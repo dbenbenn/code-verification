@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Game.ModelIface
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore
-public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
+public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
 
 /-!
 # Shared Halted-Game Tracker and Target-Adversary Query Bounds
@@ -21,7 +21,7 @@ online soundness `validSessionHaltTracker_kemFailCoreTracker`, and defines the t
 query-bound bundle `TargetAdvPerInstanceBounded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +42,7 @@ open Computational.Proofs.LibsignalCli.MainHaltedPrefixCore (SessionHaltTracker
 
 /-- `KemFailSessionTrack F C` packaged as a `SessionHaltTracker`, halting on `transmit`/`chall`
 when `stepKemFailSend` detects a candidate decapsulation failure. -/
-def kemFailCoreTracker {St Msg C : Type} [DecidableEq C] (F : ShaCompress) (K : MlKem) :
+@[expose] def kemFailCoreTracker {St Msg C : Type} [DecidableEq C] (F : ShaCompress) (K : MlKem) :
     SessionHaltTracker St Msg (BitVec 512) C SampledSessionKey (KemFailSessionTrack F C) where
   init k := initKemFailSessionTrack F C k.2.2
   onSend _ P coins st :=
@@ -85,7 +85,7 @@ theorem validSessionHaltTracker_kemFailCoreTracker {St Msg C : Type} [DecidableE
     simp [hnone]
 
 /-- Per-category and per-instance `IsQueryBoundP` contract on a model-target adversary `B`. -/
-def TargetAdvPerInstanceBounded {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def TargetAdvPerInstanceBounded {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (B : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
     (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ) : Prop :=
   B.IsQueryBoundP

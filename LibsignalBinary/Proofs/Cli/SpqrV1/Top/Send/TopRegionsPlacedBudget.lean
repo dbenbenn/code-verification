@@ -11,17 +11,19 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinishPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopRegionsPlaced
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinishPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopRegionsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 public meta import Lean -- shake: keep
 public meta import ProofLib.SepLogic.WP -- shake: keep
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -40,6 +42,11 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.TopRegions
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
 
 /-!
 # Budget-Threaded Relocatable Top Regions & `.headerReceived` `encaps1 = none` Panic Arm (Block `427`)
@@ -48,7 +55,7 @@ Threads `RustCliAllocBudget` through alignment-free Phase 4 finish (`+6216 -> +4
 the `.headerReceived` `encaps1 = none` panic arm in Block `427`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -66,13 +73,13 @@ open scoped CryptoVerification.RustHeap
 open scoped CryptoVerification.LibsignalTripleRatchet
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement libsignalSessionCode lsmpl lsρ sepWP_seq_lscl)
+  (LibsignalCodeLoaded LibsignalPlacement lsmpl lsρ sepWP_seq_lscl)
 open CryptoVerification.Cli.SpqrV1.Top.Send
   (spqrCoinsAfterPlaced spqrCoinsAtPlaced spqrCoinsAtPlaced_entails_after_zero spqrMlkemEncaps1Sym
    spqrSendDropJumpTablePlacedAt spqrSend_unwrap_failed_placed spqrUnwrapFailedSym)
 open CryptoVerification.Cli.SpqrV1.Top.Send.CodePlaced (blkPC_427 blkPl_427)
 open CryptoVerification.LibsignalSpqrV1
-  (Authenticator Bytes MlKem PqRatchetState mlkemEncaps1Spec spqrAuthApi spqrPolyApi)
+  (Authenticator Bytes MlKem MlkemEncaps1Call PqRatchetState mlkemEncaps1Spec spqrAuthApi spqrPolyApi)
 open CryptoVerification.LibsignalTripleRatchet
   (LibsignalCodeRoLoaded extHookStack spqrSendResultAt withLsCodeRoLoaded)
 open CryptoVerification.LibsignalTripleRatchetRepr (noneCap)
@@ -119,10 +126,13 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedB
   (HeaderReceived1aEnv fitsEnv_headerReceived1a_iff fitsEvents_headerReceived1aEvents_split
    headerReceived1aEvents spqrSend_allocZeroedNoOom_ok_placed)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1PlacedBudget
-  (spqrSend_encapsulate1_ok_placed)
+  (spqrSend_encapsulate1_ok_placed stackAt_spqrSendCallee_from_mlkem
+   stackAt_spqrSendCallee_to_mlkem)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget.KeysUnsampledHelpers
   (call_lscro_calleeStack_sepWP of_sepWP_lscro_plain spqrSend_shim_ok_placed)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (mlkemEncaps1AtSpec)
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux (call_sessionShim_budget)
 open LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled1PlacedBudget
   (sepWP_seg_vm sepWPp_seg_vm tpidrEl0_setMem_pre tpidrEl0_writeVReg128_pre
@@ -140,7 +150,7 @@ private theorem send_noneCap2_add_two_beq_zero :
 private theorem send_noneCap2_add_two_bne_zero :
     (0xfffffffffffffffe#64 + 2#64 != 0#64) = false := rfl
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff Program.fnAddr
   v1StatePBPinnedAt
 attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp
@@ -725,6 +735,56 @@ private theorem call_coinsFill32_lscro {M : AllocCostModel} {A : RustCliAllocBud
     hnext sf hcrl_sf hpc_sf hrun_sf hsp_sf
       hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 hvregs (htr_sf.trans htrace)
 
+private theorem call_mlkemEncaps1_none_sepWP {K : MlKem} {prog : Program} {entry ret_pc tgt : BitVec 64}
+    (hcall : subroutine_ok prog entry (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
+    (retA hdrA randA esA ssA : BitVec 64) (hdr : Bytes) (rand : List.Vector (BitVec 8) 32)
+    (hencaps : K.encaps1 hdr rand = none)
+    {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp}
+    {post : State → SepProp → Prop}
+    (hpc : s.pc = entry) (hrun : s.status = .Running)
+    (hsp : s.sp = sp_call) (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
+    (hlr : s.readReg64 Reg.lr = ret_pc) (htrace : s.trace = s0.trace)
+    (hx8 : s.readReg64 .x8 = retA) (hx0 : s.readReg64 .x0 = hdrA)
+    (hx1 : (s.readReg64 .x1).toNat = hdr.length) (hx2 : s.readReg64 .x2 = randA)
+    (hx3 : s.readReg64 .x3 = esA) (hx4 : s.readReg64 .x4 = 2080#64)
+    (hx5 : s.readReg64 .x5 = ssA) (hx6 : s.readReg64 .x6 = 32#64)
+    (hsplit : P = ((hdrA ↦ₛ hdr) ∗ (randA ↦ₛ rand.toList) ∗ memRegion retA 961 ∗
+      memRegion esA 2080 ∗ memRegion ssA 32 ∗
+      stackAt sp_call spqrSendCalleeStack) ∗ Frame)
+    (hnext : ∀ (sf : State) (err : BitVec 8),
+      sf.pc = ret_pc → sf.status = .Running → sf.sp = sp_call →
+      CalleeSavedPreserved s sf → sf.trace = s0.trace →
+      SepWP prog tgt sf
+        (((hdrA ↦ₛ hdr) ∗ (randA ↦ₛ rand.toList) ∗ (retA ↦₈ 1#8) ∗
+          ((retA + 1#64) ↦₈ err) ∗ memRegion (retA + 2#64) 959 ∗
+          memRegion esA 2080 ∗ memRegion ssA 32 ∗
+          stackAt sp_call spqrSendCalleeStack) ∗ Frame) post)
+    (hlr_ls : LsRetAddr624 ret_pc := by
+      first | assumption | simp (config := { decide := true }) only [Reg.x30, Reg.lr, BitVec.add_assoc, arm64_norm, wp_norm]) :
+    SepWP prog tgt s P post := by
+  rw [hsplit]
+  refine SepWP.fold (stackAt_spqrSendCallee_to_mlkem sp_call) (by sep_focus) ?_
+  refine SepWP.call_subroutine_frame hcall
+    (x := ({ ret := retA, hdrA := hdrA, hdr := hdr, randA := randA, rand := rand,
+             esA := esA, ssA := ssA } : MlkemEncaps1Call))
+    (F := memRegion (sp_call - 123008#64) 86144 ∗ Frame)
+    hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
+    (fun _ _ _ h => not_satisfies_false_sepConj h)
+    (fun _ _ _ _ h => not_satisfies_false_sepConj h)
+    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
+  · intro R hm
+    dsimp only [withLsRet, withVmPreserved, mlkemEncaps1AtSpec]
+    rw [hsp]; simp only [sepConj_assoc, satisfies_pure_sepConj] at hm ⊢
+    exact ⟨hlr ▸ hlr_ls, ⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6⟩, by ac_nf at hm ⊢⟩
+  · dsimp only [withLsRet, withVmPreserved, mlkemEncaps1AtSpec]
+    rw [hencaps, hsp]; dsimp only; rw [sepConj_assoc, sepConj_assoc]
+    refine SepWP.pure_elim fun _hvm1 => SepWP.pure_elim fun htr1 => ?_
+    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+    refine SepWP.exists_elim fun err => ?_
+    refine SepWP.fold (stackAt_spqrSendCallee_from_mlkem sp_call) (by sep_focus) ?_
+    exact SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl))
+      (hnext sf err hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf (htr1.trans htrace))
+
 set_option maxHeartbeats 1600000 in
 /-- Total-correctness `SepWP` execution from `spqrSendPlacedEntry + 1312#64` to the
     `core::result::unwrap_failed` panic stub (`lsρ spqrUnwrapFailedSym`) when
@@ -739,7 +799,7 @@ theorem step_headerReceived_1312_encaps1_none_sepWP_placed
       (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
     (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
-      (withVmPreserved (mlkemEncaps1Spec K)))
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (g : AuthenticatorGhost) (auth : Authenticator) (epoch : BitVec 64)
     (hdr_cap hdr_ptr : BitVec 64) (hdr : Bytes) (hhdr_lt : hdr.length < 2 ^ 63)
     (sp cur : BitVec 64) (tape : List (BitVec 8)) (h32 : 32 ≤ tape.length)
@@ -773,7 +833,6 @@ theorem step_headerReceived_1312_encaps1_none_sepWP_placed
   have hhdr_toNat : (BitVec.ofNat 64 hdr.length).toNat = hdr.length := Nat.mod_eq_of_lt (by omega)
   dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, BitVec.ofNat_eq_ofNat]
     at hpc hshim hallocz hrng_call henc1_call ⊢
-  dsimp only [withVmPreserved, mlkemEncaps1Spec] at henc1_call
   subst hP
   simp only [Reg.x24, Reg.x26, Reg.x28] at hx24 hx26 hx28
   apply of_sepWP_lscro_plain (mid := lsmpl.base 618) hcrl
@@ -861,13 +920,26 @@ theorem step_headerReceived_1312_encaps1_none_sepWP_placed
               exact Entails.refl _
             refine SepWP.fold hfold_rand_7536 (by dsimp only [words4At]; sep_focus) ?_
             clear hrand_words hfold_rand_7536
-            refine SepWP.fold (stackAt_spqrSendCallee_to_extHook sp) (by sep_focus) ?_
-            wp_apply
-            wp_conv_pre => simp only [hencaps, sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-            apply SepWP.exists_elim; intro _
-            refine SepWP.fold (stackAt_spqrSendCallee_from_extHook_of_eq (sp := sp) ?_)
-              (by sep_focus) ?_
-            · simp only [State.sp, arm64_norm, wp_norm, *]
+            refine call_mlkemEncaps1_none_sepWP henc1_call
+              (sp + 4704#64) hdr_ptr (sp + 7536#64)
+              (sf1.readReg64 (Reg.gpr 0#5)) (sf2.readReg64 (Reg.gpr 0#5))
+              hdr rand hencaps
+              (s0 := s0) (sp_call := sp)
+              (by wp_norm_goal) (by simp only [wp_norm, arm64_norm, *])
+              (by simp only [State.sp, arm64_norm, *]) hsp_align rfl
+              (by simp only [wp_norm, arm64_norm, *])
+              (by simp only [Reg.x8, BitVec.add_assoc, arm64_norm, *])
+              (by simp only [Reg.x0, arm64_norm, *])
+              (by simp only [Reg.x1, hhdr_toNat, arm64_norm, *])
+              (by simp only [Reg.x2, BitVec.add_assoc, arm64_norm, *])
+              (by simp only [Reg.x3, arm64_norm, *])
+              (by simp only [Reg.x4, arm64_norm, *])
+              (by simp only [Reg.x5, arm64_norm, *])
+              (by simp only [Reg.x6, arm64_norm, *])
+              (by sep_focus)
+              fun se1 _err hpc_se1 hrun_se1 hsp_se1 hcs_se1 htr_se1 => ?_
+            rcases hcs_se1 with ⟨hx19_e1, hx20_e1, hx21_e1, hx22_e1, hx23_e1, hx24_e1, hx25_e1, hx26_e1, hx27_e1, hx28_e1, _, hvregs_e1⟩
+            simp only [Reg.lr, BitVec.add_assoc, wp_norm, arm64_norm, *] at hpc_se1 hx19_e1 hx20_e1 hx21_e1 hx22_e1 hx23_e1 hx24_e1 hx25_e1 hx26_e1 hx27_e1 hx28_e1 hvregs_e1
             have h7536 : ((sp + 7536#64) ↦ₛ rand.toList) ⊢ memRegion (sp + 7536#64) 32 := by
               have h := pointsToBytes_entails_memRegion (sp + 7536#64) rand.toList
               rwa [List.Vector.toList_length] at h
@@ -921,7 +993,7 @@ theorem step_headerReceived_1312_encaps1_none_placed
       (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
     (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
-      (withVmPreserved (mlkemEncaps1Spec K)))
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (hunwrap_sym : (Rust.withPanics ext) spqrUnwrapFailedSym = some Rust.panicked)
     (g : AuthenticatorGhost) (auth : Authenticator) (epoch : BitVec 64)
     (hdr_cap hdr_ptr : BitVec 64) (hdr : Bytes) (hhdr_lt : hdr.length < 2 ^ 63)
@@ -966,7 +1038,7 @@ theorem step_headerReceived_1312_encaps1_none_ofEnv_placed
       (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
     (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
-      (withVmPreserved (mlkemEncaps1Spec K)))
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (hunwrap_sym : (Rust.withPanics ext) spqrUnwrapFailedSym = some Rust.panicked)
     (g : AuthenticatorGhost) (auth : Authenticator) (epoch : BitVec 64)
     (hdr_cap hdr_ptr : BitVec 64) (hdr : Bytes) (hhdr_lt : hdr.length < 2 ^ 63)
@@ -1010,7 +1082,7 @@ theorem step_send_arm_headerReceived_encaps1_none_placed {F : ShaCompress} {K : 
       (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
     (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
-      (withVmPreserved (mlkemEncaps1Spec K)))
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (hunwrap_sym : (Rust.withPanics ext) spqrUnwrapFailedSym = some Rust.panicked)
     {s0 s : State} (sp cur : BitVec 64) (tape : Bytes) (h32 : 32 ≤ tape.length)
     (st : CryptoVerification.LibsignalSpqrV1.Chunked.SendCt.HeaderReceived spqrPolyApi (spqrAuthApi F))
@@ -1078,7 +1150,7 @@ theorem step_send_arm_headerReceived_encaps1_none_ofEnv_placed {F : ShaCompress}
       (rustAllocZeroedBudgetSpec M A lim))
     (hcoinsFill : CoinsFillPlacedOkX ext)
     (henc1 : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
-      (withVmPreserved (mlkemEncaps1Spec K)))
+      (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K))))
     (hunwrap_sym : (Rust.withPanics ext) spqrUnwrapFailedSym = some Rust.panicked)
     {s0 s : State} (sp cur : BitVec 64) (tape : Bytes) (h32 : 32 ≤ tape.length)
     (st : CryptoVerification.LibsignalSpqrV1.Chunked.SendCt.HeaderReceived spqrPolyApi (spqrAuthApi F))

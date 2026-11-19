@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
+public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.ALaCarte.Ordering
@@ -35,7 +35,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -667,7 +667,7 @@ private theorem t10_msg2_at_loc :
 /-! ## Witness trace `trCK` -/
 
 /-- `t6` extended by exposing `stA0.cks`. -/
-def trCK : ExecTrace := exposeCksTr t6 "alice" stA0
+@[expose] def trCK : ExecTrace := exposeCksTr t6 "alice" stA0
 
 abbrev mkA0 : Bytes := (kdfCk stA0.cks).2
 
@@ -717,7 +717,7 @@ theorem trCK_knows : (mkTestTracePredicates trCK).AttackerKnows mkA0 :=
 /-! ## Witness trace `trCK2` -/
 
 /-- `t7` extended by exposing `stA0.cks`. -/
-def trCK2 : ExecTrace := exposeCksTr t7 "alice" stA0
+@[expose] def trCK2 : ExecTrace := exposeCksTr t7 "alice" stA0
 
 abbrev mkA1 : Bytes := (kdfCk stA1.cks).2
 
@@ -765,10 +765,10 @@ theorem trCK2_knows : (mkTestTracePredicates trCK2).AttackerKnows mkA1 :=
 
 /-! ## Witness trace `trRKPost` -/
 
-def tRKP1 : ExecTrace := exposeRkTr t10 "alice" stA0
+@[expose] def tRKP1 : ExecTrace := exposeRkTr t10 "alice" stA0
 
 /-- `t10` extended by exposing `stA0.rk` and `dhsA`. -/
-def trRKPost : ExecTrace := exposeDhsTr tRKP1 "alice" stA0
+@[expose] def trRKPost : ExecTrace := exposeDhsTr tRKP1 "alice" stA0
 
 abbrev mkB0 : Bytes := (kdfCk stB2.cks).2
 
@@ -841,12 +841,12 @@ theorem trRKPost_knows : (mkTestTracePredicates trRKPost).AttackerKnows mkB0 :=
 
 abbrev mRKP2 : Bytes := rnd 65 32
 abbrev coinsRKP2 : Bytes := rnd 66 32
-def keyRKP2 : Bytes := (Spqr.spqrSend stB3.spqr coinsRKP2).2.1
-def tRKP2_0 : ExecTrace := encTr t10 "bob" 63 stB3 keyRKP2
-def tRKP2_1 : ExecTrace := exposeRkTr tRKP2_0 "alice" stA0
+@[expose] def keyRKP2 : Bytes := (Spqr.spqrSend stB3.spqr coinsRKP2).2.1
+@[expose] def tRKP2_0 : ExecTrace := encTr t10 "bob" 63 stB3 keyRKP2
+@[expose] def tRKP2_1 : ExecTrace := exposeRkTr tRKP2_0 "alice" stA0
 
 /-- `t10` extended with Bob encrypting message 1 from `stB3` and exposing `stA0.rk` and `dhsA`. -/
-def trRKP2 : ExecTrace := exposeDhsTr tRKP2_1 "alice" stA0
+@[expose] def trRKP2 : ExecTrace := exposeDhsTr tRKP2_1 "alice" stA0
 
 abbrev mkB1 : Bytes := (kdfCk stB3.cks).2
 
@@ -928,14 +928,14 @@ theorem trRKP2_knows : (mkTestTracePredicates trRKP2).AttackerKnows mkB1 :=
 
 abbrev mDC : Bytes := rnd 72 32
 abbrev coinsDC : Bytes := rnd 73 32
-def keyDC : Bytes := (Spqr.spqrSend stA4.spqr coinsDC).2.1
-def tDC0 : ExecTrace := encTr t11 "alice" 71 stA4 keyDC
-def tDC1 : ExecTrace := exposeRkTr tDC0 "alice" stA0
-def tDC2 : ExecTrace := exposeDhsTr tDC1 "alice" stA0
+@[expose] def keyDC : Bytes := (Spqr.spqrSend stA4.spqr coinsDC).2.1
+@[expose] def tDC0 : ExecTrace := encTr t11 "alice" 71 stA4 keyDC
+@[expose] def tDC1 : ExecTrace := exposeRkTr tDC0 "alice" stA0
+@[expose] def tDC2 : ExecTrace := exposeDhsTr tDC1 "alice" stA0
 
 /-- `t11` extended with Alice encrypting message 0 from `stA4` and exposing `stA0.rk`, `dhsA`, and
 `dhsB1`. -/
-def trDC : ExecTrace := exposeDhsTr tDC2 "bob" stB1
+@[expose] def trDC : ExecTrace := exposeDhsTr tDC2 "bob" stB1
 
 abbrev mkDC : Bytes := (kdfCk stA4.cks).2
 
@@ -1046,7 +1046,7 @@ theorem trDC_knows : (mkTestTracePredicates trDC).AttackerKnows mkDC :=
 
 /-! ## Witness trace `trMK` -/
 
-def isRecvKeyAt (n : UInt32) : TREvent → Bool
+@[expose] def isRecvKeyAt (n : UInt32) : TREvent → Bool
   | .MessageKey _ .receiver _ _ n' _ _ => n' == n
   | _ => false
 
@@ -1074,18 +1074,18 @@ theorem not_receiverKeyUsedB_of_trEvIdx {tr : ExecTrace} {s : SessionInfo}
 
 abbrev mMK : Bytes := rnd 54 32
 abbrev coinsMK : Bytes := rnd 55 32
-def keyMK : Bytes := (Spqr.spqrSend stA2.spqr coinsMK).2.1
-def pqmMK : Bytes := (Spqr.spqrSend stA2.spqr coinsMK).2.2
-def tMK1 : ExecTrace := encTr t8 "alice" 43 stA2 keyMK
+@[expose] def keyMK : Bytes := (Spqr.spqrSend stA2.spqr coinsMK).2.1
+@[expose] def pqmMK : Bytes := (Spqr.spqrSend stA2.spqr coinsMK).2.2
+@[expose] def tMK1 : ExecTrace := encTr t8 "alice" 43 stA2 keyMK
 
-def cBMK : RecvChain := { cB' with chainKey := (kdfCk (kdfCk cB'.chainKey).1).1, index := 3 }
-def seedMK2 : Bytes := (kdfCk (kdfCk cB'.chainKey).1).2
-def stB2_mk : TRState := { stB1 with recv := [cBMK], spqr := recvSt stB1.spqr pqmMK }
+@[expose] def cBMK : RecvChain := { cB' with chainKey := (kdfCk (kdfCk cB'.chainKey).1).1, index := 3 }
+@[expose] def seedMK2 : Bytes := (kdfCk (kdfCk cB'.chainKey).1).2
+@[expose] def stB2_mk : TRState := { stB1 with recv := [cBMK], spqr := recvSt stB1.spqr pqmMK }
 
 theorem recv_tMK2 : Spqr.spqrRecv stB1.spqr pqmMK 2 = some (stB2_mk.spqr, recvKey stB1.spqr pqmMK) :=
   spqrRecv_not_init _ _ _ (notInit_recv _ _) (bytesToLiteral_spqrSendMsg_loc _ _)
 
-def tMK2 : ExecTrace :=
+@[expose] def tMK2 : ExecTrace :=
   let tr0 := tMK1.append (NetE (recvKey stB1.spqr pqmMK))
   let trS := tr0.append (EvT (.SkippedKeyStored (stB1.sessionInfo "bob") (dhPk dhsA) 1 seedB1 2 53))
   ((trS.append (EvT (.Received "bob" "alice" (dhPk dhsA) 2 mMK))).append
@@ -1129,7 +1129,7 @@ theorem tMK2_runs : Runs (TripleRatchet.messageDecrypt "bob" 53 60 56 2) tMK1 65
       rfl)
 
 /-- `t8` extended with out-of-order message 2 delivery and `exposeSkipped` leaking `seedB1`. -/
-def trMK : ExecTrace := exposeSkippedTr tMK2 (stB1.sessionInfo "bob") seedB1 1 2
+@[expose] def trMK : ExecTrace := exposeSkippedTr tMK2 (stB1.sessionInfo "bob") seedB1 1 2
 
 theorem tMK1_reach : tMK1.Reachable reachability :=
   reach_of_runs tMK1_runs

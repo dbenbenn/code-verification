@@ -12,7 +12,6 @@ module
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.MlKem
 public import LibsignalBinary.Specifications.LibsignalAesCbc
-public import LibsignalBinary.Specifications.LibsignalTripleRatchet
 
 /-!
 # PQXDH Parameters and Typed Inputs
@@ -31,7 +30,6 @@ set_option autoImplicit false
 namespace CryptoVerification.E2E
 
 open Arm64 ProofLib CryptoGames CryptoGames.LibsignalSession
-open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalAesCbc (toLEBytes)
 open CryptoVerification.LibsignalSpqrV1 (MlKem)
 
@@ -40,45 +38,31 @@ open CryptoVerification.LibsignalSpqrV1 (MlKem)
 /-- A SHA-512 chaining state: eight 64-bit words. -/
 abbrev Sha512State := List.Vector (BitVec 64) 8
 
-/-- **The PQXDH primitives, all abstract** (universally quantified in the statement).
+/-- **The PQXDH cryptographic primitives** (abstract in the protocol/security model layers, and
+instantiated to the concrete functions `realPqxdhPrims` executed by the linked ELF in the closed
+CLI headlines).
 
-**DEV-PQ1 (machine model): the machine code of SHA-512 compression, the Ed25519 curve core and Kyber
-is not verified.** The extension of DEV-E8. `compress512`, the seven `curve25519_dalek` functions of
-`pqxdhHookTable` and `kyber::{encapsulate, decapsulate}` are hooks over these free functions. Byte
-strings are fixed-length vectors, so each hook is total and reads exactly its argument bytes. Why:
-primitives are verified or assumed separately. Effect: out of scope: their compiled code is trusted
-to match.
+**DEV-PQ1 (machine model): SHA-512 compression and Kyber/ML-KEM machine code.** On the placed CLI
+ELF (`CliBinaryPq.lean`), `compress512`, `kyber::{encapsulate, decapsulate}`, and
+`mlkem768::incremental::*` execute their linked machine code directly, proved against
+`realPqxdhPrims` (FIPS 180-4 SHA-512, round-3 Kyber-1024, and FIPS 203 ML-KEM-768 incremental, with
+`SampleNTT` divergence excused by DEV-CLI22). Byte strings are fixed-length vectors.
 
 **DEV-PQ2 (libsignal): the KEM is Kyber1024 round 3, not FIPS 203 ML-KEM-1024.** libsignal v0.105.4's
 `kem::KeyType::Kyber1024` calls `libcrux_ml_kem::mlkem1024::kyber` (the pre-standard round-3 variant,
-`TAG_KYBER_1024 = 0x08`). `encaps` / `decaps` are abstract, so nothing here depends on which; the
-security layer's KEM assumptions must be read as about Kyber1024 round 3. Effect: none here; a
-disclosure for the security conjunct.
+`TAG_KYBER_1024 = 0x08`). In the closed CLI headlines, `encaps` / `decaps` are instantiated to
+`kyber1024EncapsVec` / `kyber1024DecapsVec` (`realPqxdhPrims`), so the security layer's KEM
+assumptions must be read as about Kyber1024 round 3. Effect: none here; a disclosure for the
+security conjunct.
 
 `decaps` is total: Kyber decapsulation never fails (implicit rejection returns a pseudorandom
 secret), as libcrux's `decapsulate` returns `[u8; 32]`. -/
 structure PqxdhPrims where
   /-- SHA-512 compression of one 128-byte block (FIPS 180-4 §6.4.2 on the big-endian words of the
   block; the state as eight words). As SHA-256's `F` (`CryptoGames/AEAD/HMACDefs.lean`), the
-  block is a byte list; the hook and the model's `sha512Ref` (at `modelPrims`) pass only 128-byte
-  blocks. -/
+  block is a byte list; the linked implementation and the model's `sha512Ref` (at `modelPrims`)
+  pass only 128-byte blocks. -/
   F512 : Sha512State → List (BitVec 8) → Sha512State
-  /-- `MontgomeryPoint::to_edwards`: u-coordinate and sign bit (0 or 1) to an `EdwardsPoint`, `none`
-  if `u` is not the u-coordinate of a curve point. -/
-  montToEd : List.Vector (BitVec 8) 32 → BitVec 8 → Option (List.Vector (BitVec 8) 160)
-  /-- `EdwardsPoint::compress`. -/
-  compress : List.Vector (BitVec 8) 160 → List.Vector (BitVec 8) 32
-  /-- `<EdwardsPoint as Neg>::neg`. -/
-  edNeg : List.Vector (BitVec 8) 160 → List.Vector (BitVec 8) 160
-  /-- `EdwardsPoint::is_torsion_free`. -/
-  isTorsionFree : List.Vector (BitVec 8) 160 → Bool
-  /-- `vartime_double_scalar_mul_basepoint a A b = [a]A + [b]B`. -/
-  dsmb : List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 160 → List.Vector (BitVec 8) 32 →
-    List.Vector (BitVec 8) 160
-  /-- `Scalar::from_bytes_mod_order` (32 bytes, reduced mod ℓ). -/
-  scalarMod : List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 32
-  /-- `Scalar::from_bytes_mod_order_wide` (64 bytes, reduced mod ℓ). -/
-  scalarWide : List.Vector (BitVec 8) 64 → List.Vector (BitVec 8) 32
   /-- Kyber1024 encapsulation on the 1568-byte public key and 32 coin bytes: (ciphertext, shared
   secret). -/
   encaps : List.Vector (BitVec 8) 1568 → List.Vector (BitVec 8) 32 →
@@ -91,11 +75,12 @@ structure PqxdhPrims where
 /-! ## Parameters -/
 
 /-- **The parameters of the PQXDH statement**: the session layer's primitives (`C : Crypto`, the
-primitives `absE` already uses) and the PQXDH primitives. All are universally quantified. -/
+primitives `absE` uses) and the PQXDH primitives (`Q : PqxdhPrims`). Universally quantified in the
+protocol/security model layers, and instantiated to `realPEParams` in the closed CLI headlines. -/
 structure PEParams where
   /-- The session layer's primitives (SHA-256, AES-256, X25519). -/
   C : Crypto
-  /-- The PQXDH primitives (SHA-512, the Ed25519 curve core, Kyber1024). -/
+  /-- The PQXDH primitives (SHA-512, Kyber1024, SPQR's ML-KEM-768). -/
   Q : PqxdhPrims
 
 /-! ## The coins of `init` -/

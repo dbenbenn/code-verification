@@ -20,6 +20,7 @@ meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `HookSat`-backed `subtle::black_box::<u8>`, `ct_eq` (Block `213`), and `PublicKey::eq` (Block `212`)
@@ -41,7 +42,7 @@ open Arm64 ProofLib
 open CryptoGames.LibsignalSession (PublicKey)
 open CryptoVerification
   (IsLsBlockProg LibsignalPlacement blkLib_eq_212 blkLib_eq_213 blkPC_212 blkPC_213 blkPl_212
-   blkPl_213 libsignalSessionImage lsBlackBoxU8Sym ls_externAt?_of_mem ls_subroutine_ok_of_block
+   blkPl_213 lsBlackBoxU8Sym ls_externAt?_of_mem ls_subroutine_ok_of_block
    lsmpl lsρ sepWP_seq_lscl subroutine_ok_withLsCodeLoaded_of_plain withLsCodeLoaded)
 open LibsignalBinary.Heap (VmPreserved VmPreserved.refl VmPreserved.trans)
 open LibsignalBinary.Heap.SpecBudget
@@ -50,7 +51,7 @@ open LibsignalBinary.Heap.SpecBudget
 open CryptoVerification.LibsignalSession (blackBoxHook)
 open CryptoVerification.LibsignalSession.FindReceiverChainIndex
   (ctEqFrame_entails_ext32 ctEqSliceSpecExt ctEq_pre_rearrange_ext32 ct_eq_bool_32_u8_ext32
-   extHookStack32 fnFrameBytes_ctEqName_ext32 fnFrameBytes_publicKeyEqName_ext32
+   extHookStack32
    ite_one_zero_and_8_ext32 ite_one_zero_and_one_8_ext32 pointsToBytes32
    pointsToBytes_eq_pointsToBytes32 publicKeyEqSpecExt publicKey_ite_toList_eq
    setWidth32_and_4294967297_ext32 setWidth8_and32_ext32 setWidth8_and64_ext32
@@ -132,21 +133,21 @@ theorem hookSat_blackBox_withStack_of_sat {H : String → Option (State → Stat
 
 /-- `ctEqSliceSpec` extended with `16` B below `ct_eq`'s 48-byte frame (`64` B total),
 returning full 64-bit `sf.readReg64 .x0 = (if k1 = k2 then 1#64 else 0#64)`. -/
-@[expose] noncomputable def ctEqSliceSpec16 :
+@[expose] def ctEqSliceSpec16 :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p1, k1, p2, k2, sp) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp ∧ k1.length = 32 ∧ k2.length = 32⌝ ∗
     (p1 ↦ₛ k1) ∗ (p2 ↦ₛ k2) ∗
-    stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" sp ∗
+    stackFrameAt sp 48 ∗
     stackAt (sp - 48#64) 16
   post := fun (p1, k1, p2, k2, sp) s0 sf =>
     ⌜sf.readReg64 .x0 = (if k1 = k2 then 1#64 else 0#64) ∧ sf.trace = s0.trace⌝ ∗
     (p1 ↦ₛ k1) ∗ (p2 ↦ₛ k2) ∗
-    stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" sp ∗
+    stackFrameAt sp 48 ∗
     stackAt (sp - 48#64) 16
 
 /-- `VmPreserved`-strengthened `ctEqSliceSpec16`. -/
-@[expose] noncomputable def ctEqSliceBudgetSpec16 :
+@[expose] def ctEqSliceBudgetSpec16 :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) :=
   withVmPreserved ctEqSliceSpec16
 
@@ -166,23 +167,23 @@ returning full 64-bit `sf.readReg64 .x0 = (if k1 = k2 then 1#64 else 0#64)`. -/
   withVmPreserved ctEqSliceMemSpec16
 
 /-- `publicKeyEqSpec` extended with `16` B below `ct_eq`'s frame (`sp - 64`, `80` B total). -/
-@[expose] noncomputable def publicKeyEqSpec16 :
+@[expose] def publicKeyEqSpec16 :
     Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey × BitVec 64) where
   pre := fun (p1, pk1, p2, pk2, sp) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp⌝ ∗
     (p1 ↦ₛ pk1.bytes.toList) ∗ (p2 ↦ₛ pk2.bytes.toList) ∗
-    stackFrameFor libsignalSessionImage "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" sp ∗
-    stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" (sp - 16#64) ∗
+    stackFrameAt sp 16 ∗
+    stackFrameAt (sp - 16#64) 48 ∗
     stackAt (sp - 64#64) 16
   post := fun (p1, pk1, p2, pk2, sp) s0 sf =>
     ⌜sf.readReg64 .x0 = (if pk1 == pk2 then 1#64 else 0#64) ∧ sf.trace = s0.trace⌝ ∗
     (p1 ↦ₛ pk1.bytes.toList) ∗ (p2 ↦ₛ pk2.bytes.toList) ∗
-    stackFrameFor libsignalSessionImage "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" sp ∗
-    stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" (sp - 16#64) ∗
+    stackFrameAt sp 16 ∗
+    stackFrameAt (sp - 16#64) 48 ∗
     stackAt (sp - 64#64) 16
 
 /-- `VmPreserved`-strengthened `publicKeyEqSpec16`. -/
-@[expose] noncomputable def publicKeyEqBudgetSpec16 :
+@[expose] def publicKeyEqBudgetSpec16 :
     Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey × BitVec 64) :=
   withVmPreserved publicKeyEqSpec16
 
@@ -204,7 +205,7 @@ returning full 64-bit `sf.readReg64 .x0 = (if k1 = k2 then 1#64 else 0#64)`. -/
 /-! ## 3. Stepping Helpers & Block `213` (`ct_eq`) Proof under `blackBoxSpecSat` -/
 
 theorem ctEqFrame_sepConj_stackAt_16 (sp : BitVec 64) :
-    stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" sp ∗
+    stackFrameAt sp 48 ∗
       stackAt (sp - 48#64) 16 =
     stackAt sp 16 ∗ memRegion (sp - 64#64) 48 := by
   rw [stackFrameFor_ctEq_eq_cells_ext32, sepConj_comm]
@@ -216,7 +217,7 @@ theorem ctEqFrame_sepConj_stackAt_16 (sp : BitVec 64) :
 
 theorem memRegion_64_eq_ctEqFrame_16 (sp : BitVec 64) :
     memRegion (sp - 64#64) 64 =
-      stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" sp ∗
+      stackFrameAt sp 48 ∗
       stackAt (sp - 48#64) 16 := by
   rw [← stackFrameFor_ctEq_eq_memRegion_ext32 sp]
   simp only [stackAt]
@@ -227,8 +228,8 @@ theorem memRegion_64_eq_ctEqFrame_16 (sp : BitVec 64) :
 
 theorem memRegion_80_eq_publicKeyEqFrame_16 (sp : BitVec 64) :
     memRegion (sp - 80#64) 80 =
-      stackFrameFor libsignalSessionImage "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" sp ∗
-      stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" (sp - 16#64) ∗
+      stackFrameAt sp 16 ∗
+      stackFrameAt (sp - 16#64) 48 ∗
       stackAt (sp - 64#64) 16 := by
   rw [← stackFrameFor_eq_eq_memRegion_ext32 sp,
       ← stackFrameFor_ctEq_eq_memRegion_ext32 (sp - 16#64)]
@@ -391,7 +392,7 @@ theorem step_blackBox_tail_sat
             (⌜VmPreserved s0 sf⌝ ∗
               ⌜sf.readReg64 .x0 = x0_target.zeroExtend 64 ∧ sf.trace = s0.trace⌝ ∗
               S1 ∗ S2 ∗
-              stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" s0.sp ∗
+              stackFrameAt s0.sp 48 ∗
               stackAt (s0.sp - 48#64) 16) ∗ R0) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf) := by
   have hal : s.spAligned = true := by
@@ -402,7 +403,7 @@ theorem step_blackBox_tail_sat
     hpc hrun hal hlr
     (fun R hm => by
       have hm1 : s.mem ⊨
-          (stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" s0.sp ∗
+          (stackFrameAt s0.sp 48 ∗
             stackAt (s0.sp - 48#64) 16) ∗ (R_slices ∗ R) := by
         have hrearr :
             (stackAt (s0.sp - 48#64) 16 ∗
@@ -470,7 +471,6 @@ attribute [local simp, local wp_norm, local arm64_norm]
   setWidth8_ite_prop_1_0_ext32 setWidth8_ite_1_0_32_ext32 setWidth8_zext64_32_ext32
   setWidth8_setWidth32_ext32 setWidth8_and64_ext32 setWidth8_and32_ext32
   ite_one_zero_and_8_ext32 setWidth32_and_4294967297_ext32 ite_one_zero_and_one_8_ext32
-  fnFrameBytes_ctEqName_ext32 fnFrameBytes_publicKeyEqName_ext32
 
 set_option hygiene false in
 local macro "wp_seg_bb_213 " : tactic =>

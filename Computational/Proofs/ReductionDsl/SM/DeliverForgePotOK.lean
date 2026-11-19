@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.RedFSPotOK -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.SM.RedFSPotOK
 public import Computational.Proofs.ReductionDsl.SM.DeliverForge -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Notation
+public import Computational.Proofs.ReductionDsl.SM.RedFSPotOKHooks -- proof-setup: allow-public-import
 
 /-!
 # Potential-Based FS-AEAD Query Bounds for `DeliverForge`

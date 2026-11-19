@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Steps
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Steps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::init_inner` (`Block 324`): Relocatable `[LibsignalPlacement]` Basic-Block Step Lemmas
@@ -22,7 +24,7 @@ import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 Relocatable counterparts of the basic-block step lemmas in `InitInner/Steps.lean` on `Block 324`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -602,28 +604,6 @@ theorem init_inner_a2b_132_to_140_placed [LibsignalPlacement]
   wp_steps
   wp_done
 
-/-- `.a2b` non-empty slice OOM branch (`+144 -> +436 -> +444`, 3 instructions) on `Block 324`. -/
-theorem init_inner_a2b_144_oom_to_444_placed [LibsignalPlacement]
-    {ext : String → Option (State → State)}
-    (s0 s : State) (len : BitVec 64) (Rest : SepProp)
-    (hpc : s.pc = (blkPl_324).base + 144#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 1040#64)
-    (hx20 : s.readReg64 .x20 = len)
-    (hx0 : s.readReg64 .x0 = 0#64)
-    (htr : s.trace = s0.trace) :
-    SepWP ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      ((blkPl_324).base + 444#64) s
-      Rest
-      (fun s2 P2 =>
-        (P2 ⊢ Rest) ∧
-        s2.sp = s0.sp - 1040#64 ∧
-        s2.readReg64 .x0 = 1#64 ∧
-        s2.readReg64 .x1 = len ∧
-        s2.trace = s0.trace) := by
-  wp_steps
-  wp_done
-
 /-- `.a2b` non-empty slice step 3 (`+144 -> +160`, 4 instructions) on `Block 324`. -/
 theorem init_inner_a2b_144_ok_to_160_placed [LibsignalPlacement]
     {ext : String → Option (State → State)}
@@ -815,28 +795,6 @@ theorem init_inner_b2a_52_to_60_placed [LibsignalPlacement]
          s2.readReg64 .x27 = s0.readReg64 .x27 ∧ calleeSavedVRegs s2 = calleeSavedVRegs s0) ∧
         s2.trace = s0.trace) := by
   rcases hcs_hi with ⟨hx22, hx23, hx24, hx25, hx26, hx27, hvregs⟩
-  wp_steps
-  wp_done
-
-/-- `.b2a` non-empty slice OOM branch (`+64 -> +436 -> +444`, 3 instructions) on `Block 324`. -/
-theorem init_inner_b2a_64_oom_to_444_placed [LibsignalPlacement]
-    {ext : String → Option (State → State)}
-    (s0 s : State) (len : BitVec 64) (Rest : SepProp)
-    (hpc : s.pc = (blkPl_324).base + 64#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 1040#64)
-    (hx20 : s.readReg64 .x20 = len)
-    (hx0 : s.readReg64 .x0 = 0#64)
-    (htr : s.trace = s0.trace) :
-    SepWP ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      ((blkPl_324).base + 444#64) s
-      Rest
-      (fun s2 P2 =>
-        (P2 ⊢ Rest) ∧
-        s2.sp = s0.sp - 1040#64 ∧
-        s2.readReg64 .x0 = 1#64 ∧
-        s2.readReg64 .x1 = len ∧
-        s2.trace = s0.trace) := by
   wp_steps
   wp_done
 

@@ -9,10 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropCodePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropCodePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Iface -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Step Combinators and Deallocation Helpers for M5 Drop Paths (Block `617`)
@@ -21,7 +27,7 @@ PC arithmetic, `InMainPlaced` pure/store step combinators, `seq_frozen_codeOk`, 
 and `dirVecAt` / `dirsVecAt` helpers for M5 drop blocks on Block `617`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -208,10 +214,10 @@ theorem strRefAt_to_memRegion16_anyHeap (a : BitVec 64) (lit : List (BitVec 8)) 
   rw [← sepConj_assoc, h12]
   exact Entails.refl _
 
-def dirVecAt (A : RustAlloc) (d : BitVec 64) (g : DirGhost) : SepProp :=
+@[expose] def dirVecAt (A : RustAlloc) (d : BitVec 64) (g : DirGhost) : SepProp :=
   RustHeap.vecOf A 48 8 (dirEntryAt A) d g.changed ∗ memRegion (d + 0x18#64) 16
 
-def dirsVecAt (A : RustAlloc) (a : BitVec 64) : List DirGhost → SepProp
+@[expose] def dirsVecAt (A : RustAlloc) (a : BitVec 64) : List DirGhost → SepProp
   | [] => emp
   | d :: ds => dirVecAt A a d ∗ dirsVecAt A (a + 0x28#64) ds
 

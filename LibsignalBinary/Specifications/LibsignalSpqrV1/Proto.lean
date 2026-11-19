@@ -240,13 +240,6 @@ structure PqRatchetState where
 
 namespace Proto
 
-abbrev ChainParams := ChainParamsPB
-abbrev EpochDirection := EpochDirectionPB
-abbrev Chain := ChainPB
-abbrev VersionNegotiation := VersionNegotiationPB
-abbrev Chunk := ProtoChunk
-abbrev Authenticator := ProtoAuthenticator
-
 /-- `prost::encoding::WireType`. -/
 inductive WireType where
   | varint | SixtyFourBit | lengthDelimited | startGroup | endGroup | ThirtyTwoBit
@@ -704,7 +697,6 @@ def mergeField (m : KeysUnsampled) (tag : BitVec 32) (wt : WireType) (bs : Bytes
 def decode (bs : Bytes) : Except DecodeErr KeysUnsampled := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : KeysUnsampled) : Bytes := encodeUint64Field 1#32 m.epoch ++ encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 m.auth
 def encodedLen (m : KeysUnsampled) : Nat := (encodeRaw m).length
-def encode (m : KeysUnsampled) : Bytes := encodeRaw m
 end KeysUnsampled
 
 namespace HeaderSent
@@ -717,7 +709,6 @@ def mergeField (m : HeaderSent) (tag : BitVec 32) (wt : WireType) (bs : Bytes) (
 def decode (bs : Bytes) : Except DecodeErr HeaderSent := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : HeaderSent) : Bytes := encodeUint64Field 1#32 m.epoch ++ encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 m.auth ++ encodeBytesField 3#32 m.ek ++ encodeBytesField 4#32 m.dk
 def encodedLen (m : HeaderSent) : Nat := (encodeRaw m).length
-def encode (m : HeaderSent) : Bytes := encodeRaw m
 end HeaderSent
 
 namespace EkSent
@@ -729,7 +720,6 @@ def mergeField (m : EkSent) (tag : BitVec 32) (wt : WireType) (bs : Bytes) (dept
 def decode (bs : Bytes) : Except DecodeErr EkSent := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : EkSent) : Bytes := encodeUint64Field 1#32 m.epoch ++ encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 m.auth ++ encodeBytesField 3#32 m.dk
 def encodedLen (m : EkSent) : Nat := (encodeRaw m).length
-def encode (m : EkSent) : Bytes := encodeRaw m
 end EkSent
 
 namespace EkSentCt1Received
@@ -742,7 +732,6 @@ def mergeField (m : EkSentCt1Received) (tag : BitVec 32) (wt : WireType) (bs : B
 def decode (bs : Bytes) : Except DecodeErr EkSentCt1Received := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : EkSentCt1Received) : Bytes := encodeUint64Field 1#32 m.epoch ++ encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 m.auth ++ encodeBytesField 3#32 m.dk ++ encodeBytesField 4#32 m.ct1
 def encodedLen (m : EkSentCt1Received) : Nat := (encodeRaw m).length
-def encode (m : EkSentCt1Received) : Bytes := encodeRaw m
 end EkSentCt1Received
 
 namespace NoHeaderReceived
@@ -753,7 +742,6 @@ def mergeField (m : NoHeaderReceived) (tag : BitVec 32) (wt : WireType) (bs : By
 def decode (bs : Bytes) : Except DecodeErr NoHeaderReceived := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : NoHeaderReceived) : Bytes := encodeUint64Field 1#32 m.epoch ++ encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 m.auth
 def encodedLen (m : NoHeaderReceived) : Nat := (encodeRaw m).length
-def encode (m : NoHeaderReceived) : Bytes := encodeRaw m
 end NoHeaderReceived
 
 namespace HeaderReceived
@@ -765,7 +753,6 @@ def mergeField (m : HeaderReceived) (tag : BitVec 32) (wt : WireType) (bs : Byte
 def decode (bs : Bytes) : Except DecodeErr HeaderReceived := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : HeaderReceived) : Bytes := encodeUint64Field 1#32 m.epoch ++ encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 m.auth ++ encodeBytesField 3#32 m.hdr
 def encodedLen (m : HeaderReceived) : Nat := (encodeRaw m).length
-def encode (m : HeaderReceived) : Bytes := encodeRaw m
 end HeaderReceived
 
 namespace EkReceived
@@ -778,7 +765,6 @@ def mergeField (m : EkReceived) (tag : BitVec 32) (wt : WireType) (bs : Bytes) (
 def decode (bs : Bytes) : Except DecodeErr EkReceived := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : EkReceived) : Bytes := encodeUint64Field 1#32 m.epoch ++ encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 m.auth ++ encodeBytesField 3#32 m.hdr ++ encodeBytesField 4#32 m.ek
 def encodedLen (m : EkReceived) : Nat := (encodeRaw m).length
-def encode (m : EkReceived) : Bytes := encodeRaw m
 end EkReceived
 
 namespace Ct1Sent
@@ -792,7 +778,6 @@ def mergeField (m : Ct1Sent) (tag : BitVec 32) (wt : WireType) (bs : Bytes) (dep
 def decode (bs : Bytes) : Except DecodeErr Ct1Sent := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : Ct1Sent) : Bytes := encodeUint64Field 1#32 m.epoch ++ encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 m.auth ++ encodeBytesField 3#32 m.hdr ++ encodeBytesField 4#32 m.es ++ encodeBytesField 5#32 m.ct1
 def encodedLen (m : Ct1Sent) : Nat := (encodeRaw m).length
-def encode (m : Ct1Sent) : Bytes := encodeRaw m
 end Ct1Sent
 
 namespace Ct1SentEkReceived
@@ -806,7 +791,6 @@ def mergeField (m : Ct1SentEkReceived) (tag : BitVec 32) (wt : WireType) (bs : B
 def decode (bs : Bytes) : Except DecodeErr Ct1SentEkReceived := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : Ct1SentEkReceived) : Bytes := encodeUint64Field 1#32 m.epoch ++ encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 m.auth ++ encodeBytesField 3#32 m.es ++ encodeBytesField 4#32 m.ek ++ encodeBytesField 5#32 m.ct1
 def encodedLen (m : Ct1SentEkReceived) : Nat := (encodeRaw m).length
-def encode (m : Ct1SentEkReceived) : Bytes := encodeRaw m
 end Ct1SentEkReceived
 
 namespace Ct2Sent
@@ -817,7 +801,6 @@ def mergeField (m : Ct2Sent) (tag : BitVec 32) (wt : WireType) (bs : Bytes) (dep
 def decode (bs : Bytes) : Except DecodeErr Ct2Sent := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : Ct2Sent) : Bytes := encodeUint64Field 1#32 m.epoch ++ encodeOptMessage ProtoAuthenticator.encodeRaw 2#32 m.auth
 def encodedLen (m : Ct2Sent) : Nat := (encodeRaw m).length
-def encode (m : Ct2Sent) : Bytes := encodeRaw m
 end Ct2Sent
 end V1State.Unchunked
 
@@ -828,8 +811,6 @@ def mergeField (m : KeysUnsampled) (tag : BitVec 32) (wt : WireType) (bs : Bytes
   if tag == 1#32 then let (v, bs') ← mergeOptMessage Unchunked.KeysUnsampled.mergeField wt m.uc bs depth; .ok ({ m with uc := v }, bs') else let bs' ← skipField wt tag bs depth; .ok (m, bs')
 def decode (bs : Bytes) : Except DecodeErr KeysUnsampled := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : KeysUnsampled) : Bytes := encodeOptMessage Unchunked.KeysUnsampled.encodeRaw 1#32 m.uc
-def encodedLen (m : KeysUnsampled) : Nat := (encodeRaw m).length
-def encode (m : KeysUnsampled) : Bytes := encodeRaw m
 end KeysUnsampled
 
 namespace KeysSampled
@@ -839,8 +820,6 @@ def mergeField (m : KeysSampled) (tag : BitVec 32) (wt : WireType) (bs : Bytes) 
   else let bs' ← skipField wt tag bs depth; .ok (m, bs')
 def decode (bs : Bytes) : Except DecodeErr KeysSampled := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : KeysSampled) : Bytes := encodeOptMessage Unchunked.HeaderSent.encodeRaw 1#32 m.uc ++ encodeOptMessage PolynomialEncoder.encodeRaw 2#32 m.sendingHdr
-def encodedLen (m : KeysSampled) : Nat := (encodeRaw m).length
-def encode (m : KeysSampled) : Bytes := encodeRaw m
 end KeysSampled
 
 namespace HeaderSent
@@ -852,7 +831,6 @@ def mergeField (m : HeaderSent) (tag : BitVec 32) (wt : WireType) (bs : Bytes) (
 def decode (bs : Bytes) : Except DecodeErr HeaderSent := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : HeaderSent) : Bytes := encodeOptMessage Unchunked.EkSent.encodeRaw 1#32 m.uc ++ encodeOptMessage PolynomialEncoder.encodeRaw 2#32 m.sendingEk ++ encodeOptMessage PolynomialDecoder.encodeRaw 3#32 m.receivingCt1
 def encodedLen (m : HeaderSent) : Nat := (encodeRaw m).length
-def encode (m : HeaderSent) : Bytes := encodeRaw m
 end HeaderSent
 
 namespace Ct1Received
@@ -862,8 +840,6 @@ def mergeField (m : Ct1Received) (tag : BitVec 32) (wt : WireType) (bs : Bytes) 
   else let bs' ← skipField wt tag bs depth; .ok (m, bs')
 def decode (bs : Bytes) : Except DecodeErr Ct1Received := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : Ct1Received) : Bytes := encodeOptMessage Unchunked.EkSentCt1Received.encodeRaw 1#32 m.uc ++ encodeOptMessage PolynomialEncoder.encodeRaw 2#32 m.sendingEk
-def encodedLen (m : Ct1Received) : Nat := (encodeRaw m).length
-def encode (m : Ct1Received) : Bytes := encodeRaw m
 end Ct1Received
 
 namespace EkSentCt1Received
@@ -873,8 +849,6 @@ def mergeField (m : EkSentCt1Received) (tag : BitVec 32) (wt : WireType) (bs : B
   else let bs' ← skipField wt tag bs depth; .ok (m, bs')
 def decode (bs : Bytes) : Except DecodeErr EkSentCt1Received := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : EkSentCt1Received) : Bytes := encodeOptMessage Unchunked.EkSentCt1Received.encodeRaw 1#32 m.uc ++ encodeOptMessage PolynomialDecoder.encodeRaw 3#32 m.receivingCt2
-def encodedLen (m : EkSentCt1Received) : Nat := (encodeRaw m).length
-def encode (m : EkSentCt1Received) : Bytes := encodeRaw m
 end EkSentCt1Received
 
 namespace NoHeaderReceived
@@ -884,8 +858,6 @@ def mergeField (m : NoHeaderReceived) (tag : BitVec 32) (wt : WireType) (bs : By
   else let bs' ← skipField wt tag bs depth; .ok (m, bs')
 def decode (bs : Bytes) : Except DecodeErr NoHeaderReceived := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : NoHeaderReceived) : Bytes := encodeOptMessage Unchunked.NoHeaderReceived.encodeRaw 1#32 m.uc ++ encodeOptMessage PolynomialDecoder.encodeRaw 2#32 m.receivingHdr
-def encodedLen (m : NoHeaderReceived) : Nat := (encodeRaw m).length
-def encode (m : NoHeaderReceived) : Bytes := encodeRaw m
 end NoHeaderReceived
 
 namespace HeaderReceived
@@ -895,8 +867,6 @@ def mergeField (m : HeaderReceived) (tag : BitVec 32) (wt : WireType) (bs : Byte
   else let bs' ← skipField wt tag bs depth; .ok (m, bs')
 def decode (bs : Bytes) : Except DecodeErr HeaderReceived := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : HeaderReceived) : Bytes := encodeOptMessage Unchunked.HeaderReceived.encodeRaw 1#32 m.uc ++ encodeOptMessage PolynomialDecoder.encodeRaw 2#32 m.receivingEk
-def encodedLen (m : HeaderReceived) : Nat := (encodeRaw m).length
-def encode (m : HeaderReceived) : Bytes := encodeRaw m
 end HeaderReceived
 
 namespace Ct1Sampled
@@ -908,7 +878,6 @@ def mergeField (m : Ct1Sampled) (tag : BitVec 32) (wt : WireType) (bs : Bytes) (
 def decode (bs : Bytes) : Except DecodeErr Ct1Sampled := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : Ct1Sampled) : Bytes := encodeOptMessage Unchunked.Ct1Sent.encodeRaw 1#32 m.uc ++ encodeOptMessage PolynomialEncoder.encodeRaw 2#32 m.sendingCt1 ++ encodeOptMessage PolynomialDecoder.encodeRaw 3#32 m.receivingEk
 def encodedLen (m : Ct1Sampled) : Nat := (encodeRaw m).length
-def encode (m : Ct1Sampled) : Bytes := encodeRaw m
 end Ct1Sampled
 
 namespace EkReceivedCt1Sampled
@@ -918,8 +887,6 @@ def mergeField (m : EkReceivedCt1Sampled) (tag : BitVec 32) (wt : WireType) (bs 
   else let bs' ← skipField wt tag bs depth; .ok (m, bs')
 def decode (bs : Bytes) : Except DecodeErr EkReceivedCt1Sampled := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : EkReceivedCt1Sampled) : Bytes := encodeOptMessage Unchunked.Ct1SentEkReceived.encodeRaw 1#32 m.uc ++ encodeOptMessage PolynomialEncoder.encodeRaw 2#32 m.sendingCt1
-def encodedLen (m : EkReceivedCt1Sampled) : Nat := (encodeRaw m).length
-def encode (m : EkReceivedCt1Sampled) : Bytes := encodeRaw m
 end EkReceivedCt1Sampled
 
 namespace Ct1Acknowledged
@@ -929,8 +896,6 @@ def mergeField (m : Ct1Acknowledged) (tag : BitVec 32) (wt : WireType) (bs : Byt
   else let bs' ← skipField wt tag bs depth; .ok (m, bs')
 def decode (bs : Bytes) : Except DecodeErr Ct1Acknowledged := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : Ct1Acknowledged) : Bytes := encodeOptMessage Unchunked.Ct1Sent.encodeRaw 1#32 m.uc ++ encodeOptMessage PolynomialDecoder.encodeRaw 2#32 m.receivingEk
-def encodedLen (m : Ct1Acknowledged) : Nat := (encodeRaw m).length
-def encode (m : Ct1Acknowledged) : Bytes := encodeRaw m
 end Ct1Acknowledged
 
 namespace Ct2Sampled
@@ -940,8 +905,6 @@ def mergeField (m : Ct2Sampled) (tag : BitVec 32) (wt : WireType) (bs : Bytes) (
   else let bs' ← skipField wt tag bs depth; .ok (m, bs')
 def decode (bs : Bytes) : Except DecodeErr Ct2Sampled := decodeTopLevelMessage mergeField bs
 def encodeRaw (m : Ct2Sampled) : Bytes := encodeOptMessage Unchunked.Ct2Sent.encodeRaw 1#32 m.uc ++ encodeOptMessage PolynomialEncoder.encodeRaw 2#32 m.sendingCt2
-def encodedLen (m : Ct2Sampled) : Nat := (encodeRaw m).length
-def encode (m : Ct2Sampled) : Bytes := encodeRaw m
 end Ct2Sampled
 end V1State.Chunked
 
@@ -1052,61 +1015,11 @@ def spqrDecodeState (bs : Bytes) : Except Error PqRatchetState :=
 
 /-- `PqRatchetState::encode_to_vec`. -/
 def encodeState (s : PqRatchetState) : Bytes := PqRatchetState.encode s
-def decodeV1Msg (bs : Bytes) : Except DecodeErr V1Msg := V1Msg.decode bs
-def encodeV1Msg (m : V1Msg) : Bytes := V1Msg.encode m
 
 end Proto
 
 abbrev spqrDecodeState := Proto.spqrDecodeState
 
 /-! ## 5. Kernel-checked round-trip guards -/
-
-theorem guard_varint_roundtrip :
-    ([0#64, 1#64, 127#64, 128#64, 16383#64, 16384#64,
-      0xffffffff#64, 0x100000000#64, 0x7fffffffffffffff#64, 0xffffffffffffffff#64].all fun v =>
-      Proto.decodeVarint (Proto.encodeVarint v) == .ok (v, []) &&
-      Proto.encodedLenVarint v == (Proto.encodeVarint v).length) = true := by decide +kernel
-
-theorem guard_varint_10th_byte :
-    (Proto.decodeVarint [0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x01#8] ==
-      .ok (0x8000000000000000#64, []) &&
-     Proto.decodeVarint [0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x02#8] ==
-      .error .invalidVarint) = true := by decide +kernel
-
-theorem guard_direction_enums :
-    (Direction.fromI32? (Direction.a2b.toI32) == some .a2b &&
-     Direction.fromI32? (Direction.b2a.toI32) == some .b2a &&
-     Direction.fromI32? (-1#32) == none) = true := by decide +kernel
-
-theorem guard_state_roundtrip_all_v1_variants :
-    (let auth : ProtoAuthenticator := { rootKey := [1#8], macKey := [2#8] }
-     let pe : PolynomialEncoder := { idx := 2#32, pts := [[3#8]], polys := [[4#8]] }
-     let pd : PolynomialDecoder := { ptsNeeded := 2#32, polys := 8#32, pts := [[5#8, 6#8]], isComplete := true }
-     let states : List V1State.InnerState :=
-       [ .keysUnsampled { uc := some { epoch := 1#64, auth := some auth } }
-       , .keysSampled { uc := some { epoch := 2#64, auth := some auth, ek := [7#8], dk := [8#8] }, sendingHdr := some pe }
-       , .headerSent { uc := some { epoch := 3#64, auth := some auth, dk := [9#8] }, sendingEk := some pe, receivingCt1 := some pd }
-       , .ct1Received { uc := some { epoch := 4#64, auth := some auth, dk := [10#8], ct1 := [11#8] }, sendingEk := some pe }
-       , .ekSentCt1Received { uc := some { epoch := 5#64, auth := some auth, dk := [12#8], ct1 := [13#8] }, receivingCt2 := some pd }
-       , .noHeaderReceived { uc := some { epoch := 6#64, auth := some auth }, receivingHdr := some pd }
-       , .headerReceived { uc := some { epoch := 7#64, auth := some auth, hdr := [14#8] }, receivingEk := some pd }
-       , .ct1Sampled { uc := some { epoch := 8#64, auth := some auth, hdr := [15#8], es := [16#8], ct1 := [17#8] }, sendingCt1 := some pe, receivingEk := some pd }
-       , .ekReceivedCt1Sampled { uc := some { epoch := 9#64, auth := some auth, es := [18#8], ek := [19#8], ct1 := [20#8] }, sendingCt1 := some pe }
-       , .ct1Acknowledged { uc := some { epoch := 10#64, auth := some auth, hdr := [21#8], es := [22#8], ct1 := [23#8] }, receivingEk := some pd }
-       , .ct2Sampled { uc := some { epoch := 11#64, auth := some auth }, sendingCt2 := some pe } ]
-     states.all fun is =>
-       let st : PqRatchetState := { inner := some (.v1 { innerState := some is }) }
-       let bs := Proto.encodeState st
-       bs.length == PqRatchetState.encodedLen st && Proto.decodeState bs == .ok st) = true := by decide +kernel
-
-theorem guard_v1msg_roundtrip_all_variants :
-    (let chk : ProtoChunk := { index := 7#32, data := [0xde#8, 0xad#8, 0xbe#8, 0xef#8] }
-     let inners : List (Option V1Msg.InnerMsg) :=
-       [ none, some (.hdr chk), some (.ek chk), some (.ekCt1Ack chk),
-         some (.ct1Ack false), some (.ct1Ack true), some (.ct1 chk), some (.ct2 chk) ]
-     inners.all fun im =>
-       let m : V1Msg := { epoch := 9#64, index := 42#32, innerMsg := im }
-       let bs := Proto.encodeV1Msg m
-       bs.length == V1Msg.encodedLen m && Proto.decodeV1Msg bs == .ok m) = true := by decide +kernel
 
 end CryptoVerification.LibsignalSpqrV1

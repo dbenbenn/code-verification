@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop
+public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChain
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbLeaf
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
@@ -24,7 +24,7 @@ import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
 `V1State.Unchunked.*` protobuf message types when the encoded byte length fits in 64 bits.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Codec
 
@@ -42,10 +42,6 @@ theorem loopsTo_uc_keysUnsampled (m : V1State.Unchunked.KeysUnsampled) (h : (V1S
     (optMessage_sub _ _ _ 2#32 _ _ (Nat.le_refl _) (by omega) loopsTo_authenticator)
     (fun _ _ _ => rfl)
   exact (h0.append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_keysUnsampled_mergeField h1).congr_res (by cases m; rfl)
-
-theorem decode_uc_keysUnsampled (m : V1State.Unchunked.KeysUnsampled) (h : (V1State.Unchunked.KeysUnsampled.encodeRaw m).length < 2 ^ 64) :
-    V1State.Unchunked.KeysUnsampled.decode (V1State.Unchunked.KeysUnsampled.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_uc_keysUnsampled m h)
 
 theorem loopsTo_uc_headerSent (m : V1State.Unchunked.HeaderSent) (h : (V1State.Unchunked.HeaderSent.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Unchunked.HeaderSent.mergeField 1 default (V1State.Unchunked.HeaderSent.encodeRaw m) m := by
@@ -65,10 +61,6 @@ theorem loopsTo_uc_headerSent (m : V1State.Unchunked.HeaderSent) (h : (V1State.U
     (by have := length_le_encodeBytesField 4#32 m.dk; omega) (fun _ _ _ => rfl)
   exact (((h0.append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_headerSent_mergeField h1).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_headerSent_mergeField h2).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_headerSent_mergeField h3).congr_res (by cases m; rfl)
 
-theorem decode_uc_headerSent (m : V1State.Unchunked.HeaderSent) (h : (V1State.Unchunked.HeaderSent.encodeRaw m).length < 2 ^ 64) :
-    V1State.Unchunked.HeaderSent.decode (V1State.Unchunked.HeaderSent.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_uc_headerSent m h)
-
 theorem loopsTo_uc_ekSent (m : V1State.Unchunked.EkSent) (h : (V1State.Unchunked.EkSent.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Unchunked.EkSent.mergeField 1 default (V1State.Unchunked.EkSent.encodeRaw m) m := by
   simp only [V1State.Unchunked.EkSent.encodeRaw, List.length_append] at h
@@ -83,10 +75,6 @@ theorem loopsTo_uc_ekSent (m : V1State.Unchunked.EkSent) (h : (V1State.Unchunked
     (by decide) (by decide) rfl
     (by have := length_le_encodeBytesField 3#32 m.dk; omega) (fun _ _ _ => rfl)
   exact ((h0.append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ekSent_mergeField h1).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ekSent_mergeField h2).congr_res (by cases m; rfl)
-
-theorem decode_uc_ekSent (m : V1State.Unchunked.EkSent) (h : (V1State.Unchunked.EkSent.encodeRaw m).length < 2 ^ 64) :
-    V1State.Unchunked.EkSent.decode (V1State.Unchunked.EkSent.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_uc_ekSent m h)
 
 theorem loopsTo_uc_ekSentCt1Received (m : V1State.Unchunked.EkSentCt1Received) (h : (V1State.Unchunked.EkSentCt1Received.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Unchunked.EkSentCt1Received.mergeField 1 default (V1State.Unchunked.EkSentCt1Received.encodeRaw m) m := by
@@ -106,10 +94,6 @@ theorem loopsTo_uc_ekSentCt1Received (m : V1State.Unchunked.EkSentCt1Received) (
     (by have := length_le_encodeBytesField 4#32 m.ct1; omega) (fun _ _ _ => rfl)
   exact (((h0.append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ekSentCt1Received_mergeField h1).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ekSentCt1Received_mergeField h2).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ekSentCt1Received_mergeField h3).congr_res (by cases m; rfl)
 
-theorem decode_uc_ekSentCt1Received (m : V1State.Unchunked.EkSentCt1Received) (h : (V1State.Unchunked.EkSentCt1Received.encodeRaw m).length < 2 ^ 64) :
-    V1State.Unchunked.EkSentCt1Received.decode (V1State.Unchunked.EkSentCt1Received.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_uc_ekSentCt1Received m h)
-
 theorem loopsTo_uc_noHeaderReceived (m : V1State.Unchunked.NoHeaderReceived) (h : (V1State.Unchunked.NoHeaderReceived.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Unchunked.NoHeaderReceived.mergeField 1 default (V1State.Unchunked.NoHeaderReceived.encodeRaw m) m := by
   simp only [V1State.Unchunked.NoHeaderReceived.encodeRaw, List.length_append] at h
@@ -121,10 +105,6 @@ theorem loopsTo_uc_noHeaderReceived (m : V1State.Unchunked.NoHeaderReceived) (h 
     (optMessage_sub _ _ _ 2#32 _ _ (Nat.le_refl _) (by omega) loopsTo_authenticator)
     (fun _ _ _ => rfl)
   exact (h0.append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_noHeaderReceived_mergeField h1).congr_res (by cases m; rfl)
-
-theorem decode_uc_noHeaderReceived (m : V1State.Unchunked.NoHeaderReceived) (h : (V1State.Unchunked.NoHeaderReceived.encodeRaw m).length < 2 ^ 64) :
-    V1State.Unchunked.NoHeaderReceived.decode (V1State.Unchunked.NoHeaderReceived.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_uc_noHeaderReceived m h)
 
 theorem loopsTo_uc_headerReceived (m : V1State.Unchunked.HeaderReceived) (h : (V1State.Unchunked.HeaderReceived.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Unchunked.HeaderReceived.mergeField 1 default (V1State.Unchunked.HeaderReceived.encodeRaw m) m := by
@@ -140,32 +120,6 @@ theorem loopsTo_uc_headerReceived (m : V1State.Unchunked.HeaderReceived) (h : (V
     (by decide) (by decide) rfl
     (by have := length_le_encodeBytesField 3#32 m.hdr; omega) (fun _ _ _ => rfl)
   exact ((h0.append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_headerReceived_mergeField h1).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_headerReceived_mergeField h2).congr_res (by cases m; rfl)
-
-theorem decode_uc_headerReceived (m : V1State.Unchunked.HeaderReceived) (h : (V1State.Unchunked.HeaderReceived.encodeRaw m).length < 2 ^ 64) :
-    V1State.Unchunked.HeaderReceived.decode (V1State.Unchunked.HeaderReceived.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_uc_headerReceived m h)
-
-theorem loopsTo_uc_ekReceived (m : V1State.Unchunked.EkReceived) (h : (V1State.Unchunked.EkReceived.encodeRaw m).length < 2 ^ 64) :
-    LoopsTo V1State.Unchunked.EkReceived.mergeField 1 default (V1State.Unchunked.EkReceived.encodeRaw m) m := by
-  simp only [V1State.Unchunked.EkReceived.encodeRaw, List.length_append] at h
-  have h0 := loopsTo_uint64 V1State.Unchunked.EkReceived.mergeField 1 (default : V1State.Unchunked.EkReceived) 1#32 m.epoch (fun x => { (default : V1State.Unchunked.EkReceived) with epoch := x })
-    (by decide) (by decide) rfl (fun _ _ _ => rfl)
-  have h1 := loopsTo_optMessage V1State.Unchunked.EkReceived.mergeField 1 { (default : V1State.Unchunked.EkReceived) with epoch := m.epoch } 2#32
-    ProtoAuthenticator.mergeField 0 ProtoAuthenticator.encodeRaw m.auth (fun x => { (default : V1State.Unchunked.EkReceived) with epoch := m.epoch, auth := x })
-    (by decide) (by decide) (by decide) rfl
-    (optMessage_sub _ _ _ 2#32 _ _ (Nat.le_refl _) (by omega) loopsTo_authenticator)
-    (fun _ _ _ => rfl)
-  have h2 := loopsTo_bytes V1State.Unchunked.EkReceived.mergeField 1 { (default : V1State.Unchunked.EkReceived) with epoch := m.epoch, auth := m.auth } 3#32 m.hdr (fun x => { (default : V1State.Unchunked.EkReceived) with epoch := m.epoch, auth := m.auth, hdr := x })
-    (by decide) (by decide) rfl
-    (by have := length_le_encodeBytesField 3#32 m.hdr; omega) (fun _ _ _ => rfl)
-  have h3 := loopsTo_bytes V1State.Unchunked.EkReceived.mergeField 1 { (default : V1State.Unchunked.EkReceived) with epoch := m.epoch, auth := m.auth, hdr := m.hdr } 4#32 m.ek (fun x => { (default : V1State.Unchunked.EkReceived) with epoch := m.epoch, auth := m.auth, hdr := m.hdr, ek := x })
-    (by decide) (by decide) rfl
-    (by have := length_le_encodeBytesField 4#32 m.ek; omega) (fun _ _ _ => rfl)
-  exact (((h0.append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ekReceived_mergeField h1).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ekReceived_mergeField h2).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ekReceived_mergeField h3).congr_res (by cases m; rfl)
-
-theorem decode_uc_ekReceived (m : V1State.Unchunked.EkReceived) (h : (V1State.Unchunked.EkReceived.encodeRaw m).length < 2 ^ 64) :
-    V1State.Unchunked.EkReceived.decode (V1State.Unchunked.EkReceived.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_uc_ekReceived m h)
 
 theorem loopsTo_uc_ct1Sent (m : V1State.Unchunked.Ct1Sent) (h : (V1State.Unchunked.Ct1Sent.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Unchunked.Ct1Sent.mergeField 1 default (V1State.Unchunked.Ct1Sent.encodeRaw m) m := by
@@ -188,10 +142,6 @@ theorem loopsTo_uc_ct1Sent (m : V1State.Unchunked.Ct1Sent) (h : (V1State.Unchunk
     (by have := length_le_encodeBytesField 5#32 m.ct1; omega) (fun _ _ _ => rfl)
   exact ((((h0.append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ct1Sent_mergeField h1).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ct1Sent_mergeField h2).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ct1Sent_mergeField h3).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ct1Sent_mergeField h4).congr_res (by cases m; rfl)
 
-theorem decode_uc_ct1Sent (m : V1State.Unchunked.Ct1Sent) (h : (V1State.Unchunked.Ct1Sent.encodeRaw m).length < 2 ^ 64) :
-    V1State.Unchunked.Ct1Sent.decode (V1State.Unchunked.Ct1Sent.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_uc_ct1Sent m h)
-
 theorem loopsTo_uc_ct1SentEkReceived (m : V1State.Unchunked.Ct1SentEkReceived) (h : (V1State.Unchunked.Ct1SentEkReceived.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Unchunked.Ct1SentEkReceived.mergeField 1 default (V1State.Unchunked.Ct1SentEkReceived.encodeRaw m) m := by
   simp only [V1State.Unchunked.Ct1SentEkReceived.encodeRaw, List.length_append] at h
@@ -213,10 +163,6 @@ theorem loopsTo_uc_ct1SentEkReceived (m : V1State.Unchunked.Ct1SentEkReceived) (
     (by have := length_le_encodeBytesField 5#32 m.ct1; omega) (fun _ _ _ => rfl)
   exact ((((h0.append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ct1SentEkReceived_mergeField h1).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ct1SentEkReceived_mergeField h2).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ct1SentEkReceived_mergeField h3).append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ct1SentEkReceived_mergeField h4).congr_res (by cases m; rfl)
 
-theorem decode_uc_ct1SentEkReceived (m : V1State.Unchunked.Ct1SentEkReceived) (h : (V1State.Unchunked.Ct1SentEkReceived.encodeRaw m).length < 2 ^ 64) :
-    V1State.Unchunked.Ct1SentEkReceived.decode (V1State.Unchunked.Ct1SentEkReceived.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_uc_ct1SentEkReceived m h)
-
 theorem loopsTo_uc_ct2Sent (m : V1State.Unchunked.Ct2Sent) (h : (V1State.Unchunked.Ct2Sent.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Unchunked.Ct2Sent.mergeField 1 default (V1State.Unchunked.Ct2Sent.encodeRaw m) m := by
   simp only [V1State.Unchunked.Ct2Sent.encodeRaw, List.length_append] at h
@@ -228,10 +174,6 @@ theorem loopsTo_uc_ct2Sent (m : V1State.Unchunked.Ct2Sent) (h : (V1State.Unchunk
     (optMessage_sub _ _ _ 2#32 _ _ (Nat.le_refl _) (by omega) loopsTo_authenticator)
     (fun _ _ _ => rfl)
   exact (h0.append CryptoVerification.SpqrV1.Prost.MessageMerge.protoPrefixStep_unchunked_ct2Sent_mergeField h1).congr_res (by cases m; rfl)
-
-theorem decode_uc_ct2Sent (m : V1State.Unchunked.Ct2Sent) (h : (V1State.Unchunked.Ct2Sent.encodeRaw m).length < 2 ^ 64) :
-    V1State.Unchunked.Ct2Sent.decode (V1State.Unchunked.Ct2Sent.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_uc_ct2Sent m h)
 
 /-! ## Sanity checks -/
 

@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Defs
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDag
-public import Symbolic.Proofs.Tests.CliNonvacuity.RecvNoCollision
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDag -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.RecvNoCollision -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import Comparse.Basic
@@ -33,7 +33,7 @@ Provides `noMemoEntryPairIdBool`, `noMemoCollisionHsTableBool`, `noMemoCollision
 `noReselectCollisionBool_of_table`, `recvRep_of_tableBool`, and `preKeyRep_of_tableBool`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -81,7 +81,7 @@ attribute [local instance]
   DY.Libsignal.Composed.instHasSubFLength
 
 unseal DY.Bytes in
-def noMemoEntryPairIdBool (pts : List DY.Bytes) (r₁ r₂ : MemoRec) : Bool :=
+@[expose] def noMemoEntryPairIdBool (pts : List DY.Bytes) (r₁ r₂ : MemoRec) : Bool :=
   Nat.beq r₁.id r₂.id ||
   !(r₁.bytes == r₂.bytes) ||
   (beqBareOptFast 256 r₁.term.val r₂.term.val == some true) ||
@@ -122,7 +122,7 @@ theorem noMemoEntryPairIdBool_imp (i : ExternInterpretation) (S : OpaqueSymbolSe
   · exact Or.inr ⟨hmem h6, Or.inl (hmem h7)⟩
   · exact Or.inr ⟨hmem h6, Or.inr h7⟩
 
-def noMemoCollisionHsTableBool (ct : CertTable) (γ : DY.Bytes → HwBytes)
+@[expose] def noMemoCollisionHsTableBool (ct : CertTable) (γ : DY.Bytes → HwBytes)
     (sts : List (DY.PersistentLocalState.LocalState TRState))
     (sends secrets pts newTerms : List DY.Bytes) : Bool :=
   let prefProxy := sends ++ sts.flatMap trStateProxyRoots ++ secrets ++ pts
@@ -244,7 +244,7 @@ theorem noMemoCollisionBool_of_hsTableBool {interp : ExternInterpretation} {r : 
         obtain ⟨r₂, hr₂, rfl⟩ := hinNew t₂ ht₂ x₂ hmx₂
         exact hpair hr₁ (hsub r₂ hr₂)
 
-def noMemoCollisionTableBool (ct : CertTable) (γ : DY.Bytes → HwBytes)
+@[expose] def noMemoCollisionTableBool (ct : CertTable) (γ : DY.Bytes → HwBytes)
     (r : ProtocolSetup) (tr : ExecTrace) (vis : List VisEntry)
     (newTerms newPts : List DY.Bytes) : Bool :=
   noMemoCollisionHsTableBool ct γ (storedStates r tr)
@@ -261,7 +261,7 @@ theorem noMemoCollisionBool_of_tableBool {interp : ExternInterpretation} {r : Pr
   noMemoCollisionBool_of_hsTableBool hc hγ rfl rfl rfl rfl hb
 
 unseal DY.Bytes in
-def noMacForgeryTableBool (γ : DY.Bytes → HwBytes)
+@[expose] def noMacForgeryTableBool (γ : DY.Bytes → HwBytes)
     (honest : List DY.Bytes) (msg : TRSignalMsg) (ctxs : List TrialCtx) : Bool :=
   (ctxs.all fun ctx =>
     match ctx.seed? with
@@ -372,7 +372,7 @@ theorem noRecvCollisionBool_of_table {interp : ExternInterpretation} {r : Protoc
   exact ⟨noMemoCollisionBool_of_tableBool hc hγ hmemo, noMacForgeryBool_of_tableBool hγ hmac⟩
 
 unseal DY.Bytes in
-def noReselectCollisionTableBool (γ : DY.Bytes → HwBytes) (r : ProtocolSetup)
+@[expose] def noReselectCollisionTableBool (γ : DY.Bytes → HwBytes) (r : ProtocolSetup)
     (tr : ExecTrace) (msg : TRSignalMsg) : Bool :=
   let rks := storedRatchetKeys r tr msg
   rks.all fun rk =>
@@ -396,7 +396,7 @@ theorem noReselectCollisionBool_of_table {interp : ExternInterpretation} {r : Pr
   · exact Or.inl (beq_iff_eq.mpr
       (Subtype.ext (beqBareOptFast_true 256 rk.val msg.ratchetKey.val (beq_iff_eq.mp heq))))
 
-def recvRepTableBool (γ : DY.Bytes → HwBytes)
+@[expose] def recvRepTableBool (γ : DY.Bytes → HwBytes)
     (b : HwBytes) (t : DY.Bytes) (msg : TRSignalMsg) : Bool :=
   (γ t == b) &&
   (γ msg.wire == b.take (b.length - 8)) &&
@@ -433,7 +433,7 @@ theorem recvRep_of_tableBool {interp : ExternInterpretation}
   simp only [Bool.and_eq_true, beq_iff_eq] at hcodec
   exact ⟨hcodec.1.1.1.1, hcodec.1.1.1.2, hcodec.1.1.2, hcodec.1.2, hcodec.2⟩
 
-def preKeyRepTableBool (γ : DY.Bytes → HwBytes)
+@[expose] def preKeyRepTableBool (γ : DY.Bytes → HwBytes)
     (b : HwBytes) (x : PreKeyRep) (msg : TRSignalMsg) : Bool :=
   match parsePreKeyWire b with
   | none => false
@@ -450,7 +450,7 @@ def preKeyRepTableBool (γ : DY.Bytes → HwBytes)
     (γ msg.pqRatchet == p.inner.pqRatchet) &&
     (!spqrHeaded msg.mac)
 
-def preKeyHdrBool (r : ProtocolSetup) (ikAPub : HwBytes) (b : HwBytes) : Bool :=
+@[expose] def preKeyHdrBool (r : ProtocolSetup) (ikAPub : HwBytes) (b : HwBytes) : Bool :=
   match parsePreKeyWire b with
   | none => false
   | some p =>

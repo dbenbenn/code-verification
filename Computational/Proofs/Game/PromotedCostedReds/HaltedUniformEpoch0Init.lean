@@ -12,14 +12,15 @@ module
 public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.DrSessionSimBookkeeping -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.DrSessionSimBookkeeping
 public import Computational.Specifications.Game.StatementPqOomFlag
 import Computational.Proofs.E2E.Dsl.TablesHonest
 import Computational.Proofs.E2E.Dsl.PqxdhSimTypes
-import Computational.Proofs.E2E.Dsl.StartAndExtSmAux
+public import Computational.Proofs.E2E.Dsl.StartAndExtSmAux -- proof-setup: allow-public-import
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInitCost
 import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.E2E.UniformStartHop
 
 /-!
 # Tracker-Halted Oracles, State Encoding, and Initializer for `uniformStart`
@@ -134,7 +135,7 @@ abbrev KemFailSessionTrack (F : ShaCompress) (C : Type) : Type :=
 abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 256) : BitVec 256 :=
   k.2.2.2
 
-@[expose] noncomputable def transmitRSessionTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def transmitRSessionTrackHalted {Key St Msg RCoins C : Type}
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
     (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Option (BitVec 512)) →ₒ Option C)
@@ -158,7 +159,7 @@ abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 
         StateT.lift (set (tr', (out.2, P) :: hw))
         return some out.2
 
-@[expose] noncomputable def challRSessionTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def challRSessionTrackHalted {Key St Msg RCoins C : Type}
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
     (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Msg × Option (BitVec 512)) →ₒ Option C)
@@ -184,7 +185,7 @@ abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 
         StateT.lift (set (tr', (out.2, P) :: hw))
         return some out.2
 
-@[expose] noncomputable def deliverRSessionTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def deliverRSessionTrackHalted {Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType RCoins]
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
     (cfg : ConfigR St Msg C) :
@@ -200,7 +201,7 @@ abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 
     | _, _ => pure ()
     return res
 
-@[expose] noncomputable def oracleImplRSessionTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def oracleImplRSessionTrackHalted {Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType RCoins]
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
     (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
@@ -216,7 +217,7 @@ abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 
       QueryImpl (Party →ₒ Option St)
         (StateT (GameState St Msg C) (StateT (KemFailSessionTrack F C) ProbComp)))
 
-@[expose] noncomputable def runRSessionTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def runRSessionTrackHalted {Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
     (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
     (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
@@ -230,7 +231,7 @@ abbrev libsignalSessionPqrOf (k : RootKey × BitVec 256 × BitVec 256 × BitVec 
     (initKemFailSessionTrack F C (pqrOf k))
 
 /-- Tracker-halted uniform-start PRG distinguisher on `(rk0, ck0)`. -/
-@[expose] noncomputable def uniformStartDistinguisherTrackHalted
+@[expose] def uniformStartDistinguisherTrackHalted
     (P : Params Bytes (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (cfg : ConfigR (GhostState Bytes) (Plain ℓ) Bytes) (qep : ℕ)
     (A : Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
@@ -538,7 +539,7 @@ theorem findRevHonestWiresIdxE_size (q : ℕ) {Γ : List (Ty ASig)}
     Expr.size, Expr.v0, Expr.v1, Expr.v2, hb0, hb1, hop]
   omega
 
-@[expose] noncomputable def epoch0TrackInitImpl (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (ℓ : ℕ)
+@[expose] def epoch0TrackInitImpl (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (ℓ : ℕ)
     (rc : RootKey × BitVec 256) :
     ProbComp (Unit × (GameState (GhostState Bytes) (Plain ℓ) Bytes ×
       KemFailSessionTrack C.F Bytes)) := do

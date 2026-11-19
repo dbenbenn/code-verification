@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Support.Phi
+public import LibsignalBinary.Proofs.E2E.Record.Support.Phi -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefs
 public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalPublicApiRepr
-public import LibsignalBinary.Proofs.E2E.Record.Support.Repr -- shake: keep
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr -- shake: keep
 
 /-!
 # Specifications and memory-level encoders for `SessionRecord::serialize`
@@ -32,7 +32,7 @@ fields, each leaf specification states its output in terms of memory-level encod
 `encSession` and `encodeRecord` under `CanonSession` / `CanonRecord`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization
 
@@ -117,7 +117,7 @@ abbrev serializeStack : Nat :=
 /-! ## Little-endian byte decoding -/
 
 /-- Natural number represented by little-endian bytes `bs`. -/
-def leNat : List (BitVec 8) → Nat
+@[expose] def leNat : List (BitVec 8) → Nat
   | [] => 0
   | b :: bs => b.toNat + 256 * leNat bs
 
@@ -132,39 +132,39 @@ Protobuf encoders reading the raw ghost `Vec<u8>` slices in `encode_raw` tag ord
 /-- Memory-level protobuf encoding of `session_structure::Chain`: tags 1 (`sender_ratchet_key`),
 2 (`sender_ratchet_key_private`), 3 (`chain_key`), and 4 (`message_keys`, omitting the three empty
 key/IV `Vec`s in `messageKeyAt`). -/
-def encChainMem (gc : ChainGhost × ReceiverChain) : List (BitVec 8) :=
+@[expose] def encChainMem (gc : ChainGhost × ReceiverChain) : List (BitVec 8) :=
   bytesField 1 gc.1.srk.bytes ++ bytesField 2 gc.1.priv.bytes ++
     msgField 3 (gc.2.chainKey.map encChainKey) ++
     (gc.2.messageKeys.map fun mk => lenField 4 (encMessageKey mk)).flatten
 
 /-- Views a `SenderChain` as a `ReceiverChain`-shaped `Chain` with empty `messageKeys` for uniform
 `protoChainAt` and `encChainMem` reasoning. -/
-def senderAsChain (sc : SenderChain) : ReceiverChain :=
+@[expose] def senderAsChain (sc : SenderChain) : ReceiverChain :=
   { senderRatchetKey := sc.ratchetKey.publicKey, chainKey := some sc.chainKey, messageKeys := [] }
 
 /-- Views a `SenderChainGhost` as a `ChainGhost` with empty message-key ghost list. -/
-def senderGhostAsChain (g : SenderChainGhost) : ChainGhost :=
+@[expose] def senderGhostAsChain (g : SenderChainGhost) : ChainGhost :=
   { srk := g.srk, priv := g.priv, mkCap := g.mkCap, mkPtr := g.mkPtr, keys := [], ck := g.ck }
 
 /-- Memory-level protobuf encoding of `PendingPreKey` (tags 1–4), reading `base_key` from the ghost
 `Vec<u8>` and scalar fields from the model via `PendingRel`. -/
-def encPendingMem (g : TailVecGhost) (p : PendingPreKey) : List (BitVec 8) :=
+@[expose] def encPendingMem (g : TailVecGhost) (p : PendingPreKey) : List (BitVec 8) :=
   optUint32Field 1 p.preKeyId ++ bytesField 2 g.vec.bytes ++ int32Field 3 p.signedPreKeyId ++
     uint64Field 4 p.timestamp
 
 /-- Memory-level `pending_pre_key` field (tag 9). -/
-def encPendingFieldMem : Option TailVecGhost → Option PendingPreKey → List (BitVec 8)
+@[expose] def encPendingFieldMem : Option TailVecGhost → Option PendingPreKey → List (BitVec 8)
   | some g, some p => lenField 9 (encPendingMem g p)
   | _, _ => []
 
 /-- Memory-level `sender_chain` field (tag 6). -/
-def encSenderFieldMem : Option SenderChainGhost → Option SenderChain → List (BitVec 8)
+@[expose] def encSenderFieldMem : Option SenderChainGhost → Option SenderChain → List (BitVec 8)
   | some g, some sc => lenField 6 (encChainMem (senderGhostAsChain g, senderAsChain sc))
   | _, _ => []
 
 /-- Memory-level protobuf encoding of `SessionStructure` in tag order 1–7, 9, 10, 11, 13, 14, 15,
 using ghost `Vec<u8>` bytes for identity and chain keys. -/
-def encSessionMem (G : SessionGhost) (s : Session (List (BitVec 8))) : List (BitVec 8) :=
+@[expose] def encSessionMem (G : SessionGhost) (s : Session (List (BitVec 8))) : List (BitVec 8) :=
   let st := s.state
   uint32Field 1 st.sessionVersion ++
   bytesField 2 G.localIk.bytes ++
@@ -181,35 +181,35 @@ def encSessionMem (G : SessionGhost) (s : Session (List (BitVec 8))) : List (Bit
   bytesField 15 st.pqRatchetState
 
 /-- Memory-level `current_session` field (tag 1 of `RecordStructure`). -/
-def encCurMem : Option SessionGhost → Option (Session (List (BitVec 8))) → List (BitVec 8)
+@[expose] def encCurMem : Option SessionGhost → Option (Session (List (BitVec 8))) → List (BitVec 8)
   | some G, some s => lenField 1 (encSessionMem G s)
   | _, _ => []
 
 /-- Memory-level protobuf encoding of `RecordStructure` with empty `previous_sessions`. -/
-def encRecordMem (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : List (BitVec 8) :=
+@[expose] def encRecordMem (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : List (BitVec 8) :=
   encCurMem g.cur r.currentSession
 
 /-! ## Ghost canonicity predicates -/
 
 /-- Canonicity of a receiver-chain ghost: canonical `senderRatchetKey` bytes and empty private-key `Vec`. -/
-def CanonChain (gc : ChainGhost × ReceiverChain) : Prop :=
+@[expose] def CanonChain (gc : ChainGhost × ReceiverChain) : Prop :=
   gc.1.srk.bytes = gc.2.senderRatchetKey.serialize ∧ gc.1.priv.bytes = []
 
 /-- Canonicity of a sender-chain ghost: canonical public-key serialization and exact 32-byte private key. -/
-def CanonSender : Option SenderChainGhost → Option SenderChain → Prop
+@[expose] def CanonSender : Option SenderChainGhost → Option SenderChain → Prop
   | none, none => True
   | some g, some sc => g.srk.bytes = sc.ratchetKey.publicKey.serialize ∧
       g.priv.bytes = sc.ratchetKey.privateKey.bytes.toList
   | _, _ => False
 
 /-- Canonicity of a pending pre-key ghost: canonical `base_key` serialization. -/
-def CanonPending : Option TailVecGhost → Option PendingPreKey → Prop
+@[expose] def CanonPending : Option TailVecGhost → Option PendingPreKey → Prop
   | none, none => True
   | some g, some p => g.vec.bytes = p.baseKey.serialize
   | _, _ => False
 
 /-- Canonicity of a session ghost across identity keys, sender/receiver chains, and pending pre-key. -/
-def CanonSession (G : SessionGhost) (s : Session (List (BitVec 8))) : Prop :=
+@[expose] def CanonSession (G : SessionGhost) (s : Session (List (BitVec 8))) : Prop :=
   G.localIk.bytes = s.state.localIdentity.serialize ∧
   G.remoteIk.bytes = (s.state.remoteIdentity.map IdentityKey.serialize).getD [] ∧
   CanonSender G.sender s.state.senderChain ∧
@@ -218,19 +218,19 @@ def CanonSession (G : SessionGhost) (s : Session (List (BitVec 8))) : Prop :=
   CanonPending G.pending s.pendingPreKey
 
 /-- Option lifting of `CanonSession` to `current_session`. -/
-def CanonCur : Option SessionGhost → Option (Session (List (BitVec 8))) → Prop
+@[expose] def CanonCur : Option SessionGhost → Option (Session (List (BitVec 8))) → Prop
   | none, none => True
   | some G, some s => CanonSession G s
   | _, _ => False
 
 /-- Canonicity of a `RecordGhost` with respect to `SessionRecord`. -/
-def CanonRecord (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def CanonRecord (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : Prop :=
   CanonCur g.cur r.currentSession
 
 /-! ## Subroutine specifications -/
 
 /-- Panic postcondition for allocator failure (`allocFailedIn s0 sf` with monotonic trace). -/
-def allocPanic {α : Type} : α → State → State → SepProp :=
+@[expose] def allocPanic {α : Type} : α → State → State → SepProp :=
   fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Ghost state for `MessageKey::encoded_len`. -/
@@ -240,7 +240,7 @@ structure MsgKeyLenGhost where
 
 /-- `<chain::MessageKey as Message>::encoded_len` (`0x2d6bc`): returns `(encMessageKey gk.2).length`
 without panicking while preserving `messageKeyAt`. -/
-def msgKeyLenSpec (A : RustAlloc) : Spec MsgKeyLenGhost where
+@[expose] def msgKeyLenSpec (A : RustAlloc) : Spec MsgKeyLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗ messageKeyAt A x.gk x.a ∗ stackAt s.sp msgKeyLenStack
   post := fun x s0 sf =>
@@ -249,7 +249,7 @@ def msgKeyLenSpec (A : RustAlloc) : Spec MsgKeyLenGhost where
 
 /-- Shared `session_structure::Chain` heap layout common to both `chainAt` (receiver chains) and
 `optSenderChainAt` (`Some` sender chains). -/
-def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
+@[expose] def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
   ⌜PublicKey.deserialize gc.1.srk.bytes = .ok gc.2.senderRatchetKey ∧
     gc.2.messageKeys.length ≤ maxMessageKeys ∧
     gc.1.keys.length = gc.2.messageKeys.length⌝ ∗
@@ -265,7 +265,7 @@ structure ChainLenGhost where
   gc : ChainGhost × ReceiverChain
 
 /-- `<Chain as Message>::encoded_len` (`0x26aa0`): returns `(encChainMem gc).length` while preserving `protoChainAt`. -/
-def chainLenSpec (A : RustAlloc) : Spec ChainLenGhost where
+@[expose] def chainLenSpec (A : RustAlloc) : Spec ChainLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ (encChainMem x.gc).length < 2 ^ 32⌝ ∗
       protoChainAt A x.gc x.a ∗ stackAt s.sp chainLenStack
@@ -280,7 +280,7 @@ structure SessionLenGhost where
   s : Session (List (BitVec 8))
 
 /-- `<SessionStructure as Message>::encoded_len` (`0x25fd0`): returns `(encSessionMem G s).length` while preserving `sessionStateReprAt`. -/
-def sessionLenSpec (A : RustAlloc) : Spec SessionLenGhost where
+@[expose] def sessionLenSpec (A : RustAlloc) : Spec SessionLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (encSessionMem x.G x.s).length < 2 ^ 32⌝ ∗
       sessionStateReprAt A x.ss x.G x.s ∗ stackAt s.sp sessionLenStack
@@ -300,7 +300,7 @@ structure EncodeChainGhost where
 
 /-- `prost::encoding::message::encode::<Chain, Vec<u8>>` (`0x44b0`): appends
 `lenField tag (encChainMem gc)` to the output `Vec<u8>`, preserving `protoChainAt`. -/
-def encodeChainSpec (A : RustAlloc) : Spec EncodeChainGhost where
+@[expose] def encodeChainSpec (A : RustAlloc) : Spec EncodeChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = BitVec.ofNat 64 x.tag ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.v ∧
       (x.tag = 6 ∨ x.tag = 7) ∧ x.bs.length + (lenField x.tag (encChainMem x.gc)).length < 2 ^ 32⌝ ∗
@@ -324,7 +324,7 @@ structure EncodeRawGhost where
 
 /-- `<SessionStructure as Message>::encode_raw::<Vec<u8>>` (`0x4d38`): appends `encSessionMem G s`
 to the output `Vec<u8>`, preserving `sessionStateReprAt`. -/
-def encodeRawSpec (A : RustAlloc) : Spec EncodeRawGhost where
+@[expose] def encodeRawSpec (A : RustAlloc) : Spec EncodeRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x1 = x.v ∧
       x.bs.length + (encSessionMem x.G x.s).length < 2 ^ 32⌝ ∗
@@ -346,7 +346,7 @@ structure SessionCloneGhost where
 
 /-- `<SessionStructure as Clone>::clone` (`0x240f0`): deep-copies `sessionStateReprAt` into the
 344-byte destination at `dst` with a fresh ghost `G'` having identical `encSessionMem`. -/
-def sessionCloneSpec (A : RustAlloc) : Spec SessionCloneGhost where
+@[expose] def sessionCloneSpec (A : RustAlloc) : Spec SessionCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       sessionStateReprAt A x.src x.G x.s ∗ memRegion x.dst 344 ∗ A.pool ∗ stackAt s.sp sessionCloneStack
@@ -364,7 +364,7 @@ structure VecVecCloneGhost where
 
 /-- `<Vec<Vec<u8>> as Clone>::clone` (`0x2c75c`) on `len = 0`: writes the empty `Vec` header
 `(0, 8, 0)` at `dst` without allocating. -/
-def vecVecCloneEmptySpec : Spec VecVecCloneGhost where
+@[expose] def vecVecCloneEmptySpec : Spec VecVecCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧ s.readReg64 .x2 = 0#64⌝ ∗
       memRegion x.dst 24 ∗ stackAt s.sp vecVecCloneStack
@@ -382,7 +382,7 @@ structure SerializeGhost where
 
 /-- `SessionRecord::serialize` (`0x1857c`), memory-level: writes `Ok(encRecordMem g r)` to `out`
 while preserving `sessionRecordAt`. -/
-def serializeSpec (A : RustAlloc) : Spec SerializeGhost where
+@[expose] def serializeSpec (A : RustAlloc) : Spec SerializeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧ (encRecordMem x.g x.r).length < 2 ^ 32⌝ ∗
       sessionRecordAt A x.self x.g x.r ∗ memRegion x.out 32 ∗ A.pool ∗
@@ -394,7 +394,7 @@ def serializeSpec (A : RustAlloc) : Spec SerializeGhost where
   onPanic := allocPanic
 
 /-- `SessionRecord::serialize` (`0x1857c`) on a canonical record: writes `Ok(encodeRecord r)` to `out`. -/
-def serializeCanonSpec (A : RustAlloc) : Spec SerializeGhost where
+@[expose] def serializeCanonSpec (A : RustAlloc) : Spec SerializeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧ CanonRecord x.g x.r ∧
       (encodeRecord x.r).length < 2 ^ 32⌝ ∗
@@ -407,11 +407,6 @@ def serializeCanonSpec (A : RustAlloc) : Spec SerializeGhost where
   onPanic := allocPanic
 
 /-! ## Program-level and relocatable helpers -/
-
-/-- `subroutine_ok` wrapper for `name` on `tripleRatchetProgAt b C ctl abs`. -/
-def OkAt {α : Type} (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (name : String) (spec : Spec α) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr name) spec
 
 /-- Sequences two `SepWP` segments across an entailment while preserving `LibsignalCodeLoaded`. -/
 theorem sepWP_seq_clean_lscl {prog : Program} {mid tgt : BitVec 64} {s : State}
@@ -435,5 +430,4 @@ structure PlacedSerializeHooks (A : RustAlloc) (H : String → Option (State →
   panic_handle_error : H lsHandleErrorSym = some Rust.panicked
 
 end CryptoVerification.E2E.Record.Serialization
-
 

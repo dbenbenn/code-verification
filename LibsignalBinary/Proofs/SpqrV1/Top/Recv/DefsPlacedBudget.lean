@@ -10,25 +10,28 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States2BudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
 
 /-!
 # Budget-Threaded Relocatable Callee Specs & Contracts for `spqr::recv`
@@ -37,7 +40,7 @@ Envelope-parametric and default budget-threaded relocatable callee specification
 bundles (`SpqrRecvPlacedContractsOfEnv`, `SpqrRecvPlacedContracts`) for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -140,7 +143,7 @@ abbrev statesFromPbPlacedSpecX (M : AllocCostModel)
 /-- Default bounded allocation-event envelope of `<spqr::v1::chunked::states::States>::recv`
     (Block `332`), bounded linearly in the serialized input `V1State` and `Message` byte
     lengths. -/
-def StatesRecvEnv {F : ShaCompress} (x : StatesRecvGhost F) (evs : List AllocEvent) : Prop :=
+@[expose] def StatesRecvEnv {F : ShaCompress} (x : StatesRecvGhost F) (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 128
     (4 * (V1State.encodeRaw x.self.into_pb).length + 4 * (x.msg.serialize 0).length + 8192) evs
 
@@ -150,12 +153,16 @@ theorem StatesRecvEnv.nil {F : ShaCompress} (x : StatesRecvGhost F) : StatesRecv
 
 /-- Budget-form panic postcondition of `<States>::recv` (Block `332`): retains the genuine pure
     model panic `(x.self.recv K x.msg).isPanic = true` while dropping `allocFailedIn s0 sf`. -/
-def statesRecvBudgetOnPanic {F : ShaCompress} (K : MlKem) (x : StatesRecvGhost F)
+@[expose] def statesRecvBudgetOnPanic {F : ShaCompress} (K : MlKem) (x : StatesRecvGhost F)
     (s0 sf : State) : SepProp :=
   ⌜(x.self.recv K x.msg).isPanic = true ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
+/-- Placed-budget stack budget of `<spqr::v1::chunked::states::States>::recv` (Block `332`):
+    `4240 + 39360 = 43600` bytes (`statesRecvStackX + 19808`). -/
+abbrev statesRecvPlacedStack : Nat := 43600
+
 /-- Envelope-parametric relocatable budget specification for `<States>::recv` (Block `332`). -/
-def statesRecvPlacedSpecOfEnv (M : AllocCostModel)
+@[expose] def statesRecvPlacedSpecOfEnv (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress) (K : MlKem)
     (Env : StatesRecvGhost F → List AllocEvent → Prop) :
     Spec (StatesRecvGhost F × M.σ) where
@@ -170,7 +177,7 @@ def statesRecvPlacedSpecOfEnv (M : AllocCostModel)
       chunkedStatesAt A.repAlloc x.selfA x.self ∗
       messageAt spqrPolyApi x.msgA x.msg ∗
       statesRecvRoPlacedAt ∗
-      A.pool lim st s ∗ stackAt s.sp statesRecvStackX
+      A.pool lim st s ∗ stackAt s.sp statesRecvPlacedStack
   post := fun (x, st) s0 sf =>
     ∃∗ evs : List AllocEvent,
       ⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
@@ -178,7 +185,7 @@ def statesRecvPlacedSpecOfEnv (M : AllocCostModel)
       memRegion x.selfA chunkedStatesSize ∗
       messageAt spqrPolyApi x.msgA x.msg ∗
       statesRecvRoPlacedAt ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp statesRecvStackX
+      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp statesRecvPlacedStack
   onPanic := fun (x, _) s0 sf => statesRecvBudgetOnPanic K x s0 sf
 
 abbrev statesRecvPlacedSpec (M : AllocCostModel)

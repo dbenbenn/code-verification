@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 
-@[expose] public section
+public section
 
 /-!
 # Fiedler–Günther `KeyInd` Bad Events and Pre-Sampling
@@ -208,12 +208,12 @@ structure KeyIndFgCutoffState (S : Setup) where
   base     : KeyIndState S
   advRoLog : List Bytes := []
 
-def KeyIndFgCutoffState.empty (S : Setup) (secb : Bool) : KeyIndFgCutoffState S :=
+@[expose] def KeyIndFgCutoffState.empty (S : Setup) (secb : Bool) : KeyIndFgCutoffState S :=
   { base := KeyIndState.empty S secb, advRoLog := [] }
 
 /-- `KeyInd` oracle implementation evolving `base` identically to `pqxdhKeyIndImpl true S P`
     while recording adversary `.roQuery` inputs in `advRoLog`. -/
-def pqxdhKeyIndFgImpl (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndFgImpl (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp)
   | .roQuery secrets => StateT.mk (fun hst => do
     let (resp, base') ← (pqxdhKeyIndImpl true S P (.roQuery secrets)).run hst.base
@@ -222,7 +222,7 @@ def pqxdhKeyIndFgImpl (S : Setup) (P : Primitives) :
     let (resp, base') ← (pqxdhKeyIndImpl true S P q).run hst.base
     return (resp, { hst with base := base' }))
 
-noncomputable def runKeyIndFgSim (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def runKeyIndFgSim (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp (Bool × Bool × KeyIndFgCutoffState S) := do
   let secb ← $ᵗ Bool
   let initSt := KeyIndFgCutoffState.empty S secb
@@ -231,11 +231,11 @@ noncomputable def runKeyIndFgSim (S : Setup) (P : Primitives) (A : KeyIndAdversa
   let (b', finalHst) ← (simulateQ impl A.run).run initSt
   return (secb, b', finalHst)
 
-def eraseSpkBundleEntryFg (S : Setup) (bIdx : ℕ) (k : Nat × Nat) (b : SpkBundleEntry) :
+@[expose] def eraseSpkBundleEntryFg (S : Setup) (bIdx : ℕ) (k : Nat × Nat) (b : SpkBundleEntry) :
     SpkBundleEntry :=
   if spkBundleFlatIdxVal S k == bIdx then { b with spkSk := [] } else b
 
-def eraseSpkBundlesFg (S : Setup) (bIdx : ℕ)
+@[expose] def eraseSpkBundlesFg (S : Setup) (bIdx : ℕ)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) :
     List ((Nat × Nat) × SpkBundleEntry) :=
   spkBundles.map (fun (k, b) => (k, eraseSpkBundleEntryFg S bIdx k b))
@@ -243,7 +243,7 @@ def eraseSpkBundlesFg (S : Setup) (bIdx : ℕ)
 /-- Case A (`DH1 = CDH(ik_U*, spk_V*)`) bad event at `(uIdx, bIdx)`: principal `uIdx` is
     uncorrupted, SPK bundle `bIdx` is unrevealed, and `P.x25519 uEntry.secIKA0 bEntry.spkPk`
     appears in `advRoLog.take maxLen` or a non-target session candidate. -/
-def badKeyIndFgDh1At {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
+@[expose] def badKeyIndFgDh1At {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
     (st : KeyIndState S) (advRoLog : List Bytes) : Bool :=
   match st.principals.find? (fun (u, _) => u == uIdx),
         st.spkBundles.find? (fun (k, _) => spkBundleFlatIdxVal S k == bIdx) with
@@ -262,7 +262,7 @@ def badKeyIndFgDh1At {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
 /-- Case C (`DH3 = CDH(ek_U*, spk_V*)`) bad event at `(sIdx, bIdx)`: initiator session `sIdx` is
     fresh against SPK bundle `bIdx` and `P.x25519 s.ekASk bEntry.spkPk` is queried in
     `advRoLog.take maxLen`. -/
-def badKeyIndFgDh3At {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
+@[expose] def badKeyIndFgDh3At {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
     (st : KeyIndState S) (advRoLog : List Bytes) : Bool :=
   match st.sessions.find? (fun s => initSessionSlotIdx s.sid == sIdx),
         st.spkBundles.find? (fun (k, _) => spkBundleFlatIdxVal S k == bIdx) with
@@ -274,7 +274,7 @@ def badKeyIndFgDh3At {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
   | _, _ => false
 
 /-- Disjunction of `badKeyIndFgDh1At` and `badKeyIndFgDh3At` over all slot indices. -/
-def badKeyIndFgAny {S : Setup} (P : Primitives) (maxLen : ℕ)
+@[expose] def badKeyIndFgAny {S : Setup} (P : Primitives) (maxLen : ℕ)
     (st : KeyIndState S) (advRoLog : List Bytes) : Bool :=
   ((List.range S.N_id).any (fun uIdx =>
     (List.range S.N_spk_tot).any (fun bIdx =>
@@ -687,7 +687,7 @@ theorem spkBundleFlatIdx_inj (S : Setup) (u1 u2 : Fin S.N_id) (j1 j2 : Fin S.N_r
     exact Nat.add_left_cancel heq
   exact ⟨Fin.ext hu, Fin.ext hj⟩
 
-def hasFiredSpk (S : Setup) (bIdx : ℕ) (hst : KeyIndFgCutoffState S) : Prop :=
+@[expose] def hasFiredSpk (S : Setup) (bIdx : ℕ) (hst : KeyIndFgCutoffState S) : Prop :=
   ∃ (u₀ : Fin S.N_id) (j₀ : Fin S.N_recv),
     spkBundleFlatIdx S u₀ j₀ = bIdx ∧
     hst.base.spkBundles.any (fun (k, _) => k == (u₀.val, j₀.val)) = true
@@ -702,10 +702,10 @@ theorem spkBundles_any_of_hasFiredSpk (S : Setup) (bIdx : ℕ) (hst : KeyIndFgCu
   rcases spkBundleFlatIdx_inj S u u₀ j j₀ heq with ⟨rfl, rfl⟩
   exact hany₀
 
-def hasFiredPrin (S : Setup) (uIdx : ℕ) (hst : KeyIndFgCutoffState S) : Prop :=
+@[expose] def hasFiredPrin (S : Setup) (uIdx : ℕ) (hst : KeyIndFgCutoffState S) : Prop :=
   hst.base.principals.any (fun (idx, _) => idx == uIdx) = true
 
-def hasFiredSess (S : Setup) (sIdx : ℕ) (hst : KeyIndFgCutoffState S) : Prop :=
+@[expose] def hasFiredSess (S : Setup) (sIdx : ℕ) (hst : KeyIndFgCutoffState S) : Prop :=
   hst.base.sessions.any (fun e => initSessionSlotIdx e.sid == sIdx) = true
 
 theorem sessions_any_of_hasFiredSess {S : Setup} (sIdx : ℕ) (hst : KeyIndFgCutoffState S)
@@ -724,13 +724,13 @@ theorem sessions_any_of_hasFiredSess {S : Setup} (sIdx : ℕ) (hst : KeyIndFgCut
 theorem StateT_run_mk {σ : Type} {m : Type → Type} {α : Type} (f : σ → m (α × σ)) (s : σ) :
     (StateT.mk f).run s = f s := rfl
 
-def liftFgBase {S : Setup} (m : StateT (KeyIndState S) ProbComp KeyIndResponse) :
+@[expose] def liftFgBase {S : Setup} (m : StateT (KeyIndState S) ProbComp KeyIndResponse) :
     StateT (KeyIndFgCutoffState S) ProbComp KeyIndResponse :=
   StateT.mk (fun hst => do
     let (resp, base') ← m.run hst.base
     return (resp, { hst with base := base' }))
 
-noncomputable def fgPreInitPrin (useDh1 : Bool) (targetIdx : ℕ) (optUsk : Option Bytes)
+@[expose] def fgPreInitPrin (useDh1 : Bool) (targetIdx : ℕ) (optUsk : Option Bytes)
     (S : Setup) (P : Primitives) (u : Fin S.N_id) :
     StateT (KeyIndState S) ProbComp KeyIndResponse := do
   let st ← get
@@ -752,7 +752,7 @@ noncomputable def fgPreInitPrin (useDh1 : Bool) (targetIdx : ℕ) (optUsk : Opti
   set { st with principals := (u.val, entry) :: st.principals }
   return .initPrinResp ikAPk ikSignPk
 
-noncomputable def fgPreGenSPK (targetSpkIdx : ℕ) (optVsk : Option Bytes)
+@[expose] def fgPreGenSPK (targetSpkIdx : ℕ) (optVsk : Option Bytes)
     (S : Setup) (P : Primitives) (u : Fin S.N_id) (j : Fin S.N_recv) :
     StateT (KeyIndState S) ProbComp KeyIndResponse := do
   let st ← get
@@ -790,7 +790,7 @@ noncomputable def fgPreGenSPK (targetSpkIdx : ℕ) (optVsk : Option Bytes)
   }
   return .bundleResp bundleOut
 
-def chooseInitPartnerDrKeyRand {S : Setup} (P : Primitives)
+@[expose] def chooseInitPartnerDrKeyRand {S : Setup} (P : Primitives)
     (respSessions : List (KeyIndRespEntry S)) (s : KeyIndInitiatorEntry S) : ProbComp DRKey :=
   match keyIndPartnerRandKey? P respSessions s with
   | some k => pure k
@@ -806,7 +806,7 @@ theorem liftM_chooseInitPartnerDrKeyRand_bind {S : Setup} (P : Primitives)
   unfold chooseInitPartnerDrKeyRand
   cases keyIndPartnerRandKey? P respSessions s <;> rfl
 
-noncomputable def fgPreInitiate (useDh1 : Bool) (targetIdx : ℕ) (optUsk : Option Bytes)
+@[expose] def fgPreInitiate (useDh1 : Bool) (targetIdx : ℕ) (optUsk : Option Bytes)
     (S : Setup) (P : Primitives) (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) :
     StateT (KeyIndState S) ProbComp KeyIndResponse := do
   let st ← get
@@ -869,7 +869,7 @@ noncomputable def fgPreInitiate (useDh1 : Bool) (targetIdx : ℕ) (optUsk : Opti
   | some _ => return .hdrResp hdr
   | none   => return .initUnfreshResp drKeyReal hdr
 
-noncomputable def pqxdhKeyIndFgPreImpl (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def pqxdhKeyIndFgPreImpl (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp)
   | .initPrin u => liftFgBase (fgPreInitPrin useDh1 targetIdx optUsk S P u)
@@ -1518,7 +1518,7 @@ theorem evalDist_preSample_U_dh1_pqxdhKeyIndFgPreImpl {S : Setup} {α : Type}
         cases s.base.principals.any (fun (idx, _) => idx == u.val) <;> simp [hSlot]
     | _ => exact Or.inl (fun _ => rfl)
 
-noncomputable def fgPreInitiateAfterCoins {S : Setup} (P : Primitives)
+@[expose] def fgPreInitiateAfterCoins {S : Setup} (P : Primitives)
     (sid : SessionId S) (uEntry : PrincipalEntry) (bundle : PreKeyBundleInput)
     (hst : KeyIndFgCutoffState S) (ekASk kemCoins : Bytes) :
     ProbComp (KeyIndResponse × KeyIndFgCutoffState S) := do

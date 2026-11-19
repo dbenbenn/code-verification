@@ -9,16 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptSlotPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptSlotPeak
+import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PqValid
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvC09aWire
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -125,12 +131,6 @@ private theorem phaseCredit_of_and_right {M : AllocCostModel} [HasFineReallocCre
   req_align evs hpq ev hev := (h hpq.2).req_align evs hpq.1 ev hev
   credit_le st0 {_} hpq := (h hpq.2).credit_le st0 hpq.1
 
-private theorem phaseGroup_of_and_right {M : AllocCostModel} [HasFineGroupCredit M]
-    {P : List AllocEvent → Prop} {Q : Prop} {g : Nat}
-    (h : Q → PhaseGroupSpec M P g) :
-    PhaseGroupSpec M (fun evs => P evs ∧ Q) g where
-  groups_le st0 {_} hpq := (h hpq.2).groups_le st0 hpq.1
-
 theorem validState_of_validStateChainParams {s : Bytes} (h : ValidStateChainParams s) :
     ValidState s := by
   rcases h with rfl | ⟨st, rfl, hch, hvn⟩
@@ -183,35 +183,6 @@ theorem spqrRecvParts_c07_linked_phaseCreditSpec_tight_uncondHist
       stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto
       (spqrRecvTightDomain_of_topStateTight_and_link hTop hLink)
 
-theorem spqrRecvParts_c07_linked_exists_phaseCreditSpec_tight_uncondHist
-    (F : ShaCompress) (K : MlKem)
-    {StatesRecvEnv' : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
-      List AllocEvent → Prop}
-    {cRecv rRecv : Nat}
-    (C09a : StatesRecvTightCreditSpec F StatesRecvEnv' cRecv rRecv)
-    (hcRecv : cRecv ≤ 1900660)
-    (stBytes : Bytes)
-    (hTop : TopStateTight F K stBytes) :
-    PhaseCreditSpec fineCostModel
-      (fun evs => ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
-        SpqrRecvC07TightLinkedEnv F K StatesRecvEnv'
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs)
-      23313687 605066 621350 (max rRecv 302480) :=
-  phaseCredit_exists fun pre_pb =>
-  phaseCredit_exists fun vn =>
-  phaseCredit_exists fun pb =>
-  phaseCredit_exists fun st0 =>
-  phaseCredit_exists fun sckaMsg =>
-  phaseCredit_exists fun v =>
-  phaseCredit_exists fun xInit =>
-  phaseCredit_exists fun xNew =>
-  phaseCredit_exists fun xAdd =>
-  phaseCredit_exists fun xRk =>
-  phaseCredit_exists fun xSInto =>
-  phaseCredit_exists fun xCInto =>
-    spqrRecvParts_c07_linked_phaseCreditSpec_tight_uncondHist F K C09a hcRecv
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hTop
-
 /-! ## Closed Linked `spqr::recv` Credit and Group Bounds -/
 
 /-- Closed linked unconditional-history `PhaseCreditSpec` for `SpqrRecvC07TightLinkedEnv` at `StatesRecvProtoEnv`.
@@ -254,282 +225,7 @@ theorem spqrRecvParts_c07_c09a_linked_phaseCreditSpec_tight_uncondHist_rawEnv
       stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto
       (spqrRecvTightDomain_of_topStateTight_and_link hTop hLink)
 
-theorem spqrRecvParts_c07_c09a_linked_exists_phaseCreditSpec_tight_uncondHist
-    (F : ShaCompress) (K : MlKem)
-    (stBytes : Bytes)
-    (hTop : TopStateTight F K stBytes) :
-    PhaseCreditSpec fineCostModel
-      (fun evs => ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
-        SpqrRecvC07C09aTightLinkedEnv F K
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs)
-      23313687 605066 621350 302480 :=
-  phaseCredit_exists fun pre_pb =>
-  phaseCredit_exists fun vn =>
-  phaseCredit_exists fun pb =>
-  phaseCredit_exists fun st0 =>
-  phaseCredit_exists fun sckaMsg =>
-  phaseCredit_exists fun v =>
-  phaseCredit_exists fun xInit =>
-  phaseCredit_exists fun xNew =>
-  phaseCredit_exists fun xAdd =>
-  phaseCredit_exists fun xRk =>
-  phaseCredit_exists fun xSInto =>
-  phaseCredit_exists fun xCInto =>
-    spqrRecvParts_c07_c09a_linked_phaseCreditSpec_tight_uncondHist F K
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hTop
-
-theorem spqrRecvParts_c07_c09a_linked_exists_phaseCreditSpec_tight_uncondHist_rawEnv
-    (F : ShaCompress) (K : MlKem)
-    (stBytes : Bytes)
-    (hTop : TopStateTight F K stBytes) :
-    PhaseCreditSpec fineCostModel
-      (fun evs => ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
-        SpqrRecvC07TightLinkedEnv F K StatesRecvEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs)
-      23313687 605066 621350 302480 :=
-  phaseCredit_exists fun pre_pb =>
-  phaseCredit_exists fun vn =>
-  phaseCredit_exists fun pb =>
-  phaseCredit_exists fun st0 =>
-  phaseCredit_exists fun sckaMsg =>
-  phaseCredit_exists fun v =>
-  phaseCredit_exists fun xInit =>
-  phaseCredit_exists fun xNew =>
-  phaseCredit_exists fun xAdd =>
-  phaseCredit_exists fun xRk =>
-  phaseCredit_exists fun xSInto =>
-  phaseCredit_exists fun xCInto =>
-    spqrRecvParts_c07_c09a_linked_phaseCreditSpec_tight_uncondHist_rawEnv F K
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hTop
-
-/-- Closed linked `PhaseGroupSpec` (`701,273,904` scaled units = `10,701` groups) for `SpqrRecvC07TightLinkedEnv` at `StatesRecvProtoEnv`.
--/
-theorem spqrRecvParts_c07_c09a_linked_phaseGroupSpec_tight
-    (F : ShaCompress) (K : MlKem)
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hTop : TopStateTight F K stBytes) :
-    PhaseGroupSpec fineCostModel
-      (SpqrRecvC07C09aTightLinkedEnv F K
-        stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-      701273904 :=
-  phaseGroup_of_and_right fun hLink =>
-    spqrRecvParts_c07_c09a_phaseGroupSpec_tight F K
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto
-      (spqrRecvTightDomain_of_topStateTight_and_link hTop hLink)
-
-theorem spqrRecvParts_c07_c09a_linked_phaseGroupSpec_tight_rawEnv
-    (F : ShaCompress) (K : MlKem)
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hTop : TopStateTight F K stBytes) :
-    PhaseGroupSpec fineCostModel
-      (SpqrRecvC07TightLinkedEnv F K StatesRecvEnv
-        stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-      701273904 :=
-  phaseGroup_of_and_right fun hLink =>
-    spqrRecvParts_c07_c09a_phaseGroupSpec_tight_rawEnv F K
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto
-      (spqrRecvTightDomain_of_topStateTight_and_link hTop hLink)
-
-theorem spqrRecvParts_c07_c09a_linked_exists_phaseGroupSpec_tight
-    (F : ShaCompress) (K : MlKem)
-    (stBytes : Bytes)
-    (hTop : TopStateTight F K stBytes) :
-    PhaseGroupSpec fineCostModel
-      (fun evs => ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
-        SpqrRecvC07C09aTightLinkedEnv F K
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs)
-      701273904 :=
-  phaseGroup_exists fun pre_pb =>
-  phaseGroup_exists fun vn =>
-  phaseGroup_exists fun pb =>
-  phaseGroup_exists fun st0 =>
-  phaseGroup_exists fun sckaMsg =>
-  phaseGroup_exists fun v =>
-  phaseGroup_exists fun xInit =>
-  phaseGroup_exists fun xNew =>
-  phaseGroup_exists fun xAdd =>
-  phaseGroup_exists fun xRk =>
-  phaseGroup_exists fun xSInto =>
-  phaseGroup_exists fun xCInto =>
-    spqrRecvParts_c07_c09a_linked_phaseGroupSpec_tight F K
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hTop
-
-theorem spqrRecvParts_c07_c09a_linked_exists_phaseGroupSpec_tight_rawEnv
-    (F : ShaCompress) (K : MlKem)
-    (stBytes : Bytes)
-    (hTop : TopStateTight F K stBytes) :
-    PhaseGroupSpec fineCostModel
-      (fun evs => ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
-        SpqrRecvC07TightLinkedEnv F K StatesRecvEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs)
-      701273904 :=
-  phaseGroup_exists fun pre_pb =>
-  phaseGroup_exists fun vn =>
-  phaseGroup_exists fun pb =>
-  phaseGroup_exists fun st0 =>
-  phaseGroup_exists fun sckaMsg =>
-  phaseGroup_exists fun v =>
-  phaseGroup_exists fun xInit =>
-  phaseGroup_exists fun xNew =>
-  phaseGroup_exists fun xAdd =>
-  phaseGroup_exists fun xRk =>
-  phaseGroup_exists fun xSInto =>
-  phaseGroup_exists fun xCInto =>
-    spqrRecvParts_c07_c09a_linked_phaseGroupSpec_tight_rawEnv F K
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hTop
-
 /-! ## Linked `try_decrypt` Credit Bounds -/
-
-/-- Linked unconditional-history `PhaseCreditSpec` for `W2TryDecryptEnv` under `TopStateTight`. -/
-theorem w2TryDecrypt_spqrC07_linked_uncondHist_phaseCreditSpec_tight
-    (F : ShaCompress) (K : MlKem)
-    {StatesRecvEnv' : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
-      List AllocEvent → Prop}
-    {cRecv rRecv : Nat}
-    (C09a : StatesRecvTightCreditSpec F StatesRecvEnv' cRecv rRecv)
-    (hcRecv : cRecv ≤ 1900660)
-    {dhCap : Nat} {needGrow : Bool} {caps : List Nat} {withAddr errAlloc : Bool}
-    {ctLen maxSteps maxOldCap maxCt : Nat}
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hDhSmall : 104 * max 4 (2 * dhCap) ≤ HasFineReallocCredit.smallMaxReq fineCostModel)
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps)
-    (hTop : TopStateTight F K stBytes)
-    (hct : ctLen ≤ maxCt) :
-    PhaseCreditSpec fineCostModel
-      (W2TryDecryptEnv dhCap needGrow caps
-        (SpqrRecvC07TightLinkedEnv F K StatesRecvEnv'
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptTightCum dhCap needGrow maxSteps 23313687)
-      (w2TryDecryptTightLive maxOldCap 605066 maxCt)
-      (w2TryDecryptTightPeak maxOldCap 605066 621350 maxCt)
-      (w2TryDecryptMaxReq dhCap maxOldCap (max rRecv 302480) maxCt) :=
-  w2TryDecrypt_fine_phaseCreditSpec_tight hDhSmall hlen hchain
-    (spqrRecvParts_c07_linked_phaseCreditSpec_tight_uncondHist F K C09a hcRecv
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hTop)
-    hct
-
-theorem w2TryDecrypt_spqrC07_linked_exists_uncondHist_phaseCreditSpec_tight
-    (F : ShaCompress) (K : MlKem)
-    {StatesRecvEnv' : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
-      List AllocEvent → Prop}
-    {cRecv rRecv : Nat}
-    (C09a : StatesRecvTightCreditSpec F StatesRecvEnv' cRecv rRecv)
-    (hcRecv : cRecv ≤ 1900660)
-    {dhCap : Nat} {needGrow : Bool} {caps : List Nat} {withAddr errAlloc : Bool}
-    {ctLen maxSteps maxOldCap maxCt : Nat}
-    (stBytes : Bytes)
-    (hDhSmall : 104 * max 4 (2 * dhCap) ≤ HasFineReallocCredit.smallMaxReq fineCostModel)
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps)
-    (hTop : TopStateTight F K stBytes)
-    (hct : ctLen ≤ maxCt) :
-    PhaseCreditSpec fineCostModel
-      (W2TryDecryptEnv dhCap needGrow caps
-        (fun evs => ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
-          SpqrRecvC07TightLinkedEnv F K StatesRecvEnv'
-            stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptTightCum dhCap needGrow maxSteps 23313687)
-      (w2TryDecryptTightLive maxOldCap 605066 maxCt)
-      (w2TryDecryptTightPeak maxOldCap 605066 621350 maxCt)
-      (w2TryDecryptMaxReq dhCap maxOldCap (max rRecv 302480) maxCt) :=
-  w2TryDecrypt_fine_phaseCreditSpec_tight hDhSmall hlen hchain
-    (spqrRecvParts_c07_linked_exists_phaseCreditSpec_tight_uncondHist F K C09a hcRecv stBytes hTop)
-    hct
-
-/-- Closed existentially lifted `PhaseCreditSpec` for `W2TryDecryptEnv` at `StatesRecvProtoEnv` (`maxReq = 302,480`).
--/
-theorem w2TryDecrypt_spqrC07_c09a_linked_exists_uncondHist_phaseCreditSpec_tight
-    (F : ShaCompress) (K : MlKem)
-    {dhCap : Nat} {needGrow : Bool} {caps : List Nat} {withAddr errAlloc : Bool}
-    {ctLen maxSteps maxOldCap maxCt : Nat}
-    (stBytes : Bytes)
-    (hDhSmall : 104 * max 4 (2 * dhCap) ≤ HasFineReallocCredit.smallMaxReq fineCostModel)
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps)
-    (hTop : TopStateTight F K stBytes)
-    (hct : ctLen ≤ maxCt) :
-    PhaseCreditSpec fineCostModel
-      (W2TryDecryptEnv dhCap needGrow caps
-        (fun evs => ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
-          SpqrRecvC07C09aTightLinkedEnv F K
-            stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptTightCum dhCap needGrow maxSteps 23313687)
-      (w2TryDecryptTightLive maxOldCap 605066 maxCt)
-      (w2TryDecryptTightPeak maxOldCap 605066 621350 maxCt)
-      (w2TryDecryptMaxReq dhCap maxOldCap 302480 maxCt) :=
-  w2TryDecrypt_fine_phaseCreditSpec_tight hDhSmall hlen hchain
-    (spqrRecvParts_c07_c09a_linked_exists_phaseCreditSpec_tight_uncondHist F K stBytes hTop)
-    hct
-
-theorem w2TryDecrypt_spqrC07_c09a_linked_exists_uncondHist_phaseCreditSpec_tight_rawEnv
-    (F : ShaCompress) (K : MlKem)
-    {dhCap : Nat} {needGrow : Bool} {caps : List Nat} {withAddr errAlloc : Bool}
-    {ctLen maxSteps maxOldCap maxCt : Nat}
-    (stBytes : Bytes)
-    (hDhSmall : 104 * max 4 (2 * dhCap) ≤ HasFineReallocCredit.smallMaxReq fineCostModel)
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps)
-    (hTop : TopStateTight F K stBytes)
-    (hct : ctLen ≤ maxCt) :
-    PhaseCreditSpec fineCostModel
-      (W2TryDecryptEnv dhCap needGrow caps
-        (fun evs => ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
-          SpqrRecvC07TightLinkedEnv F K StatesRecvEnv
-            stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptTightCum dhCap needGrow maxSteps 23313687)
-      (w2TryDecryptTightLive maxOldCap 605066 maxCt)
-      (w2TryDecryptTightPeak maxOldCap 605066 621350 maxCt)
-      (w2TryDecryptMaxReq dhCap maxOldCap 302480 maxCt) :=
-  w2TryDecrypt_fine_phaseCreditSpec_tight hDhSmall hlen hchain
-    (spqrRecvParts_c07_c09a_linked_exists_phaseCreditSpec_tight_uncondHist_rawEnv F K stBytes hTop)
-    hct
-
-theorem w2TryDecryptFail_spqrC07_c09a_linked_exists_uncondHist_phaseCreditSpec_tight_rawEnv
-    (F : ShaCompress) (K : MlKem)
-    {dhCap : Nat} {needGrow : Bool} {caps : List Nat} {withAddr errAlloc : Bool}
-    {ctLen maxSteps maxOldCap maxCt : Nat}
-    (stBytes : Bytes)
-    (hDhSmall : 104 * max 4 (2 * dhCap) ≤ HasFineReallocCredit.smallMaxReq fineCostModel)
-    (hlen : caps.length ≤ maxSteps)
-    (hchain : DoublingChainLe maxOldCap caps)
-    (hTop : TopStateTight F K stBytes)
-    (hct : ctLen ≤ maxCt) :
-    PhaseCreditSpec fineCostModel
-      (W2TryDecryptFailEnv dhCap needGrow caps
-        (fun evs => ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
-          SpqrRecvC07TightLinkedEnv F K StatesRecvEnv
-            stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptTightCum dhCap needGrow maxSteps 23313687)
-      (w2CmkChainTightLive maxOldCap + 605066)
-      (w2TryDecryptTightPeak maxOldCap 605066 621350 maxCt)
-      (w2TryDecryptMaxReq dhCap maxOldCap 302480 maxCt) :=
-  w2TryDecryptFail_fine_phaseCreditSpec_tight hDhSmall hlen hchain
-    (spqrRecvParts_c07_c09a_linked_exists_phaseCreditSpec_tight_uncondHist_rawEnv F K stBytes hTop)
-    hct
 
 /-! ## `PeerSpqrStateTight640` CLI Decrypt Slot Contracts -/
 

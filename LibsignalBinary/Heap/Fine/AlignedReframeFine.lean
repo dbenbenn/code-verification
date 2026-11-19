@@ -21,7 +21,7 @@ with a single-step `MallocngFineInv` commit (`st0 → st2`) via `ghostMap_alloc`
 `commit_claimed_slab_slot_aligned` / `commit_mmap63_group_aligned`.
 -/
 
-@[expose] public noncomputable section
+@[expose] public section
 
 set_option autoImplicit false
 
@@ -638,7 +638,7 @@ private theorem alignedAlloc_reframe_fine_finish {A : MallocngAddrs} {brkStart b
     (ghostMapAuth (fineAlignGam γ) alignMap0 ∗ MallocngRoTablesA A ∗ MallocngLiveAuth (fineBaseGam γ) st'.liveMap ∗
       MallocngBlockToken (fineBaseGam γ) p eff ∗ ByteMap st'.masterDom (alignedSlotKeep st' p eff) bv ∗
       (A.ctx ↦ₛ st'.ctx.toBytes) ∗ (A.lock ↦₃₂ 0#32) ∗ (A.replaced ↦₃₂ 0#32) ∗ (A.aaReplaced ↦₃₂ 0#32) ∗
-      ((A.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState (fineBaseGam γ) st'.auxvPtr st'.auxvSnap ∗
+      MallocngAuxvPtrCell true A.libc st'.auxvPtr ∗ MallocngAuxvStateRo true (fineBaseGam γ) st'.auxvPtr st'.auxvSnap ∗
       ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗ MappedSet st'.masterDom (OwnedMappedByte st')) ⊢
     |==> (FineCoreImpl γ A brkStart brk bf (dynamicRootRegions st') ∗
       FineBlock γ new_p len.toNat (max align.toNat 16) ∗ memRegion new_p len.toNat) := by
@@ -713,14 +713,14 @@ private theorem alignedAlloc_reframe_fine_finish {A : MallocngAddrs} {brkStart b
         FineCoreStInflightA 0 γ A brkStart brk bf (dynamicRootRegions st2) am lc pc st :=
     Entails.sepExists_right st2 (Entails.sepExists_right alignMap' (Entails.sepExists_right live2 (Entails.sepExists_right peak2 (Entails.refl _))))
   refine Entails.trans ?_ (sepConj_mono_left (sepConj_mono_right hEx))
-  unfold FineCoreStInflightA MallocngCoreStInflightA FineBlock
+  unfold FineCoreStInflightA MallocngCoreStInflightModeA FineBlock
   rw [pure_sepConj_of_true hFineInv2, pure_sepConj_of_true hwf2, pure_sepConj_of_true (Nat.le_max_right align.toNat 16), hProtEq, hMapSetEq,
       show st2.ctx = st'.ctx from rfl, show st2.auxvPtr = st'.auxvPtr from rfl, show st2.auxvSnap = st'.auxvSnap from rfl]
   generalize ghostMapAuth (fineAlignGam γ) alignMap' = P1, ghostMapElem (fineAlignGam γ) new_p (max align.toNat 16) = P2,
     MallocngRoTablesA A = P3, MallocngLiveAuth (fineBaseGam γ) st2.liveMap = P4, MallocngBlockToken (fineBaseGam γ) new_p len.toNat = P5,
     memRegion new_p len.toNat = P6, ByteMap st2.masterDom (OwnedRwByte st2) st2.byteVal = P7, (A.ctx ↦ₛ st'.ctx.toBytes) = P8,
-    (A.lock ↦₃₂ 0#32) = P9, (A.replaced ↦₃₂ 0#32) = P10, (A.aaReplaced ↦₃₂ 0#32) = P11, ((A.libc + 8#64) ↦₆₄ st'.auxvPtr) = P12,
-    MallocngAuxvState (fineBaseGam γ) st'.auxvPtr st'.auxvSnap = P13,
+    (A.lock ↦₃₂ 0#32) = P9, (A.replaced ↦₃₂ 0#32) = P10, (A.aaReplaced ↦₃₂ 0#32) = P11, MallocngAuxvPtrCell true A.libc st'.auxvPtr = P12,
+    MallocngAuxvStateRo true (fineBaseGam γ) st'.auxvPtr st'.auxvSnap = P13,
     ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal = P14, MappedSet st'.masterDom (OwnedMappedByte st') = P15
   exact Entails.of_eq (by ac_rfl)
 
@@ -1147,7 +1147,7 @@ theorem alignedAlloc_reframe_fine_ok [MallocngMultiPlacement] {prog : Program}
     let eff := mallocngAlignedEffSize align.toNat len.toNat; let bf := FineBudget.stepAligned align.toNat len.toNat bud
     SepWP prog (s0.readReg64 .lr) s4
       (ghostMapAuth (fineAlignGam γ) alignMap0 ∗ MallocngRoTablesA maddrs ∗
-       MallocngCoreStA (fineBaseGam γ) maddrs brkStart s4.brk bCoarse.liveCost bCoarse.peakCost st' ∗
+       MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s4.brk bCoarse.liveCost bCoarse.peakCost st' ∗
        MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken (fineBaseGam γ) p eff ∗
        stackFrameAt (sp0 - 32#64) 704 ∗ AlignedSpillSlots sp0 s0)
       (fun sf Pf =>
@@ -1180,16 +1180,16 @@ theorem alignedAlloc_reframe_fine_ok [MallocngMultiPlacement] {prog : Program}
   let Rest := ghostMapAuth (fineAlignGam γ) alignMap0 ∗ MallocngRoTablesA maddrs ∗
     MallocngLiveAuth (fineBaseGam γ) st'.liveMap ∗ MallocngBlockToken (fineBaseGam γ) p eff ∗
     (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗ (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-    ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState (fineBaseGam γ) st'.auxvPtr st'.auxvSnap ∗
+    MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true (fineBaseGam γ) st'.auxvPtr st'.auxvSnap ∗
     ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗ MappedSet st'.masterDom (OwnedMappedByte st') ∗
     MallocngRuntime maddrs tp ∗ stackFrameAt (sp0 - 32#64) 704
   have hPreRearr :
       (ghostMapAuth (fineAlignGam γ) alignMap0 ∗ MallocngRoTablesA maddrs ∗
-       MallocngCoreStA (fineBaseGam γ) maddrs brkStart s4.brk bCoarse.liveCost bCoarse.peakCost st' ∗
+       MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s4.brk bCoarse.liveCost bCoarse.peakCost st' ∗
        MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken (fineBaseGam γ) p eff ∗
        stackFrameAt (sp0 - 32#64) 704 ∗ AlignedSpillSlots sp0 s0) ⊢
       (ByteMap st'.masterDom (alignedSlotKeep st' p eff) bv0 ∗ AlignedSpillSlots sp0 s0 ∗ Rest) := by
-    dsimp only [MallocngCoreStA, MallocngCoreStInflightA, Rest, bv0]; rw [pure_sepConj_of_true hwf, ← hAbsEq]; exact Entails.of_eq (by ac_rfl)
+    dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA, Rest, bv0]; rw [pure_sepConj_of_true hwf, ← hAbsEq]; exact Entails.of_eq (by ac_rfl)
   refine SepWP.weaken_pre hPreRearr ?_
   have hSlotEndEq : g'.mem + 16#64 + (BitVec.setWidth 64 (BitVec.ofNat 32 idx + 1#32) &&& 0xffffffff#64 |||
       (if (BitVec.ofNat 32 idx + 1#32)[31] = true then 0xffffffffffffffff#64 else 0#64) &&& 0xffffffff00000000#64) *

@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4b
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4ePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4b -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4ePlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBaseBudget -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -25,6 +25,18 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4d
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4e
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4dPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4dPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 4 (`EkSentCt1Received`, `+248`)
@@ -33,7 +45,7 @@ Allocator event envelopes, `StatesFromPbEnv` subsumption, and total-correctness 
 `subroutine_ok` contracts for `InnerState.ekSentCt1Received` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -112,7 +124,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-- Exact allocator event envelope from `+2228` when `s.uc = some u`:
     calls `<EkSentCt1Received>::from_pb`, followed either by `FreeOnlyEvs` cleanup (when `from_pb`
     fails or `optDecPb = none`) or by `<PolyDecoder>::from_pb` (`FromPbDecEnv`). -/
-def EkSent2228SomeEnv (F : ShaCompress) (u : V1State.Unchunked.EkSentCt1Received)
+@[expose] def EkSent2228SomeEnv (F : ShaCompress) (u : V1State.Unchunked.EkSentCt1Received)
     (optDecPb : Option PolynomialDecoder) (evs : List AllocEvent) : Prop :=
   match ekSentCt1ReceivedFromPb (spqrAuthApi F) u with
   | .error _ => EkSentCt1ReceivedFromPbPostEnv F u evs
@@ -126,7 +138,7 @@ def EkSent2228SomeEnv (F : ShaCompress) (u : V1State.Unchunked.EkSentCt1Received
         FromPbDecEnv (pbToProtoPolyDecoder d) evs2
 
 /-- Exact binary allocator event envelope of Variant 4 (`InnerState.ekSentCt1Received s`, `+248`). -/
-def EkSentCt1ReceivedFromPbEnv (F : ShaCompress) (s : V1State.Chunked.EkSentCt1Received)
+@[expose] def EkSentCt1ReceivedFromPbEnv (F : ShaCompress) (s : V1State.Chunked.EkSentCt1Received)
     (evs : List AllocEvent) : Prop :=
   match s.receivingCt2 with
   | none =>

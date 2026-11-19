@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import ProofLib.Lemmas
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
 import Symbolic.Proofs.Swarm.CREF.Xpl.PrefixReach
 import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
 import VCVio.Prelude.Core
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 
 /-!
 # Move-Boundary Prefix Reachability for Pre-Key Receive
@@ -25,7 +26,7 @@ Exports `rpk_prefix_reachable`, establishing trace reachability at move-prefix b
 `MatchedPrefix`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

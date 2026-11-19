@@ -9,18 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Bytes.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Bytes.Drops
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.TripleRatchet.Bytes.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Bytes.Drops -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.From
 import ProofLib.SepLogic.Basic
 import ProofLib.SepLogic.WP
 import ProofLib.SepLogic.WP.Apply
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.StdStartup.MemOps
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
 
 /-!
 # Budget-Threaded `bytes::Bytes` Drop Functions and Vtable Dispatch
@@ -30,7 +39,7 @@ Verifies relocatable `[LibsignalPlacement]` `VmPreserved` and `RustCliAllocBudge
 `promotable_odd_drop` (Block `236`), and unified vtable `drop` dispatch.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -222,7 +231,7 @@ private theorem deallocBudget_tail_ok_of_dealloc [LibsignalPlacement]
 
 /-! ## 2. Stack-Parameterized Budget Drop Specifications (`hookStack + 48`) -/
 
-def promotableEvenDropSpecWithStack [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def promotableEvenDropSpecWithStack [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (hookStack : Nat) :
     Spec (BytesDropGhost × M.σ) where
   pre := fun ((ptr, bs, off), st) s =>
@@ -242,7 +251,7 @@ def promotableEvenDropSpecWithStack [LibsignalPlacement] (M : AllocCostModel)
     A.pool lim st' sf ∗
     stackAt s0.sp (hookStack + 48)
 
-def promotableOddDropSpecWithStack [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def promotableOddDropSpecWithStack [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (hookStack : Nat) :
     Spec (BytesDropGhost × M.σ) where
   pre := fun ((ptr, bs, off), st) s =>
@@ -262,7 +271,7 @@ def promotableOddDropSpecWithStack [LibsignalPlacement] (M : AllocCostModel)
     A.pool lim st' sf ∗
     stackAt s0.sp (hookStack + 48)
 
-def bytesVtableDropSpecWithStack [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def bytesVtableDropSpecWithStack [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (hookStack : Nat) (ptr : BitVec 64)
     (bs : List (BitVec 8)) (off : Nat) : Spec M.σ where
   pre := fun st s =>
@@ -368,15 +377,6 @@ theorem promotableEvenDrop_placed_ok [LibsignalPlacement]
   promotableEvenDrop_placed_ok_withStack (hookStack := allocHookStack)
     (by decide) (by decide) hdealloc
 
-theorem promotableEvenDrop_placed_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hdealloc : HookSat H lsBytesRustDeallocSym (rustCliDeallocBudgetSpec M A lim)) :
-    subroutine_ok ((blkPC_237).rebase (blkPl_237).base H) (blkPl_237).base
-      (promotableEvenDropSpecX M A lim) :=
-  promotableEvenDrop_placed_ok_withStack (hookStack := extHookStack)
-    (by decide) (by decide) hdealloc
-
 theorem promotableOddDrop_placed_ok_of_dealloc [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {H : String → Option (State → State)} {hookStack : Nat}
@@ -450,15 +450,6 @@ theorem promotableOddDrop_placed_ok [LibsignalPlacement]
     subroutine_ok ((blkPC_236).rebase (blkPl_236).base H) (blkPl_236).base
       (promotableOddDropSpec M A lim) :=
   promotableOddDrop_placed_ok_withStack (hookStack := allocHookStack)
-    (by decide) (by decide) hdealloc
-
-theorem promotableOddDrop_placed_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hdealloc : HookSat H lsBytesRustDeallocSym (rustCliDeallocBudgetSpec M A lim)) :
-    subroutine_ok ((blkPC_236).rebase (blkPl_236).base H) (blkPl_236).base
-      (promotableOddDropSpecX M A lim) :=
-  promotableOddDrop_placed_ok_withStack (hookStack := extHookStack)
     (by decide) (by decide) hdealloc
 
 theorem bytesVtableDrop_placed_ok_of_drops [LibsignalPlacement]

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSig
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSig
 
 /-!
 # One-key `Auth` bad-signature hop: final assembly
@@ -19,7 +19,7 @@ Instantiates `Auth1KeySigCoupling` to prove `authSig1KeyPerKBound_holds` and the
 bad-signature hop `auth1Key_hop_sigEufCma_frozen_le`.
 -/
 
-@[expose] public section
+public section
 
 open SignalPqxdh SignalPqxdh.Security
 open OracleSpec OracleComp
@@ -27,7 +27,7 @@ open scoped ENNReal
 
 namespace Proofs.SignalPqxdh.Security
 
-noncomputable def auth1KeySigCoupling (S : Setup) (P : Primitives) (b : QueryBudget)
+def auth1KeySigCoupling (S : Setup) (P : Primitives) (b : QueryBudget)
     (hP : CryptoWellFormedPrimitivesδ P) (k : ℕ) (sk : Bytes) (hsk : sk.length = 32) :
     Auth1KeySigCoupling S P b k sk where
   Inv := FgAuthSimInvSig1Key S b P hP k sk hsk
@@ -44,14 +44,5 @@ theorem authSig1KeyPerKBound_holds (S : Setup) (P : Primitives)
     (k : ℕ) : authSig1KeyPerKBound S P b A k :=
   authSig1KeyPerKBound_of_coupling S P hP b A k
     (fun sk hsk => auth1KeySigCoupling S P b hP k sk hsk)
-
-/-- Frozen-game bad-signature hop from `G0_1` (bundle provenance) to `G1` (exact provenance). -/
-theorem auth1Key_hop_sigEufCma_frozen_le (S : Setup) (P : Primitives)
-    (hP : CryptoWellFormedPrimitivesδ P) (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
-    |(𝒟[authExpG0_1WithProvFrozen1Key (checkBundleProvenance P) S P A.val].boolBias).toReal -
-     (𝒟[authExpG1WithProvFrozen1Key (checkBundleProvenanceExact P) S P A.val].boolBias).toReal| ≤
-      (S.N_id : ℝ) * GapSigEufCmaReal P P.isValidDhTriple (sigReductionAuth1Key S b A) :=
-  auth1Key_hop_sigEufCma_frozen_le_of_perK S P b A
-    (fun k _ => authSig1KeyPerKBound_holds S P hP b A k)
 
 end Proofs.SignalPqxdh.Security

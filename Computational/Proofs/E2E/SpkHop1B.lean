@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1A
-public import Computational.Proofs.E2E.SpkHop2Red
+public import Computational.Proofs.E2E.SpkHop1A -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop2Red -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostStep
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import Computational.Proofs.E2E.SpkHop2A
@@ -23,7 +23,7 @@ Establishes single-query unit bounds (`hop2GuessUnit`, `hop2CollUnit`, `hop2Fres
 lazy-table simulation helpers (`lazyImpl`, `LookupEq`) for Hop 2 coupling.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -121,7 +121,7 @@ theorem rootExpand_extractPRF_eq_rootPRNG_up (F : ShaState → List (BitVec 8) �
 /-! ## Single-query unit bounds -/
 
 /-- Single-point supremum unit of `spkSwapHiddenScalarGuessTerm`. -/
-noncomputable def hop2GuessUnit (Dh : DHFun (BitVec 256) Pt) : ℝ≥0∞ :=
+@[expose] noncomputable def hop2GuessUnit (Dh : DHFun (BitVec 256) Pt) : ℝ≥0∞ :=
   ⨆ P_pt : Pt, 𝒟[($ᵗ BitVec 256 : ProbComp (BitVec 256))] {x | Dh.dh x Dh.base = P_pt}
 
 omit [DecidableEq Pt] [Zero Pt] [SampleableType Pt] in
@@ -187,7 +187,7 @@ theorem dh_coll_prob_le_hop2CollUnit (Dh : DHFun (BitVec 256) Pt) (a : BitVec 25
     _ ≤ hop2CollUnit Dh := dh_coll_single_le_hop2CollUnit Dh a T
 
 /-- Single-query supremum unit of `spkSwapSpuriousStepTerm`. -/
-noncomputable def hop2FreshUnit (F : ShaState → List (BitVec 8) → ShaState) : ℝ≥0∞ :=
+@[expose] noncomputable def hop2FreshUnit (F : ShaState → List (BitVec 8) → ShaState) : ℝ≥0∞ :=
   ⨆ (c : ℕ) (_ : c < 2 ^ 32) (salt : Salt) (ids : LibsignalAead.SerializedIdentityKeys) (ser : List (BitVec 8))
     (_ : ser.length < 2 ^ 32) (tag : BitVec 64),
     ((Ratchet.expandPRG F).prgAdvantage (LibsignalSim.wireMacVerifiesTest F c salt ids ser tag) +
@@ -242,7 +242,7 @@ theorem testSpk_expandPRG_le_hop2FreshUnit (P : Params PQ PQC) (pqrState : PQ) (
       exact lt_of_le_of_lt (Nat.min_le_right _ _) (hc msg htry)
 
 /-- Single-query supremum unit of `hop2CreateCollTerm`. -/
-noncomputable def hop2CreateCollUnit (Dh : DHFun (BitVec 256) Pt) : ℝ≥0∞ :=
+@[expose] noncomputable def hop2CreateCollUnit (Dh : DHFun (BitVec 256) Pt) : ℝ≥0∞ :=
   ⨆ (T : Pt) (Q : Pt),
     if Q = 0 then 0 else 𝒟[($ᵗ BitVec 256 : ProbComp (BitVec 256))] {r | Dh.dh r T = Q}
 
@@ -276,7 +276,7 @@ theorem dh_createColl_prob_le_hop2CreateCollUnit (Dh : DHFun (BitVec 256) Pt) (T
 
 /-! ## Root-key patching and `DEV-LS34` window corruption refusal -/
 
-def setRootKey (rk : Ratchet.RootKey) (g : GhostState PQ) : GhostState PQ :=
+@[expose] def setRootKey (rk : Ratchet.RootKey) (g : GhostState PQ) : GhostState PQ :=
   { g with session := { g.session with rootKey := rk } }
 
 theorem Mut_exec_outgoingFromSessionState_rootKey (rk : Ratchet.RootKey) (s : SessionState PQ) :
@@ -621,7 +621,7 @@ theorem tryDecryptFromRecord_stepped_error_of_testSpk_false (P : Params Bytes PQ
 
 /-! ## Lazy-table simulation and `hop2DH` equivalence -/
 
-def lazyStep : QueryImpl (prfSpec Pt (BitVec 256)) (StateT (List (Pt × BitVec 256)) ProbComp) :=
+@[expose] def lazyStep : QueryImpl (prfSpec Pt (BitVec 256)) (StateT (List (Pt × BitVec 256)) ProbComp) :=
   fun x => do
     let tbl ← get
     match tbl.lookup x with
@@ -632,7 +632,7 @@ def lazyStep : QueryImpl (prfSpec Pt (BitVec 256)) (StateT (List (Pt × BitVec 2
       return v
 
 /-- Query implementation for `Hop2Comp Pt` backed by a lazy random-oracle table. -/
-def lazyImpl : QueryImpl (unifSpec + prfSpec Pt (BitVec 256))
+@[expose] def lazyImpl : QueryImpl (unifSpec + prfSpec Pt (BitVec 256))
     (StateT (List (Pt × BitVec 256)) ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (List (Pt × BitVec 256)) ProbComp) +
     lazyStep (Pt := Pt)
@@ -704,7 +704,7 @@ theorem evalDist_branch_true_eq_lazyImpl {Key : Type} [SampleableType Key]
   simp only [h, OracleComp.evalDist_bind_const]
 
 /-- Two association lists are lookup-equivalent if they agree on `List.lookup` at every key. -/
-def LookupEq {κ ν : Type} [BEq κ] (l₁ l₂ : List (κ × ν)) : Prop :=
+@[expose] def LookupEq {κ ν : Type} [BEq κ] (l₁ l₂ : List (κ × ν)) : Prop :=
   ∀ x, l₁.lookup x = l₂.lookup x
 
 theorem LookupEq.cons {κ ν : Type} [BEq κ] {l₁ l₂ : List (κ × ν)}
@@ -885,7 +885,7 @@ theorem evalDist_lazyStep_discard
   | none => exact evalDist_lazyImpl_cons_fresh comp x₀ tbl hlook
 
 /-- Base session state after the receiving half of `hop2DH`. -/
-def steppedSessBase (g : GhostState PQ) (msg : SignalMessage) (prev : BitVec 32)
+@[expose] def steppedSessBase (g : GhostState PQ) (msg : SignalMessage) (prev : BitVec 32)
     (ckR : BitVec 256) : SessionState PQ :=
   { g.session with
     previousCounter := prev
@@ -987,7 +987,7 @@ theorem tryDecryptFromRecord_steppedSess (P : Params PQ PQC)
   · simp only [ne_eq, hv, not_false_eq_true, ↓reduceIte] at hdec1 hdec2
     rw [hdec1, hdec2]
 
-def patchPartyIdx (m : ℕ) (rk : Ratchet.RootKey) (idx : Option ℕ) (g : GhostState PQ) :
+@[expose] def patchPartyIdx (m : ℕ) (rk : Ratchet.RootKey) (idx : Option ℕ) (g : GhostState PQ) :
     GhostState PQ :=
   if idx = some m then setRootKey rk g else g
 

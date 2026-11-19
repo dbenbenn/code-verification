@@ -20,7 +20,7 @@ Defines `PqStep` (one accepted CLI transition from `st` to `st'`) and `lastResor
 of `(spkId, baseKey)` entries recorded across last-resort `.base-keys` files) for `PqClosure.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +48,7 @@ inductive PqStep (X : UnreachedPqxdhPrimitives) (W : PEParams) (st : PqParty) : 
 
 /-- The last-resort uses: how many `(signed pre-key id, base key)` pairs the party's
 last-resort Kyber pre-keys have accepted (the entries of their `.base-keys` files). -/
-def lastResortUses (st : PqParty) : ℕ :=
+@[expose] def lastResortUses (st : PqParty) : ℕ :=
   (st.kyberLastResort.map fun e => e.2.2.length).sum
 
 end CryptoVerification.SignalSession

@@ -200,9 +200,9 @@ example (pl : Placement) (b : BitVec 64) (s : State)
 
 /-! ## Table-Projection Guards and `maxRecDepth` Diagnostics -/
 
--- Build a 600-entry symbol/name spine directly in `MetaM` so `largeImage`, `largeLinkedImage`,
--- `largeInternedLib`, `largeInternedLayout`, and `largeMultiLib` have a concrete 600-deep
--- `List.cons` spine without large source literals.
+-- Build a 600-entry symbol/name spine directly in `MetaM` so `largeProg`, `largeInternedLib`,
+-- `largeInternedLayout`, and `largeMultiLib` have a concrete 600-deep `List.cons` spine without
+-- large source literals.
 section
 
 run_meta do
@@ -247,25 +247,9 @@ run_meta do
     })
     Lean.modifyEnv (Lean.addNoncomputable · nm)
 
-noncomputable def largeImage : Obj.Image where
-  base := 0x400000#64
+noncomputable def largeProg : Program where
   code := widgetBlk.code
-  dataAddr := 0x410000#64
-  data := []
-  roData := []
-  externData := []
-  gotAddr := 0x420000#64
-  got := []
   symbols := largeSyms
-  stubs := []
-
-noncomputable def largeLinkedImage : Obj.LinkedImage where
-  code := widgetBlk.code
-  dataOff := 0x10000
-  data := []
-  gotOff := 0x20000
-  symbols := largeSyms
-  stubs := []
 
 noncomputable abbrev largeInternedLib : Obj.Interned.Lib where
   name := "large_widget"
@@ -281,19 +265,19 @@ noncomputable def largeMultiLib : Obj.MultiPlacedLib where
   name := "large_multi"
   blocks := [{ code := widgetBlk.code, symbols := largeSyms }]
 
-/-- Spec referencing both ground and symbolic 600-entry `Obj.Image`, `Obj.LinkedImage`,
-    `Obj.Interned.Lib` / `Layout` (`abbrev`), and `Obj.MultiPlacedLib` table projections. -/
+/-- Spec referencing both ground and symbolic 600-entry `Program`, `Obj.Interned.Lib` / `Layout`
+    (`abbrev`), and `Obj.MultiPlacedLib` table projections. -/
 noncomputable def keepX0WithLargeTables (mpl : MultiPlacement) (syms : List (String × Nat)) : Spec (BitVec 64) where
   pre := fun v s0 =>
     ⌜s0.readReg64 .x0 = v ∧
-      largeImage.symbols = largeLinkedImage.symbols ∧
-      largeImage.symbols = syms ∧
+      largeProg.symbols = largeMultiLib.blocks[0]!.symbols ∧
+      largeProg.symbols = syms ∧
       largeInternedLib.names.length = largeInternedLayout.addrs.length⌝ ∗
     (largeMultiLib.resolve mpl "ro_slot" ↦₆₄ᵣ largeMultiLib.fnAddr mpl "sym_0")
   post := fun v _ sf =>
     ⌜sf.readReg64 .x0 = v ∧
-      largeImage.symbols = largeLinkedImage.symbols ∧
-      largeImage.symbols = syms ∧
+      largeProg.symbols = largeMultiLib.blocks[0]!.symbols ∧
+      largeProg.symbols = syms ∧
       largeInternedLib.names.length = largeInternedLayout.addrs.length⌝ ∗
     (largeMultiLib.resolve mpl "ro_slot" ↦₆₄ᵣ largeMultiLib.fnAddr mpl "sym_0")
 
@@ -386,7 +370,7 @@ example (mpl : MultiPlacement) :
   wp_entry
 
 /-- error: wp_entry: maximum recursion depth (`maxRecDepth`) reached during entry setup (saw `Arm64.Obj.MultiPlacedLib.fnAddr` in goal/context)
-hint: pre-fold concrete `Obj.Image` / `Obj.LinkedImage` / `Obj.Interned` / `PlacedLib` / symbol-table or address projections before calling `wp_entry` -/
+hint: pre-fold concrete `Obj.Interned` / `PlacedLib` / symbol-table or address projections before calling `wp_entry` -/
 #guard_msgs (substring := true) in
 set_option maxRecDepth 350 in
 example (pl : Placement) (mpl : MultiPlacement) (b : BitVec 64)
@@ -517,10 +501,10 @@ example (b : BitVec 64) (H : String → Option (State → State))
 set_option maxRecDepth 350 in
 example (pl : Placement) (b : BitVec 64) (H : String → Option (State → State)) :
     subroutine_ok ((widgetPC pl).rebase b H)
-      (b + BitVec.ofNat 64 ((Program.ofImage largeImage).fnOff "sym_599")) keepX0 := by
+      (b + BitVec.ofNat 64 (largeProg.fnOff "sym_599")) keepX0 := by
   wp_entry
 
-/-! ## `MultiPlacedLib.SymIndex` and `Obj.RelocFnIndex` Guard Coverage -/
+/-! ## `MultiPlacedLib.SymIndex` Guard Coverage -/
 
 def smallIndexedMultiLib : MultiPlacedLib where
   name := "small_indexed"
@@ -555,7 +539,7 @@ example (pl : Placement) (b : BitVec 64) (H : String → Option (State → State
 -- Unit checks:
 -- 1. Every single-backtick constant name referenced in `ProjGuardAttr.lean`, `ControlTactics.lean`,
 --    and `Entry.lean` resolves in `Lean.getEnv`.
--- 2. `hasConcreteGuardedTableTerm` inspects `recvIdx = 1` for `SymIndex` / `RelocFnIndex` methods
+-- 2. `hasConcreteGuardedTableTerm` inspects `recvIdx = 1` for `SymIndex` methods
 --    (treating symbolic `idx` FVars as non-concrete and concrete `smallMultiSymIdx` as concrete).
 run_meta do
   let env ← Lean.getEnv
@@ -567,11 +551,7 @@ run_meta do
       `Arm64.Obj.MultiPlacedLib.SymIndex.findDataSym,
       `Arm64.Obj.MultiPlacedLib.SymIndex.resolve,
       `Arm64.Obj.MultiPlacedLib.SymIndex.fnAddr,
-      `Arm64.Obj.lookupSymInLists,
-      `Arm64.Obj.RelocFnIndex,
-      `Arm64.Obj.RelocFnIndex.lookupIdxChars,
-      `Arm64.Obj.RelocFnIndex.lookupIdx,
-      `Arm64.Obj.RelocFnIndex.findFn?] do
+      `Arm64.Obj.lookupSymInLists] do
     unless env.contains nm do
       throwError "missing constant referenced in guarded-lookup classifiers: {nm}"
   let idxTy ← Lean.Meta.mkAppM ``Obj.MultiPlacedLib.SymIndex #[Lean.mkConst ``smallIndexedMultiLib]

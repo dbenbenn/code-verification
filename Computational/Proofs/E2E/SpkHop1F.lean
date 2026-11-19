@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1E
+public import Computational.Proofs.E2E.SpkHop1E -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostStep
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import Computational.Proofs.GameHop.Advantage
@@ -23,7 +23,7 @@ Defines the Phase 2 coupling relation `Hop2Phase2Rel` and bounds receiver-chain 
 across window steps.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.unusedSectionVars false
 

@@ -20,7 +20,7 @@ Proves the `message_keys` vector allocation, per-element `MessageKey` clone loop
 path for `<session_structure::Chain as Clone>::clone [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.ChainClone3
 
@@ -235,7 +235,7 @@ theorem vecBuf_mk_pos_eq (A : RustAlloc) (mkPtr' : BitVec 64)
       ProofLib.memRegion_zero, sepConj_emp, hmul_comm]
     exact Entails.refl _
 
-def chainMkSourceFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainMkSourceFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   vecGhostAt A gc.1.priv (a + 24#64) ∗
@@ -380,7 +380,7 @@ theorem spillSlotsExist_eq_struct (sp : BitVec 64) :
       (sepConj_mono (Entails.sepExists_right s.v6 (Entails.refl _))
       (Entails.sepExists_right s.v7 (Entails.refl _)))))))))
 
-def savedRegsCore (s0 : State) : SepProp :=
+@[expose] def savedRegsCore (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗

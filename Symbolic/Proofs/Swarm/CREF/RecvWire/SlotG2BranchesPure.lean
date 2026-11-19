@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.ReadableBy2Pure
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.ReadableBy2Pure -- proof-setup: allow-public-import
 import Batteries.Data.UInt
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PkDispatchAtPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PkDispatchAtPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RatchetDHRkSwapStepTRPureA
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
@@ -31,7 +31,8 @@ import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepNoRatchetWAtPure
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepRatchetDHAtPure
 import Symbolic.Proofs.Swarm.CREF.TR.TrStateRkCkIk
 import Symbolic.Proofs.Swarm.CREF.TROpen
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # `NoRatchet` and `RatchetDH` Branch Witnesses for Whisper Receive
@@ -40,7 +41,7 @@ Constructs `RecvWireRawWitness` for the `NoRatchet` and `RatchetDH` decryption b
 incoming Whisper messages.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

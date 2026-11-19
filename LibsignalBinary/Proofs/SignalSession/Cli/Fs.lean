@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
 import ProofLib.Hoare.Safety
 import ProofLib.VCGen
 
@@ -23,14 +23,14 @@ reads them through `Dir::get`. This module lifts `StoreKit/Fs.lean`'s trace-stab
 specifications.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SignalSession.Cli
 
 open Arm64 ProofLib CryptoVerification.LibsignalPublicApi.StoreKit
 
 /-- `spec` with `⌜FsInv F0 T0 ·⌝` added to the precondition and to every outcome. -/
-def withFsInv {α : Type} (spec : Spec α) (F0 : FsFiles) (T0 : List TraceEvent) : Spec α where
+@[expose] def withFsInv {α : Type} (spec : Spec α) (F0 : FsFiles) (T0 : List TraceEvent) : Spec α where
   pre x s := ⌜FsInv F0 T0 s⌝ ∗ spec.pre x s
   post x s0 sf := ⌜FsInv F0 T0 sf⌝ ∗ spec.post x s0 sf
   onPanic x s0 sf := ⌜FsInv F0 T0 sf⌝ ∗ spec.onPanic x s0 sf
@@ -77,11 +77,5 @@ theorem files_eq_at_callback {F0 : FsFiles} {T0 : List TraceEvent} {s : State}
     (hinv : FsInv F0 T0 s) {evs : List TraceEvent} (ht : s.trace = T0 ++ evs)
     (hq : NoFsEv evs) : s.fs.files = F0 :=
   hinv.files_eq ht hq
-
-/-- The CLI's Files kits (`envOk := (· = F0)`, no kit event) meet `KitFsOk` from trace soundness;
-`Q` is the kits' quietness, `True` for the CLI. -/
-theorem filesKit_fsOk {P : Program} (hP : TraceFsSound P) (F0 : FsFiles) :
-    KitFsOk (· = F0) True P :=
-  KitFsOk.of_sound trivial hP
 
 end CryptoVerification.SignalSession.Cli

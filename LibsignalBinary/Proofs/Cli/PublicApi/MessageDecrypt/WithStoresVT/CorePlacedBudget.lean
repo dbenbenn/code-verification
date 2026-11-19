@@ -9,23 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.AssemblyPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.CorePlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegBatch1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegDispatchExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegErrTeardownExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegPostSomeExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegRegionNoneExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegSaveExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegStoreExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegTrustExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegUntrustedExtPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.AssemblyPlacedBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.CorePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegBatch1PlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegDispatchExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegErrTeardownExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegPostSomeExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegRegionNoneExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegSaveExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegStoreExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegTrustExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegUntrustedExtPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegUntrustedExtBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegRegionSomePlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegRegionSome
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAuxBudget
 
 /-!
 # Budget-Threaded Relocatable Token-Framed `MessageDecrypt` Assembly
@@ -35,7 +42,7 @@ on `lsProg_463 H` under `RustCliAllocBudget M` for `withStoresDecPlacedSpecVTPF`
 `withStoresDecPlacedSpecVTP` and `withStoresDecPlacedSpecVTF` / `withStoresDecPlacedSpecVT`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -92,7 +99,7 @@ open LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegUntrust
 /-! ## Token-framed budget `withStoresDecPlacedSpecVT` and `withStoresDecPlacedSpecVTP` -/
 
 /-- Budget-threaded `withStoresDecPlacedSpecV` with token invariant `F0` framed in `pre` and `post`. -/
-def withStoresDecPlacedSpecVTF [LibsignalPlacement] {M : AllocCostModel} (F0 : SepProp) (C : Crypto)
+@[expose] def withStoresDecPlacedSpecVTF [LibsignalPlacement] {M : AllocCostModel} (F0 : SepProp) (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (parse : UuidParser)
     (S : SpqrModel) (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
@@ -119,7 +126,7 @@ abbrev withStoresDecPlacedSpecVT [LibsignalPlacement] {M : AllocCostModel} (C : 
     C A lim ctl parse S tdEnv encRecord kit kitEnv ikit ikitEnv st0 ist0 Scope
 
 /-- Tight-panic budget-threaded `withStoresDecPlacedSpecVX` (`Extra := fun _ _ => False`) with `F0` framed. -/
-def withStoresDecPlacedSpecVTPF [LibsignalPlacement] {M : AllocCostModel} (F0 : SepProp) (C : Crypto)
+@[expose] def withStoresDecPlacedSpecVTPF [LibsignalPlacement] {M : AllocCostModel} (F0 : SepProp) (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (parse : UuidParser)
     (S : SpqrModel) (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
@@ -153,7 +160,7 @@ abbrev recordDecryptPlacedSpecP :=
   @LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegUntrustedExtBudget.recordDecryptPlacedSpecP
 
 /-- Budget-threaded `recordDecryptPlacedSpec` with `pqRatchetState.length < 2 ^ 32` and `F0` framed. -/
-def recordDecryptPlacedSpecTF [LibsignalPlacement] {M : AllocCostModel} (F0 : SepProp) (C : Crypto)
+@[expose] def recordDecryptPlacedSpecTF [LibsignalPlacement] {M : AllocCostModel} (F0 : SepProp) (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (uuidParse : UuidParser)
     (S : SpqrModel) (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
     Spec (RecordDecryptGhost × M.σ) :=
@@ -174,12 +181,12 @@ abbrev recordDecryptPlacedSpecT [LibsignalPlacement] {M : AllocCostModel} (C : C
   recordDecryptPlacedSpecTF tokenInitPlacedAt C A lim ctl uuidParse S tdEnv
 
 /-- `recordDecryptPlacedSpecTF` with weak `recordDecryptPlacedSpecP` precondition and model-panic-only `onPanic`. -/
-def recordDecryptPlacedSpecTPTightF [LibsignalPlacement] {M : AllocCostModel} (F0 : SepProp)
+@[expose] def recordDecryptPlacedSpecTPTightF [LibsignalPlacement] {M : AllocCostModel} (F0 : SepProp)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) : Spec (RecordDecryptGhost × M.σ) :=
   { recordDecryptPlacedSpecTF F0 C A lim ctl uuidParse S tdEnv with
-    pre := fun (x, st) s => ⌜x.st.pqRatchetState.length < 2 ^ 32⌝ ∗ F0 ∗
+    pre := fun (x, st) s => ⌜x.st.pqRatchetState.length < 2 ^ 32 ∧ x.rem.name.bytes.length ≤ 40⌝ ∗ F0 ∗
       (recordDecryptPlacedSpecP C A lim ctl uuidParse S tdEnv).pre (x, st) s
     onPanic := fun (x, _) s0 sf =>
       ⌜(x.model C S uuidParse).1 = .error .panic ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
@@ -217,7 +224,7 @@ theorem sessionGhostValid_of_recordPlacedPreP [LibsignalPlacement] {C : Crypto} 
   exact ⟨_, h7⟩
 
 /-- Budget-threaded `RegionSomeStateVPlaced` weakened to `WithStoresVT.recordDecryptPlacedSpecP`. -/
-def RegionSomeStatePVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def RegionSomeStatePVPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (parse : UuidParser)
     (S : SpqrModel) (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
@@ -422,6 +429,7 @@ theorem segRegionSomeVTP_placed_ok [LibsignalPlacement] {M : AllocCostModel} {F0
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
     (x : DecryptGhost) (st_init : M.σ) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (R : SepProp) (s0 s : State)
+    (hRemLen : x.rem.name.bytes.length ≤ 40)
     (hRS : RegionSomeStatePVPlaced C A lim ctl uuidTryParse S tdEnv encRecord
       kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init ans (F0 ∗ R) s0 s) :
     (lsProg_463 H).CodeLoaded s.mem →
@@ -455,7 +463,7 @@ theorem segRegionSomeVTP_placed_ok [LibsignalPlacement] {M : AllocCostModel} {F0
       (recordDecryptPlacedSpecTPTightF F0 C A lim ctl uuidTryParse S tdEnv).withVRegs.pre (x_rg, st) s ∗ R_rg := by
     dsimp only [Spec.withVRegs, recordDecryptPlacedSpecTPTightF]
     rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpq_lt, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmemP⟩
+    exact ⟨⟨hpq_lt, hRemLen⟩, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmemP⟩
   have hmemQ : s.mem ⊨
       ((recordDecryptPlacedSpecTPTightF F0 C A lim ctl uuidTryParse S tdEnv).withVRegs.restrictPre
         (fun p => Q p.1.st.pqRatchetState)).pre (x_rg, st) s ∗ R_rg :=
@@ -786,6 +794,7 @@ include hH hC hAddr in
 private theorem reachVTPF_loadPolled_placed
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
     (hid : IdOrDistinctSid uuidTryParse kit st0 Scope x)
+    (hRemLen : x.rem.name.bytes.length ≤ 40)
     (ans : StoreAnswers (List (BitVec 8)) Unit) (s : State) (hfs : DecFsCtxExtPlaced kit ikit H s0 s)
     (h : LoadPolledStateVPlaced C A lim ctl uuidTryParse S tdEnv encRecord
       kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init ans (F0 ∗ R) s0 s) :
@@ -796,7 +805,7 @@ private theorem reachVTPF_loadPolled_placed
   rintro s' hfs' (hSome | hNone | hFin)
   · refine Arm64.reaches_outcome.of_codeLoaded fun hL => ?_
     obtain ⟨s'', hst, hPost | hout⟩ :=
-      segRegionSomeVTP_placed_ok Q hC.region hQ x st_init ans R s0 s' hSome hL
+      segRegionSomeVTP_placed_ok Q hC.region hQ x st_init ans R s0 s' hRemLen hSome hL
     · refine Arm64.reaches_outcome_steps hst ?_
       exact decSegVTPF_chainFs_placed (hfs'.of_steps hst)
         (segPostSomeVX_placed_ok hH hC.remoteIk x st_init ans (F0 ∗ R) s0 s'' hPost)
@@ -825,6 +834,7 @@ theorem withStoresDec_reachVTPF_fs_placed [LibsignalPlacement] {M : AllocCostMod
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFPlaced F0 C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (x : DecryptGhost) (st_init : M.σ) (R : SepProp) (s0 : State)
     (hid : IdOrDistinctSid uuidTryParse kit st0 Scope x) (hpc : s0.pc = wsEntryPCPlaced)
     (hrun : s0.status = .Running)
@@ -842,7 +852,7 @@ theorem withStoresDec_reachVTPF_fs_placed [LibsignalPlacement] {M : AllocCostMod
   exact decSegVTPF_chainFs_placed hfs
     (segLoadVX_placed_ok hH x st_init (F0 ∗ R) s0 hfs hpc hrun hal hpreV)
     (fun s hfs' ⟨ans, h⟩ =>
-      reachVTPF_loadPolled_placed hH hC x st_init R s0 hAddr hQ hid ans s hfs' h)
+      reachVTPF_loadPolled_placed hH hC x st_init R s0 hAddr hQ hid (hRemLen x.rem.val hAddr.1) ans s hfs' h)
 
 /-- `withStoresDec_reachVTPF_fs_placed` specialized to `tokenInitPlacedAt`. -/
 theorem withStoresDec_reachVTP_fs_placed [LibsignalPlacement] {M : AllocCostModel}
@@ -856,6 +866,7 @@ theorem withStoresDec_reachVTP_fs_placed [LibsignalPlacement] {M : AllocCostMode
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPPlaced C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (x : DecryptGhost) (st_init : M.σ) (R : SepProp) (s0 : State)
     (hid : IdOrDistinctSid uuidTryParse kit st0 Scope x) (hpc : s0.pc = wsEntryPCPlaced)
     (hrun : s0.status = .Running)
@@ -864,7 +875,7 @@ theorem withStoresDec_reachVTP_fs_placed [LibsignalPlacement] {M : AllocCostMode
     (hal : s0.spAligned = true) (hfs : DecFsCtxExtPlaced kit ikit H s0 s0) :
     reaches_outcome (lsProg_463 H) (withStoresDecPlacedSpecVTP C A lim ctl uuidTryParse S tdEnv
       encRecord kit kitEnv ikit ikitEnv st0 ist0 Scope) (x, st_init) R s0 s0 :=
-  withStoresDec_reachVTPF_fs_placed hH hC hQ x st_init R s0 hid hpc hrun hpre hal hfs
+  withStoresDec_reachVTPF_fs_placed hH hC hQ hRemLen x st_init R s0 hid hpc hrun hpre hal hfs
 
 /-- Relocatable `subroutine_ok` for budget-threaded `withStoresDecPlacedSpecVTPF` under `IdOrDistinctSid`. -/
 theorem withStoresDec_okVTPF_fs_placed [LibsignalPlacement] {M : AllocCostModel} {F0 : SepProp}
@@ -878,6 +889,7 @@ theorem withStoresDec_okVTPF_fs_placed [LibsignalPlacement] {M : AllocCostModel}
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFPlaced F0 C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (hKitFs : KitFsOk (fun f => kit.envOk f ∧ ikit.envOk f) (kit.Quiet ∧ ikit.Quiet) (lsProg_463 H)) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced (withEnvPre
       ((withStoresDecPlacedSpecVTPF F0 C A lim ctl uuidTryParse S tdEnv encRecord
@@ -889,7 +901,7 @@ theorem withStoresDec_okVTPF_fs_placed [LibsignalPlacement] {M : AllocCostModel}
   obtain ⟨h0, hpreR⟩ := withEnvPre_pre_elim hpre0
   rw [reaches_outcome_withEnvPre]
   obtain ⟨hid, hpre⟩ := Spec.satisfies_restrictPre.mp hpreR
-  exact (withStoresDec_reachVTPF_fs_placed hH hC hQ x st_init R s0 hid hpc hrun hpre hal
+  exact (withStoresDec_reachVTPF_fs_placed hH hC hQ hRemLen x st_init R s0 hid hpc hrun hpre hal
     (FsCtx.of_entry hKitFs h0)).mono_outcome fun _ hout => hout
 
 /-- `withStoresDec_okVTPF_fs_placed` specialized to `tokenInitPlacedAt`. -/
@@ -904,13 +916,14 @@ theorem withStoresDec_okVTP_fs_placed [LibsignalPlacement] {M : AllocCostModel}
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPPlaced C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (hKitFs : KitFsOk (fun f => kit.envOk f ∧ ikit.envOk f) (kit.Quiet ∧ ikit.Quiet) (lsProg_463 H)) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced (withEnvPre
       ((withStoresDecPlacedSpecVTP C A lim ctl uuidTryParse S tdEnv encRecord
         kit kitEnv ikit ikitEnv st0 ist0 Scope).restrictPre
         (fun p => IdOrDistinctSid uuidTryParse kit st0 Scope p.1))
       fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files) :=
-  withStoresDec_okVTPF_fs_placed hH hC hQ hKitFs
+  withStoresDec_okVTPF_fs_placed hH hC hQ hRemLen hKitFs
 
 /-- Specialization of `withStoresDec_okVTPF_fs_placed` to `DistinctSid`. -/
 theorem withStoresDec_okVTPF_distinct_fs_placed [LibsignalPlacement] {M : AllocCostModel}
@@ -924,6 +937,7 @@ theorem withStoresDec_okVTPF_distinct_fs_placed [LibsignalPlacement] {M : AllocC
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFPlaced F0 C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (hKitFs : KitFsOk (fun f => kit.envOk f ∧ ikit.envOk f) (kit.Quiet ∧ ikit.Quiet) (lsProg_463 H)) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced (withEnvPre
       ((withStoresDecPlacedSpecVTPF F0 C A lim ctl uuidTryParse S tdEnv encRecord
@@ -936,7 +950,7 @@ theorem withStoresDec_okVTPF_distinct_fs_placed [LibsignalPlacement] {M : AllocC
   obtain ⟨h0, hpreR⟩ := withEnvPre_pre_elim hpre0
   rw [reaches_outcome_withEnvPre]
   obtain ⟨hdist, hpre⟩ := Spec.satisfies_restrictPre.mp hpreR
-  exact (withStoresDec_reachVTPF_fs_placed hH hC hQ x st_init R s0
+  exact (withStoresDec_reachVTPF_fs_placed hH hC hQ hRemLen x st_init R s0
     (idOrDistinctSid_of_distinctSid hdist) hpc hrun hpre hal
     (FsCtx.of_entry hKitFs h0)).mono_outcome fun _ hout => hout
 
@@ -952,6 +966,7 @@ theorem withStoresDec_okVTP_distinct_fs_placed [LibsignalPlacement] {M : AllocCo
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPPlaced C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (hKitFs : KitFsOk (fun f => kit.envOk f ∧ ikit.envOk f) (kit.Quiet ∧ ikit.Quiet) (lsProg_463 H)) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced (withEnvPre
       ((withStoresDecPlacedSpecVTP C A lim ctl uuidTryParse S tdEnv encRecord
@@ -959,7 +974,7 @@ theorem withStoresDec_okVTP_distinct_fs_placed [LibsignalPlacement] {M : AllocCo
         (fun p => CryptoVerification.E2E.Pqxdh.WireEntries.DistinctSid
           uuidTryParse p.1.loc.name.bytes p.1.rem.name.bytes))
       fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files) :=
-  withStoresDec_okVTPF_distinct_fs_placed hH hC hQ hKitFs
+  withStoresDec_okVTPF_distinct_fs_placed hH hC hQ hRemLen hKitFs
 
 theorem withStoresDec_okVTPF_placed [LibsignalPlacement] {M : AllocCostModel} {F0 : SepProp}
     {C : Crypto} {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64} {S : SpqrModel}
@@ -972,12 +987,13 @@ theorem withStoresDec_okVTPF_placed [LibsignalPlacement] {M : AllocCostModel} {F
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFPlaced F0 C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (htriv : ∀ f, kit.envOk f ∧ ikit.envOk f := by exact fun _ => ⟨trivial, trivial⟩) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced
       ((withStoresDecPlacedSpecVTPF F0 C A lim ctl uuidTryParse S tdEnv encRecord
         kit kitEnv ikit ikitEnv st0 ist0 Scope).restrictPre
         (fun p => IdOrDistinctSid uuidTryParse kit st0 Scope p.1)) :=
-  subroutine_ok_of_withEnvPre (withStoresDec_okVTPF_fs_placed hH hC hQ (.inl htriv))
+  subroutine_ok_of_withEnvPre (withStoresDec_okVTPF_fs_placed hH hC hQ hRemLen (.inl htriv))
     fun s => htriv s.fs.files
 
 theorem withStoresDec_okVTP_placed [LibsignalPlacement] {M : AllocCostModel}
@@ -991,12 +1007,13 @@ theorem withStoresDec_okVTP_placed [LibsignalPlacement] {M : AllocCostModel}
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPPlaced C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (htriv : ∀ f, kit.envOk f ∧ ikit.envOk f := by exact fun _ => ⟨trivial, trivial⟩) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced
       ((withStoresDecPlacedSpecVTP C A lim ctl uuidTryParse S tdEnv encRecord
         kit kitEnv ikit ikitEnv st0 ist0 Scope).restrictPre
         (fun p => IdOrDistinctSid uuidTryParse kit st0 Scope p.1)) :=
-  withStoresDec_okVTPF_placed hH hC hQ htriv
+  withStoresDec_okVTPF_placed hH hC hQ hRemLen htriv
 
 section ChainVTPlaced
 
@@ -1234,6 +1251,7 @@ theorem segRegionSomeVTP_frozen_placed_ok [LibsignalPlacement] {M : AllocCostMod
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
     (x : DecryptGhost) (st_init : M.σ) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (R : SepProp) (s0 s : State)
+    (hRemLen : x.rem.name.bytes.length ≤ 40)
     (hRS : RegionSomeStatePVPlaced C A lim ctl uuidTryParse S tdEnv encRecord
       kit kitEnv ikit ikitEnv st0 ist0 Scope x st_init ans (F0 ∗ R) s0 s)
     (hFroz : CryptoVerification.LibsignalFrozen lsmpl s.mem) :
@@ -1268,10 +1286,10 @@ theorem segRegionSomeVTP_frozen_placed_ok [LibsignalPlacement] {M : AllocCostMod
       (CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
         (recordDecryptPlacedSpecTPTightF F0 C A lim ctl uuidTryParse S tdEnv)).withVRegs.pre (x_rg, st) s ∗ R_rg := by
     dsimp only [Spec.withVRegs, CryptoVerification.LibsignalTripleRatchet.withLsFrozen, recordDecryptPlacedSpecTPTightF]
-    have hgoal : s.mem ⊨ ⌜x_rg.st.pqRatchetState.length < 2 ^ 32⌝ ∗
+    have hgoal : s.mem ⊨ ⌜x_rg.st.pqRatchetState.length < 2 ^ 32 ∧ x_rg.rem.name.bytes.length ≤ 40⌝ ∗
         (⌜CryptoVerification.LibsignalFrozen lsmpl s.mem⌝ ∗
           ((recordDecryptPlacedSpecP C A lim ctl uuidTryParse S tdEnv).pre (x_rg, st) s ∗ (F0 ∗ R_rg))) := by
-      rw [satisfies_pure_sepConj]; refine ⟨hpq_lt, ?_⟩
+      rw [satisfies_pure_sepConj]; refine ⟨⟨hpq_lt, hRemLen⟩, ?_⟩
       rw [satisfies_pure_sepConj]; exact ⟨hFroz, hmemP⟩
     exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hgoal
   have hmemQ : s.mem ⊨
@@ -1358,6 +1376,7 @@ theorem withStoresDec_reachVTPF_frozen_fs_placed [LibsignalPlacement] {M : Alloc
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFFrozenPlaced F0 C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (x : DecryptGhost) (st_init : M.σ) (R : SepProp) (s0 : State)
     (hid : IdOrDistinctSid uuidTryParse kit st0 Scope x) (hpc : s0.pc = wsEntryPCPlaced)
     (hrun : s0.status = .Running)
@@ -1435,7 +1454,7 @@ theorem withStoresDec_reachVTPF_frozen_fs_placed [LibsignalPlacement] {M : Alloc
       rcases hNext with hSome | hNone | hFin
       · refine Arm64.reaches_outcome.of_codeLoaded fun hL' => ?_
         obtain ⟨s'', hst', hPost | hout'⟩ :=
-          segRegionSomeVTP_frozen_placed_ok Q hC.region hQ x st_init ans R s0 s' hSome hFroz' hL'
+          segRegionSomeVTP_frozen_placed_ok Q hC.region hQ x st_init ans R s0 s' (hRemLen x.rem.val hAddr.1) hSome hFroz' hL'
         · refine Arm64.reaches_outcome_steps hst' ?_
           exact decSegVTPF_chainFs_placed (hfs'.of_steps hst')
             (segPostSomeVX_placed_ok hH hC.remoteIk x st_init ans (F0 ∗ R) s0 s'' hPost)
@@ -1466,6 +1485,7 @@ theorem withStoresDec_reachVTP_frozen_fs_placed [LibsignalPlacement] {M : AllocC
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFrozenPlaced C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (x : DecryptGhost) (st_init : M.σ) (R : SepProp) (s0 : State)
     (hid : IdOrDistinctSid uuidTryParse kit st0 Scope x) (hpc : s0.pc = wsEntryPCPlaced)
     (hrun : s0.status = .Running)
@@ -1475,7 +1495,7 @@ theorem withStoresDec_reachVTP_frozen_fs_placed [LibsignalPlacement] {M : AllocC
     (hal : s0.spAligned = true) (hfs : DecFsCtxExtPlaced kit ikit H s0 s0) :
     reaches_outcome (lsProg_463 H) (withStoresDecPlacedSpecVTP C A lim ctl uuidTryParse S tdEnv
       encRecord kit kitEnv ikit ikitEnv st0 ist0 Scope) (x, st_init) R s0 s0 :=
-  withStoresDec_reachVTPF_frozen_fs_placed hH hC hQ x st_init R s0 hid hpc hrun hpre hFroz hal hfs
+  withStoresDec_reachVTPF_frozen_fs_placed hH hC hQ hRemLen x st_init R s0 hid hpc hrun hpre hFroz hal hfs
 
 /-- `withLsFrozen`-guarded `subroutine_ok` for budget-threaded `withStoresDecPlacedSpecVTPF`. -/
 theorem withStoresDec_okVTPF_frozen_fs_placed [LibsignalPlacement] {M : AllocCostModel}
@@ -1489,11 +1509,12 @@ theorem withStoresDec_okVTPF_frozen_fs_placed [LibsignalPlacement] {M : AllocCos
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFFrozenPlaced F0 C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (hKitFs : KitFsOk (fun f => kit.envOk f ∧ ikit.envOk f) (kit.Quiet ∧ ikit.Quiet) (lsProg_463 H)) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced (withEnvPre
       ((CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
         (withStoresDecPlacedSpecVTPF F0 C A lim ctl uuidTryParse S tdEnv encRecord
-          kit kitEnv ikit ikitEnv st0 ist0 Scope)).restrictPre
+           kit kitEnv ikit ikitEnv st0 ist0 Scope)).restrictPre
         (fun p => IdOrDistinctSid uuidTryParse kit st0 Scope p.1))
       fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files) := by
   refine Arm64.subroutine_ok_outcome_intro ?_
@@ -1502,7 +1523,7 @@ theorem withStoresDec_okVTPF_frozen_fs_placed [LibsignalPlacement] {M : AllocCos
   rw [reaches_outcome_withEnvPre]
   obtain ⟨hid, hpreF⟩ := Spec.satisfies_restrictPre.mp hpreR
   obtain ⟨hFroz, hpre⟩ := CryptoVerification.LibsignalTripleRatchet.extract_withLsFrozen hpreF
-  exact (withStoresDec_reachVTPF_frozen_fs_placed hH hC hQ x st_init R s0 hid hpc hrun hpre hFroz hal
+  exact (withStoresDec_reachVTPF_frozen_fs_placed hH hC hQ hRemLen x st_init R s0 hid hpc hrun hpre hFroz hal
     (FsCtx.of_entry hKitFs h0)).mono_outcome fun _ hout => hout
 
 /-- `withStoresDec_okVTPF_frozen_fs_placed` specialized to `tokenInitPlacedAt`. -/
@@ -1517,6 +1538,7 @@ theorem withStoresDec_okVTP_frozen_fs_placed [LibsignalPlacement] {M : AllocCost
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFrozenPlaced C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (hKitFs : KitFsOk (fun f => kit.envOk f ∧ ikit.envOk f) (kit.Quiet ∧ ikit.Quiet) (lsProg_463 H)) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced (withEnvPre
       ((CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
@@ -1524,7 +1546,7 @@ theorem withStoresDec_okVTP_frozen_fs_placed [LibsignalPlacement] {M : AllocCost
           kit kitEnv ikit ikitEnv st0 ist0 Scope)).restrictPre
         (fun p => IdOrDistinctSid uuidTryParse kit st0 Scope p.1))
       fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files) :=
-  withStoresDec_okVTPF_frozen_fs_placed hH hC hQ hKitFs
+  withStoresDec_okVTPF_frozen_fs_placed hH hC hQ hRemLen hKitFs
 
 /-- Specialization of `withStoresDec_okVTPF_frozen_fs_placed` to `DistinctSid`. -/
 theorem withStoresDec_okVTPF_distinct_frozen_fs_placed [LibsignalPlacement] {M : AllocCostModel}
@@ -1538,6 +1560,7 @@ theorem withStoresDec_okVTPF_distinct_frozen_fs_placed [LibsignalPlacement] {M :
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFFrozenPlaced F0 C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (hKitFs : KitFsOk (fun f => kit.envOk f ∧ ikit.envOk f) (kit.Quiet ∧ ikit.Quiet) (lsProg_463 H)) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced (withEnvPre
       ((CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
@@ -1552,7 +1575,7 @@ theorem withStoresDec_okVTPF_distinct_frozen_fs_placed [LibsignalPlacement] {M :
   rw [reaches_outcome_withEnvPre]
   obtain ⟨hdist, hpreF⟩ := Spec.satisfies_restrictPre.mp hpreR
   obtain ⟨hFroz, hpre⟩ := CryptoVerification.LibsignalTripleRatchet.extract_withLsFrozen hpreF
-  exact (withStoresDec_reachVTPF_frozen_fs_placed hH hC hQ x st_init R s0
+  exact (withStoresDec_reachVTPF_frozen_fs_placed hH hC hQ hRemLen x st_init R s0
     (idOrDistinctSid_of_distinctSid hdist) hpc hrun hpre hFroz hal
     (FsCtx.of_entry hKitFs h0)).mono_outcome fun _ hout => hout
 
@@ -1568,6 +1591,7 @@ theorem withStoresDec_okVTP_distinct_frozen_fs_placed [LibsignalPlacement] {M : 
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFrozenPlaced C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (hKitFs : KitFsOk (fun f => kit.envOk f ∧ ikit.envOk f) (kit.Quiet ∧ ikit.Quiet) (lsProg_463 H)) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced (withEnvPre
       ((CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
@@ -1576,7 +1600,7 @@ theorem withStoresDec_okVTP_distinct_frozen_fs_placed [LibsignalPlacement] {M : 
         (fun p => CryptoVerification.E2E.Pqxdh.WireEntries.DistinctSid
           uuidTryParse p.1.loc.name.bytes p.1.rem.name.bytes))
       fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files) :=
-  withStoresDec_okVTPF_distinct_frozen_fs_placed hH hC hQ hKitFs
+  withStoresDec_okVTPF_distinct_frozen_fs_placed hH hC hQ hRemLen hKitFs
 
 theorem withStoresDec_okVTPF_frozen_placed [LibsignalPlacement] {M : AllocCostModel} {F0 : SepProp}
     {C : Crypto} {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64} {S : SpqrModel}
@@ -1589,13 +1613,14 @@ theorem withStoresDec_okVTPF_frozen_placed [LibsignalPlacement] {M : AllocCostMo
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFFrozenPlaced F0 C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (htriv : ∀ f, kit.envOk f ∧ ikit.envOk f := by exact fun _ => ⟨trivial, trivial⟩) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced
       ((CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
         (withStoresDecPlacedSpecVTPF F0 C A lim ctl uuidTryParse S tdEnv encRecord
           kit kitEnv ikit ikitEnv st0 ist0 Scope)).restrictPre
         (fun p => IdOrDistinctSid uuidTryParse kit st0 Scope p.1)) :=
-  subroutine_ok_of_withEnvPre (withStoresDec_okVTPF_frozen_fs_placed hH hC hQ (.inl htriv))
+  subroutine_ok_of_withEnvPre (withStoresDec_okVTPF_frozen_fs_placed hH hC hQ hRemLen (.inl htriv))
     fun s => htriv s.fs.files
 
 theorem withStoresDec_okVTP_frozen_placed [LibsignalPlacement] {M : AllocCostModel}
@@ -1609,12 +1634,13 @@ theorem withStoresDec_okVTP_frozen_placed [LibsignalPlacement] {M : AllocCostMod
     (hH : DecHypsExtPlaced C A lim uuidTryParse S encRecord H kit kitEnv ikit ikitEnv st0 Scope)
     (hC : DecCalleesTPFrozenPlaced C A lim ctl S tdEnv H Q)
     (hQ : ScopePq kit st0 Scope (fun pq => pq.length < 2 ^ 32 ∧ Q pq))
+    (hRemLen : ∀ rem, kit.addrOk rem → rem.name.length ≤ 40)
     (htriv : ∀ f, kit.envOk f ∧ ikit.envOk f := by exact fun _ => ⟨trivial, trivial⟩) :
     subroutine_ok (lsProg_463 H) wsEntryPCPlaced
       ((CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
         (withStoresDecPlacedSpecVTP C A lim ctl uuidTryParse S tdEnv encRecord
           kit kitEnv ikit ikitEnv st0 ist0 Scope)).restrictPre
         (fun p => IdOrDistinctSid uuidTryParse kit st0 Scope p.1)) :=
-  withStoresDec_okVTPF_frozen_placed hH hC hQ htriv
+  withStoresDec_okVTPF_frozen_placed hH hC hQ hRemLen htriv
 
 end LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.CorePlacedBudget

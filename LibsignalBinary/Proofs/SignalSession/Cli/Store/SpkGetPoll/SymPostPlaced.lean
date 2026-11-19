@@ -9,9 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WPp
+public import VerifiedLibraries.Mallocng.Spec
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
 
 /-!
 # Relocatable Epilogue and Cut Combinators Re-export for `get_signed_pre_key::{closure#0}`
@@ -20,6 +33,6 @@ Re-exports `sepWP_frame_cut_placed`, `sepWPp_frame_cut_placed`, `spkEpiPost_pack
 `epilogue_placed_ok` on Block `571` (`lsProg_571 H`) from `Store/SpkGetPoll/CalleesPlaced.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false

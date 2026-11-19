@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperFS
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9
 import ProofLib.SepLogic.WP.StateNorm
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG -- proof-setup: allow-public-import
 
 /-!
 # Shifted-Paper Hop 2, Part 1
@@ -22,7 +23,7 @@ Synchronization invariant `Sync10ShiftedPaper` and step lemmas (`coinsE`, `chall
 `PRFPRNG.branch prng false`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +47,7 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
   [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
   [SampleableType K]
 
-def clearCompTL {St Msg C : Type} (g : SM.GameState St Msg C) : SM.GameState St Msg C :=
+@[expose] def clearCompTL {St Msg C : Type} (g : SM.GameState St Msg C) : SM.GameState St Msg C :=
   { g with comp := [], tL := none, leaks := [], corrs := [] }
 
 @[simp] theorem clearCompTL_st {St Msg C : Type} (g : SM.GameState St Msg C) :
@@ -106,7 +107,7 @@ abbrev tStarHook (b_auth : Bool) (t : ℕ) : ℕ := if b_auth then t else 0
 
 abbrev moHook (b_auth : Bool) (l t : ℕ) : Mode := ⟨b_auth, some (l - 1), t⟩
 
-def trivHook {St Msg C : Type} (b_auth : Bool) (Δ_off tStar : ℕ)
+@[expose] def trivHook {St Msg C : Type} (b_auth : Bool) (Δ_off tStar : ℕ)
     (s : SM.GameState St Msg C) (pos : SM.Pos) : Bool :=
   if b_auth then s.trivial (2 + Δ_off) pos
   else
@@ -130,7 +131,7 @@ theorem trivHook_eq_trivial_of_new_epoch {St Msg C : Type} (b_auth : Bool) (Δ_o
     omega
   cases b_auth <;> simp [trivHook, hnot]
 
-def injectEG {ι : Type} {tspec : OracleSpec.{0, 0} ι}
+@[expose] def injectEG {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     {HS Γv Sv SSv RSv : Type} (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (b_auth : Bool) (Δ_off qep tStar : ℕ) (cfg : SM.Config M) :
     QueryImpl ((Party × (Header T × E)) →ₒ Option (SM.RecvResult M))
@@ -152,7 +153,7 @@ def injectEG {ι : Type} {tspec : OracleSpec.{0, 0} ι}
       if cfg.injectFull t' then modify fun es => { es with g := { es.g with win := true } }
       return some .rejected
 
-def deliverForgeEG {ι : Type} {tspec : OracleSpec.{0, 0} ι}
+@[expose] def deliverForgeEG {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     {HS Γv Sv SSv RSv : Type} (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (b_auth : Bool) (Δ_off qep tStar : ℕ) (cfg : SM.Config M) :
     QueryImpl ((Party × (Header T × E) × (Header T × E)) →ₒ Option (SM.RecvResult M))
@@ -177,7 +178,7 @@ def deliverForgeEG {ι : Type} {tspec : OracleSpec.{0, 0} ι}
         if cfg.injectFull t' then modify fun es => { es with g := { es.g with win := true } }
         return some .rejected
 
-def implEDFG {ι : Type} {tspec : OracleSpec.{0, 0} ι}
+@[expose] def implEDFG {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     {HS Γv Sv SSv RSv : Type} (b_auth : Bool) (l : ℕ)
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ_off qep maxSkip tStar : ℕ) (cfg : SM.Config M) (π : Policy) :
@@ -193,7 +194,7 @@ def implEDFG {ι : Type} {tspec : OracleSpec.{0, 0} ι}
       (EM tspec Γv T Sv SSv RSv M E HS) := deliverForgeEG hk b_auth Δ_off qep tStar cfg
   HAdd.hAdd i₀ (HAdd.hAdd i₁ i₂)
 
-def stepCDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def stepCDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δ_off : ℕ) (b_auth : Bool) (qep l t : ℕ)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esS : EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E) (CKAStateShifted Γ T I))
@@ -205,7 +206,7 @@ def stepCDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Si
     ((implEDFG b_auth l (hooksCKAShifted cka prng fs l (tStarHook b_auth t))
       Δ_off qep fs.maxSkip t (SM.Config.auth t) ⟨true, some (l - 1), t⟩ q).run esS)).run sc
 
-def stepPDFShiftedPaperGen (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def stepPDFShiftedPaperGen (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δ_off : ℕ) (b_auth : Bool) (qep l t : ℕ)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) :
@@ -215,7 +216,7 @@ def stepPDFShiftedPaperGen (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR
     ((implEDFG b_auth l (hooksPRNG cka prng fs (moHook b_auth l t))
       Δ_off qep fs.maxSkip t (SM.Config.auth t) ⟨true, some (l - 1), t⟩ q).run esP)).run sp
 
-def runRDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runRDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δ_off : ℕ) (b_auth : Bool) (qep l tStar : ℕ)
     {α : Type} (oa : AdversaryCompDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E) α)
     (es : EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E) (CKAStateShifted Γ T I))
@@ -227,7 +228,7 @@ def runRDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig
       oa).run es)).run sc) >>=
     fun res => pure (authOut (2 + Δ_off) ⟨true, some (l - 1), tStar⟩ res.1.2)
 
-def runRDFShifted10Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runRDFShifted10Paper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δ_off : ℕ) (b_auth : Bool) (qep l t : ℕ)
     (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) : ProbComp Bool := do

@@ -11,7 +11,7 @@ module
 
 public import Computational.Specifications.Session.StatementIdsModel
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhSessionModel
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
+public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
@@ -28,7 +28,7 @@ Proves tag-byte wire rejection, one-step SPQR-V1 state growth bounds (`+ 8000` s
 receive), and session invariant preservation across accepted whisper-receive steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -80,7 +80,7 @@ section InjectR
 open OracleComp OracleSpec
 variable {Key St Msg Coins RCoins C : Type} [DecidableEq C] [SampleableType RCoins]
 
-def injectPost (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : SM.ConfigR St Msg C)
+@[expose] def injectPost (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : SM.ConfigR St Msg C)
     (s : SM.GameState St Msg C) (P : Party) (c : C) (rc : RCoins) :
     Option (SM.RecvResult Msg) × SM.GameState St Msg C :=
   match sm.receive (s.st P) c rc with

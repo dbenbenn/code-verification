@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.SHARED.SpqrX.Prost.MessageMerge.AppendX
+public import Symbolic.Proofs.Swarm.SHARED.SpqrX.Prost.MessageMerge.AppendX -- proof-setup: allow-public-import
 public import Mathlib.Algebra.Group.Nat.Defs
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
@@ -21,7 +21,7 @@ Roundtrip and field-peeling lemmas for `Proto.encodeVarint`, `Proto.encodeKey`, 
 length-delimited field mergers, and `Proto.mergeFieldsLoop` on encoded protobuf fields.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

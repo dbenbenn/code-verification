@@ -9,16 +9,32 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDh
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhGrow
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhEvalEq
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhGrow -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepSmall
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepSend
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepRecv
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhFinish
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Step-Level Evaluation of the One-Key `Auth` Gap-DH Handler
@@ -27,7 +43,7 @@ import VCVio.EvalDist.Monad.Basic
 the shallow `fgAuth1KeyStepHalt` in an arbitrary context.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,11 +60,11 @@ set_option allowUnsafeReducibility true
 attribute [implicit_reducible] sigAndDdhOracle
 end
 
-@[simp] def a1gStToVal {S : Setup} (pa : paramsTy.denote) (st : FgAuth1KeySimState S) :
+@[expose, simp] def a1gStToVal {S : Setup} (pa : paramsTy.denote) (st : FgAuth1KeySimState S) :
     a1gStTy.denote :=
   ((pa, fgSimToVal st.sim), st.sigBudget)
 
-@[simp] def a1gRSBVal {S : Setup} (r : AuthResponse × FgAuth1KeySimState S) : RSB.denote :=
+@[expose, simp] def a1gRSBVal {S : Setup} (r : AuthResponse × FgAuth1KeySimState S) : RSB.denote :=
   (authRespToVal r.1, (fgSimToVal r.2.sim, r.2.sigBudget))
 
 theorem a1g_embedPrim_unif {α : Type} (p : ProbComp α) :
@@ -114,7 +130,7 @@ theorem a1gGenSpkC_eval (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (sig
       · simp only [↓reduceIte, map_pure]; rfl
   · simp only [↓reduceIte, map_pure]; rfl
 
-def a1gPreShallow (useDh1 : Bool) (t sIdx : Nat) (S : Setup) (K : Nat) (U V : Bytes)
+@[expose] def a1gPreShallow (useDh1 : Bool) (t sIdx : Nat) (S : Setup) (K : Nat) (U V : Bytes)
     (qv : AuthQuery S) (st : FgAuth1KeySimState S) :
     Option (OracleComp GdhSignSimSpec (AuthResponse × FgAuth1KeySimState S)) :=
   match qv with
@@ -179,44 +195,10 @@ theorem fgAuth1KeyStep_eq_pre (useDh1 : Bool) (t sIdx : Nat) (S : Setup) (K : Na
     · simp only [fgAuthGenSPK1KeyGdh, h, Bool.false_eq_true, ↓reduceIte]
     · simp only [↓reduceIte]
 
-theorem a1gStepC_eval {Γ₁ Γ₂ Δ : List (Ty pqSig)} [h₁ : Ext Γ₁ Δ] [h₂ : Ext Γ₂ Δ]
-    (S : Setup) (K : Nat) (env : Env Δ) (st : FgAuth1KeySimState S) (U V : Bytes)
-    (useDh1 : Bool) (t sIdx : Nat) (stv : Var Γ₁ a1gStTy) (q : Var Γ₂ authQueryTy)
-    (qv : AuthQuery S)
-    (hst : Env.get env (h₁.wk stv) = a1gStToVal (paVal U V useDh1 t sIdx) st)
-    (hq : Env.get env (h₂.wk q) = authQueryToVal qv) (hB : AgBnd K st.sim) :
-    (a1gStepC S K stv q).eval env =
-      (fun r => (authRespToVal r.1, a1gStToVal (paVal U V useDh1 t sIdx) r.2)) <$>
-        fgAuth1KeyStepHalt useDh1 t sIdx S K U V qv st := by
-  simp only [a1gStepC]
-  ag_unfold
-  simp only [hst, a1gStToVal]
-  rw [a1gPreC_eval S K _ st U V useDh1 t sIdx _ _ _ _ qv ?_ ?_ ?_ ?_ hB]
-  · simp only [fgAuth1KeyStepHalt]
-    rw [apply_ite (Functor.map _)]
-    refine ite_congr ?_ (fun _ => ?_) (fun _ => ?_)
-    · simp only [fgSimToVal, paVal, authStateToVal, take_map_of_le _ _ hB.base.principals_le,
-        isTargetPrinCorrupted, List.find?_map, Function.comp_def, Prod.map_fst, id_eq]
-      rcases hf : List.find? (fun x => x.1 == t) st.sim.base.principals with _ | ⟨i, e⟩
-      · simp only [hf, Option.map_none]
-      · simp only [hf, Option.map_some]
-        rfl
-    · simp only [map_pure]
-      rfl
-    · rw [fgAuth1KeyStep_eq_pre]
-      rcases hp : a1gPreShallow useDh1 t sIdx S K U V qv st with _ | c
-      · simp only [pure_bind]
-        rw [liftGdhComp_eval, fgStepC_eval S K _ st.sim U V useDh1 t sIdx _ _ _ qv ?_ ?_ ?_ hB]
-        · simp only [liftAuthSimStep1Key, liftGdhToSign_bind, liftGdhToSign_pure,
-            map_eq_bind_pure_comp, bind_assoc, pure_bind, Function.comp_def]
-        all_goals first | rfl | simp only [Ext.step_wk, Env.get_vs, hq]
-      · simp only [map_eq_bind_pure_comp, bind_assoc, pure_bind, Function.comp_def, a1gRSBVal]
-  all_goals first | rfl | simp only [Ext.step_wk, Env.get_vs, hq]
-
 /-! ## Tuple-keyed evaluation -/
 
 /-- Decodes `(useDh1, t)` into `a1gRole2Ty.denote` with out-of-range sentinel `S.N_id`. -/
-def pa2RoleVal (S : Setup) (useDh1 : Bool) (t : Nat) : a1gRole2Ty.denote :=
+@[expose] def pa2RoleVal (S : Setup) (useDh1 : Bool) (t : Nat) : a1gRole2Ty.denote :=
   if useDh1 then .inl t
   else if t < S.N_send_opk_tot then .inr (.inl (t / S.N_send_opk, t % S.N_send_opk))
   else if t < S.N_send_tot then
@@ -224,19 +206,19 @@ def pa2RoleVal (S : Setup) (useDh1 : Bool) (t : Nat) : a1gRole2Ty.denote :=
     .inr (.inr (r / S.N_send_no_opk, r % S.N_send_no_opk))
   else .inr (.inl (S.N_id, 0))
 
-@[simp] def pa2Val (S : Setup) (U V : Bytes) (useDh1 : Bool) (t sIdx : Nat) :
+@[expose, simp] def pa2Val (S : Setup) (U V : Bytes) (useDh1 : Bool) (t sIdx : Nat) :
     a1gParams2Ty.denote :=
   (U, (V, (pa2RoleVal S useDh1 t, paSpkOpt S sIdx)))
 
 /-- `K`-clamped signing budget matching `a1g2InitDsl`. -/
-def a1gClampedSigB (S : Setup) (K : Nat) (st : FgAuth1KeySimState S) : Nat :=
+@[expose] def a1gClampedSigB (S : Setup) (K : Nat) (st : FgAuth1KeySimState S) : Nat :=
   min K (min S.N_spk_tot S.N_recv) - (min S.N_spk_tot S.N_recv - st.sigBudget)
 
-@[simp] def a1g2StToVal (S : Setup) (K : Nat) (pa : a1gParams2Ty.denote)
+@[expose, simp] def a1g2StToVal (S : Setup) (K : Nat) (pa : a1gParams2Ty.denote)
     (st : FgAuth1KeySimState S) : a1g2StTy.denote :=
   ((pa, fgSimToVal st.sim), a1gClampedSigB S K st)
 
-@[simp] def a1g2RSBVal (S : Setup) (K : Nat) (r : AuthResponse × FgAuth1KeySimState S) :
+@[expose, simp] def a1g2RSBVal (S : Setup) (K : Nat) (r : AuthResponse × FgAuth1KeySimState S) :
     RSB.denote :=
   (authRespToVal r.1, (fgSimToVal r.2.sim, a1gClampedSigB S K r.2))
 

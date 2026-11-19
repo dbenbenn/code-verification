@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
+public import ProofLib.GenPlacedFetches
+public import ProofLib.ProgramReflection.SortedFresh
 
 /-!
 # `VmPreserved` Unpinning Bridges for `V1State::encoded_len`
@@ -19,7 +21,7 @@ Unpinning bridges `v1StateEncodedLen_ro_ok_of_pinned` and `v1StateEncodedLen_ro_
 for `DefsV1StateBudget.v1StateEncodedLenRo{Pinned,}Spec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Alloc
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Alloc
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Frame and Postcondition Helpers for `signal_session::address`
@@ -19,7 +21,7 @@ Defines `AddrFrameCommon` and `AddrGoalPost` over `CalleesBudget.addressSpec` fo
 `RustCliAllocBudget` proofs of `signal_session::address`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false

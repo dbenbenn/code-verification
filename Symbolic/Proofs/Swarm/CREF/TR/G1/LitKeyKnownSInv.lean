@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnown
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnown -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.BaseAttackerKnowledge
@@ -44,7 +44,7 @@ Proves `depthTR_reachable` and `sinvTR_reachable`, establishing the `SInvTR` inv
 chain keys and skipped keys on non-honest ratchet keys across all reachable composed traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,6 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Generalized Guarded Block-`617` Ghost-to-Real Seam (`HooksDehook.Block617TransferG`)
@@ -70,12 +75,6 @@ open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer
 theorem withEntryGuard_pre {α : Type} (Guard : State → Prop) (spec : Spec α)
     (x : α) (s : State) :
     (withEntryGuard Guard spec).pre x s = (⌜Guard s⌝ ∗ spec.pre x s) :=
-  rfl
-
-theorem withEntryGuard_outcome_eq {α : Type} (Guard : State → Prop) (spec : Spec α)
-    (x : α) (R : SepProp) (s0 sf : State) :
-    SubroutineOutcome (withEntryGuard Guard spec) x R s0 sf =
-      SubroutineOutcome spec x R s0 sf :=
   rfl
 
 /-- Contravariant weakening of `withEntryGuard` under `∀ s, Guard' s → Guard s`. -/
@@ -148,38 +147,6 @@ theorem Block617TransferFixedHypG.mono_guard
     Block617TransferFixedHypG mpl mmpl EG ER Guard' CodeOk_ghost CodeOk_real
       libcAddr brkStart stk :=
   fun W Run hGhostOk γ tp => subroutine_ok_withEntryGuard_mono hImp (hG W Run hGhostOk γ tp)
-
-/-- **D1(b): Pure generalization check (`block617TransferFixedHyp_of_G`).**
-    Instantiating `EG := fun W' => cliGhostExterns ghFixed (cliExternsPlaced mmpl W')`,
-    `ER := cliExternsPlaced mmpl`, and `Guard := fun _ => True` recovers the exact existing
-    `Block617TransferFixedHyp`. -/
-theorem block617TransferFixedHyp_of_G
-    {mpl mmpl : Obj.MultiPlacement} {ghFixed : CliGhostHooks}
-    {CodeOk_ghost CodeOk_real : Memory → Prop}
-    {libcAddr brkStart : BitVec 64} {stk : Nat}
-    (hG : Block617TransferFixedHypG mpl mmpl
-      (fun W' => cliGhostExterns ghFixed (cliExternsPlaced mmpl W'))
-      (cliExternsPlaced mmpl)
-      (fun _ => True)
-      CodeOk_ghost CodeOk_real libcAddr brkStart stk) :
-    Block617TransferFixedHyp mpl mmpl ghFixed CodeOk_ghost CodeOk_real libcAddr brkStart stk := by
-  intro W Run hGhostOk γ tp
-  exact subroutine_ok_of_pure_true _ (hG W Run hGhostOk γ tp)
-
-/-- Converse of `block617TransferFixedHyp_of_G`: `Block617TransferFixedHyp` implies
-    `Block617TransferFixedHypG` for any `Guard` at the F3 extern tables. -/
-theorem block617TransferFixedHypG_of_fixed
-    {mpl mmpl : Obj.MultiPlacement} {ghFixed : CliGhostHooks}
-    {CodeOk_ghost CodeOk_real : Memory → Prop}
-    {libcAddr brkStart : BitVec 64} {stk : Nat}
-    (Guard : State → Prop)
-    (hFixed : Block617TransferFixedHyp mpl mmpl ghFixed CodeOk_ghost CodeOk_real
-      libcAddr brkStart stk) :
-    Block617TransferFixedHypG mpl mmpl
-      (fun W' => cliGhostExterns ghFixed (cliExternsPlaced mmpl W'))
-      (cliExternsPlaced mmpl)
-      Guard CodeOk_ghost CodeOk_real libcAddr brkStart stk :=
-  fun W Run hGhostOk γ tp => subroutine_ok_withEntryGuard_of_plain Guard (hFixed W Run hGhostOk γ tp)
 
 /-! ## 3. Outcome-Preserving `replaysOn` Discharge (`block617TransferFixedG_of_replaysOn`) -/
 

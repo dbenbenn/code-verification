@@ -9,23 +9,22 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewCost
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewSkip
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewCost -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewSkip
 
 /-!
 # New-Epoch Receive Branch and Outer `semRecvHookS` Wrapper for `simFig8`
 
 Proves `.eval` correctness for the fresh-epoch receive branch `recvNewOfFwdC`
 (`SimFig8RecvNewSpec`), the outer `semRecvHookS` dispatcher `recvHookOfBranchesC`, and the
-deliver/inject arm wrappers of `simFig8OracleSan`.
--/
+deliver/inject arm wrappers of `simFig8OracleSan`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

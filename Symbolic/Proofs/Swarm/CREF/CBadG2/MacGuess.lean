@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame
+public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.CBadG2.Skipped
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
 
 /-!
 # Ghost Invariance of MAC Tag Forgery and Collision Predicates
@@ -22,7 +23,7 @@ Proves that `MacTagForgeryOrCollision` on `whisperTrials` is invariant across gh
 `CBadGammaAgree` and `CBadStamps` whenever the message or wire term is stamped below `n`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

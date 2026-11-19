@@ -16,10 +16,11 @@ public import LibsignalBinary.Heap.SpecBudget
 import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.IfaceSimp
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
 public import LibsignalBinary.Proofs.HookDischarge.Generics.ZeroizeDrop -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Region-Local `zeroize` Drop Code Verification & Master Spec (`HooksDehook.ZeroizeCode`)
@@ -238,14 +239,6 @@ theorem hasInstrs_sharedSecretDrop_of_hasWords {P_sub : Program}
   subst hi0
   exact Program.fetch_of_hasWords_decodeAt 0 hb_words rfl hdec
 
-/-- Concrete `hasInstrs` witness at `m + 252#64` inside `pureWordsProg m sharedSecretDropHullWords`. -/
-theorem pureWordsProg_sharedSecretDropHull_drop_hasInstrs (m : BitVec 64) :
-    hasInstrs (pureWordsProg m sharedSecretDropHullWords) (m + 252#64)
-      (sharedSecretDropInstrs (m + 252#64) m) :=
-  hasInstrs_sharedSecretDrop_of_hasWords
-    (pureWordsProg_sharedSecretDropHull_drop_hasWords m)
-    (decode_sharedSecretDropBackWord m)
-
 /-- **Row D2 (`StaticSecret::drop` / `MontgomeryPoint::zeroize`)**: full-permission region-local
     `subroutine_ok` for `processZeroizeSpec` on any hook-free `P_sub` holding `zeroize32Words`. -/
 theorem subroutine_ok_processZeroize_of_hasWords {P_sub : Program} {entry : BitVec 64}
@@ -258,89 +251,6 @@ theorem subroutine_ok_processZeroize_of_hasWords {P_sub : Program} {entry : BitV
   dsimp only [zeroizeSecretSpec, processZeroizeSpec] at hq ⊢
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
   exact ⟨hq.1, hq.2.2⟩
-
-/-- **Row D2 (`StaticSecret::drop`)**: `K`-narrowed full-permission region-local `subroutine_ok`. -/
-theorem subroutine_ok_processZeroizeK_of_hasWords (keep : BitVec 64 → Bool)
-    {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry zeroize32Words) :
-    subroutine_ok P_sub entry (zeroizeSpecK keep processZeroizeSpec) := by
-  refine subroutine_ok_mono (subroutine_ok_processZeroize_of_hasWords hsub_no hwords)
-    (fun _ R s0 hp => ?_)
-    (fun _ _ _ _ hq => hq)
-  dsimp only [zeroizeSpecK, memsetSpecK] at hp
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  exact hp.2
-
-/-- **Row D2 (`StaticSecret::drop` / `MontgomeryPoint::zeroize`)**: region-local `subroutine_ok`
-    for `masterZeroizeSpec` on any hook-free `P_sub` holding `zeroize32Words` at `entry`. -/
-theorem subroutine_ok_masterZeroize_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry zeroize32Words) :
-    subroutine_ok P_sub entry masterZeroizeSpec := by
-  refine subroutine_ok_mono (subroutine_ok_processZeroize_of_hasWords hsub_no hwords)
-    (fun _ _ _ hp => hp)
-    (fun a R s0 sf hq => ?_)
-  dsimp only [processZeroizeSpec, masterZeroizeSpec] at hq ⊢
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-  exact ⟨ZeroizeStatePreserved.of_processFieldsPreserved hq.1, hq.2⟩
-
-/-- **Row D2 (`StaticSecret::drop`)**: region-local `subroutine_ok` for
-    `zeroizeSpecK keep masterZeroizeSpec` on any hook-free `P_sub` holding `zeroize32Words`. -/
-theorem subroutine_ok_masterZeroizeK_of_hasWords (keep : BitVec 64 → Bool)
-    {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry zeroize32Words) :
-    subroutine_ok P_sub entry (zeroizeSpecK keep masterZeroizeSpec) := by
-  refine subroutine_ok_mono (subroutine_ok_masterZeroize_of_hasWords hsub_no hwords)
-    (fun _ R s0 hp => ?_)
-    (fun _ _ _ _ hq => hq)
-  dsimp only [zeroizeSpecK, memsetSpecK] at hp
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp
-  exact hp.2
-
-/-- **Row D2 (`StaticSecret::drop`)**: region-local `subroutine_ok` for `masterZeroizeBudgetSpec`
-    (`withVmPreserved masterZeroizeSpec`) on any hook-free `P_sub` holding `zeroize32Words`. -/
-theorem subroutine_ok_masterZeroizeBudget_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords entry zeroize32Words) :
-    subroutine_ok P_sub entry masterZeroizeBudgetSpec := by
-  refine subroutine_ok_mono (subroutine_ok_processZeroize_of_hasWords hsub_no hwords)
-    (fun _ _ _ hp => hp)
-    (fun a R s0 sf hq => ?_)
-  dsimp only [processZeroizeSpec, masterZeroizeBudgetSpec, withVmPreserved, masterZeroizeSpec] at hq ⊢
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-  exact ⟨hq.1.toVmPreserved, ZeroizeStatePreserved.of_processFieldsPreserved hq.1, hq.2⟩
-
-/-- Placement-generic `pureWordsProg base zeroize32Words` satisfies `processZeroizeSpec`. -/
-theorem pureWordsProg_zeroize32_processZeroize_ok (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base zeroize32Words) base processZeroizeSpec :=
-  subroutine_ok_processZeroize_of_hasWords
-    (pureWordsProg_externAt_none base zeroize32Words)
-    (pureWordsProg_zeroize32_hasWords base)
-
-/-- Placement-generic `pureWordsProg base zeroize32Words` satisfies `masterZeroizeSpec`. -/
-theorem pureWordsProg_zeroize32_masterZeroize_ok (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base zeroize32Words) base masterZeroizeSpec :=
-  subroutine_ok_masterZeroize_of_hasWords
-    (pureWordsProg_externAt_none base zeroize32Words)
-    (pureWordsProg_zeroize32_hasWords base)
-
-/-- Placement-generic `pureWordsProg base zeroize32Words` satisfies
-    `zeroizeSpecK keep masterZeroizeSpec`. -/
-theorem pureWordsProg_zeroize32_masterZeroizeK_ok (keep : BitVec 64 → Bool) (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base zeroize32Words) base
-      (zeroizeSpecK keep masterZeroizeSpec) :=
-  subroutine_ok_masterZeroizeK_of_hasWords keep
-    (pureWordsProg_externAt_none base zeroize32Words)
-    (pureWordsProg_zeroize32_hasWords base)
-
-/-- Placement-generic `pureWordsProg base zeroize32Words` satisfies `masterZeroizeBudgetSpec`. -/
-theorem pureWordsProg_zeroize32_masterZeroizeBudget_ok (base : BitVec 64) :
-    subroutine_ok (pureWordsProg base zeroize32Words) base masterZeroizeBudgetSpec :=
-  subroutine_ok_masterZeroizeBudget_of_hasWords
-    (pureWordsProg_externAt_none base zeroize32Words)
-    (pureWordsProg_zeroize32_hasWords base)
 
 /-- **Row D3 (`SharedSecret::drop`, two-block `P_sub`, `hasInstrs` branch form)**: full-permission
     region-local `subroutine_ok` for `processZeroizeSpec`. -/
@@ -363,146 +273,6 @@ theorem subroutine_ok_sharedSecret_processZeroize_of_hasWords
     subroutine_ok P_sub entry processZeroizeSpec :=
   subroutine_ok_sharedSecret_processZeroize_of_hasInstrs_hasWords hsub_no
     (hasInstrs_sharedSecretDrop_of_hasWords hb_words hdec) htgt
-
-/-- **Row D3 (`SharedSecret::drop`)**: `K`-narrowed full-permission region-local `subroutine_ok`
-    (`hasInstrs` branch form). -/
-theorem subroutine_ok_sharedSecret_processZeroizeK_of_hasInstrs_hasWords
-    (keep : BitVec 64 → Bool) {P_sub : Program} {entry targetAddr : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hb : hasInstrs P_sub entry (sharedSecretDropInstrs entry targetAddr))
-    (htgt : P_sub.hasWords targetAddr zeroize32Words) :
-    subroutine_ok P_sub entry (zeroizeSpecK keep processZeroizeSpec) :=
-  tailJump_subroutine_ok hb (subroutine_ok_processZeroizeK_of_hasWords keep hsub_no htgt)
-
-/-- **Row D3 (`SharedSecret::drop`)**: `K`-narrowed full-permission region-local `subroutine_ok`
-    (`hasWords` form). -/
-theorem subroutine_ok_sharedSecret_processZeroizeK_of_hasWords
-    (keep : BitVec 64 → Bool) {P_sub : Program} {entry targetAddr : BitVec 64}
-    {bWord : BitVec 32}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hb_words : P_sub.hasWords entry [bWord])
-    (hdec : decode bWord = some (.b (targetAddr - entry)))
-    (htgt : P_sub.hasWords targetAddr zeroize32Words) :
-    subroutine_ok P_sub entry (zeroizeSpecK keep processZeroizeSpec) :=
-  subroutine_ok_sharedSecret_processZeroizeK_of_hasInstrs_hasWords keep hsub_no
-    (hasInstrs_sharedSecretDrop_of_hasWords hb_words hdec) htgt
-
-/-- **Row D3 (`SharedSecret::drop`, two-block `P_sub`, `hasInstrs` branch form)**: region-local
-    `subroutine_ok` for `masterZeroizeSpec` when `P_sub` holds `b (targetAddr - entry)` at `entry`
-    and `zeroize32Words` at `targetAddr`. -/
-theorem subroutine_ok_sharedSecret_masterZeroize_of_hasInstrs_hasWords
-    {P_sub : Program} {entry targetAddr : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hb : hasInstrs P_sub entry (sharedSecretDropInstrs entry targetAddr))
-    (htgt : P_sub.hasWords targetAddr zeroize32Words) :
-    subroutine_ok P_sub entry masterZeroizeSpec :=
-  tailJump_subroutine_ok hb (subroutine_ok_masterZeroize_of_hasWords hsub_no htgt)
-
-/-- **Row D3 (`SharedSecret::drop`, two-block `P_sub`, `hasWords` form)**: region-local
-    `subroutine_ok` for `masterZeroizeSpec` when `P_sub` holds `[bWord]` (`decode bWord = some (.b (targetAddr - entry))`)
-    at `entry` and `zeroize32Words` at `targetAddr`. -/
-theorem subroutine_ok_sharedSecret_masterZeroize_of_hasWords
-    {P_sub : Program} {entry targetAddr : BitVec 64} {bWord : BitVec 32}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hb_words : P_sub.hasWords entry [bWord])
-    (hdec : decode bWord = some (.b (targetAddr - entry)))
-    (htgt : P_sub.hasWords targetAddr zeroize32Words) :
-    subroutine_ok P_sub entry masterZeroizeSpec :=
-  subroutine_ok_sharedSecret_masterZeroize_of_hasInstrs_hasWords hsub_no
-    (hasInstrs_sharedSecretDrop_of_hasWords hb_words hdec) htgt
-
-/-- **Row D3 (`SharedSecret::drop`)**: `K`-narrowed region-local `subroutine_ok` (`hasInstrs` branch form). -/
-theorem subroutine_ok_sharedSecret_masterZeroizeK_of_hasInstrs_hasWords
-    (keep : BitVec 64 → Bool) {P_sub : Program} {entry targetAddr : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hb : hasInstrs P_sub entry (sharedSecretDropInstrs entry targetAddr))
-    (htgt : P_sub.hasWords targetAddr zeroize32Words) :
-    subroutine_ok P_sub entry (zeroizeSpecK keep masterZeroizeSpec) :=
-  tailJump_subroutine_ok hb (subroutine_ok_masterZeroizeK_of_hasWords keep hsub_no htgt)
-
-/-- **Row D3 (`SharedSecret::drop`)**: `K`-narrowed region-local `subroutine_ok` (`hasWords` form). -/
-theorem subroutine_ok_sharedSecret_masterZeroizeK_of_hasWords
-    (keep : BitVec 64 → Bool) {P_sub : Program} {entry targetAddr : BitVec 64}
-    {bWord : BitVec 32}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hb_words : P_sub.hasWords entry [bWord])
-    (hdec : decode bWord = some (.b (targetAddr - entry)))
-    (htgt : P_sub.hasWords targetAddr zeroize32Words) :
-    subroutine_ok P_sub entry (zeroizeSpecK keep masterZeroizeSpec) :=
-  subroutine_ok_sharedSecret_masterZeroizeK_of_hasInstrs_hasWords keep hsub_no
-    (hasInstrs_sharedSecretDrop_of_hasWords hb_words hdec) htgt
-
-/-- **Row D3 (`SharedSecret::drop`)**: `withVmPreserved` region-local `subroutine_ok` (`hasInstrs` branch form). -/
-theorem subroutine_ok_sharedSecret_masterZeroizeBudget_of_hasInstrs_hasWords
-    {P_sub : Program} {entry targetAddr : BitVec 64}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hb : hasInstrs P_sub entry (sharedSecretDropInstrs entry targetAddr))
-    (htgt : P_sub.hasWords targetAddr zeroize32Words) :
-    subroutine_ok P_sub entry masterZeroizeBudgetSpec :=
-  tailJump_subroutine_ok hb (subroutine_ok_masterZeroizeBudget_of_hasWords hsub_no htgt)
-
-/-- **Row D3 (`SharedSecret::drop`)**: `withVmPreserved` region-local `subroutine_ok` (`hasWords` form). -/
-theorem subroutine_ok_sharedSecret_masterZeroizeBudget_of_hasWords
-    {P_sub : Program} {entry targetAddr : BitVec 64} {bWord : BitVec 32}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hb_words : P_sub.hasWords entry [bWord])
-    (hdec : decode bWord = some (.b (targetAddr - entry)))
-    (htgt : P_sub.hasWords targetAddr zeroize32Words) :
-    subroutine_ok P_sub entry masterZeroizeBudgetSpec :=
-  subroutine_ok_sharedSecret_masterZeroizeBudget_of_hasInstrs_hasWords hsub_no
-    (hasInstrs_sharedSecretDrop_of_hasWords hb_words hdec) htgt
-
-/-- Concrete `64`-word contiguous hull instance (`pureWordsProg m sharedSecretDropHullWords` at
-    entry `m + 252#64`) satisfying full-permission `processZeroizeSpec`. -/
-theorem pureWordsProg_sharedSecretDropHull_processZeroize_ok (m : BitVec 64) :
-    subroutine_ok (pureWordsProg m sharedSecretDropHullWords) (m + 252#64) processZeroizeSpec :=
-  subroutine_ok_sharedSecret_processZeroize_of_hasWords
-    (pureWordsProg_externAt_none m sharedSecretDropHullWords)
-    (pureWordsProg_sharedSecretDropHull_drop_hasWords m)
-    (decode_sharedSecretDropBackWord m)
-    (pureWordsProg_sharedSecretDropHull_zeroize_hasWords m)
-
-/-- Concrete `64`-word contiguous hull instance satisfying `zeroizeSpecK keep processZeroizeSpec`. -/
-theorem pureWordsProg_sharedSecretDropHull_processZeroizeK_ok
-    (keep : BitVec 64 → Bool) (m : BitVec 64) :
-    subroutine_ok (pureWordsProg m sharedSecretDropHullWords) (m + 252#64)
-      (zeroizeSpecK keep processZeroizeSpec) :=
-  subroutine_ok_sharedSecret_processZeroizeK_of_hasWords keep
-    (pureWordsProg_externAt_none m sharedSecretDropHullWords)
-    (pureWordsProg_sharedSecretDropHull_drop_hasWords m)
-    (decode_sharedSecretDropBackWord m)
-    (pureWordsProg_sharedSecretDropHull_zeroize_hasWords m)
-
-/-- Concrete `64`-word contiguous hull instance (`pureWordsProg m sharedSecretDropHullWords` at
-    entry `m + 252#64`) satisfying `masterZeroizeSpec`. -/
-theorem pureWordsProg_sharedSecretDropHull_masterZeroize_ok (m : BitVec 64) :
-    subroutine_ok (pureWordsProg m sharedSecretDropHullWords) (m + 252#64) masterZeroizeSpec :=
-  subroutine_ok_sharedSecret_masterZeroize_of_hasWords
-    (pureWordsProg_externAt_none m sharedSecretDropHullWords)
-    (pureWordsProg_sharedSecretDropHull_drop_hasWords m)
-    (decode_sharedSecretDropBackWord m)
-    (pureWordsProg_sharedSecretDropHull_zeroize_hasWords m)
-
-/-- Concrete `64`-word contiguous hull instance satisfying `zeroizeSpecK keep masterZeroizeSpec`. -/
-theorem pureWordsProg_sharedSecretDropHull_masterZeroizeK_ok
-    (keep : BitVec 64 → Bool) (m : BitVec 64) :
-    subroutine_ok (pureWordsProg m sharedSecretDropHullWords) (m + 252#64)
-      (zeroizeSpecK keep masterZeroizeSpec) :=
-  subroutine_ok_sharedSecret_masterZeroizeK_of_hasWords keep
-    (pureWordsProg_externAt_none m sharedSecretDropHullWords)
-    (pureWordsProg_sharedSecretDropHull_drop_hasWords m)
-    (decode_sharedSecretDropBackWord m)
-    (pureWordsProg_sharedSecretDropHull_zeroize_hasWords m)
-
-/-- Concrete `64`-word contiguous hull instance satisfying `masterZeroizeBudgetSpec`. -/
-theorem pureWordsProg_sharedSecretDropHull_masterZeroizeBudget_ok (m : BitVec 64) :
-    subroutine_ok (pureWordsProg m sharedSecretDropHullWords) (m + 252#64)
-      masterZeroizeBudgetSpec :=
-  subroutine_ok_sharedSecret_masterZeroizeBudget_of_hasWords
-    (pureWordsProg_externAt_none m sharedSecretDropHullWords)
-    (pureWordsProg_sharedSecretDropHull_drop_hasWords m)
-    (decode_sharedSecretDropBackWord m)
-    (pureWordsProg_sharedSecretDropHull_zeroize_hasWords m)
 
 /-! ## 3. `W`-Independent Fallback `zeroizeSecretHook` Soundness -/
 
@@ -530,31 +300,6 @@ theorem zeroizeSecretHook_masterZeroize_ok :
 theorem zeroizeSecretHook_masterZeroizeK_ok (keep : BitVec 64 → Bool) :
     HookOk zeroizeSecretHook (zeroizeSpecK keep masterZeroizeSpec) :=
   hookOk_memsetSpecK_of_plain keep zeroizeSecretHook_masterZeroize_ok
-
-/-- `zeroizeSecretHook` (`W`-independent) satisfies `masterZeroizeBudgetSpec`
-    (`withVmPreserved masterZeroizeSpec`). -/
-theorem zeroizeSecretHook_masterZeroizeBudget_ok :
-    HookOk zeroizeSecretHook masterZeroizeBudgetSpec :=
-  hookOk_withVmPreserved zeroizeSecretHook_masterZeroize_ok zeroizeSecretHook_vmPreserved
-
-/-- `zeroizeSecretHook` (`W`-independent) satisfies `zeroizeSpecK keep masterZeroizeBudgetSpec`. -/
-theorem zeroizeSecretHook_masterZeroizeBudgetK_ok (keep : BitVec 64 → Bool) :
-    HookOk zeroizeSecretHook (zeroizeSpecK keep masterZeroizeBudgetSpec) :=
-  hookOk_memsetSpecK_of_plain keep zeroizeSecretHook_masterZeroizeBudget_ok
-
-/-- `zeroizeSecretHook` (`W`-independent) also satisfies full-permission `processZeroizeSpec`. -/
-theorem zeroizeSecretHook_processZeroize_ok :
-    HookOk zeroizeSecretHook processZeroizeSpec := by
-  refine hookOk_frame_pureAbort (fun _ _ => emp) zeroizeSecretHook_masterZeroizeBudget_ok
-    (fun _ _ => by
-      dsimp only [processZeroizeSpec, masterZeroizeBudgetSpec, withVmPreserved, masterZeroizeSpec]
-      rw [sepConj_emp]; exact Entails.refl _)
-    (fun _ _ _ => ?_)
-  dsimp only [masterZeroizeBudgetSpec, withVmPreserved, masterZeroizeSpec, processZeroizeSpec]
-  rw [sepConj_emp]
-  exact Entails.pure_left fun hvm =>
-    Entails.pure_left fun hst =>
-      Entails.pure_right (hst.toProcessFieldsPreserved hvm) (Entails.refl _)
 
 /-! ## 4. Generic `HookOk` Consequence Lifts from `masterZeroizeSpec` -/
 
@@ -739,19 +484,6 @@ theorem hookOk_zeroizeSecretBudget_of_masterBudget {f : State → State}
     Entails.pure_left fun hst =>
       Entails.pure_right hvm (Entails.pure_right hst.2.1 (Entails.refl _))
 
-/-- Lift `HookOk f masterZeroizeSpec` + pointwise `VmPreserved` to
-    `HookOk f (withVmPreserved zeroizeSecretSpec)` (`= DhStepBudgetSteps.zeroizeSecretBudgetSpec`). -/
-theorem hookOk_zeroizeSecretBudget_of_master {f : State → State}
-    (hh : HookOk f masterZeroizeSpec) (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (withVmPreserved zeroizeSecretSpec) :=
-  hookOk_withVmPreserved (hookOk_zeroizeSecret_of_master hh) hvm
-
-/-- `K`-narrowed lift to `zeroizeSpecK keep (withVmPreserved zeroizeSecretSpec)`. -/
-theorem hookOk_zeroizeSecretBudgetK_of_master (keep : BitVec 64 → Bool) {f : State → State}
-    (hh : HookOk f (zeroizeSpecK keep masterZeroizeSpec)) (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (zeroizeSpecK keep (withVmPreserved zeroizeSecretSpec)) :=
-  hookOk_withVmPreserved (hookOk_zeroizeSecretK_of_master keep hh) hvm
-
 /-- Lift `HookOk f masterZeroizeBudgetSpec` to `HookOk f (withVmPreserved zeroizeSecretSpec).keepsFs`. -/
 theorem hookOk_zeroizeSecretBudget_keepsFs_of_masterBudget {f : State → State}
     (hh : HookOk f masterZeroizeBudgetSpec) :
@@ -770,13 +502,6 @@ theorem hookOk_zeroizeSecretBudget_keepsFs_of_masterBudget {f : State → State}
       Entails.pure_right hst.1
         (Entails.pure_right hvm (Entails.pure_right hst.2.1 (Entails.refl _)))
 
-/-- Lift `HookOk f masterZeroizeSpec` + pointwise `VmPreserved` to
-    `HookOk f (withVmPreserved zeroizeSecretSpec).keepsFs`. -/
-theorem hookOk_zeroizeSecretBudget_keepsFs_of_master {f : State → State}
-    (hh : HookOk f masterZeroizeSpec) (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (withVmPreserved zeroizeSecretSpec).keepsFs :=
-  hookOk_zeroizeSecretBudget_keepsFs_of_masterBudget (hookOk_withVmPreserved hh hvm)
-
 /-- Lift `HookOk f masterZeroizeBudgetSpec` to
     `HookOk f (withFsPred Pfs (withVmPreserved zeroizeSecretSpec))` (exact consumer spec of
     `AgreeBudgetFd`, `CreateChainBudgetFd`, and `ResponderCore/CryptoBridgePlacedBudgetFd`). -/
@@ -785,52 +510,6 @@ theorem hookOk_zeroizeSecretBudget_withFsPred_of_masterBudget {f : State → Sta
     HookOk f (withFsPred Pfs (withVmPreserved zeroizeSecretSpec)) :=
   hookOk_withFsPred_of_keepsFs Pfs (hookOk_zeroizeSecretBudget_keepsFs_of_masterBudget hh)
 
-/-- Lift `HookOk f masterZeroizeSpec` + pointwise `VmPreserved` to
-    `HookOk f (withFsPred Pfs (withVmPreserved zeroizeSecretSpec))`. -/
-theorem hookOk_zeroizeSecretBudget_withFsPred_of_master {f : State → State}
-    (Pfs : FsState → Prop) (hh : HookOk f masterZeroizeSpec) (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (withFsPred Pfs (withVmPreserved zeroizeSecretSpec)) :=
-  hookOk_zeroizeSecretBudget_withFsPred_of_masterBudget Pfs (hookOk_withVmPreserved hh hvm)
-
-/-- Lift `HookOk f masterZeroizeSpec` + pointwise `VmPreserved` to
-    `HookOk f (withStack (withVmPreserved zeroizeSecretSpec) stk)`. -/
-theorem hookOk_withStack_zeroizeSecretBudget_of_master {f : State → State}
-    (hh : HookOk f masterZeroizeSpec) (hvm : ∀ s, VmPreserved s (f s))
-    (stk : Nat := extHookStack) :
-    HookOk f (withStack (withVmPreserved zeroizeSecretSpec) stk) :=
-  hookOk_withStack_pureAbort (hookOk_zeroizeSecretBudget_of_master hh hvm) stk
-
-/-- Lift `HookOk f masterZeroizeSpec` + pointwise `VmPreserved` to
-    `HookOk f (withVmPreserved CliExt.zeroizeSpec)` (`= SpecBudget.cliZeroizeBudgetSpec`). -/
-theorem hookOk_cliZeroizeBudget_of_master {f : State → State}
-    (hh : HookOk f masterZeroizeSpec) (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (withVmPreserved zeroizeSpec) :=
-  hookOk_withVmPreserved (hookOk_cliZeroize_of_master hh) hvm
-
-/-- `K`-narrowed lift to `zeroizeSpecK keep (withVmPreserved CliExt.zeroizeSpec)`. -/
-theorem hookOk_cliZeroizeBudgetK_of_master (keep : BitVec 64 → Bool) {f : State → State}
-    (hh : HookOk f (zeroizeSpecK keep masterZeroizeSpec)) (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (zeroizeSpecK keep (withVmPreserved zeroizeSpec)) :=
-  hookOk_withVmPreserved (hookOk_cliZeroizeK_of_master keep hh) hvm
-
-/-- Lift `HookOk f masterZeroizeSpec` + pointwise `VmPreserved` to
-    `HookOk f (withVmPreserved CliExt.zeroizeSpec).keepsFs`. -/
-theorem hookOk_cliZeroizeBudget_keepsFs_of_master {f : State → State}
-    (hh : HookOk f masterZeroizeSpec) (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (withVmPreserved zeroizeSpec).keepsFs := by
-  refine hookOk_frame_pureAbort (fun _ s0 => stackAt s0.sp extHookStack)
-    (hookOk_withVmPreserved hh hvm)
-    (fun _ _ => Entails.refl _)
-    (fun _ _ _ => ?_)
-  dsimp only [Arm64.Spec.keepsFs, masterZeroizeBudgetSpec, withVmPreserved,
-    masterZeroizeSpec, zeroizeSpec, CryptoVerification.SignalSession.CliExt.withStack,
-    zeroizeSecretSpec]
-  simp only [sepConj_assoc]
-  exact Entails.pure_left fun hvm' =>
-    Entails.pure_left fun hst =>
-      Entails.pure_right hst.1
-        (Entails.pure_right hvm' (Entails.pure_right hst.2.1 (Entails.refl _)))
-
 /-- `zeroizeSpecK keep` commutes definitionally with `.keepsFs`, `withVmPreserved`, and
     `withOomPoolPreserved`. -/
 theorem zeroizeSpecK_keepsFs (keep : BitVec 64 → Bool) {α : Type} (spec : Spec α) :
@@ -838,9 +517,5 @@ theorem zeroizeSpecK_keepsFs (keep : BitVec 64 → Bool) {α : Type} (spec : Spe
 
 theorem zeroizeSpecK_withVmPreserved (keep : BitVec 64 → Bool) {α : Type} (spec : Spec α) :
     withVmPreserved (zeroizeSpecK keep spec) = zeroizeSpecK keep (withVmPreserved spec) := rfl
-
-theorem zeroizeSpecK_withOomPoolPreserved (keep : BitVec 64 → Bool) {α : Type} (spec : Spec α) :
-    withOomPoolPreserved (zeroizeSpecK keep spec) =
-      zeroizeSpecK keep (withOomPoolPreserved spec) := rfl
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeCode

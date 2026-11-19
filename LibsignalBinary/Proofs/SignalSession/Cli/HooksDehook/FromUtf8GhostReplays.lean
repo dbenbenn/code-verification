@@ -16,7 +16,12 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8Singl
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8Code -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8Ghost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8LrTrap -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Card `CC-FROMUTF8` — `lsFromUtf8Sym` Row Consumer Spec & Generic-`InvS` Ghost Replay (`HooksDehook.FromUtf8GhostReplays`)
@@ -177,10 +182,6 @@ theorem keepR_fromUtf8_entry (pl : Obj.Placement) :
     keepR_fromUtf8 pl pl.base = true :=
   keepFromUtf8Block_entry pl.base
 
-theorem keepR_fromUtf8Mpl_entry (mpl : Obj.MultiPlacement) :
-    keepR_fromUtf8Mpl mpl (libsignalSessionLib.resolve mpl lsFromUtf8Sym) = true :=
-  keepFromUtf8Block_entry (libsignalSessionLib.resolve mpl lsFromUtf8Sym)
-
 /-- Pure `156`-word (`624`-byte) sub-program holding `fromUtf8PatchedWords pl` at `pl.base`. -/
 @[expose] def fromUtf8SubProg (pl : Obj.Placement) : Program :=
   pureWordsProg pl.base (fromUtf8PatchedWords pl)
@@ -201,61 +202,11 @@ theorem fromUtf8SubProg_hasWords (pl : Obj.Placement) :
     (fromUtf8SubProg pl).hasWords pl.base (fromUtf8PatchedWords pl) :=
   pureWordsProg_fromUtf8_hasWords pl
 
-private theorem pureWordsProg_code_length_aux (base : BitVec 64) (ws : List (BitVec 32)) :
-    (pureWordsProg base ws).code.length = 4 * ws.length := by
-  change (ws.flatMap Program.wordToBytesLE).length = 4 * ws.length
-  induction ws with
-  | nil => rfl
-  | cons _ rest ih =>
-    simp only [List.flatMap_cons, List.length_append, ih]
-    change 4 + 4 * rest.length = 4 * (rest.length + 1)
-    omega
-
-theorem fromUtf8SubProg_code_length (pl : Obj.Placement) :
-    (fromUtf8SubProg pl).code.length = fromUtf8ByteLen := by
-  dsimp only [fromUtf8SubProg, fromUtf8ByteLen]
-  rw [pureWordsProg_code_length_aux, fromUtf8PatchedWords_length]
-
-theorem keepR_fromUtf8_of_code_offset (pl : Obj.Placement) {off : Nat}
-    (hoff : off < (fromUtf8SubProg pl).code.length) :
-    keepR_fromUtf8 pl ((fromUtf8SubProg pl).base + BitVec.ofNat 64 off) = true := by
-  rw [fromUtf8SubProg_code_length] at hoff
-  dsimp only [keepR_fromUtf8, fromUtf8SubProg_base]
-  rw [keepFromUtf8Block_iff]
-  have hsub : (pl.base + BitVec.ofNat 64 off) - pl.base = BitVec.ofNat 64 off := by bv_omega
-  have hoff_lt : off < 2 ^ 64 := by
-    have hb : fromUtf8ByteLen = 624 := rfl
-    omega
-  rw [hsub, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hoff_lt]
-  exact hoff
-
 /-- Forward `CodeLoaded` projection onto `stripExecOutside (keepR_fromUtf8 pl) mem`. -/
 theorem fromUtf8SubProg_codeLoaded_stripExecOutside {pl : Obj.Placement} {mem : Memory}
     (hL : (fromUtf8SubProg pl).CodeLoaded mem) :
     (fromUtf8SubProg pl).CodeLoaded (stripExecOutside (keepR_fromUtf8 pl) mem) :=
   fromUtf8_codeLoaded_stripExecOutside (keepCoversFromUtf8_keepFromUtf8Block pl.base) hL
-
-/-- Reverse `CodeLoaded` projection from `stripExecOutside (keepR_fromUtf8 pl) mem` back to `mem`
-    (so STARTUP's `f3CodeInv_rxWords_codeLoaded_strip` directly discharges `H1`'s
-    `(fromUtf8SubProg pl).CodeLoaded u.mem` premise). -/
-theorem fromUtf8SubProg_codeLoaded_of_stripExecOutside {pl : Obj.Placement} {mem : Memory}
-    (hL : (fromUtf8SubProg pl).CodeLoaded (stripExecOutside (keepR_fromUtf8 pl) mem)) :
-    (fromUtf8SubProg pl).CodeLoaded mem := by
-  refine Program.CodeLoaded.intro hL.aligned hL.no_wrap fun i hi => ?_
-  have hk : keepR_fromUtf8 pl ((fromUtf8SubProg pl).base + BitVec.ofNat 64 i) = true :=
-    keepR_fromUtf8_of_code_offset pl hi
-  have hbyte := hL.byte_eq i hi
-  have hperm := hL.perm_eq i hi
-  have hlf := hL.isLazyFree_eq i hi
-  rw [ProofLib.strip_read8] at hbyte
-  rw [ProofLib.strip_perm_of_keep hk] at hperm
-  rw [ProofLib.strip_isLazyFree] at hlf
-  exact ⟨hbyte, hperm, hlf⟩
-
-theorem fromUtf8SubProg_codeLoaded_stripExecOutside_iff {pl : Obj.Placement} {mem : Memory} :
-    (fromUtf8SubProg pl).CodeLoaded (stripExecOutside (keepR_fromUtf8 pl) mem) ↔
-      (fromUtf8SubProg pl).CodeLoaded mem :=
-  ⟨fromUtf8SubProg_codeLoaded_of_stripExecOutside, fromUtf8SubProg_codeLoaded_stripExecOutside⟩
 
 /-- `W`-independent ghost hook for `lsFromUtf8Sym` at placement `pl`
     (`P_run := emptyStdProg`, `fallback := realFromUtf8Fallback`). -/
@@ -368,48 +319,11 @@ theorem fromUtf8GhostHook_preserves_execFrozen
     ExecFrozen (fromUtf8GhostHook tbl keep P_real P_sub entryTarget u).mem :=
   linkedCallHookG_preserves_execFrozen (fun _ hs => realFromUtf8Fallback_preserves_execFrozen hs) hfr
 
-theorem fromUtf8GhostHookK_preserves_execFrozen
-    (tbl : BitVec 64) (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64)
-    {u : State} (hfr : ExecFrozen u.mem) :
-    ExecFrozen (fromUtf8GhostHookK tbl keep P_real P_sub entryTarget u).mem :=
-  linkedCallHookG_preserves_execFrozen (fun _ hs => realFromUtf8Fallback_preserves_execFrozen hs) hfr
-
 theorem fromUtf8Ghost_preserves_execFrozen (pl : Obj.Placement) {u : State}
     (hfr : ExecFrozen u.mem) :
     ExecFrozen (fromUtf8Ghost pl u).mem :=
   fromUtf8GhostHook_preserves_execFrozen (pl.ρ coreUtf8CharWidthSym) (keepR_fromUtf8 pl)
     emptyStdProg (fromUtf8SubProg pl) pl.base hfr
-
-theorem fromUtf8GhostK_preserves_execFrozen (pl : Obj.Placement) {u : State}
-    (hfr : ExecFrozen u.mem) :
-    ExecFrozen (fromUtf8GhostK pl u).mem :=
-  fromUtf8GhostHookK_preserves_execFrozen (pl.ρ coreUtf8CharWidthSym) (keepR_fromUtf8 pl)
-    emptyStdProg (fromUtf8SubProg pl) pl.base hfr
-
-/-- `StepsVisitedIn` witness for `K`-narrowed `fromUtf8GhostHookK` (mirroring
-    `FromUtf8Ghost.fromUtf8GhostHook_visitedIn`). -/
-theorem fromUtf8GhostHookK_visitedIn
-    {keep : BitVec 64 → Bool} {P_run P_sub : Program} {pl : Obj.Placement}
-    (hpl : fromUtf8Block.Placeable pl)
-    (hsvc_run : P_run.svc = Syscall.standard) (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hrun_no : ∀ pc, keep pc = true → P_run.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hwords : P_sub.hasWords pl.base (fromUtf8PatchedWords pl)) {s0 : State}
-    (hG : roTableGuard (pl.ρ coreUtf8CharWidthSym) corePlacedData1 s0)
-    (hnoex : ∀ msg,
-      (fromUtf8GhostHookK (pl.ρ coreUtf8CharWidthSym) keep P_run P_sub pl.base s0).status ≠
-        .Exception msg)
-    (hFr : ExecFrozen s0.mem) (hlr_out : keep (s0.readReg64 .lr) = false)
-    (hCodeSub : P_sub.CodeLoaded (stripExecOutside keep s0.mem)) :
-    h2fsgen_StepsVisitedIn keep P_run (s0.setPC pl.base)
-        (fromUtf8GhostHookK (pl.ρ coreUtf8CharWidthSym) keep P_run P_sub pl.base s0) ∧
-      ExecFrozen (fromUtf8GhostHookK (pl.ρ coreUtf8CharWidthSym) keep P_run P_sub pl.base s0).mem :=
-  linkedCallHookG_visitedIn hsvc_run hsvc_sub hrun_no hsub_no
-    (roTableGuard_stripS keep pl.base (pl.ρ coreUtf8CharWidthSym) corePlacedData1)
-    (subroutine_ok_masterFromUtf8K_of_hasWords keep hpl hsub_no hwords)
-    (specStripSInvariant_masterFromUtf8K keep) (specPreservesFsTrace_masterFromUtf8K keep)
-    (masterFromUtf8K_pre_setPC keep) (masterFromUtf8K_outcome_setPC keep) hG
-    (linkedCallHookG_activeRealPre_of_noException hnoex) hFr hlr_out hCodeSub
 
 /-! ## 4. Generic-`InvS` `GhostRowReplayOn` (Artifact 2a) & Full `GhostRowOk` -/
 
@@ -567,186 +481,6 @@ theorem fromUtf8MplGhost_rowReplayOn
     (fun W {_} hk => hRealHullNoExt W (keepR_fromUtf8_mplPlacement mpl tbl relax1 ▸ hk))
     (fun W {_} hk hne => hGhostNoExtNe W (keepR_fromUtf8_mplPlacement mpl tbl relax1 ▸ hk) hne)
 
-/-- `C4` interior-stub wrapper for `fromUtf8Ghost_rowReplayOn` (accepting split `hRealNone` at
-    `stubPc` + `hInteriorGhost` with the `Or.inr` `TrapHook` interior-stub disjunct on
-    `pc ≠ resolve mpl lsFromUtf8Sym`). -/
-theorem fromUtf8Ghost_rowReplayOn_of_interior
-    (mpl mmpl : Obj.MultiPlacement)
-    (pl : Obj.Placement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hpl : fromUtf8Block.Placeable pl)
-    (hTargetEq : libsignalSessionLib.resolve mpl lsFromUtf8Sym = pl.base)
-    (hCL : ∀ u : State, InvS u → (fromUtf8SubProg pl).CodeLoaded u.mem)
-    (hRo : ∀ u : State, ExecFrozen u.mem → InvS u →
-      RoDataAt u.mem (pl.ρ coreUtf8CharWidthSym) corePlacedData1)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt?
-        (libsignalSessionLib.resolve mpl lsFromUtf8Sym) = some (fromUtf8Ghost pl))
-    (hRealNone : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
-        (libsignalSessionLib.resolve mpl lsFromUtf8Sym) = none)
-    (hInteriorGhost : ∀ (W : CliHooks) (pc : BitVec 64),
-      keepR_fromUtf8 pl pc = true → pc ≠ libsignalSessionLib.resolve mpl lsFromUtf8Sym →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none ∧
-      ((cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-        ∃ gStub, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some gStub ∧
-          ∀ L : BitVec 64, keepR_fromUtf8 pl L = true → TrapHook L gStub)) :
-    GhostRowReplayOn mpl mmpl InvS EG lsFromUtf8Sym (fromUtf8EntryGuard mpl) (fromUtf8Ghost pl) where
-  preserves_execFrozen := fun u _ _ hfr =>
-    ⟨fromUtf8Ghost_preserves_execFrozen pl hfr, fromUtf8Ghost_fs pl u⟩
-  replay_at_stub := by
-    intro W s0 sf _ _ _ hEntry hRetPc hNoExSf hNotHaltSf
-    have hRealHullNoExt : ∀ {pc : BitVec 64},
-        keepR_fromUtf8 pl pc = true →
-        (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none := by
-      intro pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl lsFromUtf8Sym
-      · rw [hEq]; exact hRealNone W
-      · exact (hInteriorGhost W pc hk hEq).1
-    have hRegExt : ∀ pc : BitVec 64, keepFromUtf8Block pl.base pc = true →
-        (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-          ∃ f, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some f ∧
-            ∀ L : BitVec 64, keepFromUtf8Block pl.base L = true → TrapHook L f := by
-      intro pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl lsFromUtf8Sym
-      · rw [hEq]
-        exact Or.inr ⟨fromUtf8Ghost pl, hGhostAt W, fun _ hL =>
-          trapHook_emptyFromUtf8GhostHook_of_cover pl
-            (keepCoversFromUtf8_keepFromUtf8Block pl.base) hL⟩
-      · rcases (hInteriorGhost W pc hk hEq).2 with hNone | ⟨gStub, hSome, hTrap⟩
-        · exact Or.inl hNone
-        · exact Or.inr ⟨gStub, hSome, hTrap⟩
-    right
-    refine ⟨hRealNone W, ?_⟩
-    intro u _ hStepsAfter hpc hrun hnoex hkf hfr hInvU
-    have hCodeU : (fromUtf8SubProg pl).CodeLoaded u.mem := hCL u hInvU
-    have hLrS0 : keepFromUtf8Block pl.base (s0.readReg64 .lr) = false := by
-      rw [← hTargetEq]
-      exact hEntry.1
-    have hLrOut : keepR_fromUtf8 pl (u.readReg64 .lr) = false :=
-      fromUtf8_keepLr_false_after_hook_of_outcome_post
-        (P_ghost := cliProgExtPlacedAt mpl EG 617 W)
-        (P_sub := fromUtf8SubProg pl)
-        (pl := pl)
-        (f_stub := fromUtf8Ghost pl)
-        (fromUtf8SubProg_hasWords pl)
-        hRegExt
-        (fun _ hL => trapHook_emptyFromUtf8GhostHook_of_cover pl
-          (keepCoversFromUtf8_keepFromUtf8Block pl.base) hL)
-        hLrS0
-        hRetPc
-        hNoExSf
-        hNotHaltSf
-        u
-        hStepsAfter
-        hrun
-        (hCodeU.of_keepsFrozen hkf)
-    have hCodeStrip :
-        (fromUtf8SubProg pl).CodeLoaded (stripExecOutside (keepR_fromUtf8 pl) u.mem) :=
-      fromUtf8SubProg_codeLoaded_stripExecOutside hCodeU
-    obtain ⟨hvis, hfr_fu⟩ :=
-      fromUtf8GhostHook_visitedIn
-        (keep := keepR_fromUtf8 pl)
-        (P_run := emptyStdProg)
-        (P_sub := fromUtf8SubProg pl)
-        (pl := pl)
-        hpl
-        emptyStdProg_svc_eq
-        (fromUtf8SubProg_svc pl)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fromUtf8SubProg_externAt_none pl)
-        (fromUtf8SubProg_hasWords pl)
-        (hRo u hfr hInvU)
-        hnoex
-        hfr
-        hLrOut
-        hCodeStrip
-    have hStepsSetPC :
-        Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-          (u.setPC pl.base) (fromUtf8Ghost pl u) :=
-      h2fsgen_steps_lift_of_visitedIn_noExtern
-        (D := keepR_fromUtf8 pl)
-        (P1 := emptyStdProg)
-        (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (emptyStdProg_svc_eq.trans (realProg617_svc mpl mmpl W).symm)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fun _ hk => hRealHullNoExt hk)
-        hvis
-    have hSetPC : u.setPC pl.base = u :=
-      setPC_eq_self_of_pc_eq (hpc.trans hTargetEq)
-    rw [hSetPC] at hStepsSetPC
-    exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (fromUtf8Ghost pl u) hInvU hkf (fromUtf8Ghost_fs pl u)⟩
-
-/-- `K`-narrowed `fromUtf8GhostK` spare `GhostRowReplayOn` (`entryGuard := fun _ => True`;
-    note `N2`: spare only, no `GhostRowSpecOk` partner). -/
-theorem fromUtf8GhostK_rowReplayOn
-    (mpl mmpl : Obj.MultiPlacement)
-    (pl : Obj.Placement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hpl : fromUtf8Block.Placeable pl)
-    (hTargetEq : libsignalSessionLib.resolve mpl lsFromUtf8Sym = pl.base)
-    (hCL : ∀ u : State, InvS u → (fromUtf8SubProg pl).CodeLoaded u.mem)
-    (hRo : ∀ u : State, ExecFrozen u.mem → InvS u →
-      RoDataAt u.mem (pl.ρ coreUtf8CharWidthSym) corePlacedData1)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hRealHullNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_fromUtf8 pl pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none) :
-    GhostRowReplayOn mpl mmpl InvS EG lsFromUtf8Sym (fun _ => True) (fromUtf8GhostK pl) where
-  preserves_execFrozen := fun u _ _ hfr =>
-    ⟨fromUtf8GhostK_preserves_execFrozen pl hfr, emptyFromUtf8GhostHookK_fs (keepR_fromUtf8 pl) pl u⟩
-  replay_at_stub := by
-    intro W _ _ _ _ _ _ _ _ _
-    right
-    have hRealStub :
-        (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
-          (libsignalSessionLib.resolve mpl lsFromUtf8Sym) = none := by
-      rw [hTargetEq]
-      exact hRealHullNoExt W (keepR_fromUtf8_entry pl)
-    refine ⟨hRealStub, ?_⟩
-    intro u _ _ hpc hrun hnoex hkf hfr hInvU
-    have hCodeStrip :
-        (fromUtf8SubProg pl).CodeLoaded (stripExecOutside (keepR_fromUtf8 pl) u.mem) :=
-      fromUtf8SubProg_codeLoaded_stripExecOutside (hCL u hInvU)
-    have hLrOut : keepR_fromUtf8 pl (u.readReg64 .lr) = false :=
-      fromUtf8GhostHookK_keepLr_false_of_noException hnoex
-    obtain ⟨hvis, hfr_fu⟩ :=
-      fromUtf8GhostHookK_visitedIn
-        (keep := keepR_fromUtf8 pl)
-        (P_run := emptyStdProg)
-        (P_sub := fromUtf8SubProg pl)
-        (pl := pl)
-        hpl
-        emptyStdProg_svc_eq
-        (fromUtf8SubProg_svc pl)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fromUtf8SubProg_externAt_none pl)
-        (fromUtf8SubProg_hasWords pl)
-        (hRo u hfr hInvU)
-        hnoex
-        hfr
-        hLrOut
-        hCodeStrip
-    have hStepsSetPC :
-        Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-          (u.setPC pl.base) (fromUtf8GhostK pl u) :=
-      h2fsgen_steps_lift_of_visitedIn_noExtern
-        (D := keepR_fromUtf8 pl)
-        (P1 := emptyStdProg)
-        (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (emptyStdProg_svc_eq.trans (realProg617_svc mpl mmpl W).symm)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fun _ hk => hRealHullNoExt W hk)
-        hvis
-    have hSetPC : u.setPC pl.base = u :=
-      setPC_eq_self_of_pc_eq (hpc.trans hTargetEq)
-    rw [hSetPC] at hStepsSetPC
-    exact ⟨hStepsSetPC, hfr_fu,
-      hInvKeep u (fromUtf8GhostK pl u) hInvU hkf (emptyFromUtf8GhostHookK_fs (keepR_fromUtf8 pl) pl u)⟩
-
 /-- Guard-strengthening adapter on `GhostRowReplayOn` (for `ExtraListReplaysOn` when `guardOf sym`
     implies `entryGuard`). -/
 theorem ghostRowReplayOn_of_guard_imp
@@ -759,33 +493,6 @@ theorem ghostRowReplayOn_of_guard_imp
   preserves_execFrozen := hRow.preserves_execFrozen
   replay_at_stub := fun W s0 sf hG hRet hNoEx hNHalt =>
     hRow.replay_at_stub W s0 sf (hImp s0 hG) hRet hNoEx hNHalt
-
-/-- Full per-row `GhostRowOk` bundle (`GhostRowSpecOk` ∧ `GhostRowReplayOn`) for `lsFromUtf8Sym`. -/
-theorem fromUtf8Ghost_rowOk [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement)
-    (pl : Obj.Placement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hpl : fromUtf8Block.Placeable pl)
-    (hTargetEq : libsignalSessionLib.resolve mpl lsFromUtf8Sym = pl.base)
-    (hCL : ∀ u : State, InvS u → (fromUtf8SubProg pl).CodeLoaded u.mem)
-    (hRo : ∀ u : State, ExecFrozen u.mem → InvS u →
-      RoDataAt u.mem (pl.ρ coreUtf8CharWidthSym) corePlacedData1)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt?
-        (libsignalSessionLib.resolve mpl lsFromUtf8Sym) = some (fromUtf8Ghost pl))
-    (hRealHullNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_fromUtf8 pl pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none)
-    (hGhostNoExtNe : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_fromUtf8 pl pc = true →
-      pc ≠ libsignalSessionLib.resolve mpl lsFromUtf8Sym →
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none) :
-    GhostRowOk mpl mmpl InvS EG lsFromUtf8Sym (fromUtf8EntryGuard mpl) (fromUtf8Ghost pl) :=
-  ⟨fromUtf8Ghost_rowSpecOk hpl,
-   fromUtf8Ghost_rowReplayOn mpl mmpl pl InvS EG hpl hTargetEq hCL hRo hInvKeep hGhostAt
-     hRealHullNoExt hGhostNoExtNe⟩
 
 /-- `MultiPlacement`-indexed full `GhostRowOk` bundle for `fromUtf8MplGhost`. -/
 theorem fromUtf8MplGhost_rowOk [LibsignalPlacement]
@@ -815,33 +522,5 @@ theorem fromUtf8MplGhost_rowOk [LibsignalPlacement]
      hRealHullNoExt hGhostNoExtNe⟩
 
 /-! ## 5. Per-Arm & Singleton `ExtraEntryGuard` Helpers (`ccard_recipe.md` §2.1, `N3`) -/
-
-/-- Per-arm `lsFromUtf8Sym` discharge for any `guardOf : String → State → Prop` agreeing with
-    `fromUtf8EntryGuard mpl` on `lsFromUtf8Sym`. -/
-theorem extraEntryGuard_fromUtf8_arm
-    {mpl : Obj.MultiPlacement} {guardOf : String → State → Prop} {s0 : State}
-    (hGuardEq : guardOf lsFromUtf8Sym s0 ↔ fromUtf8EntryGuard mpl s0)
-    (hGuard : fromUtf8EntryGuard mpl s0) :
-    guardOf lsFromUtf8Sym s0 :=
-  hGuardEq.mpr hGuard
-
-/-- Table-level `ExtraEntryGuard guardOf g s0` discharge when `g.extra` carries the singleton
-    `lsFromUtf8Sym` row `[(lsFromUtf8Sym, fRow)]` (`N3`: 1-row helper; multi-row C2 tables assemble
-    `ExtraListEntryGuard` from `extraEntryGuard_fromUtf8_arm`). -/
-theorem extraEntryGuard_singleton_fromUtf8
-    {mpl : Obj.MultiPlacement} {guardOf : String → State → Prop}
-    {g : CliGhostHooks} {fRow : State → State} {s0 : State}
-    (hg : g.extra = [(lsFromUtf8Sym, fRow)])
-    (hGuardEq : guardOf lsFromUtf8Sym s0 ↔ fromUtf8EntryGuard mpl s0)
-    (hGuard : fromUtf8EntryGuard mpl s0) :
-    ExtraEntryGuard guardOf g s0 := by
-  intro sym f _ hLook
-  rw [hg] at hLook
-  simp only [List.lookup] at hLook
-  by_cases hSym : (sym == lsFromUtf8Sym) = true
-  · have hEq : sym = lsFromUtf8Sym := eq_of_beq hSym
-    subst hEq
-    exact hGuardEq.mpr hGuard
-  · simp [hSym] at hLook
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8GhostReplays

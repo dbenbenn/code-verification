@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked2PlacedBudgetAux
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked2PlacedBudgetAux -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked1
@@ -18,6 +18,9 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked2
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked2Placed
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked1PlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Phase 2c (Part 2): `V1State::encode_raw` Variants `idx = 0, 2, 5` (`Block 426`)
@@ -27,7 +30,7 @@ Re-exports variants `idx = 0` (`.keysUnsampled`) and `idx = 2` (`.headerSent`) f
 threading `A.pool lim st`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

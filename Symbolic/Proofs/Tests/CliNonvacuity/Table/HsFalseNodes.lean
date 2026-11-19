@@ -10,10 +10,14 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Defs
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes05
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Terms00
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes05 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Terms00 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes00 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes01 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Bytes02 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Witness -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -27,7 +31,7 @@ open Symbolic.Proofs.Tests.CliNonvacuity.Witness
 open Symbolic.Proofs.Tests.CliNonvacuity.Table.Defs (BinTree CertNode)
 open Symbolic.Proofs.Tests.CliNonvacuity.Table.MkTerm (sendAddrABytes)
 
-def hsFalseIdTree : BinTree CertNode :=
+@[expose] def hsFalseIdTree : BinTree CertNode :=
   (.branch
     (.branch
       (.branch

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.CliPqBadKemBound
-public import Computational.Proofs.LibsignalCli.CliPqAdapterRemoteIdInv
+public import Computational.Proofs.LibsignalCli.CliPqBadKemBound -- proof-setup: allow-public-import
+public import Computational.Proofs.LibsignalCli.CliPqAdapterRemoteIdInv -- proof-setup: allow-public-import
 public import Computational.Specifications.Assumptions.KeyInd1KeyReal
 import Computational.Proofs.LibsignalCli.CliPqRetainedDirEq
 import Computational.Proofs.GameHop.Advantage
@@ -26,7 +26,7 @@ import VCVio.EvalDist.Monad.Basic
 `CliPqAdapterBoundProp` from the per-oracle step-bridge propositions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.constructorNameAsVariable false
@@ -178,7 +178,7 @@ theorem cliAdapterStepCoupled.mono_qStart {S : SignalPqxdh.Setup} {ℓ : ℕ} {�
 /-! ## Per-oracle step-bridge propositions -/
 
 /-- Step-bridge proposition for uniform sampling queries. -/
-def CliUnifStepBridgeProp {Pt : Type}
+@[expose] def CliUnifStepBridgeProp {Pt : Type}
     (S : SignalPqxdh.Setup) (ℓ : ℕ) (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (qep : ℕ) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) : Prop :=
   ∀ {b : Bool} {qStart : ℕ} {qs_rem : ℕ → ℕ}
@@ -213,7 +213,7 @@ theorem cliUnifStepBridgeProp_holds {Pt : Type}
     exact ⟨rfl, hRel⟩
 
 /-- Step-bridge proposition for 1-key real-HKDF `KeyInd` queries. -/
-def CliKeyIndStepBridgeProp {Pt : Type}
+@[expose] def CliKeyIndStepBridgeProp {Pt : Type}
     (S : SignalPqxdh.Setup) (ℓ : ℕ) (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (qep : ℕ) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) : Prop :=
   ∀ {b : Bool} {qStart : ℕ} {qs_rem : ℕ → ℕ}
@@ -230,7 +230,7 @@ def CliKeyIndStepBridgeProp {Pt : Type}
             W.C W.Q.K qep decT encT (.inl (.inl (.inr kq)))).run σ_ad).run σ_e2e)
 
 /-- Step-bridge proposition for `startDR` control queries. -/
-def CliStartStepBridgeProp {Pt : Type}
+@[expose] def CliStartStepBridgeProp {Pt : Type}
     (S : SignalPqxdh.Setup) (ℓ : ℕ) (run : CliRun) (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (qep : ℕ) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) : Prop :=
   ∀ {b : Bool} {qStart : ℕ} {qs_rem : ℕ → ℕ}
@@ -271,7 +271,7 @@ theorem cliStartStepBridgeProp_of_succ {Pt : Type}
   exact (hSucc hRelLen hRem hGood sid).mono_qStart hLenLt
 
 /-- Step-bridge proposition for per-instance SM queries. -/
-def CliSmStepBridgeProp {Pt : Type}
+@[expose] def CliSmStepBridgeProp {Pt : Type}
     (S : SignalPqxdh.Setup) (ℓ : ℕ) (run : CliRun) (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (qep : ℕ) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) : Prop :=
   ∀ {b : Bool} {qStart : ℕ} {qs_rem : ℕ → ℕ}
@@ -638,7 +638,7 @@ local notation "bhE2EExpWithKi" => cliE2EExpWithKi
 /-- Bounds `CliPqxdhAdvantage` by the bias of
 `bhE2EExpWithKi true` at `SignalPqxdh.pqxdhKeyIndImpl1KeyReal` on `L_bh`'s evaluation `B_A`, plus
 `SignalPqxdh.Security.kemDecapsFailureTerm S δ_kem`. -/
-def CliPqAdapterBoundProp' {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def CliPqAdapterBoundProp' {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (S : SignalPqxdh.Setup) (ℓ : ℕ) : Prop :=
   ∀ (run : CliRun) (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (_hCli : CliSpecPqxdh run X W) (_hK_tot : MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds W.Q.K)

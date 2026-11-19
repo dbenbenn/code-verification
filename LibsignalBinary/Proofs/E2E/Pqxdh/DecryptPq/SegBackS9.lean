@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Defs
 import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegBackDefs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Segment 9 Helpers for `try_decrypt_with_state::<HookRng>`
@@ -18,7 +19,7 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegBackDefs
 Session-state writeback and return-epilogue helpers for `S9Spec` (`+0x6a4 → +0x4b8 → +0x394 → +0x3b0`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegD
 
@@ -49,7 +50,7 @@ theorem length_optSenderChainBytes (o : Option SenderChain) {pad : List (BitVec 
       sc.ratchetKey.privateKey.bytes.2
     simp [optSenderChainBytes, senderChainBytes, chainKeyBytes, keyToBytes32, leBytes, hpub, hpriv]
 
-def trStackBytes (G : TrGhost) (tr : TripleRatchet (List (BitVec 8))) (pad : BitVec 32) :
+@[expose] def trStackBytes (G : TrGhost) (tr : TripleRatchet (List (BitVec 8))) (pad : BitVec 32) :
     List (BitVec 8) :=
   unpack64 G.ratchet.chainsCap ++
   (unpack64 G.ratchet.chainsPtr ++
@@ -74,7 +75,7 @@ theorem length_trStackBytes (G : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     tr.remoteIdentityKey.publicKey.bytes.2
   simp [trStackBytes, length_optSenderChainBytes _ hpad, length_keyToBytes32, hloc, hrem]
 
-def trHeapPart (A : RustAlloc) (G : TrGhost) (tr : TripleRatchet (List (BitVec 8))) : SepProp :=
+@[expose] def trHeapPart (A : RustAlloc) (G : TrGhost) (tr : TripleRatchet (List (BitVec 8))) : SepProp :=
   ⌜∀ sc, tr.ratchet.senderChain = some sc →
     Ratchet.clampScalar sc.ratchetKey.privateKey.bytes = sc.ratchetKey.privateKey.bytes⌝ ∗
   ⌜G.ratchet.chains.length = tr.ratchet.receiverChains.length ∧
@@ -136,7 +137,7 @@ theorem trAt_of_stack_heap (A : RustAlloc) (t : BitVec 64) (G : TrGhost)
   rw [trAt_eq_stack_heap A t G tr hpad]
   exact Entails.sepExists_intro (P := fun p => (t ↦ₛ trStackBytes G tr p) ∗ trHeapPart A G tr) pad
 
-def trWithoutPqAt (A : RustAlloc) (t : BitVec 64) (G : RatchetGhost)
+@[expose] def trWithoutPqAt (A : RustAlloc) (t : BitVec 64) (G : RatchetGhost)
     (tr : TripleRatchet (List (BitVec 8))) : SepProp :=
   ⌜∀ sc, tr.ratchet.senderChain = some sc →
     Ratchet.clampScalar sc.ratchetKey.privateKey.bytes = sc.ratchetKey.privateKey.bytes⌝ ∗

@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
 
 /-!
 # Single-Slot `fineCostModel` Credit and Group Bundle
@@ -21,7 +21,7 @@ imported by concrete CLI slot leaves (`W1SendRealSlot`, `W2RecvWhisperRealSlot`,
 `W4RecvPrekeyRealSlot`) and `CliTopBudgetReal`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

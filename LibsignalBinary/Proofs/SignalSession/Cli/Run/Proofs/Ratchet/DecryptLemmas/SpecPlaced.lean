@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Inner Store-Kit Specification for `decrypt_signal`
@@ -21,7 +24,7 @@ import Arm64.Trusted.Spec.SepLogic
 `withLsFrozen`-guarded variants on Block `463` (`signal_session_ratchet::decrypt_signal`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -53,7 +56,7 @@ abbrev cliFinal := EncryptLemmas.w1CliFinal
 abbrev decNeedAux_placed (B : RunBudgets) : Nat :=
   2 ^ 20 + B.readFile
 
-noncomputable def decKeyAux_placed (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] noncomputable def decKeyAux_placed (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (msg : SignalMessage) (coins : List (BitVec 8)) :
     Option IdentityKey :=
   match Slots.loadRec Scope F peer with
@@ -65,7 +68,7 @@ noncomputable def decKeyAux_placed (W : PEParams) (Scope : SessionRecord (List (
     | .error _ => none
   | _ => none
 
-noncomputable def decDefAux_placed (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] noncomputable def decDefAux_placed (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (msg : SignalMessage) (coins : List (BitVec 8)) :
     SlotAns (List (BitVec 8)) :=
   match LibsignalSessionApi.messageDecryptSignal W.C (pqxdhSpqrModel W).spqr
@@ -87,7 +90,7 @@ theorem decDefAux_eq_model_placed (W : PEParams) (Scope : SessionRecord (List (B
   rfl
 
 /-- Relocatable tight store-kit contract for `decrypt_signal` threading `tokenInitPlacedAt` and `Slots.DistinctSid`. -/
-def withStoresDecPlacedSpecVTP [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def withStoresDecPlacedSpecVTP [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
@@ -102,16 +105,16 @@ def withStoresDecPlacedSpecVTP [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     post := fun x s0 sf =>
       SpqrV1.GF.Mul2U16.tokenInitPlacedAt ∗ base.post x s0 sf }
 
-noncomputable abbrev decSessKitPlaced [LibsignalPlacement] (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
+abbrev decSessKitPlaced [LibsignalPlacement] (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
     SessionStoreSpec E2E.HooksE.A0 0#64 :=
   EncryptLemmas.w1SessKitPlaced B F0 peer
 
-noncomputable abbrev decIdKitPlaced [LibsignalPlacement] (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
+abbrev decIdKitPlaced [LibsignalPlacement] (F0 : FsFiles) (peer : AddrGhost) (B : RunBudgets) :
     IdentityStoreSpec E2E.HooksE.A0 0#64 :=
   EncryptLemmas.w1IdKitPlaced B F0 peer
 
 /-- Relocatable inner store-kit hypothesis on Block `463` (`lsProg_463`) at `decSessKitPlaced` and `decIdKitPlaced`. -/
-def InnerDecryptPlacedOk [LibsignalPlacement]
+@[expose] def InnerDecryptPlacedOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (B : RunBudgets) : Prop :=
   ∀ (F0 : FsFiles) (peer : AddrGhost),
     Slots.FilesOkPeer Slots.scopeIn F0 peer.val →
@@ -124,7 +127,7 @@ def InnerDecryptPlacedOk [LibsignalPlacement]
           StoresGhost.opened.sessions StoresGhost.opened.identity Slots.scopeKit)
         fun s => kit.envOk s.fs.files ∧ ikit.envOk s.fs.files)
 
-def withStoresDecFrozenPlacedSpecVTP [LibsignalPlacement]
+@[expose] def withStoresDecFrozenPlacedSpecVTP [LibsignalPlacement]
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
@@ -134,7 +137,7 @@ def withStoresDecFrozenPlacedSpecVTP [LibsignalPlacement]
   withLsFrozen lsmpl (withStoresDecPlacedSpecVTP C A ctl parse S encRecord kit ikit st0 ist0 Scope)
 
 /-- `withLsFrozen`-guarded variant of `InnerDecryptPlacedOk` on Block `463`. -/
-def InnerDecryptFrozenPlacedOk [LibsignalPlacement]
+@[expose] def InnerDecryptFrozenPlacedOk [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (B : RunBudgets) : Prop :=
   ∀ (F0 : FsFiles) (peer : AddrGhost),
     Slots.FilesOkPeer Slots.scopeIn F0 peer.val →

@@ -9,14 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreSessionPrev1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Sym
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Relocatable CLI `<SessionFiles as SessionStore>::store_session` on `Prev1`
@@ -25,7 +33,7 @@ Relocatable `[LibsignalPlacement]` `Prev1` `store_session` specifications, symbo
 Block `570` (`lsProg_570 H`), and `TraceFsSound` filesystem preservation.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -75,23 +83,12 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 /-! ## 1. `TraceFsSound` for `cliExternsPlaced mmpl W` and `[IsLsBlockProg]` -/
 
 theorem cliHookTablePlaced_fsT (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    ∀ p ∈ cliHookTablePlaced mmpl W, HookFsTraced RunGlue.IsFsC p.2 :=
+    ∀ p ∈ LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliHookTablePlaced mmpl W, HookFsTraced RunGlue.IsFsC p.2 :=
   RunGlue.cliHookTablePlaced_fsT mmpl W
 
 theorem fsTHooks_cliExternsPlaced (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     RunGlue.FsTHooks (cliExternsPlaced mmpl W) :=
   RunGlue.fsTHooks_cliExternsPlaced mmpl W
-
-theorem traceFsSound_of_blockProg [LibsignalPlacement] {prog : Program} {i : Nat}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H] (hH : RunGlue.FsTHooks H) :
-    TraceFsSound prog := by
-  rw [IsLsBlockProg.eq_blockProgram (prog := prog) (i := i) (H := H)]
-  exact RunGlue.traceFsSound_of_fsTHooks hH RunGlue.fsTHooks_none
-
-theorem traceFsSound_cli_placed [LibsignalPlacement] (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    {prog : Program} {i : Nat} [IsLsBlockProg prog i (cliExternsPlaced mmpl W)] :
-    TraceFsSound prog :=
-  traceFsSound_of_blockProg (fsTHooks_cliExternsPlaced mmpl W)
 
 theorem traceFsSound_cliProgPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     TraceFsSound (cliProgPlaced mmpl W) :=
@@ -99,7 +96,7 @@ theorem traceFsSound_cliProgPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlaceme
 
 /-! ## 2. Relocatable `[LibsignalPlacement]` `Prev1` Store Specifications -/
 
-def sessStorePollPrev1MemSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def sessStorePollPrev1MemSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec SessStorePollPrev1Ghost :=
   StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -126,7 +123,7 @@ def sessStorePollPrev1MemSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : 
       onPanic := fun _ s0 sf =>
         ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def sessStorePollPrev1SpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def sessStorePollPrev1SpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec SessStorePollPrev1Ghost :=
   StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -215,7 +212,7 @@ private theorem close_panic_prev1_placed {s0 s_call sf : State} {F R : SepProp}
     (htr : s_call.trace = s0.trace)
     (hm : sf.mem ⊨ ((⌜allocFailedIn s_call sf ∧ s_call.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) ∗ R) :
     sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R := by
-  refine allowPanic_frame ?_ (by rwa [sepConj_assoc] at hm)
+  refine allowPanic_frame (F := F) ?_ (by simpa only [sepConj_assoc] using hm)
   rintro ⟨hfail, hpref⟩
   unfold allocFailedIn at hfail ⊢
   rw [htr] at hfail hpref
@@ -468,29 +465,6 @@ theorem sessStorePollPrev1_placed_ok_of_deps [LibsignalPlacement] {A : RustAlloc
   sessStorePollPrev1_placed_of_mem
     (sessStorePollPrev1Mem_placed_ok_of_deps hAddr hSer hPut hstk
       hAddrBlk hAddrUnmut hSerBlk hSerUnmut hPutBlk hPutUnmut)
-
-theorem cli_placed_steps_files_eq_of_trace_eq [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    {prog : Program} {i : Nat} [IsLsBlockProg prog i (cliExternsPlaced mmpl W)]
-    {s0 sf : State} (hsteps : Steps prog s0 sf) (htr : sf.trace = s0.trace) :
-    sf.fs.files = s0.fs.files :=
-  (traceFsSound_cli_placed mmpl W (prog := prog)).files_eq hsteps (evs := [])
-    (by simp [htr]) NoFsEv.nil
-
-theorem cli_placed_steps_fsInv [LibsignalPlacement] (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    {prog : Program} {i : Nat} [IsLsBlockProg prog i (cliExternsPlaced mmpl W)]
-    {F0 : FsFiles} {T0 : List TraceEvent} {s0 sf : State}
-    (hinv : FsInv F0 T0 s0) (hsteps : Steps prog s0 sf) :
-    FsInv F0 T0 sf :=
-  hinv.of_steps (traceFsSound_cli_placed mmpl W (prog := prog)) hsteps
-
-theorem cli_placed_steps_fsInv_of_trace_eq [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    {prog : Program} {i : Nat} [IsLsBlockProg prog i (cliExternsPlaced mmpl W)]
-    {F0 : FsFiles} {T0 : List TraceEvent} {s0 sf : State}
-    (hinv : FsInv F0 T0 s0) (hsteps : Steps prog s0 sf) (_htr : sf.trace = s0.trace) :
-    FsInv F0 T0 sf :=
-  cli_placed_steps_fsInv mmpl W hinv hsteps
 
 end Placed
 

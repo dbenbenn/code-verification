@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.Tie.BlockReadPure
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.By2Pure -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+import Symbolic.Proofs.SpecLemmas.Model.PQXDH.StateMachine
 
 /-!
 # `CleanBy` Read Extraction on `promAccBlk`
@@ -23,7 +25,7 @@ Proves `prom_not_recvCollision_of_not_dirtyAt₂` and `prom_currentRead_of_not_d
 `¬ RecvCollision` and `RcvCurrentRead` from `CleanBy` on an accepting promote block.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

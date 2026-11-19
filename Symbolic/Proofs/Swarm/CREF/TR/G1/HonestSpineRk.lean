@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -40,7 +40,7 @@ composed moves, yielding `traceOkR_runTrace`, `spStateRk_runTrace`, `spineRk_sen
 `spineRk_recvSeed_runTrace`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -164,7 +164,7 @@ end PQ
 
 /-- Alice's handshake output: identity secret drawn at `tᵢ` (`IkAt`), base secret at `tₑ`, KEM
 randomness at `tₑ + 1` (no PQXDH event there), output length `tₑ + 2`. -/
-def AliceHsOk (T : ExecTrace) (o : DY.Libsignal.PQXDH.AliceHandshakeOut) (m : Nat) : Prop :=
+@[expose] def AliceHsOk (T : ExecTrace) (o : DY.Libsignal.PQXDH.AliceHandshakeOut) (m : Nat) : Prop :=
   ∃ (tᵢ tₑ : Nat) (pk ent ikB : DY.Bytes) (opk' : Option DY.Bytes),
     tᵢ < tₑ ∧ IkAt T tᵢ ∧ ¬ PQEvAt T (tₑ + 1) ∧ m = tₑ + 2 ∧
     o.ct = (DY.PQKem.kemEncap pk ent).1 ∧
@@ -212,7 +212,7 @@ theorem tracefulF_aliceHandshake {T : ExecTrace} {k : Nat} (a b : Participant)
 
 /-- Bob's handshake output: logged-role-`true` provenance of its keys, and the signed-prekey secret
 drawn before the output position, which is the top DH secret of the root key. -/
-def BobHsOk (T : ExecTrace) (o : DY.Libsignal.PQXDH.BobHandshakeOut) (m : Nat) : Prop :=
+@[expose] def BobHsOk (T : ExecTrace) (o : DY.Libsignal.PQXDH.BobHandshakeOut) (m : Nat) : Prop :=
   ∃ (ikm : DY.Bytes) (t : Nat) (pk' : DY.Bytes),
     CtKeysIkmR T true o.ct o.keys ikm ∧ t < m ∧ o.spkSk = randTerm t 32 ∧
     TopDhSecret o.keys.rk pk' t
@@ -346,7 +346,7 @@ theorem tracefulF_aliceStart {T : ExecTrace} {k : Nat} (a b : Participant)
   exact hck0
 
 /-- The base predicate of Bob's in-memory start state: the role-`true` provenance of its keys. -/
-def BobBase (T : ExecTrace) (ct : DY.Bytes) (keys : DY.Libsignal.PQXDH.HandshakeKeys)
+@[expose] def BobBase (T : ExecTrace) (ct : DY.Bytes) (keys : DY.Libsignal.PQXDH.HandshakeKeys)
     (c : Bool) (ikm : DY.Bytes) : Prop :=
   c = true ∧ CtKeysIkmR T true ct keys ikm
 

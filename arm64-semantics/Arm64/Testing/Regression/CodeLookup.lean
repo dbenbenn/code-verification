@@ -69,7 +69,7 @@ example : (nat_lit% (2^64 - code_rel% cExamplesCode "c_arith_shift" "c_max_u64")
 
 example : cExamplesCode.fnOff "c_max_u64" = 12 := code_lemma% cExamplesCode fnOff "c_max_u64"
 example : cExamplesCode.fnOff "c_max_u64" = 12 := code_lemma% cExamplesCode off "c_max_u64"
-example : Obj.fnSize cExamplesImage "c_swap_u64" = 20 :=
+example : progFnSize cExamplesCode "c_swap_u64" = 20 :=
   code_lemma% cExamplesCode fnSize "c_swap_u64"
 #guard_expr code_lemma% cExamplesCode fnOff "c_swap_u64" =ₛ cExamplesCode_fnOff_0x18
 

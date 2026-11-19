@@ -15,8 +15,8 @@ import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
 import DY.Actions.Network
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.PromXplAssemblyPure
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.PromXplAssemblyPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RatchetDHRkSwapStepTRPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RatchetDHRkSwapStepTRPureA
@@ -51,6 +51,9 @@ import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
+import Symbolic.Proofs.Swarm.CREF.OpkRelC
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol
+import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
 
 /-!
 # Raw Witness Assembly for Session-Promote Pre-Key `recv`
@@ -59,7 +62,7 @@ Assembles the single-trace `PromXplRawKnWitness` (`prom_rawKnWitness_at_clean`) 
 matching-session promote `recv` branch.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

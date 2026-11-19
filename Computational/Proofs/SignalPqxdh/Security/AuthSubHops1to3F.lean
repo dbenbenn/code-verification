@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
@@ -21,7 +21,7 @@ Defines `rootRoCache` collision bounds, the parameterized `G3.5 ↔ G3.6` cutoff
 `authRkCutoffExp`, and its `SlotM` pre-sampling equivalence `evalDist_preSample_authRk_eq_cutoff`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -36,11 +36,11 @@ namespace SignalPqxdh.Security.AuthSubHops1to3
 
 /-! ## `RootKdfRO` cache helpers and collision bound -/
 
-def filterOutRk (rkStar : Bytes) (cache : List ((Bytes × Bytes) × (Bytes × Bytes))) :
+@[expose] def filterOutRk (rkStar : Bytes) (cache : List ((Bytes × Bytes) × (Bytes × Bytes))) :
     List ((Bytes × Bytes) × (Bytes × Bytes)) :=
   cache.filter (fun e => e.1.1 != rkStar)
 
-def cacheHasRk (rkStar : Bytes) (cache : List ((Bytes × Bytes) × (Bytes × Bytes))) : Bool :=
+@[expose] def cacheHasRk (rkStar : Bytes) (cache : List ((Bytes × Bytes) × (Bytes × Bytes))) : Bool :=
   cache.any (fun e => e.1.1 == rkStar)
 
 theorem find?_eq_find?_filterOutRk (rkStar rk dh : Bytes)
@@ -136,11 +136,11 @@ theorem RelProbUpToBad.bind_const_right {β α : Type} {R : α → α → Prop} 
   · rw [probExpect_bind, probExpect_const]
     exact h.2 w6 w5 hw6 hle
 
-def bytesToWord256Nat : List UInt8 → Nat
+@[expose] def bytesToWord256Nat : List UInt8 → Nat
   | [] => 0
   | b :: bs => b.toNat + 256 * bytesToWord256Nat bs
 
-def encodeLEBytes : Nat → Nat → List UInt8
+@[expose] def encodeLEBytes : Nat → Nat → List UInt8
   | 0, _ => []
   | n + 1, x => UInt8.ofNat (x % 256) :: encodeLEBytes n (x / 256)
 
@@ -284,7 +284,7 @@ theorem eq_of_mem_of_hasDuplicateBytes_map_false {α : Type} (f : α → Bytes) 
 
 /-! ## `G3.5 ↔ G3.6` cutoff execution and `SlotM` bridge -/
 
-def getRkAtSlot (idx slotIdx : Nat) : SlotM Bytes Bytes :=
+@[expose] def getRkAtSlot (idx slotIdx : Nat) : SlotM Bytes Bytes :=
   if slotIdx == idx then
     SlotM.getSlot sampleBytes32
   else
@@ -339,7 +339,7 @@ theorem SlotFireAtAuth.getRkAtSlot_bind_liftM {S : Setup} (idx slotIdx : Nat)
     rcases hy with ⟨rk, _, x, _, rfl⟩
     cases hSome
 
-def finishAuthSendAfterRk {S : Setup} (P : Primitives) (useIdealRkAt : Nat → Bool)
+@[expose] def finishAuthSendAfterRk {S : Setup} (P : Primitives) (useIdealRkAt : Nat → Bool)
     (sid : SessionId S) (uEntry : PrincipalEntry)
     (peerPrincipal? : Option (Nat × PrincipalEntry))
     (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
@@ -371,7 +371,7 @@ def finishAuthSendAfterRk {S : Setup} (P : Primitives) (useIdealRkAt : Nat → B
     hst.toAuthHybridState
   pure (resp, { toAuthHybridState := hst', recvCount := hst.recvCount })
 
-def authRkSendWith (S : Setup) (P : Primitives)
+@[expose] def authRkSendWith (S : Setup) (P : Primitives)
     (sampRkAt : Nat → ProbComp Bytes) (useIdealRkAt : Nat → Bool)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) : ProbComp (AuthResponse × AuthHybridStateFixed S) := do
@@ -452,7 +452,7 @@ def authRkSendWith (S : Setup) (P : Primitives)
                     hst.toAuthHybridState
                   pure (resp, { toAuthHybridState := hst', recvCount := hst.recvCount })
 
-def authRkSendSlot (S : Setup) (P : Primitives) (idx : Nat) (useIdealRkAt : Nat → Bool)
+@[expose] def authRkSendSlot (S : Setup) (P : Primitives) (idx : Nat) (useIdealRkAt : Nat → Bool)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) : SlotM Bytes (AuthResponse × AuthHybridStateFixed S) := do
   let st := hst.toAuthHybridState.base
@@ -532,7 +532,7 @@ def authRkSendSlot (S : Setup) (P : Primitives) (idx : Nat) (useIdealRkAt : Nat 
                     hst.toAuthHybridState
                   pure (resp, { toAuthHybridState := hst', recvCount := hst.recvCount })
 
-def finishAuthRecvRk {S : Setup} (P : Primitives) (msg : PreKeyMsg) (prep : PreparedAuthRecv S)
+@[expose] def finishAuthRecvRk {S : Setup} (P : Primitives) (msg : PreKeyMsg) (prep : PreparedAuthRecv S)
     (drKey : DRKey) (rk1 ck1_0 : Bytes)
     (roCache' : List (Bytes × DRKey))
     (rootRoCache' : List ((Bytes × Bytes) × (Bytes × Bytes)))
@@ -551,7 +551,7 @@ def finishAuthRecvRk {S : Setup} (P : Primitives) (msg : PreKeyMsg) (prep : Prep
   let (resp, hst') := prep.finish res?
   (resp, { toAuthHybridState := hst', recvCount := recvCount' })
 
-def finishAuthRecvUnmatchedAfterRk {S : Setup} (P : Primitives) (useIdealRkAt : Nat → Bool)
+@[expose] def finishAuthRecvUnmatchedAfterRk {S : Setup} (P : Primitives) (useIdealRkAt : Nat → Bool)
     (msg : PreKeyMsg) (prep : PreparedAuthRecv S) (rSlot recvCount' : Nat) (rk : Bytes) :
     ProbComp (AuthResponse × AuthHybridStateFixed S) := do
   let st := prep.hstDec.base
@@ -567,7 +567,7 @@ def finishAuthRecvUnmatchedAfterRk {S : Setup} (P : Primitives) (useIdealRkAt : 
       evalRootKdfOrRo true P st.rootRoCache rk prep.dhRatchet
   pure (finishAuthRecvRk P msg prep drKey rk1 ck1_0 st.roCache rootRoCache' recvCount')
 
-def authRkRecvWith (S : Setup) (P : Primitives)
+@[expose] def authRkRecvWith (S : Setup) (P : Primitives)
     (sampRkAt : Nat → ProbComp Bytes) (useIdealRkAt : Nat → Bool)
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecv S))
     (hst : AuthHybridStateFixed S) : ProbComp (AuthResponse × AuthHybridStateFixed S) := do
@@ -601,7 +601,7 @@ def authRkRecvWith (S : Setup) (P : Primitives)
         evalRootKdfOrRo true P st.rootRoCache drKey.rootKey prep.dhRatchet
       pure (finishAuthRecvRk P msg prep drKey rk1 ck1_0 roCache' rootRoCache' recvCount')
 
-def authRkRecvSlot (S : Setup) (P : Primitives) (idx : Nat) (useIdealRkAt : Nat → Bool)
+@[expose] def authRkRecvSlot (S : Setup) (P : Primitives) (idx : Nat) (useIdealRkAt : Nat → Bool)
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecv S))
     (hst : AuthHybridStateFixed S) : SlotM Bytes (AuthResponse × AuthHybridStateFixed S) := do
   let recvCount' := hst.recvCount + 1
@@ -636,7 +636,7 @@ def authRkRecvSlot (S : Setup) (P : Primitives) (idx : Nat) (useIdealRkAt : Nat 
           evalRootKdfOrRo true P st.rootRoCache drKey.rootKey prep.dhRatchet
         pure (finishAuthRecvRk P msg prep drKey rk1 ck1_0 roCache' rootRoCache' recvCount'))
 
-def authRkStepWith (S : Setup) (P : Primitives)
+@[expose] def authRkStepWith (S : Setup) (P : Primitives)
     (sampRkAt : Nat → ProbComp Bytes) (useIdealRkAt : Nat → Bool)
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     ProbComp ((authSpec S).Range q × AuthHybridStateFixed S) :=
@@ -656,7 +656,7 @@ def authRkStepWith (S : Setup) (P : Primitives)
   | qOther =>
     authCkOtherStep S P qOther hst
 
-def authRkStepSlot (S : Setup) (P : Primitives) (idx : Nat) (useIdealRkAt : Nat → Bool)
+@[expose] def authRkStepSlot (S : Setup) (P : Primitives) (idx : Nat) (useIdealRkAt : Nat → Bool)
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     SlotM Bytes ((authSpec S).Range q × AuthHybridStateFixed S) :=
   match q with
@@ -1092,16 +1092,16 @@ theorem authRkStepWith_after (S : Setup) (P : Primitives) (idx : Nat) (useIdealR
     simp only [hEqF, Bool.false_eq_true, ↓reduceIte]
   all_goals rfl
 
-def authRkCutoffImpl (S : Setup) (P : Primitives) (cutoff : Nat) :
+@[expose] def authRkCutoffImpl (S : Setup) (P : Primitives) (cutoff : Nat) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) :=
   fun q => StateT.mk (authRkStepWith S P (fun _ => sampleBytes32) (fun s => decide (s < cutoff)) q)
 
-def rootRoAuthImpl (S : Setup) (P : Primitives) (idx : Nat) (rkStar : Bytes) :
+@[expose] def rootRoAuthImpl (S : Setup) (P : Primitives) (idx : Nat) (rkStar : Bytes) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) :=
   fun q => StateT.mk (authRkStepWith S P (fun s => if s == idx then pure rkStar else sampleBytes32)
     (fun s => decide (s < idx)) q)
 
-noncomputable def authRkCutoffExp (S : Setup) (P : Primitives) (cutoff : Nat)
+@[expose] def authRkCutoffExp (S : Setup) (P : Primitives) (cutoff : Nat)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -1110,7 +1110,7 @@ noncomputable def authRkCutoffExp (S : Setup) (P : Primitives) (cutoff : Nat)
   let (b', finalSt) ← (simulateQ fullImpl A.run).run initSt
   finalizeAuthFixed P secb b' finalSt.toAuthHybridState
 
-noncomputable def authRkCutoffAdv (S : Setup) (P : Primitives) (cutoff : Nat)
+@[expose] noncomputable def authRkCutoffAdv (S : Setup) (P : Primitives) (cutoff : Nat)
     (A : AuthAdversary S) : ℝ :=
   (𝒟[authRkCutoffExp S P cutoff A].boolBias).toReal
 

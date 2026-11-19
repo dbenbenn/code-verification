@@ -9,14 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlacedBudgetAux
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlacedBudgetAux
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.Proof.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned.WithStr
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Drop Glue Proof for Owned `SignalProtocolError`
@@ -26,7 +42,7 @@ Proves the `RustCliAllocBudget M` contract `DropSpeOwnedOkPlaced` for
 caller-block transfer and `.proto` specializations (`dropSpeSpecStkPlaced`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -79,25 +95,25 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (AllocContractsX
 open LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget (dealloc_lscro_of_cli)
 
 /-- Budget-threaded `[LibsignalPlacement]` specification for `drop_glue::<SignalProtocolError>`. -/
-def dropSpeOwnedSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dropSpeOwnedSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) :
     Spec (DropSpeOwnedGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (dropSpeOwnedSpec A lim stk)
 
 /-- Budget-threaded `drop_glue::<SignalProtocolError>` contract on `lsProg_553`. -/
-def DropSpeOwnedOkPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DropSpeOwnedOkPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   ∀ stk, 32 + extHookStack ≤ stk → stk ≤ 2 ^ 64 →
     subroutine_ok (lsProg_553 H) (blkPl_553).base (dropSpeOwnedSpecPlaced A lim stk)
 
 /-- Caller-block-polymorphic budget-threaded `drop_glue::<SignalProtocolError>` contract. -/
-def DropSpeOwnedOkAtBlock [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DropSpeOwnedOkAtBlock [LibsignalPlacement] {M : AllocCostModel}
     (callerProg : Program) (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=
   ∀ stk, 32 + extHookStack ≤ stk → stk ≤ 2 ^ 64 →
     subroutine_ok callerProg (blkPl_553).base (dropSpeOwnedSpecPlaced A lim stk)
 
 /-- Budget-threaded `[LibsignalPlacement]` `.proto` error drop specification. -/
-def dropSpeSpecStkPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dropSpeSpecStkPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) :
     Spec (DropSpeGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (dropSpeSpecStk A lim stk)

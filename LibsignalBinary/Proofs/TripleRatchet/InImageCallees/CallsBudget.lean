@@ -9,12 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.Calls
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.Calls
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceIdBudget
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PrivateKeySerializeBudget
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ProtocolAddressDisplayBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Cross-Block Call-Site Lemmas for In-Image Callees
@@ -24,7 +32,7 @@ Relocatable `[LibsignalPlacement]` call-site lemmas for `PublicKey::try_from`,
 `<ProtocolAddress as Display>::fmt` under `RustCliAllocBudget` and `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,11 +45,14 @@ open CryptoVerification (
   subroutine_ok_withLsCodeLoaded_of_plain withLsCodeLoaded
 )
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
+open CryptoVerification.LibsignalTripleRatchet (keys_ls_subroutine_ok_of_block_cro withLsCodeRoLoaded)
 open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget rustCliAllocBudgetSpec
 )
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec)
-open LibsignalBinary.Heap.SpecBudget (FmtWriteEnv fmtWriteBudgetEnvSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  fmtWriteProtoAddrLsEnvSpec
+)
 open LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget (
   pkTryFromPlacedBudgetSpec pkTryFrom_placed_ok
 )
@@ -172,16 +183,15 @@ theorem priv_serialize_placed_ok_at_x_of_vm [LibsignalPlacement] {prog : Program
     (_hi := hi)
 
 /-- Relocatable `<ProtocolAddress as Display>::fmt` (Block `215`) lifted to any caller block
-`prog` (unifies with `addrDisplaySpec M A lim` when `Env = FmtWriteEnv`). -/
+`prog` (unifies with `addrDisplaySpec M A lim` when `Env = CliFmtWriteEnv`). -/
 theorem addr_display_placed_ok_at [LibsignalPlacement] {prog : Program} {i : Nat}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {Env : List AllocEvent → Prop} {H : String → Option (State → State)} [IsLsBlockProg prog i H]
-    (hW : HookSat H lsFmtWriteSym (fmtWriteBudgetEnvSpec M A lim Env))
+    (hW : HookSat H lsFmtWriteSym (fmtWriteProtoAddrLsEnvSpec M A lim Env))
     (hi : i < 619 := by decide) (_hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsmpl.base 215)
-      (withLsCodeLoaded lsmpl (addrDisplayEnvSpec M A lim Env)) :=
-  ls_subroutine_ok_of_block (callerProg := prog)
-    (subroutine_ok_withLsCodeLoaded_of_plain (addrDisplay_placed_ok hW))
-    (_hi := hi)
+      (withLsCodeRoLoaded lsmpl (addrDisplayEnvSpec M A lim Env)) :=
+  keys_ls_subroutine_ok_of_block_cro (callerProg := prog)
+    (addrDisplay_placed_ok hW) (_hi := hi)
 
 end LibsignalBinary.Proofs.TripleRatchet.InImageCallees.CallsBudget

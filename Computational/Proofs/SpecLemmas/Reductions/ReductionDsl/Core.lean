@@ -11,7 +11,7 @@ module
 
 public import Computational.Specifications.Reductions.ReductionDsl.Core
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -27,7 +27,7 @@ variable {S : Sig}
 
 variable {O : Ops S}
 
-def Expr.v7 {Γ t a b c d e f g} : Expr O (a :: b :: c :: d :: e :: f :: g :: t :: Γ) t :=
+@[expose] def Expr.v7 {Γ t a b c d e f g} : Expr O (a :: b :: c :: d :: e :: f :: g :: t :: Γ) t :=
   .var (.succ (.succ (.succ (.succ (.succ (.succ (.succ .zero)))))))
 
 variable {ι : Type} {T : OracleSpec ι} {I : Iface S T}

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsBase
-public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames
+import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStepInit
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofs
 import Computational.Proofs.ReductionDsl.Size
@@ -26,7 +26,7 @@ and CDH extractors, and establishes syntactic size/cost bounds and `evalDist` eq
 the tuple-keyed variant `fgKeyIndGapDh2Prog`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,15 +46,15 @@ attribute [local implicit_reducible] Env.get Ext.wk
 
 /-! ## Parameter Tuple Values -/
 
-def paramsDhVal (S : Setup) (useDh1 : Bool) (tIdx spkIdx : Nat) (U V : Bytes) :
+@[expose] def paramsDhVal (S : Setup) (useDh1 : Bool) (tIdx spkIdx : Nat) (U V : Bytes) :
     paramsTy.denote :=
   (U, (V, (U, (useDh1, (tIdx, (useDh1, (tIdx, (spkIdx, (false, (S.N_opk_tot,
     if useDh1 then 0 else 1))))))))))
 
-def paramsIkVal (S : Setup) (tIdx pIdx : Nat) (U V : Bytes) : paramsTy.denote :=
+@[expose] def paramsIkVal (S : Setup) (tIdx pIdx : Nat) (U V : Bytes) : paramsTy.denote :=
   (U, (V, (V, (true, (pIdx, (false, (tIdx, (S.N_spk_tot, (false, (S.N_opk_tot, 2))))))))))
 
-def paramsOpkVal (S : Setup) (tIdx oIdx : Nat) (U V : Bytes) : paramsTy.denote :=
+@[expose] def paramsOpkVal (S : Setup) (tIdx oIdx : Nat) (U V : Bytes) : paramsTy.denote :=
   (U, (V, (U, (false, (S.N_id, (false, (tIdx, (S.N_spk_tot, (true, (oIdx, 3))))))))))
 
 @[simp] theorem initParamsDh_eval (S : Setup) {Γ : List PT}
@@ -237,7 +237,7 @@ end
 
 /-! ## Extractor Equivalence -/
 
-def findMapStep {α : Type} (f : α → OracleComp GdhSimSpec Bytes) (U V : Bytes) (x : α)
+@[expose] def findMapStep {α : Type} (f : α → OracleComp GdhSimSpec Bytes) (U V : Bytes) (x : α)
     (acc : Option Bytes) : OracleComp GdhSimSpec (Option Bytes) :=
   match acc with
   | none => do let z ← f x; let ok ← ddhGdhQ U V z; pure (if ok then some z else none)
@@ -1372,7 +1372,7 @@ end SizeSimp
 
 /-- Well-formedness of a sampled `params2Ty.denote` tuple: either `fgTotalIndexCount S = 0`, or
     every `some` target coordinate lies strictly within its `Setup` range. -/
-def InBoundsParams2 (S : Setup) (p : params2Ty.denote) : Prop :=
+@[expose] def InBoundsParams2 (S : Setup) (p : params2Ty.denote) : Prop :=
   fgTotalIndexCount S = 0 ∨
     ((∀ u, p.2.2.2.1 = some u → u < S.N_id) ∧
      (∀ b u i, p.2.2.2.2.2.1 = some (b, (u, i)) →
@@ -2689,7 +2689,7 @@ private theorem isQueryBoundP_unifGdh_bind {α β : Type} (mx : ProbComp α)
       rw [mem_support_bind_iff]
       exact ⟨u, by simp, hx⟩)
 
-private noncomputable def bernoulliRatioProb (A B : Nat) : ProbComp Bool :=
+private def bernoulliRatioProb (A B : Nat) : ProbComp Bool :=
   if A = 0 then pure false
   else if B = 0 then pure true
   else if A ≤ B then do
@@ -2703,7 +2703,7 @@ private noncomputable def bernoulliRatioProb (A B : Nat) : ProbComp Bool :=
     let y2 ← FgGapDh.sampleIndexRange B
     pure (!decide (x < y1 + y2 + 1))
 
-private noncomputable def chooseArm2Prob {α : Type} (w1 w2 : Nat)
+private def chooseArm2Prob {α : Type} (w1 w2 : Nat)
     (m1 m2 : ProbComp α) : ProbComp α :=
   if w1 = 0 then m2
   else if w2 = 0 then m1
@@ -2711,20 +2711,20 @@ private noncomputable def chooseArm2Prob {α : Type} (w1 w2 : Nat)
     let b ← bernoulliRatioProb w1 w2
     if b then m1 else m2
 
-private noncomputable def samplePrin2Prob (S : Setup) : ProbComp (Option Nat) :=
+private def samplePrin2Prob (S : Setup) : ProbComp (Option Nat) :=
   if S.N_id = 0 then pure none
   else do
     let u ← FgGapDh.sampleIndexRange S.N_id
     pure (some u)
 
-private noncomputable def sampleSpkPair2Prob (S : Setup) : ProbComp (Option (Nat × Nat)) :=
+private def sampleSpkPair2Prob (S : Setup) : ProbComp (Option (Nat × Nat)) :=
   if S.N_spk_tot = 0 then pure none
   else do
     let u ← FgGapDh.sampleIndexRange S.N_id
     let j ← FgGapDh.sampleIndexRange S.N_recv
     pure (some (u, j))
 
-private noncomputable def sampleOpkTriple2Prob (S : Setup) :
+private def sampleOpkTriple2Prob (S : Setup) :
     ProbComp (Option (Nat × (Nat × Nat))) :=
   if S.N_opk_tot = 0 then pure none
   else do
@@ -2733,7 +2733,7 @@ private noncomputable def sampleOpkTriple2Prob (S : Setup) :
     let o ← FgGapDh.sampleIndexRange S.N_opk
     pure (some (u, (j, o)))
 
-private noncomputable def sampleSendOpkTarget2Prob (S : Setup) :
+private def sampleSendOpkTarget2Prob (S : Setup) :
     ProbComp (Option (Bool × (Nat × Nat))) :=
   if S.N_send_opk_tot = 0 then pure none
   else do
@@ -2741,7 +2741,7 @@ private noncomputable def sampleSendOpkTarget2Prob (S : Setup) :
     let i ← FgGapDh.sampleIndexRange S.N_send_opk
     pure (some (true, (u, i)))
 
-private noncomputable def sampleSendNoOpkTarget2Prob (S : Setup) :
+private def sampleSendNoOpkTarget2Prob (S : Setup) :
     ProbComp (Option (Bool × (Nat × Nat))) :=
   if S.N_send_no_opk_tot = 0 then pure none
   else do
@@ -2749,13 +2749,13 @@ private noncomputable def sampleSendNoOpkTarget2Prob (S : Setup) :
     let i ← FgGapDh.sampleIndexRange S.N_send_no_opk
     pure (some (false, (u, i)))
 
-private noncomputable def sampleSendTarget2Prob (S : Setup) :
+private def sampleSendTarget2Prob (S : Setup) :
     ProbComp (Option (Bool × (Nat × Nat))) :=
   if S.N_send_tot = 0 then pure none
   else chooseArm2Prob S.N_send_opk_tot S.N_send_no_opk_tot
     (sampleSendOpkTarget2Prob S) (sampleSendNoOpkTarget2Prob S)
 
-private noncomputable def initParams2Prob (S : Setup) (U V : Bytes) : ProbComp params2Ty.denote :=
+private def initParams2Prob (S : Setup) (U V : Bytes) : ProbComp params2Ty.denote :=
   if fgTotalIndexCount S = 0 then
     pure (U, V, U, none, false, some (true, 0, 0), none, true, some (0, 0, 0), 3)
   else

@@ -9,9 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.PrevEncOK
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.PrevEncOK
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Archived `previous_sessions` Encoding Predicate Re-exports
@@ -19,6 +27,6 @@ import Arm64.Trusted.Spec.SepLogic
 Re-exports `OverPrevEncOKAt` and `OverPrevEncOK` from `PrevDec.PrevEncOK`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false

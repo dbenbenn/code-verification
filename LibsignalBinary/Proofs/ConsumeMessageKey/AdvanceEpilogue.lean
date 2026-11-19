@@ -9,13 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Core
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Core -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym
+import ProofLib.Sep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+section AdvanceEpilogueSepHelpers
+
+set_option autoImplicit false
+
+open Arm64 ProofLib
+
+@[sep_footprint]
+theorem stackAt_footprint (sp : BitVec 64) (n : Nat) :
+    ProofLib.Sep.HasFootprint (stackAt sp n) true (sp - BitVec.ofNat 64 n) n := by
+  unfold stackAt; infer_instance
+
+end AdvanceEpilogueSepHelpers
+
+public section
 
 set_option maxRecDepth 200000
 set_option autoImplicit false
@@ -79,7 +94,7 @@ private theorem sepWPp_seq_epInv [LibsignalPlacement] {Inv : Memory → Prop} [E
     SepWPp prog ret s P Q Qp :=
   SepWPp.seq_frozen (fun _ _ h hkf => EpInvClass.of_keepsFrozen h hkf) hinv h
 
-def hmacAtStateSpec (F : ShaState → List (BitVec 8) → ShaState) (s : State) :
+@[expose] def hmacAtStateSpec (F : ShaState → List (BitVec 8) → ShaState) (s : State) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8)) where
   pre := fun (out, ka, key, ia, inp) s' =>
     ⌜s'.mem = s.mem ∧
@@ -132,21 +147,6 @@ abbrev advanceEpiloguePanicPlaced [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (x : ConsumeMessageKeyGhost) (R : SepProp) (s0 sf : State) (P_f : SepProp) : Prop :=
   (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (cmkPlacedSpec F A).onPanic x s0 sf ∗ R)
-
-theorem advanceEpiloguePost_eq [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustAlloc) (x : ConsumeMessageKeyGhost) (R : SepProp) (s0 : State) :
-    advanceEpiloguePostPlaced F A x R s0 =
-    advanceEpiloguePost F A cmkDummyImg x R s0 := by
-  funext sf P_f
-  unfold advanceEpiloguePostPlaced advanceEpiloguePost cmkPlacedSpec withLsCodeLoaded
-    consumeMessageKeySpec Spec.inImage
-  dsimp only
-  rw [logFilterAddr_cmkDummyImg]
-
-theorem advanceEpiloguePanic_eq [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustAlloc) (x : ConsumeMessageKeyGhost) (R : SepProp) (s0 : State) :
-    advanceEpiloguePanicPlaced F A x R s0 =
-    advanceEpiloguePanic F A cmkDummyImg x R s0 := rfl
 
 theorem findIndex_placed_ok_at_state_ls [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)} {s : State}
@@ -216,20 +216,6 @@ theorem advanceEpilogue_oom_panic_placed_ls [LibsignalPlacement]
     allowPanic_panicked (⟨Or.inr (by simpa [allocFailedIn, Rust.panicked] using hfail.1),
       by simpa [Rust.panicked] using hfail.2⟩) hm'
 
-theorem advanceEpilogue_oom_panic_placed [LibsignalPlacement]
-    {F : ShaState → List (BitVec 8) → ShaState}
-    {A : RustAlloc} {H : String → Option (State → State)} (hA : CmkAllocHooks A H)
-    (x : ConsumeMessageKeyGhost) (R P : SepProp) (s0 s : State)
-    (hpc : s.pc = (blkPl_24).base + 2484#64)
-    (hrun : s.status = .Running)
-    (_hsp : s.spAligned = true)
-    (hloaded : LibsignalCodeLoaded lsmpl s.mem)
-    (hfail : allocFailedIn s0 s ∧ s0.trace <+: s.trace) :
-    SepWPp ((blkPC_24).rebase (blkPl_24).base H) (s0.readReg64 Reg.lr) s P
-      (advanceEpiloguePost F A cmkDummyImg x R s0) (advanceEpiloguePanic F A cmkDummyImg x R s0) := by
-  rw [← advanceEpiloguePost_eq, ← advanceEpiloguePanic_eq]
-  exact advanceEpilogue_oom_panic_placed_ls hA x R P s0 s hpc hrun _hsp hloaded hfail
-
 theorem advanceEpilogue_ret_epilogue_placed_ls [LibsignalPlacement]
     {F : ShaState → List (BitVec 8) → ShaState}
     {A : RustAlloc} {H : String → Option (State → State)}
@@ -272,81 +258,12 @@ theorem advanceEpilogue_ret_epilogue_placed_ls [LibsignalPlacement]
           ⌜x.G.AgreeExcept G'' (x.touched F)⌝ ∗ ratchetAt A x.self G'' (x.model F).2 :=
     Entails.sepExists_right G' (Entails.pure_right hagree (Entails.refl _))
   refine Entails.pure_right ⟨hmodel_ok, htr⟩ ?_
-  refine Entails.trans ?_ (sepConj_mono_left hex)
-  refine Entails.trans ?_
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hstk))))))
-  have hpull :
-      (ratchetAt A x.self G' (x.model F).2 ∗
-        consumeMessageKeyResultAt A x.ret (x.model F).1 ∗
-        (x.theirA ↦ₛ x.their.bytes.toList) ∗
-        memRegion x.ckA 36 ∗
-        (lsLogFilterAddr ↦₆₄ 0#64) ∗
-        stackAt (s0.sp - 480#64) 7712 ∗
-        memRegion (s0.sp - 480#64) 384 ∗
-        (((s0.sp - 96#64) ↦₆₄ s0.readReg64 Reg.x29) ∗
-         ((s0.sp - 88#64) ↦₆₄ s0.readReg64 Reg.x30) ∗
-         ((s0.sp - 80#64) ↦₆₄ s0.readReg64 Reg.x28) ∗
-         ((s0.sp - 72#64) ↦₆₄ s0.readReg64 Reg.x27) ∗
-         ((s0.sp - 64#64) ↦₆₄ s0.readReg64 Reg.x26) ∗
-         ((s0.sp - 56#64) ↦₆₄ s0.readReg64 Reg.x25) ∗
-         ((s0.sp - 48#64) ↦₆₄ s0.readReg64 Reg.x24) ∗
-         ((s0.sp - 40#64) ↦₆₄ s0.readReg64 Reg.x23) ∗
-         ((s0.sp - 32#64) ↦₆₄ s0.readReg64 Reg.x22) ∗
-         ((s0.sp - 24#64) ↦₆₄ s0.readReg64 Reg.x21) ∗
-         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 Reg.x20) ∗
-         ((s0.sp - 8#64) ↦₆₄ s0.readReg64 Reg.x19)) ∗
-        A.pool) =
-      (ratchetAt A x.self G' (x.model F).2 ∗
-        consumeMessageKeyResultAt A x.ret (x.model F).1 ∗
-        (x.theirA ↦ₛ x.their.bytes.toList) ∗
-        memRegion x.ckA 36 ∗
-        (lsLogFilterAddr ↦₆₄ 0#64) ∗
-        (stackAt (s0.sp - 480#64) 7712 ∗
-         memRegion (s0.sp - 480#64) 384 ∗
-         (((s0.sp - 96#64) ↦₆₄ s0.readReg64 Reg.x29) ∗
-          ((s0.sp - 88#64) ↦₆₄ s0.readReg64 Reg.x30) ∗
-          ((s0.sp - 80#64) ↦₆₄ s0.readReg64 Reg.x28) ∗
-          ((s0.sp - 72#64) ↦₆₄ s0.readReg64 Reg.x27) ∗
-          ((s0.sp - 64#64) ↦₆₄ s0.readReg64 Reg.x26) ∗
-          ((s0.sp - 56#64) ↦₆₄ s0.readReg64 Reg.x25) ∗
-          ((s0.sp - 48#64) ↦₆₄ s0.readReg64 Reg.x24) ∗
-          ((s0.sp - 40#64) ↦₆₄ s0.readReg64 Reg.x23) ∗
-          ((s0.sp - 32#64) ↦₆₄ s0.readReg64 Reg.x22) ∗
-          ((s0.sp - 24#64) ↦₆₄ s0.readReg64 Reg.x21) ∗
-          ((s0.sp - 16#64) ↦₆₄ s0.readReg64 Reg.x20) ∗
-          ((s0.sp - 8#64) ↦₆₄ s0.readReg64 Reg.x19))) ∗
-        A.pool) := by ac_rfl
-  rw [hpull]
-  exact Entails.refl _
-
-theorem advanceEpilogue_ret_epilogue_placed [LibsignalPlacement]
-    {F : ShaState → List (BitVec 8) → ShaState}
-    {A : RustAlloc} {H : String → Option (State → State)}
-    (x : ConsumeMessageKeyGhost) (G' : RatchetGhost) (R : SepProp) (s0 s : State)
-    (hpc : s.pc = (blkPl_24).base + 1916#64)
-    (hrun : s.status = .Running)
-    (hsp_eq : s.sp = s0.sp - 480#64)
-    (hsp : s.spAligned = true)
-    (htr : s.trace = s0.trace)
-    (hloaded : LibsignalCodeLoaded lsmpl s.mem)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hmodel_ok : (x.model F).1 ≠ .error .panic)
-    (hagree : x.G.AgreeExcept G' (x.touched F)) :
-    SepWPp ((blkPC_24).rebase (blkPl_24).base H) (s0.readReg64 Reg.lr) s
-      (ratchetAt A x.self G' (x.model F).2 ∗
-       consumeMessageKeyResultAt A x.ret (x.model F).1 ∗
-       (x.theirA ↦ₛ x.their.bytes.toList) ∗
-       memRegion x.ckA 36 ∗
-       (logFilterAddr cmkDummyImg ↦₆₄ 0#64) ∗
-       stackAt (s0.sp - 480#64) 7712 ∗
-       memRegion (s0.sp - 480#64) 384 ∗
-       cmkSavedRegs s0.sp s0 ∗
-       A.pool)
-      (advanceEpiloguePost F A cmkDummyImg x R s0) (advanceEpiloguePanic F A cmkDummyImg x R s0) := by
-  rw [logFilterAddr_cmkDummyImg, ← advanceEpiloguePost_eq, ← advanceEpiloguePanic_eq]
-  exact advanceEpilogue_ret_epilogue_placed_ls x G' R s0 s hpc hrun hsp_eq hsp htr hloaded
-    hvregs hmodel_ok hagree
+  refine' Entails.trans ?_ (sepConj_mono_left hex)
+  generalize hrat : ratchetAt A x.self G' (x.model F).2 = vRat
+  generalize hres : consumeMessageKeyResultAt A x.ret (x.model F).1 = vRes
+  refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left hstk)) ?_
+  · bi_frame
+  · bi_entail
 
 set_option maxHeartbeats 1600000 in
 theorem advanceEpilogue_after_hmac1_placed_ls [LibsignalPlacement]
@@ -448,61 +365,21 @@ theorem advanceEpilogue_after_hmac1_placed_ls [LibsignalPlacement]
         ((s0.sp - 224#64) ↦₆₄ w0) ∗ ((s0.sp - 216#64) ↦₆₄ w1) ∗
           ((s0.sp - 208#64) ↦₆₄ w2) ∗ ((s0.sp - 200#64) ↦₆₄ w3) ⊢
           memRegion (s0.sp - 224#64) 32 := by
-      have := cells4_entails_memRegion32 (s0.sp - 224#64) w0 w1 w2 w3
-      have ha1 : s0.sp - 224#64 + 8#64 = s0.sp - 216#64 := by bv_arith
-      have ha2 : s0.sp - 224#64 + 16#64 = s0.sp - 208#64 := by bv_arith
-      have ha3 : s0.sp - 224#64 + 24#64 = s0.sp - 200#64 := by bv_arith
-      rwa [ha1, ha2, ha3] at this
-    refine Entails.trans ?_
-      (sepConj_mono_right (sepConj_mono hres
-        (sepConj_mono_right (sepConj_mono hck_mem
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hfrm_mem)))))))
-    refine Entails.trans ?_
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-            (sepConj_mono_right (sepConj_mono_left h224))))))))))))
-    have heq : ∀ {P Q : SepProp}, P = Q → (P ⊢ Q) := fun h => h ▸ Entails.refl _
-    exact heq (by ac_rfl)
-
-theorem advanceEpilogue_after_hmac1_placed [LibsignalPlacement]
-    {F : ShaState → List (BitVec 8) → ShaState}
-    {A : RustAlloc} {H : String → Option (State → State)}
-    (hA : CmkAllocHooks A H)
-    (x : ConsumeMessageKeyGhost) (G' : RatchetGhost) (ckc : ChainKey) (R : SepProp) (s0 s : State)
-    (hpc : s.pc = (blkPl_24).base + 1448#64)
-    (hrun : s.status = .Running)
-    (hsp_eq : s.sp = s0.sp - 480#64)
-    (hsp0 : s0.spAligned = true)
-    (_hsp : s.spAligned = true)
-    (htr : s.trace = s0.trace)
-    (hloaded : LibsignalCodeLoaded lsmpl s.mem)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hx19 : s.readReg64 .x19 = 1#64)
-    (hx21 : s.readReg64 .x21 = x.ckA)
-    (hx27 : s.readReg64 .x27 = s0.sp - 224#64)
-    (hm1 : (x.model F).1 = .ok (ckc.messageKeys F))
-    (hagree : x.G.AgreeExcept G' (x.touched F)) :
-    SepWPp ((blkPC_24).rebase (blkPl_24).base H) (s0.readReg64 Reg.lr) s
-      (ratchetAt A x.self G' (x.model F).2 ∗
-       memRegion x.ret 88 ∗
-       (x.theirA ↦ₛ x.their.bytes.toList) ∗
-       (x.ckA ↦ₛ keyToBytes32 ckc.key) ∗
-       ((x.ckA + 32#64) ↦₃₂ ckc.index) ∗
-       (logFilterAddr cmkDummyImg ↦₆₄ 0#64) ∗
-       stackAt (s0.sp - 480#64) 7712 ∗
-       ((s0.sp - 368#64) ↦₆₄ x.ret) ∗
-       ((s0.sp - 356#64) ↦₃₂ x.counter) ∗
-       ((s0.sp - 320#64) ↦ₛ [1#8]) ∗
-       memRegion (s0.sp - 319#64) 31 ∗
-       ((s0.sp - 224#64) ↦ₛ (ckc.messageKeys F).seed) ∗
-       cmkLoopFrameRest s0.sp ∗
-       cmkSavedRegs s0.sp s0 ∗
-       A.pool)
-      (advanceEpiloguePost F A cmkDummyImg x R s0) (advanceEpiloguePanic F A cmkDummyImg x R s0) := by
-  rw [logFilterAddr_cmkDummyImg, ← advanceEpiloguePost_eq, ← advanceEpiloguePanic_eq]
-  exact advanceEpilogue_after_hmac1_placed_ls hA x G' ckc R s0 s hpc hrun hsp_eq hsp0 _hsp htr
-    hloaded hvregs hx19 hx21 hx27 hm1 hagree
+      sep_interval
+    simp only [arm64_norm] at hres ⊢
+    generalize hlive : A.live (sf_1.readReg64 (Reg.gpr 0#5)) 32 1 = vLive at hres ⊢
+    generalize hrat : ratchetAt A x.self G' (x.model F).2 = vRat
+    generalize hres_a : consumeMessageKeyResultAt A x.ret (.ok (ckc.messageKeys F)) = vRes at hres ⊢
+    generalize hsr : cmkSavedRegs s0.sp s0 = vSr
+    refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left hres)) ?_
+    · bi_frame
+    refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left hck_mem)) ?_
+    · bi_frame
+    refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left h224)) ?_
+    · bi_frame
+    refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left hfrm_mem)) ?_
+    · bi_frame
+    · bi_entail
 
 set_option maxHeartbeats 1600000 in
 private theorem advanceEpilogue_set_chain_and_hmac1_placed_inv [LibsignalPlacement]
@@ -577,14 +454,12 @@ private theorem advanceEpilogue_set_chain_and_hmac1_placed_inv [LibsignalPlaceme
   have hsplit320 :
       memRegion (s0.sp - 320#64) 32 =
         (∃∗ b0 : BitVec 8, ((s0.sp - 320#64) ↦₈ b0)) ∗ memRegion (s0.sp - 319#64) 31 := by
-    have h319 : s0.sp - 320#64 + 1#64 = s0.sp - 319#64 := by bv_arith
-    rw [show (32 : Nat) = 1 + 31 from rfl,
-        memRegion_split (s0.sp - 320#64) 1 31 (by decide),
-        memRegion_one (s0.sp - 320#64), h319]
+    sep_interval_eq
   rw [hsplit320, stackAt_7712_split_2048 (s0.sp - 480#64)]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right]
   refine SepWPp.exists_elim fun b0 => ?_
   refine sepWPp_seq_epInv (mid := lsmpl.base 73) hloaded ?_
+  wp_disjoint _hdisj_ret_sp : DisjointRegions x.ret 88 (s0.sp - 224#64) 32
   wp_steps
   apply SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
   intro hloaded1
@@ -639,9 +514,13 @@ private theorem advanceEpilogue_set_chain_and_hmac1_placed_inv [LibsignalPlaceme
       ratchetRestAtChain A x.self Gc stc ci chc hgi ⊢
       ratchetAt A x.self G' (x.model F).2 :=
     Entails.trans (sepConj_mono_left hopt) hrepack
-  refine Entails.trans ?_ (sepConj_mono_left hchain_pack)
-  have heq : ∀ {P Q : SepProp}, P = Q → (P ⊢ Q) := fun h => h ▸ Entails.refl _
-  exact heq (by ac_rfl)
+  generalize hrrc : ratchetRestAtChain A x.self Gc stc ci chc hgi = vRrc at hchain_pack ⊢
+  generalize hrat : ratchetAt A x.self G' (x.model F).2 = vRat at hchain_pack ⊢
+  generalize hfr : cmkLoopFrameRest s0.sp = vFr
+  generalize hsr : cmkSavedRegs s0.sp s0 = vSr
+  refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left hchain_pack)) ?_
+  · bi_frame
+  · bi_entail
 
 set_option maxHeartbeats 1600000 in
 private theorem advanceEpilogue_after_find_index_placed_inv [LibsignalPlacement]
@@ -772,11 +651,7 @@ private theorem advanceEpilogue_after_find_index_placed_inv [LibsignalPlacement]
         ((s0.sp - 320#64) ↦₆₄ w0) ∗ ((s0.sp - 312#64) ↦₆₄ w1) ∗
           ((s0.sp - 304#64) ↦₆₄ w2) ∗ ((s0.sp - 296#64) ↦₆₄ w3) ⊢
           memRegion (s0.sp - 320#64) 32 := by
-      have := cells4_entails_memRegion32 (s0.sp - 320#64) w0 w1 w2 w3
-      have ha1 : s0.sp - 320#64 + 8#64 = s0.sp - 312#64 := by bv_arith
-      have ha2 : s0.sp - 320#64 + 16#64 = s0.sp - 304#64 := by bv_arith
-      have ha3 : s0.sp - 320#64 + 24#64 = s0.sp - 296#64 := by bv_arith
-      rwa [ha1, ha2, ha3] at this
+      sep_interval
     simp only [sepConj_assoc]
     cases hck_opt : chc.chainKey with
     | none =>
@@ -786,10 +661,12 @@ private theorem advanceEpilogue_after_find_index_placed_inv [LibsignalPlacement]
       have hc96 : c_Addr + 72#64 + 24#64 = c_Addr + 96#64 := by bv_arith
       have hc100 : c_Addr + 72#64 + 28#64 = c_Addr + 100#64 := by bv_arith
       rw [hc80, hc88, hc96, hc100] at hnone_unpack
-      refine SepWPp.conseq_pre
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-            (sepConj_mono_left hnone_unpack)))))))) ?_
+      generalize hrrc : ratchetRestAtChain A x.self Gc stc ci chc hgi = vRrc
+      generalize hfr : cmkLoopFrameRest s0.sp = vFr
+      generalize hsr : cmkSavedRegs s0.sp s0 = vSr
+      refine' SepWPp.conseq_pre (Entails.trans ?_ (sepConj_mono_left hnone_unpack)) ?_
+      · bi_frame
+      subst hrrc hfr hsr
       simp only [sepExists_sepConj_left, sepExists_sepConj_right]
       refine SepWPp.exists_elim fun idx0 => SepWPp.exists_elim fun l0 =>
         SepWPp.exists_elim fun p0 => ?_
@@ -808,17 +685,17 @@ private theorem advanceEpilogue_after_find_index_placed_inv [LibsignalPlacement]
           (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
           hoom hci hgi hchains_len hpad_len hmax_jumps hcap_le hcap_lt hptr_ne
           hsrk hmax hklen hagree_Gc hm1 hm2 htouched)
-      refine Entails.trans ?_
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-            (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-              (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-                (sepConj_mono_left h320_mem)))))))))))))))))
       dsimp only [c_Addr]
       have hsf_sp : sf.sp = s0.sp - 480#64 := by simp only [wp_norm, arm64_norm, *]
       rw [hw_ck (sf_1.readReg64 Reg.x0), stackAt_7712_split_4096 (s0.sp - 480#64), h8192, hsf_sp]
-      have heq : ∀ {P Q : SepProp}, P = Q → (P ⊢ Q) := fun h => h ▸ Entails.refl _
-      exact heq (by ac_rfl)
+      simp only [arm64_norm]
+      generalize hlive : A.live (sf_1.readReg64 (Reg.gpr 0#5)) 32 1 = vLive
+      generalize hrrc : ratchetRestAtChain A x.self Gc stc ci chc hgi = vRrc
+      generalize hfr : cmkLoopFrameRest s0.sp = vFr
+      generalize hsr : cmkSavedRegs s0.sp s0 = vSr
+      refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left h320_mem)) ?_
+      · bi_frame
+      · bi_entail
     | some old_ck =>
       have hsome_unpack := optChainKeyAt_some_entails_dealloc A (Gc.chains[ci]'hgi).ck old_ck (c_Addr + 72#64)
       unfold vecHeader at hsome_unpack
@@ -827,50 +704,13 @@ private theorem advanceEpilogue_after_find_index_placed_inv [LibsignalPlacement]
       have hc96 : c_Addr + 72#64 + 24#64 = c_Addr + 96#64 := by bv_arith
       have hc100 : c_Addr + 72#64 + 28#64 = c_Addr + 100#64 := by bv_arith
       rw [hc80, hc88, hc96, hc100] at hsome_unpack
-      refine SepWPp.conseq_pre
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-            (sepConj_mono_left hsome_unpack)))))))) ?_
-      have hpull_pure :
-          (A.pool ∗
-            stackAt sf.sp allocHookStack ∗
-            A.live (sf_1.readReg64 Reg.x0) 32 1 ∗
-            (sf_1.readReg64 Reg.x0 ↦₆₄ w0) ∗
-            ((sf_1.readReg64 Reg.x0 + 8#64) ↦₆₄ w1) ∗
-            ((sf_1.readReg64 Reg.x0 + 16#64) ↦₆₄ w2) ∗
-            ((sf_1.readReg64 Reg.x0 + 24#64) ↦₆₄ w3) ∗
-            (((c_Addr + 72#64) ↦₆₄ (Gc.chains[ci]'hgi).ck.cap ∗
-              (c_Addr + 80#64) ↦₆₄ (Gc.chains[ci]'hgi).ck.ptr ∗
-              (c_Addr + 88#64) ↦₆₄ 32#64) ∗
-             (c_Addr + 96#64) ↦₃₂ old_ck.index ∗
-             memRegion (c_Addr + 100#64) 4 ∗
-             (⌜32 ≤ (Gc.chains[ci]'hgi).ck.cap.toNat ∧
-               (Gc.chains[ci]'hgi).ck.cap.toNat < 2 ^ 63 ∧
-               (Gc.chains[ci]'hgi).ck.ptr ≠ 0⌝ ∗
-              if (Gc.chains[ci]'hgi).ck.cap = 0 then emp
-              else A.live (Gc.chains[ci]'hgi).ck.ptr (Gc.chains[ci]'hgi).ck.cap.toNat 1 ∗
-                memRegion (Gc.chains[ci]'hgi).ck.ptr (Gc.chains[ci]'hgi).ck.cap.toNat))) =
-          (⌜32 ≤ (Gc.chains[ci]'hgi).ck.cap.toNat ∧
-            (Gc.chains[ci]'hgi).ck.cap.toNat < 2 ^ 63 ∧
-            (Gc.chains[ci]'hgi).ck.ptr ≠ 0⌝ ∗
-           (A.pool ∗
-            stackAt sf.sp allocHookStack ∗
-            A.live (sf_1.readReg64 Reg.x0) 32 1 ∗
-            (sf_1.readReg64 Reg.x0 ↦₆₄ w0) ∗
-            ((sf_1.readReg64 Reg.x0 + 8#64) ↦₆₄ w1) ∗
-            ((sf_1.readReg64 Reg.x0 + 16#64) ↦₆₄ w2) ∗
-            ((sf_1.readReg64 Reg.x0 + 24#64) ↦₆₄ w3) ∗
-            ((c_Addr + 72#64) ↦₆₄ (Gc.chains[ci]'hgi).ck.cap) ∗
-            ((c_Addr + 80#64) ↦₆₄ (Gc.chains[ci]'hgi).ck.ptr) ∗
-            ((c_Addr + 88#64) ↦₆₄ 32#64) ∗
-            ((c_Addr + 96#64) ↦₃₂ old_ck.index) ∗
-            memRegion (c_Addr + 100#64) 4 ∗
-            (if (Gc.chains[ci]'hgi).ck.cap = 0 then emp
-             else A.live (Gc.chains[ci]'hgi).ck.ptr (Gc.chains[ci]'hgi).ck.cap.toNat 1 ∗
-               memRegion (Gc.chains[ci]'hgi).ck.ptr (Gc.chains[ci]'hgi).ck.cap.toNat))) := by ac_rfl
-      simp only [← sepConj_assoc] at hpull_pure ⊢
-      rw [hpull_pure]
-      simp only [sepConj_assoc]
+      generalize hrrc : ratchetRestAtChain A x.self Gc stc ci chc hgi = vRrc
+      generalize hfr : cmkLoopFrameRest s0.sp = vFr
+      generalize hsr : cmkSavedRegs s0.sp s0 = vSr
+      refine' SepWPp.conseq_pre (Entails.trans ?_ (sepConj_mono_left hsome_unpack)) ?_
+      · bi_frame
+      subst hrrc hfr hsr
+      simp only [sepConj_assoc, sepConj_pure_left_comm]
       refine SepWPp.pure_elim fun ⟨hcap32, hcap_lt63, hptr_old_ne⟩ => ?_
       have hcap_ne0 : (Gc.chains[ci]'hgi).ck.cap ≠ 0 := by
         intro h0; rw [h0] at hcap32; change 32 ≤ 0 at hcap32; omega
@@ -899,17 +739,17 @@ private theorem advanceEpilogue_after_find_index_placed_inv [LibsignalPlacement]
           (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
           hoom hci hgi hchains_len hpad_len hmax_jumps hcap_le hcap_lt hptr_ne
           hsrk hmax hklen hagree_Gc hm1 hm2 htouched)
-      refine Entails.trans ?_
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-            (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-              (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-                (sepConj_mono_left h320_mem)))))))))))))))))
       dsimp only [c_Addr]
       have hsf1_sp : sf_1.sp = s0.sp - 480#64 := by simp only [wp_norm, arm64_norm, *]
       rw [hw_ck (sf_1.readReg64 Reg.x0), stackAt_7712_split_4096 (s0.sp - 480#64), h8192, hsf1_sp]
-      have heq : ∀ {P Q : SepProp}, P = Q → (P ⊢ Q) := fun h => h ▸ Entails.refl _
-      exact heq (by ac_rfl)
+      simp only [arm64_norm]
+      generalize hlive : A.live (sf_1.readReg64 (Reg.gpr 0#5)) 32 1 = vLive
+      generalize hrrc : ratchetRestAtChain A x.self Gc stc ci chc hgi = vRrc
+      generalize hfr : cmkLoopFrameRest s0.sp = vFr
+      generalize hsr : cmkSavedRegs s0.sp s0 = vSr
+      refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left h320_mem)) ?_
+      · bi_frame
+      · bi_entail
 
 set_option maxHeartbeats 1600000 in
 private theorem advanceEpilogue_entry_placed_inv [LibsignalPlacement]
@@ -984,12 +824,7 @@ private theorem advanceEpilogue_entry_placed_inv [LibsignalPlacement]
         ∃∗ d0 : BitVec 64, ∃∗ d1 : BitVec 64, ∃∗ d2 : BitVec 64, ∃∗ d3 : BitVec 64,
           ((s0.sp - 320#64) ↦₆₄ d0) ∗ ((s0.sp - 312#64) ↦₆₄ d1) ∗
           ((s0.sp - 304#64) ↦₆₄ d2) ∗ ((s0.sp - 296#64) ↦₆₄ d3) := by
-    have h319 : s0.sp - 320#64 + 1#64 = s0.sp - 319#64 := by bv_arith
-    have ha1 : s0.sp - 320#64 + 8#64 = s0.sp - 312#64 := by bv_arith
-    have ha2 : s0.sp - 320#64 + 16#64 = s0.sp - 304#64 := by bv_arith
-    have ha3 : s0.sp - 320#64 + 24#64 = s0.sp - 296#64 := by bv_arith
-    have h := pointsToBytes1_31_entails_cells4 (s0.sp - 320#64) 2#8
-    rwa [h319, ha1, ha2, ha3] at h
+    rw [← pointsTo8_eq_pointsToBytes1]; sep_interval
   have hprep :
       (((s0.sp - 224#64) ↦ₛ keyToBytes32 (chainStepN F 1 ckc).key) ∗
        (x.ckA ↦ₛ keyToBytes32 ckc.key) ∗
@@ -1033,9 +868,13 @@ private theorem advanceEpilogue_entry_placed_inv [LibsignalPlacement]
        cmkSavedRegs s0.sp s0 ∗
        A.pool) := by
     rw [hw_ck (s0.sp - 224#64), stackAt_7712_split_2048 (s0.sp - 480#64), h8192]
-    refine Entails.trans ?_ (sepConj_mono_left h320_cells)
-    have heq : ∀ {P Q : SepProp}, P = Q → (P ⊢ Q) := fun h => h ▸ Entails.refl _
-    exact heq (by ac_rfl)
+    generalize harr : arrayAt (chainAt A) 104 Gc.chainsPtr (Gc.chains.zip stc.receiverChains) = vArr
+    generalize htail : ratchetTail A x.self Gc stc = vTail
+    generalize hfr : cmkLoopFrameRest s0.sp = vFr
+    generalize hsr : cmkSavedRegs s0.sp s0 = vSr
+    refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left h320_cells)) ?_
+    · bi_frame
+    · exact sepConj_mono_right (by bi_entail)
   refine SepWPp.conseq_pre hprep ?_
   rw [stackAt_7712_split_1024 (s0.sp - 480#64), h8192]
   simp only [sepExists_sepConj_left]
@@ -1123,27 +962,23 @@ private theorem advanceEpilogue_entry_placed_inv [LibsignalPlacement]
         ((s0.sp - 224#64) ↦₆₄ w0) ∗ ((s0.sp - 216#64) ↦₆₄ w1) ∗
           ((s0.sp - 208#64) ↦₆₄ w2) ∗ ((s0.sp - 200#64) ↦₆₄ w3) ⊢
           memRegion (s0.sp - 224#64) 32 := by
-      have := cells4_entails_memRegion32 (s0.sp - 224#64) w0 w1 w2 w3
-      have hb1 : s0.sp - 224#64 + 8#64 = s0.sp - 216#64 := by bv_arith
-      have hb2 : s0.sp - 224#64 + 16#64 = s0.sp - 208#64 := by bv_arith
-      have hb3 : s0.sp - 224#64 + 24#64 = s0.sp - 200#64 := by bv_arith
-      rwa [hb1, hb2, hb3] at this
+      sep_interval
     have h320_ck :
         ((s0.sp - 320#64) ↦₆₄ w0) ∗ ((s0.sp - 312#64) ↦₆₄ w1) ∗
           ((s0.sp - 304#64) ↦₆₄ w2) ∗ ((s0.sp - 296#64) ↦₆₄ w3) =
           ((s0.sp - 320#64) ↦ₛ keyToBytes32 (chainStepN F 1 ckc).key) := by
-      have ha1 : s0.sp - 320#64 + 8#64 = s0.sp - 312#64 := by bv_arith
-      have ha2 : s0.sp - 320#64 + 16#64 = s0.sp - 304#64 := by bv_arith
-      have ha3 : s0.sp - 320#64 + 24#64 = s0.sp - 296#64 := by bv_arith
-      rw [hw_ck (s0.sp - 320#64), ha1, ha2, ha3]
-    refine Entails.trans ?_ (sepConj_mono_left hfocus)
-    refine Entails.trans ?_
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left h224_mem)))))))))))
+      rw [hw_ck (s0.sp - 320#64)]; sep_interval_eq
     rw [hsp_sf, hsp_eq, stackAt_7712_split_1024 (s0.sp - 480#64), h8192, ← h320_ck]
-    have heq : ∀ {P Q : SepProp}, P = Q → (P ⊢ Q) := fun h => h ▸ Entails.refl _
-    exact heq (by ac_rfl)
+    generalize harr : arrayAt (chainAt A) 104 Gc.chainsPtr (Gc.chains.zip stc.receiverChains) = vArr at hfocus ⊢
+    generalize htail : ratchetTail A x.self Gc stc = vTail at hfocus ⊢
+    generalize hopt : optChainKeyAt A (Gc.chains[ci]'hgi).ck chc.chainKey (Gc.chainsPtr + BitVec.ofNat 64 (ci * 104) + 72#64) = vOpt at hfocus ⊢
+    generalize hrrc : ratchetRestAtChain A x.self Gc stc ci chc hgi = vRrc at hfocus ⊢
+    generalize hfr : cmkLoopFrameRest s0.sp = vFr
+    generalize hsr : cmkSavedRegs s0.sp s0 = vSr
+    refine' Entails.trans ?_ (sepConj_mono_left hfocus)
+    refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left h224_mem)) ?_
+    · bi_frame
+    · bi_entail
   refine SepWPp.conseq_pre hpull_focus ?_
   simp only [sepConj_assoc]
   refine SepWPp.pure_elim fun ⟨hsrk, hmax, hklen⟩ => ?_
@@ -1194,12 +1029,6 @@ namespace CryptoVerification.LibsignalSession
 
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
-
-/-- Correctness of the `consume_message_key` epilogue (`AdvanceEpilogueSpec`). -/
-theorem advanceEpilogue_ok (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) :
-    AdvanceEpilogueSpec F A alloc img :=
-  AdvanceEpilogue.advanceEpilogue_ok F A alloc img
 
 /-- Relocatable correctness of the `consume_message_key` epilogue (`[LibsignalPlacement]`). -/
 theorem advanceEpilogue_placed_ok [LibsignalPlacement]

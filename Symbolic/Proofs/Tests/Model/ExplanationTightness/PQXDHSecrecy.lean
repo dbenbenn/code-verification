@@ -31,7 +31,7 @@ import Symbolic.Specifications.Model.EquationalTheory.X25519
 import Symbolic.Specifications.Model.EquationalTheory.Kem
 import Symbolic.Specifications.Model.EquationalTheory.Spqr
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
-public import Symbolic.Proofs.Tests.Shared.Composed.PrunedSpecLemmas
+public import Symbolic.Proofs.Tests.Shared.Composed.PrunedSpecLemmas -- proof-setup: allow-public-import
 import Symbolic.Proofs.Tests.Shared.ExplanationTightness.PQXDHSecrecyTraces
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
@@ -44,7 +44,7 @@ import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -128,7 +128,7 @@ theorem responderSecrecyQueryWith_real (tr : ExecTrace) (Knows : Bytes → Prop)
     ResponderSecrecyQueryWith AliceHandshakeWasCompromised tr Knows ↔ AliceInitiatorSecrecyQuery tr Knows := Iff.rfl
 
 /-- `AliceInitiatorSecrecy` parameterized by the handshake-compromise predicate `E`. -/
-def ResponderSecrecyWith
+@[expose] def ResponderSecrecyWith
     (E : Participant → Bytes → Bytes → Bytes → Nat → ExecTrace → Prop) : Prop :=
   ∀ tr : ExecTrace, tr.Reachable reachability →
     ResponderSecrecyQueryWith E tr (fun t => t.AttackerKnows tr)
@@ -139,7 +139,7 @@ theorem responderSecrecyWith_real :
 theorem responderSecrecyWith_thm7Excuse_iff :
     ResponderSecrecyWith AliceHandshakeWasCompromised ↔ AliceInitiatorSecrecy := Iff.rfl
 
-def InitiatorSecrecyQueryWith
+@[expose] def InitiatorSecrecyQueryWith
     (E : Participant → Participant → Bytes → Bytes → Bytes → Bytes → Option Bytes → Nat →
       ExecTrace → Prop)
     (tr : ExecTrace) (Knows : Bytes → Prop) : Prop :=
@@ -152,7 +152,7 @@ theorem initiatorSecrecyQueryWith_real (tr : ExecTrace) (Knows : Bytes → Prop)
     InitiatorSecrecyQueryWith BobHandshakeWasCompromised tr Knows ↔ BobResponderSecrecyQuery tr Knows := Iff.rfl
 
 /-- `BobResponderSecrecy` parameterized by the handshake-compromise predicate `E`. -/
-def InitiatorSecrecyWith
+@[expose] def InitiatorSecrecyWith
     (E : Participant → Participant → Bytes → Bytes → Bytes → Bytes → Option Bytes → Nat →
       ExecTrace → Prop) : Prop :=
   ∀ tr : ExecTrace, tr.Reachable reachability →
@@ -182,7 +182,7 @@ theorem thm7Excuse_iff_exists_case (b : Participant) (ikB spk pqpk : Bytes) (i :
     | 3 => obtain ⟨⟨j, hj⟩, hPQ⟩ := hk; exact Or.inr ⟨j, hj, Or.inr hPQ⟩
 
 /-- Seven-branch case decomposition of `BobHandshakeWasCompromised`. -/
-def Thm9Case (b a : Participant) (ikB ikA spk pqpk : Bytes) (opk : Option Bytes)
+@[expose] def Thm9Case (b a : Participant) (ikB ikA spk pqpk : Bytes) (opk : Option Bytes)
     (i : Nat) (tr : ExecTrace) : Fin 7 → Prop
   | 0 => LoggedBefore (PQXDHEvent.CompromisedIK a ikA) i tr
   | 1 => LoggedBefore (PQXDHEvent.CompromisedSPK b spk) i tr
@@ -279,12 +279,12 @@ theorem not_InitiatorSecrecyWith_of_witness
 
 section WholeCases
 
-def Thm7ExcuseWithout (omitted : Fin 4) (b : Participant) (ikB spk pqpk : Bytes) (i : Nat)
+@[expose] def Thm7ExcuseWithout (omitted : Fin 4) (b : Participant) (ikB spk pqpk : Bytes) (i : Nat)
     (tr : ExecTrace) : Prop :=
   ∃ k : Fin 4, k ≠ omitted ∧ Thm7Case b ikB spk pqpk i tr k
 
 /-- `AliceInitiatorSecrecy` omitting branch `omitted` of `Thm7Case`. -/
-def Thm7_withoutCase (omitted : Fin 4) : Prop :=
+@[expose] def Thm7_withoutCase (omitted : Fin 4) : Prop :=
   ResponderSecrecyWith (Thm7ExcuseWithout omitted)
 
 abbrev Thm7_withoutCase_ikBefore : Prop := Thm7_withoutCase 0
@@ -292,12 +292,12 @@ abbrev Thm7_withoutCase_ikAndPrekeys : Prop := Thm7_withoutCase 1
 abbrev Thm7_withoutCase_brokenDHBefore : Prop := Thm7_withoutCase 2
 abbrev Thm7_withoutCase_brokenDHAndPQ : Prop := Thm7_withoutCase 3
 
-def Thm9ExcuseWithout (omitted : Fin 7) (b a : Participant) (ikB ikA spk pqpk : Bytes)
+@[expose] def Thm9ExcuseWithout (omitted : Fin 7) (b a : Participant) (ikB ikA spk pqpk : Bytes)
     (opk : Option Bytes) (i : Nat) (tr : ExecTrace) : Prop :=
   ∃ k : Fin 7, k ≠ omitted ∧ Thm9Case b a ikB ikA spk pqpk opk i tr k
 
 /-- `BobResponderSecrecy` omitting branch `omitted` of `Thm9Case`. -/
-def Thm9_withoutCase (omitted : Fin 7) : Prop :=
+@[expose] def Thm9_withoutCase (omitted : Fin 7) : Prop :=
   InitiatorSecrecyWith (Thm9ExcuseWithout omitted)
 
 abbrev Thm9_withoutCase_ikABefore : Prop := Thm9_withoutCase 0
@@ -310,7 +310,7 @@ abbrev Thm9_withoutCase_brokenDHAndBrokenKEM : Prop := Thm9_withoutCase 6
 
 /-- Reachable witness trace where `AliceDone` exposes a handshake block without
 `SessionStateExposed`, satisfying `Thm7Case` branch `c` and no other branch. -/
-def ExclusiveThm7Witness (c : Fin 4) : Prop :=
+@[expose] def ExclusiveThm7Witness (c : Fin 4) : Prop :=
   ∃ tr a b ikA ikB spk pqpk opk ek ct keys i k,
     tr.Reachable reachability ∧
     tr.EventLoggedAt (PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) i ∧
@@ -320,7 +320,7 @@ def ExclusiveThm7Witness (c : Fin 4) : Prop :=
 
 /-- Reachable witness trace where `BobDone` exposes a handshake block without
 `SessionStateExposed`, satisfying `Thm9Case` branch `c` and no other branch. -/
-def ExclusiveThm9Witness (c : Fin 7) : Prop :=
+@[expose] def ExclusiveThm9Witness (c : Fin 7) : Prop :=
   ∃ tr b a ikB ikA spk pqpk opk ek ct keys i k,
     tr.Reachable reachability ∧
     tr.EventLoggedAt (PQXDHEvent.BobDone b a ikB ikA spk pqpk opk ek ct keys) i ∧

@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cPlacedBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.BaseBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4ClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Arm 4 (`States.ekSentCt1Received`) with `withLsCodeLoaded`
@@ -27,7 +30,7 @@ Re-exports `EkSentCt1ReceivedEnv` and the `withLsCodeLoaded` Block `334` contrac
 (`States.ekSentCt1Received`, tag `6`) from `Part4cPlacedBudget`, and lifts them to `withLsCl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -75,54 +78,5 @@ export LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cPlacedBudget (
 )
 
 /-! ## 2. `withLsCl` Relocatable Arm 4 Wrappers -/
-
-/-- Envelope-parametric `withLsCl` relocatable `subroutine_ok` for `<States>::into_pb`
-    (Block `334`) on `.ekSentCt1Received s` (Arm 4, tag `6`). -/
-theorem states_into_pb_ekSentCt1Received_of_env_withLsCl_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    {Env : List AllocEvent → Prop}
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCl lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec)
-    (s : EkSentCt1Received spqrPolyApi (spqrAuthApi F))
-    (hEnv : ∀ evs, EkSentCt1ReceivedEnv s evs → Env evs) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (withLsCl lsmpl (statesIntoPbVariantPlacedSpecOfEnv M A lim F (.ekSentCt1Received s) Env)) :=
-  subroutine_ok_withLsCl_of_withLsCodeLoaded
-    (states_into_pb_ekSentCt1Received_of_env_cl_placed
-      (subroutine_ok_withLsCodeLoaded_of_withLsCl hdec_cl) hmemcpy_raw s hEnv)
-
-/-- Tight `EkSentCt1ReceivedEnv` `withLsCl` relocatable `subroutine_ok` for `<States>::into_pb`
-    (Block `334`) on `.ekSentCt1Received s` (Arm 4, tag `6`). -/
-theorem states_into_pb_ekSentCt1Received_env_withLsCl_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCl lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec)
-    (s : EkSentCt1Received spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (withLsCl lsmpl (statesIntoPbEkSentCt1ReceivedPlacedSpec M A lim F s)) :=
-  states_into_pb_ekSentCt1Received_of_env_withLsCl_placed hdec_cl hmemcpy_raw s (fun _ h => h)
-
-/-- Verifies `<States>::into_pb`
-    (Block `334`) on `.ekSentCt1Received s` (Arm 4, tag `6`). -/
-theorem states_into_pb_ekSentCt1Received_withLsCl_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCl lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec)
-    (s : EkSentCt1Received spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (withLsCl lsmpl (statesIntoPbEkSentCt1ReceivedPlacedSpec M A lim F s)) :=
-  states_into_pb_ekSentCt1Received_env_withLsCl_placed hdec_cl hmemcpy_raw s
 
 end LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cClPlacedBudget

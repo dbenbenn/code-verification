@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlaced
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyDecoderPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyEncoderPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.UnchunkedPlaced
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Chunked `States` Drop Glue (Block `443`, Part 2/2 and Top-Level)
@@ -27,7 +28,7 @@ Proves the remaining five variant contracts (`ct2Sampled`, `headerSent`, `ct1Rec
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -1019,7 +1020,7 @@ abbrev _root_.CryptoVerification.Cli.SpqrV1.Drop.withLsRoLoaded
   { spec with pre := fun x s0 => spec.pre x s0 ∗ ⌜LibsignalRoLoaded pl s0.mem⌝ }
 
 /-- Jump-table-free specification for `States` drop glue (`Block 443`). -/
-def _root_.CryptoVerification.Cli.SpqrV1.Drop.dropChunkedStatesLocal1CleanPlacedSpec
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.Drop.dropChunkedStatesLocal1CleanPlacedSpec
     (A : RustAlloc) (F : ShaCompress) : Spec (DropChunkedStatesGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗

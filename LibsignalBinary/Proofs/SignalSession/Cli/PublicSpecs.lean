@@ -10,19 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import ProofLib.BV.ReflectROBDD
-
-/-!
-# Function Specifications for `signal_session::public` Helpers
-
-Pure models (`splitId`, `splitSigned`), 48-byte `sret` memory layouts (`splitIdResultAt`,
-`splitSignedResultAt`), and subroutine specifications (`splitIdSpec`, `splitSignedSpec`,
-`bundleReadSpec`) for `split_id`, `split_signed`, and `read_bundle::{closure#0}`.
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SignalSession.Cli
 
@@ -32,15 +22,15 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 /-! ## Pure Models -/
 
 /-- 32-bit unsigned integer assembled from little-endian bytes `b0 b1 b2 b3`. -/
-def ofLe32 (b0 b1 b2 b3 : BitVec 8) : BitVec 32 := b3 ++ b2 ++ b1 ++ b0
+@[expose] def ofLe32 (b0 b1 b2 b3 : BitVec 8) : BitVec 32 := b3 ++ b2 ++ b1 ++ b0
 
 /-- Pure model of `split_id(file)`: splits a 4-byte little-endian `u32` ID from the remaining slice, returning `none` if `file.length < 4`. -/
-def splitId : List (BitVec 8) → Option (BitVec 32 × List (BitVec 8))
+@[expose] def splitId : List (BitVec 8) → Option (BitVec 32 × List (BitVec 8))
   | b0 :: b1 :: b2 :: b3 :: rest => some (ofLe32 b0 b1 b2 b3, rest)
   | _ => none
 
 /-- Pure model of `split_signed(file)`: applies `splitId`, then splits the remaining slice into `(key, sig)` with a 64-byte trailing signature, returning `none` if `file.length < 68`. -/
-def splitSigned (file : List (BitVec 8)) :
+@[expose] def splitSigned (file : List (BitVec 8)) :
     Option (BitVec 32 × List (BitVec 8) × List (BitVec 8)) :=
   match splitId file with
   | none => none
@@ -83,36 +73,11 @@ abbrev bundleReadName : String := "libsignal_cli::public::read_bundle::{closure#
 abbrev cliDropSpeName : String :=
   "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]"
 
-theorem splitId_fnOff :
-    libsignalSessionCode.fnOff splitIdName = num% (ls_off% "libsignal_cli::public::split_id") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "libsignal_cli::public::split_id")
-
-theorem splitSigned_fnOff :
-    libsignalSessionCode.fnOff splitSignedName =
-      num% (ls_off% "libsignal_cli::public::split_signed") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "libsignal_cli::public::split_signed")
-
-theorem bundleRead_fnOff :
-    libsignalSessionCode.fnOff bundleReadName =
-      num% (ls_off% "libsignal_cli::public::read_bundle::{closure#0}") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "libsignal_cli::public::read_bundle::{closure#0}")
-
-theorem cliDropSpe_fnOff :
-    libsignalSessionCode.fnOff cliDropSpeName =
-      num% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]")
-
-/-! ## Result Layouts -/
-
 /-- Niche `Ok` tag word (`-2`) for `Result<_, SignalProtocolError>` in `split_id` and `split_signed`. -/
-def splitOkTag : BitVec 64 := 0xFFFFFFFFFFFFFFFE#64
+@[expose] def splitOkTag : BitVec 64 := 0xFFFFFFFFFFFFFFFE#64
 
 /-- 48-byte `sret` layout at `r` for `split_id(fp, file)`: `(splitOkTag, id @ +8, fp + 4 @ +16, len - 4 @ +24)` on `Ok`, or `speAt A (utf8 "bundle") r .invalidState` on `Err`. -/
-def splitIdResultAt (A : RustAlloc) (r fp : BitVec 64) (file : List (BitVec 8)) : SepProp :=
+@[expose] def splitIdResultAt (A : RustAlloc) (r fp : BitVec 64) (file : List (BitVec 8)) : SepProp :=
   match splitId file with
   | some (id, rest) =>
     (r ↦₆₄ splitOkTag) ∗ ((r + 8#64) ↦₃₂ id) ∗ memRegion (r + 0xc#64) 4 ∗
@@ -121,7 +86,7 @@ def splitIdResultAt (A : RustAlloc) (r fp : BitVec 64) (file : List (BitVec 8)) 
   | none => speAt A (utf8 "bundle") r .invalidState
 
 /-- 48-byte `sret` layout at `r` for `split_signed(fp, file)`: `(splitOkTag, fp + 4 @ +8, key.len @ +16, id @ +24, fp + 4 + key.len @ +32, 64 @ +40)` on `Ok`, or `speAt A (utf8 "bundle") r .invalidState` on `Err`. -/
-def splitSignedResultAt (A : RustAlloc) (r fp : BitVec 64) (file : List (BitVec 8)) : SepProp :=
+@[expose] def splitSignedResultAt (A : RustAlloc) (r fp : BitVec 64) (file : List (BitVec 8)) : SepProp :=
   match splitSigned file with
   | some (id, key, _) =>
     (r ↦₆₄ splitOkTag) ∗ ((r + 8#64) ↦₆₄ (fp + 4#64)) ∗
@@ -140,36 +105,6 @@ structure SplitGhost where
   file : List (BitVec 8)
   ro : Bool
 
-/-- Subroutine contract for `split_id` (`0x60`-byte frame): writes `splitIdResultAt` to `x.ret`, returns the input slice, and panics only on allocation failure. -/
-def splitIdSpec (A : RustAlloc) (img : Obj.Image) (stk : Nat) : Spec SplitGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.fp ∧
-          (s.readReg64 .x2).toNat = x.file.length⌝ ∗
-          SpqrV1.ChainProofs.bytesAt x.ro x.fp x.file ∗ memRegion x.ret 48 ∗
-          stackAt s.sp stk ∗ A.pool
-      post := fun x s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗ splitIdResultAt A x.ret x.fp x.file ∗
-          SpqrV1.ChainProofs.bytesAt x.ro x.fp x.file ∗ stackAt s0.sp stk ∗ A.pool
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
-/-- Subroutine contract for `split_signed` (`0x60`-byte frame): writes `splitSignedResultAt` to `x.ret`, returns the input slice, and panics only on allocation failure. -/
-def splitSignedSpec (A : RustAlloc) (img : Obj.Image) (stk : Nat) : Spec SplitGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.fp ∧
-          (s.readReg64 .x2).toNat = x.file.length⌝ ∗
-          SpqrV1.ChainProofs.bytesAt x.ro x.fp x.file ∗ memRegion x.ret 48 ∗
-          stackAt s.sp stk ∗ A.pool
-      post := fun x s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗ splitSignedResultAt A x.ret x.fp x.file ∗
-          SpqrV1.ChainProofs.bytesAt x.ro x.fp x.file ∗ stackAt s0.sp stk ∗ A.pool
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
-/-! ## `read_bundle::{closure#0}` Specification -/
-
 /-- Ghost state for `read_bundle::{closure#0}`: 48-byte `sret` pointer `ret`, bundle directory slice `dir`, and entry name slice `name`. -/
 structure BundleReadGhost where
   ret : BitVec 64
@@ -179,26 +114,5 @@ structure BundleReadGhost where
   nameA : BitVec 64
   name : List (BitVec 8)
   nameRo : Bool
-
-/-- Subroutine contract for `read_bundle::{closure#0}` (`0x50`-byte frame): evaluates `rd` on `dir ++ "/" ++ name` into `getResultAt` at `x.ret`, returns the input slices, and panics only on allocation failure. -/
-def bundleReadSpec (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
-    (img : Obj.Image) (stk : Nat) : Spec BundleReadGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.dirA ∧
-          (s.readReg64 .x2).toNat = x.dir.length ∧ s.readReg64 .x3 = x.nameA ∧
-          (s.readReg64 .x4).toNat = x.name.length ∧ x.dir.length < 2 ^ 32 ∧
-          x.name.length < 2 ^ 32 ∧ pathOk (x.dir ++ [0x2f#8] ++ x.name)⌝ ∗
-          SpqrV1.ChainProofs.bytesAt x.dirRo x.dirA x.dir ∗
-          SpqrV1.ChainProofs.bytesAt x.nameRo x.nameA x.name ∗ memRegion x.ret 48 ∗
-          stackAt s.sp stk ∗ A.pool
-      post := fun x s0 sf =>
-        (∃∗ r : Except Unit (List (BitVec 8)),
-          ⌜r = rd s0.fs.files (x.dir ++ [0x2f#8] ++ x.name) ∧ sf.trace = s0.trace⌝ ∗
-            getResultAt A x.ret r) ∗
-          SpqrV1.ChainProofs.bytesAt x.dirRo x.dirA x.dir ∗
-          SpqrV1.ChainProofs.bytesAt x.nameRo x.nameA x.name ∗ stackAt s0.sp stk ∗ A.pool
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
 
 end CryptoVerification.SignalSession.Cli

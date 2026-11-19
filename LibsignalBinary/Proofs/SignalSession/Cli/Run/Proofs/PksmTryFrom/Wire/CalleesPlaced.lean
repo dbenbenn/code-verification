@@ -9,18 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.Assembly
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRoot
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.Callees
-public import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.RecordCodecs.Assembly
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRoot
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.IntoBoxedSlice
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.TryCloneFromRef
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Relocatable `[LibsignalPlacement]` Callee Contracts (`PksmCalleesPlaced`)
@@ -30,7 +33,7 @@ Proves the `[LibsignalPlacement]` `Err` specifications of
 of `PreKeySignalMessage::try_from` (Block `111`) from `CodecHooksPlaced A H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -62,7 +65,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 /-- Word-level Err specification of `<IdentityKey as TryFrom<&[u8]>>::try_from` (Block `116`)
 under `[LibsignalPlacement]`: writes `ikErrWords e` at `outPtr`, `outPtr + 8`, leaving
 `outPtr + 16 .. 40` untouched (`memRegion (outPtr + 16) 24`). -/
-def identityKeyTryFromSliceWordsErrPlacedSpec [LibsignalPlacement] :
+@[expose] def identityKeyTryFromSliceWordsErrPlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × SignalProtocolError × BitVec 64) where
   pre := fun (p, bs, e, outPtr) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧
@@ -79,7 +82,7 @@ def identityKeyTryFromSliceWordsErrPlacedSpec [LibsignalPlacement] :
 
 /-- Exact `speAt` Err specification of `<IdentityKey as TryFrom<&[u8]>>::try_from` (Block `116`)
 under `[LibsignalPlacement]` on a 48-byte sret (`memRegion outPtr 48`). -/
-def identityKeyTryFromSliceErrPlacedSpec [LibsignalPlacement] (A : RustAlloc)
+@[expose] def identityKeyTryFromSliceErrPlacedSpec [LibsignalPlacement] (A : RustAlloc)
     (fn : List (BitVec 8)) :
     Spec (BitVec 64 × List (BitVec 8) × SignalProtocolError × BitVec 64) where
   pre := fun (p, bs, e, outPtr) s =>

@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommonPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommonPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch0Placed
@@ -27,6 +27,12 @@ import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Dispatch -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # `<States>::recv` (Block `332`) — Shared `VmPreserved` Dispatch, Epilogue & Writeback Helpers
@@ -35,7 +41,7 @@ Shared Block `332` `VmPreserved` jump-table dispatch (`+36`), direct epilogues (
 relocatable `memcpy` call wrappers, and `Ok(V1Recv)` writeback (`+18996 -> s0.x30`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -43,7 +49,7 @@ set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
 open scoped CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchet
-open CryptoVerification (LibsignalPlacement blkPC_332 blkPC_332_pairStep_0x48 blkPl_332 libsignalSessionCode lsProg_332 lsmpl lsρ)
+open CryptoVerification (LibsignalPlacement blkPC_332 blkPC_332_pairStep_0x48 blkPl_332 lsProg_332 lsmpl lsρ)
 open CryptoVerification.LibsignalTripleRatchet (memcpyName sessionMemcpyRegionSpec sessionMemcpySpec withStack)
 open CryptoVerification.RustHeap (allocHookStack)
 open CryptoVerification.SpqrV1.Alloc (spqrMemcpySym spqr_hook_ok_of_mem)
@@ -56,7 +62,7 @@ open Arm64 ProofLib ProofLib.ProgramReflection
 open LibsignalBinary.Heap (AllocCallPreserved VmPreserved)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_332
 attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp

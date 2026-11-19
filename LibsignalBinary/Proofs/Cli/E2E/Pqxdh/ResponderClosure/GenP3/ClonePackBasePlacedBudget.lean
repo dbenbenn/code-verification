@@ -11,12 +11,55 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysTailPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePack
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackBase
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackBasePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysTailPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePack -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackBase
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackBasePlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Placed Segment 5 Packing Helpers
@@ -26,7 +69,7 @@ clone exit postconditions (`genP3PostPlacedBudget`), and `VmPreserved` pool-tran
 across `+0x1bac → +0x1cd4 / +0x1e04`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -65,7 +108,7 @@ open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget VmPres
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` untouched spatial frame threaded across
     `pack_eq_placed_wp` / `pack_ne_placed_wp`. -/
-def packRestFramePlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def packRestFramePlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (rest : List (BitVec 8))
@@ -109,22 +152,8 @@ theorem packRestFramePlacedBudget_eq_atState [LibsignalPlacement] {M : AllocCost
       whisperMsgPtr cur rest recG st w rem loc msgG msg :=
   rfl
 
-theorem packRestFramePlacedBudget_eq_of_vmPreserved [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
-    (sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-    (rest : List (BitVec 8))
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8))) (w : GenP3J4Witness)
-    (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-    {s₁ s₂ : State} (hvm : VmPreserved s₁ s₂) :
-    packRestFramePlacedBudget A lim stB sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-      rest recG st w rem loc msgG msg s₂ =
-    packRestFramePlacedBudget A lim stB sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-      rest recG st w rem loc msgG msg s₁ := by
-  rw [packRestFramePlacedBudget_eq_atState, packRestFramePlacedBudget_eq_atState,
-    A.atState_eq_of_vmPreserved lim stB hvm]
-
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `genP3PostSpatial`. -/
-def genP3PostSpatialPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3PostSpatialPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -179,7 +208,7 @@ theorem genP3PostSpatialPlacedBudget_eq_of_vmPreserved [LibsignalPlacement] {M :
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `genP3PostEq` at
     `dpClosureEntryM3Placed + 0x1cd4#64`. -/
-def genP3PostEqPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3PostEqPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -208,7 +237,7 @@ theorem genP3PostEqPlacedBudget_eq_atState [LibsignalPlacement] {M : AllocCostMo
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `genP3PostNe` at
     `dpClosureEntryM3Placed + 0x1e04#64`. -/
-def genP3PostNePlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3PostNePlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -234,7 +263,7 @@ theorem genP3PostNePlacedBudget_eq_atState [LibsignalPlacement] {M : AllocCostMo
   rfl
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `genP3Post`. -/
-def genP3PostPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3PostPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))

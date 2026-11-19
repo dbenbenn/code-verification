@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.EncResBridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsg.Helpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.EncResBridge
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsg.Helpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
 public meta import Lean
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
@@ -24,12 +24,21 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonCalleesExt
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.Disproof.Basic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.States -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `signal_session::run` Placed Arm `R2` Helpers
@@ -38,7 +47,7 @@ Relocatable (`[LibsignalPlacement]`) framing, call, deallocation, and layout hel
 (`RunHopSendPlaced`) on Block `579` (`runProgPlaced H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -503,7 +512,7 @@ structure r2_SlotWords where
   w29 : BitVec 64
   w30 : BitVec 64
 
-def r2_words31 (a : BitVec 64) (w : r2_SlotWords) : SepProp :=
+@[expose] def r2_words31 (a : BitVec 64) (w : r2_SlotWords) : SepProp :=
   (a ↦₆₄ w.w0) ∗ ((a + 8#64) ↦₆₄ w.w1) ∗ ((a + 16#64) ↦₆₄ w.w2) ∗ ((a + 24#64) ↦₆₄ w.w3) ∗
   ((a + 32#64) ↦₆₄ w.w4) ∗ ((a + 40#64) ↦₆₄ w.w5) ∗ ((a + 48#64) ↦₆₄ w.w6) ∗
   ((a + 56#64) ↦₆₄ w.w7) ∗ ((a + 64#64) ↦₆₄ w.w8) ∗ ((a + 72#64) ↦₆₄ w.w9) ∗
@@ -560,7 +569,7 @@ theorem r2_words31_to_memRegion248 (a : BitVec 64) (w : r2_SlotWords) :
     (Entails.sepExists_right w.w27 (Entails.sepExists_right w.w28 (Entails.sepExists_right w.w29
       (Entails.sepExists_right w.w30 (Entails.refl _)))))))))))))))))))))))))))))))
 
-def r2_boxLive (A : RustAlloc) (ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def r2_boxLive (A : RustAlloc) (ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if bs = [] then emp else A.live ptr bs.length 1
 
 theorem r2_boxU8At_eq (A : RustAlloc) (a ptr : BitVec 64) (bs : List (BitVec 8)) :
@@ -690,17 +699,17 @@ theorem r2_open_signalMessage (A : RustAlloc) (r : BitVec 64)
   exact Entails.pure_right ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, hsm.2.1, hser_ne⟩
     (Entails.refl _)
 
-def r2_words15 (a : BitVec 64) (w : r2_SlotWords) : SepProp :=
+@[expose] def r2_words15 (a : BitVec 64) (w : r2_SlotWords) : SepProp :=
   (a ↦₆₄ w.w0) ∗ ((a + 8#64) ↦₆₄ w.w1) ∗ ((a + 16#64) ↦₆₄ w.w2) ∗ ((a + 24#64) ↦₆₄ w.w3) ∗
   ((a + 32#64) ↦₆₄ w.w4) ∗ ((a + 40#64) ↦₆₄ w.w5) ∗ ((a + 48#64) ↦₆₄ w.w6) ∗
   ((a + 56#64) ↦₆₄ w.w7) ∗ ((a + 64#64) ↦₆₄ w.w8) ∗ ((a + 72#64) ↦₆₄ w.w9) ∗
   ((a + 80#64) ↦₆₄ w.w10) ∗ ((a + 88#64) ↦₆₄ w.w11) ∗ ((a + 96#64) ↦₆₄ w.w12) ∗
   ((a + 104#64) ↦₆₄ w.w13) ∗ ((a + 112#64) ↦₆₄ w.w14)
 
-def r2_words3 (a : BitVec 64) (w : r2_SlotWords) : SepProp :=
+@[expose] def r2_words3 (a : BitVec 64) (w : r2_SlotWords) : SepProp :=
   (a ↦₆₄ w.w15) ∗ ((a + 8#64) ↦₆₄ w.w16) ∗ ((a + 16#64) ↦₆₄ w.w17)
 
-def r2_words13 (a : BitVec 64) (w : r2_SlotWords) : SepProp :=
+@[expose] def r2_words13 (a : BitVec 64) (w : r2_SlotWords) : SepProp :=
   (a ↦₆₄ w.w18) ∗ ((a + 8#64) ↦₆₄ w.w19) ∗ ((a + 16#64) ↦₆₄ w.w20) ∗ ((a + 24#64) ↦₆₄ w.w21) ∗
   ((a + 32#64) ↦₆₄ w.w22) ∗ ((a + 40#64) ↦₆₄ w.w23) ∗ ((a + 48#64) ↦₆₄ w.w24) ∗
   ((a + 56#64) ↦₆₄ w.w25) ∗ ((a + 64#64) ↦₆₄ w.w26) ∗ ((a + 72#64) ↦₆₄ w.w27) ∗
@@ -820,7 +829,7 @@ theorem r2_pk32_eq_words4 (a : BitVec 64) (bs : List (BitVec 8)) (h : bs.length 
        ((a + 24#64) ↦₆₄ r2_pack8 (bs.drop 24))) :=
   r2_pointsToBytes32_eq_words4 a bs h
 
-def r2_pqHeap (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def r2_pqHeap (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗

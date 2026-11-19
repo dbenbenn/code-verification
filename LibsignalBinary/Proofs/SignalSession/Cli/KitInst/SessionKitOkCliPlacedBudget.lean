@@ -9,31 +9,47 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadShimPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlacedBudget
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadShimPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlaced
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeSeqFreeXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.LayoutBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCliPlaced
 
 /-!
 # Placed Budgeted CLI `SessionOnlyKitPlacedOkSE` Assembly and Instantiation
@@ -44,7 +60,7 @@ budget-threaded `SessionOnlyKitPlacedOkSE` bundles (canonical and `SeqFree`) und
 `[LibsignalPlacement]` and `cliExternsPlaced mmpl W`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -177,7 +193,7 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeSeqFreeXBudget
 /-! ## Poll allocation envelopes -/
 
 /-- Value-indexed (`AddrVal`) form of `AddrTextEnv`. -/
-def AddrTextValEnv (DecEnv : BitVec 32 → List AllocEvent → Prop)
+@[expose] def AddrTextValEnv (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (rem : AddrVal) : List AllocEvent → Prop :=
   SeqEnv (· = addrToOwnedEvents rem.name)
     (SeqEnv (· = addrDotReserveEvents rem.name)
@@ -191,12 +207,12 @@ theorem addrTextValEnv_val (DecEnv : BitVec 32 → List AllocEvent → Prop) (g 
 
 /-- Ghost-independent canonical counterpart of `SerializeEnv` (agrees with `SerializeEnv g r`
 under `CanonRecord g r`). -/
-def SerializeCanonEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
+@[expose] def SerializeCanonEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   let encLen := (encodeRecord r).length
   BoundedRustEvs (8 * encLen + 128) (256 * (encLen + 16)) evs
 
 /-- Canonical counterpart of `SerializeEnvX` (`SerializeCanonEnv r` followed by `FreeOnlyEvs`). -/
-def SerializeCanonEnvX (r : SessionRecord (List (BitVec 8))) : List AllocEvent → Prop :=
+@[expose] def SerializeCanonEnvX (r : SessionRecord (List (BitVec 8))) : List AllocEvent → Prop :=
   SeqEnv (SerializeCanonEnv r) FreeOnlyEvs
 
 theorem serializeEnv_eq_canon {g : CryptoVerification.E2E.Record.RecordGhost}
@@ -212,7 +228,7 @@ theorem serializeEnvX_eq_canon {g : CryptoVerification.E2E.Record.RecordGhost}
 
 /-- Value-indexed `load_session` poll envelope for `SessionFiles`: `AddrValEnv`, `Dir::get`,
 optional `SessionRecord::deserialize`, and `FreeOnlyEvs` drops. -/
-def cliSessionKitLoadPollEnv (rd : ReadRule)
+@[expose] def cliSessionKitLoadPollEnv (rd : ReadRule)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (AddrValEnv : AddrVal → List AllocEvent → Prop)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
@@ -224,7 +240,7 @@ def cliSessionKitLoadPollEnv (rd : ReadRule)
 
 /-- Value-indexed `store_session` poll envelope for `SessionFiles`: `AddrValEnv`,
 `SessionRecord::serialize`, and `Dir::put`. -/
-def cliSessionKitStorePollEnv
+@[expose] def cliSessionKitStorePollEnv
     (AddrValEnv : AddrVal → List AllocEvent → Prop)
     (SerValEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
@@ -233,7 +249,7 @@ def cliSessionKitStorePollEnv
   SeqEnv (AddrValEnv rem)
     (SeqEnv (SerValEnv r) (PutEnv d (addressText rem) (encodeRecord r)))
 
-def cliSessionKitBudgetEnv [LibsignalPlacement] (A : RustAlloc)
+@[expose] def cliSessionKitBudgetEnv [LibsignalPlacement] (A : RustAlloc)
     (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (peer : AddrGhost)
     (s1 s2 s3 s4 : Nat)
@@ -265,7 +281,7 @@ abbrev cliSessionKitDefaultBudgetEnv [LibsignalPlacement] (A : RustAlloc)
 
 /-- `SeqFree` `SessionRecord::serialize` envelope
 (`∃ g, RecordGhostValid g r ∧ RecordSerializeSeqFreeEnv g r evs`). -/
-def SerializeCanonSeqFreeValidEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) :
+@[expose] def SerializeCanonSeqFreeValidEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) :
     Prop :=
   ∃ g : CryptoVerification.LibsignalPublicApiRepr.RecordGhost,
     RecordGhostValid g r ∧ RecordSerializeSeqFreeEnv g r evs
@@ -439,21 +455,6 @@ theorem SessKitHooksPlaced.cli [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
           (hres (callerProg := lsProg_596 (cliGhostExterns g (cliExternsPlaced mmpl W))) (i := 596)
             (Nat.le_refl _) (by decide))
           hstk hi (by decide) (by decide) }
-
-theorem SessKitHooksPlaced.cli_of_spqr [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
-    (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hG : CliGhostSpqrAllocHooks M A lim g)
-    (hStrFsT : ∀ f, g.stringClone = some f → HookFsTraced IsFsC f) :
-    SessKitHooksPlaced A lim (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-  SessKitHooksPlaced.cli mmpl g W hG.toCliGhostAllocHooks hG.allocZeroed_fsT hStrFsT
-
-theorem SessKitHooksPlaced.cli_bumpGhost [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
-    (W : CliHooks) {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliAllocHooks M A lim) :
-    SessKitHooksPlaced A lim (cliGhostExterns bumpGhost (cliExternsPlaced mmpl W)) :=
-  SessKitHooksPlaced.cli mmpl bumpGhost W (cliGhostAllocHooks_bumpGhost hA)
-    allocZeroedHook0_fsT (fun _ h => by cases h)
 
 theorem cliDecimal_placed_ok_of_sessHooks [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
@@ -1648,42 +1649,6 @@ theorem cliSessKitOkSE_seqFree_cli_placed [LibsignalPlacement] (mmpl : Obj.Multi
     hRead hDeser (serializeCanonSeqFree_cli_placed mmpl g W hG)
     hs1 hs2 hs3 hs4 hjRead hjRead_unmut hDeserBlk hDeserUnmut (by decide) (by decide)
 
-theorem cliSessKitOkSE_seqFree_cli_placed_of_readHook [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F0 : FsFiles}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} {peer : AddrGhost}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {readStk s1 s2 s3 s4 : Nat} {vtSym idVtSym : String}
-    {deserProg : Program} {deserBlk : Nat}
-    [IsLsBlockProg deserProg deserBlk (cliGhostExterns g (cliExternsPlaced mmpl W))]
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAzFsT : HookFsTraced IsFsC g.allocZeroed)
-    (hStrFsT : ∀ f, g.stringClone = some f → HookFsTraced IsFsC f)
-    (hReadHook : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsReadFileSym
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim readStk ReadEnv))
-    (hDeser : subroutine_ok deserProg (lsmpl.base 46)
-      (sessDeserializeSpecPlaced Scope A lim DeserEnv))
-    (hs1 : loadShimNeedPlaced ≤ s1) (hs2 : loadPollNeedPlaced readStk ≤ s2)
-    (hs3 : storeShimNeedPlaced ≤ s3) (hs4 : storePollNeedXPlaced ≤ s4)
-    (hDeserBlk : deserBlk < 619 := by decide)
-    (hDeserUnmut : (deserBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    SessionOnlyKitPlacedOkSE A lim
-      (cliSessionKitSpecPlaced A.repAlloc cliIo.rd F0 cliWrOk Scope peer s1 s2 s3 s4
-        vtSym idVtSym)
-      (cliSessionKitSeqFreeBudgetEnv A.repAlloc cliIo.rd F0 cliWrOk Scope peer s1 s2 s3 s4
-        DeserEnv vtSym idVtSym ReadEnv)
-      Scope encodeRecord (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-  cliSessKitOkSE_seqFree_cli_placed mmpl g W
-    (readProg := lsProg_589 (cliGhostExterns g (cliExternsPlaced mmpl W))) (jRead := 589)
-    hDropNz hG hAzFsT hStrFsT
-    (subroutine_ok_withLsCodeRoLoaded_of_plain
-      (ls_hook_ok_ultra_of_mem
-        (prog := lsProg_589 (cliGhostExterns g (cliExternsPlaced mmpl W))) (i := 589)
-        hReadHook (by decide) (by decide) (by decide)))
-    hDeser hs1 hs2 hs3 hs4 (by decide) (by decide) hDeserBlk hDeserUnmut
-
 theorem cliSessKitOkSE_seqFree_cli_scopeKit_placed [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F0 : FsFiles}
@@ -1718,39 +1683,5 @@ theorem cliSessKitOkSE_seqFree_cli_scopeKit_placed [LibsignalPlacement]
   cliSessKitOkSE_seqFree_cli_placed mmpl g W hDropNz hG hAzFsT hStrFsT hRead
     (sessDeserialize_of_sub_placed_ok hDeserScopeKit hsub)
     hs1 hs2 hs3 hs4 hjRead hjRead_unmut hDeserBlk hDeserUnmut
-
-theorem cliSessKitRoClOkSE_seqFree_cli_scopeKit_placed [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F0 : FsFiles}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} {peer : AddrGhost}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {readStk s1 s2 s3 s4 : Nat} {vtSym idVtSym : String}
-    {readProg deserProg : Program} {jRead deserBlk : Nat}
-    [IsLsBlockProg readProg jRead (cliGhostExterns g (cliExternsPlaced mmpl W))]
-    [IsLsBlockProg deserProg deserBlk (cliGhostExterns g (cliExternsPlaced mmpl W))]
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAzFsT : HookFsTraced IsFsC g.allocZeroed)
-    (hStrFsT : ∀ f, g.stringClone = some f → HookFsTraced IsFsC f)
-    (hRead : subroutine_ok readProg (lsρ lsReadFileSym)
-      (withLsCodeRoLoaded lsmpl (readFileSpecPlaced cliIo.rd cliWrOk A lim readStk ReadEnv)))
-    (hDeserScopeKit : subroutine_ok deserProg (lsmpl.base 46)
-      (sessDeserializeSpecPlaced scopeKit A lim DeserEnv))
-    (hsub : ∀ r, Scope r → scopeKit r)
-    (hs1 : loadShimNeedPlaced ≤ s1) (hs2 : loadPollNeedPlaced readStk ≤ s2)
-    (hs3 : storeShimNeedPlaced ≤ s3) (hs4 : storePollNeedXPlaced ≤ s4)
-    (hjRead : jRead < 619 := by decide)
-    (hjRead_unmut : (jRead ∈ libsignalMutatedBlocks) = false := by decide)
-    (hDeserBlk : deserBlk < 619 := by decide)
-    (hDeserUnmut : (deserBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    SessionOnlyKitPlacedRoClOkSE A lim
-      (cliSessionKitSpecPlaced A.repAlloc cliIo.rd F0 cliWrOk Scope peer s1 s2 s3 s4
-        vtSym idVtSym)
-      (cliSessionKitSeqFreeBudgetEnv A.repAlloc cliIo.rd F0 cliWrOk Scope peer s1 s2 s3 s4
-        DeserEnv vtSym idVtSym ReadEnv)
-      Scope encodeRecord (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-  cliSessKitOkSE_seqFree_cli_scopeKit_placed mmpl g W hDropNz hG hAzFsT hStrFsT hRead
-    hDeserScopeKit hsub hs1 hs2 hs3 hs4 hjRead hjRead_unmut hDeserBlk hDeserUnmut
 
 end LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget

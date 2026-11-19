@@ -361,7 +361,6 @@ theorem allRecvChainsHonest_of_le {t1 t2 : ExecTrace} (hle : t1 ≤ t2)
 def pt1Clean : Bytes := rnd 31 32
 def coins1Clean (cls : Nat → Nat) : Bytes := rnd 32 (cls 0)
 def key1Clean (cls : Nat → Nat) : Bytes := (spqrSend stA0.spqr (coins1Clean cls)).2.1
-def pqm1Clean (cls : Nat → Nat) : Bytes := (spqrSend stA0.spqr (coins1Clean cls)).2.2
 def stA1Clean (cls : Nat → Nat) : TRState := encSt stA0 (coins1Clean cls)
 def m1Clean (cls : Nat → Nat) : Bytes := encMsg stA0 (coins1Clean cls) (key1Clean cls) pt1Clean
 def trClean2 (cls : Nat → Nat) : ExecTrace :=

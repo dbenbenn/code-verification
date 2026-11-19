@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC5
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC5
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC4 -- proof-setup: allow-public-import
 
 /-!
 # Pure step counterparts and unfolding for the one-key `Auth` `GapDhWithSign` simulator
@@ -22,7 +23,7 @@ import VCVio.EvalDist.Monad.Basic
 stateful simulation followed by `pureExtractCdhFromAuthSimState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +35,7 @@ open Proofs.SignalPqxdh.Security.FgGapDh1Key
 
 namespace Proofs.SignalPqxdh.Security
 
-noncomputable def fgAuthInitPrin1KeyPure {S : Setup} (P : Primitives)
+@[expose] def fgAuthInitPrin1KeyPure {S : Setup} (P : Primitives)
     (prinFlag : Bool) (prinIdx : ℕ) (Up : Bytes)
     (u : Fin S.N_id) (st : FgAuth1KeySimState S) :
     ProbComp (AuthResponse × FgAuth1KeySimState S) := do
@@ -55,7 +56,7 @@ noncomputable def fgAuthInitPrin1KeyPure {S : Setup} (P : Primitives)
   let base' := { st.sim.base with principals := (u.val, entry) :: st.sim.base.principals }
   return (.initPrinResp ikPk ikPk, { st with sim := { st.sim with base := base' } })
 
-noncomputable def fgAuthGenSPK1KeyPure (P : Primitives) (uSk : Bytes)
+@[expose] def fgAuthGenSPK1KeyPure (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (prinFlag : Bool) (prinIdx : ℕ)
     (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (u : Fin S.N_id) (j : Fin S.N_recv)
@@ -94,7 +95,7 @@ noncomputable def fgAuthGenSPK1KeyPure (P : Primitives) (uSk : Bytes)
       (.genSPK u j) st.sim
     return (resp, { st with sim := sim' })
 
-noncomputable def fgAuth1KeyStepPure (P : Primitives) (uSk : Bytes)
+@[expose] def fgAuth1KeyStepPure (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) (q : AuthQuery S)
     (st : FgAuth1KeySimState S) :
@@ -108,7 +109,7 @@ noncomputable def fgAuth1KeyStepPure (P : Primitives) (uSk : Bytes)
     let (resp, sim') ← AuthDh3.fgAuthStepPure P ddh useDh1 targetIdx targetSpkIdx S maxLen U V q st.sim
     return (resp, { st with sim := sim' })
 
-noncomputable def fgAuth1KeyStepHaltPure (P : Primitives) (uSk : Bytes)
+@[expose] def fgAuth1KeyStepHaltPure (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) (q : AuthQuery S)
     (st : FgAuth1KeySimState S) :
@@ -119,7 +120,7 @@ noncomputable def fgAuth1KeyStepHaltPure (P : Primitives) (uSk : Bytes)
     fgAuth1KeyStepPure P uSk ddh useDh1 targetIdx targetSpkIdx S maxLen U V q st
 
 /-- Pure `StateT` query implementation of the halting one-key `Auth` simulator. -/
-noncomputable def fgAuth1KeySimImpl (P : Primitives) (uSk : Bytes)
+@[expose] def fgAuth1KeySimImpl (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes) :
     QueryImpl (authSpec S) (StateT (FgAuth1KeySimState S) ProbComp) :=

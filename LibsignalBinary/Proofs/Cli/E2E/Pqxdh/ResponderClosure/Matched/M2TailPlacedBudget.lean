@@ -10,21 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsBBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsEPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsBBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsEPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -35,6 +35,11 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2AuxPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Tail
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Remote-Identity Mismatch Tail
@@ -45,7 +50,7 @@ Budget-threaded `[LibsignalPlacement]` counterpart of `Matched.M2TailPlaced` acr
 `StageP2MismatchTailEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -53,8 +58,6 @@ set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlacedBudget
-
-noncomputable section
 
 open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoGames.LibsignalSession (SessionState)
@@ -155,13 +158,13 @@ local macro "wp_steps_sync_518 " h:term:max mid:term : tactic => `(tactic| (
 /-! ## Envelope combinator and budget pre/post predicates -/
 
 /-- Sequential composition of two allocator event-list envelopes. -/
-def SeqEnv (E₁ E₂ : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
+@[expose] def SeqEnv (E₁ E₂ : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   ∃ e₁ e₂, E₁ e₁ ∧ E₂ e₂ ∧ evs = e₁ ++ e₂
 
 /-- Tight allocator event envelope for `stageP2_matched_mismatch_tail`:
 exact `<str as ToOwned>::to_owned` allocation on `mismatchRemoteIkStrPlaced` (`70` bytes, align `1`)
 followed by `FreeOnlyEvs` teardown of `SessionStructure` and `previous_sessions`. -/
-def StageP2MismatchTailEnv : List AllocEvent → Prop :=
+@[expose] def StageP2MismatchTailEnv : List AllocEvent → Prop :=
   SeqEnv (StrToOwnedEnv mismatchRemoteIkStrPlaced) FreeOnlyEvs
 
 theorem stageP2MismatchTailEnv_of_freeOnly {evsFree : List AllocEvent}
@@ -177,7 +180,7 @@ theorem fitsEvents_of_fitsEnv_stageP2MismatchTail {M : AllocCostModel} {lim : Bu
       (List.append_nil _).symm⟩
   exact hnil
 
-def stageP2MismatchTailPrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP2MismatchTailPrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (s0 s : State) (sp coroPtr outPtr u_a8 u_d0 : BitVec 64)
     (b_4f2 b_390 b_2c0 : BitVec 8)
@@ -202,7 +205,7 @@ def stageP2MismatchTailPrePlaced [LibsignalPlacement] {M : AllocCostModel}
   A.pool lim st s ∗
   stackAt sp rootStack
 
-def stageP2MismatchTailPostAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP2MismatchTailPostAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st' : M.σ)
     (s0 sf : State) (sp coroPtr outPtr : BitVec 64) : SepProp :=
   memRegion (coroPtr + 0xe0#64) 368 ∗
@@ -224,7 +227,7 @@ def stageP2MismatchTailPostAtPlaced [LibsignalPlacement] {M : AllocCostModel}
   A.pool lim st' sf ∗
   stackAt sp rootStack
 
-def stageP2MismatchTailPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP2MismatchTailPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (s0 sf : State) (sp coroPtr outPtr : BitVec 64) : SepProp :=
   memRegion (coroPtr + 0xe0#64) 368 ∗
@@ -1011,7 +1014,5 @@ theorem stageP2_matched_mismatch_tail_placed [LibsignalPlacement]
       Entails.sepExists_right evs (Entails.pure_right henv (Entails.refl _))
     exact entails_replace_sub hpack (by sep_focus) (by sep_ac_rfl)
   · exact ⟨sf, hsteps, Or.inr hpan_oom⟩
-
-end
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlacedBudget

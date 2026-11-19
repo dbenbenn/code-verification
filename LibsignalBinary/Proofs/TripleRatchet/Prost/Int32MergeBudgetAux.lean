@@ -11,14 +11,14 @@ module
 
 meta import Lean -- shake: keep
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
 import LibsignalBinary.Proofs.TripleRatchet.InImage.VarintSlow.Slow
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WP.Apply
@@ -30,7 +30,7 @@ Relocatable `RustCliAllocBudget`-threaded contract and verification of
 `prost::encoding::varint::decode_varint_slow::<&mut &[u8]>` (block 293).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -193,7 +193,7 @@ private theorem slot8_sub_of_le (slot : BitVec 64) {n k : Nat} (hle : k ≤ n) (
 
 /-- Stack-parameterized budget-threaded contract of
 `prost::encoding::varint::decode_varint_slow::<&mut &[u8]>` in terms of `decodeVarint`. -/
-def decodeVarintSlowSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeVarintSlowSpecGen {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (errStack : Nat) : Spec (DecodeVarintSlowGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧

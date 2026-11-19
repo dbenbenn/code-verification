@@ -11,15 +11,15 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.ExitPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.ExitPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PolysLoopPlacedBudget
@@ -30,6 +30,8 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoopPlacedBudget
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Top-Level Proof for `<PolyEncoder>::from_pb`
@@ -38,7 +40,7 @@ Proves `encoder_from_pb_placed_ok_ext` and `encoder_from_pb_placed_ok_x` on Bloc
 `RustCliAllocBudget M` and `EncoderFromPbEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -1113,25 +1115,6 @@ theorem encoder_from_pb_placed_ok_ext [LibsignalPlacement]
     (spqr_hook_ok_of_mem hdealloc_sat)
     (spqr_hook_ok_of_mem hmemcpy_sat)
     hdrop16 hdrop_pb
-
-theorem encoder_from_pb_placed_ok_x_of_subroutine [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hshim : subroutine_ok ((blkPC_374).rebase (blkPl_374).base (Rust.withPanics ext))
-      (lsρ spqrRustNoAllocShimSym) rustAllocShimVmSpec)
-    (halloc : subroutine_ok ((blkPC_374).rebase (blkPl_374).base (Rust.withPanics ext))
-      (lsρ spqrRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : subroutine_ok ((blkPC_374).rebase (blkPl_374).base (Rust.withPanics ext))
-      (lsρ spqrRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : subroutine_ok ((blkPC_374).rebase (blkPl_374).base (Rust.withPanics ext))
-      (lsρ spqrMemcpySym) allocMemcpyVmSpec)
-    (hdrop16 : subroutine_ok ((blkPC_374).rebase (blkPl_374).base (Rust.withPanics ext))
-      (lsmpl.base 265) (dropGluePoly16Spec M A lim))
-    (hdrop_pb : subroutine_ok ((blkPC_374).rebase (blkPl_374).base (Rust.withPanics ext))
-      (lsmpl.base 271) (dropProtoPolyEncoderSpec M A lim)) :
-    EncoderFromPbPlacedOkX M A lim ext :=
-  encoderFromPbSpecX_of_encoderFromPbSpec
-    (encoder_from_pb_placed_ok_ext_of_subroutine hshim halloc hdealloc hmemcpy hdrop16 hdrop_pb)
 
 theorem encoder_from_pb_placed_ok_x [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

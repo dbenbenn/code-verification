@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomSpecF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3ExternNoAllocFail
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.PlacedOomRecovery2
-public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.BundleGeneralAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.BundleGeneralParse
-public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.FilesExtParity
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomSpecF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3ExternNoAllocFail
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.PlacedOomRecovery2
+import LibsignalBinary.Proofs.SignalSession.Cli.Parity.BundleGeneralAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Parity.BundleGeneralParse
+import LibsignalBinary.Proofs.SignalSession.Cli.Parity.FilesExtParity
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.GamePaths
@@ -27,6 +27,12 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Two-Placement Bundle-Initialization ELF Parity Bridges
@@ -36,7 +42,7 @@ over `cliRunPlacedSig mpl mmpl elf W` and `CliReachesOOMPlaced mpl mmpl elf W`, 
 bundle initialization, malformed-bundle rejection, and `read_file` cap overflow.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -59,14 +65,15 @@ open CryptoVerification.E2E (
 open CryptoVerification.LibsignalPublicApiRepr (AddrVal)
 open CryptoVerification.LibsignalPublicApi.StoreKit (FsFiles)
 open CryptoVerification.SignalSession (
-  Address ArgvFitsInitialStack CliHooks CliReachesOOMPlaced Cmd Inputs Outcome OutcomeOrExcusedAbort
-  PqParty PqxdhPartyInSpecDomain PrintableAsciiArg PublicBundle ancestors baseKeysFile bundleDir
+  Address ArgvFitsInitialStack CliHooks Cmd Inputs Outcome OutcomeOrExcusedAbort PqParty
+  PqxdhPartyInSpecDomain PrintableAsciiArg PublicBundle ancestors baseKeysFile bundleDir
   cliExternsPlaced cliProcessInputs coinsFile dirsFold encodeDir fileCapBytes filesFold filesOf
   files_eq_entries fsView identityFile initFsState_entries le32 observe partyAddress pathComps
-  pqInitInputs pqInitModel pqInputs pqxdhExpectedOutcome publicBundleOf sessionFile stdinCapBytes
-  stdioPaths
+  pqInitInputs pqInitModel pqInputs pqxdhExpectedOutcome publicBundleOf sessionFile
+  stdinCapBytes stdioPaths
 )
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliReachesOOMPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open CryptoVerification.SignalSession.Cli (
   CliInputsOk CoinsReadable CommitOk InputsLoadable IsSendOverCap IsStdinOverCap MainResult
   RunAnswer StoresGhost WriteOk addressText cliInputs decimalText ofLe32 pathOf splitId splitSigned
@@ -532,7 +539,7 @@ theorem cliInputsOk_of_inputsEquivRaw {i i' : Inputs} (heq : InputsEquivRaw i i'
 
 /-! ## `InitRunSemOk` and Run-Level `observe` Bridges -/
 
-def InitRunSemOk (S : RunSem) (X : UnreachedPqxdhPrimitives) (WP : PEParams) : Prop :=
+@[expose] def InitRunSemOk (S : RunSem) (X : UnreachedPqxdhPrimitives) (WP : PEParams) : Prop :=
   S.initiate = initDef X WP ∧ S.initOk = InitOk₀ WP ∧
   ∃ (Scope : SessionRecord (List (BitVec 8)) → Prop) (extra : FsFiles → Prop),
     S.filesOk = filesOk₀ Scope extra ∧
@@ -817,7 +824,7 @@ private theorem runRel_and_runAns_pqInitInputsF {S : RunSem} {X : UnreachedPqxdh
     runFilesOk_of_peer (.init (partyAddress st.party.other) bundleDir) rfl hargv hown
       (hS_files ▸ ⟨⟨hfok_ref.nameLt, hfok_ref.textLt, hfok_ref.sessPathOk, hfok_ref.idPathOk,
         hfok_ref.sessPathLt, hfok_ref.idPathLt, hsess_eq.symm ▸ hfok_ref.sessGet,
-        hid_eq.symm ▸ hfok_ref.idGet⟩,
+        hid_eq.symm ▸ hfok_ref.idGet, hfok_ref.nameLe40⟩,
         distinctSid_party st.party, hextra_i⟩)
   have hinitOk_i := (initOk₀_and_initDef_of_nonBundleCoins X WP st zeroBundleE t
     heq.2.1 (fun p hp => filesOf_pqInitInputsF_nonBundleCoins heq hb hp) hwf hs).1
@@ -1065,19 +1072,19 @@ private theorem not_isStdinOverCap_of_inputsEquiv_pqInitInputsF_f3 {P : PEParams
   simp [pqInitInputsFRaw, pqInputs, stdinCapBytes] at hgt
 
 /-- Flat-bundle `init` input domain (`InputsEquivRaw i (pqInitInputsFRaw WP st files t)` with `st.session = none` and `BundleFilesFlatRaw files`). -/
-def CliInitD3Inputs (WP : PEParams) (i : Inputs) : Prop :=
+@[expose] def CliInitD3Inputs (WP : PEParams) (i : Inputs) : Prop :=
   ∃ (st : PqParty) (files : List (String × List (BitVec 8)))
     (t : List.Vector (BitVec 8) initiateTapeLen),
     PqxdhPartyInSpecDomain WP st ∧ st.session = none ∧
     BundleFilesFlatRaw files ∧ InputsEquivRaw i (pqInitInputsFRaw WP st files t)
 
 /-- Restricts `Run₀` to `CliInitD3Inputs WP`. -/
-def initD3ScopedRun (WP : PEParams) (Run₀ : Inputs → RunAnswer → Prop)
+@[expose] def initD3ScopedRun (WP : PEParams) (Run₀ : Inputs → RunAnswer → Prop)
     (i : Inputs) (a : RunAnswer) : Prop :=
   CliInitD3Inputs WP i ∧ Run₀ i a
 
 /-- Two-placement `NeedLocks` and `cliBudgetLimits` `main` specification for flat-bundle `init`, scoped to `initD3ScopedRun`. -/
-def MainInitRunSemOkF3
+@[expose] def MainInitRunSemOkF3
     (mpl mmpl : MultiPlacement) (CodeOk : Memory → Prop)
     (libcAddr brkStart : BitVec 64) (stk : Nat) : Prop :=
   mpl.base 547 ≠ 0#64 →

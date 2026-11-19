@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Session.SpkHop2Red
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRF.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables
+public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRF.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables -- proof-setup: allow-public-import
 public import Computational.Specifications.Reductions.ReductionDsl.Samplers
 
 /-!
@@ -25,7 +25,7 @@ so costs count primitive calls, and `spkSc` exposes Bob's leaked signed-pre-key 
 `sessionSchemeFixedSpk`.
 -/
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.SpecLemmas.Reductions.E2E.CostedTables
 
@@ -44,12 +44,12 @@ open OracleSpec OracleComp
 
 /-- Signature for Libsignal E2E reductions: `smSig` instantiated with points `Pt`,
 `GhostState Bytes`, `CBC.Plain ℓ`, `PQC`, 256-bit keys/scalars, and wire `Bytes`. -/
-@[reducible] def spkLeakSessionSig (Pt : Type) (ℓ : ℕ) (PQC : Type := Unit) : Sig :=
+@[expose, reducible] def spkLeakSessionSig (Pt : Type) (ℓ : ℕ) (PQC : Type := Unit) : Sig :=
   smSig Pt (GhostState Bytes) Unit (CryptoGames.CBC.Plain ℓ) PQC (BitVec 256) Bytes
 
 /-- SM operation table for `sessionSchemeU P ℓ` with
 `injOK = ratchetKeyAdmissible protoSignalCodec decT encT`. -/
-@[reducible] def spkLeakSessionSmOps {Pt PQC : Type} (P : Params Bytes PQC) (ℓ : ℕ)
+@[expose, reducible] def spkLeakSessionSmOps {Pt PQC : Type} (P : Params Bytes PQC) (ℓ : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     Ops (spkLeakSessionSig Pt ℓ PQC) :=
   smOps
@@ -63,10 +63,10 @@ open OracleSpec OracleComp
     (stOK := fun _ _ => true)
     (φ := fun _ => none)
 
-def pkToBytes (pk : PublicKey) : Bytes :=
+@[expose] def pkToBytes (pk : PublicKey) : Bytes :=
   pk.bytes.toList
 
-def bytesToPk? (bs : Bytes) : Option PublicKey :=
+@[expose] def bytesToPk? (bs : Bytes) : Option PublicKey :=
   if h : bs.length = 32 then some ⟨⟨bs, h⟩⟩ else none
 
 /-- Primitive group, KDF, public-key, and `GhostState` operations of the E2E pre-key reductions
@@ -104,7 +104,7 @@ inductive E2EOp
 
 /-- Operation table for `E2EOp` (unit cost, except `bits B` for clamped-index operations `stEpoch B`
 and `tryDecryptWhisper B`), parameterized by the leaked scalar `s`. -/
-@[reducible] def spkLeakOps {Pt PQC : Type} [DecidableEq Pt] [Zero Pt]
+@[expose, reducible] def spkLeakOps {Pt PQC : Type} [DecidableEq Pt] [Zero Pt]
     (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (s : BitVec 256) :
@@ -256,14 +256,14 @@ and `tryDecryptWhisper B`), parameterized by the leaked scalar `s`. -/
     | _ => 1
 
 /-- Combined operation table summing `spkLeakSessionSmOps` and `spkLeakOps`. -/
-@[reducible] def spkLeakSessionOps {Pt PQC : Type} [DecidableEq Pt] [Zero Pt]
+@[expose, reducible] def spkLeakSessionOps {Pt PQC : Type} [DecidableEq Pt] [Zero Pt]
     (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (s : BitVec 256) :
     Ops (spkLeakSessionSig Pt ℓ PQC) :=
   ReductionDsl.Ops.sum (spkLeakSessionSmOps P ℓ decT encT) (spkLeakOps P ℓ Dh encPt encT decT s)
 
-@[reducible] def e2eUnifSort : Bool → SMSort
+@[expose, reducible] def e2eUnifSort : Bool → SMSort
   | false => .coins
   | true => .rcoins
 
@@ -274,19 +274,19 @@ instance (Pt : Type) (ℓ : ℕ) (PQC : Type) [SampleableType PQC] :
 
 /-- Target PRF interface (`unifSpec + prfSpec Pt (BitVec 256)`) with uniform coin samplers for
 `spkLeakRed` and `hop2PrfRedK`. -/
-@[reducible] def e2ePrfIface (Pt : Type) (ℓ : ℕ) (PQC : Type := Unit) [SampleableType PQC] :
+@[expose, reducible] def e2ePrfIface (Pt : Type) (ℓ : ℕ) (PQC : Type := Unit) [SampleableType PQC] :
     Iface (spkLeakSessionSig Pt ℓ PQC) (unifSpec + CryptoGames.MACScheme.prfSpec Pt (BitVec 256)) :=
   (prfIface (S := spkLeakSessionSig Pt ℓ PQC) (.base .key) (.base .rcoins)).withSamp
     (unifSamplers (S := spkLeakSessionSig Pt ℓ PQC) e2eUnifSort (fun _ => 1))
 
 /-- Target coin-only PRG interface (`unifSpec`) with uniform coin samplers for `hop2PrgRedK`. -/
-@[reducible] def e2ePrgIface (Pt : Type) (ℓ : ℕ) (PQC : Type := Unit) [SampleableType PQC] :
+@[expose, reducible] def e2ePrgIface (Pt : Type) (ℓ : ℕ) (PQC : Type := Unit) [SampleableType PQC] :
     Iface (spkLeakSessionSig Pt ℓ PQC) unifSpec :=
   (prgIface (spkLeakSessionSig Pt ℓ PQC)).withSamp
     (unifSamplers (S := spkLeakSessionSig Pt ℓ PQC) e2eUnifSort (fun _ => 1))
 
 /-- Source SM game codec for `spkLeakSessionSig` (`codecCost = 6`). -/
-@[reducible] def e2eCodec (Pt : Type) (ℓ : ℕ) (PQC : Type := Unit) :
+@[expose, reducible] def e2eCodec (Pt : Type) (ℓ : ℕ) (PQC : Type := Unit) :
     GameCodec (spkLeakSessionSig Pt ℓ PQC) (CryptoGames.SM.spec (GhostState Bytes) (CryptoGames.CBC.Plain ℓ) PQC Bytes) :=
   smCodec Pt (GhostState Bytes) Unit (CryptoGames.CBC.Plain ℓ) PQC (BitVec 256) Bytes .st
 

@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.TopDecodes
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States1a
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.TopDecodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States1a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-import GeneratedLean.LibsignalSessionObj
+import LibsignalBinary.Proofs.CodeLayout
+meta import GeneratedLean.LibsignalSessionPlacedObjShard23
 
 /-!
 # Relocatable Per-Block Fetches for Chunked `States` Drop Glue (Block `443`)
@@ -22,7 +23,7 @@ Generates per-block instruction decode, entry-address, and `.rodata` jump-table 
 `[LibsignalPlacement]` for Block `443` (`core::ptr::drop_glue::<States> [local#3]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -47,10 +48,10 @@ abbrev dropChunkedStatesLocal1BlkIdx : Nat := 443
 abbrev chunkedStatesLocal1JumpTableSym : String :=
   "libsignal_cli_ratchet:.rodata.core::ptr::drop_glue::<spqr::v1::chunked::states::States>"
 
-def chunkedStatesLocal1JumpTablePlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def chunkedStatesLocal1JumpTablePlacedAt [LibsignalPlacement] : SepProp :=
   (lsmpl.ρ chunkedStatesLocal1JumpTableSym) ↦ᵣ chunkedStatesLocal1JumpTableBytes
 
-def chunkedStatesLocal1JumpTablePlacedExpanded [LibsignalPlacement] : SepProp :=
+@[expose] def chunkedStatesLocal1JumpTablePlacedExpanded [LibsignalPlacement] : SepProp :=
   ((lsmpl.ρ chunkedStatesLocal1JumpTableSym) ↦₈ᵣ 49#8) ∗ ((lsmpl.ρ chunkedStatesLocal1JumpTableSym + 1#64) ↦₈ᵣ 0#8) ∗
   ((lsmpl.ρ chunkedStatesLocal1JumpTableSym + 2#64) ↦₈ᵣ 61#8) ∗ ((lsmpl.ρ chunkedStatesLocal1JumpTableSym + 3#64) ↦₈ᵣ 0#8) ∗
   ((lsmpl.ρ chunkedStatesLocal1JumpTableSym + 4#64) ↦₈ᵣ 19#8) ∗ ((lsmpl.ρ chunkedStatesLocal1JumpTableSym + 5#64) ↦₈ᵣ 90#8) ∗

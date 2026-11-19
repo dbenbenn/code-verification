@@ -12,12 +12,12 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget
-public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPb
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget
+public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPb -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
@@ -32,7 +32,7 @@ for `<spqr::authenticator::Authenticator>::from_pb` (block 330) with determinist
 allocation envelope `AuthFromPbEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -70,14 +70,14 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## Allocation Envelope -/
 
 /-- Deterministic `AllocEvent` list for cloning a key byte slice (`[]` if empty, else `rustAllocEvents bs.length 1`). -/
-def authKeyCloneEvents (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def authKeyCloneEvents (bs : List (BitVec 8)) : List AllocEvent :=
   if bs.isEmpty then [] else rustAllocEvents bs.length 1
 
 /-- Deterministic `AllocEvent` sequence of `Authenticator::from_pb` (`pb.rootKey` then `pb.macKey`). -/
-def authFromPbEvents (pb : ProtoAuthenticator) : List AllocEvent :=
+@[expose] def authFromPbEvents (pb : ProtoAuthenticator) : List AllocEvent :=
   authKeyCloneEvents pb.rootKey ++ authKeyCloneEvents pb.macKey
 
-def AuthFromPbEnv (pb : ProtoAuthenticator) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthFromPbEnv (pb : ProtoAuthenticator) (evs : List AllocEvent) : Prop :=
   evs = authFromPbEvents pb
 
 theorem fitsEvents_of_fitsEnv_authFromPbEnv {M : AllocCostModel} {lim : BudgetLimits}
@@ -88,7 +88,7 @@ theorem fitsEvents_of_fitsEnv_authFromPbEnv {M : AllocCostModel} {lim : BudgetLi
 /-! ## Budget-Threaded Specifications -/
 
 /-- Budget-threaded pinned specification of `Authenticator::from_pb`. -/
-def authFromPbPinnedSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def authFromPbPinnedSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthFromPbPinnedGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA ∧
@@ -104,7 +104,7 @@ def authFromPbPinnedSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : 
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp authFromPbStack
 
 /-- Budget-threaded unpinned specification of `Authenticator::from_pb`. -/
-def authFromPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def authFromPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (AuthFromPbGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA ∧
@@ -134,7 +134,7 @@ theorem rustAllocZeroedWithStack_of_rustAllocZeroed [LibsignalPlacement] {P : Pr
   subroutine_ok_rustCliAllocBudget_withStack hstack hbound h
 
 /-- Local resource bundle for the `Vec<u8>` IKM deallocation tail (`+488..+544`). -/
-def ikmDeallocLocal {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def ikmDeallocLocal {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {cap ptr : BitVec 64} {bs : List (BitVec 8)}
     (_hlen : bs.length ≤ cap.toNat) (_hptr : ptr ≠ 0) (st : M.σ) (s : State) (sp : BitVec 64) :
     SepProp :=

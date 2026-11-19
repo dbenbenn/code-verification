@@ -9,8 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderStepClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderStepClPlacedBudget
+public import LibsignalBinary.Heap.GrowOneSpecs
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Code-Loaded Placed Budget Verification of `PolynomialEncoder::merge` (Block `297`)
@@ -20,7 +32,7 @@ budget contracts (`polyEncoderMerge_cro_placed_ok_of_contracts`,
 `polyEncoderMerge_cl_placed_ok_of_contracts`) for `PolynomialEncoder::merge` on Block `297`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

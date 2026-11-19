@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
-import ProofLib.Lemmas
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonLocal
 import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep
 import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
 import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeAddr
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepMac
+import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
 
 /-!
 # HMAC-Wire KDF Inversion with Memo Export
@@ -27,7 +27,7 @@ inversion yields attacker-known `salt₀` and `seed₀` matching the shapes of `
 whose `kdfExtract salt₀ seed₀` and `seed₀` memos lie in `(gamma' t₀).memo`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

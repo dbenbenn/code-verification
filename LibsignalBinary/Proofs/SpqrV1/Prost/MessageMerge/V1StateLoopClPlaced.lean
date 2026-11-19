@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoop
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -25,7 +25,7 @@ Code-loaded (`withLsCodeRoLoaded lsmpl`) `[LibsignalPlacement]` exits, latch con
 decode, `skip_field` arm, and outer loop induction for `V1State::merge` (Block `298`).
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlaced
 end LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlaced
@@ -58,7 +58,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
   optProtoInnerStateJumpTableAt optProtoInnerStateJumpTablePlacedAt
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.noneCap_add_one_beq_zero EncodedLen.noneCap_add_one_bne_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero v1StateMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 
 private theorem setWidth8_ofNat64_wt_v1 (wt : WireType) :
     (BitVec.ofNat 64 wt.toNat).setWidth 8 = BitVec.ofNat 8 wt.toNat := by

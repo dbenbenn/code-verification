@@ -9,13 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwind
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyber
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4MarkKyber -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwindPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Relocatable Stage P4.2 Dispatch Proof: `mark_kyber_pre_key_used`
@@ -24,7 +34,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `StageP4VRegsMarkKyberProof` o
 (`lsProg_518 ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,7 +62,7 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 open CryptoVerification.SignalSession
 
 /-- Resources shared unchanged across Placed Substage P4.2 (`mark_kyber_pre_key_used`). -/
-def stageP4MarkKyberSharedPlaced {A : RustAlloc}
+@[expose] def stageP4MarkKyberSharedPlaced {A : RustAlloc}
     (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr msgPtr prevStatesPtr : BitVec 64)
@@ -69,7 +79,7 @@ def stageP4MarkKyberSharedPlaced {A : RustAlloc}
   stackAt s.sp (markKyberCallStack kpkKit)
 
 /-- Spatial precondition of Placed Substage P4.2 at `0#64 + kpkKit.markShimOff`. -/
-def stageP4MarkKyberPrePlaced {A : RustAlloc}
+@[expose] def stageP4MarkKyberPrePlaced {A : RustAlloc}
     (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr msgPtr outPtr kyberStorePtr prevStatesPtr ptCap ptPtr : BitVec 64)
@@ -91,7 +101,7 @@ def stageP4MarkKyberPrePlaced {A : RustAlloc}
   kpkKit.storeAt kyberStorePtr kst0
 
 /-- Spatial postcondition of Placed Substage P4.2 after `Ok(())` + deallocation. -/
-def stageP4MarkKyberOkPostPlaced {A : RustAlloc}
+@[expose] def stageP4MarkKyberOkPostPlaced {A : RustAlloc}
     (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr msgPtr outPtr kyberStorePtr prevStatesPtr ptCap ptPtr : BitVec 64)
@@ -115,7 +125,7 @@ def stageP4MarkKyberOkPostPlaced {A : RustAlloc}
   kpkKit.storeAt kyberStorePtr (kpkKit.markUpdate kst0 kyberPreKeyId signedPreKeyId baseKey (.ok ()))
 
 /-- Spatial postcondition of Placed Substage P4.2 on `Err(e)` at `s0.readReg64 .x30`. -/
-def stageP4MarkKyberErrPostPlaced {A : RustAlloc}
+@[expose] def stageP4MarkKyberErrPostPlaced {A : RustAlloc}
     (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr msgPtr outPtr kyberStorePtr prevStatesPtr : BitVec 64)

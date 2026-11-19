@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.UA.ClassicalBridge
-public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.UA.ClassicalBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.Coinsplit.Lift.L01InitClearLeak
 import Symbolic.Proofs.Swarm.Coinsplit.Lift.L02GoodExit0Cut
 import Symbolic.Proofs.Swarm.UA.Assembly
@@ -39,7 +39,7 @@ to traces containing guarded `breakDH`, `breakKEM`, `invertDH`, and `invertKEM` 
 into passive traces (`¬ RunAfterBreak`) and interleaved traces (`RunAfterBreak`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -99,11 +99,11 @@ theorem comp_refines_cli_model_classical_at (interp : ExternInterpretation)
 /-! ## Trace Splitting -/
 
 /-- Every event in `qs` is a break or invert environment event. -/
-def AllBreakInvert (qs : List CliEvent) : Prop :=
+@[expose] def AllBreakInvert (qs : List CliEvent) : Prop :=
   ∀ x ∈ qs, ∃ e : EnvEvent, x = .env e ∧ e.IsBreakInvert
 
 /-- Some run event occurs after a break or invert event. -/
-def RunAfterBreak (evs : List CliEvent) : Prop :=
+@[expose] def RunAfterBreak (evs : List CliEvent) : Prop :=
   ∃ (pre post : List CliEvent) (e : EnvEvent), evs = pre ++ .env e :: post ∧ e.IsBreakInvert ∧
     ∃ ev : RunEvent, CliEvent.run ev ∈ post
 

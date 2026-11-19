@@ -9,9 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5IfacePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5IfacePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public meta import ProofLib
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Relocatable Code Typeclasses for M5 Drop Loops (Block `617`)
@@ -21,7 +26,7 @@ typeclasses (`DropLoopCodePlaced`, `DropDirCodePlaced`, `DropDirCmpCodePlaced`) 
 and unrolled `Dir` drop blocks on Block `617`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,32 +55,32 @@ inductive DropLoopRegsPlaced where
   deriving DecidableEq
 
 /-- Counter GPR index (`20`). -/
-def DropLoopRegsPlaced.rc : DropLoopRegsPlaced → BitVec 5
+@[expose] def DropLoopRegsPlaced.rc : DropLoopRegsPlaced → BitVec 5
   | .r20_21 => 20#5
   | .r20_25 => 20#5
 
 /-- Pointer GPR index (`21` or `25`). -/
-def DropLoopRegsPlaced.rp : DropLoopRegsPlaced → BitVec 5
+@[expose] def DropLoopRegsPlaced.rp : DropLoopRegsPlaced → BitVec 5
   | .r20_21 => 21#5
   | .r20_25 => 25#5
 
 /-- `Reg` encoding of the counter register (`x20`). -/
-def DropLoopRegsPlaced.rcZr : DropLoopRegsPlaced → Reg
+@[expose] def DropLoopRegsPlaced.rcZr : DropLoopRegsPlaced → Reg
   | .r20_21 => .gpr 20#5
   | .r20_25 => .gpr 20#5
 
 /-- `Reg` encoding of the counter register (`x20`). -/
-def DropLoopRegsPlaced.rcSp : DropLoopRegsPlaced → Reg
+@[expose] def DropLoopRegsPlaced.rcSp : DropLoopRegsPlaced → Reg
   | .r20_21 => .gpr 20#5
   | .r20_25 => .gpr 20#5
 
 /-- `Reg` encoding of the pointer register (`x21` or `x25`). -/
-def DropLoopRegsPlaced.rpSp : DropLoopRegsPlaced → Reg
+@[expose] def DropLoopRegsPlaced.rpSp : DropLoopRegsPlaced → Reg
   | .r20_21 => .gpr 21#5
   | .r20_25 => .gpr 25#5
 
 /-- Every callee-saved GPR `x19 .. x29` other than `rc` and `rp` keeps its value from `s` to `sm`. -/
-def DropLoopRegsPlaced.keeps (regs : DropLoopRegsPlaced) (s sm : State) : Prop :=
+@[expose] def DropLoopRegsPlaced.keeps (regs : DropLoopRegsPlaced) (s sm : State) : Prop :=
   ∀ r : BitVec 5,
     19 ≤ r.toNat → r.toNat ≤ 29 →
     r ≠ regs.rc → r ≠ regs.rp →

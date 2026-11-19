@@ -11,29 +11,30 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroAPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Chain3Placed
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroAPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Chain3Placed
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Core
-import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Fetch
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Fields
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.PrologueSenderRatchetKey
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Code
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `GrowOneChain` and `VerNe.Chain3` (Block `516`) Exit Slice
@@ -44,7 +45,7 @@ Verifies budget-threaded `<alloc::raw_vec::RawVec<Chain>>::grow_one` (Block `43`
 (`chain3Exit_placed_ok`) for `message::merge<Chain> [local#4]` (Block `516`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -804,7 +805,7 @@ theorem growOneChain_placed_ok_cl_of_hooks [LibsignalPlacement] {M : AllocCostMo
 
 /-- Image-free budget-threaded contract for `message::merge<Chain> [local#4]` (Block `516`) at
 `chainMerge3StackX` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under `FitsEnv M lim st (ChainMergeGenEnv x)`). -/
-def chainMerge3RawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainMerge3RawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainMergeGenGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.bufRef ∧
@@ -820,13 +821,13 @@ def chainMerge3RawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
         sliceCursorAfter x.slot x.ptr (x.c.payload ++ x.tail) x.tail ∗
         A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp chainMerge3StackX
 
-def chainMerge3PlacedSpecW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def chainMerge3PlacedSpecW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (ChainMergeGenGhost × M.σ) :=
   withLsCl lsmpl (chainMerge3RawSpecW M A lim)
 
 /-- `message::merge<Chain> [local#4]` (Block `516`) meets `chainMerge3PlacedSpecW M A lim` on
 `lsProg_516 (Rust.withPanics ext)`. -/
-def Chain3PlacedOkAtW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def Chain3PlacedOkAtW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_516 (Rust.withPanics ext)) (lsmpl.base 516)
@@ -848,7 +849,7 @@ abbrev Chain3StepPlacedAtW [LibsignalPlacement] (M : AllocCostModel)
   SegStepG (lsProg_516 (Rust.withPanics ext)) (chainMerge3PlacedSpecW M A lim) (x, st) R s0 s Q
 
 /-- Placed budget-threaded loop invariant at `+0x0a8` after `k` of the chain's fields. -/
-def Chain3LoopPlacedAtW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def Chain3LoopPlacedAtW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) (x : ChainMergeGenGhost) (st : M.σ)
     (R : SepProp) (s0 : State) (k : Nat) (s : State) : Prop :=
@@ -871,7 +872,7 @@ def Chain3LoopPlacedAtW [LibsignalPlacement] (M : AllocCostModel)
         stackAt (s0.sp - 0xf0#64) chainMerge3SubStackX ∗ chain3SavedRegs s0.sp s0 ∗ R)
 
 /-- Return state of `[local#4]` with `(chainMerge3PlacedSpecW M A lim).post`. -/
-def Chain3RetPlacedAtW [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def Chain3RetPlacedAtW [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ChainMergeGenGhost) (st : M.σ) (R : SepProp) (s0 sf : State) : Prop :=
   Returned s0 sf ∧ CallingConventionPreserved s0 sf ∧

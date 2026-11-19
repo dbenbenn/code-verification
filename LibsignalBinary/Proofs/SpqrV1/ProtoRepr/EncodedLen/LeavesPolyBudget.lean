@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesPoly
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesPoly
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.LibsignalTripleRatchet
+public import ProofLib.ProgramReflection.SortedFresh
 
 /-!
 # `VmPreserved` Placed Verification of `Polynomial{Decoder,Encoder}::encoded_len`
@@ -20,7 +23,7 @@ Unpinning bridges and `[LibsignalPlacement]` `subroutine_ok` theorems with `VmPr
 `173`, `401`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,45 +73,45 @@ theorem polynomialDecoderEncodedLen_ok_of_pinned {prog : Program} {entry : BitVe
   · exact Or.inr (Or.inl hpan)
   · exact Or.inr (Or.inr hex)
 
-def PolynomialDecoderEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolynomialDecoderEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_186).rebase (blkPl_186).base (Rust.withPanics ext))
     (blkPl_186).base (polynomialDecoderEncodedLenPinnedSpec A)
 
-def PolynomialDecoderEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolynomialDecoderEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_186).rebase (blkPl_186).base (Rust.withPanics ext))
     (blkPl_186).base (polynomialDecoderEncodedLenSpec A)
 
-def PolynomialDecoderEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def PolynomialDecoderEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_186).rebase (blkPl_186).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_186).base (polynomialDecoderEncodedLenPinnedSpec A)
 
-def PolynomialDecoderEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def PolynomialDecoderEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_186).rebase (blkPl_186).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_186).base (polynomialDecoderEncodedLenSpec A)
 
-def PolynomialDecoderEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolynomialDecoderEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_413).rebase (blkPl_413).base (Rust.withPanics ext))
     (blkPl_413).base (polynomialDecoderEncodedLenPinnedSpec A)
 
-def PolynomialDecoderEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolynomialDecoderEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_413).rebase (blkPl_413).base (Rust.withPanics ext))
     (blkPl_413).base (polynomialDecoderEncodedLenSpec A)
 
-def PolynomialDecoderEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def PolynomialDecoderEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_413).rebase (blkPl_413).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_413).base (polynomialDecoderEncodedLenPinnedSpec A)
 
-def PolynomialDecoderEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def PolynomialDecoderEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_413).rebase (blkPl_413).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
@@ -121,13 +124,6 @@ theorem polynomialDecoderEncodedLen_local1_pinned_placed_ok_hooks [inst : Libsig
   ls_subroutine_ok_plain_vmPreserved (i := 186) (by decide +kernel)
     (hok := polyDec_entry_pinned_ok _ A _
       (Or.inr ⟨inst, hooksException H, Or.inl ⟨rfl, rfl⟩⟩))
-
-theorem polynomialDecoderEncodedLen_local1_placed_ok_hooks [LibsignalPlacement]
-    (A : RustAlloc) (H : String → Option (State → State)) :
-    subroutine_ok ((blkPC_186).rebase (blkPl_186).base H)
-      (blkPl_186).base (polynomialDecoderEncodedLenSpec A) :=
-  polynomialDecoderEncodedLen_ok_of_pinned
-    (polynomialDecoderEncodedLen_local1_pinned_placed_ok_hooks A H)
 
 theorem polynomialDecoderEncodedLen_local1_pinned_placed_ok_ext [LibsignalPlacement]
     (A : RustAlloc) (ext : String → Option (State → State)) :
@@ -157,13 +153,6 @@ theorem polynomialDecoderEncodedLen_local2_pinned_placed_ok_hooks [inst : Libsig
   ls_subroutine_ok_plain_vmPreserved (i := 413) (by decide +kernel)
     (hok := polyDec_entry_pinned_ok _ A _
       (Or.inr ⟨inst, hooksException H, Or.inr ⟨rfl, rfl⟩⟩))
-
-theorem polynomialDecoderEncodedLen_local2_placed_ok_hooks [LibsignalPlacement]
-    (A : RustAlloc) (H : String → Option (State → State)) :
-    subroutine_ok ((blkPC_413).rebase (blkPl_413).base H)
-      (blkPl_413).base (polynomialDecoderEncodedLenSpec A) :=
-  polynomialDecoderEncodedLen_ok_of_pinned
-    (polynomialDecoderEncodedLen_local2_pinned_placed_ok_hooks A H)
 
 theorem polynomialDecoderEncodedLen_local2_pinned_placed_ok_ext [LibsignalPlacement]
     (A : RustAlloc) (ext : String → Option (State → State)) :
@@ -213,45 +202,45 @@ theorem polynomialEncoderEncodedLen_ok_of_pinned {prog : Program} {entry : BitVe
   · exact Or.inr (Or.inl hpan)
   · exact Or.inr (Or.inr hex)
 
-def PolynomialEncoderEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolynomialEncoderEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_173).rebase (blkPl_173).base (Rust.withPanics ext))
     (blkPl_173).base (polynomialEncoderEncodedLenPinnedSpec A)
 
-def PolynomialEncoderEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolynomialEncoderEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_173).rebase (blkPl_173).base (Rust.withPanics ext))
     (blkPl_173).base (polynomialEncoderEncodedLenSpec A)
 
-def PolynomialEncoderEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def PolynomialEncoderEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_173).rebase (blkPl_173).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_173).base (polynomialEncoderEncodedLenPinnedSpec A)
 
-def PolynomialEncoderEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def PolynomialEncoderEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_173).rebase (blkPl_173).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_173).base (polynomialEncoderEncodedLenSpec A)
 
-def PolynomialEncoderEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolynomialEncoderEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_401).rebase (blkPl_401).base (Rust.withPanics ext))
     (blkPl_401).base (polynomialEncoderEncodedLenPinnedSpec A)
 
-def PolynomialEncoderEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolynomialEncoderEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_401).rebase (blkPl_401).base (Rust.withPanics ext))
     (blkPl_401).base (polynomialEncoderEncodedLenSpec A)
 
-def PolynomialEncoderEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def PolynomialEncoderEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_401).rebase (blkPl_401).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_401).base (polynomialEncoderEncodedLenPinnedSpec A)
 
-def PolynomialEncoderEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def PolynomialEncoderEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_401).rebase (blkPl_401).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
@@ -264,13 +253,6 @@ theorem polynomialEncoderEncodedLen_local1_pinned_placed_ok_hooks [inst : Libsig
   ls_subroutine_ok_plain_vmPreserved (i := 173) (by decide +kernel)
     (hok := polyEnc_entry_pinned_ok _ A _
       (Or.inr ⟨inst, hooksException H, Or.inl ⟨rfl, rfl⟩⟩))
-
-theorem polynomialEncoderEncodedLen_local1_placed_ok_hooks [LibsignalPlacement]
-    (A : RustAlloc) (H : String → Option (State → State)) :
-    subroutine_ok ((blkPC_173).rebase (blkPl_173).base H)
-      (blkPl_173).base (polynomialEncoderEncodedLenSpec A) :=
-  polynomialEncoderEncodedLen_ok_of_pinned
-    (polynomialEncoderEncodedLen_local1_pinned_placed_ok_hooks A H)
 
 theorem polynomialEncoderEncodedLen_local1_pinned_placed_ok_ext [LibsignalPlacement]
     (A : RustAlloc) (ext : String → Option (State → State)) :
@@ -300,13 +282,6 @@ theorem polynomialEncoderEncodedLen_local2_pinned_placed_ok_hooks [inst : Libsig
   ls_subroutine_ok_plain_vmPreserved (i := 401) (by decide +kernel)
     (hok := polyEnc_entry_pinned_ok _ A _
       (Or.inr ⟨inst, hooksException H, Or.inr ⟨rfl, rfl⟩⟩))
-
-theorem polynomialEncoderEncodedLen_local2_placed_ok_hooks [LibsignalPlacement]
-    (A : RustAlloc) (H : String → Option (State → State)) :
-    subroutine_ok ((blkPC_401).rebase (blkPl_401).base H)
-      (blkPl_401).base (polynomialEncoderEncodedLenSpec A) :=
-  polynomialEncoderEncodedLen_ok_of_pinned
-    (polynomialEncoderEncodedLen_local2_pinned_placed_ok_hooks A H)
 
 theorem polynomialEncoderEncodedLen_local2_pinned_placed_ok_ext [LibsignalPlacement]
     (A : RustAlloc) (ext : String → Option (State → State)) :

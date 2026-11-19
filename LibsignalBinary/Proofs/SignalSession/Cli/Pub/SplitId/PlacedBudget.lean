@@ -9,15 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `signal_session::public::split_id` (Block `593`)
@@ -25,7 +32,7 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 Verifies `splitIdSpecPlaced` on Block `593` under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -72,7 +79,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget (
 )
 
 /-- Allocator event envelope of `split_id`: allocates a 14-byte `"malformed file"` buffer, and additionally drops it (`FreeOnlyEvs`) when `4 ≤ file.length`. -/
-def SplitIdEnv (file : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def SplitIdEnv (file : List (BitVec 8)) : List AllocEvent → Prop :=
   if file.length < 4 then (· = rustAllocEvents 14 1)
   else SeqEnv (· = rustAllocEvents 14 1) FreeOnlyEvs
 

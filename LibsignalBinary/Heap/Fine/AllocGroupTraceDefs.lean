@@ -21,7 +21,7 @@ Defines `allocSlotFineByteBound`, group-geometry equivalence (`GroupSameGeom`,
 cut-point contracts, and byte-delta / OOM / count-dispatch combinators.
 -/
 
-@[expose] public noncomputable section
+@[expose] public section
 
 set_option autoImplicit false
 set_option maxRecDepth 20000
@@ -99,11 +99,6 @@ inductive AllocSlotFineTrace (rootParamPred : Nat → Nat → Nat → Prop)
 
 theorem slotSameKind_refl (s : SlotState) : SlotSameKind s s := Or.inl rfl
 
-theorem slotSameKind_symm {s1 s2 : SlotState} (h : SlotSameKind s1 s2) : SlotSameKind s2 s1 := by
-  rcases h with rfl | ⟨h1, h2⟩
-  · exact Or.inl rfl
-  · exact Or.inr ⟨h2, h1⟩
-
 theorem slotSameKind_trans {s1 s2 s3 : SlotState}
     (h12 : SlotSameKind s1 s2) (h23 : SlotSameKind s2 s3) : SlotSameKind s1 s3 := by
   rcases h12 with rfl | ⟨hf1, hf2⟩
@@ -115,10 +110,6 @@ theorem slotSameKind_trans {s1 s2 s3 : SlotState}
 theorem list_forall2_slotSameKind_refl (ss : List SlotState) : List.Forall₂ SlotSameKind ss ss := by
   induction ss with | nil => exact .nil | cons s _ ih => exact .cons (slotSameKind_refl s) ih
 
-theorem list_forall2_slotSameKind_symm {ss1 ss2 : List SlotState}
-    (h : List.Forall₂ SlotSameKind ss1 ss2) : List.Forall₂ SlotSameKind ss2 ss1 := by
-  induction h with | nil => exact .nil | cons hh _ ih => exact .cons (slotSameKind_symm hh) ih
-
 theorem list_forall2_slotSameKind_trans {ss1 ss2 ss3 : List SlotState}
     (h12 : List.Forall₂ SlotSameKind ss1 ss2) (h23 : List.Forall₂ SlotSameKind ss2 ss3) :
     List.Forall₂ SlotSameKind ss1 ss3 := by
@@ -129,9 +120,6 @@ theorem list_forall2_slotSameKind_trans {ss1 ss2 ss3 : List SlotState}
 theorem GroupSameGeom.refl (g : GroupDesc) : GroupSameGeom g g :=
   ⟨Eq.refl _, Eq.refl _, Eq.refl _, Eq.refl _, Eq.refl _⟩
 
-theorem GroupSameGeom.symm {g1 g2 : GroupDesc} (h : GroupSameGeom g1 g2) : GroupSameGeom g2 g1 :=
-  ⟨h.1.symm, h.2.1.symm, h.2.2.1.symm, h.2.2.2.1.symm, h.2.2.2.2.symm⟩
-
 theorem GroupSameGeom.trans {g1 g2 g3 : GroupDesc}
     (h12 : GroupSameGeom g1 g2) (h23 : GroupSameGeom g2 g3) : GroupSameGeom g1 g3 :=
   ⟨h12.1.trans h23.1, h12.2.1.trans h23.2.1, h12.2.2.1.trans h23.2.2.1,
@@ -141,10 +129,6 @@ theorem SameGroupsSlotKind.refl (gs : List GroupDesc) : SameGroupsSlotKind gs gs
   induction gs with
   | nil => exact .nil
   | cons g _ ih => exact .cons ⟨GroupSameGeom.refl g, list_forall2_slotSameKind_refl g.slots⟩ ih
-
-theorem SameGroupsSlotKind.symm {gs1 gs2 : List GroupDesc}
-    (h : SameGroupsSlotKind gs1 gs2) : SameGroupsSlotKind gs2 gs1 := by
-  induction h with | nil => exact .nil | cons hh _ ih => exact .cons ⟨hh.1.symm, list_forall2_slotSameKind_symm hh.2⟩ ih
 
 theorem SameGroupsSlotKind.trans {gs1 gs2 gs3 : List GroupDesc}
     (h12 : SameGroupsSlotKind gs1 gs2) (h23 : SameGroupsSlotKind gs2 gs3) : SameGroupsSlotKind gs1 gs3 := by
@@ -195,7 +179,7 @@ def AllocMetaFineParamStmt : Prop :=
     subroutine_ok P (mbase 7) (withCL mmpl {
       pre := fun (_ : Unit) s0 =>
         ⌜s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart⌝ ∗ stackFrame s0 224 ∗
-        MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp
+        MallocngCoreStInflightModeA true inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp
       post := fun _ s0 sf =>
         ∃∗ st' : MallocngSt, ∃∗ m : BitVec 64,
           ⌜MallocngProcPreserved s0 sf ∧ sf.readReg64 .x0 = m ∧ m ≠ 0#64 ∧
@@ -210,7 +194,7 @@ def AllocMetaFineParamStmt : Prop :=
            MallocngNoOrphanMappings (dynamicRootRegions st) (dynamicRootRegions st') s0.mem sf.mem ∧
            MallocngMappedDelta 1 (32768 * maxMetaAreas) s0.mem sf.mem⌝ ∗
           stackFrame s0 224 ∗ MallocngRuntime maddrs tp ∗ (m ↦ₛ List.replicate 40 0#8) ∗
-          MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
+          MallocngCoreStInflightModeA true (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
       onOom := fun _ s0 sf => ⌜MallocngPlacedOomCond msvc 1 (32768 * maxMetaAreas) s0 sf⌝
     })
 
@@ -257,7 +241,7 @@ abbrev AllocSlotFineTracePostProp [MallocngMultiPlacement] (rootParamPred : Nat 
      MallocngMappedDelta (2 * (allocSlotDepthBound sc + 1)) (allocSlotFineByteBound sc maxMetaAreas) s0.mem sf.mem⌝ ∗
     stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗
     MallocngRoTablesA maddrs ∗ MallocngRuntime maddrs tp ∗
-    MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
+    MallocngCoreStInflightModeA true (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
 
 def AllocSlotAtDepthFineTraceStmt (rootParamPred : Nat → Nat → Nat → Prop) (sc : Nat) : Prop :=
   ∀ [MallocngMultiPlacement] (req inflight : Nat) (_hSc : sc < 48) (_hReq : req ≤ nominalSlotCap sc)
@@ -270,7 +254,7 @@ def AllocSlotAtDepthFineTraceStmt (rootParamPred : Nat → Nat → Nat → Prop)
         ⌜s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart ∧
          (s0.readReg32 .x0).toNat = sc ∧ (s0.readReg64 .x1).toNat = req⌝ ∗
         stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗ MallocngRoTablesA maddrs ∗
-        MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp
+        MallocngCoreStInflightModeA true inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp
       post := fun _ s0 sf =>
         AllocSlotFineTracePostProp rootParamPred sc req inflight γ tp brkStart liveCost peakCost maxMetaAreas st s0 sf
       onOom := fun _ s0 sf =>
@@ -313,7 +297,7 @@ def AllocGroupAtOffFineTraceStmt (rootParamPred : Nat → Nat → Nat → Prop) 
         (s0.readReg64 .x21) (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24) (s0.readReg64 .x25)
         (s0.readReg64 .x26) (s0.readReg64 .x27) (s0.readReg64 .x28) ∗
        stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗ MallocngRoTablesA maddrs ∗
-       MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp)
+       MallocngCoreStInflightModeA true inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp)
       (AllocSlotFineTracePost rootParamPred sc req inflight γ tp brkStart liveCost peakCost maxMetaAreas st0 s0)
       (fun sf => ⌜MallocngPlacedOomCond msvc (2 * (allocSlotDepthBound sc + 1)) (allocSlotFineByteBound sc maxMetaAreas) s0 sf⌝)
 
@@ -391,13 +375,13 @@ theorem sepWP_extract_coreSt_wf {prog : Program} {exit_pc : BitVec 64} {s : Stat
     {liveCost peakCost : Nat} {st : MallocngSt} {Pre1 Pre2 : SepProp}
     {post : State → SepProp → Prop} {oom : State → SepProp}
     (h : MallocngWFInflight inflight A.base brkStart s.brk liveCost peakCost st →
-      SepWP prog exit_pc s (Pre1 ∗ MallocngCoreStInflightA inflight γ A brkStart s.brk liveCost peakCost st ∗ Pre2) post oom) :
-    SepWP prog exit_pc s (Pre1 ∗ MallocngCoreStInflightA inflight γ A brkStart s.brk liveCost peakCost st ∗ Pre2) post oom := by
-  have hSwap : (Pre1 ∗ MallocngCoreStInflightA inflight γ A brkStart s.brk liveCost peakCost st ∗ Pre2) =
-      (MallocngCoreStInflightA inflight γ A brkStart s.brk liveCost peakCost st ∗ (Pre1 ∗ Pre2)) := by ac_rfl
-  rw [hSwap]; conv => arg 4; simp only [MallocngCoreStInflightA, sepConj_assoc]
+      SepWP prog exit_pc s (Pre1 ∗ MallocngCoreStInflightModeA true inflight γ A brkStart s.brk liveCost peakCost st ∗ Pre2) post oom) :
+    SepWP prog exit_pc s (Pre1 ∗ MallocngCoreStInflightModeA true inflight γ A brkStart s.brk liveCost peakCost st ∗ Pre2) post oom := by
+  have hSwap : (Pre1 ∗ MallocngCoreStInflightModeA true inflight γ A brkStart s.brk liveCost peakCost st ∗ Pre2) =
+      (MallocngCoreStInflightModeA true inflight γ A brkStart s.brk liveCost peakCost st ∗ (Pre1 ∗ Pre2)) := by ac_rfl
+  rw [hSwap]; conv => arg 4; simp only [MallocngCoreStInflightModeA, sepConj_assoc]
   apply SepWP.pure_elim; intro hwf; have hh := h hwf; rw [hSwap] at hh
-  conv at hh => arg 4; simp only [MallocngCoreStInflightA, sepConj_assoc, pure_sepConj_of_true hwf]
+  conv at hh => arg 4; simp only [MallocngCoreStInflightModeA, sepConj_assoc, pure_sepConj_of_true hwf]
   exact hh
 
 private theorem wp_cnt_check_mem_fine [MallocngMultiPlacement]

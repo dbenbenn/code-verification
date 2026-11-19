@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieBExclPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieSeedShapePure
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieBExclPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieSeedShapePure -- proof-setup: allow-public-import
 import Batteries.Data.UInt
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepNoRatchetPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPure
@@ -35,7 +35,7 @@ chain-step branch while a `decryptSkipped` move reads a non-colliding message un
 skipped seed.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

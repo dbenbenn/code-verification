@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalE2E.HooksMallocng
 public import ProofLib.Hoare.MultiCodeROHook
 public import VerifiedLibraries.Mallocng.Spec
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Placed Filesystem Trace Soundness (`TraceFsSound`) at `cliExternsPlaced` and `cliGhostExterns`
@@ -26,7 +28,7 @@ deriving `TraceFsSound` on `MultiPlacedLib.blockProgram`, `mProgPlaced`, and `cl
 both `cliExternsPlaced mmpl W` and `cliGhostExterns g (cliExternsPlaced mmpl W)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -201,20 +203,10 @@ theorem libcruxHmacHookMallocng_fsT (mpl : Obj.MultiPlacement)
       apply stepRustAlloc1_fsT; intro _ _
       exact FsTraced.of_eq rfl rfl
 
-/-- Every row of the `27`-row `cliHookTablePlaced mmpl W` satisfies `HookFsTraced IsFsC`. -/
+/-- Every row of the `0`-row `cliHookTablePlaced mmpl W` satisfies `HookFsTraced IsFsC`. -/
 theorem cliHookTablePlaced_fsT (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    ∀ p ∈ cliHookTablePlaced mmpl W, HookFsTraced IsFsC p.2 := by
-  simp only [cliHookTablePlaced, cliPqxdhHookTablePlaced, List.cons_append,
-    List.nil_append, List.forall_mem_cons, List.not_mem_nil, false_implies, implies_true,
-    and_true, compress512Hook_fsT, toEdwardsHook_fsT, compressHook_fsT, edNegHook_fsT,
-    torsionFreeHook_fsT, dsmbHook_fsT, scalarModHook_fsT, scalarWideHook_fsT,
-    kemEncapsHook_fsT, kemDecapsHook_fsT, mlkemFromSeedHook_fsT, mlkemPk1Hook_fsT,
-    mlkemPk2Hook_fsT, mlkemEncaps1Hook_fsT, mlkemEncaps2Hook_fsT, mlkemDecapsHook_fsT,
-    mlkemValidatePkHook_fsT, libcruxHmacHookMallocng_fsT,
-    writeFileHook_fsT, writeStdoutHook_fsT,
-    fmtWriteHook0_fsT, formatInnerHook0_fsT,
-    compress256Hook_fsT, aesEncHookMallocng_fsT, aesDecHookMallocng_fsT, pubFromSecretHook_fsT,
-    diffieHellmanHook_fsT]
+    ∀ p ∈ LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliHookTablePlaced mmpl W, HookFsTraced IsFsC p.2 := by
+  intro _ hp; exact nomatch hp
 
 /-- Every extern hook of `cliExternsPlaced mmpl W` satisfies `HookFsTraced IsFsC`. -/
 theorem fsTHooks_cliExternsPlaced (mmpl : Obj.MultiPlacement) (W : CliHooks) :

@@ -18,23 +18,23 @@ Defines `DRKey.toBytes96`, `decodeEC`, `decodeKEM`, `WellFormedPrimitives`, and 
 proves PQXDH handshake round-trip correctness (`pqxdh_handshake_roundtrip`, `wellFormed_pqxdhCorrect`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace SignalPqxdh
 
 /-- Concatenates the three 32-byte slices of `DRKey` into a 96-byte buffer (`pqxdh.rs:70-92`). -/
-def DRKey.toBytes96 (dk : DRKey) : Bytes :=
+@[expose] def DRKey.toBytes96 (dk : DRKey) : Bytes :=
   dk.rootKey ++ dk.chainKey ++ dk.pqrKey
 
 /-- Parses a 33-byte serialized Curve25519 public key (`<PublicKey>::try_from`). -/
-def decodeEC (b : Bytes) : Option Bytes :=
+@[expose] def decodeEC (b : Bytes) : Option Bytes :=
   match b with
   | tag :: rest => if tag == TAG_EC_DJB && rest.length == 32 then some rest else none
   | [] => none
 
 /-- Parses a 1569-byte serialized Kyber1024 public key (`<kem::Key<Public>>::try_from`). -/
-def decodeKEM (b : Bytes) : Option Bytes :=
+@[expose] def decodeKEM (b : Bytes) : Option Bytes :=
   match b with
   | tag :: rest => if tag == TAG_KYBER_1024 && rest.length == 1568 then some rest else none
   | [] => none
@@ -265,7 +265,7 @@ theorem wellFormed_pqxdhCorrect (P : Primitives) (hWF : WellFormedPrimitives P) 
     (fun pqrKey stA salt? pqMsg hS => hWF.spqr_corr pqrKey initInp.spqrCoins stA salt? pqMsg hS) hSpqrOk
 
 /-- Pad or truncate a `Bytes` list to exactly `n` bytes with trailing `0`s. -/
-def fitBytes (n : Nat) (bs : Bytes) : Bytes :=
+@[expose] def fitBytes (n : Nat) (bs : Bytes) : Bytes :=
   bs.take n ++ List.replicate (n - bs.length) 0
 
 end SignalPqxdh

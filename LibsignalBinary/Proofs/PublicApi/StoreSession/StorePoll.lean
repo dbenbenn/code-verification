@@ -10,20 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalPublicApi
-public import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.CodeLayout
 import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.PublicApi.StoreSession.Decodes -- shake: keep
-
-/-!
-# `HookSessionStore::store_session` Future Poll (`0x42b38`)
-
-Verifies `<HookSessionStore as SessionStore>::store_session::{closure#0}` (31 instructions): reads
-the address and record pointers from the future box (`x0`), invokes
-`libsignal_session_store_session` (`storeSessionSpec`), writes the 48-byte
-`Poll<Result<(), SignalProtocolError>>` to `x8`, and sets the future state byte to `1`.
--/
-
-@[expose] public section
+public import ProofLib.GenDecodes
+public import ProofLib.VCGen
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.StoreSession
 
@@ -55,38 +46,8 @@ structure StorePollCall where
 
 /-- Word 0 of the `Poll<Result<(), SPE>>` the poll writes: `-2` = `Ready(Ok(()))`, else SPE
 variant 26 (`ApplicationCallbackError`, `speWord 26`, the niche-encoded `Ready(Err(_))`). -/
-def pollTag : Except Unit Unit → BitVec 64
+@[expose] def pollTag : Except Unit Unit → BitVec 64
   | .ok () => 0xFFFFFFFFFFFFFFFE#64
   | .error () => 0x800000000000001A#64
-
-/-- The poll of the `store_session` future (`0x42b38`) on `tripleRatchetProgAt b`. Pre: the future box's
-address / record pointers (`+8`, `+0x10`) and state byte 0 (`+0x18`; an odd state byte panics,
-`panic_const_async_fn_resumed`), the 48-byte sret, the hook's arguments. Post: for some answer
-`ans` of the hook, the trace grew by `storeSessionEvent`, the state byte is 1, and the sret holds
-`pollTag ans` and the `ApplicationCallbackError("store hook", Box<HookStoreError>)` payload words
-(written on both paths: `&str` at rodata `b + 0x4dab0`, length 10, ZST box data 1, vtable
-`b + 0x4da58`), the last word untouched. -/
-def storeSessionPollSpec (A : RustAlloc)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)) (b : BitVec 64) :
-    Spec StorePollCall where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.fut ∧ s.readReg64 .x8 = x.out⌝ ∗
-      ((x.fut + 8#64) ↦₆₄ x.call.addrA) ∗ ((x.fut + 0x10#64) ↦₆₄ x.call.recA) ∗
-      ((x.fut + 0x18#64) ↦₈ 0#8) ∗ memRegion x.out 48 ∗
-      protocolAddressAt A x.call.addr x.call.addrA ∗
-      sessionRecordAt A x.call.recA x.call.g x.call.record ∗ A.pool ∗
-      stackAt s.sp storeSessionPollStack
-  post := fun x s0 sf =>
-    ∃∗ ans : Except Unit Unit,
-      ⌜sf.trace = s0.trace ++
-        [storeSessionEvent encRecord x.call.addr.val x.call.record ans]⌝ ∗
-      ((x.fut + 8#64) ↦₆₄ x.call.addrA) ∗ ((x.fut + 0x10#64) ↦₆₄ x.call.recA) ∗
-      ((x.fut + 0x18#64) ↦₈ 1#8) ∗
-      (x.out ↦₆₄ pollTag ans) ∗ ((x.out + 8#64) ↦₆₄ (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}")))) ∗
-      ((x.out + 0x10#64) ↦₆₄ 10#64) ∗ ((x.out + 0x18#64) ↦₆₄ 1#64) ∗
-      ((x.out + 0x20#64) ↦₆₄ (b + bv% (ls_xref% (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 620) (ls_off% "<libsignal_protocol::fingerprint::ScannableFingerprint>::serialize" + 624) + 16))) ∗ memRegion (x.out + 0x28#64) 8 ∗
-      protocolAddressAt A x.call.addr x.call.addrA ∗
-      sessionRecordAt A x.call.recA x.call.g x.call.record ∗ A.pool ∗
-      stackAt s0.sp storeSessionPollStack
 
 end CryptoVerification.LibsignalPublicApi.StoreSession

@@ -1402,7 +1402,7 @@ private theorem memTightInv_simdStoreRegs {fp : BitVec 64 → Bool} {sz : SimdMe
 
 private def sysProj (s : State) :=
   (s.tpidrEl0, s.fpsr, s.brkStart, s.brk, s.fs, s.oracle, s.oracleIdx,
-   s.exclFails, s.trace, s.symtab, s.sigActions, s.sigAltStack, s.physMemAvail)
+   s.exclFails, s.trace, s.symtab, s.sigActions, s.sigAltStack, s.sigMask, s.sigPending, s.physMemAvail)
 
 private structure StateTightRel (fp : BitVec 64 → Bool) (gprOk vregOk : BitVec 5 → Bool)
     (s0 st st_tight : State) : Prop where

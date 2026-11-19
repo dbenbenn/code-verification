@@ -9,9 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExact
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExact
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBase
 
 /-!
 # Budget-Threaded Exact-Capacity Specifications for `encode_repeated` (`< 2 ^ 59`) & `PolynomialEncoder::encode`
@@ -21,7 +27,7 @@ Defines the allocator event envelope `EncodeRepeatedEnv` and budget-threaded con
 `encodePolyEncoderExactSpecOf`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,11 +47,11 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget
 /-! ## 1. Budget-Threaded `encodeRepeated59SpecOf` (`elems.length < 2 ^ 59`) -/
 
 /-- Deterministic `AllocEvent` list emitted by `prost::encoding::bytes::encode_repeated` on `x`. -/
-def encodeRepeatedEvents (x : EncodeRepeatedGhost) : List AllocEvent :=
+@[expose] def encodeRepeatedEvents (x : EncodeRepeatedGhost) : List AllocEvent :=
   (encodeRepeatedStep x.tag x.cap.toNat x.bs.length (x.elems.map Prod.snd)).2
 
 /-- Callee-fixed allocator event envelope of `encode_repeated`. -/
-def EncodeRepeatedEnv (x : EncodeRepeatedGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EncodeRepeatedEnv (x : EncodeRepeatedGhost) (evs : List AllocEvent) : Prop :=
   evs = encodeRepeatedEvents x
 
 theorem encodeRepeatedEvents_of_spare {x : EncodeRepeatedGhost}
@@ -55,7 +61,7 @@ theorem encodeRepeatedEvents_of_spare {x : EncodeRepeatedGhost}
   rw [encodeRepeatedStep_of_spare x.tag x.cap.toNat x.bs.length (x.elems.map Prod.snd) h]
 
 /-- Envelope-parameterized budget contract of `encode_repeated` with `elems.length < 2 ^ 59`. -/
-def encodeRepeated59SpecOfEnv (resStack : Nat)
+@[expose] def encodeRepeated59SpecOfEnv (resStack : Nat)
     (Env : EncodeRepeatedGhost → List AllocEvent → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodeRepeatedGhost × M.σ) where
@@ -94,7 +100,7 @@ abbrev encodeRepeated59SpecOf (resStack : Nat) {M : AllocCostModel}
 /-- Exact-capacity (`0`-allocation) specialization of `encodeRepeated59SpecOf`:
     when `x.bs.length + (encodeRepeatedBytes ...).length ≤ x.cap.toNat`, no allocations occur
     and `A.pool lim st` is preserved unchanged. -/
-def encodeRepeated59ExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeRepeated59ExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodeRepeatedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -186,7 +192,7 @@ theorem subroutine_ok_encodeRepeated59Exact_of_59 {resStack : Nat} {prog : Progr
 /-- Exact-capacity budget specification of `PolynomialEncoder::encode`:
     when `x.bs.length + (encodePolyEncoderMsg x.enc).length ≤ x.cap.toNat`, zero allocations
     occur and `A.pool lim st` is preserved unchanged (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def encodePolyEncoderExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodePolyEncoderExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodePolyEncoderPinnedGhost × M.σ) where
   pre := fun (x, st) s =>

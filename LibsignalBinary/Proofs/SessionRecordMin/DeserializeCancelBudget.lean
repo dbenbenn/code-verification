@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Record.Support.Phi
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Fields
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineInst
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
 
 /-!
 # Scratch-Cancellation Credit and Group Bounds for `SessionRecord::deserialize`
@@ -27,7 +33,7 @@ deallocations), non-vacuity witnesses, and `[LibsignalPlacement]` block-`46` bri
 `SpecsPlacedBudget.sessDeserializeSpecPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -123,25 +129,25 @@ export LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux (
 
 /-- Closed `fineCostModel` `cumSmall` bound for `SessionRecord::deserialize` on
 `DeserializeScopeP_Q NonEmptyV1Q` (`16,890,453` B). -/
-def deserCancelFineCum : Nat := 16890453
+@[expose] def deserCancelFineCum : Nat := 16890453
 
 /-- Closed `fineCostModel` post-deserialize `sc = 63` `liveLarge` bound at `≤ 2 MiB` wire slice
 (`3,211,282` B). -/
-def deserCancelFineLive : Nat := 3211282
+@[expose] def deserCancelFineLive : Nat := 3211282
 
 /-- Closed `fineCostModel` transient `sc = 63` `peakLarge` bound at `≤ 2 MiB` wire slice
 (`5,316,629` B). -/
-def deserCancelFinePeak : Nat := 5316629
+@[expose] def deserCancelFinePeak : Nat := 5316629
 
 /-- Closed per-step allocation request cap at `≤ 2 MiB` wire slice (`2,097,152` B). -/
-def deserCancelFineMaxReq : Nat := 2097152
+@[expose] def deserCancelFineMaxReq : Nat := 2097152
 
 /-- Closed `FineScale`-scaled `groupsScaled` bound for `SessionRecord::deserialize` on
 `DeserializeScopeP_Q NonEmptyV1Q` (`344,462,092`, i.e., `5,257` groups). -/
-def deserCancelFineGrpS : Nat := 344462092
+@[expose] def deserCancelFineGrpS : Nat := 344462092
 
 /-- Ceiling group count `(deserCancelFineGrpS + FineScale - 1) / FineScale` (`5,257` groups). -/
-def deserCancelFineGroups : Nat :=
+@[expose] def deserCancelFineGroups : Nat :=
   (deserCancelFineGrpS + FineScale - 1) / FineScale
 
 theorem deserCancelFineGroups_eq : deserCancelFineGroups = 5257 := by decide
@@ -755,11 +761,6 @@ theorem recordDeserializeCancelEnv_fine_groupSpec (bs : List (BitVec 8)) :
     · exact ((PhaseGroupSpec.nil fineCostModel).mono (Nat.zero_le _)).groups_le st0 rfl
     · exact (sessDeserEvents_fine_groupSpec hr).groups_le st0 rfl
 
-/-- Monotonicity specialization to the `345,022,998` `grpS` cap. -/
-theorem recordDeserializeCancelEnv_fine_groupSpec_b3q (bs : List (BitVec 8)) :
-    PhaseGroupSpec fineCostModel (RecordDeserializeCancelEnv bs) 345022998 :=
-  (recordDeserializeCancelEnv_fine_groupSpec bs).mono (by decide)
-
 /-- Monotonicity specialization to the `345,780,512` `grpS` cap. -/
 theorem recordDeserializeCancelEnv_fine_groupSpec_p16_48 (bs : List (BitVec 8)) :
     PhaseGroupSpec fineCostModel (RecordDeserializeCancelEnv bs) 345780512 :=
@@ -853,96 +854,7 @@ theorem recordDeserializeCancelEnv_fine_phaseCreditSpec_p192
   (recordDeserializeCancelEnv_fine_phaseCreditSpec hlen).mono
     (by decide) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
 
-/-- Standalone `FitsEnv` closure on `cliBudgetLimits` (`1 GiB` RAM, `2 ^ 48` VA) at
-`fineCostModel.init` for any `bs.length ≤ 2,097,152`. -/
-theorem recordDeserializeCancelEnv_fitsEnv_cliBudgetLimits
-    {bs : List (BitVec 8)} (hlen : bs.length ≤ deserCancelFineMaxReq) :
-    FitsEnv fineCostModel cliBudgetLimits fineCostModel.init (RecordDeserializeCancelEnv bs) :=
-  fitsEnv_fineCostModel_of_phaseCredit_groups
-    (recordDeserializeCancelEnv_fine_phaseCreditSpec hlen)
-    (recordDeserializeCancelEnv_fine_groupSpec bs)
-    (by decide)
-    (Nat.le_refl deserCancelFineGroups)
-    rfl
-    (by decide)
-    (by decide)
-
 /-! ## 4. Non-Vacuity Witnesses -/
-
-/-- Concrete single-session `SessionState` witness (`aliceIdKey` / `bobIdKey`, empty chains). -/
-def witnessSessionState0 : SessionState (List (BitVec 8)) where
-  sessionVersion := 4#32
-  localIdentity := aliceIdKey
-  remoteIdentity := some bobIdKey
-  rootKey := 0#256
-  previousCounter := 0#32
-  senderChain := none
-  receiverChains := []
-  pendingPreKey := false
-  pqRatchetState := []
-
-/-- Concrete single-session `Session` witness in `SessionScopeP`. -/
-def witnessSession0 : Session (List (BitVec 8)) where
-  state := witnessSessionState0
-  pendingPreKey := none
-  pendingKyberPreKey := none
-  localRegistrationId := 0#32
-  remoteRegistrationId := 0#32
-  aliceBaseKey := []
-
-/-- Concrete `SessionRecord` witness in `DeserializeScopeP_Q NonEmptyV1Q`. -/
-def witnessRecord0 : SessionRecord (List (BitVec 8)) :=
-  { currentSession := some witnessSession0 }
-
-theorem witnessRecord0_in_scope : DeserializeScopeP_Q NonEmptyV1Q witnessRecord0 := by
-  refine ⟨⟨?_, ?_, ?_⟩, witnessSession0, rfl, ?_⟩
-  · intro s hs
-    injection hs with hs'
-    subst hs'
-    refine ⟨?_, by decide, fun k hk => nomatch hk⟩
-    intro rc hrc
-    nomatch hrc
-  · intro s hs
-    injection hs with hs'
-    subst hs'
-    decide
-  · intro s hs
-    injection hs with hs'
-    subst hs'
-    exact ⟨(fun rc hrc => nomatch hrc), (fun sc hsc => nomatch hsc), rfl, by decide⟩
-  · exact ⟨by decide, (fun p hp => nomatch hp), (fun k hk => nomatch hk), Or.inl rfl⟩
-
-theorem witnessRecord0_encode_le_2MiB :
-    (encodeRecord witnessRecord0).length ≤ deserCancelFineMaxReq := by
-  decide +kernel
-
-theorem witnessRecord0_events_nonempty : sessDeserEvents witnessRecord0 ≠ [] := by
-  intro h
-  have hc : (sessDeserEvents witnessRecord0).isEmpty = false := by decide +kernel
-  simp [h] at hc
-
-/-- Non-empty trace witness for `SessDeserializeCancelEnv`. -/
-theorem sessDeserializeCancelEnv_nonempty_witness :
-    ∃ r evs, evs ≠ [] ∧ SessDeserializeCancelEnv r evs :=
-  ⟨witnessRecord0, sessDeserEvents witnessRecord0, witnessRecord0_events_nonempty,
-    sessDeserEvents_mem_sessDeserializeCancelEnv witnessRecord0_in_scope⟩
-
-/-- Non-empty trace witness for `RecordDeserializeCancelEnv`. -/
-theorem recordDeserializeCancelEnv_nonempty_witness :
-    ∃ bs evs, bs.length ≤ deserCancelFineMaxReq ∧ evs ≠ [] ∧ RecordDeserializeCancelEnv bs evs :=
-  ⟨encodeRecord witnessRecord0, sessDeserEvents witnessRecord0,
-    witnessRecord0_encode_le_2MiB, witnessRecord0_events_nonempty,
-    sessDeserEvents_mem_recordDeserializeCancelEnv witnessRecord0_in_scope⟩
-
-/-- `FitsEnv` and non-empty trace witness on `cliBudgetLimits`. -/
-theorem recordDeserializeCancelEnv_fitsEnv_nonempty_witness :
-    ∃ bs evs, bs.length ≤ deserCancelFineMaxReq ∧ evs ≠ [] ∧
-      RecordDeserializeCancelEnv bs evs ∧
-      FitsEnv fineCostModel cliBudgetLimits fineCostModel.init (RecordDeserializeCancelEnv bs) :=
-  ⟨encodeRecord witnessRecord0, sessDeserEvents witnessRecord0,
-    witnessRecord0_encode_le_2MiB, witnessRecord0_events_nonempty,
-    sessDeserEvents_mem_recordDeserializeCancelEnv witnessRecord0_in_scope,
-    recordDeserializeCancelEnv_fitsEnv_cliBudgetLimits witnessRecord0_encode_le_2MiB⟩
 
 /-! ## 5. Placed Subroutine Bridges (`SpecsPlacedBudget.sessDeserializeSpecPlaced`, Block `46`) -/
 
@@ -1044,16 +956,6 @@ theorem sessDeserializeCancel_recordEnv_specPlaced_ok [LibsignalPlacement]
     exact Entails.pure_left fun hm =>
       Entails.pure_right ⟨hm.1, sessDeserializeCancelEnv_imp_recordDeserializeCancelEnv hm.2⟩
         (Entails.refl _)
-
-/-- Concrete `fineCostModel` specialization of `sessDeserializeCancel_specPlaced_ok`. -/
-theorem sessDeserializeCancel_fine_specPlaced_ok [LibsignalPlacement]
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {A : RustCliAllocBudget fineCostModel} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hA : AllocContractsBudgetPlaced fineCostModel A lim H)
-    (hsub : ∀ r, Scope r → DeserializeScopeP_Q NonEmptyV1Q r) :
-    subroutine_ok (lsProg_46 H) (lsmpl.base 46)
-      (sessDeserializeSpecPlaced Scope A lim SessDeserializeCancelEnv) :=
-  sessDeserializeCancel_specPlaced_ok hA hsub
 
 /-- Concrete `fineCostModel` specialization of `sessDeserializeCancel_recordEnv_specPlaced_ok`. -/
 theorem sessDeserializeCancel_recordEnv_fine_specPlaced_ok [LibsignalPlacement]

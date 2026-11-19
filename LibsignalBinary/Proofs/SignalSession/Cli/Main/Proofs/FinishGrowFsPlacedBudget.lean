@@ -9,15 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FinishGrowFsPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.LayoutBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FinishGrowFsPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FinishGrowFs -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `finish_grow [local#10]` (Block `587`)
@@ -27,7 +36,7 @@ and `.keepsFs`) on Block `587`, `RustLayoutOk` cell-form corollaries, and cross-
 `StoreKit.withLsRoCl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -150,7 +159,7 @@ private theorem instantiate_post_exists {α : Sort _} {prog : Program} {target_p
 
 /-! ## 2. Block `587` Zero-Cap & Nonzero-Cap Symbolic Execution -/
 
-def finishGrowZeroSpec2X {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def finishGrowZeroSpec2X {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FinishGrowCall × M.σ) :=
   { finishGrowSpecX M A lim with
       pre := fun (x, st) s =>
@@ -163,7 +172,7 @@ def finishGrowZeroSpec2X {M : AllocCostModel} (A : RustCliAllocBudget M)
             (rustAllocEvents (x.new.toNat * x.stride.toNat) x.align.toNat)⌝ ∗
         memRegion x.out 24 ∗ A.pool lim st s ∗ stackAt s.sp (extHookStack + 48) }
 
-def finishGrowNeSpec2X {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def finishGrowNeSpec2X {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FinishGrowCall × M.σ) :=
   { finishGrowSpecX M A lim with
       pre := fun (x, st) s =>
@@ -514,7 +523,7 @@ theorem cliFinishGrow_blk587_okFs_of_hooks [LibsignalPlacement]
 /-! ## 4. `SpecRefines` Cell-Form Corollaries (`finishGrowZeroCellsRustSpec`, `finishGrowNeCellsRustSpec`) -/
 
 /-- `RustLayoutOk` counterpart of `LayoutBudget.finishGrowZeroCellsSpec`. -/
-def finishGrowZeroCellsRustSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def finishGrowZeroCellsRustSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FGCellsGhost × M.σ) :=
   { finishGrowZeroCellsSpec A lim with
     pre := fun ((out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp), st) s =>
@@ -527,7 +536,7 @@ def finishGrowZeroCellsRustSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
       A.pool lim st s ∗ stackAt fsp finishGrowStackX }
 
 /-- `RustLayoutOk` counterpart of `LayoutBudget.finishGrowNeCellsSpec`. -/
-def finishGrowNeCellsRustSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def finishGrowNeCellsRustSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FGCellsGhost × M.σ) :=
   { finishGrowNeCellsSpec A lim with
     pre := fun ((out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp), st) s =>
@@ -685,32 +694,6 @@ section CallerBlock
 variable [LibsignalPlacement] {M : AllocCostModel} {A : RustCliAllocBudget M}
   {lim : BudgetLimits} {H : LibsignalHooks}
   {prog : Program} {i : Nat} [IsLsBlockProg prog i H]
-
-theorem cliFinishGrow_placed_ok_of_hooks_at
-    (hshim : subroutine_ok (lsProg_587 H) (lsρ lsRustNoAllocShimSymCli)
-      (withLsRoCl lsmpl (shimSpecWithStack extHookStack)))
-    (halloc : subroutine_ok (lsProg_587 H) (lsρ lsRustAllocSymCli)
-      (withLsRoCl lsmpl (rustCliAllocNoOomExternSpecWithStack M A lim false extHookStack)))
-    (hrealloc : subroutine_ok (lsProg_587 H) (lsρ lsRustReallocSymCli)
-      (withLsRoCl lsmpl (rustCliReallocNoOomExternSpecWithStack M A lim extHookStack)))
-    (hi : i < 619 := by decide) :
-    subroutine_ok prog (lsmpl.base 587)
-      (withLsRoCl lsmpl (finishGrowSpecX M A lim)) :=
-  ls_subroutine_ok_rocl_of_block (i := i) (j := 587)
-    (cliFinishGrow_blk587_ok_of_hooks hshim halloc hrealloc) hi
-
-theorem cliFinishGrow_placed_okFs_of_hooks_at
-    (hshim : subroutine_ok (lsProg_587 H) (lsρ lsRustNoAllocShimSymCli)
-      (withLsRoCl lsmpl (shimSpecWithStack extHookStack).keepsFs))
-    (halloc : subroutine_ok (lsProg_587 H) (lsρ lsRustAllocSymCli)
-      (withLsRoCl lsmpl (rustCliAllocNoOomExternSpecWithStack M A lim false extHookStack).keepsFs))
-    (hrealloc : subroutine_ok (lsProg_587 H) (lsρ lsRustReallocSymCli)
-      (withLsRoCl lsmpl (rustCliReallocNoOomExternSpecWithStack M A lim extHookStack).keepsFs))
-    (hi : i < 619 := by decide) :
-    subroutine_ok prog (lsmpl.base 587)
-      (withLsRoCl lsmpl (finishGrowSpecX M A lim).keepsFs) :=
-  ls_subroutine_ok_rocl_of_block (i := i) (j := 587)
-    (cliFinishGrow_blk587_okFs_of_hooks hshim halloc hrealloc) hi
 
 theorem finish_grow_zero_cells_placed_ok_of_hooks_at
     (hshim : subroutine_ok (lsProg_587 H) (lsρ lsRustNoAllocShimSymCli)

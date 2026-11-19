@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.SigHopC
+public import Computational.Proofs.SignalPqxdh.Security.SigHopC -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.Collisions
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
-@[expose] public section
+public section
 
 /-!
 # Bad-Signature Hop for `KeyInd` and `HndlKeyInd`
@@ -33,7 +33,7 @@ open OracleSpec OracleComp
 open MeasureTheory
 open scoped ENNReal
 
-def noOpkSlotFlatIdx (S : Setup) (p : Nat × Nat × Nat) : Nat :=
+@[expose] def noOpkSlotFlatIdx (S : Setup) (p : Nat × Nat × Nat) : Nat :=
   (p.1 * S.N_recv + p.2.1) * S.N_no_opk + p.2.2
 
 theorem noOpkSlotFlatIdx_lt (S : Setup) {u j l : Nat}
@@ -70,11 +70,11 @@ theorem noOpkSlotFlatIdx_inj (S : Setup) {k1 k2 : Nat × Nat × Nat}
   subst hl
   rfl
 
-def ValidUsedRecvOpk (S : Setup) (used : List (Nat × Nat × Nat)) : Prop :=
+@[expose] def ValidUsedRecvOpk (S : Setup) (used : List (Nat × Nat × Nat)) : Prop :=
   (∀ x ∈ used, x.1 < S.N_id ∧ x.2.1 < S.N_recv ∧ x.2.2 < S.N_opk) ∧
   (used.map (opkSlotFlatIdx S)).Nodup
 
-def ValidUsedRecvNoOpk (S : Setup) (used : List (Nat × Nat × Nat)) : Prop :=
+@[expose] def ValidUsedRecvNoOpk (S : Setup) (used : List (Nat × Nat × Nat)) : Prop :=
   (∀ x ∈ used, x.1 < S.N_id ∧ x.2.1 < S.N_recv ∧ x.2.2 < S.N_no_opk) ∧
   (used.map (noOpkSlotFlatIdx S)).Nodup
 
@@ -124,7 +124,7 @@ theorem validUsedRecvNoOpk_cons (S : Setup) (k : Fin S.N_id) (j : Fin S.N_recv) 
   · rw [List.map_cons, List.nodup_cons]
     exact ⟨hnot_in, hV.2⟩
 
-def ValidKeyIndResp (S : Setup) (st : KeyIndState S) : Prop :=
+@[expose] def ValidKeyIndResp (S : Setup) (st : KeyIndState S) : Prop :=
   ValidUsedRecvOpk S st.usedRecvOPK ∧
   ValidUsedRecvNoOpk S st.usedRecvNoOPK ∧
   st.respSessions.length ≤ st.usedRecvOPK.length + st.usedRecvNoOPK.length
@@ -274,7 +274,7 @@ theorem pqxdhKeyIndCachedImpl_validKeyIndResp_step (useRo : Bool) (S : Setup) (P
     unfold pqxdhKeyIndCachedImpl pqxdhKeyIndImpl runKeyIndInitiate
     dsimp only; prove_preserves_at
 
-def ValidKeyIndEcC (S : Setup) (P : Primitives) (st : KeyIndState S) : Prop :=
+@[expose] def ValidKeyIndEcC (S : Setup) (P : Primitives) (st : KeyIndState S) : Prop :=
   ValidKeyIndEc S st ∧ ValidAdvKeysPow8 P st.advKeys ∧ ValidKeyIndResp S st
 
 theorem pqxdhKeyIndCachedImpl_validKeyIndEc_step (useRo : Bool) (S : Setup) (P : Primitives)
@@ -349,7 +349,7 @@ theorem pqxdhKeyIndCachedImpl_validKeyIndEcC_step (useRo : Bool) (S : Setup) (P 
     pqxdhKeyIndCachedImpl_validAdvKeysPow8_step useRo S P q st hV.2.1 x hx,
     pqxdhKeyIndCachedImpl_validKeyIndResp_step useRo S P q st hV.2.2 x hx⟩
 
-def cacheKeyIndAdvKeys (S : Setup) (P : Primitives) (st : KeyIndState S) : KeyIndState S :=
+@[expose] def cacheKeyIndAdvKeys (S : Setup) (P : Primitives) (st : KeyIndState S) : KeyIndState S :=
   { st with advKeys := st.advKeys.map (fun (_, pk) => (P.pow8 pk, pk)) }
 
 @[simp]
@@ -657,7 +657,7 @@ theorem isQueryBoundP_isRight_of_isGameQuery {ι : Type} {spec : OracleSpec.{0, 
     ext q; cases q <;> rfl
   rwa [heq] at h
 
-def sigReductionKeyIndAt (useRo : Bool) (S : Setup) (b : QueryBudget) (targetParty : Nat)
+@[expose] def sigReductionKeyIndAt (useRo : Bool) (S : Setup) (b : QueryBudget) (targetParty : Nat)
     (A : BoundedAdv (KeyIndAdversary S) b) : SigEufCmaAdv where
   run          := fun pk => simulateKeyIndForSigPrim useRo S targetParty pk A.val
   q_sig        := 2 * S.N_spk_tot
@@ -967,7 +967,7 @@ theorem sessionId_pos_N_id {S : Setup} (sid : SessionId S) : 0 < S.N_id := by
 
 /-- Per-principal `badSig` predicate in `KeyInd` attributing a forged bundle to principal `k`
 outside principal public-key collisions. -/
-def hasBadSigKeyIndAt (S : Setup) (P : Primitives) (k : Nat) (st : KeyIndState S) : Bool :=
+@[expose] def hasBadSigKeyIndAt (S : Setup) (P : Primitives) (k : Nat) (st : KeyIndState S) : Bool :=
   (keyIndSigLens S).badAt P k st
 
 theorem hasBadSigKeyInd_eq_any_range (S : Setup) (P : Primitives) (st : KeyIndState S) :

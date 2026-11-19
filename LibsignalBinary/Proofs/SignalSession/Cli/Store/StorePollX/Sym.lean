@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollX.Layout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollX.Layout -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.InImageKit
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollX.Fetches
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -116,13 +117,13 @@ private theorem close_panic_subgoal {s0 s_call sf : State} {F R : SepProp}
     (htr : s_call.trace = s0.trace)
     (hm : sf.mem ⊨ ((⌜allocFailedIn s_call sf ∧ s_call.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) ∗ R) :
     sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R := by
-  refine allowPanic_frame ?_ (by rwa [sepConj_assoc] at hm)
+  refine allowPanic_frame (F := F) ?_ (by simpa only [sepConj_assoc] using hm)
   rintro ⟨hfail, hpref⟩
   unfold allocFailedIn at hfail ⊢
   rw [htr] at hfail hpref
   exact ⟨hfail, hpref⟩
 
-def storePollSlack (sp : BitVec 64) : SepProp :=
+@[expose] def storePollSlack (sp : BitVec 64) : SepProp :=
   cells (sp - 208#64) 1 ∗ cells (sp - 152#64) 1 ∗
     cells (sp - 112#64) 2 ∗ cells (sp - 56#64) 1
 
@@ -171,103 +172,5 @@ private theorem cells_sub_6_48_eq (sp : BitVec 64) :
         ((sp - 48#64) ↦₆₄ v0) ∗ ((sp - 40#64) ↦₆₄ v1) ∗ ((sp - 32#64) ↦₆₄ v2) ∗
         ((sp - 24#64) ↦₆₄ v3) ∗ ((sp - 16#64) ↦₆₄ v4) ∗ ((sp - 8#64) ↦₆₄ v5) := by
   cells_unfold
-
-theorem sessStorePollInner_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {addrStk putStk : Nat}
-    (hAddr : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressTextName)
-      (addrTextSpec A img addrStk))
-    (hSer : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordSerializeName)
-      ((Proofs.libsignal.Hooks2.serializeCanonSpecX A).inImage img))
-    (hPut : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutName)
-      (dirPutSpec A img putStk))
-    (hhi : max (max addrStk Proofs.libsignal.Hooks2.serializeStackX)
-      (max putStk extHookStack) ≤ 2 ^ 64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sessStorePollName)
-      ((cliStorePollInnerSpec A
-        (max (max addrStk Proofs.libsignal.Hooks2.serializeStackX)
-          (max putStk extHookStack))).inImage img) := by
-  let calleeStk := max (max addrStk Proofs.libsignal.Hooks2.serializeStackX)
-    (max putStk extHookStack)
-  unfold Spec.inImage
-  simp (config := { maxSteps := 2000000 }) only [cliStorePollInnerSpec,
-    memRegion_48_cells, memRegion_40_cells,
-    cells_26_split, cells_sub_4_eq, cells_sub_5_eq, cells_sub_6_200_eq, cells_sub_6_48_eq,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  have hfn : libsignalSessionCode.fnOff sessStorePollName =
-      num% (ls_off% "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::store_session::{closure#0}") :=
-    sessStorePoll_fnOff
-  have hAddrCells := addrText_cells_ok (calleeStk := calleeStk) hAddr (by omega) hhi
-  have hSerCells := serialize_cells_ok (calleeStk := calleeStk) hSer (by omega) hhi
-  have hPutCells := dirPut_cells_ok (calleeStk := calleeStk) hPut (by omega) hhi
-  rw [Program.fnAddr_rel (name := sessStorePollName)
-    hfn addressText_fnOff
-    (k := num% (ls_rel%
-      "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::store_session::{closure#0}"
-      "libsignal_cli::stores::address_text"))
-    (by decide)] at hAddrCells
-  rw [recordSerialize_fnAddr_eq] at hSerCells
-  rw [dirPut_fnAddr_eq] at hPutCells
-  code_fetches CryptoVerification.libsignalSessionCode cliStorePollBin img.base
-    (Rust.withPanics ext) hfn
-    (num% (ls_off% "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::store_session::{closure#0}")) 216
-  dsimp only [tripleRatchetProgAtExt] at hAddrCells hSerCells hPutCells ⊢
-  clear hfn hAddr hSer hPut
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr sessStorePollName = fnBase
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  have hinv0 : ImgCallInv img s0 := ⟨by assumption, by assumption⟩
-  apply ProofLib.SepWPp.of_sepWP_inImage
-    (mid := fnBase + bv% (ls_rel%
-      "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::store_session::{closure#0}"
-      "libsignal_cli::stores::address_text"))
-    hinv0
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  intro hinv1
-  wp_call_inImage hAddrCells hinv1
-    (x.call.call.addrA, x.call.call.addr, s0.sp - 200#64, _, _, _, s0.sp - 208#64)
-  case panic =>
-    intro sf _ hm
-    exact close_panic_subgoal (by simp only [wp_norm, arm64_norm, *]) hm
-  apply ProofLib.SepWPp.of_sepWP_inImage
-    (mid := fnBase - bv% (ls_rel%
-      "<libsignal_protocol::state::session::SessionRecord>::serialize"
-      "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::store_session::{closure#0}"))
-    hinv_sf
-  wp_steps
-  apply SepWP.done (by wp_norm_goal; bv_omega) (by wp_norm_lhs)
-  intro hinv2
-  wp_call_inImage hSerCells hinv2
-    (x.call.call.recA, s0.sp - 144#64,
-      E2E.InMem.SessionStoreImpl.toRecordGhost x.call.call.g, x.call.call.record,
-      _, _, _, _, s0.sp - 208#64)
-  case panic =>
-    intro sf _ hm
-    exact close_panic_subgoal (by simp only [wp_norm, arm64_norm, *]) hm
-  apply ProofLib.SepWPp.of_sepWP_inImage
-    (mid := fnBase - bv% (ls_rel%
-      "<libsignal_cli::stores::Dir>::put::<alloc::string::String>"
-      "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::store_session::{closure#0}"))
-    hinv_sf_1
-  wp_steps
-  apply SepWP.done (by wp_norm_goal; bv_omega) (by wp_norm_lhs)
-  intro hinv3
-  wp_call_inImage hPutCells hinv3
-    (x.self, x.dir, s0.sp - 200#64, addressText x.call.call.addr.val,
-      s0.sp - 176#64, w, w_1, E2E.Record.encodeRecord x.call.call.record, s0.sp - 208#64)
-  case panic =>
-    intro sf _ hm
-    exact close_panic_subgoal (by simp only [wp_norm, arm64_norm, *]) hm
-  apply SepWPp.of_sepWP_ret
-  wp_steps
-  wp_done
 
 end CryptoVerification.SignalSession.Cli.Store.StorePollX.Helpers

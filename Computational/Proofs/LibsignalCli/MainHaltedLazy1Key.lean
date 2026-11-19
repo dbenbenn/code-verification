@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.MainHaltedKeyInd
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore
-public import Computational.Proofs.E2E.TagSync1KeyReal
+import Computational.Proofs.LibsignalCli.MainHaltedKeyInd
+public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.TagSync1KeyReal
 import Computational.Proofs.E2E.ComposedPrefixHelpers
 import Computational.Proofs.SignalWireRoundTrip
 import VCVio.EvalDist.Monad.Basic
@@ -23,7 +23,7 @@ import VCVio.EvalDist.Monad.Basic
 `SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P` on per-session tracked and halted prefix experiments.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -1177,18 +1177,5 @@ theorem evalDist_bhPrefixLazyFullExpWithSessionTracked_1KeyReal_eq_bhPrefixExact
       (paramsIdsWithSpqr C (spqrV1SessionUniformCoins C.F K) d.idA d.idB) ℓ d.spkCoins)
       (2 + 1) qep (configRefuseEarlyBobCorr (St := GhostState Bytes) (Msg := Plain ℓ) decT encT))
     P C K k b_k B
-
-/-- Unconditional lazy-vs-exact prefix equivalence at `coinLogSessionTracker badLog`. -/
-theorem evalDist_bhPrefixLazyFullExpWithHalted_1KeyReal_eq_bhPrefixExactFullExpWithHalted
-    {ℓ : ℕ} (badLog : List (BitVec 512) → Bool) (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
-    (C : Crypto) (K : MlKem) (qep : ℕ) {Pt : Type} (decT : PublicKey → Option Pt)
-    (encT : Pt → PublicKey) (k : ℕ) (b_k : Bool)
-    (B : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool) :
-    𝒟[bhPrefixLazyFullExpWithSessionTracked (coinLogSessionTracker badLog) S
-        (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P) P C K qep decT encT k b_k B] =
-      𝒟[bhPrefixExactFullExpWithSessionTracked (coinLogSessionTracker badLog) S
-        (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P) P C K qep decT encT k b_k B] :=
-  evalDist_bhPrefixLazyFullExpWithSessionTracked_1KeyReal_eq_bhPrefixExactFullExpWithSessionTracked
-    (coinLogSessionTracker badLog) S P C K qep decT encT k b_k B
 
 end Computational.Proofs.LibsignalCli.MainHaltedLazy1Key

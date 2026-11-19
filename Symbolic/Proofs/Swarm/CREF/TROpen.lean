@@ -22,7 +22,7 @@ predicates (`TRState`, `TREvent`, `isCurrentSnapshot`, `skippedKeyUsedB`, `DRSta
 `SessionInfo`, and `RecvChain`) without introducing cross-module namespace ambiguities.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

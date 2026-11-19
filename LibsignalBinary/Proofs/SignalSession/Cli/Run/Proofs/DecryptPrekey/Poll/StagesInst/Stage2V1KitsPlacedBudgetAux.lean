@@ -9,39 +9,43 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget
-public import LibsignalBinary.Proofs.CliCBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitCodecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1InstPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.DropSpeWordPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPollPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CliCBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitCodecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1InstPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.DropSpeWordPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPollPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPollPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPollPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.LayoutBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` CLI Poll Stage P2 Store-Kit Discharges
@@ -52,7 +56,7 @@ Defines pre-state-pinned store poll budget envelopes (`cliStageP2KitEnvs`) and d
 `LibsignalFrozen` counterpart.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -200,18 +204,18 @@ private theorem toSkeletonRunHooks [LibsignalPlacement] {M : AllocCostModel}
   { alloc := hh.alloc, allocFs := hh.allocFs, panics := hh.panics, memcpyRO := hh.memcpyRO,
     bcmp := hh.bcmp, fs := hh.fs, utf8 := hh.utf8, memrchr := hh.memrchr,
     codecHooks := hh.codecHooks, allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-    formatInner := hh.formatInner, blackBox := hh.blackBox }
+    formatInner := hh.formatInner, fmtWrite := hh.fmtWrite, blackBox := hh.blackBox }
 
 /-- Disjunction envelope for `decode_signed_pre_key` / `decode_kyber_pre_key` (Block `595`). -/
-def CliSpkDecodeEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def CliSpkDecodeEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   SpkLoopEnv (2 * bs.length + 3) bs.length evs ∨ KyberDecodeEnv bs.length evs
 
 /-- Disjunction envelope for `PreKeyRecord::deserialize` (Block `65`). -/
-def CliPkDecodeEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def CliPkDecodeEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   RecordCodecLoopEnv (2 * bs.length + 3) bs.length evs ∨ PreKeyDeserializeEnv bs.length evs
 
 /-- Concrete `get_signed_pre_key` poll allocation envelope for `cliPollSpkKitPlaced`. -/
-def cliPollSpkGetPollEnv
+@[expose] def cliPollSpkGetPollEnv
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (dir : DirGhost) (id : BitVec 32) : List AllocEvent → Prop :=
   CliSpkGetPollEnv DecimalEnv
@@ -219,7 +223,7 @@ def cliPollSpkGetPollEnv
     CliSpkDecodeEnv cliIo.rd F0 ⟨0#64, 0#64, 0#64, id, dir⟩
 
 /-- Concrete `get_pre_key` poll allocation envelope for `cliPollPkKitPlaced`. -/
-def cliPollPkGetPollEnv
+@[expose] def cliPollPkGetPollEnv
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (dir : DirGhost) (id : BitVec 32) : List AllocEvent → Prop :=
   CliPkGetPollEnv DecimalEnv
@@ -227,7 +231,7 @@ def cliPollPkGetPollEnv
     CliPkDecodeEnv cliIo.rd F0 ⟨0#64, 0#64, 0#64, id, dir⟩
 
 /-- Concrete `get_kyber_pre_key` poll allocation envelope for `cliPollKpkKitPlaced`. -/
-def cliPollKpkGetPollEnv
+@[expose] def cliPollKpkGetPollEnv
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (kg : KyberGhost) (id : BitVec 32) : List AllocEvent → Prop :=
   CliKpkGetPollEnv DecimalEnv
@@ -235,14 +239,14 @@ def cliPollKpkGetPollEnv
     CliSpkDecodeEnv cliIo.rd F0 ⟨0#64, 0#64, 0#64, id, kg⟩
 
 /-- Full `SignedPreKeyStoreBudgetEnv` for `cliPollSpkKitPlaced`. -/
-def cliPollSpkFullBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollSpkFullBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (spkId : BitVec 32) (σ : DpKitStk)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop) :
     SignedPreKeyStoreBudgetEnv (cliPollSpkKitPlaced A F0 spkId σ) where
   getPollEnv := cliPollSpkGetPollEnv ReadEnv F0
 
 /-- Full `PreKeyStoreBudgetEnv` (`get_pre_key` + `remove_pre_key`) for `cliPollPkKitPlaced`. -/
-def cliPollPkFullBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollPkFullBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (pkId : BitVec 32) (σ : DpKitStk)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop) :
     PreKeyStoreBudgetEnv (cliPollPkKitPlaced A F0 pkId σ) where
@@ -251,7 +255,7 @@ def cliPollPkFullBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
 
 /-- Full `KyberPreKeyStoreBudgetEnv` (`get_kyber_pre_key` + `mark_kyber_pre_key_used`) for
 `cliPollKpkKitPlaced`. -/
-def cliPollKpkFullBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollKpkFullBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (kpkId spkId : BitVec 32) (kbk : PublicKey) (σ : DpKitStk)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop) :
     KyberPreKeyStoreBudgetEnv (cliPollKpkKitPlaced A F0 kpkId spkId kbk σ) where
@@ -259,7 +263,7 @@ def cliPollKpkFullBudgetEnv [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
   markPollEnv := cliPollKpkMarkPollEnv ReadEnv F0
 
 /-- Bundled 4-kit Stage P2 budget envelopes for CLI Poll (`self`, `spk`, `kpk`, `pk`). -/
-def cliStageP2KitEnvs [LibsignalPlacement] {A : RustAlloc}
+@[expose] def cliStageP2KitEnvs [LibsignalPlacement] {A : RustAlloc}
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (B : RunBudgets)
     (senv : ∀ (F0 : FsFiles) (peer : AddrGhost),
@@ -992,6 +996,9 @@ theorem stageP2PathA_qpan_cli_full_placed_at_ok [LibsignalFullPlacement] {M : Al
       IdentitySelfStoreBudgetEnv (cliPollSelfKitPlaced A.repAlloc F0 peer (cliKitStk B))}
     (hDropNz : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hSelfKit : ∀ (F0 : FsFiles) (peer : AddrGhost),
       RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) →
@@ -1006,7 +1013,7 @@ theorem stageP2PathA_qpan_cli_full_placed_at_ok [LibsignalFullPlacement] {M : Al
       (cliP2PathAOptFieldsOkEnv A.repAlloc ReadEnv X W B senv) :=
   stageP2PathA_qpan_cli_full_placed_at_of_seams A lim X mmpl gh W B
     (kitEnvs := cliStageP2KitEnvs (A := A.repAlloc) ReadEnv B senv)
-    hDropNz hG hSpqr
+    hDropNz hG hF hX hDecaps hSpqr
     (fun F0 peer _ _ _ _ hh hRead => hSelfKit F0 peer hh hRead)
     (fun F0 _ spkId _ _ _ hh hRead =>
       cliPollSpk_kitPlacedOk mmpl gh W B F0 spkId hDropNz hh hRead)

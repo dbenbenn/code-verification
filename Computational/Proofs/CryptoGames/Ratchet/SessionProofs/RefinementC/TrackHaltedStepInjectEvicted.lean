@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectComb
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectComb
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliver
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliverInject
@@ -22,6 +22,9 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.HelpersC
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Reject
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedBase
 
 /-!
 # Tracker-halted evicted salt-mismatch `inject` cases
@@ -30,7 +33,7 @@ Proves the three DEV-LS36 evicted-epoch salt-mismatch `inject` cases (`inWin`, `
 `forward`) used by `closeByStateCTrack_inject_evicted_honest`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

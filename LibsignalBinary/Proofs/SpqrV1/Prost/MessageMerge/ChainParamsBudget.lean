@@ -12,18 +12,18 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergeCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergeCodeSym
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
 public import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -32,7 +32,8 @@ import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
-import LibsignalBinary.Proofs.TripleRatchet.InImage.Prost
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
 
@@ -45,7 +46,7 @@ Defines concrete allocator event envelopes (`ChainParamsErrEnv`, `ChainParamsMer
 (`chainParamsMerge_cl_placed_ok_of_contracts`, `chainParamsMerge_cro_placed_ok_of_contracts`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -156,7 +157,7 @@ inductive ChainParamsMergeEnv (_x : ChainParamsMergeGhost) : List AllocEvent →
 
 /-- Postcondition allocator event envelope of `ChainParams::merge` (Block `294`):
 `evs = []` on `Ok`, and `ChainParamsErrEnv evs` on `Err`. -/
-def ChainParamsMergePostEnv (x : ChainParamsMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainParamsMergePostEnv (x : ChainParamsMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage ChainParamsPB.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption with
   | some _ => evs = []
   | none => ChainParamsErrEnv evs
@@ -238,7 +239,7 @@ theorem FitsEnv.chainParams_decodeErrorPush0 {M : AllocCostModel} {lim : BudgetL
 
 /-- Envelope-parameterized budget-threaded contract of
 `prost::encoding::message::merge::<spqr::proto::pq_ratchet::ChainParams, &mut &[u8]>` (Block `294`). -/
-def chainParamsMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chainParamsMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : ChainParamsMergeGhost → List AllocEvent → Prop) :
     Spec (ChainParamsMergeGhost × M.σ) where
@@ -267,7 +268,7 @@ def chainParamsMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-- Budget-threaded contract of
 `prost::encoding::message::merge::<spqr::proto::pq_ratchet::ChainParams, &mut &[u8]>`
 (Block `294`, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chainParamsMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def chainParamsMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainParamsMergeGhost × M.σ) :=
   chainParamsMergeSpecOfEnv A lim ChainParamsMergeEnv ChainParamsMergePostEnv
 

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrTopPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrAPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrTopPlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsAPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrAPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -28,6 +28,28 @@ import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Common
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsA
+public import ProofLib.MallocngBridge
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.SyscallsMmap
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenSub5
 
 /-!
 # Budget-Threaded Placed Stage P3 Duplicate and Non-Duplicate Error Tails on 1-Element `previous_sessions`
@@ -36,7 +58,7 @@ Proves budget-threaded `[LibsignalPlacement]` duplicate-message and non-duplicat
 tails over a 1-element `prevVecAt [enc]`, advancing `A.pool` along `FreeOnlyEvs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -619,272 +641,5 @@ theorem stageP3_err_tail_nondup_dec_prev1_placed_ok [LibsignalPlacement]
     hspf, htrf, hcc, hcrof, by rw [hvregs_f, hvregs_3, hvregs_cs2, hvregs_1]⟩
 
 /-! ## Arbitrary-`Qp` and `Rust.withPanics` Corollaries -/
-
-theorem stageP3_err_tail_dup_prev1_anyQp_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hdealloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hDropSS3 : subroutine_ok (lsProg_518 ext)
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr errsPtr prevCap prevPtr w0 w1 w2 w3 w4 : BitVec 64)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (recG : SessionGhost) (recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x34dc#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64)
-    (hx25 : s.readReg64 .x25 = s.sp + 0x210#64) (hx26 : s.readReg64 .x26 = outPtr)
-    (hx28 : s.readReg64 .x28 = 0x8000000000000017#64) :
-    SepWPp (lsProg_518 ext) (s0.readReg64 .x30) s
-      (((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-       sessionStateAt A.repAlloc (coroPtr + 0xf8#64) recG recSt ∗
-       prevVecAt A.repAlloc (coroPtr + 0xe0#64) prevCap prevPtr [enc] ∗
-       ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗ memRegion outPtr 48 ∗ memRegion (s.sp + 0x250#64) 20 ∗
-       ((s.sp + 0x270#64) ↦₆₄ 0x8000000000000017#64) ∗ ((s.sp + 0x278#64) ↦₆₄ w0) ∗
-       ((s.sp + 0x280#64) ↦₆₄ w1) ∗ ((s.sp + 0x288#64) ↦₆₄ w2) ∗ ((s.sp + 0x290#64) ↦₆₄ w3) ∗
-       ((s.sp + 0x298#64) ↦₆₄ w4) ∗ memRegion (s.sp + 0x370#64) 36 ∗
-       decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool lim st_b s ∗
-       stackAt s.sp dropSessionStructure2Stack)
-      (fun sf P_f =>
-        ∃ evs_common : List AllocEvent,
-          FreeOnlyEvs evs_common ∧
-          (P_f ⊢ ((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-            memRegion (coroPtr + 0xe0#64) 368 ∗ ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
-            words6At outPtr 0x8000000000000017#64 w0 w1 w2 w3 w4 ∗ memRegion (s.sp + 0x250#64) 20 ∗
-            memRegion (s.sp + 0x270#64) 48 ∗ memRegion (s.sp + 0x370#64) 36 ∗
-            decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-            A.pool lim (M.stepEvents evs_common st_b) sf ∗
-            stackAt s.sp dropSessionStructure2Stack) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      Qp :=
-  sepWPp_lift_false_qp (stageP3_err_tail_dup_prev1_placed_ok ext hdealloc hDropSS3 st_b s0 s
-    coroPtr outPtr errsPtr prevCap prevPtr w0 w1 w2 w3 w4 b_2c0 enc recG recSt
-    hcro hpc hrun hsp_align htr hx19 hx24 hx25 hx26 hx28)
-
-theorem stageP3_sub5_err_dup_prev1_anyQp_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hdealloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hDropSS3 : subroutine_ok (lsProg_518 ext)
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr errsPtr prevCap prevPtr : BitVec 64)
-    (ratVer counter : BitVec 32) (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 ext) (s0.readReg64 .x30) s
-      (((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗
-       vecResultAt A.repAlloc (s.sp + 0x270#64) (.error (.duplicatedMessage ratVer counter)) ∗
-       sessionStateAt A.repAlloc (s.sp + 0xa90#64) G₂ st₂ ∗ ((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗
-       ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-       sessionStateAt A.repAlloc (coroPtr + 0xf8#64) recG recSt ∗
-       prevVecAt A.repAlloc (coroPtr + 0xe0#64) prevCap prevPtr [enc] ∗
-       ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗ memRegion outPtr 48 ∗ memRegion (s.sp + 0x250#64) 20 ∗
-       memRegion (s.sp + 0x370#64) 36 ∗ decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-       A.pool lim st_b s ∗ stackAt s.sp dropSessionStructure2Stack)
-      (fun sf P_f =>
-        ∃ evs_dup : List AllocEvent,
-          FreeOnlyEvs evs_dup ∧
-          (P_f ⊢ ((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗ ((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗
-            ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-            memRegion (s.sp + 0xa90#64) 344 ∗ memRegion (coroPtr + 0xe0#64) 368 ∗
-            ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
-            recordResultAt A.repAlloc outPtr (.error (.duplicatedMessage ratVer counter)) ∗
-            memRegion (s.sp + 0x250#64) 20 ∗ memRegion (s.sp + 0x270#64) 48 ∗
-            memRegion (s.sp + 0x370#64) 36 ∗ decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-            A.pool lim (M.stepEvents evs_dup st_b) sf ∗ stackAt s.sp dropSessionStructure2Stack) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      Qp :=
-  sepWPp_lift_false_qp (stageP3_sub5_err_dup_prev1_placed_ok ext hdealloc hDropSS3 st_b s0 s
-    coroPtr outPtr errsPtr prevCap prevPtr ratVer counter b_2c0 enc G₂ recG st₂ recSt
-    hcro hpc hrun hsp_align htr hx19 hx24)
-
-theorem stageP3_err_tail_nondup_dec_prev1_anyQp_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hdealloc : subroutine_ok (lsProg_518 ext)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hDropSS3 : subroutine_ok (lsProg_518 ext)
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr errsPtr prevCap prevPtr w0 w1 w2 w3 w4 : BitVec 64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic) (b_2c0 : BitVec 8)
-    (enc : List (BitVec 8)) (recG : SessionGhost) (recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x34dc#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64)
-    (hx25 : s.readReg64 .x25 = s.sp + 0x210#64) (hx26 : s.readReg64 .x26 = outPtr)
-    (hx28 : s.readReg64 .x28 = 0x8000000000000018#64) :
-    SepWPp (lsProg_518 ext) (s0.readReg64 .x30) s
-      (((s.sp + 0x3c8#64) ↦₆₄ 4#64) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗
-       ((s.sp + 0x3d8#64) ↦₆₄ 1#64) ∗ A.live errsPtr 192 8 ∗
-       speAt A.repAlloc (utf8 "decrypt") errsPtr e ∗ memRegion (errsPtr + 0x30#64) 144 ∗
-       sessionStateAt A.repAlloc (coroPtr + 0xf8#64) recG recSt ∗
-       prevVecAt A.repAlloc (coroPtr + 0xe0#64) prevCap prevPtr [enc] ∗
-       ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗ memRegion outPtr 48 ∗
-       memRegion (s.sp + 0x250#64) 20 ∗ ((s.sp + 0x270#64) ↦₆₄ 0x8000000000000018#64) ∗
-       ((s.sp + 0x278#64) ↦₆₄ w0) ∗ ((s.sp + 0x280#64) ↦₆₄ w1) ∗
-       ((s.sp + 0x288#64) ↦₆₄ w2) ∗ ((s.sp + 0x290#64) ↦₆₄ w3) ∗
-       ((s.sp + 0x298#64) ↦₆₄ w4) ∗ memRegion (s.sp + 0x370#64) 36 ∗
-       decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool lim st_b s ∗
-       stackAt s.sp dropSessionStructure2Stack)
-      (fun sf P_f =>
-        ∃ evs_tail : List AllocEvent,
-          FreeOnlyEvs evs_tail ∧
-          (P_f ⊢ ((s.sp + 0x3c8#64) ↦₆₄ 4#64) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗
-            ((s.sp + 0x3d8#64) ↦₆₄ 1#64) ∗ memRegion (coroPtr + 0xe0#64) 368 ∗
-            ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
-            words6At outPtr 0x8000000000000018#64 w0 w1 w2 w3 w4 ∗ memRegion (s.sp + 0x250#64) 20 ∗
-            memRegion (s.sp + 0x270#64) 48 ∗ memRegion (s.sp + 0x370#64) 36 ∗
-            decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-            A.pool lim (M.stepEvents evs_tail st_b) sf ∗
-            stackAt s.sp dropSessionStructure2Stack) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      Qp :=
-  sepWPp_lift_false_qp (stageP3_err_tail_nondup_dec_prev1_placed_ok ext hdealloc hDropSS3 st_b s0 s
-    coroPtr outPtr errsPtr prevCap prevPtr w0 w1 w2 w3 w4 e he_npan b_2c0 enc recG recSt
-    hcro hpc hrun hsp_align htr hx19 hx24 hx25 hx26 hx28)
-
-theorem stageP3_err_tail_dup_prev1_withPanics_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State))
-    (hdealloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hDropSS3 : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr errsPtr prevCap prevPtr w0 w1 w2 w3 w4 : BitVec 64)
-    (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (recG : SessionGhost) (recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x34dc#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64)
-    (hx25 : s.readReg64 .x25 = s.sp + 0x210#64) (hx26 : s.readReg64 .x26 = outPtr)
-    (hx28 : s.readReg64 .x28 = 0x8000000000000017#64) :
-    SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-       sessionStateAt A.repAlloc (coroPtr + 0xf8#64) recG recSt ∗
-       prevVecAt A.repAlloc (coroPtr + 0xe0#64) prevCap prevPtr [enc] ∗
-       ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗ memRegion outPtr 48 ∗ memRegion (s.sp + 0x250#64) 20 ∗
-       ((s.sp + 0x270#64) ↦₆₄ 0x8000000000000017#64) ∗ ((s.sp + 0x278#64) ↦₆₄ w0) ∗
-       ((s.sp + 0x280#64) ↦₆₄ w1) ∗ ((s.sp + 0x288#64) ↦₆₄ w2) ∗ ((s.sp + 0x290#64) ↦₆₄ w3) ∗
-       ((s.sp + 0x298#64) ↦₆₄ w4) ∗ memRegion (s.sp + 0x370#64) 36 ∗
-       decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool lim st_b s ∗
-       stackAt s.sp dropSessionStructure2Stack)
-      (fun sf P_f =>
-        ∃ evs_common : List AllocEvent,
-          FreeOnlyEvs evs_common ∧
-          (P_f ⊢ ((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-            memRegion (coroPtr + 0xe0#64) 368 ∗ ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
-            words6At outPtr 0x8000000000000017#64 w0 w1 w2 w3 w4 ∗ memRegion (s.sp + 0x250#64) 20 ∗
-            memRegion (s.sp + 0x270#64) 48 ∗ memRegion (s.sp + 0x370#64) 36 ∗
-            decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-            A.pool lim (M.stepEvents evs_common st_b) sf ∗
-            stackAt s.sp dropSessionStructure2Stack) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      (fun _ _ => False) :=
-  stageP3_err_tail_dup_prev1_placed_ok (Rust.withPanics ext) hdealloc hDropSS3 st_b s0 s
-    coroPtr outPtr errsPtr prevCap prevPtr w0 w1 w2 w3 w4 b_2c0 enc recG recSt
-    hcro hpc hrun hsp_align htr hx19 hx24 hx25 hx26 hx28
-
-theorem stageP3_sub5_err_dup_prev1_withPanics_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State))
-    (hdealloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hDropSS3 : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr errsPtr prevCap prevPtr : BitVec 64)
-    (ratVer counter : BitVec 32) (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x1cd8#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64) :
-    SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗
-       vecResultAt A.repAlloc (s.sp + 0x270#64) (.error (.duplicatedMessage ratVer counter)) ∗
-       sessionStateAt A.repAlloc (s.sp + 0xa90#64) G₂ st₂ ∗ ((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗
-       ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-       sessionStateAt A.repAlloc (coroPtr + 0xf8#64) recG recSt ∗
-       prevVecAt A.repAlloc (coroPtr + 0xe0#64) prevCap prevPtr [enc] ∗
-       ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗ memRegion outPtr 48 ∗ memRegion (s.sp + 0x250#64) 20 ∗
-       memRegion (s.sp + 0x370#64) 36 ∗ decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-       A.pool lim st_b s ∗ stackAt s.sp dropSessionStructure2Stack)
-      (fun sf P_f =>
-        ∃ evs_dup : List AllocEvent,
-          FreeOnlyEvs evs_dup ∧
-          (P_f ⊢ ((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗ ((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗
-            ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-            memRegion (s.sp + 0xa90#64) 344 ∗ memRegion (coroPtr + 0xe0#64) 368 ∗
-            ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
-            recordResultAt A.repAlloc outPtr (.error (.duplicatedMessage ratVer counter)) ∗
-            memRegion (s.sp + 0x250#64) 20 ∗ memRegion (s.sp + 0x270#64) 48 ∗
-            memRegion (s.sp + 0x370#64) 36 ∗ decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-            A.pool lim (M.stepEvents evs_dup st_b) sf ∗ stackAt s.sp dropSessionStructure2Stack) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      (fun _ _ => False) :=
-  stageP3_sub5_err_dup_prev1_placed_ok (Rust.withPanics ext) hdealloc hDropSS3 st_b s0 s
-    coroPtr outPtr errsPtr prevCap prevPtr ratVer counter b_2c0 enc G₂ recG st₂ recSt
-    hcro hpc hrun hsp_align htr hx19 hx24
-
-theorem stageP3_err_tail_nondup_dec_prev1_withPanics_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State))
-    (hdealloc : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    (hDropSS3 : subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)))
-    (st_b : M.σ) (s0 s : State) (coroPtr outPtr errsPtr prevCap prevPtr w0 w1 w2 w3 w4 : BitVec 64)
-    (e : SignalProtocolError) (he_npan : e ≠ .panic) (b_2c0 : BitVec 8)
-    (enc : List (BitVec 8)) (recG : SessionGhost) (recSt : SessionState (List (BitVec 8)))
-    (hcro : StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryP34Placed + 0x34dc#64) (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (htr : s.trace = s0.trace)
-    (hx19 : s.readReg64 .x19 = coroPtr) (hx24 : s.readReg64 .x24 = s.sp + 0x370#64)
-    (hx25 : s.readReg64 .x25 = s.sp + 0x210#64) (hx26 : s.readReg64 .x26 = outPtr)
-    (hx28 : s.readReg64 .x28 = 0x8000000000000018#64) :
-    SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (((s.sp + 0x3c8#64) ↦₆₄ 4#64) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗
-       ((s.sp + 0x3d8#64) ↦₆₄ 1#64) ∗ A.live errsPtr 192 8 ∗
-       speAt A.repAlloc (utf8 "decrypt") errsPtr e ∗ memRegion (errsPtr + 0x30#64) 144 ∗
-       sessionStateAt A.repAlloc (coroPtr + 0xf8#64) recG recSt ∗
-       prevVecAt A.repAlloc (coroPtr + 0xe0#64) prevCap prevPtr [enc] ∗
-       ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗ memRegion outPtr 48 ∗
-       memRegion (s.sp + 0x250#64) 20 ∗ ((s.sp + 0x270#64) ↦₆₄ 0x8000000000000018#64) ∗
-       ((s.sp + 0x278#64) ↦₆₄ w0) ∗ ((s.sp + 0x280#64) ↦₆₄ w1) ∗
-       ((s.sp + 0x288#64) ↦₆₄ w2) ∗ ((s.sp + 0x290#64) ↦₆₄ w3) ∗
-       ((s.sp + 0x298#64) ↦₆₄ w4) ∗ memRegion (s.sp + 0x370#64) 36 ∗
-       decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool lim st_b s ∗
-       stackAt s.sp dropSessionStructure2Stack)
-      (fun sf P_f =>
-        ∃ evs_tail : List AllocEvent,
-          FreeOnlyEvs evs_tail ∧
-          (P_f ⊢ ((s.sp + 0x3c8#64) ↦₆₄ 4#64) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗
-            ((s.sp + 0x3d8#64) ↦₆₄ 1#64) ∗ memRegion (coroPtr + 0xe0#64) 368 ∗
-            ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
-            words6At outPtr 0x8000000000000018#64 w0 w1 w2 w3 w4 ∗ memRegion (s.sp + 0x250#64) 20 ∗
-            memRegion (s.sp + 0x270#64) 48 ∗ memRegion (s.sp + 0x370#64) 36 ∗
-            decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-            A.pool lim (M.stepEvents evs_tail st_b) sf ∗
-            stackAt s.sp dropSessionStructure2Stack) ∧
-          sf.sp = s.sp + 0xcd0#64 ∧ sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-          StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem ∧ calleeSavedVRegs sf = calleeSavedVRegs s)
-      (fun _ _ => False) :=
-  stageP3_err_tail_nondup_dec_prev1_placed_ok (Rust.withPanics ext) hdealloc hDropSS3 st_b s0 s
-    coroPtr outPtr errsPtr prevCap prevPtr w0 w1 w2 w3 w4 e he_npan b_2c0 enc recG recSt
-    hcro hpc hrun hsp_align htr hx19 hx24 hx25 hx26 hx28
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrAPlacedBudget

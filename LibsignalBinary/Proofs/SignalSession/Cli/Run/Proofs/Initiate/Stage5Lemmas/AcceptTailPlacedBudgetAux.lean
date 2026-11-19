@@ -9,20 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.AcceptTailPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.AcceptTailStorePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.CallKitPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCallsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.AcceptTailPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.AcceptTailStorePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.CallKitPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCallsPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.HelpersPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ModelBridge
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.SessionBridge
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.CallKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCalls -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.AcceptTailStore
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.CallKitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.Epilogue
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.VtablesPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.AcceptTailStorePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.EpiloguePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCallsPlaced
 
 /-!
 # Budget-Threaded Stage 5 Accept Path Segment Helpers (`[LibsignalPlacement]`)
@@ -31,7 +45,7 @@ Minimal-frame segment proofs for `save_identity` (`+0x163c..+0x1730`) and `memcp
 `promote_state` (`+0x1734..+0x1764`) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -39,8 +53,6 @@ set_option linter.dupNamespace false
 set_option linter.unusedSimpArgs false
 set_option maxRecDepth 2000000
 set_option maxHeartbeats 400000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.AcceptTailPlacedBudgetAux
 
@@ -144,7 +156,7 @@ private theorem s5_with_rodata_oom {prog : Program} {ret : BitVec 64} {s : State
 
 /-! ## Minimal-Frame Decomposition -/
 
-def initArgsSaveRestPlaced [LibsignalPlacement] (fsp : BitVec 64) (x : InitGhost)
+@[expose] def initArgsSaveRestPlaced [LibsignalPlacement] (fsp : BitVec 64) (x : InitGhost)
     (s0 : State) : SepProp :=
   ((fsp + 0xd8#64) ↦₆₄ x.meA) ∗
     ((fsp + 0xe0#64) ↦₆₄ (x.stores + 0xf0#64)) ∗
@@ -164,7 +176,7 @@ theorem initArgsAtPlaced_save_split [LibsignalPlacement] (fsp : BitVec 64) (x : 
       initArgsSaveRestPlaced fsp x s0 := by
   dsimp only [initArgsAtPlaced, initArgsSaveRestPlaced]; ac_rfl
 
-def stage5ScratchSaveRestPlaced (fsp w5d0 : BitVec 64) : SepProp :=
+@[expose] def stage5ScratchSaveRestPlaced (fsp w5d0 : BitVec 64) : SepProp :=
   memRegion (fsp + 0x5ba#64) 6 ∗
     ((fsp + 0x5d0#64) ↦₆₄ w5d0) ∗
     memRegion (fsp + 0x5d8#64) (0x1600 - 0x5d8) ∗
@@ -179,7 +191,7 @@ theorem stage5ScratchAt_save_split_placed (fsp w5c0 w5c8 w5d0 : BitVec 64) :
       stage5ScratchSaveRestPlaced fsp w5d0 := by
   dsimp only [stage5ScratchAt, stage5ScratchSaveRestPlaced]; ac_rfl
 
-def stage5ScratchMemcpyRestPlaced (fsp w5c0 w5c8 w5d0 : BitVec 64) : SepProp :=
+@[expose] def stage5ScratchMemcpyRestPlaced (fsp w5c0 w5c8 w5d0 : BitVec 64) : SepProp :=
   memRegion (fsp + 0x5ba#64) 6 ∗
     ((fsp + 0x5c0#64) ↦₆₄ w5c0) ∗
     ((fsp + 0x5c8#64) ↦₆₄ w5c8) ∗
@@ -815,4 +827,3 @@ theorem stage5_save_drop_dealloc_placed_ok [LibsignalPlacement] {M : AllocCostMo
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.AcceptTailPlacedBudgetAux
 
-end

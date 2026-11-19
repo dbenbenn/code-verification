@@ -20,7 +20,7 @@ public import ProofLib.SepLogic.Frame
 public import ProofLib.Abi.Aapcs
 public import ProofLib.SepLogic
 public import ProofLib.SepLogic.Bytes
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Hoare.Safety
 public import ProofLib.VCGen
 public import ProofLib.LitNorm
@@ -69,7 +69,9 @@ def sepWPHasPointsTo32 (isSingleStep : Bool := false) : TacticM Bool := do
   let g ← getMainGoal
   let opts ← getOptions
   let symBytes := CondClassify.proofLib.wpSymbolicBytes.get opts
-  let autoFocus := isSingleStep && proofLib.wpAutoSubwordFocus.get opts
+  let autoFocus :=
+    (isSingleStep || proofLib.wpAutoFocusInSteps.get opts) &&
+    proofLib.wpAutoSubwordFocus.get opts
   g.withContext do
     let ty := (← instantiateMVars (← g.getType)).consumeMData
     if !ty.isAppOfArity ``SepWP 6 then return false
@@ -616,6 +618,10 @@ private def extractLoadStoreAddrMode? (instExpr : Expr) : Option Expr :=
     some (instExpr.getArg! 4)
   else if instExpr.isAppOfArity ``Instr.stp 4 then
     some (instExpr.getArg! 3)
+  else if instExpr.isAppOfArity ``Instr.ldrSimd 3 || instExpr.isAppOfArity ``Instr.strSimd 3 then
+    some (instExpr.getArg! 2)
+  else if instExpr.isAppOfArity ``Instr.ldpSimd 4 || instExpr.isAppOfArity ``Instr.stpSimd 4 then
+    some (instExpr.getArg! 3)
   else
     none
 
@@ -655,38 +661,117 @@ private def memSizeConstBytes? (szExpr : Expr) : Option Nat :=
   else if isMemSizeConst szExpr 1 then some 1
   else none
 
+private def simdScalarAccesses? (szExpr : Expr) : Option (Nat × Nat) :=
+  match szExpr.constName? with
+  | some ``SimdMemSize.Q128 => some (8, 2)
+  | some ``SimdMemSize.D64 => some (8, 1)
+  | some ``SimdMemSize.S32 => some (4, 1)
+  | some ``SimdMemSize.H16 => some (2, 1)
+  | some ``SimdMemSize.B8 => some (1, 1)
+  | _ => none
+
+private def simdPairAccesses? (szExpr : Expr) : Option (Nat × Nat) :=
+  match szExpr.constName? with
+  | some ``SimdMemSize.Q128 => some (8, 4)
+  | some ``SimdMemSize.D64 => some (8, 2)
+  | some ``SimdMemSize.S32 => some (4, 2)
+  | _ => none
+
 private def extractLoadStoreAccesses? (instExpr : Expr) :
-    Option (Expr × Nat × Bool) :=
+    Option (Expr × Nat × Nat) :=
   if instExpr.isAppOfArity ``Instr.ldr 5 then
     match memSizeConstBytes? (instExpr.getArg! 1) with
-    | some b => some (instExpr.getArg! 4, b, false)
+    | some b => some (instExpr.getArg! 4, b, 1)
     | none => none
   else if instExpr.isAppOfArity ``Instr.str 3 then
     match memSizeConstBytes? (instExpr.getArg! 0) with
-    | some b => some (instExpr.getArg! 2, b, false)
+    | some b => some (instExpr.getArg! 2, b, 1)
     | none => none
   else if instExpr.isAppOfArity ``Instr.ldp 5 then
     let elemBytes :=
       if instExpr.getArg! 1 == mkConst ``Bool.true || instExpr.getArg! 0 == mkConst ``RegWidth.W32
       then 4 else 8
-    some (instExpr.getArg! 4, elemBytes, true)
+    some (instExpr.getArg! 4, elemBytes, 2)
   else if instExpr.isAppOfArity ``Instr.stp 4 then
     let elemBytes := if instExpr.getArg! 0 == mkConst ``RegWidth.W32 then 4 else 8
-    some (instExpr.getArg! 3, elemBytes, true)
+    some (instExpr.getArg! 3, elemBytes, 2)
+  else if instExpr.isAppOfArity ``Instr.ldrSimd 3 || instExpr.isAppOfArity ``Instr.strSimd 3 then
+    match simdScalarAccesses? (instExpr.getArg! 0) with
+    | some (elemBytes, count) => some (instExpr.getArg! 2, elemBytes, count)
+    | none => none
+  else if instExpr.isAppOfArity ``Instr.ldpSimd 4 || instExpr.isAppOfArity ``Instr.stpSimd 4 then
+    match simdPairAccesses? (instExpr.getArg! 0) with
+    | some (elemBytes, count) => some (instExpr.getArg! 3, elemBytes, count)
+    | none => none
   else
     none
 
-private def splitAtomForTarget? (atom targetEa bTarget : Expr) (oTarget targetW : Nat) :
+private def leafMayCoverTarget? (leaf bTarget : Expr) (oTarget targetW : Nat)
+    (allowExposed : Bool := false) : MetaM Bool := do
+  let mut cur := SepSolver.stripMData leaf
+  while cur.isAppOfArity ``SepProp.sepExists 2 do
+    let fn := SepSolver.stripMData (cur.getArg! 1)
+    if fn.isLambda then
+      cur := SepSolver.stripMData fn.bindingBody!
+    else
+      break
+  let fixedWidth? : Option Nat :=
+    if cur.isAppOfArity ``Arm64.pointsTo8 2 || cur.isAppOfArity ``Arm64.pointsTo8RO 2 then some 1
+    else if cur.isAppOfArity ``Arm64.pointsTo16 2 || cur.isAppOfArity ``Arm64.pointsTo16RO 2 then some 2
+    else if cur.isAppOfArity ``Arm64.pointsTo32 2 || cur.isAppOfArity ``Arm64.pointsTo32RO 2 then some 4
+    else if cur.isAppOfArity ``Arm64.pointsTo64 2 || cur.isAppOfArity ``Arm64.pointsTo64RO 2 then some 8
+    else if cur.isAppOfArity ``Arm64.pointsTo128 2 || cur.isAppOfArity ``Arm64.pointsTo128RO 2 then some 16
+    else none
+  let some addr := SepSolver.spatialAtomAddr? cur | do
+    if (← SepSolver.unfoldSpatialBundleAtom? cur (includeAbbrev := true)
+        (multiAtomOnlyForExposed := false) (allowExposed := allowExposed)).isSome then
+      return ← cur.getAppArgs.anyM fun (arg : Expr) => do
+        if arg.hasLooseBVars then return true
+        let ty := (← inferType arg).consumeMData
+        if !SepSolver.isBitVec64Type ty then return false
+        let (aNorm, _) ← SepSolver.normAddrMeta arg (peelLets := true)
+        let (bArg, _) ← sepAddrBaseOff aNorm
+        return bTarget == bArg || (← withReducibleAndInstances (isDefEq bTarget bArg))
+    return false
+  if addr.hasLooseBVars then return true
+  let (aNorm, _) ← SepSolver.normAddrMeta addr (peelLets := true)
+  let (bLeaf, oLeaf) ← sepAddrBaseOff aNorm
+  if !(bTarget == bLeaf || (← withReducibleAndInstances (isDefEq bTarget bLeaf))) then
+    return false
+  if let some wLeaf := fixedWidth? then
+    let relOff := (oTarget + 2 ^ 64 - oLeaf) % (2 ^ 64)
+    return relOff + targetW <= wLeaf
+  if cur.isAppOfArity ``Arm64.memRegion 2 then
+    if let some n ← SepSolver.evalNatLitSolver? (cur.getArg! 1) true then
+      let relOff := (oTarget + 2 ^ 64 - oLeaf) % (2 ^ 64)
+      return relOff + targetW <= n
+  return true
+
+private def splitAtomForTarget? (atom targetEa bTarget : Expr) (oTarget targetW : Nat)
+    (allowExposed : Bool := false) (unfoldBundles : Bool := true) :
     TacticM (Option (Expr × Expr × Bool)) := do
-  if atom.isAppOfArity ``Arm64.pointsTo64 2 && targetW < 8 then
+  if atom.isAppOfArity ``Arm64.pointsTo128 2 && targetW <= 8 then
     let a := atom.getArg! 0
     let v := atom.getArg! 1
-    let (aNorm, _) ← SepSolver.normAddrMeta a
+    let (aNorm, _) ← SepSolver.normAddrMeta a (peelLets := true)
     let (bCell, oCell) ← sepAddrBaseOff aNorm
     if !(bTarget == bCell || (← withReducibleAndInstances (isDefEq bTarget bCell))) then
       return none
     let relOff := (oTarget + 2 ^ 64 - oCell) % (2 ^ 64)
-    if relOff + targetW > 8 then return none
+    if !((relOff + targetW <= 8) || (8 <= relOff && relOff + targetW <= 16)) then return none
+    let hSplit := mkApp2 (mkConst ``pointsTo128_split64) a v
+    let eqTy ← inferType hSplit
+    let some (_, _, splitRhs) := eqTy.eq? | return none
+    return some (splitRhs, hSplit, false)
+  if atom.isAppOfArity ``Arm64.pointsTo64 2 && targetW < 8 then
+    let a := atom.getArg! 0
+    let v := atom.getArg! 1
+    let (aNorm, _) ← SepSolver.normAddrMeta a (peelLets := true)
+    let (bCell, oCell) ← sepAddrBaseOff aNorm
+    if !(bTarget == bCell || (← withReducibleAndInstances (isDefEq bTarget bCell))) then
+      return none
+    let relOff := (oTarget + 2 ^ 64 - oCell) % (2 ^ 64)
+    if !((relOff + targetW <= 4) || (4 <= relOff && relOff + targetW <= 8)) then return none
     let hSplit := mkApp2 (mkConst ``pointsTo64_split32') a v
     let eqTy ← inferType hSplit
     let some (_, _, splitRhs) := eqTy.eq? | return none
@@ -694,7 +779,7 @@ private def splitAtomForTarget? (atom targetEa bTarget : Expr) (oTarget targetW 
   if atom.isAppOfArity ``Arm64.pointsTo32 2 && targetW < 4 then
     let a := atom.getArg! 0
     let v := atom.getArg! 1
-    let (aNorm, _) ← SepSolver.normAddrMeta a
+    let (aNorm, _) ← SepSolver.normAddrMeta a (peelLets := true)
     let (bCell, oCell) ← sepAddrBaseOff aNorm
     if !(bTarget == bCell || (← withReducibleAndInstances (isDefEq bTarget bCell))) then
       return none
@@ -708,7 +793,7 @@ private def splitAtomForTarget? (atom targetEa bTarget : Expr) (oTarget targetW 
   if atom.isAppOfArity ``Arm64.pointsTo16 2 && targetW == 1 then
     let a := atom.getArg! 0
     let v := atom.getArg! 1
-    let (aNorm, _) ← SepSolver.normAddrMeta a
+    let (aNorm, _) ← SepSolver.normAddrMeta a (peelLets := true)
     let (bCell, oCell) ← sepAddrBaseOff aNorm
     if !(bTarget == bCell || (← withReducibleAndInstances (isDefEq bTarget bCell))) then
       return none
@@ -718,7 +803,15 @@ private def splitAtomForTarget? (atom targetEa bTarget : Expr) (oTarget targetW 
     let eqTy ← inferType hSplit
     let some (_, _, splitRhs) := eqTy.eq? | return none
     return some (splitRhs, hSplit, false)
-  if atom.isAppOfArity ``Arm64.stackFrameAt 2 || atom.isAppOfArity ``Arm64.memRegion 2 then
+  let isStackOrRegion :=
+    atom.isAppOfArity ``Arm64.stackFrame 2 ||
+    atom.isAppOfArity ``Arm64.stackFrame16 1 ||
+    atom.isAppOfArity ``Arm64.stackFrame32 1 ||
+    atom.isAppOfArity ``Arm64.stackFrameAt 2 ||
+    atom.isAppOfArity ``Arm64.stackFrame16At 1 ||
+    atom.isAppOfArity ``Arm64.stackFrame32At 1 ||
+    atom.isAppOfArity ``Arm64.memRegion 2
+  if isStackOrRegion then
     let thmName? : Option Name := match targetW with
       | 1 => some ``memRegion_one
       | 2 => some ``memRegion_two
@@ -728,18 +821,27 @@ private def splitAtomForTarget? (atom targetEa bTarget : Expr) (oTarget targetW 
     let some thmName := thmName? | return none
     let disch := SepSolver.liftTacDisch (fun φ => do
       proveOmegaBoundedTerm? φ [← `(tactic| bv_omega), ← `(tactic| omega)] [.strict, .transitive] 20000)
-    let (p, nExpr, hPrefix?) ←
-      if atom.isAppOfArity ``Arm64.stackFrameAt 2 then
-        let sp := atom.getArg! 0
-        let nExpr := atom.getArg! 1
-        let pow64 ← mkAppM ``HPow.hPow #[toExpr (2 : Nat), toExpr (64 : Nat)]
-        let some hn ← disch (← mkAppM ``LE.le #[nExpr, pow64]) | return none
-        let hStack := mkApp3 (mkConst ``stackFrameAt_eq_memRegion) sp nExpr hn
-        let eqTy ← inferType hStack
-        let some (_, _, memRegExpr) := eqTy.eq? | return none
-        pure (memRegExpr.getArg! 0, nExpr, some hStack)
+    let (a1, hNorm?) ←
+      if atom.isAppOfArity ``Arm64.stackFrame 2 ||
+         atom.isAppOfArity ``Arm64.stackFrame16 1 ||
+         atom.isAppOfArity ``Arm64.stackFrame32 1 then
+        SepSolver.normSepPropMeta atom
       else
-        pure (atom.getArg! 0, atom.getArg! 1, none)
+        pure (atom, none)
+    let (p, nExpr, hPrefix?) ←
+      if a1.isAppOfArity ``Arm64.stackFrameAt 2 ||
+         a1.isAppOfArity ``Arm64.stackFrame16At 1 ||
+         a1.isAppOfArity ``Arm64.stackFrame32At 1 then
+        let some (memRegExpr, hStack) ← SepSolver.expandStackFrameAtAtom? disch a1
+          | return none
+        let hPre ← match hNorm? with
+          | some hN => mkEqTrans hN hStack
+          | none => pure hStack
+        pure (memRegExpr.getArg! 0, memRegExpr.getArg! 1, some hPre)
+      else if a1.isAppOfArity ``Arm64.memRegion 2 then
+        pure (a1.getArg! 0, a1.getArg! 1, hNorm?)
+      else
+        return none
     let wExpr := toExpr targetW
     let some (subRhs, hSub) ← SepSolver.splitMemRegionSubblock? disch p nExpr targetEa wExpr
       | return none
@@ -753,10 +855,23 @@ private def splitAtomForTarget? (atom targetEa bTarget : Expr) (oTarget targetW 
       | some hPre => mkEqTrans hPre hSubCell
       | none => pure hSubCell
     return some (finalRhs, hFinal, true)
+  if SepSolver.proofLib.frameSplitUnfold.get (← getOptions) then
+    if let some rawUnf ←
+        SepSolver.unfoldSpatialBundleAtom? atom (includeAbbrev := unfoldBundles)
+          (multiAtomOnlyForExposed := false) (allowExposed := unfoldBundles && allowExposed) then
+      let (unfolded, pNorm?) ← SepSolver.normSepPropMeta rawUnf (peelLets := true)
+      if ← (SepSolver.atoms unfolded).anyM
+          (leafMayCoverTarget? · bTarget oTarget targetW (unfoldBundles && allowExposed)) then
+        let hUnf ← match pNorm? with
+          | some pNorm => mkExpectedTypeHint pNorm (← mkEq atom unfolded)
+          | none => mkExpectedTypeHint (← mkEqRefl unfolded) (← mkEq atom unfolded)
+        let hasEx := (unfolded.find? (·.isConstOf ``SepProp.sepExists)).isSome
+        return some (unfolded, hUnf, hasEx)
   return none
 
-private def tryAutoFocusCell? (targetEa : Expr) (targetW : Nat) : TacticM Bool := do
-  let (eaNorm, _) ← SepSolver.normAddrMeta targetEa
+private def tryAutoFocusCell? (targetEa : Expr) (targetW : Nat)
+    (unfoldBundles : Bool := true) : TacticM Bool := do
+  let (eaNorm, _) ← SepSolver.normAddrMeta targetEa (peelLets := true)
   let (bTarget, oTarget) ← sepAddrBaseOff eaNorm
   let atomConsts : Array Name := match targetW with
     | 1 => #[``Arm64.pointsTo8]
@@ -765,7 +880,7 @@ private def tryAutoFocusCell? (targetEa : Expr) (targetW : Nat) : TacticM Bool :
     | 8 => #[``Arm64.pointsTo64, ``Arm64.pointsTo64RO]
     | _ => #[]
   let mut anyChanged := false
-  for _ in [0:4] do
+  for _ in [0:6] do
     let g ← getMainGoal
     let stepRes? : Option (MVarId × Bool) ← g.withContext do
       let ty := (← instantiateMVars (← g.getType)).consumeMData
@@ -779,26 +894,28 @@ private def tryAutoFocusCell? (targetEa : Expr) (targetW : Nat) : TacticM Bool :
       let atoms := SepSolver.atoms P
       for atom in atoms do
         if atomConsts.any (fun c => atom.isAppOfArity c 2) then
-          let (aNorm, _) ← SepSolver.normAddrMeta (atom.getArg! 0)
+          let (aNorm, _) ← SepSolver.normAddrMeta (atom.getArg! 0) (peelLets := true)
           let (bCell, oCell) ← sepAddrBaseOff aNorm
           if (bTarget == bCell || (← withReducibleAndInstances (isDefEq bTarget bCell))) &&
              oTarget == oCell then
             return none
-      for h : i in [0:atoms.size] do
-        let atom := atoms[i]
-        if let some (splitRhs, hSplit, hasExists) ←
-            splitAtomForTarget? atom eaNorm bTarget oTarget targetW then
-          if let some (P1, h1) ← SepSolver.rewriteAtomAtEq? P i splitRhs hSplit then
-            let (P2, h2?) ← SepSolver.normSepPropMeta P1
-            let hEq ← match h2? with
-              | some h2 => mkEqTrans h1 h2
-              | none => pure h1
-            let nextTy := mkApp6 (mkConst ``SepWP) prog targetPc s P2 post oom
-            let gNext ← mkFreshExprMVar nextTy
-            let prf := mkAppN (mkConst ``SepWP.congr_pre)
-              #[prog, targetPc, s, P2, P, post, oom, (← mkEqSymm hEq), gNext]
-            g.assign prf
-            return some (gNext.mvarId!, hasExists)
+      let passes : List Bool := if unfoldBundles then [false, true] else [false]
+      for allowExposed in passes do
+        for h : i in [0:atoms.size] do
+          let atom := atoms[i]
+          if let some (splitRhs, hSplit, hasExists) ←
+              splitAtomForTarget? atom eaNorm bTarget oTarget targetW allowExposed unfoldBundles then
+            if let some (P1, h1) ← SepSolver.rewriteAtomAtEq? P i splitRhs hSplit then
+              let (P2, h2?) ← SepSolver.normSepPropMeta P1
+              let hEq ← match h2? with
+                | some h2 => mkEqTrans h1 h2
+                | none => pure h1
+              let nextTy := mkApp6 (mkConst ``SepWP) prog targetPc s P2 post oom
+              let gNext ← mkFreshExprMVar nextTy
+              let prf := mkAppN (mkConst ``SepWP.congr_pre)
+                #[prog, targetPc, s, P2, P, post, oom, (← mkEqSymm hEq), gNext]
+              g.assign prf
+              return some (gNext.mvarId!, hasExists)
       return none
     match stepRes? with
     | none => break
@@ -809,8 +926,9 @@ private def tryAutoFocusCell? (targetEa : Expr) (targetW : Nat) : TacticM Bool :
         let _ ← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| wp_pull_exists)))
   return anyChanged
 
-private def tryAutoFocusSubwordOrRegion? (instExpr : Expr) : TacticM Bool := do
-  let some (amExpr, elemBytes, isPair) := extractLoadStoreAccesses? instExpr
+private def tryAutoFocusSubwordOrRegion? (instExpr : Expr)
+    (unfoldBundles : Bool := true) : TacticM Bool := do
+  let some (amExpr, elemBytes, count) := extractLoadStoreAccesses? instExpr
     | return false
   let g ← getMainGoal
   let ea? ← g.withContext do
@@ -818,15 +936,17 @@ private def tryAutoFocusSubwordOrRegion? (instExpr : Expr) : TacticM Bool := do
     if !ty.isAppOfArity ``SepWP 6 then return none
     evalLoadStoreEffAddrDiag? (ty.getArg! 2) amExpr
   let some ea0 := ea? | return false
-  let c1 ← tryAutoFocusCell? ea0 elemBytes
-  let c2 ←
-    if isPair then
-      let ea1 ← (← getMainGoal).withContext do
-        mkAppM ``HAdd.hAdd #[ea0, mkCanonBitVecLit 64 elemBytes]
-      tryAutoFocusCell? ea1 elemBytes
-    else
-      pure false
-  return c1 || c2
+  let mut anyChanged := false
+  for idx in [0:count] do
+    let eaIdx ←
+      if idx == 0 then
+        pure ea0
+      else
+        (← getMainGoal).withContext do
+          mkAppM ``HAdd.hAdd #[ea0, mkCanonBitVecLit 64 (idx * elemBytes)]
+    if ← tryAutoFocusCell? eaIdx elemBytes unfoldBundles then
+      anyChanged := true
+  return anyChanged
 
 set_option maxHeartbeats 400000 in
 /-- Internal helper: take a single `SepWP` step, returning a `WpStepOutcome` classifying whether
@@ -834,7 +954,8 @@ set_option maxHeartbeats 400000 in
     unconditional branch (`B`). -/
 def wpStepCoreWithOutcome (stepFailed : Option (IO.Ref (Array Expr)) := none)
     (tacticName : String := "wp_step") (isSingleStep : Bool := false)
-    (resolvedItePcRef : Option (IO.Ref (Option Expr)) := none) :
+    (resolvedItePcRef : Option (IO.Ref (Option Expr)) := none)
+    (fromSymStep : Bool := false) :
     TacticM WpStepOutcome := do
   let _ ← getOrCreateWpNormSimpCacheRef
   let (_, _, pcExpr0) ← getSepWPStateAndPC
@@ -1408,10 +1529,16 @@ def wpStepCoreWithOutcome (stepFailed : Option (IO.Ref (Array Expr)) := none)
           runWords
     else if instExpr.isAppOfArity ``Instr.ldrSimd 3 &&
             (instExpr.getArg! 0 == mkConst ``SimdMemSize.D64 ||
-             instExpr.getArg! 0 == mkConst ``SimdMemSize.S32) then
-      -- `LDR Dt` / `LDR St`: single `SepLoad64` / `SepLoad32` cell, zero-extended into `Vt`.
-      let thm := mkIdent (if instExpr.getArg! 0 == mkConst ``SimdMemSize.D64
-        then ``SepWP.step_ldrSimd64 else ``SepWP.step_ldrSimd32)
+             instExpr.getArg! 0 == mkConst ``SimdMemSize.S32 ||
+             instExpr.getArg! 0 == mkConst ``SimdMemSize.H16 ||
+             instExpr.getArg! 0 == mkConst ``SimdMemSize.B8) then
+      -- `LDR Dt` / `LDR St` / `LDR Ht` / `LDR Bt`: single cell load, zero-extended into `Vt`.
+      let sz := instExpr.getArg! 0
+      let thm := mkIdent <|
+        if sz == mkConst ``SimdMemSize.D64 then ``SepWP.step_ldrSimd64
+        else if sz == mkConst ``SimdMemSize.S32 then ``SepWP.step_ldrSimd32
+        else if sz == mkConst ``SimdMemSize.H16 then ``SepWP.step_ldrSimd16
+        else ``SepWP.step_ldrSimd8
       evalTactic (← `(tactic| (
         apply $thm:ident
         wp_focus_close wp_norm_lhs
@@ -1426,11 +1553,17 @@ def wpStepCoreWithOutcome (stepFailed : Option (IO.Ref (Array Expr)) := none)
       )))
     else if instExpr.isAppOfArity ``Instr.strSimd 3 &&
             (instExpr.getArg! 0 == mkConst ``SimdMemSize.D64 ||
-             instExpr.getArg! 0 == mkConst ``SimdMemSize.S32) then
-      -- `STR Dt` / `STR St`: single `SepStore64` / `SepStore32` cell from the low bits of `Vt`.
+             instExpr.getArg! 0 == mkConst ``SimdMemSize.S32 ||
+             instExpr.getArg! 0 == mkConst ``SimdMemSize.H16 ||
+             instExpr.getArg! 0 == mkConst ``SimdMemSize.B8) then
+      -- `STR Dt` / `STR St` / `STR Ht` / `STR Bt`: single cell store from the low bits of `Vt`.
       let mId ← freshIdent `m
-      let thm := mkIdent (if instExpr.getArg! 0 == mkConst ``SimdMemSize.D64
-        then ``SepWP.step_strSimd64 else ``SepWP.step_strSimd32)
+      let sz := instExpr.getArg! 0
+      let thm := mkIdent <|
+        if sz == mkConst ``SimdMemSize.D64 then ``SepWP.step_strSimd64
+        else if sz == mkConst ``SimdMemSize.S32 then ``SepWP.step_strSimd32
+        else if sz == mkConst ``SimdMemSize.H16 then ``SepWP.step_strSimd16
+        else ``SepWP.step_strSimd8
       evalTactic (← `(tactic| (
         apply $thm:ident
         wp_focus_close wp_norm_lhs
@@ -1447,9 +1580,12 @@ def wpStepCoreWithOutcome (stepFailed : Option (IO.Ref (Array Expr)) := none)
         try wp_norm_state
       )))
     else if instExpr.isAppOfArity ``Instr.ldpSimd 4 &&
-            instExpr.getArg! 0 == mkConst ``SimdMemSize.D64 then
+            (instExpr.getArg! 0 == mkConst ``SimdMemSize.D64 ||
+             instExpr.getArg! 0 == mkConst ``SimdMemSize.S32) then
+      let thm := mkIdent (if instExpr.getArg! 0 == mkConst ``SimdMemSize.D64
+        then ``SepWP.step_ldpSimd64 else ``SepWP.step_ldpSimd32)
       evalTactic (← `(tactic| (
-        apply SepWP.step_ldpSimd64
+        apply $thm:ident
         wp_focus_close wp_norm_lhs
         wp_focus_close wp_norm_lhs
       )))
@@ -1463,10 +1599,13 @@ def wpStepCoreWithOutcome (stepFailed : Option (IO.Ref (Array Expr)) := none)
         wp_focus_close wp_norm_lhs
       )))
     else if instExpr.isAppOfArity ``Instr.stpSimd 4 &&
-            instExpr.getArg! 0 == mkConst ``SimdMemSize.D64 then
+            (instExpr.getArg! 0 == mkConst ``SimdMemSize.D64 ||
+             instExpr.getArg! 0 == mkConst ``SimdMemSize.S32) then
       let mId ← freshIdent `m
+      let thm := mkIdent (if instExpr.getArg! 0 == mkConst ``SimdMemSize.D64
+        then ``SepWP.step_stpSimd64 else ``SepWP.step_stpSimd32)
       evalTactic (← `(tactic| (
-        apply SepWP.step_stpSimd64
+        apply $thm:ident
         wp_focus_close wp_norm_lhs
         wp_focus_close wp_norm_lhs
       )))
@@ -1851,14 +1990,23 @@ def wpStepCoreWithOutcome (stepFailed : Option (IO.Ref (Array Expr)) := none)
   match stepRes? with
   | .ok () => return outcome
   | .error ex =>
+    let isSimdLdst :=
+      instExpr.isAppOfArity ``Instr.ldrSimd 3 || instExpr.isAppOfArity ``Instr.strSimd 3 ||
+      instExpr.isAppOfArity ``Instr.ldpSimd 4 || instExpr.isAppOfArity ``Instr.stpSimd 4
+    let opts ← getOptions
+    let autoInSteps := proofLib.wpAutoFocusInSteps.get opts
+    let allowAutoFocus :=
+      proofLib.wpAutoSubwordFocus.get opts &&
+      (isSingleStep || (!fromSymStep && isSimdLdst) || autoInSteps)
+    let unfoldBundles := !fromSymStep || autoInSteps
     let retryOk ←
-      if isSingleStep && proofLib.wpAutoSubwordFocus.get (← getOptions) then
+      if allowAutoFocus then
         let savedRetry ← saveState
         let savedRetryMsgs ← Core.getMessageLog
         let ok ← tryTacticCatchRuntimeBool do
           if ← pure isW32Access <&&> tryTacticCatchRuntimeBool (wpStep32Core instExpr fetchPrf) then
             return
-          if !(← tryAutoFocusSubwordOrRegion? instExpr) then
+          if !(← tryAutoFocusSubwordOrRegion? instExpr unfoldBundles) then
             throwError "no autofocus"
           dispatchStep
         if !ok then

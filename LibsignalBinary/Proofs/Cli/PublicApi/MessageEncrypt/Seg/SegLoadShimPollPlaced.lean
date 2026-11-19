@@ -9,11 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadCommonPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegLoadShimPoll
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadCommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegLoadShimPoll
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CmDropPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrSignalEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrStoreHookPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Relocatable `segLoad` Prologue, Load Shim, and Poll (`+0x000..+0x160`)
@@ -23,7 +33,7 @@ executing prologue and spill setup `E0` (`+0x000..+0x08c`), `kit.loadShim`, pre-
 (`+0x090..+0x0a8`), `kit.loadPoll`, and ready-path future cleanup `E1` (`+0x0ac..+0x160`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -381,7 +391,7 @@ theorem segLoad_shim_placed_wp [LibsignalPlacement]
 
 /-! ## 5. Combined `E0` + `loadShim` + `loadPoll` + `E1` to `+0x160` (`segLoad_to_dispatch_placed`) -/
 
-def shimFramePlaced [LibsignalPlacement] {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def shimFramePlaced [LibsignalPlacement] {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (ctl : BitVec 64) (x : WithStoresEncGhost) (s0 : State) (v50 : BitVec 64) : SepProp :=
   let sp := s0.sp - 0xbe0#64
@@ -402,7 +412,7 @@ def shimFramePlaced [LibsignalPlacement] {A : RustAlloc} (kit : SessionStoreSpec
   FromRecordCallees.lsLogOff ∗
   ikit.identityAt x.idA ist0
 
-def dispatchFramePlaced [LibsignalPlacement] {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def dispatchFramePlaced [LibsignalPlacement] {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (st0 : kit.StoreState) (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (ctl : BitVec 64)
     (x : WithStoresEncGhost) (s0 : State) (v50 : BitVec 64) : SepProp :=

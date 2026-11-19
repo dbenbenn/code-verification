@@ -13,7 +13,7 @@ public meta import Lean
 public meta import Arm64.Trusted.ISA.Syntax
 public import Arm64
 public import ProofLib.ProgramReflection
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.SepLogic
 public import ProofLib.SepLogic.WP
 public import ProofLib.SepLogic.WPp
@@ -191,8 +191,7 @@ private def isSubroutineOkApp (e : Expr) : Bool :=
   e.isAppOf ``Program.subroutineOk ||
   e.isAppOf ``Arm64.fn_subroutine_ok ||
   e.isAppOf ``Program.relocSubroutineOk ||
-  e.isAppOf ``Program.alignedSubroutineOk ||
-  e.isAppOf ``Obj.LinkedImage.subroutineOk
+  e.isAppOf ``Program.alignedSubroutineOk
 
 private def isQuantifiedSubroutineOk (e : Expr) : Bool :=
   let e := e.consumeMData
@@ -201,7 +200,7 @@ private def isQuantifiedSubroutineOk (e : Expr) : Bool :=
   | .forallE _ dom body _ =>
     let dom := dom.consumeMData
     let body := body.consumeMData
-    if dom.isConstOf ``Arm64.Obj.Image || dom.isAppOfArity ``BitVec 1 then
+    if dom.isAppOfArity ``BitVec 1 then
       if isSubroutineOkApp body then true
       else match body with
       | .forallE _ _ body2 _ => isSubroutineOkApp body2
@@ -210,20 +209,15 @@ private def isQuantifiedSubroutineOk (e : Expr) : Bool :=
   | _ => false
 
 /-- Unfold a top-level statement definition (`*Stmt`) or base-quantified `subroutineOk` wrapper
-    and introduce any universally quantified load base `b : BitVec 64` (or `img : Obj.Image` and
-    `himg : Obj.Loads li img`), rewriting `Program.ofImage img` to `<code>.rebase img.base`. -/
+    and introduce any universally quantified load base `b : BitVec 64`. -/
 def prepareBaseQuantifiedGoal : TacticM Unit := do
   let gInit ← getMainGoal
   let needsPrep ← gInit.withContext do
     let tgt := (← instantiateMVars (← gInit.getType)).consumeMData
-    let hasLoads := (← getLCtx).any fun d =>
-      !d.isImplementationDetail && !d.isAuxDecl &&
-      d.type.consumeMData.isAppOfArity ``Arm64.Obj.Loads 2
     if tgt.isAppOf ``Arm64.subroutine_ok &&
        !tgt.isAppOf ``Program.subroutineOk &&
        !tgt.isAppOf ``Arm64.fn_subroutine_ok &&
-       (tgt.find? (·.isAppOf ``ToBaseSpec.toSpec)).isNone &&
-       !hasLoads then
+       (tgt.find? (·.isAppOf ``ToBaseSpec.toSpec)).isNone then
       return false
     if !isQuantifiedSubroutineOk tgt then
       if let some c := tgt.getAppFn.constName? then
@@ -235,18 +229,14 @@ def prepareBaseQuantifiedGoal : TacticM Unit := do
     return
   let _ ← tryTactic (evalTactic (← `(tactic|
     dsimp only [Program.relocSubroutineOk, Program.alignedSubroutineOk,
-      Obj.LinkedImage.subroutineOk, Program.subroutineOk, fn_subroutine_ok,
+      Program.subroutineOk, fn_subroutine_ok,
       ToBaseSpec.toSpec, instToBaseSpecId, instToBaseSpecFn, wp_proj_guard])))
   let g1 ← getMainGoal
   g1.withContext do
     let tgt := (← instantiateMVars (← g1.getType)).consumeMData
     if let .forallE _ dom _ _ := tgt then
       let dom := dom.consumeMData
-      if dom.isConstOf ``Arm64.Obj.Image then
-        let imgId := mkIdent `img
-        let himgId := mkIdent `himg
-        evalTactic (← `(tactic| intro $imgId:ident $himgId:ident))
-      else if dom.isAppOfArity ``BitVec 1 then
+      if dom.isAppOfArity ``BitVec 1 then
         let bId := mkIdent `b
         evalTactic (← `(tactic| intro $bId:ident))
         let g2 ← getMainGoal
@@ -256,34 +246,6 @@ def prepareBaseQuantifiedGoal : TacticM Unit := do
             if dom2.consumeMData.isAppOf ``Eq then
               let hbId := mkIdent `hb
               evalTactic (← `(tactic| intro $hbId:ident))
-  let g3 ← getMainGoal
-  g3.withContext do
-    let env ← getEnv
-    let lctx ← getLCtx
-    for decl in lctx do
-      if !decl.isImplementationDetail && !decl.isAuxDecl then
-        let ty := (← instantiateMVars decl.type).consumeMData
-        if ty.isAppOfArity ``Arm64.Obj.Loads 2 then
-          let liExpr := (ty.getArg! 0).consumeMData
-          let imgExpr := (ty.getArg! 1).consumeMData
-          let himgId := mkIdent decl.userName
-          let hasHb := lctx.any fun d =>
-            !d.isImplementationDetail && !d.isAuxDecl && d.userName == `hb
-          if !hasHb then
-            let imgStx ← Term.exprToSyntax (← instantiateMVars imgExpr)
-            let hbId := mkIdent `hb
-            let _ ← tryTactic (evalTactic (← `(tactic|
-              have $hbId:ident : ($imgStx : Arm64.Obj.Image).base &&& 0xfff#64 = 0#64 :=
-                ProofLib.ObjectLoad.base_aligned_of_loads $himgId:ident)))
-            (← getGoals).forM instantiateMVarDeclMVars
-          if let some liName := liExpr.getAppFn.constName? then
-            let liStr := liName.getString!
-            let pfx := if liStr.endsWith "Image" then (liStr.dropEnd 5).toString else liStr
-            let ofImageName := Name.str liName.getPrefix (pfx ++ "Code_ofImage")
-            if env.contains ofImageName then
-              let _ ← tryTactic (evalTactic (← `(tactic|
-                rw [$(mkIdent ofImageName) $himgId:ident])))
-          break
   let _ ← tryTactic (evalTactic (← `(tactic|
     dsimp only [Program.subroutineOk, fn_subroutine_ok,
       ToBaseSpec.toSpec, instToBaseSpecId, instToBaseSpecFn, wp_proj_guard])))
@@ -292,12 +254,8 @@ private def unreducedEntryHead? (e : Expr) : Option Name :=
   let isLookupConst (nm : Name) : Bool :=
     nm == ``Arm64.Obj.PlacedLib.fnAddr ||
     nm == ``Arm64.Obj.MultiPlacedLib.fnAddr ||
-    nm == ``Arm64.Obj.LinkedImage.fnAddr ||
     nm == ``Arm64.Obj.MultiPlacedLib.resolve ||
     nm == ``Arm64.Obj.CodeBlock.resolve ||
-    nm == ``Arm64.Obj.LinkedImage.resolveSym ||
-    nm == ``Arm64.Obj.LinkedImage.resolveObjSym ||
-    nm == ``Arm64.Obj.Image.symtab ||
     nm == ``Arm64.Obj.lookup ||
     nm == ``Arm64.Obj.lookupUnique ||
     nm == ``Arm64.Obj.lookupBlockSym ||
@@ -376,10 +334,6 @@ private def entryProgramHint (tacName : String) (progExpr : Expr) : MessageData 
       s.isConstOf ``Arm64.Obj.PlacedLib.program ||
       s.isConstOf ``Arm64.Obj.MultiPlacedLib.blockProgram).isSome then
     m!"\nhint: program uses unrewritten `PlacedLib.program` / `MultiPlacedLib.blockProgram`; rewrite the program to its `(<progPC> pl).rebase b H` wrapper (registered via `gen_placed_fnOffs`) and pre-fold the entry address to `b + 0x...#64` before calling `{tacName}`"
-  else if (progExpr.find? fun s =>
-      s.isConstOf ``Arm64.Program.ofImage ||
-      s.isConstOf ``Arm64.Program.ofImageWithSvc).isSome then
-    m!"\nhint: program uses unrewritten `Program.ofImage`; rewrite it with `<prefix>Code_ofImage himg` (or `Program.ofImage_eq_rebase`) to `<codeConst>.rebase img.base hooks` before calling `{tacName}`"
   else
     m!""
 
@@ -387,10 +341,9 @@ private def collectTableOrLookupHeads (g : MVarId) : MetaM (Array Name) := do
   let ref ← IO.mkRef (#[] : Array Name)
   let isInteresting (nm : Name) : Bool :=
     let pfx := nm.getPrefix
-    pfx == `Arm64.Obj.Image || pfx == `Arm64.Obj.LinkedImage ||
     pfx == `Arm64.Obj.CodeBlock || pfx == `Arm64.Obj.PlacedLib ||
     pfx == `Arm64.Obj.MultiPlacedLib || pfx == `Arm64.Obj.MultiPlacedLib.SymIndex ||
-    pfx == `Arm64.Obj.RelocFnIndex || pfx == `Arm64.Obj.Interned ||
+    pfx == `Arm64.Obj.Interned ||
     pfx == `Arm64.Process.ElfImage ||
     nm == ``Arm64.Obj.lookup || nm == ``Arm64.Obj.lookupUnique ||
     nm == ``Arm64.Obj.lookupBlockSym || nm == `Arm64.Obj.lookupSymInLists ||
@@ -452,41 +405,13 @@ private def bridgeLocalCallees (info : FnEntryInfo) (bExpr : Expr)
          (ty.find? (·.isAppOf ``ToBaseSpec.toSpec)).isSome then
         let _ ← tryTactic (evalTactic (← `(tactic|
           dsimp only [Program.relocSubroutineOk, Program.alignedSubroutineOk,
-            Obj.LinkedImage.subroutineOk, Program.subroutineOk, fn_subroutine_ok,
+            Program.subroutineOk, fn_subroutine_ok,
             ToBaseSpec.toSpec, instToBaseSpecId, instToBaseSpecFn, wp_proj_guard] at $hypId:ident)))
         let some ty' ← refreshTy? uName | return
         ty := ty'
       if let .forallE _ dom _ _ := ty then
         let dom := dom.consumeMData
-        if dom.isConstOf ``Arm64.Obj.Image then
-          let loadsHyp? ← withMainContext do
-            let mut res : Option (Ident × Term × Option Name) := none
-            for d in (← getLCtx) do
-              if !d.isImplementationDetail && !d.isAuxDecl then
-                let dty := (← instantiateMVars d.type).consumeMData
-                if dty.isAppOfArity ``Arm64.Obj.Loads 2 then
-                  let liExpr := (dty.getArg! 0).consumeMData
-                  let imgExpr := (dty.getArg! 1).consumeMData
-                  let imgStx ← Term.exprToSyntax (← instantiateMVars imgExpr)
-                  let ofImageName? := liExpr.getAppFn.constName?.bind fun liName =>
-                    let liStr := liName.getString!
-                    let pfx := if liStr.endsWith "Image" then (liStr.dropEnd 5).toString else liStr
-                    let n := Name.str liName.getPrefix (pfx ++ "Code_ofImage")
-                    if env.contains n then some n else none
-                  res := some (mkIdent d.userName, imgStx, ofImageName?)
-            pure res
-          if let some (himgId, imgStx, ofImageName?) := loadsHyp? then
-            evalTactic (← `(tactic| replace $hypId:ident := $hypId:ident $imgStx $himgId:ident))
-            (← getGoals).forM instantiateMVarDeclMVars
-            if let some ofImageName := ofImageName? then
-              let _ ← tryTactic (evalTactic (← `(tactic|
-                rw [$(mkIdent ofImageName) $himgId:ident] at $hypId:ident)))
-            let _ ← tryTactic (evalTactic (← `(tactic|
-              dsimp only [Program.subroutineOk, fn_subroutine_ok,
-                ToBaseSpec.toSpec, instToBaseSpecId, instToBaseSpecFn, wp_proj_guard] at $hypId:ident)))
-            let some ty' ← refreshTy? uName | return
-            ty := ty'
-        else if dom.isAppOfArity ``BitVec 1 then
+        if dom.isAppOfArity ``BitVec 1 then
           let bNow ← currentBaseExpr
           let bStx ← withMainContext do Term.exprToSyntax (← instantiateMVars bNow)
           evalTactic (← `(tactic| replace $hypId:ident := $hypId:ident $bStx))
@@ -633,7 +558,7 @@ private def wpEntryCoreBody (tacName : String) (isPanic : Bool) (sym? : Option S
   let (info, bExpr, hExpr, oExpr, needsEntryRw, isZeroOffBase, hasRegFnOff) ← g0.withContext do
     let tgt := (← instantiateMVars (← g0.getType)).consumeMData
     unless tgt.isAppOfArity ``Arm64.subroutine_ok 4 do
-      throwError "{tacName}: goal must be `subroutine_ok`, `Program.subroutineOk`, `Program.relocSubroutineOk`, or `Obj.LinkedImage.subroutineOk`, got{indentExpr tgt}"
+      throwError "{tacName}: goal must be `subroutine_ok`, `Program.subroutineOk`, or `Program.relocSubroutineOk`, got{indentExpr tgt}"
     let progExpr := (tgt.getArg! 1).consumeMData
     let entryExpr := (tgt.getArg! 2).consumeMData
     let some (codeConst, bExpr, hExpr, oExpr) ← extractRebase? progExpr
@@ -735,8 +660,7 @@ private def wpEntryCoreBody (tacName : String) (isPanic : Bool) (sym? : Option S
               if sub.isConst then
                 let nm := sub.constName!
                 if nm != ``Arm64.Program.mk && nm != ``Arm64.Program.rebase &&
-                   nm != ``Arm64.Program.ofImage && nm != ``Arm64.Program.ofWords &&
-                   nm != ``Arm64.Obj.LinkedImage.toProgram then
+                   nm != ``Arm64.Program.ofWords then
                   if !(← isReducible nm) then
                     if let some cinfo := env.find? nm then
                       if let some val := cinfo.value? then
@@ -788,8 +712,8 @@ private def wpEntryCoreBody (tacName : String) (isPanic : Bool) (sym? : Option S
   evalTactic (← `(tactic| examples_hide_fetches))
 
 /-- Core implementation of `wp_entry` / `wp_init_fn` / `wpp_entry`. Catches `maxRecDepth`
-    exhaustion and attaches an actionable hint explaining how to pre-fold concrete image,
-    placement, or symbol-table projections before calling `wp_entry`. -/
+    exhaustion and attaches an actionable hint explaining how to pre-fold concrete placement
+    or symbol-table projections before calling `wp_entry`. -/
 def wpEntryCore (isPanic : Bool) (sym? : Option String) (a? s0? : Option Ident)
     (pInit? : Option Term) : TacticM Unit := do
   let tacName := if isPanic then "wpp_entry" else "wp_entry"
@@ -808,7 +732,7 @@ def wpEntryCore (isPanic : Bool) (sym? : Option String) (a? s0? : Option Ident)
             else
               let listStr := String.intercalate ", " (heads.toList.map (s!"`{·}`"))
               m!" (saw {listStr} in goal/context)"
-          throwError "{tacName}: maximum recursion depth (`maxRecDepth`) reached during entry setup{foundNote}\nhint: pre-fold concrete `Obj.Image` / `Obj.LinkedImage` / `Obj.Interned` / `PlacedLib` / symbol-table or address projections before calling `{tacName}` (for example, `have hentry : <addr> = b + 0x...#64 := ...; rw [hentry]`, or bind large table expressions behind an opaque local `have`/`generalize` hypothesis)"
+          throwError "{tacName}: maximum recursion depth (`maxRecDepth`) reached during entry setup{foundNote}\nhint: pre-fold concrete `Obj.Interned` / `PlacedLib` / symbol-table or address projections before calling `{tacName}` (for example, `have hentry : <addr> = b + 0x...#64 := ...; rw [hentry]`, or bind large table expressions behind an opaque local `have`/`generalize` hypothesis)"
       throw ex
 
 /-- Symbol-keyed function entry tactic for `SepWP`:

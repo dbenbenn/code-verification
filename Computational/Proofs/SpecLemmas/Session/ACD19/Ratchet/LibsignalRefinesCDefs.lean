@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrHyp
-public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrHyp -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
 public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 
@@ -28,7 +28,7 @@ session game to the ACD19 Fig. 8 instance, the graded SPQR send-totality hypothe
 `Refine.LibSimC` (`DEV-LS36`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -43,7 +43,7 @@ variable {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] [Inha
 
 /-- Decision-C reduction (`LibsignalSimC.runLibsignalToModularSchemeSim`) transforming a libsignal
 session adversary into an ACD19 Fig. 8 adversary while tracking corrupted parties' chain states. -/
-def libsignalToModularSchemeSim (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def libsignalToModularSchemeSim (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
     (qep : ℕ) (A : LibAdv PQ PQC ℓ) : Fig8Adv Pt ℓ :=
   LibsignalSimC.runLibsignalToModularSchemeSim P Dh encPt encT decT idOf lam qep A
@@ -63,7 +63,7 @@ open Ratchet LibsignalInst LibsignalSession HMAC HKDF CBC LibsignalAead SM SM.Co
 namespace Corr
 
 /-- Unbounded SPQR send-totality and panic-freedom invariant closed under `init`, `send`, and `recv`. -/
-def SpqrSendCorrect {PQ PQC : Type} (S : Spqr PQ PQC) : Prop :=
+@[expose] def SpqrSendCorrect {PQ PQC : Type} (S : Spqr PQ PQC) : Prop :=
   ∃ Inv : PQ → Prop, SpqrInvClosed S Inv ∧ SpqrSendTotalOn S Inv ∧
     ∀ st r, Inv st → S.sendPanics st r = false
 
@@ -75,7 +75,7 @@ structure SpqrInvClosedQ {PQ PQC : Type} (S : Spqr PQ PQC) (Inv : ℕ → PQ →
 
 /-- Graded SPQR send-totality and panic-freedom up to send budget `q`, accommodating SPQR V1's
 `u32` chain-counter limit (`DEV-SPQR7`). -/
-def SpqrSendCorrectQ {PQ PQC : Type} (S : Spqr PQ PQC) (q : ℕ) : Prop :=
+@[expose] def SpqrSendCorrectQ {PQ PQC : Type} (S : Spqr PQ PQC) (q : ℕ) : Prop :=
   ∃ Inv : ℕ → PQ → Prop, SpqrInvClosedQ S Inv ∧
     (∀ n st r, n < q → Inv n st → (S.send st r).isSome) ∧
     ∀ n st r, n < q → Inv n st → S.sendPanics st r = false
@@ -88,7 +88,7 @@ variable {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] [Inha
   [SampleableType PQC]
 
 /-- Decision-C libsignal-to-Fig. 8 refinement bound predicate including `2 * hiddenSaltTerm` (`DEV-LS36`). -/
-def LibSimC (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def LibSimC (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
     (qep q : ℕ) (εcoll : ℝ≥0∞) : Prop :=
   ∀ A : LibAdv PQ PQC ℓ, SM.MakesAtMostQueries A q →

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.CorrSend
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.CorrSend -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupling
@@ -24,7 +24,7 @@ import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 Proves `libsignal_refines_C_proof`, establishing `Refine.LibSimC` under `Corr.SpqrSendCorrectQ` by coupling `libsignalSessionScheme` with `libsignalToModularSchemeSim` via `CloseByRefinesH` and bounding the additional hidden-salt probe term.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrChunkedMergePlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkReceivedCt1SampledClPlacedBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrChunkedMergePlacedInst
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkReceivedCt1SampledClPlacedBudget
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -33,6 +32,11 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
 
 /-!
 # Guarded-Tight Placed Budget Proof for `Chunked.EkReceivedCt1Sampled::merge` (Block `310`)
@@ -43,7 +47,7 @@ inlined `Unchunked.Ct1SentEkReceived` `61,686` B + `PolynomialEncoder` `342,615`
 `tlb_ChunkedEkReceivedCt1SampledDom` inputs, falling back to `ChunkedEkReceivedCt1SampledMergeEnv` outside the domain.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -177,7 +181,7 @@ abbrev e2b310_ownBytesMaxReq : Nat := 2080
 enforces `SpqrTightEvs maxOps cumCap maxReq evs` on `tlb_ChunkedEkReceivedCt1SampledDom x`, and
 falls back to `ChunkedEkReceivedCt1SampledMergeEnv x evs` on `¬ tlb_ChunkedEkReceivedCt1SampledDom x`.
 At `(maxOps, 404301, 2560)` this is definitionally `tlb_ChunkedEkReceivedCt1SampledGuardedEnvOf maxOps`. -/
-def e2b310_ChunkedEkReceivedCt1SampledGuardedEnv (maxOps cumCap maxReq : Nat) :
+@[expose] def e2b310_ChunkedEkReceivedCt1SampledGuardedEnv (maxOps cumCap maxReq : Nat) :
     ChunkedEkReceivedCt1SampledMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedEkReceivedCt1SampledDom
     (SpqrTightEvs maxOps cumCap maxReq) ChunkedEkReceivedCt1SampledMergeEnv
@@ -329,7 +333,7 @@ private theorem e2b310_memRegion_unchunked5_none_split (a : BitVec 64) :
     ProofLib.memRegion_eight (a + 72#64), ProofLib.memRegion_eight (a + 120#64)]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
 
-private noncomputable def e2b310_DomSpec {M : AllocCostModel}
+private def e2b310_DomSpec {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps cumCap maxReq : Nat) :
     Spec (ChunkedEkReceivedCt1SampledMergeGhost × M.σ) where
   pre := fun (x, st) s =>

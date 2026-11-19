@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events
-public import Computational.Proofs.E2E.Relabel.GameEq
-public import Computational.Proofs.E2E.SpkLeakRedModel
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Relabel.GameEq -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkLeakRedModel -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 
 /-!
@@ -24,7 +24,7 @@ and establishes the lazy random-oracle table bijection via `hker`, epoch-0 key p
 (`patchGameSpk`), and oracle step lemmas for Hop 2 coupling.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -39,7 +39,7 @@ open CryptoGames CryptoGames.SM CryptoGames.Ratchet CryptoGames.Ratchet.Libsigna
 
 /-- Extends `configR1OnCurve` with the early-Bob-corruption guards `noBobCorrInEpoch0` (`DEV-LS33`)
 and `noBobCorrWhileAliceBelowEpoch10` (`DEV-LS34`). -/
-def configR1OnCurveSpk {St Msg : Type} (onImage : List (BitVec 8) → Bool) :
+@[expose] def configR1OnCurveSpk {St Msg : Type} (onImage : List (BitVec 8) → Bool) :
     ConfigR St Msg (List (BitVec 8)) :=
   { configR1OnCurve onImage with
     corrOK := fun st P =>
@@ -76,7 +76,7 @@ variable {PQ PQC : Type} [Inhabited PQ] [SampleableType PQC] {ℓ : ℕ}
 /-! ### Lazy random-oracle table bijection -/
 
 /-- Maps an abstract point-tag table `L` to the concrete PRF table under scalar `x`. -/
-def tableFor (Dh : DHFun (BitVec 256) Pt) (x : BitVec 256)
+@[expose] def tableFor (Dh : DHFun (BitVec 256) Pt) (x : BitVec 256)
     (L : List (Pt × BitVec 256)) : List (Pt × BitVec 256) :=
   L.map fun pt => (Dh.dh x pt.1, pt.2)
 
@@ -101,7 +101,7 @@ theorem lookup_tableFor_eq (Dh : DHFun (BitVec 256) Pt) (s : BitVec 256)
          | true => some t | false => (tableFor Dh s tl).lookup (Dh.dh s P_pt))
     rw [hbeq, ih]
 
-def stepTableFor (Dh : DHFun (BitVec 256) Pt) (s : BitVec 256)
+@[expose] def stepTableFor (Dh : DHFun (BitVec 256) Pt) (s : BitVec 256)
     (P_pt : Pt) (L : List (Pt × BitVec 256)) :
     ProbComp (BitVec 256 × List (Pt × BitVec 256)) :=
   match (tableFor Dh s L).lookup (Dh.dh s P_pt) with
@@ -130,25 +130,25 @@ theorem prfEval_true_tableFor_bind {Key α : Type}
 
 /-! ### Bob epoch-0 sender-key patching -/
 
-def setBobSpk (kp : KeyPair) (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
+@[expose] def setBobSpk (kp : KeyPair) (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
   { g with session := { g.session with
       senderChain := g.session.senderChain.map fun _sc => ⟨kp, ⟨ck0, 0⟩⟩ } }
 
-def patchBobSpk (kp : KeyPair) (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
+@[expose] def patchBobSpk (kp : KeyPair) (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
   if g.epoch = 0 then setBobSpk kp ck0 g else g
 
 /-! ### Alice head public-key patching -/
 
-def setHeadPubKey (spk : PublicKey) (cs : List ReceiverChain) : List ReceiverChain :=
+@[expose] def setHeadPubKey (spk : PublicKey) (cs : List ReceiverChain) : List ReceiverChain :=
   match cs with
   | [] => []
   | rc :: rest => { rc with senderRatchetKey := spk } :: rest
 
-def setAliceSpkPub (spk : PublicKey) (g : GhostState PQ) : GhostState PQ :=
+@[expose] def setAliceSpkPub (spk : PublicKey) (g : GhostState PQ) : GhostState PQ :=
   { g with session := { g.session with
                         receiverChains := setHeadPubKey spk g.session.receiverChains } }
 
-def patchAlicePub (spk : PublicKey) (g : GhostState PQ) : GhostState PQ :=
+@[expose] def patchAlicePub (spk : PublicKey) (g : GhostState PQ) : GhostState PQ :=
   if 0 ∈ g.chainEpochs then setAliceSpkPub spk g else g
 
 theorem findIdx?_setHeadPubKey (spk : PublicKey) (rc0 : ReceiverChain) (rest : List ReceiverChain)
@@ -839,17 +839,17 @@ theorem receive_patchAlicePub_nonSpk (P : Params PQ PQC) (spk₀ spk : PublicKey
 
 /-! ### Full game-state SPK patching -/
 
-def patchPartyPub (spk : PublicKey) (kp : KeyPair) : Party → GhostState PQ → GhostState PQ
+@[expose] def patchPartyPub (spk : PublicKey) (kp : KeyPair) : Party → GhostState PQ → GhostState PQ
   | .A => patchAlicePub spk
   | .B => patchBobSpk kp 0
 
-def patchGamePub (C : Crypto) (x : BitVec 256) (s : GameSt PQ ℓ) : GameSt PQ ℓ :=
+@[expose] def patchGamePub (C : Crypto) (x : BitVec 256) (s : GameSt PQ ℓ) : GameSt PQ ℓ :=
   { s with st := fun p => match p with
       | .A => patchAlicePub (KeyPair.generate C x).publicKey (s.st .A)
       | .B => patchBobSpk (KeyPair.generate C x) 0 (s.st .B) }
 
 /-- Patches both `(KeyPair.generate C x)` and `ck0` across the game state. -/
-def patchGameSpk (C : Crypto) (x ck0 : BitVec 256) (s : GameSt PQ ℓ) : GameSt PQ ℓ :=
+@[expose] def patchGameSpk (C : Crypto) (x ck0 : BitVec 256) (s : GameSt PQ ℓ) : GameSt PQ ℓ :=
   patchGameState ck0 (patchGamePub C x s)
 
 omit [Inhabited PQ] in
@@ -928,7 +928,7 @@ theorem spkForgeTerm_eq_mul_eps0IdealUnit (F : ShaState → List (BitVec 8) → 
     epoch0ChainForgeryTerm F q = q * eps0IdealUnit F :=
   rfl
 
-def prfOracleImpl {Key : Type} (mac : MACScheme Key Pt (BitVec 256)) :
+@[expose] def prfOracleImpl {Key : Type} (mac : MACScheme Key Pt (BitVec 256)) :
     QueryImpl (unifSpec + prfSpec Pt (BitVec 256))
       (StateT (PRFState Key Pt (BitVec 256)) ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget
@@ -941,7 +941,7 @@ theorem simulateQ_prfOracleImpl_evalQuery {Key : Type}
     simulateQ (prfOracleImpl mac) (evalQuery y) = MACScheme.prfEval mac y := by
   simp [evalQuery, prfOracleImpl]
 
-def initARef (P : Params Bytes PQC) (s prk alice pqr : BitVec 256) : GhostState Bytes :=
+@[expose] def initARef (P : Params Bytes PQC) (s prk alice pqr : BitVec 256) : GhostState Bytes :=
   let (rk1, ck1) := (expandPRG P.C.F).gen prk
   let spk := (KeyPair.generate P.C s).publicKey
   let sendingRatchetKey := KeyPair.generate P.C alice
@@ -951,7 +951,7 @@ def initARef (P : Params Bytes PQC) (s prk alice pqr : BitVec 256) : GhostState 
   ⟨.A, sess.setUnacknowledgedPreKeyMessage, 0, [0]⟩
 
 /-- Reference initial `GameState` after `initAOracle` receives `prk`, with `s` and `ck0 = 0`. -/
-def initGameSpkRef (P : Params Bytes PQC) (ℓ : ℕ) (b : Bool) (s prk alice pqr : BitVec 256) :
+@[expose] def initGameSpkRef (P : Params Bytes PQC) (ℓ : ℕ) (b : Bool) (s prk alice pqr : BitVec 256) :
     GameSt Bytes ℓ :=
   { st := fun Q => match Q with
       | .A => initARef P s prk alice pqr
@@ -1002,7 +1002,7 @@ theorem gameInv_initGameSpkRef (P : Params Bytes PQC) (ℓ : ℕ) (b : Bool)
     subst hsc
     rfl
 
-def receiveB0Post (P : Params Bytes PQC) (ℓ : ℕ)
+@[expose] def receiveB0Post (P : Params Bytes PQC) (ℓ : ℕ)
     (g : GhostState Bytes) (msg : SignalMessage) (rc prk : BitVec 256) :
     Option (GhostState Bytes × ℕ × ℕ × CBC.Plain ℓ) :=
   let (rk1, ck1) := (expandPRG P.C.F).gen prk
@@ -1023,7 +1023,7 @@ def receiveB0Post (P : Params Bytes PQC) (ℓ : ℕ)
       some ({ g with session := s_out, epoch := 1, chainEpochs := epochs },
         1, msg.counter.toNat + 1, padOrTruncatePlain ℓ m)
 
-def stepReceiveB0 (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepReceiveB0 (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (s : BitVec 256)
     (g : GhostState Bytes) (c : Bytes) (rc : BitVec 256)
     (L : List (Pt × BitVec 256)) :

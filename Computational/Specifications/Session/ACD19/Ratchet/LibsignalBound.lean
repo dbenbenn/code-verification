@@ -39,13 +39,19 @@ size, target query counts, operator/sampler size-honesty, and run-local state an
 while `GRedCostByKind` and `GRed2CostByKind` refine step-cost and target-query accounting when game
 queries are split by kind (online vs. offline random-oracle queries).
 
-Because `macForgeryProb ≥ 2⁻⁶⁴` (8-byte MAC tag) and each FS-AEAD instance pays
-`4 * macForgeryTerm C qd = 4 * q * macForgeryProb` outside the `fsSlotCount qR` slot sum (summed
-across epoch/message guesses and doubled by the window/signed-pre-key authenticity term), the bound
-is meaningful only for moderately long sessions: the MAC-forgery term reaches `2⁻³²` at
-`q = 9459 / 7327 / 1986 / 151` queries for `qep = 0 / 1 / 10 / q`, and reaches `1` at
-`q = 619925131 / 480191941 / 130210321 / 38967` (see DEV-LS31 in
-`Computational/docs/DEVIATIONS.md`).
+Under the bucket-partitioned authenticity, `DeliverForge` parity-bucket, and switch-back privacy
+reductions, the 8-byte MAC-forgery part of the per-session bound scales as
+`O(qep · q · macForgeryProb)`: `4 * macForgeryTerm C q = 4 * q * macForgeryProb` is charged once
+per chain or bucket across privacy (`qep + 2` challenge-epoch triples via `redFSPriv` and
+`2 * redFSPrivCoin`), authenticity (`qep + 1` last-leak `tL` buckets, split into honest-header and
+forged-header modes for `8 * macForgeryTerm C q` per bucket), and `DeliverForge` (`2 * qep + 1`
+shifted boundary cells plus `≤ 2 * max 1 qep` unshifted `(tL, par)` buckets), with
+`macForgeryProb ≥ 2⁻⁶⁴` for an 8-byte MAC tag. Compared with the earlier per-`(t, tL, j)` cell
+bound, this bucket-partitioned bound is formally incomparable: it drops the MAC-forgery term from
+`O(qep² · q² · macForgeryProb)` to `O(qep · q · macForgeryProb)` in exchange for up to `1.95×` more
+PRF-PRNG terms, up to `1.74×` more FS-AEAD terms (for `q ≥ 1`; `2.33×` at `q = 0, qep = 1`), and a
+re-indexed, enlarged reduction family under `ratchetCostBudget q (qep + 1)` (see DEV-LS31 and
+DEV-C14 in `Computational/docs/DEVIATIONS.md`).
 -/
 
 @[expose] public section
@@ -164,7 +170,8 @@ no `maxForwardJumps`-step chain iterations. -/
 def ratchetFsAdapterBudget (qR qep : ℕ) : ℕ :=
   2 ^ 24 * (qR + 1) + 2 ^ 10 * (qR + 1) ^ 2 + 2 ^ 12 * (qR + 1) * ReductionDsl.bits qep
 
-/-- Step-cost budget for the two-stage FS-AEAD hybrid reductions (`prgRedZero`, `multiRed`). -/
+/-- Step-cost budget for the four two-stage FS-AEAD hybrid reductions (`prgRedZero`, `multiRed`,
+`prgRedAuth`, `multiRedAuth`). -/
 def fsRatchetCostBudget (q qep : ℕ) : ℕ :=
   min (ratchetCostBudget q qep)
     (2 ^ 14 * (q + 1) ^ 2 + 2 ^ 15 * (q + 1) * (maxForwardJumps + ReductionDsl.bits qep))
@@ -290,7 +297,8 @@ def GRed2CostByKind {S : ReductionDsl.Sig}
   R.totalQueries wTag wSamp (List.ofFn qKind).sum ≤ qOut
 
 omit [Zero Pt] [SampleableType Pt] in
-/-- Costed reduction programs for ACD19 Theorem 5 and the per-message AEAD salt and wire hops on
+/-- Costed reduction programs for ACD19 Theorem 5 (`pubRed`, two-stage `prgRedZero` / `multiRed`,
+and direct-output `prgRedAuth` / `multiRedAuth`) and the per-message AEAD salt and wire hops on
 libsignal's symmetric ratchet (`fsShortBound`). -/
 structure FsCostedReds (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) where
@@ -357,10 +365,36 @@ structure FsCostedReds (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ
       (AEADScheme.otccaSpec (ℕ × (Header Pt × LibsignalMsgPublicPart)) (Plain ℓ) LCt)
       (ReductionDsl.slotOtccaCodec ℓ Pt)
       .unit .unit .bool .bool
+  /-- Direct-output cumulative chain-PRG reduction at hop index `j` for multi-session authenticity
+  and `DeliverForge` telescopes (returning the `FsAdv`'s `Bool` output directly rather than `hOut`,
+  so internal-session wins and lookahead flags propagate across external-session encryption hops). -/
+  prgRedAuth : (j : ℕ) →
+    ReductionDsl.TwoStageCostedReduction
+      (ReductionDsl.atomicFsOps ℓ Pt C encT)
+      (ReductionDsl.coinOnlyBaseIface ℓ Pt)
+      (FSAEAD.spec
+        (RatchetSenderState (BitVec 256))
+        (RatchetReceiverState (BitVec 256) (BitVec 256))
+        (Header Pt × LibsignalMsgPublicPart) (Plain ℓ) (ℕ × LCt))
+      (ReductionDsl.fsaeadRatchetCodec ℓ Pt)
+      (.prod ReductionDsl.BV256 ReductionDsl.BV256) .unit .bool .unit .unit .bool
+  /-- Direct-output multi-slot OT-CCA reduction for chain `la : Bool` in multi-session authenticity
+  and `DeliverForge` telescopes (returning the `FsAdv`'s `Bool` output directly rather than `hOut`). -/
+  multiRedAuth : (la : Bool) →
+    ReductionDsl.TwoStageCostedReduction
+      (ReductionDsl.atomicFsOps ℓ Pt C encT)
+      (ReductionDsl.slotOtccaTargetIface ℓ Pt)
+      (FSAEAD.spec
+        (RatchetSenderState (BitVec 256))
+        (RatchetReceiverState (BitVec 256) (BitVec 256))
+        (Header Pt × LibsignalMsgPublicPart) (Plain ℓ) (ℕ × LCt))
+      (ReductionDsl.fsaeadRatchetCodec ℓ Pt) .unit .unit .bool .unit .unit .bool
 
 omit [Zero Pt] [SampleableType Pt] in
 /-- Cost, program-size, query-count, and run-local size bounds for an `FsCostedReds` bundle at
-ratchet query bound `qR` and epoch cap `qep`. -/
+ratchet query bound `qR` and epoch cap `qep`: `ratchetFsAdapterBudget qR qep` on the five
+lightweight adapter/single-slot reductions and `fsRatchetCostBudget qR qep` on the four two-stage
+hybrid reductions (`prgRedZero`, `multiRed`, `prgRedAuth`, `multiRedAuth`). -/
 def fsCostedBounds {C : Crypto} {codec : SignalMessageProtoCodec} {ℓ : ℕ}
     {encT : Pt → PublicKey} {idOf : Party → IdentityKey}
     (qR qep : ℕ) (R : FsCostedReds C codec ℓ encT idOf) : Prop :=
@@ -376,7 +410,11 @@ def fsCostedBounds {C : Crypto} {codec : SignalMessageProtoCodec} {ℓ : ℕ}
   GRedBounded R.lSaltRed (fun _ => 1) (fun _ => 0) qR qR B_adapt ∧
   (∀ j < fsSlotCount qR,
     GRedBounded (R.slotWireRed (FSAEAD.Thm5.slotToHybridHopIndex qR j)) (fun _ => 1) (fun _ => 0) qR qR B_adapt) ∧
-  GRedBounded R.lWireRed (fun _ => 1) (fun _ => 0) qR qR B_adapt
+  GRedBounded R.lWireRed (fun _ => 1) (fun _ => 0) qR qR B_adapt ∧
+  (∀ j < fsSlotCount qR,
+    GTwoStageBounded (R.prgRedAuth (FSAEAD.Thm5.slotToHybridHopIndex qR j)) Empty.elim (fun _ => 0) qR 0 B_hyb) ∧
+  (∀ la : Bool,
+    GTwoStageBounded (R.multiRedAuth la) (fun _ => 1) (fun _ => 0) qR qR B_hyb)
 
 omit [Zero Pt] [SampleableType Pt] in
 def pubToADCosted {C : Crypto} {codec : SignalMessageProtoCodec} {ℓ : ℕ}
@@ -391,12 +429,29 @@ def multiSlotAdvCosted {C : Crypto} {codec : SignalMessageProtoCodec} {ℓ : ℕ
   evalTwoStage1 (R.multiRed la) qR false (fun _ => pubToADCosted R A) ()
 
 omit [Zero Pt] [SampleableType Pt] in
+/-- `multiSlotAdv` evaluated via `R.multiRedAuth` and `R.pubRed` at query fuel `qR`
+(direct-output authenticity form). -/
+def multiSlotAdvAuthCosted {C : Crypto} {codec : SignalMessageProtoCodec} {ℓ : ℕ}
+    {encT : Pt → PublicKey} {idOf : Party → IdentityKey}
+    (qR : ℕ) (R : FsCostedReds C codec ℓ encT idOf) (la : Bool) (A : FsAdv Pt ℓ) :=
+  evalTwoStage1 (R.multiRedAuth la) qR false (fun _ => pubToADCosted R A) ()
+
+omit [Zero Pt] [SampleableType Pt] in
 /-- Slot `j` chain-PRG advantage evaluated via `R.prgRedZero` and `R.pubRed` at query fuel `qR`. -/
 noncomputable def chainPRGTermCosted (C : Crypto) {codec : SignalMessageProtoCodec} {ℓ : ℕ}
     {encT : Pt → PublicKey} {idOf : Party → IdentityKey}
     (qR : ℕ) (R : FsCostedReds C codec ℓ encT idOf) (A : FsAdv Pt ℓ) (j : ℕ) : ℝ≥0∞ :=
   (lChainPRG C.F (j / 2)).prgAdvantage
     (fun mt => evalTwoStage1 (R.prgRedZero j) qR false (fun _ => pubToADCosted R A) mt)
+
+omit [Zero Pt] [SampleableType Pt] in
+/-- Slot `j` chain-PRG advantage evaluated via `R.prgRedAuth` and `R.pubRed` at query fuel `qR`
+(direct-output authenticity form). -/
+noncomputable def chainPRGTermAuthCosted (C : Crypto) {codec : SignalMessageProtoCodec} {ℓ : ℕ}
+    {encT : Pt → PublicKey} {idOf : Party → IdentityKey}
+    (qR : ℕ) (R : FsCostedReds C codec ℓ encT idOf) (A : FsAdv Pt ℓ) (j : ℕ) : ℝ≥0∞ :=
+  (lChainPRG C.F (j / 2)).prgAdvantage
+    (fun mt => evalTwoStage1 (R.prgRedAuth j) qR false (fun _ => pubToADCosted R A) mt)
 
 omit [Zero Pt] [SampleableType Pt] in
 /-- Slot `j` salt-PRF advantage evaluated on an `FsCostedReds` bundle. -/
@@ -409,6 +464,17 @@ noncomputable def saltPRFTermCosted (C : Crypto) {codec : SignalMessageProtoCode
       (fun _ => (R.slotSaltRed j).eval (fun _ => multiSlotAdvCosted qR R la A) ()) ())
 
 omit [Zero Pt] [SampleableType Pt] in
+/-- Slot `j` salt-PRF advantage evaluated via `R.multiRedAuth` on an `FsCostedReds` bundle
+(direct-output authenticity form). -/
+noncomputable def saltPRFTermAuthCosted (C : Crypto) {codec : SignalMessageProtoCodec} {ℓ : ℕ}
+    {encT : Pt → PublicKey} {idOf : Party → IdentityKey}
+    (qR : ℕ) (R : FsCostedReds C codec ℓ encT idOf) (A : FsAdv Pt ℓ) (j : ℕ) : ℝ≥0∞ :=
+  let la := FSAEAD.Thm5.isLookaheadHop j
+  (lSaltPRF32 C.F).prfAdvantage
+    (R.lSaltRed.eval
+      (fun _ => (R.slotSaltRed j).eval (fun _ => multiSlotAdvAuthCosted qR R la A) ()) ())
+
+omit [Zero Pt] [SampleableType Pt] in
 /-- Slot `j` wire-AEAD OT-CCA advantage evaluated on an `FsCostedReds` bundle. -/
 noncomputable def wireOtccaTermCosted (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     {encT : Pt → PublicKey} {idOf : Party → IdentityKey}
@@ -418,8 +484,21 @@ noncomputable def wireOtccaTermCosted (C : Crypto) (codec : SignalMessageProtoCo
     (R.lWireRed.eval
       (fun _ => (R.slotWireRed j).eval (fun _ => multiSlotAdvCosted qR R la A) ()) ())
 
-/-- Costed reduction programs for ACD19 Theorem 1, Lemma 18, Theorem 8, and Theorem 12 on the Fig. 8
-SM instance (`fig8ShortBound`). -/
+omit [Zero Pt] [SampleableType Pt] in
+/-- Slot `j` wire-AEAD OT-CCA advantage evaluated via `R.multiRedAuth` on an `FsCostedReds` bundle
+(direct-output authenticity form). -/
+noncomputable def wireOtccaTermAuthCosted (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+    {encT : Pt → PublicKey} {idOf : Party → IdentityKey}
+    (qR : ℕ) (R : FsCostedReds C codec ℓ encT idOf) (A : FsAdv Pt ℓ) (j : ℕ) : ℝ≥0∞ :=
+  let la := FSAEAD.Thm5.isLookaheadHop j
+  (lWire C codec ℓ).wireOtccaAdvantage
+    (R.lWireRed.eval
+      (fun _ => (R.slotWireRed j).eval (fun _ => multiSlotAdvAuthCosted qR R la A) ()) ())
+
+/-- Costed reduction programs for ACD19 Theorem 1 (`challSim`), Lemma 18 (`privRedB`),
+bucket-partitioned Theorem 8 (`redCKAAuth`, `redPRNGAuth`, `redFSAuth`), and switch-back
+Theorem 12 (`redCKAPriv`, `redCKAPrivU`, `redPRNGPriv`, `redFSPriv`, `redFSPrivCoin`) on the
+Fig. 8 SM instance (`fig8MixShortAuthV1`, `fig8MixShortPrivV1`). -/
 structure Fig8CostedReds (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (lam : Pt) where
@@ -439,15 +518,16 @@ structure Fig8CostedReds (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitV
       (SM.spec (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
       (ReductionDsl.fig8SmCodec ℓ Pt)
       .unit .unit .bool .bool
-  /-- Thm 8 CKA authenticity reduction `redCKAAuth` at `(tL, t)`. -/
-  redCKAAuth : (tL : Option ℕ) → (t : ℕ) →
+  /-- Thm 8 CKA authenticity reduction `redCKAAuth` for last-leak bucket `tL`. -/
+  redCKAAuth : (tL : Option ℕ) →
     ReductionDsl.CostedReduction
       (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
       (ReductionDsl.ckaTargetIface ℓ Pt)
       (SM.spec (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
       (ReductionDsl.fig8SmCodec ℓ Pt)
       .unit .unit .bool .bool
-  /-- Thm 8 PRF-PRNG authenticity reduction `redPRNGAuth` at `(tL, t)`. -/
+  /-- Thm 8 coin-averaged (honest-header / forged-header) PRF-PRNG authenticity reduction
+  `redPRNGAuth` at `(tL, t)`. -/
   redPRNGAuth : (tL : Option ℕ) → (t : ℕ) →
     ReductionDsl.CostedReduction
       (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
@@ -455,16 +535,28 @@ structure Fig8CostedReds (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitV
       (SM.spec (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
       (ReductionDsl.fig8SmCodec ℓ Pt)
       .unit .unit .bool .bool
-  /-- Thm 8 FS-AEAD authenticity reduction `redFSAuth` at `(j, tL, t)`. -/
-  redFSAuth : (j : ℕ) → (tL : Option ℕ) → (t : ℕ) →
+  /-- Thm 8 computational FS-AEAD authenticity reduction `redFSAuth` at `(stage, la, j, tL, t)`:
+  `j = 0` is the honest-header mode and `1 ≤ j ≤ q` is the forged-header mode at session `j - 1`;
+  `stage = false` is the chain-PRG and salt-PRF hop (`lFS → slotSaltImpl false`), `stage = true`
+  is the wire OT-CCA hop (`slotSaltImplNF false → slotSaltImpl true`); `la = false` is the `win`
+  branch and `la = true` is the lookahead `lf` branch. -/
+  redFSAuth : (stage : Bool) → (la : Bool) → (j : ℕ) → (tL : Option ℕ) → (t : ℕ) →
     ReductionDsl.CostedReduction
       (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
       (ReductionDsl.fsaeadHeaderIface ℓ Pt)
       (SM.spec (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
       (ReductionDsl.fig8SmCodec ℓ Pt)
       .unit .unit .bool .bool
-  /-- Thm 12 CKA privacy reduction `redCKAPriv` at `(tL, i)`. -/
+  /-- Thm 12 forward-CKA privacy reduction `redCKAPriv` at `(tL, i)`. -/
   redCKAPriv : (tL : Option ℕ) → (i : ℕ) →
+    ReductionDsl.CostedReduction
+      (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
+      (ReductionDsl.ckaTargetIface ℓ Pt)
+      (SM.spec (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
+      (ReductionDsl.fig8SmCodec ℓ Pt)
+      .unit .unit .bool .bool
+  /-- Thm 12 reverse-CKA switch-back privacy reduction `redCKAPrivU` at `(tL, i)`. -/
+  redCKAPrivU : (tL : Option ℕ) → (i : ℕ) →
     ReductionDsl.CostedReduction
       (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
       (ReductionDsl.ckaTargetIface ℓ Pt)
@@ -479,16 +571,16 @@ structure Fig8CostedReds (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitV
       (SM.spec (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
       (ReductionDsl.fig8SmCodec ℓ Pt)
       .unit .unit .bool .bool
-  /-- Thm 12 FS-AEAD privacy reduction `redFSPriv` at `(tL, i)`. -/
-  redFSPriv : (tL : Option ℕ) → (i : ℕ) →
+  /-- Thm 12 `tL`-free FS-AEAD privacy reduction `redFSPrivUni` at challenge epoch `i`. -/
+  redFSPriv : (i : ℕ) →
     ReductionDsl.CostedReduction
       (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
       (ReductionDsl.fsaeadHeaderIface ℓ Pt)
       (SM.spec (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
       (ReductionDsl.fig8SmCodec ℓ Pt)
       .unit .unit .bool .bool
-  /-- Thm 12 FS-AEAD coin-privacy reduction `redFSPrivCoin` at `(tL, i)`. -/
-  redFSPrivCoin : (tL : Option ℕ) → (i : ℕ) →
+  /-- Thm 12 `tL`-free FS-AEAD coin-privacy reduction `redFSPrivUniCoin` at challenge epoch `i`. -/
+  redFSPrivCoin : (i : ℕ) →
     ReductionDsl.CostedReduction
       (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
       (ReductionDsl.fsaeadHeaderIface ℓ Pt)
@@ -506,45 +598,54 @@ def fig8CostedBounds {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → List (BitVec 8
   GRedBounded R.challSim (fun _ => 1) (fun _ => 0) q q B ∧
   (∀ i < qep + 1,
     GRedBounded (R.privRedB i) (fun _ => 1) (fun _ => 0) q q B) ∧
-  (∀ t < qep + 2, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
-    GRedBounded (R.redCKAAuth tL t) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
-  (∀ t < qep + 2, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
-    GRedBounded (R.redPRNGAuth tL t) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B) ∧
-  (∀ t < qep + 2, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) t, ∀ j < q,
-    GRedBounded (R.redFSAuth j tL t) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
+  (∀ tL ∈ admissibleLastLeakGuesses (2 + 1) (qep + 1),
+    GRedBounded (R.redCKAAuth tL) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
+  (∀ tL ∈ admissibleLastLeakGuesses (2 + 1) (qep + 1),
+    ∀ t ∈ Finset.Ico (healEpoch tL) (qep + 2),
+      GRedBounded (R.redPRNGAuth tL t) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B) ∧
+  (∀ tL ∈ admissibleLastLeakGuesses (2 + 1) (qep + 1),
+    ∀ t ∈ Finset.Ico (healEpoch tL) (qep + 2), ∀ j < q + 1, ∀ stage la : Bool,
+      GRedBounded (R.redFSAuth stage la j tL t) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
   (∀ i < qep + 1, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
     GRedBounded (R.redCKAPriv tL i) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
   (∀ i < qep + 1, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
+    GRedBounded (R.redCKAPrivU tL i) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
+  (∀ i < qep + 1, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
     GRedBounded (R.redPRNGPriv tL i) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B) ∧
-  (∀ i < qep + 1, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
-    GRedBounded (R.redFSPriv tL i) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
-  (∀ i < qep + 1, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
-    GRedBounded (R.redFSPrivCoin tL i) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
-  (∀ t < qep + 2, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
+  (∀ i < qep + 1,
+    GRedBounded (R.redFSPriv i) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
+  (∀ i < qep + 1,
+    GRedBounded (R.redFSPrivCoin i) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
+  (∀ tL ∈ admissibleLastLeakGuesses (2 + 1) (qep + 1),
     ∀ A : Fig8Adv Pt ℓ, SM.MakesAtMostQueries A q →
-      CKA.MakesAtMostQueries ((R.redCKAAuth tL t).eval (fun _ => A) ()) (min (2 * q) (q + 2))) ∧
+      CKA.MakesAtMostQueries ((R.redCKAAuth tL).eval (fun _ => A) ()) (min (2 * q) (q + 2))) ∧
   (∀ i < qep + 1, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
     ∀ A : Fig8Adv Pt ℓ, SM.MakesAtMostQueries A q →
       CKA.MakesAtMostQueries ((R.redCKAPriv tL i).eval (fun _ => A) ()) (min (2 * q) (q + 2))) ∧
-  (∀ t < qep + 2, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
+  (∀ i < qep + 1, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
     ∀ A : Fig8Adv Pt ℓ, SM.MakesAtMostQueries A q →
-      PRFPRNG.MakesAtMostQueries ((R.redPRNGAuth tL t).eval (fun _ => A) ())
-        (min (2 + 2 * q) (q + 3))) ∧
+      CKA.MakesAtMostQueries ((R.redCKAPrivU tL i).eval (fun _ => A) ()) (min (2 * q) (q + 2))) ∧
+  (∀ tL ∈ admissibleLastLeakGuesses (2 + 1) (qep + 1),
+    ∀ t ∈ Finset.Ico (healEpoch tL) (qep + 2),
+      ∀ A : Fig8Adv Pt ℓ, SM.MakesAtMostQueries A q →
+        PRFPRNG.MakesAtMostQueries ((R.redPRNGAuth tL t).eval (fun _ => A) ())
+          (min (2 + 2 * q) (q + 3))) ∧
   (∀ i < qep + 1, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
     ∀ A : Fig8Adv Pt ℓ, SM.MakesAtMostQueries A q →
       PRFPRNG.MakesAtMostQueries ((R.redPRNGPriv tL i).eval (fun _ => A) ())
         (min (2 + 2 * q) (min (q + 3) (2 * qep + 2)))) ∧
-  (∀ t < qep + 2, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) t, ∀ j < q,
+  (∀ tL ∈ admissibleLastLeakGuesses (2 + 1) (qep + 1),
+    ∀ t ∈ Finset.Ico (healEpoch tL) (qep + 2), ∀ j < q + 1, ∀ stage la : Bool,
+      ∀ A : Fig8Adv Pt ℓ, SM.MakesAtMostQueries A q →
+        FSAEAD.MakesAtMostQueries ((R.redFSAuth stage la j tL t).eval (fun _ => A) ())
+          (min (2 * q) (q + 2))) ∧
+  (∀ i < qep + 1,
     ∀ A : Fig8Adv Pt ℓ, SM.MakesAtMostQueries A q →
-      FSAEAD.MakesAtMostQueries ((R.redFSAuth j tL t).eval (fun _ => A) ())
+      FSAEAD.MakesAtMostQueries ((R.redFSPriv i).eval (fun _ => A) ())
         (min (2 * q) (q + 2))) ∧
-  (∀ i < qep + 1, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
+  (∀ i < qep + 1,
     ∀ A : Fig8Adv Pt ℓ, SM.MakesAtMostQueries A q →
-      FSAEAD.MakesAtMostQueries ((R.redFSPriv tL i).eval (fun _ => A) ())
-        (min (2 * q) (q + 2))) ∧
-  (∀ i < qep + 1, ∀ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
-    ∀ A : Fig8Adv Pt ℓ, SM.MakesAtMostQueries A q →
-      FSAEAD.MakesAtMostQueries ((R.redFSPrivCoin tL i).eval (fun _ => A) ())
+      FSAEAD.MakesAtMostQueries ((R.redFSPrivCoin i).eval (fun _ => A) ())
         (min (2 * q) (q + 2)))
 
 end Bounds

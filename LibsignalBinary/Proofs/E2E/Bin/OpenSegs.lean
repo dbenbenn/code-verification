@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public meta import ProofLib -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon
+public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
 import LibsignalBinary.Proofs.E2E.StoreNew.RoData
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.E2E.Bin.Fetch -- shake: keep
 public meta import Lean -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Segment Proofs for `libsignal_e2e::open` (`0x43a38..0x43d1c`)
@@ -25,7 +26,7 @@ Defines `binProg`, `BinEnv`, `SegExit`, `openSavedRegsAt`, and `OpenSeam`, and p
 seam-to-seam segment obligations for `libsignal_e2e::open`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Bin
 
@@ -33,25 +34,13 @@ set_option warningAsError false
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames
+open Arm64 ProofLib CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalProtoCodec
 
-variable {C : Crypto} {A : RustAlloc} {S : SpqrModel}
-
-abbrev binProg (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Program :=
-  tripleRatchetProg img C ctl abs
-
-structure BinEnv (C : Crypto) (A : RustAlloc) (S : SpqrModel) (img : Obj.Image)
-    (_ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop where
-  loads : Obj.Loads libsignalSessionImage img
-  hooks : BinHooks C A S abs
-
-def SegExit {α : Type} (prog : Program) (spec : Spec α) (g : α) (R : SepProp)
+@[expose] def SegExit {α : Type} (prog : Program) (spec : Spec α) (g : α) (R : SepProp)
     (s0 s : State) (next : State → Prop) : Prop :=
   prog.CodeLoaded s.mem →
     ∃ sf, Steps prog s sf ∧ (next sf ∨ SubroutineOutcome spec g R s0 sf)
@@ -70,7 +59,7 @@ theorem segExit_chain {α : Type} {prog : Program} {spec : Spec α} {g : α} {R 
 
 /-- Callee-saved registers `x19..x29` and link register `x30` spilled at the top of `open`'s
 `0x3f0`-byte stack frame (`s0.sp - 0x60#64 .. s0.sp`, i.e., `s.sp + 0x390#64 .. s.sp + 0x3f0#64`). -/
-def openSavedRegsAt (s0 : State) : SepProp :=
+@[expose] def openSavedRegsAt (s0 : State) : SepProp :=
   ((s0.sp - 0x60#64) ↦₆₄ s0.readReg64 .x29) ∗ ((s0.sp - 0x58#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((s0.sp - 0x50#64) ↦₆₄ s0.readReg64 .x28) ∗ ((s0.sp - 0x48#64) ↦₆₄ s0.readReg64 .x27) ∗
   ((s0.sp - 0x40#64) ↦₆₄ s0.readReg64 .x26) ∗ ((s0.sp - 0x38#64) ↦₆₄ s0.readReg64 .x25) ∗
@@ -137,9 +126,6 @@ theorem sepWP_done {prog : Program} {target_pc : BitVec 64} {s : State} {P : Sep
     (hq : post s P) : SepWP prog target_pc s P post := by
   unfold SepWP
   exact fun _ hm => reaches_pc_refl hpc hrun ⟨P, hm, hq⟩
-
-variable (C : Crypto) (A : RustAlloc) (S : SpqrModel) (img : Obj.Image) (ctl : BitVec 64)
-  (abs : String → Option (State → State))
 
 theorem who_ne_zero_zext {w : BitVec 32} (h0 : w ≠ 0#32) :
     (BitVec.zeroExtend 64 w == 0#64) = false := by
@@ -469,117 +455,5 @@ theorem subsPState32_z_false {w : BitVec 32} (h1 : w ≠ 1#32) :
   have := w.isLt
   omega
 
-theorem open_seg_parties_err_outcome {A : RustAlloc} {img : Obj.Image}
-    {g : OpenGhost} {R : SepProp} {s0 sf : State}
-    (hwho0 : g.who ≠ 0#32) (hwho1 : g.who ≠ 1#32)
-    (hret : Returned s0 sf) (hcc : CallingConventionPreserved s0 sf)
-    (htr : sf.trace = s0.trace) (_htpidr : sf.tpidrEl0 = s0.tpidrEl0)
-    (hm_sf : sf.mem ⊨ (openSavedRegsAt s0 ∗ (g.outPtr ↦₆₄ 0xffffffffffffffff#64) ∗
-      (memRegion (g.outPtr + 8#64) 224 ∗
-       memRegion (s0.sp - openStack) (openStack - 0x3f0) ∗
-       memRegion (s0.sp - 0x3f0#64) 0x390 ∗
-       (g.statePtr ↦ₛ g.stateBytes) ∗
-       tlsKeysAt (s0.tpidrEl0 + tlsKeysTpoff) g.tlsInit ∗
-       A.pool)) ∗ R) :
-    SubroutineOutcome (openSpec A img) g R s0 sf := by
-  left
-  refine ⟨hret, hcc, ?_⟩
-  have hrole : Role.ofWho g.who = none := by
-    simp [Role.ofWho, hwho0, hwho1]
-  have h1 : tlsKeysAt (s0.tpidrEl0 + tlsKeysTpoff) g.tlsInit ⊢
-      (∃∗ tlsCur, tlsKeysAt (s0.tpidrEl0 + tlsKeysTpoff) tlsCur) :=
-    Entails.sepExists_right g.tlsInit (Entails.refl _)
-  have h2 := openSavedRegsAt_entails_cells s0
-  have hm0 : sf.mem ⊨ (openSavedRegsAt s0 ∗ (g.outPtr ↦₆₄ 0xffffffffffffffff#64) ∗
-      (memRegion (g.outPtr + 8#64) 224 ∗
-       memRegion (s0.sp - openStack) (openStack - 0x3f0) ∗
-       memRegion (s0.sp - 0x3f0#64) 0x390 ∗
-       (g.statePtr ↦ₛ g.stateBytes) ∗
-       tlsKeysAt (s0.tpidrEl0 + tlsKeysTpoff) g.tlsInit ∗
-       A.pool)) ∗ (R ∗ emp) := by
-    rwa [sepConj_emp]
-  have hm1 := Satisfies.mono
-    (sepConj_mono
-      (sepConj_mono h2 (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono h1 (Entails.refl _))))))))
-      (sepConj_mono_right emp_entails_anyHeap)) hm0
-  simp only [openSpec, Spec.inImage, evalOpen, openResultAt, hrole,
-    stackAt_openStack_split s0.sp, sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨htr, ?_⟩
-  ac_sat hm1
-
-/-! ## Segment 2: `open_seg_deserialize` (`+0x054..+0x080`) -/
-
-def sessionRecordHeap (A : RustAlloc) (G : SessionGhost) (sess : Session (List (BitVec 8))) : SepProp :=
-  ⌜PendingRel G.pending sess.pendingPreKey ∧ KyberRel G.kyber sess.pendingKyberPreKey ∧
-    G.alice.bytes = sess.aliceBaseKey ∧ G.regIds.take 4 = leBytes 4 sess.remoteRegistrationId.toNat ∧
-    (G.regIds.drop 4).take 4 = leBytes 4 sess.localRegistrationId.toNat⌝ ∗
-    RawByteMove.sessionHeap A G sess.state
-
-theorem vecAt_empty_0_8 (A : RustAlloc) (r : BitVec 64) :
-    vecAt A 24 8 (fun (_ : Unit) _ => emp) r 0#64 8#64 [] =
-      (r ↦₆₄ 0#64) ∗ ((r + 8#64) ↦₆₄ 8#64) ∗ ((r + 16#64) ↦₆₄ 0#64) := by
-  simp [vecAt, vecBuf]
-  ac_rfl
-
-theorem sessionRecordAt_eq_word0_sep_tail_sep_heap (A : RustAlloc) (r : BitVec 64)
-    (G : SessionGhost) (sess : Session (List (BitVec 8))) :
-    sessionRecordAt A r ⟨0#64, 8#64, some G⟩ ⟨some sess⟩ =
-      ∃∗ bs : List (BitVec 8),
-        ⌜bs.length = 344 ∧ RawByteMove.SessionInline G sess.state bs⌝ ∗
-        (r ↦₆₄ 0#64) ∗
-        ((r + 8#64) ↦ₛ (unpack64 8#64 ++ unpack64 0#64 ++ bs)) ∗
-        sessionRecordHeap A G sess := by
-  dsimp only [sessionRecordAt, sessionStateReprAt, sessionRecordHeap]
-  rw [vecAt_empty_0_8 A r, RawByteMove.sessionStateAt_eq_inline_sep_heap A (r + 0x18#64) G sess.state]
-  apply RawByteMove.sepProp_eq_of_entails
-  · rw [sepExists_sepConj_right, sepExists_sepConj_right]
-    apply Entails.sepExists_elim; intro bs
-    rw [← sepConj_assoc, ← sepConj_assoc,
-        sepConj_comm _ ⌜bs.length = 344 ∧ RawByteMove.SessionInline G sess.state bs⌝,
-        sepConj_assoc]
-    apply Entails.pure_left; rintro ⟨hlen, hinl⟩
-    refine Entails.sepExists_right bs ?_
-    apply Entails.pure_right ⟨hlen, hinl⟩
-    rw [pointsTo64_eq_pointsToBytes (r + 8#64) 8#64,
-        pointsTo64_eq_pointsToBytes (r + 16#64) 0#64]
-    have h8_16 : (r + 8#64) + BitVec.ofNat 64 (unpack64 8#64).length = r + 16#64 := by
-      rw [unpack64_length]; bv_lin
-    have h16_24 : (r + 16#64) + BitVec.ofNat 64 (unpack64 0#64).length = r + 0x18#64 := by
-      rw [unpack64_length]; bv_lin
-    rw [List.append_assoc, pointsToBytes_append, h8_16,
-        pointsToBytes_append, h16_24]
-    exact Entails.of_eq (by ac_rfl)
-  · apply Entails.sepExists_elim; intro bs
-    apply Entails.pure_left; rintro ⟨hlen, hinl⟩
-    rw [sepExists_sepConj_right, sepExists_sepConj_right]
-    refine Entails.sepExists_right bs ?_
-    rw [pointsTo64_eq_pointsToBytes (r + 8#64) 8#64,
-        pointsTo64_eq_pointsToBytes (r + 16#64) 0#64]
-    have h8_16 : (r + 8#64) + BitVec.ofNat 64 (unpack64 8#64).length = r + 16#64 := by
-      rw [unpack64_length]; bv_lin
-    have h16_24 : (r + 16#64) + BitVec.ofNat 64 (unpack64 0#64).length = r + 0x18#64 := by
-      rw [unpack64_length]; bv_lin
-    rw [List.append_assoc, pointsToBytes_append, h8_16,
-        pointsToBytes_append, h16_24]
-    have hpull :
-        ((r ↦₆₄ 0#64) ∗
-          (((r + 8#64) ↦ₛ unpack64 8#64) ∗ ((r + 16#64) ↦ₛ unpack64 0#64) ∗ ((r + 0x18#64) ↦ₛ bs)) ∗
-          (⌜PendingRel G.pending sess.pendingPreKey ∧ KyberRel G.kyber sess.pendingKyberPreKey ∧
-            G.alice.bytes = sess.aliceBaseKey ∧ G.regIds.take 4 = leBytes 4 sess.remoteRegistrationId.toNat ∧
-            (G.regIds.drop 4).take 4 = leBytes 4 sess.localRegistrationId.toNat⌝ ∗
-           RawByteMove.sessionHeap A G sess.state)) =
-        (((r ↦₆₄ 0#64) ∗ ((r + 8#64) ↦ₛ unpack64 8#64) ∗ ((r + 16#64) ↦ₛ unpack64 0#64)) ∗
-          ⌜PendingRel G.pending sess.pendingPreKey ∧ KyberRel G.kyber sess.pendingKyberPreKey ∧
-            G.alice.bytes = sess.aliceBaseKey ∧ G.regIds.take 4 = leBytes 4 sess.remoteRegistrationId.toNat ∧
-            (G.regIds.drop 4).take 4 = leBytes 4 sess.localRegistrationId.toNat⌝ ∗
-          (((r + 0x18#64) ↦ₛ bs) ∗ RawByteMove.sessionHeap A G sess.state)) := by ac_rfl
-    rw [hpull]
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    exact Entails.pure_right ⟨hlen, hinl⟩ (Entails.refl _)
-
 end CryptoVerification.E2E.Bin
-
-
 

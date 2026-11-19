@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -27,7 +27,7 @@ Relocatable error-path cleanup after `spqr::chain_from` (`+2568..+2656`) and `<C
 (`+2000..+2056 -> +2632`) in `spqr::recv` (Block `329`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Recv
 

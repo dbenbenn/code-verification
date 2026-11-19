@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecordPure
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecordPure -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNone
-public import Symbolic.Proofs.Swarm.CREF.RelPure
-public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNone -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RelPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.OooPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
@@ -27,7 +27,7 @@ Defines pure whisper-receive evaluation (`pureDrawsCoins`, `PureDecryptCoinsOk`,
 `recv_wire` verification.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,19 +55,19 @@ open Symbolic.Swarm.TRREF.GrowthRecordPure (pureSpqr)
 
 /-! ## Pure Address Serialization, Coins, and `pureEvalRecvWireWithCoinsW` -/
 
-def pureRoleParty : Role → CryptoGames.Party
+@[expose] def pureRoleParty : Role → CryptoGames.Party
   | .alice => .A
   | .bob => .B
 
-def pureSerializeRole (sender recipient : Role) : Option (List (BitVec 8)) :=
+@[expose] def pureSerializeRole (sender recipient : Role) : Option (List (BitVec 8)) :=
   CryptoVerification.E2E.serializedPartyAddresses CryptoVerification.LibsignalTripleRatchetRepr.uuidTryParse
     (pureRoleParty sender) (pureRoleParty recipient)
 
-def pureCoinsOf (rest : List (BitVec 8)) : BitVec 256 :=
+@[expose] def pureCoinsOf (rest : List (BitVec 8)) : BitVec 256 :=
   HKDF.bytesToKey32 ((rest ++ List.replicate 32 0#8).take 32)
 
 /-- Pure predicate testing whether `try_decrypt_with_state` reaches `KeyPair.generate`. -/
-def pureDrawsCoins {PQ : Type} (C : Crypto) (st : SessionState PQ) (their : PublicKey) : Bool :=
+@[expose] def pureDrawsCoins {PQ : Type} (C : Crypto) (st : SessionState PQ) (their : PublicKey) : Bool :=
   st.remoteIdentity.isSome &&
     match RatchetState.findReceiverChainKey
         ⟨st.rootKey, st.senderChain, st.receiverChains, st.previousCounter, maxForwardJumps⟩
@@ -250,7 +250,7 @@ theorem tryDecryptFromRecordW_coins_irrel_of_pureDrawsCoins_false {PQ PQC : Type
       rw [htr_eq, hens]
 
 /-- Pure `evalRecvWireWithCoinsW` over `pureSpqr S` and `pureSerializeRole`. -/
-def pureEvalRecvWireWithCoinsW (C : Crypto) (W : AesW) (S : SpqrModel)
+@[expose] def pureEvalRecvWireWithCoinsW (C : Crypto) (W : AesW) (S : SpqrModel)
     (g : RecvWireGhost) (coins : BitVec 256) :
     Option (List (BitVec 8) × List (BitVec 8)) :=
   match g.wireBytes with

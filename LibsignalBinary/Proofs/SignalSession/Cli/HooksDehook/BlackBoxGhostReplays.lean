@@ -12,10 +12,15 @@ module
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.BlackBoxRowSpec -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxCode -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxCode
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxLrTrap -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Card CC-DALEK — `lsBlackBoxSym` Row Consumer Spec & Generic-`InvS` Ghost Replay (`HooksDehook.BlackBoxGhostReplays`)
@@ -162,26 +167,6 @@ theorem blackBoxSubProg_codeLoaded_stripExecOutside {mpl : Obj.MultiPlacement} {
     (blackBoxSubProg mpl).CodeLoaded (stripExecOutside (keepR_blackBox mpl) mem) :=
   blackBox_codeLoaded_stripExecOutside (fun _ hoff => keepR_blackBox_of_code_offset mpl hoff) hL
 
-/-- Reverse `CodeLoaded` projection from `stripExecOutside (keepR_blackBox mpl) mem` back to `mem`. -/
-theorem blackBoxSubProg_codeLoaded_of_stripExecOutside {mpl : Obj.MultiPlacement} {mem : Memory}
-    (hL : (blackBoxSubProg mpl).CodeLoaded (stripExecOutside (keepR_blackBox mpl) mem)) :
-    (blackBoxSubProg mpl).CodeLoaded mem := by
-  refine Program.CodeLoaded.intro hL.aligned hL.no_wrap fun i hi => ?_
-  have hk : keepR_blackBox mpl ((blackBoxSubProg mpl).base + BitVec.ofNat 64 i) = true :=
-    keepR_blackBox_of_code_offset mpl hi
-  have hbyte := hL.byte_eq i hi
-  have hperm := hL.perm_eq i hi
-  have hlf := hL.isLazyFree_eq i hi
-  rw [ProofLib.strip_read8] at hbyte
-  rw [ProofLib.strip_perm_of_keep hk] at hperm
-  rw [ProofLib.strip_isLazyFree] at hlf
-  exact ⟨hbyte, hperm, hlf⟩
-
-theorem blackBoxSubProg_codeLoaded_stripExecOutside_iff {mpl : Obj.MultiPlacement} {mem : Memory} :
-    (blackBoxSubProg mpl).CodeLoaded (stripExecOutside (keepR_blackBox mpl) mem) ↔
-      (blackBoxSubProg mpl).CodeLoaded mem :=
-  ⟨blackBoxSubProg_codeLoaded_of_stripExecOutside, blackBoxSubProg_codeLoaded_stripExecOutside⟩
-
 /-- `W`-independent ghost hook for `lsBlackBoxSym`
     (`CliGhostHooks.extra` entry `(lsBlackBoxSym, blackBoxGhost mpl mmpl)`). -/
 @[expose] noncomputable def blackBoxGhost (mpl _mmpl : Obj.MultiPlacement) : State → State :=
@@ -265,12 +250,6 @@ theorem blackBoxGhost_preserves_execFrozen (mpl mmpl : Obj.MultiPlacement)
     {u : State} (hfr : ExecFrozen u.mem) :
     ExecFrozen (blackBoxGhost mpl mmpl u).mem :=
   f3EmptyBlackBoxGhostHook_preserves_execFrozen (keepR_blackBox mpl) (blackBoxSubProg mpl)
-    (libsignalSessionLib.resolve mpl lsBlackBoxSym) hfr
-
-theorem blackBoxGhostK_preserves_execFrozen (mpl mmpl : Obj.MultiPlacement)
-    {u : State} (hfr : ExecFrozen u.mem) :
-    ExecFrozen (blackBoxGhostK mpl mmpl u).mem :=
-  f3EmptyBlackBoxGhostHookK_preserves_execFrozen (keepR_blackBox mpl) (blackBoxSubProg mpl)
     (libsignalSessionLib.resolve mpl lsBlackBoxSym) hfr
 
 private theorem setPC_eq_self_of_pc_eq {u : State} {pc : BitVec 64} (hpc : u.pc = pc) :
@@ -377,165 +356,6 @@ theorem blackBoxGhost_rowReplayOn
       setPC_eq_self_of_pc_eq hpc
     rw [hSetPC] at hStepsSetPC
     exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (blackBoxGhost mpl mmpl u) hInvU hkf hfs_fu⟩
-
-/-- `C4` interior-stub signature wrapper for `blackBoxGhost_rowReplayOn` (accepting split
-    `hRealNone` at `stubPc` + `hInteriorGhost` with the `Or.inr` `TrapHook` interior-stub disjunct
-    on `pc ≠ resolve mpl lsBlackBoxSym`). -/
-theorem blackBoxGhost_rowReplayOn_of_interior
-    (mpl mmpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hCL : ∀ u : State, InvS u → (blackBoxSubProg mpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt?
-        (libsignalSessionLib.resolve mpl lsBlackBoxSym) = some (blackBoxGhost mpl mmpl))
-    (hRealNone : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
-        (libsignalSessionLib.resolve mpl lsBlackBoxSym) = none)
-    (hInteriorGhost : ∀ (W : CliHooks) (pc : BitVec 64),
-      keepR_blackBox mpl pc = true → pc ≠ libsignalSessionLib.resolve mpl lsBlackBoxSym →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none ∧
-      ((cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-        ∃ gStub, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some gStub ∧
-          ∀ L : BitVec 64, keepR_blackBox mpl L = true → TrapHook L gStub)) :
-    GhostRowReplayOn mpl mmpl InvS EG lsBlackBoxSym
-      (blackBoxEntryGuard mpl) (blackBoxGhost mpl mmpl) where
-  preserves_execFrozen := fun u _ _ hfr =>
-    ⟨blackBoxGhost_preserves_execFrozen mpl mmpl hfr, blackBoxGhost_fs mpl mmpl u⟩
-  replay_at_stub := by
-    intro W s0 sf _ _ _ hEntry hRetPc hNoExSf hNotHaltSf
-    have hRealHullNoExt : ∀ {pc : BitVec 64},
-        keepR_blackBox mpl pc = true →
-        (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none := by
-      intro pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl lsBlackBoxSym
-      · rw [hEq]; exact hRealNone W
-      · exact (hInteriorGhost W pc hk hEq).1
-    have hRegExt : ∀ pc : BitVec 64,
-        keepBlackBox (libsignalSessionLib.resolve mpl lsBlackBoxSym) pc = true →
-        (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-          ∃ f, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some f ∧
-            ∀ L, keepBlackBox (libsignalSessionLib.resolve mpl lsBlackBoxSym) L = true →
-              TrapHook L f := by
-      intro pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl lsBlackBoxSym
-      · rw [hEq]
-        exact Or.inr ⟨blackBoxGhost mpl mmpl, hGhostAt W, fun L hL =>
-          trapHook_f3EmptyBlackBoxGhostHook_of_cover (blackBoxSubProg mpl)
-            (libsignalSessionLib.resolve mpl lsBlackBoxSym) (fun _ h => h) hL⟩
-      · rcases (hInteriorGhost W pc hk hEq).2 with hNone | ⟨gStub, hSome, hTrap⟩
-        · exact Or.inl hNone
-        · exact Or.inr ⟨gStub, hSome, hTrap⟩
-    right
-    refine ⟨hRealNone W, ?_⟩
-    intro u _ hStepsAfter hpc hrun hnoex hkf hfr hInvU
-    have hCodeU : (blackBoxSubProg mpl).CodeLoaded u.mem := hCL u hInvU
-    have hLrOut : keepR_blackBox mpl (u.readReg64 .lr) = false :=
-      blackBox_keepLr_false_after_hook_of_codeLoaded_u
-        (P_ghost := cliProgExtPlacedAt mpl EG 617 W)
-        (P_sub := blackBoxSubProg mpl)
-        (entry := libsignalSessionLib.resolve mpl lsBlackBoxSym)
-        (f_stub := blackBoxGhost mpl mmpl)
-        (blackBoxSubProg_hasWords mpl)
-        hRegExt
-        (fun _ hL => trapHook_f3EmptyBlackBoxGhostHook_of_cover (blackBoxSubProg mpl)
-          (libsignalSessionLib.resolve mpl lsBlackBoxSym) (fun _ h => h) hL)
-        hEntry.1
-        hRetPc
-        hNoExSf
-        hNotHaltSf
-        u
-        hCodeU
-        hStepsAfter
-        hrun
-        hkf
-    have hCodeStrip :
-        (blackBoxSubProg mpl).CodeLoaded (stripExecOutside (keepR_blackBox mpl) u.mem) :=
-      blackBoxSubProg_codeLoaded_stripExecOutside hCodeU
-    obtain ⟨hvis, hfr_fu, hfs_fu⟩ :=
-      f3EmptyBlackBoxGhostHook_visitedIn
-        (keep := keepR_blackBox mpl)
-        (P_sub := blackBoxSubProg mpl)
-        (entryTarget := libsignalSessionLib.resolve mpl lsBlackBoxSym)
-        (blackBoxSubProg_svc mpl)
-        (blackBoxSubProg_externAt_none mpl)
-        (blackBoxSubProg_hasWords mpl)
-        hrun
-        hnoex
-        hfr
-        hLrOut
-        hCodeStrip
-    have hStepsSetPC :
-        Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-          (u.setPC (libsignalSessionLib.resolve mpl lsBlackBoxSym))
-          (blackBoxGhost mpl mmpl u) :=
-      h2fsgen_steps_lift_of_visitedIn_noExtern
-        (D := keepR_blackBox mpl)
-        (P1 := emptyStdProg)
-        (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (emptyStdProg_svc.trans (realProg617_svc mpl mmpl W).symm)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fun _ hk => hRealHullNoExt hk)
-        hvis
-    have hSetPC : u.setPC (libsignalSessionLib.resolve mpl lsBlackBoxSym) = u :=
-      setPC_eq_self_of_pc_eq hpc
-    rw [hSetPC] at hStepsSetPC
-    exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (blackBoxGhost mpl mmpl u) hInvU hkf hfs_fu⟩
-
-/-- `K`-narrowed `blackBoxGhostK` companion `GhostRowReplayOn` (`entryGuard := fun _ => True`;
-    spare only per N2). -/
-theorem blackBoxGhostK_rowReplayOn
-    (mpl mmpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hCL : ∀ u : State, InvS u → (blackBoxSubProg mpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hRealHullNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_blackBox mpl pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none) :
-    GhostRowReplayOn mpl mmpl InvS EG lsBlackBoxSym
-      (fun _ => True) (blackBoxGhostK mpl mmpl) where
-  preserves_execFrozen := fun u _ _ hfr =>
-    ⟨blackBoxGhostK_preserves_execFrozen mpl mmpl hfr,
-     f3EmptyBlackBoxGhostHookK_fs (keepR_blackBox mpl) (blackBoxSubProg mpl)
-       (libsignalSessionLib.resolve mpl lsBlackBoxSym) u⟩
-  replay_at_stub := by
-    intro W _ _ _ _ _ _ _ _ _
-    right
-    refine ⟨hRealHullNoExt W (keepR_blackBox_entry mpl), ?_⟩
-    intro u _ _ hpc hrun hnoex hkf hfr hInvU
-    have hCodeStrip :
-        (blackBoxSubProg mpl).CodeLoaded (stripExecOutside (keepR_blackBox mpl) u.mem) :=
-      blackBoxSubProg_codeLoaded_stripExecOutside (hCL u hInvU)
-    obtain ⟨hvis, hfr_fu, hfs_fu⟩ :=
-      f3EmptyBlackBoxGhostHookK_visitedIn
-        (keep := keepR_blackBox mpl)
-        (P_sub := blackBoxSubProg mpl)
-        (entryTarget := libsignalSessionLib.resolve mpl lsBlackBoxSym)
-        (blackBoxSubProg_svc mpl)
-        (blackBoxSubProg_externAt_none mpl)
-        (blackBoxSubProg_hasWords mpl)
-        hrun
-        hnoex
-        hfr
-        hCodeStrip
-    have hStepsSetPC :
-        Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-          (u.setPC (libsignalSessionLib.resolve mpl lsBlackBoxSym))
-          (blackBoxGhostK mpl mmpl u) :=
-      h2fsgen_steps_lift_of_visitedIn_noExtern
-        (D := keepR_blackBox mpl)
-        (P1 := emptyStdProg)
-        (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (emptyStdProg_svc.trans (realProg617_svc mpl mmpl W).symm)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fun _ hk => hRealHullNoExt W hk)
-        hvis
-    have hSetPC : u.setPC (libsignalSessionLib.resolve mpl lsBlackBoxSym) = u :=
-      setPC_eq_self_of_pc_eq hpc
-    rw [hSetPC] at hStepsSetPC
-    exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (blackBoxGhostK mpl mmpl u) hInvU hkf hfs_fu⟩
 
 /-- Guard-strengthening adapter on `GhostRowReplayOn` (for `ExtraListReplaysOn` when `guardOf sym`
     implies `entryGuard`). -/

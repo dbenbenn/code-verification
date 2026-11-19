@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializePlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `kem::Key<Public>::deserialize` Slot Adapter
@@ -23,7 +24,7 @@ that Block `590` (`kem::Key<Public>::deserialize`) satisfies `kemDeserializeSlot
 caller block `i < 619`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,13 +47,13 @@ structure CalleeSlotPlaced where
   need : Nat
 
 /-- `σ`'s specification holds on `callerProg` at `entry` for every stack budget `σ.need ≤ stk ≤ 2^63`. -/
-def CalleeSlotPlaced.OkAtBlock [LibsignalPlacement] (callerProg : Program)
+@[expose] def CalleeSlotPlaced.OkAtBlock [LibsignalPlacement] (callerProg : Program)
     (entry : BitVec 64) (σ : CalleeSlotPlaced) : Prop :=
   ∀ stk, σ.need ≤ stk → stk ≤ 2 ^ 63 →
     subroutine_ok callerProg entry (σ.spec stk)
 
 /-- Relocatable `[LibsignalPlacement]` slot for `kem::Key<Public>::deserialize` (Block `590`). -/
-def kemDeserializeSlotPlaced [LibsignalPlacement] (A : RustAlloc) : CalleeSlotPlaced where
+@[expose] def kemDeserializeSlotPlaced [LibsignalPlacement] (A : RustAlloc) : CalleeSlotPlaced where
   Ghost := KemDeserializeGhost
   spec := fun stk => cliKemDeserializeSpecPlaced A stk
   need := 48 + extHookStack

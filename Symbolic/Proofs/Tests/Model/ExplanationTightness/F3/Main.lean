@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
-public import Symbolic.Proofs.Tests.Model.ExplanationTightness.F3.Statement
-public import Symbolic.Proofs.Tests.Model.ExplanationTightness.F3.Secrecy
+public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.Model.ExplanationTightness.F3.Statement -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.Model.ExplanationTightness.F3.Secrecy -- proof-setup: allow-public-import
 
 /-!
 # Replay-Aliasing Tightness for `HandshakeRootCompromised`
@@ -23,7 +23,7 @@ never excuses a key shared with an unexcused handshake, whereas the existential 
 `HandshakeRootCompromised_old` excuses Alice's uncompromised message-0 seed `mkA` on `fTr`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

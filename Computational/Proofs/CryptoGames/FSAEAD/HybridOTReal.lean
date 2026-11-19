@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.FSAEAD.HybridOT
+import Computational.Proofs.CryptoGames.FSAEAD.HybridOT
 import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Hybrid
 
 /-!
 # Helper Lemmas for the OT-CCA Real World
@@ -21,7 +22,7 @@ Auxiliary lemmas on compromise predicates (`isCompromised_withKeys`, `isCompromi
 skipped-key ranges (`mem_newSkipped`) used in the OT-CCA real-world hybrid step.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec CryptoGames.Lazy
 

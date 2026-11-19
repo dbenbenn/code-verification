@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.CliPqAdapterCoupling
+public import Computational.Proofs.LibsignalCli.CliPqAdapterCoupling -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.CliPqKeyIndInvStep
 import ProofLib.SepLogic.WP.StateNorm
 import VCVio.EvalDist.Monad.Basic
@@ -22,7 +22,7 @@ and `cliComposedAdapterImplWith` over `SignalPqxdh.pqxdhKeyIndImpl1KeyReal`, dis
 `CliKeyIndStepBridgeProp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.constructorNameAsVariable false

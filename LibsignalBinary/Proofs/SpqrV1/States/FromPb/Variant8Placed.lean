@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8a
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8d
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8d -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10
@@ -24,6 +24,8 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8bPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8cPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8dPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8b
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 8 (`EkReceivedCt1Sampled`, `+1764`, Block `333`)
@@ -32,7 +34,7 @@ Relocatable (`Obj.MultiPlacedLib`) top-level proof for Variant 8 (`InnerState.ek
 `+1764 -> s0.x30`), composing `Authenticator` cloning, `<PolyEncoder>::from_pb`, and shared epilogue staging.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

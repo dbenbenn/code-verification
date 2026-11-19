@@ -19,7 +19,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -45,6 +45,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber
 
 /-!
 # Attacker-Built Seed Exclusion at Matched Prefixes
@@ -53,7 +55,7 @@ Proves reachability of `spk_DoneOpkEkAk` and deduces `prom_g1cAttackerBuiltSeedE
 via one-sided spine peeling.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

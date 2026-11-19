@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.EffSalt
@@ -17,7 +17,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -44,7 +44,7 @@ The `LengthsFit` bound is necessary because `encodeBytesField` truncates `v.leng
 Rust `usize` (`BitVec.ofNat 64 v.length`), so a field of length `2^64` encodes with length varint `0`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalProtoCodec
 
@@ -251,7 +251,7 @@ theorem mergeUint32_encode (x : BitVec 32) (rest : List (BitVec 8)) :
   omega
 
 /-- `decodeLoop` reaches `r` from `m` on `bs` with any fuel that covers the input. -/
-def LoopsTo (m : ProtoSignalMessage) (bs : List (BitVec 8)) (r : ProtoSignalMessage) : Prop :=
+@[expose] def LoopsTo (m : ProtoSignalMessage) (bs : List (BitVec 8)) (r : ProtoSignalMessage) : Prop :=
   ∀ n, bs.length ≤ n → decodeLoop n m bs = some r
 
 theorem loopsTo_nil (m : ProtoSignalMessage) : LoopsTo m [] m := by
@@ -284,7 +284,7 @@ theorem loopsTo_field (t : ℕ) (wt : WireType) (h1 : 1 ≤ t) (h2 : t < 2 ^ 28)
       exact h fuel (by omega)
 
 /-- Every `bytes` field of `m` has length strictly less than `2^64`. -/
-def LengthsFit (m : ProtoSignalMessage) : Prop :=
+@[expose] def LengthsFit (m : ProtoSignalMessage) : Prop :=
   ∀ v, m.ratchetKey = some v ∨ m.ciphertext = some v ∨ m.pqRatchet = some v ∨ m.addresses = some v →
     v.length < 2 ^ 64
 

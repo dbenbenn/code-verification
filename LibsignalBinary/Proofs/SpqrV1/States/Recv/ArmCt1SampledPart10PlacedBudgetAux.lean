@@ -11,20 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart10Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart6PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart7PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart8PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart9PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart10Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3PlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart5PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart6PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart7PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart8PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart9PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
@@ -34,6 +34,14 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart7
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart9Placed
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart5Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart6Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart8Placed
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Sampled` Arm, Part 10 Aux (Budget-Threaded)
@@ -42,7 +50,7 @@ Allocator-event envelopes (`Ct1SampledRecvPreEnv` / `Ct1SampledRecvPostEnv`), `F
 decomposition lemmas, sequencing adapters, and the budget-threaded Path 5c (`ack = true`) theorem.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -138,7 +146,7 @@ attribute [local irreducible] addChunkTotal decodedMessageTotal DecodedMessageEn
     - `msg.epoch = st.uc.epoch`, `.ekCt1Ack chunk`: `AddChunkSlotsEnv`, `DecodedMessageEnv`, and
       `Ct1AckRecvEkTailPreEnv` (`recv_ek` + `send_ct2` + `send_ct2_encoder`).
     - `msg.epoch = st.uc.epoch`, any other payload: `[]`. -/
-def Ct1SampledRecvPreEnv {F : ShaCompress} (K : MlKem)
+@[expose] def Ct1SampledRecvPreEnv {F : ShaCompress} (K : MlKem)
     (st : Ct1Sampled spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
     (evs : List AllocEvent) : Prop :=
   if msg.epoch = st.uc.epoch then
@@ -159,7 +167,7 @@ def Ct1SampledRecvPreEnv {F : ShaCompress} (K : MlKem)
 /-- Postcondition allocator-event envelope of `<States>::recv` (`Block 332`) on
     `States.ct1Sampled st`: `Ct1SampledRecvPreEnv K st msg` followed by trailing `FreeOnlyEvs`
     from epilogue deallocations. -/
-def Ct1SampledRecvPostEnv {F : ShaCompress} (K : MlKem)
+@[expose] def Ct1SampledRecvPostEnv {F : ShaCompress} (K : MlKem)
     (st : Ct1Sampled spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (Ct1SampledRecvPreEnv K st msg) FreeOnlyEvs evs

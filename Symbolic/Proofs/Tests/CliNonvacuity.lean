@@ -10,9 +10,14 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Tests.CliNonvacuity.Defs
-public import Symbolic.Proofs.Tests.CliNonvacuity.Witness
-public import Symbolic.Proofs.Tests.CliNonvacuity.Handshake
-public import Symbolic.Proofs.Tests.CliNonvacuity.Session
+import Symbolic.Proofs.Tests.CliNonvacuity.Witness
+import Symbolic.Proofs.Tests.CliNonvacuity.Handshake
+import Symbolic.Proofs.Tests.CliNonvacuity.Session
+public import Symbolic.Tests.Nonvacuity.ExposedSession
+public import Symbolic.Tests.Nonvacuity.HonestHandshakeWithOpk
+public import Symbolic.Tests.Nonvacuity.HonestHandshakeWithoutOpk
+public import Symbolic.Tests.Nonvacuity.HonestSession
+public import Symbolic.Tests.Nonvacuity.SetupTrace
 
 /-!
 # CLI-Level Non-Vacuity Barrel Proofs
@@ -22,7 +27,7 @@ Aggregates `cliSpecPq_satisfiable_proof` and the five `CliTraceReachableProof` w
 for `Symbolic.Tests.CliNonvacuity`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

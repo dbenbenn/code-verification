@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.Proof
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3Placed
@@ -24,7 +24,7 @@ Relocatable `.rodata` exposure helpers and the `spqr::chain_from` error (`+1320`
 post-`Chain::into_pb` (`+1424`) continuations of `Ordering::Less` in `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -64,7 +64,7 @@ open CryptoVerification.SpqrV1.Top.Recv.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 theorem spqrRecvRoPlacedAt_expose_logOff :

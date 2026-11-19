@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderStore.Fetch
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # CLI `SessionRecord` Callee Contracts
@@ -23,7 +23,7 @@ the `try_decrypt_from_record::<signal_session_handshake::Coins>::{closure#0}` lo
 the CLI binary.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderStore
 
@@ -55,42 +55,8 @@ local macro "cells_unfold_fast" : tactic =>
 abbrev _root_.CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.dropProcessPrekeyImplName : String :=
   "core::ptr::drop_glue::<libsignal_protocol::session::process_prekey_impl::{closure#0}>"
 
-set_option maxHeartbeats 1200000 in
-theorem _root_.CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.drop_process_prekey_impl_state1_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.dropProcessPrekeyImplName)
-      dropProcessPrekeyImplState1Spec := by
-  unfold dropProcessPrekeyImplState1Spec
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.dropProcessPrekeyImplName = (ls_off% "core::ptr::drop_glue::<libsignal_protocol::session::process_prekey_impl::{closure#0}>") :=
-    (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::session::process_prekey_impl::{closure#0}>")
-  responder_fetches_from_cli b (Rust.withPanics (trTrapExterns C abs)) hfn (ls_off% "core::ptr::drop_glue::<libsignal_protocol::session::process_prekey_impl::{closure#0}>") 0 368
-  wp_init ptr s0
-  examples_generalize_entry
-  examples_hide_fetches
-  subst h
-  wp_steps
-  wp_done
-
-theorem _root_.CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.drop_process_prekey_impl_state1_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.dropProcessPrekeyImplName)
-      dropProcessPrekeyImplState1Spec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.dropProcessPrekeyImplName]
-  exact subroutine_ok_kit_of_trTrap CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.drop_process_prekey_impl_state1_ok_trap
-
-/-! ## `try_decrypt_from_record::<Coins>::{closure#0}` (log-disabled fast path) -/
-
 abbrev _root_.CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName : String :=
   "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}"
-
-private theorem _root_.CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName = (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}") :=
-  (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}")
 
 private theorem stackAt_pqxdhClosure (sp : BitVec 64) :
     stackAt sp pqxdhClosureStack =
@@ -127,64 +93,5 @@ private theorem stackAt_pqxdhClosure (sp : BitVec 64) :
         ((sp - 24#64) ↦₆₄ w9) ∗ ((sp - 16#64) ↦₆₄ w10) ∗ ((sp - 8#64) ↦₆₄ w11)) := by
     cells_unfold
   rw [h1, h2, hc4, hc12, sepConj_assoc]
-
-private theorem pqxdhLogClosure_adrp_addr_eq {base entry : BitVec 64}
-    (hb : base &&& 0xfff#64 = 0#64) (he : entry = base + (bv% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}"))) :
-    (((entry + 36#64) &&& 18446744073709547520#64) + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) - (page% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}" + 36)))) + bv% ((ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) % 4096) = base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) := by
-  subst he; bv_arith
-
-def _root_.CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.PqxdhLogClosureOk_trap
-    (img : Obj.Image) (C : Crypto) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (trTrapProgAt img.base C abs)
-    ((trTrapProgAt img.base C abs).fnAddr CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName)
-    ((pqxdhLogClosureSpec img).inImage img)
-
-def _root_.CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.PqxdhLogClosureOk (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    ((tripleRatchetProgAt img.base C ctl abs).fnAddr CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName)
-    ((pqxdhLogClosureSpec img).inImage img)
-
-set_option maxHeartbeats 1200000 in
-theorem _root_.CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdh_log_closure_ok_trap
-    {img : Obj.Image} {C : Crypto}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.PqxdhLogClosureOk_trap img C abs := by
-  unfold CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.PqxdhLogClosureOk_trap
-  simp only [Spec.inImage, pqxdhLogClosureSpec, logOff, logFilterAddr, stackAt_pqxdhClosure,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  unfold trTrapProgAt
-  have hfn := CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName_fnOff
-  have hb : img.base &&& 0xfff#64 = 0#64 := ProofLib.ObjectLoad.base_aligned_of_loads himg
-  have hentry : (libsignalSessionCode.rebase img.base
-      (Rust.withPanics (trTrapExterns C abs))).fnAddr
-      CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName =
-      img.base + (bv% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}")) := by
-    rw [Program.fnAddr_rebase, hfn]
-  have hadrp := pqxdhLogClosure_adrp_addr_eq hb hentry
-  clear hentry
-  responder_fetches_from_cli img.base
-    (Rust.withPanics (trTrapExterns C abs)) hfn (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}") 0 56
-  responder_fetches_from_cli img.base
-    (Rust.withPanics (trTrapExterns C abs)) hfn (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}") 784 32
-  clear hfn himg
-  generalize_entry (libsignalSessionCode.rebase img.base
-      (Rust.withPanics (trTrapExterns C abs))).fnAddr
-      CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName = entry
-  wp_init x s0
-  examples_hide_fetches
-  wp_steps
-  wp_done
-
-theorem _root_.CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdh_log_closure_ok {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.PqxdhLogClosureOk img C ctl abs := by
-  unfold CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.PqxdhLogClosureOk
-  rw [← (trapsOnly_trTrap_kit img.base C ctl abs).fnAddr
-    CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName]
-  exact subroutine_ok_kit_of_trTrap
-    (CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdh_log_closure_ok_trap himg)
 
 end CryptoVerification.E2E.Pqxdh.ResponderStore

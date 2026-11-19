@@ -10,33 +10,51 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.CmkLoopAdvanceCredit
-public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvGroupSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedGroupSplit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTieLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
+import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+import LibsignalBinary.Proofs.PeakBudget.CmkLoopAdvanceCredit
+import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
+import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvGroupSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedGroupSplit
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendTieLemmas
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.TopPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux
 
 /-!
 # Guarded-Tight `W1` (`encrypt`) and `W2` (`decryptSignal`) Exact Slot Specs
@@ -49,14 +67,13 @@ curried `PhaseCreditSpec` and `PhaseGroupSpec` obligations, and the bundled `Sin
 and whole-`main` `FitsEnv` consumers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSession (ChainKey Crypto Mut PublicKey RatchetState ShaCompress TripleRatchet)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
@@ -82,7 +99,8 @@ open CryptoVerification.SpqrV1.Top.InitInner (InitInnerGhost)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent FreeOnlyEvs RustCliAllocBudget SeqEnv rustAllocEvents)
 open LibsignalBinary.Heap.Fine (fineCostModel)
-open LibsignalBinary.Heap.SpecBudget (FmtWriteEnv FormatInnerEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
+  (CliFmtWriteEnv CliFormatInnerEnv)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux
   (StatesSendTightEnv)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
@@ -143,7 +161,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 /-! ## `@109` Guarded-Tight `W1` and `W2` Slot Envelope Definitions -/
 
 /-- `spqr::decode_state` tight leaf parameterized by `maxOps`. -/
-def ckx2_DecodeStateTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def ckx2_DecodeStateTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 1307216 79236
 
 /-- `@109` `spqr::decode_state` tight leaf (`maxOps = 109`). -/
@@ -151,7 +169,7 @@ abbrev ckx2_DecodeStateTightEnv : List AllocEvent → Prop :=
   ckx2_DecodeStateTightEnvOf 109
 
 /-- Leaf-parametric `spqr::send::<Coins>` byte-slice allocation envelope. -/
-def ckx2_SpqrSendCoinsOfDecodeFromPbBytesEnv (F : ShaCompress) (K : MlKem)
+@[expose] def ckx2_SpqrSendCoinsOfDecodeFromPbBytesEnv (F : ShaCompress) (K : MlKem)
     (DecBytesEnv : List (BitVec 8) → List AllocEvent → Prop)
     (FromPbValEnv : V1State → List AllocEvent → Prop) : SpqrSendBudgetEnv :=
   fun stBs rest evs =>
@@ -181,7 +199,7 @@ def ckx2_SpqrSendCoinsOfDecodeFromPbBytesEnv (F : ShaCompress) (K : MlKem)
 /-- `PeerSpqrStateTight640`-guarded `@109` `W1` (`encrypt`) binary-kit slot envelope.
 When `¬ PeerSpqrStateTight640 W.C.F W.Q.K x.F x.peer.val`, the predicate is `True`; outer
 `MainOk` consumers discharge `PeerSpqrStateTight640` from `CliPqxdhInputs`. -/
-noncomputable def ckx2_cliEncryptBinaryKitSlotEnvExact [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ckx2_cliEncryptBinaryKitSlotEnvExact [LibsignalPlacement] {M : AllocCostModel}
     (W : CliHooks) (A : RustCliAllocBudget M) (B : RunBudgets := cliRunBudgets) :
     EncGhost → List AllocEvent → Prop :=
   let sendEnv : SpqrSendBudgetEnv :=
@@ -196,7 +214,7 @@ noncomputable def ckx2_cliEncryptBinaryKitSlotEnvExact [LibsignalPlacement] {M :
         x evs
 
 /-- Post-`decoded_message` tail envelope for `<EkSentCt1Received>::recv_ct2_chunk`. -/
-def ckx2_RecvCt2ChunkTailEnv' (rootKeyLen ct1Len dkLen : Nat) :
+@[expose] def ckx2_RecvCt2ChunkTailEnv' (rootKeyLen ct1Len dkLen : Nat) :
     Option Bytes → List AllocEvent → Prop
   | none, evs => FreeOnlyEvs evs
   | some ct2Full, evs =>
@@ -217,7 +235,7 @@ def ckx2_RecvCt2ChunkTailEnv' (rootKeyLen ct1Len dkLen : Nat) :
         evs
 
 /-- Pre-state-pinned allocation envelope for `<EkSentCt1Received>::recv_ct2_chunk`. -/
-def ckx2_EkSentCt1ReceivedRecvCt2ChunkEnv' {F : ShaCompress}
+@[expose] def ckx2_EkSentCt1ReceivedRecvCt2ChunkEnv' {F : ShaCompress}
     (s : EkSentCt1Received spqrPolyApi (spqrAuthApi F)) (epoch : Epoch) (chunk : Chunk)
     (evs : List AllocEvent) : Prop :=
   if epoch != s.uc.epoch then
@@ -232,7 +250,7 @@ def ckx2_EkSentCt1ReceivedRecvCt2ChunkEnv' {F : ShaCompress}
 
 /-- Post-`decoded_message` tail envelope for `<Ct1Sampled>::recv_ek_chunk` and
 `<Ct1Acknowledged>::recv_ek_chunk`. -/
-def ckx2_RecvEkChunkSendCt2TailEnv' {F : ShaCompress} (K : MlKem) (sendCt2OnDone : Bool)
+@[expose] def ckx2_RecvEkChunkSendCt2TailEnv' {F : ShaCompress} (K : MlKem) (sendCt2OnDone : Bool)
     (uc : CryptoVerification.LibsignalSpqrV1.Unchunked.SendCt.Ct1Sent (spqrAuthApi F)) :
     Option Bytes → List AllocEvent → Prop
   | none, evs => FreeOnlyEvs evs
@@ -252,7 +270,7 @@ def ckx2_RecvEkChunkSendCt2TailEnv' {F : ShaCompress} (K : MlKem) (sendCt2OnDone
           evs
 
 /-- 11-constructor pre-state-pinned allocation envelope for `<States>::recv`. -/
-def ckx2_StatesRecvEnv' {F : ShaCompress} (K : MlKem)
+@[expose] def ckx2_StatesRecvEnv' {F : ShaCompress} (K : MlKem)
     (st : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
     List AllocEvent → Prop :=
   match st with
@@ -357,13 +375,13 @@ def ckx2_StatesRecvEnv' {F : ShaCompress} (K : MlKem)
   | .ct2Sampled _ => FreeOnlyEvs
 
 /-- Protocol-sized wrapper around `ckx2_StatesRecvEnv' K`. -/
-def ckx2_StatesRecvProtoEnv' {F : ShaCompress} (K : MlKem)
+@[expose] def ckx2_StatesRecvProtoEnv' {F : ShaCompress} (K : MlKem)
     (st : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
     List AllocEvent → Prop :=
   if isStatesProtoSized st then ckx2_StatesRecvEnv' K st msg else FreeOnlyEvs
 
 /-- `(maxOps, RecvProtoEnv)`-parametric linked `spqr::recv` allocation envelope. -/
-def ckx2_SpqrRecvC07C09aTightLinkedEnvRecvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
+@[expose] def ckx2_SpqrRecvC07C09aTightLinkedEnvRecvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
     (RecvProtoEnv : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop)
     (stBytes : Bytes)
@@ -382,7 +400,7 @@ def ckx2_SpqrRecvC07C09aTightLinkedEnvRecvOf (maxOps : Nat) (F : ShaCompress) (K
     stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs
 
 /-- `maxOps`-parametric linked `spqr::recv` allocation envelope at `ckx2_StatesRecvProtoEnv' K`. -/
-def ckx2_SpqrRecvC07C09aTightLinkedEnvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
+@[expose] def ckx2_SpqrRecvC07C09aTightLinkedEnvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
     (stBytes : Bytes)
     (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
     (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
@@ -395,14 +413,14 @@ def ckx2_SpqrRecvC07C09aTightLinkedEnvOf (maxOps : Nat) (F : ShaCompress) (K : M
     stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs
 
 /-- Existentially lifted `maxOps`-parametric linked `spqr::recv` byte-slice envelope. -/
-def ckx2_SpqrRecvC07C09aBytesEnvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
+@[expose] def ckx2_SpqrRecvC07C09aBytesEnvOf (maxOps : Nat) (F : ShaCompress) (K : MlKem)
     (stBs _msgBs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
     ckx2_SpqrRecvC07C09aTightLinkedEnvOf maxOps F K
       stBs pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs
 
 /-- Loop-envelope-parametric Segment-4 `consume_message_key` step envelope. -/
-def ckx2_tryDecryptCmkStepEnvOf
+@[expose] def ckx2_tryDecryptCmkStepEnvOf
     (LoopAdvEnv : Nat → BitVec 64 → Nat → Bool → List AllocEvent → Prop)
     (msgCounter : BitVec 32) (senderRatchetKey : PublicKey)
     (trG : TrGhost) (r : RatchetState) (ck : ChainKey) (evs : List AllocEvent) : Prop :=
@@ -424,7 +442,7 @@ def ckx2_tryDecryptCmkStepEnvOf
     evs = rustAllocEvents 36 1
 
 /-- Loop-envelope-parametric Segment-4 (`ConsumeMsgKey`) allocation envelope. -/
-def ckx2_tryDecryptCmkSeg4EnvOf
+@[expose] def ckx2_tryDecryptCmkSeg4EnvOf
     (LoopAdvEnv : Nat → BitVec 64 → Nat → Bool → List AllocEvent → Prop)
     (fmtWriteEnv : List AllocEvent → Prop)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
@@ -434,7 +452,7 @@ def ckx2_tryDecryptCmkSeg4EnvOf
       FreeOnlyEvs)
 
 /-- `try_decrypt_with_state` CLI allocation envelope parameterized by `LoopAdvEnv` and `maxOps`. -/
-def ckx2_TryDecryptCliLinkedLoopEnvOf
+@[expose] def ckx2_TryDecryptCliLinkedLoopEnvOf
     (LoopAdvEnv : Nat → BitVec 64 → Nat → Bool → List AllocEvent → Prop)
     (maxOps : Nat) (C : Crypto) (K : MlKem)
     (a : TryDecryptEnvArgs) : List AllocEvent → Prop :=
@@ -444,8 +462,8 @@ def ckx2_TryDecryptCliLinkedLoopEnvOf
   | (.ok tr0, st1) =>
     SeqEnv FreeOnlyEvs
       (FromS2GenEnv C uuidTryParse S (stdAesOpt C)
-        (s3DefaultEnv C) (ckx2_tryDecryptCmkSeg4EnvOf LoopAdvEnv FmtWriteEnv)
-        (PqRecvEnv S (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) FormatInnerEnv)
+        (s3DefaultEnv C) (ckx2_tryDecryptCmkSeg4EnvOf LoopAdvEnv CliFmtWriteEnv)
+        (PqRecvEnv S (ckx2_SpqrRecvC07C09aBytesEnvOf maxOps C.F K) CliFormatInnerEnv)
         s6FreeOnlyEnv (s7Env C.F uuidTryParse) s8Env s9Env
         (tryDecryptEnvArgsToGhost a) (s1InitTrGhost a.G) tr0 st1)
 
@@ -455,7 +473,7 @@ abbrev ckx2_TryDecryptCliLinkedEnvOf (maxOps : Nat) (C : Crypto) (K : MlKem) :
   ckx2_TryDecryptCliLinkedLoopEnvOf CmkLoopAdvanceEvs maxOps C K
 
 /-- `PeerSpqrStateTight640`-guarded `@109` `W2` (`decryptSignal`) binary-kit slot envelope. -/
-noncomputable def ckx2_cliDecryptSignalBinaryKitSlotEnvExact [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ckx2_cliDecryptSignalBinaryKitSlotEnvExact [LibsignalPlacement] {M : AllocCostModel}
     (W : CliHooks) (A : RustCliAllocBudget M) (B : RunBudgets := cliRunBudgets) :
     DecSigGhost → List AllocEvent → Prop :=
   fun x evs =>
@@ -478,7 +496,7 @@ theorem ckx2_tryDecryptCmkSeg4EnvOf_cmk_eq :
 
 /-- Curried `W1` (`encrypt`) `PhaseCreditSpec fineCostModel` obligation on
 `ckx2_cliEncryptBinaryKitSlotEnvExact`. -/
-def ckx2_w1EncExact_phaseCredit_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
+@[expose] def ckx2_w1EncExact_phaseCredit_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
   ∀ (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (w1R : W1BinarySendParams),
     CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
@@ -492,7 +510,7 @@ def ckx2_w1EncExact_phaseCredit_Stmt [LibsignalPlacement] (W : CliHooks) : Prop 
 
 /-- Curried `W1` (`encrypt`) `PhaseGroupSpec fineCostModel` obligation on
 `ckx2_cliEncryptBinaryKitSlotEnvExact`. -/
-def ckx2_w1EncExact_groupSpec_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
+@[expose] def ckx2_w1EncExact_groupSpec_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
   ∀ (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (w1R : W1BinarySendParams),
     CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
@@ -506,7 +524,7 @@ def ckx2_w1EncExact_groupSpec_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
 
 /-- Curried `W2` (`decryptSignal`) `PhaseCreditSpec fineCostModel` obligation on
 `ckx2_cliDecryptSignalBinaryKitSlotEnvExact`. -/
-def ckx2_w2DecSigExact_phaseCredit_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
+@[expose] def ckx2_w2DecSigExact_phaseCredit_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
   ∀ (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (w2R : W2BinaryWhisperParams),
     CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
@@ -520,7 +538,7 @@ def ckx2_w2DecSigExact_phaseCredit_Stmt [LibsignalPlacement] (W : CliHooks) : Pr
 
 /-- Curried `W2` (`decryptSignal`) `PhaseGroupSpec fineCostModel` obligation on
 `ckx2_cliDecryptSignalBinaryKitSlotEnvExact`. -/
-def ckx2_w2DecSigExact_groupSpec_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
+@[expose] def ckx2_w2DecSigExact_groupSpec_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
   ∀ (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (w2R : W2BinaryWhisperParams),
     CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
@@ -535,7 +553,7 @@ def ckx2_w2DecSigExact_groupSpec_Stmt [LibsignalPlacement] (W : CliHooks) : Prop
 /-! ## Bundled `SingleSlotFineSpec` and Whole-`main` Consumer Wiring -/
 
 /-- Bundled `SingleSlotFineSpec` for `ckx2_cliEncryptBinaryKitSlotEnvExact`. -/
-def ckx2_w1EncExact_singleSlotFineSpec_of_stmts [LibsignalPlacement] (W : CliHooks)
+@[expose] def ckx2_w1EncExact_singleSlotFineSpec_of_stmts [LibsignalPlacement] (W : CliHooks)
     (hCredit : ckx2_w1EncExact_phaseCredit_Stmt W)
     (hGrp : ckx2_w1EncExact_groupSpec_Stmt W)
     (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
@@ -556,7 +574,7 @@ def ckx2_w1EncExact_singleSlotFineSpec_of_stmts [LibsignalPlacement] (W : CliHoo
   groups := hGrp g peerV M A w1R hi hp hc hrep hdom
 
 /-- Bundled `SingleSlotFineSpec` for `ckx2_cliDecryptSignalBinaryKitSlotEnvExact`. -/
-def ckx2_w2DecSigExact_singleSlotFineSpec_of_stmts [LibsignalPlacement] (W : CliHooks)
+@[expose] def ckx2_w2DecSigExact_singleSlotFineSpec_of_stmts [LibsignalPlacement] (W : CliHooks)
     (hCredit : ckx2_w2DecSigExact_phaseCredit_Stmt W)
     (hGrp : ckx2_w2DecSigExact_groupSpec_Stmt W)
     (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
@@ -579,7 +597,7 @@ def ckx2_w2DecSigExact_singleSlotFineSpec_of_stmts [LibsignalPlacement] (W : Cli
 /-- Instantiates `realCliMainBinaryKitEnvOfSlot_fitsEnv_cliBudgetLimits_of_curried` with the
 curried `W1` and `W2` slot obligations. -/
 theorem ckx2_realCliMainBinaryKitEnvOfSlot_fitsEnv_of_stmts [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (hEncCredit : ckx2_w1EncExact_phaseCredit_Stmt W)
     (hEncGrp : ckx2_w1EncExact_groupSpec_Stmt W)
     (hDecSigCredit : ckx2_w2DecSigExact_phaseCredit_Stmt W)

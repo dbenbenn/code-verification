@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChain
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbLeaf
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChain
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbLeaf
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
@@ -27,6 +27,11 @@ import LibsignalBinary.Proofs.SpqrV1Sync.ErasureCode
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.DecoderCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.EncoderCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.TopSize
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefs
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
 
 /-!
 # Tight Event Bounds, Canonical Wire Helpers, & `TopStateTight` Extraction
@@ -36,7 +41,7 @@ canonical wire round-trip lemmas, and `e2ar_topStateTight_encode_valid` showing 
 `TopStateTight F K bs` state encodes a valid canonical `PqRatchetState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -138,26 +143,6 @@ theorem e2ar_bytesMerge3_zero_tight79236 {wt : WireType} {bs v rest : List (BitV
   exact (e2ar_bytesMergeEventsCore_zero_tight hm (by decide) hv).mono
     (Nat.le_refl 2) (by decide) (Nat.le_refl 79236)
 
-/-- `RawVec<ChainEpoch>::grow_one` from `cap = 0#64` allocates `4 * 112 = 448` bytes (`align = 8`),
-fitting `SpqrTightEvs 1 9789 448`. -/
-theorem e2ar_growOneChainEpoch_zero_tight {evs : List AllocEvent}
-    (h : GrowOneStrideEnv 0#64 112 8 evs) :
-    SpqrTightEvs 1 9789 448 evs := by
-  unfold GrowOneStrideEnv growOneStrideEvents at h
-  simp only [↓reduceIte] at h
-  subst h
-  exact SpqrTightEvs.rustAlloc (Nat.le_refl 448) (by decide)
-
-theorem e2ar_chainParamsMergePostEnv_ok_nil {x : ChainParamsMergeGhost}
-    {p : ChainParamsPB × List (BitVec 8)} {evs : List AllocEvent}
-    (hok : (CryptoVerification.LibsignalSpqrV1.Proto.mergeMessage
-        ChainParamsPB.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 99).toOption = some p)
-    (h : ChainParamsMergePostEnv x evs) :
-    evs = [] := by
-  unfold ChainParamsMergePostEnv at h
-  rw [hok] at h
-  exact h
-
 theorem e2ar_decodeVarint2Env_some_nil {bs : List (BitVec 8)}
     {p : BitVec 64 × List (BitVec 8)} {evs : List AllocEvent}
     (hdv : decodeVarint bs = some p) (h : DecodeVarint2Env bs evs) :
@@ -243,25 +228,6 @@ theorem e2ar_encodeBytesUncond_eq_key_lenPrefixed (tag : BitVec 32) (v rest : By
   unfold CryptoVerification.LibsignalSpqrV1.Proto.encodeBytesUncond tlb_lenPrefixed
   simp [List.append_assoc]
 
-theorem e2ar_encodeMessage_eq_key_lenPrefixed {N : Type} (encodeRaw : N → Bytes)
-    (tag : BitVec 32) (n : N) (rest : Bytes) :
-    CryptoVerification.LibsignalSpqrV1.Proto.encodeMessage encodeRaw tag n ++ rest =
-      CryptoVerification.LibsignalSpqrV1.Proto.encodeKey tag .lengthDelimited ++
-        tlb_lenPrefixed (encodeRaw n) rest := by
-  unfold CryptoVerification.LibsignalSpqrV1.Proto.encodeMessage tlb_lenPrefixed
-  simp [List.append_assoc]
-
-theorem e2ar_mergeMessage_chainParams_lenPrefixed (m : ChainParamsPB) (rest : Bytes)
-    (depth : Nat) (hd : 0 < depth)
-    (hlt : (tlb_lenPrefixed (ChainParamsPB.encodeRaw m) rest).length < 2 ^ 63) :
-    (CryptoVerification.LibsignalSpqrV1.Proto.mergeMessage
-      ChainParamsPB.mergeField .lengthDelimited default
-      (tlb_lenPrefixed (ChainParamsPB.encodeRaw m) rest) depth).toOption =
-        some (m, rest) := by
-  have hlen := e2ar_raw_lt_of_lenPrefixed_lt hlt
-  exact e2ar_mergeMessage_lenPrefixed ChainParamsPB.mergeField 0 ChainParamsPB.encodeRaw
-    default m depth rest (loopsTo_chainParams m) hlen hd
-
 theorem e2ar_mergeMessage_epochDirection_lenPrefixed (m : CryptoVerification.LibsignalSpqrV1.EpochDirectionPB)
     (rest : Bytes) (depth : Nat) (hd : 0 < depth)
     (hlt : (tlb_lenPrefixed (CryptoVerification.LibsignalSpqrV1.EpochDirectionPB.encodeRaw m) rest).length < 2 ^ 63) :
@@ -274,50 +240,6 @@ theorem e2ar_mergeMessage_epochDirection_lenPrefixed (m : CryptoVerification.Lib
     CryptoVerification.LibsignalSpqrV1.EpochDirectionPB.mergeField 0
     CryptoVerification.LibsignalSpqrV1.EpochDirectionPB.encodeRaw
     default m depth rest (loopsTo_epochDirection m hlen) hlen hd
-
-theorem e2ar_mergeMessage_chainEpoch_lenPrefixed (m : ChainEpochPB) (rest : Bytes)
-    (depth : Nat) (hd : 1 < depth)
-    (hlt : (tlb_lenPrefixed (ChainEpochPB.encodeRaw m) rest).length < 2 ^ 63) :
-    (CryptoVerification.LibsignalSpqrV1.Proto.mergeMessage
-      ChainEpochPB.mergeField .lengthDelimited default
-      (tlb_lenPrefixed (ChainEpochPB.encodeRaw m) rest) depth).toOption =
-        some (m, rest) := by
-  have hlen := e2ar_raw_lt_of_lenPrefixed_lt hlt
-  exact e2ar_mergeMessage_lenPrefixed ChainEpochPB.mergeField 1 ChainEpochPB.encodeRaw
-    default m depth rest (loopsTo_chainEpoch m hlen) hlen hd
-
-theorem e2ar_mergeMessage_chain_lenPrefixed (m : ChainPB) (rest : Bytes)
-    (depth : Nat) (hd : 2 < depth)
-    (hlt : (tlb_lenPrefixed (ChainPB.encodeRaw m) rest).length < 2 ^ 63) :
-    (CryptoVerification.LibsignalSpqrV1.Proto.mergeMessage
-      ChainPB.mergeField .lengthDelimited default
-      (tlb_lenPrefixed (ChainPB.encodeRaw m) rest) depth).toOption =
-        some (m, rest) := by
-  have hlen := e2ar_raw_lt_of_lenPrefixed_lt hlt
-  exact e2ar_mergeMessage_lenPrefixed ChainPB.mergeField 2 ChainPB.encodeRaw
-    default m depth rest (loopsTo_chain m hlen) hlen hd
-
-theorem e2ar_mergeMessage_versionNegotiation_lenPrefixed (m : VersionNegotiationPB) (rest : Bytes)
-    (depth : Nat) (hd : 1 < depth)
-    (hlt : (tlb_lenPrefixed (VersionNegotiationPB.encodeRaw m) rest).length < 2 ^ 63) :
-    (CryptoVerification.LibsignalSpqrV1.Proto.mergeMessage
-      VersionNegotiationPB.mergeField .lengthDelimited default
-      (tlb_lenPrefixed (VersionNegotiationPB.encodeRaw m) rest) depth).toOption =
-        some (m, rest) := by
-  have hlen := e2ar_raw_lt_of_lenPrefixed_lt hlt
-  exact e2ar_mergeMessage_lenPrefixed VersionNegotiationPB.mergeField 1 VersionNegotiationPB.encodeRaw
-    default m depth rest (loopsTo_versionNegotiation m hlen) hlen hd
-
-theorem e2ar_mergeMessage_v1State_lenPrefixed (m : V1State) (rest : Bytes)
-    (depth : Nat) (hd : 3 < depth)
-    (hlt : (tlb_lenPrefixed (V1State.encodeRaw m) rest).length < 2 ^ 63) :
-    (CryptoVerification.LibsignalSpqrV1.Proto.mergeMessage
-      V1State.mergeField .lengthDelimited default
-      (tlb_lenPrefixed (V1State.encodeRaw m) rest) depth).toOption =
-        some (m, rest) := by
-  have hlen := e2ar_raw_lt_of_lenPrefixed_lt hlt
-  exact e2ar_mergeMessage_lenPrefixed V1State.mergeField 3 V1State.encodeRaw
-    default m depth rest (loopsTo_v1State m hlen) hlen hd
 
 /-! ## 3. `TopStateTight` → `tlb_ValidPqRatchetStatePB` Extraction -/
 
@@ -587,14 +509,5 @@ theorem e2ar_topStateTight_encode_valid {F : ShaCompress} {K : MlKem} {bs : Byte
     injection hv1 with hv1
     subst hv1
     exact e2ar_validV1StatePB_of_bokTight F st hw.hbok
-
-theorem e2ar_topStateTight_encode_valid_with_len {F : ShaCompress} {K : MlKem} {bs : Bytes}
-    (hTop : TopStateTight F K bs) :
-    ∃ pb : PqRatchetState,
-      bs = encodeState pb ∧
-      tlb_ValidPqRatchetStatePB pb ∧
-      (encodeState pb).length ≤ spqrStateTightCapBytes := by
-  obtain ⟨pb, rfl, hvalid⟩ := e2ar_topStateTight_encode_valid hTop
-  exact ⟨pb, rfl, hvalid, topStateTight_length_le hTop⟩
 
 end LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateTightCountR

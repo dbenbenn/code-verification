@@ -9,10 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsParserTryParsePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsParserTryParsePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFs
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Relocatable `<uuid::Uuid>::try_parse` with `.keepsFs` and Stack Framing
@@ -21,7 +26,7 @@ Relocatable (`[LibsignalPlacement]`, Block `252`) `.keepsFs` contract and stack-
 (`uuidTryParseStack ≤ hookStack ≤ 2 ^ 64`) for `<uuid::Uuid>::try_parse`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

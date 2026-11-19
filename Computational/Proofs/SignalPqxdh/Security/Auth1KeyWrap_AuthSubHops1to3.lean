@@ -9,19 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
-public import Computational.Proofs.GameHop.Swap
-public import Computational.Proofs.GameHop.StateSim
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface -- proof-setup: allow-public-import
+public import Computational.Proofs.GameHop.Swap -- proof-setup: allow-public-import
+import Computational.Proofs.GameHop.StateSim
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 public import VCVio.CryptoFoundations.SecExp.Measure
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
 public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key `SlotM` Bridge for `PrfChainKey` (`G3.6` to `G3.7`)
@@ -30,7 +30,7 @@ Defines the single-identity-key `PrfChainKey` slot-indexed query steps and cutof
 `pqxdhAuthImpl1KeyG`, and proves the `SlotM` pre-sampling bridge `evalDist_preSample_authCk_eq_cutoff1Key`.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open MeasureTheory
@@ -55,7 +55,7 @@ end AuthSubHops1to3
 
 open AuthSubHops1to3
 
-def authCkOtherStep1Key (S : Setup) (P : Primitives) (q : AuthQuery S)
+@[expose] def authCkOtherStep1Key (S : Setup) (P : Primitives) (q : AuthQuery S)
     (hst : AuthHybridStateFixed S) : ProbComp (AuthResponse × AuthHybridStateFixed S) := do
   if hst.toAuthHybridState.base.hasWonAuth then
     pure (.noneResp, hst)
@@ -63,7 +63,7 @@ def authCkOtherStep1Key (S : Setup) (P : Primitives) (q : AuthQuery S)
     let (resp, base') ← (pqxdhAuthImpl1KeyG true true S P q).run hst.toAuthHybridState.base
     pure (resp, { hst with toAuthHybridState := { hst.toAuthHybridState with base := base' } })
 
-def authCkStepWith1Key (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
+@[expose] def authCkStepWith1Key (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     ProbComp ((authSpec S).Range q × AuthHybridStateFixed S) :=
   match q with
@@ -82,7 +82,7 @@ def authCkStepWith1Key (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (
   | qOther =>
     authCkOtherStep1Key S P qOther hst
 
-def authCkStepSlot1Key (S : Setup) (P : Primitives) (idx : Nat) (samp : ProbComp (Bytes × Bytes))
+@[expose] def authCkStepSlot1Key (S : Setup) (P : Primitives) (idx : Nat) (samp : ProbComp (Bytes × Bytes))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     SlotM (Bytes × Bytes) ((authSpec S).Range q × AuthHybridStateFixed S) :=
   match q with
@@ -302,7 +302,7 @@ theorem authCkStepWith_after1Key (S : Setup) (P : Primitives) (idx : Nat) (b : B
     simp only [hEqF, Bool.false_eq_true, ↓reduceIte, hlt]
   all_goals rfl
 
-noncomputable def authCkPreSampleRun1Key (S : Setup) (P : Primitives) (idx : Nat)
+@[expose] def authCkPreSampleRun1Key (S : Setup) (P : Primitives) (idx : Nat)
     (p : Bytes × Bytes) (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -314,7 +314,7 @@ noncomputable def authCkPreSampleRun1Key (S : Setup) (P : Primitives) (idx : Nat
   let (b', finalSt) ← (simulateQ fullImpl A.run).run initSt
   finalizeAuthFixed P secb b' finalSt.toAuthHybridState
 
-noncomputable def authCkCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat)
+@[expose] def authCkCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb

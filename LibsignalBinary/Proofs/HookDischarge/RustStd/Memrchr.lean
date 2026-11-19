@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import VerifiedLibraries.RustStd.Proofs.Wave1.CoreMemrchr
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
-public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.HookDischarge.RustStd.Common
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
 
 /-!
 # `core::slice::memchr::memrchr` CLI hook discharge
@@ -20,7 +21,7 @@ Bridges `VerifiedLibraries.RustStd.coreMemrchrSpec` (`coreMultiLib` block `2`, 2
 stack frame) to `CliExt.memrchrSpec` with zero extra hypotheses (`16 ≤ hookStack ≤ 2 ^ 64`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +37,7 @@ open LibsignalBinary.Proofs.HookDischarge.Libc.Common (keepsFs)
 open LibsignalBinary.Proofs.HookDischarge.RustStd.Common (SpecSimulates)
 
 /-- Stack-parameterized `CliExt.memrchrSpec` (`cliMemrchrSpec extHookStack = memrchrSpec`). -/
-def cliMemrchrSpec (hookStack : Nat := extHookStack) : Spec MemrchrCall where
+@[expose] def cliMemrchrSpec (hookStack : Nat := extHookStack) : Spec MemrchrCall where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = x.c ∧ s.readReg64 .x1 = x.p ∧
       s.readReg64 .x2 = BitVec.ofNat 64 x.bs.length ∧ x.bs.length < 2 ^ 64⌝ ∗
@@ -116,12 +117,6 @@ theorem coreMemrchr_memrchrSpec_keepsFs_ok {prog : Program} {entry : BitVec 64}
     (h : subroutine_ok prog entry coreMemrchrSpec) :
     subroutine_ok prog entry (keepsFs memrchrSpec) :=
   coreMemrchr_cliMemrchrSpec_keepsFs_ok (by decide) h
-
-theorem coreMemrchr_memrchrSpec_inImage_ok {prog : Program} {entry : BitVec 64}
-    (img : Obj.Image) (h : subroutine_ok prog entry coreMemrchrSpec) :
-    subroutine_ok prog entry (memrchrSpec.inImage img) :=
-  LibsignalBinary.Proofs.HookDischarge.Libc.Common.subroutine_ok_inImage img
-    (coreMemrchr_memrchrSpec_ok h)
 
 /-! ## Placed `coreMultiLib` bridges -/
 

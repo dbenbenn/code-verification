@@ -12,6 +12,8 @@ module
 public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # `memRegion` and Receiver-Chain Eviction Helpers for `S3CommitSpec`
@@ -20,7 +22,7 @@ Arithmetic, multi-cell `memRegion` splitting, and `vecBuf` eviction helper lemma
 `receiver_chains` eviction loop of `S3CommitSpec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegBH
 
@@ -243,7 +245,7 @@ theorem elim_memRegion_104 {m : Memory} {a : BitVec 64} {R : SepProp}
   refine Satisfies.mono (Entails.of_eq ?_) h1
   ac_rfl
 
-def evictList {α : Type} (xs : List α) : List α :=
+@[expose] def evictList {α : Type} (xs : List α) : List α :=
   xs.drop (xs.length - maxReceiverChains)
 
 theorem evictList_cons_of_ge_six {α : Type} (x : α) (xs : List α) (h : 6 ≤ (x :: xs).length) :
@@ -280,7 +282,7 @@ theorem evictList_zip {α β : Type} (xs : List α) (ys : List β) (h : xs.lengt
   unfold evictList
   rw [List.length_zip, h, Nat.min_self, drop_zip_eq]
 
-def evictActive (A : RustAlloc) (sp chainsCap chainsPtr : BitVec 64)
+@[expose] def evictActive (A : RustAlloc) (sp chainsCap chainsPtr : BitVec 64)
     (gcs : List (ChainGhost × ReceiverChain)) : SepProp :=
   ((sp + 0x40#64) ↦₆₄ chainsPtr) ∗
   ((sp + 0x48#64) ↦₆₄ BitVec.ofNat 64 gcs.length) ∗

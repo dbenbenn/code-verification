@@ -12,6 +12,8 @@ module
 public import Computational.Proofs.ReductionDsl.SM.RedPRNG -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.SM.RedPRNGPotOK
 import Computational.Proofs.GameHop.ReductionDsl.SupportWP
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
 
 /-!
 # Epoch-Cap Potential Query Bound for `redPRNGPrivProg`

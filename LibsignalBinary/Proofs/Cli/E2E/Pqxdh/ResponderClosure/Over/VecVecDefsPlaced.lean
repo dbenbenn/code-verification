@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefs
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.Common
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.Common
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 
@@ -21,7 +21,7 @@ import Arm64.Trusted.Spec.SepLogic
 Defines `VecVecClone1PlacedOkStmt` at `lsmpl.base 117` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +34,7 @@ open CryptoVerification.E2E.Record.Serialization CryptoVerification.E2E.Record.P
 open Proofs.libsignal.Hooks2
 
 /-- Placed subroutine contract for `<Vec<Vec<u8>> as Clone>::clone` on `len = 1` at `lsmpl.base 117`. -/
-def VecVecClone1PlacedOkStmt [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def VecVecClone1PlacedOkStmt [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_117).rebase (blkPl_117).base H) (lsmpl.base 117)
     (withLsCodeLoaded lsmpl (vecVecClone1SpecX A))
 

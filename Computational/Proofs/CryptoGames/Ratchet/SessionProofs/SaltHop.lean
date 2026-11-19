@@ -10,14 +10,15 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.WireHop
-public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.WireHop -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.MsgAeadCorrect
 import Computational.Proofs.CryptoGames.FSAEAD.CellForgery
 import Computational.Proofs.CryptoGames.FSAEAD.HybridOT
 import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 import Std.Tactic.BVDecide.Normalize.BitVec
 import Std.Tactic.BVDecide.Normalize.Prop
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
 
 /-!
 # Proof of the salt hop `lAeadR_otcca`
@@ -25,7 +26,7 @@ import Std.Tactic.BVDecide.Normalize.Prop
 **Checked by Lean.** Proves `lAeadR_otcca` (DEV-LS25) by showing that the real-PRF branch of `lSaltRed` matches `otccaGameAdIdeal lIdeal` for `lAeadR`, together with multi-slot salt-PRF and MAC-forgery hybrid bounds.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -42,14 +43,14 @@ abbrev ChalState (Pt : Type) := Option (AD Pt × Ct)
 abbrev AState (Pt : Type) := OTCCAState (BitVec 256) (AD Pt) Ct
 abbrev PState := PRFState (BitVec 256) Salt32 DerivedMessageKeys
 
-def aImpl (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def aImpl (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) :
     QueryImpl (unifSpec + otccaSpec (AD Pt) (Plain ℓ) Ct) (StateT (AState Pt) ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (AState Pt) ProbComp)
     + ((lAeadR C codec ℓ encT idOf).otccaEncryptAdIdeal (lIdeal C codec ℓ encT)
       + (lAeadR C codec ℓ encT idOf).otccaDecrypt)
 
-def pImpl (F : ShaState → List (BitVec 8) → ShaState) :
+@[expose] def pImpl (F : ShaState → List (BitVec 8) → ShaState) :
     QueryImpl (unifSpec + prfSpec Salt32 DerivedMessageKeys) (StateT PState ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT PState ProbComp)
     + prfEval (lSaltPRF32 F)
@@ -785,13 +786,13 @@ theorem multiOtBranch_false_boolDist_multiSalt_false (C : Crypto) (codec : Signa
 
 abbrev MSaltSt (Pt : Type) := ℕ → SaltSlotSt Pt
 
-def mKeyOfF (i : ℕ) (salt : Salt32) : StateT (MSaltSt Pt × Bool) ProbComp DerivedMessageKeys :=
+@[expose] def mKeyOfF (i : ℕ) (salt : Salt32) : StateT (MSaltSt Pt × Bool) ProbComp DerivedMessageKeys :=
   StateT.mk fun (st, f) =>
     (fun p : DerivedMessageKeys × SaltSlotSt Pt => (p.1, (Function.update st i p.2, f))) <$>
       (slotKeyOf salt).run (st i)
 
 /-- Multi-slot flag game returning `none` and raising a global flag when a non-challenge-salt decryption passes the HMAC tag check. -/
-def multiSaltFlagNF (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def multiSaltFlagNF (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) :
     QueryImpl (QSpecS Pt ℓ) (StateT (MSaltSt Pt × Bool) ProbComp)
   | .inl n => EtMProof.coin n
@@ -1281,12 +1282,12 @@ theorem multiSaltFlagNF_prepopulate_out (C : Crypto) (codec : SignalMessageProto
   simpa [map_eq_bind_pure_comp] using hlz
 
 /-- Invariant on `SaltSlotSt`: `table` is empty before the challenge query and restricted to `a₀.2.2.salt` afterwards. -/
-def SaltSlotTableInv (sst : SaltSlotSt Pt) : Prop :=
+@[expose] def SaltSlotTableInv (sst : SaltSlotSt Pt) : Prop :=
   match sst.chal with
   | none => sst.table = []
   | some (a₀, _) => ∀ s, s ≠ a₀.2.2.salt → sst.table.lookup s = none
 
-def MSaltTableInv (st : MSaltSt Pt) : Prop :=
+@[expose] def MSaltTableInv (st : MSaltSt Pt) : Prop :=
   ∀ i, SaltSlotTableInv (st i)
 
 omit [DecidableEq Pt] in

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.RelocCodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.RelocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneBase
 import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneEpilogue
 import LibsignalBinary.Proofs.Placed.GenLsBlock
@@ -24,7 +24,7 @@ Program-generic `protoChainCloneSpec` lifts (`chainClone_of_protoChainClone_gen`
 panic-tail (`+800..+860`) lemmas under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -259,184 +259,5 @@ theorem senderChainClone_of_chainClone_gen {prog : Program} {entry : BitVec 64} 
   · exact (not_satisfies_false_sepConj hoom).elim
 
 /-! ## 2. Epilogue & Panic Tail Lemmas on Block `468` -/
-
-theorem chain_clone3_placed_epilogue [LibsignalPlacement] {A : RustAlloc}
-    {H : String → Option (State → State)}
-    {Qp : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State)
-    (srkPtr' privPtr' mkPtr' x25 x28 v9 v10 v13 : BitVec 64)
-    (w27 : BitVec 32) (keys' : List MessageKeyGhost) (ckPin' : VecPin)
-    (hsrk : PublicKey.deserialize x.gc.1.srk.bytes = .ok x.gc.2.senderRatchetKey)
-    (hmax : x.gc.2.messageKeys.length ≤ maxMessageKeys)
-    (hklen : keys'.length = x.gc.2.messageKeys.length)
-    (hsrc_klen : x.gc.1.keys.length = x.gc.2.messageKeys.length)
-    (hpc : s.pc = (blkPl_468).base + 736#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 208#64)
-    (hsp_align : s.spAligned = true)
-    (hx29 : s.readReg64 (Reg.gpr 29#5) = s0.sp - 96#64)
-    (hx19 : s.readReg64 (Reg.gpr 19#5) = x.dst)
-    (hx21 : s.readReg64 (Reg.gpr 21#5) = BitVec.ofNat 64 x.gc.1.srk.bytes.length)
-    (hx22 : s.readReg64 (Reg.gpr 22#5) = srkPtr')
-    (hx23 : s.readReg64 (Reg.gpr 23#5) = BitVec.ofNat 64 x.gc.1.priv.bytes.length)
-    (hx24 : s.readReg64 (Reg.gpr 24#5) = privPtr')
-    (hx9 : s.readReg64 (Reg.gpr 9#5) = mkPtr')
-    (hx25 : s.readReg64 (Reg.gpr 25#5) = x25)
-    (hx28 : s.readReg64 (Reg.gpr 28#5) = x28)
-    (hw27 : s.readReg32 (Reg.gpr 27#5) = w27)
-    (htrace : s.trace = s0.trace)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0) :
-    SepWPp ((blkPC_468).rebase (blkPl_468).base H) (s0.readReg64 (Reg.gpr 30#5)) s
-      (memRegion x.dst 104 ∗
-        vecU8Buf A (BitVec.ofNat 64 x.gc.1.srk.bytes.length) srkPtr' x.gc.1.srk.bytes ∗
-        vecU8Buf A (BitVec.ofNat 64 x.gc.1.priv.bytes.length) privPtr' x.gc.1.priv.bytes ∗
-        vecBuf A 104 8 (messageKeyAt A) (BitVec.ofNat 64 x.gc.2.messageKeys.length) mkPtr'
-          (keys'.zip x.gc.2.messageKeys) ∗
-        clonedOptChainKeyBuf A ckPin' x25 x28 w27 x.gc.2.chainKey ∗
-        protoChainAt A x.gc x.src ∗
-        A.pool ∗
-        stackAt (s0.sp - 208#64) allocHookStack ∗
-        spillSlotsExist s0.sp ∗
-        ((s0.sp - 144#64) ↦₆₄ BitVec.ofNat 64 x.gc.2.messageKeys.length) ∗
-        ((s0.sp - 136#64) ↦₆₄ v9) ∗
-        ((s0.sp - 128#64) ↦₆₄ v10) ∗
-        ((s0.sp - 104#64) ↦₆₄ v13) ∗
-        savedRegsOnStack s0)
-      (fun sf P_f =>
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf ∧
-        (P_f ⊢ (protoChainCloneSpec A).post x s0 sf))
-      Qp := by
-  rw [memRegion_104_eq_slots104 x.dst, sepExists_sepConj_left]
-  refine SepWPp.exists_elim fun d => ?_
-  unfold savedRegsOnStack
-  simp only [sepConj_assoc]
-  apply SepWPp.of_sepWP (mid := s0.readReg64 (Reg.gpr 30#5))
-  wp_steps
-  apply SepWP.done (by simp_all) (by simp_all)
-  apply SepWPp.done (by simp_all) (by simp_all)
-  refine ⟨by simp_all, ?_, ?_⟩
-  · constructor <;> simp_all
-  · rw [show BitVec.truncate 32 (s.readReg64 (Reg.gpr 27#5)) = w27 from hw27]
-    refine Entails.trans ?_
-      (epilogue_post_entails A x s0 _ srkPtr' privPtr' mkPtr' x25 x28 v9 v10 v13
-        w27 keys' ckPin' hsrk hmax hklen hsrc_klen (by simp_all))
-    unfold savedRegsOnStack
-    exact Entails.of_eq (by ac_rfl)
-
-theorem panic_at_handle_error3_placed [LibsignalPlacement]
-    {H : String → Option (State → State)}
-    (hpanic : H lsHandleErrorSym = some Rust.panicked) :
-    ((blkPC_468).rebase (blkPl_468).base H).externAt? (lsρ lsHandleErrorSym) =
-      some Rust.panicked := by
-  rw [ls_externAt?_of_mem, hpanic]
-
-theorem chain_clone3_placed_panic_800 [LibsignalPlacement] {A : RustAlloc}
-    {H : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (hpanic : H lsHandleErrorSym = some Rust.panicked)
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (blkPl_468).base + 800#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp ((blkPC_468).rebase (blkPl_468).base H) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hp := panic_at_handle_error3_placed hpanic
-  apply SepWPp.of_sepWP (mid := lsρ lsHandleErrorSym)
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hp) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone3_placed_panic_812 [LibsignalPlacement] {A : RustAlloc}
-    {H : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (hpanic : H lsHandleErrorSym = some Rust.panicked)
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (blkPl_468).base + 812#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp ((blkPC_468).rebase (blkPl_468).base H) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hp := panic_at_handle_error3_placed hpanic
-  apply SepWPp.of_sepWP (mid := lsρ lsHandleErrorSym)
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hp) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone3_placed_panic_824 [LibsignalPlacement] {A : RustAlloc}
-    {H : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (hpanic : H lsHandleErrorSym = some Rust.panicked)
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (blkPl_468).base + 824#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp ((blkPC_468).rebase (blkPl_468).base H) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hp := panic_at_handle_error3_placed hpanic
-  apply SepWPp.of_sepWP (mid := lsρ lsHandleErrorSym)
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hp) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone3_placed_panic_836 [LibsignalPlacement] {A : RustAlloc}
-    {H : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (hpanic : H lsHandleErrorSym = some Rust.panicked)
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (blkPl_468).base + 836#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp ((blkPC_468).rebase (blkPl_468).base H) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hp := panic_at_handle_error3_placed hpanic
-  apply SepWPp.of_sepWP (mid := lsρ lsHandleErrorSym)
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hp) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone3_placed_panic_848 [LibsignalPlacement] {A : RustAlloc}
-    {H : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (hpanic : H lsHandleErrorSym = some Rust.panicked)
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (blkPl_468).base + 848#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp ((blkPC_468).rebase (blkPl_468).base H) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hp := panic_at_handle_error3_placed hpanic
-  apply SepWPp.of_sepWP (mid := lsρ lsHandleErrorSym)
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hp) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone3_placed_panic_860 [LibsignalPlacement] {A : RustAlloc}
-    {H : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (hpanic : H lsHandleErrorSym = some Rust.panicked)
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (blkPl_468).base + 860#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp ((blkPC_468).rebase (blkPl_468).base H) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hp := panic_at_handle_error3_placed hpanic
-  apply SepWPp.of_sepWP (mid := lsρ lsHandleErrorSym)
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hp) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
 
 end CryptoVerification.LibsignalTripleRatchet.ChainClone3

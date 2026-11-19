@@ -21,7 +21,7 @@ Defines `TopDhSecret`, `RkHole`, `IkmRoleHoles`, and the role- and parity-indexe
 `SpineRk` over PQXDH and Double Ratchet KDF steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ open DY.Libsignal.PQXDH (pqxdhIkm pqxdhKdf)
 /-- The top DH hole of a root key `rk` has public key `pk'` and secret key `randTerm t 32`:
 either `rk = (kdfRk r₀ (dh pk' (randTerm t 32))).1` (from `createChain`) or
 `rk = (pqxdhKdf (pqxdhIkm (dh pk' (randTerm t 32)) dh2 dh3 dh4 ss)).rk` (from `pqxdhKdf`). -/
-def TopDhSecret (rk pk' : DY.Bytes) (t : Nat) : Prop :=
+@[expose] def TopDhSecret (rk pk' : DY.Bytes) (t : Nat) : Prop :=
   (∃ r₀, rk = (kdfRk r₀ (dh pk' (randTerm t 32))).1) ∨
   (∃ dh2 dh3 dh4 ss, rk = (pqxdhKdf (pqxdhIkm (dh pk' (randTerm t 32)) dh2 dh3 dh4 ss)).rk)
 
@@ -46,7 +46,7 @@ def TopDhSecret (rk pk' : DY.Bytes) (t : Nat) : Prop :=
   `rk`'s top DH hole is `dh pk' (randTerm t₀ 32)` with the SAME `pk'` and an earlier secret `t₀ ≠ t₁`.
 - At `b = true` (`recvChainFor` and `dhRatchetStep` 1st step): `d = dh pk' (randTerm t₂ 32)` where
   `rk = st.rk` has top DH hole `dh pk₀' (randTerm t₂ 32)` with the SAME secret `t₂` (`st.dhs`). -/
-def RkHole (b : Bool) (rk d : DY.Bytes) : Prop :=
+@[expose] def RkHole (b : Bool) (rk d : DY.Bytes) : Prop :=
   match b with
   | false => ∃ pk' t₀ t₁, d = dh pk' (randTerm t₁ 32) ∧ TopDhSecret rk pk' t₀ ∧ t₀ ≠ t₁
   | true => ∃ pk' pk₀' t₂, d = dh pk' (randTerm t₂ 32) ∧ TopDhSecret rk pk₀' t₂
@@ -55,7 +55,7 @@ def RkHole (b : Bool) (rk d : DY.Bytes) : Prop :=
 - Role `false` (`AliceDone`): `a` uses an `ik` secret (`P_ik`), and `b, e, d` use an `ek` secret (`P_ek`).
 - Role `true` (`BobDone`): `a, e` use an `spk` secret (`P_spk`), `b` uses an `ik` secret (`P_ik`),
   and `d` uses an `opk` secret (`P_opk`). -/
-def IkmRoleHoles (P_ik P_spk P_opk P_ek : Nat → Prop)
+@[expose] def IkmRoleHoles (P_ik P_spk P_opk P_ek : Nat → Prop)
     (c : Bool) (a b e : DY.Bytes) (d : Option DY.Bytes) : Prop :=
   match c with
   | false =>

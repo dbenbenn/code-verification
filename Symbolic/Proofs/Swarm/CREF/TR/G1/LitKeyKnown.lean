@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong
+public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.EquationalTheory.Literal
@@ -34,7 +34,7 @@ trace satisfying `SInvTR`, any logged `SkippedKeyStored` event whose ratchet key
 has both its ratchet key and its skipped seed attacker-known.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -251,12 +251,12 @@ theorem seedKnownCasesTR {T : ExecTrace} (hT : ReachableTrace T) {ck : DY.Bytes}
   · exact hwr2.ne_literal.elim
 
 /-- `x` is the sending or a receiving chain key of a state stored on `T`. -/
-def StoredCkTR (T : ExecTrace) (x : DY.Bytes) : Prop :=
+@[expose] def StoredCkTR (T : ExecTrace) (x : DY.Bytes) : Prop :=
   ∃ p st i, TRStateStoredAt p st i T ∧ (st.cks = x ∨ ∃ c ∈ st.recv, c.chainKey = x)
 
 /-- Statement that on a reachable trace, an attacker-known next chain key `(kdfCk ck).1` either
 comes from an attacker-known `ck` or is stored in a `TRState`. -/
-def CkKnownCasesTRP : Prop :=
+@[expose] def CkKnownCasesTRP : Prop :=
   ∀ {T : ExecTrace}, ReachableTrace T → ∀ {ck : DY.Bytes}, ((kdfCk ck).1).AttackerKnows T →
     ck.AttackerKnows T ∨ StoredCkTR T (kdfCk ck).1
 
@@ -265,7 +265,7 @@ def CkKnownCasesTRP : Prop :=
 /-- A chain base for ratchet key `pk`: a fresh `randTerm`, a receiving-half-step chain key
 `(createChain rk pk (randTerm t 32)).2`, or an `aliceStart` handshake chain base
 `(aliceAgreement ikA (randTerm t 32) ikB pk pqpk opk e).2.ck`. -/
-def ChainBaseTR (pk b : DY.Bytes) : Prop :=
+@[expose] def ChainBaseTR (pk b : DY.Bytes) : Prop :=
   (∃ i n, b = randTerm i n) ∨
   (∃ rk t, b = (createChain rk pk (randTerm t 32)).2) ∨
   (∃ ikA ikB pqpk opk t e,
@@ -312,16 +312,16 @@ theorem aliceAgreement_ck_litJunk_tr {ikA ikB pk pqpk e ikA' ikB' pk' pqpk' e' :
 /-! ## Trace invariant `SInvTR` -/
 
 /-- If `pk` is `LitJunk`, then `pk` and the chain base `b` are attacker-known on `tr`. -/
-def GoodTR (tr : ExecTrace) (pk b : DY.Bytes) : Prop :=
+@[expose] def GoodTR (tr : ExecTrace) (pk b : DY.Bytes) : Prop :=
   LitJunk pk → pk.AttackerKnows tr ∧ b.AttackerKnows tr
 
 /-- `ck` descends from a chain base `b` for `pk` with `GoodTR tr pk b`. -/
-def ChainOKTR (tr : ExecTrace) (pk ck : DY.Bytes) : Prop :=
+@[expose] def ChainOKTR (tr : ExecTrace) (pk ck : DY.Bytes) : Prop :=
   ∃ b k, ck = chainKeyAt b k ∧ GoodTR tr pk b ∧ ChainBaseTR pk b
 
 /-- The sending chain key descends from `randTerm`, or from a sending half-step
 `(createChain rk pk st.dhs).2` whose root output is `st.rk`. -/
-def CksOKTR (st : TRState) : Prop :=
+@[expose] def CksOKTR (st : TRState) : Prop :=
   (∃ i n k, st.cks = chainKeyAt (randTerm i n) k) ∨
     ∃ rk pk k, st.cks = chainKeyAt (createChain rk pk st.dhs).2 k ∧
       st.rk = (createChain rk pk st.dhs).1

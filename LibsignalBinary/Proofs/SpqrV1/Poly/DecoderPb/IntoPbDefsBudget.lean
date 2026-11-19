@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Specifications for `<spqr::encoding::polynomial::PolyDecoder>::into_pb`
@@ -20,7 +21,7 @@ Allocator event envelopes (`DecoderIntoPbAllocEnv`, `DecoderIntoPbEnv`) and
 Block `377`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,7 +30,6 @@ namespace LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget
 open Arm64 ProofLib
 open CryptoVerification (LibsignalPlacement blkPC_377 blkPl_377)
 open CryptoVerification.LibsignalSpqrV1 (PolyDecoder Pt)
-open CryptoVerification.LibsignalTripleRatchet (tripleRatchetProgAtExt)
 open CryptoVerification.SpqrV1.Poly (
   polyDecoderAt polyDecoderSize protoPolynomialDecoderAt protoPolynomialDecoderSize
 )
@@ -45,24 +45,24 @@ open LibsignalBinary.Heap (
 
 /-- Deterministic `AllocEvent` list emitted when serializing one `SortedSet<Pt>` slot in
     `<PolyDecoder>::into_pb`: `[]` if empty, else `rustAllocEvents (4 * pts.length) 1`. -/
-def decoderIntoPbSlotEvents (pts : List Pt) : List AllocEvent :=
+@[expose] def decoderIntoPbSlotEvents (pts : List Pt) : List AllocEvent :=
   if pts.isEmpty then [] else rustAllocEvents (4 * pts.length) 1
 
 /-- Deterministic `AllocEvent` list for the allocation phase of `<PolyDecoder>::into_pb`:
     the `384`-byte outer `Vec<Vec<u8>>` buffer (`align = 8`) followed by per-slot `Vec<u8>`
     allocations across `dec.pts`. -/
-def decoderIntoPbAllocEvents (dec : PolyDecoder) : List AllocEvent :=
+@[expose] def decoderIntoPbAllocEvents (dec : PolyDecoder) : List AllocEvent :=
   rustAllocEvents 384 8 ++ dec.pts.flatMap (fun s => decoderIntoPbSlotEvents s.vec)
 
 /-- Precondition allocation envelope of `<PolyDecoder>::into_pb` (before the trailing
     `drop_glue::<[SortedSet<Pt>; 16]>` deallocations). -/
-def DecoderIntoPbAllocEnv (dec : PolyDecoder) (evs : List AllocEvent) : Prop :=
+@[expose] def DecoderIntoPbAllocEnv (dec : PolyDecoder) (evs : List AllocEvent) : Prop :=
   evs = decoderIntoPbAllocEvents dec
 
 /-- Full postcondition event envelope of `<PolyDecoder>::into_pb`: deterministic allocations
     `decoderIntoPbAllocEvents dec` followed by `FreeOnlyEvs` from dropping the 16 `SortedSet<Pt>`
     buffers. -/
-def DecoderIntoPbEnv (dec : PolyDecoder) (evs : List AllocEvent) : Prop :=
+@[expose] def DecoderIntoPbEnv (dec : PolyDecoder) (evs : List AllocEvent) : Prop :=
   ∃ evs_alloc evs_free,
     evs = evs_alloc ++ evs_free ∧
     DecoderIntoPbAllocEnv dec evs_alloc ∧
@@ -83,7 +83,7 @@ theorem fitsEnv_decoderIntoPbAllocEnv_of_decoderIntoPbEnv {M : AllocCostModel}
 
 /-- Budget-threaded specification of `<spqr::encoding::polynomial::PolyDecoder>::into_pb`
     (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def decoderIntoPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def decoderIntoPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DecoderIntoPbGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.decA ∧
@@ -99,7 +99,7 @@ def decoderIntoPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bud
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp decoderIntoPbStack
 
 /-- Extended-stack variant of `decoderIntoPbSpec` (`decoderIntoPbStackX = 160 + extHookStack`). -/
-def decoderIntoPbSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def decoderIntoPbSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DecoderIntoPbGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.decA ∧
@@ -114,26 +114,14 @@ def decoderIntoPbSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bu
       memRegion x.decA polyDecoderSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp decoderIntoPbStackX
 
-def DecoderIntoPbOkExt (b : BitVec 64) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decoderIntoPbName)
-    (decoderIntoPbSpec M A lim)
-
-def DecoderIntoPbOkX (img : Obj.Image) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr decoderIntoPbName)
-    ((decoderIntoPbSpecX M A lim).inImage img)
-
-def DecoderIntoPbPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def DecoderIntoPbPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_377).rebase (blkPl_377).base (Rust.withPanics ext))
     (blkPl_377).base
     (decoderIntoPbSpec M A lim)
 
-def DecoderIntoPbPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def DecoderIntoPbPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_377).rebase (blkPl_377).base (Rust.withPanics ext))

@@ -9,21 +9,69 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public meta import Lean -- shake: keep
 public meta import ProofLib -- shake: keep
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropSsLocal1Ext
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropSsLocal1Ext -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.Common
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Fetch
 import ProofLib.SepLogic.WPp
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.Alloc
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.IoCommon
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.RustStd.Spec.Top
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `SessionStructure` Drop Glue Proofs
@@ -38,7 +86,7 @@ Proves relocatable `[LibsignalPlacement]` total-correctness (`onOom := ⌜False�
 * `fromRecord_clone_and_drop_budget_bounds` composing clone and drop peak bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -277,64 +325,63 @@ private theorem weaken_pre_at_state {prog : Program} {tgt : BitVec 64} {s : Stat
   rw [heq]
   exact SepWP.weaken_pre (hent s) hwp
 
-
 /-! ## 1. Deterministic Drop Event Lists & Deallocation Credit Lemmas -/
 
 /-- Events emitted by dropping one `VecPin` (`cap == 0#64` skips `__rust_dealloc`). -/
-def pinFreeEvents (pin : VecPin) : List AllocEvent :=
+@[expose] def pinFreeEvents (pin : VecPin) : List AllocEvent :=
   if (pin.cap == 0#64) = true then []
   else rustDeallocEvents pin.cap.toNat 1
 
 /-- Events emitted by dropping a signed-niche `cap : BitVec 64` (`cap.slt 1#64` skips dealloc). -/
-def sgnCapFreeEvents (cap : BitVec 64) : List AllocEvent :=
+@[expose] def sgnCapFreeEvents (cap : BitVec 64) : List AllocEvent :=
   if cap.slt 1#64 = true then []
   else rustDeallocEvents cap.toNat 1
 
 /-- Events emitted by dropping a `Vec<104>` outer buffer (`align = 8`, `cap == 0#64` skips). -/
-def vec104FreeEvents (cap : BitVec 64) : List AllocEvent :=
+@[expose] def vec104FreeEvents (cap : BitVec 64) : List AllocEvent :=
   if (cap == 0#64) = true then []
   else rustDeallocEvents (cap.toNat * 104) 8
 
 /-- Events emitted by one iteration of `drop_glue::<Vec<MessageKey>>` (`cipher`, `mac`, `iv`, `seed`). -/
-def mkFreeEvents (pin : MessageKeyGhost) : List AllocEvent :=
+@[expose] def mkFreeEvents (pin : MessageKeyGhost) : List AllocEvent :=
   pinFreeEvents pin.cipher ++ pinFreeEvents pin.mac ++
     pinFreeEvents pin.iv ++ pinFreeEvents pin.seed
 
 /-- Events emitted by `drop_glue::<Vec<MessageKey>>` (Block `3`). -/
-def dropVecMessageKeyEvents (cap : BitVec 64)
+@[expose] def dropVecMessageKeyEvents (cap : BitVec 64)
     (mks : List (MessageKeyGhost × MessageKeyGenerator)) : List AllocEvent :=
   (mks.flatMap fun gk => mkFreeEvents gk.1) ++ vec104FreeEvents cap
 
 /-- Deterministic capacity word stored at `chain + 0x48` (`optChainKeyNone` on `none`, `pin.cap` on `some`). -/
-def optCkCapVal (pin : VecPin) : Option ChainKey → BitVec 64
+@[expose] def optCkCapVal (pin : VecPin) : Option ChainKey → BitVec 64
   | none => optChainKeyNone
   | some _ => pin.cap
 
 /-- Events emitted by one iteration of `drop_glue::<Vec<Chain>>` (`srk`, `priv`, `ck`, `message_keys`). -/
-def chainPairFreeEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def chainPairFreeEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   pinFreeEvents ⟨gc.1.srk.cap, gc.1.srk.ptr⟩ ++
     pinFreeEvents ⟨gc.1.priv.cap, gc.1.priv.ptr⟩ ++
     sgnCapFreeEvents (optCkCapVal gc.1.ck gc.2.chainKey) ++
     dropVecMessageKeyEvents gc.1.mkCap (gc.1.keys.zip gc.2.messageKeys)
 
 /-- Events emitted by `drop_glue::<Vec<Chain>>` (Block `2`). -/
-def dropVecChainEvents (cap : BitVec 64)
+@[expose] def dropVecChainEvents (cap : BitVec 64)
     (cs : List (ChainGhost × ReceiverChain)) : List AllocEvent :=
   (cs.flatMap chainPairFreeEvents) ++ vec104FreeEvents cap
 
 /-- Deterministic capacity word of `optTailVecAt` (`noneCap` on `none`, `tg.vec.cap` on `some tg`). -/
-def optTailCapVal : Option TailVecGhost → BitVec 64
+@[expose] def optTailCapVal : Option TailVecGhost → BitVec 64
   | none => noneCap
   | some tg => tg.vec.cap
 
 /-- Events emitted by `first3` (`local_identity_public`, `remote_identity_public`, `root_key`). -/
-def ssFirst3FreeEvents (G : SessionGhost) : List AllocEvent :=
+@[expose] def ssFirst3FreeEvents (G : SessionGhost) : List AllocEvent :=
   pinFreeEvents ⟨G.localIk.cap, G.localIk.ptr⟩ ++
     pinFreeEvents ⟨G.remoteIk.cap, G.remoteIk.ptr⟩ ++
     pinFreeEvents G.root
 
 /-- Events emitted by the `sender_chain` drop segment (`+76 → +156`). -/
-def senderFreeEvents : Option SenderChainGhost → List AllocEvent
+@[expose] def senderFreeEvents : Option SenderChainGhost → List AllocEvent
   | none => []
   | some sg =>
     pinFreeEvents ⟨sg.srk.cap, sg.srk.ptr⟩ ++
@@ -343,13 +390,13 @@ def senderFreeEvents : Option SenderChainGhost → List AllocEvent
       dropVecMessageKeyEvents sg.mkCap []
 
 /-- Events emitted by `tail3` (`pending_pre_key`, `pending_kyber_pre_key`, `alice_base_key`). -/
-def ssTail3FreeEvents (G : SessionGhost) : List AllocEvent :=
+@[expose] def ssTail3FreeEvents (G : SessionGhost) : List AllocEvent :=
   sgnCapFreeEvents (optTailCapVal G.pending) ++
     sgnCapFreeEvents (optTailCapVal G.kyber) ++
     pinFreeEvents ⟨G.alice.cap, G.alice.ptr⟩
 
 /-- Complete deterministic `AllocEvent` trace of `drop_glue::<SessionStructure> [local#1]` (Block `6`). -/
-def dropSessionStructureLocal1Events (G : SessionGhost)
+@[expose] def dropSessionStructureLocal1Events (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) : List AllocEvent :=
   ssFirst3FreeEvents G ++
     senderFreeEvents G.sender ++
@@ -358,20 +405,20 @@ def dropSessionStructureLocal1Events (G : SessionGhost)
     pinFreeEvents G.pq
 
 /-- Pure layout invariants extracted non-destructively from `chainAt`. -/
-def ChainPairCapsOk (gc : ChainGhost × ReceiverChain) : Prop :=
+@[expose] def ChainPairCapsOk (gc : ChainGhost × ReceiverChain) : Prop :=
   gc.1.keys.length = gc.2.messageKeys.length ∧
     ∀ ck, gc.2.chainKey = some ck → gc.1.ck.cap.toNat < 2 ^ 63
 
 /-- List-level `ChainPairCapsOk` extracted from `vecAt ... (chainAt A) ... cs`. -/
-def ChainListCapsOk (cs : List (ChainGhost × ReceiverChain)) : Prop :=
+@[expose] def ChainListCapsOk (cs : List (ChainGhost × ReceiverChain)) : Prop :=
   ∀ gc ∈ cs, ChainPairCapsOk gc
 
 /-- Pure capacity bound extracted from `optTailVecAt`. -/
-def TailCapOk (opt : Option TailVecGhost) : Prop :=
+@[expose] def TailCapOk (opt : Option TailVecGhost) : Prop :=
   ∀ tg, opt = some tg → tg.vec.cap.toNat < 2 ^ 63
 
 /-- Pure layout invariants extracted non-destructively from `sessionStateAt`. -/
-def SessionDropCapsOk (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Prop :=
+@[expose] def SessionDropCapsOk (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Prop :=
   (∀ sg, G.sender = some sg → sg.ck.cap.toNat < 2 ^ 63) ∧
     ChainListCapsOk (G.chains.zip st.receiverChains) ∧
     TailCapOk G.pending ∧
@@ -1449,7 +1496,7 @@ open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 `dropVecMessageKeyStackX = 16,432` B): `onOom := ⌜False⌝`, `onPanic := ⌜False⌝`, leaves `cumSmall`
 and `peakLarge` non-increasing, and credits `(x.mks.map (messageKeyLargeLive M ∘ Prod.fst)).sum +
 vec104LargeLive M x.cap.toNat` back from `liveLarge`. -/
-def dropVecMessageKeyBudgetSpecX [LibsignalPlacement]
+@[expose] def dropVecMessageKeyBudgetSpecX [LibsignalPlacement]
     (M : AllocCostModel) [HasFineReallocCredit M]
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropVecMessageKeyGhost × M.σ) where
@@ -1626,7 +1673,6 @@ private theorem drop_vec_message_key_budget_placed_body [LibsignalPlacement]
             wp_done
         exact SepWP.mono hstep4 fun sm Pm _ _ h =>
           ⟨Entails.trans h.1 (sepConj_mono_left (mkHeadersAt_entails_memRegion_104 cur pin)), h.2⟩
-
 
 private def dropVecMessageKeyEventsSpecX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
@@ -1908,7 +1954,7 @@ theorem drop_vec_message_key_budget_placed_ok_cl [LibsignalPlacement]
 `dropVecChainStackX = 16,480` B): `onOom := ⌜False⌝`, `onPanic := ⌜False⌝`, leaves `cumSmall`
 and `peakLarge` non-increasing, and credits `(x.cs.map (chainPairLargeLive M)).sum +
 vec104LargeLive M x.cap.toNat` back from `liveLarge`. -/
-def dropVecChainBudgetSpecX [LibsignalPlacement]
+@[expose] def dropVecChainBudgetSpecX [LibsignalPlacement]
     (M : AllocCostModel) [HasFineReallocCredit M]
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropVecChainGhost × M.σ) where
@@ -2139,7 +2185,6 @@ private theorem drop_vec_chain_budget_placed_body [LibsignalPlacement]
         rw [stackAt_dropVecMessageKeyX_split_bottom fsp] at h1
         dsimp only [extHookStack, Proofs.libsignal.Stage1X.extHookStack] at h1 ⊢
         exact Entails.trans h1 (sepConj_mono_left (chain_memRegions_entails_104 cur))
-
 
 set_option maxHeartbeats 800000 in
 private theorem drop_vec_chain_budget_placed_loop [LibsignalPlacement]
@@ -2424,7 +2469,7 @@ theorem drop_vec_chain_budget_placed_ok_cl [LibsignalPlacement]
 (**unchanged**), leaving `cumSmall` and `peakLarge` non-increasing, and crediting
 `ssStateLargeLive M x.G x.st` back from `liveLarge` (equal to `ssLargeLive M x.G` whenever
 `none` chain-keys carry `ck.cap.slt 1#64 = true`, see `ssStateLargeLive_eq_ssLargeLive`). -/
-def dropSessionStructureLocal1BudgetSpecX [LibsignalPlacement]
+@[expose] def dropSessionStructureLocal1BudgetSpecX [LibsignalPlacement]
     (M : AllocCostModel) [HasFineReallocCredit M]
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropSessionStructureLocal1Ghost × M.σ) where
@@ -2573,7 +2618,6 @@ private theorem drop_ss_local1_budget_placed_first3 [LibsignalPlacement]
           wp_done
       exact SepWP.mono hstep3 (fun sm Pm _ _ h =>
         ⟨Entails.trans h.1 (sepConj_mono_left (ssFirst3HeadersAt_entails_memRegions_x ss G)), h.2⟩)
-
 
 set_option maxHeartbeats 800000 in
 private theorem drop_ss_local1_budget_placed_sender [LibsignalPlacement]
@@ -2788,7 +2832,6 @@ private theorem drop_ss_local1_budget_placed_sender [LibsignalPlacement]
             dsimp only [extHookStack, Proofs.libsignal.Stage1X.extHookStack] at h1 ⊢
             exact Entails.trans h1 (sepConj_mono_left (ssSender1_memRegions_entails_104_x ss))
 
-
 set_option maxHeartbeats 400000 in
 private theorem drop_ss_local1_tail3_step1 [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
@@ -2994,7 +3037,6 @@ private theorem drop_ss_local1_budget_placed_tail3 [LibsignalPlacement]
     (M.stepEvents (sgnCapFreeEvents (optTailCapVal G.kyber))
       (M.stepEvents (sgnCapFreeEvents (optTailCapVal G.pending)) st))
     s2 Frame hpc2 hrun2 hcl2 hpres2 hx19_2
-
 
 private theorem ss_local1_tail_dealloc_post_ext (ss : BitVec 64) (pool : SepProp) (sp : BitVec 64) :
     memRegion (ss + 120#64) 24 ∗ ss9MemRegions ss ∗ pool ∗

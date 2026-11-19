@@ -27,10 +27,9 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
@@ -46,7 +45,7 @@ either arises directly from a logged `AliceDone` or `BobDone` handshake (`RkHist
 obtained by a `dhRatchetStep` from an earlier stored state at index `i' < i` (`RkHistStep T i st`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,7 +71,7 @@ attribute [local instance 2000]
 /-! ## Root-key history predicates -/
 
 /-- A root key produced by a `dhRatchetStep` from an earlier stored `TRState` at `i' < i` on `T`. -/
-def RkHistStep (T : ExecTrace) (i : Nat) (st : TRState) : Prop :=
+@[expose] def RkHistStep (T : ExecTrace) (i : Nat) (st : TRState) : Prop :=
   ∃ (p' : Participant) (st' : TRState) (i' : Nat) (pk : DY.Bytes),
     i' < i ∧ TRStateStoredAt p' st' i' T ∧
     st.rk = (createChain (createChain st'.rk pk st'.dhs).1 pk st.dhs).1
@@ -80,7 +79,7 @@ def RkHistStep (T : ExecTrace) (i : Nat) (st : TRState) : Prop :=
 /-- Initial stored root-key forms produced by `aliceStart` (one `createChain` from a logged
 `AliceDone` handshake `keys.rk`) and `bobStart` (two `createChain` steps from a logged `BobDone`
 handshake `keys.rk`). -/
-def RkHistBase (T : ExecTrace) (st : TRState) : Prop :=
+@[expose] def RkHistBase (T : ExecTrace) (st : TRState) : Prop :=
   (∃ (a b : Participant) (ikA ikB spk pqpk : DY.Bytes) (opk : Option DY.Bytes)
      (ek ct : DY.Bytes) (keys : HandshakeKeys) (j : Nat),
      T.EventLoggedAt (PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) j ∧

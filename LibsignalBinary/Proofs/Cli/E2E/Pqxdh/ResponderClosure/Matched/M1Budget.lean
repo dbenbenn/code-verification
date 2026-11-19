@@ -9,18 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1BudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Raw
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Steps
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1BudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Raw
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Steps
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Specifications.AsmConstants
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `SessionRecord::promote_matching_session` on a Matched Current Session
@@ -29,7 +30,7 @@ import ProofLib.SepLogic.WPp
 `A.pool lim st` via `VmPreserved s0 sf`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -54,11 +55,6 @@ export LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1BudgetAux
   (promoteMatchingSessionRawBudgetSpec promoteMatchingSessionRawBudgetSpecExt32
    promoteMatchingSessionMatchBudgetSpec promoteMatchingSessionMatchSpec)
 
-export LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1BudgetAux
-  (promoteMatchingSessionMatchBudgetSpecExt promoteMatchingSessionMatchSpecExt
-   promote_matching_session_raw_ok promote_matching_session_raw_ok_ext32)
-
-attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.add_assoc BitVec.toNat_zero
 
 /-! ## Record-level frame refinement -/
@@ -338,59 +334,6 @@ private theorem promoteMatch_post_entails (A : RustAlloc) (x : PromoteMatchGhost
     BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
   exact Entails.of_eq (by sep_ac_rfl)
 
-theorem promote_matching_session_match_ok {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (h_bb : ext "subtle::black_box::<u8>" = some blackBoxHook) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr promoteMatchingSessionName)
-      (promoteMatchingSessionMatchBudgetSpec A) := by
-  refine subroutine_ok_vmPreserved_refine_frame
-    (promote_matching_session_raw_ok (b := b) (ext := ext) h_bb) ?_
-  intro x R s0 hpre
-  have hpre' : s0.mem ⊨
-      ⌜s0.readReg64 .x0 = x.recPtr ∧
-       s0.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
-       s0.readReg64 .x2 = x.serPtr ∧
-       s0.readReg64 .x3 = 33#64 ∧
-       s0.readReg64 .x8 = x.outPtr ∧
-       x.r.currentSession = some x.s ∧
-       x.s.state.version = x.msgVer.zeroExtend 32 ∧
-       x.s.aliceBaseKey = x.serBytes ∧
-       x.serBytes.length = 33⌝ ∗
-      ((sessionRecordAt A x.recPtr x.g x.r ∗
-        (x.serPtr ↦ₛ x.serBytes) ∗
-        memRegion x.outPtr 16 ∗
-        stackAt s0.sp promoteMatchingSessionMatchStack) ∗ R) := by
-    dsimp only [CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.promoteMatchingSessionMatchSpec] at hpre
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre
-  rw [satisfies_pure_sepConj] at hpre'
-  obtain ⟨⟨hx0, hx1, hx2, hx3, hx8, hcur, hver, halice, hlen⟩, hpre_sp⟩ := hpre'
-  cases hgc : x.g.cur with
-  | none =>
-    exfalso
-    have hfalse : s0.mem ⊨ ⌜False⌝ ∗
-        (vecAt A 24 8 (fun (_ : Unit) _ => emp) x.recPtr x.g.prevCap x.g.prevPtr [] ∗
-         (x.serPtr ↦ₛ x.serBytes) ∗ memRegion x.outPtr 16 ∗
-         stackAt s0.sp promoteMatchingSessionMatchStack ∗ R) := by
-      simp only [sessionRecordAt, hgc, hcur] at hpre_sp
-      exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre_sp
-    rw [satisfies_pure_sepConj] at hfalse
-    exact hfalse.1
-  | some G =>
-    refine ⟨⟨x.recPtr, G.localIk.cap, G.alice.ptr, x.s.state.sessionVersion,
-             x.msgVer, x.serPtr, x.serBytes, x.outPtr⟩,
-            promoteMatchFrame A x.recPtr x.outPtr s0.sp x.g G x.s, ?_, ?_⟩
-    · rw [← sepConj_assoc]
-      exact Satisfies.mono
-        (sepConj_mono_left
-          (promoteMatch_pre_entails A x G s0 hgc hx0 hx1 hx2 hx3 hx8 hcur hver halice hlen))
-        hpre_sp
-    · intro sf hpost
-      rw [← sepConj_assoc] at hpost
-      exact Satisfies.mono
-        (sepConj_mono_left (promoteMatch_post_entails A x G s0 sf hgc hcur halice hlen))
-        hpost
-
 private theorem rawPreExt32_eq (y : PromoteRawGhost) (st : State) :
     promoteMatchingSessionRawSpecExt32.pre y st =
       promoteMatchingSessionRawSpec.pre y st ∗ stackAt (st.sp - 1184#64) extHookStack := by
@@ -460,59 +403,5 @@ private theorem promoteMatch_post_entails_ext32 (A : RustAlloc) (x : PromoteMatc
     (sepConj_mono_left (promoteMatch_post_entails A x G s0 sf hgc hcur halice hlen)) ?_
   dsimp only [CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.promoteMatchingSessionMatchSpec]
   exact Entails.of_eq (by sep_ac_rfl)
-
-theorem promote_matching_session_match_ok_ext32 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (h_bb : HookSat ext "subtle::black_box::<u8>"
-      (withVmPreserved CryptoVerification.SignalSession.CliExt.blackBoxSpec)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr promoteMatchingSessionName)
-      (promoteMatchingSessionMatchBudgetSpecExt A) := by
-  refine subroutine_ok_vmPreserved_refine_frame
-    (promote_matching_session_raw_ok_ext32 (b := b) (ext := ext) h_bb) ?_
-  intro x R s0 hpre
-  have hpre' : s0.mem ⊨
-      ⌜s0.readReg64 .x0 = x.recPtr ∧
-       s0.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
-       s0.readReg64 .x2 = x.serPtr ∧
-       s0.readReg64 .x3 = 33#64 ∧
-       s0.readReg64 .x8 = x.outPtr ∧
-       x.r.currentSession = some x.s ∧
-       x.s.state.version = x.msgVer.zeroExtend 32 ∧
-       x.s.aliceBaseKey = x.serBytes ∧
-       x.serBytes.length = 33⌝ ∗
-      ((sessionRecordAt A x.recPtr x.g x.r ∗
-        (x.serPtr ↦ₛ x.serBytes) ∗
-        memRegion x.outPtr 16 ∗
-        stackAt s0.sp promoteMatchingSessionMatchStackExt) ∗ R) := by
-    dsimp only [CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.promoteMatchingSessionMatchSpecExt] at hpre
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre
-  rw [satisfies_pure_sepConj] at hpre'
-  obtain ⟨⟨hx0, hx1, hx2, hx3, hx8, hcur, hver, halice, hlen⟩, hpre_sp⟩ := hpre'
-  cases hgc : x.g.cur with
-  | none =>
-    exfalso
-    have hfalse : s0.mem ⊨ ⌜False⌝ ∗
-        (vecAt A 24 8 (fun (_ : Unit) _ => emp) x.recPtr x.g.prevCap x.g.prevPtr [] ∗
-         (x.serPtr ↦ₛ x.serBytes) ∗ memRegion x.outPtr 16 ∗
-         stackAt s0.sp promoteMatchingSessionMatchStackExt ∗ R) := by
-      simp only [sessionRecordAt, hgc, hcur] at hpre_sp
-      exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre_sp
-    rw [satisfies_pure_sepConj] at hfalse
-    exact hfalse.1
-  | some G =>
-    refine ⟨⟨x.recPtr, G.localIk.cap, G.alice.ptr, x.s.state.sessionVersion,
-             x.msgVer, x.serPtr, x.serBytes, x.outPtr⟩,
-            promoteMatchFrame A x.recPtr x.outPtr s0.sp x.g G x.s, ?_, ?_⟩
-    · rw [← sepConj_assoc]
-      exact Satisfies.mono
-        (sepConj_mono_left
-          (promoteMatch_pre_entails_ext32 A x G s0 hgc hx0 hx1 hx2 hx3 hx8 hcur hver halice hlen))
-        hpre_sp
-    · intro sf hpost
-      rw [← sepConj_assoc] at hpost
-      exact Satisfies.mono
-        (sepConj_mono_left (promoteMatch_post_entails_ext32 A x G s0 sf hgc hcur halice hlen))
-        hpost
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Budget

@@ -12,19 +12,21 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.Accept
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecBudget
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.Accept -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecBudget
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 public import LibsignalBinary.Heap.IfaceBudgetBase
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `Pqxdh::accept` Helpers and Placed Contracts
@@ -35,28 +37,25 @@ Provides `RustCliAllocBudget M` allocator split combinators (`SepWPp.split_alloc
 `Pqxdh::accept` (Block `79`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget
 
+open CryptoVerification.LibsignalTripleRatchet (LibsignalCodeRoLoaded extract_withLsFrozen withLsCodeRoLoaded withLsFrozen)
+
 open Arm64 Arm64.Obj ProofLib SepProp
 open CryptoGames.LibsignalSession (Crypto)
 open CryptoVerification (
   LibsignalFrozen LibsignalPlacement libsignalFrozen_of_keepsFrozen
-  libsignalSessionCode lsLogFilterAddr lsmpl
+  libsignalSessionLib lsLogFilterAddr lsmpl
 )
 open CryptoVerification.RustHeap (allocHookStack)
-open CryptoVerification.LibsignalTripleRatchet (
-  LibsignalCodeRoLoaded
-  subroutine_ok_kit_of_trTrap trTrapProgAt trTrapProgAt_fnAddr_eq
-  tripleRatchetProgAt tripleRatchetProgAtExt
-  withLsCodeRoLoaded withLsFrozen extract_withLsFrozen
-)
 open CryptoVerification.E2E.Pqxdh.Initiator (
-  AcceptKeysInput Bytes KeyCanonicalGhost Primitives StructuralPrims WellSizedAcceptKeysInput
-  bv_sub_add_lit' bytesToBv8 handshakeKeysResultOk104 pqxdhEntryStack
+  AcceptKeysInput Bytes KeyCanonicalGhost KyberDecapsCall Primitives StructuralPrims
+  WellSizedAcceptKeysInput
+  bv_sub_add_lit' bytesToBv8 fitBv8 handshakeKeysResultOk104 kyberDecapsOutBytes pqxdhEntryStack
 )
 open CryptoVerification.E2E.Pqxdh.Initiator.Model (acceptKeys)
 open CryptoVerification.E2E.Pqxdh.ResponderCore (
@@ -72,6 +71,9 @@ open LibsignalBinary.Heap (
   rustCliDeallocBudgetSpecBase subroutine_ok_allocNoOom_of_budgetBase
 )
 open LibsignalBinary.Heap.SpecBudget (AllocHooksBudgetBase withVmPreserved)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (
+  satisfies_withLsRet_of_blockPlacement_base_add withLsRet
+)
 
 /-! ## 1. Budget-Threaded `SepWPp` Allocator Split Combinators -/
 
@@ -183,134 +185,20 @@ section HookAt
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 
-ls_attribute [local simp, local arm64_norm ↓]
-  (ls_stub% "__rustc::__rust_alloc") (ls_stub% "__rustc::__rust_dealloc")
-
-theorem pqxdh_alloc_ok_at_trap {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64} {C : Crypto}
-    {absHooks : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim absHooks) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by fnoff_eq) :
-    subroutine_ok (trTrapProgAt b C absHooks)
-      ((trTrapProgAt b C absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocBudgetSpecBase M A lim false) :=
-  hook_ok_at (P := libsignalSessionCode) (hname := "__rustc::__rust_alloc") rfl hk
-    (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-    (by simp [Rust.isPanicSymbol])
-    (by unfold HookSat at *; exact hA.alloc)
-
-theorem pqxdh_alloc_ok_at {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim absHooks) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt b C ctl absHooks)
-      ((tripleRatchetProgAt b C ctl absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocBudgetSpecBase M A lim false) := by
-  simp only [← trTrapProgAt_fnAddr_eq] at *
-  exact subroutine_ok_kit_of_trTrap (pqxdh_alloc_ok_at_trap hA hk)
-
-theorem pqxdh_allocNoOom_ok_at_trap {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64} {C : Crypto}
-    {absHooks : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim absHooks) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by fnoff_eq) :
-    subroutine_ok (trTrapProgAt b C absHooks)
-      ((trTrapProgAt b C absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocNoOomSpecBase M A lim false) :=
-  subroutine_ok_allocNoOom_of_budgetBase (pqxdh_alloc_ok_at_trap hA hk)
-
-theorem pqxdh_allocNoOom_ok_at {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim absHooks) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt b C ctl absHooks)
-      ((tripleRatchetProgAt b C ctl absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocNoOomSpecBase M A lim false) :=
-  subroutine_ok_allocNoOom_of_budgetBase (pqxdh_alloc_ok_at hA hk)
-
-theorem pqxdh_dealloc_ok_at_trap {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64} {C : Crypto}
-    {absHooks : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim absHooks) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by fnoff_eq) :
-    subroutine_ok (trTrapProgAt b C absHooks)
-      ((trTrapProgAt b C absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliDeallocBudgetSpecBase M A lim) :=
-  hook_ok_at (P := libsignalSessionCode) (hname := "__rustc::__rust_dealloc") rfl hk
-    (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-    (by simp [Rust.isPanicSymbol])
-    (by unfold HookSat at *; exact hA.dealloc)
-
-theorem pqxdh_dealloc_ok_at {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {absHooks : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim absHooks) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt b C ctl absHooks)
-      ((tripleRatchetProgAt b C ctl absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliDeallocBudgetSpecBase M A lim) := by
-  simp only [← trTrapProgAt_fnAddr_eq] at *
-  exact subroutine_ok_kit_of_trTrap (pqxdh_dealloc_ok_at_trap hA hk)
-
-theorem pqxdh_alloc_ok_at_ext {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocBudgetSpecBase M A lim false) :=
-  hook_ok_at (P := libsignalSessionCode) (hname := "__rustc::__rust_alloc") rfl hk
-    (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-    (by simp [Rust.isPanicSymbol]) hA.alloc
-
-theorem pqxdh_allocNoOom_ok_at_ext {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliAllocNoOomSpecBase M A lim false) :=
-  subroutine_ok_allocNoOom_of_budgetBase (pqxdh_alloc_ok_at_ext hA hk)
-
-theorem pqxdh_dealloc_ok_at_ext {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim ext) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustCliDeallocBudgetSpecBase M A lim) :=
-  hook_ok_at (P := libsignalSessionCode) (hname := "__rustc::__rust_dealloc") rfl hk
-    (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])
-    (by simp [Rust.isPanicSymbol]) hA.dealloc
-
 end HookAt
 
 /-- `VmPreserved`-strengthened `ecPubKeyIsCanonicalCallSpec`. -/
-def ecPubKeyIsCanonicalCallSpec (P : Primitives) :
+@[expose] def ecPubKeyIsCanonicalCallSpec (P : Primitives) :
     Spec KeyCanonicalGhost :=
   withVmPreserved (CryptoVerification.E2E.Pqxdh.ResponderCore.ecPubKeyIsCanonicalCallSpec P)
 
 /-- `VmPreserved`-strengthened `ecPubKeyIsCanonicalCallSpecExt`. -/
-def ecPubKeyIsCanonicalCallSpecExt (P : Primitives) :
+@[expose] def ecPubKeyIsCanonicalCallSpecExt (P : Primitives) :
     Spec KeyCanonicalGhost :=
   withVmPreserved (CryptoVerification.E2E.Pqxdh.ResponderCore.ecPubKeyIsCanonicalCallSpecExt P)
 
 /-- `VmPreserved`-strengthened `pqxdhVecAppendElementsFastSpecExt`. -/
-def pqxdhVecAppendElementsFastSpecExt :
+@[expose] def pqxdhVecAppendElementsFastSpecExt :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   withVmPreserved CryptoVerification.E2E.Pqxdh.ResponderCore.pqxdhVecAppendElementsFastSpecExt
 
@@ -318,17 +206,17 @@ def pqxdhVecAppendElementsFastSpecExt :
 
 /-- Deterministic `AllocEvent` list emitted by `PrivateKey::calculate_agreement` (Block `207`):
 `[]` when the X25519 shared secret is all-zero, and `rustAllocEvents 32 1` otherwise. -/
-def calculateAgreementEvents (P : Primitives) (ourSk32 theirPk32 : Bytes) : List AllocEvent :=
+@[expose] def calculateAgreementEvents (P : Primitives) (ourSk32 theirPk32 : Bytes) : List AllocEvent :=
   if P.x25519 ourSk32 theirPk32 = List.replicate 32 0 then [] else rustAllocEvents 32 1
 
 /-- Allocation envelope for `PrivateKey::calculate_agreement`. -/
-def CalculateAgreementEnv (P : Primitives) (ourSk32 theirPk32 : Bytes)
+@[expose] def CalculateAgreementEnv (P : Primitives) (ourSk32 theirPk32 : Bytes)
     (evs : List AllocEvent) : Prop :=
   evs = calculateAgreementEvents P ourSk32 theirPk32
 
 /-- Budget-threaded relocatable base specification for `PrivateKey::calculate_agreement`
 (Block `207`, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under `FitsEvents`). -/
-def acceptCalculateAgreementPlacedBaseSpec (M : AllocCostModel) (P : Primitives)
+@[expose] def acceptCalculateAgreementPlacedBaseSpec (M : AllocCostModel) (P : Primitives)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × Bytes × BitVec 64 × Bytes × BitVec 64 × BitVec 64) × M.σ) where
   pre := fun ((ourA, ourSk32, theirA, theirPk32, ret, sp), st) s =>
@@ -347,7 +235,7 @@ def acceptCalculateAgreementPlacedBaseSpec (M : AllocCostModel) (P : Primitives)
 /-- Deterministic `AllocEvent` list emitted on the accepting (`acceptKeys P inp = some _`) path of
 `Pqxdh::accept` (Block `79`): `192`-byte `secrets` buffer + `3` (or `4`, when `inp.opkBSk?.isSome`)
 `32`-byte X25519 `Box<[u8]>` allocations/deallocations + `192`-byte `secrets` deallocation. -/
-def acceptSuccessEvents (inp : AcceptKeysInput) : List AllocEvent :=
+@[expose] def acceptSuccessEvents (inp : AcceptKeysInput) : List AllocEvent :=
   let dhCycle := rustAllocEvents 32 1 ++ rustDeallocEvents 32 1
   rustAllocEvents 192 1 ++
     dhCycle ++ dhCycle ++ dhCycle ++
@@ -484,10 +372,96 @@ theorem SepWPp_call_hag_placed [LibsignalPlacement] {M : AllocCostModel} {prog :
     simp only [sepConj_assoc]
     exact hok hdh sf dh_ptr hpc_f hrun_f (hsp_f.trans hsp_eq) hcs_f htr_sf hF_f
 
+/-- Placed stack frame (`36,864` B >= `35,968` B real leaf frame) for
+`libcrux_ml_kem::mlkem1024::kyber::decapsulate`. -/
+abbrev kyberDecapsPlacedStack : Nat := 36864
+
+/-- Placed stack frame (`41,984` B = `16,384 + 25,600`) for `Pqxdh::accept` (Block `79`),
+covering `4,944` B local frame + `36,864` B `kyber::decapsulate` call frame (`41,808` B). -/
+abbrev pqxdhAcceptPlacedStack : Nat := pqxdhEntryStack + 25600
+
+/-- Stack-parameterized `kyberDecapsStubSpec`. -/
+@[expose] def kyberDecapsStubSpecAt (stk : Nat) (P : Primitives) : Spec KyberDecapsCall where
+  pre := fun g s =>
+    ⌜s.readReg64 .x0 = g.skPtr ∧ s.readReg64 .x1 = g.ctPtr ∧ s.readReg64 .x8 = g.outPtr ∧
+      g.sk3168.length = 3168 ∧ g.ct1568.length = 1568 ∧
+      (P.kemDecaps g.sk3168 g.ct1568).isSome⌝ ∗ (g.skPtr ↦ₛ bytesToBv8 g.sk3168) ∗
+        (g.ctPtr ↦ₛ bytesToBv8 g.ct1568) ∗
+      memRegion g.outPtr 32 ∗ stackAt s.sp stk
+  post := fun g s0 sf =>
+    ⌜sf.trace = s0.trace⌝ ∗ (g.skPtr ↦ₛ bytesToBv8 g.sk3168) ∗ (g.ctPtr ↦ₛ bytesToBv8 g.ct1568) ∗
+      (g.outPtr ↦ₛ fitBv8 32 (kyberDecapsOutBytes P g.sk3168 g.ct1568)) ∗
+        stackAt s0.sp stk
+
+/-- `VmPreserved` + `withLsRet` + `36864`-byte placed contract for
+`libcrux_ml_kem::mlkem1024::kyber::decapsulate`. -/
+@[expose] def kyberDecapsStubBudgetSpec [LibsignalPlacement] (P : Primitives) : Spec KyberDecapsCall :=
+  withLsRet (withVmPreserved (kyberDecapsStubSpecAt kyberDecapsPlacedStack P))
+
+/-- Call-site specialization of `kyberDecapsStubSpecAt kyberDecapsPlacedStack` at Block `79`
+return offset `+928` (`bl` at `+0x39c`). -/
+@[expose] def kyberDecapsAt79_928Spec [LibsignalPlacement] (P : Primitives) : Spec KyberDecapsCall where
+  pre := fun g s =>
+    ⌜s.readReg64 .lr = (libsignalSessionLib.blockPlacement lsmpl 79).base + 928#64 ∧
+      s.readReg64 .x0 = g.skPtr ∧ s.readReg64 .x1 = g.ctPtr ∧ s.readReg64 .x8 = g.outPtr ∧
+      g.sk3168.length = 3168 ∧ g.ct1568.length = 1568 ∧
+      (P.kemDecaps g.sk3168 g.ct1568).isSome⌝ ∗ (g.skPtr ↦ₛ bytesToBv8 g.sk3168) ∗
+        (g.ctPtr ↦ₛ bytesToBv8 g.ct1568) ∗
+      memRegion g.outPtr 32 ∗ stackAt s.sp kyberDecapsPlacedStack
+  post := (kyberDecapsStubSpecAt kyberDecapsPlacedStack P).post
+
+theorem hookSat_kyberDecapsAt79_928_of_budget [LibsignalPlacement] {P : Primitives}
+    {H : String → Option (State → State)} {sym : String}
+    (h : HookSat H sym (kyberDecapsStubBudgetSpec P)) :
+    HookSat H sym (withVmPreserved (kyberDecapsAt79_928Spec P)) := by
+  refine HookSat.mono h fun g R s0 hp => ?_
+  dsimp only [kyberDecapsAt79_928Spec, withVmPreserved] at hp
+  simp only [sepConj_assoc] at hp
+  rw [satisfies_pure_sepConj] at hp
+  rcases hp with ⟨⟨hlr, hrest⟩, hm⟩
+  refine ⟨g, R, ?_, fun _ hq => hq⟩
+  refine satisfies_withLsRet_of_blockPlacement_base_add 79 928#64 hlr ?_
+  dsimp only [withVmPreserved, kyberDecapsStubSpecAt]
+  simp only [sepConj_assoc]
+  rw [satisfies_pure_sepConj]
+  exact ⟨hrest, hm⟩
+
+theorem stackAt_pqxdhAcceptPlaced_split (sp : BitVec 64) :
+    stackAt sp pqxdhAcceptPlacedStack =
+      memRegion (sp - 41984#64) 25600 ∗ stackAt sp pqxdhEntryStack := by
+  simp only [stackAt, pqxdhAcceptPlacedStack, pqxdhEntryStack]
+  have hb : sp - BitVec.ofNat 64 (16384 + 25600) = sp - 41984#64 := rfl
+  rw [hb]
+  exact ProofLib.memRegion_split' (b := sp - 41984#64) (n := 25600) (k := 16384)
+    (b' := sp - BitVec.ofNat 64 16384) rfl (by bv_omega) (by decide)
+
+theorem accept_decaps_stack_merge (sp : BitVec 64) :
+    memRegion (sp - 41984#64) 25600 ∗ memRegion (sp - 16384#64) 6944 ∗
+    memRegion (sp - 9440#64) 400 ∗ stackAt (sp - 4944#64) allocHookStack =
+      memRegion (sp - 41984#64) 176 ∗ stackAt (sp - 4944#64) kyberDecapsPlacedStack := by
+  simp only [stackAt, allocHookStack, kyberDecapsPlacedStack]
+  have hb1 : sp - 4944#64 - BitVec.ofNat 64 4096 = sp - 9040#64 := by bv_omega
+  have hb2 : sp - 4944#64 - BitVec.ofNat 64 36864 = sp - 41808#64 := by bv_omega
+  rw [hb1, hb2,
+    (ProofLib.memRegion_split' (b := sp - 9440#64) (n := 400) (k := 4096)
+      (b' := sp - 9040#64) rfl (by bv_omega) (by decide)).symm,
+    (ProofLib.memRegion_split' (b := sp - 16384#64) (n := 6944) (k := 4496)
+      (b' := sp - 9440#64) rfl (by bv_omega) (by decide)).symm,
+    (ProofLib.memRegion_split' (b := sp - 41984#64) (n := 25600) (k := 11440)
+      (b' := sp - 16384#64) rfl (by bv_omega) (by decide)).symm,
+    ProofLib.memRegion_split' (b := sp - 41984#64) (n := 176) (k := 36864)
+      (b' := sp - 41808#64) rfl (by bv_omega) (by decide)]
+
+theorem accept_decaps_stack_unmerge_of_eq (sp sp' : BitVec 64) (h : sp' = sp - 4944#64) :
+    memRegion (sp - 41984#64) 176 ∗ stackAt sp' kyberDecapsPlacedStack ⊢
+      memRegion (sp - 41984#64) 25600 ∗ memRegion (sp - 16384#64) 6944 ∗
+      memRegion (sp - 9440#64) 400 ∗ stackAt (sp - 4944#64) allocHookStack := by
+  rw [h, ← accept_decaps_stack_merge sp]; exact Entails.refl _
+
 /-- Budget-threaded relocatable inner contract for `Pqxdh::accept` (Block `79`), parameterized by
 allocator event envelope `AcceptEnv : AcceptKeysInput → List AllocEvent → Prop` (`onPanic = ⌜False⌝`,
 `onOom = ⌜False⌝` under `FitsEnv M lim st (AcceptEnv g.inp)`). -/
-def pqxdhAcceptOptFieldsInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pqxdhAcceptOptFieldsInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (AcceptFieldsCallGhost × M.σ) where
@@ -498,7 +472,7 @@ def pqxdhAcceptOptFieldsInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel
       FitsEnv M lim st (AcceptEnv g.inp)⌝ ∗
     pqxdhAcceptOptFieldsAt g.argPtr g.pqskPtr g.ctSlicePtr g.ctBufPtr g.inp ∗
     memRegion g.outPtr 104 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-    stackAt s.sp pqxdhEntryStack ∗ A.pool lim st s
+    stackAt s.sp pqxdhAcceptPlacedStack ∗ A.pool lim st s
   post := fun (g, st) s0 sf =>
     ∃∗ evs : List AllocEvent,
       ⌜sf.trace = s0.trace ∧ AcceptEnv g.inp evs⌝ ∗
@@ -509,18 +483,18 @@ def pqxdhAcceptOptFieldsInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel
        | none =>
          pqxdhAcceptErrStrong2At g.outPtr ∗ anyHeap) ∗
       (lsLogFilterAddr ↦₆₄ 0#64) ∗
-      stackAt s0.sp pqxdhEntryStack ∗
+      stackAt s0.sp pqxdhAcceptPlacedStack ∗
       A.pool lim (M.stepEvents evs st) sf
 
 /-- Budget-threaded `withLsCodeRoLoaded` contract for `Pqxdh::accept` (Block `79`). -/
-def pqxdhAcceptOptFieldsPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pqxdhAcceptOptFieldsPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (AcceptFieldsCallGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (pqxdhAcceptOptFieldsInnerPlacedSpec P A lim AcceptEnv)
 
 /-- Budget-threaded `withLsFrozen` contract for `Pqxdh::accept` (Block `79`). -/
-def pqxdhAcceptOptFieldsFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pqxdhAcceptOptFieldsFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (AcceptFieldsCallGhost × M.σ) :=

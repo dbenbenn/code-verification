@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
 public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.SizeDefs
 import LibsignalBinary.Proofs.SpqrV1Sync.TopSize
 import LibsignalBinary.Proofs.SpqrV1Sync.ErasureRoundTrip
@@ -43,7 +43,7 @@ Tightens the SPQR V1 serialized-state bounds from `SendTotal/`:
    `rawV1State st.into_pb ≤ 46880` bytes (tightening `st_bSize`'s `≤ 2 ^ 40`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -62,7 +62,7 @@ open CryptoGames.HMAC (toBEBytes)
 /-! ## 1. Tight receive-history invariant `RecvSmallTight` (`≤ 79236 = 2201 * 36`) -/
 
 /-- Every receive history of the chain has at most `2201 * 36 = 79236` bytes. -/
-def RecvSmallTight (ch : Chain) : Prop :=
+@[expose] def RecvSmallTight (ch : Chain) : Prop :=
   ∀ l ∈ ch.links, l.recv.prev.data.length ≤ 79236
 
 theorem RecvSmallTight.toRecvSmall {ch : Chain} (h : RecvSmallTight ch) : RecvSmall ch :=
@@ -676,14 +676,14 @@ theorem tsz_rawChain_tight_le (F : ShaCompress) (authKey : Bytes) (dir : Directi
 /-- A `DecWF` polynomial decoder in which each polynomial `j`'s stored keys `≥ necessaryPoints j`
 number at most `necessaryPoints j`, bounding total stored points per polynomial by
 `2 * necessaryPoints j`. -/
-def DecWFTight (n : ℕ) (d : PolyDecoder) : Prop :=
+@[expose] def DecWFTight (n : ℕ) (d : PolyDecoder) : Prop :=
   DecWF n d ∧
     ∀ j (hj : j < d.pts.length),
       (((d.pts[j]).vec.map fun pt => pt.x.value.toNat).toFinset.filter
         (d.necessaryPoints j ≤ ·)).card ≤ d.necessaryPoints j
 
 /-- Arm-by-arm tight decoder conjunct supplementing `BOk`. -/
-def DecTightOnly {F : ShaCompress} : St F → Prop
+@[expose] def DecTightOnly {F : ShaCompress} : St F → Prop
   | .headerSent s => DecWFTight 480 s.receiving_ct1
   | .ekSentCt1Received s => DecWFTight 80 s.receiving_ct2
   | .noHeaderReceived s => DecWFTight 48 s.receiving_hdr
@@ -693,7 +693,7 @@ def DecTightOnly {F : ShaCompress} : St F → Prop
   | _ => True
 
 /-- Tight well-formed braid state (`BOk` + `DecTightOnly`), bounding `rawV1State` by `46880` B. -/
-def BOkTight {F : ShaCompress} (st : St F) : Prop :=
+@[expose] def BOkTight {F : ShaCompress} (st : St F) : Prop :=
   BOk st ∧ DecTightOnly st
 
 private abbrev tbPtKey (pt : Pt) : ℕ := pt.x.value.toNat

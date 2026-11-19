@@ -37,12 +37,8 @@ open LibsignalBinary.Heap (
   mallocngBudgetPoolAt mallocngBudgetPoolAt_split_runtime mallocngBudgetPoolInv
 )
 open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase (
-  CodeBlocksPermRX fineHookRustCliAllocBudget
+  CodeBlocksPermRX aesStorageCell fineHookRustCliAllocBudget
 )
-
-theorem mallocngAddrsOfPlacement_libc_eq (mmpl : Obj.MultiPlacement) :
-    (mallocngAddrsOfPlacement mmpl).libc = mmpl.ρ "__libc" :=
-  rfl
 
 /-- Project `((A.libc + 3#64) ↦₈ 0#8) ∗ anyHeap` from any sound `mallocngBudgetPoolAt`. -/
 theorem mallocngBudgetPoolAt_entails_needLocks_anyHeap
@@ -92,6 +88,7 @@ theorem hookPool_entails_needLocks_anyHeap
       (((mallocngAddrsOfPlacement mmpl).libc + 3#64) ↦₈ 0#8) ∗ anyHeap := by
   change VerifiedLibraries.mallocngLib.codeRO mmpl ∗
       (fineRustCliAllocBudget γ mmpl tp brkStart).pool lim st s ∗
+      aesStorageCell brkStart ∗
       ⌜lim.enforced = true → CodeBlocksPermRX mmpl s⌝ ⊢
     (((mallocngAddrsOfPlacement mmpl).libc + 3#64) ↦₈ 0#8) ∗ anyHeap
   refine Entails.trans
@@ -100,9 +97,11 @@ theorem hookPool_entails_needLocks_anyHeap
   have hEq :
       VerifiedLibraries.mallocngLib.codeRO mmpl ∗
         ((((mallocngAddrsOfPlacement mmpl).libc + 3#64) ↦₈ 0#8) ∗ anyHeap) ∗
+        aesStorageCell brkStart ∗
         ⌜lim.enforced = true → CodeBlocksPermRX mmpl s⌝ =
       (((mallocngAddrsOfPlacement mmpl).libc + 3#64) ↦₈ 0#8) ∗
         (VerifiedLibraries.mallocngLib.codeRO mmpl ∗ anyHeap ∗
+          aesStorageCell brkStart ∗
           ⌜lim.enforced = true → CodeBlocksPermRX mmpl s⌝) := by
     sep_ac_rfl
   rw [hEq]

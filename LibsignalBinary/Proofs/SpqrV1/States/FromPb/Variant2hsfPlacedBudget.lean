@@ -10,18 +10,34 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbCopyPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsfPlaced
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbCopyPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpiloguePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsfPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsf
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2d -- proof-setup: allow-public-import
+public import VerifiedLibraries.Musl.Spec
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 2 (`HeaderSent`) — Part F
@@ -30,7 +46,7 @@ Relocatable Block-`333` `Ok` staging (`+9404 -> +9484 -> +8180 -> ret`) for
 `InnerState.headerSent` with `VmPreserved` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 400000
@@ -351,53 +367,6 @@ theorem v2hsf_step_9404_to_9484_placed [LibsignalPlacement]
     d92 w104 w112 w120 w192 w592 q576 Rest
     hfsp_align hpc hrun hsp hx19 hx20 hx21 hx22 hx23 hx25 hx26 hx28 htr
 
-theorem v2hsf_step_9404_to_9484_placed_budget [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext) (st : M.σ)
-    (s0 s : State) (fsp out x20_in ca3 epoch : BitVec 64)
-    (dw0 dw8 dw16 dw24 dw32 dw40 dw48 dw56 dw64 : BitVec 64)
-    (dbs328 : List (BitVec 8)) (hdbs328 : dbs328.length = 328)
-    (d92 : BitVec 32) (w104 w112 w120 w192 w592 : BitVec 64) (q576 : BitVec 128) (Rest : SepProp)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = lsmpl.base 333 + 9404#64)
-    (hrun : s.status = .Running) (hsp : s.sp = fsp) (hx19 : s.readReg64 .x19 = out)
-    (hx20 : s.readReg64 .x20 = x20_in) (hx21 : s.readReg64 .x21 = fsp + 1392#64)
-    (hx22 : s.readReg64 .x22 = fsp + 1888#64) (hx23 : s.readReg64 .x23 = fsp + 848#64)
-    (hx25 : s.readReg64 .x25 = fsp + 1792#64) (hx26 : s.readReg64 .x26 = ca3)
-    (hx28 : s.readReg64 .x28 = epoch) (htr : TraceCalleeSaved s s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 9484#64) s
-      (stackAt fsp allocHookStack ∗ ((fsp + 92#64) ↦₃₂ d92) ∗
-        ((fsp + 104#64) ↦₆₄ w104) ∗ ((fsp + 112#64) ↦₆₄ w112) ∗ ((fsp + 120#64) ↦₆₄ w120) ∗
-        ((fsp + 192#64) ↦₆₄ w192) ∗ memRegion (fsp + 240#64) 328 ∗
-        ((fsp + 576#64) ↦₁₂₈ q576) ∗ ((fsp + 592#64) ↦ₛ loBytes7 w592) ∗
-        ((fsp + 1888#64) ↦₆₄ dw0) ∗ ((fsp + 1896#64) ↦₆₄ dw8) ∗ ((fsp + 1904#64) ↦₆₄ dw16) ∗
-        ((fsp + 1912#64) ↦₆₄ dw24) ∗ ((fsp + 1920#64) ↦₆₄ dw32) ∗ ((fsp + 1928#64) ↦₆₄ dw40) ∗
-        ((fsp + 1936#64) ↦₆₄ dw48) ∗ ((fsp + 1944#64) ↦₆₄ dw56) ∗ ((fsp + 1952#64) ↦₆₄ dw64) ∗
-        ((fsp + 1960#64) ↦ₛ dbs328) ∗ memRegion (fsp + 2288#64) 16 ∗ Rest ∗ A.pool lim st s)
-      (fun s1 P1 =>
-        (P1 ⊢
-          stackAt fsp allocHookStack ∗ ((fsp + 92#64) ↦₃₂ (loByte dw48).zeroExtend 32) ∗
-          ((fsp + 104#64) ↦₆₄ dw24) ∗ ((fsp + 112#64) ↦₆₄ dw32) ∗ ((fsp + 120#64) ↦₆₄ dw40) ∗
-          ((fsp + 192#64) ↦₆₄ dw8) ∗ ((fsp + 240#64) ↦ₛ dbs328) ∗
-          ((fsp + 576#64) ↦₁₂₈ v1_midQ128 dw48 dw56 dw64) ∗
-          ((fsp + 592#64) ↦ₛ loBytes7 (dw64 >>> 8)) ∗
-          ((fsp + 1888#64) ↦₁₂₈ (dw8 ++ dw0)) ∗ ((fsp + 1904#64) ↦₁₂₈ (dw24 ++ dw16)) ∗
-          ((fsp + 1920#64) ↦₆₄ dw32) ∗ memRegion (fsp + 1928#64) 376 ∗ Rest ∗ A.pool lim st s1) ∧
-        VmPreserved s s1 ∧
-        s1.sp = fsp ∧ s1.readReg64 .x19 = out ∧ s1.readReg64 .x20 = dw16 ∧
-        s1.readReg64 .x21 = fsp + 1392#64 ∧ s1.readReg64 .x23 = fsp + 848#64 ∧
-        s1.readReg64 .x24 = x20_in ∧ s1.readReg64 .x26 = ca3 ∧
-        s1.readReg64 .x28 = epoch ∧ TraceCalleeSaved s1 s0) := by
-  have hwp := v2hsf_step_9404_to_9484_placed hA s0 s fsp out x20_in ca3 epoch
-    dw0 dw8 dw16 dw24 dw32 dw40 dw48 dw56 dw64 dbs328 hdbs328
-    d92 w104 w112 w120 w192 w592 q576 (Rest ∗ A.pool lim st s)
-    hfsp_align hpc hrun hsp hx19 hx20 hx21 hx22 hx23 hx25 hx26 hx28 htr
-  refine SepWP.mono hwp fun s1 P1 _ _ ⟨hP1, hvm, hrest⟩ => ?_
-  rw [← A.pool_transport lim st s s1 hvm] at hP1
-  exact ⟨hP1, hvm, hrest⟩
-
 /-! ## Copy Block `+9484 -> +8180` (`VmPreserved` & Pool-Threaded) -/
 
 /-- `VmPreserved`-strengthened segment `+9484 -> +8180` (Block `333`). -/
@@ -497,82 +466,6 @@ theorem v2hsf_step_9484_to_8180_placed [LibsignalPlacement]
        by simpa using hx10_1, by simpa using hx26_1, by simpa using hx12_1,
        by simpa using hx1_1, by simpa using hx28_1, by simpa using hx16_1,
        ⟨by simpa using htr1.1, by simpa using htr1.2⟩⟩
-
-theorem v2hsf_step_9484_to_8180_placed_budget [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
-    {ext : String → Option (State → State)}
-    (s0 s : State) (fsp out tag ca1 pa1 ca2 pa2 ca3 pa3 la3 epoch dw0 dw16 : BitVec 64)
-    (bs : List (BitVec 8)) (hbs : bs.length = 384) (hi32 : BitVec 32) (idx : BitVec 32)
-    (w160 w208 w224 w832 w864 w880 w888 : BitVec 64) (d172 : BitVec 32)
-    (q608 q624 q640 q656 q672 q688 q704 q720 q736 q752 q768 q784 q800 q816 q848 : BitVec 128)
-    (Rest : SepProp) (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = lsmpl.base 333 + 9484#64)
-    (hrun : s.status = .Running) (hsp : s.sp = fsp) (hx19 : s.readReg64 .x19 = out)
-    (hx20 : s.readReg64 .x20 = dw16) (hx21 : s.readReg64 .x21 = fsp + 1392#64)
-    (hx23 : s.readReg64 .x23 = fsp + 848#64)
-    (hx24 : s.readReg64 .x24 = (loByte (v1_wordAt bs 0)).zeroExtend 64)
-    (hx26 : s.readReg64 .x26 = ca3) (hx28 : s.readReg64 .x28 = epoch) (htr : TraceCalleeSaved s s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 8180#64) s
-      (((fsp + 56#64) ↦₆₄ tag) ∗ ((fsp + 96#64) ↦₆₄ la3) ∗ ((fsp + 160#64) ↦₆₄ w160) ∗
-        ((fsp + 172#64) ↦₃₂ d172) ∗ ((fsp + 176#64) ↦₆₄ pa3) ∗ ((fsp + 184#64) ↦₆₄ pa2) ∗
-        ((fsp + 200#64) ↦₆₄ ca1) ∗ ((fsp + 208#64) ↦₆₄ w208) ∗ ((fsp + 216#64) ↦₆₄ dw0) ∗
-        ((fsp + 224#64) ↦₆₄ w224) ∗ ((fsp + 232#64) ↦₆₄ ca2) ∗
-        ((fsp + 608#64) ↦₁₂₈ q608) ∗ ((fsp + 624#64) ↦₁₂₈ q624) ∗ ((fsp + 640#64) ↦₁₂₈ q640) ∗
-        ((fsp + 656#64) ↦₁₂₈ q656) ∗ ((fsp + 672#64) ↦₁₂₈ q672) ∗ ((fsp + 688#64) ↦₁₂₈ q688) ∗
-        ((fsp + 704#64) ↦₁₂₈ q704) ∗ ((fsp + 720#64) ↦₁₂₈ q720) ∗ ((fsp + 736#64) ↦₁₂₈ q736) ∗
-        ((fsp + 752#64) ↦₁₂₈ q752) ∗ ((fsp + 768#64) ↦₁₂₈ q768) ∗ ((fsp + 784#64) ↦₁₂₈ q784) ∗
-        ((fsp + 800#64) ↦₁₂₈ q800) ∗ ((fsp + 816#64) ↦₁₂₈ q816) ∗ ((fsp + 832#64) ↦₆₄ w832) ∗
-        ((fsp + 848#64) ↦₁₂₈ q848) ∗ ((fsp + 864#64) ↦ₛ loBytes7 w864) ∗
-        ((fsp + 880#64) ↦₆₄ w880) ∗ ((fsp + 888#64) ↦ₛ loBytes7 w888) ∗
-        ((fsp + 1272#64) ↦₆₄ pa1) ∗ v1_encCellsAt (fsp + 1392#64) bs ∗
-        ((fsp + 1784#64) ↦₆₄ (hi32 ++ idx)) ∗ Rest ∗ A.pool lim st s)
-      (fun s1 P1 =>
-        (P1 ⊢
-          ((fsp + 56#64) ↦₆₄ tag) ∗ ((fsp + 96#64) ↦₆₄ la3) ∗ ((fsp + 160#64) ↦₆₄ ca2) ∗
-          ((fsp + 172#64) ↦₃₂ (loByte (v1_wordAt bs 128)).zeroExtend 32) ∗
-          ((fsp + 176#64) ↦₆₄ pa3) ∗ ((fsp + 184#64) ↦₆₄ pa2) ∗ ((fsp + 200#64) ↦₆₄ ca1) ∗
-          ((fsp + 208#64) ↦₆₄ v1_wordAt bs 0) ∗ ((fsp + 216#64) ↦₆₄ dw0) ∗
-          ((fsp + 224#64) ↦₆₄ epoch) ∗ ((fsp + 232#64) ↦₆₄ ca2) ∗
-          ((fsp + 608#64) ↦₁₂₈ v1_quadAt bs 152) ∗ ((fsp + 624#64) ↦₁₂₈ v1_quadAt bs 168) ∗
-          ((fsp + 640#64) ↦₁₂₈ v1_quadAt bs 184) ∗ ((fsp + 656#64) ↦₁₂₈ v1_quadAt bs 200) ∗
-          ((fsp + 672#64) ↦₁₂₈ v1_quadAt bs 216) ∗ ((fsp + 688#64) ↦₁₂₈ v1_quadAt bs 232) ∗
-          ((fsp + 704#64) ↦₁₂₈ v1_quadAt bs 248) ∗ ((fsp + 720#64) ↦₁₂₈ v1_quadAt bs 264) ∗
-          ((fsp + 736#64) ↦₁₂₈ v1_quadAt bs 280) ∗ ((fsp + 752#64) ↦₁₂₈ v1_quadAt bs 296) ∗
-          ((fsp + 768#64) ↦₁₂₈ v1_quadAt bs 312) ∗ ((fsp + 784#64) ↦₁₂₈ v1_quadAt bs 328) ∗
-          ((fsp + 800#64) ↦₁₂₈ v1_quadAt bs 344) ∗ ((fsp + 816#64) ↦₁₂₈ v1_quadAt bs 360) ∗
-          ((fsp + 832#64) ↦₆₄ v1_wordAt bs 376) ∗
-          ((fsp + 848#64) ↦₁₂₈ v1_midQ128 (v1_wordAt bs 128) (v1_wordAt bs 136) (v1_wordAt bs 144)) ∗
-          ((fsp + 864#64) ↦ₛ loBytes7 (v1_wordAt bs 144 >>> 8)) ∗
-          ((fsp + 880#64) ↦₆₄ unshiftWord (v1_wordAt bs 104) (loByte (v1_wordAt bs 112))) ∗
-          ((fsp + 888#64) ↦ₛ loBytes7 (v1_wordAt bs 112 >>> 8)) ∗
-          ((fsp + 1272#64) ↦₆₄ pa1) ∗ memRegion (fsp + 1400#64) 392 ∗ Rest ∗ A.pool lim st s1) ∧
-        VmPreserved s s1 ∧
-        s1.sp = fsp ∧ s1.readReg64 .x6 = fsp + 576#64 ∧ s1.readReg64 .x19 = out ∧
-        s1.readReg64 .x23 = fsp + 848#64 ∧ s1.readReg64 .x8 = 4#64 ∧ s1.readReg64 .x15 = tag ∧
-        s1.readReg64 .x20 = v1_wordAt bs 8 ∧ s1.readReg64 .x13 = v1_wordAt bs 16 ∧
-        s1.readReg64 .x25 = v1_wordAt bs 24 ∧ s1.readReg64 .x30 = v1_wordAt bs 32 ∧
-        s1.readReg64 .x9 = v1_wordAt bs 40 ∧ s1.readReg64 .x14 = v1_wordAt bs 48 ∧
-        s1.readReg64 .x18 = v1_wordAt bs 56 ∧ s1.readReg64 .x17 = v1_wordAt bs 64 ∧
-        s1.readReg64 .x0 = v1_wordAt bs 72 ∧
-        s1.readReg32 .x3 = ((v1_wordAt bs 80).extractLsb' 0 8).zeroExtend 32 ∧
-        s1.readReg32 .x27 = (v1_wordAt bs 80).extractLsb' 8 32 ∧
-        ((s1.readReg64 .x27 >>> 32).setWidth 32).setWidth 16 = (v1_wordAt bs 80).extractLsb' 40 16 ∧
-        ((s1.readReg64 .x27 >>> 48).setWidth 32).setWidth 8 = (v1_wordAt bs 80).extractLsb' 56 8 ∧
-        s1.readReg64 .x4 = v1_wordAt bs 88 ∧ s1.readReg64 .x5 = v1_wordAt bs 96 ∧
-        s1.readReg32 .x21 = (loByte (v1_wordAt bs 104)).zeroExtend 32 ∧
-        s1.readReg64 .x7 = v1_wordAt bs 120 ∧ s1.readReg64 .x2 = hi32 ++ idx ∧
-        s1.readReg64 .x11 = ca1 ∧ s1.readReg64 .x22 = pa1 ∧ s1.readReg64 .x24 = ca1 ∧
-        s1.readReg64 .x10 = pa2 ∧ s1.readReg64 .x26 = ca3 ∧ s1.readReg64 .x12 = pa3 ∧
-        s1.readReg64 .x1 = la3 ∧ s1.readReg64 .x28 = dw0 ∧ s1.readReg64 .x16 = dw16 ∧
-        TraceCalleeSaved s1 s0) := by
-  have hwp := v2hsf_step_9484_to_8180_placed (ext := ext) s0 s fsp out tag ca1 pa1 ca2 pa2
-    ca3 pa3 la3 epoch dw0 dw16 bs hbs hi32 idx w160 w208 w224 w832 w864 w880 w888 d172
-    q608 q624 q640 q656 q672 q688 q704 q720 q736 q752 q768 q784 q800 q816 q848
-    (Rest ∗ A.pool lim st s) hfsp_align hpc hrun hsp hx19 hx20 hx21 hx23 hx24 hx26 hx28 htr
-  refine SepWP.mono hwp fun s1 P1 _ _ ⟨hP1, hvm, hrest⟩ => ?_
-  rw [← A.pool_transport lim st s s1 hvm] at hP1
-  exact ⟨hP1, hvm, hrest⟩
 
 /-! ## Top-Level `+9404 -> s0.x30` (`v2hsf_headerSent_ok_9404_to_ret_placed`) -/
 

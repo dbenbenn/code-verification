@@ -11,13 +11,14 @@ module
 
 public import Arm64
 public import ProofLib
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Heap.SpecBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceSimp -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `[LibsignalPlacement]`-Generic `withLsRet` Consumer & Master Wrapper (`HooksDehook.WithLsRet`)
@@ -49,7 +50,7 @@ push/pop `lr` and `bl` to hooked panic stubs:
    `durationSinceBudgetSpec`, `durationSinceEpochBudgetSpec`, and generic `withLsRet_withPost`), plus
    exact `Spec` equalities (`=`) with right- and left-framed wrappers (`withLsRet_frameRight`,
    `withLsRet_frameLeft`, `withLsRoCl`, `withLsCodeRoLoaded`, `withLsCodeLoaded`, `withRoData`,
-   `withRoDataSep`, `MultiPlacedLib.withCodeLoaded`, `Spec.inImage`, and `withStack`).
+   `withRoDataSep`, `MultiPlacedLib.withCodeLoaded`, and `withStack`).
 -/
 
 set_option autoImplicit false
@@ -397,12 +398,6 @@ theorem withLsRet_withCodeLoaded [LibsignalPlacement] {α : Type}
     (lib : MultiPlacedLib) (mpl : MultiPlacement) (spec : Spec α) :
     withLsRet (lib.withCodeLoaded mpl spec) = lib.withCodeLoaded mpl (withLsRet spec) :=
   withLsRet_frameRight spec (fun _ s0 => ⌜lib.CodeLoaded mpl s0.mem⌝) spec.post
-
-/-- `withLsRet` commutes with `Spec.inImage img` (`Spec` equality via `sepConj_left_comm`). -/
-theorem withLsRet_inImage [LibsignalPlacement] {α : Type}
-    (spec : Spec α) (img : Obj.Image) :
-    withLsRet (spec.inImage img) = (withLsRet spec).inImage img :=
-  withLsRet_frameLeft spec (fun _ s => ⌜img.FrozenLoaded s ∧ s.symtab = img.symtab⌝) spec.post
 
 /-- `withLsRet` commutes with `withStack · hookStack` (`Spec` equality via `sepConj_assoc`). -/
 theorem withLsRet_withStack [LibsignalPlacement] {α : Type}

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -44,7 +44,7 @@ Proves that for any well-formed `ProtocolSetupWF r`, the empty move list forms a
 characterizations, `newRandoms` evaluations, and setup reachability (`setupTrace_reachable`).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -154,7 +154,7 @@ theorem newRandoms_append_nonRnd {E : Type} [ExecTraceTypes.Has E]
 
 /-! ## Symbolic `Runs` combinators for `setupAct` -/
 
-def Runs {α : Type} (x : Traceful α) (tr : ExecTrace) (a : α) (tr' : ExecTrace) : Prop :=
+@[expose] def Runs {α : Type} (x : Traceful α) (tr : ExecTrace) (a : α) (tr' : ExecTrace) : Prop :=
   (x.run tr).1 = some a ∧ (x.run tr).2.val = tr'
 
 theorem Runs.bind {α β : Type} {x : Traceful α} {f : α → Traceful β}
@@ -230,7 +230,7 @@ theorem Runs.requireTracePredicate {p : ExecTrace → Bool} {tr : ExecTrace} (h 
 
 /-! ## Explicit setup traces -/
 
-def setupTr1 (a : DY.Participant) : ExecTrace :=
+@[expose] def setupTr1 (a : DY.Participant) : ExecTrace :=
   ((((Trace.nil.append (RndE 32)).append
     (EvE (.IdentityRegistered a (DY.DiffieHellman.dhPk (randTerm 0 32))
       (DY.Signature.vk (randTerm 0 32)) true))).append
@@ -238,7 +238,7 @@ def setupTr1 (a : DY.Participant) : ExecTrace :=
     (NetE (DY.Signature.vk (randTerm 0 32)))).append
     (StE a { kind := .identity, sk := randTerm 0 32 })
 
-def setupTr2 (a b : DY.Participant) : ExecTrace :=
+@[expose] def setupTr2 (a b : DY.Participant) : ExecTrace :=
   (((((setupTr1 a).append (RndE 32)).append
     (EvE (.IdentityRegistered b (DY.DiffieHellman.dhPk (randTerm 5 32))
       (DY.Signature.vk (randTerm 5 32)) true))).append
@@ -246,7 +246,7 @@ def setupTr2 (a b : DY.Participant) : ExecTrace :=
     (NetE (DY.Signature.vk (randTerm 5 32)))).append
     (StE b { kind := .identity, sk := randTerm 5 32 })
 
-def setupTr3 (a b : DY.Participant) : ExecTrace :=
+@[expose] def setupTr3 (a b : DY.Participant) : ExecTrace :=
   ((((((setupTr2 a b).append (RndE 32)).append (RndE 64)).append
     (EvE (.SignedPrekeyPublished b (DY.DiffieHellman.dhPk (randTerm 10 32))))).append
     (StE b { kind := .signedPrekey, sk := randTerm 10 32 })).append
@@ -254,7 +254,7 @@ def setupTr3 (a b : DY.Participant) : ExecTrace :=
     (NetE (DY.Signature.sign (randTerm 5 32) (randTerm 11 64)
       (DY.Libsignal.PQXDH.encodeEC (DY.DiffieHellman.dhPk (randTerm 10 32)))))
 
-def setupTr4 (a b : DY.Participant) : ExecTrace :=
+@[expose] def setupTr4 (a b : DY.Participant) : ExecTrace :=
   ((((((setupTr3 a b).append (RndE 64)).append (RndE 64)).append
     (EvE (.PQPrekeyPublished b (DY.PQKem.kemPk (randTerm 16 64))))).append
     (StE b { kind := .pqPrekey, sk := randTerm 16 64 })).append
@@ -262,7 +262,7 @@ def setupTr4 (a b : DY.Participant) : ExecTrace :=
     (NetE (DY.Signature.sign (randTerm 5 32) (randTerm 17 64)
       (DY.Libsignal.PQXDH.encodeKEM (DY.PQKem.kemPk (randTerm 16 64)))))
 
-def setupTr5 (a b : DY.Participant) : ExecTrace :=
+@[expose] def setupTr5 (a b : DY.Participant) : ExecTrace :=
   ((((setupTr4 a b).append (RndE 32)).append
     (EvE (.OneTimePrekeyPublished b (DY.DiffieHellman.dhPk (randTerm 22 32))))).append
     (StE b { kind := .oneTimePrekey, sk := randTerm 22 32 })).append

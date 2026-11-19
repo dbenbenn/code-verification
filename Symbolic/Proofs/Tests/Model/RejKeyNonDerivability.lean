@@ -42,7 +42,7 @@ attacker knowledge of both `sk` and `ct` or base exposure in a projecting subter
 contains `kemRejKey sk ct` in such a position, yielding `rejKey_attackerKnows_iff_of_reachable_proof`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.OneKeyStore
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.OneKeyStore -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCallees
+import LibsignalBinary.Proofs.CodeLayout
 /-!
 # Substages P2.1–P2.3 Framing and Assembly for `message_decrypt_prekey::{closure#0}`
 
@@ -23,7 +23,7 @@ Stack/memory framing helpers and substage compositions for Substages P2.1–P2.3
 `message_decrypt_prekey::<PqxdhRng>::{closure#0}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace CryptoVerification.E2E.Pqxdh.ResponderClosure
@@ -172,15 +172,6 @@ theorem memRegion_9_sp3e0_eq (sp : BitVec 64) :
     ProofLib.memRegion_one (sp + 0x3e8#64)]
 private theorem cond_eq_cbz_0 : (0#64 == 0#64) = true := rfl
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  cond_eq_cbz_0
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-/-! ### Stage P2 Combinators & Byte-Layout Helpers -/
-
 /-- Extract a pure conjunct `⌜φ⌝` from `P` via `hP : P = ⌜φ⌝ ∗ P_rest` in `SepWPp`. -/
 theorem SepWPp.pure_left_frame {prog : Program} {ret : BitVec 64} {s : State}
     {φ : Prop} {P P_rest : SepProp} {Q Qp : State → SepProp → Prop}
@@ -189,52 +180,6 @@ theorem SepWPp.pure_left_frame {prog : Program} {ret : BitVec 64} {s : State}
     SepWPp prog ret s P Q Qp := by
   rw [hP]
   exact SepWPp.pure_elim h
-/-- Framed `SepWPp` subroutine call for a `(spec.inImage img)` non-panicking callee. -/
-theorem SepWPp.call_frame_inImage_nopanic {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_false : ∀ sf, spec.onPanic x s sf = ⌜False⌝ := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro _; rfl) :
-    SepWPp prog ret s P Q Qp := by
-  refine SepWPp.call_frame_frozen_nopanic hF hsym hcall hpc hrun hsp hlr
-    (φ := (img.FrozenLoaded s ∧ s.symtab = img.symtab) ∧ φ)
-    (T := T) (F := F) ?_ ⟨⟨hF, hsym⟩, hφ⟩ hP hpan_false hexit_false hnext hoom_false
-  dsimp only [Spec.inImage]
-  rw [hspec, pure_sepConj_pure_assoc]
-/-- Framed `SepWPp` subroutine call for a `(spec.inImage img)` may-panic OOM callee. -/
-theorem SepWPp.call_frame_inImage_oom {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s0 s : State} {φ : Prop}
-    {P T F : SepProp} {Q : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (htr : s.trace = s0.trace)
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_eq : ∀ sf, spec.onPanic x s sf = (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗
-      anyHeap) := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (PanicOomProp s0))
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro _; rfl) :
-    SepWPp prog ret s P Q (PanicOomProp s0) := by
-  refine SepWPp.call_frame_frozen_oom hF hsym htr hcall hpc hrun hsp hlr
-    (φ := (img.FrozenLoaded s ∧ s.symtab = img.symtab) ∧ φ)
-    (T := T) (F := F) ?_ ⟨⟨hF, hsym⟩, hφ⟩ hP hpan_eq hexit_false hnext hoom_false
-  dsimp only [Spec.inImage]
-  rw [hspec, pure_sepConj_pure_assoc]
 def first7 (v : BitVec 64) : List (BitVec 8) :=
   [v.extractLsb' 0 8, v.extractLsb' 8 8, v.extractLsb' 16 8, v.extractLsb' 24 8,
    v.extractLsb' 32 8, v.extractLsb' 40 8, v.extractLsb' 48 8]

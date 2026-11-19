@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRoPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRoPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Placed Budgeted Read-Only `signal_session::address` and `MainCalleesROBlk617` Discharge
@@ -21,7 +25,7 @@ Discharges the `memrchrSpecRO` external-hook premise of `address_ro_placed_ok` a
 `memrchrHook` and derives `MainCalleesROBlk617` from `MainCalleesBlk617`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -57,18 +61,6 @@ theorem address_ro_placed_ok_a1_of_hooks [LibsignalPlacement]
     subroutine_ok (lsProg_617 H) (lsmpl.base 580)
       (withLsRoCl lsmpl (addressSpecRO A lim uuidTryParse resStack)) :=
   address_ro_placed_ok hFs (memrchr_ro_blk580_ok_of_hooks hext) hres hres64
-
-theorem address_ro_placed_ok_a1_rocl_of_hooks [LibsignalPlacement] {prog : Program} {i : Nat}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H] {resStack : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hext : H lsMemrchrSym = some memrchrHook)
-    (hres : 0xB0 + extHookStack ≤ resStack) (hres64 : resStack ≤ 2 ^ 63)
-    (hi : i < 619 := by decide) :
-    subroutine_ok prog (lsmpl.base 580)
-      (withLsRoCl lsmpl (addressSpecRO A lim uuidTryParse resStack)) :=
-  address_ro_placed_ok_rocl (prog := prog) (i := i)
-    hFs (memrchr_ro_blk580_ok_of_hooks hext) hres hres64 hi
 
 /-- Derive `MainCalleesROBlk617` from `MainCalleesBlk617` and the `from_utf8` and
 `memrchr` hook entries. -/

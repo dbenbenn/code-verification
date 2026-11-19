@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DecoderFromPbClPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EncoderFromPbProofClPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlaced
@@ -24,6 +24,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9Placed
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Closed Relocatable Top-Level Proof (Block `333`)
@@ -33,7 +34,7 @@ Discharges `<PolyEncoder>::from_pb` (Block `374`), `<PolyDecoder>::from_pb` (Blo
 `StatesFromPbPlacedOkExt` and `StatesFromPbPlacedOkX` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

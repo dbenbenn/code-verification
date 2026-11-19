@@ -9,6 +9,7 @@ limitations under the License.
 
 module
 
+public import ProofLib.Meta.Compat
 public import ProofLib.SimpAttrs
 public import ProofLib.Meta.ToExpr
 public meta import ProofLib.Meta.ToExpr
@@ -26,12 +27,11 @@ public import ProofLib.ProgramReflection.IdxTree
 public import ProofLib.GenDecodes
 public import ProofLib.LiteralFetchLint
 public import ProofLib.OpcodeExclusion
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Process
 public import ProofLib.Process.Overrides
 public import ProofLib.Process.OverrideWellBehaved
 public import ProofLib.FsTrace
-public import ProofLib.Library
 public import ProofLib.RelocDecode
 public import ProofLib.Abi
 public import ProofLib.SepLogic
@@ -54,7 +54,6 @@ public import ProofLib.SpecAudit
 public import ProofLib.NonVacuity
 public import ProofLib.Disproof
 public import ProofLib.CType
-public import ProofLib.Legacy.CType
 public import ProofLib.BV
 public import ProofLib.TrustedClosure
 public import ProofLib.Placed

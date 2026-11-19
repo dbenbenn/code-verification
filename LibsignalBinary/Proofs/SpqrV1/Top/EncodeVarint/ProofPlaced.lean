@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.Base
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.BasePlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.Base
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.BasePlaced -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
 # Relocatable Proof of `spqr::encode_varint` (Block `326`, 164 insns)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

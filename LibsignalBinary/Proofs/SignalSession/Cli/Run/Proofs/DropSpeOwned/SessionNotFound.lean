@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned.Common
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned.Common -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.Entry
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -266,92 +268,6 @@ private theorem snf_add2_ult_sub1_eq_false {cap : BitVec 64}
   have heq : cap + 2#64 = (cap - 1#64) + 3#64 := by bv_omega
   rw [heq]
   exact snf_cmn3_ult_eq_false hcap hcap_lt
-
-set_option linter.unusedSimpArgs false in
-theorem cliDropSpeOwned_snf_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliDropSpeName)
-      ((dropSpeSnfSpecX A).inImage img) := by
-  simp only [Spec.inImage, dropSpeSnfSpecX, pure_sepConj_pure_assoc]
-  have hdealloc := hA.dealloc_ok_at cliDropSpeName
-    (num% (ls_off% "__rustc::__rust_dealloc" -
-      ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]"))
-    (by
-      rw [(ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]")]
-      simp only [arm64_norm])
-  simp only [Spec.inImage, rustDeallocExternSpecWithStack] at hdealloc
-  code_fetches libsignalSessionCode CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin
-    img.base (Rust.withPanics ext)
-    (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]")
-    (num% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]")) 184
-  have hb : img.base &&& 0xfff#64 = 0#64 := ProofLib.ObjectLoad.base_aligned_of_loads himg
-  have hadp : (
-      ((libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-        "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" +
-        bv% 40) &&&
-      bv% (2 ^ 64 - 4096)) =
-      img.base + bv% (page% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)) :=
-    speJumpTable_adrp_eq hb
-      (fnAddr_rebase_eq_add_of_fnOff
-        (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]"))
-  dsimp only [tripleRatchetProgAtExt, cliDropSpeName, BitVec.ofNat_eq_ofNat] at hdealloc ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" = entry
-  examples_hide_fetches
-  wp_init x s0
-  obtain ⟨a, addr, op⟩ := x
-  dsimp only at *
-  have hx0 : s0.readReg64 (Reg.gpr 0#5) = a := by assumption
-  subst hx0
-  have hfrozen : img.FrozenLoaded s0 := by assumption
-  have hsym : s0.symtab = img.symtab := by assumption
-  have hro : img.RoDataLoaded s0.mem := (Obj.Image.frozenLoaded_iff.mp hfrozen).2.1
-  refine intro_rodata_speJumpTable himg hro ?_
-  nth_rw 1 [stackAt_dropSpeX_split s0.sp]
-  cells_unfold
-  wp_pull_exists
-  refine weaken_pre_sat
-    (speOwned_snf_pre_weakenX A (s0.readReg64 (Reg.gpr 0#5)) addr op
-      (speJumpTable_byte img.base 19
-        (bv% (ls_xref%
-          (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 40)
-          (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]" + 44) + 19))
-        0x13#8 rfl rfl rfl) _) ?_
-  wp_pull_exists
-  rename_i cap ptr
-  by_cases hcap : cap = 0#64
-  · simp only [hcap, beq_self_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-    wp_steps
-    refine weaken_pre_sat (snf_cap0_pre_weaken_fullX _ _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-  · have hcap_beq : (cap == 0#64) = false := beq_eq_false_iff_ne.mpr hcap
-    simp only [hcap_beq, Bool.false_eq_true, ↓reduceIte]
-    refine SepWP.focus_pure (by sep_focus) ?_
-    rintro ⟨⟨hlay1, hlay2, hlay3⟩, hcap_lt⟩
-    have hlo_false : BitVec.ult (cap ^^^ 0x8000000000000000#64) 35#64 = false :=
-      snf_xor_ult_35_eq_false hcap_lt
-    have hhi_ult : BitVec.ult ((cap - 1#64) + 3#64) (cap - 1#64) = false :=
-      snf_cmn3_ult_eq_false hcap hcap_lt
-    have hhi_ult2 : BitVec.ult (cap + 2#64) (cap - 1#64) = false :=
-      snf_add2_ult_sub1_eq_false hcap hcap_lt
-    apply seq_callInv
-      (mid_pc := entry + bv% (ls_off% "__rustc::__rust_dealloc" -
-        ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#3]"))
-      hfrozen hsym
-    wp_steps
-    refine weaken_pre_sat
-      (snf_tail_dealloc_pre_weakenX (s0.readReg64 (Reg.gpr 0#5)) cap ptr s0.sp
-        _ _ _ _ _ _ _ _) ?_
-    apply SepWP.done (by rfl)
-      (by simp only [State.status_setMem, State.status_setPC, State.status_writeReg64,
-        State.status_setPState, hrun])
-    intro hfrozen_call hsym_call
-    wp_call hdealloc (ptr, cap.toNat, 1)
-    refine SepWP.weaken_pre (spe_tail_dealloc_postX (s0.readReg64 (Reg.gpr 0#5)) A.pool s0.sp) ?_
-    wp_done
 
 end
 

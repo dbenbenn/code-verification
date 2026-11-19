@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
 
@@ -22,7 +22,7 @@ followed by `rng` or `send` events) is explained by one visible encrypt-family m
 is `Move.encrypt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,13 +40,13 @@ structure SendBlockShape (blk : List MachineEvent) : Prop where
   tail : ∀ e ∈ blk.tail, eventKind e = .rng ∨ eventKind e = .send
 
 /-- Encrypt-family move acting for `p`. -/
-def SendBy (p : Participant) : Move → Prop
+@[expose] def SendBy (p : Participant) : Move → Prop
   | .encrypt me .. | .encryptAbort me _ | .encryptFail me .. => me = p
   | _ => False
 
 /-- Step conclusion for a `send_wire` block: an encrypt-family move by `p` that is `Move.encrypt`
 whenever `blk` contains a `send` event. -/
-def SendStep (p : Participant) (blk : List MachineEvent) (_tr : ExecTrace) (m : Move) : Prop :=
+@[expose] def SendStep (p : Participant) (blk : List MachineEvent) (_tr : ExecTrace) (m : Move) : Prop :=
   SendBy p m ∧ ((∃ e ∈ blk, eventKind e = .send) → ∃ me s c q w, m = .encrypt me s c q w)
 
 /-- Single-move inversion for a `send_wire` block. -/

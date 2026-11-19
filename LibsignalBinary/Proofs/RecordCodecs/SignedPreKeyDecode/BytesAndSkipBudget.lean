@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.BytesAndSkip
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Defs
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.DefsBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.BytesAndSkip -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Defs
+public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.Deps
 import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.ErrTails
 import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.ErrTailsBudget
@@ -27,7 +27,7 @@ import ProofLib.SepLogic.WPp
 3, 4), error-push stubs, and `skip_field` on Block `562`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000

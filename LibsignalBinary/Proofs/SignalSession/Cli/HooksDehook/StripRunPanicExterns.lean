@@ -9,9 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
 import ProofLib.MallocngBridge
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Real-Code `stripS` & `linkedCallHook` Replays Allowing Panic-Stub Externs (`HooksDehook.StripRunPanicExterns`)
@@ -81,14 +86,6 @@ theorem stripCommExtern_rustPanicked (keep : BitVec 64 → Bool) :
     StripCommExtern keep Rust.panicked := by
   intro st hfr _ _
   have h := h2fsgen_rustPanicked_comm_stripS keep st hfr
-  exact ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1⟩
-
-/-- `ProofLib.hookMemcpy` commutes with `stripS keep` and preserves `ExecFrozen`, `KeepsFrozen`,
-    and `symtab`. -/
-theorem stripCommExtern_hookMemcpy (keep : BitVec 64 → Bool) :
-    StripCommExtern keep ProofLib.hookMemcpy := by
-  intro st hfr hkf _
-  have h := h2fsgen_hookMemcpy_comm_stripS keep st hfr hkf
   exact ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1⟩
 
 /-! ## 2. Generic `P_sub ⊆ P_real` Extern-Subset `stripS` & `linkedCallHook` Replay Suite -/
@@ -271,97 +268,7 @@ theorem ghostExternReplaysOn_of_linkedCallHook_with_externs {α : Type}
     hStubSteps.trans hBodySteps
   exact ⟨hSteps, hfr_out, hInvKf u.mem _ hinv hSteps.keepsFrozen⟩
 
-/-- Companion to `ghostExternReplaysOn_of_linkedCallHook_with_externs` where `pc ≠ u.readReg64 .lr`
-    is supplied from the call-site/memory invariant `hInvLr` rather than `spec.pre`. -/
-theorem ghostExternReplaysOn_of_linkedCallHook_with_externs_of_invLr {α : Type}
-    {InvMem : Memory → Prop}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program}
-    {stubPc entryTarget : BitVec 64} {spec : Spec α} {fallback : State → State}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hext_sub : ∀ (pc : BitVec 64) (f : State → State),
-      P_sub.externAt? pc = some f →
-      P_real.externAt? pc = some f ∧ StripCommExtern keep f)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc entryTarget)
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      P_sub.CodeLoaded (stripExecOutside keep m))
-    (hInvLr : ∀ u : State,
-      u.pc = stubPc → u.status = .Running → ExecFrozen u.mem →
-      keep (u.readReg64 .lr) = false → InvMem u.mem →
-      ∀ (pc : BitVec 64) (f : State → State),
-        P_sub.externAt? pc = some f → pc ≠ u.readReg64 .lr)
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m')
-    (hOk : subroutine_ok P_sub entryTarget spec)
-    (hInv : SpecStripSInvariant keep spec)
-    (hFsT : SpecPreservesFsTrace spec)
-    (hPrePC : ∀ x (s : State) (pc : BitVec 64), spec.pre x (s.setPC pc) = spec.pre x s)
-    (hOutPC : ∀ x (R : SepProp) (s0 sf : State) (pc : BitVec 64),
-      SubroutineOutcome spec x R (s0.setPC pc) sf → SubroutineOutcome spec x R s0 sf) :
-    P_real.externAt? stubPc = none ∧
-    ∀ u : State,
-      u.pc = stubPc →
-      u.status = .Running →
-      (∀ msg,
-        (linkedCallHook keep P_real P_sub entryTarget spec fallback u).status ≠ .Exception msg) →
-      ExecFrozen u.mem →
-      keep (u.readReg64 .lr) = false →
-      InvMem u.mem →
-      Steps P_real u (linkedCallHook keep P_real P_sub entryTarget spec fallback u) ∧
-      ExecFrozen (linkedCallHook keep P_real P_sub entryTarget spec fallback u).mem ∧
-      InvMem (linkedCallHook keep P_real P_sub entryTarget spec fallback u).mem := by
-  refine ⟨hreal_stub_none, fun u hpc hrun hnoex hfr hlr hinv => ?_⟩
-  have hActPre : ActiveRealPre spec u := linkedCallHook_activeRealPre_of_noException hnoex
-  have hCodeSub : P_sub.CodeLoaded (stripExecOutside keep u.mem) := hInvLoaded u.mem hfr hinv
-  have hStubSteps : Steps P_real u (u.setPC entryTarget) := hStub u hpc hrun hfr hinv
-  obtain ⟨hBodySteps, hfr_out⟩ :=
-    linkedCallHook_active_steps_with_externs hsvc_real hsvc_sub hreal_no hext_sub
-      hOk hInv hFsT hPrePC hOutPC hActPre hfr hlr (hInvLr u hpc hrun hfr hlr hinv) hCodeSub
-  have hSteps : Steps P_real u (linkedCallHook keep P_real P_sub entryTarget spec fallback u) :=
-    hStubSteps.trans hBodySteps
-  exact ⟨hSteps, hfr_out, hInvKf u.mem _ hinv hSteps.keepsFrozen⟩
-
 /-! ## 3. `Rust.panicked`-Extern Specializations (Supporting `.Panicked` Outcomes) -/
-
-/-- `Rust.panicked` specialization of `real_subroutine_run_of_stripS_with_externs`:
-    every extern `e` of `P_sub` equals `Rust.panicked` and is matched at the same PC by `P_real`.
-    Both normal `Returned` and `.Panicked` outcomes are preserved across `stripS keep`. -/
-theorem real_subroutine_run_of_stripS_panicExterns {α : Type}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entryTarget : BitVec 64} {spec : Spec α}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_pan : ∀ (pc : BitVec 64) (e : State → State),
-      P_sub.externAt? pc = some e →
-      e = Rust.panicked ∧ P_real.externAt? pc = some Rust.panicked)
-    (hOk : subroutine_ok P_sub entryTarget spec)
-    (hInv : SpecStripSInvariant keep spec)
-    (hFsT : SpecPreservesFsTrace spec)
-    (hPrePC : ∀ x (s : State) (pc : BitVec 64), spec.pre x (s.setPC pc) = spec.pre x s)
-    (hOutPC : ∀ x (R : SepProp) (s0 sf : State) (pc : BitVec 64),
-      SubroutineOutcome spec x R (s0.setPC pc) sf → SubroutineOutcome spec x R s0 sf)
-    {x : α} {R : SepProp} {s0 : State}
-    (hRun : s0.status = .Running)
-    (hSp : s0.spAligned = true)
-    (hPre : s0.mem ⊨ spec.pre x s0 ∗ R)
-    (hFr : ExecFrozen s0.mem)
-    (hlr_out : keep (s0.readReg64 .lr) = false)
-    (hlr_ne : ∀ (pc : BitVec 64) (e : State → State),
-      P_sub.externAt? pc = some e → pc ≠ s0.readReg64 .lr)
-    (hCodeSub : P_sub.CodeLoaded (stripExecOutside keep s0.mem)) :
-    ∃ sf : State,
-      StepsUntil P_real (SubroutineStop s0) (s0.setPC entryTarget) sf ∧
-      SubroutineStop s0 sf ∧
-      SubroutineOutcome spec x R s0 sf ∧
-      sf.fs = s0.fs ∧
-      FsTraced IsFsC s0 sf ∧
-      ExecFrozen sf.mem :=
-  real_subroutine_run_of_stripS_with_externs hsvc_real hsvc_sub hreal_no
-    (fun pc e he => by
-      obtain ⟨rfl, hreal⟩ := hsub_pan pc e he
-      exact ⟨hreal, stripCommExtern_rustPanicked keep⟩)
-    hOk hInv hFsT hPrePC hOutPC hRun hSp hPre hFr hlr_out hlr_ne hCodeSub
 
 /-- `Rust.panicked` specialization of `linkedCallHook_ok_with_externs`. -/
 theorem linkedCallHook_ok_panicExterns {α : Type}
@@ -390,38 +297,6 @@ theorem linkedCallHook_ok_panicExterns {α : Type}
       obtain ⟨rfl, hreal⟩ := hsub_pan pc e he
       exact ⟨hreal, stripCommExtern_rustPanicked keep⟩)
     hlr_ne_pre hOk hInv hFsT hPrePC hOutPC hFallbackOk
-
-/-- `Rust.panicked` specialization of `linkedCallHook_active_steps_with_externs`. -/
-theorem linkedCallHook_active_steps_panicExterns {α : Type}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program}
-    {entryTarget : BitVec 64} {spec : Spec α} {fallback : State → State}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_pan : ∀ (pc : BitVec 64) (e : State → State),
-      P_sub.externAt? pc = some e →
-      e = Rust.panicked ∧ P_real.externAt? pc = some Rust.panicked)
-    (hOk : subroutine_ok P_sub entryTarget spec)
-    (hInv : SpecStripSInvariant keep spec)
-    (hFsT : SpecPreservesFsTrace spec)
-    (hPrePC : ∀ x (s : State) (pc : BitVec 64), spec.pre x (s.setPC pc) = spec.pre x s)
-    (hOutPC : ∀ x (R : SepProp) (s0 sf : State) (pc : BitVec 64),
-      SubroutineOutcome spec x R (s0.setPC pc) sf → SubroutineOutcome spec x R s0 sf)
-    {s0 : State}
-    (hActPre : ActiveRealPre spec s0)
-    (hFr : ExecFrozen s0.mem)
-    (hlr_out : keep (s0.readReg64 .lr) = false)
-    (hlr_ne : ∀ (pc : BitVec 64) (e : State → State),
-      P_sub.externAt? pc = some e → pc ≠ s0.readReg64 .lr)
-    (hCodeSub : P_sub.CodeLoaded (stripExecOutside keep s0.mem)) :
-    Steps P_real (s0.setPC entryTarget)
-        (linkedCallHook keep P_real P_sub entryTarget spec fallback s0) ∧
-      ExecFrozen (linkedCallHook keep P_real P_sub entryTarget spec fallback s0).mem :=
-  linkedCallHook_active_steps_with_externs hsvc_real hsvc_sub hreal_no
-    (fun pc e he => by
-      obtain ⟨rfl, hreal⟩ := hsub_pan pc e he
-      exact ⟨hreal, stripCommExtern_rustPanicked keep⟩)
-    hOk hInv hFsT hPrePC hOutPC hActPre hFr hlr_out hlr_ne hCodeSub
 
 /-- `Rust.panicked` specialization of `ghostExternReplaysOn_of_linkedCallHook_with_externs`
     (`pc ≠ lr` supplied from `spec.pre`, e.g. β′ `withLsRet` + K3). -/
@@ -467,52 +342,6 @@ theorem ghostExternReplaysOn_of_linkedCallHook_panicExterns {α : Type}
       obtain ⟨rfl, hreal⟩ := hsub_pan pc e he
       exact ⟨hreal, stripCommExtern_rustPanicked keep⟩)
     hlr_ne_pre hreal_stub_none hStub hInvLoaded hInvKf hOk hInv hFsT hPrePC hOutPC
-
-/-- `Rust.panicked` specialization of `ghostExternReplaysOn_of_linkedCallHook_with_externs_of_invLr`
-    (`pc ≠ lr` supplied from call-site/memory invariant `hInvLr`). -/
-theorem ghostExternReplaysOn_of_linkedCallHook_panicExterns_of_invLr {α : Type}
-    {InvMem : Memory → Prop}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program}
-    {stubPc entryTarget : BitVec 64} {spec : Spec α} {fallback : State → State}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_pan : ∀ (pc : BitVec 64) (e : State → State),
-      P_sub.externAt? pc = some e →
-      e = Rust.panicked ∧ P_real.externAt? pc = some Rust.panicked)
-    (hreal_stub_none : P_real.externAt? stubPc = none)
-    (hStub : StubReachesTargetOn InvMem P_real stubPc entryTarget)
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → InvMem m →
-      P_sub.CodeLoaded (stripExecOutside keep m))
-    (hInvLr : ∀ u : State,
-      u.pc = stubPc → u.status = .Running → ExecFrozen u.mem →
-      keep (u.readReg64 .lr) = false → InvMem u.mem →
-      ∀ (pc : BitVec 64) (e : State → State),
-        P_sub.externAt? pc = some e → pc ≠ u.readReg64 .lr)
-    (hInvKf : ∀ m m' : Memory, InvMem m → m.KeepsFrozen m' → InvMem m')
-    (hOk : subroutine_ok P_sub entryTarget spec)
-    (hInv : SpecStripSInvariant keep spec)
-    (hFsT : SpecPreservesFsTrace spec)
-    (hPrePC : ∀ x (s : State) (pc : BitVec 64), spec.pre x (s.setPC pc) = spec.pre x s)
-    (hOutPC : ∀ x (R : SepProp) (s0 sf : State) (pc : BitVec 64),
-      SubroutineOutcome spec x R (s0.setPC pc) sf → SubroutineOutcome spec x R s0 sf) :
-    P_real.externAt? stubPc = none ∧
-    ∀ u : State,
-      u.pc = stubPc →
-      u.status = .Running →
-      (∀ msg,
-        (linkedCallHook keep P_real P_sub entryTarget spec fallback u).status ≠ .Exception msg) →
-      ExecFrozen u.mem →
-      keep (u.readReg64 .lr) = false →
-      InvMem u.mem →
-      Steps P_real u (linkedCallHook keep P_real P_sub entryTarget spec fallback u) ∧
-      ExecFrozen (linkedCallHook keep P_real P_sub entryTarget spec fallback u).mem ∧
-      InvMem (linkedCallHook keep P_real P_sub entryTarget spec fallback u).mem :=
-  ghostExternReplaysOn_of_linkedCallHook_with_externs_of_invLr hsvc_real hsvc_sub hreal_no
-    (fun pc e he => by
-      obtain ⟨rfl, hreal⟩ := hsub_pan pc e he
-      exact ⟨hreal, stripCommExtern_rustPanicked keep⟩)
-    hreal_stub_none hStub hInvLoaded hInvLr hInvKf hOk hInv hFsT hPrePC hOutPC
 
 /-! ## 4. `W`-Independent `externOnlyStdProg P_sub`, Generic `StepsVisitedIn` Producer & Extern-Tolerant Lift
 
@@ -596,17 +425,13 @@ theorem steps_lift_of_visitedIn_eq_externAt
         exact Step.extern_fault hrun (heq.trans he1) hnkf
     exact .step hstep2 ih
 
-/-- Lifts `h2fsgen_StepsVisitedIn (keepOrSubExtern keep P_sub) (externOnlyStdProg P_sub) s sf`
-    onto any real target program `P_real` from:
-    - `hsvc_real : P_real.svc = Syscall.standard`,
-    - `hsub_out_keep : ∀ pc, keep pc = true → P_sub.externAt? pc = none`,
-    - `hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none`, and
-    - `hext_sub_real : ∀ pc f, P_sub.externAt? pc = some f → P_real.externAt? pc = some f`. -/
-theorem steps_externOnly_to_real_of_visitedIn
+/-- In-keep variant of `steps_externOnly_to_real_of_visitedIn`: allows `P_sub` externs inside
+    `keep` as long as `P_real` agrees with `P_sub` on every `P_sub` extern and has `externAt? = none`
+    on non-extern addresses in `keep`. -/
+theorem steps_externOnly_to_real_of_visitedIn_inKeep
     {keep : BitVec 64 → Bool} {P_sub P_real : Program} {s sf : State}
     (hsvc_real : P_real.svc = Syscall.standard)
-    (hsub_out_keep : ∀ pc, keep pc = true → P_sub.externAt? pc = none)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
+    (hreal_no : ∀ pc, keep pc = true → P_sub.externAt? pc = none → P_real.externAt? pc = none)
     (hext_sub_real : ∀ (pc : BitVec 64) (f : State → State),
       P_sub.externAt? pc = some f → P_real.externAt? pc = some f)
     (hvis : h2fsgen_StepsVisitedIn (keepOrSubExtern keep P_sub) (externOnlyStdProg P_sub) s sf) :
@@ -614,11 +439,23 @@ theorem steps_externOnly_to_real_of_visitedIn
   refine steps_lift_of_visitedIn_eq_externAt
     ((externOnlyStdProg_svc P_sub).trans hsvc_real.symm) (fun pc hD => ?_) hvis
   rw [externOnlyStdProg_externAt]
-  by_cases hkp : keep pc = true
-  · rw [hreal_no pc hkp, hsub_out_keep pc hkp]
-  · simp only [keepOrSubExtern, hkp, Bool.false_or, Option.isSome_iff_exists] at hD
-    rcases hD with ⟨f, hf⟩
-    rw [hf, hext_sub_real pc f hf]
+  cases hf : P_sub.externAt? pc with
+  | some f => exact hext_sub_real pc f hf
+  | none =>
+    simp only [keepOrSubExtern, hf, Option.isSome_none, Bool.or_false] at hD
+    exact hreal_no pc hD hf
+
+theorem steps_externOnly_to_real_of_visitedIn
+    {keep : BitVec 64 → Bool} {P_sub P_real : Program} {s sf : State}
+    (hsvc_real : P_real.svc = Syscall.standard)
+    (_hsub_out_keep : ∀ pc, keep pc = true → P_sub.externAt? pc = none)
+    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
+    (hext_sub_real : ∀ (pc : BitVec 64) (f : State → State),
+      P_sub.externAt? pc = some f → P_real.externAt? pc = some f)
+    (hvis : h2fsgen_StepsVisitedIn (keepOrSubExtern keep P_sub) (externOnlyStdProg P_sub) s sf) :
+    Steps P_real s sf :=
+  steps_externOnly_to_real_of_visitedIn_inKeep hsvc_real
+    (fun pc hkp _ => hreal_no pc hkp) hext_sub_real hvis
 
 private theorem stripS_mem_eq (keep : BitVec 64 → Bool) (s : State) :
     (stripS keep s).mem = stripExecOutside keep s.mem := by cases s; rfl
@@ -660,7 +497,7 @@ private theorem subroutineOutcome_not_halted {α : Type} {spec : Spec α} {x : �
 private theorem stepsVisitedIn_of_stripS_with_externs_aux
     {keep : BitVec 64 → Bool} {P1 P_sub : Program} {s0 : State}
     (hsvc1 : P1.svc = Syscall.standard) (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hext1_no : ∀ pc, keep pc = true → P1.externAt? pc = none)
+    (hext1_no : ∀ pc, keep pc = true → P_sub.externAt? pc = none → P1.externAt? pc = none)
     (hext_sub : ∀ (pc : BitVec 64) (f : State → State),
       P_sub.externAt? pc = some f → P1.externAt? pc = some f ∧ StripCommExtern keep f)
     (hlr_out : keep (s0.readReg64 .lr) = false)
@@ -767,7 +604,7 @@ private theorem stepsVisitedIn_of_stripS_with_externs_aux
               have hce : sa.mem.canExec sa.pc 4 = true := by
                 simp [Memory.canExec, Memory.allPerm, BitVec.add_assoc, hx0, hx1, hx2, hx3]
               rw [strip_read32_eq] at hfm'
-              have hext1 : P1.externAt? sa.pc = none := hext1_no sa.pc hkp0
+              have hext1 : P1.externAt? sa.pc = none := hext1_no sa.pc hkp0 he_sub
               have hfm1 : P1.fetchMem sa.mem sa.pc = some inst := by
                 unfold Program.fetchMem; simp [hext1, hal_pc, hce, hfm']
               have hd : keepOrSubExtern keep P_sub sa.pc = true := keepOrSubExtern_of_keep hkp0
@@ -807,10 +644,26 @@ private theorem stepsVisitedIn_of_stripS_with_externs_aux
             · simp [hce'] at hfm'
           · simp [hal_pc] at hfm'
 
-/-- With-externs generalization of `h2fsgen_stepsVisitedIn_of_stripS_standard`: lifts a stripped
-    subroutine run `Steps P_sub (stripS keep s1) sf'` (`sf'.status ≠ .Halted`) to both a first-stop
-    `StepsUntil P1 (SubroutineStop s0) s1 sf` run and an inductive
-    `h2fsgen_StepsVisitedIn (keepOrSubExtern keep P_sub) P1 s1 sf` witness. -/
+/-- In-keep variant of `stepsVisitedIn_of_stripS_with_externs`: allows `P_sub` externs inside
+    `keep`, requiring `P1.externAt? pc = none` only when `P_sub.externAt? pc = none`. -/
+theorem stepsVisitedIn_of_stripS_with_externs_inKeep
+    {keep : BitVec 64 → Bool} {P1 P_sub : Program} {s0 s1 sf' : State}
+    (hsvc1 : P1.svc = Syscall.standard) (hsvc_sub : P_sub.svc = Syscall.standard)
+    (hext1_no : ∀ pc, keep pc = true → P_sub.externAt? pc = none → P1.externAt? pc = none)
+    (hext_sub : ∀ (pc : BitVec 64) (f : State → State),
+      P_sub.externAt? pc = some f → P1.externAt? pc = some f ∧ StripCommExtern keep f)
+    (hlr_out : keep (s0.readReg64 .lr) = false)
+    (hlr_ne : ∀ (pc : BitVec 64) (f : State → State),
+      P_sub.externAt? pc = some f → pc ≠ s0.readReg64 .lr)
+    (hsteps' : Steps P_sub (stripS keep s1) sf')
+    (hstop' : SubroutineStop s0 sf') (hnhalt' : sf'.status ≠ .Halted) (hFr1 : ExecFrozen s1.mem) :
+    ∃ sf : State,
+      StepsUntil P1 (SubroutineStop s0) s1 sf ∧ SubroutineStop s0 sf ∧
+      sf' = stripS keep sf ∧ ExecFrozen sf.mem ∧
+      h2fsgen_StepsVisitedIn (keepOrSubExtern keep P_sub) P1 s1 sf :=
+  stepsVisitedIn_of_stripS_with_externs_aux hsvc1 hsvc_sub hext1_no hext_sub
+    hlr_out hlr_ne hsteps' hstop' hnhalt' s1 rfl hFr1
+
 theorem stepsVisitedIn_of_stripS_with_externs
     {keep : BitVec 64 → Bool} {P1 P_sub : Program} {s0 s1 sf' : State}
     (hsvc1 : P1.svc = Syscall.standard) (hsvc_sub : P_sub.svc = Syscall.standard)
@@ -826,8 +679,8 @@ theorem stepsVisitedIn_of_stripS_with_externs
       StepsUntil P1 (SubroutineStop s0) s1 sf ∧ SubroutineStop s0 sf ∧
       sf' = stripS keep sf ∧ ExecFrozen sf.mem ∧
       h2fsgen_StepsVisitedIn (keepOrSubExtern keep P_sub) P1 s1 sf :=
-  stepsVisitedIn_of_stripS_with_externs_aux hsvc1 hsvc_sub hext1_no hext_sub
-    hlr_out hlr_ne hsteps' hstop' hnhalt' s1 rfl hFr1
+  stepsVisitedIn_of_stripS_with_externs_inKeep hsvc1 hsvc_sub (fun pc hk _ => hext1_no pc hk)
+    hext_sub hlr_out hlr_ne hsteps' hstop' hnhalt' hFr1
 
 /-- With-externs generalization of `h2fsgen_real_subroutine_run_visitedIn_of_stripS`: combines
     `subroutine_ok P_sub entryTarget spec` with `stepsVisitedIn_of_stripS_with_externs`. -/

@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.GameHop.Rnd
+import Computational.Proofs.GameHop.Rnd
 public import VCVio.OracleComp.SimSemantics.StateT.StateProjection
 public import VCVio.OracleComp.QueryTracking.QueryBound.Basic
+public import VCVio.OracleComp.EvalDist.AnswerMeasure
+public import VCVio.EvalDist.EvalDistEq
 
 /-!
 # Relational State Projection, Support Invariants, and Query-Bound Combinators
@@ -23,7 +25,7 @@ projections across `simulateQ` away from forbidden query classes, and invariant-
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.StateSim
 
@@ -35,7 +37,7 @@ section AllSupport
 variable {ι : Type} {spec : OracleSpec.{0, 0} ι}
 
 /-- Unary support predicate asserting that every output in `support oa` satisfies `P`. -/
-def AllSupport {α : Type} (P : α → Prop) (oa : OracleComp spec α) : Prop :=
+@[expose] def AllSupport {α : Type} (P : α → Prop) (oa : OracleComp spec α) : Prop :=
   ∀ x ∈ support oa, P x
 
 theorem isQueryBoundP_false {κ : Type} {G : OracleSpec.{0, 0} κ} {α : Type}
@@ -168,75 +170,6 @@ theorem run'_simulateQ_eq_of_inv_dis {α σ₁ σ₂ : Type}
   have hmap := congrArg (fun p => Prod.fst <$> p)
     (map_run_simulateQ_eq_of_inv_dis impl₁ impl₂ inv proj dis hinv hproj oa hoa s hs)
   simpa [StateT.run'_eq, Functor.map_map, Function.comp_def] using hmap
-
-/-- Distributional (`=ᵈ`) state projection across `simulateQ` under state invariant `inv` away
-from `dis`. -/
-theorem evalDistEq_map_run_simulateQ_of_inv_dis [OracleSpec.AnswerMeasure spec']
-    {α σ₁ σ₂ : Type}
-    (impl₁ : QueryImpl spec (StateT σ₁ (OracleComp spec')))
-    (impl₂ : QueryImpl spec (StateT σ₂ (OracleComp spec')))
-    (inv : σ₁ → Prop) (proj : σ₁ → σ₂)
-    (dis : κ → Prop) [DecidablePred dis]
-    (hinv : ∀ t s, ¬ dis t → inv s → ∀ y ∈ support ((impl₁ t).run s), inv y.2)
-    (hproj : ∀ t s, ¬ dis t → inv s →
-      Prod.map id proj <$> (impl₁ t).run s =ᵈ (impl₂ t).run (proj s))
-    (oa : OracleComp spec α) (hoa : oa.IsQueryBoundP dis 0)
-    (s : σ₁) (hs : inv s) :
-    Prod.map id proj <$> (simulateQ impl₁ oa).run s =ᵈ
-      (simulateQ impl₂ oa).run (proj s) := by
-  induction oa using OracleComp.inductionOn generalizing s with
-  | pure a =>
-    simp only [simulateQ_pure, StateT.run_pure, map_pure, Prod.map_apply, id_eq]
-    exact EvalDistEq.rfl
-  | query_bind t k ih =>
-    rw [isQueryBoundP_query_bind_iff] at hoa
-    obtain ⟨hdis, hk⟩ := hoa
-    have hndis : ¬ dis t := by simpa using hdis
-    simp only [hndis, ↓reduceIte] at hk
-    simp only [simulateQ_bind, simulateQ_query, OracleQuery.input_query,
-      OracleQuery.cont_query, id_map, StateT.run_bind, map_bind]
-    have h1 :
-        ((impl₁ t).run s >>= fun z => Prod.map id proj <$> (simulateQ impl₁ (k z.1)).run z.2) =ᵈ
-          ((impl₁ t).run s >>= fun z => (simulateQ impl₂ (k z.1)).run (proj z.2)) :=
-      evalDistEq_bind_right_of_mem_support ((impl₁ t).run s) fun z hz =>
-        ih z.1 (hk z.1) z.2 (hinv t s hndis hs z hz)
-    have h2 :
-        ((impl₁ t).run s >>= fun z => (simulateQ impl₂ (k z.1)).run (proj z.2)) =
-          ((Prod.map id proj <$> (impl₁ t).run s) >>= fun w => (simulateQ impl₂ (k w.1)).run w.2) := by
-      rw [bind_map_left]; rfl
-    rw [h2] at h1
-    exact h1.trans ((hproj t s hndis hs).bind_left fun w => (simulateQ impl₂ (k w.1)).run w.2)
-
-theorem evalDistEq_run'_simulateQ_of_inv_dis [OracleSpec.AnswerMeasure spec']
-    {α σ₁ σ₂ : Type}
-    (impl₁ : QueryImpl spec (StateT σ₁ (OracleComp spec')))
-    (impl₂ : QueryImpl spec (StateT σ₂ (OracleComp spec')))
-    (inv : σ₁ → Prop) (proj : σ₁ → σ₂)
-    (dis : κ → Prop) [DecidablePred dis]
-    (hinv : ∀ t s, ¬ dis t → inv s → ∀ y ∈ support ((impl₁ t).run s), inv y.2)
-    (hproj : ∀ t s, ¬ dis t → inv s →
-      Prod.map id proj <$> (impl₁ t).run s =ᵈ (impl₂ t).run (proj s))
-    (oa : OracleComp spec α) (hoa : oa.IsQueryBoundP dis 0)
-    (s : σ₁) (hs : inv s) :
-    (simulateQ impl₁ oa).run' s =ᵈ (simulateQ impl₂ oa).run' (proj s) := by
-  have hmap :=
-    (evalDistEq_map_run_simulateQ_of_inv_dis impl₁ impl₂ inv proj dis hinv hproj oa hoa s hs).map
-      Prod.fst
-  simpa [StateT.run'_eq, Functor.map_map, Function.comp_def] using hmap
-
-theorem evalDistEq_run'_simulateQ_of_inv [OracleSpec.AnswerMeasure spec']
-    {α σ₁ σ₂ : Type}
-    (impl₁ : QueryImpl spec (StateT σ₁ (OracleComp spec')))
-    (impl₂ : QueryImpl spec (StateT σ₂ (OracleComp spec')))
-    (inv : σ₁ → Prop) (proj : σ₁ → σ₂)
-    (hinv : ∀ t s, inv s → ∀ y ∈ support ((impl₁ t).run s), inv y.2)
-    (hproj : ∀ t s, inv s →
-      Prod.map id proj <$> (impl₁ t).run s =ᵈ (impl₂ t).run (proj s))
-    (oa : OracleComp spec α) (s : σ₁) (hs : inv s) :
-    (simulateQ impl₁ oa).run' s =ᵈ (simulateQ impl₂ oa).run' (proj s) :=
-  evalDistEq_run'_simulateQ_of_inv_dis impl₁ impl₂ inv proj (fun _ => False)
-    (fun t s _ hs => hinv t s hs) (fun t s _ hs => hproj t s hs)
-    oa (isQueryBoundP_false oa 0) s hs
 
 end StateProjectionDis
 

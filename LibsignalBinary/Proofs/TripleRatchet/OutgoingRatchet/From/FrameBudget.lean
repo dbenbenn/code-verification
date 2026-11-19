@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Frame
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Frame -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable `OTR::from_session_state` Decomposition
@@ -20,7 +20,7 @@ Provides the `[LibsignalPlacement]` `RustCliAllocBudget` specifications (`otrFro
 `<OutgoingTripleRatchet>::from_session_state`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +39,7 @@ open CryptoVerification.LibsignalTripleRatchet.OutgoingRatchet (withLsRoLoaded)
 
 /-- Budget-threaded relocatable specification of `OTR::from_session_state` (`FreeOnlyEvs`,
     `0` `FitsEnv` needed). -/
-def otrFromRawPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def otrFromRawPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (OtrFromGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -55,7 +55,7 @@ abbrev otrFromPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (OtrFromGhost × M.σ) :=
   withLsRoLoaded lsmpl (withLsCodeLoaded lsmpl (otrFromRawPlacedSpec M A lim))
 
-def otrFromCasePlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def otrFromCasePlacedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (P : OtrFromGhost → Prop) :
     Spec (OtrFromGhost × M.σ) where
   pre := fun (x, st) s =>

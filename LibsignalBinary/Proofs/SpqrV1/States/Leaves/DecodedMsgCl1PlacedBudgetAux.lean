@@ -11,11 +11,11 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl1Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl1Placed
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
@@ -23,6 +23,11 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Interpolate
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolatePlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Loop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyDecoder as Decoder>::decoded_message` (Block `418`): `RustCliAllocBudget` `lagrange_interpolate` Sub-Steps
@@ -32,7 +37,7 @@ Auxiliary relocatable sub-step lemmas (`lagrangeInterpolateOuter*`, `copyAndComp
 `LibsignalCodeLoaded lsmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

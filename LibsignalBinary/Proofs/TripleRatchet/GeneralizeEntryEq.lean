@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public meta import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry -- shake: keep
+public meta import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry -- shake: keep -- proof-setup: allow-public-import
 public meta import Lean -- shake: keep
 import Arm64.Trusted.ISA.Semantics
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -23,7 +23,7 @@ Extends `generalize_entry` (`GeneralizeEntry.lean`) to introduce the equation `h
 `bind_entry` so the kernel never substitutes or unfolds `prog.fnAddr name` inside the proof body.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.GeneralizeEntry
 

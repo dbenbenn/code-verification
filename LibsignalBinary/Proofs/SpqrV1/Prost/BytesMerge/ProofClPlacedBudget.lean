@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.DropsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.FromBudget
 import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `prost::encoding::bytes::merge [local#3]` (Block `290`): Budget-Threaded Code-Loaded Verification
@@ -23,7 +25,7 @@ Discharges the `withLsCodeLoaded` callee contracts of `bytes_merge_3_placed_ok_o
 `decodeVarint2_cl_placed_ok` (Block `291`) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -110,26 +112,6 @@ theorem bytes_merge_3_cl_placed_ok [LibsignalPlacement]
     (fun tmpPtr v =>
       subroutine_ok_withLsCl_of_withLsCodeLoaded
         (bytesVtableDrop_placed_ok hdealloc (by decide) tmpPtr v v.length))
-
-/-- Envelope-parameterized code-loaded `HookSat` verification of `bytes::merge [local#3]`
-(Block `290`). -/
-theorem bytes_merge_3_cl_placed_ok_env [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    {PreEnv PostEnv : BytesMergeGhost → List AllocEvent → Prop}
-    (hPre : ∀ x evs, BytesMergeEnv x evs → PreEnv x evs)
-    (hPost : ∀ x evs, BytesMergeEnv x evs → PostEnv x evs)
-    (hshim : HookSat H lsRustNoAllocShimSym sessionShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hpanic_raw : H lsHandleErrorSym = some Rust.panicked) :
-    subroutine_ok ((blkPC_290).rebase (blkPl_290).base H)
-      (blkPl_290).base
-      (withLsCodeRoLoaded lsmpl (bytesMerge3RawSpecOfEnv2 A lim PreEnv PostEnv)) :=
-  subroutine_ok_bytesMerge3OfEnv2_of_spec hPre hPost
-    (bytes_merge_3_cl_placed_ok hshim halloc hrealloc hdealloc hmc hpanic_raw)
 
 /-- `Proto.mergeBytes` form of `bytes_merge_3_cl_placed_ok`. -/
 theorem bytes_merge_3_proto_cl_placed_ok [LibsignalPlacement]

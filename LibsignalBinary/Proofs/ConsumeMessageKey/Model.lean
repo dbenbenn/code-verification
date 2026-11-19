@@ -21,7 +21,7 @@ Relates the monadic session-model `RatchetState.consumeMessageKey` to closed-for
 `chainStepN`, `skippedKeys`, and `ChainsOk` for the past-counter, too-far, advance, and panic paths.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SessionModel
 
@@ -81,18 +81,6 @@ theorem consumeMessageKey_panic_iff (F : ShaCompress) (st : RatchetState) (their
       ck.index ≤ c ∧ (c - ck.index).toNat ≤ st.maxForwardJumps ∧
         (c = BitVec.allOnes 32 ∨ st.findReceiverChainIndex their = none) := by
   exact AdvanceAndFrame.consumeMessageKey_panic_iff_thm F st their ck c t
-
-/-- Frame property: `consumeMessageKey` modifies only `receiverChains`, preserving chain count,
-each chain's `senderRatchetKey`, and `ChainsOk`. -/
-theorem consumeMessageKey_frame (F : ShaCompress) (st : RatchetState) (their : PublicKey)
-    (ck : ChainKey) (c : BitVec 32) (t : MessageType) (hok : ChainsOk st) :
-    let st' := ((RatchetState.consumeMessageKey F their ck c t).exec st).2
-    ((RatchetState.consumeMessageKey F their ck c t).exec st).1 ≠ .error .panic →
-      st'.rootKey = st.rootKey ∧ st'.senderChain = st.senderChain ∧
-      st'.previousCounter = st.previousCounter ∧ st'.maxForwardJumps = st.maxForwardJumps ∧
-      st'.receiverChains.map (·.senderRatchetKey) = st.receiverChains.map (·.senderRatchetKey) ∧
-      ChainsOk st' := by
-  exact AdvanceAndFrame.consumeMessageKey_frame_thm F st their ck c t hok
 
 /-- `findReceiverChainIndex` is invariant under updating a chain while preserving its `senderRatchetKey`. -/
 theorem findReceiverChainIndex_set (st : RatchetState) (their : PublicKey) (i : ℕ)

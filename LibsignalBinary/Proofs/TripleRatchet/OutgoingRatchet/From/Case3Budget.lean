@@ -10,15 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case3
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case3
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `OTR::from_session_state` Case 3 (`st.remoteIdentity = none`)
@@ -28,7 +29,7 @@ Proves the `[LibsignalPlacement]` `RustCliAllocBudget` contract for the
 `pkTryFromOkPlacedBudgetSpec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -115,7 +116,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## VM-preserving `<PublicKey as TryFrom<&[u8]>>::try_from` -/
 
 /-- `pkTryFromOkPlacedSpec` strengthened with `VmPreserved s0 sf`. -/
-def pkTryFromOkPlacedBudgetSpec [LibsignalPlacement] :
+@[expose] def pkTryFromOkPlacedBudgetSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) :=
   withVmPreserved pkTryFromOkPlacedSpec
 
@@ -383,7 +384,7 @@ theorem otrFrom_case3_placed_ok_of_contracts [LibsignalPlacement] {M : AllocCost
     congrArg Prod.snd hmod
   have hnopanic : (.error (.invalidSessionStructure .missingRemoteIdentity) :
       Except SignalProtocolError (OutgoingTripleRatchet (List (BitVec 8)))) ≠ .error .panic := by
-    decide
+    nofun
   have hagree : G.AgreeExceptPq { G with pq := ⟨0#64, 1#64⟩ } := rfl
   have hagree' : G.AgreeExceptPq { G with pq := ⟨0#64, 1#64⟩, sender := some sg } :=
     agreeExceptPq_of_sender G ⟨0#64, 1#64⟩ sg hGs

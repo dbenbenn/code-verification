@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.M3Interfaces
+public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
 
 /-!
 # Encoders, Wire Filters, and Session Expressions for Local Session Steps
@@ -19,7 +19,7 @@ Proves wire-parser equivalence between `CompositionCostedTables` and the binary 
 indexing and per-session `ReductionDsl` expressions for `LocalSessionStep`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -119,16 +119,13 @@ theorem e2eDecodePreKeyMsg_eq_bhDecodePreKeyMsgE (c : Bytes) :
   rw [e2eDecodePreKeyRaw_eq_bhDecodePreKeyMsgERaw]
   cases bhDecodePreKeyMsgERaw c <;> rfl
 
-theorem e2eHdrOfPreKeyMsg_eq_bhHdrOfPreKeyMsg (m : PreKeyMessageFields) :
-    e2eHdrOfPreKeyMsg m = bhHdrOfPreKeyMsg m := rfl
-
 theorem e2eExpectedPreKeyMsg_eq_bhExpectedPreKeyMsg (regIdA : BitVec 32)
     (hdr : HandshakeHdr) (inner : Bytes) :
     e2eExpectedPreKeyMsg regIdA hdr inner = bhExpectedPreKeyMsg regIdA hdr inner := by
   unfold e2eExpectedPreKeyMsg bhExpectedPreKeyMsg kyberCtLen; rfl
 
 /-- Pure wire-filtering function factoring the five query-dispatch branches of `bhE2EStepLocalSm`. -/
-def bhFilterLocalSmQuery {S : Setup} {ℓ : ℕ} (bobAccepted : Bool) (sid : SessionId S)
+@[expose] def bhFilterLocalSmQuery {S : Setup} {ℓ : ℕ} (bobAccepted : Bool) (sid : SessionId S)
     (hdr : HandshakeHdr)
     (q : (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain) :
     Option ((CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain) :=
@@ -249,7 +246,7 @@ theorem bhE2EStepLocalSm_eq_filtered {S : Setup} {ℓ : ℕ} {Pt : Type}
                       simp only [hh, Bool.false_eq_true, ↓reduceIte]
             · rfl
 
-def emptySmRespE {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))} :
+@[expose] def emptySmRespE {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))} :
     Expr O Γ (smRT GhostStT) := .pair .none (.pair .none .none)
 
 @[simp] theorem eval_emptySmRespE {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
@@ -267,22 +264,22 @@ def emptySmRespE {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))
 
 /-- Session-slot representation `(idA, (idB, (spkCoins, (promFlag, gsVal))))`, with
 `promFlag = false` for unpromoted local sessions and `promFlag = true` otherwise. -/
-@[reducible] def instSlotTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def instSlotTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod IdKey (.prod IdKey (.prod BV256 (.prod .bool (e2eGsTy ℓ))))
 
-def defaultGhostState {ℓ : ℕ} : GhostState Bytes :=
+@[expose] def defaultGhostState {ℓ : ℕ} : GhostState Bytes :=
   ghostJoinEval (ℓ := ℓ)
     (false, (0#32, (bhIdKeyOf [], (none, (0#256, (0#32,
       (false, (0, ([], (none, ([], E2EPureOp.eval ℓ (.bytesLit 32 []) ())))))))))))
 
-def defaultE2eGsVal {ℓ : ℕ} : (e2eGsTy ℓ).denote :=
+@[expose] def defaultE2eGsVal {ℓ : ℕ} : (e2eGsTy ℓ).denote :=
   ((defaultGhostState (ℓ := ℓ), defaultGhostState (ℓ := ℓ)),
    (false, (false, ((0, 0), ((0, 0), (none, ([], ([], ([], ((fun _ => 0, fun _ => 0), ([], [])))))))))))
 
-def defaultInstSlotVal {ℓ : ℕ} : (instSlotTy ℓ).denote :=
+@[expose] def defaultInstSlotVal {ℓ : ℕ} : (instSlotTy ℓ).denote :=
   (bhIdKeyOf [], (bhIdKeyOf [], (0#256, (true, defaultE2eGsVal))))
 
-def defaultE2eGsE {ℓ : ℕ} {Pt : Type} {P : Primitives} {C : Crypto} {K : MlKem}
+@[expose] def defaultE2eGsE {ℓ : ℕ} {Pt : Type} {P : Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey} {Γ : List (Ty (e2eSig ℓ))} :
     Expr (e2eOps ℓ P C K decT encT) Γ (e2eGsTy ℓ) :=
   let idKey0 := e2ePureOp .idKeyOfPbytes (e2ePureOp (.pbytesLit 32 []) .unit)
@@ -315,11 +312,11 @@ theorem cost_defaultE2eGsE {ℓ : ℕ} {Pt : Type} {P : Primitives} {C : Crypto}
     List.length_nil, hb0]
   omega
 
-def instSlotOfModelInst {S : Setup} {ℓ : ℕ} (d : BHModelInst S ℓ) : (instSlotTy ℓ).denote :=
+@[expose] def instSlotOfModelInst {S : Setup} {ℓ : ℕ} (d : BHModelInst S ℓ) : (instSlotTy ℓ).denote :=
   (d.idA, (d.idB, (d.spkCoins,
     match d.gs with | some gs => (false, e2eGsEnc gs) | none => (true, defaultE2eGsVal))))
 
-def encodeInstTbl {S : Setup} {ℓ : ℕ} (insts : List (BHModelInst S ℓ))
+@[expose] def encodeInstTbl {S : Setup} {ℓ : ℕ} (insts : List (BHModelInst S ℓ))
     (j : ℕ) : (instSlotTy ℓ).denote :=
   match insts[j]? with | some d => instSlotOfModelInst d | none => defaultInstSlotVal
 
@@ -332,14 +329,14 @@ theorem tset_encodeInstTbl {S : Setup} {ℓ : ℕ} (insts : List (BHModelInst S 
   · subst hji; simp [hi]
   · simp [hji, Ne.symm hji]
 
-@[reducible] def e2eInstHdrMetaTy (S : Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eInstHdrMetaTy (S : Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (sidT S) (.prod hdrT (e2eInstMetaTy S ℓ))
 
-def e2eInstHdrMetaEnc {S : Setup} {ℓ : ℕ} (d : BHModelInst S ℓ)
+@[expose] def e2eInstHdrMetaEnc {S : Setup} {ℓ : ℕ} (d : BHModelInst S ℓ)
     (im : ModelDriverInstanceMeta S) : (e2eInstHdrMetaTy S ℓ).denote :=
   (sidV d.sid, (hdrV d.hdr, e2eInstMetaEnc im))
 
-def encodeHdrMetaList {S : Setup} {ℓ : ℕ} (insts : List (BHModelInst S ℓ))
+@[expose] def encodeHdrMetaList {S : Setup} {ℓ : ℕ} (insts : List (BHModelInst S ℓ))
     (instMeta : List (ModelDriverInstanceMeta S)) : List (e2eInstHdrMetaTy S ℓ).denote :=
   (insts.zip instMeta).map fun p => e2eInstHdrMetaEnc p.1 p.2
 
@@ -380,7 +377,7 @@ theorem not_any_not_eq_all {α : Type} (p : α → Bool) :
 
 /-- Look up index `iE` in an unindexed list `lE : Expr O Γ (.list t)` of length `≤ K` via
 `Expr.foldrB`. -/
-def listGetOptE {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))} {t : Ty (e2eSig ℓ)}
+@[expose] def listGetOptE {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))} {t : Ty (e2eSig ℓ)}
     (K : ℕ) (lE : Expr O Γ (.list t)) (iE : Expr O Γ .nat) : Expr O Γ (.opt t) :=
   .letE (.pair lE iE)
     (.letE (.len (.fst .v0))
@@ -443,7 +440,7 @@ theorem cost_listGetOptE {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eS
 
 /-- Replace index `iE` with `valE` in an unindexed list `lE : Expr O Γ (.list t)` of length `≤ K`
 via `Expr.foldrB`. -/
-def listSetE {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))} {t : Ty (e2eSig ℓ)}
+@[expose] def listSetE {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))} {t : Ty (e2eSig ℓ)}
     (K : ℕ) (lE : Expr O Γ (.list t)) (iE : Expr O Γ .nat) (valE : Expr O Γ t) :
     Expr O Γ (.list t) :=
   .letE (.pair lE (.pair iE valE))
@@ -537,7 +534,7 @@ theorem cost_eLet_le {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
   change (e2ePureOps ℓ).eval .parsePreKeyWire c = _
   rw [e2ePureOps_eval_parsePreKeyWire_lossless, e2eDecodePreKeyMsg_eq_bhDecodePreKeyMsgE]; rfl
 
-def initPrinOptE {Γ : List (Ty (e2eSig ℓ))} (sidE : Expr (e2eOps ℓ P C K decT encT) Γ (sidT S)) :
+@[expose] def initPrinOptE {Γ : List (Ty (e2eSig ℓ))} (sidE : Expr (e2eOps ℓ P C K decT encT) Γ (sidT S)) :
     Expr (e2eOps ℓ P C K decT encT) Γ (.opt (FinT S.N_id)) :=
   eCaseSum sidE (fun p => .some (.fst (v p)))
     (fun r1 => eCaseSum (v r1) (fun p => .some (.fst (v p))) (fun _ => .none))
@@ -548,7 +545,7 @@ def initPrinOptE {Γ : List (Ty (e2eSig ℓ))} (sidE : Expr (e2eOps ℓ P C K de
   rcases h : sidE.eval ρ with ⟨u, i⟩ | ⟨u, i⟩ | ⟨k, j, o⟩ | ⟨k, j, l⟩ <;>
     simp [initPrinOptE, eCaseSum, Expr.eval, h, sidOfV, bhDrvSessionInitPrin?]
 
-def initRegIdE {Γ : List (Ty (e2eSig ℓ))} (sidE : Expr (e2eOps ℓ P C K decT encT) Γ (sidT S)) :
+@[expose] def initRegIdE {Γ : List (Ty (e2eSig ℓ))} (sidE : Expr (e2eOps ℓ P C K decT encT) Γ (sidT S)) :
     Expr (e2eOps ℓ P C K decT encT) Γ U32 :=
   eLet sidE fun s => eCaseOpt (initPrinOptE (v s)) (e2ePureOp (.u32Lit 0#32) .unit)
     (fun u => e2ePureOp .u32OfNat (e2ePureOp (.finVal S.N_id) (v u)))
@@ -569,7 +566,7 @@ theorem cost_initRegIdE {Γ : List (Ty (e2eSig ℓ))}
   simp only [initPrinOptE, exprCostUB_eCaseOpt, exprCostUB_eCaseSum, exprCostUB_v, exprCostUB,
     exprCostUB_e2ePureOp, E2EPureOp.cost]; omega
 
-def hdrEqE {Γ : List (Ty (e2eSig ℓ))} (h1 h2 : Expr (e2eOps ℓ P C K decT encT) Γ hdrT) :
+@[expose] def hdrEqE {Γ : List (Ty (e2eSig ℓ))} (h1 h2 : Expr (e2eOps ℓ P C K decT encT) Γ hdrT) :
     Expr (e2eOps ℓ P C K decT encT) Γ .bool :=
   eLet (.pair h1 h2) fun p =>
     let a := Expr.fst (v p); let b := Expr.snd (v p)
@@ -609,7 +606,7 @@ theorem cost_hdrEqE {Γ : List (Ty (e2eSig ℓ))} (h1 h2 : Expr (e2eOps ℓ P C 
       exprCostUB_e2ePureOp, E2EPureOp.cost, PNat.val_ofNat]; omega
   · simp only [Expr.cost]; omega
 
-def isBobRecvSmQueryE {Γ : List (Ty (e2eSig ℓ))} (qE : Expr (e2eOps ℓ P C K decT encT) Γ smQT) :
+@[expose] def isBobRecvSmQueryE {Γ : List (Ty (e2eSig ℓ))} (qE : Expr (e2eOps ℓ P C K decT encT) Γ smQT) :
     Expr (e2eOps ℓ P C K decT encT) Γ .bool :=
   eCaseSum qE (fun _ => .bool false)
     (fun r1 => eCaseSum (v r1) (fun _ => .bool false)
@@ -641,7 +638,7 @@ theorem cost_isBobRecvSmQueryE {Γ : List (Ty (e2eSig ℓ))}
     (isBobRecvSmQueryE qE).cost ≤ qE.cost + 20 := by
   dsimp only [isBobRecvSmQueryE, eCaseSum, v, Expr.cost]; omega
 
-def isBobAcceptSmRespE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isBobAcceptSmRespE {Γ : List (Ty (e2eSig ℓ))}
     (qE : Expr (e2eOps ℓ P C K decT encT) Γ smQT)
     (respE : Expr (e2eOps ℓ P C K decT encT) Γ (smRT GhostStT)) :
     Expr (e2eOps ℓ P C K decT encT) Γ .bool :=
@@ -687,7 +684,7 @@ theorem cost_isBobAcceptSmRespE {Γ : List (Ty (e2eSig ℓ))}
       exprCostUB]; omega
   · simp only [Expr.cost]; omega
 
-def setInstMetaAcceptE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def setInstMetaAcceptE {Γ : List (Ty (e2eSig ℓ))}
     (imE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eInstMetaTy S ℓ))
     (ikACorrE : Expr (e2eOps ℓ P C K decT encT) Γ .bool) :
     Expr (e2eOps ℓ P C K decT encT) Γ (e2eInstMetaTy S ℓ) :=
@@ -718,7 +715,7 @@ theorem cost_setInstMetaAcceptE {Γ : List (Ty (e2eSig ℓ))}
   dsimp only [setInstMetaAcceptE, Expr.cost]; omega
 
 /-- Pure `ReductionDsl` wire filter evaluating to `(bhFilterLocalSmQuery bobAcc sid hdr sq).map smQenc`. -/
-def filterLocalSmQueryE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def filterLocalSmQueryE {Γ : List (Ty (e2eSig ℓ))}
     (bobAccE : Expr (e2eOps ℓ P C K decT encT) Γ .bool)
     (sidE : Expr (e2eOps ℓ P C K decT encT) Γ (sidT S))
     (hdrE : Expr (e2eOps ℓ P C K decT encT) Γ hdrT)

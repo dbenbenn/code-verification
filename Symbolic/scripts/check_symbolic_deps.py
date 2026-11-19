@@ -401,7 +401,13 @@ def main(argv=None):
     challenge_mods = [
         m
         for m in sorted(imports_of)
-        if under(m, ("comparator.ComparatorChallenge.Symbolic", "ComparatorChallenge.Symbolic"))
+        if under(
+            m,
+            (
+                "comparator.ComparatorChallenge.Symbolic",
+                "ComparatorChallenge.Symbolic",
+            ),
+        )
     ]
     for mod in challenge_mods:
         f = path_of[mod]

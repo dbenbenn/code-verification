@@ -63,52 +63,92 @@ def SYS_MREMAP : BitVec 64 := 216#64
 def MREMAP_MAYMOVE : BitVec 64 := 1#64
 
 /-- `mremap(old_address, old_size, new_size, flags)` (`__NR_mremap = 216`,
-    `SYSCALL_DEFINE5(mremap)` and `vma_to_resize` / `move_vma` in `mm/mremap.c:1964`), modeled for
-    `flags == MREMAP_MAYMOVE` (`1`) on a single mapped `Perm.rw` anonymous range:
-    - `[INTENTIONAL_SCOPE]`: any `flags ≠ MREMAP_MAYMOVE` fails closed with `.Exception "unmodeled mremap flags"`;
-    - `old_address` (`X0`) not page-aligned, `new_size == 0` (`X2 == 0`), or 64-bit `PAGE_ALIGN`
-      overflow on `new_size` (`newLen > 2 ^ 64 - PAGE_SIZE`) returns `-EINVAL` (`offset_in_page`
-      and `!PAGE_ALIGN(new_len)` in `mm/mremap.c:1819` `check_mremap_params`);
-    - `old_size == 0` (`X1 == 0`) fails closed with `.Exception "unmodeled mremap (old_size == 0)"`;
-    - with `oldAligned := pageAlignUp oldLen` and `newAligned := pageAlignUp newLen`:
-      - if `oldAddr.toNat + oldAligned > USER_VA_LIMIT`, returns `-EINVAL`;
+    `SYSCALL_DEFINE5(mremap)`, `do_mremap`, and `mremap_at` in `mm/mremap.c:1559,1641,1679,2022`),
+    modeled for `flags == 0` (in-place resize) and `flags == MREMAP_MAYMOVE` (`1`) on a single
+    mapped `Perm.rw` anonymous range:
+    - `[INTENTIONAL_SCOPE]`: any `flags ≠ 0` and `flags ≠ MREMAP_MAYMOVE` fails closed with
+      `.Exception "unmodeled mremap flags"`;
+    - with `oldAddr := untaggedAddr X0`, `oldAligned := pageAlignUp oldLen`, and
+      `newAligned := pageAlignUp newLen`:
+      - strips any AArch64 user TBI tag from `oldAddr := untaggedAddr X0` (`mm/mremap.c:2096`);
+      - rejects unaligned `oldAddr`, `newLen == 0`, or `newLen > USER_VA_LIMIT` (`PAGE_ALIGN(new_len)
+        == 0 || PAGE_ALIGN(new_len) > TASK_SIZE` in `check_mremap_params`, `mm/mremap.c:2028-2045`)
+        with `-EINVAL`;
+      - fails closed with `.Exception "unmodeled mremap (old_size == 0)"` when `oldLen == 0` or
+        `oldLen > 2 ^ 64 - PAGE_SIZE` (where C `PAGE_ALIGN(old_len)` wraps to `0`);
+      - `[INTENTIONAL_OVERAPPROX]`: queries `s.oracle.mremapRefusal s.oracleIdx == some .enomem`
+        immediately after `check_mremap_params`, consuming `s.nextOracle` and returning `-ENOMEM`
+        (`check_map_count_against_split_early` before `vma_lookup`, `mm/mremap.c:2039-2042`, plus
+        later `may_expand_vm` refusals at `mm/mremap.c:1870`);
+      - when `oldAddr.toNat + oldAligned > USER_VA_LIMIT`: returns `-EFAULT` if the starting page
+        at `oldAddr` is above `USER_VA_LIMIT` or unmapped (`vma_lookup` miss), returns `oldAddr` on
+        `newAligned == oldAligned` (`MREMAP_NO_RESIZE`, `mm/mremap.c:1688`), returns `-EINVAL` on
+        `newAligned < oldAligned` (`MREMAP_SHRINK` -> `shrink_vma` -> `do_vmi_munmap`,
+        `mm/mremap.c:897-906,1805`, `mm/vma.c:1717`, regardless of `MREMAP_MAYMOVE`), and returns
+        `-EFAULT` on `newAligned > oldAligned` (`old_len > vma->vm_end - addr`, `mm/mremap.c:1849`);
       - if `[oldAddr, oldAddr + oldAligned)` intersects any frozen byte, fails closed with
         `.Exception "mremap on frozen memory"`;
       - if `[oldAddr, oldAddr + oldAligned)` is completely unmapped (`s.mem.canMap oldAddr oldAligned`),
-        returns `-EFAULT` (`vma_lookup` miss in `vma_to_resize`, `mm/mremap.c:1110`);
-      - if `[oldAddr, oldAddr + oldAligned)` is not uniformly `some Perm.rw`, fails closed with
-        `.Exception "unmodeled mremap (range not uniformly PROT_READ|PROT_WRITE)"`;
-      - otherwise queries `s.oracleIdx` (`[INTENTIONAL_OVERAPPROX]`):
-        - if `s.oracle.mremapFail s.oracleIdx` is `true`, consumes the oracle query (`s.nextOracle`),
-          leaves `s.mem` unchanged, and returns `-ENOMEM`;
-        - otherwise computes `mUnmapped := s.mem.unmapNonFrozen oldAddr oldAligned` and sanitizes
-          `s.oracle.mmap s.oracleIdx` via `sanitizeMmapAddr mUnmapped cand newAligned`. -/
+        returns `-EFAULT` (`vma_lookup` miss in `check_prep_vma`, `mm/mremap.c:1787,2047`);
+      - if `[oldAddr, oldAddr + oldAligned)` is not uniformly `some Perm.rw` or not anonymous,
+        fails closed with `.Exception`;
+      - `[INTENTIONAL_OVERAPPROX]`: if `s.oracle.mremapRefusal s.oracleIdx == some .efault`,
+        consumes `s.nextOracle`, leaves `s.mem` unchanged, and returns `-EFAULT`
+        (`old_len > vma->vm_end - addr` in `check_prep_vma`, `mm/mremap.c:1849`, over-approximating
+        adjacent anonymous mappings that remain unmerged `vm_area_struct`s in the kernel maple tree);
+      - otherwise (`mremapRefusal == none`): proceeds with in-place resize (`flags == 0`) or
+        `MREMAP_MAYMOVE` relocation via `sanitizeMmapAddr mUnmapped cand newAligned`. -/
 def execMremap (s : State) : State :=
-  let oldAddr := s.readReg64 Reg.x0
+  let oldAddr := untaggedAddr (s.readReg64 Reg.x0)
   let oldLen  := (s.readReg64 Reg.x1).toNat
   let newLen  := (s.readReg64 Reg.x2).toNat
   let flags   := s.readReg64 Reg.x3
-  if flags != MREMAP_MAYMOVE then
+  if flags != 0#64 && flags != MREMAP_MAYMOVE then
     s.setStatus (.Exception "unmodeled mremap flags")
-  else if oldAddr.toNat % PAGE_SIZE != 0 || newLen == 0 || !decide (newLen ≤ 2 ^ 64 - PAGE_SIZE) then
+  else if oldAddr.toNat % PAGE_SIZE != 0 || newLen == 0 || !decide (newLen ≤ USER_VA_LIMIT) then
     (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
-  else if oldLen == 0 then
+  else if oldLen == 0 || !decide (oldLen ≤ 2 ^ 64 - PAGE_SIZE) then
     s.setStatus (.Exception "unmodeled mremap (old_size == 0)")
+  else if s.oracle.mremapRefusal s.oracleIdx == some .enomem then
+    ((s.nextOracle).writeReg64 Reg.x0 (-ENOMEM)).advancePC
   else
     let oldAligned := pageAlignUp oldLen
     let newAligned := pageAlignUp newLen
     if !decide (oldAddr.toNat + oldAligned ≤ USER_VA_LIMIT) then
-      (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
+      if !decide (oldAddr.toNat < USER_VA_LIMIT) || s.mem.canMap oldAddr PAGE_SIZE then
+        ((s.nextOracle).writeReg64 Reg.x0 EFAULT_RET).advancePC
+      else if newAligned == oldAligned then
+        ((s.nextOracle).writeReg64 Reg.x0 oldAddr).advancePC
+      else if decide (newAligned < oldAligned) then
+        ((s.nextOracle).writeReg64 Reg.x0 (-EINVAL)).advancePC
+      else
+        ((s.nextOracle).writeReg64 Reg.x0 EFAULT_RET).advancePC
     else if !s.mem.allPerm (fun p => !p.frozen) oldAddr oldAligned then
       s.setStatus (.Exception "mremap on frozen memory")
     else if s.mem.canMap oldAddr oldAligned then
-      (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
+      ((s.nextOracle).writeReg64 Reg.x0 EFAULT_RET).advancePC
     else if !s.mem.allPerm (· == some Perm.rw) oldAddr oldAligned then
       s.setStatus (.Exception "unmodeled mremap (range not uniformly PROT_READ|PROT_WRITE)")
     else if !s.mem.allAnon oldAddr oldAligned then
       s.setStatus (.Exception "unmodeled mremap on non-anonymous memory")
-    else if s.oracle.mremapFail s.oracleIdx then
-      ((s.nextOracle).writeReg64 Reg.x0 (-ENOMEM)).advancePC
+    else if s.oracle.mremapRefusal s.oracleIdx == some .efault then
+      ((s.nextOracle).writeReg64 Reg.x0 EFAULT_RET).advancePC
+    else if flags == 0#64 then
+      if decide (newAligned ≤ oldAligned) then
+        let mem' := s.mem.remapRw oldAddr oldAligned oldAddr newAligned
+        ((((s.setMem mem').setPhysMemAvail
+          (s.physMemAvail + oldAligned - newAligned)).nextOracle).writeReg64
+          Reg.x0 oldAddr).advancePC
+      else if !decide (oldAddr.toNat + newAligned ≤ USER_VA_LIMIT) ||
+          !s.mem.canMap (oldAddr + BitVec.ofNat 64 oldAligned) (newAligned - oldAligned) then
+        ((s.nextOracle).writeReg64 Reg.x0 (-ENOMEM)).advancePC
+      else if !decide (newAligned ≤ s.physMemAvail + oldAligned) then
+        s.setStatus .OutOfMemory
+      else
+        let mem' := s.mem.remapRw oldAddr oldAligned oldAddr newAligned
+        ((((s.setMem mem').setPhysMemAvail
+          (s.physMemAvail + oldAligned - newAligned)).nextOracle).writeReg64
+          Reg.x0 oldAddr).advancePC
     else
       let mUnmapped := s.mem.unmapNonFrozen oldAddr oldAligned
       match sanitizeMmapAddr mUnmapped (s.oracle.mmap s.oracleIdx) newAligned with

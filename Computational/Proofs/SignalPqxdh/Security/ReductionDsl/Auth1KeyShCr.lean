@@ -10,15 +10,16 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Pqxdh.Security.CostedBudgets
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrLoop
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrLoop -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrStep
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimRecv
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeProofs -- proof-setup: allow-public-import
 
 /-!
 # One-Key `Auth` `KemShCr` `ReductionDsl` Program
@@ -28,7 +29,7 @@ replaced by `initPrin1KeyB`), bounds its step cost and primitive queries via the
 and proves branch evaluation equivalence for `pqxdhAuthShCrPrimImpl1Key true S`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -63,14 +64,14 @@ section Branches1Key
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
 
-def initPrin1KeyB (st : Var Γ₁ authStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def initPrin1KeyB (st : Var Γ₁ authStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ RS :=
   .iteC (eAny K (stPrin (v st)) fun e => natEq (.fst (v e)) (v u)) (.ret (rs aNone (v st))) <|
   bindV .sampleBytes32 fun s0 => bindV (.queryPrim .x25519Base (v s0)) fun ik =>
   .ret (rs (aInitPrin (v ik) (v ik)) (stUpd (v st) (prin := .listCons
     (.pair (v u) (peMk (v s0) (v ik) (v s0) (v ik) (.litBool false))) (stPrin (v st)))))
 
-def shcrPost1KeyC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
+@[expose] def shcrPost1KeyC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ SCS :=
   caseSumV (v q) (fun u => onBase s fun g => initPrin1KeyB K g u) fun q =>
   caseSumV (v q) (fun u => onBase s fun g => corruptB K g u) fun q =>
@@ -85,7 +86,7 @@ def shcrPost1KeyC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
   caseSumV (v q) (fun _ => .ret (.pair aNone (v s))) fun sk =>
   onBase s fun g => registerB g sk
 
-def shcrPre1KeyC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
+@[expose] def shcrPre1KeyC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ (.sum SCS (.prod (B 1568) (.prod pauseTy shcrStTy))) :=
   bindV (pauseCheckC S K s q) fun p =>
@@ -95,7 +96,7 @@ def shcrPre1KeyC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
 end Branches1Key
 
 /-- `ReductionDsl` version of `shcrReductionAuthCore1Key S b` (`Q = b.q_total`, list bound `K`). -/
-def shcrReductionAuthProg1Key (S : Setup) (Q K : Nat) :
+@[expose] def shcrReductionAuthProg1Key (S : Setup) (Q K : Nat) :
     TwoStageCostedReduction pqxdhOps pqPrimIface (authSpec S) (authCodec S)
       (.prod (B 1568) (B 3168)) .unit .bool (B 1568) (.prod (B 32) (B 1568)) (B 1568) where
   σ := shcrStTy
@@ -132,7 +133,7 @@ theorem initPrin1KeyB_queries_le (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
   simp only [initPrin1KeyB, initPrinB, bindV, Comp.queries]
   omega
 
-@[reducible] def authQueryRestTy : Ty pqSig :=
+@[expose, reducible] def authQueryRestTy : Ty pqSig :=
   .sum .nat (.sum (.prod .nat .nat) (.sum (.prod .nat (.prod .nat .nat))
   (.sum (.prod .nat (.prod .nat (.prod bundleT (.prod (B 32) (B 32)))))
   (.sum (.prod .nat (.prod .nat (.prod bundleT (.prod (B 32) (B 32)))))
@@ -140,7 +141,7 @@ theorem initPrin1KeyB_queries_le (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
   (.sum (.prod .nat (.prod .nat (.prod .nat preKeyMsgT)))
   (.sum (B 192) (.sum (.prod (B 32) (B 32)) (.sum .unit (B 32))))))))))
 
-def shcrPostTailC (S : Setup) (K : Nat) {Γ₁ Δ : List (Ty pqSig)}
+@[expose] def shcrPostTailC (S : Setup) (K : Nat) {Γ₁ Δ : List (Ty pqSig)}
     (s : Var Γ₁ shcrStTy) [Ext Γ₁ Δ]
     (q : Var (authQueryRestTy :: Δ) authQueryRestTy) :
     Comp pqxdhOps pqPrimIface (authQueryRestTy :: Δ) SCS :=
@@ -286,12 +287,6 @@ theorem shcrReductionAuthProg1Key_totalQueries_le_twoKey (S : Setup) (Q K fuel :
         ((shcrReductionAuthProg S Q K).resume.queries w ws) +
       (shcrReductionAuthProg S Q K).finish.queries w ws ≤ _
   omega
-
-theorem shcrAuth1KeyDslProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (shcrAuth1KeyDslProg S b).totalCost b.q_total ≤
-      SignalPqxdh.Security.stepCostBudget S b :=
-  (shcrReductionAuthProg1Key_totalCost_le_twoKey S b.q_total b.q_total b.q_total).trans
-    (shcrReductionAuthProg_totalCost_le_sec S b)
 
 theorem shcrAuth1KeyDslProg_totalQueries_le (S : Setup) (b : QueryBudget) :
     (shcrAuth1KeyDslProg S b).totalQueries primW primWS b.q_total ≤ primQueryBudget S b :=

@@ -9,14 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2PlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2PlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2bPlacedBudget
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2cPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2bPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2cPlacedBudget
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 1 (`KeysSampled`, `+1104`)
@@ -25,7 +37,7 @@ Total-correctness relocatable Block-`333` theorems and `subroutine_ok` contracts
 `InnerState.keysSampled` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -831,19 +843,5 @@ theorem states_from_pb_keysSampled_ok_ext_placed [LibsignalPlacement]
   states_from_pb_keysSampled_placed_ok_of_env hA henc s
     (fun _ h => fitsEnv_alloc_of_statesFromPbEnv s h)
     (fun _ _ hfits hevs => keysSampledEnv_sub_statesFromPbEnv s hfits hevs)
-
-/-- `subroutine_ok` for Variant 1 (`InnerState.keysSampled`) under the uniform
-    `statesFromPbVariantPlacedSpec` (`StatesFromPbEnv`), discharged from `FromPbAllocHooksBudget`
-    alone via `encoder_from_pb_ok_of_alloc_placed`. -/
-theorem states_from_pb_keysSampled_ok_ext_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (s : V1State.Chunked.KeysSampled) :
-    subroutine_ok (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeLoaded lsmpl
-        (DefsBudget.statesFromPbVariantPlacedSpec M A lim F { innerState := some (.keysSampled s) })) :=
-  states_from_pb_keysSampled_ok_ext_placed hA (encoder_from_pb_ok_of_alloc_placed hA) s
 
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2PlacedBudget

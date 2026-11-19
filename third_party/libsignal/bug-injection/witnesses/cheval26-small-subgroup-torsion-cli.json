@@ -1,5 +1,5 @@
 {
-  "comment": "#450's cheval26-small-subgroup-torsion-comp on the libsignal-cli CLI: Alice's first pre-key message delivered to Bob (no session yet) with EIGHT_TORSION[1] added to its base key. The CLI run's honest base key is abbb904f2c8f86f71332b8059313b1a1cbad7b332d85927b485e5b0e1049c34d (the same as the C-ABI witness cheval26-small-subgroup-torsion, same setup and RNG seeds); the tweaked key is curve25519-dalek 5.0.0's MontgomeryPoint::to_edwards(0) + EIGHT_TORSION[1], to_montgomery, as recorded there.",
+  "comment": "CLI counterpart of cheval26-small-subgroup-torsion-comp: Alice's first pre-key message delivered to Bob (no session yet) with EIGHT_TORSION[1] added to its base key. The CLI run's honest base key is abbb904f2c8f86f71332b8059313b1a1cbad7b332d85927b485e5b0e1049c34d (the same as the C-ABI witness cheval26-small-subgroup-torsion, same setup and RNG seeds); the tweaked key is curve25519-dalek 5.0.0's MontgomeryPoint::to_edwards(0) + EIGHT_TORSION[1], to_montgomery, as recorded there.",
   "setup_seed": 23209,
   "rng_seed": 41,
   "torsion_shifts": [

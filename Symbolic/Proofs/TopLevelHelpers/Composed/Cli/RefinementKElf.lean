@@ -9,24 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KGhostArms
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KGhostArms -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
-public import Symbolic.Proofs.Refinement.Composed.Cli.ElfToModelV2BridgeF3Placed
-public import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.ProgressPlacedKElf
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
+import Symbolic.Proofs.Refinement.Composed.Cli.ElfToModelV2PlainBridge
+import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.ProgressPlacedKElf
 public import Symbolic.Specifications.Refinement.ElfBinding
+public import Symbolic.Proofs.SpecLemmas.ElfBindingPlainPanPlaced -- proof-setup: allow-public-import
 public import VerifiedLibraries.Mallocng.Spec
 
 /-!
-# Relocatable Whole-Protocol CLI Refinement for `cliElfBytes` from `H2KGhostArms`
+# Relocatable Plain-Memory Whole-Protocol CLI Refinement for `cliElfBytes` from `H2KGhostArms`
 
 **Checked by Lean.**
 
-Proves `CompRefinesCliBinaryPlaced cliElfBytes` conditionally on `H2KGhostArms` by combining
+Proves `CompRefinesCliBinaryPlainPanPlaced cliElfBytes` conditionally on `H2KGhostArms` by combining
 `h2kg_cliPqBinaryV2OomF3BytesPlaced_cliElf`, `cliElfProgressPlaced_cliElfK`, and
 `comp_refines_cli_model_b2`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,29 +37,35 @@ namespace Symbolic.Proofs.TopLevelHelpers.Composed.Cli.RefinementKElf
 open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
 open CryptoVerification.SignalSession (cliElfBytes libsignalSessionLib)
-open DY.Libsignal.Composed.Refinement.Cli (CompRefinesCliBinaryPlaced comp_refines_cli_model_b2)
+open DY.Libsignal.Composed.Refinement.Cli (comp_refines_cli_model_b2)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KGhostArms
   (H2KGhostArms h2kg_cliPqBinaryV2OomF3BytesPlaced_cliElf)
-open Symbolic.Proofs.Refinement.Composed.Cli.ElfToModelV2BridgeF3Placed
-  (compRefinesCliBinaryPlaced_of_v2OomF3Bytes)
+open Symbolic.Proofs.Refinement.Composed.Cli.ElfToModelV2PlainBridge
+  (compRefinesCliBinaryPlainPanPlaced_of_v2OomF3Bytes)
+open Symbolic.Proofs.SpecLemmas.ElfBindingPlainPanPlaced
+  (CliElfProgressPlainPanPlaced CompRefinesCliBinaryPlainPanPlaced)
 open Symbolic.Proofs.TopLevelHelpers.Composed.Cli.ProgressPlacedKElf
   (cliElfProgressPlaced_cliElfK)
 
-/-- Placed progress for `cliElfBytes` given `H2KGhostArms`. -/
+/-- Plain-memory placed progress for `cliElfBytes` given `H2KGhostArms`. -/
 theorem cliElfProgressPlaced_cliElfK (hG : H2KGhostArms) :
     ∀ mpl mmpl : MultiPlacement,
       libsignalSessionLib.LinkedAt cliElfBytes mpl →
       VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl →
       ∀ elf : ElfImage, ElfImage.parse cliElfBytes = .ok elf →
-        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl mmpl elf :=
+        CliElfProgressPlainPanPlaced mpl elf :=
   ProgressPlacedKElf.cliElfProgressPlaced_cliElfK hG
 
-/-- Relocatable two-placement whole-protocol CLI refinement for `cliElfBytes` given
+/-- Relocatable plain-memory whole-protocol CLI refinement for `cliElfBytes` given
 `H2KGhostArms`. -/
 theorem comp_refines_cli_placed_proofK :
-    H2KGhostArms → CompRefinesCliBinaryPlaced cliElfBytes :=
+    H2KGhostArms → CompRefinesCliBinaryPlainPanPlaced cliElfBytes :=
   fun hG =>
-    compRefinesCliBinaryPlaced_of_v2OomF3Bytes
+    compRefinesCliBinaryPlainPanPlaced_of_v2OomF3Bytes
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced.cliElf_mallocng_linkedIn
+      (fun _ hLs _ hparse =>
+        LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced.cliElf_trustedCodeMatchesPlaced_of_parse
+          hLs hparse)
       (h2kg_cliPqBinaryV2OomF3BytesPlaced_cliElf hG)
       (cliElfProgressPlaced_cliElfK hG)
       comp_refines_cli_model_b2

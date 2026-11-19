@@ -9,11 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Bridge
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Fetch -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Bridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Fetch -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain -- shake: keep
 public import ProofLib -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Defs
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Top -- shake: keep
@@ -28,7 +27,7 @@ and pure protobuf merge step lemmas for `VersionNegotiationPB`, `ChainEpochPB`, 
 `PqRatchetState`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.DecodeState
 
@@ -55,59 +54,29 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Callee symbol names called by `spqr::decode_state` (`0x5349c`).
     `v1StateMergeName` (`0x4e7e8`) is imported from `CryptoVerification.SpqrV1.Prost.MessageMerge`. -/
-def skipField3Name : String :=
+@[expose] def skipField3Name : String :=
   "prost::encoding::skip_field::<&mut &[u8]> [local#3]"
 
-def chainParamsMergeName : String :=
+@[expose] def chainParamsMergeName : String :=
   "prost::encoding::message::merge::<spqr::proto::pq_ratchet::ChainParams, &mut &[u8]>"
 
-def dropOptProtoInnerStateName : String :=
+@[expose] def dropOptProtoInnerStateName : String :=
   "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>"
 
-def epochDirectionMergeName : String :=
+@[expose] def epochDirectionMergeName : String :=
   "prost::encoding::message::merge::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, &mut &[u8]>"
 
-def dropProtoPqRatchetStateName : String :=
+@[expose] def dropProtoPqRatchetStateName : String :=
   "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>"
-
-@[simp, arm64_norm]
-theorem skipField3_fnOff :
-    libsignalSessionCode.fnOff skipField3Name = 0x4677c :=
-  libsignalSessionCode_fnOff_0x4677c
-
-@[simp, arm64_norm]
-theorem chainParamsMerge_fnOff :
-    libsignalSessionCode.fnOff chainParamsMergeName = 0x48900 :=
-  libsignalSessionCode_fnOff_0x48900
-
-@[simp, arm64_norm]
-theorem dropOptProtoInnerState_fnOff :
-    libsignalSessionCode.fnOff dropOptProtoInnerStateName = 0x46cdc :=
-  libsignalSessionCode_fnOff_0x46cdc
-
-@[simp, arm64_norm]
-theorem epochDirectionMerge_fnOff :
-    libsignalSessionCode.fnOff epochDirectionMergeName = 0x4a14c :=
-  libsignalSessionCode_fnOff_0x4a14c
-
-@[simp, arm64_norm]
-theorem dropProtoPqRatchetState_fnOff :
-    libsignalSessionCode.fnOff dropProtoPqRatchetStateName = 0x47068 :=
-  libsignalSessionCode_fnOff_0x47068
-
-macro "decodeState_fetches " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode
-    CryptoVerification.SpqrV1.Top.DecodeState.decodeStateBin $b $H
-    CryptoVerification.SpqrV1.Top.DecodeState.decodeState_fnOff 0x4e0a4 $k0 $len)
 
 /-- Own stack frame size of `spqr::decode_state`: `0x60 + 0x510 = 0x570 = 1392` bytes. -/
 abbrev decodeStateOwnFrame : Nat := 1392
 
 /-- Niche value `-2` (`0xfffffffffffffffe`) used for `Option<InnerState>::None` and `Result::Err`. -/
-def none2Cap : BitVec 64 := 0xfffffffffffffffe#64
+@[expose] def none2Cap : BitVec 64 := 0xfffffffffffffffe#64
 
 /-- Niche value `-3` (`0xfffffffffffffffd`) used for `Option<PqRatchetState.Inner>::None`. -/
-def none3Cap : BitVec 64 := 0xfffffffffffffffd#64
+@[expose] def none3Cap : BitVec 64 := 0xfffffffffffffffd#64
 
 @[simp, arm64_norm]
 theorem noneCap_add_one_beq_zero : (noneCap + 1#64 == 0#64) = true := rfl

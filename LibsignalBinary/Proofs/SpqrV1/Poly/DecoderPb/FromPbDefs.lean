@@ -10,7 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder>::from_pb`: Definitions and Specifications
@@ -21,7 +22,7 @@ Total pure model (`fromPbDecResult`) and AArch64 separation-logic contracts (`fr
 `fromPbDecSpecX`) for `<PolyDecoder>::from_pb` (`0x62b1c`, Block `376`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.DecoderPb
 
@@ -54,7 +55,7 @@ abbrev fromPbDecStackX : Nat := fromPbDecFrame + extHookStack
 /-! ## Total Pure Model for `PolyDecoder.fromPb` -/
 
 /-- Total version of `PolyDecoder.pushChunksExact4` (when `pts.length % 4 = 0`). -/
-def pushChunks4Total : List (BitVec 8) → SortedSetPt → SortedSetPt
+@[expose] def pushChunks4Total : List (BitVec 8) → SortedSetPt → SortedSetPt
   | b0 :: b1 :: b2 :: b3 :: rest, v =>
     let pt : Pt := { x := GF16.new (u16FromBeBytes b0 b1), y := GF16.new (u16FromBeBytes b2 b3) }
     pushChunks4Total rest (v.push pt).1
@@ -136,7 +137,7 @@ theorem pushChunks4Total_strictSorted :
     exact hsort'
 
 /-- Total version of `PolyDecoder.decodeDecoderPbPts`. -/
-def decodePbPtsTotal : List (List (BitVec 8)) → Except PolynomialError (List SortedSetPt)
+@[expose] def decodePbPtsTotal : List (List (BitVec 8)) → Except PolynomialError (List SortedSetPt)
   | [] => .ok []
   | pts :: rest =>
     if pts.length % 4 != 0 then
@@ -204,7 +205,7 @@ theorem decodePbPtsTotal_strictSorted :
         · exact decodePbPtsTotal_strictSorted hrest s hmem
 
 /-- Total result of `<PolyDecoder>::from_pb`. -/
-def fromPbDecResult (pb : ProtoPolynomialDecoder) : Except PolynomialError PolyDecoder :=
+@[expose] def fromPbDecResult (pb : ProtoPolynomialDecoder) : Except PolynomialError PolyDecoder :=
   if pb.pts.length != 16 then
     .error .serializationInvalid
   else
@@ -268,7 +269,7 @@ structure FromPbDecGhost where
   pb : ProtoPolynomialDecoder
 
 /-- Specification of `<PolyDecoder>::from_pb` (`0x62b1c`): consumes `protoPolynomialDecoderAt A pbA pb` at `x1` into `memRegion pbA 40` and writes `resultPolyDecoderFromPbAt A out (fromPbDecResult pb)` to `x0 = out` (or panics on OOM). -/
-def fromPbDecSpec (A : RustAlloc) : Spec FromPbDecGhost where
+@[expose] def fromPbDecSpec (A : RustAlloc) : Spec FromPbDecGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA⌝ ∗
       memRegion x.out polyDecoderSize ∗
@@ -282,7 +283,7 @@ def fromPbDecSpec (A : RustAlloc) : Spec FromPbDecGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Extended-stack variant of `fromPbDecSpec` (`fromPbDecStackX = 544 + extHookStack`). -/
-def fromPbDecSpecX (A : RustAlloc) : Spec FromPbDecGhost where
+@[expose] def fromPbDecSpecX (A : RustAlloc) : Spec FromPbDecGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA⌝ ∗
       memRegion x.out polyDecoderSize ∗
@@ -295,25 +296,13 @@ def fromPbDecSpecX (A : RustAlloc) : Spec FromPbDecGhost where
       A.pool ∗ stackAt s0.sp fromPbDecStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def FromPbDecOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr fromPbDecName)
-    (fromPbDecSpec A)
-
-def FromPbDecOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr fromPbDecName)
-    ((fromPbDecSpecX A).inImage img)
-
-def FromPbDecPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def FromPbDecPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_376).rebase (blkPl_376).base (Rust.withPanics ext))
     (blkPl_376).base
     (fromPbDecSpec A)
 
-def FromPbDecPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def FromPbDecPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_376).rebase (blkPl_376).base (Rust.withPanics ext))
     (blkPl_376).base

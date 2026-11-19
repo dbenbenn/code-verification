@@ -105,13 +105,7 @@ globs = [
   "Arm64.Trusted.Process.OverrideWellBehaved",
   "Arm64.Trusted.Process",
   "Arm64.Trusted.Spec.SepLogicModel",
-  "Arm64.Legacy.Object.LinkedImage",
-  "Arm64.Legacy.Object.Loader",
-  "Arm64.Legacy.Spec.Library",
-  "Arm64.Legacy.Spec.Helpers",
-  "Arm64.Legacy",
   "Arm64.Trusted.*",
-  "Arm64.Legacy.*",
 ]
 libName = "arm64_Arm64_Trusted"
 precompileModules = true

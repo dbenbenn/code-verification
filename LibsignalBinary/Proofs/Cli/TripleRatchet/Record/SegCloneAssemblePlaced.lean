@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced -- proof-setup: allow-public-import
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneBase
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Destination Slot Assembly for CLI `SegClone`
@@ -23,7 +26,7 @@ Proves the `[LibsignalPlacement]` destination `SessionStructure` slot assembly a
 branch (`+0x594 → +0x69c / +0x7e4`) on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

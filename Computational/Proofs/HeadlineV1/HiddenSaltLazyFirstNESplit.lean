@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltV1
-public import Computational.Proofs.HeadlineV1.SignedRefineC
+public import Computational.Proofs.HeadlineV1.HiddenSaltV1Defs -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.HiddenSaltV1
+public import Computational.Proofs.HeadlineV1.SignedRefineC -- proof-setup: allow-public-import
 import Computational.Proofs.HeadlineV1.DeliverForgeShifted
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyWire
 import Computational.Proofs.SignalWireRoundTrip
 import ProofLib.SepLogic.WP.StateNorm
+import Computational.Proofs.HeadlineV1.SendShortC
 
 /-!
 # Sticky-Dead-Ghost `firstNESimImpl'` Split
@@ -24,11 +26,9 @@ import ProofLib.SepLogic.WP.StateNorm
 plus `evictOnlySimImpl'`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
@@ -58,7 +58,7 @@ abbrev KemFailSimM' (PQ Pt : Type) (F : ShaCompress) (ℓ : ℕ) :=
 open Classical in
 /-- Sticky-dead-ghost simulator setting `fl` on lazy wrong-salt `deliver` probes before `dead` and
 transitioning to `dead` on non-lazy probes. -/
-noncomputable def firstNESimImpl'
+@[expose] noncomputable def firstNESimImpl'
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
     (InvPQ : ℕ → List (BitVec 8) → Prop) (ℓ : ℕ)
@@ -1134,4 +1134,3 @@ theorem hiddenSaltTerm_le_add_spuriousStepTerm_v1_refuseCorrB0_lazy'
 
 end CryptoVerification.E2E.Signed
 
-end

@@ -11,11 +11,12 @@ module
 
 public import LibsignalBinary.Heap.Fine.F3LayoutData -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2EntryGuard -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMemsetEntryGuard -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks -- proof-setup: allow-public-import
 public import ProofLib.ProgramReflection -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMemsetEntryGuard
 
 /-!
 # Startup `StdMainEntryLr` Dischargers & Guarded-Harness Producer for `F3C2EntryGuard` (`ElfSlicesPqOomC2EntryGuardLr`)
@@ -46,7 +47,8 @@ open VerifiedLibraries.Mallocng (mallocngAddrsOfPlacement)
 open CryptoVerification (LibsignalPlacement)
 open CryptoVerification.SignalSession (
   CliHooks cliElfBytes cliElfImage cliExternsPlaced cliProcessInputs libsignalSessionLib
-  lsBlackBoxSym lsFromUtf8Sym lsSharedSecretDropSym lsStaticSecretDropSym
+  lsAesDecSym lsAesEncSym lsBlackBoxSym lsDurationSinceSym lsFromUtf8Sym lsMemrchrSym
+  lsSharedSecretDropSym lsStaticSecretDropSym lsTimeAddSym
 )
 open CryptoVerification.SignalSession.Cli.MainHops (cliMainStk)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks)
@@ -295,6 +297,13 @@ theorem f3FromUtf8EntryGuard_of_stdMainEntryLr {mpl : Obj.MultiPlacement}
   rw [resolve_eq_stubAddrOf hLs c2Pins_parts.2.2.2.2.1, hlr_eq_startupLrVal hlr]
   exact c2LrDisjoint_parts.2.2.2.1
 
+private theorem ite_bool_intro {c : Bool} {P Q : Prop}
+    (hT : c = true → P) (hF : c = false → Q) :
+    (if c = true then P else Q) := by
+  cases c with
+  | true => exact hT rfl
+  | false => exact hF rfl
+
 /-- Every `cliExtraGhostSyms` entry guard holds at `StdMainEntryLr f3StdLayout s0`. -/
 theorem c2GuardOf_of_stdMainEntryLr {mpl : Obj.MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
@@ -302,7 +311,7 @@ theorem c2GuardOf_of_stdMainEntryLr {mpl : Obj.MultiPlacement}
     (hlr : StdMainEntryLr f3StdLayout s0) :
     c2GuardOf mpl sym s0 := by
   unfold c2GuardOf
-  split
+  refine ite_bool_intro (fun _ => ?_) fun _ => ?_
   · unfold LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveExtraReplays.memmoveEntryGuard
       LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveExtraReplays.keepR_memmove
       LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveExtraReplays.memcpyEntry
@@ -310,59 +319,42 @@ theorem c2GuardOf_of_stdMainEntryLr {mpl : Obj.MultiPlacement}
       resolve_eq_stubAddrOf hLs c2Pins_parts.2.1,
       hlr_eq_startupLrVal hlr]
     exact c2LrDisjoint_parts.1
-  · split
+  · refine ite_bool_intro (fun _ => ?_) fun _ => ?_
     · unfold LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhostReplays.bcmpEntryGuard
         LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhostReplays.bcmpHullBase
         BcmpEntryGuard
       rw [resolve_eq_stubAddrOf hLs c2Pins_parts.2.2.1, hlr_eq_startupLrVal hlr]
       exact c2LrDisjoint_parts.2.1
-    · split
+    · refine ite_bool_intro (fun _ => ?_) fun _ => ?_
       · unfold LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenGhostReplays.strlenEntryGuard
           LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenGhostReplays.strlenEntry
           StrlenEntryGuard
         rw [resolve_eq_stubAddrOf hLs c2Pins_parts.2.2.2.1, hlr_eq_startupLrVal hlr]
         exact c2LrDisjoint_parts.2.2.1
-      · split
-        · trivial
-        · split
-          · exact f3FromUtf8EntryGuard_of_stdMainEntryLr hLs hlr
-          · split
-            · trivial
-            · split
-              · trivial
-              · split
-                · unfold LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhostReplays.blackBoxEntryGuard
-                    BlackBoxEntryGuard
-                  rw [resolve_eq_stubAddrOf hLs c2Pins_parts.2.2.2.2.2.1, hlr_eq_startupLrVal hlr]
-                  exact c2LrDisjoint_parts.2.2.2.2.1
-                · split
-                  · unfold LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StaticSecretDropGhostReplays.staticSecretDropEntryGuard
-                      StaticSecretDropEntryGuard
-                    rw [resolve_eq_stubAddrOf hLs c2Pins_parts.2.2.2.2.2.2.1, hlr_eq_startupLrVal hlr]
-                    exact c2LrDisjoint_parts.2.2.2.2.2.1
-                  · split
-                    · unfold LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropGhostReplays.sharedSecretDropEntryGuard
-                        LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropGhostReplays.sharedSecretDropHullBase
-                        SharedSecretDropEntryGuard
-                      rw [resolve_eq_stubAddrOf hLs c2Pins_parts.2.2.2.2.2.2.2, hlr_eq_startupLrVal hlr]
-                      exact c2LrDisjoint_parts.2.2.2.2.2.2
-                    · trivial
-
-/-- Generic `ExtraEntryGuard (c2GuardOf mpl) gh s0` startup discharge for ANY `gh : CliGhostHooks`. -/
-theorem extraEntryGuard_c2GuardOf_of_stdMainEntryLr {mpl : Obj.MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (gh : CliGhostHooks) {s0 : State}
-    (hlr : StdMainEntryLr f3StdLayout s0) :
-    ExtraEntryGuard (c2GuardOf mpl) gh s0 :=
-  fun _sym _f _hDom _hLook => c2GuardOf_of_stdMainEntryLr hLs hlr
-
-/-- Exact H-REV4 requested specialization at `gh := h2k_ghFixedK mpl mmpl`. -/
-theorem extraEntryGuard_h2k_of_stdMainEntryLr [LibsignalPlacement]
-    {mpl : Obj.MultiPlacement} (mmpl : Obj.MultiPlacement)
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    {s0 : State} (hlr : StdMainEntryLr f3StdLayout s0) :
-    ExtraEntryGuard (c2GuardOf mpl) (h2k_ghFixedK mpl mmpl) s0 :=
-  extraEntryGuard_c2GuardOf_of_stdMainEntryLr hLs (h2k_ghFixedK mpl mmpl) hlr
+      · refine ite_bool_intro (fun _ => trivial) fun _ => ?_
+        refine ite_bool_intro (fun _ => f3FromUtf8EntryGuard_of_stdMainEntryLr hLs hlr) fun _ => ?_
+        refine ite_bool_intro (fun _ => trivial) fun _ => ?_
+        refine ite_bool_intro (fun _ => trivial) fun _ => ?_
+        refine ite_bool_intro (fun _ => ?_) fun _ => ?_
+        · unfold LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhostReplays.blackBoxEntryGuard
+            BlackBoxEntryGuard
+          rw [resolve_eq_stubAddrOf hLs c2Pins_parts.2.2.2.2.2.1, hlr_eq_startupLrVal hlr]
+          exact c2LrDisjoint_parts.2.2.2.2.1
+        · refine ite_bool_intro (fun _ => ?_) fun _ => ?_
+          · unfold LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StaticSecretDropGhostReplays.staticSecretDropEntryGuard
+              StaticSecretDropEntryGuard
+            rw [resolve_eq_stubAddrOf hLs c2Pins_parts.2.2.2.2.2.2.1, hlr_eq_startupLrVal hlr]
+            exact c2LrDisjoint_parts.2.2.2.2.2.1
+          · refine ite_bool_intro (fun _ => ?_) fun _ => ?_
+            · unfold LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropGhostReplays.sharedSecretDropEntryGuard
+                LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropGhostReplays.sharedSecretDropHullBase
+                SharedSecretDropEntryGuard
+              rw [resolve_eq_stubAddrOf hLs c2Pins_parts.2.2.2.2.2.2.2, hlr_eq_startupLrVal hlr]
+              exact c2LrDisjoint_parts.2.2.2.2.2.2
+            · refine ite_bool_intro (fun _ => trivial) fun _ => ?_
+              refine ite_bool_intro (fun _ => trivial) fun _ => ?_
+              refine ite_bool_intro (fun _ => trivial) fun _ => ?_
+              exact ite_bool_intro (fun _ => trivial) fun _ => trivial
 
 /-- Combined `F3C2EntryGuard mpl mmpl s0` startup discharge (drop-in replacement at every
     `f3MemsetMemcpyEntryLrFalse_of_stdMainEntryLr` call site). -/
@@ -384,7 +376,7 @@ theorem cliElf_f3MuslHarness_c2EntryGuard_of_linkedAt {mpl mmpl : Obj.MultiPlace
     (W : CliHooks) :
     MuslHarnessFineNeedLocksGuardedPerInput 80
       (mallocngAddrsOfPlacement mmpl).libc
-      (patchElfTokensPlacedAt mpl cliElfImage)
+      cliElfImage
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
       (mpl.base 617) cliProcessInputs mmpl cliBudgetLimits fineCostModel.init cliMainStk
       (F3CodeOk mpl mmpl) (cliStaticsPlacedAt mpl)

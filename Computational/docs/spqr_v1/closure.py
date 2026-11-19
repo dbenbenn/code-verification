@@ -6,27 +6,25 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Call-closure measurement on the REAL rung-7b image (`GeneratedLean/LibsignalSessionObj.{lean,code.bin}`).
-Untrusted tooling (numbers only). A copy of `third_party/libsignal/libsignal-session/tools/closure.py`
-whose `reach` matches root names exactly instead of as substrings. `closure.txt` next to it is
+"""Call-closure measurement on an exported `<STEM>.{lean,code.bin}` pair.
+Untrusted tooling (numbers only). A historical copy of `third_party/libsignal/libsignal-session/tools/closure.py`
+whose `reach` matches root names exactly instead of as substrings. `closure.txt` next to it was
+recorded on the rung-7b session `.code.bin` snapshot with SHA-256 prefix `ded40fcf5568` for roots
+`'spqr::send::<libsignal_session::HookRng>'` and `'spqr::recv'`.
 
-    closure.py .GeneratedLean/GeneratedLean reach 'spqr::send::<libsignal_session::HookRng>' 'spqr::recv'
-
-on the image whose `LibsignalSessionObj.code.bin` has SHA-256 prefix `ded40fcf5568`.
-
-usage: closure.py GENDIR list SUBSTR            # list functions matching
-       closure.py GENDIR reach ROOT... [--stop SUBSTR]...   # closure from roots (exact names)
-       closure.py GENDIR fn SUBSTR             # per-function detail (callees, loops)
+usage: closure.py STEM_PATH list SUBSTR            # list functions matching
+       closure.py STEM_PATH reach ROOT... [--stop SUBSTR]...   # closure from roots (exact names)
+       closure.py STEM_PATH fn SUBSTR             # per-function detail (callees, loops)
 Closure stops at extern stubs (hooks) and at --stop substrings (already-verified / hooked).
 """
 import re, sys, os, subprocess, json, hashlib, collections, shutil
 
-gen = sys.argv[1]
+stem = sys.argv[1]
 mode = sys.argv[2]
 args = sys.argv[3:]
 here = os.environ.get("CLOSURE_CACHE", "/tmp")
-objl = open(os.path.join(gen, "LibsignalSessionObj.lean")).read()
-code = open(os.path.join(gen, "LibsignalSessionObj.code.bin"), "rb").read()
+objl = open(stem + ".lean").read()
+code = open(stem + ".code.bin", "rb").read()
 h = hashlib.sha256(code).hexdigest()[:16]
 elf = os.path.join(here, f"s2code_{h}.elf")
 def llvm_objcopy():
@@ -38,7 +36,7 @@ if not os.path.exists(elf):
         llvm_objcopy(),
         "-I", "binary", "-O", "elf64-littleaarch64",
         "--rename-section", ".data=.text,alloc,code,load,readonly",
-        os.path.join(gen, "LibsignalSessionObj.code.bin"), elf])
+        stem + ".code.bin", elf])
 cache = elf + ".dis"
 if not os.path.exists(cache):
     out = subprocess.check_output(["llvm-objdump", "-d", "--no-show-raw-insn", elf], text=True)

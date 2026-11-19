@@ -9,16 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.InitBundlePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.InitPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.InitBundlePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.InitPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.Pure
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.Helpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.CallAndFrame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.HelpersPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.TailPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `init` Dispatch Branch (`M+0x240`, Block `617`)
@@ -28,7 +40,7 @@ Verifies `main`'s 3-argument `"init"` dispatch branch at `M+0x240` with read-onl
 bundle allocation (`M+0x274`) under `InitBranchEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -92,7 +104,7 @@ private theorem pool_congr_vm {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-- Deterministic `AllocEvent` list emitted by `step_init_branch_240_placed` prior to the tail
 `vptr` deallocation (`address` + `try_allocate_in` on `bs3` when `bs1 = utf8 "init"` and
 `addrParse uuidParse bs2 = some peer`, else `[]`). -/
-def initBranchEvents (uuidParse : UuidParser) (bs1 bs2 bs3 : List (BitVec 8)) :
+@[expose] def initBranchEvents (uuidParse : UuidParser) (bs1 bs2 bs3 : List (BitVec 8)) :
     List AllocEvent :=
   if bs1 = utf8 "init" then
     match addrParse uuidParse bs2 with
@@ -102,7 +114,7 @@ def initBranchEvents (uuidParse : UuidParser) (bs1 bs2 bs3 : List (BitVec 8)) :
 
 /-- Exact deterministic `AllocEvent` envelope of `step_init_branch_240_placed` prior to the tail
 `vptr` deallocation. -/
-def InitBranchEnv (uuidParse : UuidParser) (bs1 bs2 bs3 : List (BitVec 8))
+@[expose] def InitBranchEnv (uuidParse : UuidParser) (bs1 bs2 bs3 : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   evs = initBranchEvents uuidParse bs1 bs2 bs3
 
@@ -507,60 +519,5 @@ theorem step_init_branch_240_placed [LibsignalPlacement] {CodeOk : Memory → Pr
       Q Qp oom :=
   step_init_branch_240_pool_placed hc hstk hstk64 hok hne hps hfit hs hx19 hx20 hx23 hx24
     hvcap htr hfs (exitKPoolPlaced_of_exitKPlaced hexit) hnext
-
-theorem step_init_branch_240_placed_any_st [LibsignalPlacement] {CodeOk : Memory → Prop}
-    [LsCodeInv CodeOk] {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {st : M.σ}
-    {uuidParse : UuidParser} {i : Inputs} {s0 s : State}
-    {stk hookStack resStack : Nat} {buf vcap vptr p0 p1 p2 p3 w3 w4 w1 : BitVec 64}
-    {b0 b1 b2 b3 : BitVec 8} {bs2 bs3 : List (BitVec 8)}
-    {Statics : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hc : MainCalleesROBlk617 A lim H uuidParse hookStack resStack)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk) (hstk64 : stk ≤ 2 ^ 63)
-    (hok : CliInputsOk i) (hne : i.argv ≠ [])
-    (hps : ([(p1, [b0, b1, b2, b3]), (p2, bs2), (p3, bs3)] :
-      List (BitVec 64 × List (BitVec 8))).map (·.2) = i.argv.map bytesOfString)
-    (hfit : FitsEvents M lim st (initBranchEvents uuidParse [b0, b1, b2, b3] bs2 bs3))
-    (hs : InMainPlaced CodeOk s0 s 0x240)
-    (hx19 : s.readReg64 (.gpr 19#5) = buf) (hx20 : s.readReg64 (.gpr 20#5) = vptr)
-    (hx23 : s.readReg64 (.gpr 23#5) = vcap)
-    (hx24 : s.readReg64 (.gpr 24#5) = BitVec.ofNat 64 i.argv.length)
-    (hvcap : vcap ≠ 0#64) (htr : s.trace = s0.trace) (hfs : s.fs = s0.fs)
-    (hexit : ExitKPlaced CodeOk H A s0 stk
-      (fun code s' => code = 2 ∧ parseArgs uuidParse (i.argv.map bytesOfString) = none ∧
-        s'.trace = s0.trace ∧ s'.fs = s0.fs) Q Qp)
-    (hnext : ∀ (s' : State) (st' : M.σ) (w : CallW) (c : CallV),
-      parseArgs uuidParse (i.argv.map bytesOfString) = some c →
-      AtCallPlaced CodeOk s0 s' w i.argv.length buf →
-      SepWPp (mProgPlaced H) (s0.readReg64 .lr) s'
-        (callHeap A.repAlloc w c ∗
-          argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf
-            [(p1, [b0, b1, b2, b3]), (p2, bs2), (p3, bs3)] ∗
-          argvAtROP (s0.readReg64 .x1)
-            ((p0, bytesOfString "libsignal-cli") ::
-              [(p1, [b0, b1, b2, b3]), (p2, bs2), (p3, bs3)]) ∗
-          mainSaved s0 ∗ locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
-            (callCellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) w) ∗
-          stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
-          A.pool lim st' s' ∗ Statics)
-        Q Qp oom) :
-    let fsp := s0.sp - BitVec.ofNat 64 mainFrameSize
-    SepWPp (mProgPlaced H) (s0.readReg64 .lr) s
-      ((vptr ↦₆₄ p1) ∗ ((vptr + 8#64) ↦₆₄ BitVec.ofNat 64 ([b0, b1, b2, b3] : List (BitVec 8)).length) ∗
-        ((vptr + 16#64) ↦₆₄ p2) ∗ ((vptr + 24#64) ↦₆₄ BitVec.ofNat 64 bs2.length) ∗
-        ((vptr + 32#64) ↦₆₄ p3) ∗ ((vptr + 40#64) ↦₆₄ BitVec.ofNat 64 bs3.length) ∗
-        argsBufTail A.repAlloc vcap vptr [(p1, [b0, b1, b2, b3]), (p2, bs2), (p3, bs3)] ∗
-        argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf
-          [(p1, [b0, b1, b2, b3]), (p2, bs2), (p3, bs3)] ∗
-        argvAtROP (s0.readReg64 .x1)
-          ((p0, bytesOfString "libsignal-cli") ::
-            [(p1, [b0, b1, b2, b3]), (p2, bs2), (p3, bs3)]) ∗
-        mainSaved s0 ∗
-        ((fsp + 0x40#64) ↦₆₄ w3) ∗ ((fsp + 0x48#64) ↦₆₄ w4) ∗ ((fsp + 0x58#64) ↦₆₄ w1) ∗
-        memRegion (fsp + 0x1b8#64) 32 ∗ m2LocalsRest fsp ∗
-        stackAt fsp (stk - mainFrameSize) ∗ A.pool lim st s ∗ Statics)
-      Q Qp oom :=
-  step_init_branch_240_placed hc hstk hstk64 hok hne hps hfit hs hx19 hx20 hx23 hx24
-    hvcap htr hfs hexit fun s' w' c' hp ha => hnext s' _ w' c' hp ha
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.InitPlacedBudget

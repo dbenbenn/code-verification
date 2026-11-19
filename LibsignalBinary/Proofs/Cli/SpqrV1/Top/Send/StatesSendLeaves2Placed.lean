@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1StepsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpoch
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
@@ -24,7 +24,7 @@ Proves the six leaf-call arms (`headerSent`, `ct1Received`, `keysSampled`, `ct1S
 `ct2Sampled`, `ekReceivedCt1Sampled`) in Block `427` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,7 +49,7 @@ open CryptoVerification.Cli.SpqrV1.Top.Send.CodePlaced
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp

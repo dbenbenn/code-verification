@@ -12,11 +12,13 @@ module
 public import Arm64
 public import ProofLib
 public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.SyscallReadWritev
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Block-`617` Ghost-to-Real Link Transfer and State-Indexed Transfer
@@ -28,7 +30,7 @@ preservation across `cliExternsPlaced` and `Syscall.standard`, and the block-`61
 `Block617TransferFixedHyp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -40,21 +42,15 @@ open CryptoGames.CBC (AesKey Block)
 open CryptoGames.HMAC (ShaState)
 open CryptoGames.LibsignalSession (Crypto)
 open CryptoVerification.E2E
-  (PqxdhPrims aesDecHookMallocng aesEncHookMallocng compress512Hook compressHook dsmbHook edNegHook
-   fmtWriteHook0 formatInnerHook0 kemDecapsHook kemEncapsHook libcruxHmacHookMallocng
-   mlkemDecapsHook mlkemEncaps1Hook mlkemEncaps2Hook mlkemFromSeedHook mlkemPk1Hook mlkemPk2Hook
-   mlkemValidatePkHook restoreCallerRegs scalarModHook scalarWideHook stepRustAlloc1
-   stepRustDealloc1 toEdwardsHook torsionFreeHook writeVecHeader)
+  (PqxdhPrims aesDecHookMallocng aesEncHookMallocng libcruxHmacHookMallocng restoreCallerRegs
+   stepRustAlloc1 stepRustDealloc1 writeVecHeader)
 open CryptoVerification.LibsignalAesCbc (returnToLinkRegister)
-open CryptoVerification.LibsignalHmac (compress256Hook)
-open CryptoVerification.LibsignalTripleRatchet
-  (diffieHellmanHook pubFromSecretHook)
 open CryptoVerification.SignalSession
-  (CliHooks Inputs cliExternsPlaced cliHookTablePlaced cliPqxdhHookTablePlaced
-   cliProcessInputs isCliPanicSymbolPlaced libsignalSessionLib
-   lsReadFileSym lsReadStdinSym lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli
-   lsRustNoAllocShimSymCli lsRustReallocSymCli lsStringCloneSym unitResult
-   writeFileHook writeStdoutHook)
+  (CliHooks Inputs cliExternsPlaced cliPqxdhHookTablePlaced cliProcessInputs
+  isCliPanicSymbolPlaced libsignalSessionLib lsReadFileSym lsReadStdinSym lsRustAllocSymCli
+  lsRustAllocZeroedSymCli lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli
+  lsStringCloneSym)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliHookTablePlaced)
 open CryptoVerification.SignalSession.Placed (DirectOrBranchStub)
 open CryptoVerification.SignalSession.Cli (RunAnswer)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks cliGhostExterns)
@@ -116,7 +112,7 @@ private theorem subroutineOutcome_not_halted {α : Type} {spec : Spec α} {x : �
 
 /-- Trajectory- and state-indexed generalization of `AllocGhostLinkTransfer.GhostExternReplays`
     from `Inv : Memory → Prop` to `InvS : State → Prop` (e.g. `InvMem u.mem ∧ FdsGe3Closed u.fs`). -/
-def GhostExternReplaysOn (keep : BitVec 64 → Bool) (InvS : State → Prop)
+@[expose] def GhostExternReplaysOn (keep : BitVec 64 → Bool) (InvS : State → Prop)
     (P_ghost P_real : Program) (s0 sf : State) : Prop :=
   ∀ (pc : BitVec 64) (f : State → State),
     P_ghost.externAt? pc = some f →
@@ -144,7 +140,7 @@ def GhostExternReplaysOn (keep : BitVec 64 → Bool) (InvS : State → Prop)
         InvS u →
         Steps P_real u (f u) ∧ ExecFrozen (f u).mem ∧ InvS (f u))
 
-def GhostExternReplaysS (keep : BitVec 64 → Bool) (InvS : State → Prop)
+@[expose] def GhostExternReplaysS (keep : BitVec 64 → Bool) (InvS : State → Prop)
     (P_ghost P_real : Program) : Prop :=
   ∀ (pc : BitVec 64) (f : State → State),
     P_ghost.externAt? pc = some f →
@@ -459,7 +455,7 @@ theorem subroutine_ok_transfer_ghostS {α : Type}
 
 /-- `InvMem`-guarded counterpart of `StubReachesTarget` supporting 1-word `B` branch stubs loaded
     in `u.mem` (`DirectOrBranchStub`). -/
-def StubReachesTargetOn (InvMem : Memory → Prop) (P_real : Program)
+@[expose] def StubReachesTargetOn (InvMem : Memory → Prop) (P_real : Program)
     (stubPc entryTarget : BitVec 64) : Prop :=
   ∀ u : State,
     u.pc = stubPc →
@@ -555,7 +551,7 @@ theorem stubReachesTargetOn_of_directOrBranchStub
 /-- Active symbol/hook pairs overridden by `ghFixed : CliGhostHooks` in `cliGhostExterns`
     (10 named slots + domain-guarded Cutover-2 `ghFixed.extra` table; `rfl`-equal to
     `ExtraGhostReplay.GhostSymActiveWithExtra ghFixed ghFixed.extra`). -/
-def GhostSymActive (ghFixed : CliGhostHooks) (sym : String) (f : State → State) : Prop :=
+@[expose] def GhostSymActive (ghFixed : CliGhostHooks) (sym : String) (f : State → State) : Prop :=
   (sym = lsRustAllocSymCli ∧ f = ghFixed.alloc) ∨
   (sym = lsRustDeallocSymCli ∧ f = ghFixed.dealloc) ∨
   (sym = lsRustReallocSymCli ∧ f = ghFixed.realloc) ∨
@@ -890,10 +886,14 @@ local macro "fs_state_norm" : tactic => `(tactic|
   dsimp (config := { zeta := true, zetaHave := true }) only
     [State.advancePC, State.setPC, State.writeReg64, State.writeReg32, State.setMem,
      State.setBrk, State.setPhysMemAvail, State.nextOracle, State.setStatus,
-     State.appendTrace, State.setSigAction, State.setSigAltStack, State.setFs])
+     State.appendTrace, State.setSigAction, State.setSigAltStack,
+     State.setSigMask, State.setSigPending, State.setFs])
 
 local macro "fs_unchanged_close" h:ident : tactic => `(tactic|
   (repeat' split
+   repeat' split
+   repeat' split
+   repeat' split
    all_goals
      fs_state_norm
      exact $h))
@@ -912,7 +912,8 @@ private theorem fdsGe3Closed_execReadCommon {s : State} (useExplicitPos : Bool)
     dsimp (config := { zeta := true }) only
     have hlt3 := fd_lt3_of_some hClosed hnslt hfd
     refine ite_preserve_fdsGe3Closed
-      (ite_preserve_fdsGe3Closed hClosed (ite_preserve_fdsGe3Closed hClosed hClosed)) ?_
+      (ite_preserve_fdsGe3Closed hClosed
+        (ite_preserve_fdsGe3Closed hClosed (ite_preserve_fdsGe3Closed hClosed hClosed))) ?_
     refine ite_preserve_fdsGe3Closed hClosed ?_
     refine ite_preserve_fdsGe3Closed hClosed ?_
     refine ite_preserve_fdsGe3Closed hClosed ?_
@@ -1031,7 +1032,7 @@ private theorem fdsGe3Closed_execPpoll {s : State} (h : FdsGe3Closed s.fs) :
   refine ite_preserve_fdsGe3Closed h ?_
   refine ite_preserve_fdsGe3Closed h ?_
   refine ite_preserve_fdsGe3Closed h ?_
-  refine ite_preserve_fdsGe3Closed h ?_
+  refine ite_preserve_fdsGe3Closed (ite_preserve_fdsGe3Closed h h) ?_
   refine ite_preserve_fdsGe3Closed h ?_
   refine ite_preserve_fdsGe3Closed h ?_
   cases evalPpollEntries s.fs s.mem (s.readReg64 Reg.x0) (s.readReg32 Reg.x1).toNat 0 0 with
@@ -1039,7 +1040,7 @@ private theorem fdsGe3Closed_execPpoll {s : State} (h : FdsGe3Closed s.fs) :
   | some mc =>
     rcases mc with ⟨_, _⟩
     dsimp only
-    exact ite_preserve_fdsGe3Closed h h
+    exact ite_preserve_fdsGe3Closed (ite_preserve_fdsGe3Closed h h) h
 
 private theorem fdsGe3Closed_execBrk {s : State} (h : FdsGe3Closed s.fs) :
     FdsGe3Closed (execBrk s).fs := by
@@ -1049,9 +1050,16 @@ private theorem fdsGe3Closed_execMunmap {s : State} (h : FdsGe3Closed s.fs) :
     FdsGe3Closed (execMunmap s).fs := by
   dsimp (config := { zetaHave := true }) only [execMunmap]; fs_unchanged_close h
 
+private theorem ite_fdsGe3Closed {c : Prop} [Decidable c] {a b : State}
+    (ha : FdsGe3Closed a.fs) (hb : FdsGe3Closed b.fs) :
+    FdsGe3Closed (if c then a else b).fs := by
+  split <;> assumption
+
 private theorem fdsGe3Closed_execMremap {s : State} (h : FdsGe3Closed s.fs) :
     FdsGe3Closed (execMremap s).fs := by
-  dsimp (config := { zetaHave := true }) only [execMremap]; fs_unchanged_close h
+  unfold execMremap; dsimp only
+  repeat' apply ite_fdsGe3Closed
+  all_goals fs_unchanged_close h
 
 private theorem fdsGe3Closed_execMmap {s : State} (h : FdsGe3Closed s.fs) :
     FdsGe3Closed (execMmap s).fs := by
@@ -1079,11 +1087,22 @@ private theorem fdsGe3Closed_execSigaltstack {s : State} (h : FdsGe3Closed s.fs)
 
 private theorem fdsGe3Closed_execRtSigaction {s : State} (h : FdsGe3Closed s.fs) :
     FdsGe3Closed (execRtSigaction s).fs := by
-  dsimp (config := { zetaHave := true }) only [execRtSigaction]; fs_unchanged_close h
+  unfold execRtSigaction
+  by_cases h1 : (s.readReg64 Reg.x1 == 0#64) = true <;>
+  by_cases h2 : (s.readReg32 Reg.x0 == LINUX_SIGABRT &&
+      s.mem.read64 (s.readReg64 Reg.x1) == SIG_IGN) = true <;>
+    (simp only [h1, h2, ↓reduceIte, Bool.false_eq_true]
+     fs_unchanged_close h)
 
 private theorem fdsGe3Closed_execRtSigprocmask {s : State} (h : FdsGe3Closed s.fs) :
     FdsGe3Closed (execRtSigprocmask s).fs := by
-  dsimp (config := { zetaHave := true }) only [execRtSigprocmask]; fs_unchanged_close h
+  suffices (execRtSigprocmask s).fs = s.fs by rw [this]; exact h
+  have hite : ∀ {c : Prop} [inst : Decidable c] {a b : State},
+      a.fs = s.fs → b.fs = s.fs → (if c then a else b).fs = s.fs := by
+    intro c inst a b ha hb; cases inst <;> assumption
+  unfold execRtSigprocmask; dsimp only
+  repeat' apply hite
+  all_goals rfl
 
 private theorem fdsGe3Closed_execClockGettime {s : State} (h : FdsGe3Closed s.fs) :
     FdsGe3Closed (execClockGettime s).fs := by
@@ -1097,9 +1116,14 @@ private theorem fdsGe3Closed_execSetTidAddress {s : State} (h : FdsGe3Closed s.f
     FdsGe3Closed (execSetTidAddress s).fs := by
   dsimp (config := { zetaHave := true }) only [execSetTidAddress]; fs_unchanged_close h
 
+private theorem fdsGe3Closed_execFutex {s : State} (h : FdsGe3Closed s.fs) :
+    FdsGe3Closed (execFutex s).fs := by
+  dsimp (config := { zetaHave := true }) only [execFutex]; fs_unchanged_close h
+
 private theorem fdsGe3Closed_execSchedGetaffinity {s : State} (h : FdsGe3Closed s.fs) :
     FdsGe3Closed (execSchedGetaffinity s).fs := by
-  dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]; fs_unchanged_close h
+  dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]
+  cases s.oracle.schedGetaffinity s.oracleIdx <;> (dsimp only; fs_unchanged_close h)
 
 private theorem fdsGe3Closed_execGetpid {s : State} (h : FdsGe3Closed s.fs) :
     FdsGe3Closed (execGetpid s).fs := by
@@ -1130,7 +1154,8 @@ theorem fdsGe3Closed_syscallStandard_of_not_open_fcntl {u : State}
       ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
       ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
       ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
-      ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
+      ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩ |
+      ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩
     · exact fdsGe3Closed_execRead hClosed
     · exact fdsGe3Closed_execWrite hClosed
     · exact LibsignalBinary.Proofs.SpecLemmas.SyscallReadWritev.execReadv_fs_preserves
@@ -1161,6 +1186,7 @@ theorem fdsGe3Closed_syscallStandard_of_not_open_fcntl {u : State}
     · exact fdsGe3Closed_execClockGettime hClosed
     · exact fdsGe3Closed_execGetrandom hClosed
     · exact fdsGe3Closed_execSetTidAddress hClosed
+    · exact fdsGe3Closed_execFutex hClosed
     · exact fdsGe3Closed_execSchedGetaffinity hClosed
     · exact fdsGe3Closed_execGetpid hClosed
     · exact fdsGe3Closed_execGetpid hClosed
@@ -1396,7 +1422,7 @@ private theorem execFrozen_stepRustDealloc1
   · exact hfr1
   · refine hk _ ?_; rw [restoreCallerRegs_mem]; exact hfr1
 
-private theorem execFrozen_aesEncHookMallocng
+theorem execFrozen_aesEncHookMallocng
     (mpl : Obj.MultiPlacement) (E : AesKey → Block → Block)
     (s0 : State) (hfr0 : ExecFrozen s0.mem) :
     ExecFrozen (aesEncHookMallocng mpl E s0).mem := by
@@ -1410,7 +1436,7 @@ private theorem execFrozen_aesEncHookMallocng
       rw [retHook_mem]
       exact execFrozen_writeVecHeader (execFrozen_writeBytes hfr1 _ _) _ _ _ _
 
-private theorem execFrozen_aesDecHookMallocng
+theorem execFrozen_aesDecHookMallocng
     (mpl : Obj.MultiPlacement) (D : AesKey → Block → Block)
     (s0 : State) (hfr0 : ExecFrozen s0.mem) :
     ExecFrozen (aesDecHookMallocng mpl D s0).mem := by
@@ -1429,7 +1455,7 @@ private theorem execFrozen_aesDecHookMallocng
         rw [retHook_mem]
         exact execFrozen_write64 (execFrozen_write64 hfr2 _ _) _ _
 
-private theorem execFrozen_libcruxHmacHookMallocng
+theorem execFrozen_libcruxHmacHookMallocng
     (mpl : Obj.MultiPlacement) (F : ShaState → List (BitVec 8) → ShaState)
     (s0 : State) (hfr0 : ExecFrozen s0.mem) :
     ExecFrozen (libcruxHmacHookMallocng mpl F s0).mem := by
@@ -1469,68 +1495,17 @@ private theorem tableLookup_mem {tbl : List (String × (State → State))} {sym 
       rw [hbeq] at h
       exact List.Mem.tail _ (ih h)
 
-private theorem table_cliPqxdhPlaced_execFrozen (mmpl : Obj.MultiPlacement)
-    (C : Crypto) (Q : PqxdhPrims) :
-    ∀ p ∈ cliPqxdhHookTablePlaced mmpl C Q, ∀ u : State, ExecFrozen u.mem → ExecFrozen (p.2 u).mem := by
-  simp only [cliPqxdhHookTablePlaced, List.mem_cons, List.not_mem_nil, or_false]
-  rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl) u hfr
-  · unfold compress512Hook; rw [returnToLinkRegister_mem]; exact execFrozen_writeBytes hfr _ _
-  · unfold toEdwardsHook; rw [returnToLinkRegister_mem]
-    split
-    · exact execFrozen_writeBytes (execFrozen_write64 hfr _ _) _ _
-    · exact execFrozen_write64 hfr _ _
-  · unfold compressHook; rw [returnToLinkRegister_mem]; exact execFrozen_writeBytes hfr _ _
-  · unfold edNegHook; rw [returnToLinkRegister_mem]; exact execFrozen_writeBytes hfr _ _
-  · unfold torsionFreeHook; exact hfr
-  · unfold dsmbHook; rw [returnToLinkRegister_mem]; exact execFrozen_writeBytes hfr _ _
-  · unfold scalarModHook; rw [returnToLinkRegister_mem]; exact execFrozen_writeBytes hfr _ _
-  · unfold scalarWideHook; rw [returnToLinkRegister_mem]; exact execFrozen_writeBytes hfr _ _
-  · unfold kemEncapsHook; rw [returnToLinkRegister_mem]
-    exact execFrozen_writeBytes (execFrozen_writeBytes hfr _ _) _ _
-  · unfold kemDecapsHook; rw [returnToLinkRegister_mem]; exact execFrozen_writeBytes hfr _ _
-  · unfold mlkemFromSeedHook; rw [retHook_mem]; exact execFrozen_writeBytes hfr _ _
-  · unfold mlkemPk1Hook; exact hfr
-  · unfold mlkemPk2Hook; exact hfr
-  · unfold mlkemEncaps1Hook; rw [retHook_mem]; dsimp only
-    split
-    · exact execFrozen_writeBytes hfr _ _
-    · split
-      · exact execFrozen_writeBytes (execFrozen_writeBytes (execFrozen_writeBytes hfr _ _) _ _) _ _
-      · exact execFrozen_writeBytes hfr _ _
-  · unfold mlkemEncaps2Hook; rw [retHook_mem]; exact execFrozen_writeBytes hfr _ _
-  · unfold mlkemDecapsHook; rw [retHook_mem]; exact execFrozen_writeBytes hfr _ _
-  · unfold mlkemValidatePkHook; exact hfr
-  · exact execFrozen_libcruxHmacHookMallocng mmpl C.F u hfr
+private theorem table_cliPqxdhPlaced_execFrozen (Q : PqxdhPrims) :
+    ∀ p ∈ cliPqxdhHookTablePlaced Q, ∀ u : State, ExecFrozen u.mem → ExecFrozen (p.2 u).mem := by
+  intro _ hp
+  cases hp
 
 private theorem table_cliHookTablePlaced_execFrozen (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     ∀ p ∈ cliHookTablePlaced mmpl W, ∀ u : State, ExecFrozen u.mem → ExecFrozen (p.2 u).mem := by
-  intro p hp
-  unfold cliHookTablePlaced at hp
-  rw [List.mem_append] at hp
-  rcases hp with hpq | hcli
-  · exact table_cliPqxdhPlaced_execFrozen mmpl W.C W.Q p hpq
-  · simp only [List.mem_cons, List.not_mem_nil, or_false] at hcli
-    rcases hcli with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-    · intro u hfr
-      unfold writeFileHook; dsimp only
-      split
-      · exact hfr
-      · split
-        · exact hfr
-        · split
-          · exact hfr
-          · split <;> exact hfr
-    · intro u hfr; unfold writeStdoutHook; dsimp only; split <;> exact hfr
-    · intro _ hfr; exact hfr
-    · intro u hfr; unfold formatInnerHook0; rw [retHook_mem]; exact execFrozen_writeVecHeader hfr _ _ _ _
-    · intro u hfr; unfold compress256Hook; rw [returnToLinkRegister_mem]; exact execFrozen_writeBytes hfr _ _
-    · exact execFrozen_aesEncHookMallocng mmpl W.C.E
-    · exact execFrozen_aesDecHookMallocng mmpl W.C.D
-    · intro u hfr; unfold pubFromSecretHook; rw [retHook_mem]; exact execFrozen_writeBytes hfr _ _
-    · intro u hfr; unfold diffieHellmanHook; rw [retHook_mem]; exact execFrozen_writeBytes hfr _ _
+  intro _ hp
+  cases hp
 
-/-- Every hook `f` in `cliExternsPlaced mmpl W` (`39` rows + `Rust.panicked`) preserves
+/-- Every hook `f` in `cliExternsPlaced mmpl W` (`0` rows + `Rust.panicked`) preserves
     `ExecFrozen` unconditionally. -/
 theorem cliExternsPlaced_preserves_execFrozen
     (mmpl : Obj.MultiPlacement) (W : CliHooks)
@@ -1545,34 +1520,13 @@ theorem cliExternsPlaced_preserves_execFrozen
   · exact table_cliHookTablePlaced_execFrozen mmpl W (sym, f) (tableLookup_mem h)
 
 private theorem table_cliPqxdhPlaced_fdsGe3Closed (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    ∀ p ∈ cliPqxdhHookTablePlaced mmpl W.C W.Q,
+    ∀ p ∈ cliPqxdhHookTablePlaced W.Q,
       (∀ u : State, FdsGe3Closed u.fs → FdsGe3Closed (p.2 u).fs) ∨
         (p.2 = aesEncHookMallocng mmpl W.C.E ∨
          p.2 = aesDecHookMallocng mmpl W.C.D ∨
          p.2 = libcruxHmacHookMallocng mmpl W.C.F) := by
-  simp only [cliPqxdhHookTablePlaced, List.mem_cons, List.not_mem_nil, or_false]
-  rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · refine Or.inl (fun u hfs => ?_)
-    unfold mlkemEncaps1Hook retHook; dsimp only
-    split <;> exact hfs
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inl (fun _ hfs => hfs)
-  · exact Or.inr (Or.inr (Or.inr rfl))
+  intro _ hp
+  cases hp
 
 private theorem table_cliHookTablePlaced_fdsGe3Closed (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     ∀ p ∈ cliHookTablePlaced mmpl W,
@@ -1580,33 +1534,8 @@ private theorem table_cliHookTablePlaced_fdsGe3Closed (mmpl : Obj.MultiPlacement
         (p.2 = aesEncHookMallocng mmpl W.C.E ∨
          p.2 = aesDecHookMallocng mmpl W.C.D ∨
          p.2 = libcruxHmacHookMallocng mmpl W.C.F) := by
-  intro p hp
-  unfold cliHookTablePlaced at hp
-  rw [List.mem_append] at hp
-  rcases hp with hpq | hcli
-  · exact table_cliPqxdhPlaced_fdsGe3Closed mmpl W p hpq
-  · simp only [List.mem_cons, List.not_mem_nil, or_false] at hcli
-    rcases hcli with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-    · refine Or.inl (fun u hfs => ?_)
-      unfold writeFileHook; dsimp only
-      split
-      · exact hfs
-      · split
-        · exact hfs
-        · split
-          · exact hfs
-          · split
-            · exact hfs
-            · exact hfs
-            · exact fdsGe3Closed_setFile _ _ hfs
-    · exact Or.inl (fun u hfs => by unfold writeStdoutHook; dsimp only; split <;> exact hfs)
-    · exact Or.inl (fun _ hfs => hfs)
-    · exact Or.inl (fun _ hfs => hfs)
-    · exact Or.inl (fun _ hfs => hfs)
-    · exact Or.inr (Or.inl rfl)
-    · exact Or.inr (Or.inr (Or.inl rfl))
-    · exact Or.inl (fun _ hfs => hfs)
-    · exact Or.inl (fun _ hfs => hfs)
+  intro _ hp
+  cases hp
 
 /-- Every hook `f` in `cliExternsPlaced mmpl W` except the `3` `mallocng`-backed crypto hooks
     (`aesEncHookMallocng`, `aesDecHookMallocng`, `libcruxHmacHookMallocng`) preserves `FdsGe3Closed`
@@ -1628,7 +1557,7 @@ theorem cliExternsPlaced_nonMallocng_preserves_fdsGe3Closed
 
 /-! ## Block-`617` Seam and Concrete Real-Externs Discharges -/
 
-def Block617TransferFixedHyp
+@[expose] def Block617TransferFixedHyp
     (mpl mmpl : Obj.MultiPlacement) (ghFixed : CliGhostHooks)
     (CodeOk_ghost CodeOk_real : Memory → Prop)
     (libcAddr brkStart : BitVec 64) (stk : Nat) : Prop :=

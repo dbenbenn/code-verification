@@ -9,15 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
 # Heap/header helpers, protobuf bounds, and callee wrappers for `SignalMessage::try_from` post-loop
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Wire
 
@@ -38,7 +37,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## Heap and header unpacking helpers for `wireSignalMessageOf` -/
 
 /-- The heap part of `vecU8At A v cap ptr bs` without the 24-byte `vecHeader`. -/
-def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -50,7 +49,7 @@ theorem vecU8At_eq_header_buf (A : RustAlloc) (v cap ptr : BitVec 64) (bs : List
   rfl
 
 /-- Heap ownership of an `Option<Vec<u8>>` after reading its 24-byte header `(cap, ptr, len)`. -/
-def optVecU8Buf (A : RustAlloc) (cap ptr len : BitVec 64) : Option (List (BitVec 8)) → SepProp
+@[expose] def optVecU8Buf (A : RustAlloc) (cap ptr len : BitVec 64) : Option (List (BitVec 8)) → SepProp
   | none => ⌜cap = noneCap⌝
   | some bs => ⌜len = BitVec.ofNat 64 bs.length⌝ ∗ vecU8Buf A cap ptr bs
 
@@ -95,7 +94,7 @@ theorem optVecU8At_entails_header_buf (A : RustAlloc) (pin : VecPin) (a : BitVec
     exact Entails.refl _
 
 /-- Pure relation between the `(tag, val)` 32-bit words of an `Option<u32>` slot and its value. -/
-def optU32TagVal (tag val : BitVec 32) : Option (BitVec 32) → Prop
+@[expose] def optU32TagVal (tag val : BitVec 32) : Option (BitVec 32) → Prop
   | none => tag = 0#32
   | some v => tag = 1#32 ∧ val = v
 
@@ -156,7 +155,7 @@ theorem mergeBytes_len_le {wt : WireType} {bs out rest : List (BitVec 8)}
         omega
 
 /-- All four byte-vector fields of `m` have length at most `N`. -/
-def MsgFieldsLe (N : Nat) (m : ProtoSignalMessage) : Prop :=
+@[expose] def MsgFieldsLe (N : Nat) (m : ProtoSignalMessage) : Prop :=
   (m.ratchetKey.getD []).length ≤ N ∧
   (m.ciphertext.getD []).length ≤ N ∧
   (m.pqRatchet.getD []).length ≤ N ∧
@@ -240,7 +239,7 @@ theorem vecU8Buf_dealloc (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVe
 /-- Dichotomy for deallocating any `optVecU8Buf A cap ptr len opt`: either `active = true`
 (`0 < cap.toNat < 2^63`, owning `A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat`) or
 `active = false` (`cap = noneCap ∨ cap = 0#64`, owning `emp`). -/
-def deallocSlot (A : RustAlloc) (cap ptr : BitVec 64) (active : Bool) : SepProp :=
+@[expose] def deallocSlot (A : RustAlloc) (cap ptr : BitVec 64) (active : Bool) : SepProp :=
   if active then
     ⌜0 < cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
       A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat
@@ -327,133 +326,11 @@ theorem vecU8Buf_repack (A : RustAlloc) (v cap ptr len : BitVec 64) (bs : List (
   subst hlen
   exact Entails.refl _
 
-/-- Call a non-panicking callee (`onPanic = ⌜False⌝`, `onExit = ⌜False⌝`) inside `SepWPp`. -/
-theorem SepWPp.call_noPanic_tryFrom {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {s0 s : Arm64.State} {P T F : SepProp} {φ : Prop}
-    {Q : Arm64.State → SepProp → Prop} {spec : Spec α} (x : α)
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F := by sep_focus)
-    (hnext : ∀ sf : Arm64.State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → img.FrozenLoaded sf → sf.symtab = img.symtab →
-      CalleeSavedPreserved s sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (tryFromQp s0))
-    (hexit : ∀ sf code, spec.onExit x code s sf = ⌜False⌝ := by intros; rfl)
-    (hpan : ∀ sf, spec.onPanic x s sf = ⌜False⌝ := by intros; rfl)
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPp prog ret s P Q (tryFromQp s0) := by
-  intro R' hm hL
-  have hpre : s.mem ⊨ (spec.inImage img).pre x s ∗ (F ∗ R') := by
-    dsimp only [Spec.inImage]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hF, hsym⟩, ?_⟩
-    rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-    exact ⟨hφ, hm⟩
-  obtain ⟨sm, hsteps, hout, -⟩ :=
-    hcall.no_fault_before_outcome x (F ∗ R') s hpc hrun hpre hsp hL
-  rcases hout with ⟨⟨hpcm, _, hrunm⟩, ⟨hspm, hcsm⟩, hpost⟩ | ⟨_, hpost⟩ | ⟨code, _, hpost⟩ | ⟨_, hpost⟩
-  · rw [← sepConj_assoc] at hpost
-    rw [hlr] at hpcm
-    have hspm_align : sm.spAligned = true := by
-      rw [Arm64.State.spAligned, hspm, ← Arm64.State.spAligned]; exact hsp
-    obtain ⟨sf, hsteps', ⟨hpcf, hrunf, Pf, hmf, hqf, hvf⟩ | hpanf⟩ :=
-      hnext sm hpcm hrunm hspm hspm_align (hsteps.frozenLoaded hF)
-        (hsteps.symtab_eq.trans hsym) hcsm R' hpost (hsteps.codeLoaded hL)
-    · exact ⟨sf, hsteps.trans hsteps',
-        Or.inl ⟨hpcf, hrunf, Pf, hmf, hqf, hvf.trans hcsm.2.2.2.2.2.2.2.2.2.2.2⟩⟩
-    · exact ⟨sf, hsteps.trans hsteps', Or.inr hpanf⟩
-  · dsimp only [Spec.inImage] at hpost
-    rw [hpan sm] at hpost
-    exact (allowPanic_not_exited hpost).elim
-  · dsimp only [Spec.inImage] at hpost
-    rw [hexit sm code] at hpost
-    exact (allowPanic_not_exited hpost).elim
-  · dsimp only [Spec.inImage] at hpost
-    rw [hoom sm] at hpost
-    exact (allowPanic_not_exited hpost).elim
-
-/-! ## Negative-offset callee wrappers from `try_from` (`0x25868`) -/
-
-theorem fnAddr_sub_rel {b : BitVec 64} {H : String → Option (State → State)}
-    {fn callee : String} {off1 off2 : Nat} {k : BitVec 64}
-    (h1 : libsignalSessionCode.fnOff fn = off1)
-    (h2 : libsignalSessionCode.fnOff callee = off2)
-    (hk : BitVec.ofNat 64 off1 + k = BitVec.ofNat 64 off2) :
-    (libsignalSessionCode.rebase b H).fnAddr fn + k =
-      (libsignalSessionCode.rebase b H).fnAddr callee := by
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase, h1, h2, ← hk]
-  bv_omega
-
-theorem dropDecodeError_ok_sub {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : DropDecodeErrorOkW img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAtW img.base C ctl abs)
-      ((tripleRatchetProgAtW img.base C ctl abs).fnAddr tryFromName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<prost::error::DecodeError> [local#1]") - (ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")))
-      ((dropDecodeErrorSpecX A).inImage img) := by
-  rw [fnAddr_sub_rel (ls_lemma% fnOff "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from") (ls_lemma% fnOff "core::ptr::drop_glue::<prost::error::DecodeError> [local#1]") (by decide)]
-  exact h
-
-theorem dropSpe_ok_sub {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : DropSpeOkW img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAtW img.base C ctl abs)
-      ((tripleRatchetProgAtW img.base C ctl abs).fnAddr tryFromName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]") - (ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")))
-      ((dropSpeSpecX A).inImage img) := by
-  rw [fnAddr_sub_rel (ls_lemma% fnOff "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from") (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]") (by decide)]
-  exact h
-
-theorem intoBoxedSlice_ok_sub {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : IntoBoxedSliceOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAtW img.base C ctl abs)
-      ((tripleRatchetProgAtW img.base C ctl abs).fnAddr tryFromName + bv% (2 ^ 64 + (ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice") - (ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")))
-      ((intoBoxedSliceSpecX A).inImage img) := by
-  rw [fnAddr_sub_rel (ls_lemma% fnOff "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from") (ls_lemma% fnOff "<alloc::vec::Vec<u8>>::into_boxed_slice") (by decide)]
-  exact h
-
-theorem tryCloneFromRef_ok_sub {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : TryCloneFromRefOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAtW img.base C ctl abs)
-      ((tripleRatchetProgAtW img.base C ctl abs).fnAddr tryFromName + bv% (2 ^ 64 + (ls_off% "<alloc::boxed::Box<[u8]>>::try_clone_from_ref_in") - (ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")))
-      ((tryCloneFromRefSpecX A).inImage img) := by
-  rw [fnAddr_sub_rel (ls_lemma% fnOff "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from") (ls_lemma% fnOff "<alloc::boxed::Box<[u8]>>::try_clone_from_ref_in") (by decide)]
-  exact h
-
 theorem vecU8Buf_zero (A : RustAlloc) (ptr : BitVec 64) (bs : List (BitVec 8)) :
     vecU8Buf A 0#64 ptr bs = ⌜bs = [] ∧ ptr ≠ 0⌝ := by
   simp [vecU8Buf]
 
-macro "tryFrom_fetches2 " b:term:max _C:term:max _ctl:term:max abs:term:max
-    k0:num len:num : tactic =>
-  `(tactic| tryFrom_fetches $b (Rust.withPanics $abs) $k0 $len)
-
-/-! ## Shared cleanup tails in post-loop (`+0x698`, `+0x684`, `+0x668`, `+0x64c`, `+0x640` → `+0x440`) -/
-
-/-- State invariant at the shared epilogue entry `+0x440` (`0x25ca8`, `entry + 1088#64`). -/
-def PostEpilogueState (img : Obj.Image) (s0 : State) (sp' : BitVec 64) (s : State) : Prop :=
-  s.sp = sp' ∧ s.spAligned = true ∧ img.FrozenLoaded s ∧ s.symtab = img.symtab ∧ s.trace = s0.trace
-
-theorem PostEpilogueState.of_steps {img : Obj.Image} {s0 s1 s2 : State} {sp' : BitVec 64}
-    (hF : img.FrozenLoaded s2) (hsym : s2.symtab = img.symtab)
-    (hsp : s2.sp = sp') (hsp0 : s1.sp = sp') (hal : s1.spAligned = true)
-    (htr : s2.trace = s0.trace) :
-    PostEpilogueState img s0 sp' s2 := by
-  refine ⟨hsp, ?_, hF, hsym, htr⟩
-  rw [State.spAligned, hsp, ← hsp0, ← State.spAligned]
-  exact hal
-
 namespace TryFromPostSpFacts
-
-theorem tryFrom_dealloc_ok {A : RustAlloc} {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooksW img A abs) :
-    subroutine_ok (tripleRatchetProgAtW img.base C ctl abs)
-      ((tripleRatchetProgAtW img.base C ctl abs).fnAddr tryFromName + bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from"))
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img) :=
-  sub_ok_at_of_fnAddr hA.dealloc tryFromName (num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from"))
 
 theorem sp_writeReg32_gpr (s : State) (idx : BitVec 5) (v : BitVec 32) :
     (s.writeReg32 (Reg.gpr idx) v).sp = s.sp := rfl
@@ -543,7 +420,7 @@ theorem SepWPp.call_noPanic_tryFrom_placed [LibsignalPlacement] {α : Type} {pro
     rw [hoom sm] at hpost
     exact (allowPanic_not_exited hpost).elim
 
-def PostEpilogueStatePlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 64) (s : State) : Prop :=
+@[expose] def PostEpilogueStatePlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 64) (s : State) : Prop :=
   s.sp = sp' ∧ s.spAligned = true ∧ LibsignalCodeRoLoaded lsmpl s.mem ∧ s.trace = s0.trace
 
 theorem PostEpilogueStatePlaced.of_steps [LibsignalPlacement] {s0 s1 s2 : State} {sp' : BitVec 64}

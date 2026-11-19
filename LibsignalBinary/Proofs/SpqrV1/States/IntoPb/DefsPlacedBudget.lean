@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Budget Specifications and Stack/RO Bridges for `<States>::into_pb` (Block `334`)
@@ -22,7 +24,7 @@ Re-exports relocatable `RustCliAllocBudget M` specifications and prologue/epilog
 stack-framing and `.rodata`-discharge bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -84,8 +86,6 @@ abbrev statesIntoPbPlacedRoSpecXOfEnv := @statesIntoPbPlacedSpecXOfEnv
 
 abbrev statesIntoPbPlacedRoSpecX := @statesIntoPbPlacedSpecX
 
-abbrev statesIntoPbPlacedInnerSpecXOfEnv := @statesIntoPbPlacedRoFreeSpecXOfEnv
-
 abbrev statesIntoPbPlacedInnerSpecX := @statesIntoPbPlacedRoFreeSpecX
 
 abbrev statesIntoPbPlacedRoSpecX_of_statesIntoPbPlacedSpec :=
@@ -142,13 +142,6 @@ theorem withLsCodeLoaded_statesIntoPbPlacedSpecX_of_statesIntoPbPlacedSpec
     subroutine_ok P addr (withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecX M A lim F)) :=
   withLsCodeLoaded_statesIntoPbPlacedSpecXOfEnv_of_statesIntoPbPlacedSpecOfEnv h
 
-theorem statesIntoPbPlacedRoFreeSpecX_of_placedSpecX [LibsignalPlacement]
-    {P : Program} {addr : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    (h : subroutine_ok P addr (withLsCodeLoaded lsmpl (statesIntoPbPlacedSpecX M A lim F))) :
-    subroutine_ok P addr (withLsCodeRoLoaded lsmpl (statesIntoPbPlacedRoFreeSpecX M A lim F)) :=
-  statesIntoPbPlacedRoFreeSpecXOfEnv_of_placedSpecXOfEnv h
-
 /-- Lift `StatesIntoPbPlacedOkExt` (`statesIntoPbStack`) to `StatesIntoPbPlacedOkX`
     (`statesIntoPbStackX`, explicit `statesIntoPbJumpTablePlacedAt`). -/
 theorem statesIntoPbPlacedOkX_of_statesIntoPbPlacedOkExt [LibsignalPlacement]
@@ -165,15 +158,5 @@ theorem statesIntoPbPlacedOkX_of_statesIntoPbPlacedOkExt [LibsignalPlacement]
   have hbase : (blkPl_334).base = lsmpl.base 334 := rfl
   rw [hprog, hbase] at h1
   exact h1
-
-/-- Lift `StatesIntoPbPlacedOkExt` (`statesIntoPbStack`, explicit `statesIntoPbJumpTablePlacedAt`)
-    to `StatesIntoPbPlacedRoFreeOkX` (`statesIntoPbStackX`, `.rodata`-free via `withLsCodeRoLoaded`). -/
-theorem statesIntoPbPlacedRoFreeOkX_of_statesIntoPbPlacedOkExt [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (h : StatesIntoPbPlacedOkExt M A lim F ext) :
-    StatesIntoPbPlacedRoFreeOkX M A lim F ext :=
-  statesIntoPbPlacedRoFreeSpecX_of_placedSpecX
-    (withLsCodeLoaded_statesIntoPbPlacedSpecX_of_statesIntoPbPlacedSpec h)
 
 end LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget

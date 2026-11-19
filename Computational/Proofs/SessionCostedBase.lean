@@ -9,18 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.ReductionDsl.Soundness
 public import LibsignalBinary.Specifications.CryptoGames.CKA.LibsignalCKA
 public import LibsignalBinary.Specifications.CryptoGames.CKA.DDHDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 public import Computational.Specifications.Reductions.ReductionDsl.Samplers
 public import LibsignalBinary.Specifications.CryptoGames.CKA.Defs
 public import VCVio.CryptoFoundations.HardnessAssumptions.DiffieHellman
-public import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
-public import Computational.Proofs.ReductionDsl.Size
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+public import Computational.Proofs.ReductionDsl.Size -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
 
 /-!
 # Costed DSL Base Helpers and Ratchet Budget Bounds
@@ -29,7 +30,7 @@ Provides `gredBounded_of_bounds`, `gtwoStageBounded_of_bounds`, and `ratchetCost
 lemmas for the Libsignal session security proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -143,105 +144,6 @@ lemma comp_cost_pos {Γ : List (ReductionDsl.Ty S)} {t : ReductionDsl.Ty S}
   | consumeFirstM _ s _ _ _ | foldM _ s _ _ _ =>
     have := expr_cost_pos s; simp only [ReductionDsl.Comp.cost]; omega
 
-private lemma costedMidFits_of_fitsWhen {α : Type} {qB B B' : ℕ} (h : B ≤ B')
-    {π σ ch : ReductionDsl.Ty S}
-    (m : ReductionDsl.Mid G α π.denote σ.denote ch.denote)
-    (hm : ReductionDsl.Mid.FitsWhen C π σ ch qB B m) :
-    CostedMidFits B' π σ ch m := by
-  cases m with
-  | done _ s => exact ReductionDsl.Ty.fits_mono h _ s hm
-  | paused _ c p s _ =>
-    exact ⟨ReductionDsl.Ty.fits_mono h _ c hm.1,
-      ReductionDsl.Ty.fits_mono h _ p hm.2.1,
-      ReductionDsl.Ty.fits_mono h _ s hm.2.2.1⟩
-
-lemma gtwoStageBounded_of_bounds {rIn aIn aOut ch rIn2 out : ReductionDsl.Ty S}
-    {R : ReductionDsl.TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out}
-    {wTag : I.Tag → ℕ} {wSamp : I.smp.Samp → ℕ}
-    {q qOut costBudget : ℕ}
-    (hcost : R.totalCost q ≤ costBudget)
-    (hsize : R.size ≤ ReductionDsl.reductionSizeBudget + 2 ^ 12 * ReductionDsl.bits costBudget)
-    (hq : R.totalQueries wTag wSamp q ≤ qOut)
-    (hO : ReductionDsl.OpsSizeHonest O)
-    (hS : ReductionDsl.SampSizeHonest I.smp) :
-    GTwoStageBounded R wTag wSamp q qOut costBudget := by
-  refine ⟨hcost, hsize, hq, costedOpsSizeHonest_of_opsSizeHonest hO,
-    costedSampSizeHonest_of_sampSizeHonest hS,
-    fun B haOut A hfit x hx dflt cm hcm => ?_⟩
-  have haOut' : ∀ v, aOut.Fits B v :=
-    fun v => (costedFits_iff_fits B _ _).mp (haOut v)
-  have hx' : rIn.Fits B x := (costedFits_iff_fits B _ _).mp hx
-  have hi1 := comp_cost_pos R.init
-  have hres1 := comp_cost_pos R.resume
-  have hfin1 := comp_cost_pos R.finish
-  have hi_nq := comp_nq_le_cost R.init
-  have hpre_nq := comp_nq_le_cost R.handlePre
-  have hpost_nq := comp_nq_le_cost R.handlePost
-  have hch_nq := comp_nq_le_cost R.chDone
-  have hres_nq := comp_nq_le_cost R.resume
-  have hfin_nq := comp_nq_le_cost R.finish
-  have hnq_tot : R.nq q ≤ costBudget :=
-    le_trans (CryptoVerification.E2E.Costed.TwoStageCostedReduction.nq_le_totalCost R q) hcost
-  have hnq_tot_B : R.nq q * B ≤ costBudget * B := Nat.mul_le_mul_right B hnq_tot
-  have hpre_c : q * R.handlePre.cost ≤
-      q * max I.uCost (max R.handlePre.cost R.handlePost.cost + C.codecCost) :=
-    Nat.mul_le_mul_left q (le_trans (le_trans (le_max_left _ _) (Nat.le_add_right _ _))
-      (le_max_right _ _))
-  have hpost_c : q * R.handlePost.cost ≤
-      q * max I.uCost (max R.handlePre.cost R.handlePost.cost + C.codecCost) :=
-    Nat.mul_le_mul_left q (le_trans (le_trans (le_max_right _ _) (Nat.le_add_right _ _))
-      (le_max_right _ _))
-  have hpre_nq_mul : q * R.handlePre.nq ≤ q * R.handlePre.cost := Nat.mul_le_mul_left q hpre_nq
-  have hpost_nq_mul : q * R.handlePost.nq ≤ q * R.handlePost.cost := Nat.mul_le_mul_left q hpost_nq
-  have hres_c : R.resume.cost ≤ max R.chDone.cost R.resume.cost := le_max_right _ _
-  have hpre_cost_le : R.init.cost + q * R.handlePre.cost ≤ costBudget := by
-    have := hcost; dsimp only [ReductionDsl.TwoStageCostedReduction.totalCost] at this; omega
-  have hpre_nq_le : R.init.nq + q * R.handlePre.nq ≤ costBudget := by
-    have := hcost; dsimp only [ReductionDsl.TwoStageCostedReduction.totalCost] at this; omega
-  have hpre_nq_B : (R.init.nq + q * R.handlePre.nq) * B ≤ costBudget * B :=
-    Nat.mul_le_mul_right B hpre_nq_le
-  have hcost_sum :
-      R.init.cost + q * R.handlePre.cost + R.resume.cost + q * R.handlePost.cost + R.finish.cost ≤
-        2 * costBudget := by
-    have := hcost; dsimp only [ReductionDsl.TwoStageCostedReduction.totalCost] at this; omega
-  have hnq_sum :
-      3 + R.init.nq + q * R.handlePre.nq + R.resume.nq + q * R.handlePost.nq + R.finish.nq ≤
-        2 * costBudget := by
-    have := hcost; dsimp only [ReductionDsl.TwoStageCostedReduction.totalCost] at this; omega
-  have hnq_sum_B :
-      (3 + R.init.nq + q * R.handlePre.nq + R.resume.nq + q * R.handlePost.nq + R.finish.nq) * B ≤
-        2 * (costBudget * B) := by
-    calc (3 + R.init.nq + q * R.handlePre.nq + R.resume.nq + q * R.handlePost.nq + R.finish.nq) * B
-      _ ≤ (2 * costBudget) * B := Nat.mul_le_mul_right B hnq_sum
-      _ = 2 * (costBudget * B) := by ring
-  have hringW : 2 * (costBudget + 2 * q + 1) * (B + 1) =
-      2 * (costBudget * B) + 4 * (q * B) + 2 * B + 2 * costBudget + 4 * q + 2 := by ring
-  obtain ⟨hcFits, hmFits⟩ :=
-    R.fits_eval1_when hO hS B B B haOut' A hfit q B x hx' dflt cm hcm
-  refine ⟨?_, ?_, fun y hy z hz => ?_⟩
-  · rw [costedFits_iff_fits]
-    refine ReductionDsl.Ty.fits_mono ?_ _ _ hcFits
-    rw [hringW]; omega
-  · refine costedMidFits_of_fitsWhen ?_ cm.2 hmFits
-    have hringM :
-        B + R.init.cost + R.init.nq * B + q * (B + R.handlePre.cost + R.handlePre.nq * B) =
-          B + q * B + (R.init.cost + q * R.handlePre.cost) +
-            (R.init.nq + q * R.handlePre.nq) * B := by ring
-    rw [hringM, hringW]; omega
-  · rw [costedFits_iff_fits]
-    have hy' : rIn2.Fits B y := (costedFits_iff_fits B _ _).mp hy
-    have hz' := R.fits_eval2_when hO hS B B B haOut' cm.2 _ hmFits y B hy' q dflt z hz
-    refine ReductionDsl.Ty.fits_mono ?_ _ _ hz'
-    have hring2 :
-        (B + R.init.cost + R.init.nq * B + q * (B + R.handlePre.cost + R.handlePre.nq * B)) +
-          B + B + q * B + (R.resume.cost + q * R.handlePost.cost + R.finish.cost) +
-          (R.resume.nq + q * R.handlePost.nq + R.finish.nq) * B =
-        2 * (q * B) +
-          (R.init.cost + q * R.handlePre.cost + R.resume.cost + q * R.handlePost.cost + R.finish.cost) +
-          (3 + R.init.nq + q * R.handlePre.nq + R.resume.nq + q * R.handlePost.nq + R.finish.nq) * B := by
-      ring
-    rw [hring2, hringW]; omega
-
 end GRedBoundedHelper
 
 section ChainCosted
@@ -255,23 +157,6 @@ lemma ratchetCostBudget_pos (q qep : ℕ) :
   unfold ratchetCostBudget maxForwardJumps
   have hb : 1 ≤ ReductionDsl.bits qep := ReductionDsl.one_le_bits qep
   nlinarith
-
-theorem ratchetCostBudget_le_old (q qep : ℕ) :
-    ratchetCostBudget q qep ≤ 2 ^ 24 * (q + 1) * (q + qep + maxForwardJumps + 1) ^ 2 := by
-  unfold ratchetCostBudget
-  set N := q + qep + maxForwardJumps + 1
-  have hq : q + 1 ≤ N := by dsimp [N]; omega
-  have hb : ReductionDsl.bits qep ≤ qep + 1 := ReductionDsl.bits_le_succ qep
-  have hm : maxForwardJumps + ReductionDsl.bits qep ≤ N := by dsimp [N]; omega
-  have hprod : (q + 1) * (maxForwardJumps + ReductionDsl.bits qep) ≤ N ^ 2 := by
-    calc (q + 1) * (maxForwardJumps + ReductionDsl.bits qep)
-      _ ≤ N * N := Nat.mul_le_mul hq hm
-      _ = N ^ 2 := by ring
-  calc 2 ^ 12 * (q + 1) ^ 2 * (maxForwardJumps + ReductionDsl.bits qep)
-    _ = 2 ^ 12 * (q + 1) * ((q + 1) * (maxForwardJumps + ReductionDsl.bits qep)) := by ring
-    _ ≤ 2 ^ 12 * (q + 1) * N ^ 2 := Nat.mul_le_mul_left _ hprod
-    _ ≤ 2 ^ 24 * (q + 1) * N ^ 2 :=
-      Nat.mul_le_mul_right (N ^ 2) (Nat.mul_le_mul_right (q + 1) (by decide))
 
 end ChainCosted
 

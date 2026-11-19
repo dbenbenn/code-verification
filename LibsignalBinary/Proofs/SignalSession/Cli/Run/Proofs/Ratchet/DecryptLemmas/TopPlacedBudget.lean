@@ -11,17 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Fs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.EntryExit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.ModelDet
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.Top
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.EntryExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.ModelDet
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.Top -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Stack
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
 
 /-!
 # Budget-Threaded Outer Slot Reduction for `decrypt_signal` (Placed)
@@ -31,7 +34,7 @@ Defines the exact allocation-event envelope `CliDecryptSignalSlotEnv` for
 `decSigSlotSpecFrozenPlaced` to the budget-threaded inner store-kit contract.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -221,7 +224,7 @@ private def dummyCliHooks (P : PEParams) : CliHooks where
 
 /-- Allocation-event envelope for the `decrypt_signal` wrapper slot (`lsProg_463`), instantiating
 `WithStoresDecEnv` at `decSessKitPlaced`, `decIdKitPlaced`, and `StoresGhost.opened`. -/
-def CliDecryptSignalSlotEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliDecryptSignalSlotEnv [LibsignalPlacement] {M : AllocCostModel}
     (P : PEParams) (A : RustCliAllocBudget M) (B : RunBudgets)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (kitEnv : ∀ F0 peer, SessionStoreBudgetEnv (decSessKitPlaced A.repAlloc F0 peer B))
@@ -689,7 +692,7 @@ theorem cliDecryptSignal_slot_of_inner_placed [LibsignalPlacement] {callerProg :
   cliDecryptSignal_slot_of_inner_placed_pe ⟨W.C, W.Q⟩ A lim B S Scope tdEnv kitEnv ikitEnv
     hfs hinjK hsub hS hok hvt hivt hInner stk hstk hstk64
 
-def decSigSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def decSigSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecSigEnv : DecSigGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :
     Spec (DecSigGhost × M.σ) :=
@@ -717,7 +720,7 @@ def decSigSlotSpecBasePlaced [LibsignalPlacement] {M : AllocCostModel}
     onPanic := fun (x, _) _ _ =>
       ⌜S.decryptSignal x.F x.peer.val x.me.val x.msg x.coins = none⌝ ∗ anyHeap }
 
-def decSigSlotSpecPlacedOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def decSigSlotSpecPlacedOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecSigEnv : DecSigGhost → List AllocEvent → Prop) (S : RunSem) (stk : Nat) :

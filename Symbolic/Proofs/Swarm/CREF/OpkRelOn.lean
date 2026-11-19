@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.ModelSplit
@@ -29,7 +28,7 @@ event when `r.withOpk = true` and `used = false`, and proves transfer lemmas acr
 for prefix-closed classes (`XplPrefixClosed`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +49,7 @@ open Symbolic.Swarm.COMPOSED.CompTrace
 
 /-- One-time pre-key relation over explanation class `P`: if `r.withOpk = true` and `used = false`,
 no explanation `(g, ms)` of `acc` in `P` logs Bob's `OPKUsed` for `setupPublic r 8`. -/
-def COpkRelOn (r : ProtocolSetup)
+@[expose] def COpkRelOn (r : ProtocolSetup)
     (P : Ghost → List Move → List MachineEvent → Prop) (used : Bool)
     (acc : List MachineEvent) : Prop :=
   r.withOpk = true → used = false →
@@ -58,7 +57,7 @@ def COpkRelOn (r : ProtocolSetup)
       DY.Libsignal.PQXDH.opkUsedB (runTraceMoves r ms) r.bob (setupPublic r 8) = false
 
 /-- An explanation class `P` that implies `MatchedPrefix` and restricts to split prefixes. -/
-def XplPrefixClosed (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def XplPrefixClosed (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (P : Ghost → List Move → List MachineEvent → Prop) : Prop :=
   (∀ g ms τ, P g ms τ → MatchedPrefix interpretation r S who g ms τ) ∧
   (∀ g ms₀ δ acc blk, P g (ms₀ ++ δ) (acc ++ blk) →

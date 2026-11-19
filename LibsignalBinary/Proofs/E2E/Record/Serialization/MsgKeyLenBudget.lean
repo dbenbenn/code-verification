@@ -9,12 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.MsgKeyLen
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.MsgKeyLen
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -27,7 +26,7 @@ import ProofLib.SepLogic.WPp
 Proves `msgKeyLen_placed_ok` (block `118`) against `Serialization.DefsBudget.msgKeyLenSpec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

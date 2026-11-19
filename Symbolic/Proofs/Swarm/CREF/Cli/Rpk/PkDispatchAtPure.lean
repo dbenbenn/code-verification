@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.SkippedVarFresh
+public import Symbolic.Proofs.Swarm.CREF.TR.SkippedVarFresh -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Actions.Random
 import DY.EquationalTheory.DiffieHellman
 import Symbolic.Specifications.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnown
-public import Symbolic.Proofs.Swarm.CREF.TR.StoredRk
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnown -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.StoredRk -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.CkSafeTR
 import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnownSInv
@@ -36,7 +36,7 @@ Defines `AuthenticDecryptRepB3AtSt` and `NoRatchetPkDispatchAtSt`, and upgrades
 provenance-state salt form.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -73,7 +73,7 @@ theorem svk_recvChainFor_false' {st : TRState} {pk : DY.Bytes} {c : RecvChain}
   · split at h <;> cases h
 
 /-- Salt-form authentic decrypt representation at a fixed provenance state `st_prov`. -/
-def AuthenticDecryptRepB3AtSt (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : SpqrSem_pdapd27)
+@[expose] def AuthenticDecryptRepB3AtSt (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : SpqrSem_pdapd27)
     (g : Ghost) (ms₁ : List Move) (_body pt : HwBytes) (_t₀ : DY.Bytes) (msg₀ : TRSignalMsg)
     (st_prov : TRState) (_salt seed : DY.Bytes) : Prop :=
   ∃ (st_s : TRState) (t_c coinsLen : Nat),
@@ -380,7 +380,7 @@ private theorem variant_pack_not_mem_ptAtoms_pkd (r₀ : ProtocolSetup) (ms : Li
     (Symbolic.DYBridge.DY.BytesView.view?_pack_eq_none _ _)
 
 /-- No-ratchet ratchet-key dispatch hypothesis formulated with `AuthenticDecryptRepB3AtSt`. -/
-def NoRatchetPkDispatchAtSt (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : SpqrSem_pdapd27)
+@[expose] def NoRatchetPkDispatchAtSt (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : SpqrSem_pdapd27)
     (g : Ghost) (ms₁ : List Move) (_τ₁ : List MachineEvent) : Prop :=
   ∀ (p : Participant) (stateIdx₀ : Nat) (body ptBytes : HwBytes) (m : SignalMessage) (st₀ : TRState)
     (c c' : RecvChain) (t₀ seed k_own : DY.Bytes) (msg₀ : TRSignalMsg),

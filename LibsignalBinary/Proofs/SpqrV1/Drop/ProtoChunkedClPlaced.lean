@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` Drop Glue for Protobuf Chunked and Leaf Slice Types
@@ -27,7 +27,7 @@ Proves `withLsCodeLoaded lsmpl` subroutine contracts from `rustDeallocSpec A` fo
 `285` (`EkSentCt1Received`), `286` (`unchunked::Ct1SentEkReceived`), and `288` (`[chain::Epoch]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

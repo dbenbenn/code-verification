@@ -9,11 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
 
 /-!
 # `clearPending` Protobuf Length Monotonicity and Session-Cap `VerNe` Upgrade
@@ -24,7 +38,7 @@ session-store cap (`sessionCapBytes = 2 ^ 21`), this embeds `PromoteOverArchiveC
 `W4BinaryArchiveDirectEnv` and upgrades `VerNeTightTopRawEnv` to `VerNeTightTopEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,7 +80,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stag
 
 /-- Clearing pending pre-key fields does not exceed the serialized outer `SessionRecord` byte
 length when `r.currentSession = some s_old`. -/
-def h7l2_Stmt : Prop :=
+@[expose] def h7l2_Stmt : Prop :=
   ∀ (r : SessionRecord (List (BitVec 8))) (s_old : Session (List (BitVec 8))),
     r.currentSession = some s_old →
     (encSession (clearPending s_old)).length ≤ (encodeRecord r).length
@@ -74,7 +88,7 @@ def h7l2_Stmt : Prop :=
 /-- Under `CliPqOrD3RecvDom` and `F = runFiles i`, any `SessionRecord` `r` loaded via
 `cliPollSessKitPlaced` with `r.currentSession = some s_old` satisfies
 `(encodeRecord ⟨some (clearPending s_old)⟩).length ≤ 2 ^ 21`. -/
-def h7l3_Stmt : Prop :=
+@[expose] def h7l3_Stmt : Prop :=
   ∀ [LibsignalPlacement] (A : RustAlloc) (P : PEParams) (B : RunBudgets)
     {i : Inputs} {F : FsFiles} {peer : AddrGhost}
     {r : SessionRecord (List (BitVec 8))} {s_old : Session (List (BitVec 8))},
@@ -111,9 +125,6 @@ theorem h7l23_encSession_clearPending_le_encodeRecord
     dsimp only [Option.map, msgField]
     exact h7l23_lenField_length_ge 1 (encSession s_old)
   exact Nat.le_trans h1 h2
-
-theorem h7l23_l2 : h7l2_Stmt :=
-  h7l23_encSession_clearPending_le_encodeRecord
 
 private theorem h7l23_encodeVarintAux_length_mono :
     ∀ (k : Nat) {v₁ v₂ : BitVec 64}, v₁.toNat ≤ v₂.toNat →
@@ -175,60 +186,6 @@ theorem h7l23_encodeRecord_clearPending_le_encodeRecord
 
 /-! ## 3. `PromoteOverArchiveCanonSessEnv ⊆ W4BinaryArchiveDirectEnv` -/
 
-private theorem h7l23_seqEnv_mono {A₁ A₂ B₁ B₂ : List AllocEvent → Prop}
-    (hA : ∀ e, A₁ e → A₂ e) (hB : ∀ e, B₁ e → B₂ e)
-    {evs : List AllocEvent} (h : SeqEnv A₁ B₁ evs) :
-    SeqEnv A₂ B₂ evs := by
-  rcases h with h1 | ⟨evs₁, evs₂, rfl, h1, h2⟩
-  · exact Or.inl (hA evs h1)
-  · exact Or.inr ⟨evs₁, evs₂, rfl, hA evs₁ h1, hB evs₂ h2⟩
-
-private theorem h7l23_w4BoundedEvs_alloc96 :
-    W4BoundedEvs 1 192 (rustAllocEvents 96 8) := by
-  have heq : rustAllocEvents 96 8 = [.alloc 96] := by
-    unfold rustAllocEvents
-    decide
-  rw [heq]
-  refine ⟨by decide, ?_⟩
-  intro ev hev
-  simp only [List.mem_singleton] at hev
-  subst hev
-  exact ⟨by decide, by decide⟩
-
-private theorem h7l23_w4BoundedEvs_nil :
-    W4BoundedEvs 1 192 [] := by
-  refine ⟨by decide, ?_⟩
-  intro ev hev
-  cases hev
-
-/-- When `r.currentSession = some s_old`,
-`PromoteOverArchiveCanonSessEnv s_old ⊆ W4BinaryArchiveDirectEnv (encodeRecord r).length`. -/
-theorem h7l23_promoteOverArchive_sub_w4ArchiveDirect
-    {r : SessionRecord (List (BitVec 8))} {s_old : Session (List (BitVec 8))}
-    {evs : List AllocEvent}
-    (hcur : r.currentSession = some s_old)
-    (hprom : PromoteOverArchiveCanonSessEnv s_old evs) :
-    W4BinaryArchiveDirectEnv (encodeRecord r).length evs := by
-  have hn : (encSession (clearPending s_old)).length ≤ (encodeRecord r).length :=
-    h7l23_encSession_clearPending_le_encodeRecord r s_old hcur
-  unfold PromoteOverArchiveCanonSessEnv at hprom
-  unfold W4BinaryArchiveDirectEnv
-  rcases hprom with h96 | hnil
-  · refine h7l23_seqEnv_mono (fun _ h => h) ?_ h96
-    intro e₁ he₁
-    refine h7l23_seqEnv_mono
-      (fun e he => ⟨(encSession (clearPending s_old)).length, hn, he⟩) ?_ he₁
-    intro e₂ he₂
-    exact h7l23_seqEnv_mono
-      (fun e he => he ▸ h7l23_w4BoundedEvs_alloc96) (fun _ h => h) he₂
-  · refine h7l23_seqEnv_mono (fun _ h => h) ?_ hnil
-    intro e₁ he₁
-    refine h7l23_seqEnv_mono
-      (fun e he => ⟨(encSession (clearPending s_old)).length, hn, he⟩) ?_ he₁
-    intro e₂ he₂
-    exact h7l23_seqEnv_mono
-      (fun e he => he ▸ h7l23_w4BoundedEvs_nil) (fun _ h => h) he₂
-
 /-! ## 4. Session-File `2 MiB` Cap and `VerNe` Raw-to-Tight Upgrade -/
 
 /-- Any `SessionRecord` `r` loaded from `StoresGhost.opened.sessions` via `cliPollSessKitPlaced`
@@ -283,48 +240,5 @@ theorem h7l23_encodeRecord_clearPending_le_cap [LibsignalPlacement]
     h7l23_encodeRecord_clearPending_le_encodeRecord hcur hr_lt
   rw [hcap_eq] at hr_cap
   exact Nat.le_trans hmono hr_cap
-
-theorem h7l23_l3 : h7l3_Stmt := by
-  intro _ A P B _i _F _peer _r _s_old hi hfiles hload hcur
-  exact h7l23_encodeRecord_clearPending_le_cap A P B hi hfiles hload hcur
-
-/-- Upgrades `VerNeSessionCancelRawEnv` to `VerNeSessionCancelEnv` given
-`(encodeRecord ⟨some s₀⟩).length ≤ 2 ^ 21`. -/
-theorem h7l23_verNeSessionCancelRaw_to_tight
-    {s₀ : Session (List (BitVec 8))} {evs : List AllocEvent}
-    (hcap : (encodeRecord ⟨some s₀⟩).length ≤ 2 ^ 21)
-    (hraw : VerNeSessionCancelRawEnv (encSession s₀) evs) :
-    VerNeSessionCancelEnv (encSession s₀) evs := by
-  rcases hraw with ⟨s', henc, hdes⟩
-  have hrec : encodeRecord ⟨some s'⟩ = encodeRecord ⟨some s₀⟩ := by
-    unfold encodeRecord
-    dsimp only [Option.map]
-    rw [← henc]
-  have hreq_eq : deserCancelFineMaxReq = 2 ^ 21 := rfl
-  have hlen' : (encodeRecord ⟨some s'⟩).length ≤ deserCancelFineMaxReq := by
-    rw [hrec, hreq_eq]
-    exact hcap
-  exact ⟨s', henc, hlen', hdes⟩
-
-/-- Upgrades `VerNeTightTopRawEnv` to `VerNeTightTopEnv` given
-`(encodeRecord ⟨some (clearPending s_old)⟩).length ≤ 2 ^ 21`. -/
-theorem h7l23_verNeRaw_to_verNeTight_of_cap
-    {s_old : Session (List (BitVec 8))} {evs : List AllocEvent}
-    (hcap : (encodeRecord ⟨some (clearPending s_old)⟩).length ≤ 2 ^ 21)
-    (hraw : VerNeTightTopRawEnv (encSession (clearPending s_old)) evs) :
-    VerNeTightTopEnv (encSession (clearPending s_old)) evs := by
-  refine h7l23_seqEnv_mono (fun _ h => h) ?_ hraw
-  intro e₁ he₁
-  refine h7l23_seqEnv_mono ?_ (fun _ h => h) he₁
-  intro e₂ he₂
-  exact h7l23_seqEnv_mono
-    (fun _ h => h7l23_verNeSessionCancelRaw_to_tight hcap h) (fun _ h => h) he₂
-
-theorem h7l23_verNeRaw_to_verNeTight
-    {s_old : Session (List (BitVec 8))} {evs : List AllocEvent}
-    (hcap : (encodeRecord ⟨some (clearPending s_old)⟩).length ≤ deserCancelFineMaxReq)
-    (hraw : VerNeTightTopRawEnv (encSession (clearPending s_old)) evs) :
-    VerNeTightTopEnv (encSession (clearPending s_old)) evs :=
-  h7l23_verNeRaw_to_verNeTight_of_cap hcap hraw
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0LeafL23

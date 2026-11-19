@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepTightTargets
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepTightTargets
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBlocks
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import all Init.Data.String.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitPack -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepMain -- proof-setup: allow-public-import
 
 /-!
 # Relocatable DH Ratchet Sub-Block WP Lemmas on Block `507`
@@ -26,7 +29,7 @@ Relocatable `[LibsignalPlacement]` `DhCommitBlockWp` and `DhStepBlockWp` symboli
 Segment `S3` of `try_decrypt_with_state::<signal_session_handshake::Coins>` (Block `507`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -93,7 +96,7 @@ theorem dhCommitBlockWp_507 [LibsignalPlacement] (H : String → Option (State �
   step4c_le := by intro _ _ s hpc hrun hsp hsp_align hle; wp_done_reg hsp_align
   step5 := by intro _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ s hpc hrun hsp hsp_align hx25; wp_done_reg hsp_align
 
-def dhStepBlockWp_507 [LibsignalPlacement] (H : String → Option (State → State)) :
+@[expose] def dhStepBlockWp_507 [LibsignalPlacement] (H : String → Option (State → State)) :
     DhStepBlockWp ((blkPC_508).rebase (blkPl_508).base H) (blkPl_508).base
       (lsmpl.base 618) where
   missingScAddr := lsmpl.ρ "libsignal_cli_handshake:.rodata..Lanon.2"

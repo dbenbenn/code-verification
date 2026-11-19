@@ -20,7 +20,7 @@ reduction AST sizes `sz ≤ C₀ + C₁ * bits costBudget` by
 `reductionSizeBudget + 2 ^ 12 * bits costBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

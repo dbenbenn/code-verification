@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3bPlaced
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5ePlaced
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`): Top-Level Relocatable Proof
@@ -30,7 +31,7 @@ Combines all 11 arms of `<spqr::v1::chunked::states::States>::into_pb` (Block `3
 `withLsCodeLoaded`, and `withLsCodeRoLoaded` top-level contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +53,7 @@ open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.SpqrV1.States.IntoPb.Placed
 
 set_option maxRecDepth 200000
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 
 /-- Per-variant correctness of `<spqr::v1::chunked::states::States>::into_pb` (Block `334`)
     across all 11 `States` constructors under `[LibsignalPlacement]`. -/

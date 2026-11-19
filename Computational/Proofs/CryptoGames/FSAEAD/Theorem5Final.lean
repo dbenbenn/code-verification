@@ -25,7 +25,7 @@ main-chain hybrid `A_N` (`N ≥ q`) outputs `true` with probability `1 / 2` (`fi
 `final_main_idx`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory CryptoGames.Lazy
 
@@ -1035,7 +1035,7 @@ theorem relComp_sampleH {α : Type} (p : ProbComp α) {R : α × St → α × St
   exact .bind_self p fun a => .pure (h a)
 
 /-- Agreement of two hybrid states everywhere except `b` (`s₂.1.b = false`) and `inTransit`. -/
-def StateSync (s₁ s₂ : St) : Prop :=
+@[expose] def StateSync (s₁ s₂ : St) : Prop :=
   s₂.1 = { s₁.1 with b := false, inTransit := s₂.1.inTransit } ∧ s₂.2 = s₁.2
 
 def UpdatedKeys (s₁ s₂ s₁' s₂' : St) : Prop :=

@@ -15,6 +15,13 @@ public import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDslEvalAu
 public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF -- proof-setup: allow-public-import
 import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDsl
 import Computational.Proofs.Game.PromotedCostedReds.DrSessionSimSize
+import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
+import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs
+import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Tracker-Halted `spkLeakRed` Step Handler and Evaluation Proofs
@@ -87,7 +94,7 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDslEvalAux
    kemTrackDeliverInv_initSim kemTrackDeliverInv_stepDeliverSim kemTrackDeliverInv_stepSendSim)
 open Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDsl
   (initKemFailTrackE_eval stepKemFailSendC_eval kemOnDeliverPostE_eval)
-open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg
+open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs
   (liftCompCoins_cost_exact)
 open Computational.Proofs.Game.PromotedCostedReds.HaltedSpkLeakProgSub
   (kemSessTrackT spkBaseStTy spkHaltedStTy

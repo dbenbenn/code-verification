@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateTightCountR
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStateChPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStatePlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopClPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.E2aTightBytesZeroAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateTightCountR
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStateChPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStatePlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.OuterLoopClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
 
 /-!
 # Guarded-Tight Placed Verification of `spqr::decode_state` (Block `325`)
@@ -26,7 +28,7 @@ Extends canonical `PqRatchetState` extraction to `SpqrStateTight640 F K bs`, bri
 and proves guarded-tight `spqr::decode_state` contracts under `tlb_DecodeStateGuardedEnv F K`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -93,29 +95,6 @@ theorem e2a_spqrStateTight640_encode_valid {F : ShaCompress} {K : MlKem} {bs : B
     · intro ch hch; simp at hch
     · intro v1 hv1; simp at hv1
   · exact e2ar_topStateTight_encode_valid hTop
-
-/-- Weaken `DecodeStateCalleeContractsPlacedX` to `DecodeStateCalleeContractsClPlacedX`. -/
-theorem e2a_contractsClPlacedX_of_placedX [LibsignalPlacement] {M : AllocCostModel}
-    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hc : DecodeStateCalleeContractsPlacedX H_inner A lim ext) :
-    DecodeStateCalleeContractsClPlacedX H_inner A lim ext where
-  of_drop_inner := hc.of_drop_inner
-  of_cap_inner := hc.of_cap_inner
-  dealloc := hc.dealloc
-  memcpy := hc.memcpy
-  session_memcpy := hc.session_memcpy
-  decodeErrorFrom := subroutine_ok_withLsCodeLoaded_of_plain hc.decodeErrorFrom
-  decodeErrorPush := subroutine_ok_withLsCodeLoaded_of_plain hc.decodeErrorPush
-  decodeVarint2 := subroutine_ok_withLsCodeLoaded_of_plain hc.decodeVarint2
-  skipField3 := subroutine_ok_withLsCodeLoaded_of_plain hc.skipField3
-  chainParamsMerge := subroutine_ok_withLsCodeLoaded_of_plain hc.chainParamsMerge
-  growOneChainEpoch := subroutine_ok_withLsCodeLoaded_of_plain hc.growOneChainEpoch
-  dropOptProtoInnerState := ls_subroutine_ok_cl_of_plain hc.dropOptProtoInnerState
-  dropProtoPqRatchetState := ls_subroutine_ok_cl_of_plain hc.dropProtoPqRatchetState
-  bytesMerge3 := hc.bytesMerge3
-  epochDirectionMerge := hc.epochDirectionMerge
-  v1StateMerge := hc.v1StateMerge
 
 /-- Monotonicity of `DecodeStatePlacedOkOfEnv` when `PreEnv = PostEnv` widens (`Env₁ ⊆ Env₂`):
 `FitsEnv M lim st (Env₂ x)` is contravariant (`FitsEnv Env₂ → FitsEnv Env₁`) while `PostEnv` is
@@ -212,7 +191,7 @@ theorem e2a_v1StateMerge_tight_of_dom {v1Ops : Nat} {v1 : V1State}
 /-! ## 3. Canonical Entry Seam & Guarded-Tight Block `325` Producers -/
 
 /-- Canonical entry specification for Block `325` (`+0`) on `encodeState pb` wire inputs. -/
-def E2aDecodeStateCanonicalEntryOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def E2aDecodeStateCanonicalEntryOk [LibsignalPlacement] {M : AllocCostModel}
     (H_inner : V1InnerHeapPred) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (v1Ops : Nat) (V1Env : V1StateMergeGhost → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -308,51 +287,7 @@ theorem e2a_decodeState_cl_placed_ok_of_canonical_109 [LibsignalPlacement] {M : 
     (fun _ _ h => tlb_decodeStateGuardedEnv_mono (by decide : 23 + 80 ≤ 109) h)
     (e2a_decodeState_cl_placed_ok_of_canonical hCanon hc hEpochDir hV1Merge)
 
-theorem e2a_decodeState_placed_ok_of_canonical [LibsignalPlacement] {M : AllocCostModel}
-    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {K : MlKem} {v1Ops : Nat}
-    {ext : String → Option (State → State)}
-    (hCanon : E2aDecodeStateCanonicalEntryOk H_inner A lim v1Ops
-      (tlb_V1StateMergeGuardedEnvOf v1Ops) ext)
-    (hc : DecodeStateCalleeContractsPlacedX H_inner A lim ext)
-    (hEpochDir : tlb_EpochDirectionMergeBlk325TightOkOf A lim 2 4 ext)
-    (hV1Merge : tlb_V1StateMergeBlk325TightOkOf A lim v1Ops ext) :
-    DecodeStatePlacedOkOfEnv H_inner A lim
-      (tlb_DecodeStateGuardedEnvOf F K (23 + v1Ops))
-      (tlb_DecodeStateGuardedEnvOf F K (23 + v1Ops)) ext :=
-  e2a_decodeState_cl_placed_ok_of_canonical hCanon
-    (e2a_contractsClPlacedX_of_placedX hc) hEpochDir hV1Merge
-
-theorem e2a_decodeState_placed_ok_of_canonical_109 [LibsignalPlacement] {M : AllocCostModel}
-    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {K : MlKem}
-    {ext : String → Option (State → State)}
-    (hCanon : E2aDecodeStateCanonicalEntryOk H_inner A lim 80
-      (tlb_V1StateMergeGuardedEnvOf 80) ext)
-    (hc : DecodeStateCalleeContractsPlacedX H_inner A lim ext)
-    (hEpochDir : tlb_EpochDirectionMergeBlk325TightOkOf A lim 2 4 ext)
-    (hV1Merge : tlb_V1StateMergeBlk325TightOkOf A lim 80 ext) :
-    DecodeStatePlacedOkOfEnv H_inner A lim
-      (tlb_DecodeStateGuardedEnv F K)
-      (tlb_DecodeStateGuardedEnv F K) ext :=
-  e2a_decodeState_cl_placed_ok_of_canonical_109 hCanon
-    (e2a_contractsClPlacedX_of_placedX hc) hEpochDir hV1Merge
-
 /-! ## 4. Unconditional Block `325` Guarded-Tight Producers -/
-
-/-- Unconditional guarded-tight code-loaded Block `325` (`spqr::decode_state`) contract at `23 + v1Ops`. -/
-theorem e2a_decodeState_cl_placed_ok_of_v1Merge [LibsignalPlacement] {M : AllocCostModel}
-    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {K : MlKem} {v1Ops : Nat}
-    {ext : String → Option (State → State)}
-    (hc : DecodeStateCalleeContractsClPlacedX H_inner A lim ext)
-    (hEpochDir : tlb_EpochDirectionMergeBlk325TightOkOf A lim 2 4 ext)
-    (hV1Merge : tlb_V1StateMergeBlk325TightOkOf A lim v1Ops ext) :
-    DecodeStatePlacedOkOfEnv H_inner A lim
-      (tlb_DecodeStateGuardedEnvOf F K (23 + v1Ops))
-      (tlb_DecodeStateGuardedEnvOf F K (23 + v1Ops)) ext :=
-  e2a_decodeState_cl_placed_ok_of_canonical e2a_decodeState_entry_canonical_cl_placed
-    hc hEpochDir hV1Merge
 
 /-- Unconditional guarded-tight code-loaded Block `325` (`spqr::decode_state`) contract under `tlb_DecodeStateGuardedEnv F K` (`109` ops). -/
 theorem e2a_decodeState_cl_placed_ok_of_v1Merge_109 [LibsignalPlacement] {M : AllocCostModel}
@@ -366,32 +301,6 @@ theorem e2a_decodeState_cl_placed_ok_of_v1Merge_109 [LibsignalPlacement] {M : Al
       (tlb_DecodeStateGuardedEnv F K)
       (tlb_DecodeStateGuardedEnv F K) ext :=
   e2a_decodeState_cl_placed_ok_of_canonical_109 e2a_decodeState_entry_canonical_cl_placed
-    hc hEpochDir hV1Merge
-
-theorem e2a_decodeState_placed_ok_of_v1Merge [LibsignalPlacement] {M : AllocCostModel}
-    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {K : MlKem} {v1Ops : Nat}
-    {ext : String → Option (State → State)}
-    (hc : DecodeStateCalleeContractsPlacedX H_inner A lim ext)
-    (hEpochDir : tlb_EpochDirectionMergeBlk325TightOkOf A lim 2 4 ext)
-    (hV1Merge : tlb_V1StateMergeBlk325TightOkOf A lim v1Ops ext) :
-    DecodeStatePlacedOkOfEnv H_inner A lim
-      (tlb_DecodeStateGuardedEnvOf F K (23 + v1Ops))
-      (tlb_DecodeStateGuardedEnvOf F K (23 + v1Ops)) ext :=
-  e2a_decodeState_placed_ok_of_canonical e2a_decodeState_entry_canonical_cl_placed
-    hc hEpochDir hV1Merge
-
-theorem e2a_decodeState_placed_ok_of_v1Merge_109 [LibsignalPlacement] {M : AllocCostModel}
-    {H_inner : V1InnerHeapPred} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {K : MlKem}
-    {ext : String → Option (State → State)}
-    (hc : DecodeStateCalleeContractsPlacedX H_inner A lim ext)
-    (hEpochDir : tlb_EpochDirectionMergeBlk325TightOkOf A lim 2 4 ext)
-    (hV1Merge : tlb_V1StateMergeBlk325TightOkOf A lim 80 ext) :
-    DecodeStatePlacedOkOfEnv H_inner A lim
-      (tlb_DecodeStateGuardedEnv F K)
-      (tlb_DecodeStateGuardedEnv F K) ext :=
-  e2a_decodeState_placed_ok_of_canonical_109 e2a_decodeState_entry_canonical_cl_placed
     hc hEpochDir hV1Merge
 
 end LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.E2aTightDecodeStatePlacedBudget

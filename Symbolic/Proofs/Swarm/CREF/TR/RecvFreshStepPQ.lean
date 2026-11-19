@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.ALaCarte.Basic
@@ -43,7 +43,7 @@ Proves one-move preservation of `TRRecvFreshAll r₀` across moves that store no
 log no receiver `TREvent`: key-compromise moves, `Move.reject`, and `Move.attackerSend`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -62,7 +62,7 @@ open Symbolic.Swarm.COMPOSED.CompTrace (Preserves Preserves.bind Preserves.pure 
   Preserves.getLocalState_pq)
 
 /-- `TRRecvFreshAll r₀` stated as a predicate on an arbitrary execution trace. -/
-def rfs_RF (r₀ : ProtocolSetup) (tr : ExecTrace) : Prop :=
+@[expose] def rfs_RF (r₀ : ProtocolSetup) (tr : ExecTrace) : Prop :=
   ∀ q stateIdx st,
     (q = r₀.alice ∨ q = r₀.bob) →
     ((PersistentLocalState.getLocalState q stateIdx : Traceful TRState).run tr).1 = some st →

@@ -15,9 +15,9 @@ public import ProofLib.SepLogic.SymBlock.Tactic
 /-!
 # Layout-Generic Relocations and Symbolic Decoder Tests
 
-Regression tests for `Obj.patchRelocs`, `Contract.holds_of_relocFn`, `VeneerAt`, symbol-relative
-cut points (`reloc_call_off%`, `words_ret_off%`), TLS relocation decoding, and `checkRelocFn`
-across `wp_sym_steps` and `sym_block`.
+Regression tests for `Obj.patchRelocs`, `VeneerAt`, symbol-relative cut points
+(`reloc_call_off%`, `words_ret_off%`), and TLS relocation decoding across `wp_sym_steps` and
+`sym_block`.
 -/
 
 @[expose] public section
@@ -150,7 +150,7 @@ theorem readIndexed_sym_block_ok (prog : Program) (a : BitVec 64)
   sym_block
   wp_done
 
-/-! ## `Contract.holds_of_relocFn` with `.rodata`, `.data`, and `BL` -/
+/-! ## Relocated Caller with Read-Only Data, Mutable Global, and `BL` -/
 
 /-- Bytes for `read_ro_and_bump`:
     `+0`:  `stp x29, x30, [sp, #-16]!` (`0xa9bf7bfd`)
@@ -169,142 +169,8 @@ def readRoAndBumpRelocs : List Obj.RelocEntry :=
   , { off := 8, kind := .adrpHi21, sym := "ro_magic", addend := 0 }
   , { off := 12, kind := .ldst64Lo12, sym := "ro_magic", addend := 0 } ]
 
-def readRoMagicWords : List (BitVec 32) :=
-  [0x90000008#32, 0x39400100#32, 0xd65f03c0#32]
-
-def readRoMagicRelocs : List Obj.RelocEntry :=
-  [ { off := 0, kind := .adrpHi21, sym := "ro_magic", addend := 0 }
-  , { off := 4, kind := .ldst8Lo12, sym := "ro_magic", addend := 0 } ]
-
 def wordsToBytesLE (ws : List (BitVec 32)) : List (BitVec 8) :=
   ws.flatMap Obj.bytesOfWordLE
-
-/-- Synthetic `ObjectInfo` exercising `relocFns` and `dataSyms` (`.rodata` bytes, `.rodata` `ABS64`
-    function-pointer table, `.rodata` `PREL32` offset table, and `.data` RW global). -/
-def testRelocObj : Obj.ObjectInfo where
-  name := "test_reloc.o"
-  fns := []
-  callFns := []
-  relocFns :=
-    [ { sym := "bump_counter"
-        code := wordsToBytesLE bumpCounterWords
-        relocs := bumpCounterRelocs }
-    , { sym := "read_ro_magic"
-        code := wordsToBytesLE readRoMagicWords
-        relocs := readRoMagicRelocs } ]
-  dataSyms :=
-    [ { sym := "ro_magic"
-        align := 1
-        readOnly := true
-        bytes := [0x2a#8]
-        relocs := [] }
-    , { sym := "fn_tbl"
-        align := 8
-        readOnly := true
-        bytes := [0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8]
-        relocs := [{ off := 0, kind := .abs64, sym := "read_ro_magic", addend := 0 }] }
-    , { sym := "prel_tbl"
-        align := 4
-        readOnly := true
-        bytes := [0x00#8, 0x00#8, 0x00#8, 0x00#8]
-        relocs := [{ off := 0, kind := .prel32, sym := "ro_magic", addend := 0 }] }
-    , { sym := "counter"
-        align := 8
-        readOnly := false
-        bytes := [0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8]
-        relocs := [] } ]
-
-/-- Concrete `LinkedImage` laying out `testRelocObj`:
-    - `bump_counter` at offset `0` (`24` bytes)
-    - `read_ro_magic` at offset `24` (`12` bytes)
-    - `dataOff = 4096` (page-aligned):
-      - `"ro_magic"` at offset `4096` (`[0x2a#8]`, padded to `4104`)
-      - `"fn_tbl"` at offset `4104` (`ABS64` relocation at `data` offset `8` targeting `24`)
-      - `"prel_tbl"` at offset `4112` (`PREL32` value `4096 - 4112 = -16 = 0xfffffff0#32`, padded to `4120`)
-      - `roData = [(4096, 24)]` covering offsets `[4096, 4120)`
-      - `"counter"` at offset `4120` (`8` RW bytes outside `roData`)
-    - `gotOff = 4128` -/
-def testLinkedImage : Obj.LinkedImage where
-  code :=
-    let resolve : String → BitVec 64
-      | "bump_counter" => 0#64
-      | "read_ro_magic" => 24#64
-      | "ro_magic" => 4096#64
-      | "fn_tbl" => 4104#64
-      | "prel_tbl" => 4112#64
-      | "counter" => 4120#64
-      | _ => 0#64
-    wordsToBytesLE (Obj.patchRelocs bumpCounterRelocs bumpCounterWords 0#64 resolve) ++
-    wordsToBytesLE (Obj.patchRelocs readRoMagicRelocs readRoMagicWords 24#64 resolve)
-  dataOff := 4096
-  data :=
-    [ 0x2a#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8
-    , 0x18#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8
-    , 0xf0#8, 0xff#8, 0xff#8, 0xff#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8
-    , 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8 ]
-  roData := [(4096, 24)]
-  gotOff := 4128
-  relocs := [{ off := 8, width := 8, target := 24 }]
-  symbols :=
-    [ ("bump_counter", 0)
-    , ("read_ro_magic", 24)
-    , ("ro_magic", 4096)
-    , ("fn_tbl", 4104)
-    , ("prel_tbl", 4112)
-    , ("counter", 4120) ]
-  objSymbols :=
-    [ ("test_reloc.o",
-      [ ("bump_counter", 0)
-      , ("read_ro_magic", 24)
-      , ("ro_magic", 4096)
-      , ("fn_tbl", 4104)
-      , ("prel_tbl", 4112)
-      , ("counter", 4120) ]) ]
-  stubs := []
-  objects := [testRelocObj]
-
-theorem testLinkedImage_honours : testLinkedImage.honours testRelocObj = true := by decide
-
-theorem testLinkedImage_wellFormed : testLinkedImage.wellFormed = true := by decide
-
-def bumpCounterObjSpec : Spec (BitVec 64) where
-  pre := fun v s => s.sym "test_reloc.o" "counter" ↦₆₄ v
-  post := fun v s sf =>
-    ⌜sf.readReg64 (.gpr 0#5) = v + 1#64⌝ ∗ (s.sym "test_reloc.o" "counter" ↦₆₄ (v + 1#64))
-
-def bumpCounterImgContract : Contract :=
-  { sym := "bump_counter", spec := bumpCounterObjSpec }
-
-def readRoMagicObjSpec : Spec Unit where
-  pre := fun _ _ => emp
-  post := fun _ _ sf => ⌜sf.readReg64 (.gpr 0#5) = 42#64⌝
-
-def readRoMagicContract : Contract :=
-  { sym := "read_ro_magic", spec := readRoMagicObjSpec }
-
-def testRelocLib : LibrarySpec where
-  name := "test_reloc"
-  obj := some testRelocObj
-  deps := []
-  contracts := [bumpCounterImgContract, readRoMagicContract]
-
-theorem bumpCounter_contract_holds {img : Obj.Image} {X : String → Option (State → State)}
-    (hLinks : LinksIn [testRelocLib] img []) :
-    Contract.Holds testRelocLib img X bumpCounterImgContract := by
-  refine Contract.holds_of_relocFn hLinks (by simp) (by simp) rfl
-    (relocs := bumpCounterRelocs) (words := bumpCounterWords) (by decide) ?_
-  intro a resolve hctx hrange hwords
-  dsimp only [bumpCounterImgContract, Spec.inImage, bumpCounterObjSpec]
-  wp_init v s0
-  have hSymEq : s0.sym "test_reloc.o" "counter" = resolve "counter" :=
-    hctx.sym_self_of_dataSym ‹s0.symtab = img.symtab› (D := testRelocLib) (o := testRelocObj)
-      (d := { sym := "counter", align := 8, readOnly := false,
-              bytes := [0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8, 0x00#8],
-              relocs := [] })
-      (by simp) (by simp) rfl (by decide) (by decide)
-  rw [hSymEq]
-  sym_block
-  wp_done
 
 theorem readRoAndBump_ok (prog : Program) (a : BitVec 64)
     (resolve : String → BitVec 64) (v : BitVec 64)
@@ -328,55 +194,6 @@ theorem readRoAndBump_ok (prog : Program) (a : BitVec 64)
   wp_call hcallee
   wp_sym_steps
   wp_done
-
-theorem readRoMagic_contract_holds {img : Obj.Image} {X : String → Option (State → State)}
-    (hLinks : LinksIn [testRelocLib] img []) :
-    Contract.Holds testRelocLib img X readRoMagicContract := by
-  refine Contract.holds_of_relocFn hLinks (by simp) (by simp) rfl
-    (relocs := readRoMagicRelocs) (words := readRoMagicWords) (by decide) ?_
-  intro a resolve hctx hrange hwords
-  dsimp only [readRoMagicContract, Spec.inImage, readRoMagicObjSpec]
-  wp_init u s0
-  have hRo : Obj.HoldsBytes s0.mem (resolve "ro_magic") [0x2a#8] (fun _ => .ro) :=
-    hctx.holdsBytes_dataSym_ro ‹img.FrozenLoaded s0› (D := testRelocLib) (o := testRelocObj)
-      (d := { sym := "ro_magic", align := 1, readOnly := true,
-              bytes := [0x2a#8], relocs := [] })
-      (by simp) (by simp) rfl (by decide) (by decide) rfl rfl
-  refine SepWP.holdsBytes_ro_intro hRo (by decide) ?_
-  wp_sym_steps
-  wp_done
-
-theorem testRelocLib_ok : library_ok testRelocLib [] := by
-  have hclosure : testRelocLib.closure = [testRelocLib] := rfl
-  refine ⟨fun D hD _ => ?_, fun img X hLinks _ D hD _ c hc => ?_⟩
-  · rw [hclosure, List.mem_singleton] at hD
-    subst hD
-    rfl
-  · rw [hclosure, List.mem_singleton] at hD
-    subst hD
-    rw [hclosure] at hLinks
-    simp only [testRelocLib, List.mem_cons, List.not_mem_nil, or_false] at hc
-    rcases hc with rfl | rfl
-    · exact bumpCounter_contract_holds hLinks
-    · exact readRoMagic_contract_holds hLinks
-
-def testLoadedImage : Obj.Image :=
-  match testLinkedImage.load 0x100000#64 with
-  | .ok img => img
-  | .error _ => default
-
-theorem testRelocLib_linksIn_nonvacuous :
-    LinksIn [testRelocLib] testLoadedImage [] := by
-  refine ⟨testLinkedImage, ?_, ?_⟩
-  · intro D hD
-    simp only [List.mem_singleton] at hD
-    subst hD
-    left
-    intro o ho
-    cases ho
-    exact List.Mem.head _
-  · show testLinkedImage.load testLoadedImage.base = .ok testLoadedImage
-    rfl
 
 /-! ## Additional Relocation Kinds -/
 
@@ -516,7 +333,7 @@ theorem veneer_transfers_subroutine_ok (prog : Program) (vAddr target : BitVec 6
   Obj.subroutine_ok_of_veneerAt hveneer hcallee
     (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ _ => rfl)
 
-/-! ## Negative `#guard_msgs` and `honours = false` Checks -/
+/-! ## Negative `#guard_msgs` Checks -/
 
 /--
 error: sym_block: no instruction could be executed (no fetch at +0000000000000000)
@@ -572,32 +389,6 @@ theorem wp_step_mismatched_scale_rejected (prog : Program) (a target : BitVec 64
     subroutine_ok prog a (getSymAddrSpec target) := by
   wp_init u s0
   wp_step
-
-theorem honours_zero_align_rejected :
-    testLinkedImage.honours
-      { testRelocObj with
-        dataSyms := [{ sym := "ro_magic", align := 0, readOnly := true, bytes := [0x2a#8], relocs := [] }] } = false := by
-  decide
-
-theorem honours_abs64_in_code_rejected :
-    testLinkedImage.honours
-      { testRelocObj with
-        relocFns := [{ sym := "bump_counter"
-                       code := wordsToBytesLE bumpCounterWords
-                       relocs := [{ off := 0, kind := .abs64, sym := "counter", addend := 0 }] }] } = false := by
-  decide
-
-theorem img_fnAddr_pc_base_sym_block_ok (prog : Program) (img : Obj.Image)
-    (resolve : String → BitVec 64)
-    (hrange : ∀ r ∈ getSymAddrRelocs,
-      Obj.CodeRelocInRange r.kind (img.fnAddr "get_sym_addr" + BitVec.ofNat 64 r.off)
-        (Obj.addSignedAddr (resolve r.sym) r.addend))
-    (hwords : prog.hasWords (img.fnAddr "get_sym_addr")
-      (Obj.patchRelocs getSymAddrRelocs getSymAddrWords (img.fnAddr "get_sym_addr") resolve)) :
-    subroutine_ok prog (img.fnAddr "get_sym_addr") (getSymAddrSpec (resolve "my_table")) := by
-  wp_init u s0
-  sym_block
-  wp_done
 
 /-! ## Symbol-Relative Cut Points -/
 
@@ -710,121 +501,5 @@ theorem tlsle_hi12_and_lo12_decode_ok (tprel : BitVec 64) :
         ((Obj.lo12Of tprel).truncate 12) false) :=
   ⟨Obj.decode_tprelHi12Word rfl tprel,
    Obj.decode_addLo12Word rfl tprel⟩
-
-/-! ## `checkRelocFn` and `checkRelocFnAt` Edge Cases -/
-
-section CheckRelocFnEdgeCases
-
-open ProofLib.ProgramReflection
-
-/-- Clean instruction templates exercising every distinct code relocation mask family. -/
-def allRelocKindWords : List (BitVec 32) :=
-  [ 0x94000000#32 -- +0:  call26       (BL)
-  , 0x14000000#32 -- +4:  jump26       (B)
-  , 0x90000008#32 -- +8:  adrpHi21     (ADRP X8)
-  , 0xb0000009#32 -- +12: adrpHi21Nc   (ADRP X9)
-  , 0x1000000a#32 -- +16: adrPrelLo21  (ADR X10)
-  , 0x91000108#32 -- +20: addLo12      (ADD X8, X8, #0)
-  , 0x3940010b#32 -- +24: ldst8Lo12    (LDRB W11, [X8])
-  , 0x7940010c#32 -- +28: ldst16Lo12   (LDRH W12, [X8])
-  , 0xb940010d#32 -- +32: ldst32Lo12   (LDR W13, [X8])
-  , 0xf940010e#32 -- +36: ldst64Lo12   (LDR X14, [X8])
-  , 0x3dc00100#32 -- +40: ldst128Lo12  (LDR Q0, [X8])
-  , 0x54000000#32 -- +44: condbr19     (B.EQ)
-  , 0x5800000f#32 -- +48: ldPrelLo19   (LDR X15, label)
-  , 0x36000010#32 -- +52: tstbr14      (TBZ W16, #0, label)
-  , 0xd65f03c0#32 -- +56: non-relocated RET
-  ]
-
-/-- Object words with non-zero immediate link placeholders sharing the opcode and register mask
-    bits of `allRelocKindWords`. -/
-def allRelocKindPatchedWords : List (BitVec 32) :=
-  (allRelocKindWords.take 14).zip
-    [ Obj.RelocKind.call26, .jump26, .adrpHi21, .adrpHi21Nc, .adrPrelLo21, .addLo12
-    , .ldst8Lo12, .ldst16Lo12, .ldst32Lo12, .ldst64Lo12, .ldst128Lo12
-    , .condbr19, .ldPrelLo19, .tstbr14 ]
-  |>.map (fun (w, k) => w ||| (~~~Obj.relocOpcodeMask k &&& 0xdeadbeef#32))
-  |>.concat 0xd65f03c0#32
-
-def allRelocKindRelocs : List Obj.RelocEntry :=
-  [ { off := 0,  kind := .call26,      sym := "t" }
-  , { off := 4,  kind := .jump26,      sym := "t" }
-  , { off := 8,  kind := .adrpHi21,    sym := "t" }
-  , { off := 12, kind := .adrpHi21Nc,  sym := "t" }
-  , { off := 16, kind := .adrPrelLo21, sym := "t" }
-  , { off := 20, kind := .addLo12,     sym := "t" }
-  , { off := 24, kind := .ldst8Lo12,   sym := "t" }
-  , { off := 28, kind := .ldst16Lo12,  sym := "t" }
-  , { off := 32, kind := .ldst32Lo12,  sym := "t" }
-  , { off := 36, kind := .ldst64Lo12,  sym := "t" }
-  , { off := 40, kind := .ldst128Lo12, sym := "t" }
-  , { off := 44, kind := .condbr19,    sym := "t" }
-  , { off := 48, kind := .ldPrelLo19,  sym := "t" }
-  , { off := 52, kind := .tstbr14,     sym := "t" } ]
-
-def allRelocKindObj : Obj.ObjectInfo where
-  name := "all_kinds.o"
-  relocFns := [{ sym := "all_kinds", code := wordsToBytesLE allRelocKindPatchedWords,
-                 relocs := allRelocKindRelocs }]
-
-example : checkRelocFn allRelocKindObj "all_kinds" allRelocKindRelocs allRelocKindWords = true := by
-  decide +kernel
-example : checkRelocFnAt allRelocKindObj 0 "all_kinds" allRelocKindRelocs allRelocKindWords = true := by
-  decide +kernel
-example : allRelocKindObj.RelocFnChecked "all_kinds" allRelocKindRelocs allRelocKindWords :=
-  Obj.ObjectInfo.RelocFnChecked.of_checkRelocFnAt (idx := 0) (by decide +kernel)
-
-example : checkRelocFn testRelocObj "bump_counter" bumpCounterRelocs
-    (bumpCounterWords.set 0 0x90000001#32) = false := by
-  decide +kernel
-
-example : checkRelocFn testRelocObj "bump_counter" bumpCounterRelocs
-    (bumpCounterWords.set 2 0x91000929#32) = false := by
-  decide +kernel
-
-example : checkRelocFn { name := "empty.o", relocFns := [{ sym := "f", code := [] }] }
-    "f" [] [] = false := by decide +kernel
-
-example : checkRelocFn testRelocObj "bump_counter" bumpCounterRelocs
-    (bumpCounterWords.take 4) = false := by decide +kernel
-example : checkRelocFn testRelocObj "bump_counter" bumpCounterRelocs
-    (bumpCounterWords ++ [0xd65f03c0#32]) = false := by decide +kernel
-
-example : checkRelocFn
-    { name := "odd.o", relocFns := [{ sym := "f", code := [0xc0#8, 0x03#8, 0x5f#8, 0xd6#8, 0x00#8] }] }
-    "f" [] [0xd65f03c0#32] = false := by decide +kernel
-
-example : checkRelocWordsStream (wordsToBytesLE bumpCounterWords) bumpCounterWords
-    (bumpCounterRelocs.reverse) 0 = false := by decide +kernel
-
-example : checkRelocWordsStream (wordsToBytesLE bumpCounterWords) bumpCounterWords
-    [ { off := 0, kind := .adrpHi21, sym := "counter" }
-    , { off := 0, kind := .adrpHi21, sym := "counter" } ] 0 = false := by decide +kernel
-
-example : checkRelocWordsStream (wordsToBytesLE bumpCounterWords) bumpCounterWords
-    [{ off := 2, kind := .adrpHi21, sym := "counter" }] 0 = false := by decide +kernel
-
-example : checkRelocWordsStream (wordsToBytesLE bumpCounterWords) bumpCounterWords
-    (bumpCounterRelocs ++ [{ off := 24, kind := .call26, sym := "counter" }]) 0 = false := by
-  decide +kernel
-
-example : checkRelocFnAt testRelocObj 1 "bump_counter" bumpCounterRelocs bumpCounterWords = false := by
-  decide +kernel
-example : checkRelocFnAt testRelocObj 99 "bump_counter" bumpCounterRelocs bumpCounterWords = false := by
-  decide +kernel
-example : checkRelocFn testRelocObj "missing_fn" bumpCounterRelocs bumpCounterWords = false := by
-  decide +kernel
-
-/--
-error: Tactic `decide` proved that the proposition
-  checkRelocFn testRelocObj "bump_counter" bumpCounterRelocs (bumpCounterWords.set 2 2432698665#32) = true
-is false
--/
-#guard_msgs (error, drop info) in
-example : checkRelocFn testRelocObj "bump_counter" bumpCounterRelocs
-    (bumpCounterWords.set 2 0x91000929#32) = true := by
-  decide +kernel
-
-end CheckRelocFnEdgeCases
 
 end Testing.LayoutGenericRelocs

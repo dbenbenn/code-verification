@@ -11,25 +11,31 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4KyberRefused
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsKyberRefusedPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProofPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4KyberRefused -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsKyberRefusedPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProofPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProof
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProof
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4MarkKyber
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Budget-Threaded Relocatable Stage P4 Kyber Pre-Key Refusal Arm
@@ -39,7 +45,7 @@ spatial bundles (`stageP4SharedPlaced`, `stageP4RawPrePlaced`, `stageP4PrePlaced
 `stageP4ExitAtPlaced`) on Block `518` (`lsProg_518 ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -150,7 +156,7 @@ abbrev StageP4SaveMarkBudgetEnv {A : RustAlloc} {b : BitVec 64}
 
 /-- Allocation envelope on the `save_identity = Ok(c)` + `mark_kyber_pre_key_used = Err(e)`
 exit of Stage P4: `SaveStepEnv` followed by `StageP4MarkErrEnv`. -/
-def StageP4KyberRefusedMarkErrEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4KyberRefusedMarkErrEnv {A : RustAlloc} {b : BitVec 64}
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (kpkKit : KyberPreKeyStoreSpec A b) (kpkKitEnv : KyberPreKeyStoreBudgetEnv kpkKit)
     (ist0 : ikit.IdState) (kst0 : kpkKit.KpkState)
@@ -162,7 +168,7 @@ def StageP4KyberRefusedMarkErrEnv {A : RustAlloc} {b : BitVec 64}
 
 /-- Combined exit allocation envelope of the Kyber refusal path covering both `mark_used = Err(e)`
 and `save_identity = Err(())`. -/
-def StageP4KyberRefusedEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4KyberRefusedEnv {A : RustAlloc} {b : BitVec 64}
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (kpkKit : KyberPreKeyStoreSpec A b) (kpkKitEnv : KyberPreKeyStoreBudgetEnv kpkKit)
     (ist0 : ikit.IdState) (kst0 : kpkKit.KpkState)
@@ -207,7 +213,7 @@ theorem fitsEnv_saveMark_of_kyberRefused {M : AllocCostModel} {lim : BudgetLimit
 
 /-! ## Placed 2-kit Kyber refusal spatial predicates and theorems -/
 
-def kyberRefusedSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def kyberRefusedSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (kpkKit : KyberPreKeyStoreSpec A.repAlloc 0#64)
     (s0 s s_pool : State)
@@ -248,7 +254,7 @@ def kyberRefusedSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
   A.pool lim st s_pool ∗
   stackAt s.sp (kyberRefusedCallStack ikit kpkKit)
 
-def kyberRefusedPrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def kyberRefusedPrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (kpkKit : KyberPreKeyStoreSpec A.repAlloc 0#64)
     (s0 s : State)
@@ -276,7 +282,7 @@ def kyberRefusedPrePlaced [LibsignalPlacement] {M : AllocCostModel}
   ikit.identityAt idStorePtr ist0 ∗
   kpkKit.storeAt kyberStorePtr kst0
 
-def kyberRefusedMarkErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def kyberRefusedMarkErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (kpkKit : KyberPreKeyStoreSpec A.repAlloc 0#64)
     (s0 s sf : State)
@@ -300,7 +306,7 @@ def kyberRefusedMarkErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
   kpkKit.storeAt kyberStorePtr
     (kpkKit.markUpdate kst0 kyberPreKeyId signedPreKeyId baseKey (.error e))
 
-def kyberRefusedSaveErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def kyberRefusedSaveErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (kpkKit : KyberPreKeyStoreSpec A.repAlloc 0#64)
     (s0 s sf : State)
@@ -620,7 +626,7 @@ theorem stageP4_kyber_refused_core_vregs_kits_placed_ok [LibsignalPlacement]
 
 /-! ## Placed 4-kit Stage P4 spatial predicates and refusal theorems -/
 
-def stageP4SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) {b : BitVec 64}
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b) (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
@@ -669,7 +675,7 @@ def stageP4SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
   A.pool lim st s_pool ∗
   stackAt s.sp (stageP4CallStack kit ikit pkKit kpkKit)
 
-def stageP4RawPrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4RawPrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ) {b : BitVec 64}
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b) (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
@@ -719,7 +725,7 @@ abbrev stageP4PrePlaced [LibsignalPlacement] {M : AllocCostModel}
     v_3d0 (coroOpkIdAtP4 coroPtr opkId?) kyberPreKeyId signedPreKeyId b_2c0 pt peer remoteIk
     baseKey sst0 ist0 pst0 kst0 G ssSt
 
-def stageP4ExitAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4ExitAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ) {b : BitVec 64}
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b) (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)

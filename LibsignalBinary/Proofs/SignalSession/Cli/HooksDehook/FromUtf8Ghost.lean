@@ -13,68 +13,55 @@ public import Arm64
 public import ProofLib.SepLogic.WP.StepsProcess
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8Code -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenCode
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
-# `W`-Independent Ghost `from_utf8` Hook, Consumer `HookOk` Suite, & Stock-Safe `_liftVis` Replays (`HooksDehook.FromUtf8Ghost`)
+# `W`-Independent Ghost `from_utf8` Hook, Consumer `HookOk` Suite, and `_liftVis` Replays (`HooksDehook.FromUtf8Ghost`)
 
-Card **R1-b** for de-hooking `core::str::converts::from_utf8` (`lsFromUtf8Sym`, `156` words =
-`624` bytes from `VerifiedLibraries.RustStd.coreMultiLib.blockLib 1` — rustup musl sysroot `core`
-rlib `Cs2kXltWtc1W`; the CLI's own `core` is `CskxtBwYRO61I`, matching `624` B, with placed-block
-byte identity deferred to Card R1-a2 after STOCK commit 1 via reloc-masked compare +
+Ghost hook, consumer `HookOk` lifts, and trajectory replays for `core::str::converts::from_utf8`
+(`lsFromUtf8Sym`, `156` words = `624` bytes from `VerifiedLibraries.RustStd.coreMultiLib.blockLib 1`,
+the rustup musl sysroot `core` rlib `Cs2kXltWtc1W`; the CLI's own `core` `CskxtBwYRO61I` is also
+`624` B, bridged separately via relocation-masked word comparison using
 `fetch_rebase_of_patchedWord` / `patchedWord_block_some`):
 
-1. **`W`-Independent Guarded Ghost Hook (`fromUtf8GhostHook`, `emptyFromUtf8GhostHook`):**
+1. `W`-independent guarded ghost hook (`fromUtf8GhostHook`, `emptyFromUtf8GhostHook`):
    Wraps `masterFromUtf8Spec` (and `fromUtf8SpecK keep masterFromUtf8Spec`) via
    `linkedCallHookG (roTableGuard tbl corePlacedData1)` with the computable `W`-free fallback
    `realFromUtf8Fallback`. Specializing `P_run := emptyStdProg` (`= hole2_emptyProg`) and
    `P_sub := pureWordsProg pl.base (fromUtf8PatchedWords pl)` yields `emptyFromUtf8GhostHook keep pl`
-   and `emptyFromUtf8GhostHookK keep pl` with **zero dependence on `W : CliHooks`**.
-
-2. **Pointwise State Preservation (`fs`, `HookFsTraced IsFsC`, `VmPreserved`, `OomPreserved`):**
+   and `emptyFromUtf8GhostHookK keep pl` with no dependence on `W : CliHooks`.
+2. Pointwise state preservation (`fs`, `HookFsTraced IsFsC`, `VmPreserved`, `OomPreserved`):
    - `fromUtf8GhostHook_fs` / `fromUtf8GhostHook_fsT` hold unconditionally via `linkedCallHookG_fs`
      and `linkedCallHookG_fsT`.
    - `fromUtf8GhostHook_vmPreserved` / `fromUtf8GhostHook_oomPoolPreserved` extract full
      `ProcessFieldsPreserved` on the active real-code branch via `processFromUtf8Spec` +
      `roTableGuard_stripS` + `perm_eq_of_stripExecOutside_keepsFrozen`, and delegate to
      `realFromUtf8Fallback_vmPreserved` on the fallback branch.
-
-3. **Complete Consumer `HookOk` Suite (All `stk : Nat`, RW & RO):**
-   Discharges `HookOk` for `masterFromUtf8Spec`, `MainHops.fromUtf8AsciiSpec stk` (`=
-   FromUtf8.fromUtf8AsciiSpec stk`), `CalleesRO.fromUtf8AsciiSpecRO stk`, `CliExt.fromUtf8Spec`,
-   and their `.keepsFs`, `withVmPreserved` (matching `ElfSlicesPqOomH2KHooks.lean:365` and
-   `CliHookSatPlacedBudget.lean:296`), `withOomPoolPreserved`, `.inImage`, and `fromUtf8SpecK`
+3. Consumer `HookOk` lifts (all `stk : Nat`, RW & RO):
+   Discharges `HookOk` for `masterFromUtf8Spec`, `MainHops.fromUtf8AsciiSpec stk`
+   (`= FromUtf8.fromUtf8AsciiSpec stk`), `CalleesRO.fromUtf8AsciiSpecRO stk`, `CliExt.fromUtf8Spec`,
+   and their `.keepsFs`, `withVmPreserved`, `withOomPoolPreserved`, `.inImage`, and `fromUtf8SpecK`
    variants.
-
-4. **Stock-Safe `StepsVisitedIn` & `_roTable_liftVis` Replays (`REV-S1` F1):**
+4. Stock-safe `StepsVisitedIn` and `_roTable_liftVis` replays:
    Uses `linkedCallHookG_visitedIn` and `ghostExternReplaysOn_of_linkedCallHookG_roTable_liftVis`
    (taking `hLiftVis : … → h2fsgen_StepsVisitedIn keep P_run (u.setPC pl.base) sf →
-   Steps P_real (u.setPC pl.base) sf`, discharged on stock ELF via
-   `h2sl_steps_realW_of_visitedIn_keepSub`, never `h2sl_stepsUntil_emptyProg_to_realW`).
+   Steps P_real (u.setPC pl.base) sf`, discharged on the stock ELF via
+   `h2sl_steps_realW_of_visitedIn_keepSub`).
 
-### C11 Bundle Mapping Note (No `GhostRowSpecOk` Redefined Here)
-When C11 Commit 2B wires the `lsFromUtf8Sym` row into `CliGhostHooks.extra`:
-- **`f` (`State → State`, `W`-independent):** `emptyFromUtf8GhostHook keep pl` (or `…K keep pl`).
-- **`fs_eq`:** `emptyFromUtf8GhostHook_fs keep pl` (`∀ s, (f s).fs = s.fs`).
-- **`fsT` (`HookFsTraced IsFsC f`):** `emptyFromUtf8GhostHook_fsT keep pl`.
-- **`vmPreserved` (`∀ s, VmPreserved s (f s)`):** `emptyFromUtf8GhostHook_vmPreserved keep hpl`.
-- **Consumer `HookOk` (`GhostRowSpecOk`):**
-  - RW budget/K consumers (`∀ stk, HookOk f (withVmPreserved (fromUtf8AsciiSpec stk))`):
-    `emptyFromUtf8GhostHook_ascii_vmPreserved_ok keep hpl stk`
-    (and `emptyFromUtf8GhostHookK_asciiK_vmPreserved_ok keep hpl stk`).
-  - RO budget consumers (`∀ stk, HookOk f (withVmPreserved (fromUtf8AsciiSpecRO stk))`):
-    `emptyFromUtf8GhostHook_asciiRO_vmPreserved_ok keep hpl stk`.
-- **Stock-ELF `On`/`S` Replay (`GhostRowReplayOn`, C11 §8.2):**
-  `ghostExternReplaysOn_emptyFromUtf8GhostHook_liftVis` (or `…K_autoLr_liftVis`) instantiated with
-  `InvMem := F3CodeInv mpl mmpl` (preserved across real hooks via `linkedCallHookG_fs`), `hRoInv`
-  from C2 §3 `f3CodeInv_roDataAt_*` for `corePlacedData1`, and `hLiftVis` from
-  `h2sl_steps_realW_of_visitedIn_keepSub`.
-- **C1 Activation Follow-Up (before flip 2):** Switch `#1328`'s former raw-eq
-  `from_utf8` call sites (`ElfSlicesPqOomH2KD3MainLiftGlueSat.lean`,
-  `ElfSlicesPqOomH2KMainEntryFitsSat.lean`) to `CliHookSatPlacedBudget.cliGhostExterns_fromUtf8{,RO}_budget_sat … hG.extraOk`.
+For `CliGhostHooks.extra` assembly (`GhostRowSpecOk` / `GhostRowReplayOn`), the `lsFromUtf8Sym`
+row uses `emptyFromUtf8GhostHook keep pl` (or `…K`), `emptyFromUtf8GhostHook_fs`,
+`emptyFromUtf8GhostHook_fsT`, `emptyFromUtf8GhostHook_vmPreserved`,
+`emptyFromUtf8GhostHook_ascii_vmPreserved_ok`, `emptyFromUtf8GhostHook_asciiRO_vmPreserved_ok`,
+and `ghostExternReplaysOn_emptyFromUtf8GhostHook_liftVis`.
 -/
 
 set_option autoImplicit false
@@ -128,30 +115,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StrlenCode (
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8SingleBlock (
   fromUtf8Block fromUtf8PatchedWords pureWordsProg_fromUtf8_hasWords
 )
-open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8Code (
-  FromUtf8Call masterFromUtf8Spec processFromUtf8Spec fromUtf8SpecK
-  processFromUtf8Spec_pre_eq
-  subroutine_ok_processFromUtf8_of_hasWords
-  subroutine_ok_masterFromUtf8_of_hasWords
-  subroutine_ok_masterFromUtf8K_of_hasWords
-  realFromUtf8Fallback
-  realFromUtf8Fallback_processFieldsPreserved
-  keepFsTrace_realFromUtf8Fallback_eq_apply
-  keepFsTrace_realFromUtf8Fallback_master_ok
-  keepFsTrace_realFromUtf8Fallback_masterK_ok
-  hookOk_of_specSimulates specSimulates_inImage
-  specStripSInvariant_masterFromUtf8 specStripSInvariant_masterFromUtf8K
-  specPreservesFsTrace_masterFromUtf8 specPreservesFsTrace_masterFromUtf8K
-  masterFromUtf8_pre_setPC processFromUtf8_pre_setPC masterFromUtf8K_pre_setPC
-  masterFromUtf8_outcome_setPC masterFromUtf8K_outcome_setPC
-  hookOk_fromUtf8Ascii_of_master hookOk_fromUtf8Ascii_keepsFs_of_master
-  hookOk_cliFromUtf8_of_master hookOk_cliFromUtf8_keepsFs_of_master
-  hookOk_fromUtf8AsciiRO_of_master hookOk_fromUtf8AsciiRO_keepsFs_of_master
-  hookOk_fromUtf8AsciiK_of_master hookOk_fromUtf8AsciiK_keepsFs_of_master
-  hookOk_cliFromUtf8K_of_master
-  hookOk_fromUtf8AsciiROK_of_master hookOk_fromUtf8AsciiROK_keepsFs_of_master
-  fromUtf8SpecK_keepsFs fromUtf8SpecK_withVmPreserved fromUtf8SpecK_withOomPoolPreserved
-)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8Code (FromUtf8Call masterFromUtf8Spec processFromUtf8Spec fromUtf8SpecK processFromUtf8Spec_pre_eq subroutine_ok_processFromUtf8_of_hasWords subroutine_ok_masterFromUtf8_of_hasWords subroutine_ok_masterFromUtf8K_of_hasWords realFromUtf8Fallback realFromUtf8Fallback_processFieldsPreserved keepFsTrace_realFromUtf8Fallback_eq_apply keepFsTrace_realFromUtf8Fallback_master_ok keepFsTrace_realFromUtf8Fallback_masterK_ok hookOk_of_specSimulates specStripSInvariant_masterFromUtf8 specStripSInvariant_masterFromUtf8K specPreservesFsTrace_masterFromUtf8 specPreservesFsTrace_masterFromUtf8K masterFromUtf8_pre_setPC processFromUtf8_pre_setPC masterFromUtf8K_pre_setPC masterFromUtf8_outcome_setPC masterFromUtf8K_outcome_setPC hookOk_fromUtf8Ascii_of_master hookOk_fromUtf8Ascii_keepsFs_of_master hookOk_cliFromUtf8_of_master hookOk_cliFromUtf8_keepsFs_of_master hookOk_fromUtf8AsciiRO_of_master hookOk_fromUtf8AsciiRO_keepsFs_of_master hookOk_fromUtf8AsciiK_of_master hookOk_fromUtf8AsciiK_keepsFs_of_master hookOk_cliFromUtf8K_of_master hookOk_fromUtf8AsciiROK_of_master hookOk_fromUtf8AsciiROK_keepsFs_of_master fromUtf8SpecK_keepsFs fromUtf8SpecK_withVmPreserved fromUtf8SpecK_withOomPoolPreserved)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric (
   h2fsgen_StepsVisitedIn h2fsgen_stepsUntil_det
 )
@@ -758,18 +722,6 @@ theorem fromUtf8GhostHook_asciiRO_oomPool_ok (stk : Nat := extHookStack) :
     (fromUtf8GhostHook_asciiRO_ok hpl hsvc_real hsvc_sub hreal_no hsub_no hwords stk)
     (fromUtf8GhostHook_oomPoolPreserved hpl hsvc_real hsvc_sub hreal_no hsub_no hwords)
 
-theorem fromUtf8GhostHook_ascii_inImage_ok (img : Obj.Image) (stk : Nat := extHookStack) :
-    HookOk (fromUtf8GhostHook (pl.ρ coreUtf8CharWidthSym) keep P_real P_sub pl.base)
-      ((fromUtf8AsciiSpec stk).inImage img) :=
-  hookOk_of_specSimulates (specSimulates_inImage _ img)
-    (fromUtf8GhostHook_ascii_ok hpl hsvc_real hsvc_sub hreal_no hsub_no hwords stk)
-
-theorem fromUtf8GhostHook_asciiRO_inImage_ok (img : Obj.Image) (stk : Nat := extHookStack) :
-    HookOk (fromUtf8GhostHook (pl.ρ coreUtf8CharWidthSym) keep P_real P_sub pl.base)
-      ((fromUtf8AsciiSpecRO stk).inImage img) :=
-  hookOk_of_specSimulates (specSimulates_inImage _ img)
-    (fromUtf8GhostHook_asciiRO_ok hpl hsvc_real hsvc_sub hreal_no hsub_no hwords stk)
-
 theorem fromUtf8GhostHookK_asciiK_ok (stk : Nat := extHookStack) :
     HookOk (fromUtf8GhostHookK (pl.ρ coreUtf8CharWidthSym) keep P_real P_sub pl.base)
       (fromUtf8SpecK keep (fromUtf8AsciiSpec stk)) :=
@@ -1014,8 +966,8 @@ theorem ghostExternReplaysOn_fromUtf8GhostHook
     (specStripSInvariant_masterFromUtf8 keep) specPreservesFsTrace_masterFromUtf8
     masterFromUtf8_pre_setPC masterFromUtf8_outcome_setPC
 
-/-- **Stock-safe `StepsVisitedIn` `P_run → P_real` replay for `fromUtf8GhostHook`:**
-    Wraps `ghostExternReplaysOn_of_linkedCallHookG_roTable_liftVis` so stock-ELF callers discharge
+/-- Stock-safe `StepsVisitedIn` `P_run → P_real` replay for `fromUtf8GhostHook`:
+    wraps `ghostExternReplaysOn_of_linkedCallHookG_roTable_liftVis` so stock-ELF callers discharge
     `hLiftVis` via `h2sl_steps_realW_of_visitedIn_keepSub`. -/
 theorem ghostExternReplaysOn_fromUtf8GhostHook_liftVis
     {InvMem : Memory → Prop} {keep : BitVec 64 → Bool} {P_run P_real P_sub : Program}
@@ -1048,8 +1000,8 @@ theorem ghostExternReplaysOn_fromUtf8GhostHook_liftVis
     (specStripSInvariant_masterFromUtf8 keep) specPreservesFsTrace_masterFromUtf8
     masterFromUtf8_pre_setPC masterFromUtf8_outcome_setPC
 
-/-- **Stock-safe `StepsVisitedIn` `P_run → P_real` replay for `fromUtf8GhostHookK`:**
-    Wraps `ghostExternReplaysOn_of_linkedCallHookG_roTable_liftVis` on `fromUtf8SpecK`. -/
+/-- Stock-safe `StepsVisitedIn` `P_run → P_real` replay for `fromUtf8GhostHookK`:
+    wraps `ghostExternReplaysOn_of_linkedCallHookG_roTable_liftVis` on `fromUtf8SpecK`. -/
 theorem ghostExternReplaysOn_fromUtf8GhostHookK_liftVis
     {InvMem : Memory → Prop} {keep : BitVec 64 → Bool} {P_run P_real P_sub : Program}
     {stubPc : BitVec 64} {pl : Placement} (hpl : fromUtf8Block.Placeable pl)
@@ -1081,8 +1033,8 @@ theorem ghostExternReplaysOn_fromUtf8GhostHookK_liftVis
     (specStripSInvariant_masterFromUtf8K keep) (specPreservesFsTrace_masterFromUtf8K keep)
     (masterFromUtf8K_pre_setPC keep) (masterFromUtf8K_outcome_setPC keep)
 
-/-- **Ready-to-call `W`-independent `emptyFromUtf8GhostHook` `_liftVis` replay (`P_run = emptyStdProg`):**
-    Discharges all `P_run`/`P_sub` side obligations automatically from `hpl : fromUtf8Block.Placeable pl`. -/
+/-- `W`-independent `emptyFromUtf8GhostHook` `_liftVis` replay (`P_run = emptyStdProg`),
+    discharging `P_run`/`P_sub` side obligations from `hpl : fromUtf8Block.Placeable pl`. -/
 theorem ghostExternReplaysOn_emptyFromUtf8GhostHook_liftVis
     {InvMem : Memory → Prop} {keep : BitVec 64 → Bool} {P_real : Program}
     {stubPc : BitVec 64} {pl : Placement} (hpl : fromUtf8Block.Placeable pl)
@@ -1107,8 +1059,8 @@ theorem ghostExternReplaysOn_emptyFromUtf8GhostHook_liftVis
     (fun pc _ => emptyStdProg_externAt_none pc) (pureWordsProg_externAt_none _ _)
     (pureWordsProg_fromUtf8_hasWords pl) hreal_stub_none hStub hLiftVis hInvLoaded hInvKf hRoInv
 
-/-- **Ready-to-call `W`-independent `emptyFromUtf8GhostHookK` `_liftVis` replay with zero caller
-    `lr` hypothesis:** Discharges `keep (u.readReg64 .lr) = false` automatically from `hnoex`. -/
+/-- `W`-independent `emptyFromUtf8GhostHookK` `_liftVis` replay with no caller `lr` hypothesis:
+    discharges `keep (u.readReg64 .lr) = false` directly from `hnoex`. -/
 theorem ghostExternReplaysOn_emptyFromUtf8GhostHookK_autoLr_liftVis
     {InvMem : Memory → Prop} {keep : BitVec 64 → Bool} {P_real : Program}
     {stubPc : BitVec 64} {pl : Placement} (hpl : fromUtf8Block.Placeable pl)

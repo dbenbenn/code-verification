@@ -9,11 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `FdsGe3Closed`-Threaded Machine-Level Hop States for `signal_session::run`
@@ -24,7 +28,7 @@ Defines cut-point state carriers conjoining `FdsGe3Closed` (`AtRunEntryPlacedFd`
 lemmas on Block `579` (`lsProg_579`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -57,26 +61,26 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 
 /-! ## 1. Named Cut-Point State Carriers Conjoining `FdsGe3Closed` -/
 
-def AtRunEntryPlacedFd [LibsignalPlacement] (CodeOk : Memory → Prop) (S : RunSem)
+@[expose] def AtRunEntryPlacedFd [LibsignalPlacement] (CodeOk : Memory → Prop) (S : RunSem)
     (g : RunCall) (s0 : State) : Prop :=
   AtRunEntryPlaced CodeOk S g s0 ∧ FdsGe3Closed s0.fs
 
-def AtDispatchPlacedFd [LibsignalPlacement] (CodeOk : Memory → Prop)
+@[expose] def AtDispatchPlacedFd [LibsignalPlacement] (CodeOk : Memory → Prop)
     (g : RunCall) (me : MeAtDispatch) (s0 s : State) : Prop :=
   AtDispatchPlaced CodeOk g me s0 s ∧ FdsGe3Closed s.fs
 
-def AtInit1PlacedFd [LibsignalPlacement] (CodeOk : Memory → Prop)
+@[expose] def AtInit1PlacedFd [LibsignalPlacement] (CodeOk : Memory → Prop)
     (g : RunCall) (d : Init1Data) (s0 s : State) : Prop :=
   AtInit1Placed CodeOk g d s0 s ∧ FdsGe3Closed s.fs
 
-def AtInit2PlacedFd [LibsignalPlacement] (CodeOk : Memory → Prop)
+@[expose] def AtInit2PlacedFd [LibsignalPlacement] (CodeOk : Memory → Prop)
     (g : RunCall) (d : Init2Data) (s0 s : State) : Prop :=
   AtInit2Placed CodeOk g d s0 s ∧ FdsGe3Closed s.fs
 
 /-! ## 2. Pre-Only `FdsGe3Closed` `run` Specifications -/
 
 /-- `runSpecPlaced` guarded by `⌜FdsGe3Closed s0.fs⌝` on `pre` only. -/
-def runSpecPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def runSpecPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (RunEnvPred : RunCall → List AllocEvent → Prop)
     (uuidParse : UuidParser) (Run : Inputs → RunAnswer → Prop)
@@ -87,7 +91,7 @@ def runSpecPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
 /-- `runSpecTightPlaced` guarded by `⌜FdsGe3Closed s0.fs⌝` on `pre` only
 (definitionally equal to both `runSpecPlacedPreFd` and
 `ElfSlicesPqOomH2KIfaces.runSpecTightPlacedPreFd`). -/
-def runSpecTightPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def runSpecTightPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (RunEnvPred : RunCall → List AllocEvent → Prop)
     (uuidParse : UuidParser) (Run : Inputs → RunAnswer → Prop)
@@ -96,7 +100,7 @@ def runSpecTightPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
   withPreFdsGe3Closed (runSpecTightPlaced CodeOk A lim RunEnvPred uuidParse Run wrOk resStack)
 
 /-- `runSpecAnyPlaced` guarded by `⌜FdsGe3Closed s0.fs⌝` on `pre` only. -/
-def runSpecAnyPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def runSpecAnyPlacedPreFd [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (uuidParse : UuidParser) (Run : Inputs → RunAnswer → Prop)
     (wrOk : List (BitVec 8) → Prop) (resStack : Nat) :
@@ -136,21 +140,6 @@ theorem runEntryFd_of_placed_pre [LibsignalPlacement] {M : AllocCostModel}
   rcases runEntry_of_placed_pre hpc hrun hpre0 hsp with ⟨he, hfits, hmem⟩
   exact ⟨⟨he, hfds⟩, hfits, hmem⟩
 
-theorem runEntryFd_of_tight_placed_pre [LibsignalPlacement] {M : AllocCostModel}
-    {CodeOk : Memory → Prop} {S : RunSem}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {RunEnv : RunCall → List AllocEvent → Prop}
-    {g : RunCall} {st : M.σ} {resStack : Nat} {R : SepProp} {s0 : State}
-    (hpc : s0.pc = lsmpl.base 579)
-    (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨
-      (runSpecTightPlacedPreFd CodeOk A lim RunEnv uuidTryParse (runRel S) cliWrOk resStack).pre
-        (g, st) s0 ∗ R)
-    (hsp : s0.spAligned = true) :
-    AtRunEntryPlacedFd CodeOk S g s0 ∧ FitsEnv M lim st (RunEnv g) ∧
-      (s0.mem ⊨ runEntryMemPlaced A lim st g s0 resStack ∗ R) :=
-  runEntryFd_of_placed_pre hpc hrun hpre hsp
-
 theorem placed_post_of_runPost_preFd [LibsignalPlacement] {M : AllocCostModel}
     {CodeOk : Memory → Prop} {S : RunSem}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -177,64 +166,6 @@ theorem placed_onPanic_of_runPanic_preFd [LibsignalPlacement] {M : AllocCostMode
         (g, st) s0 sf ∗ R :=
   placed_onPanic_of_runPanic (CodeOk := CodeOk) (S := S) (A := A) (lim := lim) (RunEnv := RunEnv)
     (st := st) (resStack := resStack) hpan hmf
-
-theorem placed_onOom_eq_preFd [LibsignalPlacement] {M : AllocCostModel}
-    {CodeOk : Memory → Prop} {S : RunSem}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {RunEnv : RunCall → List AllocEvent → Prop}
-    (g : RunCall) (st : M.σ) (resStack : Nat) (s0 sf : State) :
-    (runSpecPlacedPreFd CodeOk A lim RunEnv uuidTryParse (runRel S) cliWrOk resStack).onOom
-        (g, st) s0 sf =
-      ⌜False⌝ := rfl
-
-theorem runEntryFd_of_any_placed_pre [LibsignalPlacement] {M : AllocCostModel}
-    {CodeOk : Memory → Prop} {S : RunSem}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {g : RunCall} {st : M.σ} {resStack : Nat} {R : SepProp} {s0 : State}
-    (hpc : s0.pc = lsmpl.base 579)
-    (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨
-      (runSpecAnyPlacedPreFd CodeOk A lim uuidTryParse (runRel S) cliWrOk resStack).pre
-        (g, st) s0 ∗ R)
-    (hsp : s0.spAligned = true) :
-    AtRunEntryPlacedFd CodeOk S g s0 ∧
-      (s0.mem ⊨ runEntryMemPlaced A lim st g s0 resStack ∗ R) := by
-  obtain ⟨hfds, hpre0⟩ := extract_withPreFdsGe3Closed hpre
-  rcases runEntry_of_any_placed_pre hpc hrun hpre0 hsp with ⟨he, hmem⟩
-  exact ⟨⟨he, hfds⟩, hmem⟩
-
-theorem any_placed_post_of_runPost_preFd [LibsignalPlacement] {M : AllocCostModel}
-    {CodeOk : Memory → Prop} {S : RunSem}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {g : RunCall} {st : M.σ} {resStack : Nat} {R Pf : SepProp} {s0 sf : State}
-    (hfs0 : s0.fs.files = runFiles g.i)
-    (hout0 : ProcessOutcome.traceStreamBytes .stdout s0.trace = [])
-    (hp : runPostAnyPlaced CodeOk A lim g resStack s0 sf Pf)
-    (hmf : sf.mem ⊨ Pf ∗ R) :
-    (sf.mem ⊨
-      (runSpecAnyPlacedPreFd CodeOk A lim uuidTryParse (runRel S) cliWrOk resStack).post
-        (g, st) s0 sf ∗ R) ∧
-      sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf :=
-  any_placed_post_of_runPost (S := S) (st := st) hfs0 hout0 hp hmf
-
-theorem any_placed_onPanic_of_runPanic_preFd [LibsignalPlacement] {M : AllocCostModel}
-    {CodeOk : Memory → Prop} {S : RunSem}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {g : RunCall} {st : M.σ} {resStack : Nat} {R Pf : SepProp} {s0 sf : State}
-    (hpan : runPanicProp g s0 sf) (hmf : sf.mem ⊨ Pf ∗ R) :
-    sf.mem ⊨
-      (runSpecAnyPlacedPreFd CodeOk A lim uuidTryParse (runRel S) cliWrOk resStack).onPanic
-        (g, st) s0 sf ∗ R :=
-  any_placed_onPanic_of_runPanic (CodeOk := CodeOk) (S := S) (A := A) (lim := lim)
-    (st := st) (resStack := resStack) hpan hmf
-
-theorem any_placed_onOom_eq_preFd [LibsignalPlacement] {M : AllocCostModel}
-    {CodeOk : Memory → Prop} {S : RunSem}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (g : RunCall) (st : M.σ) (resStack : Nat) (s0 sf : State) :
-    (runSpecAnyPlacedPreFd CodeOk A lim uuidTryParse (runRel S) cliWrOk resStack).onOom
-        (g, st) s0 sf =
-      ⌜False⌝ := rfl
 
 theorem subroutine_ok_runSpecPlacedPreFd_mono_env [LibsignalPlacement] {M : AllocCostModel}
     {CodeOk : Memory → Prop} {A : RustCliAllocBudget M} {lim : BudgetLimits}

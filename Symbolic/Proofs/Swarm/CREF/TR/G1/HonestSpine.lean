@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.IkShapeId
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineIkm
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.IkShapeId -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineIkm -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -21,7 +21,7 @@ import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
-import Symbolic.Proofs.Swarm.CREF.ModelMono
+public import Symbolic.Proofs.Swarm.CREF.ModelMono -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
@@ -34,6 +34,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeModKem -- proof-setup: allow-public-import
 
 /-!
 # Role-Indexed Honest-Spine Invariant
@@ -45,7 +46,7 @@ sending and receiving seeds of available states are equal under peel-local `DhHo
 opposite-role base injectivity (`seed_eq_of_shape_eq_peel`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -98,7 +99,7 @@ def HsKeysOk (ct : DY.Bytes) (keys : DY.Libsignal.PQXDH.HandshakeKeys) : Prop :=
 
 /-- `ikm` is a PQXDH input key material with `DhHole` DH outputs and the KEM leaf paired with `ct`,
 and `keys` is derived from it. -/
-def CtKeysIkm (ct : DY.Bytes) (keys : DY.Libsignal.PQXDH.HandshakeKeys) (ikm : DY.Bytes) :
+@[expose] def CtKeysIkm (ct : DY.Bytes) (keys : DY.Libsignal.PQXDH.HandshakeKeys) (ikm : DY.Bytes) :
     Prop :=
   ∃ (ss d1 d2 d3 : DY.Bytes) (d4 : Option DY.Bytes),
     ((∃ pk e : DY.Bytes, ct = (DY.PQKem.kemEncap pk e).1 ∧ ss = (DY.PQKem.kemEncap pk e).2) ∨
@@ -109,22 +110,22 @@ def CtKeysIkm (ct : DY.Bytes) (keys : DY.Libsignal.PQXDH.HandshakeKeys) (ikm : D
 
 /-- `ikm` is an input key material of a handshake-completion event of role `c`
 (`false`: `AliceDone`, `true`: `BobDone`). -/
-def DoneIkmR (c : Bool) (ev : DY.Libsignal.PQXDH.PQXDHEvent) (ikm : DY.Bytes) : Prop :=
+@[expose] def DoneIkmR (c : Bool) (ev : DY.Libsignal.PQXDH.PQXDHEvent) (ikm : DY.Bytes) : Prop :=
   match c, ev with
   | false, .AliceDone _ _ _ _ _ _ _ _ ct keys => CtKeysIkm ct keys ikm
   | true, .BobDone _ _ _ _ _ _ _ _ ct keys => CtKeysIkm ct keys ikm
   | _, _ => False
 
 /-- `ev` is logged in `T`. -/
-def LoggedPQEv (T : ExecTrace) (ev : DY.Libsignal.PQXDH.PQXDHEvent) : Prop :=
+@[expose] def LoggedPQEv (T : ExecTrace) (ev : DY.Libsignal.PQXDH.PQXDHEvent) : Prop :=
   ∃ (j : Nat) (e : IkPQEvEntry), (T.at? j : Option IkPQEvEntry) = some e ∧ e.ev = ev
 
 /-- Role-indexed input key materials of handshake-completion events logged in `T`. -/
-def LoggedIkmR (T : ExecTrace) (c : Bool) (ikm : DY.Bytes) : Prop :=
+@[expose] def LoggedIkmR (T : ExecTrace) (c : Bool) (ikm : DY.Bytes) : Prop :=
   ∃ ev, LoggedPQEv T ev ∧ DoneIkmR c ev ikm
 
 /-- PQXDH input key material with `DhHole` DH outputs and a KEM leaf. -/
-def IkmH (ikm : DY.Bytes) : Prop :=
+@[expose] def IkmH (ikm : DY.Bytes) : Prop :=
   ∃ (dh1 dh2 dh3 : DY.Bytes) (dh4 : Option DY.Bytes) (ss : DY.Bytes),
     ikm = pqxdhIkm dh1 dh2 dh3 dh4 ss ∧ DhHole dh1 ∧ DhHole dh2 ∧ DhHole dh3 ∧
     (∀ d, dh4 = some d → DhHole d) ∧ KemLeaf ss
@@ -1152,7 +1153,7 @@ theorem spState_runTrace {r₀ : ProtocolSetup} {ms : List Move} {st : TRState}
 
 /-- Shape-equal sending and receiving seeds of available states are equal whenever a received
 ratchet key opening a fresh chain satisfies `ShapeId`. -/
-def HonestSkelUniqRk (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def HonestSkelUniqRk (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) : Prop :=
   ∀ st_s ∈ availableStates r₀ (runTraceMoves r₀ ms), ∀ st₀ ∈ availableStates r₀ (runTraceMoves r₀ ms),
     ∀ (msg₀ : TRSignalMsg) (mkSeed : DY.Bytes),

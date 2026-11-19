@@ -9,13 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # `Ok`-Branch `fs`-Preserving Relocatable `signal_session::public::split_id` (Block `593`)
@@ -24,7 +31,7 @@ Strengthens `splitIdSpecPlaced` on Block `593` with `(splitId x.file).isSome = t
 (`splitIdSpecPlacedOkFs`) under `AllocContractsFsPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -80,7 +87,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget (
 /-! ## `Ok`-Branch `fs`-Preserving Specification -/
 
 /-- Strengthens `splitIdSpecPlaced` with `(splitId x.file).isSome = true → sf.fs = s0.fs` in the postcondition. Because `split_id` writes `Result<(u32, &[u8]), SignalProtocolError>` to the 48-byte `sret` buffer at `x.ret`, keying `fs` preservation on `(splitId x.file).isSome` matches callers branching on `splitId file`. -/
-def splitIdSpecPlacedOkFs [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def splitIdSpecPlacedOkFs [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (SplitEnv : List (BitVec 8) → List AllocEvent → Prop)
     (stk : Nat) : Spec (SplitGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl
@@ -918,20 +925,6 @@ theorem splitId_placed_ok_of_deps_fd [LibsignalPlacement] {M : AllocCostModel}
     subroutine_ok (lsProg_593 H) (lsmpl.base 593)
       (splitIdSpecPlacedOkFs A lim SplitIdEnv stk) :=
   Helpers.splitId_placed_ok_core_fd hC hDrop hstk
-
-theorem splitId_placed_caller_ok_of_deps_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} {stk : Nat} {callerProg : Program} {i : Nat}
-    [IsLsBlockProg callerProg i H]
-    (hC : AllocContractsFsPlaced A lim H)
-    (hDrop : subroutine_ok (lsProg_593 H) (lsmpl.base 553)
-      (withLsCodeRoLoaded lsmpl (dropSpeSpecX M A lim).keepsFs))
-    (hstk : 96 + dropSpeStackX ≤ stk)
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 593)
-      (splitIdSpecPlacedOkFs A lim SplitIdEnv stk) :=
-  ls_transfer_lscro (callerProg := callerProg) (j := 593)
-    (splitId_placed_ok_of_deps_fd hC hDrop hstk) hi
 
 /-- `split_id` (Block `593`) satisfies `splitIdSpecPlacedOkFs` from `AllocContractsFsPlaced` alone. -/
 theorem splitId_placed_ok_of_allocFs_fd [LibsignalPlacement] {M : AllocCostModel}

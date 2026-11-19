@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.RcvByPureA
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.RcvByPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptSplitPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyTR
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPureA
 import Symbolic.Proofs.Swarm.CREF.Cli.World.RelCliPure
@@ -31,7 +31,7 @@ Proves post-call `SpqrOooBounded`, Bob base-key and `PureBobKyberNone` preservat
 block.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

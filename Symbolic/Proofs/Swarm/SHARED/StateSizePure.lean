@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.ProofHubsPure
+public import Symbolic.Proofs.SpecLemmas.ProofHubsPure -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Model
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
 
@@ -22,7 +22,7 @@ Establishes byte-length bounds on `KeyHistory`, `Chain`, `Authenticator`, `State
 `Proto.encodeState` across SPQR V1 initialization, send, and receive transitions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -192,7 +192,7 @@ theorem flatMap_ptSerialize_length (l : List Pt) :
   | cons p ps ih =>
     simp only [List.flatMap_cons, List.length_append, ih, List.length_cons]
     have : (Pt.serialize p).length = 4 := rfl; omega
-def ptSetRaw (s : SortedSetPt) : Nat := 4 * s.vec.length + 22
+@[expose] def ptSetRaw (s : SortedSetPt) : Nat := 4 * s.vec.length + 22
 theorem map_intoPb_decoder_pts (pts : List SortedSetPt) :
     ((pts.map (fun s => s.vec.flatMap Pt.serialize)).map (fun b => b.length + 22)) =
     pts.map ptSetRaw := by
@@ -317,8 +317,8 @@ theorem flatMap_u16ToBeBytes_length (l : List GF16) :
 theorem Poly.serialize_length (p : Poly) :
     p.serialize.length = 2 * p.coefficients.length :=
   flatMap_u16ToBeBytes_length p.coefficients
-def pointRaw (pt : Point) : Nat := 2 * pt.value.length + 22
-def polyRaw (p : Poly) : Nat := 2 * p.coefficients.length + 22
+@[expose] def pointRaw (pt : Point) : Nat := 2 * pt.value.length + 22
+@[expose] def polyRaw (p : Poly) : Nat := 2 * p.coefficients.length + 22
 theorem map_intoPb_encoder_pts (pts : List Point) :
     ((pts.map (fun pt => pt.value.flatMap (fun g => u16ToBeBytes g.value))).map (fun b => b.length + 22)) =
     pts.map pointRaw := by
@@ -877,7 +877,7 @@ attribute [local simp]
   Unchunked.SendEk.KeysUnsampled.into_pb Unchunked.SendCt.NoHeaderReceived.into_pb
   rawV1State rawInnerState rawChKeysUnsampled rawChNoHeaderReceived
   rawUcKeysUnsampled rawUcNoHeaderReceived rawPqInner Option.map optRaw_none optRaw_some
-def StatesPtsNeededBound {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
+@[expose] def StatesPtsNeededBound {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
   | .headerSent s => s.receiving_ct1.ptsNeeded ≤ 480
   | _ => True
 theorem States.init_a_raw_le {F : ShaCompress} {authKey : Bytes}

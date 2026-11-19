@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Handshake `bytes::merge [local#5]` Definitions
@@ -22,7 +24,7 @@ Budget-threaded (`RustCliAllocBudget M`) relocatable specifications (`bytesMerge
 `BytesMerge6ProtoPlacedOkExt`) for `prost::encoding::bytes::merge [local#5]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,7 +55,7 @@ abbrev bytesMerge3ProtoPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
 /-- Relocatable `[LibsignalPlacement]` budget-threaded contract for
 `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#5]`
 (Block `508`, `(blkPl_507).base = lsmpl.base 507`) against `bytesMerge3PlacedSpec A lim`. -/
-def BytesMerge6PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def BytesMerge6PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 507)
@@ -62,7 +64,7 @@ def BytesMerge6PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
 /-- Relocatable `[LibsignalPlacement]` budget-threaded contract for
 `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#5]`
 (Block `508`, `(blkPl_507).base = lsmpl.base 507`) against `bytesMerge3ProtoPlacedSpec A lim`. -/
-def BytesMerge6ProtoPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def BytesMerge6ProtoPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 507)

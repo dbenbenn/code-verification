@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.UA.Defs
-public import Symbolic.Proofs.Swarm.CREF.Initiate.PostTrace
+public import Symbolic.Proofs.Swarm.CREF.Initiate.PostTrace -- proof-setup: allow-public-import
 import all DY.Trace.Basic
 import all DY.Trace.Monad
 import all DY.Trace.Manipulation
@@ -27,7 +27,10 @@ import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
 import Symbolic.Proofs.Swarm.CREF.TRView
 import Symbolic.Proofs.Swarm.Leaves.IC12_Stage1MatchedPrefixPure
-import Symbolic.Proofs.Swarm.UA.Base
+public import Symbolic.Proofs.Swarm.UA.Base
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 
 /-!
 # Step-to-Move Translation Helpers and Accumulator Invariant
@@ -38,7 +41,7 @@ Shared helpers translating between `Step`-level and `Move`-level explanations: v
 accumulator invariant `AccInv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -60,7 +63,7 @@ open Symbolic.Proofs.Swarm.UA.Defs (runOk flatEntry flatExit failedSend flatEven
 
 /-- Two visible-entry lists agree on their `.send` and `.pt` entries (`Move.reject []` adds only an
 unconstrained `.recv` entry). -/
-def VisSendPtEq (v₁ v₂ : List VisEntry) : Prop :=
+@[expose] def VisSendPtEq (v₁ v₂ : List VisEntry) : Prop :=
   v₁.filter (·.kind == .send) = v₂.filter (·.kind == .send) ∧
     v₁.filter (·.kind == .pt) = v₂.filter (·.kind == .pt)
 
@@ -953,7 +956,7 @@ theorem pathFaithful_append_of_prekeyCallsPos {interp : ExternInterpretation}
   rw [callStarts_append, List.getElem?_append_left hcc_lt] at hcs
   exact hmp.2.2.2.1 i m promote b p hmi hp hcs hpw
 
-def OutcomeFaithfulCli2 (r : ProtocolSetup) (ok : Nat → Bool) (ms : List Move) : Prop :=
+@[expose] def OutcomeFaithfulCli2 (r : ProtocolSetup) (ok : Nat → Bool) (ms : List Move) : Prop :=
   ∀ (i : Nat) (m : Move), ms[i]? = some m →
     let tr := runTraceMoves r (ms.take i)
     let vs := m.vis tr
@@ -1003,7 +1006,7 @@ theorem rngLengthsFaithfulCli_snoc {interp : ExternInterpretation} {r : Protocol
     subst hmi
     simpa using hm
 
-def StateLoadSub (r : ProtocolSetup) (ms : List Move) (ss : List Step) : Prop :=
+@[expose] def StateLoadSub (r : ProtocolSetup) (ms : List Move) (ss : List Step) : Prop :=
   ∀ (j : Nat) (mj : Move) (p : Participant) (k : Nat) (b : Bool),
     ms[j]? = some mj → mj.stateLoad? = some (p, k, b) →
     ∃ (i : Nat) (si : Step), ss[i]? = some si ∧ si.stateLoad? = some (p, k, b) ∧

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.ChainParamsBasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.ChainParamsBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2Placed
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.TopPlaced
@@ -25,7 +25,7 @@ Proves `encode_chainParams_1_placed_ok{,_x}` and exact-capacity `EncodeToVec` br
 `453` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -705,6 +705,4 @@ theorem etv_encodeChainParams_1_exact_placed_ok_x [LibsignalPlacement]
     (encode_chainParams_1_placed_ok_x h_panic hshim halloc hrealloc)
 
 abbrev encode_chainParams_1_exact_placed_ok := @etv_encodeChainParams_1_exact_placed_ok
-abbrev encode_chainParams_1_exact_placed_ok_x := @etv_encodeChainParams_1_exact_placed_ok_x
-
 end CryptoVerification.Cli.SpqrV1.Prost.MessageEncode

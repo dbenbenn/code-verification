@@ -9,23 +9,24 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.HaltedSpkHop2Core
-public import Computational.Proofs.E2E.SpkHop2
+public import Computational.Proofs.E2E.HaltedSpkHop2Core -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop2 -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.SpkHop1Phases01B
 import Computational.Proofs.E2E.HeadlineSpkSession
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events
 import Computational.Proofs.SignalWireRoundTrip
+public import Computational.Proofs.E2E.SpkHop1 -- proof-setup: allow-public-import
 
 /-!
 # Tracker-Halted Hop-2 Phase 2 and Terminal Hybrid
 
 Proves Phase 2 of the `k → k + 1` Hop-2 hybrid transition under `KemFailSessionTrack` halting and
-bounds the terminal `k = spkSwapHybridCount - 1` random-function branch of `hop2PrfRedKTrackHalted`.
--/
+bounds the terminal `k = spkSwapHybridCount - 1` random-function branch of `hop2PrfRedKTrackHalted`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 namespace Computational.Proofs.E2E.HaltedSpkHop2Phase2Last
 

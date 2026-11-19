@@ -9,13 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+public import ProofLib.FsTrace
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -35,24 +44,5 @@ open CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.SignalSession CryptoVerification.SignalSession.Cli
 open CryptoVerification.SignalSession.Cli.Main.Placed
 open CryptoVerification.LibsignalPublicApi.StoreKit
-
-/-- `strlen` satisfies `withLsRoCl lsmpl (strlenSpec hookStack)` at `lsρ "strlen"` on Block `617`. -/
-theorem strlen_ok_placed [LibsignalPlacement] {H : LibsignalHooks} {hookStack : Nat}
-    (hext : H "strlen" = some strlenHook) :
-    subroutine_ok (lsProg_617 H) (lsρ "strlen")
-      (withLsRoCl lsmpl (strlenSpec hookStack)) :=
-  subroutine_ok_rocl_of_plain <|
-    ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617)
-      ⟨strlenHook, hext, strlenHook_ok hookStack⟩ (by decide)
-
-/-- `core::str::converts::from_utf8` satisfies `withLsRoCl lsmpl (fromUtf8AsciiSpec hookStack)` at `lsρ lsFromUtf8Sym` on Block `617`. -/
-theorem fromUtf8Ascii_ok_placed [LibsignalPlacement] {H : LibsignalHooks} {hookStack : Nat}
-    {err : List (BitVec 8) → BitVec 64 × BitVec 16}
-    (hext : H lsFromUtf8Sym = some (fromUtf8Hook err)) :
-    subroutine_ok (lsProg_617 H) (lsρ lsFromUtf8Sym)
-      (withLsRoCl lsmpl (fromUtf8AsciiSpec hookStack)) :=
-  subroutine_ok_rocl_of_plain <|
-    ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617)
-      ⟨fromUtf8Hook err, hext, fromUtf8Hook_ok hookStack err⟩ (by decide)
 
 end CryptoVerification.SignalSession.Cli.MainHops

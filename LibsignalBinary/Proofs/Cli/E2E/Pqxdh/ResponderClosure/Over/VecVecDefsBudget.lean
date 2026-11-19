@@ -12,9 +12,19 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefs
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- shake: keep
+public import ProofLib.MallocngBridge
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<Vec<Vec<u8>> as Clone>::clone` Specification on 1 Element
@@ -23,7 +33,7 @@ Defines the deterministic event list `vecVecClone1Events`, envelope `VecVecClone
 total-correctness budget contract `vecVecClone1SpecX` for `<Vec<Vec<u8>> as Clone>::clone` on `len = 1`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,11 +56,11 @@ abbrev VecVecClone1Ghost :=
 
 /-- Allocator events of `<Vec<Vec<u8>> as Clone>::clone` on `len = 1`: `rustAllocEvents 24 8` for
 the outer buffer, plus `rustAllocEvents enc.length 1` when `enc ≠ []`. -/
-def vecVecClone1Events (enc : List (BitVec 8)) : List AllocEvent :=
+@[expose] def vecVecClone1Events (enc : List (BitVec 8)) : List AllocEvent :=
   rustAllocEvents 24 8 ++ (if enc.length = 0 then [] else rustAllocEvents enc.length 1)
 
 /-- Exact allocator event envelope for `<Vec<Vec<u8>> as Clone>::clone` on `len = 1`. -/
-def VecVecClone1Env (x : VecVecClone1Ghost) (evs : List AllocEvent) : Prop :=
+@[expose] def VecVecClone1Env (x : VecVecClone1Ghost) (evs : List AllocEvent) : Prop :=
   evs = vecVecClone1Events x.enc
 
 theorem vecVecClone1Env_bounded {x : VecVecClone1Ghost} {evs : List AllocEvent}
@@ -83,7 +93,7 @@ theorem vecVecClone1Env_bounded {x : VecVecClone1Ghost} {evs : List AllocEvent}
 
 /-- Budget-threaded specification of `<Vec<Vec<u8>> as Clone>::clone` on `len = 1`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def vecVecClone1SpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def vecVecClone1SpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (VecVecClone1Ghost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧ s.readReg64 .x2 = 1#64 ∧

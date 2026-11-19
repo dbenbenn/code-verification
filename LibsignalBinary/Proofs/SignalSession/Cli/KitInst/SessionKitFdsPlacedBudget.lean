@@ -9,17 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.FsFds
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitFdsPilotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.FsFds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitFdsPilotPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadShimPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Placed Budgeted `SessionStoreSpec` with Closed-FD Invariant
@@ -30,7 +39,7 @@ poll lifting on Blocks `569` and `570` (both canonical and `SeqFree` envelopes),
 `writeFileHook` preservation of `FdsGe3Closed`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
@@ -1012,32 +1021,5 @@ theorem cliSessKitOkSE_fds_seqFree_placed_of_polls [LibsignalPlacement] {M : All
     exact cliIdFutDrop_fds_rocl_placed_ok hblk
 
 /-! ## `FsAtFds` and `writeFileHook` preservation -/
-
-theorem fsAt_cliSessionKit_of_fdsGe3Closed [LibsignalPlacement] {A : RustAlloc}
-    {envOk : FsFiles → Prop} {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {peer : AddrGhost} {s1 s2 s3 s4 : Nat} {vtSym idVtSym : String} {P : Program} {s : State}
-    (hP : TraceFsSound P) (henv : envOk F0) (hfiles : s.fs.files = F0) (hfds : FdsGe3Closed s.fs) :
-    FsAtFds envOk
-      (cliSessionKitSpecPlaced A rd F0 pathOk Scope peer s1 s2 s3 s4 vtSym idVtSym).fdsOk
-      (cliSessionKitSpecPlaced A rd F0 pathOk Scope peer s1 s2 s3 s4 vtSym idVtSym).Quiet P s :=
-  .inr ⟨cliSessionKitSpecPlaced_quiet (A := A) (rd := rd) (F0 := F0) (pathOk := pathOk)
-    (Scope := Scope) (peer := peer) (s1 := s1) (s2 := s2) (s3 := s3) (s4 := s4)
-    (vtSym := vtSym) (idVtSym := idVtSym), hP, hfiles.symm ▸ henv, hfds⟩
-
-theorem cliSessionKitSpecPlaced_writeFileHook [LibsignalPlacement] {A : RustAlloc}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} {peer : AddrGhost}
-    {s1 s2 s3 s4 : Nat} {vtSym idVtSym : String} {s : State}
-    (hfds :
-      (cliSessionKitSpecPlaced A rd F0 pathOk Scope peer s1 s2 s3 s4 vtSym idVtSym).fdsOk s.fs) :
-    (cliSessionKitSpecPlaced A rd F0 pathOk Scope peer s1 s2 s3 s4 vtSym idVtSym).fdsOk
-      (writeFileHook s).fs :=
-  fdsGe3Closed_writeFileHook hfds
-
-theorem hookOk_writeFileHook_withFdsGe3Closed_sess {α : Type} {spec : Spec α}
-    (hok : HookOk writeFileHook spec) :
-    HookOk writeFileHook (withFdsGe3Closed spec) :=
-  hookOk_withFdsGe3Closed_writeFileHook hok
 
 end LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitFdsPlacedBudget

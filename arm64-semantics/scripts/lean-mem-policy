@@ -26,7 +26,7 @@
 #   In Lake 5.0.0 (`leanprover/lean4:v4.34.0`), `lake` has no `-j` CLI flag; instead `lake`
 #   schedules each `compileLeanModule` subprocess on Lean's `Task.Priority.default` worker pool
 #   (`Lake/Build/Job/Monad.lean:172`), whose concurrency equals `LEAN_NUM_THREADS`.
-#   Computes `clamp(floor((MemAvailable_GiB - 16) / 6), 1, clamp(nproc / 2, 1, 48))`, further
+#   Computes `clamp(floor((MemAvailable_GiB - 16) / 3), 1, clamp(nproc / 2, 1, 64))`, further
 #   bounded by `max(1, floor((file_nr_free * 3 / 4) / 30000))` when `/proc/sys/fs/file-nr` is
 #   readable (preventing `ENFILE` from Lean 4.34's 5 `mmap`s per module) and capped at 4 in CI,
 #   honoring `$LAKE_JOBS` / `$LEAN_JOBS`.
@@ -123,7 +123,7 @@ compute_jobs() {
   case "$nproc_val" in '' | *[!0-9]* | 0) nproc_val=4 ;; esac
   cpu_cap=$(( nproc_val / 2 ))
   if [ "$cpu_cap" -lt 1 ]; then cpu_cap=1; fi
-  if [ "$cpu_cap" -gt 48 ]; then cpu_cap=48; fi
+  if [ "$cpu_cap" -gt 64 ]; then cpu_cap=64; fi
   if [ "$is_ci" -eq 1 ]; then
     if [ "$cpu_cap" -gt 4 ]; then echo 4; else echo "$cpu_cap"; fi
     return
@@ -146,7 +146,7 @@ compute_jobs() {
   esac
   awk -v a="$avail" -v c="$cpu_cap" -v f="$fd_free" 'BEGIN {
     gib = int(a / (1024 * 1024))
-    mj = gib > 16 ? int((gib - 16) / 6) : 1
+    mj = gib > 16 ? int((gib - 16) / 3) : 1
     if (mj < 1) mj = 1
     if (mj > c) mj = c
     if (f != "" && f ~ /^[0-9]+$/) {

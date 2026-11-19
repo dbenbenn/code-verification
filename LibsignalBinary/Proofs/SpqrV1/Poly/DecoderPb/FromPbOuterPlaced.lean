@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbOuter
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbOuter -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbInnerPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbOuter
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder>::from_pb`: Relocatable Inner Chunk Loop and Outer Slot Steps
@@ -25,7 +26,7 @@ outer-iteration completion (`+672 → +204 / +876`), OOM panic (`+1288`), and ou
 Block `376`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.DecoderPb
 

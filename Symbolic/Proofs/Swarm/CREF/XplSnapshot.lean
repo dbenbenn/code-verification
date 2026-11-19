@@ -28,12 +28,12 @@ import Mathlib.Tactic.Push
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.DYBridge.DY.Trace.Basic
-import Symbolic.DYBridge.DY.Trace.Monad
-import Symbolic.DYBridge.DY.Trace.Manipulation
+public import Symbolic.DYBridge.DY.Trace.Monad
+public import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
-import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 /-!
 # Snapshot Lineage on Composed Traces
@@ -43,7 +43,7 @@ event at index `k` with parent snapshot `par` stores a child snapshot for the sa
 role at `k + 1` with no intervening same-role snapshot in `(par, k + 1)`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

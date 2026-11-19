@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Base
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommon
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommon -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -20,7 +20,7 @@ Shared instruction decodes, `&[Vec<u8>]` slice layout predicates, `encodeRepeate
 and call-step helpers for `encode_repeated [local#1, 2]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Varint
 
@@ -39,8 +39,6 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Instruction Decode Lemmas -/
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [0x36064 → 0x36150, 0x47c48 → 0x47d44]
 
 abbrev encodeRepeated1Name : String :=
   "prost::encoding::bytes::encode_repeated::<alloc::vec::Vec<u8>, alloc::vec::Vec<u8>> [local#1]"
@@ -63,7 +61,7 @@ abbrev encodeRepeatedStackX : Nat := encodeRepeatedStackOf doReserveStackX
 /-- `prost::encoding::bytes::encode_repeated(tag, values, buf)` (`prost-0.14.4/src/encoding.rs:733–737`):
 for each element `v` in `values`, appends `encodeBytesField tag (some v)`
 (`= encodeKey tag .lengthDelimited ++ encodeVarint (BitVec.ofNat 64 v.length) ++ v`). -/
-def encodeRepeatedBytes (tag : ℕ) : List (List (BitVec 8)) → List (BitVec 8)
+@[expose] def encodeRepeatedBytes (tag : ℕ) : List (List (BitVec 8)) → List (BitVec 8)
   | [] => []
   | v :: vs => encodeBytesField tag (some v) ++ encodeRepeatedBytes tag vs
 
@@ -101,13 +99,13 @@ theorem encodeBytesField_some_length (tag : ℕ) (v : List (BitVec 8)) :
 /-- Read-only view of a single 24-byte `Vec<u8>` element at `a` as read by `encode_repeated`:
 loads `ptr` from `a + 8` and `bs.length` from `a + 16` (`ldp x22, x21, [x25, #-8]`),
 and reads `ptr ↦ₛ bs` (which is `emp` when `bs = []`). -/
-def repeatedBytesElemAt (a ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def repeatedBytesElemAt (a ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ((a + 8#64) ↦₆₄ ptr) ∗
     ((a + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
     (ptr ↦ₛ bs)
 
 /-- Read-only slice of 24-byte `Vec<u8>` headers at `base, base + 24, ...`. -/
-def repeatedBytesSliceAt (base : BitVec 64) : List (BitVec 64 × List (BitVec 8)) → SepProp
+@[expose] def repeatedBytesSliceAt (base : BitVec 64) : List (BitVec 64 × List (BitVec 8)) → SepProp
   | [] => emp
   | (ptr, bs) :: rest =>
     repeatedBytesElemAt base ptr bs ∗ repeatedBytesSliceAt (base + 24#64) rest
@@ -123,14 +121,14 @@ theorem repeatedBytesSliceAt_cons (base ptr : BitVec 64) (bs : List (BitVec 8))
       repeatedBytesElemAt base ptr bs ∗ repeatedBytesSliceAt (base + 24#64) rest := rfl
 
 /-- Full array of `vecU8At A` elements at `base, base + 24, ...`. -/
-def vecU8ArrayAt (A : RustAlloc) (base : BitVec 64) :
+@[expose] def vecU8ArrayAt (A : RustAlloc) (base : BitVec 64) :
     List (BitVec 64 × BitVec 64 × List (BitVec 8)) → SepProp
   | [] => emp
   | (cap, ptr, bs) :: rest =>
     vecU8At A base cap ptr bs ∗ vecU8ArrayAt A (base + 24#64) rest
 
 /-- Frame remainder of a single `vecU8At A a cap ptr bs` after extracting `repeatedBytesElemAt a ptr bs`. -/
-def vecU8ElemRestAt (A : RustAlloc) (a cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8ElemRestAt (A : RustAlloc) (a cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   (a ↦₆₄ cap) ∗
     ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     if cap = 0 then emp
@@ -183,7 +181,7 @@ structure EncodeRepeatedGhost where
 at reserve stack budget `resStack`: appends `encodeRepeatedBytes x.tag (x.elems.map Prod.snd)`
 to `buf` (`x3`), preserving `repeatedBytesSliceAt x.base x.elems` and avoiding reallocation
 whenever initial capacity `x.cap` covers the encoded output. -/
-def encodeRepeatedSpecOf (resStack : Nat) (A : RustAlloc) : Spec EncodeRepeatedGhost where
+@[expose] def encodeRepeatedSpecOf (resStack : Nat) (A : RustAlloc) : Spec EncodeRepeatedGhost where
   pre := fun x s =>
     ⌜s.readReg32 .x0 = BitVec.ofNat 32 x.tag ∧
       s.readReg64 .x1 = x.base ∧
@@ -206,10 +204,10 @@ def encodeRepeatedSpecOf (resStack : Nat) (A : RustAlloc) : Spec EncodeRepeatedG
       A.pool ∗ stackAt s0.sp (encodeRepeatedStackOf resStack)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def encodeRepeatedSpec (A : RustAlloc) : Spec EncodeRepeatedGhost :=
+@[expose] def encodeRepeatedSpec (A : RustAlloc) : Spec EncodeRepeatedGhost :=
   encodeRepeatedSpecOf doReserveStack A
 
-def encodeRepeatedSpecX (A : RustAlloc) : Spec EncodeRepeatedGhost :=
+@[expose] def encodeRepeatedSpecX (A : RustAlloc) : Spec EncodeRepeatedGhost :=
   encodeRepeatedSpecOf doReserveStackX A
 
 /-! ## Arithmetic, Separation-Logic, and Call Helpers -/
@@ -448,7 +446,7 @@ theorem stackAt_encodeVarint_eq_doReserve {resStack : Nat} (hres : resStack + 48
   have heq : resStack + 48 = 0x30 + resStack := by omega
   simpa only [heq] using h
 
-def vecU8RestAt (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8RestAt (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if cap = 0 then emp
   else
     A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -477,7 +475,7 @@ theorem sp_sub_80_aligned {sp : BitVec 64} (h : sp &&& 15#64 = 0#64) :
 
 /-- Callee-saved registers `x26..x28` untouched by `encode_repeated` (`x19..x25, fp` are saved on stack),
 together with `StepInv s0 s` for `inImage img` invariant propagation. -/
-def EncRepeatedCalleeSaved (s0 s : State) : Prop :=
+@[expose] def EncRepeatedCalleeSaved (s0 s : State) : Prop :=
   s.readReg64 (Reg.gpr 26#5) = s0.readReg64 (Reg.gpr 26#5) ∧
   s.readReg64 (Reg.gpr 27#5) = s0.readReg64 (Reg.gpr 27#5) ∧
   s.readReg64 (Reg.gpr 28#5) = s0.readReg64 (Reg.gpr 28#5) ∧
@@ -510,7 +508,7 @@ theorem EncRepeatedCalleeSaved.step {s0 s1 s2 : State}
 
 /-- Wrap a `Spec α` with `⌜EncRepeatedCalleeSaved s0 s⌝` in the precondition so a single
 generalized proof works for both `spec` and `spec.inImage img`. -/
-def withEncRepeatedCS {α : Type} (s0 : State) (spec : Spec α) : Spec α where
+@[expose] def withEncRepeatedCS {α : Type} (s0 : State) (spec : Spec α) : Spec α where
   pre := fun x s => ⌜EncRepeatedCalleeSaved s0 s⌝ ∗ spec.pre x s
   post := spec.post
   onPanic := spec.onPanic
@@ -523,17 +521,6 @@ theorem subroutine_ok_withEncRepeatedCS {α : Type} {prog : Program} {entry : Bi
   refine subroutine_ok_outcome_intro fun x R s hpc hrun hpre hsp => ?_
   rw [withEncRepeatedCS, sepConj_assoc, satisfies_pure_sepConj] at hpre
   exact h.mono_outcome x R s hpc hrun hpre.2 hsp fun _ hout => hout
-
-theorem subroutine_ok_withEncRepeatedCS_x {α : Type} {prog : Program} {entry : BitVec 64} {spec : Spec α}
-    (img : Obj.Image) (s0 : State) (hinv0 : ImgCallInv img s0)
-    (h : subroutine_ok prog entry (spec.inImage img)) :
-    subroutine_ok prog entry (withEncRepeatedCS s0 spec) := by
-  refine subroutine_ok_outcome_intro fun x R s hpc hrun hpre hsp => ?_
-  rw [withEncRepeatedCS, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  have hpre' : s.mem ⊨ (spec.inImage img).pre x s ∗ R := by
-    rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpre.1.2.2.2.2 img hinv0, hpre.2⟩
-  exact h.mono_outcome x R s hpc hrun hpre' hsp fun _ hout => hout
 
 theorem step_memcpy_call_gen {prog : Program} (A : RustAlloc)
     {call_pc : BitVec 64}
@@ -588,27 +575,6 @@ theorem step_memcpy_call_gen {prog : Program} (A : RustAlloc)
       (hnext sm hpcm hrunm hspm htrm' hcsm
         (hcs.trans (EncRepeatedCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)))
     exact Entails.of_eq (by ac_rfl)
-
-theorem step_memcpy_call (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    {call_pc : BitVec 64}
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc sessionMemcpyRegionSpec)
-    (dst src sp ret_pc : BitVec 64) (bs : List (BitVec 8))
-    {s0 s : State} {x0 : EncodeRepeatedGhost} {R : SepProp}
-    {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running) (hsp : s.sp = sp - 80#64)
-    (halign : sp &&& 15#64 = 0#64) (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = dst) (hx1 : s.readReg64 .x1 = src) (hx2 : (s.readReg64 .x2).toNat = bs.length)
-    (hcs : EncRepeatedCalleeSaved s0 s)
-    (hP : P = (memRegion dst bs.length ∗ (src ↦ₛ bs)) ∗ F)
-    (hnext : ∀ (sm : State),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 80#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → EncRepeatedCalleeSaved s0 sm →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm (((dst ↦ₛ bs) ∗ (src ↦ₛ bs)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeRepeatedSpec A).onPanic x0 s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeRepeatedSpec A).onPanic x0 s0 sf ∗ R)) :=
-  step_memcpy_call_gen A hmemcpy dst src sp ret_pc bs hpc hrun hsp halign htr hlr hx0 hx1 hx2 hcs hP hnext
 
 theorem step_encode_varint_call_gen {resStack : Nat} {prog : Program} (A : RustAlloc)
     {call_pc : BitVec 64} {s0 s : State}
@@ -676,33 +642,6 @@ theorem step_encode_varint_call_gen {resStack : Nat} {prog : Program} (A : RustA
         (hcs.trans (EncRepeatedCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)) hge hpres)
     exact Entails.of_eq (by ac_rfl)
 
-theorem step_encode_varint_call {resStack : Nat} (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    {call_pc : BitVec 64} {s0 s : State}
-    (henc : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc
-      (withEncRepeatedCS s0 (encodeVarintFitSpecOf resStack A)))
-    (val v curCap curPtr sp ret_pc : BitVec 64) (curBs : List (BitVec 8))
-    (hlen_lt : curBs.length + (encodeVarint val).length ≤ curCap.toNat ∨ curBs.length + 10 < 2 ^ 62)
-    {x0 : EncodeRepeatedGhost} {R : SepProp}
-    {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running) (hsp : s.sp = sp - 80#64)
-    (halign : sp &&& 15#64 = 0#64) (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = val) (hx1 : s.readReg64 .x1 = v)
-    (hcs : EncRepeatedCalleeSaved s0 s)
-    (hP : P = (vecU8At A v curCap curPtr curBs ∗ A.pool ∗ stackAt (sp - 80#64) (0x30 + resStack)) ∗ F)
-    (hnext : ∀ (sm : State) (nextCap nextPtr : BitVec 64),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 80#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → EncRepeatedCalleeSaved s0 sm →
-      curCap.toNat ≤ nextCap.toNat →
-      (curBs.length + (encodeVarint val).length ≤ curCap.toNat → nextCap = curCap ∧ nextPtr = curPtr) →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm
-        ((vecU8At A v nextCap nextPtr (curBs ++ encodeVarint val) ∗ A.pool ∗
-          stackAt (sp - 80#64) (0x30 + resStack)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeRepeatedSpec A).onPanic x0 s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeRepeatedSpec A).onPanic x0 s0 sf ∗ R)) :=
-  step_encode_varint_call_gen A henc val v curCap curPtr sp ret_pc curBs hlen_lt hpc hrun hsp halign htr hlr hx0 hx1 hcs hP hnext
-
 theorem step_do_reserve2_call_gen {resStack : Nat} (hres : resStack + 48 + 80 < 2 ^ 64)
     {prog : Program} (A : RustAlloc)
     {call_pc : BitVec 64} {s0 s : State}
@@ -766,33 +705,6 @@ theorem step_do_reserve2_call_gen {resStack : Nat} (hres : resStack + 48 + 80 < 
         (hcs.trans (EncRepeatedCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)))
     rw [stackAt_encodeVarint_eq_doReserve hres (sp - 80#64)]
     exact Entails.of_eq (by ac_rfl)
-
-theorem step_do_reserve2_call {resStack : Nat} (hres : resStack + 48 + 80 < 2 ^ 64)
-    (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    {call_pc : BitVec 64} {s0 s : State}
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc
-      (withEncRepeatedCS s0 (doReserve2SpecOf resStack A)))
-    (v curCap curPtr sp ret_pc : BitVec 64) (curBs : List (BitVec 8)) (additional : Nat)
-    (hbound : reserveCap curCap.toNat curBs.length additional + 1 ≤ 2 ^ 63)
-    {x0 : EncodeRepeatedGhost} {R : SepProp}
-    {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running) (hsp : s.sp = sp - 80#64)
-    (halign : sp &&& 15#64 = 0#64) (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = v) (hx1 : (s.readReg64 .x1).toNat = curBs.length)
-    (hx2 : (s.readReg64 .x2).toNat = additional) (hcs : EncRepeatedCalleeSaved s0 s)
-    (hP : P = (vecU8At A v curCap curPtr curBs ∗ A.pool ∗ stackAt (sp - 80#64) (0x30 + resStack)) ∗ F)
-    (hnext : ∀ (sm : State) (newPtr : BitVec 64),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 80#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → EncRepeatedCalleeSaved s0 sm →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm
-        ((vecU8At A v (BitVec.ofNat 64 (reserveCap curCap.toNat curBs.length additional)) newPtr curBs ∗
-          A.pool ∗ stackAt (sp - 80#64) (0x30 + resStack)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeRepeatedSpec A).onPanic x0 s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeRepeatedSpec A).onPanic x0 s0 sf ∗ R)) :=
-  step_do_reserve2_call_gen hres A hdoReserve v curCap curPtr sp ret_pc curBs additional hbound
-    hpc hrun hsp halign htr hlr hx0 hx1 hx2 hcs hP hnext
 
 theorem step_do_reserve7_call_gen {resStack : Nat} (hres : resStack + 48 + 80 < 2 ^ 64)
     {prog : Program} (A : RustAlloc)
@@ -859,33 +771,5 @@ theorem step_do_reserve7_call_gen {resStack : Nat} (hres : resStack + 48 + 80 < 
         (hcs.trans (EncRepeatedCalleeSaved.of_calleeSavedPreserved hcsm hinv_call)))
     rw [stackAt_encodeVarint_eq_doReserve hres (sp - 80#64)]
     exact Entails.of_eq (by ac_rfl)
-
-theorem step_do_reserve7_call {resStack : Nat} (hres : resStack + 48 + 80 < 2 ^ 64)
-    (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    {call_pc : BitVec 64} {s0 s : State}
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b ext) call_pc
-      (withEncRepeatedCS s0 (doReserveSpecOf resStack A)))
-    (v curCap curPtr sp ret_pc : BitVec 64) (curBs : List (BitVec 8)) (additional : Nat)
-    (hbound : reserveCap curCap.toNat curBs.length additional + 1 ≤ 2 ^ 63)
-    {x0 : EncodeRepeatedGhost} {R : SepProp}
-    {ret : BitVec 64} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = call_pc) (hrun : s.status = .Running) (hsp : s.sp = sp - 80#64)
-    (halign : sp &&& 15#64 = 0#64) (htr : s.trace = s0.trace) (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = v) (hx1 : (s.readReg64 .x1).toNat = curBs.length)
-    (hx2 : (s.readReg64 .x2).toNat = additional) (hx3 : s.readReg64 .x3 = 1#64) (hx4 : s.readReg64 .x4 = 1#64)
-    (hcs : EncRepeatedCalleeSaved s0 s)
-    (hP : P = (vecU8At A v curCap curPtr curBs ∗ A.pool ∗ stackAt (sp - 80#64) (0x30 + resStack)) ∗ F)
-    (hnext : ∀ (sm : State) (newPtr : BitVec 64),
-      sm.pc = ret_pc → sm.status = .Running → sm.sp = sp - 80#64 → sm.trace = s0.trace →
-      CalleeSavedPreserved s sm → EncRepeatedCalleeSaved s0 sm →
-      SepWPp (tripleRatchetProgAtExt b ext) ret sm
-        ((vecU8At A v (BitVec.ofNat 64 (reserveCap curCap.toNat curBs.length additional)) newPtr curBs ∗
-          A.pool ∗ stackAt (sp - 80#64) (0x30 + resStack)) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeRepeatedSpec A).onPanic x0 s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeRepeatedSpec A).onPanic x0 s0 sf ∗ R)) :=
-  step_do_reserve7_call_gen hres A hdoReserve v curCap curPtr sp ret_pc curBs additional hbound
-    hpc hrun hsp halign htr hlr hx0 hx1 hx2 hx3 hx4 hcs hP hnext
 
 end CryptoVerification.SpqrV1.Varint

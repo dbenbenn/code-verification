@@ -21,7 +21,7 @@ Proves injectivity of fixed-width key encodings, pre-key wire messages, and prot
 records, and establishes `encodeRecordUnderExtras` round-trip decoding up to `PqSessionEquiv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

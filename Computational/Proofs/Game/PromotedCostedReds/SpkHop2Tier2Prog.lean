@@ -9,18 +9,27 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Lift -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingProofs -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingProofs
 import Computational.Proofs.Game.PromotedCostedReds.DrSessionSimSize
 import Computational.Proofs.E2E.Dsl.SmReachInvParty
+public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.Bridge
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Tier-2 `CostedReduction` Witnesses for `hop2PrgRedK` and `hop2PrfRedK`
 
 Constructs sub-quadratic `CostedReduction` witnesses `hop2PrgRedKTier2` and `hop2PrfRedKTier2`
-replacing association-list scans in `SpkHop2RInProg` with `Ty.tbl`-indexed tables, proving
+replacing association-list scans in `SpkHop2RInDefs` with `Ty.tbl`-indexed tables, proving
 `GRedBounded` at `spkTier2Budget q qep ℓ` and exact `.eval` agreement with the game-level hybrids.
 -/
 
@@ -107,7 +116,7 @@ open Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping (deleteCip
   cost_acceptCiphertextTier2E cost_inTransitTier2E cost_recordCiphertextTier2E
   cost_hop2TblInitE cost_hop2TblGetE cost_hop2TblSetE
   sessionSchemeU_send_wire_length_le spk_totalCost_le_spkTier2Budget)
-open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg (env_get_zero env_get_succ fst_eval snd_eval
+open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs (env_get_zero env_get_succ fst_eval snd_eval
   compCoinToPrf cost_compCoinToPrf size_compCoinToPrf compCoinToPrf_wk1Comp compCoinToPrf_eval_eq_liftM
   coinOnlyIface_liftP redCoinToPrf eval_redCoinToPrf
   queries_compCoinToPrf_zero queries_coinOnly_zero Hop2Mode Hop2EvalSpec
@@ -182,9 +191,9 @@ structure Hop2AuxTier2Rel (encT : Pt → PublicKey) (aux : Hop2Aux Pt)
   Hop2AuxTier2Rel (ℓ := ℓ) encT ga.2 stV.2.2.1 ∧ stV.2.2.2 = chall
 
 @[expose] def auxLazyTier2 {Γ : List (Ty ASig)} (a : Expr AOps Γ (hop2Tier2AuxTy ℓ Pt)) : Expr AOps Γ (hop2TblTy ℓ Pt) := .fst a
-def auxMadeTier2 {Γ : List (Ty ASig)} (a : Expr AOps Γ (hop2Tier2AuxTy ℓ Pt)) : Expr AOps Γ (hop2TblTy ℓ Pt) := .fst (.snd a)
+@[expose] def auxMadeTier2 {Γ : List (Ty ASig)} (a : Expr AOps Γ (hop2Tier2AuxTy ℓ Pt)) : Expr AOps Γ (hop2TblTy ℓ Pt) := .fst (.snd a)
 @[expose] def auxIdxTier2 {Γ : List (Ty ASig)} (a : Expr AOps Γ (hop2Tier2AuxTy ℓ Pt)) : Expr AOps Γ (.prod (.opt .nat) (.opt .nat)) := .fst (.snd (.snd a))
-def auxCoinsTier2 {Γ : List (Ty ASig)} (a : Expr AOps Γ (hop2Tier2AuxTy ℓ Pt)) : Expr AOps Γ (.prod BV256 BV256) := .fst (.snd (.snd (.snd a)))
+@[expose] def auxCoinsTier2 {Γ : List (Ty ASig)} (a : Expr AOps Γ (hop2Tier2AuxTy ℓ Pt)) : Expr AOps Γ (.prod BV256 BV256) := .fst (.snd (.snd (.snd a)))
 @[expose] def auxBadTier2 {Γ : List (Ty ASig)} (a : Expr AOps Γ (hop2Tier2AuxTy ℓ Pt)) : Expr AOps Γ .bool := .snd (.snd (.snd (.snd a)))
 
 @[expose] def auxMkTier2 {Γ : List (Ty ASig)} (lazy made : Expr AOps Γ (hop2TblTy ℓ Pt))
@@ -466,9 +475,9 @@ local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
 @[expose] def stSTier2 {Γ : List (Ty ASig)} (e : Expr AOps Γ (hop2Tier2FullStTy ℓ Pt)) : Expr AOps Γ BV256 := .fst e
-def stGsTier2 {Γ : List (Ty ASig)} (e : Expr AOps Γ (hop2Tier2FullStTy ℓ Pt)) : Expr AOps Γ (tier2GsTy ℓ Pt) := .fst (.snd e)
+@[expose] def stGsTier2 {Γ : List (Ty ASig)} (e : Expr AOps Γ (hop2Tier2FullStTy ℓ Pt)) : Expr AOps Γ (tier2GsTy ℓ Pt) := .fst (.snd e)
 @[expose] def stAuxTier2 {Γ : List (Ty ASig)} (e : Expr AOps Γ (hop2Tier2FullStTy ℓ Pt)) : Expr AOps Γ (hop2Tier2AuxTy ℓ Pt) := .fst (.snd (.snd e))
-def stChallTier2 {Γ : List (Ty ASig)} (e : Expr AOps Γ (hop2Tier2FullStTy ℓ Pt)) : Expr AOps Γ (hop2ChallTy ℓ Pt) := .snd (.snd (.snd e))
+@[expose] def stChallTier2 {Γ : List (Ty ASig)} (e : Expr AOps Γ (hop2Tier2FullStTy ℓ Pt)) : Expr AOps Γ (hop2ChallTy ℓ Pt) := .snd (.snd (.snd e))
 
 @[expose] def stMkTier2 {Γ : List (Ty ASig)} (sE : Expr AOps Γ BV256) (gsE : Expr AOps Γ (tier2GsTy ℓ Pt))
     (auxE : Expr AOps Γ (hop2Tier2AuxTy ℓ Pt)) (challE : Expr AOps Γ (hop2ChallTy ℓ Pt)) :
@@ -1621,7 +1630,7 @@ theorem hop2DHTier2C_rel
         (gs, aux') =
       pure (hop2DecryptOut P g sc msg rc rk2 ckR ckS upd, (gs, aux')) := by
     intro sc rk2 ckR ckS upd aux'
-    dsimp only [hop2DecryptOut, SpkHop2RInProg.prepHop2DHState]
+    dsimp only [hop2DecryptOut, SpkHop2RInDefs.prepHop2DHState]
     cases SessionState.tryDecryptFromRecord P.C P.spqr (P.expectedAddrs g.party) msg .whisper rc _ with
     | mk res s_out => cases res <;> simp [StateT.run_pure]
   have htail_none : ∀ (sc : SenderChain) (rkM ckR : BitVec 256) (aux' : Hop2Aux Pt) (T : Pt),
@@ -3439,7 +3448,7 @@ theorem hop2InitBodyTier2C_rel
   have hl := liftExpr_eval (Pt := Pt) (C := C) (K := K) (Dh := Dh) (encPt := encPt)
     (encT := encT) (decT := decT) (lam := lam)
     (hop2InitGsE2EE (ℓ := ℓ) (C := C) (K := K) (decT := decT) (encT := encT) idA idB)
-    (.cons (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2InitArgT ℓ)
+    (.cons (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2InitArgT ℓ)
       (b, (x, ((0, ck1), (ck0, (alice, pqr))))) .nil)
   have hgs := eval_hop2InitGsE2EE (ℓ := ℓ) (C := C) (K := K) (decT := decT) (encT := encT)
     idA idB b x 0 ck1 ck0 alice pqr
@@ -3451,7 +3460,7 @@ theorem hop2InitBodyTier2C_rel
               (if k = 0 then (.snd (.snd .v6)) else .v0))
             (.pair .v4 (.pair .v2 .v1))))).eval ρ6 =
       liftVal (Pt := Pt)
-        (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2InitArgT ℓ)
+        (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2InitArgT ℓ)
         (b, (x, ((0, ck1), (ck0, (alice, pqr))))) := by
     simp only [pair_eval, hck1Eval]
     rfl
@@ -3470,10 +3479,10 @@ theorem hop2InitBodyTier2C_rel
               (hop2InitGsE2EE (ℓ := ℓ) (C := C) (K := K) (decT := decT)
                 (encT := encT) idA idB))))).eval ρ6 = (stA, stB) := by
     have henv : (Env.cons (liftVal (Pt := Pt)
-          (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2InitArgT ℓ)
+          (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2InitArgT ℓ)
           (b, (x, ((0, ck1), (ck0, (alice, pqr)))))) .nil :
         Env (S := ASig) [_]) =
-      liftEnv (Pt := Pt) (.cons (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2InitArgT ℓ)
+      liftEnv (Pt := Pt) (.cons (t := Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2InitArgT ℓ)
         (b, (x, ((0, ck1), (ck0, (alice, pqr))))) .nil) := rfl
     rw [fst_eval, letE_eval, harg, wk1Expr_eval, henv, hl, hgs]
     rfl

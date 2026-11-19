@@ -9,12 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneXBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneXBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
 import Arm64.Trusted.Spec.Hoare
-import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExtBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExtBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.E2E.Bin.Record -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `SessionRecord::serialize` Glue
@@ -24,7 +34,7 @@ Instantiates `HSerXBudget` with `SessionCloneXBudget.sessionClone_placed_ok_ext`
 `recordSerializeSpecX`, and `recordSerializeEnvSpecX` on Block `52`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

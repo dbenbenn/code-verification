@@ -24,7 +24,7 @@ and `call_placed_allocSlot_trace`.
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -125,7 +125,7 @@ private theorem fastPop_finish_post_trace [MallocngMultiPlacement]
         (s0.readReg64 .x21) (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24)
         (s0.readReg64 .x25) (s0.readReg64 .x26) ∗
        MallocngRoTablesA maddrs ∗
-       MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
+       MallocngCoreStInflightModeA true inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
        (SlotSaved4 s0.sp v19 v20 v27 v28 ∗
         stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗
         MallocngRuntime maddrs tp))
@@ -196,7 +196,7 @@ private theorem fastPop_finish_post_trace [MallocngMultiPlacement]
   generalize stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) = ST
   generalize MallocngRoTablesA maddrs = RO
   generalize MallocngRuntime maddrs tp = RT
-  generalize MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st1 = CS1
+  generalize MallocngCoreStInflightModeA true (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st1 = CS1
   ac_rfl
 
 private theorem ag_finish_post_trace [MallocngMultiPlacement]
@@ -227,7 +227,7 @@ private theorem ag_finish_post_trace [MallocngMultiPlacement]
     SepWP (mallocngBlockProg mmpl 8 msvc) (s0.readReg64 .x30) s
       (SlotSaved4 s0.sp (s0.readReg64 .x19) (s0.readReg64 .x20)
         (s0.readReg64 .x27) (s0.readReg64 .x28) ∗
-       MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
+       MallocngCoreStInflightModeA true inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
        (SlotSaved8 s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30)
           (s0.readReg64 .x21) (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24)
           (s0.readReg64 .x25) (s0.readReg64 .x26) ∗
@@ -265,7 +265,7 @@ private theorem ag_finish_post_trace [MallocngMultiPlacement]
   generalize stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) = ST
   generalize MallocngRoTablesA maddrs = RO
   generalize MallocngRuntime maddrs tp = RT
-  generalize MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st = CS
+  generalize MallocngCoreStInflightModeA true inflight γ maddrs brkStart s.brk liveCost peakCost st = CS
   ac_rfl
 
 /-! ## Slow-Path `try_avail` Chain -/
@@ -291,7 +291,7 @@ private theorem wp_allocSlot_slow_chain_to_208_trace [MallocngMultiPlacement]
     SepWP ((mallocngBlockProg mmpl 8 msvc).withSvc mallocngFaultSvc)
       (mbase 8 + allocSlotOff_fast_pop) s
       (SlotSaved4 sp0 u19 u20 u27 u28 ∗
-       MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
+       MallocngCoreStInflightModeA true inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
        (MallocngRoTablesA maddrs ∗ Rest))
       (fun sf P_f =>
         ∃ st_f : MallocngSt, ∃ g_f ∈ st_f.groups,
@@ -305,7 +305,7 @@ private theorem wp_allocSlot_slow_chain_to_208_trace [MallocngMultiPlacement]
           sf.readReg64 .x27 = s.readReg64 .x27 ∧ sf.readReg64 .x28 = s.readReg64 .x28 ∧
           P_f = (SlotSaved4 sp0 (s.readReg64 .x19) (s.readReg64 .x20)
             (s.readReg64 .x27) (s.readReg64 .x28) ∗
-            MallocngCoreStInflightA inflight γ maddrs brkStart sf.brk liveCost peakCost st_f ∗
+            MallocngCoreStInflightModeA true inflight γ maddrs brkStart sf.brk liveCost peakCost st_f ∗
             (MallocngRoTablesA maddrs ∗ Rest)))
       (fun _ => ⌜False⌝) := by
   let S4 := SlotSaved4 sp0 (s.readReg64 .x19) (s.readReg64 .x20)
@@ -320,14 +320,14 @@ private theorem wp_allocSlot_slow_chain_to_208_trace [MallocngMultiPlacement]
   have hs2_23 : s2.readReg64 .x23 = BitVec.ofNat 64 sc :=
     (hr2 .x23 (by decide) (by decide) (by decide) (by decide)).trans hx23
   have hSwap2 :
-      (S4 ∗ MallocngCoreStInflightA inflight γ maddrs brkStart s2.brk liveCost peakCost st2 ∗
+      (S4 ∗ MallocngCoreStInflightModeA true inflight γ maddrs brkStart s2.brk liveCost peakCost st2 ∗
         (MallocngRoTablesA maddrs ∗ Rest)) =
-      (MallocngCoreStInflightA inflight γ maddrs brkStart s2.brk liveCost peakCost st2 ∗
+      (MallocngCoreStInflightModeA true inflight γ maddrs brkStart s2.brk liveCost peakCost st2 ∗
         (MallocngRoTablesA maddrs ∗ (S4 ∗ Rest))) := by
     dsimp only [S4]
     generalize SlotSaved4 sp0 (s.readReg64 .x19) (s.readReg64 .x20)
       (s.readReg64 .x27) (s.readReg64 .x28) = A
-    generalize MallocngCoreStInflightA inflight γ maddrs brkStart s2.brk liveCost peakCost st2 = B
+    generalize MallocngCoreStInflightModeA true inflight γ maddrs brkStart s2.brk liveCost peakCost st2 = B
     generalize MallocngRoTablesA maddrs = C
     ac_rfl
   refine SepWP.weaken_pre (Entails.of_eq hSwap2) ?_
@@ -355,14 +355,14 @@ private theorem wp_allocSlot_slow_chain_to_208_trace [MallocngMultiPlacement]
   have hsp5_0 : s5.sp = sp0 - 96#64 := hsp5.trans (hsp4.trans (hsp3.trans hsp2))
   have hal5_0 : s5.spAligned = true := hal5.trans (hal4.trans (hal3.trans hal2))
   have hSwap5 :
-      (MallocngCoreStInflightA inflight γ maddrs brkStart s5.brk liveCost peakCost st5 ∗
+      (MallocngCoreStInflightModeA true inflight γ maddrs brkStart s5.brk liveCost peakCost st5 ∗
         (MallocngRoTablesA maddrs ∗ (S4 ∗ Rest))) =
-      (S4 ∗ MallocngCoreStInflightA inflight γ maddrs brkStart s5.brk liveCost peakCost st5 ∗
+      (S4 ∗ MallocngCoreStInflightModeA true inflight γ maddrs brkStart s5.brk liveCost peakCost st5 ∗
         (MallocngRoTablesA maddrs ∗ Rest)) := by
     dsimp only [S4]
     generalize SlotSaved4 sp0 (s.readReg64 .x19) (s.readReg64 .x20)
       (s.readReg64 .x27) (s.readReg64 .x28) = A
-    generalize MallocngCoreStInflightA inflight γ maddrs brkStart s5.brk liveCost peakCost st5 = B
+    generalize MallocngCoreStInflightModeA true inflight γ maddrs brkStart s5.brk liveCost peakCost st5 = B
     generalize MallocngRoTablesA maddrs = C
     ac_rfl
   refine SepWP.weaken_pre (Entails.of_eq hSwap5) ?_
@@ -414,17 +414,17 @@ private theorem allocSlot_step_trace_ok {rootParamPred : Nat → Nat → Nat →
       ((SlotSaved8 s0.sp u29 u30 u21 u22 u23 u24 u25 u26 ∗
         SlotSaved4 s0.sp u19 u20 u27 u28) ∗
        StkRest ∗ MallocngRoTablesA maddrs ∗
-       MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
+       MallocngCoreStInflightModeA true inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
        MallocngRuntime maddrs tp) =
       (SlotSaved8 s0.sp u29 u30 u21 u22 u23 u24 u25 u26 ∗
-       MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
+       MallocngCoreStInflightModeA true inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
        EntryFrame) := by
     dsimp only [EntryFrame, StkRest]
     generalize SlotSaved8 s0.sp u29 u30 u21 u22 u23 u24 u25 u26 = S8
     generalize SlotSaved4 s0.sp u19 u20 u27 u28 = S4
     generalize stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) = ST
     generalize MallocngRoTablesA maddrs = RO
-    generalize MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st = CS
+    generalize MallocngCoreStInflightModeA true inflight γ maddrs brkStart s0.brk liveCost peakCost st = CS
     generalize MallocngRuntime maddrs tp = RT
     ac_rfl
   refine SepWP.weaken_pre (Entails.of_eq hEntryEq) ?_
@@ -440,17 +440,17 @@ private theorem allocSlot_step_trace_ok {rootParamPred : Nat → Nat → Nat →
     (s0.readReg64 .x27) (s0.readReg64 .x28)
   by_cases hActZ : st.ctx.active[sc]'h1 = 0#64
   · have hPreZ :
-        (S8_0 ∗ MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
+        (S8_0 ∗ MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
           EntryFrame) =
         (SlotSaved4 s0.sp u19 u20 u27 u28 ∗
-         (MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
+         (MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
           (S8_0 ∗ StkRest ∗ MallocngRoTablesA maddrs ∗ MallocngRuntime maddrs tp))) := by
       dsimp only [EntryFrame, S8_0, StkRest]
       generalize SlotSaved8 s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30)
         (s0.readReg64 .x21) (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24)
         (s0.readReg64 .x25) (s0.readReg64 .x26) = A
       generalize SlotSaved4 s0.sp u19 u20 u27 u28 = B
-      generalize MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st = C
+      generalize MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st = C
       generalize stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) = D
       generalize MallocngRoTablesA maddrs = E
       generalize MallocngRuntime maddrs tp = F
@@ -470,9 +470,9 @@ private theorem allocSlot_step_trace_ok {rootParamPred : Nat → Nat → Nat →
       ((hr2 .x21).trans hs1_21) ((hr2 .x25).trans hs1_25)
   ·
     have hPreWf :
-        (S8_0 ∗ MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
+        (S8_0 ∗ MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
           EntryFrame) =
-        (MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
+        (MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
           (S8_0 ∗ EntryFrame)) := by
       rw [← sepConj_assoc, sepConj_comm S8_0, sepConj_assoc]
     refine SepWP.weaken_pre (Entails.of_eq hPreWf) ?_
@@ -483,17 +483,17 @@ private theorem allocSlot_step_trace_ok {rootParamPred : Nat → Nat → Nat →
     · by_cases hDeqSing : g.freedMask = 0#32 ∧ g.next = g.metaPtr
       ·
         have hPreSing :
-            (MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
+            (MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
               (S8_0 ∗ EntryFrame)) =
             (SlotSaved4 s0.sp u19 u20 u27 u28 ∗
-              MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
+              MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
               (S8_0 ∗ StkRest ∗ MallocngRoTablesA maddrs ∗ MallocngRuntime maddrs tp)) := by
           dsimp only [EntryFrame, S8_0, StkRest]
           generalize SlotSaved8 s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30)
             (s0.readReg64 .x21) (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24)
             (s0.readReg64 .x25) (s0.readReg64 .x26) = A
           generalize SlotSaved4 s0.sp u19 u20 u27 u28 = B
-          generalize MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st = C
+          generalize MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st = C
           generalize stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) = D
           generalize MallocngRoTablesA maddrs = E
           generalize MallocngRuntime maddrs tp = F
@@ -520,17 +520,17 @@ private theorem allocSlot_step_trace_ok {rootParamPred : Nat → Nat → Nat →
           · exact Or.inr fun hNx => hDeqSing ⟨hFr, hNx⟩
           · exact Or.inl hFr
         have hPreSlow :
-            (MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
+            (MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
               (S8_0 ∗ EntryFrame)) =
             (SlotSaved4 s0.sp u19 u20 u27 u28 ∗
-              MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
+              MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st ∗
               (MallocngRoTablesA maddrs ∗ (S8_0 ∗ StkRest ∗ MallocngRuntime maddrs tp))) := by
           dsimp only [EntryFrame, S8_0, StkRest]
           generalize SlotSaved8 s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30)
             (s0.readReg64 .x21) (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24)
             (s0.readReg64 .x25) (s0.readReg64 .x26) = A
           generalize SlotSaved4 s0.sp u19 u20 u27 u28 = B
-          generalize MallocngCoreStInflightA inflight γ maddrs brkStart s1.brk liveCost peakCost st = C
+          generalize MallocngCoreStInflightModeA true inflight γ maddrs brkStart s1.brk liveCost peakCost st = C
           generalize stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) = D
           generalize MallocngRoTablesA maddrs = E
           generalize MallocngRuntime maddrs tp = F
@@ -546,10 +546,10 @@ private theorem allocSlot_step_trace_ok {rootParamPred : Nat → Nat → Nat →
         have hPostPerm :
             (SlotSaved4 s0.sp (s1.readReg64 .x19) (s1.readReg64 .x20)
               (s1.readReg64 .x27) (s1.readReg64 .x28) ∗
-              MallocngCoreStInflightA inflight γ maddrs brkStart sf.brk liveCost peakCost st_f ∗
+              MallocngCoreStInflightModeA true inflight γ maddrs brkStart sf.brk liveCost peakCost st_f ∗
               (MallocngRoTablesA maddrs ∗ (S8_0 ∗ StkRest ∗ MallocngRuntime maddrs tp))) =
             (S8_0 ∗ MallocngRoTablesA maddrs ∗
-              MallocngCoreStInflightA inflight γ maddrs brkStart sf.brk liveCost peakCost st_f ∗
+              MallocngCoreStInflightModeA true inflight γ maddrs brkStart sf.brk liveCost peakCost st_f ∗
               (S4_0 ∗ StkRest ∗ MallocngRuntime maddrs tp)) := by
           dsimp only [S8_0, S4_0, StkRest]
           rw [hs1_19, hs1_20, hs1_27, hs1_28]
@@ -558,7 +558,7 @@ private theorem allocSlot_step_trace_ok {rootParamPred : Nat → Nat → Nat →
             (s0.readReg64 .x25) (s0.readReg64 .x26) = A
           generalize SlotSaved4 s0.sp (s0.readReg64 .x19) (s0.readReg64 .x20)
             (s0.readReg64 .x27) (s0.readReg64 .x28) = B
-          generalize MallocngCoreStInflightA inflight γ maddrs brkStart sf.brk liveCost peakCost st_f = C
+          generalize MallocngCoreStInflightModeA true inflight γ maddrs brkStart sf.brk liveCost peakCost st_f = C
           generalize stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) = D
           generalize MallocngRoTablesA maddrs = E
           generalize MallocngRuntime maddrs tp = F
@@ -575,17 +575,17 @@ private theorem allocSlot_step_trace_ok {rootParamPred : Nat → Nat → Nat →
             hpc1 hrun1 hs1_2g) ?_)
       rintro s2 P2 hpc2 hrun2 ⟨_, hsp2, hal2, hpsp2, _, hw0_2, hx2_2, hr2, rfl⟩ hperm2 _
       have hFastPerm :
-          (MallocngCoreStInflightA inflight γ maddrs brkStart s2.brk liveCost peakCost st ∗
+          (MallocngCoreStInflightModeA true inflight γ maddrs brkStart s2.brk liveCost peakCost st ∗
             (S8_0 ∗ EntryFrame)) =
           (S8_0 ∗ MallocngRoTablesA maddrs ∗
-            MallocngCoreStInflightA inflight γ maddrs brkStart s2.brk liveCost peakCost st ∗
+            MallocngCoreStInflightModeA true inflight γ maddrs brkStart s2.brk liveCost peakCost st ∗
             (SlotSaved4 s0.sp u19 u20 u27 u28 ∗ StkRest ∗ MallocngRuntime maddrs tp)) := by
         dsimp only [EntryFrame, S8_0, StkRest]
         generalize SlotSaved8 s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30)
           (s0.readReg64 .x21) (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24)
           (s0.readReg64 .x25) (s0.readReg64 .x26) = A
         generalize SlotSaved4 s0.sp u19 u20 u27 u28 = B
-        generalize MallocngCoreStInflightA inflight γ maddrs brkStart s2.brk liveCost peakCost st = C
+        generalize MallocngCoreStInflightModeA true inflight γ maddrs brkStart s2.brk liveCost peakCost st = C
         generalize stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) = D
         generalize MallocngRoTablesA maddrs = E
         generalize MallocngRuntime maddrs tp = F
@@ -638,7 +638,7 @@ theorem placed_allocSlot_trace_ok [MallocngMultiPlacement]
          (s0.readReg32 .x0).toNat = sc ∧ (s0.readReg64 .x1).toNat = req⌝ ∗
         stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
+        MallocngCoreStInflightModeA true inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
         MallocngRuntime maddrs tp
       post := fun _ s0 sf =>
         ∃∗ st' : MallocngSt, ∃∗ idx : Nat,
@@ -658,7 +658,7 @@ theorem placed_allocSlot_trace_ok [MallocngMultiPlacement]
            MallocngMappedDelta (2 * (allocSlotDepthBound sc + 1)) (allocSlotFineByteBound sc maxMetaAreas) s0.mem sf.mem⌝ ∗
           stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗
           MallocngRoTablesA maddrs ∗ MallocngRuntime maddrs tp ∗
-          MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
+          MallocngCoreStInflightModeA true (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
       onOom := fun _ s0 sf =>
         ⌜MallocngPlacedOomCond msvc (2 * (allocSlotDepthBound sc + 1))
           (allocSlotFineByteBound sc maxMetaAreas) s0 sf⌝
@@ -687,7 +687,7 @@ theorem call_placed_allocSlot_trace [MallocngMultiPlacement] {P : Program}
          (s0.readReg32 .x0).toNat = sc ∧ (s0.readReg64 .x1).toNat = req⌝ ∗
         stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
+        MallocngCoreStInflightModeA true inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
         MallocngRuntime maddrs tp
       post := fun _ s0 sf =>
         ∃∗ st' : MallocngSt, ∃∗ idx : Nat,
@@ -707,7 +707,7 @@ theorem call_placed_allocSlot_trace [MallocngMultiPlacement] {P : Program}
            MallocngMappedDelta (2 * (allocSlotDepthBound sc + 1)) (allocSlotFineByteBound sc maxMetaAreas) s0.mem sf.mem⌝ ∗
           stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗
           MallocngRoTablesA maddrs ∗ MallocngRuntime maddrs tp ∗
-          MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
+          MallocngCoreStInflightModeA true (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
       onOom := fun _ s0 sf =>
         ⌜MallocngPlacedOomCond msvc (2 * (allocSlotDepthBound sc + 1))
           (allocSlotFineByteBound sc maxMetaAreas) s0 sf⌝

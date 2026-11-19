@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Defs
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Decodes
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2
@@ -27,7 +27,7 @@ Pre/post `<Message>::deserialize` steppers (`+1532..+1568`), 928-byte `States` `
 helpers, and stack splits for `<States>::from_pb` and `<States>::recv` in `spqr::recv` (`0x5462c`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Recv
 
@@ -71,88 +71,6 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. `+1532..+1568`: `Message::deserialize` Pre/Post Steps -/
 
-/-- Pre-call step `+1532 -> entry + 44552` (`0x54c28..0x54c3c -> 0x5f434`): sets `x0 = s0.sp -
-    3056#64`, `x1 = pre.epoch`, `x2 = remPtr`, `x3 = BitVec.ofNat 64 pre.remaining.length`, `x25
-    = s0.sp - 4640#64`, and `x30 = entry + 1556#64`. -/
-theorem step_pre_msgDeserialize_1532 (b : BitVec 64) (ext : String → Option (State → State))
-    (s0 s : State) (pre : MsgPreamble) (remPtr : BitVec 64) (P : SepProp)
-    (hs0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr spqrRecvName + 1532#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 4992#64)
-    (hx22 : s.readReg64 .x22 = pre.epoch)
-    (hx23 : s.readReg64 .x23 = BitVec.ofNat 64 pre.remaining.length)
-    (hx24 : s.readReg64 .x24 = remPtr) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr spqrRecvName + 44552#64) s P
-      (fun sf Pf =>
-        Pf = P ∧
-        sf.sp = s0.sp - 4992#64 ∧
-        TraceVRegs sf s ∧
-        sf.readReg64 .x0 = s0.sp - 3056#64 ∧
-        sf.readReg64 .x1 = pre.epoch ∧
-        sf.readReg64 .x2 = remPtr ∧
-        sf.readReg64 .x3 = BitVec.ofNat 64 pre.remaining.length ∧
-        sf.readReg64 .x19 = s.readReg64 .x19 ∧
-        sf.readReg64 .x20 = s.readReg64 .x20 ∧
-        sf.readReg64 .x21 = s.readReg64 .x21 ∧
-        sf.readReg64 .x22 = pre.epoch ∧
-        sf.readReg64 .x23 = BitVec.ofNat 64 pre.remaining.length ∧
-        sf.readReg64 .x24 = remPtr ∧
-        sf.readReg64 .x25 = s0.sp - 4640#64 ∧
-        sf.readReg64 .x26 = s.readReg64 .x26 ∧
-        sf.readReg64 .x27 = s.readReg64 .x27 ∧
-        sf.readReg64 .x28 = s.readReg64 .x28 ∧
-        sf.readReg64 .x29 = s.readReg64 .x29 ∧
-        sf.readReg64 .x30 = (tripleRatchetProgAtExt b ext).fnAddr spqrRecvName + 1556#64) := by
-  have hfsp_align : ((s0.sp - 4992#64) &&& 15#64 == 0#64) = true :=
-    sp_sub_4992_aligned s0 hs0_align
-  dsimp only [tripleRatchetProgAtExt, spqrRecvName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  spqr_recv_fetches_range b (Rust.withPanics ext) 1532 24
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "spqr::recv" = entry
-  examples_hide_fetches
-  wp_steps
-  exact ProofLib.SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    ⟨rfl, by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *]⟩
-
-/-- Post-call error step `+1556 -> +2060` (`0x54c40..0x54c48 -> 0x54e38`) when
-    `Message.deserialize spqrPolyApi pre.epoch pre.remaining = .error err`: reads `0xff#8` from
-    `s0.sp - 3048#64` (`[sp, #1944]`) and takes `b.eq +2060`. -/
-theorem step_post_msgDeserialize_err_1556 (b : BitVec 64) (ext : String → Option (State → State))
-    (s0 s : State) (Rest : SepProp)
-    (hs0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr spqrRecvName + 1556#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 4992#64) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr spqrRecvName + 2060#64) s
-      (((s0.sp - 3048#64) ↦₈ 0xff#8) ∗ Rest)
-      (fun sf Pf =>
-        Pf = (((s0.sp - 3048#64) ↦₈ 0xff#8) ∗ Rest) ∧
-        sf.sp = s0.sp - 4992#64 ∧
-        sf.readReg64 .x19 = s.readReg64 .x19 ∧
-        sf.readReg64 .x25 = s.readReg64 .x25 ∧
-        sf.readReg64 .x26 = s.readReg64 .x26 ∧
-        TraceVRegs sf s) := by
-  have hfsp_align : ((s0.sp - 4992#64) &&& 15#64 == 0#64) = true :=
-    sp_sub_4992_aligned s0 hs0_align
-  dsimp only [tripleRatchetProgAtExt, spqrRecvName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  spqr_recv_fetches_range b (Rust.withPanics ext) 1556 12
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "spqr::recv" = entry
-  examples_hide_fetches
-  wp_steps
-  exact ProofLib.SepWP.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    ⟨rfl, by simp only [arm64_norm, *], by simp only [arm64_norm, *],
-      by simp only [arm64_norm, *], by simp only [arm64_norm, *], by simp only [arm64_norm, *]⟩
-
 @[simp, arm64_norm]
 theorem tag_zeroExtend_beq_255_false {tag : BitVec 8} (htag : tag ≠ 0xff#8) :
     (tag.zeroExtend 32 == 255#32) = false := by
@@ -167,56 +85,6 @@ theorem tag_zeroExtend_sub_255_beq_0_false {tag : BitVec 8} (htag : tag ≠ 0xff
 theorem tag_zeroExtend_sub_255_bne_0_true {tag : BitVec 8} (htag : tag ≠ 0xff#8) :
     (tag.zeroExtend 32 - 255#32 != 0#32) = true := by
   revert tag htag; decide
-
-/-- Post-call ok step `+1556 -> +1568` (`0x54c40..0x54c48 -> 0x54c4c`) when `tag ≠ 0xff#8`:
-    reads `tag` from `s0.sp - 3048#64` (`[sp, #1944]`), does not branch to `+2060`, and reaches
-    `+1568` with `(sf.readReg64 .x8).truncate 8 = tag`. -/
-theorem step_post_msgDeserialize_ok_1556 (b : BitVec 64) (ext : String → Option (State → State))
-    (s0 s : State) (tag : BitVec 8) (Rest : SepProp)
-    {post : State → SepProp → Prop}
-    (hs0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr spqrRecvName + 1556#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 4992#64)
-    (htag : tag ≠ 0xff#8)
-    (hnext : ∀ sf : State,
-      sf.pc = (tripleRatchetProgAtExt b ext).fnAddr spqrRecvName + 1568#64 →
-      sf.status = .Running →
-      sf.sp = s0.sp - 4992#64 →
-      TraceVRegs sf s →
-      (sf.readReg64 .x8).truncate 8 = tag →
-      sf.readReg64 .x19 = s.readReg64 .x19 →
-      sf.readReg64 .x20 = s.readReg64 .x20 →
-      sf.readReg64 .x21 = s.readReg64 .x21 →
-      sf.readReg64 .x22 = s.readReg64 .x22 →
-      sf.readReg64 .x25 = s.readReg64 .x25 →
-      sf.readReg64 .x26 = s.readReg64 .x26 →
-      sf.readReg64 .x27 = s.readReg64 .x27 →
-      sf.readReg64 .x28 = s.readReg64 .x28 →
-      sf.readReg64 .x29 = s.readReg64 .x29 →
-      SepWP (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) sf
-        (((s0.sp - 3048#64) ↦₈ tag) ∗ Rest) post) :
-    SepWP (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) s
-      (((s0.sp - 3048#64) ↦₈ tag) ∗ Rest) post := by
-  have hfsp_align : ((s0.sp - 4992#64) &&& 15#64 == 0#64) = true :=
-    sp_sub_4992_aligned s0 hs0_align
-  have htag_eq := tag_zeroExtend_beq_255_false htag
-  have htag_cond := tag_zeroExtend_sub_255_beq_0_false htag
-  have htag_ne := tag_zeroExtend_sub_255_bne_0_true htag
-  have htrunc : ((tag.zeroExtend 32).zeroExtend 64).truncate 8 = tag := by
-    revert tag; bv_kernel
-  dsimp only [tripleRatchetProgAtExt, spqrRecvName, BitVec.ofNat_eq_ofNat] at hpc hnext ⊢
-  spqr_recv_fetches_range b (Rust.withPanics ext) 1556 12
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "spqr::recv" = entry
-  examples_hide_fetches
-  wp_steps
-  exact hnext _ (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
 
 theorem memRegion_4064_split_2096 (sp0 : BitVec 64) :
     memRegion (sp0 - 4064#64) 3968 ⊢
@@ -527,44 +395,6 @@ theorem resultV1RecvAt_err_expose (A : RustAlloc) {F : ShaCompress}
   exact Entails.of_eq (by ac_rfl)
 
 /-! ## 4. Stepping `<Message>::deserialize` (+1532..+1636) and `<States>::from_pb` (+1636..+1736) -/
-
-theorem spqrRecvRoAt_expose_statesFromPb (b : BitVec 64) :
-    spqrRecvRoAt b ⊢
-      statesFromPbJumpTableAt b ∗
-      (∃∗ P_ro : SepProp, ⌜statesFromPbJumpTableAt b ∗ P_ro ⊢ spqrRecvRoAt b⌝ ∗ P_ro) := by
-  unfold spqrRecvRoAt
-  refine Entails.trans
-    (Entails.of_eq (show
-      Prost.MessageMerge.v1StateJumpTablesAt b ∗
-        statesFromPbJumpTableAt b ∗
-        States.Recv.statesRecvRoAt b ∗
-        statesIntoPbJumpTableAt b =
-      statesFromPbJumpTableAt b ∗
-        (Prost.MessageMerge.v1StateJumpTablesAt b ∗
-          States.Recv.statesRecvRoAt b ∗
-          statesIntoPbJumpTableAt b) by ac_rfl)) ?_
-  refine sepConj_mono_right ?_
-  refine Entails.sepExists_right _ (Entails.pure_right ?_ (Entails.refl _))
-  exact Entails.of_eq (by ac_rfl)
-
-theorem spqrRecvRoAt_expose_statesRecv (b : BitVec 64) :
-    spqrRecvRoAt b ⊢
-      States.Recv.statesRecvRoAt b ∗
-      (∃∗ P_ro : SepProp, ⌜States.Recv.statesRecvRoAt b ∗ P_ro ⊢ spqrRecvRoAt b⌝ ∗ P_ro) := by
-  unfold spqrRecvRoAt
-  refine Entails.trans
-    (Entails.of_eq (show
-      Prost.MessageMerge.v1StateJumpTablesAt b ∗
-        statesFromPbJumpTableAt b ∗
-        States.Recv.statesRecvRoAt b ∗
-        statesIntoPbJumpTableAt b =
-      States.Recv.statesRecvRoAt b ∗
-        (Prost.MessageMerge.v1StateJumpTablesAt b ∗
-          statesFromPbJumpTableAt b ∗
-          statesIntoPbJumpTableAt b) by ac_rfl)) ?_
-  refine sepConj_mono_right ?_
-  refine Entails.sepExists_right _ (Entails.pure_right ?_ (Entails.refl _))
-  exact Entails.of_eq (by ac_rfl)
 
 @[simp, arm64_norm]
 theorem statesFromPb_noneCap_add_one_beq_zero :

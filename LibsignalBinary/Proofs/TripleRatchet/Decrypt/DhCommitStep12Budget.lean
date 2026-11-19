@@ -9,26 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.IfaceSimp
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvictBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitPackBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvictBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitPackBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitChain -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitPack -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded DH Step Commit Sub-Segments 1 & 2 (`+0x8ac → +0xa84`)
@@ -39,7 +42,7 @@ Defines the deterministic allocator event list `dhCommitStep12Events` (`PublicKe
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -71,11 +74,11 @@ open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (
 
 /-- Deterministic `AllocEvent` list emitted by `dhCommit` Steps 1 & 2 (`+0x8ac → +0xa84`):
     `PublicKey::serialize` (`33`B), `__rust_alloc(33, 1)`, and `ChainKey::to_pb` (`32`B). -/
-def dhCommitStep12Events : List AllocEvent :=
+@[expose] def dhCommitStep12Events : List AllocEvent :=
   publicKeySerializeEvents ++ rustAllocEvents 33 1 ++ chainKeyToPbEvents
 
 /-- Singleton allocation envelope for `dhCommit` Steps 1 & 2. -/
-def DhCommitStep12Env (evs : List AllocEvent) : Prop :=
+@[expose] def DhCommitStep12Env (evs : List AllocEvent) : Prop :=
   evs = dhCommitStep12Events
 
 theorem fitsEnv_dhCommitStep12_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :

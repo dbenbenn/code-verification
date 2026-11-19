@@ -150,21 +150,30 @@ structure AuxvValid (a : AuxvConfig) : Prop where
       `round_up(sizeof(struct rt_sigframe), 16) + 32 = 4688 + 32 = 4720 < MINSIGSTKSZ = 5120`). -/
   minsigstksz_bound : ∀ e ∈ a.extra, e.1 = 51#64 → e.2.toNat ≤ 524288
 
-/-- `S1`–`S5`: Linux AArch64 user stack geometry (`fs/binfmt_elf.c` `setup_arg_pages`,
+/-- `S1`–`S5`: Linux AArch64 user stack geometry (`fs/exec.c` `setup_arg_pages`,
+    `fs/binfmt_elf.c` `load_elf_binary`, `mm/vma.c` `acct_stack_growth`,
     `include/uapi/linux/resource.h` `_STK_LIM`, `arch/arm64/include/asm/processor.h`,
-    `arch/arm64/include/asm/elf.h`). -/
+    `arch/arm64/include/asm/elf.h`). `init.stackTop` models `vma->vm_end` *above* the populated
+    `[sp, stackTop)` `execve` entry image (`argc`/`argv`/`envp`/`auxv` words, `AT_RANDOM`,
+    `"aarch64\0"`, `argv`/`envp`/`execfn` strings, and top sentinel), and `init.stackSize` models
+    the `RLIMIT_STACK` window `[stackTop - stackSize, stackTop)` measured downward from `vm_end`
+    (`vma->vm_end - new_start ≤ rlimit(RLIMIT_STACK)` in `acct_stack_growth`), so `[sp, stackTop)`
+    is charged against `stackSize` and `[stackTop - stackSize, sp)` is the zero-mapped stack
+    headroom below initial `sp`. -/
 structure StackValid (init : ProcessInit) : Prop where
-  /-- `S1`: `stackTop` is 4 KiB page-aligned (`PAGE_ALIGN` in `setup_arg_pages`) and at most
-      `TASK_SIZE` (`2 ^ 48`, `arch/arm64/include/asm/processor.h` `TASK_SIZE_64`). -/
+  /-- `S1`: `stackTop` (`vma->vm_end` above `[sp, stackTop)`, `PAGE_ALIGN` in `fs/exec.c`
+      `setup_arg_pages`) is 4 KiB page-aligned and at most `TASK_SIZE` (`2 ^ 48`,
+      `arch/arm64/include/asm/processor.h` `TASK_SIZE_64`). -/
   top_aligned  : init.stackTop.toNat % Obj.pageSize = 0 ∧ init.stackTop.toNat ≤ TASK_SIZE
   /-- `S2`: `stackSize` is 4 KiB page-aligned and does not underflow `stackTop`. -/
   size_aligned : init.stackSize % Obj.pageSize = 0 ∧ init.stackSize ≤ init.stackTop.toNat
   /-- `S3`: `8 MiB` stack floor (`STK_LIM`, `include/uapi/linux/resource.h` `#define _STK_LIM
       (8*1024*1024)`), ensuring `argLimit init.stackSize ≤ init.stackSize / 4` (`fs/exec.c`
-      `bprm_stack_limits`) and leaving at least `6 MiB` of stack headroom below the initial
-      `execve` frame. -/
+      `bprm_stack_limits`) so that after charging the `[sp, stackTop)` `execve` entry image
+      against `[stackTop - stackSize, stackTop)` (`mm/vma.c` `acct_stack_growth`), nearly `6 MiB`
+      (`> 5.99 MiB`) of `[stackTop - stackSize, sp)` stack headroom remains below initial `sp`. -/
   size_floor   : STK_LIM ≤ init.stackSize
-  /-- `S4`: `128 MiB` stack ceiling (`STACK_SIZE_MAX = 16 * STK_LIM`; `fs/binfmt_elf.c`
+  /-- `S4`: `128 MiB` stack ceiling (`STACK_SIZE_MAX = 16 * STK_LIM`; `fs/exec.c`
       `setup_arg_pages` `rlim_stack` cap), ensuring the eagerly mapped initial user stack does
       not consume the user virtual address space. -/
   size_ceil    : init.stackSize ≤ STACK_SIZE_MAX
@@ -177,16 +186,19 @@ structure StackValid (init : ProcessInit) : Prop where
     - `E1` (post-`execve` inherited signal state in `ElfImage.loadState`): Linux `execve` resets
       caught signal handlers to `SIG_DFL` (`flush_signal_handlers` in `fs/exec.c:1303`,
       `kernel/signal.c:526`) and zeroes `sas_ss_sp` and `sas_ss_size` (`fs/exec.c:1260`), but
-      preserves parent `SIG_IGN` dispositions and the parent's raw `sas_ss_flags` word (inherited
+      preserves parent `SIG_IGN` dispositions, the parent's raw `sas_ss_flags` word (inherited
       verbatim across `fork`, which calls `sas_ss_reset` only for `CLONE_VM` threads in
-      `kernel/fork.c:2381-2382`); `ElfImage.loadState` models standard un-ignored parent signal
-      state by initializing `sigActions := fun _ => {}` (`SIG_DFL`, no inherited `SIG_IGN`) and
+      `kernel/fork.c:2381-2382`), the blocked signal mask (`current->blocked`), and any pending
+      signals (`pending`). `ElfImage.loadState` models standard un-ignored, unblocked parent
+      signal state by initializing `sigActions := fun _ => {}` (`SIG_DFL`, no inherited `SIG_IGN`),
       `sigAltStack := {}` (raw `sas_ss_flags = 0`, as for a process tree that never set an
       alternate stack or last set one with `ss_flags = 0`; `sigaltstack` queries report
       `ss_flags = SS_DISABLE = 2` via `sas_ss_flags` in `include/linux/sched/signal.h:602-608`
-      since `sas_ss_size = 0`). The raw flags are observable: `sigaltstack(&{0, 0, 0}, _)` takes
-      the unchanged-settings early return in `do_sigaltstack` (`kernel/signal.c:4486-4493`) and
-      succeeds, whereas under an inherited `SS_DISABLE` it would return `-ENOMEM`. -/
+      since `sas_ss_size = 0`), `sigMask := 0#64` (empty blocked mask), and `sigPending := 0#64`
+      (empty pending set). Both the raw alternate-stack flags and the inherited blocked mask are
+      observable (`sigaltstack(&{0, 0, 0}, _)` takes the unchanged-settings early return in
+      `do_sigaltstack` at `kernel/signal.c:4486-4493` rather than returning `-ENOMEM`, and
+      `rt_sigprocmask(SIG_BLOCK, NULL, &old, 8)` reads back `sigMask`). -/
 def ProcessInit.Valid (init : ProcessInit) : Prop :=
   AuxvValid init.auxv ∧ StackValid init
 

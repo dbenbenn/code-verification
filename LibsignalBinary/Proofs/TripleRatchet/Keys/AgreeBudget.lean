@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Heap.IfaceBudgetLemmas
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `<PrivateKey>::calculate_agreement`
@@ -27,7 +28,7 @@ Proves `[LibsignalPlacement]` `RustCliAllocBudget` contracts (`calculateAgreemen
 `calculateAgreementSpecX`) for `<PrivateKey>::calculate_agreement`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,7 +47,7 @@ open CryptoVerification.RustHeap (LayoutOk allocHookStack)
 open CryptoVerification.LibsignalTripleRatchet
   (CalculateAgreementGhost calculateAgreement calculateAgreementResultAt
    calculateAgreementStack calculateAgreementStackX diffieHellmanSpec
-   keys_ls_hook_ok_of_mem withLsCodeRoLoaded zeroizeSecretSpec)
+   keys_ls_hook_ok_of_mem withLsCodeRoLoaded withStack zeroizeSecretSpec)
 open CryptoVerification.LibsignalTripleRatchet.Keys
   (LsFrozenInv SepWP.done_frozen SepWP.of_sepWP_lscro SepWPp.of_sepWP_lscro SepWPp.rw_pre
    calculateAgreementResultAt_some_intro calculateAgreement_eq_none calculateAgreement_eq_some
@@ -55,9 +56,9 @@ open CryptoVerification.LibsignalTripleRatchet.Keys
    lsDhSym lsRodataCst32Sym lsRustAllocSym lsRustNoAllocShimSym lsSharedDropSym lsStaticDropSym
    memRegion_24_err memRegion_24_ok memRegion_32_cells memRegion_32_view1_sp
    pointsToBytes_entails_memRegion_of_eq rejoin_stack_calculateAgreementAt
-   stackAt_calculateAgreementAt_split stackAt_calculateAgreementExt_split
+   stackAt_calculateAgreementAt_split stackAt_calculateAgreementExt_split stackAt_split_subStack
    stur_q0_reframe_sp subroutine_ok_withLsCodeRoLoaded_rodata''
-   vec32_view1 vec32_view1_to_view2 vec32_view2)
+   vec32_view1 vec32_view1_to_view2 vec32_view2 withLsRet624)
 open scoped CryptoVerification.LibsignalTripleRatchet.Keys
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv FitsEvents PoolPreserved
@@ -90,19 +91,20 @@ private theorem SepWP.sync_pool {M : AllocCostModel}
   rw [hf, ← A.pool_of_vmPreserved hvm]
   exact hk
 
-def dhPlacedCallSpec (pl : Obj.MultiPlacement) (X : X25519Fn) (subStack : Nat) :
+@[expose] def dhPlacedCallSpec [LibsignalPlacement] (pl : Obj.MultiPlacement) (X : X25519Fn)
+    (subStack : Nat) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64 × List.Vector (BitVec 8) 32 ×
       BitVec 64 × BitVec 64) where
   pre := fun (secA, sec, pubA, pub, ret, sp) s =>
     ⌜LsFrozenInv pl s ∧ s.readReg64 .x0 = secA ∧ s.readReg64 .x1 = pubA ∧
-      s.readReg64 .x8 = ret ∧ s.sp = sp⌝ ∗
+      s.readReg64 .x8 = ret ∧ s.sp = sp ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗
       (secA ↦ₛ sec.toList) ∗ (pubA ↦ₛ pub.toList) ∗ memRegion ret 32 ∗ stackAt sp subStack
   post := fun (secA, sec, pubA, pub, ret, sp) s0 sf =>
     ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗
       (secA ↦ₛ sec.toList) ∗ (pubA ↦ₛ pub.toList) ∗ (ret ↦ₛ (X sec pub).toList) ∗
       stackAt sp subStack
 
-def zeroizePlacedCallSpec (pl : Obj.MultiPlacement) (subStack : Nat) :
+@[expose] def zeroizePlacedCallSpec (pl : Obj.MultiPlacement) (subStack : Nat) :
     Spec (BitVec 64 × BitVec 64) where
   pre := fun (a, sp) s =>
     ⌜LsFrozenInv pl s ∧ s.readReg64 .x0 = a ∧ s.sp = sp⌝ ∗ memRegion a 32 ∗ stackAt sp subStack
@@ -110,7 +112,7 @@ def zeroizePlacedCallSpec (pl : Obj.MultiPlacement) (subStack : Nat) :
     ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗
       (a ↦ₛ List.replicate 32 0#8) ∗ stackAt sp subStack
 
-def ctEqPlacedCallSpec (pl : Obj.MultiPlacement) (subStack : Nat) :
+@[expose] def ctEqPlacedCallSpec (pl : Obj.MultiPlacement) (subStack : Nat) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p1, k1, p2, k2, sp) s =>
     ⌜LsFrozenInv pl s ∧ s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp ∧
@@ -121,11 +123,11 @@ def ctEqPlacedCallSpec (pl : Obj.MultiPlacement) (subStack : Nat) :
       sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗
       (p1 ↦ₛ k1) ∗ (p2 ↦ᵣ k2) ∗ stackAt sp subStack
 
-def shimPlacedCallSpec (pl : Obj.MultiPlacement) (subStack : Nat) : Spec (BitVec 64) where
+@[expose] def shimPlacedCallSpec (pl : Obj.MultiPlacement) (subStack : Nat) : Spec (BitVec 64) where
   pre := fun sp s => ⌜LsFrozenInv pl s ∧ s.sp = sp⌝ ∗ stackAt sp subStack
   post := fun sp s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗ stackAt sp subStack
 
-def allocPlacedCallSpec [LibsignalPlacement] (pl : Obj.MultiPlacement) (M : AllocCostModel)
+@[expose] def allocPlacedCallSpec [LibsignalPlacement] (pl : Obj.MultiPlacement) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (subStack : Nat) :
     Spec (Nat × Nat × M.σ × BitVec 64) where
   pre := fun (size, align, st, sp) s =>
@@ -140,22 +142,27 @@ def allocPlacedCallSpec [LibsignalPlacement] (pl : Obj.MultiPlacement) (M : Allo
       A.repAlloc.live (sf.readReg64 .x0) size align ∗ memRegion (sf.readReg64 .x0) size ∗
       A.pool lim (M.stepEvents (rustAllocEvents size align) st) sf ∗ stackAt sp subStack
 
-private theorem dhPlacedCallAt_of_raw {pl : Obj.MultiPlacement} {X : X25519Fn}
-    {subStack : Nat} {prog : Program} {entry : BitVec 64}
-    (h : subroutine_ok prog entry (withVmPreserved (diffieHellmanSpec X))) :
+private theorem dhPlacedCallAt_of_raw [LibsignalPlacement] {pl : Obj.MultiPlacement} {X : X25519Fn}
+    {stk subStack : Nat} {prog : Program} {entry : BitVec 64}
+    (hlo : stk ≤ subStack) (hhi : subStack ≤ 2 ^ 64)
+    (h : subroutine_ok prog entry (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec X) stk)))) :
     subroutine_ok prog entry (dhPlacedCallSpec pl X subStack) := by
   refine subroutine_ok_map h ?_
   rintro ⟨secA, sec, pubA, pub, ret, sp⟩ R s0 hpre
   dsimp only [dhPlacedCallSpec] at hpre
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨_, hx0, hx1, hx8, hsp⟩, hpre⟩
+  rcases hpre with ⟨⟨_, hx0, hx1, hx8, hsp, hlr⟩, hpre⟩
   subst hsp
-  refine ⟨(secA, sec, pubA, pub, ret), stackAt s0.sp subStack ∗ R, ?_, ?_⟩
-  · dsimp only [withVmPreserved, diffieHellmanSpec]
+  rw [stackAt_split_subStack s0.sp hlo hhi] at hpre
+  refine ⟨(secA, sec, pubA, pub, ret),
+    stackAt (s0.sp - BitVec.ofNat 64 stk) (subStack - stk) ∗ R, ?_, ?_⟩
+  · dsimp only [withLsRet624, withVmPreserved, withStack, diffieHellmanSpec]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx8⟩, by arm64_sep_close⟩
+    exact ⟨hlr, ⟨hx0, hx1, hx8⟩, by arm64_sep_close⟩
   · intro sf hpost
-    dsimp only [withVmPreserved, diffieHellmanSpec, dhPlacedCallSpec] at hpost ⊢
+    dsimp only [withLsRet624, withVmPreserved, withStack, diffieHellmanSpec,
+      dhPlacedCallSpec] at hpost ⊢
+    rw [stackAt_split_subStack s0.sp hlo hhi]
     simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
     rcases hpost with ⟨hvm, htr, hpost⟩
     exact ⟨⟨htr, hvm⟩, by arm64_sep_close⟩
@@ -489,7 +496,7 @@ theorem calculateAgreement_placed_ok_of_contracts [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {X : X25519Fn} {H : String → Option (State → State)}
     (h_dh : subroutine_ok ((blkPC_207).rebase (blkPl_207).base H) (lsρ lsDhSym)
-      (withVmPreserved (diffieHellmanSpec X)))
+      (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec X) 1808))))
     (h_shdrop : subroutine_ok ((blkPC_207).rebase (blkPl_207).base H) (lsρ lsSharedDropSym)
       (withVmPreserved zeroizeSecretSpec))
     (hct : subroutine_ok ((blkPC_207).rebase (blkPl_207).base H) (lsmpl.base 213)
@@ -503,7 +510,7 @@ theorem calculateAgreement_placed_ok_of_contracts [LibsignalPlacement]
     subroutine_ok ((blkPC_207).rebase (blkPl_207).base H) (blkPl_207).base
       (withLsCodeRoLoaded lsmpl (calculateAgreementSpec M A lim X)) :=
   calculateAgreement_placed_ok_of_hooks_gen (subStack := allocHookStack) (by decide)
-    (dhPlacedCallAt_of_raw h_dh)
+    (dhPlacedCallAt_of_raw (by decide) (by decide) h_dh)
     (zeroizePlacedCallAt_of_raw h_shdrop)
     (ctEqPlacedCallAt_of_withLsCodeLoaded hct)
     (shimPlacedCallAt_of_raw h_shim)
@@ -514,7 +521,7 @@ theorem calculateAgreement_placed_ok_of_contracts [LibsignalPlacement]
 theorem calculateAgreement_placed_ok [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {X : X25519Fn} {H : String → Option (State → State)}
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (hct : subroutine_ok ((blkPC_207).rebase (blkPl_207).base H) (lsmpl.base 213)
       (withLsCodeLoaded lsmpl ctEqSliceROSpec))
@@ -564,7 +571,7 @@ theorem subroutine_ok_calculateAgreementSpecX_of_calculateAgreementSpec
 theorem calculateAgreement_placed_ok_x [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {X : X25519Fn} {H : String → Option (State → State)}
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (hct : subroutine_ok ((blkPC_207).rebase (blkPl_207).base H) (lsmpl.base 213)
       (withLsCodeLoaded lsmpl ctEqSliceROSpec))

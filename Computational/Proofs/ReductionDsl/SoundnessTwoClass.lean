@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 
 /-!
 # Two-Class Static Query Bounds
@@ -18,7 +18,7 @@ Refines `CostedReduction.queryBound_eval` by charging at most `m` heavy game que
 queries each and all remaining game queries `kL ≤ kH`.
 -/
 
-@[expose] public section
+public section
 
 namespace ReductionDsl
 
@@ -112,7 +112,7 @@ theorem simulateQ_run_StateT_of_step_le₂ {κ : Type} {spec : OracleSpec κ} {�
       · simp only [hp, hp2, ite_false]
         omega
 
-def onGame {κ : Type} {G : OracleSpec κ} (h : κ → Prop) : (unifSpec + G).Domain → Prop
+@[expose] def onGame {κ : Type} {G : OracleSpec κ} (h : κ → Prop) : (unifSpec + G).Domain → Prop
   | .inl _ => False
   | .inr t => h t
 

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
-public import Symbolic.Proofs.Swarm.CREF.OpkRelC
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.SHARED.SpqrBytesDefs
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
@@ -23,7 +23,7 @@ Defines `RecvAcceptContractPure`, `CReadyPure`, and `RpkAcceptHypsPure` over `Pu
 `COpkRelC`, shared across new-session and session-overwrite pre-key proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,7 +59,7 @@ structure RecvAcceptContractPure (interpretation : ExternInterpretation) (r : Pr
   baseKey_ok : ((p.baseKey.take 33).drop 1).length = 32 ∧
     DY.X25519.leValue (((p.baseKey.take 33).drop 1).map BitVec.toNat) < DY.X25519.p25519 ∧
     DY.X25519.isLowOrderKey (((p.baseKey.take 33).drop 1).map BitVec.toNat) = false ∧
-    X25519TorsionFree interpretation ((p.baseKey.take 33).drop 1)
+    X25519TorsionFree ((p.baseKey.take 33).drop 1)
   ratchetKey_ok :
     DY.X25519.isLowOrderKey (p.inner.senderRatchetKey.bytes.toList.map BitVec.toNat) = false
   mac_eq : ∀ S : OpaqueSymbolSemantics,
@@ -77,7 +77,7 @@ structure RecvAcceptContractPure (interpretation : ExternInterpretation) (r : Pr
          (TR.bobSaltSeedBytes interpretation r S p ct_wire).2).take 16] = some pt
 
 /-- Bundled pre-state invariants `(Clean, PureCRel, COpkRelC)` before a pre-key receive step. -/
-def CReadyPure (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def CReadyPure (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool)
     (records : Participant → Option HwBytes) (sent accepted : List HwBytes)
     (opkUsed : Bool) (acc : List MachineEvent) : Prop :=

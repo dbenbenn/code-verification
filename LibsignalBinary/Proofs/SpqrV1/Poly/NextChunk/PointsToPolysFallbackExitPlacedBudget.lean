@@ -10,26 +10,30 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst30PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstLoopPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstLoopPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackExit
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackExitPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSetupPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst30PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConst5PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstLoopPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstLoopPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysConstPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackExit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackExitPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSetupPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackLoopPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Rodata
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackLoopPlaced
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Placed Fallback Exit and Unified Basis
@@ -40,7 +44,7 @@ Relocatable `[LibsignalPlacement]` verification of `lagrangeBasisExit_placed_sep
 `BasisPosEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -165,7 +169,7 @@ attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
 /-- Exact allocator event sequence of the precomputed constant basis paths (`n ∈ {1, 3, 5, 30, 34, 36}`,
     `+1136..+2608`): `24 * k` bytes (align `8`) for `basisPtr`, `k` polynomial buffers of `2 * k`
     bytes (align `2`), and `2 * k` bytes (align `2`) for `accPtr`. -/
-def constBasisEvents (k : Nat) : List AllocEvent :=
+@[expose] def constBasisEvents (k : Nat) : List AllocEvent :=
   rustAllocEvents (24 * k) 8 ++ (List.replicate (k + 1) (rustAllocEvents (2 * k) 2)).flatten
 
 theorem constBasisEvents_1 : constBasisEvents 1 = basisN1Events := rfl
@@ -178,16 +182,16 @@ theorem constBasisEvents_36 : constBasisEvents 36 = basisN36Events := rfl
 /-- Event envelope of `lagrangeBasisExit_placed_sepWPp` (`+4116..+2608`, Block `416`):
     `k` `FallbackBasisStepEnv k` iterations (including `xsPtr` deallocation absorbed into the
     trailing `FreeOnlyEvs`), followed by `accPtr` allocation (`2 * k` bytes, align `2`). -/
-def FallbackBasisExitEnv (k : Nat) : List AllocEvent → Prop :=
+@[expose] def FallbackBasisExitEnv (k : Nat) : List AllocEvent → Prop :=
   SeqEnv (RepeatSeqEnv k (FallbackBasisStepEnv k))
     (SeqEnv (· = rustAllocEvents (2 * k) 2) FreeOnlyEvs)
 
 /-- Event envelope of `basis_fallback_placed_sepWPp` (`+1136..+2608`, Block `416`). -/
-def FallbackBasisEnv (k : Nat) : List AllocEvent → Prop :=
+@[expose] def FallbackBasisEnv (k : Nat) : List AllocEvent → Prop :=
   SeqEnv (AllocXsAndBasisEnv k) (FallbackBasisExitEnv k)
 
 /-- Unified event envelope of `basis_pos_placed_sepWPp` (`+1136..+2608`, Block `416`) for `k > 0`. -/
-def BasisPosEnv (k : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BasisPosEnv (k : Nat) (evs : List AllocEvent) : Prop :=
   if isPrecomputedBasisLen k then
     evs = constBasisEvents k
   else

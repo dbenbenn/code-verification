@@ -10,7 +10,11 @@ limitations under the License.
 module
 
 public import Computational.Proofs.E2E.HaltedSpkDefs
-public import Computational.Proofs.E2E.SpkHop1InitBridge
+import Computational.Proofs.E2E.SpkHop1InitBridge
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop1A -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop1Phases01 -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop1Phases01B -- proof-setup: allow-public-import
 
 /-!
 # Tracker-Halted Hop-1 SPK Evaluators
@@ -20,7 +24,7 @@ Defines the `KemFailSessionTrack`-carrying SPK evaluators (`runSpkTabTrack`, `ru
 commutation for halted sends, and bounds `runSpkTabTrack` against `runSpkRefTrack`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -74,7 +78,7 @@ abbrev SpkTabTrackSt (F : ShaCompress) (Pt : Type) (ℓ : ℕ) :=
 abbrev SpkRefTrackSt (F : ShaCompress) (Pt : Type) (ℓ : ℕ) :=
   SpkRefSt Pt ℓ × KemFailSessionTrack F Bytes
 
-def spkStepImplTrack {ℓ : ℕ} (P : Params Bytes (BitVec 512)) (K : MlKem)
+@[expose] def spkStepImplTrack {ℓ : ℕ} (P : Params Bytes (BitVec 512)) (K : MlKem)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256) :
     QueryImpl (unifSpec + spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -105,7 +109,7 @@ def spkStepImplTrack {ℓ : ℕ} (P : Params Bytes (BitVec 512)) (K : MlKem)
       let (res, stL') ← (liftSpkTab (corrR (configRefuseEarlyBobCorr decT encT) x)).run stL
       return (res, (stL', tr))
 
-def spkRefImplTrack {ℓ : ℕ} (P : Params Bytes (BitVec 512)) (K : MlKem)
+@[expose] def spkRefImplTrack {ℓ : ℕ} (P : Params Bytes (BitVec 512)) (K : MlKem)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256) :
     QueryImpl (unifSpec + spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -136,7 +140,7 @@ def spkRefImplTrack {ℓ : ℕ} (P : Params Bytes (BitVec 512)) (K : MlKem)
       let (res, stR') ← (corrSpkRef ℓ decT encT x).run stR
       return (res, (stR', tr))
 
-def spkBadImplTrack {ℓ : ℕ} (P : Params Bytes (BitVec 512)) (K : MlKem)
+@[expose] def spkBadImplTrack {ℓ : ℕ} (P : Params Bytes (BitVec 512)) (K : MlKem)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256) :
     QueryImpl (unifSpec + spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -167,7 +171,7 @@ def spkBadImplTrack {ℓ : ℕ} (P : Params Bytes (BitVec 512)) (K : MlKem)
       let (res, stB') ← (corrSpkRef ℓ decT encT x).run stB
       return (res, (stB', tr))
 
-def runSpkTabTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : MlKem)
+@[expose] def runSpkTabTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : MlKem)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256)
     (oa : OracleComp (unifSpec + spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) β)
@@ -176,7 +180,7 @@ def runSpkTabTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : 
   let (b', ((fin, _), _)) ← (simulateQ (spkStepImplTrack P K Dh encT decT qep s) oa).run ((st, L), tr)
   return post b' fin
 
-def runSpkRefTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : MlKem)
+@[expose] def runSpkRefTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : MlKem)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256)
     (oa : OracleComp (unifSpec + spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) β)
@@ -186,7 +190,7 @@ def runSpkRefTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : 
     (simulateQ (spkRefImplTrack P K Dh encT decT qep s) oa).run ((sRef, L, abort), tr)
   return (abort' || post b' fin)
 
-def runSpkBadTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : MlKem)
+@[expose] def runSpkBadTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : MlKem)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256)
     (oa : OracleComp (unifSpec + spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) β)
@@ -196,7 +200,7 @@ def runSpkBadTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : 
     (simulateQ (spkBadImplTrack P K Dh encT decT qep s) oa).run ((st, L, bad), tr)
   return bad'
 
-def runSpkCombTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : MlKem)
+@[expose] def runSpkCombTrack {ℓ : ℕ} {β : Type} (P : Params Bytes (BitVec 512)) (K : MlKem)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (qep : ℕ) (s : BitVec 256)
     (oa : OracleComp (unifSpec + spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) β)

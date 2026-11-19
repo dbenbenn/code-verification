@@ -272,7 +272,7 @@ pub struct TargetSymbolIndex {
     pub obj_name: String,
     /// Lean `Code` definition name (e.g. `"myLibCode"`).
     pub code_def: String,
-    /// Lean `LinkedImage` definition name (e.g. `"myLibImage"`).
+    /// Lean object/image definition name (e.g. `"myLibImage"`).
     pub objs_expr: String,
     /// Root namespace prefix.
     pub namespace_prefix: String,

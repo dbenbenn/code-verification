@@ -93,13 +93,13 @@ local macro "hb_wp_simp" : tactic => `(tactic|
 
 /-- Non-VM process fields preserved across non-signal, non-altstack startup steps. -/
 def HbNonVmFields (s0 sf : State) : Prop :=
-  sf.fs = s0.fs ∧ sf.trace = s0.trace ∧ sf.tpidrEl0 = s0.tpidrEl0 ∧ sf.sigActions = s0.sigActions ∧ sf.sigAltStack = s0.sigAltStack
+  sf.fs = s0.fs ∧ sf.trace = s0.trace ∧ sf.tpidrEl0 = s0.tpidrEl0 ∧ sf.sigActions = s0.sigActions ∧ sf.sigAltStack = s0.sigAltStack ∧ sf.sigPending = s0.sigPending
 
-theorem HbNonVmFields.rfl (s : State) : HbNonVmFields s s := ⟨_root_.rfl, _root_.rfl, _root_.rfl, _root_.rfl, _root_.rfl⟩
+theorem HbNonVmFields.rfl (s : State) : HbNonVmFields s s := ⟨_root_.rfl, _root_.rfl, _root_.rfl, _root_.rfl, _root_.rfl, _root_.rfl⟩
 theorem HbNonVmFields.trans {s0 s1 s2 : State} (h01 : HbNonVmFields s0 s1) (h12 : HbNonVmFields s1 s2) : HbNonVmFields s0 s2 :=
-  ⟨h12.1.trans h01.1, h12.2.1.trans h01.2.1, h12.2.2.1.trans h01.2.2.1, h12.2.2.2.1.trans h01.2.2.2.1, h12.2.2.2.2.trans h01.2.2.2.2⟩
-theorem HbNonVmFields.of_std {s0 sf : State} (h : StdStatePreserved s0 sf) (hsas : sf.sigAltStack = s0.sigAltStack) : HbNonVmFields s0 sf :=
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, hsas⟩
+  ⟨h12.1.trans h01.1, h12.2.1.trans h01.2.1, h12.2.2.1.trans h01.2.2.1, h12.2.2.2.1.trans h01.2.2.2.1, h12.2.2.2.2.1.trans h01.2.2.2.2.1, h12.2.2.2.2.2.trans h01.2.2.2.2.2⟩
+theorem HbNonVmFields.of_std {s0 sf : State} (h : StdStatePreserved s0 sf) (hsas : sf.sigAltStack = s0.sigAltStack) (hsp : sf.sigPending = s0.sigPending) : HbNonVmFields s0 sf :=
+  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, hsas, hsp⟩
 
 @[local simp] private theorem hbNonVm_w64_r (a b : State) (r : Reg) (v : BitVec 64) : HbNonVmFields a (b.writeReg64 r v) ↔ HbNonVmFields a b := by cases r <;> rfl
 @[local simp] private theorem hbNonVm_w64_l (a b : State) (r : Reg) (v : BitVec 64) : HbNonVmFields (a.writeReg64 r v) b ↔ HbNonVmFields a b := by cases r <;> rfl
@@ -117,10 +117,12 @@ theorem HbNonVmFields.of_std {s0 sf : State} (h : StdStatePreserved s0 sf) (hsas
 @[local simp] private theorem hbNonVm_excl_l (a b : State) : HbNonVmFields a.stepExclOracle b ↔ HbNonVmFields a b := by cases a; rfl
 @[local simp] private theorem hbNonVm_exclLoop_r (a b : State) : HbNonVmFields a b.stepExclLoop ↔ HbNonVmFields a b := by cases b; rfl
 @[local simp] private theorem hbNonVm_exclLoop_l (a b : State) : HbNonVmFields a.stepExclLoop b ↔ HbNonVmFields a b := by cases a; rfl
+@[local simp] private theorem hbNonVm_setSigMask_r (a b : State) (m : BitVec 64) : HbNonVmFields a (b.setSigMask m) ↔ HbNonVmFields a b := Iff.rfl
+@[local simp] private theorem hbNonVm_setSigMask_l (a b : State) (m : BitVec 64) : HbNonVmFields (a.setSigMask m) b ↔ HbNonVmFields a b := Iff.rfl
 
 local macro "hb_nv_rfl " s:term : tactic => `(tactic|
   (simp only [hbNonVm_w64_r, hbNonVm_w32_r, hbNonVm_pc_r, hbNonVm_mem_r, hbNonVm_ps_r,
-    hbNonVm_adv_r, hbNonVm_excl_r, hbNonVm_exclLoop_r]
+    hbNonVm_adv_r, hbNonVm_excl_r, hbNonVm_exclLoop_r, hbNonVm_setSigMask_r]
    exact HbNonVmFields.rfl $s))
 
 section
@@ -386,8 +388,8 @@ theorem step_hb_poll_stdio3 {P : Program} {L : StdBinaryLayout} {target_pc ret_p
       simp only [State.mem_setPC, State.mem_writeReg64]; simp only [wp_norm, arm64_norm, bv_lin_norm, BitVec.ofNat_eq_ofNat] at hm
       rw [← h24, ← h32] at hm; rw [stdioPollfds_eq_bytes ufds, stackAt_split_cells s.sp 0x20 4 (by decide)]; fold_stack_cells) ?_
   have hnv02 : HbNonVmFields s s2 := by
-    unfold HbNonVmFields at hnv2 ⊢; rcases hnv2 with ⟨hfs, htr, htp, hsa, hsas⟩
-    simp only [wp_norm, arm64_norm] at hfs htr htp hsa hsas ⊢; exact ⟨hfs, htr, htp, hsa, hsas⟩
+    unfold HbNonVmFields at hnv2 ⊢; rcases hnv2 with ⟨hfs, htr, htp, hsa, hsas, hspnd⟩
+    simp only [wp_norm, arm64_norm] at hfs htr htp hsa hsas hspnd ⊢; exact ⟨hfs, htr, htp, hsa, hsas, hspnd⟩
   refine hnext _ (by simp [wp_norm, arm64_norm]) (by simp [wp_norm, arm64_norm, hrun2])
     (by simp [wp_norm, arm64_norm]) (by simpa [State.spAligned, wp_norm, arm64_norm, hsp_end] using hsp_align)
     ?_ (by simp [wp_norm, arm64_norm, hx0_2]) (hnv02.trans (by hb_nv_rfl s2))
@@ -458,16 +460,25 @@ private theorem step_svc_rt_sigprocmask_unblock {P : Program} {target_pc pc setA
     (hfetch : P.fetch pc = some (.system false 0#16)) (hx8 : s.readReg64 .x8 = 135#64) (hx0 : s.readReg32 .x0 = 1#32)
     (hx1 : s.readReg64 .x1 = setAddr) (hx2 : s.readReg64 .x2 = 0#64) (hx3 : s.readReg64 .x3 = 8#64)
     (hset_ne : setAddr ≠ 0#64) (hset_fit : setAddr.toNat + 8 ≤ 2 ^ 64)
-    (hnext : SepWP P target_pc ((s.writeReg64 .x0 0#64).setPC (pc + 4#64)) ((setAddr ↦₆₄ maskVal) ∗ F) post oom) :
+    (hpending : s.sigPending = 0#64)
+    (hnext : SepWP P target_pc
+      (((s.setSigMask (s.sigMask &&& ~~~maskVal &&& ~~~SIG_UNBLOCKABLE_MASK)).writeReg64
+        .x0 0#64).setPC (pc + 4#64))
+      ((setAddr ↦₆₄ maskVal) ∗ F) post oom) :
     SepWP P target_pc s ((setAddr ↦₆₄ maskVal) ∗ F) post oom := by
   unfold SepWP; intro R hm
   have hm' : s.mem ⊨ (setAddr ↦₆₄ maskVal) ∗ (F ∗ R) := by rw [← sepConj_assoc]; exact hm
   have hcr : s.mem.canRead setAddr 8 = true := (IsBlock.pointsTo64 setAddr maskVal).canRead (by decide) hm'
   have hall : s.mem.allPerm (·.r) setAddr 8 = true := Memory.allPerm_r_of_canRead hcr
+  have hread : s.mem.read64 setAddr = maskVal := (IsBlock.pointsTo64 setAddr maskVal).read hm'
   have hne_b : (setAddr != 0#64) = true := bne_iff_ne.mpr hset_ne
+  have heq_f : (setAddr == 0#64) = false := beq_eq_false_iff_ne.mpr hset_ne
   apply reaches_pc_step hrun (hpc.symm ▸ hfetch); rw [hb_evalSvc_rt_sigprocmask hsvc hx8]
-  have hev : execRtSigprocmask s = (s.writeReg64 .x0 0#64).setPC (pc + 4#64) := by
-    simp [execRtSigprocmask, hx0, hx1, hx2, hx3, hne_b, hset_fit, hcr, hall, State.advancePC, State.setPC, State.writeReg64, hpc]
+  have hev : execRtSigprocmask s =
+      ((s.setSigMask (s.sigMask &&& ~~~maskVal &&& ~~~SIG_UNBLOCKABLE_MASK)).writeReg64
+        .x0 0#64).setPC (pc + 4#64) := by
+    simp [execRtSigprocmask, hx0, hx1, hx2, hx3, hne_b, heq_f, hset_fit, hcr, hall, hread,
+      hpending, State.advancePC, State.setPC, State.writeReg64, State.setSigMask, hpc]
   rw [hev]; unfold SepWP at hnext; exact hnext R hm
 
 private theorem hb_step_stxr32_either {prog : Program} {target_pc pc ea : BitVec 64} {s : State} {F : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
@@ -562,8 +573,8 @@ private theorem step_hb_sigaltstack_probe {P : Program} {L : StdBinaryLayout} {s
       simp only [State.mem_setPC, State.mem_writeReg64]; simp only [wp_norm, arm64_norm, bv_lin_norm, BitVec.ofNat_eq_ofNat] at hm
       rw [← h08, ← h16] at hm; rw [stackAt_split_cells s.sp 0x20 2 (by decide)]; fold_stack_cells) ?_
   have hnv02 : HbNonVmFields s s2 := by
-    unfold HbNonVmFields at hnv2 ⊢; rcases hnv2 with ⟨hfs, htr, htp, hsa, hsas⟩
-    simp only [wp_norm, arm64_norm] at hfs htr htp hsa hsas ⊢; exact ⟨hfs, htr, htp, hsa, hsas⟩
+    unfold HbNonVmFields at hnv2 ⊢; rcases hnv2 with ⟨hfs, htr, htp, hsa, hsas, hspnd⟩
+    simp only [wp_norm, arm64_norm] at hfs htr htp hsa hsas hspnd ⊢; exact ⟨hfs, htr, htp, hsa, hsas, hspnd⟩
   refine hnext _ (by simp [wp_norm, arm64_norm]) (by simp [wp_norm, arm64_norm, hrun2])
     (by simp [wp_norm, arm64_norm]) (by simpa [State.spAligned, wp_norm, arm64_norm, hsp_end] using hsp_align)
     ?_ (by simp [wp_norm, arm64_norm, hx0_2]) (hnv02.trans (by hb_nv_rfl s2))
@@ -639,10 +650,10 @@ private theorem step_hb_sigaltstack_install {P : Program} {L : StdBinaryLayout} 
       rw [← h08, ← h16] at hm; rw [stackAt_split_cells s.sp 0x20 2 (by decide)]; fold_stack_cells) ?_
   have hnv02 : HbNonVmFields (s.setSigAltStack { sp := ssSp, size := ssSize, ssFlags := 0#32 }) s2 := by
     unfold HbNonVmFields at hnv1 hnv2 ⊢
-    rcases hnv1 with ⟨hfs1, htr1, htp1, hsa1, _⟩
-    rcases hnv2 with ⟨hfs2, htr2, htp2, hsa2, hsas2⟩
-    simp only [wp_norm, arm64_norm, State.setSigAltStack] at hfs2 htr2 htp2 hsa2 hsas2 ⊢
-    exact ⟨hfs2.trans hfs1, htr2.trans htr1, htp2.trans htp1, hsa2.trans hsa1, hsas2⟩
+    rcases hnv1 with ⟨hfs1, htr1, htp1, hsa1, _, hspnd1⟩
+    rcases hnv2 with ⟨hfs2, htr2, htp2, hsa2, hsas2, hspnd2⟩
+    simp only [wp_norm, arm64_norm, State.setSigAltStack] at hfs2 htr2 htp2 hsa2 hsas2 hspnd2 ⊢
+    exact ⟨hfs2.trans hfs1, htr2.trans htr1, htp2.trans htp1, hsa2.trans hsa1, hsas2, hspnd2.trans hspnd1⟩
   refine hnext _ (by simp [wp_norm, arm64_norm]) (by simp [wp_norm, arm64_norm, hrun2])
     (by simp [wp_norm, arm64_norm]) (by simpa [State.spAligned, wp_norm, arm64_norm, hsp_end] using hsp_align)
     ?_ (by simp [wp_norm, arm64_norm, hx0_2]) (hnv02.trans (by hb_nv_rfl s2))
@@ -669,7 +680,7 @@ theorem hbNonVm_applyOptSig {s0 s1 : State} {actOpt : Option (BitVec 32 × SigAc
     (h : HbNonVmFields s0 s1) : HbNonVmFields (applyOptSig actOpt s0) (applyOptSig actOpt s1) := by
   cases actOpt with
   | none => exact h
-  | some p => exact ⟨h.1, h.2.1, h.2.2.1, by dsimp [applyOptSig, State.setSigAction]; rw [h.2.2.2.1], h.2.2.2.2⟩
+  | some p => exact ⟨h.1, h.2.1, h.2.2.1, by dsimp [applyOptSig, State.setSigAction]; rw [h.2.2.2.1], h.2.2.2.2.1, h.2.2.2.2.2⟩
 
 /-- Shared `sigaction` fast-path wrapper (`L.sigactionAddr`, `sig ∈ {13, 11, 7}`) around `__libc_sigaction`. -/
 theorem step_hb_sigaction_wrap {P : Program} {L : StdBinaryLayout} {target_pc ret_pc sig act oact : BitVec 64}
@@ -847,7 +858,8 @@ private theorem step_hb_libcSigaction_ign {P : Program} {L : StdBinaryLayout} {t
     dsimp only [kSigActionAt, optOldSigActionAt]
     simp only [getSigAction_w64, getSigAction_ps, getSigAction_pc, hsig1, hk_f, ho_f, Bool.false_eq_true, ↓reduceIte]
     rw [htoBytes_emp, ← fourCells_eq_bytes, ka1, ka2, ka3, oa1, oa2, oa3]
-  conv => arg 3; rw [hk_f]; simp only [Bool.false_eq_true, ↓reduceIte, show (0#64 &&& ~~~SIG_UNBLOCKABLE_MASK) = 0#64 from rfl]
+  have hne_abrt : (13#32 == LINUX_SIGABRT) = false := by decide
+  conv => arg 3; rw [hk_f]; simp only [hne_abrt, Bool.false_and, Bool.false_eq_true, ↓reduceIte, show (0#64 &&& ~~~SIG_UNBLOCKABLE_MASK) = 0#64 from rfl]
   clear hf23; wp_steps 11
   refine hb_step_bl_to (pc := b + 164#64) (dst := L.memcpyAddr) (by hb_wp_simp) (by simp [wp_norm, arm64_norm, hrun1]) hf41 ?_
   refine hb_step_cut fun s2 hs2 => ?_
@@ -1174,6 +1186,7 @@ private theorem step_hb_libcSigaction_mid {P : Program} {L : StdBinaryLayout} {S
     (hpc : s.pc = L.libcSigactionAddr + 48#64) (hrun : s.status = .Running) (hsp_al : s.spAligned = true) (hsp_ne : s.sp + 80#64 ≠ 0#64)
     (hx0 : s.readReg64 (.gpr 0#5) = sig) (hx4 : s.readReg64 (.gpr 4#5) = act)
     (hsig_mem : sig = 11#64 ∨ sig = 7#64) (hunmask : unmask0 = 0#32 ∨ unmask0 = 1#32)
+    (hpending : unmask0 = 0#32 → s.sigPending = 0#64)
     (hnext : ∀ (sf : State) (w10' : BitVec 64),
       sf.pc = L.libcSigactionAddr + 0xfc#64 → sf.status = .Running → sf.sp = s.sp → sf.spAligned = true →
       sf.readReg64 (.gpr 4#5) = act → sf.readReg64 (.gpr 6#5) = S.signalHandlerAddr →
@@ -1226,7 +1239,8 @@ private theorem step_hb_libcSigaction_mid {P : Program} {L : StdBinaryLayout} {S
         have hmod16 : s1.sp.toNat % 16 = 0 :=
           (Nat.and_two_pow_sub_one_eq_mod s1.sp.toNat 4).symm.trans h1
         have := s1.sp.isLt
-        simp [BitVec.toNat_add]; omega) ?_
+        simp [BitVec.toNat_add]; omega)
+      (by simp [wp_norm, arm64_norm, hnv1.2.2.2.2.2.trans (hnv0.2.2.2.2.2.trans (hpending rfl))]) ?_
     wp_steps 11
     refine hb_step_entail (hnext _ 0x300000000#64 (by hb_wp_simp; rw [← hsm]; bv_lin) (by simp [wp_norm, arm64_norm, hrun1]) (by simp [wp_norm, arm64_norm, hsp1_eq])
       (by simpa [State.spAligned, wp_norm, arm64_norm, hsp1_eq] using hsp_al) (by hb_wp_simp) (by hb_wp_simp)
@@ -1252,6 +1266,7 @@ theorem step_hb_libcSigaction_custom {P : Program} {C : HbCliLayout} {S : HbStar
     (hpc : s.pc = C.std.libcSigactionAddr) (hrun : s.status = .Running) (hsp_align : s.spAligned = true) (hsp_lo : 0x90 ≤ s.sp.toNat)
     (hlr : s.readReg64 .lr = ret_pc) (hx0 : s.readReg64 .x0 = sig) (hx1 : s.readReg64 .x1 = act) (hx2 : s.readReg64 .x2 = 0#64)
     (hsig_mem : sig = 11#64 ∨ sig = 7#64) (hact_ne : act ≠ 0#64) (hunmask : unmask0 = 0#32 ∨ unmask0 = 1#32)
+    (hpending : unmask0 = 0#32 → s.sigPending = 0#64)
     (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running → sf.sp = s.sp → sf.spAligned = true →
       CalleeSavedPreserved s sf → sf.readReg64 .x0 = 0#64 → HbNonVmFields (s.setSigAction (sig.truncate 32) (hbCustomSigAction C S)) sf →
       SepWP P target_pc sf (((((act ↦₆₄ S.signalHandlerAddr) ∗ ((act + 8#64) ↦₆₄ 0#64) ∗ ((act + 0x88#64) ↦₆₄ 0x08000004#64)) ∗
@@ -1290,7 +1305,7 @@ theorem step_hb_libcSigaction_custom {P : Program} {C : HbCliLayout} {S : HbStar
       (S.unmaskDoneAddr ↦₃₂ unmask0) ∗ (S.eintrValidFlagAddr ↦₃₂ eintr0) ∗ ((s0.sp + 80#64) ↦₆₄ w10)) ∗ ?_))
     (fun R hm => by rw [hsp0_80]; revert hm; sep_frame) ?_
   refine step_hb_libcSigaction_mid hsvc hmid hal_hs hpc0 hrun0 hsp_al0 (by rw [hsp0_80]; bv_omega)
-    hx0_0 hx4_0 hsig_mem hunmask fun s1 w10' hpc1 hrun1 hsp1 hsp_al1 hx4_1 hx6_1 hcs1 hnv1 => ?_
+    hx0_0 hx4_0 hsig_mem hunmask (fun h => hnv0.2.2.2.2.2.trans (hpending h)) fun s1 w10' hpc1 hrun1 hsp1 hsp_al1 hx4_1 hx6_1 hcs1 hnv1 => ?_
   clear hmid hpc0 hx0_0 hx4_0
   have hsp1_eq : s1.sp = s.sp - 112#64 := hsp1.trans hsp0
   have hpc1_b : s1.pc = b := hpc1.trans hb
@@ -1350,7 +1365,9 @@ theorem step_hb_libcSigaction_custom {P : Program} {C : HbCliLayout} {S : HbStar
   wp_conv_pre =>
     dsimp only [kSigActionAt, optOldSigActionAt]; rw [hk_f]
     simp only [beq_self_eq_true, Bool.false_eq_true, ↓reduceIte, emp_sepConj, ← fourCells_eq_bytes]
-  conv => arg 3; rw [hk_f]; simp only [Bool.false_eq_true, ↓reduceIte, show (0#64 &&& ~~~SIG_UNBLOCKABLE_MASK) = 0#64 from rfl]
+  have hne_abrt : (sig.truncate 32 == LINUX_SIGABRT) = false := by
+    rcases hsig_mem with rfl | rfl <;> decide
+  conv => arg 3; rw [hk_f]; simp only [hne_abrt, Bool.false_and, Bool.false_eq_true, ↓reduceIte, show (0#64 &&& ~~~SIG_UNBLOCKABLE_MASK) = 0#64 from rfl]
   clear hf23
   have heq_ofBits4 : ConditionHolds .EQ (PState.ofBits4 0#4) = false := by decide
   wp_steps 5
@@ -1426,8 +1443,10 @@ private theorem step_svc_mprotect_protNone {P : Program} {target_pc pc addr : Bi
   have hnf : s.mem.allPerm (fun p => !p.frozen) addr 4096 = true := Satisfies.allPerm_not_frozen_of_memRegion hm'
   have hmap : s.mem.allPerm (·.mapped) addr 4096 = true := Satisfies.allPerm_mapped_of_memRegion hm'
   apply reaches_pc_step hrun (hpc.symm ▸ hfetch); rw [hb_evalSvc_mprotect hsvc hx8]
+  have huntag : untaggedAddr addr = addr := untaggedAddr_of_le_user_va (by omega)
+  have hva64 : addr.toNat + 4096 < 2 ^ 64 := by omega
   have hev : execMprotect s = ((s.setMem (s.mem.setPermNonFrozen addr 4096 Perm.protNone)).writeReg64 .x0 0#64).setPC (pc + 4#64) := by
-    simp [execMprotect, MMAP_PROT_NONE, PAGE_SIZE, hx0, hx1, hx2, halign, hva, hnf, hmap, State.advancePC, State.setPC, State.writeReg64, State.setMem, hpc]
+    simp [execMprotect, MMAP_PROT_NONE, PAGE_SIZE, hx0, hx1, hx2, huntag, halign, hva, hva64, hnf, hmap, State.advancePC, State.setPC, State.writeReg64, State.setMem, hpc]
   rw [hev]; unfold SepWP at hnext
   exact hnext R (by rw [sepConj_assoc]; exact Satisfies.setPermProtNone_of_memRegion hm')
 
@@ -1906,7 +1925,7 @@ private theorem step_hb_make_handler_pre {P : Program} {C : HbCliLayout} {S : Hb
     (by hb_wp_simp)
     (by simp [wp_norm, arm64_norm, hbAltstackReqSz_bv_eq_csel])
     (by hb_wp_simp) (by hb_wp_simp) (by hb_wp_simp) (by hb_wp_simp)
-    ?_ ((hnv01.trans hnv12).trans ⟨rfl, rfl, rfl, rfl, rfl⟩)
+    ?_ ((hnv01.trans hnv12).trans ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩)
   rcases (CalleeSavedPreserved.iff_regs _ _).mp hcs1 with ⟨_, g20_1, _, g22_1, g23_1, g24_1, g25_1, g26_1, g27_1, g28_1, g29_1, gv_1⟩
   rcases (CalleeSavedPreserved.iff_regs _ _).mp hcs2 with ⟨_, g20_2, _, g22_2, g23_2, g24_2, g25_2, g26_2, g27_2, g28_2, g29_2, gv_2⟩
   simp only [wp_norm, arm64_norm, bv_lin_norm] at g20_1 g22_1 g23_1 g24_1 g25_1 g26_1 g27_1 g28_1 g29_1 gv_1 g20_2 g22_2 g23_2 g24_2 g25_2 g26_2 g27_2 g28_2 g29_2 gv_2
@@ -2037,7 +2056,7 @@ private theorem step_hb_make_handler_post {P : Program} {C : HbCliLayout} {S : H
     (by simp [wp_norm, arm64_norm])
     (by simpa [State.spAligned, wp_norm, arm64_norm] using hsp_align)
     (by hb_wp_simp) (by hb_wp_simp) (by hb_wp_simp) (by hb_wp_simp) (by hb_wp_simp)
-    ?_ ((HbNonVmFields.trans ⟨rfl, rfl, rfl, rfl, rfl⟩ hnv5).trans ⟨rfl, rfl, rfl, rfl, rfl⟩)
+    ?_ ((HbNonVmFields.trans ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩ hnv5).trans ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩)
   rcases (CalleeSavedPreserved.iff_regs _ _).mp hcs5 with ⟨_, _, _, g22_5, g23_5, g24_5, g25_5, g26_5, g27_5, g28_5, _, gv_5⟩
   simp only [wp_norm, arm64_norm] at g22_5 g23_5 g24_5 g25_5 g26_5 g27_5 g28_5 gv_5
   rw [CalleeSavedPreserved.iff_regs]
@@ -2045,7 +2064,7 @@ private theorem step_hb_make_handler_post {P : Program} {C : HbCliLayout} {S : H
 
 private theorem HbNonVmFields.setSigAltStack {s0 s1 : State} (sas : SigAltStack) (h : HbNonVmFields s0 s1) :
     HbNonVmFields (s0.setSigAltStack sas) (s1.setSigAltStack sas) :=
-  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, _root_.rfl⟩
+  ⟨h.1, h.2.1, h.2.2.1, h.2.2.2.1, _root_.rfl, h.2.2.2.2.2⟩
 
 /-- Step `make_handler` (`C.makeStackHandlerAddr`) allocating, guard-protecting, and installing the alternate signal stack. -/
 theorem step_hb_make_handler {P : Program} {C : HbCliLayout} {S : HbStartupLayout}
@@ -2193,7 +2212,7 @@ theorem step_hb_make_handler {P : Program} {C : HbCliLayout} {S : HbStartupLayou
   have hnv23 : HbNonVmFields s2 s3 := (by hb_nv_rfl s2 : HbNonVmFields s2 _).trans hnv3
   have hnv34 : HbNonVmFields s3 s4 := (by hb_nv_rfl s3 : HbNonVmFields s3 _).trans hnv4
   have hnv04 : HbNonVmFields s s4 := hnv2.trans (hnv23.trans hnv34)
-  have hsas4 : s4.sigAltStack = {} := hnv04.2.2.2.2.trans hsas0
+  have hsas4 : s4.sigAltStack = {} := hnv04.2.2.2.2.1.trans hsas0
   have htp24 : muslErrnoAddr s2 = muslErrnoAddr s4 := by
     unfold muslErrnoAddr; rw [(hnv23.trans hnv34).2.2.1]
   refine hb_seq_nonVm (mid := ret_pc) hext hsvc ?_

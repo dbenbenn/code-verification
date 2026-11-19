@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyX
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyX
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `SessionRecord::serialize` `None` / `Some` Case Split (Block `52`)
@@ -23,7 +29,7 @@ Combines `serialize_none_placed_okX` and `serialize_some_placed_okX` to establis
 `withLsCodeLoaded lsmpl (serializeSpecX M A lim)` on Block `52` (`SessionRecord::serialize`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

@@ -11,12 +11,12 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.FetchDecrypt
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsAPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsBPlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.FetchDecrypt -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
@@ -28,6 +28,19 @@ import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneBase
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsA
+public import ProofLib.MallocngBridge
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Placed Stage P3 and Stage P4 Error Epilogues on 1-Element `previous_sessions`
@@ -37,7 +50,7 @@ across the `[LibsignalPlacement]` Stage P3 common error epilogue (`lsmpl.base 51
 and Stage P4 error unwinds (`+0x3588` and `+0x550 → s0.readReg64 .x30`) over `prevVecAt [enc]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -239,54 +252,6 @@ theorem stageP3_err_tail_common_prev1_placed_ok [LibsignalPlacement]
      ⟨hx19_f, hx20_f, hx21_f, hx22_f, hx23_f, hx24_f, hx25_f, hx26_f, hx27_f, hx28_f, hx29_f,
       True.intro⟩,
      hcrof, hvregs_f.trans hvregs_cs1⟩
-
-theorem stageP3_err_tail_common_prev1_withPanics_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State)) :
-    subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim) →
-    subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)) →
-    ∀ (st0 : M.σ) (s0 s : State)
-      (coroPtr outPtr errTag prevCap prevPtr w0 w1 w2 w3 w4 : BitVec 64)
-      (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-      (recG : SessionGhost) (recSt : SessionState (List (BitVec 8))),
-      LibsignalCodeRoLoaded lsmpl s.mem →
-      s.pc = lsmpl.base 512 →
-      s.status = .Running →
-      (s.sp &&& 15#64 == 0#64) = true →
-      s.trace = s0.trace →
-      s.readReg64 .x0 = coroPtr + 0xf8#64 →
-      s.readReg64 .x19 = coroPtr →
-      s.readReg64 .x22 = (w0.extractLsb' 0 32).zeroExtend 64 →
-      s.readReg64 .x25 = s.sp + 0x210#64 →
-      s.readReg64 .x26 = outPtr →
-      s.readReg64 .x28 = errTag →
-      s.readReg64 .x30 = dpClosureEntryP34Placed + 0x359c#64 →
-      SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-        (sessionStateAt A.repAlloc (coroPtr + 0xf8#64) recG recSt ∗
-         prevVecAt A.repAlloc (coroPtr + 0xe0#64) prevCap prevPtr [enc] ∗
-         ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗ memRegion outPtr 48 ∗
-         ((s.sp + 0x370#64) ↦₆₄ (w1.extractLsb' 0 32 ++ w0.extractLsb' 32 32)) ∗
-         ((s.sp + 0x378#64) ↦₆₄ (w2.extractLsb' 0 32 ++ w1.extractLsb' 32 32)) ∗
-         ((s.sp + 0x380#64) ↦₃₂ w2.extractLsb' 32 32) ∗ ((s.sp + 0x384#64) ↦₆₄ w3) ∗
-         ((s.sp + 0x38c#64) ↦₆₄ w4) ∗ decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-         A.pool lim st0 s ∗
-         stackAt s.sp dropSessionStructure2Stack)
-        (fun sf P_f =>
-          ∃ evs : List AllocEvent,
-            FreeOnlyEvs evs ∧
-            (P_f ⊢
-              memRegion (coroPtr + 0xe0#64) 368 ∗
-              ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗ words6At outPtr errTag w0 w1 w2 w3 w4 ∗
-              memRegion (s.sp + 0x370#64) 36 ∗ decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-              A.pool lim (M.stepEvents evs st0) sf ∗ stackAt s.sp dropSessionStructure2Stack) ∧
-            sf.sp = s.sp + 0xcd0#64 ∧
-            sf.trace = s0.trace ∧ ClosureCalleeSaved s0 sf ∧
-            LibsignalCodeRoLoaded lsmpl sf.mem ∧
-            calleeSavedVRegs sf = calleeSavedVRegs s)
-        (PanicOomProp s0) :=
-  stageP3_err_tail_common_prev1_placed_ok (Rust.withPanics ext)
 
 /-! ## Stage P4 Error Unwind (`+0x3588` / `+0x550 → s0.readReg64 .x30`) -/
 
@@ -524,58 +489,6 @@ theorem stageP4_err_unwind_3588_prev1_vregs_placed_ok [LibsignalPlacement]
     hvregsf.trans (hvregs_cs2.trans (hvregs1.trans hvregs)), hcrof⟩
   exact ⟨hx19f, hx20f, hx21f, hx22f, hx23f, hx24f, hx25f, hx26f, hx27f, hx28f, hx29f, trivial⟩
 
-theorem stageP4_err_unwind_3588_prev1_vregs_withPanics_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State)) :
-    subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim) →
-    subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)) →
-    ∀ (st0 : M.σ) (s0 s : State)
-      (coroPtr outPtr errTag prevCap prevPtr o2 o3 o4 o5 : BitVec 64)
-      (w_22 o6 : BitVec 32) (b_2c0 : BitVec 8) (enc : List (BitVec 8))
-      (G : SessionGhost) (st : SessionState (List (BitVec 8)))
-      (Qp : State → SepProp → Prop),
-      stageP4ErrUnwindStack ≤ 2 ^ 64 →
-      LibsignalCodeRoLoaded lsmpl s.mem →
-      s.pc = dpClosureEntryP34Placed + 0x3588#64 →
-      s.status = .Running →
-      (s.sp &&& 15#64 == 0#64) = true →
-      s.readReg64 .x19 = coroPtr →
-      s.readReg64 .x22 = w_22.zeroExtend 64 →
-      s.readReg64 .x25 = s.sp + 0x210#64 →
-      s.readReg64 .x26 = outPtr →
-      s.readReg64 .x28 = errTag →
-      calleeSavedVRegs s = calleeSavedVRegs s0 →
-      SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-        (sessionStateAt A.repAlloc (coroPtr + 0xf8#64) G st ∗
-         prevVecAt A.repAlloc (coroPtr + 0xe0#64) prevCap prevPtr [enc] ∗
-         ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗
-         memRegion outPtr 48 ∗
-         stagingCellsAt (s.sp + 0x370#64) o2 o3 o4 o5 o6 ∗
-         decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-         A.pool lim st0 s ∗
-         stackAt s.sp stageP4ErrUnwindStack)
-        (fun sf P_f =>
-          Steps (lsProg_518 (Rust.withPanics ext)) s sf ∧
-          ∃ evs : List AllocEvent,
-            FreeOnlyEvs evs ∧
-            (P_f ⊢
-              pollCellsAt outPtr errTag w_22 o2 o3 o4 o5 o6 ∗
-              memRegion (coroPtr + 0xe0#64) 368 ∗
-              ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
-              memRegion (s.sp + 0x370#64) 36 ∗
-              decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-              A.pool lim (M.stepEvents evs st0) sf ∗
-              stackAt s.sp stageP4ErrUnwindStack) ∧
-            sf.sp = s.sp + 0xcd0#64 ∧
-            sf.trace = s.trace ∧
-            ClosureCalleeSavedP4 s0 sf ∧
-            calleeSavedVRegs sf = calleeSavedVRegs s0 ∧
-            LibsignalCodeRoLoaded lsmpl sf.mem)
-        Qp :=
-  stageP4_err_unwind_3588_prev1_vregs_placed_ok (Rust.withPanics ext)
-
 /-- Budget-threaded placed Stage P4 `+0x550 → s0.readReg64 .x30` unwind on 1-element `prevVecAt [enc]`
 producing `FreeOnlyEvs`. -/
 theorem stageP4_err_unwind_550_prev1_vregs_placed_ok [LibsignalPlacement]
@@ -728,70 +641,5 @@ theorem stageP4_err_unwind_550_prev1_vregs_placed_ok [LibsignalPlacement]
        FreeOnlyEvs.append (FreeOnlyEvs.singleton 1 ptCap.toNat) hfree_unw,
        by rw [← hevs_eq]; exact Entails.of_eq (by sep_ac_rfl), ?_⟩
     exact ⟨hspf, by rw [htrf, htr1], hcsf, hvregsf, hcrof⟩
-
-theorem stageP4_err_unwind_550_prev1_vregs_withPanics_placed_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (ext : String → Option (State → State)) :
-    subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim) →
-    subroutine_ok (lsProg_518 (Rust.withPanics ext))
-      (lsmpl.base 512) (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)) →
-    ∀ (st0 : M.σ) (s0 s : State)
-      (coroPtr slot ptCap ptPtr outPtr errTag prevCap prevPtr o2 o3 o4 o5 : BitVec 64)
-      (w_22 o6 : BitVec 32) (b_2c0 : BitVec 8) (pt enc : List (BitVec 8))
-      (G : SessionGhost) (st : SessionState (List (BitVec 8)))
-      (Qp : State → SepProp → Prop),
-      pt.length ≤ ptCap.toNat →
-      stageP4ErrUnwindStack ≤ 2 ^ 64 →
-      LibsignalCodeRoLoaded lsmpl s.mem →
-      s.pc = dpClosureEntryP34Placed + 0x550#64 →
-      s.status = .Running →
-      (s.sp &&& 15#64 == 0#64) = true →
-      s.readReg64 .x8 = slot →
-      s.readReg64 .x19 = coroPtr →
-      s.readReg64 .x22 = w_22.zeroExtend 64 →
-      s.readReg64 .x24 = s.sp + 0x370#64 →
-      s.readReg64 .x25 = s.sp + 0x210#64 →
-      s.readReg64 .x26 = outPtr →
-      s.readReg64 .x28 = errTag →
-      calleeSavedVRegs s = calleeSavedVRegs s0 →
-      SepWPp (lsProg_518 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-        (((coroPtr + 0x280#64) ↦₆₄ ptCap) ∗
-         ((coroPtr + 0x288#64) ↦₆₄ ptPtr) ∗
-         ((coroPtr + 0x290#64) ↦₆₄ BitVec.ofNat 64 pt.length) ∗
-         (ptPtr ↦ₛ pt) ∗
-         (if ptCap = 0#64 then emp
-          else A.live ptPtr ptCap.toNat 1 ∗
-            memRegion (ptPtr + BitVec.ofNat 64 pt.length) (ptCap.toNat - pt.length)) ∗
-         stagingCellsAt slot o2 o3 o4 o5 o6 ∗
-         memRegion (s.sp + 0x370#64) 36 ∗
-         sessionStateAt A.repAlloc (coroPtr + 0xf8#64) G st ∗
-         prevVecAt A.repAlloc (coroPtr + 0xe0#64) prevCap prevPtr [enc] ∗
-         ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗
-         memRegion outPtr 48 ∗
-         decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-         A.pool lim st0 s ∗
-         stackAt s.sp stageP4ErrUnwindStack)
-        (fun sf P_f =>
-          Steps (lsProg_518 (Rust.withPanics ext)) s sf ∧
-          ∃ evs : List AllocEvent,
-            FreeOnlyEvs evs ∧
-            (P_f ⊢
-              pollCellsAt outPtr errTag w_22 o2 o3 o4 o5 o6 ∗
-              memRegion (coroPtr + 0xe0#64) 368 ∗
-              ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
-              memRegion (coroPtr + 0x280#64) 24 ∗
-              memRegion slot 36 ∗
-              memRegion (s.sp + 0x370#64) 36 ∗
-              decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗
-              A.pool lim (M.stepEvents evs st0) sf ∗
-              stackAt s.sp stageP4ErrUnwindStack) ∧
-            sf.sp = s.sp + 0xcd0#64 ∧
-            sf.trace = s.trace ∧
-            ClosureCalleeSavedP4 s0 sf ∧
-            calleeSavedVRegs sf = calleeSavedVRegs s0 ∧
-            LibsignalCodeRoLoaded lsmpl sf.mem)
-        Qp :=
-  stageP4_err_unwind_550_prev1_vregs_placed_ok (Rust.withPanics ext)
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlacedBudget

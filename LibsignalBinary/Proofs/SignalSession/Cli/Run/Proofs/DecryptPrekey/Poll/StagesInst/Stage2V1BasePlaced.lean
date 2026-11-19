@@ -9,24 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Base
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPrePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.PreKeyKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoPlacedSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPrePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.PreKeyKitOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCalleesPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoPlacedSat
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerialize
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `[LibsignalPlacement]` CLI Poll Stage P2 V1 Base Callees and Bounds
@@ -35,7 +38,7 @@ Proves `[LibsignalPlacement]` Stage P2 stack bounds, `FsAt` lifts, error payload
 `PqxdhPlacedHookContracts`, and Stage P2 callee projections at `cliGhostExterns gh (cliExternsPlaced mmpl W)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -43,7 +46,7 @@ set_option linter.unusedSimpArgs false
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Poll
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalAesCbc (memcpyHook memsetHook)
@@ -61,7 +64,7 @@ open CryptoVerification.E2E.Pqxdh.ResponderClosure.P3P4
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.GenP3
-open CryptoVerification.SpqrV1.Top.InitialState (InitialStateOkX initialStateValue)
+open CryptoVerification.SpqrV1.Top.InitialState (initialStateValue)
 open CryptoVerification.LibsignalPublicApi CryptoVerification.LibsignalPublicApiRepr
 open CryptoVerification.LibsignalPublicApi.StoreSession
 open CryptoVerification.LibsignalPublicApi.StoreKit
@@ -176,115 +179,7 @@ theorem cliPollSelf_regIdErr_entails_decResAt_err_placed [LibsignalPlacement] (A
       decResAt A outPtr (.error err) :=
   cliPollSelf_regIdErr_entails_decResAt_err A 0#64 F0 peer σ outPtr e err
 
-/-! ## 3. Placed `PqxdhPlacedHookContracts` at `cliGhostExterns gh (cliExternsPlaced mmpl W)` -/
-
-/-- `HkdfPlacedHooks W.C.F (cliGhostExterns gh (cliExternsPlaced mmpl W))` from
-`gh.memset = some memsetHook`, `gh.memcpy = some memcpyHook`, and `cliHookTablePlaced mmpl W`. -/
-theorem instHkdfPlacedHooks_cli_poll (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
-    (W : CliHooks)
-    (hMs : gh.memset = some memsetHook) (hMc : gh.memcpy = some memcpyHook) :
-    HkdfPlacedHooks W.C.F (cliGhostExterns gh (cliExternsPlaced mmpl W)) where
-  memset := cliGhostExterns_memset_some gh (cliExternsPlaced mmpl W) hMs
-  memcpy := cliGhostExterns_memcpy_some gh (cliExternsPlaced mmpl W) hMc
-  compress256 := (cliGhostExterns_other gh (cliExternsPlaced mmpl W)
-    (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans
-    (Slots.cliExternsPlaced_compress256 mmpl W)
-
-private structure PqxdhPlacedHookContractsExactBbSat (P : Initiator.Primitives) (C : Crypto)
-    (A : RustAlloc) (H : LibsignalHooks) : Prop where
-  hkdf             : LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat C.F H
-  dh               : HookSat H CryptoVerification.LibsignalTripleRatchet.Keys.lsDhSym (diffieHellmanSpec C.X)
-  sharedDrop       : HookSat H CryptoVerification.LibsignalTripleRatchet.Keys.lsSharedDropSym zeroizeSecretSpec
-  staticDrop       : HookSat H CryptoVerification.LibsignalTripleRatchet.Keys.lsStaticDropSym zeroizeSecretSpec
-  blackBox         : HookSat H CryptoVerification.SignalSession.lsBlackBoxSym
-    LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat.blackBoxSpecSat
-  noAllocShim      : HookSat H CryptoVerification.LibsignalTripleRatchet.Keys.lsRustNoAllocShimSym noAllocShimSpec
-  alloc            : HookSat H CryptoVerification.LibsignalTripleRatchet.Keys.lsRustAllocSym (rustAllocSpec A)
-  dealloc          : HookSat H lsRustDeallocSym (rustDeallocSpec A)
-  handleAllocError : H CryptoVerification.LibsignalTripleRatchet.Keys.lsHandleAllocErrorSym = some Rust.panicked
-  handleError      : H CryptoVerification.E2E.Pqxdh.ResponderCore.lsHandleErrorSym = some Rust.panicked
-  kyberDecaps      : HookSat H ResponderCore.lsKyberDecapsSym (Initiator.kyberDecapsStubSpec P)
-  dalekMontToEd    : HookSat H ResponderCore.lsDalekMontToEdSym
-    (CryptoVerification.E2E.Pqxdh.ResponderCore.dalekMontToEdStubSpec P)
-  dalekTorsionFree : HookSat H ResponderCore.lsDalekTorsionFreeSym
-    (Initiator.cryptoBoolRegStubSpec P.isTorsionFree 160)
-
-private theorem PqxdhPlacedHookContractsExactBbSat.calculateAgreement_ok [LibsignalPlacement]
-    {callerProg : Program} {i : Nat}
-    {P : Initiator.Primitives} {C : Crypto} {A : RustAlloc} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H]
-    (hH : PqxdhPlacedHookContractsExactBbSat P C A H)
-    (hP : ResponderCore.PrimitivesMatchCrypto P C)
-    (hi : i < 619 := by decide) :
-    ResponderCore.PqxdhCalculateAgreementPlacedOk P A callerProg :=
-  LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedSat.pqxdhCalculateAgreement_placed_ok_of_block_sat
-    hP hH.dh hH.sharedDrop hH.blackBox hH.noAllocShim hH.alloc hH.staticDrop hH.handleAllocError hi
-
-private theorem PqxdhPlacedHookContractsExactBbSat.hkdfExtract_ok [LibsignalPlacement]
-    {callerProg : Program} {i : Nat}
-    {P : Initiator.Primitives} {C : Crypto} {A : RustAlloc} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H]
-    (hH : PqxdhPlacedHookContractsExactBbSat P C A H)
-    (hP : ResponderCore.PrimitivesMatchCrypto P C)
-    (hi : i < 619 := by decide) :
-    Initiator.PqxdhHkdfExtractPlacedOk P callerProg := by
-  have _ : LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat C.F H := hH.hkdf
-  exact LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoPlacedSat.pqxdhHkdfExtract_placed_ok_sat hP hi
-
-private theorem PqxdhPlacedHookContractsExactBbSat.hkdfExpandMultiInfo_ok [LibsignalPlacement]
-    {callerProg : Program} {i : Nat}
-    {P : Initiator.Primitives} {C : Crypto} {A : RustAlloc} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H]
-    (hH : PqxdhPlacedHookContractsExactBbSat P C A H)
-    (hP : ResponderCore.PrimitivesMatchCrypto P C)
-    (hi : i < 619 := by decide) :
-    Initiator.PqxdhHkdfExpandMultiInfoPlacedOk P callerProg := by
-  have _ : LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat C.F H := hH.hkdf
-  exact LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoPlacedSat.pqxdhHkdfExpandMultiInfo_placed_ok_sat hP hi
-
-/-- `PqxdhPlacedHookContractsExactBbSat` at `cliGhostExterns gh (cliExternsPlaced mmpl W)`
-and `E2E.HooksE.A0` from `CliGhostA0Hooks E2E.HooksE.A0 gh` and `RunHooksPlaced`. -/
-private theorem cliResponderPqxdhHookContractsPlaced [LibsignalPlacement]
-    (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
-    (hh : RunSkeleton.RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns gh (cliExternsPlaced mmpl W))) :
-    PqxdhPlacedHookContractsExactBbSat
-      (ResponderCore.ofSignalPqxdhPrimitives (modelPrims X ⟨W.C, W.Q⟩))
-      W.C E2E.HooksE.A0 (cliGhostExterns gh (cliExternsPlaced mmpl W)) := by
-  refine
-    { hkdf :=
-        { memset := Slots.cliExternsPlaced_sessionMemsetRegion_sat mmpl gh W hG
-          memcpy := Slots.cliGhostExterns_a0_exactMemcpy_sat (cliExternsPlaced mmpl W) hG
-          compress256 :=
-            (cliGhostExterns_other gh (cliExternsPlaced mmpl W)
-              (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans
-              (Slots.cliExternsPlaced_compress256 mmpl W) }
-      dh := Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-        (Slots.cliExternsPlaced_diffieHellman_sat mmpl W)
-      sharedDrop := Slots.cliGhostExterns_sharedSecretDrop_sat gh (cliExternsPlaced mmpl W)
-        hG.extraOk
-      staticDrop := Slots.cliGhostExterns_staticSecretDrop_sat gh (cliExternsPlaced mmpl W)
-        hG.extraOk
-      blackBox := hh.blackBox
-      noAllocShim := hh.codecHooks.shim
-      alloc := hh.codecHooks.alloc
-      dealloc := hh.codecHooks.dealloc
-      handleAllocError := Slots.cliGhostExterns_panic_handle_alloc_error mmpl gh W
-      handleError := Slots.cliGhostExterns_panic_handle_error mmpl gh W
-      kyberDecaps := Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-        (Slots.cliExternsPlaced_kemDecaps_sat mmpl W X)
-      dalekMontToEd := by
-        rcases Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-          (Slots.cliExternsPlaced_toEdwards_sat mmpl W X (img := default)) with ⟨f, hrow, hok⟩
-        exact ⟨f, hrow, fun g R s0 hrun hpre hsp =>
-          hok ⟨g.inBytes, g.signBit, g.inPtr, g.outPtr⟩ R s0 hrun hpre hsp⟩
-      dalekTorsionFree := by
-        rcases Slots.cliGhostExterns_sat_of_cliExternsPlaced mmpl gh W
-          (Slots.cliExternsPlaced_torsionFree_sat mmpl W X (img := default)) with ⟨f, hrow, hok⟩
-        exact ⟨f, hrow, fun g R s0 hrun hpre hsp =>
-          hok ⟨g.inPtr, g.inBytes⟩ R s0 hrun hpre hsp⟩ }
-
-/-! ### Placed Stage P2 Callee Projections at `cliGhostExterns gh (cliExternsPlaced mmpl W)` -/
+/-! ## 3. Placed Stage P2 Callee Projections at `cliGhostExterns gh (cliExternsPlaced mmpl W)` -/
 
 /-- `drop_spe2` (`Getters.dropSpeSpec E2E.HooksE.A0`) on any caller block `i < 619` at
 `cliGhostExterns gh (cliExternsPlaced mmpl W)`. -/
@@ -329,32 +224,72 @@ theorem cliPublicKeySerialize_placed_ok_at [LibsignalPlacement] (mmpl : Obj.Mult
     hi
 
 /-- `PqxdhCalculateAgreementPlacedOk` on any caller block `i < 619` at
-`cliGhostExterns gh (cliExternsPlaced mmpl W)`. -/
-theorem cliPqxdhCalculateAgreement_placed_ok [LibsignalPlacement] (X : UnreachedPqxdhPrimitives)
+`cliGhostExterns gh (cliExternsPlaced mmpl W)` from a `HookSat` `dh` premise. -/
+theorem cliPqxdhCalculateAgreement_placed_ok_of_hookSat [LibsignalPlacement]
+    (X : UnreachedPqxdhPrimitives)
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
     (hh : RunSkeleton.RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
+    (hDh : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W))
+      CryptoVerification.LibsignalTripleRatchet.Keys.lsDhSym
+      (CryptoVerification.LibsignalTripleRatchet.Keys.withLsRet624
+        (withStack (diffieHellmanSpec W.C.X) 1808)))
     {callerProg : Program} {i : Nat}
     [IsLsBlockProg callerProg i (cliGhostExterns gh (cliExternsPlaced mmpl W))]
     (hi : i < 619 := by decide) :
     ResponderCore.PqxdhCalculateAgreementPlacedOk
       (ResponderCore.ofSignalPqxdhPrimitives (modelPrims X ⟨W.C, W.Q⟩))
       E2E.HooksE.A0 callerProg :=
-  (cliResponderPqxdhHookContractsPlaced X mmpl gh W hG hh).calculateAgreement_ok
-    (cliModelPrims_matchCrypto X W) hi
+  LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedSat.pqxdhCalculateAgreement_placed_ok_of_block_sat
+    (cliModelPrims_matchCrypto X W)
+    hDh
+    (Slots.cliGhostExterns_sharedSecretDrop_sat gh (cliExternsPlaced mmpl W) hG.extraOk)
+    hh.blackBox
+    hh.codecHooks.shim
+    hh.codecHooks.alloc
+    (Slots.cliGhostExterns_staticSecretDrop_sat gh (cliExternsPlaced mmpl W) hG.extraOk)
+    (Slots.cliGhostExterns_panic_handle_alloc_error mmpl gh W)
+    hi
+
+/-- `PqxdhCalculateAgreementPlacedOk` on any caller block `i < 619` at
+`cliGhostExterns gh (cliExternsPlaced mmpl W)` from `CliGhostA0Hooks` and
+`W.C.X = CryptoGames.RFC7748.x25519Ref`. -/
+theorem cliPqxdhCalculateAgreement_placed_ok [LibsignalPlacement] (X : UnreachedPqxdhPrimitives)
+    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
+    (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
+    (hh : RunSkeleton.RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    {callerProg : Program} {i : Nat}
+    [IsLsBlockProg callerProg i (cliGhostExterns gh (cliExternsPlaced mmpl W))]
+    (hi : i < 619 := by decide) :
+    ResponderCore.PqxdhCalculateAgreementPlacedOk
+      (ResponderCore.ofSignalPqxdhPrimitives (modelPrims X ⟨W.C, W.Q⟩))
+      E2E.HooksE.A0 callerProg :=
+  cliPqxdhCalculateAgreement_placed_ok_of_hookSat X mmpl gh W hG hh
+    (LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs.hookSat_cliGhostExterns_of_extraOk
+      gh (cliExternsPlaced mmpl W) hG.extraOk
+      (fun _ _ hr => by
+        rw [hX]
+        exact hr.diffieHellmanWithStack_ok 1808 (by decide) (by decide)))
+    hi
 
 /-- `PqxdhHkdfExtractPlacedOk` on any caller block `i < 619` at
 `cliGhostExterns gh (cliExternsPlaced mmpl W)` from `CliGhostA0Hooks E2E.HooksE.A0 gh`. -/
 theorem cliPqxdhHkdfExtract_placed_ok [LibsignalPlacement] (X : UnreachedPqxdhPrimitives)
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
-    (hh : RunSkeleton.RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
+    (_hh : RunSkeleton.RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
     {callerProg : Program} {i : Nat}
     [IsLsBlockProg callerProg i (cliGhostExterns gh (cliExternsPlaced mmpl W))]
     (hi : i < 619 := by decide) :
     Initiator.PqxdhHkdfExtractPlacedOk
       (ResponderCore.ofSignalPqxdhPrimitives (modelPrims X ⟨W.C, W.Q⟩)) callerProg := by
-  exact (cliResponderPqxdhHookContractsPlaced X mmpl gh W hG hh).hkdfExtract_ok
+  have _ : LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat W.C.F
+      (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
+    LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat.of_a0Hooks
+      (mmpl := mmpl) hG hF
+  exact LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoPlacedSat.pqxdhHkdfExtract_placed_ok_sat
     (cliModelPrims_matchCrypto X W) hi
 
 /-- `PqxdhHkdfExpandMultiInfoPlacedOk` on any caller block `i < 619` at
@@ -362,13 +297,18 @@ theorem cliPqxdhHkdfExtract_placed_ok [LibsignalPlacement] (X : UnreachedPqxdhPr
 theorem cliPqxdhHkdfExpandMultiInfo_placed_ok [LibsignalPlacement] (X : UnreachedPqxdhPrimitives)
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 gh)
-    (hh : RunSkeleton.RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
+    (_hh : RunSkeleton.RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
     {callerProg : Program} {i : Nat}
     [IsLsBlockProg callerProg i (cliGhostExterns gh (cliExternsPlaced mmpl W))]
     (hi : i < 619 := by decide) :
     Initiator.PqxdhHkdfExpandMultiInfoPlacedOk
       (ResponderCore.ofSignalPqxdhPrimitives (modelPrims X ⟨W.C, W.Q⟩)) callerProg := by
-  exact (cliResponderPqxdhHookContractsPlaced X mmpl gh W hG hh).hkdfExpandMultiInfo_ok
+  have _ : LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat W.C.F
+      (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
+    LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat.HkdfPlacedHooksExactSat.of_a0Hooks
+      (mmpl := mmpl) hG hF
+  exact LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoPlacedSat.pqxdhHkdfExpandMultiInfo_placed_ok_sat
     (cliModelPrims_matchCrypto X W) hi
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Poll

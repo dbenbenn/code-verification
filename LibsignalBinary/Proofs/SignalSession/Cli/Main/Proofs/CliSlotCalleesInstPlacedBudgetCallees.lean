@@ -9,43 +9,56 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetSeams
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetUuid
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.SpqrV1Empty
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeysBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.NextChainKey
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.CoreStepEnvBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.GenerateKeysBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLenBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.AddressesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceIdBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.InstancesBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetSeams -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetUuid
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.SpqrV1Empty -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeysBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.NextChainKey -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.CoreStepEnvBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Keys.GenerateKeysBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLenBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget
+import LibsignalBinary.Proofs.TripleRatchet.Mac.AddressesBudget
+import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudget
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceIdBudget
+import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.InstancesBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAux
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigest
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.NewFromSliceSecondHalf
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetSat
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.InstancesBudgetSat
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.NewFromSlice
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
+import LibsignalBinary.Proofs.TripleRatchet.Keys.KeysSat
+import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyBudgetSat
 import ProofLib.SepLogic.Entry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.InnerInstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Encrypt.RootPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetSat
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
+import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux
 
 /-!
 # Budget-Threaded TripleRatchet Encrypt Callees (`[LibsignalPlacement]`)
@@ -55,7 +68,7 @@ Budget-threaded relocatable contracts for `OutgoingTripleRatchet::encrypt` (Bloc
 `ChainKey::next_chain_key` (Block `39`) under `PublicApiEncHooksPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -91,7 +104,7 @@ open CryptoVerification.LibsignalSession.CryptoHmacSha256 (
   lsSha256IVAddr new_from_slice_placed_run rodata_placed_sha256IV
 )
 open CryptoVerification.LibsignalSessionRepr (chainKeyBytes)
-open CryptoVerification.LibsignalSpqrV1 (spqrV1_emptyOk)
+open CryptoVerification.LibsignalSpqrV1 (sha256Compress spqrV1_emptyOk)
 open CryptoVerification.LibsignalTripleRatchet (
   LibsignalCodeRoLoaded SpqrModel blkPC_63 blkPl_63
   extract_withLsCodeRoLoaded hmacWith_two_eq_chainStep keyToBytes32_bytesToKey32
@@ -111,7 +124,7 @@ open CryptoVerification.SignalSession.Cli.RunGlue (
 open CryptoVerification.SignalSession.Cli.Slots (
   cliGhostExterns_panic_handle_alloc_error cliGhostExterns_panic_handle_error
   cliGhostExterns_panic_option_expect_failed cliGhostExterns_sat_of_cliExternsPlaced
-  compress256_row_placed scopeIn
+  scopeIn
 )
 open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitPlacedAt)
 open LibsignalBinary.Heap (
@@ -135,6 +148,7 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetSat
   extract_placed_vm_ok_of_other_block_sat
 )
 open LibsignalBinary.Proofs.Placed.BudgetPoolSync (hooksException sepWP_seg_ls_vm)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (hookSat_withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetSeams (
   CliSlotAllocHooks CliSlotEnvs SpqrV1PlacedSeamsBudget WithStoresEncVTPlacedOk
   w1IdKitBudgetEnv w1IdKitPlaced_okIE w1SessKitBudgetEnv w1SessKitPlaced_okSE
@@ -150,12 +164,15 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.I
   W1InnerPlacedOk
 )
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget (
-  CliGhostAllocHooks cliExternsPlaced_alloc_budget_sat cliExternsPlaced_compress256Multi_budget_sat
+  CliGhostAllocHooks cliExternsPlaced_alloc_budget_sat cliGhostExterns_compress256_roBudget_sat
   cliExternsPlaced_dealloc_budget_sat cliExternsPlaced_exactMemcpy_sat
   cliExternsPlaced_framelessMemcpy_budget_sat cliExternsPlaced_noAllocShim_budget_sat
   cliExternsPlaced_realloc_budget_sat cliExternsPlaced_sessionMemcpyRegion_budget_sat
   cliExternsPlaced_sessionMemsetRegion_budget_sat cliExternsPlaced_shim_budget_sat
   cliGhostExterns_durationSinceBounded_budget_sat cliGhostExterns_timeAdd_budget_sat
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs (
+  hookSatCompress256_cliGhostExterns_of_extraOk_eq
 )
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (noAllocShimBudgetSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget (
@@ -171,20 +188,20 @@ open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat (
   HkdfPlacedHooksExactBudgetSat
 )
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat (
-  HkdfPlacedHooksExactSat
+  HkdfPlacedHooksExactSat newFromSliceSpecSat
 )
 open LibsignalBinary.Proofs.TripleRatchet.Encrypt.CoreStepEnvBudget (nextChainKeyPlacedSpec)
 open LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceIdBudget (
   parseSid_placed_ok_of_code
 )
 open LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget (generateKeysSpec)
-open LibsignalBinary.Proofs.TripleRatchet.Keys.GenerateKeysBudget (
-  generateKeys_placed_ok_of_contracts
+open LibsignalBinary.Proofs.TripleRatchet.Keys.KeysSat (
+  generateKeys_placed_ok_of_contracts_budget_sat
 )
 open LibsignalBinary.Proofs.TripleRatchet.Mac.AddressesBudget (
   serialize_addresses_placed_ok_of_rustAllocShimVm
 )
-open LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudget (computeMac_placed_cro_ok)
+open LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyBudgetSat (computeMac_placed_cro_ok_sat)
 open LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux (newFromSliceBudgetSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget (encode_varint_placed_ok)
 open LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLenBudget (encoded_len_placed_ok)
@@ -565,23 +582,20 @@ private theorem new_from_slice_114_vm_cro_ok [LibsignalPlacement] (F : ShaCompre
 private theorem new_from_slice_cro_budget_ok_at_block [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hG : CliGhostAllocHooks M A lim g)
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
     {callerProg : Program} {i : Nat}
     [IsLsBlockProg callerProg i (cliGhostExterns g (cliExternsPlaced mmpl W))]
     (hi : i < 619 := by decide) :
     subroutine_ok callerProg (lsmpl.base 114)
-      (withLsCodeRoLoaded lsmpl (newFromSliceBudgetSpec W.C.F)) :=
+      (withLsCodeRoLoaded lsmpl (withVmPreserved (newFromSliceSpecSat W.C.F))) :=
   new_from_slice_placed_cro_budget_ok_at_block_sat W.C.F
     (cliExternsPlaced_exactMemcpy_sat mmpl g W hG)
-    ((cliGhostExterns_other g (cliExternsPlaced mmpl W)
-      (by decide) (by decide) (by decide) (by decide) (by decide)
-      (by decide) (by decide) (by decide) (by decide) (by decide)).trans
-      (cliExternsPlaced_row mmpl W (compress256_row_placed mmpl W))) hi
+    (hookSatCompress256_cliGhostExterns_of_extraOk_eq g (cliExternsPlaced mmpl W) hG.extraOk hF) hi
 
 private theorem hmac_vm_cro_ok_at_block [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hG : CliGhostAllocHooks M A lim g)
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
     {callerProg : Program} {i : Nat}
     [IsLsBlockProg callerProg i (cliGhostExterns g (cliExternsPlaced mmpl W))]
     (hi : i < 619 := by decide) :
@@ -590,10 +604,7 @@ private theorem hmac_vm_cro_ok_at_block [LibsignalPlacement]
   hmac_placed_cro_ok_at_block_sat W.C.F
     (cliExternsPlaced_exactMemcpy_sat mmpl g W hG)
     (cliExternsPlaced_sessionMemsetRegion_budget_sat mmpl g W hG)
-    ((cliGhostExterns_other g (cliExternsPlaced mmpl W)
-      (by decide) (by decide) (by decide) (by decide) (by decide)
-      (by decide) (by decide) (by decide) (by decide) (by decide)).trans
-      (cliExternsPlaced_row mmpl W (compress256_row_placed mmpl W))) hi
+    (hookSatCompress256_cliGhostExterns_of_extraOk_eq g (cliExternsPlaced mmpl W) hG.extraOk hF) hi
 
 theorem generateKeys_428_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
@@ -605,7 +616,7 @@ theorem generateKeys_428_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       (lsmpl.base 69) (withLsCodeRoLoaded lsmpl (generateKeysSpec M A lim W.C.F)) := by
   have hG := hH.alloc.toCliGhostAllocHooks
   have _ : HkdfPlacedHooksExactSat W.C.F (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-    HkdfPlacedHooksExactSat.of_allocHooks hG
+    HkdfPlacedHooksExactSat.of_allocHooks hG hH.f_eq
   have _ : HkdfPlacedHooksExactBudgetSat W.C.F (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
     HkdfPlacedHooksExactBudgetSat.of_exactSat
       (cliExternsPlaced_sessionMemsetRegion_budget_sat mmpl g W hG)
@@ -621,7 +632,7 @@ theorem generateKeys_428_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (prog := (blkPC_69).rebase (blkPl_69).base
       (cliGhostExterns g (cliExternsPlaced mmpl W))) (i := 69)
     (cliExternsPlaced_dealloc_budget_sat mmpl g W hG)
-  have hgk69 := generateKeys_placed_ok_of_contracts (C := W.C) hext69 hexp69 hdealloc69
+  have hgk69 := generateKeys_placed_ok_of_contracts_budget_sat (C := W.C) hext69 hexp69 hdealloc69
   have _ := instIsLsBlockProg_428 (cliGhostExterns g (cliExternsPlaced mmpl W))
   exact transfer_tr_cro_of_block
     (callerProg := (blkPC_428).rebase (blkPl_428).base
@@ -653,9 +664,9 @@ theorem signalMessageNew_428_placed_cro_ok [LibsignalPlacement] {M : AllocCostMo
   have hser61 := serialize_addresses_placed_ok_of_rustAllocShimVm hparse61
     (cliExternsPlaced_rustAllocShimVm_sat mmpl g W hH.alloc.shim_eq)
     hAlloc
-  have hmac60 := computeMac_placed_cro_ok W.C M A lim
+  have hmac60 := computeMac_placed_cro_ok_sat W.C M A lim
     (cliGhostExterns g (cliExternsPlaced mmpl W))
-    (new_from_slice_cro_budget_ok_at_block mmpl g W hH.alloc.toCliGhostAllocHooks
+    (new_from_slice_cro_budget_ok_at_block mmpl g W hH.alloc.toCliGhostAllocHooks hH.f_eq
       (callerProg := (blkPC_60).rebase (blkPl_60).base
         (cliGhostExterns g (cliExternsPlaced mmpl W))))
     (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
@@ -663,8 +674,8 @@ theorem signalMessageNew_428_placed_cro_ok [LibsignalPlacement] {M : AllocCostMo
         (callerProg := (blkPC_60).rebase (blkPl_60).base
           (cliGhostExterns g (cliExternsPlaced mmpl W))) hpks205))
     (cliExternsPlaced_sessionMemcpyRegion_budget_sat mmpl g W hH.alloc.toCliGhostAllocHooks)
-    (cliGhostExterns_sat_of_cliExternsPlaced mmpl g W
-      (cliExternsPlaced_compress256Multi_budget_sat mmpl W))
+    (hH.f_eq ▸ cliGhostExterns_compress256_roBudget_sat g (cliExternsPlaced mmpl W)
+      hH.alloc.toCliGhostAllocHooks.extraOk (stk := 176))
     hDealloc
     (cliExternsPlaced_sessionMemsetRegion_budget_sat mmpl g W hH.alloc.toCliGhostAllocHooks)
   have hnew63 := signalMessageNew_placed_cro_ok (C := W.C)
@@ -731,7 +742,7 @@ theorem otrRoCalleesPlacedOk_cli [LibsignalPlacement] {M : AllocCostModel}
         (calleeProg := (blkPC_38).rebase (blkPl_38).base
           (cliGhostExterns g (cliExternsPlaced mmpl W)))
         (message_keys_placed_cro_ok
-          (hmac_vm_cro_ok_at_block mmpl g W hH.alloc.toCliGhostAllocHooks
+          (hmac_vm_cro_ok_at_block mmpl g W hH.alloc.toCliGhostAllocHooks hH.f_eq
             (callerProg := (blkPC_38).rebase (blkPl_38).base
               (cliGhostExterns g (cliExternsPlaced mmpl W))))
           (cliExternsPlaced_noAllocShim_budget_sat mmpl g W hH.alloc.shim_eq)
@@ -743,7 +754,7 @@ theorem otrRoCalleesPlacedOk_cli [LibsignalPlacement] {M : AllocCostModel}
         (calleeProg := (blkPC_39).rebase (blkPl_39).base
           (cliGhostExterns g (cliExternsPlaced mmpl W)))
         (nextChainKey_39_vm_cro_ok
-          (hmac_vm_cro_ok_at_block mmpl g W hH.alloc.toCliGhostAllocHooks
+          (hmac_vm_cro_ok_at_block mmpl g W hH.alloc.toCliGhostAllocHooks hH.f_eq
             (callerProg := (blkPC_39).rebase (blkPl_39).base
               (cliGhostExterns g (cliExternsPlaced mmpl W))))
           ((CliSlotCalleesInstPlacedBudgetSeams.skeletonHooks_of_slotHooks hH).panics
@@ -772,7 +783,7 @@ theorem otrEncryptV1_464_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   have h428 := otrEncryptV1_coins_placed_ok tokenInitPlacedAt W.C A lim 0#64
     (pqxdhSpqrModel ⟨W.C, W.Q⟩) envs.spqrSend
     (cliGhostExterns g (cliExternsPlaced mmpl W))
-    hH.aesEnc hH.formatInnerEnv
+    (hookSat_withLsRet hH.aesEnc) hH.formatInnerCall
     (cliExternsPlaced_dealloc_budget_sat mmpl g W hH.alloc.toCliGhostAllocHooks)
     hSend428 hOtrRo.messageKeys (generateKeys_428_placed_ok mmpl g W A lim hH)
     hOtrRo.signalMessageNew hOtrRo.nextChainKey
@@ -798,7 +809,7 @@ theorem otrEncryptEmpty_464_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   have h428 := otrEncryptEmpty_coins_placed_ok W.C A lim 0#64 S (fun _ _ evs => evs = [])
     (cliGhostExterns g (cliExternsPlaced mmpl W)) hEmpty (fun _ => rfl)
     (cliExternsPlaced_sessionMemcpyRegion_budget_sat mmpl g W hH.alloc.toCliGhostAllocHooks)
-    hH.aesEnc hH.formatInnerEnv
+    (hookSat_withLsRet hH.aesEnc) hH.formatInnerCall
     (cliExternsPlaced_dealloc_budget_sat mmpl g W hH.alloc.toCliGhostAllocHooks)
     hOtrRo.messageKeys (generateKeys_428_placed_ok mmpl g W A lim hH)
     hOtrRo.signalMessageNew hOtrRo.nextChainKey

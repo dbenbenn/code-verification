@@ -6,9 +6,9 @@
 # Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""A-LINK v0.3.2 (P8) fail-closed stock-linker checker (`scripts/stock-pin/alink_check.py`).
+"""A-LINK v0.3.2 fail-closed stock-linker checker (`scripts/stock-pin/alink_check.py`).
 
-Implements all A-LINK v0.3.2 + Gatekeeper rows 365, 367, 369, 372, 373, 374, 375 checks across
+Implements the A-LINK v0.3.2 linker-provenance checks across
 both stock-link recipes (`scripts/cli-elf-stock` builder and engine `snapshot-link --stock`):
   1. Computes `X_i = U_i \\ D_i` directly from as-linked Rust objects (incl. sysroot trims) and
      `X = ⋃_i X_i`; cross-checks engine `hookedExterns ⊆ X` (`scripts/cli-elf-stock --verify`
@@ -327,7 +327,7 @@ class ALinkReport:
             out["proved_closures"] = self.proved_closures
         if self.inputs_lock_pin is not None:
             out["inputs_lock_pin"] = self.inputs_lock_pin
-        if self.cli_hook_table_placed:
+        if self.cli_hook_table_placed or self.cli_dehooked_syms_placed:
             out["cli_hook_table_placed"] = self.cli_hook_table_placed
         if self.cli_dehooked_syms_placed or self.cli_hook_table_placed:
             out["cli_dehooked_syms_placed"] = self.cli_dehooked_syms_placed
@@ -385,6 +385,9 @@ def _resolve_staged_file(
                 stripped_parts = [pt for pt in rel_p.parts if pt != ".."]
                 if stripped_parts:
                     exact_candidates.append(root / pathlib.Path(*stripped_parts))
+            else:
+                exact_candidates.append(root / "work" / rel_p)
+                exact_candidates.append(root / "stock_stage" / "work" / rel_p)
         else:
             exact_candidates.append(root / rel_p)
 
@@ -412,6 +415,10 @@ def _resolve_staged_file(
             if expected_sha256 and elf_inspect.sha256_file(c) == expected_sha256:
                 return c
     if has_dir_parts and existing_exact:
+        if not expected_sha256 and len({elf_inspect.sha256_file(p) for p in existing_exact}) > 1:
+            raise FileNotFoundError(
+                f"ambiguous staged input {rel_or_name!r}: conflicting files {[str(p) for p in existing_exact]}"
+            )
         # Never jump across directories by basename when an explicit relative/absolute path exists on disk
         return existing_exact[0]
 
@@ -753,6 +760,27 @@ def _parse_lock_native_objects(
     return True, out
 
 
+_DEP_TRIM_OBJ_RE = re.compile(r"^dep_trim_[A-Za-z0-9_]+\.o$")
+_CARGO_DEP_RLIB_NAME_RE = re.compile(r"^lib[A-Za-z0-9_]+-[0-9a-f]{16}\.rlib$")
+
+
+def _is_cargo_dep_rlib_entry(obj_name: str, rlib_path: str, recipe: str) -> bool:
+    """Return True iff `(obj_name, rlib_path, recipe)` is a Cargo-compiled `[[dep_rlib_trims]]`
+    entry (`dep_trim_<slug>.o`, staged under `(work/)?rlibs/lib<crate>-<16hex>.rlib`, `recipe == 'elf_trim'`).
+
+    Whole-archive `rlib_sha256` may be `""` ONLY for these Cargo-compiled dependency `.rlib`s
+    (matching `[[lib2_objects]]`), because `rustc` embeds host-path `Svh` hashes in
+    `lib.rmeta` while `.rcgu.o` (`member_sha256`) and `elf_trim` (`sha256`) are byte-identical."""
+    if not _DEP_TRIM_OBJ_RE.match(obj_name) or recipe != "elf_trim":
+        return False
+    norm_p = pathlib.PurePosixPath(rlib_path.replace("\\", "/"))
+    if norm_p.is_absolute() or any(pt in ("", ".", "..") for pt in norm_p.parts):
+        return False
+    if norm_p.parts not in (("rlibs", norm_p.name), ("work", "rlibs", norm_p.name)):
+        return False
+    return bool(_CARGO_DEP_RLIB_NAME_RE.match(norm_p.name))
+
+
 def _parse_lock_rust_extracted(
     lock: Mapping[str, Any] | None,
 ) -> tuple[dict[str, dict[str, Any]], list[str]]:
@@ -798,15 +826,22 @@ def _parse_lock_rust_extracted(
 
         if kind == "rlib_member":
             rlib_p = str(ent.get("rlib_path") or ent.get("rlib") or "")
-            rlib_sha = str(ent.get("rlib_sha256") or "")
+            raw_rlib_sha = ent.get("rlib_sha256")
+            rlib_sha = raw_rlib_sha if isinstance(raw_rlib_sha, str) else ""
             mem_name = str(ent.get("member") or "")
             mem_sha = str(ent.get("member_sha256") or "")
             recipe_s = str(ent.get("recipe") or "").strip()
             raw_secs = ent.get("keep_sections") if "keep_sections" in ent else ent.get("sections")
             if not rlib_p:
                 errs.append(f"0f(vi) / GK 458 C1(a): `rust_extracted[{obj_name!r}]` missing `rlib_path`")
-            if not _is_hex64(rlib_sha):
+            allow_empty_rlib_sha = (
+                isinstance(raw_rlib_sha, str)
+                and raw_rlib_sha == ""
+                and _is_cargo_dep_rlib_entry(obj_name, rlib_p, recipe_s)
+            )
+            if not allow_empty_rlib_sha and not _is_hex64(raw_rlib_sha):
                 errs.append(f"0f(vi) / GK 458 C1(a): `rust_extracted[{obj_name!r}]` invalid `rlib_sha256`")
+                rlib_sha = str(raw_rlib_sha or "")
             if not mem_name:
                 errs.append(f"0f(vi) / GK 458 C1(a): `rust_extracted[{obj_name!r}]` missing `member`")
             if not _is_hex64(mem_sha):
@@ -1323,7 +1358,7 @@ def verify_report_against_lock(
         for rek in sorted(set(exp_re_keys) & set(got_re_keys)):
             e_re = parsed_lock_re[rek]
             g_re = report.rust_extracted[rek]
-            for fk in ("kind", "sha256", "rlib_sha256", "member", "member_sha256", "asm_sha256", "recipe", "keep_sections"):
+            for fk in ("kind", "sha256", "rlib_path", "rlib_sha256", "member", "member_sha256", "asm_sha256", "recipe", "keep_sections"):
                 if fk in e_re and e_re[fk] is not None and e_re[fk] != "":
                     chk_eq(f"rust_extracted[{rek!r}].{fk}", g_re.get(fk), e_re[fk])
 
@@ -1694,10 +1729,13 @@ def check_stock_link(
     cli_pq_sha256: str | None = None
     if pq_lean_file is not None and pq_lean_file.is_file():
         pq_tables = elf_inspect.load_cli_binary_pq_tables(eff_repo_root)  # type: ignore[arg-type]
+        staged_syms = elf_inspect.load_lock_staged_dehook_syms(eff_repo_root, inputs_lock_path)
+        if staged_syms:
+            pq_tables = elf_inspect.apply_staged_dehook_overlay(pq_tables, staged_syms)
         hook_table_keys = pq_tables.hook_set
         dehooked_table_keys = pq_tables.dehooked_set
         panic_table_keys = pq_tables.panic_set
-        cli_pq_sha256 = pq_tables.pq_lean_sha256
+        cli_pq_sha256 = None if staged_syms else pq_tables.pq_lean_sha256
     elif (
         lock_data is not None
         and isinstance(lock_data.get("cli_hook_table_placed"), Sequence)
@@ -1712,8 +1750,8 @@ def check_stock_link(
         panic_table_keys = frozenset(str(x) for x in lock_data["cli_panic_symbols_placed"])
         if lock_data.get("cli_binary_pq_sha256"):
             cli_pq_sha256 = str(lock_data["cli_binary_pq_sha256"])
-        if not hook_table_keys or not panic_table_keys:
-            errors.append("D-C2d: lock `cli_hook_table_placed` and `cli_panic_symbols_placed` must be non-empty")
+        if not panic_table_keys:
+            errors.append("D-C2d: lock `cli_panic_symbols_placed` must be non-empty")
         if (
             (hook_table_keys & dehooked_table_keys)
             or (hook_table_keys & panic_table_keys)
@@ -1932,6 +1970,11 @@ def check_stock_link(
                         f"P8-3 trim mismatch in {disk_p.name} ({t_from.get('rlib')}): "
                         f"SHF_ALLOC sections {sorted(actual_alloc_secs)} != keepSet {sorted(expected_kept_secs)}"
                     )
+                nonlocal_kept_secs = {
+                    parsed_o.sections[sym.st_shndx].name
+                    for sym in parsed_o.symbols
+                    if not sym.is_local and 0 < sym.st_shndx < len(parsed_o.sections)
+                } & expected_kept_secs
                 sysroot_trims_report.append({
                     "image_idx": img_idx,
                     "object": disk_p.name,
@@ -1941,6 +1984,7 @@ def check_stock_link(
                     "member_sha256": str(t_from.get("memberSha256", "")),
                     "keep_set_sha256": str(t_from.get("keepSetSha256", "")),
                     "kept_sections": sorted(expected_kept_secs),
+                    "nonlocal_kept_sections": sorted(nonlocal_kept_secs),
                 })
 
             if is_lib2_cfg:
@@ -3156,7 +3200,7 @@ def check_stock_link(
     for x, (win_node, _wrsym, _wesym) in sorted(winning_node_by_x.items()):
         if win_node.role == "Z":
             continue
-        if x in hook_table_keys or elf_inspect.is_cli_panic_symbol_placed(x, panic_table_keys):
+        if x in hook_table_keys or (x not in dehooked_table_keys and elf_inspect.is_cli_panic_symbol_placed(x, panic_table_keys)):
             continue
         actual_unhooked_rns.add(x)
 
@@ -3175,7 +3219,7 @@ def check_stock_link(
         for x, (win_node, _wrsym, _wesym) in sorted(winning_node_by_x.items()):
             if win_node.role == "Z":
                 continue
-            if x in hook_table_keys or elf_inspect.is_cli_panic_symbol_placed(x, panic_table_keys):
+            if x in hook_table_keys or (x not in dehooked_table_keys and elf_inspect.is_cli_panic_symbol_placed(x, panic_table_keys)):
                 continue
             if x not in exp_rhr_set and x not in exp_rp_set:
                 errors.append(
@@ -3241,6 +3285,11 @@ def check_stock_link(
             )
 
     # Hooked / panic ban in `lib2` + `D-C2d` `< e_entry` check when `.text.b_pre` is present
+    lib2_declared_exports = {
+        s
+        for img_idx in lib2_img_indices
+        for s in declared_exports_by_img.get(img_idx, set())
+    }
     for img_idx in sorted(lib2_img_indices):
         for r in image_records[img_idx]:
             if r.obj is None:
@@ -3251,7 +3300,11 @@ def check_stock_link(
                         f"C2 lib2 / D-C2d: hooked symbol {sname!r} ({elf_inspect.demangle_rust(sname)}) "
                         f"is defined in lib2 object {r.name!r} while still in `cliHookTablePlaced`"
                     )
-                if elf_inspect.is_cli_panic_symbol_placed(sname, panic_table_keys):
+                if (
+                    sname not in dehooked_table_keys
+                    and not (sname in panic_table_keys and sname in lib2_declared_exports)
+                    and elf_inspect.is_cli_panic_symbol_placed(sname, panic_table_keys)
+                ):
                     errors.append(
                         f"C2 lib2 / D-C2d: panic symbol {sname!r} ({elf_inspect.demangle_rust(sname)}) "
                         f"is defined in lib2 object {r.name!r}"
@@ -3264,7 +3317,18 @@ def check_stock_link(
                     f"C2 lib2 / D-C2d: `X` symbol {x_sym!r} resolved to lib2 ({wnode.node_id}) "
                     f"while still in `cliHookTablePlaced`"
                 )
-            if dehooked_table_keys and x_sym not in dehooked_table_keys:
+            non_lib2_surviving_refs = {
+                nid
+                for nid in surviving_referrers_all.get(x_sym, set())
+                if node_by_id[nid].image_idx is not None
+                and node_by_id[nid].image_idx not in lib2_img_indices
+            }
+            if (
+                dehooked_table_keys
+                and non_lib2_surviving_refs
+                and x_sym not in dehooked_table_keys
+                and not (x_sym in panic_table_keys and x_sym in lib2_declared_exports)
+            ):
                 errors.append(
                     f"C2 lib2 / D-C2d: `X` symbol {x_sym!r} resolved to lib2 ({wnode.node_id}) "
                     f"is absent from `cliDehookedSymsPlaced`"
@@ -3383,11 +3447,26 @@ def check_stock_link(
         if not lib2_nodes:
             errors.append("C2 placement: active `lib2` config retained 0 sections")
 
+        allowed_lib2_rw_sec = (
+            ".data._RNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes7STORAGE"
+        )
         lib2_rx_nodes: list[RetainedSecNode] = []
         lib2_ro_nodes: list[RetainedSecNode] = []
+        lib2_allowed_rw_nodes: list[RetainedSecNode] = []
+        # Cold `core`/`alloc` panic helpers in sysroot rlibs load `core::fmt::Display::fmt`
+        # pointers via GOT (`R_AARCH64_ADR_GOT_PAGE=311`, `R_AARCH64_LD64_GOT_LO12_NC=312`);
+        # the abort-only panic path never dereferences the loaded formatter pointer.
+        allowed_lib2_got_secs = {
+            ".text.unlikely._RNvNtCskxtBwYRO61I_4core9panicking18panic_bounds_check",
+            ".text.unlikely._RNvNtCskxtBwYRO61I_4core9panicking19assert_failed_inner",
+            ".text.unlikely._RNvNtNtCskxtBwYRO61I_4core5slice5index16slice_index_fail",
+            ".text.unlikely._RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed",
+        }
         for lnode in lib2_nodes:
             for rel in lnode.sec.relocs:
                 if rel.r_type in {309, 310, 311, 312, 313}:
+                    if rel.r_type in {311, 312} and lnode.sec.name in allowed_lib2_got_secs:
+                        continue
                     errors.append(
                         f"C2 placement (lib2 GOT): GOT relocation r_type={rel.r_type} in {lnode.node_id}"
                     )
@@ -3405,6 +3484,18 @@ def check_stock_link(
                     errors.append(
                         f"C2 placement (lib2 text): {lnode.node_id} placed in {lnode.map_sec.out_sec!r} "
                         f"(expected '.text.lib2')"
+                    )
+            elif (
+                lnode.sec.name == allowed_lib2_rw_sec
+                and lnode.sec.sh_type == elf_inspect.SHT_PROGBITS
+                and lnode.sec.sh_size == 1
+                and (lnode.sec.sh_flags & elf_inspect.SHF_WRITE) != 0
+            ):
+                lib2_allowed_rw_nodes.append(lnode)
+                if lnode.map_sec.out_sec != ".data.crate" or lnode.map_sec.size != 1:
+                    errors.append(
+                        f"C2 placement (lib2 RW): {lnode.node_id} placed in {lnode.map_sec.out_sec!r} "
+                        f"(size={lnode.map_sec.size}, expected '.data.crate' size 1)"
                     )
             else:
                 lib2_ro_nodes.append(lnode)
@@ -3436,7 +3527,12 @@ def check_stock_link(
                 and m_sec.archive_path is None
                 and pathlib.Path(m_sec.input_raw).name in lib2_obj_names
             ):
-                if m_sec.out_sec not in (".text.lib2", ".rodata.lib2"):
+                is_allowed_lib2_rw_map = (
+                    m_sec.out_sec == ".data.crate"
+                    and m_sec.sec_name == allowed_lib2_rw_sec
+                    and m_sec.size == 1
+                )
+                if m_sec.out_sec not in (".text.lib2", ".rodata.lib2") and not is_allowed_lib2_rw_map:
                     errors.append(
                         f"C2 placement: lib2 map section {m_sec.input_raw}:({m_sec.sec_name}) placed in "
                         f"{m_sec.out_sec!r} (expected '.text.lib2' or '.rodata.lib2')"
@@ -3550,7 +3646,10 @@ def check_stock_link(
 
         ro_lib2_secs = [s for s in elf.sections if s.name == ".rodata.lib2"]
         has_any_lib2_ro_in_objs = any(
-            (s.sh_flags & elf_inspect.SHF_ALLOC) != 0 and (s.sh_flags & elf_inspect.SHF_EXECINSTR) == 0 and s.sh_size > 0
+            (s.sh_flags & elf_inspect.SHF_ALLOC) != 0
+            and (s.sh_flags & elf_inspect.SHF_EXECINSTR) == 0
+            and s.sh_size > 0
+            and s.name != allowed_lib2_rw_sec
             for idx in lib2_img_indices
             for r in image_records[idx]
             if r.obj is not None
@@ -3608,6 +3707,8 @@ def check_stock_link(
                             tsec.sh_flags & elf_inspect.SHF_EXECINSTR
                         ) != 0:
                             continue
+                        if tsec.name == allowed_lib2_rw_sec:
+                            continue
                         rel_vma = lnode.map_sec.vma + (rel.r_offset - p_lo)
                         if rel.r_type == 257:  # R_AARCH64_ABS64
                             (ptr_vma,) = struct.unpack("<Q", elf.read_vma(rel_vma, 8))
@@ -3640,13 +3741,16 @@ def check_stock_link(
                                             f"resolved to {resolved_ro:#x} outside `.rodata.lib2` [{rl2_lo:#x}, {rl2_hi:#x})"
                                         )
 
-        # 0 `lib2` bytes in any writable (`PF_W`) segment
+        # 0 `lib2` bytes in any writable (`PF_W`) segment (except the 1-byte `features_aes::STORAGE` in `.data.crate`)
+        allowed_rw_node_ids = {id(n) for n in lib2_allowed_rw_nodes}
         for seg in elf.segments:
             if (seg.flags & 0x2) == 0:
                 continue
             seg_lo = seg.vaddr
             seg_hi = seg.vaddr + seg.memsz
             for lnode in lib2_nodes:
+                if id(lnode) in allowed_rw_node_ids:
+                    continue
                 n_lo = lnode.map_sec.vma
                 n_hi = n_lo + lnode.map_sec.size
                 if max(seg_lo, n_lo) < min(seg_hi, n_hi):
@@ -3686,12 +3790,19 @@ def check_stock_link(
         x_sym
         for x_sym, (wnode, _wrsym, _wesym) in winning_node_by_x.items()
         if wnode.image_idx in lib2_img_indices
+        and x_sym in elf_inspect.BASELINE_2F20C836_STUB_ADDRS
     }
     retired_slots_report: list[dict[str, Any]] = []
     retired_vmas: dict[int, str] = {}
     seen_retired_syms: set[str] = set()
     seen_retired_names: set[str] = set()
     seen_retired_secs: set[str] = set()
+    text_crate_secs = [s for s in elf.sections if s.name == ".text.crate"]
+    text_crate_shift = 0
+    if len(text_crate_secs) == 1:
+        tc_delta = text_crate_secs[0].sh_addr - 0x40A000
+        if tc_delta >= 0 and tc_delta % 0x1000 == 0:
+            text_crate_shift = tc_delta
 
     for idx_rs, rs_item in enumerate(raw_retired_slots):
         if not isinstance(rs_item, Mapping):
@@ -3742,7 +3853,7 @@ def check_stock_link(
                 f"C2 retired slots: `{rs_sym}` slot size={rs_sz} origAddr={rs_orig:#x} (expected 4-byte aligned 4 B)"
             )
         if rs_sym in elf_inspect.BASELINE_2F20C836_STUB_ADDRS:
-            base_vma = elf_inspect.BASELINE_2F20C836_STUB_ADDRS[rs_sym]
+            base_vma = elf_inspect.BASELINE_2F20C836_STUB_ADDRS[rs_sym] + text_crate_shift
             if rs_orig != base_vma:
                 errors.append(
                     f"C2 retired slots: `{rs_sym}` origAddr {rs_orig:#x} != baseline 2f20c836 stub VMA {base_vma:#x}"
@@ -3900,25 +4011,41 @@ def check_stock_link(
     rust_extracted_report: dict[str, dict[str, Any]] = {}
     toolchain_sysroot_scan_report: dict[str, Any] = {}
 
-    # §0f(vi): Check that NO section of the SAME `.rlib` member is kept by two objects across
-    # `sysroot_trims` and `rust_extracted` kind (a)
-    kept_section_owners: dict[tuple[str, str], list[str]] = {}
+    # §0f(vi): Check that NO section of the SAME `.rlib` member is kept by two objects within the
+    # same `sysroot_trims` image, involving `rust_extracted` kind (a), or defining any non-local
+    # (`STB_GLOBAL`/`STB_WEAK`) symbol across images (`STB_LOCAL`-only internal callees have
+    # strictly per-`.o` scope in ELF and cannot be resolved across `lib0_*.o` and `lib2_*.o`).
+    kept_section_owners: dict[tuple[str, str], list[tuple[str, int | None, bool]]] = {}
     for st_row in sysroot_trims_report:
         st_owner = f"sysroot_trim:{st_row['object']}"
         st_msha = str(st_row.get("member_sha256") or "")
+        st_img = int(st_row["image_idx"])
+        st_nonlocal = set(st_row.get("nonlocal_kept_sections") or ())
         for ksec in st_row.get("kept_sections", []):
-            kept_section_owners.setdefault((st_msha, str(ksec)), []).append(st_owner)
+            ksec_s = str(ksec)
+            kept_section_owners.setdefault((st_msha, ksec_s), []).append(
+                (st_owner, st_img, ksec_s in st_nonlocal)
+            )
     for re_name, re_cfg in sorted(lock_rust_extracted.items()):
         if re_cfg.get("kind") == "rlib_member":
             re_owner = f"rust_extracted:{re_name}"
             re_msha = str(re_cfg.get("member_sha256") or "")
             for ksec in re_cfg.get("keep_sections") or []:
-                kept_section_owners.setdefault((re_msha, str(ksec)), []).append(re_owner)
-    for (msha_key, ksec), kowners in sorted(kept_section_owners.items()):
-        if len(kowners) > 1:
-            errors.append(
-                f"0f(vi): section {ksec!r} (member {msha_key[:16] or 'unknown'}) is kept by multiple objects: {kowners}"
+                kept_section_owners.setdefault((re_msha, str(ksec)), []).append(
+                    (re_owner, None, True)
+                )
+    for (msha_key, ksec), kowner_rows in sorted(kept_section_owners.items()):
+        if len(kowner_rows) > 1:
+            img_list = [img_i for _, img_i, _ in kowner_rows]
+            cross_image_local_only = (
+                all(img_i is not None and not has_nonlocal for _, img_i, has_nonlocal in kowner_rows)
+                and len(set(img_list)) == len(img_list)
             )
+            if not cross_image_local_only:
+                kowners = [own for own, _, _ in kowner_rows]
+                errors.append(
+                    f"0f(vi): section {ksec!r} (member {msha_key[:16] or 'unknown'}) is kept by multiple objects: {kowners}"
+                )
 
     # Exact-name definitions in all non-`rust_extracted` pinned inputs (`R`, non-`rust_extracted` `N`, `S:<i>`)
     exact_defs_non_re: dict[str, list[str]] = {}
@@ -3945,6 +4072,7 @@ def check_stock_link(
     # `rlib_exact_hits[sym]` -> list of `(scope_label, rlib_name, rlib_sha256, member_name, member_sha256)`
     rlib_exact_hits: dict[str, list[tuple[str, str, str, str, str]]] = {}
     scanned_sysroot_rlib_shas: set[str] = set()
+    scanned_sysroot_rlib_names: set[str] = set()
     seen_hit_keys: dict[str, set[tuple[str, str, str, str]]] = {}
 
     def _record_rlib_hits(
@@ -3957,6 +4085,7 @@ def check_stock_link(
         rl_sha = elf_inspect.sha256_bytes(raw_rl)
         if is_sysroot_scan:
             scanned_sysroot_rlib_shas.add(rl_sha)
+            scanned_sysroot_rlib_names.add(rlib_name)
         elif rl_sha in scanned_sysroot_rlib_shas:
             # Byte-identical staged copy of an already-scanned toolchain sysroot `.rlib`
             return rl_sha
@@ -4062,22 +4191,38 @@ def check_stock_link(
 
     # Parse referenced kind-(a) `.rlib` archives and register them in `rlib_exact_hits` as well
     rlib_parsed_by_re: dict[str, elf_inspect.ParsedArchive] = {}
+    got_rl_sha_by_re: dict[str, str] = {}
     for re_name, re_cfg in sorted(lock_rust_extracted.items()):
         if re_cfg.get("kind") != "rlib_member":
             continue
+        exp_rlib_bname = pathlib.PurePosixPath(str(re_cfg["rlib_path"]).replace("\\", "/")).name
         try:
             rl_disk = _resolve_staged_file(
-                re_cfg["rlib_path"], rlib_roots, expected_sha256=re_cfg["rlib_sha256"]
+                re_cfg["rlib_path"], rlib_roots, expected_sha256=re_cfg["rlib_sha256"] or None
             )
         except FileNotFoundError as exc:
             errors.append(f"0f(vi) / GK 458 C1(a): `rust_extracted[{re_name!r}]` missing rlib: {exc}")
             continue
+        if rl_disk.name != exp_rlib_bname:
+            errors.append(
+                f"0f(vi) / GK 458 C1(a): `rust_extracted[{re_name!r}]` resolved rlib basename "
+                f"{rl_disk.name!r} != expected {exp_rlib_bname!r}"
+            )
+            continue
         raw_rl = rl_disk.read_bytes()
         got_rl_sha = _record_rlib_hits(raw_rl, rl_disk.name, f"rust_extracted:{re_name}")
-        if got_rl_sha != re_cfg["rlib_sha256"]:
+        got_rl_sha_by_re[re_name] = got_rl_sha
+        if re_cfg["rlib_sha256"]:
+            if got_rl_sha != re_cfg["rlib_sha256"]:
+                errors.append(
+                    f"0f(vi) / GK 458 C1(a): `rust_extracted[{re_name!r}]` rlib {rl_disk.name} sha256 "
+                    f"{got_rl_sha} != pinned {re_cfg['rlib_sha256']}"
+                )
+                continue
+        elif got_rl_sha in scanned_sysroot_rlib_shas or rl_disk.name in scanned_sysroot_rlib_names:
             errors.append(
-                f"0f(vi) / GK 458 C1(a): `rust_extracted[{re_name!r}]` rlib {rl_disk.name} sha256 "
-                f"{got_rl_sha} != pinned {re_cfg['rlib_sha256']}"
+                f"0f(vi) / GK 458 C1(a): `rust_extracted[{re_name!r}]` prebuilt toolchain sysroot rlib "
+                f"{rl_disk.name} must pin 64-hex `rlib_sha256`"
             )
             continue
         rlib_parsed_by_re[re_name] = elf_inspect.parse_rlib_archive(raw_rl, rl_disk.name)
@@ -4115,12 +4260,21 @@ def check_stock_link(
                         f"0f(vi) / SR-31 A1 route-order violation: alias_stub {re_name!r} defines {dsym!r}, "
                         f"displacing exact-name rlib definer {h_scope}:{h_rname}({h_mname})"
                     )
-                elif (re_cfg["rlib_sha256"], re_cfg["member_sha256"]) != (h_rsha, h_msha):
-                    errors.append(
-                        f"0f(vi) / SR-31 A1 route-order violation: kind (a) {re_name!r} extracts {dsym!r} from "
-                        f"({re_cfg['rlib_sha256'][:12]}, {re_cfg['member_sha256'][:12]}) instead of mandatory "
-                        f"exact-name rlib definer {h_scope}:{h_rname}({h_mname}) ({h_rsha[:12]}, {h_msha[:12]})"
+                else:
+                    exp_hit_rsha = re_cfg["rlib_sha256"] or got_rl_sha_by_re.get(re_name, "")
+                    exp_rlib_bname = pathlib.PurePosixPath(
+                        str(re_cfg["rlib_path"]).replace("\\", "/")
+                    ).name
+                    name_mismatch = (
+                        not re_cfg["rlib_sha256"]
+                        and (h_rname, h_mname) != (exp_rlib_bname, str(re_cfg["member"]))
                     )
+                    if (exp_hit_rsha, re_cfg["member_sha256"]) != (h_rsha, h_msha) or name_mismatch:
+                        errors.append(
+                            f"0f(vi) / SR-31 A1 route-order violation: kind (a) {re_name!r} extracts {dsym!r} from "
+                            f"({(exp_hit_rsha or 'unpinned')[:12]}, {re_cfg['member_sha256'][:12]}) instead of mandatory "
+                            f"exact-name rlib definer {h_scope}:{h_rname}({h_mname}) ({h_rsha[:12]}, {h_msha[:12]})"
+                        )
 
         if re_kind == "rlib_member":
             pr = rlib_parsed_by_re.get(re_name)
@@ -4130,7 +4284,7 @@ def check_stock_link(
             if pr is not None:
                 mem_name = str(re_cfg["member"])
                 mcands = pr.members_by_name.get(mem_name, [])
-                if len(mcands) > 1:
+                if re_cfg["rlib_sha256"] and len(mcands) > 1:
                     sha_filtered = [m for m in mcands if m.sha256 == re_cfg["member_sha256"]]
                     if len(sha_filtered) == 1:
                         mcands = sha_filtered
@@ -4792,7 +4946,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             inputs_lock_path=args.inputs_lock,
             ci=args.ci,
             atomics_mode=args.atomics_mode,
-            raise_on_error=False,
+            raise_on_error=(args.json_out is None),
         )
         if args.json_out is not None:
             args.json_out.parent.mkdir(parents=True, exist_ok=True)

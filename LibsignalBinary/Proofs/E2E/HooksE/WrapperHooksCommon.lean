@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.HooksE.Common
+public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
 import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Wrapper Hook Witnesses
@@ -18,7 +19,7 @@ import ProofLib.VCGen
 Proves `HookOk` for `stringCloneHook0` (`stringCloneSpec A0`) and `timeAddHook` (`timeAddSpec`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

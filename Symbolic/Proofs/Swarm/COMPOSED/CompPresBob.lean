@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompCikOK
+public import Symbolic.Proofs.Swarm.COMPOSED.CompCikOK -- proof-setup: allow-public-import
 import all DY.ALaCarte.Basic
 import all DY.ALaCarte.Ordering
 import all DY.Bytes.Basic
@@ -31,7 +31,7 @@ import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import all Init.Data.String.Defs
 import Symbolic.Proofs.Swarm.COMPOSED.CompHsClass
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp
-import Symbolic.Proofs.Swarm.COMPOSED.CompPubInv
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPubInv -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 
 /-!
@@ -42,7 +42,7 @@ attacker-known message yields `AliceMatch` or an authentication compromise excus
 that `bobStart` preserves `SpqrInv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -627,12 +627,6 @@ theorem eq_dhPk_of_sameDHKey_dhPk {sk₁ sk₂ : Bytes}
   rw [x25519Key_dhPk, x25519Key_dhPk] at hsame
   exact dhPk_inj hsame
 
-theorem bobAgreement_of_kemDecap {sB sS sQ : Bytes} {o : Option Bytes} {ikA ek ct e : Bytes}
-    (hdec : PQKem.kemDecap sQ ct = some e) :
-    bobAgreement sB sS sQ o ikA ek ct =
-      some (pqxdhKdf (pqxdhIkm (agree ikA sS) (agree ek sB) (agree ek sS) (o.map (agree ek ·)) e)) := by
-  unfold bobAgreement; rw [hdec]; rfl
-
 theorem kemDecap_of_bobAgreement {sB sS sQ : Bytes} {o : Option Bytes} {ikA ek ct : Bytes}
     {keys : HandshakeKeys} (hbob : bobAgreement sB sS sQ o ikA ek ct = some keys) :
     ∃ e, e = (DY.Libsignal.PQXDH.errToOption (PQKem.kemDecap sQ ct)).getD (PQKem.kemRejKey sQ ct) ∧
@@ -919,15 +913,15 @@ theorem bind_verifyMacAndDecrypt_at {Inv : ExecTrace → Prop} {α : Type}
   · exact hInv
   · exact hf m hMac
 
-def bobInitSt (a : Participant) (ikB ikA : Bytes) (keys : HandshakeKeys) (sS rt : Bytes) : TRState :=
+@[expose] def bobInitSt (a : Participant) (ikB ikA : Bytes) (keys : HandshakeKeys) (sS rt : Bytes) : TRState :=
   { peer := a, myIk := serializedIk ikB, peerIk := serializedIk ikA, rk := keys.rk,
     dhs := sS, cks := keys.ck, ns := 0, pn := 0, sid := Concat.concat (X25519.normalizeX25519Key rt) keys.rk,
     initiator := false, rIdx := 0, recv := [], spqr := Spqr.spqrInit keys.pqr spqrB2A }
 
-def bobRatchetedChain (keys : HandshakeKeys) (rt sS : Bytes) : RecvChain :=
+@[expose] def bobRatchetedChain (keys : HandshakeKeys) (rt sS : Bytes) : RecvChain :=
   { ratchetKey := rt, chainKey := (createChain keys.rk rt sS).2, index := 0, rIdx := 2 }
 
-def bobRatchetedSt (a : Participant) (ikB ikA : Bytes) (keys : HandshakeKeys)
+@[expose] def bobRatchetedSt (a : Participant) (ikB ikA : Bytes) (keys : HandshakeKeys)
     (sS rt dhs : Bytes) : TRState :=
   let (rk1, _) := createChain keys.rk rt sS
   let (rk2, cks) := createChain rk1 rt dhs

@@ -18,7 +18,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 open DY.Libsignal (HwBytes)
 open DY.Libsignal.Composed.Refinement Symbolic.BugInjection Symbolic.BugInjection.Disproofs.Hyp
 variable {w : PQXDHSpqrSetup} {i : ExternInterpretation} {r : Records}
-theorem compFits_base (h : compFitsPinned w i r) : compFits w i r := h.1
+theorem compFits_base (h : compFitsPinned w i r) : SetupMatches w i r := h.1
 theorem compFits_alice (h : compFitsPinned w i r) : r.alice = "alice" := h.2.2.2.1.1
 theorem compFits_bob (h : compFitsPinned w i r) : r.bob = "bob" := h.2.2.2.1.2
 theorem compFits_secretBytes_fresh (h : compFitsPinned w i r) : secretBytes r 3 = fillFresh 11 64 ∧ secretBytes r 4 = fillFresh 16 64 ∧ secretBytes r 5 = fillFresh 17 64 := h.2.2.1
@@ -33,7 +33,7 @@ def checkPreKeyOuter (w : PQXDHSpqrSetup) (i : ExternInterpretation) (b : HwByte
       decide (q.preKeyId = none)
 
 theorem preKeyOuterMatches_of_check {w : PQXDHSpqrSetup} {i : ExternInterpretation} {r : Records}
-    {b : HwBytes} {q : PreKeyFields} (hf : compFits w i r) (hq : parsePreKeyWire b = some q)
+    {b : HwBytes} {q : PreKeyFields} (hf : SetupMatches w i r) (hq : parsePreKeyWire b = some q)
     (h : checkPreKeyOuter w i b = true) :
     Symbolic.BugInjection.Proofs.Common443.CompRPreKeyWire.PreKeyOuterMatches i r b q := by
   unfold checkPreKeyOuter at h; rw [hq] at h

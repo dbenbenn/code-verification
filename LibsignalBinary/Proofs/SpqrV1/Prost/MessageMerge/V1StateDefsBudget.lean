@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefs
 
 /-!
@@ -21,7 +21,7 @@ contracts (`v1StateMergeSpec`, `v1StateMergePlacedSpec`), and loop/error frame b
 `V1State::merge` (Block `298`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,7 +49,7 @@ open CryptoVerification.SpqrV1.Prost.MessageMerge
 /-! ## 1. `Polynomial{Encoder,Decoder}` Capacity Bound for `Option V1State.InnerState` -/
 
 /-- Maximum initial `Polynomial{Encoder,Decoder}` vector length inside `V1State.InnerState`. -/
-def innerStatePolyCapMax : V1State.InnerState → Nat
+@[expose] def innerStatePolyCapMax : V1State.InnerState → Nat
   | .keysUnsampled _ => 0
   | .keysSampled s =>
       Nat.max (optPolyEncoderPtsLen s.sendingHdr) (optPolyEncoderPolysLen s.sendingHdr)
@@ -77,12 +77,12 @@ def innerStatePolyCapMax : V1State.InnerState → Nat
       Nat.max (optPolyEncoderPtsLen s.sendingCt2) (optPolyEncoderPolysLen s.sendingCt2)
 
 /-- Maximum initial `Polynomial{Encoder,Decoder}` vector length inside `Option V1State.InnerState`. -/
-def optInnerStatePolyCapMax : Option V1State.InnerState → Nat
+@[expose] def optInnerStatePolyCapMax : Option V1State.InnerState → Nat
   | none => 0
   | some st => innerStatePolyCapMax st
 
 /-- Uniform `growVecU8` capacity upper bound across `V1State::merge` starting from `(opt, bsLen)`. -/
-def optInnerStatePolyCapBound (opt : Option V1State.InnerState) (bsLen : Nat) : Nat :=
+@[expose] def optInnerStatePolyCapBound (opt : Option V1State.InnerState) (bsLen : Nat) : Nat :=
   optInnerStatePolyCapMax opt + bsLen
 
 theorem optInnerStatePolyCapBound_mono_len {opt : Option V1State.InnerState} {m n : Nat}
@@ -96,12 +96,12 @@ theorem optInnerStatePolyCapBound_mono_len {opt : Option V1State.InnerState} {m 
 /-- Precondition allocator event envelope for `V1State::merge`:
 each outer byte consumed allows up to `8` `SpqrMergeIterEnv` steps (`1` optional `InnerState`
 variant-switch deallocation + `6 * Δ` inner `Chunked.*` steps), plus `16` error-unwind steps. -/
-def V1StateMergeEnv (x : V1StateMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def V1StateMergeEnv (x : V1StateMergeGhost) (evs : List AllocEvent) : Prop :=
   SpqrMergeLoopEnv (8 * x.bs.length + 16) x.bs.length
     (optInnerStatePolyCapBound x.msg.innerState x.bs.length) evs
 
 /-- Postcondition allocator event envelope for `V1State::merge`. -/
-def V1StateMergePostEnv (x : V1StateMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def V1StateMergePostEnv (x : V1StateMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage V1State.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 100).toOption with
   | some (_, rest) =>
     SpqrMergeLoopEnv (8 * (x.bs.length - rest.length)) x.bs.length
@@ -121,7 +121,7 @@ theorem v1StateMergePostEnv_imp_pre {x : V1StateMergeGhost} {evs : List AllocEve
 /-! ## 3. Base-Parameterized & Relocatable `[LibsignalPlacement]` Hoare Contracts -/
 
 /-- Envelope-parameterized base-offset contract of `V1State::merge`. -/
-def v1StateMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def v1StateMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (b : BitVec 64)
     (PreEnv PostEnv : V1StateMergeGhost → List AllocEvent → Prop) :
     Spec (V1StateMergeGhost × M.σ) where
@@ -153,18 +153,18 @@ def v1StateMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M) (lim :
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded base-offset contract of `V1State::merge` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def v1StateMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def v1StateMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (b : BitVec 64) : Spec (V1StateMergeGhost × M.σ) :=
   v1StateMergeSpecOfEnv A lim b V1StateMergeEnv V1StateMergePostEnv
 
-def v1StateErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def v1StateErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (b : BitVec 64) (s0 sf : State)
     (msgPtr bufRef slot ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   (∃∗ is' : Option V1State.InnerState, optProtoInnerStateAt A.repAlloc msgPtr is') ∗
     v1StateJumpTablesAt b ∗ (bufRef ↦₆₄ slot) ∗ memRegion slot 16 ∗ (ptr ↦ₛ bs) ∗
     A.pool lim st sf ∗ v1StateSavedRegsAt s0.sp s0
 
-def v1StateLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def v1StateLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (b : BitVec 64) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64) (m : V1State) (bs cur : List (BitVec 8)) : SepProp :=
   optProtoInnerStateCapAt A.repAlloc msgPtr cur.length m.innerState ∗
@@ -174,7 +174,7 @@ def v1StateLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : Budget
     v1StateSavedRegsAt s0.sp s0
 
 /-- Envelope-parameterized relocatable `[LibsignalPlacement]` contract of `V1State::merge`. -/
-def v1StateMergePlacedSpecOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def v1StateMergePlacedSpecOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv PostEnv : V1StateMergeGhost → List AllocEvent → Prop) :
     Spec (V1StateMergeGhost × M.σ) where
@@ -206,18 +206,18 @@ def v1StateMergePlacedSpecOfEnv [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` contract of `V1State::merge`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def v1StateMergePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def v1StateMergePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (V1StateMergeGhost × M.σ) :=
   v1StateMergePlacedSpecOfEnv A lim V1StateMergeEnv V1StateMergePostEnv
 
-def v1StateErrFramePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def v1StateErrFramePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s0 sf : State)
     (msgPtr bufRef slot ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   (∃∗ is' : Option V1State.InnerState, optProtoInnerStateAt A.repAlloc msgPtr is') ∗
     v1StateJumpTablesPlacedAt ∗ (bufRef ↦₆₄ slot) ∗ memRegion slot 16 ∗ (ptr ↦ₛ bs) ∗
     A.pool lim st sf ∗ v1StateSavedRegsAt s0.sp s0
 
-def v1StateLoopPrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def v1StateLoopPrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64) (m : V1State) (bs cur : List (BitVec 8)) : SepProp :=
   optProtoInnerStateCapAt A.repAlloc msgPtr cur.length m.innerState ∗

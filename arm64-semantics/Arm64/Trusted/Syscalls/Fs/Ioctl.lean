@@ -72,7 +72,8 @@ def execIoctl (s : State) : State :=
         ((s.setFs fs').writeReg64 Reg.x0 0#64).advancePC
       else if desc.kind != .localFile then s.setStatus (.Exception "unmodeled non-file fd")
       else if cmd == FIONREAD_W32 then
-        if !s.mem.canWrite arg 4 then (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        if !decide (arg.toNat + 4 ≤ 2 ^ 64) || !s.mem.canWrite arg 4 then
+          (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
         else
           let avail : BitVec 32 :=
             BitVec.ofNat 32 (s.fs.fdBytes desc).length - BitVec.ofNat 32 desc.offset

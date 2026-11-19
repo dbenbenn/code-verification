@@ -10,12 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAux
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Helpers for `archive_current_state_inner` and `promote_state`
@@ -29,7 +33,7 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
   `encodeRawPreallocSubSpecX`, `rustDeallocSubSpecX`, and `growOneSubSpecX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -147,26 +151,10 @@ theorem vecAt_congr_live {α : Type} {A₁ A₂ : RustAlloc} (h : A₁.live = A�
   unfold vecAt
   rw [vecBuf_congr_live h stride align cap ptr xs helem]
 
-theorem vecOf_congr_live {α : Type} {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (stride align : Nat) {elem₁ elem₂ : α → BitVec 64 → SepProp}
-    (v : BitVec 64) (xs : List α)
-    (helem : ∀ x ∈ xs, ∀ a, elem₁ x a = elem₂ x a) :
-    vecOf A₁ stride align elem₁ v xs = vecOf A₂ stride align elem₂ v xs := by
-  unfold vecOf
-  have heq : ∀ cap ptr : BitVec 64,
-      vecAt A₁ stride align elem₁ v cap ptr xs = vecAt A₂ stride align elem₂ v cap ptr xs :=
-    fun cap ptr => vecAt_congr_live h stride align v cap ptr xs helem
-  simp only [heq]
-
 theorem vecGhostAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     (g : VecGhost) (v : BitVec 64) :
     vecGhostAt A₁ g v = vecGhostAt A₂ g v :=
   vecU8At_congr_live h v g.cap g.ptr g.bytes
-
-theorem vecGhostHeap_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (g : VecGhost) :
-    vecGhostHeap A₁ g = vecGhostHeap A₂ g :=
-  vecU8Buf_congr_live h g.cap g.ptr g.bytes
 
 theorem messageKeyAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     (gk : MessageKeyGhost × MessageKeyGenerator) (a : BitVec 64) :
@@ -179,11 +167,6 @@ theorem optChainKeyAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.l
     optChainKeyAt A₁ pin o a = optChainKeyAt A₂ pin o a := by
   cases o <;> simp only [optChainKeyAt, vecU8At_congr_live h]
 
-theorem optChainKeyHeap_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (pin : VecPin) (o : Option ChainKey) :
-    optChainKeyHeap A₁ pin o = optChainKeyHeap A₂ pin o := by
-  cases o <;> simp only [optChainKeyHeap, vecU8Buf_congr_live h]
-
 theorem chainAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     (gc : ChainGhost × ReceiverChain) (a : BitVec 64) :
     chainAt A₁ gc a = chainAt A₂ gc a := by
@@ -192,30 +175,6 @@ theorem chainAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     vecAt_congr_live h _ _ _ _ _ _ (fun x _ b => messageKeyAt_congr_live h x b),
     optChainKeyAt_congr_live h]
 
-theorem protoChainAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (gc : ChainGhost × ReceiverChain) (a : BitVec 64) :
-    protoChainAt A₁ gc a = protoChainAt A₂ gc a := by
-  unfold protoChainAt
-  rw [vecGhostAt_congr_live h, vecGhostAt_congr_live h,
-    vecAt_congr_live h _ _ _ _ _ _ (fun x _ b => messageKeyAt_congr_live h x b),
-    optChainKeyAt_congr_live h]
-
-theorem protoChainHeap_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (gc : ChainGhost × ReceiverChain) :
-    protoChainHeap A₁ gc = protoChainHeap A₂ gc := by
-  unfold protoChainHeap
-  rw [vecGhostHeap_congr_live h, vecGhostHeap_congr_live h,
-    vecBuf_congr_live h _ _ _ _ _ (fun x _ b => messageKeyAt_congr_live h x b),
-    optChainKeyHeap_congr_live h]
-
-theorem chainHeap_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (gc : ChainGhost × ReceiverChain) :
-    chainHeap A₁ gc = chainHeap A₂ gc := by
-  unfold chainHeap
-  rw [vecGhostHeap_congr_live h, vecGhostHeap_congr_live h,
-    vecBuf_congr_live h _ _ _ _ _ (fun x _ b => messageKeyAt_congr_live h x b),
-    optChainKeyHeap_congr_live h]
-
 theorem optSenderChainAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     (a : BitVec 64) (g : Option SenderChainGhost) (sc : Option SenderChain) :
     optSenderChainAt A₁ a g sc = optSenderChainAt A₂ a g sc := by
@@ -223,20 +182,10 @@ theorem optSenderChainAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A�
     simp only [optSenderChainAt, vecGhostAt_congr_live h, optChainKeyAt_congr_live h,
       vecAt_congr_live h _ _ _ _ _ _ (fun x _ b => messageKeyAt_congr_live h x b)]
 
-theorem optSenderChainHeap_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (g : Option SenderChainGhost) (sc : Option SenderChain) :
-    optSenderChainHeap A₁ g sc = optSenderChainHeap A₂ g sc := by
-  cases g <;> cases sc <;> simp only [optSenderChainHeap, protoChainHeap_congr_live h]
-
 theorem optTailVecAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     (size : Nat) (a : BitVec 64) (o : Option TailVecGhost) :
     optTailVecAt A₁ size a o = optTailVecAt A₂ size a o := by
   cases o <;> simp only [optTailVecAt, vecGhostAt_congr_live h]
-
-theorem optTailVecHeap_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (o : Option TailVecGhost) :
-    optTailVecHeap A₁ o = optTailVecHeap A₂ o := by
-  cases o <;> simp only [optTailVecHeap, vecGhostHeap_congr_live h]
 
 theorem sessionStateAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     (ss : BitVec 64) (G : SessionGhost) (st : SessionState (List (BitVec 8))) :
@@ -247,26 +196,11 @@ theorem sessionStateAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.
     vecGhostAt_congr_live h, vecU8At_congr_live h, optSenderChainAt_congr_live h,
     optTailVecAt_congr_live h, optTailVecAt_congr_live h]
 
-theorem sessionHeap_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (G : SessionGhost) (st : SessionState (List (BitVec 8))) :
-    sessionHeap A₁ G st = sessionHeap A₂ G st := by
-  unfold sessionHeap
-  rw [vecGhostHeap_congr_live h, vecGhostHeap_congr_live h, vecU8Buf_congr_live h,
-    vecBuf_congr_live h _ _ _ _ _ (fun x _ b => chainAt_congr_live h x b),
-    vecGhostHeap_congr_live h, vecU8Buf_congr_live h, optSenderChainHeap_congr_live h,
-    optTailVecHeap_congr_live h, optTailVecHeap_congr_live h]
-
 theorem sessionStateReprAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     (ss : BitVec 64) (G : SessionGhost) (s : Session (List (BitVec 8))) :
     sessionStateReprAt A₁ ss G s = sessionStateReprAt A₂ ss G s := by
   unfold sessionStateReprAt
   rw [sessionStateAt_congr_live h]
-
-theorem sessionAtHeap_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (G : SessionGhost) (s : Session (List (BitVec 8))) :
-    sessionAtHeap A₁ G s = sessionAtHeap A₂ G s := by
-  unfold sessionAtHeap
-  rw [sessionHeap_congr_live h]
 
 theorem sessionRecordAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     (r : BitVec 64) (g : RecordGhost) (rec : SessionRecord (List (BitVec 8))) :
@@ -274,11 +208,6 @@ theorem sessionRecordAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂
   unfold sessionRecordAt
   rw [vecAt_congr_live h 24 8 r g.prevCap g.prevPtr [] (fun _ _ _ => rfl)]
   cases g.cur <;> cases rec.currentSession <;> simp only [sessionStateReprAt_congr_live h]
-
-theorem prevElem_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live) :
-    prevElem A₁ = prevElem A₂ := by
-  funext bs a
-  exact vecU8_congr_live h a bs
 
 theorem prevVecAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     (r cap ptr : BitVec 64) (ps : List (List (BitVec 8))) :
@@ -290,24 +219,6 @@ theorem prev1_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
     Prev1 A₁ q enc = Prev1 A₂ q enc := by
   unfold Prev1
   exact vecBuf_congr_live h 24 8 4#64 q [enc] (fun bs _ a => vecU8_congr_live h a bs)
-
-theorem recCurAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (r : BitVec 64) (cur : Option SessionGhost) (rec : SessionRecord (List (BitVec 8))) :
-    recCurAt A₁ r cur rec = recCurAt A₂ r cur rec := by
-  cases cur <;> cases rec.currentSession <;> simp only [recCurAt, sessionStateReprAt_congr_live h]
-
-theorem sessionRecordPrevAt_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (r : BitVec 64) (g : RecordGhost) (ps : List (List (BitVec 8)))
-    (rec : SessionRecord (List (BitVec 8))) :
-    sessionRecordPrevAt A₁ r g ps rec = sessionRecordPrevAt A₂ r g ps rec := by
-  unfold sessionRecordPrevAt
-  rw [prevVecAt_congr_live h, recCurAt_congr_live h]
-
-theorem tailPinDealloc_congr_live {A₁ A₂ : RustAlloc} (h : A₁.live = A₂.live)
-    (cap ptr : BitVec 64) :
-    tailPinDealloc A₁ cap ptr = tailPinDealloc A₂ cap ptr := by
-  unfold tailPinDealloc
-  rw [h]
 
 /-! ### `A.atState lim st s` ↔ `A.repAlloc` Specializations -/
 
@@ -345,12 +256,6 @@ theorem sessionStateReprAt_atState {M : AllocCostModel} (A : RustCliAllocBudget 
       sessionStateReprAt A.repAlloc ss G sess :=
   sessionStateReprAt_congr_live (A.atState_live_eq_repAlloc lim st s) ss G sess
 
-theorem sessionAtHeap_atState {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (st : M.σ) (s : State)
-    (G : SessionGhost) (sess : Session (List (BitVec 8))) :
-    sessionAtHeap (A.atState lim st s) G sess = sessionAtHeap A.repAlloc G sess :=
-  sessionAtHeap_congr_live (A.atState_live_eq_repAlloc lim st s) G sess
-
 theorem sessionRecordAt_atState {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State)
     (r : BitVec 64) (g : RecordGhost) (rec : SessionRecord (List (BitVec 8))) :
@@ -367,25 +272,6 @@ theorem prev1_atState {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) (q : BitVec 64) (enc : List (BitVec 8)) :
     Prev1 (A.atState lim st s) q enc = Prev1 A.repAlloc q enc :=
   prev1_congr_live (A.atState_live_eq_repAlloc lim st s) q enc
-
-theorem recCurAt_atState {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (st : M.σ) (s : State)
-    (r : BitVec 64) (cur : Option SessionGhost) (rec : SessionRecord (List (BitVec 8))) :
-    recCurAt (A.atState lim st s) r cur rec = recCurAt A.repAlloc r cur rec :=
-  recCurAt_congr_live (A.atState_live_eq_repAlloc lim st s) r cur rec
-
-theorem sessionRecordPrevAt_atState {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (st : M.σ) (s : State)
-    (r : BitVec 64) (g : RecordGhost) (ps : List (List (BitVec 8)))
-    (rec : SessionRecord (List (BitVec 8))) :
-    sessionRecordPrevAt (A.atState lim st s) r g ps rec =
-      sessionRecordPrevAt A.repAlloc r g ps rec :=
-  sessionRecordPrevAt_congr_live (A.atState_live_eq_repAlloc lim st s) r g ps rec
-
-theorem tailPinDealloc_atState {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (st : M.σ) (s : State) (cap ptr : BitVec 64) :
-    tailPinDealloc (A.atState lim st s) cap ptr = tailPinDealloc A.repAlloc cap ptr :=
-  tailPinDealloc_congr_live (A.atState_live_eq_repAlloc lim st s) cap ptr
 
 /-! ### `ArchiveDefsBudget` Unfoldings and `*PlacedOk*` Abbreviations -/
 
@@ -533,9 +419,6 @@ abbrev PromoteStateOverPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
 theorem freeOnlyEvs_rustDealloc (size align : Nat) :
     FreeOnlyEvs (rustDeallocEvents size align) :=
   FreeOnlyEvs.singleton align size
-
-theorem growOneVecU8Events_zero :
-    growOneVecU8Events 0#64 = rustAllocEvents 96 8 := rfl
 
 theorem growOneVecU8Env_zero_iff {x : GrowOneCall} {evs : List AllocEvent}
     (hx : x.cap = 0#64) :
@@ -697,7 +580,7 @@ abbrev memcpy_placed_sub_clX :=
 `encodeRawStackX` when the destination `Vec<u8>` already has sufficient capacity
 (`x.bs.length + (encSessionMem x.G x.s).length ≤ x.cap.toNat`), as in
 `archive_current_state_inner`'s `Vec::with_capacity(encoded_len)` path. -/
-def encodeRawPreallocSpecX (A : RustAlloc) : Spec EncodeRawGhost where
+@[expose] def encodeRawPreallocSpecX (A : RustAlloc) : Spec EncodeRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x1 = x.v ∧
       x.bs.length + (encSessionMem x.G x.s).length ≤ x.cap.toNat ∧
@@ -719,7 +602,7 @@ abbrev EncodeRawPreallocPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (withLsCodeLoaded lsmpl (encodeRawPreallocSpecX A))
 
 /-- Pre-reserved `0`-allocation `SessionStructure::encode_raw` lifted to `serializeSubStackX`. -/
-def encodeRawPreallocSubSpecX (A : RustAlloc) : Spec EncodeRawGhost where
+@[expose] def encodeRawPreallocSubSpecX (A : RustAlloc) : Spec EncodeRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x1 = x.v ∧
       x.bs.length + (encSessionMem x.G x.s).length ≤ x.cap.toNat ∧
@@ -808,7 +691,7 @@ theorem dealloc_arch_placed_clX [LibsignalPlacement]
 /-! ### Budget-Threaded `RawVec<Vec<u8>>::grow_one` at `serializeSubStackX` -/
 
 /-- Conditional-OOM budget contract for `RawVec<Vec<u8>>::grow_one` lifted to `serializeSubStackX`. -/
-def growOneBudgetCondSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneBudgetCondSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (GrowOneCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ x.bs.length = x.cap.toNat * 24 ∧ x.ptr ≠ 0 ∧
@@ -837,7 +720,7 @@ def growOneBudgetCondSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Deterministic-event `NoOom` contract (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`) for
 `RawVec<Vec<u8>>::grow_one` lifted to `serializeSubStackX`. -/
-def growOneNoOomSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneNoOomSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (GrowOneCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ x.bs.length = x.cap.toNat * 24 ∧ x.ptr ≠ 0 ∧
@@ -858,7 +741,7 @@ def growOneNoOomSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Envelope-form budget contract (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`) for
 `RawVec<Vec<u8>>::grow_one` lifted to `serializeSubStackX`. -/
-def growOneSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (GrowOneCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ x.bs.length = x.cap.toNat * 24 ∧ x.ptr ≠ 0 ∧

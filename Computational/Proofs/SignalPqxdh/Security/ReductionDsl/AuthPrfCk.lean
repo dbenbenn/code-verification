@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # Evaluation Equivalence and Wiring for `prfCkRedProg`
@@ -21,7 +22,7 @@ Proves list-length preservation and semantic evaluation equivalence between the 
 and shows both reductions have identical `PrfChainKey` advantage.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 100000
@@ -1548,7 +1549,7 @@ theorem authCkStepC_eval
     exact registerFixedB_eval S fhst .zero _ s sk
       (by simp [Ext.step_wk, hfhst]) rfl
 
-@[simp] def prfCkStateToVal {S : Setup} (secb : Bool) (idx : Nat) (p : Bytes × Bytes)
+@[expose, simp] def prfCkStateToVal {S : Setup} (secb : Bool) (idx : Nat) (p : Bytes × Bytes)
     (hst : AuthHybridStateFixed S) : prfCkStTy.denote :=
   (secb, (idx, (p, authHybridStateFixedToVal hst)))
 
@@ -1881,7 +1882,7 @@ theorem prfCkRedProg_eval_eq (S : Setup) (b : QueryBudget)
   exact prfCkRedProg_eval_eq_of_bound S b.q_total A.1 mkSeedChal ck1_1Chal b.q_total hA le_rfl
 
 /-- The `PrfChainKey` adversary obtained by running the `ReductionDsl` program `prfCkRedProg S b.q_total`. -/
-def prfCkReductionAuthFixedDslAdv (S : Setup) (b : QueryBudget)
+@[expose] def prfCkReductionAuthFixedDslAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : PrfCkAdv where
   dist mkSeedChal ck1_1Chal :=
     (prfCkRedProg S b.q_total).eval (fun _ => A.1.run) (mkSeedChal, ck1_1Chal)

@@ -9,19 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.StepsChains
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.StepsFrontBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.StepsChains
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.StepsFrontBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA
-import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.Decode
+import Aesop.BuiltinRules
+import Mathlib.Tactic.Basic
+import Mathlib.Tactic.Simps
+import Mathlib.Tactic.ToAdditive
+import Mathlib.Tactic.ToDual
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.Pure -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved`-threaded chain step lemmas for `SessionStructure::encoded_len`
@@ -30,7 +34,7 @@ Relocatable `[LibsignalPlacement]` chain step lemmas for block `86` (tags 6–7:
 `receiver_chains` loop against `DefsBudget.chainLenSpec`), threading `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

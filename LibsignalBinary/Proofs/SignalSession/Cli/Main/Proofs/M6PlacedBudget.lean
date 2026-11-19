@@ -9,18 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlacedSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudgetSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded Relocatable `main` Hop M6 (`M+0xf70 .. M+0xfb4` + `free_args`, Block `617`)
@@ -30,7 +40,7 @@ Verifies `main`'s output/cleanup epilogue (`M+0xf70 → M+0xb80`) on Block `617`
 and `input` deallocation, and `free_args` into `ExitKPoolPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -62,17 +72,26 @@ open CryptoVerification.SignalSession.Cli.MainHops.M6PlacedHelpers
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv FreeOnlyEvs RustCliAllocBudget RustLayoutOk
    SeqEnv rustDeallocEvents rustCliDeallocBudgetExternSpecWithStack)
-open LibsignalBinary.Heap.SpecBudget (WriteStdoutEnv)
+open LibsignalBinary.Heap.SpecBudget (WriteStdoutEnv withVmPreserved)
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+  (LsRetAddr624 lsRetAddr624_blockPlacement_base_add)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
   (MainIoOfPlaced mainIoBoundedPlaced_iff_mainIoPlaced)
+open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlacedSat
+  (MainIoOfPlacedSat mainIoBoundedPlaced_iff_mainIoPlaced_sat)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
   (ExitKPlaced MainCalleesBlk617 retMem_of_pool)
+open LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs
+  (writeStdoutHonestCore writeStdoutSpecPlacedSat writeStdoutStackFloor)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
   (main_dealloc_fs_placed_ok)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget
   (ExitKPoolPlaced exitKPoolPlaced_of_exitKPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
   (MainIoPlaced writeStdoutSpecPlaced)
+open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudgetSat
+  (MainIoPlacedSat)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget (rustDeallocExternSpecWithStack)
 
 attribute [local irreducible] Program.fetch Program.externAt?
@@ -148,6 +167,65 @@ theorem step_writeStdout_placed [LibsignalPlacement] {CodeOk : Memory → Prop} 
     simp only [sepExists_sepConj_left, sepConj_assoc]
     refine SepWPp.exists_elim fun evs => ?_
     refine SepWPp.pure_elim fun ⟨hevs, hx0m, hfiles, hpref, hstdout⟩ => ?_
+    refine SepWPp.weaken_pre (Entails.of_eq (by sep_ac_rfl))
+      (hk sm evs hpcm hrunm (hspm.trans hsp_eq) hcsm hinv_m hevs hx0m
+        (hfiles.trans hfiles_eq) (htr_eq ▸ hpref) (htr_eq ▸ hstdout))
+
+theorem step_writeStdout_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
+    {H : LibsignalHooks} {hookStack : Nat} {fsp ret_pc ret outPtr : BitVec 64}
+    {out : List (BitVec 8)}
+    {files0 : String → Option FsEntry} {tr0 : List TraceEvent}
+    {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
+    (hw : subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsρ lsWriteStdoutSym)
+      (withLsRoCl lsmpl (withLsRet (writeStdoutSpecPlacedSat A lim hookStack))))
+    (hpc : s.pc = lsρ lsWriteStdoutSym)
+    (hrun : s.status = .Running)
+    (hsp_eq : s.sp = fsp)
+    (hal : s.spAligned = true)
+    (hinv : CodeOk s.mem)
+    (hlr : s.readReg64 .lr = ret_pc)
+    (hlr_ret : LsRetAddr624 ret_pc)
+    (hx0 : s.readReg64 .x0 = outPtr)
+    (hx1 : (s.readReg64 .x1).toNat = out.length)
+    (hfit : FitsEnv M lim st WriteStdoutEnv)
+    (hfloor : writeStdoutStackFloor ≤ hookStack)
+    (hout63 : out.length < 2 ^ 63)
+    (hfiles_eq : s.fs.files = files0)
+    (htr_eq : s.trace = tr0)
+    (hP : P ⊢ (outPtr ↦ₛ out) ∗ stackAt fsp hookStack ∗ A.pool lim st s ∗ F)
+    (hk : ∀ (sm : State) (evs : List AllocEvent),
+      sm.pc = ret_pc →
+      sm.status = .Running →
+      sm.sp = fsp →
+      CalleeSavedPreserved s sm →
+      CodeOk sm.mem →
+      WriteStdoutEnv evs →
+      sm.readReg64 .x0 = 0#64 →
+      sm.fs.files = files0 →
+      tr0 <+: sm.trace →
+      ProcessOutcome.traceStreamBytes .stdout sm.trace =
+        ProcessOutcome.traceStreamBytes .stdout tr0 ++ out →
+      SepWPp ((blkPC_617).rebase (blkPl_617).base H) ret sm
+        ((outPtr ↦ₛ out) ∗ stackAt fsp hookStack ∗ A.pool lim (M.stepEvents evs st) sm ∗ F)
+        Q Qp oom) :
+    SepWPp ((blkPC_617).rebase (blkPl_617).base H) ret s P Q Qp oom := by
+  refine main_call_rocl (x := (WriteStdoutGhost.mk outPtr out, st)) hw hinv hpc hrun hal hlr
+    (F := F) ?_ (hnext := ?_)
+  · refine Entails.trans hP ?_
+    dsimp only [withLsRet, writeStdoutSpecPlacedSat, withVmPreserved, writeStdoutHonestCore]
+    simp only [hsp_eq, sepConj_assoc]
+    apply Entails.pure_right (hlr ▸ hlr_ret)
+    apply Entails.pure_right ⟨hx0, hx1, hfit, hfloor, hout63⟩
+    exact Entails.of_eq (by sep_ac_rfl)
+  · intro sm hinv_m hpcm hrunm hspm hcsm
+    dsimp only [withLsRet, writeStdoutSpecPlacedSat, withVmPreserved, writeStdoutHonestCore]
+    rw [hsp_eq]
+    simp only [sepConj_assoc]
+    refine SepWPp.pure_elim fun _hvm => ?_
+    simp only [sepExists_sepConj_left, sepConj_assoc]
+    refine SepWPp.exists_elim fun evs => ?_
+    refine SepWPp.pure_elim fun ⟨hevs, hx0m, hfiles, hpref, hstdout, _htr_eq, _hfs_eq⟩ => ?_
     refine SepWPp.weaken_pre (Entails.of_eq (by sep_ac_rfl))
       (hk sm evs hpcm hrunm (hspm.trans hsp_eq) hcsm hinv_m hevs hx0m
         (hfiles.trans hfiles_eq) (htr_eq ▸ hpref) (htr_eq ▸ hstdout))
@@ -1075,5 +1153,434 @@ theorem main_m6_m6Env_proof_placed [LibsignalPlacement] {CodeOk : Memory → Pro
         A.pool lim st s ∗ anyHeap)
       Q Qp (mainOom s0) :=
   main_m6_m6Env_pool_proof_placed hc hio hfit hstk hstk64 hs (exitKPoolPlaced_of_exitKPlaced hexit)
+
+/-- `{StdinEnv ReadEnv}`-parametric `MainIoOfPlacedSat` pool-retaining M6 proof from `M+0xf70`
+(`AtM6Placed`) to `ExitKPoolPlaced` at `M+0xb80`. -/
+theorem main_m6_of_pool_proof_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop}
+    [LsCodeInv CodeOk] {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {st : M.σ}
+    {uuidParse : UuidParser} {io : IoModel}
+    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
+    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
+    {s0 s : State} {ok : Bool} {n : Nat}
+    {stk hookStack resStack : Nat} {buf outCap outPtr inCap inPtr : BitVec 64}
+    {out inp : List (BitVec 8)} {ps : List (BitVec 64 × List (BitVec 8))}
+    {Q Qp : State → SepProp → Prop}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoOfPlacedSat A lim H io hookStack StdinEnv ReadEnv)
+    (hfit : ok = true → FitsEnv M lim st WriteStdoutEnv)
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hs : AtM6Placed CodeOk s0 s ok n buf)
+    (hexit : ExitKPoolPlaced CodeOk H A lim s0 stk
+      (fun code s' => s'.fs.files = s.fs.files ∧
+        (if ok then code = 0 ∧ s.trace <+: s'.trace ∧
+            ProcessOutcome.traceStreamBytes .stdout s'.trace =
+            ProcessOutcome.traceStreamBytes .stdout s.trace ++ out
+         else code = 2 ∧ s'.trace = s.trace)) Q Qp) :
+    ProofLib.SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+      (ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+        ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 inp.length) inp ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (m6CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) outCap outPtr
+            (BitVec.ofNat 64 out.length) inCap inPtr) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim st s ∗ anyHeap)
+      Q Qp (mainOom s0) := by
+  have hdealloc : subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsρ lsRustDeallocSymCli)
+      (withLsRoCl lsmpl (rustDeallocExternSpecWithStack M A lim extHookStack).keepsFs) :=
+    main_dealloc_fs_placed_ok hc.allocFs
+  have hwstdout : subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsρ lsWriteStdoutSym)
+      (withLsRoCl lsmpl (withLsRet (writeStdoutSpecPlacedSat A lim hookStack))) :=
+    hio.writeStdout
+  have hfloor : writeStdoutStackFloor ≤ hookStack := hio.hWriteStdoutStack
+  clear hc hio
+  refine SepWPp.weaken_pre
+    (sepConj_mono
+      (ownedBytes_unpack A.repAlloc outCap outPtr out)
+      (sepConj_mono_left (ownedBytes_unpack A.repAlloc inCap inPtr inp))) ?_
+  rw [m6CellsPlaced_eq]
+  change SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+    ((⌜out.length ≤ outCap.toNat ∧ outCap.toNat < 2 ^ 63 ∧ outPtr ≠ 0⌝ ∗
+      ((outPtr ↦ₛ out) ∗ ownedBytesRest A.repAlloc outCap outPtr out)) ∗
+      ((⌜inp.length ≤ inCap.toNat ∧ inCap.toNat < 2 ^ 63 ∧ inPtr ≠ 0⌝ ∗
+        ((inPtr ↦ₛ inp) ∗ ownedBytesRest A.repAlloc inCap inPtr inp)) ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+        (((s0.sp - 1248#64) ↦₆₄ BitVec.ofNat 64 out.length) ∗
+          ((s0.sp - 1248#64 + 8#64) ↦₆₄ outCap) ∗ ((s0.sp - 1248#64 + 16#64) ↦₆₄ inCap) ∗
+          ((s0.sp - 1248#64 + 24#64) ↦₆₄ outPtr) ∗ ((s0.sp - 1248#64 + 80#64) ↦₆₄ inPtr) ∗
+          m6CellsPlacedRest (s0.sp - 1248#64)) ∗
+        stackAt (s0.sp - 1248#64) (stk - mainFrameSize) ∗ A.pool lim st s ∗ anyHeap))
+    Q Qp (mainOom s0)
+  have hpure_pull :
+      (⌜out.length ≤ outCap.toNat ∧ outCap.toNat < 2 ^ 63 ∧ outPtr ≠ 0⌝ ∗
+        ((outPtr ↦ₛ out) ∗ ownedBytesRest A.repAlloc outCap outPtr out)) ∗
+        ((⌜inp.length ≤ inCap.toNat ∧ inCap.toNat < 2 ^ 63 ∧ inPtr ≠ 0⌝ ∗
+          ((inPtr ↦ₛ inp) ∗ ownedBytesRest A.repAlloc inCap inPtr inp)) ∗
+          argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+          (((s0.sp - 1248#64) ↦₆₄ BitVec.ofNat 64 out.length) ∗
+            ((s0.sp - 1248#64 + 8#64) ↦₆₄ outCap) ∗ ((s0.sp - 1248#64 + 16#64) ↦₆₄ inCap) ∗
+            ((s0.sp - 1248#64 + 24#64) ↦₆₄ outPtr) ∗ ((s0.sp - 1248#64 + 80#64) ↦₆₄ inPtr) ∗
+            m6CellsPlacedRest (s0.sp - 1248#64)) ∗
+          stackAt (s0.sp - 1248#64) (stk - mainFrameSize) ∗ A.pool lim st s ∗ anyHeap) =
+      ⌜out.length ≤ outCap.toNat ∧ outCap.toNat < 2 ^ 63 ∧ outPtr ≠ 0⌝ ∗
+        ⌜inp.length ≤ inCap.toNat ∧ inCap.toNat < 2 ^ 63 ∧ inPtr ≠ 0⌝ ∗
+        (((outPtr ↦ₛ out) ∗ ownedBytesRest A.repAlloc outCap outPtr out) ∗
+          ((inPtr ↦ₛ inp) ∗ ownedBytesRest A.repAlloc inCap inPtr inp) ∗
+          argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+          ((s0.sp - 1248#64) ↦₆₄ BitVec.ofNat 64 out.length) ∗
+          ((s0.sp - 1248#64 + 8#64) ↦₆₄ outCap) ∗ ((s0.sp - 1248#64 + 16#64) ↦₆₄ inCap) ∗
+          ((s0.sp - 1248#64 + 24#64) ↦₆₄ outPtr) ∗ ((s0.sp - 1248#64 + 80#64) ↦₆₄ inPtr) ∗
+          m6CellsPlacedRest (s0.sp - 1248#64) ∗
+          stackAt (s0.sp - 1248#64) (stk - mainFrameSize) ∗
+          A.pool lim st s ∗ anyHeap) := by
+    sep_ac_rfl
+  rw [hpure_pull]
+  refine SepWPp.pure_elim fun ⟨hout_le, hout_lt, _⟩ => ?_
+  refine SepWPp.pure_elim fun ⟨hin_le, hin_lt, _⟩ => ?_
+  rcases hs with ⟨⟨hpc, hrun, hsp, hfp, hinv, hvregs, hsp0⟩, hw22, hx19, hx24⟩
+  change s.pc = (blkPl_617).base + 3952#64 at hpc
+  change s.sp = s0.sp - 1248#64 at hsp
+  change s.readReg64 (.gpr 29#5) = s0.sp - 96#64 at hfp
+  change s.vregs.calleeSaved = s0.vregs.calleeSaved at hvregs
+  have hsub_le64 : stk - mainFrameSize ≤ 2 ^ 64 := by omega
+  have hhook_le : hookStack ≤ stk - mainFrameSize := by omega
+  have hext_le : extHookStack ≤ stk - mainFrameSize := by omega
+  cases ok
+  · have hbit := extractLsb0_of_getLsbD0 hw22
+    have hb0 := bit0_of_getLsbD0 hw22
+    rw [← hsp]
+    apply m5_seq_placed hinv (mid := (blkPl_617).base + 3980#64)
+    wp_steps
+    apply SepWP.done (by simp only [arm64_norm, *])
+      (by simp only [arm64_norm, *])
+    intro _ _ hinv_m
+    rw [hsp]
+    refine SepWPp.weaken_pre ?_
+      (main_m6_from_f8c_placed (st1 := st) (ok := false) (n := n) (code := 2)
+        (buf := buf) (outCap := outCap) (outPtr := outPtr) (inCap := inCap) (inPtr := inPtr)
+        (out := out) (inp := inp) (ps := ps)
+        hdealloc hsp0 hsub_le64 hext_le hout_le hout_lt hin_le hin_lt hexit
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        hinv_m
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm])
+        ⟨rfl, by simp only [arm64_norm]⟩)
+    simp only [RustCliAllocBudget.pool_setPC, RustCliAllocBudget.pool_writeReg64]
+    exact Entails.refl _
+  · have hfit_w : FitsEnv M lim st WriteStdoutEnv := hfit rfl
+    have hbit := extractLsb0_of_getLsbD0 hw22
+    have hb0 := bit0_of_getLsbD0 hw22
+    rw [← hsp]
+    apply m5_seq_placed hinv (mid := lsρ lsWriteStdoutSym)
+    wp_steps
+    apply SepWP.done (by simp only [arm64_norm, *])
+      (by simp only [arm64_norm, *])
+    intro _ _ hinv_w
+    rw [hsp, stackAt_split_ge (s0.sp - 1248#64) hhook_le hsub_le64]
+    refine M6Helpers.step_writeStdout_placed_sat hwstdout (st := st)
+      (fsp := s0.sp - 1248#64) (ret_pc := (blkPl_617).base + 3972#64) (outPtr := outPtr)
+      (out := out) (files0 := s.fs.files) (tr0 := s.trace)
+      (F := ownedBytesRest A.repAlloc outCap outPtr out ∗
+        ((inPtr ↦ₛ inp) ∗ ownedBytesRest A.repAlloc inCap inPtr inp) ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+        ((s0.sp - 1248#64) ↦₆₄ BitVec.ofNat 64 out.length) ∗
+        ((s0.sp - 1248#64 + 8#64) ↦₆₄ outCap) ∗ ((s0.sp - 1248#64 + 16#64) ↦₆₄ inCap) ∗
+        ((s0.sp - 1248#64 + 24#64) ↦₆₄ outPtr) ∗ ((s0.sp - 1248#64 + 80#64) ↦₆₄ inPtr) ∗
+        m6CellsPlacedRest (s0.sp - 1248#64) ∗
+        memRegion ((s0.sp - 1248#64) - BitVec.ofNat 64 (stk - mainFrameSize))
+          (stk - mainFrameSize - hookStack) ∗
+        anyHeap)
+      (by simp only [arm64_norm, *])
+      (by simp only [arm64_norm, *])
+      (by simp only [arm64_norm, *])
+      (spAligned_of_s0 hsp0 (by simp only [arm64_norm, hsp]))
+      hinv_w
+      (by simp only [arm64_norm, *])
+      (lsRetAddr624_blockPlacement_base_add 617 3972#64 (by decide) (by decide))
+      (by simp only [arm64_norm, *])
+      (by simp only [arm64_norm, *]; rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)])
+      hfit_w
+      hfloor
+      (Nat.lt_of_le_of_lt hout_le hout_lt)
+      (by simp only [arm64_norm])
+      (by simp only [arm64_norm])
+      (by
+        simp only [RustCliAllocBudget.pool_setPC, RustCliAllocBudget.pool_setPState,
+          RustCliAllocBudget.pool_writeReg64]
+        exact Entails.of_eq (by sep_ac_rfl))
+      fun sm evs hpcm hrunm hspm hcsm hinvm _hevs hx0m hfilesm hprefm hstdoutm => ?_
+    rcases hcsm with ⟨hx19m, _, _, _, _, hx24m, _, hx26m, _, _, hfpm, hvregsm⟩
+    simp only [arm64_norm, *] at hx19m hx24m hx26m hfpm hvregsm
+    apply m5_seq_placed hinvm (mid := (blkPl_617).base + 3980#64)
+    wp_steps
+    apply SepWP.done (by simp only [arm64_norm, *])
+      (by simp only [arm64_norm, *])
+    intro _ _ hinvm2
+    refine SepWPp.weaken_pre ?_
+      (main_m6_from_f8c_placed (st1 := M.stepEvents evs st) (ok := true) (n := n) (code := 0)
+        (buf := buf) (outCap := outCap) (outPtr := outPtr) (inCap := inCap) (inPtr := inPtr)
+        (out := out) (inp := inp) (ps := ps)
+        hdealloc hsp0 hsub_le64 hext_le hout_le hout_lt hin_le hin_lt hexit
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        hinvm2
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        (by simp only [arm64_norm, *])
+        ⟨rfl, by simp only [arm64_norm, *], by simp only [arm64_norm, *]⟩)
+    simp only [RustCliAllocBudget.pool_setPC, RustCliAllocBudget.pool_setPState,
+      RustCliAllocBudget.pool_writeReg64]
+    rw [stackAt_split_ge (s0.sp - 1248#64) hhook_le hsub_le64]
+    exact Entails.of_eq (by sep_ac_rfl)
+
+theorem main_m6_of_m6Env_pool_proof_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop}
+    [LsCodeInv CodeOk] {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {st : M.σ}
+    {uuidParse : UuidParser} {io : IoModel}
+    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
+    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
+    {s0 s : State} {ok : Bool} {n : Nat}
+    {stk hookStack resStack : Nat} {buf outCap outPtr inCap inPtr : BitVec 64}
+    {out inp : List (BitVec 8)} {ps : List (BitVec 64 × List (BitVec 8))}
+    {Q Qp : State → SepProp → Prop}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoOfPlacedSat A lim H io hookStack StdinEnv ReadEnv)
+    (hfit : FitsEnv M lim st (SeqEnv (if ok then WriteStdoutEnv else (· = [])) FreeOnlyEvs))
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hs : AtM6Placed CodeOk s0 s ok n buf)
+    (hexit : ExitKPoolPlaced CodeOk H A lim s0 stk
+      (fun code s' => s'.fs.files = s.fs.files ∧
+        (if ok then code = 0 ∧ s.trace <+: s'.trace ∧
+            ProcessOutcome.traceStreamBytes .stdout s'.trace =
+            ProcessOutcome.traceStreamBytes .stdout s.trace ++ out
+         else code = 2 ∧ s'.trace = s.trace)) Q Qp) :
+    ProofLib.SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+      (ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+        ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 inp.length) inp ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (m6CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) outCap outPtr
+            (BitVec.ofNat 64 out.length) inCap inPtr) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim st s ∗ anyHeap)
+      Q Qp (mainOom s0) :=
+  main_m6_of_pool_proof_placed_sat hc hio (fun hok => by subst hok; exact hfit.seq_left)
+    hstk hstk64 hs hexit
+
+theorem main_m6_of_proof_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
+    {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {st : M.σ}
+    {uuidParse : UuidParser} {io : IoModel}
+    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
+    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
+    {s0 s : State} {ok : Bool} {n : Nat}
+    {stk hookStack resStack : Nat} {buf outCap outPtr inCap inPtr : BitVec 64}
+    {out inp : List (BitVec 8)} {ps : List (BitVec 64 × List (BitVec 8))}
+    {Q Qp : State → SepProp → Prop}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoOfPlacedSat A lim H io hookStack StdinEnv ReadEnv)
+    (hfit : ok = true → FitsEnv M lim st WriteStdoutEnv)
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hs : AtM6Placed CodeOk s0 s ok n buf)
+    (hexit : ExitKPlaced CodeOk H A s0 stk
+      (fun code s' => s'.fs.files = s.fs.files ∧
+        (if ok then code = 0 ∧ s.trace <+: s'.trace ∧
+            ProcessOutcome.traceStreamBytes .stdout s'.trace =
+            ProcessOutcome.traceStreamBytes .stdout s.trace ++ out
+         else code = 2 ∧ s'.trace = s.trace)) Q Qp) :
+    ProofLib.SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+      (ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+        ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 inp.length) inp ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (m6CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) outCap outPtr
+            (BitVec.ofNat 64 out.length) inCap inPtr) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim st s ∗ anyHeap)
+      Q Qp (mainOom s0) :=
+  main_m6_of_pool_proof_placed_sat hc hio hfit hstk hstk64 hs (exitKPoolPlaced_of_exitKPlaced hexit)
+
+theorem main_m6_of_m6Env_proof_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop}
+    [LsCodeInv CodeOk] {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {st : M.σ}
+    {uuidParse : UuidParser} {io : IoModel}
+    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
+    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
+    {s0 s : State} {ok : Bool} {n : Nat}
+    {stk hookStack resStack : Nat} {buf outCap outPtr inCap inPtr : BitVec 64}
+    {out inp : List (BitVec 8)} {ps : List (BitVec 64 × List (BitVec 8))}
+    {Q Qp : State → SepProp → Prop}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoOfPlacedSat A lim H io hookStack StdinEnv ReadEnv)
+    (hfit : FitsEnv M lim st (SeqEnv (if ok then WriteStdoutEnv else (· = [])) FreeOnlyEvs))
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hs : AtM6Placed CodeOk s0 s ok n buf)
+    (hexit : ExitKPlaced CodeOk H A s0 stk
+      (fun code s' => s'.fs.files = s.fs.files ∧
+        (if ok then code = 0 ∧ s.trace <+: s'.trace ∧
+            ProcessOutcome.traceStreamBytes .stdout s'.trace =
+            ProcessOutcome.traceStreamBytes .stdout s.trace ++ out
+         else code = 2 ∧ s'.trace = s.trace)) Q Qp) :
+    ProofLib.SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+      (ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+        ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 inp.length) inp ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (m6CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) outCap outPtr
+            (BitVec.ofNat 64 out.length) inCap inPtr) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim st s ∗ anyHeap)
+      Q Qp (mainOom s0) :=
+  main_m6_of_m6Env_pool_proof_placed_sat hc hio hfit hstk hstk64 hs
+    (exitKPoolPlaced_of_exitKPlaced hexit)
+
+/-- Primary `MainIoPlacedSat` pool-retaining M6 proof from `M+0xf70` (`AtM6Placed`) to
+`ExitKPoolPlaced` at `M+0xb80`. -/
+theorem main_m6_pool_proof_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop}
+    [LsCodeInv CodeOk]
+    {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {st : M.σ}
+    {uuidParse : UuidParser} {io : IoModel} {s0 s : State} {ok : Bool} {n : Nat}
+    {stk hookStack resStack : Nat} {buf outCap outPtr inCap inPtr : BitVec 64}
+    {out inp : List (BitVec 8)} {ps : List (BitVec 64 × List (BitVec 8))}
+    {Q Qp : State → SepProp → Prop}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoPlacedSat A lim H io hookStack)
+    (hfit : ok = true → FitsEnv M lim st WriteStdoutEnv)
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hs : AtM6Placed CodeOk s0 s ok n buf)
+    (hexit : ExitKPoolPlaced CodeOk H A lim s0 stk
+      (fun code s' => s'.fs.files = s.fs.files ∧
+        (if ok then code = 0 ∧ s.trace <+: s'.trace ∧
+            ProcessOutcome.traceStreamBytes .stdout s'.trace =
+            ProcessOutcome.traceStreamBytes .stdout s.trace ++ out
+         else code = 2 ∧ s'.trace = s.trace)) Q Qp) :
+    ProofLib.SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+      (ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+        ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 inp.length) inp ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (m6CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) outCap outPtr
+            (BitVec.ofNat 64 out.length) inCap inPtr) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim st s ∗ anyHeap)
+      Q Qp (mainOom s0) :=
+  main_m6_of_pool_proof_placed_sat
+    (outCap := outCap) (outPtr := outPtr) (inCap := inCap) (inPtr := inPtr)
+    (out := out) (inp := inp) (ps := ps)
+    hc ((mainIoBoundedPlaced_iff_mainIoPlaced_sat A lim H io hookStack).mpr hio)
+    hfit hstk hstk64 hs hexit
+
+theorem main_m6_m6Env_pool_proof_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop}
+    [LsCodeInv CodeOk] {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {st : M.σ}
+    {uuidParse : UuidParser} {io : IoModel} {s0 s : State} {ok : Bool} {n : Nat}
+    {stk hookStack resStack : Nat} {buf outCap outPtr inCap inPtr : BitVec 64}
+    {out inp : List (BitVec 8)} {ps : List (BitVec 64 × List (BitVec 8))}
+    {Q Qp : State → SepProp → Prop}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoPlacedSat A lim H io hookStack)
+    (hfit : FitsEnv M lim st (SeqEnv (if ok then WriteStdoutEnv else (· = [])) FreeOnlyEvs))
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hs : AtM6Placed CodeOk s0 s ok n buf)
+    (hexit : ExitKPoolPlaced CodeOk H A lim s0 stk
+      (fun code s' => s'.fs.files = s.fs.files ∧
+        (if ok then code = 0 ∧ s.trace <+: s'.trace ∧
+            ProcessOutcome.traceStreamBytes .stdout s'.trace =
+            ProcessOutcome.traceStreamBytes .stdout s.trace ++ out
+         else code = 2 ∧ s'.trace = s.trace)) Q Qp) :
+    ProofLib.SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+      (ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+        ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 inp.length) inp ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (m6CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) outCap outPtr
+            (BitVec.ofNat 64 out.length) inCap inPtr) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim st s ∗ anyHeap)
+      Q Qp (mainOom s0) :=
+  main_m6_pool_proof_placed_sat hc hio (fun hok => by subst hok; exact hfit.seq_left)
+    hstk hstk64 hs hexit
+
+theorem main_m6_proof_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
+    {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {st : M.σ}
+    {uuidParse : UuidParser} {io : IoModel} {s0 s : State} {ok : Bool} {n : Nat}
+    {stk hookStack resStack : Nat} {buf outCap outPtr inCap inPtr : BitVec 64}
+    {out inp : List (BitVec 8)} {ps : List (BitVec 64 × List (BitVec 8))}
+    {Q Qp : State → SepProp → Prop}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoPlacedSat A lim H io hookStack)
+    (hfit : ok = true → FitsEnv M lim st WriteStdoutEnv)
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hs : AtM6Placed CodeOk s0 s ok n buf)
+    (hexit : ExitKPlaced CodeOk H A s0 stk
+      (fun code s' => s'.fs.files = s.fs.files ∧
+        (if ok then code = 0 ∧ s.trace <+: s'.trace ∧
+            ProcessOutcome.traceStreamBytes .stdout s'.trace =
+            ProcessOutcome.traceStreamBytes .stdout s.trace ++ out
+         else code = 2 ∧ s'.trace = s.trace)) Q Qp) :
+    ProofLib.SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+      (ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+        ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 inp.length) inp ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (m6CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) outCap outPtr
+            (BitVec.ofNat 64 out.length) inCap inPtr) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim st s ∗ anyHeap)
+      Q Qp (mainOom s0) :=
+  main_m6_pool_proof_placed_sat hc hio hfit hstk hstk64 hs (exitKPoolPlaced_of_exitKPlaced hexit)
+
+theorem main_m6_m6Env_proof_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop}
+    [LsCodeInv CodeOk]
+    {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {st : M.σ}
+    {uuidParse : UuidParser} {io : IoModel} {s0 s : State} {ok : Bool} {n : Nat}
+    {stk hookStack resStack : Nat} {buf outCap outPtr inCap inPtr : BitVec 64}
+    {out inp : List (BitVec 8)} {ps : List (BitVec 64 × List (BitVec 8))}
+    {Q Qp : State → SepProp → Prop}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoPlacedSat A lim H io hookStack)
+    (hfit : FitsEnv M lim st (SeqEnv (if ok then WriteStdoutEnv else (· = [])) FreeOnlyEvs))
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hs : AtM6Placed CodeOk s0 s ok n buf)
+    (hexit : ExitKPlaced CodeOk H A s0 stk
+      (fun code s' => s'.fs.files = s.fs.files ∧
+        (if ok then code = 0 ∧ s.trace <+: s'.trace ∧
+            ProcessOutcome.traceStreamBytes .stdout s'.trace =
+            ProcessOutcome.traceStreamBytes .stdout s.trace ++ out
+         else code = 2 ∧ s'.trace = s.trace)) Q Qp) :
+    ProofLib.SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+      (ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+        ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 inp.length) inp ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗ mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (m6CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) outCap outPtr
+            (BitVec.ofNat 64 out.length) inCap inPtr) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim st s ∗ anyHeap)
+      Q Qp (mainOom s0) :=
+  main_m6_m6Env_pool_proof_placed_sat hc hio hfit hstk hstk64 hs
+    (exitKPoolPlaced_of_exitKPlaced hexit)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6PlacedBudget

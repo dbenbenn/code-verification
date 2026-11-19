@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WP.Structural
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Hop Contracts for `main`
@@ -23,7 +26,7 @@ import ProofLib.SepLogic.WP.Structural
 from `HopsPlaced.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +55,7 @@ open LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget (doRese
 
 /-- Total-correctness (`FitsEnv`) contract of `try_allocate_in` with `RustLayoutOk`
 (`x.align.toNat ≤ 2 ^ 31`), matching `rustCliAllocNoOomSpec` and `finishGrowSpecX`. -/
-def tryAllocateInRustSpecOf {M : AllocCostModel} (resStack : Nat) (A : RustCliAllocBudget M)
+@[expose] def tryAllocateInRustSpecOf {M : AllocCostModel} (resStack : Nat) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (TryAllocateInCall × M.σ) :=
   { tryAllocateInSpecOf resStack A lim with
     pre := fun (x, st) s =>
@@ -94,20 +97,12 @@ theorem subroutine_ok_runSpecPlaced_of_tight [LibsignalPlacement] {P : Program} 
     subroutine_ok P e (runSpecPlaced CodeOk A lim RunEnv uuidParse Run wrOk resStack) :=
   h
 
-theorem subroutine_ok_runSpecAnyPlaced_of_tight [LibsignalPlacement] {P : Program} {e : BitVec 64}
-    {M : AllocCostModel} {CodeOk : Memory → Prop} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {uuidParse : UuidParser} {Run : Inputs → RunAnswer → Prop}
-    {wrOk : List (BitVec 8) → Prop} {resStack : Nat}
-    (h : subroutine_ok P e (runSpecAnyTightPlaced CodeOk A lim uuidParse Run wrOk resStack)) :
-    subroutine_ok P e (runSpecAnyPlaced CodeOk A lim uuidParse Run wrOk resStack) :=
-  h
-
 /-- Memory owned on entry to `main`'s shared exit block under `RustCliAllocBudget M`
 (`A.repAlloc.pool = emp`, absorbing remaining `A.pool lim st s` into `anyHeap`). -/
-def retMem {M : AllocCostModel} (A : RustCliAllocBudget M) (s0 : State) (stk : Nat) : SepProp :=
+@[expose] def retMem {M : AllocCostModel} (A : RustCliAllocBudget M) (s0 : State) (stk : Nat) : SepProp :=
   CryptoVerification.SignalSession.Cli.MainHops.retMem A.repAlloc s0 stk
 
-def ExitKPlaced [LibsignalPlacement] {M : AllocCostModel} (CodeOk : Memory → Prop)
+@[expose] def ExitKPlaced [LibsignalPlacement] {M : AllocCostModel} (CodeOk : Memory → Prop)
     (H : LibsignalHooks) (A : RustCliAllocBudget M) (s0 : State) (stk : Nat)
     (G : Nat → State → Prop) (Q Qp : State → SepProp → Prop) : Prop :=
   ∀ (s : State) (code : Nat), AtRetPlaced CodeOk s0 s code → G code s →

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1StatePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StatePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpersPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpersBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1StatePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StatePlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpersPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpersBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesPolyPlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked59_71PlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93PlacedBudget
@@ -30,6 +30,9 @@ import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed -- shake: keep
 meta import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpersPlaced -- shake: keep
 meta import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1State
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedHeaderSent
 
 /-!
 # `VmPreserved` Placed Master Proof and Contracts for `V1State::encoded_len` (Block `484`)
@@ -39,7 +42,7 @@ jump-table and `LibsignalRoLoaded`-discharged) for `V1State::encoded_len [local#
 `484`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -947,31 +950,31 @@ theorem v1State_484_entry_ro_pinned_wp_placed [LibsignalPlacement]
 
 /-! ## 3. Explicit `.rodata` Jump-Table Placed Contracts (`lsρ cliV1StateJtSym`) -/
 
-def V1StateEncodedLenLocal1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 H) (blkPl_484).base
     (withLsCodeLoaded lsmpl (v1StateEncodedLenRoPinnedSpec A cliV1JtAddr))
 
-def V1StateEncodedLenLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 H) (blkPl_484).base
     (withLsCodeLoaded lsmpl (v1StateEncodedLenRoSpec A cliV1JtAddr))
 
-def V1StateEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 (Rust.withPanics ext)) (blkPl_484).base
     (withLsCodeLoaded lsmpl (v1StateEncodedLenRoPinnedSpec A cliV1JtAddr))
 
-def V1StateEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 (Rust.withPanics ext)) (blkPl_484).base
     (withLsCodeLoaded lsmpl (v1StateEncodedLenRoSpec A cliV1JtAddr))
 
-def V1StateEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   V1StateEncodedLenLocal1PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def V1StateEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   V1StateEncodedLenLocal1PlacedOkExt A (tripleRatchetExterns C ctl abs)
 
@@ -1091,35 +1094,35 @@ private theorem subroutine_ok_swap_lsro_lscl {α : Type} {pl : MultiPlacement}
     (fun _ _ _ _ _ he => he)
     (fun _ _ _ _ ho => ho)
 
-def V1StateEncodedLenLocal1RoPinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1RoPinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 H) (blkPl_484).base
     (withLsCodeLoaded lsmpl
       (withLsRoLoaded lsmpl (v1StateEncodedLenPinnedSpec A)))
 
-def V1StateEncodedLenLocal1RoPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1RoPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 H) (blkPl_484).base
     (withLsCodeLoaded lsmpl
       (withLsRoLoaded lsmpl (v1StateEncodedLenSpec A)))
 
-def V1StateEncodedLenLocal1RoPinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1RoPinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 (Rust.withPanics ext)) (blkPl_484).base
     (withLsCodeLoaded lsmpl
       (withLsRoLoaded lsmpl (v1StateEncodedLenPinnedSpec A)))
 
-def V1StateEncodedLenLocal1RoPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1RoPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_484 (Rust.withPanics ext)) (blkPl_484).base
     (withLsCodeLoaded lsmpl
       (withLsRoLoaded lsmpl (v1StateEncodedLenSpec A)))
 
-def V1StateEncodedLenLocal1RoPinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1RoPinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   V1StateEncodedLenLocal1RoPinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def V1StateEncodedLenLocal1RoPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def V1StateEncodedLenLocal1RoPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   V1StateEncodedLenLocal1RoPlacedOkExt A (tripleRatchetExterns C ctl abs)
 

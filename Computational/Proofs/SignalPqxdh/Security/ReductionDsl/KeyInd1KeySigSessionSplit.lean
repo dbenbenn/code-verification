@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhSessionSplit
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigBounds
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhSessionSplit -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigBounds
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigProg -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemProofs
 
 /-!
 # Session-Split Primitive-Query Bound for `sigKeyInd1KeyProg`
@@ -20,7 +23,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyS
 non-session arms that make at most `32` primitive queries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +37,7 @@ namespace SignalPqxdh.Security.ReductionDsl.KeyInd
 open SignalPqxdh.Security.ReductionDsl.KeyIndGapDh
 
 /-- Variant of `sig1KeyPreDispatchC` with the initiator signature-check arms replaced by `.inr ()`. -/
-def sig1KeyPreDispatchNSC (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def sig1KeyPreDispatchNSC (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
     Comp pqxdhOps pqSigAndDdhIface Δ (.sum S1RS .unit) :=
   .ite (isSomeE (s1Forgery (v s))) (.ret (.inl (.pair rNone (v s)))) <|
@@ -50,7 +53,7 @@ def sig1KeyPreDispatchNSC (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [E
   .ret (.inr .unit)
 
 /-- Variant of `gdhHandle2` with the four session arms replaced by no-ops. -/
-def gdhHandle2NS (_S : Setup) (K : Nat) :
+@[expose] def gdhHandle2NS (_S : Setup) (K : Nat) :
     Comp pqxdhOps pqGapDhIface [gdhState2Ty, keyIndQueryTy] (.prod keyIndRespTy gdhState2Ty) :=
   let st : Var [gdhState2Ty, keyIndQueryTy] gdhState2Ty := .zero
   let q : Var [gdhState2Ty, keyIndQueryTy] keyIndQueryTy := .succ .zero
@@ -73,7 +76,7 @@ def gdhHandle2NS (_S : Setup) (K : Nat) :
                    (fun x => wrapBase2 pa sm (revealSpkB K bSt x))
 
 /-- `delegateFgC` with `gdhHandle2NS` in place of `gdhHandle2`. -/
-def delegateFgNSC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def delegateFgNSC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
     Comp pqxdhOps pqSigAndDdhIface Δ S1RS :=
   letV (.pair (pa2Zero (s1Pk (v s))) (s1Fg (v s))) fun gdhSt =>
@@ -83,7 +86,7 @@ def delegateFgNSC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ
 
 /-- Variant of `sig1KeyHandleC` with the session arms replaced by no-ops, used to bound
     non-session primitive queries. -/
-def sig1KeyHandleNSC (S : Setup) (K : Nat) :
+@[expose] def sig1KeyHandleNSC (S : Setup) (K : Nat) :
     Comp pqxdhOps pqSigAndDdhIface [sig1KeyStTy, keyIndQueryTy] S1RS :=
   let s : Var [sig1KeyStTy, keyIndQueryTy] sig1KeyStTy := .zero
   let q : Var [sig1KeyStTy, keyIndQueryTy] keyIndQueryTy := .succ .zero

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.Composed.Adversary
+public import Symbolic.Proofs.Tests.Shared.Composed.Adversary -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -49,7 +49,7 @@ import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -94,7 +94,7 @@ end SizeOfPos
 
 set_option linter.unusedVariables false in
 /-- Number of `kdfExtract` (`hmac`) applications along the left (`salt`) spine of a symbolic term. -/
-def saltDepth (b : Bytes) : Nat :=
+@[expose] def saltDepth (b : Bytes) : Nat :=
   match h : b.view? KdfExtract.KdfExtract.SubF with
   | some v => saltDepth v.salt + 1
   | none => 0
@@ -589,7 +589,7 @@ theorem rnd_ne_pqxdhKdf_pqr (t n : Nat) (ikm : Bytes) : rnd t n ≠ (pqxdhKdf ik
   rnd_ne_kdfExtract t n _ _
 
 /-- A chain root `ck₀` is not the `.1` step of any `kdfCk`. -/
-def IsChainRoot (ck₀ : Bytes) : Prop := ∀ x, ck₀ ≠ (kdfCk x).1
+@[expose] def IsChainRoot (ck₀ : Bytes) : Prop := ∀ x, ck₀ ≠ (kdfCk x).1
 
 theorem isChainRoot_rnd (t n : Nat) : IsChainRoot (rnd t n) :=
   fun x => rnd_ne_kdfCk_fst t n x
@@ -720,14 +720,14 @@ structure TestTracePredicates where
   Compromised : Bytes → Prop
   HonestDH : Bytes → Prop
 
-def mkTestTracePredicates (tr : ExecTrace) (Knows : Bytes → Prop := fun t => t.AttackerKnows tr) :
+@[expose] def mkTestTracePredicates (tr : ExecTrace) (Knows : Bytes → Prop := fun t => t.AttackerKnows tr) :
     TestTracePredicates where
   MessageKey seed := ∃ pqSalt, MessageSeedUsed tr seed pqSalt
   AttackerKnows seed := ∃ pqSalt, MessageSeedUsed tr seed pqSalt ∧ TRKeyKnown Knows seed pqSalt
   Compromised := CompromisedKey tr
   HonestDH := HonestDHKey tr
 
-def FSQueryP (P : TestTracePredicates) : Prop :=
+@[expose] def FSQueryP (P : TestTracePredicates) : Prop :=
   ∀ mk : Bytes,
     P.MessageKey mk →
     P.AttackerKnows mk →
@@ -735,7 +735,7 @@ def FSQueryP (P : TestTracePredicates) : Prop :=
     (∃ ck, DerivesMsgKey ck mk ∧ P.Compromised ck) ∨
     (∃ rk ck, DerivesChain rk ck ∧ DerivesMsgKey ck mk ∧ P.Compromised rk)
 
-def PCSQueryP (P : TestTracePredicates) : Prop :=
+@[expose] def PCSQueryP (P : TestTracePredicates) : Prop :=
   ∀ mk rk_prev ownSk peerSk : Bytes,
     P.MessageKey mk →
     P.AttackerKnows mk →
@@ -767,7 +767,7 @@ theorem pcsQuery_iff_test (tr : ExecTrace) (Knows : Bytes → Prop) :
 /-! ## No-compromise reduction and `ExposedKey` helpers -/
 
 /-- Disjunction of the five `TREvent.Exposed*` events for `k`. -/
-def ExposedKey (tr : ExecTrace) (k : Bytes) : Prop :=
+@[expose] def ExposedKey (tr : ExecTrace) (k : Bytes) : Prop :=
   (∃ s i, tr.EventLogged (TREvent.ExposedRK s k i)) ∨
   (∃ s i, tr.EventLogged (TREvent.ExposedDHs s k i)) ∨
   (∃ s ns i, tr.EventLogged (TREvent.ExposedCKs s k ns i)) ∨
@@ -898,7 +898,7 @@ theorem eventLogged_append_ev {tr : ExecTrace} {ev₀ ev : TREvent}
   · exact .inl ⟨i, by rw [Symbolic.DYBridge.DY.Trace.EventLoggedAt_eq_1]; exact hi⟩
   · rw [proj_inj] at hp; injection hp with hp; injection hp with hp; exact .inr hp
 
-def exposedKeyOf : TREvent → Option Bytes
+@[expose] def exposedKeyOf : TREvent → Option Bytes
   | .ExposedRK _ k _ | .ExposedDHs _ k _ | .ExposedCKs _ k _ _
   | .ExposedCKr _ k _ _ | .ExposedMK _ k _ _ => some k
   | _ => none

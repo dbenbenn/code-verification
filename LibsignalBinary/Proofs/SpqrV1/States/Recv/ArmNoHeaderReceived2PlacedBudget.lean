@@ -9,18 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceived1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceived2Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceived1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceived2Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceived2
-import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedSteps
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedSteps -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledSteps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<States>::recv` (Block `332`) — `.noHeaderReceived` Arm, Part 2 (Budget-Threaded)
@@ -30,7 +36,7 @@ Allocator-event envelope (`StatesRecvNoHeaderReceivedEnv`), budget-threaded
 `[LibsignalPlacement]` contracts `states_recv_noHeaderReceived_placed_ok_ext*` (`tag = 7#64`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -84,7 +90,7 @@ open LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget (
   statesRecvVariantPlacedSpecOfPrePostEnv
 )
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_332
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit bv_sub_sub_recv BitVec.sub_add_cancel BitVec.toNat_zero
   sp_sub_4240_add_4144 bv_add_lit_add_lit_recv
@@ -99,7 +105,7 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit bv_sub_sub_recv BitVe
     - `msg.epoch == st.uc.epoch`, non-`.hdr`: `[]`;
     - `msg.epoch > st.uc.epoch`: `FreeOnlyEvs`;
     - `msg.epoch < st.uc.epoch`: `[]`. -/
-def StatesRecvNoHeaderReceivedEnv {F : ShaCompress}
+@[expose] def StatesRecvNoHeaderReceivedEnv {F : ShaCompress}
     (x : StatesRecvGhost F) (evs : List AllocEvent) : Prop :=
   match x.self with
   | .noHeaderReceived st =>

@@ -28,13 +28,18 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
-import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
+public import Symbolic.Proofs.Swarm.COMPOSED.CompInvDefs
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepBase
+import Symbolic.Proofs.Swarm.CREF.TR.G1.RkSpine
 
 /-!
 # Receiving-Chain and Skipped-Seed Root Linkage
@@ -46,7 +51,7 @@ seed derives via `chainKeyAt` from a `RecvRoot T pk R` witness (either a stored 
 chain key from `AliceDoneKeys`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -90,7 +95,7 @@ theorem RecvRoot.mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {pk R : DY.Bytes}
   · exact .inr (.inl ⟨keys, t, b, idx, hbob.mono hle, CompTrace.pqxdhStoredAt_mono hle hspk, hR⟩)
   · exact .inr (.inr ⟨keys, halice.mono hle, hR⟩)
 
-def ChainLink (tr : ExecTrace) (c : RecvChain) : Prop :=
+@[expose] def ChainLink (tr : ExecTrace) (c : RecvChain) : Prop :=
   ∃ (R : DY.Bytes) (j : Nat), c.chainKey = chainKeyAt R j ∧ RecvRoot tr c.ratchetKey R
 
 theorem ChainLink.mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {c : RecvChain}
@@ -111,7 +116,7 @@ theorem ChainLink.kdfCk_fst {tr : ExecTrace} {c : RecvChain}
     ChainLink tr { c with chainKey := (kdfCk c.chainKey).1, index := idx' } :=
   hc.advance 1 idx'
 
-def StLink (tr : ExecTrace) (st : TRState) : Prop :=
+@[expose] def StLink (tr : ExecTrace) (st : TRState) : Prop :=
   ∀ c ∈ st.recv, ChainLink tr c
 
 theorem StLink.mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {st : TRState}
@@ -129,7 +134,7 @@ theorem stLink_setRecvChain {tr : ExecTrace} {st : TRState} {c : RecvChain} {spq
   · simp only [hk, ↓reduceIte]; exact hc
   · simp only [hk, Bool.false_eq_true, ↓reduceIte]; exact hst c1 hc1
 
-def SeedLink (tr : ExecTrace) (seed : DY.Bytes) : Prop :=
+@[expose] def SeedLink (tr : ExecTrace) (seed : DY.Bytes) : Prop :=
   ∃ (pk' R : DY.Bytes) (j : Nat), seed = (kdfCk (chainKeyAt R j)).2 ∧ RecvRoot tr pk' R
 
 theorem SeedLink.mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {seed : DY.Bytes}
@@ -142,7 +147,7 @@ theorem SeedLink.of_chainLink {tr : ExecTrace} {c : RecvChain} (hc : ChainLink t
   obtain ⟨R, j, hck, hroot⟩ := hc
   exact ⟨c.ratchetKey, R, j, by rw [hck], hroot⟩
 
-def SpineLinkInv (tr : ExecTrace) : Prop :=
+@[expose] def SpineLinkInv (tr : ExecTrace) : Prop :=
   RecvLinkStored tr ∧ RecvLinkSkipped tr
 
 theorem spineLinkInv_nil : SpineLinkInv Trace.nil :=

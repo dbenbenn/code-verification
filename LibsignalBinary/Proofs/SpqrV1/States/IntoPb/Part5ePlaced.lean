@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dPlaced
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 5e Placed: Arm 7 (`States.ct1Sampled`)
@@ -24,7 +25,7 @@ Relocatable `[LibsignalPlacement]` verification of `states_into_pb_ct1Sampled_pl
 `+0 -> +60 -> +828 -> +1712 -> +2028 -> +2100 -> +2116 -> +2128 -> +1544 -> ret`) on Block `334`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,7 +54,7 @@ set_option linter.unusedSimpArgs false
 
 open CryptoVerification.SpqrV1.States.IntoPb.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   bv_sub_sub_lit' bv_add_add_lit'
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero

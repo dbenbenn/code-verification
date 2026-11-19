@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosure
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymA
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosure -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalPublicApi
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `SessionState::unacknowledged_pre_key_message_items` (`0x1245c`)
@@ -27,7 +29,7 @@ Proves `unackItems_ok` (82 instructions) and its relocatable `[LibsignalPlacemen
 block `36`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.UnackItems
 
@@ -49,10 +51,6 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 @[simp, arm64_norm]
 abbrev unackItemsName : String :=
   "<libsignal_protocol::state::session::SessionState>::unacknowledged_pre_key_message_items"
-
-gen_decodes libsignalSessionCode_tree unackItemsBin [0x1245c → 0x125a0]
-
-/-! ## Helper Lemmas -/
 
 namespace AddrOffsetArith
 
@@ -545,30 +543,6 @@ private theorem timeAdd_hookSat_tripleRatchetExterns (C : Crypto) (ctl : BitVec 
     staticDropName, sharedDropName, rngFillName, uuidTryParseName,
     varintSlowName, noHookNames, timeAddHookName] using ht
 
-private theorem timeAdd_ok_at {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (ht : HookSat abs timeAddHookName timeAddSpec) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr unackItemsName + bv% (ls_off% "<std::time::SystemTime as core::ops::arith::Add<core::time::Duration>>::add" - 0x1245c))
-      timeAddSpec :=
-  hook_ok_at_raw libsignalSessionCode_fnOff_0x1245c (k := num% (ls_off% "<std::time::SystemTime as core::ops::arith::Add<core::time::Duration>>::add" - 0x1245c)) rfl (by decide)
-    (ls_hook% "<std::time::SystemTime as core::ops::arith::Add<core::time::Duration>>::add")
-    (timeAdd_hookSat_tripleRatchetExterns C ctl ht)
-
-private theorem deserialize_ok_at {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr unackItemsName + 178136#64)
-      (CryptoVerification.LibsignalSession.FindReceiverChainIndex.deserializeSpec b) := by
-  have h := CryptoVerification.LibsignalSession.FindReceiverChainIndex.deserialize_ok b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-  have haddr : (tripleRatchetProgAt b C ctl abs).fnAddr "<libsignal_core::curve::PublicKey>::deserialize" =
-      (tripleRatchetProgAt b C ctl abs).fnAddr unackItemsName + 178136#64 := by
-    simp only [tripleRatchetProgAt, unackItemsName, Program.fnAddr_rebase,
-      libsignalSessionCode_fnOff_0x3dc34, libsignalSessionCode_fnOff_0x1245c]
-    bv_omega
-  rwa [haddr] at h
-
 private def sessionRest (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (sess : Session (List (BitVec 8))) : SepProp :=
   ⌜G.alice.bytes = sess.aliceBaseKey ∧
@@ -906,9 +880,6 @@ private theorem unackOutAt_none_intro (out : BitVec 64) (kyG : Option TailVecGho
     (out ↦₃₂ 2#32) ∗ memRegion (out + 4#64) 84 ⊢ unackOutAt out kyG kyber none :=
   Entails.refl _
 
-private theorem logOff_eq (img : Obj.Image) :
-    logOff img = ((img.base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) := rfl
-
 private theorem SepWPp.pure_elim_focus {prog : Program} {ret : BitVec 64} {s : State}
     (φ : Prop) {P P' : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
     (h : φ → SepWPp prog ret s P' Q Qp oom)
@@ -995,232 +966,6 @@ private theorem timeAdd_hookSat_ext {ext : String → Option (State → State)}
     HookSat (Rust.withPanics ext) timeAddHookName timeAddSpec := by
   simpa [HookSat, Rust.withPanics, Rust.isPanicSymbol, timeAddHookName] using ht
 
-private theorem timeAdd_ok_at_ext {b : BitVec 64} {ext : String → Option (State → State)}
-    (ht : HookSat ext timeAddHookName timeAddSpec) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr unackItemsName + bv% (ls_off% "<std::time::SystemTime as core::ops::arith::Add<core::time::Duration>>::add" - 0x1245c))
-      timeAddSpec :=
-  hook_ok_at_raw libsignalSessionCode_fnOff_0x1245c (k := num% (ls_off% "<std::time::SystemTime as core::ops::arith::Add<core::time::Duration>>::add" - 0x1245c)) rfl (by decide)
-    (ls_hook% "<std::time::SystemTime as core::ops::arith::Add<core::time::Duration>>::add") (timeAdd_hookSat_ext ht)
-
-private theorem deserialize_ok_at_ext {b : BitVec 64} {ext : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr unackItemsName + 178136#64)
-      (CryptoVerification.LibsignalSession.FindReceiverChainIndex.deserializeSpec b) := by
-  have h := CryptoVerification.LibsignalSession.FindReceiverChainIndex.deserialize_ok b (Rust.withPanics ext)
-  have haddr : (tripleRatchetProgAtExt b ext).fnAddr "<libsignal_core::curve::PublicKey>::deserialize" =
-      (tripleRatchetProgAtExt b ext).fnAddr unackItemsName + 178136#64 := by
-    simp only [tripleRatchetProgAtExt, unackItemsName, Program.fnAddr_rebase,
-      libsignalSessionCode_fnOff_0x3dc34, libsignalSessionCode_fnOff_0x1245c]; bv_omega
-  rwa [haddr] at h
-
-theorem unackItems_fn_ok_ext {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (ht : HookSat ext timeAddHookName timeAddSpec) (halign : img.base &&& 0xfff#64 = 0#64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr unackItemsName) (unackItemsSpec A img) := by
-  have hfn := libsignalSessionCode_fnOff_0x1245c; have hdeser := deserialize_ok_at_ext (b := img.base) (ext := ext)
-  have htime := timeAdd_ok_at_ext (b := img.base) ht; simp only [unackItemsSpec]
-  code_fetches CryptoVerification.libsignalSessionCode unackItemsBin img.base (Rust.withPanics ext) hfn 0x1245c 328
-  dsimp only [tripleRatchetProgAtExt, unackItemsName, BitVec.ofNat_eq_ofNat] at hdeser htime ⊢; wpp_init x s0
-  replace hpc : s0.pc = (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr unackItemsName := by
-    rw [hpc, Program.fnAddr_rebase, libsignalSessionCode_fnOff_0x1245c]
-  generalize_entry (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr unackItemsName = entry
-  examples_hide_fetches; rcases x with ⟨ss, G, sess, out⟩; dsimp only at *; nth_rw 1 [sessionAt_split]
-  apply SepWPp.pure_elim_focus (PendingRel G.pending sess.pendingPreKey ∧
-    KyberRel G.kyber sess.pendingKyberPreKey); intro ⟨hpendRel, hkyRel⟩
-  cases hppk : sess.pendingPreKey with
-  | none =>
-    cases hgp : G.pending with
-    | some g => rw [hppk, hgp] at hpendRel; exact False.elim hpendRel
-    | none =>
-      apply SepWPp.of_sepWP_ret
-      wp_simp_pre [optTailVecAt_248_none, memRegion_88_none_split, stackAt_unackItems_none_pre, cells_10_sp_80]
-      wp_pull_exists; wp_steps 11
-      wp_simp_pre [BitVec.add_assoc, BitVec.reduceAdd, bv_sub_add_lit]; wp_steps 10
-      refine SepWP.fold (sessionAt_none_intro A ss G sess hgp hppk hkyRel) (by sep_focus) ?_
-      refine SepWP.fold (unackOutAt_none_intro out G.kyber sess.pendingKyberPreKey) (by sep_focus) ?_
-      refine SepWP.fold (stackAt_unackItems_none_post s0.sp _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-      wp_done
-  | some items =>
-    cases hgp : G.pending with
-    | none => rw [hppk, hgp] at hpendRel; exact False.elim hpendRel
-    | some g =>
-      rw [hppk, hgp] at hpendRel
-      have hpendRel' : PendingRel (some g) (some items) := hpendRel
-      rcases hpendRel with ⟨hdeserOk, hpkRel, htsRel, hspkRel, _⟩
-      rw [optTailVecAt_296_split A ss G.kyber]; dsimp only [optTailVecAt, Nat.reduceSub]
-      apply SepWPp.pure_elim_focus (g.tail.length = 24); intro htailLen
-      rw [vecGhostAt_split A (ss + 248#64) g.vec]
-      apply SepWPp.pure_elim_focus (g.vec.bytes.length ≤ g.vec.cap.toNat ∧
-        g.vec.cap.toNat < 2 ^ 63 ∧ g.vec.ptr ≠ 0); intro ⟨hlen_le, hcap_lt, hptr_ne⟩
-      have hlen_lt : g.vec.bytes.length < 2 ^ 63 := Nat.lt_of_le_of_lt hlen_le hcap_lt
-      have hlen_toNat : (BitVec.ofNat 64 g.vec.bytes.length).toNat = g.vec.bytes.length := by
-        rw [BitVec.toNat_ofNat]; omega
-      obtain ⟨pkTag, pkVal, hpTail, hpkEnt⟩ :=
-        pendingTail_pointsToBytes ss g.tail items htailLen hpkRel htsRel hspkRel
-      obtain ⟨bk0, bk1, bk2, bk3, bk4, bk5, bk6, bk7, bk15, bk23, bk31, hbk⟩ :=
-        exists_baseKeyChunks_of_length_32 (List.Vector.toList_length items.baseKey.bytes)
-      have hbk_sp := Entails.of_eq ((hbk (s0.sp - 127#64)).trans
-        (baseKeyChunks_sp_127 s0.sp bk0 bk1 bk2 bk3 bk4 bk5 bk6 bk7 bk15 bk23 bk31)).symm
-      have hbk_out := Entails.of_eq ((hbk (out + 32#64)).trans
-        (baseKeyChunks_out_32 out bk0 bk1 bk2 bk3 bk4 bk5 bk6 bk7 bk15 bk23 bk31)).symm
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "<std::time::SystemTime as core::ops::arith::Add<core::time::Duration>>::add" - 0x1245c))
-      wp_simp_pre [vecU8BufAt_eq_of_le A g.vec hlen_le, stackAt_unackItems_outer,
-        memRegion_176_some_split, memRegion_32_eq_exists_bytes, cells_10_sp_80, logOff_eq,
-        BitVec.add_assoc, BitVec.reduceAdd]
-      rw [hpTail]; wp_pull_exists
-      rename_i c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 s82 s83 s84 s88 bs tag0 s152 s160 s162 s163 s164 s168 s172
-      refine SepWP.pure_elim_focus (bs.length = 32) ?_ (by sep_focus); intro hbs_len
-      wp_steps 11
-      conv => arg 3; simp only [add_one_beq_zero_of_lt_2_63 hcap_lt, Bool.false_eq_true, ↓reduceIte]
-      wp_steps 8
-      wp_apply
-      wp_simp_pre [← logOff_eq, hbk (s0.sp - 127#64), baseKeyChunks_sp_127,
-        BitVec.add_assoc, BitVec.reduceAdd, bv_sub_add_lit]
-      wp_steps 3; wp_simp_pre [sevenLo_sp_127]; wp_steps 1; wp_simp_pre [← sevenLo_sp_127]
-      wp_steps 6; wp_simp_pre [sevenLo_sp_88]; wp_steps 1; wp_simp_pre [← sevenLo_sp_88]; wp_steps 1
-      refine SepWP.fold hbk_sp (by sep_focus) ?_
-      wp_steps 8
-      refine SepWP.fold (Entails.of_eq hpTail.symm) (by sep_focus) ?_
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.call_frame htime (x := (SystemTime.unixEpoch, items.timestamp.toNat))
-        (ret_pc := entry + 192#64) (T := stackAt (s0.sp - 176#64) extHookStack)
-        (by wp_norm_goal) (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_goal)
-        (by dsimp only [timeAddSpec]; congr 2)
-        ?_ (by sep_focus)
-        (fun _ _ _ _ h => allowPanic_not_exited h)
-        (fun sf _ h => by
-          rw [← sepConj_assoc]
-          exact allowPanic_frame (fun ⟨hts_none, htr⟩ =>
-            ⟨⟨items, rfl, hts_none⟩, by simp only [arm64_norm] at htr; rwa [hpost] at htr⟩) h) ?_
-      · exact ⟨by wp_norm_lhs, by wp_norm_lhs, by decide, by wp_norm_lhs, by wp_norm_lhs⟩
-      intro sf hpcf hrunf hspf hcsf
-      replace hspf : sf.sp = s0.sp - 176#64 := by rw [hspf]; wp_norm_lhs
-      dsimp only [CalleeSavedPreserved] at hcsf
-      rcases hcsf with ⟨hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx26, hx27, hx28, hx29, hvregs⟩
-      replace hx19 : sf.readReg64 (.gpr 19#5) = out := by rw [hx19]; wp_norm_lhs
-      replace hx20 : sf.readReg64 (.gpr 20#5) = ss := by rw [hx20]; wp_norm_lhs
-      replace hx21 : sf.readReg64 (.gpr 21#5) = BitVec.zeroExtend 64 items.signedPreKeyId := by rw [hx21]; wp_norm_lhs
-      replace hx22 : sf.readReg64 (.gpr 22#5) = BitVec.zeroExtend 64 pkTag := by rw [hx22]; wp_norm_lhs
-      replace hx23 : sf.readReg64 (.gpr 23#5) = BitVec.zeroExtend 64 pkVal := by rw [hx23]; wp_norm_lhs
-      replace hx24 : sf.readReg64 (.gpr 24#5) = bk15 := by rw [hx24]; wp_norm_lhs
-      replace hx25 : sf.readReg64 (.gpr 25#5) = bk7 := by rw [hx25]; wp_norm_lhs
-      replace hx26 : sf.readReg64 (.gpr 26#5) = kyberCapWord G.kyber := by rw [hx26]; wp_norm_lhs
-      replace hx27 : sf.readReg64 (.gpr 27#5) = s0.readReg64 (.gpr 27#5) := by rw [hx27]; wp_norm_lhs
-      replace hx28 : sf.readReg64 (.gpr 28#5) = s0.readReg64 (.gpr 28#5) := by rw [hx28]; wp_norm_lhs
-      replace hx29 : sf.readReg64 (.gpr 29#5) = s0.sp - 80#64 := by rw [hx29]; wp_norm_lhs
-      replace hvregs : calleeSavedVRegs sf = calleeSavedVRegs s0 := by rw [hvregs]; wp_norm_lhs
-      dsimp only [timeAddSpec]
-      rw [show (stackAt (State.sp _) extHookStack) = stackAt (s0.sp - 176#64) extHookStack from
-        congrArg (stackAt · extHookStack) (by wp_norm_lhs)]
-      apply SepWPp.pure_elim_focus (SystemTime.unixEpoch.checkedAddSecs items.timestamp.toNat =
-        some ⟨sf.readReg64 .x0, (sf.readReg64 .x1).setWidth 32⟩ ∧ sf.trace = _)
-      rintro ⟨hts_some, htr_sf⟩
-      replace htr_sf : sf.trace = s0.trace := by rw [htr_sf]; wp_norm_lhs
-      cases hky : sess.pendingKyberPreKey with
-      | none =>
-        cases hgk : G.kyber with
-        | some kg => rw [hky, hgk] at hkyRel; exact False.elim hkyRel
-        | none =>
-          simp only [hgk, kyberCapWord, noneCap] at hx26
-          apply SepWPp.of_sepWP_ret
-          wp_simp_pre [kyberCapWord, optKyberRest, memRegion_88_some_split,
-            BitVec.add_assoc, BitVec.reduceAdd, bv_sub_add_lit]
-          wp_pull_exists; wp_steps 5
-          wp_simp_pre [sevenLo_sp_88]; wp_steps 1; wp_simp_pre [← sevenLo_sp_88]
-          wp_steps 3; wp_simp_pre [sevenLo_sp_168]; wp_steps 1
-          wp_simp_pre [← sevenLo_sp_168, pointsTo32_32_sp_172]; wp_steps 1
-          wp_simp_pre [← pointsTo32_32_sp_172]; wp_steps 4
-          wp_simp_pre [← pointsTo32_32_out_28, sevenLo_out_32]; wp_steps 1
-          wp_simp_pre [← sevenLo_out_32]; wp_steps 14
-          refine SepWP.fold hbk_out (by sep_focus) ?_
-          refine SepWP.fold (sessionAt_some_none_intro A ss G sess g items hgp hppk hgk hky
-            hpendRel' htailLen ⟨hlen_le, hcap_lt, hptr_ne⟩) (by sep_focus) ?_
-          refine SepWP.fold (optU32At_out_8_none_intro out _) (by sep_focus) ?_
-          refine SepWP.fold (unackKyberSliceAt_out_64_none_intro out _) (by sep_focus) ?_
-          refine SepWP.fold (unackOutAt_some_intro out none none items
-            ⟨sf.readReg64 .x0, (sf.readReg64 .x1).setWidth 32⟩ hts_some pkTag pkVal
-            (hpkEnt out) _) (by sep_focus) ?_
-          refine SepWP.fold (stackAt_unackItems_some_post s0.sp _ _ _ _ _ _ _ _
-            items.baseKey.bytes.toList (List.Vector.toList_length items.baseKey.bytes)
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-          wp_done
-      | some ky =>
-        cases hgk : G.kyber with
-        | none => rw [hky, hgk] at hkyRel; exact False.elim hkyRel
-        | some kg =>
-          have hkyRel' : KyberRel (some kg) (some ky) := by rwa [hky, hgk] at hkyRel
-          rcases hkyRel' with ⟨hkyBytes, hkyTake⟩
-          simp only [hgk, kyberCapWord] at hx26
-          dsimp only [kyberCapWord, optKyberRest]
-          apply SepWPp.pure_elim_focus (kg.tail.length = 8); intro hkgTailLen
-          apply SepWPp.pure_elim_focus (kg.vec.bytes.length ≤ kg.vec.cap.toNat ∧
-            kg.vec.cap.toNat < 2 ^ 63 ∧ kg.vec.ptr ≠ 0); intro hkgVec
-          have hkyTail := kyberTail_pointsToBytes ss kg.tail ky hkgTailLen hkyTake
-          apply SepWPp.of_sepWP_ret
-          wp_simp_pre [hkyTail, memRegion_88_some_split,
-            BitVec.add_assoc, BitVec.reduceAdd, bv_sub_add_lit]
-          wp_pull_exists; wp_steps 2
-          conv => arg 3; simp only [add_one_beq_zero_of_lt_2_63 hkgVec.2.1, Bool.false_eq_true, ↓reduceIte]
-          wp_steps 5; wp_simp_pre [sevenLo_sp_88]; wp_steps 1; wp_simp_pre [← sevenLo_sp_88]
-          wp_steps 3; wp_simp_pre [sevenLo_sp_168]; wp_steps 1
-          wp_simp_pre [← sevenLo_sp_168, pointsTo32_32_sp_172]; wp_steps 1
-          wp_simp_pre [← pointsTo32_32_sp_172]; wp_steps 4
-          wp_simp_pre [← pointsTo32_32_out_28, sevenLo_out_32]; wp_steps 1
-          wp_simp_pre [← sevenLo_out_32]; wp_steps 14
-          refine SepWP.fold hbk_out (by sep_focus) ?_
-          refine SepWP.fold (Entails.of_eq hkyTail.symm) (by sep_focus) ?_
-          refine SepWP.fold (sessionAt_some_some_intro A ss G sess g kg items ky hgp hppk hgk hky
-            hpendRel' ⟨hkyBytes, hkyTake⟩ htailLen ⟨hlen_le, hcap_lt, hptr_ne⟩ hkgTailLen hkgVec)
-            (by sep_focus) ?_
-          refine SepWP.fold (optU32At_out_8_some_intro out ky) (by sep_focus) ?_
-          refine SepWP.fold (unackKyberSliceAt_out_64_some_intro out kg _ (by rw [hkyBytes])) (by sep_focus) ?_
-          refine SepWP.fold (unackOutAt_some_intro out (some kg) (some ky) items
-            ⟨sf.readReg64 .x0, (sf.readReg64 .x1).setWidth 32⟩ hts_some pkTag pkVal
-            (hpkEnt out) _) (by sep_focus) ?_
-          refine SepWP.fold (stackAt_unackItems_some_post s0.sp _ _ _ _ _ _ _ _
-            items.baseKey.bytes.toList (List.Vector.toList_length items.baseKey.bytes)
-            _ _ _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-          wp_done
-
-theorem unackItems_fn_ok_trap {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    (ht : HookSat (trTrapExterns C abs) timeAddHookName timeAddSpec)
-    (halign : img.base &&& 0xfff#64 = 0#64) :
-    subroutine_ok (trTrapProgAt img.base C abs)
-      ((trTrapProgAt img.base C abs).fnAddr unackItemsName) (unackItemsSpec A img) :=
-  unackItems_fn_ok_ext ht halign
-
-theorem unackItems_fn_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (ht : HookSat abs timeAddHookName timeAddSpec) (halign : img.base &&& 0xfff#64 = 0#64) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr unackItemsName) (unackItemsSpec A img) :=
-  subroutine_ok_kit_of_trTrap (unackItems_fn_ok_trap (hookSat_trTrapExterns (by decide) (by decide) ht) halign)
-
-theorem unackItems_ok_ext {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (ht : HookSat ext timeAddHookName timeAddSpec) (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + 0x1245c#64) (unackItemsSpec A img) := by
-  have h := unackItems_fn_ok_ext (img := img) (A := A) ht (base_aligned_of_loads himg)
-  have haddr : (tripleRatchetProgAtExt img.base ext).fnAddr unackItemsName = img.base + 0x1245c#64 := by
-    simp only [tripleRatchetProgAtExt, unackItemsName, Program.fnAddr_rebase, libsignalSessionCode_fnOff_0x1245c]
-  rwa [haddr] at h
-
-theorem unackItems_ok_trap {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    (ht : HookSat (trTrapExterns C abs) timeAddHookName timeAddSpec)
-    (himg : Obj.Loads libsignalSessionImage img) : UnackItemsOk_trap img C A abs :=
-  unackItems_ok_ext ht himg
-
-theorem unackItems_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64} {S : SpqrModel}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {abs : String → Option (State → State)}
-    (h3 : PublicApiHooks C A S encRecord abs) (himg : Obj.Loads libsignalSessionImage img) :
-    UnackItemsOk img C A ctl abs :=
-  subroutine_ok_kit_of_trTrap (unackItems_ok_trap (hookSat_trTrapExterns (by decide) (by decide) h3.timeAdd) himg)
-
-/-! ## Relocatable `[LibsignalPlacement]` Proofs -/
-
 open CryptoVerification.LibsignalPublicApi.Placed
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
@@ -1245,7 +990,7 @@ abbrev lsTimeAddSym : String :=
 private theorem lsLogOff_eq [LibsignalPlacement] :
     FromRecordCallees.lsLogOff = (lsLogFilterAddr ↦₆₄ 0#64) := rfl
 
-def unackItemsPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec UnackCall where
+@[expose] def unackItemsPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec UnackCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x8 = x.out⌝ ∗ sessionStateReprAt A x.ss x.G x.sess ∗
       memRegion x.out 88 ∗ FromRecordCallees.lsLogOff ∗ stackAt s.sp unackItemsStack

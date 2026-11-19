@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MF14Aux.Helpers
+public import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MF14Aux.Helpers -- proof-setup: allow-public-import
 
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.Base
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MF9PAux.Pure
 import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX.Leaf.MF9PAux
 
@@ -27,11 +27,10 @@ open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Record.DeserializeSeed CryptoVerification.E2E.Record.DeserializeGeneral
 open CryptoVerification.E2E.Record.L1GX
 open CryptoVerification.E2E.Record.L1GX.Leaf.MF14Aux
-open CryptoVerification.E2E.Record.Serialization (OkAt allocPanic)
+open CryptoVerification.E2E.Record.Serialization (allocPanic)
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
-
 
 /-! ## Generic `int32::merge` and `bytes::merge` framing lemmas -/
 
@@ -190,7 +189,7 @@ theorem post_of_bytesMerge_gen_x9p (ss bufRef slot p_cur sp0 : BitVec 64)
 
 /-! ## Slice-cursor unfolds and folds -/
 
-def pendingPtr2 (ptr : BitVec 64) (i : BitVec 32) : BitVec 64 :=
+@[expose] def pendingPtr2 (ptr : BitVec 64) (i : BitVec 32) : BitVec 64 :=
   ptr + 2#64 + BitVec.ofNat 64 (encodeVarint (i.setWidth 64)).length
 
 theorem sliceCursorAt_unfold_id_x9p (slot ptr : BitVec 64) (i : BitVec 32) {k : List (BitVec 8)}
@@ -427,41 +426,6 @@ theorem cmp_gt_tail_x9p {a n : Nat} (ha : 0 < a) (hlen : a + n < 2 ^ 32) :
   · simp only [BitVec.ule, BitVec.toNat_ofNat, decide_eq_false_iff_not]; omega
   · simp only [BitVec.ult, BitVec.toNat_ofNat, decide_eq_true_eq]; omega
   · apply BitVec.eq_of_toNat_eq; simp only [BitVec.toNat_sub, BitVec.toNat_ofNat]; omega
-
-theorem int32Merge_ok_sub_x9p {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : Prost.Int32MergeOk sessionImg0.base C A0 ctl abs) :
-    subroutine_ok (tripleRatchetProgAt sessionImg0.base C ctl abs)
-      ((tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName +
-        18446744073709540264#64)
-      ((Prost.int32MergeSpec A0).inImage sessionImg0) := by
-  have h1 := int32Merge_ok_sub_mf14 h
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact h1.mono_outcome x R s0 hpc hrun hpre.2 hsp fun _ hout => hout
-
-theorem call_frame_inv_x9p {α : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc ret : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp} {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P ⊢ T ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗
-      R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPp prog ret s P Q Qp := by
-  refine SepWPp.mono_pre_seedChain hP ?_
-  refine SepWPp.call_inImage_frame hcall hfl hsym hpc hrun hsp hlr hspec hφ rfl hexit hpanic hnext ?_
-  intro sf R' _ hoom_post
-  rw [hoom] at hoom_post
-  exact (not_satisfies_false_sepConj hoom_post).elim
 
 theorem allowPanic_frame_trace_x9p {s0 sm sf : State} {F R : SepProp}
     (htr : sm.trace = s0.trace)

@@ -9,18 +9,37 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateEnvBridges
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterEnvBridges
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserProfile
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateEnvBridges
+import LibsignalBinary.Proofs.PeakBudget.W4OuterEnvBridges
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserProfile -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # `sessDeserEvents` Bridges for CLI `load_session` & `SessionStore`
@@ -33,7 +52,7 @@ instantiated at `SessDeserializeCancelEnv`, `RecordDeserializeCancelEnv`, `SessD
 `SessDeserSetAEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -169,7 +188,7 @@ abbrev ofBytesEnv (DeserByBytesEnv : List (BitVec 8) → List AllocEvent → Pro
   fun r evs => DeserByBytesEnv (encodeRecord r) evs
 
 /-- Exact deterministic `SessionRecord::deserialize` event envelope (`evs = sessDeserEvents r`). -/
-def SessDeserExactEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
+@[expose] def SessDeserExactEnv (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   evs = sessDeserEvents r
 
 /-- `CliGhostAllocHooks M A lim g` discharges `DeserBudget.HookLift.AllocContractsBudgetPlaced` at
@@ -668,7 +687,7 @@ end W1ToW4LoadEq
 
 /-- Tight `Δcum` of `cliSessionKitDefaultBudgetEnv`'s `loadPollEnv`:
 `11,265` (`AddrTextValEnv DecimalEnv`) `+ 21,185` (`DirGetPathEnv`) `+ max 738 (fineReadFileCum fc) + deserCum`. -/
-def defaultLoadPollTightDeltaCum (fc deserCum : Nat) : Nat :=
+@[expose] def defaultLoadPollTightDeltaCum (fc deserCum : Nat) : Nat :=
   32450 + max 738 (fineReadFileCum fc) + deserCum
 
 /-- Tight `fineCostModel` `PhaseCreditSpec` for `cliSessionKitDefaultBudgetEnv`'s `loadPollEnv`
@@ -1468,7 +1487,7 @@ theorem fineReadFileMaxReq_le_2MiB {fc : Nat} (hfc : fc ≤ 2097152) :
 
 /-- Closed `CliSessLoadPollEnv` `cumSmall` bound on `RecordDeserializeCancelEnv` at `≤ 2 MiB`
 (`17,495,245` B). -/
-def sessLoadPollCancel2MiBCum : Nat := sessLoadPollTightDeltaCum 2097152 deserCancelFineCum
+@[expose] def sessLoadPollCancel2MiBCum : Nat := sessLoadPollTightDeltaCum 2097152 deserCancelFineCum
 
 /-- `P64` `CliSessLoadPollEnv` `cumSmall` bound at `≤ 2 MiB` (`20,022,520` B). -/
 def sessLoadPollCancel2MiBCumP64 : Nat := sessLoadPollTightDeltaCum 2097152 19417728
@@ -1478,7 +1497,7 @@ def sessLoadPollCancel2MiBCumP192 : Nat := sessLoadPollTightDeltaCum 2097152 206
 
 /-- Closed `cliSessionKitDefaultBudgetEnv` `loadPollEnv` `cumSmall` bound at `≤ 2 MiB`
 (`17,496,721` B). -/
-def defaultLoadPollCancel2MiBCum : Nat := defaultLoadPollTightDeltaCum 2097152 deserCancelFineCum
+@[expose] def defaultLoadPollCancel2MiBCum : Nat := defaultLoadPollTightDeltaCum 2097152 deserCancelFineCum
 
 /-- `P64` `cliSessionKitDefaultBudgetEnv` `loadPollEnv` `cumSmall` bound (`20,023,996` B). -/
 def defaultLoadPollCancel2MiBCumP64 : Nat := defaultLoadPollTightDeltaCum 2097152 19417728
@@ -1488,18 +1507,18 @@ def defaultLoadPollCancel2MiBCumP192 : Nat := defaultLoadPollTightDeltaCum 20971
 
 /-- Closed `LoadPoll` post-phase `liveLarge` bound on `RecordDeserializeCancelEnv` at `≤ 2 MiB`
 (`5,316,629` B). -/
-def loadPollCancel2MiBLive : Nat := 2105347 + deserCancelFineLive
+@[expose] def loadPollCancel2MiBLive : Nat := 2105347 + deserCancelFineLive
 
 /-- Closed `LoadPoll` transient `peakLarge` bound on `RecordDeserializeCancelEnv` at `≤ 2 MiB`
 (`7,421,976` B). -/
-def loadPollCancel2MiBPeak : Nat := max 3162118 (2105347 + deserCancelFinePeak)
+@[expose] def loadPollCancel2MiBPeak : Nat := max 3162118 (2105347 + deserCancelFinePeak)
 
 /-- Closed `LoadPoll` `maxReq` cap at `≤ 2 MiB` (`2,097,152` B). -/
-def loadPollCancel2MiBMaxReq : Nat := deserCancelFineMaxReq
+@[expose] def loadPollCancel2MiBMaxReq : Nat := deserCancelFineMaxReq
 
 /-- Closed `CliSessLoadPollEnv` `groupsScaled` bound on `RecordDeserializeCancelEnv`
 (`347,214,604`, `5,299` groups). -/
-def cliSessLoadPollCancelGrpS : Nat := 42 * FineScale + deserCancelFineGrpS
+@[expose] def cliSessLoadPollCancelGrpS : Nat := 42 * FineScale + deserCancelFineGrpS
 
 /-- Ceiling group count of `cliSessLoadPollCancelGrpS` (`5,299` groups). -/
 def cliSessLoadPollCancelGroups : Nat := (cliSessLoadPollCancelGrpS + FineScale - 1) / FineScale
@@ -1512,7 +1531,7 @@ def cliSessLoadPollCancelGrpSP192 : Nat := 42 * FineScale + 371994912
 
 /-- Closed `cliSessionKitDefaultBudgetEnv` `loadPollEnv` `groupsScaled` bound on
 `RecordDeserializeCancelEnv` (`347,411,212`, `5,302` groups). -/
-def defaultLoadPollCancelGrpS : Nat := 45 * FineScale + deserCancelFineGrpS
+@[expose] def defaultLoadPollCancelGrpS : Nat := 45 * FineScale + deserCancelFineGrpS
 
 /-- Ceiling group count of `defaultLoadPollCancelGrpS` (`5,302` groups). -/
 def defaultLoadPollCancelGroups : Nat := (defaultLoadPollCancelGrpS + FineScale - 1) / FineScale

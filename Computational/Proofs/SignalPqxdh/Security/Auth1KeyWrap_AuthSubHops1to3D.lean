@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C -- proof-setup: allow-public-import
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
 
 /-!
 # One-Key Creation-Order `PrfChainKey` Slot Simulation
@@ -27,7 +28,7 @@ Defines creation-order `PrfChainKey` hybrid steps over `pqxdhAuthImpl1KeyG` and 
 primitive-oracle simulation and `SlotM` execution.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -131,10 +132,10 @@ theorem simulateQ_stepAuthOtherPrim1Key (S : Setup) (P : Primitives) (q : AuthQu
     dsimp only
     rfl
 
-def projSlots0 {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
+@[expose] def projSlots0 {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
   { hst with slots := {} }
 
-def authCkSlotsSendWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
+@[expose] def authCkSlotsSendWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) : ProbComp (AuthResponse × AuthHybridStateFixed S) := do
   let st := hst.toAuthHybridState.base
@@ -216,7 +217,7 @@ def authCkSlotsSendWith (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp 
                   pure (resp, { toAuthHybridState := hst', recvCount := hst.recvCount,
                                 slots := hst.slots })
 
-def authCkSlotsStepWith1Key (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
+@[expose] def authCkSlotsStepWith1Key (S : Setup) (P : Primitives) (sampAt : Nat → ProbComp (Bytes × Bytes))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     ProbComp ((authSpec S).Range q × AuthHybridStateFixed S) :=
   match q with
@@ -233,7 +234,7 @@ def authCkSlotsStepWith1Key (S : Setup) (P : Primitives) (sampAt : Nat → ProbC
   | qOther =>
     authCkOtherStep1Key S P qOther hst
 
-noncomputable def authCkSlotsPreSampleRun1Key (S : Setup) (P : Primitives) (idx : Nat)
+@[expose] def authCkSlotsPreSampleRun1Key (S : Setup) (P : Primitives) (idx : Nat)
     (p : Bytes × Bytes) (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -245,7 +246,7 @@ noncomputable def authCkSlotsPreSampleRun1Key (S : Setup) (P : Primitives) (idx 
   let (b', finalSt) ← (simulateQ fullImpl A.run).run initSt
   finalizeAuthFixed P secb b' finalSt.toAuthHybridState
 
-noncomputable def authCkSlotsCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat)
+@[expose] def authCkSlotsCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -733,7 +734,7 @@ theorem ckSlotsWf_empty (S : Setup) (secb : Bool) :
     CkSlotsWf (AuthHybridStateFixed.empty S secb) :=
   ⟨fun sid _ => by cases sid <;> rfl, fun _ _ => rfl⟩
 
-def authCkSlotsSendSlot (S : Setup) (P : Primitives) (idx : Nat)
+@[expose] def authCkSlotsSendSlot (S : Setup) (P : Primitives) (idx : Nat)
     (samp : ProbComp (Bytes × Bytes))
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) :
@@ -808,7 +809,7 @@ def authCkSlotsSendSlot (S : Setup) (P : Primitives) (idx : Nat)
                     hst.toAuthHybridState
                   pure (resp, { toAuthHybridState := hst', recvCount := hst.recvCount, slots := hst.slots })
 
-def authCkSlotsRecvSlot (S : Setup) (P : Primitives) (idx : Nat)
+@[expose] def authCkSlotsRecvSlot (S : Setup) (P : Primitives) (idx : Nat)
     (samp : ProbComp (Bytes × Bytes))
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecv S))
     (hst : AuthHybridStateFixed S) :
@@ -869,7 +870,7 @@ def authCkSlotsRecvSlot (S : Setup) (P : Primitives) (idx : Nat)
         let (resp, hst') := prep.finish res?
         pure (resp, { toAuthHybridState := hst', recvCount := recvCount', slots := hst.slots })
 
-def authCkSlotsStepSlot1Key (S : Setup) (P : Primitives) (idx : Nat)
+@[expose] def authCkSlotsStepSlot1Key (S : Setup) (P : Primitives) (idx : Nat)
     (samp : ProbComp (Bytes × Bytes))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     SlotM (Bytes × Bytes) ((authSpec S).Range q × AuthHybridStateFixed S) :=

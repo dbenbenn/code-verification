@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewCodec
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewInv
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -24,7 +24,7 @@ Relates `PreKeyMessageFields` and `PqParty` store lookups (`pqRecvPrekeyModel`, 
 `HonestIdentity`, and `.base-keys` replay freshness.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,7 +72,7 @@ private theorem djbKey_inj_rpnwa64 {v₁ v₂ : List.Vector (BitVec 8) 32} (h : 
 
 /-- Canonical `PreKeyFields` extracted from a typed `PreKeyMessageFields` whose inner `SignalMessage`
 decodes to `inner`. -/
-def rpkNew_preKeyFieldsOf (m : PreKeyMessageFields) (inner : SignalMessage) : PreKeyFields where
+@[expose] def rpkNew_preKeyFieldsOf (m : PreKeyMessageFields) (inner : SignalMessage) : PreKeyFields where
   version := 4
   preKeyId := m.opkId
   signedPreKeyId := m.spkId

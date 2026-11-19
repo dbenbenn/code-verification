@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStep
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetSteps
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStep
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetSteps -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBlocks
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepErr
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepRecvChain
 import ProofLib.RegChain
+import ProofLib.Sep
 
 /-!
 # `VmPreserved` Branch and Pre-`create_chain` Steppers for `DhStep`
@@ -25,7 +27,7 @@ Lifts the relocatable `[LibsignalPlacement]` error-tail, missing-sender-chain, b
 `+0x70c → lsmpl.base 40` key-generation steppers of `DhStep` to carry `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,9 +57,8 @@ open CryptoVerification.LibsignalTripleRatchet.Decrypt (
   tryDecryptPlacedImg tryDecryptSavedRegs tryDecryptSubStack
 )
 open CryptoVerification.LibsignalTripleRatchet.Decrypt.DhStep (
-  DhStepAfterRecvChainStatePlaced fold_for_7f8 optSenderChainBytes_none_pointsTo32
+  DhStepAfterRecvChainStatePlaced optSenderChainBytes_none_pointsTo32
   split_190_4e0_for_cc2 split_1a0_56 split_400_500_for_keygen split_memRegion_for_7f8
-  tryDecryptCommonHeap_split_tape
 )
 open LibsignalBinary.Heap (VmPreserved)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (derivePublicKeyBytesBudgetSpec)
@@ -97,47 +98,19 @@ theorem dhStep_err_tail_from_2dc_vm_placed [LibsignalPlacement]
       (∃∗ u180 : BitVec 64, (sp + 0x180#64) ↦₆₄ u180) ∗ (∃∗ u188 : BitVec 32, (sp + 0x188#64) ↦₃₂ u188) ∗
       (∃∗ u18c : BitVec 32, (sp + 0x18c#64) ↦₃₂ u18c) ∗ memRegion (sp + 0x190#64) 0x120 ∗
       (∃∗ u2b0 : BitVec 64, (sp + 0x2b0#64) ↦₆₄ u2b0) ∗ (∃∗ u2b8 : BitVec 64, (sp + 0x2b8#64) ↦₆₄ u2b8) := by
-    rw [memRegion_split' (b' := sp + 0x168#64) (n := 0x28) (k := 0x158) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x168#64) (b' := sp + 0x170#64) (n := 0x8) (k := 0x150) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x170#64) (b' := sp + 0x178#64) (n := 0x8) (k := 0x148) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x178#64) (b' := sp + 0x180#64) (n := 0x8) (k := 0x140) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x180#64) (b' := sp + 0x188#64) (n := 0x8) (k := 0x138) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x188#64) (b' := sp + 0x18c#64) (n := 0x4) (k := 0x134) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x18c#64) (b' := sp + 0x190#64) (n := 0x4) (k := 0x130) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x190#64) (b' := sp + 0x2b0#64) (n := 0x120) (k := 0x10) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x2b0#64) (b' := sp + 0x2b8#64) (n := 0x8) (k := 0x8) rfl (by bv_arith) (by decide),
-        memRegion_eight (sp + 0x168#64), memRegion_eight (sp + 0x170#64), memRegion_eight (sp + 0x178#64),
-        memRegion_eight (sp + 0x180#64), memRegion_four (sp + 0x188#64), memRegion_four (sp + 0x18c#64),
-        memRegion_eight (sp + 0x2b0#64), memRegion_eight (sp + 0x2b8#64)]
+    sep_interval_eq
   have h2d0_split : memRegion (sp + 0x2d0#64) 0x2b0 =
       (∃∗ u2d0 : BitVec 32, (sp + 0x2d0#64) ↦₃₂ u2d0) ∗ memRegion (sp + 0x2d4#64) 0x5c ∗
       (∃∗ u330 : BitVec 64, (sp + 0x330#64) ↦₆₄ u330) ∗ (∃∗ u338 : BitVec 64, (sp + 0x338#64) ↦₆₄ u338) ∗
       (∃∗ u340 : BitVec 32, (sp + 0x340#64) ↦₃₂ u340) ∗ (∃∗ u344 : BitVec 64, (sp + 0x344#64) ↦₆₄ u344) ∗
       (∃∗ u34c : BitVec 64, (sp + 0x34c#64) ↦₆₄ u34c) ∗ memRegion (sp + 0x354#64) 0x22c := by
-    rw [memRegion_split' (b := sp + 0x2d0#64) (b' := sp + 0x2d4#64) (n := 0x4) (k := 0x2ac) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x2d4#64) (b' := sp + 0x330#64) (n := 0x5c) (k := 0x250) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x330#64) (b' := sp + 0x338#64) (n := 0x8) (k := 0x248) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x338#64) (b' := sp + 0x340#64) (n := 0x8) (k := 0x240) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x340#64) (b' := sp + 0x344#64) (n := 0x4) (k := 0x23c) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x344#64) (b' := sp + 0x34c#64) (n := 0x8) (k := 0x234) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x34c#64) (b' := sp + 0x354#64) (n := 0x8) (k := 0x22c) rfl (by bv_arith) (by decide),
-        memRegion_four (sp + 0x2d0#64), memRegion_eight (sp + 0x330#64), memRegion_eight (sp + 0x338#64),
-        memRegion_four (sp + 0x340#64), memRegion_eight (sp + 0x344#64), memRegion_eight (sp + 0x34c#64)]
+    sep_interval_eq
   rw [h140_split, h2d0_split] at hmem
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hmem
   rcases hmem with ⟨u34c, u344, u340, u338, u330, u2d0, u2b8, u2b0, u18c, u188, u180, u178, u170, u168, hmem⟩
   have hwp1 := hwp.wpp_2dc_to_30c s0 s w2c0 w2c8 u34c u344 u338 u330 u2b8 u2b0 u180 u178 u170 u168
     u340 u2d0 u18c u188 hpc hrun hsp hsp_al hx29 hx12 hx20 hx25 htrace hvregs
-  have hmem_framed : s.mem ⊨
-      (((memRegion (sp + 0x140#64) 0x28 ∗ (sp + 0x168#64) ↦₆₄ u168 ∗ (sp + 0x170#64) ↦₆₄ u170 ∗
-        (sp + 0x178#64) ↦₆₄ u178 ∗ (sp + 0x180#64) ↦₆₄ u180 ∗ (sp + 0x188#64) ↦₃₂ u188 ∗
-        (sp + 0x18c#64) ↦₃₂ u18c ∗ memRegion (sp + 0x190#64) 0x120 ∗ (sp + 0x2b0#64) ↦₆₄ u2b0 ∗
-        (sp + 0x2b8#64) ↦₆₄ u2b8) ∗ (sp + 0x2c0#64) ↦₆₄ w2c0 ∗ (sp + 0x2c8#64) ↦₆₄ w2c8 ∗
-       ((sp + 0x2d0#64) ↦₃₂ u2d0 ∗ memRegion (sp + 0x2d4#64) 0x5c ∗ (sp + 0x330#64) ↦₆₄ u330 ∗
-        (sp + 0x338#64) ↦₆₄ u338 ∗ (sp + 0x340#64) ↦₃₂ u340 ∗ (sp + 0x344#64) ↦₆₄ u344 ∗
-        (sp + 0x34c#64) ↦₆₄ u34c ∗ memRegion (sp + 0x354#64) 0x22c)) ∗ Rest) :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem
-  obtain ⟨s', hsteps, hout⟩ := hwp1.elim hmem_framed hcode
+  obtain ⟨s', hsteps, hout⟩ := hwp1.elim (Satisfies.mono (by dsimp only [sp]; bi_frame) hmem) hcode
   obtain ⟨hpcs', hruns', P_f, hmem', hvms', hsp', hx29', hx19', hx20', hx26', htrace', hvregs', hent⟩ :=
     hout.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
   have hsp_al' : s'.spAligned = true := by
@@ -145,8 +118,7 @@ theorem dhStep_err_tail_from_2dc_vm_placed [LibsignalPlacement]
   refine ⟨s', hsteps, hvms', hpcs',
     ⟨hruns', hsp', hsp0_al, hsp_al', hx29', htrace', hcl.of_keepsFrozen hsteps.keepsFrozen, hvregs'⟩,
     hx19', hx20', hx26', ?_⟩
-  have hm := hent s'.mem Rest hmem'
-  exact Eq.mp (congrArg (s'.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hm
+  exact Satisfies.mono (by dsimp only [sp]; bi_entail) (hent s'.mem _ hmem')
 
 theorem dhStep_err_tail_from_7f8_vm_placed [LibsignalPlacement]
     {prog : Program} {entry rngFillEntry : BitVec 64} {A : RustAlloc}
@@ -173,50 +145,30 @@ theorem dhStep_err_tail_from_7f8_vm_placed [LibsignalPlacement]
   rcases hmem with ⟨u508, u500, u2d0, u2c8, u2c0, u2b8, u2b0, hmem⟩
   have hwp1 := hwp.wpp_7f8_to_2dc s0 s u508 u500 u2c8 u2c0 u2b8 u2b0 u2d0
     hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
-  have hmem_framed : s.mem ⊨
-      (memRegion (sp + 0x140#64) 0x58 ∗ ((sp + 0x198#64) ↦₆₄ speWord 10) ∗
-       memRegion (sp + 0x1a0#64) 0x110 ∗ ((sp + 0x2b0#64) ↦₆₄ u2b0) ∗
-       ((sp + 0x2b8#64) ↦₆₄ u2b8) ∗ ((sp + 0x2c0#64) ↦₆₄ u2c0) ∗
-       ((sp + 0x2c8#64) ↦₆₄ u2c8) ∗ ((sp + 0x2d0#64) ↦₃₂ u2d0) ∗
-       memRegion (sp + 0x2d4#64) 0x22c ∗ ((sp + 0x500#64) ↦₆₄ u500) ∗
-       ((sp + 0x508#64) ↦₆₄ u508) ∗ memRegion (sp + 0x510#64) 0x70) ∗ Rest :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem
-  obtain ⟨sm, hsteps1, hout⟩ := hwp1.elim hmem_framed hcode
+  obtain ⟨sm, hsteps1, hout⟩ := hwp1.elim (Satisfies.mono (by dsimp only [sp]; bi_frame) hmem) hcode
   obtain ⟨hpcm, hrunm, P_m, hmem_m, hvmm, hsp_m, hx29_m, hx12_m, hx19_m, hx20_m, hx25_m, hx26_m, htrace_m, hvregs_m, hent_m⟩ :=
     hout.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
   have hsp_al_m : sm.spAligned = true := by
     unfold State.spAligned at hsp_al ⊢; rw [hsp_m, ← show s.sp = s0.sp - 1504#64 from hsp]; exact hsp_al
   have hmeta_m : tryDecryptMidMetaPlaced s0 sm :=
     ⟨hrunm, hsp_m, hsp0_al, hsp_al_m, hx29_m, htrace_m, hcl.of_keepsFrozen hsteps1.keepsFrozen, hvregs_m⟩
-  have hmem_m0 := hent_m sm.mem Rest hmem_m
+  have hmem_m0 : sm.mem ⊨ memRegion (sp + 0x140#64) 0x440 ∗ Rest :=
+    Satisfies.mono (by dsimp only [sp]; bi_entail) (hent_m sm.mem _ hmem_m)
   have h2c0_split : memRegion (sp + 0x140#64) 0x440 =
       memRegion (sp + 0x140#64) 0x180 ∗ (∃∗ w2c0 : BitVec 64, (sp + 0x2c0#64) ↦₆₄ w2c0) ∗
       (∃∗ w2c8 : BitVec 64, (sp + 0x2c8#64) ↦₆₄ w2c8) ∗ memRegion (sp + 0x2d0#64) 0x2b0 := by
-    rw [memRegion_split' (b := sp + 0x140#64) (b' := sp + 0x2c0#64) (n := 0x180) (k := 0x2c0) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x2c0#64) (b' := sp + 0x2c8#64) (n := 0x8) (k := 0x2b8) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x2c8#64) (b' := sp + 0x2d0#64) (n := 0x8) (k := 0x2b0) rfl (by bv_arith) (by decide),
-        memRegion_eight (sp + 0x2c0#64), memRegion_eight (sp + 0x2c8#64)]
+    sep_interval_eq
   rw [h2c0_split] at hmem_m0
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hmem_m0
   rcases hmem_m0 with ⟨w2c8, w2c0, hmem_m0⟩
-  have hmem_m' : sm.mem ⊨ memRegion (sp + 0x140#64) 0x180 ∗
-      ((sp + 0x2c0#64) ↦₆₄ w2c0) ∗ ((sp + 0x2c8#64) ↦₆₄ w2c8) ∗
-      memRegion (sp + 0x2d0#64) 0x2b0 ∗ Rest :=
-    Eq.mp (congrArg (sm.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem_m0
   obtain ⟨s', hsteps2, hvm2, hpcs', hmetas', hx19s', hx20s', hx26s', hmems'⟩ :=
     dhStep_err_tail_from_2dc_vm_placed hwp w2c0 w2c8 Rest s0 sm
-      hpcm hmeta_m hx12_m hx20_m hx25_m hmem_m' (hsteps1.codeLoaded hcode)
+      hpcm hmeta_m hx12_m hx20_m hx25_m
+      (Satisfies.mono (by dsimp only [sp]; bi_entail) hmem_m0) (hsteps1.codeLoaded hcode)
   refine ⟨s', Steps.trans hsteps1 hsteps2, hvmm.trans hvm2, hpcs', hmetas', hx19s'.trans hx19_m, hx20s',
     hx26s'.trans hx26_m, ?_⟩
   dsimp only [speBodyAt]
-  have h168_fold : memRegion (sp + 0x168#64) 40 =
-      memRegion (sp + 0x168#64) 8 ∗ memRegion (sp + 0x170#64) 8 ∗ memRegion (sp + 0x178#64) 24 := by
-    rw [memRegion_split' (b := sp + 0x168#64) (b' := sp + 0x170#64) (n := 8) (k := 32) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x170#64) (b' := sp + 0x178#64) (n := 8) (k := 24) rfl (by bv_arith) (by decide)]
-  rw [h168_fold]
-  dsimp only [sp] at hmems' ⊢
-  change s'.mem ⊨ _
-  arm64_sep_close
+  exact Satisfies.mono (by dsimp only [sp]; sep_interval) hmems'
 
 theorem dhStep_missing_sender_chain_vm_placed [LibsignalPlacement]
     {prog : Program} {entry rngFillEntry : BitVec 64} {A : RustAlloc} {ctl : BitVec 64}
@@ -239,10 +191,7 @@ theorem dhStep_missing_sender_chain_vm_placed [LibsignalPlacement]
   have h2c0_split : memRegion (sp + 0x140#64) 0x440 =
       memRegion (sp + 0x140#64) 0x180 ∗ (∃∗ u2c0 : BitVec 64, (sp + 0x2c0#64) ↦₆₄ u2c0) ∗
       (∃∗ u2c8 : BitVec 64, (sp + 0x2c8#64) ↦₆₄ u2c8) ∗ memRegion (sp + 0x2d0#64) 0x2b0 := by
-    rw [memRegion_split' (b := sp + 0x140#64) (b' := sp + 0x2c0#64) (n := 0x180) (k := 0x2c0) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x2c0#64) (b' := sp + 0x2c8#64) (n := 0x8) (k := 0x2b8) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := sp + 0x2c8#64) (b' := sp + 0x2d0#64) (n := 0x8) (k := 0x2b0) rfl (by bv_arith) (by decide),
-        memRegion_eight (sp + 0x2c0#64), memRegion_eight (sp + 0x2c8#64)]
+    sep_interval_eq
   unfold trAt ratchetAt at hmem
   rw [hsc_tag, h2c0_split] at hmem
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hmem
@@ -334,35 +283,16 @@ theorem dhStep_cc1_err_branch_vm_placed [LibsignalPlacement]
   rcases hmem with ⟨u1c4, u1bc, u1b4, u1b0, u1a8, u1a0, hmem⟩
   have hwp1 := hwp.wpp_cc1_err s0 s u1bc u1b4 u1a8 u1a0 u1c4 u1b0
     hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
-  have hmem_framed : s.mem ⊨
-      (((sp + 0x190#64) ↦₃₂ 1#32) ∗ ((sp + 0x1a0#64) ↦₆₄ u1a0) ∗ ((sp + 0x1a8#64) ↦₆₄ u1a8) ∗
-       ((sp + 0x1b0#64) ↦₃₂ u1b0) ∗ ((sp + 0x1b4#64) ↦₆₄ u1b4) ∗ ((sp + 0x1bc#64) ↦₆₄ u1bc) ∗
-       ((sp + 0x1c4#64) ↦₃₂ u1c4)) ∗
-      (memRegion (sp + 0x140#64) 0x50 ∗ memRegion (sp + 0x194#64) 4 ∗
-       ((sp + 0x198#64) ↦₆₄ speWord 10) ∗ memRegion (sp + 0x1c8#64) 16 ∗
-       memRegion (sp + 0x1d8#64) 0x3a8 ∗ Rest) :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem
-  obtain ⟨sm, hsteps1, hout⟩ := hwp1.elim hmem_framed hcode
+  obtain ⟨sm, hsteps1, hout⟩ := hwp1.elim (Satisfies.mono (by dsimp only [sp]; bi_frame) hmem) hcode
   obtain ⟨hpcm, hrunm, P_m, hmem_m, hvmm, hsp_m, hx29_m, hx19_m, hx20_m, hx23_m, hx25_m, hx26_m, htrace_m, hvregs_m, hent_m⟩ :=
     hout.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
   have hsp_al_m : sm.spAligned = true := by
     unfold State.spAligned at hsp_al ⊢; rw [hsp_m, ← show s.sp = s0.sp - 1504#64 from hsp]; exact hsp_al
   have hmeta_m : tryDecryptMidMetaPlaced s0 sm :=
     ⟨hrunm, hsp_m, hsp0_al, hsp_al_m, hx29_m, htrace_m, hcl.of_keepsFrozen hsteps1.keepsFrozen, hvregs_m⟩
-  have hmem_m0 := hent_m sm.mem _ hmem_m
-  have hmem_m1 : sm.mem ⊨
-      (memRegion (sp + 0x140#64) 0x50 ∗ ((sp + 0x190#64) ↦₃₂ 1#32) ∗ memRegion (sp + 0x194#64) 4 ∗
-       ((sp + 0x1a0#64) ↦₆₄ u1a0) ∗ ((sp + 0x1a8#64) ↦₆₄ u1a8) ∗ ((sp + 0x1b0#64) ↦₃₂ u1b0) ∗
-       ((sp + 0x1b4#64) ↦₆₄ u1b4) ∗ ((sp + 0x1bc#64) ↦₆₄ u1bc) ∗ ((sp + 0x1c4#64) ↦₃₂ u1c4) ∗
-       memRegion (sp + 0x1c8#64) 16 ∗ memRegion (sp + 0x1d8#64) 0x3a8) ∗
-      (((sp + 0x198#64) ↦₆₄ speWord 10) ∗ Rest) :=
-    Eq.mp (congrArg (sm.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem_m0
-  have hmem_m2 := Satisfies.mono (sepConj_mono_left (fold_for_7f8 sp 1#32 u1a0 u1a8 u1b4 u1bc u1b0 u1c4)) hmem_m1
-  have hmem_m3 : sm.mem ⊨ memRegion (sp + 0x140#64) 0x58 ∗
-      ((sp + 0x198#64) ↦₆₄ speWord 10) ∗ memRegion (sp + 0x1a0#64) 0x3e0 ∗ Rest :=
-    Eq.mp (congrArg (sm.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem_m2
   obtain ⟨s', hsteps2, hvm2, hpcs', hmetas', hx19s', hx20s', hx26s', hmems'⟩ :=
-    dhStep_err_tail_from_7f8_vm_placed hwp Rest s0 sm hpcm hmeta_m hx20_m hx23_m hx25_m hx26_m hmem_m3
+    dhStep_err_tail_from_7f8_vm_placed hwp Rest s0 sm hpcm hmeta_m hx20_m hx23_m hx25_m hx26_m
+      (Satisfies.mono (by sep_interval) (hent_m sm.mem _ hmem_m))
       (hsteps1.codeLoaded hcode)
   exact ⟨s', Steps.trans hsteps1 hsteps2, hvmm.trans hvm2, hpcs', hmetas', hx19s'.trans hx19_m, hx20s', hx26s', hmems'⟩
 
@@ -384,10 +314,7 @@ theorem dhStep_cc1_ok_branch_vm_placed [LibsignalPlacement]
   rw [show sp + 0x190#64 + 4#64 = sp + 0x194#64 by bv_arith,
       show sp + 0x190#64 + 0x24#64 = sp + 0x1b4#64 by bv_arith] at hmem
   have hwp1 := hwp.wpp_cc1_ok s0 s hpc hrun hsp hsp_al hx25 htrace
-  have hmem_framed : s.mem ⊨ ((sp + 0x190#64) ↦₃₂ 0#32) ∗
-      (((sp + 0x194#64) ↦ₛ keyToBytes32 rk1) ∗ ((sp + 0x1b4#64) ↦ₛ chainKeyBytes rck) ∗ Rest) :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem
-  obtain ⟨sm, hsteps1, hout⟩ := hwp1.elim hmem_framed hcode
+  obtain ⟨sm, hsteps1, hout⟩ := hwp1.elim (Satisfies.mono (by dsimp only [sp]; bi_frame) hmem) hcode
   obtain ⟨hpcm, hrunm, P_m, hmem_m, hvmm, hsp_m, hcs_m, htrace_m, hent_m⟩ :=
     hout.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
   have hsp_al_m : sm.spAligned = true := by
@@ -395,7 +322,7 @@ theorem dhStep_cc1_ok_branch_vm_placed [LibsignalPlacement]
   have hx29_m : sm.readReg64 .x29 = s0.sp - 96#64 := by reg_chain
   have hmeta_m : tryDecryptMidMetaPlaced s0 sm :=
     ⟨hrunm, hsp_m, hsp0_al, hsp_al_m, hx29_m, htrace_m, hcl.of_keepsFrozen hsteps1.keepsFrozen, by reg_chain⟩
-  exact ⟨sm, hsteps1, hvmm, hpcm, hmeta_m, hcs_m, hent_m sm.mem _ hmem_m⟩
+  exact ⟨sm, hsteps1, hvmm, hpcm, hmeta_m, hcs_m, Satisfies.mono (by dsimp only [sp]; bi_entail) (hent_m sm.mem _ hmem_m)⟩
 
 theorem dhStep_cc2_ok_branch_vm_placed [LibsignalPlacement]
     {prog : Program} {entry rngFillEntry : BitVec 64} (hwp : DhStepBlockVmWp prog entry rngFillEntry)
@@ -415,10 +342,7 @@ theorem dhStep_cc2_ok_branch_vm_placed [LibsignalPlacement]
   rw [show sp + 0x190#64 + 4#64 = sp + 0x194#64 by bv_arith,
       show sp + 0x190#64 + 0x24#64 = sp + 0x1b4#64 by bv_arith] at hmem
   have hwp1 := hwp.wpp_cc2_ok s0 s hpc hrun hsp hsp_al hx25 htrace
-  have hmem_framed : s.mem ⊨ ((sp + 0x190#64) ↦₃₂ 0#32) ∗
-      (((sp + 0x194#64) ↦ₛ keyToBytes32 finalRootKey) ∗ ((sp + 0x1b4#64) ↦ₛ chainKeyBytes senderChainKey) ∗ Rest) :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem
-  obtain ⟨sm, hsteps1, hout1⟩ := hwp1.elim hmem_framed hcode
+  obtain ⟨sm, hsteps1, hout1⟩ := hwp1.elim (Satisfies.mono (by dsimp only [sp]; bi_frame) hmem) hcode
   obtain ⟨hpcm, hrunm, P_m, hmem_m, hvmm, hsp_m, hcs_m, htrace_m, hent_m⟩ :=
     hout1.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
   have hsp_al_m : sm.spAligned = true := by
@@ -426,7 +350,7 @@ theorem dhStep_cc2_ok_branch_vm_placed [LibsignalPlacement]
   have hx29_m : sm.readReg64 .x29 = s0.sp - 96#64 := hcs_m.2.2.2.2.2.2.2.2.2.2.1.trans hx29
   have hmeta_m : tryDecryptMidMetaPlaced s0 sm :=
     ⟨hrunm, hsp_m, hsp0_al, hsp_al_m, hx29_m, htrace_m, hcl.of_keepsFrozen hsteps1.keepsFrozen, by reg_chain⟩
-  exact ⟨sm, hsteps1, hvmm, hpcm, hmeta_m, hcs_m, hent_m sm.mem _ hmem_m⟩
+  exact ⟨sm, hsteps1, hvmm, hpcm, hmeta_m, hcs_m, Satisfies.mono (by dsimp only [sp]; bi_entail) (hent_m sm.mem _ hmem_m)⟩
 
 theorem dhStep_cc2_err_branch_vm_placed [LibsignalPlacement]
     {prog : Program} {entry rngFillEntry : BitVec 64} {A : RustAlloc}
@@ -458,157 +382,19 @@ theorem dhStep_cc2_err_branch_vm_placed [LibsignalPlacement]
   rcases hmem with ⟨u1c4, u1bc, u1b4, u1b0, u1a8, u1a0, hmem⟩
   have hwp1 := hwp.wpp_cc2_err s0 s msgW u1bc u1b4 u1a8 u1a0 u1c4 u1b0
     hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
-  have hmem_framed : s.mem ⊨
-      (((sp + 0x1c#64) ↦₃₂ msgW) ∗ ((sp + 0x190#64) ↦₃₂ 1#32) ∗ ((sp + 0x1a0#64) ↦₆₄ u1a0) ∗
-       ((sp + 0x1a8#64) ↦₆₄ u1a8) ∗ ((sp + 0x1b0#64) ↦₃₂ u1b0) ∗ ((sp + 0x1b4#64) ↦₆₄ u1b4) ∗
-       ((sp + 0x1bc#64) ↦₆₄ u1bc) ∗ ((sp + 0x1c4#64) ↦₃₂ u1c4)) ∗
-      (memRegion (sp + 0x140#64) 0x50 ∗ memRegion (sp + 0x194#64) 4 ∗
-       ((sp + 0x198#64) ↦₆₄ speWord 10) ∗ memRegion (sp + 0x1c8#64) 16 ∗
-       memRegion (sp + 0x1d8#64) 0x3a8 ∗ Rest) :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem
-  obtain ⟨sm, hsteps1, hout1⟩ := hwp1.elim hmem_framed hcode
+  obtain ⟨sm, hsteps1, hout1⟩ := hwp1.elim (Satisfies.mono (by dsimp only [sp]; bi_frame) hmem) hcode
   obtain ⟨hpcm, hrunm, P_m, hmem_m, hvmm, hsp_m, hx29_m, hx19_m, hx20_m, hx23_m, hx25_m, hx26_m, htrace_m, hvregs_m, hent_m⟩ :=
     hout1.resolve_right fun ⟨_, hoom⟩ => not_satisfies_false_sepConj hoom
   have hsp_al_m : sm.spAligned = true := by
     unfold State.spAligned at hsp_al ⊢; rw [hsp_m, ← show s.sp = s0.sp - 1504#64 from hsp]; exact hsp_al
   have hmeta_m : tryDecryptMidMetaPlaced s0 sm :=
     ⟨hrunm, hsp_m, hsp0_al, hsp_al_m, hx29_m, htrace_m, hcl.of_keepsFrozen hsteps1.keepsFrozen, hvregs_m⟩
-  have hmem_m0 := hent_m sm.mem _ hmem_m
-  have hmem_m1 : sm.mem ⊨
-      (memRegion (sp + 0x140#64) 0x50 ∗ ((sp + 0x190#64) ↦₃₂ 1#32) ∗ memRegion (sp + 0x194#64) 4 ∗
-       ((sp + 0x1a0#64) ↦₆₄ u1a0) ∗ ((sp + 0x1a8#64) ↦₆₄ u1a8) ∗ ((sp + 0x1b0#64) ↦₃₂ u1b0) ∗
-       ((sp + 0x1b4#64) ↦₆₄ u1b4) ∗ ((sp + 0x1bc#64) ↦₆₄ u1bc) ∗ ((sp + 0x1c4#64) ↦₃₂ u1c4) ∗
-       memRegion (sp + 0x1c8#64) 16 ∗ memRegion (sp + 0x1d8#64) 0x3a8) ∗
-      (((sp + 0x198#64) ↦₆₄ speWord 10) ∗ ((sp + 0x1c#64) ↦₃₂ msgW) ∗ Rest) :=
-    Eq.mp (congrArg (sm.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem_m0
-  have hmem_m2 := Satisfies.mono (sepConj_mono_left (fold_for_7f8 sp 1#32 u1a0 u1a8 u1b4 u1bc u1b0 u1c4)) hmem_m1
-  have hmem_m3 : sm.mem ⊨ memRegion (sp + 0x140#64) 0x58 ∗
-      ((sp + 0x198#64) ↦₆₄ speWord 10) ∗ memRegion (sp + 0x1a0#64) 0x3e0 ∗ (((sp + 0x1c#64) ↦₃₂ msgW) ∗ Rest) :=
-    Eq.mp (congrArg (sm.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem_m2
   obtain ⟨s', hsteps2, hvm2, hpcs', hmetas', hx19s', hx20s', hx26s', hmems'⟩ :=
-    dhStep_err_tail_from_7f8_vm_placed hwp (((sp + 0x1c#64) ↦₃₂ msgW) ∗ Rest) s0 sm hpcm hmeta_m
-      hx20_m hx23_m hx25_m hx26_m hmem_m3 (hsteps1.codeLoaded hcode)
+    dhStep_err_tail_from_7f8_vm_placed (A := A) hwp (((sp + 0x1c#64) ↦₃₂ msgW) ∗ Rest) s0 sm hpcm hmeta_m
+      hx20_m hx23_m hx25_m hx26_m
+      (Satisfies.mono (by dsimp only [sp]; sep_interval) (hent_m sm.mem _ hmem_m))
+      (hsteps1.codeLoaded hcode)
   exact ⟨s', Steps.trans hsteps1 hsteps2, hvmm.trans hvm2, hpcs', hmetas', hx19s'.trans hx19_m, hx20s', hx26s',
-    Eq.mp (congrArg (s'.mem ⊨ ·) (by dsimp only [sp] at hmems' ⊢; sep_ac_rfl)) hmems'⟩
+    Satisfies.mono (by dsimp only [sp]; bi_entail) hmems'⟩
 
-theorem dhStep_after_cc1_to_cc2_call_vm_placed [LibsignalPlacement]
-    {prog : Program} {entry rngFillEntry : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    (hwp : DhStepBlockVmWp prog entry rngFillEntry)
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (derivePublicKeyBytesBudgetSpec C.pubKey))
-    (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
-    (st1 : SessionState (List (BitVec 8))) (rk1 : RootKey) (rck : ChainKey) (R : SepProp) (s0 s : State)
-    (hrng : subroutine_ok prog rngFillEntry (rngFillAtBudgetSpec ctl x.cur x.rest))
-    (hsd : subroutine_ok prog (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
-    (hafter : DhStepAfterRecvChainStatePlaced entry A ctl x trG tr st1 rk1 rck R s0 s) (hcode : prog.CodeLoaded s.mem) :
-    let sp := s0.sp - 1504#64; let draws := min 32 x.rest.length; let newSenderKey := KeyPair.generate C (coinsOf x.rest)
-    ∃ s5, Steps prog s s5 ∧ VmPreserved s s5 ∧ s5.pc = lsmpl.base 40 ∧ tryDecryptMidMetaPlaced s0 s5 ∧
-      s5.readReg64 .x0 = sp + 0x4a0#64 ∧ s5.readReg64 .x1 = x.msgA + 56#64 ∧
-      s5.readReg64 .x2 = sp + 0x420#64 ∧ s5.readReg64 .x8 = sp + 0x190#64 ∧
-      s5.readReg64 .x19 = x.ret ∧ s5.readReg64 .x20 = sp + 0x140#64 ∧ s5.readReg64 .x21 = x.ss ∧ s5.readReg64 .x22 = x.msgA ∧
-      s5.readReg64 .x23 = sp + 0x500#64 ∧ s5.readReg64 .x25 = sp + 0x190#64 ∧ s5.readReg64 .x26 = sp + 0x2c0#64 ∧ s5.readReg64 .x27 = sp + 0x38#64 ∧
-      s5.readReg64 .x28 = sp + 0x3d0#64 ∧ s5.readReg64 .x30 = entry + 2008#64 ∧
-      ∃ (msgW : BitVec 32), msgW.setWidth 8 = msgTypeByte x.msgType ∧
-        (s5.mem ⊨ sessionStateAt A x.ss x.G.afterTrFrom st1 ∗
-          trAt A (sp + 0x38#64) trG { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-          memRegion x.ret 48 ∗ memRegion sp 0x10 ∗ ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗ memRegion (sp + 0x14#64) 8 ∗
-          ((sp + 0x1c#64) ↦₃₂ msgW) ∗ ((sp + 0x20#64) ↦₆₄ x.locA) ∗ ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗
-          memRegion (sp + 0x2c#64) 4 ∗ ((sp + 0x30#64) ↦₆₄ x.remA) ∗
-          memRegion (sp + 0x140#64) 0x50 ∗ memRegion (sp + 0x190#64) 72 ∗ memRegion (sp + 0x1d8#64) 0x1f8 ∗
-          ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x3f4#64) 12 ∗
-          ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗ ((sp + 0x420#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗ memRegion (sp + 0x440#64) 0x60 ∗
-          ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗ ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-          ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0xa0 ∗
-          tryDecryptCommonHeap A ctl tryDecryptPlacedImg x draws s0 ∗ R) := by
-  obtain ⟨hpc, hmeta, hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx26, hx27, hx28, hmem⟩ := hafter
-  set sp := s0.sp - 1504#64; set draws := min 32 x.rest.length; set newSenderKey := KeyPair.generate C (coinsOf x.rest)
-  set msgW : BitVec 32 := (s.readReg64 .x24).setWidth 32
-  have hmsgW : msgW.setWidth 8 = msgTypeByte x.msgType := (by dsimp only [msgW]; bv_kernel : msgW.setWidth 8 = (s.readReg64 .x24).setWidth 8).trans hx24
-  let BaseRest : SepProp :=
-    sessionStateAt A x.ss x.G.afterTrFrom st1 ∗ trAt A (sp + 0x38#64) trG { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-    memRegion x.ret 48 ∗ ((sp + 0x20#64) ↦₆₄ x.locA) ∗ ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗
-    memRegion (sp + 0x2c#64) 4 ∗ ((sp + 0x30#64) ↦₆₄ x.remA) ∗ memRegion (sp + 0x140#64) 0x50
-  have hmem0 : s.mem ⊨ memRegion sp 0x20 ∗ ((sp + 0x190#64) ↦₃₂ 0#32) ∗ ((sp + 0x194#64) ↦ₛ keyToBytes32 rk1) ∗
-      ((sp + 0x1b4#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x1d8#64) 0x3a8 ∗ (BaseRest ∗ tryDecryptCommonHeap A ctl tryDecryptPlacedImg x 0 s0 ∗ R) :=
-    Eq.mp (congrArg (s.mem ⊨ ·) (by dsimp only [BaseRest, sp]; sep_ac_rfl)) hmem
-  obtain ⟨s1, hsteps1, hvm1, hpc1, hmeta1, hx0_1, hx1_1, hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx25_1, hx26_1, hx27_1, hx28_1, hv0_1, hmem1⟩ :=
-    dhStep_step_70c_to_778_vm_placed hwp rk1 rck (BaseRest ∗ tryDecryptCommonHeap A ctl tryDecryptPlacedImg x 0 s0 ∗ R)
-      s0 s hpc hmeta hx23 hx25 hx26 hx28 hmem0 hcode
-  rw [tryDecryptCommonHeap_split_tape A ctl tryDecryptPlacedImg x 0 s0] at hmem1
-  have hmem1_in : s1.mem ⊨ memRegion (sp + 0x190#64) 0x20 ∗ tapeAfter ctl x.cur x.rest 0 ∗
-      (memRegion sp 0x10 ∗ ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗
-       memRegion (sp + 0x14#64) 8 ∗ ((sp + 0x1c#64) ↦₃₂ msgW) ∗ memRegion (sp + 0x1b0#64) 0x220 ∗
-       ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x3f4#64) 12 ∗ memRegion (sp + 0x400#64) 0xa0 ∗
-       ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗ ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-       ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0x20 ∗ memRegion (sp + 0x500#64) 0x80 ∗ BaseRest ∗
-       (protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
-        signalMessageAt A x.msgG x.msgA x.msg ∗ logOff tryDecryptPlacedImg ∗ stackAt (s0.sp - 1504#64) tryDecryptSubStack ∗ tryDecryptSavedRegs s0.sp s0 ∗ A.pool) ∗ R) :=
-    Eq.mp (congrArg (s1.mem ⊨ ·) (by dsimp only [msgW, sp]; sep_ac_rfl)) hmem1
-  obtain ⟨s2, hsteps2, hvm2, hpc2, hmeta2, hcs2, hmem2⟩ :=
-    dhStep_step_778_to_780_vm_placed hwp x.cur x.rest _ s0 s1 hrng hpc1 hmeta1 hx0_1 hx1_1 hx25_1 hv0_1 hmem1_in (hsteps1.codeLoaded hcode)
-  have hsteps12 := Steps.trans hsteps1 hsteps2
-  have hmem2_in : s2.mem ⊨ ((sp + 0x190#64) ↦ₛ (keyToBytesVec32 (coinsOf x.rest)).toList) ∗
-      (memRegion sp 0x10 ∗ ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗
-       memRegion (sp + 0x14#64) 8 ∗ ((sp + 0x1c#64) ↦₃₂ msgW) ∗ memRegion (sp + 0x1b0#64) 0x220 ∗
-       ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x3f4#64) 12 ∗ memRegion (sp + 0x400#64) 0xa0 ∗
-       ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗ ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-       ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0x20 ∗ memRegion (sp + 0x500#64) 0x80 ∗ BaseRest ∗ tryDecryptCommonHeap A ctl tryDecryptPlacedImg x draws s0 ∗ R) := by
-    rw [tryDecryptCommonHeap_split_tape A ctl tryDecryptPlacedImg x draws s0]
-    exact Eq.mp (congrArg (s2.mem ⊨ ·) (by dsimp only [draws, sp]; sep_ac_rfl)) hmem2
-  have hx23_2 : s2.readReg64 .x23 = sp + 0x500#64 := hcs2.2.2.2.2.1.trans hx23_1
-  have hx25_2 : s2.readReg64 .x25 = sp + 0x190#64 := hcs2.2.2.2.2.2.2.1.trans hx25_1
-  obtain ⟨s3, hsteps3, hvm3, hpc3, hmeta3, hx0_3, hx8_3, hx19_3, hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hmem3⟩ :=
-    dhStep_step_780_to_7a8_vm_placed hwp (keyToBytesVec32 (coinsOf x.rest)) _ s0 s2 hpc2 hmeta2 hx23_2 hx25_2 hmem2_in (hsteps12.codeLoaded hcode)
-  have hsteps123 := Steps.trans hsteps12 hsteps3
-  have hx23_3' : s3.readReg64 .x23 = sp + 0x500#64 := hx23_3.trans hx23_2
-  have hx25_3' : s3.readReg64 .x25 = sp + 0x190#64 := hx25_3.trans hx25_2
-  have hmem3_in : s3.mem ⊨ ((sp + 0x190#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-      memRegion (sp + 0x400#64) 32 ∗ memRegion (sp + 0x500#64) 32 ∗
-      (memRegion (sp + 0x420#64) 32 ∗ memRegion (sp + 0x440#64) 0x60 ∗ memRegion (sp + 0x520#64) 0x60 ∗
-       memRegion sp 0x10 ∗ ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗
-       memRegion (sp + 0x14#64) 8 ∗ ((sp + 0x1c#64) ↦₃₂ msgW) ∗ memRegion (sp + 0x1b0#64) 0x220 ∗
-       ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x3f4#64) 12 ∗
-       ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗ ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-       ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0x20 ∗ BaseRest ∗
-       tryDecryptCommonHeap A ctl tryDecryptPlacedImg x draws s0 ∗ R) := by
-    have h400 := split_400_500_for_keygen sp
-    have hmem3' : s3.mem ⊨ (memRegion (sp + 0x400#64) 0xa0 ∗ memRegion (sp + 0x500#64) 0x80) ∗
-        (((sp + 0x190#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-         memRegion sp 0x10 ∗ ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗
-         memRegion (sp + 0x14#64) 8 ∗ ((sp + 0x1c#64) ↦₃₂ msgW) ∗ memRegion (sp + 0x1b0#64) 0x220 ∗
-         ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x3f4#64) 12 ∗
-         ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗ ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-         ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0x20 ∗ BaseRest ∗
-         tryDecryptCommonHeap A ctl tryDecryptPlacedImg x draws s0 ∗ R) :=
-      Eq.mp (congrArg (s3.mem ⊨ ·) (by dsimp only [newSenderKey, KeyPair.generate, sp]; sep_ac_rfl)) hmem3
-    rw [h400] at hmem3'; exact Eq.mp (congrArg (s3.mem ⊨ ·) (by sep_ac_rfl)) hmem3'
-  obtain ⟨s4, hsteps4, hvm4, hpc4, hmeta4, hcs4, hmem4⟩ :=
-    dhStep_step_7a8_to_7b4_vm_placed hwp hdpk newSenderKey.privateKey.bytes _ s0 s3 hpc3 hmeta3 hx0_3 hx8_3 hx23_3' hx25_3' hmem3_in (hsteps123.codeLoaded hcode)
-  have hsteps1234 := Steps.trans hsteps123 hsteps4
-  have hmem4_in : s4.mem ⊨ memRegion (sp + 0x420#64) 32 ∗ ((sp + 0x500#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-      (memRegion (sp + 0x190#64) 32 ∗ ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗
-       memRegion (sp + 0x440#64) 0x60 ∗ memRegion (sp + 0x520#64) 0x60 ∗
-       memRegion sp 0x10 ∗ ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗
-       memRegion (sp + 0x14#64) 8 ∗ ((sp + 0x1c#64) ↦₃₂ msgW) ∗ memRegion (sp + 0x1b0#64) 0x220 ∗
-       ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x3f4#64) 12 ∗
-       ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗ ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-       ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0x20 ∗ BaseRest ∗
-       tryDecryptCommonHeap A ctl tryDecryptPlacedImg x draws s0 ∗ R) :=
-    Eq.mp (congrArg (s4.mem ⊨ ·) (by dsimp only [newSenderKey, KeyPair.generate, sp]; sep_ac_rfl)) hmem4
-  obtain ⟨s5, hsteps5, hvm5, hpc5, hmeta5, hx0_5, hx1_5, hx2_5, hx8_5, hx30_5, hcs5, hmem5⟩ :=
-    dhStep_step_7b4_to_7d4_vm_placed hwp hsd x.msgA newSenderKey.privateKey.bytes _ s0 s4 hpc4 hmeta4
-      (by reg_chain) (by reg_chain) (by reg_chain) (by reg_chain) hmem4_in (hsteps1234.codeLoaded hcode)
-  have hsteps12345 := Steps.trans hsteps1234 hsteps5
-  have hmem5' : s5.mem ⊨
-      (memRegion (sp + 0x190#64) 32 ∗ memRegion (sp + 0x1b0#64) 0x220 ∗ memRegion (sp + 0x4e0#64) 0x20 ∗ memRegion (sp + 0x500#64) 32 ∗ memRegion (sp + 0x520#64) 0x60) ∗
-      (((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x3f4#64) 12 ∗
-       ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗ ((sp + 0x420#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-       memRegion (sp + 0x440#64) 0x60 ∗ ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗
-       ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗ ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗
-       memRegion sp 0x10 ∗ ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗
-       memRegion (sp + 0x14#64) 8 ∗ ((sp + 0x1c#64) ↦₃₂ msgW) ∗ BaseRest ∗ tryDecryptCommonHeap A ctl tryDecryptPlacedImg x draws s0 ∗ R) :=
-    Eq.mp (congrArg (s5.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hmem5
-  rw [split_190_4e0_for_cc2 sp] at hmem5'
-  exact ⟨s5, hsteps12345, (((hvm1.trans hvm2).trans hvm3).trans hvm4).trans hvm5, hpc5, hmeta5, hx0_5, hx1_5, hx2_5, hx8_5, by reg_chain, by reg_chain,
-    by reg_chain, by reg_chain, by reg_chain, by reg_chain, by reg_chain, by reg_chain, by reg_chain,
-    hx30_5, msgW, hmsgW, Eq.mp (congrArg (s5.mem ⊨ ·) (by dsimp only [BaseRest]; sep_ac_rfl)) hmem5'⟩
 end LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetAux

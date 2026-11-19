@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -44,7 +44,7 @@ Prefix-cutting and single-step extension lemmas for `runMoves`, `ModelRun`, `Rol
 `ExplainsMoves`, and `Clean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -211,7 +211,7 @@ private theorem mp_modelRun_prefix {r : ProtocolSetup} {ms₀ δ : List Move}
     hcomp.1, hown.1, mp_peerFaithful_prefix hpeer, mp_stateFaithful_prefix hstate⟩
 
 /-- Pointwise single-move well-formedness side conditions on `tr` for `modelRun_snoc`. -/
-def MoveOK (r : ProtocolSetup) (m : Move) (tr : ExecTrace) : Prop :=
+@[expose] def MoveOK (r : ProtocolSetup) (m : Move) (tr : ExecTrace) : Prop :=
   m.isSetup = false ∧ m.LogsSessionCompletion tr ∧ m.MatchesSetupPeer r ∧
   (match m with
    | .exposeKey _ s _ | .exposeSpqr _ s => TripleRatchet.isCurrentSnapshot tr s = true
@@ -367,7 +367,7 @@ private theorem mp_mem_snd_of_mem_zip :
       (fun h' => List.mem_cons_of_mem _ (mp_mem_snd_of_mem_zip h'))
 
 /-- Pointwise `.recv` entry read-representation predicate parameterized by `(R, P)`. -/
-def ReadOKWith (R : HwBytes → Set DY.Bytes) (P : HwBytes → Set PreKeyRep)
+@[expose] def ReadOKWith (R : HwBytes → Set DY.Bytes) (P : HwBytes → Set PreKeyRep)
     (e : MachineEvent) (v : VisEntry) : Prop :=
   match v.layout, v.terms, eventBytes e with
   | .whisper, [t], _ :: body => t ∈ R body
@@ -693,7 +693,7 @@ theorem not_readCollision_append_noAccept {interpretation : ExternInterpretation
 /-! ## `MatchedPrefix`, `ExplainsMoves`, and `Clean` Combinators -/
 
 /-- Collision-free trace explanation: `ExplainsMoves` together with `¬ ReadCollision`. -/
-def Clean (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def Clean (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) (g : Ghost) (ms : List Move)
     (τ₁ : List MachineEvent) : Prop :=
   ExplainsMoves interpretation r S who ok g ms τ₁ ∧ ¬ ReadCollision interpretation r S g ms τ₁

@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach
@@ -24,7 +24,7 @@ Proves that every `PQXDHEvent.BobDone` entry on a reachable trace of length `≤
 ephemeral base key stamped below `ts`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieAuxPure
-public import Symbolic.Proofs.RngG.R3ModelInv
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.SR.SendSpecWPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieAuxPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.SendSpecWPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
+import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds
+import Symbolic.Proofs.Refinement.LemmasPure
 
 /-!
 # Ratchet-Branch Inversion for Pre-Key Session Decryption
@@ -25,7 +28,7 @@ existing receiver chains into the DH ratchet step, chain advance, MAC verificati
 decryption witnesses.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

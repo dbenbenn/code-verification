@@ -9,8 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.GameHop.Rnd
-public import Computational.Proofs.GameHop.StateSim
+import Computational.Proofs.GameHop.Rnd
+import Computational.Proofs.GameHop.StateSim
+public import Mathlib.MeasureTheory.MeasurableSpace.Defs
+public import PolyFun.Control.Monad.Support
+public import VCVio.EvalDist.EvalDistEq
+public import VCVio.OracleComp.OracleComp
+public import VCVio.OracleComp.OracleSpec
+public import VCVio.OracleComp.ProbComp.Basic
+public import VCVio.OracleComp.SimSemantics.QueryImpl.Basic
+public import VCVio.OracleComp.SimSemantics.SimulateQ
+public import VCVio.OracleComp.Constructions.SampleableType.Measure
+public import VCVio.OracleComp.EvalDist.AnswerMeasure
+public import VCVio.OracleComp.QueryTracking.QueryBound.Basic
+public import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+public import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Lazy-vs-Eager Sampling, `CacheLens`, `SlotM`, and Association Caches
@@ -22,7 +35,7 @@ lazy random caches (`evalCache`, `CacheEquiv`).
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.Swap
 
@@ -33,78 +46,7 @@ section PostHocCompletion
 
 variable {κ : Type} {spec : OracleSpec.{0, 0} κ}
 
-theorem evalDistEq_simulateQ_run_of_complete {α S : Type}
-    (impl : QueryImpl spec (StateT S ProbComp))
-    (complete : S → ProbComp S)
-    (inv : S → Prop) (dis : κ → Prop) [DecidablePred dis]
-    (hinv : ∀ t s, ¬ dis t → inv s → ∀ z ∈ support ((impl t).run s), inv z.2)
-    (hcomm : ∀ t s, ¬ dis t → inv s →
-      (do let s' ← complete s; (impl t).run s') =ᵈ
-        (do let z ← (impl t).run s; let s' ← complete z.2; pure (z.1, s')))
-    (oa : OracleComp spec α) (hoa : oa.IsQueryBoundP dis 0)
-    (s₀ : S) (hs₀ : inv s₀) :
-    (do let s' ← complete s₀; (simulateQ impl oa).run s') =ᵈ
-      (do let z ← (simulateQ impl oa).run s₀; let s' ← complete z.2; pure (z.1, s')) := by
-  induction oa using OracleComp.inductionOn generalizing s₀ with
-  | pure a =>
-    simp only [simulateQ_pure, StateT.run_pure, pure_bind]
-    exact EvalDistEq.rfl
-  | query_bind t k ih =>
-    rw [isQueryBoundP_query_bind_iff] at hoa
-    obtain ⟨hdis, hk⟩ := hoa
-    have hndis : ¬ dis t := by simpa using hdis
-    simp only [hndis, ↓reduceIte] at hk
-    simp only [simulateQ_bind, simulateQ_query, OracleQuery.input_query,
-      OracleQuery.cont_query, id_map, StateT.run_bind]
-    have h1 :
-        (do
-          let s' ← complete s₀
-          let z ← (impl t).run s'
-          (simulateQ impl (k z.1)).run z.2) =ᵈ
-        (do
-          let w ← (do let z ← (impl t).run s₀; let s' ← complete z.2; pure (z.1, s'))
-          (simulateQ impl (k w.1)).run w.2) := by
-      have hbind := (hcomm t s₀ hndis hs₀).bind_left fun w => (simulateQ impl (k w.1)).run w.2
-      simpa only [bind_assoc] using hbind
-    refine h1.trans ?_
-    simp only [bind_assoc, pure_bind]
-    exact evalDistEq_bind_right_of_mem_support ((impl t).run s₀) fun z hz =>
-      ih z.1 (hk z.1) z.2 (hinv t s₀ hndis hs₀ z hz)
 
-/-- Eager completion `s' ← complete s₀` before `simulateQ` yields the same output distribution
-(`run'`) as lazy `simulateQ` when `complete` commutes with allowed steps on `inv`. -/
-theorem evalDistEq_simulateQ_run'_of_complete {α S : Type}
-    (impl : QueryImpl spec (StateT S ProbComp))
-    (complete : S → ProbComp S)
-    (inv : S → Prop) (dis : κ → Prop) [DecidablePred dis]
-    (hinv : ∀ t s, ¬ dis t → inv s → ∀ z ∈ support ((impl t).run s), inv z.2)
-    (hcomm : ∀ t s, ¬ dis t → inv s →
-      (do let s' ← complete s; (impl t).run s') =ᵈ
-        (do let z ← (impl t).run s; let s' ← complete z.2; pure (z.1, s')))
-    (oa : OracleComp spec α) (hoa : oa.IsQueryBoundP dis 0)
-    (s₀ : S) (hs₀ : inv s₀) :
-    (do let s' ← complete s₀; (simulateQ impl oa).run' s') =ᵈ
-      (simulateQ impl oa).run' s₀ := by
-  have hfull :=
-    (evalDistEq_simulateQ_run_of_complete impl complete inv dis hinv hcomm oa hoa s₀ hs₀).map
-      Prod.fst
-  have hlhs :
-      Prod.fst <$> (do let s' ← complete s₀; (simulateQ impl oa).run s') =
-        (do let s' ← complete s₀; (simulateQ impl oa).run' s') := by
-    simp only [StateT.run'_eq, map_bind]
-  have hrhs :
-      Prod.fst <$> (do
-          let z ← (simulateQ impl oa).run s₀
-          let s' ← complete z.2
-          pure (z.1, s')) =ᵈ
-        (simulateQ impl oa).run' s₀ := by
-    let : MeasurableSpace α := ⊤
-    refine EvalDistEq.of_evalDist_eq ?_
-    simp only [StateT.run'_eq, map_eq_bind_pure_comp, Function.comp_def, bind_assoc, pure_bind]
-    exact evalDist_bind_congr_of_mem_support ((simulateQ impl oa).run s₀) _ _ fun z _ =>
-      evalDist_bind_const (complete z.2) (pure z.1)
-  rw [hlhs] at hfull
-  exact hfull.trans hrhs
 
 end PostHocCompletion
 
@@ -122,7 +64,7 @@ namespace CacheLens
 
 variable {S V : Type}
 
-def fill (L : CacheLens S V) (samp : ProbComp V) (s : S) : ProbComp S :=
+@[expose] def fill (L : CacheLens S V) (samp : ProbComp V) (s : S) : ProbComp S :=
   match L.get s with
   | some _ => pure s
   | none => (fun v => L.put s (some v)) <$> samp
@@ -139,70 +81,6 @@ theorem fill_of_none (L : CacheLens S V) (samp : ProbComp V) {s : S}
     L.fill samp s = ((fun v => L.put s (some v)) <$> samp) := by
   simp [fill, h]
 
-/-- Pre-populating a `CacheLens` slot with `v ← samp` yields the same output distribution as lazy
-sampling when allowed steps preserve `some v` and commute with `L.fill samp`. -/
-theorem evalDistEq_eager_eq_lazy_of_lens {κ α : Type} {spec : OracleSpec.{0, 0} κ}
-    (L : CacheLens S V) (samp : ProbComp V)
-    (impl : QueryImpl spec (StateT S ProbComp))
-    (invNone invSome : S → Prop) (dis : κ → Prop) [DecidablePred dis]
-    (hkeep : ∀ t s v, ¬ dis t → invSome s → L.get s = some v →
-      ∀ z ∈ support ((impl t).run s), invSome z.2 ∧ L.get z.2 = some v)
-    (hpres : ∀ t s, ¬ dis t → invNone s → L.get s = none →
-      ∀ z ∈ support ((impl t).run s),
-        match L.get z.2 with
-        | none => invNone z.2
-        | some _ => invSome z.2)
-    (hcomm : ∀ t s, ¬ dis t → invNone s → L.get s = none →
-      (do let v ← samp; (impl t).run (L.put s (some v))) =ᵈ
-        (do let z ← (impl t).run s; let s' ← L.fill samp z.2; pure (z.1, s')))
-    (oa : OracleComp spec α) (hoa : oa.IsQueryBoundP dis 0)
-    (s₀ : S) (hs₀ : invNone s₀) (hnone₀ : L.get s₀ = none) :
-    (do let v ← samp; (simulateQ impl oa).run' (L.put s₀ (some v))) =ᵈ
-      (simulateQ impl oa).run' s₀ := by
-  let inv : S → Prop := fun s =>
-    match L.get s with
-    | none => invNone s
-    | some _ => invSome s
-  have hinv_all : ∀ t s, ¬ dis t → inv s → ∀ z ∈ support ((impl t).run s), inv z.2 := by
-    intro t s hndis hs z hz
-    dsimp only [inv] at hs ⊢
-    cases hgs : L.get s with
-    | none =>
-      rw [hgs] at hs
-      exact hpres t s hndis hs hgs z hz
-    | some v =>
-      rw [hgs] at hs
-      obtain ⟨hIs, hgz⟩ := hkeep t s v hndis hs hgs z hz
-      rw [hgz]
-      exact hIs
-  have hcomm_all : ∀ t s, ¬ dis t → inv s →
-      (do let s' ← L.fill samp s; (impl t).run s') =ᵈ
-        (do let z ← (impl t).run s; let s' ← L.fill samp z.2; pure (z.1, s')) := by
-    intro t s hndis hs
-    dsimp only [inv] at hs
-    cases hgs : L.get s with
-    | none =>
-      rw [hgs] at hs
-      rw [L.fill_of_none samp hgs, bind_map_left]
-      exact hcomm t s hndis hs hgs
-    | some v =>
-      rw [hgs] at hs
-      rw [L.fill_of_some samp hgs, pure_bind]
-      have hrhs :
-          (do let z ← (impl t).run s; let s' ← L.fill samp z.2; pure (z.1, s')) =
-            (impl t).run s := by
-        calc (do let z ← (impl t).run s; let s' ← L.fill samp z.2; pure (z.1, s'))
-            = ((impl t).run s >>= fun z => pure z) := by
-              refine bind_congr_of_forall_mem_support ((impl t).run s) fun z hz => ?_
-              have hgz := (hkeep t s v hndis hs hgs z hz).2
-              rw [L.fill_of_some samp hgz, pure_bind]
-          _ = (impl t).run s := bind_pure _
-      rw [hrhs]
-  have hs₀_inv : inv s₀ := by simp [inv, hnone₀, hs₀]
-  have hmain := evalDistEq_simulateQ_run'_of_complete impl (L.fill samp) inv dis
-    hinv_all hcomm_all oa hoa s₀ hs₀_inv
-  rw [L.fill_of_none samp hnone₀, bind_map_left] at hmain
-  exact hmain
 
 end CacheLens
 
@@ -217,7 +95,7 @@ namespace SlotM
 
 variable {κ : Type}
 
-def fill1 {α : Type} (samp : ProbComp κ) (r : α × Option κ) : ProbComp (α × Option κ) :=
+@[expose] def fill1 {α : Type} (samp : ProbComp κ) (r : α × Option κ) : ProbComp (α × Option κ) :=
   match r.2 with
   | some _ => pure r
   | none => do
@@ -243,7 +121,7 @@ theorem bind_fill1_of_keep {α γ : Type} (samp : ProbComp κ) (k : κ)
   simp [fill1]
 
 /-- Lazy read-or-sample operation on `SlotM κ`. -/
-def getSlot (samp : ProbComp κ) : SlotM κ κ :=
+@[expose] def getSlot (samp : ProbComp κ) : SlotM κ κ :=
   StateT.mk fun o => match o with
     | some k => pure (k, some k)
     | none => do
@@ -343,13 +221,6 @@ theorem SlotComp.eager_eq_lazy_run' {samp : ProbComp κ} {α β : Type} [Measura
     exact evalDist_bind_const samp (g a)
   · simp only [fill1_some, pure_bind]
 
-theorem SlotComp.evalDistEq_eager_eq_lazy {samp : ProbComp κ} {α : Type}
-    {mx : SlotM κ α} (h : SlotComp samp mx) :
-    (samp >>= fun k => mx.run' (some k)) =ᵈ mx.run' none := by
-  let : MeasurableSpace α := ⊤
-  refine EvalDistEq.of_evalDist_eq ?_
-  have h1 := SlotComp.eager_eq_lazy_run' (β := α) h (fun a => Pure.pure (f := ProbComp) a)
-  simpa only [bind_pure] using h1
 
 end SlotM
 
@@ -366,7 +237,7 @@ inductive LazyOnce (κ : Type) : Type where
 
 namespace LazyOnce
 
-def consume {κ : Type} (samp : ProbComp κ) : StateT (LazyOnce κ) ProbComp (Option κ) :=
+@[expose] def consume {κ : Type} (samp : ProbComp κ) : StateT (LazyOnce κ) ProbComp (Option κ) :=
   StateT.mk fun st => match st with
     | .uninit => do
       let k ← samp
@@ -374,7 +245,7 @@ def consume {κ : Type} (samp : ProbComp κ) : StateT (LazyOnce κ) ProbComp (Op
     | .ready k => pure (some k, .consumed)
     | .consumed => pure (none, .consumed)
 
-def fillOnce {κ : Type} (samp : ProbComp κ) : LazyOnce κ → ProbComp (LazyOnce κ)
+@[expose] def fillOnce {κ : Type} (samp : ProbComp κ) : LazyOnce κ → ProbComp (LazyOnce κ)
   | .uninit => .ready <$> samp
   | .ready k => pure (.ready k)
   | .consumed => pure .consumed
@@ -400,7 +271,7 @@ end LazyOnce
 section AssocCache
 
 /-- Lazy random association-cache lookup and insertion over `samp : ProbComp V`. -/
-def evalCache {K V : Type} [BEq K] (samp : ProbComp V) (cache : List (K × V)) (k : K) :
+@[expose] def evalCache {K V : Type} [BEq K] (samp : ProbComp V) (cache : List (K × V)) (k : K) :
     ProbComp (V × List (K × V)) :=
   match cache.find? (fun p => p.1 == k) with
   | some (_, v) => pure (v, cache)
@@ -409,7 +280,7 @@ def evalCache {K V : Type} [BEq K] (samp : ProbComp V) (cache : List (K × V)) (
     pure (v, (k, v) :: cache)
 
 /-- Lookup equivalence on association caches: `find?` returns the same value for every key. -/
-def CacheEquiv {K V : Type} [BEq K] (c₁ c₂ : List (K × V)) : Prop :=
+@[expose] def CacheEquiv {K V : Type} [BEq K] (c₁ c₂ : List (K × V)) : Prop :=
   ∀ k : K, (c₁.find? (fun p => p.1 == k)).map Prod.snd =
            (c₂.find? (fun p => p.1 == k)).map Prod.snd
 

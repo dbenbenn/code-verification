@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake -- proof-setup: allow-public-import
 
 /-!
 # `ReductionDsl` Program for the `Auth` `SigEufCma` Reduction
@@ -18,7 +18,7 @@ Defines `sigReductionAuthProg` and its clamped variant `sigReductionAuthProg2` o
 `pqxdhEufCmaIface`, mirroring the shallow reduction `sigReductionAuth`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,14 +39,14 @@ section SigBranches
 
 variable (S : Setup) (K : Nat) {Γ Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List (Ty pqSig)}
 
-def wrapC (m : Comp pqxdhOps pqPrimIface Δ RS)
+@[expose] def wrapC (m : Comp pqxdhOps pqPrimIface Δ RS)
     (fg : Expr pqxdhOps (RS :: Δ) (.opt (.prod (B 1569) (B 64))))
     (tp : Expr pqxdhOps (RS :: Δ) .nat) (tpk : Expr pqxdhOps (RS :: Δ) (B 32)) :
     Comp pqxdhOps pqPrimIface Δ sigStepTy :=
   bindV m fun r =>
     .ret (.inl (.pair (.fst (v r)) (.pair fg (.pair tp (.pair tpk (.snd (v r)))))))
 
-def extractC (tp : Var Γ₁ .nat) (tpk : Var Γ₂ (B 32)) (st : Var Γ₃ authStateTy)
+@[expose] def extractC (tp : Var Γ₁ .nat) (tpk : Var Γ₂ (B 32)) (st : Var Γ₃ authStateTy)
     (bu : Var Γ₄ preKeyBundleTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
     Comp pqxdhOps pqPrimIface Δ (.opt (.prod (B 1569) (B 64))) :=
   bindV (honestPeerC S K st (buIkB (v bu))) fun peer =>
@@ -69,7 +69,7 @@ def extractC (tp : Var Γ₁ .nat) (tpk : Var Γ₂ (B 32)) (st : Var Γ₃ auth
           .noneE))
       .noneE)
 
-def sigStepC (tp : Var Γ₁ .nat) (tpk : Var Γ₂ (B 32)) (st : Var Γ₃ authStateTy)
+@[expose] def sigStepC (tp : Var Γ₁ .nat) (tpk : Var Γ₂ (B 32)) (st : Var Γ₃ authStateTy)
     (q : Var Γ₄ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
     Comp pqxdhOps pqPrimIface Δ sigStepTy :=
   caseSumV (v q)
@@ -127,7 +127,7 @@ def sigStepC (tp : Var Γ₁ .nat) (tpk : Var Γ₂ (B 32)) (st : Var Γ₃ auth
 
 end SigBranches
 
-def sigHandleDsl (S : Setup) (K : Nat) :
+@[expose] def sigHandleDsl (S : Setup) (K : Nat) :
     Comp pqxdhOps pqxdhEufCmaIface [sigStTy, authQueryTy] (.prod authRespTy sigStTy) :=
   letV (.var .vz : Expr pqxdhOps [sigStTy, authQueryTy] sigStTy) fun s =>
   letV (.fst (v s)) fun bud => letV (.snd (v s)) fun core =>
@@ -154,17 +154,17 @@ def sigHandleDsl (S : Setup) (K : Nat) :
         (sbMk (v spkSk) (v spkPk) (v sig1) (.snd (v kp)) (.fst (v kp)) (v sig2) (.litBool false)))
         (stSpks (v gs)))))))))
 
-def sigInitDsl (S : Setup) : Comp pqxdhOps pqxdhEufCmaIface [B 32] (.prod .unit sigStTy) :=
+@[expose] def sigInitDsl (S : Setup) : Comp pqxdhOps pqxdhEufCmaIface [B 32] (.prod .unit sigStTy) :=
   bindV (.sampleIndexC S.N_id) fun k => bindV .sampleBoolC fun b =>
   .ret (.pair .litUnit (.pair (.litNat S.N_spk_tot) (.pair .noneE (.pair (v k)
     (.pair (.var (.vs (.vs .vz)) : Expr pqxdhOps [.bool, .nat, B 32] (B 32)) (emptyAuthStE (v b)))))))
 
-def sigFinishDsl (S : Setup) : Comp pqxdhOps pqxdhEufCmaIface [sigStTy, .bool] (.prod (B 1569) (B 64)) :=
+@[expose] def sigFinishDsl (S : Setup) : Comp pqxdhOps pqxdhEufCmaIface [sigStTy, .bool] (.prod (B 1569) (B 64)) :=
   .ret (.ite (natEq (.litNat S.N_id) (.litNat 0)) (.pair (.litBytes 1569 []) (.litBytes 64 []))
     (eCaseOpt (.fst (.snd (.var .vz))) (.pair (.litBytes 1569 []) (.litBytes 64 [])) fun f => v f))
 
 /-- `ReductionDsl` program for `sigReductionAuth` with list-traversal bound `K`. -/
-def sigReductionAuthProg (S : Setup) (K : Nat) :
+@[expose] def sigReductionAuthProg (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqxdhEufCmaIface (authSpec S) (authCodec S)
       (B 32) .unit .bool (.prod (B 1569) (B 64)) where
   σ      := sigStTy
@@ -172,7 +172,7 @@ def sigReductionAuthProg (S : Setup) (K : Nat) :
   handle := sigHandleDsl S K
   finish := sigFinishDsl S
 
-def sigInit2Dsl (S : Setup) (K : Nat) :
+@[expose] def sigInit2Dsl (S : Setup) (K : Nat) :
     Comp pqxdhOps pqxdhEufCmaIface [B 32] (.prod .unit sigStTy) :=
   if S.N_id = 0 then
     .ret (.pair .litUnit (.pair (.litNat 0) (.pair .noneE (.pair (.litNat 0)
@@ -183,7 +183,7 @@ def sigInit2Dsl (S : Setup) (K : Nat) :
       (.pair (.var (.vs (.vs .vz)) : Expr pqxdhOps [.bool, .nat, B 32] (B 32))
         (emptyAuthStE (v b)))))))
 
-def sigFinish2Dsl (S : Setup) :
+@[expose] def sigFinish2Dsl (S : Setup) :
     Comp pqxdhOps pqxdhEufCmaIface [sigStTy, .bool] (.prod (B 1569) (B 64)) :=
   if S.N_id = 0 then
     .ret (.pair (.litBytes 1569 []) (.litBytes 64 []))
@@ -192,7 +192,7 @@ def sigFinish2Dsl (S : Setup) :
       (.pair (.litBytes 1569 []) (.litBytes 64 [])) fun f => v f)
 
 /-- Clamped `ReductionDsl` program for `sigReductionAuth` with `K`-bounded signing budget literal. -/
-def sigReductionAuthProg2 (S : Setup) (K : Nat) :
+@[expose] def sigReductionAuthProg2 (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqxdhEufCmaIface (authSpec S) (authCodec S)
       (B 32) .unit .bool (.prod (B 1569) (B 64)) where
   σ      := sigStTy

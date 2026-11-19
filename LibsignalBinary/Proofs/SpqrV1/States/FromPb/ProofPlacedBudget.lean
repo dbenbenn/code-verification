@@ -9,14 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
 
 /-!
 # Budget-Threaded Relocatable Dispatch & Variant Composition for `<States>::from_pb` (Block `333`)
@@ -26,7 +32,7 @@ prologue and jump-table dispatch combiners for Block `333`, Variant 0 (`KeysUnsa
 and top-level reductions to `StatesFromPbPlacedOk*` and `.rodata`-free specifications.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -253,7 +259,7 @@ alias sfpProof_tagged_ok_of_step_placed := Variant1bPlacedBudget.sfpProof_tagged
 
 /-- Post-dispatch `Satisfies`-form `SepWPp` obligation at offset `off` in Block `333` carrying
     `LibsignalCodeLoaded lsmpl s1.mem` for variants that make cross-block calls. -/
-def StatesFromPbVariantStepClPlacedOfEnv [LibsignalPlacement]
+@[expose] def StatesFromPbVariantStepClPlacedOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (ext : String → Option (State → State))
     (inner : V1State.InnerState) (off : BitVec 64)
@@ -297,7 +303,7 @@ abbrev StatesFromPbVariantStepClPlaced [LibsignalPlacement]
 
 /-- Post-dispatch `Entails`-form `SepWPp` obligation at offset `off` in Block `333` carrying
     `LibsignalCodeLoaded lsmpl s1.mem` and existential event witness `evs` in `Env`. -/
-def StatesFromPbVariantBodyClPlacedOfEnv [LibsignalPlacement]
+@[expose] def StatesFromPbVariantBodyClPlacedOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (ext : String → Option (State → State))
     (inner : V1State.InnerState) (off : BitVec 64)
@@ -447,165 +453,6 @@ theorem sfpProof_tagged_ok_of_step_cl_placed [LibsignalPlacement]
       (withLsCodeLoaded lsmpl
         (DefsBudget.statesFromPbVariantPlacedSpec M A lim F { innerState := some inner })) :=
   sfpProof_tagged_ok_of_step_cl_placed_of_env htag hinner hstep
-
-/-- Lift an `Entails`-based `StatesFromPbVariantBodyClPlacedOfEnv` at `+off` to `subroutine_ok`
-    for `withLsCodeLoaded lsmpl (statesFromPbVariantPlacedSpecOfEnv M A lim F { innerState := some inner } Env)`. -/
-theorem sfpProof_tagged_ok_of_body_cl_placed_of_env [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    {inner : V1State.InnerState} {tag off : BitVec 64} {Tail : BitVec 64 → SepProp}
-    {Env : List AllocEvent → Prop}
-    (htag : TaggedVariantDispatch tag off)
-    (hinner : ∀ pbA, optProtoInnerStateAt A.repAlloc pbA (some inner) = (pbA ↦₆₄ tag) ∗ Tail pbA)
-    (hbody : v1StatePtsBound { innerState := some inner } →
-      StatesFromPbVariantBodyClPlacedOfEnv M A lim F ext inner off Env) :
-    subroutine_ok (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeLoaded lsmpl
-        (statesFromPbVariantPlacedSpecOfEnv M A lim F { innerState := some inner } Env)) := by
-  refine sfpProof_tagged_ok_of_step_cl_placed_of_env htag hinner fun hpts => ?_
-  intro st s0 s1 out pbA R hcl1 hfits hsp0 hpc1 hrun1 hsp1 hx19 hx23 hx27 htr1
-  exact sfpProof_sepWPp_of_states_body_placed_of_env st s0 s1 out pbA
-    { innerState := some inner } Env _ R
-    (hbody hpts st s0 s1 out pbA R hcl1 hfits hsp0 hpc1 hrun1 hsp1 hx19 hx23 hx27 htr1)
-
-theorem sfpProof_tagged_ok_of_body_cl_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    {inner : V1State.InnerState} {tag off : BitVec 64} {Tail : BitVec 64 → SepProp}
-    (htag : TaggedVariantDispatch tag off)
-    (hinner : ∀ pbA, optProtoInnerStateAt A.repAlloc pbA (some inner) = (pbA ↦₆₄ tag) ∗ Tail pbA)
-    (hbody : v1StatePtsBound { innerState := some inner } →
-      StatesFromPbVariantBodyClPlaced M A lim F ext inner off) :
-    subroutine_ok (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeLoaded lsmpl
-        (DefsBudget.statesFromPbVariantPlacedSpec M A lim F { innerState := some inner })) :=
-  sfpProof_tagged_ok_of_body_cl_placed_of_env htag hinner hbody
-
-/-- Lift an untagged `Ct1Sampled` (`+36 -> +1056`) `StatesFromPbVariantStepClPlacedOfEnv` to
-    `subroutine_ok` for `withLsCodeLoaded lsmpl (statesFromPbVariantPlacedSpecOfEnv ...)`. -/
-theorem sfpProof_ct1Sampled_ok_of_step_cl_placed_of_env [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    {s : V1State.Chunked.Ct1Sampled} {Env : List AllocEvent → Prop}
-    (hinner : ∀ pbA, ∃ (w0 : BitVec 64) (Tail : SepProp),
-      (w0 = noneCap ∨ w0.toNat < 2 ^ 63) ∧
-      (optProtoInnerStateAt A.repAlloc pbA (some (.ct1Sampled s)) ⊢ (pbA ↦₆₄ w0) ∗ Tail) ∧
-      ((pbA ↦₆₄ w0) ∗ Tail ⊢ optProtoInnerStateAt A.repAlloc pbA (some (.ct1Sampled s))))
-    (hstep : v1StatePtsBound { innerState := some (.ct1Sampled s) } →
-      StatesFromPbVariantStepClPlacedOfEnv M A lim F ext (.ct1Sampled s) 1056#64 Env) :
-    subroutine_ok (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeLoaded lsmpl
-        (statesFromPbVariantPlacedSpecOfEnv M A lim F { innerState := some (.ct1Sampled s) } Env)) := by
-  apply subroutine_ok_of_sepWPp
-  rintro ⟨⟨out, pbA⟩, st⟩ R s0 hpc0 hrun0 hpre hsp0_align
-  obtain ⟨hcl0, hpre⟩ := extract_withLsCodeLoaded hpre
-  dsimp only [statesFromPbVariantPlacedSpecOfEnv] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx8, hx0, hpts, hfits⟩, hmem⟩
-  obtain ⟨w0, Tail, hw0, hopen, hclose⟩ := hinner pbA
-  refine ⟨stackAt s0.sp statesFromPbStack ∗ A.pool lim st s0 ∗
-      (memRegion out chunkedStatesSize ∗
-       optProtoInnerStateAt A.repAlloc pbA (some (.ct1Sampled s)) ∗
-       statesFromPbJumpTablePlacedAt),
-    R, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem, ?_⟩
-  have hpro := DefsBudget.states_from_pb_prologue_placed (ext := ext) A lim st s0 out pbA
-    (memRegion out chunkedStatesSize ∗
-     optProtoInnerStateAt A.repAlloc pbA (some (.ct1Sampled s)) ∗
-     statesFromPbJumpTablePlacedAt)
-    hsp0_align hpc0 hrun0 hx8 hx0
-  refine sepWPp_seq_clean_lscl_st hcl0 hpro ?_
-  intro s1 hpc1 hrun1 hcl1 ⟨hsp1, _, hx8_1, hx0_1, htr1, _⟩
-  have hP1' :
-      stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-      ((s0.sp - 2400#64) ↦₆₄ 0#64) ∗
-      memRegion ((s0.sp - 2400#64) + 8#64) 2296 ∗
-      statesFromPbSavedCells s0 ∗ A.pool lim st s1 ∗
-      (memRegion out chunkedStatesSize ∗
-       optProtoInnerStateAt A.repAlloc pbA (some (.ct1Sampled s)) ∗
-       statesFromPbJumpTablePlacedAt) ⊢
-      (pbA ↦₆₄ w0) ∗ statesFromPbJumpTablePlacedAt ∗
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-       ((s0.sp - 2400#64) ↦₆₄ 0#64) ∗
-       memRegion ((s0.sp - 2400#64) + 8#64) 2296 ∗
-       statesFromPbSavedCells s0 ∗
-       memRegion out chunkedStatesSize ∗
-       Tail) ∗
-      A.pool lim st s1 := by
-    refine Entails.trans (Entails.of_eq (show _ =
-      optProtoInnerStateAt A.repAlloc pbA (some (.ct1Sampled s)) ∗
-      (statesFromPbJumpTablePlacedAt ∗ stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-       ((s0.sp - 2400#64) ↦₆₄ 0#64) ∗
-       memRegion ((s0.sp - 2400#64) + 8#64) 2296 ∗
-       statesFromPbSavedCells s0 ∗ memRegion out chunkedStatesSize ∗
-       A.pool lim st s1) by sep_ac_rfl)) ?_
-    exact Entails.trans (sepConj_mono_left hopen) (Entails.of_eq (by sep_ac_rfl))
-  refine SepWPp.weaken_pre hP1' ?_
-  have hdisp := states_from_pb_dispatch_ct1Sampled_placed_budget A lim st (ext := ext)
-    s0 s1 out pbA w0
-    (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-     ((s0.sp - 2400#64) ↦₆₄ 0#64) ∗
-     memRegion ((s0.sp - 2400#64) + 8#64) 2296 ∗
-     statesFromPbSavedCells s0 ∗
-     memRegion out chunkedStatesSize ∗
-     Tail)
-    hw0 hpc1 hrun1 hsp1 hx8_1 hx0_1 htr1
-  refine sepWPp_seq_clean_lscl_st hcl1 hdisp ?_
-  intro s2 hpc2 hrun2 hcl2 ⟨hsp2, hx19_2, hx27_2, _, _, _, _, hx23_2, htr2, _⟩
-  have hx23_2' : s2.readReg64 .x23 = (s0.sp - 2400#64) + 848#64 := by
-    rw [hx23_2]; bv_omega
-  have hpre_join :
-      (pbA ↦₆₄ w0) ∗ statesFromPbJumpTablePlacedAt ∗
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-       ((s0.sp - 2400#64) ↦₆₄ 0#64) ∗
-       memRegion ((s0.sp - 2400#64) + 8#64) 2296 ∗
-       statesFromPbSavedCells s0 ∗
-       memRegion out chunkedStatesSize ∗
-       Tail) ∗
-      A.pool lim st s2 ⊢
-      stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-      memRegion (s0.sp - 2400#64) 2304 ∗
-      statesFromPbSavedCells s0 ∗
-      memRegion out chunkedStatesSize ∗
-      optProtoInnerStateAt A.repAlloc pbA (some (.ct1Sampled s)) ∗
-      statesFromPbJumpTablePlacedAt ∗
-      A.pool lim st s2 := by
-    have h2304 := cell0_2296_entails_memRegion_2304 (s0.sp - 2400#64) 0#64
-    refine Entails.trans (Entails.of_eq (show _ =
-      (((s0.sp - 2400#64) ↦₆₄ 0#64) ∗ memRegion ((s0.sp - 2400#64) + 8#64) 2296) ∗
-      (((pbA ↦₆₄ w0) ∗ Tail) ∗
-       (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        statesFromPbSavedCells s0 ∗
-        memRegion out chunkedStatesSize ∗
-        statesFromPbJumpTablePlacedAt ∗ A.pool lim st s2)) by sep_ac_rfl)) ?_
-    exact Entails.trans (sepConj_mono h2304 (sepConj_mono_left hclose))
-      (Entails.of_eq (by sep_ac_rfl))
-  exact SepWPp.weaken_pre hpre_join
-    (hstep hpts st s0 s2 out pbA R hcl2 hfits hsp0_align hpc2 hrun2 hsp2 hx19_2 hx23_2' hx27_2 htr2)
-
-/-- Lift an untagged `Ct1Sampled` (`+36 -> +1056`) `StatesFromPbVariantBodyClPlacedOfEnv` to
-    `subroutine_ok` for `withLsCodeLoaded lsmpl (statesFromPbVariantPlacedSpecOfEnv ...)`. -/
-theorem sfpProof_ct1Sampled_ok_of_body_cl_placed_of_env [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    {s : V1State.Chunked.Ct1Sampled} {Env : List AllocEvent → Prop}
-    (hinner : ∀ pbA, ∃ (w0 : BitVec 64) (Tail : SepProp),
-      (w0 = noneCap ∨ w0.toNat < 2 ^ 63) ∧
-      (optProtoInnerStateAt A.repAlloc pbA (some (.ct1Sampled s)) ⊢ (pbA ↦₆₄ w0) ∗ Tail) ∧
-      ((pbA ↦₆₄ w0) ∗ Tail ⊢ optProtoInnerStateAt A.repAlloc pbA (some (.ct1Sampled s))))
-    (hbody : v1StatePtsBound { innerState := some (.ct1Sampled s) } →
-      StatesFromPbVariantBodyClPlacedOfEnv M A lim F ext (.ct1Sampled s) 1056#64 Env) :
-    subroutine_ok (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeLoaded lsmpl
-        (statesFromPbVariantPlacedSpecOfEnv M A lim F { innerState := some (.ct1Sampled s) } Env)) := by
-  refine sfpProof_ct1Sampled_ok_of_step_cl_placed_of_env hinner fun hpts => ?_
-  intro st s0 s1 out pbA R hcl1 hfits hsp0 hpc1 hrun1 hsp1 hx19 hx23 hx27 htr1
-  exact sfpProof_sepWPp_of_states_body_placed_of_env st s0 s1 out pbA
-    { innerState := some (.ct1Sampled s) } Env _ R
-    (hbody hpts st s0 s1 out pbA R hcl1 hfits hsp0 hpc1 hrun1 hsp1 hx19 hx23 hx27 htr1)
 
 /-! ## 3. Variant 0 (`KeysUnsampled`, `+156`) Complete Subroutine Theorems -/
 
@@ -766,55 +613,5 @@ theorem states_from_pb_okX_of_ok_placed [LibsignalPlacement]
     (hok : DefsBudget.StatesFromPbPlacedOk M A lim F ext) :
     DefsBudget.StatesFromPbPlacedOkX M A lim F ext :=
   states_from_pb_okX_of_ok_ext_placed (states_from_pb_placed_ok_ext_of_ok hok)
-
-/-- Discharge `statesFromPbJumpTablePlacedAt` via `LibsignalRoLoaded` to obtain the `.rodata`-free
-    extended-stack contract `statesFromPbPlacedRoFreeSpecXOfEnv`. -/
-theorem states_from_pb_roFree_okX_of_okX_placed_of_env [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    {Env : V1State → List AllocEvent → Prop}
-    (hok : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeRoLoaded lsmpl (statesFromPbPlacedSpecXOfEnv M A lim F Env))) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeRoLoaded lsmpl (statesFromPbPlacedRoFreeSpecXOfEnv M A lim F Env)) := by
-  refine subroutine_ok_outcome_intro fun (x, st) R s0 hpc hrun hpre hal => ?_
-  obtain ⟨hfr, hpre0⟩ := extract_withLsCodeRoLoaded hpre
-  have hpre_jt := rodata_statesFromPbJumpTablePlacedAt hfr.2 hpre0
-  have hpre' : s0.mem ⊨
-      (withLsCodeRoLoaded lsmpl (statesFromPbPlacedSpecXOfEnv M A lim F Env)).pre (x, st) s0 ∗ R := by
-    dsimp only [withLsCodeRoLoaded]
-    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hfr, ?_⟩
-    dsimp only [statesFromPbPlacedRoFreeSpecXOfEnv, statesFromPbPlacedSpecXOfEnv] at hpre_jt ⊢
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre_jt
-  refine hok.mono_outcome (x, st) R s0 hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [withLsCodeRoLoaded, statesFromPbPlacedRoFreeSpecXOfEnv, statesFromPbPlacedSpecXOfEnv] at hpost ⊢
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
-    rcases hpost with ⟨evs, hpost⟩
-    refine ⟨evs, ?_⟩
-    have hpost' : sf.mem ⊨ statesFromPbJumpTablePlacedAt ∗
-        ((⌜sf.trace = s0.trace ∧ Env x.pb evs⌝ ∗
-          resultChunkedStatesAt A.repAlloc (F := F) x.out
-            (States.from_pb spqrPolyApi (spqrAuthApi F) x.pb) ∗
-          memRegion x.pbA optProtoInnerStateSize ∗
-          A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp statesFromPbStackX) ∗ R) :=
-      Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
-    exact Satisfies.of_sep_right hpost'
-  · exact (not_satisfies_false_sepConj hpan).elim
-  · exact (not_satisfies_false_sepConj hex).elim
-  · exact (not_satisfies_false_sepConj hoom).elim
-
-theorem states_from_pb_roFree_okX_of_okX_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hok : DefsBudget.StatesFromPbPlacedOkX M A lim F ext) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeRoLoaded lsmpl (statesFromPbPlacedRoFreeSpecX M A lim F)) :=
-  states_from_pb_roFree_okX_of_okX_placed_of_env hok
 
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.ProofPlacedBudget

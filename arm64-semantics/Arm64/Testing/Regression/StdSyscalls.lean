@@ -16,8 +16,9 @@ public import Arm64.Trusted.Process
 # Linux AArch64 Syscall Regression Tests
 
 Kernel-checked conformance and fail-closed `.Exception` regression tests for `execPpoll`,
-`execMmap`, `execMremap`, `execRtSigaction`/`execTkill`/`execTgkill`, `FdKind.localDir` VFS
-descriptors (`openatPure`, `MAX_LFS_FILESIZE`), and `execSigaltstack`/`MAP_STACK`.
+`execMmap`, `execMremap` (`MREMAP_MAYMOVE` and `flags = 0`), `execRtSigaction`/`execTkill`/`execTgkill`,
+`FdKind.localDir` VFS descriptors (`openatPure`, `MAX_LFS_FILESIZE`), `execSigaltstack`/`MAP_STACK`,
+and `execFutex` (`FUTEX_WAKE` / `FUTEX_WAKE_PRIVATE`).
 -/
 
 @[expose] public section
@@ -276,8 +277,9 @@ def checkMremapRelocateGrowth : Bool :=
 theorem mremap_relocate_growth_ok : checkMremapRelocateGrowth = true := by
   decide +kernel
 
-/-- In-place growth (`4 KiB -> 8 KiB`), in-place shrink (`8 KiB -> 4 KiB`), `mremapFail` refusal,
-    and VA-exhaustion (`newLen = 2^48`) `-ENOMEM` refusal preserving the original mapping. -/
+/-- In-place growth (`4 KiB -> 8 KiB`), in-place shrink (`8 KiB -> 4 KiB`), `mremapRefusal`
+    (`some .enomem` and `some .efault`), and VA-exhaustion (`newLen = 2^48`) `-ENOMEM` refusal
+    preserving the original mapping. -/
 def checkMremapInPlaceAndRefusal : Bool :=
   let oldAddr := 0x20000#64
   let mem4k := patternedRwMem 0x20000 0x20fff
@@ -291,7 +293,12 @@ def checkMremapInPlaceAndRefusal : Bool :=
   let sRefuse := callMremap
     { pc := 0x1000#64
       mem := mem4k
-      oracle := { mmap := fun _ => 0x600000000000#64, mremapFail := fun _ => true } }
+      oracle := { mmap := fun _ => 0x600000000000#64, mremapRefusal := fun _ => some .enomem } }
+    oldAddr 0x1000#64 0x2000#64 MREMAP_MAYMOVE
+  let sRefuseEf := callMremap
+    { pc := 0x1000#64
+      mem := mem4k
+      oracle := { mmap := fun _ => 0x600000000000#64, mremapRefusal := fun _ => some .efault } }
     oldAddr 0x1000#64 0x2000#64 MREMAP_MAYMOVE
   let sVaFull := callMremap
     { pc := 0x1000#64, mem := mem4k, oracle := { mmap := fun _ => 0x600000000000#64 } }
@@ -315,6 +322,8 @@ def checkMremapInPlaceAndRefusal : Bool :=
   sShrinkInPlace.mem.perm (oldAddr + 0x1fff#64) == none &&
   sRefuse.status == .Running && sRefuse.pc == 0x1004#64 && sRefuse.oracleIdx == 1 &&
   sRefuse.readReg64 .x0 == -ENOMEM &&
+  sRefuseEf.status == .Running && sRefuseEf.pc == 0x1004#64 && sRefuseEf.oracleIdx == 1 &&
+  sRefuseEf.readReg64 .x0 == EFAULT_RET &&
   sRefuse.mem.read8 oldAddr == 0xa5#8 &&
   sRefuse.mem.read8 (oldAddr + 0xfff#64) == 0x5a#8 &&
   sRefuse.mem.perm oldAddr == some Perm.rw &&
@@ -345,36 +354,141 @@ def checkMremapErrorsAndTraps : Bool :=
   let sEmpty   : State := { pc := 0x1000#64, mem := Memory.empty }
   let sPartMem := mkPage 0x20000 0x20000 .rw
   let sMisal    := callMremap sRw 0x20001#64 0x1000#64 0x2000#64 MREMAP_MAYMOVE
+  let sMisal0   := callMremap sRw 0x20001#64 0x1000#64 0x2000#64 0#64
   let sNewZero  := callMremap sRw rwAddr 0x1000#64 0#64 MREMAP_MAYMOVE
+  let sNewZero0 := callMremap sRw rwAddr 0x1000#64 0#64 0#64
   let sNewOvfl  := callMremap sRw rwAddr 0x1000#64 0xfffffffffffff001#64 MREMAP_MAYMOVE
+  let sNewOvfl0 := callMremap sRw rwAddr 0x1000#64 0xfffffffffffff001#64 0#64
   let sOldPast  := callMremap sRw 0x0000fffffffff000#64 0x2000#64 0x3000#64 MREMAP_MAYMOVE
+  let sTopMapped := mkPage 0x0000fffffffff000 0x0000ffffffffffff .rw
+  let sOldPast0 := callMremap sTopMapped 0x0000fffffffff000#64 0x2000#64 0x3000#64 0#64
+  -- S2: beyond-`USER_VA_LIMIT` (`oldAddr + oldAligned > 2^48`) with first page mapped:
+  -- `MREMAP_NO_RESIZE` returns `oldAddr`, and `MREMAP_SHRINK` returns `-EINVAL` (with or without `MREMAP_MAYMOVE`).
+  let sOldNoResize0  := callMremap sTopMapped 0x0000fffffffff000#64 0x2000#64 0x2000#64 0#64
+  let sOldNoResizeMm := callMremap sTopMapped 0x0000fffffffff000#64 0x2000#64 0x2000#64 MREMAP_MAYMOVE
+  let sOldShrink0    := callMremap sTopMapped 0x0000fffffffff000#64 0x2000#64 0x1000#64 0#64
+  let sOldShrinkMm   := callMremap sTopMapped 0x0000fffffffff000#64 0x2000#64 0x1000#64 MREMAP_MAYMOVE
+  -- S3: `check_map_count_against_split_early` (`mremapRefusal = some .enomem`) runs before `vma_lookup` (`-EFAULT`).
+  let sEarlyEnomemUnmapped := callMremap
+    { sEmpty with oracle := { mremapRefusal := fun _ => some .enomem } }
+    0x50000#64 0x1000#64 0x2000#64 MREMAP_MAYMOVE
   let sUnmapped := callMremap sEmpty 0x50000#64 0x1000#64 0x2000#64 MREMAP_MAYMOVE
-  let sFlags0   := callMremap sRw rwAddr 0x1000#64 0x2000#64 0#64
+  let sUnmapped0 := callMremap sEmpty 0x50000#64 0x1000#64 0x2000#64 0#64
+  let sFlags2   := callMremap sRw rwAddr 0x1000#64 0x2000#64 2#64
   let sFlags3   := callMremap sRw rwAddr 0x1000#64 0x2000#64 3#64
   let sOldZero  := callMremap sRw rwAddr 0#64 0x1000#64 MREMAP_MAYMOVE
+  let sOldZero0 := callMremap sRw rwAddr 0#64 0x1000#64 0#64
   let sFrozenRo := callMremap (mkPage 0x30000 0x30fff .ro) roAddr 0x1000#64 0x2000#64 MREMAP_MAYMOVE
   let sFrozenRx := callMremap (mkPage 0x31000 0x31fff .rx) rxAddr 0x1000#64 0x2000#64 MREMAP_MAYMOVE
   let sProtNone := callMremap (mkPage 0x32000 0x32fff .protNone) noneAddr 0x1000#64 0x2000#64 MREMAP_MAYMOVE
   let sPartial  := callMremap sPartMem rwAddr 0x1000#64 0x2000#64 MREMAP_MAYMOVE
   sMisal.status == .Running && sMisal.pc == 0x1004#64 && sMisal.oracleIdx == 0 &&
   sMisal.readReg64 .x0 == -EINVAL &&
+  sMisal0.status == .Running && sMisal0.pc == 0x1004#64 && sMisal0.oracleIdx == 0 &&
+  sMisal0.readReg64 .x0 == -EINVAL &&
   sNewZero.status == .Running && sNewZero.pc == 0x1004#64 && sNewZero.oracleIdx == 0 &&
   sNewZero.readReg64 .x0 == -EINVAL &&
+  sNewZero0.status == .Running && sNewZero0.pc == 0x1004#64 && sNewZero0.oracleIdx == 0 &&
+  sNewZero0.readReg64 .x0 == -EINVAL &&
   sNewOvfl.status == .Running && sNewOvfl.pc == 0x1004#64 && sNewOvfl.oracleIdx == 0 &&
   sNewOvfl.readReg64 .x0 == -EINVAL &&
-  sOldPast.status == .Running && sOldPast.pc == 0x1004#64 && sOldPast.oracleIdx == 0 &&
-  sOldPast.readReg64 .x0 == -EINVAL &&
-  sUnmapped.status == .Running && sUnmapped.pc == 0x1004#64 && sUnmapped.oracleIdx == 0 &&
+  sNewOvfl0.status == .Running && sNewOvfl0.pc == 0x1004#64 && sNewOvfl0.oracleIdx == 0 &&
+  sNewOvfl0.readReg64 .x0 == -EINVAL &&
+  sOldPast.status == .Running && sOldPast.pc == 0x1004#64 && sOldPast.oracleIdx == 1 &&
+  sOldPast.readReg64 .x0 == EFAULT_RET &&
+  sOldPast0.status == .Running && sOldPast0.pc == 0x1004#64 && sOldPast0.oracleIdx == 1 &&
+  sOldPast0.readReg64 .x0 == EFAULT_RET &&
+  sOldNoResize0.status == .Running && sOldNoResize0.oracleIdx == 1 &&
+  sOldNoResize0.readReg64 .x0 == 0x0000fffffffff000#64 &&
+  sOldNoResizeMm.status == .Running && sOldNoResizeMm.oracleIdx == 1 &&
+  sOldNoResizeMm.readReg64 .x0 == 0x0000fffffffff000#64 &&
+  sOldShrink0.status == .Running && sOldShrink0.oracleIdx == 1 &&
+  sOldShrink0.readReg64 .x0 == -EINVAL &&
+  sOldShrinkMm.status == .Running && sOldShrinkMm.oracleIdx == 1 &&
+  sOldShrinkMm.readReg64 .x0 == -EINVAL &&
+  sEarlyEnomemUnmapped.status == .Running && sEarlyEnomemUnmapped.oracleIdx == 1 &&
+  sEarlyEnomemUnmapped.readReg64 .x0 == -ENOMEM &&
+  sUnmapped.status == .Running && sUnmapped.pc == 0x1004#64 && sUnmapped.oracleIdx == 1 &&
   sUnmapped.readReg64 .x0 == EFAULT_RET &&
-  isExceptionStatus sFlags0.status &&
+  sUnmapped0.status == .Running && sUnmapped0.pc == 0x1004#64 && sUnmapped0.oracleIdx == 1 &&
+  sUnmapped0.readReg64 .x0 == EFAULT_RET &&
+  isExceptionStatus sFlags2.status &&
   isExceptionStatus sFlags3.status &&
   isExceptionStatus sOldZero.status &&
+  isExceptionStatus sOldZero0.status &&
   isExceptionStatus sFrozenRo.status &&
   isExceptionStatus sFrozenRx.status &&
   isExceptionStatus sProtNone.status &&
   isExceptionStatus sPartial.status
 
 theorem mremap_errors_and_traps_ok : checkMremapErrorsAndTraps = true := by
+  decide +kernel
+
+/-- In-place `mremap(..., flags = 0)` shrink, same-page no-op, unblocked grow, blocked-tail
+    `-ENOMEM`, `USER_VA_LIMIT` `-ENOMEM`, `mremapRefusal` refusal, and `.OutOfMemory`. -/
+def checkMremapFlagsZero : Bool :=
+  let oldAddr := 0x20000#64
+  let mem4k := patternedRwMem 0x20000 0x20fff
+  let mem8k := patternedRwMem 0x20000 0x21fff
+  let memBlocked : Memory := ⟨fun a =>
+    let n := a.toNat
+    cond (Nat.ble 0x20000 n && Nat.ble n 0x20fff)
+      (some (some Perm.rw, (BitVec.ofNat 8 (n % 256)) ^^^ 0xa5#8))
+      (cond (Nat.ble 0x21000 n && Nat.ble n 0x21fff)
+        (some (some Perm.rw, 0x77#8)) none)⟩
+  let topPageAddr := 0x0000fffffffff000#64
+  let memTopPage : Memory := ⟨fun a =>
+    let n := a.toNat
+    cond (Nat.ble 0x0000fffffffff000 n && Nat.ble n 0x0000ffffffffffff)
+      (some (some Perm.rw, 0x11#8)) none⟩
+  -- `oracle.mmap` points elsewhere (`0x600000000000`), verifying `flags = 0` never relocates.
+  let oraElsewhere : Oracle := { mmap := fun _ => 0x600000000000#64 }
+  let sShrink := callMremap
+    { pc := 0x1000#64, mem := mem8k, physMemAvail := 0x3000, oracle := oraElsewhere }
+    oldAddr 0x2000#64 0x1000#64 0#64
+  let sSamePage := callMremap
+    { pc := 0x1000#64, mem := mem4k, physMemAvail := 0x3000, oracle := oraElsewhere }
+    oldAddr 0x1000#64 2000#64 0#64
+  let sGrow := callMremap
+    { pc := 0x1000#64, mem := mem4k, physMemAvail := 0x3000, oracle := oraElsewhere }
+    oldAddr 0x1000#64 0x2000#64 0#64
+  let sBlocked := callMremap
+    { pc := 0x1000#64, mem := memBlocked, physMemAvail := 0x3000, oracle := oraElsewhere }
+    oldAddr 0x1000#64 0x2000#64 0#64
+  let sTopOverflow := callMremap
+    { pc := 0x1000#64, mem := memTopPage, physMemAvail := 0x3000, oracle := oraElsewhere }
+    topPageAddr 0x1000#64 0x2000#64 0#64
+  let sFailOra := callMremap
+    { pc := 0x1000#64, mem := mem4k, physMemAvail := 0x3000,
+      oracle := { mmap := fun _ => 0x600000000000#64, mremapRefusal := fun _ => some .enomem } }
+    oldAddr 0x1000#64 0x2000#64 0#64
+  let sOom := callMremap
+    { pc := 0x1000#64, mem := mem4k, physMemAvail := 0, oracle := oraElsewhere }
+    oldAddr 0x1000#64 0x2000#64 0#64
+  sShrink.status == .Running && sShrink.pc == 0x1004#64 && sShrink.oracleIdx == 1 &&
+  sShrink.readReg64 .x0 == oldAddr && sShrink.physMemAvail == 0x4000 &&
+  sShrink.mem.read8 oldAddr == 0xa5#8 && sShrink.mem.read8 (oldAddr + 0xfff#64) == 0x5a#8 &&
+  sShrink.mem.perm oldAddr == some Perm.rw && sShrink.mem.perm (oldAddr + 0x1000#64) == none &&
+  sSamePage.status == .Running && sSamePage.pc == 0x1004#64 && sSamePage.oracleIdx == 1 &&
+  sSamePage.readReg64 .x0 == oldAddr && sSamePage.physMemAvail == 0x3000 &&
+  sSamePage.mem.read8 oldAddr == 0xa5#8 && sSamePage.mem.perm (oldAddr + 0xfff#64) == some Perm.rw &&
+  sGrow.status == .Running && sGrow.pc == 0x1004#64 && sGrow.oracleIdx == 1 &&
+  sGrow.readReg64 .x0 == oldAddr && sGrow.physMemAvail == 0x2000 &&
+  sGrow.mem.read8 oldAddr == 0xa5#8 && sGrow.mem.read8 (oldAddr + 0xfff#64) == 0x5a#8 &&
+  sGrow.mem.read64 (oldAddr + 0x1000#64) == 0#64 && sGrow.mem.read64 (oldAddr + 0x1ff8#64) == 0#64 &&
+  sGrow.mem.perm (oldAddr + 0x1000#64) == some Perm.rw &&
+  sGrow.mem.perm (oldAddr + 0x1fff#64) == some Perm.rw &&
+  sGrow.mem.perm 0x600000000000#64 == none &&
+  sBlocked.status == .Running && sBlocked.pc == 0x1004#64 && sBlocked.oracleIdx == 1 &&
+  sBlocked.readReg64 .x0 == -ENOMEM && sBlocked.physMemAvail == 0x3000 &&
+  sBlocked.mem.read8 oldAddr == 0xa5#8 && sBlocked.mem.read8 (oldAddr + 0x1000#64) == 0x77#8 &&
+  sTopOverflow.status == .Running && sTopOverflow.pc == 0x1004#64 && sTopOverflow.oracleIdx == 1 &&
+  sTopOverflow.readReg64 .x0 == -ENOMEM && sTopOverflow.mem.read8 topPageAddr == 0x11#8 &&
+  sFailOra.status == .Running && sFailOra.pc == 0x1004#64 && sFailOra.oracleIdx == 1 &&
+  sFailOra.readReg64 .x0 == -ENOMEM && sFailOra.physMemAvail == 0x3000 &&
+  sOom.status == .OutOfMemory
+
+theorem mremap_flags_zero_ok : checkMremapFlagsZero = true := by
   decide +kernel
 
 /-! ## Per-Signal `rt_sigaction` (`134`), `tkill` (`130`), and `tgkill` (`131`) -/
@@ -807,6 +921,68 @@ def checkSigaltstackAndMapStack : Bool :=
   sZeroDis.sigAltStack == { ssFlags := SS_DISABLE }
 
 theorem sigaltstack_and_map_stack_ok : checkSigaltstackAndMapStack = true := by
+  decide +kernel
+
+/-! ## Single-Threaded `futex` (`SYS_FUTEX = 98`, `FUTEX_WAKE` / `FUTEX_WAKE_PRIVATE`) -/
+
+/-- Invoke `futex(uaddr, op, val, utime, uaddr2, val3)` via `execSyscall`. -/
+def callFutex (s : State) (uaddr op val : BitVec 64) : State :=
+  callSyscall6 s SYS_FUTEX uaddr op val 0#64 0#64 0#64
+
+/-- Single-threaded `futex` wake conformance, alignment/VA errno ordering, private vs. shared
+    `get_futex_key` memory checks, 32-bit `op` truncation, and fail-closed traps on wait/other ops. -/
+def checkFutexWake : Bool :=
+  let rwAddr   := 0x20000#64
+  let roAddr   := 0x30000#64
+  let noneAddr := 0x32000#64
+  let unmapVa  := 0x50000#64
+  let mem0 := memOfRegions
+    [{ start := rwAddr,   perm := .rw,       bytes := leBytes32 3#32 ++ leBytes32 0xdeadbeef#32 },
+     { start := roAddr,   perm := .ro,       bytes := leBytes32 3#32 },
+     { start := noneAddr, perm := .protNone, bytes := leBytes32 0#32 }]
+  let s0 : State := { pc := 0x1000#64, mem := mem0 }
+  let opWakePriv : BitVec 64 := 129#64 -- FUTEX_WAKE_PRIVATE (1 | 128)
+  let opWakeShrd : BitVec 64 := 1#64   -- FUTEX_WAKE
+  let sPrivRw     := callFutex s0 rwAddr opWakePriv 0x7fffffff#64
+  let sPrivUnmap  := callFutex s0 unmapVa opWakePriv 1#64
+  let sPrivNone   := callFutex s0 noneAddr opWakePriv 1#64
+  let sPrivTopOk  := callFutex s0 0x0000fffffffffffc#64 opWakePriv 1#64
+  let sPrivHiBits := callFutex s0 rwAddr 0xffffffff00000081#64 1#64
+  let sShrdRw     := callFutex s0 rwAddr opWakeShrd 1#64
+  let sShrdUnmap  := callFutex s0 unmapVa opWakeShrd 1#64
+  let sShrdNone   := callFutex s0 noneAddr opWakeShrd 1#64
+  let sShrdRo     := callFutex s0 roAddr opWakeShrd 1#64
+  let sUnalign1   := callFutex s0 (rwAddr + 1#64) opWakePriv 1#64
+  let sUnalign2   := callFutex s0 (rwAddr + 2#64) opWakeShrd 1#64
+  -- Alignment check (`core.c:535`) precedes `access_ok` (`core.c:539`).
+  let sUnalignTop := callFutex s0 0x0001000000000002#64 opWakePriv 1#64
+  let sPastUser   := callFutex s0 0x0001000000000000#64 opWakePriv 1#64
+  let sWait       := callFutex s0 rwAddr 0#64 0#64
+  let sWaitPriv   := callFutex s0 rwAddr 128#64 0#64
+  let sWakeRt     := callFutex s0 rwAddr 257#64 1#64 -- FUTEX_WAKE | FUTEX_CLOCK_REALTIME
+  let sRequeue    := callFutex s0 rwAddr 3#64 1#64
+  SYS_FUTEX == 98#64 &&
+  sPrivRw.status == .Running && sPrivRw.pc == 0x1004#64 && sPrivRw.oracleIdx == 0 &&
+  sPrivRw.readReg64 .x0 == 0#64 && sPrivRw.mem.read32 rwAddr == 3#32 &&
+  sPrivUnmap.status == .Running && sPrivUnmap.readReg64 .x0 == 0#64 &&
+  sPrivNone.status == .Running && sPrivNone.readReg64 .x0 == 0#64 &&
+  sPrivTopOk.status == .Running && sPrivTopOk.readReg64 .x0 == 0#64 &&
+  sPrivHiBits.status == .Running && sPrivHiBits.readReg64 .x0 == 0#64 &&
+  sShrdRw.status == .Running && sShrdRw.pc == 0x1004#64 && sShrdRw.oracleIdx == 0 &&
+  sShrdRw.readReg64 .x0 == 0#64 && sShrdRw.mem.read32 rwAddr == 3#32 &&
+  sShrdUnmap.status == .Running && sShrdUnmap.readReg64 .x0 == EFAULT_RET &&
+  sShrdNone.status == .Running && sShrdNone.readReg64 .x0 == EFAULT_RET &&
+  isExceptionStatus sShrdRo.status &&
+  sUnalign1.status == .Running && sUnalign1.readReg64 .x0 == -EINVAL &&
+  sUnalign2.status == .Running && sUnalign2.readReg64 .x0 == -EINVAL &&
+  sUnalignTop.status == .Running && sUnalignTop.readReg64 .x0 == -EINVAL &&
+  sPastUser.status == .Running && sPastUser.readReg64 .x0 == EFAULT_RET &&
+  isExceptionStatus sWait.status &&
+  isExceptionStatus sWaitPriv.status &&
+  isExceptionStatus sWakeRt.status &&
+  isExceptionStatus sRequeue.status
+
+theorem futex_wake_ok : checkFutexWake = true := by
   decide +kernel
 
 end Arm64.Testing.Regression.StdSyscalls

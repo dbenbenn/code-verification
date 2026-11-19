@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrCorrect
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrCorrect -- proof-setup: allow-public-import
 
 /-!
 # Honest FIFO schedules stay in SPQR's window
@@ -19,7 +19,7 @@ causality and `< 2^32` total sends delivers only messages inside `spqrWindowOk`
 (`honest_fifo_in_window`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames
 namespace LibsignalSpqrWindowHonest
@@ -27,13 +27,13 @@ namespace LibsignalSpqrWindowHonest
 open LibsignalSession
 
 /-- Bounded LEB128 varint encoding of `n`. -/
-def varint : ℕ → ℕ → List (BitVec 8)
+@[expose] def varint : ℕ → ℕ → List (BitVec 8)
   | 0, _ => []
   | fuel + 1, n => if n < 128 then [BitVec.ofNat 8 n]
       else BitVec.ofNat 8 (n % 128 + 128) :: varint fuel (n / 128)
 
 /-- Synthetic SPQR V1 message with header `(E, i)`. -/
-def honestMsg (E i : ℕ) : List (BitVec 8) := 1#8 :: (varint 10 E ++ varint 10 i ++ [0#8])
+@[expose] def honestMsg (E i : ℕ) : List (BitVec 8) := 1#8 :: (varint 10 E ++ varint 10 i ++ [0#8])
 
 private theorem wv_byte_lt_mask80 (r : Fin 128) :
     BitVec.ofNat 8 r.val &&& 0x80#8 = 0#8 := by
@@ -136,7 +136,7 @@ inductive Ev
   | send (P : Party) (E : ℕ)
   | deliver (P : Party)
 
-def Ev.isSend : Ev → Bool
+@[expose] def Ev.isSend : Ev → Bool
   | .send _ _ => true
   | .deliver _ => false
 
@@ -149,10 +149,10 @@ structure SimState where
   honest : Bool
   inWindow : Bool
 
-def SimState.init : SimState :=
+@[expose] def SimState.init : SimState :=
   ⟨fun _ => default, fun _ => [], fun _ => (0, 0), fun _ => 0, true, true⟩
 
-def SimState.step (s : SimState) : Ev → SimState
+@[expose] def SimState.step (s : SimState) : Ev → SimState
   | .send P E =>
     let i := if (s.last P).1 = E then (s.last P).2 + 1 else 1
     { s with
@@ -172,7 +172,7 @@ def SimState.step (s : SimState) : Ev → SimState
         inFlight := Function.update s.inFlight P.other rest
         maxRecv := Function.update s.maxRecv P (max (s.maxRecv P) E) }
 
-def run (evs : List Ev) : SimState := evs.foldl SimState.step SimState.init
+@[expose] def run (evs : List Ev) : SimState := evs.foldl SimState.step SimState.init
 
 example :
     let s := run [.send .A 1, .send .A 1, .send .B 1, .send .A 1, .send .B 1,

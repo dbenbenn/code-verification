@@ -49,7 +49,7 @@ key-schedule agreement lemmas for `DY.Libsignal.Composed`, covering handshakes w
 a one-time prekey.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -65,10 +65,10 @@ open DY DY.Comparse DY.DiffieHellman DY.PQKem DY.Libsignal.PQXDH
 
 variable [DY.Libsignal.PQXDH.HasExecTrace]
 
-def rnd (t n : Nat) : Bytes :=
+@[expose] def rnd (t n : Nat) : Bytes :=
   BytesView.pack (SubF := Random.Random) { timestamp := t, size := n }
 
-def Runs {α : Type} (x : Traceful α) (tr : ExecTrace) (a : α) (tr' : ExecTrace) : Prop :=
+@[expose] def Runs {α : Type} (x : Traceful α) (tr : ExecTrace) (a : α) (tr' : ExecTrace) : Prop :=
   (x.run tr).1 = some a ∧ (x.run tr).2.val = tr'
 
 theorem Runs.bind {α β : Type} {x : Traceful α} {f : α → Traceful β} {tr tr1 tr2 : ExecTrace}
@@ -138,7 +138,7 @@ theorem Runs.lookupIdentity {tr : ExecTrace} {p : Participant} {i : Nat} {ikPk v
   refine Runs.bind (Runs.getEntry h) ?_
   exact Runs.bind (Runs.guard _ rfl) (Runs.pure _ _)
 
-def aliceOutOpt (tr : ExecTrace) (ikA ikBPk spkPk pqPk : Bytes) (opkPk : Option Bytes) :
+@[expose] def aliceOutOpt (tr : ExecTrace) (ikA ikBPk spkPk pqPk : Bytes) (opkPk : Option Bytes) :
     AliceHandshakeOut :=
   let ek := rnd tr.length 32
   let e := rnd (tr.length + 1) 32
@@ -214,7 +214,7 @@ theorem Runs.aliceHandshakeOpk {tr : ExecTrace} {a b : Participant} {idH regB oi
   dsimp only
   simpa only [aliceOutOpt, append_len_loc] using Runs.pure _ _
 
-def bobOutOpt (ikB spk pqsk : Bytes) (opkSk : Option Bytes) (ikAPk ek ct : Bytes)
+@[expose] def bobOutOpt (ikB spk pqsk : Bytes) (opkSk : Option Bytes) (ikAPk ek ct : Bytes)
     (keys : HandshakeKeys) : BobHandshakeOut :=
   { ikB := dhPk ikB, ikA := ikAPk, spk := dhPk spk, pqpk := kemPk pqsk,
     opk := opkSk.map dhPk, ek, ct, spkSk := spk, keys }
@@ -301,7 +301,7 @@ open PQXDH (NoCompromise HonestRun KeyKnown)
 /-! ## Running transitions step by step -/
 
 /-- A random value (defeq to DyLean's `makeRand`). -/
-def rnd (t n : Nat) : Bytes :=
+@[expose] def rnd (t n : Nat) : Bytes :=
   BytesView.pack (SubF := Random.Random) { timestamp := t, size := n }
 
 /-- Dynamic trace-index lookup (first matching entry). -/
@@ -314,7 +314,7 @@ def findLastEntryIdx (tr : ExecTrace) (p : ExecTrace.Entry → Bool) : Nat :=
     match tr.at? (tr.length - 1 - i) with | some e => p e | none => false
 
 /-- `x` run on `tr` returns `a` and leaves `tr'`. -/
-def Runs {α : Type} (x : Traceful α) (tr : ExecTrace) (a : α) (tr' : ExecTrace) : Prop :=
+@[expose] def Runs {α : Type} (x : Traceful α) (tr : ExecTrace) (a : α) (tr' : ExecTrace) : Prop :=
   (x.run tr).1 = some a ∧ (x.run tr).2.val = tr'
 
 theorem Runs.bind {α β : Type} {x : Traceful α} {f : α → Traceful β} {tr tr1 tr2 : ExecTrace}
@@ -488,7 +488,7 @@ theorem Runs.ensureReceiverChain_found {tr : ExecTrace} {st : TRState} {pk : Byt
   exact Runs.pure _ _
 
 /-- The state and new receiver chain of `dhRatchetStep st pk` with fresh secret `dhs`. -/
-def ratchetState (st : TRState) (pk dhs : Bytes) : TRState × RecvChain :=
+@[expose] def ratchetState (st : TRState) (pk dhs : Bytes) : TRState × RecvChain :=
   let (rk1, ckr) := createChain st.rk pk st.dhs
   let (rk2, cks) := createChain rk1 pk dhs
   let c : RecvChain := { ratchetKey := pk, chainKey := ckr, index := 0, rIdx := st.rIdx + 2 }
@@ -673,19 +673,19 @@ theorem Runs.messageDecryptSkipped {tr : ExecTrace} {me : Participant}
 
 /-- The wire message (with MAC) `messageEncrypt` sends from state `st` with SPQR coins `coins`,
 salt `pq` and plaintext `m`. -/
-def encMsg (st : TRState) (coins pq m : Bytes) : Bytes :=
+@[expose] def encMsg (st : TRState) (coins pq m : Bytes) : Bytes :=
   let keys := trMsgKeys pq (kdfCk st.cks).2
   let wire := trHonestWireMsg (dhPk st.dhs) st.ns st.pn
     (SymEnc.symEnc keys.cipherKey keys.iv m) (Spqr.spqrSend st.spqr coins).2.2
   Concat.concat wire (computeMac keys.macKey st.myIk st.peerIk wire)
 
 /-- The state `messageEncrypt` stores after sending from `st` with SPQR coins `coins`. -/
-def encSt (st : TRState) (coins : Bytes) : TRState :=
+@[expose] def encSt (st : TRState) (coins : Bytes) : TRState :=
   { st with cks := (kdfCk st.cks).1, ns := st.ns + 1, spqr := (Spqr.spqrSend st.spqr coins).1 }
 
 /-- The trace after `messageEncrypt me stH 32 pqH` on `tr` reading `st` and salt `pq`: plaintext
 at `tr.length`, coins at `tr.length + 1`, the published SPQR key at `tr.length + 2`. -/
-def encTr (tr : ExecTrace) (me : Participant) (stH : Nat) (st : TRState) (pq : Bytes) :
+@[expose] def encTr (tr : ExecTrace) (me : Participant) (stH : Nat) (st : TRState) (pq : Bytes) :
     ExecTrace :=
   let m := rnd tr.length 32
   let coins := rnd (tr.length + 1) 32
@@ -724,7 +724,7 @@ theorem Runs.messageEncrypt {tr : ExecTrace} {me : Participant} {stH pqH : Nat} 
 
 /-! ## Session-State and Skipped-Key Exposure Transitions -/
 
-def exposeRkTr (tr : ExecTrace) (me : Participant) (st : TRState) : ExecTrace :=
+@[expose] def exposeRkTr (tr : ExecTrace) (me : Participant) (st : TRState) : ExecTrace :=
   (tr.append (EvT (.ExposedRK (st.sessionInfo me) st.rk st.rIdx))).append (NetE st.rk)
 
 theorem Runs.exposeRk {tr : ExecTrace} {me : Participant} {stH : Nat} {st : TRState}
@@ -735,7 +735,7 @@ theorem Runs.exposeRk {tr : ExecTrace} {me : Participant} {stH : Nat} {st : TRSt
   refine Runs.bind (Runs.logEvent _ _) ?_
   exact runs_cast_loc (Runs.sendMessage _ _) (append_len_loc _ _) rfl
 
-def exposeDhsTr (tr : ExecTrace) (me : Participant) (st : TRState) : ExecTrace :=
+@[expose] def exposeDhsTr (tr : ExecTrace) (me : Participant) (st : TRState) : ExecTrace :=
   (tr.append (EvT (.ExposedDHs (st.sessionInfo me) st.dhs st.rIdx))).append (NetE st.dhs)
 
 theorem Runs.exposeDhs {tr : ExecTrace} {me : Participant} {stH : Nat} {st : TRState}
@@ -746,7 +746,7 @@ theorem Runs.exposeDhs {tr : ExecTrace} {me : Participant} {stH : Nat} {st : TRS
   refine Runs.bind (Runs.logEvent _ _) ?_
   exact runs_cast_loc (Runs.sendMessage _ _) (append_len_loc _ _) rfl
 
-def exposeCksTr (tr : ExecTrace) (me : Participant) (st : TRState) : ExecTrace :=
+@[expose] def exposeCksTr (tr : ExecTrace) (me : Participant) (st : TRState) : ExecTrace :=
   (tr.append (EvT (.ExposedCKs (st.sessionInfo me) st.cks st.ns st.rIdx))).append (NetE st.cks)
 
 theorem Runs.exposeCks {tr : ExecTrace} {me : Participant} {stH : Nat} {st : TRState}
@@ -757,7 +757,7 @@ theorem Runs.exposeCks {tr : ExecTrace} {me : Participant} {stH : Nat} {st : TRS
   refine Runs.bind (Runs.logEvent _ _) ?_
   exact runs_cast_loc (Runs.sendMessage _ _) (append_len_loc _ _) rfl
 
-def exposeCkrTr (tr : ExecTrace) (me : Participant) (st : TRState) (c : RecvChain) :
+@[expose] def exposeCkrTr (tr : ExecTrace) (me : Participant) (st : TRState) (c : RecvChain) :
     ExecTrace :=
   (tr.append (EvT (.ExposedCKr (st.sessionInfo me) c.chainKey c.index c.rIdx))).append
     (NetE c.chainKey)
@@ -774,7 +774,7 @@ theorem Runs.exposeCkr {tr : ExecTrace} {me : Participant} {stH : Nat} {st : TRS
   refine Runs.bind (Runs.logEvent _ _) ?_
   exact runs_cast_loc (Runs.sendMessage _ _) (append_len_loc _ _) rfl
 
-def exposeSpqrTr (tr : ExecTrace) (me : Participant) (st : TRState) : ExecTrace :=
+@[expose] def exposeSpqrTr (tr : ExecTrace) (me : Participant) (st : TRState) : ExecTrace :=
   (tr.append (EvT (.ExposedSpqr (st.sessionInfo me) st.spqr st.rIdx))).append (NetE st.spqr)
 
 theorem Runs.exposeSpqr {tr : ExecTrace} {me : Participant} {stH : Nat} {st : TRState}
@@ -785,7 +785,7 @@ theorem Runs.exposeSpqr {tr : ExecTrace} {me : Participant} {stH : Nat} {st : TR
   refine Runs.bind (Runs.logEvent _ _) ?_
   exact runs_cast_loc (Runs.sendMessage _ _) (append_len_loc _ _) rfl
 
-def exposeSkippedTr (tr : ExecTrace) (s : SessionInfo) (seed : Bytes) (n : UInt32)
+@[expose] def exposeSkippedTr (tr : ExecTrace) (s : SessionInfo) (seed : Bytes) (n : UInt32)
     (rIdx : Nat) : ExecTrace :=
   (tr.append (EvT (.ExposedMK s seed n rIdx))).append (NetE seed)
 
@@ -827,7 +827,7 @@ theorem parse_honest (rk ct pqm mk ikS ikR : Bytes) (n pn : UInt32) :
   rfl
 
 /-- The parsed form of `encMsg st coins pq m`. -/
-def encSig (st : TRState) (coins pq m : Bytes) : TRSignalMsg :=
+@[expose] def encSig (st : TRState) (coins pq m : Bytes) : TRSignalMsg :=
   let keys := trMsgKeys pq (kdfCk st.cks).2
   let wire := trHonestWireMsg (dhPk st.dhs) st.ns st.pn
     (SymEnc.symEnc keys.cipherKey keys.iv m) (Spqr.spqrSend st.spqr coins).2.2
@@ -962,7 +962,7 @@ theorem Runs.aliceHandshakeOpk {tr : ExecTrace} {a b : Participant} {idH regB oi
 
 /-- The session state `aliceStart` stores, from the handshake output `o` and the ratchet secret
 `dhsA`. -/
-def aliceSt (b : Participant) (o : AliceHandshakeOut) (dhsA : Bytes) : TRState :=
+@[expose] def aliceSt (b : Participant) (o : AliceHandshakeOut) (dhsA : Bytes) : TRState :=
   { peer := b, myIk := serializedIk o.ikA, peerIk := serializedIk o.ikB,
     rk := (createChain o.keys.rk o.spk dhsA).1, dhs := dhsA,
     cks := (createChain o.keys.rk o.spk dhsA).2, ns := 0, pn := 0,
@@ -975,7 +975,7 @@ def aliceSt (b : Participant) (o : AliceHandshakeOut) (dhsA : Bytes) : TRState :
 entropy and ratchet secret (randomness at `tr.length` to `tr.length + 2`), base key and KEM
 ciphertext (network), `AliceDone` at `tr.length + 5`, `InitSession`, `HandshakeSession`, and the
 state at `tr.length + 8`. -/
-def aliceTrOpt (tr : ExecTrace) (a b : Participant) (ikA ikBPk spkPk pqPk : Bytes)
+@[expose] def aliceTrOpt (tr : ExecTrace) (a b : Participant) (ikA ikBPk spkPk pqPk : Bytes)
     (opkPk : Option Bytes) : ExecTrace :=
   let o := aliceOutOpt tr ikA ikBPk spkPk pqPk opkPk
   let dhsA := rnd (tr.length + 2) 32
@@ -1114,7 +1114,7 @@ theorem Runs.bobHandshakeOpk {tr : ExecTrace} {b a : Participant} {h : BobKeyHan
 
 /-- Bob's in-memory session state of `bobStart` (`initialize_bob_session`), before the decrypt of
 the opening message `msg`. -/
-def bobSt0 (a : Participant) (ikB spk ikAPk : Bytes) (keys : HandshakeKeys) (msg : TRSignalMsg) :
+@[expose] def bobSt0 (a : Participant) (ikB spk ikAPk : Bytes) (keys : HandshakeKeys) (msg : TRSignalMsg) :
     TRState :=
   { peer := a, myIk := serializedIk (dhPk ikB), peerIk := serializedIk ikAPk, rk := keys.rk,
     dhs := spk, cks := keys.ck, ns := 0, pn := 0,
@@ -1267,7 +1267,7 @@ theorem Runs.bobStartOpk {tr : ExecTrace} {b a : Participant} {kh : BobKeyHandle
 
 /-! ## PKI and Prekey Upload `Runs` Combinators -/
 
-def registerIdentityTr (tr : ExecTrace) (p : Participant) : ExecTrace :=
+@[expose] def registerIdentityTr (tr : ExecTrace) (p : Participant) : ExecTrace :=
   let ik := rnd tr.length 32
   ((((tr.append (RndE 32)).append
     (EvP (.IdentityRegistered p (dhPk ik) (Signature.vk ik) true))).append
@@ -1286,7 +1286,7 @@ theorem Runs.registerIdentity {tr : ExecTrace} {p : Participant}
   refine runs_cast_loc (Runs.storePQXDHState _ _ _) ?_ rfl
   simp only [NetE, append_len_loc, Nat.add_assoc]
 
-def genSignedPrekeyTr (tr : ExecTrace) (b : Participant) (ik : Bytes) : ExecTrace :=
+@[expose] def genSignedPrekeyTr (tr : ExecTrace) (b : Participant) (ik : Bytes) : ExecTrace :=
   let spk := rnd tr.length 32
   let nonce := rnd (tr.length + 1) 64
   (((((tr.append (RndE 32)).append (RndE 64)).append
@@ -1309,7 +1309,7 @@ theorem Runs.genSignedPrekey {tr : ExecTrace} {b : Participant} {idH : Nat} {ik 
   simpa only [genSignedPrekeyTr, RndE, EvP, NetE, StP, append_len_loc, Nat.add_assoc] using
     Runs.pure _ _
 
-def genPQPrekeyTr (tr : ExecTrace) (b : Participant) (ik : Bytes) : ExecTrace :=
+@[expose] def genPQPrekeyTr (tr : ExecTrace) (b : Participant) (ik : Bytes) : ExecTrace :=
   let pqsk := rnd tr.length 64
   let nonce := rnd (tr.length + 1) 64
   (((((tr.append (RndE 64)).append (RndE 64)).append
@@ -1332,7 +1332,7 @@ theorem Runs.genPQPrekey {tr : ExecTrace} {b : Participant} {idH : Nat} {ik : By
   simpa only [genPQPrekeyTr, RndE, EvP, NetE, StP, append_len_loc, Nat.add_assoc] using
     Runs.pure _ _
 
-def genOneTimePrekeyTr (tr : ExecTrace) (b : Participant) : ExecTrace :=
+@[expose] def genOneTimePrekeyTr (tr : ExecTrace) (b : Participant) : ExecTrace :=
   let opk := rnd tr.length 32
   (((tr.append (RndE 32)).append
     (EvP (.OneTimePrekeyPublished b (dhPk opk)))).append

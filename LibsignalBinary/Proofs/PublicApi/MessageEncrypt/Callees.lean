@@ -13,6 +13,7 @@ public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Defs
 public import LibsignalBinary.Specifications.LibsignalPublicApiRepr
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Hooks
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # In-Image Callee Contracts for `session_message_encrypt_with_stores`
@@ -27,7 +28,7 @@ Specifications at rebased addresses `img.base + off` for the four in-image helpe
 Logging calls behind `logOff` (`+0xc84 b.ls`, including `encode_hex` at `+0xc98`) are unreachable.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt
 
@@ -44,7 +45,7 @@ abbrev unackItemsStack : Nat := extHookStack + 0x200
 
 /-- Borrowed slice `(ptr, len)` returned by `kyber_ciphertext()` at `a`: null pointer and
 unspecified length on `none`; `(g.vec.ptr, k.ciphertext.length)` on `some g`. -/
-def unackKyberSliceAt (a : BitVec 64) : Option TailVecGhost → SepProp
+@[expose] def unackKyberSliceAt (a : BitVec 64) : Option TailVecGhost → SepProp
   | none => (a ↦₆₄ 0#64) ∗ memRegion (a + 8#64) 8
   | some g => (a ↦₆₄ g.vec.ptr) ∗ ((a + 8#64) ↦₆₄ BitVec.ofNat 64 g.vec.bytes.length)
 
@@ -52,7 +53,7 @@ def unackKyberSliceAt (a : BitVec 64) : Option TailVecGhost → SepProp
 written to `out`: `u32` niche tag at `+0` (`0`/`1` = `Some` with `pre_key_id` `None`/`Some` at `+4`,
 `2` = `None`), optional `kyber_pre_key_id` at `+8`, `UNIX_EPOCH + timestamp` at `+0x10`, 32-byte
 base key at `+0x20`, `kyber_ciphertext` slice at `+0x40`, and `signed_pre_key_id` at `+0x50`. -/
-def unackOutAt (out : BitVec 64) (kyG : Option TailVecGhost) (kyber : Option PendingKyberPreKey) :
+@[expose] def unackOutAt (out : BitVec 64) (kyG : Option TailVecGhost) (kyber : Option PendingKyberPreKey) :
     Option PendingPreKey → SepProp
   | none => (out ↦₃₂ 2#32) ∗ memRegion (out + 4#64) 84
   | some items =>
@@ -70,24 +71,6 @@ structure UnackCall where
   sess : Session (List (BitVec 8))
   out : BitVec 64
 
-/-- Contract for `SessionState::unacknowledged_pre_key_message_items`: writes the pending pre-key
-items to `x.out` with timestamp `UNIX_EPOCH + Duration::from_secs(t)` (`timeAdd` at `0x12518`) while
-preserving the session, panicking iff timestamp addition overflows. -/
-def unackItemsSpec (A : RustAlloc) (img : Obj.Image) : Spec UnackCall where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x8 = x.out⌝ ∗ sessionStateReprAt A x.ss x.G x.sess ∗
-      memRegion x.out 88 ∗ logOff img ∗ stackAt s.sp unackItemsStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗ sessionStateReprAt A x.ss x.G x.sess ∗
-      unackOutAt x.out x.G.kyber x.sess.pendingKyberPreKey x.sess.pendingPreKey ∗ logOff img ∗
-      stackAt s0.sp unackItemsStack
-  onPanic := fun x s0 sf =>
-    ⌜(∃ items, x.sess.pendingPreKey = some items ∧
-        SystemTime.unixEpoch.checkedAddSecs items.timestamp.toNat = none) ∧
-      s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-! ## The Kyber closure (`0x34254`) -/
-
 /-- Call parameters for the `KyberPayload::new` `Option::map` closure: 24-byte `Option<KyberPayload>`
 `sret` (`x0`), `Option<(u32, &[u8])>` argument pointer (`x1`: `pre_key_id` at `+0`, slice pointer
 at `+8` with `0` for `None`, length at `+0x10`), backing slice pointer, and model payload. -/
@@ -98,7 +81,7 @@ structure KyberMapCall where
   kp : Option KyberPayload
 
 /-- Memory layout of the `Option<(u32, &[u8])>` closure argument at `x.arg`. -/
-def kyberArgAt (x : KyberMapCall) : SepProp :=
+@[expose] def kyberArgAt (x : KyberMapCall) : SepProp :=
   match x.kp with
   | none => memRegion x.arg 8 ∗ ((x.arg + 8#64) ↦₆₄ 0#64) ∗ memRegion (x.arg + 0x10#64) 8
   | some k =>
@@ -109,7 +92,7 @@ def kyberArgAt (x : KyberMapCall) : SepProp :=
 /-- Contract for the `Option<(KyberPreKeyId, &[u8])>::map(KyberPayload::new)` closure (`0x34254`):
 allocates and copies the ciphertext slice into a boxed `Option<KyberPayload>` (`optKyberAt`),
 leaving the input unchanged and panicking only on allocation failure. -/
-def kyberMapSpec (A : RustAlloc) : Spec KyberMapCall where
+@[expose] def kyberMapSpec (A : RustAlloc) : Spec KyberMapCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.arg⌝ ∗ kyberArgAt x ∗ memRegion x.out 24 ∗
       A.pool ∗ stackAt s.sp (allocHookStack + 0x40)
@@ -144,14 +127,14 @@ structure PreKeyMsgNewCall where
   msgG : SignalMessageGhost
   msg : SignalMessage
 
-def PreKeyMsgNewCall.model (x : PreKeyMsgNewCall) : PreKeySignalMessage :=
+@[expose] def PreKeyMsgNewCall.model (x : PreKeyMsgNewCall) : PreKeySignalMessage :=
   PreKeySignalMessage.new x.ver x.regId x.preKeyId x.spk x.kp x.baseKey x.ik x.msg
 
 /-- Contract for `PreKeySignalMessage::new`: consumes the `Option<KyberPayload>` and `SignalMessage`
 and writes `Ok(x.model)` in niche layout. Bounding `1 + encoded_len < 2^42` in the precondition
 rules out capacity and length-addition overflow panics (`0x15998`, `0x159c0`), so the call panics
 only on allocation failure. -/
-def preKeyMsgNewSpec (A : RustAlloc) : Spec PreKeyMsgNewCall where
+@[expose] def preKeyMsgNewSpec (A : RustAlloc) : Spec PreKeyMsgNewCall where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = x.ver ∧ (s.readReg64 .x1).setWidth 32 = x.regId ∧
       (s.readReg64 .x2).setWidth 32 = (if x.preKeyId.isSome then 1#32 else 0#32) ∧
@@ -172,91 +155,12 @@ def preKeyMsgNewSpec (A : RustAlloc) : Spec PreKeyMsgNewCall where
 
 /-- Contract for `drop_glue::<CiphertextMessage>`: deallocates all heap buffers of a
 `CiphertextMessage` in `apiEncResultAt` `Ok` niche layout without panicking. -/
-def cmDropSpec (A : RustAlloc) : Spec (BitVec 64 × CiphertextMessage) where
+@[expose] def cmDropSpec (A : RustAlloc) : Spec (BitVec 64 × CiphertextMessage) where
   pre := fun (p, m) s =>
     ⌜s.readReg64 .x0 = p⌝ ∗ apiEncResultAt A p (.ok m) ∗ A.pool ∗ stackAt s.sp (allocHookStack + 0x40)
   post := fun (p, _) s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ memRegion p 248 ∗ A.pool ∗ stackAt s0.sp (allocHookStack + 0x40)
 
 /-! ## Callee hypotheses -/
-
-def UnackItemsOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + bv% (ls_off% "<libsignal_protocol::state::session::SessionState>::unacknowledged_pre_key_message_items")) (unackItemsSpec A img)
-
-def UnackItemsOk_trap (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (trTrapProgAt img.base C abs) (img.base + bv% (ls_off% "<libsignal_protocol::state::session::SessionState>::unacknowledged_pre_key_message_items")) (unackItemsSpec A img)
-
-def KyberMapOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + bv% (ls_off% "<core::option::Option<(libsignal_protocol::state::kyber_prekey::KyberPreKeyId, &[u8])>>::map::<libsignal_protocol::protocol::KyberPayload, libsignal_protocol::session_management::message_encrypt<libsignal_session::HookRng>::{closure#0}::{closure#2}>")) (kyberMapSpec A)
-
-def PreKeyMsgNewOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + bv% (ls_off% "<libsignal_protocol::protocol::PreKeySignalMessage>::new")) (preKeyMsgNewSpec A)
-
-def PreKeyMsgNewOk_trap (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (trTrapProgAt img.base C abs) (img.base + bv% (ls_off% "<libsignal_protocol::protocol::PreKeySignalMessage>::new")) (preKeyMsgNewSpec A)
-
-def CmDropOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + bv% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::CiphertextMessage> [local#1]")) (cmDropSpec A)
-
-/-- `OTR::encrypt` (`0x33e0c`) on `tripleRatchetProgAt`. -/
-def OtrEncryptOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs) ((tripleRatchetProgAt img.base C ctl abs).fnAddr otrEncryptName)
-    (otrEncryptSpec C A ctl parse S img)
-
-/-- `otrEncryptSpec` restricted to outgoing triple-ratchet states whose SPQR state satisfies `Q`. -/
-def otrEncryptSpecQ (Q : List (BitVec 8) → Prop) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel) (img : Obj.Image) : Spec OtrEncryptGhost :=
-  { otrEncryptSpec C A ctl parse S img with
-    pre := fun x s => ⌜Q x.ot.pqrState⌝ ∗ (otrEncryptSpec C A ctl parse S img).pre x s }
-
-/-- `OTR::encrypt` (`0x33e0c`) on `tripleRatchetProgAt` for `otrEncryptSpecQ Q`. -/
-def OtrEncryptOkQ (Q : List (BitVec 8) → Prop) (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) (abs : String → Option (State → State)) :
-    Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    ((tripleRatchetProgAt img.base C ctl abs).fnAddr otrEncryptName) (otrEncryptSpecQ Q C A ctl parse S img)
-
-/-- `otrEncryptSpec` restricted to `(pqrState, rest)` satisfying `Q`, with `F` framed. -/
-def otrEncryptSpecQF (Q : List (BitVec 8) → List (BitVec 8) → Prop) (F : SepProp)
-    (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel)
-    (img : Obj.Image) : Spec OtrEncryptGhost :=
-  { otrEncryptSpec C A ctl parse S img with
-    pre := fun x s => ⌜Q x.ot.pqrState x.rest⌝ ∗ F ∗ (otrEncryptSpec C A ctl parse S img).pre x s
-    post := fun x s0 sf => F ∗ (otrEncryptSpec C A ctl parse S img).post x s0 sf }
-
-def OtrEncryptOkQF (Q : List (BitVec 8) → List (BitVec 8) → Prop) (F : SepProp)
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser)
-    (S : SpqrModel) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    ((tripleRatchetProgAt img.base C ctl abs).fnAddr otrEncryptName)
-    (otrEncryptSpecQF Q F C A ctl parse S img)
-
-/-- `OTR::encrypt` (`0x33e0c`) on `tripleRatchetProgAt` for `otrEncryptSpecT` (`pqrState.length < 2^32`, `64 ≤ rest.length`, `TokenInit img` framed). -/
-abbrev OtrEncryptOkQT (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel) (abs : String → Option (State → State)) : Prop :=
-  OtrEncryptOkQF (fun st rest => st.length < 2 ^ 32 ∧ 64 ≤ rest.length)
-    (LibsignalSpqrV1.TokenInit img) img C A ctl parse S abs
-
-/-- Bundle of all in-image callee contracts required by the `MessageEncrypt` segments alongside `PublicApiHooks` and `StoreKitOkS`. -/
-structure EncCallees (Q : List (BitVec 8) → Prop) (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) (abs : String → Option (State → State)) :
-    Prop where
-  otrFrom : OutgoingRatchet.OtrFromOk img C A ctl abs
-  otrApply : OutgoingRatchet.OtrApplyOk img C A ctl abs
-  remoteIk : OutgoingRatchet.RemoteIdentityKeyOk img C A ctl abs
-  otrEnc : OtrEncryptOkQ Q img C A ctl parse S abs
-  unack : UnackItemsOk img C A ctl abs
-  kyber : KyberMapOk img C A ctl abs
-  psmNew : PreKeyMsgNewOk img C A ctl abs
-  cmDrop : CmDropOk img C A ctl abs
-  /-- `drop_glue::<SessionStructure> [local#2]` (`0x35958`) for dropping the session record at `+0xef4`. -/
-  dropSs : FromRecordCallees.DropSessionStructureLocal2Ok img.base C A ctl abs
 
 end CryptoVerification.LibsignalPublicApi.MessageEncrypt

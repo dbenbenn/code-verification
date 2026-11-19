@@ -9,12 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS0_507Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS1Err507Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS2Sym507Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChain
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS0_507Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS1Err507Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS2Sym507Placed
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChain
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.ChainKeyCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.FindReceiverChainKey -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainStack
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainSym
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailSym
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
 
 /-!
 # Relocatable Chain-Lookup Segments for CLI `try_decrypt_with_state::<Coins>`
@@ -23,7 +31,7 @@ Relocatable `[LibsignalPlacement]` verification of Segment `S2` (`find_receiver_
 re-exports of `S0PSeamPlaced`, `S1TightSeamPlaced`, and `ErrTailTightSeamPlaced` on Block `507`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

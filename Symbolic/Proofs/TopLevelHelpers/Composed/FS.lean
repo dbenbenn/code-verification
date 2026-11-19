@@ -19,7 +19,7 @@ Re-exports whole-protocol forward secrecy (`Security.ForwardSecrecy`) for
 `Symbolic.Theorems.Composed.ComposedFS`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

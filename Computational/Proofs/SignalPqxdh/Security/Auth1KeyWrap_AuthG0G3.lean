@@ -9,7 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB3
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB2
 
 /-!
 # One-Key `Auth` Hop `G0 → G3`
@@ -19,7 +23,7 @@ Bounds the advantage difference between the one-key `Auth` game and `G3` modulo 
 `shcrReductionAuth1Key`.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open MeasureTheory

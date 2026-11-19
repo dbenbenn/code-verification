@@ -20,7 +20,7 @@ Pure session-model and ghost-relation lemmas for `SessionState.tryDecryptWithSta
 `Root` and the segment proofs.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.Model
 

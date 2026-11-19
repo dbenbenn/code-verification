@@ -10,13 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropStepsPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `main` Hop M5 (`M+0x7b0 → M+0xf70`, Block `617`)
@@ -25,7 +30,7 @@ Composes `m5_moves_placed`, `m5_loop_placed`, and `m5_drop_for_m5_placed` on Blo
 `FitsEnv M lim st (M5Env g)`, and bridges `M5Env g` into `CliMainPeakSpec.M5PhaseEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,9 +56,13 @@ open LibsignalBinary.Heap.SpecBudget (WriteFileEnv writeFileEnv_nil)
 open LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
   (CliWriteFileEnv M5DirStepEnv M5LoopAEntryEnv M5PhaseEnv M5WriteStepEnv)
 open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit (ConcatEnv IterSeqEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced (FdsGe3Closed)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
   (MainIoOfPlaced mainIoBoundedPlaced_iff_mainIoPlaced)
+open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlacedSat
+  (MainIoOfPlacedSat mainIoBoundedPlaced_iff_mainIoPlaced_sat)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (MainIoPlaced)
+open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudgetSat (MainIoPlacedSat)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget (MainCalleesBlk617)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DirStepPlacedBudget
   (M5DirErrEnv M5DirOkEnv)
@@ -68,17 +77,19 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopBPlacedBudget
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopDropPlacedBudget
   (m5ErrEntryDropEvents)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopPlacedBudget
-  (M5DirsErrEnv M5DirsOkEnv m5_loop_of_placed m5_loop_placed)
+  (M5DirsErrEnv M5DirsOkEnv m5_loop_of_placed m5_loop_of_placed_sat m5_loop_placed)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPlacedBudget
   (m5ErrMem_eq_atState m5_drop_for_m5_placed)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesPlacedBudget
   (m5_moves_placed)
+open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.PoolSliceBound
+  (FitsEnvCap PoolSliceBound)
 
 /-- Unified allocator event envelope for `main`'s entire M5 phase (`M+0x7b0 → M+0xf70`), covering
 both full 8-`Dir` commit (`ok = true`) and `write_file`-error early exit followed by
 `m5_drop_for_m5_placed` cleanup (`ok = false`, via `IterSeqEnv` prefix early-exit +
 `m5ErrEntryDropEvents` + `FreeOnlyEvs`). -/
-def M5Env (g : StoresGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def M5Env (g : StoresGhost) (evs : List AllocEvent) : Prop :=
   SeqEnv (M5DirsOkEnv (storesDirs g)) FreeOnlyEvs evs
 
 example : ∃ evs, M5Env .opened evs :=
@@ -374,5 +385,130 @@ theorem main_m5_proof_placed [LibsignalPlacement] {CodeOk : Memory → Prop} [Ls
   main_m5_of_proof_placed hc
     ((mainIoBoundedPlaced_iff_mainIoPlaced A lim H io hookStack).mpr hio)
     hfit hstk hstk64 hpaths hs hnext
+
+/-- `{StdinEnv ReadEnv}`-parametric `MainIoOfPlacedSat` M5 hop (`M+0x7b0 → M+0xf70`) on Block `617`
+under `FitsEnvCap M lim st (M5Env g)` + `FdsGe3Closed s.fs`: composes `m5_moves_placed`,
+`m5_loop_of_placed_sat`, and `m5_drop_for_m5_placed` while advancing `A.pool` by `M5Env g`. -/
+theorem main_m5_of_proof_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop}
+    [LsCodeInv CodeOk]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} [PoolSliceBound A]
+    {lim : BudgetLimits} {st : M.σ}
+    {H : LibsignalHooks}
+    {uuidParse : UuidParser} {io : IoModel}
+    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
+    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
+    {i : Inputs} {c : CallV} {g : StoresGhost}
+    {out : List (BitVec 8)} {s0 s : State} {stk hookStack resStack : Nat}
+    {buf inCap inPtr : BitVec 64} {ps : List (BitVec 64 × List (BitVec 8))}
+    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoOfPlacedSat A lim H io hookStack StdinEnv ReadEnv)
+    (henf : lim.enforced = true)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE)
+    (hfit : FitsEnvCap M lim st (M5Env g))
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hpaths : ∀ pw ∈ g.writes, io.pathOk pw.1 ∧ pw.1.length < 2 ^ 32)
+    (hs : AtM4EndPlaced CodeOk i s0 s c i.argv.length buf inCap)
+    (hfds : FdsGe3Closed s.fs)
+    (hnext : ∀ (s' : State) (evs : List AllocEvent) (ok : Bool) (outCap outPtr : BitVec 64),
+      M5Env g evs →
+      (match commitFiles io.wr s.fs.files g.writes with
+       | some F => ok = true ∧ s'.fs.files = F
+       | none => ok = false) →
+      s.trace <+: s'.trace →
+      ProcessOutcome.traceStreamBytes .stdout s'.trace =
+        ProcessOutcome.traceStreamBytes .stdout s.trace →
+      AtM6Placed CodeOk s0 s' ok i.argv.length buf →
+      SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s'
+        (ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+          ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 (inputOf i c).length) (inputOf i c) ∗
+          argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗ mainSaved s0 ∗
+          locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+            (m6CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) outCap outPtr
+              (BitVec.ofNat 64 out.length) inCap inPtr) ∗
+          stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+          A.pool lim (M.stepEvents evs st) s' ∗ anyHeap)
+        Q Qp oom) :
+    SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+      (ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 (inputOf i c).length) (inputOf i c) ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
+        mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (m5CellsPlaced A.repAlloc (s0.sp - BitVec.ofNat 64 mainFrameSize) inPtr g out) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim st s ∗ anyHeap)
+      Q Qp oom := by
+  have hext : mainFrameSize + extHookStack ≤ stk := by omega
+  refine m5_moves_placed (inp := inputOf i c) (n := i.argv.length) (io := io) (g := g)
+    (out := out) (ps := ps) (st := st) hc.allocFs hext hs ?_
+  intro s1 outCap outPtr _hvm1 hfs1 _htr1 hloop
+  refine m5_loop_of_placed_sat (F0 := s.fs.files) (tr0 := s.trace) (st := st)
+    hc hio henf hphys hfit.seq_left hstk hstk64 hpaths hloop
+    (hfs1.symm ▸ hfds) (Entails.refl _) ?_ ?_
+  · intro k se evsErr errE curCap curPtr curEntries herr_dirs herr_st
+    rw [← m5ErrMem_eq_atState]
+    refine m5_drop_for_m5_placed (s := s) (i := i) (c := c)
+      (st := M.stepEvents evsErr st) hc.allocFs hext herr_st ?_
+    intro s' evsDrop evsRest ok outCap' outPtr' hsplit hcommit htr hstdout hat6
+    rcases hsplit with ⟨hdrop_eq, hfree_rest⟩
+    rw [← M.stepEvents_append evsErr evsDrop st]
+    exact hnext s' (evsErr ++ evsDrop) ok outCap' outPtr'
+      (m5Env_of_err herr_dirs hdrop_eq hfree_rest) hcommit htr hstdout hat6
+  · intro s' evs hok_dirs hcommit hpre hstdout hat6
+    exact hnext s' evs true outCap outPtr (Or.inl hok_dirs)
+      (by rw [hcommit]; exact ⟨rfl, rfl⟩) hpre hstdout hat6
+
+/-- `MainIoPlacedSat` M5 hop (`M+0x7b0 → M+0xf70`) on Block `617` under
+`FitsEnvCap M lim st (M5Env g)` + `FdsGe3Closed s.fs`. -/
+theorem main_m5_proof_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} [PoolSliceBound A]
+    {lim : BudgetLimits} {st : M.σ}
+    {H : LibsignalHooks}
+    {uuidParse : UuidParser} {io : IoModel} {i : Inputs} {c : CallV} {g : StoresGhost}
+    {out : List (BitVec 8)} {s0 s : State} {stk hookStack resStack : Nat}
+    {buf inCap inPtr : BitVec 64} {ps : List (BitVec 64 × List (BitVec 8))}
+    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoPlacedSat A lim H io hookStack)
+    (henf : lim.enforced = true)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE)
+    (hfit : FitsEnvCap M lim st (M5Env g))
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hpaths : ∀ pw ∈ g.writes, io.pathOk pw.1 ∧ pw.1.length < 2 ^ 32)
+    (hs : AtM4EndPlaced CodeOk i s0 s c i.argv.length buf inCap)
+    (hfds : FdsGe3Closed s.fs)
+    (hnext : ∀ (s' : State) (evs : List AllocEvent) (ok : Bool) (outCap outPtr : BitVec 64),
+      M5Env g evs →
+      (match commitFiles io.wr s.fs.files g.writes with
+       | some F => ok = true ∧ s'.fs.files = F
+       | none => ok = false) →
+      s.trace <+: s'.trace →
+      ProcessOutcome.traceStreamBytes .stdout s'.trace =
+        ProcessOutcome.traceStreamBytes .stdout s.trace →
+      AtM6Placed CodeOk s0 s' ok i.argv.length buf →
+      SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s'
+        (ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+          ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 (inputOf i c).length) (inputOf i c) ∗
+          argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗ mainSaved s0 ∗
+          locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+            (m6CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) outCap outPtr
+              (BitVec.ofNat 64 out.length) inCap inPtr) ∗
+          stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+          A.pool lim (M.stepEvents evs st) s' ∗ anyHeap)
+        Q Qp oom) :
+    SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s
+      (ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 (inputOf i c).length) (inputOf i c) ∗
+        argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
+        mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (m5CellsPlaced A.repAlloc (s0.sp - BitVec.ofNat 64 mainFrameSize) inPtr g out) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim st s ∗ anyHeap)
+      Q Qp oom :=
+  main_m5_of_proof_placed_sat hc
+    ((mainIoBoundedPlaced_iff_mainIoPlaced_sat A lim H io hookStack).mpr hio)
+    henf hphys hfit hstk hstk64 hpaths hs hfds hnext
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5PlacedBudget

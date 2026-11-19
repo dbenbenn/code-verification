@@ -29,7 +29,6 @@
 //! | `**/*.md` | `README.md` | `doc` | `-` | All Markdown documentation across the repository |
 //! | `Arm64/Trusted/{ISA,Object,Process,Syscalls,Spec}/**.lean`, `Arm64/Trusted/Syscalls.lean` | `Arm64/Trusted/ISA/Decode.lean` | `tcb` | `Arm64:Spec` (`CoreInitOnly`) | `Init`-only semantic core (`SepLogic.lean` is the sole notation allowlist entry) |
 //! | `Arm64/Trusted/Surface/**.lean`, `Arm64.lean`, `Arm64/Trusted.lean`, `Arm64/Trusted/Process.lean` | `Arm64/Trusted/Surface/Abi.lean` | `tcb` | `Arm64:Spec` (`SurfaceMacro`) | Surface DSL macros/elaborators and package barrels |
-//! | `Arm64/Legacy.lean`, `Arm64/Legacy/**.lean` | `Arm64/Legacy/Object/LinkedImage.lean` | `proof` | `Arm64:Proof` | Deprecated `[OUTSIDE TCB]` `LinkedImage` compatibility modules (shrinking importer allowlist) |
 //! | `Arm64/Testing/**.lean` (`.Fixtures` at depth >= 4) | `Arm64/Testing/Audit/AxiomAudit/Fixtures.lean` | `testing` | `Arm64Testing:Fixture` | Deliberately unsound audit fixtures (importable only by parent module) |
 //! | `Arm64/Testing/**` (other `.lean` and non-Lake assets) | `Arm64/Testing/AsciiTests.lean` | `testing` | `Arm64Testing:Test` | Engine-level tests decoupled from `VerifiedLibraries` and `CaseStudies` |
 //! | `ProofLib.lean`, `ProofLib/**.lean` (outside `Testing/` and `TRUST_ENFORCEMENT_LEAN_FILES`) | `ProofLib/SimpAttrs.lean` | `proof` | `ProofLib:Proof` | Untrusted reusable proof automation and lemmas |
@@ -42,15 +41,14 @@
 //! | `{VerifiedLibraries,CaseStudies}/<Pkg>/Spec.lean`, `.../Spec/**.lean` | `CaseStudies/Alpha/Spec/Top.lean` | `case-studies-tcb` | `Examples:Spec` | Definition-only trusted specifications (`VerifiedLibraries:Spec` under `VerifiedLibraries/`) |
 //! | `{VerifiedLibraries,CaseStudies}/<Pkg>/Proofs/**.lean` | `CaseStudies/Alpha/Proofs/Main.lean` | `proof` | `Examples:Proof` | Untrusted kernel-checked proofs (`VerifiedLibraries:Proof` under `VerifiedLibraries/`) |
 //! | `{VerifiedLibraries,CaseStudies}/<Pkg>/Generated/{*PlacedObj,*PlacedObjShard<k>,*ExtractedObj,*ElfObj}.lean` | `CaseStudies/Alpha/Generated/AlphaPlacedObj.lean` | `case-studies-tcb` | `Examples:Spec` | Generated trusted placed-library, pre-link extracted-object, and ELF object definitions (and `placed_shards` code shards) |
-//! | `{VerifiedLibraries,CaseStudies}/<Pkg>/Generated/*.bin` (except `*.{code,data}.bin`) | `CaseStudies/Alpha/Generated/AlphaPlacedObj.bin` | `case-studies-tcb` | `-` | Extracted target binary payloads |
-//! | `{VerifiedLibraries,CaseStudies}/<Pkg>/Generated.lean`, `.../Generated/**.lean` (other) | `CaseStudies/Alpha/Generated/AlphaCode.lean` | `proof` | `Examples:Proof` | Generated instruction/decode/placement proof modules and `[OUTSIDE TCB]` legacy `*Obj` proof cache |
-//! | `{VerifiedLibraries,CaseStudies}/<Pkg>/Generated/*.{code,data}.bin` | `CaseStudies/Alpha/Generated/AlphaObj.code.bin` | `proof` | `-` | `[OUTSIDE TCB]` legacy `LinkedImage` proof-cache binary sidecars |
+//! | `{VerifiedLibraries,CaseStudies}/<Pkg>/Generated/*.bin` | `CaseStudies/Alpha/Generated/AlphaPlacedObj.bin` | `case-studies-tcb` | `-` | Extracted target binary payloads |
+//! | `{VerifiedLibraries,CaseStudies}/<Pkg>/Generated.lean`, `.../Generated/**.lean` (other) | `CaseStudies/Alpha/Generated/AlphaCode.lean` | `proof` | `Examples:Proof` | Generated instruction/decode/placement proof modules |
 //! | `VerifiedLibraries/Theorems[.lean]`, `{VerifiedLibraries,CaseStudies}/<Pkg>/Theorems[.lean]` | `CaseStudies/Alpha/Theorems/Top.lean` | `case-studies-tcb` | `Theorems:Theorems` | Closed `theorem`-only end-to-end statements (`Theorems` sink) |
 //! | `{VerifiedLibraries,CaseStudies}/<Pkg>/Implementation/**` (Rust unit/integration tests) | `CaseStudies/Alpha/Implementation/src/tests.rs` | `testing` | `-` | Only `*.rs` files matching `is_test_path` (including `tests/`; never linked into verified objects); `.c`/`.h` under `tests/` stay `case-studies-tcb` |
 //! | `{VerifiedLibraries,CaseStudies}/<Pkg>/Implementation/**` (target sources & build configs) | `CaseStudies/Alpha/Implementation/src/lib.rs` | `case-studies-tcb` | `-` | Verified C/Rust target inputs, translation configs, and linked ELFs |
 //! | `third_party/**` | `third_party/vendor/src/lib.c` | `case-studies-tcb` | `-` | Vendored upstream sources compiled into case studies |
 //! | `tools/rust-obj2lean/src/{trusted_*,lib.rs}` | `tools/rust-obj2lean/src/lib.rs` | `tcb` | `-` | Core ELF extraction TCB (`tcb-rust-import` enforced) |
-//! | `tools/rust-obj2lean/src/{untrusted_lemmas,untrusted_legacy_linker}/**` (non-test) | `tools/rust-obj2lean/src/untrusted_lemmas/mod.rs` | `proof` | `-` | Untrusted Lean proof-module codegen and `[OUTSIDE TCB]` legacy `LinkedImage` proof-cache exporter |
+//! | `tools/rust-obj2lean/src/untrusted_lemmas/**` (non-test) | `tools/rust-obj2lean/src/untrusted_lemmas/mod.rs` | `proof` | `-` | Untrusted Lean proof-module codegen and `symexec` advisor |
 //! | `tools/proc-snapshot/src/**` (trusted modules) | `tools/proc-snapshot/src/lib.rs` | `case-studies-tcb` | `-` | Process-snapshot dumper (`tcb-rust-import` enforced) |
 //! | `tools/{rust-obj2lean,proc-snapshot}/**` (`tests`, `*_test.rs`, `test_infra`) | `tools/rust-obj2lean/src/tests.rs` | `testing` | `-` | Separated unit/integration tests of `[tcb]`/`[case-studies-tcb]` crates |
 //! | `tools/{rust-obj2lean,proc-snapshot}/**` (`untrusted_*`, `src/main.rs`, `Cargo.toml`) | `tools/rust-obj2lean/src/main.rs` | `infra` | `-` | Untrusted CLI/driver orchestration and crate manifests |
@@ -86,17 +84,6 @@ pub const ENGINE_INTERNAL_IMPORTS: &[&str] = &[
 /// Engine-internal modules that must only be imported privately (never `public import`), so their
 /// declarations never become visible to the importer's own importers.
 pub const PRIVATE_ONLY_IMPORTS: &[&str] = &["ProofLib.SepLogic.Model", "ProofLib.Hoare.Model"];
-
-/// Shrinking Stage 3a allowlist of non-`Arm64.Legacy` Lean modules permitted to directly
-/// `import Arm64.Legacy[.*]` while `ProofLib/` and `Arm64/Testing/` preserve temporary bump
-/// compatibility for downstream consumers. Audited bidirectionally by
-/// [`crate::Workspace::check_imports`] (new importers are rejected; stale entries fail closed).
-pub const LEGACY_LINKED_IMAGE_IMPORTERS: &[&str] = &[
-    "Arm64.Testing.Harness.ElfRegionLoad",
-    "Arm64.Testing.Regression.ObjectLoad",
-    "ProofLib.Library",
-    "ProofLib.ObjectLoad",
-];
 
 /// Explicit two-tier classification for every non-`Testing` Lean module in `Arm64` (`[tcb]`):
 /// - [`TrustedTcbTier::CoreInitOnly`]: semantic core TCB modules whose entire transitive import
@@ -208,30 +195,27 @@ pub enum TrustCategory {
     /// accepted — the Lean definitions every theorem is stated against (`Arm64/Trusted/`) and the
     /// ELF `.o` extraction that produces the relocatable object bytes the theorems are about
     /// (`tools/rust-obj2lean/src/{trusted_*,lib.rs}`). Inside that crate, test files
-    /// ([`is_test_path`]) are `testing`, `untrusted_lemmas/` and `untrusted_legacy_linker/`
-    /// (non-test) are `proof`, and other `untrusted_*` modules plus the `src/main.rs` entry
-    /// stub ([`is_untrusted_module_path`]) are `infra`. Trusted host-tool Rust files (`tcb` and
-    /// `case-studies-tcb` under `tools/`) contain no inline test code (`tcb_test_code`) and
-    /// reference no non-`tcb` workspace crate or `untrusted_*` / `test_infra` module
-    /// (`tcb_rust_import`).
+    /// ([`is_test_path`]) are `testing`, `untrusted_lemmas/` (non-test) is `proof`, and other
+    /// `untrusted_*` modules plus the `src/main.rs` entry stub ([`is_untrusted_module_path`]) are
+    /// `infra`. Trusted host-tool Rust files (`tcb` and `case-studies-tcb` under `tools/`)
+    /// contain no inline test code (`tcb_test_code`) and reference no non-`tcb` workspace crate
+    /// or `untrusted_*` / `test_infra` module (`tcb_rust_import`).
     Tcb,
     /// Case-study Trusted Computing Base (`[case-studies-tcb]`): trusted only insofar as you want
     /// the case-study proofs (deleting the case studies leaves the core engine intact):
     /// `{VerifiedLibraries,CaseStudies}/<Pkg>/Implementation/` and `third_party/` (C/Rust sources
     /// under test), `{VerifiedLibraries,CaseStudies}/<Pkg>/Spec*`,
     /// `{VerifiedLibraries,CaseStudies}/<Pkg>/Theorems*`,
-    /// `{VerifiedLibraries,CaseStudies}/<Pkg>/Generated/*.bin` (excluding legacy `.code.bin`/`.data.bin`
-    /// proof-cache sidecars), and the optional process-snapshot
+    /// `{VerifiedLibraries,CaseStudies}/<Pkg>/Generated/*.bin`, and the optional process-snapshot
     /// dumper `tools/proc-snapshot/` (whose trusted Rust sources also obey `tcb_test_code` and
     /// `tcb_rust_import`).
     #[serde(rename = "case-studies-tcb")]
     CaseStudiesTcb,
-    /// Untrusted machine-checked proofs & proof automation (`[proof]`): `Arm64/Legacy/`, `ProofLib/`,
+    /// Untrusted machine-checked proofs & proof automation (`[proof]`): `ProofLib/`,
     /// `{VerifiedLibraries,CaseStudies}/<Pkg>.lean`,
     /// `{VerifiedLibraries,CaseStudies}/<Pkg>/Proofs/`, `Generated/` Lean modules other than
-    /// `*PlacedObj` / `*PlacedObjShard<k>` / `*ExtractedObj` / `*ElfObj` (including legacy `*Obj`
-    /// proof-cache modules and `.code.bin`/`.data.bin` sidecars), and
-    /// `tools/rust-obj2lean/src/{untrusted_lemmas,untrusted_legacy_linker}/`.
+    /// `*PlacedObj` / `*PlacedObjShard<k>` / `*ExtractedObj` / `*ElfObj`, and
+    /// `tools/rust-obj2lean/src/untrusted_lemmas/`.
     Proof,
     /// Validation suites and trust-model enforcement (`[testing]`):
     /// `{Arm64,ProofLib,VerifiedLibraries}/Testing/`,
@@ -366,8 +350,6 @@ pub fn classify_path(rel_path: &str) -> Option<TrustCategory> {
         "Arm64" => {
             if parts.get(1) == Some(&"Testing") {
                 Some(TrustCategory::Testing)
-            } else if parts.get(1) == Some(&"Legacy") {
-                Some(TrustCategory::Proof)
             } else {
                 Some(TrustCategory::Tcb)
             }
@@ -405,9 +387,7 @@ pub fn classify_path(rel_path: &str) -> Option<TrustCategory> {
         "tools" => {
             let category = match parts.get(1).copied() {
                 Some("rust-obj2lean") => match (parts.get(2).copied(), parts.get(3).copied()) {
-                    (Some("src"), Some("untrusted_lemmas" | "untrusted_legacy_linker"))
-                        if !is_test_path(&parts[2..]) =>
-                    {
+                    (Some("src"), Some("untrusted_lemmas")) if !is_test_path(&parts[2..]) => {
                         Some(TrustCategory::Proof)
                     }
                     (Some("src"), _) => Some(TrustCategory::Tcb),
@@ -461,8 +441,8 @@ pub fn classify_path(rel_path: &str) -> Option<TrustCategory> {
 /// Classify a non-`.lean` file of a per-campaign package (`rel` is the repo-relative path, `rest`
 /// its segments below the package directory, see [`package_depth`]): Lake/CI configuration and
 /// `Proofs/.gitkeep` are `infra`, `Testing/**` is `testing`, `Implementation/**` is
-/// `case-studies-tcb` except Rust test sources, `Generated/*.{code,data}.bin` sidecars are
-/// `proof`, other `Generated/*.bin` payloads are `case-studies-tcb`; anything else fails closed.
+/// `case-studies-tcb` except Rust test sources, and `Generated/*.bin` payloads are
+/// `case-studies-tcb`; anything else fails closed.
 fn classify_package_file_path(rel: &str, rest: &[&str]) -> Option<TrustCategory> {
     match rest {
         ["lakefile.toml" | "lakefile.lean" | "lake-manifest.json"] => Some(TrustCategory::Infra),
@@ -475,9 +455,6 @@ fn classify_package_file_path(rel: &str, rest: &[&str]) -> Option<TrustCategory>
             Some(TrustCategory::Testing)
         }
         ["Implementation", ..] => Some(TrustCategory::CaseStudiesTcb),
-        ["Generated", ..] if rel.ends_with(".code.bin") || rel.ends_with(".data.bin") => {
-            Some(TrustCategory::Proof)
-        }
         ["Generated", ..] if rel.ends_with(".bin") => Some(TrustCategory::CaseStudiesTcb),
         _ => None,
     }
@@ -519,8 +496,6 @@ pub enum Scope {
     NonTesting,
     /// Everything outside `ProofLib/` and `Arm64/Testing/`.
     OutsideProofLibAndArm64Testing,
-    /// Everything outside `Arm64/Legacy*`, `ProofLib/`, and `Arm64/Testing/`.
-    OutsideLegacyLinkedImage,
     Spec,
     /// `Role::Spec` modules outside [`is_spec_macro_syntax_allowed`].
     SpecNonSurface,
@@ -543,13 +518,6 @@ impl Scope {
             Scope::OutsideProofLibAndArm64Testing => {
                 !matches!(class.lib, Lib::ProofLib | Lib::Arm64Testing)
                     && !path.starts_with("Arm64/Testing")
-            }
-            Scope::OutsideLegacyLinkedImage => {
-                !matches!(class.lib, Lib::ProofLib | Lib::Arm64Testing)
-                    && !(class.lib == Lib::Arm64 && class.role == Role::Proof)
-                    && !path.starts_with("Arm64/Legacy")
-                    && !path.starts_with("Arm64/Testing")
-                    && !path.starts_with("ProofLib/")
             }
             Scope::Spec => class.role == Role::Spec,
             Scope::SpecNonSurface => {

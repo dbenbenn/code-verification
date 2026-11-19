@@ -9,10 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.SpecsPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushAPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Tag-7 (`receiver_chains`) Push Segment (`+0x2310 → +0x2160`)
@@ -22,7 +27,7 @@ Total-correctness (`RustCliAllocBudget M`) verification of Segment B of the tag-
 advancing `A.pool lim st s` along the exact allocation envelope `OverDecRecvSegBEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -87,7 +92,7 @@ export LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRec
 /-! ## Plain `OverDecRecvSegBPlacedBudgetStmt` (`PrevDec.OverDecG`) -/
 
 /-- Budget-threaded Segment B (`(blkPl_518).base + 0x2310 → +0x2160`) of the tag-7 (`receiver_chains`) arm on `lsProg_518 ext` with panic postcondition `Qp`. -/
-def OverDecRecvSegBPlacedBudgetStmtGen [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecRecvSegBPlacedBudgetStmtGen [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Qp : M.σ → State → State → SepProp → Prop) : Prop :=
   ∀ (ext : String → Option (State → State)) (st : M.σ),
@@ -262,7 +267,7 @@ theorem overDecRecv_segB_placed_of_grow [LibsignalPlacement] {M : AllocCostModel
 /-! ## `LibsignalCodeLoaded`-Backed `OverDecRecvSegBLsclPlacedBudgetStmt` (`VerNe.Chain3.OverDecG`) -/
 
 /-- `LibsignalCodeLoaded`-backed Segment B (`(blkPl_518).base + 0x2310 → +0x2160`) on `lsProg_518 (Rust.withPanics ext)` under `GrowOneXBudget.AllocContractsPlaced`. -/
-def OverDecRecvSegBLsclPlacedBudgetStmtGen [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverDecRecvSegBLsclPlacedBudgetStmtGen [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Qp : M.σ → State → State → SepProp → Prop) : Prop :=
   ∀ (ext : String → Option (State → State)),

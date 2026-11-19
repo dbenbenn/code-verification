@@ -36,7 +36,7 @@ import Symbolic.Specifications.Model.EquationalTheory.Trunc
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import Symbolic.Specifications.Model.EquationalTheory.X25519
 import DY.Trace.BaseAttackerKnowledge
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
 import Batteries.Tactic.SeqFocus
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
@@ -77,7 +77,7 @@ Defines the `DhSafe` structural invariant on reachable composed traces and prove
 `agree_attackerKnows_inv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

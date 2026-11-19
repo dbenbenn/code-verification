@@ -23,10 +23,10 @@ Proves `comp_refinement_preservation_cli` (`CompRefinementPreservationCli Agree 
 and `R` refines the model from `initDirs`, then all ten properties hold on guarded, coin-fresh
 hardware execution traces against `HwAttackerKnows` up to cryptographic collisions.
 
-Instantiating `Agree` and `R` with `HooksMatchInterpretation` and `elfRelPlaced mpl mmpl elf`
+Instantiating `Agree` and `R` with `HooksMatchPlaced` and `elfRel elf addrs`
 (`Symbolic/Specifications/Refinement/ElfBinding.lean`) combines
-`Symbolic/Theorems/ModelSecurity.lean` with `comp_refines_cli_placed`
-(`Symbolic/Theorems/Refinement.lean`) to yield `signal_session_secure_placed`
+`Symbolic/Theorems/ModelSecurity.lean` with `comp_refines_cli`
+(`Symbolic/Theorems/Refinement.lean`) to yield `signal_session_secure`
 (`Symbolic/Theorems/Security.lean`).
 -/
 

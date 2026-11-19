@@ -23,7 +23,7 @@ can read `*__errno_location()`.
 
 set_option autoImplicit false
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -100,8 +100,8 @@ private theorem fineEnv_focus_replaced (γ : GhostName) (A : MallocngAddrs)
     ⌜MallocngWFInflight 0 A.base brkStart s.brk liveCost peakCost st⌝ ∗
     MallocngLiveAuth (fineBaseGam γ) st.liveMap ∗
     (A.ctx ↦ₛ st.ctx.toBytes) ∗ (A.lock ↦₃₂ 0#32) ∗
-    (A.aaReplaced ↦₃₂ 0#32) ∗ ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-    MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
+    (A.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell true A.libc st.auxvPtr ∗
+    MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
     ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
     ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
     MappedSet st.masterDom (OwnedMappedByte st)
@@ -119,7 +119,7 @@ private theorem fineEnv_focus_replaced (γ : GhostName) (A : MallocngAddrs)
     rw [sepExists_sepConj_right]; refine sepExists_congr fun alignMap => ?_
     rw [sepExists_sepConj_right]; refine sepExists_congr fun liveCost => ?_
     rw [sepExists_sepConj_right]; refine sepExists_congr fun peakCost => ?_
-    dsimp only [FineCoreStInflightA, MallocngCoreStInflightA, body]
+    dsimp only [FineCoreStInflightA, MallocngCoreStInflightModeA, body]
     ac_rfl
   rw [hEx]; ac_rfl
 
@@ -149,7 +149,7 @@ private theorem ccmp_ovf_hi_iff {align len : BitVec 64} (hMax : align.toNat ≤ 
 /-- Internal 736-byte stack contract for `aligned_alloc(align, len)` (`blk12`) over `FineBudget`,
     exposing the TLS `errno` cell (`22#32` when `!alignedAllocAlignOk align`, else `12#32`) on
     `NULL` return. -/
-noncomputable def alignedAllocFineErrnoSpec [MallocngMultiPlacement]
+def alignedAllocFineErrnoSpec [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart align len : BitVec 64)
     (b : FineBudget) (ivs0 : List (BitVec 64 × Nat)) : Spec Unit :=
   let ok := mallocngAlignedAllocOk align len
@@ -437,7 +437,7 @@ private theorem blk12_alignedAlloc_fine_errno (hImplRaw : LibcMallocImplFineRawS
               (g'.isMmapped = true → bs = List.replicate eff 0#8)⌝ ∗
             (MallocngRoTablesA maddrs ∗
              ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-             MallocngCoreStA (fineBaseGam γ) maddrs brkStart sm.brk bCoarse.liveCost bCoarse.peakCost st' ∗
+             MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sm.brk bCoarse.liveCost bCoarse.peakCost st' ∗
              MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken (fineBaseGam γ) p eff ∗
              stackFrameAt (s0.sp - 32#64) 704 ∗ AlignedSpillSlots s0.sp s0))
             (by dsimp only [eff]; exact Entails.of_eq (by ac_rfl)) ?_
@@ -453,7 +453,7 @@ private theorem blk12_alignedAlloc_fine_errno (hImplRaw : LibcMallocImplFineRawS
               ghostMapAuth (fineAlignGam γ) alignMap0 ∗
               MallocngLiveAuth (fineBaseGam γ) st'.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
               (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-              ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState (fineBaseGam γ) st'.auxvPtr st'.auxvSnap ∗
+              MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo true (fineBaseGam γ) st'.auxvPtr st'.auxvSnap ∗
               ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
               MappedSet st'.masterDom (OwnedMappedByte st') ∗
               MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken (fineBaseGam γ) p eff ∗
@@ -461,11 +461,11 @@ private theorem blk12_alignedAlloc_fine_errno (hImplRaw : LibcMallocImplFineRawS
             have hToGM :
                 (MallocngRoTablesA maddrs ∗
                   ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-                  MallocngCoreStA (fineBaseGam γ) maddrs brkStart sm.brk bCoarse.liveCost bCoarse.peakCost st' ∗
+                  MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sm.brk bCoarse.liveCost bCoarse.peakCost st' ∗
                   MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken (fineBaseGam γ) p eff ∗
                   stackFrameAt (s0.sp - 32#64) 704 ∗ AlignedSpillSlots s0.sp s0) ⊢
                 alignedGetMetaPre maddrs st' RestGM := by
-              dsimp only [alignedGetMetaPre, MallocngRoTablesA, MallocngCoreStA, MallocngCoreStInflightA, RestGM]
+              dsimp only [alignedGetMetaPre, MallocngRoTablesA, MallocngCoreStModeA, MallocngCoreStInflightModeA, RestGM]
               rw [pure_sepConj_of_true hwf']; sep_frame
             refine SepWP.weaken_pre hToGM ?_
             have hF := liveUserBlockFacts_of hwf' hg' hIdx hSlot
@@ -476,12 +476,12 @@ private theorem blk12_alignedAlloc_fine_errno (hImplRaw : LibcMallocImplFineRawS
             refine SepWP.weaken_pre hEnt4 ?_
             have hFromGM : alignedGetMetaPre maddrs st' RestGM ⊢
                 (ghostMapAuth (fineAlignGam γ) alignMap0 ∗ MallocngRoTablesA maddrs ∗
-                  MallocngCoreStA (fineBaseGam γ) maddrs brkStart s4.brk bCoarse.liveCost bCoarse.peakCost st' ∗
+                  MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s4.brk bCoarse.liveCost bCoarse.peakCost st' ∗
                   MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken (fineBaseGam γ) p eff ∗
                   stackFrameAt (s0.sp - 32#64) 704 ∗ AlignedSpillSlots s0.sp s0) := by
               have hbrk_eq : s4.brk = sm.brk := hbrk4
               rw [hbrk_eq]
-              dsimp only [alignedGetMetaPre, MallocngRoTablesA, MallocngCoreStA, MallocngCoreStInflightA, RestGM]
+              dsimp only [alignedGetMetaPre, MallocngRoTablesA, MallocngCoreStModeA, MallocngCoreStInflightModeA, RestGM]
               rw [pure_sepConj_of_true hwf']; sep_frame
             refine SepWP.weaken_pre hFromGM ?_
             have hcl4 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl s4.mem := by

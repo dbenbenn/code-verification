@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -32,6 +32,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials -- proof-setup: allow-public-import
 
 /-!
 # Symbolic Execution of `Composed.bobStart`
@@ -42,7 +43,7 @@ unpacks `bobKeys` via `OpkSel` and `bobKeysOf`, and proves `Runs.bobStart` and
 `opkUsedB_append_rnd_net`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -130,19 +131,19 @@ private theorem bsr_runs_genRand (tr : ExecTrace) (size : Nat) :
 
 /-! ## `bobKeys` and `OpkSel` unpackers -/
 
-def bobKeysOf (r : ProtocolSetup) (x : PreKeyRep) (opk : Option DY.Bytes) : PQXDH.HandshakeKeys :=
+@[expose] def bobKeysOf (r : ProtocolSetup) (x : PreKeyRep) (opk : Option DY.Bytes) : PQXDH.HandshakeKeys :=
   PQXDH.pqxdhKdf (PQXDH.pqxdhIkm (PQXDH.agree (setupPublic r 0) (setupSecret r 2))
     (PQXDH.agree x.ek (setupSecret r 1))
     (PQXDH.agree x.ek (setupSecret r 2)) (opk.map (PQXDH.agree x.ek ·))
     ((PQXDH.errToOption (DY.PQKem.kemDecap (setupSecret r 4) x.ct)).getD
       (DY.PQKem.kemRejKey (setupSecret r 4) x.ct)))
 
-def OpkSel (r : ProtocolSetup) (p : PreKeyFields) (opk : Option DY.Bytes) : Prop :=
+@[expose] def OpkSel (r : ProtocolSetup) (p : PreKeyFields) (opk : Option DY.Bytes) : Prop :=
   (p.preKeyId = none ∧ opk = none) ∨
     (r.withOpk = true ∧ p.preKeyId = some r.opkId ∧ opk = some (setupSecret r 6))
 
 /-- Computes `bobKeysOf r x opk` when `bobOpk? r p = some opk`. -/
-def bobKeys (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) : Option PQXDH.HandshakeKeys :=
+@[expose] def bobKeys (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) : Option PQXDH.HandshakeKeys :=
   (bobOpk? r p).map (bobKeysOf r x)
 
 theorem bobOpk?_unpack {r : ProtocolSetup} {p : PreKeyFields} {opk : Option DY.Bytes}
@@ -175,12 +176,12 @@ theorem bobKeys_unpack (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep)
 
 /-! ## Symbolic step lemmas for `Composed.bobStart` -/
 
-def StOpt (tr : ExecTrace) (me : Participant) : Option Nat → Option DY.Bytes → Prop
+@[expose] def StOpt (tr : ExecTrace) (me : Participant) : Option Nat → Option DY.Bytes → Prop
   | none, none => True
   | some i, some o => tr.at? i = some (PQStE me { kind := .oneTimePrekey, sk := o })
   | _, _ => False
 
-def bobOut (ikB spk pqsk : DY.Bytes) (opk : Option DY.Bytes) (ikAPk ek ct : DY.Bytes)
+@[expose] def bobOut (ikB spk pqsk : DY.Bytes) (opk : Option DY.Bytes) (ikAPk ek ct : DY.Bytes)
     (keys : PQXDH.HandshakeKeys) : PQXDH.BobHandshakeOut :=
   { ikB := DY.DiffieHellman.dhPk ikB, ikA := ikAPk, spk := DY.DiffieHellman.dhPk spk,
     pqpk := DY.PQKem.kemPk pqsk, opk := opk.map DY.DiffieHellman.dhPk,
@@ -280,19 +281,19 @@ theorem Runs.verifyMacAndDecrypt {tr : ExecTrace}
     erw [DY.Traceful.run_mk]
     exact ⟨rfl, rfl⟩
 
-def bobInitSt (a : Participant) (ikB ikA : DY.Bytes) (keys : PQXDH.HandshakeKeys)
+@[expose] def bobInitSt (a : Participant) (ikB ikA : DY.Bytes) (keys : PQXDH.HandshakeKeys)
     (sS rt : DY.Bytes) : DY.Libsignal.TripleRatchet.TRState :=
   { peer := a, myIk := PQXDH.serializedIk ikB, peerIk := PQXDH.serializedIk ikA,
     rk := keys.rk, dhs := sS, cks := keys.ck, ns := 0, pn := 0,
     sid := Concat.concat (DY.X25519.normalizeX25519Key rt) keys.rk, initiator := false, rIdx := 0, recv := [],
     spqr := DY.Spqr.spqrInit keys.pqr DY.Libsignal.TripleRatchet.spqrB2A }
 
-def bobRatchetedChain (keys : PQXDH.HandshakeKeys) (rt sS : DY.Bytes) :
+@[expose] def bobRatchetedChain (keys : PQXDH.HandshakeKeys) (rt sS : DY.Bytes) :
     DY.Libsignal.TripleRatchet.RecvChain :=
   { ratchetKey := rt, chainKey := (DY.Libsignal.TripleRatchet.createChain keys.rk rt sS).2,
     index := 0, rIdx := 2 }
 
-def bobRatchetedSt (a : Participant) (ikB ikA : DY.Bytes) (keys : PQXDH.HandshakeKeys)
+@[expose] def bobRatchetedSt (a : Participant) (ikB ikA : DY.Bytes) (keys : PQXDH.HandshakeKeys)
     (sS rt dhs : DY.Bytes) : DY.Libsignal.TripleRatchet.TRState :=
   let (rk1, _) := DY.Libsignal.TripleRatchet.createChain keys.rk rt sS
   let (rk2, cks) := DY.Libsignal.TripleRatchet.createChain rk1 rt dhs
@@ -370,7 +371,7 @@ theorem Runs.logMessageKeyAndStore (b : Participant) (s : DY.Libsignal.TripleRat
     rw [← hlen]; exact Runs.storeLocalState_tr tr₁ b st
   exact bsr_runs_bind (Runs.logEvent_tr tr _) hst
 
-def bobStartPreSkipTr (tr : ExecTrace) (b a : Participant) (o : PQXDH.BobHandshakeOut)
+@[expose] def bobStartPreSkipTr (tr : ExecTrace) (b a : Participant) (o : PQXDH.BobHandshakeOut)
     (msg : DY.Libsignal.TripleRatchet.TRSignalMsg) (key : DY.Bytes) : ExecTrace :=
   let dhs := randTerm tr.length 32
   let st := bobRatchetedSt a o.ikB o.ikA o.keys o.spkSk msg.ratchetKey dhs
@@ -388,7 +389,7 @@ def bobStartPreSkipTr (tr : ExecTrace) (b a : Participant) (o : PQXDH.BobHandsha
   tr_rat2.append (CEvE
     (.HandshakeSession (st.sessionInfo b) doneIdx))
 
-def bobStartTr (tr : ExecTrace) (b a : Participant) (o : PQXDH.BobHandshakeOut)
+@[expose] def bobStartTr (tr : ExecTrace) (b a : Participant) (o : PQXDH.BobHandshakeOut)
     (msg : DY.Libsignal.TripleRatchet.TRSignalMsg)
     (c' : DY.Libsignal.TripleRatchet.RecvChain)
     (spqr' key seed pqSalt m : DY.Bytes) : ExecTrace :=

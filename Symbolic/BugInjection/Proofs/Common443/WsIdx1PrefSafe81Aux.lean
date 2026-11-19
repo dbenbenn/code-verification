@@ -32,11 +32,9 @@ theorem seg43_tail_untagged4 : ∀ b : HwBytes, .rng b ∈ (seg 43 35).tail → 
 theorem rngAt41_ne_fillFresh64 :
     ∀ t ∈ ([11, 16, 17] : List Nat), evRngAt 41 ≠ fillFresh t 64 := by decide
 theorem rngAt41_untagged4 : Untagged4 (evRngAt 41) := by decide
-theorem ptAt78_len_ne_64 : (evPtAt 78).length ≠ 64 := by decide
+theorem ptAt78_len_lt_48 : (evPtAt 78).length < 48 := by decide
 theorem ptAt78_untagged4 : Untagged4 (evPtAt 78) := by decide
 set_option maxRecDepth 200000 in
-theorem rngAt79_ne_fillFresh64 :
-    ∀ t ∈ ([11, 16, 17] : List Nat), evRngAt 79 ≠ fillFresh t 64 := by decide
 set_option maxRecDepth 200000 in theorem rngAt79_untagged4 : Untagged4 (evRngAt 79) := by decide
 theorem compKyberE2_untagged4 : Untagged4 compKyberE2 := by decide
 theorem spqrRecv_fst_eq {st m : DY.Bytes} {idx : UInt32} {spqr' : DY.Bytes} (h : (DY.Spqr.spqrRecv st m idx).map Prod.fst = some spqr') : spqr' = ({ st := st, msg := m } : DY.Spqr.RecvState.SubF DY.Bytes).pack := by

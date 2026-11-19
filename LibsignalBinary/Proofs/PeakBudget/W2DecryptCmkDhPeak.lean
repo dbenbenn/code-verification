@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptLeavesPeak
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W2DecryptLeavesPeak -- proof-setup: allow-public-import
 
 /-!
 # `Vec<104>` Doubling, `consume_message_key`, and `create_chain` Helpers for W2
@@ -21,7 +21,7 @@ Symbolic `[HasFineReallocCredit M]` cumulative and peak bounds for W2 `message_d
 `consume_message_key` (`≤ 2,000` forward jumps), and `dh_ratchet_step` / `create_chain` (`cap ≤ 5`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,21 +45,21 @@ open LibsignalBinary.Proofs.PeakBudget.W2DecryptLeavesPeak (
 
 /-- Events emitted by `<RawVec<Chain/MessageKey>>::grow_one` (`stride = 104`, `align = 8`) at capacity `cap`.
 -/
-def growOne104Evs (cap : Nat) : List AllocEvent :=
+@[expose] def growOne104Evs (cap : Nat) : List AllocEvent :=
   if cap = 0 then
     rustAllocEvents 416 8
   else
     rustReallocEvents (104 * cap) (104 * (2 * cap)) 8
 
 /-- Live `sc = 63` large-buffer weight of a `Vec<104>` buffer at capacity `cap`. -/
-def v104Live (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
+@[expose] def v104Live (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
   if 104 * cap ≤ HasFineReallocCredit.smallMaxReq M then
     0
   else
     HasFineReallocCredit.largeCost M (104 * cap)
 
 /-- Step `cumSmall` charge of `growOne104Evs cap`. -/
-def v104GrowStepCum (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
+@[expose] def v104GrowStepCum (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
   if cap = 0 then
     singleAllocCum M 416
   else if 104 * (2 * cap) ≤ HasFineReallocCredit.smallMaxReq M then
@@ -70,11 +70,6 @@ def v104GrowStepCum (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : 
 theorem v104Live_zero (M : AllocCostModel) [HasFineReallocCredit M] :
     v104Live M 0 = 0 := by
   simp [v104Live]
-
-theorem v104Live_eq_zero_of_le (M : AllocCostModel) [HasFineReallocCredit M]
-    {cap : Nat} (hle : 104 * cap ≤ HasFineReallocCredit.smallMaxReq M) :
-    v104Live M cap = 0 := by
-  simp [v104Live, hle]
 
 theorem stepEvents_growOne104_zero (M : AllocCostModel) [HasFineReallocCredit M]
     {L₀ : Nat} (st : M.σ)
@@ -153,17 +148,6 @@ theorem stepEvents_dhCommitStep12_small (M : AllocCostModel) [HasFineReallocCred
       (by decide) (by decide) h32 with ⟨hc3, hl3, hp3⟩
   exact ⟨by omega, by omega, by omega⟩
 
-theorem stepEvents_alloc33_and_dealloc33 (M : AllocCostModel) [HasFineReallocCredit M]
-    (st : M.σ) :
-    let st' := M.stepEvents (rustAllocEvents 33 1 ++ rustDeallocEvents 33 1) st
-    HasFineReallocCredit.cumSmall st' ≤
-      HasFineReallocCredit.cumSmall st + singleAllocCum M 33 ∧
-    HasFineReallocCredit.liveLarge st' ≤ HasFineReallocCredit.liveLarge st ∧
-    HasFineReallocCredit.peakLarge st' ≤
-      max (HasFineReallocCredit.peakLarge st)
-        (HasFineReallocCredit.liveLarge st + singleAllocLarge M 33) :=
-  stepEvents_rustAlloc_dealloc_cancel M (req := 33) (al := 1) st (by decide) (by decide)
-
 /-- Credit bound for `dhCommitStep3Events cap needGrow` in the small-capacity regime (`104 * max 4 (2 * cap) ≤ smallMaxReq M`).
 -/
 theorem stepEvents_dhCommitStep3_smallCap (M : AllocCostModel) [HasFineReallocCredit M]
@@ -214,7 +198,7 @@ theorem stepEvents_dhCommitStep3_smallCap (M : AllocCostModel) [HasFineReallocCr
 /-! ## 3. `consume_message_key` Doubling Tower (`0 → ... → 2048`) -/
 
 /-- Cumulative `cumSmall` bound for the `Vec<104>` doubling tower from `0` to `2048`. -/
-def v104TowerCum2048 (M : AllocCostModel) [HasFineReallocCredit M] : Nat :=
+@[expose] def v104TowerCum2048 (M : AllocCostModel) [HasFineReallocCredit M] : Nat :=
   v104GrowStepCum M 0 +
   v104GrowStepCum M 4 +
   v104GrowStepCum M 8 +
@@ -226,7 +210,7 @@ def v104TowerCum2048 (M : AllocCostModel) [HasFineReallocCredit M] : Nat :=
   v104GrowStepCum M 512 +
   v104GrowStepCum M 1024
 
-def v104CapSeq : Nat → Nat
+@[expose] def v104CapSeq : Nat → Nat
   | 0 => 0
   | j + 1 => 4 * 2 ^ j
 
@@ -234,7 +218,7 @@ def v104TowerCum (M : AllocCostModel) [HasFineReallocCredit M] : Nat → Nat
   | 0 => 0
   | k + 1 => v104TowerCum M k + v104GrowStepCum M (v104CapSeq k)
 
-def v104TowerPeak (M : AllocCostModel) [HasFineReallocCredit M] : Nat → Nat
+@[expose] def v104TowerPeak (M : AllocCostModel) [HasFineReallocCredit M] : Nat → Nat
   | 0 => 0
   | 1 => v104Live M 4
   | k + 2 => max (v104TowerPeak M (k + 1))
@@ -352,7 +336,7 @@ theorem stepEvents_cmk_jump_step (M : AllocCostModel) [HasFineReallocCredit M]
 
 /-- Event sequence of a multi-step `consume_message_key` forward-jump trace starting at tower
     capacity index `k`. -/
-def cmkJumpListEvs : Nat → List (Bool × Bool) → List AllocEvent
+@[expose] def cmkJumpListEvs : Nat → List (Bool × Bool) → List AllocEvent
   | _, [] => []
   | k, (needGrow, needEvictFree) :: rest =>
     (rustAllocEvents 33 1 ++
@@ -361,7 +345,7 @@ def cmkJumpListEvs : Nat → List (Bool × Bool) → List AllocEvent
     cmkJumpListEvs (if needGrow then k + 1 else k) rest
 
 /-- Final tower index after executing `jumps` starting from index `k`. -/
-def cmkJumpFinalIdx : Nat → List (Bool × Bool) → Nat
+@[expose] def cmkJumpFinalIdx : Nat → List (Bool × Bool) → Nat
   | k, [] => k
   | k, (needGrow, _) :: rest => cmkJumpFinalIdx (if needGrow then k + 1 else k) rest
 

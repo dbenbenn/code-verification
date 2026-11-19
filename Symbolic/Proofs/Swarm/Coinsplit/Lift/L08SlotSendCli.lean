@@ -40,6 +40,15 @@ import Symbolic.Proofs.Swarm.CREF.Xpl.PrefixReach
 import Symbolic.Proofs.Swarm.Coinsplit.Slots.S3SendCut
 import Symbolic.Proofs.Swarm.SHARED.HmacLen
 import Symbolic.Proofs.Swarm.TRREF.MacFormBridge
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
+import Symbolic.Proofs.Refinement.EncodeWithSound
+import Symbolic.Proofs.Refinement.TripleRatchet.WireCovered
+import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendWhisperSlot
+import Symbolic.Proofs.Swarm.CREF.Cli.TopDispatch
+import Symbolic.Proofs.Swarm.CREF.Sanitize
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
 
 /-!
 # Cut-Polymorphic `send` Slot Refinement
@@ -48,7 +57,7 @@ Proves `SlotSendCliSpec`, lifting `slot_send_d3_pqModelRel` from single-cut `Cli
 cut-polymorphic `CliLiveAtCli` across all `CoinSplit` cuts `sendCutOfLen`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

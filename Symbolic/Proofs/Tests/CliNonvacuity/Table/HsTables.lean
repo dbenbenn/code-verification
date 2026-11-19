@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsFalseNodes
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsTrueNodes
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsFalseNodes -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.HsTrueNodes -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionEval -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -21,7 +23,7 @@ namespace Symbolic.Proofs.Tests.CliNonvacuity.Table.HsTables
 open Symbolic.Proofs.Tests.CliNonvacuity.SessionEval (Trie emptyTrie)
 open Symbolic.Proofs.Tests.CliNonvacuity.Table.Defs (CertTable)
 
-def hsFalseHashTrie : Trie Nat :=
+@[expose] def hsFalseHashTrie : Trie Nat :=
   (.branch
     (.branch
       (.branch
@@ -247,9 +249,9 @@ def hsFalseHashTrie : Trie Nat :=
     )
   )
 
-def hsFalseTable : CertTable := ⟨8, HsFalseNodes.hsFalseIdTree, hsFalseHashTrie⟩
+@[expose] def hsFalseTable : CertTable := ⟨8, HsFalseNodes.hsFalseIdTree, hsFalseHashTrie⟩
 
-def hsTrueHashTrie : Trie Nat :=
+@[expose] def hsTrueHashTrie : Trie Nat :=
   (.branch
     (.branch
       (.branch
@@ -476,9 +478,9 @@ def hsTrueHashTrie : Trie Nat :=
     )
   )
 
-def hsTrueTable : CertTable := ⟨8, HsTrueNodes.hsTrueIdTree, hsTrueHashTrie⟩
+@[expose] def hsTrueTable : CertTable := ⟨8, HsTrueNodes.hsTrueIdTree, hsTrueHashTrie⟩
 
-def hsTable (withOpk : Bool) : CertTable :=
+@[expose] def hsTable (withOpk : Bool) : CertTable :=
   if withOpk then hsTrueTable else hsFalseTable
 
 end Symbolic.Proofs.Tests.CliNonvacuity.Table.HsTables

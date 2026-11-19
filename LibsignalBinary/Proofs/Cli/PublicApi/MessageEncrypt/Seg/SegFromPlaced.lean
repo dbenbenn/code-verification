@@ -10,13 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFrom
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegFrom -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
 public import ProofLib.RegChain
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable CLI `SegFrom` Proof (`segFrom_placed_okV`)
@@ -25,7 +29,7 @@ Verifies `SegFromSpecVPlaced` (`CurStateVPlaced` at `+0x20c` → `OtrStateVPlace
 error tail at `+0x49c`) on `lsProg_464 Hk` (`blkPl_464`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -280,7 +284,7 @@ theorem segFrom_placed_step_ok [LibsignalPlacement] {Hk : LibsignalHooks} {sp : 
 
 /-! ## 3. Frame Split/Merge Helpers -/
 
-def fromRestFramePlaced [LibsignalPlacement] (ss_vt id_vt : BitVec 64) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def fromRestFramePlaced [LibsignalPlacement] (ss_vt id_vt : BitVec 64) (A : RustAlloc) (ctl : BitVec 64)
     (x : WithStoresEncGhost) (g : RecordGhost) (sp : BitVec 64) (s0 : State) : SepProp :=
   vecAt A 24 8 (fun (_ : Unit) _ => emp) (sp + 0x110#64) g.prevCap g.prevPtr [] ∗
   memRegion (sp + 0x288#64) 0x1e0 ∗
@@ -579,7 +583,7 @@ theorem otrFrom_placed_err_tail_mem [LibsignalPlacement] {ss_vt id_vt : BitVec 6
   have hm_out := Satisfies.mono (sepConj_mono_left h280_ent) hm_rearr
   exact Eq.mp (congrArg (s3.mem ⊨ ·) (by sep_ac_rfl)) hm_out
 
-def okStepFramePlaced [LibsignalPlacement] (ss_vt id_vt : BitVec 64)
+@[expose] def okStepFramePlaced [LibsignalPlacement] (ss_vt id_vt : BitVec 64)
     (A : RustAlloc) (ctl : BitVec 64)
     (x : WithStoresEncGhost) (g' : RecordGhost) (sess : Session (List (BitVec 8)))
     (st' : SessionState (List (BitVec 8))) (sp : BitVec 64) (H : SepProp) (s0 : State) : SepProp :=

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepDefs -- shake: keep
 
@@ -28,7 +28,7 @@ Bridges `CliExternsOk` / `HookSat` contracts at `pqxdhHookStackExt` (`16384` B) 
 (`calculateAgreement_frozen_ok_ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -40,8 +40,7 @@ open Arm64 ProofLib ProofLib.ProgramReflection CryptoGames CryptoGames.Libsignal
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalSession
-open CryptoVerification.LibsignalTripleRatchet.Decrypt.DhStep (rngFill_ok_at_tripleRatchet
-  rngFillAfter0Spec)
+open CryptoVerification.LibsignalTripleRatchet.Decrypt.DhStep (rngFillAfter0Spec)
 open CryptoVerification.E2E.Pqxdh CryptoVerification.E2E.Pqxdh.ResponderCore
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff
@@ -98,7 +97,7 @@ theorem initAlice_hookOk_map {α β : Type} {fn : State → State}
 
 /-- `kyber::encapsulate(&pk, randomness)` (`sret x8`) with by-value 32-byte `coins`
 (`memRegion g.coinsPtr 32` after call) and `pqxdhHookStackExt` (`16384` B) stack budget. -/
-def kyberEncapsByValSpec (P : Primitives) : Spec KyberEncapsCall where
+@[expose] def kyberEncapsByValSpec (P : Primitives) : Spec KyberEncapsCall where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.pkPtr ∧ s.readReg64 .x1 = g.coinsPtr ∧ s.readReg64 .x8 = g.outPtr ∧
       g.pk1568.length = 1568 ∧ g.coins32.length = 32 ∧
@@ -120,11 +119,13 @@ theorem hookSat_kyberEncapsByVal_of_kemEncaps_of_len {P : Primitives}
       let (ct, ss) :=
         Q.encaps (CryptoVerification.E2E.u8Vec 1568 pk) (CryptoVerification.E2E.u8Vec 32 r)
       some (CryptoVerification.E2E.vecU8 ss, CryptoVerification.E2E.vecU8 ct))
-    (hKem : HookSat ext CryptoVerification.E2E.kemEncapsName
+    (hKem : HookSat ext
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.kemEncapsName
       (SignalSession.CliExt.kemEncapsSpec Q)) :
     HookSat ext kyberEncapsStub (kyberEncapsByValSpec P) := by
   rcases hKem with ⟨fn, hfn, hok⟩
-  have hname : kyberEncapsStub = CryptoVerification.E2E.kemEncapsName := rfl
+  have hname : kyberEncapsStub =
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.kemEncapsName := rfl
   refine ⟨fn, hname ▸ hfn, initAlice_hookOk_map
     (fun (g : KyberEncapsCall) =>
       (g.pkPtr, CryptoVerification.E2E.u8Vec 1568 g.pk1568,
@@ -163,7 +164,8 @@ theorem hookSat_kyberEncapsByVal_of_kemEncaps {P : Primitives}
       let (ct, ss) :=
         Q.encaps (CryptoVerification.E2E.u8Vec 1568 pk) (CryptoVerification.E2E.u8Vec 32 r)
       some (CryptoVerification.E2E.vecU8 ss, CryptoVerification.E2E.vecU8 ct))
-    (hKem : HookSat ext CryptoVerification.E2E.kemEncapsName
+    (hKem : HookSat ext
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.kemEncapsName
       (SignalSession.CliExt.kemEncapsSpec Q)) :
     HookSat ext kyberEncapsStub (kyberEncapsByValSpec P) :=
   hookSat_kyberEncapsByVal_of_kemEncaps_of_len (fun pk r _ => hEncapsEq pk r) hKem
@@ -179,33 +181,6 @@ theorem hookSat_kyberEncapsByVal_of_externsOk
         CryptoVerification.E2E.modelPrims, CryptoVerification.E2E.blockLevelPrims,
         SignalPqxdh.kyberPkLen, hpk, beq_self_eq_true, ↓reduceIte])
     hOk.kemEncaps
-
-theorem hookSat_cliExternsWith_kyberEncapsByVal {P : Primitives}
-    {ext : String → Option (State → State)}
-    (hEncaps : HookSat ext kyberEncapsStub (kyberEncapsByValSpec P)) :
-    HookSat (SignalSession.cliExternsWith ext) kyberEncapsStub (kyberEncapsByValSpec P) := by
-  rcases hEncaps with ⟨fn, hfn, hok⟩
-  have hnp : CryptoVerification.E2E.isImagePanicSymbol kyberEncapsStub = false := by decide +kernel
-  exact ⟨fn, by simp [SignalSession.cliExternsWith, CryptoVerification.E2E.withImagePanics, hnp, hfn], hok⟩
-
-theorem kyberEncapsByVal_ok_at_ext {P : Primitives} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hEncaps : HookSat ext kyberEncapsStub (kyberEncapsByValSpec P))
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff kyberEncapsStub := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      (kyberEncapsByValSpec P) :=
-  hook_ok_at (hname := kyberEncapsStub) rfl hk
-    (by rw [(ls_stub% "libcrux_ml_kem::mlkem1024::kyber::encapsulate")]; decide)
-    (fun H => by
-      rw [(ls_stub% "libcrux_ml_kem::mlkem1024::kyber::encapsulate")]
-      exact (ls_hook% "libcrux_ml_kem::mlkem1024::kyber::encapsulate") H)
-    (by decide +kernel)
-    (by
-      rcases hEncaps with ⟨fn, hfn, hok⟩
-      exact ⟨fn, by rw [← hfn], hok⟩)
 
 /-- Hook hypotheses needed by `<PrivateKey>::calculate_agreement` and `initialize_alice_session`
 Stage 1 DH steps on `tripleRatchetProgAtExt`. -/
@@ -232,41 +207,7 @@ theorem InitAliceAgreeHooks.of_externsOk
   staticDrop := hOk.staticDrop
   sharedDrop := hOk.sharedDrop
 
-theorem InitAliceAgreeHooks.to_cliExternsWith
-    {C : Crypto} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hH : InitAliceAgreeHooks C A ext) :
-    InitAliceAgreeHooks C A (SignalSession.cliExternsWith ext) := by
-  have heq : ∀ s, CryptoVerification.E2E.isImagePanicSymbol s = false →
-      SignalSession.cliExternsWith ext s = ext s := by
-    intro s hs; simp [SignalSession.cliExternsWith, CryptoVerification.E2E.withImagePanics, hs]
-  refine ⟨⟨?_, ?_, ?_⟩, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · rcases hH.alloc.alloc with ⟨f, hf, hok⟩
-    exact ⟨f, (heq _ (by decide +kernel)).trans hf, hok⟩
-  · rcases hH.alloc.dealloc with ⟨f, hf, hok⟩
-    exact ⟨f, (heq _ (by decide +kernel)).trans hf, hok⟩
-  · rcases hH.alloc.realloc with ⟨f, hf, hok⟩
-    exact ⟨f, (heq _ (by decide +kernel)).trans hf, hok⟩
-  · rcases hH.shim with ⟨f, hf, hok⟩
-    exact ⟨f, (heq _ (by decide +kernel)).trans hf, hok⟩
-  · rcases hH.memcpy with ⟨f, hf, hok⟩
-    exact ⟨f, (heq _ (by decide +kernel)).trans hf, hok⟩
-  · rcases hH.blackBox with ⟨f, hf, hok⟩
-    exact ⟨f, (heq _ (by decide +kernel)).trans hf, hok⟩
-  · rcases hH.dh with ⟨f, hf, hok⟩
-    exact ⟨f, (heq _ (by decide +kernel)).trans hf, hok⟩
-  · rcases hH.staticDrop with ⟨f, hf, hok⟩
-    exact ⟨f, (heq _ (by decide +kernel)).trans hf, hok⟩
-  · rcases hH.sharedDrop with ⟨f, hf, hok⟩
-    exact ⟨f, (heq _ (by decide +kernel)).trans hf, hok⟩
-
-theorem InitAliceAgreeHooks.of_cliExternsOk
-    {P0 : CryptoVerification.E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hOk : SignalSession.CliExternsOk P0 A ext) :
-    InitAliceAgreeHooks P0.C A (SignalSession.cliExternsWith ext) :=
-  (InitAliceAgreeHooks.of_externsOk hOk).to_cliExternsWith
-
-def initAliceMemcpyRegionExtSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def initAliceMemcpyRegionExtSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s =>
     ⌜s.readReg64 .x0 = dst ∧ s.readReg64 .x1 = src ∧
       s.readReg64 .x2 = BitVec.ofNat 64 bs.length ∧ bs.length < 2 ^ 64⌝ ∗
@@ -300,175 +241,6 @@ private theorem initAlice_hookSat_memcpy {ext : String → Option (State → Sta
       satisfies_pure_sepConj] at hpost ⊢
     rcases hpost with ⟨hp, hmem⟩
     exact ⟨hp, by ac_nf at hmem ⊢⟩
-
-theorem initAlice_shim_ok_at_ext {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hShim : HookSat ext "__rustc::__rust_no_alloc_shim_is_unstable_v2"
-      SignalSession.CliExt.shimSpec)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) pqxdhShimSpec :=
-  hook_ok_at (hname := "__rustc::__rust_no_alloc_shim_is_unstable_v2") rfl hk
-    (by fnoff_eq) (by fnoff_eq) (by simp [Rust.isPanicSymbol])
-    (initAlice_hookSat_shim hShim)
-
-theorem initAlice_memcpy_region_ok_at_ext {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hMemcpy : HookSat ext "memcpy" SignalSession.CliExt.memcpySpec)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memcpy" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k)
-      initAliceMemcpyRegionExtSpec :=
-  hook_ok_at (hname := "memcpy") rfl hk
-    (by fnoff_eq) (by fnoff_eq) (by simp [Rust.isPanicSymbol])
-    (initAlice_hookSat_memcpy hMemcpy)
-
-theorem initAlice_alloc_ok_at_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocHooks A ext)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (rustAllocSpec A) :=
-  hook_ok_at (hname := "__rustc::__rust_alloc") rfl hk
-    (by fnoff_eq) (by fnoff_eq) (by simp [Rust.isPanicSymbol]) hA.alloc
-
-theorem initAlice_dealloc_ok_at_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocHooks A ext)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (rustDeallocSpec A) :=
-  hook_ok_at (hname := "__rustc::__rust_dealloc") rfl hk
-    (by fnoff_eq) (by fnoff_eq) (by simp [Rust.isPanicSymbol]) hA.dealloc
-
-/-- `<PrivateKey>::calculate_agreement` contract on `tripleRatchetProgAtExt` requiring only
-`img.FrozenLoaded s` (no `s.symtab = img.symtab` hypothesis) and `initAliceCalcStackExt` (`16608` B). -/
-def pqxdhCalculateAgreementFrozenSpecExt (P : Primitives) (A : RustAlloc) (img : Obj.Image) :
-    Spec (BitVec 64 × Bytes × BitVec 64 × Bytes × BitVec 64 × BitVec 64) where
-  pre := fun (ourA, ourSk32, theirA, theirPk32, ret, sp) s =>
-    ⌜img.FrozenLoaded s ∧ s.readReg64 .x0 = ourA ∧ s.readReg64 .x1 = theirA ∧
-      s.readReg64 .x8 = ret ∧ s.sp = sp ∧ ourSk32.length = 32 ∧ theirPk32.length = 32⌝ ∗
-      (ourA ↦ₛ bytesToBv8 ourSk32) ∗ (theirA ↦ₛ bytesToBv8 theirPk32) ∗
-      memRegion ret 24 ∗ A.pool ∗ stackAt sp initAliceCalcStackExt
-  post := fun (ourA, ourSk32, theirA, theirPk32, ret, sp) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (ourA ↦ₛ bytesToBv8 ourSk32) ∗ (theirA ↦ₛ bytesToBv8 theirPk32) ∗
-      pqxdhCalculateAgreementResultAt P A ret ourSk32 theirPk32 ∗ A.pool ∗
-      stackAt sp initAliceCalcStackExt
-  onPanic := rustPanicOnOom img
-
-def InitAliceCalculateAgreementOkExt (P : Primitives) (A : RustAlloc) (img : Obj.Image)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr calculateAgreementSym)
-    (pqxdhCalculateAgreementFrozenSpecExt P A img)
-
-/-- Discharges `<PrivateKey>::calculate_agreement` on `tripleRatchetProgAtExt img.base ext`
-with only `img.FrozenLoaded s` (usable both in `initialize_alice_session` and in `cliInitiate`
-where `s.symtab ≠ libsignalSessionImage.symtab`). -/
-theorem calculateAgreement_frozen_ok_ext {P : Primitives} {C : Crypto} {A : RustAlloc}
-    {img : Obj.Image} {ext : String → Option (State → State)}
-    (hP : ResponderCore.PrimitivesMatchCrypto P C)
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hH : InitAliceAgreeHooks C A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr calculateAgreementSym)
-      (pqxdhCalculateAgreementFrozenSpecExt P A img) := by
-  have hct : ConsumeMessageKeyTransfer.CtEqROOkExt32 img.base ext :=
-    ConsumeMessageKeyTransfer.ctEqRO_ok_ext32 img.base hH.blackBox
-  have hraw := ResponderCore.calculateAgreement_rodata_ok_ext himg hct
-    hH.alloc hH.dh hH.sharedDrop hH.shim hH.staticDrop
-  refine subroutine_ok_outcome_intro ?_
-  rintro ⟨ourA, ourSk32, theirA, theirPk32, ret, sp⟩ R s0 hpc hrun hpre hsp
-  dsimp only [pqxdhCalculateAgreementFrozenSpecExt] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, hx0, hx1, hx8, hsp_eq, hour, htheir⟩, hpre⟩
-  have hro := rodata_0x7ff6a himg hF.roData hpre
-  let xg : CryptoVerification.LibsignalTripleRatchet.CalculateAgreementGhost :=
-    ⟨ourA, ⟨CryptoVerification.E2E.u8Vec 32 ourSk32⟩,
-     theirA, ⟨CryptoVerification.E2E.u8Vec 32 theirPk32⟩, ret⟩
-  have hour_list : xg.our.bytes.toList = bytesToBv8 ourSk32 :=
-    ResponderCore.u8Vec_toList_of_length hour
-  have htheir_list : xg.their.bytes.toList = bytesToBv8 theirPk32 :=
-    ResponderCore.u8Vec_toList_of_length htheir
-  have hpre' : s0.mem ⊨
-      (((img.base + bv% (ls_xref% 0x3e748 0x3e74c)) ↦ᵣ List.replicate 32 0#8) ∗
-        (CryptoVerification.LibsignalTripleRatchet.Keys.calculateAgreementSpecAt
-          C.X A initAliceCalcSubStackExt).pre xg s0) ∗ R := by
-    dsimp only [CryptoVerification.LibsignalTripleRatchet.Keys.calculateAgreementSpecAt,
-      initAliceCalcStackExt]
-    rw [hour_list, htheir_list]
-    have hcomm :
-        (((img.base + bv% (ls_xref% 0x3e748 0x3e74c)) ↦ᵣ List.replicate 32 0#8) ∗
-          (⌜s0.readReg64 .x0 = ourA ∧ s0.readReg64 .x1 = theirA ∧ s0.readReg64 .x8 = ret⌝ ∗
-            (ourA ↦ₛ bytesToBv8 ourSk32) ∗ (theirA ↦ₛ bytesToBv8 theirPk32) ∗
-            memRegion ret 24 ∗ A.pool ∗ stackAt s0.sp (160 + initAliceCalcSubStackExt))) ∗ R =
-        ⌜s0.readReg64 .x0 = ourA ∧ s0.readReg64 .x1 = theirA ∧ s0.readReg64 .x8 = ret⌝ ∗
-          (((img.base + bv% (ls_xref% 0x3e748 0x3e74c)) ↦ᵣ List.replicate 32 0#8) ∗
-            ((ourA ↦ₛ bytesToBv8 ourSk32) ∗ (theirA ↦ₛ bytesToBv8 theirPk32) ∗
-              memRegion ret 24 ∗ A.pool ∗ stackAt s0.sp (160 + initAliceCalcSubStackExt) ∗ R)) := by
-      ac_rfl
-    rw [hcomm, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx8⟩, by rw [hsp_eq]; ac_nf at hro ⊢⟩
-  have hpc' : s0.pc = (tripleRatchetProgAtExt img.base ext).fnAddr calculateAgreementName := hpc
-  refine (hraw.to_outcome xg R s0 hpc' hrun hpre' hsp).mono_outcome fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨c, hex, hq⟩ | ⟨hoom, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [CryptoVerification.LibsignalTripleRatchet.Keys.calculateAgreementSpecAt,
-      pqxdhCalculateAgreementFrozenSpecExt, initAliceCalcStackExt] at hq ⊢
-    rw [hour_list, htheir_list, hsp_eq] at hq
-    have hE := ResponderCore.calculateAgreementResultAt_entails_pqxdh hP A ret ourSk32 theirPk32
-    have hq1 : sf.mem ⊨
-        calculateAgreementResultAt A ret (calculateAgreement C.X xg.their xg.our) ∗
-          (((img.base + bv% (ls_xref% 0x3e748 0x3e74c)) ↦ᵣ List.replicate 32 0#8) ∗
-            (⌜sf.trace = s0.trace⌝ ∗
-              (ourA ↦ₛ bytesToBv8 ourSk32) ∗ (theirA ↦ₛ bytesToBv8 theirPk32) ∗
-              A.pool ∗ stackAt sp (160 + initAliceCalcSubStackExt) ∗ R)) := by
-      ac_nf at hq ⊢
-    have hq2 := Satisfies.mono (sepConj_mono_left hE) hq1
-    have hq3 : sf.mem ⊨
-        ((img.base + bv% (ls_xref% 0x3e748 0x3e74c)) ↦ᵣ List.replicate 32 0#8) ∗
-          ((⌜sf.trace = s0.trace⌝ ∗
-            (ourA ↦ₛ bytesToBv8 ourSk32) ∗ (theirA ↦ₛ bytesToBv8 theirPk32) ∗
-            pqxdhCalculateAgreementResultAt P A ret ourSk32 theirPk32 ∗ A.pool ∗
-            stackAt sp (160 + initAliceCalcSubStackExt)) ∗ R) := by
-      ac_nf at hq2 ⊢
-    exact Satisfies.of_sep_right hq3
-  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-    dsimp only [CryptoVerification.LibsignalTripleRatchet.Keys.calculateAgreementSpecAt,
-      pqxdhCalculateAgreementFrozenSpecExt, rustPanicOnOom] at hq ⊢
-    exact hq
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-theorem calculateAgreement_frozen_ok_of_externsOk (X : CryptoVerification.E2E.UnreachedPqxdhPrimitives)
-    {P0 : CryptoVerification.E2E.PEParams} {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hOk : SignalSession.CliExternsOk P0 A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr calculateAgreementSym)
-      (pqxdhCalculateAgreementFrozenSpecExt (initiatorModelPrims X P0) A img) :=
-  calculateAgreement_frozen_ok_ext (ResponderCore.primitivesMatchCrypto_modelPrims X P0)
-    himg (InitAliceAgreeHooks.of_externsOk hOk)
-
-theorem calculateAgreement_frozen_ok_of_cliExternsOk (X : CryptoVerification.E2E.UnreachedPqxdhPrimitives)
-    {P0 : CryptoVerification.E2E.PEParams} {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hOk : SignalSession.CliExternsOk P0 A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base (SignalSession.cliExternsWith ext))
-      ((tripleRatchetProgAtExt img.base (SignalSession.cliExternsWith ext)).fnAddr
-        calculateAgreementSym)
-      (pqxdhCalculateAgreementFrozenSpecExt (initiatorModelPrims X P0) A img) :=
-  calculateAgreement_frozen_ok_ext (ResponderCore.primitivesMatchCrypto_modelPrims X P0)
-    himg (InitAliceAgreeHooks.of_cliExternsOk hOk)
 
 theorem stackAt_calc_split_alloc_ext (fsp : BitVec 64) :
     stackAt fsp initAliceCalcStackExt =

@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import ProofLib.SepLogic.Stack
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Normal-Return `libc.need_locks` Exit-Seam Harness Specification
@@ -23,7 +24,7 @@ it back alongside `stackAt sm.sp stkRet` on normal `main` return before `musl`'s
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.HarnessSpec
 
@@ -33,7 +34,7 @@ open CryptoVerification.SignalSession.Cli (ElfStaticOk cliInputs)
 
 /-- `MuslHarness` variant parameterized by return-stack headroom `stkRet` and `libcAddr`
 (`__libc`), receiving `((libcAddr + 3#64) ↦₈ 0#8)` back on normal `main` return. -/
-def MuslHarnessNeedLocksN (stkRet : Nat) (libcAddr : BitVec 64)
+@[expose] def MuslHarnessNeedLocksN (stkRet : Nat) (libcAddr : BitVec 64)
     (elf : ElfImage) (P : Program) (mainPc : BitVec 64) (Fr : SepProp)
     (Ok : Inputs → Prop) (MainPre : Inputs → State → SepProp) : Prop :=
   ElfStaticOk elf → ∀ i, Ok i → ∃ s0 sm,
@@ -66,16 +67,5 @@ theorem exit_frame_needLocks_n {m : Memory} {nl sp : BitVec 64} {n stk : Nat} {F
     sep_ac_rfl
   rw [hEq]
   exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (entails_anyHeap _)))
-
-theorem exit_frame_stack_needLocks_n {m : Memory} {nl sp : BitVec 64} {n stk : Nat} {Fr : SepProp}
-    (hstk : n ≤ stk) (hstk' : stk ≤ 2 ^ 64)
-    (h : m ⊨ (stackAt sp stk ∗ (nl ↦₈ 0#8) ∗ anyHeap) ∗ Fr) :
-    m ⊨ stackAt sp n ∗ (nl ↦₈ 0#8) ∗ Fr ∗ anyHeap := by
-  have hEq :
-      (stackAt sp stk ∗ (nl ↦₈ 0#8) ∗ anyHeap) ∗ Fr =
-      ((nl ↦₈ 0#8) ∗ stackAt sp stk ∗ anyHeap) ∗ Fr := by
-    sep_ac_rfl
-  rw [hEq] at h
-  exact exit_frame_needLocks_n hstk hstk' h
 
 end LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.HarnessSpec

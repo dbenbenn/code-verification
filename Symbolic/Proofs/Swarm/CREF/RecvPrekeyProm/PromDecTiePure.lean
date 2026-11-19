@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedEqPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2AdapterPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedEqPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2AdapterPure -- proof-setup: allow-public-import
 import Batteries.Data.UInt
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedShapePure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedShapePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecStepPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieAPure
@@ -36,6 +36,43 @@ import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
 import Symbolic.Proofs.Swarm.CREF.TR.TrStateRkCkIk
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.Xpl.NoRatchet
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
+import Batteries.Data.List.Lemmas
+import Batteries.Tactic.SeqFocus
+import Comparse.Basic
+import Comparse.Formats.Basic
+import Comparse.Formats.Derived
+import DY.ALaCarte.Basic
+import DY.ALaCarte.Ordering
+import DY.Actions.Network
+import DY.Actions.PersistentGlobalState
+import DY.Bytes.AttackerKnowledgeTheorem
+import DY.Comparse
+import DY.Meta.CombineMacro
+import DY.Trace.BaseAttackerKnowledge
+import DY.Trace.Basic
+import DY.Trace.Manipulation
+import Init.Data.List.Control
+import Init.Data.Range.Basic
+import Init.Data.String
+import Init.Data.String.Defs
+import Init.Data.String.Pattern.Basic
+import Init.Data.String.Pattern.String
+import Init.Data.String.Slice
+import Init.Data.String.TakeDrop
+import Mathlib.Data.List.Basic
+import Mathlib.Data.List.Forall2
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.Tactic.Continuity
+import Mathlib.Tactic.Push
+import Mathlib.Tactic.SplitIfs
+import Std.Data.DTreeMap.Internal.Operations
+import Std.Tactic.BVDecide.Normalize.Prop
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.Prelude.Core
 
 /-!
 # Promote Record-State Tie for the Existing-Chain Branch and Dispatcher
@@ -44,7 +81,7 @@ Proves `prom_tieA_leaf` for the existing-chain (`PromDecSelNoRatchet`) branch an
 binary-branch and model-move pairs in `prom_rcvDecTie_at`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

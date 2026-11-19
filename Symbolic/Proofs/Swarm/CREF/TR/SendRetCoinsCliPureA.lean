@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
-public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
-public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
-public import Symbolic.Proofs.SR.ModelW
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.ModelW -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecord.DRBound
 import Symbolic.Proofs.Swarm.TRREF.GrowthSend
 import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
 
 /-!
 # Pure Send-Wire Execution, Growth Bounds, and Record Canonicity
@@ -27,7 +28,7 @@ Defines `pureEvalSendWire` and `sessionToRecordRecPending`, and proves BitVec ke
 identities, SPQR send growth bounds, and canonical record-bytes correspondence.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -128,12 +129,12 @@ theorem mut_exec_bind {σ α β : Type} (m : Mut σ α) (f : α → Mut σ β) (
   rw [ExceptT.run_bind]; simp only [StateT.run_bind]; rcases (m.run).run s with ⟨r, s'⟩; cases r <;> rfl
 
 /-- Pure `Spqr` view of `S : SpqrModel` without referencing `SpqrModel.spqr` or `S.draws`. -/
-def spqrOfModel (S : SpqrModel) : Spqr HwBytes HwBytes :=
+@[expose] def spqrOfModel (S : SpqrModel) : Spqr HwBytes HwBytes :=
   { init := fun _ _ => [], send := S.send, recv := S.recv, sendPanics := S.sendPanics, recvPanics := S.recvPanics }
 
 /-- Pure machine-free `send_wire` evaluation on `sess : Session HwBytes` with associated-data
 `pendingAddrs : Option HwBytes` used when `sess.pendingPreKey = some _`. -/
-def pureEvalSendWire (C : Crypto) (W : AesW) (S : SpqrModel)
+@[expose] def pureEvalSendWire (C : Crypto) (W : AesW) (S : SpqrModel)
     (sess : Session HwBytes) (pendingAddrs : Option HwBytes) (ptext coins : HwBytes) :
     Option (HwBytes × HwBytes) :=
   match Mut.exec OutgoingTripleRatchet.fromSessionState sess.state with
@@ -300,7 +301,7 @@ export Symbolic.Swarm.CREF.SendWire
 
 open Swarm.Phase0WholeFunctionBridge
 
-def sessionToRecordRecPending (s : Session (List (BitVec 8))) : RecordRec :=
+@[expose] def sessionToRecordRecPending (s : Session (List (BitVec 8))) : RecordRec :=
   { current :=
       { (Swarm.Phase0WholeFunctionBridge.sessionToSessionRec s) with
         pendingPreKey := s.pendingPreKey.map fun p => (CryptoVerification.E2E.Record.encPendingPreKey p, []),
@@ -316,17 +317,17 @@ theorem stateRel_sessionToRecordRecPending_iff (interpretation : ExternInterpret
     StateRel interpretation S g st (sessionToRecordRecPending s) ↔
       StateRel interpretation S g st (Swarm.Phase0WholeFunctionBridge.sessionToRecordRec s) := Iff.rfl
 
-def pbFields_c (l : List (Nat × PbValue)) : HwBytes :=
+@[expose] def pbFields_c (l : List (Nat × PbValue)) : HwBytes :=
   l.flatMap (fun p => encodeField p.1 0 0 p.2)
 
 theorem pbFields_append_c (l₁ l₂ : List (Nat × PbValue)) :
     pbFields_c (l₁ ++ l₂) = pbFields_c l₁ ++ pbFields_c l₂ := by
   simp only [pbFields_c, List.flatMap_append]
 
-def bytesFieldList_c (tag : Nat) (b : HwBytes) : List (Nat × PbValue) :=
+@[expose] def bytesFieldList_c (tag : Nat) (b : HwBytes) : List (Nat × PbValue) :=
   if b = [] then [] else [(tag, .bytes b)]
 
-def u32FieldList_c (tag : Nat) (v : BitVec 32) : List (Nat × PbValue) :=
+@[expose] def u32FieldList_c (tag : Nat) (v : BitVec 32) : List (Nat × PbValue) :=
   if v = 0 then [] else [(tag, .varint v.toNat)]
 
 theorem pbFields_bytesFieldList_c (tag : Nat) (b : HwBytes) :
@@ -346,7 +347,7 @@ theorem pbFields_map_msgField7_c (l : List ChainRec) :
     simp only [List.map_cons, pbFields_c, List.flatMap_cons, msgField, Function.comp_apply]
     congr 1
 
-def encSessionFields_c (s : Session (List (BitVec 8))) : List (Nat × PbValue) :=
+@[expose] def encSessionFields_c (s : Session (List (BitVec 8))) : List (Nat × PbValue) :=
   let st := s.state
   u32FieldList_c 1 st.sessionVersion ++
   bytesFieldList_c 2 st.localIdentity.serialize ++

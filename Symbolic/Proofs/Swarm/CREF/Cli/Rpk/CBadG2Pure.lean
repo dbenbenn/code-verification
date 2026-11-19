@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBad
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Kem -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.CBadG2.Kem -- shake: keep
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -20,7 +20,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame
+public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.CBadG2.MacGuess
 import Symbolic.Proofs.Swarm.CREF.CBadG2.Skipped
 import Symbolic.Proofs.Swarm.CREF.CBadG2.Stamps
@@ -45,7 +45,7 @@ Proves that `RecvCollision`, `recvRepresentations`, `preKeyRepresentations`, `Ma
 trace length `(runTraceMoves r ms).length`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

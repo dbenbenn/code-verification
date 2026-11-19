@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1Sync.ErasureDefs
-import LibsignalBinary.Proofs.SpqrV1Sync.ErasurePoly
+public import LibsignalBinary.Proofs.SpqrV1Sync.ErasurePoly -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -276,7 +276,7 @@ theorem take_two_mul_succ (msg : List (BitVec 8)) (i : Nat) (hi : 2 * i + 1 < ms
   rw [h3, h2, h1, List.append_assoc]
   rfl
 
-def PolysInv (msg : List (BitVec 8)) (polys : List (Option Poly)) : Prop :=
+@[expose] def PolysInv (msg : List (BitVec 8)) (polys : List (Option Poly)) : Prop :=
   polys.length = 16 ∧
     ∀ j (hj : j < polys.length) (p : Poly),
       polys[j]'hj = some p → polyOf p.coefficients = msgPoly msg j

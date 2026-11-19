@@ -9,21 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
-
-/-!
-# `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::add_chunk`: Definitions and Specifications
-
-Pure totality (`addChunkTotal`), hardware binary-search equivalence (`addChunkBsearch_eq_addChunkTotal`),
-and separation-logic contracts (`addChunkBsearchSpec`, `addChunkSpec`, `addChunkSpecX`) for
-`<PolyDecoder as Decoder>::add_chunk` (`0x6c420`, Block `419`).
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.AddChunk
 
@@ -37,11 +27,6 @@ open CryptoVerification.SpqrV1.Poly CryptoVerification.SpqrV1.Alloc CryptoVerifi
 abbrev addChunkName : String :=
   "<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::add_chunk"
 
-theorem addChunk_fnOff : libsignalSessionCode.fnOff addChunkName = 0x67028 :=
-  ls_lemma% fnOff "<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::add_chunk"
-
-gen_decodes libsignalSessionCode_tree addChunkBin [0x67028 → 0x6722c]
-
 /-- Own stack frame of `add_chunk` (`0x60 = 96` bytes) + `growOneStack` (`4208` bytes) = `4304` bytes. -/
 abbrev addChunkStack : Nat := 96 + growOneStack
 
@@ -51,7 +36,7 @@ abbrev addChunkStackX : Nat := 96 + extHookStack
 /-! ## Total Pure Characterization of `PolyDecoder.addChunk` -/
 
 /-- Total version of `PolyDecoder.addChunkLoop` (`self.pts.length = 16`). -/
-def addChunkLoopTotal (chunk : Chunk) : Nat → Nat → PolyDecoder → PolyDecoder
+@[expose] def addChunkLoopTotal (chunk : Chunk) : Nat → Nat → PolyDecoder → PolyDecoder
   | _, 0, self => self
   | i, rem + 1, self =>
     let totalIdx := chunk.index.toNat * 16 + i
@@ -72,7 +57,7 @@ def addChunkLoopTotal (chunk : Chunk) : Nat → Nat → PolyDecoder → PolyDeco
     addChunkLoopTotal chunk (i + 1) rem self'
 
 /-- Total pure result of `PolyDecoder.addChunk self chunk` when `self.pts.length = 16`. -/
-def addChunkTotal (self : PolyDecoder) (chunk : Chunk) : PolyDecoder :=
+@[expose] def addChunkTotal (self : PolyDecoder) (chunk : Chunk) : PolyDecoder :=
   addChunkLoopTotal chunk 0 16 self
 
 theorem addChunkLoop_eq_ok (chunk : Chunk) :
@@ -144,7 +129,7 @@ theorem addChunkLoop_eq_ok (chunk : Chunk) :
 /-! ## Hardware Binary Search Mirror and Equivalence on Strictly Sorted `SortedSet<Pt>` -/
 
 /-- Exact functional mirror of the hardware binary search loop at `0x6c524..0x6c544`. -/
-def bsearchLoop (vec : List Pt) (xVal : BitVec 16) (base size : Nat) : Nat :=
+@[expose] def bsearchLoop (vec : List Pt) (xVal : BitVec 16) (base size : Nat) : Nat :=
   if _h : size > 1 then
     let half := size / 2
     let mid := base + half
@@ -181,7 +166,7 @@ theorem bsearchLoop_bounds (vec : List Pt) (xVal : BitVec 16) :
     · exact ⟨Nat.le_refl _, by omega⟩
 
 /-- Exact functional mirror of `0x6c50c..0x6c5a0` (`SortedSet::replace` when `element.x < last.x`). -/
-def bsearchReplace (self : SortedSetPt) (element : Pt) : SortedSetPt :=
+@[expose] def bsearchReplace (self : SortedSetPt) (element : Pt) : SortedSetPt :=
   let base := bsearchLoop self.vec element.x.value 0 self.vec.length
   let baseX := (self.vec[base]?.getD default).x.value
   if baseX == element.x.value then
@@ -191,7 +176,7 @@ def bsearchReplace (self : SortedSetPt) (element : Pt) : SortedSetPt :=
     { vec := self.vec.take insertIdx ++ (element :: self.vec.drop insertIdx) }
 
 /-- Exact functional mirror of `0x6c4a0..0x6c5a0` (`SortedSet::push`). -/
-def bsearchPush (self : SortedSetPt) (element : Pt) : SortedSetPt :=
+@[expose] def bsearchPush (self : SortedSetPt) (element : Pt) : SortedSetPt :=
   match self.vec.getLast? with
   | some last =>
     match Pt.cmp element last with
@@ -201,7 +186,7 @@ def bsearchPush (self : SortedSetPt) (element : Pt) : SortedSetPt :=
   | none => { vec := [element] }
 
 /-- Hardware loop mirror of `add_chunk` (`0x6c46c..0x6c5f8`), for `i` in `0..16`. -/
-def addChunkBsearchLoop (chunk : Chunk) : Nat → Nat → PolyDecoder → PolyDecoder
+@[expose] def addChunkBsearchLoop (chunk : Chunk) : Nat → Nat → PolyDecoder → PolyDecoder
   | _, 0, self => self
   | i, rem + 1, self =>
     let totalIdx := chunk.index.toNat * 16 + i
@@ -222,19 +207,19 @@ def addChunkBsearchLoop (chunk : Chunk) : Nat → Nat → PolyDecoder → PolyDe
     addChunkBsearchLoop chunk (i + 1) rem self'
 
 /-- Hardware mirror of `<PolyDecoder as Decoder>::add_chunk` (`0x6c420..0x6c614`). -/
-def addChunkBsearch (self : PolyDecoder) (chunk : Chunk) : PolyDecoder :=
+@[expose] def addChunkBsearch (self : PolyDecoder) (chunk : Chunk) : PolyDecoder :=
   addChunkBsearchLoop chunk 0 16 self
 
 /-- A `List Pt` is strictly sorted by `x` (`a.x.value.toNat < b.x.value.toNat`). -/
-def PtListStrictSorted (pts : List Pt) : Prop :=
+@[expose] def PtListStrictSorted (pts : List Pt) : Prop :=
   pts.Pairwise (fun a b => a.x.value.toNat < b.x.value.toNat)
 
 /-- A `SortedSetPt` is strictly sorted by `x`. -/
-def SortedSetPtStrictSorted (s : SortedSetPt) : Prop :=
+@[expose] def SortedSetPtStrictSorted (s : SortedSetPt) : Prop :=
   PtListStrictSorted s.vec
 
 /-- Every `SortedSetPt` in `dec.pts` is strictly sorted by `x`. -/
-def PolyDecoderStrictSorted (dec : PolyDecoder) : Prop :=
+@[expose] def PolyDecoderStrictSorted (dec : PolyDecoder) : Prop :=
   ∀ s ∈ dec.pts, SortedSetPtStrictSorted s
 
 theorem ptListStrictSorted_getElem_lt {vec : List Pt} (hsort : PtListStrictSorted vec)
@@ -569,12 +554,12 @@ theorem addChunkBsearch_eq_addChunkTotal (self : PolyDecoder) (chunk : Chunk)
 /-! ## Separation-Logic Helpers for `ptSliceAt`, `sortedSetPtListOf`, and `chunkAt` -/
 
 /-- Little-endian 4-byte encoding of a `Pt` in memory (`x` at `+0..+2`, `y` at `+2..+4`). -/
-def ptLeBytes (pt : Pt) : List (BitVec 8) :=
+@[expose] def ptLeBytes (pt : Pt) : List (BitVec 8) :=
   [pt.x.value.extractLsb' 0 8, pt.x.value.extractLsb' 8 8,
    pt.y.value.extractLsb' 0 8, pt.y.value.extractLsb' 8 8]
 
 /-- Little-endian byte list of a `List Pt` in memory. -/
-def ptListBytes (pts : List Pt) : List (BitVec 8) :=
+@[expose] def ptListBytes (pts : List Pt) : List (BitVec 8) :=
   pts.flatMap ptLeBytes
 
 @[simp] theorem ptLeBytes_length (pt : Pt) : (ptLeBytes pt).length = 4 := rfl
@@ -1053,7 +1038,7 @@ theorem memRegion_spare_split_one (ptr : BitVec 64) {len cap : Nat}
     hadd4, h4 (ptr + BitVec.ofNat 64 (4 * len))]
 
 /-- Single iteration `i` of `addChunkBsearchLoop`. -/
-def addChunkBsearchStep (chunk : Chunk) (i : Nat) (self : PolyDecoder) : PolyDecoder :=
+@[expose] def addChunkBsearchStep (chunk : Chunk) (i : Nat) (self : PolyDecoder) : PolyDecoder :=
   let totalIdx := chunk.index.toNat * 16 + i
   let poly := totalIdx % 16
   let polyIdx := totalIdx / 16
@@ -1108,7 +1093,7 @@ structure AddChunkGhost where
 
 /-- Hardware specification of `<PolyDecoder as Decoder>::add_chunk` (`0x6c420`, 129 instructions)
     without requiring `PolyDecoderStrictSorted` in the precondition (outputs `addChunkBsearch`). -/
-def addChunkBsearchSpec (A : RustAlloc) : Spec AddChunkGhost where
+@[expose] def addChunkBsearchSpec (A : RustAlloc) : Spec AddChunkGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.decA ∧ s.readReg64 .x1 = x.chunkA ∧
       (∀ s ∈ x.dec.pts, s.vec.length ≤ 65536)⌝ ∗
@@ -1126,7 +1111,7 @@ def addChunkBsearchSpec (A : RustAlloc) : Spec AddChunkGhost where
     strictly sorted `PolyDecoder` (`PolyDecoderStrictSorted x.dec`), outputting
     `addChunkTotal x.dec x.chunk` (`PolyDecoder.addChunk x.dec x.chunk = .ok (addChunkTotal x.dec x.chunk)`)
     and preserving `PolyDecoderStrictSorted`. -/
-def addChunkSpec (A : RustAlloc) : Spec AddChunkGhost where
+@[expose] def addChunkSpec (A : RustAlloc) : Spec AddChunkGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.decA ∧ s.readReg64 .x1 = x.chunkA ∧
       PolyDecoderStrictSorted x.dec⌝ ∗
@@ -1141,7 +1126,7 @@ def addChunkSpec (A : RustAlloc) : Spec AddChunkGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Extended-stack variant of `addChunkSpec` (`addChunkStackX = 96 + extHookStack`). -/
-def addChunkSpecX (A : RustAlloc) : Spec AddChunkGhost where
+@[expose] def addChunkSpecX (A : RustAlloc) : Spec AddChunkGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.decA ∧ s.readReg64 .x1 = x.chunkA ∧
       PolyDecoderStrictSorted x.dec⌝ ∗
@@ -1155,31 +1140,19 @@ def addChunkSpecX (A : RustAlloc) : Spec AddChunkGhost where
       A.pool ∗ stackAt s0.sp addChunkStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def AddChunkOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr addChunkName)
-    (addChunkSpec A)
-
-def AddChunkOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr addChunkName)
-    ((addChunkSpecX A).inImage img)
-
-def AddChunkPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def AddChunkPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
     (blkPl_419).base
     (addChunkSpec A)
 
-def AddChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def AddChunkPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
     (blkPl_419).base
     (addChunkSpecX A)
 
-def addChunkOnPanic (s0 sf : State) : SepProp :=
+@[expose] def addChunkOnPanic (s0 sf : State) : SepProp :=
   ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 theorem allocFailedIn_of_trace_eq {s0 sm sf : State} (htr : sm.trace = s0.trace)

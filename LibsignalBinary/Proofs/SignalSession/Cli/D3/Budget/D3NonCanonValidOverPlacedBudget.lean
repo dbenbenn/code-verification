@@ -9,27 +9,49 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BinaryOomSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage4OverInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlacedBudget
+public import LibsignalBinary.Heap.AesDecErrRoBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BinaryOomSpec -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.FramePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.CryptoGames.DH.X25519
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePendPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOfEnvGlue
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage2PlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage4OverInstPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.Ok
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Pksm
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Budget-Threaded `validOver` (`DecPkOkOverV4`) Slot, Block-`579` `run`, and `mainSpecTightPlacedAt` Lift
@@ -41,7 +63,7 @@ budget-threaded `DecPkOkOverV4` poll contracts to block `520` (`decrypt_prekey`)
 `[LibsignalFullPlacement]` and `SpqrV1PlacedSeamsOfEnv` variants.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -61,7 +83,7 @@ open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits (stageP1ProgPlaced)
 open CryptoVerification.CliHandshake.RespClosurePlaced (lsProg_518)
 open CryptoVerification.E2E
   (PEParams PreKeyMessageFields RecordExtras UnreachedPqxdhPrimitives
-   aesDecHookMallocng djbKey kyberKey wirePrekey)
+   djbKey kyberKey wirePrekey)
 open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
 open CryptoVerification.LibsignalPublicApi.StoreKit
   (FsFiles LibsignalCodeRoLoaded withLsCodeRoLoaded)
@@ -71,8 +93,8 @@ open CryptoVerification.LibsignalTripleRatchetRepr (AddrGhost UuidParser uuidTry
 open CryptoVerification.RustHeap (RustAlloc)
 open CryptoVerification.SignalSession
   (CliHooks Inputs OutcomeMatchesModelExceptPath PqParty
-   PqSessionMatches PqxdhPartyInSpecDomain cliExternsPlaced lsReadFileSym observe partyAddress
-   pqRecvInputs pqRecvPrekeyModel sessionFile)
+   PqSessionMatches PqxdhPartyInSpecDomain cliExternsPlaced lsAesDecSym lsReadFileSym observe
+   partyAddress pqRecvInputs pqRecvPrekeyModel sessionFile)
 open CryptoVerification.SignalSession.Cli
   (CommitOk MainResult RunAnswer cliStaticsPlaced)
 open CryptoVerification.SignalSession.Cli.MainHops
@@ -95,8 +117,8 @@ open CryptoVerification.SignalSession.Cli.Slots
    scopeKit)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget)
+open LibsignalBinary.Heap.AesDecErrRoBudget (cliAesDecBudgetSpecErrRo)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (growOneVecU8BudgetSpec)
-open LibsignalBinary.Heap.SpecBudget (aesDecBudgetSpec)
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudget (TryDecryptCliEnv)
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget
   (PromoteOverEnv)
@@ -149,6 +171,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
   (pksmSlotSpecPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
   (RunCalleesEnvs RunCalleesPlaced RunHooksPlaced)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget (CliGhostAllocHooks)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
   (decPkSlotSpecFrozenPlaced decPkSlotSpecPlaced dpSlotPollKStatePlaced
@@ -162,12 +185,12 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 /-! ## 1. Pure Non-Matching Overwrite Semantics (`cliRunSemOverV4`, `validOver`, `canonicalNoMatch`) -/
 
 /-- `RunSem` instantiated with `decPkOverDef`, `DecPkOkOverV4`, and `Pksm.pksmParse`. -/
-noncomputable def cliRunSemOverV4 (X : UnreachedPqxdhPrimitives) (W : CliHooks) : RunSem :=
+@[expose] noncomputable def cliRunSemOverV4 (X : UnreachedPqxdhPrimitives) (W : CliHooks) : RunSem :=
   cliRunSemF3 X W (decPkOverDef X ⟨W.C, W.Q⟩ scopeIn)
     (DecPkOkOverV4 ⟨W.C, W.Q⟩ scopeIn) pksmParse
 
 /-- Restricts `Run₀ : Inputs → RunAnswer → Prop` to `CliPqOrD3RecvDom WP`. -/
-def pqD3ScopedRun (WP : PEParams) (Run₀ : Inputs → RunAnswer → Prop)
+@[expose] def pqD3ScopedRun (WP : PEParams) (Run₀ : Inputs → RunAnswer → Prop)
     (i : Inputs) (a : RunAnswer) : Prop :=
   CliPqOrD3RecvDom WP i ∧ Run₀ i a
 
@@ -514,6 +537,9 @@ theorem decPkValidOverSlotOk_cli_placedBudget [LibsignalPlacement]
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hReadAll : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks)
       (B' : RunBudgets),
@@ -536,7 +562,8 @@ theorem decPkValidOverSlotOk_cli_placedBudget [LibsignalPlacement]
       CliGhostAllocHooks M A lim gh' →
       subroutine_ok (lsProg_518 (cliGhostExterns gh' (cliExternsPlaced mmpl' W')))
         (lsmpl.base 519) (withLsCodeLoaded lsmpl pqxdhLogClosurePlacedSpec))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (S : RunSem) (sEnvs : RunSlotEnvs) (needs : RunNeeds)
     (hsEnv : ∀ g evs,
@@ -562,7 +589,7 @@ theorem decPkValidOverSlotOk_cli_placedBudget [LibsignalPlacement]
     (decPk_d3_validOver_stage2_placedBudget A lim hPathC hRaw hGrow)
     (stageP3_prev1_d3_placed_ok hLog519)
     (stageP4Prev1_vregs_placed_inst A lim (ReadFileRuleEnv cliIo.rd) h547 hReadAll)
-    (over_tryDecrypt_cli_placed_ok_at mmpl gh W 0#64 hG hAesDec hSpqr)
+    (over_tryDecrypt_cli_placed_ok_at mmpl gh W 0#64 hG hF hX hPub hAesDec hSpqr hh.fmtWrite hh.formatInner)
     S sEnvs needs hsEnv hfiles hdecPk hdecPkOk hneed
 
 /-! ## 3. Block-`579` `runSpecTightPlaced` & Block-`617` `mainSpecTightPlacedAt` Lift -/
@@ -599,6 +626,9 @@ theorem hrun_cli_validOver_tight_placed [LibsignalPlacement]
     {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs} {aEnvs : RunArmEnvs}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hReadAll : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks)
       (B' : RunBudgets),
@@ -621,7 +651,8 @@ theorem hrun_cli_validOver_tight_placed [LibsignalPlacement]
       CliGhostAllocHooks M A lim gh' →
       subroutine_ok (lsProg_518 (cliGhostExterns gh' (cliExternsPlaced mmpl' W')))
         (lsmpl.base 519) (withLsCodeLoaded lsmpl pqxdhLogClosurePlacedSpec))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverCliEnv A.repAlloc W X cliRunBudgets P2OverErrEnv P2OverOkEnv g evs →
@@ -642,7 +673,7 @@ theorem hrun_cli_validOver_tight_placed [LibsignalPlacement]
     subroutine_ok (mProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 579)
       (runSpecTightPlaced (LibsignalCodeRoLoaded lsmpl) A lim (RunEnv aEnvs) uuidTryParse
         (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W))) cliWrOk cliResStack) := by
-  have hslot := decPkValidOverSlotOk_cli_placedBudget mmpl gh W X h547 hG hh hReadAll hDeser
+  have hslot := decPkValidOverSlotOk_cli_placedBudget mmpl gh W X h547 hG hF hX hPub hh hReadAll hDeser
     hPathC hRaw hGrow hLog519 hAesDec hSpqr (cliRunSemOverV4 X W) sEnvs
     (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)) hsEnv rfl rfl (fun _ _ _ _ h => h) rfl
   have hrun := run_ok_placed_at_block
@@ -662,6 +693,9 @@ theorem main_ok_cli_validOver_tight_placed_at [LibsignalPlacement]
     {sEnvs : RunSlotEnvs} {needs : RunNeeds}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hReadAll : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks)
       (B' : RunBudgets),
@@ -684,7 +718,8 @@ theorem main_ok_cli_validOver_tight_placed_at [LibsignalPlacement]
       CliGhostAllocHooks M A lim gh' →
       subroutine_ok (lsProg_518 (cliGhostExterns gh' (cliExternsPlaced mmpl' W')))
         (lsmpl.base 519) (withLsCodeLoaded lsmpl pqxdhLogClosurePlacedSpec))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverCliEnv A.repAlloc W X cliRunBudgets P2OverErrEnv P2OverOkEnv g evs →
@@ -700,7 +735,7 @@ theorem main_ok_cli_validOver_tight_placed_at [LibsignalPlacement]
       (mainSpecTightPlacedAt (LibsignalCodeRoLoaded lsmpl) A lim st cliMainStk cliStaticsPlaced
         (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W)))) :=
   hMainLift
-    (decPkValidOverSlotOk_cli_placedBudget mmpl gh W X h547 hG hh hReadAll hDeser
+    (decPkValidOverSlotOk_cli_placedBudget mmpl gh W X h547 hG hF hX hPub hh hReadAll hDeser
       hPathC hRaw hGrow hLog519 hAesDec hSpqr (cliRunSemOverV4 X W) sEnvs needs
       hsEnv rfl rfl (fun _ _ _ _ h => h) hneed)
 
@@ -710,8 +745,6 @@ export LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnv
   DecPkD3ValidOverCliEnv
   ValidOverRealSlotEnv
   decPkD3ValidOverEnv_mem_w4RecvPrekeyRealEnv
-  realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_validOver_d3
-  mainSt0Dom_init_cliBudgetLimits_validOver_d3
 )
 
 /-! ## 5. `LibsignalFrozen` / `[LibsignalFullPlacement]` Variants -/
@@ -719,7 +752,7 @@ export LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnv
 /-- `ReadEnv`-parametric D3 `validOver` (`DecPkOkOverV4`) `decrypt_prekey` slot allocation envelope
 (definitionally equal `rfl` to `DecPkD3ValidOverCliEnv` at `ReadEnv := ReadFileRuleEnv cliIo.rd`,
 and directly instantiable at `ReadFileRuleEnvFixed cliIo.rd`). -/
-def DecPkD3ValidOverOfReadEnv [LibsignalPlacement]
+@[expose] def DecPkD3ValidOverOfReadEnv [LibsignalPlacement]
     (A : RustAlloc)
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
@@ -928,6 +961,9 @@ theorem decPkValidOverSlotOk_full_of_readEnv_placedBudget
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hReadAll : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks)
       (B' : RunBudgets),
@@ -946,7 +982,8 @@ theorem decPkValidOverSlotOk_full_of_readEnv_placedBudget
     (hGrow : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks),
       subroutine_ok (lsProg_51 (cliGhostExterns gh' (cliExternsPlaced mmpl' W'))) (lsmpl.base 621)
         (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (S : RunSem) (sEnvs : RunSlotEnvs) (needs : RunNeeds)
     (hsEnv : ∀ g evs,
@@ -972,7 +1009,7 @@ theorem decPkValidOverSlotOk_full_of_readEnv_placedBudget
     (decPk_d3_validOver_stage2_full_placedBudget A lim hPathC hRaw hGrow)
     stageP3_prev1_d3_full_placed_ok
     (stageP4Prev1_vregs_placed_inst A lim ReadEnv h547 hReadAll)
-    (over_tryDecrypt_cli_placed_ok_at mmpl gh W 0#64 hG hAesDec hSpqr)
+    (over_tryDecrypt_cli_placed_ok_at mmpl gh W 0#64 hG hF hX hPub hAesDec hSpqr hh.fmtWrite hh.formatInner)
     S sEnvs needs hsEnv hfiles hdecPk hdecPkOk hneed
 
 /-- Specialization of `decPkValidOverSlotOk_full_of_readEnv_placedBudget` to `ReadFileRuleEnv cliIo.rd`. -/
@@ -984,6 +1021,9 @@ theorem decPkValidOverSlotOk_cli_full_placedBudget [LibsignalFullPlacement]
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hReadAll : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks)
       (B' : RunBudgets),
@@ -1002,7 +1042,8 @@ theorem decPkValidOverSlotOk_cli_full_placedBudget [LibsignalFullPlacement]
     (hGrow : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks),
       subroutine_ok (lsProg_51 (cliGhostExterns gh' (cliExternsPlaced mmpl' W'))) (lsmpl.base 621)
         (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (S : RunSem) (sEnvs : RunSlotEnvs) (needs : RunNeeds)
     (hsEnv : ∀ g evs,
@@ -1015,7 +1056,7 @@ theorem decPkValidOverSlotOk_cli_full_placedBudget [LibsignalFullPlacement]
     (hneed : needs.decryptPrekey = cliDecryptPrekeyNeed cliRunBudgets) :
     (slotsOfSigPkFrozenPlaced A lim sEnvs S needs).decryptPrekey.OkPlaced
       (lsProg_579 (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 520) :=
-  decPkValidOverSlotOk_full_of_readEnv_placedBudget mmpl gh W X h547 hG hh hReadAll hDeser
+  decPkValidOverSlotOk_full_of_readEnv_placedBudget mmpl gh W X h547 hG hF hX hPub hh hReadAll hDeser
     hPathC hRaw hGrow hAesDec hSpqr S sEnvs needs hsEnv hfiles hdecPk hdecPkOk hneed
 
 /-- Lifts `decPkValidOverSlotOk_full_of_readEnv_placedBudget` onto `mProgPlaced` at
@@ -1031,6 +1072,9 @@ theorem hrun_cli_validOver_tight_full_of_readEnv_placed
     {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs} {aEnvs : RunArmEnvs}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hReadAll : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks)
       (B' : RunBudgets),
@@ -1049,7 +1093,8 @@ theorem hrun_cli_validOver_tight_full_of_readEnv_placed
     (hGrow : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks),
       subroutine_ok (lsProg_51 (cliGhostExterns gh' (cliExternsPlaced mmpl' W'))) (lsmpl.base 621)
         (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverOfReadEnv A.repAlloc W X cliRunBudgets ReadEnv P2OverErrEnv P2OverOkEnv g evs →
@@ -1071,7 +1116,7 @@ theorem hrun_cli_validOver_tight_full_of_readEnv_placed
       (runSpecTightPlaced (LibsignalFrozen lsmpl) A lim (RunEnv aEnvs)
         uuidTryParse (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W)))
         cliWrOk cliResStack) := by
-  have hslot := decPkValidOverSlotOk_full_of_readEnv_placedBudget mmpl gh W X h547 hG hh hReadAll
+  have hslot := decPkValidOverSlotOk_full_of_readEnv_placedBudget mmpl gh W X h547 hG hF hX hPub hh hReadAll
     hDeser hPathC hRaw hGrow hAesDec hSpqr (cliRunSemOverV4 X W) sEnvs
     (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)) hsEnv rfl rfl (fun _ _ _ _ h => h) rfl
   have hrun := run_ok_frozen_placed_at_block
@@ -1090,6 +1135,9 @@ theorem hrun_cli_validOver_tight_full_placed [LibsignalFullPlacement]
     {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs} {aEnvs : RunArmEnvs}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hReadAll : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks)
       (B' : RunBudgets),
@@ -1108,7 +1156,8 @@ theorem hrun_cli_validOver_tight_full_placed [LibsignalFullPlacement]
     (hGrow : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks),
       subroutine_ok (lsProg_51 (cliGhostExterns gh' (cliExternsPlaced mmpl' W'))) (lsmpl.base 621)
         (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverCliEnv A.repAlloc W X cliRunBudgets P2OverErrEnv P2OverOkEnv g evs →
@@ -1130,7 +1179,7 @@ theorem hrun_cli_validOver_tight_full_placed [LibsignalFullPlacement]
       (runSpecTightPlaced (LibsignalFrozen lsmpl) A lim (RunEnv aEnvs)
         uuidTryParse (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W)))
         cliWrOk cliResStack) :=
-  hrun_cli_validOver_tight_full_of_readEnv_placed A lim mmpl gh W X h547 hG hh hReadAll hDeser
+  hrun_cli_validOver_tight_full_of_readEnv_placed A lim mmpl gh W X h547 hG hF hX hPub hh hReadAll hDeser
     hPathC hRaw hGrow hAesDec hSpqr hsEnv harms hcFromSlot hpksm
 
 /-- `ReadEnv`-parametric block-`617` frozen `mainSpecTightPlacedAt` corollary for `validOver`. -/
@@ -1145,6 +1194,9 @@ theorem main_ok_cli_validOver_tight_full_of_readEnv_placed_at
     {sEnvs : RunSlotEnvs} {needs : RunNeeds}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hReadAll : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks)
       (B' : RunBudgets),
@@ -1163,7 +1215,8 @@ theorem main_ok_cli_validOver_tight_full_of_readEnv_placed_at
     (hGrow : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks),
       subroutine_ok (lsProg_51 (cliGhostExterns gh' (cliExternsPlaced mmpl' W'))) (lsmpl.base 621)
         (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverOfReadEnv A.repAlloc W X cliRunBudgets ReadEnv P2OverErrEnv P2OverOkEnv g evs →
@@ -1179,7 +1232,7 @@ theorem main_ok_cli_validOver_tight_full_of_readEnv_placed_at
       (mainSpecTightPlacedAt (LibsignalFrozen lsmpl) A lim st cliMainStk
         cliStaticsPlaced (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W)))) :=
   hMainLift
-    (decPkValidOverSlotOk_full_of_readEnv_placedBudget mmpl gh W X h547 hG hh hReadAll hDeser
+    (decPkValidOverSlotOk_full_of_readEnv_placedBudget mmpl gh W X h547 hG hF hX hPub hh hReadAll hDeser
       hPathC hRaw hGrow hAesDec hSpqr (cliRunSemOverV4 X W) sEnvs needs
       hsEnv rfl rfl (fun _ _ _ _ h => h) hneed)
 
@@ -1194,6 +1247,9 @@ theorem main_ok_cli_validOver_tight_full_placed_at
     {sEnvs : RunSlotEnvs} {needs : RunNeeds}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hReadAll : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks)
       (B' : RunBudgets),
@@ -1212,7 +1268,8 @@ theorem main_ok_cli_validOver_tight_full_placed_at
     (hGrow : ∀ (mmpl' : Obj.MultiPlacement) (gh' : CliGhostHooks) (W' : CliHooks),
       subroutine_ok (lsProg_51 (cliGhostExterns gh' (cliExternsPlaced mmpl' W'))) (lsmpl.base 621)
         (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverCliEnv A.repAlloc W X cliRunBudgets P2OverErrEnv P2OverOkEnv g evs →
@@ -1227,7 +1284,7 @@ theorem main_ok_cli_validOver_tight_full_placed_at
     subroutine_ok (mProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 617)
       (mainSpecTightPlacedAt (LibsignalFrozen lsmpl) A lim st cliMainStk
         cliStaticsPlaced (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W)))) :=
-  main_ok_cli_validOver_tight_full_of_readEnv_placed_at A lim st mmpl gh W X h547 hG hh hReadAll
+  main_ok_cli_validOver_tight_full_of_readEnv_placed_at A lim st mmpl gh W X h547 hG hF hX hPub hh hReadAll
     hDeser hPathC hRaw hGrow hAesDec hSpqr hsEnv hneed hMainLift
 
 /-! ## 6. Pointwise `(X, mmpl, gh, W)` Frozen (`withLsFrozen` / `[LibsignalFullPlacement]`) Twins -/
@@ -1427,6 +1484,9 @@ theorem decPkValidOverSlotOk_at_full_of_readEnv_placedBudget
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hRead : ∀ (B' : RunBudgets),
       subroutine_ok
@@ -1442,7 +1502,8 @@ theorem decPkValidOverSlotOk_at_full_of_readEnv_placedBudget
     (hRaw : EncodeRawPreallocPlacedOkX A.repAlloc (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hGrow : subroutine_ok (lsProg_51 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 621) (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (S : RunSem) (sEnvs : RunSlotEnvs) (needs : RunNeeds)
     (hsEnv : ∀ g evs,
@@ -1469,7 +1530,7 @@ theorem decPkValidOverSlotOk_at_full_of_readEnv_placedBudget
     stageP3_prev1_d3_full_placed_ok
     (fun B F0 peer pid kpkId spkId kbk st_b hh_p4 =>
       stageP4Prev1_placed_inst h547 mmpl gh W B F0 peer pid kpkId spkId kbk hh_p4 (hRead B) st_b)
-    (over_tryDecrypt_cli_placed_ok_at mmpl gh W 0#64 hG hAesDec hSpqr)
+    (over_tryDecrypt_cli_placed_ok_at mmpl gh W 0#64 hG hF hX hPub hAesDec hSpqr hh.fmtWrite hh.formatInner)
     S sEnvs needs hsEnv hfiles hdecPk hdecPkOk hneed
 
 /-- Specialization of `decPkValidOverSlotOk_at_full_of_readEnv_placedBudget` to `ReadFileRuleEnv cliIo.rd`. -/
@@ -1481,6 +1542,9 @@ theorem decPkValidOverSlotOk_cli_at_full_placedBudget [LibsignalFullPlacement]
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hRead : ∀ (B' : RunBudgets),
       subroutine_ok
@@ -1496,7 +1560,8 @@ theorem decPkValidOverSlotOk_cli_at_full_placedBudget [LibsignalFullPlacement]
     (hRaw : EncodeRawPreallocPlacedOkX A.repAlloc (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hGrow : subroutine_ok (lsProg_51 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 621) (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (S : RunSem) (sEnvs : RunSlotEnvs) (needs : RunNeeds)
     (hsEnv : ∀ g evs,
@@ -1509,7 +1574,7 @@ theorem decPkValidOverSlotOk_cli_at_full_placedBudget [LibsignalFullPlacement]
     (hneed : needs.decryptPrekey = cliDecryptPrekeyNeed cliRunBudgets) :
     (slotsOfSigPkFrozenPlaced A lim sEnvs S needs).decryptPrekey.OkPlaced
       (lsProg_579 (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 520) :=
-  decPkValidOverSlotOk_at_full_of_readEnv_placedBudget mmpl gh W X h547 hG hh hRead hDeser
+  decPkValidOverSlotOk_at_full_of_readEnv_placedBudget mmpl gh W X h547 hG hF hX hPub hh hRead hDeser
     hPathC hRaw hGrow hAesDec hSpqr S sEnvs needs hsEnv hfiles hdecPk hdecPkOk hneed
 
 /-- Pointwise `(X, mmpl, gh, W)` `ReadEnv`-parametric block-`579` frozen `runSpecTightPlaced` lift. -/
@@ -1524,6 +1589,9 @@ theorem hrun_cli_validOver_tight_at_full_of_readEnv_placed
     {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs} {aEnvs : RunArmEnvs}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hRead : ∀ (B' : RunBudgets),
       subroutine_ok
@@ -1539,7 +1607,8 @@ theorem hrun_cli_validOver_tight_at_full_of_readEnv_placed
     (hRaw : EncodeRawPreallocPlacedOkX A.repAlloc (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hGrow : subroutine_ok (lsProg_51 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 621) (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverOfReadEnv A.repAlloc W X cliRunBudgets ReadEnv P2OverErrEnv P2OverOkEnv g evs →
@@ -1561,7 +1630,7 @@ theorem hrun_cli_validOver_tight_at_full_of_readEnv_placed
       (runSpecTightPlaced (LibsignalFrozen lsmpl) A lim (RunEnv aEnvs)
         uuidTryParse (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W)))
         cliWrOk cliResStack) := by
-  have hslot := decPkValidOverSlotOk_at_full_of_readEnv_placedBudget mmpl gh W X h547 hG hh hRead
+  have hslot := decPkValidOverSlotOk_at_full_of_readEnv_placedBudget mmpl gh W X h547 hG hF hX hPub hh hRead
     hDeser hPathC hRaw hGrow hAesDec hSpqr (cliRunSemOverV4 X W) sEnvs
     (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)) hsEnv rfl rfl (fun _ _ _ _ h => h) rfl
   have hrun := run_ok_frozen_placed_at_block
@@ -1580,6 +1649,9 @@ theorem hrun_cli_validOver_tight_at_full_placed [LibsignalFullPlacement]
     {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs} {aEnvs : RunArmEnvs}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hRead : ∀ (B' : RunBudgets),
       subroutine_ok
@@ -1595,7 +1667,8 @@ theorem hrun_cli_validOver_tight_at_full_placed [LibsignalFullPlacement]
     (hRaw : EncodeRawPreallocPlacedOkX A.repAlloc (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hGrow : subroutine_ok (lsProg_51 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 621) (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverCliEnv A.repAlloc W X cliRunBudgets P2OverErrEnv P2OverOkEnv g evs →
@@ -1617,7 +1690,7 @@ theorem hrun_cli_validOver_tight_at_full_placed [LibsignalFullPlacement]
       (runSpecTightPlaced (LibsignalFrozen lsmpl) A lim (RunEnv aEnvs)
         uuidTryParse (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W)))
         cliWrOk cliResStack) :=
-  hrun_cli_validOver_tight_at_full_of_readEnv_placed A lim mmpl gh W X h547 hG hh hRead hDeser
+  hrun_cli_validOver_tight_at_full_of_readEnv_placed A lim mmpl gh W X h547 hG hF hX hPub hh hRead hDeser
     hPathC hRaw hGrow hAesDec hSpqr hsEnv harms hcFromSlot hpksm
 
 /-- Pointwise `(X, mmpl, gh, W)` `ReadEnv`-parametric block-`617` frozen `mainSpecTightPlacedAt` corollary. -/
@@ -1632,6 +1705,9 @@ theorem main_ok_cli_validOver_tight_at_full_of_readEnv_placed_at
     {sEnvs : RunSlotEnvs} {needs : RunNeeds}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hRead : ∀ (B' : RunBudgets),
       subroutine_ok
@@ -1647,7 +1723,8 @@ theorem main_ok_cli_validOver_tight_at_full_of_readEnv_placed_at
     (hRaw : EncodeRawPreallocPlacedOkX A.repAlloc (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hGrow : subroutine_ok (lsProg_51 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 621) (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverOfReadEnv A.repAlloc W X cliRunBudgets ReadEnv P2OverErrEnv P2OverOkEnv g evs →
@@ -1663,7 +1740,7 @@ theorem main_ok_cli_validOver_tight_at_full_of_readEnv_placed_at
       (mainSpecTightPlacedAt (LibsignalFrozen lsmpl) A lim st cliMainStk
         cliStaticsPlaced (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W)))) :=
   hMainLift
-    (decPkValidOverSlotOk_at_full_of_readEnv_placedBudget mmpl gh W X h547 hG hh hRead hDeser
+    (decPkValidOverSlotOk_at_full_of_readEnv_placedBudget mmpl gh W X h547 hG hF hX hPub hh hRead hDeser
       hPathC hRaw hGrow hAesDec hSpqr (cliRunSemOverV4 X W) sEnvs needs
       hsEnv rfl rfl (fun _ _ _ _ h => h) hneed)
 
@@ -1678,6 +1755,9 @@ theorem main_ok_cli_validOver_tight_at_full_placed_at
     {sEnvs : RunSlotEnvs} {needs : RunNeeds}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hRead : ∀ (B' : RunBudgets),
       subroutine_ok
@@ -1693,7 +1773,8 @@ theorem main_ok_cli_validOver_tight_at_full_placed_at
     (hRaw : EncodeRawPreallocPlacedOkX A.repAlloc (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hGrow : subroutine_ok (lsProg_51 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 621) (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverCliEnv A.repAlloc W X cliRunBudgets P2OverErrEnv P2OverOkEnv g evs →
@@ -1708,7 +1789,7 @@ theorem main_ok_cli_validOver_tight_at_full_placed_at
     subroutine_ok (mProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 617)
       (mainSpecTightPlacedAt (LibsignalFrozen lsmpl) A lim st cliMainStk
         cliStaticsPlaced (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W)))) :=
-  main_ok_cli_validOver_tight_at_full_of_readEnv_placed_at A lim st mmpl gh W X h547 hG hh hRead
+  main_ok_cli_validOver_tight_at_full_of_readEnv_placed_at A lim st mmpl gh W X h547 hG hF hX hPub hh hRead
     hDeser hPathC hRaw hGrow hAesDec hSpqr hsEnv hneed hMainLift
 
 /-- `SpqrV1PlacedSeamsOfEnv` variant of `decPkValidOverSlotOk_at_full_of_readEnv_placedBudget`. -/
@@ -1726,6 +1807,9 @@ theorem decPkValidOverSlotOk_at_full_of_readEnv_ofEnv_placedBudget
     {tdEnv : CliHooks → TryDecryptEnvArgs → List AllocEvent → Prop}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hRead : ∀ (B' : RunBudgets),
       subroutine_ok
@@ -1741,7 +1825,8 @@ theorem decPkValidOverSlotOk_at_full_of_readEnv_ofEnv_placedBudget
     (hRaw : EncodeRawPreallocPlacedOkX A.repAlloc (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hGrow : subroutine_ok (lsProg_51 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 621) (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr :
       LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget.SpqrV1PlacedSeamsOfEnv
         M A lim mmpl gh W InitEnv (fun st msg => RecvBytesEnv st.bytes msg.bytes) SendEnv)
@@ -1749,8 +1834,8 @@ theorem decPkValidOverSlotOk_at_full_of_readEnv_ofEnv_placedBudget
     (htd : ∀ a evs,
       LibsignalBinary.Proofs.Cli.SpqrV1.M4.TryDecryptPV1TrapPlacedBudget.TryDecryptCliEnvOf
         W.C (spqrV1 W.C.F W.Q.K)
-        LibsignalBinary.Heap.SpecBudget.FmtWriteEnv RecvBytesEnv
-        LibsignalBinary.Heap.SpecBudget.FormatInnerEnv a evs →
+        LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs.CliFmtWriteEnv RecvBytesEnv
+        LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs.CliFormatInnerEnv a evs →
       tdEnv W a evs)
     (S : RunSem) (sEnvs : RunSlotEnvs) (needs : RunNeeds)
     (hsEnv : ∀ g evs,
@@ -1782,7 +1867,7 @@ theorem decPkValidOverSlotOk_at_full_of_readEnv_ofEnv_placedBudget
     (fun B F0 peer pid kpkId spkId kbk st_b hh_p4 =>
       stageP4Prev1_placed_inst h547 mmpl gh W B F0 peer pid kpkId spkId kbk hh_p4 (hRead B) st_b)
     (LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOfEnvGlue.over_tryDecrypt_cli_of_tdEnv_placed_ok_at
-      mmpl gh W 0#64 hG hAesDec hSpqr hRecv_ne htd)
+      mmpl gh W 0#64 hG hF hX hPub hAesDec hSpqr hh.fmtWrite hh.formatInner hRecv_ne htd)
     S sEnvs needs hsEnv hfiles hdecPk hdecPkOk hneed
 
 /-- `SpqrV1PlacedSeamsOfEnv` variant of `hrun_cli_validOver_tight_at_full_of_readEnv_placed`. -/
@@ -1801,6 +1886,9 @@ theorem hrun_cli_validOver_tight_at_full_of_readEnv_ofEnv_placed
     {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs} {aEnvs : RunArmEnvs}
     (h547 : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hRead : ∀ (B' : RunBudgets),
       subroutine_ok
@@ -1816,7 +1904,8 @@ theorem hrun_cli_validOver_tight_at_full_of_readEnv_ofEnv_placed
     (hRaw : EncodeRawPreallocPlacedOkX A.repAlloc (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hGrow : subroutine_ok (lsProg_51 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 621) (withLsCl lsmpl (growOneVecU8BudgetSpec M A lim)))
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr :
       LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget.SpqrV1PlacedSeamsOfEnv
         M A lim mmpl gh W InitEnv (fun st msg => RecvBytesEnv st.bytes msg.bytes) SendEnv)
@@ -1824,8 +1913,8 @@ theorem hrun_cli_validOver_tight_at_full_of_readEnv_ofEnv_placed
     (htd : ∀ a evs,
       LibsignalBinary.Proofs.Cli.SpqrV1.M4.TryDecryptPV1TrapPlacedBudget.TryDecryptCliEnvOf
         W.C (spqrV1 W.C.F W.Q.K)
-        LibsignalBinary.Heap.SpecBudget.FmtWriteEnv RecvBytesEnv
-        LibsignalBinary.Heap.SpecBudget.FormatInnerEnv a evs →
+        LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs.CliFmtWriteEnv RecvBytesEnv
+        LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs.CliFormatInnerEnv a evs →
       tdEnv W a evs)
     (hsEnv : ∀ g evs,
       DecPkD3ValidOverEnv A.repAlloc W X cliRunBudgets ReadEnv SessDeserializeCancelEnv
@@ -1851,7 +1940,7 @@ theorem hrun_cli_validOver_tight_at_full_of_readEnv_ofEnv_placed
       (runSpecTightPlaced (LibsignalFrozen lsmpl) A lim (RunEnv aEnvs)
         uuidTryParse (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W)))
         cliWrOk cliResStack) := by
-  have hslot := decPkValidOverSlotOk_at_full_of_readEnv_ofEnv_placedBudget mmpl gh W X h547 hG hh
+  have hslot := decPkValidOverSlotOk_at_full_of_readEnv_ofEnv_placedBudget mmpl gh W X h547 hG hF hX hPub hh
     hRead hDeser hPathC hRaw hGrow hAesDec hSpqr hRecv_ne htd (cliRunSemOverV4 X W) sEnvs
     (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)) hsEnv rfl rfl (fun _ _ _ _ h => h) rfl
   have hrun := run_ok_frozen_placed_at_block

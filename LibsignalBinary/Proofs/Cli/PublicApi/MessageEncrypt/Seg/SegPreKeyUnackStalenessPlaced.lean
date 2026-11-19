@@ -9,10 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStaleness
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStaleness -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
+public import ProofLib.RegChain
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CmDropPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrSignalEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrStoreHookPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `segPreKey` Unacknowledged Items Getter and Staleness Check (`+0x344..+0x6fc`)
@@ -22,7 +36,7 @@ Defines `StalenessDurStatePlaced` (`+0x6c4`) and `StalenessAddStatePlaced` (`+0x
 (`lsProg_464 Hk`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +64,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 
 /-! ## 1. `+0x344..+0x6c4`: `StalenessDurStatePlaced` & `segPreKey_unackItems_to_dur_placed_ok` -/
 
-def pollWithBaseKey_trap_placed (sp : BitVec 64) (items : PendingPreKey) (ts : SystemTime) : SepProp :=
+@[expose] def pollWithBaseKey_trap_placed (sp : BitVec 64) (items : PendingPreKey) (ts : SystemTime) : SepProp :=
   memRegion (sp + 0x46a#64) 0x64a ∗
     ((sp + 0xab4#64) ↦ₛ items.baseKey.bytes.toList) ∗
     memRegion (sp + 0xad4#64) 0x2c ∗
@@ -117,7 +131,7 @@ theorem durationSinceBounded_b00_intro_trap (sp : BitVec 64) (tvSec : BitVec 64)
 
 /-- State at `+0x6c4` (`encEntryPlaced + 0x6c4#64`), right before `bl durationSince`,
     under `[LibsignalPlacement]`. -/
-def StalenessDurStatePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def StalenessDurStatePlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (ctl : BitVec 64)
@@ -294,7 +308,7 @@ theorem segPreKey_unackItems_to_dur_placed_ok [LibsignalPlacement] {A : RustAllo
 
 /-- State at `+0x6fc` (`encEntryPlaced + 0x6fc#64`), right after `bl timeAdd`,
     under `[LibsignalPlacement]`. -/
-def StalenessAddStatePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def StalenessAddStatePlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (ctl : BitVec 64)

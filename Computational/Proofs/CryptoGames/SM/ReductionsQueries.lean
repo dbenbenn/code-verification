@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
 import VCVio.OracleComp.QueryTracking.SubSpec
 
 /-!
@@ -22,7 +22,7 @@ Each SM query causes at most two FS-AEAD queries in `redFSAuth`, `redFSPriv`, an
 while only `fsRecv` issues a decryption (`deliver` or `inject`) query.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec
 
@@ -31,13 +31,13 @@ namespace CryptoGames.FSAEAD
 variable {SS RS AD Msg C : Type}
 
 /-- Whether an FS-AEAD oracle query is a decryption query (`deliver` or `inject`). -/
-protected def isDecQuery : (unifSpec + spec SS RS AD Msg C).Domain → Bool
+@[expose] protected def isDecQuery : (unifSpec + spec SS RS AD Msg C).Domain → Bool
   | .inr (.inl (.inr _)) => true
   | .inr (.inr _) => true
   | _ => false
 
 /-- `A` makes at most `qd` decryption (`deliver` or `inject`) queries to the Fig. 5 oracles. -/
-protected def MakesAtMostDecQueries (A : Adversary SS RS AD Msg C) (qd : ℕ) : Prop :=
+@[expose] protected def MakesAtMostDecQueries (A : Adversary SS RS AD Msg C) (qd : ℕ) : Prop :=
   A.IsQueryBoundP (fun t => FSAEAD.isDecQuery (SS := SS) (RS := RS) (AD := AD) (Msg := Msg) (C := C) t = true) qd
 
 end CryptoGames.FSAEAD
@@ -105,7 +105,7 @@ section QB
 
 variable {Q : (RSpec SS RS T M E).Domain → Prop} [DecidablePred Q] {σ α β : Type}
 
-def QB (Q : (RSpec SS RS T M E).Domain → Prop) [DecidablePred Q]
+@[expose] def QB (Q : (RSpec SS RS T M E).Domain → Prop) [DecidablePred Q]
     {σ α : Type} (x : StateT σ (OracleComp (RSpec SS RS T M E)) α) (n : ℕ) : Prop :=
   ∀ s : σ, IsQueryBoundP (x.run s) Q n
 

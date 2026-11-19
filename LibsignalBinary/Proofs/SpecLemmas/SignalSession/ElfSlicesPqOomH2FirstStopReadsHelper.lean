@@ -12,16 +12,19 @@ module
 public import Arm64.Trusted.Spec.Hoare
 public import LibsignalBinary.Heap.IfaceBudgetBase
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
 public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
-public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslOpenDeterministic
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslOpenDeterministic -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
+public import ProofLib.StdStartup.MuslStage1Init
 public import VerifiedLibraries.Musl.Proofs.MemOps
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 import LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopReadsMusl
 import ProofLib.Process
 import ProofLib.Process.FastParse
@@ -39,7 +42,7 @@ Proves `mallocngLib` `hole2_keepSub` bounds, `RustCliAllocBudgetEntriesBase` ins
 `muslOpenRdonlyDetSpec` on `f3TrialRxProg` for `ElfSlicesPqOomH2FirstStopReads`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,13 +62,14 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie (f3TrialRxP
 
 abbrev h2fsreads_hookStack : Nat := extHookStack
 
-/-- Guard set `[0x469000, 0x46f000)` (`seg[2]`, `rfl` with `hole2_keepSub`). -/
+/-- Guard set `seg[2]` (`rfl` with `hole2_keepSub`). -/
 abbrev h2fsreads_keepSub (a : BitVec 64) : Bool :=
-  decide (0x469000 ≤ a.toNat ∧ a.toNat < 0x46f000)
+  decide (Wp4LayoutGen.hole2_keepSubLo ≤ a.toNat ∧ a.toNat < Wp4LayoutGen.hole2_keepSubHi)
 
-/-- Guard set `[0x4686a0, 0x468724) ∪ [0x469000, 0x46f000)` (`rfl` with `hole2_keep`). -/
+/-- Guard set `[hole2_keepR1Lo, hole2_keepR1Hi) ∪ seg[2]` (`rfl` with `hole2_keep`). -/
 abbrev h2fsreads_keep (a : BitVec 64) : Bool :=
-  decide ((0x4686a0 ≤ a.toNat ∧ a.toNat < 0x468724) ∨ (0x469000 ≤ a.toNat ∧ a.toNat < 0x46f000))
+  decide ((Wp4LayoutGen.hole2_keepR1Lo ≤ a.toNat ∧ a.toNat < Wp4LayoutGen.hole2_keepR1Hi) ∨
+    (Wp4LayoutGen.hole2_keepSubLo ≤ a.toNat ∧ a.toNat < Wp4LayoutGen.hole2_keepSubHi))
 
 abbrev h2fsreads_emptyProg : Program :=
   Program.ofSvc Arm64.Syscall.standard
@@ -155,8 +159,8 @@ theorem h2fsreads_keepSub_mallocng (mmpl : MultiPlacement)
     have hk_off : (a - mmpl.base k).toNat < mallocngLib.blocks[k].code.length := hin
     have heq_a : mmpl.base k + BitVec.ofNat 64 (a - mmpl.base k).toNat = a := by
       rw [BitVec.ofNat_toNat, BitVec.setWidth_eq]; bv_omega
-    have hlo : 0x469000 ≤ f3MngCodeLo := by decide
-    have hhi : f3MngCodeHi ≤ 0x46f000 := by decide
+    have hlo : Wp4LayoutGen.hole2_keepSubLo ≤ f3MngCodeLo := by decide
+    have hhi : f3MngCodeHi ≤ Wp4LayoutGen.hole2_keepSubHi := by decide
     have ht : (mmpl.base k + BitVec.ofNat 64 (a - mmpl.base k).toNat).toNat =
         (mmpl.base k).toNat + (a - mmpl.base k).toNat :=
       h2fsreads_toNat_add_ofNat_of_lt (by omega)
@@ -249,14 +253,14 @@ theorem h2fsreads_fineHookAllocEntries_thunks (mmpl : MultiPlacement)
     f3Trial_allocMemcpyVm_ok
 
 theorem h2fsreads_stdMemcpy_ok :
-    subroutine_ok f3TrialRxProg 0x469650#64 stdMemcpySpec :=
+    subroutine_ok f3TrialRxProg 0x474650#64 stdMemcpySpec :=
   stdMemcpy_ok_of_hasWords f3TrialRxProg f3StdLayout.memcpyAddr f3TrialRxProg_no_ext
     (hasWords_of_wordTree f3RxWordCount f3TrialRxWordTree_eq f3TrialRxWordTree_size
       (by rw [f3TrialRxProg_base]) (by decide) f3TrialRxProg_stubs f3TrialRxProg_symbols
       (by rfl_kernel))
 
 theorem h2fsreads_noAllocShim_ok :
-    subroutine_ok f3TrialRxProg 0x469640#64 rustAllocShimVmSpec :=
+    subroutine_ok f3TrialRxProg 0x474640#64 rustAllocShimVmSpec :=
   rustAllocShimVm_ret_ok f3Trial_seg5ShimBundle.noAllocShimV2
 
 /-! ## Deterministic `open` (`O_RDONLY | O_CLOEXEC`) on `f3TrialRxProg` -/
@@ -264,98 +268,6 @@ theorem h2fsreads_noAllocShim_ok :
 private theorem h2fsreads_setFs_appendTrace_nil (s : State) (fs' : FsState) :
     (s.setFs fs').appendTrace [] = s.setFs fs' := by
   cases s; simp only [State.setFs, State.appendTrace, List.append_nil]
-
-private theorem h2fsreads_execOpenat_rdonly_cloexec_err_anc {s : State} {path : String}
-    {err : BitVec 64}
-    (hdfd : s.readReg32 .x0 = AT_FDCWD_W32)
-    (hflags : s.readReg32 .x2 = O_LARGEFILE_W32 ||| O_CLOEXEC_W32)
-    (hcs : readCString s.mem (s.readReg64 .x1) = .ok path)
-    (hne : path.isEmpty = false)
-    (hlead : hasLeadingSlash path = false)
-    (hdot : hasDotDot path = false)
-    (hanc : ancestorWalkErrno? s.fs path = some err) :
-    execOpenat s = (s.writeReg64 .x0 (-err)).advancePC := by
-  have hf_bad : (((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& ~~~OPENAT_KNOWN_MASK) != 0#32 ||
-      ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& 3#32) == 3#32) = false := by decide
-  have hf_cr : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& O_CREAT_W32 != 0#32) = false := by decide
-  have hres : resolveCwdPath AT_FDCWD_W32 path = .ok (normalizePath path) := by
-    simp [resolveCwdPath, hne, hlead, hdot]
-  rw [ProofLib.ancestorWalkErrno_eq_strict] at hanc
-  dsimp only [execOpenat, checkOpenFlags, openatPure, applyOpenVerdict]
-  rw [hdfd, hflags, hf_bad, hf_cr, hcs]
-  simp only [Bool.false_eq_true, Bool.false_and, ↓reduceIte]
-  rw [hres]
-  cases hsanc : strictAncestorWalkErrno? s.fs path with
-  | some e =>
-    rw [hsanc] at hanc
-    injection hanc with he; subst he; rfl
-  | none =>
-    rw [hsanc] at hanc
-    cases hlast : ((splitSlash path).filter (!·.isEmpty)).getLast?.any (·.length > NAME_MAX) with
-    | true =>
-      rw [hlast] at hanc
-      simp only [↓reduceIte, Option.some.injEq] at hanc
-      subst hanc; rfl
-    | false =>
-      rw [hlast] at hanc; cases hanc
-
-private theorem h2fsreads_execOpenat_rdonly_cloexec_missing {s : State} {path : String}
-    (hdfd : s.readReg32 .x0 = AT_FDCWD_W32)
-    (hflags : s.readReg32 .x2 = O_LARGEFILE_W32 ||| O_CLOEXEC_W32)
-    (hcs : readCString s.mem (s.readReg64 .x1) = .ok path)
-    (hne : path.isEmpty = false)
-    (hlead : hasLeadingSlash path = false)
-    (hdot : hasDotDot path = false)
-    (hanc : ancestorWalkErrno? s.fs path = none)
-    (hnone : s.fs.files path = none) :
-    execOpenat s = (s.writeReg64 .x0 (-ENOENT)).advancePC := by
-  have hf_bad : (((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& ~~~OPENAT_KNOWN_MASK) != 0#32 ||
-      ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& 3#32) == 3#32) = false := by decide
-  have hf_cr : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& O_CREAT_W32 != 0#32) = false := by decide
-  have hres : resolveCwdPath AT_FDCWD_W32 path = .ok (normalizePath path) := by
-    simp [resolveCwdPath, hne, hlead, hdot]
-  have hge : s.fs.getEntry (normalizePath path) = none := hnone
-  obtain ⟨hsanc, hlast⟩ := ProofLib.strictAncestorWalkErrno_of_none hanc
-  dsimp only [execOpenat, checkOpenFlags, openatPure, applyOpenVerdict]
-  rw [hdfd, hflags, hf_bad, hf_cr, hcs]
-  simp only [Bool.false_eq_true, Bool.false_and, ↓reduceIte]
-  rw [hres, hsanc]
-  dsimp only
-  rw [hlast]
-  simp only [Bool.false_eq_true, ↓reduceIte]
-  rw [hge]
-  simp
-
-private theorem h2fsreads_execOpenat_rdonly_cloexec_emfile_dir {s : State} {path : String}
-    (hdfd : s.readReg32 .x0 = AT_FDCWD_W32)
-    (hflags : s.readReg32 .x2 = O_LARGEFILE_W32 ||| O_CLOEXEC_W32)
-    (hcs : readCString s.mem (s.readReg64 .x1) = .ok path)
-    (hne : path.isEmpty = false)
-    (hlead : hasLeadingSlash path = false)
-    (hdot : hasDotDot path = false)
-    (hanc : ancestorWalkErrno? s.fs path = none)
-    (hdir : s.fs.files path = some .dir)
-    (halloc : s.fs.allocFd = none) :
-    execOpenat s = (s.writeReg64 .x0 (-EMFILE)).advancePC := by
-  have hf_bad : (((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& ~~~OPENAT_KNOWN_MASK) != 0#32 ||
-      ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& 3#32) == 3#32) = false := by decide
-  have hf_m0 : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& 3#32 == 0#32) = true := by decide
-  have hf_cr : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& O_CREAT_W32 != 0#32) = false := by decide
-  have hf_tr : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& O_TRUNC_W32 != 0#32) = false := by decide
-  have hrd_ne : (FdAccessMode.rdonly != FdAccessMode.rdonly) = false := rfl
-  have hres : resolveCwdPath AT_FDCWD_W32 path = .ok (normalizePath path) := by
-    simp [resolveCwdPath, hne, hlead, hdot]
-  have hge : s.fs.getEntry (normalizePath path) = some .dir := hdir
-  obtain ⟨hsanc, hlast⟩ := ProofLib.strictAncestorWalkErrno_of_none hanc
-  dsimp only [execOpenat, checkOpenFlags, openatPure, applyOpenVerdict]
-  rw [hdfd, hflags, hf_bad, hf_m0, hf_cr, hf_tr, hcs]
-  simp only [Bool.false_eq_true, Bool.false_and, ↓reduceIte]
-  rw [hres, hsanc]
-  dsimp only
-  rw [hlast]
-  simp only [Bool.false_eq_true, ↓reduceIte]
-  rw [hge, hrd_ne, halloc]
-  simp
 
 private theorem h2fsreads_execOpenat_rdonly_cloexec_file_or_emfile {s : State} {path : String}
     {bs : List (BitVec 8)}
@@ -375,49 +287,9 @@ private theorem h2fsreads_execOpenat_rdonly_cloexec_file_or_emfile {s : State} {
       | some fd =>
         ((s.setFs (s.fs.setFd fd (some
             { path := path, accMode := .rdonly, append := false, cloexec := true,
-              offset := 0, kind := .localFile }))).writeReg64 .x0 fd).advancePC := by
-  have hf_bad : (((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& ~~~OPENAT_KNOWN_MASK) != 0#32 ||
-      ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& 3#32) == 3#32) = false := by decide
-  have hf_m0 : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& 3#32 == 0#32) = true := by decide
-  have hf_cr : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& O_CREAT_W32 != 0#32) = false := by decide
-  have hf_tr : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& O_TRUNC_W32 != 0#32) = false := by decide
-  have hf_ap : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& O_APPEND_W32 != 0#32) = false := by decide
-  have hf_dr : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& O_DIRECTORY_W32 != 0#32) = false := by decide
-  have hf_cl : ((O_LARGEFILE_W32 ||| O_CLOEXEC_W32) &&& O_CLOEXEC_W32 != 0#32) = true := by decide
-  have hres : resolveCwdPath AT_FDCWD_W32 path = .ok (normalizePath path) := by
-    simp [resolveCwdPath, hne, hlead, hdot]
-  have hge : s.fs.getEntry (normalizePath path) = some (.file bs) := hfile
-  have hself : s.fs.setEntry (normalizePath path) (some (.file bs)) = s.fs :=
-    FsState.setEntry_self_of_nonEmpty hnorm_ne hge
-  obtain ⟨hsanc, hlast⟩ := ProofLib.strictAncestorWalkErrno_of_none hanc
-  dsimp only [execOpenat, checkOpenFlags, openatPure, applyOpenVerdict]
-  rw [hdfd, hflags, hf_bad, hf_m0, hf_cr, hf_tr, hf_ap, hf_dr, hf_cl, hcs]
-  simp only [Bool.false_eq_true, Bool.false_and, Bool.and_false, ↓reduceIte]
-  rw [hres, hsanc]
-  dsimp only
-  rw [hlast]
-  simp only [Bool.false_eq_true, ↓reduceIte]
-  rw [hge, htd]
-  simp only [Bool.false_or, Bool.false_eq_true, ↓reduceIte]
-  cases s.fs.allocFd with
-  | none => rfl
-  | some fd => simp [hself]
-
-private theorem h2fsreads_classifyOpenRdonly_err_of_none_some
-    (fs : FsState) (path : String) (e : FsEntry) {errno : Nat}
-    (hb : blockingAncestor? fs path = none)
-    (hf : fs.files path = some e)
-    (hcl : classifyOpenRdonly fs path = .err errno) :
-    fs.allocFd = none ∧ errno = 24 := by
-  unfold classifyOpenRdonly at hcl
-  rw [hb, hf] at hcl
-  cases ha : fs.allocFd with
-  | none =>
-    rw [ha] at hcl
-    cases e <;> (dsimp only at hcl; injection hcl with he; exact ⟨rfl, he.symm⟩)
-  | some fd =>
-    rw [ha] at hcl
-    cases e <;> nomatch hcl
+              offset := 0, kind := .localFile }))).writeReg64 .x0 fd).advancePC :=
+  LibsignalBinary.Proofs.SignalSession.CliIo.MuslOpenDeterministic.execOpenat_rdonly_cloexec_file_or_emfile
+    hdfd hflags hcs hne hlead hdot htd hnorm_ne hanc hfile
 
 private theorem h2fsreads_execOpenat_of_classifyOpenRdonly_err {s : State} {path : String} {errno : Nat}
     (hpok : PathOk path = true)
@@ -426,57 +298,12 @@ private theorem h2fsreads_execOpenat_of_classifyOpenRdonly_err {s : State} {path
     (hdfd : s.readReg32 .x0 = AT_FDCWD_W32)
     (hflags : s.readReg32 .x2 = O_LARGEFILE_W32 ||| O_CLOEXEC_W32)
     (hcs : readCString s.mem (s.readReg64 .x1) = .ok path) :
-    execOpenat s = (s.writeReg64 .x0 (-BitVec.ofNat 64 errno)).advancePC := by
-  have hcs_ne := pathComps_ne_nil path
-  have hg : ∀ c ∈ pathComps path, GoodComp c :=
-    fun c hc => goodComp_of_mem_pathComps hpok hc
-  have hp_eq := strOfComps_pathComps path
-  have hne : path.isEmpty = false := isEmpty_false_of_pathOk hpok
-  have hlead : hasLeadingSlash path = false := by
-    rw [← hp_eq]; exact hasLeadingSlash_strOfComps hcs_ne hg
-  have hdot : hasDotDot path = false := by
-    rw [← hp_eq]; exact hasDotDot_strOfComps hcs_ne hg
-  have htd : trailingDir path = false := trailingDir_false_of_pathOk hpok
-  have hnorm_ne : normalizePath path ≠ [] := normalizePath_ne_nil_of_pathOk hpok
-  have hanc_eq := ancestorWalkErrno?_eq_of_pathOk s.fs hpok hmax
-  have hcl0 := hcl
-  unfold classifyOpenRdonly at hcl
-  cases hb : blockingAncestor? s.fs path with
-  | some a =>
-    rw [hb] at hcl hanc_eq
-    cases a with
-    | none =>
-      have he : errno = 2 := by dsimp only at hcl; injection hcl with he'; exact he'.symm
-      subst he
-      exact h2fsreads_execOpenat_rdonly_cloexec_err_anc hdfd hflags hcs hne hlead hdot hanc_eq
-    | some e =>
-      cases e with
-      | dir => exact absurd hb (blockingAncestor?_ne_some_dir s.fs path)
-      | file _ =>
-        have he : errno = 20 := by dsimp only at hcl; injection hcl with he'; exact he'.symm
-        subst he
-        exact h2fsreads_execOpenat_rdonly_cloexec_err_anc hdfd hflags hcs hne hlead hdot hanc_eq
-  | none =>
-    rw [hb] at hcl hanc_eq
-    cases hf : s.fs.files path with
-    | none =>
-      rw [hf] at hcl
-      have he : errno = 2 := by dsimp only at hcl; injection hcl with he'; exact he'.symm
-      subst he
-      exact h2fsreads_execOpenat_rdonly_cloexec_missing hdfd hflags hcs hne hlead hdot hanc_eq hf
-    | some e =>
-      obtain ⟨ha, rfl⟩ := h2fsreads_classifyOpenRdonly_err_of_none_some s.fs path e hb hf hcl0
-      cases e with
-      | dir =>
-        exact h2fsreads_execOpenat_rdonly_cloexec_emfile_dir hdfd hflags hcs hne hlead hdot hanc_eq hf ha
-      | file bs =>
-        have hexec := h2fsreads_execOpenat_rdonly_cloexec_file_or_emfile hdfd hflags hcs hne hlead hdot
-          htd hnorm_ne hanc_eq hf
-        rw [ha] at hexec
-        exact hexec
+    execOpenat s = (s.writeReg64 .x0 (-BitVec.ofNat 64 errno)).advancePC :=
+  LibsignalBinary.Proofs.SignalSession.CliIo.MuslOpenDeterministic.execOpenat_of_classifyOpenRdonly_err
+    hpok hmax hcl hdfd hflags hcs
 
 theorem h2fsreads_muslOpenRdonlyDet_ok :
-    subroutine_ok f3TrialRxProg 0x46bb24#64 muslOpenRdonlyDetSpec := by
+    subroutine_ok f3TrialRxProg 0x476ba0#64 muslOpenRdonlyDetSpec := by
   apply subroutine_ok.of_codeLoaded
   rintro ⟨cstr, path, e0⟩ R s0 hpc hrun hpre hsp _hL
   simp only [muslOpenRdonlyDetSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre

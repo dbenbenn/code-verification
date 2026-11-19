@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX
+public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.CanonKey
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.DeserializeLeaves
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Fields
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.Push
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,16 +40,6 @@ open CryptoVerification.E2E.Record.Serialization
 open CryptoVerification.E2E.Bin
 
 theorem L1_DeserTransportX : True := trivial
-
-/-- Exact-postcondition `SessionRecord::deserialize` contract (`deserOutRecordG` niche form),
-parameterized by a loaded `img`. Pre = `deserializeGenSpecAt img`.pre. -/
-noncomputable def deserializeExactSpecAtX (img : Obj.Image) : Spec DeserializeGenGhost where
-  pre := (deserializeGenSpecAt img).pre
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗ (x.p ↦ₛ CryptoVerification.E2E.Record.encodeRecord x.r) ∗
-      deserOutRecordG x.out x.r ∗
-      stackAt s0.sp recDeserializeStack
-  onPanic := (deserializeGenSpecAt img).onPanic
 
 theorem stackAt_sub_splitX (sp : BitVec 64) (k m : Nat) (hkm : k ≤ m)
     (hm : m ≤ 2 ^ 64) :
@@ -150,80 +140,10 @@ theorem deserOutRecordG_entails_binCanonSessionX {G0 : SessionGhost} (s : Sessio
   rw [vecAt_prev_zero_eqX]
   exact Entails.refl _
 
-/-- Transport (generic in `prog`/`entry`): the exact deserialize contract implies
-`(recordDeserializeOpenSpec A0).inImage img`. Copy of `sessionRecord_deserialize_base_generic`
-with the unused environment premise dropped. -/
-theorem recordDeserializeOpen_of_exactX {prog : Program} {entry : BitVec 64} (img : Obj.Image)
-    (hdeser : subroutine_ok prog entry (deserializeExactSpecAtX img)) :
-    subroutine_ok prog entry ((recordDeserializeOpenSpec A0).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨ptr, bs, out, sess⟩ R s0 hpc hrun hpre hal => ?_
-  have hpre' := hpre
-  dsimp only [Spec.inImage, recordDeserializeOpenSpec] at hpre'
-  rw [stackAt_recordDeserialize_splitX s0.sp, sepConj_assoc, satisfies_pure_sepConj] at hpre'
-  rcases hpre' with ⟨⟨hF, hsym⟩, hpre'⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre'
-  rcases hpre' with ⟨⟨hx0, hx1_nat, hx8, hbs, hr, G0, hG0⟩, hmem⟩
-  subst hbs
-  have hlen_lt : (CryptoVerification.E2E.Record.encodeRecord ⟨some sess⟩).length < 2 ^ 20 :=
-    encodeRecord_length_lt hr
-  have hx1 : s0.readReg64 .x1 =
-      BitVec.ofNat 64 (CryptoVerification.E2E.Record.encodeRecord ⟨some sess⟩).length := by
-    apply BitVec.eq_of_toNat_eq
-    rw [hx1_nat, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  let x_deserialize : DeserializeGenGhost := ⟨ptr, out, ⟨some sess⟩⟩
-  let R_deserialize : SepProp := (A0.pool ∗
-    memRegion (s0.sp - BitVec.ofNat 64 recordDeserializeStack)
-      (recordDeserializeStack - recDeserializeStack) ∗ R)
-  have hpre_deserialize :
-      s0.mem ⊨ (deserializeExactSpecAtX img).pre x_deserialize s0 ∗ R_deserialize := by
-    dsimp only [deserializeExactSpecAtX, deserializeGenSpecAt, x_deserialize, R_deserialize]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx8, hr, hF, hsym⟩, ?_⟩
-    convert hmem using 1; ac_rfl
-  refine (hdeser.to_outcome x_deserialize R_deserialize s0 hpc hrun hpre_deserialize hal).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨_, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [deserializeExactSpecAtX, x_deserialize, R_deserialize] at hq
-    have hrepr := deserOutRecordG_entails_binCanonSessionX sess hG0 hr out
-    have hq' := Satisfies.mono
-      (sepConj_mono_left (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hrepr)))) hq
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq'
-    rcases hq' with ⟨htr, hq_mem⟩
-    dsimp only [Spec.inImage, recordDeserializeOpenSpec]
-    rw [stackAt_recordDeserialize_splitX s0.sp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htr, ?_⟩
-    convert hq_mem using 1; ac_rfl
-  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-    dsimp only [deserializeExactSpecAtX, deserializeGenSpecAt, allocPanic,
-      Spec.inImage, recordDeserializeOpenSpec, R_deserialize] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    rcases hq with ⟨hfail, hq_mem⟩
-    refine ⟨hfail, ?_⟩
-    have hany : (anyHeap ∗ A0.pool ∗
-        memRegion (s0.sp - BitVec.ofNat 64 recordDeserializeStack)
-          (recordDeserializeStack - recDeserializeStack)) ∗ R ⊢ anyHeap ∗ R :=
-      sepConj_mono_left (ProofLib.entails_anyHeap _)
-    refine Satisfies.mono hany ?_
-    convert hq_mem using 1; ac_rfl
-  · dsimp only [deserializeExactSpecAtX, deserializeGenSpecAt] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact hq.1.elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-/-! ## Arbitrary-Allocator (`A : RustAlloc`) Representation & Transport -/
-
 section ArbitraryAlloc
 open CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.E2E.Record.DeserializeSeed
 open CryptoGames.HMAC
-
-/-- Exact-postcondition `SessionRecord::deserialize` contract for arbitrary `A : RustAlloc`
-(`= deserializeExactSpecAtWA A img` by `rfl`). -/
-noncomputable def deserializeExactSpecAtXA (A : RustAlloc) (img : Obj.Image) :
-    Spec DeserializeGenGhost where
-  pre := (deserializeGenSpecAtA A img).pre
-  post := fun x s0 sf => deserOutRawGA A x s0 sf
-  onPanic := (deserializeGenSpecAtA A img).onPanic
 
 theorem vecAt_prev_zero_eqXA (A : RustAlloc) (out : BitVec 64) :
     vecAt A 24 8 (fun (_ : Unit) _ => emp) out 0#64 8#64 [] =
@@ -637,66 +557,6 @@ theorem deserOutRecordGA_entails_binCanonSessionX (A : RustAlloc) {G0 : SessionG
   unfold sessionRecordAt; dsimp only
   rw [vecAt_prev_zero_eqXA A]; exact Entails.refl _
 
-/-- Transport (generic in `prog`/`entry`/`A`): the exact deserialize contract implies
-`(recordDeserializeOpenSpec A).inImage img`. -/
-theorem recordDeserializeOpen_of_exactXA {prog : Program} {entry : BitVec 64}
-    (A : RustAlloc) (img : Obj.Image)
-    (hdeser : subroutine_ok prog entry (deserializeExactSpecAtXA A img)) :
-    subroutine_ok prog entry ((recordDeserializeOpenSpec A).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨ptr, bs, out, sess⟩ R s0 hpc hrun hpre hal => ?_
-  have hpre' := hpre
-  dsimp only [Spec.inImage, recordDeserializeOpenSpec] at hpre'
-  rw [stackAt_recordDeserialize_splitX s0.sp, sepConj_assoc, satisfies_pure_sepConj] at hpre'
-  rcases hpre' with ⟨⟨hF, hsym⟩, hpre'⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre'
-  rcases hpre' with ⟨⟨hx0, hx1_nat, hx8, hbs, hr, G0, hG0⟩, hmem⟩
-  subst hbs
-  have hlen_lt : (CryptoVerification.E2E.Record.encodeRecord ⟨some sess⟩).length < 2 ^ 20 :=
-    encodeRecord_length_lt hr
-  have hx1 : s0.readReg64 .x1 =
-      BitVec.ofNat 64 (CryptoVerification.E2E.Record.encodeRecord ⟨some sess⟩).length := by
-    apply BitVec.eq_of_toNat_eq
-    rw [hx1_nat, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  let x_deserialize : DeserializeGenGhost := ⟨ptr, out, ⟨some sess⟩⟩
-  let R_deserialize : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 recordDeserializeStack)
-      (recordDeserializeStack - recDeserializeStack) ∗ R
-  have hpre_deserialize :
-      s0.mem ⊨ (deserializeExactSpecAtXA A img).pre x_deserialize s0 ∗ R_deserialize := by
-    dsimp only [deserializeExactSpecAtXA, deserializeGenSpecAtA, x_deserialize, R_deserialize]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx8, hr, hF, hsym⟩, ?_⟩
-    convert hmem using 1; ac_rfl
-  refine (hdeser.to_outcome x_deserialize R_deserialize s0 hpc hrun hpre_deserialize hal).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨_, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [deserializeExactSpecAtXA, deserOutRawGA, x_deserialize, R_deserialize] at hq
-    have hrepr := deserOutRecordGA_entails_binCanonSessionX A sess hG0 hr out
-    have hq' := Satisfies.mono
-      (sepConj_mono_left (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hrepr)))) hq
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq'
-    rcases hq' with ⟨htr, hq_mem⟩
-    dsimp only [Spec.inImage, recordDeserializeOpenSpec]
-    rw [stackAt_recordDeserialize_splitX s0.sp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htr, ?_⟩
-    convert hq_mem using 1; ac_rfl
-  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-    dsimp only [deserializeExactSpecAtXA, deserializeGenSpecAtA, allocPanic,
-      Spec.inImage, recordDeserializeOpenSpec, R_deserialize] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    rcases hq with ⟨hfail, hq_mem⟩
-    refine ⟨hfail, ?_⟩
-    have hany : (anyHeap ∗
-        memRegion (s0.sp - BitVec.ofNat 64 recordDeserializeStack)
-          (recordDeserializeStack - recDeserializeStack)) ∗ R ⊢ anyHeap ∗ R :=
-      sepConj_mono_left (ProofLib.entails_anyHeap _)
-    refine Satisfies.mono hany ?_
-    convert hq_mem using 1; ac_rfl
-  · dsimp only [deserializeExactSpecAtXA, deserializeGenSpecAtA] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact hq.1.elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
 end ArbitraryAlloc
 
 /-! ## Relocatable `[LibsignalPlacement]` Exact-to-Open Transport -/
@@ -707,7 +567,7 @@ theorem L1_DeserTransportX_Placed : True := trivial
 
 /-- Image-free exact-postcondition `SessionRecord::deserialize` contract (`deserOutRecordG` niche form),
 definitionally equal to `deserializeExactRawSpecW`. -/
-noncomputable def deserializeExactRawSpecX : Spec DeserializeGenGhost where
+@[expose] def deserializeExactRawSpecX : Spec DeserializeGenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.p ∧
       s.readReg64 .x1 = BitVec.ofNat 64 (CryptoVerification.E2E.Record.encodeRecord x.r).length ∧
@@ -722,7 +582,7 @@ noncomputable def deserializeExactRawSpecX : Spec DeserializeGenGhost where
 
 /-- Relocatable exact-postcondition `SessionRecord::deserialize` contract carrying
 `LibsignalCodeRoLoaded lsmpl`. -/
-noncomputable abbrev deserializeExactPlacedSpecX [LibsignalPlacement] : Spec DeserializeGenGhost :=
+abbrev deserializeExactPlacedSpecX [LibsignalPlacement] : Spec DeserializeGenGhost :=
   LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl deserializeExactRawSpecX
 
 /-- Relocatable transport (generic in `prog`, `entry`, and `pl`): the exact deserialize contract
@@ -785,8 +645,7 @@ theorem recordDeserializeOpen_placed_of_exactX {prog : Program} {entry : BitVec 
       sepConj_mono_left (ProofLib.entails_anyHeap _)
     refine Satisfies.mono hany ?_
     convert hq_mem using 1; ac_rfl
-  · dsimp only [LibsignalTripleRatchet.withLsCodeRoLoaded, deserializeExactRawSpecX,
-      deserializeGenSpec] at hq
+  · dsimp only [LibsignalTripleRatchet.withLsCodeRoLoaded, deserializeExactRawSpecX] at hq
     rw [satisfies_pure_sepConj] at hq
     exact hq.1.elim
   · exact (not_satisfies_false_sepConj hq).elim

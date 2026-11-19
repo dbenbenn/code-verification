@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.Witness
+public import Symbolic.Proofs.Tests.CliNonvacuity.Witness -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -30,6 +30,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
 
 /-!
 # Plaintext Draw Non-Collision
@@ -39,7 +40,7 @@ any 9-byte `.send` plaintext `ev.input` containing `'m'` (`109#8`) cannot trigge
 `NextEventCollides` after an explained CLI prefix `evs₁` whose run coin files exclude `109#8`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

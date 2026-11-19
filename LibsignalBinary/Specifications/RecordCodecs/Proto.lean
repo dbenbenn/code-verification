@@ -222,9 +222,6 @@ def PreKeyRecord.deserialize (bs : List (BitVec 8)) : Except SignalProtocolError
   | none => .error .invalidProtobufEncoding
   | some s => .ok ⟨s⟩
 
-/-- `PreKeyRecord::serialize` (`L/protocol/src/state/prekey.rs:70–72`, always `Ok`). -/
-def PreKeyRecord.serialize (r : PreKeyRecord) : List (BitVec 8) := r.preKey.encode
-
 /-- `SignedPreKeyRecord { signed_pre_key: SignedPreKeyRecordStructure }`
 (`L/protocol/src/state/signed_prekey.rs:26–29`). -/
 structure SignedPreKeyRecord where
@@ -239,11 +236,6 @@ def SignedPreKeyRecord.deserialize (bs : List (BitVec 8)) :
   match SignedPreKeyRecordStructure.decode bs with
   | none => .error .invalidProtobufEncoding
   | some s => .ok ⟨s⟩
-
-/-- `<SignedPreKeyRecord as GenericSignedPreKey>::serialize`
-(`L/protocol/src/state/signed_prekey.rs:76–78`, always `Ok`). -/
-def SignedPreKeyRecord.serialize (r : SignedPreKeyRecord) : List (BitVec 8) :=
-  r.signedPreKey.encode
 
 /-- `KyberPreKeyRecord { signed_pre_key: SignedPreKeyRecordStructure }`
 (`L/protocol/src/state/kyber_prekey.rs:26–29`): the same structure as `SignedPreKeyRecord`, with
@@ -260,9 +252,5 @@ def KyberPreKeyRecord.deserialize (bs : List (BitVec 8)) :
   match SignedPreKeyRecordStructure.decode bs with
   | none => .error .invalidProtobufEncoding
   | some s => .ok ⟨s⟩
-
-/-- `<KyberPreKeyRecord as GenericSignedPreKey>::serialize` (the provided method). -/
-def KyberPreKeyRecord.serialize (r : KyberPreKeyRecord) : List (BitVec 8) :=
-  r.signedPreKey.encode
 
 end CryptoVerification.RecordCodecs

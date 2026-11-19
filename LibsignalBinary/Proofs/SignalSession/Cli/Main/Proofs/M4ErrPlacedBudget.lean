@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FreeArgsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4ErrPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FreeArgsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4ErrPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -19,6 +19,15 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WP.Structural
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4LitsPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Post-`run` Discriminant Check & Error Exit for `main_m4` (Block `617`)
@@ -28,7 +37,7 @@ and `M+0xb24` error cleanup block under `RustCliAllocBudget M`, threading `A.poo
 `ExitKPoolPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false

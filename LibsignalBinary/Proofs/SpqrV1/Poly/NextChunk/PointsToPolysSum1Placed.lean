@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Rodata
-import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Rodata -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysDefs
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackLoop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumMult1Placed
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed `Poly::add_assign` and `lagrange_sum` Helpers
@@ -25,7 +26,7 @@ Relocatable `[LibsignalPlacement]` verification of `Poly::add_assign` push/XOR l
 deallocation (`+2640 -> +2668 / +3908`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -103,7 +104,7 @@ theorem multAssign_length_pl (p : Poly) (c : GF16) :
   exact parallelMult_length_pl c p.coefficients
 
 /-- Recursive fold for `Poly::lagrange_sum` over `pts` and `polys`. -/
-def lagrangeSumFoldPoly_pl (acc : Poly) : List Pt → List Poly → Poly
+@[expose] def lagrangeSumFoldPoly_pl (acc : Poly) : List Pt → List Poly → Poly
   | pt :: ptsRest, poly :: polysRest =>
     lagrangeSumFoldPoly_pl (acc.addAssign (poly.multAssign pt.y)) ptsRest polysRest
   | _, _ => acc

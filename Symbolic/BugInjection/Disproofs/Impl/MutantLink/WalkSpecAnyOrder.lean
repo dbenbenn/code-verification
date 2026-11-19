@@ -31,7 +31,7 @@ set_option autoImplicit false
 namespace Symbolic.BugInjection.Disproofs.Impl.MutantLink.WalkSpecAnyOrder
 
 open Arm64 Arm64.Obj Arm64.Obj.Interned Arm64.Process
-open ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection
+open ProofLib ProofLib.ProgramReflection
 
 /-- Like `Obj.Interned.checkMultiMetaCoreFastB`, but falls back from `rangesSorted` to pairwise
     `checkRangesDisjoint` when blocks are laid out out-of-index-order in the stock `ld.lld` ELF. -/

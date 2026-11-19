@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.CKA.Defs
-public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Lazy
+public import Computational.Proofs.CryptoGames.FSAEAD.Lazy
 public import Computational.Proofs.CryptoGames.CKA.CKAProofDefs
 public import LibsignalBinary.Specifications.CryptoGames.CKA.LibsignalCKA
 public import LibsignalBinary.Specifications.CryptoGames.CKA.DDHDefs
@@ -31,7 +31,7 @@ with exponents in a field `F` acting on an `F`-module `G` via a bijective genera
 whereas `dhScheme D` abstracts commuting scalar multiplication directly.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory CryptoGames.Lazy CryptoGames.CKA.DDH
 

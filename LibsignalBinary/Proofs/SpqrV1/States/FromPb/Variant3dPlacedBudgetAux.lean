@@ -11,17 +11,26 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3cPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3b
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3c
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3c -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3d
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 3 Post-Encoder Helpers
@@ -30,7 +39,7 @@ Relocatable Block-`333` pure segment lifts (`+924`, `+1012`, `+4984`), `Ok` exit
 (`+4984 -> +8180 -> ret`), and `+4884` `FreeOnlyEvs` error exit.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

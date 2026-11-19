@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslElfBlock
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.InitStack
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslElfBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.InitStack -- proof-setup: allow-public-import
 import ProofLib.SepLogic.Basic
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -95,7 +95,7 @@ theorem wellFormed_disjointAligned (elf : ElfImage) (hwf : elf.WellFormed = true
   exact hwf.1.1.1.2
 
 /-- Bytes `bs` at `a` form a slice of a segment of `elf` with permission `p`. -/
-def SegSlice (elf : ElfImage) (a : BitVec 64) (bs : List (BitVec 8)) (p : Perm) : Prop :=
+@[expose] def SegSlice (elf : ElfImage) (a : BitVec 64) (bs : List (BitVec 8)) (p : Perm) : Prop :=
   ∃ (k : Nat) (hk : k < elf.segments.length) (off : Nat),
     elf.segments[k].perm = p ∧ a = elf.segments[k].start + BitVec.ofNat 64 off ∧
     (elf.segments[k].bytes.drop off).take bs.length = bs
@@ -285,7 +285,7 @@ theorem startProc_eq (elf : ElfImage) (strs : List (List (BitVec 8))) (sp envp n
       (envp ↦₆₄* auxWords elf strs)) =
     (StartProc sp envp (argvBase strs) elf.phdrVaddr
         (BitVec.ofNat 64 Obj.pageSize) 0#64 0#64 elf.entry 1000#64 1000#64 (platformAddr strs)
-        0x3#64 100#64 (BitVec.ofNat 64 (infoBase strs)) 0#64 (execfnAddr strs)
+        0x1b#64 100#64 (BitVec.ofNat 64 (infoBase strs)) 0#64 (execfnAddr strs)
         (n.extractLsb' 0 32) (n.extractLsb' 32 32) ∗
       ((envp + 304#64) ↦₆₄ 0#64)) := by
   unfold auxWords
@@ -565,137 +565,5 @@ theorem stackBudget_le {stk : Nat} (h : stk ≤ cliStackBudget) : stk ≤ 837177
   have := cliStackSize_eq
   unfold cliStackBudget cliArgBudget at h
   omega
-
-set_option maxHeartbeats 3200000 in
-/-- Under `CliElfMusl` and `ArgvFitsInitialStack`, loading the CLI succeeds and `Program.ofImage img E`
-steps from `_start` to `main` (`entry - 89668`) with `w0 = argc`, `x1 = argv`, `sp = sp0 - 48`,
-`lr = entry + 0x854`, unchanged filesystem and trace, and `(argvAt x1 argv ∗ stackAt sp stk ∗ R) ∗ muslFiniFr entry`. -/
-theorem musl_startup {li : Obj.LinkedImage} {img : Obj.Image} (himg : Obj.Loads li img)
-    (E : String → Option (State → State)) {elf : ElfImage} {code : List (BitVec 8)}
-    (hC : CliElfMusl elf code) (hwf : elf.WellFormed = true)
-    (hbrk : elf.brkStart.toNat ≤ stackBase)
-    (hend : img.base.toNat + img.code.length ≤ elf.entry.toNat)
-    (hf : MuslStartFetch ({ code } : Program) 0#64)
-    (argv : List String) (stdin : List (BitVec 8)) (files : List (String × List (BitVec 8)))
-    (dirs : List String)
-    (hargs : ∀ a ∈ argv, ∀ c ∈ a.toList, 0 < c.toNat ∧ c.toNat < 128)
-    (hfits : (argv.map fun a => a.length + 1 + 8).sum ≤ cliArgBudget)
-    (hdirs : ∀ d ∈ dirs, Arm64.hasLeadingSlash d = false ∧ Arm64.hasDotDot d = false)
-    (hfiles : ∀ f ∈ files,
-      (Arm64.hasLeadingSlash f.1 = false ∧ Arm64.hasDotDot f.1 = false) ∧
-        f.2.length ≤ Arm64.MAX_LFS_FILESIZE)
-    (stk : Nat) (hstk : stk ≤ cliStackBudget) {R : SepProp} {S : Nat → Prop}
-    (hR : ∀ s0, elf.loadState (processInputs ("libsignal-cli" :: argv) stdin files dirs) = .ok s0 →
-      SupportedOn 0#64 S s0.mem R)
-    (hS : ∀ k, S k → k < stackBase ∧
-      ¬((elf.entry + 0x2000#64).toNat ≤ k ∧ k < (elf.entry + 0x2000#64).toNat + 600)) :
-    ∃ s0 sm, elf.loadState (processInputs ("libsignal-cli" :: argv) stdin files dirs) = .ok s0 ∧
-      Steps (Program.ofImage img E) s0 sm ∧ sm.pc = elf.entry - 85504#64 ∧
-      sm.status = .Running ∧ sm.spAligned = true ∧ sm.sp = s0.sp - 48#64 ∧
-      (sm.readReg64 .x0).setWidth 32 = BitVec.ofNat 32 (argv.length + 1) ∧
-      sm.readReg64 .x1 = s0.sp + 8#64 ∧ sm.readReg64 .lr = elf.entry + 0x854#64 ∧
-      sm.fs = s0.fs ∧ sm.trace = s0.trace ∧
-      (sm.mem ⊨ (argvAt (sm.readReg64 .x1) (cliStrs argv) ∗ stackAt sm.sp stk ∗ R) ∗
-        muslFiniFr elf.entry) ∧
-      stk ≤ sm.sp.toNat := by
-  replace hstk : stk ≤ 8371776 := stackBudget_le hstk
-  replace hfits : (argv.map fun a => a.length + 1 + 8).sum ≤ 16384 := hfits
-  obtain ⟨hload, hsp0, hal16, hlo, hlen, hfr, hzero, -⟩ :=
-    loadState_cli_layout elf argv stdin files dirs hwf hbrk hargs hfits hdirs hfiles
-  generalize elf.rawState (processInputs ("libsignal-cli" :: argv) stdin files dirs) = s0
-    at hload hsp0 hfr hzero
-  obtain ⟨hpc0, hrun0, -, -⟩ := loadState_fields hload
-  obtain ⟨hfit, -, -⟩ := cli_bounds argv hfits
-  have hphent := wf_phent elf hwf
-  have heb := entry_bound elf hwf hbrk
-  have hsb := stackBase_eq
-  have htop := top_eq
-  have hspn := toNat_sp0 (cliStrs argv)
-  have hk : (cliStrs argv).length < 2 ^ 31 := by
-    have := argv_length_le argv hfits
-    rw [cliStrs_length]; omega
-  obtain ⟨h0, g3, g4, ia, F, hh0, hrw⟩ := hC.rw
-  have hML : (unpackL (muslRwWords h0 g3 g4 ia F)).length = 600 := by
-    rw [unpackL_length]; rfl
-  have hne : unpackL (muslRwWords h0 g3 g4 ia F) ≠ [] := by
-    intro h; have := congrArg List.length h; rw [hML] at this; simp at this
-  have hMb := hrw.bound hne hwf hbrk
-  rw [hML] at hMb
-  have hFs := supportedOn_of_holdsBytes_rw (by rw [hspn]; omega) hfr
-  have hZb : Obj.HoldsBytes s0.mem (BitVec.ofNat 64 stackBase)
-      (List.replicate (sp0 (cliStrs argv) - stackBase - 480 + 480) 0#8) (fun _ => .rw) := by
-    apply holdsBytes_zero
-    intro i hi
-    have hi' : i < sp0 (cliStrs argv) - stackBase - 480 + 480 := hi
-    have e := toNat_ofNat_add stackBase i (by omega)
-    apply hzero
-    · rw [e]; exact Nat.le_add_right _ _
-    · rw [e]; clear e; omega
-  have hZs := supportedOn_of_holdsBytes_rw (by rw [toNat_stackBase, List.length_replicate]; omega)
-    hZb
-  have hMs := supportedOn_of_holdsBytes_rw (by omega) (hrw.holdsBytes hwf hbrk hload)
-  rw [← pointsToWords64_eq_pointsToBytes] at hMs
-  have hRs := hR s0 hload
-  have hMR := hMs.sepConj hRs (by
-    intro k h1 h2
-    obtain ⟨h1a, h1b⟩ := h1
-    exact (hS k h2).2 ⟨h1a, by omega⟩)
-  have hZMR := hZs.sepConj hMR (by
-    intro k h1 h2
-    obtain ⟨h1a, h1b⟩ := h1
-    simp only [toNat_stackBase, List.length_replicate] at h1a h1b
-    rcases h2 with ⟨h2a, h2b⟩ | h2
-    · omega
-    · have := (hS k h2).1; omega)
-  have hall := hFs.sepConj hZMR (by
-    intro k h1 h2
-    obtain ⟨h1a, h1b⟩ := h1
-    rw [hspn] at h1a h1b
-    rcases h2 with ⟨h2a, h2b⟩ | ⟨h2a, h2b⟩ | h2
-    · simp only [toNat_stackBase, List.length_replicate] at h2a h2b; omega
-    · omega
-    · have := (hS k h2).1; omega)
-  have hsat := hall.satisfies
-  have hzsp : s0.sp = BitVec.ofNat 64 stackBase +
-      BitVec.ofNat 64 (sp0 (cliStrs argv) - stackBase - 480 + 480) := by
-    rw [hsp0, BitVec.ofNat_add_ofNat]
-    exact congrArg (BitVec.ofNat 64) (sub_add_eq' _ _ hlo)
-  have hsat2 := Arm64.Satisfies.mono (sepConj_mono
-    (frame_split elf (cliStrs argv) (bytesOfString "libsignal-cli") (argv.map bytesOfString) rfl
-      hfit)
-    (sepConj_mono_left (zeros_split s0.sp _ _ hzsp))) hsat
-  rw [← hsp0] at hsat2
-  have hpre := pre_assemble hsat2
-    (startProc_eq elf (cliStrs argv) s0.sp
-      (s0.sp + BitVec.ofNat 64 (8 * ((cliStrs argv).length + 2)))
-      (BitVec.ofNat 64 (cliStrs argv).length) hphent hC.phnum)
-    (cStr_eq _) (fun Q hQ => sat_startPhdrs hC.phdrs hwf hbrk hload hQ)
-  have hend' : img.base.toNat + img.code.length ≤ elf.entry.toNat := hend
-  obtain ⟨sm, hsteps, hpc', hrun', hregs, hpost⟩ := musl_start_block himg E (B := elf.entry)
-    (code := code) hend' (by omega) hf hC.entry_page (s := s0)
-    (codeLoaded_of_text hC hwf hbrk hload) hpc0 hrun0
-    (al_of_mod _ (by rw [hsp0, hspn]; exact hal16))
-    (and_neg16 _ (by rw [hsp0, hspn]; exact hal16))
-    _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-    (envp_eq s0.sp (cliStrs argv).length hk).symm
-    (argvBase_ne argv hfits) hC.phdr_ne h0 g3 g4 ia F hh0 hpre
-  delta Hop7Regs at hregs
-  obtain ⟨hsp', hx0, hx1, -, hlr, hfs, htr⟩ := hregs
-  refine ⟨s0, sm, hload, hsteps, hpc', hrun', ?_, hsp', ?_, hx1, hlr, hfs, htr, ?_, ?_⟩
-  · unfold State.spAligned
-    rw [hsp']
-    exact spAligned_sub48 _ (al_of_mod _ (by rw [hsp0, hspn]; exact hal16))
-  · rw [hx0, cliStrs_length]
-    exact x0_eq _
-  · rw [hx1, hsp']
-    exact post_finish hpost pick3
-      (bupd_sep (pointsTo64_freeze_ro _ _) (pointsTo64_freeze_ro _ _)) (fini_intro _ _)
-      (argvAt_cli _ _ _)
-      (stack_rebuild s0.sp (BitVec.ofNat 64 stackBase) (sp0 (cliStrs argv) - stackBase - 480) stk
-        (by rw [hsp0, hspn, toNat_stackBase]; omega) (by omega))
-  · rw [hsp', hsp0]
-    have := sp0_le_top (cliStrs argv)
-    simp only [BitVec.toNat_sub, BitVec.toNat_ofNat]
-    omega
 
 end CryptoVerification.SignalSession.MuslElf

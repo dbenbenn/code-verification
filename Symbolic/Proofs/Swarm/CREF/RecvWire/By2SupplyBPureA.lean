@@ -13,9 +13,9 @@ import DY.ALaCarte.Basic
 import DY.Bytes.Basic
 import DY.EquationalTheory.KdfExtract
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieSeedShapePure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecTieSeedShapePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelSplit
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvWire.A2bSameOriginPure
@@ -27,6 +27,10 @@ import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 
 /-!
 # Ratchet-Key Alias Shape-Split Lemmas for Whisper Receive
@@ -36,7 +40,7 @@ Proves `a2b_rkAlias_false_of_shape_eq` (excluding equal-shape seeds on a ratchet
 unequal-shape seeds on a ratchet-key alias to `RecvCollision` via `whisperTrials`).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -158,7 +162,7 @@ theorem a2b_rkAlias_false_of_shape_eq
 
 /-- Ratchet-key alias configuration where the cached skipped seed `seed_s` and chain seed
 `seed_c` evaluate to the same bytes with unequal shapes. -/
-def A2bRkAliasShapeNe (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def A2bRkAliasShapeNe (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (t : DY.Bytes) : Prop :=
   let tr := runTraceMoves r ms
   ∃ msg, parseTrSignalMsg t = some msg ∧
@@ -173,7 +177,7 @@ def A2bRkAliasShapeNe (interpretation : ExternInterpretation) (r : ProtocolSetup
         gamma interpretation S g seed_c = gamma interpretation S g seed_s ∧
         (gamma' interpretation S g seed_c).shape ≠ (gamma' interpretation S g seed_s).shape
 
-def A2bRkAliasShapeNeExcl (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def A2bRkAliasShapeNeExcl (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (acc : List MachineEvent) : Prop :=
   ∀ t, A2bRkAliasShapeNe interpretation r S g ms t → RecvCollision interpretation r S g ms t
 

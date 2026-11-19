@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.CryptoGames.SM.Construction
 
 /-!
@@ -20,7 +20,7 @@ interface, and source game codecs (`CKA.spec`, `SM.spec`, `SM.specDF`) for Conti
 and the ACD19 Fig. 8 secure-messaging reductions.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.CKA
 
@@ -31,7 +31,7 @@ inductive CKASort
   | kc | γ | ccoins | t | i | kr | sig | k | ss | rs | msg | ct
   deriving DecidableEq
 
-@[reducible] def CKASort.den (KC Γ CCoins T I KR RSt K SS RS M E : Type) : CKASort → Type
+@[expose, reducible] def CKASort.den (KC Γ CCoins T I KR RSt K SS RS M E : Type) : CKASort → Type
   | .kc => KC
   | .γ => Γ
   | .ccoins => CCoins
@@ -46,16 +46,16 @@ inductive CKASort
   | .ct => E
 
 /-- Signature for CKA and ACD19 Fig. 8 reductions, assigning unit size to every `CKASort`. -/
-@[reducible] def ckaSig (KC Γ CCoins T I KR RSt K SS RS M E : Type) : Sig where
+@[expose, reducible] def ckaSig (KC Γ CCoins T I KR RSt K SS RS M E : Type) : Sig where
   Base := CKASort
   den := CKASort.den KC Γ CCoins T I KR RSt K SS RS M E
   sz := fun _ _ => 1
 
-@[reducible] def ckaHdrTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaHdrTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (ckaSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .prod .nat (.opt (.base .t))
 
-@[reducible] def ckaHdrCtTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaHdrCtTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (ckaSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .prod (ckaHdrTy KC Γ CCoins T I KR RSt K SS RS M E) (.base .ct)
 
@@ -82,7 +82,7 @@ inductive CKAOp
 
 /-- Operation table for `CKAOp` at unit cost, except `fsReceive B` which clamps the message index to
 `B` at cost `bits B`. -/
-@[reducible] def ckaOps {KC Γ CCoins T I KR RSt K SS RS M E : Type}
+@[expose, reducible] def ckaOps {KC Γ CCoins T I KR RSt K SS RS M E : Type}
     (ckaInitA : KC → Γ)
     (ckaInitB : KC → Γ)
     (ckaSend : Γ → CCoins → Γ × T × I)
@@ -160,7 +160,7 @@ inductive CKAOp
     | _ => 1
 
 /-- Instantiate `ckaOps` from concrete `CKAScheme`, `PRFPRNG`, and `FSAEADScheme` structures. -/
-@[reducible] def ckaSchemeOps {KC Γ CCoins T I KR RSt K SS RS M E : Type}
+@[expose, reducible] def ckaSchemeOps {KC Γ CCoins T I KR RSt K SS RS M E : Type}
     [DecidableEq T] [DecidableEq I] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR RSt I K)
@@ -176,7 +176,7 @@ inductive CKASamp
   deriving DecidableEq
 
 /-- Coin and key samplers for CKA and Fig. 8 reductions at unit cost per sample. -/
-@[reducible] def ckaSamplers {KC Γ CCoins T I KR RSt K SS RS M E : Type}
+@[expose, reducible] def ckaSamplers {KC Γ CCoins T I KR RSt K SS RS M E : Type}
     (sampKR : ProbComp KR)
     (sampKC : ProbComp KC)
     (sampCCoins : ProbComp CCoins)
@@ -207,7 +207,7 @@ inductive CKATag
 
 /-- Target oracle interface for `unifSpec + CKA.spec Γ CCoins T I` with unit query cost and
 `ckaSamplers`. -/
-@[reducible] def ckaIface (KC Γ CCoins T I KR RSt K SS RS M E : Type)
+@[expose, reducible] def ckaIface (KC Γ CCoins T I KR RSt K SS RS M E : Type)
     (sampKR : ProbComp KR)
     (sampKC : ProbComp KC)
     (sampCCoins : ProbComp CCoins)
@@ -245,7 +245,7 @@ inductive CKATag
   qCost := fun _ => 1
   smp := ckaSamplers sampKR sampKC sampCCoins sampI sampK
 
-@[reducible] def ckaQ (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaQ (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (ckaSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .sum
     (.sum
@@ -255,7 +255,7 @@ inductive CKATag
       .bool)
     .bool
 
-@[reducible] def ckaR (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaR (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (ckaSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .sum
     (.sum
@@ -268,7 +268,7 @@ inductive CKATag
     (.opt (.base .γ))
 
 /-- Source game codec for `CKA.spec` (`codecCost = 6`). -/
-@[reducible] def ckaCodec (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaCodec (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     GameCodec (ckaSig KC Γ CCoins T I KR RSt K SS RS M E)
       (CKA.spec Γ CCoins T I) where
   Q := ckaQ KC Γ CCoins T I KR RSt K SS RS M E
@@ -294,13 +294,13 @@ inductive CKATag
 
 /-! ## Fig. 8 SM source game codecs -/
 
-@[reducible] def ckaRrTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaRrTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (ckaSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .sum .unit (.prod .nat (.prod .nat (.opt (.base .msg))))
 
 /-- Tuple representation `(id, root, vS, vR, γ, curCkaMsg, tcur)` of `SM.Construction.PartyState`
 in `ckaSig`. -/
-@[reducible] def ckaPsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaPsTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (ckaSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .prod .bool
     (.prod (.base .sig)
@@ -309,12 +309,12 @@ in `ckaSig`. -/
           (.prod (.base .γ)
             (.prod (.opt (.base .t)) .nat)))))
 
-def ckaPsDec {KC Γ CCoins T I KR RSt K SS RS M E : Type}
+@[expose] def ckaPsDec {KC Γ CCoins T I KR RSt K SS RS M E : Type}
     (v : (ckaPsTy KC Γ CCoins T I KR RSt K SS RS M E).denote) :
     SM.Construction.PartyState Γ T RSt SS RS :=
   ⟨SM.partyDec v.1, v.2.1, v.2.2.1, v.2.2.2.1, v.2.2.2.2.1, v.2.2.2.2.2.1, v.2.2.2.2.2.2⟩
 
-@[reducible] def ckaSMQ (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaSMQ (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (ckaSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .sum
     (.sum
@@ -326,7 +326,7 @@ def ckaPsDec {KC Γ CCoins T I KR RSt K SS RS M E : Type}
       (.prod .bool (ckaHdrCtTy KC Γ CCoins T I KR RSt K SS RS M E)))
     .bool
 
-@[reducible] def ckaSMR (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaSMR (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (ckaSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .sum
     (.sum
@@ -339,7 +339,7 @@ def ckaPsDec {KC Γ CCoins T I KR RSt K SS RS M E : Type}
     (.opt (ckaPsTy KC Γ CCoins T I KR RSt K SS RS M E))
 
 /-- Source game codec for the Fig. 8 `SM.spec` (`codecCost = 12`). -/
-@[reducible] def ckaSMCodec (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaSMCodec (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     GameCodec (ckaSig KC Γ CCoins T I KR RSt K SS RS M E)
       (SM.spec (SM.Construction.PartyState Γ T RSt SS RS) M CCoins
         (SM.Construction.Header T × E)) where
@@ -369,21 +369,21 @@ def ckaPsDec {KC Γ CCoins T I KR RSt K SS RS M E : Type}
     | .inr _, _ => none
   codecCost := 12
 
-@[reducible] def ckaSMQDF (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaSMQDF (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (ckaSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .sum (ckaSMQ KC Γ CCoins T I KR RSt K SS RS M E)
     (.prod .bool
       (.prod (ckaHdrCtTy KC Γ CCoins T I KR RSt K SS RS M E)
         (ckaHdrCtTy KC Γ CCoins T I KR RSt K SS RS M E)))
 
-@[reducible] def ckaSMRDF (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaSMRDF (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (ckaSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .sum (ckaSMR KC Γ CCoins T I KR RSt K SS RS M E)
     (.opt (ckaRrTy KC Γ CCoins T I KR RSt K SS RS M E))
 
 /-- Source game codec for the Fig. 8 `SM.specDF` extending `ckaSMCodec` with `deliverForge`
 (`codecCost = 13`). -/
-@[reducible] def ckaSMCodecDF (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def ckaSMCodecDF (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     GameCodec (ckaSig KC Γ CCoins T I KR RSt K SS RS M E)
       (SM.specDF (SM.Construction.PartyState Γ T RSt SS RS) M CCoins
         (SM.Construction.Header T × E)) where
@@ -411,7 +411,7 @@ namespace CryptoGames.CKA
 
 open ReductionDsl OracleSpec OracleComp
 
-def ckaPsEnc {KC Γ CCoins T I KR RSt K SS RS M E : Type}
+@[expose] def ckaPsEnc {KC Γ CCoins T I KR RSt K SS RS M E : Type}
     (p : SM.Construction.PartyState Γ T RSt SS RS) :
     (ckaPsTy KC Γ CCoins T I KR RSt K SS RS M E).denote :=
   (SM.partyEnc p.id, p.root, p.vS, p.vR, p.γ, p.curCkaMsg, p.tcur)

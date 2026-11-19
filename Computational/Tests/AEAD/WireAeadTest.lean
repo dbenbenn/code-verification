@@ -10,14 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
-public import Computational.Tests.AEAD.LibsignalAeadTest
 public meta import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs -- shake: keep
+public import Computational.Tests.AEAD.LibsignalAeadTest
 public meta import Computational.Tests.AEAD.LibsignalAeadTest -- shake: keep
 public meta import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs -- shake: keep
 public meta import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs -- shake: keep
 public meta import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead -- shake: keep
 public import Computational.Proofs.CryptoGames.AEAD.WireAeadProofDefs
-public meta import Computational.Proofs.CryptoGames.AEAD.WireAeadProofDefs
+public meta import Computational.Proofs.CryptoGames.AEAD.WireAeadProofDefs -- shake: keep
 
 /-!
 # Variable-Length Raw-Wire AEAD Tests

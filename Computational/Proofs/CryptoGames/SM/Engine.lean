@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Specifications.CryptoGames.SM.Construction
 public import Computational.Proofs.CryptoGames.SM.GameProofDefs
+public import Computational.Proofs.CryptoGames.SM.PartyProofDefs
 
 /-!
 # Simulation engine for the reductions of Theorems 8 and 12
@@ -18,7 +19,7 @@ public import Computational.Proofs.CryptoGames.SM.GameProofDefs
 **Checked by Lean.** Factors out the shared Fig. 2 / Fig. 8 simulation used by the CKA, PRF-PRNG, and FS-AEAD reductions of ACD19 §5.3. Reductions supply primitive `Hooks` over virtual party states and bookkeeping `HS`, while the engine aborts doomed runs that violate the guessed `(t*_L, t*)` window (DEV-SM9).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -68,7 +69,7 @@ variable [Inhabited E]
   (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
 
 /-- Fig. 8 `Send` over virtual party states using `hk`. -/
-def vSend (ctx : Ctx Γv T Sv SSv RSv M E) (P : Party) (s : VP Γv T Sv SSv RSv) (m : M)
+@[expose] def vSend (ctx : Ctx Γv T Sv SSv RSv M E) (P : Party) (s : VP Γv T Sv SSv RSv) (m : M)
     (pair : Option (M × M)) (r : Option CCoins) :
     HM tspec HS (Option (VP Γv T Sv SSv RSv × (Header T × E))) := do
   let s₁? : Option (VP Γv T Sv SSv RSv) ←
@@ -91,7 +92,7 @@ def vSend (ctx : Ctx Γv T Sv SSv RSv M E) (P : Party) (s : VP Γv T Sv SSv RSv)
       | some (v', e) => return some ({ s₁ with vS := some v' }, (h, e))
 
 /-- Fig. 8 `Rcv` over virtual party states using `hk` (outer `none` aborts, inner `none` rejects). -/
-def vRecv (ctx : Ctx Γv T Sv SSv RSv M E) (P : Party) (s : VP Γv T Sv SSv RSv)
+@[expose] def vRecv (ctx : Ctx Γv T Sv SSv RSv M E) (P : Party) (s : VP Γv T Sv SSv RSv)
     (c : Header T × E) (rec : Option (Record M (Header T × E))) :
     HM tspec HS (Option (Option (VP Γv T Sv SSv RSv × ℕ × ℕ × M))) := do
   let t := c.1.1
@@ -139,13 +140,13 @@ namespace Policy
 variable (π : Policy) {St Msg C : Type}
 
 /-- Checks whether a leak in `g → g'` dooms the `(t*_L, t*)` guess window. -/
-def leakDoom (g g' : GameState St Msg C) : Bool :=
+@[expose] def leakDoom (g g' : GameState St Msg C) : Bool :=
   g'.leaks.any (fun l => ltOpt π.tL l && decide (l < π.tStar))
     || (g'.leaks.any (fun l => decide (π.tStar ≤ l))
         && decide (g.epoch (Party.senderOf π.tStar) < π.tStar))
 
 /-- Checks whether corrupting `P` in state `g` dooms the `(t*_L, t*)` guess window. -/
-def corrDoom (g : GameState St Msg C) (P : Party) : Bool :=
+@[expose] def corrDoom (g : GameState St Msg C) (P : Party) : Bool :=
   P == Party.receiverOf π.tStar &&
     (if π.auth then ltOpt π.tL (g.epoch P)
      else decide (g.epoch P < π.tStar)
@@ -175,13 +176,13 @@ variable [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E]
 
 local notation "EMt" => EM tspec Γv T Sv SSv RSv M E HS
 
-def liftH {α : Type} (x : HM tspec HS α) : EMt α := fun es => do
+@[expose] def liftH {α : Type} (x : HM tspec HS α) : EMt α := fun es => do
   let (a, h') ← x.run es.h
   pure (a, { es with h := h' })
 
-def abortE : EMt Unit := modify fun es => { es with abort := true }
+@[expose] def abortE : EMt Unit := modify fun es => { es with abort := true }
 
-def transmitE : QueryImpl ((Party × M × Option CCoins) →ₒ Option (Header T × E)) EMt :=
+@[expose] def transmitE : QueryImpl ((Party × M × Option CCoins) →ₒ Option (Header T × E)) EMt :=
   fun ⟨P, m, r⟩ => do
     let es ← get
     if es.abort || es.g.win then return none
@@ -200,7 +201,7 @@ def transmitE : QueryImpl ((Party × M × Option CCoins) →ₒ Option (Header T
           { es with g := s₁.record Δ P st' ⟨⟨P, s₁.epoch P, s₁.idx P + 1⟩, m, c⟩ false }
         return some c
 
-def challE : QueryImpl ((Party × M × M × Option CCoins) →ₒ Option (Header T × E)) EMt :=
+@[expose] def challE : QueryImpl ((Party × M × M × Option CCoins) →ₒ Option (Header T × E)) EMt :=
   fun ⟨P, m₀, m₁, r⟩ => do
     let es ← get
     if es.abort || es.g.win then return none
@@ -221,7 +222,7 @@ def challE : QueryImpl ((Party × M × M × Option CCoins) →ₒ Option (Header
           { es with g := s₁.record Δ P st' ⟨⟨P, s₁.epoch P, s₁.idx P + 1⟩, m, c⟩ true }
         return some c
 
-def commitE (s : Ctx Γv T Sv SSv RSv M E) (P : Party) (old new : VP Γv T Sv SSv RSv) (pos : Pos) :
+@[expose] def commitE (s : Ctx Γv T Sv SSv RSv M E) (P : Party) (old new : VP Γv T Sv SSv RSv) (pos : Pos) :
     EMt (Option (Ctx Γv T Sv SSv RSv M E)) := do
   let s₁ := s.accept P new pos
   match ← liftH (hk.commit s₁ P old new) with
@@ -230,7 +231,7 @@ def commitE (s : Ctx Γv T Sv SSv RSv M E) (P : Party) (old new : VP Γv T Sv SS
     return none
   | some new' => return some { s₁ with st := Function.update s₁.st P new' }
 
-def deliverE : QueryImpl ((Party × (Header T × E)) →ₒ Option (RecvResult M)) EMt :=
+@[expose] def deliverE : QueryImpl ((Party × (Header T × E)) →ₒ Option (RecvResult M)) EMt :=
   fun ⟨P, c⟩ => do
     let es ← get
     if es.abort || es.g.win then return none
@@ -254,7 +255,7 @@ def deliverE : QueryImpl ((Party × (Header T × E)) →ₒ Option (RecvResult M
           modify fun es => { es with g := if bad then { s₁ with win := true } else s₁ }
           return some (.accepted t' i' (if s.chall.contains r.pos then none else some m'))
 
-def injectE : QueryImpl ((Party × (Header T × E)) →ₒ Option (RecvResult M)) EMt :=
+@[expose] def injectE : QueryImpl ((Party × (Header T × E)) →ₒ Option (RecvResult M)) EMt :=
   fun ⟨P, c⟩ => do
     let es ← get
     let s := es.g
@@ -277,7 +278,7 @@ def injectE : QueryImpl ((Party × (Header T × E)) →ₒ Option (RecvResult M)
         if cfg.injectFull t' then modify fun es => { es with g := { es.g with win := true } }
         return some .rejected
 
-def corrE : QueryImpl (Party →ₒ Option (PartyState Γ T Sig SS RS)) EMt := fun P => do
+@[expose] def corrE : QueryImpl (Party →ₒ Option (PartyState Γ T Sig SS RS)) EMt := fun P => do
   let es ← get
   if es.abort || es.g.win || !(es.g.corrAllowed P) then return none
   let s₁ := es.g.afterCorr P
@@ -292,10 +293,10 @@ def corrE : QueryImpl (Party →ₒ Option (PartyState Γ T Sig SS RS)) EMt := f
     modify fun es => { es with g := s₁ }
     return some st
 
-def coinsE : QueryImpl unifSpec EMt := fun n =>
+@[expose] def coinsE : QueryImpl unifSpec EMt := fun n =>
   StateT.lift (query (spec := unifSpec + tspec) (.inl n))
 
-def implE : QueryImpl (unifSpec + spec (PartyState Γ T Sig SS RS) M CCoins (Header T × E)) EMt :=
+@[expose] def implE : QueryImpl (unifSpec + spec (PartyState Γ T Sig SS RS) M CCoins (Header T × E)) EMt :=
   let i₀ : QueryImpl unifSpec EMt := coinsE
   let i₁ : QueryImpl ((Party × M × Option CCoins) →ₒ Option (Header T × E)) EMt :=
     transmitE hk Δ qep π
@@ -309,7 +310,7 @@ def implE : QueryImpl (unifSpec + spec (PartyState Γ T Sig SS RS) M CCoins (Hea
   HAdd.hAdd i₀ (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd (HAdd.hAdd i₁ i₂) i₃) i₄) i₅)
 
 /-- Runs SM adversary `A` against the engine from initial virtual states built by `init` and hidden bit `b`. -/
-def engRun (init : HM tspec HS (Option (VP Γv T Sv SSv RSv × VP Γv T Sv SSv RSv))) (h₀ : HS)
+@[expose] def engRun (init : HM tspec HS (Option (VP Γv T Sv SSv RSv × VP Γv T Sv SSv RSv))) (h₀ : HS)
     (b : Bool) (A : Adversary (PartyState Γ T Sig SS RS) M CCoins (Header T × E)) :
     TComp tspec (Option (Bool × EState (VP Γv T Sv SSv RSv) M (Header T × E) HS)) := do
   let (vs, h) ← init.run h₀
@@ -333,15 +334,15 @@ section Outcomes
 variable {VPt M C HS : Type} [DecidableEq M] (Δ : ℕ) (π : Policy)
 
 /-- Authenticity outcome: a non-aborted win avoiding the losing conditions. -/
-def authOut (es : EState VPt M C HS) : Bool :=
+@[expose] def authOut (es : EState VPt M C HS) : Bool :=
   !es.abort && es.g.win && authLosingConditionsAvoided Δ π.tL π.tStar es.g
 
 /-- Privacy outcome: `b == b'` on a valid non-aborted run, and a fresh coin otherwise. -/
-def privOut (b b' : Bool) (es : EState VPt M C HS) : TComp tspec Bool :=
+@[expose] def privOut (b b' : Bool) (es : EState VPt M C HS) : TComp tspec Bool :=
   if !es.abort && lastLeakGuessAdmissible Δ π.tL π.tStar && canon π.tStar es.g == π.tL then pure (b == b')
   else (liftM ($ᵗ Bool : ProbComp Bool) : TComp tspec Bool)
 
-def privValid (es : EState VPt M C HS) : Bool :=
+@[expose] def privValid (es : EState VPt M C HS) : Bool :=
   !es.abort && lastLeakGuessAdmissible Δ π.tL π.tStar && canon π.tStar es.g == π.tL
 
 end Outcomes

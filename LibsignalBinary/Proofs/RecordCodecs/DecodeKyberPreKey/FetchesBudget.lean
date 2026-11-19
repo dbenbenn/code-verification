@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Fetches
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Fetches
+import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.Deps
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `decode_kyber_pre_key` Call Transfer
@@ -24,7 +24,7 @@ Non-panicking `RustCliAllocBudget`-threaded `[LibsignalPlacement]` call combinat
 `decode_kyber_pre_key` (Block `595`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ open LibsignalBinary.Heap
 open CryptoVerification.RecordCodecsBinary (ls_subroutine_ok_lscro_of_block ls_subroutine_ok_lscro_of_plain)
 open LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget (dropDecodeErrorBudgetSpec signedDecodePlacedSpec signedDecodeRawSpec)
 
-def noPanicQp (_s0 : Arm64.State) : Arm64.State → SepProp → Prop :=
+@[expose] def noPanicQp (_s0 : Arm64.State) : Arm64.State → SepProp → Prop :=
   fun _ _ => False
 
 theorem sepWPp_end_noPanic_lscro {prog : Program} {pl : Obj.MultiPlacement} {ret : BitVec 64}

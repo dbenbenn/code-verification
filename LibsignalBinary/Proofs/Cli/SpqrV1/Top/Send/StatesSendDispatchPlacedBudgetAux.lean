@@ -11,21 +11,24 @@ module
 
 meta import Lean -- shake: keep
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendDispatch
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled3PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendDispatch -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1PlacedBudget
 
 /-!
 # Post-Arm Reassembly (`+3068..+3196`), 11-Arm Envelopes, & Continuation Helpers (Block `427`)
@@ -34,7 +37,7 @@ Defines per-arm and unified `AllocEnv` budget envelopes and proves `VmPreserved`
 stack reassembly (`+3068 -> +3196`) for `<States>::send`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,7 +50,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBud
 
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection SepProp
 open CryptoGames.LibsignalSession (ShaCompress)
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsmpl lsρ)
+open CryptoVerification (LibsignalPlacement lsmpl lsρ)
 open CryptoVerification.Cli.SpqrV1.Top.Send
   (SpqrSendJoinStatePlaced of_sepWP_lscro spqrCoinsAfterPlaced spqrCoinsAtPlaced
    spqrCoinsAtPlaced_entails_after_zero)
@@ -104,7 +107,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionMemcpyRegionB
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 
 run_cmd Lean.Elab.Command.liftCoreM do
   for nm in [
@@ -520,7 +523,7 @@ theorem step_send_post_arm_3068_to_3196_placed {F : ShaCompress}
     (`statesSendArmOffset st0 -> +3196` in Block `427`), parameterized over the five leaf-call
     envelopes (`HeaderSent`, `Ct1Received` shared with `KeysSampled`, `Ct1Sampled`,
     `EkReceivedCt1Sampled`, and `Ct2Sampled`). Zero `∃`, zero `ValidRustAllocEv`. -/
-def StatesSendEnvOfEnv (F : ShaCompress) (K : MlKem)
+@[expose] def StatesSendEnvOfEnv (F : ShaCompress) (K : MlKem)
     (EnvHsEk : HeaderSentSendEkChunkGhost F → List AllocEvent → Prop)
     (EnvCt1rEk : Ct1ReceivedSendEkChunkGhost F → List AllocEvent → Prop)
     (EnvCt1sCt1 : Ct1SampledSendCt1ChunkGhost F → List AllocEvent → Prop)
@@ -576,7 +579,7 @@ def StatesSendEnvOfEnv (F : ShaCompress) (K : MlKem)
 
 /-- Peer-seam default (`SpqrSendChunkEnv` on leaves) allocation-event envelope for
     `<States>::send` + post-arm reassembly (`statesSendArmOffset st0 -> +3196`), independent of `sp`. -/
-def StatesSendEnv (F : ShaCompress) (K : MlKem)
+@[expose] def StatesSendEnv (F : ShaCompress) (K : MlKem)
     (st0 : States spqrPolyApi (spqrAuthApi F)) (tape : Bytes) : List AllocEvent → Prop :=
   StatesSendEnvOfEnv F K
     (fun _ => SpqrSendChunkEnv) (fun _ => SpqrSendChunkEnv) (fun _ => SpqrSendChunkEnv)
@@ -592,7 +595,7 @@ theorem statesSendEnvOfEnv_default_eq (F : ShaCompress) (K : MlKem)
 
 /-- Exact leaf-envelope (`*Send*ChunkEnv` on leaves) allocation-event envelope for
     `<States>::send` + post-arm reassembly (`statesSendArmOffset st0 -> +3196`), independent of `sp`. -/
-def StatesSendTightEnv (F : ShaCompress) (K : MlKem)
+@[expose] def StatesSendTightEnv (F : ShaCompress) (K : MlKem)
     (st0 : States spqrPolyApi (spqrAuthApi F)) (tape : Bytes) : List AllocEvent → Prop :=
   StatesSendEnvOfEnv F K
     HeaderSentSendEkChunkEnv Ct1ReceivedSendEkChunkEnv Ct1SampledSendCt1ChunkEnv
@@ -752,7 +755,7 @@ theorem statesSendPreArmScratch_eq_post (sp : BitVec 64) :
   unfold statesSendPreArmScratch statesSendPostArmScratch
   rw [memRegion_7104_24_eq sp, memRegion_7536_400_eq sp]; sep_ac_rfl
 
-def statesSendLeafScratchRest (sp : BitVec 64) (sz : Nat) : SepProp :=
+@[expose] def statesSendLeafScratchRest (sp : BitVec 64) (sz : Nat) : SepProp :=
   memRegion (sp + 32#64) 16 ∗ memRegion (sp + 3552#64) 504 ∗
   memRegion (sp + 4056#64) 8 ∗ memRegion (sp + 4064#64) 16 ∗
   memRegion (sp + 4080#64) 104 ∗ memRegion (sp + 4192#64) 504 ∗
@@ -767,14 +770,14 @@ theorem statesSendPreArmScratch_eq_leaf (sp : BitVec 64) (sz : Nat)
   unfold statesSendPreArmScratch statesSendLeafScratchRest
   rw [memRegion_1260_2400_split sp sz hsz]; sep_ac_rfl
 
-def statesSendLeafFrame {ctl : BitVec 64} (A : RustAlloc) (sp cur : BitVec 64)
+@[expose] def statesSendLeafFrame {ctl : BitVec 64} (A : RustAlloc) (sp cur : BitVec 64)
     (tape : List (BitVec 8)) (chain : Option ChainPB) (sz : Nat) (Frame : SepProp) : SepProp :=
   spqrLogLevelZeroPlacedAt ∗ spqrCoinsAtPlaced ctl cur tape ∗
   optChainPBAt A (sp + 0x60#64) chain ∗
   memRegion (sp + 0x190#64) 928 ∗ memRegion (sp + 0x530#64) 24 ∗
   statesSendLeafScratchRest sp sz ∗ Frame
 
-def statesSendImmFrame {ctl : BitVec 64} (A : RustAlloc) (sp cur : BitVec 64)
+@[expose] def statesSendImmFrame {ctl : BitVec 64} (A : RustAlloc) (sp cur : BitVec 64)
     (tape : List (BitVec 8)) (chain : Option ChainPB) (Frame : SepProp) : SepProp :=
   stackAt sp spqrSendCalleeStack ∗
   tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ spqrLogLevelZeroPlacedAt ∗

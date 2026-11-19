@@ -9,21 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PureBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PureBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
 
 /-!
 # Budget-Threaded Envelopes, Helpers, and Miss Path for `Dir::put::<String>` (Block 542)
@@ -32,7 +37,7 @@ Defines the `DirPutEnv` and `DirPutTailEnv` allocator event envelopes, budget-th
 epilogue helpers, and the cache-miss path (`+196 .. +288`) for `Dir::put::<String>`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -99,14 +104,14 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 - on a miss (`∀ e ∈ dir.changed, e.1 ≠ name`), either `[]` (spare capacity) or
   `rawVecGrowEvents 48 4 8 (BitVec.ofNat 64 dir.changed.length)` (`grow_one`);
 - on a hit (`¬ ∀ e ∈ dir.changed, e.1 ≠ name`), only deallocation events (`FreeOnlyEvs`). -/
-def DirPutTailEnv (dir : DirGhost) (name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def DirPutTailEnv (dir : DirGhost) (name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   if ∀ e ∈ dir.changed, e.1 ≠ name then
     evs = [] ∨ evs = rawVecGrowEvents 48 4 8 (BitVec.ofNat 64 dir.changed.length)
   else
     FreeOnlyEvs evs
 
 /-- Canonical `AllocEvent` envelope for `Dir::put::<String>`. -/
-def DirPutEnv (dir : DirGhost) (name _bytes : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def DirPutEnv (dir : DirGhost) (name _bytes : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   DirPutTailEnv dir name evs
 
 theorem dirPutTailEnv_miss_nil {dir : DirGhost} {name : List (BitVec 8)}

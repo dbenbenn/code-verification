@@ -9,24 +9,38 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2ProofBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlaced
-public meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux -- shake: keep
-public meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2ProofBudget
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlaced
+public meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib.SepLogic.WP -- shake: keep
 public meta import Lean -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Base
-import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Decodes
+import ProofLib.ProgramReflection.SortedFresh
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefs
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Mid
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget
 
 /-!
 # `<Ct1SentEkReceived>::send_ct2`: Closed Budget-Threaded Contract (Block `347`)
@@ -37,7 +51,7 @@ discharging cross-block callees in Blocks `320` and `386` under `withLsCodeLoade
 `withLsCodeRoLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,6 +61,12 @@ set_option linter.unusedSimpArgs false
 namespace LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlacedBudget
 
 open Arm64 ProofLib ProofLib.ProgramReflection
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (
+  LsRetAddr624 lsLen lsRetAddr624_blockPlacement_base_add
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (
+  hookSat_withLsRet intro_withLsRet subroutine_ok_withLsRet withLsRet
+)
 open CryptoGames.HMAC (hmacWith toBEBytes)
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification (
@@ -106,6 +126,7 @@ open LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget (of_sepWP_lscl
 open LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlacedBudgetAux (
   call_mlkemEncaps2_vm_lscl_wpp call_rustAllocNoOom_cs_lscl_wpp call_rustDealloc_cs_lscl_wpp
   send_ct2_5d8_to_604_cl_placed_wpp send_ct2_628_to_690_cl_placed_preEnv_wpp
+  send_ct2_628_to_690_cl_placed_preEnv_wpp_withLsRet
   send_ct2_628_to_690_cl_placed_wpp send_ct2_reserve_ct1_cl_placed_preEnv_wpp
   send_ct2_reserve_ct1_cl_placed_wpp send_ct2_scan_to_628_cl_placed_preEnv_wpp
   send_ct2_scan_to_628_cl_placed_wpp sepWPp_call_lscl_noPanic sepWPp_call_withLscl_noPanic
@@ -115,7 +136,10 @@ open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux (
   sendCt2Seg5aEvents sepWPp_pure_left_focus
 )
 open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2ProofBudget (
-  send_ct2_epilogue_ret_placed_wpp_ofPostEnv unchunkedSendCt2PostEnv_of_seg5b
+  send_ct2_epilogue_ret_placed_wpp_ofPostEnv
+)
+open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2ProofBudgetAux (
+  unchunkedSendCt2PostEnv_of_seg5b
 )
 open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux (
   SendCt2Reserve128Env UnchunkedCt1SentEkReceivedSendCt2PlacedOk
@@ -124,7 +148,7 @@ open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux (
   libcruxHmacSafeBudgetSpec sendCt2ConcatHmacEvents sendCt2PlacedPostQOfPostEnv
   sendCt2PlacedPostQp sendCt2Seg23Events send_ct2_prologue_to_scan_placed_pool
   sepWPp_call_noPanic sepWPp_intro_state sepWPp_pure_left_eq sepWPp_rw_pre_eq
-  subroutine_ok_libcruxHmacSafe_of_budget unchunkedCt1SentEkReceivedSendCt2PlacedSpec
+  subroutine_ok_withLsRet_libcruxHmacSafe_of_budget unchunkedCt1SentEkReceivedSendCt2PlacedSpec
   unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfEnv
   unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv
 )
@@ -205,6 +229,11 @@ theorem hookSat_defsNoAllocShim_of_rustAllocShimVm {H : String → Option (State
 
 /-! ## 2. Relocatable Segment 5a (`+676 → +836`) Calling `withLsCodeLoaded` `slice_concat_3` -/
 
+private theorem lsRetAddr624_blkPl_347 [LibsignalPlacement] (off : BitVec 64)
+    (ho : off.toNat < lsLen 347 := by decide) :
+    LsRetAddr624 ((blkPl_347).base + off) :=
+  lsRetAddr624_blockPlacement_base_add 347 off (by decide) ho
+
 set_option maxHeartbeats 1600000 in
 /-- Relocatable `[LibsignalPlacement]` budget-threaded Segment 5a (`+676 → +836`) calling
     `slice_concat_3` (Block `386`) under `withLsCodeLoaded lsmpl (sliceConcat3Spec M A lim)`,
@@ -216,7 +245,7 @@ theorem send_ct2_append_hmac_cl_placed_wpp [LibsignalPlacement] {F : ShaCompress
     (h_concat3 : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsmpl.base 386) (withLsCodeLoaded lsmpl (sliceConcat3Spec M A lim)))
     (h_hmac : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacSafeBudgetSpec F M A lim))
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacSafeBudgetSpec F M A lim)))
     (h_dealloc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
     (x : UnchunkedSendCt2Ghost F) (stCost : M.σ)
@@ -474,6 +503,9 @@ theorem send_ct2_append_hmac_cl_placed_wpp [LibsignalPlacement] {F : ShaCompress
       ?_ (by intros; rfl) (by intros; rfl) (by intros; rfl)
       (fun sf_hm hpc_hm hrun_hm hsp_hm_rel hcs_hm => ?_)
     · intro R' hm
+      refine intro_withLsRet (by
+        simp only [hs_hm, Reg.lr, wp_norm, arm64_norm]
+        exact lsRetAddr624_blkPl_347 _) ?_
       dsimp only [libcruxHmacSafeBudgetSpec]
       rw [hsp_hm, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
       refine ⟨⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hmk_lt32, hdata_lt32, hFit_hm⟩, ?_⟩
@@ -489,7 +521,7 @@ theorem send_ct2_append_hmac_cl_placed_wpp [LibsignalPlacement] {F : ShaCompress
       · simp only [hs_hm, Reg.x6, wp_norm, arm64_norm, *]
       · exact Eq.mp (congrArg (SepProp.Satisfies · _) (by sep_ac_rfl)) hm
     · simp only [hs_hm, Reg.lr, wp_norm, arm64_norm] at hpc_hm
-      dsimp only [libcruxHmacSafeBudgetSpec]
+      dsimp only [withLsRet, libcruxHmacSafeBudgetSpec]
       rw [hsp_hm]
       rcases hcs_hm with ⟨hx19_h, hx20_h, hx21_h, hx22_h, hx23_h, hx24_h, hx25_h, hx26_h,
         hx27_h, hx28_h, hfp_h, hvregs_h⟩
@@ -601,7 +633,7 @@ theorem send_ct2_append_hmac_cl_placed_preEnv_wpp [LibsignalPlacement] {F : ShaC
     (h_concat3 : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsmpl.base 386) (withLsCodeLoaded lsmpl (sliceConcat3Spec M A lim)))
     (h_hmac : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacSafeBudgetSpec F M A lim))
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacSafeBudgetSpec F M A lim)))
     (h_dealloc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
     (x : UnchunkedSendCt2Ghost F) (st0 : M.σ) (evsRes : List AllocEvent)
@@ -695,9 +727,9 @@ theorem send_ct2_append_hmac_cl_placed_preEnv_wpp [LibsignalPlacement] {F : ShaC
 /-! ## 3. Combined Segments 2–5a (`+136 → +836`) & Closed Block-`347` Contracts -/
 
 set_option maxHeartbeats 1200000 in
-/-- Combined relocatable `[LibsignalPlacement]` Segments 2–5a (`+136 → +836`) under
-    `LibsignalCodeLoaded lsmpl`. -/
-theorem send_ct2_segs_2_to_5a_cl_placed_preEnv_wpp [LibsignalPlacement]
+/-- `withLsRet`-narrowed combined relocatable `[LibsignalPlacement]` Segments 2–5a (`+136 → +836`)
+    under `LibsignalCodeLoaded lsmpl`. -/
+theorem send_ct2_segs_2_to_5a_cl_placed_preEnv_wpp_withLsRet [LibsignalPlacement]
     {K : MlKem} {F : ShaCompress}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {H : LibsignalHooks}
@@ -714,9 +746,9 @@ theorem send_ct2_segs_2_to_5a_cl_placed_preEnv_wpp [LibsignalPlacement]
     (hmemcpy : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrMemcpySym) framelessMemcpyAcpSpec)
     (henc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrMlkemEncaps2Sym) (withVmPreserved (mlkemEncaps2Spec K)))
+      (lsρ spqrMlkemEncaps2Sym) (withLsRet (withVmPreserved (mlkemEncaps2Spec K))))
     (hhmac_safe : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacSafeBudgetSpec F M A lim))
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacSafeBudgetSpec F M A lim)))
     (x : UnchunkedSendCt2Ghost F) (st0 : M.σ)
     (mkPtr esPtr ekPtr ct1Cap ct1Ptr e0 : BitVec 64)
     (esVec : List.Vector (BitVec 8) 2080) (ekVec : List.Vector (BitVec 8) 1152)
@@ -828,7 +860,7 @@ theorem send_ct2_segs_2_to_5a_cl_placed_preEnv_wpp [LibsignalPlacement]
       (fun st2 esWorkPtr hcl2 hpc2 hrun2 hsp2 htr2 hvregs2 hx19_2 hx20_2 hx21_2 hx22_2
         hx23_2 hx24_2 hx25_2 hx26_2 hx27_2 hx28_2 hx29_2 => ?_))
   refine sepWPp_rw_pre_eq (by sep_ac_rfl)
-    (send_ct2_628_to_690_cl_placed_preEnv_wpp henc hshim halloc hdealloc x st0
+    (send_ct2_628_to_690_cl_placed_preEnv_wpp_withLsRet henc hshim halloc hdealloc x st0
       esPtr ekPtr esWorkPtr esVec ekVec s0 st2
       (F_frame ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗ (mkPtr ↦ₛ x.st.auth.macKey) ∗
         ((s0.sp - 312#64) ↦₆₄ x.st.epoch) ∗
@@ -877,6 +909,132 @@ theorem send_ct2_segs_2_to_5a_cl_placed_preEnv_wpp [LibsignalPlacement]
       (((hx24_5.trans hx24_4).trans hx24_3).trans hx24_2)
       hx25_5 hx26_5 hx27_5 hx29_5)
 
+/-- Combined relocatable `[LibsignalPlacement]` Segments 2–5a (`+136 → +836`) under
+    `LibsignalCodeLoaded lsmpl`. -/
+theorem send_ct2_segs_2_to_5a_cl_placed_preEnv_wpp [LibsignalPlacement]
+    {K : MlKem} {F : ShaCompress}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {H : LibsignalHooks}
+    (h_res : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsmpl.base 320) (withLsCodeLoaded lsmpl (doReserveSpec M A lim)))
+    (h_concat3 : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsmpl.base 386) (withLsCodeLoaded lsmpl (sliceConcat3Spec M A lim)))
+    (hshim : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrRustNoAllocShimSym) rustAllocShimVmSpec)
+    (halloc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
+    (hdealloc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hmemcpy : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrMemcpySym) framelessMemcpyAcpSpec)
+    (henc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrMlkemEncaps2Sym) (withVmPreserved (mlkemEncaps2Spec K)))
+    (hhmac_safe : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacSafeBudgetSpec F M A lim)))
+    (x : UnchunkedSendCt2Ghost F) (st0 : M.σ)
+    (mkPtr esPtr ekPtr ct1Cap ct1Ptr e0 : BitVec 64)
+    (esVec : List.Vector (BitVec 8) 2080) (ekVec : List.Vector (BitVec 8) 1152)
+    (s0 st : State) (F_frame : SepProp)
+    {Q Qp : State → SepProp → Prop}
+    (hcl : LibsignalCodeLoaded lsmpl st.mem)
+    (hPre : FitsEnv M lim st0 (UnchunkedSendCt2PreEnv x))
+    (hes_len : x.st.es.length = 2080)
+    (hesVec : esVec.toList = if issue1275NeedsFlip ((x.st.es.drop 1536).take 512) then
+      flipEndiannessOfEncapsulationStateBytes x.st.es else x.st.es)
+    (hekVec : ekVec.toList = x.st.ek)
+    (hct2_eq : x.ct2 = (K.encaps2 esVec ekVec).toList)
+    (hct2_len : x.ct2.length = 128)
+    (hekPtr_ne : ekPtr ≠ 0#64)
+    (hct1_lt32 : x.st.ct1.length < 2 ^ 32)
+    (hmk_lt32 : x.st.auth.macKey.length < 2 ^ 32)
+    (hdata_lt32 :
+      (Authenticator.ctLabel ++ toBEBytes 8 x.st.epoch ++ (x.st.ct1 ++ x.ct2)).length < 2 ^ 32)
+    (hmac_eq : x.mac = x.st.auth.macCtUnchecked F x.st.epoch (x.st.ct1 ++ x.ct2))
+    (hpc : st.pc = (blkPl_347).base + 136#64)
+    (hrun : st.status = .Running)
+    (hsp : st.sp = s0.sp - 336#64)
+    (hsp_s0 : (s0.sp &&& 15#64 == 0#64) = true)
+    (htr : st.trace = s0.trace)
+    (hvregs : calleeSavedVRegs st = calleeSavedVRegs s0)
+    (hx8 : st.readReg64 .x8 = esPtr + 1536#64)
+    (hx9 : st.readReg64 .x9 = 512#64)
+    (hx10 : st.readReg64 .x10 = 2#64)
+    (hx11 : st.readReg64 .x11 = 65534#64)
+    (hx13 : st.readReg64 .x13 = 65535#64)
+    (hx19 : st.readReg64 .x19 = esPtr)
+    (hx20 : st.readReg64 .x20 = ekPtr)
+    (hx25 : st.readReg64 .x25 = mkPtr)
+    (hx26 : st.readReg64 .x26 = BitVec.ofNat 64 x.st.auth.macKey.length)
+    (hx27 : st.readReg64 .x27 = 1152#64)
+    (hx28 : st.readReg64 .x28 = bv% (2 ^ 64 - 1))
+    (hx29 : st.readReg64 .x29 = s0.sp - 96#64)
+    (hcont : ∀ (st5 : State) (cap_ct1' ptr_ct1' ptr_ct2 : BitVec 64)
+        (evsRes : List AllocEvent),
+      SendCt2Reserve128Env x.st.ct1.length evsRes →
+      cap_ct1' ≠ 0#64 →
+      x.st.ct1.length + 128 ≤ cap_ct1'.toNat →
+      cap_ct1'.toNat < 2 ^ 63 →
+      ptr_ct1' ≠ 0#64 →
+      ptr_ct2 ≠ 0#64 →
+      st5.pc = (blkPl_347).base + 836#64 →
+      st5.status = .Running →
+      st5.sp = s0.sp - 336#64 →
+      st5.trace = s0.trace →
+      calleeSavedVRegs st5 = calleeSavedVRegs s0 →
+      st5.readReg64 .x19 = esPtr →
+      st5.readReg64 .x20 = ekPtr →
+      st5.readReg64 .x22 = ptr_ct1' →
+      st5.readReg64 .x23 = st.readReg64 .x23 →
+      st5.readReg64 .x24 = st.readReg64 .x24 →
+      st5.readReg64 .x25 = mkPtr →
+      st5.readReg64 .x26 = BitVec.ofNat 64 x.st.auth.macKey.length →
+      st5.readReg64 .x27 = ptr_ct2 →
+      st5.readReg64 .x29 = s0.sp - 96#64 →
+      SepWPp ((blkPC_347).rebase (blkPl_347).base H) (s0.readReg64 .x30) st5
+        (((s0.sp - 312#64) ↦₆₄ x.st.epoch) ∗
+          ((s0.sp - 304#64) ↦₆₄ cap_ct1') ∗
+          ((s0.sp - 296#64) ↦₆₄ ptr_ct1') ∗
+          ((s0.sp - 288#64) ↦₆₄ BitVec.ofNat 64 x.st.ct1.length) ∗
+          memRegion ptr_ct1' cap_ct1'.toNat ∗
+          A.live ptr_ct1' cap_ct1'.toNat 1 ∗
+          (esPtr ↦ₛ x.st.es) ∗
+          (ekPtr ↦ₛ x.st.ek) ∗
+          (ptr_ct2 ↦ₛ x.ct2) ∗
+          A.live ptr_ct2 128 1 ∗
+          (mkPtr ↦ₛ x.st.auth.macKey) ∗
+          vecU8 A.repAlloc (s0.sp - 272#64) x.mac ∗
+          memRegion (s0.sp - 248#64) 24 ∗
+          memRegion (s0.sp - 224#64) 80 ∗
+          memRegion (s0.sp - 144#64) 24 ∗
+          ((s0.sp - 120#64) ↦ₛ toBEBytes 8 x.st.epoch) ∗
+          unchunkedSendCt2PlacedRoAt ∗
+          A.pool lim
+            (M.stepEvents (sendCt2Seg23Events x.st.es ++ evsRes ++ sendCt2Seg5aEvents x.st.ct1.length) st0)
+            st5 ∗
+          stackAt (s0.sp - 336#64) extHookStack ∗
+          F_frame)
+        Q Qp) :
+    SepWPp ((blkPC_347).rebase (blkPl_347).base H) (s0.readReg64 .x30) st
+      ((esPtr ↦ₛ x.st.es) ∗
+        (ekPtr ↦ₛ x.st.ek) ∗
+        (mkPtr ↦ₛ x.st.auth.macKey) ∗
+        ((s0.sp - 312#64) ↦₆₄ x.st.epoch) ∗
+        vecU8At A.repAlloc (s0.sp - 304#64) ct1Cap ct1Ptr x.st.ct1 ∗
+        memRegion (s0.sp - 272#64) 128 ∗
+        memRegion (s0.sp - 144#64) 24 ∗
+        ((s0.sp - 120#64) ↦₆₄ e0) ∗
+        unchunkedSendCt2PlacedRoAt ∗
+        A.pool lim st0 st ∗
+        stackAt (s0.sp - 336#64) extHookStack ∗
+        F_frame)
+      Q Qp :=
+  send_ct2_segs_2_to_5a_cl_placed_preEnv_wpp_withLsRet h_res h_concat3 hshim halloc hdealloc
+    hmemcpy (subroutine_ok_withLsRet henc) hhmac_safe x st0
+    mkPtr esPtr ekPtr ct1Cap ct1Ptr e0 esVec ekVec s0 st F_frame
+    hcl hPre hes_len hesVec hekVec hct2_eq hct2_len hekPtr_ne
+    hct1_lt32 hmk_lt32 hdata_lt32 hmac_eq hpc hrun hsp hsp_s0 htr hvregs
+    hx8 hx9 hx10 hx11 hx13 hx19 hx20 hx25 hx26 hx27 hx28 hx29 hcont
+
 private theorem sepWPp_of_false_qp {prog : Program} {ret : BitVec 64} {s : State}
     {P : SepProp} {Q Qp : State → SepProp → Prop}
     (h : SepWPp prog ret s P Q (fun _ _ => False)) :
@@ -888,10 +1046,10 @@ private theorem sepWPp_of_false_qp {prog : Program} {ret : BitVec 64} {s : State
   · exact ⟨sf, hsteps, Or.inr (Or.inr hoom)⟩
 
 set_option maxHeartbeats 1200000 in
-/-- Relocatable `[LibsignalPlacement]` two-envelope (`PreEnv` / `PostEnv`) correctness theorem for
-    `<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2` (Block `347`) under
-    `withLsCodeLoaded lsmpl`, from `withLsCodeLoaded` contracts on Block `320` and Block `386`. -/
-theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofPrePostEnv
+/-- `withLsRet`-narrowed relocatable `[LibsignalPlacement]` two-envelope (`PreEnv` / `PostEnv`)
+    correctness theorem for `<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2`
+    (Block `347`) under `withLsCodeLoaded lsmpl`. -/
+theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofPrePostEnv_withLsRet
     [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {F : ShaCompress} {K : MlKem}
@@ -914,13 +1072,13 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofPreP
     (hmemcpy : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrMemcpySym) framelessMemcpyAcpSpec)
     (henc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrMlkemEncaps2Sym) (withVmPreserved (mlkemEncaps2Spec K)))
+      (lsρ spqrMlkemEncaps2Sym) (withLsRet (withVmPreserved (mlkemEncaps2Spec K))))
     (hhmac : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacBudgetSpec F M A lim)) :
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
       (withLsCodeLoaded lsmpl
         (unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv M A lim F K PreEnv PostEnv)) := by
-  have hhmac_safe := subroutine_ok_libcruxHmacSafe_of_budget hhmac
+  have hhmac_safe := subroutine_ok_withLsRet_libcruxHmacSafe_of_budget hhmac
   apply subroutine_ok_of_sepWPp
   rintro ⟨x, st0⟩ R s0 hpc hrun hpre0 hsp
   have ⟨hcl0, hpre⟩ := extract_withLsCodeLoaded hpre0
@@ -1016,7 +1174,7 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofPreP
     memRegion (s0.sp - 112#64) 16 ∗
     sendCt2CalleeSavedAt s0
   refine sepWPp_rw_pre_eq (by dsimp only [F_base]; sep_ac_rfl)
-    (send_ct2_segs_2_to_5a_cl_placed_preEnv_wpp h_res h_concat3 hshim halloc hdealloc
+    (send_ct2_segs_2_to_5a_cl_placed_preEnv_wpp_withLsRet h_res h_concat3 hshim halloc hdealloc
       hmemcpy henc hhmac_safe x st0 mkPtr esPtr ekPtr ct1Cap ct1Ptr e0 esVec ekVec
       s0 st1 F_base hcl1 hPre hes_len hesVec hekVec hct2_eq hct2_len hek_ne
       hct1_lt32 hmk_lt32 hdata_lt32 hmac_eq hpc1 hrun1 hsp1 hsp htr1 hvregs_1
@@ -1037,6 +1195,42 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofPreP
       hmk_le hmk_max hmk_ne hes_le hes_max hek_le hek_max hge128 hptr_ct2_ne
       hpc5 hrun5 hsp5 hsp htr5 hvregs_5
       hx19_5 hx20_5 hx22_5 hx23_5 hx24_5 hx25_5 hx26_5 hx27_5)
+
+/-- Relocatable `[LibsignalPlacement]` two-envelope (`PreEnv` / `PostEnv`) correctness theorem for
+    `<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2` (Block `347`) under
+    `withLsCodeLoaded lsmpl`, from `withLsCodeLoaded` contracts on Block `320` and Block `386`. -/
+theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofPrePostEnv
+    [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {H : LibsignalHooks}
+    {PreEnv PostEnv : UnchunkedSendCt2Ghost F → List AllocEvent → Prop}
+    (hPreImp : ∀ (x : UnchunkedSendCt2Ghost F) (st : M.σ),
+      FitsEnv M lim st (PreEnv x) → FitsEnv M lim st (UnchunkedSendCt2PreEnv x))
+    (hPostImp : ∀ (x : UnchunkedSendCt2Ghost F) (evs : List AllocEvent),
+      UnchunkedSendCt2PostEnv x evs → PostEnv x evs)
+    (h_res : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsmpl.base 320) (withLsCodeLoaded lsmpl (doReserveSpec M A lim)))
+    (h_concat3 : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsmpl.base 386) (withLsCodeLoaded lsmpl (sliceConcat3Spec M A lim)))
+    (hshim : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrRustNoAllocShimSym) rustAllocShimVmSpec)
+    (halloc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
+    (hdealloc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hmemcpy : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrMemcpySym) framelessMemcpyAcpSpec)
+    (henc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrMlkemEncaps2Sym) (withVmPreserved (mlkemEncaps2Spec K)))
+    (hhmac : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
+    subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
+      (withLsCodeLoaded lsmpl
+        (unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv M A lim F K PreEnv PostEnv)) :=
+  unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofPrePostEnv_withLsRet
+    hPreImp hPostImp h_res h_concat3 hshim halloc hdealloc hmemcpy
+    (subroutine_ok_withLsRet henc) hhmac
 
 theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofEnv
     [LibsignalPlacement]
@@ -1063,7 +1257,7 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofEnv
     (henc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrMlkemEncaps2Sym) (withVmPreserved (mlkemEncaps2Spec K)))
     (hhmac : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacBudgetSpec F M A lim)) :
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
       (withLsCodeLoaded lsmpl
         (unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfEnv M A lim F K Env)) :=
@@ -1092,12 +1286,75 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts
     (henc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrMlkemEncaps2Sym) (withVmPreserved (mlkemEncaps2Spec K)))
     (hhmac : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacBudgetSpec F M A lim)) :
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
       (withLsCodeLoaded lsmpl
         (unchunkedCt1SentEkReceivedSendCt2PlacedSpec M A lim F K)) :=
   unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofPrePostEnv
     (fun _ _ h => h) (fun _ _ h => h) h_res h_concat3 hshim halloc hdealloc hmemcpy henc hhmac
+
+/-- `withLsRet`-narrowed closed `[LibsignalPlacement]` two-envelope (`PreEnv` / `PostEnv`) contract
+    for Block `347` with `withLsCodeLoaded lsmpl`. -/
+theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_ofPrePostEnv_withLsRet
+    [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {H : LibsignalHooks}
+    {PreEnv PostEnv : UnchunkedSendCt2Ghost F → List AllocEvent → Prop}
+    (hPreImp : ∀ (x : UnchunkedSendCt2Ghost F) (st : M.σ),
+      FitsEnv M lim st (PreEnv x) → FitsEnv M lim st (UnchunkedSendCt2PreEnv x))
+    (hPostImp : ∀ (x : UnchunkedSendCt2Ghost F) (evs : List AllocEvent),
+      UnchunkedSendCt2PostEnv x evs → PostEnv x evs)
+    (h_panic : H spqrHandleErrorSym = some Rust.panicked)
+    (hshim : HookSat H spqrRustNoAllocShimSym rustAllocShimVmSpec)
+    (halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
+    (hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
+    (hdealloc : HookSat H spqrRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
+    (hmemcpy : HookSat H spqrMemcpySym framelessMemcpyAcpSpec)
+    (hRO : HookSat H spqrMemcpySym sessionMemcpyRegionROSpec)
+    (hencaps2 : HookSat H spqrMlkemEncaps2Sym (withLsRet (withVmPreserved (mlkemEncaps2Spec K))))
+    (hhmac : HookSat H spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
+    subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
+      (withLsCodeLoaded lsmpl
+        (unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv M A lim F K PreEnv PostEnv)) :=
+  unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_of_contracts_ofPrePostEnv_withLsRet
+    hPreImp hPostImp
+    (ls_subroutine_ok_of_block (i := 347) (j := 320)
+      (do_reserve_7_placed_ok h_panic
+        (hookSat_defsNoAllocShim_of_rustAllocShimVm hshim) halloc hrealloc))
+    (ls_subroutine_ok_of_block (i := 347) (j := 386)
+      (subroutine_ok_withLsCodeLoaded_of_plain
+        (slice_concat_3_placed_ok hshim halloc hmemcpy hRO)))
+    (spqr_hook_ok_of_mem (sym := spqrRustNoAllocShimSym) hshim)
+    (spqr_hook_ok_of_mem (sym := spqrRustAllocSym) halloc)
+    (spqr_hook_ok_of_mem (sym := spqrRustDeallocSym) hdealloc)
+    (spqr_hook_ok_of_mem (sym := spqrMemcpySym) hmemcpy)
+    (spqr_hook_ok_of_mem (sym := spqrMlkemEncaps2Sym) hencaps2)
+    (spqr_hook_ok_of_mem (sym := spqrLibcruxHmacSym) hhmac)
+
+/-- `withLsRet`-narrowed closed `[LibsignalPlacement]` contract for
+    `<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2` (Block `347`) with
+    `withLsCodeLoaded lsmpl`, purely from `HookSat` contracts. -/
+theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_withLsRet
+    [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {H : LibsignalHooks}
+    (h_panic : H spqrHandleErrorSym = some Rust.panicked)
+    (hshim : HookSat H spqrRustNoAllocShimSym rustAllocShimVmSpec)
+    (halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
+    (hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
+    (hdealloc : HookSat H spqrRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
+    (hmemcpy : HookSat H spqrMemcpySym framelessMemcpyAcpSpec)
+    (hRO : HookSat H spqrMemcpySym sessionMemcpyRegionROSpec)
+    (hencaps2 : HookSat H spqrMlkemEncaps2Sym (withLsRet (withVmPreserved (mlkemEncaps2Spec K))))
+    (hhmac : HookSat H spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
+    subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
+      (withLsCodeLoaded lsmpl
+        (unchunkedCt1SentEkReceivedSendCt2PlacedSpec M A lim F K)) :=
+  unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_ofPrePostEnv_withLsRet
+    (fun _ _ h => h) (fun _ _ h => h)
+    h_panic hshim halloc hrealloc hdealloc hmemcpy hRO hencaps2 hhmac
 
 /-- Closed `[LibsignalPlacement]` two-envelope (`PreEnv` / `PostEnv`) contract for Block `347`
     with `withLsCodeLoaded lsmpl`, discharging Block `320` (`do_reserve_7_placed_ok`) and
@@ -1120,7 +1377,7 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_ofPrePostEnv
     (hmemcpy : HookSat H spqrMemcpySym framelessMemcpyAcpSpec)
     (hRO : HookSat H spqrMemcpySym sessionMemcpyRegionROSpec)
     (hencaps2 : HookSat H spqrMlkemEncaps2Sym (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat H spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat H spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
       (withLsCodeLoaded lsmpl
         (unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv M A lim F K PreEnv PostEnv)) :=
@@ -1157,7 +1414,7 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_ofEnv
     (hmemcpy : HookSat H spqrMemcpySym framelessMemcpyAcpSpec)
     (hRO : HookSat H spqrMemcpySym sessionMemcpyRegionROSpec)
     (hencaps2 : HookSat H spqrMlkemEncaps2Sym (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat H spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat H spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
       (withLsCodeLoaded lsmpl
         (unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfEnv M A lim F K Env)) :=
@@ -1180,7 +1437,7 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok
     (hmemcpy : HookSat H spqrMemcpySym framelessMemcpyAcpSpec)
     (hRO : HookSat H spqrMemcpySym sessionMemcpyRegionROSpec)
     (hencaps2 : HookSat H spqrMlkemEncaps2Sym (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat H spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat H spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
       (withLsCodeLoaded lsmpl
         (unchunkedCt1SentEkReceivedSendCt2PlacedSpec M A lim F K)) :=
@@ -1208,7 +1465,7 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cro_placed_ok_ofPrePostEnv
     (hmemcpy : HookSat H spqrMemcpySym framelessMemcpyAcpSpec)
     (hRO : HookSat H spqrMemcpySym sessionMemcpyRegionROSpec)
     (hencaps2 : HookSat H spqrMlkemEncaps2Sym (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat H spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat H spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
       (withLsCodeRoLoaded lsmpl
         (unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv M A lim F K PreEnv PostEnv)) :=
@@ -1234,7 +1491,7 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cro_placed_ok_ofEnv
     (hmemcpy : HookSat H spqrMemcpySym framelessMemcpyAcpSpec)
     (hRO : HookSat H spqrMemcpySym sessionMemcpyRegionROSpec)
     (hencaps2 : HookSat H spqrMlkemEncaps2Sym (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat H spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat H spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
       (withLsCodeRoLoaded lsmpl
         (unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfEnv M A lim F K Env)) :=
@@ -1258,7 +1515,7 @@ theorem unchunked_ct1_sent_ek_received_send_ct2_cro_placed_ok
     (hmemcpy : HookSat H spqrMemcpySym framelessMemcpyAcpSpec)
     (hRO : HookSat H spqrMemcpySym sessionMemcpyRegionROSpec)
     (hencaps2 : HookSat H spqrMlkemEncaps2Sym (withVmPreserved (mlkemEncaps2Spec K)))
-    (hhmac : HookSat H spqrLibcruxHmacSym (libcruxHmacBudgetSpec F M A lim)) :
+    (hhmac : HookSat H spqrLibcruxHmacSym (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     subroutine_ok ((blkPC_347).rebase (blkPl_347).base H) (blkPl_347).base
       (withLsCodeRoLoaded lsmpl
         (unchunkedCt1SentEkReceivedSendCt2PlacedSpec M A lim F K)) :=

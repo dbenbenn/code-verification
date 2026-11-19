@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC0
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC0 -- proof-setup: allow-public-import
 
 /-!
 # One-key `Auth` bad-signature hop: step lemmas for the pre-sampled real oracle
@@ -18,7 +18,7 @@ public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyC0
 `bundleSignedMessages` monotonicity across one step of `pqxdhAuthSigPreImpl1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

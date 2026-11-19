@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Witnesses.CliShapePlaced
 public import Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.ImplTrace
+import Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.ShaGuard
 
 /-!
 # Placed 7-Call CLI Implementation Trace Builder for `Cheval26WeakStateIdx1Cli`
@@ -45,12 +47,12 @@ open DY.Libsignal.TripleRatchet.Refinement (wireWhisperTag)
 open CryptoVerification.SignalSession
   (PublicBundle Cmd Address filesOf stdioPaths bundleDir coinsFile signedPreKeyFile
    lastResortKyberPreKeyFile baseKeysFile sessionFile)
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open Symbolic.BugInjection (cliCompShapePlaced compFitsPinned)
 open Symbolic.BugInjection.Disproofs.Hyp.FrozenSSC.Interp0 (compI0)
 open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable
-  (cliCompFitsPinned compHooks0 compI0_externContractsHoldCli compI0_hooksAgree
-   cliCompFitsPinned_satisfiable_ws1)
+  (CliSetupMatchesPinned compHooks0 compI0_externContractsHoldCli compI0_hooksAgree
+   compI0_hooksAgreePlaced cliSetupMatchesPinned_satisfiable_ws1)
 open Symbolic.BugInjection.Proofs.Common443.CompI0Laws (compI0_publicKey)
 open Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.ImplTrace
   (FileList wsSetup wsTrace rawRunAt rawExitOutAt c0InFast coins0 pt1 coins1 c1Out pt2 coins2
@@ -65,6 +67,10 @@ open Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.ImplTrace
    wsInp0 wsInp1 wsInp2 wsInp3 wsInp4 wsInp5 wsInp6 wsOut0 wsOut1 wsOut2 wsOut3 wsOut4 wsOut5
    wsOut6 hasNonEmptySession hasNoMatchBobSession ValidStepFiles mkTurn
    preKeyNoMatch_call6_of_files3)
+open Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.ShaGuard
+  (realHooksAgreeOnInput_wsInp0 realHooksAgreeOnInput_wsInp1 realHooksAgreeOnInput_wsInp2
+   realHooksAgreeOnInput_wsInp3 realHooksAgreeOnInput_wsInp4 realHooksAgreeOnInput_wsInp5
+   realHooksAgreeOnInput_wsInp6)
 
 private theorem isCliFilePath_props {p : String} (h : isCliFilePath p = true) :
     normalizePath p ≠ [] ∧ normalizePath p ∉ stdioPaths.map normalizePath ∧
@@ -290,6 +296,7 @@ private theorem initDirs_eq_wsBase {r : ProtocolSetup} (hfit : compFitsPinned ws
     initDirs compI0 r = (fun q => if q = "alice" then filesOf wsAliceBaseList
       else if q = "bob" then filesOf wsBobBaseList else fun _ => none) := by
   obtain ⟨_, hopk, hregA, hregB, hspkId, hkpkId, hs0, hs1, hs2, ho5, ho6, ho7, hsec, _⟩ := hfit.1
+  change r.withOpk = false at hopk
   obtain ⟨halice, hbob⟩ := hfit.2.2.2.1; have hba : ("bob" : String) ≠ "alice" := by decide
   have haddrA : (addrOf r "alice").text = "8a6f1c2e-3b4d-4e5f-9a0b-1c2d3e4f5a6b.1" := by
     simp [addrOf, nameOf, halice, aliceUuid, Address.text, nat_repr_one]
@@ -540,7 +547,7 @@ private theorem unpack_validStepFiles {f0 f1 f2 f3 f4 f5 f6 : FileList}
   unfold ValidStepFiles at h; simp only [Bool.and_eq_true] at h
   exact ⟨h.1.1.1.1.1.1.1.1.1.1, h.1.1.1.1.1.1.1.1.1.2, h.1.1.1.1.1.1.1.1.2,
     h.1.1.1.1.1.1.1.2, h.1.1.1.1.1.1.2, h.1.1.1.1.1.2, h.1.1.1.1.2,
-    h.1.1.1.2, h.1.1.2, h.1.2, h.2⟩
+    h.1.1.1.2, h.1.1.2, h.1.2, h.2.1⟩
 
 private theorem argv_init_bob : ["init", "5d3e2f10-7a8b-4c9d-8e0f-a1b2c3d4e5f6.1", bundleDir] =
     (Cmd.init ⟨bobUuid, 1⟩ bundleDir).argv := by simp [Cmd.argv, Address.text, bobUuid, nat_repr_one]
@@ -549,7 +556,7 @@ private theorem argv_send_bob : ["send", "5d3e2f10-7a8b-4c9d-8e0f-a1b2c3d4e5f6.1
 private theorem argv_recv_alice : ["recv", "8a6f1c2e-3b4d-4e5f-9a0b-1c2d3e4f5a6b.1"] =
     (Cmd.recv ⟨aliceUuid, 1⟩).argv := by simp [Cmd.argv, Address.text, aliceUuid, nat_repr_one]
 
-/-- Reduces `(cliCompShapePlaced mpl mmpl).ImplHalf` at `cliCompFitsPinned setup` on `H` to the
+/-- Reduces `(cliCompShapePlaced mpl mmpl).ImplHalf` at `CliSetupMatchesPinned setup` on `H` to the
 seven `cliRunPlacedSig mpl mmpl H compHooks0` runs and `ValidStepFiles`. -/
 theorem impl_half_pinned_of_seven_calls_placed (mpl mmpl : Arm64.Obj.MultiPlacement)
     (H : Arm64.Process.ElfImage)
@@ -563,14 +570,14 @@ theorem impl_half_pinned_of_seven_calls_placed (mpl mmpl : Arm64.Obj.MultiPlacem
     (hRun5 : cliRunPlacedSig mpl mmpl H compHooks0 (wsInp5 files4) = some (wsOut5 files5))
     (hRun6 : cliRunPlacedSig mpl mmpl H compHooks0 (wsInp6 files3) = some (wsOut6 files6)) :
     (cliCompShapePlaced mpl mmpl).ImplHalf
-      (cliCompFitsPinned Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.setup)
+      (CliSetupMatchesPinned Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.setup)
       H Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.trace := by
   obtain ⟨hv0, hv1, hv2, hv3, hv4, hv5, _hv6, hs0, hs1, hnm3, hs4⟩ := unpack_validStepFiles hValid
-  obtain ⟨⟨_, _⟩, r, hcomp, _, _⟩ := cliCompFitsPinned_satisfiable_ws1
+  obtain ⟨⟨_, _⟩, r, hcomp, _, _⟩ := cliSetupMatchesPinned_satisfiable_ws1
   rcases hcomp.2.1 with rfl; obtain ⟨ha, hb⟩ := hcomp.2.2.2.1
-  have hPin : cliCompFitsPinned wsSetup (compI0, compHooks0) r :=
+  have hPin : CliSetupMatchesPinned wsSetup (compI0, compHooks0) r :=
     ⟨hcomp, compI0_externContractsHoldCli, compI0_hooksAgree⟩
-  refine ⟨(compI0, compHooks0), r, hPin, ⟨compI0_externContractsHoldCli, compI0_hooksAgree⟩,
+  refine ⟨(compI0, compHooks0), r, hPin, ⟨compI0_externContractsHoldCli, compI0_hooksAgreePlaced⟩,
     ?_, wsTrace_invertsGuarded r⟩
   have hba : ("bob" : String) ≠ "alice" := by decide
   let a0 := wsAliceBaseList; let b0 := wsBobBaseList
@@ -596,7 +603,7 @@ theorem impl_half_pinned_of_seven_calls_placed (mpl mmpl : Arm64.Obj.MultiPlacem
     preKeyNoMatch_call6_of_files3 ha hb hv3 hnm3 (filesOf a6) [s1, s2, s5] false
   have hinit : CliTurn.init (initDirs compI0 r) = t0 := by
     unfold CliTurn.init t0 mkTurn; rw [initDirs_eq_wsBase hcomp]
-  change CliTraces (elfRelPlaced mpl mmpl H compI0 compHooks0) compI0 r (CliTurn.init (initDirs compI0 r)) wsTrace
+  change CliTraces (elfRelPlaced mpl H compI0 compHooks0) compI0 r (CliTurn.init (initDirs compI0 r)) wsTrace
   rw [hinit, ← wsTrace_events_eq]
   have ht01 : t0.after r wsCall0 0 [] (filesOf files0) = t1 := by
     simpa [t0, t1, a1, show wsCall0.cmd = .init ⟨bobUuid, 1⟩ bundleDir from rfl] using
@@ -617,67 +624,55 @@ theorem impl_half_pinned_of_seven_calls_placed (mpl mmpl : Arm64.Obj.MultiPlacem
       after_alice_mkTurn hb (aDir := filesOf a5) (bDir := filesOf b3) (sent := [s1, s2]) (c := wsCall5) (out := c5Out) rfl hv5
   have hwsBundle_len : (wsBundle.files bundleDir).all (fun x => decide (x.2.length < 2 ^ 31)) = true :=
     List.all_eq_true.mpr fun x hx => decide_eq_true (wsBundle_flat x hx).2
-  let Rel := elfRelPlaced mpl mmpl H compI0 compHooks0
+  have hrunEq := LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliRunPlacedSig_eq mpl mmpl H compHooks0
+  let Rel := elfRelPlaced mpl H compI0 compHooks0
   have hs6 : CliTraces Rel compI0 r t6 _ :=
     CliTraces.step (leaks := []) (i := wsInp6 files3) (fun _ h => nomatch h)
       (validCall6 ha hb hv_b3 (filesOf a6))
       (by simp only [t6, mkTurn, show wsCall6.party = "bob" from rfl, hba, ↓reduceIte, b3, wsInp6]
           exact inputsFor_mkInpArgv _ wsCall6 b3 argv_recv_alice hv_b3 rfl rfl
-            (by have := coins6_len; dsimp only [wsCall6]; omega)) hRun6 (CliTraces.done _)
+            (by have := coins6_len; dsimp only [wsCall6]; omega))
+      ⟨(congrFun hrunEq _).symm.trans hRun6, realHooksAgreeOnInput_wsInp6 hValid⟩ (CliTraces.done _)
   have hs5 : CliTraces Rel compI0 r t5 _ :=
     CliTraces.step (leaks := []) (i := wsInp5 files4) (fun _ h => nomatch h)
       (validCall_send ha hv_a5 hs4 (by decide) rfl coins5_len pt5_len_lt)
       (by simp only [t5, mkTurn, show wsCall5.party = "alice" from rfl, ↓reduceIte, a5, wsInp5]
           exact inputsFor_mkInpArgv _ wsCall5 a5 argv_send_bob hv_a5 rfl rfl
-            (by have := coins5_len; dsimp only [wsCall5]; omega)) hRun5 (ht56.symm ▸ hs6)
+            (by have := coins5_len; dsimp only [wsCall5]; omega))
+      ⟨(congrFun hrunEq _).symm.trans hRun5, realHooksAgreeOnInput_wsInp5 hValid⟩ (ht56.symm ▸ hs6)
   have hs4_tr : CliTraces Rel compI0 r t4 _ :=
     CliTraces.step (leaks := []) (i := wsInp4 files2) (fun _ h => nomatch h)
       (validCall_init hcomp hv_a4 ha4_nosess rfl coins4_len)
       (by simp only [t4, mkTurn, show wsCall4.party = "alice" from rfl, ↓reduceIte, a4, a3, wsInp4]
           exact inputsFor_mkInpArgv _ wsCall4 a4 argv_init_bob hv_a4 wsBundle_paths_valid hwsBundle_len
-            (by have := coins4_len; dsimp only [wsCall4]; omega)) hRun4 (ht45.symm ▸ hs5)
+            (by have := coins4_len; dsimp only [wsCall4]; omega))
+      ⟨(congrFun hrunEq _).symm.trans hRun4, realHooksAgreeOnInput_wsInp4 hValid⟩ (ht45.symm ▸ hs5)
   have hs_clr : CliTraces Rel compI0 r t4Pre _ := CliTraces.clear "alice" (hclr.symm ▸ hs4_tr)
   have hs3 : CliTraces Rel compI0 r t3 _ :=
     CliTraces.step (leaks := []) (i := wsInp3) (fun _ h => nomatch h) (validCall3 ha hb (filesOf a3))
       (by simp only [t3, mkTurn, show wsCall3.party = "bob" from rfl, hba, ↓reduceIte, b0, wsInp3]
           exact inputsFor_mkInpArgv _ wsCall3 b0 argv_recv_alice wsBobBaseList_valid rfl rfl
-            (by have := coins3_len; dsimp only [wsCall3]; omega)) hRun3 (ht34Pre.symm ▸ hs_clr)
+            (by have := coins3_len; dsimp only [wsCall3]; omega))
+      ⟨(congrFun hrunEq _).symm.trans hRun3, realHooksAgreeOnInput_wsInp3⟩ (ht34Pre.symm ▸ hs_clr)
   have hs2_tr : CliTraces Rel compI0 r t2 _ :=
     CliTraces.step (leaks := []) (i := wsInp2 files1) (fun _ h => nomatch h)
       (validCall_send ha hv_a2 hs1 (by decide) rfl coins2_len pt2_len_lt)
       (by simp only [t2, mkTurn, show wsCall2.party = "alice" from rfl, ↓reduceIte, a2, wsInp2]
           exact inputsFor_mkInpArgv _ wsCall2 a2 argv_send_bob hv_a2 rfl rfl
-            (by have := coins2_len; dsimp only [wsCall2]; omega)) hRun2 (ht23.symm ▸ hs3)
+            (by have := coins2_len; dsimp only [wsCall2]; omega))
+      ⟨(congrFun hrunEq _).symm.trans hRun2, realHooksAgreeOnInput_wsInp2 hValid⟩ (ht23.symm ▸ hs3)
   have hs1_tr : CliTraces Rel compI0 r t1 _ :=
     CliTraces.step (leaks := []) (i := wsInp1 files0) (fun _ h => nomatch h)
       (validCall_send ha hv_a1 hs0 (by decide) rfl coins1_len pt1_len_lt)
       (by simp only [t1, mkTurn, show wsCall1.party = "alice" from rfl, ↓reduceIte, a1, wsInp1]
           exact inputsFor_mkInpArgv _ wsCall1 a1 argv_send_bob hv_a1 rfl rfl
-            (by have := coins1_len; dsimp only [wsCall1]; omega)) hRun1 (ht12.symm ▸ hs2_tr)
+            (by have := coins1_len; dsimp only [wsCall1]; omega))
+      ⟨(congrFun hrunEq _).symm.trans hRun1, realHooksAgreeOnInput_wsInp1 hValid⟩ (ht12.symm ▸ hs2_tr)
   exact CliTraces.step (leaks := []) (i := wsInp0) (fun _ h => nomatch h)
     (validCall_init hcomp wsAliceBaseList_valid wsAliceBaseList_no_sess rfl coins0_len)
     (by simp only [t0, mkTurn, show wsCall0.party = "alice" from rfl, ↓reduceIte, a0, wsInp0]
         exact inputsFor_mkInpArgv _ wsCall0 a0 argv_init_bob wsAliceBaseList_valid wsBundle_paths_valid hwsBundle_len
           (by have := coins0_len; dsimp only [wsCall0]; omega))
-    hRun0 (ht01.symm ▸ hs1_tr)
-
-/-- Specialization of `impl_half_pinned_of_seven_calls_placed` to `Cheval26WeakStateIdx1Cli.fits`. -/
-theorem impl_half_of_seven_calls_placed (mpl mmpl : Arm64.Obj.MultiPlacement)
-    (H : Arm64.Process.ElfImage)
-    (files0 files1 files2 files3 files4 files5 files6 : FileList)
-    (hValid : ValidStepFiles files0 files1 files2 files3 files4 files5 files6 = true)
-    (hRun0 : cliRunPlacedSig mpl mmpl H compHooks0 wsInp0 = some (wsOut0 files0))
-    (hRun1 : cliRunPlacedSig mpl mmpl H compHooks0 (wsInp1 files0) = some (wsOut1 files1))
-    (hRun2 : cliRunPlacedSig mpl mmpl H compHooks0 (wsInp2 files1) = some (wsOut2 files2))
-    (hRun3 : cliRunPlacedSig mpl mmpl H compHooks0 wsInp3 = some (wsOut3 files3))
-    (hRun4 : cliRunPlacedSig mpl mmpl H compHooks0 (wsInp4 files2) = some (wsOut4 files4))
-    (hRun5 : cliRunPlacedSig mpl mmpl H compHooks0 (wsInp5 files4) = some (wsOut5 files5))
-    (hRun6 : cliRunPlacedSig mpl mmpl H compHooks0 (wsInp6 files3) = some (wsOut6 files6)) :
-    (cliCompShapePlaced mpl mmpl).ImplHalf Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.fits
-      H Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.trace := by
-  obtain ⟨iw, r, hpin, hc, htr⟩ := impl_half_pinned_of_seven_calls_placed mpl mmpl H
-    files0 files1 files2 files3 files4 files5 files6 hValid
-    hRun0 hRun1 hRun2 hRun3 hRun4 hRun5 hRun6
-  exact ⟨iw, r, ⟨hpin.1.1, hpin.2.1, hpin.2.2⟩, hc, htr⟩
+    ⟨(congrFun hrunEq _).symm.trans hRun0, realHooksAgreeOnInput_wsInp0⟩ (ht01.symm ▸ hs1_tr)
 
 end Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.ImplTracePlaced

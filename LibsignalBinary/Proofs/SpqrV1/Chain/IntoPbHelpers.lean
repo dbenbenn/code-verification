@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbHelpers
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbHelpers -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
 
 /-!
@@ -20,7 +20,7 @@ Specifications (`chainIntoPbPinnedSpec`, `chainIntoPbSpec`, and `*X` variants), 
 unaligned `recv` header copy, and separation-logic bridges between `Chain` and `ChainPB`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ChainProofs
 
@@ -48,15 +48,15 @@ abbrev chainIntoPbStack : Nat := 288 + dropStack32
 /-- `<spqr::chain::Chain>::into_pb` frame (`0x120 = 288` B) + `extHookStack`. -/
 abbrev chainIntoPbStackX : Nat := 288 + extHookStack
 
-def toEpochDirectionPBGhost (g : ChainEpochDirectionGhost) : EpochDirectionPBGhost :=
+@[expose] def toEpochDirectionPBGhost (g : ChainEpochDirectionGhost) : EpochDirectionPBGhost :=
   { next := ⟨g.next.cap, g.next.ptr⟩
     prev := ⟨g.prev.cap, g.prev.ptr⟩ }
 
-def toChainEpochPBGhost (g : ChainEpochGhost) : ChainEpochPBGhost :=
+@[expose] def toChainEpochPBGhost (g : ChainEpochGhost) : ChainEpochPBGhost :=
   { send := toEpochDirectionPBGhost g.send
     recv := toEpochDirectionPBGhost g.recv }
 
-def chainEpochIntoPb (ce : ChainEpoch) : ChainEpochPB :=
+@[expose] def chainEpochIntoPb (ce : ChainEpoch) : ChainEpochPB :=
   { send := some ce.send.intoPb
     recv := some ce.recv.intoPb }
 
@@ -77,7 +77,7 @@ structure ChainIntoPbCall where
 /-- Pinned spec of `<spqr::chain::Chain>::into_pb` (`0x60514`, 239 instructions) with tight stack
 budget `chainIntoPbStack` (`288 + dropStack32`), preserving the per-epoch and `next_root` ghost
 pins via `Top.ChainFrom.chainPBAt`. -/
-def chainIntoPbPinnedSpec (A : RustAlloc) : Spec ChainIntoPbCall where
+@[expose] def chainIntoPbPinnedSpec (A : RustAlloc) : Spec ChainIntoPbCall where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.chainPtr⌝ ∗
       memRegion x.out 80 ∗ chainAt A x.chainPtr x.gChain x.chain ∗
@@ -95,7 +95,7 @@ def chainIntoPbPinnedSpec (A : RustAlloc) : Spec ChainIntoPbCall where
 
 /-- Unpinned `ProtoRepr.chainPBAt` spec of `<spqr::chain::Chain>::into_pb` (`0x60514`, 239 instructions)
 with tight stack budget `chainIntoPbStack`. -/
-def chainIntoPbSpec (A : RustAlloc) : Spec ChainIntoPbCall where
+@[expose] def chainIntoPbSpec (A : RustAlloc) : Spec ChainIntoPbCall where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.chainPtr⌝ ∗
       memRegion x.out 80 ∗ chainAt A x.chainPtr x.gChain x.chain ∗
@@ -109,7 +109,7 @@ def chainIntoPbSpec (A : RustAlloc) : Spec ChainIntoPbCall where
 
 /-- Pinned spec of `<spqr::chain::Chain>::into_pb` (`0x60514`, 239 instructions) with stack
 budget `chainIntoPbStackX` (`288 + extHookStack`). -/
-def chainIntoPbPinnedSpecX (A : RustAlloc) : Spec ChainIntoPbCall where
+@[expose] def chainIntoPbPinnedSpecX (A : RustAlloc) : Spec ChainIntoPbCall where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.chainPtr⌝ ∗
       memRegion x.out 80 ∗ chainAt A x.chainPtr x.gChain x.chain ∗
@@ -127,7 +127,7 @@ def chainIntoPbPinnedSpecX (A : RustAlloc) : Spec ChainIntoPbCall where
 
 /-- Unpinned `ProtoRepr.chainPBAt` spec of `<spqr::chain::Chain>::into_pb` (`0x60514`, 239 instructions)
 with stack budget `chainIntoPbStackX` (`288 + extHookStack`). -/
-def chainIntoPbSpecX (A : RustAlloc) : Spec ChainIntoPbCall where
+@[expose] def chainIntoPbSpecX (A : RustAlloc) : Spec ChainIntoPbCall where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.chainPtr⌝ ∗
       memRegion x.out 80 ∗ chainAt A x.chainPtr x.gChain x.chain ∗
@@ -138,32 +138,6 @@ def chainIntoPbSpecX (A : RustAlloc) : Spec ChainIntoPbCall where
       memRegion x.chainPtr 88 ∗
       A.pool ∗ stackAt s0.sp chainIntoPbStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def ChainIntoPbPinnedOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr chainIntoPbName)
-    (chainIntoPbPinnedSpec A)
-
-def ChainIntoPbOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr chainIntoPbName)
-    (chainIntoPbSpec A)
-
-def ChainIntoPbPinnedOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainIntoPbName)
-    ((chainIntoPbPinnedSpecX A).inImage img)
-
-def ChainIntoPbOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainIntoPbName)
-    ((chainIntoPbSpecX A).inImage img)
-
-/-! ## Stride-112 Arithmetic and Magic Constant `0x2492492492492493#64` -/
 
 theorem ofNat_len_ule_max_112 {n : Nat} (hn : n * 112 < 2 ^ 63) :
     BitVec.ule (BitVec.ofNat 64 n) 0x0124924924924924#64 = true := by
@@ -239,25 +213,25 @@ theorem ofNat_sub_one_add_one {n : Nat} (hpos : 1 ≤ n) :
 
 /-! ## 52-Byte 4-Byte-Shifted Cell Equality (`shift52_eq`) -/
 
-def shift52_u0 (pad : BitVec 32) (w0 : BitVec 64) : BitVec 64 :=
+@[expose] def shift52_u0 (pad : BitVec 32) (w0 : BitVec 64) : BitVec 64 :=
   w0.extractLsb' 0 32 ++ pad
 
-def shift52_u1 (w0 w1 : BitVec 64) : BitVec 64 :=
+@[expose] def shift52_u1 (w0 w1 : BitVec 64) : BitVec 64 :=
   w1.extractLsb' 0 32 ++ w0.extractLsb' 32 32
 
-def shift52_u2 (w1 w2 : BitVec 64) : BitVec 64 :=
+@[expose] def shift52_u2 (w1 w2 : BitVec 64) : BitVec 64 :=
   w2.extractLsb' 0 32 ++ w1.extractLsb' 32 32
 
-def shift52_u3 (w2 w3 : BitVec 64) : BitVec 64 :=
+@[expose] def shift52_u3 (w2 w3 : BitVec 64) : BitVec 64 :=
   w3.extractLsb' 0 32 ++ w2.extractLsb' 32 32
 
-def shift52_u4 (w3 w4 : BitVec 64) : BitVec 64 :=
+@[expose] def shift52_u4 (w3 w4 : BitVec 64) : BitVec 64 :=
   w4.extractLsb' 0 32 ++ w3.extractLsb' 32 32
 
-def shift52_u5 (w4 w5 : BitVec 64) : BitVec 64 :=
+@[expose] def shift52_u5 (w4 w5 : BitVec 64) : BitVec 64 :=
   w5.extractLsb' 0 32 ++ w4.extractLsb' 32 32
 
-def shift52_u6 (w5 : BitVec 64) : BitVec 32 :=
+@[expose] def shift52_u6 (w5 : BitVec 64) : BitVec 32 :=
   w5.extractLsb' 32 32
 
 theorem shift52_eq (a : BitVec 64) (pad : BitVec 32) (w0 w1 w2 w3 w4 w5 : BitVec 64) :
@@ -604,7 +578,7 @@ theorem arrayAt_chainEpochPBAt_snoc (A : RustAlloc) (ptr : BitVec 64)
 /-! ## `chainAt` and `vecDequeRingBuf` Unpacking and `chainPBAt` Packing -/
 
 /-- All 88 bytes of `Chain` header cells at `a`. -/
-def chainHeaderCellsAt (a : BitVec 64) (g : ChainGhost) (c : Chain) : SepProp :=
+@[expose] def chainHeaderCellsAt (a : BitVec 64) (g : ChainGhost) (c : Chain) : SepProp :=
   (a ↦₆₄ g.linksCap) ∗ ((a + 8#64) ↦₆₄ g.linksPtr) ∗
   ((a + 16#64) ↦₆₄ g.linksHead) ∗ ((a + 24#64) ↦₆₄ BitVec.ofNat 64 c.links.length) ∗
   ((a + 32#64) ↦₆₄ g.nextRoot.cap) ∗ ((a + 40#64) ↦₆₄ g.nextRoot.ptr) ∗

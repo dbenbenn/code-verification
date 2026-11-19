@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Drop Glue for `proto::pq_ratchet::PolynomialEncoder` and `Option<PolynomialEncoder>`
@@ -26,7 +29,7 @@ Proves subroutine contracts for:
 - `core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]` (`0x35218`, Block `132`, 57 instructions)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Layout.L14
 open Lean Meta Elab Tactic ProofLib in
@@ -106,7 +109,7 @@ theorem stack_restore_64_allocHook (sp fp lr x23 w3 x22 x21 x20 x19 : BitVec 64)
   exact sepConj_mono_right (cells8_sub64_entails sp fp lr x23 w3 x22 x21 x20 x19)
 
 /-- Callee-saved registers not saved in `[sp..sp+64]` when `x19..x23, x29, x30` ARE saved in `[sp..sp+64]`. -/
-@[reducible]
+@[expose, reducible]
 def Saved64Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.readReg64 .x24 = s0.readReg64 .x24 ∧
   s.readReg64 .x25 = s0.readReg64 .x25 ∧
@@ -280,7 +283,7 @@ structure DropProtoPolyEncoderGhost where
   /-- Abstract `ProtoPolynomialEncoder` model value. -/
   pb : ProtoPolynomialEncoder
 
-def dropProtoPolyEncoderSpec (A : RustAlloc) : Spec DropProtoPolyEncoderGhost where
+@[expose] def dropProtoPolyEncoderSpec (A : RustAlloc) : Spec DropProtoPolyEncoderGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
       protoPolynomialEncoderAt A x.a x.pb ∗
@@ -297,7 +300,7 @@ structure DropOptProtoPolyEncoderGhost where
   /-- Abstract `Option ProtoPolynomialEncoder` model value. -/
   optPb : Option ProtoPolynomialEncoder
 
-def dropOptProtoPolyEncoderSpec (A : RustAlloc) : Spec DropOptProtoPolyEncoderGhost where
+@[expose] def dropOptProtoPolyEncoderSpec (A : RustAlloc) : Spec DropOptProtoPolyEncoderGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
       optProtoPolynomialEncoderAt A x.a x.optPb ∗
@@ -555,93 +558,6 @@ local macro "proto_poly_encoder_main_steps " entry:term:max : tactic => `(tactic
           rw [stackAt_dropStack48_split_bottom s0.sp]
           wp_call hdealloc_raw (g.polys.ptr, g.polys.cap.toNat * 24, 8)
           rw [← stackAt_dropStack48_split_bottom s0.sp]; wp_done))
-
-private theorem drop_proto_poly_encoder_body1 {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp a ptr : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (bs : List (BitVec 8)) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + 48#64 → s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = a → s.readReg64 .x20 = ptr → s.readReg64 .x21 = cnt → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + 36#64) s
-        (vecU8 A cur bs ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur 24 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = a ∧ sm.readReg64 .x20 = ptr ∧
-          sm.readReg64 .x21 = cnt ∧ sm.readReg64 .x22 = cur + 8#64) := by
-  simp only [rustDeallocSpec] at hdealloc; dsimp only [dropProgAtExt, dropProtoPolyEncoderName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" = entry
-  examples_hide_fetches; proto_poly_encoder_body_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry 36#64
-
-private theorem drop_proto_poly_encoder_loop1 {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp a ptr : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List (List (BitVec 8))) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 24 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + 48#64 → s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = a → s.readReg64 .x20 = ptr → s.readReg64 .x21 = BitVec.ofNat 64 rest.length → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + 72#64) s
-        (arrayAt (fun bs addr => vecU8 A addr bs) 24 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur (rest.length * 24) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = a ∧ sm.readReg64 .x20 = ptr) := by
-  have hbody := drop_proto_poly_encoder_body1 (b := b) (ext := ext) hdealloc s0 fsp a ptr hfsp_align
-  dsimp only [dropProgAtExt, dropProtoPolyEncoderName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" = entry
-  examples_hide_fetches; proto_poly_encoder_loop_steps entry 36#64 48#64
-
-private theorem drop_proto_poly_encoder_body2 {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp a ptr : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (bs : List (BitVec 8)) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + 128#64 → s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = a → s.readReg64 .x20 = ptr → s.readReg64 .x21 = cnt → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + 116#64) s
-        (vecU8 A cur bs ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur 24 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = a ∧ sm.readReg64 .x20 = ptr ∧
-          sm.readReg64 .x21 = cnt ∧ sm.readReg64 .x22 = cur + 8#64) := by
-  simp only [rustDeallocSpec] at hdealloc; dsimp only [dropProgAtExt, dropProtoPolyEncoderName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" = entry
-  examples_hide_fetches; proto_poly_encoder_body_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry 116#64
-
-private theorem drop_proto_poly_encoder_loop2 {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp a ptr : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List (List (BitVec 8))) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 24 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + 128#64 → s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = a → s.readReg64 .x20 = ptr → s.readReg64 .x21 = BitVec.ofNat 64 rest.length → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + 152#64) s
-        (arrayAt (fun bs addr => vecU8 A addr bs) 24 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur (rest.length * 24) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = a ∧ sm.readReg64 .x20 = ptr) := by
-  have hbody := drop_proto_poly_encoder_body2 (b := b) (ext := ext) hdealloc s0 fsp a ptr hfsp_align
-  dsimp only [dropProgAtExt, dropProtoPolyEncoderName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" = entry
-  examples_hide_fetches; proto_poly_encoder_loop_steps entry 116#64 128#64
-
-/-- `core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>` (`0x4c500`, 52 insns)
-    satisfies `dropProtoPolyEncoderSpec A`. -/
-theorem drop_glue_proto_poly_encoder_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName) (dropProtoPolyEncoderSpec A) := by
-  simp only [dropProtoPolyEncoderSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "__rustc::__rust_dealloc")) (rustDeallocSpec A) :=
-    sub_ok_of_addr_eq (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>") (ls_stub% "__rustc::__rust_dealloc") (by decide)) hdealloc
-  have hloop1 := drop_proto_poly_encoder_loop1 (b := b) (ext := ext) hdealloc_raw
-  have hloop2 := drop_proto_poly_encoder_loop2 (b := b) (ext := ext) hdealloc_raw
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>"
-  dsimp only [dropProgAtExt, dropProtoPolyEncoderName, protoPolynomialEncoderSize, BitVec.ofNat_eq_ofNat] at hloop1 hloop2 hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>" = entry
-  examples_hide_fetches; proto_poly_encoder_main_steps entry
 
 section PlacedProtoPolyEncoder
 variable [LibsignalPlacement]
@@ -1029,94 +945,6 @@ local macro "opt_proto_poly_encoder_main_steps " entry:term:max : tactic => `(ta
             rw [stackAt_dropStack64_split_bottom s0.sp]
             wp_call hdealloc_raw (g.polys.ptr, g.polys.cap.toNat * 24, 8)
             rw [← stackAt_dropStack64_split_bottom s0.sp]; wp_done))
-
-private theorem drop_opt_proto_poly_encoder_body1 {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp a ptsPtr ptsCap : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (bs : List (BitVec 8)) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + 64#64 → s.status = .Running → Saved64Preserved s0 s fsp →
-      s.readReg64 .x19 = a → s.readReg64 .x20 = ptsPtr → s.readReg64 .x21 = ptsCap →
-      s.readReg64 .x22 = cnt → s.readReg64 .x23 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + 52#64) s
-        (vecU8 A cur bs ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur 24 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved64Preserved s0 sm fsp ∧ sm.readReg64 .x19 = a ∧ sm.readReg64 .x20 = ptsPtr ∧
-          sm.readReg64 .x21 = ptsCap ∧ sm.readReg64 .x22 = cnt ∧ sm.readReg64 .x23 = cur + 8#64) := by
-  simp only [rustDeallocSpec] at hdealloc; dsimp only [dropProgAtExt, dropOptProtoPolyEncoderName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" = entry
-  examples_hide_fetches; opt_proto_poly_encoder_body1_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
-
-private theorem drop_opt_proto_poly_encoder_loop1 {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp a ptsPtr ptsCap : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List (List (BitVec 8))) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 24 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + 64#64 → s.status = .Running → Saved64Preserved s0 s fsp →
-      s.readReg64 .x19 = a → s.readReg64 .x20 = ptsPtr → s.readReg64 .x21 = ptsCap →
-      s.readReg64 .x22 = BitVec.ofNat 64 rest.length → s.readReg64 .x23 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + 88#64) s
-        (arrayAt (fun bs addr => vecU8 A addr bs) 24 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur (rest.length * 24) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved64Preserved s0 sm fsp ∧ sm.readReg64 .x19 = a ∧ sm.readReg64 .x20 = ptsPtr ∧ sm.readReg64 .x21 = ptsCap) := by
-  have hbody := drop_opt_proto_poly_encoder_body1 (b := b) (ext := ext) hdealloc s0 fsp a ptsPtr ptsCap hfsp_align
-  dsimp only [dropProgAtExt, dropOptProtoPolyEncoderName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" = entry
-  examples_hide_fetches; opt_proto_poly_encoder_loop1_steps entry
-
-private theorem drop_opt_proto_poly_encoder_body2 {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp a polysPtr : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (bs : List (BitVec 8)) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + 140#64 → s.status = .Running → Saved64Preserved s0 s fsp →
-      s.readReg64 .x19 = a → s.readReg64 .x20 = polysPtr → s.readReg64 .x21 = cnt → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + 128#64) s
-        (vecU8 A cur bs ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur 24 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved64Preserved s0 sm fsp ∧ sm.readReg64 .x19 = a ∧ sm.readReg64 .x20 = polysPtr ∧
-          sm.readReg64 .x21 = cnt ∧ sm.readReg64 .x22 = cur + 8#64) := by
-  simp only [rustDeallocSpec] at hdealloc; dsimp only [dropProgAtExt, dropOptProtoPolyEncoderName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" = entry
-  examples_hide_fetches; opt_proto_poly_encoder_body2_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
-
-private theorem drop_opt_proto_poly_encoder_loop2 {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" "__rustc::__rust_dealloc")) (rustDeallocSpec A))
-    (s0 : State) (fsp a polysPtr : BitVec 64) (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List (List (BitVec 8))) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 24 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + 140#64 → s.status = .Running → Saved64Preserved s0 s fsp →
-      s.readReg64 .x19 = a → s.readReg64 .x20 = polysPtr →
-      s.readReg64 .x21 = BitVec.ofNat 64 rest.length → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + 164#64) s
-        (arrayAt (fun bs addr => vecU8 A addr bs) 24 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm => (Pm ⊢ memRegion cur (rest.length * 24) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved64Preserved s0 sm fsp ∧ sm.readReg64 .x19 = a ∧ sm.readReg64 .x20 = polysPtr) := by
-  have hbody := drop_opt_proto_poly_encoder_body2 (b := b) (ext := ext) hdealloc s0 fsp a polysPtr hfsp_align
-  dsimp only [dropProgAtExt, dropOptProtoPolyEncoderName, BitVec.ofNat_eq_ofNat] at *
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]"
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" = entry
-  examples_hide_fetches; opt_proto_poly_encoder_loop2_steps entry
-
-theorem drop_glue_opt_proto_poly_encoder_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext) ((dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName) (dropOptProtoPolyEncoderSpec A) := by
-  simp only [dropOptProtoPolyEncoderSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoPolyEncoderName + bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" "__rustc::__rust_dealloc")) (rustDeallocSpec A) :=
-    sub_ok_of_addr_eq (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]") (ls_stub% "__rustc::__rust_dealloc") (by decide)) hdealloc
-  have hloop1 := drop_opt_proto_poly_encoder_loop1 (b := b) (ext := ext) hdealloc_raw
-  have hloop2 := drop_opt_proto_poly_encoder_loop2 (b := b) (ext := ext) hdealloc_raw
-  ls_code_fetches libsignalSessionCode spqrDropChainEpochBin b (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]"
-  dsimp only [dropProgAtExt, dropOptProtoPolyEncoderName, protoPolynomialEncoderSize, optProtoPolynomialEncoderNoneTailSize, BitVec.ofNat_eq_ofNat] at hloop1 hloop2 hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::PolynomialEncoder>> [local#1]" = entry
-  examples_hide_fetches; opt_proto_poly_encoder_main_steps entry
 
 section PlacedOptProtoPolyEncoder
 variable [LibsignalPlacement]

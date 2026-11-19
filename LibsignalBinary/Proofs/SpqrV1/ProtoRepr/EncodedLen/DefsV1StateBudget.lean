@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1State
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1State -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` Specifications for `V1State::encoded_len`
@@ -19,7 +20,7 @@ public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1State
 zero-allocation budget transport across `V1State::encoded_len`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,18 +32,18 @@ open LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget (withVmPreserved)
 open CryptoVerification.SpqrV1.ProtoRepr
   (V1StateEncodedLenPinnedGhost V1StateEncodedLenGhost)
 
-def v1StateEncodedLenRoPinnedSpec (A : RustAlloc) (roBase : BitVec 64) :
+@[expose] def v1StateEncodedLenRoPinnedSpec (A : RustAlloc) (roBase : BitVec 64) :
     Spec V1StateEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.v1StateEncodedLenRoPinnedSpec A roBase)
 
-def v1StateEncodedLenRoSpec (A : RustAlloc) (roBase : BitVec 64) :
+@[expose] def v1StateEncodedLenRoSpec (A : RustAlloc) (roBase : BitVec 64) :
     Spec V1StateEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.v1StateEncodedLenRoSpec A roBase)
 
-def v1StateEncodedLenPinnedSpec (A : RustAlloc) : Spec V1StateEncodedLenPinnedGhost :=
+@[expose] def v1StateEncodedLenPinnedSpec (A : RustAlloc) : Spec V1StateEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.v1StateEncodedLenPinnedSpec A)
 
-def v1StateEncodedLenSpec (A : RustAlloc) : Spec V1StateEncodedLenGhost :=
+@[expose] def v1StateEncodedLenSpec (A : RustAlloc) : Spec V1StateEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.v1StateEncodedLenSpec A)
 
 end LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
+public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.EquationalTheory.KdfExtract
 import Symbolic.Specifications.Model.EquationalTheory.Trunc
 import Symbolic.Specifications.Model.EquationalTheory.Spqr
-public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef
+public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.TripleRatchet.WireCovered
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
@@ -35,7 +35,7 @@ symbolic `pq_term` and extracts honest `DY.Spqr.SendMsg` terms under `PqFromHone
 for forged decrypt steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

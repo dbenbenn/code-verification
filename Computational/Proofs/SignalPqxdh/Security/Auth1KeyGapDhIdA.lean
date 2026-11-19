@@ -9,9 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdClear
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdClear -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPre -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPreSample -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC5 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhF
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-key `Auth` Case A (`DH1`) `GapDhWithSign` bound
@@ -24,7 +31,7 @@ signing oracle within `sigBudget` and delegating all other steps to
 `fgAuthStepCoupling_dh1_latched`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +48,7 @@ open AuthDh3
 /-! ## Reference step auxiliary invariant -/
 
 /-- Auxiliary preservation relation across one non-`.initPrin` reference step. -/
-def PreStepPreservesAuth1KeyAux {S : Setup} (hst hst' : AuthFgCutoffState S) : Prop :=
+@[expose] def PreStepPreservesAuth1KeyAux {S : Setup} (hst hst' : AuthFgCutoffState S) : Prop :=
   ((∀ kv ∈ hst.base.principals, kv.2.secIKAsign = kv.2.secIKA0) →
     ∀ kv ∈ hst'.base.principals, kv.2.secIKAsign = kv.2.secIKA0) ∧
   (∀ k, (bundleSignedMessages k hst.base.spkBundles).length ≤
@@ -296,7 +303,7 @@ theorem pqxdhAuthFgLatchedPreImpl1Key_preserves_deadAndUnlatchedDh1 {S : Setup} 
 
 /-- One-key Case A simulation invariant coupling `st` to a ghost two-key state via
 `clearAuthSecSign uIdx`. -/
-def FgAuthSimInvDh1Latched1Key (S : Setup) (b : QueryBudget) (P : Primitives)
+@[expose] def FgAuthSimInvDh1Latched1Key (S : Setup) (b : QueryBudget) (P : Primitives)
     (hP : CryptoWellFormedPrimitivesδ P) (uIdx bIdx : ℕ) (uSk vSk : Bytes)
     (huSk : uSk.length = 32) (hvSk : vSk.length = 32) (rem : ℕ)
     (hst : AuthFgCutoffState S) (st : FgAuth1KeySimState S) : Prop :=
@@ -406,7 +413,7 @@ theorem fgAuthStepPure_genSPK_clearAuthSecSign_of_ne (P : Primitives)
       rfl
 
 /-- Queries answered identically to the ghost two-key simulator up to `clearAuthSecSign tIdx`. -/
-def isDelegatedAuth1KeyQuery {S : Setup} (tIdx : ℕ) : AuthQuery S → Bool
+@[expose] def isDelegatedAuth1KeyQuery {S : Setup} (tIdx : ℕ) : AuthQuery S → Bool
   | .initPrin _  => false
   | .corruptIK u => !(u.val == tIdx)
   | .genSPK u _  => !(u.val == tIdx)

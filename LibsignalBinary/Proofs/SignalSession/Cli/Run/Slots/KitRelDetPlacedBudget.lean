@@ -9,14 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
 
 /-!
 # Budget-Threaded `SessionRecord::deserialize` Contracts at `scopeKit` (Placed)
@@ -26,7 +32,7 @@ Proves budget-threaded `sessDeserializeSpecPlaced` for Block `46` (`SessionRecor
 with cross-block (`i < 619`) and `CliGhostAllocHooks` specializations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -222,46 +228,5 @@ theorem sessDeserialize_of_sub_scopeKit_placed_at_block [LibsignalPlacement]
     subroutine_ok callerProg (blkPl_46).base
       (sessDeserializeSpecPlaced Scope A lim DeserEnv) :=
   sessDeserialize_of_sessDeserEvents_caller_ok hA hsub hMem hi
-
-theorem sessDeserialize_scopeKit_cli_placed_ok [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
-    (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    (hG : CliGhostAllocHooks M A lim g)
-    (hMem : ∀ r, scopeKit r → DeserEnv r (sessDeserEvents r)) :
-    subroutine_ok (lsProg_46 (cliGhostExterns g (cliExternsPlaced mmpl W))) (blkPl_46).base
-      (sessDeserializeSpecPlaced scopeKit A lim DeserEnv) :=
-  sessDeserialize_scopeKit_placed_ok (allocContractsBudgetPlaced_cli mmpl g W hG) hMem
-
-theorem sessDeserialize_of_sub_scopeKit_cli_placed_ok [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    (hG : CliGhostAllocHooks M A lim g)
-    (hsub : ∀ r, Scope r → scopeKit r)
-    (hMem : ∀ r, Scope r → DeserEnv r (sessDeserEvents r)) :
-    subroutine_ok (lsProg_46 (cliGhostExterns g (cliExternsPlaced mmpl W))) (blkPl_46).base
-      (sessDeserializeSpecPlaced Scope A lim DeserEnv) :=
-  sessDeserialize_of_sub_scopeKit_placed_ok (allocContractsBudgetPlaced_cli mmpl g W hG) hsub hMem
-
-theorem sessDeserialize_of_sub_scopeKit_cli_placed_at_block [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    {callerProg : Program} {i : Nat}
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    [IsLsBlockProg callerProg i (cliGhostExterns g (cliExternsPlaced mmpl W))]
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    (hG : CliGhostAllocHooks M A lim g)
-    (hsub : ∀ r, Scope r → scopeKit r)
-    (hMem : ∀ r, Scope r → DeserEnv r (sessDeserEvents r))
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (blkPl_46).base
-      (sessDeserializeSpecPlaced Scope A lim DeserEnv) :=
-  sessDeserialize_of_sub_scopeKit_placed_at_block (allocContractsBudgetPlaced_cli mmpl g W hG)
-    hsub hMem hi
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDetPlacedBudget

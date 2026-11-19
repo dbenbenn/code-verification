@@ -9,25 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.IfaceSimp
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvictBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitPackBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep3
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.GrowSpeBudget
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvictBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitPackBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.GrowSpeBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded DH Step Commit Sub-Segment 3 (`+0xa84 → +0xaf0`)
@@ -37,7 +37,7 @@ stack-parametric `growOneSpecWithStack`, `VmPreserved` basic-block `SepWP` bundl
 and `433`, and relocatable `dhCommit_step3` theorems over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,16 +67,16 @@ abbrev growOneChainSpecXB :=
 
 /-- Deterministic `AllocEvent` list for Step 3a (`+0xa84 → +0xa9c`): emits
 `growOne104Events chainsCap` iff `rcLen = chainsCap`, else `[]`. -/
-def dhCommitStep3aEvents (chainsCap rcLen : BitVec 64) : List AllocEvent :=
+@[expose] def dhCommitStep3aEvents (chainsCap rcLen : BitVec 64) : List AllocEvent :=
   if rcLen = chainsCap then growOne104Events chainsCap else []
 
 /-- Deterministic `AllocEvent` list for full Step 3 (`+0xa84 → +0xaf0`): Step 3a followed by
 `__rust_dealloc(boxPtr, 33, 1)`. -/
-def dhCommitStep3Events (chainsCap rcLen : BitVec 64) : List AllocEvent :=
+@[expose] def dhCommitStep3Events (chainsCap rcLen : BitVec 64) : List AllocEvent :=
   dhCommitStep3aEvents chainsCap rcLen ++ rustDeallocEvents 33 1
 
 /-- Allocation envelope for Step 3 (`+0xa84 → +0xaf0`). -/
-def DhCommitStep3Env (chainsCap rcLen : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def DhCommitStep3Env (chainsCap rcLen : BitVec 64) (evs : List AllocEvent) : Prop :=
   evs = dhCommitStep3Events chainsCap rcLen
 
 theorem fitsEnv_dhCommitStep3_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -105,7 +105,7 @@ theorem fitsEvents_dhCommitStep3a_of_imp {M : AllocCostModel} {lim : BudgetLimit
 
 /-- Stack-parametric budget-threaded `<RawVec<Chain>>::grow_one` contract (`stride = 104`,
 `align = 8`). Definitionally equal to `GrowOneXBudget.growOneChainSpecX` at `growOneChainStackX`. -/
-def growOneSpecWithStack (stk : Nat) (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneSpecWithStack (stk : Nat) (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length = cap.toNat * 104 ∧ ptr ≠ 0 ∧

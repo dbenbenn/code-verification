@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -43,7 +43,7 @@ Proves `alice_myIk_of_getLocalState`: every stored `TRState` snapshot for `r₀.
 `ModelRun r₀ ms` satisfies `st.myIk = serializedIk (setupPublic r₀ 0)`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

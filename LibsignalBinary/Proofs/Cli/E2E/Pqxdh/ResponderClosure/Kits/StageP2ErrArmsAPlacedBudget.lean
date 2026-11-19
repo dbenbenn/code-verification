@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrCPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrCPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -21,6 +21,15 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedAux
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Untrusted
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrA
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrBPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrCPlaced
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Shared Error Funnel and Unwind Arms 1–2
@@ -30,7 +39,7 @@ placed unwind theorems for the shared `+0x1648` error funnel and Store-Error Arm
 Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -178,15 +187,15 @@ local macro "sep_norm" : tactic =>
 /-! ## 1. Concrete `FreeOnlyEvs` Event Lists for Funnel & Store-Error Arms 1–2 -/
 
 /-- Exact deallocation event list for the shared Stage P2 error funnel (`+0x1648 -> ret`). -/
-def p2ErrFunnelEvents (prevCap : BitVec 64) : List AllocEvent :=
+@[expose] def p2ErrFunnelEvents (prevCap : BitVec 64) : List AllocEvent :=
   if prevCap = 0#64 then [] else rustDeallocEvents (prevCap.toNat * 24) 8
 
 /-- Exact deallocation event list for Arm 1 (`get_signed_pre_key` `.error` unwind). -/
-def p2Arm1ErrEvents (spkBoxSize : Nat) (prevCap : BitVec 64) : List AllocEvent :=
+@[expose] def p2Arm1ErrEvents (spkBoxSize : Nat) (prevCap : BitVec 64) : List AllocEvent :=
   rustDeallocEvents spkBoxSize 8 ++ p2ErrFunnelEvents prevCap
 
 /-- Exact deallocation event list for Arm 2 (`get_kyber_pre_key` `.error` unwind). -/
-def p2Arm2ErrEvents (kyberBoxSize : Nat) (prevCap : BitVec 64) : List AllocEvent :=
+@[expose] def p2Arm2ErrEvents (kyberBoxSize : Nat) (prevCap : BitVec 64) : List AllocEvent :=
   rustDeallocEvents kyberBoxSize 8 ++ p2ErrFunnelEvents prevCap
 
 theorem p2ErrFunnelEvents_freeOnly (prevCap : BitVec 64) :

@@ -9,16 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1Stages45AuxBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2BaseBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1Stages45AuxBudget
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2BaseBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
 import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2Budget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1Stages13AuxBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCSBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent2StagesPlacedAuxBudget
 
 /-!
 # Budget-Threaded Verification of `unchunked::Ct1Sent::encode [local#1]` (`Block 156`)
@@ -28,7 +35,7 @@ Stage 6 (`ct1: Vec<u8>`) and the epilogue on `lsProg_156`, and composes `ct1Sent
 and the `[LibsignalPlacement]` contracts for `Ct1Sent::encode [local#1]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

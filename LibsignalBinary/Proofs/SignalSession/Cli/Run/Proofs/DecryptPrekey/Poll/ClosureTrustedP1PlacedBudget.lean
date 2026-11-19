@@ -9,21 +9,32 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathATopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMainPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrusted
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathATopPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMainPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTopPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrusted
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1PlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudget
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4PlacedBudget
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Poll Trusted Entry and Path A/B Join
@@ -34,7 +45,7 @@ and `ClosurePathBMainPlacedBudget.closure_pathB_placed_ok` under `[LibsignalPlac
 allocation envelope `CliDpPollTrustedEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -118,7 +129,7 @@ structure PollBaseStagesPlacedStmt [LibsignalPlacement] : Prop where
   stageP4PathB : StageP4MatchedPlacedStmt
 
 /-- Concrete CLI Stage-P1 (`is_trusted_identity =.ok true`) allocation envelope at `StoresGhost.opened`. -/
-def CliStageP1OkEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CliStageP1OkEnv [LibsignalPlacement] {A : RustAlloc}
     (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -136,7 +147,7 @@ def CliStageP1OkEnv [LibsignalPlacement] {A : RustAlloc}
 /-- Complete allocation-event envelope for `closure_trusted_placed_ok`, covering untrusted rejection,
 Stage P1 (`CliStageP1OkEnv`), Path A (`opt = none`, Stages P2–P4), and Path B (`opt = some r`,
 `previousSessions = []`, Stages P2–P4). -/
-def CliDpPollTrustedEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CliDpPollTrustedEnv [LibsignalPlacement] {A : RustAlloc}
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -247,31 +258,5 @@ theorem closure_trusted_placed_ok [LibsignalPlacement]
     hStages.stageP3PathA hStages.stageP4PathA
     hStages.stageP2PathB hStages.stageP3PathB hStages.stageP4PathB
     hTryDec hEnv
-
-theorem cliDpPollOk_placed_of_stages [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    {DecPkEnv : CliHooks → UnreachedPqxdhPrimitives → RunBudgets →
-      (SessionRecord (List (BitVec 8)) → Prop) → DecPkGhost → List AllocEvent → Prop}
-    {P2PathAErrEnv P2PathAOkEnv : CliHooks → UnreachedPqxdhPrimitives → RunBudgets →
-      (SessionRecord (List (BitVec 8)) → Prop) → DecPkGhost → List AllocEvent → Prop}
-    {tdEnv : CliHooks → TryDecryptEnvArgs → List AllocEvent → Prop}
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hStages : PollBaseStagesPlacedStmt)
-    (hTryDec : ∀ mmpl gh W,
-      subroutine_ok (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-        (lsmpl.base 508)
-        (withLsCodeRoLoaded lsmpl
-          (pollTryDecryptPlacedSpecTPTight W.C A lim 0#64 uuidTryParse (spqrV1 W.C.F W.Q.K)
-            (tdEnv W))))
-    (hEnv : ∀ W X B Scope g evs,
-      CliDpPollTrustedEnv (A := A.repAlloc) W X B ReadEnv DeserEnv
-        (P2PathAErrEnv W X B Scope) (P2PathAOkEnv W X B Scope) (tdEnv W) g evs →
-      DecPkEnv W X B Scope g evs) :
-    CliDpPollOkStatePlacedStmt A lim ReadEnv DeserEnv DecPkEnv :=
-  fun mmpl gh W X B S Scope =>
-    closure_trusted_placed_ok hDropNz hStages mmpl gh W X B S Scope
-      (hTryDec mmpl gh W) (hEnv W X B Scope)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1PlacedBudget

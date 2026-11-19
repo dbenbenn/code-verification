@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.ProofPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.ProofPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProofPlacedB
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Unconditional Placed Contracts
@@ -20,7 +21,7 @@ unconditional `[LibsignalPlacement]` contracts (`poly_next_chunk_rodata_placed_o
 `poly_next_chunk_placed_ok`) for Block `416`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.CaseSplit
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.CaseSplit -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Actions.Random
@@ -25,7 +25,7 @@ import Symbolic.Specifications.Model.EquationalTheory.Trunc
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import Symbolic.Specifications.Model.EquationalTheory.X25519
 import Init.Data.String.Defs
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepMac
@@ -43,7 +43,7 @@ receiver's HMAC input, then under `G1cAttackerBuiltSeedExcl'` the receiver's Dou
 attacker-known (`g1c_own_key_branch'`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -334,7 +334,7 @@ theorem parseTrSignalMsg_unpack_c {t : DY.Bytes} {msg : TRSignalMsg}
 
 /-- Valid input shapes for an attacker-known `kdfExtract s i` on a reachable composed trace: either
 both inputs are attacker-known, or `i` is a Double Ratchet or PQXDH key-derivation label. -/
-def KdfInputValidC (T : ExecTrace) (s i : DY.Bytes) : Prop :=
+@[expose] def KdfInputValidC (T : ExecTrace) (s i : DY.Bytes) : Prop :=
   (s.AttackerKnows T ∧ i.AttackerKnows T) ∨
   i = litByte 0x01 ∨
   i = litByte 0x02 ∨
@@ -358,7 +358,7 @@ theorem macKdfSafe_c_kdfExtract_inv (r₀ : ProtocolSetup) (ms : List Move) (s i
 /-- Hypothesis excluding a collision-free received representation `t₀` from reaching `G1cOwnKeyCaseB3`
 (`msg₀.mac = trunc8 inp₀` with `inp₀` attacker-known and matching the shape of the receiver's HMAC
 input) when the receiver's seed `mkSeed` is not attacker-known. -/
-def G1cAttackerBuiltSeedExcl' (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def G1cAttackerBuiltSeedExcl' (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) : Prop :=
   ∀ (b : HwBytes) (t₀ : DY.Bytes) (msg₀ : TRSignalMsg) (st₀ : TRState)
     (mkSeed k_own : DY.Bytes),

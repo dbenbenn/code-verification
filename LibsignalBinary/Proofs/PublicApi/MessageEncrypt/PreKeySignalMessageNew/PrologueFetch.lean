@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Split
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Split -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerialize
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Glue
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `PreKeySignalMessage::new` Prologue Fetches, OOM Panics, and Layout Helpers
@@ -27,7 +29,7 @@ sequencing and OOM panic-block helpers (`+0x060`, `+0x10c`, `+0x204`), callee `s
 projections, and separation-logic pack/unpack lemmas.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.Prologue
 
@@ -35,28 +37,6 @@ section Fetch
 
 open Lean Meta Elab Command Tactic Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoVerification
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [0x15130 → 0x1538c]
-
-elab "preKeyMsg_fetches_range " b:term:max H:term:max kStart:num kEnd:num : tactic => do
-  let off := 0x15130
-  let kStart := kStart.getNat
-  let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let hfn := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x15130
-  let mut k := kStart
-  while k <= kEnd do
-    let dec := mkIdent (.str `CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.Prologue
-      s!"libsignalSessionBin_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-    let kq := Syntax.mkNumLit (toString k)
-    if k == 0 then
-      evalTactic (← `(tactic|
-        have := $fetchEntry (b := $b) (H := $H) $hfn (by decide) $dec))
-    else
-      evalTactic (← `(tactic|
-        have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-    k := k + 4
 
 end Fetch
 
@@ -76,53 +56,6 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 abbrev preKeyMsgNewName : String :=
   "<libsignal_protocol::protocol::PreKeySignalMessage>::new"
-
-theorem fnAddr_preKeyMsgNew_eq (img : Obj.Image) {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    (tripleRatchetProgAt img.base C ctl abs).fnAddr preKeyMsgNewName = preKeyMsgNewEntry img := by
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, preKeyMsgNewEntry, preKeyMsgNewName,
-    CryptoVerification.libsignalSessionCode_fnOff_0x15130]
-
-theorem fnAddr_preKeyMsgNew_add_eq {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {target : String} {off : BitVec 64}
-    (h : BitVec.ofNat 64 (libsignalSessionCode.fnOff preKeyMsgNewName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff target) := by
-      simp only [arm64_norm]) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + off =
-      (tripleRatchetProgAt b C ctl abs).fnAddr target := by
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, BitVec.add_assoc, h]
-
-theorem fnAddr_preKeyMsgNew_eq_ext (img : Obj.Image)
-    {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt img.base ext).fnAddr preKeyMsgNewName = preKeyMsgNewEntry img := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, preKeyMsgNewEntry, preKeyMsgNewName,
-    CryptoVerification.libsignalSessionCode_fnOff_0x15130]
-
-theorem fnAddr_preKeyMsgNew_add_eq_ext {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    {target : String} {off : BitVec 64}
-    (h : BitVec.ofNat 64 (libsignalSessionCode.fnOff preKeyMsgNewName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff target) := by
-      simp only [arm64_norm]) :
-    (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName + off =
-      (tripleRatchetProgAtExt b ext).fnAddr target := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, BitVec.add_assoc, h]
-
-theorem fnAddr_preKeyMsgNew_eq_trap (img : Obj.Image) {C : Crypto}
-    {abs : String → Option (State → State)} :
-    (trTrapProgAt img.base C abs).fnAddr preKeyMsgNewName = preKeyMsgNewEntry img :=
-  fnAddr_preKeyMsgNew_eq_ext img
-
-theorem fnAddr_preKeyMsgNew_add_eq_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)}
-    {target : String} {off : BitVec 64}
-    (h : BitVec.ofNat 64 (libsignalSessionCode.fnOff preKeyMsgNewName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff target) := by
-      simp only [arm64_norm]) :
-    (trTrapProgAt b C abs).fnAddr preKeyMsgNewName + off =
-      (trTrapProgAt b C abs).fnAddr target :=
-  fnAddr_preKeyMsgNew_add_eq_ext h
 
 theorem allocHooks_of_trTrap_trap {C : Crypto} {A : RustAlloc}
     {abs : String → Option (State → State)}
@@ -150,7 +83,7 @@ theorem trTrap_memcpy_hookSat {C : Crypto} {abs : String → Option (State → S
 
 /-! ## `SepWPp` Sequencing and Panic Helpers -/
 
-def PanicAllocPost (s0 : State) : State → SepProp → Prop :=
+@[expose] def PanicAllocPost (s0 : State) : State → SepProp → Prop :=
   fun sf P_f => ∀ R, (sf.mem ⊨ P_f ∗ R) →
     (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R)
 
@@ -172,7 +105,7 @@ theorem satisfies_of_sep_focus {m : Memory} {P Q : SepProp} (hm : m ⊨ P)
     (h : P = Q ∗ emp) : m ⊨ Q := by
   rwa [h, sepConj_emp] at hm
 
-def not_satisfies_false_sepConj2 {α : Sort*} {m : Memory} {P Q : SepProp}
+@[expose] def not_satisfies_false_sepConj2 {α : Sort*} {m : Memory} {P Q : SepProp}
     (h : m ⊨ (⌜False⌝ ∗ P) ∗ Q) : α :=
   (not_satisfies_false_sepConj (R := P ∗ Q) (m := m) (by rwa [sepConj_assoc] at h)).elim
 
@@ -227,306 +160,6 @@ theorem preKeyMsg_seq_wp {prog : Program} {mid ret : BitVec 64} {s : State}
   · exact (not_satisfies_false_sepConj _hoom).elim
 
 /-! ## Callee `subroutine_ok` Wrappers -/
-
-theorem preKeyMsg_shim_ok {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x15130)) noAllocShimSpec :=
-  noAllocShim_ok_at (name := preKeyMsgNewName) (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x15130))
-
-theorem preKeyMsg_alloc_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + bv% (ls_off% "__rustc::__rust_alloc" - 0x15130)) (rustAllocSpec A) :=
-  alloc_ok_at_norm hA (name := preKeyMsgNewName) (k := num% (ls_off% "__rustc::__rust_alloc" - 0x15130))
-
-theorem preKeyMsg_memcpy_ok {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + bv% (ls_off% "memcpy" - 0x15130)) framelessMemcpySpec :=
-  framelessMemcpy_ok_at (name := preKeyMsgNewName) (k := num% (ls_off% "memcpy" - 0x15130))
-
-theorem preKeyMsg_publicKeySerialize_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + 168340#64) (publicKeySerializeSpec A) := by
-  rw [fnAddr_preKeyMsgNew_add_eq (target := publicKeySerializeName)]
-  exact Glue.publicKeySerializeOk hA
-
-theorem preKeyMsg_encodedLen_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hEncLen : PreKeyMsgEncodedLenOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr preKeyMsgNewName + 100920#64) (preKeyMsgEncodedLenSpec A) := by
-  have haddr : (tripleRatchetProgAt img.base C ctl abs).fnAddr preKeyMsgNewName + 100920#64 =
-      img.base + 0x2db68#64 := by
-    rw [fnAddr_preKeyMsgNew_eq, preKeyMsgNewEntry, BitVec.add_assoc]
-    rfl
-  rw [haddr]
-  exact hEncLen
-
-theorem preKeyMsg_shim_ok_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr preKeyMsgNewName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x15130)) noAllocShimSpec :=
-  hook_ok_at (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x15130))
-    (stub := libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-    (hname := "__rustc::__rust_no_alloc_shim_is_unstable_v2") rfl
-    (by simp only [arm64_norm])
-    (by simp only [arm64_norm])
-    (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-    ⟨hookNoop, by rw [trTrapExterns_eq_tripleRatchetExterns C 0#64 abs (by decide)]; rfl, noAllocShim_hookOk⟩
-
-theorem preKeyMsg_alloc_ok_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr preKeyMsgNewName + bv% (ls_off% "__rustc::__rust_alloc" - 0x15130)) (rustAllocSpec A) :=
-  alloc_ok_at_norm_ext (AllocContracts.of_tripleRatchetProgAt_trap b C A abs hA)
-    (name := preKeyMsgNewName) (k := num% (ls_off% "__rustc::__rust_alloc" - 0x15130))
-
-theorem preKeyMsg_memcpy_ok_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr preKeyMsgNewName + bv% (ls_off% "memcpy" - 0x15130)) framelessMemcpySpec :=
-  hook_ok_at (k := num% (ls_off% "memcpy" - 0x15130))
-    (stub := libsignalSessionCode.fnOff "memcpy")
-    (hname := "memcpy") rfl
-    (by simp only [arm64_norm])
-    (by simp only [arm64_norm])
-    (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-    ⟨hookMemcpy, by rw [trTrapExterns_eq_tripleRatchetExterns C 0#64 abs (by decide)]; rfl, framelessMemcpy_hookOk⟩
-
-theorem preKeyMsg_publicKeySerialize_ok_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr preKeyMsgNewName + 168340#64) (publicKeySerializeSpec A) := by
-  rw [fnAddr_preKeyMsgNew_add_eq_trap (target := publicKeySerializeName)]
-  exact public_key_serialize_ok_ext (AllocContracts.of_tripleRatchetProgAt_trap b C A abs hA)
-
-theorem preKeyMsg_encodedLen_ok_trap {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    (hEncLen : PreKeyMsgEncodedLenOk_trap img C A abs) :
-    subroutine_ok (trTrapProgAt img.base C abs)
-      ((trTrapProgAt img.base C abs).fnAddr preKeyMsgNewName + 100920#64) (preKeyMsgEncodedLenSpec A) := by
-  have haddr : (trTrapProgAt img.base C abs).fnAddr preKeyMsgNewName + 100920#64 =
-      img.base + 0x2db68#64 := by
-    rw [fnAddr_preKeyMsgNew_eq_trap, preKeyMsgNewEntry, BitVec.add_assoc]
-    rfl
-  rw [haddr]
-  exact hEncLen
-
-theorem preKeyMsg_shim_ok_ext {b : BitVec 64} {ext : String → Option (State → State)}
-    (hSh : HookSat ext shimName sessionShimSpec) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName +
-        bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x15130))
-      noAllocShimSpec :=
-  hook_ok_at (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x15130))
-    (stub := libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-    (hname := "__rustc::__rust_no_alloc_shim_is_unstable_v2") rfl
-    (by simp only [arm64_norm])
-    (by simp only [arm64_norm])
-    (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-    hSh
-
-theorem preKeyMsg_alloc_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocHooks A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName +
-        bv% (ls_off% "__rustc::__rust_alloc" - 0x15130))
-      (rustAllocSpec A) :=
-  alloc_ok_at_ext b A ext hA preKeyMsgNewName
-    (num% (ls_off% "__rustc::__rust_alloc" - 0x15130))
-
-theorem preKeyMsg_memcpy_ok_ext {b : BitVec 64} {ext : String → Option (State → State)}
-    (hMc : HookSat ext memcpyName (sessionMemcpySpec allocHookStack)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName +
-        bv% (ls_off% "memcpy" - 0x15130))
-      (withStack framelessMemcpySpec allocHookStack) := by
-  have hraw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName +
-        bv% (ls_off% "memcpy" - 0x15130))
-      (sessionMemcpySpec allocHookStack) :=
-    hook_ok_at (k := num% (ls_off% "memcpy" - 0x15130))
-      (stub := libsignalSessionCode.fnOff "memcpy")
-      (hname := "memcpy") rfl
-      (by simp only [arm64_norm])
-      (by simp only [arm64_norm])
-      (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-      hMc
-  refine subroutine_ok_mono hraw (fun (dst, src, bs) R s0 hpre => ?_)
-    (fun (dst, src, bs) R s0 sf hpost => ?_)
-  · dsimp only [withStack, framelessMemcpySpec] at hpre
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
-    rcases hpre with ⟨⟨hx0, hx1, hx2⟩, hm⟩
-    dsimp only [sessionMemcpySpec, libcMemcpySpec] at hm ⊢
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2⟩, ?_⟩
-    simpa only [sepConj_assoc] using hm
-  · dsimp only [sessionMemcpySpec, withStack, framelessMemcpySpec] at hpost ⊢
-    simpa only [sepConj_assoc] using hpost
-
-theorem preKeyMsg_publicKeySerialize_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocHooks A ext)
-    (hSh : HookSat ext shimName sessionShimSpec) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName + 168340#64)
-      (publicKeySerializeSpec A) := by
-  rw [fnAddr_preKeyMsgNew_add_eq_ext (target := publicKeySerializeName)]
-  apply subroutine_ok_of_optNone
-  refine public_key_serialize_ok_of_hooks_opt (oimg := none) (by decide) ?_ ?_
-  · apply subroutine_ok_to_optNone
-    have hsh0 : subroutine_ok (tripleRatchetProgAtExt b ext)
-        ((tripleRatchetProgAtExt b ext).fnAddr publicKeySerializeName +
-          BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-            ls_off% "<libsignal_core::curve::PublicKey>::serialize")))
-        sessionShimSpec :=
-      hook_ok_at (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-          ls_off% "<libsignal_core::curve::PublicKey>::serialize"))
-        (stub := libsignalSessionCode.fnOff shimName)
-        (hname := shimName) rfl
-        (by simp only [arm64_norm])
-        (by simp only [arm64_norm])
-        (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol, shimName])
-        hSh
-    have hsh1 := subroutine_ok_withStack_of_subroutine_ok hsh0 allocHookStack
-    refine subroutine_ok_mono hsh1 (fun x R s0 hpre => ?_) (fun _ _ _ _ hpost => hpost)
-    dsimp only [withStack, sessionShimSpec, shimSpecWithStack] at hpre ⊢
-    simpa only [emp_sepConj, sepConj_assoc] using hpre
-  · exact subroutine_ok_to_optNone
-      (alloc_ok_at_ext b A ext hA publicKeySerializeName
-        (num% (ls_off% "__rustc::__rust_alloc" -
-          ls_off% "<libsignal_core::curve::PublicKey>::serialize")))
-
-theorem preKeyMsg_encodedLen_ok_ext {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hEncLen : subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + 0x2db68#64)
-      (preKeyMsgEncodedLenSpec A)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyMsgNewName + 100920#64)
-      (preKeyMsgEncodedLenSpec A) := by
-  have haddr : (tripleRatchetProgAtExt img.base ext).fnAddr preKeyMsgNewName + 100920#64 =
-      img.base + 0x2db68#64 := by
-    rw [fnAddr_preKeyMsgNew_eq_ext, preKeyMsgNewEntry, BitVec.add_assoc]
-    rfl
-  rw [haddr]
-  exact hEncLen
-
-/-! ## OOM Panic Blocks (`+0x060`, `+0x10c`, `+0x204`) -/
-
-theorem preKeyMsg_oom_at_060_ext {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName + 96#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q (PanicAllocPost s0) := by
-  have hpanic := panic_at_handle_error_norm_ext (b := b)
-    (ext := ext) (name := preKeyMsgNewName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x15130))
-  preKeyMsg_fetches_range b (Rust.withPanics ext) 0x060 0x068
-  generalize_entry (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x15130))
-  wp_steps
-  apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-  refine SepWPp.panic (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  exact panicAllocPost_of_eq (allocFailedIn_of_append_one (by simp_all [Rust.panicked, arm64_norm]))
-
-theorem preKeyMsg_oom_at_060_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)}
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr preKeyMsgNewName + 96#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (trTrapProgAt b C abs) ret s P Q (PanicAllocPost s0) :=
-  preKeyMsg_oom_at_060_ext hpc hrun htr
-
-theorem preKeyMsg_oom_at_060 {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + 96#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  rw [← trTrapProgAt_fnAddr_eq b C ctl abs preKeyMsgNewName] at hpc
-  exact SepWPp_kit_of_trTrap (preKeyMsg_oom_at_060_trap hpc hrun htr)
-
-theorem preKeyMsg_oom_at_10c_ext {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName + 268#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q (PanicAllocPost s0) := by
-  have hpanic := panic_at_handle_error_norm_ext (b := b)
-    (ext := ext) (name := preKeyMsgNewName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x15130))
-  preKeyMsg_fetches_range b (Rust.withPanics ext) 0x10c 0x114
-  generalize_entry (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x15130))
-  wp_steps
-  apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-  refine SepWPp.panic (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  exact panicAllocPost_of_eq (allocFailedIn_of_append_one (by simp_all [Rust.panicked, arm64_norm]))
-
-theorem preKeyMsg_oom_at_10c_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)}
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr preKeyMsgNewName + 268#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (trTrapProgAt b C abs) ret s P Q (PanicAllocPost s0) :=
-  preKeyMsg_oom_at_10c_ext hpc hrun htr
-
-theorem preKeyMsg_oom_at_10c {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + 268#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  rw [← trTrapProgAt_fnAddr_eq b C ctl abs preKeyMsgNewName] at hpc
-  exact SepWPp_kit_of_trTrap (preKeyMsg_oom_at_10c_trap hpc hrun htr)
-
-theorem preKeyMsg_oom_at_204_ext {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName + 516#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q (PanicAllocPost s0) := by
-  have hpanic := panic_at_handle_error_norm_ext (b := b)
-    (ext := ext) (name := preKeyMsgNewName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x15130))
-  preKeyMsg_fetches_range b (Rust.withPanics ext) 0x204 0x20c
-  generalize_entry (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x15130))
-  wp_steps
-  apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-  refine SepWPp.panic (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  exact panicAllocPost_of_eq (allocFailedIn_of_append_one (by simp_all [Rust.panicked, arm64_norm]))
-
-theorem preKeyMsg_oom_at_204_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)}
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr preKeyMsgNewName + 516#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (trTrapProgAt b C abs) ret s P Q (PanicAllocPost s0) :=
-  preKeyMsg_oom_at_204_ext hpc hrun htr
-
-theorem preKeyMsg_oom_at_204 {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {ret : BitVec 64} {s0 s : State} {P : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + 516#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  rw [← trTrapProgAt_fnAddr_eq b C ctl abs preKeyMsgNewName] at hpc
-  exact SepWPp_kit_of_trTrap (preKeyMsg_oom_at_204_trap hpc hrun htr)
-
-/-! ## Arithmetic and Stack/Memory Lemmas -/
 
 theorem publicKey_serialize_length (pk : PublicKey) :
     pk.serialize.length = 33 := by
@@ -698,7 +331,7 @@ theorem boxU8Buf_extract_pure (A : RustAlloc) (ptr : BitVec 64) (bs : List (BitV
   unfold boxU8Buf
   exact Entails.pure_left fun h => Entails.pure_right h (Entails.pure_right h (Entails.refl _))
 
-def signalMessageRestAt (A : RustAlloc) (g : SignalMessageGhost) (a : BitVec 64)
+@[expose] def signalMessageRestAt (A : RustAlloc) (g : SignalMessageGhost) (a : BitVec 64)
     (m : SignalMessage) : SepProp :=
   ⌜macLength + 1 ≤ m.serialized.length ∧ m.serialized.length < 2 ^ 40 ∧
     m.ciphertext.length < 2 ^ 40 ∧ m.pqRatchet.length < 2 ^ 40 ∧
@@ -735,7 +368,7 @@ theorem signalMessageRestAt_extract_ser_bounds (A : RustAlloc) (g : SignalMessag
     omega
   exact Entails.pure_right ⟨h9, hp.2.1⟩ (Entails.pure_right hp (Entails.refl _))
 
-def _root_.CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeyMsgNewCall.mkWirePins
+@[expose] def _root_.CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeyMsgNewCall.mkWirePins
     (x : PreKeyMsgNewCall) (kyberCap kyberCopyPtr bkSerPtr ikSerPtr msgCopyPtr : BitVec 64) :
     WirePreKeySignalMessageGhost :=
   { kyberCt := ⟨kyberCap, kyberCopyPtr⟩

@@ -66,8 +66,8 @@ theorem census_spqrSendKey {i : ExternInterpretation} {S : Sem} {g : Ghost} {st 
     exact census_spqrChainKey hk hpar (census_lit _ (nonInjOffXZ_of_len
       (by rw [CompPlant.gamma_literalToBytes_length]; simp [ByteArray.size])
       (by rw [CompPlant.gamma_literalToBytes_length]; simp [ByteArray.size])))
-theorem census_storedSecrets_40 {w : PQXDHSpqrSetup} {r : Records} {S : Sem} {g : Ghost} {ms : List Move} (hfits : compFits w compI0 r) (hA : r.alice = "alice") (hB : r.bob = "bob") (hc : Compat compI0 r S g) (hns : ∀ m ∈ ms, m.isSetup = false) (hreach : (runTraceMoves r ms).Reachable DY.Libsignal.Composed.reachability) : ∀ u ∈ storedSecrets (runTraceMoves r ms), Census compI0 S g u := by
-  have hNe : r.alice ≠ r.bob := hfits.1.1; have hopk : r.withOpk = false := hfits.2.1; have hinv := CompInv.spqrInv_of_reachable (runTraceMoves r ms) hreach
+theorem census_storedSecrets_40 {w : PQXDHSpqrSetup} {r : Records} {S : Sem} {g : Ghost} {ms : List Move} (hfits : SetupMatches w compI0 r) (hA : r.alice = "alice") (hB : r.bob = "bob") (hc : Compat compI0 r S g) (hns : ∀ m ∈ ms, m.isSetup = false) (hreach : (runTraceMoves r ms).Reachable DY.Libsignal.Composed.reachability) : ∀ u ∈ storedSecrets (runTraceMoves r ms), Census compI0 S g u := by
+  have hNe : r.alice ≠ r.bob := hfits.1.1; have hinv := CompInv.spqrInv_of_reachable (runTraceMoves r ms) hreach
   have hL : ∀ ts sz, (ts, sz) ∈ setupRandomsAt r → sz ≠ 0 → 32 ≤ sz → 32 ≤ (gamma compI0 S g (randTerm ts sz)).length := by intro ts sz hp hsz h32; rw [gamma_setup_len hc hfits.1 hp hsz]; exact h32
   intro u hu; obtain ⟨j, _, ⟨part, ⟨kind, sk⟩⟩, hat, rfl⟩ := CompRX0NBSC38Parts.mem_storedSecrets_iff.mp hu; have hkind := hinv.stOK part ⟨kind, sk⟩ j hat; dsimp only [CompInv.KindOK] at hkind
   cases kind with
@@ -97,8 +97,16 @@ theorem census_storedSecrets_40 {w : PQXDHSpqrSetup} {r : Records} {S : Sem} {g 
     obtain ⟨t, rfl, _, hev⟩ := hkind
     rcases CompSetupSecrecy.setupTrace_eventLoggedAt_cases hNe
         (CompSetupSecrecy.noNewNonMovePQEv_runTrace r ms hns _ (t + 1) rfl hev) with
-      ⟨_, heq⟩ | ⟨_, heq⟩ | ⟨_, heq⟩ | ⟨_, heq⟩ | ⟨hopk_true, _, _⟩ <;>
-      [cases heq; cases heq; cases heq; cases heq; (rw [hopk] at hopk_true; cases hopk_true)]
+      ⟨_, heq⟩ | ⟨_, heq⟩ | ⟨_, heq⟩ | ⟨_, heq⟩ | ⟨hopk_true, hj, heq⟩
+    · cases heq
+    · cases heq
+    · cases heq
+    · cases heq
+    · obtain rfl : t = 22 := by omega
+      injection heq with hp _
+      refine census_serialize_local_pqxdh (participant_size_ne (Or.inr (hp.trans hB))) ?_ ?_
+      · exact census_randTerm 22 32
+      · exact hL 22 32 (CompPrefixInvFresh.mem_setupRandomsAt_32 hNe (.inr ⟨hopk_true, rfl⟩)) (by decide) le_rfl
 theorem iniAliceOut_eq_comp : @Census443Defs.iniAliceOut = @CompPrefixInvAlice.iniAliceOut := rfl
 theorem iniAliceStartState_eq_comp : @Census443Defs.iniAliceStartState = @CompPrefixInvAlice.iniAliceStartState := rfl
 theorem encSt_eq_comp : @Census443Defs.encSt = @CompPrefixInvEnc.encSt := rfl

@@ -9,22 +9,22 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3B
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3B
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3D
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3D -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key `PrfChainKey` Sub-Hop (`G3.6` to `G3.7`)
@@ -33,7 +33,7 @@ Proves hybrid state validity and establishes the single-identity-key `PrfChainKe
 `hop_G3_6_G3_7_1Key` over `pqxdhAuthImpl1KeyG`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,16 +45,6 @@ open SignalPqxdh
 open _root_.Proofs.SignalPqxdh.Security
 
 namespace AuthSubHops1to3
-
-theorem simulateQ_authCkStepWithPrim1Key (S : Setup) (P : Primitives)
-    (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
-    (sampAtPure : Nat → ProbComp (Bytes × Bytes))
-    (hSamp : ∀ s, simulateQ (primBaseImpl P) (sampAt s) = sampAtPure s)
-    (q : AuthQuery S) (hst : AuthHybridStateFixed S)
-    (hV : ValidAuthHybrid S P hst) :
-    simulateQ (primBaseImpl P) (authCkStepWithPrim1Key S sampAt q (cacheAuthAdvKeysFixed P hst)) =
-      Prod.map id (cacheAuthAdvKeysFixed P) <$> authCkSlotsStepWith1Key S P sampAtPure q hst :=
-  simulateQ_authCkSlotsStepWithPrim1Key S P sampAt sampAtPure hSamp q hst hV
 
 theorem authCkStepWith_validAuthHybrid1Key (S : Setup) (P : Primitives)
     (sampAt : Nat → ProbComp (Bytes × Bytes))

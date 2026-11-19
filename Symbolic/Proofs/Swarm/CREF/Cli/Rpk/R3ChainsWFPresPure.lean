@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.ModelDefs
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.RngG.R3ModelInv
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure
 
@@ -23,7 +23,7 @@ per chain, and cached counters strictly below the chain-key index) and proves pr
 existing-chain and DH-ratchet `advanceChain` / `setReceiverChainKey` steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -38,17 +38,17 @@ open CryptoVerification.SessionModel.AdvanceAndFrame
 open Swarm.Phase0WholeFunctionBridge (sessionToRecordRec sessionToSessionRec receiverChainToChainRec)
 
 /-- Per-chain well-formedness: cached counters `Nodup`, each below the chain-key index. -/
-def ChainKeysWF (ch : ReceiverChain) : Prop :=
+@[expose] def ChainKeysWF (ch : ReceiverChain) : Prop :=
   (ch.messageKeys.map MessageKeyGenerator.counter).Nodup ∧
   ∀ k ∈ ch.messageKeys, ∃ ck, ch.chainKey = some ck ∧ k.counter < ck.index
 
 /-- Model-level receiver-chain well-formedness: sender ratchet keys `Nodup`, every chain
 `ChainKeysWF`. -/
-def ChainsWFm (cs : List ReceiverChain) : Prop :=
+@[expose] def ChainsWFm (cs : List ReceiverChain) : Prop :=
   (cs.map ReceiverChain.senderRatchetKey).Nodup ∧ ∀ ch ∈ cs, ChainKeysWF ch
 
 /-- Record-level receiver-chain well-formedness on `RecordRec`. -/
-def RecordChainsWF3 (rec : DY.Libsignal.Rust.RecordRec) : Prop :=
+@[expose] def RecordChainsWF3 (rec : DY.Libsignal.Rust.RecordRec) : Prop :=
   (rec.current.receiverChains.map DY.Libsignal.Rust.ChainRec.senderRatchetKey).Nodup ∧
   (∀ c ∈ rec.current.receiverChains, (c.messageKeys.map Prod.fst).Nodup) ∧
   ∀ c ∈ rec.current.receiverChains, ∀ k ∈ c.messageKeys, ∃ ck, c.chainKey = some ck ∧ k.1 < ck.1

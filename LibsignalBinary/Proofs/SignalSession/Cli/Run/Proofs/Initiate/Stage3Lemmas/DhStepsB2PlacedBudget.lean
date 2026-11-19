@@ -9,14 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsB2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhHelpersPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsB2Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhHelpersPlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Collapse
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.EarlyExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Stage 3 PQXDH Step B2 (`[LibsignalPlacement]`, `+0x0968 → +0x0a70`: `DH3`)
@@ -26,7 +41,7 @@ discharging the zero-DH unwind (`unwind1548Events`) and writing `F_X25519 ++ dh1
 (`len = 128`) at `secretsPtr` (`dh3StepOkEvents`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -56,8 +71,6 @@ open CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage3Lemmas (appen
 open CryptoVerification.SignalSession.Cli.RunSkeleton (RunBudgets)
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsB2PlacedBudget
-
-noncomputable section
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib SepProp
 open CryptoVerification.LibsignalSpqrV1 (Params)
@@ -90,7 +103,7 @@ attribute [local simp, local arm64_norm, local wp_norm]
   extractLsb_hi56_3 and_ff_hi56_3 and_ff32_hi56_3 zext64_trunc32_hi56_3_and_ff
 
 /-- Allocator events along the non-zero `DH3` path (`+0x0968 → +0x0a70`). -/
-def dh3StepOkEvents : List AllocEvent :=
+@[expose] def dh3StepOkEvents : List AllocEvent :=
   rustAllocEvents 32 1 ++ rustDeallocEvents 32 1
 
 theorem stepEvents_dh3StepOkEvents (M : AllocCostModel) (st : M.σ) :
@@ -599,89 +612,5 @@ theorem dh3_step_hooks_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       Q Qp oom :=
   dh3_step_of_ok hh (calculateAgreement_cli_placed_ok mmpl gh W hh X) hFit hEnv hS hstk hstk64 hs3
     hpost hpanic hdh1_len32 hdh2_len32 hsecNonNull hctrl htr hx20 hx21 hx22 hx24 hx26 hnext
-
-theorem dh3_step_placed_evs_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {InitStateEnv : Params → List AllocEvent → Prop}
-    {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks} {X : UnreachedPqxdhPrimitives} {B : RunBudgets} {S : RunSem}
-    {x : InitGhost} {st0 : M.σ} {evs_pre : List AllocEvent}
-    {be : PreKeyBundleFields} {kp : IdentityKeyPair}
-    {ekASk ekAPk : List (BitVec 8)} {pqspkPtr secretsPtr : BitVec 64} {opkId : BitVec 32}
-    {dh1 dh2 : SignalPqxdh.Bytes} {stk : Nat} {s0 s3 s : State}
-    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hLocal : InitLocalCalleesPlaced A lim InitStateEnv mmpl gh W stk)
-    (hFit : FitsEvents M lim (M.stepEvents evs_pre st0) (rustAllocEvents 32 1))
-    (hEnv :
-      let P := modelPrims X ⟨W.C, W.Q⟩
-      let inp := initiateInput ⟨W.C, W.Q⟩ ⟨kp.privateKey.bytes, 0#32⟩ be (padCoins x.coins)
-      P.x25519 inp.ekASk inp.bundle.spkB = List.replicate 32 0 →
-      InitEnv x (evs_pre ++ unwind1548Events))
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hstk : cliInitiateNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63)
-    (hs3 : AtStage3Placed W X x be kp ekASk ekAPk pqspkPtr opkId s0 s3)
-    (hpost : ∀ sf Pf, InitExitPostPlaced A lim InitEnv S x st0 stk s0 sf Pf → Q sf Pf)
-    (hpanic : ∀ sf Pf, InitPanicPostPlaced A lim InitEnv S x st0 stk s0 sf Pf → Qp sf Pf)
-    (hdh1_len32 : dh1.length = 32) (hdh2_len32 : dh2.length = 32)
-    (hsecNonNull : secretsPtr ≠ 0#64)
-    (hctrl : InInitiatePlaced s0 s 0x968) (htr : s.trace = s0.trace)
-    (hx20 : s.readReg64 (.gpr 20#5) = (s0.sp - BitVec.ofNat 64 cliInitiateFrame) + 0x348#64)
-    (hx21 : s.readReg64 (.gpr 21#5) = (s0.sp - BitVec.ofNat 64 cliInitiateFrame) + 0x388#64)
-    (hx22 : s.readReg64 (.gpr 22#5) = (s0.sp - BitVec.ofNat 64 cliInitiateFrame) + 0x408#64)
-    (hx24 : s.readReg64 (.gpr 24#5) = (s0.sp - BitVec.ofNat 64 cliInitiateFrame) + 0x3e8#64)
-    (hx26 : s.readReg64 (.gpr 26#5) = 96#64)
-    (hnext : ∀ (sa : State) (dh3 : SignalPqxdh.Bytes),
-      let P := modelPrims X ⟨W.C, W.Q⟩
-      let inp := initiateInput ⟨W.C, W.Q⟩ ⟨kp.privateKey.bytes, 0#32⟩ be (padCoins x.coins)
-      let fsp := s0.sp - BitVec.ofNat 64 cliInitiateFrame
-      dh3 = P.x25519 inp.ekASk inp.bundle.spkB → dh3 ≠ List.replicate 32 0 →
-      InInitiatePlaced s0 sa 0xa70 → sa.trace = s0.trace →
-      sa.readReg64 (.gpr 20#5) = fsp + 0x348#64 → sa.readReg64 (.gpr 21#5) = fsp + 0x388#64 →
-      sa.readReg64 (.gpr 22#5) = fsp + 0x408#64 → sa.readReg64 (.gpr 26#5) = 128#64 →
-      SepWPp (initProgPlaced mmpl gh W) (s0.readReg64 .lr) sa
-        (S3InvPrefixPlaced A x s0 ∗ coinsCursorAtPlaced x.coinsP x.coins 32 ∗
-          A.pool lim (M.stepEvents (evs_pre ++ dh3StepOkEvents) st0) sa ∗ stackAt fsp extHookStack ∗
-          memRegion (fsp - BitVec.ofNat 64 (stk - cliInitiateFrame))
-            (stk - cliInitiateFrame - extHookStack) ∗
-          A.live secretsPtr 192 1 ∗ (secretsPtr ↦ₛ bytesToBv8 (F_X25519 ++ dh1 ++ dh2 ++ dh3)) ∗
-          memRegion (secretsPtr + 128#64) 32 ∗ memRegion (secretsPtr + 160#64) 32 ∗
-          memRegion fsp 0x78 ∗ ((fsp + 0x78#64) ↦₆₄ (fsp + 0x3c8#64)) ∗
-          stage3KeySlotsAt A.repAlloc fsp x.bundle kp ekASk ekAPk pqspkPtr opkId ∗
-          memRegion (fsp + 0x930#64) 8 ∗ memRegion (fsp + 0x938#64) 0x20 ∗
-          memRegion (fsp + 0x958#64) 0x48 ∗ ((fsp + 0x9a0#64) ↦ₛ ekASk) ∗
-          memRegion (fsp + 0x9c0#64) 0xc40 ∗ memRegion (fsp + 0x1600#64) 24 ∗
-          memRegion (fsp + 0x1618#64) 0x648 ∗
-          ((fsp + 0x1c60#64) ↦₆₄ 192#64) ∗ ((fsp + 0x1c68#64) ↦₆₄ secretsPtr) ∗
-          ((fsp + 0x1c70#64) ↦₆₄ 128#64) ∗ memRegion (fsp + 0x1c78#64) 0x18)
-        Q Qp oom) :
-    let fsp := s0.sp - BitVec.ofNat 64 cliInitiateFrame
-    SepWPp (initProgPlaced mmpl gh W) (s0.readReg64 .lr) s
-      (S3InvPrefixPlaced A x s0 ∗ coinsCursorAtPlaced x.coinsP x.coins 32 ∗
-        A.pool lim (M.stepEvents evs_pre st0) s ∗ stackAt fsp extHookStack ∗
-        memRegion (fsp - BitVec.ofNat 64 (stk - cliInitiateFrame))
-          (stk - cliInitiateFrame - extHookStack) ∗
-        A.live secretsPtr 192 1 ∗ (secretsPtr ↦ₛ bytesToBv8 (F_X25519 ++ dh1 ++ dh2)) ∗
-        memRegion (secretsPtr + 96#64) 32 ∗ memRegion (secretsPtr + 128#64) 32 ∗
-        memRegion (secretsPtr + 160#64) 32 ∗
-        memRegion fsp 0x78 ∗ ((fsp + 0x78#64) ↦₆₄ (fsp + 0x3c8#64)) ∗
-        stage3KeySlotsAt A.repAlloc fsp x.bundle kp ekASk ekAPk pqspkPtr opkId ∗
-        memRegion (fsp + 0x930#64) 8 ∗ memRegion (fsp + 0x938#64) 0x20 ∗
-        memRegion (fsp + 0x958#64) 0x48 ∗ ((fsp + 0x9a0#64) ↦ₛ ekASk) ∗
-        memRegion (fsp + 0x9c0#64) 0xc40 ∗ memRegion (fsp + 0x1600#64) 24 ∗
-        memRegion (fsp + 0x1618#64) 0x648 ∗
-        ((fsp + 0x1c60#64) ↦₆₄ 192#64) ∗ ((fsp + 0x1c68#64) ↦₆₄ secretsPtr) ∗
-        ((fsp + 0x1c70#64) ↦₆₄ 96#64) ∗ memRegion (fsp + 0x1c78#64) 0x18)
-      Q Qp oom := by
-  refine dh3_step_placed_ok hh hLocal (fitsEvents_s3CalcAgreeEvents_of_alloc32 hFit)
-    (fun hzero => ⟨evs_pre ++ unwind1548Events, hEnv hzero,
-      (stepEvents_unwind1548Events M (M.stepEvents evs_pre st0)).trans
-        (M.stepEvents_append evs_pre unwind1548Events st0).symm⟩)
-    hS hstk hstk64 hs3 hpost hpanic hdh1_len32 hdh2_len32 hsecNonNull hctrl htr
-    hx20 hx21 hx22 hx24 hx26 fun sa dh3 hdh3 hnz hc ha hx20' hx21' hx22' hx26' => ?_
-  rw [← M.stepEvents_append evs_pre dh3StepOkEvents st0]
-  exact hnext sa dh3 hdh3 hnz hc ha hx20' hx21' hx22' hx26'
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsB2PlacedBudget

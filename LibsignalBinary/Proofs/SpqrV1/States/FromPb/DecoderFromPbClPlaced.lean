@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbProof
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbProof -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbCopyPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExitPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 
 /-!
 # Closed `[LibsignalPlacement]` Contract for `<PolyDecoder>::from_pb` (`DecoderFromPbClPlaced`)
@@ -25,7 +27,7 @@ Discharges the cross-block callee `core::ptr::drop_glue::<[spqr::encoding::polyn
 `withLsCodeLoaded lsmpl`, and lifts the resulting contract to `lsProg_333` (`DecoderFromPbPlacedOkExt`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

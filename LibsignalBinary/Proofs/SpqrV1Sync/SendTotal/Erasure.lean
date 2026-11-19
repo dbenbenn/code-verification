@@ -24,7 +24,7 @@ Proves `DecFreshStmt` (`st_decFresh`), `EncNextStmt` (`st_encNext`), and `EncNew
 for `EncWF` and `DecWF`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

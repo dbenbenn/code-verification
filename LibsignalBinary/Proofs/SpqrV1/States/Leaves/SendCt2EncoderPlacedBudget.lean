@@ -9,17 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlaced
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlaced
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.ProofBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
 
 /-!
 # `spqr::v1::chunked::send_ct::send_ct2_encoder` (Budget-Threaded, Block `382`)
@@ -29,7 +37,7 @@ Two-envelope (`SendCt2EncoderPreEnv` / `SendCt2EncoderPostEnv`), single-envelope
 for `spqr::v1::chunked::send_ct::send_ct2_encoder` (Block `382`, `85` instructions).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -148,7 +156,7 @@ export LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux (
 
 /-- Exact allocation-phase prefix event trace of `spqr::v1::chunked::send_ct::send_ct2_encoder`
     (Block `382`), prior to the trailing `Vec<u8>` buffer drop (`sendCt2FreeEvs`). -/
-def sendCt2EncoderAllocPrefixEvents (ct2 mac : Bytes) : List AllocEvent :=
+@[expose] def sendCt2EncoderAllocPrefixEvents (ct2 mac : Bytes) : List AllocEvent :=
   (sendCt2InitEvs ct2 ++ sendCt2MacEvs ct2 mac) ++
     encodeBytesAllocEvents (ct2.length + mac.length)
 
@@ -954,40 +962,6 @@ theorem call_sendCt2Encoder_cl_sepWP_ofEnv [LibsignalPlacement]
       sf.pc = ret_pc → sf.status = .Running → sf.sp = sp_call →
       CalleeSavedPreserved s sf → sf.trace = s0.trace →
       Env ⟨outA, ct2Ptr, ct2, macPtr, mac, enc⟩ evs →
-      LibsignalCodeLoaded lsmpl sf.mem →
-      SepWP prog (s0.readReg64 Reg.lr) sf
-        ((polyEncoderAt A.repAlloc outA enc ∗ (ct2Ptr ↦ₛ ct2) ∗ (macPtr ↦ₛ mac) ∗
-          A.pool lim (M.stepEvents evs st_b) sf ∗ stackAt sp_call sendCt2EncoderStack) ∗ Frame) post)
-    (hlr_ls : LsRetAddr624 ret_pc := by
-      first | assumption | simp (config := { decide := true }) only [arm64_norm, wp_norm]) :
-    SepWP prog entry s P
-      (fun sm Pm => LibsignalCodeLoaded lsmpl sm.mem →
-        SepWP prog (s0.readReg64 Reg.lr) sm Pm post) :=
-  call_sendCt2Encoder_cl_sepWP_ofPrePostEnv hcall outA ct2Ptr macPtr ct2 mac enc st_b hct2_ptr
-    hmac_ptr henc hfit hpc hrun hsp hsp_align hlr htrace hx0 hx1 hx2 hx3 hx4 hsplit hnext hlr_ls
-
-/-- Canonical `sendCt2EncoderSpec M A lim` (`SendCt2EncoderPreEnv` / `SendCt2EncoderPostEnv`)
-    pure-`SepWP` framed relocatable call rule for Block `382`. -/
-theorem call_sendCt2Encoder_cl_sepWP [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {prog : Program} {entry ret_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry (withLsCodeLoaded lsmpl (sendCt2EncoderSpec M A lim)))
-    (outA ct2Ptr macPtr : BitVec 64) (ct2 mac : Bytes) (enc : PolyEncoder) (st_b : M.σ)
-    (hct2_ptr : ct2Ptr ≠ 0#64) (hmac_ptr : macPtr ≠ 0#64)
-    (henc : send_ct2_encoder spqrPolyApi ct2 mac = .ok enc)
-    (hfit : FitsEnv M lim st_b (SendCt2EncoderPreEnv ⟨outA, ct2Ptr, ct2, macPtr, mac, enc⟩))
-    {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp} {post : State → SepProp → Prop}
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true) (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htrace : s.trace = s0.trace) (hx0 : s.readReg64 Reg.x0 = outA)
-    (hx1 : s.readReg64 Reg.x1 = ct2Ptr) (hx2 : s.readReg64 Reg.x2 = BitVec.ofNat 64 ct2.length)
-    (hx3 : s.readReg64 Reg.x3 = macPtr) (hx4 : s.readReg64 Reg.x4 = BitVec.ofNat 64 mac.length)
-    (hsplit : P = (memRegion outA 400 ∗ (ct2Ptr ↦ₛ ct2) ∗ (macPtr ↦ₛ mac) ∗
-      A.pool lim st_b s ∗ stackAt sp_call sendCt2EncoderStack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running → sf.sp = sp_call →
-      CalleeSavedPreserved s sf → sf.trace = s0.trace →
-      SendCt2EncoderPostEnv ⟨outA, ct2Ptr, ct2, macPtr, mac, enc⟩ evs →
       LibsignalCodeLoaded lsmpl sf.mem →
       SepWP prog (s0.readReg64 Reg.lr) sf
         ((polyEncoderAt A.repAlloc outA enc ∗ (ct2Ptr ↦ₛ ct2) ∗ (macPtr ↦ₛ mac) ∗

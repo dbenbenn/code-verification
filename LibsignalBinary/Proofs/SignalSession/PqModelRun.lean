@@ -29,7 +29,7 @@ for every `(X : UnreachedPqxdhPrimitives) (W : PEParams)`:
    extras erasure).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -129,12 +129,6 @@ private theorem string_append_left_inj (pre : String) {s₁ s₂ : String}
   have hl := congrArg String.toList h
   rw [String.toList_append, String.toList_append] at hl
   exact String.ext (List.append_cancel_left hl)
-
-private theorem string_append_right_inj (suf : String) {s₁ s₂ : String}
-    (h : s₁ ++ suf = s₂ ++ suf) : s₁ = s₂ := by
-  have hl := congrArg String.toList h
-  rw [String.toList_append, String.toList_append] at hl
-  exact String.ext (List.append_cancel_right hl)
 
 /-! ## 2. `Prost.varint` and `PreKeyMessageFields.bytes` injectivity -/
 
@@ -1380,29 +1374,29 @@ private theorem pqRecvPrekey_observe_congr {X : UnreachedPqxdhPrimitives} {W : P
 /-! ## 7. Witness predicates, `pqModelRun`, and `cliSpecPq_pqModelRun` -/
 
 /-- `(st, b, t)` witnesses an `init` input `i` in `CliSpecPqxdh`'s domain. -/
-def InitWitness (W : PEParams) (i : Inputs)
+@[expose] def InitWitness (W : PEParams) (i : Inputs)
     (p : PqParty × PreKeyBundleFields × List.Vector (BitVec 8) initiateTapeLen) : Prop :=
   PqxdhPartyInSpecDomain W p.1 ∧ p.1.session = none ∧ pqInitInputs W p.1 p.2.1 p.2.2 = i
 
 /-- `(st, m, r)` witnesses a `send` input `i` in `CliSpecPqxdh`'s domain. -/
-def SendWitness (W : PEParams) (i : Inputs)
+@[expose] def SendWitness (W : PEParams) (i : Inputs)
     (p : PqParty × List (BitVec 8) × List.Vector (BitVec 8) 64) : Prop :=
   PqxdhPartyInSpecDomain W p.1 ∧ p.2.1.length < 2 ^ 32 ∧ pqSendInputs W p.1 p.2.1 p.2.2 = i
 
 /-- `(st, c, rc)` witnesses a `recv` whisper (`2 ‖ c`) input `i` in `CliSpecPqxdh`'s domain. -/
-def RecvWhisperWitness (W : PEParams) (i : Inputs)
+@[expose] def RecvWhisperWitness (W : PEParams) (i : Inputs)
     (p : PqParty × List (BitVec 8) × BitVec 256) : Prop :=
   PqxdhPartyInSpecDomain W p.1 ∧ p.2.1.length < 2 ^ 32 ∧ pqRecvInputs W p.1 (wireWhisper :: p.2.1) p.2.2 = i
 
 /-- `(st, m, rc)` witnesses a `recv` pre-key (`3 ‖ m.bytes`) input `i` in `CliSpecPqxdh`'s domain. -/
-def RecvPrekeyWitness (W : PEParams) (i : Inputs)
+@[expose] def RecvPrekeyWitness (W : PEParams) (i : Inputs)
     (p : PqParty × PreKeyMessageFields × BitVec 256) : Prop :=
   PqxdhPartyInSpecDomain W p.1 ∧ p.2.1.inner.length + 2048 < 2 ^ 32 ∧
     (∀ x g, p.1.session = some (x, g) → PqSessionMatches x g p.2.1) ∧
     pqRecvInputs W p.1 (wirePrekey :: p.2.1.bytes) p.2.2 = i
 
 /-- `(st, c, rc)` witnesses a `recv` non-whisper / non-prekey input `i` in `CliSpecPqxdh`'s domain. -/
-def RecvOtherWitness (W : PEParams) (i : Inputs)
+@[expose] def RecvOtherWitness (W : PEParams) (i : Inputs)
     (p : PqParty × List (BitVec 8) × BitVec 256) : Prop :=
   PqxdhPartyInSpecDomain W p.1 ∧ p.2.1.length < 2 ^ 32 ∧
     p.2.1.head? ≠ some wireWhisper ∧ p.2.1.head? ≠ some wirePrekey ∧
@@ -1411,7 +1405,7 @@ def RecvOtherWitness (W : PEParams) (i : Inputs)
 open Classical in
 /-- Pure PQXDH directory model run: answers every input in `CliSpecPqxdh`'s domain with the
 model's outcome, and `none` elsewhere. -/
-noncomputable def pqModelRun (X : UnreachedPqxdhPrimitives) (W : PEParams) : CliRun := fun i =>
+@[expose] noncomputable def pqModelRun (X : UnreachedPqxdhPrimitives) (W : PEParams) : CliRun := fun i =>
   if h1 : ∃ p, InitWitness W i p then
     some (pqxdhExpectedOutcome W i
       (pqInitModel X W (Classical.choose h1).1 (Classical.choose h1).2.1 (Classical.choose h1).2.2))

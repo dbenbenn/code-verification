@@ -11,7 +11,7 @@ module
 
 public import LibsignalBinary.Specifications.LibsignalPublicApi
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageLengthBound
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
 
 /-!
 # Panic Tightness and Wire-Length Bounds for `encrypt`
@@ -21,7 +21,7 @@ model panic, proves model panics depend solely on `answers.loadSession`, and bou
 `PreKeySignalMessage` wire output below `2^42` bytes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false

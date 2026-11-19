@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExact
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommon
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExact -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeatedCommonPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2Placed
@@ -24,7 +24,7 @@ Proves `[LibsignalPlacement]` per-block contracts (`< 2 ^ 58` and `< 2 ^ 59` ele
 for `encode_repeated::<Vec<u8>, Vec<u8>> [local#3]` (Block `448`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

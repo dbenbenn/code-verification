@@ -36,7 +36,7 @@ across a `GoodStepCut` block `blk_hw` upgrades `Clean` on `τ_pre ++ blk_hw` to 
 `σ_pre ++ blk_cli`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Separation-Logic Split and Merge Lemmas for Dropping a 1-Element `Vec<Vec<u8>>`
@@ -19,7 +20,7 @@ sites that deallocate the inner `Vec<u8>` buffer followed by the outer `cap * 24
 of a 1-element `previous_sessions` vector.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.LibsignalE2E.HooksCommon
-public import LibsignalBinary.Proofs.E2E.HooksNames
-public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.AllocWitness
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.HooksCommonLegacy -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.HooksNames -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.AllocWitness -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.AesHooks0
 public import LibsignalBinary.Proofs.E2E.StoreNew.Defs
-import ProofLib.SepLogic.WP.Structural
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+public import LibsignalBinary.Specifications.LibsignalE2E.HooksCommon
+import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.E2E.Record.Support.Phi -- shake: keep
+import ProofLib.SepLogic.WP.Structural
 
 /-!
 # E2E Hook Models, Contracts, and Bump-Allocator Helpers
@@ -25,7 +28,7 @@ Defines the token-free allocator model `A0`, empty-state SPQR model `spqrModelE`
 `durationSinceSpec`, `HashbrownBinAbsHooks`), and bump-allocator memory lemmas for `absE C env`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.HooksE
 
@@ -46,7 +49,7 @@ abbrev A0 : RustAlloc := A₀
 
 /-- Empty-state `SpqrModel` (`spqrOffModel`) for `absE C env`: `recv` delegates to the in-image
 `LibsignalSpqr.spqrRecvEmpty` (rejecting malformed preambles, DEV-LS24). -/
-def spqrModelE : SpqrModel where
+@[expose] def spqrModelE : SpqrModel where
   send _ _ := some ([], none, [])
   draws _ _ := 0
   recv _ msg := LibsignalSpqr.spqrRecvEmpty msg
@@ -58,22 +61,13 @@ theorem spqrModelE_emptyOk : SpqrModel.SendEmptyOk spqrModelE where
   draws _ := rfl
   noPanic _ h := Bool.false_ne_true h
 
-theorem spqrModelE_modelRecvEmptyOk : SpqrModel.RecvEmptyOk spqrModelE where
-  recv _ := rfl
-  noPanic _ h := Bool.false_ne_true h
-
-theorem spqrModelE_spqr_eq :
-    spqrModelE.spqr =
-      ⟨fun _ _ => [], fun _ _ => some ([], none, []),
-        fun _ msg => LibsignalSpqr.spqrRecvEmpty msg, fun _ _ => false, fun _ _ => false⟩ := rfl
-
 /-! ## Hook Contracts -/
 
 /-! ### `__rustc::__rust_alloc` with No-Wrap (`rustAllocNWSpec`) -/
 
 /-- `__rustc::__rust_alloc(size = x0, align = x1)` strengthening `rustAllocSpec A` with
 `(sf.readReg64 .x0).toNat + size < 2 ^ 64` on non-null return. -/
-def rustAllocNWSpec (A : RustAlloc) : Spec (Nat × Nat) where
+@[expose] def rustAllocNWSpec (A : RustAlloc) : Spec (Nat × Nat) where
   pre := (rustAllocSpec A).pre
   post := fun (size, align) s0 sf =>
     A.pool ∗ stackAt s0.sp allocHookStack ∗
@@ -115,7 +109,7 @@ structure BcmpCall where
   bsB : List (BitVec 8)
 
 /-- `bcmp(a = x0, b = x1, n = x2) -> w0` preserving `vregs`. -/
-def bcmpVregsSpec : Spec BcmpCall where
+@[expose] def bcmpVregsSpec : Spec BcmpCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ s.readReg64 .x1 = x.b ∧
       (s.readReg64 .x2).toNat = x.bsA.length ∧ x.bsB.length = x.bsA.length⌝ ∗
@@ -126,7 +120,7 @@ def bcmpVregsSpec : Spec BcmpCall where
       (x.a ↦ₛ x.bsA) ∗ (x.b ↦ₛ x.bsB) ∗ stackAt s0.sp extHookStack
 
 /-- `bcmp(a = x0, b = x1, n = x2) -> w0` without `vregs` preservation. -/
-def e2eBcmpSpec : Spec BcmpCall where
+@[expose] def e2eBcmpSpec : Spec BcmpCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ s.readReg64 .x1 = x.b ∧
       (s.readReg64 .x2).toNat = x.bsA.length ∧ x.bsB.length = x.bsA.length⌝ ∗
@@ -171,7 +165,7 @@ theorem hookOk_randomKeysSpec_of_tpidr {h : State → State}
 
 /-- `<String as Clone>::clone(&self) -> String` (`x0 = &self`, sret `x8`): allocates a fresh
 24-byte `String` with identical bytes while preserving `self`, or panics on allocation failure. -/
-def stringCloneSpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × VecGhost) where
+@[expose] def stringCloneSpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × VecGhost) where
   pre := fun (p, ret, g) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret⌝ ∗ vecGhostAt A g p ∗ memRegion ret 24 ∗
       A.pool ∗ stackAt s.sp extHookStack
@@ -184,7 +178,7 @@ def stringCloneSpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × VecGhost) 
 
 /-- `<SystemTime as Add<Duration>>::add` for whole seconds (`x3.setWidth 32 = 0#32`): returns
 `SystemTime.checkedAddSecs t secs` in `(x0, w1)`, or panics on overflow. -/
-def timeAddSpec : Spec (SystemTime × Nat) where
+@[expose] def timeAddSpec : Spec (SystemTime × Nat) where
   pre := fun (t, secs) s =>
     ⌜s.readReg64 .x0 = t.tvSec ∧ (s.readReg64 .x1).setWidth 32 = t.tvNsec ∧
       t.tvNsec.toNat < 10 ^ 9 ∧
@@ -199,7 +193,7 @@ def timeAddSpec : Spec (SystemTime × Nat) where
 
 /-- `SystemTime::duration_since(x0: &self, x1: earlier_sec, w2: earlier_nsec, x8: sret)`: writes
 a 24-byte `Result<Duration, SystemTimeError>` at `x8`. -/
-def durationSinceSpec : Spec (BitVec 64 × BitVec 64) where
+@[expose] def durationSinceSpec : Spec (BitVec 64 × BitVec 64) where
   pre := fun (p, ret) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret⌝ ∗
       memRegion p 16 ∗ memRegion ret 24 ∗ stackAt s.sp extHookStack
@@ -273,7 +267,7 @@ theorem bumpAddr?_spec {m : Memory} {size align : Nat} {p : BitVec 64}
     (h : bumpAddr? m size align = some p) :
     p ≠ 0 ∧ p.toNat % align = 0 ∧ heapBase.toNat ≤ p.toNat ∧
       p.toNat + size ≤ heapBase.toNat + heapSize ∧ Unmapped m p size := by
-  unfold bumpAddr? at h
+  rw [bumpAddr?_eq_classical] at h
   split at h
   · rename_i hex
     simp only [Option.some.injEq] at h

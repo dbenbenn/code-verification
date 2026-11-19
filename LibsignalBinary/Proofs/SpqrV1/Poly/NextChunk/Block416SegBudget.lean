@@ -9,12 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.NextChunkCodeSym
+public import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.NextChunkCodeSym -- proof-setup: allow-public-import
 public meta import Lean -- shake: keep
 public meta import ProofLib.SepLogic.WP -- shake: keep
 public meta import ProofLib.SepLogic.WPp -- shake: keep
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.GenPlacedFetches
+public import Arm64.Trusted.Object.Labels
+public import ProofLib
+public import ProofLib.Hoare.LibcHooks
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.SepLogic.WPp
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.NonVmSteps
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
 
 /-!
 # Cached Block `416` Non-Syscall Segment Wrappers
@@ -24,7 +41,7 @@ Caches `checkBlockNoSvc0 blkLib_416.text = true` (`noSvc0_416`) so `sepWP_seg_41
 (`<PolyEncoder as Encoder>::next_chunk`) without repeated `checkBlockNoSvc0` kernel reduction.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

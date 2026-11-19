@@ -121,7 +121,7 @@ private theorem ctxBytes_length (c : CtxFields)
   simp only [List.length_append, List.length_singleton] at hPre hSuf h
   omega
 
-private theorem SepWP.extract_fresh_mmap_disjoint_A [MallocngMultiPlacement]
+private theorem SepWP.extract_fresh_mmap_disjoint_A [MallocngMultiPlacement] {ro : Bool}
     {prog : Program} {target_pc : BitVec 64} {s : State} {oom : State → SepProp}
     {post : State → SepProp → Prop}
     {inflight : Nat} {γ : GhostName} {brkStart mb : BitVec 64}
@@ -133,19 +133,19 @@ private theorem SepWP.extract_fresh_mmap_disjoint_A [MallocngMultiPlacement]
     (hk : (∀ r ∈ dynamicRootRegions st1, DisjointRegions r.1 r.2 mb len) →
       SepWP prog target_pc s
         ((mb ↦ₛ List.replicate len 0#8) ∗ memMapped mb len ∗
-         MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st1 ∗ Rest)
+         MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st1 ∗ Rest)
         post oom) :
     SepWP prog target_pc s
       ((mb ↦ₛ List.replicate len 0#8) ∗ memMapped mb len ∗
-       MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st1 ∗ Rest)
+       MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st1 ∗ Rest)
       post oom := by
   apply SepWP.of_reaches_pc
   intro R hm
   have hm' : s.mem ⊨
       (mb ↦ₛ List.replicate len 0#8) ∗ memMapped mb len ∗
-      MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st1 ∗ (Rest ∗ R) := by
+      MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st1 ∗ (Rest ∗ R) := by
     simpa [sepConj_assoc] using hm
-  have hDisj := fresh_mmap_disjoint_A hm' hMbAl hLenAl hLenPos hMbBound
+  have hDisj := fresh_mmap_disjoint_mode_A hm' hMbAl hLenAl hLenPos hMbBound
   exact SepWP.to_reaches_pc (hk hDisj) hm
 
 /-! ## `unmapSeq` Zeroing Loop and `seq` Preparation -/
@@ -501,8 +501,8 @@ private theorem stackFrameAt_624_eq (sp1 : BitVec 64) (k : Nat) (hk : k ≤ 624)
   exact stackFrameAt_split sp1 k (624 - k)
 
 set_option maxHeartbeats 400000 in
-theorem mallocImpl_large_branch [MallocngMultiPlacement]
-    (hMeta : AllocMetaPlacedFullStmt) (hMetaInv : MallocngMetaCountInv)
+theorem mallocImpl_large_branch [MallocngMultiPlacement] {ro : Bool}
+    (hMeta : AllocMetaPlacedFullStmt ro) (hMetaInv : MallocngMetaCountInv)
     {γ : GhostName} {tp brkStart : BitVec 64} {bud : MallocngBudget}
     {ivs0 : List (BitVec 64 × Nat)} {req : Nat}
     {st0 : MallocngSt} {s0 s : State}
@@ -519,10 +519,10 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
     SepWP (mallocngBlockProg mmpl 9 msvc) (s0.readReg64 (.gpr 30#5)) s
       (MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
        MallocngRoTablesA maddrs ∗
-       MallocngCoreStInflightA 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 ∗
+       MallocngCoreStInflightModeA ro 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 ∗
        MallocngRuntime maddrs tp)
       (fun sf P_f =>
-        (P_f ⊢ mallocImplSuccessPost24 γ tp brkStart bud ivs0 req s0 sf) ∧
+        (P_f ⊢ mallocImplSuccessPost24 γ tp brkStart bud ivs0 req s0 sf ro) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
       (fun sf => ⌜MallocngTightOomCond msvc req bud.peakCount s0 sf⌝) := by
   rw [mallocngBlockProg_eq_b09]
@@ -538,14 +538,14 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
   have hRtUnpack :
       (MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
        MallocngRoTablesA maddrs ∗
-       MallocngCoreStInflightA 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 ∗
+       MallocngCoreStInflightModeA ro 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 ∗
        MallocngRuntime maddrs tp) =
       (∃∗ errnoVal : BitVec 32,
         ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗
         stackFrameAt (s0.sp - 80#64) 624 ∗
         MallocImplSavedRegs s0 (s0.sp - 80#64) ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStInflightA 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 ∗
+        MallocngCoreStInflightModeA ro 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 ∗
         ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)) := by
     unfold MallocngRuntime
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
@@ -556,7 +556,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
       MallocImplSavedRegs s0 (s0.sp - 80#64) = pSv,
       stackFrameAt (s0.sp - 80#64) 624 = pSf,
       MallocngRoTablesA maddrs = pRo,
-      MallocngCoreStInflightA 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 = pCr
+      MallocngCoreStInflightModeA ro 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 = pCr
     ac_rfl
   rw [hRtUnpack]
   apply SepWP.exists_elim; intro errnoVal
@@ -570,7 +570,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
     stackFrameAt ((s0.sp - 80#64) - 64#64) (624 - 64) ∗
     MallocImplSavedRegs s0 (s0.sp - 80#64) ∗
     MallocngRoTablesA maddrs ∗
-    MallocngCoreStInflightA 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 ∗
+    MallocngCoreStInflightModeA ro 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 ∗
     ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)
   refine SepWP.call_subroutine_frame (F := mmapFrame) (x := ()) (ret_pc := b + miOff_after_mmap)
     hmmap rfl
@@ -597,7 +597,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
         stackFrameAt ((s0.sp - 80#64) - 64#64) (624 - 64) = pS2,
         MallocImplSavedRegs s0 (s0.sp - 80#64) = pSv,
         MallocngRoTablesA maddrs = pRo,
-        MallocngCoreStInflightA 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 = pCr,
+        MallocngCoreStInflightModeA ro 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 = pCr,
         ((maddrs.libc + 3#64) ↦₈ 0#8) = pL3,
         ((maddrs.libc + 48#64) ↦₆₄ 4096#64) = pL48
       ac_rfl)
@@ -627,7 +627,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
         (mb ↦ₛ List.replicate len 0#8) ∗ memMapped mb len ∗
         MallocImplSavedRegs s0 (s0.sp - 80#64) ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStInflightA 0 γ maddrs brkStart sm.brk bud.liveCost bud.peakCost st0 ∗
+        MallocngCoreStInflightModeA ro 0 γ maddrs brkStart sm.brk bud.liveCost bud.peakCost st0 ∗
         ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64))) := by
     have hBrkEq : sm.brk = s.brk := hbrk_m
     rw [hBrkEq]
@@ -641,7 +641,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
       memMapped mb len = pMp,
       MallocImplSavedRegs s0 (s0.sp - 80#64) = pSv,
       MallocngRoTablesA maddrs = pRo,
-      MallocngCoreStInflightA 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 = pCr,
+      MallocngCoreStInflightModeA ro 0 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st0 = pCr,
       ((maddrs.libc + 3#64) ↦₈ 0#8) = pL3,
       ((maddrs.libc + 48#64) ↦₆₄ 4096#64) = pL48
     ac_rfl
@@ -672,7 +672,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
   let coreBody0 :=
     MallocngLiveAuth γ st0.liveMap ∗
     (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-    ((maddrs.libc + 8#64) ↦₆₄ st0.auxvPtr) ∗ MallocngAuxvState γ st0.auxvPtr st0.auxvSnap ∗
+    MallocngAuxvPtrCell ro maddrs.libc st0.auxvPtr ∗ MallocngAuxvStateRo ro γ st0.auxvPtr st0.auxvSnap ∗
     ByteMap st0.masterDom (OwnedRwByte st0) st0.byteVal ∗
     ProtNoneByteMap st0.masterDom (OwnedProtNoneByte st0) st0.byteVal ∗
     MappedSet st0.masterDom (OwnedMappedByte st0)
@@ -688,10 +688,10 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
        (mb ↦ₛ List.replicate len 0#8) ∗ memMapped mb len ∗
        MallocImplSavedRegs s0 (s0.sp - 80#64) ∗
        MallocngRoTablesA maddrs ∗
-       MallocngCoreStInflightA 0 γ maddrs brkStart sm.brk bud.liveCost bud.peakCost st0 ∗
+       MallocngCoreStInflightModeA ro 0 γ maddrs brkStart sm.brk bud.liveCost bud.peakCost st0 ∗
        ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)) =
       ((maddrs.ctx ↦ₛ st0.ctx.toBytes) ∗ ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ seqFrame) := by
-    dsimp only [MallocngCoreStInflightA, coreBody0, seqFrame]
+    dsimp only [MallocngCoreStInflightModeA, coreBody0, seqFrame]
     rw [propext ⟨fun _ => trivial, fun _ => hwf_sm⟩, pure_true, emp_sepConj]
     generalize (maddrs.ctx ↦ₛ st0.ctx.toBytes) = pCtx,
       ((maddrs.libc + 3#64) ↦₈ 0#8) = pL3,
@@ -704,8 +704,8 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
       (maddrs.lock ↦₃₂ 0#32) = pLk,
       (maddrs.replaced ↦₃₂ 0#32) = pRp,
       (maddrs.aaReplaced ↦₃₂ 0#32) = pAa,
-      ((maddrs.libc + 8#64) ↦₆₄ st0.auxvPtr) = pLb8,
-      MallocngAuxvState γ st0.auxvPtr st0.auxvSnap = pAx,
+      MallocngAuxvPtrCell ro maddrs.libc st0.auxvPtr = pLb8,
+      MallocngAuxvStateRo ro γ st0.auxvPtr st0.auxvSnap = pAx,
       ByteMap st0.masterDom (OwnedRwByte st0) st0.byteVal = pRw,
       ProtNoneByteMap st0.masterDom (OwnedProtNoneByte st0) st0.byteVal = pPn,
       MappedSet st0.masterDom (OwnedMappedByte st0) = pMs,
@@ -730,7 +730,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
       ((maddrs.ctx ↦ₛ (if st0.ctx.seq = 0xff#8 then { st0.ctx with unmapSeq := List.replicate 32 0#8, seq := 1#8 }
         else { st0.ctx with seq := st0.ctx.seq + 1#8 }).toBytes) ∗ ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ seqFrame) ⊢
       stackFrameAt (s0.sp - 80#64) 624 ∗
-      MallocngCoreStInflightA 0 γ maddrs brkStart s_q.brk bud.liveCost bud.peakCost st_seq ∗
+      MallocngCoreStInflightModeA ro 0 γ maddrs brkStart s_q.brk bud.liveCost bud.peakCost st_seq ∗
       MallocngRuntime maddrs tp ∗
       (mb ↦ₛ List.replicate len 0#8) ∗ memMapped mb len ∗
       MallocImplSavedRegs s0 (s0.sp - 80#64) ∗
@@ -742,12 +742,12 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
       unfold MallocngRuntime
       exact sepConj_mono_left (Entails.sepExists_right errnoVal (Entails.refl _))
     have hCoreEq :
-        MallocngCoreStInflightA 0 γ maddrs brkStart s_q.brk bud.liveCost bud.peakCost st_seq =
+        MallocngCoreStInflightModeA ro 0 γ maddrs brkStart s_q.brk bud.liveCost bud.peakCost st_seq =
           ((maddrs.ctx ↦ₛ st_seq.ctx.toBytes) ∗ coreBody0) := by
       have hSameAtoms :
           MallocngLiveAuth γ st_seq.liveMap = MallocngLiveAuth γ st0.liveMap ∧
-          ((maddrs.libc + 8#64) ↦₆₄ st_seq.auxvPtr) = ((maddrs.libc + 8#64) ↦₆₄ st0.auxvPtr) ∧
-          MallocngAuxvState γ st_seq.auxvPtr st_seq.auxvSnap = MallocngAuxvState γ st0.auxvPtr st0.auxvSnap ∧
+          MallocngAuxvPtrCell ro maddrs.libc st_seq.auxvPtr = MallocngAuxvPtrCell ro maddrs.libc st0.auxvPtr ∧
+          MallocngAuxvStateRo ro γ st_seq.auxvPtr st_seq.auxvSnap = MallocngAuxvStateRo ro γ st0.auxvPtr st0.auxvSnap ∧
           ByteMap st_seq.masterDom (OwnedRwByte st_seq) st_seq.byteVal =
             ByteMap st0.masterDom (OwnedRwByte st0) st0.byteVal ∧
           ProtNoneByteMap st_seq.masterDom (OwnedProtNoneByte st_seq) st_seq.byteVal =
@@ -756,7 +756,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
             MappedSet st0.masterDom (OwnedMappedByte st0) := by
         dsimp only [st_seq, updateSeqSt]
         split <;> exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
-      dsimp only [MallocngCoreStInflightA, coreBody0]
+      dsimp only [MallocngCoreStInflightModeA, coreBody0]
       rw [propext ⟨fun _ => trivial, fun _ => hwf_seq⟩, pure_true, emp_sepConj,
           hSameAtoms.1, hSameAtoms.2.1, hSameAtoms.2.2.1, hSameAtoms.2.2.2.1,
           hSameAtoms.2.2.2.2.1, hSameAtoms.2.2.2.2.2]
@@ -765,8 +765,8 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
         (maddrs.lock ↦₃₂ 0#32) = pLk,
         (maddrs.replaced ↦₃₂ 0#32) = pRp,
         (maddrs.aaReplaced ↦₃₂ 0#32) = pAa,
-        ((maddrs.libc + 8#64) ↦₆₄ st0.auxvPtr) = pLb8,
-        MallocngAuxvState γ st0.auxvPtr st0.auxvSnap = pAx,
+        MallocngAuxvPtrCell ro maddrs.libc st0.auxvPtr = pLb8,
+        MallocngAuxvStateRo ro γ st0.auxvPtr st0.auxvSnap = pAx,
         ByteMap st0.masterDom (OwnedRwByte st0) st0.byteVal = pRw,
         ProtNoneByteMap st0.masterDom (OwnedProtNoneByte st0) st0.byteVal = pPn,
         MappedSet st0.masterDom (OwnedMappedByte st0) = pMs
@@ -835,7 +835,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
       generalize ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl s_q.mem⌝ = pCL,
         stackFrameAt (s0.sp - 80#64) 224 = pS1,
         stackFrameAt ((s0.sp - 80#64) - 224#64) (624 - 224) = pS2,
-        MallocngCoreStInflightA 0 γ maddrs brkStart s_q.brk bud.liveCost bud.peakCost st_seq = pCr,
+        MallocngCoreStInflightModeA ro 0 γ maddrs brkStart s_q.brk bud.liveCost bud.peakCost st_seq = pCr,
         MallocngRuntime maddrs tp = pRt,
         (mb ↦ₛ List.replicate len 0#8) = pMb,
         memMapped mb len = pMp,
@@ -865,11 +865,11 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
   rw [stackFrame_eq_stackFrameAt 224 (by simpa [arm64_norm] using hsp_q)]
   have hPullCL_a :
       ((stackFrameAt (s0.sp - 80#64) 224 ∗ MallocngRuntime maddrs tp ∗ (m ↦ₛ List.replicate 40 0#8) ∗
-        MallocngCoreStInflightA (0 + 1) γ maddrs brkStart s_a.brk bud.liveCost bud.peakCost st1) ∗
+        MallocngCoreStInflightModeA ro (0 + 1) γ maddrs brkStart s_a.brk bud.liveCost bud.peakCost st1) ∗
        ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl s_a.mem⌝ ∗ metaFrame) =
       (⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl s_a.mem⌝ ∗
        ((mb ↦ₛ List.replicate len 0#8) ∗ memMapped mb len ∗
-        MallocngCoreStInflightA 1 γ maddrs brkStart s_a.brk bud.liveCost bud.peakCost st1 ∗
+        MallocngCoreStInflightModeA ro 1 γ maddrs brkStart s_a.brk bud.liveCost bud.peakCost st1 ∗
         ((m ↦ₛ List.replicate 40 0#8) ∗
          stackFrameAt (s0.sp - 80#64) 624 ∗
          MallocImplSavedRegs s0 (s0.sp - 80#64) ∗
@@ -882,7 +882,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
       stackFrameAt ((s0.sp - 80#64) - 224#64) (624 - 224) = pS2,
       MallocngRuntime maddrs tp = pRt,
       (m ↦ₛ List.replicate 40 0#8) = pM,
-      MallocngCoreStInflightA 1 γ maddrs brkStart s_a.brk bud.liveCost bud.peakCost st1 = pCr,
+      MallocngCoreStInflightModeA ro 1 γ maddrs brkStart s_a.brk bud.liveCost bud.peakCost st1 = pCr,
       (mb ↦ₛ List.replicate len 0#8) = pMb,
       memMapped mb len = pMp,
       MallocImplSavedRegs s0 (s0.sp - 80#64) = pSv,
@@ -894,7 +894,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
   intro hDisjDyn
   have hUnpackCore1 :
       ((mb ↦ₛ List.replicate len 0#8) ∗ memMapped mb len ∗
-       MallocngCoreStInflightA 1 γ maddrs brkStart s_a.brk bud.liveCost bud.peakCost st1 ∗
+       MallocngCoreStInflightModeA ro 1 γ maddrs brkStart s_a.brk bud.liveCost bud.peakCost st1 ∗
        ((m ↦ₛ List.replicate 40 0#8) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
         MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ MallocngRoTablesA maddrs ∗ MallocngRuntime maddrs tp)) =
       (⌜MallocngWFInflight 1 maddrs.base brkStart s_a.brk bud.liveCost bud.peakCost st1⌝ ∗
@@ -903,13 +903,13 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
         (memMapped mb len ∗
          MallocngLiveAuth γ st1.liveMap ∗
          (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-         ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗ MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗
+         MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr ∗ MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap ∗
          ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
          ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗
          MappedSet st1.masterDom (OwnedMappedByte st1) ∗
          stackFrameAt (s0.sp - 80#64) 624 ∗
          MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ MallocngRoTablesA maddrs ∗ MallocngRuntime maddrs tp))) := by
-    dsimp only [MallocngCoreStInflightA]
+    dsimp only [MallocngCoreStInflightModeA]
     generalize ⌜MallocngWFInflight 1 maddrs.base brkStart s_a.brk bud.liveCost bud.peakCost st1⌝ = pWF,
       (mb ↦ₛ List.replicate len 0#8) = pMb,
       memMapped mb len = pMp,
@@ -919,8 +919,8 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
       (maddrs.lock ↦₃₂ 0#32) = pLk,
       (maddrs.replaced ↦₃₂ 0#32) = pRp,
       (maddrs.aaReplaced ↦₃₂ 0#32) = pAa,
-      ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) = pLb8,
-      MallocngAuxvState γ st1.auxvPtr st1.auxvSnap = pAx,
+      MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr = pLb8,
+      MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap = pAx,
       ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal = pRw,
       ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal = pPn,
       MappedSet st1.masterDom (OwnedMappedByte st1) = pMs,
@@ -975,7 +975,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
     hbrk_u ▸ hwf1
   obtain ⟨hNoRes2, hCnt2, hMetaLen2, hg2, hSlotsPos2, hClaimed2, hSc2_63, hMap2,
     hZeroMm2, hNoOrph2, hwf2, hBundle2⟩ :=
-    large_group_bundle (γ := γ) (ivs0 := ivs0)
+    large_group_bundle (ro := ro) (γ := γ) (ivs0 := ivs0)
       (m0 := s0.mem) (m1 := sm.mem) (m2 := s_q.mem) (m3 := s_a.mem) (mf := s_u.mem)
       hwf1_u hRes1Eq hMbNe0 hMbDiv hLenLo hLenMod hMbBound
       hInReg0_sm hperm_q hNoOrph_a' hperm_u hDisjDyn
@@ -987,7 +987,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
        (maddrs.ctx ↦ₛ ({ st1.ctx with mmapCounter := st1.ctx.mmapCounter + 1#32 }).toBytes) ∗
        (memMapped mb len ∗ MallocngLiveAuth γ st1.liveMap ∗
         (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗ MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗
+        MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr ∗ MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap ∗
         ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
         ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗
         MappedSet st1.masterDom (OwnedMappedByte st1) ∗
@@ -995,14 +995,14 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
         MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ MallocngRoTablesA maddrs ∗ MallocngRuntime maddrs tp)) ⊢
       MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
       MallocngRoTablesA maddrs ∗
-      MallocngCoreStInflightA 1 γ maddrs brkStart s_u.brk bud.liveCost bud.peakCost st2 ∗
+      MallocngCoreStInflightModeA ro 1 γ maddrs brkStart s_u.brk bud.liveCost bud.peakCost st2 ∗
       MallocngRuntime maddrs tp := by
     have hRearr :
         ((m ↦ₛ gNew.metaBytes) ∗ (mb ↦ₛ groupBytes) ∗
          (maddrs.ctx ↦ₛ ({ st1.ctx with mmapCounter := st1.ctx.mmapCounter + 1#32 }).toBytes) ∗
          (memMapped mb len ∗ MallocngLiveAuth γ st1.liveMap ∗
           (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-          ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗ MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗
+          MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr ∗ MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap ∗
           ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
           ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗
           MappedSet st1.masterDom (OwnedMappedByte st1) ∗
@@ -1013,7 +1013,7 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
          (MallocngLiveAuth γ st1.liveMap ∗
           (maddrs.ctx ↦ₛ ({ st1.ctx with mmapCounter := st1.ctx.mmapCounter + 1#32 }).toBytes) ∗
           (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-          ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗ MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗
+          MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr ∗ MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap ∗
           (m ↦ₛ gNew.metaBytes) ∗ (mb ↦ₛ groupBytes) ∗ memMapped mb len ∗
           ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
           ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗
@@ -1027,8 +1027,8 @@ theorem mallocImpl_large_branch [MallocngMultiPlacement]
         (maddrs.lock ↦₃₂ 0#32) = pLk,
         (maddrs.replaced ↦₃₂ 0#32) = pRp,
         (maddrs.aaReplaced ↦₃₂ 0#32) = pAa,
-        ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) = pLb8,
-        MallocngAuxvState γ st1.auxvPtr st1.auxvSnap = pAx,
+        MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr = pLb8,
+        MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap = pAx,
         ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal = pRw,
         ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal = pPn,
         MappedSet st1.masterDom (OwnedMappedByte st1) = pMs,

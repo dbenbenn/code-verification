@@ -9,17 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyAeadCpa
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacProofs
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacLeaves
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacShallow
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacMu
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacA
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyAeadCpa
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEval -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacProofs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacLeaves
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacShallow
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacMu
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacA
 public import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfBase
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-Key `PrfHmac` `ReductionDsl` Program
@@ -30,7 +34,7 @@ Defines `prfHmacRedProg1Key` by replacing the `.initPrin` branch of `prfHmacRedP
 primitive-query counts via `prfHmacRedProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 16000000
@@ -50,7 +54,7 @@ section Hm1KeyBranches
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
 
 /-- `hmDispatchC` with the `.initPrin` branch replaced by `initPrin1KeyFixedB`. -/
-def hmDispatch1KeyC (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy) (mst : Var Γ₃ muStTy)
+@[expose] def hmDispatch1KeyC (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy) (mst : Var Γ₃ muStTy)
     (q : Var Γ₄ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
     Comp pqxdhOps pqPrimIface Δ hmPreTy :=
   caseSumV (v q) (fun u => hmOther mst (initPrin1KeyFixedB K fhst u)) fun q =>
@@ -72,7 +76,7 @@ section Prog1Key
 
 variable (S : Setup) (K : Nat)
 
-def hmPre1KeyC : Comp pqxdhOps pqPrimIface [hmStTy, authQueryTy] hmPreTy :=
+@[expose] def hmPre1KeyC : Comp pqxdhOps pqPrimIface [hmStTy, authQueryTy] hmPreTy :=
   letV (.var .zero : Expr pqxdhOps [hmStTy, authQueryTy] hmStTy) fun s =>
   letV (.fst (v s)) fun jt =>
   letV (.fst (.snd (v s))) fun fhst =>
@@ -81,7 +85,7 @@ def hmPre1KeyC : Comp pqxdhOps pqPrimIface [hmStTy, authQueryTy] hmPreTy :=
     (.succ (.succ (.succ (.succ (.succ .zero)))) :
       Var [muStTy, authHybridStateFixedTy, .nat, hmStTy, hmStTy, authQueryTy] authQueryTy)
 
-def hmHandle1KeyC : Comp pqxdhOps pqPrfHmacIface [hmStTy, authQueryTy] (.prod authRespTy hmStTy) :=
+@[expose] def hmHandle1KeyC : Comp pqxdhOps pqPrfHmacIface [hmStTy, authQueryTy] (.prod authRespTy hmStTy) :=
   bindV (liftPrimComp (hmPre1KeyC S K)) fun pre =>
   letV (.fst (.var (.succ .zero)) : Expr pqxdhOps [hmPreTy, hmStTy, authQueryTy] .nat) fun jt =>
   caseSumV (v pre)
@@ -94,7 +98,7 @@ def hmHandle1KeyC : Comp pqxdhOps pqPrfHmacIface [hmStTy, authQueryTy] (.prod au
         (.pair (v jt) (.pair (.snd (.fst (v r))) (.snd (v r)))))
 
 /-- `ReductionDsl` reduction program for `prfHmacReductionAuth1Key S b` (list bound `K`). -/
-def prfHmacRedProg1Key :
+@[expose] def prfHmacRedProg1Key :
     CostedReduction pqxdhOps pqPrfHmacIface (authSpec S) (authCodec S) .unit .unit .bool .bool where
   σ      := hmStTy
   init   := hmInitC S
@@ -103,7 +107,7 @@ def prfHmacRedProg1Key :
 
 end Prog1Key
 
-def hmPre1Key (S : Setup) (jt : ℕ) (q : AuthQuery S) (hst : AuthHybridStateFixed S)
+@[expose] def hmPre1Key (S : Setup) (jt : ℕ) (q : AuthQuery S) (hst : AuthHybridStateFixed S)
     (mst : PrfHmacMuState) : OracleComp PrimBaseSpec (HmRes S ⊕ HmSendCont S) :=
   match q with
   | .initPrin u => (fun r => .inl (r, mst)) <$> stepAuthOtherPrim1Key true S (.initPrin u) hst
@@ -230,7 +234,7 @@ theorem hmStep1Key_leaves (n jt : Nat) (q : AuthQuery S) (hst : AuthHybridStateF
     exact AllLeaves.bind_const _ fun t => AllLeaves.pure (hcB.post_inv t)
 
 /-- The DSL step function of `CostedReduction.eval` for `prfHmacRedProg1Key`. -/
-def hmDslStep1Key :
+@[expose] def hmDslStep1Key :
     (q : AuthQuery S) → hmStTy.denote →
       OracleComp PrfHmacSimSpec ((authSpec S).Range q × hmStTy.denote) :=
   fun q st => do
@@ -417,7 +421,7 @@ section Adv
 variable (S : Setup)
 
 /-- The one-key `ReductionDsl` reduction as a `PrfHmacAdv`. -/
-def prfHmac1KeyDslAdv (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
+@[expose] def prfHmac1KeyDslAdv (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
     PrfHmacAdv where
   run := (prfHmacRedProg1Key S b.q_total).eval (fun _ => A.1.run) ()
   q_prf := (prfHmacReductionAuth1Key S b A).q_prf
@@ -468,24 +472,10 @@ theorem hmPre1KeyC_cost_le : (hmPre1KeyC S K).cost ≤ (hmPreC S K).cost := by
   gcongr
   exact initPrin1KeyFixedB_cost_le K _ _
 
-theorem hmPre1KeyC_queries_le (w : pqPrimIface.Tag → ℕ) (ws : pqPrimIface.smp.Samp → ℕ) :
-    (hmPre1KeyC S K).queries w ws ≤ (hmPreC S K).queries w ws := by
-  simp only [hmPre1KeyC, hmPreC, hmDispatch1KeyC, hmDispatchC, hmOther, letV, Comp.letC, caseSumV,
-    bindV, Comp.queries]
-  gcongr
-  exact initPrin1KeyFixedB_queries_le K _ _ w ws
-
 theorem hmHandle1KeyC_cost_le : (hmHandle1KeyC S K).cost ≤ (hmHandleC S K).cost := by
   have h := hmPre1KeyC_cost_le S K
   simp only [hmHandle1KeyC, hmHandleC, letV, Comp.letC, bindV, caseSumV, cost_liftPrimComp,
     Comp.cost]
-  gcongr
-
-theorem hmHandle1KeyC_queries_le :
-    (hmHandle1KeyC S K).queries chalPrimW chalWS ≤ (hmHandleC S K).queries chalPrimW chalWS := by
-  have h := hmPre1KeyC_queries_le S K primW primWS
-  simp only [hmHandle1KeyC, hmHandleC, letV, Comp.letC, bindV, caseSumV, queries_liftPrimComp_prim,
-    Comp.queries]
   gcongr
 
 theorem prfHmacRedProg1Key_totalCost_le (q : Nat) :
@@ -495,35 +485,6 @@ theorem prfHmacRedProg1Key_totalCost_le (q : Nat) :
   gcongr
   exact h
 
-theorem prfHmacRedProg1Key_totalQueries_prim_le (q : Nat) :
-    (prfHmacRedProg1Key S K).totalQueries chalPrimW chalWS q ≤
-      (prfHmacRedProg S K).totalQueries chalPrimW chalWS q := by
-  have h := hmHandle1KeyC_queries_le S K
-  simp only [CostedReduction.totalQueries, prfHmacRedProg1Key, prfHmacRedProg]
-  gcongr
-  exact h
-
 end Hm1KeyCost
-
-private theorem authAeadStepCostBudget_le_legacy (S : Setup) (b : QueryBudget) :
-    AuthAead.stepCostBudget S b ≤
-      _root_.SignalPqxdh.LegacyCosted.stepCostBudget S b := by
-  unfold AuthAead.stepCostBudget _root_.SignalPqxdh.LegacyCosted.stepCostBudget
-  nlinarith [Nat.zero_le (b.q_total * S.N_dh), Nat.zero_le (b.q_total * S.N_sess_tot),
-    Nat.zero_le (S.N_dh * S.N_sess_tot)]
-
-/-- Step-cost budget for the one-key `PrfHmac` program. -/
-theorem prfHmacRedProg1Key_totalCost_budget (S : Setup) (b : QueryBudget) :
-    (prfHmacRedProg1Key S b.q_total).totalCost b.q_total ≤
-      SignalPqxdh.LegacyCosted.stepCostBudget S b :=
-  ((prfHmacRedProg1Key_totalCost_le S b.q_total b.q_total).trans
-    (prfHmacRedProg_totalCost_le S b)).trans (authAeadStepCostBudget_le_legacy S b)
-
-/-- Primitive-query budget for the one-key `PrfHmac` program. -/
-theorem prfHmacRedProg1Key_totalQueries_budget (S : Setup) (b : QueryBudget) :
-    (prfHmacRedProg1Key S b.q_total).totalQueries chalPrimW chalWS b.q_total ≤
-      primQueryBudget S b :=
-  (prfHmacRedProg1Key_totalQueries_prim_le S b.q_total b.q_total).trans
-    (prfHmacRedProg_totalQueries_prim_le S b)
 
 end SignalPqxdh.Security.ReductionDsl.AuthPrfHmac

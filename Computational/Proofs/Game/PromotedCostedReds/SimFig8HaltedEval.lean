@@ -11,7 +11,7 @@ module
 
 public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Halted -- proof-setup: allow-public-import
-public import Computational.Proofs.HeadlineV1.SendShortC -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.SendShortC
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedEvalSan
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedCoupling
 
@@ -19,27 +19,25 @@ import Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedCoupling
 # Evaluation and Game Coupling for `simFig8RedProgHalted`
 
 Combines the sanitized `.eval` and query/guard invariants for `simFig8RedProgHalted` with its
-game-level coupling to `libsignalToModularSchemeSimHalted`.
--/
+game-level coupling to `libsignalToModularSchemeSimHalted`.-/
 
 public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 namespace Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedEval
 
-noncomputable section
-
 open OracleComp OracleSpec
 open _root_.CryptoGames (Party)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.CBC (Plain)
-open CryptoGames.LibsignalSession (Crypto PublicKey IdentityKey GhostState Params)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart lFig8)
-open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
-open CryptoVerification.LibsignalSpqrV1 (MlKem Bytes)
-open CryptoVerification.E2E (idsOf paramsV1)
-open CryptoGames.LibsignalSM.Proofs.SessionShort (SendMsgsOk GuardedSMShort)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.LibsignalSession (Crypto PublicKey IdentityKey GhostState Params)
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart lFig8)
+open _root_.CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem Bytes)
+open _root_.CryptoVerification.E2E (idsOf paramsV1)
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort (SendMsgsOk GuardedSMShort)
 open Computational.Proofs.ReductionDsl.Fig8Atomic (atomicShortPubB)
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8Halted
   (libsignalToModularSchemeSimHalted simCNoneWinEventHalted
@@ -51,16 +49,6 @@ private theorem paramsV1_idsOf_eq (C : Crypto) (K : MlKem) (idA idB : IdentityKe
     (if R == Party.A then (paramsV1 C K idA idB).idA else (paramsV1 C K idA idB).idB) =
       idsOf idA idB R := by
   cases R <;> rfl
-
-theorem libsignalToModularSchemeSimHalted_eq {PQ Pt : Type} [DecidableEq Pt] [Zero Pt]
-    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey)
-    (lam : Pt) (qep : ℕ)
-    (A : CryptoGames.SM.Adversary (GhostState PQ) (Plain ℓ) (BitVec 512) Bytes) :
-    libsignalToModularSchemeSimHalted P K ℓ Dh encPt encT decT idOf lam qep A =
-      CryptoGames.LibsignalSM.Proofs.Refinement.runLibsignalToModularSchemeSimTrackHalted
-        P K (ℓ := ℓ) Dh encPt encT decT idOf lam qep A := rfl
 
 section Theorems
 
@@ -187,7 +175,5 @@ theorem simFig8RedProgHalted_simCNoneWinEvent_eq (hℓ : ℓ < 10 ^ 6)
     (by omega) (by omega) le_rfl le_rfl le_rfl
 
 end Theorems
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedEval

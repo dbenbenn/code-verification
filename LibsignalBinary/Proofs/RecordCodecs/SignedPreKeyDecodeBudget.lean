@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Nonempty
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.NonemptyBudget
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode
+import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.Nonempty
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode.NonemptyBudget
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `<SignedPreKeyRecordStructure as Message>::decode::<&[u8]>` Proof
@@ -22,7 +24,7 @@ Proves `signedDecode_placed_ok_of_deps` (`signedDecodePlacedSpec`, Block `562`) 
 `RustCliAllocBudget` from `SignedHooksPlaced` and `SignedPortDepsPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false

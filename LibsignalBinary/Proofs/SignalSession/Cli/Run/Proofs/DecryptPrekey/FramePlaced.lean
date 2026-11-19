@@ -9,12 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Frame
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import ProofLib
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WPp
+public import VerifiedLibraries.Mallocng.Spec
 
 /-!
 # Placed Stack-Frame Layout and Epilogue Helpers for `decrypt_prekey`
@@ -24,12 +33,10 @@ Block `520` (`signal_session_handshake::decrypt_prekey`, `lsProg_520`) and Block
 (`message_decrypt_prekey::{closure#0}`, `lsProg_518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.DecryptPrekeyHelpers
 
@@ -44,7 +51,7 @@ open CryptoVerification.CliHandshake.Placed
 open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Block `520` (`signal_session_handshake::decrypt_prekey`) program with `Rust.withPanics ext`. -/
-abbrev dpWrapProgPlaced [LibsignalPlacement] (ext : String → Option (State → State)) : Program :=
+noncomputable abbrev dpWrapProgPlaced [LibsignalPlacement] (ext : String → Option (State → State)) : Program :=
   lsProg_520 (Rust.withPanics ext)
 
 /-- Entry address of Block `520` (`signal_session_handshake::decrypt_prekey`). -/
@@ -53,18 +60,11 @@ abbrev dpWrapEntryPlaced [LibsignalPlacement] : BitVec 64 :=
 
 /-- Block `518` (`message_decrypt_prekey::<signal_session_handshake::Coins>::{closure#0}`) program
 with `Rust.withPanics ext`. -/
-abbrev dpPollProgPlaced [LibsignalPlacement] (ext : String → Option (State → State)) : Program :=
+noncomputable abbrev dpPollProgPlaced [LibsignalPlacement] (ext : String → Option (State → State)) : Program :=
   lsProg_518 (Rust.withPanics ext)
 
 /-- Entry address of Block `518` (`message_decrypt_prekey::<signal_session_handshake::Coins>::{closure#0}`). -/
 abbrev dpPollEntryPlaced [LibsignalPlacement] : BitVec 64 :=
   (blkPl_518).base
 
-theorem dpWrapEntryPlaced_eq_lsmpl_base [LibsignalPlacement] :
-    dpWrapEntryPlaced = lsmpl.base 520 := rfl
-
-theorem dpPollEntryPlaced_eq_lsmpl_base [LibsignalPlacement] :
-    dpPollEntryPlaced = lsmpl.base 518 := rfl
-
 end CryptoVerification.SignalSession.Cli.RunProofs.DecryptPrekeyHelpers
-end

@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
+import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 
 /-!
 # Stability of `ModelAcceptsTermAfterCoinSplit` Under Appended Events
@@ -19,7 +21,7 @@ initial non-`rng` `.accept` event, appending further events `τ'` leaves
 `ModelAcceptsTermAfterCoinSplit` invariant because the pinned accept index lies inside `τ₂`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

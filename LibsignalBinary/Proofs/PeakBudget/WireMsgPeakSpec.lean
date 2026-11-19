@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogueDeallocBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
-public import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogueDeallocBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PeakBudget.WireSignalHelpers
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Peak Live-Heap & Group Specs for Wire `SignalMessage` & `PreKeySignalMessage`
@@ -26,7 +29,7 @@ Allocator event envelopes, `PhaseCreditSpec` bounds, and `PhaseGroupSpec` bounds
 `<SignalMessage>::new`, `<PreKeySignalMessage>::new`, and `<SignalMessage as TryFrom<&[u8]>>::try_from`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -78,19 +81,19 @@ theorem fineCostModel_wireGroupHyps :
 
 /-! ## 1. `<SignalMessage>::new` (`SignalMessageNewEnv`) -/
 
-def signalMessageNewSerLen (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
+@[expose] def signalMessageNewSerLen (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
   (encode (x.protoMsg parse)).length + 9
 
-def signalMessageNewDeltaCum (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
+@[expose] def signalMessageNewDeltaCum (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
   4 * x.ciphertext.length + 4 * x.pqRatchet.length + 2 * signalMessageNewSerLen parse x + 86121
 
-def signalMessageNewDeltaLive (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
+@[expose] def signalMessageNewDeltaLive (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
   x.ciphertext.length + x.pqRatchet.length + signalMessageNewSerLen parse x + 32816
 
-def signalMessageNewDeltaPeak (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
+@[expose] def signalMessageNewDeltaPeak (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
   2 * x.ciphertext.length + 2 * x.pqRatchet.length + signalMessageNewSerLen parse x + 65662
 
-def signalMessageNewMaxReq (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
+@[expose] def signalMessageNewMaxReq (parse : UuidParser) (x : SignalMessageNewGhost) : Nat :=
   max (max 36 x.ciphertext.length) (max x.pqRatchet.length (signalMessageNewSerLen parse x))
 
 theorem signalMessageNew_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -106,50 +109,50 @@ theorem signalMessageNew_phaseCredit {M : AllocCostModel} [HasFineReallocCredit 
 
 /-! ## 2. `<PreKeySignalMessage>::new` (`PreKeyMsgNewEnv`) -/
 
-def kyberCopyEvs (kp : Option KyberPayload) : List AllocEvent :=
+@[expose] def kyberCopyEvs (kp : Option KyberPayload) : List AllocEvent :=
   match kp with
   | none => []
   | some k =>
     if k.ciphertext = [] then []
     else rustAllocEvents k.ciphertext.length 1
 
-def kyberPayloadLen : Option KyberPayload → Nat
+@[expose] def kyberPayloadLen : Option KyberPayload → Nat
   | none => 0
   | some k => k.ciphertext.length
 
-def preKeyMsgNewRawPrologueEvents (kp : Option KyberPayload) (smLen outLen : Nat) :
+@[expose] def preKeyMsgNewRawPrologueEvents (kp : Option KyberPayload) (smLen outLen : Nat) :
     List AllocEvent :=
   kyberCopyEvs kp ++
     (rustAllocEvents 33 1 ++ rustAllocEvents 33 1) ++
     rustAllocEvents smLen 1 ++
     rustAllocEvents outLen 1
 
-def preKeyMsgNewRawEvents (kp : Option KyberPayload) (smLen outLen : Nat) : List AllocEvent :=
+@[expose] def preKeyMsgNewRawEvents (kp : Option KyberPayload) (smLen outLen : Nat) : List AllocEvent :=
   preKeyMsgNewRawPrologueEvents kp smLen outLen ++
     kyberDeallocEvs kp ++
     (rustDeallocEvents 33 1 ++ rustDeallocEvents 33 1) ++
     rustDeallocEvents smLen 1
 
-def PreKeyMsgNewRawEnv (kp : Option KyberPayload) (smLen outLen : Nat)
+@[expose] def PreKeyMsgNewRawEnv (kp : Option KyberPayload) (smLen outLen : Nat)
     (evs : List AllocEvent) : Prop :=
   evs = preKeyMsgNewRawEvents kp smLen outLen
 
-def preKeyMsgNewEvents (x : PreKeyMsgNewCall) : List AllocEvent :=
+@[expose] def preKeyMsgNewEvents (x : PreKeyMsgNewCall) : List AllocEvent :=
   preKeyMsgNewRawEvents x.kp x.msg.serialized.length x.model.serialized.length
 
-def PreKeyMsgNewEnv (x : PreKeyMsgNewCall) (evs : List AllocEvent) : Prop :=
+@[expose] def PreKeyMsgNewEnv (x : PreKeyMsgNewCall) (evs : List AllocEvent) : Prop :=
   PreKeyMsgNewRawEnv x.kp x.msg.serialized.length x.model.serialized.length evs
 
-def preKeyMsgNewRawDeltaCum (kp : Option KyberPayload) (smLen outLen : Nat) : Nat :=
+@[expose] def preKeyMsgNewRawDeltaCum (kp : Option KyberPayload) (smLen outLen : Nat) : Nat :=
   2 * kyberPayloadLen kp + 2 * smLen + 2 * outLen + 47827
 
-def preKeyMsgNewRawDeltaLive (outLen : Nat) : Nat :=
+@[expose] def preKeyMsgNewRawDeltaLive (outLen : Nat) : Nat :=
   outLen + 8195
 
-def preKeyMsgNewRawDeltaPeak (kp : Option KyberPayload) (smLen outLen : Nat) : Nat :=
+@[expose] def preKeyMsgNewRawDeltaPeak (kp : Option KyberPayload) (smLen outLen : Nat) : Nat :=
   kyberPayloadLen kp + smLen + outLen + 41041
 
-def preKeyMsgNewRawMaxReq (kp : Option KyberPayload) (smLen outLen : Nat) : Nat :=
+@[expose] def preKeyMsgNewRawMaxReq (kp : Option KyberPayload) (smLen outLen : Nat) : Nat :=
   max (max (kyberPayloadLen kp) 33) (max smLen outLen)
 
 theorem preKeyMsgNewRaw_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -252,7 +255,7 @@ theorem preKeyMsgNew_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 /-! ## 3. `<SignalMessage as TryFrom<&[u8]>>::try_from` (`SigTryFromBoundedEnv`) -/
 
 /-- Bounded `<DecodeError>::push` envelope matching `SpqrV1.Alloc.newCap32` (`max (2 * n) 4`). -/
-def DecodeErrorPushBoundedEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeErrorPushBoundedEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   (n = 0 ∧ evs = rustAllocEvents 128 8) ∨
   (0 < n ∧ evs = rustReallocEvents (n * 32) (max (2 * n) 4 * 32) 8)
@@ -266,12 +269,12 @@ structure SigTryFromCaps where
   pq : Nat
   ad : Nat
 
-def SigTryFromCaps.zero : SigTryFromCaps := ⟨0, 0, 0, 0⟩
+@[expose] def SigTryFromCaps.zero : SigTryFromCaps := ⟨0, 0, 0, 0⟩
 
-def SigTryFromCaps.get (c : SigTryFromCaps) : SigTryFromField → Nat
+@[expose] def SigTryFromCaps.get (c : SigTryFromCaps) : SigTryFromField → Nat
   | .rk => c.rk | .ct => c.ct | .pq => c.pq | .ad => c.ad
 
-def SigTryFromCaps.set (c : SigTryFromCaps) : SigTryFromField → Nat → SigTryFromCaps
+@[expose] def SigTryFromCaps.set (c : SigTryFromCaps) : SigTryFromField → Nat → SigTryFromCaps
   | .rk, v => { c with rk := v }
   | .ct, v => { c with ct := v }
   | .pq, v => { c with pq := v }
@@ -307,62 +310,62 @@ inductive SigTryFromLoopBoundedEnv : Nat → SigTryFromCaps → List AllocEvent 
       SigTryFromLoopBoundedEnv rem caps
         (bytesMergeEventsCore wt (BitVec.ofNat 64 (caps.get f)) bs ++ evs₂)
 
-def intoBoxedCapEvents (cap : BitVec 64) (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def intoBoxedCapEvents (cap : BitVec 64) (bs : List (BitVec 8)) : List AllocEvent :=
   if cap.toNat ≤ bs.length then []
   else if bs = [] then rustDeallocEvents cap.toNat 1
   else rustReallocEvents cap.toNat bs.length 1
 
-def IntoBoxedBoundedEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def IntoBoxedBoundedEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ cap : BitVec 64, bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ evs = intoBoxedCapEvents cap bs
 
-def IntoBoxedOptBoundedEnv : Option (List (BitVec 8)) → List AllocEvent → Prop
+@[expose] def IntoBoxedOptBoundedEnv : Option (List (BitVec 8)) → List AllocEvent → Prop
   | none => (· = [])
   | some ad => IntoBoxedBoundedEnv ad
 
-def TryCloneBytesEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def TryCloneBytesEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = if bs = [] then [] else rustAllocEvents bs.length 1
 
-def SigTryFromPostOkAllocEnv (bs ct : List (BitVec 8))
+@[expose] def SigTryFromPostOkAllocEnv (bs ct : List (BitVec 8))
     (adOpt : Option (List (BitVec 8))) : List AllocEvent → Prop :=
   SeqEnv (IntoBoxedBoundedEnv ct) (SeqEnv (IntoBoxedOptBoundedEnv adOpt) (TryCloneBytesEnv bs))
 
-def SigTryFromPostOutPreEnv : Except SignalProtocolError SignalMessage → List AllocEvent → Prop
+@[expose] def SigTryFromPostOutPreEnv : Except SignalProtocolError SignalMessage → List AllocEvent → Prop
   | .error _ => (· = [])
   | .ok msg =>
     SeqEnv FreeOnlyEvs (SigTryFromPostOkAllocEnv msg.serialized msg.ciphertext msg.addresses)
 
-def SigTryFromPostEnv (bs : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def SigTryFromPostEnv (bs : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv (SigTryFromPostOutPreEnv (SignalMessage.tryFrom protoSignalCodec bs)) FreeOnlyEvs
 
 /-- Full `<SignalMessage as TryFrom<&[u8]>>::try_from` envelope for `SigTryFromPlacedBudget`. -/
-def SigTryFromBoundedEnv (x : TryFromGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def SigTryFromBoundedEnv (x : TryFromGhost) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   SeqEnv (SigTryFromLoopBoundedEnv x.bytes.length SigTryFromCaps.zero)
          (SigTryFromPostEnv x.bytes) evs
 
-def sigTryFromCapDeltaCum (N : Nat) : Nat :=
+@[expose] def sigTryFromCapDeltaCum (N : Nat) : Nat :=
   94 * N + 16 * min (max 8 (2 * N)) 135167 + 38156 * wireRemGrows N 0 + 6 * min N 135167 + 48095
 
-def sigTryFromCapDeltaLive (N : Nat) : Nat :=
+@[expose] def sigTryFromCapDeltaLive (N : Nat) : Nat :=
   5 * N + 57397
 
-def sigTryFromCapDeltaPeak (N : Nat) : Nat :=
+@[expose] def sigTryFromCapDeltaPeak (N : Nat) : Nat :=
   5 * N + 57397
 
-def sigTryFromCapMaxReq (N : Nat) : Nat :=
+@[expose] def sigTryFromCapMaxReq (N : Nat) : Nat :=
   max 128 (2 * N)
 
-def sigTryFromDeltaCum (x : TryFromGhost) : Nat :=
+@[expose] def sigTryFromDeltaCum (x : TryFromGhost) : Nat :=
   94 * x.bytes.length + 16 * min (max 8 (2 * x.bytes.length)) 135167 +
     38156 * wireRemGrows x.bytes.length 0 + 6 * min x.bytes.length 135167 + 48095
 
-def sigTryFromDeltaLive (x : TryFromGhost) : Nat :=
+@[expose] def sigTryFromDeltaLive (x : TryFromGhost) : Nat :=
   5 * x.bytes.length + 57397
 
-def sigTryFromDeltaPeak (x : TryFromGhost) : Nat :=
+@[expose] def sigTryFromDeltaPeak (x : TryFromGhost) : Nat :=
   5 * x.bytes.length + 57397
 
-def sigTryFromMaxReq (x : TryFromGhost) : Nat :=
+@[expose] def sigTryFromMaxReq (x : TryFromGhost) : Nat :=
   max 128 (2 * x.bytes.length)
 
 private theorem min_right_mono {a b S : Nat} (h : a ≤ b) : min a S ≤ min b S := by
@@ -768,26 +771,26 @@ theorem sigTryFrom_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-- `FineScale`-scaled group delta for `<SignalMessage>::new` (`4 * 16659 + 5 * 140011 = 766,691`,
 `≤ 12` groups). -/
-def signalMessageNewDeltaGrpS : Nat := 766691
+@[expose] def signalMessageNewDeltaGrpS : Nat := 766691
 
 /-- `FineScale`-scaled group delta for `<PreKeySignalMessage>::new`
 (`2 * 16659 + 3 * 140011 = 453,351`, `≤ 7` groups). -/
-def preKeyMsgNewDeltaGrpS : Nat := 453351
+@[expose] def preKeyMsgNewDeltaGrpS : Nat := 453351
 
 /-- Closed-form `FineScale`-scaled group delta for `SigTryFromLoopBoundedEnv N SigTryFromCaps.zero`:
 `2369 * N` for `copy_to_bytes` across `sc = 0..47` and `mmap`, `560044 * wireRemGrows N 0`
 (`4 * 140011`) for the 4 `Vec<u8>` fields' `reserveCap` doublings, plus `183475` (`43464 + 140011`)
 for the decode error tail. -/
-def sigTryFromLoopDeltaGrpS (N : Nat) : Nat :=
+@[expose] def sigTryFromLoopDeltaGrpS (N : Nat) : Nat :=
   2369 * N + 560044 * wireRemGrows N 0 + 183475
 
 /-- Closed-form `FineScale`-scaled group cap for `SigTryFromBoundedEnv x` when `x.bytes.length ≤ N`
 (`= 2,495,320,888` = `38,076` groups at `N = 1,048,576`). -/
-def sigTryFromCapDeltaGrpS (N : Nat) : Nat :=
+@[expose] def sigTryFromCapDeltaGrpS (N : Nat) : Nat :=
   2369 * N + 560044 * wireRemGrows N 0 + 603508
 
 /-- Exact-ghost `FineScale`-scaled group delta for `SigTryFromBoundedEnv x`. -/
-def sigTryFromDeltaGrpS (x : TryFromGhost) : Nat :=
+@[expose] def sigTryFromDeltaGrpS (x : TryFromGhost) : Nat :=
   2369 * x.bytes.length + 560044 * wireRemGrows x.bytes.length 0 + 603508
 
 theorem sigTryFromLoopDeltaGrpS_mono {N₁ N₂ : Nat} (h : N₁ ≤ N₂) :

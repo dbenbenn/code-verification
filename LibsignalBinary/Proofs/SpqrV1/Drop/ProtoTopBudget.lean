@@ -10,19 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DecodesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Heap.IfaceBudget
+import LibsignalBinary.Heap.IfaceBudgetBase
+import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2Budget
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Specifications and Simple/Compound Variants for `Option<InnerState>` (Block `267`)
@@ -32,7 +36,7 @@ Defines `dropOptProtoInnerStatePlacedSpec`, `dropProtoPqRatchetStatePlacedSpec`,
 proves the ten non-looping variant contracts of Block `267`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -107,7 +111,7 @@ attribute [local simp, local arm64_norm]
 
 /-! ## Budget-Threaded Specifications (Blocks `267` and `270`) -/
 
-def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement]
+@[expose] def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropOptProtoInnerStateGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -120,7 +124,7 @@ def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement]
       optProtoInnerStateJumpTablePlacedAt ∗ A.pool lim (M.stepEvents evs st) sf ∗
       stackAt s0.sp dropStack96
 
-def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement]
+@[expose] def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropProtoPqRatchetStateGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -136,7 +140,7 @@ def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement]
 /-- Per-variant budget-threaded specification of Block `267` (`Option<InnerState>`) for a fixed
 `optSt`; `(dropOptProtoInnerStatePlacedSpec M A lim)` at `(⟨a, optSt⟩, st)` is definitionally
 equal to `(dropOptProtoInnerStatePlacedVariantSpec M A lim optSt)` at `(a, st)`. -/
-def dropOptProtoInnerStatePlacedVariantSpec [LibsignalPlacement]
+@[expose] def dropOptProtoInnerStatePlacedVariantSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (optSt : Option V1State.InnerState) : Spec (BitVec 64 × M.σ) where
   pre := fun (a, st) s =>

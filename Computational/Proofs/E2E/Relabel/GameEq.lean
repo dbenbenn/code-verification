@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.SM.Game
-public import Computational.Proofs.GameHop.StateSim
+import Computational.Proofs.GameHop.StateSim
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSMInstance
 
 /-!
@@ -20,7 +20,7 @@ State coupling between `sm₂` against `A` in `configR1OnCurve` (restricted by `
 against `A.relabel φ keep` in `configR1OnCurve`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Relabel.GameEq
 
@@ -31,7 +31,7 @@ set_option linter.unusedSectionVars false
 variable {Key St₁ St₂ Msg Coins RCoins C : Type}
 
 /-- Map party states in a `GameState` through `φ`, leaving all other fields unchanged. -/
-def mapSt (φ : St₁ → St₂) (s : GameState St₁ Msg C) : GameState St₂ Msg C :=
+@[expose] def mapSt (φ : St₁ → St₂) (s : GameState St₁ Msg C) : GameState St₂ Msg C :=
   { st := fun P => φ (s.st P)
     epoch := s.epoch
     idx := s.idx

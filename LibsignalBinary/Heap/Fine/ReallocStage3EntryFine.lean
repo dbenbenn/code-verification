@@ -25,7 +25,7 @@ commits the resized `sc = 63` mapping via `realloc_s3_post_mremap_fine_of_raw` o
 
 set_option autoImplicit false
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -67,7 +67,7 @@ private theorem extract_to_mremap_fine [MallocngMultiPlacement]
     (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
      MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
      ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-     MallocngReadRest γb maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
+     MallocngReadRestMode true γb maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
      MallocngBlockToken γb p oldSz ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ FrameAl) ⊢
       ∃∗ errnoVal : BitVec 32,
         (g.mem ↦ₛ mkSc63OldMapBs st.byteVal g p oldSz (origBs ++ tailBs)) ∗
@@ -78,10 +78,10 @@ private theorem extract_to_mremap_fine [MallocngMultiPlacement]
          MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
          MallocngLiveAuth γb st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
          (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-         ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γb st.auxvPtr st.auxvSnap ∗
+         MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap ∗
          ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
          MallocngBlockToken γb p oldSz ∗ FrameAl) := by
-  unfold MallocngReadRest
+  unfold MallocngReadRestMode
   have hExt := reallocMremap_extract maddrs tp hwf hg hIdx0 (origBs ++ tailBs)
     hUserLen hSlot0 hSc63
   refine Entails.trans (Q :=
@@ -94,13 +94,13 @@ private theorem extract_to_mremap_fine [MallocngMultiPlacement]
         MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
         MallocngLiveAuth γb st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
         (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γb st.auxvPtr st.auxvSnap ∗
+        MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap ∗
         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
         MallocngBlockToken γb p oldSz ∗ FrameAl)))
     (Entails.of_eq (by
       generalize (MallocngRoTablesAt maddrs) = PRo
       generalize (MallocngRuntime maddrs tp) = PRt
-      generalize (MallocngAuxvState γb st.auxvPtr st.auxvSnap) = PAu
+      generalize (MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap) = PAu
       ac_rfl)) ?_
   refine Entails.pure_left fun _ => ?_
   refine Entails.trans (sepConj_mono_left hExt) ?_
@@ -108,7 +108,7 @@ private theorem extract_to_mremap_fine [MallocngMultiPlacement]
   refine Entails.sepExists_mono fun errnoVal => Entails.of_eq ?_
   generalize (MallocngRoTablesAt maddrs) = PRo
   generalize (ReallocMremapFrame maddrs tp st g) = PFr
-  generalize (MallocngAuxvState γb st.auxvPtr st.auxvSnap) = PAu
+  generalize (MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap) = PAu
   ac_rfl
 
 private theorem unextract_to_stage4_fine [MallocngMultiPlacement]
@@ -127,10 +127,10 @@ private theorem unextract_to_stage4_fine [MallocngMultiPlacement]
     (hSlot0 : g.slots[0]'hIdx0 = .liveUser p oldSz oldEff)
     (hSc63 : g.sc = 63)
     (hbrk : s.brk = s0.brk) (htp : s.tpidrEl0 = tp) (hbrks : s.brkStart = brkStart)
-    (sp1 : BitVec 64) (Frame : SepProp) :
+    (err32 : BitVec 32) (sp1 : BitVec 64) (Frame : SepProp) :
     let γb := fineBaseGam γ
     (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
-     ((tp - 0xa4#64) ↦₃₂ 12#32) ∗
+     ((tp - 0xa4#64) ↦₃₂ err32) ∗
      (g.mem ↦ₛ mkSc63OldMapBs st.byteVal g p oldSz (origBs ++ tailBs)) ∗
      memMapped g.mem (g.maplen * 4096) ∗
      (g.metaPtr ↦ₛ g.metaBytes) ∗
@@ -138,7 +138,7 @@ private theorem unextract_to_stage4_fine [MallocngMultiPlacement]
      ReallocMremapFrame maddrs tp st g ∗
      MallocngLiveAuth γb st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
      (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-     ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γb st.auxvPtr st.auxvSnap ∗
+     MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap ∗
      ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
      MallocngBlockToken γb p oldSz ∗
      (ghostMapAuth (fineAlignGam γ) alignMap0 ∗
@@ -165,24 +165,24 @@ private theorem unextract_to_stage4_fine [MallocngMultiPlacement]
        (g.metaPtr ↦ₛ g.metaBytes) ∗
        (g.mem ↦ₛ mkSc63OldMapBs st.byteVal g p oldSz (origBs ++ tailBs)) ∗
        memMapped g.mem (g.maplen * 4096) ∗
-       ((tp - 0xa4#64) ↦₃₂ 12#32) ∗
+       ((tp - 0xa4#64) ↦₃₂ err32) ∗
        ReallocMremapFrame maddrs tp st g ∗
        MallocngLiveAuth γb st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
        (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-       ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γb st.auxvPtr st.auxvSnap ∗
+       MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal) ⊢
         MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
         ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-        MallocngReadRest γb maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
+        MallocngReadRestMode true γb maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
         (p ↦ₛ (origBs ++ tailBs)) := by
-    unfold ReallocMremapFrame MallocngReadRest
-    have hErrno : ((tp - 0xa4#64) ↦₃₂ 12#32) ⊢
-        ∃∗ ev : BitVec 32, (tp - 0xa4#64) ↦₃₂ ev := Entails.sepExists_intro 12#32
+    unfold ReallocMremapFrame MallocngReadRestMode
+    have hErrno : ((tp - 0xa4#64) ↦₃₂ err32) ⊢
+        ∃∗ ev : BitVec 32, (tp - 0xa4#64) ↦₃₂ ev := Entails.sepExists_intro err32
     refine Entails.trans (Entails.of_eq (by
       generalize (MallocngRoTablesAt maddrs) = PRo
-      generalize (MallocngAuxvState γb st.auxvPtr st.auxvSnap) = PAu
+      generalize (MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap) = PAu
       ac_rfl : _ =
-        (((tp - 0xa4#64) ↦₃₂ 12#32) ∗
+        (((tp - 0xa4#64) ↦₃₂ err32) ∗
          ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)) ∗
         (((g.metaPtr ↦ₛ g.metaBytes) ∗
           (g.mem ↦ₛ mkSc63OldMapBs st.byteVal g p oldSz (origBs ++ tailBs)) ∗
@@ -198,8 +198,8 @@ private theorem unextract_to_stage4_fine [MallocngMultiPlacement]
          (maddrs.lock ↦₃₂ 0#32) ∗
          (maddrs.replaced ↦₃₂ 0#32) ∗
          (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-         ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-         MallocngAuxvState γb st.auxvPtr st.auxvSnap ∗
+         MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗
+         MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap ∗
          ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal))) ?_
     refine Entails.trans (sepConj_mono_left (sepConj_mono_left hErrno)) ?_
     change (MallocngRuntime maddrs tp ∗ _) ⊢ _
@@ -207,7 +207,7 @@ private theorem unextract_to_stage4_fine [MallocngMultiPlacement]
     refine Entails.trans (Entails.of_eq (by
       generalize (MallocngRoTablesAt maddrs) = PRo
       generalize (MallocngRuntime maddrs tp) = PRt
-      generalize (MallocngAuxvState γb st.auxvPtr st.auxvSnap) = PAu
+      generalize (MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap) = PAu
       ac_rfl : _ =
         MallocngRoTablesAt maddrs ∗
         (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
@@ -216,8 +216,8 @@ private theorem unextract_to_stage4_fine [MallocngMultiPlacement]
          (maddrs.lock ↦₃₂ 0#32) ∗
          (maddrs.replaced ↦₃₂ 0#32) ∗
          (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-         ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-         MallocngAuxvState γb st.auxvPtr st.auxvSnap ∗
+         MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗
+         MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap ∗
          ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
          MappedSet st.masterDom (OwnedMappedByte st) ∗
          MallocngRuntime maddrs tp) ∗
@@ -233,11 +233,11 @@ private theorem unextract_to_stage4_fine [MallocngMultiPlacement]
        (g.metaPtr ↦ₛ g.metaBytes) ∗
        (g.mem ↦ₛ mkSc63OldMapBs st.byteVal g p oldSz (origBs ++ tailBs)) ∗
        memMapped g.mem (g.maplen * 4096) ∗
-       ((tp - 0xa4#64) ↦₃₂ 12#32) ∗
+       ((tp - 0xa4#64) ↦₃₂ err32) ∗
        ReallocMremapFrame maddrs tp st g ∗
        MallocngLiveAuth γb st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
        (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-       ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γb st.auxvPtr st.auxvSnap ∗
+       MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal) ∗
       (MallocngBlockToken γb p oldSz ∗
        ghostMapAuth (fineAlignGam γ) alignMap0 ∗
@@ -245,13 +245,13 @@ private theorem unextract_to_stage4_fine [MallocngMultiPlacement]
     (Entails.of_eq (by
       generalize (MallocngRoTablesAt maddrs) = PRo
       generalize (ReallocMremapFrame maddrs tp st g) = PFr
-      generalize (MallocngAuxvState γb st.auxvPtr st.auxvSnap) = PAu
+      generalize (MallocngAuxvStateRo true γb st.auxvPtr st.auxvSnap) = PAu
       ac_rfl)) ?_
   refine Entails.trans (sepConj_mono_left hCoreUn) ?_
   exact Entails.of_eq (by
     dsimp only [γb, bCoarse]
     generalize (MallocngRoTablesAt maddrs) = PRo
-    generalize (MallocngReadRest (fineBaseGam γ) maddrs tp brkStart s0.brk
+    generalize (MallocngReadRestMode true (fineBaseGam γ) maddrs tp brkStart s0.brk
       (synthCoarseBudget live0 peak0 st) ivs0 st) = PRest
     ac_rfl)
 
@@ -328,12 +328,12 @@ theorem realloc_stage3_fine_of_raw
         ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
         MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
         ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-        MallocngReadRest (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
+        MallocngReadRestMode true (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
         MallocngBlockToken (fineBaseGam γ) p oldSz ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ FrameAl)
       (Entails.of_eq (by
         dsimp only [FrameAl]
         generalize (MallocngRoTablesAt maddrs) = PRo
-        generalize (MallocngReadRest (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st) = PRest
+        generalize (MallocngReadRestMode true (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st) = PRest
         ac_rfl)) ?_
     apply sepWP_pure_of_sat (fun R hm =>
       satisfies_readRest_wf (Rest := ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗
@@ -342,7 +342,7 @@ theorem realloc_stage3_fine_of_raw
         MallocngBlockToken (fineBaseGam γ) p oldSz ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ FrameAl ∗ R)
         (Satisfies.mono (Entails.of_eq (by
           generalize (MallocngRoTablesAt maddrs) = PRo
-          generalize (MallocngReadRest (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st) = PRest
+          generalize (MallocngReadRestMode true (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st) = PRest
           ac_rfl)) hm))
     rintro ⟨hCount, hwf⟩
     obtain ⟨hIdxEq0, _hLast0, _, hMpPos, _, _, _, _,
@@ -428,8 +428,8 @@ theorem realloc_stage3_fine_of_raw
             MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
             MallocngLiveAuth (fineBaseGam γ) st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
             (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-            ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-            MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
+            MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗
+            MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
             ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
             MallocngBlockToken (fineBaseGam γ) p oldSz ∗ FrameAl)
           (ret_pc := b + 0x3e0#64)
@@ -450,14 +450,14 @@ theorem realloc_stage3_fine_of_raw
                  MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
                  MallocngLiveAuth (fineBaseGam γ) st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
                  (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-                 ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-                 MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
+                 MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗
+                 MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
                  ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
                  MallocngBlockToken (fineBaseGam γ) p oldSz ∗ FrameAl) ∗ R')
               (Entails.of_eq (by
                 generalize (MallocngRoTablesAt maddrs) = PRo
                 generalize (ReallocMremapFrame maddrs tp st g) = PFr
-                generalize (MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
+                generalize (MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
                 ac_rfl)) ?_
             refine sepConj_mono_left ?_
             rw [sepConj_comm _ ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl sCall.mem⌝]
@@ -515,39 +515,42 @@ theorem realloc_stage3_fine_of_raw
         ·
           simp only [hFail, ↓reduceIte]
           refine SepWP.weaken_pre (P' :=
-              ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl sMr.mem ∧
-               MallocngProcPreserved sCall sMr ∧ sMr.brk = sCall.brk ∧
-               sMr.mem.perm = sCall.mem.perm⌝ ∗
-              (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
-               ((tp - 0xa4#64) ↦₃₂ 12#32) ∗ (g.mem ↦ₛ oldMapBs) ∗ memMapped g.mem oldLen ∗
-               (g.metaPtr ↦ₛ g.metaBytes) ∗ MallocngRoTablesAt maddrs ∗
-               (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗ ReallocMremapFrame maddrs tp st g ∗
-               MallocngLiveAuth (fineBaseGam γ) st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
-               (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-               ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-               MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
-               ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
-               MallocngBlockToken (fineBaseGam γ) p oldSz ∗ FrameAl))
+              ∃∗ err32 : BitVec 32,
+                ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl sMr.mem ∧
+                 MallocngProcPreserved sCall sMr ∧ sMr.brk = sCall.brk ∧
+                 sMr.mem.perm = sCall.mem.perm⌝ ∗
+                (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
+                 ((tp - 0xa4#64) ↦₃₂ err32) ∗ (g.mem ↦ₛ oldMapBs) ∗ memMapped g.mem oldLen ∗
+                 (g.metaPtr ↦ₛ g.metaBytes) ∗ MallocngRoTablesAt maddrs ∗
+                 (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗ ReallocMremapFrame maddrs tp st g ∗
+                 MallocngLiveAuth (fineBaseGam γ) st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
+                 (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
+                 MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗
+                 MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
+                 ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
+                 MallocngBlockToken (fineBaseGam γ) p oldSz ∗ FrameAl))
             (by
+              simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+              refine Entails.sepExists_mono fun err32 => ?_
               refine Entails.trans (Q :=
                   ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl sMr.mem⌝ ∗
                   ⌜MallocngProcPreserved sCall sMr ∧ sMr.brk = sCall.brk⌝ ∗
                   ⌜sMr.mem.perm = sCall.mem.perm ∧ MallocngMappedDelta 0 0 sCall.mem sMr.mem⌝ ∗
                   ((stackFrame sCall 144 ∗ stackFrameAt (sp1 - 144#64) 576) ∗
                    ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗
-                   ((tp - 0xa4#64) ↦₃₂ 12#32) ∗ (g.mem ↦ₛ oldMapBs) ∗ memMapped g.mem oldLen ∗
+                   ((tp - 0xa4#64) ↦₃₂ err32) ∗ (g.mem ↦ₛ oldMapBs) ∗ memMapped g.mem oldLen ∗
                    (g.metaPtr ↦ₛ g.metaBytes) ∗ MallocngRoTablesAt maddrs ∗
                    (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗ ReallocMremapFrame maddrs tp st g ∗
                    MallocngLiveAuth (fineBaseGam γ) st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
                    (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-                   ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-                   MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
+                   MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗
+                   MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
                    ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
                    MallocngBlockToken (fineBaseGam γ) p oldSz ∗ FrameAl))
                 (Entails.of_eq (by
                   generalize (MallocngRoTablesAt maddrs) = PRo
                   generalize (ReallocMremapFrame maddrs tp st g) = PFr
-                  generalize (MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
+                  generalize (MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
                   ac_rfl)) ?_
               rw [← hSf144]
               refine Entails.pure_left fun hclM => Entails.pure_left fun ⟨hpM, hbM⟩ =>
@@ -555,8 +558,9 @@ theorem realloc_stage3_fine_of_raw
               exact Entails.pure_right ⟨hclM, hpM, hbM, hpmM⟩ (Entails.of_eq (by
                 generalize (MallocngRoTablesAt maddrs) = PRo
                 generalize (ReallocMremapFrame maddrs tp st g) = PFr
-                generalize (MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
+                generalize (MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
                 ac_rfl))) ?_
+          apply SepWP.exists_left; intro err32
           apply SepWP.pure_elim; rintro ⟨hclMr, hProcMr, hBrkMr, hPermMr⟩
           clear hsCall
           apply sepWP_abstract_all; intro PGoal4 postGoal4 oomGoal4 hPG4 hPostG4 hOomG4
@@ -576,7 +580,7 @@ theorem realloc_stage3_fine_of_raw
           refine SepWP.weaken_pre
             (unextract_to_stage4_fine (align := align) γ tp brkStart bgt live0 peak0 ivs0 s0 sF
               alignMap0 hInv0 hCount hwf hg hIdx origBs tailBs hUserLen hTailLen hSlot hSc63
-              hBrk0F (hProc0F.2.2.1.trans htp0) (hProc0F.2.2.2.1.trans hbrks0) sp1 Frame) ?_
+              hBrk0F (hProc0F.2.2.1.trans htp0) (hProc0F.2.2.2.1.trans hbrks0) err32 sp1 Frame) ?_
           exact realloc_stage4_oop_fine_ok placed_libcMallocImpl_raw_fine_ok (align := align)
             hb γ tp brkStart bgt ivs0 s0 sF origBs hpNe hpOld48 hOrigLe hNewMax
             (by rw [hsF]; simp only [wp_norm, arm64_norm, hb])
@@ -610,8 +614,8 @@ theorem realloc_stage3_fine_of_raw
                   ReallocMremapFrame maddrs tp st g ∗
                   MallocngLiveAuth (fineBaseGam γ) st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
                   (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-                  ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-                  MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
+                  MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗
+                  MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
                   ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
                   MallocngBlockToken (fineBaseGam γ) p oldSz ∗ FrameAl)))
             (by
@@ -634,14 +638,14 @@ theorem realloc_stage3_fine_of_raw
                     ReallocMremapFrame maddrs tp st g ∗
                     MallocngLiveAuth (fineBaseGam γ) st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
                     (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-                    ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-                    MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
+                    MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗
+                    MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
                     ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
                     MallocngBlockToken (fineBaseGam γ) p oldSz ∗ FrameAl)))
                 (Entails.of_eq (by
                   generalize (MallocngRoTablesAt maddrs) = PRo
                   generalize (ReallocMremapFrame maddrs tp st g) = PFr
-                  generalize (MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
+                  generalize (MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
                   ac_rfl)) ?_
               rw [← hSf144]
               refine Entails.pure_left fun _ => Entails.pure_left fun ⟨hpM, hbM⟩ =>
@@ -649,7 +653,7 @@ theorem realloc_stage3_fine_of_raw
               exact Entails.pure_right ⟨hpM, hbM, hRest⟩ (Entails.of_eq (by
                 generalize (MallocngRoTablesAt maddrs) = PRo
                 generalize (ReallocMremapFrame maddrs tp st g) = PFr
-                generalize (MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
+                generalize (MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
                 ac_rfl))) ?_
           apply SepWP.exists_left; intro newBase
           apply SepWP.pure_elim
@@ -748,15 +752,15 @@ theorem realloc_stage3_fine_of_raw
                ReallocMremapFrame maddrs tp st g ∗
                MallocngLiveAuth (fineBaseGam γ) st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
                (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-               ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-               MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
+               MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗
+               MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
                ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
                MallocngBlockToken (fineBaseGam γ) p oldSz ∗ FrameAl))
             (Entails.of_eq (by
               rw [← hBsEq, hNeedEqOld]
               generalize (MallocngRoTablesAt maddrs) = PRo
               generalize (ReallocMremapFrame maddrs tp st g) = PFr
-              generalize (MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
+              generalize (MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap) = PAu
               ac_rfl)) ?_
           refine SepWP.mono
             (realloc_s3_post_mremap_fine_of_raw hPostRaw hb γ tp brkStart bgt bCoarse ivs0

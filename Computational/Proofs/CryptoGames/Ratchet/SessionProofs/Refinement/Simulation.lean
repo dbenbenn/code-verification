@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.WindowSpur
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RoundTrip
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.WindowSpur -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RoundTrip -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
 
@@ -24,7 +24,7 @@ Couples the libsignal R1 session game with the Fig. 8 H1 game under `LibsignalSi
 ambiguous-receive, spurious-step, epoch-0 injection, and ratchet-key collision bad events.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -45,7 +45,7 @@ variable {Pt PQ PQC : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [Inha
 
 /-- Coupling relation bounding `{true}` probability distance up to window, slack, and epoch-0 bad
 events. -/
-def CloseByRefines (n : ℕ) (d : ℝ≥0∞)
+@[expose] def CloseByRefines (n : ℕ) (d : ℝ≥0∞)
     (cR cS : ProbComp Bool) (cWin : ℕ → ProbComp Bool) (cEps0 : ProbComp Bool) : Prop :=
   𝒟[cR] {true} ≤
       𝒟[cS] {true} + (∑ k ∈ Finset.range n, 𝒟[cWin k] {true}) + d + 𝒟[cEps0] {true} ∧
@@ -370,10 +370,10 @@ theorem epMgmt_corrs_eq {St Msg C : Type}
     · injection h with h; subst h; rfl
 
 /-- Post-acceptance condition under which `eps0Event` is absorbed for the remainder of a run. -/
-def eps0BaseCond {St Msg C : Type} (s : SM.GameState St Msg C) : Prop :=
+@[expose] def eps0BaseCond {St Msg C : Type} (s : SM.GameState St Msg C) : Prop :=
   0 < s.maxAcc .A 0 ∧ (.B, 0) ∉ s.corrs ∧ 0 < s.epoch .B
 
-def eps0Cond {St Msg C : Type} (s : SM.GameState St Msg C) : Prop :=
+@[expose] def eps0Cond {St Msg C : Type} (s : SM.GameState St Msg C) : Prop :=
   eps0BaseCond s ∨ (s.win = true ∧ (.B, 0) ∉ s.corrs)
 
 theorem eps0BaseCond_accept {St Msg C : Type} {s : SM.GameState St Msg C}
@@ -632,7 +632,7 @@ theorem evalDist_simulateQ_oracleImplR_eps0_true {Key St Msg Coins RCoins C α :
 
 /-! ## Step and continuation wrappers -/
 
-def stepR {Key St Msg Coins RCoins C : Type}
+@[expose] def stepR {Key St Msg Coins RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] [SampleableType RCoins]
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : SM.ConfigR St Msg C)
     (q : (SM.spec St Msg Coins C).Domain)
@@ -640,7 +640,7 @@ def stepR {Key St Msg Coins RCoins C : Type}
     ProbComp ((SM.spec St Msg Coins C).Range q × SM.GameState St Msg C) :=
   (SM.oracleImplR sm Δ qep cfg q).run s
 
-def runRCont {Key St Msg Coins RCoins C α : Type}
+@[expose] def runRCont {Key St Msg Coins RCoins C α : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] [SampleableType RCoins]
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : SM.ConfigR St Msg C)
     (oa : SM.AdversaryComp St Msg Coins C α)
@@ -688,7 +688,7 @@ theorem runRCont_inr_bind {Key St Msg Coins RCoins C α : Type}
     id_eq, StateT.run_bind]
   rfl
 
-def stepSimNone (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepSimNone (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
     (q : (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))).Domain)
@@ -798,16 +798,16 @@ theorem eps0Event_eq_runRCont (P : Params PQ PQC) (ℓ : ℕ) (encPt : Pt → Li
 
 /-! ## Eager-coin formulation of `lFig8` -/
 
-def sampleWindowCoin (w : Bool) : ProbComp (BitVec 256) :=
+@[expose] def sampleWindowCoin (w : Bool) : ProbComp (BitVec 256) :=
   if w then ($ᵗ BitVec 256 : ProbComp (BitVec 256)) else pure 0
 
-def withEagerCoins {α : Type} {ℓ : ℕ} (mir : SM.GameState Unit (Plain ℓ) (List (BitVec 8)))
+@[expose] def withEagerCoins {α : Type} {ℓ : ℕ} (mir : SM.GameState Unit (Plain ℓ) (List (BitVec 8)))
     (f : (Party → BitVec 256) → ProbComp α) : ProbComp α := do
   let cA ← sampleWindowCoin (inReceiveOnlyEpoch mir .A)
   let cB ← sampleWindowCoin (inReceiveOnlyEpoch mir .B)
   f (fun Q => match Q with | .A => cA | .B => cB)
 
-def updateEagerCoin (wasIn nowIn used : Bool) (old : BitVec 256) : ProbComp (BitVec 256) :=
+@[expose] def updateEagerCoin (wasIn nowIn used : Bool) (old : BitVec 256) : ProbComp (BitVec 256) :=
   if nowIn then
     if wasIn && !used then pure old
     else ($ᵗ BitVec 256 : ProbComp (BitVec 256))
@@ -820,7 +820,7 @@ theorem evalDist_updateEagerCoin_unused (wasIn nowIn : Bool)
   cases wasIn <;> cases nowIn <;>
     simp [sampleWindowCoin, updateEagerCoin, OracleComp.evalDist_bind_const]
 
-def updateAllEagerCoins {ℓ : ℕ}
+@[expose] def updateAllEagerCoins {ℓ : ℕ}
     (mir mir' : SM.GameState Unit (Plain ℓ) (List (BitVec 8)))
     (used : Party → Bool) (ec : Party → BitVec 256) : ProbComp (Party → BitVec 256) := do
   let cA' ← updateEagerCoin (inReceiveOnlyEpoch mir .A) (inReceiveOnlyEpoch mir' .A) (used .A) (ec .A)
@@ -973,7 +973,7 @@ theorem scheme_send_coins_eq_of_not_sendsIn
 
 /-! ## Pure characterizations of `SM.oracleImpl` steps -/
 
-def deliverPure {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def deliverPure {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     (sm : SMScheme Key St Msg Coins C) (cfg : SM.Config Msg)
     (P : Party) (c : C) (s : SM.GameState St Msg C) :
     Option (SM.RecvResult Msg) × SM.GameState St Msg C :=
@@ -1013,7 +1013,7 @@ theorem deliverImpl_run_eq {Key St Msg Coins C : Type} [DecidableEq Msg] [Decida
         simp only [hrcv]
         split <;> simp [StateT.run_bind, StateT.run_set]
 
-def injectPure {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def injectPure {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) (cfg : SM.Config Msg)
     (P : Party) (c : C) (s : SM.GameState St Msg C) :
     Option (SM.RecvResult Msg) × SM.GameState St Msg C :=
@@ -1048,7 +1048,7 @@ theorem injectImpl_run_eq {Key St Msg Coins C : Type} [DecidableEq Msg] [Decidab
         · simp [StateT.run_bind, StateT.run_set]
         · split <;> simp [StateT.run_bind, StateT.run_set]
 
-def corrPure {St Msg C : Type} (P : Party) (s : SM.GameState St Msg C) :
+@[expose] def corrPure {St Msg C : Type} (P : Party) (s : SM.GameState St Msg C) :
     Option St × SM.GameState St Msg C :=
   if s.win || !(s.corrAllowed P) then (none, s)
   else (some (s.st P), s.afterCorr P)
@@ -1059,7 +1059,7 @@ theorem corrImpl_run_eq {St Msg C : Type} (P : Party) (s : SM.GameState St Msg C
   simp only [StateT.run_bind, StateT.run_get, pure_bind]
   split <;> simp [StateT.run_bind, StateT.run_set]
 
-def transmitPure {Key St Msg Coins C : Type}
+@[expose] def transmitPure {Key St Msg Coins C : Type}
     (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
     (P : Party) (m : Msg) (coins : Coins) (bad : Bool) (s : SM.GameState St Msg C) :
     Option C × SM.GameState St Msg C :=
@@ -1084,7 +1084,7 @@ theorem transmitImpl_run_eq {Key St Msg Coins C : Type} [SampleableType Coins]
     congr 1; funext cb
     cases hep : s.epMgmt Δ qep P cb.2 <;> simp [hep, StateT.run_bind, StateT.run_set]
 
-def challPure {Key St Msg Coins C : Type}
+@[expose] def challPure {Key St Msg Coins C : Type}
     (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) (cfg : SM.Config Msg)
     (P : Party) (m₀ m₁ : Msg) (coins : Coins) (bad : Bool) (s : SM.GameState St Msg C) :
     Option C × SM.GameState St Msg C :=
@@ -1229,7 +1229,7 @@ theorem simulateQ_challQuery_run {Key St Msg Coins C α : Type}
   rw [h1, challImpl_run_eq]
   split <;> simp [bind_assoc, pure_bind]
 
-def fwdPure {Key : Type} {ℓ : ℕ}
+@[expose] def fwdPure {Key : Type} {ℓ : ℕ}
     (sm : SMScheme Key (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
     (Δ qep : ℕ) (cfg : SM.Config (LibsignalMsgPublicPart × Plain ℓ))
     (simSt : SimState PQ Pt ℓ) (Q : Party) (c : Fig8C Pt)
@@ -1293,7 +1293,7 @@ theorem simulateQ_coin_run {Key α β : Type} [SampleableType α] {ℓ : ℕ}
   rw [Construction.AuthL11.simulateQ_liftM_run]
   simp only [bind_assoc, pure_bind]
 
-def simCorrPure (P : Params PQ PQC) {ℓ : ℕ} (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simCorrPure (P : Params PQ PQC) {ℓ : ℕ} (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (Q : Party)
     (st : SimState PQ Pt ℓ × SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) :
     Option (GhostState PQ) ×
@@ -1351,7 +1351,7 @@ theorem mkPub_isSome (P : Params PQ PQC) {ℓ : ℕ} (hS : ∀ st r, (P.spqr.sen
     (LibsignalSim.mkPub (P := P) s Q rq pn).isSome := by
   simp [LibsignalSim.mkPub, hS]
 
-def simSendStep (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simSendStep (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
     (Q : Party) (m₀ : Plain ℓ) (chal : Option (Plain ℓ)) (bad : Bool)
@@ -1511,7 +1511,7 @@ theorem stepSimNone_chall_eq (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec
   have h := stepSim_send_run_eq P ℓ Dh encPt encT idOf lam qep hS Q m₀ (some m₁) r st hwin
   simpa [stepSimNone, LibsignalSim.simImpl] using h
 
-def onAcceptPure {ℓ : ℕ} (qep : ℕ) (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
+@[expose] def onAcceptPure {ℓ : ℕ} (qep : ℕ) (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
     (t i : ℕ) (m : Plain ℓ) (ci? : Option ℕ) (T : PublicKey) (pq' : PQ)
     (s : SimState PQ Pt ℓ) :
     Option (SM.RecvResult (Plain ℓ)) × SimState PQ Pt ℓ :=
@@ -1553,7 +1553,7 @@ theorem onAccept_run_eq {ℓ : ℕ} (qep : ℕ) (Q : Party) (w : List (BitVec 8)
     · simp
     · split <;> simp [LibsignalSim.putS, StateT.run_bind, StateT.run_set]
 
-def onAnswerPure {ℓ : ℕ} (qep : ℕ) (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
+@[expose] def onAnswerPure {ℓ : ℕ} (qep : ℕ) (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
     (ci? : Option ℕ) (T : PublicKey) (pq' : PQ)
     (res : Option (SM.RecvResult (LibsignalMsgPublicPart × Plain ℓ))) (s : SimState PQ Pt ℓ) :
     Option (SM.RecvResult (Plain ℓ)) × SimState PQ Pt ℓ :=
@@ -1575,7 +1575,7 @@ theorem onAnswer_run_eq {ℓ : ℕ} (qep : ℕ) (Q : Party) (w : List (BitVec 8)
     | rejected => rfl
     | accepted t i pm => exact onAccept_run_eq qep Q w isDel t i ((pm.map (·.2)).getD default) ci? T pq' s
 
-def simRecvUsesCoin (P : Params PQ PQC) {ℓ : ℕ}
+@[expose] def simRecvUsesCoin (P : Params PQ PQC) {ℓ : ℕ}
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (k : Option ℕ)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
     (st : SimState PQ Pt ℓ × SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) : Bool :=
@@ -1610,7 +1610,7 @@ def simRecvUsesCoin (P : Params PQ PQC) {ℓ : ℕ}
               if !(inReceiveOnlyEpoch s.mir Q) then false else !s_fig8.win
             else false
 
-def spurPtStep (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def spurPtStep (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (decT : PublicKey → Option Pt) {ℓ : ℕ}
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (c_cka : BitVec 256)
     (st : SimState PQ Pt ℓ × SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) : Bool :=
@@ -1679,7 +1679,7 @@ theorem spurPtStep_prob_le (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
                 · rename_i hT
                   exact spurBadSinglePt_prob_le P encPt Dh Q (st.2.st Q).root T_base hT_base w salt T hT
 
-def simRecvStep (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simRecvStep (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (c_cka : BitVec 256)
@@ -1838,7 +1838,7 @@ theorem stepSim_recv_run_eq_none (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (Bi
                                 simp only [onAnswer_run_eq, StateT.run_pure, simulateQ_pure, pure_bind, sm]
   · simp only [ite_true, Bool.false_eq_true, ite_false, StateT.run_pure, simulateQ_pure, pure_bind]
 
-def stepSim (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepSim (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (q : (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))).Domain)
@@ -1864,14 +1864,14 @@ def stepSim (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     | q' =>
       stepSimNone P ℓ Dh encPt encT decT idOf lam qep q' st
 
-def simStepImpl (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simStepImpl (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ) :
     QueryImpl (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (StateT (SimState PQ Pt ℓ × SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) ProbComp) :=
   fun q => StateT.mk fun st => stepSim P ℓ Dh encPt encT decT idOf lam qep k q st
 
-def runSim {α : Type} (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def runSim {α : Type} (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (oa : SM.AdversaryComp (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)) α)
@@ -2087,7 +2087,7 @@ theorem inWin_of_simRecvUsesCoin (P : Params PQ PQC) {ℓ : ℕ}
   revert h
   repeat' (first | split | (intro h; simp [hf] at *))
 
-def stepSimEagerTransmit (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepSimEagerTransmit (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (Q : Party) (m₀ : Plain ℓ) (r : Option PQC)
@@ -2113,7 +2113,7 @@ def stepSimEagerTransmit (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256
     updateAllEagerCoins st.1.mir res.2.1.mir (fun _ => false) ec >>= fun ec' =>
     pure (res.1, (res.2, ec'))
 
-def stepSimEagerChall (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepSimEagerChall (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (Q : Party) (m₀ m₁ : Plain ℓ) (r : Option PQC)
@@ -2144,7 +2144,7 @@ def stepSimEagerChall (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) P
     updateAllEagerCoins st.1.mir res.2.1.mir (fun _ => false) ec >>= fun ec' =>
     pure (res.1, (res.2, ec'))
 
-def stepSimEagerDeliver (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepSimEagerDeliver (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (Q : Party) (w : List (BitVec 8))
@@ -2162,7 +2162,7 @@ def stepSimEagerDeliver (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256)
     updateAllEagerCoins st.1.mir res.2.1.mir (fun _ => false) ec >>= fun ec' =>
     pure (res.1, (res.2, ec'))
 
-def stepSimEagerInject (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepSimEagerInject (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (Q : Party) (w : List (BitVec 8))
@@ -2180,7 +2180,7 @@ def stepSimEagerInject (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) 
     updateAllEagerCoins st.1.mir res.2.1.mir (fun _ => false) ec >>= fun ec' =>
     pure (res.1, (res.2, ec'))
 
-def stepSimEagerCorr (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepSimEagerCorr (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (Q : Party)
@@ -2193,7 +2193,7 @@ def stepSimEagerCorr (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt
   updateAllEagerCoins st.1.mir res.2.1.mir (fun _ => false) ec >>= fun ec' =>
   pure (res.1, (res.2, ec'))
 
-def stepSimEager (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def stepSimEager (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (q : (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))).Domain)
@@ -2415,7 +2415,7 @@ theorem evalDist_stepSimEager (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVe
   · exact evalDist_stepSimEagerInject P ℓ Dh encPt encT decT idOf lam qep k Q w st G
   · exact evalDist_stepSimEagerCorr P ℓ Dh encPt encT decT idOf lam qep k Q st G
 
-def simEagerImpl (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simEagerImpl (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ) :
     QueryImpl (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
@@ -2423,7 +2423,7 @@ def simEagerImpl (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
         (Party → BitVec 256)) ProbComp) :=
   fun q => StateT.mk fun ⟨st, ec⟩ => stepSimEager P ℓ Dh encPt encT decT idOf lam qep k q st ec
 
-def runSimEager {α : Type} (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def runSimEager {α : Type} (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (oa : SM.AdversaryComp (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)) α)
@@ -2643,7 +2643,7 @@ theorem evalDist_runSimEager_win_true {α : Type} (P : Params PQ PQC) (ℓ : ℕ
   intro q s hs
   exact stepSimEager_preserve_win_true P ℓ Dh encPt encT decT idOf lam qep k q s.1 s.2 hs hk
 
-def ValidEagerCoins {ℓ : ℕ} (mir : SM.GameState Unit (Plain ℓ) (List (BitVec 8)))
+@[expose] def ValidEagerCoins {ℓ : ℕ} (mir : SM.GameState Unit (Plain ℓ) (List (BitVec 8)))
     (ec : Party → BitVec 256) : Prop :=
   ∀ R, inReceiveOnlyEpoch mir R = false → ec R = 0
 
@@ -2693,7 +2693,7 @@ theorem validEagerCoins_of_mem_support_updateAllEagerCoins {ℓ : ℕ}
     simp only [Bool.false_eq_true, ↓reduceIte, support_pure, Set.mem_singleton_iff] at hcB'
     exact hcB'
 
-def smRangeNone {St Msg Coins C : Type}
+@[expose] def smRangeNone {St Msg Coins C : Type}
     (q : (SM.spec St Msg Coins C).Domain) : (SM.spec St Msg Coins C).Range q :=
   match q with
   | .inl (.inl (.inl (.inl _))) => none
@@ -3238,7 +3238,7 @@ theorem stepR_chall_eq {Key St Msg Coins RCoins C : Type}
     exact challImpl_run_eq sm.sendPart Δ qep cfg.base P m₀ m₁ r s
   · simp
 
-def deliverRPure {Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def deliverRPure {Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
     (sm : SMSchemeR Key St Msg Coins RCoins C) (cfg : SM.ConfigR St Msg C)
     (P : Party) (c : C) (rc : RCoins) (s : SM.GameState St Msg C) :
     Option (SM.RecvResult Msg) × SM.GameState St Msg C :=
@@ -3287,7 +3287,7 @@ theorem stepR_deliver_eq {Key St Msg Coins RCoins C : Type}
         simp only [hrcv]
         split <;> simp [StateT.run_bind, StateT.run_set]
 
-def injectRPure {Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def injectRPure {Key St Msg Coins RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : SM.ConfigR St Msg C)
     (P : Party) (c : C) (rc : RCoins) (s : SM.GameState St Msg C) :
     Option (SM.RecvResult Msg) × SM.GameState St Msg C :=
@@ -3331,7 +3331,7 @@ theorem stepR_inject_eq {Key St Msg Coins RCoins C : Type}
         · simp [StateT.run_bind, StateT.run_set]
         · split <;> simp [StateT.run_bind, StateT.run_set]
 
-def corrRPure {St Msg C : Type} (cfg : SM.ConfigR St Msg C) (P : Party)
+@[expose] def corrRPure {St Msg C : Type} (cfg : SM.ConfigR St Msg C) (P : Party)
     (s : SM.GameState St Msg C) : Option St × SM.GameState St Msg C :=
   if s.win || !(s.corrAllowed P) || (cfg.r1 && SM.inWindow s P) || !(cfg.corrOK s P) then
     (none, s)
@@ -3426,10 +3426,10 @@ theorem stepR_configD0_eq_configR1Inj (P : Params PQ PQC) (ℓ : ℕ)
 
 /-! ## Window potential -/
 
-def winCount {St Msg C : Type} (s : SM.GameState St Msg C) : ℕ :=
+@[expose] def winCount {St Msg C : Type} (s : SM.GameState St Msg C) : ℕ :=
   s.epoch .A / 2 + (s.epoch .B + 1) / 2
 
-def remWin {St Msg C : Type} (qep : ℕ) (s : SM.GameState St Msg C) : ℕ :=
+@[expose] def remWin {St Msg C : Type} (qep : ℕ) (s : SM.GameState St Msg C) : ℕ :=
   qep - winCount s
 
 theorem winCount_le_of_epoch_le {St Msg C : Type} {s : SM.GameState St Msg C} {qep : ℕ}
@@ -3508,24 +3508,24 @@ theorem winCount_accept_succ {St Msg C : Type} (s : SM.GameState St Msg C)
 
 /-! ## Core simulator coupling definitions -/
 
-def SpqrOffCorrectLocal (S : Spqr PQ PQC) : Prop :=
+@[expose] def SpqrOffCorrectLocal (S : Spqr PQ PQC) : Prop :=
   (∀ st r, (S.send st r).isSome) ∧
   (∀ st r st' salt msg, S.send st r = some (st', salt, msg) →
     ∀ st₂, ∃ st₂', S.recv st₂ msg = .ok (st₂', salt)) ∧
   (∀ st r, S.sendPanics st r = false) ∧ (∀ st msg, S.recvPanics st msg = false)
 
-def resolveSpkChains (spkKey : PublicKey) (cs : Party → List GhostChain) (Q : Party) :
+@[expose] def resolveSpkChains (spkKey : PublicKey) (cs : Party → List GhostChain) (Q : Party) :
     List GhostChain :=
   if Q == Party.A then
     (cs .A).map fun g => if g.key.isNone then { g with key := some spkKey } else g
   else
     cs Q
 
-def resolveSim {ℓ : ℕ} (spkKey : PublicKey) (s : SimState PQ Pt ℓ) : SimState PQ Pt ℓ :=
+@[expose] def resolveSim {ℓ : ℕ} (spkKey : PublicKey) (s : SimState PQ Pt ℓ) : SimState PQ Pt ℓ :=
   { s with chains := resolveSpkChains spkKey s.chains }
 
 /-- Expected `GhostState` of party `Q` in `s_R` from simulator state `s`, Fig. 8 state `st`, and eager coin `c_eager`. -/
-def expectedGhost (P : Params PQ PQC) {ℓ : ℕ} (Dh : DHFun (BitVec 256) Pt)
+@[expose] def expectedGhost (P : Params PQ PQC) {ℓ : ℕ} (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (spkKey : PublicKey)
     (s : SimState PQ Pt ℓ) (Q : Party) (st : Fig8St Pt) (c_eager : BitVec 256) :
     GhostState PQ :=
@@ -3566,7 +3566,7 @@ theorem expectedGhost_chainEpochs (P : Params PQ PQC) {ℓ : ℕ} (Dh : DHFun (B
   · cases st.γ <;> simp [toGhost, withEager]
   · simp [toGhost]
 
-noncomputable def stepSlack (P : Params PQ PQC) (encPt : Pt → List (BitVec 8))
+@[expose] noncomputable def stepSlack (P : Params PQ PQC) (encPt : Pt → List (BitVec 8))
     (Dh : DHFun (BitVec 256) Pt) (q qep : ℕ) (δ : ℝ≥0∞) (r_win : ℕ) : ℝ≥0∞ :=
   (q * r_win : ℕ) * spurUnit P.C.F encPt Dh +
     (r_win : ℝ≥0∞) * ((q + qep + 2 : ℝ≥0∞) * δ)
@@ -3764,10 +3764,10 @@ theorem drop_append_singleton_drop {α : Type} (L : List α) (x : α) :
     congr 2
     omega
 
-def rawEpListA (n : ℕ) : List ℕ := (List.range (n + 1)).map (2 * ·)
-def rawEpListB (n : ℕ) : List ℕ := (List.range n).map (2 * · + 1)
-def epListA (n : ℕ) : List ℕ := (rawEpListA n).drop (n + 1 - 5)
-def epListB (n : ℕ) : List ℕ := (rawEpListB n).drop (n - 5)
+@[expose] def rawEpListA (n : ℕ) : List ℕ := (List.range (n + 1)).map (2 * ·)
+@[expose] def rawEpListB (n : ℕ) : List ℕ := (List.range n).map (2 * · + 1)
+@[expose] def epListA (n : ℕ) : List ℕ := (rawEpListA n).drop (n + 1 - 5)
+@[expose] def epListB (n : ℕ) : List ℕ := (rawEpListB n).drop (n - 5)
 
 @[local simp]
 theorem length_rawEpListA (n : ℕ) : (rawEpListA n).length = n + 1 := by
@@ -3941,7 +3941,7 @@ theorem updateAllEagerCoins_enter_inWin {ℓ : ℕ} (Q : Party)
 
 /-! ## Hybrid family wrapper -/
 
-def runWinAt {α : Type} (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def runWinAt {α : Type} (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
     (oa : SM.AdversaryComp (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)) α)
@@ -3985,7 +3985,7 @@ theorem closeByRefines_congr_all {n : ℕ} {d : ℝ≥0∞}
   rw [hR, hS, hsum, hEps0]
   exact h
 
-def simRecvStepEager (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simRecvStepEager (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
@@ -4339,7 +4339,7 @@ theorem evalDist_runWinAt_inr_deliver_amb_bind {α γ : Type} (P : Params PQ PQC
 
 /-! ## Active-epoch and ghost-state lemmas -/
 
-def maxActiveEp {ℓ : ℕ} (mir : SM.GameState Unit (Plain ℓ) (List (BitVec 8))) (R : Party) : ℕ :=
+@[expose] def maxActiveEp {ℓ : ℕ} (mir : SM.GameState Unit (Plain ℓ) (List (BitVec 8))) (R : Party) : ℕ :=
   mir.epoch R + if inReceiveOnlyEpoch mir R then 1 else 0
 
 structure SameMeta {ℓ : ℕ}
@@ -4779,7 +4779,7 @@ theorem resolveSim_afterCorr_B_epoch0 (Dh : DHFun (BitVec 256) Pt) (encT : Pt �
     rw [hchains]; rfl
 
 /-- Invariant on every `(w, c) ∈ s.honest` recorded by `simSendStep`. -/
-def HonestEntryInv (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def HonestEntryInv (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (epExp : ℕ → BitVec 256)
     (wc : List (BitVec 8) × Fig8C Pt) : Prop :=
   let w := wc.1
@@ -4847,7 +4847,7 @@ theorem expectedGhost_of_inWin_true (P : Params PQ PQC) {ℓ : ℕ} (Dh : DHFun 
   simp [expectedGhost, h, hγ]
 
 /-- Invariant on Alice's ghost receiver chains tracking eviction of epoch 0 by epoch 10. -/
-def ChainsEpochInvA (epA : ℕ) (cs : List GhostChain) : Prop :=
+@[expose] def ChainsEpochInvA (epA : ℕ) (cs : List GhostChain) : Prop :=
   (∀ g ∈ cs, g.key.isNone = true → g.epoch = 0) ∧
   ((10 ≤ epA ∧ ∀ e ∈ cs.map (·.epoch), 0 < e) ∨
    (epA < 10 ∧ cs.length = epA / 2 + 1 ∧ ∀ e ∈ (cs.map (·.epoch)).drop 1, 0 < e))

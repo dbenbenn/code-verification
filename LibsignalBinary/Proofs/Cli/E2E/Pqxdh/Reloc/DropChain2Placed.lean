@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.ClearUnacknowledgedPreKeyMessage -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `[LibsignalPlacement]` Contracts for `drop_glue::<Chain>` (Block `513`)
@@ -24,7 +25,7 @@ Verifies `core::ptr::drop_glue::<session_structure::Chain>` (`blkPC_513` / `blkP
 `dropProtoChainSpec A` and `dropChainSpec A` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.Cli.LibsignalE2E.Pqxdh.Reloc
 

@@ -9,18 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4c0PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4c0PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlacedBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4c
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4b -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4c0 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4aPlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 4 (`EkSentCt1Received`) — Part C
@@ -29,7 +39,7 @@ Relocatable Block-`333` post-`<PolyDecoder>::from_pb` continuations (`+2472 -> +
 and cross-block `<EkSentCt1Received>::from_pb` contract under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

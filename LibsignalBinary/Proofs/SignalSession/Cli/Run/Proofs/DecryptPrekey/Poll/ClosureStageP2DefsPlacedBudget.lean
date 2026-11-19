@@ -11,16 +11,21 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Poll Stage P2 and Stage P3 Interfaces
@@ -31,7 +36,7 @@ and `StageP3PrevEmptyVRegsPlacedStmt` / `StageP3GenStepsVRegsPlacedStmt` (plus `
 variants).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -83,7 +88,7 @@ abbrev genP3S5PostFrame_placed :=
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `genP3Pre_placed` at
 `dpPollEntryPlaced + 0x1778#64` over `A.atState lim st_b s`. -/
-def genP3Pre_placed {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def genP3Pre_placed {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st_b : M.σ) [LibsignalPlacement]
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -96,7 +101,7 @@ def genP3Pre_placed {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `stageP3DispatchOkMid_placed`, evaluating
 `A.pool` at the post-Step5 machine state `s'` while indexing stack offsets at `s.sp`. -/
-def stageP3DispatchOkMid_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3DispatchOkMid_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s' : State)
     (coroPtr outPtr initErrsPtr prevStatesPtr ptCap ptPtr : BitVec 64)
     (pt : List (BitVec 8)) (b_2c0 : BitVec 8)
@@ -107,7 +112,7 @@ def stageP3DispatchOkMid_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `stageP3ErrPost_placed`, evaluating
 `A.pool` at the exit machine state `sf` while indexing stack offsets at `s.sp`. -/
-def stageP3ErrPost_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3ErrPost_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s sf : State)
     (coroPtr outPtr prevStatesPtr : BitVec 64)
     (e : SignalProtocolError) : SepProp :=
@@ -116,7 +121,7 @@ def stageP3ErrPost_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `stageP3DispatchOkMidPrevEmpty_placed`,
 evaluating `A.pool` at the post-Step5 machine state `s'` while indexing stack offsets at `s.sp`. -/
-def stageP3DispatchOkMidPrevEmpty_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3DispatchOkMidPrevEmpty_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s' : State)
     (coroPtr outPtr initErrsPtr ptCap ptPtr : BitVec 64) (g : RecordGhost)
     (pt : List (BitVec 8)) (b_2c0 : BitVec 8)
@@ -126,7 +131,7 @@ def stageP3DispatchOkMidPrevEmpty_placed [LibsignalPlacement] {M : AllocCostMode
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `stageP3ErrPostPrevEmpty_placed`,
 evaluating `A.pool` at the exit machine state `sf` while indexing stack offsets at `s.sp`. -/
-def stageP3ErrPostPrevEmpty_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3ErrPostPrevEmpty_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s sf : State)
     (coroPtr outPtr : BitVec 64)
     (e : SignalProtocolError) : SepProp :=
@@ -135,7 +140,7 @@ def stageP3ErrPostPrevEmpty_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded `[LibsignalPlacement]` `ChainClone3OkPlaced` at Block `524`
 (`<SessionStructure_Chain as Clone>::clone [local#5]`). -/
-def ChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_524).rebase (blkPl_524).base H) (lsmpl.base 524)
@@ -143,7 +148,7 @@ def ChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded `[LibsignalPlacement]` `SenderChainClone3OkPlaced` at Block `524`
 (`<SessionStructure_Chain as Clone>::clone [local#5]`). -/
-def SenderChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SenderChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_524).rebase (blkPl_524).base H) (lsmpl.base 524)
@@ -151,7 +156,7 @@ def SenderChainClone3OkPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Stack-pointer-independent `TryDecryptEnvArgs` at the Stage P3 `try_decrypt_with_state`
 call site (`msgType :=.preKey`). -/
-def stageP3TryDecryptEnvArgs (G₁ : SessionGhost) (st : SessionState (List (BitVec 8)))
+@[expose] def stageP3TryDecryptEnvArgs (G₁ : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
     (rest : List (BitVec 8)) : TryDecryptEnvArgs where
   G := G₁
@@ -166,7 +171,7 @@ def stageP3TryDecryptEnvArgs (G₁ : SessionGhost) (st : SessionState (List (Bit
 /-- Stage P3 `Ok`-branch (`+0x1778 → +0x34dc`) prefix allocation envelope for cloned `G₁`:
 `SessionStructure::clone` (`SegCloneEnv`), `try_decrypt_with_state` (`tdEnv`), and
 `set_session_state` (`FreeOnlyEvs`). -/
-def StageP3OkPrefixEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
+@[expose] def StageP3OkPrefixEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (recG G₁ : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
     (rest : List (BitVec 8)) : List AllocEvent → Prop :=
@@ -176,7 +181,7 @@ def StageP3OkPrefixEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
 /-- Stage P3 `st.version = msgVer` full/error allocation envelope for cloned `G₁`:
 `SessionStructure::clone` (`SegCloneEnv`), `try_decrypt_with_state` (`tdEnv`), and
 `FromVPostTdEnv` (`FreeOnlyEvs ∨ FromMEnv`). -/
-def StageP3ErrEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
+@[expose] def StageP3ErrEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (recG G₁ : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
     (rest : List (BitVec 8)) : List AllocEvent → Prop :=
@@ -186,13 +191,13 @@ def StageP3ErrEnv (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
 /-- Stage P3 `st.version ≠ msgVer` allocation envelope: `SessionStructure::clone` (`SegCloneEnv`)
 followed by `FromMEnv` (`grow_one` at `cap = 0`, drop cloned state, allocate 17-byte
 `"decryption failed"`, and drop coro state). -/
-def StageP3VerNeEnv (recG : SessionGhost) (st : SessionState (List (BitVec 8))) :
+@[expose] def StageP3VerNeEnv (recG : SessionGhost) (st : SessionState (List (BitVec 8))) :
     List AllocEvent → Prop :=
   SeqEnv (SegCloneEnv recG st) FromMEnv
 
 /-- Combined Stage P3 entry allocation envelope covering `hOk` (via `FreeOnlyEvs ⊆ FromVPostTdEnv`),
 `hErr`, and `hVerNe`. -/
-def StageP3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
+@[expose] def StageP3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
     (msgVer : BitVec 32) (rest : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
@@ -205,13 +210,13 @@ def StageP3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
 /-- Budget-threaded relocatable `[LibsignalPlacement]` CLI `pollTryDecryptPlacedSpecP` weakened to
 `DistinctSid` (`remoteIdentity ≠ some localIdentity ∨ DistinctSid`), dropping `allocFailedIn`
 from `onPanic`. -/
-def pollTryDecryptPlacedSpecP [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pollTryDecryptPlacedSpecP [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
     Spec (TryDecryptGhost × M.σ) where
   pre := fun (x, st_b) s =>
-    ⌜FitsEnv M lim st_b (tdEnv (tryDecryptEnvArgs x))⌝ ∗
+    ⌜FitsEnv M lim st_b (tdEnv (tryDecryptEnvArgs x)) ∧ x.rem.name.bytes.length ≤ 40⌝ ∗
       (CryptoVerification.SignalSession.Cli.RunProofs.Poll.pollTryDecryptPlacedSpecP
         C (A.atState lim st_b s) ctl uuidParse S).pre x s
   post :=
@@ -224,7 +229,7 @@ def pollTryDecryptPlacedSpecP [LibsignalPlacement] {M : AllocCostModel}
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `pollTryDecryptPlacedSpecTPTight` for
 `StageP3*PlacedStmt`, using `tryDecryptOnPanicTight` (dropping both `S.recvPanics` and
 `allocFailedIn`). -/
-def pollTryDecryptPlacedSpecTPTight [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pollTryDecryptPlacedSpecTPTight [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -241,7 +246,7 @@ def pollTryDecryptPlacedSpecTPTight [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `cliTryDecryptPqV1_ok` contract on
 `dpPollProgPlaced ext` at Block `507`. -/
-def CliTryDecryptPqV1PlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliTryDecryptPqV1PlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (tdEnv : Crypto → SpqrModel → TryDecryptEnvArgs → List AllocEvent → Prop)
     (ext : Crypto → MlKem → String → Option (State → State)) : Prop :=
@@ -253,7 +258,7 @@ def CliTryDecryptPqV1PlacedStmt [LibsignalPlacement] {M : AllocCostModel}
         (pollTryDecryptPlacedSpecTPTight C A lim ctl uuidTryParse S (tdEnv C S)))
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `StageP3PrevEmptyVRegsPlacedStmt`. -/
-def StageP3PrevEmptyVRegsPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP3PrevEmptyVRegsPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
     {st_b : M.σ}
@@ -285,6 +290,7 @@ def StageP3PrevEmptyVRegsPlacedStmt [LibsignalPlacement] : Prop :=
       SeedsLen32 st →
       st.receiverChains.length < 2 ^ 32 →
       st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       LibsignalCodeRoLoaded lsmpl s.mem →
       s.pc = dpPollEntryPlaced + 0x1778#64 →
       s.status = .Running →
@@ -375,7 +381,7 @@ def StageP3PrevEmptyVRegsPlacedStmt [LibsignalPlacement] : Prop :=
         (genP3S5ModelPanicProp C K rem loc st msg msgVer rest s0)
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `StageP3GenStepsVRegsPlacedStmt`. -/
-def StageP3GenStepsVRegsPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP3GenStepsVRegsPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
     {st_b : M.σ}
@@ -404,6 +410,7 @@ def StageP3GenStepsVRegsPlacedStmt [LibsignalPlacement] : Prop :=
       SeedsLen32 st →
       st.receiverChains.length < 2 ^ 32 →
       st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       LibsignalCodeRoLoaded lsmpl s.mem →
       s.pc = dpPollEntryPlaced + 0x1778#64 →
       s.status = .Running →
@@ -495,7 +502,7 @@ def StageP3GenStepsVRegsPlacedStmt [LibsignalPlacement] : Prop :=
 
 /-! ## `LibsignalFrozen` Variants -/
 
-def StageP3PrevEmptyVRegsFrozenPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
+@[expose] def StageP3PrevEmptyVRegsFrozenPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
     {st_b : M.σ}
@@ -527,6 +534,7 @@ def StageP3PrevEmptyVRegsFrozenPlacedStmt [CryptoVerification.LibsignalFullPlace
       SeedsLen32 st →
       st.receiverChains.length < 2 ^ 32 →
       st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       CryptoVerification.LibsignalFrozen lsmpl s.mem →
       s.pc = dpPollEntryPlaced + 0x1778#64 →
       s.status = .Running →
@@ -616,7 +624,7 @@ def StageP3PrevEmptyVRegsFrozenPlacedStmt [CryptoVerification.LibsignalFullPlace
         Q
         (genP3S5ModelPanicProp C K rem loc st msg msgVer rest s0)
 
-def StageP3GenStepsVRegsFrozenPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
+@[expose] def StageP3GenStepsVRegsFrozenPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
     {st_b : M.σ}
@@ -645,6 +653,7 @@ def StageP3GenStepsVRegsFrozenPlacedStmt [CryptoVerification.LibsignalFullPlacem
       SeedsLen32 st →
       st.receiverChains.length < 2 ^ 32 →
       st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       CryptoVerification.LibsignalFrozen lsmpl s.mem →
       s.pc = dpPollEntryPlaced + 0x1778#64 →
       s.status = .Running →

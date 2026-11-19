@@ -9,19 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccount -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BinaryOomSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3ParseRejectPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmt
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeTop
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.HsOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.Ok
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperState
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.Common
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3ParseRejectPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmt
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeTop
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.HsOk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.Ok
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperState
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.Common
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge
@@ -40,6 +40,11 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStmts
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridge
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Matching-Session Path-B Pure Model, Store Invariants, and `decPkDef` Bridges
@@ -50,7 +55,7 @@ untrusted-identity trap branch for arbitrary wire payloads parsing via `Pksm.pks
 under a matching current session.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -95,7 +100,7 @@ structure DecPkOkPathB (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) �
 
 /-- Pure state-transition model for matching-session Path-B pre-key `recv` directly in terms of
 `(x, g)` and the parsed `PreKeySignalMessage` `pm`. -/
-noncomputable abbrev pqRecvMatchingModel := d3PqRecvMatchingModel
+abbrev pqRecvMatchingModel := d3PqRecvMatchingModel
 
 /-- `DecPkOkPathB` holds on `pqRecvInputs W st (wirePrekey :: body) rc` whenever
 `PqxdhPartyInSpecDomain W st`, `st.session = some (x, g)`, and `SessMatchesPm (pqSessionOf x g) pm`. -/
@@ -615,82 +620,6 @@ theorem dpCxAt_entails_memRegion32_d3 (cx : BitVec 64) :
   exact sepConj_mono (ProofLib.pointsTo64_entails_memRegion _ _)
     (sepConj_mono (ProofLib.pointsTo64_entails_memRegion _ _)
       (sepConj_mono (ProofLib.pointsTo64_entails_memRegion _ _) (Entails.refl _)))
-
-def dpPollEntrySpatial {B : RunBudgets} {S : RunSem} (img : Obj.Image) (stk' : Nat)
-    (y : DpPollGhostState (dpSlotPollKState E2E.HooksE.A0 img B S))
-    (s0 : State) (R : SepProp) : SepProp :=
-  memRegion y.out 48 ∗
-  dpFutStartAt y.fut (dpSlotArgs img y.g) ∗
-  memRegion y.cx 32 ∗
-  storesAt E2E.HooksE.A0 y.g.stores StoresGhost.opened ∗
-  protocolAddressAt E2E.HooksE.A0 y.g.peer y.g.peerA ∗
-  protocolAddressAt E2E.HooksE.A0 y.g.me y.g.meA ∗
-  coinsInstalled img y.g.coinsP y.g.coins ∗
-  TokenInit img ∗
-  logOff img ∗
-  E2E.HooksE.A0.pool ∗
-  preKeyMsgAt E2E.HooksE.A0 y.g.msgG y.g.msgA y.g.msg ∗
-  stackAt s0.sp stk' ∗ R
-
-structure DpPollEntryPurePathB {W : CliHooks}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {B : RunBudgets} {S : RunSem}
-    (img : Obj.Image) (stk' : Nat)
-    (y : DpPollGhostState (dpSlotPollKState E2E.HooksE.A0 img B S))
-    (s0 : State) : Prop where
-  inv : ImgCallInv img s0
-  x0 : s0.readReg64 .x0 = y.out
-  x1 : s0.readReg64 .x1 = y.fut
-  x2 : s0.readReg64 .x2 = y.cx
-  stk_le_sp : stk' ≤ s0.sp.toNat
-  files_eq : s0.fs.files = y.g.F
-  coins_lt : y.g.coins.length < 2 ^ 63
-  filesOkPeer : Slots.FilesOkPeer Scope y.g.F y.g.peer.val
-  decPkOk : DecPkOkPathB ⟨W.C, W.Q⟩ Scope y.g.F y.g.peer.val y.g.me.val y.g.msg
-
-theorem dpPollPre_unpack_pathB
-    {img : Obj.Image} {W : CliHooks} {B : RunBudgets} {S : RunSem}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    (hSemOk : ∀ F peer me pm, S.filesOk F peer me → S.decPkOk F peer me pm →
-      Slots.FilesOkPeer Scope F peer ∧ DecPkOkPathB ⟨W.C, W.Q⟩ Scope F peer me pm)
-    (stk' : Nat) (y : DpPollGhostState (dpSlotPollKState E2E.HooksE.A0 img B S))
-    (R : SepProp) (s0 : State)
-    (hpre : s0.mem ⊨ ((dpPollSpecState (dpSlotPollKState E2E.HooksE.A0 img B S) stk').inImage img).pre y s0 ∗ R) :
-    DpPollEntryPurePathB (W := W) (Scope := Scope) img stk' y s0 ∧
-      (s0.mem ⊨ dpPollEntrySpatial img stk' y s0 R) := by
-  have h1 : s0.mem ⊨ ⌜img.FrozenLoaded s0 ∧ s0.symtab = img.symtab⌝ ∗
-      (⌜s0.readReg64 .x0 = y.out ∧ s0.readReg64 .x1 = y.fut ∧ s0.readReg64 .x2 = y.cx ∧
-        (dpSlotArgs img y.g).length = 13 ∧ stk' ≤ s0.sp.toNat⌝ ∗
-      (memRegion y.out 48 ∗ dpFutStartAt y.fut (dpSlotArgs img y.g) ∗ dpCxAt y.cx ∗
-        (⌜s0.fs.files = y.g.F ∧ S.filesOk y.g.F y.g.peer.val y.g.me.val ∧
-            S.decPkOk y.g.F y.g.peer.val y.g.me.val y.g.msg⌝ ∗
-          (⌜y.g.coins.length < 2 ^ 63⌝ ∗
-            (storesAt E2E.HooksE.A0 y.g.stores StoresGhost.opened ∗
-              protocolAddressAt E2E.HooksE.A0 y.g.peer y.g.peerA ∗
-              protocolAddressAt E2E.HooksE.A0 y.g.me y.g.meA ∗
-              coinsInstalled img y.g.coinsP y.g.coins ∗ TokenInit img ∗ logOff img ∗
-              E2E.HooksE.A0.pool ∗ preKeyMsgAt E2E.HooksE.A0 y.g.msgG y.g.msgA y.g.msg ∗
-              stackAt s0.sp stk' ∗ R))))) := by
-    simpa only [Spec.inImage, dpPollSpecState, dpSlotPollKState, slotFrame, sepConj_assoc] using hpre
-  rw [satisfies_pure_sepConj] at h1; rcases h1 with ⟨hinv, h2⟩
-  rw [satisfies_pure_sepConj] at h2; rcases h2 with ⟨⟨hx0, hx1, hx2, _, hstk_sp⟩, h3⟩
-  have h3' : s0.mem ⊨
-      ⌜s0.fs.files = y.g.F ∧ S.filesOk y.g.F y.g.peer.val y.g.me.val ∧
-          S.decPkOk y.g.F y.g.peer.val y.g.me.val y.g.msg⌝ ∗
-        (⌜y.g.coins.length < 2 ^ 63⌝ ∗
-          (dpCxAt y.cx ∗ (memRegion y.out 48 ∗ dpFutStartAt y.fut (dpSlotArgs img y.g) ∗
-            storesAt E2E.HooksE.A0 y.g.stores StoresGhost.opened ∗
-            protocolAddressAt E2E.HooksE.A0 y.g.peer y.g.peerA ∗
-            protocolAddressAt E2E.HooksE.A0 y.g.me y.g.meA ∗
-            coinsInstalled img y.g.coinsP y.g.coins ∗ TokenInit img ∗ logOff img ∗
-            E2E.HooksE.A0.pool ∗ preKeyMsgAt E2E.HooksE.A0 y.g.msgG y.g.msgA y.g.msg ∗
-            stackAt s0.sp stk' ∗ R))) := by convert h3 using 1; ac_rfl
-  rw [satisfies_pure_sepConj] at h3'; rcases h3' with ⟨⟨hfiles, hfOk, hdOk⟩, h4⟩
-  rw [satisfies_pure_sepConj] at h4; rcases h4 with ⟨hcoins_lt, h5⟩
-  obtain ⟨hfPeer, hdecOk⟩ := hSemOk y.g.F y.g.peer.val y.g.me.val y.g.msg hfOk hdOk
-  have h5_cx := Arm64.Satisfies.mono (sepConj_mono_left (dpCxAt_entails_memRegion32_d3 y.cx)) h5
-  refine ⟨⟨hinv, hx0, hx1, hx2, hstk_sp, hfiles, hcoins_lt, hfPeer, hdecOk⟩, ?_⟩
-  dsimp only [dpPollEntrySpatial]; convert h5_cx using 1; ac_rfl
 
 section PlacedSection2B
 

@@ -184,7 +184,8 @@ theorem SepWP.step_svc_ppoll {prog : Program} {target_pc : BitVec 64}
       SepWP prog target_pc (((s.setMem m').writeReg64 .x0 (BitVec.ofNat 64 count)).setPC (pc + 4#64))
         ((ufds ↦ₛ bs') ∗ (((tsp ↦₆₄ 0#64) ∗ ((tsp + 8#64) ↦₆₄ 0#64)) ∗ F)) post oom)
     (hsvc : prog.evalInst (.system false 0#16) s = execPpoll s := by
-      simp [wp_norm, arm64_norm, Reg.x8, *]) :
+      simp [wp_norm, arm64_norm, Reg.x8, *])
+    (hufdsZeroFit : nfds = 0 → ufds.toNat ≤ USER_VA_LIMIT := by omega) :
     SepWP prog target_pc s
       ((ufds ↦ₛ bs₀) ∗ (((tsp ↦₆₄ 0#64) ∗ ((tsp + 8#64) ↦₆₄ 0#64)) ∗ F)) post oom := by
   let _ := hx8
@@ -216,7 +217,7 @@ theorem SepWP.step_svc_ppoll {prog : Program} {target_pc : BitVec 64}
   rw [hsvc, execPpoll_ok s hsigmask (htsp ▸ htspNe) (htsp ▸ htspFit) (htsp ▸ htspRead)
     (htsp ▸ htvSec) (htsp ▸ htvNsec) (hnfds ▸ hnfdsMax) (by rw [hufds, hnfds]; exact hufdsFit)
     (by rw [hufds, hnfds]; exact hufdsRead) (by rw [hufds, hnfds]; exact hufdsWrite)
-    (by rw [hufds, hnfds]; exact heval_m)]
+    (by rw [hufds, hnfds]; exact heval_m) (by rw [hufds, hnfds]; exact hufdsZeroFit)]
   have hst : ((s.setMem m').writeReg64 .x0 (BitVec.ofNat 64 count)).advancePC =
       (((s.setMem m').writeReg64 .x0 (BitVec.ofNat 64 count)).setPC (pc + 4#64)) := by
     cases s; simp [State.setMem, State.writeReg64, State.advancePC, State.setPC, hpc]
@@ -473,8 +474,13 @@ theorem SepWP.step_svc_rt_sigaction_any {prog : Program} {target_pc : BitVec 64}
     (holdOk : oldact = 0#64 ∨ (oldact.toNat + 32 ≤ 2 ^ 64 ∧ oldBs₀.length = 32))
     (hnext : ∀ m' : Memory,
       let oldAction := s.getSigAction signum
-      let s₁ := if act == 0#64 then s else s.setSigAction signum
-        { handler, flags := flags &&& UAPI_SA_FLAGS, restorer, mask := mask &&& ~~~SIG_UNBLOCKABLE_MASK }
+      let s₁ := if act == 0#64 then s else
+        let sAct := s.setSigAction signum
+          { handler, flags := flags &&& UAPI_SA_FLAGS, restorer, mask := mask &&& ~~~SIG_UNBLOCKABLE_MASK }
+        if signum == LINUX_SIGABRT && handler == SIG_IGN then
+          sAct.setSigPending (sAct.sigPending &&& ~~~SIGABRT_MASK)
+        else
+          sAct
       SepWP prog target_pc (((s₁.setMem m').writeReg64 .x0 0#64).setPC (pc + 4#64))
         (kSigActionAt act handler flags restorer mask ∗
           (optOldSigActionAt oldact oldAction.toBytes ∗ F)) post oom)
@@ -537,12 +543,22 @@ theorem SepWP.step_svc_rt_sigaction_any {prog : Program} {target_pc : BitVec 64}
   rw [hsvc, execRtSigaction_any_ok s hsigset (hsig ▸ hlo) (hsig ▸ hhi) hact_mem hold_mem]
   dsimp only
   rw [hsig, hact, hold]
-  have hs1_eq : (if act == 0#64 then s else s.setSigAction signum
-      { handler := s.mem.read64 act, flags := s.mem.read64 (act + 8#64) &&& UAPI_SA_FLAGS,
-        restorer := s.mem.read64 (act + 16#64),
-        mask := s.mem.read64 (act + 24#64) &&& ~~~SIG_UNBLOCKABLE_MASK }) =
-      (if act == 0#64 then s else s.setSigAction signum
-        { handler, flags := flags &&& UAPI_SA_FLAGS, restorer, mask := mask &&& ~~~SIG_UNBLOCKABLE_MASK }) := by
+  have hs1_eq : (if act == 0#64 then s else
+      let sAct := s.setSigAction signum
+        { handler := s.mem.read64 act, flags := s.mem.read64 (act + 8#64) &&& UAPI_SA_FLAGS,
+          restorer := s.mem.read64 (act + 16#64),
+          mask := s.mem.read64 (act + 24#64) &&& ~~~SIG_UNBLOCKABLE_MASK }
+      if signum == LINUX_SIGABRT && s.mem.read64 act == SIG_IGN then
+        sAct.setSigPending (sAct.sigPending &&& ~~~SIGABRT_MASK)
+      else
+        sAct) =
+      (if act == 0#64 then s else
+        let sAct := s.setSigAction signum
+          { handler, flags := flags &&& UAPI_SA_FLAGS, restorer, mask := mask &&& ~~~SIG_UNBLOCKABLE_MASK }
+        if signum == LINUX_SIGABRT && handler == SIG_IGN then
+          sAct.setSigPending (sAct.sigPending &&& ~~~SIGABRT_MASK)
+        else
+          sAct) := by
     by_cases ha0 : act = 0#64
     · simp [ha0]
     · have ha_f : (act == 0#64) = false := beq_false_of_ne ha0
@@ -562,11 +578,16 @@ theorem SepWP.step_svc_rt_sigaction_any {prog : Program} {target_pc : BitVec 64}
   have hadv : ∀ st : State, st.pc = pc →
       (st.writeReg64 .x0 0#64).advancePC = (st.writeReg64 .x0 0#64).setPC (pc + 4#64) := by
     intro st hp; cases st; simp [State.writeReg64, State.advancePC, State.setPC, hp]
-  let s₁ := if act == 0#64 then s else s.setSigAction signum
-    { handler, flags := flags &&& UAPI_SA_FLAGS, restorer, mask := mask &&& ~~~SIG_UNBLOCKABLE_MASK }
-  have hs1_mem : s₁.mem = s.mem := by dsimp [s₁]; split <;> (cases s; rfl)
-  have hs1_pc : s₁.pc = pc := by dsimp [s₁]; split <;> (cases s; exact hpc)
-  have hs1_set : s₁.setMem s.mem = s₁ := by dsimp [s₁]; split <;> (cases s; rfl)
+  let s₁ := if act == 0#64 then s else
+    let sAct := s.setSigAction signum
+      { handler, flags := flags &&& UAPI_SA_FLAGS, restorer, mask := mask &&& ~~~SIG_UNBLOCKABLE_MASK }
+    if signum == LINUX_SIGABRT && handler == SIG_IGN then
+      sAct.setSigPending (sAct.sigPending &&& ~~~SIGABRT_MASK)
+    else
+      sAct
+  have hs1_mem : s₁.mem = s.mem := by dsimp [s₁]; (repeat' split) <;> (cases s; rfl)
+  have hs1_pc : s₁.pc = pc := by dsimp [s₁]; (repeat' split) <;> (cases s; exact hpc)
+  have hs1_set : s₁.setMem s.mem = s₁ := by dsimp [s₁]; (repeat' split) <;> (cases s; rfl)
   by_cases ho0 : oldact = 0#64
   · subst ho0; simp only [beq_self_eq_true, ↓reduceIte]
     change reaches_pc prog target_pc ((s₁.writeReg64 .x0 0#64).advancePC) _ _
@@ -582,7 +603,7 @@ theorem SepWP.step_svc_rt_sigaction_any {prog : Program} {target_pc : BitVec 64}
         (((s₁.setMem (s₁.mem.writeBytes oldact (s.getSigAction signum).toBytes)).writeReg64 .x0 0#64).advancePC) _ _
       rw [hs1_mem]
       let m' := s.mem.writeBytes oldact (s.getSigAction signum).toBytes
-      have hs1m_pc : (s₁.setMem m').pc = pc := by dsimp [s₁]; split <;> (cases s; exact hpc)
+      have hs1m_pc : (s₁.setMem m').pc = pc := by dsimp [s₁]; (repeat' split) <;> (cases s; exact hpc)
       rw [hadv (s₁.setMem m') hs1m_pc]
       apply hnext m' R
       change m' ⊨ _
@@ -612,8 +633,13 @@ theorem SepWP.step_svc_rt_sigaction {prog : Program} {target_pc : BitVec 64}
     (holdOk : oldact = 0#64 ∨ (oldact.toNat + 32 ≤ 2 ^ 64 ∧ oldBs₀.length = 32))
     (hnext : ∀ m' : Memory,
       let oldAction := s.getSigAction signum
-      let s₁ := if act == 0#64 then s else s.setSigAction signum
-        { handler, flags := flags &&& UAPI_SA_FLAGS, restorer, mask := mask &&& ~~~SIG_UNBLOCKABLE_MASK }
+      let s₁ := if act == 0#64 then s else
+        let sAct := s.setSigAction signum
+          { handler, flags := flags &&& UAPI_SA_FLAGS, restorer, mask := mask &&& ~~~SIG_UNBLOCKABLE_MASK }
+        if signum == LINUX_SIGABRT && handler == SIG_IGN then
+          sAct.setSigPending (sAct.sigPending &&& ~~~SIGABRT_MASK)
+        else
+          sAct
       SepWP prog target_pc (((s₁.setMem m').writeReg64 .x0 0#64).setPC (pc + 4#64))
         (kSigActionAt act handler flags restorer mask ∗
           (optOldSigActionAt oldact oldAction.toBytes ∗ F)) post oom)

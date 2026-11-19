@@ -9,16 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated1
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated1
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommonBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2Budget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2BaseBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Verification of `encode_varint [local#2]` and `encode_repeated [local#1]`
@@ -28,7 +34,7 @@ and `[LibsignalPlacement]` `RustCliAllocBudget`-threaded contracts for
 `prost::encoding::bytes::encode_repeated [local#1]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -105,7 +111,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## Deterministic-Capacity `encode_varint::<Vec<u8>> [local#2]` -/
 
 /-- Single-byte `RawVec<u8>::grow_one` / deterministic capacity invariant. -/
-def VecCapStepInv2 (x : EncodeVarintGhost) (curCap : BitVec 64)
+@[expose] def VecCapStepInv2 (x : EncodeVarintGhost) (curCap : BitVec 64)
     (curBs : List (BitVec 8)) (remLen : Nat) : Prop :=
   (pushBytesStep (encodeVarint x.val).length x.cap.toNat x.bs.length).1 =
     (pushBytesStep remLen curCap.toNat curBs.length).1

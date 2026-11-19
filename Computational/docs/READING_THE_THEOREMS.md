@@ -159,13 +159,17 @@ closed-form terms symbolically in the assumption advantages and $\delta$:
 * `GapDhWithSign` term: $c_3 \cdot \varepsilon_{\mathrm{GapDh}}$ with exact coefficient
   $c_3 = 2 \cdot \bigl(2^{25} \cdot (2^{20} + 2^{30}) + 2^{50} + 2^{59}\bigr) = 2^{60} + 2^{56} + 2^{51} + 2^{46} = \frac{17{,}441}{16{,}384} \cdot 2^{60} \approx 2^{60.09}$ ($\le 2^{60.1}$, or bounded by $O(b.\mathrm{q\_on}^2)$ when $b.\mathrm{q\_on} \ll 2^{25}$).
 * KEM $\delta$-term (`kemDecapsFailureTerm deploymentSetup δ`): $2 \cdot 2^{30} \cdot 2^{25} \cdot \delta = 2^{56} \cdot \delta$.
-  At the Kyber-1024 round-3 specification estimate $\delta = 2^{-174}$, this equals $2^{-118}$
-  exactly.
+  At the Kyber-1024 round-3 specification heuristic $\delta = 2^{-174}$, this equals $2^{-118}$
+  exactly. The Main Theorem (`libsignal_cli_pq_secure_elf_binary`) instantiates $\delta$ via the
+  proved bound `kyber1024_kem_delta_correct` ($\delta_{\mathrm{kem}} = \varepsilon + 2^{-112}$ under
+  `KyberNoiseGap ε`, [DEV-PQ21](DEVIATIONS.md#dev-pq21)), giving $2^{56} \cdot \varepsilon + 2^{-56}$
+  at `deploymentSetup`.
 
 **Why $b.\mathrm{q\_total} = 2^{40}$ at `deploymentSetup` is asymptotic/qualitative in the standard model.**
-The statistical collision and decapsulation-failure terms above ($\approx 2^{-188.64}$,
-$\approx 2^{-206}$, and $2^{-118}$ at $\delta = 2^{-174}$) hold unconditionally regardless of
-running time, and the multi-user loss coefficients grow polynomially in the active/setup counts. However, the computational
+The statistical collision terms above ($\approx 2^{-188.64}$ and $\approx 2^{-206}$) and the
+decapsulation-failure term ($2^{56}\varepsilon + 2^{-56}$ under `KyberNoiseGap ε` via
+`kyber1024_kem_delta_correct`, or $2^{-118}$ at the heuristic $\delta = 2^{-174}$) do not depend on
+adversary running time, and the multi-user loss coefficients grow polynomially in the active/setup counts. However, the computational
 assumption advantages $\varepsilon_{\mathrm{Sig}}, \varepsilon_{\mathrm{KemShCr}}, \varepsilon_{\mathrm{GapDh}}$
 must be evaluated at the reductions' combined running time $t' \le t + \mathrm{stepCostBudget}(S, b)$.
 Although quadratic tightening places $\mathrm{stepCostBudget} \approx 2^{96.00}$ at
@@ -198,13 +202,21 @@ suprema (`eps0IdealUnit`, `epoch0ChainForgeryTerm`, `spuriousStepTerm`,
 `forgedEpochStartSpuriousStepTerm`, and `spkSwapSpuriousStepTerm`) restrict `c < 2^32` and
 `ser.length < 2^32`, keeping all six non-vacuous in the random-function / ROM heuristic
 ($\approx 2^{-64}$ per uniform-key tag test, heuristic, not proved in Lean;
-[DEV-LS23](DEVIATIONS.md#dev-ls23), `TRUSTED_BASE.md` §4). Active-session
+[DEV-LS23](DEVIATIONS.md#dev-ls23), [`TRUSTED_BASE.md`](TRUSTED_BASE.md) §4). Active-session
 forgery in `SessionSecure`, `ModelSecure`, and `CliPqxdhSecurityFor` is therefore a proved guarantee
 whose session multiplicities are listed in [DEV-LS31](DEVIATIONS.md#dev-ls31) and
-[DEV-C14](DEVIATIONS.md#dev-c14) (scaling as $\sim 12 \cdot q_{\mathrm{ep}}^2 \cdot q^2 \cdot 2^{-64}$
-per promoted session, non-vacuous for moderate per-session $q, q_{\mathrm{ep}}$), bounded below by
+[DEV-C14](DEVIATIONS.md#dev-c14) (scaling linearly in $q_{\mathrm{ep}}$ and $q$ as
+$(92 \cdot q_{\mathrm{ep}} + 96) \cdot q \cdot 2^{-64}$ per promoted session for
+$q_{\mathrm{ep}} \ge 1$ and $112 \cdot q \cdot 2^{-64}$ at $q_{\mathrm{ep}} = 0$, e.g.
+$\approx 2^{-12.47}$ across $2^{25}$ promoted sessions at $q = q_{\mathrm{ep}} = 1{,}024$), bounded below by
 Libsignal's protocol-inherent 8-byte wire-MAC floor ($\approx 4 \cdot q_{\mathrm{DR}} \cdot 2^{-64}$,
-e.g. $2^{-38}$ at $q_{\mathrm{DR}} = 2^{24}$ and $2^{-32}$ at $q_{\mathrm{DR}} = 2^{30}$). Because
+e.g. $2^{-38}$ at $q_{\mathrm{DR}} = 2^{24}$ and $2^{-32}$ at $q_{\mathrm{DR}} = 2^{30}$). Note
+that hoisting MAC forgeries into buckets makes this session bound formally incomparable with the
+earlier per-cell form rather than a strict tightening: it drops the MAC term from
+$O(q_{\mathrm{ep}}^2 \cdot q^2 \cdot \mu)$ to $O(q_{\mathrm{ep}} \cdot q \cdot \mu)$ in exchange
+for up to $1.95\times$ more PRF-PRNG terms, up to $1.74\times$ more FS-AEAD terms (for $q \ge 1$),
+and a re-indexed, enlarged reduction family under `ratchetCostBudget q (qep + 1)`
+([DEV-C14](DEVIATIONS.md#dev-c14)). Because
 this 64-bit wire-tag floor grows with delivered/injected messages regardless of reduction
 tightness, concrete security summaries should report two separate numbers rather than folding them
 into one headline figure: (i) cryptographic (key-secrecy) bit security from the computational
@@ -254,7 +266,7 @@ statement:
   (`CostedBudgets.lean`). Lean checks size honesty and the budget inequalities against those
   definitions, while human review checks that each declared op cost, sampler width, codec reshaping,
   query weight, and game specification reflects the intended cryptographic model (see
-  `TRUSTED_BASE.md` and [`DEVIATIONS.md`](DEVIATIONS.md)).
+  [`TRUSTED_BASE.md`](TRUSTED_BASE.md) and [`DEVIATIONS.md`](DEVIATIONS.md)).
 * Reader-supplied cost model for `A` and the primitives: because `A` is bounded only by its oracle
   queries, Lean bounds the reduction's added syntactic overhead (`stepCostBudget`,
   `outputSizeBudget`) and oracle call counts (`q_sig`, `q_ddh`, `q_prim`), not `A`'s own internal
@@ -268,7 +280,7 @@ Sections 1 through 5 trace Lemma 1 (`headlineδ` / `PqxdhKeyIndSecureδ`). Lemma
 `SessionSecure` in [`StatementSession.lean`](../Specifications/Session/StatementSession.lean)),
 Lemma 3 (`model_secure_costed` / `ModelSecure` in
 [`StatementModel.lean`](../Specifications/Composition/StatementModel.lean)), and the compiled-binary
-headlines (`libsignal_cli_pq_binary_correct_placed` and `libsignal_cli_pq_secure_elf_binary_placed` in
+headlines (`libsignal_cli_pq_binary_correct` and `libsignal_cli_pq_secure_elf_binary` in
 [`Main.lean`](../Theorems/Main.lean), stated via `CliPqxdhSecurityFor` in
 [`StatementPqElf.lean`](../Specifications/LibsignalCli/StatementPqElf.lean) and
 [`CliBinaryPq.lean`](../../LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean)) follow the same pattern:
@@ -293,10 +305,11 @@ programs.
   `ReductionDsl` loops. Conjunct 1 (`CompositionCostedReductionFamilyBounded P C K qep decT encT reds`)
   holds unconditionally for all `P`, while `SignalPqxdh.WellFormedPrimitivesδ P` scopes Conjunct 2
   (the query bounds `keyIndReductionBudget S qStart b` on `advK` and `qs k` on `prefixRed`, and the `ComposedAdvantage` security bound).
-* CLI and ELF security (`CliPqxdhSecurityFor`): specializes, with no excused aborts
-  (`exc? := none`), to `CliPqxdhElfSecurePlaced` (the security conjunct of the Main Theorem
-  `libsignal_cli_pq_secure_elf_binary_placed`) and to the model-run statement
-  `LibsignalCliPqSecure`. Four existential `ReductionDsl` packages connect the binary game to the leaf
+* CLI and ELF security (`CliPqxdhSecurityFor`): specializes to `CliPqxdhElfSecure` (the
+  security conjunct of the Main Theorem `libsignal_cli_pq_secure_elf_binary`, with
+  `exc? := some (CliReachesSampleNttStuckElf elf addrs)`, DEV-CLI22) and to the model-run
+  statement `LibsignalCliPqSecure` (with `exc? := none`). Four existential `ReductionDsl` packages
+  connect the binary game to the leaf
   assumptions, with closed-form polynomial step-cost budgets in
   [`StatementBinaryHarnessCore.lean`](../Specifications/Game/StatementBinaryHarnessCore.lean),
   [`CostedBudgets.lean`](../Specifications/Pqxdh/Security/CostedBudgets.lean),
@@ -319,11 +332,12 @@ programs.
     $b_{\mathrm{ki}}.\mathrm{q\_on} = b.\mathrm{q\_on} + 2 \cdot \min(q_{\mathrm{Start}}, S.N_{\mathrm{send\_tot}})$);
   * `D : SessionCostedReductionFamily Pt ℓ` (Lemma 2), whose Double Ratchet + SPQR V1 per-session reduction stack
     bounds `Fig8CostedReds` and the promoted `SessionCostedReductions` under
-    `ratchetCostBudget q qep = 2 ^ 12 * (q + 1) ^ 2 * (maxForwardJumps + bits qep)`, the two-stage FS-AEAD hybrid reductions under
+    `ratchetCostBudget q (qep + 1)` (`ratchetCostBudget q qep = 2 ^ 12 * (q + 1) ^ 2 * (maxForwardJumps + bits qep)`), the four two-stage FS-AEAD hybrid reductions (`prgRedZero`, `multiRed`, `prgRedAuth`, `multiRedAuth`) under
     `fsRatchetCostBudget (min (2 * q) (q + 2)) (qep + 1)`, the lightweight FS-AEAD adapter reductions under
     `ratchetFsAdapterBudget (min (2 * q) (q + 2)) (qep + 1)`, and the leaked-SPK / Hop-2 bundle `SpkCostedReds` (`spkCostedBounds` in
     [`StatementSpkModel.lean`](../Specifications/Session/StatementSpkModel.lean)) under
-    `spkLeakRedUBudget q = 16 * (q + 2)` and `spkHopBudget q qep ℓ = min (spkTier1Budget q qep) (spkTier2Budget q qep ℓ)`.
+    `spkLeakRedUBudget q = 16 * (q + 2)` and `spkHopBudget q qep ℓ = min (spkTier1Budget q qep) (spkTier2Budget q qep ℓ)`
+    (compared to the earlier per-cell session bound, the bucket-partitioned bound drops the MAC term from `O(qep²·q²·μ)` to `O(qep·q·μ)` while enlarging/re-indexing `D` and increasing PRF-PRNG and FS-AEAD term counts by up to `1.95×` and `1.74×` for `q ≥ 1`, making the two statements formally incomparable; [DEV-C14](DEVIATIONS.md#dev-c14)).
 
 For symbol-by-symbol mappings and language details, see [`GLOSSARY.md`](GLOSSARY.md),
 [`REDUCTION_DSL_TUTORIAL.md`](REDUCTION_DSL_TUTORIAL.md), [`PQXDH.md`](PQXDH.md), and

@@ -17,7 +17,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -39,7 +39,7 @@ Helper lemmas unfolding `Mut.exec` (`ExceptT SignalProtocolError (StateM σ)`), 
 `storeSkippedKey`, `setReceiverChainKey`, and `takeSkippedKey` to closed forms.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SessionModel.AdvanceAndFrame
 
@@ -233,7 +233,7 @@ theorem mem_of_mem_eraseIdx {α : Type} (xs : List α) (i : ℕ) (y : α)
     (h : y ∈ xs.eraseIdx i) : y ∈ xs :=
   List.mem_of_mem_eraseIdx h
 
-def step1 (F : ShaCompress) (ck : ChainKey) : ChainKey :=
+@[expose] def step1 (F : ShaCompress) (ck : ChainKey) : ChainKey :=
   ⟨bytesToKey32 (Ratchet.chainHmac F ck.key Ratchet.chainKeySeed), ck.index + 1⟩
 
 theorem nextChainKey_eq_of_ne (F : ShaCompress) (ck : ChainKey)
@@ -460,24 +460,6 @@ private theorem length_sha256With (F : ShaCompress) (m : List (BitVec 8)) :
   rcases s with ⟨l, hl⟩
   simp [toBEBytes, List.length_flatMap, hl]
 
-private theorem messageKeys_seed_ne_nil (F : ShaCompress) (ck : ChainKey) :
-    (ck.messageKeys F).seed ≠ [] := by
-  intro h
-  have hlen : (ck.messageKeys F).seed.length = 32 := length_sha256With F _
-  rw [h] at hlen
-  contradiction
-
-private theorem mem_skippedKeys_seed_ne_nil (F : ShaCompress) (n : ℕ) (ck : ChainKey)
-    (k : MessageKeyGenerator) (hk : k ∈ skippedKeys F n ck) :
-    k.seed ≠ [] := by
-  induction n generalizing ck with
-  | zero => simp [skippedKeys] at hk
-  | succ m ih =>
-    simp only [skippedKeys, List.mem_append, List.mem_singleton] at hk
-    rcases hk with hk | rfl
-    · exact ih _ hk
-    · exact messageKeys_seed_ne_nil F ck
-
 private theorem advanceChain_exec_some (F : ShaCompress) (their : PublicKey) (c : BitVec 32)
     (n : ℕ) (ck : ChainKey) (st : RatchetState) (ci : ℕ) (ch : ReceiverChain)
     (hn : ck.index.toNat + n = c.toNat)
@@ -657,89 +639,6 @@ theorem consumeMessageKey_panic_iff_thm (F : ShaCompress) (st : RatchetState) (t
             exact hc
           simp only [ckc, n, hnext, setReceiverChainKey_exec_some their _ st' ci ch' hci' hch',
             exec_map, exec_pure, hc, reduceCtorEq]
-
-theorem consumeMessageKey_frame_thm (F : ShaCompress) (st : RatchetState) (their : PublicKey)
-    (ck : ChainKey) (c : BitVec 32) (t : MessageType) (hok : ChainsOk st) :
-    let st' := ((RatchetState.consumeMessageKey F their ck c t).exec st).2
-    ((RatchetState.consumeMessageKey F their ck c t).exec st).1 ≠ .error .panic →
-      st'.rootKey = st.rootKey ∧ st'.senderChain = st.senderChain ∧
-      st'.previousCounter = st.previousCounter ∧ st'.maxForwardJumps = st.maxForwardJumps ∧
-      st'.receiverChains.map (·.senderRatchetKey) = st.receiverChains.map (·.senderRatchetKey) ∧
-      ChainsOk st' := by
-  dsimp only
-  intro hne
-  by_cases hlt : c < ck.index
-  · have hcmk :
-        ((RatchetState.consumeMessageKey F their ck c t).exec st).2 = st ∨
-        ∃ ci ch pos,
-          st.receiverChains[ci]? = some ch ∧
-          ((RatchetState.consumeMessageKey F their ck c t).exec st).2 =
-            { st with receiverChains := st.receiverChains.set ci { ch with messageKeys := ch.messageKeys.eraseIdx pos } } := by
-      unfold RatchetState.consumeMessageKey
-      simp only [hlt, ↓reduceIte, exec_bind]
-      rcases takeSkippedKey_exec their c st with ⟨st₁, htake, rfl⟩ | ⟨k, ci, ch, pos, _, hch, _, _, htake⟩
-      · left
-        simp [htake]
-      · right
-        exact ⟨ci, ch, pos, hch, by simp [htake]⟩
-    rcases hcmk with hst' | ⟨ci, ch, pos, hch, hst'⟩
-    · rw [hst']
-      exact ⟨rfl, rfl, rfl, rfl, rfl, hok⟩
-    · rw [hst']
-      refine ⟨rfl, rfl, rfl, rfl, ?_, ?_⟩
-      · dsimp only
-        exact map_set_of_eq (·.senderRatchetKey) st.receiverChains ci
-          { ch with messageKeys := ch.messageKeys.eraseIdx pos } ⟨ch, hch, rfl⟩
-      · intro c' hc'
-        have hch_mem : ch ∈ st.receiverChains := mem_of_getElem?_some st.receiverChains ci ch hch
-        rcases mem_set_or st.receiverChains ci _ c' hc' with rfl | hc'_mem
-        · refine ⟨(length_eraseIdx_le ch.messageKeys pos).trans (hok ch hch_mem).1, ?_⟩
-          intro k hk
-          exact (hok ch hch_mem).2 k (mem_of_mem_eraseIdx ch.messageKeys pos k hk)
-        · exact hok c' hc'_mem
-  · have hle : ck.index ≤ c := BitVec.not_lt.mp hlt
-    by_cases hj : st.maxForwardJumps < (c - ck.index).toNat
-    · have hst' : ((RatchetState.consumeMessageKey F their ck c t).exec st).2 = st := by
-        unfold RatchetState.consumeMessageKey
-        simp only [hlt, ↓reduceIte, exec_bind, exec_get, hj, exec_throw]
-      rw [hst']
-      exact ⟨rfl, rfl, rfl, rfl, rfl, hok⟩
-    · have hjle : (c - ck.index).toNat ≤ st.maxForwardJumps := Nat.not_lt.mp hj
-      have hnot_panic : ¬ (c = BitVec.allOnes 32 ∨ st.findReceiverChainIndex their = none) := by
-        intro hp
-        exact hne ((consumeMessageKey_panic_iff_thm F st their ck c t).mpr ⟨hle, hjle, hp⟩)
-      have hc : c ≠ BitVec.allOnes 32 := fun h => hnot_panic (Or.inl h)
-      cases hci : st.findReceiverChainIndex their with
-      | none => exact False.elim (hnot_panic (Or.inr hci))
-      | some ci =>
-        obtain ⟨ch, hch, heq⟩ :=
-          consumeMessageKey_advance_thm F st their ck c t hc hle hjle ci hci hok
-        have hst' :
-            ((RatchetState.consumeMessageKey F their ck c t).exec st).2 =
-              { st with
-                receiverChains := st.receiverChains.set ci
-                  { ch with
-                    messageKeys := (skippedKeys F (c - ck.index).toNat ck ++ ch.messageKeys).take maxMessageKeys
-                    chainKey := some (chainStepN F 1 (chainStepN F (c - ck.index).toNat ck)) } } := by
-          rw [heq]
-        rw [hst']
-        refine ⟨rfl, rfl, rfl, rfl, ?_, ?_⟩
-        · dsimp only
-          exact map_set_of_eq (·.senderRatchetKey) st.receiverChains ci
-            { ch with
-              messageKeys := (skippedKeys F (c - ck.index).toNat ck ++ ch.messageKeys).take maxMessageKeys
-              chainKey := some (chainStepN F 1 (chainStepN F (c - ck.index).toNat ck)) } ⟨ch, hch, rfl⟩
-        · intro c' hc'
-          have hch_mem : ch ∈ st.receiverChains := mem_of_getElem?_some st.receiverChains ci ch hch
-          rcases mem_set_or st.receiverChains ci _ c' hc' with rfl | hc'_mem
-          · refine ⟨length_take_le' _ maxMessageKeys, ?_⟩
-            intro k hk
-            have hk' := mem_of_mem_take' _ maxMessageKeys k hk
-            simp only [List.mem_append] at hk'
-            rcases hk' with hk_skip | hk_old
-            · exact mem_skippedKeys_seed_ne_nil F _ ck k hk_skip
-            · exact (hok ch hch_mem).2 k hk_old
-          · exact hok c' hc'_mem
 
 end MoveCompat
 

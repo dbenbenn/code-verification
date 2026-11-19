@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.Bridge
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Relocatable SPQR CPU-Probe Token Patch (`DEV-CLI10`)
@@ -18,7 +19,7 @@ public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
 `[LibsignalPlacement]` wrapper for `Placed.cliTokenPatchPlaced lsmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

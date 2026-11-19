@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepBase
-import ProofLib.Lemmas
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonLocal
 import Symbolic.Proofs.Swarm.CREF.TR.G1.OneSidedPeel
 import Symbolic.Proofs.Swarm.CREF.TR.G1.OneSidedPeelDefs
+import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber
 
 /-!
 # Alice and Bob Handshake Root-Key Twins
@@ -26,7 +27,7 @@ key bundle and a `BobDone` key bundle whose root keys have equal `gamma'` shapes
 keys unless their memo windows satisfy `KemSlotAlias`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

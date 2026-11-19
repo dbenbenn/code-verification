@@ -9,24 +9,32 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.InnerInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.InnerGluePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Encrypt.RootPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.InnerInstPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.InnerGluePlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtablesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Encrypt.RootPlacedBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SendCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.SpecPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Rodata -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Budget-Threaded CLI Slot Seams & Store-Kit Witnesses (`[LibsignalPlacement]`)
@@ -36,7 +44,7 @@ signature-verification seams, and placed session/identity store-kit witnesses (`
 `CliSlotCalleesInstPlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -60,7 +68,7 @@ open CryptoVerification.LibsignalTripleRatchet (SpqrModel extHookStack finishGro
 open CryptoVerification.LibsignalTripleRatchet.Encrypt (lsAesEncSym)
 open CryptoVerification.LibsignalTripleRatchetRepr (AddrGhost uuidTryParse)
 open CryptoVerification.SignalSession (
-  CliHooks cliExternsPlaced lsDropOffPlaced_eq lsFormatInnerSym lsReadFileSym
+  CliHooks cliExternsPlaced lsDropOffPlaced_eq lsFmtWriteSym lsFormatInnerSym lsReadFileSym
   lsRustAllocZeroedSymCli lsStringCloneSym
 )
 open CryptoVerification.SignalSession.Cli.KitInst (
@@ -87,14 +95,15 @@ open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget
 )
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (stringCloneBudgetSpec)
-open LibsignalBinary.Heap.SpecBudget (
-  FormatInnerEnv aesEncBudgetSpec formatInnerBudgetEnvSpec formatInnerBudgetSpec
+open LibsignalBinary.Heap.SpecBudget (aesEncBudgetSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  fmtWriteProtoAddrCliLsSpec formatInnerCallCliLsSpec
 )
 open LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux (
   PublicApiEncHooksPlaced otrEncryptPlacedSpecQ otrEncryptPlacedSpecQF
 )
 open LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget (
-  spqrSendCoinsPlacedSpec
+  spqrSendCoinsDispPlacedSpec
 )
 open LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget (IdentityStoreBudgetEnv)
 open LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget (
@@ -148,6 +157,7 @@ structure CliSlotAllocHooks [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop) : Prop where
   alloc : CliGhostSpqrAllocHooks M A lim g
+  f_eq : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress := by rfl
   strClone_fsT : ∀ f, g.stringClone = some f → HookFsTraced IsFsC f
   stringClone : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsStringCloneSym
     (stringCloneBudgetSpec M A lim)
@@ -156,11 +166,10 @@ structure CliSlotAllocHooks [LibsignalPlacement] {M : AllocCostModel}
     (stringCloneBudgetSpec M A lim)
   aesEnc : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsAesEncSym
     (aesEncBudgetSpec W.C.E M A lim)
-  formatInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
-    (formatInnerBudgetSpec M A lim)
-  formatInnerEnv : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W))
-    CryptoVerification.LibsignalTripleRatchet.Encrypt.lsFormatInnerSym
-    (formatInnerBudgetEnvSpec M A lim FormatInnerEnv)
+  formatInnerCall : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
+    (formatInnerCallCliLsSpec M A lim)
+  fmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
+    (fmtWriteProtoAddrCliLsSpec M A lim)
   readFile : ∀ (stk : Nat),
     subroutine_ok (lsProg_589 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsρ lsReadFileSym)
@@ -177,14 +186,14 @@ structure SpqrV1PlacedSeamsBudget [LibsignalPlacement] {M : AllocCostModel}
       ((blkPC_427).rebase (blkPl_427).base (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        { spqrSendCoinsPlacedSpec M A lim 0#64 (pqxdhSpqrModel ⟨W.C, W.Q⟩)
+        { spqrSendCoinsDispPlacedSpec M A lim 0#64 (pqxdhSpqrModel ⟨W.C, W.Q⟩)
             (fun sc evs => envs.spqrSend sc.st.bytes sc.rest evs) with
           pre := fun (sc, st) s =>
             ⌜sc.st.bytes.length < 2 ^ 32 ∧ 64 ≤ sc.rest.length⌝ ∗ tokenInitPlacedAt ∗
-              (spqrSendCoinsPlacedSpec M A lim 0#64 (pqxdhSpqrModel ⟨W.C, W.Q⟩)
+              (spqrSendCoinsDispPlacedSpec M A lim 0#64 (pqxdhSpqrModel ⟨W.C, W.Q⟩)
                 (fun sc evs => envs.spqrSend sc.st.bytes sc.rest evs)).pre (sc, st) s
           post := fun (sc, st) s0 sf =>
-            tokenInitPlacedAt ∗ (spqrSendCoinsPlacedSpec M A lim 0#64 (pqxdhSpqrModel ⟨W.C, W.Q⟩)
+            tokenInitPlacedAt ∗ (spqrSendCoinsDispPlacedSpec M A lim 0#64 (pqxdhSpqrModel ⟨W.C, W.Q⟩)
               (fun sc evs => envs.spqrSend sc.st.bytes sc.rest evs)).post (sc, st) s0 sf })
   spqrInitialState_initProg :
     subroutine_ok (initProgPlaced mmpl g W) (lsmpl.base 327)
@@ -199,7 +208,7 @@ structure SpqrV1PlacedSeamsBudget [LibsignalPlacement] {M : AllocCostModel}
 /-- Seam over Block `464` (`Cli/PublicApi/MessageEncrypt/WithStoresVTPlaced` budget composition),
 matching `withStores_placed_okVT_fs_cli` once all segment, kit, vtable, and Block-`428`
 `otrEncrypt` budget contracts are supplied. -/
-def WithStoresEncVTPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def WithStoresEncVTPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (B : RunBudgets)
     (sendEnv : SpqrSendBudgetEnv)
@@ -246,9 +255,10 @@ theorem skeletonHooks_of_slotHooks [LibsignalPlacement] {M : AllocCostModel}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     (hH : CliSlotAllocHooks mmpl g W A lim ReadEnv) :
     RunHooksPlaced A lim (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-  RunHooksPlaced.of_hooks mmpl g W hH.alloc hH.strClone_fsT hH.stringClone hH.formatInner
+  RunHooksPlaced.of_hooks mmpl g W hH.alloc hH.strClone_fsT hH.stringClone
+    hH.formatInnerCall hH.fmtWrite
 
-noncomputable abbrev w1SessKitBudgetEnv [LibsignalPlacement]
+abbrev w1SessKitBudgetEnv [LibsignalPlacement]
     (A : CryptoVerification.RustHeap.RustAlloc) (B : RunBudgets)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
@@ -259,7 +269,7 @@ noncomputable abbrev w1SessKitBudgetEnv [LibsignalPlacement]
     storeShimNeed storePollNeedX
     DeserEnv cliSessionVtRoSym cliIdentityVtRoSym ReadEnv
 
-noncomputable abbrev w1IdKitBudgetEnv [LibsignalPlacement]
+abbrev w1IdKitBudgetEnv [LibsignalPlacement]
     (A : CryptoVerification.RustHeap.RustAlloc) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (peer : AddrGhost) :
@@ -269,7 +279,7 @@ noncomputable abbrev w1IdKitBudgetEnv [LibsignalPlacement]
     saveShimNeed (savePollNeed B.readFile)
     cliIdentityVtRoSym ReadEnv
 
-noncomputable abbrev decSessKitBudgetEnv [LibsignalPlacement]
+abbrev decSessKitBudgetEnv [LibsignalPlacement]
     (A : CryptoVerification.RustHeap.RustAlloc) (B : RunBudgets)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
@@ -277,7 +287,7 @@ noncomputable abbrev decSessKitBudgetEnv [LibsignalPlacement]
     SessionStoreBudgetEnv (decSessKitPlaced A F0 peer B) :=
   w1SessKitBudgetEnv A B DeserEnv ReadEnv F0 peer
 
-noncomputable abbrev decIdKitBudgetEnv [LibsignalPlacement]
+abbrev decIdKitBudgetEnv [LibsignalPlacement]
     (A : CryptoVerification.RustHeap.RustAlloc) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (peer : AddrGhost) :
@@ -358,7 +368,7 @@ abbrev cliDirPutStrNeedPlaced : Nat :=
 
 /-- Budget-threaded Block-`543` (`Dir::put::<&str>`) contract at
 `cliGhostExterns g (cliExternsPlaced mmpl W)`. -/
-def DirPutStrPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DirPutStrPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=
   subroutine_ok (lsProg_543 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 543)

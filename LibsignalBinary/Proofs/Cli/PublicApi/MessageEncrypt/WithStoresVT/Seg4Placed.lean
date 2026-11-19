@@ -9,16 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.WithStoresVT.Seg3Placed
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegIdentityPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegIdentity
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.WithStoresVT.Seg3Placed
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegIdentityPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegIdentity
+import LibsignalBinary.Proofs.Common.SharedHelpers
 public import ProofLib.RegChain
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalEncPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.WithStoresVT.Seg1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegSignalMemPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalEnc
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegSignalFrame
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -639,7 +652,7 @@ open CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegFrom
 open CryptoVerification.Cli.LibsignalPublicApi.MessageEncrypt.Pf.SegFrom
 
 /-- Segment continuation wrapper for `withStoresEncPlacedSpecVT F0` on `lsProg_464 H`. -/
-def h45_SegExitVTPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def h45_SegExitVTPlaced [LibsignalPlacement] {A : RustAlloc}
     (F0 : SepProp)
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)

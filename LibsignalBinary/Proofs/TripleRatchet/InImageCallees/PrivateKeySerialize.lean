@@ -9,12 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -27,7 +26,7 @@ Proves that `<libsignal_core::curve::PrivateKey>::serialize` allocates a 32-byte
 copy of the private key bytes, satisfying `privSerializeSpec` and `privSerializeSpecX`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -81,12 +80,6 @@ theorem readReg_setMem_setPC_pre (s : State) (pc : BitVec 64) (m : Memory) (w : 
     ((s.setPC pc).setMem m).readReg w r = s.readReg w r := by
   cases w <;> cases r <;> rfl
 
-theorem alloc_fnOff : libsignalSessionCode.fnOff allocName = num% (ls_off% "__rustc::__rust_alloc") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) (ls_stub% "__rustc::__rust_alloc")
-
-theorem privSerialize_fnOff : libsignalSessionCode.fnOff privSerializeName = num% (ls_off% "<libsignal_core::curve::PrivateKey>::serialize") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) (ls_lemma% fnOff "<libsignal_core::curve::PrivateKey>::serialize")
-
 end PrivateKeySerializeFacts
 
 open PrivateKeySerializeFacts
@@ -139,9 +132,7 @@ private theorem sepWPp_pure_mid {prog : Program} {ret : BitVec 64} {s : State}
 
 open ProofLib.ProgramReflection
 
-private gen_decodes libsignalSessionCode_tree privateKeySerializeBin [(ls_off% "<libsignal_core::curve::PrivateKey>::serialize") → (ls_off% "<libsignal_core::curve::PrivateKey>::serialize" + 80)]
-
-def privSerializeSpecWithStack (A : RustAlloc) (totalStack : Nat) :
+@[expose] def privSerializeSpecWithStack (A : RustAlloc) (totalStack : Nat) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (k, bs, ret) s =>
     ⌜s.readReg64 .x0 = k ∧ s.readReg64 .x8 = ret ∧ bs.length = 32⌝ ∗ (k ↦ₛ bs) ∗
@@ -173,167 +164,6 @@ end PrivateKeySerialize
 open PrivateKeySerialize
 
 attribute [local irreducible] Program.fnOff
-
-theorem privSerialize_ok_of_contracts_opt (oimg : Option Obj.Image) (b : BitVec 64) (A : RustAlloc)
-    (H : String → Option (State → State))
-    (hookStack padBelow totalStack : Nat)
-    (htot : (hookStack + padBelow) + 32 = totalStack)
-    (hstack : totalStack ≤ 2 ^ 64 := by decide)
-    (hshim : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr privSerializeName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize"))
-      (specWithOptInv oimg (shimSpecWithStack hookStack)))
-    (halloc : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr privSerializeName + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize"))
-      (specWithOptInv oimg (rustAllocSpecWithStack A hookStack)))
-    (hpanic : (libsignalSessionCode.rebase b H).externAt?
-      ((libsignalSessionCode.rebase b H).fnAddr privSerializeName + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) =
-      some Rust.panicked) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr privSerializeName)
-      (specWithOptInv oimg (privSerializeSpecWithStack A totalStack)) := by
-  refine subroutine_ok_mono (spec := specWithOptInv oimg (privSerializeSpec32WithStack A totalStack)) ?_
-    (fun _ _ _ h => h)
-    (fun x _ s0 sf h => Satisfies.mono (sepConj_mono_left (privSerializeSpec32WithStack_post_entails A totalStack x s0 sf)) h)
-    (fun _ _ _ _ h => h)
-    (fun _ _ _ _ _ h => h)
-  unfold specWithOptInv
-  simp only [privSerializeSpec32WithStack, privSerializeSpecWithStack, memRegion_24_cells,
-    stackAt_privSerialize_opt htot hstack, sepExists_sepConj_left, sepExists_sepConj_right]
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff privSerializeName = num% (ls_off% "<libsignal_core::curve::PrivateKey>::serialize") :=
-    privSerialize_fnOff
-  code_fetches CryptoVerification.libsignalSessionCode
-    privateKeySerializeBin b H hfn (num% (ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) 84
-  clear hfn
-  generalize_entry (libsignalSessionCode.rebase b H).fnAddr privSerializeName = entry
-  generalize_entry (libsignalSessionCode.rebase b H) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨k, bs, ret⟩ := x
-  dsimp only at *
-  have hinv0 : OptCallInv oimg s0 := by assumption
-  obtain ⟨w0, w1, w2, w3, _, hkey_cells⟩ :=
-    exists_unpack64_of_length_32 h
-  rw [hkey_cells k]
-  have hpow2 : ∃ j, 1 = 2 ^ j := ⟨0, rfl⟩
-  have hlay : LayoutOk 32 1 := ⟨by decide, hpow2, by decide⟩
-  apply SepWPp.of_sepWP (mid := entry + bv% (36))
-  apply SepWP.seq_optImage (mid := entry + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) hinv0
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  intro hinv1
-  apply SepWP.seq_optImage (mid := entry + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) hinv1
-  wp_call hshim ()
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  intro hinv2
-  wp_call halloc (32, 1)
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    simp only [hoom, ite_true, sepConj_assoc]
-    refine sepWPp_pure_mid fun htrace => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize"))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, memRegion_32_cells, sepExists_sepConj_left,
-      sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun u0 => SepWPp.exists_elim fun u1 =>
-      SepWPp.exists_elim fun u2 => SepWPp.exists_elim fun u3 => ?_
-    refine sepWPp_pure_mid fun ⟨hmod, htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    simp only [vecU8At, vecHeader, h,
-      (by decide : (32#64 : BitVec 64) = 0 ↔ False),
-      ite_false, (by decide : (32#64 : BitVec 64).toNat = 32),
-      Nat.sub_self, memRegion_zero, sepConj_emp, hkey_cells]
-    wp_done
-
-theorem privSerialize_ok_of_contracts (b : BitVec 64) (A : RustAlloc)
-    (H : String → Option (State → State))
-    (hshim : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr privSerializeName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) sessionShimSpec)
-    (halloc : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr privSerializeName + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) (rustAllocSpec A))
-    (hpanic : (libsignalSessionCode.rebase b H).externAt?
-      ((libsignalSessionCode.rebase b H).fnAddr privSerializeName + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) =
-      some Rust.panicked) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr privSerializeName)
-      (privSerializeSpec A) := by
-  have hshim_opt : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr privSerializeName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize"))
-      (specWithOptInv none (shimSpecWithStack allocHookStack)) := by
-    apply subroutine_ok_to_optNone
-    have h := subroutine_ok_withStack_of_subroutine_ok hshim allocHookStack
-    refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-    have hpre' : s0.mem ⊨ (withStack sessionShimSpec allocHookStack).pre x s0 ∗ R := by
-      dsimp only [withStack, sessionShimSpec, shimSpecWithStack] at hpre ⊢
-      simpa only [emp_sepConj, sepConj_assoc] using hpre
-    exact h.mono_outcome x R s0 hpc hrun hpre' hal (fun _ hout => hout)
-  exact subroutine_ok_of_optNone
-    (privSerialize_ok_of_contracts_opt none b A H allocHookStack 12256 extHookStack
-      (by decide) (by decide) hshim_opt (subroutine_ok_to_optNone halloc) hpanic)
-
-theorem privSerialize_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) (hC : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr privSerializeName)
-      (privSerializeSpec A) := by
-  exact privSerialize_ok_of_contracts b A (Rust.withPanics ext)
-    (hC.shim_ok_at privSerializeName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) (by fnoff_eq))
-    (hC.alloc_ok_at privSerializeName (num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) (by fnoff_eq))
-    (panic_at_handle_error_ext b ext privSerializeName (num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize"))
-      (by fnoff_eq))
-
-theorem privSerialize_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr privSerializeName)
-      (privSerializeSpec A) :=
-  privSerialize_ok_ext b A (tripleRatchetExterns C ctl abs)
-    (AllocContracts.of_tripleRatchetProgAt b C A ctl abs hA)
-
-theorem privSerialize_ok_of_contracts_x (img : Obj.Image) (A : RustAlloc)
-    (H : String → Option (State → State))
-    (hshim : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr privSerializeName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize"))
-      ((withStack sessionShimSpec extHookStack).inImage img))
-    (halloc : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr privSerializeName + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize"))
-      ((rustAllocSpecWithStack A extHookStack).inImage img))
-    (hpanic : (libsignalSessionCode.rebase img.base H).externAt?
-      ((libsignalSessionCode.rebase img.base H).fnAddr privSerializeName + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) =
-      some Rust.panicked) :
-    subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr privSerializeName)
-      ((privSerializeSpecX A).inImage img) := by
-  have hshim_opt : subroutine_ok (libsignalSessionCode.rebase img.base H)
-      ((libsignalSessionCode.rebase img.base H).fnAddr privSerializeName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize"))
-      (specWithOptInv (some img) (shimSpecWithStack extHookStack)) := by
-    refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-    have hpre' : s0.mem ⊨ ((withStack sessionShimSpec extHookStack).inImage img).pre x s0 ∗ R := by
-      dsimp only [specWithOptInv, OptCallInv, Spec.inImage, withStack, sessionShimSpec, shimSpecWithStack] at hpre ⊢
-      simpa only [emp_sepConj, sepConj_assoc] using hpre
-    exact hshim.mono_outcome x R s0 hpc hrun hpre' hal (fun _ hout => hout)
-  exact privSerialize_ok_of_contracts_opt (some img) img.base A H extHookStack 0 privSerializeStackX
-    (by decide) (by decide) hshim_opt halloc hpanic
-
-theorem privSerialize_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr privSerializeName)
-      ((privSerializeSpecX A).inImage img) := by
-  exact privSerialize_ok_of_contracts_x img A (Rust.withPanics ext)
-    (hC.shim_ok_at privSerializeName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) extHookStack (by decide) (by decide)
-      (by fnoff_eq))
-    (hC.alloc_ok_at privSerializeName (num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize")) (by fnoff_eq))
-    (panic_at_handle_error_ext img.base ext privSerializeName (num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_core::curve::PrivateKey>::serialize"))
-      (by fnoff_eq))
-
-/-! ## Relocatable per-block proofs (`[LibsignalPlacement]`) -/
 
 private theorem shimWithStack_of_noAllocShim {prog : Program} {addr : BitVec 64} (hookStack : Nat)
     (h : subroutine_ok prog addr noAllocShimSpec) :

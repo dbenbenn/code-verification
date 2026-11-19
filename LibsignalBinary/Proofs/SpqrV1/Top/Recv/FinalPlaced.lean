@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Contracts
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Final
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet5Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1RatchetErr2500
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1RatchetErr2500Placed
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
 
 /-!
 # Relocatable Top-Level Assembly for `spqr::recv`
@@ -30,7 +31,7 @@ the relocatable `spqr_recv_placed_ok` and `blockProgram` theorems for `spqr::rec
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -81,7 +82,7 @@ open CryptoVerification.SpqrV1.ChainProofs.NextKeyInternalFacts
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. `V0ChainPlacedTail` (`+496 -> s0.x30`) and `InitInnerPlacedTail` (`+1076 -> s0.x30`) -/
@@ -134,7 +135,7 @@ theorem sepWPpLS_intro_chunkedStatesLocal2JumpTablePlacedAt
 /-- Post-`+1856` continuation interface for the relocatable V1 ratchet path (`+1856 -> s0.x30`),
     matching the `hok_1856` continuation of `step_v1_ratchet_1532_to_1856_placed`
     (`V1Ratchet3Placed.lean`). -/
-def V1RatchetPlacedChainContinuation
+@[expose] def V1RatchetPlacedChainContinuation
     (H_inner : V1InnerHeapPred) (A : RustAlloc)
     (F : ShaCompress) (K : MlKem) (ext : String → Option (State → State))
     (st msg : VecArg) (ret : BitVec 64) (s0 : State) (R : SepProp) : Prop :=

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.PqxdhTables
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.CostUB
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
+public import Computational.Proofs.ReductionDsl.PqxdhTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.CostUB -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -22,7 +22,7 @@ Defines `Ty pqSig` encodings, named-variable `Ext` combinators, bounded monadic 
 and shared PQXDH `Auth` simulator handler branches for `ReductionDsl` reductions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,10 +30,10 @@ namespace ReductionDsl
 
 open SignalPqxdh.LegacyCosted
 
-@[reducible] def Ty.u32 : Ty pqSig := SignalPqxdh.LegacyCosted.U32
-@[reducible] def Var.vz {S : Sig} {Γ : List (Ty S)} {t : Ty S} :
+@[expose, reducible] def Ty.u32 : Ty pqSig := SignalPqxdh.LegacyCosted.U32
+@[expose, reducible] def Var.vz {S : Sig} {Γ : List (Ty S)} {t : Ty S} :
     Var (t :: Γ) t := .zero
-@[reducible] def Var.vs {S : Sig} {Γ : List (Ty S)} {t u : Ty S}
+@[expose, reducible] def Var.vs {S : Sig} {Γ : List (Ty S)} {t u : Ty S}
     (v : Var Γ t) : Var (u :: Γ) t := .succ v
 
 end ReductionDsl
@@ -93,46 +93,46 @@ abbrev authRespTy : Ty pqSig := authRT
 
 abbrev principalEntryTy : Ty pqSig :=
   .prod (B 32) (.prod (B 32) (.prod (B 32) (.prod (B 32) .bool)))
-@[simp] def principalEntryToVal (e : PrincipalEntry) : principalEntryTy.denote :=
+@[expose, simp] def principalEntryToVal (e : PrincipalEntry) : principalEntryTy.denote :=
   (e.secIKA0, (e.ikAPk, (e.secIKAsign, (e.ikSignPk, e.corrupted))))
 
 abbrev spkBundleEntryTy : Ty pqSig :=
   .prod (B 32) (.prod (B 32) (.prod (B 64)
     (.prod (B 3168) (.prod (B 1568) (.prod (B 64) .bool)))))
-@[simp] def spkBundleEntryToVal (b : SpkBundleEntry) : spkBundleEntryTy.denote :=
+@[expose, simp] def spkBundleEntryToVal (b : SpkBundleEntry) : spkBundleEntryTy.denote :=
   (b.spkSk, (b.spkPk, (b.spkSig, (b.pqspkSk, (b.pqspkPk, (b.pqspkSig, b.revealed))))))
 
 abbrev opkEntryTy : Ty pqSig := .prod (B 32) (.prod (B 32) .bool)
-@[simp] def opkEntryToVal (o : OpkEntry) : opkEntryTy.denote := (o.opkSk, (o.opkPk, o.consumed))
+@[expose, simp] def opkEntryToVal (o : OpkEntry) : opkEntryTy.denote := (o.opkSk, (o.opkPk, o.consumed))
 
 abbrev sentOPKEventTy : Ty pqSig :=
   .prod (B 32) (.prod (B 32) (.prod (B 32) (.prod (B 32)
     (.prod (B 32) (.prod (B 1568) (.prod (B 1568) (.prod (B 32) .bool)))))))
-@[simp] def sentOPKEventToVal (e : SentOPKEvent) : sentOPKEventTy.denote :=
+@[expose, simp] def sentOPKEventToVal (e : SentOPKEvent) : sentOPKEventTy.denote :=
   (e.a0, (e.b0, (e.sb, (e.ob, (e.a1, (e.pk1, (e.ct, (e.m, e.matched))))))))
 
 abbrev sentNoOPKEventTy : Ty pqSig :=
   .prod (B 32) (.prod (B 32) (.prod (B 32)
     (.prod (B 32) (.prod (B 1568) (.prod (B 1568) (.prod (B 32) .bool))))))
-@[simp] def sentNoOPKEventToVal (e : SentNoOPKEvent) : sentNoOPKEventTy.denote :=
+@[expose, simp] def sentNoOPKEventToVal (e : SentNoOPKEvent) : sentNoOPKEventTy.denote :=
   (e.a0, (e.b0, (e.sb, (e.a1, (e.pk1, (e.ct, (e.m, e.matched)))))))
 
 abbrev recvdOPKEventTy : Ty pqSig :=
   .prod .bool (.prod (B 32) (.prod (B 32) (.prod (B 32) (.prod (B 32)
     (.prod (B 32) (.prod (B 1568) (.prod (B 1568) (B 32))))))))
-@[simp] def recvdOPKEventToVal (e : RecvdOPKEvent) : recvdOPKEventTy.denote :=
+@[expose, simp] def recvdOPKEventToVal (e : RecvdOPKEvent) : recvdOPKEventTy.denote :=
   (e.bCorr, (e.a0, (e.b0, (e.sb, (e.ob, (e.a1, (e.pk1, (e.ct, e.m))))))))
 
 abbrev recvdNoOPKEventTy : Ty pqSig :=
   .prod .bool (.prod (B 32) (.prod (B 32)
     (.prod (B 32) (.prod (B 32) (.prod (B 1568) (.prod (B 1568) (B 32)))))))
-@[simp] def recvdNoOPKEventToVal (e : RecvdNoOPKEvent) : recvdNoOPKEventTy.denote :=
+@[expose, simp] def recvdNoOPKEventToVal (e : RecvdNoOPKEvent) : recvdNoOPKEventTy.denote :=
   (e.bCorr, (e.a0, (e.b0, (e.sb, (e.a1, (e.pk1, (e.ct, e.m)))))))
 
 abbrev authSessionEntryTy : Ty pqSig :=
   .prod sessionIdTy (.prod (B 32) (.prod (B 32) (.prod (.opt (B 32)) (.prod (B 1568)
     (.prod .bool (.prod .bool (.prod .bool (.prod (B 32) (.prod (B 32) (.prod .bool .bool))))))))))
-@[simp] def authSessionEntryToVal {S : Setup} (s : AuthInitiatorEntry S) :
+@[expose, simp] def authSessionEntryToVal {S : Setup} (s : AuthInitiatorEntry S) :
     authSessionEntryTy.denote :=
   (sessionIdToVal s.sid, (s.peerIkPk, (s.peerSpkPk, (s.peerOpkPk?, (s.peerPqspkPk,
     (s.spkHonest, (s.opkHonest, (s.pqspkHonest,
@@ -155,7 +155,7 @@ abbrev authStateTy : Ty pqSig :=
                       (.prod (.list rootRoCacheEntryTy)
                         (.list (.prod (B 32) (B 32))))))))))))))))))
 
-@[simp] def authStateToVal {S : Setup} (st : AuthState S) : authStateTy.denote :=
+@[expose, simp] def authStateToVal {S : Setup} (st : AuthState S) : authStateTy.denote :=
   (st.secb, (st.hasWonAuth, (st.principals.map (Prod.map id principalEntryToVal),
     (st.spkBundles.map (Prod.map id spkBundleEntryToVal),
       (st.opkEntries.map (Prod.map (fun (u, j, o) => (u, (j, o))) opkEntryToVal),
@@ -172,10 +172,10 @@ abbrev authStateTy : Ty pqSig :=
 
 abbrev fgPosTy : Ty pqSig :=
   .sum (.prod (B 32) .bool) (.prod (B 32) (.prod (B 32) (.prod (B 32) (B 32))))
-@[simp] def fgPosToVal : FgPoS → fgPosTy.denote
+@[expose, simp] def fgPosToVal : FgPoS → fgPosTy.denote
   | .secret z c => .inl (z, c)
   | .pair p1 p2 w1 w2 => .inr (p1, (p2, (w1, w2)))
-@[simp] def valToFgPos : fgPosTy.denote → FgPoS
+@[expose, simp] def valToFgPos : fgPosTy.denote → FgPoS
   | .inl (z, c) => .secret z c
   | .inr (p1, (p2, (w1, w2))) => .pair p1 p2 w1 w2
 @[simp] theorem valToFgPos_fgPosToVal (x : FgPoS) : valToFgPos (fgPosToVal x) = x := by
@@ -183,13 +183,13 @@ abbrev fgPosTy : Ty pqSig :=
 
 abbrev fgPatchEntryTy : Ty pqSig :=
   .prod fgPosTy (.prod fgPosTy (.prod fgPosTy (.prod (.opt fgPosTy) (.prod (B 32) drKeyTy))))
-@[simp] def fgPatchEntryToVal (e : FgPatchEntry) : fgPatchEntryTy.denote :=
+@[expose, simp] def fgPatchEntryToVal (e : FgPatchEntry) : fgPatchEntryTy.denote :=
   (fgPosToVal e.pos1, (fgPosToVal e.pos2,
     (fgPosToVal e.pos3, (e.pos4?.map fgPosToVal, (e.ss, drKeyToVal e.dk)))))
-@[simp] def valToFgPatchEntry (v : fgPatchEntryTy.denote) : FgPatchEntry :=
+@[expose, simp] def valToFgPatchEntry (v : fgPatchEntryTy.denote) : FgPatchEntry :=
   ⟨valToFgPos v.1, valToFgPos v.2.1, valToFgPos v.2.2.1,
     v.2.2.2.1.map valToFgPos, v.2.2.2.2.1, valToDrKey v.2.2.2.2.2⟩
-def fgPatchEntryIso : ValIso FgPatchEntry fgPatchEntryTy :=
+@[expose] def fgPatchEntryIso : ValIso FgPatchEntry fgPatchEntryTy :=
   ⟨fgPatchEntryToVal, valToFgPatchEntry, by
     intro ⟨p1, p2, p3, p4, ss, dk⟩
     cases p4 <;> simp only [fgPatchEntryToVal, valToFgPatchEntry, Option.map,
@@ -205,53 +205,53 @@ open SignalPqxdh SignalPqxdh.LegacyCosted SignalPqxdh.Security SignalPqxdh.Secur
 
 variable {Γ : List (Ty pqSig)} {τ σ : Ty pqSig}
 
-@[reducible] def litUnit : Expr pqxdhOps Γ .unit := .unit
-@[reducible] def litBool (b : Bool) : Expr pqxdhOps Γ .bool := .bool b
-@[reducible] def litNat (n : ℕ) : Expr pqxdhOps Γ .nat := .nat n
-@[reducible] def noneE : Expr pqxdhOps Γ (.opt τ) := .none
-@[reducible] def someE (a : Expr pqxdhOps Γ τ) : Expr pqxdhOps Γ (.opt τ) := .some a
-@[reducible] def boolNot (a : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ .bool := .not a
-@[reducible] def boolAnd (a b : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ .bool := .and a b
-@[reducible] def boolOr (a b : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ .bool := .ite a (.bool true) b
+@[expose, reducible] def litUnit : Expr pqxdhOps Γ .unit := .unit
+@[expose, reducible] def litBool (b : Bool) : Expr pqxdhOps Γ .bool := .bool b
+@[expose, reducible] def litNat (n : ℕ) : Expr pqxdhOps Γ .nat := .nat n
+@[expose, reducible] def noneE : Expr pqxdhOps Γ (.opt τ) := .none
+@[expose, reducible] def someE (a : Expr pqxdhOps Γ τ) : Expr pqxdhOps Γ (.opt τ) := .some a
+@[expose, reducible] def boolNot (a : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ .bool := .not a
+@[expose, reducible] def boolAnd (a b : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ .bool := .and a b
+@[expose, reducible] def boolOr (a b : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ .bool := .ite a (.bool true) b
 
-@[reducible] def listNil : Expr pqxdhOps Γ (.list τ) := .nil
-@[reducible] def listCons (x : Expr pqxdhOps Γ τ) (l : Expr pqxdhOps Γ (.list τ)) :
+@[expose, reducible] def listNil : Expr pqxdhOps Γ (.list τ) := .nil
+@[expose, reducible] def listCons (x : Expr pqxdhOps Γ τ) (l : Expr pqxdhOps Γ (.list τ)) :
     Expr pqxdhOps Γ (.list τ) := .cons x l
-@[reducible] def findBounded (K : ℕ) (l : Expr pqxdhOps Γ (.list τ))
+@[expose, reducible] def findBounded (K : ℕ) (l : Expr pqxdhOps Γ (.list τ))
     (p : Expr pqxdhOps (τ :: Γ) .bool) : Expr pqxdhOps Γ (.opt τ) := .findB K l p
-@[reducible] def anyBounded (K : ℕ) (l : Expr pqxdhOps Γ (.list τ))
+@[expose, reducible] def anyBounded (K : ℕ) (l : Expr pqxdhOps Γ (.list τ))
     (p : Expr pqxdhOps (τ :: Γ) .bool) : Expr pqxdhOps Γ .bool := .anyB K l p
-@[reducible] def mapBounded (K : ℕ) (l : Expr pqxdhOps Γ (.list τ))
+@[expose, reducible] def mapBounded (K : ℕ) (l : Expr pqxdhOps Γ (.list τ))
     (f : Expr pqxdhOps (τ :: Γ) σ) : Expr pqxdhOps Γ (.list σ) := .mapB K l f
 
-def litBytes (w : ℕ+) (bs : Bytes) : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w) :=
+@[expose] def litBytes (w : ℕ+) (bs : Bytes) : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w) :=
   Expr.op (O := pqxdhOps) (Sum.inl (BOp.lit w bs)) .unit
-def bytesAppend {m n : ℕ+} (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B m)) (b : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B n)) :
+@[expose] def bytesAppend {m n : ℕ+} (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B m)) (b : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B n)) :
     Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B (m + n)) :=
   Expr.op (O := pqxdhOps) (Sum.inl (BOp.cat m n)) (.pair a b)
-def bytesCons {w : ℕ+} (b : UInt8) (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w)) :
+@[expose] def bytesCons {w : ℕ+} (b : UInt8) (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w)) :
     Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B (w + 1)) :=
   Expr.op (O := pqxdhOps) (Sum.inl (BOp.cons b w)) a
-def bytesWiden (w d : ℕ+) (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w)) :
+@[expose] def bytesWiden (w d : ℕ+) (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w)) :
     Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B (w + d)) :=
   Expr.op (O := pqxdhOps) (Sum.inl (BOp.widen w d)) a
-def bytesTakeK {w : ℕ+} (k : ℕ+) (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w)) :
+@[expose] def bytesTakeK {w : ℕ+} (k : ℕ+) (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w)) :
     Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B k) :=
   Expr.op (O := pqxdhOps) (Sum.inl (BOp.takeK w k)) a
-def bytesDrop {w : ℕ+} (n : Expr pqxdhOps Γ .nat) (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w)) :
+@[expose] def bytesDrop {w : ℕ+} (n : Expr pqxdhOps Γ .nat) (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w)) :
     Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w) :=
   Expr.op (O := pqxdhOps) (Sum.inl (BOp.drop w)) (.pair n a)
-def bytesLen {w : ℕ+} (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w)) : Expr pqxdhOps Γ .nat :=
+@[expose] def bytesLen {w : ℕ+} (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B w)) : Expr pqxdhOps Γ .nat :=
   Expr.op (O := pqxdhOps) (Sum.inl (BOp.len w)) a
-def bytesBeq {m n : ℕ+} (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B m)) (b : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B n)) :
+@[expose] def bytesBeq {m n : ℕ+} (a : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B m)) (b : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B n)) :
     Expr pqxdhOps Γ .bool :=
   Expr.op (O := pqxdhOps) (Sum.inl (BOp.eq m n)) (.pair a b)
-def bytesVarint (n : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B 10) :=
+@[expose] def bytesVarint (n : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ (SignalPqxdh.LegacyCosted.B 10) :=
   Expr.op (O := pqxdhOps) (Sum.inl BOp.varint) n
 
-def u32OfNat (n : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ SignalPqxdh.LegacyCosted.U32 :=
+@[expose] def u32OfNat (n : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ SignalPqxdh.LegacyCosted.U32 :=
   Expr.op (O := pqxdhOps) (Sum.inr UOp.ofNat) n
-def u32Beq (a b : Expr pqxdhOps Γ SignalPqxdh.LegacyCosted.U32) : Expr pqxdhOps Γ .bool :=
+@[expose] def u32Beq (a b : Expr pqxdhOps Γ SignalPqxdh.LegacyCosted.U32) : Expr pqxdhOps Γ .bool :=
   Expr.op (O := pqxdhOps) (Sum.inr UOp.eq) (.pair a b)
 
 @[simp] theorem eval_litBytes (w : ℕ+) (bs : Bytes) (env : Env Γ) :
@@ -290,7 +290,7 @@ open OracleSpec
 variable {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
 variable {Γ : List (Ty pqSig)} {t u v : Ty pqSig}
 
-def letC (e : Expr pqxdhOps Γ t) (k : Comp pqxdhOps I (t :: Γ) u) : Comp pqxdhOps I Γ u :=
+@[expose] def letC (e : Expr pqxdhOps Γ t) (k : Comp pqxdhOps I (t :: Γ) u) : Comp pqxdhOps I Γ u :=
   .bind (.ret e) k
 
 @[simp] theorem eval_letC (e : Expr pqxdhOps Γ t) (k : Comp pqxdhOps I (t :: Γ) u) (env : Env Γ) :
@@ -308,54 +308,54 @@ def letC (e : Expr pqxdhOps Γ t) (k : Comp pqxdhOps I (t :: Γ) u) : Comp pqxdh
     (letC e k).queries w ws = k.queries w ws := by
   simp [letC, Comp.queries]
 
-@[reducible] def iteC (b : Expr pqxdhOps Γ .bool) (c d : Comp pqxdhOps I Γ t) : Comp pqxdhOps I Γ t :=
+@[expose, reducible] def iteC (b : Expr pqxdhOps Γ .bool) (c d : Comp pqxdhOps I Γ t) : Comp pqxdhOps I Γ t :=
   .ite b c d
-@[reducible] def caseOptC (e : Expr pqxdhOps Γ (.opt t)) (n : Comp pqxdhOps I Γ u)
+@[expose, reducible] def caseOptC (e : Expr pqxdhOps Γ (.opt t)) (n : Comp pqxdhOps I Γ u)
     (s : Comp pqxdhOps I (t :: Γ) u) : Comp pqxdhOps I Γ u :=
   .caseOpt e n s
-@[reducible] def caseSumC (e : Expr pqxdhOps Γ (.sum t u)) (l : Comp pqxdhOps I (t :: Γ) v)
+@[expose, reducible] def caseSumC (e : Expr pqxdhOps Γ (.sum t u)) (l : Comp pqxdhOps I (t :: Γ) v)
     (r : Comp pqxdhOps I (u :: Γ) v) : Comp pqxdhOps I Γ v :=
   .caseSum e l r
-@[reducible] def findBoundedM (K : ℕ) (l : Expr pqxdhOps Γ (.list t))
+@[expose, reducible] def findBoundedM (K : ℕ) (l : Expr pqxdhOps Γ (.list t))
     (p : Comp pqxdhOps I (t :: Γ) .bool) : Comp pqxdhOps I Γ (.opt t) :=
   .findM K l p
-@[reducible] def anyBoundedM (K : ℕ) (l : Expr pqxdhOps Γ (.list t))
+@[expose, reducible] def anyBoundedM (K : ℕ) (l : Expr pqxdhOps Γ (.list t))
     (p : Comp pqxdhOps I (t :: Γ) .bool) : Comp pqxdhOps I Γ .bool :=
   .anyM K l p
-@[reducible] def mapBoundedM (K : ℕ) (l : Expr pqxdhOps Γ (.list t))
+@[expose, reducible] def mapBoundedM (K : ℕ) (l : Expr pqxdhOps Γ (.list t))
     (f : Comp pqxdhOps I (t :: Γ) u) : Comp pqxdhOps I Γ (.list u) :=
   .mapM K l f
-@[reducible] def foldBoundedM (K : ℕ) (l : Expr pqxdhOps Γ (.list t))
+@[expose, reducible] def foldBoundedM (K : ℕ) (l : Expr pqxdhOps Γ (.list t))
     (z : Expr pqxdhOps Γ u) (f : Comp pqxdhOps I (t :: u :: Γ) u) : Comp pqxdhOps I Γ u :=
   .foldM K l z f
 
-def sampleBool : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ .bool :=
+@[expose] def sampleBool : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ .bool :=
   Comp.sample (I := SignalPqxdh.LegacyCosted.pqPrimIface) PSamp.bool .unit
-def sampleBytes32 : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ (SignalPqxdh.LegacyCosted.B 32) :=
+@[expose] def sampleBytes32 : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ (SignalPqxdh.LegacyCosted.B 32) :=
   Comp.sample (I := SignalPqxdh.LegacyCosted.pqPrimIface) PSamp.bytes32 .unit
-def sampleRandom64 : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ (SignalPqxdh.LegacyCosted.B 64) :=
+@[expose] def sampleRandom64 : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ (SignalPqxdh.LegacyCosted.B 64) :=
   Comp.sample (I := SignalPqxdh.LegacyCosted.pqPrimIface) PSamp.random64 .unit
-def sampleDrKey96 : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ drKeyTy :=
+@[expose] def sampleDrKey96 : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ drKeyTy :=
   Comp.sample (I := SignalPqxdh.LegacyCosted.pqPrimIface) PSamp.drKey96 .unit
-def sampleIndex (N : ℕ) : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ .nat :=
+@[expose] def sampleIndex (N : ℕ) : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ .nat :=
   Comp.sample (I := SignalPqxdh.LegacyCosted.pqPrimIface) (PSamp.index N) .unit
-def queryPrim (g : SignalPqxdh.LegacyCosted.PTag) (e : Expr pqxdhOps Γ g.dom) : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ g.cod :=
+@[expose] def queryPrim (g : SignalPqxdh.LegacyCosted.PTag) (e : Expr pqxdhOps Γ g.dom) : Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ g.cod :=
   Comp.query (I := SignalPqxdh.LegacyCosted.pqPrimIface) g e
 
-def sampleBoolC {C : ChallengerOracle} : Comp pqxdhOps (pqChalIface C) Γ .bool :=
+@[expose] def sampleBoolC {C : ChallengerOracle} : Comp pqxdhOps (pqChalIface C) Γ .bool :=
   Comp.sample (I := pqChalIface C) PSamp.bool .unit
-def sampleBytes32C {C : ChallengerOracle} : Comp pqxdhOps (pqChalIface C) Γ (SignalPqxdh.LegacyCosted.B 32) :=
+@[expose] def sampleBytes32C {C : ChallengerOracle} : Comp pqxdhOps (pqChalIface C) Γ (SignalPqxdh.LegacyCosted.B 32) :=
   Comp.sample (I := pqChalIface C) PSamp.bytes32 .unit
-def sampleRandom64C {C : ChallengerOracle} : Comp pqxdhOps (pqChalIface C) Γ (SignalPqxdh.LegacyCosted.B 64) :=
+@[expose] def sampleRandom64C {C : ChallengerOracle} : Comp pqxdhOps (pqChalIface C) Γ (SignalPqxdh.LegacyCosted.B 64) :=
   Comp.sample (I := pqChalIface C) PSamp.random64 .unit
-def sampleDrKey96C {C : ChallengerOracle} : Comp pqxdhOps (pqChalIface C) Γ drKeyTy :=
+@[expose] def sampleDrKey96C {C : ChallengerOracle} : Comp pqxdhOps (pqChalIface C) Γ drKeyTy :=
   Comp.sample (I := pqChalIface C) PSamp.drKey96 .unit
-def sampleIndexC {C : ChallengerOracle} (N : ℕ) : Comp pqxdhOps (pqChalIface C) Γ .nat :=
+@[expose] def sampleIndexC {C : ChallengerOracle} (N : ℕ) : Comp pqxdhOps (pqChalIface C) Γ .nat :=
   Comp.sample (I := pqChalIface C) (PSamp.index N) .unit
-def queryPrimC {C : ChallengerOracle} (g : SignalPqxdh.LegacyCosted.PTag) (e : Expr pqxdhOps Γ g.dom) :
+@[expose] def queryPrimC {C : ChallengerOracle} (g : SignalPqxdh.LegacyCosted.PTag) (e : Expr pqxdhOps Γ g.dom) :
     Comp pqxdhOps (pqChalIface C) Γ g.cod :=
   Comp.query (I := pqChalIface C) (Sum.inl g) e
-def queryChal {C : ChallengerOracle} (g : C.Tag) (e : Expr pqxdhOps Γ (C.dom g)) :
+@[expose] def queryChal {C : ChallengerOracle} (g : C.Tag) (e : Expr pqxdhOps Γ (C.dom g)) :
     Comp pqxdhOps (pqChalIface C) Γ (C.cod g) :=
   Comp.query (I := pqChalIface C) (Sum.inr g) e
 
@@ -625,7 +625,7 @@ open OracleSpec OracleComp
 /-- Lift a primitive-interface computation `Comp pqxdhOps pqPrimIface Γ t` into any
     challenger interface `Comp pqxdhOps (pqChalIface C) Γ t` with identical cost and
     zero challenger queries. -/
-def liftChal {C : ChallengerOracle} {Γ : List (Ty pqSig)} {t : Ty pqSig} :
+@[expose] def liftChal {C : ChallengerOracle} {Γ : List (Ty pqSig)} {t : Ty pqSig} :
     Comp pqxdhOps SignalPqxdh.LegacyCosted.pqPrimIface Γ t → Comp pqxdhOps (pqChalIface C) Γ t
   | .ret e => .ret e
   | .bind c k => .bind c.liftChal k.liftChal
@@ -746,7 +746,7 @@ open OracleSpec OracleComp
 /-! ## Bounded Simulation Bridges -/
 
 /-- Simulates an adversary `mx` using `I.fwdU` on coin queries and `step` on game queries. -/
-def runWithIfaceStep {ι : Type} {T : OracleSpec ι}
+@[expose] def runWithIfaceStep {ι : Type} {T : OracleSpec ι}
     (I : Iface pqSig T) {κ : Type} {G : OracleSpec κ} {St α : Type}
     (step : (q : κ) → St → OracleComp T (G q × St))
     (mx : OracleComp (unifSpec + G) α) (st : St) :
@@ -805,46 +805,46 @@ instance (priority := high) Ext.refl {Γ : List (Ty pqSig)} : Ext Γ Γ := ⟨fu
 instance Ext.step {Γ Δ : List (Ty pqSig)} {σ : Ty pqSig} [h : Ext Γ Δ] : Ext Γ (σ :: Δ) :=
   ⟨fun x => .vs (h.wk x)⟩
 
-def v {Γ Δ : List (Ty pqSig)} {τ : Ty pqSig} [h : Ext Γ Δ] (x : Var Γ τ) : Expr pqxdhOps Δ τ :=
+@[expose] def v {Γ Δ : List (Ty pqSig)} {τ : Ty pqSig} [h : Ext Γ Δ] (x : Var Γ τ) : Expr pqxdhOps Δ τ :=
   .var (h.wk x)
 
-def bindV {ι : Type} {T : OracleSpec ι}
+@[expose] def bindV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig} (m : Comp pqxdhOps I Γ τ₁)
     (k : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) : Comp pqxdhOps I Γ τ₂ := .bind m (k .vz)
 
-def letV {ι : Type} {T : OracleSpec ι}
+@[expose] def letV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig} (e : Expr pqxdhOps Γ τ₁)
     (k : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) : Comp pqxdhOps I Γ τ₂ := .letC e (k .vz)
 
-def caseOptV {ι : Type} {T : OracleSpec ι}
+@[expose] def caseOptV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig} (o : Expr pqxdhOps Γ (.opt τ₁))
     (kn : Comp pqxdhOps I Γ τ₂)
     (ks : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) : Comp pqxdhOps I Γ τ₂ :=
   .caseOptC o kn (ks .vz)
 
-def caseSumV {ι : Type} {T : OracleSpec ι}
+@[expose] def caseSumV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List (Ty pqSig)} {τ₁ τ₂ τ : Ty pqSig} (s : Expr pqxdhOps Γ (.sum τ₁ τ₂))
     (kl : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ)
     (kr : Var (τ₂ :: Γ) τ₂ → Comp pqxdhOps I (τ₂ :: Γ) τ) : Comp pqxdhOps I Γ τ :=
   .caseSumC s (kl .vz) (kr .vz)
 
-def findMV {ι : Type} {T : OracleSpec ι}
+@[expose] def findMV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List (Ty pqSig)} {τ : Ty pqSig} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
     (p : Var (τ :: Γ) τ → Comp pqxdhOps I (τ :: Γ) .bool) : Comp pqxdhOps I Γ (.opt τ) :=
   .findBoundedM K xs (p .vz)
 
-def anyMV {ι : Type} {T : OracleSpec ι}
+@[expose] def anyMV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List (Ty pqSig)} {τ : Ty pqSig} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
     (p : Var (τ :: Γ) τ → Comp pqxdhOps I (τ :: Γ) .bool) : Comp pqxdhOps I Γ .bool :=
   .anyBoundedM K xs (p .vz)
 
-def mapMV {ι : Type} {T : OracleSpec ι}
+@[expose] def mapMV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig}
     (K : Nat) (xs : Expr pqxdhOps Γ (.list τ₁))
     (f : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) : Comp pqxdhOps I Γ (.list τ₂) :=
   .mapBoundedM K xs (f .vz)
 
-def foldMV {ι : Type} {T : OracleSpec ι}
+@[expose] def foldMV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig}
     (K : Nat) (xs : Expr pqxdhOps Γ (.list τ₁)) (z : Expr pqxdhOps Γ τ₂)
     (f : Var (τ₁ :: τ₂ :: Γ) τ₁ → Var (τ₁ :: τ₂ :: Γ) τ₂ →
@@ -852,60 +852,60 @@ def foldMV {ι : Type} {T : OracleSpec ι}
     Comp pqxdhOps I Γ τ₂ :=
   .foldBoundedM K xs z (f .vz (.vs .vz))
 
-def eLet {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig} (e : Expr pqxdhOps Γ τ₁)
+@[expose] def eLet {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig} (e : Expr pqxdhOps Γ τ₁)
     (k : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ₂) : Expr pqxdhOps Γ τ₂ := .letE e (k .vz)
 
-def eLet2 {Γ : List (Ty pqSig)} {τ₁ τ₂ τ : Ty pqSig}
+@[expose] def eLet2 {Γ : List (Ty pqSig)} {τ₁ τ₂ τ : Ty pqSig}
     (a : Expr pqxdhOps Γ τ₁) (b : Expr pqxdhOps Γ τ₂)
     (k : Var (τ₁ :: .prod τ₁ τ₂ :: Γ) τ₁ → Var (τ₂ :: τ₁ :: .prod τ₁ τ₂ :: Γ) τ₂ →
       Expr pqxdhOps (τ₂ :: τ₁ :: .prod τ₁ τ₂ :: Γ) τ) :
     Expr pqxdhOps Γ τ :=
   eLet (.pair a b) fun p => eLet (.fst (v p)) fun x => eLet (.snd (v p)) fun y => k x y
 
-def eCaseOpt {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig}
+@[expose] def eCaseOpt {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig}
     (o : Expr pqxdhOps Γ (.opt τ₁)) (kn : Expr pqxdhOps Γ τ₂)
     (ks : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ₂) : Expr pqxdhOps Γ τ₂ := .caseOpt o kn (ks .vz)
 
-def eCaseSum {Γ : List (Ty pqSig)} {τ₁ τ₂ τ : Ty pqSig}
+@[expose] def eCaseSum {Γ : List (Ty pqSig)} {τ₁ τ₂ τ : Ty pqSig}
     (s : Expr pqxdhOps Γ (.sum τ₁ τ₂))
     (kl : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ)
     (kr : Var (τ₂ :: Γ) τ₂ → Expr pqxdhOps (τ₂ :: Γ) τ) : Expr pqxdhOps Γ τ :=
   .caseSum s (kl .vz) (kr .vz)
 
-def eFind {Γ : List (Ty pqSig)} {τ : Ty pqSig} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
+@[expose] def eFind {Γ : List (Ty pqSig)} {τ : Ty pqSig} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
     (p : Var (τ :: Γ) τ → Expr pqxdhOps (τ :: Γ) .bool) : Expr pqxdhOps Γ (.opt τ) :=
   .findBounded K xs (p .vz)
 
-def eAny {Γ : List (Ty pqSig)} {τ : Ty pqSig} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
+@[expose] def eAny {Γ : List (Ty pqSig)} {τ : Ty pqSig} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
     (p : Var (τ :: Γ) τ → Expr pqxdhOps (τ :: Γ) .bool) : Expr pqxdhOps Γ .bool :=
   .anyBounded K xs (p .vz)
 
-def eMap {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ₁))
+@[expose] def eMap {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ₁))
     (f : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ₂) : Expr pqxdhOps Γ (.list τ₂) :=
   .mapBounded K xs (f .vz)
 
-def natEq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .bool :=
+@[expose] def natEq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .bool :=
   .eqN a b
 
-def nat2Eq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ (.prod .nat .nat)) : Expr pqxdhOps Γ .bool :=
+@[expose] def nat2Eq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ (.prod .nat .nat)) : Expr pqxdhOps Γ .bool :=
   .boolAnd (natEq (.fst a) (.fst b)) (natEq (.snd a) (.snd b))
 
-def nat3Eq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ (.prod .nat (.prod .nat .nat))) :
+@[expose] def nat3Eq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ (.prod .nat (.prod .nat .nat))) :
     Expr pqxdhOps Γ .bool :=
   .boolAnd (natEq (.fst a) (.fst b)) (nat2Eq (.snd a) (.snd b))
 
-def optBytesEq {w : ℕ+} {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ (.opt (B w))) :
+@[expose] def optBytesEq {w : ℕ+} {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ (.opt (B w))) :
     Expr pqxdhOps Γ .bool :=
   eLet2 a b fun a b => eCaseOpt (v a)
     (eCaseOpt (v b) (.litBool true) fun _ => .litBool false)
     fun x => eCaseOpt (v b) (.litBool false) fun y => .bytesBeq (v x) (v y)
 
-def optU32Eq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ (.opt .u32)) : Expr pqxdhOps Γ .bool :=
+@[expose] def optU32Eq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ (.opt .u32)) : Expr pqxdhOps Γ .bool :=
   eLet2 a b fun a b => eCaseOpt (v a)
     (eCaseOpt (v b) (.litBool true) fun _ => .litBool false)
     fun x => eCaseOpt (v b) (.litBool false) fun y => .u32Beq (v x) (v y)
 
-def sidEq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def sidEq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .bool :=
   eLet2 a b fun a b => eCaseSum (v a)
     (fun x => eCaseSum (v b) (fun y => nat2Eq (v x) (v y)) fun _ => .litBool false)
     fun a1 => eCaseSum (v a1)
@@ -919,7 +919,7 @@ def sidEq {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ sessionIdTy) : Expr pqx
           eCaseSum (v b1) (fun _ => .litBool false) fun b2 =>
             eCaseSum (v b2) (fun _ => .litBool false) fun y => nat3Eq (v x) (v y)
 
-def kyberEq {Γ : List (Ty pqSig)}
+@[expose] def kyberEq {Γ : List (Ty pqSig)}
     (a b : Expr pqxdhOps Γ (.prod .nat (.prod .u32 (.prod .u32 (B 32))))) :
     Expr pqxdhOps Γ .bool :=
   .boolAnd (natEq (.fst a) (.fst b))
@@ -927,10 +927,10 @@ def kyberEq {Γ : List (Ty pqSig)}
       (.boolAnd (.u32Beq (.fst (.snd (.snd a))) (.fst (.snd (.snd b))))
         (.bytesBeq (.snd (.snd (.snd a))) (.snd (.snd (.snd b))))))
 
-def nonZero32 {Γ : List (Ty pqSig)} (b : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ .bool :=
+@[expose] def nonZero32 {Γ : List (Ty pqSig)} (b : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ .bool :=
   .boolNot (.bytesBeq b (.litBytes 32 (List.replicate 32 0)))
 
-def buildSecretsE {Γ : List (Ty pqSig)} (dh1 dh2 dh3 : Expr pqxdhOps Γ (B 32))
+@[expose] def buildSecretsE {Γ : List (Ty pqSig)} (dh1 dh2 dh3 : Expr pqxdhOps Γ (B 32))
     (dh4? : Expr pqxdhOps Γ (.opt (B 32))) (ss : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 192) :=
   eLet2 (.pair dh1 (.pair dh2 (.pair dh3 ss))) dh4? fun p d =>
     eCaseOpt (v d)
@@ -953,14 +953,14 @@ def buildSecretsE {Γ : List (Ty pqSig)} (dh1 dh2 dh3 : Expr pqxdhOps Γ (B 32))
   dsimp only [Expr.eval, Env.get, Ext.step, Ext.refl]
   cases dh4?.eval env <;> rfl
 
-def encEC {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 33) :=
+@[expose] def encEC {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 33) :=
   .bytesCons TAG_EC_DJB pk
 
 @[simp] theorem encEC_eval {Γ : List (Ty pqSig)}
     (pk : Expr pqxdhOps Γ (B 32)) (env : Env Γ) :
     (encEC pk).eval env = encodeEC (pk.eval env) := rfl
 
-def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhOps Γ (B 1569) :=
+@[expose] def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhOps Γ (B 1569) :=
   .bytesCons TAG_KYBER_1024 pk
 
 @[simp] theorem encKEM_eval {Γ : List (Ty pqSig)}
@@ -969,57 +969,57 @@ def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhO
 
 /-! ### State and Message Field Accessors -/
 
-@[reducible] def stSecb {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stSecb {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ .bool := .fst e
-@[reducible] def stHasWon {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stHasWon {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ .bool := .fst (.snd e)
-@[reducible] def stPrin {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stPrin {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod .nat principalEntryTy)) := .fst (.snd (.snd e))
-@[reducible] def stSpks {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stSpks {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod (.prod .nat .nat) spkBundleEntryTy)) := .fst (.snd (.snd (.snd e)))
-@[reducible] def stOpks {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stOpks {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod (.prod .nat (.prod .nat .nat)) opkEntryTy)) :=
   .fst (.snd (.snd (.snd (.snd e))))
-@[reducible] def stSess {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stSess {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list authSessionEntryTy) := .fst (.snd (.snd (.snd (.snd (.snd e)))))
-@[reducible] def stUsedS {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stUsedS {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list sessionIdTy) := .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-@[reducible] def stUsedO {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stUsedO {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod .nat (.prod .nat .nat))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
-@[reducible] def stUsedN {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stUsedN {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod .nat (.prod .nat .nat))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))
-@[reducible] def stKyb {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stKyb {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod .nat (.prod .u32 (.prod .u32 (B 32))))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))
-@[reducible] def stSOE {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stSOE {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list sentOPKEventTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))))
-@[reducible] def stSNE {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stSNE {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list sentNoOPKEventTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))))
-@[reducible] def stROE {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stROE {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list recvdOPKEventTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))))))
-@[reducible] def stRNE {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stRNE {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list recvdNoOPKEventTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))))))
-@[reducible] def stRo {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stRo {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod (B 192) drKeyTy)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))))))))
-@[reducible] def stRoot {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stRoot {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod (.prod (B 32) (B 32)) (.prod (B 32) (B 32)))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))))))))
-@[reducible] def stAdv {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
+@[expose, reducible] def stAdv {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod (B 32) (B 32))) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))))))))
 
-@[reducible] def stMk {Γ : List (Ty pqSig)}
+@[expose, reducible] def stMk {Γ : List (Ty pqSig)}
     (secb : Expr pqxdhOps Γ .bool) (hasWon : Expr pqxdhOps Γ .bool)
     (prin : Expr pqxdhOps Γ (.list (.prod .nat principalEntryTy)))
     (spks : Expr pqxdhOps Γ (.list (.prod (.prod .nat .nat) spkBundleEntryTy)))
@@ -1041,7 +1041,7 @@ def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhO
     (.pair usedO (.pair usedN (.pair kyb (.pair sOE (.pair sNE (.pair rOE (.pair rNE
       (.pair ro (.pair root adv)))))))))))))))
 
-@[reducible] def stUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy)
+@[expose, reducible] def stUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authStateTy)
     (secb : Expr pqxdhOps Γ .bool := stSecb e)
     (hasWon : Expr pqxdhOps Γ .bool := stHasWon e)
     (prin : Expr pqxdhOps Γ (.list (.prod .nat principalEntryTy)) := stPrin e)
@@ -1062,34 +1062,34 @@ def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhO
     Expr pqxdhOps Γ authStateTy :=
   stMk secb hasWon prin spks opks sess usedS usedO usedN kyb sOE sNE rOE rNE ro root adv
 
-@[reducible] def seSid {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def seSid {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ sessionIdTy := .fst e
-@[reducible] def sePeerIk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def sePeerIk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-@[reducible] def sePeerSpk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def sePeerSpk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
-@[reducible] def sePeerOpk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def sePeerOpk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ (.opt (B 32)) := .fst (.snd (.snd (.snd e)))
-@[reducible] def sePeerPqspk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def sePeerPqspk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ (B 1568) := .fst (.snd (.snd (.snd (.snd e))))
-@[reducible] def seSpkHon {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def seSpkHon {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd e)))))
-@[reducible] def seOpkHon {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def seOpkHon {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-@[reducible] def sePqspkHon {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def sePqspkHon {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
-@[reducible] def seEkASk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def seEkASk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))
-@[reducible] def seEphASk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def seEphASk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))
-@[reducible] def seFresh {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def seFresh {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))))
-@[reducible] def seChal {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
+@[expose, reducible] def seChal {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ authSessionEntryTy) :
     Expr pqxdhOps Γ .bool :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))))
 
-@[reducible] def seMk {Γ : List (Ty pqSig)}
+@[expose, reducible] def seMk {Γ : List (Ty pqSig)}
     (sid : Expr pqxdhOps Γ sessionIdTy) (peerIk : Expr pqxdhOps Γ (B 32)) (peerSpk : Expr pqxdhOps Γ (B 32))
     (peerOpk : Expr pqxdhOps Γ (.opt (B 32))) (peerPqspk : Expr pqxdhOps Γ (B 1568))
     (spkHon opkHon pqspkHon : Expr pqxdhOps Γ .bool)
@@ -1098,19 +1098,19 @@ def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhO
   .pair sid (.pair peerIk (.pair peerSpk (.pair peerOpk (.pair peerPqspk (.pair spkHon
     (.pair opkHon (.pair pqspkHon (.pair ekASk (.pair ephASk (.pair fresh chal))))))))))
 
-@[reducible] def pmHdr {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyMsgTy) :
+@[expose, reducible] def pmHdr {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyMsgTy) :
     Expr pqxdhOps Γ handshakeHdrTy := .fst e
-@[reducible] def pmEphAPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyMsgTy) :
+@[expose, reducible] def pmEphAPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyMsgTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-@[reducible] def pmPqMsg {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyMsgTy) :
+@[expose, reducible] def pmPqMsg {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyMsgTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
-@[reducible] def pmAeadCt {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyMsgTy) :
+@[expose, reducible] def pmAeadCt {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyMsgTy) :
     Expr pqxdhOps Γ (B 32) := .snd (.snd (.snd e))
-@[reducible] def pmMk {Γ : List (Ty pqSig)}
+@[expose, reducible] def pmMk {Γ : List (Ty pqSig)}
     (hdr : Expr pqxdhOps Γ handshakeHdrTy) (ephAPk pqMsg aeadCt : Expr pqxdhOps Γ (B 32)) :
     Expr pqxdhOps Γ preKeyMsgTy :=
   .pair hdr (.pair ephAPk (.pair pqMsg aeadCt))
-@[reducible] def pmUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyMsgTy)
+@[expose, reducible] def pmUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyMsgTy)
     (hdr : Expr pqxdhOps Γ handshakeHdrTy := pmHdr e)
     (ephAPk : Expr pqxdhOps Γ (B 32) := pmEphAPk e)
     (pqMsg : Expr pqxdhOps Γ (B 32) := pmPqMsg e)
@@ -1118,21 +1118,21 @@ def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhO
     Expr pqxdhOps Γ preKeyMsgTy :=
   pmMk hdr ephAPk pqMsg aeadCt
 
-@[reducible] def peSecIKA0 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy) :
+@[expose, reducible] def peSecIKA0 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst e
-@[reducible] def peIkAPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy) :
+@[expose, reducible] def peIkAPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-@[reducible] def peSecIKAsign {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy) :
+@[expose, reducible] def peSecIKAsign {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
-@[reducible] def peIkSignPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy) :
+@[expose, reducible] def peIkSignPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd (.snd e)))
-@[reducible] def peCorrupted {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy) :
+@[expose, reducible] def peCorrupted {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy) :
     Expr pqxdhOps Γ .bool := .snd (.snd (.snd (.snd e)))
-@[reducible] def peMk {Γ : List (Ty pqSig)}
+@[expose, reducible] def peMk {Γ : List (Ty pqSig)}
     (secIKA0 ikAPk secIKAsign ikSignPk : Expr pqxdhOps Γ (B 32)) (corrupted : Expr pqxdhOps Γ .bool) :
     Expr pqxdhOps Γ principalEntryTy :=
   .pair secIKA0 (.pair ikAPk (.pair secIKAsign (.pair ikSignPk corrupted)))
-@[reducible] def peUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy)
+@[expose, reducible] def peUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ principalEntryTy)
     (secIKA0 : Expr pqxdhOps Γ (B 32) := peSecIKA0 e)
     (ikAPk : Expr pqxdhOps Γ (B 32) := peIkAPk e)
     (secIKAsign : Expr pqxdhOps Γ (B 32) := peSecIKAsign e)
@@ -1141,61 +1141,61 @@ def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhO
     Expr pqxdhOps Γ principalEntryTy :=
   peMk secIKA0 ikAPk secIKAsign ikSignPk corrupted
 
-@[reducible] def sbSpkSk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
+@[expose, reducible] def sbSpkSk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst e
-@[reducible] def sbSpkPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
+@[expose, reducible] def sbSpkPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-@[reducible] def sbSpkSig {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
+@[expose, reducible] def sbSpkSig {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
     Expr pqxdhOps Γ (B 64) := .fst (.snd (.snd e))
-@[reducible] def sbPqspkSk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
+@[expose, reducible] def sbPqspkSk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
     Expr pqxdhOps Γ (B 3168) := .fst (.snd (.snd (.snd e)))
-@[reducible] def sbPqspkPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
+@[expose, reducible] def sbPqspkPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
     Expr pqxdhOps Γ (B 1568) := .fst (.snd (.snd (.snd (.snd e))))
-@[reducible] def sbPqspkSig {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
+@[expose, reducible] def sbPqspkSig {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
     Expr pqxdhOps Γ (B 64) := .fst (.snd (.snd (.snd (.snd (.snd e)))))
-@[reducible] def sbRevealed {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
+@[expose, reducible] def sbRevealed {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ spkBundleEntryTy) :
     Expr pqxdhOps Γ .bool := .snd (.snd (.snd (.snd (.snd (.snd e)))))
-@[reducible] def sbMk {Γ : List (Ty pqSig)}
+@[expose, reducible] def sbMk {Γ : List (Ty pqSig)}
     (spkSk spkPk : Expr pqxdhOps Γ (B 32)) (spkSig : Expr pqxdhOps Γ (B 64))
     (pqspkSk : Expr pqxdhOps Γ (B 3168)) (pqspkPk : Expr pqxdhOps Γ (B 1568))
     (pqspkSig : Expr pqxdhOps Γ (B 64)) (revealed : Expr pqxdhOps Γ .bool) :
     Expr pqxdhOps Γ spkBundleEntryTy :=
   .pair spkSk (.pair spkPk (.pair spkSig (.pair pqspkSk (.pair pqspkPk (.pair pqspkSig revealed)))))
 
-@[reducible] def oeOpkSk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ opkEntryTy) :
+@[expose, reducible] def oeOpkSk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ opkEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst e
-@[reducible] def oeOpkPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ opkEntryTy) :
+@[expose, reducible] def oeOpkPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ opkEntryTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-@[reducible] def oeConsumed {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ opkEntryTy) :
+@[expose, reducible] def oeConsumed {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ opkEntryTy) :
     Expr pqxdhOps Γ .bool := .snd (.snd e)
-@[reducible] def oeMk {Γ : List (Ty pqSig)}
+@[expose, reducible] def oeMk {Γ : List (Ty pqSig)}
     (opkSk opkPk : Expr pqxdhOps Γ (B 32)) (consumed : Expr pqxdhOps Γ .bool) :
     Expr pqxdhOps Γ opkEntryTy :=
   .pair opkSk (.pair opkPk consumed)
-@[reducible] def oeUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ opkEntryTy)
+@[expose, reducible] def oeUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ opkEntryTy)
     (opkSk : Expr pqxdhOps Γ (B 32) := oeOpkSk e)
     (opkPk : Expr pqxdhOps Γ (B 32) := oeOpkPk e)
     (consumed : Expr pqxdhOps Γ .bool := oeConsumed e) :
     Expr pqxdhOps Γ opkEntryTy :=
   oeMk opkSk opkPk consumed
 
-@[reducible] def buIkB {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
+@[expose, reducible] def buIkB {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
     Expr pqxdhOps Γ (B 32) := .fst e
-@[reducible] def buSpkId {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
+@[expose, reducible] def buSpkId {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
     Expr pqxdhOps Γ .u32 := .fst (.snd e)
-@[reducible] def buSpkB {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
+@[expose, reducible] def buSpkB {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
-@[reducible] def buSpkSig {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
+@[expose, reducible] def buSpkSig {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
     Expr pqxdhOps Γ (B 64) := .fst (.snd (.snd (.snd e)))
-@[reducible] def buOpkB {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
+@[expose, reducible] def buOpkB {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
     Expr pqxdhOps Γ (.opt (.prod .u32 (B 32))) := .fst (.snd (.snd (.snd (.snd e))))
-@[reducible] def buPqspkId {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
+@[expose, reducible] def buPqspkId {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
     Expr pqxdhOps Γ .u32 := .fst (.snd (.snd (.snd (.snd (.snd e)))))
-@[reducible] def buPqspkB {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
+@[expose, reducible] def buPqspkB {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
     Expr pqxdhOps Γ (B 1568) := .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-@[reducible] def buPqspkSig {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
+@[expose, reducible] def buPqspkSig {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy) :
     Expr pqxdhOps Γ (B 64) := .snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-@[reducible] def buMk {Γ : List (Ty pqSig)}
+@[expose, reducible] def buMk {Γ : List (Ty pqSig)}
     (ikB : Expr pqxdhOps Γ (B 32)) (spkId : Expr pqxdhOps Γ .u32) (spkB : Expr pqxdhOps Γ (B 32))
     (spkSig : Expr pqxdhOps Γ (B 64)) (opkB : Expr pqxdhOps Γ (.opt (.prod .u32 (B 32))))
     (pqspkId : Expr pqxdhOps Γ .u32) (pqspkB : Expr pqxdhOps Γ (B 1568))
@@ -1203,7 +1203,7 @@ def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhO
     Expr pqxdhOps Γ preKeyBundleTy :=
   .pair ikB (.pair spkId (.pair spkB (.pair spkSig
     (.pair opkB (.pair pqspkId (.pair pqspkB pqspkSig))))))
-@[reducible] def buUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy)
+@[expose, reducible] def buUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ preKeyBundleTy)
     (ikB : Expr pqxdhOps Γ (B 32) := buIkB e)
     (spkId : Expr pqxdhOps Γ .u32 := buSpkId e)
     (spkB : Expr pqxdhOps Γ (B 32) := buSpkB e)
@@ -1215,25 +1215,25 @@ def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhO
     Expr pqxdhOps Γ preKeyBundleTy :=
   buMk ikB spkId spkB spkSig opkB pqspkId pqspkB pqspkSig
 
-@[reducible] def hdIkAPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
+@[expose, reducible] def hdIkAPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
     Expr pqxdhOps Γ (B 32) := .fst e
-@[reducible] def hdEkAPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
+@[expose, reducible] def hdEkAPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-@[reducible] def hdSpkId {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
+@[expose, reducible] def hdSpkId {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
     Expr pqxdhOps Γ .u32 := .fst (.snd (.snd e))
-@[reducible] def hdOpkId {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
+@[expose, reducible] def hdOpkId {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
     Expr pqxdhOps Γ (.opt .u32) := .fst (.snd (.snd (.snd e)))
-@[reducible] def hdPqspkId {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
+@[expose, reducible] def hdPqspkId {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
     Expr pqxdhOps Γ .u32 := .fst (.snd (.snd (.snd (.snd e))))
-@[reducible] def hdKemCt {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
+@[expose, reducible] def hdKemCt {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy) :
     Expr pqxdhOps Γ (B 1568) := .snd (.snd (.snd (.snd (.snd e))))
-@[reducible] def hdMk {Γ : List (Ty pqSig)}
+@[expose, reducible] def hdMk {Γ : List (Ty pqSig)}
     (ikAPk ekAPk : Expr pqxdhOps Γ (B 32)) (spkId : Expr pqxdhOps Γ .u32)
     (opkId : Expr pqxdhOps Γ (.opt .u32)) (pqspkId : Expr pqxdhOps Γ .u32)
     (kemCt : Expr pqxdhOps Γ (B 1568)) :
     Expr pqxdhOps Γ handshakeHdrTy :=
   .pair ikAPk (.pair ekAPk (.pair spkId (.pair opkId (.pair pqspkId kemCt))))
-@[reducible] def hdUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy)
+@[expose, reducible] def hdUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ handshakeHdrTy)
     (ikAPk : Expr pqxdhOps Γ (B 32) := hdIkAPk e)
     (ekAPk : Expr pqxdhOps Γ (B 32) := hdEkAPk e)
     (spkId : Expr pqxdhOps Γ .u32 := hdSpkId e)
@@ -1243,28 +1243,28 @@ def encKEM {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhO
     Expr pqxdhOps Γ handshakeHdrTy :=
   hdMk ikAPk ekAPk spkId opkId pqspkId kemCt
 
-def isSomeE {Γ : List (Ty pqSig)} {τ : Ty pqSig} (o : Expr pqxdhOps Γ (.opt τ)) : Expr pqxdhOps Γ .bool :=
+@[expose] def isSomeE {Γ : List (Ty pqSig)} {τ : Ty pqSig} (o : Expr pqxdhOps Γ (.opt τ)) : Expr pqxdhOps Γ .bool :=
   .caseOpt o (.litBool false) (.litBool true)
 
-def getDBytes {w : ℕ+} {Γ : List (Ty pqSig)} (o : Expr pqxdhOps Γ (.opt (B w))) : Expr pqxdhOps Γ (B w) :=
+@[expose] def getDBytes {w : ℕ+} {Γ : List (Ty pqSig)} (o : Expr pqxdhOps Γ (.opt (B w))) : Expr pqxdhOps Γ (B w) :=
   eCaseOpt o (.litBytes w []) fun x => v x
 
-def optFst {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig}
+@[expose] def optFst {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig}
     (o : Expr pqxdhOps Γ (.opt (.prod τ₁ τ₂))) : Expr pqxdhOps Γ (.opt τ₁) :=
   eCaseOpt o .noneE fun p => .someE (.fst (v p))
 
-def optSnd {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig}
+@[expose] def optSnd {Γ : List (Ty pqSig)} {τ₁ τ₂ : Ty pqSig}
     (o : Expr pqxdhOps Γ (.opt (.prod τ₁ τ₂))) : Expr pqxdhOps Γ (.opt τ₂) :=
   eCaseOpt o .noneE fun p => .someE (.snd (v p))
 
-def dhOptNZ {Γ : List (Ty pqSig)} (d : Expr pqxdhOps Γ (.opt (B 32))) : Expr pqxdhOps Γ .bool :=
+@[expose] def dhOptNZ {Γ : List (Ty pqSig)} (d : Expr pqxdhOps Γ (.opt (B 32))) : Expr pqxdhOps Γ .bool :=
   eCaseOpt d (.litBool true) fun x => nonZero32 (v x)
 
-def guardE {Γ : List (Ty pqSig)} {τ : Ty pqSig}
+@[expose] def guardE {Γ : List (Ty pqSig)} {τ : Ty pqSig}
     (c : Expr pqxdhOps Γ .bool) (e : Expr pqxdhOps Γ (.opt τ)) : Expr pqxdhOps Γ (.opt τ) :=
   .ite c e .noneE
 
-def kyberCheckE {Γ : List (Ty pqSig)} (K : Nat)
+@[expose] def kyberCheckE {Γ : List (Ty pqSig)} (K : Nat)
     (used : Expr pqxdhOps Γ (.list (.prod .nat (.prod .u32 (.prod .u32 (B 32))))))
     (entry : Expr pqxdhOps Γ (.prod .nat (.prod .u32 (.prod .u32 (B 32))))) :
     Expr pqxdhOps Γ (.prod .bool (.list (.prod .nat (.prod .u32 (.prod .u32 (B 32)))))) :=
@@ -1279,7 +1279,7 @@ section Helpers
 
 variable (S : Setup) (K : Nat) {Γ Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
 
-def findHonestC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
+@[expose] def findHonestC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ (.opt (.prod .nat principalEntryTy)) :=
   letV ik fun ik =>
     findMV (min K S.N_dh) (stPrin (v st)) fun e =>
@@ -1287,26 +1287,26 @@ def findHonestC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 
         bindV (.queryPrim .pow8 (peIkAPk (.snd (v e)))) fun p2 =>
           .ret (.bytesBeq (v p1) (v p2))
 
-def isAdvRegC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
+@[expose] def isAdvRegC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   bindV (.queryPrim .pow8 pk) fun p =>
     .ret (eAny K (stAdv (v st)) fun e => .bytesBeq (v p) (.fst (v e)))
 
-def isGameSpkC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
+@[expose] def isGameSpkC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   letV pk fun pk =>
     anyMV (min K S.N_dh) (stSpks (v st)) fun e =>
       bindV (.queryPrim .pow8 (sbSpkPk (.snd (v e)))) fun p1 =>
         bindV (.queryPrim .pow8 (v pk)) fun p2 => .ret (.bytesBeq (v p1) (v p2))
 
-def isGameOpkC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
+@[expose] def isGameOpkC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   letV pk fun pk =>
     anyMV (min K S.N_dh) (stOpks (v st)) fun e =>
       bindV (.queryPrim .pow8 (oeOpkPk (.snd (v e)))) fun p1 =>
         bindV (.queryPrim .pow8 (v pk)) fun p2 => .ret (.bytesBeq (v p1) (v p2))
 
-def koskBundleOkC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def koskBundleOkC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   bindV (findHonestC S K st (buIkB (v bu))) fun f =>
   bindV (isAdvRegC K st (buIkB (v bu))) fun idA =>
@@ -1321,26 +1321,26 @@ def koskBundleOkC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy) [
       .ret (.boolAnd (.boolAnd (.boolOr (isSomeE (v f)) (v idA)) (.boolOr (v spkG) (v spkA)))
         (.boolOr (v opkG) (v opkA)))
 
-def koskSenderOkC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
+@[expose] def koskSenderOkC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   letV ik fun ik =>
   bindV (findHonestC S K st (v ik)) fun f =>
   bindV (isAdvRegC K st (v ik)) fun idA =>
   .ret (.boolOr (isSomeE (v f)) (v idA))
 
-def resolveSigPkC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
+@[expose] def resolveSigPkC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ (B 32) :=
   letV ik fun ik =>
   bindV (findHonestC S K st (v ik)) fun f =>
   .ret (eCaseOpt (v f) (v ik) fun e => peIkSignPk (.snd (v e)))
 
-def honestPeerC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
+@[expose] def honestPeerC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ (.opt .nat) :=
   bindV (findHonestC S K st ik) fun f =>
   .ret (eCaseOpt (v f) .noneE fun e =>
     .ite (.boolNot (peCorrupted (.snd (v e)))) (.someE (.fst (v e))) .noneE)
 
-def hkdfOrRoC (useRo : Bool) (st : Var Γ authStateTy) [Ext Γ Δ] (sec : Expr pqxdhOps Δ (B 192)) :
+@[expose] def hkdfOrRoC (useRo : Bool) (st : Var Γ authStateTy) [Ext Γ Δ] (sec : Expr pqxdhOps Δ (B 192)) :
     Comp pqxdhOps pqPrimIface Δ (.prod drKeyTy (.list (.prod (B 192) drKeyTy))) :=
   letV sec fun sec =>
   if useRo then
@@ -1354,36 +1354,36 @@ def hkdfOrRoC (useRo : Bool) (st : Var Γ authStateTy) [Ext Γ Δ] (sec : Expr p
 
 end Helpers
 
-def aNone {Γ : List (Ty pqSig)} : Expr pqxdhOps Γ authRespTy := .inl .litUnit
-def aInitPrin {Γ : List (Ty pqSig)} (ik s : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aNone {Γ : List (Ty pqSig)} : Expr pqxdhOps Γ authRespTy := .inl .litUnit
+@[expose] def aInitPrin {Γ : List (Ty pqSig)} (ik s : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inl (.pair ik s))
-def aPk {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aPk {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inl pk))
-def aCorr {Γ : List (Ty pqSig)} (ik s : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aCorr {Γ : List (Ty pqSig)} (ik s : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inl (.pair ik s))))
-def aBundle {Γ : List (Ty pqSig)} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aBundle {Γ : List (Ty pqSig)} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inl b))))
-def aSendFresh {Γ : List (Ty pqSig)} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aSendFresh {Γ : List (Ty pqSig)} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inl m)))))
-def aSendUnfresh {Γ : List (Ty pqSig)} (dk : Expr pqxdhOps Γ drKeyTy) (rk ck : Expr pqxdhOps Γ (B 32))
+@[expose] def aSendUnfresh {Γ : List (Ty pqSig)} (dk : Expr pqxdhOps Γ drKeyTy) (rk ck : Expr pqxdhOps Γ (B 32))
     (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inl (.pair dk (.pair rk (.pair ck m)))))))))
-def aRecvHonest {Γ : List (Ty pqSig)} : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aRecvHonest {Γ : List (Ty pqSig)} : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl .litUnit)))))))
-def aRecvUnfresh {Γ : List (Ty pqSig)} (dk : Expr pqxdhOps Γ drKeyTy) (rk ck pt : Expr pqxdhOps Γ (B 32)) :
+@[expose] def aRecvUnfresh {Γ : List (Ty pqSig)} (dk : Expr pqxdhOps Γ drKeyTy) (rk ck pt : Expr pqxdhOps Γ (B 32)) :
     Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl (.pair dk (.pair rk (.pair ck pt)))))))))))
-def aDrKey {Γ : List (Ty pqSig)} (dk : Expr pqxdhOps Γ drKeyTy) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aDrKey {Γ : List (Ty pqSig)} (dk : Expr pqxdhOps Γ drKeyTy) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl dk)))))))))
-def aRootKdf {Γ : List (Ty pqSig)} (rk ck : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aRootKdf {Γ : List (Ty pqSig)} (rk ck : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl (.pair rk ck)))))))))))
 
 abbrev RS : Ty pqSig := .prod authRespTy authStateTy
 
-def rs {Γ : List (Ty pqSig)} (r : Expr pqxdhOps Γ authRespTy) (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def rs {Γ : List (Ty pqSig)} (r : Expr pqxdhOps Γ authRespTy) (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ RS := .pair r st
 
-def firstMsgADE {Γ : List (Ty pqSig)} (ikA ikB eph pq : Expr pqxdhOps Γ (B 32)) :
+@[expose] def firstMsgADE {Γ : List (Ty pqSig)} (ikA ikB eph pq : Expr pqxdhOps Γ (B 32)) :
     Expr pqxdhOps Γ (B 158) :=
   .bytesAppend
     (.bytesAppend
@@ -1410,11 +1410,11 @@ theorem firstMsgAD_splitHs (ikA ikB ephAPk pq : Bytes) :
       firstMsgAD (ikA.eval env) (ikB.eval env) (eph.eval env) (pq.eval env) := by
   rw [firstMsgAD_splitHs]; rfl
 
-def bytes2Eq {w₁ w₂ : ℕ+} {Γ : List (Ty pqSig)}
+@[expose] def bytes2Eq {w₁ w₂ : ℕ+} {Γ : List (Ty pqSig)}
     (a b : Expr pqxdhOps Γ (.prod (B w₁) (B w₂))) : Expr pqxdhOps Γ .bool :=
   .boolAnd (.bytesBeq (.fst a) (.fst b)) (.bytesBeq (.snd a) (.snd b))
 
-def emptyAuthStE {Γ : List (Ty pqSig)} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ authStateTy :=
+@[expose] def emptyAuthStE {Γ : List (Ty pqSig)} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ authStateTy :=
   stMk secb (.litBool false) .listNil .listNil .listNil .listNil .listNil .listNil .listNil
     .listNil .listNil .listNil .listNil .listNil .listNil .listNil .listNil
 
@@ -1422,7 +1422,7 @@ section Helpers2
 
 variable (S : Setup) (K : Nat) {Γ Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
 
-def rootRoC (st : Var Γ authStateTy) [Ext Γ Δ] (rk dh : Expr pqxdhOps Δ (B 32)) :
+@[expose] def rootRoC (st : Var Γ authStateTy) [Ext Γ Δ] (rk dh : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ
       (.prod (.prod (B 32) (B 32)) (.list (.prod (.prod (B 32) (B 32)) (.prod (B 32) (B 32))))) :=
   letV (.pair rk dh) fun inp =>
@@ -1443,7 +1443,7 @@ section BaseBranches
 
 variable (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
 
-def initPrinB (st : Var Γ₁ authStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def initPrinB (st : Var Γ₁ authStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ RS :=
   .iteC (eAny K (stPrin (v st)) fun e => natEq (.fst (v e)) (v u)) (.ret (rs aNone (v st))) <|
   bindV .sampleBytes32 fun s0 => bindV (.queryPrim .x25519Base (v s0)) fun ik =>
@@ -1451,7 +1451,7 @@ def initPrinB (st : Var Γ₁ authStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [
   .ret (rs (aInitPrin (v ik) (v sp)) (stUpd (v st) (prin := .listCons
     (.pair (v u) (peMk (v s0) (v ik) (v s1) (v sp) (.litBool false))) (stPrin (v st)))))
 
-def corruptB (st : Var Γ₁ authStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def corruptB (st : Var Γ₁ authStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ RS :=
   caseOptV (eFind K (stPrin (v st)) fun e => natEq (.fst (v e)) (v u)) (.ret (rs aNone (v st)))
     fun e => .ret (rs (aCorr (peSecIKA0 (.snd (v e))) (peSecIKAsign (.snd (v e))))
@@ -1459,7 +1459,7 @@ def corruptB (st : Var Γ₁ authStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [E
         .ite (natEq (.fst (v x)) (v u))
           (.pair (.fst (v x)) (peUpd (.snd (v x)) (corrupted := .litBool true))) (v x))))
 
-def genSpkB (st : Var Γ₁ authStateTy) (x : Var Γ₂ (.prod .nat .nat)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def genSpkB (st : Var Γ₁ authStateTy) (x : Var Γ₂ (.prod .nat .nat)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ RS :=
   .iteC (eAny K (stSpks (v st)) fun e => nat2Eq (.fst (v e)) (v x)) (.ret (rs aNone (v st))) <|
   caseOptV (eFind K (stPrin (v st)) fun e => natEq (.fst (v e)) (.fst (v x)))
@@ -1480,14 +1480,14 @@ def genSpkB (st : Var Γ₁ authStateTy) (x : Var Γ₂ (.prod .nat .nat)) [Ext 
     (stUpd (v st) (spks := .listCons (.pair (v x) (sbMk (v spkSk) (v spkPk) (v sig1) (.snd (v kp))
       (.fst (v kp)) (v sig2) (.litBool false))) (stSpks (v st)))))
 
-def genOpkB (st : Var Γ₁ authStateTy) (x : Var Γ₂ (.prod .nat (.prod .nat .nat)))
+@[expose] def genOpkB (st : Var Γ₁ authStateTy) (x : Var Γ₂ (.prod .nat (.prod .nat .nat)))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RS :=
   .iteC (eAny K (stOpks (v st)) fun e => nat3Eq (.fst (v e)) (v x)) (.ret (rs aNone (v st))) <|
   bindV .sampleBytes32 fun sk => bindV (.queryPrim .x25519Base (v sk)) fun pk =>
   .ret (rs (aPk (v pk)) (stUpd (v st) (opks := .listCons
     (.pair (v x) (oeMk (v sk) (v pk) (.litBool false))) (stOpks (v st)))))
 
-def registerB (st : Var Γ₁ authStateTy) (sk : Var Γ₂ (B 32)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def registerB (st : Var Γ₁ authStateTy) (sk : Var Γ₂ (B 32)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ RS :=
   .iteC (.boolNot (natEq (.bytesLen (v sk)) (.litNat 32))) (.ret (rs aNone (v st))) <|
   bindV (.queryPrim .x25519Base (v sk)) fun pk => bindV (.queryPrim .pow8 (v pk)) fun p8 =>
@@ -1499,7 +1499,7 @@ section Branches
 
 variable (S : Setup) (K : Nat) {Γ Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List (Ty pqSig)}
 
-def sendC (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ sendQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def sendC (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ sendQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ RS :=
   letV (.fst (.snd (.snd (v x)))) fun bu =>
   letV (.fst (.snd (.snd (.snd (v x))))) fun m0 =>
@@ -1567,13 +1567,13 @@ def sendC (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ sendQTy) [Ext
     (stUpd (v st) (sess := .listCons (v se) (stSess (v st)))
       (usedS := .listCons (v sid) (stUsedS (v st))) (ro := .snd (v dr)) (root := .snd (v rkOut))))
 
-def sendB (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ sendQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def sendB (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ sendQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ RS :=
   .iteC (if opk then .boolNot (isSomeE (buOpkB (.fst (.snd (.snd (v x))))))
       else isSomeE (buOpkB (.fst (.snd (.snd (v x))))))
     (.ret (rs aNone (v st))) (sendC S K opk st x)
 
-def recvTailC (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ recvQTy)
+@[expose] def recvTailC (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ recvQTy)
     (kE : Var Γ₃ principalEntryTy) (bE : Var Γ₄ spkBundleEntryTy)
     (oSk? : Expr pqxdhOps Δ (.opt (B 32)))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] : Comp pqxdhOps pqPrimIface Δ RS :=
@@ -1624,7 +1624,7 @@ def recvTailC (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ recvQTy)
   .ret (rs (eCaseOpt (v snd?) (aRecvUnfresh (.fst (v dr)) (.fst (.fst (v rkOut))) (v ck11) (v pt))
       fun _ => aRecvHonest) (v st'))
 
-def recvB (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def recvB (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ RS :=
   letV (.snd (.snd (.snd (v x)))) fun msg =>
   letV (pmHdr (v msg)) fun hdr =>
@@ -1656,12 +1656,12 @@ def recvB (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ recvQTy) [Ext
   else
     recvTailC S K false st x kE' bE' .noneE
 
-def roB (st : Var Γ₁ authStateTy) (sec : Var Γ₂ (B 192)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def roB (st : Var Γ₁ authStateTy) (sec : Var Γ₂ (B 192)) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ RS :=
   bindV (hkdfOrRoC K true st (v sec)) fun r =>
   .ret (rs (aDrKey (.fst (v r))) (stUpd (v st) (ro := .snd (v r))))
 
-def roRootB (st : Var Γ₁ authStateTy) (x : Var Γ₂ (.prod (B 32) (B 32)))
+@[expose] def roRootB (st : Var Γ₁ authStateTy) (x : Var Γ₂ (.prod (B 32) (B 32)))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RS :=
   bindV (rootRoC K st (.fst (v x)) (.snd (v x))) fun r =>
   .ret (rs (aRootKdf (.fst (.fst (v r))) (.snd (.fst (v r)))) (stUpd (v st) (root := .snd (v r))))

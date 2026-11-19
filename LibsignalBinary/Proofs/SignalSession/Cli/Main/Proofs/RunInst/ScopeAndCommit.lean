@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignal
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignal -- proof-setup: allow-public-import
 import all Init.Data.Repr
 import all Init.Data.ToString.Basic
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.GamePaths
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Record Scope, Stack Budget, and `CommitOk` Helpers for `RunInst`
@@ -27,7 +30,7 @@ concrete stack-budget bound `runNeed cliRunBudgets … ≤ cliResStack ≤ 2 ^ 6
 `RunEncOk`, `RunHsOk`, and `CommitOk` on SM and PQXDH domain inputs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -119,10 +122,10 @@ theorem ratchetScopeCoversPq_scopeIn (W : PEParams) :
 /-! ## 2. Concrete budgets and stack reserve proof -/
 
 /-- Concrete `RunBudgets` at `extHookStack` (`16384`). -/
-def cliRunBudgets : RunBudgets := ⟨extHookStack⟩
+@[expose] def cliRunBudgets : RunBudgets := ⟨extHookStack⟩
 
 /-- Concrete `RunNeeds` at `cliRunBudgets` with a parameterized `decryptPrekey` slot budget. -/
-def cliRunNeeds (decPkNeed : Nat) : RunNeeds where
+@[expose] def cliRunNeeds (decPkNeed : Nat) : RunNeeds where
   encrypt := cliEncryptNeed cliRunBudgets
   decryptSignal := cliDecryptSignalNeed cliRunBudgets
   initiate := cliInitiateNeed cliRunBudgets
@@ -141,44 +144,6 @@ private theorem foldr_max_le {xs : List Nat} {acc b : Nat}
   | cons x xs ih =>
     simp only [List.foldr_cons, Nat.max_le]
     exact ⟨hxs x (List.mem_cons_self ..), ih (fun y hy => hxs y (List.mem_cons_of_mem x hy))⟩
-
-theorem runNeed_cli_le_resStack {img : Obj.Image} {S : RunSem} {decPkNeed : Nat}
-    (hdec : decPkNeed ≤ 4194304) :
-    runNeed cliRunBudgets (slotsOf E2E.HooksE.A0 img S (cliRunNeeds decPkNeed)) ≤ cliResStack := by
-  have hcallee :
-      runCalleeNeed cliRunBudgets (slotsOf E2E.HooksE.A0 img S (cliRunNeeds decPkNeed)) ≤
-        4194304 := by
-    unfold runCalleeNeed
-    refine foldr_max_le (by decide) fun x hx => ?_
-    dsimp only [slotsOf, mkSlot, cliRunNeeds] at hx
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hx
-    rcases hx with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-      rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
-      first | exact hdec | decide
-  have hsum : runFrame + 4194304 ≤ cliResStack := by decide
-  unfold runNeed
-  omega
-
-/-- `runNeed_cli_le_resStack` generalized to an arbitrary allocator `A : RustAlloc`
-(`(mkSlot spec need).need = need` ignores `spec`; proved directly via `foldr_max_le` to avoid
-kernel unfolding of `slotsOf`). -/
-theorem runNeed_cli_le_resStack_ext {A : RustAlloc} {img : Obj.Image} {S : RunSem}
-    {decPkNeed : Nat} (hdec : decPkNeed ≤ 4194304) :
-    runNeed cliRunBudgets (slotsOf A img S (cliRunNeeds decPkNeed)) ≤ cliResStack := by
-  have hcallee :
-      runCalleeNeed cliRunBudgets (slotsOf A img S (cliRunNeeds decPkNeed)) ≤ 4194304 := by
-    unfold runCalleeNeed
-    refine foldr_max_le (by decide) fun x hx => ?_
-    dsimp only [slotsOf, mkSlot, cliRunNeeds] at hx
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hx
-    rcases hx with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-      rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
-      first | exact hdec | decide
-  have hsum : runFrame + 4194304 ≤ cliResStack := by decide
-  unfold runNeed
-  omega
-
-/-! ## 3. `RunFilesOk`, `RunEncOk`, and `RunHsOk` on SM and PQXDH domain inputs -/
 
 theorem runFilesOk_smSend_cli {S : RunSem}
     (hS : S.filesOk = Slots.filesOk₀ Slots.scopeIn (fun _ => True))

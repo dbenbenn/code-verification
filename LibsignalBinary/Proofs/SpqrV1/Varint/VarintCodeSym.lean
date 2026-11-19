@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Bytes.BytesCodeSym -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard11
+meta import GeneratedLean.LibsignalSessionPlacedObjShard7
 
 /-!
 # Relocatable Per-Block Fetches for `SpqrV1/Varint`
@@ -23,7 +28,7 @@ Provides relocatable instruction fetches for `encode_repeated` (`[local#1, 2]`),
 `encode_varint` (`[local#2, 4]`), `decode_varint [local#2]`, and `skip_field [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

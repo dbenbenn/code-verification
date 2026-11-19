@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.WireSignalHelpers
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.WireSignalHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
 
 /-!
 # Parametric Fine-Credit Helpers for `SignalMessage::try_from` & `PreKeySignalMessage::try_from`
@@ -31,7 +31,7 @@ Parametric `(M : AllocCostModel) [HasFineReallocCredit M]` step and amortization
    and `WireGroupHyps M` small-allocation group step lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -79,7 +79,7 @@ theorem fineCostModel_wireLowInterceptHyps : WireLowInterceptHyps fineCostModel 
 
 /-- Bounded-fuel capacity-doubling counter (`fuel = 65` covers every `cap < 2 ^ 64`, while structural
 recursion on `fuel` ensures instant kernel `decide` / `rfl` reduction without `WellFounded.fix`). -/
-def wireGrowsAux : Nat → Nat → Nat → Nat
+@[expose] def wireGrowsAux : Nat → Nat → Nat → Nat
   | 0, _, _ => 0
   | fuel + 1, B, cap =>
     if B < cap ∨ cap = 0 then 0
@@ -87,12 +87,12 @@ def wireGrowsAux : Nat → Nat → Nat → Nat
 
 /-- Number of remaining `Vec<u8>` capacity doublings starting from positive capacity `cap`
 while `cap ≤ min N (2 ^ 64 - 1)`. -/
-def wireGrowsFrom (N cap : Nat) : Nat :=
+@[expose] def wireGrowsFrom (N cap : Nat) : Nat :=
   wireGrowsAux 65 (min N (2 ^ 64 - 1)) cap
 
 /-- Number of remaining `Vec<u8>` `reserveCap` growths starting from capacity `cap`
 under payload length cap `N` (`= 19` at `N = 1048576, cap = 0`). -/
-def wireRemGrows (N cap : Nat) : Nat :=
+@[expose] def wireRemGrows (N cap : Nat) : Nat :=
   if cap = 0 then 1 + wireGrowsFrom N 8
   else wireGrowsFrom N cap
 
@@ -533,74 +533,6 @@ theorem phaseCredit_tryCloneBytes_S {M : AllocCostModel} [HasFineReallocCredit M
       exact ⟨by omega, by omega, by omega⟩
 
 /-! ## Affine `ModelHyps`-Only Helpers & `SignalMessage.tryFrom` Field Bounds -/
-
-theorem reserveCap_step_bounds {cap vLen maxLen : Nat}
-    (hlt : cap < vLen) (hv : vLen ≤ maxLen) (hcap_lt : cap < maxLen) :
-    let cap' := reserveCap cap 0 vLen
-    8 ≤ cap' ∧ cap < cap' ∧ cap' ≤ 2 * (cap' - cap) ∧ cap' ≤ max 8 (2 * maxLen) := by
-  dsimp only [reserveCap]
-  omega
-
-theorem bytesLargeLive_le_capBound {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {c maxLen : Nat} (hc : c ≤ max 8 (2 * maxLen)) :
-    bytesLargeLive M c ≤ 2 * maxLen + 8203 := by
-  have hl := bytesLargeLive_le_aff hM c
-  omega
-
-theorem phaseCredit_intoBoxedSlice {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (bs : List (BitVec 8)) :
-    PhaseCreditSpec M
-      (fun evs => ∃ cap : BitVec 64, bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧
-        evs = (if cap.toNat ≤ bs.length then []
-               else if bs = [] then rustDeallocEvents cap.toNat 1
-               else rustReallocEvents cap.toNat bs.length 1))
-      (2 * bs.length + 9539) (bs.length + 8195) (bs.length + 8195) bs.length where
-  req_align := by
-    rintro evs ⟨cap, _, _, rfl⟩ ev hev
-    split at hev
-    · nomatch hev
-    · split at hev
-      · exact req_align_of_rustDeallocEvents (al := 1) (by decide) ev hev
-      · exact req_align_of_rustReallocEvents (al := 1) (Nat.le_refl _) (by decide) ev hev
-  credit_le := by
-    rintro st0 evs ⟨cap, hle, _, rfl⟩
-    split
-    · simp only [AllocCostModel.stepEvents_nil]
-      exact ⟨by omega, by omega, by omega⟩
-    · rename_i hnot_le
-      split
-      · have hd := stepEvents_rustDealloc_any M cap.toNat 1 (by decide) st0
-        exact ⟨by omega, by omega, by omega⟩
-      · rename_i hne_nil
-        have hbs_pos : 0 < bs.length := List.length_pos_iff.mpr hne_nil
-        have hcap_pos : 0 < cap.toNat := by omega
-        have hr := stepEvents_rustRealloc_pos M (old := cap.toNat) (new := bs.length) (al := 1)
-          (by decide) (by omega) hcap_pos hbs_pos st0
-        have hc := bytesCumRealloc_le_aff hM cap.toNat bs.length
-        have hl := bytesLargeLive_le_aff hM bs.length
-        exact ⟨by omega, by omega, by omega⟩
-
-theorem phaseCredit_tryCloneBytes {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (bs : List (BitVec 8)) :
-    PhaseCreditSpec M
-      (fun evs => evs = if bs = [] then [] else rustAllocEvents bs.length 1)
-      (2 * bs.length + 9539) (bs.length + 8195) (bs.length + 8195) bs.length where
-  req_align := by
-    rintro evs rfl ev hev
-    split at hev
-    · nomatch hev
-    · exact req_align_of_rustAllocEvents (al := 1) (Nat.le_refl _) (by decide) ev hev
-  credit_le := by
-    rintro st0 evs rfl
-    split
-    · simp only [AllocCostModel.stepEvents_nil]
-      exact ⟨by omega, by omega, by omega⟩
-    · rename_i hne_nil
-      have hbs_pos : 0 < bs.length := List.length_pos_iff.mpr hne_nil
-      have ha := stepEvents_rustAlloc_pos M (req := bs.length) (al := 1) (by decide) hbs_pos st0
-      have hc := bytesCumAlloc_le_aff hM bs.length
-      have hl := bytesLargeLive_le_aff hM bs.length
-      exact ⟨by omega, by omega, by omega⟩
 
 theorem tryFrom_ok_field_lengths {bs : List (BitVec 8)} {msg : SignalMessage}
     (h : SignalMessage.tryFrom protoSignalCodec bs = .ok msg) :

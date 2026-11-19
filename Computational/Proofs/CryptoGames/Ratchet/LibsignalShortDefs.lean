@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSMInstance
 
 /-!
@@ -21,7 +21,7 @@ Query-bound and guarded-execution predicates restricting encryption public parts
 (`LibsignalMsgPublicPart.shortB`) and decryption or injection wires to `< 2^32` bytes.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec
 
@@ -32,12 +32,12 @@ namespace AEADScheme
 variable {K AD M C : Type}
 
 /-- The OT-CCA query `t` is an encryption query whose AD fails `ok`. -/
-def otEncBad (ok : AD → Bool) : (unifSpec + otccaSpec AD M C).Domain → Bool
+@[expose] def otEncBad (ok : AD → Bool) : (unifSpec + otccaSpec AD M C).Domain → Bool
   | .inr (.inl ⟨a, _⟩) => !ok a
   | _ => false
 
 /-- Every encryption query of `B` has an AD with `ok` (decryption queries are unrestricted). -/
-def OTEncADsOk (ok : AD → Bool) (B : OTCCAAdversary AD M C) : Prop :=
+@[expose] def OTEncADsOk (ok : AD → Bool) (B : OTCCAAdversary AD M C) : Prop :=
   B.IsQueryBoundP (fun t => otEncBad (M := M) (C := C) ok t = true) 0
 
 end AEADScheme
@@ -47,13 +47,13 @@ namespace FSAEAD
 variable {SS RS AD Msg C : Type}
 
 /-- The FS-AEAD query `t` is a `transmit` or `challenge` with a message failing `ok`. -/
-def encBadMsg (ok : Msg → Bool) : (unifSpec + spec SS RS AD Msg C).Domain → Bool
+@[expose] def encBadMsg (ok : Msg → Bool) : (unifSpec + spec SS RS AD Msg C).Domain → Bool
   | .inr (.inl (.inl (.inl (.inl (.inl ⟨_, m⟩))))) => !ok m
   | .inr (.inl (.inl (.inl (.inl (.inr ⟨_, m₀, m₁⟩))))) => !ok m₀ || !ok m₁
   | _ => false
 
 /-- Every message of a `transmit` / `challenge` query of `A` satisfies `ok`. -/
-def EncMsgsOk (ok : Msg → Bool) (A : Adversary SS RS AD Msg C) : Prop :=
+@[expose] def EncMsgsOk (ok : Msg → Bool) (A : Adversary SS RS AD Msg C) : Prop :=
   A.IsQueryBoundP (fun t => encBadMsg (SS := SS) (RS := RS) (AD := AD) (C := C) ok t = true) 0
 
 end FSAEAD
@@ -149,7 +149,7 @@ theorem GuardedSafePost.liftComp_unif {τ : Type} {tspec : OracleSpec.{0, 0} τ}
 
 /-- `GuardedSafeS RespOk Q I P x` states that from any state satisfying `I`, running `x` under
 responses satisfying `RespOk` makes no `Q`-queries and every `(a, s')` returned satisfies `P a s'`. -/
-def GuardedSafeS (RespOk : (t : ι) → spec.Range t → Prop) (Q : ι → Prop)
+@[expose] def GuardedSafeS (RespOk : (t : ι) → spec.Range t → Prop) (Q : ι → Prop)
     {σ α : Type} (I : σ → Prop) (P : α → σ → Prop)
     (x : StateT σ (OracleComp spec) α) : Prop :=
   ∀ s, I s → GuardedSafePost RespOk Q (fun r => P r.1 r.2) (x.run s)
@@ -259,29 +259,29 @@ namespace Ratchet.LibsignalInst
 open LibsignalSession LibsignalAead GuardedSafe
 
 /-- `pqmsg` and every entry of `addrs` have byte length `< 2 ^ 29`. -/
-def LibsignalMsgPublicPart.shortB (p : LibsignalMsgPublicPart) : Bool :=
+@[expose] def LibsignalMsgPublicPart.shortB (p : LibsignalMsgPublicPart) : Bool :=
   decide (p.pqmsg.length < 2 ^ 29) && p.addrs.all fun a => decide (a.length < 2 ^ 29)
 
 /-- Every OT-CCA encryption response `some e` has `e.1.1.length + 8 < 2 ^ 32`. -/
-def otRespShort {AD M : Type} :
+@[expose] def otRespShort {AD M : Type} :
     (t : (unifSpec + AEADScheme.otccaSpec AD M LibsignalCiphertextWithSalt32).Domain) →
       (unifSpec + AEADScheme.otccaSpec AD M LibsignalCiphertextWithSalt32).Range t → Prop
   | .inr (.inl _), r => ∀ e, r = some e → e.1.1.length + 8 < 2 ^ 32
   | _, _ => True
 
 /-- OT-CCA decryption query whose serialized wire `e.1.1` has length `≥ 2 ^ 32`. -/
-def otDecLong {AD M : Type} :
+@[expose] def otDecLong {AD M : Type} :
     (unifSpec + AEADScheme.otccaSpec AD M LibsignalCiphertextWithSalt32).Domain → Prop
   | .inr (.inr ⟨_, e⟩) => ¬ e.1.1.length < 2 ^ 32
   | _ => False
 
 /-- Under `otRespShort`, `B` never queries decryption on a serialized wire of length `≥ 2 ^ 32`. -/
-def GuardedOTDecShort {AD M : Type}
+@[expose] def GuardedOTDecShort {AD M : Type}
     (B : AEADScheme.OTCCAAdversary AD M LibsignalCiphertextWithSalt32) : Prop :=
   GuardedSafePost otRespShort otDecLong (fun _ => True) B
 
 /-- Every FS-AEAD `transmit` or `challenge` response `some (_, e)` has `e.1.1.length + 8 < 2 ^ 32`. -/
-def fsRespShort {SS RS AD Msg : Type} :
+@[expose] def fsRespShort {SS RS AD Msg : Type} :
     (t : (unifSpec + FSAEAD.spec SS RS AD Msg (ℕ × LibsignalCiphertextWithSalt32)).Domain) →
       (unifSpec + FSAEAD.spec SS RS AD Msg (ℕ × LibsignalCiphertextWithSalt32)).Range t → Prop
   | .inr (.inl (.inl (.inl (.inl (.inl _))))), r =>
@@ -291,13 +291,13 @@ def fsRespShort {SS RS AD Msg : Type} :
   | _, _ => True
 
 /-- FS-AEAD `inject` query whose serialized wire `e.1.1` has length `≥ 2 ^ 32`. -/
-def fsInjectLong {SS RS AD Msg : Type} :
+@[expose] def fsInjectLong {SS RS AD Msg : Type} :
     (unifSpec + FSAEAD.spec SS RS AD Msg (ℕ × LibsignalCiphertextWithSalt32)).Domain → Prop
   | .inr (.inr ⟨_, _, e⟩) => ¬ e.1.1.length < 2 ^ 32
   | _ => False
 
 /-- Under `fsRespShort`, `A` never queries `inject` on a serialized wire of length `≥ 2 ^ 32`. -/
-def GuardedFSInjectShort {SS RS AD Msg : Type}
+@[expose] def GuardedFSInjectShort {SS RS AD Msg : Type}
     (A : FSAEAD.Adversary SS RS AD Msg (ℕ × LibsignalCiphertextWithSalt32)) : Prop :=
   GuardedSafePost fsRespShort fsInjectLong (fun _ => True) A
 

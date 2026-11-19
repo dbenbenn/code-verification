@@ -502,7 +502,7 @@ theorem reallocMremap_extract (A : MallocngAddrs) (tp : BitVec 64)
   rw [hSplitRw, hExtMp, sepExists_sepConj_left]
   refine Entails.sepExists_mono fun errnoVal => Entails.of_eq (by ac_rfl)
 
-theorem reallocMremap_unextract (γ : GhostName) (A : MallocngAddrs)
+theorem reallocMremap_unextract {ro : Bool} (γ : GhostName) (A : MallocngAddrs)
     (tp brkStart brk : BitVec 64) (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
     {st : MallocngSt}
     (hCount : MallocngCountIvsWF b ivs0 st)
@@ -523,10 +523,10 @@ theorem reallocMremap_unextract (γ : GhostName) (A : MallocngAddrs)
      (A.lock ↦₃₂ 0#32) ∗
      (A.replaced ↦₃₂ 0#32) ∗
      (A.aaReplaced ↦₃₂ 0#32) ∗
-     ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-     MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+     MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗
+     MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
      ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal) ⊢
-      mallocngIface.MallocngHeap γ A tp brkStart brk b ivs0 ∗ (p ↦ₛ userBs) := by
+      (mallocngModeIface ro).MallocngHeap γ A tp brkStart brk b ivs0 ∗ (p ↦ₛ userBs) := by
   have hgw := hwf.groups_wf g hg
   have hMpPos := (hgw.2.2.2.1 hSc63).2.1
   have hTotEq : g.totalBytes = g.maplen * 4096 := by simp [GroupDesc.totalBytes, hMpPos]
@@ -537,14 +537,14 @@ theorem reallocMremap_unextract (γ : GhostName) (A : MallocngAddrs)
     g.mem (n := g.maplen * 4096) (by omega)
     (fun a ha => (hMemOwn a ha).1) (fun a ha => (hMemOwn a ha).2.1)
   have hSplitRw := sc63_rw_split_eq hwf hg hIdx userBs hUserLen hSlot hSc63
-  have hRepack := mallocngHeap_read_liveUser_repack γ A tp brkStart brk b ivs0 st
-  unfold MallocngReadRest at hRepack
+  have hRepack := mallocngHeapMode_read_liveUser_repack (ro := ro) γ A tp brkStart brk b ivs0 st
+  unfold MallocngReadRestMode at hRepack
   unfold ReallocMremapFrame
   have hErrno : ((tp - 0xa4#64) ↦₃₂ errnoVal') ⊢
       ∃∗ ev : BitVec 32, (tp - 0xa4#64) ↦₃₂ ev := Entails.sepExists_intro errnoVal'
   refine Entails.trans (Entails.of_eq (by
     generalize (MallocngRoTablesAt A) = PRo
-    generalize (MallocngAuxvState γ st.auxvPtr st.auxvSnap) = PAu
+    generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu
     ac_rfl : _ =
       (((tp - 0xa4#64) ↦₃₂ errnoVal') ∗
        ((A.libc + 3#64) ↦₈ 0#8) ∗ ((A.libc + 48#64) ↦₆₄ 4096#64)) ∗
@@ -562,8 +562,8 @@ theorem reallocMremap_unextract (γ : GhostName) (A : MallocngAddrs)
        (A.lock ↦₃₂ 0#32) ∗
        (A.replaced ↦₃₂ 0#32) ∗
        (A.aaReplaced ↦₃₂ 0#32) ∗
-       ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-       MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+       MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗
+       MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal))) ?_
   refine Entails.trans (sepConj_mono_left (sepConj_mono_left hErrno)) ?_
   change (MallocngRuntime A tp ∗ _) ⊢ _
@@ -571,7 +571,7 @@ theorem reallocMremap_unextract (γ : GhostName) (A : MallocngAddrs)
   refine Entails.trans (Entails.of_eq (by
     generalize (MallocngRoTablesAt A) = PRo
     generalize (MallocngRuntime A tp) = PRt
-    generalize (MallocngAuxvState γ st.auxvPtr st.auxvSnap) = PAu
+    generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu
     ac_rfl : _ =
       (MallocngRoTablesAt A ∗
        (A.ctx ↦ₛ st.ctx.toBytes) ∗
@@ -580,8 +580,8 @@ theorem reallocMremap_unextract (γ : GhostName) (A : MallocngAddrs)
         (A.lock ↦₃₂ 0#32) ∗
         (A.replaced ↦₃₂ 0#32) ∗
         (A.aaReplaced ↦₃₂ 0#32) ∗
-        ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-        MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+        MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗
+        MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
         MappedSet st.masterDom (OwnedMappedByte st) ∗
         MallocngRuntime A tp)) ∗

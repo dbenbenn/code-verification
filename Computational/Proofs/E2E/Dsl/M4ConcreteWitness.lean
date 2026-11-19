@@ -9,15 +9,52 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.M3Subprograms
-public import Computational.Proofs.E2E.Dsl.M3PqxdhSize
-public import Computational.Proofs.E2E.Dsl.M3SessionSize
-public import Computational.Proofs.E2E.Dsl.KeyInd1RealRedsHonest
-public import Computational.Proofs.E2E.Dsl.LeafCostBounds
+public import Computational.Proofs.E2E.Dsl.M3Subprograms -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.M3PqxdhSize -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.M3SessionSize -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.KeyInd1RealRedsHonest
+public import Computational.Proofs.E2E.Dsl.LeafCostBounds -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 import Computational.Proofs.ReductionDsl.KindedCost
 import Computational.Proofs.E2E.Dsl.CompositionHaltedWitness
 import Computational.Proofs.E2E.Dsl.PrefixRedHaltedByKind
+public import Computational.Proofs.E2E.Dsl.BinaryHarnessCostedRedsHonest -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.PqxdhSimBranches
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.List.Dedup
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Ring
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Basic
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Concrete Multi-Session Composition Reduction Witness
@@ -28,7 +65,7 @@ step-cost, syntax-size, and per-kind cost bounds against `bhE2ECostBudgetHonest`
 `bhE2ECostBudget`, discharging `ModelSecureHonestFamilyStmt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -89,14 +126,14 @@ def e2eLinearInnerFactor (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget)
     S.N_send_tot + S.N_recv_tot + maxForwardJumps + ℓ + 1
 
 /-- Weighted per-step parameter sum of `bhE2ECostBudgetHonest`. -/
-def e2ePerStepWeightedFactor (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget)
+@[expose] def e2ePerStepWeightedFactor (S : SignalPqxdh.Setup) (b : SignalPqxdh.QueryBudget)
     (qStart qDR qep ℓ : ℕ) : ℕ :=
   10 * b.q_total + qStart + qDR + qep + S.N_opk_tot +
     16 * (S.N_id + S.N_spk_tot + S.N_send_tot + S.N_recv_tot) +
     maxForwardJumps + ℓ + 1
 
 /-- Inner parameter sum of the `allTestedSessionsFresh` endpoint scan in `bhE2ECostBudgetHonest`. -/
-def e2eFreshScanInnerFactor (S : SignalPqxdh.Setup) (qStart : ℕ) : ℕ :=
+@[expose] def e2eFreshScanInnerFactor (S : SignalPqxdh.Setup) (qStart : ℕ) : ℕ :=
   S.N_id + S.N_spk_tot + S.N_send_tot + S.N_recv_tot + qStart + maxForwardJumps + 1
 
 @[simp] theorem bhAdapterCostBudgetHonest_eq_preBlock (S : SignalPqxdh.Setup)
@@ -164,30 +201,6 @@ theorem drOracleStepCost_le_linear (qDR : ℕ) :
   have hb1 : bits (qep + 1) ≤ qep + 2 := bits_le_succ (qep + 1)
   unfold drOracleStepCost
   omega
-
-theorem drOracleStepCost_le_leafQuadratic (qDR : ℕ) :
-    drOracleStepCost ℓ qDR qep ≤ 8192 * (qDR + 1) * (qDR + qep + ℓ + 1) + 8000000 := by
-  have hlin := drOracleStepCost_le_linear ℓ qep qDR
-  have hprod : qDR + qep + ℓ + 1 ≤ (qDR + 1) * (qDR + qep + ℓ + 1) :=
-    Nat.le_mul_of_pos_left _ (by omega)
-  have hmul : 8192 * (qDR + qep + ℓ + 1) ≤ 8192 * ((qDR + 1) * (qDR + qep + ℓ + 1)) :=
-    Nat.mul_le_mul_left 8192 hprod
-  rw [← Nat.mul_assoc] at hmul
-  omega
-
-theorem m3Subprograms_leafSum_le_compositionPerStepBudgetHonest
-    (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ) :
-    2 * pqxdh1KeyRealStepCost S b.q_total +
-      finishStartSpkCost qStart S.N_id S.N_spk_tot S.N_opk_tot S.N_send_tot + 0 +
-      drOracleStepCost ℓ qDR qep +
-      (e2eTargetGameCodec S ℓ).codecCost ≤
-      compositionPerStepBudgetHonest S b qStart qDR qep ℓ := by
-  refine e2eLeafSumM3_le_compositionPerStepBudgetHonest S b qStart qDR qep ℓ ?_ ?_ ?_ ?_ ?_
-  · dsimp only [pqxdh1KeyRealStepCost]; omega
-  · dsimp only [finishStartSpkCost]; omega
-  · omega
-  · exact drOracleStepCost_le_leafQuadratic ℓ qep qDR
-  · dsimp only [e2eTargetGameCodec, CryptoVerification.E2E.Costed.e2eGameCodec]; omega
 
 theorem m3Subprograms_kindEndpointCost_le (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ) :
     m3KindEndpointCost (m3Subprograms (Pt := Pt) ℓ S P C K decT encT) qStart ≤
@@ -289,35 +302,10 @@ theorem m3Subprograms_leafCostBound_le (b : SignalPqxdh.QueryBudget) (qStart qDR
   m3Subprograms_leafCostBound_le_of_qTot_le (Pt := Pt) S ℓ P C K qep decT encT
     b qStart qDR (b.q_total + qStart + qDR) le_rfl
 
-theorem m3Subprograms_leafCostBound_le_linear (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ) :
-    m3LeafCostBound (m3Subprograms (Pt := Pt) ℓ S P C K decT encT)
-        b qStart qDR qep (b.q_total + qStart + qDR) ≤
-      2 ^ 15 * (b.q_total + qStart + qDR + S.N_send_tot + S.N_recv_tot + 1) *
-        (b.q_total + qStart + qDR + qep + S.N_id + S.N_spk_tot + S.N_opk_tot +
-          S.N_send_tot + S.N_recv_tot + maxForwardJumps + ℓ + 1) :=
-  (m3Subprograms_leafCostBound_le (Pt := Pt) S ℓ P C K qep decT encT b qStart qDR).trans
-    (bhE2ECostBudgetHonest_le_linear_old S b qStart qDR qep ℓ)
-
-theorem m3Subprograms_leafCostBound_le_quadratic (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ) :
-    m3LeafCostBound (m3Subprograms (Pt := Pt) ℓ S P C K decT encT)
-        b qStart qDR qep (b.q_total + qStart + qDR) ≤
-      2 ^ 15 * (b.q_total + qStart + qDR + S.N_send_tot + S.N_recv_tot + 1) *
-        (b.q_total + qStart + S.N_id + S.N_spk_tot + S.N_opk_tot +
-          S.N_send_tot + S.N_recv_tot + maxForwardJumps + ℓ +
-          (qDR + 1) * (qDR + qep + ℓ + 1)) := by
-  refine (m3Subprograms_leafCostBound_le_linear (Pt := Pt) S ℓ P C K qep decT encT
-    b qStart qDR).trans ?_
-  apply Nat.mul_le_mul_left
-  have hquad : qDR + qep + 1 ≤ (qDR + 1) * (qDR + qep + ℓ + 1) := by
-    calc
-      qDR + qep + 1 ≤ 1 * (qDR + qep + ℓ + 1) := by omega
-      _ ≤ (qDR + 1) * (qDR + qep + ℓ + 1) := Nat.mul_le_mul_right _ (by omega)
-  omega
-
 end LeafBounds
 
 /-- Compositional syntax-size witness for `m3Subprograms`. -/
-def m3SubprogramsSize (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
+@[expose] def m3SubprogramsSize (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     M3SubprogramsSizeIface (m3Subprograms ℓ S P C K decT encT) where
@@ -418,14 +406,14 @@ theorem m3Subprograms_leafSizeBound_le {Pt : Type} (S : SignalPqxdh.Setup) (ℓ 
     omega
 
 /-- Honest multi-session composition reduction bundle assembled from `m3Subprograms`. -/
-@[reducible] def concreteCompositionReds (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
+@[expose, reducible] def concreteCompositionReds (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (b : SignalPqxdh.QueryBudget) (qStart qDR : ℕ) :
     CompositionCostedReductionsHonest S ℓ P C K qep decT encT :=
   compositionRedsHonest (qep := qep) (m3Subprograms ℓ S P C K decT encT) b qStart qDR
 
-@[reducible] def concreteCompositionFamily (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
+@[expose, reducible] def concreteCompositionFamily (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     CompositionCostedReductionFamilyHonest S ℓ P C K qep decT encT :=
@@ -442,13 +430,6 @@ theorem m3Subprograms_bundleCostBounded {Pt : Type} (S : SignalPqxdh.Setup) (ℓ
     (m3Subprograms_leafCostBound_le (Pt := Pt) S ℓ P C K qep decT encT b qStart qDR)
     (m3Subprograms_leafSizeBound_le (Pt := Pt) S ℓ P C K qep decT encT b qStart qDR)
 
-theorem m3Subprograms_costBounded {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ)
-    (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
-    M3SubprogramsCostBounded qep (m3Subprograms (Pt := Pt) ℓ S P C K decT encT) :=
-  fun b qStart qDR =>
-    m3Subprograms_bundleCostBounded (Pt := Pt) S ℓ P C K qep decT encT b qStart qDR
-
 theorem concreteCompositionReds_bounded {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ)
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
@@ -459,38 +440,6 @@ theorem concreteCompositionReds_bounded {Pt : Type} (S : SignalPqxdh.Setup) (ℓ
   compositionRedsHonest_bounded (m3Subprograms ℓ S P C K decT encT) b qStart qs qep
     (m3Subprograms_bundleCostBounded (Pt := Pt) S ℓ P C K qep decT encT
       b qStart (∑ k ∈ Finset.range qStart, qs k))
-
-theorem concreteCompositionFamily_bounded {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ)
-    (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
-    CompositionCostedReductionFamilyBoundedHonest P C K qep decT encT
-      (concreteCompositionFamily S ℓ P C K qep decT encT) :=
-  compositionFamilyHonest_bounded (m3Subprograms ℓ S P C K decT encT) qep
-    (m3Subprograms_costBounded (Pt := Pt) S ℓ P C K qep decT encT)
-
-theorem m3Subprograms_kindSpec {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ)
-    (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ) :
-    M4KindRedSpec P C K qep decT encT b qStart qs
-      (kindRedHonest (m3Subprograms ℓ S P C K decT encT)
-        b qStart (∑ k ∈ Finset.range qStart, qs k) qep) :=
-  let hB := m3Subprograms_bundleCostBounded (Pt := Pt) S ℓ P C K qep decT encT
-    b qStart (∑ k ∈ Finset.range qStart, qs k)
-  m4KindRedSpec_honest (m3Subprograms ℓ S P C K decT encT) b qStart qs
-    hB.kindCost_le hB.kindSize_le
-
-theorem m3Subprograms_prefixSpec {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ)
-    (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ) :
-    M4PrefixRedSpec P C K qep decT encT b qStart qs
-      (prefixRedHonest (m3Subprograms ℓ S P C K decT encT)
-        b qStart (∑ k ∈ Finset.range qStart, qs k) qep) :=
-  let hB := m3Subprograms_bundleCostBounded (Pt := Pt) S ℓ P C K qep decT encT
-    b qStart (∑ k ∈ Finset.range qStart, qs k)
-  m4PrefixRedSpec_honest (m3Subprograms ℓ S P C K decT encT) b qStart qs
-    hB.prefixCost_le hB.prefixSize_le
 
 theorem m3Subprograms_bundleSpec {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ)
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
@@ -505,75 +454,6 @@ theorem m3Subprograms_bundleSpec {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ)
       b qStart (∑ k ∈ Finset.range qStart, qs k))
     (m3Subprograms_leafSizeBound_le (Pt := Pt) S ℓ P C K qep decT encT
       b qStart (∑ k ∈ Finset.range qStart, qs k))
-
-theorem m3Subprograms_spec {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ)
-    (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
-    M4CompositionFamilySpec P C K qep decT encT
-      (concreteCompositionFamily S ℓ P C K qep decT encT) :=
-  m4CompositionFamilySpec_of_leafCostBound (m3Subprograms ℓ S P C K decT encT)
-    (m3SubprogramsSize ℓ S P C K decT encT)
-    (m3Subprograms_leafCostBound_le (Pt := Pt) S ℓ P C K qep decT encT)
-    (m3Subprograms_leafSizeBound_le (Pt := Pt) S ℓ P C K qep decT encT)
-
-/-- Multi-session model security `ModelSecureHonestFamilyStmt` instantiated with `m3Subprograms`. -/
-theorem modelSecureHonestFamily_concrete {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ) :
-    ModelSecureHonestFamilyStmt (Pt := Pt) S ℓ :=
-  modelSecureHonestFamily_of_m3_leaf (Pt := Pt) S ℓ
-    (fun P C K decT encT => m3Subprograms ℓ S P C K decT encT)
-    (fun P C K decT encT => m3SubprogramsSize ℓ S P C K decT encT)
-    (fun P C K qep decT encT b qStart qDR =>
-      m3Subprograms_leafCostBound_le (Pt := Pt) S ℓ P C K qep decT encT b qStart qDR)
-    (fun P C K qep decT encT b qStart qDR =>
-      m3Subprograms_leafSizeBound_le (Pt := Pt) S ℓ P C K qep decT encT b qStart qDR)
-
-/-- Expanded closed-form statement of `modelSecureHonestFamily_concrete`. -/
-theorem modelSecureHonestFamily_concrete_linear {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ) :
-    ∀ (P : SignalPqxdh.Primitives)
-      (C : Crypto) (K : MlKem) (qep : ℕ)
-      (decT : PublicKey → Option Pt) (encT : Pt → PublicKey),
-    let ki := SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P
-    ∃ R_fam : CompositionCostedReductionFamilyHonest S ℓ P C K qep decT encT,
-      (∀ (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ),
-        let qDR := ∑ k ∈ Finset.range qStart, qs k
-        let qTot := b.q_total + qStart + qDR
-        let B :=
-          2 ^ 10 * (b.q_total + qStart + qDR + 1) *
-              (10 * b.q_total + qStart + qDR + qep + S.N_opk_tot +
-                16 * (S.N_id + S.N_spk_tot + S.N_send_tot + S.N_recv_tot) +
-                maxForwardJumps + ℓ + 1) +
-            2 ^ 13 * (S.N_send_tot + S.N_recv_tot) *
-              (S.N_id + S.N_spk_tot + S.N_send_tot + S.N_recv_tot + qStart + maxForwardJumps + 1)
-        let R_e2e := R_fam b qStart qDR
-        GRedBounded R_e2e.kindRed (fun _ => 1) (fun _ => 0) qTot (2 * qTot) B ∧
-        (∀ k < qStart,
-          GRed2Bounded (R_e2e.prefixRed k) (fun _ => 1) (fun _ => 0) qTot qTot B false)) ∧
-      ∀ (_hP : SignalPqxdh.WellFormedPrimitivesδ P)
-        (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ)
-        (A : OracleComp (composedSpec S ℓ (GhostState Bytes)) Bool)
-        (_hA : ModelAdversaryPerInstanceBounded A b qStart qs),
-        let qDR := ∑ k ∈ Finset.range qStart, qs k
-        let qTot := b.q_total + qStart + qDR
-        let R_e2e := R_fam b qStart qDR
-        let B_A := modelAdvRun A
-        let advK : SignalPqxdh.KeyIndAdversary S := ⟨R_e2e.kindRed.eval (fun _ => B_A) ()⟩
-        SignalPqxdh.QueryBounded advK (keyIndReductionBudget S qStart b) ∧
-        (∀ k < qStart,
-          ∀ o ∈ support (stageOneAsProbComp ((R_e2e.prefixRed k).eval1 (fun _ => B_A) () qTot false)),
-          ∀ flip,
-          MakesAtMostQueries ((R_e2e.prefixRed k).eval2 o.2 flip qTot false) (qs k)) ∧
-        ComposedAdvantage (modelIface (ℓ := ℓ) P ki C K qep decT encT) A ≤
-          2 * KeyIndAdvantageForHandshake S P ki advK +
-            ∑ k ∈ Finset.range qStart, ⨆ flip : Bool,
-              𝒟[stageOneAsProbComp ((R_e2e.prefixRed k).eval1 (fun _ => B_A) () qTot false) >>=
-                fun o =>
-                  gameR
-                    (sessionSchemeFixedSpk
-                      (paramsIdsWithSpqr C (spqrV1SessionUniformCoins C.F K) o.1.1 o.1.2.1)
-                      ℓ o.1.2.2)
-                    3 qep (configRefuseEarlyBobCorr decT encT)
-                    ((R_e2e.prefixRed k).eval2 o.2 flip qTot false)].boolBias :=
-  modelSecureHonestFamily_concrete (Pt := Pt) S ℓ
 
 section ClampedWitness
 
@@ -601,7 +481,7 @@ open Computational.Proofs.E2E.Dsl.FreshnessSim (finishPrefixClampedC finishPrefi
   size_finishPrefixClampedC)
 open Computational.Proofs.E2E.Dsl.M4ReductionsIface (twoStageTotalQueries₁ twoStageTotalQueries₂)
 
-def kindStartStepClampedC {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
+@[expose] def kindStartStepClampedC {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (subs : M3SubprogramsIface ℓ S P C K decT encT)
@@ -627,7 +507,7 @@ def kindStartStepClampedC {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
               (.some (drvBitE (.fst .v4)))
               (.fst .v4) (.snd .v4) .v2 .v1 .v0)))))
 
-def kindHandleClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
+@[expose] def kindHandleClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (subs : M3SubprogramsIface ℓ S P C K decT encT)
@@ -650,7 +530,7 @@ def kindHandleClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
       (.ret (.pair (.inr (.fst .v0)) (.snd .v0))))
 
 /-- Clamped one-stage handshake reduction over `e2eOps` with per-session DR cap `qInst` and epoch cap `min qep (qInst + 4)`. -/
-def kindRedClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
+@[expose] def kindRedClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (subs : M3SubprogramsIface ℓ S P C K decT encT)
@@ -664,7 +544,7 @@ def kindRedClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
   handle := kindHandleClamped subs b qStart qInst qep
   finish := .ret (subs.drv.finishKindE (min qStart (min b.q_total S.N_send_tot)) .v0 .v1)
 
-def prefixKiStepClampedC {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
+@[expose] def prefixKiStepClampedC {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (subs : M3SubprogramsIface ℓ S P C K decT encT)
@@ -685,7 +565,7 @@ def prefixKiStepClampedC {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
             (subs.drv.mirrorE (drvSetStE (.fst .v1) (.snd .v0)) (.snd .v1) (.fst .v0)))))
       (.ret (.pair (.inl (.inl (.inl .unit))) (.fst .v0))))
 
-def prefixLocalStartClampedC {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
+@[expose] def prefixLocalStartClampedC {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (subs : M3SubprogramsIface ℓ S P C K decT encT)
@@ -715,7 +595,7 @@ def prefixLocalStartClampedC {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
               (.snd .v4) (.fst .v2) (.fst .v1) .v0)))))
 
 /-- Stage-1 handler of `prefixRedClamped`, omitting `Expr.nat k` when `k ≥ min qStart (min b.q_total S.N_send_tot)`. -/
-def prefixHandlePreClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
+@[expose] def prefixHandlePreClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (subs : M3SubprogramsIface ℓ S P C K decT encT)
@@ -746,7 +626,7 @@ def prefixHandlePreClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
       (.ret (.inl (.pair (.inr (.fst .v0)) (.snd .v0)))))
 
 /-- Stage-2 handler of `prefixRedClamped`, routing all SM queries locally without `Expr.nat k` when `k ≥ min qStart (min b.q_total S.N_send_tot)`. -/
-def prefixHandlePostClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
+@[expose] def prefixHandlePostClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (subs : M3SubprogramsIface ℓ S P C K decT encT)
@@ -776,7 +656,7 @@ def prefixHandlePostClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
         (.ret (.pair (.inr (.fst .v0)) (.snd .v0))))
 
 /-- Clamped two-stage per-session prefix reduction over `e2eOps`. -/
-def prefixRedClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
+@[expose] def prefixRedClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     (subs : M3SubprogramsIface ℓ S P C K decT encT)
@@ -795,7 +675,7 @@ def prefixRedClamped {ℓ : ℕ} {S : SignalPqxdh.Setup} {Pt : Type}
   finish := finishPrefixClampedC (Pt := Pt) (e2eSessionTargetIface ℓ) qStart b.q_total .v0 .v1 .v2
 
 /-- Clamped multi-session composition reduction bundle assembled at `m3Subprograms`. -/
-def concreteCompositionRedsClamped (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
+@[expose] def concreteCompositionRedsClamped (S : SignalPqxdh.Setup) {Pt : Type} (ℓ : ℕ)
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (b : SignalPqxdh.QueryBudget) (qStart _qDR qInst : ℕ) :

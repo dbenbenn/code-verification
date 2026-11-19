@@ -13,12 +13,19 @@ public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Defs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchDefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlacedBudget
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchDefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
 
 /-!
 # Budget-Threaded Stage P2 Over-Path Callee Specifications and Envelopes
@@ -28,7 +35,7 @@ Defines `VmPreserved` zero-allocation miss contracts for `<SessionRecord>::promo
 `<SessionRecord>::promote_state` (block 47).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -68,25 +75,25 @@ open LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget (BoundedRustEvs)
 
 /-- `VmPreserved` instance-specialized `<SessionRecord>::promote_matching_session` miss contract
 (`p2PromoteMissStack = 1248` B, zero allocations). -/
-def p2PromoteMatchingMissAtSpec (A : RustAlloc) (coroPtr : BitVec 64)
+@[expose] def p2PromoteMatchingMissAtSpec (A : RustAlloc) (coroPtr : BitVec 64)
     (g : RecordGhost) (recG : SessionGhost) (sess : Session (List (BitVec 8)))
     (msgVer : BitVec 8) (serBytes : List (BitVec 8)) : Spec P2PromoteMatchingMissCallGhost :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.p2PromoteMatchingMissAtSpec
       A coroPtr g recG sess msgVer serBytes)
 
-def p2PromoteMatchingMissGenSpec (A : RustAlloc) : Spec P2PromoteMissGhost :=
+@[expose] def p2PromoteMatchingMissGenSpec (A : RustAlloc) : Spec P2PromoteMissGhost :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.p2PromoteMatchingMissGenSpec A)
 
-def p2PromoteMatchingMissAtSpecExt (A : RustAlloc) (coroPtr : BitVec 64)
+@[expose] def p2PromoteMatchingMissAtSpecExt (A : RustAlloc) (coroPtr : BitVec 64)
     (g : RecordGhost) (recG : SessionGhost) (sess : Session (List (BitVec 8)))
     (msgVer : BitVec 8) (serBytes : List (BitVec 8)) : Spec P2PromoteMatchingMissCallGhost :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.p2PromoteMatchingMissAtSpecExt
       A coroPtr g recG sess msgVer serBytes)
 
-def p2PromoteMatchingMissGenSpecExt (A : RustAlloc) : Spec P2PromoteMissGhost :=
+@[expose] def p2PromoteMatchingMissGenSpecExt (A : RustAlloc) : Spec P2PromoteMissGhost :=
   withVmPreserved
     (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over.p2PromoteMatchingMissGenSpecExt A)
 
@@ -204,26 +211,26 @@ theorem promoteMatchingMissAt_to_ext {A : RustAlloc} {prog : Program} {entry : B
 
 /-- Relocatable `[LibsignalPlacement]` `VmPreserved` contract for `promote_matching_session` miss
 at block 50 (`lsmpl.base 50`). -/
-def PromoteMatchingMissAtPlacedProp [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PromoteMatchingMissAtPlacedProp [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State))
     (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
     (sess : Session (List (BitVec 8))) (msgVer : BitVec 8) (serBytes : List (BitVec 8)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 50)
     (withLsCl lsmpl (p2PromoteMatchingMissAtSpec A coroPtr g recG sess msgVer serBytes))
 
-def PromoteMatchingMissGenPlacedProp [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PromoteMatchingMissGenPlacedProp [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 50)
     (withLsCl lsmpl (p2PromoteMatchingMissGenSpec A))
 
-def PromoteMatchingMissAtExtPlacedProp [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PromoteMatchingMissAtExtPlacedProp [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State))
     (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
     (sess : Session (List (BitVec 8))) (msgVer : BitVec 8) (serBytes : List (BitVec 8)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 50)
     (withLsCl lsmpl (p2PromoteMatchingMissAtSpecExt A coroPtr g recG sess msgVer serBytes))
 
-def PromoteMatchingMissGenExtPlacedProp [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PromoteMatchingMissGenExtPlacedProp [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 50)
     (withLsCl lsmpl (p2PromoteMatchingMissGenSpecExt A))
@@ -346,7 +353,7 @@ theorem promoteMatchingMissAt_placed_to_ext [LibsignalPlacement] {A : RustAlloc}
 `previous_sessions`: output buffer allocation (`≤ 1` event of `n` bytes), `encode_raw`
 (`≤ 4 * n + 32` events of `≤ 2 * n + 16` bytes), and optional `RawVec<Vec<u8>>::grow_one`
 (`≤ 1` event of 96 bytes), where `n := (encSessionMem (clearPendingGhost G) (clearPending sess)).length`. -/
-def PromoteOverAllocMidEnv (G : SessionGhost) (sess : Session (List (BitVec 8))) :
+@[expose] def PromoteOverAllocMidEnv (G : SessionGhost) (sess : Session (List (BitVec 8))) :
     List AllocEvent → Prop :=
   let n := (encSessionMem (clearPendingGhost G) (clearPending sess)).length
   BoundedRustEvs (4 * n + 34) (2 * n + 96)
@@ -354,7 +361,7 @@ def PromoteOverAllocMidEnv (G : SessionGhost) (sess : Session (List (BitVec 8)))
 /-- Full allocation envelope of `<SessionRecord>::promote_state` on empty `previous_sessions`:
 pending/Kyber pre-key drops (`FreeOnlyEvs`), middle allocations (`PromoteOverAllocMidEnv G sess`),
 and epilogue `drop_glue<SessionStructure>` (`FreeOnlyEvs`). -/
-def PromoteOverEnv (G : SessionGhost) (sess : Session (List (BitVec 8))) :
+@[expose] def PromoteOverEnv (G : SessionGhost) (sess : Session (List (BitVec 8))) :
     List AllocEvent → Prop :=
   SeqEnv FreeOnlyEvs (SeqEnv (PromoteOverAllocMidEnv G sess) FreeOnlyEvs)
 
@@ -369,7 +376,7 @@ theorem PromoteOverEnv.of_steps {G : SessionGhost} {sess : Session (List (BitVec
 
 /-- Envelope-parameterized instance-specialized budget contract for
 `<SessionRecord>::promote_state(coroPtr + 0xe0, src)`. -/
-def p2PromoteOverAtSpecWithEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def p2PromoteOverAtSpecWithEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (Env : SessionGhost → Session (List (BitVec 8)) → List AllocEvent → Prop)
     (coroPtr : BitVec 64) (g : RecordGhost) (recG : SessionGhost)
@@ -404,7 +411,7 @@ abbrev p2PromoteOverAtSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Envelope-parameterized universal budget contract for `<SessionRecord>::promote_state` on empty
 `previous_sessions`. -/
-def p2PromoteOverGenSpecWithEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def p2PromoteOverGenSpecWithEnv (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (Env : SessionGhost → Session (List (BitVec 8)) → List AllocEvent → Prop) :
     Spec (P2PromoteOverGenGhost × M.σ) where
@@ -437,7 +444,7 @@ abbrev p2PromoteOverGenSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Relocatable `[LibsignalPlacement]` envelope-parameterized contract for
 `SessionRecord::promote_state` at block 47 (`lsmpl.base 47`). -/
-def PromoteOverAtPlacedWithEnvProp [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def PromoteOverAtPlacedWithEnvProp [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : SessionGhost → Session (List (BitVec 8)) → List AllocEvent → Prop)
     (ext : String → Option (State → State))
@@ -453,7 +460,7 @@ abbrev PromoteOverAtPlacedProp [LibsignalPlacement] (M : AllocCostModel)
     (sess : Session (List (BitVec 8))) : Prop :=
   PromoteOverAtPlacedWithEnvProp M A lim PromoteOverEnv ext coroPtr g recG sess
 
-def PromoteOverGenPlacedWithEnvProp [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def PromoteOverGenPlacedWithEnvProp [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : SessionGhost → Session (List (BitVec 8)) → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=

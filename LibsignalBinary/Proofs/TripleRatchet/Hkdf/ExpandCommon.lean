@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Common
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Common -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Definitions and Cut Invariants for `expand_multi_info`
@@ -20,7 +21,7 @@ transfer lemmas, and cut-point predicates `StateX0p`–`ExpandPost` for
 `GenericHkdf<Hmac<Sha256>>::expand_multi_info`.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
@@ -50,17 +51,17 @@ attribute [scoped simp, arm64_norm]
 /-! ## Pure HKDF-Expand Block Helpers -/
 
 /-- First 32-byte HKDF-Expand block `T(1) = HMAC(prk, info ‖ [1])`. -/
-def t1 (F : ShaState → List (BitVec 8) → ShaState) (prk info : List (BitVec 8)) :
+@[expose] def t1 (F : ShaState → List (BitVec 8) → ShaState) (prk info : List (BitVec 8)) :
     List (BitVec 8) :=
   hmacWith F prk (info ++ [1#8])
 
 /-- Second 32-byte HKDF-Expand block `T(2) = HMAC(prk, T(1) ‖ info ‖ [2])`. -/
-def t2 (F : ShaState → List (BitVec 8) → ShaState) (prk info : List (BitVec 8)) :
+@[expose] def t2 (F : ShaState → List (BitVec 8) → ShaState) (prk info : List (BitVec 8)) :
     List (BitVec 8) :=
   hmacWith F prk (t1 F prk info ++ info ++ [2#8])
 
 /-- Third 32-byte HKDF-Expand block `T(3) = HMAC(prk, T(2) ‖ info ‖ [3])`. -/
-def t3 (F : ShaState → List (BitVec 8) → ShaState) (prk info : List (BitVec 8)) :
+@[expose] def t3 (F : ShaState → List (BitVec 8) → ShaState) (prk info : List (BitVec 8)) :
     List (BitVec 8) :=
   hmacWith F prk (t2 F prk info ++ info ++ [3#8])
 
@@ -104,7 +105,7 @@ theorem hkdfExpand_80_eq (F : ShaState → List (BitVec 8) → ShaState)
 /-! ## Stack Frame, Preconditions, and Saved Registers -/
 
 /-- `expand_multi_info`'s stack pointer after the prologue (`s₀.sp - 496#64`). -/
-def esp (s₀ : State) : BitVec 64 := s₀.sp - 496#64
+@[expose] def esp (s₀ : State) : BitVec 64 := s₀.sp - 496#64
 
 theorem esp_eq_add (s₀ : State) : s₀.sp = esp s₀ + 496#64 := by
   unfold esp; bv_lin
@@ -158,7 +159,7 @@ abbrev ExpandFrame (okmLen : ℕ) (s₀ : State) (m : Memory) : Prop :=
 /-- Bundled preconditions of `expandMultiInfoSpec` at entry state `s₀`. -/
 structure ExpandPre (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (prk info : List (BitVec 8)) (infoPtr : BitVec 64) (okmLen : ℕ) (s₀ : State) : Prop where
-  pc_eq         : s₀.pc = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info")
+  pc_eq         : s₀.pc = b + bv% offExpandMultiInfo
   status        : s₀.status = .Running
   x3_eq         : s₀.readReg64 .x3 = BitVec.ofNat 64 okmLen
   prk_le        : prk.length ≤ 64
@@ -227,7 +228,7 @@ theorem Frame.rw_iff {m₁ m₂ : Memory} {rs : List (BitVec 64 × ℕ)}
     MprImpl (m₂.RW addr len) (m₁.RW addr len) :=
   ⟨Memory.RW.of_perm_eq hf.2.1 hf.2.2.2.1⟩
 
-def KeepsFrozenNoAnon (m m' : Memory) : Prop :=
+@[expose] def KeepsFrozenNoAnon (m m' : Memory) : Prop :=
   ∀ a, m.Frozen a →
     m'.read8 a = m.read8 a ∧ m'.perm a = m.perm a ∧ (m.isLazyFree a = false → m'.isLazyFree a = false)
 
@@ -856,7 +857,7 @@ theorem ExpandCommon.of_agreesOutside_x2 {b : BitVec 64}
 
 /-- Cut `X0p` at `b + 0x1a894` (after 8-step prologue). -/
 structure StateX0p (b : BitVec 64) (okmLen : ℕ) (s₀ s : State) : Prop where
-  pc_eq  : s.pc = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 32)
+  pc_eq  : s.pc = b + bv% (offExpandMultiInfo + 32)
   status : s.status = .Running
   sp_eq  : s.sp = esp s₀
   x29_eq : s.readReg64 .x29 = esp s₀ + 400#64
@@ -870,9 +871,9 @@ structure StateX0p (b : BitVec 64) (okmLen : ℕ) (s₀ s : State) : Prop where
 /-- Cut `X1` at `b + 0x47f50` (`memcpy` #1 stub, reached after 40 steps from `X0p`). -/
 structure StateX1 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (prk info : List (BitVec 8)) (infoPtr : BitVec 64) (okmLen : ℕ) (s₀ s : State) : Prop where
-  pc_eq   : s.pc = b + bv% (ls_off% "memcpy")
+  pc_eq   : s.pc = b + bv% offMemcpy
   common  : ExpandCommon okmLen s₀ s
-  lr_eq   : s.readReg64 .lr = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 192)
+  lr_eq   : s.readReg64 .lr = b + bv% (offExpandMultiInfo + 192)
   x0_eq   : s.readReg64 .x0 = esp s₀ + 64#64
   x1_eq   : s.readReg64 .x1 = infoPtr
   x2_eq   : s.readReg64 .x2 = BitVec.ofNat 64 info.length
@@ -886,7 +887,7 @@ structure StateX1 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState
 /-- Cut `X1b` at `b + 0x1aa34` (after `memcpy` #1 and 13 steps appending `1#8`). -/
 structure StateX1b (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (prk info : List (BitVec 8)) (okmLen : ℕ) (s₀ s : State) : Prop where
-  pc_eq   : s.pc = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 448)
+  pc_eq   : s.pc = b + bv% (offExpandMultiInfo + 448)
   common  : ExpandCommon okmLen s₀ s
   x22_eq  : s.readReg64 .x22 = s₀.readReg64 .x2
   x23_eq  : s.readReg64 .x23 = 32#64
@@ -896,9 +897,9 @@ structure StateX1b (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaStat
 /-- Cut `X2` at `b + 0x30680` (`finalize_fixed` #1 entry, reached after 13 steps from `X1b`). -/
 structure StateX2 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (prk info : List (BitVec 8)) (okmLen : ℕ) (s₀ s : State) : Prop where
-  pc_eq    : s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]")
+  pc_eq    : s.pc = b + bv% offFinalizeFixed1
   common   : ExpandCommon okmLen s₀ s
-  lr_eq    : s.readReg64 .lr = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 500)
+  lr_eq    : s.readReg64 .lr = b + bv% (offExpandMultiInfo + 500)
   x0_eq    : s.readReg64 .x0 = esp s₀ + 208#64
   x1_eq    : s.readReg64 .x1 = esp s₀ + 240#64
   x22_eq   : s.readReg64 .x22 = s₀.readReg64 .x2
@@ -909,7 +910,7 @@ structure StateX2 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState
 /-- Cut `X2r` at `b + 0x1aa68` (after `finalize_fixed` #1 returns). -/
 structure StateX2r (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (prk info : List (BitVec 8)) (okmLen : ℕ) (s₀ s : State) : Prop where
-  pc_eq  : s.pc = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 500)
+  pc_eq  : s.pc = b + bv% (offExpandMultiInfo + 500)
   common : ExpandCommon okmLen s₀ s
   x22_eq : s.readReg64 .x22 = s₀.readReg64 .x2
   x23_eq : s.readReg64 .x23 = 32#64
@@ -922,7 +923,7 @@ structure StateX2r (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaStat
 - `rem = okmLen - dstOff` bytes remain (`x26 = BitVec.ofNat 64 rem`). -/
 structure StateLoop (b : BitVec 64) (okmLen : ℕ)
     (tPrev okmSoFar : List (BitVec 8)) (i rem dstOff : ℕ) (s₀ s : State) : Prop where
-  pc_eq   : s.pc = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 712)
+  pc_eq   : s.pc = b + bv% (offExpandMultiInfo + 712)
   common  : ExpandCommon okmLen s₀ s
   x19_eq  : s.readReg64 .x19 = BitVec.ofNat 64 i
   x22_eq  : s.readReg64 .x22 = s₀.readReg64 .x2 + BitVec.ofNat 64 dstOff
@@ -936,12 +937,12 @@ structure StateLoop (b : BitVec 64) (okmLen : ℕ)
 have been written to `s₀.readReg64 .x2`. -/
 structure StateDone (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (prk info : List (BitVec 8)) (okmLen : ℕ) (s₀ s : State) : Prop where
-  pc_eq   : s.pc = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 1176)
+  pc_eq   : s.pc = b + bv% (offExpandMultiInfo + 1176)
   common  : ExpandCommon okmLen s₀ s
   okm_all : s.mem.readBytes (s₀.readReg64 .x2) okmLen = hkdfExpand F prk info okmLen
 
 /-- Postcondition of `expand_multi_info` at return (`s'.pc = s₀.readReg64 .lr`). -/
-def ExpandPost (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def ExpandPost (F : ShaState → List (BitVec 8) → ShaState)
     (prk info : List (BitVec 8)) (okmLen : ℕ) (s₀ s' : State) : Prop :=
   s'.pc = s₀.readReg64 .lr ∧
   s'.status = .Running ∧

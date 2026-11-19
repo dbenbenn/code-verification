@@ -38,7 +38,7 @@ public import Aesop.BuiltinRules
 public import Mathlib.Data.Subtype
 public import Mathlib.Tactic.Basic
 public import Mathlib.Tactic.ToAdditive
-public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob -- proof-setup: allow-public-import
 import Batteries.Tactic.SeqFocus
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
@@ -47,7 +47,7 @@ import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Trunc
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
-import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompPubInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -77,7 +77,7 @@ record that every honest `messageEncrypt` packs `msg₀.pqRatchet` via `Spqr.Sen
 `DY.Spqr.spqrEmptyMsg msg₀.pqRatchet = false`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -192,12 +192,12 @@ def TruncInputValidTRPq (T : ExecTrace) (inp : DY.Bytes) : Prop :=
           (SymEnc.symEnc (trMsgKeys pqSalt seed).cipherKey (trMsgKeys pqSalt seed).iv m)
           ({ st := st, coins := coins } : DY.Spqr.SendMsg.SubF DY.Bytes).pack)))
 
-def IsRatchetOrPqxdhBlock23Pq (b1 i : DY.Bytes) : Prop :=
+@[expose] def IsRatchetOrPqxdhBlock23Pq (b1 i : DY.Bytes) : Prop :=
   i = Concat.concat b1 (Concat.concat (lit "WhisperRatchet") (litByte 2)) ∨
   i = Concat.concat b1 (Concat.concat pqxdhLabel (litByte 2)) ∨
   i = Concat.concat b1 (Concat.concat pqxdhLabel (litByte 3))
 
-def KdfInputValidTRPq (T : ExecTrace) (s i : DY.Bytes) : Prop :=
+@[expose] def KdfInputValidTRPq (T : ExecTrace) (s i : DY.Bytes) : Prop :=
   (s.AttackerKnows T ∧ i.AttackerKnows T) ∨
   (i = litByte 0x01 ∧ ∃ j ses pk n rIdx src,
       T.EventLoggedAt (TREvent.SkippedKeyStored ses pk n (KdfExtract.kdfExtract s i) rIdx src) j) ∨

@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig
-public import Computational.Proofs.SignalPqxdh.Security.SigHop1Key
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.SigHop1Key
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 
 /-!
 # One-key `Auth` bad-signature hop: union bound and index sampling
@@ -22,7 +24,7 @@ bound `authSig1KeyPerKBound` via a union bound over `k < N_id` and index samplin
 `sigReductionAuth1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,7 +34,7 @@ open OracleSpec OracleComp
 namespace Proofs.SignalPqxdh.Security
 
 /-- Per-principal bad-signature bound for one-key `Auth`, in the frozen `NoOpk` game. -/
-def authSig1KeyPerKBound (S : Setup) (P : Primitives) (b : QueryBudget)
+@[expose] def authSig1KeyPerKBound (S : Setup) (P : Primitives) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) (k : Nat) : Prop :=
   𝒟[runAuthWithProvFrozen1Key (checkBundleProvenanceNoOpk P) S P A.val >>= fun (_, _, finalSt) =>
       pure (hasBadSigAuthAt S P k finalSt)] {true} ≤

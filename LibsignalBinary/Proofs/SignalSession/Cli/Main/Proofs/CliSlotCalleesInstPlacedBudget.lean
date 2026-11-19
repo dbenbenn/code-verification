@@ -9,14 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetSeams
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetCallees
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureVmPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetSeams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureVmPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.InnerInstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVTPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptLemmas.InnerGluePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Budget-Threaded Relocatable `CliSlotCalleesPlaced` Assembly
@@ -26,7 +31,7 @@ decrypt, and session-initiation callee contracts into `CliSlotCalleesPlaced` and
 `CliSlotCalleesFullPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -85,7 +90,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.I
 )
 
 /-- Stage-2 initiation callee contract obligation over `RustCliAllocBudget M`. -/
-def Stage2PlacedBudgetOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Stage2PlacedBudgetOk [LibsignalPlacement] {M : AllocCostModel}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (envs : CliSlotEnvs)
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem) : Prop :=
@@ -96,7 +101,7 @@ def Stage2PlacedBudgetOk [LibsignalPlacement] {M : AllocCostModel}
   S.initiate = initDef X ⟨W.C, W.Q⟩ → True
 
 /-- Stage-3 initiation callee contract obligation over `RustCliAllocBudget M`. -/
-def Stage3PlacedBudgetOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Stage3PlacedBudgetOk [LibsignalPlacement] {M : AllocCostModel}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (envs : CliSlotEnvs)
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (_B : RunBudgets) (S : RunSem) : Prop :=
@@ -161,15 +166,18 @@ theorem cliSlotCallees_placed_of_inner [LibsignalPlacement] {M : AllocCostModel}
       (cliGhostExterns g (cliExternsPlaced mmpl W)) cliRunBudgets
       envs.tryDecrypt
       (decSessKitBudgetEnv A.repAlloc cliRunBudgets envs.sessDeser envs.readFile)
-      (decIdKitBudgetEnv A.repAlloc cliRunBudgets envs.readFile)) :
+      (decIdKitBudgetEnv A.repAlloc cliRunBudgets envs.readFile))
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref := by rfl)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef := by rfl)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec := by rfl) :
     CliSlotCalleesPlaced mmpl g X W A lim envs :=
   { w1Inner := w1_inner_placed_ok mmpl g W A lim envs hDropNz hH hSpqr hEncVT
     w2SessVt := w2SessVt_placed_ok A.repAlloc cliRunBudgets hDropNz
     w2IdVt := w2IdVt_placed_ok A.repAlloc cliRunBudgets hDropNz
     w2Inner := hw2Inner
-    w3Hooks := w3Hooks_placed_ok mmpl g W A lim hH
+    w3Hooks := w3Hooks_placed_ok mmpl g W A lim hH hX hPub hEnc
     w3Exist := w3Exist_placed_ok_of_putStr mmpl g W A lim envs.readFile hH
-    w3A4 := w3A4_placed_ok mmpl g W A lim envs hH.alloc.toCliGhostAllocHooks hSpqr
+    w3A4 := w3A4_placed_ok mmpl g W A lim envs hH.alloc.toCliGhostAllocHooks hH.f_eq hSpqr
     w3Stage2 := w3Stage2_placed_ok mmpl g X W A lim envs
     w3Stage3 := w3Stage3_placed_ok mmpl g X W A lim envs }
 
@@ -189,10 +197,14 @@ theorem cliSlotCallees_placed_of_region [LibsignalPlacement] {M : AllocCostModel
       recEntryPlaced recExitPlaced
       ((recordDecryptPlacedSpecTPTight W.C A lim 0#64 uuidTryParse
         (pqxdhSpqrModel ⟨W.C, W.Q⟩) envs.tryDecrypt).withVRegs.restrictPre
-        (fun p => (fun _ => True) p.1.st.pqRatchetState))) :
+        (fun p => (fun _ => True) p.1.st.pqRatchetState)))
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref := by rfl)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef := by rfl)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec := by rfl) :
     CliSlotCalleesPlaced mmpl g X W A lim envs :=
   cliSlotCallees_placed_of_inner mmpl g X W A lim envs hDropNz hH hSpqr hEncVT
     (w2_inner_placed_ok_of_region mmpl g W A lim envs hDropNz hH hSpqr hreg)
+    hX hPub hEnc
 
 /-- Assembles budget-threaded `CliSlotCalleesPlaced` from the Block-`462` `logClosurePlacedSpec` seam
 `hLog462` and `hregOfLog`. -/
@@ -218,9 +230,13 @@ theorem cliSlotCallees_placed_of_seams [LibsignalPlacement] {M : AllocCostModel}
         recEntryPlaced recExitPlaced
         ((recordDecryptPlacedSpecTPTight W.C A lim 0#64 uuidTryParse
           (pqxdhSpqrModel ⟨W.C, W.Q⟩) envs.tryDecrypt).withVRegs.restrictPre
-          (fun p => (fun _ => True) p.1.st.pqRatchetState))) :
+          (fun p => (fun _ => True) p.1.st.pqRatchetState)))
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref := by rfl)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef := by rfl)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec := by rfl) :
     CliSlotCalleesPlaced mmpl g X W A lim envs :=
   cliSlotCallees_placed_of_region mmpl g X W A lim envs hDropNz hH hSpqr hEncVT (hregOfLog hLog462)
+    hX hPub hEnc
 
 /-- Budget-threaded `CliSlotCalleesFullPlaced` bundle under `[LibsignalFullPlacement]`, replacing
 `w2Inner` with `InnerDecryptFrozenPlacedOk`. -/
@@ -311,6 +327,7 @@ theorem w2_inner_frozen_placed_ok_of_region [LibsignalPlacement] {M : AllocCostM
       hreg
       (fun _ _ ses hsc hcur =>
         ⟨CryptoVerification.SignalSession.Cli.Slots.scopeKit_pqrState_lt hsc.1 ses hcur, trivial⟩)
+      (fun _ h => h ▸ hPeer.nameLe40)
   refine subroutine_ok_mono hraw ?_ ?_
   · intro xs R s0 hpre
     dsimp only [CryptoVerification.LibsignalPublicApi.StoreKit.withEnvPre,
@@ -393,15 +410,18 @@ theorem cliSlotCallees_full_placed_of_inner [CryptoVerification.LibsignalFullPla
         (cliGhostExterns g (cliExternsPlaced mmpl W)) cliRunBudgets
         envs.tryDecrypt
         (decSessKitBudgetEnv A.repAlloc cliRunBudgets envs.sessDeser envs.readFile)
-        (decIdKitBudgetEnv A.repAlloc cliRunBudgets envs.readFile)) :
+        (decIdKitBudgetEnv A.repAlloc cliRunBudgets envs.readFile))
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref := by rfl)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef := by rfl)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec := by rfl) :
     CliSlotCalleesFullPlaced mmpl g X W A lim envs :=
   { w1Inner := w1_inner_placed_ok mmpl g W A lim envs hDropNz hH hSpqr hEncVT
     w2SessVt := w2SessVt_placed_ok A.repAlloc cliRunBudgets hDropNz
     w2IdVt := w2IdVt_placed_ok A.repAlloc cliRunBudgets hDropNz
     w2Inner := hw2Inner
-    w3Hooks := w3Hooks_placed_ok mmpl g W A lim hH
+    w3Hooks := w3Hooks_placed_ok mmpl g W A lim hH hX hPub hEnc
     w3Exist := w3Exist_placed_ok_of_putStr mmpl g W A lim envs.readFile hH
-    w3A4 := w3A4_placed_ok mmpl g W A lim envs hH.alloc.toCliGhostAllocHooks hSpqr
+    w3A4 := w3A4_placed_ok mmpl g W A lim envs hH.alloc.toCliGhostAllocHooks hH.f_eq hSpqr
     w3Stage2 := w3Stage2_placed_ok mmpl g X W A lim envs
     w3Stage3 := w3Stage3_placed_ok mmpl g X W A lim envs }
 
@@ -423,10 +443,14 @@ theorem cliSlotCallees_full_placed_of_region [CryptoVerification.LibsignalFullPl
       ((CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
         (recordDecryptPlacedSpecTPTight W.C A lim 0#64 uuidTryParse
           (pqxdhSpqrModel ⟨W.C, W.Q⟩) envs.tryDecrypt)).withVRegs.restrictPre
-        (fun p => (fun _ => True) p.1.st.pqRatchetState))) :
+        (fun p => (fun _ => True) p.1.st.pqRatchetState)))
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref := by rfl)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef := by rfl)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec := by rfl) :
     CliSlotCalleesFullPlaced mmpl g X W A lim envs :=
   cliSlotCallees_full_placed_of_inner mmpl g X W A lim envs hDropNz hH hSpqr hEncVT
     (w2_inner_frozen_placed_ok_of_region mmpl g W A lim envs hDropNz hH hSpqr hreg)
+    hX hPub hEnc
 
 /-- Closed `[LibsignalFullPlacement]` assembly of `CliSlotCalleesFullPlaced` (with Block `462`
 discharged internally via `RecordDecryptPV1TrapPlacedBudget`). -/
@@ -446,9 +470,13 @@ theorem cliSlotCallees_full_placed_of_seams [CryptoVerification.LibsignalFullPla
       ((CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
         (recordDecryptPlacedSpecTPTight W.C A lim 0#64 uuidTryParse
           (pqxdhSpqrModel ⟨W.C, W.Q⟩) envs.tryDecrypt)).withVRegs.restrictPre
-        (fun p => (fun _ => True) p.1.st.pqRatchetState))) :
+        (fun p => (fun _ => True) p.1.st.pqRatchetState)))
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref := by rfl)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef := by rfl)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec := by rfl) :
     CliSlotCalleesFullPlaced mmpl g X W A lim envs :=
   cliSlotCallees_full_placed_of_region mmpl g X W A lim envs hDropNz hH hSpqr hEncVT hreg
+    hX hPub hEnc
 
 /-- `[LibsignalFullPlacement]` assembly discharging a `withLsFrozen`-guarded Block-`462` premise via
 `log_closure_coins_frozen_vm_placed_ok_of_block`. -/
@@ -473,11 +501,15 @@ theorem cliSlotCallees_full_placed_of_seams_of_log [CryptoVerification.Libsignal
         ((CryptoVerification.LibsignalTripleRatchet.withLsFrozen lsmpl
           (recordDecryptPlacedSpecTPTight W.C A lim 0#64 uuidTryParse
             (pqxdhSpqrModel ⟨W.C, W.Q⟩) envs.tryDecrypt)).withVRegs.restrictPre
-          (fun p => (fun _ => True) p.1.st.pqRatchetState))) :
+          (fun p => (fun _ => True) p.1.st.pqRatchetState)))
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref := by rfl)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef := by rfl)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec := by rfl) :
     CliSlotCalleesFullPlaced mmpl g X W A lim envs :=
   cliSlotCallees_full_placed_of_region mmpl g X W A lim envs hDropNz hH hSpqr hEncVT
     (hregOfLog
       (LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureVmPlacedBudget.log_closure_coins_frozen_vm_placed_ok_of_block
         (callerProg := lsProg_463 (cliGhostExterns g (cliExternsPlaced mmpl W)))))
+    hX hPub hEnc
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudget

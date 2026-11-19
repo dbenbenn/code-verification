@@ -17,9 +17,9 @@ import all DY.Actions.PersistentLocalState
 import all DY.Actions.PersistentGlobalState
 import all DY.Actions.ProtocolEvent
 import all DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Refinement.Statement
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.CREF.CBadG2.MacGuess
@@ -34,6 +34,9 @@ import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureB
 import Symbolic.Proofs.Swarm.UA.BI.G.SlotInitTransfer
 import Symbolic.Proofs.Swarm.UA.BI.G.StepsStateFaithful
 import Symbolic.Proofs.Swarm.UA.Base
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 
 /-!
 # Send-Step Ghost Frame and Explanation Transfer
@@ -43,7 +46,7 @@ faithfulness for `Step.messageEncrypt`, and clean-explanation extension lemmas f
 pending-PreKey, and rejected `send` runs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

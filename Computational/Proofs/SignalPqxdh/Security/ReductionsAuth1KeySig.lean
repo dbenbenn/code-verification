@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem
 
 /-!
 # One-Key `Auth` `GapSigEufCma` Simulator
@@ -20,7 +20,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigK
 simulator while extracting bundle signature forgeries on `send*` queries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,18 +37,18 @@ structure SigAuth1KeySimState (S : Setup) where
   targetPk    : Bytes
   forgery     : Option (Bytes × Bytes) := none
 
-def SigAuth1KeySimState.empty (S : Setup) (secb : Bool) (targetParty : ℕ) (pk : Bytes) :
+@[expose] def SigAuth1KeySimState.empty (S : Setup) (secb : Bool) (targetParty : ℕ) (pk : Bytes) :
     SigAuth1KeySimState S :=
   { fg := FgAuth1KeySimState.empty S secb, targetParty := targetParty, targetPk := pk,
     forgery := none }
 
-def sigAuth1KeyDelegate (S : Setup) (maxLen : ℕ) (q : AuthQuery S) (st : SigAuth1KeySimState S) :
+@[expose] def sigAuth1KeyDelegate (S : Setup) (maxLen : ℕ) (q : AuthQuery S) (st : SigAuth1KeySimState S) :
     OracleComp GdhSignSimSpec (AuthResponse × SigAuth1KeySimState S) := do
   let (out, fg') ← fgAuth1KeyStepHalt true st.targetParty S.N_spk_tot S maxLen
     st.targetPk st.targetPk q st.fg
   return (out, { st with fg := fg' })
 
-def sigAuth1KeySend (S : Setup) (maxLen : ℕ) (q : AuthQuery S) (bundle : PreKeyBundleInput)
+@[expose] def sigAuth1KeySend (S : Setup) (maxLen : ℕ) (q : AuthQuery S) (bundle : PreKeyBundleInput)
     (st : SigAuth1KeySimState S) :
     OracleComp GdhSignSimSpec (AuthResponse × SigAuth1KeySimState S) := do
   let forgery' ← SignalPqxdh.Security.embedPrim (spec := sigAndDdhSpec)
@@ -59,7 +59,7 @@ def sigAuth1KeySend (S : Setup) (maxLen : ℕ) (q : AuthQuery S) (bundle : PreKe
   sigAuth1KeyDelegate S maxLen q st
 
 /-- Per-query handler that freezes the simulator state once a bundle forgery is extracted. -/
-def sigAuth1KeyStep (S : Setup) (maxLen : ℕ) (q : AuthQuery S) (st : SigAuth1KeySimState S) :
+@[expose] def sigAuth1KeyStep (S : Setup) (maxLen : ℕ) (q : AuthQuery S) (st : SigAuth1KeySimState S) :
     OracleComp GdhSignSimSpec (AuthResponse × SigAuth1KeySimState S) :=
   if st.forgery.isSome then
     return (.noneResp, st)
@@ -69,14 +69,14 @@ def sigAuth1KeyStep (S : Setup) (maxLen : ℕ) (q : AuthQuery S) (st : SigAuth1K
     | .sendNoOPK _ _ bundle _ _ => sigAuth1KeySend S maxLen q bundle st
     | q => sigAuth1KeyDelegate S maxLen q st
 
-def sigReductionAuth1KeyRunAt (targetParty : ℕ) (S : Setup) (b : QueryBudget)
+@[expose] def sigReductionAuth1KeyRunAt (targetParty : ℕ) (S : Setup) (b : QueryBudget)
     (A : AuthAdversary S) (pk : Bytes) : OracleComp GdhSignSimSpec (Bytes × Bytes) := do
   let secb ← unifGdhSign ($ᵗ Bool)
   let initSt := SigAuth1KeySimState.empty S secb targetParty pk
   let (_, finalSt) ← runWithGdhSignStep (sigAuth1KeyStep S b.q_total) A.run initSt
   return finalSt.forgery.getD ([], [])
 
-def sigReductionAuth1KeyAt (targetParty : ℕ) (S : Setup) (b : QueryBudget)
+@[expose] def sigReductionAuth1KeyAt (targetParty : ℕ) (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : GapSigEufCmaAdv where
   run := sigReductionAuth1KeyRunAt targetParty S b A.1
   q_sig := 2 * min S.N_spk_tot S.N_recv
@@ -84,7 +84,7 @@ def sigReductionAuth1KeyAt (targetParty : ℕ) (S : Setup) (b : QueryBudget)
   q_prim := gdhPrimQueryBudget S b
 
 /-- One-key `Auth` `GapSigEufCma` reduction (`G1 → G2`) sampling a uniform target principal. -/
-def sigReductionAuth1Key (S : Setup) (b : QueryBudget)
+@[expose] def sigReductionAuth1Key (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : GapSigEufCmaAdv where
   run pk := do
     let k ← unifGdhSign (RoKem.sampleIndexRange S.N_id)

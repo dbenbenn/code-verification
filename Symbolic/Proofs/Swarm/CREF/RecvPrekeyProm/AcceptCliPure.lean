@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BinPure
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRpk
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BinPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRpk -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.World.RelCliPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNonePure
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.Tie.AcceptFramePure
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.OpkRelC
 
 /-!
 # Promote Accept Bundles and Obligation Interfaces
@@ -28,7 +30,7 @@ and `PromAcceptCall`), and the accept-branch obligation predicates (`PromExplain
 extraction.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -192,7 +194,7 @@ theorem PromAcceptCall.hmid {interpretation : ExternInterpretation} {r : Protoco
 
 /-- Explanation obligation on an accepting promote call: yields a `MatchedPrefix` explanation and,
 when `ok j = true`, a `Clean` explanation. -/
-def PromExplainOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromExplainOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) : Prop :=
   ∀ (j : Nat) (e' : PromTurn) (mid acc : List MachineEvent)
     (rec b : HwBytes) (sm : StateAndMessage) (pf : PreKeyFields)
@@ -205,7 +207,7 @@ def PromExplainOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S
     (ok j = true → ∃ g ms, Clean interpretation r S who ok g ms (acc ++ promAccBlk b mid pt))
 
 /-- Post-state `PureCRecRel` and `TRNsBound` step for a single-move receive block under `Clean`. -/
-def PromNewRec (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromNewRec (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool)
     (p : Participant) (rec st' : HwBytes) (sent : List HwBytes) (acc blk : List MachineEvent) :
     Prop :=
@@ -221,7 +223,7 @@ def PromNewRec (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : 
 abbrev PromNewRecBy₂ := PromNewRec
 
 /-- Post-state record and `TRNsBound` obligation on an accepting promote call. -/
-def PromNewRecOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromNewRecOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) : Prop :=
   ∀ (j : Nat) (e' : PromTurn) (mid acc : List MachineEvent)
     (rec b : HwBytes) (sm : StateAndMessage) (pf : PreKeyFields)
@@ -235,7 +237,7 @@ def PromNewRecOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S 
 abbrev PromNewRecByOK₂ := PromNewRecOK
 
 /-- `CHist` step across a single-move receive block under `Clean`. -/
-def PromHistStep (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromHistStep (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool)
     (p : Participant) (rec st' : HwBytes) (acc blk : List MachineEvent) : Prop :=
   ∀ g ms₀ δ,
@@ -248,7 +250,7 @@ def PromHistStep (interpretation : ExternInterpretation) (r : ProtocolSetup) (S 
     CHist interpretation r S g (ms₀ ++ δ)
 
 /-- `CHist` obligation on an accepting promote call. -/
-def PromHistOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromHistOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) : Prop :=
   ∀ (j : Nat) (e' : PromTurn) (mid acc : List MachineEvent)
     (rec b : HwBytes) (sm : StateAndMessage) (pf : PreKeyFields)
@@ -260,7 +262,7 @@ def PromHistOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : 
     PromHistStep interpretation r S who ok r.bob rec sm.state acc (promAccBlk b mid pt)
 
 /-- `COpkRelC` preservation obligation on an accepting promote call. -/
-def PromOpkOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromOpkOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) : Prop :=
   ∀ (j : Nat) (e' : PromTurn) (mid acc : List MachineEvent)
     (rec b : HwBytes) (sm : StateAndMessage) (pf : PreKeyFields)
@@ -272,7 +274,7 @@ def PromOpkOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : O
     COpkRelC interpretation r S who ok e'.opkUsed (acc ++ promAccBlk b mid pt)
 
 /-- Obligation that an accepting promote call with `mid = []` has `pureDrawsCoins = false`. -/
-def PromNoDrawOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromNoDrawOK (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) : Prop :=
   ∀ (j : Nat) (e' : PromTurn) (acc : List MachineEvent)
     (rec b : HwBytes) (sm : StateAndMessage) (pf : PreKeyFields)

@@ -10,7 +10,6 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.NewFromSliceInvariants
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
@@ -19,6 +18,7 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Entry (`+0x1ee8 → +0x216c`) of Inlined `SessionStructure::decode`
@@ -28,14 +28,14 @@ in `message_decrypt_prekey::<Coins>::{closure#0}` (`overDecEntry : OverDecEntryS
 `SessionStructure::default()` at `q + 0x930` and setting up the input slice cursor at `q + 0xbe8`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection SepProp
+open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoGames CryptoGames.LibsignalSession
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr
@@ -43,14 +43,14 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 open CryptoVerification.LibsignalSession
 open CryptoVerification.E2E.Pqxdh.ResponderClosure
 open CryptoVerification.E2E.Pqxdh.ResponderClosure.P3P4
-open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure (decryptPrekeyClosureName decryptPrekeyClosure_fnOff)
+open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure (decryptPrekeyClosureName)
 open CryptoVerification.E2E.Record (A0)
 open CryptoVerification.E2E.Record.DeserializeSeed
 open CryptoVerification.E2E.Record.DeserializeGeneral
 open Symbolic.Swarm.TRREF.B3DeserQ (SSGQ ExtraGQ prostSSGQAt prostSSGQAt_empty)
 
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm ↓, local wp_norm ↓] decryptPrekeyClosure_fnOff
+
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 
 private theorem SepWPp_weaken_frame {prog : Program} {ret : BitVec 64} {s : State}
@@ -61,31 +61,6 @@ private theorem SepWPp_weaken_frame {prog : Program} {ret : BitVec 64} {s : Stat
   intro R hm hL
   rw [hP] at hm
   exact h R (Satisfies.mono (sepConj_mono_left (sepConj_mono_left hent)) hm) hL
-
-private theorem SepWPp_bind_sepWP_frame {prog : Program} {img : Obj.Image} {mid ret : BitVec 64} {s : State}
-    {P P_step P_step_post F : SepProp} {Q_regs : State → Prop}
-    {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hstep : SepWP prog mid s P_step
-      (fun sm P_step' => (P_step' ⊢ P_step_post) ∧ Q_regs sm))
-    (hP : P = P_step ∗ F)
-    (hnext : ∀ sm : State, sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Q_regs sm →
-      SepWPp prog ret sm (P_step_post ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  rw [hP, sepConj_assoc] at hm
-  obtain ⟨sm, hsteps, ⟨hpc, hrun, P_step', hmm, hent, hregs⟩ | ⟨_, _hoom⟩⟩ := hstep.elim hm hL
-  rotate_left; · first | exact False.elim _hoom | exact (not_satisfies_false_sepConj _hoom).elim
-  have hmm' : sm.mem ⊨ (P_step_post ∗ F) ∗ R := by
-    rw [sepConj_assoc]
-    exact Satisfies.mono (sepConj_mono_left hent) hmm
-  obtain ⟨sf, hsteps', hout'⟩ :=
-    hnext sm hpc hrun (hF.of_keepsFrozen hsteps.keepsFrozen)
-      (hsteps.symtab_eq.trans hsym) hregs R hmm' (hsteps.codeLoaded hL)
-  exact ⟨sf, hsteps.trans hsteps', hout'⟩
-
-/-! ## Pure and Spatial Helpers -/
 
 private theorem enc_len_ofNat64_ne_zero {enc : List (BitVec 8)}
     (hne : enc ≠ []) (hlen : enc.length < 2 ^ 62) :
@@ -285,137 +260,5 @@ private theorem sliceCursorAfter_self (slot ptr : BitVec 64) (bs : List (BitVec 
       Prost.sliceCursorAfter slot ptr bs bs := by
   unfold Prost.sliceCursorAfter
   rw [Nat.sub_self, show (BitVec.ofNat 64 0 : BitVec 64) = 0#64 from rfl, BitVec.add_zero]
-
-/-! ## Entry `SepWP` (`+0x1ee8 → +0x216c`) -/
-
-set_option maxHeartbeats 600000 in
-private theorem entry_wp (b : BitVec 64) (ext : String → Option (State → State))
-    (s : State) (g : OverDecG)
-    (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13
-     w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 : BitVec 64)
-    (hlen_nz : BitVec.ofNat 64 g.enc.length ≠ 0#64)
-    (hpc : s.pc = (contractProg b ext).fnAddr decryptPrekeyClosureName + 0x1ee8#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = g.q)
-    (hal : (s.sp &&& 15#64 == 0#64) = true)
-    (hx19 : s.readReg64 .x19 = g.r19)
-    (hx20 : s.readReg64 .x20 = g.r20)
-    (hx21 : s.readReg64 .x21 = g.q + 0x930#64)
-    (hx24 : s.readReg64 .x24 = 1#64)
-    (hx25 : s.readReg64 .x25 = 0xffffffffffffffff#64)
-    (hx26 : s.readReg64 .x26 = g.r26)
-    (hx27 : s.readReg64 .x27 = g.prevPtr)
-    (hx29 : s.readReg64 .x29 = g.q + 0xc70#64) :
-    SepWP (contractProg b ext)
-      ((contractProg b ext).fnAddr decryptPrekeyClosureName + 0x216c#64) s
-      (vecHeader g.prevPtr g.encCap g.encPtr (BitVec.ofNat 64 g.enc.length) ∗
-       entryScratchCells g.q w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13
-         w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25)
-      (fun s1 P_f =>
-        (P_f ⊢
-          vecHeader g.prevPtr g.encCap g.encPtr (BitVec.ofNat 64 g.enc.length) ∗
-          ((g.q + 0x920#64) ↦₆₄ g.encPtr) ∗
-          ((g.q + 0x928#64) ↦₆₄ BitVec.ofNat 64 g.enc.length) ∗
-          ((g.q + 0xbe8#64) ↦₆₄ (g.q + 0x920#64)) ∗
-          ssRawCells_entry g.q) ∧
-        s1.sp = g.q ∧
-        s1.trace = s.trace ∧
-        s1.readReg64 .x19 = g.r19 ∧
-        s1.readReg64 .x20 = g.r20 ∧
-        s1.readReg64 .x21 = g.q + 0x930#64 ∧
-        s1.readReg64 .x24 = 1#64 ∧
-        s1.readReg64 .x25 = 0xffffffffffffffff#64 ∧
-        s1.readReg64 .x26 = g.r26 ∧
-        s1.readReg64 .x27 = g.prevPtr ∧
-        s1.readReg64 .x28 = g.q + 0xa90#64 ∧
-        s1.readReg64 .x29 = g.q + 0xc70#64 ∧
-        calleeSavedVRegs s1 = calleeSavedVRegs s) := by
-  closure_fetches_range_cli b (Rust.withPanics ext) 0x1ee8 0x1f54
-  dsimp only [contractProg, vecHeader, entryScratchCells] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr decryptPrekeyClosureName = entry
-  examples_hide_fetches
-  have hx19' : s.readReg64 (Reg.gpr 19#5) = g.r19 := hx19
-  have hx20' : s.readReg64 (Reg.gpr 20#5) = g.r20 := hx20
-  have hx21' : s.readReg64 (Reg.gpr 21#5) = g.q + 0x930#64 := hx21
-  have hx24' : s.readReg64 (Reg.gpr 24#5) = 1#64 := hx24
-  have hx25' : s.readReg64 (Reg.gpr 25#5) = 0xffffffffffffffff#64 := hx25
-  have hx26' : s.readReg64 (Reg.gpr 26#5) = g.r26 := hx26
-  have hx27' : s.readReg64 (Reg.gpr 27#5) = g.prevPtr := hx27
-  have hx29' : s.readReg64 (Reg.gpr 29#5) = g.q + 0xc70#64 := hx29
-  wp_steps
-  refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  refine ⟨Entails.of_eq (by unfold ssRawCells_entry; ac_rfl), hsp, rfl,
-    by simp_all [arm64_norm], by simp_all [arm64_norm], by simp_all [arm64_norm],
-    by simp_all [arm64_norm], by simp_all [arm64_norm], by simp_all [arm64_norm],
-    by simp_all [arm64_norm], by simp_all [arm64_norm], by simp_all [arm64_norm],
-    by simp_all [arm64_norm]⟩
-
-/-! ## Top-Level `overDecEntry` -/
-
-set_option maxHeartbeats 600000 in
-/-- Entry (`+0x1ee8 → +0x216c`) of the inlined `SessionStructure::decode` (`OverDecEntryStmtExt A`). -/
-theorem overDecEntry_ext {A : RustAlloc} : OverDecEntryStmtExt A := by
-  intro img ext _himg _hAlloc s0 s g henc_ne henc_lt hF hsym
-    hpc hrun hsp hal htr hx19 hx20 hx26 hx21 hx24 hx25 hx27 hx29 hvregs
-  have hlen_nz := enc_len_ofNat64_ne_zero henc_ne henc_lt
-  refine SepWPp_weaken_frame (overPrevElemAt_entails_of_ne_nil henc_ne)
-    (by sep_focus) ?_
-  rw [overDecScratchPre_split g.q]
-  refine SepWPp_weaken_frame (Entails.of_eq (by ac_rfl))
-    (show (overPrevElemRestExt A g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗ (g.encPtr ↦ₛ g.enc)) ∗
-        ((∃∗ w25 : BitVec 64, ∃∗ w24 : BitVec 64, ∃∗ w23 : BitVec 64, ∃∗ w22 : BitVec 64,
-          ∃∗ w21 : BitVec 64, ∃∗ w20 : BitVec 64, ∃∗ w19 : BitVec 64, ∃∗ w18 : BitVec 64,
-          ∃∗ w17 : BitVec 64, ∃∗ w16 : BitVec 64, ∃∗ w15 : BitVec 64, ∃∗ w14 : BitVec 64,
-          ∃∗ w13 : BitVec 64, ∃∗ w12 : BitVec 64, ∃∗ w11 : BitVec 64, ∃∗ w10 : BitVec 64,
-          ∃∗ w9 : BitVec 64, ∃∗ w8 : BitVec 64, ∃∗ w7 : BitVec 64, ∃∗ w6 : BitVec 64,
-          ∃∗ w5 : BitVec 64, ∃∗ w4 : BitVec 64, ∃∗ w3 : BitVec 64, ∃∗ w2 : BitVec 64,
-          ∃∗ w1 : BitVec 64, ∃∗ w0 : BitVec 64,
-            entryScratchCells g.q w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13
-              w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25) ∗
-          entryScratchKeep g.q) ∗
-        stackAt g.q overDecStackX ∗ A.pool =
-      (∃∗ w25 : BitVec 64, ∃∗ w24 : BitVec 64, ∃∗ w23 : BitVec 64, ∃∗ w22 : BitVec 64,
-       ∃∗ w21 : BitVec 64, ∃∗ w20 : BitVec 64, ∃∗ w19 : BitVec 64, ∃∗ w18 : BitVec 64,
-       ∃∗ w17 : BitVec 64, ∃∗ w16 : BitVec 64, ∃∗ w15 : BitVec 64, ∃∗ w14 : BitVec 64,
-       ∃∗ w13 : BitVec 64, ∃∗ w12 : BitVec 64, ∃∗ w11 : BitVec 64, ∃∗ w10 : BitVec 64,
-       ∃∗ w9 : BitVec 64, ∃∗ w8 : BitVec 64, ∃∗ w7 : BitVec 64, ∃∗ w6 : BitVec 64,
-       ∃∗ w5 : BitVec 64, ∃∗ w4 : BitVec 64, ∃∗ w3 : BitVec 64, ∃∗ w2 : BitVec 64,
-       ∃∗ w1 : BitVec 64, ∃∗ w0 : BitVec 64,
-        entryScratchCells g.q w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13
-          w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25) ∗
-      (overPrevElemRestExt A g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗
-        (g.encPtr ↦ₛ g.enc) ∗ entryScratchKeep g.q ∗
-        stackAt g.q overDecStackX ∗ A.pool) by ac_rfl) ?_
-  repeat' (apply SepWPp_exists_left; intro _)
-  rename_i w25 w24 w23 w22 w21 w20 w19 w18 w17 w16 w15 w14 w13 w12 w11 w10 w9 w8 w7 w6 w5 w4 w3 w2 w1 w0
-  have hstep := entry_wp img.base ext s g
-    w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13
-    w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25
-    hlen_nz hpc hrun hsp hal hx19 hx20 hx21 hx24 hx25 hx26 hx27 hx29
-  unfold overPrevElemRestExt
-  refine SepWPp_bind_sepWP_frame hF hsym hstep (by sep_focus)
-    fun sf hpcf hrunf hFf hsymf hpost => ?_
-  rcases hpost with ⟨hsp_f, htr_f, hx19_f, hx20_f, hx21_f, hx24_f, hx25_f, hx26_f, hx27_f, hx28_f, hx29_f, hvregs_f⟩
-  have hal_f : (sf.sp &&& 15#64 == 0#64) = true := by rwa [hsp_f, ← hsp]
-  refine SepWPp.done hpcf hrunf ⟨⟨hpcf, hrunf, hsp_f, hal_f, htr_f.trans htr, hFf, hsymf,
-    hx19_f, hx20_f, hx26_f, hx21_f, hx24_f, hx25_f, hx27_f, hx28_f, hx29_f, hvregs_f.trans hvregs⟩, ?_⟩
-  have hss := prostSSGQAt_empty_intro_entry A g.q
-  have hcur := sliceCursorAfter_self (g.q + 0x920#64) g.encPtr g.enc
-  rw [show g.q + 0x920#64 + 8#64 = g.q + 0x928#64 by bv_omega] at hcur
-  let F_post : SepProp :=
-    overPrevElemRestExt A g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗
-    ((g.q + 0xbe8#64) ↦₆₄ (g.q + 0x920#64)) ∗
-    Prost.sliceCursorAfter (g.q + 0x920#64) g.encPtr g.enc g.enc ∗
-    memRegion (g.q + 0xa88#64) 8 ∗ memRegion (g.q + 0xa90#64) 344 ∗
-    memRegion (g.q + 0xbf0#64) 128 ∗
-    stackAt g.q overDecStackX ∗ A.pool
-  refine Entails.trans (Q := (ssRawCells_entry g.q ∗ memRegion (g.q + 0x9c8#64) 96 ∗
-      memRegion (g.q + 0xa30#64) 40 ∗ memRegion (g.q + 0xa60#64) 24) ∗ F_post)
-    (Entails.of_eq (by unfold F_post overPrevElemRestExt entryScratchKeep; rw [← hcur]; ac_rfl))
-    (Entails.trans (sepConj_mono_left (Q := F_post) hss)
-      (Entails.of_eq (by unfold overDecHeapExt F_post; ac_rfl)))
-
-theorem overDecEntry : OverDecEntryStmt :=
-  overDecEntry_ext
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StoreStepsPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StoreStepsPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
@@ -21,9 +21,17 @@ import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP4
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSession
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProof
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4Unwind
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlaced
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Matched-Session Substage P4.4 (`store_session`, `+0x3cc → x30`)
@@ -32,7 +40,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `Matched.M4Store` on Block `51
 (`lsProg_518 (Rust.withPanics ext)`, `(blkPl_518).base = lsmpl.base 518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -450,7 +458,7 @@ theorem p4_seg4e_placed_wp [LibsignalPlacement] (ext : String → Option (State 
 
 /-! ## Placed vtable and framing helpers for `store_session` -/
 
-def storeSessionVtablesPlacedAt {A : RustAlloc} (kit : SessionStoreSpec A 0#64) : SepProp :=
+@[expose] def storeSessionVtablesPlacedAt {A : RustAlloc} (kit : SessionStoreSpec A 0#64) : SepProp :=
   ((kit.ss_vt + 0x20#64) ↦₆₄ᵣ (0#64 + kit.storeShimOff)) ∗
   ((0#64 + kit.storeFutVtOff) ↦₆₄ᵣ (0#64 + kit.storeFutDropOff)) ∗
   ((0#64 + kit.storeFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 kit.storeBoxSize) ∗
@@ -780,7 +788,7 @@ theorem stageP4_storeSession_ok_tail_prevEmpty_vregs_placed [LibsignalPlacement]
 
 /-- Shared resources across entry, `Ok(())` exit, and `Err(())` exit of matched `P4.4`
 under `[LibsignalPlacement]`. -/
-def stageP4MatchedStoreSharedPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4MatchedStoreSharedPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr remoteAddrPtr sessionStorePtr : BitVec 64)
@@ -797,7 +805,7 @@ def stageP4MatchedStoreSharedPlaced [LibsignalPlacement] {A : RustAlloc}
   A.pool ∗
   stackAt s.sp (storeSessionCallStack kit)
 
-def stageP4MatchedStorePrePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4MatchedStorePrePlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr sessionStorePtr ptCap ptPtr : BitVec 64)
@@ -818,7 +826,7 @@ def stageP4MatchedStorePrePlaced [LibsignalPlacement] {A : RustAlloc}
   memRegion outPtr 48 ∗
   kit.storeAt sessionStorePtr sst0
 
-def stageP4MatchedStoreOkPostPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4MatchedStoreOkPostPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr sessionStorePtr : BitVec 64)
@@ -832,7 +840,7 @@ def stageP4MatchedStoreOkPostPlaced [LibsignalPlacement] {A : RustAlloc}
   ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗
   kit.storeAt sessionStorePtr (kit.storeUpdate sst0 peer.val ⟨some ss⟩ (.ok ()))
 
-def stageP4MatchedStoreErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4MatchedStoreErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr sessionStorePtr : BitVec 64)

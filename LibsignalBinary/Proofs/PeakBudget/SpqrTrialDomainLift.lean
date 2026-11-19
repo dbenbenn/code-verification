@@ -9,15 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.V1.ReachSteps
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -188,13 +192,13 @@ theorem spqrStateTight640_of_reachPq {W : PEParams} {me : LocalIdentity} {x : Re
 
 /-- Tight SPQR V1 serialized-state invariant (`TopStateTight F K`) on every active session of a
 `SessionRecord`. -/
-def RecordSpqrStateTight640 (F : ShaCompress) (K : MlKem)
+@[expose] def RecordSpqrStateTight640 (F : ShaCompress) (K : MlKem)
     (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ sess, r.currentSession = some sess → TopStateTight F K sess.state.pqRatchetState
 
 /-- Tight SPQR V1 serialized-state invariant on the record stored for `rem` on `files` under
 `scopeKit`. -/
-def PeerSpqrStateTight640 (F : ShaCompress) (K : MlKem) (files : FsFiles) (rem : AddrVal) : Prop :=
+@[expose] def PeerSpqrStateTight640 (F : ShaCompress) (K : MlKem) (files : FsFiles) (rem : AddrVal) : Prop :=
   match loadRec scopeKit files rem with
   | .ok (some r) => RecordSpqrStateTight640 F K r
   | _ => True
@@ -252,19 +256,6 @@ theorem peerSpqrStateTight640_of_cliSessionStoreSpec {A : RustAlloc} {b : BitVec
     TopStateTight F K otrPqr := by
   have hrec := recordSpqrStateTight640_of_cliSessionStoreSpec hScAt hState sess hcur
   simpa [hpqr] using hrec
-
-theorem peerSpqrStateTight640_of_w1ScopeAt {B : RunBudgets} {img : Arm64.Obj.Image}
-    {F : ShaCompress} {K : MlKem} {files : FsFiles} {peer : AddrGhost} {rem : AddrVal}
-    {r : SessionRecord (List (BitVec 8))} {sess : Session (List (BitVec 8))}
-    {otrPqr : List (BitVec 8)}
-    (hScAt : (w1SessKit B img files peer).ScopeAt scopeKit StoresGhost.opened.sessions rem r)
-    (hcur : r.currentSession = some sess)
-    (hpqr : otrPqr = sess.state.pqRatchetState)
-    (hState : PeerSpqrStateTight640 F K files rem) :
-    TopStateTight F K otrPqr :=
-  peerSpqrStateTight640_of_cliSessionStoreSpec hScAt hcur hpqr hState
-
-/-! ## 3. `CliPqxdhInputs` and `RunCall` Domain-Cap Bridges -/
 
 private theorem recordSpqrStateTight640_of_wfSession {W : PEParams} {st : PqParty}
     (hwf : PqxdhPartyInSpecDomain W st) {x : RecordExtras} {g : GhostState Bytes}

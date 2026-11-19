@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Assumptions.Assumptions
-public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames
+public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -20,7 +20,7 @@ Shows that a `SigEufCma` adversary making zero signing queries and discarding it
 constant `c` has the same experiment distribution as returning `c` directly.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace SignalPqxdh.Security.ReductionDsl

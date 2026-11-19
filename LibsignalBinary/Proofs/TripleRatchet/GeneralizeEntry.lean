@@ -24,7 +24,7 @@ the goal, and closes the goal via the opaque theorem `bind_entry`, keeping `e` s
 top-level argument to `bind_entry` so the kernel never unfolds it.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 

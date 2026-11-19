@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
 public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmLoopCredit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.WirePksmLoopCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # End-to-End `PhaseCreditSpec` & `PhaseGroupSpec` Combinators for `PreKeySignalMessage::try_from`
@@ -31,7 +35,7 @@ Connects `WirePksmTryFromHelpers` and `WirePksmLoopCredit` to `WireFieldDomainCa
    `PhaseGroupSpec` theorems.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -96,10 +100,6 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
   (bytesMergeEventsCore doReserveClearEvents)
 
 /-! ## Nominal Post-Loop, Loop Error-Tail, & Kyber Error Bridges -/
-
-theorem intoBoxedCapEvents_eq_intoBoxedSliceEvents (cap : BitVec 64) (bs : List (BitVec 8)) :
-    intoBoxedCapEvents cap bs = intoBoxedSliceEvents ⟨0#64, cap, 0#64, bs⟩ :=
-  rfl
 
 /-- Affine `PhaseCreditSpec` for `WireMsgPeakSpec.IntoBoxedBoundedEnv bs` with `bs.length ≤ N`. -/
 theorem phaseCreditSpec_intoBoxedBounded {M : AllocCostModel} [HasFineReallocCredit M]
@@ -205,7 +205,7 @@ theorem phaseCreditSpec_pksmLoopTail {M : AllocCostModel} [HasFineReallocCredit 
 
 /-- Kyber 3-way validation error allocation in Block 111 (`+0x684 → +0xa24`):
 allocates a 68-byte (`kyber_half_err`) or 54-byte (`kyber_neither_v4_err`) error `String`. -/
-def PksmKyberErrAllocEnv (evs : List AllocEvent) : Prop :=
+@[expose] def PksmKyberErrAllocEnv (evs : List AllocEvent) : Prop :=
   evs = rustAllocEvents 68 1 ∨ evs = rustAllocEvents 54 1
 
 /-- Affine `PhaseCreditSpec` for `PksmKyberErrAllocEnv` (`maxReq = 68`). -/
@@ -468,7 +468,7 @@ theorem decodeProto_fields_le {body : List (BitVec 8)} {m : ProtoPreKeySignalMes
      (fun _ hv => by cases hv), (fun _ hv => by cases hv)⟩ h
 
 /-- Deterministic inner `SignalMessage` slice extracted from `decodeProto (bs.drop 1)`. -/
-def pksmDecodedInnerBytes : List (BitVec 8) → List (BitVec 8)
+@[expose] def pksmDecodedInnerBytes : List (BitVec 8) → List (BitVec 8)
   | [] => []
   | _ :: body =>
     match decodeProto body with
@@ -476,7 +476,7 @@ def pksmDecodedInnerBytes : List (BitVec 8) → List (BitVec 8)
     | none => []
 
 /-- Deterministic optional Kyber ciphertext slice extracted from `decodeProto (bs.drop 1)`. -/
-def pksmDecodedKyberOpt : List (BitVec 8) → Option (List (BitVec 8))
+@[expose] def pksmDecodedKyberOpt : List (BitVec 8) → Option (List (BitVec 8))
   | [] => none
   | _ :: body =>
     match decodeProto body with
@@ -484,7 +484,7 @@ def pksmDecodedKyberOpt : List (BitVec 8) → Option (List (BitVec 8))
     | none => none
 
 /-- Deterministic `TryFromGhost` argument passed to `SignalMessage::try_from`. -/
-def pksmInnerGhost (x : PksmGhost) : TryFromGhost :=
+@[expose] def pksmInnerGhost (x : PksmGhost) : TryFromGhost :=
   ⟨0#64, pksmDecodedInnerBytes x.bytes, 0#64⟩
 
 theorem pksmDecodedInnerBytes_length_le (bs : List (BitVec 8)) :
@@ -594,12 +594,12 @@ abbrev PksmTryFromLoopBoundedEnv : Nat → ProtoCaps4 → List AllocEvent → Pr
 
 /-- Segment 4 post-inner-`SignalMessage::try_from` envelope (`.error` `FreeOnlyEvs` cleanup, or `.ok`
 `TryCloneBytesEnv bs` + `FreeOnlyEvs`). -/
-def PksmPostSeg4Env (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def PksmPostSeg4Env (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv (TryCloneBytesEnv bs) FreeOnlyEvs evs
 
 /-- Post-Kyber-validation envelope (`IdentityKey::try_from` `.error` `FreeOnlyEvs`, or `.ok`
 followed by `SigTryFromBoundedEnv innerG` and `PksmPostSeg4Env bs`). -/
-def PksmAfterKyberOkEnv (bs : List (BitVec 8)) (innerG : TryFromGhost)
+@[expose] def PksmAfterKyberOkEnv (bs : List (BitVec 8)) (innerG : TryFromGhost)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   SeqEnv (SigTryFromBoundedEnv innerG) (SeqEnv (PksmPostSeg4Env bs) FreeOnlyEvs) evs
@@ -609,7 +609,7 @@ order:
 1. Missing mandatory field or `base_key` `PublicKey::deserialize` error (`FreeOnlyEvs`);
 2. Kyber half-present (`68` B) or v4-neither (`54` B) error `String` alloc + `FreeOnlyEvs`;
 3. Kyber valid (`IntoBoxedOptBoundedEnv kyberOpt`) → `PksmAfterKyberOkEnv bs innerG`. -/
-def PksmPostBoundedEnv (bs : List (BitVec 8))
+@[expose] def PksmPostBoundedEnv (bs : List (BitVec 8))
     (kyberOpt : Option (List (BitVec 8))) (innerG : TryFromGhost)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -619,37 +619,37 @@ def PksmPostBoundedEnv (bs : List (BitVec 8))
 
 /-- Full all-inputs allocator envelope for `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from`
 (Block `111`, `PksmTryFromPlacedBudget`). -/
-def PksmTryFromBoundedEnv (x : PksmGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def PksmTryFromBoundedEnv (x : PksmGhost) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   SeqEnv (PksmTryFromLoopBoundedEnv x.bytes.length ProtoCaps4.zero)
     (PksmPostBoundedEnv x.bytes (pksmDecodedKyberOpt x.bytes) (pksmInnerGhost x)) evs
 
-def pksmTryFromCapDeltaCum (N : Nat) : Nat :=
+@[expose] def pksmTryFromCapDeltaCum (N : Nat) : Nat :=
   94 * N + 16 * min (max 8 (2 * N)) 135167 + 38156 * wireRemGrows N 0 +
     4 * min N 135167 + 48351 + sigTryFromCapDeltaCum N
 
-def pksmTryFromCapDeltaLive (N : Nat) : Nat :=
+@[expose] def pksmTryFromCapDeltaLive (N : Nat) : Nat :=
   4 * N + 49170 + sigTryFromCapDeltaLive N
 
-def pksmTryFromCapDeltaPeak (N : Nat) : Nat :=
+@[expose] def pksmTryFromCapDeltaPeak (N : Nat) : Nat :=
   4 * N + 49170 + sigTryFromCapDeltaLive N + sigTryFromCapDeltaPeak N
 
-def pksmTryFromCapMaxReq (N : Nat) : Nat :=
+@[expose] def pksmTryFromCapMaxReq (N : Nat) : Nat :=
   max (max 128 (2 * N)) (sigTryFromCapMaxReq N)
 
-def pksmTryFromDeltaCum (x : PksmGhost) : Nat :=
+@[expose] def pksmTryFromDeltaCum (x : PksmGhost) : Nat :=
   94 * x.bytes.length + 16 * min (max 8 (2 * x.bytes.length)) 135167 +
     38156 * wireRemGrows x.bytes.length 0 + 4 * min x.bytes.length 135167 + 48351 +
     sigTryFromDeltaCum (pksmInnerGhost x)
 
-def pksmTryFromDeltaLive (x : PksmGhost) : Nat :=
+@[expose] def pksmTryFromDeltaLive (x : PksmGhost) : Nat :=
   4 * x.bytes.length + 49170 + sigTryFromDeltaLive (pksmInnerGhost x)
 
-def pksmTryFromDeltaPeak (x : PksmGhost) : Nat :=
+@[expose] def pksmTryFromDeltaPeak (x : PksmGhost) : Nat :=
   4 * x.bytes.length + 49170 +
     sigTryFromDeltaLive (pksmInnerGhost x) + sigTryFromDeltaPeak (pksmInnerGhost x)
 
-def pksmTryFromMaxReq (x : PksmGhost) : Nat :=
+@[expose] def pksmTryFromMaxReq (x : PksmGhost) : Nat :=
   max (max 128 (2 * x.bytes.length)) (sigTryFromMaxReq (pksmInnerGhost x))
 
 private theorem min_right_mono {a b S : Nat} (h : a ≤ b) : min a S ≤ min b S := by
@@ -1386,16 +1386,16 @@ theorem phaseGroupSpec_pksmKyberErrAlloc {M : AllocCostModel} [HasFineGroupCredi
 `2369 * N` (`copy_to_bytes` across `sc = 0..47` and `mmap`) + `560044 * wireRemGrows N 0`
 (`4 * 140011` `Vec<u8>` `reserveCap` doublings) + `323486` (`43464 + 2 * 140011` 2-push decode
 error tail). -/
-def pksmTryFromLoopDeltaGrpS (N : Nat) : Nat :=
+@[expose] def pksmTryFromLoopDeltaGrpS (N : Nat) : Nat :=
   2369 * N + 560044 * wireRemGrows N 0 + 323486
 
 /-- Closed-form `FineScale`-scaled group cap for `PksmTryFromBoundedEnv x` when `x.bytes.length ≤ N`
 (`= 4,990,641,776` = `76,152` groups at `N = 1,048,576`). -/
-def pksmTryFromCapDeltaGrpS (N : Nat) : Nat :=
+@[expose] def pksmTryFromCapDeltaGrpS (N : Nat) : Nat :=
   2369 * N + 560044 * wireRemGrows N 0 + 603508 + sigTryFromCapDeltaGrpS N
 
 /-- Exact-ghost `FineScale`-scaled group delta for `PksmTryFromBoundedEnv x`. -/
-def pksmTryFromDeltaGrpS (x : PksmGhost) : Nat :=
+@[expose] def pksmTryFromDeltaGrpS (x : PksmGhost) : Nat :=
   2369 * x.bytes.length + 560044 * wireRemGrows x.bytes.length 0 + 603508 +
     sigTryFromDeltaGrpS (pksmInnerGhost x)
 
@@ -1506,11 +1506,11 @@ theorem pksmTryFrom_phaseGroup {M : AllocCostModel} [HasFineGroupCredit M]
 
 /-- Closed-form `FineScale`-scaled group cap for `PreKeyTryFromBoundedEnv x` when
 `x.inner.length ≤ M_cap` (`= 2,496,720,998` = `38,097` groups at `M_cap = 1,048,576`). -/
-def preKeyTryFromCapDeltaGrpS (M_cap _B_cap : Nat) : Nat :=
+@[expose] def preKeyTryFromCapDeltaGrpS (M_cap _B_cap : Nat) : Nat :=
   1400110 + sigTryFromCapDeltaGrpS M_cap
 
 /-- Exact-ghost `FineScale`-scaled group delta for `PreKeyTryFromBoundedEnv x`. -/
-def preKeyTryFromDeltaGrpS (x : PreKeyTryFromArgs) : Nat :=
+@[expose] def preKeyTryFromDeltaGrpS (x : PreKeyTryFromArgs) : Nat :=
   1400110 + sigTryFromDeltaGrpS ⟨0#64, x.inner, 0#64⟩
 
 theorem preKeyTryFromDeltaGrpS_le_cap {x : PreKeyTryFromArgs} {M_cap B_cap : Nat}

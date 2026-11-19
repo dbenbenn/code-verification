@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatements
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatements
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
-public import Computational.Proofs.CryptoGames.FSAEAD.FSAEADProofDefs
+import Computational.Proofs.CryptoGames.FSAEAD.FSAEADProofDefs
 public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.FSAEADBound
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.MsgAeadCorrect
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.WireHop
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.WireHop.Helpers
+public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.ReductionsQueries -- proof-setup: allow-public-import
 
 /-!
 # Composed FS-AEAD bound for short public parts
@@ -27,7 +30,7 @@ Composes ACD19 Theorem 5, the salt-PRF hop, and the wire OT-CCA hop for `lFS` un
 `SignalRoundTripShort` and short encryption public parts (`LibsignalMsgPublicPart.shortB`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 

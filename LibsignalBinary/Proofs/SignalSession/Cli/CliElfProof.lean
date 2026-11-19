@@ -12,13 +12,14 @@ module
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import LibsignalBinary.Heap.Fine.ElfInitFine
 public import LibsignalBinary.Heap.Fine.F3LayoutData
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliBinaryTokenPatchPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliBinaryTokenPatchPlaced -- proof-setup: allow-public-import
 public import ProofLib.Process
 public import ProofLib.StdStartup.Layout
 public import ProofLib.ProgramReflection
 public meta import ProofLib.ProgramReflection
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -27,7 +28,7 @@ set_option autoImplicit false
 
 **Checked by Lean. Untrusted (`Role::Proof`).** Discharges the concrete ELF parse, well-formedness,
 `brkStart`, segment geometry, and `CliElfMallocngLayout` obligations over the pinned from-source
-stock `ld.lld` `libsignal-cli.elf` (`CliElf.cliElfBytes`, `619,032` B, SHA-256 `50066cbd…`) using
+stock `ld.lld` `libsignal-cli.elf` (`CliElf.cliElfBytes`, `1,011,912` B, SHA-256 `0d6227d2…`) using
 pure kernel reduction (`std3` axioms `{propext, Classical.choice, Quot.sound}` only; `0` `sorry`,
 `0` `native_decide`, `0` `bv_decide`).
 -/
@@ -48,7 +49,7 @@ set_option maxRecDepth 200000
 set_option maxRecDepth 4000000 in
 /-- Concrete `ElfImage` reified at elaboration time from `.GeneratedLean/cli-elf/libsignal-cli.elf`
 (untrusted witness; tied to the SHA-256-pinned `cliElfBytes` by `cliElf_parse`). -/
-noncomputable def cliElfImage : ElfImage :=
+@[expose] noncomputable def cliElfImage : ElfImage :=
   elf_image% "../../../../.GeneratedLean/cli-elf/libsignal-cli.elf"
 
 set_option maxRecDepth 4000000 in
@@ -121,7 +122,7 @@ theorem cliElf_seg1_lt : 1 < cliElfImage.segments.length := by
   decide
 
 set_option maxRecDepth 4000000 in
-theorem cliElf_seg1_start : (cliElfImage.segments[1]'cliElf_seg1_lt).start = 0x40a000#64 := by
+theorem cliElf_seg1_start : (cliElfImage.segments[1]'cliElf_seg1_lt).start = 0x415000#64 := by
   rfl_kernel
 
 set_option maxRecDepth 4000000 in

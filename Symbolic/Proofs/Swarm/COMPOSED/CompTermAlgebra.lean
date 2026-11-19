@@ -25,7 +25,7 @@ PQXDH and Triple Ratchet labels, and Diffie-Hellman agreement inversion on
 `DY.Libsignal.Composed.Bytes`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

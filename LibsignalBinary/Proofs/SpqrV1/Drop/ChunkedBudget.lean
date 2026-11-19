@@ -10,18 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Chunked
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Chunked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
 import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Drop Glue for `spqr::v1::chunked::*`
@@ -32,7 +33,7 @@ for the five `spqr::v1::chunked` state drop-glue blocks (`Ct2Sampled` Block `274
 `EkSentCt1Received` Block `278`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -91,7 +92,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Budget-Threaded Specifications -/
 
-def dropChunkedCt2SampledSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropChunkedCt2SampledSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) : Spec (DropChunkedCt2SampledGhost F × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗
@@ -103,7 +104,7 @@ def dropChunkedCt2SampledSpec [LibsignalPlacement] (M : AllocCostModel) (A : Rus
       memRegion x.a chunkedCt2SampledSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack32
 
-def dropChunkedEkReceivedCt1SampledSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropChunkedEkReceivedCt1SampledSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) : Spec (DropChunkedEkReceivedCt1SampledGhost F × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗
@@ -115,7 +116,7 @@ def dropChunkedEkReceivedCt1SampledSpec [LibsignalPlacement] (M : AllocCostModel
       memRegion x.a chunkedEkReceivedCt1SampledSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack32
 
-def dropChunkedCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropChunkedCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) : Spec (DropChunkedCt1ReceivedGhost F × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗
@@ -127,7 +128,7 @@ def dropChunkedCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel) (A : Ru
       memRegion x.a chunkedCt1ReceivedSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack32
 
-def dropChunkedEkSentCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropChunkedEkSentCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) : Spec (DropChunkedEkSentCt1ReceivedGhost F × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗
@@ -139,7 +140,7 @@ def dropChunkedEkSentCt1ReceivedSpec [LibsignalPlacement] (M : AllocCostModel) (
       memRegion x.a chunkedEkSentCt1ReceivedSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropStack32
 
-def dropChunkedHeaderSentSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropChunkedHeaderSentSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) : Spec (DropChunkedHeaderSentGhost F × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗

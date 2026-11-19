@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Unchunked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Unchunked `Ct1Sent` Drop Glue (Blocks `444` and `436`)
@@ -24,7 +25,7 @@ Proves `drop_unchunked_ct1_sent_local1_placed_ok` (Block `444`) and
 wrappers under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

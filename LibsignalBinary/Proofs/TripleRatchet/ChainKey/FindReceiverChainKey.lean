@@ -10,18 +10,20 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.ChainKeyCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.ChainKeyCodeSym -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
-import LibsignalBinary.Proofs.Common.CallInv
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop -- proof-setup: allow-public-import
+import ProofLib
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndex
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Transfer
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
+import ProofLib.Sep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -37,11 +39,6 @@ open CryptoVerification.LibsignalSession
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-/-- The base session program, rebased at `b`. -/
-noncomputable abbrev SP_findReceiverChainKey (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
-    (alloc : String → Option (State → State)) : Program :=
-  libsignalSessionCode.rebase b (Rust.withPanics (sessionExterns F alloc))
-
 /-- Close a `CalleeSavedPreserved s0 sf` goal after straight-line execution. -/
 macro "findReceiverChainKey_cc_close" : tactic => `(tactic| (
   simp (config := { decide := true }) only [Arm64.CalleeSavedPreserved, applyWriteback,
@@ -52,76 +49,9 @@ macro "findReceiverChainKey_cc_close" : tactic => `(tactic| (
     arm64_norm, *]
   done))
 
-namespace FindReceiverChainKeyFacts
-
-theorem findReceiverChainKey_fnOff : libsignalSessionCode.fnOff findReceiverChainKeyName = num% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_key") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) (ls_lemma% fnOff "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_key")
-
-end FindReceiverChainKeyFacts
-
-section Fetch
-
-open Lean Meta Elab Command Tactic Arm64 ProofLib ProofLib.ProgramReflection
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [(ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_key") → (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_key" + 392)]
-
-/-- Introduce instruction-fetch facts for `find_receiver_chain_key` (`0xe8fc`, 99 instructions = 396 bytes). -/
-elab "findReceiverChainKey_fetches " b:term:max H:term:max : tactic => do
-  let hfn := mkIdent ``FindReceiverChainKeyFacts.findReceiverChainKey_fnOff
-  let fetchEntry := mkIdent ``CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent ``CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let currNs ← getCurrNamespace
-  for i in [0 : 99] do
-    let k := 4 * i
-    let hex := String.ofList (Nat.toDigits 16 (num% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_key") + k))
-    let dec := mkIdent (currNs ++ Name.mkSimple s!"libsignalSessionBin_decode_0x{hex}")
-    let kq := Syntax.mkNumLit (toString k)
-    if k == 0 then
-      evalTactic (← `(tactic|
-        have := $fetchEntry (b := $b) (H := $H) $hfn (by decide) $dec))
-    else
-      evalTactic (← `(tactic|
-        have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-end Fetch
-
 /-! ## 1. Rodata & Address Helpers -/
 
 open ProofLib.ProgramReflection
-
-private theorem entails_of_eq {P P' Q : SepProp} (h : P = P') (hq : P' ⊢ Q) : P ⊢ Q :=
-  h ▸ hq
-
-private theorem memRegion_split_at (a : BitVec 64) (n k nk : Nat) {a' : BitVec 64}
-    (hnk : n + k = nk) (ha : a + BitVec.ofNat 64 n = a') (h : nk ≤ 2 ^ 64) :
-    memRegion a nk = memRegion a n ∗ memRegion a' k := by
-  subst hnk ha
-  exact memRegion_split a n k h
-
-private theorem rodata_0x41bf8_eq :
-    (libsignalSessionImage.data.drop (num% (ls_str% "missing receiver chain key") - num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)))).take 26 =
-      invalidSessionStructureStr .missingReceiverChainKey := by
-  rfl_kernel
-
-private theorem rodata_missingReceiverChainKey_intro {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + bv% (ls_str% "missing receiver chain key")) ↦ᵣ invalidSessionStructureStr .missingReceiverChainKey) ∗ P := by
-  have h := ProofLib.Satisfies.of_rodata_loads himg
-    (secOff := num% (ls_str% "missing receiver chain key")) (secLen := 26) (dataOff := num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)))
-    rfl (List.mem_of_elem_eq_true (by rfl_kernel)) (by decide) (by decide)
-    (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) hro hP
-  rwa [rodata_0x41bf8_eq] at h
-
-private theorem adrp_missingReceiverChainKey {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {entry : BitVec 64} (hentry : entry = img.base + bv% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_key")) :
-    ((entry + bv% (272)) &&& bv% (2 ^ 64 - 4096)) + bv% (ls_str% "missing receiver chain key" - page% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 296)) =
-      img.base + bv% (ls_str% "missing receiver chain key") := by
-  have hbal := ProofLib.base_aligned_of_loads himg
-  rw [hentry]
-  revert hbal
-  bv_bits
 
 private theorem leBytes_four_eq_unpack32 (w : BitVec 32) :
     leBytes 4 w.toNat = unpack32 w := by
@@ -146,7 +76,7 @@ private theorem pointsToBytes_chainKeyBytes_eq (a : BitVec 64) (ck : ChainKey) :
 
 /-! ## 2. `ratchetAt`, `chainAt`, and `optChainKeyAt` Exposure and Reassembly -/
 
-def vecBufRest_shared_lb {α : Type} (A : RustAlloc) (stride align : Nat)
+@[expose] def vecBufRest_shared_lb {α : Type} (A : RustAlloc) (stride align : Nat)
     (cap ptr : BitVec 64) (xs : List α) : SepProp :=
   ⌜xs.length ≤ cap.toNat ∧ cap.toNat * stride < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
   (if cap = 0 then emp
@@ -160,21 +90,15 @@ private theorem vecBuf_expose_arrayAt {α : Type} (A : RustAlloc) {stride : Nat}
       arrayAt elem stride ptr xs ∗
       vecBufRest_shared_lb A stride align cap ptr xs := by
   unfold vecBuf vecBufRest_shared_lb
-  apply Entails.pure_left
-  rintro ⟨hlen, hlt, hptr⟩
+  apply Entails.pure_left; rintro ⟨hlen, hlt, hptr⟩
   have hxs_lt : xs.length * stride < 2 ^ 63 :=
     Nat.lt_of_le_of_lt (Nat.mul_le_mul_right stride hlen) hlt
-  apply Entails.pure_right hxs_lt
-  rw [sepConj_pure_left_comm]
-  apply Entails.pure_right ⟨hlen, hlt, hptr⟩
+  have hp : xs.length ≤ cap.toNat ∧ cap.toNat * stride < 2 ^ 63 ∧ ptr ≠ 0 := ⟨hlen, hlt, hptr⟩
   by_cases hcap : cap = 0
   · subst hcap
     have hnil : xs = [] := List.eq_nil_of_length_eq_zero (by simpa using hlen)
-    subst hnil
-    simp only [↓reduceIte, arrayAt_nil, emp_sepConj]
-    exact Entails.refl _
-  · simp only [hcap, ↓reduceIte]
-    exact entails_of_eq (by ac_rfl) (Entails.refl _)
+    subst hnil; simp only [↓reduceIte, arrayAt_nil]; bi_entail
+  · simp only [hcap, ↓reduceIte]; bi_entail
 
 private theorem vecBuf_reassemble_arrayAt {α : Type} (A : RustAlloc) (stride align : Nat)
     (elem : α → BitVec 64 → SepProp) (cap ptr : BitVec 64) (xs : List α) :
@@ -182,19 +106,15 @@ private theorem vecBuf_reassemble_arrayAt {α : Type} (A : RustAlloc) (stride al
       vecBuf A stride align elem cap ptr xs := by
   unfold vecBuf vecBufRest_shared_lb
   rw [sepConj_pure_left_comm]
-  apply Entails.pure_left
-  rintro ⟨hlen, hlt, hptr⟩
-  apply Entails.pure_right ⟨hlen, hlt, hptr⟩
+  apply Entails.pure_left; rintro ⟨hlen, hlt, hptr⟩
+  have hp : xs.length ≤ cap.toNat ∧ cap.toNat * stride < 2 ^ 63 ∧ ptr ≠ 0 := ⟨hlen, hlt, hptr⟩
   by_cases hcap : cap = 0
   · subst hcap
     have hnil : xs = [] := List.eq_nil_of_length_eq_zero (by simpa using hlen)
-    subst hnil
-    simp only [↓reduceIte, arrayAt_nil, emp_sepConj]
-    exact Entails.refl _
-  · simp only [hcap, ↓reduceIte]
-    exact entails_of_eq (by ac_rfl) (Entails.refl _)
+    subst hnil; simp only [↓reduceIte, arrayAt_nil]; bi_entail
+  · simp only [hcap, ↓reduceIte]; bi_entail
 
-def ratchetTailRest (A : RustAlloc) (self : BitVec 64) (G : RatchetGhost) (st : RatchetState) : SepProp :=
+@[expose] def ratchetTailRest (A : RustAlloc) (self : BitVec 64) (G : RatchetGhost) (st : RatchetState) : SepProp :=
   ⌜G.chains.length = st.receiverChains.length ∧ G.senderPad.length = 100 ∧
     st.maxForwardJumps < 2 ^ 64⌝ ∗
   (self ↦₆₄ G.chainsCap) ∗
@@ -215,19 +135,16 @@ theorem ratchetAt_expose_findIndex (A : RustAlloc) (self : BitVec 64)
       ratchetTailRest A self G st := by
   set cs := G.chains.zip st.receiverChains
   unfold ratchetAt vecAt vecHeader ratchetTailRest
-  apply Entails.pure_left
-  rintro ⟨hchains_len, hpad, hmax⟩
+  apply Entails.pure_left; rintro ⟨hchains_len, hpad, hmax⟩
   refine Entails.trans
     (sepConj_mono_left (sepConj_mono_right
       (vecBuf_expose_arrayAt A 8 (chainAt A) G.chainsCap G.chainsPtr cs))) ?_
-  rw [← sepConj_assoc, sepConj_pure_left_comm]
-  simp only [sepConj_assoc]
-  apply Entails.pure_left
-  intro hcs_lt
-  apply Entails.pure_right ⟨hchains_len, hcs_lt⟩
-  simp only [sepConj_pure_left_comm]
-  apply Entails.pure_right ⟨hchains_len, hpad, hmax⟩
-  exact entails_of_eq (by ac_rfl) (Entails.refl _)
+  conv => lhs; simp only [sepConj_assoc, sepConj_pure_left_comm]
+  apply Entails.pure_left; intro hcs_lt
+  have hp1 : G.chains.length = st.receiverChains.length ∧ cs.length * 104 < 2 ^ 63 := ⟨hchains_len, hcs_lt⟩
+  have hp2 : G.chains.length = st.receiverChains.length ∧ G.senderPad.length = 100 ∧
+      st.maxForwardJumps < 2 ^ 64 := ⟨hchains_len, hpad, hmax⟩
+  bi_entail
 
 theorem ratchetAt_reassemble_findIndex (A : RustAlloc) (self : BitVec 64)
     (G : RatchetGhost) (st : RatchetState) :
@@ -238,18 +155,12 @@ theorem ratchetAt_reassemble_findIndex (A : RustAlloc) (self : BitVec 64)
       ratchetAt A self G st := by
   set cs := G.chains.zip st.receiverChains
   unfold ratchetAt vecAt vecHeader ratchetTailRest
-  rw [sepConj_pure_left_comm (arrayAt (chainAt A) 104 G.chainsPtr cs),
-      sepConj_pure_left_comm ((self + 16#64) ↦₆₄ BitVec.ofNat 64 cs.length),
-      sepConj_pure_left_comm ((self + 8#64) ↦₆₄ G.chainsPtr)]
-  apply Entails.pure_left
-  rintro ⟨hchains_len, hpad, hmax⟩
-  apply Entails.pure_right ⟨hchains_len, hpad, hmax⟩
   refine Entails.trans ?_
-    (sepConj_mono_left (sepConj_mono_right
-      (vecBuf_reassemble_arrayAt A 104 8 (chainAt A) G.chainsCap G.chainsPtr cs)))
-  exact entails_of_eq (by ac_rfl) (Entails.refl _)
+    (sepConj_mono_right (sepConj_mono_left (sepConj_mono_right
+      (vecBuf_reassemble_arrayAt A 104 8 (chainAt A) G.chainsCap G.chainsPtr cs))))
+  bi_entail
 
-def chainRest (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
+@[expose] def chainRest (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
   ⌜PublicKey.deserialize gc.1.srk.bytes = .ok gc.2.senderRatchetKey ∧
     gc.2.messageKeys.length ≤ maxMessageKeys ∧ gc.1.keys.length = gc.2.messageKeys.length ∧
     gc.1.srk.bytes.length = 33 ∧ gc.1.priv.bytes = []⌝ ∗
@@ -259,10 +170,9 @@ def chainRest (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64)
 
 theorem chainAt_eq_optChainKeyAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) :
     chainAt A gc a = optChainKeyAt A gc.1.ck gc.2.chainKey (a + 72#64) ∗ chainRest A gc a := by
-  unfold chainAt chainRest
-  ac_rfl
+  unfold chainAt chainRest; sep_ac_rfl
 
-def optChainKeySomeRest (A : RustAlloc) (pin : VecPin) (a : BitVec 64) : SepProp :=
+@[expose] def optChainKeySomeRest (A : RustAlloc) (pin : VecPin) (a : BitVec 64) : SepProp :=
   ⌜32 ≤ pin.cap.toNat ∧ pin.cap.toNat < 2 ^ 63 ∧ pin.ptr ≠ 0⌝ ∗
   A.live pin.ptr pin.cap.toNat 1 ∗
   memRegion (pin.ptr + 32#64) (pin.cap.toNat - 32) ∗
@@ -280,23 +190,11 @@ theorem optChainKeyAt_some_expose (A : RustAlloc) (pin : VecPin) (ck : ChainKey)
   dsimp only [optChainKeyAt, vecU8At, vecHeader, optChainKeySomeRest]
   have hlen : (keyToBytes32 ck.key).length = 32 := by simp [keyToBytes32]
   rw [hlen]
-  simp only [sepConj_assoc]
-  rw [sepConj_pure_left_comm ((a + 16#64) ↦₆₄ 32#64),
-      sepConj_pure_left_comm ((a + 8#64) ↦₆₄ pin.ptr),
-      sepConj_pure_left_comm (a ↦₆₄ pin.cap)]
-  apply Entails.pure_left
-  rintro ⟨h32, hlt, hptr⟩
-  have hcap : pin.cap ≠ 0 := by
-    intro h0; rw [h0] at h32; simp at h32
-  simp only [hcap, ↓reduceIte]
-  apply Entails.pure_right hlt
-  rw [sepConj_pure_left_comm (pin.ptr ↦ₛ keyToBytes32 ck.key),
-      sepConj_pure_left_comm ((a + 24#64) ↦₃₂ ck.index),
-      sepConj_pure_left_comm ((a + 16#64) ↦₆₄ 32#64),
-      sepConj_pure_left_comm ((a + 8#64) ↦₆₄ pin.ptr),
-      sepConj_pure_left_comm (a ↦₆₄ pin.cap)]
-  apply Entails.pure_right ⟨h32, hlt, hptr⟩
-  exact entails_of_eq (by ac_rfl) (Entails.refl _)
+  conv => lhs; simp only [sepConj_assoc, sepConj_pure_left_comm]
+  apply Entails.pure_left; rintro ⟨h32, hlt, hptr⟩
+  have hcap : pin.cap ≠ 0 := by intro h0; rw [h0] at h32; simp at h32
+  have hp : 32 ≤ pin.cap.toNat ∧ pin.cap.toNat < 2 ^ 63 ∧ pin.ptr ≠ 0 := ⟨h32, hlt, hptr⟩
+  simp only [hcap, ↓reduceIte]; bi_entail
 
 theorem optChainKeyAt_some_reassemble (A : RustAlloc) (pin : VecPin) (ck : ChainKey) (a : BitVec 64) :
     (a ↦₆₄ pin.cap) ∗
@@ -309,24 +207,13 @@ theorem optChainKeyAt_some_reassemble (A : RustAlloc) (pin : VecPin) (ck : Chain
   dsimp only [optChainKeyAt, vecU8At, vecHeader, optChainKeySomeRest]
   have hlen : (keyToBytes32 ck.key).length = 32 := by simp [keyToBytes32]
   rw [hlen]
-  simp only [sepConj_assoc]
-  rw [sepConj_pure_left_comm (pin.ptr ↦ₛ keyToBytes32 ck.key),
-      sepConj_pure_left_comm ((a + 24#64) ↦₃₂ ck.index),
-      sepConj_pure_left_comm ((a + 16#64) ↦₆₄ 32#64),
-      sepConj_pure_left_comm ((a + 8#64) ↦₆₄ pin.ptr),
-      sepConj_pure_left_comm (a ↦₆₄ pin.cap)]
-  apply Entails.pure_left
-  rintro ⟨h32, hlt, hptr⟩
-  have hcap : pin.cap ≠ 0 := by
-    intro h0; rw [h0] at h32; simp at h32
-  simp only [hcap, ↓reduceIte]
-  rw [sepConj_pure_left_comm ((a + 16#64) ↦₆₄ 32#64),
-      sepConj_pure_left_comm ((a + 8#64) ↦₆₄ pin.ptr),
-      sepConj_pure_left_comm (a ↦₆₄ pin.cap)]
-  apply Entails.pure_right ⟨h32, hlt, hptr⟩
-  exact entails_of_eq (by ac_rfl) (Entails.refl _)
+  conv => lhs; simp only [sepConj_assoc, sepConj_pure_left_comm]
+  apply Entails.pure_left; rintro ⟨h32, hlt, hptr⟩
+  have hcap : pin.cap ≠ 0 := by intro h0; rw [h0] at h32; simp at h32
+  have hp : 32 ≤ pin.cap.toNat ∧ pin.cap.toNat < 2 ^ 63 ∧ pin.ptr ≠ 0 := ⟨h32, hlt, hptr⟩
+  simp only [hcap, ↓reduceIte]; bi_entail
 
-def optChainKeyNoneRest_shared_lb (a : BitVec 64) : SepProp :=
+@[expose] def optChainKeyNoneRest_shared_lb (a : BitVec 64) : SepProp :=
   memRegion (a + 80#64) 24
 
 theorem chainAt_none_expose (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
@@ -337,9 +224,7 @@ theorem chainAt_none_expose (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
       chainRest A gc a := by
   rw [chainAt_eq_optChainKeyAt A gc a, hnone]
   dsimp only [optChainKeyAt, optChainKeyNone, optChainKeyNoneRest_shared_lb]
-  have h80 : a + 72#64 + 8#64 = a + 80#64 := by bv_omega
-  rw [h80]
-  ac_rfl
+  rw [show a + 72#64 + 8#64 = a + 80#64 by bv_omega]; sep_ac_rfl
 
 theorem chainAt_some_expose (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (ck : ChainKey) (a : BitVec 64) (hsome : gc.2.chainKey = some ck) :
@@ -353,12 +238,8 @@ theorem chainAt_some_expose (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
       optChainKeySomeRest A gc.1.ck (a + 72#64) ∗
       chainRest A gc a := by
   rw [chainAt_eq_optChainKeyAt A gc a, hsome]
-  have h80 : a + 72#64 + 8#64 = a + 80#64 := by bv_omega
-  have h88 : a + 72#64 + 16#64 = a + 88#64 := by bv_omega
-  have h96 : a + 72#64 + 24#64 = a + 96#64 := by bv_omega
   refine Entails.trans (sepConj_mono_left (optChainKeyAt_some_expose A gc.1.ck ck (a + 72#64))) ?_
-  rw [h80, h88, h96]
-  exact entails_of_eq (by ac_rfl) (Entails.refl _)
+  bi_entail
 
 theorem chainAt_some_reassemble (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (ck : ChainKey) (a : BitVec 64) (hsome : gc.2.chainKey = some ck) :
@@ -371,29 +252,10 @@ theorem chainAt_some_reassemble (A : RustAlloc) (gc : ChainGhost × ReceiverChai
     chainRest A gc a ⊢
       chainAt A gc a := by
   rw [chainAt_eq_optChainKeyAt A gc a, hsome]
-  have h80 : a + 72#64 + 8#64 = a + 80#64 := by bv_omega
-  have h88 : a + 72#64 + 16#64 = a + 88#64 := by bv_omega
-  have h96 : a + 72#64 + 24#64 = a + 96#64 := by bv_omega
-  rw [← h80, ← h88, ← h96]
   refine Entails.trans ?_ (sepConj_mono_left (optChainKeyAt_some_reassemble A gc.1.ck ck (a + 72#64)))
-  exact entails_of_eq (by ac_rfl) (Entails.refl _)
+  bi_entail
 
 /-! ## 3. Stack, Result Buffer, and Unaligned Copy Helpers -/
-
-/-- Split `memRegion (sp - c) N` at `n` (`N = n + k`, `c' = c - n`). -/
-private theorem mr_cut' (sp : BitVec 64) (c c' n k N : Nat) (hN : n + k = N) (hc' : c - n = c')
-    (hn : n ≤ c) (hc : c < 2 ^ 64) (h : N ≤ 2 ^ 64) :
-    memRegion (sp - BitVec.ofNat 64 c) N =
-      memRegion (sp - BitVec.ofNat 64 c) n ∗ memRegion (sp - BitVec.ofNat 64 c') k := by
-  subst hN hc'
-  refine memRegion_split' rfl ?_ h
-  apply BitVec.eq_of_toNat_eq
-  simp only [BitVec.toNat_add, BitVec.toNat_sub, BitVec.toNat_ofNat]
-  have h1 : c % 2 ^ 64 = c := Nat.mod_eq_of_lt hc
-  have h2 : (c - n) % 2 ^ 64 = c - n := Nat.mod_eq_of_lt (by omega)
-  have h3 : n % 2 ^ 64 = n := Nat.mod_eq_of_lt (by omega)
-  rw [h1, h2, h3]
-  omega
 
 private theorem stackAt_findReceiverChainKeyStack (sp : BitVec 64) :
     stackAt sp findReceiverChainKeyStack =
@@ -406,19 +268,7 @@ private theorem stackAt_findReceiverChainKeyStack (sp : BitVec 64) :
       memRegion (sp - 24#64) 8 ∗
       (∃∗ v20 : BitVec 64, (sp - 16#64) ↦₆₄ v20) ∗
       (∃∗ v19 : BitVec 64, (sp - 8#64) ↦₆₄ v19) := by
-  unfold stackAt findReceiverChainKeyStack
-  rw [mr_cut' sp 2048 1104 944 1104 2048 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 1104 80 1024 80 1104 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 80 48 32 48 80 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 48 40 8 40 48 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 40 32 8 32 40 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 32 24 8 24 32 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 24 16 8 16 24 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 16 8 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  rw [memRegion_eight (sp - 48#64), memRegion_eight (sp - 40#64), memRegion_eight (sp - 32#64),
-      memRegion_eight (sp - 16#64), memRegion_eight (sp - 8#64)]
-  have h1104 : sp - 80#64 - 1024#64 = sp - 1104#64 := by bv_omega
-  rw [h1104]
+  dsimp only [findReceiverChainKeyStack]; sep_interval_eq
 
 private theorem stackAt_findReceiverChainKeyStack_repack (sp : BitVec 64) (v29 v30 v21 v20 v19 : BitVec 64) :
     memRegion (sp - 2048#64) 944 ∗
@@ -431,13 +281,7 @@ private theorem stackAt_findReceiverChainKeyStack_repack (sp : BitVec 64) (v29 v
     ((sp - 16#64) ↦₆₄ v20) ∗
     ((sp - 8#64) ↦₆₄ v19) ⊢
       stackAt sp findReceiverChainKeyStack := by
-  rw [stackAt_findReceiverChainKeyStack sp]
-  refine sepConj_mono_right (sepConj_mono_right (sepConj_mono_right ?_))
-  refine sepConj_mono (Entails.sepExists_intro v29)
-    (sepConj_mono (Entails.sepExists_intro v30)
-      (sepConj_mono (Entails.sepExists_intro v21)
-        (sepConj_mono_right (sepConj_mono (Entails.sepExists_intro v20)
-          (Entails.sepExists_intro v19)))))
+  dsimp only [findReceiverChainKeyStack]; sep_interval
 
 theorem sp_scratch32_unpack (sp : BitVec 64) :
     memRegion (sp - 80#64) 32 =
@@ -448,14 +292,7 @@ theorem sp_scratch32_unpack (sp : BitVec 64) :
       (∃∗ s16 : BitVec 64, (sp - 64#64) ↦₆₄ s16) ∗
       (∃∗ s24 : BitVec 8, (sp - 56#64) ↦₈ s24) ∗
       memRegion (sp - 55#64) 7 := by
-  rw [mr_cut' sp 80 78 2 30 32 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 78 77 1 29 30 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 77 69 8 21 29 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 69 64 5 16 21 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 64 56 8 8 16 rfl rfl (by decide) (by decide) (by decide),
-      mr_cut' sp 56 55 1 7 8 rfl rfl (by decide) (by decide) (by decide),
-      memRegion_two (sp - 80#64), memRegion_one (sp - 78#64), memRegion_eight (sp - 77#64),
-      memRegion_eight (sp - 64#64), memRegion_one (sp - 56#64)]
+  sep_interval_eq
 
 theorem sp_scratch32_repack (sp : BitVec 64) (w0 : BitVec 64) (w8 : BitVec 16)
     (w10 : BitVec 8) (s16 : BitVec 64) (s24 : BitVec 8) :
@@ -467,19 +304,7 @@ theorem sp_scratch32_repack (sp : BitVec 64) (w0 : BitVec 64) (w8 : BitVec 16)
     ((sp - 56#64) ↦₈ s24) ∗
     memRegion (sp - 55#64) 7 ⊢
       memRegion (sp - 80#64) 32 := by
-  refine Entails.trans
-    (sepConj_mono (pointsTo64_entails_memRegion (sp - 80#64) w0)
-      (sepConj_mono (pointsTo16_entails_memRegion (sp - 72#64) w8)
-        (sepConj_mono (pointsTo8_entails_memRegion (sp - 70#64) w10)
-          (sepConj_mono_right (sepConj_mono (pointsTo64_entails_memRegion (sp - 64#64) s16)
-            (sepConj_mono_left (pointsTo8_entails_memRegion (sp - 56#64) s24))))))) ?_
-  rw [← mr_cut' sp 56 55 1 7 8 rfl rfl (by decide) (by decide) (by decide),
-      ← mr_cut' sp 64 56 8 8 16 rfl rfl (by decide) (by decide) (by decide),
-      ← mr_cut' sp 69 64 5 16 21 rfl rfl (by decide) (by decide) (by decide),
-      ← mr_cut' sp 70 69 1 21 22 rfl rfl (by decide) (by decide) (by decide),
-      ← mr_cut' sp 72 70 2 22 24 rfl rfl (by decide) (by decide) (by decide),
-      ← mr_cut' sp 80 72 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  exact Entails.refl _
+  sep_interval
 
 theorem mr_add_split (r : BitVec 64) (off n k off' nk : Nat)
     (hnk : n + k = nk) (hoff : off + n = off') (h : nk ≤ 2 ^ 64) :
@@ -491,7 +316,7 @@ theorem mr_add_split (r : BitVec 64) (off n k off' nk : Nat)
 
 theorem memRegion40_unpack_none (r : BitVec 64) :
     memRegion r 40 = (∃∗ t0 : BitVec 32, r ↦₃₂ t0) ∗ memRegion (r + 4#64) 36 := by
-  rw [show (40 : Nat) = 4 + 36 from rfl, memRegion_split r 4 36 (by decide), memRegion_four r]
+  sep_interval_eq
 
 theorem memRegion40_unpack_err (r : BitVec 64) :
     memRegion r 40 =
@@ -500,11 +325,7 @@ theorem memRegion40_unpack_err (r : BitVec 64) :
       (∃∗ p0 : BitVec 64, (r + 8#64) ↦₆₄ p0) ∗
       (∃∗ l0 : BitVec 64, (r + 16#64) ↦₆₄ l0) ∗
       memRegion (r + 24#64) 16 := by
-  rw [show (40 : Nat) = 4 + 36 from rfl, memRegion_split r 4 36 (by decide),
-      mr_add_split r 4 4 32 8 36 rfl rfl (by decide),
-      mr_add_split r 8 8 24 16 32 rfl rfl (by decide),
-      mr_add_split r 16 8 16 24 24 rfl rfl (by decide),
-      memRegion_four r, memRegion_eight (r + 8#64), memRegion_eight (r + 16#64)]
+  sep_interval_eq
 
 theorem memRegion40_unpack_some (r : BitVec 64) :
     memRegion r 40 =
@@ -520,21 +341,7 @@ theorem memRegion40_unpack_some (r : BitVec 64) :
       (∃∗ r27 : BitVec 64, (r + 27#64) ↦₆₄ r27) ∗
       (∃∗ r35 : BitVec 8, (r + 35#64) ↦₈ r35) ∗
       (∃∗ r36 : BitVec 32, (r + 36#64) ↦₃₂ r36) := by
-  rw [show (40 : Nat) = 4 + 36 from rfl, memRegion_split r 4 36 (by decide),
-      mr_add_split r 4 4 32 8 36 rfl rfl (by decide),
-      mr_add_split r 8 8 24 16 32 rfl rfl (by decide),
-      mr_add_split r 16 2 22 18 24 rfl rfl (by decide),
-      mr_add_split r 18 1 21 19 22 rfl rfl (by decide),
-      mr_add_split r 19 4 17 23 21 rfl rfl (by decide),
-      mr_add_split r 23 1 16 24 17 rfl rfl (by decide),
-      mr_add_split r 24 2 14 26 16 rfl rfl (by decide),
-      mr_add_split r 26 1 13 27 14 rfl rfl (by decide),
-      mr_add_split r 27 8 5 35 13 rfl rfl (by decide),
-      mr_add_split r 35 1 4 36 5 rfl rfl (by decide),
-      memRegion_four r, memRegion_four (r + 4#64), memRegion_eight (r + 8#64),
-      memRegion_two (r + 16#64), memRegion_one (r + 18#64), memRegion_four (r + 19#64),
-      memRegion_one (r + 23#64), memRegion_two (r + 24#64), memRegion_one (r + 26#64),
-      memRegion_eight (r + 27#64), memRegion_one (r + 35#64), memRegion_four (r + 36#64)]
+  sep_interval_eq
 
 private theorem pointsTo8_eq_pointsToBytes1 (a : BitVec 64) (b : BitVec 8) :
     (a ↦₈ b) = (a ↦ₛ [b]) := by
@@ -630,7 +437,7 @@ private theorem ret_8_repack (a : BitVec 64) (v15 : BitVec 64) :
   simp only [unpack32, unpack16, unpack64, List.cons_append, List.nil_append, List.cons.injEq, and_true]
   repeat (first | refine ⟨by first | rfl | bv_bits, ?_⟩ | first | rfl | bv_bits)
 
-def findReceiverChainKeyKeyChunks (a : BitVec 64) (v0 : BitVec 32) (v4 : BitVec 16) (v6 : BitVec 8)
+@[expose] def findReceiverChainKeyKeyChunks (a : BitVec 64) (v0 : BitVec 32) (v4 : BitVec 16) (v6 : BitVec 8)
     (v7 v15 v23 : BitVec 64) (v31 : BitVec 8) : SepProp :=
   (a ↦₃₂ v0) ∗ ((a + 4#64) ↦₁₆ v4) ∗ ((a + 6#64) ↦₈ v6) ∗
   ((a + 7#64) ↦₆₄ v7) ∗ ((a + 15#64) ↦₆₄ v15) ∗
@@ -740,11 +547,7 @@ theorem findReceiverChainKeyResultAt_err_repack (r p : BitVec 64) :
       findReceiverChainKeyResultAt r (.error (.invalidSessionStructure .missingReceiverChainKey)) := by
   dsimp only [findReceiverChainKeyResultAt, strRefAt]
   have hlen : BitVec.ofNat 64 (invalidSessionStructureStr .missingReceiverChainKey).length = 26#64 := by rfl_kernel
-  have ha16 : r + 8#64 + 8#64 = r + 16#64 := by bv_omega
-  rw [hlen, ha16]
-  refine Entails.trans ?_
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left (Entails.sepExists_intro p))))
-  exact entails_of_eq (by ac_rfl) (Entails.refl _)
+  rw [hlen, show r + 8#64 + 8#64 = r + 16#64 by bv_omega]; bi_entail
 
 /-! ## 4. Pure Model & Subroutine Helpers -/
 
@@ -859,45 +662,11 @@ private theorem cap_add_one_beq_zero_false {cap : BitVec 64} (h : cap.toNat < 2 
   simp only [BitVec.toNat_add, BitVec.toNat_ofNat] at h1
   omega
 
-private theorem findIndex_ok_at_findReceiverChainKey {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {A : RustAlloc}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hfind : FindIndexOk img F alloc A) :
-    subroutine_ok (SP_findReceiverChainKey img.base F alloc)
-      ((SP_findReceiverChainKey img.base F alloc).fnAddr findReceiverChainKeyName + bv% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_index" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_key"))
-      ((findIndexSpec img A).inImage img) := by
-  unfold FindIndexOk at hfind
-  rw [show sessionProg img F alloc = SP_findReceiverChainKey img.base F alloc from libsignalSessionCode_ofImage himg] at hfind
-  have haddr : (SP_findReceiverChainKey img.base F alloc).fnAddr findReceiverChainKeyName + bv% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_index" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_key") = img.base + bv% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_index") := by
-    rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_key"), BitVec.add_assoc]; rfl
-  rwa [haddr]
-
 private theorem pure_and_entails_pure_sep_of {P P' Q : Prop} {R : SepProp}
     (h : P → P' ∧ Q) :
     ⌜P⌝ ∗ R ⊢ ⌜P'⌝ ∗ (⌜Q⌝ ∗ R) := by
   apply Entails.pure_left; intro hp; rcases h hp with ⟨hp', hq⟩
   exact Entails.pure_right hp' (Entails.pure_right hq (Entails.refl R))
-
-private theorem findIndex_ok_at_state {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {A : RustAlloc} {img : Obj.Image}
-    {addr : BitVec 64} {s : State}
-    (hfind : subroutine_ok (SP_findReceiverChainKey b F alloc) addr ((findIndexSpec img A).inImage img))
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab) :
-    subroutine_ok (SP_findReceiverChainKey b F alloc) addr
-      { pre := fun (p, cs, theirA, their) s' =>
-          ⌜s'.mem = s.mem ∧ s'.symtab = s.symtab ∧
-            s'.readReg64 .x0 = p ∧ (s'.readReg64 .x1).toNat = cs.length ∧ s'.readReg64 .x2 = theirA ∧
-            cs.length * 104 < 2 ^ 63⌝ ∗
-          arrayAt (chainAt A) 104 p cs ∗ (theirA ↦ₛ their.bytes.toList) ∗
-          (logFilterAddr img ↦₆₄ 0#64) ∗ stackAt s'.sp 1024
-        post := (findIndexSpec img A).post } := by
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨p, cs, theirA, their⟩ R s0 hpc hrun hm hsp
-  refine hfind.mono_outcome (p, cs, theirA, their) R s0 hpc hrun ?_ hsp fun _ hout => hout
-  refine Satisfies.mono (sepConj_mono_left ?_) hm
-  dsimp only [Spec.inImage, findIndexSpec]
-  exact pure_and_entails_pure_sep_of fun ⟨hmem, hsym', hrest⟩ =>
-    ⟨⟨frozenLoaded_of_mem_eq hmem hfrozen, hsym'.trans hsym⟩, hrest⟩
 
 private theorem SepWPp.conseq_pre {prog : Program} {ret : BitVec 64} {s : State}
     {P P' : SepProp} {Q Qp : State → SepProp → Prop}
@@ -912,48 +681,15 @@ theorem SepWPp_eq_pre_shared_lb {prog : Program} {ret : BitVec 64} {s : State}
   hP ▸ h
 private abbrev SepWPp.eq_pre := @SepWPp_eq_pre_shared_lb
 
-theorem SepWPp_intro_rodata_missingReceiverChainKey_shared_lb {prog : Program} {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {ret : BitVec 64} {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hfrozen : img.FrozenLoaded s)
-    (h : SepWPp prog ret s (((img.base + bv% (ls_str% "missing receiver chain key")) ↦ᵣ invalidSessionStructureStr .missingReceiverChainKey) ∗ P) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  unfold Obj.Image.FrozenLoaded at hfrozen
-  have hm' : s.mem ⊨ (((img.base + bv% (ls_str% "missing receiver chain key")) ↦ᵣ invalidSessionStructureStr .missingReceiverChainKey) ∗ P) ∗ R := by
-    rw [sepConj_assoc]
-    exact rodata_missingReceiverChainKey_intro himg hfrozen.2.1 hm
-  exact h R hm' hL
-private abbrev SepWPp.intro_rodata_missingReceiverChainKey := @SepWPp_intro_rodata_missingReceiverChainKey_shared_lb
-
 namespace FindReceiverChainKeyFacts
-
-theorem findIndex_ok_at_state_prog {prog : Program} {A : RustAlloc} {img : Obj.Image}
-    {addr : BitVec 64} {s : State}
-    (hfind : subroutine_ok prog addr ((findIndexSpec img A).inImage img))
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab) :
-    subroutine_ok prog addr
-      { pre := fun (p, cs, theirA, their) s' =>
-          ⌜s'.mem = s.mem ∧ s'.symtab = s.symtab ∧
-            s'.readReg64 .x0 = p ∧ (s'.readReg64 .x1).toNat = cs.length ∧ s'.readReg64 .x2 = theirA ∧
-            cs.length * 104 < 2 ^ 63⌝ ∗
-          arrayAt (chainAt A) 104 p cs ∗ (theirA ↦ₛ their.bytes.toList) ∗
-          (logFilterAddr img ↦₆₄ 0#64) ∗ stackAt s'.sp 1024
-        post := (findIndexSpec img A).post } := by
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨p, cs, theirA, their⟩ R s0 hpc hrun hm hsp
-  refine hfind.mono_outcome (p, cs, theirA, their) R s0 hpc hrun ?_ hsp fun _ hout => hout
-  refine Satisfies.mono (sepConj_mono_left ?_) hm
-  dsimp only [Spec.inImage, findIndexSpec]
-  exact pure_and_entails_pure_sep_of fun ⟨hmem, hsym', hrest⟩ =>
-    ⟨⟨frozenLoaded_of_mem_eq hmem hfrozen, hsym'.trans hsym⟩, hrest⟩
 
 theorem ratchet_reassemble_chain {P8 P16 Ch Chain Rest Tail Rat : SepProp}
     (hch : Ch ⊢ Chain)
     (hrat : P8 ∗ P16 ∗ (Chain ∗ Rest) ∗ Tail ⊢ Rat) :
     P8 ∗ P16 ∗ Ch ∗ Rest ∗ Tail ⊢ Rat := by
-  refine Entails.trans (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hch))) ?_
-  exact entails_of_eq (by ac_rfl) hrat
+  refine Entails.trans ?_ hrat
+  rw [sepConj_assoc Chain Rest Tail]
+  exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hch))
 
 theorem stack_reassemble_scr {M944 S1024 Scr M32 Rest Stk : SepProp}
     (hscr : Scr ⊢ M32)
@@ -967,211 +703,7 @@ end FindReceiverChainKeyFacts
 
 attribute [local irreducible] Program.fnOff
 
-theorem findReceiverChainKey_ok_sessionProg {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hfind : FindIndexOk img F abs A) :
-    subroutine_ok (sessionProg img F abs)
-      ((SP_findReceiverChainKey img.base F abs).fnAddr findReceiverChainKeyName) (findReceiverChainKeySpec A img) := by
-  rw [show sessionProg img F abs = SP_findReceiverChainKey img.base F abs from libsignalSessionCode_ofImage himg]
-  have hfn := FindReceiverChainKeyFacts.findReceiverChainKey_fnOff
-  have hfind_at := findIndex_ok_at_findReceiverChainKey himg hfind
-  have hadrp : ((((SP_findReceiverChainKey img.base F abs).fnAddr findReceiverChainKeyName) + 272#64) &&& bv% (2 ^ 64 - 4096)) + bv% (ls_str% "missing receiver chain key" - page% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 296)) =
-      img.base + bv% (ls_str% "missing receiver chain key") := by
-    apply adrp_missingReceiverChainKey himg; rw [Program.fnAddr_rebase, hfn]
-  apply subroutine_ok_of_sepWPp
-  intro x R s0 hpc hrun hpre hsp0
-  simp only [findReceiverChainKeySpec, Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hfrozen0, hsym0⟩, ⟨hx0, hx1, hx8⟩, hmem⟩
-  refine ⟨ratchetAt A x.self x.G x.st ∗ (x.theirA ↦ₛ x.their.bytes.toList) ∗ memRegion x.ret 40 ∗
-    logOff img ∗ stackAt s0.sp findReceiverChainKeyStack, R, ?_, ?_⟩
-  · simpa [sepConj_assoc] using hmem
-  apply SepWPp.conseq_pre (sepConj_mono_left (ratchetAt_expose_findIndex A x.self x.G x.st))
-  simp only [sepConj_assoc]
-  refine SepWPp.pure_elim fun ⟨hchains_len, hcs_lt⟩ => ?_
-  set cs := x.G.chains.zip x.st.receiverChains
-  have hcs_toNat : (BitVec.ofNat 64 cs.length).toNat = cs.length := by
-    simp only [BitVec.toNat_ofNat]; exact Nat.mod_eq_of_lt (by omega)
-  unfold logOff; rw [stackAt_findReceiverChainKeyStack s0.sp]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  refine SepWPp.exists_elim fun v19 => SepWPp.exists_elim fun v20 =>
-    SepWPp.exists_elim fun v21 => SepWPp.exists_elim fun v30 =>
-    SepWPp.exists_elim fun v29 => ?_
-  dsimp only [SP_findReceiverChainKey] at hpc hfind_at hadrp ⊢
-  findReceiverChainKey_fetches img.base (Rust.withPanics (sessionExterns F abs))
-  generalize_entry (libsignalSessionCode.rebase img.base (Rust.withPanics (sessionExterns F abs))).fnAddr findReceiverChainKeyName = entry
-  generalize_entry (libsignalSessionCode.rebase img.base (Rust.withPanics (sessionExterns F abs))) = prog reverting [Program.fetch, subroutine_ok]
-  examples_hide_fetches
-  apply SepWPp.of_sepWP_frozen (mid := entry + bv% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_index" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_key")) hfrozen0 hsym0
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-  intro hfrozen1 hsym1
-  have hfind1 := FindReceiverChainKeyFacts.findIndex_ok_at_state_prog hfind_at hfrozen1 hsym1
-  apply SepWPp.of_sepWP_frozen (mid := entry + bv% (44)) hfrozen1 hsym1
-  wp_apply
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-  intro hfrozen2 hsym2
-  have hmap_cs : cs.map (·.2) = x.st.receiverChains :=
-    zip_map_snd x.G.chains x.st.receiverChains hchains_len
-  have hidx_post : match x.st.findReceiverChainIndex x.their with
-      | some i => sf.readReg64 (Reg.gpr 0#5) = 1#64 ∧ (sf.readReg64 (Reg.gpr 1#5)).toNat = i
-      | none => sf.readReg64 (Reg.gpr 0#5) = 0#64 := by
-    have h := hpost; rw [hmap_cs] at h; exact h
-  cases hfind_res : x.st.findReceiverChainIndex x.their with
-  | none =>
-    rw [hfind_res] at hidx_post; dsimp only at hidx_post
-    rw [memRegion40_unpack_none x.ret]
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-    refine SepWPp.exists_elim fun t0 => ?_
-    apply SepWPp.of_sepWP_frozen (mid := s0.readReg64 Reg.lr) hfrozen2 hsym2
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-    intro _ _
-    refine SepWPp.done (by wp_norm_goal) (by wp_norm_goal) ⟨fun hm => ?_, rfl, by findReceiverChainKey_cc_close⟩
-    refine Satisfies.mono (sepConj_mono_left ?_) hm
-    rw [findReceiverChainKey_of_none hfind_res]; dsimp only [findReceiverChainKeyResultAt, logOff]
-    refine Entails.pure_right (by simp only [wp_norm, arm64_norm, *]) ?_
-    have hrat := ratchetAt_reassemble_findIndex A x.self x.G x.st
-    have hstk := stackAt_findReceiverChainKeyStack_repack s0.sp
-      (s0.readReg64 Reg.x29) (s0.readReg64 Reg.lr) (s0.readReg64 Reg.x21)
-      (s0.readReg64 Reg.x20) (s0.readReg64 Reg.x19)
-    refine Entails.trans ?_
-      (sepConj_mono hrat (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hstk))))
-    exact entails_of_eq (by dsimp only [cs, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; ac_rfl)
-      (Entails.refl _)
-  | some i =>
-    rw [hfind_res] at hidx_post; rcases hidx_post with ⟨hx0_1, hx1_1⟩
-    have hi_rc : i < x.st.receiverChains.length := findReceiverChainIndex_lt hfind_res
-    have hi : i < cs.length := by rwa [zip_length_eq hchains_len]
-    have hx1_eq : sf.readReg64 (Reg.gpr 1#5) = BitVec.ofNat 64 i := by
-      apply BitVec.eq_of_toNat_eq; rw [hx1_1, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-    have hule : (BitVec.ofNat 64 cs.length).ule (BitVec.ofNat 64 i) = false :=
-      len_ule_idx_false hi hcs_lt
-    rw [arrayAt_split_at (chainAt A) 104 x.G.chainsPtr cs hi]
-    set elemAddr := x.G.chainsPtr + BitVec.ofNat 64 (i * 104)
-    cases hck : cs[i].2.chainKey with
-    | none =>
-      rw [chainAt_none_expose A cs[i] elemAddr hck, memRegion40_unpack_err x.ret]
-      simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-      refine SepWPp.exists_elim fun l0 => SepWPp.exists_elim fun p0 =>
-        SepWPp.exists_elim fun t0 => ?_
-      apply SepWPp.of_sepWP_frozen (mid := s0.readReg64 Reg.lr) hfrozen2 hsym2
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-      intro hfrozen3 _
-      apply SepWPp.intro_rodata_missingReceiverChainKey himg hfrozen3
-      refine SepWPp.done (by wp_norm_goal) (by wp_norm_goal) ⟨fun hm => ?_, rfl, by findReceiverChainKey_cc_close⟩
-      refine Satisfies.mono (sepConj_mono_left ?_) hm
-      rw [findReceiverChainKey_of_some_none hchains_len hfind_res hi hck]; dsimp only [logOff]
-      refine Entails.pure_right (by simp only [wp_norm, arm64_norm, *]) ?_
-      have herr := findReceiverChainKeyResultAt_err_repack x.ret (img.base + bv% (ls_str% "missing receiver chain key"))
-      have hrat := ratchetAt_reassemble_findIndex A x.self x.G x.st
-      have hstk := stackAt_findReceiverChainKeyStack_repack s0.sp
-        (s0.readReg64 Reg.x29) (s0.readReg64 Reg.lr) (s0.readReg64 Reg.x21)
-        (s0.readReg64 Reg.x20) (s0.readReg64 Reg.x19)
-      rw [arrayAt_split_at (chainAt A) 104 x.G.chainsPtr cs hi,
-          chainAt_none_expose A cs[i] elemAddr hck] at hrat
-      refine Entails.trans ?_
-        (sepConj_mono hrat (sepConj_mono_right (sepConj_mono herr (sepConj_mono_right hstk))))
-      exact entails_of_eq (by dsimp only [cs, elemAddr, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; ac_rfl)
-        (Entails.refl _)
-    | some ck =>
-      apply SepWPp.conseq_pre
-        (sepConj_mono_left (sepConj_mono_left (chainAt_some_expose A cs[i] ck elemAddr hck)))
-      apply SepWPp.eq_pre (by simp only [sepConj_assoc]; rfl)
-      refine SepWPp.pure_elim fun hcap_lt => ?_
-      have hcap_ne := cap_add_one_beq_zero_false hcap_lt
-      have hlen_key : (keyToBytes32 ck.key).length = 32 := by simp [keyToBytes32]
-      obtain ⟨v0, v4, v6, v7, v15, v23, v31, hkey⟩ :=
-        exists_findReceiverChainKeyKeyChunks_of_length_32 hlen_key
-      rw [hkey cs[i].1.ck.ptr]; unfold findReceiverChainKeyKeyChunks
-      rw [sp_scratch32_unpack s0.sp, memRegion40_unpack_some x.ret]
-      simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-      refine SepWPp.exists_elim fun r36 => SepWPp.exists_elim fun r35 =>
-        SepWPp.exists_elim fun r27 => SepWPp.exists_elim fun r26 =>
-        SepWPp.exists_elim fun r24 => SepWPp.exists_elim fun r23 =>
-        SepWPp.exists_elim fun r19 => SepWPp.exists_elim fun r18 =>
-        SepWPp.exists_elim fun r16 => SepWPp.exists_elim fun r8 =>
-        SepWPp.exists_elim fun r4 => SepWPp.exists_elim fun r0 =>
-        SepWPp.exists_elim fun s24 => SepWPp.exists_elim fun s16 =>
-        SepWPp.exists_elim fun s3 => SepWPp.exists_elim fun s2 =>
-        SepWPp.exists_elim fun s0_scr => ?_
-      apply SepWPp.of_sepWP_frozen (mid := entry + bv% (156)) hfrozen2 hsym2
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-      intro hfrozen3 hsym3
-      apply SepWPp.eq_pre (by simp only [sepConj_assoc, sp_11_repack_rest s0.sp v4 v6 v7]; rfl)
-      apply SepWPp.of_sepWP_frozen (mid := s0.readReg64 Reg.lr) hfrozen3 hsym3
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-      intro _ _
-      refine SepWPp.done (by wp_norm_goal) (by wp_norm_goal) ⟨fun hm => ?_, rfl, by findReceiverChainKey_cc_close⟩
-      refine Satisfies.mono (sepConj_mono_left ?_) hm
-      rw [findReceiverChainKey_of_some_some hchains_len hfind_res hi hck]; dsimp only [logOff]
-      refine Entails.pure_right (by simp only [wp_norm, arm64_norm, *]) ?_
-      have hres := findReceiverChainKeyResultAt_some_repack x.ret ck v0 v4 v6 v7 v15 v23 v31 hkey
-      have hscr := sp_scratch32_repack s0.sp
-        (v7.extractLsb' 0 40 ++ v6 ++ v4) (v7.extractLsb' 40 16) (v7.extractLsb' 56 8) v23 v31
-      have hstk := stackAt_findReceiverChainKeyStack_repack s0.sp
-        (s0.readReg64 Reg.x29) (s0.readReg64 Reg.lr) (s0.readReg64 Reg.x21)
-        (s0.readReg64 Reg.x20) (s0.readReg64 Reg.x19)
-      have hch := chainAt_some_reassemble A cs[i] ck elemAddr hck
-      rw [hkey cs[i].1.ck.ptr] at hch; unfold findReceiverChainKeyKeyChunks at hch
-      have hrat := ratchetAt_reassemble_findIndex A x.self x.G x.st
-      rw [arrayAt_split_at (chainAt A) 104 x.G.chainsPtr cs hi] at hrat
-      have hrat' := FindReceiverChainKeyFacts.ratchet_reassemble_chain hch hrat
-      have hstk' := FindReceiverChainKeyFacts.stack_reassemble_scr hscr hstk
-      rw [← hres]
-      refine Entails.trans ?_
-        (sepConj_mono hrat' (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hstk'))))
-      exact entails_of_eq
-        (by dsimp only [cs, elemAddr, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; ac_rfl)
-        (Entails.refl _)
-
-theorem findReceiverChainKey_ok_of_findIndex_ext
-    {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {abs ext : String → Option (State → State)}
-    (hfind : FindIndexOk img F abs A)
-    (hle : ∀ n f, Rust.withPanics (CryptoVerification.LibsignalSession.sessionExterns F abs) n = some f →
-      Rust.withPanics ext n = some f)
-    (hloads : Obj.Loads libsignalSessionImage img) :
-    FindReceiverChainKeyOkExt img A ext := by
-  unfold FindReceiverChainKeyOkExt
-  have hfn : (tripleRatchetProgAtExt img.base ext).fnAddr findReceiverChainKeyName =
-      (SP_findReceiverChainKey img.base F abs).fnAddr findReceiverChainKeyName := by
-    simp only [tripleRatchetProgAtExt, SP_findReceiverChainKey, Program.fnAddr_rebase]
-  rw [hfn]
-  exact ConsumeMessageKeyTransfer.session_subroutine_ok_mono_ext hloads hle (findReceiverChainKey_ok_sessionProg hloads hfind)
-
-theorem findReceiverChainKey_ok_ext
-    {img : Obj.Image} {F : ShaCompress} {A : RustAlloc}
-    {abs ext : String → Option (State → State)}
-    (hle : ∀ n f, Rust.withPanics (CryptoVerification.LibsignalSession.sessionExterns F abs) n = some f →
-      Rust.withPanics ext n = some f)
-    (hloads : Obj.Loads libsignalSessionImage img) :
-    FindReceiverChainKeyOkExt img A ext :=
-  findReceiverChainKey_ok_of_findIndex_ext (find_receiver_chain_index_ok img F abs A hloads) hle hloads
-
-theorem findReceiverChainKey_ok_of_findIndex
-    {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hfind : FindIndexOk img C.F abs A)
-    (hloads : Obj.Loads libsignalSessionImage img) :
-    FindReceiverChainKeyOk img C A ctl abs :=
-  findReceiverChainKey_ok_of_findIndex_ext hfind (ConsumeMessageKeyTransfer.sessionExterns_le C ctl abs) hloads
-
-/-- `RatchetState::find_receiver_chain_key` satisfies `FindReceiverChainKeyOk` on
-`tripleRatchetProgAt`. -/
-theorem findReceiverChainKey_ok
-    {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hloads : Obj.Loads libsignalSessionImage img) :
-    FindReceiverChainKeyOk img C A ctl abs :=
-  findReceiverChainKey_ok_of_findIndex (find_receiver_chain_index_ok img C.F abs A hloads) hloads
-
-/-! ## 6. Relocatable `[LibsignalPlacement]` Contract (Block `25`) -/
-
-def findReceiverChainKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def findReceiverChainKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec FindReceiverChainKeyGhost where
   pre := fun x s =>
     ⌜LibsignalRoLoaded lsmpl s.mem ∧
@@ -1200,11 +732,11 @@ private theorem sepWPp_intro_rodata_missingReceiverChainKey_placed [LibsignalPla
     {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
     (hro : LibsignalRoLoaded lsmpl s.mem)
     (h : SepWPp prog ret s
-      (((lsmpl.ρ "libsignal_protocol:.rodata..Lanon.290") ↦ᵣ invalidSessionStructureStr .missingReceiverChainKey) ∗ P)
+      (((lsmpl.ρ "libsignal_protocol:.rodata..Lanon.297") ↦ᵣ invalidSessionStructureStr .missingReceiverChainKey) ∗ P)
       Q Qp) :
     SepWPp prog ret s P Q Qp := by
   intro R hm hL
-  have hm' : s.mem ⊨ (((lsmpl.ρ "libsignal_protocol:.rodata..Lanon.290") ↦ᵣ invalidSessionStructureStr .missingReceiverChainKey) ∗ P) ∗ R := by
+  have hm' : s.mem ⊨ (((lsmpl.ρ "libsignal_protocol:.rodata..Lanon.297") ↦ᵣ invalidSessionStructureStr .missingReceiverChainKey) ∗ P) ∗ R := by
     rw [sepConj_assoc]
     exact lsro_intro_chk hro (by decide +kernel) hm
   exact h R hm' hL
@@ -1293,8 +825,7 @@ theorem find_receiver_chain_key_placed_ok_of_find_index [LibsignalPlacement]
       (s0.readReg64 Reg.x20) (s0.readReg64 Reg.x19)
     refine Entails.trans ?_
       (sepConj_mono hrat (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hstk))))
-    exact entails_of_eq (by dsimp only [cs, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; ac_rfl)
-      (Entails.refl _)
+    dsimp only [cs, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; bi_entail
   | some i =>
     rw [hfind_res] at hidx_post; rcases hidx_post with ⟨hx0_1, hx1_1⟩
     have hi_rc : i < x.st.receiverChains.length := findReceiverChainIndex_lt hfind_res
@@ -1320,7 +851,7 @@ theorem find_receiver_chain_key_placed_ok_of_find_index [LibsignalPlacement]
       refine Satisfies.mono (sepConj_mono_left ?_) hm
       rw [findReceiverChainKey_of_some_none hchains_len hfind_res hi hck]
       refine Entails.pure_right ⟨hro3, by simp only [wp_norm, arm64_norm, *]⟩ ?_
-      have herr := findReceiverChainKeyResultAt_err_repack x.ret (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.290")
+      have herr := findReceiverChainKeyResultAt_err_repack x.ret (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.297")
       have hrat := ratchetAt_reassemble_findIndex A x.self x.G x.st
       have hstk := stackAt_findReceiverChainKeyStack_repack s0.sp
         (s0.readReg64 Reg.x29) (s0.readReg64 Reg.lr) (s0.readReg64 Reg.x21)
@@ -1329,8 +860,7 @@ theorem find_receiver_chain_key_placed_ok_of_find_index [LibsignalPlacement]
           chainAt_none_expose A cs[i] elemAddr hck] at hrat
       refine Entails.trans ?_
         (sepConj_mono hrat (sepConj_mono_right (sepConj_mono herr (sepConj_mono_right hstk))))
-      exact entails_of_eq (by dsimp only [cs, elemAddr, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; ac_rfl)
-        (Entails.refl _)
+      dsimp only [cs, elemAddr, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; bi_entail
     | some ck =>
       apply SepWPp.conseq_pre
         (sepConj_mono_left (sepConj_mono_left (chainAt_some_expose A cs[i] ck elemAddr hck)))
@@ -1380,9 +910,7 @@ theorem find_receiver_chain_key_placed_ok_of_find_index [LibsignalPlacement]
       rw [← hres]
       refine Entails.trans ?_
         (sepConj_mono hrat' (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hstk'))))
-      exact entails_of_eq
-        (by dsimp only [cs, elemAddr, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; ac_rfl)
-        (Entails.refl _)
+      dsimp only [cs, elemAddr, Reg.x19, Reg.x20, Reg.x21, Reg.lr, Reg.x29]; bi_entail
 
 theorem find_receiver_chain_key_placed_ok [LibsignalPlacement]
     {A : RustAlloc} {H : String → Option (State → State)}

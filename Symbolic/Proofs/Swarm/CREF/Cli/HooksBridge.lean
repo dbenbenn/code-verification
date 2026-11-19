@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat
-public import Symbolic.Proofs.SpecLemmas.ImageSymbolsProofDefs
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
+import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat
+import Symbolic.Proofs.SpecLemmas.ImageSymbolsProofDefs
+public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
 
 /-!
 # CLI Parameter and SPQR Override Bridges
@@ -22,7 +22,7 @@ Defines `interpOfParams interp P`, overriding the six SPQR and `libcrux_hmac` ex
 preserved and that `ModelHookBridge (interpOfParams interp P) P` holds whenever `ModelAgree interp P`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,7 +32,8 @@ open DY DY.Comparse DY.Libsignal
 open DY.Libsignal.Composed.Refinement DY.Libsignal.Composed.Refinement.Cli
 open DY.Libsignal.Refinement (sha256CompressFunction sha256CompressSymbol x25519AgreementSymbol
   x25519PublicKeySymbol x25519TorsionSymbol aesCbcEncryptSymbol aesCbcDecryptSymbol torsionShift)
-open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol kyberDecapsSymbol toEdwardsSymbol torsionFreeSymbol mlkem768FromSeedSymbol mlkem768ValidatePkSymbol mlkem768Encaps1Symbol mlkem768Encaps2Symbol mlkem768DecapsSymbol libcruxHmacSymbol)open CryptoProofLib.Refinement (ByteString ExternInterpretation)
+open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol kyberDecapsSymbol mlkem768FromSeedSymbol mlkem768ValidatePkSymbol mlkem768Encaps1Symbol mlkem768Encaps2Symbol mlkem768DecapsSymbol libcruxHmacSymbol)
+open CryptoProofLib.Refinement (ByteString ExternInterpretation)
 open CryptoGames CryptoGames.LibsignalSession CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.E2E (PEParams UnreachedPqxdhPrimitives pqxdhSpqrModel)
 open Proofs.libsignal.Hooks2 (cryptoOf')
@@ -43,14 +44,14 @@ open Symbolic.Swarm.TRREF.SpqrSemOf (mlkemOf hmacFnOf hmacFnOfSha bytesToVec spq
 /-! ## `interpOfParams` and non-SPQR symbol preservation -/
 
 /-- Whether `sym` is one of the six SPQR / `libcrux_hmac` symbols overridden by `interpOfParams`. -/
-def isSpqrOrHmacSymbol (sym : String) : Bool :=
+@[expose] def isSpqrOrHmacSymbol (sym : String) : Bool :=
   sym == mlkem768FromSeedSymbol || sym == mlkem768ValidatePkSymbol ||
     sym == mlkem768Encaps1Symbol || sym == mlkem768Encaps2Symbol ||
     sym == mlkem768DecapsSymbol || sym == libcruxHmacSymbol
 
 /-- Override `interp` on the six SPQR / `libcrux_hmac` symbols using `P.Q.K` and `P.C.F` at their
 exact input shapes and byte lengths, falling back to `interp sym args` everywhere else. -/
-def interpOfParams (interp : ExternInterpretation) (P : PEParams) : ExternInterpretation :=
+@[expose] def interpOfParams (interp : ExternInterpretation) (P : PEParams) : ExternInterpretation :=
   fun sym args =>
     if sym == mlkem768FromSeedSymbol then
       match args with
@@ -260,10 +261,7 @@ private theorem externContractsHoldCli_congr_nonSpqr {i₁ i₂ : ExternInterpre
         hmac_tag_length := hhmac }
   · rw [← ho x25519PublicKeySymbol _ (by decide), ← hts] at hu1
     rw [← ho x25519PublicKeySymbol _ (by decide)] at hu2
-    intro ⟨pt, hpt, hme, htf⟩
-    rw [← ho toEdwardsSymbol _ (by decide)] at hme
-    rw [← ho torsionFreeSymbol _ (by decide)] at htf
-    exact htor s t k hk hu1 hu2 ⟨pt, hpt, hme, htf⟩
+    exact htor s t k hk hu1 hu2
 
 theorem externContractsHoldCli_interpOfParams {interp : ExternInterpretation} (P : PEParams)
     (h : ExternContractsHoldCli interp) :
@@ -286,9 +284,7 @@ theorem modelAgree_interpOfParams (interp : ExternInterpretation) (P : PEParams)
     interpOfParams_other interp P x25519AgreementSymbol _ (by decide),
     interpOfParams_other interp P x25519PublicKeySymbol _ (by decide),
     interpOfParams_other interp P kyberEncapsSymbol _ (by decide),
-    interpOfParams_other interp P kyberDecapsSymbol _ (by decide),
-    interpOfParams_other interp P toEdwardsSymbol _ (by decide),
-    interpOfParams_other interp P torsionFreeSymbol _ (by decide)]
+    interpOfParams_other interp P kyberDecapsSymbol _ (by decide)]
 
 @[simp] theorem pubBytes_interpOfParams (interp : ExternInterpretation) (P : PEParams) :
     pubBytes (interpOfParams interp P) = pubBytes interp := by
@@ -351,7 +347,7 @@ private theorem gAll_interpOfParams (interp : ExternInterpretation) (P : PEParam
 /-! ## `ModelHookBridge` from `ModelAgree` -/
 
 /-- Pure default `UnreachedPqxdhPrimitives` witness (handshake models only read `PEParams` on reached paths). -/
-def Xof (_interp : ExternInterpretation) (_P : PEParams) : UnreachedPqxdhPrimitives :=
+@[expose] def Xof (_interp : ExternInterpretation) (_P : PEParams) : UnreachedPqxdhPrimitives :=
   { sigPkGen := fun _ => [], sigSign := fun _ _ _ => [], scalarMul := fun _ _ => [],
     scalarAdd := fun _ _ => [], kemKeyGen := fun _ => ([], []), pow8 := fun _ => [],
     isValidDhTriple := fun _ _ _ => false }

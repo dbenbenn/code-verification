@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecDefs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bundle
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bundle
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Lemmas.Agree
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Lemmas.InitFiles
 
@@ -22,7 +22,7 @@ and `agree_pqInit`, discharging the `S₀` domain and model-agreement obligation
 `Initiate/Spec.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

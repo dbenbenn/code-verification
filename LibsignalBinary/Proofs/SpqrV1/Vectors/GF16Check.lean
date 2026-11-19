@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.GF16
-public import LibsignalBinary.Proofs.SpqrV1.Vectors.GF16
-public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.GF16
+public import LibsignalBinary.Proofs.SpqrV1.Vectors.GF16 -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.GF16 -- proof-setup: allow-public-import
 public meta import LibsignalBinary.Specifications.LibsignalSpqrV1.GF16
 
 /-!
@@ -21,7 +21,7 @@ Checks `GF16.lean` against `Vectors/GF16.lean` (`gf16EdgeVectors`, `gf16RandomVe
 `reduceBytesTable`, `parallelMultVectors`) via `decide +kernel` and `#guard`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Vectors.GF16Check
 
@@ -38,16 +38,6 @@ def checkGF16Entry (e : GF16Entry) : Bool :=
   (GF16.divImpl ⟨e.a⟩ ⟨e.b⟩).value == e.div &&
   (GF16.div ⟨e.a⟩ ⟨e.b⟩).value == e.div &&
   (GF16.constDiv ⟨e.a⟩ ⟨e.b⟩).value == e.div
-
-/-- Kernel-checked `REDUCE_BYTES` table equality (`256` entries). -/
-theorem gf16ReduceBytesTable_ok :
-    reduce.REDUCE_BYTES = reduceBytesTable := by
-  decide +kernel
-
-/-- Kernel-checked validation on the first 16 edge vectors (including `0`, `1`, `2`, `0xffff`). -/
-theorem gf16EdgeVectors_head_ok :
-    (gf16EdgeVectors.take 16).all checkGF16Entry = true := by
-  decide +kernel
 
 -- Full differential vector suite checked via `#guard` (228 edge + 200 random + 6 parallel_mult):
 #guard gf16EdgeVectors.all checkGF16Entry

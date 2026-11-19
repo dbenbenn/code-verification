@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTie
-public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTie -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -20,9 +20,8 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono
+public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyFrame
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -44,7 +43,7 @@ Proves `bksS_bobStartTr` and `bks_bobStart`: after an accepting `bobStart` block
 holds on the extended trace for the wire prekey message's base key `q.baseKey.take 33`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

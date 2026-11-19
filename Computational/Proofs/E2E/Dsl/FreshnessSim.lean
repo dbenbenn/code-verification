@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.E2EStateRepr
+public import Computational.Proofs.E2E.Dsl.E2EStateRepr -- proof-setup: allow-public-import
 public import Computational.Specifications.Reductions.Pqxdh.StatementPqReds
-public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers
+import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers
 import Computational.Proofs.E2E.Dsl.ClampsLossless
 
 /-!
@@ -21,7 +21,7 @@ Defines bounded `ReductionDsl` expressions and computations for `bhE2EDrvWon`,
 `allTestedSessionsFresh`, `finishKind`, and `bhShallowFinishPrefix`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -57,7 +57,7 @@ section GenericHelpers
 
 variable {ℓ : ℕ} {O : Ops (e2eSig ℓ)}
 
-def boolEqE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) : Expr O Γ .bool :=
+@[expose] def boolEqE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) : Expr O Γ .bool :=
   .ite a b (.not b)
 
 @[simp] theorem eval_boolEqE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) (ρ : Env Γ) :
@@ -69,7 +69,7 @@ def boolEqE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) : Expr O Γ .b
     (boolEqE a b).cost = a.cost + b.cost + 2 := by
   simp only [boolEqE, Expr.cost]; omega
 
-def boolXorE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) : Expr O Γ .bool :=
+@[expose] def boolXorE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) : Expr O Γ .bool :=
   .ite a (.not b) b
 
 @[simp] theorem eval_boolXorE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) (ρ : Env Γ) :
@@ -89,10 +89,10 @@ def boolXorE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) : Expr O Γ .
     (e : Expr O Γ (.opt τ)) : (isNoneE e).cost = e.cost + 2 := by
   simp only [isNoneE, Expr.cost]; omega
 
-def gsB {Γ : List (Ty (e2eSig ℓ))} (gs : Expr O Γ (e2eGsTy ℓ)) : Expr O Γ .bool :=
+@[expose] def gsB {Γ : List (Ty (e2eSig ℓ))} (gs : Expr O Γ (e2eGsTy ℓ)) : Expr O Γ .bool :=
   .fst (.snd gs)
 
-def gsWin {Γ : List (Ty (e2eSig ℓ))} (gs : Expr O Γ (e2eGsTy ℓ)) : Expr O Γ .bool :=
+@[expose] def gsWin {Γ : List (Ty (e2eSig ℓ))} (gs : Expr O Γ (e2eGsTy ℓ)) : Expr O Γ .bool :=
   .fst (.snd (.snd gs))
 
 @[simp] theorem eval_gsB {Γ : List (Ty (e2eSig ℓ))} (gsE : Expr O Γ (e2eGsTy ℓ)) (ρ : Env Γ)
@@ -129,10 +129,10 @@ local notation "eCrypt" =>
 @[simp] private theorem pnat32_val : (32 : ℕ+).val = 32 := rfl
 @[simp] private theorem pnat1568_val : (1568 : ℕ+).val = 1568 := rfl
 
-def drvWonCost (qStart : ℕ) : ℕ := 24 * qStart + 12
+@[expose] def drvWonCost (qStart : ℕ) : ℕ := 24 * qStart + 12
 
 /-- Bounded local-instance win predicate `bhE2EDrvWon σ b`. -/
-def drvWonE (qStart : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def drvWonE (qStart : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) (bE : E2EExpr Γ .bool) : E2EExpr Γ .bool :=
   eLet (.pair σE bE) fun sb =>
     eAny qStart (drvInsts (.fst (v sb))) fun d =>
@@ -168,7 +168,7 @@ theorem cost_drvWonE (qStart : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     Nat.max_def, Nat.reduceLeDiff, ↓reduceIte, Nat.reduceAdd]
   omega
 
-def drvWonC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def drvWonC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (qStart : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) (bE : E2EExpr Γ .bool) :
     Comp (e2eOps ℓ P C K decT encT) (stepAIface ℓ I₀) Γ .bool :=
@@ -197,10 +197,10 @@ theorem cost_drvWonC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) 
 
 attribute [local irreducible] drvWonE drvWonC
 
-def finishKindCost (qStart : ℕ) : ℕ := drvWonCost qStart + 32
+@[expose] def finishKindCost (qStart : ℕ) : ℕ := drvWonCost qStart + 32
 
 /-- End-of-game bit decision `b' == σ.b || bhE2EDrvWon σ σ.b` for `kindRed`. -/
-def finishKindE (qStart : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def finishKindE (qStart : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) (b'E : E2EExpr Γ .bool) : E2EExpr Γ .bool :=
   eLet (.pair σE b'E) fun sb =>
     orE (boolEqE (.snd (v sb)) (drvB (.fst (v sb))))
@@ -230,7 +230,7 @@ theorem cost_finishKindE (qStart : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     eLet, v, Ext.wk, Ext.refl, Expr.cost, Nat.reduceAdd] at hw ⊢
   omega
 
-def finishKindC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def finishKindC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (qStart : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) (b'E : E2EExpr Γ .bool) :
     Comp (e2eOps ℓ P C K decT encT) (stepAIface ℓ I₀) Γ .bool :=
@@ -260,7 +260,7 @@ theorem cost_finishKindC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig �
 
 attribute [local irreducible] finishKindE finishKindC
 
-def isHonestUncorruptedPeerSomeE (nId : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isHonestUncorruptedPeerSomeE (nId : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (principalsE : E2EExpr Γ (.list (.prod .nat e2ePrincipalEntryTy)))
     (pkE : E2EExpr Γ (PB 32)) : E2EExpr Γ .bool :=
   eLet (.pair principalsE (eCrypt .pow8 pkE)) fun pp =>
@@ -318,7 +318,7 @@ theorem cost_isHonestUncorruptedPeerSomeE (nId : ℕ) {Γ : List (Ty (e2eSig ℓ
 
 attribute [local irreducible] isHonestUncorruptedPeerSomeE
 
-def isSpkRevealedE (nSpk : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isSpkRevealedE (nSpk : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (spkBundlesE : E2EExpr Γ (.list (.prod (.prod .nat .nat) e2eSpkBundleEntryTy)))
     (pkE : E2EExpr Γ (PB 32)) : E2EExpr Γ .bool :=
   eLet (.pair spkBundlesE (eCrypt .pow8 pkE)) fun bp =>
@@ -363,7 +363,7 @@ theorem cost_isSpkRevealedE (nSpk : ℕ) {Γ : List (Ty (e2eSig ℓ))}
 
 attribute [local irreducible] isSpkRevealedE
 
-def keyIndInitCorrClauseE (nId nSpk : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def keyIndInitCorrClauseE (nId nSpk : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (principalsE : E2EExpr Γ (.list (.prod .nat e2ePrincipalEntryTy)))
     (spkBundlesE : E2EExpr Γ (.list (.prod (.prod .nat .nat) e2eSpkBundleEntryTy)))
     (sE : E2EExpr Γ (e2eInitiatorEntryTy ℓ S)) : E2EExpr Γ .bool :=
@@ -439,7 +439,7 @@ theorem cost_keyIndInitCorrClauseE (nId nSpk : ℕ) {Γ : List (Ty (e2eSig ℓ))
 
 attribute [local irreducible] keyIndInitCorrClauseE
 
-def optPow8EqE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def optPow8EqE {Γ : List (Ty (e2eSig ℓ))}
     (aE bE : E2EExpr Γ (.opt (PB 32))) : E2EExpr Γ .bool :=
   eLet (.pair aE bE) fun ab =>
     eCaseOpt (.fst (v ab))
@@ -474,7 +474,7 @@ theorem cost_optPow8EqE {Γ : List (Ty (e2eSig ℓ))}
 
 attribute [local irreducible] optPow8EqE
 
-def keyIndPartnerE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def keyIndPartnerE {Γ : List (Ty (e2eSig ℓ))}
     (sE : E2EExpr Γ (e2eInitiatorEntryTy ℓ S))
     (rE : E2EExpr Γ (e2eRespEntryTy ℓ S)) : E2EExpr Γ .bool :=
   eLet (.pair sE rE) fun sr =>
@@ -541,7 +541,7 @@ theorem cost_keyIndPartnerE {Γ : List (Ty (e2eSig ℓ))}
 
 attribute [local irreducible] keyIndPartnerE
 
-def isKeyIndInitStillFreshE (nId nSpk nResp : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isKeyIndInitStillFreshE (nId nSpk nResp : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (principalsE : E2EExpr Γ (.list (.prod .nat e2ePrincipalEntryTy)))
     (spkBundlesE : E2EExpr Γ (.list (.prod (.prod .nat .nat) e2eSpkBundleEntryTy)))
     (respE : E2EExpr Γ (.list (e2eRespEntryTy ℓ S)))
@@ -650,7 +650,7 @@ theorem cost_isKeyIndInitStillFreshE (nId nSpk nResp : ℕ) {Γ : List (Ty (e2eS
 
 attribute [local irreducible] isKeyIndInitStillFreshE
 
-def respPartnerStepE {Γ : List (Ty (e2eSig ℓ))} :
+@[expose] def respPartnerStepE {Γ : List (Ty (e2eSig ℓ))} :
     E2EExpr (e2eInitiatorEntryTy ℓ S :: .prod .bool .bool ::
       .prod (.list (e2eInitiatorEntryTy ℓ S)) (.prod (e2eRespEntryTy ℓ S) (.prod .bool .bool)) :: Γ)
       (.prod .bool .bool) :=
@@ -724,7 +724,7 @@ theorem cost_respPartnerStepE {Γ : List (Ty (e2eSig ℓ))} :
     Nat.reduceAdd]
   omega
 
-def respPartnerFoldE (nInit : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def respPartnerFoldE (nInit : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (initE : E2EExpr Γ (.list (e2eInitiatorEntryTy ℓ S)))
     (rE : E2EExpr Γ (e2eRespEntryTy ℓ S)) (aE bE : E2EExpr Γ .bool) :
     E2EExpr Γ (.prod .bool .bool) :=
@@ -764,7 +764,7 @@ theorem cost_respPartnerFoldE (nInit : ℕ) {Γ : List (Ty (e2eSig ℓ))}
 attribute [local irreducible] respPartnerFoldE
 
 /-- Checks `isKeyIndRespStillFresh`, evaluating peer-key corruption lookups once against `r` up to `pow8`. -/
-def isKeyIndRespStillFreshE (nId nSpk nInit : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isKeyIndRespStillFreshE (nId nSpk nInit : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (principalsE : E2EExpr Γ (.list (.prod .nat e2ePrincipalEntryTy)))
     (spkBundlesE : E2EExpr Γ (.list (.prod (.prod .nat .nat) e2eSpkBundleEntryTy)))
     (initE : E2EExpr Γ (.list (e2eInitiatorEntryTy ℓ S)))
@@ -898,18 +898,18 @@ theorem cost_isKeyIndRespStillFreshE (nId nSpk nInit : ℕ) {Γ : List (Ty (e2eS
 
 attribute [local irreducible] isKeyIndRespStillFreshE
 
-def initStillFreshStepCost (nId nSpk nResp : ℕ) : ℕ :=
+@[expose] def initStillFreshStepCost (nId nSpk nResp : ℕ) : ℕ :=
   96 * nId + 104 * nSpk + 7000 * nResp + 300
 
-def respStillFreshStepCost (nId nSpk nInit : ℕ) : ℕ :=
+@[expose] def respStillFreshStepCost (nId nSpk nInit : ℕ) : ℕ :=
   7100 * nInit + 192 * nId + 104 * nSpk + 460
 
-def allTestedSessionsFreshBoundedCost (nInit nResp nId nSpk : ℕ) : ℕ :=
+@[expose] def allTestedSessionsFreshBoundedCost (nInit nResp nId nSpk : ℕ) : ℕ :=
   nInit * initStillFreshStepCost nId nSpk nResp +
     nResp * respStillFreshStepCost nId nSpk nInit + 32
 
 /-- Bounded scan for `allTestedSessionsFresh P st`. -/
-def allTestedSessionsFreshBoundedE (nInit nResp nId nSpk : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def allTestedSessionsFreshBoundedE (nInit nResp nId nSpk : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (stE : E2EExpr Γ (e2eKeyIndStateTy ℓ S)) : E2EExpr Γ .bool :=
   eLet stE fun st =>
     .and
@@ -1062,10 +1062,10 @@ theorem cost_allTestedSessionsFreshBoundedE (nInit nResp nId nSpk : ℕ)
 
 attribute [local irreducible] allTestedSessionsFreshBoundedE
 
-def allTestedSessionsFreshCost (S : SignalPqxdh.Setup) : ℕ :=
+@[expose] def allTestedSessionsFreshCost (S : SignalPqxdh.Setup) : ℕ :=
   allTestedSessionsFreshBoundedCost S.N_send_tot S.N_recv_tot S.N_id S.N_spk_tot
 
-def allTestedSessionsFreshE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def allTestedSessionsFreshE {Γ : List (Ty (e2eSig ℓ))}
     (stE : E2EExpr Γ (e2eKeyIndStateTy ℓ S)) : E2EExpr Γ .bool :=
   allTestedSessionsFreshBoundedE S.N_send_tot S.N_recv_tot S.N_id S.N_spk_tot stE
 
@@ -1083,7 +1083,7 @@ theorem cost_allTestedSessionsFreshE {Γ : List (Ty (e2eSig ℓ))}
     (allTestedSessionsFreshE stE).cost ≤ stE.cost + allTestedSessionsFreshCost S :=
   cost_allTestedSessionsFreshBoundedE S.N_send_tot S.N_recv_tot S.N_id S.N_spk_tot stE
 
-def allTestedSessionsFreshC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def allTestedSessionsFreshC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     {Γ : List (Ty (e2eSig ℓ))}
     (stE : E2EExpr Γ (e2eKeyIndStateTy ℓ S)) :
     Comp (e2eOps ℓ P C K decT encT) (stepAIface ℓ I₀) Γ .bool :=
@@ -1112,10 +1112,10 @@ theorem cost_allTestedSessionsFreshC {ι : Type} {T : OracleSpec ι} (I₀ : Ifa
 
 attribute [local irreducible] allTestedSessionsFreshE allTestedSessionsFreshC
 
-def finishPrefixBoundedCost (qStart nInit nResp nId nSpk : ℕ) : ℕ :=
+@[expose] def finishPrefixBoundedCost (qStart nInit nResp nId nSpk : ℕ) : ℕ :=
   allTestedSessionsFreshBoundedCost nInit nResp nId nSpk + 2 * drvWonCost qStart + 64
 
-def finishPrefixBoundedC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def finishPrefixBoundedC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (qStart nInit nResp nId nSpk : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
     (b'E flipE : E2EExpr Γ .bool) :
@@ -1249,11 +1249,11 @@ theorem cost_finishPrefixBoundedC {ι : Type} {T : OracleSpec ι} (I₀ : Iface 
 
 attribute [local irreducible] finishPrefixBoundedC
 
-def finishPrefixCost (S : SignalPqxdh.Setup) (qStart _nAdv : ℕ) : ℕ :=
+@[expose] def finishPrefixCost (S : SignalPqxdh.Setup) (qStart _nAdv : ℕ) : ℕ :=
   finishPrefixBoundedCost qStart S.N_send_tot S.N_recv_tot S.N_id S.N_spk_tot
 
 /-- End-of-game freshness check and bit decision `bhShallowFinishPrefix`. -/
-def finishPrefixC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def finishPrefixC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (qStart _nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
     (b'E flipE : E2EExpr Γ .bool) :
@@ -1297,7 +1297,7 @@ theorem cost_finishPrefixC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig
 
 attribute [local irreducible] finishPrefixC
 
-def testedInitSessionsFreshE (nInst nSend nId nSpk nRecv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def testedInitSessionsFreshE (nInst nSend nId nSpk nRecv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (stE : E2EExpr Γ (e2eKeyIndStateTy ℓ S)) : E2EExpr Γ .bool :=
   eLet stE fun st =>
     let testedListE : E2EExpr (e2eKeyIndStateTy ℓ S :: Γ) (.list (e2eInitiatorEntryTy ℓ S)) :=
@@ -1306,7 +1306,7 @@ def testedInitSessionsFreshE (nInst nSend nId nSpk nRecv : ℕ) {Γ : List (Ty (
       .not (isKeyIndInitStillFreshE nId nSpk nRecv
         (stPrin (v st)) (stSpk (v st)) (stResp (v st)) (v s)))
 
-def finishPrefixClampedCost (S : SignalPqxdh.Setup) (qStart nAdv : ℕ) : ℕ :=
+@[expose] def finishPrefixClampedCost (S : SignalPqxdh.Setup) (qStart nAdv : ℕ) : ℕ :=
   let nId := min nAdv S.N_id
   let nSpk := min nAdv S.N_spk_tot
   let nSend := min nAdv S.N_send_tot
@@ -1314,7 +1314,7 @@ def finishPrefixClampedCost (S : SignalPqxdh.Setup) (qStart nAdv : ℕ) : ℕ :=
   let nInst := min qStart nSend
   24 * nSend + nInst * initStillFreshStepCost nId nSpk nRecv + 2 * drvWonCost nInst + 160
 
-def finishPrefixClampedSize (S : SignalPqxdh.Setup) (qStart nAdv : ℕ) : ℕ :=
+@[expose] def finishPrefixClampedSize (S : SignalPqxdh.Setup) (qStart nAdv : ℕ) : ℕ :=
   let nId := min nAdv S.N_id
   let nSpk := min nAdv S.N_spk_tot
   let nSend := min nAdv S.N_send_tot
@@ -1324,7 +1324,7 @@ def finishPrefixClampedSize (S : SignalPqxdh.Setup) (qStart nAdv : ℕ) : ℕ :=
     3 * ReductionDsl.bits nId + 2 * ReductionDsl.bits nSpk + 1900
 
 /-- Clamped end-of-game freshness check and bit decision `bhShallowFinishPrefix`. -/
-def finishPrefixClampedC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
+@[expose] def finishPrefixClampedC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (qStart nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
     (b'E flipE : E2EExpr Γ .bool) :

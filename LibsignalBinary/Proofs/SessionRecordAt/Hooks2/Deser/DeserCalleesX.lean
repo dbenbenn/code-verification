@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.X.BytesMergeXPhase1
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.X.DecodeErrorFromX
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.X.DecodeVarintSlowX
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.X.Int32MergeX
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.X.VarintSliceX
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,71 +40,6 @@ open CryptoVerification.LibsignalTripleRatchet.Prost.X
 open CryptoVerification.LibsignalTripleRatchet.WireX
 open CryptoVerification.E2E.Record
 open Proofs.libsignal.Stage1X
-
-/-- Assemble `DeserializeCalleesAtW img ext` from `Stage2ContractsA0 img ext` and an explicit
-`Prost.X.BytesMergeOkW img A0 ext`. -/
-theorem deserializeCalleesAtW_of_stage2_bytes {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsA0 img ext)
-    (hbytes : Prost.X.BytesMergeOkW img A0 ext) :
-    DeserializeCalleesAtW img ext := by
-  have hA : Stage1X.AllocContractsX img A0 ext := allocContractsX_of_stage2ContractsA0 hC
-  have hFrom : DecodeErrorFromOkW img A0 ext := decodeErrorFrom_okW hA
-  have hSlow : DecodeVarintSlowOkW img A0 ext := decodeVarintSlow_okW hFrom
-  have hSlice : DecodeVarintSliceOkW img A0 ext := decodeVarintSlice_okW hFrom
-  exact ⟨hSlice, int32Merge_okW hFrom hSlow hSlice, hbytes, grow_one_72_ok_ext_x hA⟩
-
-/-- Assemble `DeserializeCalleesAtW img ext` from `Stage2ContractsA0 img ext`. -/
-theorem deserializeCalleesAtW_of_stage2 {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsA0 img ext) :
-    DeserializeCalleesAtW img ext :=
-  deserializeCalleesAtW_of_stage2_bytes hC
-    (bytes_merge_okW hC.loads (allocContractsX_of_stage2ContractsA0 hC) hC.memcpy)
-
-/-! ## Arbitrary-Allocator `DeserializeCalleesAtWA` Assembly -/
-
-/-- Bridge `Stage2ContractsA img A ext` (`Hooks2.Adapters`) to `Stage1X.AllocContractsX img A ext`. -/
-theorem allocContractsX_of_stage2ContractsA {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsA img A ext) :
-    Stage1X.AllocContractsX img A ext :=
-  allocContractsX_of_stage2Stubs hC.alloc hC.deallocLayout hC.realloc hC.shim hC.memmove
-
-/-- Assemble `DeserializeCalleesAtWA img A ext` from `AllocContractsX` and `memcpy`. -/
-theorem deserializeCalleesAtWA_of_alloc_memcpy {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hLoads : Obj.Loads libsignalSessionImage img)
-    (hA : Stage1X.AllocContractsX img A ext)
-    (hmemcpy : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff memcpyName)
-      ((sessionMemcpySpec CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)) :
-    DeserializeCalleesAtWA img A ext := by
-  have hFrom : DecodeErrorFromOkW img A ext := decodeErrorFrom_okW hA
-  have hSlow : DecodeVarintSlowOkW img A ext := decodeVarintSlow_okW hFrom
-  have hSlice : DecodeVarintSliceOkW img A ext := decodeVarintSlice_okW hFrom
-  exact ⟨hSlice, int32Merge_okW hFrom hSlow hSlice, bytes_merge_okW hLoads hA hmemcpy,
-    grow_one_72_ok_ext_x hA⟩
-
-/-- Assemble `DeserializeCalleesAtWA img A ext` from `Stage2ContractsA img A ext` and explicit `BytesMergeOkW`. -/
-theorem deserializeCalleesAtWA_of_stage2_bytes {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsA img A ext)
-    (hbytes : Prost.X.BytesMergeOkW img A ext) :
-    DeserializeCalleesAtWA img A ext := by
-  have hA : Stage1X.AllocContractsX img A ext := allocContractsX_of_stage2ContractsA hC
-  have hFrom : DecodeErrorFromOkW img A ext := decodeErrorFrom_okW hA
-  have hSlow : DecodeVarintSlowOkW img A ext := decodeVarintSlow_okW hFrom
-  have hSlice : DecodeVarintSliceOkW img A ext := decodeVarintSlice_okW hFrom
-  exact ⟨hSlice, int32Merge_okW hFrom hSlow hSlice, hbytes, grow_one_72_ok_ext_x hA⟩
-
-/-- Assemble `DeserializeCalleesAtWA img A ext` from `Stage2ContractsA img A ext`. -/
-theorem deserializeCalleesAtWA_of_stage2 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsA img A ext) :
-    DeserializeCalleesAtWA img A ext :=
-  deserializeCalleesAtWA_of_alloc_memcpy hC.loads (allocContractsX_of_stage2ContractsA hC) hC.memcpy
-
-/-! ## Relocatable `[LibsignalPlacement]` `DeserializeCalleesPlacedW` Assembly -/
 
 section Placed
 

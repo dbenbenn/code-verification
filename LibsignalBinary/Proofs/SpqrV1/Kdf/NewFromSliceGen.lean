@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceGt64
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceGt64 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigest
 import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSlice
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Transfer
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Generalized `Hmac<Sha256>::new_from_slice [local#3]`
@@ -25,7 +25,7 @@ Finalization of `SHA-256(key)` on the `key.length > 64` branch (`0x6707c → 0x6
 of the arbitrary-length (`key.length < 2 ^ 63`) contracts for `new_from_slice [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -77,9 +77,6 @@ attribute [local arm64_norm]
   Memory.read64_write8_base_off_zero Memory.read64_write32_base_off_disjoint Memory.read64_write32_base_zero_off
   Memory.read64_write32_base_off_zero Memory.read64_write64_base_off_disjoint Memory.read64_write64_base_zero_off
   Memory.read64_write64_base_off_zero
-
-@[simp, arm64_norm] private
-gen_decodes libsignalSessionCode_tree libsignalSessionCode [0x61c84 → 0x61d88]
 
 /-! ## Sub-segment 0c (`0x6707c → 0x670e4`): One-Block vs Two-Block Finalization of `SHA-256(key)` -/
 
@@ -190,23 +187,6 @@ macro "nfs_seg0c_gt64_one_post" : tactic => `(tactic| (
           have hsha := sha256With_pfx_one_block F pfx tail hpfx_mod hlt56
           rw [hkey_split, hpfx_div] at hsha; exact hsha.symm⟩ }))
 
-set_option maxHeartbeats 1600000 in
-theorem nfs_seg0c_gt64_one {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {key : List (BitVec 8)} {s₀ s : State}
-    (hs : StateG2 b F key s₀ s)
-    (hkey_gt : 64 < key.length) (hkey_lt : key.length < 2 ^ 63)
-    (hlt56 : (key.drop (64 * (key.length / 64))).length < 56)
-    (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544) :
-    RunsTo (P b F alloc) s (StateG3 b F key s₀) := by
-  nfs_seg0c_gt64_one_pre
-  refine RunsTo.sess_compress256_step (m₀ := m_pre_c) (lr := b + 0x61cec#64)
-    (st := st0) (blk := sha256PadBlock1 (key.length / 64) tail)
-    (hrun := by simp only [arm64_norm, hstat]) (hpc := rfl)
-    (hx0 := by simp only [arm64_norm]) (hx1 := by simp only [arm64_norm])
-    (hx2 := by simp only [arm64_norm]) (hlr := by simp only [arm64_norm])
-    (hmem := State.mem_setMem _ _) (hst := hst0_pre_c) (hblk := hblk_pre_c) (hrw := hrw_st) ?_
-  nfs_seg0c_gt64_one_post
-
 structure StateG2b (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key : List (BitVec 8)) (s₀ s : State) (b_iv : BitVec 64 := b) : Prop where
   pc_eq : s.pc = b + 0x61cac#64
@@ -218,9 +198,12 @@ structure StateG2b (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaStat
     shaStateBytes (F ((chunks64 (key.take (64 * (key.length / 64)))).foldl F sha256IV)
       (innerPadBlock1 (key.drop (64 * (key.length / 64)))))
 
+/-- Synthetic cut-point base offset for `compress256` (`558584`). -/
+local macro:max "offNfsCompress256" : term => `(558584)
+
 structure StateG2c (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key : List (BitVec 8)) (s₀ s : State) (b_iv : BitVec 64 := b)
-    (pc_target : BitVec 64 := b + bv% (ls_off% "sha2::sha256::compress256")) : Prop where
+    (pc_target : BitVec 64 := b + bv% offNfsCompress256) : Prop where
   pc_eq : s.pc = pc_target
   common : NfsGt64Common b_iv s₀ s
   x0_eq : s.readReg64 .x0 = nfsSp s₀ + 352#64
@@ -302,22 +285,6 @@ macro "nfs_seg0c_gt64_two_a_post" : tactic => `(tactic| (
         exact Run.Layout.readBytes_writeBytes_eq m_pre_c1 (nfsSp s₀ + 352#64)
           (shaStateBytes st1) 32 (shaStateBytes_length st1) (by decide) }))
 
-set_option maxHeartbeats 1600000 in
-theorem nfs_seg0c_gt64_two_a {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {key : List (BitVec 8)} {s₀ s : State}
-    (hs : StateG2 b F key s₀ s)
-    (hnlt56 : ¬ (key.drop (64 * (key.length / 64))).length < 56)
-    (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544) :
-    RunsTo (P b F alloc) s (StateG2b b F key s₀) := by
-  nfs_seg0c_gt64_two_a_pre
-  refine RunsTo.sess_compress256_step (m₀ := m_pre_c1) (lr := b + 0x61cac#64)
-    (st := st0) (blk := innerPadBlock1 tail)
-    (hrun := by simp only [arm64_norm, hstat]) (hpc := rfl)
-    (hx0 := by simp only [arm64_norm]) (hx1 := by simp only [arm64_norm])
-    (hx2 := by simp only [arm64_norm]) (hlr := by simp only [arm64_norm])
-    (hmem := State.mem_setMem _ _) (hst := hst0_pre_c1) (hblk := hblk_pre_c1) (hrw := hrw_st1) ?_
-  nfs_seg0c_gt64_two_a_post
-
 set_option hygiene false in
 macro "nfs_seg0c_gt64_two_b_body" : tactic => `(tactic| (
   rcases hs with ⟨hpc, hcom, hx20, hx21, hx23, hst1_bytes⟩
@@ -392,14 +359,6 @@ macro "nfs_seg0c_gt64_two_b_body" : tactic => `(tactic| (
       st1_bytes := by rw [State.mem_setMem]; exact hst1_pre_c2
       blk2_bytes := by rw [State.mem_setMem]; exact hblk_pre_c2 }))
 
-set_option maxHeartbeats 1600000 in
-theorem nfs_seg0c_gt64_two_b {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {key : List (BitVec 8)} {s₀ s : State}
-    (hs : StateG2b b F key s₀ s)
-    (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544) :
-    RunsTo (P b F alloc) s (StateG2c b F key s₀) := by
-  nfs_seg0c_gt64_two_b_body
-
 set_option hygiene false in
 macro "nfs_seg0c_gt64_two_c_pre" : tactic => `(tactic| (
   rcases hs with ⟨hpc, hcom, hx0, hx1, hx2, hlr, hst1_bytes, hblk2_bytes⟩
@@ -445,40 +404,6 @@ macro "nfs_seg0c_gt64_two_c_post" : tactic => `(tactic| (
         by
           have hsha := sha256With_pfx_two_blocks F pfx tail hpfx_mod hge56 htail_lt
           rw [hkey_split, hpfx_div] at hsha; exact hsha.symm⟩ }))
-
-theorem nfs_seg0c_gt64_two_c {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {key : List (BitVec 8)} {s₀ s : State}
-    (hs : StateG2c b F key s₀ s)
-    (hnlt56 : ¬ (key.drop (64 * (key.length / 64))).length < 56)
-    (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544) :
-    RunsTo (P b F alloc) s (StateG3 b F key s₀) := by
-  nfs_seg0c_gt64_two_c_pre
-  refine RunsTo.sess_compress256_step (m₀ := s.mem) (lr := b + 0x61cec#64)
-    (st := st1) (blk := innerPadBlock2 (key.length / 64) tail)
-    (hrun := hstat) (hpc := hpc) (hx0 := hx0) (hx1 := hx1) (hx2 := hx2) (hlr := hlr)
-    (hmem := rfl) (hst := hst1_bytes) (hblk := hblk2_bytes) (hrw := hrw_st2) ?_
-  nfs_seg0c_gt64_two_c_post
-
-theorem nfs_seg0c_gt64_two {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {key : List (BitVec 8)} {s₀ s : State}
-    (hs : StateG2 b F key s₀ s)
-    (hnlt56 : ¬ (key.drop (64 * (key.length / 64))).length < 56)
-    (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544) :
-    RunsTo (P b F alloc) s (StateG3 b F key s₀) :=
-  (nfs_seg0c_gt64_two_a hs hnlt56 hrw_stack).trans fun _ h2b =>
-    (nfs_seg0c_gt64_two_b h2b hrw_stack).trans fun _ h2c =>
-      nfs_seg0c_gt64_two_c h2c hnlt56 hrw_stack
-
-theorem nfs_seg0c_gt64 {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {key : List (BitVec 8)} {s₀ s : State}
-    (hs : StateG2 b F key s₀ s)
-    (hkey_gt : 64 < key.length)
-    (hkey_lt : key.length < 2 ^ 63)
-    (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544) :
-    RunsTo (P b F alloc) s (StateG3 b F key s₀) := by
-  by_cases hlt56 : (key.drop (64 * (key.length / 64))).length < 56
-  · exact nfs_seg0c_gt64_one hs hkey_gt hkey_lt hlt56 hrw_stack
-  · exact nfs_seg0c_gt64_two hs hlt56 hrw_stack
 
 /-! ## Sub-segment 0d (`0x670e4 → 0x6717c`): Writing Digest to `sp + 112..144` and Joining `0x67158` -/
 
@@ -577,7 +502,7 @@ structure StateG4 (b : BitVec 64) (k : List (BitVec 8)) (s₀ s : State)
   sp_align : (nfsSp s₀ &&& 0b1111#64) = 0#64
   x29_eq : s.readReg64 .x29 = nfsSp s₀ + 464#64
   x19_eq : s.readReg64 .x19 = s₀.readReg64 .x0
-  x22_eq : s.readReg64 .x22 = b_iv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)
+  x22_eq : s.readReg64 .x22 = b_iv + bv% nfs3IvOffNat
   x25_eq : s.readReg64 .x25 = s₀.readReg64 .x25
   x26_eq : s.readReg64 .x26 = s₀.readReg64 .x26
   x27_eq : s.readReg64 .x27 = s₀.readReg64 .x27
@@ -653,14 +578,6 @@ macro "nfs_seg0d1_gt64_body" : tactic => `(tactic| (
             (agreesOutside_toFrame hag_zero_mid2).readBytes_eq (by simp [hd2]) (by decide),
             h144_zero, keyBlock_drop32_of_len32 hk_len] }))
 
-set_option maxHeartbeats 1600000 in
-theorem nfs_seg0d1_gt64 {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {key : List (BitVec 8)} {s₀ s : State}
-    (hs : StateG3 b F key s₀ s)
-    (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544) :
-    RunsTo (P b F alloc) s (StateG4 b (sha256With F key) s₀) := by
-  nfs_seg0d1_gt64_body
-
 set_option hygiene false in
 macro "nfs_seg0d2_gt64_body " bIv:term:max : tactic => `(tactic| (
   generalize hPost : (fun s' : State => _) = Post
@@ -685,11 +602,11 @@ macro "nfs_seg0d2_gt64_body " bIv:term:max : tactic => `(tactic| (
     rw_out := (Frame.rw_iff hf_k0 _ _).mpr hrw_out
     readable_iv := (Frame.readable_iff hf_k0 _ _).mpr hread_iv
     iv_bytes := by
-      have hd432 : DisjointRegions (nfsSp s₀ + 432#64) 8 ($bIv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 := by
+      have hd432 : DisjointRegions (nfsSp s₀ + 432#64) 8 ($bIv + bv% nfs3IvOffNat) 32 := by
         clear * - hdisj_iv_stack; simp only [DisjointRegions, nfsSp] at hdisj_iv_stack ⊢; bv_omega
-      have hdk0 : DisjointRegions (nfsSp s₀ + 112#64) 352 ($bIv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 := by
+      have hdk0 : DisjointRegions (nfsSp s₀ + 112#64) 352 ($bIv + bv% nfs3IvOffNat) 32 := by
         clear * - hdisj_iv_stack; simp only [DisjointRegions, nfsSp] at hdisj_iv_stack ⊢; bv_omega
-      have hdpro : DisjointRegions (nfsSp s₀ + 464#64) 80 ($bIv + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 := by
+      have hdpro : DisjointRegions (nfsSp s₀ + 464#64) 80 ($bIv + bv% nfs3IvOffNat) 32 := by
         clear * - hdisj_iv_stack; simp only [DisjointRegions, nfsSp] at hdisj_iv_stack ⊢; bv_omega
       rw [(agreesOutside_toFrame hA_432).readBytes_eq (by simp only [List.mem_singleton, forall_eq]; exact hd432) (by decide),
           (agreesOutside_toFrame hA_k0).readBytes_eq (by simp only [List.mem_singleton, forall_eq]; exact hdk0) (by decide),
@@ -730,166 +647,6 @@ macro "nfs_seg0d2_gt64_body " bIv:term:max : tactic => `(tactic| (
   · rw [State.mem_setMem, write64_quad_288_eq_writeBytes_slice16 (m_k0.write64 (nfsSp s₀ + 432#64) 1#64) m_k0
       (nfsSp s₀) (keyBlock k) hkb_len hk0_take32]
     exact readBytes_writeBytes_16_self _ _ _ _ (slice16_length _ _)))
-
-set_option maxHeartbeats 1600000 in
-theorem nfs_seg0d2_gt64 {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {k : List (BitVec 8)} {s₀ s : State}
-    (hs : StateG4 b k s₀ s) (hk_len : k.length ≤ 64)
-    (hiv : s₀.mem.readBytes (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV)
-    (hread_iv : s₀.mem.Readable (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32)
-    (hdisj_iv_stack : DisjointRegions (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 544#64) 544)
-    (hrw_out : RW s₀.mem (s₀.readReg64 .x0) 0x98) (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544)
-    (hdisj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544) :
-    RunsTo (P b F alloc) s (fun s' =>
-      s'.pc = b + 0x61d84#64 ∧ s'.status = .Running ∧
-      NfsRegInv3 b s₀ s' ∧ NfsMemInv3 b s₀ s'.mem ∧
-      s'.readReg64 .x8 = 0x36#64 ∧ s'.readReg64 .x0 = nfsSp s₀ + 400#64 ∧
-      s'.readReg64 .x1 = nfsSp s₀ + 288#64 ∧ s'.readReg64 .x2 = 1#64 ∧
-      s'.readVReg128 2#5 = s'.mem.read64 (nfsSp s₀ + 152#64) ++ s'.mem.read64 (nfsSp s₀ + 144#64) ∧
-      s'.readVReg128 0#5 = s'.mem.read64 (nfsSp s₀ + 168#64) ++ s'.mem.read64 (nfsSp s₀ + 160#64) ∧
-      s'.mem.readBytes (nfsSp s₀ + 144#64) 32 = (keyBlock k).drop 32 ∧
-      s'.mem.readBytes (nfsSp s₀ + 288#64) 16 = slice16 (keyBlock k) 0 ∧
-      s'.mem.readBytes (nfsSp s₀ + 304#64) 16 = slice16 (keyBlock k) 16) := by
-  nfs_seg0d2_gt64_body b
-
-/-! ## Full `> 64` Execution (`nfs_gt64_run`) and Generalized `new_from_slice3_gen_runsTo_ext` -/
-
-theorem nfs_chunks_1_to_4_of_G4 {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {k : List (BitVec 8)} {s₀ s : State}
-    (hs : StateG4 b k s₀ s) (hk_le : k.length ≤ 64)
-    (hiv : s₀.mem.readBytes (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV)
-    (hb : (b &&& 0xfff#64) = 0#64)
-    (hread_iv : s₀.mem.Readable (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32)
-    (hdisj_iv_stack : DisjointRegions (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 544#64) 544)
-    (hrw_out : RW s₀.mem (s₀.readReg64 .x0) 0x98) (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544)
-    (hdisj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544)
-    (hal : (s₀.sp &&& 0b1111#64) = 0#64) :
-    RunsTo (P b F alloc) s (fun s' =>
-      s'.pc = b + 0x62094#64 ∧ s'.status = .Running ∧
-      NfsRegInv3 b s₀ s' ∧ NfsMemInv3 b s₀ s'.mem ∧
-      s'.readReg64 .x0 = nfsSp s₀ + 400#64 ∧ s'.readReg64 .x1 = nfsSp s₀ + 288#64 ∧ s'.readReg64 .x2 = 1#64 ∧
-      s'.mem.readBytes (nfsSp s₀ + 400#64) 32 = shaStateBytes sha256IV ∧
-      s'.mem.readBytes (nfsSp s₀ + 288#64) 64 = (keyBlock k).map (· ^^^ 0x36#8) ∧
-      s'.mem.readBytes (nfsSp s₀) 32 = (shaStateBytes sha256IV).drop 16 ++ (shaStateBytes sha256IV).take 16) := by
-  refine (nfs_seg0d2_gt64 hs hk_le hiv hread_iv hdisj_iv_stack hrw_out hrw_stack hdisj_out_stack).trans fun s1 h1 => ?_
-  rcases h1 with ⟨hpc1, hstat1, hR1, hM1, hx8_1, hx0_1, hx1_1, hx2_1, hq2_1, hq0_1, hk0_1, hs0_1, hs16_1⟩
-  refine (NewFromSlice3Proof.nfs_chunk1 hk_le hpc1 hstat1 hR1 hM1 hx8_1 hx0_1 hx1_1 hx2_1 hs0_1 hs16_1).trans fun s2 h2 => ?_
-  rcases h2 with ⟨hpc2, hstat2, hR2, hM2, hx8_2, hx0_2, hx1_2, hx2_2, hx10_2, hx11_2, hq2_2, hq0_2, hs0_2, hs16_2⟩
-  refine (NewFromSlice3Proof.nfs_chunk2 hk_le hal hpc2 hstat2 hR2 hM2 hx8_2 hx0_2 hx1_2 hx2_2 hx10_2 hx11_2
-    (hq2_2.trans hq2_1) (hq0_2.trans hq0_1) hk0_1 hs0_2 hs16_2).trans fun s3 h3 => ?_
-  rcases h3 with ⟨hpc3, hstat3, hR3, hM3, hx8_3, hx0_3, hx1_3, hx2_3, hx11_3, hx9_3, hs0_3, hs16_3, hs32_3, hs48_3⟩
-  refine (NewFromSlice3Proof.nfs_chunk3 hk_le hpc3 hstat3 hR3 hM3 hx8_3 hx0_3 hx1_3 hx2_3 hx11_3 hx9_3
-    hs0_3 hs16_3 hs32_3 hs48_3).trans fun s4 h4 => ?_
-  rcases h4 with ⟨hpc4, hstat4, hR4, hM4, hx8_4, hx0_4, hx1_4, hx2_4, hx9_4, hx10_4, hs0_4, hs16_4, hs32_4, hs48_4⟩
-  exact NewFromSlice3Proof.nfs_chunk4 hk_le hal hb hpc4 hstat4 hR4 hM4 hx8_4 hx0_4 hx1_4 hx2_4 hx9_4 hx10_4
-    hs0_4 hs16_4 hs32_4 hs48_4
-
-theorem nfs_first_half_gt64 {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {s₀ : State}
-    (hpc : s₀.pc = b + 0x61ba8#64) (hstat : s₀.status = .Running)
-    (hgt : 64 < (s₀.readReg64 .x2).toNat) (hlt : (s₀.readReg64 .x2).toNat < 2 ^ 63)
-    (hiv : s₀.mem.readBytes (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV)
-    (hb : (b &&& 0xfff#64) = 0#64)
-    (hread_iv : s₀.mem.Readable (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32)
-    (hdisj_iv_stack : DisjointRegions (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 544#64) 544)
-    (hrw_out : RW s₀.mem (s₀.readReg64 .x0) 0x98) (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544)
-    (hdisj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544)
-    (hdisj_key_stack : DisjointRegions (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat (s₀.sp - 544#64) 544)
-    (hal : (s₀.sp &&& 0b1111#64) = 0#64) :
-    let key := s₀.mem.readBytes (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat
-    RunsTo (P b F alloc) s₀ (fun s' =>
-      s'.pc = b + 0x62094#64 ∧ s'.status = .Running ∧
-      NfsRegInv3 b s₀ s' ∧ NfsMemInv3 b s₀ s'.mem ∧
-      s'.readReg64 .x0 = nfsSp s₀ + 400#64 ∧ s'.readReg64 .x1 = nfsSp s₀ + 288#64 ∧ s'.readReg64 .x2 = 1#64 ∧
-      s'.mem.readBytes (nfsSp s₀ + 400#64) 32 = shaStateBytes sha256IV ∧
-      s'.mem.readBytes (nfsSp s₀ + 288#64) 64 = (keyBlock (sha256With F key)).map (· ^^^ 0x36#8) ∧
-      s'.mem.readBytes (nfsSp s₀) 32 = (shaStateBytes sha256IV).drop 16 ++ (shaStateBytes sha256IV).take 16) := by
-  intro key
-  have hkey_len : key.length = (s₀.readReg64 .x2).toNat := Memory.readBytes_length _ _ _
-  have hkey_gt : 64 < key.length := by omega
-  have hkey_lt : key.length < 2 ^ 63 := by omega
-  have hk_le : (sha256With F key).length ≤ 64 := by have : (sha256With F key).length = 32 := sha256With_length F key; omega
-  refine (nfs_seg0_pro_gt64 hpc hstat hgt hb hrw_stack hal).trans fun s_g0 hg0 => ?_
-  refine (nfs_seg0a_gt64 hg0 hgt hlt hiv hread_iv hdisj_iv_stack hrw_stack hdisj_key_stack).trans fun s_g1 hg1 => ?_
-  refine (nfs_seg0b_gt64 hg1 hkey_gt hkey_lt hrw_stack).trans fun s_g2 hg2 => ?_
-  refine (nfs_seg0c_gt64 hg2 hkey_gt hkey_lt hrw_stack).trans fun s_g3 hg3 => ?_
-  refine (nfs_seg0d1_gt64 hg3 hrw_stack).trans fun s_g4 hg4 => ?_
-  exact nfs_chunks_1_to_4_of_G4 hg4 hk_le hiv hb hread_iv hdisj_iv_stack hrw_out hrw_stack hdisj_out_stack hal
-
-theorem nfs_second_half_of_mid {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {k : List (BitVec 8)} {s₀ s1 : State}
-    (hk_le : k.length ≤ 64) (hal : (s₀.sp &&& 0b1111#64) = 0#64)
-    (h1 : s1.pc = b + 0x62094#64 ∧ s1.status = .Running ∧
-      NfsRegInv3 b s₀ s1 ∧ NfsMemInv3 b s₀ s1.mem ∧
-      s1.readReg64 .x0 = nfsSp s₀ + 400#64 ∧ s1.readReg64 .x1 = nfsSp s₀ + 288#64 ∧ s1.readReg64 .x2 = 1#64 ∧
-      s1.mem.readBytes (nfsSp s₀ + 400#64) 32 = shaStateBytes sha256IV ∧
-      s1.mem.readBytes (nfsSp s₀ + 288#64) 64 = (keyBlock k).map (· ^^^ 0x36#8) ∧
-      s1.mem.readBytes (nfsSp s₀) 32 = (shaStateBytes sha256IV).drop 16 ++ (shaStateBytes sha256IV).take 16) :
-    RunsTo (P b F alloc) s1 (fun s' =>
-      s'.pc = s₀.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s₀ s' ∧
-      s'.mem.read64 (s₀.readReg64 .x0) = 0#64 ∧ HmacSt s'.mem (s₀.readReg64 .x0 + 8#64) F k [] ∧
-      Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 544#64, 544)]) := by
-  rcases h1 with ⟨hpc1, hstat1, hR1, hM1, hx0_1, hx1_1, hx2_1, hist1, hblk1, hivsw1⟩
-  exact NewFromSlice3Proof.nfs_second_half hk_le hal hpc1 hstat1 hR1 hM1 hx0_1 hx1_1 hx2_1 hist1 hblk1 hivsw1
-
-theorem new_from_slice3_gt64_run {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {s₀ : State}
-    (hpc : s₀.pc = b + 0x61ba8#64) (hstat : s₀.status = .Running)
-    (hgt : 64 < (s₀.readReg64 .x2).toNat) (hlt : (s₀.readReg64 .x2).toNat < 2 ^ 63)
-    (hiv : s₀.mem.readBytes (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV)
-    (hb : (b &&& 0xfff#64) = 0#64)
-    (hread_iv : s₀.mem.Readable (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32)
-    (hdisj_iv_stack : DisjointRegions (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 544#64) 544)
-    (hrw_out : RW s₀.mem (s₀.readReg64 .x0) 0x98) (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544)
-    (hdisj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544)
-    (hdisj_key_stack : DisjointRegions (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat (s₀.sp - 544#64) 544)
-    (hal : (s₀.sp &&& 0b1111#64) = 0#64) :
-    let key := s₀.mem.readBytes (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat
-    RunsTo (P b F alloc) s₀ (fun s' =>
-      s'.pc = s₀.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s₀ s' ∧
-      s'.mem.read64 (s₀.readReg64 .x0) = 0#64 ∧ HmacSt s'.mem (s₀.readReg64 .x0 + 8#64) F (sha256With F key) [] ∧
-      Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 544#64, 544)]) := by
-  intro key
-  have hk_le : (sha256With F key).length ≤ 64 := by have : (sha256With F key).length = 32 := sha256With_length F key; omega
-  refine (nfs_first_half_gt64 hpc hstat hgt hlt hiv hb hread_iv hdisj_iv_stack hrw_out hrw_stack
-    hdisj_out_stack hdisj_key_stack hal).trans fun s1 h1 => ?_
-  exact nfs_second_half_of_mid hk_le hal h1
-
-theorem new_from_slice3_gen_run {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {s₀ : State}
-    (hpc : s₀.pc = b + 0x61ba8#64) (hstat : s₀.status = .Running)
-    (hlt : (s₀.readReg64 .x2).toNat < 2 ^ 63)
-    (hiv : s₀.mem.readBytes (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV)
-    (hb : (b &&& 0xfff#64) = 0#64)
-    (hread_iv : s₀.mem.Readable (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32)
-    (hdisj_iv_stack : DisjointRegions (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 544#64) 544)
-    (hrw_out : RW s₀.mem (s₀.readReg64 .x0) 0x98) (hrw_stack : RW s₀.mem (s₀.sp - 544#64) 544)
-    (hdisj_out_stack : DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544)
-    (hdisj_key_stack : (s₀.readReg64 .x2).toNat = 0 ∨
-      DisjointRegions (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat (s₀.sp - 544#64) 544)
-    (hal : (s₀.sp &&& 0b1111#64) = 0#64) :
-    let key := s₀.mem.readBytes (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat
-    RunsTo (P b F alloc) s₀ (fun s' =>
-      s'.pc = s₀.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s₀ s' ∧
-      s'.mem.read64 (s₀.readReg64 .x0) = 0#64 ∧ HmacSt s'.mem (s₀.readReg64 .x0 + 8#64) F (effectiveHmacKey F key) [] ∧
-      Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 544#64, 544)]) := by
-  intro key
-  have hkey_len : key.length = (s₀.readReg64 .x2).toNat := Memory.readBytes_length _ _ _
-  by_cases hle : (s₀.readReg64 .x2).toNat ≤ 64
-  · have heff : effectiveHmacKey F key = key := effectiveHmacKey_of_le F (by omega)
-    rw [heff]
-    exact NewFromSlice3Proof.new_from_slice3_run hpc hstat hle hiv hb hread_iv hdisj_iv_stack hrw_out hrw_stack
-      hdisj_out_stack hdisj_key_stack hal
-  · have hgt : 64 < (s₀.readReg64 .x2).toNat := by omega
-    have hgt' : 64 < key.length := by omega
-    have heff : effectiveHmacKey F key = sha256With F key := by
-      unfold effectiveHmacKey
-      simp [hgt']
-    rw [heff]
-    have hdisj_k : DisjointRegions (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat (s₀.sp - 544#64) 544 :=
-      hdisj_key_stack.resolve_left (by omega)
-    exact new_from_slice3_gt64_run hpc hstat hgt hlt hiv hb hread_iv hdisj_iv_stack hrw_out hrw_stack
-      hdisj_out_stack hdisj_k hal
 
 /-! ## Placed (`[LibsignalPlacement]`) Generalized `new_from_slice [local#3]` (Block `402`) -/
 
@@ -1057,9 +814,9 @@ theorem nfs_first_half_gt64_placed [LibsignalPlacement] {F : ShaState → List (
   have hkey_gt : 64 < key.length := by omega
   have hkey_lt : key.length < 2 ^ 63 := by omega
   have hk_le : (sha256With F key).length ≤ 64 := by have : (sha256With F key).length = 32 := sha256With_length F key; omega
-  have hiv' : s₀.mem.readBytes (nfs3PlacedFakeB + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = shaStateBytes sha256IV := by rwa [nfs3PlacedFakeB_add_iv]
-  have hread_iv' : s₀.mem.Readable (nfs3PlacedFakeB + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 := by rwa [nfs3PlacedFakeB_add_iv]
-  have hdisj_iv_stack' : DisjointRegions (nfs3PlacedFakeB + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 544#64) 544 := by rwa [nfs3PlacedFakeB_add_iv]
+  have hiv' : s₀.mem.readBytes (nfs3PlacedFakeB + bv% nfs3IvOffNat) 32 = shaStateBytes sha256IV := by rwa [nfs3PlacedFakeB_add_iv]
+  have hread_iv' : s₀.mem.Readable (nfs3PlacedFakeB + bv% nfs3IvOffNat) 32 := by rwa [nfs3PlacedFakeB_add_iv]
+  have hdisj_iv_stack' : DisjointRegions (nfs3PlacedFakeB + bv% nfs3IvOffNat) 32 (s₀.sp - 544#64) 544 := by rwa [nfs3PlacedFakeB_add_iv]
   refine (nfs_seg0_pro_gt64_placed hpc hstat hgt hrw_stack hal).trans fun s_g0 hg0 => ?_
   refine (nfs_seg0a_gt64_placed h_memcpy h_compress hg0 hgt hlt hiv' hread_iv' hdisj_iv_stack' hrw_stack hdisj_key_stack).trans fun s_g1 hg1 => ?_
   refine (nfs_seg0b_gt64_placed h_memset hg1 hkey_gt hkey_lt hrw_stack).trans fun s_g2 hg2 => ?_
@@ -1139,29 +896,6 @@ open CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalTripleRatchet.ConsumeMessageKeyTransfer
-
-theorem new_from_slice3_gen_runsTo_ext {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc ext : String → Option (State → State)}
-    (hle : ∀ n f, Rust.withPanics (CryptoVerification.LibsignalSession.sessionExterns F alloc) n = some f →
-      Rust.withPanics ext n = some f) :
-    Nfs3GenRunsToExt b F ext := by
-  intro s₀ hpc hstat hlt hiv hb hread_iv hdisj_iv_stack hrw_out hrw_stack
-    hdisj_out_stack hdisj_key_stack _hdisj_key_out hal hL2
-  have hL1 : (LibsignalSession.CryptoHmacSha256.P b F alloc).CodeLoaded s₀.mem := by
-    rw [Program.codeLoaded_iff] at hL2 ⊢
-    dsimp only [LibsignalSession.CryptoHmacSha256.P, tripleRatchetProgAtExt, Program.rebase] at hL2 ⊢
-    exact hL2
-  obtain ⟨s', hs, htr, hvregs, hpost, hL1'⟩ :=
-    NewFromSlice3GenProof.new_from_slice3_gen_run (F := F) (alloc := alloc)
-      hpc hstat hlt hiv hb hread_iv hdisj_iv_stack hrw_out hrw_stack
-      hdisj_out_stack hdisj_key_stack hal hL1
-  have hL2' : (tripleRatchetProgAtExt b ext).CodeLoaded s'.mem := by
-    rw [Program.codeLoaded_iff] at hL1' ⊢
-    dsimp only [LibsignalSession.CryptoHmacSha256.P, tripleRatchetProgAtExt, Program.rebase] at hL1' ⊢
-    exact hL1'
-  have hnh : s'.status ≠ .Halted := by rw [hpost.2.1]; decide
-  exact ⟨s', steps_mono libsignalSessionCode_stubs_offsets_fresh libsignalSessionCode_stubsDead
-    hle hs hL1 hnh, ⟨htr, hvregs⟩, hpost, hL2'⟩
 
 theorem new_from_slice3_gen_placed_runsTo [LibsignalPlacement] (C : Crypto) (H : LibsignalHooks)
     [hH : HkdfPlacedHooks C.F H] {s₀ : State}

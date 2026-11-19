@@ -9,12 +9,11 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.DecodesGet
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.DecodesIsTrusted
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.DecodesSave
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.ProgramReflection.SortedFresh
 
 /-! # Instruction Decode Theorems Barrel for `IdentityKeyStoreFutures` -/
 
-@[expose] public section
+public section

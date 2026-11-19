@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyCD
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyA
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyB
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCoupling
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyCD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyB
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCoupling -- proof-setup: allow-public-import
 public import Computational.Specifications.Assumptions.KeyInd1KeyRo
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 import VCVio.CryptoFoundations.SecExp.Measure
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre -- proof-setup: allow-public-import
 
 /-!
 # One-Key Hop 4: Lazy-Cache Coupling and `GapDhWithSign` Union Bound
@@ -25,7 +26,7 @@ import VCVio.CryptoFoundations.SecExp.Measure
 and D) with the one-key `G3 -> G3.5` lazy-cache coupling to bound `keyIndAdvG3_1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -244,7 +245,7 @@ theorem prob_badKeyIndFgAny4_1Key_le_gapDhWithSign (S : Setup) (b : QueryBudget)
 
 /-! ## One-Key `ShCr` Simulation and `G3` Game -/
 
-def pqxdhKeyIndShCrImpl1Key (checkG2 : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndShCrImpl1Key (checkG2 : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndShCrState S) ProbComp)
   | .initPrin u => liftKeyIndShCrBase (pqxdhKeyIndImpl1KeyReal S P (.initPrin u))
   | q => pqxdhKeyIndShCrImpl checkG2 S P q
@@ -274,18 +275,7 @@ theorem map_base_pqxdhKeyIndShCrImpl1Key_false (S : Setup) (P : Primitives)
     rw [pqxdhKeyIndShCrImpl1Key_eq_of_ne_initPrin false S P q hNe, hRo]
     exact map_base_pqxdhKeyIndShCrImpl_false S P q hst
 
-theorem map_base_fullKeyIndShCrImpl1Key_false (S : Setup) (P : Primitives)
-    (q : (unifSpec + keyIndSpec S).Domain) (hst : KeyIndShCrState S) :
-    (Prod.map id ShCrState.base <$>
-      (((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (KeyIndShCrState S) ProbComp) + pqxdhKeyIndShCrImpl1Key false S P) q).run hst) =
-      (((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (KeyIndState S) ProbComp) + pqxdhKeyIndImpl1KeyRo S P) q).run hst.base := by
-  cases q with
-  | inl _ => simp [QueryImpl.liftTarget, StateT.run_monadLift]
-  | inr kq => exact map_base_pqxdhKeyIndShCrImpl1Key_false S P kq hst
-
-noncomputable def runKeyIndShCrSim1Key (S : Setup) (P : Primitives)
+@[expose] def runKeyIndShCrSim1Key (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp (Bool × Bool × KeyIndShCrState S) := do
   let secb ← $ᵗ Bool
   let initSt : KeyIndShCrState S := { base := KeyIndState.empty S secb }
@@ -294,12 +284,12 @@ noncomputable def runKeyIndShCrSim1Key (S : Setup) (P : Primitives)
   let (b', finalHst) ← (simulateQ impl A.run).run initSt
   return (secb, b', finalHst)
 
-noncomputable def badKemShCrProbKeyInd_1Key (S : Setup) (P : Primitives)
+@[expose] noncomputable def badKemShCrProbKeyInd_1Key (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyIndShCrSim1Key S P A >>= fun (_, _, finalHst) =>
     pure (hasBadKemShCrRecords S P finalHst.initKemRecs finalHst.recvKemRecs)] {true}).toReal
 
-noncomputable def keyIndExpG2_5ShCr_1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+def keyIndExpG2_5ShCr_1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let (secb, b', finalHst) ← runKeyIndShCrSim1Key S P A
   let finalSt := finalHst.base
@@ -320,12 +310,12 @@ noncomputable def keyIndAdvG2_5ShCr_1Key (S : Setup) (P : Primitives) (A : KeyIn
   (𝒟[keyIndExpG2_5ShCr_1Key S P A].boolBias).toReal
 
 /-- One-key `G3` experiment: runs `runKeyIndShCrSim1Key` and applies `finalizeKeyIndG3`. -/
-noncomputable def keyIndExpG3_1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyIndExpG3_1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool := do
   let (secb, b', finalHst) ← runKeyIndShCrSim1Key S P A
   finalizeKeyIndG3 S P secb b' finalHst
 
-noncomputable def keyIndAdvG3_1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyIndAdvG3_1Key (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyIndExpG3_1Key S P A].boolBias).toReal
 
 theorem keyInd_hop_badKemShCr_1Key_le_prob (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
@@ -348,7 +338,7 @@ theorem keyInd_hop_badKemShCr_1Key_le_prob (S : Setup) (P : Primitives) (A : Key
 
 /-! ## `advRoLog` Extension and `secb`-Branch Decomposition -/
 
-def pqxdhKeyIndAdvG3Impl1Key (S : Setup) (P : Primitives) :
+@[expose] def pqxdhKeyIndAdvG3Impl1Key (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndAdvCutoffState S) ProbComp)
   | .roQuery sec =>
     StateT.mk fun hst => do
@@ -398,7 +388,7 @@ theorem simulateQ_pqxdhKeyIndAdvG3Impl1Key_shCr {S : Setup} {α : Type} (P : Pri
       congr 1; funext y
       exact ih y.1 y.2
 
-noncomputable def runKeyIndAdvG3Sim1Key (S : Setup) (P : Primitives)
+@[expose] def runKeyIndAdvG3Sim1Key (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp (Bool × Bool × KeyIndAdvCutoffState S) := do
   let secb ← $ᵗ Bool
   let initSt : KeyIndAdvCutoffState S :=
@@ -496,7 +486,7 @@ theorem badKeyIndFgAny_runKeyIndAdvG3Sim1Key_eq_runKeyIndFgSim1Key
   rw [← runKeyIndAdvG3Sim1Key_toFg S P A, bind_map_left]
   rfl
 
-noncomputable def keyIndAdvG3Branch1Key (secb : Bool) (S : Setup) (P : Primitives)
+@[expose] def keyIndAdvG3Branch1Key (secb : Bool) (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp Bool := do
   let initSt : KeyIndAdvCutoffState S :=
     { shCr := { base := KeyIndState.empty S secb }, advRoLog := [] }
@@ -839,138 +829,6 @@ theorem evalDist_simulateQ_testImpl1Key_badKeyIndFgAny_eq_tagImpl1Key_false_fals
     (isInvariant_roLens_badKeyIndFgAny S P maxLen)
     (KeyIndLazyState.empty S)
 
-theorem keyIndAdvG3_1Key_le_prob_badKeyIndFgAny_of_tagImpl_false_false_relCoupled
-    (S : Setup) (P : Primitives) (maxLen : ℕ) (A : KeyIndAdversary S)
-    (R : Bool × KeyIndLazyState S → Bool × KeyIndLazyState S → Prop)
-    (hRel :
-      let fullF := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (KeyIndLazyState S) ProbComp) + pqxdhKeyIndAdvTagImpl1Key false false false S P
-      let fullT := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (KeyIndLazyState S) ProbComp) + pqxdhKeyIndAdvTagImpl1Key false false true S P
-      RelCoupled R
-        ((simulateQ fullF A.run).run (KeyIndLazyState.empty S))
-        ((simulateQ fullT A.run).run (KeyIndLazyState.empty S)))
-    (hFin : ∀ p5 p6, R p5 p6 →
-      𝒟[finalizeKeyIndG3 S P true p5.1 p5.2.adv.shCr] {true} =
-        𝒟[finalizeKeyIndG3 S P true p6.1 p6.2.adv.shCr] {true} ∨
-      badKeyIndFgAny4 P maxLen p5.2.adv.shCr.base p5.2.adv.advRoLog = true ∨
-      badKeyIndFgAny4 P maxLen p6.2.adv.shCr.base p6.2.adv.advRoLog = true) :
-    keyIndAdvG3_1Key S P A ≤
-      2 * (𝒟[runKeyIndFgSim1Key S P A >>= fun x =>
-        pure (badKeyIndFgAny4 P maxLen x.2.2.base x.2.2.advRoLog)] {true}).toReal := by
-  let initFalse : KeyIndAdvCutoffState S :=
-    { shCr := { base := KeyIndState.empty S false }, advRoLog := [] }
-  let initTrue : KeyIndAdvCutoffState S :=
-    { shCr := { base := KeyIndState.empty S true }, advRoLog := [] }
-  let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (KeyIndAdvCutoffState S) ProbComp) + pqxdhKeyIndAdvG3Impl1Key S P
-  let implF := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (KeyIndAdvCutoffState S) ProbComp) + pqxdhKeyIndAdvTestImpl1Key false S P
-  let implT := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (KeyIndAdvCutoffState S) ProbComp) + pqxdhKeyIndAdvTestImpl1Key true S P
-  have hSym := hRel.evalDist_bind_le_sym
-    (fun p5 => badKeyIndFgAny4 P maxLen p5.2.adv.shCr.base p5.2.adv.advRoLog)
-    (fun p6 => badKeyIndFgAny4 P maxLen p6.2.adv.shCr.base p6.2.adv.advRoLog)
-    (fun p5 => finalizeKeyIndG3 S P true p5.1 p5.2.adv.shCr)
-    (fun p6 => finalizeKeyIndG3 S P true p6.1 p6.2.adv.shCr)
-    hFin
-  rw [← evalDist_simulateQ_testImpl1Key_finalizeKeyIndG3_eq_tagImpl1Key_false_false false P true
-        A.run,
-      ← evalDist_simulateQ_testImpl1Key_finalizeKeyIndG3_eq_tagImpl1Key_false_false true P true
-        A.run,
-      ← evalDist_simulateQ_testImpl1Key_badKeyIndFgAny_eq_tagImpl1Key_false_false false P maxLen
-        A.run,
-      ← evalDist_simulateQ_testImpl1Key_badKeyIndFgAny_eq_tagImpl1Key_false_false true P maxLen
-        A.run] at hSym
-  have hBrF : keyIndAdvG3Branch1Key false S P A =
-      ((simulateQ implF A.run).run initTrue >>= fun p => finalizeKeyIndG3 S P true p.1 p.2.shCr) :=
-    by
-    unfold keyIndAdvG3Branch1Key
-    simp only [finalizeKeyIndG3Post_eq_finalizeKeyIndG3_true]
-    have hInit : ({ shCr :=
-      { base := KeyIndState.empty S false }, advRoLog := [] } : KeyIndAdvCutoffState S) =
-        withSecbAdv false initTrue := rfl
-    rw [hInit, simulateQ_pqxdhKeyIndAdvG3Impl1Key_withSecbAdv false P A.run initTrue,
-      bind_map_left]
-    rfl
-  have hBrT : keyIndAdvG3Branch1Key true S P A =
-      ((simulateQ implT A.run).run initTrue >>= fun p => finalizeKeyIndG3 S P true p.1 p.2.shCr) :=
-    by
-    unfold keyIndAdvG3Branch1Key
-    simp only [finalizeKeyIndG3Post_eq_finalizeKeyIndG3_true]
-    have hInit : ({ shCr :=
-      { base := KeyIndState.empty S true }, advRoLog := [] } : KeyIndAdvCutoffState S) =
-        withSecbAdv true initTrue := rfl
-    conv_lhs => rw [hInit]
-    rw [simulateQ_pqxdhKeyIndAdvG3Impl1Key_withSecbAdv true P A.run initTrue, bind_map_left]
-    rfl
-  have hBadF : ((simulateQ implF A.run).run initTrue >>= fun p =>
-      pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)) =
-      ((simulateQ impl A.run).run initFalse >>= fun p =>
-      pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)) := by
-    have hInit : initFalse = withSecbAdv false initTrue := rfl
-    rw [hInit, simulateQ_pqxdhKeyIndAdvG3Impl1Key_withSecbAdv false P A.run initTrue,
-      bind_map_left]
-    rfl
-  have hBadT : ((simulateQ implT A.run).run initTrue >>= fun p =>
-      pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)) =
-      ((simulateQ impl A.run).run initTrue >>= fun p =>
-      pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)) := by
-    have hInit : initTrue = withSecbAdv true initTrue := rfl
-    conv_rhs => rw [hInit]
-    rw [simulateQ_pqxdhKeyIndAdvG3Impl1Key_withSecbAdv true P A.run initTrue, bind_map_left]
-    rfl
-  rw [← hBrF, ← hBrT, hBadF, hBadT] at hSym
-  have hBadSum :
-      2 * (𝒟[runKeyIndFgSim1Key S P A >>= fun x =>
-        pure (badKeyIndFgAny4 P maxLen x.2.2.base x.2.2.advRoLog)] {true}).toReal =
-      (𝒟[(simulateQ impl A.run).run initFalse >>= fun p =>
-        pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] {true}).toReal +
-      (𝒟[(simulateQ impl A.run).run initTrue >>= fun p =>
-        pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] {true}).toReal := by
-    rw [← badKeyIndFgAny_runKeyIndAdvG3Sim1Key_eq_runKeyIndFgSim1Key]
-    unfold runKeyIndAdvG3Sim1Key
-    simp only [bind_assoc, pure_bind]
-    exact two_mul_toReal_uniformBool_bind_eq_add_fg (fun secb =>
-      (simulateQ impl A.run).run
-        { shCr := { base := KeyIndState.empty S secb }, advRoLog := [] } >>=
-        fun p => pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog))
-  have hfin5 : 𝒟[keyIndAdvG3Branch1Key false S P A] {true} ≠ ⊤ :=
-    MeasureTheory.measure_ne_top _ {true}
-  have hfin6 : 𝒟[keyIndAdvG3Branch1Key true S P A] {true} ≠ ⊤ :=
-    MeasureTheory.measure_ne_top _ {true}
-  have hfinB5 : 𝒟[(simulateQ impl A.run).run initFalse >>= fun p =>
-      pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] {true} ≠ ⊤ :=
-    MeasureTheory.measure_ne_top _ {true}
-  have hfinB6 : 𝒟[(simulateQ impl A.run).run initTrue >>= fun p =>
-      pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] {true} ≠ ⊤ :=
-    MeasureTheory.measure_ne_top _ {true}
-  have hfinBad : 𝒟[(simulateQ impl A.run).run initFalse >>= fun p =>
-      pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] {true} +
-     𝒟[(simulateQ impl A.run).run initTrue >>= fun p =>
-      pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] {true} ≠ ⊤ :=
-    ENNReal.add_ne_top.mpr ⟨hfinB5, hfinB6⟩
-  have h1 : 𝒟[keyIndAdvG3Branch1Key false S P A] {true} ≤
-      𝒟[keyIndAdvG3Branch1Key true S P A] {true} +
-      (𝒟[(simulateQ impl A.run).run initFalse >>= fun p =>
-        pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] {true} +
-       𝒟[(simulateQ impl A.run).run initTrue >>= fun p =>
-        pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] {true}) := by
-    rw [← add_assoc]; exact hSym.1
-  have h2 : 𝒟[keyIndAdvG3Branch1Key true S P A] {true} ≤
-      𝒟[keyIndAdvG3Branch1Key false S P A] {true} +
-      (𝒟[(simulateQ impl A.run).run initFalse >>= fun p =>
-        pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] {true} +
-       𝒟[(simulateQ impl A.run).run initTrue >>= fun p =>
-        pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] {true}) := by
-    rw [← add_assoc]; exact hSym.2
-  have h1r := (ENNReal.toReal_le_toReal hfin5 (ENNReal.add_ne_top.mpr ⟨hfin6, hfinBad⟩)).mpr h1
-  have h2r := (ENNReal.toReal_le_toReal hfin6 (ENNReal.add_ne_top.mpr ⟨hfin5, hfinBad⟩)).mpr h2
-  rw [ENNReal.toReal_add hfin6 hfinBad, ENNReal.toReal_add hfinB5 hfinB6] at h1r
-  rw [ENNReal.toReal_add hfin5 hfinBad, ENNReal.toReal_add hfinB5 hfinB6] at h2r
-  rw [keyIndAdvG3_1Key_eq_abs_sub_branch, hBadSum]
-  exact abs_sub_le_iff.mpr ⟨by linarith, by linarith⟩
-
 theorem validNonTestTagStep_of_tagStepView1Key {S : Setup} (testReal : Bool) (P : Primitives)
     (q : KeyIndQuery S) (hNeTest : ∀ sid, q ≠ .testSession sid)
     (adv : KeyIndAdvCutoffState S)
@@ -1055,48 +913,6 @@ theorem relCoupled_pqxdhKeyIndAdvTagImpl1Key_false_false_step {S : Setup} (P : P
     rintro ⟨post, adv'⟩ hy
     have hStepView := validNonTestTagStep_of_tagStepView1Key false P q hNeTest (getLazyView lst5) hy
     exact relCoupled_runLazyPost_of_validNonTestTagStep lst5 lst6 post adv' hAg hStepView
-
-theorem keyIndAdvG3_1Key_le_prob_badKeyIndFgAny_of_lazyStop
-    (S : Setup) (P : Primitives) (maxLen : ℕ) (A : KeyIndAdversary S)
-    (hStop :
-      ∀ (testReal : Bool),
-      let full := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (KeyIndLazyState S) ProbComp) + pqxdhKeyIndAdvTagImpl1Key false false testReal S P
-      ∀ p ∈ support ((simulateQ full A.run).run (KeyIndLazyState.empty S)),
-      lazyStop p.2.adv = true →
-      badKeyIndFgAny4 P maxLen p.2.adv.shCr.base p.2.adv.advRoLog = true ∨
-      isKeyIndG3Abort P p.2.adv.shCr = true) :
-    keyIndAdvG3_1Key S P A ≤
-      2 * (𝒟[runKeyIndFgSim1Key S P A >>= fun x =>
-        pure (badKeyIndFgAny4 P maxLen x.2.2.base x.2.2.advRoLog)] {true}).toReal := by
-  let fullF := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (KeyIndLazyState S) ProbComp) + pqxdhKeyIndAdvTagImpl1Key false false false S P
-  let fullT := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (KeyIndLazyState S) ProbComp) + pqxdhKeyIndAdvTagImpl1Key false false true S P
-  apply keyIndAdvG3_1Key_le_prob_badKeyIndFgAny_of_tagImpl_false_false_relCoupled S P maxLen A
-    (fun p5 p6 =>
-      ((p5.1 = p6.1 ∧ LazyTagCacheAgree p5.2 p6.2) ∨
-        (lazyStop p5.2.adv = true ∧ lazyStop p6.2.adv = true)) ∧
-      p5 ∈ support ((simulateQ fullF A.run).run (KeyIndLazyState.empty S)) ∧
-      p6 ∈ support ((simulateQ fullT A.run).run (KeyIndLazyState.empty S)))
-  · exact (simulateQ_relCoupled_or_stop
-      (pqxdhKeyIndAdvTagImpl1Key false false false S P)
-      (pqxdhKeyIndAdvTagImpl1Key false false true S P)
-      LazyTagCacheAgree (fun s => lazyStop s.adv) (fun s => lazyStop s.adv)
-      (fun q s5 hS _ hy => lazyStop_mono_pqxdhKeyIndAdvTagImpl1Key_false_false false P q s5 hS hy)
-      (fun q s6 hS _ hy => lazyStop_mono_pqxdhKeyIndAdvTagImpl1Key_false_false true P q s6 hS hy)
-      (relCoupled_pqxdhKeyIndAdvTagImpl1Key_false_false_step P) A.run
-      (KeyIndLazyState.empty S) (KeyIndLazyState.empty S) (lazyTagCacheAgree_empty S)).and_support
-  · rintro p5 p6 ⟨⟨hEq, hAg⟩ | ⟨hs5, hs6⟩, hp5, hp6⟩
-    · left
-      rw [hEq, finalizeKeyIndG3_eq_of_lazyTagCacheAgree P p6.1 p5.2 p6.2 hAg]
-    · rcases hStop false p5 hp5 hs5 with hb5 | ha5
-      · exact Or.inr (Or.inl hb5)
-      · rcases hStop true p6 hp6 hs6 with hb6 | ha6
-        · exact Or.inr (Or.inr hb6)
-        · left
-          rw [finalizeKeyIndG3_of_isKeyIndG3Abort S P true p5.1 p5.2.adv.shCr ha5,
-              finalizeKeyIndG3_of_isKeyIndG3Abort S P true p6.1 p6.2.adv.shCr ha6]
 
 /-! ## `ValidTagState` Preservation and `G3 -> G3.5` Bound -/
 

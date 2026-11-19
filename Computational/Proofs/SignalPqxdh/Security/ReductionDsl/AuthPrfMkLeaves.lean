@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkShallow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkShallow -- proof-setup: allow-public-import
 
 /-!
 # Leaf List-Length Bounds for the Shallow `PrfMsgKeys` Step
@@ -17,7 +17,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkSh
 Proves `mkPre_leaves` and `MkCont.post_leaves`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,17 +70,6 @@ private theorem finishAuthRecvMkSlotsPrim_bounded {S : Setup} {n : Nat} (msg : P
   · intro p hp
     exact AllLeaves.pure ⟨hp, hc⟩
 
-theorem finishAuthRecvMkPrim_bounded {S : Setup} {n : Nat} (msg : PreKeyMsg)
-    (prep : PreparedAuthRecvPrim S)
-    (drKey : DRKey) (rk1 ck1_1 : Bytes) (recvCount' : Nat)
-    (mkSaltCache' : List ((SessionId S × Option Bytes) × (Nat × MessageKeys)))
-    (deriveMessageKeys : MessageKeys) (hP : PreparedRecvBounded n prep)
-    (hc : mkSaltCache'.length ≤ n + 1) :
-    AllLeaves (fun p => AuthListsBounded (n + 1) p.2)
-      (finishAuthRecvMkPrim S msg prep drKey rk1 ck1_1 recvCount' mkSaltCache' deriveMessageKeys) :=
-  finishAuthRecvMkSlotsPrim_bounded msg prep drKey rk1 ck1_1 recvCount' mkSaltCache' {}
-    deriveMessageKeys hP hc
-
 theorem MkCont.post_leaves {S : Setup} {n : Nat} (c : MkCont S) (mk : MessageKeys)
     (hc : c.Bounded n) :
     AllLeaves (fun p => AuthListsBounded (n + 1) p.2) (c.post mk) := by
@@ -96,7 +85,7 @@ theorem MkCont.post_leaves {S : Setup} {n : Nat} (c : MkCont S) (mk : MessageKey
     | none => exact Nat.le_trans hC (Nat.le_succ n)
     | some p => simp; omega
 
-def PrepSendOk {S : Setup} (n : Nat) : PreparedAuthSend S → Prop
+@[expose] def PrepSendOk {S : Setup} (n : Nat) : PreparedAuthSend S → Prop
   | .done _ hst' => AuthListsBounded (n + 1) hst'
   | .idealMk .. => True
 
@@ -162,7 +151,7 @@ theorem prepareAuthSendMkPrim_bounded {S : Setup} {n : Nat}
       intro p hp
       exact AllLeaves.pure ⟨hp, Nat.le_trans hB.mkSaltCache_le (Nat.le_succ n)⟩
 
-def MkLeafOk {S : Setup} (n : Nat) (sc : Bool) (R : Prop) : MkPre S → Prop
+@[expose] def MkLeafOk {S : Setup} (n : Nat) (sc : Bool) (R : Prop) : MkPre S → Prop
   | .inl (_, hst') => AuthListsBounded (n + 1) hst'
   | .inr (_, c) => c.Bounded n ∧ (c.isSend = true → sc = false) ∧ (c.isSend = false → R)
 
@@ -226,14 +215,6 @@ private theorem mkUnmatchedSlotsPre_leaves {S : Setup} {n : Nat} {R : Prop} (hR 
     exact AllLeaves.bind (finishAuthRecvMkSlotsPrim_bounded _ _ _ _ _ _ _ slots' _ hP hC')
       (fun ⟨_, _⟩ hp => AllLeaves.pure hp)
 
-theorem mkUnmatchedPre_leaves {S : Setup} {n : Nat} {R : Prop} (hR : R) (idx : Nat)
-    (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S) (drKey : DRKey) (rk1 : Bytes)
-    (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat) (cache : AuthMkSaltCache S)
-    (sc : Bool) (hP : PreparedRecvBounded n prep) (hC : cache.length ≤ n) :
-    AllLeaves (MkLeafOk n sc R)
-      (mkUnmatchedPre S idx msg prep drKey rk1 spqrSalt? rSlot recvCount' cache sc) :=
-  mkUnmatchedSlotsPre_leaves hR idx msg prep drKey rk1 spqrSalt? rSlot recvCount' cache {} sc hP hC
-
 private theorem mkMatchedSameEphSlotsPre_leaves {S : Setup} {n : Nat} {R : Prop} (hR : R)
     (idx : Nat) (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
     (s : IdealAuthSession S) (sIdx : Nat) (spqrSalt? : Option Bytes) (recvCount : Nat)
@@ -272,16 +253,6 @@ private theorem mkMatchedSameEphSlotsPre_leaves {S : Setup} {n : Nat} {R : Prop}
   · refine AllLeaves.bind_const _ (fun mk => ?_)
     exact AllLeaves.bind (finishAuthRecvMkSlotsPrim_bounded _ _ _ _ _ _ _ slots _ hP hC')
       (fun ⟨_, _⟩ hp => AllLeaves.pure hp)
-
-theorem mkMatchedSameEphPre_leaves {S : Setup} {n : Nat} {R : Prop} (hR : R) (idx : Nat)
-    (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S)
-    (s : IdealAuthSession S) (spqrSalt? : Option Bytes) (recvCount : Nat)
-    (cache : AuthMkSaltCache S) (sc : Bool) (hP : PreparedRecvBounded n prep)
-    (hC : cache.length ≤ n) :
-    AllLeaves (MkLeafOk n sc R)
-      (mkMatchedSameEphPre S idx msg prep s spqrSalt? recvCount cache) :=
-  mkMatchedSameEphSlotsPre_leaves hR idx msg prep s (sessionSlotIndex s.sid) spqrSalt? recvCount
-    cache {} sc hP hC
 
 theorem mkRecvPre_leaves {S : Setup} {n : Nat} {R : Prop} (hR : R) (idx : Nat)
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecvPrim S))

@@ -10,25 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChunkedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple3Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChunkedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple3Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpoch
-import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple3
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple3 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch3Placed
@@ -37,6 +37,14 @@ import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WP.FrameAuto
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
 
 /-!
 # `<States>::recv` (Block `332`): Budget-Threaded `Ct2Sampled` Arm
@@ -45,7 +53,7 @@ Relocatable `[LibsignalPlacement]` `RustCliAllocBudget` proof of `States.ct2Samp
 (`tag = 12#64`, `+2396`) with `Ct2SampledRecvPostEnv` and `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple3PlacedBudget
 
@@ -161,7 +169,7 @@ local elab "by_vm_steps_nest " tac:Lean.Parser.Tactic.tacticSeq : tactic => do
     vectors via `drop_glue::<Ct2Sampled>` when `(msg.epoch == st.uc.epoch + 1#64) = false`) on
     `msg.epoch > st.uc.epoch`, and performs zero allocator calls (`evs = []`) on
     `¬ (msg.epoch > st.uc.epoch)`. -/
-def Ct2SampledRecvPostEnv {F : ShaCompress}
+@[expose] def Ct2SampledRecvPostEnv {F : ShaCompress}
     (st : Ct2Sampled spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
     (evs : List AllocEvent) : Prop :=
   if msg.epoch > st.uc.epoch then FreeOnlyEvs evs else evs = []

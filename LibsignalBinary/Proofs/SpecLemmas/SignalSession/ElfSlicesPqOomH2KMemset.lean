@@ -15,6 +15,21 @@ public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2St
 public import ProofLib.ProgramReflection -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
 import ProofLib.StdStartup.MemOps
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlacedBudget
 
 /-!
 # K-Route `W`-Independent `memset` Ghost Hook Instance (`ElfSlicesPqOomH2KMemset`)
@@ -202,23 +217,13 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks (
   h2k_ghFixedK h2k_keepSubLr_false_of_noException h2k_withKeepLrFalse
 )
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2StepsLiftR2 (
-  h2sl_realW_noExtern_keepSub h2sl_steps_realW_of_visitedIn_keepSub
+  h2sl_keepLoSub
 )
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst (
   hole2_emptyProg hole2_keepSub
 )
 
 /-! ## 1. K-Convention `W`-Independent Definitions & Definitional (`rfl`) Bridges -/
-
-/-- `MemsetCode.memsetSpecK` is definitionally identical (`rfl`) to
-    `ElfSlicesPqOomH2KHooks.h2k_withKeepLrFalse`. -/
-theorem memsetSpecK_eq_h2k_withKeepLrFalse {α : Type} (keep : BitVec 64 → Bool) (spec : Spec α) :
-    memsetSpecK keep spec = h2k_withKeepLrFalse keep spec := rfl
-
-/-- `ElfSlicesPqOomPlacedInst.hole2_emptyProg` is definitionally identical (`rfl`) to
-    `MemsetGhostK.emptyStdProg` (`Program.ofSvc Syscall.standard`). -/
-theorem hole2_emptyProg_eq_emptyStdProg :
-    hole2_emptyProg = emptyStdProg := rfl
 
 /-- `hole2_keepSub` equals `keepRange f3RxSegBase.toNat (f3RxSegBase.toNat + 4 * f3RxWordCount)`
     (`rev_c1.md` §4 nice-to-have #4, stated purely symbolically via `f3RxSegBase` and
@@ -255,43 +260,9 @@ theorem h2k_memsetGhostHook_eq_f3Empty (mmpl : MultiPlacement) :
     h2k_memsetGhostHook mmpl =
       f3EmptyMemsetGhostHook hole2_keepSub f3TrialRxProg (mmpl.base 21) := rfl
 
-theorem h2k_memsetGhostHookK_eq_f3EmptyK (mmpl : MultiPlacement) :
-    h2k_memsetGhostHookK mmpl =
-      f3EmptyMemsetGhostHookK hole2_keepSub f3TrialRxProg (mmpl.base 21) := rfl
-
 /-! ## 2. Kernel-Checked `f3TrialRxProg.hasWords (mmpl.base 21) memsetWordsSym` & `CodeLoaded` -/
 
-private theorem memsetWordsSym_len_le : memsetWordsSym.length ≤ 1024 :=
-  Nat.le_of_ble_eq_true (by rfl_kernel : Nat.ble memsetWordsSym.length 1024 = true)
-
 set_option maxRecDepth 4000000 in
-private theorem h2k_f3Trial_blk21_chk :
-    checkWordsAt f3TrialRxWordTree
-      (f3MallocngMpl.base 21 - f3RxSegBase).toNat memsetWordsSym = true := by
-  rfl_kernel
-
-/-- Unconditional kernel-checked `hasWords` for `memsetWordsSym` at `f3MallocngMpl.base 21` inside
-    `f3TrialRxProg`. -/
-theorem h2k_f3TrialRxProg_hasWords_blk21_f3 :
-    f3TrialRxProg.hasWords (f3MallocngMpl.base 21) memsetWordsSym := by
-  have hoff_lt : (f3MallocngMpl.base 21 - f3RxSegBase).toNat < 2 ^ 32 := by decide
-  have hlen := memsetWordsSym_len_le
-  exact hasWords_of_wordTree f3RxWordCount
-    f3TrialRxWordTree_eq f3TrialRxWordTree_size
-    (by rw [f3TrialRxProg_base]) (by omega)
-    f3TrialRxProg_stubs f3TrialRxProg_symbols h2k_f3Trial_blk21_chk
-
-/-- `f3TrialRxProg` holds `memsetWordsSym` at `mmpl.base 21` for every `mmpl` satisfying
-    `mallocngLib.LinkedAt cliElfBytes mmpl`. -/
-theorem h2k_f3TrialRxProg_hasWords_blk21 {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    f3TrialRxProg.hasWords (mmpl.base 21) memsetWordsSym := by
-  have h21 : (21 : Nat) < mallocngLib.blocks.length := by decide
-  have hbase : mmpl.base 21 = f3MallocngMpl.base 21 :=
-    (f3CliElf_mallocng_linkedAt_unique hMm).1 21 h21
-  rw [hbase]
-  exact h2k_f3TrialRxProg_hasWords_blk21_f3
-
 /-- `F3CodeInv mpl mmpl m` implies `f3TrialRxProg.CodeLoaded (stripExecOutside hole2_keepSub m)`. -/
 theorem h2k_f3CodeInv_rxProg_keepSub {mpl mmpl : MultiPlacement} {m : Memory}
     (hInv : F3CodeInv mpl mmpl m) :
@@ -312,22 +283,6 @@ theorem h2k_f3CodeInv_rxProg_keepSub {mpl mmpl : MultiPlacement} {m : Memory}
 
 /-! ## 3. State / Frame / Consumer `HookOk` Suite (`hMm` Only, `W`-Independent) -/
 
-theorem h2k_memsetGhostHook_fs (mmpl : MultiPlacement) (s0 : State) :
-    (h2k_memsetGhostHook mmpl s0).fs = s0.fs :=
-  f3EmptyMemsetGhostHook_fs hole2_keepSub f3TrialRxProg (mmpl.base 21) s0
-
-theorem h2k_memsetGhostHookK_fs (mmpl : MultiPlacement) (s0 : State) :
-    (h2k_memsetGhostHookK mmpl s0).fs = s0.fs :=
-  f3EmptyMemsetGhostHookK_fs hole2_keepSub f3TrialRxProg (mmpl.base 21) s0
-
-theorem h2k_memsetGhostHook_fsT (mmpl : MultiPlacement) :
-    HookFsTraced IsFsC (h2k_memsetGhostHook mmpl) :=
-  f3EmptyMemsetGhostHook_fsT hole2_keepSub f3TrialRxProg (mmpl.base 21)
-
-theorem h2k_memsetGhostHookK_fsT (mmpl : MultiPlacement) :
-    HookFsTraced IsFsC (h2k_memsetGhostHookK mmpl) :=
-  f3EmptyMemsetGhostHookK_fsT hole2_keepSub f3TrialRxProg (mmpl.base 21)
-
 theorem h2k_memsetGhostHookK_keepLr_false_of_noException
     {mmpl : MultiPlacement} {u : State}
     (hnoex : ∀ msg, (h2k_memsetGhostHookK mmpl u).status ≠ .Exception msg) :
@@ -338,292 +293,6 @@ section ConsumerContracts
 
 variable {mmpl : MultiPlacement} (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
 include hMm
-
-private theorem hw_blk21 : f3TrialRxProg.hasWords (mmpl.base 21) memsetWordsSym :=
-  h2k_f3TrialRxProg_hasWords_blk21 hMm
-
-theorem h2k_memsetGhostHook_trace (s0 : State) :
-    (h2k_memsetGhostHook mmpl s0).trace = s0.trace :=
-  f3EmptyMemsetGhostHook_trace f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) s0
-
-theorem h2k_memsetGhostHookK_trace (s0 : State) :
-    (h2k_memsetGhostHookK mmpl s0).trace = s0.trace :=
-  f3EmptyMemsetGhostHookK_trace f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) s0
-
-theorem h2k_memsetGhostHook_vmPreserved (s0 : State) :
-    VmPreserved s0 (h2k_memsetGhostHook mmpl s0) :=
-  f3EmptyMemsetGhostHook_vmPreserved f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) s0
-
-theorem h2k_memsetGhostHookK_vmPreserved (s0 : State) :
-    VmPreserved s0 (h2k_memsetGhostHookK mmpl s0) :=
-  f3EmptyMemsetGhostHookK_vmPreserved f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) s0
-
-theorem h2k_memsetGhostHook_oomPoolPreserved (s0 : State) :
-    OomPreserved s0 (h2k_memsetGhostHook mmpl s0) ∧
-    PoolPreserved s0 (h2k_memsetGhostHook mmpl s0) :=
-  f3EmptyMemsetGhostHook_oomPoolPreserved f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) s0
-
-theorem h2k_memsetGhostHookK_oomPoolPreserved (s0 : State) :
-    OomPreserved s0 (h2k_memsetGhostHookK mmpl s0) ∧
-    PoolPreserved s0 (h2k_memsetGhostHookK mmpl s0) :=
-  f3EmptyMemsetGhostHookK_oomPoolPreserved f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) s0
-
-theorem h2k_memsetGhostHook_master_ok : HookOk (h2k_memsetGhostHook mmpl) masterMemsetSpec :=
-  f3EmptyMemsetGhostHook_master_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_masterK_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub masterMemsetSpec) :=
-  f3EmptyMemsetGhostHookK_masterK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_libcMemset_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (libcMemsetSpec stk) :=
-  f3EmptyMemsetGhostHook_libcMemset_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_sessionMemset_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (sessionMemsetSpec stk) :=
-  f3EmptyMemsetGhostHook_sessionMemset_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_cliMemset_ok : HookOk (h2k_memsetGhostHook mmpl) memsetSpec :=
-  f3EmptyMemsetGhostHook_cliMemset_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_memsetRegion_ok : HookOk (h2k_memsetGhostHook mmpl) memsetRegionSpec :=
-  f3EmptyMemsetGhostHook_memsetRegion_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_sessionMemsetRegion_ok :
-    HookOk (h2k_memsetGhostHook mmpl) sessionMemsetRegionSpec :=
-  f3EmptyMemsetGhostHook_sessionMemsetRegion_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_session2MemsetExtern_ok (stk : Nat := 16384) :
-    HookOk (h2k_memsetGhostHook mmpl) (session2MemsetExternSpec stk) :=
-  f3EmptyMemsetGhostHook_session2MemsetExtern_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_libcMemset_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (libcMemsetSpec stk).keepsFs :=
-  f3EmptyMemsetGhostHook_libcMemset_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_sessionMemset_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (sessionMemsetSpec stk).keepsFs :=
-  f3EmptyMemsetGhostHook_sessionMemset_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_cliMemset_keepsFs_ok :
-    HookOk (h2k_memsetGhostHook mmpl) memsetSpec.keepsFs :=
-  f3EmptyMemsetGhostHook_cliMemset_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_memsetRegion_keepsFs_ok :
-    HookOk (h2k_memsetGhostHook mmpl) memsetRegionSpec.keepsFs :=
-  f3EmptyMemsetGhostHook_memsetRegion_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_sessionMemsetRegion_keepsFs_ok :
-    HookOk (h2k_memsetGhostHook mmpl) sessionMemsetRegionSpec.keepsFs :=
-  f3EmptyMemsetGhostHook_sessionMemsetRegion_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_session2MemsetExtern_keepsFs_ok (stk : Nat := 16384) :
-    HookOk (h2k_memsetGhostHook mmpl) (session2MemsetExternSpec stk).keepsFs :=
-  f3EmptyMemsetGhostHook_session2MemsetExtern_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_memsetRegion_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (withStack memsetRegionSpec stk) :=
-  f3EmptyMemsetGhostHook_memsetRegion_withStack_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_sessionMemsetRegion_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (withStack sessionMemsetRegionSpec stk) :=
-  f3EmptyMemsetGhostHook_sessionMemsetRegion_withStack_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_libcMemset_budget_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (withVmPreserved (libcMemsetSpec stk)) :=
-  f3EmptyMemsetGhostHook_libcMemset_budget_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_libcMemset_budget_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (withVmPreserved (libcMemsetSpec stk)).keepsFs :=
-  f3EmptyMemsetGhostHook_libcMemset_budget_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_sessionMemsetBudget_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (sessionMemsetBudgetSpec stk) :=
-  f3EmptyMemsetGhostHook_sessionMemsetBudget_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_sessionMemsetBudget_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (sessionMemsetBudgetSpec stk).keepsFs :=
-  f3EmptyMemsetGhostHook_sessionMemsetBudget_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_cliMemset_budget_ok :
-    HookOk (h2k_memsetGhostHook mmpl) (withVmPreserved memsetSpec) :=
-  f3EmptyMemsetGhostHook_cliMemset_budget_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_session2MemsetExtern_budget_ok (stk : Nat := 16384) :
-    HookOk (h2k_memsetGhostHook mmpl) (withVmPreserved (session2MemsetExternSpec stk)) :=
-  f3EmptyMemsetGhostHook_session2MemsetExtern_budget_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_session2MemsetExtern_budget_keepsFs_ok (stk : Nat := 16384) :
-    HookOk (h2k_memsetGhostHook mmpl) (withVmPreserved (session2MemsetExternSpec stk)).keepsFs :=
-  f3EmptyMemsetGhostHook_session2MemsetExtern_budget_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_memsetRegion_budget_ok :
-    HookOk (h2k_memsetGhostHook mmpl) (withVmPreserved memsetRegionSpec) :=
-  f3EmptyMemsetGhostHook_memsetRegion_budget_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_memsetRegion_budget_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (withStack (withVmPreserved memsetRegionSpec) stk) :=
-  f3EmptyMemsetGhostHook_memsetRegion_budget_withStack_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_memsetRegion_budget_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (withStack (withVmPreserved memsetRegionSpec) stk).keepsFs :=
-  f3EmptyMemsetGhostHook_memsetRegion_budget_withStack_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_sessionMemsetRegionBudget_ok :
-    HookOk (h2k_memsetGhostHook mmpl) sessionMemsetRegionBudgetSpec :=
-  f3EmptyMemsetGhostHook_sessionMemsetRegionBudget_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_sessionMemsetRegionBudget_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (withStack sessionMemsetRegionBudgetSpec stk) :=
-  f3EmptyMemsetGhostHook_sessionMemsetRegionBudget_withStack_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_sessionMemsetRegionBudget_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (withStack sessionMemsetRegionBudgetSpec stk).keepsFs :=
-  f3EmptyMemsetGhostHook_sessionMemsetRegionBudget_withStack_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_memsetRegionCli_ok :
-    HookOk (h2k_memsetGhostHook mmpl) memsetRegionCliSpec :=
-  f3EmptyMemsetGhostHook_memsetRegionCli_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_libcMemsetCli_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (libcMemsetCliSpec stk) :=
-  f3EmptyMemsetGhostHook_libcMemsetCli_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_libcMemset_execFrozen_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (withExecFrozen (libcMemsetSpec stk)) :=
-  f3EmptyMemsetGhostHook_libcMemset_execFrozen_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_sessionMemset_execFrozen_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHook mmpl) (withExecFrozen (sessionMemsetSpec stk)) :=
-  f3EmptyMemsetGhostHook_sessionMemset_execFrozen_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHook_memsetRegion_execFrozen_ok :
-    HookOk (h2k_memsetGhostHook mmpl) (withExecFrozen memsetRegionSpec) :=
-  f3EmptyMemsetGhostHook_memsetRegion_execFrozen_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_sessionMemsetRegion_execFrozen_ok :
-    HookOk (h2k_memsetGhostHook mmpl) (withExecFrozen sessionMemsetRegionSpec) :=
-  f3EmptyMemsetGhostHook_sessionMemsetRegion_execFrozen_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHook_session2MemsetExtern_execFrozen_ok (stk : Nat := 16384) :
-    HookOk (h2k_memsetGhostHook mmpl) (withExecFrozen (session2MemsetExternSpec stk)) :=
-  f3EmptyMemsetGhostHook_session2MemsetExtern_execFrozen_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-omit hMm in
-/-- Any plain `HookOk` on `h2k_memsetGhostHook mmpl` lifts immediately to
-    `h2k_withKeepLrFalse hole2_keepSub spec`. -/
-theorem h2k_memsetGhostHook_any_withKeepLrFalse_ok {α : Type} {spec : Spec α}
-    (hok : HookOk (h2k_memsetGhostHook mmpl) spec) :
-    HookOk (h2k_memsetGhostHook mmpl) (h2k_withKeepLrFalse hole2_keepSub spec) :=
-  f3EmptyMemsetGhostHook_any_memsetSpecK_ok hok
-
-theorem h2k_memsetGhostHookK_libcMemsetK_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (libcMemsetSpec stk)) :=
-  f3EmptyMemsetGhostHookK_libcMemsetK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_sessionMemsetK_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (sessionMemsetSpec stk)) :=
-  f3EmptyMemsetGhostHookK_sessionMemsetK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_cliMemsetK_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub memsetSpec) :=
-  f3EmptyMemsetGhostHookK_cliMemsetK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_memsetRegionK_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub memsetRegionSpec) :=
-  f3EmptyMemsetGhostHookK_memsetRegionK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_sessionMemsetRegionK_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub sessionMemsetRegionSpec) :=
-  f3EmptyMemsetGhostHookK_sessionMemsetRegionK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_libcMemsetK_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (libcMemsetSpec stk).keepsFs) :=
-  f3EmptyMemsetGhostHookK_libcMemsetK_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_sessionMemsetK_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (sessionMemsetSpec stk).keepsFs) :=
-  f3EmptyMemsetGhostHookK_sessionMemsetK_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_cliMemsetK_keepsFs_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub memsetSpec.keepsFs) :=
-  f3EmptyMemsetGhostHookK_cliMemsetK_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_memsetRegionK_keepsFs_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub memsetRegionSpec.keepsFs) :=
-  f3EmptyMemsetGhostHookK_memsetRegionK_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_sessionMemsetRegionK_keepsFs_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub sessionMemsetRegionSpec.keepsFs) :=
-  f3EmptyMemsetGhostHookK_sessionMemsetRegionK_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_libcMemsetK_budget_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved (libcMemsetSpec stk))) :=
-  f3EmptyMemsetGhostHookK_libcMemsetK_budget_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_libcMemsetK_budget_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved (libcMemsetSpec stk)).keepsFs) :=
-  f3EmptyMemsetGhostHookK_libcMemsetK_budget_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_sessionMemsetBudgetK_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (sessionMemsetBudgetSpec stk)) :=
-  f3EmptyMemsetGhostHookK_sessionMemsetBudgetK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_sessionMemsetBudgetK_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (sessionMemsetBudgetSpec stk).keepsFs) :=
-  f3EmptyMemsetGhostHookK_sessionMemsetBudgetK_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_cliMemsetK_budget_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved memsetSpec)) :=
-  f3EmptyMemsetGhostHookK_cliMemsetK_budget_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_memsetRegionK_budget_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved memsetRegionSpec)) :=
-  f3EmptyMemsetGhostHookK_memsetRegionK_budget_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_memsetRegionK_budget_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (withStack (withVmPreserved memsetRegionSpec) stk)) :=
-  f3EmptyMemsetGhostHookK_memsetRegionK_budget_withStack_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_memsetRegionK_budget_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (withStack (withVmPreserved memsetRegionSpec) stk).keepsFs) :=
-  f3EmptyMemsetGhostHookK_memsetRegionK_budget_withStack_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_sessionMemsetRegionBudgetK_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub sessionMemsetRegionBudgetSpec) :=
-  f3EmptyMemsetGhostHookK_sessionMemsetRegionBudgetK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_sessionMemsetRegionBudgetK_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (withStack sessionMemsetRegionBudgetSpec stk)) :=
-  f3EmptyMemsetGhostHookK_sessionMemsetRegionBudgetK_withStack_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_sessionMemsetRegionBudgetK_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (withStack sessionMemsetRegionBudgetSpec stk).keepsFs) :=
-  f3EmptyMemsetGhostHookK_sessionMemsetRegionBudgetK_withStack_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_memsetRegionCliK_ok :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub memsetRegionCliSpec) :=
-  f3EmptyMemsetGhostHookK_memsetRegionCliK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm)
-
-theorem h2k_memsetGhostHookK_libcMemsetCliK_ok (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (libcMemsetCliSpec stk)) :=
-  f3EmptyMemsetGhostHookK_libcMemsetCliK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_session2MemsetExternK_ok (stk : Nat := 16384) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (session2MemsetExternSpec stk)) :=
-  f3EmptyMemsetGhostHookK_session2MemsetExternK_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_session2MemsetExternK_keepsFs_ok (stk : Nat := 16384) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (session2MemsetExternSpec stk).keepsFs) :=
-  f3EmptyMemsetGhostHookK_session2MemsetExternK_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_session2MemsetExternK_budget_ok (stk : Nat := 16384) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved (session2MemsetExternSpec stk))) :=
-  f3EmptyMemsetGhostHookK_session2MemsetExternK_budget_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
-
-theorem h2k_memsetGhostHookK_session2MemsetExternK_budget_keepsFs_ok (stk : Nat := 16384) :
-    HookOk (h2k_memsetGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved (session2MemsetExternSpec stk)).keepsFs) :=
-  f3EmptyMemsetGhostHookK_session2MemsetExternK_budget_keepsFs_ok f3TrialRxProg_svc f3TrialRxProg_no_ext (hw_blk21 hMm) stk
 
 end ConsumerContracts
 
@@ -673,152 +342,6 @@ private theorem f3LinkedCallHook_empty_visitedIn {α : Type}
     exact h2fsgen_stepsUntil_det hchoose.1 hchoose.2.1 huntil hstop
   dsimp only; rw [heq]; exact ⟨hvis, hfr_sf, hfs⟩
 
-/-- **Target-entry `W`-polymorphic replay for `h2k_memsetGhostHook`:**
-    Replays `h2k_memsetGhostHook mmpl u` (`P_real := hole2_emptyProg`) into real machine steps on
-    `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` starting at `u.setPC (mmpl.base 21)` for
-    **every `W : CliHooks`** via `h2sl_steps_realW_of_visitedIn_keepSub` under `hLs`, `hMm`, and
-    `F3CodeInv mpl mmpl u.mem`. -/
-theorem h2k_memsetGhostHook_target_replay {mpl mmpl : MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) (W : CliHooks) {u : State}
-    (hrun : u.status = .Running)
-    (hnoex : ∀ msg, (h2k_memsetGhostHook mmpl u).status ≠ .Exception msg)
-    (hFr : ExecFrozen u.mem) (hlr_out : hole2_keepSub (u.readReg64 .lr) = false)
-    (hInv : F3CodeInv mpl mmpl u.mem) :
-    Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (u.setPC (mmpl.base 21)) (h2k_memsetGhostHook mmpl u) ∧
-      ExecFrozen (h2k_memsetGhostHook mmpl u).mem ∧
-      F3CodeInv mpl mmpl (h2k_memsetGhostHook mmpl u).mem ∧
-      (h2k_memsetGhostHook mmpl u).fs = u.fs := by
-  obtain ⟨hvis, hfr_sf, hfs_sf⟩ :=
-    f3LinkedCallHook_empty_visitedIn f3TrialRxProg_svc f3TrialRxProg_no_ext
-      (subroutine_ok_masterMemset_of_hasWords f3TrialRxProg_no_ext
-        (h2k_f3TrialRxProg_hasWords_blk21 hMm))
-      (specStripSInvariant_masterMemset hole2_keepSub) specPreservesFsTrace_masterMemset
-      masterMemset_pre_setPC masterMemset_outcome_setPC hrun hnoex hFr hlr_out
-      (h2k_f3CodeInv_rxProg_keepSub hInv)
-  have hSteps := h2sl_steps_realW_of_visitedIn_keepSub hLs mmpl W hvis
-  exact ⟨hSteps, hfr_sf, hInv.of_keepsFrozen hSteps.keepsFrozen, hfs_sf⟩
-
-/-- **Target-entry `W`-polymorphic replay for `h2k_memsetGhostHookK` (zero caller `lr`
-    hypothesis):** discharges `hole2_keepSub (u.readReg64 .lr) = false` automatically from `hnoex`. -/
-theorem h2k_memsetGhostHookK_target_replay {mpl mmpl : MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) (W : CliHooks) {u : State}
-    (hrun : u.status = .Running)
-    (hnoex : ∀ msg, (h2k_memsetGhostHookK mmpl u).status ≠ .Exception msg)
-    (hFr : ExecFrozen u.mem) (hInv : F3CodeInv mpl mmpl u.mem) :
-    Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (u.setPC (mmpl.base 21)) (h2k_memsetGhostHookK mmpl u) ∧
-      ExecFrozen (h2k_memsetGhostHookK mmpl u).mem ∧
-      F3CodeInv mpl mmpl (h2k_memsetGhostHookK mmpl u).mem ∧
-      (h2k_memsetGhostHookK mmpl u).fs = u.fs := by
-  obtain ⟨hvis, hfr_sf, hfs_sf⟩ :=
-    f3LinkedCallHook_empty_visitedIn f3TrialRxProg_svc f3TrialRxProg_no_ext
-      (subroutine_ok_masterMemsetK_of_hasWords hole2_keepSub f3TrialRxProg_no_ext
-        (h2k_f3TrialRxProg_hasWords_blk21 hMm))
-      (specStripSInvariant_masterMemsetK hole2_keepSub)
-      (specPreservesFsTrace_masterMemsetK hole2_keepSub)
-      (masterMemsetK_pre_setPC hole2_keepSub) (masterMemsetK_outcome_setPC hole2_keepSub)
-      hrun hnoex hFr (f3EmptyMemsetGhostHookK_keepLr_false_of_noException hnoex)
-      (h2k_f3CodeInv_rxProg_keepSub hInv)
-  have hSteps := h2sl_steps_realW_of_visitedIn_keepSub hLs mmpl W hvis
-  exact ⟨hSteps, hfr_sf, hInv.of_keepsFrozen hSteps.keepsFrozen, hfs_sf⟩
-
-/-- **Behind-stub `W`-polymorphic guarded `On` replay for `h2k_memsetGhostHook`:**
-    Composes `StubReachesTargetOn (F3CodeInv mpl mmpl)` with
-    `h2sl_steps_realW_of_visitedIn_keepSub` across all `W : CliHooks`. -/
-theorem h2k_memsetGhostHook_stub_replayOn {mpl mmpl : MultiPlacement} {stubPc : BitVec 64}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) (W : CliHooks)
-    (hreal_stub_none : (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc = none)
-    (hStub : StubReachesTargetOn (F3CodeInv mpl mmpl)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc (mmpl.base 21)) :
-    (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc = none ∧
-    ∀ u : State, u.pc = stubPc → u.status = .Running →
-      (∀ msg, (h2k_memsetGhostHook mmpl u).status ≠ .Exception msg) →
-      ExecFrozen u.mem → hole2_keepSub (u.readReg64 .lr) = false → F3CodeInv mpl mmpl u.mem →
-      Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) u (h2k_memsetGhostHook mmpl u) ∧
-        ExecFrozen (h2k_memsetGhostHook mmpl u).mem ∧
-        F3CodeInv mpl mmpl (h2k_memsetGhostHook mmpl u).mem ∧
-        (h2k_memsetGhostHook mmpl u).fs = u.fs := by
-  refine ⟨hreal_stub_none, fun u hpc hrun hnoex hfr hlr hInv => ?_⟩
-  obtain ⟨hBody, hfr_sf, hInv_sf, hfs_sf⟩ :=
-    h2k_memsetGhostHook_target_replay hLs hMm W hrun hnoex hfr hlr hInv
-  exact ⟨(hStub u hpc hrun hfr hInv).trans hBody, hfr_sf, hInv_sf, hfs_sf⟩
-
-/-- **Behind-stub `W`-polymorphic guarded `On` replay for `h2k_memsetGhostHookK` (zero caller `lr`
-    hypothesis!):** K-route / Option `(ii)` per-PC replay helper (`rev_c6` F1/F2) for multi-row
-    `GhostExternReplaysS` / `GhostExternReplaysOn` passes alongside `h2k_ghFixedK`. -/
-theorem h2k_memsetGhostHookK_stub_replayOn {mpl mmpl : MultiPlacement} {stubPc : BitVec 64}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) (W : CliHooks)
-    (hreal_stub_none : (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc = none)
-    (hStub : StubReachesTargetOn (F3CodeInv mpl mmpl)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc (mmpl.base 21)) :
-    (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc = none ∧
-    ∀ u : State, u.pc = stubPc → u.status = .Running →
-      (∀ msg, (h2k_memsetGhostHookK mmpl u).status ≠ .Exception msg) →
-      ExecFrozen u.mem → F3CodeInv mpl mmpl u.mem →
-      Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) u (h2k_memsetGhostHookK mmpl u) ∧
-        ExecFrozen (h2k_memsetGhostHookK mmpl u).mem ∧
-        F3CodeInv mpl mmpl (h2k_memsetGhostHookK mmpl u).mem ∧
-        (h2k_memsetGhostHookK mmpl u).fs = u.fs := by
-  refine ⟨hreal_stub_none, fun u hpc hrun hnoex hfr hInv => ?_⟩
-  obtain ⟨hBody, hfr_sf, hInv_sf, hfs_sf⟩ :=
-    h2k_memsetGhostHookK_target_replay hLs hMm W hrun hnoex hfr hInv
-  exact ⟨(hStub u hpc hrun hfr hInv).trans hBody, hfr_sf, hInv_sf, hfs_sf⟩
-
-/-- **Single-row `GhostExternReplaysS` for `h2k_memsetGhostHook`:**
-    Single-stub (`hother`) packager; for the multi-row K CLI pass, compose
-    `h2k_memsetGhostHookK_stub_replayOn` per PC (`rev_c6` F1/F2). -/
-theorem h2k_memsetGhostHook_replaysS {P_ghost : Program} {mpl mmpl : MultiPlacement} {stubPc : BitVec 64}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) (W : CliHooks)
-    (hghost_stub : P_ghost.externAt? stubPc = some (h2k_memsetGhostHook mmpl))
-    (hother : ∀ pc, pc ≠ stubPc →
-      P_ghost.externAt? pc = (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc)
-    (hreal_fr : ∀ pc f,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = some f →
-      ∀ u : State, u.status = .Running → ExecFrozen u.mem → ExecFrozen (f u).mem)
-    (hreal_stub_none : (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc = none)
-    (hStub : StubReachesTargetOn (F3CodeInv mpl mmpl)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc (mmpl.base 21)) :
-    GhostExternReplaysS hole2_keepSub (fun u => F3CodeInv mpl mmpl u.mem) P_ghost
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) := by
-  have hRep := h2k_memsetGhostHook_stub_replayOn hLs hMm W hreal_stub_none hStub
-  exact ghostExternReplaysS_of_single_stub hghost_stub hother
-    (fun pc f hr u hrun hkf hfr hInv => ⟨hreal_fr pc f hr u hrun hfr, hInv.of_keepsFrozen hkf⟩)
-    ⟨hRep.1, fun u hpc hrun hnoex hfr hlr hInv =>
-      let ⟨hs, hfr', hInv', _⟩ := hRep.2 u hpc hrun hnoex hfr hlr hInv
-      ⟨hs, hfr', hInv'⟩⟩
-
-/-- **Single-row `GhostExternReplaysS` for `h2k_memsetGhostHookK` (polymorphic in `keep_any`!):**
-    Discharges `hole2_keepSub (u.readReg64 .lr) = false` internally from `hnoex`. Single-stub
-    (`hother`) packager; for the 8-row K CLI pass alongside `h2k_ghFixedK`, plug
-    `h2k_memsetGhostHookK_stub_replayOn` directly into the per-PC case split (`rev_c6` F2). -/
-theorem h2k_memsetGhostHookK_replaysS (keep_any : BitVec 64 → Bool)
-    {P_ghost : Program} {mpl mmpl : MultiPlacement} {stubPc : BitVec 64}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) (W : CliHooks)
-    (hghost_stub : P_ghost.externAt? stubPc = some (h2k_memsetGhostHookK mmpl))
-    (hother : ∀ pc, pc ≠ stubPc →
-      P_ghost.externAt? pc = (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc)
-    (hreal_fr : ∀ pc f,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = some f →
-      ∀ u : State, u.status = .Running → ExecFrozen u.mem → ExecFrozen (f u).mem)
-    (hreal_stub_none : (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc = none)
-    (hStub : StubReachesTargetOn (F3CodeInv mpl mmpl)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc (mmpl.base 21)) :
-    GhostExternReplaysS keep_any (fun u => F3CodeInv mpl mmpl u.mem) P_ghost
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) := by
-  have hRep := h2k_memsetGhostHookK_stub_replayOn hLs hMm W hreal_stub_none hStub
-  exact ghostExternReplaysS_of_single_stub hghost_stub hother
-    (fun pc f hr u hrun hkf hfr hInv => ⟨hreal_fr pc f hr u hrun hfr, hInv.of_keepsFrozen hkf⟩)
-    ⟨hRep.1, fun u hpc hrun hnoex hfr _ hInv =>
-      let ⟨hs, hfr', hInv', _⟩ := hRep.2 u hpc hrun hnoex hfr hInv
-      ⟨hs, hfr', hInv'⟩⟩
-
 /-! ## 5. `(A2)` `Blk21TrapHook` Coverage for `hole2_keepSub`, `h2k_memsetGhostHook*`, & All 7 Ghosts in `h2k_ghFixedK` -/
 
 /-- `hole2_keepSub` covers `keepMemsetBlk21 mmpl` (`260` B at `mmpl.base 21`) for every `mmpl`
@@ -842,6 +365,25 @@ theorem h2k_keepSub_covers_blk21 {mmpl : MultiPlacement}
   rw [ha_eq]
   exact hcov_f3 _ hoff_lt
 
+/-- `h2sl_keepLoSub` (`[0x474000, 0x479798)`) covers `keepMemsetBlk21 mmpl` (`260` B at `mmpl.base 21`). -/
+theorem h2k_keepLoSub_covers_blk21 {mmpl : MultiPlacement}
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
+    ∀ a : BitVec 64, keepMemsetBlk21 mmpl a = true → h2sl_keepLoSub a = true := by
+  have h21 : (21 : Nat) < mallocngLib.blocks.length := by decide
+  have hbase : mmpl.base 21 = f3MallocngMpl.base 21 :=
+    (f3CliElf_mallocng_linkedAt_unique hMm).1 21 h21
+  have hcov_f3 : ∀ off : Nat, off < 260 →
+      h2sl_keepLoSub (f3MallocngMpl.base 21 + BitVec.ofNat 64 off) = true := by
+    unfold h2sl_keepLoSub
+    exact keepCoversBlk21_keepRange 0x474000 0x479798 (by decide) (by decide) (by decide)
+  intro a hka
+  have hoff_lt : (a - mmpl.base 21).toNat < 260 := of_decide_eq_true hka
+  have ha_eq : a = f3MallocngMpl.base 21 + BitVec.ofNat 64 (a - mmpl.base 21).toNat := by
+    rw [← hbase, BitVec.ofNat_toNat, BitVec.setWidth_eq, BitVec.add_comm (mmpl.base 21),
+      BitVec.sub_add_cancel]
+  rw [ha_eq]
+  exact hcov_f3 _ hoff_lt
+
 /-- Contrapositive helper: if any non-`.Exception` evaluation of `f` forces
     `keep (w.readReg64 .lr) = false`, then `keep (w.readReg64 .lr) = true` forces `(f w).status`
     to be `.Exception msg` for some `msg`. -/
@@ -856,27 +398,6 @@ private theorem exception_of_keepLr_false_of_noException
     hnoex_imp fun msg hst => hnone ⟨msg, hst⟩
   rw [hkw] at hfalse
   exact Bool.noConfusion hfalse
-
-/-- Plain `h2k_memsetGhostHook mmpl` satisfies `Blk21TrapHook L` for every `L ∈ blk21`. -/
-theorem h2k_memsetGhostHook_blk21TrapHook {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    ∀ L : BitVec 64, keepMemsetBlk21 mmpl L = true →
-      Blk21TrapHook L (h2k_memsetGhostHook mmpl) := by
-  intro L hL
-  rw [h2k_memsetGhostHook_eq_f3Empty,
-    LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK.f3EmptyMemsetGhostHook_eq]
-  exact blk21TrapHook_memsetGhostHook emptyStdProg f3TrialRxProg (mmpl.base 21)
-    (h2k_keepSub_covers_blk21 hMm L hL)
-
-/-- `K`-narrowed `h2k_memsetGhostHookK mmpl` satisfies `Blk21TrapHook L` for every `L ∈ blk21`
-    via its `.Exception` branch. -/
-theorem h2k_memsetGhostHookK_blk21TrapHook {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    ∀ L : BitVec 64, keepMemsetBlk21 mmpl L = true →
-      Blk21TrapHook L (h2k_memsetGhostHookK mmpl) :=
-  fun L hL =>
-    blk21TrapHook_of_exception_on_keepLr (h2k_keepSub_covers_blk21 hMm L hL) fun _ hkw =>
-      exception_of_keepLr_false_of_noException h2k_memsetGhostHookK_keepLr_false_of_noException hkw
 
 private def c3e5_isBlk20SafeInstr (off : Nat) (inst : Instr) : Bool :=
   match inst with
@@ -1357,94 +878,6 @@ theorem h2k_memsetGhostHookNarrow_master_ok (mmpl : MultiPlacement) :
     (mallocngBlockProg21_externAt_none mmpl Syscall.standard)
     (mallocngBlockProg21_hasWords mmpl Syscall.standard)
 
-theorem h2k_memsetGhostHookNarrow_sessionMemsetRegion_ok (mmpl : MultiPlacement) :
-    HookOk (h2k_memsetGhostHookNarrow mmpl) sessionMemsetRegionSpec :=
-  f3EmptyMemsetGhostHook_sessionMemsetRegion_ok (mallocngBlockProg21_svc_eq mmpl)
-    (mallocngBlockProg21_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg21_hasWords mmpl Syscall.standard)
-
-theorem h2k_memsetGhostHookNarrow_sessionMemsetRegionBudget_ok (mmpl : MultiPlacement) :
-    HookOk (h2k_memsetGhostHookNarrow mmpl) sessionMemsetRegionBudgetSpec :=
-  f3EmptyMemsetGhostHook_sessionMemsetRegionBudget_ok (mallocngBlockProg21_svc_eq mmpl)
-    (mallocngBlockProg21_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg21_hasWords mmpl Syscall.standard)
-
-theorem h2k_memsetGhostHookNarrow_blk21TrapHook (mmpl : MultiPlacement) :
-    ∀ L : BitVec 64, keepMemsetBlk21 mmpl L = true →
-      Blk21TrapHook L (h2k_memsetGhostHookNarrow mmpl) := by
-  intro L hL
-  change Blk21TrapHook L
-    (f3EmptyMemsetGhostHook (keepMemsetBlk21 mmpl)
-      (mallocngBlockProg mmpl 21 Syscall.standard) (mmpl.base 21))
-  rw [LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK.f3EmptyMemsetGhostHook_eq]
-  exact blk21TrapHook_memsetGhostHook emptyStdProg
-    (mallocngBlockProg mmpl 21 Syscall.standard) (mmpl.base 21) hL
-
-/-- **`W`-polymorphic `(A1)` + `(A2)` trap-discharged behind-stub `On` replay for
-    `h2k_memsetGhostHookNarrow`:**
-    Combines `W`-independence (`P_real = hole2_emptyProg`, bridged by
-    `h2sl_steps_realW_of_visitedIn_keepSub`), guarded `StubReachesTargetOn (F3CodeInv mpl mmpl)`,
-    and `(A1)` + `(A2)` closed-trap discharge of `keepMemsetBlk21 mmpl (u.readReg64 .lr) = false`
-    (supporting subroutine `Returned` outcomes when `keepMemsetBlk21 mmpl (s0.readReg64 .lr) = false`,
-    such as `sm.lr` at the Block-617 entry!). -/
-theorem h2k_memsetGhostHookNarrow_stub_replayOn_of_trap_ret
-    {P_ghost : Program} {mpl mmpl : MultiPlacement} {stubPc : BitVec 64}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (W : CliHooks)
-    (hblk21_ext : ∀ pc, keepMemsetBlk21 mmpl pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepMemsetBlk21 mmpl L = true → Blk21TrapHook L f)
-    (hreal_stub_none : (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc =
-      none)
-    (hStub : StubReachesTargetOn (F3CodeInv mpl mmpl)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc (mmpl.base 21))
-    {sf : State}
-    (hrun_sf' : sf.status = .Running → keepMemsetBlk21 mmpl sf.pc = false)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    let f_ms := h2k_memsetGhostHookNarrow mmpl
-    (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc = none ∧
-    ∀ u : State,
-      Steps P_ghost (f_ms u) sf →
-      u.pc = stubPc →
-      u.status = .Running →
-      (∀ msg, (f_ms u).status ≠ .Exception msg) →
-      u.mem.KeepsFrozen (f_ms u).mem →
-      ExecFrozen u.mem →
-      F3CodeInv mpl mmpl u.mem →
-      Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) u (f_ms u) ∧
-        ExecFrozen (f_ms u).mem ∧
-        F3CodeInv mpl mmpl (f_ms u).mem ∧
-        (f_ms u).fs = u.fs := by
-  have h21 : (21 : Nat) < mallocngLib.blocks.length := by decide
-  refine ⟨hreal_stub_none, fun u hrest hpc hrun hnoex hkf hfr hInv => ?_⟩
-  have hcl21 : (mallocngBlockProg mmpl 21 Syscall.standard).CodeLoaded u.mem :=
-    hInv.mngBlockCodeLoaded 21 h21 (fun _ => none) (fun _ => none) Syscall.standard
-  have hlr_false : keepMemsetBlk21 mmpl (u.readReg64 .lr) = false :=
-    blk21_lr_trap_after_hook_ret
-      (h2k_memsetGhostHookNarrow_blk21TrapHook mmpl)
-      hblk21_ext
-      (hcl21.of_keepsFrozen hkf)
-      hrest hrun hrun_sf' hnoex_sf hnhalt_sf
-  obtain ⟨hvis, hfr_sf, hfs_sf⟩ :=
-    f3LinkedCallHook_empty_visitedIn
-      (mallocngBlockProg21_svc_eq mmpl)
-      (mallocngBlockProg21_externAt_none mmpl Syscall.standard)
-      (subroutine_ok_masterMemset_of_hasWords
-        (mallocngBlockProg21_externAt_none mmpl Syscall.standard)
-        (mallocngBlockProg21_hasWords mmpl Syscall.standard))
-      (specStripSInvariant_masterMemset (keepMemsetBlk21 mmpl))
-      specPreservesFsTrace_masterMemset masterMemset_pre_setPC masterMemset_outcome_setPC
-      hrun hnoex hfr hlr_false
-      (codeLoaded_stripExecOutside_blk21 (keepCoversBlk21_keepMemsetBlk21 mmpl) hcl21)
-  have hBody :=
-    h2sl_steps_realW_of_visitedIn_keepSub hLs mmpl W
-      (stepsVisitedIn_mono (h2k_keepSub_covers_blk21 hMm) hvis)
-  have hSteps := (hStub u hpc hrun hfr hInv).trans hBody
-  exact ⟨hSteps, hfr_sf, hInv.of_keepsFrozen hSteps.keepsFrozen, hfs_sf⟩
-
 /-! ## 6. Closed Ghost-Side `hblk21_ext` for CLI Block `617` (`rev_c6` F3) -/
 
 private theorem externAt?_cliProgExtPlacedAt_any
@@ -1647,57 +1080,5 @@ private theorem cliGhostExterns_some_cases (g : CliGhostHooks)
         cliGhostExternsWithExtra g [] (fun _ => none) sym = some f) ∨
       baseExt sym = some f :=
   cliGhostExternsWithExtra_some_cases_nil g g.extra baseExt hext
-
-/-- **Compositional ghost-side `hblk21_ext` (`rev_c6` F3):** combines `h2k_ghFixedK_blk21TrapHook`
-    (9 non-shim named ghosts), `h2k_memsetGhostHookNarrow_blk21TrapHook` (`memset`),
-    `h2k_shimStub_not_in_blk21` (`shim`), `h2k_extraStub_not_in_blk21` (`cliExtraGhostSyms`), and
-    `h2sl_realW_noExtern_keepSub` on any base map `baseExt ⊆ cliExternsPlaced mmpl`. -/
-theorem h2k_cliGhostExterns_ghFixedK_blk21_ext [LibsignalPlacement]
-    {mpl mmpl : MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (baseExt : CliHooks → String → Option (State → State))
-    (hbase_sub : ∀ W sym, baseExt W sym = none ∨ baseExt W sym = cliExternsPlaced mmpl W sym)
-    (W : CliHooks) :
-    let P_ghost := cliProgExtPlacedAt mpl
-      (fun W' sym =>
-        if sym == "memset" then some (h2k_memsetGhostHookNarrow mmpl)
-        else cliGhostExterns (h2k_ghFixedK mpl mmpl) (baseExt W') sym) 617 W
-    ∀ pc, keepMemsetBlk21 mmpl pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepMemsetBlk21 mmpl L = true → Blk21TrapHook L f := by
-  intro P_ghost pc hpc
-  cases hg : P_ghost.externAt? pc with
-  | none => exact Or.inl rfl
-  | some f =>
-    refine Or.inr ⟨f, rfl, ?_⟩
-    rw [externAt?_cliProgExtPlacedAt_any] at hg
-    obtain ⟨sym, hsym_mem, hsym_ite⟩ := exists_of_findSome?_eq_some hg
-    cases hres_eq : libsignalSessionLib.resolve mpl sym == pc with
-    | false => rw [hres_eq] at hsym_ite; cases hsym_ite
-    | true =>
-      rw [hres_eq] at hsym_ite; simp only [↓reduceIte] at hsym_ite
-      have hres : libsignalSessionLib.resolve mpl sym = pc := beq_iff_eq.mp hres_eq
-      by_cases hms : sym == "memset"
-      · simp only [hms, ↓reduceIte, Option.some.injEq] at hsym_ite; subst hsym_ite
-        exact h2k_memsetGhostHookNarrow_blk21TrapHook mmpl
-      · simp only [hms, Bool.false_eq_true, ↓reduceIte] at hsym_ite
-        rcases cliGhostExterns_some_cases (h2k_ghFixedK mpl mmpl) (baseExt W) hsym_ite with
-          ⟨hex, _⟩ | rfl | ⟨hne, hgh⟩ | hbase
-        · exfalso; have hns := h2k_extraStub_not_in_blk21 hLs hMm hex
-          rw [hres, hpc] at hns; exact Bool.noConfusion hns
-        · exfalso; have hns := h2k_shimStub_not_in_blk21 hLs hMm
-          rw [hres, hpc] at hns; exact Bool.noConfusion hns
-        · exact h2k_ghFixedK_blk21TrapHook mpl hMm hgh hne
-        · exfalso
-          rcases hbase_sub W sym with hnone | heq_real
-          · rw [hnone] at hbase; cases hbase
-          · rw [heq_real] at hbase
-            have hreal_none :=
-              h2sl_realW_noExtern_keepSub hLs mmpl W pc (h2k_keepSub_covers_blk21 hMm pc hpc)
-            rw [externAt?_cliProgExtPlacedAt_any] at hreal_none
-            have hcell := findSome?_eq_none_imp hreal_none hsym_mem
-            rw [hres_eq, hbase] at hcell; cases hcell
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMemset

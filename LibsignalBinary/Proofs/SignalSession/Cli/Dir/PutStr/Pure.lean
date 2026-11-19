@@ -10,16 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat -- proof-setup: allow-public-import
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
-import LibsignalBinary.Proofs.Common.CallInv
-
-@[expose] public section
+import ProofLib
+public section
 
 set_option autoImplicit false
 
@@ -33,129 +31,8 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 abbrev atOff (fnBase : BitVec 64) (k : Nat) : BitVec 64 :=
   fnBase + BitVec.ofNat 64 k
 
-gen_decodes libsignalSessionCode_tree dirPutStrBin
-  [(ls_off% "<libsignal_cli::stores::Dir>::put::<&str>") →
-   (ls_off% "<libsignal_cli::stores::Dir>::put::<&str>" + 348)]
-
-/-! ## 2. Callee Bridges & `ImgCallInv`-Preserving Call Rules -/
-
-theorem panic_at_dirPutStr_handle_error (b : BitVec 64)
-    (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).externAt?
-      ((tripleRatchetProgAtExt b ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>"
-            "alloc::raw_vec::handle_error")) =
-      some Rust.panicked :=
-  panic_at_panicSymbol (P := libsignalSessionCode) (hname := handleErrorName)
-    dirPutStr_fnOff
-    (by decide)
-    (by decide)
-    (ls_lemma% hookAtOff "alloc::raw_vec::handle_error")
-    (by
-      unfold Rust.isPanicSymbol
-      cases (handleErrorName.startsWith "core::panicking::") <;> rfl)
-
-theorem shim_ok_at_dirPutStr {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>"
-            "__rustc::__rust_no_alloc_shim_is_unstable_v2"))
-      (session2ShimSpecX.inImage img) :=
-  shim_ok_at2_ext_x hC (name := dirPutStrName)
-    (k := ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>"
-      "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-    (by rw [dirPutStr_fnOff, (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")])
-
-theorem alloc_ok_at_dirPutStr {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "__rustc::__rust_alloc"))
-      ((rustAllocSpecWithStack A extHookStack).inImage img) :=
-  alloc_ok_at_norm_ext_x hC (name := dirPutStrName)
-    (k := ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "__rustc::__rust_alloc")
-    (by rw [dirPutStr_fnOff, (ls_stub% "__rustc::__rust_alloc")])
-
-theorem dealloc_ok_at_dirPutStr {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "__rustc::__rust_dealloc"))
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img) :=
-  dealloc_ok_at_norm_ext_x hC (name := dirPutStrName)
-    (k := ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "__rustc::__rust_dealloc")
-    (by rw [dirPutStr_fnOff, (ls_stub% "__rustc::__rust_dealloc")])
-
-theorem memcpy_ro_ok_at_dirPutStr (img : Obj.Image)
-    (ext : String → Option (State → State))
-    (hRO : HookSat ext memcpyName SpqrV1.Alloc.sessionMemcpyRegionROSpec) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "memcpy"))
-      ((withStack SpqrV1.Alloc.sessionMemcpyRegionROSpec extHookStack).inImage img) :=
-  subroutine_ok_inImage_of_subroutine_ok img
-    (subroutine_ok_withStack_of_subroutine_ok
-      (hook_ok_at (P := libsignalSessionCode) (hname := memcpyName)
-        dirPutStr_fnOff
-        (by decide)
-        (by decide)
-        (ls_lemma% hookAtOff "memcpy")
-        (by decide)
-        hRO)
-      extHookStack)
-
-theorem memcpy_bytesAt_inImage_ok_at (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hC : AllocContractsX img A ext)
-    (hRO : HookSat ext memcpyName SpqrV1.Alloc.sessionMemcpyRegionROSpec)
-    (ro : Bool) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "memcpy"))
-      ((withStack (SpqrV1.Alloc.sessionMemcpyBytesAtSpec ro) extHookStack).inImage img) := by
-  cases ro
-  · apply subroutine_ok_outcome_intro
-    rintro ⟨dst, src, bs⟩ R s0 hpc hrun hpre hsp
-    have hmc := hC.session_memcpy_region_ok_at dirPutStrName
-      (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "memcpy")
-      extHookStack (by decide) (by decide)
-      (by rw [dirPutStr_fnOff, (ls_stub% "memcpy")])
-    have hpre' : s0.mem ⊨
-        ((withStack sessionMemcpyRegionSpec extHookStack).inImage img).pre
-          (dst, src, bs) s0 ∗ R := by
-      simp only [Spec.inImage, withStack, SpqrV1.Alloc.sessionMemcpyBytesAtSpec,
-        sessionMemcpyRegionSpec, memcpyRegionSpec, SpqrV1.ChainProofs.bytesAt_false,
-        sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-      exact ⟨hpre.1, ⟨hpre.2.1.1, hpre.2.1.2.1, hpre.2.1.2.2.1⟩, hpre.2.2⟩
-    exact (hmc.to_outcome (dst, src, bs) R s0 hpc hrun hpre' hsp).mono_outcome fun _ h => h
-  · exact memcpy_ro_ok_at_dirPutStr img ext hRO
-
-theorem bcmp_inImage_ok_at_dirPutStr (img : Obj.Image)
-    (ext : String → Option (State → State))
-    (hBcmp : HookSat ext cliBcmpName cliBcmpSpec) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "bcmp"))
-      (cliBcmpSpec.inImage img) :=
-  subroutine_ok_inImage_of_subroutine_ok img
-    (hook_ok_at (P := libsignalSessionCode) (hname := cliBcmpName)
-      dirPutStr_fnOff
-      (by decide)
-      (by decide)
-      (ls_lemma% hookAtOff "bcmp")
-      (by decide)
-      hBcmp)
-
 /-- Unwrapped inner `Spec` of `growOneDirSpec A img stk` (`(growOneDirBaseSpec A stk).inImage img = growOneDirSpec A img stk`). -/
-def growOneDirBaseSpec (A : RustAlloc) (stk : Nat) : Spec GrowOneDirGhost where
+@[expose] def growOneDirBaseSpec (A : RustAlloc) (stk : Nat) : Spec GrowOneDirGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.v ∧ x.cap.toNat < 2 ^ 32⌝ ∗
       RustHeap.vecAt A 48 8 (dirEntryAt A) x.v x.cap x.ptr x.xs ∗ stackAt s.sp stk ∗ A.pool
@@ -166,91 +43,9 @@ def growOneDirBaseSpec (A : RustAlloc) (stk : Nat) : Spec GrowOneDirGhost where
       stackAt s0.sp stk ∗ A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem growOne_ok_at_dirPutStr {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {growStk : Nat}
-    (hGrow : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr growOneDirName)
-      (growOneDirSpec A img growStk)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>"
-            "<alloc::raw_vec::RawVec<(alloc::string::String, alloc::vec::Vec<u8>)>>::grow_one"))
-      ((growOneDirBaseSpec A growStk).inImage img) :=
-  sub_ok_at_of_fnAddr hGrow dirPutStrName _
-    (by rw [dirPutStr_fnOff, growOneDir_fnOff])
-
-/-- Framed `SepWPp` call rule for `(spec.inImage img)` callees that also preserves `ImgCallInv img`
-    into the `SepWPp` continuation. -/
-theorem call_inImage_wpp {α : Type} {prog : Program} {callee ret_pc target_pc : BitVec 64}
-    {spec : Spec α} {img : Obj.Image}
-    (hcall : subroutine_ok prog callee (spec.inImage img))
-    (x : α) {s : State} {P T F : SepProp}
-    {Q Qp : State → SepProp → Prop}
-    (hinv : ImgCallInv img s)
-    (hpc : s.pc = callee)
-    (hrun : s.status = .Running)
-    (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    {φ : Prop} (hspec : spec.pre x s = ⌜φ⌝ ∗ T) (hφ : φ) (hP : P = T ∗ F)
-    (hpan : ∀ sf, Qp sf (spec.onPanic x s sf ∗ F))
-    (hexit : ∀ code sf, spec.onExit x code s sf = ⌜False⌝)
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf → ImgCallInv img sf →
-      SepWPp prog target_pc sf (spec.post x s sf ∗ F) Q Qp) :
-    SepWPp prog target_pc s P Q Qp := by
-  refine SepWPp.call_inImage_frame (x := x) hcall hinv.1 hinv.2 hpc hrun hsp_align hlr
-    hspec hφ hP ?_ (fun sf _ => hpan sf)
-    (fun sf hpcm hrunm hspm hcsm hfz hsym => hnext sf hpcm hrunm hspm hcsm ⟨hfz, hsym⟩) ?_
-  · intro sf code R' _ hpost
-    rw [hexit] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sf R' _ hpost
-    rw [hoom] at hpost
-    exact (not_satisfies_false_sepConj hpost).elim
-
-/-- Normal-return `SepWPp` postcondition matching `wpp_init` on `dirPutStrSpec`. -/
-abbrev DirPutStrPost (A : RustAlloc) (img : Obj.Image) (x : DirPutStrGhost)
-    (s0 : State) (stk : Nat) (R : SepProp) : State → SepProp → Prop :=
-  fun sf P_f =>
-    ((sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (dirPutStrSpec A img stk).post x s0 sf ∗ R)) ∧
-    sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
-
-/-- Panic `SepWPp` postcondition matching `wpp_init` on `dirPutStrSpec`. -/
-abbrev DirPutStrPanic (A : RustAlloc) (img : Obj.Image) (x : DirPutStrGhost)
-    (s0 : State) (stk : Nat) (R : SepProp) : State → SepProp → Prop :=
-  fun sf P_f =>
-    (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (dirPutStrSpec A img stk).onPanic x s0 sf ∗ R)
-
-/-- Sequence a `SepWP` segment up to `mid` into `SepWPp`, automatically propagating
-    `ImgCallInv img` across `Steps prog s sm`. -/
-theorem sepWPp_cut {prog : Program} {mid ret : BitVec 64} {s : State} {P : SepProp}
-    {Q Qp : State → SepProp → Prop} {img : Obj.Image}
-    (hinv : ImgCallInv img s)
-    (h : SepWP prog mid s P fun sm Pm =>
-      ∀ s', s' = sm → ImgCallInv img s' → SepWPp prog ret s' Pm Q Qp) :
-    SepWPp prog ret s P Q Qp :=
-  SepWPp.of_sepWP_frozen hinv.1 hinv.2
-    (h.mono fun sm Pm _ _ hcont hfz hsym => hcont sm rfl ⟨hfz, hsym⟩)
-
 theorem spAligned_of_sub80 {s0 s1 : State} (h0 : s0.spAligned = true)
     (hsp : s1.sp = s0.sp - 80#64) : s1.spAligned = true := by
   simpa only [State.spAligned, hsp] using s0.spAligned_sub 80#64 h0
-
-/-- Sequence a `SepWP` block on the rebased program up to `mid` without unfolding
-    `tripleRatchetProgAtExt` inside the `SepWPp` continuation. -/
-theorem sepWPp_cut_rebase {b : BitVec 64} {ext : String → Option (State → State)}
-    {mid ret : BitVec 64} {s : State} {P : SepProp}
-    {Q Qp : State → SepProp → Prop} {img : Obj.Image}
-    (hinv : ImgCallInv img s)
-    (h : SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) mid s P fun sm Pm =>
-      ∀ s1 P1, ImgCallInv img s1 → (s1 = sm ∧ P1 = Pm) →
-        SepWPp (tripleRatchetProgAtExt b ext) ret s1 P1 Q Qp) :
-    SepWPp (tripleRatchetProgAtExt b ext) ret s P Q Qp := by
-  change SepWP (tripleRatchetProgAtExt b ext) mid s P _ at h
-  exact SepWPp.of_sepWP_frozen hinv.1 hinv.2
-    (h.mono fun sm Pm _ _ hcont hfz hsym => hcont sm Pm ⟨hfz, hsym⟩ ⟨rfl, rfl⟩)
 
 theorem sepWPp_pure_left {prog : Program} {ret : BitVec 64} {s : State}
     {φ : Prop} {P : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
@@ -265,51 +60,6 @@ theorem sepWPp_exists_left {α : Type} {prog : Program} {ret : BitVec 64} {s : S
     SepWPp prog ret s ((∃∗ a, Φ a) ∗ P) Q Qp oom := by
   rw [sepExists_sepConj_left]
   exact SepWPp.exists_elim h
-
-theorem panic_false_wpp {A : RustAlloc} {img : Obj.Image} {x : DirPutStrGhost}
-    {s0 : State} {stk : Nat} {R : SepProp} {sf : State} {F : SepProp} :
-    DirPutStrPanic A img x s0 stk R sf (⌜False⌝ ∗ F) := by
-  intro hm
-  rw [sepConj_assoc] at hm
-  exact (not_satisfies_false_sepConj hm).elim
-
-/-- Framed tail-call combinator for `(spec.inImage img)` callees (`b __rust_dealloc`). -/
-theorem tailcall_inImage_frame {α : Type} {prog : Program} {callee ret : BitVec 64}
-    {spec : Spec α} {img : Obj.Image}
-    (hcall : subroutine_ok prog callee (spec.inImage img))
-    (x : α) {φ : Prop} {s : State} {P T F : SepProp}
-    {Q Qp : State → SepProp → Prop}
-    (hinv : ImgCallInv img s)
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret)
-    (hspec : spec.pre x s = ⌜φ⌝ ∗ T) (hφ : φ) (hP : P = T ∗ F)
-    (hpan : ∀ sf, spec.onPanic x s sf = ⌜False⌝)
-    (hexit : ∀ code sf, spec.onExit x code s sf = ⌜False⌝)
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝)
-    (hret : ∀ sf : State, sf.pc = ret → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf → Q sf (spec.post x s sf ∗ F)) :
-    SepWPp prog ret s P Q Qp := by
-  refine SepWPp.call_wpp (x := x) (F := F) hcall hpc hrun hsp hlr ?_ ?_ ?_
-    (fun sf hpcf hrunf hspf hcsf => SepWPp.done hpcf hrunf (hret sf hpcf hrunf hspf hcsf)) ?_
-  · intro R' hm
-    dsimp [Spec.inImage]
-    rw [hspec, sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj,
-      ← sepConj_assoc, ← hP]
-    exact ⟨hinv, hφ, hm⟩
-  · intro sf code R' _ hpost
-    dsimp [Spec.inImage] at hpost
-    rw [hexit] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · rintro sf _ ⟨R', hpost⟩
-    dsimp [Spec.inImage] at hpost
-    rw [hpan] at hpost
-    exact (not_satisfies_false_sepConj hpost).elim
-  · intro sf R' _ hpost
-    dsimp [Spec.inImage] at hpost
-    rw [hoom] at hpost
-    exact (not_satisfies_false_sepConj hpost).elim
-
-/-! ## 3. Stack & Region Lemmas (Arbitrary `stk` Bound + Frame Split/Merge) -/
 
 /-- Any region separated from an owned byte strictly fits inside the 64-bit address space. -/
 theorem memRegion_lt_two_pow_64_of_pointsTo8 {m : Memory} {base a : BitVec 64}
@@ -470,17 +220,6 @@ theorem sepWPp_weaken_pre {prog : Program} {ret : BitVec 64} {s : State}
     SepWPp prog ret s P Q Qp oom :=
   SepWPp.weaken_pre hent h
 
-theorem panic_callee_wpp {A : RustAlloc} {img : Obj.Image} {x : DirPutStrGhost}
-    {s0 s sf : State} {stk : Nat} {R F : SepProp}
-    (htr : s.trace = s0.trace) :
-    DirPutStrPanic A img x s0 stk R sf
-      ((⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) := by
-  intro hm
-  have hm' : sf.mem ⊨ ⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ (anyHeap ∗ F ∗ R) := by
-    simpa only [sepConj_assoc] using hm
-  rw [satisfies_pure_sepConj] at hm'
-  exact allowPanic_panicked (allocFailedIn_of_trace_eq htr hm'.1) hm
-
 theorem setOrPush_append_of_forall_ne (name bs : List (BitVec 8)) :
     ∀ (pre suf : List (List (BitVec 8) × List (BitVec 8))),
       (∀ e ∈ pre, e.1 ≠ name) →
@@ -554,12 +293,12 @@ theorem growOne_cap_gt {cap : BitVec 64} {len : Nat}
 
 /-- Owned buffer for `name.to_owned()`: empty if `name = []` (with non-null dangling `ptr`),
 otherwise `A.live ptr name.length 1 ∗ (ptr ↦ₛ name)`. -/
-def nameBuf (A : RustAlloc) (ptr : BitVec 64) (name : List (BitVec 8)) : SepProp :=
+@[expose] def nameBuf (A : RustAlloc) (ptr : BitVec 64) (name : List (BitVec 8)) : SepProp :=
   ⌜ptr ≠ 0#64 ∧ name.length < 2 ^ 63⌝ ∗
     (if name = [] then emp else A.live ptr name.length 1 ∗ (ptr ↦ₛ name))
 
 /-- Remainder of `nameBuf` when lending `(ptr ↦ₛ name)` to read-preserving callees (`bcmp`). -/
-def nameBufRest (A : RustAlloc) (ptr : BitVec 64) (name : List (BitVec 8)) : SepProp :=
+@[expose] def nameBufRest (A : RustAlloc) (ptr : BitVec 64) (name : List (BitVec 8)) : SepProp :=
   ⌜ptr ≠ 0#64 ∧ name.length < 2 ^ 63⌝ ∗
     (if name = [] then emp else A.live ptr name.length 1)
 
@@ -652,7 +391,7 @@ theorem vecU8_of_nameBuf (A : RustAlloc) (v ptr : BitVec 64) (name : List (BitVe
     exact Entails.pure_right ⟨trivial, trivial, hp0⟩ (Entails.refl _)
 
 /-- Heap payload of a `vecU8At` without its 24-byte header at `v` (so moving the 3 words moves ownership). -/
-def vecU8Heap (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Heap (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -675,7 +414,7 @@ theorem vecU8_of_header_heap (A : RustAlloc) (v cap ptr : BitVec 64) (bs : List 
     (Entails.sepExists_intro (P := fun c => ∃∗ p, vecU8At A v c p bs) cap)
 
 /-- Heap remainder of a `vecU8At` when `(ptr ↦ₛ bs)` is temporarily lent out (e.g. to `bcmp`). -/
-def vecU8Rest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Rest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗
@@ -951,7 +690,7 @@ theorem savedSlots_merge (s0 : State) {cal stk : Nat}
     hstk hmax
 
 /-- Callee-saved registers untouched by `Dir::put::<&str>` (`x27`, `x28`, `d8..d15`). -/
-def PresHigh (s0 s : State) : Prop :=
+@[expose] def PresHigh (s0 s : State) : Prop :=
   s.readReg64 (.gpr 27#5) = s0.readReg64 (.gpr 27#5) ∧
   s.readReg64 (.gpr 28#5) = s0.readReg64 (.gpr 28#5) ∧
   calleeSavedVRegs s = calleeSavedVRegs s0
@@ -978,76 +717,5 @@ theorem calleeSavedPreserved_of_restored {s0 sf : State}
     (hp : PresHigh s0 sf) :
     CalleeSavedPreserved s0 sf :=
   ⟨h19, h20, h21, h22, h23, h24, h25, h26, hp.1, hp.2.1, hfp, hp.2.2⟩
-
-theorem memcpyROOkExtX_of_withStack {img : Obj.Image}
-    {ext : String → Option (State → State)} {roStk : Nat}
-    (hro : roStk ≤ extHookStack)
-    (hRO : HookSat ext memcpyName (SpqrV1.Alloc.sessionMemcpyRegionROSpecWithStack roStk)) :
-    SpqrV1.Alloc.MemcpyROOkExtX img ext :=
-  SpqrV1.Alloc.memcpyROOkExtX_of_hookSat_withStack hro hRO
-
-theorem memcpy_ro_ok_at_dirPutStr_roX (img : Obj.Image)
-    (ext : String → Option (State → State))
-    (hRO : SpqrV1.Alloc.MemcpyROOkExtX img ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "memcpy"))
-      ((withStack SpqrV1.Alloc.sessionMemcpyRegionROSpec extHookStack).inImage img) := by
-  have hmc_ro := SpqrV1.Alloc.session_memcpy_region_ro_ok_at_x_of_roX hRO dirPutStrName
-    (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "memcpy")
-    (by rw [dirPutStr_fnOff, (ls_stub% "memcpy")])
-  apply subroutine_ok_outcome_intro
-  rintro ⟨dst, src, bs⟩ R s0 hpc hrun hpre hsp
-  have hpre' : s0.mem ⊨ (SpqrV1.Alloc.sessionMemcpyRegionROSpecX.inImage img).pre (dst, src, bs) s0 ∗ R := by
-    simpa only [Spec.inImage, withStack, SpqrV1.Alloc.sessionMemcpyRegionROSpec,
-      SpqrV1.Alloc.sessionMemcpyRegionROSpecX, sepConj_assoc] using hpre
-  refine (hmc_ro.to_outcome (dst, src, bs) R s0 hpc hrun hpre' hsp).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hpost⟩ | hpan | hex)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simpa only [Spec.inImage, withStack, SpqrV1.Alloc.sessionMemcpyRegionROSpec,
-      SpqrV1.Alloc.sessionMemcpyRegionROSpecX, sepConj_assoc] using hpost
-  · exact Or.inr (Or.inl hpan)
-  · exact Or.inr (Or.inr hex)
-
-theorem memcpy_bytesAt_inImage_ok_at_roX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hC : AllocContractsX img A ext)
-    (hRO : SpqrV1.Alloc.MemcpyROOkExtX img ext)
-    (ro : Bool) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "memcpy"))
-      ((withStack (SpqrV1.Alloc.sessionMemcpyBytesAtSpec ro) extHookStack).inImage img) := by
-  cases ro
-  · apply subroutine_ok_outcome_intro
-    rintro ⟨dst, src, bs⟩ R s0 hpc hrun hpre hsp
-    have hmc := hC.session_memcpy_region_ok_at dirPutStrName
-      (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "memcpy")
-      extHookStack (by decide) (by decide)
-      (by rw [dirPutStr_fnOff, (ls_stub% "memcpy")])
-    have hpre' : s0.mem ⊨
-        ((withStack sessionMemcpyRegionSpec extHookStack).inImage img).pre
-          (dst, src, bs) s0 ∗ R := by
-      simp only [Spec.inImage, withStack, SpqrV1.Alloc.sessionMemcpyBytesAtSpec,
-        sessionMemcpyRegionSpec, memcpyRegionSpec, SpqrV1.ChainProofs.bytesAt_false,
-        sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-      exact ⟨hpre.1, ⟨hpre.2.1.1, hpre.2.1.2.1, hpre.2.1.2.2.1⟩, hpre.2.2⟩
-    exact (hmc.to_outcome (dst, src, bs) R s0 hpc hrun hpre' hsp).mono_outcome fun _ h => h
-  · exact memcpy_ro_ok_at_dirPutStr_roX img ext hRO
-
-theorem memcpy_bytesAt_inImage_ok_at_withStack (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) {roStk : Nat}
-    (hC : AllocContractsX img A ext)
-    (hRO : HookSat ext memcpyName (SpqrV1.Alloc.sessionMemcpyRegionROSpecWithStack roStk))
-    (ro : Bool)
-    (hro : roStk ≤ extHookStack := by decide) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirPutStrName +
-        BitVec.ofNat 64
-          (ls_rel% "<libsignal_cli::stores::Dir>::put::<&str>" "memcpy"))
-      ((withStack (SpqrV1.Alloc.sessionMemcpyBytesAtSpec ro) extHookStack).inImage img) :=
-  memcpy_bytesAt_inImage_ok_at_roX img A ext hC (memcpyROOkExtX_of_withStack hro hRO) ro
 
 end CryptoVerification.SignalSession.Cli.PutStr.Helpers

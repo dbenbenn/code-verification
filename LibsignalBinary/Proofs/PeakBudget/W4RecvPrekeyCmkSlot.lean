@@ -11,59 +11,73 @@ module
 
 public import Arm64.Trusted.Spec.Hoare
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked
-public import LibsignalBinary.Proofs.PeakBudget.RealCliDecPkLinked
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
-public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4ArchiveCancelPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
-public import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.DropSsLocal1Budget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetCore
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
+public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.RealCliDecPkLinked
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
+import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
+import LibsignalBinary.Proofs.PeakBudget.W4ArchiveCancelPeak
+import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
+import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.DropSsLocal1Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.LayoutBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetCore
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
 
 /-!
 # Widened `(LoopAdvEnv, maxOps)`-Parametric `decrypt_prekey` Slot Envelope
@@ -90,7 +104,7 @@ Main results:
   with `_ghost_congr` lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -127,8 +141,9 @@ open CryptoVerification.SpqrV1.Top.InitInner (InitInnerGhost)
 open CryptoVerification.SpqrV1.Top.InitialState (InitialStateGhost)
 open LibsignalBinary.Heap (AllocEvent FreeOnlyEvs SeqEnv rustAllocEvents)
 open LibsignalBinary.Heap.Fine (fineCostModel)
-open LibsignalBinary.Heap.SpecBudget (FmtWriteEnv FormatInnerEnv)
 open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget (CmkLoopAdvanceEvs)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
+  (CliFmtWriteEnv CliFormatInnerEnv)
 open LibsignalBinary.Proofs.PeakBudget.CliDomainCaps (parseArgs_peer_name_length_le)
 open LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
   (cliIo_rd_ok_length_le_sessionCapBytes)
@@ -212,10 +227,10 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (SegCloneEnv TryDecr
 /-! ## `maxOps`-Parametric `spqr::recv` Linked Byte-Slice Envelope -/
 
 /-- Default `spqr::decode_state` small-op cap (`109`, covering `83` for ≤4 links and up to `109`). -/
-def w4c_defaultDecodeMaxOps : Nat := 109
+@[expose] def w4c_defaultDecodeMaxOps : Nat := 109
 
 /-- `maxOps`-parametric `DecodeStateTightEnv` (`rfl`-equal to `DecodeStateTightEnv` at `maxOps = 83`). -/
-def w4c_DecodeStateTightEnvOf (maxOps : Nat) (_bs : Bytes) (evs : List AllocEvent) : Prop :=
+@[expose] def w4c_DecodeStateTightEnvOf (maxOps : Nat) (_bs : Bytes) (evs : List AllocEvent) : Prop :=
   SpqrTightEvs maxOps 1307216 79236 evs
 
 theorem w4c_decodeStateTightEnvOf_83_eq :
@@ -228,7 +243,7 @@ theorem w4c_decodeStateTightEnvOf_mono {m₁ m₂ : Nat} (hm : m₁ ≤ m₂) (b
   SpqrTightEvs.mono hm (Nat.le_refl _) (Nat.le_refl _) h
 
 /-- `maxOps`-parametric `SpqrRecvC07TightEnv` (`rfl`-equal to `SpqrRecvC07TightEnv` at `maxOps = 83`). -/
-def w4c_SpqrRecvC07TightEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat)
+@[expose] def w4c_SpqrRecvC07TightEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat)
     (StatesRecvEnv' : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop)
     (stBytes : Bytes)
@@ -246,7 +261,7 @@ def w4c_SpqrRecvC07TightEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat)
     StatesRecvEnv' stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs
 
 /-- `maxOps`-parametric `SpqrRecvC07TightLinkedEnv`. -/
-def w4c_SpqrRecvC07TightLinkedEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat)
+@[expose] def w4c_SpqrRecvC07TightLinkedEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat)
     (StatesRecvEnv' : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop)
     (stBytes : Bytes)
@@ -262,7 +277,7 @@ def w4c_SpqrRecvC07TightLinkedEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat)
     SpqrRecvGhostLink F K stBytes sckaMsg xAdd xRk
 
 /-- `maxOps`-parametric `SpqrRecvC07C09aTightLinkedEnv`. -/
-def w4c_SpqrRecvC07C09aTightLinkedEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat)
+@[expose] def w4c_SpqrRecvC07C09aTightLinkedEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat)
     (stBytes : Bytes)
     (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
     (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
@@ -276,7 +291,7 @@ def w4c_SpqrRecvC07C09aTightLinkedEnvOf (F : ShaCompress) (K : MlKem) (maxOps : 
 
 /-- `maxOps`-parametric `∃`-lifted 12-ghost `C07 + C09a` linked `spqr::recv` byte-slice envelope
 (`rfl`-equal to `DecPkD2cSlotOkLinked.SpqrRecvC07C09aBytesEnv` at `maxOps = 83`). -/
-def w4c_SpqrRecvC07C09aBytesEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat)
+@[expose] def w4c_SpqrRecvC07C09aBytesEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat)
     (stBs _msgBs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
     w4c_SpqrRecvC07C09aTightLinkedEnvOf F K maxOps
@@ -329,7 +344,7 @@ theorem w4c_spqrRecvC07C09aBytesEnvOf_nonempty (F : ShaCompress) (K : MlKem) (ma
 abbrev W4LoopAdvEnv : Type := Nat → BitVec 64 → Nat → Bool → List AllocEvent → Prop
 
 /-- Pointwise inclusion on `W4LoopAdvEnv`. -/
-def W4LoopAdvSub (L₁ L₂ : W4LoopAdvEnv) : Prop :=
+@[expose] def W4LoopAdvSub (L₁ L₂ : W4LoopAdvEnv) : Prop :=
   ∀ n cap0 len0 allOnes evs, L₁ n cap0 len0 allOnes evs → L₂ n cap0 len0 allOnes evs
 
 theorem w4c_loopAdvSub_refl (L : W4LoopAdvEnv) : W4LoopAdvSub L L :=
@@ -337,7 +352,7 @@ theorem w4c_loopAdvSub_refl (L : W4LoopAdvEnv) : W4LoopAdvSub L L :=
 
 /-- `LoopAdvEnv`-parametric Segment-4 `consume_message_key` step envelope (`rfl`-equal to
 `DecPkD2cSlotOkLinked.tryDecryptCmkStepEnv` at `LoopAdvEnv := CmkLoopAdvanceEvs`). -/
-def w4c_tryDecryptCmkStepEnvOf (LoopAdvEnv : W4LoopAdvEnv)
+@[expose] def w4c_tryDecryptCmkStepEnvOf (LoopAdvEnv : W4LoopAdvEnv)
     (msgCounter : BitVec 32) (senderRatchetKey : PublicKey)
     (trG : TrGhost) (r : RatchetState) (ck : ChainKey) (evs : List AllocEvent) : Prop :=
   if msgCounter < ck.index then
@@ -359,7 +374,7 @@ def w4c_tryDecryptCmkStepEnvOf (LoopAdvEnv : W4LoopAdvEnv)
 
 /-- `LoopAdvEnv`-parametric Segment-4 (`ConsumeMsgKey`) envelope (`rfl`-equal to
 `DecPkD2cSlotOkLinked.tryDecryptCmkSeg4Env` at `LoopAdvEnv := CmkLoopAdvanceEvs`). -/
-def w4c_tryDecryptCmkSeg4EnvOf (LoopAdvEnv : W4LoopAdvEnv)
+@[expose] def w4c_tryDecryptCmkSeg4EnvOf (LoopAdvEnv : W4LoopAdvEnv)
     (fmtWriteEnv : List AllocEvent → Prop)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (ck : ChainKey) : List AllocEvent → Prop :=
@@ -369,7 +384,7 @@ def w4c_tryDecryptCmkSeg4EnvOf (LoopAdvEnv : W4LoopAdvEnv)
 
 /-- `LoopAdvEnv`-parametric `TryDecryptCliEnvOfPure` (`rfl`-equal to
 `DecPkD2cSlotOkLinked.TryDecryptCliEnvOfPure` at `LoopAdvEnv := CmkLoopAdvanceEvs`). -/
-def w4c_TryDecryptCliEnvOfPure (LoopAdvEnv : W4LoopAdvEnv)
+@[expose] def w4c_TryDecryptCliEnvOfPure (LoopAdvEnv : W4LoopAdvEnv)
     (C : Crypto) (S : SpqrModel)
     (fmtWriteEnv : List AllocEvent → Prop)
     (RecvBytesEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
@@ -390,7 +405,7 @@ def w4c_TryDecryptCliEnvOfPure (LoopAdvEnv : W4LoopAdvEnv)
 abbrev w4c_TryDecryptCliLinkedEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (C : Crypto) (K : MlKem) : TryDecryptEnvArgs → List AllocEvent → Prop :=
   w4c_TryDecryptCliEnvOfPure LoopAdvEnv C (spqrV1 C.F K)
-    FmtWriteEnv (w4c_SpqrRecvC07C09aBytesEnvOf C.F K maxOps) FormatInnerEnv
+    CliFmtWriteEnv (w4c_SpqrRecvC07C09aBytesEnvOf C.F K maxOps) CliFormatInnerEnv
 
 theorem w4c_tryDecryptCliLinkedEnvOf_83_eq (C : Crypto) (K : MlKem) :
     w4c_TryDecryptCliLinkedEnvOf CmkLoopAdvanceEvs 83 C K = TryDecryptCliLinkedEnv C K :=
@@ -398,12 +413,12 @@ theorem w4c_tryDecryptCliLinkedEnvOf_83_eq (C : Crypto) (K : MlKem) :
 
 /-- Failed-AES-CBC (`aesOpt = none`) Segment-`S8` envelope where any output buffer is dropped before
 returning `.error`, keeping `Δlive = 0` on `S8` so `fc.failDropPairs` cancels the failed trial. -/
-def w4c_s8FailEnv (x : TryDecryptGhost) (_mks : MessageKeys) (_newPqr : List (BitVec 8)) :
+@[expose] def w4c_s8FailEnv (x : TryDecryptGhost) (_mks : MessageKeys) (_newPqr : List (BitVec 8)) :
     List AllocEvent → Prop :=
   SeqEnv (W4AesDecErrEnv x.msg.ciphertext.length) FreeOnlyEvs
 
 /-- Failed-trial `FromS2GenEnv` envelope (`aesOpt := fun _ _ => none`, `s8Env := w4c_s8FailEnv`). -/
-def w4c_TryDecryptCliFailEnvOfPure (LoopAdvEnv : W4LoopAdvEnv)
+@[expose] def w4c_TryDecryptCliFailEnvOfPure (LoopAdvEnv : W4LoopAdvEnv)
     (C : Crypto) (S : SpqrModel)
     (fmtWriteEnv : List AllocEvent → Prop)
     (RecvBytesEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
@@ -423,7 +438,7 @@ def w4c_TryDecryptCliFailEnvOfPure (LoopAdvEnv : W4LoopAdvEnv)
 abbrev w4c_TryDecryptCliLinkedFailEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (C : Crypto) (K : MlKem) : TryDecryptEnvArgs → List AllocEvent → Prop :=
   w4c_TryDecryptCliFailEnvOfPure LoopAdvEnv C (spqrV1 C.F K)
-    FmtWriteEnv (w4c_SpqrRecvC07C09aBytesEnvOf C.F K maxOps) FormatInnerEnv
+    CliFmtWriteEnv (w4c_SpqrRecvC07C09aBytesEnvOf C.F K maxOps) CliFormatInnerEnv
 
 private theorem w4c_tryDecryptCmkStepEnvOf_mono {L₁ L₂ : W4LoopAdvEnv}
     (hL : W4LoopAdvSub L₁ L₂)
@@ -608,10 +623,10 @@ theorem w4c_tryDecryptCliLinkedEnvOf_mono {L₁ L₂ : W4LoopAdvEnv} {m₁ m₂ 
       intro h
       exact seqEnv_mono (fun _ hf => hf)
         (fun _ h2 => w4c_fromS2GenEnv_mono
-          (fun x trG tr ck _ hs4 => w4c_tryDecryptCmkSeg4EnvOf_mono hL FmtWriteEnv x trG tr ck hs4)
+          (fun x trG tr ck _ hs4 => w4c_tryDecryptCmkSeg4EnvOf_mono hL CliFmtWriteEnv x trG tr ck hs4)
           (fun x tr _ hs5 => w4c_pqRecvEnv_mono
             (fun stBs msgBs _ hr => w4c_spqrRecvC07C09aBytesEnvOf_mono hm stBs msgBs hr)
-            FormatInnerEnv x tr hs5)
+            CliFormatInnerEnv x tr hs5)
           _ _ tr0 st1 h2) h
 
 theorem w4c_tryDecryptCliLinkedFailEnvOf_mono {L₁ L₂ : W4LoopAdvEnv} {m₁ m₂ : Nat}
@@ -631,10 +646,10 @@ theorem w4c_tryDecryptCliLinkedFailEnvOf_mono {L₁ L₂ : W4LoopAdvEnv} {m₁ m
       intro h
       exact seqEnv_mono (fun _ hf => hf)
         (fun _ h2 => w4c_fromS2GenEnv_mono
-          (fun x trG tr ck _ hs4 => w4c_tryDecryptCmkSeg4EnvOf_mono hL FmtWriteEnv x trG tr ck hs4)
+          (fun x trG tr ck _ hs4 => w4c_tryDecryptCmkSeg4EnvOf_mono hL CliFmtWriteEnv x trG tr ck hs4)
           (fun x tr _ hs5 => w4c_pqRecvEnv_mono
             (fun stBs msgBs _ hr => w4c_spqrRecvC07C09aBytesEnvOf_mono hm stBs msgBs hr)
-            FormatInnerEnv x tr hs5)
+            CliFormatInnerEnv x tr hs5)
           _ _ tr0 st1 h2) h
 
 /-- Direct containment from `DecPkD2cSlotOkLinked.TryDecryptCliLinkedEnv C K` into
@@ -669,7 +684,7 @@ structure W4ArchivedTrialCmk : Type where
   fc_tr : W4FailedTryDecryptCallCmk
 
 /-- Failed-trial `try_decrypt` + drop-cancellation envelope (`Δlive = 0`). -/
-def W4FailedTdCancelCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4FailedTdCancelCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (C : Crypto) (K : MlKem) (fc : W4FailedTryDecryptCallCmk)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -677,12 +692,12 @@ def W4FailedTdCancelCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
       (· = optDeallocListEvs fc.failDropPairs) evs
 
 /-- Archived-trial `PrevDec` deserialization envelope (`SessDeserializeCancelEnv`). -/
-def W4TrialDecCmkEnv (x : W4ArchivedTrialCmk) (evs : List AllocEvent) : Prop :=
+@[expose] def W4TrialDecCmkEnv (x : W4ArchivedTrialCmk) (evs : List AllocEvent) : Prop :=
   SessDeserializeCancelEnv x.r_dec evs
 
 /-- Archived-trial version-mismatch (`FreeOnlyEvs`) or widened cloned-session failed
 `try_decrypt_pq` envelope (`W4TryDecryptCloneFailWideEnv`). -/
-def W4TrialRunWideCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4TrialRunWideCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (C : Crypto) (K : MlKem) (x : W4ArchivedTrialCmk)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -691,7 +706,7 @@ def W4TrialRunWideCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
       (· = dropClonedSessionEvents x.G_tr x.ses_tr.state) evs
 
 /-- Archived-trial deterministic `SessionStructure` drop envelope (`Block 6`). -/
-def W4TrialDropCmkEnv (x : W4ArchivedTrialCmk) (evs : List AllocEvent) : Prop :=
+@[expose] def W4TrialDropCmkEnv (x : W4ArchivedTrialCmk) (evs : List AllocEvent) : Prop :=
   evs = dropSessionStructureLocal1Events x.G_dec x.st_dec
 
 /-- Concrete parameter bundle for the `CmkLoopAdvanceEvs`-widened W4 (`recv-prekey`) CLI slot
@@ -737,7 +752,7 @@ structure W4BinaryRecvPrekeyParamsCmk : Type where
 
 /-- `W4DecryptPrekeySlotParams` wired to `StoresGhost.opened`, `RecordDeserializeCancelEnv`, and
 `w4c_TryDecryptCliLinkedEnvOf LoopAdvEnv maxOps R.C R.K`. -/
-def mkW4RecvPrekeyWideCmkSlotParamsOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def mkW4RecvPrekeyWideCmkSlotParamsOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (R : W4RecvPrekeyRealParamsCmk) :
     W4DecryptPrekeySlotParams W4ArchivedTrialCmk where
   rd := R.rd
@@ -782,13 +797,13 @@ def mkW4RecvPrekeyWideCmkSlotParamsOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
   enc_prev1 := R.enc_prev1
 
 /-- Path A / Path C Stage-P3 `try_decrypt` envelope at `(LoopAdvEnv, maxOps)`. -/
-def W4RecvPrekeyTryDecACCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4RecvPrekeyTryDecACCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (R : W4RecvPrekeyRealParamsCmk) (evs : List AllocEvent) : Prop :=
   if R.isPathAC then w4c_TryDecryptCliLinkedEnvOf LoopAdvEnv maxOps R.C R.K R.td_AC.a evs
   else False
 
 /-- Binary-kit Path B (`Matched`) Stages P1 → P2 → P3 → P4 envelope at `(LoopAdvEnv, maxOps)`. -/
-def W4BinaryRecvPrekeyPathBWideCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4BinaryRecvPrekeyPathBWideCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideCmkSlotParamsOf LoopAdvEnv maxOps w.base
   SeqEnv (W4BinaryStageP1OkEnv w.base.rd w.base.files w.base.peer w.remoteIdKey)
@@ -803,7 +818,7 @@ def W4BinaryRecvPrekeyPathBWideCmkEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Na
 
 /-- Binary-kit Path A (`0`-prev) Stages P1 → P2 → P3 → P4 envelope at `W4BinaryStageP4PathAWideEnvFixed`
 and `(LoopAdvEnv, maxOps)`. -/
-def W4BinaryRecvPrekeyPathAWideCmkEnvFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4BinaryRecvPrekeyPathAWideCmkEnvFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
   SeqEnv (W4BinaryStageP1OkEnv w.base.rd w.base.files w.base.peer w.remoteIdKey)
     (SeqEnv
@@ -821,7 +836,7 @@ def W4BinaryRecvPrekeyPathAWideCmkEnvFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps
 
 /-- Binary-kit Path C (`Over` / `prev1`) Stages P1 → P2 → P3 → P4 envelope at
 `W4BinaryStageP4PathCWideEnvFixed` and `(LoopAdvEnv, maxOps)`. -/
-def W4BinaryRecvPrekeyPathCWideCmkEnvFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4BinaryRecvPrekeyPathCWideCmkEnvFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideCmkSlotParamsOf LoopAdvEnv maxOps w.base
   SeqEnv (W4BinaryStageP1OkEnv w.base.rd w.base.files w.base.peer w.remoteIdKey)
@@ -842,7 +857,7 @@ def W4BinaryRecvPrekeyPathCWideCmkEnvFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps
 
 /-- Complete 4-arm binary-kit W4 (`recv-prekey`) slot envelope at `W4BinaryKpkMarkStepEnvFixed` on
 Paths A and C (collapsed target of `w4c_wideSlotEnvCmkAllFixed_eq_fixed` under `CliPqxdhInputs`). -/
-def W4BinaryRecvPrekeyWideSlotEnvCmkFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4BinaryRecvPrekeyWideSlotEnvCmkFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   SeqEnv
@@ -855,7 +870,7 @@ def W4BinaryRecvPrekeyWideSlotEnvCmkFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps 
 
 /-- Complete 4-arm binary-kit W4 (`recv-prekey`) slot envelope with `ReadFileRuleEnvFixed` on all
 store-kit `Dir::get` steps at `(LoopAdvEnv, maxOps)`. -/
-def W4BinaryRecvPrekeyWideSlotEnvCmkAllFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def W4BinaryRecvPrekeyWideSlotEnvCmkAllFixedOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideCmkSlotParamsOf LoopAdvEnv maxOps w.base
   FreeOnlyEvs evs ∨
@@ -1571,7 +1586,7 @@ List AllocEvent → Prop` so `VerNe-prev1` (`W4StageP3Prev1WideEnvOf` / `VerNeTi
 directly while retaining `rfl` specialization at `w4c_defaultP3PathCEnvOf`. -/
 
 /-- Default Path-C Stage-P3 step envelope (`rfl`-matching `W4BinaryRecvPrekeyPathCWideCmkEnvFixedOf`). -/
-def w4c_defaultP3PathCEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
+@[expose] def w4c_defaultP3PathCEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) : List AllocEvent → Prop :=
   OptStageEnv
     (W4StageP3WideEnv W4CloneACDomEnv
@@ -1579,7 +1594,7 @@ def w4c_defaultP3PathCEnvOf (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
 
 /-- Binary-kit Path C (`Over` / `prev1`) Stages P1 → P2 → `P3PathCEnv` → P4 envelope at
 `W4BinaryStageP4PathCWideEnvFixed` and `(LoopAdvEnv, maxOps, P3PathCEnv)`. -/
-def W4BinaryRecvPrekeyPathCWideCmkWithP3EnvFixed
+@[expose] def W4BinaryRecvPrekeyPathCWideCmkWithP3EnvFixed
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (P3PathCEnv : W4BinaryRecvPrekeyParamsCmk → List AllocEvent → Prop)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
@@ -1598,7 +1613,7 @@ def W4BinaryRecvPrekeyPathCWideCmkWithP3EnvFixed
             w.base.G_out1 w.base.sess_out1 w.base.enc_prev1)))) evs
 
 /-- Complete 4-arm binary-kit W4 (`recv-prekey`) slot envelope parameterized over `P3PathCEnv`. -/
-def W4BinaryRecvPrekeyWideSlotEnvCmkWithP3CFixedOf
+@[expose] def W4BinaryRecvPrekeyWideSlotEnvCmkWithP3CFixedOf
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (P3PathCEnv : W4BinaryRecvPrekeyParamsCmk → List AllocEvent → Prop)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=
@@ -1613,7 +1628,7 @@ def W4BinaryRecvPrekeyWideSlotEnvCmkWithP3CFixedOf
 
 /-- Complete 4-arm `AllFixed` binary-kit W4 (`recv-prekey`) slot envelope parameterized over
 `P3PathCEnv`. -/
-def W4BinaryRecvPrekeyWideSlotEnvCmkWithP3CAllFixedOf
+@[expose] def W4BinaryRecvPrekeyWideSlotEnvCmkWithP3CAllFixedOf
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (P3PathCEnv : W4BinaryRecvPrekeyParamsCmk → List AllocEvent → Prop)
     (w : W4BinaryRecvPrekeyParamsCmk) (evs : List AllocEvent) : Prop :=

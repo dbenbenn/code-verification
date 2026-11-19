@@ -13,58 +13,65 @@ public import Arm64.Trusted.Process.Semantics
 public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
 public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
-public import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserClonePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cStepsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2Budget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.SpecBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
+public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
+import LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers
+import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
+import LibsignalBinary.Proofs.PeakBudget.WireTryFromHelpers
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserClonePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cStepsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2Budget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.SpecBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 public import LibsignalBinary.Specifications.SignalSession.PqDir
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
 
 /-!
 # Binary-Exact `RunEnv` to `CliRunBinaryEnv` and `RealCliMainBinaryEnvOf` Bridge
@@ -76,7 +83,7 @@ allocating `recv-prekey` (`3#8`) non-vacuity witness, and bridges `RunOkPlacedBu
 `CliRunBinaryEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -128,9 +135,7 @@ open LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
    m3PhaseMaxReq m5DirStepDeltaPeak m5DirStepMaxReq m5DirStep_phaseCredit m6DeltaCum
    m6_phaseCredit_small1024 readFileDeltaCum_tight readStdinDeltaCum_tight readStdinDeltaLive
    readStdinDeltaPeak readStdinMaxReq)
-open LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-  (existentialRealCalleeFineSpecs existentialRealCalleeFineSpecs_direct_run_bounds
-   mkExistentialRealCalleeEnvs)
+
 open LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
   (CliRunCalleeEnvs CliRunOpenedEnv InitArmEnv JoinEnv R0OpenedEnv R1cEnv R2ConcatTailEnv R2Env
    R3bEnv RecvArmEnv RecvBadEnv RunArmEnv SigTryFromSliceEnv SplitIdEnv SplitSignedEnv
@@ -233,12 +238,12 @@ private abbrev seqEnv_mono := @LibsignalBinary.Proofs.PeakBudget.SeqCreditKit.Se
 /-! ## 1. Binary-Exact `run` Arm and Whole-`main` Envelopes -/
 
 /-- Optional stage wrapper (`FreeOnlyEvs ∪ P`), containing `[]`, `FreeOnlyEvs`, and `P`. -/
-def OptStageEnv (P : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
+@[expose] def OptStageEnv (P : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ P evs
 
 /-- Prefix-closed binary single-file read step (`PathEnv`, `ReadFileRuleEnv`, optional `FreeOnlyEvs`,
 and optional `14`/`22`-byte error string allocation + `FreeOnlyEvs`). -/
-def R1bFileStepEnv (rd : ReadRule) (files : FsFiles) (dir name : List (BitVec 8))
+@[expose] def R1bFileStepEnv (rd : ReadRule) (files : FsFiles) (dir name : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (OptStageEnv (PathEnv dir name))
     (SeqEnv (OptStageEnv (ReadFileRuleEnv rd files (dir ++ [0x2f#8] ++ name)))
@@ -249,14 +254,14 @@ def R1bFileStepEnv (rd : ReadRule) (files : FsFiles) (dir name : List (BitVec 8)
 
 /-- Prefix-closed Stage-4 (`spkSig` 64-byte clone, `kemDeserializeEvents`, `kpkSig` 64-byte clone,
 and cleanup frees) envelope of Arm `R1b`. -/
-def R1bDeserStageEnv (evs : List AllocEvent) : Prop :=
+@[expose] def R1bDeserStageEnv (evs : List AllocEvent) : Prop :=
   SeqEnv (OptStageEnv (· = rustAllocEvents 64 1))
     (SeqEnv (OptStageEnv (· = rustAllocEvents kemPkLen 1))
       (OptStageEnv (SeqEnv (· = rustAllocEvents 64 1) FreeOnlyEvs))) evs
 
 /-- Prefix-closed binary Arm `R1b` (`Init2Env`) envelope over `registration-id`, `signed-pre-key`,
 `kyber-pre-key`, `one-time-pre-key`, and Stage-4 key deserialization/cloning. -/
-def R1bBinaryEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
+@[expose] def R1bBinaryEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (R1bFileStepEnv rd files dir (utf8 "registration-id"))
     (SeqEnv (OptStageEnv (R1bFileStepEnv rd files dir (utf8 "signed-pre-key")))
@@ -268,26 +273,26 @@ def R1bBinaryEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
                 (OptStageEnv R1bDeserStageEnv))))))) evs
 
 /-- Prefix-closed binary `.init` arm (`R1a → R1b → R1c`) core envelope. -/
-def InitArmBinaryCoreEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
+@[expose] def InitArmBinaryCoreEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
     (InitEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   SeqEnv (R1bFileStepEnv rd files dir (utf8 "identity-key"))
     (SeqEnv (OptStageEnv (R1bBinaryEnv rd files dir))
       (OptStageEnv (R1cEnv InitEnv))) evs
 
 /-- Combined `.init` arm envelope covering both `InitArmEnv` and `InitArmBinaryCoreEnv`. -/
-def InitArmBinaryEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
+@[expose] def InitArmBinaryEnv (rd : ReadRule) (files : FsFiles) (dir : List (BitVec 8))
     (InitEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   InitArmEnv rd files dir InitEnv evs ∨ InitArmBinaryCoreEnv rd files dir InitEnv evs
 
 /-- Binary Arm `R3a` (`2#8` Whisper `recv`) envelope using `SigTryFromCanonInnerEnv`
 (which contains both `SigTryFromSliceEnv` and Block `85`'s `TryFromEnv`). -/
-def R3aBinaryEnv (rest : List (BitVec 8)) (DecSigEnv : List AllocEvent → Prop)
+@[expose] def R3aBinaryEnv (rest : List (BitVec 8)) (DecSigEnv : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ SeqEnv (SigTryFromCanonInnerEnv rest)
     (fun evs2 => FreeOnlyEvs evs2 ∨ SeqEnv DecSigEnv FreeOnlyEvs evs2) evs
 
 /-- Binary `.recv` arm dispatch envelope. -/
-def RecvArmBinaryEnv (stdin : List (BitVec 8)) (DecSigEnv : List AllocEvent → Prop)
+@[expose] def RecvArmBinaryEnv (stdin : List (BitVec 8)) (DecSigEnv : List AllocEvent → Prop)
     (PksmEnv : List (BitVec 8) → List AllocEvent → Prop)
     (DecPkEnv : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   match stdin with
@@ -298,7 +303,7 @@ def RecvArmBinaryEnv (stdin : List (BitVec 8)) (DecSigEnv : List AllocEvent → 
   | [] => RecvBadEnv evs
 
 /-- Binary post-`R0` arm dispatch envelope. -/
-def RunArmBinaryEnv (rd : ReadRule) (files : FsFiles) (E : CliRunCalleeEnvs)
+@[expose] def RunArmBinaryEnv (rd : ReadRule) (files : FsFiles) (E : CliRunCalleeEnvs)
     (wireOutCap : Nat) (stdin : List (BitVec 8)) (c : CallV) (evs : List AllocEvent) : Prop :=
   match c with
   | .keygen _ _ => FreeOnlyEvs evs
@@ -308,21 +313,21 @@ def RunArmBinaryEnv (rd : ReadRule) (files : FsFiles) (E : CliRunCalleeEnvs)
 
 /-- Binary Arm `R0` (`PreEnv`) envelope covering both `R0OpenedEnv` and
 `DirGetEnv PathEnv (ReadFileRuleEnv rd) rd` + `PreAfterGetEnv`. -/
-def R0BinaryEnv (rd : ReadRule) (g : RunCall) (evs : List AllocEvent) : Prop :=
+@[expose] def R0BinaryEnv (rd : ReadRule) (g : RunCall) (evs : List AllocEvent) : Prop :=
   R0OpenedEnv rd (runFiles g.i) evs ∨
   SeqEnv (DirGetEnv PathEnv (ReadFileRuleEnv rd) rd (runFiles g.i)
       StoresGhost.opened.identity.own (utf8 "address"))
     (PreAfterGetEnv g) evs
 
 /-- Whole-`signal_session::run` binary-exact allocator event envelope (`R0 → Arm → Join`). -/
-def CliRunBinaryEnv (rd : ReadRule) (E : CliRunCalleeEnvs) (wireOutCap : Nat) (g : RunCall)
+@[expose] def CliRunBinaryEnv (rd : ReadRule) (E : CliRunCalleeEnvs) (wireOutCap : Nat) (g : RunCall)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
   SeqEnv (R0BinaryEnv rd g)
     (SeqEnv (RunArmBinaryEnv rd (runFiles g.i) E wireOutCap g.i.stdin g.c) JoinEnv) evs
 
 /-- Whole-`main` binary-exact allocator trace predicate on `i : Inputs` over callee slot family `E`. -/
-def RealCliMainBinaryEnvOf (E : RunCall → CliRunCalleeEnvs) (i : Inputs)
+@[expose] def RealCliMainBinaryEnvOf (E : RunCall → CliRunCalleeEnvs) (i : Inputs)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (CliMainBoundedSetupEnv i.argv.length) (fun evs' =>
     FreeOnlyEvs evs' ∨ ∃ w : ValidPostSetupWitness i, w.g.i = i ∧
@@ -372,21 +377,6 @@ theorem realCliMainEnvOf_sub_realCliMainBinaryEnvOf {E : RunCall → CliRunCalle
       Or.inr ⟨w, hgi, seqEnv_mono (fun _ hr => cliRunOpenedEnv_sub_cliRunBinaryEnv hr)
         (fun _ hm => hm) hseq⟩)
     h
-
-/-- Allocating `3#8` `recv-prekey` non-vacuity witness on
-`RealCliMainBinaryEnvOf (mkExistentialRealCalleeEnvs img S P₀) i₀`
-(`AllocEvent.alloc 72 ∈ fullLog` and `AllocEvent.realloc 1 2048 1569 ∈ fullLog`). -/
-theorem realCliMainBinaryEnvOf_concrete_recvPrekey_nonvacuous [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) :
-    ∃ (P₀ : PEParams) (i₀ : Inputs) (fullLog : List AllocEvent),
-      CliPqxdhInputs P₀ i₀ ∧
-      RealCliMainBinaryEnvOf (mkExistentialRealCalleeEnvs img S P₀) i₀ fullLog ∧
-      AllocEvent.alloc 72 ∈ fullLog ∧ AllocEvent.realloc 1 2048 1569 ∈ fullLog := by
-  obtain ⟨P₀, i₀, fullLog, hi, hEnv, ha, hr⟩ :=
-    realCliMainEnvOf_concrete_recvPrekey_nonvacuous img S
-  exact ⟨P₀, i₀, fullLog, hi, realCliMainEnvOf_sub_realCliMainBinaryEnvOf hEnv, ha, hr⟩
-
-/-! ## 3. `PhaseCreditSpec` & `PhaseGroupSpec` for Binary Stages (`R0`, `R1a`, `R1b`, `R3a`) -/
 
 private theorem optStage_phaseCredit {P : List AllocEvent → Prop} {c l p r : Nat}
     (h : PhaseCreditSpec fineCostModel P c l p r) :
@@ -553,7 +543,7 @@ private theorem r0BinaryEnv_fine_groupSpec (rd : ReadRule) (g : RunCall) :
     (hdg.seq hafter).mono (by generalize FineScale = fs; omega)
   exact (hop.or hbin).mono (max_self_le _)
 
-def r1bFileStepCum : Nat := 21185 + fineReadFileCum 1637 + (2 * 22 + 9539)
+@[expose] def r1bFileStepCum : Nat := 21185 + fineReadFileCum 1637 + (2 * 22 + 9539)
 
 private theorem r1bFileStepEnv_fine_phaseCredit {rd : ReadRule} {files : FsFiles}
     {dir name : List (BitVec 8)} (hdir : dir.length ≤ 26) (hname : name.length ≤ 16)
@@ -610,7 +600,7 @@ private theorem r1bFileStepEnv_fine_groupSpec (rd : ReadRule) (files : FsFiles)
       (by generalize FineScale = fs; omega)
   exact (hp.seq (hr.seq htail)).mono (by generalize FineScale = fs; omega)
 
-def r1bDeserStageCum : Nat := (2 * 64 + 9539) + (2 * kemPkLen + 9539) + (2 * 64 + 9539)
+@[expose] def r1bDeserStageCum : Nat := (2 * 64 + 9539) + (2 * kemPkLen + 9539) + (2 * 64 + 9539)
 
 private theorem r1bDeserStageEnv_fine_phaseCredit :
     PhaseCreditSpec fineCostModel R1bDeserStageEnv r1bDeserStageCum 0 0 kemPkLen := by
@@ -647,7 +637,7 @@ private theorem r1bDeserStageEnv_fine_groupSpec :
   have ha64Free := optStage_groupSpec ha64Seq
   exact (ha64.seq (haKem.seq ha64Free)).mono (by generalize FineScale = fs; omega)
 
-def initArmBinaryPrefixCum : Nat :=
+@[expose] def initArmBinaryPrefixCum : Nat :=
   5 * r1bFileStepCum + 2 * splitSignedDeltaCum + splitIdDeltaCum + r1bDeserStageCum
 
 private theorem initArmBinaryEnv_fine_phaseCredit {rd : ReadRule} {files : FsFiles}
@@ -781,11 +771,11 @@ private theorem r3aBinaryEnv_fine_groupSpec {rest : List (BitVec 8)}
 /-! ## 4. Whole-`run` & Whole-`main` `< 90%` / `≤ 1 GiB` / `cliBudgetLimits` `FitsTrace` & `FitsEnv` -/
 
 /-- Binary whole-`run` scaled group count `grpS` (`cliRealDirectRunGrpS_i + 27 * FineScale`). -/
-def cliRealBinaryDirectRunGrpS_i : Nat :=
+@[expose] def cliRealBinaryDirectRunGrpS_i : Nat :=
   cliRealDirectRunGrpS_i + 27 * FineScale
 
 /-- Canonical binary whole-`main` `stepReserve` (widened `16384`-B `AddrOpt`/`BundleOpt` setup). -/
-def cliRealBinaryDirectMainStepReserve_i : Nat :=
+@[expose] def cliRealBinaryDirectMainStepReserve_i : Nat :=
   cliMainWidenedStepReserveOf cliRealDirectRunMaxReq_i cliRealBinaryDirectRunGrpS_i
 
 /-- `< 90%` (`≤ 966,367,641` B), `≤ 1 GiB`, and `VA ≤ 2 ^ 48` bounds for
@@ -808,7 +798,7 @@ theorem cliRealBinaryDirect1MiB_i_fits_90pct_and_oneGiB :
 
 /-- Parametric `1 MiB` binary whole-`run` `Δcum` taking `max` over both `initArmDeltaCum` and
 `initArmBinaryPrefixCum + initCum`. -/
-def cliRunBinary1MiBCustomPksmCum (pksmCum initCum encCum decSigCum decPkCum : Nat) : Nat :=
+@[expose] def cliRunBinary1MiBCustomPksmCum (pksmCum initCum encCum decSigCum decPkCum : Nat) : Nat :=
   r0Opened1MiBCum +
     max
       (max (initArmDeltaCum (pathDeltaCum 26 16) 1637 initCum)
@@ -818,7 +808,7 @@ def cliRunBinary1MiBCustomPksmCum (pksmCum initCum encCum decSigCum decPkCum : N
           (pksmCum + decPkCum)))
 
 /-- Parametric `1 MiB` binary whole-`run` `maxReq` including `fineReadFileMaxReq 1637` in `init`. -/
-def cliRunBinary1MiBCustomPksmMaxReq
+@[expose] def cliRunBinary1MiBCustomPksmMaxReq
     (pksmMaxReq initMaxReq encMaxReq decSigMaxReq decPkMaxReq : Nat) : Nat :=
   max r0Opened1MiBMaxReq
     (max
@@ -980,41 +970,6 @@ theorem cliRunBinaryEnv_real_fine_groupSpec
     have hge : 15 * FineScale ≤ cliRealDirectRunGrpS_i := by decide
     generalize FineScale = fs at hmax hge ⊢
     omega)
-
-private theorem existentialRealCalleeFineSpecs_initGrpS_bound [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {P : PEParams} {g : RunCall}
-    (hi : CliPqxdhInputs P g.i)
-    (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
-    234 * FineScale + (existentialRealCalleeFineSpecs img S hi hparse).initGrpS ≤
-      cliRealDirectRunGrpS_i - 15 * FineScale := by
-  dsimp only [existentialRealCalleeFineSpecs]
-  decide
-
-private theorem existentialRealCalleeFineSpecs_binaryRunCum_bound [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {P : PEParams} {g : RunCall}
-    (hi : CliPqxdhInputs P g.i)
-    (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
-    let SE := existentialRealCalleeFineSpecs img S hi hparse
-    cliRunBinary1MiBCustomPksmCum SE.pksmCum SE.initCum SE.encCum SE.decSigCum SE.decPkCum ≤
-      cliRealDirectRunCum_i ∧
-    cliRunBinary1MiBCustomPksmMaxReq SE.pksmMaxReq SE.initMaxReq SE.encMaxReq
-      SE.decSigMaxReq SE.decPkMaxReq ≤ cliRealDirectRunMaxReq_i := by
-  dsimp only [existentialRealCalleeFineSpecs]
-  exact ⟨by decide, by decide⟩
-
-/-- Whole-`run` `PhaseGroupSpec fineCostModel` on `CliRunBinaryEnv` at
-`mkExistentialRealCalleeEnvs img S W g`. -/
-theorem cliRunBinaryEnv_existential_fine_groupSpec [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {W : PEParams} {g : RunCall}
-    (hi : CliPqxdhInputs W g.i)
-    (hstdin : g.i.stdin.length ≤ msgCapBytes)
-    (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c) :
-    PhaseGroupSpec fineCostModel
-      (CliRunBinaryEnv cliIo.rd (mkExistentialRealCalleeEnvs img S W g) sessionCapBytes g)
-      cliRealBinaryDirectRunGrpS_i :=
-  cliRunBinaryEnv_real_fine_groupSpec (existentialRealCalleeFineSpecs img S hi hparse) hstdin
-    (existentialRealCalleeFineSpecs_initGrpS_bound img S hi hparse)
-    (existentialRealCalleeFineSpecs_direct_run_bounds img S hi hparse).2.2.2.2
 
 private theorem realCliMainBinaryEnvOf_90pct_bounds_direct {lim : BudgetLimits}
     (hsb : lim.staticBytes ≤ cliDefaultStaticBytes) (hsc : lim.staticCount ≤ cliDefaultStaticCount)
@@ -1290,161 +1245,6 @@ theorem m5Phase_Bounded_phaseCredit_fine
   · rw [Nat.zero_add]; exact Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩
   · exact Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩
 
-/-- Concrete `PhaseCreditSpec fineCostModel` on `RealCliMainBinaryEnvOf (mkExistentialRealCalleeEnvs img S W) i`. -/
-theorem realCliMainBinaryEnvOf_phaseCredit_fine_concrete [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {W : PEParams} {i : Inputs}
-    (hi : CliPqxdhInputs W i) :
-    PhaseCreditSpec fineCostModel
-      (RealCliMainBinaryEnvOf (mkExistentialRealCalleeEnvs img S W) i)
-      (cliMainWidenedCumOf cliRealDirectRunCum_i) (cliMainTightLiveOf cliRealDirectRunLive_i)
-      (cliMainTightPeakOf cliRealDirectRunLive_i cliRealDirectRunPeak_i)
-      (cliMainTightReqOf cliRealDirectRunMaxReq_i) := by
-  have hsm1024 : 1024 ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-    rw [fineCostModel_smallMaxReq_eq]; decide
-  have hw (w : ValidPostSetupWitness i) : PhaseCreditSpec fineCostModel
-      (SeqEnv (CliRunBinaryEnv cliIo.rd (mkExistentialRealCalleeEnvs img S W w.g)
-          sessionCapBytes w.g)
-        (SeqEnv (M5PhaseEnv w.dirs) (M6Env w.ok)))
-      (cliRealDirectRunCum_i + cliMaxDirtyEntries *
-        (10 * max (4 * cliMaxDirPathBytes + cliMaxAddrTextBytes + 16) 16 + 4 * 9539) + m6DeltaCum)
-      cliRealDirectRunLive_i
-      (max cliRealDirectRunPeak_i
-        (cliRealDirectRunLive_i + m5DirStepDeltaPeak cliMaxDirPathBytes cliMaxAddrTextBytes))
-      (max cliRealDirectRunMaxReq_i
-        (max 1024 (m5DirStepMaxReq cliMaxDirPathBytes cliMaxAddrTextBytes))) := by
-    have hi_g : CliPqxdhInputs W w.g.i := w.g_i.symm ▸ hi
-    obtain ⟨h1_cum, h1_req⟩ := existentialRealCalleeFineSpecs_binaryRunCum_bound img S hi_g w.parse_ok
-    obtain ⟨_, h2, h3, _, _⟩ :=
-      existentialRealCalleeFineSpecs_direct_run_bounds img S hi_g w.parse_ok
-    have hrun :=
-      (cliRunBinaryEnv_real_1MiB_fine_phaseCredit_of_cliPqInputs
-        (existentialRealCalleeFineSpecs img S hi_g w.parse_ok) hi_g w.stdin_le
-        w.parse_ok).mono h1_cum h2 h3 h1_req
-    refine (hrun.seq ((m5Phase_Bounded_phaseCredit_fine w.dirs_sum_le
-      w.dirs_bounds).seq (m6_phaseCredit_small1024 fineCostModel_modelHyps hsm1024 w.ok))).mono
-      ?_ ?_ ?_ ?_
-    · rw [Nat.add_assoc]; exact Nat.le_refl _
-    · simp only [Nat.add_zero]; exact Nat.le_refl _
-    · exact Nat.max_le.mpr ⟨Nat.le_max_left _ _,
-        Nat.le_trans (Nat.add_le_add_left
-          (Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩) _) (Nat.le_max_right _ _)⟩
-    · exact Nat.max_le.mpr ⟨Nat.le_max_left _ _,
-        Nat.le_trans (Nat.le_of_eq (Nat.max_comm _ _)) (Nat.le_max_right _ _)⟩
-  have hex : PhaseCreditSpec fineCostModel
-      (fun evs' => ∃ w : ValidPostSetupWitness i, w.g.i = i ∧
-        SeqEnv (CliRunBinaryEnv cliIo.rd (mkExistentialRealCalleeEnvs img S W w.g)
-            sessionCapBytes w.g)
-          (SeqEnv (M5PhaseEnv w.dirs) (M6Env w.ok)) evs')
-      (cliRealDirectRunCum_i + cliMaxDirtyEntries *
-        (10 * max (4 * cliMaxDirPathBytes + cliMaxAddrTextBytes + 16) 16 + 4 * 9539) + m6DeltaCum)
-      cliRealDirectRunLive_i
-      (max cliRealDirectRunPeak_i
-        (cliRealDirectRunLive_i + m5DirStepDeltaPeak cliMaxDirPathBytes cliMaxAddrTextBytes))
-      (max cliRealDirectRunMaxReq_i
-        (max 1024 (m5DirStepMaxReq cliMaxDirPathBytes cliMaxAddrTextBytes))) :=
-    { req_align := fun evs ⟨w, _, hseq⟩ ev hev => (hw w).req_align evs hseq ev hev
-      credit_le := fun st0 {_} ⟨w, _, hseq⟩ => (hw w).credit_le st0 hseq }
-  have htail := optStage_phaseCredit hex
-  refine ((cliMainBoundedSetup_phaseCredit_fine (argv_length_le_of_cliPqInputs hi)).seq htail).mono
-    ?_ ?_ ?_ ?_
-  · unfold cliMainWidenedCumOf; simp only [Nat.add_assoc]; exact Nat.le_refl _
-  · unfold cliMainTightLiveOf cliMainDeltaLive_tight; exact Nat.le_refl _
-  · unfold cliMainTightPeakOf cliMainDeltaPeak_tight; exact Nat.le_refl _
-  · unfold cliMainTightReqOf cliMainMaxReq
-    have h16k : max 16384 (m3PhaseMaxReq msgCapBytes sessionCapBytes) =
-        m3PhaseMaxReq msgCapBytes sessionCapBytes := by
-      unfold m3PhaseMaxReq msgCapBytes sessionCapBytes; decide
-    rw [h16k]
-
-/-- Concrete `PhaseGroupSpec fineCostModel` on `RealCliMainBinaryEnvOf (mkExistentialRealCalleeEnvs img S W) i`. -/
-theorem realCliMainBinaryEnvOf_fine_groupSpec_concrete [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) {W : PEParams} {i : Inputs}
-    (hi : CliPqxdhInputs W i) :
-    PhaseGroupSpec fineCostModel
-      (RealCliMainBinaryEnvOf (mkExistentialRealCalleeEnvs img S W) i)
-      (cliMainWidenedGrpSOf cliRealBinaryDirectRunGrpS_i) := by
-  have hex : PhaseGroupSpec fineCostModel
-      (fun evs' => ∃ w : ValidPostSetupWitness i, w.g.i = i ∧
-        SeqEnv (CliRunBinaryEnv cliIo.rd (mkExistentialRealCalleeEnvs img S W w.g)
-            sessionCapBytes w.g)
-          (SeqEnv (M5PhaseEnv w.dirs) (M6Env w.ok)) evs')
-      (cliRealBinaryDirectRunGrpS_i + cliMaxDirtyEntries * (12 * FineScale) + 3 * FineScale) :=
-    { groups_le := fun st0 {_} ⟨w, _, hseq⟩ => by
-        have hi_g : CliPqxdhInputs W w.g.i := w.g_i.symm ▸ hi
-        have hrun := cliRunBinaryEnv_existential_fine_groupSpec img S hi_g w.stdin_le w.parse_ok
-        have hm5 := (m5PhaseEnv_groupSpec fineCostModel w.dirs).mono
-          (Nat.mul_le_mul_right (12 * FineScale) w.dirs_sum_le)
-        have htot : PhaseGroupSpec fineCostModel
-            (SeqEnv (CliRunBinaryEnv cliIo.rd (mkExistentialRealCalleeEnvs img S W w.g)
-                sessionCapBytes w.g)
-              (SeqEnv (M5PhaseEnv w.dirs) (M6Env w.ok)))
-            (cliRealBinaryDirectRunGrpS_i + cliMaxDirtyEntries * (12 * FineScale) + 3 * FineScale) :=
-          (hrun.seq (hm5.seq (m6Env_groupSpec fineCostModel w.ok))).mono
-            (by generalize FineScale = fs; omega)
-        exact htot.groups_le st0 hseq }
-  have htail := optStage_groupSpec hex
-  exact ((cliMainBoundedSetup_fine_groupSpec (argv_length_le_of_cliPqInputs hi)).seq htail).mono
-    (by unfold cliMainWidenedGrpSOf; generalize FineScale = fs; omega)
-
-/-- `< 90%` (`965,750,441 ≤ 966,367,641` B) whole-`main` `FitsTrace fineCostModel` on `RealCliMainBinaryEnvOf`. -/
-theorem realCliMainBinaryEnvOf_90pct_fitsTrace_concrete [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap)
-    (img : Arm64.Obj.Image) (S : RunSem) (W : PEParams)
-    {i : Inputs} (hi : CliPqxdhInputs W i)
-    {fullLog : List AllocEvent}
-    (hEnv : RealCliMainBinaryEnvOf (mkExistentialRealCalleeEnvs img S W) i fullLog) :
-    FitsTrace fineCostModel lim cliRealBinaryDirectMainStepReserve_i fullLog := by
-  obtain ⟨hlp, hram, hva⟩ := realCliMainBinaryEnvOf_90pct_bounds_direct hsb hsc hcap90
-  exact fitsTrace_fineCostModel_of_group_literal_bounds
-    (realCliMainBinaryEnvOf_phaseCredit_fine_concrete img S hi)
-    (realCliMainBinaryEnvOf_fine_groupSpec_concrete img S hi)
-    (Nat.le_refl _) hlp (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) henf hram hva hEnv
-
-/-- `< 90%` (`965,750,441 ≤ 966,367,641` B) whole-`main` `FitsEnv fineCostModel` on `RealCliMainBinaryEnvOf`. -/
-theorem realCliMainBinaryEnvOf_90pct_fitsEnv_concrete [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap)
-    (img : Arm64.Obj.Image) (S : RunSem) (W : PEParams) :
-    ∀ i : Inputs, CliPqxdhInputs W i →
-      FitsEnv fineCostModel lim fineCostModel.init
-        (RealCliMainBinaryEnvOf (mkExistentialRealCalleeEnvs img S W) i) := by
-  intro i hi
-  obtain ⟨hlp, hram, hva⟩ := realCliMainBinaryEnvOf_90pct_bounds_direct hsb hsc hcap90
-  exact fitsEnv_fineCostModel_of_group_literal_bounds
-    (realCliMainBinaryEnvOf_phaseCredit_fine_concrete img S hi)
-    (realCliMainBinaryEnvOf_fine_groupSpec_concrete img S hi)
-    (Nat.le_refl _) hlp (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) henf hram hva
-
-/-- `≤ 1 GiB` whole-`main` `FitsEnv fineCostModel` on `RealCliMainBinaryEnvOf`. -/
-theorem realCliMainBinaryEnvOf_fitsEnv_concrete [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap1G : cliOneGiB ≤ lim.physCap)
-    (img : Arm64.Obj.Image) (S : RunSem) (W : PEParams) :
-    ∀ i : Inputs, CliPqxdhInputs W i →
-      FitsEnv fineCostModel lim fineCostModel.init
-        (RealCliMainBinaryEnvOf (mkExistentialRealCalleeEnvs img S W) i) :=
-  realCliMainBinaryEnvOf_90pct_fitsEnv_concrete henf hsb hsc
-    (Nat.le_trans (by unfold cliRealNinetyPctOneGiB cliOneGiB; decide) hcap1G) img S W
-
-/-- `cliBudgetLimits` (`1 GiB`) whole-`main` `FitsEnv fineCostModel` on `RealCliMainBinaryEnvOf`. -/
-theorem realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_concrete [LibsignalPlacement]
-    (img : Arm64.Obj.Image) (S : RunSem) (W : PEParams) :
-    ∀ i : Inputs, CliPqxdhInputs W i →
-      FitsEnv fineCostModel cliBudgetLimits fineCostModel.init
-        (RealCliMainBinaryEnvOf (mkExistentialRealCalleeEnvs img S W) i) :=
-  realCliMainBinaryEnvOf_90pct_fitsEnv_concrete rfl (Nat.le_refl _) (Nat.le_refl _)
-    (by unfold cliBudgetLimits cliRealNinetyPctOneGiB cliOneGiB; decide) img S W
-
 /-- Suffix-splitting helper extracting `FitsEnv M lim (M.stepEvents evs₁ M.init) P` from any
 whole-`main` `FitsEnv M lim M.init (RealCliMainBinaryEnvOf E i)`. -/
 theorem fitsEnv_suffix_of_realCliMainBinaryEnvOf {M : AllocCostModel} {lim : BudgetLimits}
@@ -1515,7 +1315,7 @@ abbrev PubSplitSignedEnv :=
 /-- Concrete non-slot callee allocation-event envelopes on `signal_session::run` (Block `579`)
 parameterized by `ReadEnv` (definitionally equal to `AllPlacedBudget.cliRunCalleesEnvs`, avoiding
 `AllPlacedBudget` import). -/
-def cliRunCalleesEnvs
+@[expose] def cliRunCalleesEnvs
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop :=
       ReadFileRuleEnv cliIo.rd) : RunCalleesEnvs where
   readFile := ReadEnv
@@ -1527,7 +1327,7 @@ def cliRunCalleesEnvs
 /-- Concrete arm allocation-event envelopes on `signal_session::run` (Block `579`) over `cEnvs`,
 `sEnvs`, `PksmTryFromEnv`, and `S` (definitionally equal to `AllPlacedBudget.cliRunArmEnvs` /
 `MainInstAllPlacedBudgetSeams.cliMainArmEnvs`). -/
-def cliMainArmEnvs (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
+@[expose] def cliMainArmEnvs (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) (S : RunSem) : RunArmEnvs where
   pre := PreEnv cEnvs
   init1 := Init1Env cEnvs

@@ -13,11 +13,9 @@ import all Init.Data.String.Defs
 import all Init.Data.Repr
 public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 public import LibsignalBinary.Proofs.SignalSession.Cli.Specs
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommon
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSome
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-
-@[expose] public section
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSome -- proof-setup: allow-public-import
+public section
 
 set_option autoImplicit false
 
@@ -33,75 +31,6 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
 /-! ## 0. Call-site `subroutine_ok` and panic stub wrappers -/
-
-theorem at_doReserve_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {resStack : Nat}
-    (hRes : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliDoReserveName)
-      ((SpqrV1.Varint.doReserveSpecOf resStack A).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressTextName +
-        bv% (2 ^ 64 +
-          (ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#9]") -
-          (ls_off% "libsignal_cli::stores::address_text")))
-      ((SpqrV1.Varint.doReserveSpecOf resStack A).inImage img) := by
-  rw [fnAddr_sub_rel
-    (ls_lemma% fnOff "libsignal_cli::stores::address_text")
-    (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#9]")
-    (by decide)]
-  exact hRes
-
-theorem at_decimal_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {decStk : Nat}
-    (hDec : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr decimalName)
-      (decimalSpec A img decStk)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressTextName +
-        BitVec.ofNat 64 (ls_rel% "libsignal_cli::stores::address_text" "libsignal_cli::stores::decimal"))
-      (decimalSpec A img decStk) :=
-  sub_ok_at_of_fnAddr hDec addressTextName
-    (ls_rel% "libsignal_cli::stores::address_text" "libsignal_cli::stores::decimal")
-    (by rw [(ls_lemma% fnOff "libsignal_cli::stores::address_text"),
-            (ls_lemma% fnOff "libsignal_cli::stores::decimal")])
-
-theorem at_alloc_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressTextName +
-        BitVec.ofNat 64 (ls_rel% "libsignal_cli::stores::address_text" "__rustc::__rust_alloc"))
-      ((rustAllocSpecWithStack A extHookStack).inImage img) :=
-  hC.alloc_ok_at addressTextName
-    (ls_rel% "libsignal_cli::stores::address_text" "__rustc::__rust_alloc")
-    (by rw [(ls_lemma% fnOff "libsignal_cli::stores::address_text"),
-            (ls_stub% "__rustc::__rust_alloc")])
-
-theorem at_dealloc_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressTextName +
-        BitVec.ofNat 64 (ls_rel% "libsignal_cli::stores::address_text" "__rustc::__rust_dealloc"))
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img) :=
-  hC.dealloc_ok_at addressTextName
-    (ls_rel% "libsignal_cli::stores::address_text" "__rustc::__rust_dealloc")
-    (by rw [(ls_lemma% fnOff "libsignal_cli::stores::address_text"),
-            (ls_stub% "__rustc::__rust_dealloc")])
-
-theorem at_handleError_panic {img : Obj.Image}
-    {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt img.base ext).externAt?
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressTextName +
-        BitVec.ofNat 64 (ls_rel% "libsignal_cli::stores::address_text"
-          "alloc::raw_vec::handle_error")) =
-      some Rust.panicked :=
-  panic_at_handle_error_ext img.base ext addressTextName
-    (ls_rel% "libsignal_cli::stores::address_text" "alloc::raw_vec::handle_error")
-    (by rw [(ls_lemma% fnOff "libsignal_cli::stores::address_text"),
-            (ls_stub% "alloc::raw_vec::handle_error")])
-
-/-! ## 1. Pure model & arithmetic bounds -/
 
 theorem utf8_dot : Cli.utf8 "." = [0x2e#8] := by decide +kernel
 
@@ -182,7 +111,7 @@ theorem spAligned_sub112 {s0 : State} (hsp0 : s0.spAligned = true) :
   omega
 
 /-- Saved callee-saved registers & FP/LR in `[sp' + 48 .. sp' + 112)`. -/
-def addrCalleeSavedAt (sp' : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def addrCalleeSavedAt (sp' : BitVec 64) (s0 : State) : SepProp :=
   ((sp' + 48#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp' + 56#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp' + 64#64) ↦₆₄ s0.readReg64 .x24) ∗

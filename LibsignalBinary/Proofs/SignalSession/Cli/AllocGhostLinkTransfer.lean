@@ -18,6 +18,7 @@ public import ProofLib.MallocngBridge
 public import VerifiedLibraries.Mallocng.Spec
 public import VerifiedLibraries.Mallocng.Proofs.BridgeHelpers
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalE2E.HooksMallocng
 public import LibsignalBinary.Heap.IfaceBudgetBase
 public import LibsignalBinary.Heap.IfaceBudgetBaseBridges
@@ -25,14 +26,20 @@ public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.MallocngBridgeBudget
 public import LibsignalBinary.Heap.Fine.RustEntriesFine
 public import LibsignalBinary.Heap.Fine.AllocZeroedFine
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Budget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Budget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpecLemmas.SyscallReadWritev
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Ghost-Hook Overlay and Link-Transfer Bridge for `mallocng`
@@ -53,7 +60,7 @@ Connects `HookOk` / `HookSat`-parameterized `RustCliAllocBudget` proofs to linke
    `subroutine_ok` from `cliGhostExterns g baseExt` to `baseExt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -71,7 +78,7 @@ open VerifiedLibraries.RustStd (
 open CryptoGames.CBC (AesKey Block)
 open CryptoGames.HMAC (ShaState)
 open CryptoGames.LibsignalSession (Crypto)
-open CryptoVerification (IsLsBlockProg LibsignalHooks LibsignalPlacement)
+open CryptoVerification (IsLsBlockProg LibsignalHooks LibsignalPlacement libsignalSessionExterns lsρ)
 open CryptoVerification.E2E (
   aesDecFrameBytes aesDecHookMallocng aesDecOut
   aesEncFrameBytes aesEncHookMallocng
@@ -86,11 +93,11 @@ open CryptoVerification.LibsignalTripleRatchet (
   sessionMemsetRegionSpec sessionMemsetSpec sessionShim_hookOk
 )
 open CryptoVerification.SignalSession (
-  CliHooks cliExternsPlaced cliPanicSymbolsPlaced
+  CliHooks cliExternsPlaced cliCratePanicSyms cliPanicSymbolsPlaced
   lsAesDecSym lsAesEncSym lsFormatInnerSym lsFromUtf8Sym lsMemcpySym lsMemrchrSym lsMemsetSym
   lsReadFileSym lsReadStdinSym
   lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli
-  lsRustNoAllocShimSymCli lsRustReallocSymCli lsStringCloneSym
+  lsRustNoAllocShimSymCli lsRustReallocSymCli lsSpqrOnceCallSym lsStringCloneSym
 )
 open CryptoVerification.SignalSession.Cli.MainHops (
   hookNoop_fs
@@ -132,7 +139,7 @@ open LibsignalBinary.Heap.Fine (
   fineRustCliAllocBudget rdlAllocZeroedInstrs
 )
 open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase (
-  CodeBlocksPermRX CodeBlocksPermRXMem fineHookRustCliAllocBudget
+  CodeBlocksPermRX CodeBlocksPermRXMem aesStorageCell fineHookRustCliAllocBudget
 )
 open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget (
   fineAesDecWeak_budget_hookOk fineAesDec_budget_hookOk fineAesEnc_budget_hookOk
@@ -168,7 +175,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionShimBudgetSpe
 /-- Every executable byte in `m` is readable and non-writable (`Perm.rx`, hence frozen). Holds on
     every `ElfImage.loadState` memory and is preserved by all non-`SVC` instructions and all
     Linux VM syscalls (`brk`, `mmap`, `munmap`, `mprotect`, `mremap`, `madvise`). -/
-def ExecFrozen (m : Memory) : Prop :=
+@[expose] def ExecFrozen (m : Memory) : Prop :=
   ∀ a : BitVec 64, (m.perm a).x = true → (m.perm a).r = true ∧ (m.perm a).w = false
 
 theorem ExecFrozen.of_perm_eq {m m' : Memory} (h : ExecFrozen m)
@@ -372,30 +379,6 @@ private theorem execFrozen_mapZero {m : Memory} (hfr : ExecFrozen m)
   rw [perm_mk_cells] at hx ⊢
   by_cases hc : (decide ((a - base).toNat < len) && !(m.perm a).mapped) = true
   · simp only [hc, ↓reduceIte, Perm.rwx, Perm.rw, Option.x] at hx
-    cases hx
-  · simp only [hc] at hx ⊢
-    exact hfr a hx
-
-private theorem strip_unmapWritable {keep : BitVec 64 → Bool} {m : Memory}
-    (hfr : ExecFrozen m) (base : BitVec 64) (len : Nat) :
-    (stripExecOutside keep m).unmapWritable base len =
-      stripExecOutside keep (m.unmapWritable base len) := by
-  have hw : ∀ a, ((stripExecOutside keep m).perm a).w = (m.perm a).w := strip_perm_w hfr
-  dsimp only [Memory.unmapWritable]
-  simp only [hw]
-  dsimp only [stripExecOutside]
-  congr 1; funext a
-  cases (decide ((a - base).toNat < len) && (m.perm a).w) <;>
-    simp only [Bool.false_eq_true, ↓reduceIte]
-
-private theorem execFrozen_unmapWritable {m : Memory} (hfr : ExecFrozen m)
-    (base : BitVec 64) (len : Nat) :
-    ExecFrozen (m.unmapWritable base len) := by
-  intro a hx
-  unfold Memory.unmapWritable at hx ⊢
-  rw [perm_mk_cells] at hx ⊢
-  by_cases hc : (decide ((a - base).toNat < len) && (m.perm a).w) = true
-  · simp only [hc, ↓reduceIte, Option.x] at hx
     cases hx
   · simp only [hc] at hx ⊢
     exact hfr a hx
@@ -637,6 +620,8 @@ private theorem stripS_mem (keep : BitVec 64 → Bool) (s : State) :
     (stripS keep s).mem = stripExecOutside keep s.mem := by cases s; rfl
 private theorem stripS_r64 (keep : BitVec 64 → Bool) (s : State) (r : Reg) :
     (stripS keep s).readReg64 r = s.readReg64 r := by cases s; rfl
+private theorem stripS_r32 (keep : BitVec 64 → Bool) (s : State) (r : Reg) :
+    (stripS keep s).readReg32 r = s.readReg32 r := by cases s; rfl
 private theorem stripS_brk (keep : BitVec 64 → Bool) (s : State) :
     (stripS keep s).brk = s.brk := by cases s; rfl
 private theorem stripS_brkStart (keep : BitVec 64 → Bool) (s : State) :
@@ -688,23 +673,18 @@ private theorem execBrk_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : Ex
     execBrk (stripS keep s) = stripS keep (execBrk s) ∧
     ExecFrozen (execBrk s).mem ∧ (execBrk s).fs = s.fs := by
   unfold execBrk
-  have hmap := strip_allPerm_eq (keep := keep) (m := s.mem)
-    (fun a => (strip_perm_props keep s.mem a).2.2.1)
+  dsimp only
+  have hnf := strip_allPerm_eq (keep := keep) (m := s.mem) (p := fun q => !q.frozen)
+    (fun a => congrArg Bool.not (strip_perm_frozen (keep := keep) hfr a))
   simp only [stripS_r64, stripS_brkStart, stripS_brk, stripS_mem, stripS_pma,
-    hmap, strip_countRw, strip_canMap, strip_unmapWritable hfr, strip_mapZero]
-  split
-  · exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr, rfl⟩
-  · split
-    · split
-      · exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr, rfl⟩
-      · exact ⟨by simp [stripS_sbrk, stripS_smem, stripS_spma, stripS_w64, stripS_adv],
-          by simpa using execFrozen_unmapWritable hfr _ _, rfl⟩
-    · split
-      · exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr, rfl⟩
-      · split
-        · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-        · exact ⟨by simp [stripS_sbrk, stripS_smem, stripS_spma, stripS_w64, stripS_adv],
-            by simpa using execFrozen_mapZero hfr _ _, rfl⟩
+    hnf, strip_countRw, strip_canMap, strip_unmapNonFrozen hfr, strip_mapZero]
+  repeat' split
+  all_goals first
+    | exact ⟨by simp [stripS_sbrk, stripS_w64, stripS_adv, stripS_sst], by simpa using hfr, rfl⟩
+    | exact ⟨by simp [stripS_sbrk, stripS_smem, stripS_spma, stripS_w64, stripS_adv],
+        by simpa using execFrozen_unmapNonFrozen hfr _ _, rfl⟩
+    | exact ⟨by simp [stripS_sbrk, stripS_smem, stripS_spma, stripS_w64, stripS_adv],
+        by simpa using execFrozen_mapZero hfr _ _, rfl⟩
 
 private theorem execMunmap_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : ExecFrozen s.mem) :
     execMunmap (stripS keep s) = stripS keep (execMunmap s) ∧
@@ -772,35 +752,30 @@ private theorem execMprotect_stripS {keep : BitVec 64 → Bool} {s : State}
     (hfr : ExecFrozen s.mem) :
     execMprotect (stripS keep s) = stripS keep (execMprotect s) ∧
     ExecFrozen (execMprotect s).mem ∧ (execMprotect s).fs = s.fs := by
-  unfold execMprotect
   have hnf := strip_allPerm_eq (keep := keep) (m := s.mem) (p := fun q => !q.frozen)
     (fun a => congrArg Bool.not (strip_perm_frozen (keep := keep) hfr a))
   have hmp := strip_allPerm_eq (keep := keep) (m := s.mem)
     (fun a => (strip_perm_props keep s.mem a).2.2.1)
-  simp only [stripS_r64, stripS_mem, stripS_pma, hnf, hmp, strip_canMap, strip_countRw]
-  split
-  · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-  · split
-    · exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr, rfl⟩
-    · split
-      · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-      · split
-        · exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr, rfl⟩
-        · split
-          · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-          · split
-            · split
-              · exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr, rfl⟩
-              · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-            · split
-              · rw [strip_setPermNonFrozen hfr _ _ Perm.protNone rfl]
-                exact ⟨by simp [stripS_smem, stripS_w64, stripS_adv],
-                  by simpa using execFrozen_setPermNonFrozen hfr _ _ Perm.protNone rfl, rfl⟩
-              · split
-                · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-                · rw [strip_setPermNonFrozen hfr _ _ Perm.rw rfl]
-                  exact ⟨by simp [stripS_smem, stripS_spma, stripS_w64, stripS_adv],
-                    by simpa using execFrozen_setPermNonFrozen hfr _ _ Perm.rw rfl, rfl⟩
+  refine ⟨?_, ?_, ?_⟩
+  · unfold execMprotect
+    dsimp only
+    simp (config := { instances := true }) only
+      [stripS_r64, stripS_mem, stripS_pma, hnf, hmp, strip_canMap, strip_countRw,
+       strip_setPermNonFrozen hfr _ _ Perm.protNone rfl,
+       strip_setPermNonFrozen hfr _ _ Perm.rw rfl,
+       stripS_smem, stripS_spma, stripS_w64, stripS_adv, stripS_sst, stripS_ite]
+  · unfold execMprotect
+    dsimp only
+    repeat' refine execFrozen_ite ?_ ?_
+    all_goals first
+      | simpa using hfr
+      | (dsimp only [State.advancePC, State.writeReg64, State.setPhysMemAvail, State.setMem]
+         exact execFrozen_setPermNonFrozen hfr _ _ Perm.protNone rfl)
+      | (dsimp only [State.advancePC, State.writeReg64, State.setPhysMemAvail, State.setMem]
+         exact execFrozen_setPermNonFrozen hfr _ _ Perm.rw rfl)
+  · unfold execMprotect
+    dsimp only
+    simp [state_fs_ite]
 
 private theorem execMremap_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : ExecFrozen s.mem) :
     execMremap (stripS keep s) = stripS keep (execMremap s) ∧
@@ -828,7 +803,7 @@ private theorem execMremap_stripS {keep : BitVec 64 → Bool} {s : State} (hfr :
        strip_remapRw hfr, stripS_smem, stripS_spma, stripS_norc, stripS_w64, stripS_adv,
        stripS_sst, stripS_ite]
     cases sanitizeMmapAddr
-        (s.mem.unmapNonFrozen (s.readReg64 Reg.x0) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+        (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (pageAlignUp (s.readReg64 Reg.x1).toNat))
         (s.oracle.mmap s.oracleIdx)
         (pageAlignUp (s.readReg64 Reg.x2).toNat) with
     | none =>
@@ -837,23 +812,28 @@ private theorem execMremap_stripS {keep : BitVec 64 → Bool} {s : State} (hfr :
     | some _ =>
       dsimp only
       simp (config := { instances := true }) only [stripS_ite]
+  · unfold execMremap; dsimp only
+    repeat' apply execFrozen_ite
+    all_goals first
+      | simpa using hfr
+      | (dsimp only [State.advancePC, State.writeReg64, State.nextOracle,
+            State.setPhysMemAvail, State.setMem]
+         exact execFrozen_remapRw hfr _ _ _ _)
+      | (cases sanitizeMmapAddr
+           (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+           (s.oracle.mmap s.oracleIdx)
+           (pageAlignUp (s.readReg64 Reg.x2).toNat) with
+         | none => simpa using hfr
+         | some newBase =>
+           dsimp only
+           exact execFrozen_ite (by simpa using hfr)
+             (by dsimp only [State.advancePC, State.writeReg64, State.nextOracle,
+                   State.setPhysMemAvail, State.setMem]
+                 exact execFrozen_remapRw hfr _ _ _ _))
   · unfold execMremap
     dsimp only
-    repeat' apply execFrozen_ite (by simpa using hfr)
     cases sanitizeMmapAddr
-        (s.mem.unmapNonFrozen (s.readReg64 Reg.x0) (pageAlignUp (s.readReg64 Reg.x1).toNat))
-        (s.oracle.mmap s.oracleIdx)
-        (pageAlignUp (s.readReg64 Reg.x2).toNat) with
-    | none => simpa using hfr
-    | some newBase =>
-      dsimp only
-      exact execFrozen_ite (by simpa using hfr)
-        (by dsimp only [State.advancePC, State.writeReg64, State.nextOracle, State.setPhysMemAvail,
-              State.setMem]; exact execFrozen_remapRw hfr _ _ _ _)
-  · unfold execMremap
-    dsimp only
-    cases sanitizeMmapAddr
-        (s.mem.unmapNonFrozen (s.readReg64 Reg.x0) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+        (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (pageAlignUp (s.readReg64 Reg.x1).toNat))
         (s.oracle.mmap s.oracleIdx)
         (pageAlignUp (s.readReg64 Reg.x2).toNat) <;>
       simp [state_fs_ite]
@@ -861,36 +841,29 @@ private theorem execMremap_stripS {keep : BitVec 64 → Bool} {s : State} (hfr :
 private theorem execMadvise_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : ExecFrozen s.mem) :
     execMadvise (stripS keep s) = stripS keep (execMadvise s) ∧
     ExecFrozen (execMadvise s).mem ∧ (execMadvise s).fs = s.fs := by
-  unfold execMadvise
   have hnf := strip_allPerm_eq (keep := keep) (m := s.mem) (p := fun q => !q.frozen)
     (fun a => congrArg Bool.not (strip_perm_frozen (keep := keep) hfr a))
   have hmp := strip_allPerm_eq (keep := keep) (m := s.mem)
     (fun a => (strip_perm_props keep s.mem a).2.2.1)
-  simp only [stripS_r64, stripS_mem, hnf, hmp, strip_canMap, strip_allAnon,
-    strip_zeroNonFrozen hfr, strip_madvFreeNonFrozen hfr]
-  split
-  · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-  · split
-    · exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr, rfl⟩
-    · split
-      · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-      · split
-        · exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr, rfl⟩
-        · split
-          · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-          · split
-            · split
-              · exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr, rfl⟩
-              · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-            · split
-              · exact ⟨by simp [stripS_sst], by simpa using hfr, rfl⟩
-              · split
-                · exact ⟨by simp [stripS_smem, stripS_w64, stripS_adv],
-                    by simpa using execFrozen_zeroNonFrozen hfr _ _, rfl⟩
-                · split
-                  · exact ⟨by simp [stripS_smem, stripS_w64, stripS_adv],
-                      by simpa using execFrozen_madvFreeNonFrozen hfr _ _, rfl⟩
-                  · exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr, rfl⟩
+  refine ⟨?_, ?_, ?_⟩
+  · unfold execMadvise
+    dsimp only
+    simp (config := { instances := true }) only
+      [stripS_r32, stripS_r64, stripS_mem, hnf, hmp, strip_canMap, strip_allAnon,
+       strip_zeroNonFrozen hfr, strip_madvFreeNonFrozen hfr,
+       stripS_smem, stripS_w64, stripS_adv, stripS_sst, stripS_ite]
+  · unfold execMadvise
+    dsimp only
+    repeat' refine execFrozen_ite ?_ ?_
+    all_goals first
+      | simpa using hfr
+      | (dsimp only [State.advancePC, State.writeReg64, State.setMem]
+         exact execFrozen_zeroNonFrozen hfr _ _)
+      | (dsimp only [State.advancePC, State.writeReg64, State.setMem]
+         exact execFrozen_madvFreeNonFrozen hfr _ _)
+  · unfold execMadvise
+    dsimp only
+    simp [state_fs_ite]
 
 /-- `allocMallocng` (`brk`, `munmap`, `mremap`, `mmap`, `mprotect(PROT_RW)`, `madvise`) commutes
     with `stripS keep`, preserves `ExecFrozen`, and preserves `State.fs`. -/
@@ -1075,8 +1048,6 @@ private theorem execFrozen_evalPpollEntries (fs : FsState) (ufds : BitVec 64) :
         · exact execFrozen_evalPpollEntries fs ufds rem _ _ _ (execFrozen_write16 hfr _ _) h
         · cases h
 
-private theorem stripS_r32 (keep : BitVec 64 → Bool) (s : State) (r : Reg) :
-    (stripS keep s).readReg32 r = s.readReg32 r := by cases s; rfl
 private theorem stripS_sfs (keep : BitVec 64 → Bool) (s : State) (fs : FsState) :
     (stripS keep s).setFs fs = stripS keep (s.setFs fs) := by cases s; rfl
 private theorem stripS_appTr (keep : BitVec 64 → Bool) (s : State) (evs : List TraceEvent) :
@@ -1085,6 +1056,14 @@ private theorem stripS_gsa (keep : BitVec 64 → Bool) (s : State) (sig : BitVec
     (stripS keep s).getSigAction sig = s.getSigAction sig := by cases s; rfl
 private theorem stripS_ssa (keep : BitVec 64 → Bool) (s : State) (sig : BitVec 32) (sa : SigAction) :
     (stripS keep s).setSigAction sig sa = stripS keep (s.setSigAction sig sa) := by cases s; rfl
+private theorem stripS_smask (keep : BitVec 64 → Bool) (s : State) :
+    (stripS keep s).sigMask = s.sigMask := by cases s; rfl
+private theorem stripS_ssmask (keep : BitVec 64 → Bool) (s : State) (m : BitVec 64) :
+    (stripS keep s).setSigMask m = stripS keep (s.setSigMask m) := by cases s; rfl
+private theorem stripS_spnd (keep : BitVec 64 → Bool) (s : State) :
+    (stripS keep s).sigPending = s.sigPending := by cases s; rfl
+private theorem stripS_sspnd (keep : BitVec 64 → Bool) (s : State) (p : BitVec 64) :
+    (stripS keep s).setSigPending p = stripS keep (s.setSigPending p) := by cases s; rfl
 private theorem stripS_sas (keep : BitVec 64 → Bool) (s : State) :
     (stripS keep s).sigAltStack = s.sigAltStack := by cases s; rfl
 private theorem stripS_ssas (keep : BitVec 64 → Bool) (s : State) (sas : SigAltStack) :
@@ -1230,7 +1209,7 @@ private theorem execOpenat_stripS {keep : BitVec 64 → Bool} {s : State} (hfr :
   | none =>
     cases readCString s.mem (s.readReg64 Reg.x1) with
     | trap msg => exact ⟨by simp [stripS_sst], by simpa using hfr⟩
-    | errno err => exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr⟩
+    | errno err => cases s.fs.allocFd <;> exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr⟩
     | ok rawPath => exact applyOpenVerdict_stripS hfr _
 
 private theorem execClose_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : ExecFrozen s.mem) :
@@ -1252,6 +1231,18 @@ private theorem execFstat_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : 
     | exact ⟨by simp [stripS_smem, stripS_w64, stripS_adv],
         by simpa using execFrozen_writeBytes hfr _ _⟩
 
+private theorem strip_allPpollReventsWritable (keep : BitVec 64 → Bool) (m : Memory)
+    (ufds : BitVec 64) (nfds : Nat) :
+    allPpollReventsWritable (stripExecOutside keep m) ufds nfds =
+      allPpollReventsWritable m ufds nfds := by
+  unfold allPpollReventsWritable; simp [strip_canWrite]
+
+private theorem strip_anyPpollReventsWritable (keep : BitVec 64 → Bool) (m : Memory)
+    (ufds : BitVec 64) (nfds : Nat) :
+    anyPpollReventsWritable (stripExecOutside keep m) ufds nfds =
+      anyPpollReventsWritable m ufds nfds := by
+  unfold anyPpollReventsWritable; simp [strip_canWrite]
+
 private theorem execPpoll_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : ExecFrozen s.mem) :
     execPpoll (stripS keep s) = stripS keep (execPpoll s) ∧ ExecFrozen (execPpoll s).mem := by
   have hr := strip_allPerm_eq (keep := keep) (m := s.mem) (p := (·.r))
@@ -1261,8 +1252,8 @@ private theorem execPpoll_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : 
     dsimp only
     simp (config := { instances := true }) only
       [stripS_r64, stripS_r32, stripS_fs, stripS_mem, hr, strip_canRead, strip_read64,
-       strip_canWrite, strip_evalPpollEntries, stripS_w64, stripS_adv,
-       stripS_sst]
+       strip_allPpollReventsWritable, strip_anyPpollReventsWritable,
+       strip_evalPpollEntries, stripS_w64, stripS_adv, stripS_sst]
     cases evalPpollEntries s.fs s.mem (s.readReg64 Reg.x0) (s.readReg32 Reg.x1).toNat 0 0 with
     | none =>
       dsimp only [Option.map]
@@ -1274,15 +1265,17 @@ private theorem execPpoll_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : 
         [stripS_smem, stripS_w64, stripS_adv, stripS_ite]
   · unfold execPpoll
     dsimp only
-    repeat' apply execFrozen_ite (by simpa using hfr)
-    cases hev : evalPpollEntries s.fs s.mem (s.readReg64 Reg.x0) (s.readReg32 Reg.x1).toNat 0 0 with
-    | none => simpa using hfr
-    | some mc =>
-      rcases mc with ⟨m', count⟩
-      dsimp only
-      exact execFrozen_ite (by simpa using hfr)
-        (by dsimp only [State.advancePC, State.writeReg64, State.setMem]
-            exact execFrozen_evalPpollEntries s.fs _ _ 0 0 count hfr hev)
+    repeat' refine execFrozen_ite ?_ ?_
+    all_goals first
+      | simpa using hfr
+      | (cases hev : evalPpollEntries s.fs s.mem (s.readReg64 Reg.x0) (s.readReg32 Reg.x1).toNat 0 0 with
+         | none => simpa using hfr
+         | some mc =>
+           rcases mc with ⟨m', count⟩
+           dsimp only
+           exact execFrozen_ite (execFrozen_ite (by simpa using hfr) (by simpa using hfr))
+             (by dsimp only [State.advancePC, State.writeReg64, State.setMem]
+                 exact execFrozen_evalPpollEntries s.fs _ _ 0 0 count hfr hev))
 
 private theorem execExit_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : ExecFrozen s.mem) :
     execExit (stripS keep s) = stripS keep (execExit s) ∧ ExecFrozen (execExit s).mem := by
@@ -1293,17 +1286,24 @@ private theorem execTkill_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : 
     execTkill (stripS keep s) = stripS keep (execTkill s) ∧ ExecFrozen (execTkill s).mem := by
   unfold execTkill
   dsimp only
-  simp only [stripS_r32, stripS_gsa]
+  simp only [stripS_r32, stripS_gsa, stripS_smask, stripS_spnd]
   repeat' split
-  all_goals exact ⟨by simp [stripS_w64, stripS_adv, stripS_sst], by simpa using hfr⟩
+  all_goals exact ⟨by simp [stripS_sspnd, stripS_w64, stripS_adv, stripS_sst], by simpa using hfr⟩
 
 private theorem execTgkill_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : ExecFrozen s.mem) :
     execTgkill (stripS keep s) = stripS keep (execTgkill s) ∧ ExecFrozen (execTgkill s).mem := by
   unfold execTgkill
   dsimp only
-  simp only [stripS_r32, stripS_gsa]
+  simp only [stripS_r32, stripS_gsa, stripS_smask, stripS_spnd]
   repeat' split
-  all_goals exact ⟨by simp [stripS_w64, stripS_adv, stripS_sst], by simpa using hfr⟩
+  all_goals exact ⟨by simp [stripS_sspnd, stripS_w64, stripS_adv, stripS_sst], by simpa using hfr⟩
+
+private structure ExecFrozenM (m : Memory) : Prop where
+  out : ExecFrozen m
+
+private theorem execFrozenM_ite {c : Prop} [inst : Decidable c] {a b : State}
+    (ha : ExecFrozenM a.mem) (hb : ExecFrozenM b.mem) : ExecFrozenM (if c then a else b).mem := by
+  cases inst <;> assumption
 
 private theorem execRtSigprocmask_stripS {keep : BitVec 64 → Bool} {s : State}
     (hfr : ExecFrozen s.mem) :
@@ -1313,15 +1313,25 @@ private theorem execRtSigprocmask_stripS {keep : BitVec 64 → Bool} {s : State}
     (fun a => (strip_perm_props keep s.mem a).1)
   refine ⟨?_, ?_⟩
   · unfold execRtSigprocmask
-    dsimp only
-    simp (config := { instances := true }) only
-      [stripS_r32, stripS_r64, stripS_mem, hr, strip_canRead, strip_read64, strip_canWrite,
-       strip_writeBytes, stripS_smem, stripS_w64, stripS_adv, stripS_sst, stripS_ite]
-  · unfold execRtSigprocmask
-    dsimp only
-    repeat' apply execFrozen_ite (by simpa using hfr)
-    dsimp only [State.advancePC, State.writeReg64, State.setMem]
-    exact execFrozen_writeBytes hfr _ _
+    by_cases hset : s.readReg64 Reg.x1 == 0#64 <;>
+    by_cases hold : s.readReg64 Reg.x2 == 0#64 <;>
+      (set_option linter.unusedSimpArgs false in
+       simp (config := { instances := true }) only
+         [stripS_r32, stripS_r64, stripS_mem, stripS_smask, stripS_spnd, stripS_gsa,
+          hr, strip_canRead, strip_read64, strip_canWrite, strip_writeBytes,
+          stripS_ssmask, stripS_sspnd, stripS_smem, stripS_w64, stripS_adv, stripS_sst,
+          stripS_ite, hset, hold, ↓reduceIte, Bool.false_eq_true])
+  · suffices (ExecFrozenM (execRtSigprocmask s).mem) from this.out
+    have hwb : ∀ {m : Memory} a bs, ExecFrozenM m → ExecFrozenM (m.writeBytes a bs) :=
+      fun a bs h => ⟨execFrozen_writeBytes h.out a bs⟩
+    unfold execRtSigprocmask; dsimp only
+    repeat' apply execFrozenM_ite
+    all_goals
+      (try dsimp only [State.advancePC, State.writeReg64, State.setMem, State.setStatus,
+        State.setSigMask, State.setSigPending])
+      first
+        | exact ⟨hfr⟩
+        | (apply hwb; apply execFrozenM_ite <;> exact ⟨hfr⟩)
 
 private theorem execSigaltstack_stripS {keep : BitVec 64 → Bool} {s : State}
     (hfr : ExecFrozen s.mem) :
@@ -1350,20 +1360,29 @@ private theorem execRtSigaction_stripS {keep : BitVec 64 → Bool} {s : State}
     ExecFrozen (execRtSigaction s).mem := by
   have hr := strip_allPerm_eq (keep := keep) (m := s.mem) (p := (·.r))
     (fun a => (strip_perm_props keep s.mem a).1)
-  have hmem_ssa : ∀ sig sa, (s.setSigAction sig sa).mem = s.mem := fun _ _ => rfl
   refine ⟨?_, ?_⟩
   · unfold execRtSigaction
-    dsimp only
-    simp (config := { instances := true }) only
-      [stripS_r32, stripS_r64, stripS_mem, stripS_gsa, hr, strip_canRead, strip_read64,
-       stripS_ssa, strip_canWrite, strip_writeBytes, stripS_smem,
-       stripS_w64, stripS_adv, stripS_sst, stripS_ite]
+    by_cases hact : s.readReg64 Reg.x1 == 0#64 <;>
+    by_cases hign : (s.readReg32 Reg.x0 == LINUX_SIGABRT && s.mem.read64 (s.readReg64 Reg.x1) == SIG_IGN) <;>
+      (set_option linter.unusedSimpArgs false in
+       simp (config := { instances := true }) only
+         [stripS_r32, stripS_r64, stripS_mem, stripS_gsa, stripS_spnd, hr,
+          strip_canRead, strip_read64, stripS_ssa, stripS_sspnd,
+          strip_canWrite, strip_writeBytes, stripS_smem,
+          stripS_w64, stripS_adv, stripS_sst, stripS_ite,
+          hact, hign, ↓reduceIte, Bool.false_eq_true])
   · unfold execRtSigaction
-    dsimp only
-    repeat' apply execFrozen_ite (by simpa [state_mem_ite, hmem_ssa] using hfr)
-    dsimp only [State.advancePC, State.writeReg64, State.setMem]
-    simp only [state_mem_ite, hmem_ssa, ite_self]
-    exact execFrozen_writeBytes hfr _ _
+    by_cases hact : s.readReg64 Reg.x1 == 0#64 <;>
+    by_cases hign : (s.readReg32 Reg.x0 == LINUX_SIGABRT && s.mem.read64 (s.readReg64 Reg.x1) == SIG_IGN) <;>
+      (dsimp only
+       simp only [hact, hign, ↓reduceIte, Bool.false_eq_true]
+       repeat' refine execFrozen_ite ?_ ?_
+       all_goals (
+         dsimp only [State.advancePC, State.writeReg64, State.setMem, State.setStatus,
+           State.setSigAction, State.setSigPending]
+         first
+           | exact hfr
+           | exact execFrozen_writeBytes hfr _ _))
 
 private theorem execClockGettime_stripS {keep : BitVec 64 → Bool} {s : State}
     (hfr : ExecFrozen s.mem) :
@@ -1389,9 +1408,21 @@ private theorem execGetrandom_stripS {keep : BitVec 64 → Bool} {s : State}
     strip_canWrite, strip_writeBytes]
   repeat' split
   all_goals first
-    | exact ⟨by simp [stripS_w64, stripS_adv], by simpa using hfr⟩
+    | exact ⟨by simp [stripS_w64, stripS_adv, stripS_sst], by simpa using hfr⟩
     | exact ⟨by simp [stripS_smem, stripS_norc, stripS_w64, stripS_adv],
         by simpa using execFrozen_writeBytes hfr _ _⟩
+
+private theorem execFutex_stripS {keep : BitVec 64 → Bool} {s : State}
+    (hfr : ExecFrozen s.mem) :
+    execFutex (stripS keep s) = stripS keep (execFutex s) ∧
+    ExecFrozen (execFutex s).mem := by
+  have hallr := strip_allPerm_eq (keep := keep) (m := s.mem) (p := (·.r))
+    (fun a => (strip_perm_props keep s.mem a).1)
+  unfold execFutex
+  dsimp only
+  simp only [stripS_r32, stripS_r64, stripS_mem, strip_canWrite, hallr]
+  repeat' split
+  all_goals exact ⟨by simp [stripS_w64, stripS_adv, stripS_sst], by simpa using hfr⟩
 
 private theorem execSetTidAddress_stripS {keep : BitVec 64 → Bool} {s : State}
     (hfr : ExecFrozen s.mem) :
@@ -1409,14 +1440,21 @@ private theorem execSchedGetaffinity_stripS {keep : BitVec 64 → Bool} {s : Sta
     (hfr : ExecFrozen s.mem) :
     execSchedGetaffinity (stripS keep s) = stripS keep (execSchedGetaffinity s) ∧
     ExecFrozen (execSchedGetaffinity s).mem := by
-  unfold execSchedGetaffinity
-  dsimp only
-  simp only [stripS_r32, stripS_r64, stripS_mem, strip_canWrite, strip_writeBytes]
-  repeat' split
-  all_goals first
-    | exact ⟨by simp [stripS_w64, stripS_adv, stripS_sst], by simpa using hfr⟩
-    | exact ⟨by simp [stripS_smem, stripS_w64, stripS_adv],
-        by simpa using execFrozen_writeBytes hfr _ _⟩
+  refine ⟨?_, ?_⟩
+  · unfold execSchedGetaffinity
+    dsimp only
+    simp (config := { instances := true }) only
+      [stripS_r32, stripS_r64, stripS_mem, stripS_orc, stripS_oi,
+       strip_canWrite, strip_writeBytes, stripS_smem, stripS_norc,
+       stripS_w64, stripS_adv, stripS_sst, stripS_ite]
+  · unfold execSchedGetaffinity
+    dsimp only
+    repeat' refine execFrozen_ite ?_ ?_
+    all_goals first
+      | (dsimp only [State.advancePC, State.writeReg64, State.nextOracle, State.setStatus]
+         exact hfr)
+      | (dsimp only [State.advancePC, State.writeReg64, State.nextOracle, State.setMem]
+         exact execFrozen_writeBytes hfr _ _)
 
 private theorem dispatch_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : ExecFrozen s.mem) :
     ∀ (tbl : List (BitVec 64 × (State → State))),
@@ -1433,7 +1471,7 @@ private theorem dispatch_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : E
     · simp only [h]
       exact dispatch_stripS hfr rest (fun p hp => htbl p (List.mem_cons_of_mem _ hp))
 
-/-- All 31 modeled Linux AArch64 syscalls (`Syscall.standard`) commute with `stripS keep` and
+/-- All 32 modeled Linux AArch64 syscalls (`Syscall.standard`) commute with `stripS keep` and
     preserve `ExecFrozen`. -/
 theorem standard_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : ExecFrozen s.mem) :
     Syscall.standard (stripS keep s) = stripS keep (Syscall.standard s) ∧
@@ -1477,8 +1515,9 @@ theorem standard_stripS {keep : BitVec 64 → Bool} {s : State} (hfr : ExecFroze
     · exact execRtSigprocmask_stripS hfr
   · subst hp; exact execClockGettime_stripS hfr
   · subst hp; exact execGetrandom_stripS hfr
-  · rcases hp with rfl | rfl | rfl | rfl
+  · rcases hp with rfl | rfl | rfl | rfl | rfl
     · exact execSetTidAddress_stripS hfr
+    · exact execFutex_stripS hfr
     · exact execSchedGetaffinity_stripS hfr
     · exact execGetpid_stripS hfr
     · exact execGetpid_stripS hfr
@@ -1680,7 +1719,7 @@ theorem stepsUntil_of_stripS_standard
     `fineRustCliAllocBudget` + `CodeBlocksPermRX`). Its `repAlloc` is `rfl`-equal to
     `fineRustCliAllocBudget γ mmpl tp brkStart`, so all `vecU8At` / `vecGhostAt` / store-kit
     invariants match `fineRustCliAllocBudget` definitionally. -/
-noncomputable def linkedGhostBudget (allocLib : Obj.MultiPlacedLib) (allocMpl : Obj.MultiPlacement)
+@[expose] def linkedGhostBudget (allocLib : Obj.MultiPlacedLib) (allocMpl : Obj.MultiPlacement)
     (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64) :
     RustCliAllocBudget fineCostModel :=
   let base := fineHookRustCliAllocBudget γ mmpl tp brkStart
@@ -1716,6 +1755,7 @@ theorem linkedGhostPool_entails_needLocks_anyHeap
   change allocLib.codeRO allocMpl ∗
       (VerifiedLibraries.mallocngLib.codeRO mmpl ∗
         mallocngBudgetPoolAt fineCostModel fineCostModelIface γ A tp brkStart lim st s ∗
+        aesStorageCell brkStart ∗
         ⌜lim.enforced = true → CodeBlocksPermRX mmpl s⌝) ⊢
     ((A.libc + 3#64) ↦₈ 0#8) ∗ anyHeap
   rw [mallocngBudgetPoolAt_split_runtime fineCostModelSound γ A tp brkStart lim st s]
@@ -1730,6 +1770,7 @@ theorem linkedGhostPool_entails_needLocks_anyHeap
             ((∃∗ errnoVal : BitVec 32, (tp - 0xa4#64) ↦₃₂ errnoVal) ∗
               ((A.libc + 3#64) ↦₈ 0#8) ∗
               ((A.libc + 48#64) ↦₆₄ 4096#64))) ∗
+          aesStorageCell brkStart ∗
           ⌜lim.enforced = true → CodeBlocksPermRX mmpl s⌝) =
       ((A.libc + 3#64) ↦₈ 0#8) ∗
         (allocLib.codeRO allocMpl ∗ VerifiedLibraries.mallocngLib.codeRO mmpl ∗
@@ -1739,6 +1780,7 @@ theorem linkedGhostPool_entails_needLocks_anyHeap
               fineCostModelIface.CoreM γ A brkStart s.brk st ivs) ∗
             (∃∗ errnoVal : BitVec 32, (tp - 0xa4#64) ↦₃₂ errnoVal) ∗
             ((A.libc + 48#64) ↦₆₄ 4096#64)) ∗
+          aesStorageCell brkStart ∗
           ⌜lim.enforced = true → CodeBlocksPermRX mmpl s⌝) := by
     sep_ac_rfl
   rw [hEq]
@@ -1803,11 +1845,13 @@ theorem linkedGhostBudget_pool_stripS
       (VerifiedLibraries.mallocngLib.codeRO mmpl ∗
         mallocngBudgetPoolAt fineCostModel fineCostModelIface γ (mallocngAddrsOfPlacement mmpl)
           tp brkStart lim st (stripS keep s) ∗
+        aesStorageCell brkStart ∗
         ⌜lim.enforced = true → CodeBlocksPermRX mmpl (stripS keep s)⌝) =
     allocLib.codeRO allocMpl ∗
       (VerifiedLibraries.mallocngLib.codeRO mmpl ∗
         mallocngBudgetPoolAt fineCostModel fineCostModelIface γ (mallocngAddrsOfPlacement mmpl)
           tp brkStart lim st s ∗
+        aesStorageCell brkStart ∗
         ⌜lim.enforced = true → CodeBlocksPermRX mmpl s⌝)
   rw [strip_mallocngBudgetPoolAt, hPermRX]
 
@@ -2296,7 +2340,7 @@ theorem specPreservesFsTraceExact_realloc [LibsignalPlacement] {M : AllocCostMod
   specPreservesFsTraceExact_reallocBase A lim
 
 /-- Every `SubroutineOutcome` of `spec` preserves `State.fs` and `FsTraced IsFsC`. -/
-def SpecPreservesFsTrace {α : Type} (spec : Spec α) : Prop :=
+@[expose] def SpecPreservesFsTrace {α : Type} (spec : Spec α) : Prop :=
   ∀ (x : α) (R : SepProp) (s0 sf : State),
     SubroutineOutcome spec x R s0 sf → sf.fs = s0.fs ∧ FsTraced IsFsC s0 sf
 
@@ -2325,7 +2369,7 @@ theorem specPreservesFsTrace_realloc [LibsignalPlacement] {M : AllocCostModel}
     `HookFsTraced IsFsC` and `AllocContractsFsPlaced`, while agreeing with `fallback s0` whenever
     `(fallback s0).fs = s0.fs ∧ (fallback s0).trace = s0.trace` (which holds on every valid
     `SubroutineOutcome` of `rustCli{Alloc,Dealloc,Realloc}BudgetSpec`). -/
-def keepFsTrace (fallback : State → State) (s0 : State) : State :=
+@[expose] def keepFsTrace (fallback : State → State) (s0 : State) : State :=
   let sf := fallback s0
   { sf with fs := s0.fs, trace := s0.trace }
 
@@ -2359,14 +2403,14 @@ theorem keepFsTrace_ok {α : Type} {fallback : State → State} {spec : Spec α}
   exact ⟨hkf, hsym, hout⟩
 
 /-- Entry precondition witness for `linkedCallHook`. -/
-def ActiveRealPre {α : Type} (spec : Spec α) (s0 : State) : Prop :=
+@[expose] def ActiveRealPre {α : Type} (spec : Spec α) (s0 : State) : Prop :=
   s0.status = .Running ∧ s0.spAligned = true ∧ ∃ (x : α) (R : SepProp), s0.mem ⊨ spec.pre x s0 ∗ R
 
 /-- Active real-code execution witness for `linkedCallHook`: `s0.mem` is `ExecFrozen`, caller `lr`
     lies outside `keep` (`keep (s0.readReg64 .lr) = false`), `P_sub` is loaded inside `keep`, and
     the real program `P_real` reaches a first `SubroutineStop s0` state `sf` from `s0.setPC entryTarget`
     while preserving `State.fs`, `FsTraced IsFsC`, and `ExecFrozen`. -/
-def ActiveRealRun (keep : BitVec 64 → Bool) (P_real P_sub : Program)
+@[expose] def ActiveRealRun (keep : BitVec 64 → Bool) (P_real P_sub : Program)
     (entryTarget : BitVec 64) (s0 : State) : Prop :=
   ExecFrozen s0.mem ∧ keep (s0.readReg64 .lr) = false ∧
   P_sub.CodeLoaded (stripExecOutside keep s0.mem) ∧
@@ -2383,7 +2427,7 @@ open Classical in
       unconditionally.
     - Outside `ActiveRealPre spec s0`, sets `.Exception`, so `steps_preserves_exception` establishes
       `ActiveRealPre spec s0` at every call along non-faulting ghost traces. -/
-noncomputable def linkedCallHook {α : Type}
+@[expose] noncomputable def linkedCallHook {α : Type}
     (keep : BitVec 64 → Bool) (P_real P_sub : Program)
     (entryTarget : BitVec 64) (spec : Spec α) (fallback : State → State) (s0 : State) : State :=
   if _ : ActiveRealPre spec s0 then
@@ -2670,7 +2714,12 @@ theorem cliGhostSpqrAllocHooks_of_linked [LibsignalPlacement]
     (hMemcpyExact : ∀ f, fMemcpy = some f → HookExactMemcpy f)
     (hMemsetAcp : ∀ f, fMemset = some f →
       ∀ s : State, (f s).sigActions = s.sigActions ∧ (f s).oracle = s.oracle)
-    (hExtraOk : ExtraFullListSpecOk extra) :
+    (hExtraOk : ExtraFullListSpecOk extra)
+    (hOnceCall : ∃ f, extra.lookup lsSpqrOnceCallSym = some f ∧
+      HookOk f CryptoVerification.SpqrV1.GF.Mul2U16.spqrOnceCallGhostSpec)
+    (hOnceUnique : ∀ e ∈ libsignalSessionExterns,
+      lsρ e = lsρ CryptoVerification.SpqrV1.GF.Mul2U16.spqrOnceCallSym →
+      e = CryptoVerification.SpqrV1.GF.Mul2U16.spqrOnceCallSym) :
     let A := linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart
     let spAlloc := rustCliAllocBudgetSpec fineCostModel A lim false
     let spDealloc := rustCliDeallocBudgetSpec fineCostModel A lim
@@ -2747,7 +2796,9 @@ theorem cliGhostSpqrAllocHooks_of_linked [LibsignalPlacement]
         (keepFsTrace_ok hFbZeroedP fun x R s0 hout =>
           specPreservesFsTraceExact_alloc A lim true x R s0 (fbAllocZeroed s0) hout)
       allocZeroed_fs := linkedCallHook_fs _ _ _ _ _ _
-      allocZeroed_fsT := linkedCallHook_fsT _ _ _ _ _ _ }
+      allocZeroed_fsT := linkedCallHook_fsT _ _ _ _ _ _
+      onceCall := hOnceCall
+      onceCall_unique := hOnceUnique }
 
 /-- `FsTHooks` for `cliGhostExterns g baseExt` whenever `FsTHooks baseExt` and `g`'s overlaid hooks
     are `HookFsTraced IsFsC`. -/
@@ -2842,6 +2893,7 @@ theorem noAllocShim_budget_sat_of_eq (baseExt : LibsignalHooks) {g : CliGhostHoo
   ⟨hookNoop, (cliGhostExterns_shim g baseExt).trans (congrArg some hShim),
     hookOk_withVmPreserved noAllocShim_hookOk (fun s => LibsignalBinary.Heap.VmPreserved.refl s)⟩
 
+set_option maxRecDepth 400000 in
 theorem cliGhostExterns_panics {baseExt : LibsignalHooks} (g : CliGhostHooks)
     (hPan : CliPanicHooksPlaced baseExt) :
     CliPanicHooksPlaced (cliGhostExterns g baseExt) := by
@@ -2857,7 +2909,7 @@ theorem cliGhostExterns_panics {baseExt : LibsignalHooks} (g : CliGhostHooks)
   have h9 : sym ≠ lsMemsetSym := by intro he; subst he; exact nomatch hmem
   have h10 : sym ≠ lsMemcpySym := by intro he; subst he; exact nomatch hmem
   have hEx : cliExtraGhostSyms.contains sym = false := by
-    simp only [cliPanicSymbolsPlaced, List.mem_cons, List.not_mem_nil, or_false] at hmem
+    simp only [cliCratePanicSyms, cliPanicSymbolsPlaced, List.mem_cons, List.not_mem_nil, or_false] at hmem
     rcases hmem with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
       rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;> decide
   rw [cliGhostExterns_other g baseExt h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 (Or.inl hEx)]
@@ -2974,7 +3026,7 @@ theorem cliExternsPlaced_baseHelperRows (mmpl : Obj.MultiPlacement) (W : CliHook
 
 /-- A stub address `stubPc` reaches `entryTarget` under `P_real` (`0` steps when `stubPc = entryTarget`,
     or `1` `Step.exec` hop across a branch-stub `B` instruction). -/
-def StubReachesTarget (P_real : Program) (stubPc entryTarget : BitVec 64) : Prop :=
+@[expose] def StubReachesTarget (P_real : Program) (stubPc entryTarget : BitVec 64) : Prop :=
   ∀ u : State,
     u.pc = stubPc →
     u.status = .Running →
@@ -2995,7 +3047,7 @@ theorem StubReachesTarget.refl (P_real : Program) (entryTarget : BitVec 64) :
       multi-step execution `Steps P_real u (f u)` preserving `ExecFrozen` whenever `f u` does not
       fault (`∀ msg, (f u).status ≠ .Exception msg`), `ExecFrozen u.mem`, `keep (u.readReg64 .lr) = false`,
       and `Inv u.mem` holds. -/
-def GhostExternReplays (keep : BitVec 64 → Bool) (Inv : Memory → Prop)
+@[expose] def GhostExternReplays (keep : BitVec 64 → Bool) (Inv : Memory → Prop)
     (P_ghost P_real : Program) : Prop :=
   ∀ (pc : BitVec 64) (f : State → State),
     P_ghost.externAt? pc = some f →

@@ -9,11 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Fs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `FdsGe3Closed`-Threaded Relocatable Helpers for `load_session::{closure#0}`
@@ -23,7 +37,7 @@ outside `withFdsGe3Closed` at `FsInv` call sites and `withFdsGe3Closed` outside 
 on top-level contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -94,43 +108,6 @@ theorem lpoll_memcpy_keepsFs_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
     exact ⟨hq.1, ⟨hq.2.2.1.1, hq.2.2.1.2, hq.2.1⟩, hq.2.2.2⟩
 
-theorem lpoll_dealloc_placed_ok_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hC : AllocContractsFsPlaced A lim H) :
-    subroutine_ok ((blkPC_569).rebase (blkPl_569).base H) (lsρ lsRustDeallocSymCli)
-      (withFdsGe3Closed
-        (withLsCodeRoLoaded lsmpl (rustDeallocExternSpecWithStack M A lim extHookStack))) := by
-  have h0 := dealloc_keepsFs_lscro_of_fs (callerProg := lsProg_569 H) hC (by decide)
-  have h1 : subroutine_ok (lsProg_569 H) (lsρ lsRustDeallocSymCli)
-      (withFdsGe3Closed
-        (withLsCodeRoLoaded lsmpl
-          (rustDeallocExternSpecWithStack M A lim extHookStack).keepsFs)) :=
-    subroutine_ok_withFdsGe3Closed_of_fs_eq h0 fun _ _ _ _ hpost => by
-      dsimp only [withLsCodeRoLoaded, Spec.keepsFs] at hpost
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
-      exact hpost.1
-  refine subroutine_ok_mono h1 (fun _ _ _ hp => hp) (fun _ _ _ _ hq => ?_)
-  dsimp only [withFdsGe3Closed, withLsCodeRoLoaded, Spec.keepsFs] at hq ⊢
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-  exact ⟨hq.1, hq.2.2⟩
-
-theorem lpoll_memcpy_placed_ok_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hC : AllocContractsFsPlaced A lim H) :
-    subroutine_ok ((blkPC_569).rebase (blkPl_569).base H) (lsρ memcpyName)
-      (withFdsGe3Closed (withLsCodeRoLoaded lsmpl session2MemcpyBudgetSpecX)) := by
-  have h0 := lpoll_memcpy_keepsFs_placed_ok hC
-  have h1 : subroutine_ok (lsProg_569 H) (lsρ memcpyName)
-      (withFdsGe3Closed (withLsCodeRoLoaded lsmpl session2MemcpyBudgetSpecX.keepsFs)) :=
-    subroutine_ok_withFdsGe3Closed_of_fs_eq h0 fun _ _ _ _ hpost => by
-      dsimp only [withLsCodeRoLoaded, Spec.keepsFs] at hpost
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
-      exact hpost.1
-  refine subroutine_ok_mono h1 (fun _ _ _ hp => hp) (fun _ _ _ _ hq => ?_)
-  dsimp only [withFdsGe3Closed, withLsCodeRoLoaded, Spec.keepsFs] at hq ⊢
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-  exact ⟨hq.1, hq.2.2⟩
-
 theorem lpoll_call_addrText_placed_fd [LibsignalPlacement] {prog : Program}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {AddrEnv : AddrGhost → List AllocEvent → Prop}
@@ -199,64 +176,6 @@ theorem lpoll_call_addrText_placed_fd [LibsignalPlacement] {prog : Program}
       SepWPp.pure_elim fun hfdsm => SepWPp.pure_elim fun ⟨htrm, hevs⟩ => ?_
     exact sepWPp_conseq (Entails.of_eq (by sep_ac_rfl))
       (hnext sm evs hpcm hrunm hspm hcsm hcrlm hfsm hfdsm htrm hevs)
-
-/-- `FdsGe3Closed`-threaded variant of `lpoll_call_dirGet_placed` (plain `withFdsGe3Closed` form). -/
-theorem lpoll_call_dirGet_plain_placed_fd [LibsignalPlacement] {prog : Program}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk : Nat}
-    {callee ret_pc ret : BitVec 64}
-    (hcall : subroutine_ok prog callee
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (xg : DirGetGhost) (st : M.σ) (F : SepProp)
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hcrl : LibsignalCodeRoLoaded lsmpl s.mem) (hfds : FdsGe3Closed s.fs)
-    (hx0 : s.readReg64 .x0 = xg.ret) (hx1 : s.readReg64 .x1 = xg.self)
-    (hx2 : s.readReg64 .x2 = xg.nameA) (hx3 : (s.readReg64 .x3).toNat = xg.name.length)
-    (hnlen : xg.name.length < 2 ^ 32) (hdlen : xg.dir.path.length < 2 ^ 32)
-    (hpOk : pathOk (pathOf xg.dir.path xg.name))
-    (hfit : FitsEnv M lim st (GetEnv s.fs.files xg.dir xg.name))
-    (hpre : P ⊢ (dirAt A.repAlloc xg.self xg.dir ∗ bytesAt xg.nameRo xg.nameA xg.name ∗
-      memRegion xg.ret 48 ∗ stackAt s.sp getStk ∗ A.pool lim st s) ∗ F)
-    (hnext : ∀ (sm : State) (evs : List AllocEvent) (gr : Except Unit (List (BitVec 8))),
-      sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → LibsignalCodeRoLoaded lsmpl sm.mem →
-      FdsGe3Closed sm.fs →
-      (gr = xg.dir.get rd s.fs.files xg.name ∧ sm.trace = s.trace ∧
-        GetEnv s.fs.files xg.dir xg.name evs) →
-      SepWPp prog ret sm
-        ((getResultAt A.repAlloc xg.ret gr ∗ dirAt A.repAlloc xg.self xg.dir ∗
-          bytesAt xg.nameRo xg.nameA xg.name ∗
-          stackAt s.sp getStk ∗ A.pool lim (M.stepEvents evs st) sm) ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine lpoll_call_total_placed_raw hcall (xg, st) F hpc hrun hsp_align hlr hcrl
-    ?_ ?_ ?_ ?_ ?_
-  · refine Entails.trans hpre ?_
-    dsimp only [withFdsGe3Closed]
-    simp only [sepConj_assoc]
-    refine Entails.pure_right hfds ?_
-    unfold dirGetSpecPlaced
-    refine entails_withLsCodeRoLoaded_pre hcrl ?_
-    simp only [sepConj_assoc]
-    exact Entails.pure_right ⟨hx0, hx1, hx2, hx3, hnlen, hdlen, hpOk, hfit⟩ (Entails.refl _)
-  · intro sm R' hpost
-    simp only [withFdsGe3Closed, dirGetSpecPlaced, withLsCodeRoLoaded] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro code sm R' hpost
-    simp only [withFdsGe3Closed, dirGetSpecPlaced, withLsCodeRoLoaded] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost
-    simp only [withFdsGe3Closed, dirGetSpecPlaced, withLsCodeRoLoaded] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm hcsm hcrlm
-    simp only [withFdsGe3Closed, dirGetSpecPlaced, withLsCodeRoLoaded,
-      sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun evs => SepWPp.exists_elim fun gr =>
-      SepWPp.pure_elim fun hfdsm => SepWPp.pure_elim fun hgr => ?_
-    exact sepWPp_conseq (Entails.of_eq (by sep_ac_rfl))
-      (hnext sm evs gr hpcm hrunm hspm hcsm hcrlm hfdsm hgr)
 
 /-- `FdsGe3Closed` + `FsInv`-threaded variant of `lpoll_call_dirGet_placed` under the canonical
 `withFsInv (withFdsGe3Closed (dirGetSpecPlaced …)) s0_files s0_trace` nesting order. -/

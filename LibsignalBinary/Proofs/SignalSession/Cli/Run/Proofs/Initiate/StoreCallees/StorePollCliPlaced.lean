@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Sym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Existing
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneX
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Sym
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Existing -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerX
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneX
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropSsLocal1Ext
@@ -24,6 +24,11 @@ import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExt
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyX
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarint
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable `[LibsignalPlacement]` Proof of `SessionFiles::store_session::{closure#0}`
@@ -33,14 +38,12 @@ Proves `sessStorePoll_cli_placed_ok` (Block `570`) and transfers it onto any cal
 Block `52`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.StorePollCli
 
@@ -113,7 +116,7 @@ private theorem close_panic_subgoal_placed {s0 s_call sf : State} {F R : SepProp
     (htr : s_call.trace = s0.trace)
     (hm : sf.mem ⊨ ((⌜allocFailedIn s_call sf ∧ s_call.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) ∗ R) :
     sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R := by
-  refine allowPanic_frame ?_ (by rwa [sepConj_assoc] at hm)
+  refine allowPanic_frame (F := F) ?_ (by simpa only [sepConj_assoc] using hm)
   rintro ⟨hfail, hpref⟩
   unfold allocFailedIn at hfail ⊢
   rw [htr] at hfail hpref

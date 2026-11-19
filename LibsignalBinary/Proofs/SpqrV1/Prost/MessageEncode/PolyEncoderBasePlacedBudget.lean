@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Shared Step Lemmas for `PolynomialEncoder::encode` (`Blocks 153 & 316`)
@@ -25,7 +29,7 @@ Provides budget-threaded `encodeRepeatedStackOf`-frame call steppers, pinned-to-
 and `VmPreserved`-threaded basic-block steppers for `PolynomialEncoder::encode` (`lsProg_153`, `lsProg_316`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -354,7 +358,7 @@ theorem polyEncoder_unpinned_of_pinned_placed_x [LibsignalPlacement] {resStack :
 
 /-- Relocatable `[LibsignalPlacement]` entry predicate for the two `PolynomialEncoder::encode`
 monomorphizations (`blkPC_153` and `blkPC_316`). -/
-def IsPolyEncoderEncodeEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
+@[expose] def IsPolyEncoderEncodeEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
     prog = @lsProg_153 inst H ∧ entry = (@blkPl_153 inst).base) ∨
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),

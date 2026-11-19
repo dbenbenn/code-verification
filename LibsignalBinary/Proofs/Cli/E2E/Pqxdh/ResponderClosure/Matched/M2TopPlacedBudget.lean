@@ -11,17 +11,17 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsBBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TopPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsBBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TopPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -29,6 +29,12 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Ok
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable Top-Level Stage P2 Matched-Session Contract
@@ -39,7 +45,7 @@ Budget-threaded `[LibsignalPlacement]` counterpart of `Matched.M2TopPlaced` on B
 zero allocator panic/OOM residue.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,8 +53,6 @@ set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TopPlacedBudget
-
-noncomputable section
 
 open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoGames.LibsignalSession (IdentityKey PublicKey SessionState)
@@ -135,13 +139,13 @@ local macro "sep_norm" : tactic =>
 (`+0x0868 → s0.readReg64 .x30` when `sess.state.remoteIdentity ≠ some remIdKey`):
 `StageP2MatchedBridgeEnv` (`[.alloc 33, .free 1 33]`) followed by `StageP2MismatchTailEnv`
 (`[.alloc 70] ++ FreeOnlyEvs`). -/
-def StageP2MatchedMismatchEnv : List AllocEvent → Prop :=
+@[expose] def StageP2MatchedMismatchEnv : List AllocEvent → Prop :=
   SeqEnv StageP2MatchedBridgeEnv StageP2MismatchTailEnv
 
 /-- Branch-exact Stage P2 matched-session allocator event envelope at `+0x0868`:
 - when `sess.state.remoteIdentity = some remIdKey`: `StageP2MatchedBridgeEnv` (`+0x0868 → +0x1778`);
 - when `sess.state.remoteIdentity ≠ some remIdKey`: `StageP2MatchedMismatchEnv` (`+0x0868 → x30`). -/
-def StageP2MatchedEnv (sess : Session (List (BitVec 8))) (remIdKey : IdentityKey)
+@[expose] def StageP2MatchedEnv (sess : Session (List (BitVec 8))) (remIdKey : IdentityKey)
     (evs : List AllocEvent) : Prop :=
   if sess.state.remoteIdentity = some remIdKey then
     StageP2MatchedBridgeEnv evs
@@ -149,7 +153,7 @@ def StageP2MatchedEnv (sess : Session (List (BitVec 8))) (remIdKey : IdentityKey
     StageP2MatchedMismatchEnv evs
 
 /-- Branch-agnostic disjunction envelope covering both Stage P2 matched-session outcomes. -/
-def StageP2MatchedTopEnv (evs : List AllocEvent) : Prop :=
+@[expose] def StageP2MatchedTopEnv (evs : List AllocEvent) : Prop :=
   StageP2MatchedBridgeEnv evs ∨ StageP2MatchedMismatchEnv evs
 
 theorem stageP2MatchedMismatchEnv_of_tail {evs_tail : List AllocEvent}
@@ -988,7 +992,5 @@ theorem stageP2_matched_ok_topEnv_placed [LibsignalPlacement]
     hcro hsp_eq hsp_root hpc hrun hsp_align
     hx8 hx9 hx10 hx11 hx12 hx13 hx14 hx15 hx16 hx19 hx22 hx23 hx24 hx28 hx29
     hmismatch hmatch
-
-end
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TopPlacedBudget

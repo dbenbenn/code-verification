@@ -18,7 +18,7 @@ Defines `dropDecodeErrorName` and `DropDecodeErrorOk` for
 `core::ptr::drop_glue::<prost::error::DecodeError>` in `CliC`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Prost
 
@@ -30,10 +30,5 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalP
 
 abbrev _root_.CryptoVerification.CliC.LibsignalTripleRatchet.Prost.dropDecodeErrorName : String :=
   "core::ptr::drop_glue::<prost::error::DecodeError> [local#3]"
-
-def _root_.CryptoVerification.CliC.LibsignalTripleRatchet.Prost.DropDecodeErrorOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr CryptoVerification.CliC.LibsignalTripleRatchet.Prost.dropDecodeErrorName)
-    (dropDecodeErrorSpec A)
 
 end CryptoVerification.LibsignalTripleRatchet.Prost

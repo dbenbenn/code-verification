@@ -9,20 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMain
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudgetStep5
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep3Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMain
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudgetStep5
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep3Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep5
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
 import ProofLib.RegChain
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudgetStep4 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded DH Step Commit Core Composition (`+0x8ac → +0x3e4`)
@@ -32,7 +37,7 @@ Defines the `dhCommit` allocator event envelopes (`dhCommitAllocEvents`, `DhComm
 stack- and environment-parametric total-correctness composition `dhCommit_withStack_env_of_wp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -102,16 +107,16 @@ set_option maxHeartbeats 400000
 /-! ## 1. Allocator Event Lists, Envelopes, and `DhCommitBlockVmWp` Bundle -/
 
 /-- Deterministic `AllocEvent` prefix emitted by `dhCommit` Steps 1–3 (`+0x8ac → +0xaf0`). -/
-def dhCommitAllocEvents (chainsCap rcLen : BitVec 64) : List AllocEvent :=
+@[expose] def dhCommitAllocEvents (chainsCap rcLen : BitVec 64) : List AllocEvent :=
   dhCommitStep12Events ++ dhCommitStep3Events chainsCap rcLen
 
 /-- Allocation envelope for the full `dhCommit` sub-segment (`+0x8ac → +0x3e4`):
     deterministic Steps 1–3 events followed by `FreeOnlyEvs` from Step 4 receiver-chain eviction. -/
-def DhCommitEnv (chainsCap rcLen : BitVec 64) : List AllocEvent → Prop :=
+@[expose] def DhCommitEnv (chainsCap rcLen : BitVec 64) : List AllocEvent → Prop :=
   SeqEnv (· = dhCommitAllocEvents chainsCap rcLen) FreeOnlyEvs
 
 /-- Default `s3CommitEnv` argument for `S3CommitSeamPlaced` / `S3CommitSeamXPlaced`. -/
-def s3CommitDefaultEnv (_x : TryDecryptGhost) (trG : TrGhost)
+@[expose] def s3CommitDefaultEnv (_x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) : List AllocEvent → Prop :=
   DhCommitEnv trG.ratchet.chainsCap (BitVec.ofNat 64 tr.ratchet.receiverChains.length)
 

@@ -18,7 +18,7 @@ import VCVio.EvalDist.ProbabilityBounds
 import VCVio.EvalDist.MeasureTVDist.Event
 import VCVio.OracleComp.EvalDist.Measure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -58,7 +58,7 @@ local instance instLawfulMonadWriterTListCoin {Coins : Type} {M : Type → Type}
 
 /-! ## Forgetful homomorphism and `GameRCoinLoggedFaithful` -/
 
-def forgetCoinW {Coins α : Type} (m : WriterT (List Coins) ProbComp α) : ProbComp α :=
+@[expose] def forgetCoinW {Coins α : Type} (m : WriterT (List Coins) ProbComp α) : ProbComp α :=
   Prod.fst <$> m.run
 
 @[simp] theorem forgetCoinW_pure {Coins α : Type} (a : α) :
@@ -104,7 +104,7 @@ def pureCoinSchemeRM {Key St Msg Coins RCoins C : Type}
   send st m r := pure (sm.send st m r)
   receive st c rc := pure (sm.receive st c rc)
 
-def forgetCoinS1 {Coins σ α : Type}
+@[expose] def forgetCoinS1 {Coins σ α : Type}
     (m : StateT σ (WriterT (List Coins) ProbComp) α) : StateT σ ProbComp α :=
   fun s => forgetCoinW (m.run s)
 
@@ -289,29 +289,12 @@ theorem fst_gameRCoinLogged {Key St Msg Coins RCoins C : Type}
     · exact forgetCoinS1_oracleImplRM_smSchemeCoinLogged sm Δ qep cfg q
   rw [← forgetCoinS1_run, forgetCoinS1_simulateQ _ _ himpl A, smSchemeCoinLogged_initState]; simp
 
-theorem fst_bind_gameRCoinLogged {α Key St Msg Coins RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins] [SampleableType RCoins]
-    (oa : ProbComp α) (sm : α → SMSchemeR Key St Msg Coins RCoins C)
-    (Δ qep : ℕ) (cfg : ConfigR St Msg C) (A : α → Adversary St Msg Coins C) :
-    Prod.fst <$> (oa >>= fun o => gameRCoinLogged (sm o) Δ qep cfg (A o)) =
-      (oa >>= fun o => gameR (sm o) Δ qep cfg (A o)) := by
-  rw [map_eq_bind_pure_comp, bind_assoc]; congr 1; funext o
-  rw [← map_eq_bind_pure_comp, fst_gameRCoinLogged]
-
 theorem evalDist_fst_gameRCoinLogged {Key St Msg Coins RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins] [SampleableType RCoins]
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C)
     (A : Adversary St Msg Coins C) :
     𝒟[Prod.fst <$> gameRCoinLogged sm Δ qep cfg A] = 𝒟[gameR sm Δ qep cfg A] :=
   congrArg evalDist (fst_gameRCoinLogged sm Δ qep cfg A)
-
-theorem evalDist_fst_bind_gameRCoinLogged {α Key St Msg Coins RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins] [SampleableType RCoins]
-    (oa : ProbComp α) (sm : α → SMSchemeR Key St Msg Coins RCoins C)
-    (Δ qep : ℕ) (cfg : ConfigR St Msg C) (A : α → Adversary St Msg Coins C) :
-    𝒟[Prod.fst <$> (oa >>= fun o => gameRCoinLogged (sm o) Δ qep cfg (A o))] =
-      𝒟[oa >>= fun o => gameR (sm o) Δ qep cfg (A o)] :=
-  congrArg evalDist (fst_bind_gameRCoinLogged oa sm Δ qep cfg A)
 
 /-- Forgetting the send-coin log of `gameRCoinLogged` preserves `evalDist` (`GameRCoinLoggedFaithful`). -/
 theorem gameRCoinLogged_faithful : GameRCoinLoggedFaithful :=
@@ -329,18 +312,6 @@ theorem kemFailBad_eq_true_iff (K : MlKem) (tapes : List (List (BitVec 8))) :
     K.KemFailBad tapes = true ↔ ∃ t₁ ∈ tapes, ∃ t₂ ∈ tapes, K.tapePairFails t₁ t₂ = true := by
   simp [MlKem.KemFailBad, List.any_eq_true]
 
-theorem kemFailBad_map_coinBytes_eq_true_iff (K : MlKem) (log : List (BitVec 512)) :
-    K.KemFailBad (log.map coinBytes) = true ↔
-      ∃ r₁ ∈ log, ∃ r₂ ∈ log, K.honestExchangeFails ⟨coinBytes r₁, coinBytes_length r₁⟩
-        ⟨(coinBytes r₂).take 32, by simp [coinBytes_length r₂]⟩ = true := by
-  simp [kemFailBad_eq_true_iff, tapePairFails_coinBytes_eq]
-
-theorem kemFailBad_map_coinBytes_eq_false_iff (K : MlKem) (log : List (BitVec 512)) :
-    K.KemFailBad (log.map coinBytes) = false ↔
-      ∀ r₁ ∈ log, ∀ r₂ ∈ log, K.honestExchangeFails ⟨coinBytes r₁, coinBytes_length r₁⟩
-        ⟨(coinBytes r₂).take 32, by simp [coinBytes_length r₂]⟩ = false := by
-  simp [MlKem.KemFailBad, List.any_eq_false, tapePairFails_coinBytes_eq]
-
 theorem kemFailBad_mono_subset (K : MlKem) {l₁ l₂ : List (List (BitVec 8))}
     (hsub : l₁ ⊆ l₂) (h : K.KemFailBad l₁ = true) : K.KemFailBad l₂ = true := by
   rw [kemFailBad_eq_true_iff] at h ⊢; rcases h with ⟨t₁, ht₁, t₂, ht₂, hfail⟩
@@ -352,11 +323,6 @@ theorem kemFailBad_eq_false_of_subset (K : MlKem) {l₁ l₂ : List (List (BitVe
   · rfl
   · rw [kemFailBad_mono_subset K hsub h₁] at h; cases h
 
-theorem kemFailBad_map_coinBytes_mono_subset (K : MlKem) {w₁ w₂ : List (BitVec 512)}
-    (hsub : w₁ ⊆ w₂) (h : K.KemFailBad (w₁.map coinBytes) = true) :
-    K.KemFailBad (w₂.map coinBytes) = true :=
-  kemFailBad_mono_subset K (List.map_subset coinBytes hsub) h
-
 abbrev kemFailBadLog (K : MlKem) (w : List (BitVec 512)) : Bool :=
   K.KemFailBad (w.map coinBytes)
 
@@ -364,14 +330,9 @@ abbrev kemFailBadLog (K : MlKem) (w : List (BitVec 512)) : Bool :=
 def PrefixClosed {Coins : Type} (good : List Coins → Prop) : Prop :=
   ∀ w₁ w₂, good (w₁ ++ w₂) → good w₁
 
-theorem prefixClosed_kemFailBad_false (K : MlKem) :
-    PrefixClosed (fun w : List (BitVec 512) => K.KemFailBad (w.map coinBytes) = false) := by
-  intro w₁ w₂ h; rw [List.map_append] at h
-  exact kemFailBad_eq_false_of_subset K (List.subset_append_left _ _) h
-
 /-! ## Prefix-closed online identical-until-bad -/
 
-def embedCoinW {Coins α : Type} (m : WriterT (List Coins) ProbComp α) :
+@[expose] def embedCoinW {Coins α : Type} (m : WriterT (List Coins) ProbComp α) :
     StateT (List Coins) ProbComp α :=
   fun pre => (fun zw => (zw.1, pre ++ zw.2)) <$> m.run
 
@@ -415,7 +376,7 @@ def embedCoinW {Coins α : Type} (m : WriterT (List Coins) ProbComp α) :
     embedCoinW ((smSchemeCoinLogged sm).receive st c rc) = pure (sm.receive st c rc) := by
   ext pre; simp
 
-def embedCoinS1 {Coins σ α : Type} (m : StateT σ (WriterT (List Coins) ProbComp) α) :
+@[expose] def embedCoinS1 {Coins σ α : Type} (m : StateT σ (WriterT (List Coins) ProbComp) α) :
     StateT σ (StateT (List Coins) ProbComp) α :=
   fun s => embedCoinW (m.run s)
 
@@ -676,22 +637,6 @@ def oracleImplRHalted {Key St Msg Coins RCoins C : Type}
       QueryImpl (Party →ₒ Option St)
         (StateT (GameState St Msg C) (StateT (List Coins) ProbComp)))
 
-/-- Online-halted `SM.gameR` answering `none` on sends that trigger `badLog`. -/
-def gameRCoinHalted {Key St Msg Coins RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
-    [SampleableType RCoins]
-    (badLog : List Coins → Bool) (sm : SMSchemeR Key St Msg Coins RCoins C)
-    (Δ qep : ℕ) (cfg : ConfigR St Msg C) (A : Adversary St Msg Coins C) :
-    ProbComp (Bool × List Coins) :=
-  (StateT.run · []) do
-    let b ← liftM ($ᵗ Bool : ProbComp Bool)
-    let k ← liftM ($ᵗ Key : ProbComp Key)
-    let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (GameState St Msg C) (StateT (List Coins) ProbComp)) +
-      oracleImplRHalted badLog sm Δ qep cfg
-    let (b', s) ← (simulateQ impl A).run (initState sm.sendPart k b)
-    return (b == b' || s.win)
-
 private theorem embedCoinS1_oracleImplRM_eq {Key St Msg Coins RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] [SampleableType RCoins]
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C)
@@ -779,245 +724,6 @@ private theorem gameRCoinLogged_eq_state {Key St Msg Coins RCoins C : Type}
     · exact embedCoinS1_oracleImplRM_eq sm Δ qep cfg q
   rw [← embedCoinS1_run, embedCoinS1_simulateQ _ _ himpl A]; ext pre; simp
 
-private theorem agreeOnline_oracleImplRM {Key St Msg Coins RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] [SampleableType RCoins]
-    {good : List Coins → Prop}
-    (sm₁ sm₂ : SMSchemeRM (StateT (List Coins) ProbComp) Key St Msg Coins RCoins C)
-    (hsend : ∀ s m coins, AgreeOnline good (sm₁.send s m coins) (sm₂.send s m coins))
-    (hrecv : ∀ s c rc, AgreeOnline good (sm₁.receive s c rc) (sm₂.receive s c rc))
-    (Δ qep : ℕ) (cfg : ConfigR St Msg C) (q : (spec St Msg Coins C).Domain) :
-    AgreeOnlineS1 good (oracleImplRM sm₁ Δ qep cfg q) (oracleImplRM sm₂ Δ qep cfg q) := by
-  rcases q with (((⟨P, m, r⟩ | ⟨P, m₀, m₁, r⟩) | ⟨P, c⟩) | ⟨P, c⟩) | P
-  · change AgreeOnlineS1 good (transmitRM sm₁ Δ qep cfg (P, m, r)) (transmitRM sm₂ Δ qep cfg (P, m, r))
-    unfold transmitRM; refine AgreeOnlineS1.bind (AgreeOnlineS1.get good) fun s => ?_
-    cases cfg.sendOK s P
-    · exact AgreeOnlineS1.pure good _
-    · simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte]; cases s.win
-      · simp only [Bool.false_eq_true, ↓reduceIte]
-        refine AgreeOnlineS1.bind (AgreeOnlineS1.lift (AgreeOnline.liftM good _)) fun ⟨coins, bf⟩ => ?_
-        cases s.epMgmt Δ qep P bf with
-        | none => exact AgreeOnlineS1.pure good _
-        | some s₁ => exact AgreeOnlineS1.bind (AgreeOnlineS1.lift (hsend _ _ _)) fun out =>
-            AgreeOnlineS1.bind (AgreeOnlineS1.set good _) fun _ => AgreeOnlineS1.pure good _
-      · exact AgreeOnlineS1.pure good _
-  · change AgreeOnlineS1 good (challRM sm₁ Δ qep cfg (P, m₀, m₁, r)) (challRM sm₂ Δ qep cfg (P, m₀, m₁, r))
-    unfold challRM; refine AgreeOnlineS1.bind (AgreeOnlineS1.get good) fun s => ?_
-    cases cfg.sendOK s P
-    · exact AgreeOnlineS1.pure good _
-    · simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte]; cases s.win
-      · simp only [Bool.false_eq_true, ↓reduceIte]
-        refine AgreeOnlineS1.bind (AgreeOnlineS1.lift (AgreeOnline.liftM good _)) fun ⟨coins, bf⟩ => ?_
-        cases s.epMgmt Δ qep P bf with
-        | none => exact AgreeOnlineS1.pure good _
-        | some s₁ =>
-          dsimp only; cases (!(s₁.safeCh Δ P) || !(cfg.base.challAllowedIn (s₁.epoch P)))
-          · simp only [Bool.false_eq_true, ↓reduceIte]
-            exact AgreeOnlineS1.bind (AgreeOnlineS1.lift (hsend _ _ _)) fun out =>
-              AgreeOnlineS1.bind (AgreeOnlineS1.set good _) fun _ => AgreeOnlineS1.pure good _
-          · exact AgreeOnlineS1.pure good _
-      · exact AgreeOnlineS1.pure good _
-  · change AgreeOnlineS1 good (deliverRM sm₁ cfg (P, c)) (deliverRM sm₂ cfg (P, c))
-    unfold deliverRM; refine AgreeOnlineS1.bind (AgreeOnlineS1.get good) fun s => ?_
-    cases s.win
-    · simp only [Bool.false_eq_true, ↓reduceIte]; cases s.inTransit P.other c with
-      | none => exact AgreeOnlineS1.pure good _
-      | some r =>
-        dsimp only; refine AgreeOnlineS1.bind (AgreeOnlineS1.lift (AgreeOnline.liftM good _)) fun rc =>
-          AgreeOnlineS1.bind (AgreeOnlineS1.lift (hrecv _ _ _)) fun out => ?_
-        cases out with
-        | none =>
-          dsimp only; split_ifs
-          · exact AgreeOnlineS1.bind (AgreeOnlineS1.set good _) fun _ => AgreeOnlineS1.pure good _
-          · exact AgreeOnlineS1.pure good _
-        | some x =>
-          rcases x with ⟨st', t', i', m'⟩; dsimp only; split_ifs <;>
-            exact AgreeOnlineS1.bind (AgreeOnlineS1.set good _) fun _ => AgreeOnlineS1.pure good _
-    · exact AgreeOnlineS1.pure good _
-  · change AgreeOnlineS1 good (injectRM sm₁ Δ qep cfg (P, c)) (injectRM sm₂ Δ qep cfg (P, c))
-    unfold injectRM; refine AgreeOnlineS1.bind (AgreeOnlineS1.get good) fun s => ?_
-    cases (s.win || (s.inTransit P.other c).isSome || !(s.safeInj Δ) || !(cfg.injOK c))
-    · simp only [Bool.false_eq_true, ↓reduceIte]
-      refine AgreeOnlineS1.bind (AgreeOnlineS1.lift (AgreeOnline.liftM good _)) fun rc =>
-        AgreeOnlineS1.bind (AgreeOnlineS1.lift (hrecv _ _ _)) fun out => ?_
-      cases out with
-      | none => exact AgreeOnlineS1.pure good _
-      | some x =>
-        rcases x with ⟨st', t', i', m'⟩; dsimp only; split_ifs
-        · exact AgreeOnlineS1.pure good _
-        · exact AgreeOnlineS1.bind (AgreeOnlineS1.set good _) fun _ => AgreeOnlineS1.pure good _
-        · exact AgreeOnlineS1.bind (AgreeOnlineS1.set good _) fun _ => AgreeOnlineS1.pure good _
-        · exact AgreeOnlineS1.bind (AgreeOnlineS1.pure good _) fun _ => AgreeOnlineS1.pure good _
-    · exact AgreeOnlineS1.pure good _
-  · intro gs; exact AgreeOnline.liftM good (corrR cfg P gs)
-
-private theorem agreeOnline_append_of_eq {Coins α : Type} {good : List Coins → Prop}
-    (hpref : PrefixClosed good) (r : Coins) (x₁ x₂ : List Coins → α)
-    (heq : ∀ log, good (log ++ [r]) → x₁ (log ++ [r]) = x₂ (log ++ [r])) :
-    AgreeOnline good (fun log => pure (x₁ (log ++ [r]), log ++ [r]))
-      (fun log => pure (x₂ (log ++ [r]), log ++ [r])) := by
-  refine ⟨PreservesBad.append hpref _ (fun log => ⟨[r], rfl⟩),
-    PreservesBad.append hpref _ (fun log => ⟨[r], rfl⟩), fun log _ q => ?_⟩
-  let log' := log ++ [r]
-  have hgoal : Pr{let z ← (pure (x₁ log', log') : ProbComp (α × List Coins))}[q z ∧ good z.2] =
-      Pr{let z ← (pure (x₂ log', log') : ProbComp (α × List Coins))}[q z ∧ good z.2] := by
-    by_cases hg : good log'
-    · rw [heq log hg]
-    · have hzero (x : α) : Pr{let z ← (pure (x, log') : ProbComp (α × List Coins))}[q z ∧ good z.2] = 0 :=
-        prEvent_eq_zero_of_forall_mem_support _ _ fun z hz ⟨_, hz2⟩ => by
-          rw [support_pure, Set.mem_singleton_iff] at hz; subst hz; exact hg hz2
-      rw [hzero, hzero]
-  exact hgoal
-
-private theorem agreeOnlineS1_send_halted {Key St Msg Coins RCoins C : Type}
-    {badLog : List Coins → Bool} (hpref : PrefixClosed (fun w => badLog w = false))
-    (sm : SMSchemeR Key St Msg Coins RCoins C)
-    (st : St) (msg : Msg) (coins : Coins) (recSt : St × C → GameState St Msg C) :
-    AgreeOnlineS1 (fun w => badLog w = false)
-      (do
-        let out ← StateT.lift ((smSchemeCoinState sm).send st msg coins)
-        set (recSt out); return some out.2 :
-        StateT (GameState St Msg C) (StateT (List Coins) ProbComp) (Option C))
-      (do
-        let isBad ← StateT.lift (fun log : List Coins =>
-          let log' := log ++ [coins]; pure (badLog log', log'))
-        if isBad then return none
-        else let out := sm.send st msg coins; set (recSt out); return some out.2 :
-        StateT (GameState St Msg C) (StateT (List Coins) ProbComp) (Option C)) := by
-  intro gs; let out := sm.send st msg coins
-  have h₁ : ((do
-      let o ← StateT.lift ((smSchemeCoinState sm).send st msg coins)
-      set (recSt o); return some o.2 :
-      StateT (GameState St Msg C) (StateT (List Coins) ProbComp) (Option C)).run gs) =
-    (fun log => pure ((some out.2, recSt out), log ++ [coins])) := by
-    ext log
-    simp only [smSchemeCoinState, StateT.run_bind, StateT.run_lift, StateT.run_map,
-      StateT.run_set, bind_pure_comp, map_pure]
-    rfl
-  let chk : StateT (List Coins) ProbComp Bool :=
-    fun l => let log' := l ++ [coins]; pure (badLog log', log')
-  have h₂ : ((do
-      let isBad ← StateT.lift chk
-      if isBad then return none
-      else let o := sm.send st msg coins; set (recSt o); return some o.2 :
-      StateT (GameState St Msg C) (StateT (List Coins) ProbComp) (Option C)).run gs) =
-    (fun log =>
-      let log' := log ++ [coins]
-      pure (if badLog log' then (none, gs) else (some out.2, recSt out), log')) := by
-    ext log
-    have hchk : chk.run log = pure (badLog (log ++ [coins]), log ++ [coins]) := rfl
-    change _ = pure (if badLog (log ++ [coins]) then (none, gs) else (some out.2, recSt out),
-      log ++ [coins])
-    simp only [StateT.run_bind, StateT.run_lift, StateT.run_map, hchk, bind_pure_comp, map_pure,
-      pure_bind]
-    cases badLog (log ++ [coins]) <;>
-      simp only [↓reduceIte, Bool.false_eq_true, StateT.run_pure, StateT.run_set, StateT.run_map,
-        map_pure]; rfl
-  rw [h₁]; exact Eq.subst (motive := fun x => AgreeOnline _ _ x) (Eq.symm h₂)
-    (agreeOnline_append_of_eq hpref coins
-      (fun _ => (some out.2, recSt out))
-      (fun log' => if badLog log' then (none, gs) else (some out.2, recSt out))
-      (fun log hg => by simp [hg]))
-
-/-- `gameRCoinLogged` agrees with `gameRCoinHalted` off `badLog` when `badLog = false` is prefix-closed. -/
-theorem gameRCoinLogged_agree_halted {Key St Msg Coins RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins] [SampleableType RCoins]
-    (badLog : List Coins → Bool) (hnil : badLog [] = false)
-    (hpref : PrefixClosed (fun w => badLog w = false)) (sm : SMSchemeR Key St Msg Coins RCoins C)
-    (Δ qep : ℕ) (cfg : ConfigR St Msg C) (A : Adversary St Msg Coins C) (p : Bool × List Coins → Prop) :
-    Pr{let z ← gameRCoinLogged sm Δ qep cfg A}[p z ∧ badLog z.2 = false] =
-      Pr{let z ← gameRCoinHalted badLog sm Δ qep cfg A}[p z ∧ badLog z.2 = false] := by
-  rw [gameRCoinLogged_eq_state]; unfold gameRCoinHalted
-  let good : List Coins → Prop := fun w => badLog w = false
-  have himpl (t : (unifSpec + spec St Msg Coins C).Domain) :
-      AgreeOnlineS1 good (((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (GameState St Msg C) (StateT (List Coins) ProbComp)) +
-        oracleImplRM (smSchemeCoinState sm) Δ qep cfg) t)
-      (((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (GameState St Msg C) (StateT (List Coins) ProbComp)) +
-        oracleImplRHalted badLog sm Δ qep cfg) t) := by
-    rcases t with u | (((⟨P, m, r⟩ | ⟨P, m₀, m₁, r⟩) | ⟨P, c⟩) | ⟨P, c⟩) | P
-    · exact AgreeOnlineS1.lift (AgreeOnline.liftM good _)
-    · change AgreeOnlineS1 good (transmitRM _ Δ qep cfg (P, m, r)) (transmitRHalted _ _ Δ qep cfg (P, m, r))
-      unfold transmitRM transmitRHalted; refine AgreeOnlineS1.bind (AgreeOnlineS1.get good) fun s => ?_
-      cases cfg.sendOK s P
-      · exact AgreeOnlineS1.pure good _
-      · simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte]; cases s.win
-        · simp only [Bool.false_eq_true, ↓reduceIte]
-          refine AgreeOnlineS1.bind (AgreeOnlineS1.lift (AgreeOnline.liftM good _)) fun ⟨coins, bf⟩ => ?_
-          cases s.epMgmt Δ qep P bf with
-          | none => exact AgreeOnlineS1.pure good _
-          | some s₁ => exact agreeOnlineS1_send_halted hpref sm (s₁.st P) m coins _
-        · exact AgreeOnlineS1.pure good _
-    · change AgreeOnlineS1 good (challRM _ Δ qep cfg (P, m₀, m₁, r)) (challRHalted _ _ Δ qep cfg (P, m₀, m₁, r))
-      unfold challRM challRHalted; refine AgreeOnlineS1.bind (AgreeOnlineS1.get good) fun s => ?_
-      cases cfg.sendOK s P
-      · exact AgreeOnlineS1.pure good _
-      · simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte]; cases s.win
-        · simp only [Bool.false_eq_true, ↓reduceIte]
-          refine AgreeOnlineS1.bind (AgreeOnlineS1.lift (AgreeOnline.liftM good _)) fun ⟨coins, bf⟩ => ?_
-          cases s.epMgmt Δ qep P bf with
-          | none => exact AgreeOnlineS1.pure good _
-          | some s₁ =>
-            dsimp only; cases (!(s₁.safeCh Δ P) || !(cfg.base.challAllowedIn (s₁.epoch P)))
-            · simp only [Bool.false_eq_true, ↓reduceIte]
-              exact agreeOnlineS1_send_halted hpref sm (s₁.st P) _ coins _
-            · exact AgreeOnlineS1.pure good _
-        · exact AgreeOnlineS1.pure good _
-    · exact agreeOnline_oracleImplRM (smSchemeCoinState sm) (smSchemeCoinState sm)
-        (fun s m c => AgreeOnline.refl (PreservesBad.append hpref _ (fun log => ⟨[c], rfl⟩)))
-        (fun s c rc => AgreeOnline.pure good _) Δ qep cfg (.inl (.inl (.inr (P, c))))
-    · exact agreeOnline_oracleImplRM (smSchemeCoinState sm) (smSchemeCoinState sm)
-        (fun s m c => AgreeOnline.refl (PreservesBad.append hpref _ (fun log => ⟨[c], rfl⟩)))
-        (fun s c rc => AgreeOnline.pure good _) Δ qep cfg (.inl (.inr (P, c)))
-    · intro gs; exact AgreeOnline.liftM good (corrR cfg P gs)
-  exact (AgreeOnline.bind (AgreeOnline.liftM good _) fun b =>
-    AgreeOnline.bind (AgreeOnline.liftM good _) fun k =>
-      AgreeOnline.bind (AgreeOnlineS1.simulateQ _ _ himpl A (initState sm.sendPart k b))
-        fun ⟨b', s⟩ => AgreeOnline.pure good (b == b' || s.win)).agree [] hnil p
-
-/-- Schemes whose `send` agrees away from `badCoin` induce identical `gameRCoinLogged` distributions off `badCoin`. -/
-theorem gameRCoinLogged_agree_of_send {Key St Msg Coins RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
-    [SampleableType RCoins]
-    (sm₁ sm₂ : SMSchemeR Key St Msg Coins RCoins C)
-    (hinitA : sm₁.initA = sm₂.initA) (hinitB : sm₁.initB = sm₂.initB)
-    (hrecv : sm₁.receive = sm₂.receive) {badCoin : Coins → Prop}
-    (hsend : ∀ st m r, ¬ badCoin r → sm₁.send st m r = sm₂.send st m r)
-    (Δ qep : ℕ) (cfg : ConfigR St Msg C) (A : Adversary St Msg Coins C)
-    (p : Bool × List Coins → Prop) :
-    Pr{let z ← gameRCoinLogged sm₁ Δ qep cfg A}[p z ∧ ∀ r ∈ z.2, ¬ badCoin r] =
-      Pr{let z ← gameRCoinLogged sm₂ Δ qep cfg A}[p z ∧ ∀ r ∈ z.2, ¬ badCoin r] := by
-  rw [gameRCoinLogged_eq_state, gameRCoinLogged_eq_state]
-  let good : List Coins → Prop := fun w => ∀ r ∈ w, ¬ badCoin r
-  have hpref : PrefixClosed good := fun w₁ w₂ h r hr => h r (List.mem_append_left w₂ hr)
-  have hnil : good [] := fun _ hr => nomatch hr
-  have hinit : initState sm₁.sendPart = initState sm₂.sendPart := by
-    ext k b : 2; unfold initState SMSchemeR.sendPart; congr 1; funext P; cases P <;> simp [hinitA, hinitB]
-  rw [hinit]
-  have hs : ∀ st m r, AgreeOnline good
-      ((smSchemeCoinState sm₁).send st m r) ((smSchemeCoinState sm₂).send st m r) :=
-    fun st m r => agreeOnline_append_of_eq hpref r
-      (fun _ => sm₁.send st m r) (fun _ => sm₂.send st m r)
-      (fun log hg => hsend st m r (hg r (List.mem_append_right log (List.mem_singleton.mpr rfl))))
-  have hr_eq : ∀ st c rc, AgreeOnline good
-      ((smSchemeCoinState sm₁).receive st c rc) ((smSchemeCoinState sm₂).receive st c rc) := by
-    intro st c rc; unfold smSchemeCoinState; rw [hrecv]; exact AgreeOnline.pure good _
-  have himpl (t : (unifSpec + spec St Msg Coins C).Domain) :
-      AgreeOnlineS1 good
-        (((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-            (StateT (GameState St Msg C) (StateT (List Coins) ProbComp)) +
-          oracleImplRM (smSchemeCoinState sm₁) Δ qep cfg) t)
-        (((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-            (StateT (GameState St Msg C) (StateT (List Coins) ProbComp)) +
-          oracleImplRM (smSchemeCoinState sm₂) Δ qep cfg) t) := by
-    rcases t with u | q
-    · exact AgreeOnlineS1.lift (AgreeOnline.liftM good _)
-    · exact agreeOnline_oracleImplRM _ _ hs hr_eq Δ qep cfg q
-  exact (AgreeOnline.bind (AgreeOnline.liftM good _) fun b =>
-    AgreeOnline.bind (AgreeOnline.liftM good _) fun k =>
-      AgreeOnline.bind (AgreeOnlineS1.simulateQ _ _ himpl A (initState sm₂.sendPart k b))
-        fun ⟨b', s⟩ => AgreeOnline.pure good (b == b' || s.win)).agree [] hnil p
-
 /-! ## Boolean distance and bias transfer -/
 
 theorem boolDist_fst_le_prEvent_of_good_le {β : Type}
@@ -1065,95 +771,5 @@ theorem boolBias_le_add_two_mul_of_boolDist_le (μ ν : Measure Bool) [IsProbabi
     _ = ν.boolBias + 2 * μ.boolDist ν := by
         rw [Measure.boolBias_eq_two_mul_absDiff_half_of_isProbabilityMeasure ν]
     _ ≤ ν.boolBias + 2 * ε := by gcongr
-
-theorem boolBias_gameR_le_add_two_mul_of_good_le {Key St Msg Coins RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins] [SampleableType RCoins]
-    (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C)
-    (A : Adversary St Msg Coins C) (H : ProbComp Bool) (badLog : List Coins → Prop)
-    (hgood : ∀ b : Bool,
-      Pr{let z ← gameRCoinLogged sm Δ qep cfg A}[z.1 = b ∧ ¬ badLog z.2] ≤ Pr{let b' ← H}[b' = b]) :
-    (𝒟[gameR sm Δ qep cfg A]).boolBias ≤
-      (𝒟[H]).boolBias + 2 * Pr{let z ← gameRCoinLogged sm Δ qep cfg A}[badLog z.2] := by
-  rw [← evalDist_fst_gameRCoinLogged sm Δ qep cfg A]
-  exact boolBias_le_add_two_mul_of_boolDist_le _ _ _
-    (boolDist_fst_le_prEvent_of_good_le _ H (fun z => badLog z.2) hgood)
-
-theorem boolBias_bind_gameR_le_add_two_mul_of_good_le {α Key St Msg Coins RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins] [SampleableType RCoins]
-    (oa : ProbComp α) (sm : α → SMSchemeR Key St Msg Coins RCoins C)
-    (Δ qep : ℕ) (cfg : ConfigR St Msg C) (A : α → Adversary St Msg Coins C)
-    (H : α → ProbComp Bool) (badLog : List Coins → Prop)
-    (hgood : ∀ o ∈ support oa, ∀ b : Bool,
-      Pr{let z ← gameRCoinLogged (sm o) Δ qep cfg (A o)}[z.1 = b ∧ ¬ badLog z.2] ≤ Pr{let b' ← H o}[b' = b]) :
-    (𝒟[oa >>= fun o => gameR (sm o) Δ qep cfg (A o)]).boolBias ≤
-      (𝒟[oa >>= H]).boolBias +
-        2 * Pr{let z ← oa >>= fun o => gameRCoinLogged (sm o) Δ qep cfg (A o)}[badLog z.2] := by
-  rw [← evalDist_fst_bind_gameRCoinLogged oa sm Δ qep cfg A]
-  refine boolBias_le_add_two_mul_of_boolDist_le _ _ _ (boolDist_fst_le_prEvent_of_good_le
-    (oa >>= fun o => gameRCoinLogged (sm o) Δ qep cfg (A o)) (oa >>= H) (fun z => badLog z.2) fun b => ?_)
-  let : MeasurableSpace α := ⊤
-  rw [prEvent_bind_eq_lintegral_of_discrete, prEvent_bind_eq_lintegral_of_discrete]
-  refine MeasureTheory.lintegral_mono_ae ?_; rw [MeasureTheory.ae_iff]
-  have hsub : {o : α | ¬ Pr{let z ← gameRCoinLogged (sm o) Δ qep cfg (A o)}[z.1 = b ∧ ¬ badLog z.2] ≤
-      Pr{let b' ← H o}[b' = b]} ⊆ (support oa)ᶜ := fun o ho hmem => ho (hgood o hmem b)
-  have hsupp : (𝒟[oa]) (support oa)ᶜ = 0 := by
-    change (𝒟[oa]) {o | o ∉ support oa} = 0; rw [← prEvent_eq_evalDist_of_discrete]
-    exact prEvent_eq_zero_of_forall_mem_support oa _ fun o ho hnot => hnot ho
-  exact MeasureTheory.measure_mono_null hsub hsupp
-
-theorem boolBias_session_le_of_good_le {α : Type}
-    (C : Crypto) (K : MlKem) (ℓ : ℕ) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (qep : ℕ)
-    (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)
-    (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) (H : α → ProbComp Bool)
-    (hgood : ∀ o ∈ support oa, ∀ b : Bool,
-      Pr{let z ← gameRCoinLogged (sessionSchemeFixedSpk
-          (paramsIdsWithSpqr C (spqrV1SessionUniformCoins C.F K) (ida o) (idb o)) ℓ (s o))
-          3 qep (configRefuseEarlyBobCorr decT encT) (A o)}[
-            z.1 = b ∧ K.KemFailBad (z.2.map coinBytes) = false] ≤ Pr{let b' ← H o}[b' = b]) :
-    (𝒟[oa >>= fun o => gameR (sessionSchemeFixedSpk
-          (paramsIdsWithSpqr C (spqrV1SessionUniformCoins C.F K) (ida o) (idb o)) ℓ (s o))
-        3 qep (configRefuseEarlyBobCorr decT encT) (A o)]).boolBias ≤
-      (𝒟[oa >>= H]).boolBias + 2 * sessionKemFailProb C K ℓ decT encT qep oa ida idb s A := by
-  unfold sessionKemFailProb
-  refine boolBias_bind_gameR_le_add_two_mul_of_good_le oa _ 3 qep _ A H
-    (fun w => K.KemFailBad (w.map coinBytes) = true) fun o ho b => ?_
-  simpa only [Bool.not_eq_true] using hgood o ho b
-
-/-- Bounds the `SessionSecure` game bias by `gameRCoinHalted` plus twice `sessionKemFailProb`. -/
-theorem boolBias_session_le_halted_add_two_mul_sessionKemFailProb {α : Type}
-    (C : Crypto) (K : MlKem) (ℓ : ℕ) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (qep : ℕ)
-    (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)
-    (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
-    let sm := fun o => sessionSchemeFixedSpk
-      (paramsIdsWithSpqr C (spqrV1SessionUniformCoins C.F K) (ida o) (idb o)) ℓ (s o)
-    (𝒟[oa >>= fun o => gameR (sm o) 3 qep (configRefuseEarlyBobCorr decT encT) (A o)]).boolBias ≤
-      (𝒟[oa >>= fun o =>
-          Prod.fst <$> gameRCoinHalted (kemFailBadLog K) (sm o) 3 qep
-            (configRefuseEarlyBobCorr decT encT) (A o)]).boolBias +
-        2 * sessionKemFailProb C K ℓ decT encT qep oa ida idb s A := by
-  let : MeasurableSpace (Bool × List (BitVec 512)) := ⊤
-  refine boolBias_session_le_of_good_le C K ℓ decT encT qep oa ida idb s A _ fun o _ b => ?_
-  rw [gameRCoinLogged_agree_halted (kemFailBadLog K) rfl
-      (prefixClosed_kemFailBad_false K) _ 3 qep _ (A o) (fun z => z.1 = b),
-    prEvent_map, prEvent_eq_evalDist_of_discrete, prEvent_eq_evalDist_of_discrete]
-  exact MeasureTheory.measure_mono fun _ h => h.1
-
-theorem sessionKemFailProb_eq_lintegral {α : Type}
-    (C : Crypto) (K : MlKem) (ℓ : ℕ) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (qep : ℕ)
-    (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)
-    (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) :
-    letI : MeasurableSpace α := ⊤
-    let g := fun o => gameRCoinLogged
-      (sessionSchemeFixedSpk
-        (paramsIdsWithSpqr C (spqrV1SessionUniformCoins C.F K) (ida o) (idb o)) ℓ (s o))
-      3 qep (configRefuseEarlyBobCorr decT encT) (A o)
-    sessionKemFailProb C K ℓ decT encT qep oa ida idb s A =
-      ∫⁻ o, Pr{let z ← g o}[K.KemFailBad (z.2.map coinBytes) = true] ∂𝒟[oa] := by
-  let : MeasurableSpace α := ⊤
-  unfold sessionKemFailProb
-  exact prEvent_bind_eq_lintegral_of_discrete oa _ _
 
 end Computational.Proofs.SpecLemmas.Session.GameRCoinLogged

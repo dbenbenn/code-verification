@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.ContractsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1DispatchPlaced
@@ -28,7 +28,7 @@ Provides `spqrSendFullRoPlacedAt` extraction/restoration and the panic-polymorph
 relocatable Phase 1 step `spqr_send_phase1_step_placed_panic` (`+0..+368`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -80,7 +80,7 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 /-- Full `.rodata` + global invariant bundle for `spqr::send::<HookRng>` (Block `124`):
     combines `spqrSendRoPlacedAt` with `spqrLogLevelZeroPlacedAt` (`lsLogFilterAddr ↦₆₄ 0#64`).
     Note that `GF.Mul2U16.tokenInitPlacedAt` is already included inside `spqrSendRoPlacedAt`. -/
-def spqrSendFullRoPlacedAt : SepProp :=
+@[expose] def spqrSendFullRoPlacedAt : SepProp :=
   spqrSendRoPlacedAt ∗
   spqrLogLevelZeroPlacedAt
 

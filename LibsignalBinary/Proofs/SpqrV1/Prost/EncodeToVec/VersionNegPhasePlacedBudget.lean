@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.VersionNegPhasePlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.VersionNegPhasePlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Phase 2b (`Block 426`, `+580 .. +1212`): `Option<VersionNegotiation>` Encoding
@@ -21,7 +23,7 @@ Re-exports the `VersionNegotiationPB` sub-steps from `VersionNegPhasePlacedBudge
 `step_encodeToVec_versionNeg_placed` (`+580/+1212 .. +1212`), threading `A.pool lim σ0`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

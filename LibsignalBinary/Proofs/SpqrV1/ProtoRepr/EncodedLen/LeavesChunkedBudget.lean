@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunked
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunked
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` Bridges and Placed Propositions for `Chunked.Ct1Sampled::encoded_len`
@@ -20,7 +21,7 @@ Unpinning bridges and `[LibsignalPlacement]` `subroutine_ok` propositions for
 `V1State.Chunked.Ct1Sampled::encoded_len` (Blocks `179`, `407`) with `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -88,39 +89,39 @@ theorem chunkedCt1SampledEncodedLen_lscl_ok_of_pinned {prog : Program} {entry : 
   · exact Or.inr (Or.inl hpan)
   · exact Or.inr (Or.inr hex)
 
-def ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_179).rebase (blkPl_179).base (Rust.withPanics ext))
     (blkPl_179).base (withLsCodeLoaded lsmpl (chunkedCt1SampledEncodedLenPinnedSpec A))
 
-def ChunkedCt1SampledEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChunkedCt1SampledEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_179).rebase (blkPl_179).base (Rust.withPanics ext))
     (blkPl_179).base (withLsCodeLoaded lsmpl (chunkedCt1SampledEncodedLenSpec A))
 
-def ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def ChunkedCt1SampledEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def ChunkedCt1SampledEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedCt1SampledEncodedLenLocal1PlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def ChunkedCt1SampledEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChunkedCt1SampledEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_407).rebase (blkPl_407).base (Rust.withPanics ext))
     (blkPl_407).base (withLsCodeLoaded lsmpl (chunkedCt1SampledEncodedLenPinnedSpec A))
 
-def ChunkedCt1SampledEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChunkedCt1SampledEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_407).rebase (blkPl_407).base (Rust.withPanics ext))
     (blkPl_407).base (withLsCodeLoaded lsmpl (chunkedCt1SampledEncodedLenSpec A))
 
-def ChunkedCt1SampledEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def ChunkedCt1SampledEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedCt1SampledEncodedLenLocal2PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def ChunkedCt1SampledEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto)
+@[expose] def ChunkedCt1SampledEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto)
     (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChunkedCt1SampledEncodedLenLocal2PlacedOkExt A (tripleRatchetExterns C ctl abs)
 

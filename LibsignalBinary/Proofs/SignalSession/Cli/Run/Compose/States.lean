@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
 import LibsignalBinary.Specifications.AsmConstants
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Machine-Level Hop States, Frame Splits, and Side-Condition Bridges for `signal_session::run`
@@ -31,7 +32,7 @@ registers), and semantic side-condition bridges used to decompose `signal_sessio
 | `AtReject` | `R+0x124` / `R+0x2c7c` | pre- or post-dispatch `drop_stores` + epilogue | `"address"` read `Err` (`0x124`) or arm reject (`0x2c7c`) |
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,15 +56,6 @@ open CryptoVerification.LibsignalProtoCodec
 96-byte saved-register area `[s0.sp - 0x60 .. s0.sp)`. -/
 abbrev runLocalBytes : Nat := 0x29f0
 
-/-- Address `k` bytes past `signal_session::run`'s entry point in `mProg img ext`. -/
-noncomputable abbrev runPc (img : Obj.Image) (ext : String → Option (State → State)) (k : Nat) :
-    BitVec 64 :=
-  (mProg img ext).fnAddr runName + BitVec.ofNat 64 k
-
-theorem runPc_zero (img : Obj.Image) (ext : String → Option (State → State)) :
-    runPc img ext 0 = (mProg img ext).fnAddr runName := by
-  simp [runPc]
-
 /-- `run`'s 12 saved register words `[s0.sp - 0x60 .. s0.sp)` (`stp x29, x30, [sp, #-0x60]!` ..
 `stp x20, x19, [sp, #0x50]` at `R+0x0..R+0x14`), identical layout to `main`'s prologue. -/
 abbrev runSaved (s0 : State) : SepProp := MainHops.mainSaved s0
@@ -72,35 +64,16 @@ abbrev runSaved (s0 : State) : SepProp := MainHops.mainSaved s0
 abbrev runFsp (s0 : State) : BitVec 64 := s0.sp - 0x2a50#64
 
 /-- OOM continuation of every hop of `run`: vacuous (allocator failures route to `onPanic`). -/
-def runOom (_s0 : State) : State → SepProp := fun _ => ⌜False⌝
+@[expose] def runOom (_s0 : State) : State → SepProp := fun _ => ⌜False⌝
 
 /-- Panic predicate of `run`: either the abstract semantics panics (`g.a = none`) or an allocation
 failed since `s0`. -/
-def runPanicProp (g : RunCall) (s0 sf : State) : Prop :=
+@[expose] def runPanicProp (g : RunCall) (s0 sf : State) : Prop :=
   g.a = none ∨ allocFailedIn s0 sf
-
-/-- Common post-prologue machine invariant inside `run` at offset `R + k`. -/
-structure InRun (img : Obj.Image) (ext : String → Option (State → State)) (s0 s : State)
-    (k : Nat) : Prop where
-  pc : s.pc = runPc img ext k
-  run : s.status = .Running
-  sp : s.sp = runFsp s0
-  fp : s.readReg64 .fp = s0.sp - 0x60#64
-  inv : ImgCallInv img s
-  vregs : calleeSavedVRegs s = calleeSavedVRegs s0
-  spAligned : s0.spAligned = true
-
-theorem InRun.spAligned_cur {img : Obj.Image} {ext : String → Option (State → State)}
-    {s0 s : State} {k : Nat} (h : InRun img ext s0 s k) : s.spAligned = true := by
-  have hs0 : s0.sp &&& 15#64 = 0#64 := by
-    simpa only [State.spAligned, beq_iff_eq] using h.spAligned
-  have hfsp : (s0.sp - 0x2a50#64) &&& 15#64 = 0#64 := by
-    bv_bits
-  simp only [State.spAligned, h.sp, runFsp, hfsp, beq_self_eq_true]
 
 /-- Owned pieces of `run`'s `0x29f0`-byte local frame at `fsp = runFsp s0`: `(offset, size, P)` in
 non-overlapping increasing order, with `memRegion` filling all gaps up to `0x29f0`. -/
-def runLocalsFrom (fsp : BitVec 64) : Nat → List (Nat × Nat × SepProp) → SepProp
+@[expose] def runLocalsFrom (fsp : BitVec 64) : Nat → List (Nat × Nat × SepProp) → SepProp
   | off, [] => memRegion (fsp + BitVec.ofNat 64 off) (runLocalBytes - off)
   | off, (o, n, P) :: cs =>
     memRegion (fsp + BitVec.ofNat 64 off) (o - off) ∗ P ∗ runLocalsFrom fsp (o + n) cs
@@ -111,7 +84,7 @@ abbrev runLocals (fsp : BitVec 64) (cs : List (Nat × Nat × SepProp)) : SepProp
 
 /-- Well-formedness of a `runLocalsFrom` descriptor list: offsets are non-overlapping and bounded by
 `runLocalBytes = 0x29f0`. -/
-def RunLocalsFromWf : Nat → List (Nat × Nat × SepProp) → Prop
+@[expose] def RunLocalsFromWf : Nat → List (Nat × Nat × SepProp) → Prop
   | off, [] => off ≤ runLocalBytes
   | off, (o, n, _) :: cs => off ≤ o ∧ RunLocalsFromWf (o + n) cs
 
@@ -285,7 +258,7 @@ theorem stackAt_run_rejoin (s0 : State) {resStack : Nat}
 /-! ## 3. Decomposing and rejoining `protocolAddressAt` and 32-byte `IdentityKey` words -/
 
 /-- Heap-only ownership of `meG.name` (separated from the 24-byte `Vec` header). -/
-def addrNameHeap (A : RustAlloc) (g : AddrGhost) : SepProp :=
+@[expose] def addrNameHeap (A : RustAlloc) (g : AddrGhost) : SepProp :=
   ⌜g.name.bytes.length ≤ g.name.cap.toNat ∧ g.name.cap.toNat < 2 ^ 63 ∧ g.name.ptr ≠ 0⌝ ∗
     if g.name.cap = 0 then emp
     else A.live g.name.ptr g.name.cap.toNat 1 ∗ (g.name.ptr ↦ₛ g.name.bytes) ∗
@@ -295,7 +268,7 @@ def addrNameHeap (A : RustAlloc) (g : AddrGhost) : SepProp :=
 /-- The upper 16 bytes `[a + 16 .. a + 32)` of `protocolAddressAt A g a` (`len` word at `+0`,
 `device` byte at `+8`, 7 padding bytes at `+9 .. +16`), which `run` copies with `ldr q0` / `str q0`
 between `[sp + 0x1760]`, `[sp + 0x1d0]`, `[sp + 0x260]`, and the call-site `ProtocolAddress` slot. -/
-def addrUpperAt (a : BitVec 64) (g : AddrGhost) : SepProp :=
+@[expose] def addrUpperAt (a : BitVec 64) (g : AddrGhost) : SepProp :=
   (a ↦₆₄ BitVec.ofNat 64 g.name.bytes.length) ∗
     ((a + 8#64) ↦₈ g.device) ∗
     memRegion (a + 9#64) 7
@@ -329,7 +302,7 @@ theorem protocolAddressAt_eq_parts (A : RustAlloc) (g : AddrGhost) (a : BitVec 6
 
 /-- Four 64-bit words holding a 32-byte key slice (`IdentityKey::decode` output words read at
 `R+0x714..R+0x720` and written to `cliBundleAt` at `R+0x284c, R+0x287c, R+0x2884, R+0x288c`). -/
-def Words32Eq (bs : Bytes) (w0 w1 w2 w3 : BitVec 64) : Prop :=
+@[expose] def Words32Eq (bs : Bytes) (w0 w1 w2 w3 : BitVec 64) : Prop :=
   ∀ a : BitVec 64,
     ((a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗ ((a + 24#64) ↦₆₄ w3)) =
       (a ↦ₛ bs)
@@ -349,7 +322,7 @@ private theorem foldr_max_le {l : List Nat} {m : Nat}
 
 /-- Every direct callee budget in `runCalleeNeed` (plus `< 2^63` / `≤ 2^64`) follows from
 `runNeed B (slotsOf A img S needs) ≤ resStack` and `resStack ≤ 2 ^ 63`. -/
-theorem runNeed_bounds {A : RustAlloc} {img : Obj.Image} {B : RunBudgets} {S : RunSem}
+theorem runNeed_bounds {A : RustAlloc} {img : Unit} {B : RunBudgets} {S : RunSem}
     {needs : RunNeeds} {resStack : Nat}
     (hres : runNeed B (slotsOf A img S needs) ≤ resStack) (hres64 : resStack ≤ 2 ^ 63) :
     let sub := resStack - runFrame
@@ -390,34 +363,7 @@ theorem runNeed_bounds {A : RustAlloc} {img : Obj.Image} {B : RunBudgets} {S : R
     hm _ (by simp [slotsOf, mkSlot]), hm _ (by simp [slotsOf, mkSlot]),
     hkem ▸ hm _ (by simp)⟩
 
-/-! ## 5. Named machine boundary states of `signal_session::run` -/
-
-/-- Entry state at `R + 0x0`: `run`'s ABI registers and precondition assertions from
-`(runSpec A img uuidTryParse (runRel S) cliWrOk resStack).inImage img`. -/
-structure AtRunEntry (S : RunSem) (img : Obj.Image) (ext : String → Option (State → State))
-    (g : RunCall) (s0 : State) : Prop where
-  pc : s0.pc = runPc img ext 0
-  run : s0.status = .Running
-  inv : ImgCallInv img s0
-  spAligned : s0.spAligned = true
-  rel : runRel S g.i g.a
-  parse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c
-  x0 : s0.readReg64 .x0 = g.res
-  x1 : s0.readReg64 .x1 = g.call
-  x2 : s0.readReg64 .x2 = g.stores
-  x3 : s0.readReg64 .x3 = g.inp
-  x4 : s0.readReg64 .x4 = BitVec.ofNat 64 (inputOf g.i g.c).length
-  fs : s0.fs.files = runFiles g.i
-  stdout : ProcessOutcome.traceStreamBytes .stdout s0.trace = []
-
-/-- Entry spatial footprint of `run`. -/
-def runEntryMem (A : RustAlloc) (img : Obj.Image) (g : RunCall) (s0 : State)
-    (resStack : Nat) : SepProp :=
-  memRegion g.res runResSize ∗ callAt A g.call g.c ∗
-    storesAt A g.stores StoresGhost.opened ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗
-    coinsInstalled img g.coins (MainHops.coinsOf g.i) ∗
-    CryptoVerification.LibsignalSpqrV1.TokenInit img ∗ logOff img ∗
-    A.pool ∗ stackAt s0.sp resStack
+/-! ## 5. Ghost data and frame cells of `signal_session::run` -/
 
 /-- Outcome of `E0` (`me = address(&s.identity.address()?)`) when execution reaches `AtDispatch`
 (`R+0x214`): either `address` parsed `ownB` into `(meV, meG)`, or `address` returned `None`.
@@ -429,57 +375,14 @@ inductive MeAtDispatch : Type where
 
 /-- Local stack cells live at `AtDispatch` (`R + 0x214`): `[fsp + 0x1d0 .. fsp + 0x1e0)` holds the
 upper 16 bytes of `meG` when `me = some (meV, meG)`, and nothing when `me = none`. -/
-def dispatchCells (fsp : BitVec 64) : MeAtDispatch → List (Nat × Nat × SepProp)
+@[expose] def dispatchCells (fsp : BitVec 64) : MeAtDispatch → List (Nat × Nat × SepProp)
   | .none => []
   | .some _ meG => [(0x1d0, 16, addrUpperAt (fsp + 0x1d0#64) meG)]
 
 /-- Extra heap ownership carried at `AtDispatch` (`meG.name`'s buffer when `me = some`). -/
-def dispatchMeHeap (A : RustAlloc) : MeAtDispatch → SepProp
+@[expose] def dispatchMeHeap (A : RustAlloc) : MeAtDispatch → SepProp
   | .none => emp
   | .some _ meG => addrNameHeap A meG
-
-/-- Post-own-address-check dispatch state at `R + 0x214` (`cmp x8, #0x1`): `x8 = g.c.tag`,
-`x19 = g.stores`, `x20 = g.res`, `x23 = g.inp`, `x24 = (inputOf g.i g.c).length`, `x25 = g.call`,
-`x26 = fsp + 0x4d0`, `x27 = fsp + 0x1750`, with `ownB` read from `"address"` and parsed as `me`. -/
-structure AtDispatch (img : Obj.Image) (ext : String → Option (State → State))
-    (g : RunCall) (me : MeAtDispatch) (s0 s : State) : Prop where
-  base : InRun img ext s0 s 0x214
-  x8 : s.readReg64 (.gpr 8#5) = BitVec.ofNat 64 g.c.tag
-  x19 : s.readReg64 (.gpr 19#5) = g.stores
-  x20 : s.readReg64 (.gpr 20#5) = g.res
-  x23 : s.readReg64 (.gpr 23#5) = g.inp
-  x24 : s.readReg64 (.gpr 24#5) = BitVec.ofNat 64 (inputOf g.i g.c).length
-  x25 : s.readReg64 (.gpr 25#5) = g.call
-  x26 : s.readReg64 (.gpr 26#5) = runFsp s0 + 0x4d0#64
-  x27 : s.readReg64 (.gpr 27#5) = runFsp s0 + 0x1750#64
-  meRegs : match me with
-    | .none => s.readReg64 (.gpr 21#5) = noneCap
-    | .some meV meG =>
-      s.readReg64 (.gpr 21#5) = meG.name.cap ∧
-        s.readReg64 (.gpr 28#5) = meG.name.ptr ∧
-        meG.name.bytes = meV.name ∧
-        meG.name.cap = BitVec.ofNat 64 meV.name.length ∧
-        meG.device = meV.device
-  ownSem : ∃ ownB : Bytes,
-    StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok ownB ∧
-      match me with
-      | .none => addrParse uuidTryParse ownB = Option.none
-      | .some meV _ => addrParse uuidTryParse ownB = Option.some meV
-  trace : s0.trace <+: s.trace
-  fs : s.fs.files = runFiles g.i
-  stdout : ProcessOutcome.traceStreamBytes .stdout s.trace = []
-
-/-- Spatial footprint at `AtDispatch` (`R + 0x214`). -/
-def dispatchMem (A : RustAlloc) (img : Obj.Image) (g : RunCall) (me : MeAtDispatch)
-    (s0 : State) (resStack : Nat) : SepProp :=
-  let fsp := runFsp s0
-  memRegion g.res runResSize ∗ callAt A g.call g.c ∗
-    storesAt A g.stores StoresGhost.opened ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗
-    coinsInstalled img g.coins (MainHops.coinsOf g.i) ∗
-    CryptoVerification.LibsignalSpqrV1.TokenInit img ∗ logOff img ∗
-    dispatchMeHeap A me ∗
-    runSaved s0 ∗ runLocals fsp (dispatchCells fsp me) ∗
-    stackAt fsp (resStack - runFrame) ∗ A.pool
 
 /-- Ghost state at `AtInit1` (`R + 0x74c`): `Call.init peerV dir` unpacked, `me` parsed, and
 `identity-key` decoded to `idKey` with its 32-byte public key split across
@@ -499,7 +402,7 @@ structure Init1Data where
   ikW3 : BitVec 64
 
 /-- Live local stack slots at `AtInit1` (`R+0x74c`), in strictly increasing offset order. -/
-def init1Cells (A : RustAlloc) (fsp : BitVec 64) (d : Init1Data) : List (Nat × Nat × SepProp) :=
+@[expose] def init1Cells (A : RustAlloc) (fsp : BitVec 64) (d : Init1Data) : List (Nat × Nat × SepProp) :=
   [ (0x180, 8,  (fsp + 0x180#64) ↦₆₄ d.ikW0),
     (0x190, 8,  (fsp + 0x190#64) ↦₆₄ d.ikW3),
     (0x1a8, 8,  (fsp + 0x1a8#64) ↦₆₄ d.ikW1),
@@ -509,43 +412,6 @@ def init1Cells (A : RustAlloc) (fsp : BitVec 64) (d : Init1Data) : List (Nat × 
     (0x1c8, 8,  (fsp + 0x1c8#64) ↦₆₄ d.dirPtr),
     (0x260, 16, addrUpperAt (fsp + 0x260#64) d.meG),
     (0x2a0, 32, protocolAddressAt A d.peerG (fsp + 0x2a0#64)) ]
-
-/-- Init checkpoint 1 (`R + 0x74c`): reached after `read("identity-key")` and
-`IdentityKey::decode` succeed (`R1a` → `R1b` seam). -/
-structure AtInit1 (img : Obj.Image) (ext : String → Option (State → State))
-    (g : RunCall) (d : Init1Data) (s0 s : State) : Prop where
-  base : InRun img ext s0 s 0x74c
-  callEq : g.c = .init d.peerV d.dir
-  x19 : s.readReg64 (.gpr 19#5) = g.stores
-  x20 : s.readReg64 (.gpr 20#5) = g.res
-  x21 : s.readReg64 (.gpr 21#5) = d.meG.name.cap
-  x22 : s.readReg64 (.gpr 22#5) = d.ikW2
-  x28 : s.readReg64 (.gpr 28#5) = BitVec.ofNat 64 d.dir.length
-  peerVal : d.peerG.val = addrValOf d.peerV
-  meVal : d.meG.val = addrValOf d.meV
-  ownSem : ∃ ownB : Bytes,
-    StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok ownB ∧
-      addrParse uuidTryParse ownB = some d.meV
-  ikSem : ∃ ikB : Bytes,
-    bundleFile (runFiles g.i) d.dir "identity-key" = some ikB ∧
-      exceptOpt (decodeIdentityKey ikB) = some d.idKey
-  ikWords : Words32Eq d.idKey.publicKey.bytes.toList d.ikW0 d.ikW1 d.ikW2 d.ikW3
-  trace : s0.trace <+: s.trace
-  fs : s.fs.files = runFiles g.i
-  stdout : ProcessOutcome.traceStreamBytes .stdout s.trace = []
-
-/-- Spatial footprint at `AtInit1` (`R + 0x74c`). -/
-def init1Mem (A : RustAlloc) (img : Obj.Image) (g : RunCall) (d : Init1Data)
-    (s0 : State) (resStack : Nat) : SepProp :=
-  let fsp := runFsp s0
-  memRegion g.res runResSize ∗ memRegion g.call 56 ∗
-    storesAt A g.stores StoresGhost.opened ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗
-    coinsInstalled img g.coins (MainHops.coinsOf g.i) ∗
-    CryptoVerification.LibsignalSpqrV1.TokenInit img ∗ logOff img ∗
-    addrNameHeap A d.meG ∗
-    ownedBytes A d.dirCap d.dirPtr (BitVec.ofNat 64 d.dir.length) d.dir ∗
-    runSaved s0 ∗ runLocals fsp (init1Cells A fsp d) ∗
-    stackAt fsp (resStack - runFrame) ∗ A.pool
 
 /-- Ghost state at `AtInit2` (`R + 0x28f0`): `PreKeyBundle` (`b : BundleV`) assembled as
 `cliBundleAt` at `fsp + 0x4d0`, with the three heap allocations (`spkSigPtr`, `kpkSigPtr`,
@@ -565,7 +431,7 @@ structure Init2Data where
 
 /-- Live local stack slots at `AtInit2` (`R+0x28f0: bl signal_session_handshake::initiate`), in
 strictly increasing offset order. -/
-def init2Cells (A : RustAlloc) (fsp : BitVec 64) (d : Init2Data) : List (Nat × Nat × SepProp) :=
+@[expose] def init2Cells (A : RustAlloc) (fsp : BitVec 64) (d : Init2Data) : List (Nat × Nat × SepProp) :=
   [ (0x000, 4,   fsp ↦₃₂ 0#32),
     (0x110, 8,   (fsp + 0x110#64) ↦₆₄ d.spkSigPtr),
     (0x120, 8,   (fsp + 0x120#64) ↦₆₄ 64#64),
@@ -581,70 +447,14 @@ def init2Cells (A : RustAlloc) (fsp : BitVec 64) (d : Init2Data) : List (Nat × 
     (0x4d0, 192, cliBundleAt (fsp + 0x4d0#64) d.bundle d.spkSigPtr d.kpkSigPtr d.kpkPtr),
     (0x23b0, 48, memRegion (fsp + 0x23b0#64) 48) ]
 
-/-- Init checkpoint 2 (`R + 0x28f0`): ABI registers staged for `initSlotSpec`, `readBundleV`
-succeeded with `d.bundle`, and the three heap buffers have lengths `(64, 64, 1568)` (`R1b` → `R1c`
-seam). -/
-structure AtInit2 (img : Obj.Image) (ext : String → Option (State → State))
-    (g : RunCall) (d : Init2Data) (s0 s : State) : Prop where
-  base : InRun img ext s0 s 0x28f0
-  callEq : g.c = .init d.peerV d.dir
-  x0 : s.readReg64 .x0 = runFsp s0 + 0x2a0#64
-  x1 : s.readReg64 .x1 = runFsp s0 + 0x320#64
-  x2 : s.readReg64 .x2 = g.stores + 0xf0#64
-  x3 : s.readReg64 .x3 = sessVt img
-  x4 : s.readReg64 .x4 = g.stores
-  x5 : s.readReg64 .x5 = idVt img
-  x6 : s.readReg64 .x6 = runFsp s0 + 0x4d0#64
-  x7 : s.readReg64 .x7 = 0#64
-  x8 : s.readReg64 .x8 = runFsp s0 + 0x23b0#64
-  x19 : s.readReg64 (.gpr 19#5) = g.stores
-  x20 : s.readReg64 (.gpr 20#5) = g.res
-  x21 : s.readReg64 (.gpr 21#5) = d.meG.name.cap
-  peerVal : d.peerG.val = addrValOf d.peerV
-  meVal : d.meG.val = addrValOf d.meV
-  ownSem : ∃ ownB : Bytes,
-    StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok ownB ∧
-      addrParse uuidTryParse ownB = some d.meV
-  bundleSem : readBundleV (runFiles g.i) d.dir d.peerV.device = some d.bundle
-  ptrsNeZero : d.spkSigPtr ≠ 0 ∧ d.kpkSigPtr ≠ 0 ∧ d.kpkPtr ≠ 0
-  trace : s0.trace <+: s.trace
-  fs : s.fs.files = runFiles g.i
-  stdout : ProcessOutcome.traceStreamBytes .stdout s.trace = []
-
-/-- Spatial footprint at `AtInit2` (`R + 0x28f0`). -/
-def init2Mem (A : RustAlloc) (img : Obj.Image) (g : RunCall) (d : Init2Data)
-    (s0 : State) (resStack : Nat) : SepProp :=
-  let fsp := runFsp s0
-  memRegion g.res runResSize ∗ memRegion g.call 56 ∗
-    storesAt A g.stores StoresGhost.opened ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗
-    coinsInstalled img g.coins (MainHops.coinsOf g.i) ∗
-    CryptoVerification.LibsignalSpqrV1.TokenInit img ∗ logOff img ∗
-    A.live d.spkSigPtr 64 1 ∗ A.live d.kpkSigPtr 64 1 ∗ A.live d.kpkPtr 1568 1 ∗
-    ownedBytes A d.dirCap d.dirPtr (BitVec.ofNat 64 d.dir.length) d.dir ∗
-    runSaved s0 ∗ runLocals fsp (init2Cells A fsp d) ∗
-    stackAt fsp (resStack - runFrame) ∗ A.pool
-
-/-- History invariant on exit paths of `run` (`AtJoin`, `AtReject`, `runPost`): files are
+/-- History invariant on exit paths of `run` (`AtJoin`, `AtReject`): files are
 `runFiles i` (`(initFsState (cliInputs i)).files`) and stdout is empty. -/
 abbrev RunHistOk (i : Inputs) (_s0 s : State) : Prop :=
   s.fs.files = runFiles i ∧
     ProcessOutcome.traceStreamBytes .stdout s.trace = []
 
-/-- Accept join point (`R + 0xf8c`): arm temporaries have been freed, `storesAt A g.stores g'` is
-in `x19`, `out` is in `[fsp + 0x208 .. fsp + 0x220)`, and `x20 = g.res` before copying into `g.res`
-and branching to the shared epilogue (`R+0x2c84..R+0x2ca4`). -/
-structure AtJoin (img : Obj.Image) (ext : String → Option (State → State))
-    (g : RunCall) (g' : StoresGhost) (out : Bytes) (s0 s : State) : Prop where
-  base : InRun img ext s0 s 0xf8c
-  x19 : s.readReg64 (.gpr 19#5) = g.stores
-  x20 : s.readReg64 (.gpr 20#5) = g.res
-  trace : s0.trace <+: s.trace
-  hist : RunHistOk g.i s0 s
-  ans : g.a = some (some (namedWrites g'.writes, out))
-  wrOk : ∀ pw ∈ g'.writes, cliWrOk pw.1
-
 /-- Spatial footprint at `AtJoin` (`R + 0xf8c`). -/
-def joinMem (A : RustAlloc) (g : RunCall) (g' : StoresGhost) (out : Bytes)
+@[expose] def joinMem (A : RustAlloc) (g : RunCall) (g' : StoresGhost) (out : Bytes)
     (s0 : State) (resStack : Nat) : SepProp :=
   let fsp := runFsp s0
   memRegion g.res runResSize ∗ memRegion g.call 56 ∗
@@ -662,23 +472,12 @@ inductive RejectKind : Type where
   | postDispatch : RejectKind
 
 /-- PC offset of each `RejectKind`. -/
-def RejectKind.pcOff : RejectKind → Nat
+@[expose] def RejectKind.pcOff : RejectKind → Nat
   | .preDispatch => 0x124
   | .postDispatch => 0x2c7c
 
-/-- Reject cut-point state (`R + 0x2c7c` or `R + 0x124`). -/
-structure AtReject (img : Obj.Image) (ext : String → Option (State → State))
-    (g : RunCall) (g' : StoresGhost) (rk : RejectKind) (s0 s : State) : Prop where
-  base : InRun img ext s0 s rk.pcOff
-  x19 : s.readReg64 (.gpr 19#5) = g.stores
-  preRegs : rk = .preDispatch →
-    s.readReg64 (.gpr 20#5) = g.res ∧ s.readReg64 (.gpr 25#5) = g.call
-  trace : s0.trace <+: s.trace
-  hist : RunHistOk g.i s0 s
-  ans : g.a = some none
-
 /-- Spatial footprint at `AtReject`. -/
-def rejectMem (A : RustAlloc) (g : RunCall) (g' : StoresGhost) (rk : RejectKind)
+@[expose] def rejectMem (A : RustAlloc) (g : RunCall) (g' : StoresGhost) (rk : RejectKind)
     (s0 : State) (resStack : Nat) : SepProp :=
   let fsp := runFsp s0
   let resCall : SepProp :=
@@ -688,17 +487,7 @@ def rejectMem (A : RustAlloc) (g : RunCall) (g' : StoresGhost) (rk : RejectKind)
   resCall ∗ storesAt A g.stores g' ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗
     runSaved s0 ∗ runLocals fsp [] ∗ stackAt fsp (resStack - runFrame) ∗ A.pool ∗ anyHeap
 
-/-- Concrete normal-return postcondition established by `run_hop_join` at `s0.readReg64 .lr`. -/
-def runPost (A : RustAlloc) (img : Obj.Image) (g : RunCall) (resStack : Nat)
-    (s0 sf : State) (Pf : SepProp) : Prop :=
-  ImgCallInv img sf ∧ sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
-    s0.trace <+: sf.trace ∧ RunHistOk g.i s0 sf ∧
-    ∃ a' : RunAnswer, a' ≠ none ∧ a' = g.a ∧
-      (Pf ⊢ memRegion g.call 56 ∗ memRegion g.stores 320 ∗
-        (g.inp ↦ₛ inputOf g.i g.c) ∗ A.pool ∗ stackAt s0.sp resStack ∗
-        runResAt A cliWrOk g.res a' ∗ anyHeap)
-
-/-! ## 6. Entry / Exit `Spec.inImage` Bridge Lemmas -/
+/-! ## 6. `SepWPp` Postcondition Monotonicity -/
 
 /-- Postcondition weakening for `ProofLib.SepWPp` along normal returns (`Q → Q'`). -/
 theorem sepWPp_mono_post {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp}
@@ -710,61 +499,6 @@ theorem sepWPp_mono_post {prog : Program} {ret : BitVec 64} {s : State} {P : Sep
   obtain ⟨sf, hs, ⟨hpc, hrun, Pf, hmf, hp⟩ | hrest⟩ := h R hm hL
   · exact ⟨sf, hs, Or.inl ⟨hpc, hrun, Pf, hmf, hq sf Pf hp⟩⟩
   · exact ⟨sf, hs, Or.inr hrest⟩
-
-theorem runEntry_of_inImage_pre {S : RunSem} {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)} {g : RunCall} {resStack : Nat} {R : SepProp}
-    {s0 : State}
-    (hpc : s0.pc = (mProg img ext).fnAddr runName)
-    (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨ ((runSpec A img uuidTryParse (runRel S) cliWrOk resStack).inImage img).pre g s0 ∗ R)
-    (hsp : s0.spAligned = true) :
-    AtRunEntry S img ext g s0 ∧ (s0.mem ⊨ runEntryMem A img g s0 resStack ∗ R) := by
-  simp only [Spec.inImage, runSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, ⟨hrel, hparse, hx0, hx1, hx2, hx3, hx4, hfs, hout, _hspb⟩, hmem⟩
-  refine ⟨⟨?_, hrun, hinv, hsp, hrel, hparse, hx0, hx1, hx2, hx3, hx4, hfs, hout⟩, ?_⟩
-  · simpa [runPc] using hpc
-  · simpa only [runEntryMem, sepConj_assoc] using hmem
-
-theorem inImage_post_of_runPost {S : RunSem} {A : RustAlloc} {img : Obj.Image}
-    {g : RunCall} {resStack : Nat} {R Pf : SepProp} {s0 sf : State}
-    (hfs0 : s0.fs.files = runFiles g.i)
-    (hout0 : ProcessOutcome.traceStreamBytes .stdout s0.trace = [])
-    (hp : runPost A img g resStack s0 sf Pf)
-    (hmf : sf.mem ⊨ Pf ∗ R) :
-    (sf.mem ⊨ ((runSpec A img uuidTryParse (runRel S) cliWrOk resStack).inImage img).post g s0 sf ∗ R) ∧
-      sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf := by
-  rcases hp with ⟨_, hsp, hcs, htr, ⟨hf, ho⟩, a', ha_ne, ha_eq, hent⟩
-  refine ⟨?_, hsp, hcs⟩
-  have hex :
-      runResAt A cliWrOk g.res a' ⊢
-        ∃∗ a'', ⌜a'' ≠ none ∧ a'' = g.a⌝ ∗
-          runResAt A cliWrOk g.res a'' :=
-    Entails.sepExists_right a' (Entails.pure_right ⟨ha_ne, ha_eq⟩ (Entails.refl _))
-  have hent' :
-      Pf ⊢ memRegion g.call 56 ∗ memRegion g.stores 320 ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗
-        A.pool ∗ stackAt s0.sp resStack ∗
-        (∃∗ a'', ⌜a'' ≠ none ∧ a'' = g.a⌝ ∗
-          runResAt A cliWrOk g.res a'') ∗
-        anyHeap :=
-    Entails.trans hent
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hex))))))
-  have hmem1 := Satisfies.mono (sepConj_mono_left hent') hmf
-  simp only [Spec.inImage, runSpec, sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨⟨htr, hf.trans hfs0.symm, ho.trans hout0.symm⟩, by simpa only [sepConj_assoc] using hmem1⟩
-
-theorem inImage_onPanic_of_runPanic {S : RunSem} {A : RustAlloc} {img : Obj.Image}
-    {g : RunCall} {resStack : Nat} {R Pf : SepProp} {s0 sf : State}
-    (hpan : runPanicProp g s0 sf) (hmf : sf.mem ⊨ Pf ∗ R) :
-    sf.mem ⊨
-      ((runSpec A img uuidTryParse (runRel S) cliWrOk resStack).inImage img).onPanic g s0 sf ∗ R := by
-  simp only [Spec.inImage, runSpec, sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨hpan, Satisfies.mono (sepConj_mono_left (entails_anyHeap _)) hmf⟩
-
-theorem inImage_onOom_eq {S : RunSem} {A : RustAlloc} {img : Obj.Image}
-    (g : RunCall) (resStack : Nat) (s0 : State) :
-    ((runSpec A img uuidTryParse (runRel S) cliWrOk resStack).inImage img).onOom g s0 =
-      runOom s0 := rfl
 
 /-! ## 7. Pure Side-Condition & Semantics Extraction Lemmas -/
 
@@ -822,175 +556,5 @@ theorem runRel_not_keygen {S : RunSem} {g : RunCall}
   rcases parseArgs_domain hrel.1 with ⟨c', hc', htag⟩
   rw [hparse] at hc'
   exact Option.some.inj hc' ▸ htag
-
-/-- Coins length `< 2 ^ 63` (`slotFrame`'s pure bound) and ASCII own-address bytes (`from_utf8`'s
-precondition) from `AtRunEntry`. -/
-theorem AtRunEntry.bounds_pre {S : RunSem} {img : Obj.Image}
-    {ext : String → Option (State → State)} {g : RunCall} {s0 : State}
-    (he : AtRunEntry S img ext g s0) :
-    (MainHops.coinsOf g.i).length < 2 ^ 63 ∧
-      (∀ bs, StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok bs →
-        ∀ b ∈ bs, b.toNat < 128) :=
-  ⟨he.rel.2.1.1, he.rel.2.1.2.2.2.1⟩
-
-/-- If `Dir::get("address")` returns `Err`, `g.a = some none` (reject). -/
-theorem AtRunEntry.reject_of_own_err {S : RunSem} {img : Obj.Image}
-    {ext : String → Option (State → State)} {g : RunCall} {s0 : State}
-    (he : AtRunEntry S img ext g s0)
-    (herr : StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .error ()) :
-    g.a = some none := by
-  rw [he.rel.2.2.2.2.2]
-  unfold runAns
-  simp [he.parse, herr]
-
-/-- If `me = .none` at `AtDispatch` (`address` returned `None`), `g.a = some none` (reject). -/
-theorem AtDispatch.reject_of_me_none {S : RunSem} {img : Obj.Image}
-    {ext : String → Option (State → State)} {g : RunCall} {s0 s : State}
-    (he : AtRunEntry S img ext g s0)
-    (hd : AtDispatch img ext g .none s0 s) :
-    g.a = some none := by
-  rcases hd.ownSem with ⟨ownB, hget, hnone⟩
-  rw [he.rel.2.2.2.2.2]
-  unfold runAns
-  simp [he.parse, hget, hnone]
-
-/-- Call-site side conditions for `run_hop_send` (`encSlotSpec` precondition and answer link). -/
-theorem AtDispatch.send_facts {S : RunSem} {img : Obj.Image}
-    {ext : String → Option (State → State)} {g : RunCall} {peerV : AddrV}
-    {meV : AddrV} {meG : AddrGhost} {s0 s : State}
-    (he : AtRunEntry S img ext g s0)
-    (hd : AtDispatch img ext g (.some meV meG) s0 s)
-    (hc : g.c = .send peerV) :
-    g.i.stdin.length < 2 ^ 32 ∧
-      (MainHops.coinsOf g.i).length < 2 ^ 63 ∧
-      s.fs.files = runFiles g.i ∧
-      S.filesOk (runFiles g.i) (addrValOf peerV) (addrValOf meV) ∧
-      S.encOk (runFiles g.i) (addrValOf peerV) (MainHops.coinsOf g.i) ∧
-      g.a = finish (S.encrypt (runFiles g.i) (addrValOf peerV) (addrValOf meV)
-        g.i.stdin (MainHops.coinsOf g.i)) ctWire := by
-  rcases hd.ownSem with ⟨ownB, hget, hme⟩
-  have hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some (.send peerV) :=
-    hc ▸ he.parse
-  refine ⟨he.rel.2.1.2.1 peerV hparse, he.rel.2.1.1, hd.fs,
-    he.rel.2.2.1 (.send peerV) peerV ownB meV hparse rfl hget hme,
-    he.rel.2.2.2.1 peerV ownB meV hparse hget hme, ?_⟩
-  rw [he.rel.2.2.2.2.2]
-  unfold runAns
-  simp [hparse, hget, hme]
-
-/-- Bundle-file path well-formedness (`cliWrOk`) for `run_hop_init1` and `run_hop_init2`. -/
-theorem AtRunEntry.init_bundlePaths_ok {S : RunSem} {img : Obj.Image}
-    {ext : String → Option (State → State)} {g : RunCall} {peerV : AddrV} {dir : Bytes}
-    {s0 : State}
-    (he : AtRunEntry S img ext g s0) (hc : g.c = .init peerV dir) :
-    ∀ name ∈ bundleNames, cliWrOk (bundlePath dir name) :=
-  he.rel.2.1.2.2.2.2 peerV dir (hc ▸ he.parse)
-
-/-- Call-site side conditions for `run_hop_init3` (`initSlotSpec` precondition, slice lengths, and
-`runAns` answer link) from `AtRunEntry` and `AtInit2`. -/
-theorem AtInit2.init_facts {S : RunSem} {img : Obj.Image}
-    {ext : String → Option (State → State)} {g : RunCall} {d : Init2Data} {s0 s : State}
-    (he : AtRunEntry S img ext g s0)
-    (hi : AtInit2 img ext g d s0 s) :
-    (MainHops.coinsOf g.i).length < 2 ^ 63 ∧
-      s.fs.files = runFiles g.i ∧
-      d.bundle.spkSig.length = 64 ∧
-      d.bundle.kpkSig.length = 64 ∧
-      d.bundle.kpk.length = 1568 ∧
-      S.filesOk (runFiles g.i) d.peerG.val d.meG.val ∧
-      S.initOk (runFiles g.i) d.peerG.val d.meG.val ∧
-      g.a = finish (S.initiate (runFiles g.i) d.peerG.val d.meG.val
-        d.bundle (MainHops.coinsOf g.i)) (fun _ => []) := by
-  rcases hi.ownSem with ⟨ownB, hget, hme⟩
-  have hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some (.init d.peerV d.dir) :=
-    hi.callEq ▸ he.parse
-  have hlen := readBundleV_slice_lengths hi.bundleSem
-  refine ⟨he.rel.2.1.1, hi.fs, hlen.1, hlen.2.1, hlen.2.2, ?_, ?_, ?_⟩
-  · rw [hi.peerVal, hi.meVal]
-    exact he.rel.2.2.1 (.init d.peerV d.dir) d.peerV ownB d.meV hparse rfl hget hme
-  · rw [hi.peerVal, hi.meVal]
-    exact he.rel.2.2.2.2.1.1 d.peerV d.dir ownB d.meV hparse hget hme
-  · rw [he.rel.2.2.2.2.2, hi.peerVal, hi.meVal]
-    unfold runAns
-    simp [hparse, hget, hme, hi.bundleSem]
-
-/-- Call-site side conditions for `run_hop_recvW` (wire byte `2`, `SignalMessage`). -/
-theorem AtDispatch.recvW_facts {S : RunSem} {img : Obj.Image}
-    {ext : String → Option (State → State)} {g : RunCall} {peerV : AddrV}
-    {meV : AddrV} {meG : AddrGhost} {rest : Bytes} {s0 s : State}
-    (he : AtRunEntry S img ext g s0)
-    (hd : AtDispatch img ext g (.some meV meG) s0 s)
-    (hc : g.c = .recv peerV)
-    (hstdin : g.i.stdin = 2#8 :: rest) :
-    rest.length < 2 ^ 32 ∧
-      (MainHops.coinsOf g.i).length < 2 ^ 63 ∧
-      s.fs.files = runFiles g.i ∧
-      S.filesOk (runFiles g.i) (addrValOf peerV) (addrValOf meV) ∧
-      g.a = (match SignalMessage.tryFrom protoSignalCodec rest with
-        | .ok m => finish (S.decryptSignal (runFiles g.i) (addrValOf peerV) (addrValOf meV)
-            m (MainHops.coinsOf g.i)) id
-        | .error _ => some none) := by
-  rcases hd.ownSem with ⟨ownB, hget, hme⟩
-  have hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some (.recv peerV) :=
-    hc ▸ he.parse
-  have htail : g.i.stdin.tail.length < 2 ^ 32 := he.rel.2.1.2.2.1 peerV hparse
-  rw [hstdin] at htail
-  refine ⟨htail, he.rel.2.1.1, hd.fs,
-    he.rel.2.2.1 (.recv peerV) peerV ownB meV hparse rfl hget hme, ?_⟩
-  rw [he.rel.2.2.2.2.2]
-  unfold runAns
-  simp [hparse, hget, hme, hstdin]; rfl
-
-/-- Call-site side conditions for `run_hop_recvP` (wire byte `3`, `PreKeySignalMessage`). -/
-theorem AtDispatch.recvP_facts {S : RunSem} {img : Obj.Image}
-    {ext : String → Option (State → State)} {g : RunCall} {peerV : AddrV}
-    {meV : AddrV} {meG : AddrGhost} {rest : Bytes} {s0 s : State}
-    (he : AtRunEntry S img ext g s0)
-    (hd : AtDispatch img ext g (.some meV meG) s0 s)
-    (hc : g.c = .recv peerV)
-    (hstdin : g.i.stdin = 3#8 :: rest) :
-    rest.length < 2 ^ 32 ∧
-      (MainHops.coinsOf g.i).length < 2 ^ 63 ∧
-      s.fs.files = runFiles g.i ∧
-      S.filesOk (runFiles g.i) (addrValOf peerV) (addrValOf meV) ∧
-      (∀ pm, S.pksmParse rest = some pm →
-        S.decPkOk (runFiles g.i) (addrValOf peerV) (addrValOf meV) pm) ∧
-      g.a = (match S.pksmParse rest with
-        | some m => finish (S.decryptPrekey (runFiles g.i) (addrValOf peerV) (addrValOf meV)
-            m (MainHops.coinsOf g.i)) id
-        | none => some none) := by
-  rcases hd.ownSem with ⟨ownB, hget, hme⟩
-  have hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some (.recv peerV) :=
-    hc ▸ he.parse
-  have htail : g.i.stdin.tail.length < 2 ^ 32 := he.rel.2.1.2.2.1 peerV hparse
-  rw [hstdin] at htail
-  refine ⟨htail, he.rel.2.1.1, hd.fs,
-    he.rel.2.2.1 (.recv peerV) peerV ownB meV hparse rfl hget hme,
-    fun pm hpm => he.rel.2.2.2.2.1.2 peerV ownB meV rest pm hparse hget hme hstdin hpm, ?_⟩
-  rw [he.rel.2.2.2.2.2]
-  unfold runAns
-  simp [hparse, hget, hme, hstdin]; rfl
-
-/-- Reject answer `g.a = some none` for `run_hop_recvBad` (empty `stdin` or leading byte
-`∉ {2#8, 3#8}`). -/
-theorem AtDispatch.recvBad_reject {S : RunSem} {img : Obj.Image}
-    {ext : String → Option (State → State)} {g : RunCall} {peerV : AddrV}
-    {me : MeAtDispatch} {s0 s : State}
-    (he : AtRunEntry S img ext g s0)
-    (hd : AtDispatch img ext g me s0 s)
-    (hc : g.c = .recv peerV)
-    (hbad : g.i.stdin = [] ∨ ∃ t rest, g.i.stdin = t :: rest ∧ t ≠ 2#8 ∧ t ≠ 3#8) :
-    g.a = some none := by
-  cases me with
-  | none => exact hd.reject_of_me_none he
-  | some meV meG =>
-    rcases hd.ownSem with ⟨ownB, hget, hme⟩
-    have hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some (.recv peerV) :=
-      hc ▸ he.parse
-    rw [he.rel.2.2.2.2.2]
-    unfold runAns
-    rcases hbad with hnil | ⟨t, rest, hcons, ht2, ht3⟩
-    · simp [hparse, hget, hme, hnil]
-    · simp [hparse, hget, hme, hcons, ht2, ht3]
 
 end CryptoVerification.SignalSession.Cli.RunCompose

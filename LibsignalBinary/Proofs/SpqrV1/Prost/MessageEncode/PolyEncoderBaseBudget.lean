@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBaseBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBase
 import LibsignalBinary.Proofs.Common.SharedHelpers
 
@@ -22,7 +22,7 @@ allocator event list `encodePolyEncoderEvents` and envelope `EncodePolyEncoderEn
 budget-threaded pinned/unpinned contracts for `PolynomialEncoder::encode` (`[local#1, 2]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,7 +53,7 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBaseBudget
 
 /-- `VmPreserved`-strengthened variant of `polynomialEncoderEncodedLenPinnedSpec` whose
     postcondition exposes `polyEncoderElemsAt` and `polyEncoderRestAt` for field encoding. -/
-def polynomialEncoderEncodedLenElemsOutSpec (A : RustAlloc) :
+@[expose] def polynomialEncoderEncodedLenElemsOutSpec (A : RustAlloc) :
     Spec PolynomialEncoderEncodedLenPinnedGhost where
   pre := (polynomialEncoderEncodedLenPinnedSpec A).pre
   post := fun x s0 sf =>
@@ -101,12 +101,12 @@ theorem subroutine_ok_polyEncLenElemsOut_of_pinned {prog : Program} {entry : Bit
 
 /-! ## 2. Deterministic Allocator Events & Budget Contracts for `PolynomialEncoder::encode` -/
 
-def encodePolyEncoderPinnedToUnpinned (x : EncodePolyEncoderPinnedGhost) :
+@[expose] def encodePolyEncoderPinnedToUnpinned (x : EncodePolyEncoderPinnedGhost) :
     EncodePolyEncoderGhost :=
   ⟨x.encA, x.enc, x.v, x.cap, x.ptr, x.bs⟩
 
 /-- Deterministic `AllocEvent` list emitted by `PolynomialEncoder::encode` on `x`. -/
-def encodePolyEncoderEvents (x : EncodePolyEncoderGhost) : List AllocEvent :=
+@[expose] def encodePolyEncoderEvents (x : EncodePolyEncoderGhost) : List AllocEvent :=
   let hdrLen := (polyEncoderHeaderBytes x.enc).length
   let s1 := pushBytesStep hdrLen x.cap.toNat x.bs.length
   let idxLen := (encodeUint32Field 1#32 x.enc.idx).length
@@ -117,7 +117,7 @@ def encodePolyEncoderEvents (x : EncodePolyEncoderGhost) : List AllocEvent :=
   s1.2 ++ s2.2 ++ s3.2 ++ s4.2
 
 /-- Callee-fixed allocator event envelope of `PolynomialEncoder::encode`. -/
-def EncodePolyEncoderEnv (x : EncodePolyEncoderGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EncodePolyEncoderEnv (x : EncodePolyEncoderGhost) (evs : List AllocEvent) : Prop :=
   evs = encodePolyEncoderEvents x
 
 theorem encodePolyEncoderEvents_of_spare {x : EncodePolyEncoderGhost}
@@ -148,7 +148,7 @@ theorem encodePolyEncoderEvents_of_spare {x : EncodePolyEncoderGhost}
 
 /-- Pinned budget specification of `prost::encoding::message::encode::<PolynomialEncoder, Vec<u8>>`
     parameterized by `resStack` and `Env`. -/
-def encodePolyEncoderPinnedSpecOfEnv (resStack : Nat)
+@[expose] def encodePolyEncoderPinnedSpecOfEnv (resStack : Nat)
     (Env : EncodePolyEncoderGhost → List AllocEvent → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodePolyEncoderPinnedGhost × M.σ) where
@@ -177,7 +177,7 @@ def encodePolyEncoderPinnedSpecOfEnv (resStack : Nat)
 
 /-- Unpinned budget specification of `prost::encoding::message::encode::<PolynomialEncoder, Vec<u8>>`
     parameterized by `resStack` and `Env`. -/
-def encodePolyEncoderSpecOfEnv (resStack : Nat)
+@[expose] def encodePolyEncoderSpecOfEnv (resStack : Nat)
     (Env : EncodePolyEncoderGhost → List AllocEvent → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodePolyEncoderGhost × M.σ) where

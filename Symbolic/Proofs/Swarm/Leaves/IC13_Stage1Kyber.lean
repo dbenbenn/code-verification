@@ -25,7 +25,7 @@ Concretization, memo-membership, and 13-functor `.shape` inversion lemmas for `D
 (`gamma_bobKemShare`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -631,7 +631,7 @@ private theorem partialFunDep_shape_cases_step
   rw [DY.Bytes.rec_eq pf (concretizeAll i S g) x]; rfl
 
 /-- Canonical top-level forms of `(gamma' i S g u).shape`. -/
-def Gamma'ShapeClass (u : DY.Bytes) : Prop :=
+@[expose] def Gamma'ShapeClass (u : DY.Bytes) : Prop :=
   (∃ v : HwBytes, (gamma' i S g u).shape = litOf v) ∨
   (∃ x : DY.Literal.Literal.SubF DY.Bytes,
       u = DY.BytesView.pack x ∧ (gamma' i S g u).shape = DY.BytesView.pack x) ∨

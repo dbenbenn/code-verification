@@ -9,18 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepSendCorr
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwd
-public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepSendCorr
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwd
+public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF -- proof-setup: allow-public-import
 
 /-!
 # Atomic Step Program for `SimDeliverForge`
 
-Packages the single-query atomic step computation matching `simDeliverForgeOracleSanQ`.
--/
+Packages the single-query atomic step computation matching `simDeliverForgeOracleSanQ`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,15 +30,15 @@ open _root_.ReductionDsl (Sig Ops Iface Ty Expr Comp Env Var liftRen handlerImpl
   atomicSessionOps fig8SmIfaceDF e2eSessionCodec GhostStT PlainT BV512 B smQT smRT smQenc smRdec
   recvResultT recvResultDec smRrDec partyToBool fig8CtT fig8CtOfV)
 open _root_.CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.SM (partyEnc)
-open CryptoGames.Ratchet.LibsignalSim (Fig8C SimCStateBounded deliverForgeSemHook)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.LibsignalSession (ratchetCostBudget)
-open CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.SM (partyEnc)
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8C SimCStateBounded deliverForgeSemHook)
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.LibsignalSession (ratchetCostBudget)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
 open Computational.Proofs.Game.PromotedCostedReds.SanOracleCore (semHandleHookDedupS)
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling (SanSnapExtra)
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost (simFullT simFullDec)
@@ -52,12 +51,12 @@ open Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdCost
 open Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwd
   (dfRecvHookC dfRecvHookC_queries dfRecvHookC_cost dfRecvHookC_descBits_le dfRecvHookC_eval)
 
-noncomputable section
+section
 
-@[reducible] def dfStepT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfStepT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simFullT ℓ Pt) (.list (fig8CtT (ℓ := ℓ) (Pt := Pt)))
 
-@[reducible] def dfStepDec {ℓ : ℕ} {Pt : Type} (v : (dfStepT ℓ Pt).denote) :
+@[expose, reducible] def dfStepDec {ℓ : ℕ} {Pt : Type} (v : (dfStepT ℓ Pt).denote) :
     LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt) :=
   (simFullDec v.1, v.2.map fig8CtOfV)
 
@@ -421,25 +420,25 @@ private theorem dfStepC_eval {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableT
       (Γ := Γc) (.var (.succ (.succ .zero))) (.var .zero)
       ρc Q (partyToBool_eq_partyEnc_local Q) hbnd hextra
 
+@[nospecialize] def simDeliverForgeRawStepSpec
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    (ℓ : ℕ) (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
+    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (lam : Pt) (qep q : ℕ) :
+    SimDeliverForgeRawStepSpec Pt ℓ C K idA idB Dh encPt encT decT lam qep q where
+  step := dfStepC ℓ C K idA idB Dh encPt encT decT lam qep q
+  hstep_q := dfStepC_queries ℓ C K idA idB Dh encPt encT decT lam qep q
+  hstep_c := dfStepC_cost ℓ C K idA idB Dh encPt encT decT lam qep q
+  hstep_d := dfStepC_descBits_le ℓ C K idA idB Dh encPt encT decT lam qep q
+  hstep := dfStepC_eval ℓ C K idA idB Dh encPt encT decT lam qep q
+
 theorem simDeliverForgeRawStepSpec_nonempty
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (ℓ : ℕ) (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (qep q : ℕ) :
     Nonempty (SimDeliverForgeRawStepSpec Pt ℓ C K idA idB Dh encPt encT decT lam qep q) :=
-  ⟨{ step := dfStepC ℓ C K idA idB Dh encPt encT decT lam qep q
-     hstep_q := dfStepC_queries ℓ C K idA idB Dh encPt encT decT lam qep q
-     hstep_c := dfStepC_cost ℓ C K idA idB Dh encPt encT decT lam qep q
-     hstep_d := dfStepC_descBits_le ℓ C K idA idB Dh encPt encT decT lam qep q
-     hstep := dfStepC_eval ℓ C K idA idB Dh encPt encT decT lam qep q }⟩
-
-def simDeliverForgeRawStepSpec
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (ℓ : ℕ) (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (lam : Pt) (qep q : ℕ) :
-    SimDeliverForgeRawStepSpec Pt ℓ C K idA idB Dh encPt encT decT lam qep q :=
-  Classical.choice (simDeliverForgeRawStepSpec_nonempty ℓ C K idA idB Dh encPt encT decT lam qep q)
+  ⟨simDeliverForgeRawStepSpec ℓ C K idA idB Dh encPt encT decT lam qep q⟩
 
 end
 

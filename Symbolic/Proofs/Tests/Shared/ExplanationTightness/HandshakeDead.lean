@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Security.Model
-public import Symbolic.Proofs.SpecLemmas.ModelProofDefs
+import Symbolic.Proofs.SpecLemmas.ModelProofDefs
 import DY.Actions.Network
 import DY.Actions.PersistentLocalState
 import DY.Actions.ProtocolEvent
@@ -33,7 +33,7 @@ import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked3aPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked3aPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked3aPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked3aPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import Lean -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -22,6 +22,14 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked3a
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked1PlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked1PlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Phase 3e (Part 3a): `V1State` Variants `idx = 10, 6`
@@ -30,7 +38,7 @@ Threads `RustCliAllocBudget` and `VmPreserved` through `V1State::encode_raw` arm
 `headerReceived` (`idx = 6`), re-exporting bytes helpers and `ct2Sampled` (`idx = 10`) from `Aux`.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.style.longLine false
 set_option autoImplicit false
@@ -45,7 +53,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked3aPl
 open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open LibsignalBinary.Heap
   (AllocCostModel BudgetLimits RustCliAllocBudget VmPreserved)
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsmpl lsρ)
+open CryptoVerification (LibsignalPlacement lsmpl lsρ)
 open CryptoVerification.RustHeap (vecHeader vecU8At)
 open CryptoVerification.LibsignalSpqrV1
   (PolynomialDecoder PolynomialEncoder ProtoAuthenticator V1State)
@@ -117,7 +125,7 @@ variable [LibsignalPlacement]
 export LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerChunked3aPlacedBudgetAux
   (send3a_step_memcpy_slice_placed send3a_step_bytes_varint_placed step_send_v1_ct2Sampled_placed)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] spqrSendPlacedEntry blkPl_427_ρ
   bv_sub_add_lit BitVec.toNat_zero
   zeroExtend64_beq_zero32

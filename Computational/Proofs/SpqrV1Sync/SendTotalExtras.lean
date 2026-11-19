@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopBytesSize
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopSend
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecv
@@ -44,7 +44,7 @@ deterministic receive-salt evaluation `evalSaltFromSeed` for `spqrV1SessionUnifo
 proves that every sent message fits within `rustLenBound` (`spqrV1Send_msg_len_lt`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 
@@ -83,7 +83,7 @@ structure TopStateW (F : ShaCompress) (K : MlKem) (bytes : Bytes) (w : TopWitnes
   hphi : phiB w.st ≤ w.sendEp + 1
   hsmall : RecvSmall w.chE
 
-def TopState (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Prop :=
+@[expose] def TopState (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Prop :=
   ∃ w : TopWitness F, TopStateW F K bytes w
 
 theorem topStateW_length_lt (F : ShaCompress) (K : MlKem) {bytes : Bytes} {w : TopWitness F}
@@ -382,11 +382,11 @@ theorem topStateW_send (F : ShaCompress) (K : MlKem) {bytes bytes' : Bytes} {r :
 /-! ## Receive-salt evaluation and `SpqrReachFrom` preservation -/
 
 /-- Chain epoch queried by `Top.recv` (`0` when `pre.version > 1`, `(pre.epoch - 1).toNat` otherwise). -/
-def msgChainEpoch (pre : MsgPreamble) : ℕ :=
+@[expose] def msgChainEpoch (pre : MsgPreamble) : ℕ :=
   if pre.version > 1#8 then 0 else (pre.epoch - 1#64).toNat
 
 /-- Deterministic receive-salt evaluator from the seed of `msgChainEpoch pre`. -/
-def evalSaltFromSeed (F : ShaCompress) (pre : MsgPreamble) (seed : Bytes) : Salt :=
+@[expose] def evalSaltFromSeed (F : ShaCompress) (pre : MsgPreamble) (seed : Bytes) : Salt :=
   if msgChainEpoch pre = 0 ∧ pre.index = 0#32 then
     none
   else

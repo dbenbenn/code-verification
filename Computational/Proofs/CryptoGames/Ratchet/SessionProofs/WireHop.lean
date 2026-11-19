@@ -10,16 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSMInstance
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtM
-public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Lazy
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.FSAEAD.Lazy -- proof-setup: allow-public-import
 import Std.Tactic.BVDecide.Normalize.BitVec
 import Std.Tactic.BVDecide.Normalize.Prop
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDec
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
-public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
+import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
 
 /-!
 # Proofs of the wire hop (`lRandSaltBias_le` and `lWireRed_queries`)
@@ -29,7 +29,7 @@ coupling the multi-slot random-salt OT-CCA game with `wireOtccaGame` across the 
 worlds.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory CryptoGames.Lazy
 
@@ -45,13 +45,13 @@ variable {Pt : Type}
 /-- State of `lWireRed`: seen salts, lazy key table, abort flag, and encryption-queried flag. -/
 abbrev WRedSt := List Salt32 × List (Salt32 × DerivedMessageKeys) × Bool × Bool
 
-def wSlot (ℓ : ℕ) (salt : Salt32) : StateT WRedSt (OracleComp (LibsignalWireOracleSpec ℓ)) ℕ := do
+@[expose] def wSlot (ℓ : ℕ) (salt : Salt32) : StateT WRedSt (OracleComp (LibsignalWireOracleSpec ℓ)) ℕ := do
   let st ← get
   match st.1.idxOf? salt with
   | some n => return n
   | none => set (st.1 ++ [salt], st.2.1, st.2.2.1, st.2.2.2); return st.1.length
 
-def wRedImpl [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def wRedImpl [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (j : ℕ) :
     QueryImpl (unifSpec + otccaSpec (ℕ × (Header Pt × LibsignalMsgPublicPart)) (Plain ℓ) LibsignalCiphertextWithSalt32)
       (StateT WRedSt (OracleComp (LibsignalWireOracleSpec ℓ))) := fun q =>
@@ -138,7 +138,7 @@ theorem lAeadK_dec_eq_none_of_parse (C : Crypto) (codec : SignalMessageProtoCode
 
 /-! ## Lazy-slot combinators and branch decompositions -/
 
-def fillKey {H : Type} (_ : H) : Option DerivedMessageKeys → ProbComp (Option DerivedMessageKeys)
+@[expose] def fillKey {H : Type} (_ : H) : Option DerivedMessageKeys → ProbComp (Option DerivedMessageKeys)
   | some k => pure (some k)
   | none => some <$> ($ᵗ DerivedMessageKeys)
 
@@ -148,16 +148,16 @@ theorem idem_fillKey {H : Type} : Idem (fillKey (H := H)) := by
   | some k => exact DEq.of_eq (by simp [fillKey])
   | none => exact DEq.of_eq (by simp [fillKey, map_eq_bind_pure_comp, bind_assoc])
 
-def onH {H α : Type} (m : StateT H ProbComp α) : StateT (H × Option DerivedMessageKeys) ProbComp α :=
+@[expose] def onH {H α : Type} (m : StateT H ProbComp α) : StateT (H × Option DerivedMessageKeys) ProbComp α :=
   StateT.mk fun ⟨h, sl⟩ => (fun ⟨a, h'⟩ => (a, (h', sl))) <$> m.run h
 
-def getSlotKey {H : Type} : StateT (H × Option DerivedMessageKeys) ProbComp DerivedMessageKeys :=
+@[expose] def getSlotKey {H : Type} : StateT (H × Option DerivedMessageKeys) ProbComp DerivedMessageKeys :=
   StateT.mk fun ⟨h, sl⟩ =>
     match sl with
     | some k => pure (k, (h, some k))
     | none => (fun k => (k, (h, some k))) <$> ($ᵗ DerivedMessageKeys)
 
-def readSlotKey {H : Type} : StateT (H × Option DerivedMessageKeys) ProbComp DerivedMessageKeys :=
+@[expose] def readSlotKey {H : Type} : StateT (H × Option DerivedMessageKeys) ProbComp DerivedMessageKeys :=
   StateT.mk fun ⟨h, sl⟩ => pure (sl.getD default, (h, sl))
 
 theorem rel_onH {H α : Type} (m : StateT H ProbComp α) :
@@ -259,7 +259,7 @@ theorem idxOf?_append_singleton_of_ne {α : Type} [BEq α] [LawfulBEq α] (xs : 
     simp only [List.cons_append, List.idxOf?_cons]
     split_ifs <;> simp [ih]
 
-def stepSlot (salts : List Salt32) (salt : Salt32) : ℕ × List Salt32 :=
+@[expose] def stepSlot (salts : List Salt32) (salt : Salt32) : ℕ × List Salt32 :=
   match salts.idxOf? salt with
   | some n => (n, salts)
   | none => (salts.length, salts ++ [salt])
@@ -288,18 +288,18 @@ structure SaltSt (Pt : Type) where
   salts : List Salt32 := []
   chalSlot : Option ℕ := none
 
-def sSlot (salt : Salt32) : StateT (SaltSt Pt) ProbComp ℕ :=
+@[expose] def sSlot (salt : Salt32) : StateT (SaltSt Pt) ProbComp ℕ :=
   StateT.mk fun st =>
     let (n, salts') := stepSlot st.salts salt
     pure (n, { st with salts := salts' })
 
-def sKeyOf (salt : Salt32) : StateT (SaltSt Pt) ProbComp DerivedMessageKeys :=
+@[expose] def sKeyOf (salt : Salt32) : StateT (SaltSt Pt) ProbComp DerivedMessageKeys :=
   StateT.mk fun st =>
     match st.table.lookup salt with
     | some k => pure (k, st)
     | none => (fun k => (k, { st with table := (salt, k) :: st.table })) <$> ($ᵗ DerivedMessageKeys)
 
-def saltImpl [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def saltImpl [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (b : Bool) :
     QueryImpl (QSpecS Pt ℓ) (StateT (SaltSt Pt) ProbComp)
   | .inl n => EtMProof.coin n
@@ -318,23 +318,23 @@ def saltImpl [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (�
     let mk ← sKeyOf a.2.2.salt
     return (lAeadK C codec ℓ encT idOf).dec mk ((a.1, a.2.1), a.2.2) e
 
-def saltFull [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def saltFull [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (b : Bool)
     (B : OTCCAAdversary (ADType Pt) (Plain ℓ) CtType) : ProbComp (Bool × SaltSt Pt) :=
   (simulateQ (saltImpl C codec ℓ encT idOf b) B).run {}
 
-def saltRun [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def saltRun [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (b : Bool)
     (B : OTCCAAdversary (ADType Pt) (Plain ℓ) CtType) : ProbComp Bool :=
   Prod.fst <$> saltFull C codec ℓ encT idOf b B
 
-def isChalSalt (chal : Option (ADType Pt × CtType)) (salt : Salt32) : Bool :=
+@[expose] def isChalSalt (chal : Option (ADType Pt × CtType)) (salt : Salt32) : Bool :=
   match chal with
   | none => false
   | some (a₀, _) => salt == a₀.2.2.salt
 
 /-- Variant of `saltImpl` returning `none` on all decryptions at non-challenge salts. -/
-def saltImplNF [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def saltImplNF [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (b : Bool) :
     QueryImpl (QSpecS Pt ℓ) (StateT (SaltSt Pt) ProbComp)
   | .inl n => EtMProof.coin n
@@ -351,23 +351,23 @@ def saltImplNF [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (
     let mk ← sKeyOf a.2.2.salt
     return (lAeadK C codec ℓ encT idOf).dec mk ((a.1, a.2.1), a.2.2) e
 
-def saltFullNF [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def saltFullNF [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (b : Bool)
     (B : OTCCAAdversary (ADType Pt) (Plain ℓ) CtType) : ProbComp (Bool × SaltSt Pt) :=
   (simulateQ (saltImplNF C codec ℓ encT idOf b) B).run {}
 
-def saltRunNF [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def saltRunNF [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (b : Bool)
     (B : OTCCAAdversary (ADType Pt) (Plain ℓ) CtType) : ProbComp Bool :=
   Prod.fst <$> saltFullNF C codec ℓ encT idOf b B
 
-def prfImpl (F : ShaState → List (BitVec 8) → ShaState) :
+@[expose] def prfImpl (F : ShaState → List (BitVec 8) → ShaState) :
     QueryImpl (unifSpec + prfSpec Salt32 DerivedMessageKeys)
       (StateT (PRFState (BitVec 256) Salt32 DerivedMessageKeys) ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget
     (StateT (PRFState (BitVec 256) Salt32 DerivedMessageKeys) ProbComp) + (lSaltPRF32 F).prfEval
 
-def lSaltRedImpl [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def lSaltRedImpl [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (b : Bool) :
     QueryImpl (QSpecS Pt ℓ)
       (StateT (Option (ADType Pt × CtType)) (OracleComp (unifSpec + prfSpec Salt32 DerivedMessageKeys))) :=
@@ -483,14 +483,14 @@ theorem lSaltRed_simulateQ_eq [DecidableEq Pt] (C : Crypto) (codec : SignalMessa
             exact ih _ ⟨st.chal, (a.2.2.salt, mk) :: st.table,
               (stepSlot st.salts a.2.2.salt).2, st.chalSlot⟩
 
-def wImpl (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) :
+@[expose] def wImpl (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ) :
     QueryImpl (LibsignalWireOracleSpec ℓ)
       (StateT (WireState DerivedMessageKeys SerializedIdentityKeys (BitVec 64)) ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget
     (StateT (WireState DerivedMessageKeys SerializedIdentityKeys (BitVec 64)) ProbComp) +
     ((lWire C codec ℓ).wireEncrypt + (lWire C codec ℓ).wireDecrypt)
 
-def wireBranch [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def wireBranch [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (b : Bool) (j : ℕ)
     (B : OTCCAAdversary (ADType Pt) (Plain ℓ) CtType) : ProbComp Bool := do
   let key ← $ᵗ DerivedMessageKeys
@@ -821,7 +821,7 @@ theorem chal_beq_false_of_isChalSalt_false [DecidableEq Pt]
 
 /-! ## Real world (`b = false`) and final bound -/
 
-def otBadIdx {ℓ : ℕ} : (unifSpec + otccaSpec (ℕ × (Header Pt × LibsignalMsgPublicPart)) (Plain ℓ) LibsignalCiphertextWithSalt32).Domain → Bool
+@[expose] def otBadIdx {ℓ : ℕ} : (unifSpec + otccaSpec (ℕ × (Header Pt × LibsignalMsgPublicPart)) (Plain ℓ) LibsignalCiphertextWithSalt32).Domain → Bool
   | .inr (.inl ⟨a, _⟩) => decide (a.1 = 0 ∨ 2 ^ 32 < a.1)
   | .inr (.inr ⟨a, _⟩) => decide (a.1 = 0 ∨ 2 ^ 32 < a.1)
   | _ => false
@@ -904,7 +904,7 @@ theorem isQueryBoundP_zero_query_bind {ι α : Type} {spec : OracleSpec ι}
 
 abbrev WRealH := WRedSt × Option (SerializedIdentityKeys × (List (BitVec 8) × BitVec 64))
 
-def wRealStep [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def wRealStep [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (j : ℕ)
     (getK : StateT (WRealH × Option DerivedMessageKeys) ProbComp DerivedMessageKeys) :
     QueryImpl (QSpecS Pt ℓ) (StateT (WRealH × Option DerivedMessageKeys) ProbComp)

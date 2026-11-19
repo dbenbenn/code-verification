@@ -9,18 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5CallsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlacedSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.PoolSliceBound -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5CallsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded `.keepsFs` Call Wrappers for `main` Hop M5 (Block `617`)
@@ -30,7 +41,7 @@ Budget-threaded `SepWPp` call wrappers on Block `617` under `RustCliAllocBudget 
 `do_reserve_and_handle`, `write_file`, and `__rust_dealloc`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -63,15 +74,25 @@ open LibsignalBinary.Heap
    rustAllocEvents rustDeallocEvents rustCliDeallocBudgetExternSpecWithStack)
 open LibsignalBinary.Heap.IfaceBudgetLemmas (rustCliAllocBudgetSpecWithStack)
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
-open LibsignalBinary.Heap.SpecBudget (WriteFileEnv withVmPreserved)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+  (entails_withLsRet_of_blockPlacement_base_add withLsRet)
+open LibsignalBinary.Heap.SpecBudget (WriteFileEnv withVmPreserved writeFileEnv_nil)
+open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+  (FdsGe3Closed fdsGe3Closed_of_fds_eq)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
   (MainIoOfPlaced mainIoBoundedPlaced_iff_mainIoPlaced main_writeFile_of_placed_ok)
+open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlacedSat
+  (MainIoOfPlacedSat main_writeFile_of_placed_ok_sat)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget (MainCalleesBlk617)
+open LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs
+  (writeFileHonestCore writeFileSpecPlacedSat)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
   (main_alloc_fs_placed_ok main_dealloc_fs_placed_ok main_reserve1_placed_ok)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlacedBudget
   (main_writeFile_placed_ok)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget (MainMemcpyROFsPlaced)
+open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.PoolSliceBound
+  (FitsEnvCap PoolSliceBound sepWPp_with_mem_sat)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
   (AllocContractsFsPlaced MainIoPlaced writeFileSpecPlaced)
 open LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget (doReserveSpecOf)
@@ -777,6 +798,108 @@ abbrev m5_call_write_file_of_pool_placed [LibsignalPlacement]
     {CodeOk : Memory → Prop} [LsCodeInv CodeOk] :=
   @m5_call_write_file_of_placed _ CodeOk _
 
+/-- `{StdinEnv ReadEnv}`-parametric `MainIoOfPlacedSat` call wrapper for `write_file(pathA, path, buf, bs)`
+under `FitsEnvCap M lim st (WriteFileEnv path.length)`, discharging `bs.length ≤ Arm64.FS_SAFE_MAX_FILESIZE`
+from `PoolSliceBound A` + `lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE` and preserving `FdsGe3Closed`. -/
+theorem m5_call_write_file_of_placed_sat [LibsignalPlacement] {CodeOk : Memory → Prop}
+    [LsCodeInv CodeOk]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} [PoolSliceBound A]
+    {lim : BudgetLimits} {st : M.σ}
+    {H : LibsignalHooks} {io : IoModel}
+    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
+    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
+    {hookStack stk retOff : Nat}
+    {pathA buf : BitVec 64} {path bs : List (BitVec 8)}
+    {s0 s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
+    (hio : MainIoOfPlacedSat A lim H io hookStack StdinEnv ReadEnv)
+    (henf : lim.enforced = true)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE)
+    (hstk : mainFrameSize + hookStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hpc : s.pc = lsρ lsWriteFileSym)
+    (hrun : s.status = .Running)
+    (hinv : CodeOk s.mem)
+    (hsp : s.sp = s0.sp - BitVec.ofNat 64 mainFrameSize)
+    (hfp : s.readReg64 .fp = s0.sp - 0x60#64)
+    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
+    (hs0_align : s0.spAligned = true)
+    (hlr : s.readReg64 .lr = mPcPlaced retOff)
+    (hx0 : s.readReg64 .x0 = pathA)
+    (hx1 : (s.readReg64 .x1).toNat = path.length)
+    (hx2 : s.readReg64 .x2 = buf)
+    (hx3 : (s.readReg64 .x3).toNat = bs.length)
+    (hlen : path.length < 2 ^ 32)
+    (hok : io.pathOk path)
+    (hbs64 : bs.length ≤ 2 ^ 64)
+    (hfds : FdsGe3Closed s.fs)
+    (hfit : FitsEnvCap M lim st (WriteFileEnv path.length))
+    (hP : P ⊢ (pathA ↦ₛ path) ∗ (buf ↦ₛ bs) ∗ A.pool lim st s ∗
+      stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗ F)
+    (hnext : ∀ (sm : State) (evs : List AllocEvent),
+      InMainPlaced CodeOk s0 sm retOff →
+      WriteFileEnv path.length evs →
+      (match io.wr s.fs.files path bs with
+       | some F' => sm.readReg64 .x0 = 0#64 ∧ sm.fs.files = F'
+       | none => sm.readReg64 .x0 = 1#64 ∧ sm.fs.files = s.fs.files) →
+      s.trace <+: sm.trace →
+      ProcessOutcome.traceStreamBytes .stdout sm.trace =
+        ProcessOutcome.traceStreamBytes .stdout s.trace →
+      CalleeSavedPreserved s sm →
+      FdsGe3Closed sm.fs →
+      SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) sm
+        ((pathA ↦ₛ path) ∗ (buf ↦ₛ bs) ∗ A.pool lim (M.stepEvents evs st) sm ∗
+          stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗ F)
+        Q Qp oom)
+    (hret : (BitVec.ofNat 64 retOff).toNat <
+      _root_.LibsignalBinary.Proofs.Placed.ElfLsRetAddr.lsLen 617 := by decide) :
+    SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s P Q Qp oom := by
+  refine sepWPp_with_mem_sat fun hsatP => ?_
+  have hcap0 : lim.staticBytes + M.footprint st ≤ lim.physCap :=
+    hfit.cap_of_nil (writeFileEnv_nil path.length)
+  have hbs_cap : bs.length ≤ lim.physCap :=
+    PoolSliceBound.slice_len_le_of_entails henf hcap0 hbs64
+      (F := (pathA ↦ₛ path) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗ F)
+      (Entails.trans hP (Entails.of_eq (by sep_ac_rfl))) hsatP
+  have hbs_fs : bs.length ≤ Arm64.FS_SAFE_MAX_FILESIZE := Nat.le_trans hbs_cap hphys
+  let fsp := s0.sp - BitVec.ofNat 64 mainFrameSize
+  have hal : s.spAligned = true := by
+    simp only [State.spAligned, hsp, mainFrameSize]
+    exact ProofLib.spAligned_sub s0.sp 0x4e0#64 hs0_align
+  have hsplit := stackAt_split_ge fsp (n := hookStack) (m := stk - mainFrameSize)
+    (by m5_omega) (by m5_omega)
+  refine main_call_rocl (x := (WriteFileGhost.mk pathA path buf bs, st))
+    (main_writeFile_of_placed_ok_sat hio) hinv hpc hrun hal hlr
+    (F := memRegion (fsp - BitVec.ofNat 64 (stk - mainFrameSize))
+      (stk - mainFrameSize - hookStack) ∗ F)
+    ?_ (hnext := ?_)
+  · refine Entails.trans hP ?_
+    rw [hsplit]
+    dsimp only [withLsRet, writeFileSpecPlacedSat, withVmPreserved, writeFileHonestCore]
+    simp only [hsp, sepConj_assoc]
+    apply Entails.pure_right
+      (hlr ▸ _root_.LibsignalBinary.Proofs.Placed.ElfLsRetAddr.lsRetAddr624_blockPlacement_base_add
+        617 (BitVec.ofNat 64 retOff) (by decide) hret)
+    apply Entails.pure_right
+      ⟨hx0, hx1, hx2, hx3, hlen, hok, hfit.fitsEnv, hio.hWriteFileStack, hfds, hbs_fs⟩
+    exact Entails.of_eq (by sep_ac_rfl)
+  · intro sm hinv_m hpcm hrunm hspm hcsm
+    have hbase : InMainPlaced CodeOk s0 sm retOff :=
+      { pc := hpcm, run := hrunm, sp := hspm.trans hsp,
+        fp := hcsm.2.2.2.2.2.2.2.2.2.2.1.trans hfp, inv := hinv_m,
+        vregs := hcsm.2.2.2.2.2.2.2.2.2.2.2.trans hvregs, spAligned := hs0_align }
+    dsimp only [withLsRet, writeFileSpecPlacedSat, withVmPreserved, writeFileHonestCore]
+    rw [hsp]
+    simp only [sepConj_assoc]
+    refine SepWPp.pure_elim fun _hvm => ?_
+    simp only [sepExists_sepConj_left, sepConj_assoc]
+    refine SepWPp.exists_elim fun evs => ?_
+    refine SepWPp.pure_elim fun ⟨hevs, hwr, htr, hout, hfds_eq, _hfsTr, _hnoOom⟩ => ?_
+    refine SepWPp.weaken_pre ?_
+      (hnext sm evs hbase hevs hwr htr hout hcsm (fdsGe3Closed_of_fds_eq hfds_eq hfds))
+    rw [hsplit]
+    exact Entails.of_eq (by sep_ac_rfl)
+
 /-- Call `write_file(pathA, path, buf, bs)` (`hio.writeFile`) under
 `FitsEnv M lim st (WriteFileEnv path.length)`, advancing `A.pool lim st s` to
 `A.pool lim (M.stepEvents evs st) sm` for some `WriteFileEnv path.length evs`. -/
@@ -912,6 +1035,7 @@ export LoopDrop
    m5_call_memcpy_ro_placed m5_call_memcpy_ro_pool_placed
    m5_call_reserve1_placed
    m5_call_write_file_of_placed m5_call_write_file_of_pool_placed
+   m5_call_write_file_of_placed_sat
    m5_call_write_file_placed m5_call_write_file_pool_placed
    m5_call_dealloc_placed)
 

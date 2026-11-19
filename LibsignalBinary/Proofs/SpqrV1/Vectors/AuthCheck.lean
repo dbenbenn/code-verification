@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
-public import LibsignalBinary.Proofs.SpqrV1.Vectors.Authenticator
+public import LibsignalBinary.Proofs.SpqrV1.Vectors.Authenticator -- proof-setup: allow-public-import
 public meta import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
-public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Authenticator
+public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Authenticator -- proof-setup: allow-public-import
 
 /-!
 # Differential Vector Checks for `Auth.lean`
@@ -21,13 +21,12 @@ Checks `Auth.lean` against all `authUpdateVectors` and `authMacVerifyVectors` in
 `Vectors/Authenticator.lean` via `#guard` and `decide +kernel`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Vectors.AuthCheck
 
 open CryptoGames.HMAC
 open CryptoVerification.LibsignalSpqrV1
-open CryptoVerification.LibsignalSpqrV1.Tests (sha256Compress)
 open CryptoVerification.SpqrV1.Vectors.Authenticator
 
 /-- Check one `AuthUpdateVec` entry against `Authenticator.update`, `Authenticator.new` (when starting

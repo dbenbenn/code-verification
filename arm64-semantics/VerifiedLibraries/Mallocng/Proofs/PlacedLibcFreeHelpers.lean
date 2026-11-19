@@ -34,7 +34,7 @@ open Arm64 Arm64.Obj ProofLib ProofLib.SepLogic VerifiedLibraries.Mallocng
 
 def nontrivialFreeTopPlacedSpec [MallocngMultiPlacement]
     (γ : GhostName) (brkStart : BitVec 64) (b : MallocngBudget)
-    (st : MallocngSt) (g : GroupDesc) (idx : Nat) : Spec Unit :=
+    (st : MallocngSt) (g : GroupDesc) (idx : Nat) (ro : Bool := false) : Spec Unit :=
   withCL mmpl {
     pre := fun (_ : Unit) s0 =>
       ⌜s0.readReg64 .x0 = g.metaPtr ∧
@@ -43,7 +43,7 @@ def nontrivialFreeTopPlacedSpec [MallocngMultiPlacement]
        ∃ hIdx : idx < g.slots.length, g.slots[idx]'hIdx = .claimed⌝ ∗
       stackFrame s0 224 ∗
       MallocngRoTablesA maddrs ∗
-      MallocngCoreStInflightA 1 γ maddrs brkStart s0.brk b.liveCost b.peakCost st
+      MallocngCoreStInflightModeA ro 1 γ maddrs brkStart s0.brk b.liveCost b.peakCost st
     post := fun _ s0 sf =>
       ∃∗ st' : MallocngSt,
         ⌜MallocngProcPreserved s0 sf ∧
@@ -57,7 +57,7 @@ def nontrivialFreeTopPlacedSpec [MallocngMultiPlacement]
          Cost.GroupsGrpMono st.groups st'.groups⌝ ∗
         stackFrame s0 224 ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart s0.brk b.liveCost b.peakCost st' ∗
+        MallocngCoreStModeA ro γ maddrs brkStart s0.brk b.liveCost b.peakCost st' ∗
         if sf.readReg64 .x1 = 0#64 then
           ⌜dynamicRootRegions st' = dynamicRootRegions st⌝
         else
@@ -73,20 +73,20 @@ def nontrivialFreeTopPlacedSpec [MallocngMultiPlacement]
           memMapped miBase miLen
   }
 
-def NontrivialFreeTopPlacedStmt : Prop :=
+def NontrivialFreeTopPlacedStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (γ : GhostName) (brkStart : BitVec 64) (b : MallocngBudget)
     (st : MallocngSt) (g : GroupDesc) (idx : Nat),
     subroutine_ok (mallocngBlockProg mmpl 5 msvc) (mbase 5)
-      (nontrivialFreeTopPlacedSpec γ brkStart b st g idx)
+      (nontrivialFreeTopPlacedSpec γ brkStart b st g idx ro)
 
-theorem call_placed_nontrivialFree (h : NontrivialFreeTopPlacedStmt) [MallocngMultiPlacement]
+theorem call_placed_nontrivialFree {ro : Bool} (h : NontrivialFreeTopPlacedStmt ro) [MallocngMultiPlacement]
     {P : Program} (γ : GhostName) (brkStart : BitVec 64) (b : MallocngBudget)
     (st : MallocngSt) (g : GroupDesc) (idx : Nat)
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 5) (nontrivialFreeTopPlacedSpec γ brkStart b st g idx) :=
+    subroutine_ok P (mbase 5) (nontrivialFreeTopPlacedSpec γ brkStart b st g idx ro) :=
   subroutine_ok_block_to_block (j := 5) (by decide) (h γ brkStart b st g idx) hext hsvc
 
 /-! ## Permission-Tracking `__unlock` and `__munmap` Wrappers -/

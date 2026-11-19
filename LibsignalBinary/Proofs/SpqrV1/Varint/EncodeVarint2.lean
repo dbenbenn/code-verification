@@ -10,7 +10,6 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2Base
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
@@ -23,7 +22,7 @@ Proves continuation-byte stages 4..8 and top-level fixed-base and `[LibsignalPla
 contracts for `encode_varint::<Vec<u8>> [local#2]` (`0x36628`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Varint
 
@@ -126,50 +125,6 @@ local macro "encVarint2_s4_body " entry:term:max callMid:term:max ofCs:term:max 
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         (hcsm.trans (by simp only [$csPred:term, arm64_norm, *, and_self]))
         hnew_ge (fun h => absurd h hlt)))
-/-- Stage 4 (`+0x150..+0x1bc`, offsets `336..444`): appends `varintContByte (val >>> 21)` and either
-exits to `+0x364` (`868`) with `x0 = val >>> 28` when `(val >>> 28).ult 128#64`, or continues to
-Stage 5 (`+0x1bc` = `444`) with `x10 = nextPtr`, `x11 = val >>> 35`, `x12 = val >>> 28`. -/
-theorem step_encVarint2_s4 (b : BitVec 64) (A : RustAlloc) (abs : String → Option (State → State))
-    {resStack : Nat} {s0 : State}
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b abs)
-      ((tripleRatchetProgAtExt b abs).fnAddr doReserve2Name) (doReserve2SpecWith resStack s0 A))
-    (val v curCap curPtr sp v48 v40 : BitVec 64) (curBs : List (BitVec 8))
-    (hlen_lt : curBs.length < curCap.toNat ∨ curBs.length < 2 ^ 62)
-    {x : EncodeVarintGhost} {R : SepProp} {s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 336#64)
-    (hrun : s.status = .Running) (hsp : s.sp = sp - 48#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hx0 : s.readReg64 .x0 = val) (hx1 : s.readReg64 .x1 = v)
-    (hx8 : s.readReg64 .x8 = BitVec.ofNat 64 curBs.length) (hx9 : s.readReg64 .x9 = curCap)
-    (hx12 : s.readReg64 .x12 = val >>> 28) (hcs : EncVarintCalleeSaved s0 s)
-    (hP : P = ((v ↦₆₄ curCap) ∗ ((v + 8#64) ↦₆₄ curPtr) ∗
-      ((v + 16#64) ↦₆₄ BitVec.ofNat 64 curBs.length) ∗ vecU8Buf A curCap curPtr curBs ∗
-      ((sp - 48#64) ↦₆₄ v48) ∗ ((sp - 40#64) ↦₆₄ v40) ∗ A.pool ∗ stackAt (sp - 48#64) resStack) ∗ F)
-    (hnext : ∀ (sm : State) (nextCap nextPtr v48' v40' : BitVec 64),
-      sm.pc = (if (val >>> 28).ult 128#64 then
-        (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 868#64
-      else
-        (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 444#64) →
-      sm.status = .Running → sm.sp = sp - 48#64 → sm.trace = s0.trace →
-      sm.readReg64 .x0 = (if (val >>> 28).ult 128#64 then val >>> 28 else val) →
-      sm.readReg64 .x1 = v → sm.readReg64 .x8 = BitVec.ofNat 64 (curBs ++ [varintContByte (val >>> 21)]).length →
-      sm.readReg64 .x9 = nextCap → sm.readReg64 .x10 = nextPtr →
-      sm.readReg64 .x11 = val >>> 35 → sm.readReg64 .x12 = val >>> 28 → EncVarintCalleeSaved s0 sm →
-      curCap.toNat ≤ nextCap.toNat → (curBs.length < curCap.toNat → nextCap = curCap ∧ nextPtr = curPtr) →
-      SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) sm
-        (((v ↦₆₄ nextCap) ∗ ((v + 8#64) ↦₆₄ nextPtr) ∗
-          ((v + 16#64) ↦₆₄ BitVec.ofNat 64 (curBs ++ [varintContByte (val >>> 21)]).length) ∗
-          vecU8Buf A nextCap nextPtr (curBs ++ [varintContByte (val >>> 21)]) ∗
-          ((sp - 48#64) ↦₆₄ v48') ∗ ((sp - 40#64) ↦₆₄ v40') ∗ A.pool ∗ stackAt (sp - 48#64) resStack) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R)) := by
-  spqrProgAt_fetches_range b (Rust.withPanics abs)
-    libsignalSessionCode_fnOff_0x3670c 222988 336 444
-  rw [← doReserve2_fnAddr_eq] at hdoReserve
-  generalize_entry hentry : (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name = entry
-  examples_hide_fetches
-  encVarint2_s4_body entry (entry + 6484#64) SepWPp.of_sepWP_cs EncVarintCalleeSaved step_doReserve2_call_gen
-
 theorem step_encVarint2_s4_placed [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State))
     {resStack : Nat} {s0 : State}
     (hdoReserve : subroutine_ok (lsProg_148 H) (lsmpl.base 157) (doReserve2SpecWithPlaced resStack s0 A))
@@ -284,51 +239,6 @@ local macro "encVarint2_s5_body " entry:term:max callMid:term:max ofCs:term:max 
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         (hcsm.trans (by simp only [$csPred:term, arm64_norm, *, and_self]))
         hnew_ge (fun h => absurd h hlt)))
-/-- Stage 5 (`+0x1bc..+0x220`, offsets `444..544`): appends `varintContByte (val >>> 28)` and either
-exits to `+0x364` (`868`) with `x0 = val >>> 35` when `(val >>> 35).ult 128#64`, or continues to
-Stage 6 (`+0x220` = `544`) with `x10 = nextPtr`, `x11 = val >>> 35`, `x13 = val >>> 42`. -/
-theorem step_encVarint2_s5 (b : BitVec 64) (A : RustAlloc) (abs : String → Option (State → State))
-    {resStack : Nat} {s0 : State}
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b abs)
-      ((tripleRatchetProgAtExt b abs).fnAddr doReserve2Name) (doReserve2SpecWith resStack s0 A))
-    (val v curCap curPtr sp v48 v40 : BitVec 64) (curBs : List (BitVec 8))
-    (hlen_lt : curBs.length < curCap.toNat ∨ curBs.length < 2 ^ 62)
-    {x : EncodeVarintGhost} {R : SepProp} {s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 444#64)
-    (hrun : s.status = .Running) (hsp : s.sp = sp - 48#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hx0 : s.readReg64 .x0 = val) (hx1 : s.readReg64 .x1 = v)
-    (hx8 : s.readReg64 .x8 = BitVec.ofNat 64 curBs.length) (hx9 : s.readReg64 .x9 = curCap)
-    (hx10 : s.readReg64 .x10 = curPtr) (hx11 : s.readReg64 .x11 = val >>> 35)
-    (hx12 : s.readReg64 .x12 = val >>> 28) (hcs : EncVarintCalleeSaved s0 s)
-    (hP : P = ((v ↦₆₄ curCap) ∗ ((v + 8#64) ↦₆₄ curPtr) ∗
-      ((v + 16#64) ↦₆₄ BitVec.ofNat 64 curBs.length) ∗ vecU8Buf A curCap curPtr curBs ∗
-      ((sp - 48#64) ↦₆₄ v48) ∗ ((sp - 40#64) ↦₆₄ v40) ∗ A.pool ∗ stackAt (sp - 48#64) resStack) ∗ F)
-    (hnext : ∀ (sm : State) (nextCap nextPtr v48' v40' : BitVec 64),
-      sm.pc = (if (val >>> 35).ult 128#64 then
-        (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 868#64
-      else
-        (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 544#64) →
-      sm.status = .Running → sm.sp = sp - 48#64 → sm.trace = s0.trace →
-      sm.readReg64 .x0 = (if (val >>> 35).ult 128#64 then val >>> 35 else val) →
-      sm.readReg64 .x1 = v → sm.readReg64 .x8 = BitVec.ofNat 64 (curBs ++ [varintContByte (val >>> 28)]).length →
-      sm.readReg64 .x9 = nextCap → sm.readReg64 .x10 = nextPtr →
-      sm.readReg64 .x11 = val >>> 35 → sm.readReg64 .x13 = val >>> 42 → EncVarintCalleeSaved s0 sm →
-      curCap.toNat ≤ nextCap.toNat → (curBs.length < curCap.toNat → nextCap = curCap ∧ nextPtr = curPtr) →
-      SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) sm
-        (((v ↦₆₄ nextCap) ∗ ((v + 8#64) ↦₆₄ nextPtr) ∗
-          ((v + 16#64) ↦₆₄ BitVec.ofNat 64 (curBs ++ [varintContByte (val >>> 28)]).length) ∗
-          vecU8Buf A nextCap nextPtr (curBs ++ [varintContByte (val >>> 28)]) ∗
-          ((sp - 48#64) ↦₆₄ v48') ∗ ((sp - 40#64) ↦₆₄ v40') ∗ A.pool ∗ stackAt (sp - 48#64) resStack) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R)) := by
-  spqrProgAt_fetches_range b (Rust.withPanics abs)
-    libsignalSessionCode_fnOff_0x3670c 222988 444 544
-  rw [← doReserve2_fnAddr_eq] at hdoReserve
-  generalize_entry hentry : (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name = entry
-  examples_hide_fetches
-  encVarint2_s5_body entry (entry + 6484#64) SepWPp.of_sepWP_cs EncVarintCalleeSaved step_doReserve2_call_gen
-
 theorem step_encVarint2_s5_placed [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State))
     {resStack : Nat} {s0 : State}
     (hdoReserve : subroutine_ok (lsProg_148 H) (lsmpl.base 157) (doReserve2SpecWithPlaced resStack s0 A))
@@ -444,51 +354,6 @@ local macro "encVarint2_s6_body " entry:term:max callMid:term:max ofCs:term:max 
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         (hcsm.trans (by simp only [$csPred:term, arm64_norm, *, and_self]))
         hnew_ge (fun h => absurd h hlt)))
-/-- Stage 6 (`+0x220..+0x288`, offsets `544..648`): appends `varintContByte (val >>> 35)` and either
-exits to `+0x364` (`868`) with `x0 = val >>> 42` when `(val >>> 42).ult 128#64`, or continues to
-Stage 7 (`+0x288` = `648`) with `x12 = val >>> 49`, `x13 = val >>> 42`. -/
-theorem step_encVarint2_s6 (b : BitVec 64) (A : RustAlloc) (abs : String → Option (State → State))
-    {resStack : Nat} {s0 : State}
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b abs)
-      ((tripleRatchetProgAtExt b abs).fnAddr doReserve2Name) (doReserve2SpecWith resStack s0 A))
-    (val v curCap curPtr sp v48 v40 : BitVec 64) (curBs : List (BitVec 8))
-    (hlen_lt : curBs.length < curCap.toNat ∨ curBs.length < 2 ^ 62)
-    {x : EncodeVarintGhost} {R : SepProp} {s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 544#64)
-    (hrun : s.status = .Running) (hsp : s.sp = sp - 48#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hx0 : s.readReg64 .x0 = val) (hx1 : s.readReg64 .x1 = v)
-    (hx8 : s.readReg64 .x8 = BitVec.ofNat 64 curBs.length) (hx9 : s.readReg64 .x9 = curCap)
-    (hx10 : s.readReg64 .x10 = curPtr) (hx11 : s.readReg64 .x11 = val >>> 35)
-    (hx13 : s.readReg64 .x13 = val >>> 42) (hcs : EncVarintCalleeSaved s0 s)
-    (hP : P = ((v ↦₆₄ curCap) ∗ ((v + 8#64) ↦₆₄ curPtr) ∗
-      ((v + 16#64) ↦₆₄ BitVec.ofNat 64 curBs.length) ∗ vecU8Buf A curCap curPtr curBs ∗
-      ((sp - 48#64) ↦₆₄ v48) ∗ ((sp - 40#64) ↦₆₄ v40) ∗ A.pool ∗ stackAt (sp - 48#64) resStack) ∗ F)
-    (hnext : ∀ (sm : State) (nextCap nextPtr v48' v40' : BitVec 64),
-      sm.pc = (if (val >>> 42).ult 128#64 then
-        (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 868#64
-      else
-        (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 648#64) →
-      sm.status = .Running → sm.sp = sp - 48#64 → sm.trace = s0.trace →
-      sm.readReg64 .x0 = (if (val >>> 42).ult 128#64 then val >>> 42 else val) →
-      sm.readReg64 .x1 = v → sm.readReg64 .x8 = BitVec.ofNat 64 (curBs ++ [varintContByte (val >>> 35)]).length →
-      sm.readReg64 .x9 = nextCap → sm.readReg64 .x12 = val >>> 49 →
-      sm.readReg64 .x13 = val >>> 42 → EncVarintCalleeSaved s0 sm →
-      curCap.toNat ≤ nextCap.toNat → (curBs.length < curCap.toNat → nextCap = curCap ∧ nextPtr = curPtr) →
-      SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) sm
-        (((v ↦₆₄ nextCap) ∗ ((v + 8#64) ↦₆₄ nextPtr) ∗
-          ((v + 16#64) ↦₆₄ BitVec.ofNat 64 (curBs ++ [varintContByte (val >>> 35)]).length) ∗
-          vecU8Buf A nextCap nextPtr (curBs ++ [varintContByte (val >>> 35)]) ∗
-          ((sp - 48#64) ↦₆₄ v48') ∗ ((sp - 40#64) ↦₆₄ v40') ∗ A.pool ∗ stackAt (sp - 48#64) resStack) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R)) := by
-  spqrProgAt_fetches_range b (Rust.withPanics abs)
-    libsignalSessionCode_fnOff_0x3670c 222988 544 648
-  rw [← doReserve2_fnAddr_eq] at hdoReserve
-  generalize_entry hentry : (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name = entry
-  examples_hide_fetches
-  encVarint2_s6_body entry (entry + 6484#64) SepWPp.of_sepWP_cs EncVarintCalleeSaved step_doReserve2_call_gen
-
 theorem step_encVarint2_s6_placed [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State))
     {resStack : Nat} {s0 : State}
     (hdoReserve : subroutine_ok (lsProg_148 H) (lsmpl.base 157) (doReserve2SpecWithPlaced resStack s0 A))
@@ -604,56 +469,6 @@ local macro "encVarint2_s7_body " entry:term:max callMid:term:max ofCs:term:max 
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         (hcsm.trans (by simp only [$csPred:term, arm64_norm, *, and_self]))
         hnew_ge (fun h => absurd h hlt)))
-/-- Stage 7 (`+0x288..+0x2ac`, `+0x2d0..+0x310`, `+0x178..+0x180`, offsets `648..684`, `720..784`, `376..384`):
-appends `varintContByte (val >>> 42)` and either exits to `+0x364` (`868`) with `x0 = val >>> 49`
-when `(val >>> 49).ult 128#64`, or continues to Stage 8 (`+0x2ac` = `684`) with `x10 = val >>> 56`,
-`x11 = nextPtr`, `x12 = val >>> 49`. -/
-theorem step_encVarint2_s7 (b : BitVec 64) (A : RustAlloc) (abs : String → Option (State → State))
-    {resStack : Nat} {s0 : State}
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b abs)
-      ((tripleRatchetProgAtExt b abs).fnAddr doReserve2Name) (doReserve2SpecWith resStack s0 A))
-    (val v curCap curPtr sp v48 v40 : BitVec 64) (curBs : List (BitVec 8))
-    (hlen_lt : curBs.length < curCap.toNat ∨ curBs.length < 2 ^ 62)
-    {x : EncodeVarintGhost} {R : SepProp} {s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 648#64)
-    (hrun : s.status = .Running) (hsp : s.sp = sp - 48#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hx0 : s.readReg64 .x0 = val) (hx1 : s.readReg64 .x1 = v)
-    (hx8 : s.readReg64 .x8 = BitVec.ofNat 64 curBs.length) (hx9 : s.readReg64 .x9 = curCap)
-    (hx12 : s.readReg64 .x12 = val >>> 49) (hx13 : s.readReg64 .x13 = val >>> 42)
-    (hcs : EncVarintCalleeSaved s0 s)
-    (hP : P = ((v ↦₆₄ curCap) ∗ ((v + 8#64) ↦₆₄ curPtr) ∗
-      ((v + 16#64) ↦₆₄ BitVec.ofNat 64 curBs.length) ∗ vecU8Buf A curCap curPtr curBs ∗
-      ((sp - 48#64) ↦₆₄ v48) ∗ ((sp - 40#64) ↦₆₄ v40) ∗ A.pool ∗ stackAt (sp - 48#64) resStack) ∗ F)
-    (hnext : ∀ (sm : State) (nextCap nextPtr v48' v40' : BitVec 64),
-      sm.pc = (if (val >>> 49).ult 128#64 then
-        (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 868#64
-      else
-        (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 684#64) →
-      sm.status = .Running → sm.sp = sp - 48#64 → sm.trace = s0.trace →
-      sm.readReg64 .x0 = (if (val >>> 49).ult 128#64 then val >>> 49 else val) →
-      sm.readReg64 .x1 = v → sm.readReg64 .x8 = BitVec.ofNat 64 (curBs ++ [varintContByte (val >>> 42)]).length →
-      sm.readReg64 .x9 = nextCap → sm.readReg64 .x10 = val >>> 56 →
-      sm.readReg64 .x11 = nextPtr → sm.readReg64 .x12 = val >>> 49 → EncVarintCalleeSaved s0 sm →
-      curCap.toNat ≤ nextCap.toNat → (curBs.length < curCap.toNat → nextCap = curCap ∧ nextPtr = curPtr) →
-      SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) sm
-        (((v ↦₆₄ nextCap) ∗ ((v + 8#64) ↦₆₄ nextPtr) ∗
-          ((v + 16#64) ↦₆₄ BitVec.ofNat 64 (curBs ++ [varintContByte (val >>> 42)]).length) ∗
-          vecU8Buf A nextCap nextPtr (curBs ++ [varintContByte (val >>> 42)]) ∗
-          ((sp - 48#64) ↦₆₄ v48') ∗ ((sp - 40#64) ↦₆₄ v40') ∗ A.pool ∗ stackAt (sp - 48#64) resStack) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R)) := by
-  spqrProgAt_fetches_range b (Rust.withPanics abs)
-    libsignalSessionCode_fnOff_0x3670c 222988 376 384
-  spqrProgAt_fetches_range b (Rust.withPanics abs)
-    libsignalSessionCode_fnOff_0x3670c 222988 648 684
-  spqrProgAt_fetches_range b (Rust.withPanics abs)
-    libsignalSessionCode_fnOff_0x3670c 222988 720 784
-  rw [← doReserve2_fnAddr_eq] at hdoReserve
-  generalize_entry hentry : (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name = entry
-  examples_hide_fetches
-  encVarint2_s7_body entry (entry + 6484#64) SepWPp.of_sepWP_cs EncVarintCalleeSaved step_doReserve2_call_gen
-
 theorem step_encVarint2_s7_placed [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State))
     {resStack : Nat} {s0 : State}
     (hdoReserve : subroutine_ok (lsProg_148 H) (lsmpl.base 157) (doReserve2SpecWithPlaced resStack s0 A))
@@ -769,54 +584,6 @@ local macro "encVarint2_s8_body " entry:term:max callMid:term:max ofCs:term:max 
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         (hcsm.trans (by simp only [$csPred:term, arm64_norm, *, and_self]))
         hnew_ge (fun h => absurd h hlt)))
-/-- Stage 8 (`+0x2ac..+0x2d0`, `+0x310..+0x348`, offsets `684..720`, `784..840`):
-appends `varintContByte (val >>> 49)` and either exits to `+0x364` (`868`) with `x0 = val >>> 56`
-when `(val >>> 56).ult 128#64`, or continues to Stage 9 (`+0x348` = `840`) with `x10 = val >>> 56`,
-`x11 = nextPtr`. -/
-theorem step_encVarint2_s8 (b : BitVec 64) (A : RustAlloc) (abs : String → Option (State → State))
-    {resStack : Nat} {s0 : State}
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b abs)
-      ((tripleRatchetProgAtExt b abs).fnAddr doReserve2Name) (doReserve2SpecWith resStack s0 A))
-    (val v curCap curPtr sp v48 v40 : BitVec 64) (curBs : List (BitVec 8))
-    (hlen_lt : curBs.length < curCap.toNat ∨ curBs.length < 2 ^ 62)
-    {x : EncodeVarintGhost} {R : SepProp} {s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 684#64)
-    (hrun : s.status = .Running) (hsp : s.sp = sp - 48#64) (halign : sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace) (hx0 : s.readReg64 .x0 = val) (hx1 : s.readReg64 .x1 = v)
-    (hx8 : s.readReg64 .x8 = BitVec.ofNat 64 curBs.length) (hx9 : s.readReg64 .x9 = curCap)
-    (hx10 : s.readReg64 .x10 = val >>> 56) (hx11 : s.readReg64 .x11 = curPtr)
-    (hx12 : s.readReg64 .x12 = val >>> 49) (hcs : EncVarintCalleeSaved s0 s)
-    (hP : P = ((v ↦₆₄ curCap) ∗ ((v + 8#64) ↦₆₄ curPtr) ∗
-      ((v + 16#64) ↦₆₄ BitVec.ofNat 64 curBs.length) ∗ vecU8Buf A curCap curPtr curBs ∗
-      ((sp - 48#64) ↦₆₄ v48) ∗ ((sp - 40#64) ↦₆₄ v40) ∗ A.pool ∗ stackAt (sp - 48#64) resStack) ∗ F)
-    (hnext : ∀ (sm : State) (nextCap nextPtr v48' v40' : BitVec 64),
-      sm.pc = (if (val >>> 56).ult 128#64 then
-        (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 868#64
-      else
-        (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name + 840#64) →
-      sm.status = .Running → sm.sp = sp - 48#64 → sm.trace = s0.trace →
-      sm.readReg64 .x0 = (if (val >>> 56).ult 128#64 then val >>> 56 else val) →
-      sm.readReg64 .x1 = v → sm.readReg64 .x8 = BitVec.ofNat 64 (curBs ++ [varintContByte (val >>> 49)]).length →
-      sm.readReg64 .x9 = nextCap → sm.readReg64 .x10 = val >>> 56 →
-      sm.readReg64 .x11 = nextPtr → EncVarintCalleeSaved s0 sm →
-      curCap.toNat ≤ nextCap.toNat → (curBs.length < curCap.toNat → nextCap = curCap ∧ nextPtr = curPtr) →
-      SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) sm
-        (((v ↦₆₄ nextCap) ∗ ((v + 8#64) ↦₆₄ nextPtr) ∗
-          ((v + 16#64) ↦₆₄ BitVec.ofNat 64 (curBs ++ [varintContByte (val >>> 49)]).length) ∗
-          vecU8Buf A nextCap nextPtr (curBs ++ [varintContByte (val >>> 49)]) ∗
-          ((sp - 48#64) ↦₆₄ v48') ∗ ((sp - 40#64) ↦₆₄ v40') ∗ A.pool ∗ stackAt (sp - 48#64) resStack) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R)) := by
-  spqrProgAt_fetches_range b (Rust.withPanics abs)
-    libsignalSessionCode_fnOff_0x3670c 222988 684 720
-  spqrProgAt_fetches_range b (Rust.withPanics abs)
-    libsignalSessionCode_fnOff_0x3670c 222988 784 840
-  rw [← doReserve2_fnAddr_eq] at hdoReserve
-  generalize_entry hentry : (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name = entry
-  examples_hide_fetches
-  encVarint2_s8_body entry (entry + 6484#64) SepWPp.of_sepWP_cs EncVarintCalleeSaved step_doReserve2_call_gen
-
 theorem step_encVarint2_s8_placed [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State))
     {resStack : Nat} {s0 : State}
     (hdoReserve : subroutine_ok (lsProg_148 H) (lsmpl.base 157) (doReserve2SpecWithPlaced resStack s0 A))
@@ -1000,74 +767,6 @@ local macro "encVarint2_gen_body "
     exact $exitt hdoReserve x x.val x.cap x.ptr v48 v40 x.bs hinv0 (encodeVarint_exit_bs hbs0 hult0)
       (stage_len_lt_of_exit hlen_bound hinv0 (encodeVarint_exit_bs hbs0 hult0))
       hpc1 hrun1 hsp1 halign htr1 hx0_1 hx1_1 hx8_1 hx9_1 hcs1 (by ac_rfl)))
-
-theorem encodeVarint2_gen_ok_ext (b : BitVec 64) (A : RustAlloc) (abs : String → Option (State → State))
-    {resStack : Nat} (hres : resStack + 8 * 6 < 2 ^ 64)
-    (x : EncodeVarintGhost) (R : SepProp) (s0 : State)
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b abs)
-      ((tripleRatchetProgAtExt b abs).fnAddr doReserve2Name) (doReserve2SpecWith resStack s0 A))
-    (hpc0 : s0.pc = (tripleRatchetProgAtExt b abs).fnAddr encodeVarint2Name)
-    (hrun0 : s0.status = .Running)
-    (hpre : s0.mem ⊨ (encodeVarintFitSpecOf resStack A).pre x s0 ∗ R)
-    (hsp0 : s0.spAligned = true) :
-    ∃ P,
-      (s0.mem ⊨ P ∗ R) ∧
-      SepWPp (tripleRatchetProgAtExt b abs) (s0.readReg64 .lr) s0 P
-        (fun s' Q =>
-          ((s'.mem ⊨ Q ∗ R) → (s'.mem ⊨ (encodeVarintSpecOf resStack A).post x s0 s' ∗ R)) ∧
-          s'.sp = s0.sp ∧ CalleeSavedPreserved s0 s')
-        (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (encodeVarintSpec A).onPanic x s0 sf ∗ R)) := by
-  encVarint2_gen_body
-    (step_encVarint2_prologue b abs) (step_encVarint2_s1 b A abs) (step_encVarint2_s2 b A abs)
-    (step_encVarint2_s3 b A abs) (step_encVarint2_s4 b A abs) (step_encVarint2_s5 b A abs)
-    (step_encVarint2_s6 b A abs) (step_encVarint2_s7 b A abs) (step_encVarint2_s8 b A abs)
-    (step_encVarint2_s9 b A abs) (step_encVarint2_exit hres b A abs)
-
-theorem encodeVarint2_fit_ok_ext (b : BitVec 64) (A : RustAlloc) (abs : String → Option (State → State))
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b abs)
-      ((tripleRatchetProgAtExt b abs).fnAddr doReserve2Name) (doReserve2Spec A)) :
-    EncodeVarint2FitOkExt b A abs := by
-  unfold EncodeVarint2FitOkExt; apply subroutine_ok_of_sepWPp
-  intro x R s0 hpc0 hrun0 hpre hsp0
-  obtain ⟨P, hP, hwp⟩ := encodeVarint2_gen_ok_ext b A abs (resStack := doReserveStack)
-    (by decide) x R s0 (doReserve2_with_of_ok b A abs s0 hdoReserve) hpc0 hrun0 hpre hsp0
-  exact ⟨P, R, hP, hwp⟩
-
-theorem encode_varint2_fit_ok_ext {b : BitVec 64} {A : RustAlloc}
-    {abs : String → Option (State → State)} (hA : AllocContracts b A abs) :
-    EncodeVarint2FitOkExt b A abs :=
-  encodeVarint2_fit_ok_ext b A abs (do_reserve2_ok_ext hA)
-
-theorem encodeVarint2_fit_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hdoReserve : subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr doReserve2Name) (doReserve2Spec A)) :
-    EncodeVarint2FitOk b C A ctl abs :=
-  encodeVarint2_fit_ok_ext b A (tripleRatchetExterns C ctl abs) hdoReserve
-
-theorem encode_varint2_fit_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    EncodeVarint2FitOk b C A ctl abs :=
-  encodeVarint2_fit_ok b C A ctl abs (do_reserve2_ok_ext (AllocContracts.of_tripleRatchetProgAt b C A ctl abs hA))
-
-theorem encodeVarint2_fit_ok_ext_x (img : Obj.Image) (A : RustAlloc) (abs : String → Option (State → State))
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt img.base abs)
-      ((tripleRatchetProgAtExt img.base abs).fnAddr doReserve2Name) ((doReserve2SpecX A).inImage img)) :
-    EncodeVarint2FitOkExtX img A abs := by
-  unfold EncodeVarint2FitOkExtX; apply subroutine_ok_of_sepWPp
-  intro x R s0 hpc0 hrun0 hpre hsp0
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗ (encodeVarintFitSpecOf doReserveStackX A).pre x s0) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre; rcases hpre with ⟨himg0, hpre⟩
-  obtain ⟨P, hP, hwp⟩ := encodeVarint2_gen_ok_ext img.base A abs (resStack := doReserveStackX)
-    (by decide) x R s0 (doReserve2_with_of_ok_x img A abs s0 himg0 hdoReserve) hpc0 hrun0 hpre hsp0
-  exact ⟨P, R, hP, hwp⟩
-
-theorem encode_varint2_fit_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {abs : String → Option (State → State)} (hA : AllocContracts img.base A abs) :
-    EncodeVarint2FitOkExtX img A abs :=
-  encodeVarint2_fit_ok_ext_x img A abs (do_reserve2_ok_ext_x hA)
-
-/-! ## Relocatable `[LibsignalPlacement]` Proofs -/
 
 theorem encodeVarint2_gen_placed_ok [LibsignalPlacement] (A : RustAlloc) (H : String → Option (State → State))
     {resStack : Nat} (hres : resStack + 8 * 6 < 2 ^ 64)

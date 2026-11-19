@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Specifications for `<PolyDecoder as Decoder>::decoded_message`
@@ -20,7 +21,7 @@ Allocator event envelopes (`LagrangeInterpolateInlinedEnv`, `DecodedMessageLoopE
 `decodedMessagePlacedSpec`) for Block `418`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,9 +30,8 @@ namespace LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
 open Arm64 ProofLib
 open CryptoVerification (LibsignalPlacement blkPC_418 blkPl_418 lsmpl)
 open CryptoVerification.LibsignalSpqrV1 (GF16 Poly PolyDecoder Pt SortedSetPt)
-open CryptoVerification.LibsignalTripleRatchet (tripleRatchetProgAtExt)
-open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitAt tokenInitPlacedAt)
-open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTableAt reduceTablePlacedAt)
+open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitPlacedAt)
+open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.Poly (polyDecoderAt vecHeaderBytes)
 open CryptoVerification.SpqrV1.Poly.AddChunk (PolyDecoderStrictSorted)
 open CryptoVerification.SpqrV1.Poly.DecodedMessage (
@@ -50,7 +50,7 @@ open LibsignalBinary.Heap (
     - `len = 0`: `grow_one` from `0 → 4` `GF16`s (`8` bytes, align `2`);
     - `len = 1`: `with_capacity(1)` (`2` bytes, align `2`) then `grow_one` (`2 → 8` bytes, align `2`);
     - `2 ≤ len`: `with_capacity(len)` (`2 * len` bytes, align `2`). -/
-def computeAtAllocEvents (len : Nat) : List AllocEvent :=
+@[expose] def computeAtAllocEvents (len : Nat) : List AllocEvent :=
   if len = 0 then
     rustAllocEvents 8 2
   else if len = 1 then
@@ -61,7 +61,7 @@ def computeAtAllocEvents (len : Nat) : List AllocEvent :=
 /-- Event envelope of one `<Poly>::compute_at` call on `len` coefficients:
     `computeAtAllocEvents len` followed by `FreeOnlyEvs` (`__rust_dealloc` of the scratch powers
     buffer). -/
-def ComputeAtCallEnv (len : Nat) : List AllocEvent → Prop :=
+@[expose] def ComputeAtCallEnv (len : Nat) : List AllocEvent → Prop :=
   SeqEnv (· = computeAtAllocEvents len) FreeOnlyEvs
 
 theorem computeAtCallEnv_of_dealloc (len cap : Nat) :
@@ -76,7 +76,7 @@ theorem computeAtCallEnv_nonempty (len : Nat) :
     `__rust_alloc(2 * k, 2)` for the accumulator polynomial, `__rust_alloc(2 * (k + 1), 2)` inside
     `lagrange_interpolate_prepare`, `__rust_alloc(2 * (k + 1), 2)` for the working copy `ptr_l`, and
     `FreeOnlyEvs` (`__rust_dealloc` of `ptr_l` and `ptr_b`). -/
-def LagrangeInterpolateMissEnv (k : Nat) : List AllocEvent → Prop :=
+@[expose] def LagrangeInterpolateMissEnv (k : Nat) : List AllocEvent → Prop :=
   SeqEnv
     (· = rustAllocEvents (2 * k) 2 ++ rustAllocEvents (2 * (k + 1)) 2 ++ rustAllocEvents (2 * (k + 1)) 2)
     FreeOnlyEvs
@@ -88,7 +88,7 @@ theorem lagrangeInterpolateMissEnv_nonempty (k : Nat) :
 
 /-- Event envelope of inlined `Poly::lagrange_interpolate` given cache slot `optPoly` and slice
     length `k`: `[]` on a cache hit (`some _`), `LagrangeInterpolateMissEnv k` on `none`. -/
-def LagrangeInterpolateInlinedEnv : Option Poly → Nat → List AllocEvent → Prop
+@[expose] def LagrangeInterpolateInlinedEnv : Option Poly → Nat → List AllocEvent → Prop
   | some _, _, evs => evs = []
   | none, k, evs => LagrangeInterpolateMissEnv k evs
 
@@ -100,7 +100,7 @@ theorem lagrangeInterpolateInlinedEnv_nonempty (optPoly : Option Poly) (k : Nat)
 
 /-- Sequential `AllocEvent` envelope of `PolyDecoder.decodedMessageLoop` (`rem` iterations starting
     at `i` with cache `polys`), mirroring the control flow of `decodedMessageLoopTotal`. -/
-def DecodedMessageLoopEnv (self : PolyDecoder) (pointsVecs : List (List Pt)) :
+@[expose] def DecodedMessageLoopEnv (self : PolyDecoder) (pointsVecs : List (List Pt)) :
     Nat → Nat → List (Option Poly) → List AllocEvent → Prop
   | _, 0, _, evs => evs = []
   | i, rem + 1, polys, evs =>
@@ -153,7 +153,7 @@ theorem decodedMessageLoopEnv_nonempty (self : PolyDecoder) (pointsVecs : List (
     - `dec.isComplete = false` with complete points and `1 ≤ dec.ptsNeeded`:
       `rustAllocEvents 256 8 ++ rustAllocEvents (2 * dec.ptsNeeded) 1`, followed by
       `DecodedMessageLoopEnv`, followed by `FreeOnlyEvs` (`polys` cache + `points_vecs` drops). -/
-def DecodedMessageEnv (dec : PolyDecoder) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodedMessageEnv (dec : PolyDecoder) (evs : List AllocEvent) : Prop :=
   if dec.isComplete then
     evs = []
   else if (collectPointsVecsTotal dec 0 16 false []).1 || decide (dec.ptsNeeded = 0) then
@@ -181,36 +181,9 @@ theorem decodedMessageEnv_nonempty (dec : PolyDecoder) :
 
 /-! ## Budget-Threaded Specifications and Contracts -/
 
-/-- Budget-threaded fixed-base specification of
-    `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message`
-    (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def decodedMessageSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (b : BitVec 64) : Spec (DecodedMessageGhost × M.σ) where
-  pre := fun (x, st) s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧ s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.decA ∧
-      PolyDecoderStrictSorted x.dec ∧
-      FitsEnv M lim st (DecodedMessageEnv x.dec)⌝ ∗
-      memRegion x.out vecHeaderBytes ∗
-      polyDecoderAt A.repAlloc x.decA x.dec ∗
-      tokenInitAt b ∗ reduceTableAt b ∗
-      A.pool lim st s ∗ stackAt s.sp decodedMessageStack
-  post := fun (x, st) s0 sf =>
-    ∃∗ evs : List AllocEvent,
-      ⌜DecodedMessageEnv x.dec evs ∧ sf.trace = s0.trace⌝ ∗
-      optVecU8Of A.repAlloc x.out (decodedMessageTotal x.dec) ∗
-      polyDecoderAt A.repAlloc x.decA x.dec ∗
-      tokenInitAt b ∗ reduceTableAt b ∗
-      A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp decodedMessageStack
-
-def DecodedMessageOkExt (b : BitVec 64) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodedMessageName)
-    (decodedMessageSpec M A lim b)
-
 /-- Budget-threaded relocatable (`[LibsignalPlacement]`) specification of
     `<PolyDecoder as Decoder>::decoded_message` (Block `418`). -/
-def decodedMessagePlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def decodedMessagePlacedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DecodedMessageGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.decA ∧
@@ -228,7 +201,7 @@ def decodedMessagePlacedSpec [LibsignalPlacement] (M : AllocCostModel)
       tokenInitPlacedAt ∗ reduceTablePlacedAt ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp decodedMessageStack
 
-def DecodedMessagePlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def DecodedMessagePlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))

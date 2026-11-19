@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3ChainsWFPresPure
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3ChainsWFPresPure -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -41,6 +41,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Sem
 
 /-!
 # Existing-Chain Whisper Receive Helper Lemmas
@@ -49,7 +51,7 @@ Proves pure helper lemmas for the existing-chain whisper receive branch and defi
 authentic decrypt representation `AuthenticDecryptRepB3St` at a fixed provenance state.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -299,7 +301,7 @@ open Symbolic.Swarm.CREF.TR.RecvCol (TRRecvAllCollide)
 open Symbolic.Swarm.CREF.TR.RecvRep (decrypt_recvRepresentations_nonempty_of_tryFrom)
 
 /-- Salt-form authentic decrypt representation at a fixed provenance state `st_prov`. -/
-def AuthenticDecryptRepB3St (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : SpqrSem)
+@[expose] def AuthenticDecryptRepB3St (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : SpqrSem)
     (g : Ghost) (ms₁ : List Move) (_body pt : HwBytes) (_t₀ : DY.Bytes) (msg₀ : TRSignalMsg)
     (st_prov : TRState) (_salt seed : DY.Bytes) : Prop :=
   ∃ (st_s : TRState) (t_c coinsLen : Nat),

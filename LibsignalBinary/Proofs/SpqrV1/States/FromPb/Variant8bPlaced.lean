@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8a
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8b
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 8 (`EkReceivedCt1Sampled`, `+1764`, Block `333`) — Part B
@@ -25,7 +26,7 @@ Relocatable (`Obj.MultiPlacedLib`) PB-to-stack copy (`+1764..+1872`), `s.uc = no
 and `es`/`ct1`/`ek` byte-length validation (`+1872 -> +1936 -> +2100 | +1972`) for Variant 8.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

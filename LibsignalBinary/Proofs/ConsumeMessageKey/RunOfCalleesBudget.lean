@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CommonBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCallees
+public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCallees
 import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.Model
 import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPathsBudget
@@ -19,7 +19,6 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.PrologueSplitBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.AdvanceChainKeyBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DeriveSeedBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.EvictOldestKeyBudget
-import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.InsertKeyBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CoreBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.CoreBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -32,7 +31,7 @@ Composes the budget-threaded segment contracts on Block 24 under `RustCliAllocBu
 `SeamBudget` into `consume_message_key_placed_run_of` and `consume_message_key_placed_ro_run_of`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -100,7 +99,6 @@ open LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget (
 open LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DeriveSeedBudget (
   deriveSeed_placed_ok deriveSeed_placed_ro_ok
 )
-open LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.InsertKeyBudget (insertKey_placed_ok)
 open LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.EvictOldestKeyBudget (
   evictOldestKey_placed_ok
 )
@@ -123,7 +121,7 @@ private theorem getElem?_set_self {α : Type} {xs : List α} {i : Nat}
   rw [List.getElem?_eq_getElem (by simpa using hi), List.getElem_set_self]
 
 /-- Budget-threaded relocatable `cmkPlacedSpec` backed by `LibsignalRoLoaded`. -/
-def cmkPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def cmkPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (ConsumeMessageKeyGhost × M.σ) :=
@@ -131,35 +129,13 @@ def cmkPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
     pre := fun g s => (cmkPlacedSpec F A lim).pre g s ∗ ⌜LibsignalRoLoaded lsmpl s.mem⌝ }
 
 /-- Budget-threaded relocatable correctness statement for `RatchetState::consume_message_key` (Block 24). -/
-def CmkPlacedRunStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CmkPlacedRunStmt [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A lim H →
   H "memmove" = some hookMemmove →
   subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (blkPl_24).base (cmkPlacedRoSpec F A lim)
-
-theorem storeLoop_iter_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State)) :
-    StoreLoopIterPlacedSpec F A lim H :=
-  storeLoop_iter_placed_of_parts
-    (deriveSeed_placed_ok F A lim H)
-    (insertKey_placed_ok F A lim H)
-    evictOldestKey_placed_ok
-    (advanceChainKey_placed_ok F A lim H)
-
-theorem storeLoop_iter_placed_ro_ok [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State)) :
-    StoreLoopIterPlacedRoSpec F A lim H :=
-  storeLoop_iter_placed_ro_of_parts
-    (deriveSeed_placed_ro_ok F A lim H)
-    (insertKey_placed_ok F A lim H)
-    evictOldestKey_placed_ok
-    (advanceChainKey_placed_ro_ok F A lim H)
 
 /-- Compose the budget-threaded placed segment contracts into `CmkPlacedRunStmt`. -/
 theorem cmk_placed_of_seams [LibsignalPlacement] {M : AllocCostModel}
@@ -353,24 +329,6 @@ theorem cmk_placed_of_seams [LibsignalPlacement] {M : AllocCostModel}
         rwa [heq] at hm
       exact reaches_outcome_steps hsteps1 (hs2 hA x st_init st_init R s0 s1 hle hj_gt hst1_ro)
 
-theorem consume_message_key_placed_run_of [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (hfind : FindIndexPlacedOk H A) (hhmac : HmacPlacedOk H F)
-    (hgrow : GrowOnePlacedOk H A lim) :
-    CmkPlacedRunStmt F A lim H :=
-  cmk_placed_of_seams hfind hhmac hgrow
-    (prologueSplit_past_placed_ok F A lim H)
-    (prologueSplit_tooFar_placed_ok F A lim H)
-    (prologueSplit_advance_placed_ok F A lim H)
-    (takePath_placed_ok_thm F A lim H)
-    (tooFarPath_placed_ok' F A lim H)
-    (storeLoop_iter_placed_ok F A lim H)
-    (advanceEpilogue_placed_ok F A lim H)
-    (loopNoChainPanic_placed_ok F A lim H)
-    (epiloguePanic_placed_ok F A lim H)
-
 /-- Compose the `.rodata`-backed budget-threaded placed segment contracts. -/
 theorem cmk_placed_ro_of_seams [LibsignalPlacement] {M : AllocCostModel}
     {F : ShaState → List (BitVec 8) → ShaState}
@@ -561,23 +519,5 @@ theorem cmk_placed_ro_of_seams [LibsignalPlacement] {M : AllocCostModel}
               ((lsρ cmkTooFarStrSym ↦ᵣ tooFarInFutureStr) ∗ R) := by sep_ac_rfl
         rwa [heq] at hm
       exact reaches_outcome_steps hsteps1 (hs2 hA x st_init st_init R s0 s1 hle hj_gt hst1_ro)
-
-theorem consume_message_key_placed_ro_run_of [LibsignalPlacement] {M : AllocCostModel}
-    (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
-    (hfind : FindIndexPlacedOk H A) (hhmac : HmacPlacedRoOk H F)
-    (hgrow : GrowOnePlacedOk H A lim) :
-    CmkPlacedRunStmt F A lim H :=
-  cmk_placed_ro_of_seams hfind hhmac hgrow
-    (prologueSplit_past_placed_ok F A lim H)
-    (prologueSplit_tooFar_placed_ok F A lim H)
-    (prologueSplit_advance_placed_ok F A lim H)
-    (takePath_placed_ok_thm F A lim H)
-    (tooFarPath_placed_ok' F A lim H)
-    (storeLoop_iter_placed_ro_ok F A lim H)
-    (advanceEpilogue_placed_ro_ok F A lim H)
-    (loopNoChainPanic_placed_ro_ok F A lim H)
-    (epiloguePanic_placed_ro_ok F A lim H)
 
 end LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCalleesBudget

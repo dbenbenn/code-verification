@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PureBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.LayoutBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PureBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Parametric `Vec` Growth and Realloc-Credit Lemmas
@@ -28,7 +31,7 @@ bounds for `RawVec` and `VecDeque` doubling ladders, concrete `Vec<T>` element s
 super-doubling `do_reserve` / `prost::encoding::bytes::merge` overwrite chains.
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.PeakBudget.VecGrowCredit
 
@@ -950,7 +953,7 @@ inductive BytesMergeChainOk : Nat → List BytesMergeGhost → Nat → Prop wher
       BytesMergeChainOk cap (x :: xs) maxWire
 
 /-- Total merged payload bytes across a list of `BytesMergeGhost` calls. -/
-def bytesMergePayloadSum : List BytesMergeGhost → Nat
+@[expose] def bytesMergePayloadSum : List BytesMergeGhost → Nat
   | [] => 0
   | x :: xs =>
     (match mergeBytes x.wt x.bs with

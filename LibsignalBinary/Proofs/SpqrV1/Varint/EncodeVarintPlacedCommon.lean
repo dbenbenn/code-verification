@@ -18,7 +18,7 @@ Provides stack-parametric `doReserveSpecOf` / `doReserve2SpecOf` specifications 
 `EncVarintCalleeSavedPlaced` call steppers shared by `EncodeVarint2*` and `EncodeVarint4*`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Varint
 
@@ -30,7 +30,7 @@ open CryptoVerification.LibsignalTripleRatchet.Prost
 open CryptoVerification.CodeLayout
 
 /-- Stack-parametric specification of `do_reserve_and_handle` (`align = 1, elem_size = 1`). -/
-def doReserveSpecOf (resStack : Nat) (A : RustAlloc) : Spec DoReserveCall where
+@[expose] def doReserveSpecOf (resStack : Nat) (A : RustAlloc) : Spec DoReserveCall where
   pre := fun x s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
     ⌜s.readReg64 .x0 = x.v ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
@@ -120,7 +120,7 @@ theorem step_doReserve_call_gen_placed {prog : Program} {resTarget : BitVec 64} 
 
 /-- Stack-parametric specification of `do_reserve_and_handle [local#2]`, which hardcodes
 `align = 1, elem_size = 1` and does not read `x3` or `x4`. -/
-def doReserve2SpecOf (resStack : Nat) (A : RustAlloc) : Spec DoReserveCall where
+@[expose] def doReserve2SpecOf (resStack : Nat) (A : RustAlloc) : Spec DoReserveCall where
   pre := fun x s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
     ⌜s.readReg64 .x0 = x.v ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
@@ -134,7 +134,7 @@ def doReserve2SpecOf (resStack : Nat) (A : RustAlloc) : Spec DoReserveCall where
     A.pool ∗ stackAt s0'.sp resStack
   onPanic := (doReserveSpec A).onPanic
 
-def doReserve2Spec (A : RustAlloc) : Spec DoReserveCall where
+@[expose] def doReserve2Spec (A : RustAlloc) : Spec DoReserveCall where
   pre := fun x s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
     ⌜s.readReg64 .x0 = x.v ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
@@ -144,7 +144,7 @@ def doReserve2Spec (A : RustAlloc) : Spec DoReserveCall where
   post := (doReserveSpec A).post
   onPanic := (doReserveSpec A).onPanic
 
-def doReserve2SpecX (A : RustAlloc) : Spec DoReserveCall where
+@[expose] def doReserve2SpecX (A : RustAlloc) : Spec DoReserveCall where
   pre := fun x s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
     ⌜s.readReg64 .x0 = x.v ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
@@ -154,7 +154,7 @@ def doReserve2SpecX (A : RustAlloc) : Spec DoReserveCall where
   post := (doReserveSpecX A).post
   onPanic := (doReserveSpecX A).onPanic
 
-def doReserve2SpecWithPlaced (resStack : Nat) (s0 : State) (A : RustAlloc) : Spec DoReserveCall where
+@[expose] def doReserve2SpecWithPlaced (resStack : Nat) (s0 : State) (A : RustAlloc) : Spec DoReserveCall where
   pre := fun x s =>
     ⌜EncVarintCalleeSavedPlaced s0 s ∧ s.readReg64 .x0 = x.v ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
       (s.readReg64 .x2).toNat = x.additional ∧ reserveCap x.cap.toNat x.bs.length x.additional + 1 ≤ 2 ^ 63⌝ ∗

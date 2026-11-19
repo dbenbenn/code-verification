@@ -93,11 +93,12 @@ theorem rc_setup_of_rVal {w : PQXDHSpqrSetup} {r : Records} {S : Sem} {g : Ghost
   · rw [← CompSetupSecrecy.setupSecret_1 hNe, CompRX0Bytes.gamma_setupSecret_1 hNe hc, hfits.1.2.2.2.2.2.2.2.1]; exact hb
   · rw [← CompSetupSecrecy.setupSecret_2 hNe, CompRX0Bytes.gamma_setupSecret_2 hNe hc, hfits.1.2.2.2.2.2.2.2.2.1]; exact hspk
   · rw [← CompSetupSecrecy.setupSecret_4 hNe, gamma_setupSecret_4' hNe hc, (CompFitsNames.compFits_secretBytes_fresh hfits).2.1]; exact rVal_fillFresh_16_64
-theorem rc_storedSecrets_of_rVal {w : PQXDHSpqrSetup} {r : Records} {S : Sem} {g : Ghost} {ms : List Move} (ha : RVal w.aliceId) (hb : RVal w.bobId) (hspk : RVal w.spk) (hfits : compFitsPinned w compI0 r) (hc : Compat compI0 r S g) (hns : ∀ m ∈ ms, m.isSetup = false) (hreach : (runTraceMoves r ms).Reachable DY.Libsignal.Composed.reachability) : ∀ u ∈ storedSecrets (runTraceMoves r ms), RC S g u := by
-  obtain ⟨h0, h5, h10, h16⟩ := rc_setup_of_rVal ha hb hspk hfits hc; intro u hu; obtain ⟨ls, rfl, hsk⟩ := mem_storedSecrets_sk_cases hfits.1.1.1 hfits.1.2.1 hns hreach hu; refine rc_serialize_local_pqxdh ?_
+theorem rc_storedSecrets_of_rVal {w : PQXDHSpqrSetup} [hw : NoOpk w.withOpk] {r : Records} {S : Sem} {g : Ghost} {ms : List Move} (ha : RVal w.aliceId) (hb : RVal w.bobId) (hspk : RVal w.spk) (hfits : compFitsPinned w compI0 r) (hc : Compat compI0 r S g) (hns : ∀ m ∈ ms, m.isSetup = false) (hreach : (runTraceMoves r ms).Reachable DY.Libsignal.Composed.reachability) : ∀ u ∈ storedSecrets (runTraceMoves r ms), RC S g u := by
+  have hopk : r.withOpk = false := by have h := hfits.1.2.1; rw [hw.out] at h; exact h
+  obtain ⟨h0, h5, h10, h16⟩ := rc_setup_of_rVal ha hb hspk hfits hc; intro u hu; obtain ⟨ls, rfl, hsk⟩ := mem_storedSecrets_sk_cases hfits.1.1.1 hopk hns hreach hu; refine rc_serialize_local_pqxdh ?_
   rcases hsk with h | h | h | h <;> rw [h] <;> assumption
 attribute [local irreducible] Symbolic.BugInjection.hexBytes
-theorem rc_preTerms_split38_ss {w : PQXDHSpqrSetup} {r : Records} {S : Sem} {g : Ghost} (ha : RVal w.aliceId) (hb_id : RVal w.bobId) (hspk : RVal w.spk) (hfits : compFitsPinned w compI0 r) (hcompat : Compat compI0 r S g) {pre mid post : List Move} {hb : DY.Libsignal.PQXDH.BundleHandles} {shown cl e c' : Nat} {o : DY.Libsignal.PQXDH.AliceHandshakeOut} (ho : o = iniAliceOut (runMoves pre (setupTrace r)).1 (setupSecret r 0) (setupPublic r 2) (setupPublic r 4) (setupPublic r 6) none) (hns' : ∀ m ∈ pre ++ Move.aliceStart r.alice r.bob 4 6 hb shown :: mid ++ Move.encrypt r.alice ((runMoves pre (setupTrace r)).1.length + 8) cl ((runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2) (some ((runMoves pre (setupTrace r)).1.length + 3, (runMoves pre (setupTrace r)).1.length + 4)) :: post, m.isSetup = false) (hreach' : (runTraceMoves r (pre ++ Move.aliceStart r.alice r.bob 4 6 hb shown :: mid ++ Move.encrypt r.alice ((runMoves pre (setupTrace r)).1.length + 8) cl ((runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2) (some ((runMoves pre (setupTrace r)).1.length + 3, (runMoves pre (setupTrace r)).1.length + 4)) :: post)).Reachable reachability) (hvis' : List.Forall₂ (EventMatchesEntry compI0 r S g) ((.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes]) (runVis r (pre ++ Move.aliceStart r.alice r.bob 4 6 hb shown :: mid ++ Move.encrypt r.alice ((runMoves pre (setupTrace r)).1.length + 8) cl ((runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2) (some (e, c')) :: post))) (hpre : MovesFrom InvisibleNoEffect (setupTrace r) pre) (hmid : MovesFrom InvisibleNoEffect ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1) mid) (hpost : MovesFrom InvisibleNoEffect ((Move.encrypt r.alice ((runMoves pre (setupTrace r)).1.length + 8) cl ((runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2) (some (e, c'))).next (runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1) post) (hm₀ : (Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1 = iniAliceStartTr (runMoves pre (setupTrace r)).1 r.alice r.bob o) : let tr₁ := (runMoves pre (setupTrace r)).1;
+theorem rc_preTerms_split38_ss {w : PQXDHSpqrSetup} [NoOpk w.withOpk] {r : Records} {S : Sem} {g : Ghost} (ha : RVal w.aliceId) (hb_id : RVal w.bobId) (hspk : RVal w.spk) (hfits : compFitsPinned w compI0 r) (hcompat : Compat compI0 r S g) {pre mid post : List Move} {hb : DY.Libsignal.PQXDH.BundleHandles} {shown cl e c' : Nat} {o : DY.Libsignal.PQXDH.AliceHandshakeOut} (ho : o = iniAliceOut (runMoves pre (setupTrace r)).1 (setupSecret r 0) (setupPublic r 2) (setupPublic r 4) (setupPublic r 6) none) (hns' : ∀ m ∈ pre ++ Move.aliceStart r.alice r.bob 4 6 hb shown :: mid ++ Move.encrypt r.alice ((runMoves pre (setupTrace r)).1.length + 8) cl ((runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2) (some ((runMoves pre (setupTrace r)).1.length + 3, (runMoves pre (setupTrace r)).1.length + 4)) :: post, m.isSetup = false) (hreach' : (runTraceMoves r (pre ++ Move.aliceStart r.alice r.bob 4 6 hb shown :: mid ++ Move.encrypt r.alice ((runMoves pre (setupTrace r)).1.length + 8) cl ((runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2) (some ((runMoves pre (setupTrace r)).1.length + 3, (runMoves pre (setupTrace r)).1.length + 4)) :: post)).Reachable reachability) (hvis' : List.Forall₂ (EventMatchesEntry compI0 r S g) ((.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes]) (runVis r (pre ++ Move.aliceStart r.alice r.bob 4 6 hb shown :: mid ++ Move.encrypt r.alice ((runMoves pre (setupTrace r)).1.length + 8) cl ((runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2) (some (e, c')) :: post))) (hpre : MovesFrom InvisibleNoEffect (setupTrace r) pre) (hmid : MovesFrom InvisibleNoEffect ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1) mid) (hpost : MovesFrom InvisibleNoEffect ((Move.encrypt r.alice ((runMoves pre (setupTrace r)).1.length + 8) cl ((runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2) (some (e, c'))).next (runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1) post) (hm₀ : (Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1 = iniAliceStartTr (runMoves pre (setupTrace r)).1 r.alice r.bob o) : let tr₁ := (runMoves pre (setupTrace r)).1;
     let m₀ := Move.aliceStart r.alice r.bob 4 6 hb shown; let tr₂ := (runMoves mid (m₀.next tr₁)).1; let ms' := pre ++ m₀ :: mid ++ Move.encrypt r.alice (tr₁.length + 8) cl (tr₂.length + 2) (some (tr₁.length + 3, tr₁.length + 4)) :: post;
     ∀ u ∈ prefixTerms r (runTraceMoves r ms') (runVis r ms'), RC S g u := by
   subst ho; dsimp only; have hNe : r.alice ≠ r.bob := hfits.1.1.1; obtain ⟨q₀, hq₀, -⟩ := sentWireBytes_innerWireCanonical.1; obtain ⟨hvis₀, hm₁⟩ := split38_forall2_vis_inv hNe rfl hpre hmid hpost hm₀ CompRX0SS38.rsT_len hvis'; obtain ⟨hb0_s, hcoins, hdhs_s⟩ := aliceVis_dhs_coin CompRX0SS38.rsT_len rsT_drop32 hvis₀; obtain ⟨_, hpt_s, hc_s, _⟩ := encVis_split38_pins CompRX0SS38.sentWireBytes_len hq₀ hm₁; obtain ⟨h0, h5, h10, h16⟩ := rc_setup_of_rVal ha hb_id hspk hfits hcompat; have hekR := rc_randTerm_of_eq (single_eq_inv hb0_s) rVal_ssB0; have he₀ := (CompRX0Gamma.gamma_of_kyberCoins hcoins).trans CompRX0SS38.rsT_coinHeads_eq; have hentR := rc_randTerm_of_eq he₀ rVal_compKyberE0; have hssV := rVal_kemEncap_snd_of_e0 (pk := DY.PQKem.kemPk (randTerm 16 64)) he₀; have hdhsR := rc_randTerm_of_eq (single_eq_inv hdhs_s) rVal_ssDhs; have hpt0 := (single_eq_inv hpt_s).trans ptB_eq_compAesPt0; have hcR := rc_randTerm_of_eq (single_eq_inv hc_s) rVal_ssC; have hout := rc_aliceOut hNe ((runMoves pre (setupTrace r)).1) h0 h5 h10 h16 hekR hentR hssV; have hstA := trStateRC_stA hNe ((runMoves pre (setupTrace r)).1) h0 h5 h10 h16 hekR hentR hssV hdhsR
@@ -120,7 +121,7 @@ theorem rc_preTerms_split38_ss {w : PQXDHSpqrSetup} {r : Records} {S : Sem} {g :
   · intro v hv hkind u hu_v; rw [pt_terms_split38_mem hNe rfl hpre hmid hpost' hm₀ hv hkind hu_v]; exact rc_randTerm_of_eq hpt0 rVal_compAesPt0
 abbrev RestPre38HB : Prop := RestPre38At Witnesses.Cheval26SmallSubgroupHighBitComp.setup (Witnesses.Cheval26SmallSubgroupHighBitComp.trace.take 38) highBitWireBytes 1 0
 abbrev RestPre38TC : Prop := RestPre38At Witnesses.Cheval26SmallSubgroupTorsionComp.setup (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.take 38) torsionWireBytes 0 1
-theorem restPre38At_of_ss {w : PQXDHSpqrSetup} {τ : List MachineEvent} {wire : HwBytes} {v : Fin 4} {t : Fin 8} (ha : RVal w.aliceId) (hb_id : RVal w.bobId) (hspk : RVal w.spk) (hτ : τ = (.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes]) : RestPre38At w τ wire v t := by
+theorem restPre38At_of_ss {w : PQXDHSpqrSetup} [NoOpk w.withOpk] {τ : List MachineEvent} {wire : HwBytes} {v : Fin 4} {t : Fin 8} (ha : RVal w.aliceId) (hb_id : RVal w.bobId) (hspk : RVal w.spk) (hτ : τ = (.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes]) : RestPre38At w τ wire v t := by
   intro r S g p hfits _ _ pre mid post hb shown cl e c'; dsimp only; intro hcompat hmr hvis hpre hmid hpost hm₀ _ u hu x hx; let tr₁ := (runMoves pre (setupTrace r)).1; let m₀ := Move.aliceStart r.alice r.bob 4 6 hb shown; let tr₂ := (runMoves mid (m₀.next tr₁)).1;
   have htr_eq := runTrace_split38_swap_eq r pre mid post m₀ r.alice (tr₁.length + 8) cl (tr₂.length + 2)
     (some (e, c')) (some (tr₁.length + 3, tr₁.length + 4))
@@ -130,8 +131,6 @@ theorem restPre38At_of_ss {w : PQXDHSpqrSetup} {τ : List MachineEvent} {wire : 
     (htr_eq ▸ hmr.2.2.1.1) hvis hpre hmid hpost hm₀
   dsimp only at hok; exact hok u hu x hx (CompRPreMemoSound.memo_sound compI0 S g u hx).2
 theorem restPre38HB_holds : RestPre38HB := restPre38At_of_ss rVal_hb_aliceId rVal_hb_bobId rVal_hb_spk CompRX0SS38.highBitComp_take38
-theorem restPre38TC_holds : RestPre38TC := restPre38At_of_ss rVal_tc_aliceId rVal_tc_bobId rVal_tc_spk CompRX0SS38.torsionComp_take38
-
 private theorem forall2_no_pt_lt_false {i : ExternInterpretation} {r : Records} {S : Sem} {g : Ghost} :
     ∀ {xs ys : List MachineEvent} {us vs : List VisEntry} {v₀ : VisEntry},
       (∀ e ∈ xs, eventKind e ≠ .pt) → v₀.kind = .pt → us.length < xs.length →
@@ -281,7 +280,7 @@ theorem split38_encMac_chain_split {r : Records} {S : Sem} {g : Ghost}
       rw [encMac_eq'', gamma_computeMac, take4_take8] at h; exact h
     exact ⟨hk, hP, hkK, hPK, hu1, by rw [hk]; exact h3⟩
 
-theorem rc_preTerms_split38_ss_split {w : PQXDHSpqrSetup} {r : Records} {S : Sem} {g : Ghost}
+theorem rc_preTerms_split38_ss_split {w : PQXDHSpqrSetup} [NoOpk w.withOpk] {r : Records} {S : Sem} {g : Ghost}
     (ha : RVal w.aliceId) (hb_id : RVal w.bobId) (hspk : RVal w.spk)
     (hfits : compFitsPinned w compI0 r) (hcompat : Compat compI0 r S g)
     {pre mid post : List Move} {hb : DY.Libsignal.PQXDH.BundleHandles}
@@ -338,7 +337,7 @@ theorem rc_preTerms_split38_ss_split {w : PQXDHSpqrSetup} {r : Records} {S : Sem
     rw [pt_terms_split38_mem hNe rfl hpre hmid hpost' hm₀ hv hkind hu_v]
     exact rc_randTerm_of_eq hpt0 rVal_compAesPt0
 
-theorem restPre38At_of_ss_split {w : PQXDHSpqrSetup} {τ blk₁ : List MachineEvent} {wire : HwBytes} {v : Fin 4} {t : Fin 8}
+theorem restPre38At_of_ss_split {w : PQXDHSpqrSetup} [NoOpk w.withOpk] {τ blk₁ : List MachineEvent} {wire : HwBytes} {v : Fin 4} {t : Fin 8}
     (ha : RVal w.aliceId) (hb_id : RVal w.bobId) (hspk : RVal w.spk)
     (hcs : DY.Libsignal.Composed.Refinement.Cli.CoinSplit [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes] blk₁)
     (hτ : τ = (.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ blk₁) :
@@ -368,7 +367,7 @@ theorem restPre38TC_split {blk₁ : List MachineEvent}
       ((.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ blk₁) torsionWireBytes 0 1 :=
   restPre38At_of_ss_split rVal_tc_aliceId rVal_tc_bobId rVal_tc_spk hcs rfl
 
-theorem preNXOK_preTerms_split38_ss_split {w : PQXDHSpqrSetup} {r : Records} {S : Sem} {g : Ghost}
+theorem preNXOK_preTerms_split38_ss_split {w : PQXDHSpqrSetup} [NoOpk w.withOpk] {r : Records} {S : Sem} {g : Ghost}
     (ha : w.aliceId = Witnesses.Cheval26WeakState.setup.aliceId)
     (hb_id : w.bobId = Witnesses.Cheval26WeakState.setup.bobId)
     (hs : w.spk = Witnesses.Cheval26WeakState.setup.spk)
@@ -424,7 +423,7 @@ theorem preNXOK_preTerms_split38_ss_split {w : PQXDHSpqrSetup} {r : Records} {S 
   · rcases storedStates_split38_cases rfl hpre hmid hpost' hm₀ hls with hls_eq | hls_eq <;> rw [hls_eq] <;> [exact preNXOK_serialize_local_tr hstA; exact preNXOK_serialize_local_tr hstA_enc]
   · rw [pt_terms_split38_mem hNe rfl hpre hmid hpost' hm₀ hv hkind hu_v]; exact preNXOK_randTerm hpt_u
 
-theorem split38CtxPairsAt_qPreUntaggedNX_ss_split {w : PQXDHSpqrSetup} {τ blk₁ : List MachineEvent}
+theorem split38CtxPairsAt_qPreUntaggedNX_ss_split {w : PQXDHSpqrSetup} [NoOpk w.withOpk] {τ blk₁ : List MachineEvent}
     (wire : HwBytes) (v : Fin 4) (t : Fin 8)
     (ha : w.aliceId = Witnesses.Cheval26WeakState.setup.aliceId)
     (hb_id : w.bobId = Witnesses.Cheval26WeakState.setup.bobId)

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
@@ -17,6 +17,9 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
 meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInit
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Block A Init (Part A)
@@ -26,7 +29,7 @@ Relocatable `[LibsignalPlacement]` verification of initial 2-byte `Poly::zero()`
 `BlockAAlloc610Env`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -97,10 +100,10 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 /-! ## 1. Exact Allocator Event Envelopes for Block A (`0..5` and `6..10`) -/
 
 /-- Exact allocator event sequence for a pair of `2`-byte, alignment-`2` `Poly` allocations. -/
-def blockAAllocPairEvents : List AllocEvent :=
+@[expose] def blockAAllocPairEvents : List AllocEvent :=
   rustAllocEvents 2 2 ++ rustAllocEvents 2 2
 
-def BlockAAllocPairEnv (evs : List AllocEvent) : Prop :=
+@[expose] def BlockAAllocPairEnv (evs : List AllocEvent) : Prop :=
   evs = blockAAllocPairEvents
 
 theorem fitsEnv_blockAAllocPair_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -110,10 +113,10 @@ theorem fitsEnv_blockAAllocPair_iff {M : AllocCostModel} {lim : BudgetLimits} {s
   · intro h evs hevs; rw [hevs]; exact h
 
 /-- Exact allocator event sequence for Block A allocations `0..5` (`6` allocations of `2` bytes, align `2`). -/
-def blockAAlloc05Events : List AllocEvent :=
+@[expose] def blockAAlloc05Events : List AllocEvent :=
   blockAAllocPairEvents ++ blockAAllocPairEvents ++ blockAAllocPairEvents
 
-def BlockAAlloc05Env (evs : List AllocEvent) : Prop :=
+@[expose] def BlockAAlloc05Env (evs : List AllocEvent) : Prop :=
   evs = blockAAlloc05Events
 
 theorem fitsEnv_blockAAlloc05_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -123,11 +126,11 @@ theorem fitsEnv_blockAAlloc05_iff {M : AllocCostModel} {lim : BudgetLimits} {st 
   · intro h evs hevs; rw [hevs]; exact h
 
 /-- Exact allocator event sequence for Block A allocations `6..10` (`5` allocations of `2` bytes, align `2`). -/
-def blockAAlloc610Events : List AllocEvent :=
+@[expose] def blockAAlloc610Events : List AllocEvent :=
   rustAllocEvents 2 2 ++ rustAllocEvents 2 2 ++ rustAllocEvents 2 2 ++
     rustAllocEvents 2 2 ++ rustAllocEvents 2 2
 
-def BlockAAlloc610Env (evs : List AllocEvent) : Prop :=
+@[expose] def BlockAAlloc610Env (evs : List AllocEvent) : Prop :=
   evs = blockAAlloc610Events
 
 theorem fitsEnv_blockAAlloc610_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :

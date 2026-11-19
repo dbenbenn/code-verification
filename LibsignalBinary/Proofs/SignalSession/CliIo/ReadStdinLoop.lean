@@ -9,7 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinSteps
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinSteps
+public import GeneratedLean.SignalSessionIoPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslReadStdin -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.Sym -- proof-setup: allow-public-import
 
 /-!
 # Bounded `read_stdin` Chunk Loop
@@ -18,7 +22,7 @@ Proves `cliIoReadStdin_loop` for `signalSessionIoMultiLib` block `0` (`signal_se
 from loop header `+0x48` (`STDIN_CAP = 2^20 = 1,048,576`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -68,7 +72,7 @@ open LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinSteps (
 )
 
 /-- Spatial + `fs` postcondition of `read_stdin` (`rem = s0.fs.stdin.drop d0.offset`). -/
-def cliIoStdinLoopResult {oom : State → State → Prop} (A : RustStdAlloc oom)
+@[expose] def cliIoStdinLoopResult {oom : State → State → Prop} (A : RustStdAlloc oom)
     (sret : BitVec 64) (d0 : FdEntry) (lb lk : Nat) (s0 sf : State) : SepProp :=
   let rem := s0.fs.stdin.drop d0.offset
   if rem.length ≤ cliIoStdinCap then
@@ -83,7 +87,7 @@ def cliIoStdinLoopResult {oom : State → State → Prop} (A : RustStdAlloc oom)
       A.pool lb lk sf
 
 /-- OOM postcondition of `read_stdin` (`k ≤ min rem.length cliIoStdinCap` bytes consumed). -/
-def cliIoStdinOom (oom : State → State → Prop) (d0 : FdEntry) (s0 sf : State) : SepProp :=
+@[expose] def cliIoStdinOom (oom : State → State → Prop) (d0 : FdEntry) (s0 sf : State) : SepProp :=
   ⌜∃ k sm, k ≤ min (s0.fs.stdin.drop d0.offset).length cliIoStdinCap ∧
     IoFrame s0 sm ∧
     sm.fs = s0.fs.setFd 0#64 (some { d0 with offset := d0.offset + k }) ∧

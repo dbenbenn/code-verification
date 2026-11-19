@@ -10,11 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Record.Defs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKit
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKit -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `[LibsignalPlacement]` Store-Kit Contracts
@@ -25,7 +27,7 @@ under `LibsignalRoLoaded lsmpl`, and caller-block-polymorphic `subroutine_ok` bu
 `KyberPreKeyStore`, and `IdentitySelfStore`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -218,42 +220,17 @@ abbrev withLsLogOff [LibsignalPlacement] {α : Type} (spec : Spec α) : Spec α 
     pre := fun x s => spec.pre x s ∗ FromRecordCallees.lsLogOff
     post := fun x s0 sf => spec.post x s0 sf ∗ FromRecordCallees.lsLogOff }
 
-/-- Frame `FromRecordCallees.lsLogOff` onto a `subroutine_ok` contract whose `onPanic` absorbs it. -/
-theorem subroutine_ok_withLsLogOff [LibsignalPlacement] {α : Type} {prog : Program}
-    {entry : BitVec 64} {spec : Spec α}
-    (h : subroutine_ok prog entry spec)
-    (hpan : ∀ x s0 sf, spec.onPanic x s0 sf ∗ FromRecordCallees.lsLogOff ⊢ spec.onPanic x s0 sf)
-    (hexit : ∀ x code s0 sf, spec.onExit x code s0 sf = ⌜False⌝ := by intros; rfl)
-    (hoom : ∀ x s0 sf, spec.onOom x s0 sf = ⌜False⌝ := by intros; rfl) :
-    subroutine_ok prog entry (withLsLogOff spec) := by
-  refine Arm64.subroutine_ok_outcome_intro fun x R s0 hpc hrun hp hsp => ?_
-  have hp' : s0.mem ⊨ spec.pre x s0 ∗ (FromRecordCallees.lsLogOff ∗ R) := by
-    rw [← sepConj_assoc]; exact hp
-  refine (h.to_outcome x (FromRecordCallees.lsLogOff ∗ R) s0 hpc hrun hp' hsp).mono_outcome fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan_st, hq⟩ | ⟨code, _, hq⟩ | ⟨_, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    show sf.mem ⊨ (spec.post x s0 sf ∗ FromRecordCallees.lsLogOff) ∗ R
-    rw [sepConj_assoc]; exact hq
-  · refine Or.inr (Or.inl ⟨hpan_st, ?_⟩)
-    show sf.mem ⊨ spec.onPanic x s0 sf ∗ R
-    rw [← sepConj_assoc] at hq
-    exact Satisfies.mono (sepConj_mono_left (hpan x s0 sf)) hq
-  · rw [hexit] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · rw [hoom] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-
 /-! ## 2. Layout-Independent Placed Poll Output Predicates -/
 
 /-- Layout-independent `ApplicationCallbackError("store hook", Box<HookStoreError>)` payload tail:
     `strPtr` and `vt` are existentialized at the poll boundary, matching `apiErrAt A e (.store ())`. -/
-def errTailPlacedAt (strPtr vt out : BitVec 64) : SepProp :=
+@[expose] def errTailPlacedAt (strPtr vt out : BitVec 64) : SepProp :=
   ((out + 0x10#64) ↦₆₄ 10#64) ∗ ((out + 0x18#64) ↦₆₄ 1#64) ∗
     ((out + 0x20#64) ↦₆₄ vt) ∗ (strPtr ↦ᵣ storeHookStr)
 
 /-- Layout-independent 368-byte `Poll<Result<Option<SessionRecord>, SPE>>` written by `load_session`.
     Definitionally equal to `loadPollOutAtS` on `.ok (some r)` and `.ok none`. -/
-def loadPollPlacedOutAtS (Scope : SessionRecord (List (BitVec 8)) → Prop) (A : RustAlloc)
+@[expose] def loadPollPlacedOutAtS (Scope : SessionRecord (List (BitVec 8)) → Prop) (A : RustAlloc)
     (out : BitVec 64) :
     Except Unit (Option (SessionRecord (List (BitVec 8)))) → SepProp
   | .ok (some r) => ⌜Scope r⌝ ∗ ∃∗ g : RecordGhost, sessionRecordAt A out g r
@@ -267,7 +244,7 @@ def loadPollPlacedOutAtS (Scope : SessionRecord (List (BitVec 8)) → Prop) (A :
 
 /-- Layout-independent 48-byte `Poll<Result<(), SPE>>` written by `store_session`.
     Definitionally equal to `storePollOutAt` on `.ok ()`. -/
-def storePollPlacedOutAt (out : BitVec 64) : Except Unit Unit → SepProp
+@[expose] def storePollPlacedOutAt (out : BitVec 64) : Except Unit Unit → SepProp
   | .ok () => (out ↦₆₄ 0xFFFFFFFFFFFFFFFE#64) ∗ memRegion (out + 8#64) 40
   | .error () =>
     ∃∗ strPtr : BitVec 64, ∃∗ vt : BitVec 64,
@@ -276,7 +253,7 @@ def storePollPlacedOutAt (out : BitVec 64) : Except Unit Unit → SepProp
 
 /-- Layout-independent 48-byte `Poll<Result<bool, SPE>>` written by `is_trusted_identity`.
     Definitionally equal to `trustPollOutAt` on `.ok t`. -/
-def trustPollPlacedOutAt (out : BitVec 64) : Except Unit Bool → SepProp
+@[expose] def trustPollPlacedOutAt (out : BitVec 64) : Except Unit Bool → SepProp
   | .ok t =>
     (out ↦₆₄ 0xFFFFFFFFFFFFFFFE#64) ∗ ((out + 8#64) ↦₈ (if t then 1#8 else 0#8)) ∗
       memRegion (out + 9#64) 39
@@ -287,7 +264,7 @@ def trustPollPlacedOutAt (out : BitVec 64) : Except Unit Bool → SepProp
 
 /-- Layout-independent 48-byte `Poll<Result<IdentityChange, SPE>>` written by `save_identity`.
     Definitionally equal to `savePollOutAt` on `.ok c`. -/
-def savePollPlacedOutAt (out : BitVec 64) : Except Unit IdentityChange → SepProp
+@[expose] def savePollPlacedOutAt (out : BitVec 64) : Except Unit IdentityChange → SepProp
   | .ok c =>
     (out ↦₆₄ 0xFFFFFFFFFFFFFFFE#64) ∗
       ((out + 8#64) ↦₃₂ (if c == .replacedExisting then 1#32 else 0#32)) ∗
@@ -301,7 +278,7 @@ def savePollPlacedOutAt (out : BitVec 64) : Except Unit IdentityChange → SepPr
 
 /-- Relocatable `load_session` poll spec parameterized by `kit : SessionStoreSpec A 0#64`
     (code/rodata loadedness is carried outside by `withLsRoCl lsmpl` in the kit bundle). -/
-def kitLoadPollPlacedSpecS {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def kitLoadPollPlacedSpecS {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)) :
     Spec (LoadPollCall × BitVec 64 × kit.StoreState) where
@@ -325,7 +302,7 @@ abbrev kitLoadPollPlacedSpecSE {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
   withEnvPre (kitLoadPollPlacedSpecS kit Scope encRecord) fun s => kit.envOk s.fs.files
 
 /-- Relocatable `store_session` poll spec parameterized by `kit : SessionStoreSpec A 0#64`. -/
-def kitStorePollPlacedSpec {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
+@[expose] def kitStorePollPlacedSpec {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)) :
     Spec (StorePollCall × BitVec 64 × kit.StoreState) where
   pre := fun (x, self, st0) s =>
@@ -354,7 +331,7 @@ abbrev kitStorePollPlacedSpecE {A : RustAlloc} (kit : SessionStoreSpec A 0#64)
   withEnvPre (kitStorePollPlacedSpec kit encRecord) fun s => kit.envOk s.fs.files
 
 /-- Relocatable `is_trusted_identity` poll spec parameterized by `ikit : IdentityStoreSpec A 0#64`. -/
-def kitTrustPollPlacedSpec {A : RustAlloc} (ikit : IdentityStoreSpec A 0#64) :
+@[expose] def kitTrustPollPlacedSpec {A : RustAlloc} (ikit : IdentityStoreSpec A 0#64) :
     Spec (IdentityPollCall × Direction × BitVec 64 × ikit.IdState) where
   pre := fun (x, d, self, ist0) s =>
     ⌜s.readReg64 .x0 = x.fut ∧ s.readReg64 .x8 = x.out ∧ ikit.addrOk x.call.addr.val⌝ ∗
@@ -385,7 +362,7 @@ abbrev kitTrustPollPlacedSpecI [LibsignalPlacement] {A : RustAlloc}
   withLsLogOff (kitTrustPollPlacedSpecE ikit)
 
 /-- Relocatable `save_identity` poll spec parameterized by `ikit : IdentityStoreSpec A 0#64`. -/
-def kitSavePollPlacedSpec {A : RustAlloc} (ikit : IdentityStoreSpec A 0#64) :
+@[expose] def kitSavePollPlacedSpec {A : RustAlloc} (ikit : IdentityStoreSpec A 0#64) :
     Spec (IdentityPollCall × BitVec 64 × ikit.IdState) where
   pre := fun (x, self, ist0) s =>
     ⌜s.readReg64 .x0 = x.fut ∧ s.readReg64 .x8 = x.out ∧ ikit.addrOk x.call.addr.val⌝ ∗

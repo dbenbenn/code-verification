@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.RngG.R3ModelInv
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure
 
 /-!
@@ -20,7 +20,7 @@ Proves list indexing and `Nodup` lemmas characterizing the remaining cached mess
 receiver chains after `RatchetState.takeSkippedKey` succeeds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

@@ -9,7 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `[LibsignalPlacement]` Phase 2d Common Infrastructure: `V1State` Encoding Helpers
@@ -18,7 +19,7 @@ Generic/placed `SepWPp.call_cs` wrappers for `V1State` phase callees in
 `<spqr::proto::pq_ratchet::PqRatchetState as prost::message::Message>::encode_to_vec` (`Block 426`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.EncodeToVec
 

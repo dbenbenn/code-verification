@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateLoopClPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
 import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym
@@ -41,7 +41,7 @@ against `withLsCodeRoLoaded lsmpl (v1StateMergePlacedSpec A)` by composing the e
 the 11 code-loaded tag-arm step theorems.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -73,7 +73,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
   v1StateMergeJumpTableExpanded optProtoInnerStateJumpTableAt v1StateSavedRegsAt
   v1StateMergeJumpTablePlacedExpanded optProtoInnerStateJumpTablePlacedAt
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero v1StateMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 
 /-- Code-loaded verification of `V1State::merge` (`Block 298`) parameterized over the 4 utility
 callees (`withLsCodeRoLoaded`) and the 11 tag-arm step hypotheses (`V1StateTagStepHypClPlaced`). -/

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.SpuriousBounds
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RoundTrip
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.SpuriousBounds -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RoundTrip -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostStep
@@ -26,7 +26,7 @@ Bounds the ideal `epoch0Distinguisher` experiment by `q * eps0IdealUnit P.C.F` (
 and deduces `eps0Event_le_eps0` (DEV-LS26).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -42,7 +42,7 @@ set_option linter.unusedSectionVars false
 variable {Pt PQ PQC : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [Inhabited PQ]
   [SampleableType PQC]
 
-def spurPred (F : ShaState → List (BitVec 8) → ShaState) (c : ℕ) (salt : Salt) (ids : SerializedIdentityKeys)
+@[expose] def spurPred (F : ShaState → List (BitVec 8) → ShaState) (c : ℕ) (salt : Salt) (ids : SerializedIdentityKeys)
     (ser : List (BitVec 8)) (tag : BitVec 64) (ck0 : BitVec 256) : Bool :=
   let ck := (List.range c).foldl (fun k _ => (hmacPRF F).tag k chainKeySeed) ck0
   let mk := deriveMessageKeys F salt (chainHmac F ck messageKeySeed)
@@ -214,7 +214,7 @@ theorem consumeMessageKey_zero_key (F : ShaState → List (BitVec 8) → ShaStat
           exact advanceChain_key F their counter counter.toNat ⟨ck0, 0⟩ ckOut s s1
             (by dsimp; omega) hadv
 
-def testSpk (P : Params PQ PQC) (pqrState : PQ) (c : List (BitVec 8)) (ck0 : BitVec 256) : Bool :=
+@[expose] def testSpk (P : Params PQ PQC) (pqrState : PQ) (c : List (BitVec 8)) (ck0 : BitVec 256) : Bool :=
   match SignalMessage.tryFrom P.codec c with
   | .error _ => false
   | .ok msg =>
@@ -259,7 +259,7 @@ theorem testSpk_le_unit (P : Params PQ PQC) (pqrState : PQ) (c : List (BitVec 8)
       rw [hser, List.length_take]
       exact lt_of_le_of_lt (Nat.min_le_right _ _) hc
 
-def setBobSenderKey (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
+@[expose] def setBobSenderKey (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
   { g with session := { g.session with
       senderChain := g.session.senderChain.map fun sc => { sc with chainKey := ⟨ck0, 0⟩ } } }
 
@@ -414,12 +414,12 @@ theorem receive_setBobSenderKey_eq (P : Params PQ PQC) (ck0 : BitVec 256) (g : G
     rcases SessionState.tryDecryptFromRecord P.C P.spqr (P.expectedAddrs g.party) msg .whisper rc g.session with ⟨r, s⟩
     cases r <;> rfl
 
-def setHeadChainKey (ck0 : BitVec 256) (cs : List ReceiverChain) : List ReceiverChain :=
+@[expose] def setHeadChainKey (ck0 : BitVec 256) (cs : List ReceiverChain) : List ReceiverChain :=
   match cs with
   | [] => []
   | rc :: rest => { rc with chainKey := some ⟨ck0, 0⟩ } :: rest
 
-def setAliceSpkKey (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
+@[expose] def setAliceSpkKey (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
   { g with session := { g.session with receiverChains := setHeadChainKey ck0 g.session.receiverChains } }
 
 theorem findIdx?_setHeadChainKey (ck0 : BitVec 256) (cs : List ReceiverChain) (their : PublicKey) :
@@ -818,12 +818,12 @@ theorem consumeMessageKey_length (F : ShaState → List (BitVec 8) → ShaState)
           rw [h_set] at hset
           cases r_set <;> exact hset.trans hadv
 
-def ratchetDecryptStep (C : Crypto) (their : PublicKey) (counter : BitVec 32)
+@[expose] def ratchetDecryptStep (C : Crypto) (their : PublicKey) (counter : BitVec 32)
     (msgType : MessageType) (coins : BitVec 256) : Mut RatchetState MessageKeyGenerator := do
   let chainKey ← RatchetState.ensureReceiverChain C their coins
   RatchetState.consumeMessageKey C.F their chainKey counter msgType
 
-def postRatchetDecrypt (C : Crypto) (spqr : Spqr PQ PQC) (expected : Option (List (BitVec 8)))
+@[expose] def postRatchetDecrypt (C : Crypto) (spqr : Spqr PQ PQC) (expected : Option (List (BitVec 8)))
     (msg : SignalMessage) (msgType : MessageType) (s : SessionState PQ)
     (rem : IdentityKey) (gen : MessageKeyGenerator) (r' : RatchetState) :
     Except SignalProtocolError (List (BitVec 8)) × SessionState PQ :=
@@ -1129,11 +1129,11 @@ theorem mem_of_mem_drop {α : Type} : ∀ (k : ℕ) (l : List α) (x : α), x �
   | k + 1, [], _, h => by simp at h
   | k + 1, a :: l, x, h => List.mem_cons_of_mem a (mem_of_mem_drop k l x h)
 
-def patchAlice (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
+@[expose] def patchAlice (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
   if 0 ∈ g.chainEpochs then setAliceSpkKey ck0 g else g
 
 /-- Invariant on Alice's reference ghost state before any epoch-0 acceptance. -/
-def AliceInv (P : Params PQ PQC) (spk : PublicKey) (g : GhostState PQ) : Prop :=
+@[expose] def AliceInv (P : Params PQ PQC) (spk : PublicKey) (g : GhostState PQ) : Prop :=
   g.party = .A ∧
   g.session.remoteIdentity = some P.idB ∧
   g.session.localIdentity = P.idA ∧
@@ -1565,11 +1565,11 @@ theorem receive_patchAlice_nonSpk (P : Params PQ PQC) (ck0 : BitVec 256) (spk : 
     · exfalso; apply hno0; simp [hep]
     · exact AliceInv_receive_hasZero P ck0 spk g rest epochsTail c rc hparty hrem hloc hlen hrc hep hpos hmsg
 
-def patchBob (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
+@[expose] def patchBob (ck0 : BitVec 256) (g : GhostState PQ) : GhostState PQ :=
   if g.epoch = 0 then setBobSenderKey ck0 g else g
 
 /-- Invariant on Bob's reference ghost state. -/
-def BobInv (P : Params PQ PQC) (s_epoch_B : ℕ) (g : GhostState PQ) : Prop :=
+@[expose] def BobInv (P : Params PQ PQC) (s_epoch_B : ℕ) (g : GhostState PQ) : Prop :=
   g.session.remoteIdentity = some P.idA ∧
   g.chainEpochs.length = g.session.receiverChains.length ∧
   (∀ e ∈ g.chainEpochs, 0 < e) ∧
@@ -1622,17 +1622,17 @@ theorem receive_patchBob (P : Params PQ PQC) (ck0 : BitVec 256) (s_ep : ℕ) (g 
 
 abbrev GameSt (PQ : Type) (ℓ : ℕ) := GameState (GhostState PQ) (Plain ℓ) (List (BitVec 8))
 
-def patchParty (ck0 : BitVec 256) : Party → GhostState PQ → GhostState PQ
+@[expose] def patchParty (ck0 : BitVec 256) : Party → GhostState PQ → GhostState PQ
   | .A => patchAlice ck0
   | .B => patchBob ck0
 
-def patchGameState {ℓ : ℕ} (ck0 : BitVec 256) (s : GameSt PQ ℓ) : GameSt PQ ℓ :=
+@[expose] def patchGameState {ℓ : ℕ} (ck0 : BitVec 256) (s : GameSt PQ ℓ) : GameSt PQ ℓ :=
   { s with st := fun p => match p with
       | .A => patchAlice ck0 (s.st .A)
       | .B => patchBob ck0 (s.st .B) }
 
 /-- Reference game-state invariant maintained while `0 = s.maxAcc .A 0`, `s.win = false`, and `(.B, 0) ∉ s.corrs`. -/
-def GameInv {ℓ : ℕ} (P : Params PQ PQC) (spk : PublicKey) (s : GameSt PQ ℓ) : Prop :=
+@[expose] def GameInv {ℓ : ℕ} (P : Params PQ PQC) (spk : PublicKey) (s : GameSt PQ ℓ) : Prop :=
   AliceInv P spk (s.st .A) ∧
   BobInv P (s.epoch .B) (s.st .B) ∧
   s.maxAcc .A 0 = 0 ∧
@@ -1834,10 +1834,10 @@ theorem receive_alice_spk_implies_testSpk (P : Params PQ PQC) (ck0 : BitVec 256)
               Bool.eq_false_iff.mpr hmac
             simp [hmacF, Mut_exec_throw] at hdec
 
-def winPred {ℓ : ℕ} (s : GameSt PQ ℓ) : Bool :=
+@[expose] def winPred {ℓ : ℕ} (s : GameSt PQ ℓ) : Bool :=
   (decide (0 < s.maxAcc .A 0) || s.win) && !(s.corrs.contains (.B, 0))
 
-def d0Impl (P : Params PQ PQC) (ℓ : ℕ) (onImage : List (BitVec 8) → Bool) (qep : ℕ) :
+@[expose] def d0Impl (P : Params PQ PQC) (ℓ : ℕ) (onImage : List (BitVec 8) → Bool) (qep : ℕ) :
     QueryImpl (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (StateT (GameSt PQ ℓ) ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (GameSt PQ ℓ) ProbComp) +
@@ -2147,7 +2147,7 @@ theorem send_record_patchGameState (P : Params PQ PQC) (ℓ : ℕ) (ck0 : BitVec
         · exact hep_pos
         · rw [htr] at hr; exact hinv.2.2.2.2 r hr
 
-def isAliceSpkQuery (P : Params PQ PQC) (spk : PublicKey) (Q : Party) (gA : GhostState PQ)
+@[expose] def isAliceSpkQuery (P : Params PQ PQC) (spk : PublicKey) (Q : Party) (gA : GhostState PQ)
     (c : List (BitVec 8)) : Bool :=
   (Q == .A) && decide (0 ∈ gA.chainEpochs) &&
   match SignalMessage.tryFrom P.codec c with
@@ -2278,7 +2278,7 @@ theorem receive_patchGameState_of_spk_test_false (P : Params PQ PQC) (ℓ : ℕ)
         rw [htrue] at htest
         cases htest
 
-def TransShort {St Msg : Type} (s : GameState St Msg (List (BitVec 8))) : Prop :=
+@[expose] def TransShort {St Msg : Type} (s : GameState St Msg (List (BitVec 8))) : Prop :=
   ∀ r ∈ s.trans, r.ct.length < 2 ^ 32
 
 theorem transShort_accept {St Msg : Type} {s : GameState St Msg (List (BitVec 8))}

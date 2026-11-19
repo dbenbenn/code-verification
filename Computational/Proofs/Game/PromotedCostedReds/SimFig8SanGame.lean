@@ -9,8 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
+public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Game-Side Invariants for the `simFig8` Sanitizer Coupling
@@ -20,7 +29,7 @@ Defines Fig. 8 party and `Kept` state invariants (`Fig8CkaInv`, `SkippedLenLe`, 
 `lFig8` oracle steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,24 +58,24 @@ section PartyInvariants
 
 /-- Ping-pong CKA state invariant on `Fig8St Pt`: `.pub` before a sending epoch and `.exp` before a
 receiving epoch. -/
-def Fig8CkaInv {Pt : Type} (st : Fig8St Pt) : Prop :=
+@[expose] def Fig8CkaInv {Pt : Type} (st : Fig8St Pt) : Prop :=
   if st.id.sendsIn (st.tcur + 1) then ∃ h, st.γ = .pub h else ∃ x, st.γ = .exp x
 
-def SkippedLenLe (B0 : ℕ) (v : RatchetReceiverState (BitVec 256) (BitVec 256)) : Prop :=
+@[expose] def SkippedLenLe (B0 : ℕ) (v : RatchetReceiverState (BitVec 256) (BitVec 256)) : Prop :=
   v.skippedKeys.length ≤ B0
 
 theorem SkippedLenLe.mono {B0 B0' : ℕ} {v : RatchetReceiverState (BitVec 256) (BitVec 256)}
     (hle : B0 ≤ B0') (hv : SkippedLenLe B0 v) : SkippedLenLe B0' v :=
   Nat.le_trans hv hle
 
-def Fig8PartyInv {Pt : Type} (B0 : ℕ) (st : Fig8St Pt) : Prop :=
+@[expose] def Fig8PartyInv {Pt : Type} (B0 : ℕ) (st : Fig8St Pt) : Prop :=
   Fig8CkaInv st ∧ ∀ t v, st.vR t = some v → SkippedLenLe B0 v
 
 theorem Fig8PartyInv.mono {Pt : Type} {B0 B0' : ℕ} {st : Fig8St Pt}
     (hle : B0 ≤ B0') (hst : Fig8PartyInv B0 st) : Fig8PartyInv B0' st :=
   ⟨hst.1, fun t v hv => (hst.2 t v hv).mono hle⟩
 
-def KeptInv {Pt : Type} (B0 : ℕ) (k : Kept Pt) : Prop :=
+@[expose] def KeptInv {Pt : Type} (B0 : ℕ) (k : Kept Pt) : Prop :=
   (∀ st, k.full = some st → Fig8PartyInv B0 st) ∧
   (∀ t v, k.rs t = some v → SkippedLenLe B0 v)
 

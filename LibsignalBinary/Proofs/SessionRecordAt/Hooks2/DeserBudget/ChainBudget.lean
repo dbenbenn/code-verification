@@ -11,12 +11,11 @@ module
 
 public meta import Lean -- shake: keep
 public meta import ProofLib -- shake: keep
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ProstMergeBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ProstMergeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.ChainDefs
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Fields
@@ -38,6 +37,9 @@ import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.ChainExitGExt
 public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ProstVarintVm
+import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `prost::encoding::message::merge<Chain>` Proof
@@ -51,7 +53,7 @@ under `AllocContractsBudgetPlaced M A lim H` and `[HasFineReallocCredit M]`:
   telescoping step invariants (`stepEvents_chainMerge_bounds`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -283,7 +285,7 @@ open CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainMessageKeysG (
 
 /-- Freshly-merged `Vec<u8>` at `v` with deterministic capacity `bytesMergeOutCap 0#64 bs.length`
 (`0#64` when `bs = []`, `BitVec.ofNat 64 (max bs.length 8)` when `bs ≠ []`). -/
-def vecU8FreshCap (A : RustAlloc) (v : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8FreshCap (A : RustAlloc) (v : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ∃∗ ptr : BitVec 64, vecU8At A v (bytesMergeOutCap 0#64 bs.length) ptr bs
 
 theorem vecU8FreshCap_entails_vecU8 (A : RustAlloc) (v : BitVec 64) (bs : List (BitVec 8)) :
@@ -331,7 +333,7 @@ theorem vecU8FreshCap_move_bytes (A : RustAlloc) (bs : List (BitVec 8)) (a : Bit
 
 /-- Capacity-explicit `prostMsgKeyAt` (104 bytes) where empty sub-vectors have `cap = 0` and
 `mk.seed` has deterministic capacity `bytesMergeOutCap 0#64 mk.seed.length`. -/
-def prostMsgKeyAtCap (A : RustAlloc) (mk : MessageKeyGenerator) (a : BitVec 64) : SepProp :=
+@[expose] def prostMsgKeyAtCap (A : RustAlloc) (mk : MessageKeyGenerator) (a : BitVec 64) : SepProp :=
   vecU8FreshCap A a [] ∗ vecU8FreshCap A (a + 24#64) [] ∗
     vecU8FreshCap A (a + 48#64) [] ∗ vecU8FreshCap A (a + 72#64) mk.seed ∗
     ((a + 96#64) ↦₃₂ mk.counter) ∗ memRegion (a + 100#64) 4
@@ -461,7 +463,7 @@ theorem arrayAt_prostMsgKeyAtCap_move_bytes (A : RustAlloc) (keys : List Message
 
 /-- Capacity-explicit `prostChainGAt` (104 bytes) tracking `capMk : Nat` on `c.keys` (`a + 0x30`)
 and `vecU8FreshCap` on `c.srk`, `c.priv`, and `c.ck`. -/
-def prostChainGAtCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG) : SepProp :=
+@[expose] def prostChainGAtCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG) : SepProp :=
   vecU8FreshCap A a c.srk ∗ vecU8FreshCap A (a + 0x18#64) c.priv ∗
     (∃∗ ptrMk : BitVec 64,
       vecAt A 104 8 (fun mk b => prostMsgKeyAtCap A mk b)
@@ -617,8 +619,7 @@ theorem prostChainGAtCap_move_chunks104 (A : RustAlloc) (capMk : Nat) (c : Chain
         (Entails.sepExists_right w6 (Entails.sepExists_right H ?_)))))))
   exact Entails.pure_right (fun b => by rw [← hchunks b]; exact hmov b) (Entails.refl _)
 
-
-def prostChainGRestCap (A : RustAlloc) (a : BitVec 64) (c : ChainG) : SepProp :=
+@[expose] def prostChainGRestCap (A : RustAlloc) (a : BitVec 64) (c : ChainG) : SepProp :=
   vecU8FreshCap A a c.srk ∗ vecU8FreshCap A (a + 0x18#64) c.priv ∗
     match c.ck with
     | none => ((a + 0x48#64) ↦₆₄ noneCap) ∗ memRegion (a + 0x50#64) 24
@@ -908,7 +909,7 @@ theorem chainGAfter_priv_eq_nil {c : ChainG} {k : Nat} {b : List (BitVec 8)}
   exact foldl_priv_of_countP_zero (c.fields.take k) ChainG.empty (by omega)
 
 /-- Exact byte-length invariant on a single `ChainField` of a well-formed `ChainG`. -/
-def ChainFieldBytesOk : ChainField → Prop
+@[expose] def ChainFieldBytesOk : ChainField → Prop
   | .srk b => b.length = 33
   | .priv b => b.length = 32
   | .ck _ key => key.length = 32
@@ -935,7 +936,7 @@ theorem mem_fields_bytes_le_33 {c : ChainG} (hcOk : c.Ok) {fl : ChainField}
 
 /-- Allocator events emitted by one field of `c.fields` when `message_keys` currently has
 `lenMk` elements (hence capacity `vecCap4Of lenMk`). -/
-def chainFieldStepEvents (lenMk : Nat) : ChainField → List AllocEvent
+@[expose] def chainFieldStepEvents (lenMk : Nat) : ChainField → List AllocEvent
   | .srk b => bytesMergeEvents 0 b.length
   | .priv b => bytesMergeEvents 0 b.length
   | .ck _ key => bytesMergeEvents 0 key.length
@@ -944,7 +945,7 @@ def chainFieldStepEvents (lenMk : Nat) : ChainField → List AllocEvent
         (if lenMk < vecCap4Of lenMk then [] else vec104GrowEvents (vecCap4Of lenMk))
 
 /-- Prefix of allocator events emitted by the first `k` fields of `c.fields`. -/
-def chainDoneEvents (c : ChainG) : Nat → List AllocEvent
+@[expose] def chainDoneEvents (c : ChainG) : Nat → List AllocEvent
   | 0 => []
   | k + 1 =>
       if hk : k < c.fields.length then
@@ -953,7 +954,7 @@ def chainDoneEvents (c : ChainG) : Nat → List AllocEvent
       else chainDoneEvents c k
 
 /-- Remaining allocator events emitted from field index `k` up to `c.fields.length`. -/
-def chainRemEvents (c : ChainG) (k : Nat) : List AllocEvent :=
+@[expose] def chainRemEvents (c : ChainG) (k : Nat) : List AllocEvent :=
   if hk : k < c.fields.length then
     chainFieldStepEvents (chainGAfter c k).keys.length (c.fields[k]'hk) ++
       chainRemEvents c (k + 1)
@@ -961,7 +962,7 @@ def chainRemEvents (c : ChainG) (k : Nat) : List AllocEvent :=
 termination_by c.fields.length - k
 
 /-- Complete deterministic allocator event trace of `prost::encoding::message::merge<Chain>` on `c`. -/
-def chainMergeEvents (c : ChainG) : List AllocEvent :=
+@[expose] def chainMergeEvents (c : ChainG) : List AllocEvent :=
   chainDoneEvents c c.fields.length
 
 theorem chainRemEvents_eq_cons {c : ChainG} {k : Nat} (hk : k < c.fields.length) :
@@ -1001,12 +1002,12 @@ theorem chainRemEvents_zero (c : ChainG) :
   simpa [chainDoneEvents] using chainDoneEvents_append_rem c 0 (Nat.zero_le _)
 
 /-- Symbolic `cumSmall` charge of a fresh `bytes::merge` of `n` bytes when `max n 8 ≤ smallMaxReq M`. -/
-def bytesFreshSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (n : Nat) : Nat :=
+@[expose] def bytesFreshSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (n : Nat) : Nat :=
   if n = 0 then 0
   else HasFineReallocCredit.smallAllocCost M n + HasFineReallocCredit.smallAllocCost M (max n 8)
 
 /-- Symbolic `cumSmall` charge of the `bytes::merge` call inside one `ChainField`. -/
-def chainFieldBytesSmallCost (M : AllocCostModel) [HasFineReallocCredit M] : ChainField → Nat
+@[expose] def chainFieldBytesSmallCost (M : AllocCostModel) [HasFineReallocCredit M] : ChainField → Nat
   | .srk b => bytesFreshSmallCost M b.length
   | .priv b => bytesFreshSmallCost M b.length
   | .ck _ key => bytesFreshSmallCost M key.length
@@ -1014,7 +1015,7 @@ def chainFieldBytesSmallCost (M : AllocCostModel) [HasFineReallocCredit M] : Cha
 
 /-- Symbolic `cumSmall` cost of `message::merge<Chain>` on `c : ChainG`:
 charges `0` `Vec<MessageKey>` growth cost when `c.keys = []` (`sender_chain` zero-alloc invariant). -/
-def chainMergeSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (c : ChainG) : Nat :=
+@[expose] def chainMergeSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (c : ChainG) : Nat :=
   (c.fields.map (chainFieldBytesSmallCost M)).sum + vec104CumOfCap M (vecCap4Of c.keys.length)
 
 /-- Compatibility alias for `chainMergeSmallCost`. -/
@@ -1022,7 +1023,7 @@ abbrev chainFieldsSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (c : C
   chainMergeSmallCost M c
 
 /-- Post-merge direct-`mmap` live cost of `c : ChainG` (`0` when `c.keys = []` or `≤ 1024` under `hsplit`). -/
-def chainMergeLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (c : ChainG) : Nat :=
+@[expose] def chainMergeLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (c : ChainG) : Nat :=
   vec104LargeLive M (vecCap4Of c.keys.length)
 
 /-- Compatibility alias for `chainMergeLargeLive`. -/
@@ -1030,7 +1031,7 @@ abbrev chainFieldsLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (c : C
   chainMergeLargeLive M c
 
 /-- Transient direct-`mmap` peak of `message::merge<Chain>` on `c : ChainG`. -/
-def chainMergePeakLarge (M : AllocCostModel) [HasFineReallocCredit M] (c : ChainG) : Nat :=
+@[expose] def chainMergePeakLarge (M : AllocCostModel) [HasFineReallocCredit M] (c : ChainG) : Nat :=
   vec104PeakLarge M (vecCap4Of c.keys.length)
 
 @[simp]
@@ -1292,7 +1293,6 @@ theorem chainMergeFits_of_fine_bounds (M : AllocCostModel) [HasFineReallocCredit
   simpa only [List.append_nil] using
     ⟨fun ev hev => ⟨chainMergeEvents_withinMaxAlloc hcOk ev hev, hstep ev hev⟩, hFitFinal⟩
 
-
 /-! ## 3. Total-Correctness `SepWPp` Spec, Loop Invariant & Callee Call Helpers -/
 
 open CryptoVerification.LibsignalTripleRatchet (LibsignalCodeRoLoaded)
@@ -1300,7 +1300,7 @@ open CryptoVerification.LibsignalTripleRatchet (LibsignalCodeRoLoaded)
 /-- Raw total-correctness (`onPanic := ⌜False⌝`, `onOom := ⌜False⌝`) contract for
 `prost::encoding::message::merge<Chain>` (Block `11`, `chainMergeStackX`) from a freshly
 defaulted `*x.a = ChainG.empty`. -/
-def chainMergeGenBudgetRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainMergeGenBudgetRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainMergeGenGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.bufRef ∧
@@ -1328,7 +1328,7 @@ abbrev chainMergeGenBudgetSpecW [LibsignalPlacement] (M : AllocCostModel)
   withLsCodeRoLoaded lsmpl (chainMergeGenBudgetRawSpecW M A lim)
 
 /-- Pure state & remaining-budget loop invariant at `(blkPl_11).base + 0x120` after `k` fields. -/
-def ChainLoopBudgetInv [LibsignalPlacement]
+@[expose] def ChainLoopBudgetInv [LibsignalPlacement]
     (M : AllocCostModel) (lim : BudgetLimits)
     (x : ChainMergeGenGhost) (st₀ : M.σ) (s0 : State) (k : Nat) (s : State) : Prop :=
   s.pc = (blkPl_11).base + 0x120#64 ∧ s.status = .Running ∧ s.trace = s0.trace ∧
@@ -1344,7 +1344,7 @@ def ChainLoopBudgetInv [LibsignalPlacement]
     FitsEvents M lim (M.stepEvents (chainDoneEvents x.c k) st₀) (chainRemEvents x.c k)
 
 /-- Spatial loop invariant at `(blkPl_11).base + 0x120` after `k` fields. -/
-def ChainLoopBudgetSpatial (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def ChainLoopBudgetSpatial (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ChainMergeGenGhost) (st₀ : M.σ) (s0 : State) (k : Nat) (s : State) : SepProp :=
   prostChainGAtCap A.repAlloc x.a (vecCap4Of (chainGAfter x.c k).keys.length) (chainGAfter x.c k) ∗
     (x.bufRef ↦₆₄ x.slot) ∗
@@ -1674,7 +1674,6 @@ private theorem step_chainMerge_int32Merge_budget [LibsignalPlacement]
       sep_ac_rfl
     exact SepWPp.weaken_pre (Entails.of_eq hfold)
       (hnext sm hpcm hrunm hspm hclm hrom (htrm.trans htr) hcsm hx0m)
-
 
 /-! ## 4. Entry & Loop Body Segments (`Tags 1–4`, `Exit`) -/
 
@@ -3118,7 +3117,6 @@ private theorem step_chainTag3_budget [LibsignalPlacement]
   dsimp only [c0, capMk, ckHead, ptr3a, ptr3b, ptr3c, ptrEnd]
   exact Entails.of_eq (by cb_sep_eq)
 
-
 private def Tag4Regs (sp0 bufRef a : BitVec 64) (tailLen restLen : Nat) (s : State) : Prop :=
   s.sp = sp0 - 256#64 ∧
     s.readReg64 .x19 = bufRef ∧
@@ -3519,7 +3517,6 @@ private theorem step_tag4c_budget [LibsignalPlacement]
     rw [pbBytes_ptr_advance_seedChain 5 (by decide) ptr seed hseed_lt,
       ← pbBytes_pointsTo_combine_seedChain 5 (by decide) ptr seed hseed_lt]
     exact Entails.of_eq (by cb_sep_eq)
-
 
 set_option maxHeartbeats 1200000 in
 private theorem step_tag4d_budget [LibsignalPlacement]
@@ -3999,7 +3996,6 @@ private theorem step_tag4e_budget [LibsignalPlacement]
       (Entails.trans (sepConj_mono_left hpush) (Entails.of_eq (by cb_sep_eq)))
     · cb_sep_eq
 
-
 private theorem step_chainTag4_budget [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
     (hA : AllocContractsBudgetPlaced M A lim H)
@@ -4201,7 +4197,6 @@ private theorem step_chainTag4_budget [LibsignalPlacement]
   dsimp only [cap', st_end, st_mid, F_base, ptr4a, ptr4b, ptr4c, ptrRest]
   rw [hst_succ, ← hcur_comb]
   exact Entails.of_eq (by cb_sep_eq)
-
 
 /-! ## 5. Loop Exit, Loop Induction & Top-Level `chainMergeGen_budget_placed_ok` -/
 

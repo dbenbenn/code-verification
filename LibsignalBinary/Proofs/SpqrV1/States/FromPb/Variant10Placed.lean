@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10b
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Relocatable Variant 10 (`Ct2Sampled`, `+1632`) — Encoder Dispatch
@@ -24,7 +25,7 @@ field loads, `+5728 -> +7212` (`sending_ct2 = none`), `+5728 -> lsmpl.base 374` 
 call), and post-call `+5808 -> +5820` (`Err`) / `+5808 -> +7904` (`Ok`) branches.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -275,37 +275,4 @@ theorem explains_swap_append {i : ExternInterpretation} {r : Records} {S : Sem}
   have hset : (pre ++ Move.encrypt me s cl pq (some (e, c)) :: post).set pre.length (.encrypt me s cl pq (some (e', c'))) = pre ++ Move.encrypt me s cl pq (some (e', c')) :: post := by rw [List.set_append_right _ _ (Nat.le_refl _), Nat.sub_self]; rfl
   rw [← hset]
   exact explains_swap_step hk (by rw [htake]; exact hek) (by rw [htake]; exact hct) (by rw [htake]; exact hγ) hex
-theorem matchedPrefix_swap_step {i : ExternInterpretation} {r : Records} {S : Sem}
-    {who : List Participant} {g : Ghost} {ms : List Move}
-    {τ₁ : List MachineEvent} {k : Nat} {me : Participant} {s cl pq e c e' c' : Nat} {ek ct : DY.Bytes}
-    (hk : ms[k]? = some (.encrypt me s cl pq (some (e, c))))
-    (hek : NetMsgAt ek e' (runTraceMoves r (ms.take k))) (hct : NetMsgAt ct c' (runTraceMoves r (ms.take k)))
-    (hγ : (received (runTraceMoves r (ms.take k)) [e, c]).map (gamma i S g) = [gamma i S g ek, gamma i S g ct])
-    (hmp : MatchedPrefix i r S who g ms τ₁) :
-    let ms' := ms.set k (.encrypt me s cl pq (some (e', c')))
-    MatchedPrefix i r S who g ms' τ₁ ∧ runTraceMoves r ms' = runTraceMoves r ms ∧
-    preKeyRepresentations i r S g ms' = preKeyRepresentations i r S g ms := by
-  dsimp only
-  have hγ' : (received (runTraceMoves r (ms.take k)) [e, c]).map (gamma i S g) = (received (runTraceMoves r (ms.take k)) [e', c']).map (gamma i S g) := by rw [hγ, received_pair_of_netMsgAt hek hct]; rfl
-  have htr := runTrace_set_wrap (r := r) (w₂ := some (e', c')) hk; exact ⟨matchedPrefix_set_wrap hk hγ' hmp, htr, preKeyRepresentations_eq_of_runTrace_eq htr⟩
-
-theorem matchedPrefix_swap_append {i : ExternInterpretation} {r : Records} {S : Sem}
-    {who : List Participant} {g : Ghost}
-    {τ₁ : List MachineEvent} {pre post : List Move}
-    {me : Participant} {s cl pq e c e' c' : Nat} {ek ct : DY.Bytes}
-    (hek : NetMsgAt ek e' (runTraceMoves r pre)) (hct : NetMsgAt ct c' (runTraceMoves r pre))
-    (hγ : (received (runTraceMoves r pre) [e, c]).map (gamma i S g) = [gamma i S g ek, gamma i S g ct])
-    (hmp : MatchedPrefix i r S who g (pre ++ .encrypt me s cl pq (some (e, c)) :: post) τ₁) :
-    let ms := pre ++ .encrypt me s cl pq (some (e, c)) :: post
-    let ms' := pre ++ .encrypt me s cl pq (some (e', c')) :: post
-    MatchedPrefix i r S who g ms' τ₁ ∧ runTraceMoves r ms' = runTraceMoves r ms ∧
-    preKeyRepresentations i r S g ms' = preKeyRepresentations i r S g ms := by
-  dsimp only
-  have hk : (pre ++ Move.encrypt me s cl pq (some (e, c)) :: post)[pre.length]? = some (.encrypt me s cl pq (some (e, c))) := by
-    rw [List.getElem?_append_right (Nat.le_refl _), Nat.sub_self]; rfl
-  have htake : (pre ++ Move.encrypt me s cl pq (some (e, c)) :: post).take pre.length = pre := List.take_left
-  have hset : (pre ++ Move.encrypt me s cl pq (some (e, c)) :: post).set pre.length (.encrypt me s cl pq (some (e', c'))) = pre ++ Move.encrypt me s cl pq (some (e', c')) :: post := by rw [List.set_append_right _ _ (Nat.le_refl _), Nat.sub_self]; rfl
-  rw [← hset]
-  exact matchedPrefix_swap_step hk (by rw [htake]; exact hek) (by rw [htake]; exact hct) (by rw [htake]; exact hγ) hmp
-
 end Symbolic.BugInjection.Proofs.Common443.WsIdx1DecompSwap

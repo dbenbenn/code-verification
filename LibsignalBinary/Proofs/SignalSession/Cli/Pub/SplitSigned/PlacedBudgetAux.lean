@@ -9,15 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget Envelopes and Error Paths for `signal_session::public::split_signed`
@@ -26,7 +33,7 @@ Allocator event envelopes (`SplitSignedTailEnv`, `SplitSignedEnv`) and budget-th
 lemmas (`step_err_copy_path_p`, `step_short_err_path_p`) for Block `592`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -72,7 +79,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget (
 )
 
 /-- Tail allocator events of `split_signed` after `split_id`: none when `splitId file = none`, a 14-byte allocation when `rest.length < 64`, and a 14-byte allocation plus `FreeOnlyEvs` drop when `64 ≤ rest.length`. -/
-def SplitSignedTailEnv (file : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def SplitSignedTailEnv (file : List (BitVec 8)) : List AllocEvent → Prop :=
   match splitId file with
   | none => (· = [])
   | some (_, rest) =>
@@ -80,7 +87,7 @@ def SplitSignedTailEnv (file : List (BitVec 8)) : List AllocEvent → Prop :=
     else SeqEnv (· = rustAllocEvents 14 1) FreeOnlyEvs
 
 /-- Full allocator event envelope of `split_signed` parameterized by `split_id`'s `SplitEnv`. -/
-def SplitSignedEnv (SplitEnv : List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def SplitSignedEnv (SplitEnv : List (BitVec 8) → List AllocEvent → Prop)
     (file : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv (SplitEnv file) (SplitSignedTailEnv file)
 

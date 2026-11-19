@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.ModelProofs.AdvanceAndFrame
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import LibsignalBinary.Proofs.ConsumeMessageKey.ModelProofs.AdvanceAndFrame -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 
 /-!
 # Receiver-Chain Erasure and Execution Inversion Lemmas
@@ -20,7 +20,7 @@ inversion lemmas for `findReceiverChainKey`, `takeSkippedKey`, and `advanceChain
 `setReceiverChainKey`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -59,7 +59,7 @@ theorem publicKey_eq_vec32_of_toList_eq {pk : PublicKey} {b : HwBytes}
   rw [h, vec32_toList_of_length_eq hLen]
 
 /-- Clears cached `messageKeys` from a `ReceiverChain`. -/
-def eraseRecvChain (rc : ReceiverChain) : ReceiverChain :=
+@[expose] def eraseRecvChain (rc : ReceiverChain) : ReceiverChain :=
   { rc with messageKeys := [] }
 
 @[simp] theorem eraseRecvChain_idem (rc : ReceiverChain) :
@@ -188,7 +188,7 @@ theorem keyToBytes32_inj' {a b : BitVec 256}
   rw [← bytesToKey32_keyToBytes32' a, h, bytesToKey32_keyToBytes32']
 
 /-- Record representation of an erased receiver chain. -/
-def recChainOfErased (rc : ReceiverChain) : ChainRec :=
+@[expose] def recChainOfErased (rc : ReceiverChain) : ChainRec :=
   { senderRatchetKey := rc.senderRatchetKey.serialize
     senderRatchetKeyPrivate := []
     chainKey := rc.chainKey.map fun ck => (ck.index, CryptoGames.HMAC.keyToBytes32 ck.key)

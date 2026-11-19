@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -18,7 +18,7 @@ import VCVio.EvalDist.Monad.Basic
 Proves that `initiateOpkGdhB` and `initiateNoOpkGdhB` evaluate to `fgRunInitiateGdh`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

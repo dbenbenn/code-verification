@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOk
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOk -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
@@ -19,15 +19,17 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHook
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHook
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat
 import LibsignalBinary.Proofs.TripleRatchet.Glue
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # CLI Instantiation of `IdentityStoreKitOkIE`
 
-Specializes `IdKit.cliIdKitOkIE` to `cliExterns W` and `cliExternsWith ext` using the CLI
+Specializes `IdKit.cliIdKitOkIE` to `cliExterns W` using the CLI
 `read_file` and `subtle::black_box::<u8>` hook contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,52 +52,8 @@ theorem cliExterns_blackBox (W : CliHooks) :
       some CryptoVerification.LibsignalSession.blackBoxHook :=
   Slots.cliExterns_sessionExterns_le W _ _ (by rfl_kernel)
 
-/-- `IdentityStoreKitOkIE` for `cliIdentityStoreSpec` at `cliExterns W` and `E2E.HooksE.A0`. -/
-theorem cliIdKitOkIE_cli (W : CliHooks) {img : Obj.Image} {F0 : FsFiles} {peer : AddrGhost}
-    {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hs1 : IdKit.trustShimNeed ≤ s1) (hs2 : IdKit.trustPollNeed readStk ≤ s2)
-    (hs3 : IdKit.saveShimNeed ≤ s3) (hs4 : IdKit.savePollNeed readStk ≤ s4) :
-    StoreKit.Identity.IdentityStoreKitOkIE img
-      (cliIdentityStoreSpec E2E.HooksE.A0 img.base cliIo.rd F0 cliWrOk peer s1 s2 s3 s4)
-      (cliExterns W) :=
-  IdKit.cliIdKitOkIE himg (RunSkeleton.RunHooks.cli W img) (RunSkeleton.cliReadFile_ok W img readStk)
-    (Glue.publicKeyEq_ok_ext img.base (cliExterns_blackBox W)) hs1 hs2 hs3 hs4
-
-theorem cliExternsWith_blackBox_hookSat {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    HookSat (cliExternsWith ext) "subtle::black_box::<u8>" CliExt.blackBoxSpec :=
-  RunGlue.hookSat_cliExternsWith
-    (by simp [E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol])
-    hOk.blackBox
-
-theorem publicKeyEq_ok_cliExternsWith {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (b : BitVec 64) (hOk : CliExternsOk P A ext) :
-    Getters.PublicKeyEqOkExt32 b (cliExternsWith ext) :=
-  Glue.publicKeyEq_ok_ext32 b (cliExternsWith_blackBox_hookSat hOk)
-
-/-- `IdentityStoreKitOkIE` for `cliIdentityStoreSpec` at `cliExternsWith ext` under
-`CliExternsOk`. -/
-theorem cliIdKitOkIE_ext {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} {img : Obj.Image} {F0 : FsFiles} {peer : AddrGhost}
-    {readStk s1 s2 s3 s4 : Nat}
-    (hOk : CliExternsOk P A ext)
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hs1 : IdKit.trustShimNeed ≤ s1) (hs2 : IdKit.trustPollNeed readStk ≤ s2)
-    (hs3 : IdKit.saveShimNeed ≤ s3) (hs4 : IdKit.savePollNeed readStk ≤ s4)
-    (hread : extHookStack ≤ readStk := by decide) :
-    StoreKit.Identity.IdentityStoreKitOkIE img
-      (cliIdentityStoreSpec A img.base cliIo.rd F0 cliWrOk peer s1 s2 s3 s4)
-      (cliExternsWith ext) :=
-  IdKit.cliIdKitOkIE_ext32 himg (RunSkeleton.RunHooksExt.of_externsOk hOk img)
-    (RunSkeleton.cliReadFile_ok_cliExternsWith hOk img hread)
-    (publicKeyEq_ok_cliExternsWith img.base hOk) hs1 hs2 hs3 hs4
-
 end CryptoVerification.SignalSession.Cli.KitInst.IdKit
 
 namespace CryptoVerification.SignalSession.Cli.KitInst
-
-export IdKit (cliExterns_blackBox cliIdKitOkIE_cli
-  cliExternsWith_blackBox_hookSat publicKeyEq_ok_cliExternsWith cliIdKitOkIE_ext)
 
 end CryptoVerification.SignalSession.Cli.KitInst

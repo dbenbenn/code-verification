@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedMidBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4PlacedMidBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
@@ -21,6 +21,7 @@ import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Clone
 
 /-!
 # Budget-Threaded Relocatable `ck_some` and `priv` Stage Proofs for `Chain::clone` (Block `524`)
@@ -32,7 +33,7 @@ Budget-threaded (`RustCliAllocBudget M` / `VmPreserved`) stage proofs for Block 
   and `chain_clone_placed_priv_pos` (`+88 → ret`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -101,14 +102,14 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 /-! ## 1. Stage-Tail Event Helpers for `chainCloneEvents` -/
 
 /-- Suffix of `chainCloneEvents gc` emitted from the `chain_key` stage onward. -/
-def chainCloneFromCkEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def chainCloneFromCkEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   (match gc.2.chainKey with
    | none => []
    | some _ => rustAllocEvents 32 1) ++
   chainCloneMkEvents gc.2.messageKeys
 
 /-- Suffix of `chainCloneEvents gc` emitted from the `priv` stage onward. -/
-def chainCloneFromPrivEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def chainCloneFromPrivEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   (if gc.1.priv.bytes = [] then [] else rustAllocEvents gc.1.priv.bytes.length 1) ++
   chainCloneFromCkEvents gc
 

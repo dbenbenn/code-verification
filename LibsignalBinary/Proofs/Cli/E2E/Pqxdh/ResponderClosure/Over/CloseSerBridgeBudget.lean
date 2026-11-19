@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBridge
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyBBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecCloneBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecClonePlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropSsLocal1ExtBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneXBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyBBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecCloneBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecClonePlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropSsLocal1ExtBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneXBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExtBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `SessionRecord::serialize` (`Prev1`) Bridge and Callee Assembly
@@ -32,7 +35,7 @@ canonical 32-byte `serializePrev1CanonSpecWithEnvX` contracts, and assembles all
 obligations from `SerContractsXPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -151,7 +154,7 @@ theorem vecU8_atState_eq {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Envelope-parameterized canonical-ghost 32-byte-`out` contract for `SessionRecord::serialize`
 at `serializeStackX`. -/
-def serializePrev1CanonSpecWithEnvX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializePrev1CanonSpecWithEnvX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (Env : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) → List AllocEvent → Prop) :
     Spec (SerializePrev1BodyGhost × M.σ) where
@@ -170,7 +173,7 @@ def serializePrev1CanonSpecWithEnvX (M : AllocCostModel) (A : RustCliAllocBudget
         A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp serializeStackX
 
 /-- Canonical-ghost 32-byte-`out` contract instantiated at `SerializePrev1Env`. -/
-def serializePrev1CanonSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializePrev1CanonSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializePrev1BodyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧

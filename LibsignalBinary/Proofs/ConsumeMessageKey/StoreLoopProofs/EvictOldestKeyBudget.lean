@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.EvictOldestKey
+public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.EvictOldestKey -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
@@ -24,7 +24,7 @@ import ProofLib.SepLogic.WP.Apply
 Proves `EvictOldestKeyPlacedSpec` under `RustCliAllocBudget M` and `SeamBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledBudgetAux
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -23,6 +22,8 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoder
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1Sent
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPQR V1: Budget-Threaded `Option` Field Init Helpers for `Chunked.Ct1Sampled::merge` (Block `300`)
@@ -32,7 +33,7 @@ Proves the three `Option` field initialization step helpers (`tag1_init` for `uc
 `V1State.Chunked.Ct1Sampled::merge` (Block `300`) with `spqrPoolAt` threading.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -56,15 +57,7 @@ open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.SpqrV1.ProtoRepr.EncodedLen
   (cap_add_one_beq_zero_false cap_add_one_bne_zero_true
    noneCap_add_one_beq_zero noneCap_add_one_bne_zero)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedCt1SampledMergeGhost ChunkedLoopRegs SepWPpLscro
-   bv64_add_zero bv64_sub_zero chunkedBelow chunkedCt1SampledMerge_fnOff
-   chunkedCt1SampledPBCapAt chunkedSavedRegs
-   default_ct1Sent_entails_cap default_polyDecoder_entails_pb
-   default_polyEncoder_entails_pb memRegion_ct1Sent_none_split
-   memRegion_polyDecoder_none_split memRegion_polyEncoder_none_split
-   optUnchunkedCt1SentPBCapAt unchunkedCt1SentPBCapAt
-   vecU8At_eq_header_sep_buf vecU8Buf vecU8Buf_entails_cap_lt vecVecU8Buf_entails_cap_lt)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedCt1SampledMergeGhost ChunkedLoopRegs SepWPpLscro bv64_add_zero bv64_sub_zero chunkedBelow chunkedCt1SampledPBCapAt chunkedSavedRegs default_ct1Sent_entails_cap default_polyDecoder_entails_pb default_polyEncoder_entails_pb memRegion_ct1Sent_none_split memRegion_polyDecoder_none_split memRegion_polyEncoder_none_split optUnchunkedCt1SentPBCapAt unchunkedCt1SentPBCapAt vecU8At_eq_header_sep_buf vecU8Buf vecU8Buf_entails_cap_lt vecVecU8Buf_entails_cap_lt)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_300 blkPl_300)
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget VmPreserved)
 open LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledBudgetAux
@@ -77,7 +70,7 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   noneCap_add_one_beq_zero noneCap_add_one_bne_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero chunkedCt1SampledMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 
 section ClPlaced
 

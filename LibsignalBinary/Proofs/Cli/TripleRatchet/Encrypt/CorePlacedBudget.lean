@@ -9,23 +9,32 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeysBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.RodataBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.CoreStepEnvBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeysBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Stack -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.CoreStepEnvBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib.SepLogic.WP -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SpqrErrorDisplayAux
+import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.RodataBudget
+import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -35,7 +44,7 @@ Threads allocator cost-model state (`RustCliAllocBudget M`) and concrete allocat
 block `428` (`OutgoingTripleRatchet::encrypt::<Coins>`) over `cliTapeAt` / `cliTapeAfter`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -51,7 +60,10 @@ open CryptoGames.HMAC (keyToBytes32)
 open CryptoGames.LibsignalSession (
   ChainKey Crypto OutgoingTripleRatchet SignalMessage SignalProtocolError aesCbcEncrypt
 )
-open CryptoVerification (LibsignalPlacement lsLogFilterAddr lsRustDeallocSym lsmpl lsρ)
+open CryptoVerification (
+  LibsignalPlacement LibsignalRoLoaded lsLogFilterAddr lsRustDeallocSym lsroCheck lsro_intro_chk
+  lsmpl lsρ
+)
 open CryptoVerification.Cli.CoinsTape (cliTapeAfter cliTapeAt)
 open CryptoVerification.CliRatchet.Placed (blkLib_428 blkLib_eq_428 blkPC_428 blkPl_428)
 open CryptoVerification.LibsignalSessionRepr (chainKeyBytes length_keyToBytes32)
@@ -61,17 +73,18 @@ open CryptoVerification.LibsignalTripleRatchet (
   extHookStack extract_withLsCodeRoLoaded
   generateKeysStack messageKeysAt messageKeysStack nextChainKeyStack
   optAddrAt rootStack signalMessageNewStack
-  spqrSendResultAt spqrSendStack withLsCodeRoLoaded
+  spqrSendStack withLsCodeRoLoaded
 )
 open CryptoVerification.LibsignalTripleRatchet.Encrypt (
   LsCallInv
   add_one_beq_zero_false_of_lt_2_63 aesCbcEncrypt_length_le_u32
   blockToBytesLE_length bytes32_unpack
   bytesToBlock_blockToBytesLE bytesToKey32_keyToBytes32
-  chainKeyBytes_split chainKeyBytes_unpack errResultAt_invalidState_placed_pack
-  err_branch_stack_join err_branch_stack_split lsAesEncSym lsFormatInnerSym
+  chainKeyBytes_split chainKeyBytes_unpack drop_left_sepWPp
+  errResultAt_invalidState_placed_pack err_branch_stack_join
+  lsAesEncSym lsFormatInnerSym
   lsOtrEncryptCoinsRoSym lsroCheck_otrEncryptCoinsRoSym messageKeys_seed_length
-  model_of_send_none msgResultAt_ok_pack
+  model_of_send_none mr_cut' msgResultAt_ok_pack
   ok_branch_epilogue_stack otrAt_exists_pack otrAt_updated_pack
   pair_576_entails_memRegion post_copy_stack_fold post_dealloc1_copy_fold
   pre_dealloc1_stack_fold pre_nck_fold pre_nck_stack_split pre_new_stack_split
@@ -87,24 +100,40 @@ open CryptoVerification.LibsignalTripleRatchet.Encrypt.EncryptCoreFacts (
 )
 open CryptoVerification.LibsignalTripleRatchet.FromRecordCallees (lsLogOff)
 open CryptoVerification.LibsignalTripleRatchetRepr (
-  UuidParser otrAt protocolAddressAt signalMessageResultAt utf8 uuidTryParse
+  UuidParser errTag otrAt protocolAddressAt signalMessageResultAt utf8 uuidTryParse
 )
-open CryptoVerification.RustHeap (allocHookStack)
+open CryptoVerification.RustHeap (RustAlloc allocHookStack vecU8)
 open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits FitsEnv FreeOnlyEvs
   RustCliAllocBudget SeqEnv rustAllocEvents rustCliDeallocBudgetSpec rustDeallocEvents
 )
 open LibsignalBinary.Heap.SpecBudget (
-  AesEncEnv FormatInnerEnv aesCallPreBudget aesEncBudgetSpec
-  formatInnerBudgetEnvSpec withVmPreserved
+  AesEncEnv aesCallPreBudget aesEncBudgetSpec withVmPreserved
 )
 open LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux (
   otrEncryptPlacedSpec otrEncryptPlacedSpecQ otrEncryptPlacedSpecQF
 )
 open LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget (
-  spqrSendCoinsPlacedSpec
+  spqrSendCoinsDispPlacedSpec
 )
 open LibsignalBinary.Proofs.Placed.BudgetPoolSync (hooksException sepWP_seg_ls_vm)
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (lsRetAddr624_base_add)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  CliFormatInnerLsCall cliFormatInnerLsCallSpec
+  cliFormatInnerLsCall_exactEvs_mem_spqrErrorDisplayPrefixed formatInnerCallCliLsSpec
+  formatInnerCallLsEnvSpec lsRetAddrFormatInner_base_add
+  lsSpqrErrorDisplayBlock prefixedOneArgTplBytes withLsRetFormatInner
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (
+  CliFormatInnerEnv cliFormatInnerEnv_nil
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SpqrErrorDisplayAux (
+  fmtArgEntriesAt_false_singleton getLsbD0_sub_even_of_spAligned spqrErrorCellsAt
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (
+  SpqrErrorValidTag spqrSendResultDispAt spqrSendResultDispAt_entails_spqrSendResultAt
+)
 open LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeysBudget (
   MessageKeysEnv messageKeysEvents messageKeysPlacedSpec messageKeysPlacedSpecWithStack
 )
@@ -113,7 +142,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget (
   otrSignalMsgGhost signalMessageNewEvents_eq_otrSignalMsgGhost
 )
 open LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.RodataBudget (
-  aesEnc_placed_ok dealloc_placed_ok formatInnerEnv_placed_ok
+  aesEnc_placed_ok dealloc_placed_ok formatInnerCallLsEnv_placed_ok
 )
 open LibsignalBinary.Proofs.TripleRatchet.Encrypt.CoreStepEnvBudget (
   OptVecDropEnv OtrEncryptStepEnv
@@ -132,6 +161,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget (
 open LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget (
   SignalMessageNewEnv signalMessageNewEvents signalMessageNewSpec signalMessageNewSpecWithStack
 )
+open VerifiedLibraries.RustStd (fmtArgumentsAt)
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -145,7 +175,7 @@ theorem lsLogOff_eq [LibsignalPlacement] :
 /-- Envelope-parametric budget specification of CLI `OTR::encrypt::<Coins>` over `cliTapeAt` /
 `cliTapeAfter`. Definitionally equal (`rfl`) to `PlacedDefsBudgetAux.otrEncryptPlacedSpec` at
 `OtrEncryptEnv C S sendEnv uuidParse`. -/
-def otrEncryptCoinsPlacedEnvSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def otrEncryptCoinsPlacedEnvSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (EncryptEnv : OtrEncryptGhost → List AllocEvent → Prop) :
@@ -169,7 +199,7 @@ abbrev otrEncryptCoinsPlacedStepSpec [LibsignalPlacement] {M : AllocCostModel} (
     (uuidParse : UuidParser) (S : SpqrModel)
     (SendEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop :=
       fun _ _ evs => evs = [])
-    (FmtEnv : List AllocEvent → Prop := FormatInnerEnv) :
+    (FmtEnv : List AllocEvent → Prop := CliFormatInnerEnv) :
     Spec (OtrEncryptGhost × M.σ) :=
   otrEncryptCoinsPlacedEnvSpec C A lim ctl uuidParse S
     (OtrEncryptStepEnv C S uuidParse SendEnv FmtEnv)
@@ -240,7 +270,7 @@ theorem subroutine_ok_otrEncryptCoinsPlacedEnv_framed_of_imp [LibsignalPlacement
 
 /-- Protected postcondition wrapper so `simp ... only [arm64_norm]` during instruction stepping
 never expands `(otrEncryptCoinsPlacedEnvSpec ...).post` inside the `SepWPp` goal. -/
-def otrCoinsPostBox [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def otrCoinsPostBox [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (EncryptEnv : OtrEncryptGhost → List AllocEvent → Prop)
@@ -306,7 +336,7 @@ private theorem seqEnv_append {P Q : List AllocEvent → Prop} {xs ys : List All
 
 theorem otrEncryptEnv_of_stepEnv {C : Crypto} {S : SpqrModel} {uuidParse : UuidParser}
     {SendEnv : SpqrSendBudgetEnv} {x : OtrEncryptGhost} {evs : List AllocEvent}
-    (h : OtrEncryptStepEnv C S uuidParse SendEnv FormatInnerEnv x evs) :
+    (h : OtrEncryptStepEnv C S uuidParse SendEnv CliFormatInnerEnv x evs) :
     OtrEncryptEnv C S SendEnv uuidParse x evs := by
   unfold OtrEncryptEnv OtrEncryptCoreEnv
   cases hsend : S.send x.ot.pqrState x.rest with
@@ -385,6 +415,216 @@ local macro "sync_seg_428 " hH:term "," mid:term "," hrun:ident : tactic => `(ta
     (hnext := ?_)
   simp only [State.setMem_setMem]))
 
+abbrev lsOtrSendErrTplSym : String :=
+  "libsignal_cli_ratchet:.rodata.str1.1+0x567"
+
+@[expose] def otrSendErrPfxBs : List (BitVec 8) :=
+  [0x70#8, 0x6f#8, 0x73#8, 0x74#8, 0x2d#8, 0x71#8, 0x75#8, 0x61#8, 0x6e#8, 0x74#8, 0x75#8,
+   0x6d#8, 0x20#8, 0x72#8, 0x61#8, 0x74#8, 0x63#8, 0x68#8, 0x65#8, 0x74#8, 0x20#8, 0x73#8,
+   0x65#8, 0x6e#8, 0x64#8, 0x20#8, 0x65#8, 0x72#8, 0x72#8, 0x6f#8, 0x72#8, 0x3a#8, 0x20#8]
+
+theorem lsroCheck_otrSendErrTplSym :
+    lsroCheck lsOtrSendErrTplSym (prefixedOneArgTplBytes otrSendErrPfxBs) = true := by
+  decide +kernel
+
+private theorem rodata_otrSendErrTpl_placed_sepWPp [LibsignalPlacement] {prog : Program}
+    {ret : BitVec 64} {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
+    (hchk : lsroCheck lsOtrSendErrTplSym (prefixedOneArgTplBytes otrSendErrPfxBs) = true)
+    (hro : LibsignalRoLoaded lsmpl s.mem)
+    (h : SepWPp prog ret s
+      (((lsmpl.ρ lsOtrSendErrTplSym) ↦ᵣ prefixedOneArgTplBytes otrSendErrPfxBs) ∗ P) Q Qp) :
+    SepWPp prog ret s P Q Qp := by
+  intro R hm hL
+  refine h R ?_ hL
+  rw [sepConj_assoc]
+  exact lsro_intro_chk hro hchk hm
+
+private theorem byte_and_seven_entails_word64 (a : BitVec 64) (d : BitVec 8) :
+    (a ↦₈ d) ∗ memRegion (a + 1#64) 7 ⊢
+      ∃∗ w : BitVec 64, ⌜w.extractLsb' 0 8 = d⌝ ∗ (a ↦₆₄ w) := by
+  rw [memRegion_eq_exists_bytes (a + 1#64) 7 (by decide), sepExists_sepConj_right]
+  refine Entails.sepExists_elim fun bs => ?_
+  rw [sepConj_pure_left_comm]
+  refine Entails.pure_left fun hlen => ?_
+  rcases bs with _ | ⟨b1, _ | ⟨b2, _ | ⟨b3, _ | ⟨b4, _ | ⟨b5, _ | ⟨b6, _ | ⟨b7, _ | _⟩⟩⟩⟩⟩⟩⟩ <;>
+    try (simp at hlen)
+  let w : BitVec 64 := b7 ++ b6 ++ b5 ++ b4 ++ b3 ++ b2 ++ b1 ++ d
+  have hw_eq : (a ↦₈ d) ∗ ((a + 1#64) ↦ₛ [b1, b2, b3, b4, b5, b6, b7]) = (a ↦₆₄ w) := by
+    rw [← pointsToBytes_cons, pointsToBytes8_eq_pointsTo64]
+  have hd : w.extractLsb' 0 8 = d := by
+    dsimp only [w]; bv_bits
+  rw [hw_eq]
+  exact Entails.sepExists_right w (Entails.pure_right hd (Entails.refl _))
+
+private theorem spqrSendResultDispAt_none_unpack (A : RustAlloc) (sp : BitVec 64) :
+    spqrSendResultDispAt A (sp - 408#64) none ⊢
+      ∃∗ c0 : BitVec 64,
+        ⌜SpqrErrorValidTag (c0.extractLsb' 0 8)⌝ ∗
+        ((sp - 408#64) ↦₆₄ errTag) ∗
+        ((sp - 400#64) ↦₆₄ c0) ∗
+        memRegion (sp - 392#64) 56 := by
+  dsimp only [spqrSendResultDispAt]
+  have ha400 : sp - 408#64 + 8#64 = sp - 400#64 := by bv_arith
+  have ha399 : sp - 408#64 + 9#64 = sp - 400#64 + 1#64 := by bv_arith
+  have ha392 : sp - 400#64 + 1#64 + 7#64 = sp - 392#64 := by bv_arith
+  rw [ha400, ha399, show (63 : Nat) = 7 + 56 by rfl,
+    memRegion_split (sp - 400#64 + 1#64) 7 56 (by decide), ha392]
+  rw [sepExists_sepConj_left, sepExists_sepConj_right]
+  refine Entails.sepExists_elim fun d => ?_
+  have hassoc :
+      ((sp - 408#64) ↦₆₄ errTag) ∗ ((⌜SpqrErrorValidTag d⌝ ∗ ((sp - 400#64) ↦₈ d)) ∗
+        (memRegion (sp - 400#64 + 1#64) 7 ∗ memRegion (sp - 392#64) 56)) =
+      ⌜SpqrErrorValidTag d⌝ ∗
+        ((((sp - 400#64) ↦₈ d) ∗ memRegion (sp - 400#64 + 1#64) 7) ∗
+          (((sp - 408#64) ↦₆₄ errTag) ∗ memRegion (sp - 392#64) 56)) := by
+    sep_ac_rfl
+  rw [hassoc]
+  refine Entails.pure_left fun hd => ?_
+  refine Entails.trans (sepConj_mono_left (byte_and_seven_entails_word64 (sp - 400#64) d)) ?_
+  rw [sepExists_sepConj_left]
+  refine Entails.sepExists_elim fun c0 => ?_
+  rw [sepConj_assoc]
+  refine Entails.pure_left fun hc0 => ?_
+  refine Entails.sepExists_right c0 ?_
+  refine Entails.pure_right (hc0.symm ▸ hd) ?_
+  exact Entails.of_eq (by sep_ac_rfl)
+
+private theorem err_branch_stack_split_disp (sp : BitVec 64) :
+    (memRegion (sp - 552#64) 88 ∗ memRegion (sp - 464#64) 48 ∗
+      memRegion (sp - 392#64) 56 ∗ memRegion (sp - 288#64) 32) =
+      (memRegion (sp - 552#64) 8 ∗ memRegion (sp - 544#64) 24 ∗ memRegion (sp - 520#64) 56 ∗
+        (∃∗ a0 : BitVec 64, (sp - 464#64) ↦₆₄ a0) ∗
+        (∃∗ a1 : BitVec 64, (sp - 456#64) ↦₆₄ a1) ∗
+        (∃∗ a2 : BitVec 64, (sp - 448#64) ↦₆₄ a2) ∗
+        memRegion (sp - 440#64) 24 ∗
+        (∃∗ c1 : BitVec 64, (sp - 392#64) ↦₆₄ c1) ∗
+        (∃∗ c2 : BitVec 64, (sp - 384#64) ↦₆₄ c2) ∗
+        memRegion (sp - 376#64) 40 ∗
+        (∃∗ b0 : BitVec 64, (sp - 288#64) ↦₆₄ b0) ∗
+        (∃∗ b1 : BitVec 64, (sp - 280#64) ↦₆₄ b1) ∗
+        memRegion (sp - 272#64) 16) := by
+  rw [mr_cut' sp 552 544 8 80 88 rfl rfl (by decide) (by decide) (by decide),
+    mr_cut' sp 544 520 24 56 80 rfl rfl (by decide) (by decide) (by decide),
+    mr_cut' sp 464 456 8 40 48 rfl rfl (by decide) (by decide) (by decide),
+    mr_cut' sp 456 448 8 32 40 rfl rfl (by decide) (by decide) (by decide),
+    mr_cut' sp 448 440 8 24 32 rfl rfl (by decide) (by decide) (by decide),
+    mr_cut' sp 392 384 8 48 56 rfl rfl (by decide) (by decide) (by decide),
+    mr_cut' sp 384 376 8 40 48 rfl rfl (by decide) (by decide) (by decide),
+    mr_cut' sp 288 280 8 24 32 rfl rfl (by decide) (by decide) (by decide),
+    mr_cut' sp 280 272 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
+  simp only [memRegion_eight, sepConj_assoc]
+
+private theorem words3_464_entails_spqrErrorCellsAt (sp w0 w1 w2 : BitVec 64) :
+    ((sp - 464#64) ↦₆₄ w0) ∗ ((sp - 456#64) ↦₆₄ w1) ∗ ((sp - 448#64) ↦₆₄ w2) ⊢
+      spqrErrorCellsAt (sp - 464#64)
+        (w0.extractLsb' 0 8) (w0.extractLsb' 8 8) (w0.extractLsb' 32 32) w1 w2 := by
+  dsimp only [spqrErrorCellsAt]
+  have ha8 : sp - 464#64 + 8#64 = sp - 456#64 := by bv_arith
+  have ha16 : sp - 464#64 + 16#64 = sp - 448#64 := by bv_arith
+  rw [pointsTo64_split32 (sp - 464#64) w0, ha8, ha16]
+  have hlo : ((sp - 464#64) ↦₃₂ w0.extractLsb' 0 32) ⊢
+      ((sp - 464#64) ↦₈ w0.extractLsb' 0 8) ∗
+        ((sp - 464#64 + 1#64) ↦₈ w0.extractLsb' 8 8) ∗
+        memRegion (sp - 464#64 + 2#64) 2 := by
+    rw [pointsTo32_eq_pointsToBytes]
+    dsimp only [unpack32]
+    rw [pointsToBytes_cons, pointsToBytes_cons]
+    have ha2 : sp - 464#64 + 1#64 + 1#64 = sp - 464#64 + 2#64 := by bv_arith
+    have he0 : (w0.extractLsb' 0 32).extractLsb' 0 8 = w0.extractLsb' 0 8 := by bv_bits
+    have he8 : (w0.extractLsb' 0 32).extractLsb' 8 8 = w0.extractLsb' 8 8 := by bv_bits
+    rw [ha2, he0, he8]
+    exact sepConj_mono_right (sepConj_mono_right
+      (pointsToBytes_entails_memRegion (sp - 464#64 + 2#64) _))
+  refine Entails.trans (sepConj_mono_left (sepConj_mono_left hlo)) ?_
+  exact Entails.of_eq (by sep_ac_rfl)
+
+private theorem words3_464_pack_spqrErrorCellsAt {sp w0 w1 w2 c0 c1 c2 : BitVec 64}
+    (hw0 : w0 = c0) (hw1 : w1 = c1) (hw2 : w2 = c2) :
+    ((sp - 464#64) ↦₆₄ w0) ∗ ((sp - 456#64) ↦₆₄ w1) ∗ ((sp - 448#64) ↦₆₄ w2) ⊢
+      spqrErrorCellsAt (sp - 464#64)
+        (c0.extractLsb' 0 8) (c0.extractLsb' 8 8) (c0.extractLsb' 32 32) c1 c2 := by
+  cases hw0; cases hw1; cases hw2
+  exact words3_464_entails_spqrErrorCellsAt sp w0 w1 w2
+
+private theorem spqrErrorCellsAt_entails_words3_464 (sp : BitVec 64)
+    (d b1 : BitVec 8) (u1 : BitVec 32) (q1 q2 : BitVec 64) :
+    spqrErrorCellsAt (sp - 464#64) d b1 u1 q1 q2 ⊢
+      (∃∗ a0' : BitVec 64, (sp - 464#64) ↦₆₄ a0') ∗
+        ((sp - 456#64) ↦₆₄ q1) ∗ ((sp - 448#64) ↦₆₄ q2) := by
+  dsimp only [spqrErrorCellsAt]
+  have ha8 : sp - 464#64 + 8#64 = sp - 456#64 := by bv_arith
+  have ha16 : sp - 464#64 + 16#64 = sp - 448#64 := by bv_arith
+  rw [ha8, ha16]
+  have h8 :
+      ((sp - 464#64) ↦₈ d) ∗ ((sp - 464#64 + 1#64) ↦₈ b1) ∗
+        memRegion (sp - 464#64 + 2#64) 2 ∗ ((sp - 464#64 + 4#64) ↦₃₂ u1) ⊢
+      ∃∗ a0' : BitVec 64, (sp - 464#64) ↦₆₄ a0' := by
+    rw [← memRegion_eight (sp - 464#64)]
+    have hm0 : ((sp - 464#64) ↦₈ d) ⊢ memRegion (sp - 464#64) 1 := by
+      rw [memRegion_one]; exact Entails.sepExists_right d (Entails.refl _)
+    have hm1 : ((sp - 464#64 + 1#64) ↦₈ b1) ⊢ memRegion (sp - 464#64 + 1#64) 1 := by
+      rw [memRegion_one]; exact Entails.sepExists_right b1 (Entails.refl _)
+    have hm4 : ((sp - 464#64 + 4#64) ↦₃₂ u1) ⊢ memRegion (sp - 464#64 + 4#64) 4 := by
+      rw [memRegion_four]; exact Entails.sepExists_right u1 (Entails.refl _)
+    refine Entails.trans
+      (sepConj_mono hm0 (sepConj_mono hm1 (sepConj_mono_right hm4))) ?_
+    have hsplit :
+        memRegion (sp - 464#64) 8 =
+          memRegion (sp - 464#64) 1 ∗ memRegion (sp - 464#64 + 1#64) 1 ∗
+            memRegion (sp - 464#64 + 2#64) 2 ∗ memRegion (sp - 464#64 + 4#64) 4 := by
+      rw [show (8 : Nat) = 1 + 7 by rfl, memRegion_split (sp - 464#64) 1 7 (by decide),
+        show (7 : Nat) = 1 + 6 by rfl, memRegion_split (sp - 464#64 + 1#64) 1 6 (by decide),
+        show sp - 464#64 + 1#64 + 1#64 = sp - 464#64 + 2#64 by bv_arith,
+        show (6 : Nat) = 2 + 4 by rfl, memRegion_split (sp - 464#64 + 2#64) 2 4 (by decide),
+        show sp - 464#64 + 2#64 + 2#64 = sp - 464#64 + 4#64 by bv_arith]
+    rw [hsplit]
+    exact Entails.refl _
+  have hassoc :
+      ((sp - 464#64) ↦₈ d) ∗ ((sp - 464#64 + 1#64) ↦₈ b1) ∗
+        memRegion (sp - 464#64 + 2#64) 2 ∗ ((sp - 464#64 + 4#64) ↦₃₂ u1) ∗
+        ((sp - 456#64) ↦₆₄ q1) ∗ ((sp - 448#64) ↦₆₄ q2) =
+      (((sp - 464#64) ↦₈ d) ∗ ((sp - 464#64 + 1#64) ↦₈ b1) ∗
+        memRegion (sp - 464#64 + 2#64) 2 ∗ ((sp - 464#64 + 4#64) ↦₃₂ u1)) ∗
+        (((sp - 456#64) ↦₆₄ q1) ∗ ((sp - 448#64) ↦₆₄ q2)) := by
+    sep_ac_rfl
+  rw [hassoc]
+  exact sepConj_mono_left h8
+
+private theorem otrSendErrFmtArgs_eq [LibsignalPlacement] {sp : BitVec 64}
+    (hsp : (sp &&& 15#64 == 0#64) = true) :
+    fmtArgumentsAt false (lsmpl.ρ lsOtrSendErrTplSym) (sp - 288#64)
+      (prefixedOneArgTplBytes otrSendErrPfxBs)
+      [(sp - 464#64, lsmpl.base lsSpqrErrorDisplayBlock)] =
+    (lsmpl.ρ lsOtrSendErrTplSym ↦ᵣ prefixedOneArgTplBytes otrSendErrPfxBs) ∗
+      ((sp - 288#64) ↦₆₄ (sp - 464#64)) ∗
+      ((sp - 280#64) ↦₆₄ lsmpl.base lsSpqrErrorDisplayBlock) := by
+  have heven := getLsbD0_sub_even_of_spAligned hsp 288 (by decide)
+  have ha280 : sp - 288#64 + 8#64 = sp - 280#64 := by bv_arith
+  simp only [fmtArgumentsAt, heven, Bool.false_eq_true, ↓reduceIte,
+    fmtArgEntriesAt_false_singleton, ha280]
+
+private theorem otrSendErrFmtArgs_pack [LibsignalPlacement] {sp v288 v280 : BitVec 64}
+    (hsp : (sp &&& 15#64 == 0#64) = true)
+    (hv288 : v288 = sp - 464#64)
+    (hv280 : v280 = lsmpl.base lsSpqrErrorDisplayBlock) :
+    (lsmpl.ρ lsOtrSendErrTplSym ↦ᵣ prefixedOneArgTplBytes otrSendErrPfxBs) ∗
+      ((sp - 288#64) ↦₆₄ v288) ∗
+      ((sp - 280#64) ↦₆₄ v280) ⊢
+    fmtArgumentsAt false (lsmpl.ρ lsOtrSendErrTplSym) (sp - 288#64)
+      (prefixedOneArgTplBytes otrSendErrPfxBs)
+      [(sp - 464#64, lsmpl.base lsSpqrErrorDisplayBlock)] := by
+  subst hv288; subst hv280
+  exact Entails.of_eq (otrSendErrFmtArgs_eq hsp).symm
+
+private def otrSendErrFmtCall [LibsignalPlacement] (sp c0 c1 c2 : BitVec 64) :
+    CliFormatInnerLsCall where
+  ret := sp - 544#64
+  x0 := lsmpl.ρ lsOtrSendErrTplSym
+  x1 := sp - 288#64
+  argsRo := false
+  shape := .spqrErrorDisplayPrefixed otrSendErrPfxBs (sp - 464#64)
+    (c0.extractLsb' 0 8) (c0.extractLsb' 8 8) (c0.extractLsb' 32 32) c1 c2
+
 section Block428Body
 
 attribute [local irreducible] otrCoinsPostBox
@@ -398,22 +638,22 @@ theorem otrEncrypt_coins_placed_step_body_ok_frame [LibsignalPlacement] {M : All
     (ctl : BitVec 64) (S : SpqrModel)
     (SendEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop :=
       fun _ _ evs => evs = [])
-    (FmtEnv : List AllocEvent → Prop := FormatInnerEnv)
+    (FmtEnv : List AllocEvent → Prop := CliFormatInnerEnv)
     (H : String → Option (State → State))
-    (hFmtWit : ∃ evs, FmtEnv evs := by exact ⟨[], rfl⟩)
-    (h_aes : HookSat H lsAesEncSym (aesEncBudgetSpec C.E M A lim))
-    (h_fmt : HookSat H lsFormatInnerSym (formatInnerBudgetEnvSpec M A lim FmtEnv))
+    (hFmtSub : ∀ evs, CliFormatInnerEnv evs → FmtEnv evs := by intro _ h; exact h)
+    (h_aes : HookSat H lsAesEncSym (withLsRet (aesEncBudgetSpec C.E M A lim)))
+    (h_fmt : HookSat H lsFormatInnerSym (formatInnerCallLsEnvSpec M A lim FmtEnv))
     (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hSend : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        { spqrSendCoinsPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
+        { spqrSendCoinsDispPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
           pre := fun (sc, st) s =>
             ⌜Q sc.st.bytes sc.rest⌝ ∗ F ∗
-              (spqrSendCoinsPlacedSpec M A lim ctl S
+              (spqrSendCoinsDispPlacedSpec M A lim ctl S
                 (fun sc evs => SendEnv sc.st.bytes sc.rest evs)).pre (sc, st) s
           post := fun (sc, st) s0 sf =>
-            F ∗ (spqrSendCoinsPlacedSpec M A lim ctl S
+            F ∗ (spqrSendCoinsDispPlacedSpec M A lim ctl S
               (fun sc evs => SendEnv sc.st.bytes sc.rest evs)).post (sc, st) s0 sf }))
     (hMK : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 38) (withLsCodeRoLoaded lsmpl (messageKeysPlacedSpec C.F A lim)))
@@ -462,20 +702,21 @@ theorem otrEncrypt_coins_placed_step_body_ok_frame [LibsignalPlacement] {M : All
     R, ?_, ?_⟩
   · wp_focus_close arm64_sep_close
   have hAes := aesEnc_placed_ok (prog := (blkPC_428).rebase (blkPl_428).base H) h_aes
-  have hFmt := formatInnerEnv_placed_ok (prog := (blkPC_428).rebase (blkPl_428).base H) h_fmt
+  have hFmt := formatInnerCallLsEnv_placed_ok (prog := (blkPC_428).rebase (blkPl_428).base H) h_fmt
   have hDealloc := dealloc_placed_ok (prog := (blkPC_428).rebase (blkPl_428).base H) h_dealloc
-  dsimp only [spqrSendCoinsPlacedSpec, messageKeysPlacedSpec, messageKeysPlacedSpecWithStack,
+  dsimp only [spqrSendCoinsDispPlacedSpec, messageKeysPlacedSpec, messageKeysPlacedSpecWithStack,
     generateKeysSpec, generateKeysSpecWithStack, signalMessageNewSpec, signalMessageNewSpecWithStack,
     nextChainKeyPlacedSpec, withVmPreserved,
     CryptoVerification.LibsignalTripleRatchet.Encrypt.nextChainKeyPlacedSpec,
-    aesEncBudgetSpec, aesCallPreBudget, formatInnerBudgetEnvSpec, rustCliDeallocBudgetSpec,
+    withLsRet, aesEncBudgetSpec, aesCallPreBudget, formatInnerCallLsEnvSpec, withLsRetFormatInner,
+    cliFormatInnerLsCallSpec, rustCliDeallocBudgetSpec,
     VecArg.at, SignalMessageNewGhost.inputsAt, Option.isSome]
     at hSend hMK hGK hNew hNCK hAes hFmt hDealloc
   simp only [sepConj_assoc, sepConj_pure_left_comm F, pure_sepConj_pure_assoc]
     at hSend hMK hGK hNew hNCK hAes hFmt hDealloc
   have ⟨hsp640, hsp640_beq⟩ := spAligned_sub_640 hsp_align
   have hfit_send : FitsEnv M lim st0 (SendEnv x.ot.pqrState x.rest) :=
-    fitsEnv_send_of_stepEnv hFmtWit hfit0
+    fitsEnv_send_of_stepEnv ⟨[], hFmtSub [] cliFormatInnerEnv_nil⟩ hfit0
   apply of_sepWP_lsCallInv hinv0 (mid := lsmpl.base 427)
   wp_simp_pre only [otrAt, stackAt_encrypt_prologue s0.sp,
     stackAt_sub (s0.sp - 640#64) (rootStack - 640) spqrSendStack,
@@ -525,29 +766,51 @@ theorem otrEncrypt_coins_placed_step_body_ok_frame [LibsignalPlacement] {M : All
   | none =>
     have hfit_fmt : FitsEnv M lim st1 FmtEnv :=
       fitsEnv_fmt_of_stepEnv_none hsend hev_spqr hfit0
-    simp (disch := decide) only [spqrSendResultAt, bv_sub_add_lit, Nat.reduceSub, sepConj_assoc]
+    refine SepWPp.fold (spqrSendResultDispAt_none_unpack A.repAlloc s0.sp) (by sep_focus) ?_
+    refine wpp_exists_elim fun c0 => ?_
+    simp only [sepConj_assoc]
+    refine SepWPp.pure_elim fun hc0_tag => ?_
     apply of_sepWP_lsCallInv hinv2 (mid := lsρ lsFormatInnerSym)
-    refine SepWP.fold (Entails.of_eq (err_branch_stack_split s0.sp)) (by sep_focus) ?_
+    refine SepWP.fold (Entails.of_eq (err_branch_stack_split_disp s0.sp)) (by sep_focus) ?_
     wp_simp_pre only [stackAt_sub (s0.sp - 640#64) (rootStack - 640) extHookStack,
       sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
     refine SepWP.exists_elim fun b1 => SepWP.exists_elim fun b0 =>
       SepWP.exists_elim fun c2 => SepWP.exists_elim fun c1 =>
-      SepWP.exists_elim fun c0 => SepWP.exists_elim fun a2 =>
-      SepWP.exists_elim fun a1 => SepWP.exists_elim fun a0 => ?_
+      SepWP.exists_elim fun a2 => SepWP.exists_elim fun a1 =>
+      SepWP.exists_elim fun a0 => ?_
     sync_seg_428 H, (lsρ lsFormatInnerSym), hrun1
     apply SepWP.done
       (by simp (config := { decide := true }) only [arm64_norm])
       (by simp (config := { decide := true }) only [arm64_norm, hrun1])
     intro hinv3
+    apply rodata_otrSendErrTpl_placed_sepWPp lsroCheck_otrSendErrTplSym hinv3.2
+    refine SepWPp.fold (otrSendErrFmtArgs_pack hsp_align ?_ ?_) (by sep_focus) ?_
+    · rfl
+    · rfl
+    refine SepWPp.fold
+      (words3_464_pack_spqrErrorCellsAt (c0 := c0) (c1 := c1) (c2 := c2) ?_ ?_ ?_)
+      (by sep_focus) ?_
+    · rfl
+    · rfl
+    · rfl
     refine call_frame_lsInv
-      (x := (s0.sp - 544#64, st1))
+      (x := (otrSendErrFmtCall s0.sp c0 c1 c2, st1))
       hFmt hinv3
       (by simp (config := { decide := true }) only [arm64_norm])
       (by simp (config := { decide := true }) only [arm64_norm, hrun1])
       (by simp (config := { decide := true }) only [State.spAligned, arm64_norm, hsp1, hsp_align, hsp640_beq])
       rfl rfl
-      ⟨by simp (config := { decide := true }) only [arm64_norm, hsp1], hfit_fmt⟩
-      (by simp (config := { decide := true }) only [State.sp_writeReg64, State.sp_writeVReg128, State.sp_setPC, State.sp_setPState, State.sp_setMem, ite_true, ite_false, hsp1]; sep_focus)
+      ⟨by simp (config := { decide := true }) only [arm64_norm]; exact lsRetAddrFormatInner_base_add 428 _ (by decide) (by decide) (by decide),
+        by dsimp only [otrSendErrFmtCall]; simp (config := { decide := true }) only [arm64_norm, wp_norm, hsp1],
+        by dsimp only [otrSendErrFmtCall, lsOtrSendErrTplSym]; simp (config := { decide := true }) only [arm64_norm, wp_norm],
+        by dsimp only [otrSendErrFmtCall]; simp (config := { decide := true }) only [arm64_norm, wp_norm, h29_1],
+        ⟨getLsbD0_sub_even_of_spAligned hsp_align 288 (by decide), hc0_tag, by decide, by decide⟩,
+        hfit_fmt,
+        hFmtSub _ (cliFormatInnerLsCall_exactEvs_mem_spqrErrorDisplayPrefixed _ _ _ _ _ _ _ _ _ _ _ (by decide) (by decide))⟩
+      (by dsimp only [otrSendErrFmtCall, CliFormatInnerLsCall.argsRo, CliFormatInnerLsCall.x0,
+            CliFormatInnerLsCall.x1, CliFormatInnerLsCall.tpl, CliFormatInnerLsCall.args,
+            CliFormatInnerLsCall.clientSep, CliFormatInnerLsCall.ret]
+          simp (config := { decide := true }) only [State.sp_writeReg64, State.sp_writeVReg128, State.sp_setPC, State.sp_setPState, State.sp_setMem, ite_true, ite_false, hsp1]; sep_focus)
       (fun _ _ _ _ => allowPanic_not_exited)
       (fun sf _ hm => by
         simp only [sepConj_assoc, satisfies_pure_sepConj] at hm
@@ -557,9 +820,21 @@ theorem otrEncrypt_coins_placed_step_body_ok_frame [LibsignalPlacement] {M : All
     simp (config := { decide := true }) only [arm64_norm, hsp1, h19_1, h20_1, h21_1, h22_1, h23_1, h24_1, h25_1, h26_1, h27_1, h28_1, h29_1] at hpc2 hsp2 hcs2
     obtain ⟨h19_2, h20_2, h21_2, h22_2, h23_2, h24_2, h25_2, h26_2, h27_2, h28_2, h29_2⟩ := hcs2
     refine wpp_exists_elim fun evs_fmt => ?_
-    simp (config := { decide := true }) only [arm64_norm, hsp1, htr1]
-    refine wpp_exists_elim_top fun fBs => ?_
-    refine SepWPp.pure_elim fun ⟨htr2, hev_fmt⟩ => ?_
+    refine wpp_exists_elim fun fBs => ?_
+    dsimp only [otrSendErrFmtCall, CliFormatInnerLsCall.argsRo, CliFormatInnerLsCall.x0,
+      CliFormatInnerLsCall.x1, CliFormatInnerLsCall.tpl, CliFormatInnerLsCall.args,
+      CliFormatInnerLsCall.clientSep, CliFormatInnerLsCall.ret]
+    simp (config := { decide := true }) only [arm64_norm, hsp1, htr1, sepConj_assoc]
+    refine SepWPp.pure_elim fun ⟨_hacp2, _hfs2, htr2, hev_fmt⟩ => ?_
+    refine SepWPp.fold (Entails.of_eq (otrSendErrFmtArgs_eq hsp_align)) (by sep_focus) ?_
+    simp only [sepConj_assoc]
+    apply drop_left_sepWPp
+    refine SepWPp.fold
+      (spqrErrorCellsAt_entails_words3_464 s0.sp (c0.extractLsb' 0 8)
+        (c0.extractLsb' 8 8) (c0.extractLsb' 32 32) c1 c2)
+      (by sep_focus) ?_
+    simp only [sepConj_assoc]
+    refine wpp_exists_elim fun a0' => ?_
     refine SepWPp.fold
       (Entails.of_eq (stackAt_sub (s0.sp - 640#64) (rootStack - 640) extHookStack).symm)
       (by sep_focus) ?_
@@ -602,7 +877,7 @@ theorem otrEncrypt_coins_placed_step_body_ok_frame [LibsignalPlacement] {M : All
       (by simp (config := { decide := true }) only [arm64_norm, hrun2])
       (model_of_send_none x C S hnp1 hsend)
       hev_none
-      (by decide)
+      (by nofun)
       (by simp (config := { decide := true }) only [arm64_norm, htr2])
       (by sep_focus)
       (by simp (config := { decide := true }) only [arm64_norm, hsp2, BitVec.sub_add_cancel])
@@ -611,7 +886,12 @@ theorem otrEncrypt_coins_placed_step_body_ok_frame [LibsignalPlacement] {M : All
     obtain ⟨newPqrState, pqrKey, pqrMsg⟩ := val
     have hfit_mk : FitsEnv M lim st1 MessageKeysEnv :=
       fitsEnv_mk_of_stepEnv_some hsend hev_spqr hfit0
-    refine SepWPp.fold (sendResultAt_some_unpack A.repAlloc s0.sp newPqrState pqrKey pqrMsg) (by sep_focus) ?_
+    refine SepWPp.fold
+      (Entails.trans
+        (spqrSendResultDispAt_entails_spqrSendResultAt A.repAlloc (s0.sp - 408#64)
+          (some (newPqrState, pqrKey, pqrMsg)))
+        (sendResultAt_some_unpack A.repAlloc s0.sp newPqrState pqrKey pqrMsg))
+      (by sep_focus) ?_
     refine wpp_exists_elim fun newPqrCap => wpp_exists_elim fun newPqrPtr =>
       wpp_exists_elim fun pqrMsgCap => wpp_exists_elim fun pqrMsgPtr =>
       wpp_exists_elim fun k0 => wpp_exists_elim fun k1 =>
@@ -727,7 +1007,8 @@ theorem otrEncrypt_coins_placed_step_body_ok_frame [LibsignalPlacement] {M : All
       (by simp (config := { decide := true }) only [arm64_norm, hrun3])
       (by simp (config := { decide := true }) only [State.spAligned, arm64_norm, hsp3, hsp_align, hsp640_beq])
       rfl rfl
-      ⟨by simp (config := { decide := true }) only [x_aes, arm64_norm, hsp3, h19_3, h20_3, h21_3, h22_3, h23_3, h24_3, h25_3, h26_3, h27_3, h28_3, h29_3],
+      ⟨by simp (config := { decide := true }) only [arm64_norm]; exact lsRetAddr624_base_add 428 _ (by decide) (by decide),
+        by simp (config := { decide := true }) only [x_aes, arm64_norm, hsp3, h19_3, h20_3, h21_3, h22_3, h23_3, h24_3, h25_3, h26_3, h27_3, h28_3, h29_3],
         by simp (config := { decide := true }) only [x_aes, arm64_norm, hsp3, h19_3, h20_3, h21_3, h22_3, h23_3, h24_3, h25_3, h26_3, h27_3, h28_3, h29_3, hx3_0],
         by simp (config := { decide := true }) only [x_aes, arm64_norm, hsp3],
         by simp (config := { decide := true }) only [x_aes, arm64_norm, hsp3],
@@ -1277,19 +1558,19 @@ theorem otrEncrypt_coins_placed_step_body_ok [LibsignalPlacement] {M : AllocCost
     (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (SendEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop :=
       fun _ _ evs => evs = [])
-    (FmtEnv : List AllocEvent → Prop := FormatInnerEnv)
+    (FmtEnv : List AllocEvent → Prop := CliFormatInnerEnv)
     (H : String → Option (State → State))
-    (hFmtWit : ∃ evs, FmtEnv evs := by exact ⟨[], rfl⟩)
-    (h_aes : HookSat H lsAesEncSym (aesEncBudgetSpec C.E M A lim))
-    (h_fmt : HookSat H lsFormatInnerSym (formatInnerBudgetEnvSpec M A lim FmtEnv))
+    (hFmtSub : ∀ evs, CliFormatInnerEnv evs → FmtEnv evs := by intro _ h; exact h)
+    (h_aes : HookSat H lsAesEncSym (withLsRet (aesEncBudgetSpec C.E M A lim)))
+    (h_fmt : HookSat H lsFormatInnerSym (formatInnerCallLsEnvSpec M A lim FmtEnv))
     (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hSend : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        { spqrSendCoinsPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
+        { spqrSendCoinsDispPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
           pre := fun (sc, st) s =>
             ⌜Q sc.st.bytes⌝ ∗
-              (spqrSendCoinsPlacedSpec M A lim ctl S
+              (spqrSendCoinsDispPlacedSpec M A lim ctl S
                 (fun sc evs => SendEnv sc.st.bytes sc.rest evs)).pre (sc, st) s }))
     (hMK : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 38) (withLsCodeRoLoaded lsmpl (messageKeysPlacedSpec C.F A lim)))
@@ -1307,7 +1588,7 @@ theorem otrEncrypt_coins_placed_step_body_ok [LibsignalPlacement] {M : AllocCost
               (otrEncryptCoinsPlacedStepSpec C A lim ctl uuidTryParse S SendEnv FmtEnv).pre
                 (x, st) s }) := by
   have h := otrEncrypt_coins_placed_step_body_ok_frame (fun st _ => Q st) emp C A lim ctl S
-    SendEnv FmtEnv H hFmtWit h_aes h_fmt h_dealloc
+    SendEnv FmtEnv H hFmtSub h_aes h_fmt h_dealloc
     (by simpa only [emp_sepConj] using hSend) hMK hGK hNew hNCK
   simpa only [emp_sepConj] using h
 
@@ -1318,24 +1599,24 @@ theorem otrEncrypt_coins_placed_env_body_ok_frame [LibsignalPlacement] {M : Allo
     (EncryptEnv : OtrEncryptGhost → List AllocEvent → Prop)
     (SendEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop :=
       fun _ _ evs => evs = [])
-    (FmtEnv : List AllocEvent → Prop := FormatInnerEnv)
+    (FmtEnv : List AllocEvent → Prop := CliFormatInnerEnv)
     (H : String → Option (State → State))
     (hImp : ∀ x evs, Q x.ot.pqrState x.rest → x.ptext.length < 2 ^ 32 →
       OtrEncryptStepEnv C S uuidTryParse SendEnv FmtEnv x evs → EncryptEnv x evs)
-    (hFmtWit : ∃ evs, FmtEnv evs := by exact ⟨[], rfl⟩)
-    (h_aes : HookSat H lsAesEncSym (aesEncBudgetSpec C.E M A lim))
-    (h_fmt : HookSat H lsFormatInnerSym (formatInnerBudgetEnvSpec M A lim FmtEnv))
+    (hFmtSub : ∀ evs, CliFormatInnerEnv evs → FmtEnv evs := by intro _ h; exact h)
+    (h_aes : HookSat H lsAesEncSym (withLsRet (aesEncBudgetSpec C.E M A lim)))
+    (h_fmt : HookSat H lsFormatInnerSym (formatInnerCallLsEnvSpec M A lim FmtEnv))
     (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hSend : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        { spqrSendCoinsPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
+        { spqrSendCoinsDispPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
           pre := fun (sc, st) s =>
             ⌜Q sc.st.bytes sc.rest⌝ ∗ F ∗
-              (spqrSendCoinsPlacedSpec M A lim ctl S
+              (spqrSendCoinsDispPlacedSpec M A lim ctl S
                 (fun sc evs => SendEnv sc.st.bytes sc.rest evs)).pre (sc, st) s
           post := fun (sc, st) s0 sf =>
-            F ∗ (spqrSendCoinsPlacedSpec M A lim ctl S
+            F ∗ (spqrSendCoinsDispPlacedSpec M A lim ctl S
               (fun sc evs => SendEnv sc.st.bytes sc.rest evs)).post (sc, st) s0 sf }))
     (hMK : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 38) (withLsCodeRoLoaded lsmpl (messageKeysPlacedSpec C.F A lim)))
@@ -1355,7 +1636,7 @@ theorem otrEncrypt_coins_placed_env_body_ok_frame [LibsignalPlacement] {M : Allo
             F ∗ (otrEncryptCoinsPlacedEnvSpec C A lim ctl uuidTryParse S EncryptEnv).post
               (x, st) s0 sf }) :=
   subroutine_ok_otrEncryptCoinsPlacedEnv_framed_of_imp hImp
-    (otrEncrypt_coins_placed_step_body_ok_frame Q F C A lim ctl S SendEnv FmtEnv H hFmtWit
+    (otrEncrypt_coins_placed_step_body_ok_frame Q F C A lim ctl S SendEnv FmtEnv H hFmtSub
       h_aes h_fmt h_dealloc hSend hMK hGK hNew hNCK)
 
 theorem otrEncrypt_coins_placed_env_body_ok [LibsignalPlacement] {M : AllocCostModel}
@@ -1364,21 +1645,21 @@ theorem otrEncrypt_coins_placed_env_body_ok [LibsignalPlacement] {M : AllocCostM
     (EncryptEnv : OtrEncryptGhost → List AllocEvent → Prop)
     (SendEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop :=
       fun _ _ evs => evs = [])
-    (FmtEnv : List AllocEvent → Prop := FormatInnerEnv)
+    (FmtEnv : List AllocEvent → Prop := CliFormatInnerEnv)
     (H : String → Option (State → State))
     (hImp : ∀ x evs, Q x.ot.pqrState → x.ptext.length < 2 ^ 32 →
       OtrEncryptStepEnv C S uuidTryParse SendEnv FmtEnv x evs → EncryptEnv x evs)
-    (hFmtWit : ∃ evs, FmtEnv evs := by exact ⟨[], rfl⟩)
-    (h_aes : HookSat H lsAesEncSym (aesEncBudgetSpec C.E M A lim))
-    (h_fmt : HookSat H lsFormatInnerSym (formatInnerBudgetEnvSpec M A lim FmtEnv))
+    (hFmtSub : ∀ evs, CliFormatInnerEnv evs → FmtEnv evs := by intro _ h; exact h)
+    (h_aes : HookSat H lsAesEncSym (withLsRet (aesEncBudgetSpec C.E M A lim)))
+    (h_fmt : HookSat H lsFormatInnerSym (formatInnerCallLsEnvSpec M A lim FmtEnv))
     (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hSend : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        { spqrSendCoinsPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
+        { spqrSendCoinsDispPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
           pre := fun (sc, st) s =>
             ⌜Q sc.st.bytes⌝ ∗
-              (spqrSendCoinsPlacedSpec M A lim ctl S
+              (spqrSendCoinsDispPlacedSpec M A lim ctl S
                 (fun sc evs => SendEnv sc.st.bytes sc.rest evs)).pre (sc, st) s }))
     (hMK : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 38) (withLsCodeRoLoaded lsmpl (messageKeysPlacedSpec C.F A lim)))
@@ -1396,7 +1677,7 @@ theorem otrEncrypt_coins_placed_env_body_ok [LibsignalPlacement] {M : AllocCostM
               (otrEncryptCoinsPlacedEnvSpec C A lim ctl uuidTryParse S EncryptEnv).pre
                 (x, st) s }) := by
   have h := otrEncrypt_coins_placed_env_body_ok_frame (fun st _ => Q st) emp C A lim ctl S
-    EncryptEnv SendEnv FmtEnv H (fun x evs hQ hpt he => hImp x evs hQ hpt he) hFmtWit
+    EncryptEnv SendEnv FmtEnv H (fun x evs hQ hpt he => hImp x evs hQ hpt he) hFmtSub
     h_aes h_fmt h_dealloc (by simpa only [emp_sepConj] using hSend) hMK hGK hNew hNCK
   simpa only [emp_sepConj] using h
 
@@ -1408,19 +1689,19 @@ theorem otrEncrypt_coins_placed_body_ok_frame [LibsignalPlacement] {M : AllocCos
     (ctl : BitVec 64) (S : SpqrModel)
     (SendEnv : SpqrSendBudgetEnv := fun _ _ evs => evs = [])
     (H : String → Option (State → State))
-    (h_aes : HookSat H lsAesEncSym (aesEncBudgetSpec C.E M A lim))
-    (h_fmt : HookSat H lsFormatInnerSym (formatInnerBudgetEnvSpec M A lim FormatInnerEnv))
+    (h_aes : HookSat H lsAesEncSym (withLsRet (aesEncBudgetSpec C.E M A lim)))
+    (h_fmt : HookSat H lsFormatInnerSym (formatInnerCallCliLsSpec M A lim))
     (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hSend : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        { spqrSendCoinsPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
+        { spqrSendCoinsDispPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
           pre := fun (sc, st) s =>
             ⌜Q sc.st.bytes sc.rest⌝ ∗ F ∗
-              (spqrSendCoinsPlacedSpec M A lim ctl S
+              (spqrSendCoinsDispPlacedSpec M A lim ctl S
                 (fun sc evs => SendEnv sc.st.bytes sc.rest evs)).pre (sc, st) s
           post := fun (sc, st) s0 sf =>
-            F ∗ (spqrSendCoinsPlacedSpec M A lim ctl S
+            F ∗ (spqrSendCoinsDispPlacedSpec M A lim ctl S
               (fun sc evs => SendEnv sc.st.bytes sc.rest evs)).post (sc, st) s0 sf }))
     (hMK : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 38) (withLsCodeRoLoaded lsmpl (messageKeysPlacedSpec C.F A lim)))
@@ -1434,8 +1715,8 @@ theorem otrEncrypt_coins_placed_body_ok_frame [LibsignalPlacement] {M : AllocCos
       (withLsCodeRoLoaded lsmpl
         (otrEncryptPlacedSpecQF Q F C A lim ctl uuidTryParse S SendEnv)) := by
   have hbase := otrEncrypt_coins_placed_env_body_ok_frame Q F C A lim ctl S
-    (OtrEncryptEnv C S SendEnv uuidTryParse) SendEnv FormatInnerEnv H
-    (fun _ _ _ _ he => otrEncryptEnv_of_stepEnv he) ⟨[], rfl⟩
+    (OtrEncryptEnv C S SendEnv uuidTryParse) SendEnv CliFormatInnerEnv H
+    (fun _ _ _ _ he => otrEncryptEnv_of_stepEnv he) (fun _ h => h)
     h_aes h_fmt h_dealloc hSend hMK hGK hNew hNCK
   refine subroutine_ok_mono hbase
     (fun ⟨x, st⟩ R s0 hp => ?_)
@@ -1464,16 +1745,16 @@ theorem otrEncrypt_coins_placed_body_ok [LibsignalPlacement] {M : AllocCostModel
     (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (SendEnv : SpqrSendBudgetEnv := fun _ _ evs => evs = [])
     (H : String → Option (State → State))
-    (h_aes : HookSat H lsAesEncSym (aesEncBudgetSpec C.E M A lim))
-    (h_fmt : HookSat H lsFormatInnerSym (formatInnerBudgetEnvSpec M A lim FormatInnerEnv))
+    (h_aes : HookSat H lsAesEncSym (withLsRet (aesEncBudgetSpec C.E M A lim)))
+    (h_fmt : HookSat H lsFormatInnerSym (formatInnerCallCliLsSpec M A lim))
     (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hSend : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        { spqrSendCoinsPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
+        { spqrSendCoinsDispPlacedSpec M A lim ctl S (fun sc evs => SendEnv sc.st.bytes sc.rest evs) with
           pre := fun (sc, st) s =>
             ⌜Q sc.st.bytes⌝ ∗
-              (spqrSendCoinsPlacedSpec M A lim ctl S
+              (spqrSendCoinsDispPlacedSpec M A lim ctl S
                 (fun sc evs => SendEnv sc.st.bytes sc.rest evs)).pre (sc, st) s }))
     (hMK : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
       (lsmpl.base 38) (withLsCodeRoLoaded lsmpl (messageKeysPlacedSpec C.F A lim)))

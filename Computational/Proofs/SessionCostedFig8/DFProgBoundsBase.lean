@@ -9,21 +9,23 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Fig8WeightedParts
-public import Computational.Proofs.SessionCostedFig8.Bundles
-public import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
-public import Computational.Proofs.SessionCostedFig8.ProgBounds
+public import Computational.Proofs.ReductionDsl.Fig8WeightedParts -- proof-setup: allow-public-import
+public import Computational.Proofs.SessionCostedFig8.Bundles -- proof-setup: allow-public-import
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import Computational.Proofs.SessionCostedFig8.ProgBoundsDefs
 import Computational.Proofs.GameHop.ReductionDsl.CostUB
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 
 /-!
 # Cost Bounds for Atomic `DeliverForge` Reductions
 
 Proves `GRedBounded` within `ratchetCostBudget` for the compiled atomic `DeliverForge` reductions
 (`challSimDFAtomicProg`, `redCKAAuthDFAtomicProg`, `redPRNGAuthDFAtomicProg`, and
-`redFSAuthDFAtomicProg`).
--/
+`redFSAuthDFAtomicProg`).-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,7 +34,7 @@ namespace Computational.Proofs.SessionCostedFig8.DFProgBoundsBase
 open OracleSpec OracleComp
 open _root_.ReductionDsl (Sig Ty Ops Iface Expr Comp CostedReduction bits reductionSizeBudget
   AtomicUnifBase atomicFig8Ops_sizeHonest atomicSamplers_sizeHonest)
-open CryptoGames (Party)
+open _root_.CryptoGames (Party)
 open CryptoVerification.LibsignalSession (ratchetCostBudget GRedBounded)
 open Computational.Proofs.ReductionDsl.Fig8ExcessCosts (smOpC smSampC smQueryC ckaOpC ckaSampC
   ckaQueryC prngQueryC fsQueryC)
@@ -97,7 +99,7 @@ theorem compileSmDFAtomic_gRedBounded
   refine guardRed_gRedBounded _ _ _ _ _ _ q qOut _ (fun hℓ => ?_) ?_ (fun _ => ?_) ?_ (fun _ => ?_)
     (atomicFig8Ops_sizeHonest ℓ Pt C Dh encPt encT lam) (atomicSamplers_sizeHonest ℓ Pt)
   · refine (compilePureAuxRed_totalCost_le _ _ R smOpC smSampC smQueryC ?_ ?_ ?_ q).trans
-      (ProgBounds.compiled_le_ratchetCostBudget hparts.1 hparts.2 ?_ (by simp) ?_)
+      (ProgBoundsDefs.compiled_le_ratchetCostBudget hparts.1 hparts.2 ?_ (by simp) ?_)
     · intro o; have := Computational.Proofs.ReductionDsl.Fig8Atomic.eqMExpr_cost ℓ Pt C Dh encPt encT lam
       have := Computational.Proofs.ReductionDsl.Fig8Atomic.smEqCtExpr_cost ℓ Pt C Dh encPt encT lam
       have := Computational.Proofs.ReductionDsl.Fig8Atomic.smBlankExpr_cost ℓ Pt C Dh encPt encT lam
@@ -107,7 +109,7 @@ theorem compileSmDFAtomic_gRedBounded
     · have := Bundles.fig8SplitIn_cost ℓ Pt C Dh encPt encT idOf lam; simp only [Expr.cost]; omega
     · have := Bundles.fig8AdaptQDF_cost ℓ Pt C Dh encPt encT lam
       have := Bundles.fig8AdaptRDF_cost ℓ Pt C Dh encPt encT lam; simp; omega
-  · exact ProgBounds.dummy_le_ratchetCostBudget (by simp [Expr.cost]) (by simp [Expr.cost])
+  · exact ProgBoundsDefs.dummy_le_ratchetCostBudget (by simp [Expr.cost]) (by simp [Expr.cost])
   · refine (Bundles.compilePureAuxRed_size_le _ _ R Bundles.smOpS Bundles.smSampS Bundles.smQueryS
       (Bundles.smOpMacro_size_le ℓ Pt C Dh encPt encT lam) ?_ ?_).trans ?_
     · intro s; cases s <;> simp [Bundles.smDFPureAuxBundle, Bundles.smDFSampMacro, Bundles.smSampS, Comp.size, Expr.size]
@@ -141,14 +143,14 @@ theorem compileCkaDFAtomic_gRedBounded (B0 : ℕ)
   refine guardRed_gRedBounded _ _ _ _ _ _ q qOut _ (fun hℓ => ?_) ?_ (fun _ => ?_) ?_ (fun _ => ?_)
     (atomicFig8Ops_sizeHonest ℓ Pt C Dh encPt encT lam) (atomicSamplers_sizeHonest ℓ Pt)
   · refine (compilePureAuxRed_totalCost_le _ _ R (ckaOpC B0) ckaSampC ckaQueryC
-      (ProgBounds.ckaOpMacro_cost_le ℓ Pt C Dh encPt encT idOf lam hℓ B0) ?_ ?_ q).trans
-      (ProgBounds.compiled_le_ratchetCostBudget hparts.1 hparts.2 ?_ (by simp) ?_)
+      (ProgBoundsDefs.ckaOpMacro_cost_le ℓ Pt C Dh encPt encT idOf lam hℓ B0) ?_ ?_ q).trans
+      (ProgBoundsDefs.compiled_le_ratchetCostBudget hparts.1 hparts.2 ?_ (by simp) ?_)
     · intro s; cases s <;> simp [Bundles.ckaPureAuxBundle, Bundles.ckaSampMacro, ckaSampC, Comp.cost, Expr.cost, AtomicUnifBase.cost]
     · intro g; cases g <;> simp [ckaQueryC, Comp.cost, Expr.cost]
     · have := Bundles.fig8SplitIn_cost ℓ Pt C Dh encPt encT idOf lam; simp only [Expr.cost]; omega
     · have := Bundles.fig8AdaptQDF_cost ℓ Pt C Dh encPt encT lam
       have := Bundles.fig8AdaptRDF_cost ℓ Pt C Dh encPt encT lam; simp; omega
-  · exact ProgBounds.dummy_le_ratchetCostBudget (by simp [Expr.cost]) (by simp [Expr.cost])
+  · exact ProgBoundsDefs.dummy_le_ratchetCostBudget (by simp [Expr.cost]) (by simp [Expr.cost])
   · refine (Bundles.compilePureAuxRed_size_le _ _ R (Bundles.ckaOpS B0) Bundles.ckaSampS
       Bundles.ckaQueryS (Bundles.ckaOpMacro_size_le ℓ Pt C Dh encPt encT idOf lam B0) ?_ ?_).trans ?_
     · intro s; cases s <;> simp [Bundles.ckaPureAuxBundle, Bundles.ckaSampMacro, Bundles.ckaSampS, Comp.size, Expr.size]
@@ -182,14 +184,14 @@ theorem compilePrngDFAtomic_gRedBounded (B0 : ℕ)
   refine guardRed_gRedBounded _ _ _ _ _ _ q qOut _ (fun hℓ => ?_) ?_ (fun _ => ?_) ?_ (fun _ => ?_)
     (atomicFig8Ops_sizeHonest ℓ Pt C Dh encPt encT lam) (atomicSamplers_sizeHonest ℓ Pt)
   · refine (compilePureAuxRed_totalCost_le _ _ R (ckaOpC B0) ckaSampC prngQueryC
-      (ProgBounds.ckaOpMacro_cost_le ℓ Pt C Dh encPt encT idOf lam hℓ B0) ?_ ?_ q).trans
-      (ProgBounds.compiled_le_ratchetCostBudget hparts.1 hparts.2 ?_ (by simp) ?_)
+      (ProgBoundsDefs.ckaOpMacro_cost_le ℓ Pt C Dh encPt encT idOf lam hℓ B0) ?_ ?_ q).trans
+      (ProgBoundsDefs.compiled_le_ratchetCostBudget hparts.1 hparts.2 ?_ (by simp) ?_)
     · intro s; cases s <;> simp [Bundles.prngPureAuxBundle, Bundles.prngSampMacro, ckaSampC, Comp.cost, Expr.cost, AtomicUnifBase.cost]
     · intro g; cases g <;> simp [prngQueryC, Comp.cost, Expr.cost]
     · have := Bundles.fig8SplitIn_cost ℓ Pt C Dh encPt encT idOf lam; simp only [Expr.cost]; omega
     · have := Bundles.fig8AdaptQDF_cost ℓ Pt C Dh encPt encT lam
       have := Bundles.fig8AdaptRDF_cost ℓ Pt C Dh encPt encT lam; simp; omega
-  · exact ProgBounds.dummy_le_ratchetCostBudget (by simp [Expr.cost]) (by simp [Expr.cost])
+  · exact ProgBoundsDefs.dummy_le_ratchetCostBudget (by simp [Expr.cost]) (by simp [Expr.cost])
   · refine (Bundles.compilePureAuxRed_size_le _ _ R (Bundles.ckaOpS B0) Bundles.ckaSampS
       Bundles.ckaQueryS (Bundles.ckaOpMacro_size_le ℓ Pt C Dh encPt encT idOf lam B0) ?_ ?_).trans ?_
     · intro s; cases s <;> simp [Bundles.prngPureAuxBundle, Bundles.prngSampMacro, Bundles.ckaSampS, Comp.size, Expr.size]
@@ -223,14 +225,14 @@ theorem compileFsDFAtomic_gRedBounded (B0 : ℕ)
   refine guardRed_gRedBounded _ _ _ _ _ _ q qOut _ (fun hℓ => ?_) ?_ (fun _ => ?_) ?_ (fun _ => ?_)
     (atomicFig8Ops_sizeHonest ℓ Pt C Dh encPt encT lam) (atomicSamplers_sizeHonest ℓ Pt)
   · refine (compilePureAuxRed_totalCost_le _ _ R (ckaOpC B0) ckaSampC fsQueryC
-      (ProgBounds.ckaOpMacro_cost_le ℓ Pt C Dh encPt encT idOf lam hℓ B0) ?_ ?_ q).trans
-      (ProgBounds.compiled_le_ratchetCostBudget hparts.1 hparts.2 ?_ (by simp) ?_)
+      (ProgBoundsDefs.ckaOpMacro_cost_le ℓ Pt C Dh encPt encT idOf lam hℓ B0) ?_ ?_ q).trans
+      (ProgBoundsDefs.compiled_le_ratchetCostBudget hparts.1 hparts.2 ?_ (by simp) ?_)
     · intro s; cases s <;> simp [Bundles.fsPureAuxBundle, Bundles.fsSampMacro, ckaSampC, Comp.cost, Expr.cost, AtomicUnifBase.cost]
     · intro g; cases g <;> simp [fsQueryC, Comp.cost, Expr.cost] <;> omega
     · have := Bundles.fig8SplitIn_cost ℓ Pt C Dh encPt encT idOf lam; simp only [Expr.cost]; omega
     · have := Bundles.fig8AdaptQDF_cost ℓ Pt C Dh encPt encT lam
       have := Bundles.fig8AdaptRDF_cost ℓ Pt C Dh encPt encT lam; simp; omega
-  · exact ProgBounds.dummy_le_ratchetCostBudget (by simp [Expr.cost]) (by simp [Expr.cost])
+  · exact ProgBoundsDefs.dummy_le_ratchetCostBudget (by simp [Expr.cost]) (by simp [Expr.cost])
   · refine (Bundles.compilePureAuxRed_size_le _ _ R (Bundles.ckaOpS B0) Bundles.ckaSampS
       Bundles.ckaQueryS (Bundles.ckaOpMacro_size_le ℓ Pt C Dh encPt encT idOf lam B0) ?_ ?_).trans ?_
     · intro s; cases s <;> simp [Bundles.fsPureAuxBundle, Bundles.fsSampMacro, Bundles.ckaSampS, Comp.size, Expr.size]
@@ -357,8 +359,8 @@ private theorem challSimDFProg_parts_le (q qep : ℕ) :
     dsimp only [P, CryptoGames.SM.challSimDFProg]
     exact compCostW_le_of_parts (simHandleCDF_cost_le q qep) (simHandleCDF_excessUB_le q qep) (by omega)
   refine ⟨(Nat.add_le_add_right (Nat.add_le_add hi hf) 100000).trans
-    (ProgBounds.const_le_fig8AtomicStepBound (by decide)), (Nat.add_le_add_right hh 200000).trans ?_⟩
-  exact (le_of_eq (by ring)).trans (ProgBounds.linear_le_fig8AtomicStepBound (k := 20) (a := 2000)
+    (ProgBoundsDefs.const_le_fig8AtomicStepBound (by decide)), (Nat.add_le_add_right hh 200000).trans ?_⟩
+  exact (le_of_eq (by ring)).trans (ProgBoundsDefs.linear_le_fig8AtomicStepBound (k := 20) (a := 2000)
     (b := 1215030) (q := q) (qep := qep) (by decide) (by decide) (by decide))
 
 set_option linter.unusedSimpArgs false in
@@ -423,8 +425,8 @@ end DFSMParts
 
 section DFEngineParts
 
-open CryptoGames.LibsignalSession (maxForwardJumps)
-open CryptoGames.SM.Construction (Header healEpoch)
+open _root_.CryptoGames.LibsignalSession (maxForwardJumps)
+open _root_.CryptoGames.SM.Construction (Header healEpoch)
 open Computational.Proofs.ReductionDsl.PureAuxMacroLift (exprCostW)
 open Computational.Proofs.ReductionDsl.Fig8SourceCosts (HooksCostBounded bits_succ_le
   bits_le_bits_qep_add cInTransitE_cost_le cCompContainsE_cost_le vRecvC_cost_le
@@ -672,7 +674,7 @@ private theorem init_finish_le_step {q qep k1 k2 a1 a2 b1 b2 x y : ℕ}
     (hk : k1 + k2 ≤ 200) (ha : a1 + a2 ≤ 15000) (hb : b1 + b2 + 100000 ≤ 25000000) :
     x + y + 100000 ≤ fig8AtomicStepBound q qep := by
   refine (Nat.add_le_add (Nat.add_le_add hx hy) le_rfl).trans
-    ((le_of_eq (by ring)).trans (ProgBounds.linear_le_fig8AtomicStepBound hk ha hb))
+    ((le_of_eq (by ring)).trans (ProgBoundsDefs.linear_le_fig8AtomicStepBound hk ha hb))
 
 private theorem hooksCKA_mono_arith {L B bq bt btH : ℕ} (ht : bt ≤ bq + 4) (htH : btH ≤ bq + 4) :
     3 * btH + bt + (B + 1) + 1010 ≤ 320 * L + 10 * bq + B + 2500 := by omega

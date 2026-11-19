@@ -54,10 +54,6 @@ theorem groupLiveUserCount_eq_filter (g : GroupDesc) :
 theorem FineGroupSameGeom.refl (g : GroupDesc) : FineGroupSameGeom g g :=
   ⟨rfl, rfl, rfl, rfl, rfl⟩
 
-theorem FineGroupSameGeom.symm {g1 g2 : GroupDesc} (h : FineGroupSameGeom g1 g2) :
-    FineGroupSameGeom g2 g1 :=
-  ⟨h.1.symm, h.2.1.symm, h.2.2.1.symm, h.2.2.2.1.symm, h.2.2.2.2.symm⟩
-
 theorem FineGroupSameGeom.trans {g1 g2 g3 : GroupDesc}
     (h12 : FineGroupSameGeom g1 g2) (h23 : FineGroupSameGeom g2 g3) :
     FineGroupSameGeom g1 g3 :=
@@ -68,11 +64,6 @@ theorem FineGroupSameGeom.cnt_eq {g' g : GroupDesc} (h : FineGroupSameGeom g' g)
     g'.cnt = g.cnt := by
   unfold GroupDesc.cnt
   rw [h.2.2.2.2]
-
-theorem FineGroupSameGeom.stride_eq {g' g : GroupDesc} (h : FineGroupSameGeom g' g) :
-    g'.stride = g.stride := by
-  unfold GroupDesc.stride
-  rw [h.2.1, h.2.2.1, h.2.2.2.2]
 
 theorem FineGroupSameGeom.groupFineGeom_iff {g' g : GroupDesc} (h : FineGroupSameGeom g' g) :
     GroupFineGeom g' ↔ GroupFineGeom g := by

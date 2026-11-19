@@ -11,9 +11,9 @@ module
 
 public import Computational.Specifications.Pqxdh.Security.Headline
 public import Computational.Specifications.Pqxdh.Security.CostedBudgets
-public import Computational.Proofs.ReductionDsl.StepSimTwoStage -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.StepSimTwoStage
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreKSimBase -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim
 
@@ -418,15 +418,6 @@ theorem eMap_eq_of_le {Γ : List PT} {τ₁ τ₂ : PT} {K₁ K₂ : ℕ}
     (hLen : (xs.eval env).length ≤ K₁) (hLe : K₁ ≤ K₂) :
     (eMap K₁ xs f).eval env = (eMap K₂ xs f).eval env := by
   simp only [eMap, Expr.eval,
-    List.take_of_length_le hLen, List.take_of_length_le (Nat.le_trans hLen hLe)]
-
-theorem findMV_eq_of_le {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
-    {Γ : List PT} {τ : PT} {K₁ K₂ : ℕ}
-    (xs : Expr pqxdhOps Γ (.list τ))
-    (p : Var (τ :: Γ) τ → Comp pqxdhOps I (τ :: Γ) .bool) (env : Env Γ)
-    (hLen : (xs.eval env).length ≤ K₁) (hLe : K₁ ≤ K₂) :
-    (findMV K₁ xs p).eval env = (findMV K₂ xs p).eval env := by
-  simp only [findMV, Comp.eval,
     List.take_of_length_le hLen, List.take_of_length_le (Nat.le_trans hLen hLe)]
 
 theorem findMV_min_eq_of_le {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}

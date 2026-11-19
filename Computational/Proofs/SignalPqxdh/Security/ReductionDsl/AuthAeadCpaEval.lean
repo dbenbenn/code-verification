@@ -9,11 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaShallow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaShallow -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaLeaves
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaRecv
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaSend
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
 
 /-!
 # `aeadCpaRedProg` Step Evaluation
@@ -22,7 +30,7 @@ Step-evaluation equivalence for `cpaStepC`, the pre- and post-challenge handler 
 `aeadCpaRedProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,13 +42,13 @@ open OracleSpec OracleComp
 
 /-! ## Generalized one-query step -/
 
-def cpaSendCollapse {S : Setup} (ap : Bool) (hst : AuthHybridStateFixed S) :
+@[expose] def cpaSendCollapse {S : Setup} (ap : Bool) (hst : AuthHybridStateFixed S) :
     CpaSendRes S → (AuthResponse × AuthHybridStateFixed S) ⊕
       ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × AuthHybridStateFixed S))
   | .inl x => .inl x
   | .inr (ad, m0, m1, p, h) => if ap then .inr ((ad, m0, m1), (p, h)) else .inl (.noneResp, hst)
 
-def stepCpaGen (S : Setup) (ap : Bool) (idx : Nat) (q : AuthQuery S)
+@[expose] def stepCpaGen (S : Setup) (ap : Bool) (idx : Nat) (q : AuthQuery S)
     (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec ((AuthResponse × AuthHybridStateFixed S) ⊕
       ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × AuthHybridStateFixed S))) :=
@@ -62,41 +70,21 @@ theorem stepCpaGen_true (S : Setup) (idx : Nat) (q : AuthQuery S) (hst : AuthHyb
     rcases x with ⟨r, h⟩ | ⟨ad, m0', m1', p, h⟩ <;> rfl
   all_goals rfl
 
-theorem stepCpaGen_false (S : Setup) (idx : Nat) (q : AuthQuery S)
-    (hst : AuthHybridStateFixed S) :
-    stepCpaGen S false idx q hst = Sum.inl <$> stepAuthCpaCutoffPrim idx S q hst := by
-  cases q
-  case sendOPK u i b m0 m1 =>
-    simp only [stepCpaGen, stepAuthCpaCutoffPrim, cpaSendShOpk, runAuthSendCpaCutoffPrim]
-    split
-    · simp only [map_pure]; rfl
-    · simp only [map_eq_bind_pure_comp, bind_assoc]
-      refine bind_congr fun x => ?_
-      rcases x with ⟨r, h⟩ | ⟨ad, m0', m1', p, h⟩ <;> simp [cpaSendCollapse]
-  case sendNoOPK u i b m0 m1 =>
-    simp only [stepCpaGen, stepAuthCpaCutoffPrim, cpaSendShNoOpk, runAuthSendCpaCutoffPrim]
-    split
-    · simp only [map_pure]; rfl
-    · simp only [map_eq_bind_pure_comp, bind_assoc]
-      refine bind_congr fun x => ?_
-      rcases x with ⟨r, h⟩ | ⟨ad, m0', m1', p, h⟩ <;> simp [cpaSendCollapse]
-  all_goals rfl
-
-def cpaPreEnc {S : Setup} (idx : Nat) :
+@[expose] def cpaPreEnc {S : Setup} (idx : Nat) :
     (AuthResponse × AuthHybridStateFixed S) ⊕
       ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × AuthHybridStateFixed S)) →
     cpaPreTy.denote
   | .inl (r, h) => .inl (authRespToVal r, cpaStToVal idx h)
   | .inr (c, (p, h)) => .inr (c, (cpaPayloadToVal p, cpaStToVal idx h))
 
-def cpaSendSlotCollapse {S : Setup} (ap : Bool) (shst : CpaSlotSt S) :
+@[expose] def cpaSendSlotCollapse {S : Setup} (ap : Bool) (shst : CpaSlotSt S) :
     CpaSlotSendRes S → (AuthResponse × CpaSlotSt S) ⊕
       ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × CpaSlotSt S))
   | .inl x => .inl x
   | .inr (ad, m0, m1, p, sh) =>
     if ap then .inr ((ad, m0, m1), (p, sh)) else .inl (.noneResp, shst)
 
-def stepCpaSlotGen (S : Setup) (ap : Bool) (idx : Nat) (q : AuthQuery S)
+@[expose] def stepCpaSlotGen (S : Setup) (ap : Bool) (idx : Nat) (q : AuthQuery S)
     (shst : CpaSlotSt S) :
     OracleComp PrimBaseSpec ((AuthResponse × CpaSlotSt S) ⊕
       ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × CpaSlotSt S))) :=
@@ -143,7 +131,7 @@ theorem stepCpaSlotGen_false (S : Setup) (idx : Nat) (q : AuthQuery S)
     refine bind_congr fun ⟨_, _⟩ => ?_
     simp only [Function.comp_apply, pure_bind]
 
-def cpaSlotPreEnc {S : Setup} (idx : Nat) :
+@[expose] def cpaSlotPreEnc {S : Setup} (idx : Nat) :
     (AuthResponse × CpaSlotSt S) ⊕
       ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × CpaSlotSt S)) →
     cpaPreTy.denote
@@ -155,21 +143,6 @@ def cpaSlotPreEnc {S : Setup} (idx : Nat) :
 section StepEval
 
 variable (S : Setup) (K : Nat)
-
-theorem cpaInl_eval {Γ₁ Δ : List PT} (idxV : Var Γ₁ .nat) [h₁ : Ext Γ₁ Δ] (env : Env Δ)
-    (idx : Nat) (hi : Env.get env (h₁.wk idxV) = idx) (m : Comp pqxdhOps pqPrimIface Δ RSF)
-    (mx : OracleComp PrimBaseSpec (AuthResponse × AuthHybridStateFixed S))
-    (hm : m.eval env = Prod.map authRespToVal authHybridStateFixedToVal <$> mx) :
-    (bindV (wrapCpa idxV m) fun r => .ret (.inl (v r)) :
-      Comp pqxdhOps pqPrimIface Δ cpaPreTy).eval env =
-      cpaPreEnc idx <$> (Sum.inl <$> mx :
-        OracleComp PrimBaseSpec ((AuthResponse × AuthHybridStateFixed S) ⊕
-          ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × AuthHybridStateFixed S)))) := by
-  simp only [wrapCpa, bindV, v, Comp.eval, Expr.eval, Ext.step_wk, Env.get_succ, hm,
-    hi, map_eq_bind_pure_comp, bind_assoc, Function.comp_apply, pure_bind]
-  refine bind_congr fun x => ?_
-  rcases x with ⟨r, h⟩
-  rfl
 
 theorem cpaSlotInl_eval {Γ₁ Γ₂ Δ : List PT} (idxV : Var Γ₁ .nat) (nsV : Var Γ₂ .nat)
     [h₁ : Ext Γ₁ Δ] [h₂ : Ext Γ₂ Δ] (env : Env Δ)

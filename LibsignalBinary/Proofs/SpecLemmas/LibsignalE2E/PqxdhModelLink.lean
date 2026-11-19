@@ -18,7 +18,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.CKA.DDHDefs
 public import LibsignalBinary.Specifications.CryptoGames.CKA.Defs
@@ -49,20 +49,20 @@ public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 public import LibsignalBinary.Specifications.LibsignalE2E.State
 public import LibsignalBinary.Specifications.LibsignalHmac
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
 public import LibsignalBinary.Specifications.LibsignalSpqr
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.MlKem
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import LibsignalBinary.Specifications.RustHeap.Vec
 public import LibsignalBinary.Specifications.SignalPqxdh.Model
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -83,11 +83,33 @@ open CryptoGames CryptoGames.LibsignalSession
 theorem modelPrims_sha512_eq_ref (X : UnreachedPqxdhPrimitives) (W : PEParams) (m : List UInt8) :
     (modelPrims X W).sha512 m = SignalPqxdh.sha512Ref (modelPrims X W) m := rfl
 
+private theorem sigVerify_eq_ref_aux (B : SignalPqxdh.Primitives) (ic h96 rcc cks ckn dmk ae ad)
+    (pk m sig : List UInt8) :
+    let B1 : SignalPqxdh.Primitives := { B with sha512 := SignalPqxdh.sha512Ref B }
+    let M : SignalPqxdh.Primitives :=
+      { B1 with sigVerify := SignalPqxdh.xeddsaVerifyRef B1, isCanonical := ic,
+                hkdfDerive96 := h96, rootCreateChain := rcc, chainKdfSeed := cks,
+                chainKdfNext := ckn, deriveMsgKeys := dmk, aeadEnc := ae, aeadDec := ad }
+    M.sigVerify pk m sig = SignalPqxdh.xeddsaVerifyRef M pk m sig := rfl
+
+private theorem isCanonical_eq_ref_aux (B : SignalPqxdh.Primitives) (sv h96 rcc cks ckn dmk ae ad)
+    (pk : List UInt8) :
+    let B1 : SignalPqxdh.Primitives := { B with sha512 := SignalPqxdh.sha512Ref B }
+    let M : SignalPqxdh.Primitives :=
+      { B1 with sigVerify := sv, isCanonical := SignalPqxdh.isCanonicalRef B1,
+                hkdfDerive96 := h96, rootCreateChain := rcc, chainKdfSeed := cks,
+                chainKdfNext := ckn, deriveMsgKeys := dmk, aeadEnc := ae, aeadDec := ad }
+    M.isCanonical pk = SignalPqxdh.isCanonicalRef M pk := rfl
+
 theorem modelPrims_sigVerify_eq_ref (X : UnreachedPqxdhPrimitives) (W : PEParams) (pk m sig : List UInt8) :
-    (modelPrims X W).sigVerify pk m sig = SignalPqxdh.xeddsaVerifyRef (modelPrims X W) pk m sig := rfl
+    (modelPrims X W).sigVerify pk m sig = SignalPqxdh.xeddsaVerifyRef (modelPrims X W) pk m sig := by
+  rw [modelPrims.eq_1]
+  exact sigVerify_eq_ref_aux (blockLevelPrims X W) _ _ _ _ _ _ _ _ pk m sig
 
 theorem modelPrims_isCanonical_eq_ref (X : UnreachedPqxdhPrimitives) (W : PEParams) (pk : List UInt8) :
-    (modelPrims X W).isCanonical pk = SignalPqxdh.isCanonicalRef (modelPrims X W) pk := rfl
+    (modelPrims X W).isCanonical pk = SignalPqxdh.isCanonicalRef (modelPrims X W) pk := by
+  rw [modelPrims.eq_1]
+  exact isCanonical_eq_ref_aux (blockLevelPrims X W) _ _ _ _ _ _ _ _ pk
 
 theorem modelPrims_hkdfDerive96_eq_ref (X : UnreachedPqxdhPrimitives) (W : PEParams) (s : List UInt8) :
     (modelPrims X W).hkdfDerive96 s = SignalPqxdh.hkdfDerive96Ref (modelPrims X W) s := rfl

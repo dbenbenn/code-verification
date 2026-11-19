@@ -10,7 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2PlacedBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRoA1PlacedBudgetSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRoA1PlacedBudgetSat
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `HookSat` Sibling of `M2PlacedBudget` (`M2PlacedBudgetSat`)

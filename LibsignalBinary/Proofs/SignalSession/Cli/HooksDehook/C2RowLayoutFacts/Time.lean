@@ -13,10 +13,11 @@ public import ProofLib.Placed.Multi -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceGhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TimeAddGhostReplays -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.DurCst16 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.DurCst16
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
 import ProofLib.ProgramReflection
 meta import ProofLib.ProgramReflection
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced -- proof-setup: allow-public-import
 
 /-!
 # Generic & Cutover-2 (`C2`) `timeMultiLib` Placement and `duration_since` Row Glue (`C2RowLayoutFacts.Time`)
@@ -91,14 +92,15 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs (GhostRo
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie (f3TrialRxProg)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
   (C2ExternTableFacts C2RoSliceFacts f3CodeInv_rxWords_codeLoaded_strip
-   f3LsRetAddr624_lt_firstExternStub f3RxSeg_realProg617_externAt_none keepLib2Text
-   keepLib2Text_sub_rxProg lsExpectFailedSymC2)
+   f3LsRetAddr624_lt_firstExternStub f3RxSeg_realProg617_externAt_none isLinkedPanicAddr
+   isLinkedPanicAddr_false_of_mid keepLib2Text keepLib2Text_sub_rxProg lsExpectFailedSymC2)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics (F3CodeInv)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
   (cliElfMultiPlacement cliElf_linkedAt_unique lsInternedMultiLib)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
   (c2DurationSinceAddr c2DurationSinceCst16Addr c2FirstExternStubAddr c2FromUtf8TableAddr
-   c2Lib2DehookedSyms c2Lib2RoLo c2Lib2TextHi c2Lib2TextLo c2SubTimespecAddr c2TimeAddAddr)
+   c2Lib2DehookedSyms c2Lib2RoHi c2Lib2RoLo c2Lib2TextHi c2Lib2TextLo c2SubTimespecAddr
+   c2TimeAddAddr)
 
 /-! ## 1. Generic `timeMultiLib` Placement Constructor & Projections -/
 
@@ -269,7 +271,7 @@ theorem invS_mem_fs_keepsFrozen {InvMem : Memory → Prop} {PredFs : FsState →
 
 /-! ## 3. Concrete Cutover-2 `c2TimeMpl` & Shared `timeMultiLib` Facts -/
 
-/-! ### Cutover-2 `.rodata.lib2` Local Data-Symbol Offsets (Gate ELF `50066cbd…98ce`)
+/-! ### `.rodata.lib2` Local Data-Symbol Offsets on `cliElfBytes`
 
 The 4 anonymous/section-local `timeMultiLib` RO data symbols (`str1.1`, `.Lanon.148`,
 `.Lanon.150`, `.Lanon.678`) are stripped from `.symtab` by `ld.lld` and therefore expressed
@@ -277,28 +279,28 @@ relative to the generator-emitted `.rodata.lib2` anchors (`c2FromUtf8TableAddr`,
 `c2DurationSinceCst16Addr`, `c2Lib2RoLo`). Their encoded `adrp + add` / `ldr` words in `.text.lib2`
 are kernel-verified against `Tie.f3TrialRxProg` via `checkProgCodeSubslice` (`hRxDur` / `hRxAdd`). -/
 
-/-- `rust_time:.rodata.str1.1+0x0` (`73` B, `align = 1`): placed immediately before
-    `c2FromUtf8TableAddr` in `.rodata.lib2` on gate ELF `50066cbd`. Not referenced directly by
-    code instructions in blocks `0..2` (referenced only by `.data.rel.ro..Lanon.150` `+0` `abs64`). -/
-abbrev c2TimeRoStr1Addr : BitVec 64 := c2FromUtf8TableAddr - 73#64
+/-- `rust_time:.rodata.str1.1+0x0` (`73` B, `align = 1`): placed in the merged `.rodata.str1.1`
+    pool at `c2FromUtf8TableAddr - 777` (`0x409a24`) in `.rodata.lib2` on the 0-hook stock ELF.
+    Not referenced directly by code instructions in blocks `0..2` (referenced only by
+    `.data.rel.ro..Lanon.150` `+0` `abs64`). -/
+abbrev c2TimeRoStr1Addr : BitVec 64 := c2FromUtf8TableAddr - 1092#64
 
-/-- `rust_time:.rodata..Lanon.148` (`25` B, `align = 1`): placed immediately after the `16`-byte
-    `c2DurationSinceCst16Addr` mask in `.rodata.lib2` on gate ELF `50066cbd`. Encoded in block `0`
+/-- `rust_time:.rodata..Lanon.148` (`25` B, `align = 1`): placed at `c2DurationSinceCst16Addr + 3120`
+    (`0x40a310`) in `.rodata.lib2` on the 0-hook stock ELF. Encoded in block `0`
     (`sub_timespec`, inside `durationSinceSubProg c2TimeMpl`) at `+216` (`adrpHi21`) and `+220`
     (`addLo12`), pinned by `hRxDur`. -/
-abbrev c2TimeRoLanon148Addr : BitVec 64 := c2DurationSinceCst16Addr + 16#64
+abbrev c2TimeRoLanon148Addr : BitVec 64 := c2DurationSinceCst16Addr + 3120#64
 
 /-- `rust_time:.data.rel.ro..Lanon.150` (`24` B, `align = 8`, `abs64` reloc at `+0` to `str1.1`):
-    placed at `c2Lib2RoLo + 48` in `.rodata.lib2` on gate ELF `50066cbd`. Encoded in block `0`
+    placed at `c2Lib2RoLo + 136` (`0x4095e8`) in `.rodata.lib2` on the 0-hook stock ELF. Encoded in block `0`
     (`sub_timespec`, inside `durationSinceSubProg c2TimeMpl`) at `+224` (`adrpHi21`) and `+228`
     (`addLo12`), pinned by `hRxDur`. -/
-abbrev c2TimeDataRelRoLanon150Addr : BitVec 64 := c2Lib2RoLo + 48#64
+abbrev c2TimeDataRelRoLanon150Addr : BitVec 64 := c2Lib2RoLo + 136#64
 
-/-- `rust_time:.rodata..Lanon.678` (`45` B, `align = 1`): placed immediately after `.Lanon.148`
-    (`+16 + 25 = +41` from `c2DurationSinceCst16Addr`, last in `.rodata.lib2`) on gate ELF
-    `50066cbd`. Encoded in block `2` (`SystemTime::add`, inside `timeAddSubProg c2TimeMpl`) at
-    `+76` (`adrpHi21`) and `+80` (`addLo12`), pinned by `hRxAdd`. -/
-abbrev c2TimeRoLanon678Addr : BitVec 64 := c2DurationSinceCst16Addr + 41#64
+/-- `rust_time:.rodata..Lanon.678` (`45` B, `align = 1`): placed last in `.rodata.lib2`
+    (`c2Lib2RoHi - 45#64`) on the stock ELF. Encoded in block `2` (`SystemTime::add`, inside
+    `timeAddSubProg c2TimeMpl`) at `+76` (`adrpHi21`) and `+80` (`addLo12`), pinned by `hRxAdd`. -/
+abbrev c2TimeRoLanon678Addr : BitVec 64 := c2Lib2RoHi - 45#64
 
 /-- Concrete Cutover-2 `Obj.MultiPlacement` for `VerifiedLibraries.RustStd.timeMultiLib`
     (blocks: `Timespec::sub_timespec`, `SystemTime::duration_since`, `SystemTime::add`), shared by
@@ -456,6 +458,14 @@ theorem c2_durationSince_hKeep [LibsignalPlacement]
     rw [decide_eq_true_eq] at hlib2
     omega
 
+theorem keepR_durationSince_c2_noPanic {pc : BitVec 64}
+    (h : keepR_durationSince c2TimeMpl pc = true) :
+    isLinkedPanicAddr pc = false := by
+  have hb := keepR_durationSince_sub_interval (lo := 0x47ac2c#64) (hi := 0x4cb070#64)
+    (by decide) (by decide) h
+  obtain ⟨hlo, hhi⟩ := of_decide_eq_true hb
+  exact isLinkedPanicAddr_false_of_mid hlo hhi
+
 /-- Exact `hRealHullNoExt` premise of `durationSinceGhost_rowOk` at `c2TimeMpl` from
     `C2ExternTableFacts mpl`. -/
 theorem c2_durationSince_hRealHullNoExt {mpl mmpl : Obj.MultiPlacement}
@@ -465,6 +475,7 @@ theorem c2_durationSince_hRealHullNoExt {mpl mmpl : Obj.MultiPlacement}
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none :=
   fun W _ hkeep =>
     f3RxSeg_realProg617_externAt_none hExt W (keepR_durationSince_c2_sub_rxProg hkeep)
+      (keepR_durationSince_c2_noPanic hkeep)
 
 /-- Combined Cutover-2 `GhostRowOk` discharge for `lsDurationSinceSym` at `c2TimeMpl` for any
     `KeepsFrozen`/`fs`-stable `InvS` projecting to `F3CodeInv mpl mmpl u.mem`. -/

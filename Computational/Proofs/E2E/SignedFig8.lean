@@ -9,19 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Defs
-public import Computational.Proofs.E2E.SignedPrims
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Defs
+import Computational.Proofs.E2E.SignedPrims
 public import Computational.Specifications.Session.StatementIdsModel
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
-public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
+import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 import Computational.Proofs.CryptoGames.CKA.DHProof
 import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatements
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.QueryBounds
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement
 import Computational.Proofs.CryptoGames.SM.Theorem1
-import Computational.Proofs.E2E.SignedSession
+import Computational.Proofs.E2E.SignedAdv
 import Computational.Proofs.E2E.SignedThm1
 import Computational.Proofs.E2E.SignedThm8
 
@@ -29,10 +29,11 @@ import Computational.Proofs.E2E.SignedThm8
 # Prefix integration helper for double finite sums
 
 Integrates pointwise upper bounds by double finite sums of event probabilities over a prefix
-distribution `oa`.
--/
+distribution `oa`.-/
 
-@[expose] public section
+set_option linter.unusedSectionVars false
+
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 
@@ -57,11 +58,5 @@ theorem evalDist_bind_apply_le_sum_sum {α ι κ : Type} (oa : ProbComp α) (f :
       rw [lintegral_finsetSum _ fun _ _ => Measurable.of_discrete]
       refine Finset.sum_congr rfl fun i _ => ?_
       exact lintegral_finsetSum _ fun _ _ => Measurable.of_discrete
-
-section Fig8
-
-variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-
-end Fig8
 
 end CryptoVerification.E2E.Signed

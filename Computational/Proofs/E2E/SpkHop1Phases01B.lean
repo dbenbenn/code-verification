@@ -9,9 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1Phases01
+public import Computational.Proofs.E2E.SpkHop1Phases01 -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
-@[expose] public section
+public section
 
 /-!
 # Initial Coupling Lemmas for `h_init`
@@ -40,12 +45,12 @@ variable {PQC : Type} [SampleableType PQC]
 
 open CryptoGames.LibsignalSM.Proofs.Refinement
 
-def badSpkCorrA {ℓ : ℕ} (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
+@[expose] def badSpkCorrA {ℓ : ℕ} (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (s : GameSt Bytes ℓ) (Q : Party) : Bool :=
   !s.win && (Q == .A) && decide (0 ∈ (s.st .A).chainEpochs) &&
     (configRefuseEarlyBobCorr (St := GhostState Bytes) (Msg := CBC.Plain ℓ) decT encT).corrOK s .A
 
-def runSpkTab {ℓ : ℕ} {β : Type} (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def runSpkTab {ℓ : ℕ} {β : Type} (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256)
     (oa : OracleComp (unifSpec + SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) β)
     (st : GameSt Bytes ℓ) (L : List (Pt × BitVec 256))
@@ -56,7 +61,7 @@ def runSpkTab {ℓ : ℕ} {β : Type} (P : Params Bytes PQC) (Dh : DHFun (BitVec
 abbrev SpkRefSt (Pt : Type) (ℓ : ℕ) :=
   SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes × List (Pt × BitVec 256) × Bool
 
-def liftSpkRef {ℓ : ℕ} {α : Type}
+@[expose] def liftSpkRef {ℓ : ℕ} {α : Type}
     (m : StateT (SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes) ProbComp α) :
     StateT (SpkRefSt Pt ℓ) ProbComp α :=
   StateT.mk fun ⟨st, L, b⟩ => do
@@ -71,7 +76,7 @@ omit [DecidableEq Pt] [Zero Pt] [SampleableType Pt] in
     (liftSpkRef m).run (st, L, b) = (m.run st >>= fun r => pure (r.1, (r.2, L, b))) :=
   rfl
 
-def deliverSpkRef (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def deliverSpkRef (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (s : BitVec 256) :
     QueryImpl ((Party × Bytes) →ₒ Option (SM.RecvResult (CBC.Plain ℓ)))
       (StateT (SpkRefSt Pt ℓ) ProbComp) :=
@@ -88,7 +93,7 @@ def deliverSpkRef (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt
         return (some (.accepted t' i' (if st.chall.contains r.pos then none else some m')),
           (st.accept Q st' r.pos, L', b))
 
-def injectSpkRef (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def injectSpkRef (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) :
     QueryImpl ((Party × Bytes) →ₒ Option (SM.RecvResult (CBC.Plain ℓ)))
       (StateT (SpkRefSt Pt ℓ) ProbComp) :=
@@ -108,7 +113,7 @@ def injectSpkRef (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
       else
         return (some .rejected, ({ st with win := true }, L', b))
 
-def corrSpkRef (ℓ : ℕ) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
+@[expose] def corrSpkRef (ℓ : ℕ) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     QueryImpl (Party →ₒ Option (GhostState Bytes)) (StateT (SpkRefSt Pt ℓ) ProbComp) :=
   fun Q => StateT.mk fun ⟨st, L, b⟩ => do
     let b' := b || badSpkCorrA decT encT st Q
@@ -116,7 +121,7 @@ def corrSpkRef (ℓ : ℕ) (decT : PublicKey → Option Pt) (encT : Pt → Publi
         CBC.Plain ℓ) decT encT) Q).run st
     return (res, (st', L, b'))
 
-def spkRefImpl (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def spkRefImpl (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) :
     QueryImpl (unifSpec + SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes)
       (StateT (SpkRefSt Pt ℓ) ProbComp)
@@ -132,7 +137,7 @@ def spkRefImpl (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
   | .inr (.inr x) =>
     corrSpkRef ℓ decT encT x
 
-def runSpkRef {ℓ : ℕ} {β : Type} (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def runSpkRef {ℓ : ℕ} {β : Type} (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256)
     (oa : OracleComp (unifSpec + SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) β)
     (sRef : GameSt Bytes ℓ) (L : List (Pt × BitVec 256)) (abort : Bool)
@@ -1225,7 +1230,7 @@ theorem const_le_bind_uniform (m0 : ProbComp Bool) (g : BitVec 256 → ProbComp 
     bind_evalDist_true_mono ($ᵗ BitVec 256 :
         ProbComp (BitVec 256)) (fun _ => m0) g (fun rc _ => h rc)
 
-def deliverSpkBad (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def deliverSpkBad (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (s : BitVec 256) :
     QueryImpl ((Party × Bytes) →ₒ Option (SM.RecvResult (CBC.Plain ℓ)))
       (StateT (SpkRefSt Pt ℓ) ProbComp) :=
@@ -1243,7 +1248,7 @@ def deliverSpkBad (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt
         return (some (.accepted t' i' (if st.chall.contains r.pos then none else some m')),
           (st.accept Q st' r.pos, L', b'))
 
-def injectSpkBad (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def injectSpkBad (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) :
     QueryImpl ((Party × Bytes) →ₒ Option (SM.RecvResult (CBC.Plain ℓ)))
       (StateT (SpkRefSt Pt ℓ) ProbComp) :=
@@ -1264,7 +1269,7 @@ def injectSpkBad (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
       else
         return (some .rejected, ({ st with win := true }, L', b'))
 
-def spkBadImpl (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def spkBadImpl (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) :
     QueryImpl (unifSpec + SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes)
       (StateT (SpkRefSt Pt ℓ) ProbComp)
@@ -1287,7 +1292,7 @@ def runSpkBad {ℓ : ℕ} {β : Type} (P : Params Bytes PQC) (Dh : DHFun (BitVec
   let (_, (_, _, bad')) ← (simulateQ (spkBadImpl P ℓ Dh encT decT qep s) oa).run (st, L, bad)
   return bad'
 
-def runSpkComb {ℓ : ℕ} {β : Type} (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def runSpkComb {ℓ : ℕ} {β : Type} (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256)
     (oa : OracleComp (unifSpec + SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) β)
     (st : GameSt Bytes ℓ) (L : List (Pt × BitVec 256)) (bad : Bool)

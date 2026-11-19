@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperCKA
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperCKA -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperFS
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9
@@ -22,7 +22,7 @@ import VCVio.OracleComp.EvalDist.Measure
 `corrAllowedPaper`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

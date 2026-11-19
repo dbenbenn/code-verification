@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneX
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneX
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Fetch
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `SessionRecord::serialize` `None` Branch (Block `52`)
@@ -26,7 +29,7 @@ Verifies relocatable `SessionRecord::serialize` (Block `52`) on a `SessionRecord
 session (`serializeNoneSpecX M A lim`), transporting `A.pool lim st` unchanged (`0` allocations).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -66,7 +69,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 
 /-- `SessionRecord::serialize` on a record with no current session (`0` allocations), threading
     `A.pool lim st s` to `A.pool lim st sf` at `serializeStackX`. -/
-def serializeNoneSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeNoneSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec ((BitVec 64 × BitVec 64 × BitVec 64) × M.σ) where
   pre := fun ((self, out, prevPtr), st) s =>
     ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = out⌝ ∗

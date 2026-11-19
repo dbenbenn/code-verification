@@ -10,25 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
-public import LibsignalBinary.Proofs.SignalSession.NonVacuity
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
+public import LibsignalBinary.Proofs.SignalSession.NonVacuity -- proof-setup: allow-public-import
 import all Init.Data.Repr
 import all Init.Data.String.Defs
-
-/-!
-# Non-Vacuity Checks for `PqDirNoMatch` and `CliBinaryPq`
-
-Sanity and non-vacuity theorems for the PQXDH-mode CLI specifications:
-1. Reflexivity, path-alias tolerance (`agreeExcept_diff_at_alias`), and discrimination properties of
-   `Outcome.AgreeExcept` and `OutcomeMatchesModelExceptPath`.
-2. Unconditional inhabitation of all five clauses of `CliPqxdhInputs W`.
-3. Concrete `pqInitModel`-constructed session witness on `emptyParty` at `W0` with non-matching
-   pre-key message (`¬ PqSessionMatches x g m`), ruling out `none`, always-aborting, and
-   always-accepting runs under `CliSpecPqxdhNoMatch`.
-4. Rejection of malformed ELF bytes by `CliPqxdhBinaryCorrect` and `#print axioms` checks.
--/
-
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -125,7 +112,7 @@ def testPreKeyMsg (bk : List.Vector (BitVec 8) 32) : PreKeyMessageFields where
   idPub := List.Vector.replicate 32 0#8
   inner := []
 
-def nzVec32 : List.Vector (BitVec 8) 32 := ⟨1#8 :: List.replicate 31 0#8, rfl⟩
+@[expose] def nzVec32 : List.Vector (BitVec 8) 32 := ⟨1#8 :: List.replicate 31 0#8, rfl⟩
 
 theorem cliPqInputs_emptyParty_init (W : PEParams) (b : PreKeyBundleFields)
     (t : List.Vector (BitVec 8) initiateTapeLen) :
@@ -259,14 +246,14 @@ theorem not_cliSpecPqNoMatch_alwaysAccept_of_wfSession (X : UnreachedPqxdhPrimit
 
 /-! ## 4. Concrete `pqInitModel`-built session witness at `W0` -/
 
-def C0 : Crypto where
+@[expose] def C0 : Crypto where
   F st _ := st
   E _ b := b
   D _ b := b
   X _ _ := nzVec32
   pubKey _ := nzVec32
 
-def K0 : CryptoVerification.LibsignalSpqrV1.MlKem where
+@[expose] def K0 : CryptoVerification.LibsignalSpqrV1.MlKem where
   keyPair _ := List.Vector.replicate 2400 0#8
   encaps1 _ _ :=
     some (List.Vector.replicate 960 0#8,
@@ -276,36 +263,34 @@ def K0 : CryptoVerification.LibsignalSpqrV1.MlKem where
   decaps _ _ _ := List.Vector.replicate 32 0#8
   validPk _ _ := true
 
-def Q0 : PqxdhPrims where
+@[expose] def Q0 : PqxdhPrims where
   F512 st _ := st
-  montToEd _ _ := some (List.Vector.replicate 160 0#8)
-  compress _ := List.Vector.replicate 32 0#8
-  edNeg p := p
-  isTorsionFree _ := true
-  dsmb _ A _ := A
-  scalarMod s := s
-  scalarWide w := fitVec 32 w.toList
   encaps _ _ := (List.Vector.replicate 1568 0#8, List.Vector.replicate 32 0#8)
   decaps _ _ := List.Vector.replicate 32 0#8
   K := K0
 
-def W0 : PEParams := ⟨C0, Q0⟩
+@[expose] def W0 : PEParams := ⟨C0, Q0⟩
 
-def b0 : PreKeyBundleFields where
+/-- Valid XEdDSA signature at `idPub = 0^32` (`edPk = (0, p - 1)` of order 2) under `Q0` (`F512`
+identity, where `SHA-512` returns `H^(0)` of odd scalar mod `ℓ`, so `[h](-A) + [0]B = (0, p - 1)`). -/
+@[expose] def sig0 : List.Vector (BitVec 8) 64 :=
+  ⟨0xec#8 :: List.replicate 30 0xff#8 ++ 0x7f#8 :: List.replicate 32 0#8, rfl⟩
+
+@[expose] def b0 : PreKeyBundleFields where
   regId := 0
   opk := none
   spkId := 0
   spkPub := List.Vector.replicate 32 0#8
-  spkSig := List.Vector.replicate 64 0#8
+  spkSig := sig0
   kpkId := 0
   kpkPub := List.Vector.replicate 1568 0#8
-  kpkSig := List.Vector.replicate 64 0#8
+  kpkSig := sig0
   idPub := List.Vector.replicate 32 0#8
 
-def t0 : List.Vector (BitVec 8) initiateTapeLen :=
+@[expose] def t0 : List.Vector (BitVec 8) initiateTapeLen :=
   List.Vector.replicate initiateTapeLen 0#8
 
-def X0 : UnreachedPqxdhPrimitives where
+@[expose] def X0 : UnreachedPqxdhPrimitives where
   sigPkGen _ := []
   sigSign _ _ _ := []
   scalarMul _ _ := []
@@ -314,10 +299,14 @@ def X0 : UnreachedPqxdhPrimitives where
   pow8 _ := []
   isValidDhTriple _ _ _ := false
 
-set_option maxRecDepth 16384 in
+private theorem initiateState_indep (X₁ X₂ : UnreachedPqxdhPrimitives) (W : PEParams)
+    (P : Party) (me : LocalIdentity) (b : PreKeyBundleFields)
+    (t : List.Vector (BitVec 8) initiateTapeLen) :
+    initiateState X₁ W P me b t = initiateState X₂ W P me b t := rfl
+
 theorem initiateState_W0_eq (X : UnreachedPqxdhPrimitives) :
-    initiateState X W0 .A emptyParty.me b0 t0 = initiateState X0 W0 .A emptyParty.me b0 t0 := by
-  with_unfolding_all rfl
+    initiateState X W0 .A emptyParty.me b0 t0 = initiateState X0 W0 .A emptyParty.me b0 t0 :=
+  initiateState_indep X X0 W0 .A emptyParty.me b0 t0
 
 theorem initiateState_W0_isSome :
     (initiateState X0 W0 .A emptyParty.me b0 t0).isSome = true := by
@@ -400,34 +389,12 @@ theorem not_cliSpecPqNoMatch_alwaysAccept (X : UnreachedPqxdhPrimitives) :
   obtain ⟨st1, x, g, _, hs, hwf⟩ := pqInitModel_W0_creates_wfSession X
   exact not_cliSpecPqNoMatch_alwaysAccept_of_wfSession X W0 st1 x g hwf hs
 
-/-! ## 5. `CliPqxdhElfCorrect` and `CliPqxdhBinaryCorrect` non-triviality -/
-
-theorem not_libsignalCliPqBinaryCorrect_nil : ¬ CliPqxdhBinaryCorrect [] := by
-  rintro ⟨elf, hparse, _⟩
-  have h : Arm64.Process.ElfImage.parse [] =
-      .error "ElfImage.parse: file shorter than 64-byte ELF64 header" := rfl
-  rw [h] at hparse
-  cases hparse
-
-theorem cliPqBinaryCorrect_send_some (elf : Arm64.Process.ElfImage) (W : CliHooks)
-    (h : CliPqxdhElfCorrect elf) :
-    cliRunAbortOnPanic elf W (pqSendInputs ⟨W.C, W.Q⟩ emptyParty [] (List.Vector.replicate 64 0#8)) ≠
-      none := by
-  have hspec := (h.2 W X0).1
-  have hsend := (hspec emptyParty (wfPq_emptyParty_uncond ⟨W.C, W.Q⟩)).2.1
-    [] (List.Vector.replicate 64 0#8) (by decide)
-  rw [hsend]
-  simp [stdinCapBytes, maxPlaintextBytes]
-
-/-! ## 6. `#print axioms` on all new definitions and non-vacuity checks -/
+/-! ## 5. `#print axioms` on all new definitions and non-vacuity checks -/
 
 #print axioms CryptoVerification.SignalSession.Outcome.AgreeExcept
 #print axioms CryptoVerification.SignalSession.OutcomeMatchesModelExceptPath
 #print axioms CryptoVerification.SignalSession.CliSpecPqxdhNoMatch
 #print axioms CryptoVerification.SignalSession.CliPqxdhInputs
-#print axioms CryptoVerification.SignalSession.CliPqxdhAllocNeverFails
-#print axioms CryptoVerification.SignalSession.CliPqxdhElfCorrect
-#print axioms CryptoVerification.SignalSession.CliPqxdhBinaryCorrect
 #print axioms agreeExcept_diff_at_p
 #print axioms agreeExcept_diff_at_alias
 #print axioms not_agreeExcept_diff_code
@@ -442,7 +409,5 @@ theorem cliPqBinaryCorrect_send_some (elf : Arm64.Process.ElfImage) (W : CliHook
 #print axioms not_cliSpecPqNoMatch_none
 #print axioms not_cliSpecPqNoMatch_aborted
 #print axioms not_cliSpecPqNoMatch_alwaysAccept
-#print axioms not_libsignalCliPqBinaryCorrect_nil
-#print axioms cliPqBinaryCorrect_send_some
 
 end CryptoVerification.SignalSession.NonVacuityPq

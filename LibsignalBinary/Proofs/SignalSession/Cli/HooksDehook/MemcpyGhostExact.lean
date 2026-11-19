@@ -12,24 +12,26 @@ module
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostReplaysOn -- proof-setup: allow-public-import
 import ProofLib.SepLogic.HeapIntro
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Exact Clobber Endpoint for Ghost `memcpy` Hooks (`HooksDehook.MemcpyGhostExact`)
 
-- **Role:** `Role::Proof` (untrusted proof module outside the TCB; #1255 H3 "G-exact" spike).
-- **Overview:**
-  Proves that every `linkedCallHook`-based `memcpy` ghost hook (`memcpyGhostHook`,
-  `memcpyGhostHookBlk20`, `memcpyGhostHookPure20`, `f3EmptyMemcpyGhostHook`, `f3MemcpyGhostHook`,
-  plus `memcpyGhostHookK` / `f3EmptyMemcpyGhostHookK` under `keep (u.readReg64 .lr) = false`) as
-  well as `hookMemcpy` / `memcpyHook` satisfies `HookExactMemcpy`:
-  - Under `u.status = .Running`, `u.spAligned = true`, register setup `(dst, src, len, lr)`,
-    `u.mem.readBytes src len = bs`, `u.mem.RW dst len`, `u.mem.Readable src len`, and
-    `len = 0 ∨ DisjointRegions dst len src len`, there exists `c : MemcpyClobber`
-    (`{x1..x17, pstate}`) such that
-    `f u = applyMemcpyClobber u (u.mem.writeBytes dst bs) lr c`.
-  - Consequently, raw-`RunsTo` `memcpy` call sites step through `HookSatExactMemcpy H lsMemcpySym`
-    via `s2_memcpy_step_placed_of_exact` / `placed_memcpy_step_of_exact` in the `∀ c : MemcpyClobber`
-    shape with exact `mem = s.mem.writeBytes dst bs` (zero `S2Frame` re-anchoring).
+Proves that every `linkedCallHook`-based `memcpy` ghost hook (`memcpyGhostHook`,
+`memcpyGhostHookBlk20`, `memcpyGhostHookPure20`, `f3EmptyMemcpyGhostHook`, `f3MemcpyGhostHook`,
+and `memcpyGhostHookK` / `f3EmptyMemcpyGhostHookK` under `keep (u.readReg64 .lr) = false`) as
+well as `hookMemcpy` / `memcpyHook` satisfies `HookExactMemcpy`:
+- Under `u.status = .Running`, `u.spAligned = true`, register setup `(dst, src, len, lr)`,
+  `u.mem.readBytes src len = bs`, `u.mem.RW dst len`, `u.mem.Readable src len`, and
+  `len = 0 ∨ DisjointRegions dst len src len`, there exists `c : MemcpyClobber`
+  (`{x1..x17, pstate}`) such that `f u = applyMemcpyClobber u (u.mem.writeBytes dst bs) lr c`.
+- Consequently, raw-`RunsTo` `memcpy` call sites step through `HookSatExactMemcpy H lsMemcpySym`
+  via `s2_memcpy_step_placed_of_exact` / `placed_memcpy_step_of_exact` in the `∀ c : MemcpyClobber`
+  shape with exact `mem = s.mem.writeBytes dst bs` (no `S2Frame` re-anchoring).
 -/
 
 set_option autoImplicit false
@@ -332,24 +334,6 @@ theorem memcpyGhostHook_exact
   · simp only [hReal, ↓reduceDIte, keepFsTrace_hookMemcpy_eq]
     exact hookMemcpy_exact hrun hsp hx0 hx1 hx2 hlr hread hrw hreadable hdisj
 
-theorem memcpyGhostHookBlk20_exact
-    {keep : BitVec 64 → Bool} {P_real : Program} (mmpl : MultiPlacement)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none) :
-    HookExactMemcpy (memcpyGhostHookBlk20 keep P_real mmpl) :=
-  memcpyGhostHook_exact hsvc_real (mallocngBlockProg20_svc_eq mmpl) hreal_no
-    (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg20_hasWords mmpl Syscall.standard)
-
-theorem memcpyGhostHookPure20_exact
-    {keep : BitVec 64 → Bool} {P_real : Program} (mmpl : MultiPlacement)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none) :
-    HookExactMemcpy (memcpyGhostHookPure20 keep P_real mmpl) :=
-  memcpyGhostHook_exact hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none (mmpl.base 20) memcpySymWords)
-    (pureWordsProg_memcpy_hasWords (mmpl.base 20))
-
 theorem f3EmptyMemcpyGhostHook_exact
     (keep : BitVec 64 → Bool) {P_sub : Program} {entryTarget : BitVec 64}
     (hsvc_sub : P_sub.svc = Syscall.standard)
@@ -358,19 +342,6 @@ theorem f3EmptyMemcpyGhostHook_exact
     HookExactMemcpy (f3EmptyMemcpyGhostHook keep P_sub entryTarget) := by
   rw [f3EmptyMemcpyGhostHook_eq]
   exact memcpyGhostHook_exact rfl hsvc_sub (fun _ _ => rfl) hsub_no hwords
-
-theorem f3MemcpyGhostHook_exact
-    {keep : BitVec 64 → Bool} (mpl mmpl : MultiPlacement) (W : CliHooks)
-    (hreal_no : ∀ pc, keep pc = true → (f3RealProg617 mpl mmpl W).externAt? pc = none) :
-    HookExactMemcpy (f3MemcpyGhostHook keep mpl mmpl W) :=
-  memcpyGhostHookBlk20_exact mmpl (f3RealProg617_svc_eq mpl mmpl W) hreal_no
-
-theorem f3MemcpyGhostHookNarrow_exact
-    (mpl mmpl : MultiPlacement) (W : CliHooks)
-    (hreal_no : ∀ pc, keepMemcpyBlk20 mmpl pc = true →
-      (f3RealProg617 mpl mmpl W).externAt? pc = none) :
-    HookExactMemcpy (f3MemcpyGhostHook (keepMemcpyBlk20 mmpl) mpl mmpl W) :=
-  f3MemcpyGhostHook_exact mpl mmpl W hreal_no
 
 /-- When `keep (u.readReg64 .lr) = false` and `ActiveRealPre masterMemcpySpec u` hold,
     `memcpyGhostHookK` agrees pointwise with `memcpyGhostHook`. -/

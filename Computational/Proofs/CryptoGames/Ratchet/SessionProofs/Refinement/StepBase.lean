@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation -- proof-setup: allow-public-import
 
 /-!
 # Base `CloseByState` combinators for the refinement
@@ -21,7 +21,7 @@ Defines the per-step coupling predicate `CloseByState` and generic step-reductio
 `libsignal_refines`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -40,7 +40,7 @@ variable {Pt PQ PQC : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [Inha
 
 /-- Relational state-coupling predicate comparing remaining `libsignalSessionScheme` and `lFig8`
 executions within `CloseByRefines`. -/
-def CloseByState {α : Type} (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def CloseByState {α : Type} (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep q : ℕ) (δ : ℝ≥0∞)
     (post : α → Bool)

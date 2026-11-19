@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanupBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDeser
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanupBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDeser -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Wire.WireCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanup
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Post-Loop Deserialization & Field Checks for `<SignalMessage>::try_from`
@@ -26,7 +28,7 @@ Proves relocatable `[LibsignalPlacement]` budget-threaded post-loop segments on 
 presence checks.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,9 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateBranches
 import ProofLib.SepLogic.WPp
 
@@ -28,7 +26,7 @@ Symbolic-execution stepping lemmas for the remaining 4 two-field variants of
   - `k = 10`: `.ct2Sampled` (`+868..+884`, `+1188..+1300`, `+1568..+1576`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 
@@ -39,7 +37,6 @@ open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalSpqrV1
 open EncodedLen
 
-local notation "tripleRatchetProgAtExt" => CryptoVerification.LibsignalTripleRatchet.contractProg
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000

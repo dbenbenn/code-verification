@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.SmReachInvParty
-public import Computational.Proofs.ReductionDsl.SM.GameCosted
+public import Computational.Proofs.E2E.Dsl.SmReachInvParty -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 public import Computational.Specifications.Reductions.Pqxdh.StatementPqReds
-public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers
+public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers -- proof-setup: allow-public-import
 
 /-!
 # Model-Game `SM.GameState` Reachability Invariant
@@ -22,7 +22,7 @@ Lifts `PartyReachInv` to `SM.GameState` (`GameReachInv`, `SmReachBounded`) and d
 session steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +48,7 @@ open Computational.Proofs.E2E.Dsl.SmReachInvParty (PartyReachInv partyReachInv_i
 /-! ## Deduplicated `comp` list -/
 
 /-- Deduplicates a compromised-position list while keeping the last occurrence of each `Pos`. -/
-def dedupComp : List Pos → List Pos
+@[expose] def dedupComp : List Pos → List Pos
   | [] => []
   | p :: ps =>
     let d := dedupComp ps
@@ -247,14 +247,6 @@ theorem gameReachInv_initState (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
           ℓ s).sendPart k b) :=
   ⟨partyReachInv_fixedSpk_initA C K idA idB ℓ s k,
    partyReachInv_fixedSpk_initB C K idA idB ℓ s k⟩
-
-theorem gameReachInv_initState_u (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
-    (ℓ : ℕ) (kU : CryptoVerification.E2E.KeyU) (b : Bool) :
-    GameReachInv C K
-      (initState
-        (sessionSchemeU (paramsIdsWithSpqr C (spqrV1SessionUniformCoins C.F K) idA idB)
-          ℓ).sendPart kU b) :=
-  ⟨partyReachInv_initA C K rfl _, partyReachInv_initB C K rfl _⟩
 
 theorem smReachBounded_initState (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
     (ℓ : ℕ) (s : BitVec 256) (k : SampledSessionKey) (b : Bool) :
@@ -680,7 +672,7 @@ theorem gameReachInv_oracleImplR (C : Crypto) (K : MlKem) (idA idB : IdentityKey
 /-! ## Driver invariant `DrvSmReachInv` -/
 
 /-- Asserts `GameReachInv C K` for every active local session in `σ`. -/
-def DrvSmReachInv {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : MlKem)
+@[expose] def DrvSmReachInv {S : SignalPqxdh.Setup} {ℓ : ℕ} (C : Crypto) (K : MlKem)
     (σ : BHE2EDrvState S ℓ) : Prop :=
   ∀ d ∈ σ.insts, ∀ gs ∈ d.gs, GameReachInv C K gs
 
@@ -729,23 +721,6 @@ theorem drvSmReachInv_compositionLocalStart {S : SignalPqxdh.Setup} {ℓ : ℕ}
     rcases hout with ⟨⟨kr1, st1⟩, -, ⟨kr2, st2⟩, -, ac, -, rfl⟩
     have h' : DrvSmReachInv C K { σ with st := st2 } := h
     exact drvSmReachInv_finishStartSpk C K bMode? h' sid kr1 kr2 ac
-
-theorem drvSmReachInv_stepStartU {S : SignalPqxdh.Setup} {ℓ : ℕ}
-    (C : Crypto) (K : MlKem)
-    {σ : BHE2EDrvState S ℓ} (h : DrvSmReachInv C K σ)
-    (sid : SignalPqxdh.SessionId S) (kU : CryptoVerification.E2E.KeyU) :
-    DrvSmReachInv C K (bhShallowStepStartU C K σ sid kU).2 := by
-  dsimp only [bhShallowStepStartU]
-  split
-  · exact h
-  · intro d hd gs hgs
-    rcases List.mem_append.mp hd with hd0 | hd1
-    · exact h d hd0 gs hgs
-    · simp only [List.mem_singleton] at hd1
-      subst hd1
-      simp only [Option.mem_def, Option.some.injEq] at hgs
-      subst hgs
-      exact gameReachInv_initState_u C K _ _ ℓ kU σ.b
 
 private theorem mem_set_iff_or {α : Type} :
     ∀ (l : List α) (i : ℕ) (x y : α), y ∈ l.set i x → y = x ∨ y ∈ l

@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
-import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyEncoder>::from_pb`: Relocatable `.points` Branch and OOM Helpers
@@ -24,7 +25,7 @@ Relocatable `[LibsignalPlacement]` proofs of OOM panic blocks (`+1536`, `+1696`,
 `.points` outer loop (`+260 → +1612 / +1648`) on Block `374`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

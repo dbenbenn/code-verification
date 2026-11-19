@@ -20,7 +20,7 @@ closure (`attacker_knows_symEnc`, `attacker_knows_symDec`), and `BytesInvariants
 and `SubAttackerKnowledgeTheorem` instances parameterized by `SymEncPred`.
 -/
 
-@[expose] public section
+public section
 
 namespace DY.SymEnc
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Common
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Common -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Core
 
 /-!
@@ -21,18 +21,12 @@ and either removes and returns the stored key via `memmove` (`+0x5e4 .. +0x778`)
 `DuplicatedMessage(ck.index, counter)` (`+0x0b4 .. +0x16c`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession
 
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
-
-/-- Past-counter take-path correctness (`TakePathSpec`). -/
-theorem takePath_ok (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) :
-    TakePathSpec F A alloc img := by
-  exact TakePath.takePath_ok_thm F A alloc img
 
 /-- Placed past-counter take-path correctness (`TakePathPlacedSpec`). -/
 theorem takePath_placed_ok [LibsignalPlacement]

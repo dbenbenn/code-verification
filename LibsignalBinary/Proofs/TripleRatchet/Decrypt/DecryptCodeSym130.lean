@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard7
 
 /-!
 # Relocatable Per-Block Decode & Fetch Lemmas for Block `130`
@@ -21,7 +22,7 @@ Generated instruction decode and fetch lemmas for block `130`
 (`libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

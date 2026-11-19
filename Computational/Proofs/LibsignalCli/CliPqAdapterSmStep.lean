@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.CliPqAdapterCoupling
+public import Computational.Proofs.LibsignalCli.CliPqAdapterCoupling -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.CliPqAdapterSmBobSim
 import Computational.Proofs.LibsignalCli.CliPqAdapterSmSendCorrA
 
@@ -20,7 +20,7 @@ import Computational.Proofs.LibsignalCli.CliPqAdapterSmSendCorrA
 `CliPqAdapterSmSendCorrA` and `CliPqAdapterSmBobSim`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

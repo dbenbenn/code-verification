@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-public import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.SpqrSendEmptyCodeSym
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.SpqrSendEmptyCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeStateEmpty.Proof
 import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.Fetch
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import ProofLib.Sep
 
 /-!
 # Verification of `spqr::send::<HookRng>` on an Empty State
@@ -27,7 +27,7 @@ Proves that on an empty post-quantum state (`x.st.bytes = []`), `spqr::send::<li
 under `[LibsignalPlacement]` (blocks 325 and 124).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.SpqrSendEmpty
 
@@ -98,39 +98,9 @@ theorem stackAt_spqr (sp : BitVec 64) :
       (∃∗ v38 : BitVec 64, (sp - 24#64) ↦₆₄ v38) ∗
       (∃∗ v39 : BitVec 64, (sp - 16#64) ↦₆₄ v39) ∗
       (∃∗ v40 : BitVec 64, (sp - 8#64) ↦₆₄ v40) := by
-  show memRegion (sp - BitVec.ofNat 64 131072) 131072 = _
-  rw [mr_cut' sp 131072 24448 106624 24448 131072 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 24448 8064 16384 8064 24448 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 8064 8056 8 8056 8064 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 8056 8016 40 8016 8056 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 8016 8008 8 8008 8016 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 8008 8000 8 8000 8008 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 8000 7992 8 7992 8000 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 7992 7984 8 7984 7992 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 7984 7664 320 7664 7984 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 7664 7656 8 7656 7664 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 7656 7648 8 7648 7656 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 7648 7640 8 7640 7648 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 7640 4192 3448 4192 7640 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 4192 4184 8 4184 4192 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 4184 3360 824 3360 4184 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 3360 3008 352 3008 3360 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 3008 96 2912 96 3008 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 96 88 8 88 96 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 88 80 8 80 88 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 80 72 8 72 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 72 64 8 64 72 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 64 56 8 56 64 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 56 48 8 48 56 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 48 40 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 40 32 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 32 24 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 24 16 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 16 8 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  have hstk : memRegion (sp - BitVec.ofNat 64 24448) 16384 = stackAt (sp - 8064#64) extHookStack := by
-    simp only [stackAt, extHookStack]; congr 1; bv_omega
-  rw [hstk]
-  simp only [memRegion_eight]
+  rw [show spqrSendStack = 131072 from rfl, show extHookStack = 16384 from rfl]
+  dsimp only [stackAt]
+  sep_interval_eq
 
 /-! ## The program -/
 
@@ -138,13 +108,6 @@ theorem stackAt_spqr (sp : BitVec 64) :
 abbrev externsWithPanics (C : Crypto) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : String → Option (State → State) :=
   Rust.withPanics (tripleRatchetExterns C ctl abs)
-
-/-- The triple-ratchet session program rebased at `b`. -/
-noncomputable abbrev rebasedTripleRatchetProg (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Program :=
-  libsignalSessionCode.rebase b (externsWithPanics C ctl abs)
-
-/-! ## The callees -/
 
 /-- `decodeStateEmptyAt` at the decode result buffer `sp - 3360`, cut at the words
 `spqr::send` reads (word 0, which is `-1`, and the three words after it) and the two `None`
@@ -157,11 +120,7 @@ theorem decodeEmpty_split (t : BitVec 64) :
       ((t - 3312#64) ↦₆₄ pqChainNone) ∗ memRegion (t - 3304#64) 72 ∗
       ((t - 3232#64) ↦₆₄ pqInnerNone) ∗ memRegion (t - 3224#64) 216 := by
   unfold decodeStateEmptyAt
-  simp (disch := decide) only [bv_sub_add_lit, Nat.reduceSub]
-  rw [mr_cut' t 3352 3344 8 32 40 rfl rfl (by decide) (by decide) (by decide),
-    mr_cut' t 3344 3336 8 24 32 rfl rfl (by decide) (by decide) (by decide),
-    mr_cut' t 3336 3328 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  simp only [memRegion_eight, sepConj_assoc]
+  sep_interval_eq
 
 /-- The 72-byte `send` result buffer, cut at the seven words the `Ok` path writes. -/
 theorem ret_split (r : BitVec 64) :
@@ -170,32 +129,21 @@ theorem ret_split (r : BitVec 64) :
       (∃∗ a2 : BitVec 64, (r + 16#64) ↦₆₄ a2) ∗ (∃∗ a3 : BitVec 64, (r + 24#64) ↦₆₄ a3) ∗
       (∃∗ a4 : BitVec 64, (r + 32#64) ↦₆₄ a4) ∗ (∃∗ a5 : BitVec 64, (r + 40#64) ↦₆₄ a5) ∗
       (∃∗ a6 : BitVec 64, (r + 48#64) ↦₆₄ a6) ∗ memRegion (r + 56#64) 16 := by
-  have hs : ∀ (b : BitVec 64) (k : Nat), k ≤ 64 →
-      memRegion b (8 + k) = memRegion b 8 ∗ memRegion (b + 8#64) k :=
-    fun b k hk => memRegion_split' rfl rfl (by omega)
-  rw [hs r 64 (by decide), hs _ 56 (by decide), hs _ 48 (by decide), hs _ 40 (by decide),
-    hs _ 32 (by decide), hs _ 24 (by decide), hs _ 16 (by decide)]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, memRegion_eight]
+  sep_interval_eq
 
 /-! ## The `memcpy` of the decode payload -/
 
 /-- The 320-byte decode payload at `a` as `spqr::send` reads it: the words at `+16` (`chain`)
 and `+96` (`inner`) are kept; the rest is opaque. -/
-def pcs (a c i : BitVec 64) : SepProp :=
+@[expose] def pcs (a c i : BitVec 64) : SepProp :=
   memRegion a 16 ∗ ((a + 16#64) ↦₆₄ c) ∗ memRegion (a + 24#64) 72 ∗ ((a + 96#64) ↦₆₄ i) ∗
     memRegion (a + 104#64) 216
 
 theorem pcs_of_bytes (a c i : BitVec 64) (b1 b3 b5 : List (BitVec 8)) (h1 : b1.length = 16)
     (h3 : b3.length = 72) (h5 : b5.length = 216) :
     (a ↦ₛ (b1 ++ (unpack64 c ++ (b3 ++ (unpack64 i ++ b5))))) ⊢ pcs a c i := by
-  simp only [pointsToBytes_append, unpack64_length, h1, h3, BitVec.add_assoc, BitVec.reduceAdd,
-    ← pointsTo64_eq_pointsToBytes, pcs]
-  have e1 := pointsToBytes_entails_memRegion a b1
-  have e3 := pointsToBytes_entails_memRegion (a + 24#64) b3
-  have e5 := pointsToBytes_entails_memRegion (a + 104#64) b5
-  rw [h1] at e1; rw [h3] at e3; rw [h5] at e5
-  exact sepConj_mono e1 (sepConj_mono (Entails.refl _) (sepConj_mono e3
-    (sepConj_mono (Entails.refl _) e5)))
+  simp only [pointsToBytes_append, unpack64_length, h1, h3, ← pointsTo64_eq_pointsToBytes, pcs]
+  sep_interval
 
 theorem bytes_of_pcs (a c i : BitVec 64) :
     pcs a c i ⊢ ∃∗ bs : List (BitVec 8), ⌜bs.length = 320 ∧ ∃ b1 b3 b5 : List (BitVec 8),
@@ -240,7 +188,7 @@ theorem pcs_dst (t c i : BitVec 64) :
 
 /-- `memcpy(t - 7984, t - 3328, 320)`: copies the decode payload (ghosts: the caller's `sp` `t`,
 the `chain` word `c`, the `inner` word `i`) and keeps the trace. -/
-def memcpyPcsSpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) where
+@[expose] def memcpyPcsSpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) where
   pre := fun (t, c, i) s0 =>
     ⌜s0.readReg64 .x0 = t - 7984#64 ∧ s0.readReg64 .x1 = t - 3328#64 ∧
       s0.readReg64 .x2 = 320#64⌝ ∗
@@ -336,17 +284,14 @@ theorem memcpyPcs_of_sessionMemcpyRegion {prog : Program} {entry : BitVec 64}
 /-! ## Folding back to the post -/
 
 theorem pcs_entails (a c i : BitVec 64) : pcs a c i ⊢ memRegion a 320 := by
-  refine Entails.trans (bytes_of_pcs a c i) (Entails.sepExists_elim fun bs => ?_)
-  refine Entails.pure_left fun h => ?_
-  have e := pointsToBytes_entails_memRegion a bs
-  rw [h.1] at e
-  exact e
+  unfold pcs
+  sep_interval
 
 theorem dst_fold (t c i : BitVec 64) :
     (memRegion (t - 7984#64) 16 ∗ ((t - 7968#64) ↦₆₄ c) ∗
       memRegion (t - 7960#64) 72 ∗ ((t - 7888#64) ↦₆₄ i) ∗ memRegion (t - 7880#64) 216) ⊢
     memRegion (t - 7984#64) 320 := by
-  rw [← pcs_dst]; exact pcs_entails _ c i
+  sep_interval
 
 theorem decode_fold (t w d1 d2 d3 c i : BitVec 64) :
     ((t - 3360#64) ↦₆₄ w) ∗ ((t - 3352#64) ↦₆₄ d1) ∗ ((t - 3344#64) ↦₆₄ d2) ∗
@@ -354,14 +299,7 @@ theorem decode_fold (t w d1 d2 d3 c i : BitVec 64) :
       (memRegion (t - 3328#64) 16 ∗ ((t - 3312#64) ↦₆₄ c) ∗
         memRegion (t - 3304#64) 72 ∗ ((t - 3232#64) ↦₆₄ i) ∗ memRegion (t - 3224#64) 216) ⊢
     memRegion (t - 3360#64) 352 := by
-  rw [← pcs_src]
-  rw [mr_cut' t 3360 3352 8 344 352 rfl rfl (by decide) (by decide) (by decide),
-    mr_cut' t 3352 3344 8 336 344 rfl rfl (by decide) (by decide) (by decide),
-    mr_cut' t 3344 3336 8 328 336 rfl rfl (by decide) (by decide) (by decide),
-    mr_cut' t 3336 3328 8 320 328 rfl rfl (by decide) (by decide) (by decide)]
-  exact sepConj_mono (pointsTo64_entails_memRegion _ _) (sepConj_mono
-    (pointsTo64_entails_memRegion _ _) (sepConj_mono (pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (pointsTo64_entails_memRegion _ _) (pcs_entails _ c i))))
+  sep_interval
 
 /-- The `Ok` result the path writes: two empty `Vec`s (`cap = 0`, dangling `ptr = 1`) and the
 key `None`. -/
@@ -399,75 +337,6 @@ theorem tape_fold (ctl cur : BitVec 64) (rest : List (BitVec 8)) :
   simp only [BitVec.add_zero, Nat.sub_zero]
   exact Entails.refl _
 
-theorem spqrSendEmpty_base_ext (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (ext : String → Option (State → State))
-    (img : Obj.Image) (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext) (hE : S.SendEmptyOk) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName)
-      (spqrSendEmptySpec A ctl S img) := by
-  have hfn := (ls_lemma% fnOff "spqr::send::<libsignal_session::HookRng>")
-  have hdec := hC.decode_state_empty_ok_at spqrSendName (num% (ls_off% "spqr::decode_state" - ls_off% "spqr::send::<libsignal_session::HookRng>"))
-  have hmc := memcpyPcs_of_sessionMemcpyRegion (hC.session_memcpy_region_ok_at spqrSendName (num% (ls_off% "memcpy" - ls_off% "spqr::send::<libsignal_session::HookRng>")))
-  spqr_fetches img.base (Rust.withPanics ext) hfn 0 108
-  spqr_fetches img.base (Rust.withPanics ext) hfn 136 88
-  spqr_fetches img.base (Rust.withPanics ext) hfn 4608 12
-  spqr_fetches img.base (Rust.withPanics ext) hfn 4632 36
-  simp only [spqrSendEmptySpec, spqrSendSpec, Spec.inImage, stackAt_spqr]
-  simp (config := { maxSteps := 1000000 }) only [sepExists_sepConj_left, sepExists_sepConj_right]
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨ret, ⟨v, cap, ptr, bs⟩, cur, rest⟩ := x
-  dsimp only at *
-  subst bs
-  wp_steps
-  wp_apply
-  wp_simp_pre only [decodeEmpty_split, sepExists_sepConj_left, sepExists_sepConj_right,
-    sepConj_assoc]
-  apply SepWP.exists_elim; intro d3
-  apply SepWP.exists_elim; intro d2
-  apply SepWP.exists_elim; intro d1
-  wp_steps
-  wp_apply
-  wp_simp_pre only [ret_split ret, sepExists_sepConj_left, sepExists_sepConj_right]
-  apply SepWP.exists_elim; intro r6
-  apply SepWP.exists_elim; intro r5
-  apply SepWP.exists_elim; intro r4
-  apply SepWP.exists_elim; intro r3
-  apply SepWP.exists_elim; intro r2
-  apply SepWP.exists_elim; intro r1
-  apply SepWP.exists_elim; intro r0
-  wp_steps
-  refine SepWP.fold (dst_fold s0.sp pqChainNone pqInnerNone) (by sep_focus) ?_
-  refine SepWP.fold (decode_fold s0.sp 0xFFFFFFFFFFFFFFFF#64 d1 d2 d3 pqChainNone pqInnerNone)
-    (by sep_focus) ?_
-  refine SepWP.fold (result_fold A ret) (by sep_focus) ?_
-  refine SepWP.fold (tape_fold ctl cur rest) (by sep_focus) ?_
-  simp only [hE.send, hE.draws, hE.noPanic]
-  wp_done
-
-theorem spqrSendEmpty_base (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (abs : String → Option (State → State))
-    (img : Obj.Image) (hS : TripleRatchetHooks C A S abs) (hE : S.SendEmptyOk) :
-    subroutine_ok (rebasedTripleRatchetProg img.base C ctl abs) ((rebasedTripleRatchetProg img.base C ctl abs).fnAddr spqrSendName)
-      (spqrSendEmptySpec A ctl S img) :=
-  spqrSendEmpty_base_ext C A ctl S (tripleRatchetExterns C ctl abs) img
-    (Stage2Contracts.of_tripleRatchetProgAt img.base C A ctl S abs hS) hE
-
-/-- In-image `spqr::send::<HookRng>` satisfies `spqrSendEmptySpec` (`SpqrSendEmptyRunStmt`). -/
-theorem spqrSendEmpty_run' (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (abs : String → Option (State → State))
-    (img : Obj.Image) : SpqrSendEmptyRunStmt C A ctl S abs img := by
-  intro hS hE himg
-  have hP : tripleRatchetProg img C ctl abs = rebasedTripleRatchetProg img.base C ctl abs :=
-    libsignalSessionCode_ofImage himg
-  have hEntry : entryOf img spqrSendName = (rebasedTripleRatchetProg img.base C ctl abs).fnAddr spqrSendName := by
-    unfold entryOf rebasedTripleRatchetProg
-    rw [libsignalSessionCode_ofImage himg, Program.fnAddr_rebase, Program.fnAddr_rebase]
-  rw [hP, hEntry]
-  exact spqrSendEmpty_base C A ctl S abs img hS hE
-
-/-! ## Relocatable per-block contracts (blocks 325 and 124) -/
-
 open Arm64.Obj CryptoVerification
 
 /-- Block `325` (`spqr::decode_state`) on an empty state meets `decodeStateEmptySpec A`
@@ -489,7 +358,7 @@ theorem decodeStateEmpty_placed_ok [LibsignalPlacement] (A : RustAlloc)
   wp_done
 
 /-- Relocatable `[LibsignalPlacement]` contract for `spqr::send::<HookRng>` (Block `124`). -/
-def spqrSendPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def spqrSendPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (S : SpqrModel) : Spec SendCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.st.v⌝ ∗ x.st.at A ∗ memRegion x.ret 72 ∗
@@ -505,7 +374,7 @@ def spqrSendPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
       anyHeap
 
 /-- `spqrSendPlacedSpec` restricted to an empty state (`x.st.bytes = []`). -/
-def spqrSendEmptyPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def spqrSendEmptyPlacedSpec [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (S : SpqrModel) : Spec SendCall :=
   { spqrSendPlacedSpec A ctl S with
     pre := fun x s => ⌜x.st.bytes = []⌝ ∗ (spqrSendPlacedSpec A ctl S).pre x s }

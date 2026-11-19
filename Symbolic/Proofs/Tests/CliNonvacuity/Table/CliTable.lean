@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Nodes00
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Nodes01
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Nodes02
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Nodes03
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Nodes00 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Nodes01 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Nodes02 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Nodes03 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionEval -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -23,7 +25,7 @@ namespace Symbolic.Proofs.Tests.CliNonvacuity.Table.CliTable
 open Symbolic.Proofs.Tests.CliNonvacuity.SessionEval (Trie emptyTrie)
 open Symbolic.Proofs.Tests.CliNonvacuity.Table.Defs (BinTree CertNode CertTable)
 
-def cliIdTree : BinTree CertNode :=
+@[expose] def cliIdTree : BinTree CertNode :=
   .branch
     (.branch
       (.branch (.branch Nodes00.sub00 Nodes00.sub01)
@@ -36,7 +38,7 @@ def cliIdTree : BinTree CertNode :=
       (.branch (.branch Nodes03.sub12 Nodes03.sub13)
                (.branch Nodes03.sub14 Nodes03.sub15)))
 
-def cliHashTrie : Trie Nat :=
+@[expose] def cliHashTrie : Trie Nat :=
   (.branch
     (.branch
       (.branch
@@ -785,6 +787,6 @@ def cliHashTrie : Trie Nat :=
     )
   )
 
-def cliTable : CertTable := ⟨10, cliIdTree, cliHashTrie⟩
+@[expose] def cliTable : CertTable := ⟨10, cliIdTree, cliHashTrie⟩
 
 end Symbolic.Proofs.Tests.CliNonvacuity.Table.CliTable

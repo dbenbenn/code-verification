@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.UA.BI.G.XlateSteps
+public import Symbolic.Proofs.Swarm.UA.BI.G.XlateSteps -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.UA.BI.RAB.Defs
 import Symbolic.Proofs.Swarm.CREF.Cli.World.LeakPure
 import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure
@@ -25,7 +25,7 @@ witness of `evs` (including leak, break, and invert steps) translates to a clean
 and `plaintextTerms`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Cryptographic Primitive Bridge (`[LibsignalPlacement]`)
@@ -22,7 +23,7 @@ Proves relocatable `[LibsignalPlacement]` contracts for `<PrivateKey>::calculate
 `53`).
 -/
 
-@[expose] public section
+public section
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -42,7 +43,7 @@ open CryptoVerification.E2E.Pqxdh.Initiator
 
 /-- Base `Spec` (without image layout pins) for `<PrivateKey>::calculate_agreement` (Block `207`)
 at the `Initiator.Primitives` abstraction level. -/
-def pqxdhCalculateAgreementPlacedBaseSpec (P : Primitives) (A : RustAlloc) :
+@[expose] def pqxdhCalculateAgreementPlacedBaseSpec (P : Primitives) (A : RustAlloc) :
     Spec (BitVec 64 × Bytes × BitVec 64 × Bytes × BitVec 64 × BitVec 64) where
   pre := fun (ourA, ourSk32, theirA, theirPk32, ret, sp) s =>
     ⌜s.readReg64 .x0 = ourA ∧ s.readReg64 .x1 = theirA ∧ s.readReg64 .x8 = ret ∧ s.sp = sp ∧
@@ -57,7 +58,7 @@ def pqxdhCalculateAgreementPlacedBaseSpec (P : Primitives) (A : RustAlloc) :
 
 /-- Frozen-invariant variant of `pqxdhCalculateAgreementPlacedBaseSpec` carrying
 `Keys.LsFrozenInv pl s` in `pre` for direct calls inside `SepWPp.of_sepWP_lscro` segments. -/
-def pqxdhCalculateAgreementPlacedFrozenSpec (P : Primitives) (A : RustAlloc)
+@[expose] def pqxdhCalculateAgreementPlacedFrozenSpec (P : Primitives) (A : RustAlloc)
     (pl : Obj.MultiPlacement) :
     Spec (BitVec 64 × Bytes × BitVec 64 × Bytes × BitVec 64 × BitVec 64) where
   pre := fun (ourA, ourSk32, theirA, theirPk32, ret, sp) s =>
@@ -70,14 +71,14 @@ def pqxdhCalculateAgreementPlacedFrozenSpec (P : Primitives) (A : RustAlloc)
 
 /-- Target predicate for `<PrivateKey>::calculate_agreement` (Block `207`) wrapped in
 `withLsCodeRoLoaded lsmpl`. -/
-def PqxdhCalculateAgreementPlacedOk [LibsignalPlacement] (P : Primitives) (A : RustAlloc)
+@[expose] def PqxdhCalculateAgreementPlacedOk [LibsignalPlacement] (P : Primitives) (A : RustAlloc)
     (prog : Program) : Prop :=
   subroutine_ok prog (lsmpl.base 207)
     (withLsCodeRoLoaded lsmpl (pqxdhCalculateAgreementPlacedBaseSpec P A))
 
 /-- Target predicate for `<PrivateKey>::calculate_agreement` (Block `207`) carrying
 `Keys.LsFrozenInv lsmpl` in `pre`. -/
-def PqxdhCalculateAgreementPlacedFrozenOk [LibsignalPlacement] (P : Primitives) (A : RustAlloc)
+@[expose] def PqxdhCalculateAgreementPlacedFrozenOk [LibsignalPlacement] (P : Primitives) (A : RustAlloc)
     (prog : Program) : Prop :=
   subroutine_ok prog (lsmpl.base 207)
     (pqxdhCalculateAgreementPlacedFrozenSpec P A lsmpl)
@@ -88,7 +89,7 @@ theorem pqxdhCalculateAgreement_placed_ok [LibsignalPlacement]
     {P : Primitives} {C : Crypto} {A : RustAlloc}
     {H : LibsignalHooks}
     (hP : PrimitivesMatchCrypto P C)
-    (h_dh : HookSat H Keys.lsDhSym (diffieHellmanSpec C.X))
+    (h_dh : HookSat H Keys.lsDhSym (Keys.withLsRet624 (withStack (diffieHellmanSpec C.X) 1808)))
     (h_shdrop : HookSat H Keys.lsSharedDropSym zeroizeSecretSpec)
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H Keys.lsRustNoAllocShimSym noAllocShimSpec)
@@ -154,7 +155,7 @@ theorem pqxdhCalculateAgreement_placed_ok_of_block [LibsignalPlacement]
     {P : Primitives} {C : Crypto} {A : RustAlloc}
     {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
     (hP : PrimitivesMatchCrypto P C)
-    (h_dh : HookSat H Keys.lsDhSym (diffieHellmanSpec C.X))
+    (h_dh : HookSat H Keys.lsDhSym (Keys.withLsRet624 (withStack (diffieHellmanSpec C.X) 1808)))
     (h_shdrop : HookSat H Keys.lsSharedDropSym zeroizeSecretSpec)
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H Keys.lsRustNoAllocShimSym noAllocShimSpec)
@@ -200,7 +201,7 @@ theorem pqxdhCalculateAgreement_placed_frozen_ok_of_block [LibsignalPlacement]
     {P : Primitives} {C : Crypto} {A : RustAlloc}
     {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
     (hP : PrimitivesMatchCrypto P C)
-    (h_dh : HookSat H Keys.lsDhSym (diffieHellmanSpec C.X))
+    (h_dh : HookSat H Keys.lsDhSym (Keys.withLsRet624 (withStack (diffieHellmanSpec C.X) 1808)))
     (h_shdrop : HookSat H Keys.lsSharedDropSym zeroizeSecretSpec)
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H Keys.lsRustNoAllocShimSym noAllocShimSpec)

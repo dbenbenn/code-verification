@@ -13,7 +13,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfBase
 import Computational.Proofs.ReductionDsl.Soundness
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace SignalPqxdh.Security.ReductionDsl.AuthPrf
@@ -119,7 +119,7 @@ theorem Expr.cost_pos {S : Sig} {O : Ops S} {Γ : List (Ty S)} {t : Ty S} (e : E
   | foldM K l init step ih => simp [liftPrimComp, ih]
 
 /-- Cost of the `Setup`-dependent constants in `sessionSlotIndexE S`. -/
-def slotIdxCost (S : Setup) : Nat :=
+@[expose] def slotIdxCost (S : Setup) : Nat :=
   max (5 + bits (if S.N_id = 0 then 0 else S.N_send_opk))
     (8 + bits S.N_send_opk_tot + bits (if S.N_id = 0 then 0 else S.N_send_no_opk))
 
@@ -333,27 +333,12 @@ private theorem finalizeAuthFixedDsl_cost_tight (S : Setup) (K : Nat) {Γ : List
     cost_letC, cost_queryPrim, Ty.wd, Comp.cost, Expr.cost, PNat.val_ofNat]
   ring
 
-private theorem prfCkInitDslK_cost_le (S : Setup) (K : Nat) :
-    (prfCkInitDslK S K).cost ≤ 80 + bits (min K S.N_sess_tot) := by
-  simp only [bindV, emptyAuthHybridStFixedE, emptyAuthHybridStE, emptyAuthStE,
-    ahsMk, stMk, cost_samplePrim, PSamp.cost,
-    Ty.wd, v, Comp.cost, Expr.cost, bits_0]
-  omega
-
 private theorem prfCkFinishDsl_cost_tight (S : Setup) (K : Nat) :
     (prfCkFinishDsl S K).cost =
       114 + min K S.N_dh * 413 + min K S.N_dh ^ 2 * 1088 + K * 97 + K ^ 2 * 9511 := by
   simp only [prfCkFinishDsl, letV, ckSecb, ckFhst, ahsfHybrid, cost_letC,
     finalizeAuthFixedDsl_cost_tight, Expr.cost]
   ring
-
-private theorem prfMsgKeysInitDslK_cost_le (S : Setup) (K : Nat) :
-    (prfMsgKeysInitDslK S K).cost ≤
-      85 + bits (min K S.N_sess_tot) + bits (min K S.N_recv_tot + 1) := by
-  simp only [bindV, mkcMk, emptyAuthHybridStFixedE, emptyAuthHybridStE,
-    emptyAuthStE, ahsMk, stMk,
-    cost_sampleChal, PSamp.cost, Ty.wd, v, Comp.cost, Expr.cost, bits_0]
-  omega
 
 private theorem prfMsgKeysFinishDsl_cost_tight (S : Setup) (K : Nat) :
     (prfMsgKeysFinishDsl S K).cost =
@@ -404,13 +389,6 @@ theorem prfCkFinishDsl_cost (S : Setup) (K : Nat) :
     (prfCkFinishDsl S K).cost =
       114 + min K S.N_dh * 413 + min K S.N_dh ^ 2 * 1088 + K * 97 + K ^ 2 * 9511 :=
   prfCkFinishDsl_cost_tight S K
-
-theorem prfMsgKeysInitDsl_cost (S : Setup) :
-    (prfMsgKeysInitDsl S).cost = 72 + bits S.N_sess_tot + bits (S.N_recv_tot + 1) := by
-  simp only [prfMsgKeysInitDsl, bindV, mkcMk, emptyAuthHybridStFixedE, emptyAuthHybridStE,
-    emptyAuthStE, ahsfMk, ahsfMkSlots, emptyAuthSlotStE, assMk, ahsMk, stMk,
-    cost_sampleChal, PSamp.cost, Ty.wd, v, Comp.cost, Expr.cost, bits_0]
-  omega
 
 theorem prfMsgKeysFinishDsl_cost (S : Setup) (K : Nat) :
     (prfMsgKeysFinishDsl S K).cost =
@@ -715,336 +693,16 @@ theorem registerFixedB_cost_le {Γ₁ Γ₂ Δ : List PT}
     Ty.wd, v, Comp.cost, Expr.cost, PNat.val_ofNat, bits_32]
   omega
 
-private theorem authCkSendB_cost_tight_le (S : Setup) (K : Nat) (opk : Bool) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
-    (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
-    (fhst : Var Γ₃ authHybridStateFixedTy) (x : Var Γ₄ sendQTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
-    (authCkSendB S K opk idx chalP fhst x : Comp pqxdhOps pqPrimIface Δ RSF).cost ≤
-      19000 + K * 14000 + min K S.N_dh * 16000 := by
-  cases opk <;>
-  · simp only [authCkSendB, sampAtCkC, sampCkPairC, koskBundleOkC_cost, finishAuthHybridSendC_cost,
-      hkdfRoC_cost, rootRoC_cost, allocSendSlotE_cost, sidEq_cost, firstMsgADE_cost,
-      buildSecretsE_cost, resolveSigPkC, checkBundleSpkHonIdealC, findHonestC, sendGuardE,
-      cost_encEC, cost_encKEM, bindV, letV, caseOptV, findMV, anyMV, eFind, eAny, eCaseOpt,
-      natEq, natLt, isSomeE, ahsfHybrid, ahsfRecvCount, ahsfSlots, ahsfMkSlots,
-      ahsBase, asSecb, asHasWonAuth, asPrincipals, asSpkBundles, asUsedSendSessions,
-      asRoCache, asRootRoCache, peSecIKA0, peIkAPk, peIkSignPk, peCorrupted,
-      sbSpkPk, sbPqspkPk, pkbIkB, pkbSpkB, pkbSpkSig, pkbOpkB?, pkbPqspkB, pkbPqspkSig,
-      aNone, cost_letC, cost_samplePrim, cost_queryPrim, cost_bytesLen, cost_bytesBeq,
-      cost_boolOr, cost_litB, PSamp.cost, Ty.wd, v, Comp.cost, Expr.cost,
-      PNat.val_ofNat, List.length_nil, bits_32, ite_true, ite_false, Bool.false_eq_true]
-    repeat' first
-      | simp (discharger := clear *- ; omega) only [Nat.max_eq_right]
-      | simp (discharger := clear *- ; omega) only [Nat.max_eq_left]
-    omega
-
-private theorem authCkSendB_cost_le (S : Setup) (K : Nat) (opk : Bool) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
-    (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
-    (fhst : Var Γ₃ authHybridStateFixedTy) (x : Var Γ₄ sendQTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
-    (authCkSendB S K opk idx chalP fhst x : Comp pqxdhOps pqPrimIface Δ RSF).cost ≤
-      19000 + slotIdxCost S + K * 14000 + S.N_dh * 28000 := by
-  have h := authCkSendB_cost_tight_le S K opk (Δ := Δ) idx chalP fhst x
-  have hmin : min K S.N_dh ≤ S.N_dh := Nat.min_le_right K S.N_dh
-  omega
-
-private theorem authCkRecvB_cost_tight_le (S : Setup) (K : Nat) (opk : Bool) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
-    (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
-    (fhst : Var Γ₃ authHybridStateFixedTy) (x : Var Γ₄ recvQTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
-    (authCkRecvB S K opk idx chalP fhst x : Comp pqxdhOps pqPrimIface Δ RSF).cost ≤
-      19000 + K * 14000 + min K S.N_dh * 16000 := by
-  cases opk <;>
-  · simp only [authCkRecvB, sampAtCkC, sampCkPairC, recvFinishTagRunC_cost_tight,
-      prepareAuthHybridRecvC_true_cost_tight, prepareAuthHybridRecvC_false_cost_tight,
-      finishAuthRecvCkC_cost_tight, allocRecvSlotE_cost, hkdfRoC_cost, rootRoC_cost, firstMsgADE_cost,
-      bindV, letV, caseOptV, eCaseOpt, natEq, natLt, isSomeE,
-      ahsfHybrid, ahsfRecvCount, ahsfMkSaltCache, ahsfSlots, ahsfMkSlots,
-      ahsfUpd, ahsfUpdSlots, ahsBase,
-      peIkAPk, hdrIkAPk, pkmHdr, pkmEphAPk, pkmPqRatchetMsg, pkmAeadCt,
-      iasDrKey, iasRk1, iasMkSeed, iasCk1_1,
-      parKEntry, parSecrets, parDhRatchet, parIsUncorrSender, parMatchedSess?, parSameEph,
-      parHstDec, parFinishTag, aNone,
-      cost_letC, cost_samplePrim, cost_queryPrim, cost_boolOr,
-      PSamp.cost, Ty.wd, v, Comp.cost, Expr.cost,
-      PNat.val_ofNat, bits_1]
-    repeat' first
-      | simp (discharger := clear *- ; omega) only [Nat.max_eq_right]
-      | simp (discharger := clear *- ; omega) only [Nat.max_eq_left]
-    omega
-
-private theorem authCkRecvB_cost_le (S : Setup) (K : Nat) (opk : Bool) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
-    (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
-    (fhst : Var Γ₃ authHybridStateFixedTy) (x : Var Γ₄ recvQTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
-    (authCkRecvB S K opk idx chalP fhst x : Comp pqxdhOps pqPrimIface Δ RSF).cost ≤
-      19000 + bits S.N_send_tot + K * 14000 + S.N_dh * 28000 := by
-  have h := authCkRecvB_cost_tight_le S K opk (Δ := Δ) idx chalP fhst x
-  have hmin : min K S.N_dh ≤ S.N_dh := Nat.min_le_right K S.N_dh
-  omega
-
-private theorem authCkStepC_cost_tight_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
-    (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
-    (fhst : Var Γ₃ authHybridStateFixedTy) (q : Var Γ₄ authQueryTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
-    (authCkStepC S K idx chalP fhst q : Comp pqxdhOps pqPrimIface Δ RSF).cost ≤
-      19500 + K * 15000 + min K S.N_dh * 16000 := by
-  unfold authCkStepC
-  refine le_trans
-    (caseSumV_cost_le _ _ _ (initPrinFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (corruptFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (genSpkFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (genOpkFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (authCkSendB_cost_tight_le S K true _ _ _ _) <|
-     caseSumV_cost_le _ _ _ (authCkSendB_cost_tight_le S K false _ _ _ _) <|
-     caseSumV_cost_le _ _ _ (authCkRecvB_cost_tight_le S K true _ _ _ _) <|
-     caseSumV_cost_le _ _ _ (authCkRecvB_cost_tight_le S K false _ _ _ _) <|
-     caseSumV_cost_le _ _ _ (roFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (roRootFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (by simp only [aNone, v, Comp.cost, Expr.cost]; exact le_rfl) <|
-     registerFixedB_cost_le _ _)
-    (by omega)
-
-private theorem prfCkHandleDsl_cost_tight_le (S : Setup) (K : Nat) :
-    (prfCkHandleDsl S K).cost ≤
-      20000 + K * 15000 + min K S.N_dh * 16000 := by
-  unfold prfCkHandleDsl
-  have h := authCkStepC_cost_tight_le S K
-    (Δ := authHybridStateFixedTy :: .prod (B 32) (B 32) :: .nat :: .bool ::
-      prfCkStTy :: [prfCkStTy, authQueryTy])
-    (.zero : Var (.nat :: .bool :: prfCkStTy :: [prfCkStTy, authQueryTy]) .nat)
-    (.zero : Var (.prod (B 32) (B 32) :: .nat :: .bool :: prfCkStTy :: [prfCkStTy, authQueryTy]) _)
-    (.zero : Var (authHybridStateFixedTy :: .prod (B 32) (B 32) :: .nat :: .bool :: prfCkStTy ::
-      [prfCkStTy, authQueryTy]) _)
-    (.succ .zero : Var [prfCkStTy, authQueryTy] authQueryTy)
-  simp only [bindV, letV, ckSecb, ckIdx, ckChal, ckFhst, cost_letC, v, Comp.cost, Expr.cost]
-  omega
-
-private theorem authCkStepC_cost_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
-    (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
-    (fhst : Var Γ₃ authHybridStateFixedTy) (q : Var Γ₄ authQueryTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
-    (authCkStepC S K idx chalP fhst q : Comp pqxdhOps pqPrimIface Δ RSF).cost ≤
-      19500 + slotIdxCost S + bits S.N_send_tot + K * 15000 + S.N_dh * 30000 := by
-  unfold authCkStepC
-  refine le_trans
-    (caseSumV_cost_le _ _ _ (initPrinFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (corruptFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (genSpkFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (genOpkFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (authCkSendB_cost_le S K true _ _ _ _) <|
-     caseSumV_cost_le _ _ _ (authCkSendB_cost_le S K false _ _ _ _) <|
-     caseSumV_cost_le _ _ _ (authCkRecvB_cost_le S K true _ _ _ _) <|
-     caseSumV_cost_le _ _ _ (authCkRecvB_cost_le S K false _ _ _ _) <|
-     caseSumV_cost_le _ _ _ (roFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (roRootFixedB_cost_le K _ _) <|
-     caseSumV_cost_le _ _ _ (by simp only [aNone, v, Comp.cost, Expr.cost]; exact le_rfl) <|
-     registerFixedB_cost_le _ _)
-    (by omega)
-
-theorem prfCkHandleDsl_cost_le (S : Setup) (K : Nat) :
-    (prfCkHandleDsl S K).cost ≤
-      20000 + slotIdxCost S + bits S.N_send_tot + K * 15000 + S.N_dh * 30000 := by
-  unfold prfCkHandleDsl
-  have h := authCkStepC_cost_le S K
-    (Δ := authHybridStateFixedTy :: .prod (B 32) (B 32) :: .nat :: .bool ::
-      prfCkStTy :: [prfCkStTy, authQueryTy])
-    (.zero : Var (.nat :: .bool :: prfCkStTy :: [prfCkStTy, authQueryTy]) .nat)
-    (.zero : Var (.prod (B 32) (B 32) :: .nat :: .bool :: prfCkStTy :: [prfCkStTy, authQueryTy]) _)
-    (.zero : Var (authHybridStateFixedTy :: .prod (B 32) (B 32) :: .nat :: .bool :: prfCkStTy ::
-      [prfCkStTy, authQueryTy]) _)
-    (.succ .zero : Var [prfCkStTy, authQueryTy] authQueryTy)
-  simp only [bindV, letV, ckSecb, ckIdx, ckChal, ckFhst, cost_letC, v, Comp.cost, Expr.cost]
-  omega
-
-private theorem wrapMkBase_cost_le {Γ₁ Δ : List PT}
-    (core : Var Γ₁ prfMkCoreTy) [Ext Γ₁ Δ] (m : Comp pqxdhOps pqPrimIface Δ RSF)
-    {M : Nat} (hm : m.cost ≤ M) :
-    (wrapMkBase core m).cost ≤ M + 30 := by
-  simp only [wrapMkBase, bindV, mkcMk, mkcSecb, mkcIdx, mkcSentChal, v, Comp.cost, Expr.cost]
-  omega
-
-private theorem authMkSendPreB_cost_le_clamped (S : Setup) (K : Nat) (opk : Bool) {Γ₁ Γ₂ Δ : List PT}
-    (core : Var Γ₁ prfMkCoreTy) (x : Var Γ₂ sendQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (authMkSendPreB S K opk core x : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy).cost ≤
-      15000 + K * 10000 + min K S.N_dh * 20000 := by
-  cases opk <;>
-  · simp only [authMkSendPreB, koskBundleOkC_cost, finishAuthHybridSendC_cost,
-      finishAuthSendMkC_cost_tight, hkdfRoC_cost, rootRoC_cost, allocSendSlotE_cost, sidEq_cost,
-      firstMsgADE_cost, buildSecretsE_cost, resolveSigPkC, checkBundleSpkHonIdealC, findHonestC,
-      sendGuardE, cost_encEC, cost_encKEM, bindV, letV, caseOptV, findMV, anyMV, eFind, eAny,
-      eCaseOpt, natEq, natLt, isSomeE, mkcSecb, mkcIdx, mkcSentChal, mkcFhst, mkcMk,
-      ahsfHybrid, ahsfRecvCount, ahsfMkSaltCache, ahsfSlots, ahsfMkSlots, ahsfUpd,
-      ahsfUpdSlots, ahsBase,
-      asSecb, asHasWonAuth, asPrincipals, asSpkBundles, asUsedSendSessions,
-      peSecIKA0, peIkAPk, peIkSignPk, peCorrupted,
-      sbSpkPk, sbPqspkPk, pkbIkB, pkbSpkB, pkbSpkSig, pkbOpkB?, pkbPqspkB, pkbPqspkSig,
-      aNone, cost_letC, cost_samplePrim, cost_queryPrim, cost_bytesLen, cost_bytesBeq,
-      cost_boolOr, cost_litB, PSamp.cost, Ty.wd, v, Comp.cost, Expr.cost,
-      PNat.val_ofNat, List.length_nil, bits_32, ite_true, ite_false, Bool.false_eq_true]
-    repeat' first
-      | simp (discharger := clear *- ; omega) only [Nat.max_eq_right]
-      | simp (discharger := clear *- ; omega) only [Nat.max_eq_left]
-    omega
-
-private theorem authMkSendPreB_cost_le (S : Setup) (K : Nat) (opk : Bool) {Γ₁ Γ₂ Δ : List PT}
-    (core : Var Γ₁ prfMkCoreTy) (x : Var Γ₂ sendQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (authMkSendPreB S K opk core x : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy).cost ≤
-      15000 + slotIdxCost S + K * 10000 + S.N_dh * 20000 := by
-  refine le_trans (authMkSendPreB_cost_le_clamped S K opk core x) ?_
-  have hd := Nat.mul_le_mul_right 20000 (Nat.min_le_right K S.N_dh)
-  omega
-
-private theorem authMkRecvPreB_cost_le_clamped (S : Setup) (K : Nat) (opk : Bool) {Γ₁ Γ₂ Δ : List PT}
-    (core : Var Γ₁ prfMkCoreTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (authMkRecvPreB S K opk core x : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy).cost ≤
-      15000 + K * 10000 + min K S.N_dh * 20000 := by
-  cases opk <;>
-  · simp only [authMkRecvPreB, recvFinishTagRunC_cost_tight,
-      prepareAuthHybridRecvC_true_cost_tight, prepareAuthHybridRecvC_false_cost_tight,
-      finishAuthRecvMkC_cost_tight, finishRecvUnmatchedMkPreC_cost_tight, hkdfRoC_cost, rootRoC_cost,
-      allocRecvSlotE_cost, lookupSendSlotE_cost, sidEq_cost, sameSaltKeyE_cost, firstMsgADE_cost,
-      bindV, letV, caseOptV, eFind, eCaseOpt, natEq, natLt, isSomeE,
-      mkcSecb, mkcIdx, mkcSentChal, mkcFhst, mkcMk,
-      ahsfHybrid, ahsfRecvCount, ahsfMkSaltCache, ahsfSlots, ahsfMkSlots, ahsfUpd,
-      ahsfUpdSlots, ahsBase,
-      peIkAPk, hdrIkAPk, pkmHdr, pkmEphAPk, pkmPqRatchetMsg, pkmAeadCt,
-      iasSid, iasSpqrSalt?, iasDrKey, iasRk1, iasMkSeed, iasCk1_1, iasMsgKeys,
-      parKEntry, parSecrets, parDhRatchet, parIsUncorrSender, parMatchedSess?, parSameEph,
-      parHstDec, parFinishTag, aNone,
-      cost_letC, cost_samplePrim, cost_queryPrim, cost_boolOr,
-      PSamp.cost, Ty.wd, v, Comp.cost, Expr.cost,
-      PNat.val_ofNat, bits_0, bits_1]
-    repeat' first
-      | simp (discharger := clear *- ; omega) only [Nat.max_eq_right]
-      | simp (discharger := clear *- ; omega) only [Nat.max_eq_left]
-    omega
-
-private theorem authMkRecvPreB_cost_le (S : Setup) (K : Nat) (opk : Bool) {Γ₁ Γ₂ Δ : List PT}
-    (core : Var Γ₁ prfMkCoreTy) (x : Var Γ₂ recvQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (authMkRecvPreB S K opk core x : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy).cost ≤
-      15000 + slotIdxCost S + bits S.N_send_tot + K * 10000 + S.N_dh * 20000 := by
-  refine le_trans (authMkRecvPreB_cost_le_clamped S K opk core x) ?_
-  have hd := Nat.mul_le_mul_right 20000 (Nat.min_le_right K S.N_dh)
-  omega
-
-private theorem prfMkStepPreC_cost_le_clamped (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (core : Var Γ₁ prfMkCoreTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (prfMkStepPreC S K core q : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy).cost ≤
-      16000 + K * 11000 + min K S.N_dh * 22000 := by
-  unfold prfMkStepPreC
-  refine le_trans
-    (letV_cost_le _ _
-      (caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (initPrinFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (corruptFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (genSpkFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (genOpkFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (authMkSendPreB_cost_le_clamped S K true _ _) <|
-       caseSumV_cost_le _ _ _ (authMkSendPreB_cost_le_clamped S K false _ _) <|
-       caseSumV_cost_le _ _ _ (authMkRecvPreB_cost_le_clamped S K true _ _) <|
-       caseSumV_cost_le _ _ _ (authMkRecvPreB_cost_le_clamped S K false _ _) <|
-       caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (roFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (roRootFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (by simp only [aNone, v, Comp.cost, Expr.cost]; exact le_rfl) <|
-       wrapMkBase_cost_le _ _ (registerFixedB_cost_le _ _)))
-    ?_
-  simp only [v, Expr.cost]
-  omega
-
-private theorem prfMkStepPreC_cost_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (core : Var Γ₁ prfMkCoreTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (prfMkStepPreC S K core q : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy).cost ≤
-      16000 + slotIdxCost S + bits S.N_send_tot + K * 11000 + S.N_dh * 22000 := by
-  unfold prfMkStepPreC
-  refine le_trans
-    (letV_cost_le _ _
-      (caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (initPrinFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (corruptFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (genSpkFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (genOpkFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (authMkSendPreB_cost_le S K true _ _) <|
-       caseSumV_cost_le _ _ _ (authMkSendPreB_cost_le S K false _ _) <|
-       caseSumV_cost_le _ _ _ (authMkRecvPreB_cost_le S K true _ _) <|
-       caseSumV_cost_le _ _ _ (authMkRecvPreB_cost_le S K false _ _) <|
-       caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (roFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (wrapMkBase_cost_le _ _ (roRootFixedB_cost_le K _ _)) <|
-       caseSumV_cost_le _ _ _ (by simp only [aNone, v, Comp.cost, Expr.cost]; exact le_rfl) <|
-       wrapMkBase_cost_le _ _ (registerFixedB_cost_le _ _)))
-    ?_
-  simp only [v, Expr.cost]
-  omega
-
-private theorem prfMkStepPostC_cost_le_clamped (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (cont : Var Γ₁ prfMkChalContTy) (mk : Var Γ₂ msgKeysTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (prfMkStepPostC S K cont mk : Comp pqxdhOps pqPrimIface Δ (.prod authRespTy prfMkCoreTy)).cost ≤
-      3500 + K * 4000 + min K S.N_dh * 9000 := by
-  simp only [prfMkStepPostC, finishAuthSendMkC_cost_tight, finishAuthRecvMkC_cost_tight,
-    bindV, letV, caseSumV, eCaseOpt, mkcMk, ahsfUpdSlots, ahsfMkSlots,
-    ahsfHybrid, ahsfRecvCount, ahsfMkSaltCache, cost_letC, cost_litB,
-    v, Comp.cost, Expr.cost, PNat.val_ofNat, List.length_nil]
-  repeat' first
-    | simp (discharger := clear *- ; omega) only [Nat.max_eq_right]
-    | simp (discharger := clear *- ; omega) only [Nat.max_eq_left]
-  omega
-
-private theorem prfMkStepPostC_cost_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (cont : Var Γ₁ prfMkChalContTy) (mk : Var Γ₂ msgKeysTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (prfMkStepPostC S K cont mk : Comp pqxdhOps pqPrimIface Δ (.prod authRespTy prfMkCoreTy)).cost ≤
-      3500 + K * 4000 + S.N_dh * 9000 := by
-  refine le_trans (prfMkStepPostC_cost_le_clamped S K cont mk) ?_
-  have hd := Nat.mul_le_mul_right 9000 (Nat.min_le_right K S.N_dh)
-  omega
-
-private theorem prfMsgKeysHandleDsl_cost_le_clamped (S : Setup) (K : Nat) :
-    (prfMsgKeysHandleDsl S K).cost ≤
-      25000 + K * 20000 + min K S.N_dh * 35000 := by
-  unfold prfMsgKeysHandleDsl
-  have hPre := prfMkStepPreC_cost_le_clamped S K
-    (Δ := prfMkCoreTy :: .nat :: prfMkStTy :: [prfMkStTy, authQueryTy])
-    (.zero : Var (prfMkCoreTy :: .nat :: prfMkStTy :: [prfMkStTy, authQueryTy]) prfMkCoreTy)
-    (.succ .zero : Var [prfMkStTy, authQueryTy] authQueryTy)
-  have hPost := prfMkStepPostC_cost_le_clamped S K
-    (Δ := msgKeysTy :: prfMkChalContTy :: .opt (B 32) :: (.prod (.opt (B 32)) prfMkChalContTy) ::
-      prfMkStepPreTy :: prfMkCoreTy :: .nat :: prfMkStTy :: [prfMkStTy, authQueryTy])
-    (.zero : Var (prfMkChalContTy :: .opt (B 32) :: (.prod (.opt (B 32)) prfMkChalContTy) ::
-      prfMkStepPreTy :: prfMkCoreTy :: .nat :: prfMkStTy :: [prfMkStTy, authQueryTy]) prfMkChalContTy)
-    (.zero : Var (msgKeysTy :: prfMkChalContTy :: .opt (B 32) :: (.prod (.opt (B 32)) prfMkChalContTy) ::
-      prfMkStepPreTy :: prfMkCoreTy :: .nat :: prfMkStTy :: [prfMkStTy, authQueryTy]) msgKeysTy)
-  simp only [bindV, letV, caseSumV, natEq, aNone,
-    cost_liftPrimComp, cost_letC, cost_queryDeriveMk,
-    v, Comp.cost, Expr.cost, bits_0, bits_1]
-  omega
-
-theorem prfMsgKeysHandleDsl_cost_le (S : Setup) (K : Nat) :
-    (prfMsgKeysHandleDsl S K).cost ≤
-      25000 + slotIdxCost S + bits S.N_send_tot + K * 20000 + S.N_dh * 35000 := by
-  unfold prfMsgKeysHandleDsl
-  have hPre := prfMkStepPreC_cost_le S K
-    (Δ := prfMkCoreTy :: .nat :: prfMkStTy :: [prfMkStTy, authQueryTy])
-    (.zero : Var (prfMkCoreTy :: .nat :: prfMkStTy :: [prfMkStTy, authQueryTy]) prfMkCoreTy)
-    (.succ .zero : Var [prfMkStTy, authQueryTy] authQueryTy)
-  have hPost := prfMkStepPostC_cost_le S K
-    (Δ := msgKeysTy :: prfMkChalContTy :: .opt (B 32) :: (.prod (.opt (B 32)) prfMkChalContTy) ::
-      prfMkStepPreTy :: prfMkCoreTy :: .nat :: prfMkStTy :: [prfMkStTy, authQueryTy])
-    (.zero : Var (prfMkChalContTy :: .opt (B 32) :: (.prod (.opt (B 32)) prfMkChalContTy) ::
-      prfMkStepPreTy :: prfMkCoreTy :: .nat :: prfMkStTy :: [prfMkStTy, authQueryTy]) prfMkChalContTy)
-    (.zero : Var (msgKeysTy :: prfMkChalContTy :: .opt (B 32) :: (.prod (.opt (B 32)) prfMkChalContTy) ::
-      prfMkStepPreTy :: prfMkCoreTy :: .nat :: prfMkStTy :: [prfMkStTy, authQueryTy]) msgKeysTy)
-  simp only [bindV, letV, caseSumV, natEq, aNone,
-    cost_liftPrimComp, cost_letC, cost_queryDeriveMk,
-    v, Comp.cost, Expr.cost, bits_0, bits_1]
-  omega
-
 /-! ## Static and semantic query bounds -/
 
-def primW : pqPrimIface.Tag → ℕ := fun _ => 1
-def primWS : pqPrimIface.smp.Samp → ℕ := fun _ => 0
+@[expose] def primW : pqPrimIface.Tag → ℕ := fun _ => 1
+@[expose] def primWS : pqPrimIface.smp.Samp → ℕ := fun _ => 0
 
-def mkPrimW : pqPrfMkIface.Tag → ℕ
+@[expose] def mkPrimW : pqPrfMkIface.Tag → ℕ
   | .inl _ => 1
   | .inr _ => 0
 
-def mkWS : pqPrfMkIface.smp.Samp → ℕ := fun _ => 0
+@[expose] def mkWS : pqPrfMkIface.smp.Samp → ℕ := fun _ => 0
 
 @[simp] theorem queries_letC {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
     (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) {Γ : List PT} {a b : PT}
@@ -1197,10 +855,6 @@ theorem caseSumV_queries_le {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
   simp only [caseSumV, Comp.queries]
   omega
 
-theorem prfCkInitDsl_queries (S : Setup) :
-    (prfCkInitDsl S).queries primW primWS = 0 := by
-  simp [prfCkInitDsl, bindV, samplePrim, primWS, Comp.queries]
-
 theorem prfCkFinishDsl_queries (S : Setup) (K : Nat) :
     (prfCkFinishDsl S K).queries primW primWS = min K S.N_dh * 5 := by
   simp only [prfCkFinishDsl, finalizeAuthFixedDsl, finalizeAuthFixedBodyDsl,
@@ -1274,10 +928,6 @@ theorem prfCkHandleDsl_queries_le (S : Setup) (K : Nat) :
     (.succ .zero : Var [prfCkStTy, authQueryTy] authQueryTy)
   simp only [bindV, letV, queries_letC, Comp.queries]
   omega
-
-theorem prfMsgKeysInitDsl_queries_prim (S : Setup) :
-    (prfMsgKeysInitDsl S).queries mkPrimW mkWS = 0 := by
-  simp [prfMsgKeysInitDsl, bindV, sampleChal, mkWS, Comp.queries]
 
 theorem prfMsgKeysFinishDsl_queries_prim (S : Setup) (K : Nat) :
     (prfMsgKeysFinishDsl S K).queries mkPrimW mkWS = min K S.N_dh * 5 := by
@@ -1370,76 +1020,6 @@ theorem prfMsgKeysHandleDsl_queries_prim_le (S : Setup) (K : Nat) :
 
 /-! ## Reduction-level cost and query bounds -/
 
-private theorem prfCkInitDslK_cost_eq (S : Setup) (K : Nat) :
-    (prfCkInitDslK S K).cost = 71 + bits (min K S.N_sess_tot) := by
-  simp only [prfCkInitDslK, bindV, emptyAuthHybridStFixedE, emptyAuthHybridStE, emptyAuthStE,
-    ahsfMk, ahsfMkSlots, emptyAuthSlotStE, assMk, ahsMk, stMk, cost_samplePrim, PSamp.cost,
-    Ty.wd, v, Comp.cost, Expr.cost, bits_0]
-  omega
-
-private theorem prfMsgKeysInitDslK_cost_eq (S : Setup) (K : Nat) :
-    (prfMsgKeysInitDslK S K).cost =
-      72 + bits (min K S.N_sess_tot) + bits (min K S.N_recv_tot + 1) := by
-  simp only [prfMsgKeysInitDslK, bindV, mkcMk, emptyAuthHybridStFixedE, emptyAuthHybridStE,
-    emptyAuthStE, ahsfMk, ahsfMkSlots, emptyAuthSlotStE, assMk, ahsMk, stMk,
-    cost_sampleChal, PSamp.cost, Ty.wd, v, Comp.cost, Expr.cost, bits_0]
-  omega
-
-private theorem prfCkRedProg_totalCost_le_clamped (S : Setup) (K q : Nat) :
-    (prfCkRedProg S K).totalCost q ≤
-      71 + bits (min K S.N_sess_tot) +
-      q * (20032 + K * 15000 + min K S.N_dh * 16000) +
-      (114 + min K S.N_dh * 413 + (min K S.N_dh) ^ 2 * 1088 + K * 97 + K ^ 2 * 9511) := by
-  simp only [CostedReduction.totalCost, prfCkRedProg, authCodec,
-    prfCkInitDslK_cost_eq, prfCkFinishDsl_cost_tight]
-  have hH := prfCkHandleDsl_cost_tight_le S K
-  have hMax : max pqPrimIface.uCost ((prfCkHandleDsl S K).cost + 32) =
-      (prfCkHandleDsl S K).cost + 32 := by
-    change max 1 ((prfCkHandleDsl S K).cost + 32) = (prfCkHandleDsl S K).cost + 32
-    omega
-  rw [hMax]
-  have hMul : q * ((prfCkHandleDsl S K).cost + 32) ≤
-      q * (20032 + K * 15000 + min K S.N_dh * 16000) :=
-    Nat.mul_le_mul_left q (by omega)
-  omega
-
-theorem prfCkRedProg_totalCost_le (S : Setup) (K q : Nat) :
-    (prfCkRedProg S K).totalCost q ≤
-      71 + bits S.N_sess_tot +
-      q * (20032 + slotIdxCost S + bits S.N_send_tot + K * 15000 + S.N_dh * 30000) +
-      (114 + S.N_dh * 413 + S.N_dh ^ 2 * 1088 + K * 97 + K ^ 2 * 9511) := by
-  refine le_trans (prfCkRedProg_totalCost_le_clamped S K q) ?_
-  have hb : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := by
-    simp only [bits]
-    exact Nat.add_le_add_right (Nat.log_mono_right (Nat.min_le_right _ _)) 1
-  have hd : min K S.N_dh ≤ S.N_dh := Nat.min_le_right _ _
-  have hd2 : (min K S.N_dh) ^ 2 ≤ S.N_dh ^ 2 := Nat.pow_le_pow_left hd 2
-  have hStep : 20032 + K * 15000 + min K S.N_dh * 16000 ≤
-      20032 + slotIdxCost S + bits S.N_send_tot + K * 15000 + S.N_dh * 30000 := by
-    have := Nat.mul_le_mul_right 16000 hd
-    omega
-  have hMul := Nat.mul_le_mul_left q hStep
-  have := Nat.mul_le_mul_right 413 hd
-  have := Nat.mul_le_mul_right 1088 hd2
-  omega
-
-theorem prfCkRedProg_totalCost_security_le (S : Setup) (b : QueryBudget) :
-    (prfCkRedProg S b.q_total).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  refine le_trans (prfCkRedProg_totalCost_le_clamped S b.q_total b.q_total) ?_
-  have hbSess : bits (min b.q_total S.N_sess_tot) ≤ min b.q_total S.N_sess_tot + 1 := by
-    rcases min b.q_total S.N_sess_tot with _ | n
-    · simp [bits]
-    · exact le_trans (bits_le_self (by omega)) (by omega)
-  unfold _root_.SignalPqxdh.Security.stepCostBudget
-  dsimp only
-  generalize b.q_total = q at *
-  set md := min q S.N_dh
-  set ms := min q S.N_sess_tot
-  set lg := Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot
-  nlinarith [Nat.zero_le (q * md), Nat.zero_le (q * ms), Nat.zero_le (md * ms),
-    Nat.zero_le lg, Nat.zero_le (q * lg)]
-
 theorem prfCkRedProg_totalQueries_le (S : Setup) (K q : Nat) :
     (prfCkRedProg S K).totalQueries primW primWS q ≤
       q * (19 + S.N_dh * 26) + S.N_dh * 5 := by
@@ -1450,73 +1030,6 @@ theorem prfCkRedProg_totalQueries_le (S : Setup) (K q : Nat) :
   have hMul := Nat.mul_le_mul_left q (prfCkHandleDsl_queries_le S K)
   have hFin := Nat.mul_le_mul_right 5 (Nat.min_le_right K S.N_dh)
   omega
-
-private theorem prfMsgKeysRedProg_totalCost_le_clamped (S : Setup) (K q : Nat) :
-    (prfMsgKeysRedProg S K).totalCost q ≤
-      72 + bits (min K S.N_sess_tot) + bits (min K S.N_recv_tot + 1) +
-      q * (25032 + K * 20000 + min K S.N_dh * 35000) +
-      (118 + min K S.N_dh * 413 + (min K S.N_dh) ^ 2 * 1088 + K * 97 + K ^ 2 * 9511) := by
-  simp only [CostedReduction.totalCost, prfMsgKeysRedProg, authCodec,
-    prfMsgKeysInitDslK_cost_eq, prfMsgKeysFinishDsl_cost_tight]
-  have hH := prfMsgKeysHandleDsl_cost_le_clamped S K
-  have hMax : max pqPrfMkIface.uCost ((prfMsgKeysHandleDsl S K).cost + 32) =
-      (prfMsgKeysHandleDsl S K).cost + 32 := by
-    change max 1 ((prfMsgKeysHandleDsl S K).cost + 32) = (prfMsgKeysHandleDsl S K).cost + 32
-    omega
-  rw [hMax]
-  have hMul : q * ((prfMsgKeysHandleDsl S K).cost + 32) ≤
-      q * (25032 + K * 20000 + min K S.N_dh * 35000) :=
-    Nat.mul_le_mul_left q (by omega)
-  omega
-
-theorem prfMsgKeysRedProg_totalCost_le (S : Setup) (K q : Nat) :
-    (prfMsgKeysRedProg S K).totalCost q ≤
-      72 + bits S.N_sess_tot + bits (S.N_recv_tot + 1) +
-      q * (25032 + slotIdxCost S + bits S.N_send_tot + K * 20000 + S.N_dh * 35000) +
-      (118 + S.N_dh * 413 + S.N_dh ^ 2 * 1088 + K * 97 + K ^ 2 * 9511) := by
-  refine le_trans (prfMsgKeysRedProg_totalCost_le_clamped S K q) ?_
-  have hb1 : bits (min K S.N_sess_tot) ≤ bits S.N_sess_tot := by
-    simp only [bits]
-    exact Nat.add_le_add_right (Nat.log_mono_right (Nat.min_le_right _ _)) 1
-  have hb2 : bits (min K S.N_recv_tot + 1) ≤ bits (S.N_recv_tot + 1) := by
-    simp only [bits]
-    exact Nat.add_le_add_right (Nat.log_mono_right (Nat.add_le_add_right (Nat.min_le_right _ _) 1)) 1
-  have hd : min K S.N_dh ≤ S.N_dh := Nat.min_le_right _ _
-  have hd2 : (min K S.N_dh) ^ 2 ≤ S.N_dh ^ 2 := Nat.pow_le_pow_left hd 2
-  have hStep : 25032 + K * 20000 + min K S.N_dh * 35000 ≤
-      25032 + slotIdxCost S + bits S.N_send_tot + K * 20000 + S.N_dh * 35000 := by
-    have := Nat.mul_le_mul_right 35000 hd
-    omega
-  have hMul := Nat.mul_le_mul_left q hStep
-  have := Nat.mul_le_mul_right 413 hd
-  have := Nat.mul_le_mul_right 1088 hd2
-  omega
-
-theorem prfMsgKeysRedProg_totalCost_security_le (S : Setup) (b : QueryBudget) :
-    (prfMsgKeysRedProg S b.q_total).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  refine le_trans (prfMsgKeysRedProg_totalCost_le_clamped S b.q_total b.q_total) ?_
-  have hRecvLe : min b.q_total S.N_recv_tot ≤ min b.q_total S.N_sess_tot := by
-    unfold Setup.N_sess_tot; omega
-  have hbSess : bits (min b.q_total S.N_sess_tot) ≤ min b.q_total S.N_sess_tot + 1 := by
-    rcases min b.q_total S.N_sess_tot with _ | n
-    · simp [bits]
-    · exact le_trans (bits_le_self (by omega)) (by omega)
-  have hbRecv : bits (min b.q_total S.N_recv_tot + 1) ≤ min b.q_total S.N_sess_tot + 2 := by
-    have h1 : bits (min b.q_total S.N_recv_tot + 1) ≤ min b.q_total S.N_recv_tot + 1 :=
-      bits_le_self (by omega)
-    omega
-  have hMdQ : min b.q_total S.N_dh ≤ b.q_total := Nat.min_le_left _ _
-  have hQMd : b.q_total * min b.q_total S.N_dh ≤ b.q_total * b.q_total :=
-    Nat.mul_le_mul_left b.q_total hMdQ
-  unfold _root_.SignalPqxdh.Security.stepCostBudget
-  dsimp only
-  generalize b.q_total = q at *
-  set md := min q S.N_dh
-  set ms := min q S.N_sess_tot
-  set lg := Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot
-  nlinarith [Nat.zero_le (q * md), Nat.zero_le (q * ms), Nat.zero_le (md * ms),
-    Nat.zero_le lg, Nat.zero_le (q * lg)]
 
 theorem prfMsgKeysRedProg_totalQueries_prim_le (S : Setup) (K q : Nat) :
     (prfMsgKeysRedProg S K).totalQueries mkPrimW mkWS q ≤
@@ -1555,11 +1068,11 @@ theorem slotIdxCost_le (S : Setup) : slotIdxCost S ≤ 10 + S.N_sess_tot := by
     simp only [h, ite_false]
     omega
 
-def chalPrimW {C : ChallengerOracle} : (pqChalIface C).Tag → ℕ
+@[expose] def chalPrimW {C : ChallengerOracle} : (pqChalIface C).Tag → ℕ
   | .inl _ => 1
   | .inr _ => 0
 
-def chalWS {C : ChallengerOracle} : (pqChalIface C).smp.Samp → ℕ := fun _ => 0
+@[expose] def chalWS {C : ChallengerOracle} : (pqChalIface C).smp.Samp → ℕ := fun _ => 0
 
 @[simp] theorem queries_liftPrimComp_prim {C : ChallengerOracle} {Γ : List PT} {t : PT}
     (c : Comp pqxdhOps pqPrimIface Γ t) :

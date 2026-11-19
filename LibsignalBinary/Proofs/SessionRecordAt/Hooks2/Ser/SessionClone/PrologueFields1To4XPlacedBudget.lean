@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.BaseBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.BaseBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseX
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneEpilogue
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.PrologueFields1To4
 meta import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.PrologueFields1To4
@@ -22,6 +22,11 @@ import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `SessionStructure::clone`: Prologue and Fields 1–4 (Block `80`)
@@ -31,7 +36,7 @@ Verifies the prologue (`+0 → +32`) and cloning of `local_identity_public`,
 `RustCliAllocBudget M` and `FitsEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -188,14 +193,14 @@ private theorem allocNoOom_ok_at_stateX [LibsignalPlacement] {M : AllocCostModel
   exact ⟨hrest, hsp⟩
 
 /-- Allocation events emitted by Field 4 (`sender_chain`). -/
-def scSenderEvents (x : SessionCloneGhost) : List AllocEvent :=
+@[expose] def scSenderEvents (x : SessionCloneGhost) : List AllocEvent :=
   match x.G.sender, x.s.state.senderChain with
   | some gs, some sc => senderChainCloneEvents gs sc
   | _, _ => []
 
 /-- Allocation events emitted across Fields 1–4 (`local_identity_public`,
 `remote_identity_public`, `root_key`, `sender_chain`). -/
-def scFields1To4Events (x : SessionCloneGhost) : List AllocEvent :=
+@[expose] def scFields1To4Events (x : SessionCloneGhost) : List AllocEvent :=
   vecCloneEvents x.G.localIk ++ vecCloneEvents x.G.remoteIk ++
     rustAllocEvents 32 1 ++ scSenderEvents x
 

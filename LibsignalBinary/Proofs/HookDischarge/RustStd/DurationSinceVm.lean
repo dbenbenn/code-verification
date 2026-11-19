@@ -37,7 +37,7 @@ block `0` `Timespec::sub_timespec`) to `LibsignalBinary.Heap.SpecBudget.withVmPr
    `subTimespec_ge_block_ok` yields `timeDurationSinceGeSpec` (`144` B stack, zero `.rodata`) and
    discharges every epoch-path consumer contract (`durationSinceEpochAtSpec`,
    `CliExt.durationSinceEpochSpec`, `durationSinceEpochBudgetSpec`,
-   `durationSinceEpochAllocSpec`, `durationSinceEpochAllocBudgetSpec`, and `keepsFs` / `inImage`
+   `durationSinceEpochAllocSpec`, `durationSinceEpochAllocBudgetSpec`, and `keepsFs`
    variants) without any `.rodata` hypothesis.
 -/
 
@@ -63,7 +63,7 @@ open CryptoVerification.LibsignalTripleRatchet (extHookStack)
 open CryptoVerification.SignalSession.CliExt (durationSinceEpochSpec)
 open LibsignalBinary.Heap (FdsHiFrame PoolPreserved VmPreserved)
 open LibsignalBinary.Heap.SpecBudget (durationSinceEpochBudgetSpec withVmPreserved)
-open LibsignalBinary.Proofs.HookDischarge.Libc.Common (keepsFs subroutine_ok_inImage)
+open LibsignalBinary.Proofs.HookDischarge.Libc.Common (keepsFs)
 open LibsignalBinary.Proofs.HookDischarge.RustStd.Common
   (RoDataAt SpecSimulates keepsFs_withRoData subroutine_ok_withRoData_of_sep withRoData
    withRoDataSep)
@@ -973,48 +973,5 @@ theorem timeDurationSince_epochAllocSpec_subroutineOk
     timeMultiLib.subroutineOk timeDurationSinceSym
       (fun _ => durationSinceEpochAllocSpec) externs :=
   timeDurationSince_epochAtSpec_subroutineOk (by decide) externs
-
-/-- Real-code `MultiPlacedLib.subroutineOk` for `durationSinceEpochBudgetSpec.inImage img`
-    (fixed-`Obj.Image` `.inImage` companion to `timeDurationSince_epochBudgetSpec_subroutineOk`,
-    zero `.rodata`). -/
-theorem timeDurationSince_epochBudgetSpec_inImage_subroutineOk (img : Obj.Image)
-    (externs : String → Option (State → State) := fun _ => none) :
-    timeMultiLib.subroutineOk timeDurationSinceSym
-      (fun _ => durationSinceEpochBudgetSpec.inImage img) externs := by
-  obtain ⟨hexp, i, off, hfn, hsub⟩ := timeDurationSince_epochBudgetSpec_subroutineOk externs
-  refine ⟨hexp, i, off, hfn, fun mpl hpl => ?_⟩
-  apply subroutine_ok.of_codeLoaded
-  intro x R s0 hpc hrun hpre hsp _hL
-  dsimp only [MultiPlacedLib.withCodeLoaded, Spec.inImage] at hpre
-  rw [sepConj_comm _ ⌜_⌝, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨hcl, hpre⟩ := hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨_himg, hpre⟩ := hpre
-  have hpre_cl : s0.mem ⊨ (timeMultiLib.withCodeLoaded mpl durationSinceEpochBudgetSpec).pre x s0 ∗ R := by
-    dsimp only [MultiPlacedLib.withCodeLoaded]
-    rw [sepConj_comm _ ⌜_⌝, sepConj_assoc, pure_sepConj_of_true hcl]
-    exact hpre
-  exact (hsub mpl hpl).mono_outcome x R s0 hpc hrun hpre_cl hsp (fun _ hout => hout)
-
-/-- Real-code `MultiPlacedLib.subroutineOk` for `CliExt.durationSinceEpochSpec.inImage img`
-    (`Stage2ContractsExt.duration_since`, zero `.rodata`). -/
-theorem timeDurationSince_epochSpec_inImage_subroutineOk (img : Obj.Image)
-    (externs : String → Option (State → State) := fun _ => none) :
-    timeMultiLib.subroutineOk timeDurationSinceSym
-      (fun _ => durationSinceEpochSpec.inImage img) externs := by
-  obtain ⟨hexp, i, off, hfn, hsub⟩ := timeDurationSince_epochSpec_zeroRo_subroutineOk externs
-  refine ⟨hexp, i, off, hfn, fun mpl hpl => ?_⟩
-  apply subroutine_ok.of_codeLoaded
-  intro x R s0 hpc hrun hpre hsp _hL
-  dsimp only [MultiPlacedLib.withCodeLoaded, Spec.inImage] at hpre
-  rw [sepConj_comm _ ⌜_⌝, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨hcl, hpre⟩ := hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨_himg, hpre⟩ := hpre
-  have hpre_cl : s0.mem ⊨ (timeMultiLib.withCodeLoaded mpl durationSinceEpochSpec).pre x s0 ∗ R := by
-    dsimp only [MultiPlacedLib.withCodeLoaded]
-    rw [sepConj_comm _ ⌜_⌝, sepConj_assoc, pure_sepConj_of_true hcl]
-    exact hpre
-  exact (hsub mpl hpl).mono_outcome x R s0 hpc hrun hpre_cl hsp (fun _ hout => hout)
 
 end LibsignalBinary.Proofs.HookDischarge.RustStd.DurationSinceVm

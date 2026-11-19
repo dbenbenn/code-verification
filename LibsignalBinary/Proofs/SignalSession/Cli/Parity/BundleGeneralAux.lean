@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.BundleGeneralParse
+public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.BundleGeneralParse -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Basic
 import all Init.Data.Repr
@@ -18,6 +18,9 @@ import all Init.Data.List.SplitOn.Basic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Lemmas.InitPaths
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
+public import LibsignalBinary.Proofs.SpecLemmas.FsFold -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Direct-Child `FsState` Lookup and Arbitrary-Input Initiate Bridge
@@ -26,7 +29,7 @@ Proves direct-child `FsState`/`filesOf` lookup (ruling out `ENOTDIR` and `EISDIR
 `InitOk₀`, `initDef`, and post-write `filesOf` for arbitrary CLI `Inputs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -60,7 +63,7 @@ theorem foldl_setEntry_entries (l : List Arm64.FsPath) (val : Option Arm64.FsEnt
       · subst hqe; simp [hqa]
       · simp [hqa, hqe, beq_false_of_ne hqe]
 
-def fileStep (fs : Arm64.FsState) (entry : String × List (BitVec 8)) : Arm64.FsState :=
+@[expose] def fileStep (fs : Arm64.FsState) (entry : String × List (BitVec 8)) : Arm64.FsState :=
   let (p, bs) := entry
   let withAnc := ((Arm64.FsPath.nonEmptyPrefixes (Arm64.normalizePath p)).dropLast).foldl
     (fun acc pref => acc.setEntry pref (some .dir)) fs
@@ -142,7 +145,7 @@ theorem mem_dropLast_nonEmptyPrefixes_iff {r q : Arm64.FsPath} :
         exact .inr ⟨a :: as, (mem_dropLast_nonEmptyPrefixes_iff (r := s2 :: rest) (q := a :: as)).mpr
           ⟨by simp, hpre', fun h => hne (congrArg (t :: ·) h)⟩, rfl⟩
 
-def SegCanon (seg : String) : Prop :=
+@[expose] def SegCanon (seg : String) : Prop :=
   seg.isEmpty = false ∧ (seg != ".") = true ∧ '/' ∉ seg.toList
 
 private theorem splitSlash_go_step {c : Char} {cur cs : List Char} (hc : c ≠ '/') :
@@ -530,7 +533,7 @@ private theorem dirsFold_partyDirs_bundle :
   exact emptyFsState_entries_of_ne_nil ["bundle", name] (by simp)
 
 /-- Every bundle directory entry read by `readBundleV` (`RunCompose.bundleNames`) has size at most `fileCapBytes` (`2 ^ 21`). -/
-def BundleReadWithinCap (d : String → Option (List (BitVec 8))) (dirName : String) : Prop :=
+@[expose] def BundleReadWithinCap (d : String → Option (List (BitVec 8))) (dirName : String) : Prop :=
   ∀ name ∈ RunCompose.bundleNames, ((d (dirName ++ "/" ++ name)).getD []).length ≤ fileCapBytes
 
 instance instDecidableBundleReadWithinCap (d : String → Option (List (BitVec 8))) (dirName : String) :
@@ -775,7 +778,7 @@ theorem readBundleV_runFiles_eq_none_of_parseBundleDir_eq_none
 
 /-! ## Arbitrary-Input `InitOk₀`, `initDef`, and Post-`observe` Agreement -/
 
-def NonBundleCoinsStdio (q : Arm64.FsPath) : Prop :=
+@[expose] def NonBundleCoinsStdio (q : Arm64.FsPath) : Prop :=
   q ≠ [] ∧ q.head? ≠ some "bundle" ∧ q.head? ≠ some "coins" ∧ q ∉ stdioPaths.map Arm64.normalizePath
 
 theorem nonBundleCoinsStdio_upward {q q' : Arm64.FsPath}

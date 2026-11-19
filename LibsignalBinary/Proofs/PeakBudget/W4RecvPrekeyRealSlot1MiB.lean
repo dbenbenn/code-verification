@@ -9,10 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
 
 /-!
 # Parametric `(smallFileCap, maxCt)` & Split-Directory `recv-prekey` Slot Specs
@@ -29,7 +39,7 @@ Parametric `(smallFileCap, maxCt)` and per-directory split generalizations of
    kernel `decide`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -236,64 +246,36 @@ structure W4RecvPrekeyRealDomSplit (smallFileCap kpkFileCap maxCt : Nat)
   tdB_dom : R.isPathB = true → W4TryDecryptCallDomOf R.F R.K maxCt R.td_B
   tdAC_dom : R.isPathAC = true → W4TryDecryptPathACDomOf R.F R.K maxCt R.td_AC
 
-theorem W4RecvPrekeyRealDomSplit.toDomOf_max {smallFileCap kpkFileCap maxCt : Nat}
-    {R : W4RecvPrekeyRealParams} (h : W4RecvPrekeyRealDomSplit smallFileCap kpkFileCap maxCt R) :
-    W4RecvPrekeyRealDomOf (max smallFileCap kpkFileCap) maxCt R :=
-  ⟨h.kpk_dir, h.outer_dom, h.cur_fail_dom, h.trials_dom, h.tdB_dom, h.tdAC_dom⟩
-
-theorem w4RecvPrekeyRealDomOf_of_legacy {smallFileCap maxCt : Nat}
-    (hsm : 4096 ≤ smallFileCap) (hct : 65536 ≤ maxCt)
-    {R : W4RecvPrekeyRealParams} (h : W4RecvPrekeyRealDom R) :
-    W4RecvPrekeyRealDomOf smallFileCap maxCt R where
-  kpk_dir := h.kpk_dir
-  outer_dom :=
-    { h.outer_dom with
-      small_cap := fun d hd n bs hr => Nat.le_trans (h.outer_dom.small_cap d hd n bs hr) hsm }
-  cur_fail_dom hcs :=
-    let hf := h.cur_fail_dom hcs
-    ⟨{ hf.td_dom with ct_le := Nat.le_trans hf.td_dom.ct_le hct }, hf.align_le, hf.cancel_live⟩
-  trials_dom x hx :=
-    let ht := h.trials_dom x hx
-    ⟨ht.enc_le, ht.live_le_peak, ht.live_le_drop, ht.drop_caps, ht.tr_gv, ht.tr_dom,
-      ⟨{ ht.tr_fail.td_dom with ct_le := Nat.le_trans ht.tr_fail.td_dom.ct_le hct },
-        ht.tr_fail.align_le, ht.tr_fail.cancel_live⟩⟩
-  tdB_dom hb :=
-    let hd := h.tdB_dom hb
-    { hd with ct_le := Nat.le_trans hd.ct_le hct }
-  tdAC_dom hac :=
-    let hd := h.tdAC_dom hac
-    ⟨{ hd.base with ct_le := Nat.le_trans hd.base.ct_le hct }, hd.zero_skip⟩
-
 /-! ## Parametric & Closed `Nat` Constants for Variants (i) and (ii) -/
 
-def w4FailTdPeakOf (maxCt : Nat) : Nat := w2TryDecryptTightPeak 2000 605066 621350 maxCt
-def w4TdMaxReqOf (maxCt : Nat) : Nat := w2TryDecryptMaxReq 5 2000 302480 maxCt
-def w4TrialPeakOf (maxCt : Nat) : Nat := 1080975 + fineOptLarge 286196 + w4FailTdPeakOf maxCt
-def w4TrialMaxReqOf (maxCt : Nat) : Nat := max (max (max 208000 286196) (w4TdMaxReqOf maxCt)) 192
-def w4TdBLiveOf (maxCt : Nat) : Nat := w2TryDecryptTightLive 2000 605066 maxCt
-def w4TdACLiveOf (maxCt : Nat) : Nat := w2TryDecryptTightLive 2000 294391 maxCt
-def w4TdACPeakOf (maxCt : Nat) : Nat := w2TryDecryptTightPeak 2000 294391 294391 maxCt
+@[expose] def w4FailTdPeakOf (maxCt : Nat) : Nat := w2TryDecryptTightPeak 2000 605066 621350 maxCt
+@[expose] def w4TdMaxReqOf (maxCt : Nat) : Nat := w2TryDecryptMaxReq 5 2000 302480 maxCt
+@[expose] def w4TrialPeakOf (maxCt : Nat) : Nat := 1080975 + fineOptLarge 286196 + w4FailTdPeakOf maxCt
+@[expose] def w4TrialMaxReqOf (maxCt : Nat) : Nat := max (max (max 208000 286196) (w4TdMaxReqOf maxCt)) 192
+@[expose] def w4TdBLiveOf (maxCt : Nat) : Nat := w2TryDecryptTightLive 2000 605066 maxCt
+@[expose] def w4TdACLiveOf (maxCt : Nat) : Nat := w2TryDecryptTightLive 2000 294391 maxCt
+@[expose] def w4TdACPeakOf (maxCt : Nat) : Nat := w2TryDecryptTightPeak 2000 294391 294391 maxCt
 
 /-- Parametric uniform-`smallFileCap` `Δcum` (`w4DecryptPrekeySplitTightCum`). -/
-def w4RecvPrekeyRealCumOf (smallFileCap : Nat) : Nat :=
+@[expose] def w4RecvPrekeyRealCumOf (smallFileCap : Nat) : Nat :=
   w4DecryptPrekeySplitTightCum 2097152 smallFileCap 0 deserCancelFineCum
     w4RealFailTdCum deserCancelFineCum w4RealTrialCum 9923
     w4RealFailTdCum w4RealTdACCum 4096
 
 /-- Parametric uniform-`smallFileCap` `Δlive` (`w4DecryptPrekeySplitTightLive`). -/
-def w4RecvPrekeyRealLiveOf (smallFileCap maxCt : Nat) : Nat :=
+@[expose] def w4RecvPrekeyRealLiveOf (smallFileCap maxCt : Nat) : Nat :=
   w4DecryptPrekeySplitTightLive 2097152 smallFileCap 0 deserCancelFineLive
     2097152 2097152 2457152 (w4TdBLiveOf maxCt) (w4TdACLiveOf maxCt)
 
 /-- Parametric uniform-`smallFileCap` `Δpeak` (`w4DecryptPrekeySplitTightPeak`). -/
-def w4RecvPrekeyRealPeakOf (smallFileCap maxCt : Nat) : Nat :=
+@[expose] def w4RecvPrekeyRealPeakOf (smallFileCap maxCt : Nat) : Nat :=
   w4DecryptPrekeySplitTightPeak 2097152 smallFileCap 0 deserCancelFineLive deserCancelFinePeak
     286196 286196 2097152 286196 2097152 16384 2097152 2457152
     (w4FailTdPeakOf maxCt) deserCancelFinePeak (w4TrialPeakOf maxCt)
     (w4TdBLiveOf maxCt) (w4FailTdPeakOf maxCt) (w4TdACLiveOf maxCt) (w4TdACPeakOf maxCt)
 
 /-- Parametric uniform-`smallFileCap` `maxReq` (`w4DecryptPrekeySplitTightMaxReq`). -/
-def w4RecvPrekeyRealMaxReqOf (smallFileCap maxCt : Nat) : Nat :=
+@[expose] def w4RecvPrekeyRealMaxReqOf (smallFileCap maxCt : Nat) : Nat :=
   w4DecryptPrekeySplitTightMaxReq 2097152 smallFileCap 0 deserCancelFineMaxReq
     286196 286196 2097152 286196 2097152 16384 2097152 2457152
     (w4TdMaxReqOf maxCt) deserCancelFineMaxReq (w4TrialMaxReqOf maxCt) 192
@@ -401,10 +383,10 @@ def w4RecvPrekeySplitDirMaxReq (smallCap kpkCap maxCt : Nat) : Nat :=
 
 /-- Variant (i) closed constants at `(sessionCapBytes, msgCapBytes)`:
 `cum = 288,625,123`, `live = 30,610,803`, `peak = 32,716,150`, `maxReq = 2,457,152`. -/
-def w4RecvPrekeyReal1MiB_i_Cum : Nat := w4RecvPrekeyRealCumOf sessionCapBytes
-def w4RecvPrekeyReal1MiB_i_Live : Nat := w4RecvPrekeyRealLiveOf sessionCapBytes msgCapBytes
-def w4RecvPrekeyReal1MiB_i_Peak : Nat := w4RecvPrekeyRealPeakOf sessionCapBytes msgCapBytes
-def w4RecvPrekeyReal1MiB_i_MaxReq : Nat := w4RecvPrekeyRealMaxReqOf sessionCapBytes msgCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_i_Cum : Nat := w4RecvPrekeyRealCumOf sessionCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_i_Live : Nat := w4RecvPrekeyRealLiveOf sessionCapBytes msgCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_i_Peak : Nat := w4RecvPrekeyRealPeakOf sessionCapBytes msgCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_i_MaxReq : Nat := w4RecvPrekeyRealMaxReqOf sessionCapBytes msgCapBytes
 
 theorem w4RecvPrekeyReal1MiB_i_eq :
     w4RecvPrekeyReal1MiB_i_Cum = 288625123 ∧
@@ -416,10 +398,10 @@ theorem w4RecvPrekeyReal1MiB_i_eq :
 
 /-- Variant (ii) closed constants at `(4096, sessionCapBytes, msgCapBytes)`:
 `cum = 284,695,267`, `live = 15,873,374`, `peak = 17,978,721`, `maxReq = 2,457,152`. -/
-def w4RecvPrekeyReal1MiB_ii_Cum : Nat := w4RecvPrekeySplitDirCum 4096 sessionCapBytes
-def w4RecvPrekeyReal1MiB_ii_Live : Nat := w4RecvPrekeySplitDirLive 4096 sessionCapBytes msgCapBytes
-def w4RecvPrekeyReal1MiB_ii_Peak : Nat := w4RecvPrekeySplitDirPeak 4096 sessionCapBytes msgCapBytes
-def w4RecvPrekeyReal1MiB_ii_MaxReq : Nat := w4RecvPrekeySplitDirMaxReq 4096 sessionCapBytes msgCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_ii_Cum : Nat := w4RecvPrekeySplitDirCum 4096 sessionCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_ii_Live : Nat := w4RecvPrekeySplitDirLive 4096 sessionCapBytes msgCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_ii_Peak : Nat := w4RecvPrekeySplitDirPeak 4096 sessionCapBytes msgCapBytes
+@[expose] def w4RecvPrekeyReal1MiB_ii_MaxReq : Nat := w4RecvPrekeySplitDirMaxReq 4096 sessionCapBytes msgCapBytes
 
 theorem w4RecvPrekeyReal1MiB_ii_eq :
     w4RecvPrekeyReal1MiB_ii_Cum = 284695267 ∧
@@ -1052,23 +1034,9 @@ theorem w4RecvPrekeyRealOf_phaseCreditSpec {smallFileCap maxCt : Nat}
       (hDom.trials_dom x hx).live_le_drop)
     hPush hTdB hTdAC
 
-/-- Parametric `SingleSlotFineSpec` for `W4RecvPrekeyRealEnv R` under
-`W4RecvPrekeyRealDomOf smallFileCap maxCt R`. -/
-def w4RecvPrekeyRealOf_singleSlotFineSpec {smallFileCap maxCt : Nat}
-    (R : W4RecvPrekeyRealParams) (hDom : W4RecvPrekeyRealDomOf smallFileCap maxCt R) :
-    SingleSlotFineSpec (W4RecvPrekeyRealEnv R) where
-  cum := w4RecvPrekeyRealCumOf smallFileCap
-  live := w4RecvPrekeyRealLiveOf smallFileCap maxCt
-  peak := w4RecvPrekeyRealPeakOf smallFileCap maxCt
-  maxReq := w4RecvPrekeyRealMaxReqOf smallFileCap maxCt
-  grpS := w4RecvPrekeyRealGrpS
-  credit := w4RecvPrekeyRealOf_phaseCreditSpec R hDom
-  live_le_peak := Nat.le_max_right _ _
-  groups := w4RecvPrekeyRealOf_fine_groupSpec R hDom
-
 /-- Variant (i) closed `SingleSlotFineSpec` (`W4RecvPrekeyRealDomOf sessionCapBytes msgCapBytes`):
 `(288,625,123, 30,610,803, 32,716,150, 2,457,152, 5,867,151,338)`. -/
-def w4RecvPrekeyReal1MiB_i_singleSlotFineSpec
+@[expose] def w4RecvPrekeyReal1MiB_i_singleSlotFineSpec
     (R : W4RecvPrekeyRealParams)
     (hDom : W4RecvPrekeyRealDomOf sessionCapBytes msgCapBytes R) :
     SingleSlotFineSpec (W4RecvPrekeyRealEnv R) where
@@ -1101,14 +1069,6 @@ private theorem fourStagePeak_mono
     max p1 (l1 + max p2 (l2 + max p3 (l3 + p4))) ≤
       max p1' (l1' + max p2' (l2' + max p3' (l3' + p4'))) :=
   seqPeak_mono hp1 hl1 (seqPeak_mono hp2 hl2 (seqPeak_mono hp3 hl3 hp4))
-
-private theorem fiveStepSplitPeak_mono {ps ls pk lk q q' : Nat} (hq : q ≤ q') :
-    max ps (ls + max pk (lk + max ps (ls + max ps (ls + q)))) ≤
-      max ps (ls + max pk (lk + max ps (ls + max ps (ls + q')))) :=
-  seqPeak_mono (Nat.le_refl _) (Nat.le_refl _)
-    (seqPeak_mono (Nat.le_refl _) (Nat.le_refl _)
-      (seqPeak_mono (Nat.le_refl _) (Nat.le_refl _)
-        (seqPeak_mono (Nat.le_refl _) (Nat.le_refl _) hq)))
 
 private theorem p2a_bob_maxReq_le (ikmCap : Nat) :
     max (max ikmCap 1569) (max 4224 68) ≤ max ikmCap 4224 :=
@@ -1182,131 +1142,6 @@ private theorem p4_split_maxReq_le (r32s r32k r16s rSt : Nat) :
     Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_left _ _)
   exact Nat.max_le.mpr ⟨hs, Nat.max_le.mpr ⟨hk, Nat.le_max_right _ _⟩⟩
 
-private theorem splitDirMaxReq_untr_le (rL r32s r32k r16sk rRest : Nat) :
-    max rL (max r32s 40) ≤ max (max rL (max (max r32s r32k) (max r16sk 40))) rRest := by
-  let T := max (max rL (max (max r32s r32k) (max r16sk 40))) rRest
-  have hA : max rL (max (max r32s r32k) (max r16sk 40)) ≤ T := Nat.le_max_left _ _
-  have hrL : rL ≤ T := Nat.le_trans (Nat.le_max_left _ _) hA
-  have hr32s : r32s ≤ T :=
-    Nat.le_trans (Nat.le_max_left _ _)
-      (Nat.le_trans (Nat.le_max_left _ _) (Nat.le_trans (Nat.le_max_right _ _) hA))
-  have h40 : 40 ≤ T :=
-    Nat.le_trans (Nat.le_max_right _ _)
-      (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_trans (Nat.le_max_right _ _) hA))
-  exact Nat.max_le.mpr ⟨hrL, Nat.max_le.mpr ⟨hr32s, h40⟩⟩
-
-private theorem splitDirMaxReq_B_le
-    (rL r32s r32k r16sk rCur r_dec r_tr rArch r_tdB r_tdAC rIkm rSt0 rSt1 : Nat) :
-    max (max rL r32s)
-      (max (max (max r_dec r_tr) rArch)
-        (max (max r_tdB 192) (max r32s rSt0))) ≤
-    max (max rL (max (max r32s r32k) (max r16sk 40)))
-      (max (max rCur (max r_dec r_tr))
-        (max rArch (max (max (max r_tdB r_tdAC) 192) (max rIkm (max rSt0 rSt1))))) := by
-  let T := max (max rL (max (max r32s r32k) (max r16sk 40)))
-    (max (max rCur (max r_dec r_tr))
-      (max rArch (max (max (max r_tdB r_tdAC) 192) (max rIkm (max rSt0 rSt1)))))
-  have hA : max rL (max (max r32s r32k) (max r16sk 40)) ≤ T := Nat.le_max_left _ _
-  have hB : max (max rCur (max r_dec r_tr))
-      (max rArch (max (max (max r_tdB r_tdAC) 192) (max rIkm (max rSt0 rSt1)))) ≤ T :=
-    Nat.le_max_right _ _
-  have hrL : rL ≤ T := Nat.le_trans (Nat.le_max_left _ _) hA
-  have hr32s : r32s ≤ T :=
-    Nat.le_trans (Nat.le_max_left _ _)
-      (Nat.le_trans (Nat.le_max_left _ _) (Nat.le_trans (Nat.le_max_right _ _) hA))
-  have hdt : max r_dec r_tr ≤ T :=
-    Nat.le_trans (Nat.le_max_right _ _) (Nat.le_trans (Nat.le_max_left _ _) hB)
-  have hBR := Nat.le_trans (Nat.le_max_right _ _) hB
-  have hArch : rArch ≤ T := Nat.le_trans (Nat.le_max_left _ _) hBR
-  have hBRR := Nat.le_trans (Nat.le_max_right _ _) hBR
-  have htdAll : max (max r_tdB r_tdAC) 192 ≤ T := Nat.le_trans (Nat.le_max_left _ _) hBRR
-  have htdB : max r_tdB 192 ≤ T :=
-    Nat.le_trans (max_mono (Nat.le_max_left r_tdB r_tdAC) (Nat.le_refl 192)) htdAll
-  have hrSt0 : rSt0 ≤ T :=
-    Nat.le_trans (Nat.le_max_left _ _)
-      (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_trans (Nat.le_max_right _ _) hBRR))
-  exact Nat.max_le.mpr
-    ⟨Nat.max_le.mpr ⟨hrL, hr32s⟩,
-     Nat.max_le.mpr ⟨Nat.max_le.mpr ⟨hdt, hArch⟩,
-       Nat.max_le.mpr ⟨htdB, Nat.max_le.mpr ⟨hr32s, hrSt0⟩⟩⟩⟩
-
-private theorem splitDirMaxReq_A_le
-    (rL r32s r32k r16s r16k rCurDt rArch r_tdB r_tdAC rIkm rSt0 rSt1 : Nat) :
-    max (max rL r32s)
-      (max (max (max r16s r16k) rIkm)
-        (max (max r_tdAC 192) (max (max r32s r32k) (max r16s rSt0)))) ≤
-    max (max rL (max (max r32s r32k) (max (max r16s r16k) 40)))
-      (max rCurDt
-        (max rArch (max (max (max r_tdB r_tdAC) 192) (max rIkm (max rSt0 rSt1))))) := by
-  let T := max (max rL (max (max r32s r32k) (max (max r16s r16k) 40)))
-    (max rCurDt
-      (max rArch (max (max (max r_tdB r_tdAC) 192) (max rIkm (max rSt0 rSt1)))))
-  have hA : max rL (max (max r32s r32k) (max (max r16s r16k) 40)) ≤ T := Nat.le_max_left _ _
-  have hB := Nat.le_max_right (max rL (max (max r32s r32k) (max (max r16s r16k) 40)))
-    (max rCurDt (max rArch (max (max (max r_tdB r_tdAC) 192) (max rIkm (max rSt0 rSt1)))))
-  have hrL : rL ≤ T := Nat.le_trans (Nat.le_max_left _ _) hA
-  have hr32sk : max r32s r32k ≤ T :=
-    Nat.le_trans (Nat.le_max_left _ _) (Nat.le_trans (Nat.le_max_right _ _) hA)
-  have hr32s : r32s ≤ T := Nat.le_trans (Nat.le_max_left _ _) hr32sk
-  have hr16sk : max r16s r16k ≤ T :=
-    Nat.le_trans (Nat.le_max_left _ _)
-      (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_trans (Nat.le_max_right _ _) hA))
-  have hr16s : r16s ≤ T := Nat.le_trans (Nat.le_max_left _ _) hr16sk
-  have hBR := Nat.le_trans (Nat.le_max_right _ _) hB
-  have hBRR := Nat.le_trans (Nat.le_max_right _ _) hBR
-  have htdAll : max (max r_tdB r_tdAC) 192 ≤ T := Nat.le_trans (Nat.le_max_left _ _) hBRR
-  have htdAC : max r_tdAC 192 ≤ T :=
-    Nat.le_trans (max_mono (Nat.le_max_right r_tdB r_tdAC) (Nat.le_refl 192)) htdAll
-  have hBRRR := Nat.le_trans (Nat.le_max_right _ _) hBRR
-  have hrIkm : rIkm ≤ T := Nat.le_trans (Nat.le_max_left _ _) hBRRR
-  have hrSt0 : rSt0 ≤ T :=
-    Nat.le_trans (Nat.le_max_left _ _) (Nat.le_trans (Nat.le_max_right _ _) hBRRR)
-  exact Nat.max_le.mpr
-    ⟨Nat.max_le.mpr ⟨hrL, hr32s⟩,
-     Nat.max_le.mpr ⟨Nat.max_le.mpr ⟨hr16sk, hrIkm⟩,
-       Nat.max_le.mpr ⟨htdAC,
-         Nat.max_le.mpr ⟨hr32sk, Nat.max_le.mpr ⟨hr16s, hrSt0⟩⟩⟩⟩⟩
-
-private theorem splitDirMaxReq_C_le
-    (rL r32s r32k r16s r16k rCurDt rArch r_tdB r_tdAC rIkm rSt0 rSt1 : Nat) :
-    max (max rL r32s)
-      (max (max rCurDt (max rArch (max (max r16s r16k) rIkm)))
-        (max (max r_tdAC 192) (max (max r32s r32k) (max r16s rSt1)))) ≤
-    max (max rL (max (max r32s r32k) (max (max r16s r16k) 40)))
-      (max rCurDt
-        (max rArch (max (max (max r_tdB r_tdAC) 192) (max rIkm (max rSt0 rSt1))))) := by
-  let T := max (max rL (max (max r32s r32k) (max (max r16s r16k) 40)))
-    (max rCurDt
-      (max rArch (max (max (max r_tdB r_tdAC) 192) (max rIkm (max rSt0 rSt1)))))
-  have hA : max rL (max (max r32s r32k) (max (max r16s r16k) 40)) ≤ T := Nat.le_max_left _ _
-  have hB := Nat.le_max_right (max rL (max (max r32s r32k) (max (max r16s r16k) 40)))
-    (max rCurDt (max rArch (max (max (max r_tdB r_tdAC) 192) (max rIkm (max rSt0 rSt1)))))
-  have hrL : rL ≤ T := Nat.le_trans (Nat.le_max_left _ _) hA
-  have hr32sk : max r32s r32k ≤ T :=
-    Nat.le_trans (Nat.le_max_left _ _) (Nat.le_trans (Nat.le_max_right _ _) hA)
-  have hr32s : r32s ≤ T := Nat.le_trans (Nat.le_max_left _ _) hr32sk
-  have hr16sk : max r16s r16k ≤ T :=
-    Nat.le_trans (Nat.le_max_left _ _)
-      (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_trans (Nat.le_max_right _ _) hA))
-  have hr16s : r16s ≤ T := Nat.le_trans (Nat.le_max_left _ _) hr16sk
-  have hCur : rCurDt ≤ T := Nat.le_trans (Nat.le_max_left _ _) hB
-  have hBR := Nat.le_trans (Nat.le_max_right _ _) hB
-  have hArch : rArch ≤ T := Nat.le_trans (Nat.le_max_left _ _) hBR
-  have hBRR := Nat.le_trans (Nat.le_max_right _ _) hBR
-  have htdAll : max (max r_tdB r_tdAC) 192 ≤ T := Nat.le_trans (Nat.le_max_left _ _) hBRR
-  have htdAC : max r_tdAC 192 ≤ T :=
-    Nat.le_trans (max_mono (Nat.le_max_right r_tdB r_tdAC) (Nat.le_refl 192)) htdAll
-  have hBRRR := Nat.le_trans (Nat.le_max_right _ _) hBRR
-  have hrIkm : rIkm ≤ T := Nat.le_trans (Nat.le_max_left _ _) hBRRR
-  have hrSt1 : rSt1 ≤ T :=
-    Nat.le_trans (Nat.le_max_right _ _) (Nat.le_trans (Nat.le_max_right _ _) hBRRR)
-  exact Nat.max_le.mpr
-    ⟨Nat.max_le.mpr ⟨hrL, hr32s⟩,
-     Nat.max_le.mpr
-       ⟨Nat.max_le.mpr ⟨hCur, Nat.max_le.mpr ⟨hArch, Nat.max_le.mpr ⟨hr16sk, hrIkm⟩⟩⟩,
-        Nat.max_le.mpr ⟨htdAC,
-          Nat.max_le.mpr ⟨hr32sk, Nat.max_le.mpr ⟨hr16s, hrSt1⟩⟩⟩⟩⟩
-
 private theorem zero_or_max4_le (x : Nat) :
     max 0 (max (max x x) (max x x)) ≤ x := by
   omega
@@ -1315,359 +1150,65 @@ private theorem slot_final_peak_le (rp l : Nat) :
     max 0 (max (max rp rp) (max rp rp)) ≤ max rp l :=
   Nat.le_trans (zero_or_max4_le rp) (Nat.le_max_left rp l)
 
-/-- Per-directory split `PhaseCreditSpec fineCostModel` for `W4RecvPrekeyRealEnv R` under
-`W4RecvPrekeyRealDomSplit smallFileCap kpkFileCap maxCt R`. -/
-theorem w4RecvPrekeyRealSplit_phaseCreditSpec {smallFileCap kpkFileCap maxCt : Nat}
-    (R : W4RecvPrekeyRealParams)
-    (hDom : W4RecvPrekeyRealDomSplit smallFileCap kpkFileCap maxCt R) :
-    PhaseCreditSpec fineCostModel (W4RecvPrekeyRealEnv R)
-      (w4RecvPrekeySplitDirCum smallFileCap kpkFileCap)
-      (w4RecvPrekeySplitDirLive smallFileCap kpkFileCap maxCt)
-      (w4RecvPrekeySplitDirPeak smallFileCap kpkFileCap maxCt)
-      (w4RecvPrekeySplitDirMaxReq smallFileCap kpkFileCap maxCt) := by
-  let P := mkW4RecvPrekeySlotParams R
-  let TryDecAC := W4RecvPrekeyTryDecACEnv R
-  obtain ⟨hdcOwn, hdcPeers, hdcSpk, hdcKot, hdcKlr, hdcOpk, hdcSess⟩ := opened_all_dirDomainCaps
-  have hdcKpk : DirDomainCaps 26 0 0 P.kpkDir := by
-    change DirDomainCaps 26 0 0 R.kpkDir
-    rcases hDom.kpk_dir with h1 | h2
-    · rw [h1]; exact hdcKot
-    · rw [h2]; exact hdcKlr
-  have hdir : (26 : Nat) ≤ 64 := by decide
-  have hIkmSmall : max 4096 1569 ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-    rw [fineCostModel_smallMaxReq_eq]; exact hDom.outer_dom.ikm_small
-  have hPeersCap : ∀ bs, P.rd P.files (pathOf P.peersDir.path (addressText P.peer.val)) = .ok bs →
-      bs.length ≤ smallFileCap :=
-    fun bs hr => hDom.nonKpk_small_cap StoresGhost.opened.identity.peers (by simp) _ bs hr
-  have hSpkCap : ∀ bs, P.rd P.files (pathOf P.spkDir.path (keyName P.spkId)) = .ok bs →
-      bs.length ≤ smallFileCap :=
-    fun bs hr => hDom.nonKpk_small_cap StoresGhost.opened.signed (by simp) _ bs hr
-  have hOpkCap : ∀ n bs, P.rd P.files (pathOf P.opkDir.path n) = .ok bs →
-      bs.length ≤ smallFileCap :=
-    fun n bs hr => hDom.nonKpk_small_cap StoresGhost.opened.oneTime (by simp) n bs hr
-  have hOwnCap : ∀ n bs, P.rd P.files (pathOf P.ownDir.path n) = .ok bs →
-      bs.length ≤ smallFileCap :=
-    fun n bs hr => hDom.nonKpk_small_cap StoresGhost.opened.identity.own (by simp) n bs hr
-  have hKpkCap : ∀ n bs, P.rd P.files (pathOf P.kpkDir.path n) = .ok bs →
-      bs.length ≤ kpkFileCap :=
-    fun n bs hr => hDom.kpk_cap n bs hr
-  have hdeser : ∀ bs, bs.length ≤ 2097152 →
-      PhaseCreditSpec fineCostModel (P.DeserEnv bs)
-        deserCancelFineCum deserCancelFineLive deserCancelFinePeak deserCancelFineMaxReq :=
-    fun _ hbs => recordDeserializeCancelEnv_fine_phaseCreditSpec hbs
-  have hCur : PhaseCreditSpec fineCostModel P.CurTrialFailEnv
-      w4RealFailTdCum 0 (w4FailTdPeakOf maxCt) (w4TdMaxReqOf maxCt) := by
-    change PhaseCreditSpec fineCostModel
-      (if R.hasCurSession then W4FailedTdCancelEnv R.F R.K R.fc_cur else fun _ => False) _ _ _ _
-    cases hcs : R.hasCurSession
-    · exact (PhaseCreditSpec.empty fineCostModel).mono
-        (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-    · exact w4FailedTdCancelOf_phaseCredit (hDom.cur_fail_dom hcs)
-  have hPush : PhaseCreditSpec fineCostModel P.VecPushEnv 9923 0 0 192 := by
-    have hsm : 192 ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-      rw [fineCostModel_smallMaxReq_eq]; decide
-    have hc9923 : 1 * (2 * 192 + 9539) ≤ 9923 := by decide
-    exact PhaseCreditSpec.mono hc9923 (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 192)
-      (phaseCredit_w4BoundedEvs_small fineCostModel_modelHyps 1 192 hsm)
-  have hTdB : PhaseCreditSpec fineCostModel P.TryDecEnv
-      w4RealFailTdCum (w4TdBLiveOf maxCt) (w4FailTdPeakOf maxCt) (w4TdMaxReqOf maxCt) := by
-    change PhaseCreditSpec fineCostModel
-      (if R.isPathB then W4TryDecryptPathBEnv R.F R.K R.td_B else fun _ => False) _ _ _ _
-    cases hpb : R.isPathB
-    · exact (PhaseCreditSpec.empty fineCostModel).mono
-        (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-    · exact w4TryDecryptPathBOf_phaseCredit (hDom.tdB_dom hpb)
-  have hTdAC : PhaseCreditSpec fineCostModel TryDecAC
-      w4RealTdACCum (w4TdACLiveOf maxCt) (w4TdACPeakOf maxCt) (w4TdMaxReqOf maxCt) := by
-    unfold TryDecAC W4RecvPrekeyTryDecACEnv
-    cases hpac : R.isPathAC
-    · exact (PhaseCreditSpec.empty fineCostModel).mono
-        (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-    · exact w4TryDecryptPathACOf_phaseCredit (hDom.tdAC_dom hpac)
-  set cTot := w4RecvPrekeySplitDirCum smallFileCap kpkFileCap
-  set lTot := w4RecvPrekeySplitDirLive smallFileCap kpkFileCap maxCt
-  set rpTot := w4RecvPrekeySplitDirRawPeak smallFileCap kpkFileCap maxCt
-  set rTot := w4RecvPrekeySplitDirMaxReq smallFileCap kpkFileCap maxCt
-  -- Arm 1: Untrusted
-  have hUntr0 := w4StageP1UntrustedCli_fine_phaseCredit
-    hdcSess hdcPeers hdir hDom.outer_dom.peer_len hDom.outer_dom.sess_cap hPeersCap hdeser
-  dsimp only at hUntr0
-  simp only [Nat.zero_max] at hUntr0
-  have hUntr : PhaseCreditSpec fineCostModel
-      (W4StageP1UntrustedCliEnv P.rd P.DeserEnv P.files P.sessDir P.peersDir P.peer)
-      cTot lTot rpTot rTot := hUntr0.mono
-    (by dsimp only [cTot, w4RecvPrekeySplitDirCum]
-        exact Nat.le_trans (Nat.le_max_left _ _) (Nat.le_max_left _ _))
-    (by dsimp only [lTot, w4RecvPrekeySplitDirLive]
-        exact Nat.le_trans (Nat.le_max_left _ _) (Nat.le_max_left _ _))
-    (by dsimp only [rpTot, w4RecvPrekeySplitDirRawPeak]
-        exact Nat.le_trans (Nat.le_max_left _ _) (Nat.le_max_left _ _))
-    (by dsimp only [rTot, w4RecvPrekeySplitDirMaxReq]
-        exact splitDirMaxReq_untr_le _ _ _ _ _)
-  -- Arm 2: Path B
-  have hP1Ok := w4StageP1OkCli_fine_phaseCredit
-    hdcSess hdcPeers hdir hDom.outer_dom.peer_len hDom.outer_dom.sess_cap hPeersCap hdeser
-  dsimp only at hP1Ok
-  simp only [Nat.zero_max] at hP1Ok
-  have hP2B := w4StageP2Matched_dom_fine_phaseCredit P.g_arch P.r_arch
-    hDom.outer_dom.arch_valid hDom.outer_dom.arch_enc hDom.outer_dom.trials_len4
-    (fun x hx => (hDom.trials_dom x hx).live_le_peak)
-    (fun x hx => w4TrialDecOf_phaseCredit (hDom.trials_dom x hx))
-    (fun x hx => w4TrialRunOf_phaseCredit (hDom.trials_dom x hx))
-    (fun x hx => deallocCreditSpec_mono_le
-      (deallocCreditSpec_dropSessionStructureLocal1 (hDom.trials_dom x hx).drop_caps)
-      (hDom.trials_dom x hx).live_le_drop)
-    hPush
-  have hP3B := w4StageP3_fine_phaseCredit_tight hTdB
-  have hP4B := w4StageP4MatchedCli_dom_fine_phaseCredit P.g_out0 P.r_out0
-    hdcPeers hdcSess hdir hDom.outer_dom.peer_len hPeersCap
-    hDom.outer_dom.out0_valid hDom.outer_dom.out0_enc
-  dsimp only at hP4B
-  simp only [Nat.zero_max] at hP4B
-  have hPathB : PhaseCreditSpec fineCostModel (W4DecryptPrekeyPathBEnv P)
-      cTot lTot rpTot rTot := (hP1Ok.seq (hP2B.seq (hP3B.seq hP4B))).mono
-    (by dsimp only [cTot, w4RecvPrekeySplitDirCum]
-        refine Nat.le_trans ?_ (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_left _ _))
-        simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (by dsimp only [lTot, w4RecvPrekeySplitDirLive]
-        refine Nat.le_trans ?_ (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_left _ _))
-        simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (by dsimp only [rpTot, w4RecvPrekeySplitDirRawPeak]
-        refine Nat.le_trans ?_ (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_left _ _))
-        exact fourStagePeak_mono
-          (seqPeak_mono (Nat.le_refl _) (Nat.le_refl _) (Nat.le_max_left _ _))
-          (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
-          (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _))
-    (by dsimp only [rTot, w4RecvPrekeySplitDirMaxReq]
-        exact splitDirMaxReq_B_le _ _ _ _ _ _ _ _ _ _ _ _ _)
-  -- Shared P2/P4 steps with split (smallFileCap, kpkFileCap)
-  have hSpk := w4KeyIdSmallStoreStep16_fine_phaseCredit P.spkId hdcSpk hdir hSpkCap
-  simp only [Nat.zero_max] at hSpk
-  have hKpk := w4KeyIdSmallStoreStep16_fine_phaseCredit P.kpkId hdcKpk hdir
-    (fun bs hr => hKpkCap _ bs hr)
-  simp only [Nat.zero_max] at hKpk
-  have hOptPk := phaseCreditSpec_ite_nil P.hasOpk fun _ =>
-    w4KeyIdSmallStoreStep16_fine_phaseCredit P.opkId hdcOpk hdir (fun bs hr => hOpkCap _ bs hr)
-  simp only [Nat.zero_max] at hOptPk
-  have hKp := w4SmallStoreStep16_fine_phaseCredit hdcOwn hdir
-    hDom.outer_dom.ownKey_len (fun bs hr => hOwnCap _ bs hr)
-  simp only [Nat.zero_max] at hKp
-  have hReg := w4SmallStoreStep16_fine_phaseCredit hdcOwn hdir
-    hDom.outer_dom.ownReg_len (fun bs hr => hOwnCap _ bs hr)
-  simp only [Nat.zero_max] at hReg
-  have hTail := w4ErrTail_fine_phaseCredit_tight
-  have hSpqr := w4SpqrInit32_fine_phaseCredit P.F P.x_spqr hDom.outer_dom.spqr_key
-  have hSave := w4PeerSmallStoreStep32_fine_phaseCredit hdcPeers hdir
-    hDom.outer_dom.peer_len hPeersCap
-  simp only [Nat.zero_max] at hSave
-  have hMark := w4SmallStoreStep32_fine_phaseCredit hdcKpk hdir
-    hDom.outer_dom.kpkMark_len (fun bs hr => hKpkCap _ bs hr)
-  simp only [Nat.zero_max] at hMark
-  have hRem := phaseCreditSpec_ite_nil P.hasOpk fun _ =>
-    w4KeyIdSmallStoreStep16_fine_phaseCredit P.opkId hdcOpk hdir (fun bs hr => hOpkCap _ bs hr)
-  simp only [Nat.zero_max] at hRem
-  have hP3AC := w4StageP3_fine_phaseCredit_tight hTdAC
-  -- Arm 3: Path A
-  have hBob : PhaseCreditSpec fineCostModel (W4InitBobSpqrEnv P.F P.x_res P.hasOpk P.x_spqr)
-      (w4InitBobOuterCum 4096 + w4SpqrInitCum 32) 0 0 (max 4096 4224) :=
-    (phaseCredit_w4InitBob_small fineCostModel_modelHyps (hasOpk := P.hasOpk)
-      hDom.outer_dom.res_old hDom.outer_dom.res_new hIkmSmall hSpqr).mono
-      (Nat.le_refl _) (Nat.le_refl 0)
-      (Nat.max_le.mpr ⟨Nat.le_refl 0, Nat.le_refl 0⟩) (p2a_bob_maxReq_le 4096)
-  have h67A := (hReg.seq hTail).mono
-    (Nat.le_refl _) (Nat.le_of_eq (Nat.add_zero _))
-    (Nat.le_of_eq (congrArg (max _) (Nat.add_zero _))) (Nat.le_refl _)
-  have hP2A := (hSpk.seq (hKpk.seq (hOptPk.seq (hKp.seq (hBob.seq h67A))))).mono
-    (p2a_split_cum_le _ _ _ _ _)
-    (p2a_split_live_le _ _)
-    (Nat.le_refl _)
-    (p2a_split_maxReq_le _ _ _)
-  have hStore0 := phaseCreditSpec_seq_freeOnly_exact fineCostModel_modelHyps
-    (w4SessStoreStep_dom_fine_phaseCredit hdcSess hDom.outer_dom.peer_len
-      hDom.outer_dom.out0_valid hDom.outer_dom.out0_enc)
-  have hP4A := (hSave.seq (hMark.seq (hRem.seq hStore0))).mono
-    (by try simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (Nat.le_refl _)
-    (Nat.le_refl _) (p4_split_maxReq_le _ _ _ _)
-  have hPathA : PhaseCreditSpec fineCostModel
-      (W4DecryptPrekeyPathAEnv ({ P with TryDecEnv := TryDecAC }))
-      cTot lTot rpTot rTot := (hP1Ok.seq (hP2A.seq (hP3AC.seq hP4A))).mono
-    (by dsimp only [cTot, w4RecvPrekeySplitDirCum]
-        refine Nat.le_trans ?_ (Nat.le_trans (Nat.le_max_left _ _) (Nat.le_max_right _ _))
-        try simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (by dsimp only [lTot, w4RecvPrekeySplitDirLive]
-        refine Nat.le_trans ?_ (Nat.le_trans (Nat.le_max_left _ _) (Nat.le_max_right _ _))
-        try simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (by dsimp only [rpTot, w4RecvPrekeySplitDirRawPeak]
-        refine Nat.le_trans ?_ (Nat.le_trans (Nat.le_max_left _ _) (Nat.le_max_right _ _))
-        have h0eq : max 0 (0 + max (smallStorePollTightDeltaPeak smallFileCap 0)
-            (smallStorePollTightDeltaLive smallFileCap 0)) ≤
-            max (smallStorePollTightDeltaPeak smallFileCap 0)
-              (smallStorePollTightDeltaLive smallFileCap 0) := by
-          simp only [Nat.zero_add, Nat.zero_max]; exact Nat.le_refl _
-        exact fourStagePeak_mono
-          (seqPeak_mono (Nat.le_refl _) (Nat.le_refl _) (Nat.le_max_left _ _))
-          (Nat.le_refl _)
-          (fiveStepSplitPeak_mono h0eq)
-          (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _))
-    (by dsimp only [rTot, w4RecvPrekeySplitDirMaxReq]
-        exact splitDirMaxReq_A_le _ _ _ _ _ _ _ _ _ _ _ _)
-  -- Arm 4: Path C
-  have hFree : PhaseCreditSpec fineCostModel FreeOnlyEvs 0 0 0 0 :=
-    PhaseCreditSpec.freeOnly_of_hyps fineCostModel_modelHyps
-  have hCurP2 : PhaseCreditSpec fineCostModel
-      (fun e1 => FreeOnlyEvs e1 ∨
-        W4TryDecryptCloneFailEnv (SegCloneEnv P.G_cur P.st_cur) P.CurTrialFailEnv
-          (· = dropClonedSessionEvents P.G_cur P.st_cur) e1)
-      (8277456 + w4RealFailTdCum + 8186) 0
-      (1080975 + fineOptLarge 286196 + w4FailTdPeakOf maxCt)
-      (max (max (max 208000 286196) (w4TdMaxReqOf maxCt)) 192) :=
-    (hFree.or (tryDecryptCloneFail_dom_fine_cancel_phaseCredit hDom.outer_dom.cur_dom hCur)).mono
-      (Nat.le_of_eq (Nat.zero_max _)) (Nat.le_of_eq (Nat.zero_max _))
-      (Nat.le_of_eq (Nat.zero_max _)) (Nat.le_of_eq (Nat.zero_max _))
-  have hLoopP2 : PhaseCreditSpec fineCostModel
-      (fun e2 => FreeOnlyEvs e2 ∨
-        IterSeqEnv (ArchivedTrialIterEnv P.DecEnv P.TrialEnv P.DropEnv) P.archivedTrials e2)
-      (4 * (deserCancelFineCum + w4RealTrialCum)) 0
-      (deserCancelFinePeak + w4TrialPeakOf maxCt)
-      (max deserCancelFineMaxReq (w4TrialMaxReqOf maxCt)) :=
-    (hFree.or (phaseCredit_archivedTrialLoop_le4 hDom.outer_dom.trials_len4
-      (fun x hx => (hDom.trials_dom x hx).live_le_peak)
-      (fun x hx => w4TrialDecOf_phaseCredit (hDom.trials_dom x hx))
-      (fun x hx => w4TrialRunOf_phaseCredit (hDom.trials_dom x hx))
-      (fun x hx => deallocCreditSpec_mono_le
-        (deallocCreditSpec_dropSessionStructureLocal1 (hDom.trials_dom x hx).drop_caps)
-        (hDom.trials_dom x hx).live_le_drop))).mono
-      (Nat.le_of_eq (Nat.zero_max _)) (Nat.le_of_eq (Nat.zero_max _))
-      (Nat.le_of_eq (Nat.zero_max _)) (Nat.le_of_eq (Nat.zero_max _))
-  have hSerArch := serialize_dom_phaseCredit_tight
-    hDom.outer_dom.arch_valid hDom.outer_dom.arch_enc
-  rw [optLargeCost_fine_eq 286196, optLargeCost_fine_eq 2097152] at hSerArch
-  have hOver : PhaseCreditSpec fineCostModel
-      (W4StageP2OverBobEnv (RecordSerializeCancelEnv P.g_arch P.r_arch) P.VecPushEnv
-        P.x_res P.hasOpk (InitialStateEnv P.F P.x_spqr))
-      (8420940 + 9923 + w4InitBobOuterCum 4096 + w4SpqrInitCum 32)
-      (fineOptLarge 2097152)
-      (1080975 + fineOptLarge 286196 + fineOptLarge 2097152)
-      (max (max (max (max 208000 286196) 2097152) 192) (max 4096 4224)) := by
-    have h0 := phaseCredit_w4StageP2OverBob_small fineCostModel_modelHyps (hasOpk := P.hasOpk)
-      hSerArch hPush hDom.outer_dom.res_old hDom.outer_dom.res_new hIkmSmall hSpqr
-    exact h0.mono (Nat.le_refl _) (Nat.le_of_eq (Nat.add_zero _))
-      (Nat.max_le.mpr ⟨Nat.le_refl _, by simp only [Nat.max_self, Nat.add_zero]; exact Nat.le_add_left _ _⟩)
-      (Nat.max_le.mpr ⟨Nat.le_max_left _ _,
-        Nat.le_trans (p2a_bob_maxReq_le 4096) (Nat.le_max_right _ _)⟩)
-  have h89C := (hReg.seq hTail).mono
-    (Nat.le_refl _) (Nat.le_of_eq (Nat.add_zero _))
-    (Nat.le_of_eq (congrArg (max _) (Nat.add_zero _))) (Nat.le_refl _)
-  have hP2C := (hCurP2.seq (hLoopP2.seq (hSpk.seq (hKpk.seq (hOptPk.seq (hKp.seq (hOver.seq h89C))))))).mono
-    (p2c_split_cum_le _ _ _ _ _ _)
-    (p2c_split_live_le _ _ _)
-    (by simp only [Nat.zero_add]; exact Nat.le_refl _)
-    (p2c_split_maxReq_le _ _ _ _ _ _ _)
-  have hStore1 := phaseCreditSpec_seq_freeOnly_exact fineCostModel_modelHyps
-    (w4SessStorePrev1Step_freshBob_fine_phaseCredit hdcSess hDom.outer_dom.peer_len
-      hDom.outer_dom.out1_freshBob)
-  have hP4C := (hSave.seq (hMark.seq (hRem.seq hStore1))).mono
-    (by try simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (Nat.le_refl _)
-    (Nat.le_refl _) (p4_split_maxReq_le _ _ _ _)
-  have hPathC : PhaseCreditSpec fineCostModel
-      (W4DecryptPrekeyPathCEnv ({ P with TryDecEnv := TryDecAC }))
-      cTot lTot rpTot rTot := (hP1Ok.seq (hP2C.seq (hP3AC.seq hP4C))).mono
-    (by dsimp only [cTot, w4RecvPrekeySplitDirCum]
-        refine Nat.le_trans ?_ (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _))
-        try simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (by dsimp only [lTot, w4RecvPrekeySplitDirLive]
-        refine Nat.le_trans ?_ (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _))
-        try simp only [Nat.add_assoc]; exact Nat.le_refl _)
-    (by dsimp only [rpTot, w4RecvPrekeySplitDirRawPeak]
-        refine Nat.le_trans ?_ (Nat.le_trans (Nat.le_max_right _ _) (Nat.le_max_right _ _))
-        exact fourStagePeak_mono
-          (seqPeak_mono (Nat.le_refl _) (Nat.le_refl _) (Nat.le_max_left _ _))
-          (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
-          (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _))
-    (by dsimp only [rTot, w4RecvPrekeySplitDirMaxReq]
-        exact splitDirMaxReq_C_le _ _ _ _ _ _ _ _ _ _ _ _)
-  have h4 := phaseCreditSpec_or4 (fun _ h => h) hUntr hPathB hPathA hPathC
-  have hSeq := phaseCreditSpec_seq_freeOnly_exact fineCostModel_modelHyps h4
-  exact (hFree.or hSeq).mono
-    (zero_or_max4_le cTot) (zero_or_max4_le lTot)
-    (slot_final_peak_le rpTot lTot) (zero_or_max4_le rTot)
-
-/-- Variant (ii) closed `SingleSlotFineSpec` (`W4RecvPrekeyRealDomSplit 4096 sessionCapBytes msgCapBytes`):
-`(284,695,267, 15,873,374, 17,978,721, 2,457,152, 5,867,151,338)`. -/
-def w4RecvPrekeyReal1MiB_ii_singleSlotFineSpec
-    (R : W4RecvPrekeyRealParams)
-    (hDom : W4RecvPrekeyRealDomSplit 4096 sessionCapBytes msgCapBytes R) :
-    SingleSlotFineSpec (W4RecvPrekeyRealEnv R) where
-  cum := w4RecvPrekeyReal1MiB_ii_Cum
-  live := w4RecvPrekeyReal1MiB_ii_Live
-  peak := w4RecvPrekeyReal1MiB_ii_Peak
-  maxReq := w4RecvPrekeyReal1MiB_ii_MaxReq
-  grpS := w4RecvPrekeyRealGrpS
-  credit := w4RecvPrekeyRealSplit_phaseCreditSpec R hDom
-  live_le_peak := w4RecvPrekeyReal1MiB_ii_eq.2.2.2.2
-  groups := w4RecvPrekeyRealOf_fine_groupSpec R hDom.toDomOf_max
-
 /-! ## Closed 5-Slot Whole-`main` Kernel `by decide` RAM Checks -/
 
 /-- Direct 5-slot `run` constants under Variant (i) (`W4RecvPrekeyRealDomOf sessionCapBytes msgCapBytes`). -/
-def cliRealDirectRunCum_i : Nat :=
+@[expose] def cliRealDirectRunCum_i : Nat :=
   cliRun1MiBCustomPksmCum cliRealPksmCumCap w3InitRealCum
     w1SendRealDcanCum w2RecvWhisperRealDcanCum w4RecvPrekeyReal1MiB_i_Cum
 
-def cliRealDirectRunLive_i : Nat :=
+@[expose] def cliRealDirectRunLive_i : Nat :=
   cliRun1MiBCustomPksmLive cliRealPksmLiveCap w3InitRealLive
     w1SendRealDcanLive w2RecvWhisperRealDcanLive w4RecvPrekeyReal1MiB_i_Live
 
-def cliRealDirectRunPeak_i : Nat :=
+@[expose] def cliRealDirectRunPeak_i : Nat :=
   cliRun1MiBCustomPksmPeak cliRealPksmLiveCap cliRealPksmPeakCap w3InitRealPeak
     w1SendRealDcanLive w1SendRealDcanPeak w2RecvWhisperRealDcanPeak w4RecvPrekeyReal1MiB_i_Peak
 
-def cliRealDirectRunMaxReq_i : Nat :=
+@[expose] def cliRealDirectRunMaxReq_i : Nat :=
   cliRun1MiBCustomPksmMaxReq cliRealPksmReqCap w3InitRealMaxReq
     w1SendRealDcanMaxReq w2RecvWhisperRealDcanMaxReq w4RecvPrekeyReal1MiB_i_MaxReq
 
-def cliRealDirectRunGrpS_i : Nat :=
+@[expose] def cliRealDirectRunGrpS_i : Nat :=
   cliRunOpenedCustomPksmGrpS msgCapBytes cliRealPksmGrpSCap w3InitRealGrpS
     w1SendRealDcanGrpS w2RecvWhisperRealDcanGrpS w4RecvPrekeyRealGrpS
 
 /-- Direct 5-slot `run` constants under Variant (ii) (`W4RecvPrekeyRealDomSplit 4096 sessionCapBytes msgCapBytes`). -/
-def cliRealDirectRunCum_ii : Nat :=
+@[expose] def cliRealDirectRunCum_ii : Nat :=
   cliRun1MiBCustomPksmCum cliRealPksmCumCap w3InitRealCum
     w1SendRealDcanCum w2RecvWhisperRealDcanCum w4RecvPrekeyReal1MiB_ii_Cum
 
-def cliRealDirectRunLive_ii : Nat :=
+@[expose] def cliRealDirectRunLive_ii : Nat :=
   cliRun1MiBCustomPksmLive cliRealPksmLiveCap w3InitRealLive
     w1SendRealDcanLive w2RecvWhisperRealDcanLive w4RecvPrekeyReal1MiB_ii_Live
 
-def cliRealDirectRunPeak_ii : Nat :=
+@[expose] def cliRealDirectRunPeak_ii : Nat :=
   cliRun1MiBCustomPksmPeak cliRealPksmLiveCap cliRealPksmPeakCap w3InitRealPeak
     w1SendRealDcanLive w1SendRealDcanPeak w2RecvWhisperRealDcanPeak w4RecvPrekeyReal1MiB_ii_Peak
 
-def cliRealDirectRunMaxReq_ii : Nat :=
+@[expose] def cliRealDirectRunMaxReq_ii : Nat :=
   cliRun1MiBCustomPksmMaxReq cliRealPksmReqCap w3InitRealMaxReq
     w1SendRealDcanMaxReq w2RecvWhisperRealDcanMaxReq w4RecvPrekeyReal1MiB_ii_MaxReq
 
 /-- Direct 5-slot `run` constants with adversarial outer PKSM (`pksmSliceCum msgCapBytes`). -/
-def cliD3DirectRunCum_i : Nat :=
+@[expose] def cliD3DirectRunCum_i : Nat :=
   cliRun1MiBCustomPksmCum (pksmSliceCum msgCapBytes) w3InitRealCum
     w1SendRealDcanCum w2RecvWhisperRealDcanCum w4RecvPrekeyReal1MiB_i_Cum
 
-def cliD3DirectRunGrpS_i : Nat :=
+@[expose] def cliD3DirectRunGrpS_i : Nat :=
   cliRunOpenedCustomPksmGrpS msgCapBytes (pksmTryFromCapDeltaGrpS msgCapBytes) w3InitRealGrpS
     w1SendRealDcanGrpS w2RecvWhisperRealDcanGrpS w4RecvPrekeyRealGrpS
 
-def cliD3Pow2SetupCum_1820 : Nat :=
+@[expose] def cliD3Pow2SetupCum_1820 : Nat :=
   (2 * (16 * 1820) + 9539) +
     ((2 * 64 + 9539) +
       (([4, 8, 16, 32, 64, 128, 256, 512, 1024] : List Nat).map
         (fun k => 2 * (16 * (2 * k)) + 9539)).sum) +
     (2 * 16384 + 9539) + (2 * 16384 + 28617)
 
-def cliD3Pow2SetupGrpS_1820 : Nat := (3 + 3 * 10 + 3 + 6 + 57) * FineScale
+@[expose] def cliD3Pow2SetupGrpS_1820 : Nat := (3 + 3 * 10 + 3 + 6 + 57) * FineScale
 
-def cliD3DirectMainRamNeed_i : Nat :=
+@[expose] def cliD3DirectMainRamNeed_i : Nat :=
   let mainCum := cliD3Pow2SetupCum_1820 + m3PhaseDeltaCum_tight + cliD3DirectRunCum_i +
     cliMaxDirtyEntries * (10 * max (4 * cliMaxDirPathBytes + cliMaxAddrTextBytes + 16) 16 + 4 * 9539) +
     m6DeltaCum
@@ -1695,20 +1236,5 @@ theorem cliRealDirect1MiB_i_fits_90pct_and_oneGiB :
     cliD3DirectMainRamNeed_i = 1063684458 ∧
     cliD3DirectMainRamNeed_i ≤ cliOneGiB :=
   ⟨by decide, by decide, by decide, by decide, by decide⟩
-
-/-- Whole-`main` `< 90%` (`≤ 966,367,641` B) and `≤ 1 GiB` RAM checks under Variant (ii). -/
-theorem cliRealDirect1MiB_ii_fits_90pct_and_oneGiB :
-    cliMainTightRamNeedOf cliRealDirectRunCum_ii cliRealDirectRunLive_ii
-      cliRealDirectRunPeak_ii cliRealDirectRunMaxReq_ii cliRealDirectRunGrpS_i ≤
-      cliRealNinetyPctOneGiB ∧
-    cliMainTightRamNeedOf cliRealDirectRunCum_ii cliRealDirectRunLive_ii
-      cliRealDirectRunPeak_ii cliRealDirectRunMaxReq_ii cliRealDirectRunGrpS_i ≤
-      cliOneGiB ∧
-    cliDecoupledVaNeed cliDefaultStaticBytes cliDefaultStaticCount
-      (cliMainTightCumOf cliRealDirectRunCum_ii)
-      (cliMainTightPeakOf cliRealDirectRunLive_ii cliRealDirectRunPeak_ii)
-      (cliMainTightReqOf cliRealDirectRunMaxReq_ii)
-      (cliMainTightGrpCountOf cliRealDirectRunGrpS_i) ≤ 2 ^ 48 :=
-  ⟨by decide, by decide, by decide⟩
 
 end LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB

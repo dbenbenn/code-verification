@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.WorkFramePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.WorkFramePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedFd -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlacedBudgetFd
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # `FdsGe3Closed`-Threaded Work Frame (`r1b_OkCtxPlacedFd`) for Arm `R1b`
@@ -21,7 +24,7 @@ Extends `r1b_OkCtxPlaced` with `FdsGe3Closed s.fs` and provides step, call, and 
 combinators across Arm `R1b` (`R+0x074c → R+0x28f0`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,12 +60,6 @@ theorem r1b_OkCtxPlacedFd.of_init1 [LibsignalPlacement] {CodeOk : Memory → Pro
     r1b_OkCtxPlacedFd CodeOk S g d s0 s1 0x74c :=
   { ok := r1b_OkCtxPlaced.of_init1 he hi1.1
     fds := hi1.2 }
-
-theorem r1b_OkCtxPlacedFd.of_init1_fd [LibsignalPlacement] {CodeOk : Memory → Prop} {S : RunSem}
-    {g : RunCall} {d : Init1Data} {s0 s1 : State}
-    (he : AtRunEntryPlacedFd CodeOk S g s0) (hi1 : AtInit1PlacedFd CodeOk g d s0 s1) :
-    r1b_OkCtxPlacedFd CodeOk S g d s0 s1 0x74c :=
-  r1b_OkCtxPlacedFd.of_init1 he.1 hi1
 
 theorem r1b_OkCtxPlacedFd.of_step [LibsignalPlacement] {CodeOk : Memory → Prop} {S : RunSem}
     {g : RunCall} {d : Init1Data} {s0 s sm : State} {off off' : Nat}
@@ -102,17 +99,6 @@ theorem r1b_OkCtxPlacedFd.of_call [LibsignalPlacement] {CodeOk : Memory → Prop
     (htr : sf.trace = st_bl.trace) :
     r1b_OkCtxPlacedFd CodeOk S g d s0 sf off' :=
   hok.of_step hin hcs.1 hcs.2.1 hcs.2.2.1 hcs.2.2.2.1 htr hfs_eq
-
-theorem r1b_OkCtxPlacedFd.of_call_fds [LibsignalPlacement] {CodeOk : Memory → Prop} {S : RunSem}
-    {g : RunCall} {d : Init1Data} {s0 st_bl sf : State} {off off' : Nat}
-    (hok : r1b_OkCtxPlacedFd CodeOk S g d s0 st_bl off)
-    (hin : InRunPlaced CodeOk s0 sf off')
-    (hcs : CalleeSavedPreserved st_bl sf)
-    (hfs : sf.fs.files = st_bl.fs.files)
-    (htr : sf.trace = st_bl.trace)
-    (hfds : FdsGe3Closed sf.fs) :
-    r1b_OkCtxPlacedFd CodeOk S g d s0 sf off' :=
-  hok.of_step_fds hin hcs.1 hcs.2.1 hcs.2.2.1 hcs.2.2.2.1 htr hfs hfds
 
 theorem r1b_OkCtxPlacedFd.after_call [LibsignalPlacement] {CodeOk : Memory → Prop} {S : RunSem}
     {g : RunCall} {d : Init1Data} {s0 s st_bl sf : State} {off off' : Nat}

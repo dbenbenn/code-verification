@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.PubToAD
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.PubToAD -- proof-setup: allow-public-import
 
 /-!
 # Public pub-to-AD game equality for short public parts
@@ -18,7 +18,7 @@ public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.PubToAD
 Exposes the pub-to-AD simulator game equality `game_pubMsg_eq_on` for short public parts so it can be lifted across prefix computations by bind congruence.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 

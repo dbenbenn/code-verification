@@ -10,17 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10Budget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.CodeLayout
@@ -29,6 +29,7 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Placed Handshake `finish_grow [local#9]` and `do_reserve_and_handle [local#8]`
@@ -38,7 +39,7 @@ Verifies `[LibsignalPlacement]` `<RawVecInner>::finish_grow [local#9]` (Block `5
 and `VmPreserved`, lifting their contracts to `lsProg_518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -103,7 +104,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 /-- Relocatable `[LibsignalPlacement]` budget-threaded contract for
 `<alloc::raw_vec::RawVecInner>::finish_grow [local#9]`
 (Block `522`, `(blkPl_522).base = lsmpl.base 522`) on `lsProg_518 ext`. -/
-def FinishGrow11PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def FinishGrow11PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 522)
@@ -111,7 +112,7 @@ def FinishGrow11PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Relocatable `[LibsignalPlacement]` raw 1-byte budget-threaded `do_reserve_and_handle [local#8]`
 contract (Block `517`, `(blkPl_517).base = lsmpl.base 517`) on `lsProg_518 ext`. -/
-def DoReserve10PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DoReserve10PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 517)
@@ -119,7 +120,7 @@ def DoReserve10PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Relocatable `[LibsignalPlacement]` `Vec<u8>` budget-threaded `do_reserve_and_handle [local#8]`
 contract (Block `517`, `(blkPl_517).base = lsmpl.base 517`) on `lsProg_518 ext`. -/
-def DoReserve10VecPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DoReserve10VecPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 517)

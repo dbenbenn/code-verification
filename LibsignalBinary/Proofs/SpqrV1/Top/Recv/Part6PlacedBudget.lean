@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part6Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part6Placed
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.Proof
@@ -23,6 +23,47 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Pure
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Budget-Threaded Relocatable `Ordering::Less` Continuations for `spqr::recv`
@@ -31,7 +72,7 @@ Envelope-parametric and default `SpqrRecvEnv` `spqr::chain_from` error (`+1320`)
 post-`Chain::into_pb` (`+1424`) continuations of `Ordering::Less` in `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,7 +87,7 @@ open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
   (LibsignalPlacement lsmpl sepWP_seq_lscl withMemEq)
 open CryptoVerification.LibsignalSpqrV1
-  (Chain Error MlKem V1State VersionNegotiationPB recvResultExactKeyAt spqrV1Recv)
+  (Chain Error MlKem V1State VersionNegotiationPB spqrV1Recv)
 open CryptoVerification.LibsignalTripleRatchet (VecArg)
 open CryptoVerification.SpqrV1.Drop
   (dropStack80 none3Cap' optProtoPqRatchetInnerAt)
@@ -61,8 +102,9 @@ open CryptoVerification.SpqrV1.Top.DecodeState
 open CryptoVerification.SpqrV1.Top.Recv
   (SepWPpLS frame1584_split_err frame4544_join_err_2424 frame4544_join_ok_880
    memRegion_224_sub_entails_words28 optProtoPqRatchetInnerAt_none_sub_entails_words27
-   recv_err_q0_foldX recv_ok_empty_foldX ret_48_split sp_sub_4992_aligned
-   spqrRecvCalleeStackX spqrRecvPlacedEntry spqrRecvPlacedProg spqrRecvRoPlacedAt
+   recv_ok_empty_foldX ret_48_split sp_sub_4992_aligned
+   spqrErrorTag_eq_zero_iff spqrRecvCalleeStackX spqrRecvPlacedEntry spqrRecvPlacedProg
+   spqrRecvRoPlacedAt
    spqrRecvSavedRegs spqrV1Recv_noPanic_of_recv_ok stackAt_spqrRecvCallee_split
    subroutine_ok_withMemEq_of_lscl vnTail_some_eq_versionNegotiationPBAt words27SubAt
    words27SubAt_to_memRegion_224)
@@ -70,8 +112,9 @@ open CryptoVerification.SpqrV1.Top.Recv.Placed (blkPC_329 blkPl_329)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FreeOnlyEvs RustCliAllocBudget VmPreserved)
 open LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget (dropOptProtoSpqrChainSpec)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (SpqrErrorValidTag recvResultExactKeyDispAt)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-  (SpqrRecvEnv sepWP_spqrRecvPlacedPostOfEnv_of_post0
+  (SpqrRecvEnv recv_err_q0_disp_foldX sepWP_spqrRecvPlacedPostOfEnv_of_post0
    spqrRecvBudgetPanicPost spqrRecvPlacedPost spqrRecvPlacedPostOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
   (SpqrRecvDropContractsBudget SpqrRecvEnv.append_freeOnly freeOnlyWitness seq_vm_lscl)
@@ -111,6 +154,7 @@ theorem step_initInner_chainFrom_err_1320_placed_ofEnv {MC : AllocCostModel}
     (e : Error) (w0 w1 : BitVec 64)
     (herr : (spqrV1Recv F K).recv st.bytes msg.bytes = .error (e == .stateDecode))
     (hnp : ¬ (spqrV1Recv F K).recvPanics st.bytes msg.bytes)
+    (hvalid : SpqrErrorValidTag (spqrErrorTag e))
     (s0 s : State) (P R : SepProp)
     (hs0_align : s0.spAligned = true)
     (hpc : s.pc = spqrRecvPlacedEntry + 1320#64)
@@ -174,9 +218,10 @@ theorem step_initInner_chainFrom_err_1320_placed_ofEnv {MC : AllocCostModel}
         ((ret + 16#64) ↦₆₄ q0_err.extractLsb' 64 64) ∗
         ((ret + 24#64) ↦₆₄ w3_err) ∗
         memRegion (ret + 32#64) 16) ⊢
-      recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
+      recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
     rw [herr]
-    exact recv_err_q0_foldX A.repAlloc ret (q0_err.extractLsb' 64 64) w3_err q0_err e htag_q0
+    exact recv_err_q0_disp_foldX A.repAlloc ret (q0_err.extractLsb' 64 64) w3_err q0_err
+      (spqrErrorTag e) (e == .stateDecode) htag_q0 (Eq.to_iff (spqrErrorTag_eq_zero_iff e)) hvalid
   have hw4_join := words4_rest_to_memRegion_88 (s0.sp - 2096#64)
     noneCap (q0_err.extractLsb' 0 64) (q0_err.extractLsb' 64 64) w3_err
   rw [bv_sub_add_lit s0.sp 2096 8,
@@ -189,7 +234,7 @@ theorem step_initInner_chainFrom_err_1320_placed_ofEnv {MC : AllocCostModel}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       ((s0.sp - 4992#64) ↦₆₄ w0) ∗
@@ -233,6 +278,7 @@ theorem step_initInner_chainFrom_err_1320_placed {MC : AllocCostModel}
     (e : Error) (w0 w1 : BitVec 64)
     (herr : (spqrV1Recv F K).recv st.bytes msg.bytes = .error (e == .stateDecode))
     (hnp : ¬ (spqrV1Recv F K).recvPanics st.bytes msg.bytes)
+    (hvalid : SpqrErrorValidTag (spqrErrorTag e))
     (s0 s : State) (P R : SepProp)
     (hs0_align : s0.spAligned = true)
     (hpc : s.pc = spqrRecvPlacedEntry + 1320#64)
@@ -262,7 +308,7 @@ theorem step_initInner_chainFrom_err_1320_placed {MC : AllocCostModel}
       (spqrRecvBudgetPanicPost (spqrV1Recv F K) st msg s0 R) :=
   step_initInner_chainFrom_err_1320_placed_ofEnv A lim st_cost (SpqrRecvEnv st msg) evs0
     (fun _ hd => SpqrRecvEnv.append_freeOnly hevs0 hd)
-    F K ext hC st msg ret vn pb e w0 w1 herr hnp s0 s P R hs0_align hpc hrun hsp htr hx19 hx20 hP
+    F K ext hC st msg ret vn pb e w0 w1 herr hnp hvalid s0 s P R hs0_align hpc hrun hsp htr hx19 hx20 hP
 
 /-- Envelope-parametric continuation after `Chain::into_pb` in `Ordering::Less` (`+1424 .. +1528
     -> +824 .. +880 -> +2540`). -/
@@ -337,7 +383,7 @@ theorem step_initInner_chainFrom_ok_1424_placed_ofEnv {MC : AllocCostModel}
   have hret_fold :
       ((ret ↦₆₄ 0#64) ∗ ((ret + 8#64) ↦₆₄ 1#64) ∗ ((ret + 16#64) ↦₆₄ 0#64) ∗
         ((ret + 24#64) ↦₆₄ 0xFFFFFFFFFFFFFFFF#64) ∗ memRegion (ret + 32#64) 16) ⊢
-      recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
+      recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) := by
     rw [hok]
     exact recv_ok_empty_foldX A.repAlloc ret
   have hjoin_dst := words27SubAt_to_memRegion_224 s0.sp 4512 none3Cap' uSrc
@@ -351,7 +397,7 @@ theorem step_initInner_chainFrom_ok_1424_placed_ofEnv {MC : AllocCostModel}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       ((s0.sp - 4992#64) ↦₆₄ w0) ∗

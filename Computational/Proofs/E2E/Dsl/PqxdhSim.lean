@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.PqxdhSimBranches
-public import Computational.Proofs.E2E.Dsl.M2Interfaces
+public import Computational.Proofs.E2E.Dsl.PqxdhSimBranches -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.M2Interfaces -- proof-setup: allow-public-import
 
 /-!
 # 14-Branch ReductionDsl Simulator for One-Key Real PQXDH
@@ -21,7 +21,7 @@ Proves zero target queries, linear step-cost bounds, and `Comp.eval` equivalence
 `SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P` to instantiate `PqxdhSimIface`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -107,7 +107,7 @@ section Dispatcher
 variable {ℓ : ℕ} {S : Setup} {O : Ops (e2eSig ℓ)} {ι : Type} {T : OracleSpec ι}
   {I : Iface (e2eSig ℓ) T}
 
-def pqxdh1KeyRealBodyG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
+@[expose] def pqxdh1KeyRealBodyG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
     {Γ : List (Ty (e2eSig ℓ))}
     (st0 : Var Γ (e2eKeyIndStateTy ℓ S))
     (qE : Expr O Γ (keyIndQT S)) :
@@ -162,7 +162,7 @@ def pqxdh1KeyRealBodyG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
                                         (revealSpkB H st12.succ (.fst (.var .zero))
                                           (.snd (.var .zero)))))))))))))))
 
-def pqxdh1KeyRealStepG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
+@[expose] def pqxdh1KeyRealStepG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
     {Γ : List (Ty (e2eSig ℓ))}
     (stE : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (qE : Expr O Γ (keyIndQT S)) :
@@ -175,7 +175,7 @@ end Dispatcher
 
 /-- Concrete `ReductionDsl` handler simulating one `pqxdhKeyIndImpl1KeyReal S P` query over
 `e2eOps` and `stepAIface`. -/
-@[local irreducible] def pqxdh1KeyRealStepC (ℓ : ℕ) (S : Setup) {Pt : Type}
+@[expose, local irreducible] def pqxdh1KeyRealStepC (ℓ : ℕ) (S : Setup) {Pt : Type}
     (P : Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) (nAdv : ℕ)
@@ -187,7 +187,7 @@ end Dispatcher
   pqxdh1KeyRealStepG (mkStepAPqxdhHooks ℓ P C K decT encT I₀) nAdv stE qE
 
 /-- Closed-form linear `Comp.cost` budget for one `pqxdh1KeyRealStepC` query. -/
-def pqxdh1KeyRealStepCost (S : Setup) (nAdv : ℕ) : ℕ :=
+@[expose] def pqxdh1KeyRealStepCost (S : Setup) (nAdv : ℕ) : ℕ :=
   600 * S.N_id + 3500 * S.N_spk_tot + 300 * S.N_opk_tot +
     7100 * S.N_send_tot + 7200 * S.N_recv_tot + 300 * nAdv + 12200
 
@@ -1511,28 +1511,9 @@ theorem pqxdh1KeyRealStepC_eval (ℓ : ℕ) (S : Setup) {Pt : Type}
     dsimp only [pqxdh1KeyRealBodyG, Comp.eval, Expr.eval, env_get_zero, env_get_succ, keyIndQenc]
     exact eval_revealSpkB _ _ _ _ rfl hBnd
 
-theorem pqxdh1KeyRealStepC_eval_prob (ℓ : ℕ) (S : Setup) {Pt : Type}
-    (P : Primitives) (C : Crypto) (K : MlKem)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (nAdv : ℕ)
-    {Γ : List (Ty (e2eSig ℓ))}
-    (stE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eKeyIndStateTy ℓ S))
-    (qE : Expr (e2eOps ℓ P C K decT encT) Γ (keyIndQT S))
-    (ρ : Env Γ) (st : KeyIndState S) (kq : KeyIndQuery S)
-    (hP : WellFormedPrimitivesδ P)
-    (hstE : stE.eval ρ = e2eKeyIndStateToVal st)
-    (hqE : qE.eval ρ = keyIndQenc kq)
-    (hBnd : KeyIndSetupBounded S st)
-    (hAdv : st.advKeys.length ≤ nAdv) :
-    (pqxdh1KeyRealStepC ℓ S P C K decT encT (e2eProbIface ℓ) nAdv stE qE).eval ρ =
-      ((fun out => (keyIndRenc out.1, e2eKeyIndStateToVal out.2)) <$>
-        ((pqxdhKeyIndImpl1KeyReal S P kq).run st)) := by
-  rw [pqxdh1KeyRealStepC_eval ℓ S P C K decT encT (e2eProbIface ℓ) nAdv stE qE
-    ρ st kq hP hstE hqE hBnd hAdv]
-  exact e2eProbIface_liftP _
-
 /-- Canonical `PqxdhSimIface` instance packaging `pqxdh1KeyRealStepC` and its cost, query, and
 evaluation theorems. -/
-def pqxdhSimIface (ℓ : ℕ) (S : Setup) {Pt : Type}
+@[expose] def pqxdhSimIface (ℓ : ℕ) (S : Setup) {Pt : Type}
     (P : Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     PqxdhSimIface ℓ S P C K decT encT where
@@ -1549,7 +1530,7 @@ section ClampedDispatcher
 variable {ℓ : ℕ} {S : Setup} {O : Ops (e2eSig ℓ)} {ι : Type} {T : OracleSpec ι}
   {I : Iface (e2eSig ℓ) T}
 
-def pqxdh1KeyRealBodyClampedG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
+@[expose] def pqxdh1KeyRealBodyClampedG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
     {Γ : List (Ty (e2eSig ℓ))}
     (st0 : Var Γ (e2eKeyIndStateTy ℓ S))
     (qE : Expr O Γ (keyIndQT S)) :
@@ -1604,7 +1585,7 @@ def pqxdh1KeyRealBodyClampedG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
                                         (revealSpkBFuel H nAdv st12.succ (.fst (.var .zero))
                                           (.snd (.var .zero)))))))))))))))
 
-def pqxdh1KeyRealStepClampedG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
+@[expose] def pqxdh1KeyRealStepClampedG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
     {Γ : List (Ty (e2eSig ℓ))}
     (stE : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (qE : Expr O Γ (keyIndQT S)) :
@@ -1613,7 +1594,7 @@ def pqxdh1KeyRealStepClampedG (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ)
     (.bind (.ret (.fst (.var .zero)))
       (pqxdh1KeyRealBodyClampedG H nAdv .zero (.snd (.var (.succ .zero)))))
 
-def pqxdhTestStepG (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ)
+@[expose] def pqxdhTestStepG (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ)
     {Γ : List (Ty (e2eSig ℓ))}
     (stE : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (sidE : Expr O Γ (sidT S)) :
@@ -1622,7 +1603,7 @@ def pqxdhTestStepG (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ)
     (.bind (.ret (.fst (.var .zero)))
       (testBFuel H nFuel .zero (.snd (.var (.succ .zero)))))
 
-def pqxdhRevealSpkStepG (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ)
+@[expose] def pqxdhRevealSpkStepG (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ)
     {Γ : List (Ty (e2eSig ℓ))}
     (stE : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (uE : Expr O Γ (FinT S.N_id))
@@ -1638,7 +1619,7 @@ end ClampedDispatcher
 
 /-- Concrete fuel-clamped (`min nAdv S.N_*`) `ReductionDsl` handler simulating one
 `pqxdhKeyIndImpl1KeyReal S P` query. -/
-@[local irreducible] def pqxdh1KeyRealStepClampedC (ℓ : ℕ) (S : Setup) {Pt : Type}
+@[expose, local irreducible] def pqxdh1KeyRealStepClampedC (ℓ : ℕ) (S : Setup) {Pt : Type}
     (P : Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) (nAdv : ℕ)
@@ -1650,12 +1631,12 @@ end ClampedDispatcher
   pqxdh1KeyRealStepClampedG (mkStepAPqxdhHooks ℓ P C K decT encT I₀) nAdv stE qE
 
 /-- Closed-form linear `Comp.cost` budget for one `pqxdh1KeyRealStepClampedC` query. -/
-def pqxdh1KeyRealStepClampedCost (S : Setup) (nAdv : ℕ) : ℕ :=
+@[expose] def pqxdh1KeyRealStepClampedCost (S : Setup) (nAdv : ℕ) : ℕ :=
   600 * min nAdv S.N_id + 3500 * min nAdv S.N_spk_tot + 300 * min nAdv S.N_opk_tot +
     7100 * min nAdv S.N_send_tot + 7200 * min nAdv S.N_recv_tot + 300 * nAdv + 12200
 
 /-- Standalone fuel-clamped `testSession` step program for `HaltedPrefixSubprogs`. -/
-@[local irreducible] def pqxdhTestStepC (ℓ : ℕ) (S : Setup) {Pt : Type}
+@[expose, local irreducible] def pqxdhTestStepC (ℓ : ℕ) (S : Setup) {Pt : Type}
     (P : Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) (nFuel : ℕ)
@@ -1666,11 +1647,11 @@ def pqxdh1KeyRealStepClampedCost (S : Setup) (nAdv : ℕ) : ℕ :=
       (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   pqxdhTestStepG (mkStepAPqxdhHooks ℓ P C K decT encT I₀) nFuel stE sidE
 
-def pqxdhTestStepCost (S : Setup) (nFuel : ℕ) : ℕ :=
+@[expose] def pqxdhTestStepCost (S : Setup) (nFuel : ℕ) : ℕ :=
   1750 * min nFuel S.N_send_tot + 1750 * min nFuel S.N_recv_tot + 600
 
 /-- Standalone fuel-clamped `revealSpkSk` step program for `HaltedPrefixSubprogs`. -/
-@[local irreducible] def pqxdhRevealSpkStepC (ℓ : ℕ) (S : Setup) {Pt : Type}
+@[expose, local irreducible] def pqxdhRevealSpkStepC (ℓ : ℕ) (S : Setup) {Pt : Type}
     (P : Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) (nFuel : ℕ)
@@ -1682,7 +1663,7 @@ def pqxdhTestStepCost (S : Setup) (nFuel : ℕ) : ℕ :=
       (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   pqxdhRevealSpkStepG (mkStepAPqxdhHooks ℓ P C K decT encT I₀) nFuel stE uE jE
 
-def pqxdhRevealSpkStepCost (S : Setup) (nFuel : ℕ) : ℕ :=
+@[expose] def pqxdhRevealSpkStepCost (S : Setup) (nFuel : ℕ) : ℕ :=
   200 * min nFuel S.N_spk_tot + 300
 
 theorem queriesUB_pqxdh1KeyRealBodyClampedG {ℓ : ℕ} {S : Setup} {O : Ops (e2eSig ℓ)}
@@ -1957,24 +1938,6 @@ theorem pqxdh1KeyRealStepClampedC_eval (ℓ : ℕ) (S : Setup) {Pt : Type}
     dsimp only [pqxdh1KeyRealBodyClampedG, Comp.eval, Expr.eval, env_get_zero, env_get_succ, keyIndQenc]
     exact eval_revealSpkBFuel nAdv _ _ _ _ rfl hst
 
-theorem pqxdh1KeyRealStepClampedC_eval_prob (ℓ : ℕ) (S : Setup) {Pt : Type}
-    (P : Primitives) (C : Crypto) (K : MlKem)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (nAdv : ℕ)
-    {Γ : List (Ty (e2eSig ℓ))}
-    (stE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eKeyIndStateTy ℓ S))
-    (qE : Expr (e2eOps ℓ P C K decT encT) Γ (keyIndQT S))
-    (ρ : Env Γ) (st : KeyIndState S) (kq : KeyIndQuery S)
-    (hP : WellFormedPrimitivesδ P)
-    (hstE : stE.eval ρ = e2eKeyIndStateToVal st)
-    (hqE : qE.eval ρ = keyIndQenc kq)
-    (hst : stListBounded S nAdv st) :
-    (pqxdh1KeyRealStepClampedC ℓ S P C K decT encT (e2eProbIface ℓ) nAdv stE qE).eval ρ =
-      ((fun out => (keyIndRenc out.1, e2eKeyIndStateToVal out.2)) <$>
-        ((pqxdhKeyIndImpl1KeyReal S P kq).run st)) := by
-  rw [pqxdh1KeyRealStepClampedC_eval ℓ S P C K decT encT (e2eProbIface ℓ) nAdv stE qE
-    ρ st kq hP hstE hqE hst]
-  exact e2eProbIface_liftP _
-
 theorem pqxdhTestStepC_eval (ℓ : ℕ) (S : Setup) {Pt : Type}
     (P : Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
@@ -1992,21 +1955,6 @@ theorem pqxdhTestStepC_eval (ℓ : ℕ) (S : Setup) {Pt : Type}
   unfold pqxdhTestStepC pqxdhTestStepG
   simp only [Comp.eval, Expr.eval, env_get_zero, pure_bind, hstE]
   exact eval_testBFuel nFuel _ _ _ rfl hst
-
-theorem pqxdhTestStepC_eval_prob (ℓ : ℕ) (S : Setup) {Pt : Type}
-    (P : Primitives) (C : Crypto) (K : MlKem)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (nFuel : ℕ)
-    {Γ : List (Ty (e2eSig ℓ))}
-    (stE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eKeyIndStateTy ℓ S))
-    (sidE : Expr (e2eOps ℓ P C K decT encT) Γ (sidT S))
-    (ρ : Env Γ) (st : KeyIndState S)
-    (hstE : stE.eval ρ = e2eKeyIndStateToVal st)
-    (hst : stListBounded S nFuel st) :
-    (pqxdhTestStepC ℓ S P C K decT encT (e2eProbIface ℓ) nFuel stE sidE).eval ρ =
-      ((fun out => (keyIndRenc out.1, e2eKeyIndStateToVal out.2)) <$>
-        ((pqxdhKeyIndImpl1KeyReal S P (.testSession (sidOfV (sidE.eval ρ)))).run st)) := by
-  rw [pqxdhTestStepC_eval ℓ S P C K decT encT (e2eProbIface ℓ) nFuel stE sidE ρ st hstE hst]
-  exact e2eProbIface_liftP _
 
 theorem pqxdhRevealSpkStepC_eval (ℓ : ℕ) (S : Setup) {Pt : Type}
     (P : Primitives) (C : Crypto) (K : MlKem)
@@ -2027,34 +1975,11 @@ theorem pqxdhRevealSpkStepC_eval (ℓ : ℕ) (S : Setup) {Pt : Type}
   simp only [Comp.eval, Expr.eval, env_get_zero, pure_bind, hstE]
   exact eval_revealSpkBFuel nFuel _ _ _ _ rfl hst
 
-theorem pqxdhRevealSpkStepC_eval_prob (ℓ : ℕ) (S : Setup) {Pt : Type}
-    (P : Primitives) (C : Crypto) (K : MlKem)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) (nFuel : ℕ)
-    {Γ : List (Ty (e2eSig ℓ))}
-    (stE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eKeyIndStateTy ℓ S))
-    (uE : Expr (e2eOps ℓ P C K decT encT) Γ (FinT S.N_id))
-    (jE : Expr (e2eOps ℓ P C K decT encT) Γ (FinT S.N_recv))
-    (ρ : Env Γ) (st : KeyIndState S)
-    (hstE : stE.eval ρ = e2eKeyIndStateToVal st)
-    (hst : stListBounded S nFuel st) :
-    (pqxdhRevealSpkStepC ℓ S P C K decT encT (e2eProbIface ℓ) nFuel stE uE jE).eval ρ =
-      ((fun out => (keyIndRenc out.1, e2eKeyIndStateToVal out.2)) <$>
-        ((pqxdhKeyIndImpl1KeyReal S P (.revealSpkSk (uE.eval ρ) (jE.eval ρ))).run st)) := by
-  rw [pqxdhRevealSpkStepC_eval ℓ S P C K decT encT (e2eProbIface ℓ) nFuel stE uE jE ρ st hstE hst]
-  exact e2eProbIface_liftP _
-
 theorem stListBounded_of_testSession {S : Setup} {P : Primitives} {nFuel : ℕ}
     (sid : SessionId S) {st : KeyIndState S} (hst : stListBounded S nFuel st)
     {out : KeyIndResponse × KeyIndState S}
     (hmem : out ∈ support ((pqxdhKeyIndImpl1KeyReal S P (.testSession sid)).run st)) :
     stListBounded S nFuel out.2 :=
   pqxdhKeyIndImpl1KeyReal_testSession_preserves_stListBounded sid hst hmem
-
-theorem stListBounded_of_revealSpkSk {S : Setup} {P : Primitives} {nFuel : ℕ}
-    (u : Fin S.N_id) (j : Fin S.N_recv) {st : KeyIndState S} (hst : stListBounded S nFuel st)
-    {out : KeyIndResponse × KeyIndState S}
-    (hmem : out ∈ support ((pqxdhKeyIndImpl1KeyReal S P (.revealSpkSk u j)).run st)) :
-    stListBounded S nFuel out.2 :=
-  pqxdhKeyIndImpl1KeyReal_revealSpkSk_preserves_stListBounded u j hst hmem
 
 end Computational.Proofs.E2E.Dsl.PqxdhSim

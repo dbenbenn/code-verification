@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Split
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Split -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `PreKeySignalMessage::new` `sret` Write and Epilogue Helpers
@@ -22,7 +24,7 @@ Instruction decodes, heap/stack separation-logic splittings, and symbolic execut
 `into_boxed_slice` and the 248-byte `Result<PreKeySignalMessage, _>` `sret` stores (`+0x4c4..+0x580`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 
@@ -39,47 +41,7 @@ open CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew
 
 /-! ## Instruction Decode Lemmas (`+0x4c4..+0x608`) -/
 
-gen_decodes libsignalSessionCode_tree preKeyMsgBin [0x155f4 → 0x155fc, 0x15634 → 0x15738]
-
 abbrev preKeyMsgNewName : String := "<libsignal_protocol::protocol::PreKeySignalMessage>::new"
-
-theorem fnOff_preKeyMsgNew : libsignalSessionCode.fnOff preKeyMsgNewName = 0x15130 := by
-  exact CryptoVerification.libsignalSessionCode_fnOff_0x15130
-
-theorem fnAddr_preKeyMsgNew {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    (tripleRatchetProgAt img.base C ctl abs).fnAddr preKeyMsgNewName = preKeyMsgNewEntry img := by
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, fnOff_preKeyMsgNew, preKeyMsgNewEntry]
-
-theorem fnAddr_preKeyMsgNew_ext {img : Obj.Image} {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt img.base ext).fnAddr preKeyMsgNewName = preKeyMsgNewEntry img := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, fnOff_preKeyMsgNew, preKeyMsgNewEntry]
-
-theorem fnAddr_preKeyMsgNew_trap {img : Obj.Image} {C : Crypto}
-    {abs : String → Option (State → State)} :
-    (trTrapProgAt img.base C abs).fnAddr preKeyMsgNewName = preKeyMsgNewEntry img :=
-  fnAddr_preKeyMsgNew_ext
-
-open Lean Elab Tactic in
-elab "preKeyMsg_fetches_range " b:term:max H:term:max kStart:num kEnd:num : tactic => do
-  let off := 0x15130
-  let kStart := kStart.getNat
-  let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let hfn := mkIdent `CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue.fnOff_preKeyMsgNew
-  let mut k := kStart
-  while k <= kEnd do
-    let dec := mkIdent (.str `CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
-      s!"preKeyMsgBin_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-    let kq := Syntax.mkNumLit (toString k)
-    if k == 0 then
-      evalTactic (← `(tactic|
-        have := $fetchEntry (b := $b) (H := $H) $hfn (by decide) $dec))
-    else
-      evalTactic (← `(tactic|
-        have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-    k := k + 4
 
 universe u in
 theorem bind_entry {α : Sort u} {P : α → Prop} (e : α) (h : ∀ x : α, P x) : P e := h e
@@ -244,10 +206,10 @@ theorem sep_entails_replace2 {P Q A1 B1 A2 B2 F : SepProp}
   rw [hP, hQ]
   exact sepConj_mono h1 (sepConj_mono_left h2)
 
-def kyberWords3At (a ky0 ky1 ky2 : BitVec 64) : SepProp :=
+@[expose] def kyberWords3At (a ky0 ky1 ky2 : BitVec 64) : SepProp :=
   (a ↦₆₄ ky0) ∗ ((a + 8#64) ↦₆₄ ky1) ∗ ((a + 16#64) ↦₆₄ ky2)
 
-def kyberHeap (A : RustAlloc) (ptr : BitVec 64) (kp : Option KyberPayload)
+@[expose] def kyberHeap (A : RustAlloc) (ptr : BitVec 64) (kp : Option KyberPayload)
     (ky0 ky1 ky2 : BitVec 64) : SepProp :=
   match kp with
   | none => ⌜ky0 = 0#64⌝
@@ -351,7 +313,7 @@ theorem optKyberAt_pack (A : RustAlloc) (a ptr : BitVec 64) (kp : Option KyberPa
       (F := (a ↦₆₄ ky0) ∗ ((a + 8#64) ↦₆₄ BitVec.ofNat 64 k.ciphertext.length) ∗
         boxU8Buf A ky0 k.ciphertext) h4 (by ac_rfl) (by ac_rfl)
 
-def vecU8Heap (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Heap (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -363,7 +325,7 @@ theorem vecU8At_eq_vecU8Heap (A : RustAlloc) (a cap ptr : BitVec 64) (bs : List 
         vecU8Heap A cap ptr bs := by
   simp only [vecU8At, vecHeader, vecU8Heap, sepConj_assoc]
 
-def optBoxU8Heap (A : RustAlloc) (ptr w0 w1 : BitVec 64) : Option (List (BitVec 8)) → SepProp
+@[expose] def optBoxU8Heap (A : RustAlloc) (ptr w0 w1 : BitVec 64) : Option (List (BitVec 8)) → SepProp
   | none => ⌜w0 = 0#64⌝
   | some bs => ⌜w0 = ptr ∧ w1 = BitVec.ofNat 64 bs.length⌝ ∗ boxU8Buf A ptr bs
 
@@ -408,7 +370,7 @@ theorem optBoxU8At_pack (A : RustAlloc) (a ptr w0 w1 : BitVec 64) (o : Option (L
     apply Entails.pure_left; rintro ⟨rfl, rfl⟩
     exact Entails.refl _
 
-def msgWords15At (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 : BitVec 64) : SepProp :=
+@[expose] def msgWords15At (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗ ((a + 24#64) ↦₆₄ w3) ∗
   ((a + 32#64) ↦₆₄ w4) ∗ ((a + 40#64) ↦₆₄ w5) ∗ ((a + 48#64) ↦₆₄ w6) ∗ ((a + 56#64) ↦₆₄ w7) ∗
   ((a + 64#64) ↦₆₄ w8) ∗ ((a + 72#64) ↦₆₄ w9) ∗ ((a + 80#64) ↦₆₄ w10) ∗ ((a + 88#64) ↦₆₄ w11) ∗
@@ -449,12 +411,12 @@ theorem msgWords15At_entails_memRegion
                             (sepConj_mono (Entails.sepExists_intro w13)
                               (Entails.sepExists_intro w14))))))))))))))
 
-def signalMessageBounds (m : SignalMessage) : Prop :=
+@[expose] def signalMessageBounds (m : SignalMessage) : Prop :=
   macLength + 1 ≤ m.serialized.length ∧ m.serialized.length < 2 ^ 40 ∧
     m.ciphertext.length < 2 ^ 40 ∧ m.pqRatchet.length < 2 ^ 40 ∧
     (∀ ad, m.addresses = some ad → ad.length < 2 ^ 40)
 
-def msgHeapAt (A : RustAlloc) (g : SignalMessageGhost) (m : SignalMessage)
+@[expose] def msgHeapAt (A : RustAlloc) (g : SignalMessageGhost) (m : SignalMessage)
     (addrW0 addrW1 : BitVec 64) : SepProp :=
   ⌜signalMessageBounds m⌝ ∗
     vecU8Heap A g.pqCap g.pqPtr m.pqRatchet ∗
@@ -717,288 +679,6 @@ theorem entails_replace3_left {P A1 B1 A2 B2 A3 B3 F : SepProp}
     P ⊢ B1 ∗ B2 ∗ B3 ∗ F := by
   rw [hP, sepConj_emp]
   exact sepConj_mono h1 (sepConj_mono h2 (sepConj_mono_left h3))
-
-theorem preKeyMsg_sret_stores_wp_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (sp0 lenW : BitVec 64)
-    (hser_bound : x.model.serialized.length < 2 ^ 42)
-    (hver : g.ver32.setWidth 8 = x.ver)
-    (hpre : ∀ v, x.preKeyId = some v → g.preKeyVal32 = v)
-    (s : State)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName + 1220#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 368#64)
-    (hsp_align : s.spAligned = true)
-    (hx8 : s.readReg64 .x8 = x.bkA)
-    (hx19 : s.readReg64 .x19 =
-      match x.kp with
-      | none => noneCap
-      | some k => BitVec.ofNat 64 k.ciphertext.length)
-    (hx20 : (s.readReg64 .x20).setWidth 32 = (if x.preKeyId.isSome then 1#32 else 0#32))
-    (hx21 : (s.readReg64 .x21).setWidth 32 = x.spk)
-    (hx22 : s.readReg64 .x22 = 33#64)
-    (hx23 : s.readReg64 .x23 = BitVec.ofNat 64 x.model.serialized.length)
-    (hx24 : s.readReg64 .x24 = 33#64)
-    (hx25 : (s.readReg64 .x25).setWidth 32 = g.preKeyVal32)
-    (hx26 : s.readReg64 .x26 = BitVec.ofNat 64 x.model.serialized.length)
-    (hx27 : s.readReg64 .x27 = BitVec.ofNat 64 x.msg.serialized.length)
-    (hx28 : s.readReg64 .x28 = g.bkSerPtr)
-    (hx29 : s.readReg64 .x29 = sp0 - 96#64) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      (if (match x.kp with
-           | none => noneCap
-           | some k => BitVec.ofNat 64 k.ciphertext.length).slt 1#64 then
-        (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName + 1428#64
-       else
-        (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName + 1412#64)
-      s
-      (optKyberAt A x.kyA x.kyPtr x.kp ∗
-       signalMessageAt A x.msgG x.msgA x.msg ∗
-       memRegion x.ret 248 ∗
-       ((sp0 - 368#64) ↦₆₄ g.msgCopyPtr) ∗
-       ((sp0 - 360#64) ↦₆₄ x.ikA) ∗
-       ((sp0 - 344#64) ↦₃₂ x.regId) ∗
-       ((sp0 - 332#64) ↦₃₂ g.ver32) ∗
-       ((sp0 - 304#64) ↦₆₄ x.ret) ∗
-       ((sp0 - 288#64) ↦₆₄ x.msgA) ∗
-       ((sp0 - 280#64) ↦₆₄ x.kyA) ∗
-       vecU8AtLen A (sp0 - 144#64) (BitVec.ofNat 64 x.model.serialized.length) g.serPtr lenW
-         x.model.serialized ∗
-       (x.bkA ↦ₛ x.baseKey.bytes.toList) ∗
-       (x.ikA ↦ₛ x.ik.publicKey.bytes.toList))
-      (fun sm Pm =>
-        (sm.sp = sp0 - 368#64 ∧
-         sm.spAligned = true ∧
-         sm.readReg64 .x19 =
-           (match x.kp with
-            | none => noneCap
-            | some k => BitVec.ofNat 64 k.ciphertext.length) ∧
-         sm.readReg64 .x20 = g.msgCopyPtr ∧
-         sm.readReg64 .x22 = 33#64 ∧
-         sm.readReg64 .x24 = 33#64 ∧
-         sm.readReg64 .x27 = BitVec.ofNat 64 x.msg.serialized.length ∧
-         sm.readReg64 .x28 = g.bkSerPtr ∧
-         sm.readReg64 .x29 = sp0 - 96#64 ∧
-         sm.trace = s.trace ∧
-         calleeSavedVRegs sm = calleeSavedVRegs s) ∧
-        (Pm ⊢
-          memRegion x.kyA 24 ∗
-          memRegion x.msgA 120 ∗
-          (∃∗ g' : PreKeyMsgGhost, preKeyMsgAt A g' x.ret x.model) ∗
-          ((sp0 - 368#64) ↦₆₄ g.msgCopyPtr) ∗
-          ((sp0 - 360#64) ↦₆₄ x.ikA) ∗
-          ((sp0 - 344#64) ↦₃₂ x.regId) ∗
-          ((sp0 - 332#64) ↦₃₂ g.ver32) ∗
-          ((sp0 - 304#64) ↦₆₄ x.ret) ∗
-          ((sp0 - 288#64) ↦₆₄ x.msgA) ∗
-          ((sp0 - 280#64) ↦₆₄ x.kyA) ∗
-          ((sp0 - 144#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-          ((sp0 - 136#64) ↦₆₄ g.serPtr) ∗
-          ((sp0 - 128#64) ↦₆₄ lenW) ∗
-          (x.bkA ↦ₛ x.baseKey.bytes.toList) ∗
-          (x.ikA ↦ₛ x.ik.publicKey.bytes.toList))) := by
-  preKeyMsg_fetches_range b (Rust.withPanics ext) 0x4c4 0x4cc
-  preKeyMsg_fetches_range b (Rust.withPanics ext) 0x504 0x580
-  generalize_entry (tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName = entry
-  examples_hide_fetches
-  obtain ⟨rk0, rk1, rk2, rk3, _, hrk⟩ :=
-    exists_unpack64_of_length_32 (List.Vector.toList_length x.msg.senderRatchetKey.bytes)
-  obtain ⟨bk0, bk1, bk2, bk3, _, hbk⟩ :=
-    exists_unpack64_of_length_32 (List.Vector.toList_length x.baseKey.bytes)
-  obtain ⟨ik0, ik1, ik2, ik3, _, hik⟩ :=
-    exists_unpack64_of_length_32 (List.Vector.toList_length x.ik.publicKey.bytes)
-  refine sepWP_elim_optKyberAt fun ky0 ky1 ky2 => ?_
-  wp_conv_pre => rw [sepConj_assoc]
-  refine sepWP_elim_signalMessageAt hrk fun addrW0 addrW1 verHi56 => ?_
-  wp_conv_pre => rw [sepConj_assoc, sepConj_assoc]
-  refine sepWP_elim_sret_248 fun w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 p0 p1
-    w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 u0 u1 b0 => ?_
-  wp_conv_pre =>
-    rw [vecU8AtLen_exact_eq_boxU8Buf A (sp0 - 144#64) g.serPtr lenW x.model.serialized (by omega),
-        hbk x.bkA, hik x.ikA]
-    simp only [kyberWords3At, msgWords15At, sepConj_assoc, arm64_norm]
-  wp_steps
-  refine SepWP.done (by simp only [wp_norm, arm64_norm, *])
-    (by simp only [wp_norm, arm64_norm, *]) ⟨?_, ?_⟩
-  · refine ⟨by simp only [wp_norm, arm64_norm, *],
-      by simpa [State.spAligned, arm64_norm] using hsp_align,
-      by simp only [wp_norm, arm64_norm, *],
-      by simp only [wp_norm, arm64_norm, *],
-      by simp only [wp_norm, arm64_norm, *],
-      by simp only [wp_norm, arm64_norm, *],
-      by simp only [wp_norm, arm64_norm, *],
-      by simp only [wp_norm, arm64_norm, *],
-      by simp only [wp_norm, arm64_norm, *],
-      by simp only [wp_norm, arm64_norm, *],
-      by simp only [wp_norm, arm64_norm, *]⟩
-  · have hky_mem := kyberWords3At_entails_memRegion x.kyA ky0 ky1 ky2
-    simp only [kyberWords3At, arm64_norm] at hky_mem
-    have hmsg_mem := msgWords15At_entails_memRegion x.msgA
-      x.msgG.pqCap x.msgG.pqPtr (BitVec.ofNat 64 x.msg.pqRatchet.length)
-      x.msgG.ctPtr (BitVec.ofNat 64 x.msg.ciphertext.length)
-      x.msgG.serPtr (BitVec.ofNat 64 x.msg.serialized.length)
-      rk0 rk1 rk2 rk3 addrW0 addrW1
-      (x.msg.previousCounter ++ x.msg.counter) (verHi56 ++ x.msg.messageVersion)
-    simp only [msgWords15At, arm64_norm] at hmsg_mem
-    have hsret := sret_cells_entails_preKeyMsgAt A x g
-      rk0 rk1 rk2 rk3 addrW0 addrW1 ky0 ky1 ky2 bk0 bk1 bk2 bk3 ik0 ik1 ik2 ik3 verHi56
-      hpre hrk hbk hik
-    simp only [msgWords15At, kyberWords3At, Option.isSome, sepConj_assoc, arm64_norm] at hsret
-    rw [hbk x.bkA, hik x.ikA]
-    exact entails_replace3_left hky_mem hmsg_mem hsret
-      (by (conv => rhs; arg 1; simp only [sepConj_assoc]); sep_focus)
-
-theorem preKeyMsg_sret_stores_wp_trap {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (sp0 lenW : BitVec 64)
-    (hser_bound : x.model.serialized.length < 2 ^ 42) (hver : g.ver32.setWidth 8 = x.ver)
-    (hpre : ∀ v, x.preKeyId = some v → g.preKeyVal32 = v) (s : State)
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr preKeyMsgNewName + 1220#64)
-    (hrun : s.status = .Running) (hsp : s.sp = sp0 - 368#64) (hsp_align : s.spAligned = true)
-    (hx8 : s.readReg64 .x8 = x.bkA)
-    (hx19 : s.readReg64 .x19 = match x.kp with | none => noneCap | some k => BitVec.ofNat 64 k.ciphertext.length)
-    (hx20 : (s.readReg64 .x20).setWidth 32 = (if x.preKeyId.isSome then 1#32 else 0#32))
-    (hx21 : (s.readReg64 .x21).setWidth 32 = x.spk) (hx22 : s.readReg64 .x22 = 33#64)
-    (hx23 : s.readReg64 .x23 = BitVec.ofNat 64 x.model.serialized.length) (hx24 : s.readReg64 .x24 = 33#64)
-    (hx25 : (s.readReg64 .x25).setWidth 32 = g.preKeyVal32)
-    (hx26 : s.readReg64 .x26 = BitVec.ofNat 64 x.model.serialized.length)
-    (hx27 : s.readReg64 .x27 = BitVec.ofNat 64 x.msg.serialized.length)
-    (hx28 : s.readReg64 .x28 = g.bkSerPtr) (hx29 : s.readReg64 .x29 = sp0 - 96#64) :
-    SepWP (trTrapProgAt b C abs)
-      (if (match x.kp with | none => noneCap | some k => BitVec.ofNat 64 k.ciphertext.length).slt 1#64 then
-        (trTrapProgAt b C abs).fnAddr preKeyMsgNewName + 1428#64
-       else (trTrapProgAt b C abs).fnAddr preKeyMsgNewName + 1412#64)
-      s
-      (optKyberAt A x.kyA x.kyPtr x.kp ∗ signalMessageAt A x.msgG x.msgA x.msg ∗ memRegion x.ret 248 ∗
-       ((sp0 - 368#64) ↦₆₄ g.msgCopyPtr) ∗ ((sp0 - 360#64) ↦₆₄ x.ikA) ∗ ((sp0 - 344#64) ↦₃₂ x.regId) ∗
-       ((sp0 - 332#64) ↦₃₂ g.ver32) ∗ ((sp0 - 304#64) ↦₆₄ x.ret) ∗ ((sp0 - 288#64) ↦₆₄ x.msgA) ∗
-       ((sp0 - 280#64) ↦₆₄ x.kyA) ∗
-       vecU8AtLen A (sp0 - 144#64) (BitVec.ofNat 64 x.model.serialized.length) g.serPtr lenW x.model.serialized ∗
-       (x.bkA ↦ₛ x.baseKey.bytes.toList) ∗ (x.ikA ↦ₛ x.ik.publicKey.bytes.toList))
-      (fun sm Pm =>
-        (sm.sp = sp0 - 368#64 ∧ sm.spAligned = true ∧
-         sm.readReg64 .x19 = (match x.kp with | none => noneCap | some k => BitVec.ofNat 64 k.ciphertext.length) ∧
-         sm.readReg64 .x20 = g.msgCopyPtr ∧ sm.readReg64 .x22 = 33#64 ∧ sm.readReg64 .x24 = 33#64 ∧
-         sm.readReg64 .x27 = BitVec.ofNat 64 x.msg.serialized.length ∧ sm.readReg64 .x28 = g.bkSerPtr ∧
-         sm.readReg64 .x29 = sp0 - 96#64 ∧ sm.trace = s.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s) ∧
-        (Pm ⊢ memRegion x.kyA 24 ∗ memRegion x.msgA 120 ∗
-          (∃∗ g' : PreKeyMsgGhost, preKeyMsgAt A g' x.ret x.model) ∗
-          ((sp0 - 368#64) ↦₆₄ g.msgCopyPtr) ∗ ((sp0 - 360#64) ↦₆₄ x.ikA) ∗ ((sp0 - 344#64) ↦₃₂ x.regId) ∗
-          ((sp0 - 332#64) ↦₃₂ g.ver32) ∗ ((sp0 - 304#64) ↦₆₄ x.ret) ∗ ((sp0 - 288#64) ↦₆₄ x.msgA) ∗
-          ((sp0 - 280#64) ↦₆₄ x.kyA) ∗ ((sp0 - 144#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-          ((sp0 - 136#64) ↦₆₄ g.serPtr) ∗ ((sp0 - 128#64) ↦₆₄ lenW) ∗
-          (x.bkA ↦ₛ x.baseKey.bytes.toList) ∗ (x.ikA ↦ₛ x.ik.publicKey.bytes.toList))) :=
-  preKeyMsg_sret_stores_wp_ext (ext := trTrapExterns C abs) x g sp0 lenW hser_bound hver hpre s hpc hrun hsp
-    hsp_align hx8 hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 hx29
-
-theorem preKeyMsg_sret_stores_wp {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (sp0 lenW : BitVec 64)
-    (hser_bound : x.model.serialized.length < 2 ^ 42)
-    (hver : g.ver32.setWidth 8 = x.ver)
-    (hpre : ∀ v, x.preKeyId = some v → g.preKeyVal32 = v)
-    (s : State)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + 1220#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 368#64)
-    (hsp_align : s.spAligned = true)
-    (hx8 : s.readReg64 .x8 = x.bkA)
-    (hx19 : s.readReg64 .x19 =
-      match x.kp with
-      | none => noneCap
-      | some k => BitVec.ofNat 64 k.ciphertext.length)
-    (hx20 : (s.readReg64 .x20).setWidth 32 = (if x.preKeyId.isSome then 1#32 else 0#32))
-    (hx21 : (s.readReg64 .x21).setWidth 32 = x.spk)
-    (hx22 : s.readReg64 .x22 = 33#64)
-    (hx23 : s.readReg64 .x23 = BitVec.ofNat 64 x.model.serialized.length)
-    (hx24 : s.readReg64 .x24 = 33#64)
-    (hx25 : (s.readReg64 .x25).setWidth 32 = g.preKeyVal32)
-    (hx26 : s.readReg64 .x26 = BitVec.ofNat 64 x.model.serialized.length)
-    (hx27 : s.readReg64 .x27 = BitVec.ofNat 64 x.msg.serialized.length)
-    (hx28 : s.readReg64 .x28 = g.bkSerPtr)
-    (hx29 : s.readReg64 .x29 = sp0 - 96#64) :
-    SepWP (tripleRatchetProgAt b C ctl abs)
-      (if (match x.kp with
-           | none => noneCap
-           | some k => BitVec.ofNat 64 k.ciphertext.length).slt 1#64 then
-        (tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + 1428#64
-       else
-        (tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + 1412#64)
-      s
-      (optKyberAt A x.kyA x.kyPtr x.kp ∗
-       signalMessageAt A x.msgG x.msgA x.msg ∗
-       memRegion x.ret 248 ∗
-       ((sp0 - 368#64) ↦₆₄ g.msgCopyPtr) ∗
-       ((sp0 - 360#64) ↦₆₄ x.ikA) ∗
-       ((sp0 - 344#64) ↦₃₂ x.regId) ∗
-       ((sp0 - 332#64) ↦₃₂ g.ver32) ∗
-       ((sp0 - 304#64) ↦₆₄ x.ret) ∗
-       ((sp0 - 288#64) ↦₆₄ x.msgA) ∗
-       ((sp0 - 280#64) ↦₆₄ x.kyA) ∗
-       vecU8AtLen A (sp0 - 144#64) (BitVec.ofNat 64 x.model.serialized.length) g.serPtr lenW
-         x.model.serialized ∗
-       (x.bkA ↦ₛ x.baseKey.bytes.toList) ∗
-       (x.ikA ↦ₛ x.ik.publicKey.bytes.toList))
-      (fun sm Pm =>
-        (sm.sp = sp0 - 368#64 ∧
-         sm.spAligned = true ∧
-         sm.readReg64 .x19 =
-           (match x.kp with
-            | none => noneCap
-            | some k => BitVec.ofNat 64 k.ciphertext.length) ∧
-         sm.readReg64 .x20 = g.msgCopyPtr ∧
-         sm.readReg64 .x22 = 33#64 ∧
-         sm.readReg64 .x24 = 33#64 ∧
-         sm.readReg64 .x27 = BitVec.ofNat 64 x.msg.serialized.length ∧
-         sm.readReg64 .x28 = g.bkSerPtr ∧
-         sm.readReg64 .x29 = sp0 - 96#64 ∧
-         sm.trace = s.trace ∧
-         calleeSavedVRegs sm = calleeSavedVRegs s) ∧
-        (Pm ⊢
-          memRegion x.kyA 24 ∗
-          memRegion x.msgA 120 ∗
-          (∃∗ g' : PreKeyMsgGhost, preKeyMsgAt A g' x.ret x.model) ∗
-          ((sp0 - 368#64) ↦₆₄ g.msgCopyPtr) ∗
-          ((sp0 - 360#64) ↦₆₄ x.ikA) ∗
-          ((sp0 - 344#64) ↦₃₂ x.regId) ∗
-          ((sp0 - 332#64) ↦₃₂ g.ver32) ∗
-          ((sp0 - 304#64) ↦₆₄ x.ret) ∗
-          ((sp0 - 288#64) ↦₆₄ x.msgA) ∗
-          ((sp0 - 280#64) ↦₆₄ x.kyA) ∗
-          ((sp0 - 144#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-          ((sp0 - 136#64) ↦₆₄ g.serPtr) ∗
-          ((sp0 - 128#64) ↦₆₄ lenW) ∗
-          (x.bkA ↦ₛ x.baseKey.bytes.toList) ∗
-          (x.ikA ↦ₛ x.ik.publicKey.bytes.toList))) := by
-  rw [← trTrapProgAt_fnAddr_eq b C ctl abs preKeyMsgNewName] at hpc ⊢
-  exact SepWP_kit_of_trTrap (preKeyMsg_sret_stores_wp_trap x g sp0 lenW hser_bound hver hpre s hpc hrun hsp hsp_align hx8 hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 hx29)
-
-/-! ## Stack Frame Collapse Helpers (`+0x584..+0x608`) -/
-
-theorem preKeyMsg_dealloc_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyMsgNewName + bv% (ls_off% "__rustc::__rust_dealloc" - 0x15130)) (rustDeallocSpec A) :=
-  dealloc_ok_at_norm hA (name := preKeyMsgNewName) (k := num% (ls_off% "__rustc::__rust_dealloc" - 0x15130))
-
-theorem preKeyMsg_dealloc_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocHooks A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr preKeyMsgNewName + bv% (ls_off% "__rustc::__rust_dealloc" - 0x15130))
-      (rustDeallocSpec A) :=
-  hook_ok_at (k := num% (ls_off% "__rustc::__rust_dealloc" - 0x15130))
-    (stub := libsignalSessionCode.fnOff "__rustc::__rust_dealloc")
-    (hname := "__rustc::__rust_dealloc") rfl
-    (by simp only [arm64_norm]) (by simp only [arm64_norm])
-    (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-    hA.dealloc
-
-theorem preKeyMsg_dealloc_ok_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr preKeyMsgNewName + bv% (ls_off% "__rustc::__rust_dealloc" - 0x15130)) (rustDeallocSpec A) :=
-  dealloc_ok_at_norm_ext (AllocContracts.of_tripleRatchetProgAt_trap b C A abs hA)
-    (name := preKeyMsgNewName) (k := num% (ls_off% "__rustc::__rust_dealloc" - 0x15130))
 
 theorem stackAt_preKeyMsgSub_to_allocHook (sp : BitVec 64) :
     stackAt sp preKeyMsgSubStack = memRegion (sp - 7824#64) 3728 ∗ stackAt sp allocHookStack := by

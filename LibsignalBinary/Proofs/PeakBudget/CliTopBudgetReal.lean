@@ -10,34 +10,42 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
 public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
+public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
 public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
 public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
+import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+public import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserProfile
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserProfile
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 public import LibsignalBinary.Specifications.SignalSession.PqDir
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Real-Instance Whole-`main` Peak Budget (`< 90%` / `≤ 1 GiB`)
@@ -55,7 +63,7 @@ linked `spqr::recv`:
 - Includes a concrete allocating `recv-prekey` (`3#8`) non-vacuity witness.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -115,9 +123,7 @@ open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit (PhaseCreditSpec)
 open LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas (fineCostModel_modelHyps)
 open LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
   (msgCapBytes sessionCapBytes)
-open LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
-  (W1SendRealDom W1SendRealParams W1SendRealSlotEnv
-   w1SendRealSlot_dcan_singleSlotFineSpec w1SendReal_dcan_caps_le)
+open LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot (W1SendRealDom W1SendRealParams w1SendReal_dcan_caps_le)
 open LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
   (W2RecvWhisperRealDom W2RecvWhisperRealParams W2RecvWhisperRealSlotEnv
    w2RecvWhisperRealSlot_dcan_singleSlotFineSpec w2RecvWhisperReal_dcan_caps_le)
@@ -132,17 +138,17 @@ open LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
 /-! ## 1. Canonical-Outer PKSM Constants and Whole-`main` Summary -/
 
 /-- `90%` of `1 GiB` (`(2 ^ 30 * 9) / 10 = 966,367,641` B). -/
-def cliRealNinetyPctOneGiB : Nat := (cliOneGiB * 9) / 10
+@[expose] def cliRealNinetyPctOneGiB : Nat := (cliOneGiB * 9) / 10
 
 -- Canonical-outer `PreKeySignalMessage::try_from`: `103,232,265` B `Δcum`.
-def cliRealPksmCumCap : Nat := 103232265
-def cliRealPksmLiveCap : Nat := pksmSliceLive msgCapBytes
-def cliRealPksmPeakCap : Nat := pksmSlicePeak msgCapBytes
-def cliRealPksmReqCap : Nat := pksmSliceMaxReq msgCapBytes
-def cliRealPksmGrpSCap : Nat := pksmTryFromCapDeltaGrpS msgCapBytes
+@[expose] def cliRealPksmCumCap : Nat := 103232265
+@[expose] def cliRealPksmLiveCap : Nat := pksmSliceLive msgCapBytes
+@[expose] def cliRealPksmPeakCap : Nat := pksmSlicePeak msgCapBytes
+@[expose] def cliRealPksmReqCap : Nat := pksmSliceMaxReq msgCapBytes
+@[expose] def cliRealPksmGrpSCap : Nat := pksmTryFromCapDeltaGrpS msgCapBytes
 
 /-- Parametric `1 MiB` whole-`run` `Δcum` allowing a custom `pksmCum` alongside the four slot caps. -/
-def cliRun1MiBCustomPksmCum (pksmCum initCum encCum decSigCum decPkCum : Nat) : Nat :=
+@[expose] def cliRun1MiBCustomPksmCum (pksmCum initCum encCum decSigCum decPkCum : Nat) : Nat :=
   r0Opened1MiBCum +
     max (initArmDeltaCum (pathDeltaCum 26 16) 1637 initCum)
       (max (r2TightDeltaCum encCum sessionCapBytes)
@@ -150,7 +156,7 @@ def cliRun1MiBCustomPksmCum (pksmCum initCum encCum decSigCum decPkCum : Nat) : 
           (pksmCum + decPkCum)))
 
 /-- Parametric `1 MiB` whole-`run` `Δlive` allowing a custom `pksmLive`. -/
-def cliRun1MiBCustomPksmLive (pksmLive initLive encLive decSigLive decPkLive : Nat) : Nat :=
+@[expose] def cliRun1MiBCustomPksmLive (pksmLive initLive encLive decSigLive decPkLive : Nat) : Nat :=
   r0Opened1MiBLive +
     max (initArmDeltaLive (pathDeltaLive 26 16) initLive)
       (max (r2DeltaLive fineCostModel encLive sessionCapBytes)
@@ -158,7 +164,7 @@ def cliRun1MiBCustomPksmLive (pksmLive initLive encLive decSigLive decPkLive : N
           (pksmLive + decPkLive)))
 
 /-- Parametric `1 MiB` whole-`run` `Δpeak` allowing custom `(pksmLive, pksmPeak)`. -/
-def cliRun1MiBCustomPksmPeak
+@[expose] def cliRun1MiBCustomPksmPeak
     (pksmLive pksmPeak initPeak encLive encPeak decSigPeak decPkPeak : Nat) : Nat :=
   max r0Opened1MiBPeak
     (r0Opened1MiBLive +
@@ -168,7 +174,7 @@ def cliRun1MiBCustomPksmPeak
             (max pksmPeak (pksmLive + decPkPeak)))))
 
 /-- Parametric `1 MiB` whole-`run` `maxReq` allowing a custom `pksmMaxReq`. -/
-def cliRun1MiBCustomPksmMaxReq
+@[expose] def cliRun1MiBCustomPksmMaxReq
     (pksmMaxReq initMaxReq encMaxReq decSigMaxReq decPkMaxReq : Nat) : Nat :=
   max r0Opened1MiBMaxReq
     (max (initArmMaxReq (pathMaxReq 26 16) 1637 initMaxReq)
@@ -177,7 +183,7 @@ def cliRun1MiBCustomPksmMaxReq
           (max pksmMaxReq decPkMaxReq))))
 
 /-- Parametric whole-`run` scaled group count `grpS` allowing a custom `g_pksm`. -/
-def cliRunOpenedCustomPksmGrpS
+@[expose] def cliRunOpenedCustomPksmGrpS
     (stdinCap g_pksm g_init g_enc g_decSig g_decPk : Nat) : Nat :=
   15 * FineScale +
     max (84 * FineScale + g_init)
@@ -185,38 +191,38 @@ def cliRunOpenedCustomPksmGrpS
         (max (sigTryFromCapDeltaGrpS stdinCap + g_decSig)
           (g_pksm + g_decPk)))
 
-def cliRealRunCumCap : Nat :=
+@[expose] def cliRealRunCumCap : Nat :=
   cliRun1MiBCustomPksmCum cliRealPksmCumCap
     cliInitSlotCumCap cliSendSlotCumCap
     cliRecvWhisperSlotCumCap cliRecvPrekeySlotCumCap
 
-def cliRealUnmodPksmRunCumCap : Nat :=
+@[expose] def cliRealUnmodPksmRunCumCap : Nat :=
   cliRun1MiBCustomPksmCum (pksmSliceCum msgCapBytes)
     cliInitSlotCumCap cliSendSlotCumCap
     cliRecvWhisperSlotCumCap cliRecvPrekeySlotCumCap
 
-def cliRealRunLiveCap : Nat :=
+@[expose] def cliRealRunLiveCap : Nat :=
   cliRun1MiBSlotLive
     cliInitSlotLiveCap cliSendSlotLiveCap
     cliRecvWhisperSlotLiveCap cliRecvPrekeySlotLiveCap
 
-def cliRealRunPeakCap : Nat :=
+@[expose] def cliRealRunPeakCap : Nat :=
   cliRun1MiBSlotPeak
     cliInitSlotPeakCap cliSendSlotLiveCap cliSendSlotPeakCap
     cliRecvWhisperSlotPeakCap cliRecvPrekeySlotPeakCap
 
-def cliRealRunReqCap : Nat :=
+@[expose] def cliRealRunReqCap : Nat :=
   cliRun1MiBSlotMaxReq
     cliInitSlotReqCap cliSendSlotReqCap
     cliRecvWhisperSlotReqCap cliRecvPrekeySlotReqCap
 
-def cliRealRunGrpSCap : Nat :=
+@[expose] def cliRealRunGrpSCap : Nat :=
   cliRunOpenedCustomPksmGrpS msgCapBytes cliRealPksmGrpSCap
     cliInitSlotGrpSCap cliSendSlotGrpSCap
     cliRecvWhisperSlotGrpSCap cliRecvPrekeySlotGrpSCap
 
 /-- Whole-`main` `stepReserve` bound (`244,277,248` B) for the canonical-outer PKSM profile. -/
-def cliRealMainStepReserve : Nat :=
+@[expose] def cliRealMainStepReserve : Nat :=
   cliMainTightStepReserveOf cliRealRunReqCap cliRealRunGrpSCap
 
 /-- Closed-numeral check that canonical-outer PKSM (`≤ 90%` = `965,445,342 ≤ 966,367,641`,
@@ -239,7 +245,7 @@ theorem cliRealR2_fits_90pct_and_oneGiB :
 /-- Reachable CLI PQXDH call-domain bundle at `1 MiB` (`msgCapBytes`) / `2 MiB` (`sessionCapBytes`),
 packaging `CliPqxdhInputs P g.i` with `SessionRecordCapInDomain`, `PqPartyBaseKeysCap`, and
 `parseArgs` agreement. -/
-def CliPqRealCallDomain (P : PEParams) (g : RunCall) : Prop :=
+@[expose] def CliPqRealCallDomain (P : PEParams) (g : RunCall) : Prop :=
   ∃ party : PqParty,
     PqxdhPartyInSpecDomain P party ∧
     ((party.session = none ∧ ∃ b t, g.i = pqInitInputs P party b t) ∨
@@ -410,7 +416,7 @@ structure CliRealCalleeFineSpecs (E : CliRunCalleeEnvs) where
   decPk_lp : decPkLive ≤ decPkPeak
   decPk_grp : PhaseGroupSpec fineCostModel E.decPkEnv decPkGrpS
 
-def CliRealCalleeFineSpecs.toSlotCalleeSpecs {E : CliRunCalleeEnvs}
+@[expose] def CliRealCalleeFineSpecs.toSlotCalleeSpecs {E : CliRunCalleeEnvs}
     (SE : CliRealCalleeFineSpecs E) :
     CliRunSlotCalleeSpecs fineCostModel E msgCapBytes where
   initCum := SE.initCum
@@ -514,7 +520,7 @@ def CliRealCalleeFineSpecs.ofWrapperUnmodPksm
     (fun _ hrest => pksmTryFromSlice_fine_groupSpec hrest)
 
 /-- Numerical cap predicate on `CliRealCalleeFineSpecs E` (20 slot caps from `CliTopBudgetSpec` plus 5 canonical-outer `PksmEnv` caps). -/
-def CliRealR2CalleeCaps {E : CliRunCalleeEnvs} (SE : CliRealCalleeFineSpecs E) : Prop :=
+@[expose] def CliRealR2CalleeCaps {E : CliRunCalleeEnvs} (SE : CliRealCalleeFineSpecs E) : Prop :=
   SE.initCum ≤ cliInitSlotCumCap ∧
   SE.initLive ≤ cliInitSlotLiveCap ∧
   SE.initPeak ≤ cliInitSlotPeakCap ∧
@@ -542,7 +548,7 @@ def CliRealR2CalleeCaps {E : CliRunCalleeEnvs} (SE : CliRealCalleeFineSpecs E) :
   SE.decPkGrpS ≤ cliRecvPrekeySlotGrpSCap
 
 /-- Companion numerical cap predicate for `CliRunFineSlotSpecs W` (`unmod pksm`, 20 slot caps). -/
-def CliRealUnmodPksmSlotCaps {W : CliRunWrapperEnvs} (SW : CliRunFineSlotSpecs W) : Prop :=
+@[expose] def CliRealUnmodPksmSlotCaps {W : CliRunWrapperEnvs} (SW : CliRunFineSlotSpecs W) : Prop :=
   SW.initCum ≤ cliInitSlotCumCap ∧
   SW.initLive ≤ cliInitSlotLiveCap ∧
   SW.initPeak ≤ cliInitSlotPeakCap ∧
@@ -1246,12 +1252,12 @@ theorem recordSerializeCancelEnv_aliceInitiated_fine_groupSpec
 /-- Concrete closed-Nat `W3` (`init`) numbers from `W3InitiateTightSpec` +
 `DeserializeCancelBudget`:
 `(cum, live, peak, maxReq, grpS) = (24764863, 15376971, 16425515, 2097152, 420352780)`. -/
-def w3InitRealCum : Nat :=
+@[expose] def w3InitRealCum : Nat :=
   7874410 + LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget.deserCancelFineCum
-def w3InitRealLive : Nat := 15376971
-def w3InitRealPeak : Nat := 16425515
-def w3InitRealMaxReq : Nat := 2097152
-def w3InitRealGrpS : Nat :=
+@[expose] def w3InitRealLive : Nat := 15376971
+@[expose] def w3InitRealPeak : Nat := 16425515
+@[expose] def w3InitRealMaxReq : Nat := 2097152
+@[expose] def w3InitRealGrpS : Nat :=
   1113 * FineScale +
     LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget.deserCancelFineGrpS +
     45 * FineScale
@@ -1268,59 +1274,6 @@ theorem w3InitReal_caps_le :
     w3InitRealGrpS ≤ cliInitSlotGrpSCap := by
   decide
 
-/-- Concrete `W3` (`init`) `SingleSlotFineSpec` built from
-`W3InitiateTightSpec.w3InitiateSlot_at_initCallSite_aliceInitiatedAnyCk_phaseCredit`,
-`DeserializeCancelBudget`, and `recordSerializeCancelEnv_aliceInitiated_fine_groupSpec`. -/
-def w3InitReal_singleSlotFineSpec
-    {img : Arm64.Obj.Image} {S : CryptoVerification.SignalSession.Cli.RunCompose.RunSem}
-    {g : RunCall} {x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost}
-    (hsite : LibsignalBinary.Proofs.PeakBudget.CallSiteFacts.InitCallSite img S g x)
-    {rd : ReadRule} {ownKeyName ownRegName : List (BitVec 8)}
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    {x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost}
-    {g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost}
-    {r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8))}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (halice : LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.RecordAliceInitiatedAnyCkBounds g_rec r_rec) :
-    SingleSlotFineSpec
-      (LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec.W3InitiateSlotEnv
-        (LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.mkW3InitiateSlotParamsDeser
-          rd
-          LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux.RecordDeserializeCancelEnv
-          x ownKeyName ownRegName F x_spqr g_rec r_rec)) where
-  cum := w3InitRealCum
-  live := w3InitRealLive
-  peak := w3InitRealPeak
-  maxReq := w3InitRealMaxReq
-  grpS := w3InitRealGrpS
-  credit := by
-    have hcr :=
-      LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.w3InitiateSlot_at_initCallSite_aliceInitiatedAnyCk_phaseCredit
-        (F := F) hsite hkeyName hregName hspqrKey hfileCap
-        (fun _ hbs =>
-          LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget.recordDeserializeCancelEnv_fine_phaseCreditSpec hbs)
-        halice
-    obtain ⟨_, _, hlive, hpeak, hreq, _⟩ :=
-      LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.w3InitiateSlotTight_real192_eq
-    dsimp only [LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget.deserCancelFineLive,
-      LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget.deserCancelFinePeak,
-      LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget.deserCancelFineMaxReq] at hcr
-    rw [hlive, hpeak, hreq] at hcr
-    exact hcr
-  live_le_peak := w3InitReal_caps_le.2.2.1
-  groups :=
-    CliGroupBounds.w3InitiateSlotEnv_groupSpec fineCostModel
-      (LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.mkW3InitiateSlotParamsDeser
-        rd
-        LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux.RecordDeserializeCancelEnv
-        x ownKeyName ownRegName F x_spqr g_rec r_rec)
-      (fun bs _ =>
-        LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget.recordDeserializeCancelEnv_fine_groupSpec bs)
-      (recordSerializeCancelEnv_aliceInitiated_fine_groupSpec halice)
-
 /-- Checks that `WirePksmTightCredit.pksmCanonSlice* msgCapBytes` fits inside `cliRealPksm*Cap`. -/
 theorem pksmReal_caps_le :
     WirePksmTightCredit.pksmCanonSliceCum msgCapBytes = 103232265 ∧
@@ -1331,96 +1284,6 @@ theorem pksmReal_caps_le :
     WirePksmTightCredit.pksmCanonSliceGrpS msgCapBytes ≤ cliRealPksmGrpSCap := by
   decide
 
-/-- Concrete `CliRunCalleeEnvs` bundle wiring `W3InitiateSlotEnv`, `W1SendRealSlotEnv`,
-`W2RecvWhisperRealSlotEnv`, `WirePksmTightCredit.PksmCanonSliceEnv`, and
-`W4RecvPrekeyRealSlot.W4RecvPrekeyRealEnv` with `RecordDeserializeCancelEnv`. -/
-def mkRealCalleeEnvs [LibsignalPlacement]
-    (img : Arm64.Obj.Image)
-    (P : PEParams) (g : RunCall)
-    (rd : ReadRule)
-    (x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : List (BitVec 8))
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (w1R : W1SendRealParams)
-    (w2R : W2RecvWhisperRealParams)
-    (w4R : W4RecvPrekeyRealParams) :
-    CliRunCalleeEnvs where
-  initEnv :=
-    LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec.W3InitiateSlotEnv
-      (LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.mkW3InitiateSlotParamsDeser
-        rd
-        LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux.RecordDeserializeCancelEnv
-        x ownKeyName ownRegName F x_spqr g_rec r_rec)
-  encEnv := W1SendRealSlotEnv img P g.i w1R
-  decSigEnv := W2RecvWhisperRealSlotEnv P g.i w2R
-  pksmEnv := WirePksmTightCredit.PksmCanonSliceEnv
-  decPkEnv := W4RecvPrekeyRealEnv w4R
-
-/-- Mode-dispatched companion of `mkRealCalleeEnvs` whose `CliRunOpenedEnv` agrees
-definitionally with `mkRealCalleeEnvs` on all four `CallV` constructors (`keygen`, `init`, `send`,
-`recv`), allowing `buildCliRealCalleeFineSpecs` to require each arm's call-site preconditions only
-on that arm's command constructor. -/
-def mkRealCalleeEnvsModeGuarded [LibsignalPlacement]
-    (img : Arm64.Obj.Image)
-    (P : PEParams) (g : RunCall)
-    (rd : ReadRule)
-    (x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : List (BitVec 8))
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (w1R : W1SendRealParams)
-    (w2R : W2RecvWhisperRealParams)
-    (w4R : W4RecvPrekeyRealParams) :
-    CliRunCalleeEnvs where
-  initEnv := match g.c with
-    | .init _ _ =>
-      LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec.W3InitiateSlotEnv
-        (LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.mkW3InitiateSlotParamsDeser
-          rd
-          LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux.RecordDeserializeCancelEnv
-          x ownKeyName ownRegName F x_spqr g_rec r_rec)
-    | _ => fun _ => False
-  encEnv := match g.c with
-    | .send _ => W1SendRealSlotEnv img P g.i w1R
-    | _ => fun _ => False
-  decSigEnv := match g.c with
-    | .recv _ => W2RecvWhisperRealSlotEnv P g.i w2R
-    | _ => fun _ => False
-  pksmEnv := WirePksmTightCredit.PksmCanonSliceEnv
-  decPkEnv := match g.c with
-    | .recv _ => W4RecvPrekeyRealEnv w4R
-    | _ => fun _ => False
-
-private theorem cliRunOpenedEnv_mkRealCalleeEnvs_eq [LibsignalPlacement]
-    (img : Arm64.Obj.Image)
-    (P : PEParams)
-    (rd : RunCall → ReadRule)
-    (x : RunCall → CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : RunCall → List (BitVec 8))
-    (F : RunCall → CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : RunCall → CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : RunCall → CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : RunCall → CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (w1R : RunCall → W1SendRealParams)
-    (w2R : RunCall → W2RecvWhisperRealParams)
-    (w4R : RunCall → W4RecvPrekeyRealParams) :
-    (fun g' => CliRunOpenedEnv cliIo.rd
-      (mkRealCalleeEnvs img P g' (rd g') (x g') (ownKeyName g') (ownRegName g')
-        (F g') (x_spqr g') (g_rec g') (r_rec g') (w1R g') (w2R g') (w4R g'))
-      sessionCapBytes g') =
-    (fun g' => CliRunOpenedEnv cliIo.rd
-      (mkRealCalleeEnvsModeGuarded img P g' (rd g') (x g') (ownKeyName g') (ownRegName g')
-        (F g') (x_spqr g') (g_rec g') (r_rec g') (w1R g') (w2R g') (w4R g'))
-      sessionCapBytes g') := by
-  funext g' evs
-  rcases g' with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c' <;> rfl
-
 theorem emptyPhaseCreditSpec (c l p r : Nat) :
     PhaseCreditSpec fineCostModel (fun _ => False) c l p r :=
   ((PhaseCreditSpec.nil fineCostModel).of_imp (fun _ h => False.elim h)).mono
@@ -1430,528 +1293,6 @@ theorem emptyPhaseGroupSpec (grp : Nat) :
     PhaseGroupSpec fineCostModel (fun _ => False) grp :=
   ((PhaseGroupSpec.nil fineCostModel).of_imp (fun _ h => False.elim h)).mono
     (Nat.zero_le grp)
-
-theorem w3Guarded_credit [LibsignalPlacement]
-    {P : PEParams} {img : Arm64.Obj.Image}
-    {S : CryptoVerification.SignalSession.Cli.RunCompose.RunSem}
-    {g : RunCall}
-    {x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost}
-    (hsite : ∀ peerV dir, g.c = .init peerV dir →
-      LibsignalBinary.Proofs.PeakBudget.CallSiteFacts.InitCallSite img S g x)
-    {rd : ReadRule} {ownKeyName ownRegName : List (BitVec 8)}
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    {x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost}
-    {g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost}
-    {r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8))}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (halice : LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.RecordAliceInitiatedAnyCkBounds g_rec r_rec)
-    (w1R : W1SendRealParams) (w2R : W2RecvWhisperRealParams) (w4R : W4RecvPrekeyRealParams) :
-    PhaseCreditSpec fineCostModel
-      (mkRealCalleeEnvsModeGuarded img P g rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R w4R).initEnv
-      w3InitRealCum w3InitRealLive w3InitRealPeak w3InitRealMaxReq := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · rename_i peerV dir
-    exact (w3InitReal_singleSlotFineSpec (hsite peerV dir rfl) F hkeyName hregName hspqrKey hfileCap halice).credit
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-
-theorem w3Guarded_groups [LibsignalPlacement]
-    {img : Arm64.Obj.Image} {P : PEParams} {g : RunCall}
-    (rd : ReadRule)
-    (x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : List (BitVec 8))
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (halice : LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.RecordAliceInitiatedAnyCkBounds g_rec r_rec)
-    (w1R : W1SendRealParams) (w2R : W2RecvWhisperRealParams) (w4R : W4RecvPrekeyRealParams) :
-    PhaseGroupSpec fineCostModel
-      (mkRealCalleeEnvsModeGuarded img P g rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R w4R).initEnv
-      w3InitRealGrpS := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseGroupSpec _
-  · exact
-      CliGroupBounds.w3InitiateSlotEnv_groupSpec fineCostModel
-        (LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.mkW3InitiateSlotParamsDeser
-          rd
-          LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux.RecordDeserializeCancelEnv
-          x ownKeyName ownRegName F x_spqr g_rec r_rec)
-        (fun bs _ =>
-          LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget.recordDeserializeCancelEnv_fine_groupSpec bs)
-        (recordSerializeCancelEnv_aliceInitiated_fine_groupSpec halice)
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-
-theorem w1Guarded_credit [LibsignalPlacement]
-    {img : Arm64.Obj.Image} {P : PEParams} {g : RunCall}
-    (hd : CliPqRealCallDomain P g)
-    {w1R : W1SendRealParams}
-    (hw1 : W1SendRealDom g.c w1R)
-    (rd : ReadRule)
-    (x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : List (BitVec 8))
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (w2R : W2RecvWhisperRealParams)
-    (w4R : W4RecvPrekeyRealParams) :
-    PhaseCreditSpec fineCostModel
-      (mkRealCalleeEnvsModeGuarded img P g rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R w4R).encEnv
-      W1SendRealSlot.w1SendRealDcanCum
-      W1SendRealSlot.w1SendRealDcanLive
-      W1SendRealSlot.w1SendRealDcanPeak
-      W1SendRealSlot.w1SendRealDcanMaxReq := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact (w1SendRealSlot_dcan_singleSlotFineSpec (img := img) w1R hd.toCliPqxdhInputs
-      hd.parseArgs_eq hw1 hd.toCliPqDomainCaps.files_bounded).credit
-  · exact emptyPhaseCreditSpec _ _ _ _
-
-theorem w1Guarded_groups [LibsignalPlacement]
-    {img : Arm64.Obj.Image} {P : PEParams} {g : RunCall}
-    (hd : CliPqRealCallDomain P g)
-    {w1R : W1SendRealParams}
-    (hw1 : W1SendRealDom g.c w1R)
-    (rd : ReadRule)
-    (x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : List (BitVec 8))
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (w2R : W2RecvWhisperRealParams)
-    (w4R : W4RecvPrekeyRealParams) :
-    PhaseGroupSpec fineCostModel
-      (mkRealCalleeEnvsModeGuarded img P g rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R w4R).encEnv
-      W1SendRealSlot.w1SendRealDcanGrpS := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-  · exact (w1SendRealSlot_dcan_singleSlotFineSpec (img := img) w1R hd.toCliPqxdhInputs
-      hd.parseArgs_eq hw1 hd.toCliPqDomainCaps.files_bounded).groups
-  · exact emptyPhaseGroupSpec _
-
-theorem w2Guarded_credit [LibsignalPlacement]
-    {img : Arm64.Obj.Image} {P : PEParams} {g : RunCall}
-    (hd : CliPqRealCallDomain P g)
-    {w2R : W2RecvWhisperRealParams}
-    (hw2 : W2RecvWhisperRealDom g.c w2R)
-    (rd : ReadRule)
-    (x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : List (BitVec 8))
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (w1R : W1SendRealParams)
-    (w4R : W4RecvPrekeyRealParams) :
-    PhaseCreditSpec fineCostModel
-      (mkRealCalleeEnvsModeGuarded img P g rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R w4R).decSigEnv
-      W2RecvWhisperRealSlot.w2RecvWhisperRealDcanCum
-      W2RecvWhisperRealSlot.w2RecvWhisperRealDcanLive
-      W2RecvWhisperRealSlot.w2RecvWhisperRealDcanPeak
-      W2RecvWhisperRealSlot.w2RecvWhisperRealDcanMaxReq := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact (w2RecvWhisperRealSlot_dcan_singleSlotFineSpec w2R hd.toCliPqxdhInputs
-      hd.parseArgs_eq hw2 hd.toCliPqDomainCaps.files_bounded).credit
-
-theorem w2Guarded_groups [LibsignalPlacement]
-    {img : Arm64.Obj.Image} {P : PEParams} {g : RunCall}
-    (hd : CliPqRealCallDomain P g)
-    {w2R : W2RecvWhisperRealParams}
-    (hw2 : W2RecvWhisperRealDom g.c w2R)
-    (rd : ReadRule)
-    (x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : List (BitVec 8))
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (w1R : W1SendRealParams)
-    (w4R : W4RecvPrekeyRealParams) :
-    PhaseGroupSpec fineCostModel
-      (mkRealCalleeEnvsModeGuarded img P g rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R w4R).decSigEnv
-      W2RecvWhisperRealSlot.w2RecvWhisperRealDcanGrpS := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-  · exact (w2RecvWhisperRealSlot_dcan_singleSlotFineSpec w2R hd.toCliPqxdhInputs
-      hd.parseArgs_eq hw2 hd.toCliPqDomainCaps.files_bounded).groups
-
-theorem w4Guarded_credit [LibsignalPlacement]
-    {img : Arm64.Obj.Image} {P : PEParams} {g : RunCall}
-    {w4R : W4RecvPrekeyRealParams}
-    (hw4 : ∀ peerV, g.c = .recv peerV → W4RecvPrekeyRealDom w4R)
-    (rd : ReadRule)
-    (x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : List (BitVec 8))
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (w1R : W1SendRealParams)
-    (w2R : W2RecvWhisperRealParams) :
-    PhaseCreditSpec fineCostModel
-      (mkRealCalleeEnvsModeGuarded img P g rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R w4R).decPkEnv
-      W4RecvPrekeyRealSlot.w4RecvPrekeyRealCum
-      W4RecvPrekeyRealSlot.w4RecvPrekeyRealLive
-      W4RecvPrekeyRealSlot.w4RecvPrekeyRealPeak
-      W4RecvPrekeyRealSlot.w4RecvPrekeyRealMaxReq := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · exact emptyPhaseCreditSpec _ _ _ _
-  · rename_i peerV
-    exact (w4RecvPrekeyReal_singleSlotFineSpec w4R (hw4 peerV rfl)).credit
-
-theorem w4Guarded_groups [LibsignalPlacement]
-    {img : Arm64.Obj.Image} {P : PEParams} {g : RunCall}
-    {w4R : W4RecvPrekeyRealParams}
-    (hw4 : ∀ peerV, g.c = .recv peerV → W4RecvPrekeyRealDom w4R)
-    (rd : ReadRule)
-    (x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : List (BitVec 8))
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (w1R : W1SendRealParams)
-    (w2R : W2RecvWhisperRealParams) :
-    PhaseGroupSpec fineCostModel
-      (mkRealCalleeEnvsModeGuarded img P g rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R w4R).decPkEnv
-      W4RecvPrekeyRealSlot.w4RecvPrekeyRealGrpS := by
-  rcases g with ⟨i', c', a', res', call', stores', inp', coins'⟩
-  cases c'
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-  · exact emptyPhaseGroupSpec _
-  · rename_i peerV
-    exact (w4RecvPrekeyReal_singleSlotFineSpec w4R (hw4 peerV rfl)).groups
-
-/-- Builds `CliRealCalleeFineSpecs` across all five concrete slot theorems
-(`w3InitReal_singleSlotFineSpec`, `w1SendRealSlot_dcan_singleSlotFineSpec`,
-`w2RecvWhisperRealSlot_dcan_singleSlotFineSpec`, `WirePksmTightCredit.pksmCanonSlice_fine_*`, and
-`w4RecvPrekeyReal_singleSlotFineSpec`). -/
-def buildCliRealCalleeFineSpecs [LibsignalPlacement]
-    {P : PEParams} {img : Arm64.Obj.Image}
-    {S : CryptoVerification.SignalSession.Cli.RunCompose.RunSem}
-    {g : RunCall}
-    (hd : CliPqRealCallDomain P g)
-    {x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost}
-    (hsite : ∀ peerV dir, g.c = .init peerV dir →
-      LibsignalBinary.Proofs.PeakBudget.CallSiteFacts.InitCallSite img S g x)
-    {rd : ReadRule} {ownKeyName ownRegName : List (BitVec 8)}
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    {x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost}
-    {g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost}
-    {r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8))}
-    (hkeyName : (ownKeyName).length ≤ 64)
-    (hregName : (ownRegName).length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (halice : LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.RecordAliceInitiatedAnyCkBounds g_rec r_rec)
-    {w1R : W1SendRealParams}
-    (hw1 : W1SendRealDom g.c w1R)
-    {w2R : W2RecvWhisperRealParams}
-    (hw2 : W2RecvWhisperRealDom g.c w2R)
-    {w4R : W4RecvPrekeyRealParams}
-    (hw4 : ∀ peerV, g.c = .recv peerV → W4RecvPrekeyRealDom w4R) :
-    CliRealCalleeFineSpecs
-      (mkRealCalleeEnvsModeGuarded img P g rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R w4R) :=
-  { initCum := w3InitRealCum
-    initLive := w3InitRealLive
-    initPeak := w3InitRealPeak
-    initMaxReq := w3InitRealMaxReq
-    initGrpS := w3InitRealGrpS
-    init_spec := w3Guarded_credit hsite F hkeyName hregName hspqrKey hfileCap halice w1R w2R w4R
-    init_lp := w3InitReal_caps_le.2.2.1
-    init_grp := w3Guarded_groups rd x ownKeyName ownRegName F x_spqr g_rec r_rec halice w1R w2R w4R
-    encCum := W1SendRealSlot.w1SendRealDcanCum
-    encLive := W1SendRealSlot.w1SendRealDcanLive
-    encPeak := W1SendRealSlot.w1SendRealDcanPeak
-    encMaxReq := W1SendRealSlot.w1SendRealDcanMaxReq
-    encGrpS := W1SendRealSlot.w1SendRealDcanGrpS
-    enc_spec := w1Guarded_credit hd hw1 rd x ownKeyName ownRegName F x_spqr g_rec r_rec w2R w4R
-    enc_lp := W1SendRealSlot.w1SendRealDcan_live_le_peak
-    enc_grp := w1Guarded_groups hd hw1 rd x ownKeyName ownRegName F x_spqr g_rec r_rec w2R w4R
-    decSigCum := W2RecvWhisperRealSlot.w2RecvWhisperRealDcanCum
-    decSigLive := W2RecvWhisperRealSlot.w2RecvWhisperRealDcanLive
-    decSigPeak := W2RecvWhisperRealSlot.w2RecvWhisperRealDcanPeak
-    decSigMaxReq := W2RecvWhisperRealSlot.w2RecvWhisperRealDcanMaxReq
-    decSigGrpS := W2RecvWhisperRealSlot.w2RecvWhisperRealDcanGrpS
-    decSig_spec := w2Guarded_credit hd hw2 rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w4R
-    decSig_lp := W2RecvWhisperRealSlot.w2RecvWhisperRealDcan_live_le_peak
-    decSig_grp := w2Guarded_groups hd hw2 rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w4R
-    pksmCum := WirePksmTightCredit.pksmCanonSliceCum msgCapBytes
-    pksmLive := WirePksmTightCredit.pksmCanonSliceLive msgCapBytes
-    pksmPeak := WirePksmTightCredit.pksmCanonSlicePeak msgCapBytes
-    pksmMaxReq := WirePksmTightCredit.pksmCanonSliceMaxReq msgCapBytes
-    pksmGrpS := WirePksmTightCredit.pksmCanonSliceGrpS msgCapBytes
-    pksm_spec := fun _ hrest => WirePksmTightCredit.pksmCanonSlice_fine_phaseCredit hrest
-    pksm_lp := WirePksmTightCredit.pksmCanonSliceLive_le_peak msgCapBytes
-    pksm_grp := fun _ hrest => WirePksmTightCredit.pksmCanonSlice_fine_groupSpec hrest
-    decPkCum := W4RecvPrekeyRealSlot.w4RecvPrekeyRealCum
-    decPkLive := W4RecvPrekeyRealSlot.w4RecvPrekeyRealLive
-    decPkPeak := W4RecvPrekeyRealSlot.w4RecvPrekeyRealPeak
-    decPkMaxReq := W4RecvPrekeyRealSlot.w4RecvPrekeyRealMaxReq
-    decPkGrpS := W4RecvPrekeyRealSlot.w4RecvPrekeyRealGrpS
-    decPk_spec := w4Guarded_credit hw4 rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R
-    decPk_lp := w4RecvPrekeyReal_caps_le.1
-    decPk_grp := w4Guarded_groups hw4 rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R }
-
-/-- Discharges `CliRealR2CalleeCaps` on `buildCliRealCalleeFineSpecs` across all five concrete slots. -/
-theorem cliRealCalleeFineSpecs_caps [LibsignalPlacement]
-    {P : PEParams} {img : Arm64.Obj.Image}
-    {S : CryptoVerification.SignalSession.Cli.RunCompose.RunSem}
-    {g : RunCall}
-    (hd : CliPqRealCallDomain P g)
-    {x : CryptoVerification.SignalSession.Cli.RunCompose.InitGhost}
-    (hsite : ∀ peerV dir, g.c = .init peerV dir →
-      LibsignalBinary.Proofs.PeakBudget.CallSiteFacts.InitCallSite img S g x)
-    {rd : ReadRule} {ownKeyName ownRegName : List (BitVec 8)}
-    (F : CryptoGames.LibsignalSession.ShaCompress)
-    {x_spqr : CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost}
-    {g_rec : CryptoVerification.LibsignalPublicApiRepr.RecordGhost}
-    {r_rec : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8))}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (halice : LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.RecordAliceInitiatedAnyCkBounds g_rec r_rec)
-    {w1R : W1SendRealParams}
-    (hw1 : W1SendRealDom g.c w1R)
-    {w2R : W2RecvWhisperRealParams}
-    (hw2 : W2RecvWhisperRealDom g.c w2R)
-    {w4R : W4RecvPrekeyRealParams}
-    (hw4 : ∀ peerV, g.c = .recv peerV → W4RecvPrekeyRealDom w4R) :
-    CliRealR2CalleeCaps
-      (E := mkRealCalleeEnvsModeGuarded img P g rd x ownKeyName ownRegName F x_spqr g_rec r_rec w1R w2R w4R)
-      (buildCliRealCalleeFineSpecs hd hsite F hkeyName hregName hspqrKey hfileCap halice hw1 hw2 hw4) := by
-  obtain ⟨_, _, _, hic, hil, hip, hir, hig⟩ := w3InitReal_caps_le
-  obtain ⟨_, _, hec, hel, hep, her, heg⟩ := w1SendReal_dcan_caps_le
-  obtain ⟨_, _, _, hsc, hsl, hsp, hsr, hsg⟩ := w2RecvWhisperReal_dcan_caps_le
-  obtain ⟨_, hkc, hkl, hkp, hkr, hkg⟩ := pksmReal_caps_le
-  obtain ⟨_, hpc, hpl, hpp, hpr, hpg⟩ := w4RecvPrekeyReal_caps_le
-  exact ⟨hic, hil, hip, hir, hig,
-    hec, hel, hep, her, heg,
-    hsc, hsl, hsp, hsr, hsg,
-    hkc, hkl, hkp, hkr, hkg,
-    hpc, hpl, hpp, hpr, hpg⟩
-
-/-- Concrete whole-`main` `FitsTrace fineCostModel` at `≤ 90%` (`965,445,342` B) across all five
-concrete slot envelopes under `CliPqRealCallDomain`. -/
-theorem cliMain_realR2_concrete_90pct_fitsTrace_fineCostModel [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap)
-    {P : PEParams} {uuidParse : UuidParser}
-    {img : Arm64.Obj.Image} {S : CryptoVerification.SignalSession.Cli.RunCompose.RunSem}
-    {g : RunCall}
-    {x : RunCall → CryptoVerification.SignalSession.Cli.RunCompose.InitGhost}
-    (hsite : ∀ peerV dir, g.c = .init peerV dir →
-      LibsignalBinary.Proofs.PeakBudget.CallSiteFacts.InitCallSite img S g (x g))
-    {rd : RunCall → ReadRule}
-    {ownKeyName ownRegName : RunCall → List (BitVec 8)}
-    (F : RunCall → CryptoGames.LibsignalSession.ShaCompress)
-    {x_spqr : RunCall → CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost}
-    {g_rec : RunCall → CryptoVerification.LibsignalPublicApiRepr.RecordGhost}
-    {r_rec : RunCall → CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8))}
-    (hkeyName : (ownKeyName g).length ≤ 64)
-    (hregName : (ownRegName g).length ≤ 64)
-    (hspqrKey : (x_spqr g).p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, (rd g) (x g).F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (halice : LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.RecordAliceInitiatedAnyCkBounds (g_rec g) (r_rec g))
-    {w1R : RunCall → W1SendRealParams}
-    (hw1 : W1SendRealDom g.c (w1R g))
-    {w2R : RunCall → W2RecvWhisperRealParams}
-    (hw2 : W2RecvWhisperRealDom g.c (w2R g))
-    {w4R : RunCall → W4RecvPrekeyRealParams}
-    (hw4 : ∀ peerV, g.c = .recv peerV → W4RecvPrekeyRealDom (w4R g))
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (hd : CliPqRealCallDomain P g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse
-      (fun g' => CliRunOpenedEnv cliIo.rd
-        (mkRealCalleeEnvs img P g' (rd g') (x g') (ownKeyName g') (ownRegName g')
-          (F g') (x_spqr g') (g_rec g') (r_rec g')
-          (w1R g') (w2R g') (w4R g'))
-        sessionCapBytes g')
-      g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim cliRealMainStepReserve fullLog := by
-  rw [cliRunOpenedEnv_mkRealCalleeEnvs_eq] at hEnv
-  exact cliMain_realR2_90pct_fitsTrace_fineCostModel henf hsb hsc hcap90 hd
-    (buildCliRealCalleeFineSpecs hd hsite (F g) hkeyName hregName hspqrKey hfileCap halice hw1 hw2 hw4)
-    (cliRealCalleeFineSpecs_caps hd hsite (F g) hkeyName hregName hspqrKey hfileCap halice hw1 hw2 hw4)
-    haddr hdirs hEnv
-
-/-- Concrete whole-`main` `FitsEnv fineCostModel` at `≤ 90%` (`965,445,342` B) across all five
-concrete slot envelopes under `CliPqRealCallDomain`. -/
-theorem cliMain_realR2_concrete_90pct_fitsEnv_fineCostModel [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap)
-    {P : PEParams} {uuidParse : UuidParser}
-    {img : Arm64.Obj.Image} {S : CryptoVerification.SignalSession.Cli.RunCompose.RunSem}
-    {g : RunCall}
-    {x : RunCall → CryptoVerification.SignalSession.Cli.RunCompose.InitGhost}
-    (hsite : ∀ peerV dir, g.c = .init peerV dir →
-      LibsignalBinary.Proofs.PeakBudget.CallSiteFacts.InitCallSite img S g (x g))
-    {rd : RunCall → ReadRule}
-    {ownKeyName ownRegName : RunCall → List (BitVec 8)}
-    (F : RunCall → CryptoGames.LibsignalSession.ShaCompress)
-    {x_spqr : RunCall → CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost}
-    {g_rec : RunCall → CryptoVerification.LibsignalPublicApiRepr.RecordGhost}
-    {r_rec : RunCall → CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8))}
-    (hkeyName : (ownKeyName g).length ≤ 64)
-    (hregName : (ownRegName g).length ≤ 64)
-    (hspqrKey : (x_spqr g).p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, (rd g) (x g).F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (halice : LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.RecordAliceInitiatedAnyCkBounds (g_rec g) (r_rec g))
-    {w1R : RunCall → W1SendRealParams}
-    (hw1 : W1SendRealDom g.c (w1R g))
-    {w2R : RunCall → W2RecvWhisperRealParams}
-    (hw2 : W2RecvWhisperRealDom g.c (w2R g))
-    {w4R : RunCall → W4RecvPrekeyRealParams}
-    (hw4 : ∀ peerV, g.c = .recv peerV → W4RecvPrekeyRealDom (w4R g))
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (hd : CliPqRealCallDomain P g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse
-        (fun g' => CliRunOpenedEnv cliIo.rd
-          (mkRealCalleeEnvs img P g' (rd g') (x g') (ownKeyName g') (ownRegName g')
-            (F g') (x_spqr g') (g_rec g') (r_rec g')
-            (w1R g') (w2R g') (w4R g'))
-          sessionCapBytes g')
-        g addrOpt needStdin dirs ok) := by
-  rw [cliRunOpenedEnv_mkRealCalleeEnvs_eq]
-  exact cliMain_realR2_90pct_fitsEnv_fineCostModel henf hsb hsc hcap90 hd
-    (buildCliRealCalleeFineSpecs hd hsite (F g) hkeyName hregName hspqrKey hfileCap halice hw1 hw2 hw4)
-    (cliRealCalleeFineSpecs_caps hd hsite (F g) hkeyName hregName hspqrKey hfileCap halice hw1 hw2 hw4)
-    haddr hdirs
-
-/-- `1 GiB` (`cliOneGiB ≤ lim.physCap`) specialization of `cliMain_realR2_concrete_90pct_fitsTrace_fineCostModel`. -/
-theorem cliMain_realR2_concrete_fitsTrace_fineCostModel [LibsignalPlacement]
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {P : PEParams} {uuidParse : UuidParser}
-    {img : Arm64.Obj.Image} {S : CryptoVerification.SignalSession.Cli.RunCompose.RunSem}
-    {g : RunCall}
-    {x : RunCall → CryptoVerification.SignalSession.Cli.RunCompose.InitGhost}
-    (hsite : ∀ peerV dir, g.c = .init peerV dir →
-      LibsignalBinary.Proofs.PeakBudget.CallSiteFacts.InitCallSite img S g (x g))
-    {rd : RunCall → ReadRule}
-    {ownKeyName ownRegName : RunCall → List (BitVec 8)}
-    (F : RunCall → CryptoGames.LibsignalSession.ShaCompress)
-    {x_spqr : RunCall → CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost}
-    {g_rec : RunCall → CryptoVerification.LibsignalPublicApiRepr.RecordGhost}
-    {r_rec : RunCall → CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8))}
-    (hkeyName : (ownKeyName g).length ≤ 64)
-    (hregName : (ownRegName g).length ≤ 64)
-    (hspqrKey : (x_spqr g).p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, (rd g) (x g).F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (halice : LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.RecordAliceInitiatedAnyCkBounds (g_rec g) (r_rec g))
-    {w1R : RunCall → W1SendRealParams}
-    (hw1 : W1SendRealDom g.c (w1R g))
-    {w2R : RunCall → W2RecvWhisperRealParams}
-    (hw2 : W2RecvWhisperRealDom g.c (w2R g))
-    {w4R : RunCall → W4RecvPrekeyRealParams}
-    (hw4 : ∀ peerV, g.c = .recv peerV → W4RecvPrekeyRealDom (w4R g))
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (hd : CliPqRealCallDomain P g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse
-      (fun g' => CliRunOpenedEnv cliIo.rd
-        (mkRealCalleeEnvs img P g' (rd g') (x g') (ownKeyName g') (ownRegName g')
-          (F g') (x_spqr g') (g_rec g') (r_rec g')
-          (w1R g') (w2R g') (w4R g'))
-        sessionCapBytes g')
-      g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim cliRealMainStepReserve fullLog :=
-  cliMain_realR2_concrete_90pct_fitsTrace_fineCostModel henf hsb hsc
-    (Nat.le_trans (by decide : cliRealNinetyPctOneGiB ≤ cliOneGiB) hcap)
-    hsite F hkeyName hregName hspqrKey hfileCap halice hw1 hw2 hw4 hd haddr hdirs hEnv
-
-/-- `cliBudgetLimits` (`1 GiB` RAM, `2 ^ 48` VA) specialization of `cliMain_realR2_concrete_90pct_fitsEnv_fineCostModel`. -/
-theorem cliMain_realR2_concrete_fitsEnv_cliBudgetLimits [LibsignalPlacement]
-    {P : PEParams} {uuidParse : UuidParser}
-    {img : Arm64.Obj.Image} {S : CryptoVerification.SignalSession.Cli.RunCompose.RunSem}
-    {g : RunCall}
-    {x : RunCall → CryptoVerification.SignalSession.Cli.RunCompose.InitGhost}
-    (hsite : ∀ peerV dir, g.c = .init peerV dir →
-      LibsignalBinary.Proofs.PeakBudget.CallSiteFacts.InitCallSite img S g (x g))
-    {rd : RunCall → ReadRule}
-    {ownKeyName ownRegName : RunCall → List (BitVec 8)}
-    (F : RunCall → CryptoGames.LibsignalSession.ShaCompress)
-    {x_spqr : RunCall → CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost}
-    {g_rec : RunCall → CryptoVerification.LibsignalPublicApiRepr.RecordGhost}
-    {r_rec : RunCall → CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8))}
-    (hkeyName : (ownKeyName g).length ≤ 64)
-    (hregName : (ownRegName g).length ≤ 64)
-    (hspqrKey : (x_spqr g).p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, (rd g) (x g).F p = .ok bs → bs.length ≤ sessionCapBytes)
-    (halice : LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec.RecordAliceInitiatedAnyCkBounds (g_rec g) (r_rec g))
-    {w1R : RunCall → W1SendRealParams}
-    (hw1 : W1SendRealDom g.c (w1R g))
-    {w2R : RunCall → W2RecvWhisperRealParams}
-    (hw2 : W2RecvWhisperRealDom g.c (w2R g))
-    {w4R : RunCall → W4RecvPrekeyRealParams}
-    (hw4 : ∀ peerV, g.c = .recv peerV → W4RecvPrekeyRealDom (w4R g))
-    (hd : CliPqRealCallDomain P g)
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel cliBudgetLimits fineCostModel.init
-      (CliMainEnv uuidParse
-        (fun g' => CliRunOpenedEnv cliIo.rd
-          (mkRealCalleeEnvs img P g' (rd g') (x g') (ownKeyName g') (ownRegName g')
-            (F g') (x_spqr g') (g_rec g') (r_rec g')
-            (w1R g') (w2R g') (w4R g'))
-          sessionCapBytes g')
-        g addrOpt needStdin dirs ok) :=
-  cliMain_realR2_concrete_90pct_fitsEnv_fineCostModel rfl (Nat.le_refl _) (Nat.le_refl _)
-    (by decide : cliRealNinetyPctOneGiB ≤ cliBudgetLimits.physCap)
-    hsite F hkeyName hregName hspqrKey hfileCap halice hw1 hw2 hw4 hd haddr hdirs
-
-/-! ## 6. Concrete `recv-prekey` (`3#8`) Non-Vacuity Witness -/
 
 private def nonVacMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
   keyPair := fun _ => List.Vector.replicate 2400 0#8
@@ -1969,20 +1310,14 @@ private def nonVacCrypto : CryptoGames.LibsignalSession.Crypto where
 
 private def nonVacPqxdhPrims : CryptoVerification.E2E.PqxdhPrims where
   F512 := fun s _ => s
-  montToEd := fun _ _ => none
-  compress := fun _ => List.Vector.replicate 32 0#8
-  edNeg := fun _ => List.Vector.replicate 160 0#8
-  isTorsionFree := fun _ => false
-  dsmb := fun _ _ _ => List.Vector.replicate 160 0#8
-  scalarMod := fun _ => List.Vector.replicate 32 0#8
-  scalarWide := fun _ => List.Vector.replicate 32 0#8
   encaps := fun _ _ => (List.Vector.replicate 1568 0#8, List.Vector.replicate 32 0#8)
   decaps := fun _ _ => List.Vector.replicate 32 0#8
   K := nonVacMlKem
 
-/-- Concrete `PEParams` witness whose `montToEd = none` rejects every handshake (`ReachablePqxdhSession`
-is empty, so `SessionRecordCapInDomain` holds with zero model assumptions) while `CliPqRealCallDomain`
-admits Bob's fresh-directory `recv` call on `wirePrekey :: pksmNonVacFields.bytes`. -/
+/-- Concrete `PEParams` witness whose `X := fun _ _ => 0^32` rejects every handshake via
+`dhOptNonZero` (`ReachablePqxdhSession` is empty, so `SessionRecordCapInDomain` holds with zero
+model assumptions) while `CliPqRealCallDomain` admits Bob's fresh-directory `recv` call on
+`wirePrekey :: pksmNonVacFields.bytes`. -/
 private def nonVacPEParams : PEParams where
   C := nonVacCrypto
   Q := nonVacPqxdhPrims
@@ -2010,36 +1345,41 @@ private def nonVacRecvPrekeyCall : RunCall where
   inp := 0#64
   coins := 0#64
 
+private theorem initiateKeys_eq_none_of_dh_zero (Q : SignalPqxdh.Primitives)
+    (hdh : ∀ a b, Q.x25519 a b = List.replicate 32 0)
+    (inp : SignalPqxdh.InitiateKeysInput) :
+    SignalPqxdh.Model.initiateKeys Q inp = none := by
+  unfold SignalPqxdh.Model.initiateKeys
+  cases inp.trustedPeer <;> simp
+  cases Q.sigVerify inp.bundle.ikB (SignalPqxdh.encodeEC inp.bundle.spkB) inp.bundle.spkSig <;> simp
+  cases Q.sigVerify inp.bundle.ikB (SignalPqxdh.encodeKEM inp.bundle.pqspkB) inp.bundle.pqspkSig <;> simp
+  cases Q.kemEncaps inp.bundle.pqspkB inp.kemCoins with
+  | none => simp
+  | some p =>
+    rcases p with ⟨ss, kemCt⟩
+    simp [hdh]
+
+private theorem acceptKeys_eq_none_of_dh_zero (Q : SignalPqxdh.Primitives)
+    (hdh : ∀ a b, Q.x25519 a b = List.replicate 32 0)
+    (inp : SignalPqxdh.AcceptKeysInput) :
+    SignalPqxdh.Model.acceptKeys Q inp = none := by
+  unfold SignalPqxdh.Model.acceptKeys
+  simp [hdh]
+
 private theorem nonVacPEParams_not_reachable
     {me : CryptoVerification.E2E.LocalIdentity}
     {x : CryptoVerification.E2E.RecordExtras}
     {g : CryptoGames.LibsignalSession.GhostState (List (BitVec 8))}
     (hr : CryptoVerification.E2E.ReachablePqxdhSession nonVacPEParams me x g) : False := by
+  have hdh : ∀ X a b,
+      (CryptoVerification.E2E.modelPrims X nonVacPEParams).x25519 a b =
+        List.replicate 32 0 := fun _ _ _ => rfl
   induction hr with
   | initiate X P me' b t x' g' hinit =>
-    have hsig : ∀ pk msg sig,
-        (CryptoVerification.E2E.modelPrims X nonVacPEParams).sigVerify pk msg sig = false := by
-      intro pk msg sig
-      unfold CryptoVerification.E2E.modelPrims SignalPqxdh.xeddsaVerifyRef
-        CryptoVerification.E2E.blockLevelPrims nonVacPEParams nonVacPqxdhPrims
-      dsimp only
-      split <;> rfl
-    unfold CryptoVerification.E2E.initiateState SignalPqxdh.Model.initiateKeys at hinit
-    simp [hsig] at hinit
+    unfold CryptoVerification.E2E.initiateState at hinit
+    rw [initiateKeys_eq_none_of_dh_zero _ (hdh X)] at hinit
+    nomatch hinit
   | recvPrekey X P me' k m rc x' g' pt hrecv =>
-    have hcan : ∀ pk,
-        (CryptoVerification.E2E.modelPrims X nonVacPEParams).isCanonical pk = false := by
-      intro pk
-      unfold CryptoVerification.E2E.modelPrims SignalPqxdh.isCanonicalRef
-        CryptoVerification.E2E.blockLevelPrims nonVacPEParams nonVacPqxdhPrims
-      dsimp only
-      split <;> rfl
-    have hacc : ∀ inp,
-        SignalPqxdh.Model.acceptKeys (CryptoVerification.E2E.modelPrims X nonVacPEParams) inp =
-          none := by
-      intro inp
-      unfold SignalPqxdh.Model.acceptKeys
-      simp [hcan]
     unfold CryptoVerification.E2E.recvPrekeyState at hrecv
     cases htry : CryptoGames.LibsignalSession.SignalMessage.tryFrom
         CryptoVerification.LibsignalProtoCodec.protoSignalCodec m.inner with
@@ -2051,7 +1391,7 @@ private theorem nonVacPEParams_not_reachable
       dsimp only at hrecv
       split at hrecv
       · nomatch hrecv
-      · rw [hacc] at hrecv
+      · rw [acceptKeys_eq_none_of_dh_zero _ (hdh X)] at hrecv
         nomatch hrecv
   | send _ _ _ _ ih => exact ih
   | recv _ _ _ ih => exact ih
@@ -2250,31 +1590,5 @@ theorem cliPqRealCallDomain_recvPrekey_nonvacuous
         Or.inr ⟨[], [], rfl, hM5, hM6⟩⟩)⟩
   · exact List.mem_append_right _ WirePksmTightCredit.pksmNonVacEvents_allocating.1
   · exact List.mem_append_right _ WirePksmTightCredit.pksmNonVacEvents_allocating.2.1
-
-/-- Specialization of `cliPqRealCallDomain_recvPrekey_nonvacuous` to `mkRealCalleeEnvs`. -/
-theorem cliPqRealCallDomain_mkRealCalleeEnvs_recvPrekey_nonvacuous [LibsignalPlacement]
-    (img : Arm64.Obj.Image)
-    (rd : RunCall → ReadRule)
-    (x : RunCall → CryptoVerification.SignalSession.Cli.RunCompose.InitGhost)
-    (ownKeyName ownRegName : RunCall → List (BitVec 8))
-    (F : RunCall → CryptoGames.LibsignalSession.ShaCompress)
-    (x_spqr : RunCall → CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost)
-    (g_rec : RunCall → CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
-    (r_rec : RunCall → CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)))
-    (w1R : RunCall → W1SendRealParams)
-    (w2R : RunCall → W2RecvWhisperRealParams)
-    (w4R : RunCall → W4RecvPrekeyRealParams) :
-    ∃ (P₀ : PEParams) (g₀ : RunCall) (fullLog : List AllocEvent),
-      CliPqRealCallDomain P₀ g₀ ∧
-      CliMainEnv uuidTryParse
-        (fun g' => CliRunOpenedEnv cliIo.rd
-          (mkRealCalleeEnvs img P₀ g' (rd g') (x g') (ownKeyName g') (ownRegName g')
-            (F g') (x_spqr g') (g_rec g') (r_rec g')
-            (w1R g') (w2R g') (w4R g'))
-          sessionCapBytes g')
-        g₀ none false [] false fullLog ∧
-      AllocEvent.alloc 72 ∈ fullLog ∧
-      AllocEvent.realloc 1 2048 1569 ∈ fullLog :=
-  cliPqRealCallDomain_recvPrekey_nonvacuous _ (fun _ _ => rfl)
 
 end LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal

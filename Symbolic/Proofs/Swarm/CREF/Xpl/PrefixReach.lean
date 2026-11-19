@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 
 /-!
 # Move-Boundary Prefix Reachability
@@ -18,7 +18,7 @@ Every move-boundary prefix `ms₀` of a `MatchedPrefix` explanation `ms = ms₀ 
 reachable composed trace `runTraceMoves r ms₀`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

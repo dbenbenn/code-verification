@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3Defs
 import LibsignalBinary.Proofs.E2E.RecordX.Length
 import LibsignalBinary.Proofs.SignalSession.SM.RecordInj.Fields
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Injectivity of `SessionRecord::serialize` on `DeserializeScopeP_Q NonEmptyV1Q`
@@ -27,7 +29,7 @@ Proves `encodeInjOn_deserializeScopeP_Q` (`EncodeInjOn` for `DeserializeScopeP_Q
    and equality of tag `9`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

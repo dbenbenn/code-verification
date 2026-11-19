@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvC09aWire
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvGroupSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvCreditHelpers
+public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvC09aWire
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvGroupSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvCreditHelpers
 public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
 
 /-!
 # Size-Class Split `PhaseGroupSpec` Bounds for SPQR `spqr::recv` and `try_decrypt`
@@ -28,7 +31,7 @@ Refines coarse `3 * FineScale = 196,608`/op slot-group bounds across `SpqrTightE
 `spqr::recv` and `509,326,673` (`7,772` groups) for `W2TryDecryptTightEnv` at `caps.length ≤ 12`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -428,11 +431,11 @@ theorem spqrTightEvs_fine_phaseGroupSpec_linear (maxOps cumCap maxReq : Nat) :
       Nat.le_trans hlin (Nat.add_le_add_left hcap _)
     exact le_add_div_of_mul_le (by decide : 0 < 7792) hmul
 
-def decodeStateTightGroupS_split : Nat := 11620913
+@[expose] def decodeStateTightGroupS_split : Nat := 11620913
 
-def statesFromPbTightGroupS_split : Nat := 5504245
+@[expose] def statesFromPbTightGroupS_split : Nat := 5504245
 
-def statesIntoPbTightGroupS_split : Nat := 5447474
+@[expose] def statesIntoPbTightGroupS_split : Nat := 5447474
 
 theorem decodeStateTight_fine_phaseGroupSpec_split :
     PhaseGroupSpec fineCostModel DecodeStateTightEnv decodeStateTightGroupS_split :=
@@ -941,7 +944,7 @@ private theorem recvCt2ChunkTail_960_fine_phaseGroupSpec (rootKeyLen : Nat) (opt
       exact (h1.seq (h32.seq (h41.seq (h32.seq (h5.seq (h6.seq (h7.seq h8))))))).mono (by decide)
 
 /-- Scaled slot-group bound for `<States>::recv` (`27,105,719` = `414` groups). -/
-def statesRecvTightGroupS_split : Nat := 27105719
+@[expose] def statesRecvTightGroupS_split : Nat := 27105719
 
 /-- `PhaseGroupSpec` (`27,105,719`) for `StatesRecvEnv st msg` across all 12 dispatch arms under `StatesProtocolSizes` and `StatesDecPtsNeededBound`.
 -/
@@ -1112,15 +1115,6 @@ theorem statesRecv_tight_phaseGroupSpec_split {F : ShaCompress}
     · exact hFree
   | ct2Sampled _ => exact hFree
 
-theorem statesRecv_tight_of_from_pb_phaseGroupSpec_split {F : ShaCompress}
-    {pb : V1State} {st : States spqrPolyApi (spqrAuthApi F)}
-    (hfrom : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st)
-    (msg : Message spqrPolyApi) :
-    PhaseGroupSpec fineCostModel (StatesRecvEnv st msg) statesRecvTightGroupS_split :=
-  statesRecv_tight_phaseGroupSpec_split st msg
-    (StatesProtocolSizes.of_from_pb hfrom)
-    (StatesDecPtsNeededBound.of_from_pb hfrom)
-
 theorem statesRecvProtoEnv_tight_groupSpec_split {F : ShaCompress}
     (st0 : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
     (hpts : StatesDecPtsNeededBound st0)
@@ -1146,20 +1140,20 @@ theorem c09aStatesRecvTightGroupSpec_split_inst (F : ShaCompress) :
 
 /-- Scaled slot-group bound for the `Ordering::Equal` branch of `spqr::recv` (`459,164,942` = `7,007` groups).
 -/
-def spqrRecvEqualTightGroupS_split : Nat := 459164942
+@[expose] def spqrRecvEqualTightGroupS_split : Nat := 459164942
 
 /-- Scaled slot-group bound for `spqr::recv` (`470,785,855` = `7,184` groups). -/
-def spqrRecvTightGroupS_split : Nat := 470785855
+@[expose] def spqrRecvTightGroupS_split : Nat := 470785855
 
 /-- Scaled slot-group bound for `W2TryDecryptTightEnv` parametric in `maxSteps`. -/
-def w2TryDecryptTightGroupS_split (maxSteps : Nat) : Nat :=
+@[expose] def w2TryDecryptTightGroupS_split (maxSteps : Nat) : Nat :=
   42 * FineScale + 6 * 16659 + 11056 + w2Seg4CmkFineGrpS maxSteps + spqrRecvTightGroupS_split
 
 /-- Closed scaled slot-group bound for `W2TryDecryptTightEnv` when `maxSteps ≤ 12` (`509,326,673` = `7,772` groups).
 -/
-def w2TryDecryptTightGroupS_split_12 : Nat := 509326673
+@[expose] def w2TryDecryptTightGroupS_split_12 : Nat := 509326673
 
-def w2TryDecryptTightGroupS_split_10 : Nat := 508933457
+@[expose] def w2TryDecryptTightGroupS_split_10 : Nat := 508933457
 
 /-- Split `Ordering::Equal` `PhaseGroupSpec` (`459,164,942`) on `StatesRecvProtoEnv`. -/
 theorem spqrRecvOrderingEqual_c07_c09a_phaseGroupSpec_tight_split
@@ -1181,25 +1175,6 @@ theorem spqrRecvOrderingEqual_c07_c09a_phaseGroupSpec_tight_split
   exact (spqrRecvOrderingEqual_phaseGroupSpec_tight F K
     (c07TightGroupSpec_split_inst F) (c09aStatesRecvTightGroupSpec_split_inst F)
     hv1Pts hv1Raw hParams hPrev).mono (by decide)
-
-theorem spqrRecvOrderingEqual_c07_c09a_phaseGroupSpec_tight_split_rawEnv
-    (F : ShaCompress) (K : MlKem)
-    {pre_pb : PqRatchetState} {pb : V1State}
-    {st0 : States spqrPolyApi (spqrAuthApi F)} {sckaMsg : Message spqrPolyApi}
-    {v : V1Recv spqrPolyApi (spqrAuthApi F)}
-    {xAdd : ChainAddEpochGhost} {xRk : ChainRecvKeyGhost}
-    {xSInto : StatesIntoPbGhost F} {xCInto : ChainIntoPbCall}
-    (hv1Pts : ValidV1PtsAt 640 pb)
-    (hv1Raw : rawV1State pb ≤ 46880)
-    (hParams : ValidChainParamsPB xRk.self.params)
-    (hPrev : RecvSmallTight xRk.self) :
-    PhaseGroupSpec fineCostModel
-      (SpqrRecvEqualC07TightEnv F K StatesRecvEnv
-        pre_pb pb st0 sckaMsg v xAdd xRk xSInto xCInto)
-      spqrRecvEqualTightGroupS_split := by
-  rw [← spqrRecvEqualC07TightEnv_proto_eq]
-  exact spqrRecvOrderingEqual_c07_c09a_phaseGroupSpec_tight_split F K
-    hv1Pts hv1Raw hParams hPrev
 
 /-- Split `spqr::recv` `PhaseGroupSpec` (`470,785,855`, independent of `xRk.G`) on `SpqrRecvC07TightEnv`.
 -/
@@ -1239,195 +1214,5 @@ theorem spqrRecvParts_c07_c09a_phaseGroupSpec_tight_split_rawEnv
   rw [← spqrRecvC07TightEnv_proto_eq]
   exact spqrRecvParts_c07_c09a_phaseGroupSpec_tight_split F K
     stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hDom
-
-/-- `maxSteps`-parametric `PhaseGroupSpec` for `W2TryDecryptTightEnv` at `StatesRecvProtoEnv`. -/
-theorem w2TryDecryptTightEnv_fine_groupSpec_split
-    (F : ShaCompress) (K : MlKem)
-    (dhCap : Nat) (needGrow : Bool) {caps : List Nat} {maxSteps : Nat}
-    (withAddr errAlloc : Bool) (ctLen : Nat)
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hcaps : caps.length ≤ maxSteps)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk) :
-    PhaseGroupSpec fineCostModel
-      (W2TryDecryptTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvProtoEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptTightGroupS_split maxSteps) :=
-  w2TryDecryptTightEnv_fine_groupSpec dhCap needGrow withAddr errAlloc ctLen hcaps
-    (spqrRecvParts_c07_c09a_phaseGroupSpec_tight_split F K
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hDom)
-
-theorem w2TryDecryptTightEnv_fine_groupSpec_split_rawEnv
-    (F : ShaCompress) (K : MlKem)
-    (dhCap : Nat) (needGrow : Bool) {caps : List Nat} {maxSteps : Nat}
-    (withAddr errAlloc : Bool) (ctLen : Nat)
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hcaps : caps.length ≤ maxSteps)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk) :
-    PhaseGroupSpec fineCostModel
-      (W2TryDecryptTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      (w2TryDecryptTightGroupS_split maxSteps) :=
-  w2TryDecryptTightEnv_fine_groupSpec dhCap needGrow withAddr errAlloc ctLen hcaps
-    (spqrRecvParts_c07_c09a_phaseGroupSpec_tight_split_rawEnv F K
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hDom)
-
-/-- Closed `509,326,673` `PhaseGroupSpec` for `W2TryDecryptTightEnv` when `caps.length ≤ 12`. -/
-theorem w2TryDecryptTightEnv_fine_groupSpec_split_12
-    (F : ShaCompress) (K : MlKem)
-    (dhCap : Nat) (needGrow : Bool) {caps : List Nat}
-    (withAddr errAlloc : Bool) (ctLen : Nat)
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hcaps : caps.length ≤ 12)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk) :
-    PhaseGroupSpec fineCostModel
-      (W2TryDecryptTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvProtoEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      w2TryDecryptTightGroupS_split_12 :=
-  (w2TryDecryptTightEnv_fine_groupSpec_split F K dhCap needGrow withAddr errAlloc ctLen
-    stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hcaps hDom).mono
-    (by decide)
-
-theorem w2TryDecryptTightEnv_fine_groupSpec_split_rawEnv_12
-    (F : ShaCompress) (K : MlKem)
-    (dhCap : Nat) (needGrow : Bool) {caps : List Nat}
-    (withAddr errAlloc : Bool) (ctLen : Nat)
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hcaps : caps.length ≤ 12)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk) :
-    PhaseGroupSpec fineCostModel
-      (W2TryDecryptTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      w2TryDecryptTightGroupS_split_12 :=
-  (w2TryDecryptTightEnv_fine_groupSpec_split_rawEnv F K dhCap needGrow withAddr errAlloc ctLen
-    stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hcaps hDom).mono
-    (by decide)
-
-theorem w2TryDecryptTightEnv_fine_groupSpec_split_10
-    (F : ShaCompress) (K : MlKem)
-    (dhCap : Nat) (needGrow : Bool) {caps : List Nat}
-    (withAddr errAlloc : Bool) (ctLen : Nat)
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hcaps : caps.length ≤ 10)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk) :
-    PhaseGroupSpec fineCostModel
-      (W2TryDecryptTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvProtoEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      w2TryDecryptTightGroupS_split_10 :=
-  (w2TryDecryptTightEnv_fine_groupSpec_split F K dhCap needGrow withAddr errAlloc ctLen
-    stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hcaps hDom).mono
-    (by decide)
-
-theorem w2TryDecryptTightEnv_fine_groupSpec_split_rawEnv_10
-    (F : ShaCompress) (K : MlKem)
-    (dhCap : Nat) (needGrow : Bool) {caps : List Nat}
-    (withAddr errAlloc : Bool) (ctLen : Nat)
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hcaps : caps.length ≤ 10)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk) :
-    PhaseGroupSpec fineCostModel
-      (W2TryDecryptTightEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      w2TryDecryptTightGroupS_split_10 :=
-  (w2TryDecryptTightEnv_fine_groupSpec_split_rawEnv F K dhCap needGrow withAddr errAlloc ctLen
-    stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hcaps hDom).mono
-    (by decide)
-
-theorem w2TryDecryptEnv_fine_groupSpec_split
-    (F : ShaCompress) (K : MlKem)
-    (dhCap : Nat) (needGrow : Bool) {caps : List Nat} {maxSteps : Nat}
-    (withAddr errAlloc : Bool) (ctLen : Nat)
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hcaps : caps.length ≤ maxSteps)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk) :
-    PhaseGroupSpec fineCostModel
-      (W2TryDecryptEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvProtoEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      (63 * FineScale + (3 * FineScale * 2000 + maxSteps * (3 * FineScale)) +
-        spqrRecvTightGroupS_split) :=
-  w2TryDecryptEnv_of_seg4_groupSpec fineCostModel dhCap needGrow caps withAddr errAlloc ctLen
-    (w2Seg4CmkStepEnv_groupSpec fineCostModel hcaps)
-    (spqrRecvParts_c07_c09a_phaseGroupSpec_tight_split F K
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hDom)
-
-theorem w2TryDecryptFailEnv_fine_groupSpec_split
-    (F : ShaCompress) (K : MlKem)
-    (dhCap : Nat) (needGrow : Bool) {caps : List Nat} {maxSteps : Nat}
-    (withAddr errAlloc : Bool) (ctLen : Nat)
-    (stBytes : Bytes)
-    (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
-    (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
-    (v : V1Recv spqrPolyApi (spqrAuthApi F))
-    (xInit : InitInnerGhost) (xNew : ChainNewGhost)
-    (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost)
-    (xSInto : StatesIntoPbGhost F) (xCInto : ChainIntoPbCall)
-    (hcaps : caps.length ≤ maxSteps)
-    (hDom : SpqrRecvTightDomain F K stBytes xAdd xRk) :
-    PhaseGroupSpec fineCostModel
-      (W2TryDecryptFailEnv dhCap needGrow caps
-        (SpqrRecvC07TightEnv F K StatesRecvProtoEnv
-          stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto)
-        withAddr errAlloc ctLen)
-      (45 * FineScale + (3 * FineScale * 2000 + maxSteps * (3 * FineScale)) +
-        spqrRecvTightGroupS_split) :=
-  w2TryDecryptFailEnv_of_seg4_groupSpec fineCostModel dhCap needGrow caps withAddr errAlloc ctLen
-    (w2Seg4CmkStepEnv_groupSpec fineCostModel hcaps)
-    (spqrRecvParts_c07_c09a_phaseGroupSpec_tight_split F K
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto hDom)
 
 end LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit

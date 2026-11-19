@@ -166,16 +166,17 @@ private def loopTryCapped (g : MVarId) (tac : TacticM Unit) : TacticM (List MVar
 
 private def loopTryCloseEnt : TacticM Unit := do
   let g ← getMainGoal
-  setGoals (← loopTryCapped g (evalTactic (← `(tactic|
-    first
-    | exact Entails.refl _
-    | (try dsimp only
-       try simp (config := { decide := true }) only [
-         sepConj_assoc, emp_sepConj, sepConj_emp, wp_norm, arm64_norm, *]
-       first
-       | exact Entails.refl _
-       | exact Entails.of_eq
-       | sep_entail)))))
+  setGoals (← loopTryCapped g (withOptions (fun o => SepSolver.proofLib.sepUnfoldExposed.set o false) do
+    evalTactic (← `(tactic|
+      first
+      | exact Entails.refl _
+      | (try dsimp only
+         try simp (config := { decide := true }) only [
+           sepConj_assoc, emp_sepConj, sepConj_emp, wp_norm, arm64_norm, *]
+         first
+         | exact Entails.refl _
+         | exact Entails.of_eq
+         | sep_entail)))))
 
 private def loopTryCloseInit : TacticM Unit := do
   let g ← getMainGoal

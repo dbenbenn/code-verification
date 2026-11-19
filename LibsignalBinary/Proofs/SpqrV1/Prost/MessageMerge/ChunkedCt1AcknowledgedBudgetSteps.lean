@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -23,6 +22,8 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoder
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1Sent
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPQR V1: Budget-Threaded Tag/Skip Step Proofs for `Chunked.Ct1Acknowledged::merge` (Block `307`)
@@ -32,7 +33,7 @@ and `tag = 2` (`receivingEk : Option PolynomialDecoder`) loop-body step lemmas f
 `V1State.Chunked.Ct1Acknowledged::merge` (Block `307`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -53,17 +54,7 @@ open CryptoVerification.LibsignalSpqrV1.Proto (mergeMessage)
 open CryptoVerification.SpqrV1.Auth (WppPost)
 open CryptoVerification.SpqrV1.ProtoRepr
   (ct1SentPBAt optCt1SentPBAt optPolynomialDecoderPBAt polynomialDecoderPBAt)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedCt1AcknowledgedMergeGhost ChunkedLoopRegs PolyDecoderMergeGhost SepWPpLscro
-   bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked
-   chunkedBelow_skipField3_98 chunkedBelow_skipField3_98_entails
-   chunkedCt1AcknowledgedMerge_fnOff chunkedCt1AcknowledgedPBAt chunkedCt1AcknowledgedPBCapAt
-   chunkedCt1AcknowledgedPBCapAt_entails_pb chunkedCt1AcknowledgedPBCapAt_mono chunkedSavedRegs
-   codecWireTypeToProto memRegion_48_split_128 optPolyDecoderPtsLen
-   optPolyDecoder_getD_default_pts_len optUnchunkedCt1SentPBCapAt
-   optUnchunkedCt1SentPBCapAt_entails_optCt1SentPBAt optUnchunkedCt1SentPBCapAt_mono
-   protoPolynomialDecoderAt_eq_pb proto_mergeMessage_len_le setWidth8_ofNat64_wt
-   unchunkedCt1SentPBCapAt)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedCt1AcknowledgedMergeGhost ChunkedLoopRegs PolyDecoderMergeGhost SepWPpLscro bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked chunkedBelow_skipField3_98 chunkedBelow_skipField3_98_entails chunkedCt1AcknowledgedPBAt chunkedCt1AcknowledgedPBCapAt chunkedCt1AcknowledgedPBCapAt_entails_pb chunkedCt1AcknowledgedPBCapAt_mono chunkedSavedRegs codecWireTypeToProto memRegion_48_split_128 optPolyDecoderPtsLen optPolyDecoder_getD_default_pts_len optUnchunkedCt1SentPBCapAt optUnchunkedCt1SentPBCapAt_entails_optCt1SentPBAt optUnchunkedCt1SentPBCapAt_mono protoPolynomialDecoderAt_eq_pb proto_mergeMessage_len_le setWidth8_ofNat64_wt unchunkedCt1SentPBCapAt)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.ChunkedMerge
   (UnchunkedCt1SentMergeGhost unchunkedMergeStack)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_307 blkPl_307)
@@ -90,8 +81,7 @@ open LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget (skipField3Spec)
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
-  chunkedCt1AcknowledgedMerge_fnOff setWidth8_ofNat64_wt
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero setWidth8_ofNat64_wt
 
 @[local simp, local arm64_norm]
 private theorem iwt_w0_setWidth8_1 (iwt : WireType) :

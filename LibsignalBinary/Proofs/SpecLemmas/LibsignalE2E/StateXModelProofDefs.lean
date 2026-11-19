@@ -20,7 +20,7 @@ Defines `seedRecordExtras` and `FixedIdRecordExtras` over `RecordExtras` from
 `LibsignalBinary/Specifications/LibsignalE2E/StateXModel.lean`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E
 open CryptoGames CryptoGames.LibsignalSession CryptoVerification.LibsignalProtoCodec
@@ -28,7 +28,7 @@ open CryptoGames CryptoGames.LibsignalSession CryptoVerification.LibsignalProtoC
 /-- The constant extras that `encodeRecord` (`State.lean`) writes, the same for both parties:
 pending pre-key `{pre_key_id: none, signed_pre_key_id: 0, base_key: 0x05 ‖ 0^32, timestamp: 0}`,
 no Kyber pre-key, registration ids 0, empty `alice_base_key`. -/
-def seedRecordExtras : Party → RecordExtras := fun _ =>
+@[expose] def seedRecordExtras : Party → RecordExtras := fun _ =>
   { pending := { preKeyId := none, signedPreKeyId := 0#32, baseKey := placeholderBaseKey,
                  timestamp := 0#64 }
     kyber := none
@@ -40,7 +40,7 @@ def seedRecordExtras : Party → RecordExtras := fun _ =>
 no one-time pre-key, signed pre-key id 0, timestamp 0, a Kyber pre-key (if any) with id 0 and a
 ciphertext shorter than `2^16` bytes, and an `alice_base_key` shorter than `2^16` bytes. The base
 key is arbitrary. -/
-def FixedIdRecordExtras (x : RecordExtras) : Prop :=
+@[expose] def FixedIdRecordExtras (x : RecordExtras) : Prop :=
   x.remoteRegistrationId = 0 ∧ x.localRegistrationId = 0 ∧
   x.pending.preKeyId = none ∧ x.pending.signedPreKeyId = 0 ∧ x.pending.timestamp = 0 ∧
   (∀ k, x.kyber = some k → k.preKeyId = 0 ∧ k.ciphertext.length < 2 ^ 16) ∧

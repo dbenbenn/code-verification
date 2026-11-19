@@ -11,6 +11,7 @@ module
 
 public import Symbolic.Specifications.Refinement.Statement
 public import Symbolic.Specifications.Refinement.ElfBinding
+public import LibsignalBinary.Specifications.CryptoGames.AEAD.Aes256
 public import Symbolic.Proofs.SpecLemmas.ByteSpecs
 public import Symbolic.Proofs.SpecLemmas.ImageSymbolsProofDefs
 public import Symbolic.Proofs.SpecLemmas.ExternInterpretationProofDefs
@@ -40,7 +41,7 @@ open DY.X25519 (isLowOrderKey lowOrderUs uCoord leValue p25519)
 open DY.Libsignal (HwBytes)
 open DY.Libsignal.Refinement (StubSymbol x25519PublicKeySymbol x25519AgreementSymbol x25519TorsionSymbol aesCbcEncryptSymbol aesCbcDecryptSymbol sha256CompressSymbol)
 open DY.Libsignal.Composed.Refinement (leBytes)
-open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol kyberDecapsSymbol sha512CompressSymbol toEdwardsSymbol edwardsCompressSymbol edwardsNegSymbol torsionFreeSymbol doubleScalarMulSymbol scalarModOrderSymbol scalarModOrderWideSymbol mlkem768FromSeedSymbol mlkem768Encaps1Symbol mlkem768Encaps2Symbol mlkem768DecapsSymbol mlkem768ValidatePkSymbol libcruxHmacSymbol)
+open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol kyberDecapsSymbol sha512CompressSymbol mlkem768FromSeedSymbol mlkem768Encaps1Symbol mlkem768Encaps2Symbol mlkem768DecapsSymbol mlkem768ValidatePkSymbol libcruxHmacSymbol)
 
 /-- Little-endian `Nat` value of a byte string (inverse of `leBytes bs.length` on `bs`). -/
 def bytesToNat : HwBytes → Nat
@@ -228,22 +229,17 @@ def compAesB2 : CryptoGames.CBC.Block := CryptoGames.CBC.bytesToBlock compAesCt2
 def compAesA3 : CryptoGames.CBC.Block := ByteSpecs.bytesToBlock (ByteSpecs.pkcs7Bytes (⟨compAesPt3, by decide⟩ : List.Vector (BitVec 8) 5)) ^^^ CryptoGames.CBC.bytesToBlock compAesIv3
 def compAesB3 : CryptoGames.CBC.Block := CryptoGames.CBC.bytesToBlock compAesCt3
 
-def compAesBlock (k : CryptoGames.CBC.AesKey) (b : CryptoGames.CBC.Block) : CryptoGames.CBC.Block :=
-  if k == CryptoGames.HKDF.bytesToKey32 compAesK0 then
-    if b == compAesA0 then compAesB0 else if b == compAesB0 then compAesA0 else b
-  else if k == CryptoGames.HKDF.bytesToKey32 compAesK1 then
-    if b == compAesA1 then compAesB1 else if b == compAesB1 then compAesA1 else b
-  else if k == CryptoGames.HKDF.bytesToKey32 compAesK2 then
-    if b == compAesA2 then compAesB2 else if b == compAesB2 then compAesA2 else b
-  else if k == CryptoGames.HKDF.bytesToKey32 compAesK3 then
-    if b == compAesA3 then compAesB3 else if b == compAesB3 then compAesA3 else b
-  else b
+def compAesBlock : CryptoGames.CBC.AesKey → CryptoGames.CBC.Block → CryptoGames.CBC.Block :=
+  CryptoGames.AES256.aes256Enc
+
+def compAesInvBlock : CryptoGames.CBC.AesKey → CryptoGames.CBC.Block → CryptoGames.CBC.Block :=
+  CryptoGames.AES256.aes256Dec
 
 def compAesPerm (k iv text : HwBytes) : HwBytes :=
   CryptoGames.LibsignalSession.aesCbcEncrypt compAesBlock (CryptoGames.HKDF.bytesToKey32 k) (CryptoGames.CBC.bytesToBlock iv) text
 
 def compAesDec (k iv ct : HwBytes) : Option HwBytes :=
-  CryptoGames.LibsignalSession.aesCbcDecrypt compAesBlock (CryptoGames.HKDF.bytesToKey32 k) (CryptoGames.CBC.bytesToBlock iv) ct
+  CryptoGames.LibsignalSession.aesCbcDecrypt compAesInvBlock (CryptoGames.HKDF.bytesToKey32 k) (CryptoGames.CBC.bytesToBlock iv) ct
 
 /-- Default 1568-byte Kyber ciphertext off-table (starts with `0xd7#8`, distinct from all recorded cts). -/
 def compDefaultKyberCt : HwBytes := List.replicate 1568 0xd7#8
@@ -737,7 +733,22 @@ def compSha256Rows : List (Nat × Nat × Nat) := [
   (0xc9fc3973f515b81036437a5d3b82ee4f486274a93baff9b1913b74ebeba57825, 0x101252a884f40bdd047e18767282d49485b5ca01022001801104ae020f0133ecd4a8abe6ff58f162cef8c18ef9d7411918dad639572eb5d162705210a44627f, 0xc2ca1f1ff8505d5ceb8fb6b5dff0fb3af767d26124f21bdfeecd2e81ddc0f6c6),
   (0xc2ca1f1ff8505d5ceb8fb6b5dff0fb3af767d26124f21bdfeecd2e81ddc0f6c6, 0x9d4c8b7a102f3e5d00016b5a4f3e2d1c0b9a5f4e4d3b2e1c6f8a002432c5dfa53708ac5adfa9c2afd695fb8d5722060dfb58d3c7074b5508b4c4e50286010102, 0xbf12e260efae36a5dccca7336af247a6b7148d99c9c389354478b3a581c77474),
   (0xbf12e260efae36a5dccca7336af247a6b7148d99c9c389354478b3a581c77474, 0x4808000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008001f6e5d4c3b2a10f8e, 0x4f2f90b7d1dfc5c96e668f5e15da5cccf51ec92f7a1e742c6cd0303523033223),
-  (0x7bfd706572848763585a8436cd6fd5b023a04d86c20a495dd2160d5850f6af41, 0x3000000000000000000000000000000000000000000000000000000000080b7902f4fc9c5dfd15e8f666ecc5cda152fc91ef52c741e7a3530d06c23320323, 0x4e8febb4cea7246e008e90a86da5f10d299749d15654d783e5ad80f4166e917b)
+  (0x7bfd706572848763585a8436cd6fd5b023a04d86c20a495dd2160d5850f6af41, 0x3000000000000000000000000000000000000000000000000000000000080b7902f4fc9c5dfd15e8f666ecc5cda152fc91ef52c741e7a3530d06c23320323, 0x4e8febb4cea7246e008e90a86da5f10d299749d15654d783e5ad80f4166e917b),
+  (0x5be0cd191f83d9ab9b05688c510e527fa54ff53a3c6ef372bb67ae856a09e667, 0x363636363636363636363636363636363636363636363636363636363636363668fd231833c96e02c80d158f9122ae1926f0e4acc179b88a53ea77de647e87fb, 0x48a7de2e02f18b93d664046e771973d82de690467d4d3eb0250d658975548a31),
+  (0x48a7de2e02f18b93d664046e771973d82de690467d4d3eb0250d658975548a31, 0x80528bf9ecc13020f000fc44144b1638e063bc8c1218a501000000000000007265646165686b653a3836374d454b4c4d5f31565f414b4351505f6c616e676953, 0x337ad7cff26b0d3ff78d8d8894690bb8f888003a5f935f6885b9c0154c0401f0),
+  (0x337ad7cff26b0d3ff78d8d8894690bb8f888003a5f935f6885b9c0154c0401f0, 0x48050000000000000000000000000000000000000000805ac2f4ce6d5b71c22b23d97cc15fd3dfd708a3bd1e6fbddc7d7cbb0b08bac6000b8cdd0fe997174ce7, 0xc47fceaa1b4fe7249a6550fc8fdc1883fc903b6318592534fb853a01b965163e),
+  (0x5be0cd191f83d9ab9b05688c510e527fa54ff53a3c6ef372bb67ae856a09e667, 0x5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c0297497259a30468a2677fe5fb48c4734c9a8ec6ab13d2e039801db40e14ed91, 0x70a5dc01164ca86c7c86c0b797db870897c6b713d58e929d479111023c31c05b),
+  (0x70a5dc01164ca86c7c86c0b797db870897c6b713d58e929d479111023c31c05b, 0x3000000000000000000000000000000000000000000000000000000000080aace7fc424e74f1bfc50659a8318dc8f633b90fc34255918013a85fb3e1665b9, 0xa9e84ceaf610f45dc9245b61a6e986614766ceea1a888888f39d5ef381d8f9e),
+  (0x5be0cd191f83d9ab9b05688c510e527fa54ff53a3c6ef372bb67ae856a09e667, 0x3636363636363636363636363636363636363636363636363636363636363636eca307cffa4eee8a191471e10f02a33a3b011197787d150d690c071127850dcd, 0x108b41c36eaff8a99075477448e17d741dcfdfa03b9d150236fcfd3414297a39),
+  (0x108b41c36eaff8a99075477448e17d741dcfdfa03b9d150236fcfd3414297a39, 0x876200e8a712484bb2386963aab9bcd113547372b8d67101000000000000007265646165686b653a3836374d454b4c4d5f31565f414b4351505f6c616e676953, 0xcd5d666b268ab8a86ced6bcf054c34fcc564cc57ab7e3c96456e121d7d6783d),
+  (0xcd5d666b268ab8a86ced6bcf054c34fcc564cc57ab7e3c96456e121d7d6783d, 0x4805000000000000000000000000000000000000000080c5dfa53708ac5adfa9c2afd695fb8d5722060dfb58d3c7074b5508b4c4e50286b03846914a49bb4426, 0xbe21dd49037528a5e826017c81d8c9b80745fc3c0f7f5ff15a41bc2a7a0b67c3),
+  (0x5be0cd191f83d9ab9b05688c510e527fa54ff53a3c6ef372bb67ae856a09e667, 0x5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c86c96da5902484e0737e1b8b6568c950516b7bfd12177f6703666d7b4def67a7, 0x33f77aa391b9821e53f641640093733c060dac98debdef0b306acd8f1caa5a7e),
+  (0x33f77aa391b9821e53f641640093733c060dac98debdef0b306acd8f1caa5a7e, 0x300000000000000000000000000000000000000000000000000000000008049dd21bea52875037c0126e8b8c9d8813cfc4507f15f7f0f2abc415ac3670b7a, 0xefca10e7f9e3d8e1e98e02dd485b6d7e9ed01a4cd09165470f0a83b997112fe4),
+  (0x5be0cd191f83d9ab9b05688c510e527fa54ff53a3c6ef372bb67ae856a09e667, 0x36363636363636363636363636363636363636363636363636363636363636362a278a2463d99e3d4d9c60047a3d12f4fbc269f673d499efb2abc4d48f16d2f1, 0x1ed0b919e417934c64e0768623365380667ae20d7cd947a7f1754a3f789b43b0),
+  (0x1ed0b919e417934c64e0768623365380667ae20d7cd947a7f1754a3f789b43b0, 0x686eb9f1a0d3d9862de2de4453d804b01c6fc502bcb3cc01000000000000007265646165686b653a3836374d454b4c4d5f31565f414b4351505f6c616e676953, 0x2794e76dfca02b9581ca25da479924487d06618ec869200c3ec7c14a11eae94d),
+  (0x2794e76dfca02b9581ca25da479924487d06618ec869200c3ec7c14a11eae94d, 0x480500000000000000000000000000000000000000008005d952d6c5c74f7fa94764b75b8bc7ebc2ad258ae290f6e347e27860eaf2f555c0396c4d0c20a2783f, 0x839e4af36d18dceac438c29631297717efe8b5a084183d97c519cfff9556bbd9),
+  (0x5be0cd191f83d9ab9b05688c510e527fa54ff53a3c6ef372bb67ae856a09e667, 0x5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c5c404de04e09b3f45727f60a6e1057789e91a8039c19bef385d8c1aebee57cb89b, 0x62214ffc2457afe4376b1243f81de5d3e848d3b0736f70050dc6786fa4bf3af4),
+  (0x62214ffc2457afe4376b1243f81de5d3e848d3b0736f70050dc6786fa4bf3af4, 0x3000000000000000000000000000000000000000000000000000000000080f34a9e83eadc186d96c238c417772931a0b5e8ef973d1884ffcf19c5d9bb5695, 0xfdfb491f922947c061a471d5406debca80715fb1c69741305172195af38dc897)
 ]
 
 /-- SHA-256 compression for `compI0`: returns `compDefaultSha256 st blk` whenever `st` starts with
@@ -759,16 +770,6 @@ def compSha256 (st blk : HwBytes) : HwBytes :=
 def compOtherExtern (s : StubSymbol) (args : List ByteString) : Option ByteString :=
   if s = sha512CompressSymbol then
     match args with | [st, blk] => some (compSha512 st blk) | _ => some (List.replicate 64 0#8)
-  else if s = edwardsCompressSymbol then
-    match args with | [pt] => some (compEdwardsCompress pt) | _ => some (List.replicate 32 0#8)
-  else if s = edwardsNegSymbol then
-    match args with | [pt] => some (compEdwardsNeg pt) | _ => some (List.replicate 160 0#8)
-  else if s = doubleScalarMulSymbol then
-    match args with | [a, pt, b] => some (compDoubleScalarMul a pt b) | _ => some (List.replicate 160 0#8)
-  else if s = scalarModOrderSymbol then
-    match args with | [b] => some (compScalarModOrder b) | _ => some (List.replicate 32 0#8)
-  else if s = scalarModOrderWideSymbol then
-    match args with | [b] => some (compScalarModOrderWide b) | _ => some (List.replicate 32 0#8)
   else if s = mlkem768FromSeedSymbol then
     match args with | [seed] => some (compMlkem768FromSeed seed) | _ => some (List.replicate 2400 0#8)
   else if s = mlkem768Encaps1Symbol then some (List.replicate (960 + 2080 + 32) 0#8)
@@ -794,10 +795,6 @@ def compI0 : ExternInterpretation :=
       match args with | [_, rand] => some (compKyberEncaps rand) | _ => some (compDefaultKyberCt ++ compDefaultKyberSs)
     else if s = kyberDecapsSymbol then
       match args with | [_, ct] => some (compKyberDecaps ct) | _ => some compDefaultKyberSs
-    else if s = toEdwardsSymbol then
-      match args with | [u, [sign]] => some (compToEdwards u sign) | _ => some (List.replicate 160 0#8)
-    else if s = torsionFreeSymbol then
-      match args with | [pt] => some (compTorsionFree pt) | _ => some [0#8]
     else if s = libcruxHmacSymbol then
       match args with | [k, d] => some (compHmac k d) | _ => some (compDefaultHmac [] [])
     else if s = sha256CompressSymbol then
@@ -809,7 +806,6 @@ end Symbolic.BugInjection.Disproofs.Hyp.FrozenSSC.Interp0
 
 abbrev DY.Libsignal.Refinement.CryptoEquationsHold := DY.Libsignal.Refinement.ExternCryptoLawsHold
 abbrev DY.Libsignal.PQXDH.Refinement.X25519PubTorsionShiftsRejected := DY.Libsignal.PQXDH.Refinement.X25519TorsionShiftsRejected
-abbrev DY.Libsignal.Composed.Refinement.CompInterpretationTotal := DY.Libsignal.Composed.Refinement.ExternInterpretationTotalOnUsedSymbols
 abbrev DY.Libsignal.Composed.Refinement.Records := DY.Libsignal.Composed.Refinement.ProtocolSetup
 abbrev DY.Libsignal.Composed.Refinement.RecordsWF := DY.Libsignal.Composed.Refinement.ProtocolSetupWF
 abbrev DY.Libsignal.Composed.Refinement.Sem := DY.Libsignal.Composed.Refinement.OpaqueSymbolSemantics
@@ -818,7 +814,6 @@ abbrev DY.Libsignal.Composed.CEvent := DY.Libsignal.Composed.ComposedEvent
 abbrev Symbolic.BugInjection.Records := DY.Libsignal.Composed.Refinement.ProtocolSetup
 abbrev DY.X25519.x25519Key := DY.X25519.normalizeX25519Key
 abbrev DY.Spqr.spqrIdx := DY.Spqr.encodeSpqrIndexTerm
-abbrev DY.Spqr.spqrParams := DY.Spqr.encodeSpqrDirectionParams
 abbrev DY.Libsignal.TripleRatchet.TRState.sinfo (st : DY.Libsignal.TripleRatchet.TRState) (me : DY.Participant) := st.sessionInfo me
 namespace DY.Libsignal.Composed.Refinement
 abbrev Compat := GhostAndSemMatchSetup

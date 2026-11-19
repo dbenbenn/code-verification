@@ -19,12 +19,16 @@ public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeGrowBudgetAux -- proof-setup: allow-public-import
 import ProofLib.BV.Bits
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Region-Local `memmove` Code Verification & `.text.b_pre` Hull (`HooksDehook.MemmoveCode`)
@@ -119,10 +123,6 @@ abbrev MemmoveStatePreserved (s0 sf : State) : Prop :=
     (`rfl`) identical (the 7 `MemsetStatePreserved` fields plus pointwise `mem.perm`). -/
 theorem stdStatePreserved_eq_processFieldsPreserved (s0 sf : State) :
     StdStatePreserved s0 sf = ProcessFieldsPreserved s0 sf := rfl
-
-theorem memmoveStatePreserved_eq_memmoveBridge (s0 sf : State) :
-    MemmoveStatePreserved s0 sf =
-      LibsignalBinary.Proofs.HookDischarge.Libc.Memmove.MemmoveStatePreserved s0 sf := rfl
 
 theorem MemmoveStatePreserved.refl (s : State) : MemmoveStatePreserved s s :=
   MemsetStatePreserved.refl s
@@ -544,24 +544,6 @@ theorem subroutine_ok_bPreHull_masterMemmove_of_hasWords
   rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
   exact ⟨⟨hq.1.1, MemmoveStatePreserved.of_processFieldsPreserved hq.1.2⟩, hq.2⟩
 
-/-- Region-local `subroutine_ok` for `withVmPreserved masterMemmoveSpec` at `m + bPreMemmoveByteOff`
-    on any hook-free `P_sub` holding the `239`-word `bPreHullWords` hull at `m`. -/
-theorem subroutine_ok_bPreHull_masterMemmoveVm_of_hasWords
-    {P_sub : Program} {m : BitVec 64} {resolve : String → BitVec 64} {padWord : BitVec 32}
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hhull : P_sub.hasWords m (bPreHullWords m resolve padWord))
-    (hres : resolve "memcpy" = m := by rfl) :
-    subroutine_ok P_sub (m + bPreMemmoveByteOff) (withVmPreserved masterMemmoveSpec) := by
-  refine subroutine_ok_mono (subroutine_ok_bPreHull_stdMemmove_of_hasWords hsub_no hhull hres)
-    (fun _ _ _ hp => hp)
-    (fun ⟨base, buf, dst, src, len⟩ R s0 sf hq => ?_)
-  dsimp only [stdMemmoveSpec, withVmPreserved, masterMemmoveSpec] at hq ⊢
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨vmPreserved_of_processFieldsPreserved hq.1.2, ?_⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨⟨hq.1.1, MemmoveStatePreserved.of_processFieldsPreserved hq.1.2⟩, hq.2⟩
-
 /-- Region-local `subroutine_ok` for `memmoveSpecK keep masterMemmoveSpec` at
     `m + bPreMemmoveByteOff` on any hook-free `P_sub` holding `bPreHullWords` at `m`. -/
 theorem subroutine_ok_bPreHull_masterMemmoveK_of_hasWords (keep : BitVec 64 → Bool)
@@ -577,42 +559,6 @@ theorem subroutine_ok_bPreHull_masterMemmoveK_of_hasWords (keep : BitVec 64 → 
   rw [sepConj_assoc, satisfies_pure_sepConj] at hp
   exact hp.2
 
-/-- Concrete single-`P_sub` `.text.b_pre` hull witness satisfying `stdMemmoveSpec`. -/
-theorem pureWordsProg_bPreHull_stdMemmove_ok (m : BitVec 64)
-    {resolve : String → BitVec 64} (padWord : BitVec 32 := bPrePadWord)
-    (hres : resolve "memcpy" = m := by rfl) :
-    subroutine_ok (pureWordsProg m (bPreHullWords m resolve padWord))
-      (m + bPreMemmoveByteOff) stdMemmoveSpec :=
-  subroutine_ok_bPreHull_stdMemmove_of_hasWords
-    (pureWordsProg_externAt_none m _) (pureWordsProg_bPreHull_hasWords m resolve padWord) hres
-
-/-- Concrete single-`P_sub` `.text.b_pre` hull witness satisfying `masterMemmoveSpec`. -/
-theorem pureWordsProg_bPreHull_masterMemmove_ok (m : BitVec 64)
-    {resolve : String → BitVec 64} (padWord : BitVec 32 := bPrePadWord)
-    (hres : resolve "memcpy" = m := by rfl) :
-    subroutine_ok (pureWordsProg m (bPreHullWords m resolve padWord))
-      (m + bPreMemmoveByteOff) masterMemmoveSpec :=
-  subroutine_ok_bPreHull_masterMemmove_of_hasWords
-    (pureWordsProg_externAt_none m _) (pureWordsProg_bPreHull_hasWords m resolve padWord) hres
-
-/-- Concrete single-`P_sub` `.text.b_pre` hull witness satisfying `withVmPreserved masterMemmoveSpec`. -/
-theorem pureWordsProg_bPreHull_masterMemmoveVm_ok (m : BitVec 64)
-    {resolve : String → BitVec 64} (padWord : BitVec 32 := bPrePadWord)
-    (hres : resolve "memcpy" = m := by rfl) :
-    subroutine_ok (pureWordsProg m (bPreHullWords m resolve padWord))
-      (m + bPreMemmoveByteOff) (withVmPreserved masterMemmoveSpec) :=
-  subroutine_ok_bPreHull_masterMemmoveVm_of_hasWords
-    (pureWordsProg_externAt_none m _) (pureWordsProg_bPreHull_hasWords m resolve padWord) hres
-
-/-- Concrete single-`P_sub` `.text.b_pre` hull witness satisfying `memmoveSpecK keep masterMemmoveSpec`. -/
-theorem pureWordsProg_bPreHull_masterMemmoveK_ok (keep : BitVec 64 → Bool) (m : BitVec 64)
-    {resolve : String → BitVec 64} (padWord : BitVec 32 := bPrePadWord)
-    (hres : resolve "memcpy" = m := by rfl) :
-    subroutine_ok (pureWordsProg m (bPreHullWords m resolve padWord))
-      (m + bPreMemmoveByteOff) (memmoveSpecK keep masterMemmoveSpec) :=
-  subroutine_ok_bPreHull_masterMemmoveK_of_hasWords keep
-    (pureWordsProg_externAt_none m _) (pureWordsProg_bPreHull_hasWords m resolve padWord) hres
-
 /-! ## 3. `W`-Free Fallback `hookMemmove` & Generic `hookMemmoveOf` Soundness -/
 
 theorem hookMemmove_processFieldsPreserved (s : State) :
@@ -623,11 +569,6 @@ theorem hookMemmove_processFieldsPreserved (s : State) :
 theorem hookMemmove_oracle_eq (s : State) : (hookMemmove s).oracle = s.oracle := rfl
 
 theorem hookMemmove_symtab_eq (s : State) : (hookMemmove s).symtab = s.symtab := rfl
-
-theorem hookMemmove_allocCallPreserved (s : State) :
-    AllocCallPreserved s (hookMemmove s) :=
-  (MemmoveStatePreserved.of_processFieldsPreserved (hookMemmove_processFieldsPreserved s)).toAllocCallPreserved
-    rfl rfl
 
 theorem keepFsTrace_hookMemmove_eq (s : State) :
     keepFsTrace hookMemmove s = hookMemmove s := by
@@ -669,25 +610,6 @@ theorem hookMemmoveOf_masterMemmoveK_ok (keep : BitVec 64 → Bool) {f : State �
 theorem hookMemmove_masterMemmove_ok : HookOk hookMemmove masterMemmoveSpec :=
   hookMemmoveOf_masterMemmove_ok (ProofLib.hookMemmove_ok 0)
     (fun s => MemmoveStatePreserved.of_processFieldsPreserved (hookMemmove_processFieldsPreserved s))
-
-/-- Fixed `W`-free `hookMemmove` satisfies permission-carrying `stdMemmoveSpec`. -/
-theorem hookMemmove_stdMemmove_ok : HookOk hookMemmove stdMemmoveSpec := by
-  refine hookOk_map_frame_pureAbort id (fun _ _ => emp) (ProofLib.hookMemmove_ok 0)
-    (fun ⟨base, buf, dst, src, len⟩ s0 => ?_)
-    (fun ⟨base, buf, dst, src, len⟩ s0 sf hsf _ => ?_)
-  · dsimp only [stdMemmoveSpec, masterMemmoveSpec, ProofLib.libcMemmoveSpec, id, stackAt]
-    rw [memRegion_zero, sepConj_emp, sepConj_emp]
-    exact Entails.pure_left fun ⟨_, hx0, hx1, hx2, hdst, hsrc⟩ =>
-      Entails.pure_right ⟨hx0, hx1, hx2, hdst, hsrc⟩ (Entails.refl _)
-  · subst hsf
-    dsimp only [ProofLib.libcMemmoveSpec, stdMemmoveSpec, id, stackAt]
-    rw [memRegion_zero, sepConj_emp, sepConj_emp]
-    exact Entails.pure_left fun hx0 =>
-      Entails.pure_right ⟨hx0, hookMemmove_processFieldsPreserved s0⟩ (Entails.refl _)
-
-/-- Fixed `W`-free `hookMemmove` satisfies `withVmPreserved masterMemmoveSpec`. -/
-theorem hookMemmove_masterMemmoveVm_ok : HookOk hookMemmove (withVmPreserved masterMemmoveSpec) :=
-  hookOk_withVmPreserved hookMemmove_masterMemmove_ok hookMemmove_vmPreserved
 
 /-- Fixed `W`-free `hookMemmove` satisfies `memmoveSpecK keep masterMemmoveSpec` for any `keep`. -/
 theorem hookMemmove_masterMemmoveK_ok (keep : BitVec 64 → Bool) :
@@ -886,42 +808,6 @@ theorem hookOk_allocVmPreserved_sessionMemmoveBoundedK_of_master (keep : BitVec 
     Entails.pure_right ⟨hmsp.toAllocCallPreserved (horc s0) hsym, hvm s0⟩
       (Entails.pure_right ⟨hx0, hmsp.2.1⟩ (Entails.refl _))
 
-/-- `hookMemmove` satisfies `sessionMemmoveBoundedAcpSpec stk`. -/
-theorem hookMemmove_sessionBoundedAcp_ok (stk : Nat := 4096) :
-    HookOk hookMemmove (sessionMemmoveBoundedAcpSpec stk) :=
-  hookOk_sessionMemmoveBoundedAcp_of_master
-    hookMemmove_masterMemmove_ok hookMemmove_vmPreserved hookMemmove_oracle_eq stk
-
-/-- `hookMemmove` satisfies `withAllocVmPreserved (sessionMemmoveBoundedSpec stk)`. -/
-theorem hookMemmove_allocVmPreserved_sessionBounded_ok (stk : Nat := 0) :
-    HookOk hookMemmove (withAllocVmPreserved (sessionMemmoveBoundedSpec stk)) :=
-  hookOk_allocVmPreserved_sessionMemmoveBounded_of_master
-    hookMemmove_masterMemmove_ok hookMemmove_vmPreserved hookMemmove_oracle_eq stk
-
-/-- Weaken `HookSat H name (sessionMemmoveAcpSpec stk)` to
-    `HookSat H name (sessionMemmoveBoundedAcpSpec stk)`. -/
-theorem hookSat_sessionMemmoveBoundedAcp_of_unbounded
-    {H : String → Option (State → State)} {name : String} (stk : Nat := 4096)
-    (h : HookSat H name (sessionMemmoveAcpSpec stk)) :
-    HookSat H name (sessionMemmoveBoundedAcpSpec stk) := by
-  rcases h with ⟨f, hf, hok⟩
-  refine ⟨f, hf, fun x R s0 hrun hpre hsp => ?_⟩
-  dsimp only [sessionMemmoveBoundedAcpSpec, sessionMemmoveBoundedSpec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hok x R s0 hrun hpre.2 hsp
-
-/-- Weaken `HookSat H name (withAllocVmPreserved (sessionMemmoveSpec stk))` to
-    `HookSat H name (withAllocVmPreserved (sessionMemmoveBoundedSpec stk))`. -/
-theorem hookSat_allocVmBounded_of_unbounded
-    {H : String → Option (State → State)} {name : String} (stk : Nat := 0)
-    (h : HookSat H name (withAllocVmPreserved (sessionMemmoveSpec stk))) :
-    HookSat H name (withAllocVmPreserved (sessionMemmoveBoundedSpec stk)) := by
-  rcases h with ⟨f, hf, hok⟩
-  refine ⟨f, hf, fun x R s0 hrun hpre hsp => ?_⟩
-  dsimp only [withAllocVmPreserved, sessionMemmoveBoundedSpec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hok x R s0 hrun hpre.2 hsp
-
 /-- Lift `HookOk f masterMemmoveSpec` + pointwise `VmPreserved` across `withAlloc A lim` on
     `masterMemmoveSpec`. -/
 theorem hookOk_withAlloc_masterMemmove_of_master {M : AllocCostModel}
@@ -1008,31 +894,6 @@ theorem Steps.oracle_eq_of_standard_hooks {prog : Program} (hsvc : prog.svc = Sy
   | refl _ => rfl
   | step h1 _ ih => exact ih.trans (Step.oracle_eq_of_standard_hooks hsvc hext h1)
 
-/-- Generic `State.oracle` preservation for any `linkedCallHook` ghost when `P_real.svc = Syscall.standard`,
-    `P_real`'s remaining extern hooks preserve `State.oracle`, and `fallback` preserves `State.oracle`
-    (discharging the `horc` hypothesis of `MemmoveStatePreserved.toAllocCallPreserved` and the
-    `sessionMemmoveBoundedAcpSpec` / `withAllocVmPreserved` lifts). -/
-theorem linkedCallHook_oracle_eq {α : Type}
-    (keep : BitVec 64 → Bool) (P_real P_sub : Program)
-    (entryTarget : BitVec 64) (spec : Spec α) (fallback : State → State)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hext_orc : ∀ pc f, P_real.externAt? pc = some f → ∀ s : State, (f s).oracle = s.oracle)
-    (hfb_orc : ∀ s : State, (fallback s).oracle = s.oracle)
-    (s0 : State) :
-    (linkedCallHook keep P_real P_sub entryTarget spec fallback s0).oracle = s0.oracle := by
-  classical
-  unfold linkedCallHook
-  split
-  · split
-    · rename_i hReal
-      have hsteps := (Classical.choose_spec hReal.2.2.2).1.toSteps
-      have horc := Steps.oracle_eq_of_standard_hooks hsvc_real hext_orc hsteps
-      have hpc_orc : (s0.setPC entryTarget).oracle = s0.oracle := by cases s0; rfl
-      exact horc.trans hpc_orc
-    · change (fallback s0).oracle = s0.oracle
-      exact hfb_orc s0
-  · rfl
-
 /-- Hook-level return-to-`lr` / `x30`-preservation shape (`rfl`-identical to
     `MemsetLrTrap.Blk21TrapHook L f`, `MemcpyLrTrap.Blk20TrapHook L f`, and
     `TrapSafeWords.TrapHook L f`): on any `.Running` state `w` with `w.readReg64 .lr = L`,
@@ -1066,41 +927,6 @@ theorem trapRetHook_hookMemcpy (L : BitVec 64) : TrapRetHook L hookMemcpy :=
 
 theorem trapRetHook_hookMemmove (L : BitVec 64) : TrapRetHook L hookMemmove :=
   fun _w hrun hlr => Or.inr ⟨hrun, hlr, hlr⟩
-
-theorem trapRetHook_hookNoop (L : BitVec 64) : TrapRetHook L hookNoop :=
-  fun _w hrun hlr => Or.inr ⟨hrun, hlr, hlr⟩
-
-/-- Unconditional `.Running` return-PC lemma for `linkedCallHook`: whenever `fallback` returns to
-    `w.readReg64 .lr` on `.Running` outcomes, any `.Running` output of `linkedCallHook` has
-    `pc = w.readReg64 .lr` and `sp = w.sp` (for arbitrary `keep` and `w`, with zero `HookOk`
-    assumptions). -/
-theorem linkedCallHook_running_returns_to_lr {α : Type}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program}
-    {entryTarget : BitVec 64} {spec : Spec α} {fallback : State → State}
-    (hfb : ∀ w : State, w.status = .Running → (fallback w).status = .Running →
-      (fallback w).pc = w.readReg64 .lr ∧ (fallback w).sp = w.sp)
-    {w : State} (hrun_w : w.status = .Running)
-    (hrun_out : (linkedCallHook keep P_real P_sub entryTarget spec fallback w).status = .Running) :
-    (linkedCallHook keep P_real P_sub entryTarget spec fallback w).pc = w.readReg64 .lr ∧
-      (linkedCallHook keep P_real P_sub entryTarget spec fallback w).sp = w.sp := by
-  classical
-  unfold linkedCallHook at hrun_out ⊢
-  by_cases hAct : ActiveRealPre spec w
-  · simp only [hAct, ↓reduceDIte] at hrun_out ⊢
-    by_cases hReal : ActiveRealRun keep P_real P_sub entryTarget w
-    · simp only [hReal, ↓reduceDIte] at hrun_out ⊢
-      have hstop := (Classical.choose_spec hReal.2.2.2).2.1
-      rcases hstop with ⟨hpc, hsp, _⟩ | hp | ⟨_, he⟩ | ho
-      · exact ⟨hpc, hsp⟩
-      · rw [hp] at hrun_out; cases hrun_out
-      · rw [he] at hrun_out; cases hrun_out
-      · rw [ho] at hrun_out; cases hrun_out
-    · simp only [hReal, ↓reduceDIte] at hrun_out ⊢
-      have hfb_run : (fallback w).status = .Running := hrun_out
-      obtain ⟨hpc, hsp⟩ := hfb w hrun_w hfb_run
-      exact ⟨hpc, by cases fallback w; exact hsp⟩
-  · simp only [hAct, ↓reduceDIte] at hrun_out
-    cases hrun_out
 
 /-- `linkedCallHook` `TrapRetHook L` when `keep L = true` (shared `.text.b_pre` union `keep`). -/
 theorem trapRetHook_linkedCallHook_of_keepLr {α : Type}

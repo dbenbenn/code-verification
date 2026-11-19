@@ -10,13 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7d
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7d -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget Envelopes and Subsumption for Placed Variant 7 (`Ct1Sampled`)
@@ -26,7 +28,7 @@ for Variant 7 (`InnerState.ct1Sampled`, `+1056`, Block `333`), `FitsEnv` steppin
 callee stages, and subsumption into `StatesFromPbEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -67,7 +69,7 @@ open LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBaseBudget
 
 /-- Exact binary allocator event envelope for Variant 7 (`Ct1Sampled`) from `+3480` when
     `s.uc = some u` and `v7_receivingEkPtsOk s.receivingEk` holds. -/
-def Ct1SampledUcSomeEnv (F : ShaCompress) (u : V1State.Unchunked.Ct1Sent)
+@[expose] def Ct1SampledUcSomeEnv (F : ShaCompress) (u : V1State.Unchunked.Ct1Sent)
     (optEnc : Option PolynomialEncoder) (optDec : Option PolynomialDecoder)
     (evs : List AllocEvent) : Prop :=
   match ct1SentFromPb (spqrAuthApi F) u, optEnc with
@@ -94,7 +96,7 @@ def Ct1SampledUcSomeEnv (F : ShaCompress) (u : V1State.Unchunked.Ct1Sent)
 
 /-- Exact binary allocator event envelope for Variant 7 (`InnerState.ct1Sampled s`, `+1056`,
     Block `333`) of `<spqr::v1::chunked::states::States>::from_pb`. -/
-def Ct1SampledFromPbEnv (F : ShaCompress)
+@[expose] def Ct1SampledFromPbEnv (F : ShaCompress)
     (s : V1State.Chunked.Ct1Sampled) (evs : List AllocEvent) : Prop :=
   match s.receivingEk, s.uc with
   | some d, some u =>

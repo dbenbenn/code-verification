@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Assumptions.Assumptions
-public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames
+public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames -- proof-setup: allow-public-import
 
 /-!
 # Two-key `KeyInd` `SigEufCma` and `KemShCr` simulators
@@ -20,7 +20,7 @@ liftings over `PrimBaseSpec`, and shallow `SigEufCma` (`sigReductionKeyInd`) and
 `KemShCr` (`shcrReductionKeyInd`) simulators for the two-key PQXDH `KeyInd` game.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,7 +31,7 @@ open OracleSpec OracleComp
 
 /-! ## Hybrid-game state and collision predicates -/
 
-def hasDuplicateBytes : List Bytes → Bool
+@[expose] def hasDuplicateBytes : List Bytes → Bool
   | []      => false
   | x :: xs => xs.contains x || hasDuplicateBytes xs
 
@@ -65,27 +65,27 @@ inductive AuthHybridStage where
 
 namespace AuthHybridStage
 
-def idealDrKey : AuthHybridStage → Bool
+@[expose] def idealDrKey : AuthHybridStage → Bool
   | .g3 => false
   | _   => true
 
-def idealRk : AuthHybridStage → Bool
+@[expose] def idealRk : AuthHybridStage → Bool
   | .g3 | .g3_5 => false
   | _           => true
 
-def idealCk : AuthHybridStage → Bool
+@[expose] def idealCk : AuthHybridStage → Bool
   | .g3 | .g3_5 | .g3_6 => false
   | _                   => true
 
-def idealMsgKeys : AuthHybridStage → Bool
+@[expose] def idealMsgKeys : AuthHybridStage → Bool
   | .g3 | .g3_5 | .g3_6 | .g3_7 => false
   | _                           => true
 
-def idealFreshAead : AuthHybridStage → Bool
+@[expose] def idealFreshAead : AuthHybridStage → Bool
   | .g4 | .g5 => true
   | _         => false
 
-def idealUnmatchedRecvAead : AuthHybridStage → Bool
+@[expose] def idealUnmatchedRecvAead : AuthHybridStage → Bool
   | .g5 => true
   | _   => false
 
@@ -122,14 +122,14 @@ structure AuthHybridState (S : Setup) where
   recvKemRecs   : List RecvKemRecord
   idealSessions : List (IdealAuthSession S)
 
-def AuthHybridState.empty (S : Setup) (secb : Bool) : AuthHybridState S :=
+@[expose] def AuthHybridState.empty (S : Setup) (secb : Bool) : AuthHybridState S :=
   { base          := AuthState.empty S secb
     initKemRecs   := []
     recvKemRecs   := []
     idealSessions := [] }
 
 /-- Recover the `(kemCt, kemSs)` pair encapsulated by initiator session `s` from `AuthState S`. -/
-def recoverAuthSessionKemSs {S : Setup} (P : Primitives) (st : AuthState S)
+@[expose] def recoverAuthSessionKemSs {S : Setup} (P : Primitives) (st : AuthState S)
     (s : AuthInitiatorEntry S) : Option (Bytes × Bytes) :=
   let senderUid := match s.sid with
     | .sendOPK u _     => u.val
@@ -186,29 +186,29 @@ instance {S : Setup} : HasAuthState (AuthHybridState S) S where
   toInitKemRecs _ st := st.initKemRecs
   toRecvKemRecs _ st := st.recvKemRecs
 
-def allHonestKemPksAuth {S : Setup} {σ : Type} [HasAuthState σ S] (st : σ) : List Bytes :=
+@[expose] def allHonestKemPksAuth {S : Setup} {σ : Type} [HasAuthState σ S] (st : σ) : List Bytes :=
   (HasAuthState.toAuthState st).spkBundles.map (fun (_, b) => b.pqspkPk)
 
-def hasKemPkCollisionAuth {S : Setup} {σ : Type} [HasAuthState σ S] (st : σ) : Bool :=
+@[expose] def hasKemPkCollisionAuth {S : Setup} {σ : Type} [HasAuthState σ S] (st : σ) : Bool :=
   hasDuplicateBytes (allHonestKemPksAuth st)
 
 /-- Whether any fresh `Auth` session accepted a bundle whose `spkB` or `pqspkB` is dishonest. -/
-def hasBadSigAuth {S : Setup} {σ : Type} [HasAuthState σ S] (st : σ) : Bool :=
+@[expose] def hasBadSigAuth {S : Setup} {σ : Type} [HasAuthState σ S] (st : σ) : Bool :=
   (HasAuthState.toAuthState st).sessions.any (fun s =>
     s.fresh && (!s.spkHonest || !s.pqspkHonest))
 
-def opkSlotFlatIdx (S : Setup) (p : Nat × Nat × Nat) : Nat :=
+@[expose] def opkSlotFlatIdx (S : Setup) (p : Nat × Nat × Nat) : Nat :=
   (p.1 * S.N_recv + p.2.1) * S.N_opk + p.2.2
 
 /-! ## Primitive-oracle liftings and `SigEufCma` simulator -/
 
-def embedUnif {α : Type} (mx : ProbComp α) : OracleComp PrimBaseSpec α :=
+@[expose] def embedUnif {α : Type} (mx : ProbComp α) : OracleComp PrimBaseSpec α :=
   liftComp mx PrimBaseSpec
 
-def primQ (q : PrimQuery) : OracleComp PrimBaseSpec (primSpec.Range q) :=
+@[expose] def primQ (q : PrimQuery) : OracleComp PrimBaseSpec (primSpec.Range q) :=
   query (spec := PrimBaseSpec) (Sum.inr q)
 
-def embedPrim {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type}
+@[expose] def embedPrim {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type}
     (mx : OracleComp PrimBaseSpec α) : OracleComp (PrimBaseSpec + spec) α :=
   OracleComp.construct
     (C := fun _ => OracleComp (PrimBaseSpec + spec) α)
@@ -218,7 +218,7 @@ def embedPrim {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type}
 
 namespace FgGapDh
 
-def sampleIndexRange (N : ℕ) : ProbComp ℕ :=
+@[expose] def sampleIndexRange (N : ℕ) : ProbComp ℕ :=
   if h : 0 < N then
     letI : NeZero N := ⟨Nat.ne_of_gt h⟩
     do
@@ -229,13 +229,13 @@ def sampleIndexRange (N : ℕ) : ProbComp ℕ :=
 
 end FgGapDh
 
-def findMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) :
+@[expose] def findMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) :
     List α → OracleComp PrimBaseSpec (Option α)
   | [] => pure none
   | x :: xs => do
     if ← p x then return some x else findMPrim p xs
 
-def anyMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) :
+@[expose] def anyMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) :
     List α → OracleComp PrimBaseSpec Bool
   | [] => pure false
   | x :: xs => do
@@ -250,12 +250,12 @@ inductive SigStepResultPrim (St R : Type) where
       (fallback : R × St)
 
 
-def sampleKemKeyGenPrim : OracleComp PrimBaseSpec (Bytes × Bytes) := do
+@[expose] def sampleKemKeyGenPrim : OracleComp PrimBaseSpec (Bytes × Bytes) := do
   let seed ← embedUnif sampleRandom64
   primQ (.kemKeyGen seed)
 
 
-def runWithSigBudgetPrim {ιI : Type}
+@[expose] def runWithSigBudgetPrim {ιI : Type}
     {GSpec : OracleSpec.{0, 0} ιI} {St α : Type}
     (step : (q : ιI) → St → OracleComp PrimBaseSpec (SigStepResultPrim St (GSpec.Range q)))
     (mx : OracleComp (unifSpec + GSpec) α) (st : St) (budget : Nat) :
@@ -286,7 +286,7 @@ def runWithSigBudgetPrim {ιI : Type}
     mx st budget
 
 
-def findHonestPrincipalPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
+@[expose] def findHonestPrincipalPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     (ikB : Bytes) : OracleComp PrimBaseSpec (Option (Nat × PrincipalEntry)) :=
   findMPrim (fun (_, entry) => do
     let p1 ← primQ (.pow8 ikB)
@@ -294,21 +294,21 @@ def findHonestPrincipalPrim (S : Setup) (principals : List (Nat × PrincipalEntr
     return (p1 == p2)) (principals.take S.N_dh)
 
 
-def resolveSigPkPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
+@[expose] def resolveSigPkPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     (ikB : Bytes) : OracleComp PrimBaseSpec Bytes := do
   match ← findHonestPrincipalPrim S principals ikB with
   | some (_, entry) => return entry.ikSignPk
   | none            => return ikB
 
 
-def isHonestUncorruptedPeerPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
+@[expose] def isHonestUncorruptedPeerPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     (ikB : Bytes) : OracleComp PrimBaseSpec (Option Nat) := do
   match ← findHonestPrincipalPrim S principals ikB with
   | some (k, entry) => return (if !entry.corrupted then some k else none)
   | none            => return none
 
 
-def checkBundleProvenancePrim (S : Setup)
+@[expose] def checkBundleProvenancePrim (S : Setup)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
@@ -332,19 +332,19 @@ def checkBundleProvenancePrim (S : Setup)
     return (spkHon, opkHon, pqspkHon)
 
 
-def isAdvRegisteredPrim (advKeys : List (Bytes × Bytes)) (pk : Bytes) :
+@[expose] def isAdvRegisteredPrim (advKeys : List (Bytes × Bytes)) (pk : Bytes) :
     OracleComp PrimBaseSpec Bool := do
   let p ← primQ (.pow8 pk)
   return advKeys.any (fun (p8, _) => p == p8)
 
 
-def isGameIdKeyPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
+@[expose] def isGameIdKeyPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     (pk : Bytes) : OracleComp PrimBaseSpec Bool := do
   let r ← findHonestPrincipalPrim S principals pk
   return r.isSome
 
 
-def isGameSpkPrim (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
+@[expose] def isGameSpkPrim (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (pk : Bytes) : OracleComp PrimBaseSpec Bool :=
   anyMPrim (fun (_, b) => do
     let p1 ← primQ (.pow8 b.spkPk)
@@ -352,7 +352,7 @@ def isGameSpkPrim (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry
     return (p1 == p2)) (spkBundles.take S.N_dh)
 
 
-def isGameOpkPrim (S : Setup) (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
+@[expose] def isGameOpkPrim (S : Setup) (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
     (pk : Bytes) : OracleComp PrimBaseSpec Bool :=
   anyMPrim (fun (_, e) => do
     let p1 ← primQ (.pow8 e.opkPk)
@@ -360,7 +360,7 @@ def isGameOpkPrim (S : Setup) (opkEntries : List ((Nat × Nat × Nat) × OpkEntr
     return (p1 == p2)) (opkEntries.take S.N_dh)
 
 
-def koskBundleOkPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
+@[expose] def koskBundleOkPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
     (advKeys : List (Bytes × Bytes)) (bundle : PreKeyBundleInput) :
@@ -378,7 +378,7 @@ def koskBundleOkPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     return ((idG || idA) && (spkG || spkA) && (opkG || opkA))
 
 
-def koskSenderOkPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
+@[expose] def koskSenderOkPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     (advKeys : List (Bytes × Bytes)) (ikAPk : Bytes) :
     OracleComp PrimBaseSpec Bool := do
   let idG ← isGameIdKeyPrim S principals ikAPk
@@ -386,7 +386,7 @@ def koskSenderOkPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
   return (idG || idA)
 
 
-def extractBundleForgery (P : Primitives)
+@[expose] def extractBundleForgery (P : Primitives)
     (targetParty : Nat) (targetPk : Bytes)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
@@ -410,7 +410,7 @@ def extractBundleForgery (P : Primitives)
         none
     | none => none
 
-def extractBundleForgeryPrim (S : Setup)
+@[expose] def extractBundleForgeryPrim (S : Setup)
     (targetParty : Nat) (targetPk : Bytes)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
@@ -438,7 +438,7 @@ def extractBundleForgeryPrim (S : Setup)
       | none => none)
 
 
-def keyIndPartnerPrim {S : Setup} (s : KeyIndInitiatorEntry S) (r : KeyIndRespEntry S) :
+@[expose] def keyIndPartnerPrim {S : Setup} (s : KeyIndInitiatorEntry S) (r : KeyIndRespEntry S) :
     OracleComp PrimBaseSpec Bool := do
   let sIk ← primQ (.pow8 s.hdr.ikAPk)
   let rIk ← primQ (.pow8 r.hdr.ikAPk)
@@ -457,7 +457,7 @@ def keyIndPartnerPrim {S : Setup} (s : KeyIndInitiatorEntry S) (r : KeyIndRespEn
           s.hdr.kemCt == r.hdr.kemCt)
 
 
-def recordKeyIndRespPrim (S : Setup) (r : KeyIndRespEntry S) :
+@[expose] def recordKeyIndRespPrim (S : Setup) (r : KeyIndRespEntry S) :
     StateT (KeyIndState S) (OracleComp PrimBaseSpec) Unit := do
   let st ← get
   let found ← liftM (findMPrim (fun s => keyIndPartnerPrim s r) (st.sessions.take S.N_dh))
@@ -467,7 +467,7 @@ def recordKeyIndRespPrim (S : Setup) (r : KeyIndRespEntry S) :
   set { st with respSessions := { r with drKeyRand := drKeyRand } :: st.respSessions }
 
 
-def evalHkdfOrRoPrim (useRo : Bool) (roCache : List (Bytes × DRKey))
+@[expose] def evalHkdfOrRoPrim (useRo : Bool) (roCache : List (Bytes × DRKey))
     (secrets : Bytes) : OracleComp PrimBaseSpec (DRKey × List (Bytes × DRKey)) := do
   if !useRo then
     let dk ← primQ (.hkdfDerive96 secrets)
@@ -480,7 +480,7 @@ def evalHkdfOrRoPrim (useRo : Bool) (roCache : List (Bytes × DRKey))
       return (dk, (secrets, dk) :: roCache)
 
 
-def acceptKeysPrim (inp : AcceptKeysInput) : OracleComp PrimBaseSpec (Option DRKey) := do
+@[expose] def acceptKeysPrim (inp : AcceptKeysInput) : OracleComp PrimBaseSpec (Option DRKey) := do
   let canon ← primQ (.isCanonical inp.hdr.ekAPk)
   let dh1 ← primQ (.x25519 inp.spkBSk inp.hdr.ikAPk)
   let dh2 ← primQ (.x25519 inp.ikBSk inp.hdr.ekAPk)
@@ -507,7 +507,7 @@ def acceptKeysPrim (inp : AcceptKeysInput) : OracleComp PrimBaseSpec (Option DRK
     some hkdf)
 
 
-def runKeyIndInitiatePrim (useRo : Bool) (S : Setup)
+@[expose] def runKeyIndInitiatePrim (useRo : Bool) (S : Setup)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) :
     StateT (KeyIndState S) (OracleComp PrimBaseSpec) KeyIndResponse := do
   let st ← get
@@ -576,7 +576,7 @@ def runKeyIndInitiatePrim (useRo : Bool) (S : Setup)
   | none   => return .initUnfreshResp drKeyReal hdr
 
 
-def pqxdhKeyIndImplPrim (useRo : Bool) (S : Setup) :
+@[expose] def pqxdhKeyIndImplPrim (useRo : Bool) (S : Setup) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndState S) (OracleComp PrimBaseSpec)) := fun q => do
   let st ← get
   match q with
@@ -819,7 +819,7 @@ structure SigReductionState (GameSt : Type) where
   targetPk    : Bytes
   forgery     : Option (Bytes × Bytes)
 
-def stepKeyIndForSigPrim (useRo : Bool) (S : Setup)
+@[expose] def stepKeyIndForSigPrim (useRo : Bool) (S : Setup)
     (q : KeyIndQuery S) (s : SigReductionState (KeyIndState S)) :
     OracleComp PrimBaseSpec
       (SigStepResultPrim (SigReductionState (KeyIndState S)) KeyIndResponse) := do
@@ -910,7 +910,7 @@ def stepKeyIndForSigPrim (useRo : Bool) (S : Setup)
       return .done out { s with gameState := gs' }
 
 
-def simulateForSigPrim {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St : Type}
+@[expose] def simulateForSigPrim {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St : Type}
     (S : Setup) (emptySt : Bool → St)
     (stepPrim : (q : ιI) → SigReductionState St →
       OracleComp PrimBaseSpec (SigStepResultPrim (SigReductionState St) (GSpec.Range q)))
@@ -928,7 +928,7 @@ def simulateForSigPrim {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St : Type}
   return finalSt.forgery.getD ([], [])
 
 
-@[reducible]
+@[expose, reducible]
 def simulateKeyIndForSigPrim (useRo : Bool) (S : Setup)
     (targetParty : Nat) (targetPk : Bytes) (A : KeyIndAdversary S) :
     OracleComp (PrimBaseSpec + sigOracleSpec) (Bytes × Bytes) :=
@@ -936,7 +936,7 @@ def simulateKeyIndForSigPrim (useRo : Bool) (S : Setup)
     targetParty targetPk A.run
 
 
-def sigReductionKeyIndCoreRun (useRo : Bool) (S : Setup)
+@[expose] def sigReductionKeyIndCoreRun (useRo : Bool) (S : Setup)
     (A : KeyIndAdversary S) (pk : Bytes) :
     OracleComp (PrimBaseSpec + sigOracleSpec) (Bytes × Bytes) :=
   if hN : 0 < S.N_id then
@@ -948,14 +948,14 @@ def sigReductionKeyIndCoreRun (useRo : Bool) (S : Setup)
     pure ([], [])
 
 
-def sigReductionKeyIndCore (useRo : Bool) (S : Setup) (b : QueryBudget)
+@[expose] def sigReductionKeyIndCore (useRo : Bool) (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : SigEufCmaAdv where
   run          := sigReductionKeyIndCoreRun useRo S A.val
   q_sig        := 2 * S.N_spk_tot
 
   q_prim       := b.q_total * (S.N_dh * 20 + S.N_sess_tot * 8 + 17)
 
-def sigReductionKeyInd (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
+@[expose] def sigReductionKeyInd (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
     SigEufCmaAdv :=
   sigReductionKeyIndCore true S b A
 
@@ -972,10 +972,10 @@ abbrev sigReduction (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversa
 
 namespace RoKem
 
-def extractDh1 (secrets : Bytes) : Bytes :=
+@[expose] def extractDh1 (secrets : Bytes) : Bytes :=
   (secrets.drop 32).take 32
 
-def extractDh3 (secrets : Bytes) : Bytes :=
+@[expose] def extractDh3 (secrets : Bytes) : Bytes :=
   (secrets.drop 96).take 32
 
 structure InitKemRecord (S : Setup) where
@@ -997,7 +997,7 @@ structure RecvKemRecord where
   deriving DecidableEq, Repr
 
 
-def spkBundleFlatIdx (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) : Nat :=
+@[expose] def spkBundleFlatIdx (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) : Nat :=
   u.val * S.N_recv + j.val
 
 
@@ -1011,7 +1011,7 @@ structure ShCrState (S : Setup) (Base : Type) where
   recvKemRecs : List RecvKemRecord := []
 
 
-def applyShCrFinish {S : Setup} {Base Resp : Type}
+@[expose] def applyShCrFinish {S : Setup} {Base Resp : Type}
     (sid : SessionId S) (pqspkPk ss kemCt : Bytes) (hst : ShCrState S Base)
     (out : Resp × Option Base) : Resp × ShCrState S Base :=
   match out.2 with
@@ -1033,26 +1033,26 @@ def applyShCrFinish {S : Setup} {Base Resp : Type}
 abbrev KeyIndShCrState (S : Setup) := ShCrState S (KeyIndState S)
 
 
-def isNoneKeyIndResp : KeyIndResponse → Bool
+@[expose] def isNoneKeyIndResp : KeyIndResponse → Bool
   | .noneResp => true
   | _ => false
 
 
-def sessionSlotIndex {S : Setup} : SessionId S → Nat
+@[expose] def sessionSlotIndex {S : Setup} : SessionId S → Nat
   | .sendOPK u i     => u.val * S.N_send_opk + i.val
   | .sendNoOPK u i   => S.N_send_opk_tot + (u.val * S.N_send_no_opk + i.val)
   | .recvOPK _ _ _   => 0
   | .recvNoOPK _ _ _ => 0
 
 
-def liftShCrBasePrim {S : Setup} {Base α : Type}
+@[expose] def liftShCrBasePrim {S : Setup} {Base α : Type}
     (m : StateT Base (OracleComp PrimBaseSpec) α) :
     StateT (ShCrState S Base) (OracleComp PrimBaseSpec) α := fun hst => do
   let (a, base') ← m.run hst.base
   return (a, { hst with base := base' })
 
 
-def recordAcceptKemGenericPrim {S : Setup} {Base Resp : Type}
+@[expose] def recordAcceptKemGenericPrim {S : Setup} {Base Resp : Type}
     (getBundles : Base → List ((Nat × Nat) × SpkBundleEntry))
     (isNoneResp : Resp → Bool)
     (k : Fin S.N_id) (j : Fin S.N_recv) (hdr : HandshakeHdr)
@@ -1078,14 +1078,14 @@ def recordAcceptKemGenericPrim {S : Setup} {Base Resp : Type}
         return (out, { hst with recvKemRecs := recEntry :: hst.recvKemRecs })
 
 
-def runKeyIndShCrAcceptPrim (S : Setup)
+@[expose] def runKeyIndShCrAcceptPrim (S : Setup)
     (k : Fin S.N_id) (j : Fin S.N_recv) (hdr : HandshakeHdr) (gq : KeyIndQuery S) :
     StateT (KeyIndShCrState S) (OracleComp PrimBaseSpec) KeyIndResponse := do
   let out ← liftShCrBasePrim (pqxdhKeyIndImplPrim true S gq)
   recordAcceptKemGenericPrim KeyIndState.spkBundles isNoneKeyIndResp k j hdr out
 
 
-def genSpkTargetKeyIndPrim (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) :
+@[expose] def genSpkTargetKeyIndPrim (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) :
     StateT (KeyIndShCrState S) (OracleComp PrimBaseSpec) KeyIndResponse := fun hst => do
   let st := hst.base
   if st.spkBundles.any (fun (k, _) => k == (u.val, j.val)) then
@@ -1122,7 +1122,7 @@ def genSpkTargetKeyIndPrim (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) :
     { hst with base := { st with spkBundles := ((u.val, j.val), bEntry) :: st.spkBundles } })
 
 
-def runKeyIndShCrGenSPKPrim (embedTarget : Bool) (S : Setup)
+@[expose] def runKeyIndShCrGenSPKPrim (embedTarget : Bool) (S : Setup)
     (u : Fin S.N_id) (j : Fin S.N_recv) :
     StateT (KeyIndShCrState S) (OracleComp PrimBaseSpec) KeyIndResponse := fun hst =>
   if !embedTarget then
@@ -1137,7 +1137,7 @@ def runKeyIndShCrGenSPKPrim (embedTarget : Bool) (S : Setup)
         (liftShCrBasePrim (pqxdhKeyIndImplPrim true S (.genSPK u j))).run hst
 
 
-def preCheckKeyIndPrim (S : Setup) (sid : SessionId S) (u : Fin S.N_id)
+@[expose] def preCheckKeyIndPrim (S : Setup) (sid : SessionId S) (u : Fin S.N_id)
     (bundle : PreKeyBundleInput) (st : KeyIndState S) :
     OracleComp PrimBaseSpec (Option PrincipalEntry) :=
   if st.sessions.any (fun e => e.sid == sid) then pure none
@@ -1149,7 +1149,7 @@ def preCheckKeyIndPrim (S : Setup) (sid : SessionId S) (u : Fin S.N_id)
       else return some uEntry
 
 
-def checkBundleSigsPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
+@[expose] def checkBundleSigsPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     (bundle : PreKeyBundleInput) : OracleComp PrimBaseSpec Bool := do
   let sigPkB ← resolveSigPkPrim S principals bundle.ikB
   let v1 ← primQ (.sigVerify sigPkB (encodeEC bundle.spkB) bundle.spkSig)
@@ -1157,7 +1157,7 @@ def checkBundleSigsPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
   return (v1 && v2)
 
 
-def finishKeyIndBasePrim (S : Setup)
+@[expose] def finishKeyIndBasePrim (S : Setup)
     (sid : SessionId S) (bundle : PreKeyBundleInput) (uEntry : PrincipalEntry)
     (ekASk ss kemCt : Bytes) (st : KeyIndState S) :
     OracleComp PrimBaseSpec (KeyIndResponse × Option (KeyIndState S)) := do
@@ -1213,7 +1213,7 @@ def finishKeyIndBasePrim (S : Setup)
   return (resp, some base')
 
 
-def postKemKeyIndPrim (S : Setup)
+@[expose] def postKemKeyIndPrim (S : Setup)
     (sid : SessionId S) (bundle : PreKeyBundleInput) (uEntry : PrincipalEntry)
     (hst : KeyIndShCrState S) (ss kemCt : Bytes) :
     OracleComp PrimBaseSpec (KeyIndResponse × KeyIndShCrState S) := do
@@ -1222,7 +1222,7 @@ def postKemKeyIndPrim (S : Setup)
   return applyShCrFinish sid bundle.pqspkB ss kemCt hst out
 
 
-def runKeyIndShCrInitiatePrim (S : Setup)
+@[expose] def runKeyIndShCrInitiatePrim (S : Setup)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) :
     StateT (KeyIndShCrState S) (OracleComp PrimBaseSpec) KeyIndResponse := fun hst => do
   match ← preCheckKeyIndPrim S sid u bundle hst.base with
@@ -1242,7 +1242,7 @@ def runKeyIndShCrInitiatePrim (S : Setup)
         return applyShCrFinish sid bundle.pqspkB ss kemCt hst out
 
 
-def pqxdhKeyIndShCrPrimImpl (embedTarget : Bool) (S : Setup) :
+@[expose] def pqxdhKeyIndShCrPrimImpl (embedTarget : Bool) (S : Setup) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndShCrState S) (OracleComp PrimBaseSpec))
   | .genSPK u j => runKeyIndShCrGenSPKPrim embedTarget S u j
   | .initiateOPK u i bundle =>
@@ -1258,13 +1258,13 @@ def pqxdhKeyIndShCrPrimImpl (embedTarget : Bool) (S : Setup) :
   | q_other => liftShCrBasePrim (pqxdhKeyIndImplPrim true S q_other)
 
 
-def isWinningKemShCrCtPrim (pk sk chosenPk ct ss candCt : Bytes) :
+@[expose] def isWinningKemShCrCtPrim (pk sk chosenPk ct ss candCt : Bytes) :
     OracleComp PrimBaseSpec Bool := do
   let dec ← primQ (.kemDecaps sk candCt)
   return (decide (dec = some ss) && decide (candCt ≠ ct ∨ chosenPk ≠ pk))
 
 
-def extractCollidingKemCtPrim (N : ℕ)
+@[expose] def extractCollidingKemCtPrim (N : ℕ)
     (pk sk chosenPk ct ss : Bytes) (recvRecs : List RecvKemRecord) :
     OracleComp PrimBaseSpec Bytes := do
   let pred := fun (r : RecvKemRecord) => isWinningKemShCrCtPrim pk sk chosenPk ct ss r.kemCt
@@ -1281,7 +1281,7 @@ structure PausedShCrData (S : Setup) where
   cont   : KeyIndResponse → OracleComp (unifSpec + keyIndSpec S) Bool
 
 
-def tryPauseKeyIndQueryPrim (S : Setup) (sIdx : Nat) (gq : KeyIndQuery S)
+@[expose] def tryPauseKeyIndQueryPrim (S : Setup) (sIdx : Nat) (gq : KeyIndQuery S)
     (cont : (keyIndSpec S).Range gq → OracleComp (unifSpec + keyIndSpec S) Bool)
     (hst : KeyIndShCrState S) : OracleComp PrimBaseSpec (Option (PausedShCrData S)) :=
   match gq, cont with
@@ -1322,7 +1322,7 @@ def tryPauseKeyIndQueryPrim (S : Setup) (sIdx : Nat) (gq : KeyIndQuery S)
   | _, _ => pure none
 
 
-def runWithFuelKeyIndShCrPrim (S : Setup)
+@[expose] def runWithFuelKeyIndShCrPrim (S : Setup)
     (oa : OracleComp (unifSpec + keyIndSpec S) Bool)
     (hst : KeyIndShCrState S) (fuel : ℕ) :
     OracleComp PrimBaseSpec (Bool × KeyIndShCrState S) :=
@@ -1343,7 +1343,7 @@ def runWithFuelKeyIndShCrPrim (S : Setup)
     oa hst fuel
 
 
-def stepUntilShCrFuelKeyIndPrim (S : Setup) (sIdx : ℕ)
+@[expose] def stepUntilShCrFuelKeyIndPrim (S : Setup) (sIdx : ℕ)
     (oa : OracleComp (unifSpec + keyIndSpec S) Bool)
     (hst : KeyIndShCrState S) (fuel : ℕ) :
     OracleComp PrimBaseSpec (Sum (Bool × KeyIndShCrState S) (PausedShCrData S)) :=
@@ -1368,7 +1368,7 @@ def stepUntilShCrFuelKeyIndPrim (S : Setup) (sIdx : ℕ)
     oa hst fuel
 
 
-def resumePausedKeyIndPrim (S : Setup) (fuel : ℕ) (d : PausedShCrData S)
+@[expose] def resumePausedKeyIndPrim (S : Setup) (fuel : ℕ) (d : PausedShCrData S)
     (ss kemCt : Bytes) : OracleComp PrimBaseSpec (Bool × KeyIndShCrState S) := do
   let (resp, hst') ← postKemKeyIndPrim S d.sid d.bundle d.uEntry d.hst ss kemCt
   runWithFuelKeyIndShCrPrim S (d.cont resp) hst' fuel
@@ -1377,7 +1377,7 @@ def resumePausedKeyIndPrim (S : Setup) (fuel : ℕ) (d : PausedShCrData S)
 abbrev ShCrFinishState (S : Setup) :=
   Bytes × Bytes × Bytes × Sum (Bool × KeyIndShCrState S) (PausedShCrData S)
 
-def choosePkKeyIndPrimAt (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
+@[expose] def choosePkKeyIndPrimAt (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
     (A : KeyIndAdversary S) (pk sk : Bytes) :
     OracleComp PrimBaseSpec (Bytes × ShCrFinishState S) := do
   let secb ← embedUnif ($ᵗ Bool)
@@ -1393,7 +1393,7 @@ def choosePkKeyIndPrimAt (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
     | Sum.inr d => d.bundle.pqspkB
   return (chosenPk, (pk, sk, chosenPk, res))
 
-def findCollisionKeyIndPrim (S : Setup) (b : QueryBudget)
+@[expose] def findCollisionKeyIndPrim (S : Setup) (b : QueryBudget)
     (st : ShCrFinishState S) (ss ct : Bytes) : OracleComp PrimBaseSpec Bytes := do
   let (pk, sk, chosenPk, res) := st
   let (_, finalHst) ← match res with
@@ -1402,7 +1402,7 @@ def findCollisionKeyIndPrim (S : Setup) (b : QueryBudget)
   extractCollidingKemCtPrim b.q_total pk sk chosenPk ct ss finalHst.recvKemRecs
 
 
-def sampleIndexRange (N : ℕ) : ProbComp ℕ :=
+@[expose] def sampleIndexRange (N : ℕ) : ProbComp ℕ :=
   if h : 0 < N then
     letI : NeZero N := ⟨Nat.ne_of_gt h⟩
     do
@@ -1412,7 +1412,7 @@ def sampleIndexRange (N : ℕ) : ProbComp ℕ :=
     return 0
 
 
-def shcrReductionKeyIndCore (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S) : KemShCrAdv where
+@[expose] def shcrReductionKeyIndCore (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S) : KemShCrAdv where
   State := ShCrFinishState S
   choosePk := fun pk sk => do
     let idx ← embedUnif (sampleIndexRange (S.N_spk_tot * S.N_send_tot))
@@ -1421,7 +1421,7 @@ def shcrReductionKeyIndCore (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S
   q_prim := primQueryBudget S b
 
 /-- Two-stage `KemShCr` reduction adversary for two-key `KeyInd` (`G2 → G3`). -/
-def shcrReductionKeyInd (S : Setup) (b : QueryBudget)
+@[expose] def shcrReductionKeyInd (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : KemShCrAdv :=
   shcrReductionKeyIndCore S b A.1
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish1Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -20,6 +20,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish2
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish2Placed
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send`: Looping `InnerState` Drop Branches & Finish Composition
@@ -29,7 +30,7 @@ variants, and top-level finish composition (`step_send_finish_320a4_placed`) in
 `spqr::send::<HookRng>` (Block `124`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,7 +54,7 @@ set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 set_option linter.unusedSectionVars false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff Program.fnAddr
   v1StatePBPinnedAt spqrSendDropJumpTablePlacedAt optProtoPolynomialEncoderAt optProtoUnchunkedCt1SentAt
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero ofNat_add_one_sub_one spqrSendPlacedEntry
 

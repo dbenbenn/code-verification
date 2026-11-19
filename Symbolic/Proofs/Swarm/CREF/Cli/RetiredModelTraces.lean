@@ -18,7 +18,7 @@ Defines hardware `MachineEvent`s, composed-model `Move` transitions, visible-ent
 `Move.vis` and `runVis`, and the move-run well-formedness predicate `ModelRun`.
 -/
 
-@[expose] public section
+public section
 
 namespace DY.Libsignal.HwEvents
 
@@ -78,7 +78,7 @@ inductive Move where
   | brkKEM
 
 /-- Traceful computation executed by a `Move` (discarding return values). -/
-def Move.act : Move → Traceful Unit
+@[expose] def Move.act : Move → Traceful Unit
   | .setup a b withOpk => setupAct a b withOpk
   | .aliceStart a b idStateIdx regIdxB h _ => do
     let _ ← Composed.aliceStart a b idStateIdx regIdxB h; pure ()
@@ -109,24 +109,24 @@ def Move.act : Move → Traceful Unit
   | .brkDH => PQXDH.breakDH
   | .brkKEM => PQXDH.breakKEM
 
-def Move.next (m : Move) (tr : ExecTrace) : ExecTrace := (m.act.run tr).2.val
+@[expose] def Move.next (m : Move) (tr : ExecTrace) : ExecTrace := (m.act.run tr).2.val
 
-def Move.isSetup : Move → Bool
+@[expose] def Move.isSetup : Move → Bool
   | .setup .. => true
   | _ => false
 
 /-! ## Visible Entries -/
 
-def eventKind : HwEvents.MachineEvent → VisEventKind
+@[expose] def eventKind : HwEvents.MachineEvent → VisEventKind
   | .pt _ => .pt | .send _ => .send | .recv _ => .recv | .rng _ => .rng | .accept _ => .accept
   | .leak _ => .leak
 
-def eventBytes : HwEvents.MachineEvent → HwBytes
+@[expose] def eventBytes : HwEvents.MachineEvent → HwBytes
   | .pt b | .send b | .recv b | .rng b | .accept b | .leak b => b
 
 /-- Outgoing `send` entry of an encrypt step from `tr` to `tr'`, either as a whisper message or
 wrapped as a `PreKeySignalMessage` using `wrap`. -/
-def encSend (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) : List VisEntry :=
+@[expose] def encSend (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) : List VisEntry :=
   match lastSent tr tr' with
   | some w =>
     match wrap with
@@ -136,11 +136,11 @@ def encSend (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) : List VisEntry :=
 
 /-- Visible entries of an encrypt step from `tr` to `tr'`: `encDraws` followed optionally by
 `encSend`. -/
-def encVis (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) (withSend : Bool) : List VisEntry :=
+@[expose] def encVis (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) (withSend : Bool) : List VisEntry :=
   encDraws (newRandoms tr tr') ++ (if withSend then encSend tr tr' wrap else [])
 
 /-- Visible entries emitted by move `m` from trace `tr`, including any logged `exposures`. -/
-def Move.vis (m : Move) (tr : ExecTrace) : List VisEntry :=
+@[expose] def Move.vis (m : Move) (tr : ExecTrace) : List VisEntry :=
   let tr' := m.next tr
   (match m with
     | .aliceStart _ _ _ _ h shown => (aliceVis tr tr' h).take shown
@@ -156,7 +156,7 @@ def Move.vis (m : Move) (tr : ExecTrace) : List VisEntry :=
   exposures tr tr'
 
 /-- Executes `ms` starting from `tr`, returning the final trace and accumulated visible entries. -/
-def runMoves : List Move → ExecTrace → ExecTrace × List VisEntry
+@[expose] def runMoves : List Move → ExecTrace → ExecTrace × List VisEntry
   | [], tr => (tr, [])
   | m :: ms, tr =>
     let (tr', vs) := runMoves ms (m.next tr)
@@ -164,13 +164,13 @@ def runMoves : List Move → ExecTrace → ExecTrace × List VisEntry
 
 /-! ## Runs from Provisioned Setup -/
 
-def ProtocolSetup.setupMove (r : ProtocolSetup) : Move := .setup r.alice r.bob r.withOpk
+@[expose] def ProtocolSetup.setupMove (r : ProtocolSetup) : Move := .setup r.alice r.bob r.withOpk
 
 /-- Final model trace after executing `r.setupMove` followed by `ms`. -/
-def runTraceMoves (r : ProtocolSetup) (ms : List Move) : ExecTrace := (runMoves (r.setupMove :: ms) Trace.nil).1
+@[expose] def runTraceMoves (r : ProtocolSetup) (ms : List Move) : ExecTrace := (runMoves (r.setupMove :: ms) Trace.nil).1
 
 /-- Visible entries emitted by `r.setupMove` followed by `ms`. -/
-def runVis (r : ProtocolSetup) (ms : List Move) : List VisEntry :=
+@[expose] def runVis (r : ProtocolSetup) (ms : List Move) : List VisEntry :=
   (runMoves (r.setupMove :: ms) Trace.nil).2
 
 theorem setupMove_next_nil (r : ProtocolSetup) : r.setupMove.next Trace.nil = setupTrace r := rfl
@@ -182,7 +182,7 @@ theorem setupMove_next_nil' (r : ProtocolSetup) :
 
 /-- Requires session-start moves (`aliceStart`, `bobStart`) to show at least one visible entry and
 anchor any logged completion event (`AliceDone`, `BobDone`) in `m.vis tr`. -/
-def Move.LogsSessionCompletion (m : Move) (tr : ExecTrace) : Prop :=
+@[expose] def Move.LogsSessionCompletion (m : Move) (tr : ExecTrace) : Prop :=
   match m with
   | .aliceStart _ _ _ _ _ shown =>
     1 ≤ shown ∧
@@ -192,12 +192,12 @@ def Move.LogsSessionCompletion (m : Move) (tr : ExecTrace) : Prop :=
       ∀ i, eventIdx isBobDone tr (m.next tr) = some i → ∃ v ∈ m.vis tr, v.anchor = some i
   | _ => True
 
-def MovesAnchored : List Move → ExecTrace → Prop
+@[expose] def MovesAnchored : List Move → ExecTrace → Prop
   | [], _ => True
   | m :: ms, tr => m.LogsSessionCompletion tr ∧ MovesAnchored ms (m.next tr)
 
 /-- Checks that every `exposeKey` and `exposeSpqr` move in `ms` reads from a current snapshot. -/
-def compromisesCurrentFrom : ExecTrace → List Move → Bool
+@[expose] def compromisesCurrentFrom : ExecTrace → List Move → Bool
   | _, [] => true
   | tr, m :: ms =>
     (match m with
@@ -208,7 +208,7 @@ def compromisesCurrentFrom : ExecTrace → List Move → Bool
 
 /-- Checks that every `encrypt` move in `ms` reads its SPQR salt at the handle of the SPQR key it
 publishes (`tr.length + 2`). -/
-def ownSaltsFrom : ExecTrace → List Move → Bool
+@[expose] def ownSaltsFrom : ExecTrace → List Move → Bool
   | _, [] => true
   | tr, m :: ms =>
     (match m with
@@ -216,18 +216,18 @@ def ownSaltsFrom : ExecTrace → List Move → Bool
       | _ => true) &&
     ownSaltsFrom (m.next tr) ms
 
-def Move.MatchesSetupPeer (r : ProtocolSetup) : Move → Prop
+@[expose] def Move.MatchesSetupPeer (r : ProtocolSetup) : Move → Prop
   | .aliceStart _ b .. => b = r.bob
   | .bobStart _ a .. => a = r.alice
   | _ => True
 
 /-- Every session-start move in `ms` names the peer provisioned in `r`. -/
-def PeerFaithful (r : ProtocolSetup) (ms : List Move) : Prop :=
+@[expose] def PeerFaithful (r : ProtocolSetup) (ms : List Move) : Prop :=
   ∀ m ∈ ms, m.MatchesSetupPeer r
 
 /-- Returns `(me, stateIdx, stores)` for moves calling `getLocalState me stateIdx`, where `stores`
 is `true` iff a successful execution stores a successor state. -/
-def Move.stateLoad? : Move → Option (Participant × Nat × Bool)
+@[expose] def Move.stateLoad? : Move → Option (Participant × Nat × Bool)
   | .encrypt me stateIdx .. => some (me, stateIdx, true)
   | .encryptAbort me stateIdx => some (me, stateIdx, false)
   | .encryptFail me stateIdx _ => some (me, stateIdx, false)
@@ -237,7 +237,7 @@ def Move.stateLoad? : Move → Option (Participant × Nat × Bool)
 
 /-- Linear session-state usage: once a move loads the state at index `k` and succeeds, no subsequent
 move loads `k`. -/
-def StateFaithful (r : ProtocolSetup) (ms : List Move) : Prop :=
+@[expose] def StateFaithful (r : ProtocolSetup) (ms : List Move) : Prop :=
   ∀ (i j : Nat) (mi mj : Move) (p : Participant) (k : Nat) (b : Bool), i < j →
     ms[i]? = some mi → ms[j]? = some mj →
     mi.stateLoad? = some (p, k, true) →
@@ -246,7 +246,7 @@ def StateFaithful (r : ProtocolSetup) (ms : List Move) : Prop :=
 
 /-- Well-formedness of a move run `ms` from setup `r`: reachable prefixes, anchored session starts,
 current-snapshot exposures, own-key encrypt salts, peer faithfulness, and linear state usage. -/
-def ModelRun (r : ProtocolSetup) (ms : List Move) : Prop :=
+@[expose] def ModelRun (r : ProtocolSetup) (ms : List Move) : Prop :=
   (setupRandoms r).length = (if r.withOpk then 7 else 6) ∧
   (∀ m ∈ ms, m.isSetup = false) ∧
   ((runTraceMoves r ms).Reachable reachability ∧ MovesAnchored ms (setupTrace r) ∧

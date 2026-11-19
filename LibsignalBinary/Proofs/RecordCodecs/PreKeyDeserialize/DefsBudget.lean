@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.Defs
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `PreKeyRecord::deserialize` Callee Wrappers and Epilogue State
@@ -22,7 +22,7 @@ import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
 invariants for `PreKeyRecord::deserialize` (Block `65`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -111,7 +111,7 @@ theorem pk_dealloc_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       (withLsCodeRoLoaded lsmpl (rustDeallocExternSpecWithStack M A lim extHookStack)) :=
   ls_dealloc_lscro_ok (callerProg := lsProg_65 H) d.dealloc
 
-def pkEpilogueMem [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pkEpilogueMem [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (fuel maxLen : Nat)
     (sp' x19 ptr : BitVec 64) (bs : List (BitVec 8))
     (out : Except SignalProtocolError PreKeyRecord) (sf : State) : SepProp :=
@@ -122,7 +122,7 @@ def pkEpilogueMem [LibsignalPlacement] {M : AllocCostModel}
     (∃∗ evs : List AllocEvent, ⌜PkSubEnv fuel maxLen evs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗
     stackAt sp' (skipFieldStackX 100)
 
-def pkEpiloguePostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pkEpiloguePostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (fuel maxLen : Nat)
     (s0 : State) (sp' x19 ptr : BitVec 64) (bs : List (BitVec 8))
     (out : Except SignalProtocolError PreKeyRecord) : State → SepProp → Prop :=

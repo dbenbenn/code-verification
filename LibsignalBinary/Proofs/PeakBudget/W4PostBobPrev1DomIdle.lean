@@ -9,12 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvNonVacSuccWhisper
-public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom
+public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvNonVacSuccWhisper -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsBudget
 import LibsignalBinary.Proofs.E2E.RecordX.Scope
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PqValid
 import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Closed Idle Inhabitant for `PostBobPrev1Dom 286196 2097152 2469364`
@@ -25,7 +36,7 @@ placeholder on arms 1–3 (`untrusted`, `p1Ok`, `p2Over`) where no runtime `Sess
 witness is present.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

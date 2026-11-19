@@ -9,8 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers3APure
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers3APure
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers1APure
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
+public import Symbolic.Proofs.SpecLemmas.ProofHubsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers1BPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers2BPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.SHARED.StateSizePure
 
 /-!
 # SPQR V1 State Decoding Weight and Per-Constructor Receive Growth Lemmas
@@ -19,7 +25,7 @@ Bounds `rawV1State st0.into_pb` in terms of `v1Weight pb` across `statesFromPb`,
 state growth across `States.recv` for the first six V1 state constructors.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

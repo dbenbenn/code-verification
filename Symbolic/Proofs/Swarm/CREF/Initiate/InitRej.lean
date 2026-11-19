@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Initiate.MidRngPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Initiate.MidRngPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -46,7 +46,7 @@ Defines bundle OPK acceptance (`BundleOpkAccepted`) and Kyber entropy reconstruc
 evaluators and `gamma` unfolding equations for `session_initiate`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -79,14 +79,14 @@ abbrev compHwLit (bs : HwBytes) : DY.Bytes := litOf bs
 /-- A bundle's OPK field passes libsignal's `session_initiate` parsing and non-zero DH4 check:
 either no OPK is present (`bundle[4]? = some 0`), or `bundle[4]? = some 1` with `0x05` Curve25519
 tag at byte 9 and non-low-order 32-byte u-coordinate at bytes `10..42`. -/
-def BundleOpkAccepted (bundle : HwBytes) : Prop :=
+@[expose] def BundleOpkAccepted (bundle : HwBytes) : Prop :=
   bundle[4]? = some 0#8 ∨
     (bundle[4]? = some 1#8 ∧ bundle[9]? = some 5#8 ∧
       x25519LowOrder (litOf (slice bundle 10 32)) = false)
 
 /-- Reconstructs the 32-byte Kyber encapsulation `entropy` from the 34 hardware draws `ds` of an ok
 `session_initiate` call: byte `j` (`0 ≤ j < 32`) is byte `0` of the 4-byte draw `ds[j + 1]`. -/
-def entropyBytes (ds : List HwBytes) : HwBytes :=
+@[expose] def entropyBytes (ds : List HwBytes) : HwBytes :=
   (List.range 32).map fun j => (ds.getD (j + 1) []).getD 0 0#8
 
 @[simp] theorem length_entropyBytes (ds : List HwBytes) :
@@ -195,7 +195,7 @@ theorem callStarts_rng_map (ds : List HwBytes) :
 
 /-- Every move in `ms` carrying `prekeyPath? = some promote` sits at a call index strictly below
 `(callStarts acc).length` (holds after `Sanitize.clearStuckWrap` and on all non-stuck runs). -/
-def PrekeyPathsInBounds (r : ProtocolSetup) (ms : List Move) (acc : List MachineEvent) : Prop :=
+@[expose] def PrekeyPathsInBounds (r : ProtocolSetup) (ms : List Move) (acc : List MachineEvent) : Prop :=
   ∀ (i : Nat) (m : Move) (promote : Bool),
     ms[i]? = some m → m.prekeyPath? = some promote →
     callCount (runVis r (ms.take i)) < (callStarts acc).length
@@ -298,7 +298,7 @@ theorem matchedPrefix_append_reject {interpretation : ExternInterpretation} {r :
 /-! ## `Runs` monad evaluators and `attackerSend` -/
 
 /-- `x : Traceful α` evaluates on `tr` to `some a` with post-trace `tr'`. -/
-def Runs {α : Type} (x : Traceful α) (tr : ExecTrace) (a : α) (tr' : ExecTrace) : Prop :=
+@[expose] def Runs {α : Type} (x : Traceful α) (tr : ExecTrace) (a : α) (tr' : ExecTrace) : Prop :=
   (x.run tr).1 = some a ∧ (x.run tr).2.val = tr'
 
 theorem Runs.bind {α β : Type} {x : Traceful α} {f : α → Traceful β}
@@ -406,7 +406,7 @@ theorem Runs.requireTracePredicate {p : ExecTrace → Bool} {tr : ExecTrace} (h 
   exact ⟨rfl, rfl⟩
 
 /-- Optional network-handle lookup predicate used by `aliceHandshake` / `aliceStart`. -/
-def NetOpt (tr : ExecTrace) : Option Nat → Option DY.Bytes → Prop
+@[expose] def NetOpt (tr : ExecTrace) : Option Nat → Option DY.Bytes → Prop
   | none, none => True
   | some i, some o => tr.at? i = some (ini_NetE o)
   | _, _ => False

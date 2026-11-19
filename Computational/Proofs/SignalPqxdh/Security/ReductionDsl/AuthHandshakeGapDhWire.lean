@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDhProofs
-public import Computational.Proofs.ReductionDsl.Soundness
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepBase
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDhProofs -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhEvalEq
 import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
 
 /-!
 # Cost Bounds and Advantage Wiring for `fgAuthGapDhDslAdv`
@@ -24,7 +25,7 @@ Defines the `ReductionDsl` `GapDH` adversary `fgAuthGapDhDslAdv` and establishes
 AST-size, and query-budget bounds together with `GapDH` advantage equality against `fgAuthGapDhAdv4`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +39,7 @@ abbrev fgAuthGapDhDslProg (S : Setup) (b : QueryBudget) :=
   fgAuthGapDhProg S b.q_total
 
 /-- The `GapDhAdv` obtained by running `fgAuthGapDhProg S b.q_total` with `primQueryBudget S b`. -/
-def fgAuthGapDhDslAdv (S : Setup) (b : QueryBudget)
+@[expose] def fgAuthGapDhDslAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : GapDhAdv where
   run U V := (fgAuthGapDhProg S b.q_total).eval (fun _ => A.1.run) (U, V)
   q_ddh := (fgAuthGapDhAdv4 S b A).q_ddh
@@ -95,18 +96,9 @@ theorem fgAuthGapDhProg_primBounded (S : Setup) (K q : Nat)
       (Sum.inl (Sum.inl n)) 0).2 (fun h => by cases h))
     A q hA (U, V)
 
-theorem fgAuthGapDhDslProg_totalCost_le_security (S : Setup) (b : QueryBudget) :
-    (fgAuthGapDhDslProg S b).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b :=
-  fgAuthGapDhProg_totalCost_le_security S b
-
 theorem fgAuthGapDhDslProg_size_le_clamped (S : Setup) (b : QueryBudget) :
     (fgAuthGapDhDslProg S b).size ≤ 185 * bits b.q_total + 20000 :=
   fgAuthGapDhProg_size_le_clamped S b.q_total
-
-theorem fgAuthGapDhDslProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (fgAuthGapDhDslProg S b).totalCost b.q_total ≤ stepCostBudget S b :=
-  fgAuthGapDhProg_totalCost_le S b
 
 /-- `fgAuthGapDhDslAdv` respects its declared DDH and primitive query budgets. -/
 theorem fgAuthGapDhDslAdv_bounded (S : Setup) (b : QueryBudget)
@@ -123,31 +115,5 @@ theorem fgAuthGapDhDslAdv_bounded (S : Setup) (b : QueryBudget)
       (fgAuthGapDhProg_totalChalQueries_le_q_ddh S b A)
   · exact (fgAuthGapDhProg_primBounded S b.q_total b.q_total (fun _ => A.1.run) hA U V).mono
       (fgAuthGapDhProg_totalPrimQueries_le S b)
-
-set_option linter.style.haveILetI false in
-theorem fgAuthGapDhProg_evalDist_eq (P : Primitives)
-    (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (pow8 : Bytes → Bytes)
-    (S : Setup) (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
-    𝒟[gapDhExp P isValidDhTriple pow8 (fgAuthGapDhDslAdv S b A)] =
-      𝒟[gapDhExp P isValidDhTriple pow8 (fgAuthGapDhAdv4 S b A)] := by
-  letI : MeasurableSpace (List UInt8) := ⊤
-  letI : DiscreteMeasurableSpace (List UInt8) := ⟨fun _ => trivial⟩
-  let ddhImpl : QueryImpl gapDhOracleSpec ProbComp := fun (X, Y, Z) =>
-    pure (isValidDhTriple X Y Z)
-  unfold gapDhExp
-  dsimp only [fgAuthGapDhDslAdv]
-  rw [evalDist_bind_of_discrete, evalDist_bind_of_discrete]
-  congr 1; funext u
-  rw [evalDist_bind_of_discrete, evalDist_bind_of_discrete]
-  congr 1; funext v
-  exact fgAuthGapDhProg_simulateQ_evalDist_eq P ddhImpl S b A (P.x25519Base u) (P.x25519Base v) _
-
-/-- `fgAuthGapDhDslAdv` and the shallow `fgAuthGapDhAdv4` have equal `GapDH` advantage. -/
-theorem fgAuthGapDhProg_gapDh_eq (P : Primitives)
-    (isValidDhTriple : Bytes → Bytes → Bytes → Bool) (pow8 : Bytes → Bytes)
-    (S : Setup) (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
-    GapDH P isValidDhTriple pow8 (fgAuthGapDhDslAdv S b A) =
-      GapDH P isValidDhTriple pow8 (fgAuthGapDhAdv4 S b A) := by
-  simp only [GapDH, fgAuthGapDhProg_evalDist_eq]
 
 end SignalPqxdh.Security.ReductionDsl.AuthHs

@@ -13,6 +13,7 @@ public import Arm64
 public import ProofLib.Invariant
 public import ProofLib.Hoare.LibcHooks
 public import LibsignalBinary.Specifications.SignalSession.CliProcess
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMemAux
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMem
 public import Symbolic.BugInjection.Proofs.CliExec.FastHooksAux
@@ -45,6 +46,9 @@ open CryptoVerification.LibsignalSpqrV1 (MlKem
   mlkemDecapsName mlkemValidatePkName libcruxHmacName)
 open CryptoVerification.E2E
 open CryptoVerification.SignalSession
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy (toEdwardsHook
+  compressHook edNegHook torsionFreeHook dsmbHook scalarModHook scalarWideHook
+  mlkemPk1Hook mlkemPk2Hook)
 open Symbolic.BugInjection.Proofs.CliExec.RadixMemAux
 open Symbolic.BugInjection.Proofs.CliExec.RadixMem
 open Symbolic.BugInjection.Proofs.CliExec.FastHooksAux
@@ -204,7 +208,7 @@ def retToLr (fs : FastState) : FastState :=
 
 def abortOnPanic (fs : FastState) : FastState :=
   match fs.status with
-  | .Panicked => fs.setStatus (.Signaled sigAbrt)
+  | .Panicked => fs.setStatus (.Signaled 6#7)
   | _ => fs
 
 theorem readReg64_eq {fs : FastState} {s : State} (h : fs.Agrees s) (r : Reg) :
@@ -427,6 +431,16 @@ theorem canWrite_mono_le {m : Memory} {addr : BitVec 64} {a b : Nat}
   rw [hsplit, canWrite_add, Bool.and_eq_true] at h
   exact h.1
 
+/-- Signal number `SIGABRT` (`6`). -/
+abbrev fastSigAbrt : BitVec 7 := 6#7
+
+/-- Map `.Panicked` to `.Signaled 6` (`SIGABRT`) for placed-level reasoning. -/
+def abortOnPanicSpec (h : State → State) (s : State) : State :=
+  let s' := h s
+  match s'.status with
+  | .Panicked => s'.setStatus (.Signaled fastSigAbrt)
+  | _ => s'
+
 /-- Postcondition relating a computable `FastState` output `fs'` to an `Arm64.State` hook `h`
 at `s`: state agreement, frozen-memory preservation, and symbol-table preservation. -/
 def FastHookPost (h : State → State) (s : State) (fs' : FastState) : Prop :=
@@ -434,12 +448,12 @@ def FastHookPost (h : State → State) (s : State) (fs' : FastState) : Prop :=
 
 theorem fastAbortOnPanic_post {h : State → State} {s : State} {fs' : FastState}
     (hp : FastHookPost h s fs') :
-    FastHookPost (abortOnPanic h) s fs'.abortOnPanic := by
+    FastHookPost (abortOnPanicSpec h) s fs'.abortOnPanic := by
   rcases hp with ⟨hag, hkf, hsym⟩
-  dsimp only [FastHookPost, abortOnPanic, FastState.abortOnPanic]
+  dsimp only [FastHookPost, abortOnPanicSpec, FastState.abortOnPanic]
   rw [hag.status]
   cases (h s).status <;>
-    exact ⟨by first | exact hag | exact FastState.setStatus_agrees hag (.Signaled sigAbrt),
+    exact ⟨by first | exact hag | exact FastState.setStatus_agrees hag (.Signaled fastSigAbrt),
       hkf, hsym⟩
 
 /-- Write `bs` at `dst` when writable and branch to `lr`. -/

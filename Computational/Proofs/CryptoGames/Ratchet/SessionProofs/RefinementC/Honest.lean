@@ -18,7 +18,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Hon
 Uniqueness and lookup lemmas for `HonestEntryInvC` without salt binding, derived from `PosUniq` and used by the `RefinementC` deliver and inject steps.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure -- proof-setup: allow-public-import
 import DY.Trace.Monad
 import DY.Trace.Manipulation
 import DY.Actions.Network
@@ -24,6 +24,8 @@ import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
 
 /-!
 # Invariant Transport Across Quiet Trace Extensions
@@ -32,7 +34,7 @@ Defines `QuietExt` (trace extensions that add no session state, session PQXDH, T
 events) and proves preservation of local state queries, record invariants, and `CHist`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -54,7 +56,7 @@ abbrev QPqE := ProtocolEvent.ExecEntryT PQXDHEvent
 abbrev QCE := ProtocolEvent.ExecEntryT ComposedEvent
 
 /-- `tr'` extends `tr` with entries containing no session state, session PQXDH, TR, or composed events. -/
-def QuietExt (tr tr' : ExecTrace) : Prop :=
+@[expose] def QuietExt (tr tr' : ExecTrace) : Prop :=
   tr ≤ tr' ∧ ∀ i, tr.length ≤ i → i < tr'.length →
     (tr'.at? i : Option QStE) = none ∧ Symbolic.Proofs.Swarm.CREF.Cli.MoveBrkLemmas.NonSessionPQAt tr' i ∧
       (tr'.at? i : Option QTrE) = none ∧ (tr'.at? i : Option QCE) = none

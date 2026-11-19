@@ -9,22 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2
+public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
+import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2
 
 /-!
 # Sanitized Oracle Wrapper for `SimDeliverForge`
 
 Defines the raw `(sC, sent)` state encoding (`dfFullT`), the sanitized `DeliverForge` oracle
 `simDeliverForgeOracleSan`, step-wise preservation of `DFStateInv`, and the game-loop `.eval`
-bridge `simDeliverForgeProgOfStep_eval_san`.
--/
+bridge `simDeliverForgeProgOfStep_eval_san`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,16 +36,16 @@ open OracleSpec OracleComp
 open _root_.ReductionDsl (Ty Expr Comp CostedReduction handlerImpl atomicSig atomicSessionOps
   e2eSessionCodec GhostStT BV256 fig8SmIfaceDF smQT smRT fig8CtT fig8CtV fig8CtOfV)
 open _root_.CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart)
-open CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C SimCStateBounded SimCStateInv
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart)
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C SimCStateBounded SimCStateInv
   deliverForgeSemHook)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState Params)
-open CryptoGames.SM.Construction.DeliverForge (AdversaryDF AdversaryCompDF specDF)
-open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1Init)
-open CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState Params)
+open _root_.CryptoGames.SM.Construction.DeliverForge (AdversaryDF AdversaryCompDF specDF)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1Init)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
 open Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
   (sessSpqrKemOp atomicDraw256 eval_sessSpqrKemOp atomicDraw256_eval)
 open Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
@@ -62,15 +61,15 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle (SanExtra)
 export CryptoGames.Ratchet.LibsignalSim (deliverForgeSemHook)
 export Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle (SanExtra)
 
-@[reducible] def dfFullT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfFullT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   ReductionDsl.Ty.prod (simFullT ℓ Pt) (.list (fig8CtT (ℓ := ℓ) (Pt := Pt)))
 
-@[reducible] def dfFullEnc {ℓ : ℕ} {Pt : Type}
+@[expose, reducible] def dfFullEnc {ℓ : ℕ} {Pt : Type}
     (s : LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt)) :
     (dfFullT ℓ Pt).denote :=
   (simFullEnc s.1, s.2.map fig8CtV)
 
-@[reducible] def dfFullDec {ℓ : ℕ} {Pt : Type}
+@[expose, reducible] def dfFullDec {ℓ : ℕ} {Pt : Type}
     (v : (dfFullT ℓ Pt).denote) :
     LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt) :=
   (simFullDec v.1, v.2.map fig8CtOfV)
@@ -96,7 +95,7 @@ theorem atomicTyDescBits_dfFullT (ℓ : ℕ) (Pt : Type) :
 
 /-- Sanitized `DeliverForge` semantic query implementation (`semHandleHookDedupS` with
 `deliverForgeSemHook`). -/
-def simDeliverForgeOracleSan {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC]
+@[expose] def simDeliverForgeOracleSan {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC]
     {ℓ : ℕ} (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (qep B T Kc Bsk : ℕ) :
@@ -118,7 +117,7 @@ abbrev simDeliverForgeOracleSanQ {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt]
   simDeliverForgeOracleSan (ℓ := ℓ) P Dh encPt encT decT lam
     qep (2 ^ 32) (50000 * q) (25001 * q + 25000) (25000 * q)
 
-def simDeliverForgeClampSan {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC]
+@[expose] def simDeliverForgeClampSan {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC]
     (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (qep B T Kc Bsk : ℕ)
@@ -222,12 +221,12 @@ theorem simDeliverForgeOracleSan_corrupt_run {PQ PQC Pt : Type}
         (deliverForgeSemHook (PQC := PQC) (Pt := Pt) (ℓ := ℓ)) Bsk sC ex Q :=
   rfl
 
-def DFStateBounded {PQ Pt : Type} {ℓ : ℕ} (L : ℕ)
+@[expose] def DFStateBounded {PQ Pt : Type} {ℓ : ℕ} (L : ℕ)
     (s : LibsignalToModularSchemeSimState PQ Pt ℓ × List (Fig8C Pt)) : Prop :=
   SimCStateBounded L s.1 ∧ s.2.length ≤ L
 
 /-- Step-indexed invariant on `(sC, sent)` with `m` remaining game queries. -/
-def DFStateInv {PQ Pt : Type} {ℓ : ℕ} (L m : ℕ)
+@[expose] def DFStateInv {PQ Pt : Type} {ℓ : ℕ} (L m : ℕ)
     (s : LibsignalToModularSchemeSimState PQ Pt ℓ × List (Fig8C Pt)) : Prop :=
   SimCStateInv L m s.1 ∧ s.2.length + m ≤ L
 
@@ -465,7 +464,7 @@ theorem simDeliverForgeOracleSan_preserves_dfStateInv {PQ PQC Pt : Type}
     semHandleHookDedupS_deliverForge_preserves_sent_len P Dh encPt encT decT lam T Kc Bsk
       L m qep B t s.1 s.2 hInv.2 (rr, sC', ex') hx⟩
 
-def simDeliverForgeInitImpl {ℓ : ℕ} {Pt : Type} [Zero Pt] (C : Crypto) (K : MlKem) :
+@[expose] def simDeliverForgeInitImpl {ℓ : ℕ} {Pt : Type} [Zero Pt] (C : Crypto) (K : MlKem) :
     AdversaryCompDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt)
       (Unit × (LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt))) := do
   let pqrKey ← (liftM ($ᵗ (BitVec 256) : ProbComp (BitVec 256)) :
@@ -473,7 +472,7 @@ def simDeliverForgeInitImpl {ℓ : ℕ} {Pt : Type} [Zero Pt] (C : Crypto) (K : 
       (BitVec 256))
   return ((), (initSimC (spqrV1Init C.F K .a2b pqrKey) (spqrV1Init C.F K .b2a pqrKey), []))
 
-def simDeliverForgeInitC {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def simDeliverForgeInitC {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) :
     Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)
@@ -538,7 +537,7 @@ theorem simDeliverForgeInitC_eval {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero
   rw [hpair]
   rfl
 
-def simDeliverForgeFinishC {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def simDeliverForgeFinishC {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) :
     Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)
@@ -556,7 +555,7 @@ def simDeliverForgeFinishC {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [S
 
 /-- Assembles `simDeliverForge` as a `CostedReduction` from a step handler on `dfFullT ℓ Pt`,
 falling back to `dummyBoolSessionRed` when `¬ (ℓ < 10 ^ 6)`. -/
-def simDeliverForgeProgOfStep {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def simDeliverForgeProgOfStep {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
     (step : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)

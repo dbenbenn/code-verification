@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightBuckets
-public import LibsignalBinary.Proofs.PeakBudget.VecGrowCredit
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightBuckets -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.VecGrowCredit
+import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Tight `fineCostModel` Sub-Phase Credit Helpers for `spqr::send`
@@ -26,7 +29,7 @@ Proves closed `fineCostModel` `PhaseCreditSpec` and `nonFreeCount` bounds in bin
 `<Chain>::add_epoch`, `<Chain>::send_key`, `<Chain>::into_pb`, and `<Message>::serialize`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -95,19 +98,19 @@ open LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
 
 /-- Precomputed `.rodata` Lagrange point counts in libsignal's SPQR V1 parameters (`n ∈ {0, 1, 3, 5, 30, 34, 36}`).
 -/
-def isRodataPtLen (n : Nat) : Bool :=
+@[expose] def isRodataPtLen (n : Nat) : Bool :=
   n == 0 || n == 1 || n == 3 || n == 5 || n == 30 || n == 34 || n == 36
 
 /-- Validity of a `PolyEncoder` under `.rodata` Lagrange sizes (`≤ 16` slots, `isRodataPtLen` point counts, polynomial lengths `≤ 36`).
 -/
-def EncRodataValid (enc : PolyEncoder) : Prop :=
+@[expose] def EncRodataValid (enc : PolyEncoder) : Prop :=
   match enc.s with
   | .points pts => pts.length ≤ 16 ∧ ∀ pt ∈ pts, isRodataPtLen pt.value.length = true
   | .polys polys => polys.length ≤ 16 ∧ ∀ p ∈ polys, p.coefficients.length ≤ 36
 
 /-- Lifts `EncRodataValid` and 32-byte authenticator root-key bounds across all `States` variants.
 -/
-def StatesRodataValid {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
+@[expose] def StatesRodataValid {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
   | .keysUnsampled _ => True
   | .keysSampled s => EncRodataValid s.sending_hdr
   | .headerSent s => EncRodataValid s.sending_ek
@@ -122,7 +125,7 @@ def StatesRodataValid {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) →
 
 /-- Single-slot `points_to_polys` allocator trace envelope (`Poly::zero` at `n = 0`, or `enumeratePts`, `const_polys_to_polys`, and `Poly::lagrange_sum` at `n > 0`).
 -/
-def PolyNextChunkRodataConvStepEnv (n : Nat) : List AllocEvent → Prop :=
+@[expose] def PolyNextChunkRodataConvStepEnv (n : Nat) : List AllocEvent → Prop :=
   if n = 0 then
     SeqEnv (fun evs => evs = [] ∨ evs = rustAllocEvents 2 2) FreeOnlyEvs
   else
@@ -135,7 +138,7 @@ def PolyNextChunkRodataConvStepEnv (n : Nat) : List AllocEvent → Prop :=
 
 /-- Binary-order allocator trace envelope of `<PolyEncoder as Encoder>::next_chunk` (`0x6a384`) on `.points pts`.
 -/
-def PolyNextChunkRodataPointsEnv (pts : List Point) : List AllocEvent → Prop :=
+@[expose] def PolyNextChunkRodataPointsEnv (pts : List Point) : List AllocEvent → Prop :=
   fun evs =>
     evs = [] ∨
       SeqEnv (· = rustAllocEvents 384 8)
@@ -145,7 +148,7 @@ def PolyNextChunkRodataPointsEnv (pts : List Point) : List AllocEvent → Prop :
               (SeqEnv (IterSeqEnv (fun pt => ComputeAtOptEnv pt.value.length) pts)
                 FreeOnlyEvs)))) evs
 
-def PolyNextChunkRodataPointsFixedEnv (numSlots slotLen : Nat) : List AllocEvent → Prop :=
+@[expose] def PolyNextChunkRodataPointsFixedEnv (numSlots slotLen : Nat) : List AllocEvent → Prop :=
   fun evs =>
     evs = [] ∨
       SeqEnv (· = rustAllocEvents 384 8)
@@ -157,7 +160,7 @@ def PolyNextChunkRodataPointsFixedEnv (numSlots slotLen : Nat) : List AllocEvent
 
 /-- Binary-order `.rodata` allocator trace envelope of `<PolyEncoder as Encoder>::next_chunk` on `enc`.
 -/
-def PolyNextChunkRodataEnv (enc : PolyEncoder) : List AllocEvent → Prop :=
+@[expose] def PolyNextChunkRodataEnv (enc : PolyEncoder) : List AllocEvent → Prop :=
   match enc.s with
   | .points pts => PolyNextChunkRodataPointsEnv pts
   | .polys polys =>
@@ -165,7 +168,7 @@ def PolyNextChunkRodataEnv (enc : PolyEncoder) : List AllocEvent → Prop :=
 
 /-- Binary-order allocator trace envelope of `<States>::send` across all 11 chunked variants under `.rodata` Lagrange sizes.
 -/
-def StatesSendRodataEnv (F : ShaCompress) :
+@[expose] def StatesSendRodataEnv (F : ShaCompress) :
     States spqrPolyApi (spqrAuthApi F) → List AllocEvent → Prop
   | .keysUnsampled _ =>
     SeqEnv (FineSmallEvs 8 85736 2400)
@@ -644,8 +647,8 @@ theorem statesSendRodata_headerReceived_fine_phaseCreditSpec (F : ShaCompress)
     (by decide) (by decide) (by decide) (by decide)
 
 /-- Unified `cumSmall` bound (`2,124,238` bytes) for `StatesSendRodataEnv` across all 11 arms. -/
-def statesSendRodataDeltaCum : Nat := 2124238
-def statesSendRodataMaxReq : Nat := 2400
+@[expose] def statesSendRodataDeltaCum : Nat := 2124238
+@[expose] def statesSendRodataMaxReq : Nat := 2400
 
 theorem statesSendRodata_fine_phaseCreditSpec (F : ShaCompress)
     {st : States spqrPolyApi (spqrAuthApi F)} (hb : StatesRodataValid st) :
@@ -704,7 +707,7 @@ theorem statesSendRodata_nonFreeCount_le (F : ShaCompress)
 
 /-- Witness-free small-class envelope for `<States>::send` under `.rodata` sizes (`≤ 1,233` ops, `Δcum ≤ 2,124,238`, `maxReq = 2,400`).
 -/
-def StatesSendRodataTightEnv : List AllocEvent → Prop :=
+@[expose] def StatesSendRodataTightEnv : List AllocEvent → Prop :=
   FineSmallEvs 1233 2124238 2400
 
 theorem statesSendRodataTight_fine_phaseCreditSpec :
@@ -715,7 +718,7 @@ theorem statesSendRodataTight_fine_phaseCreditSpec :
 
 /-- Witness-free small-class envelope for `spqr::chain_from` (`≤ 6` ops, `Δcum ≤ 10,919`, `maxReq = 448`).
 -/
-def ChainFromTightEnv : List AllocEvent → Prop :=
+@[expose] def ChainFromTightEnv : List AllocEvent → Prop :=
   FineSmallEvs 6 10919 448
 
 theorem chainFromTight_fine_phaseCreditSpec :
@@ -828,12 +831,12 @@ private theorem optDealloc_fine_phaseCreditSpec (c : BitVec 64) :
     exact PhaseCreditSpec.rustDealloc_align16 fineCostModel (by decide)
 
 /-- Optional `<Chain>::add_epoch` envelope. -/
-def OptChainAddEpochEnv (hkdf : HkdfFn) (x : ChainAddEpochGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def OptChainAddEpochEnv (hkdf : HkdfFn) (x : ChainAddEpochGhost) (evs : List AllocEvent) : Prop :=
   evs = [] ∨ ChainAddEpochEnv hkdf x evs
 
 /-- Witness-free small-class envelope for `<Chain>::add_epoch` when `links ≤ 4` (`≤ 6` ops, `Δcum ≤ 14,641`, `maxReq = 896`).
 -/
-def ChainAddEpochTight4Env : List AllocEvent → Prop :=
+@[expose] def ChainAddEpochTight4Env : List AllocEvent → Prop :=
   FineSmallEvs 6 14641 896
 
 theorem chainAddEpochTight4_fine_phaseCreditSpec :
@@ -951,12 +954,12 @@ private theorem freeOnlyAlign16_chainSendKeyPopEvents (x : ChainSendKeyGhost) :
     · exact freeOnlyAlign16_flatMap_pop _
 
 /-- Optional `<Chain>::send_key` envelope. -/
-def OptChainSendKeyEnv (hkdf : HkdfFn) (x : ChainSendKeyGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def OptChainSendKeyEnv (hkdf : HkdfFn) (x : ChainSendKeyGhost) (evs : List AllocEvent) : Prop :=
   evs = [] ∨ ChainSendKeyEnv hkdf x evs
 
 /-- Witness-free small-class envelope for `<Chain>::send_key` (`≤ 2` ops, `Δcum ≤ 1,476`, `maxReq = 35`).
 -/
-def ChainSendKeyTightEnv : List AllocEvent → Prop :=
+@[expose] def ChainSendKeyTightEnv : List AllocEvent → Prop :=
   FineSmallEvs 2 1476 35
 
 theorem chainSendKeyTight_fine_phaseCreditSpec :
@@ -1001,34 +1004,18 @@ theorem optChainSendKeyEnv_to_tight (hkdf : HkdfFn) (x : ChainSendKeyGhost)
   · exact FineSmallEvs.nil 2 1476 35
   · exact chainSendKeyEnv_to_tight hkdf x hc
 
-theorem chainSendKey_fine_phaseCreditSpec (hkdf : HkdfFn) (x : ChainSendKeyGhost) :
-    PhaseCreditSpec fineCostModel (ChainSendKeyEnv hkdf x) 1476 0 0 35 :=
-  chainSendKeyTight_fine_phaseCreditSpec.of_imp fun _ => chainSendKeyEnv_to_tight hkdf x
-
 theorem optChainSendKey_fine_phaseCreditSpec (hkdf : HkdfFn) (x : ChainSendKeyGhost) :
     PhaseCreditSpec fineCostModel (OptChainSendKeyEnv hkdf x) 1476 0 0 35 :=
   chainSendKeyTight_fine_phaseCreditSpec.of_imp fun _ => optChainSendKeyEnv_to_tight hkdf x
-
-theorem chainSendKey_nonFreeCount_le (hkdf : HkdfFn) (x : ChainSendKeyGhost)
-    {evs : List AllocEvent} (h : ChainSendKeyEnv hkdf x evs) :
-    nonFreeCount evs ≤ 2 :=
-  (chainSendKeyEnv_to_tight hkdf x h).1
 
 theorem optChainSendKey_nonFreeCount_le (hkdf : HkdfFn) (x : ChainSendKeyGhost)
     {evs : List AllocEvent} (h : OptChainSendKeyEnv hkdf x evs) :
     nonFreeCount evs ≤ 2 :=
   (optChainSendKeyEnv_to_tight hkdf x h).1
 
-theorem messageSerializeEnv_fine_phaseCreditSpec :
-    PhaseCreditSpec fineCostModel MessageSerializeEnv 78312 0 0 128 := by
-  have h := boundedCount_fine_cap_phaseCreditSpec 8 128 9789 (by decide)
-    (fun r hr => smallAllocCost_le_9789_of_le_2560 (Nat.le_trans hr (by decide)))
-    (fun _ hn => smallReallocCost_le_9789_of_le_384 (Nat.le_trans hn (by decide)))
-  exact h.mono (by decide) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 128)
-
 /-- Tight `<Message>::serialize` envelope (`alloc(≤ 44)` + optional `realloc(old, 80)` + drops; `≤ 2` ops, `Δcum ≤ 9,135`, `maxReq = 80`).
 -/
-def MessageSerializeTightEnv : List AllocEvent → Prop :=
+@[expose] def MessageSerializeTightEnv : List AllocEvent → Prop :=
   FineSmallEvs 2 9135 80
 
 theorem messageSerializeTight_fine_phaseCreditSpec :
@@ -1042,12 +1029,12 @@ theorem messageSerializeTight_nonFreeCount_le {evs : List AllocEvent}
 
 /-- Tight `<Chain>::into_pb` envelope when `links.length ≤ 4` (`≤ 1` op, `Δcum ≤ 8,186`, `maxReq = 448`).
 -/
-def ChainIntoPbTight4Env : List AllocEvent → Prop :=
+@[expose] def ChainIntoPbTight4Env : List AllocEvent → Prop :=
   FineSmallEvs 1 8186 448
 
 /-- Tight `<Chain>::into_pb` envelope when `links.length ≤ 707` (`≤ 1` op, `Δcum ≤ 90,234`, `maxReq = 79,236`).
 -/
-def ChainIntoPbTight79236Env : List AllocEvent → Prop :=
+@[expose] def ChainIntoPbTight79236Env : List AllocEvent → Prop :=
   FineSmallEvs 1 90234 79236
 
 theorem chainIntoPbTight4_fine_phaseCreditSpec :

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
 import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
@@ -23,7 +23,7 @@ followed by at most a ratchet draw and an `accept`) is explained by one visible 
 `BobStartBy p` or `DecryptBy p`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +45,7 @@ structure RpkBlockShape (blk : List MachineEvent) : Prop where
 /-- Step conclusion for a `recv_prekey` block: a move acting for `p` (or nobody) that either
 satisfies `RpkKind` or has `NoSessionEffect`, and satisfies `BobStartBy p ∨ DecryptBy p` when `blk`
 accepts. -/
-def RpkStep (p : Participant) (blk : List MachineEvent) (tr : ExecTrace) (m : Move) : Prop :=
+@[expose] def RpkStep (p : Participant) (blk : List MachineEvent) (tr : ExecTrace) (m : Move) : Prop :=
   ActorIn p m ∧ (RpkKind m ∨ NoSessionEffect tr m) ∧
     ((∃ e ∈ blk, eventKind e = .accept) → BobStartBy p m ∨ DecryptBy p m)
 

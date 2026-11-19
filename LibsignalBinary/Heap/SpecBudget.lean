@@ -14,7 +14,7 @@ public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.MallocngBridgeBudget
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalPublicApi
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Hooks
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
@@ -709,11 +709,10 @@ def readFileBudgetCoreSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
       CliExt.bytesAt x.ro x.pathA x.path ∗ stackAt s0.sp extHookStack ∗
       A.pool lim (M.stepEvents evs st) sf
 
-/-- Budget-threaded counterpart of `CliExt.readFileSpec`
-    (`Proofs/SpecLemmas/SignalSession/CliExternsFixed.lean:332`). -/
-def readFileBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (img : Obj.Image) : Spec (CliExt.ReadFileCall × M.σ) :=
-  Spec.inImage (readFileBudgetCoreSpec M A lim) img
+/-- Budget-threaded counterpart of `CliExt.readFileSpec`. -/
+abbrev readFileBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) : Spec (CliExt.ReadFileCall × M.σ) :=
+  readFileBudgetCoreSpec M A lim
 
 /-- Allocator event envelope of `signal_session_io::read_stdin`: doubling `Vec<u8>` growth up to `1 MiB` (`K = 8`), plus `rustDeallocEvents 1048576 1` on over-capacity rejection. -/
 def ReadStdinEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
@@ -755,11 +754,10 @@ def readStdinBudgetCoreSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustC
           CliExt.ioVecAt A.repAlloc x.ret r) ∗
       stackAt s0.sp extHookStack ∗ A.pool lim (M.stepEvents evs st) sf
 
-/-- Budget-threaded counterpart of `CliExt.readStdinSpec`
-    (`Proofs/SpecLemmas/SignalSession/CliExternsFixed.lean:353`). -/
-def readStdinBudgetSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (img : Obj.Image) : Spec (CliExt.ReadStdinCall × M.σ) :=
-  Spec.inImage (readStdinBudgetCoreSpec M A lim) img
+/-- Budget-threaded counterpart of `CliExt.readStdinSpec`. -/
+abbrev readStdinBudgetSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) : Spec (CliExt.ReadStdinCall × M.σ) :=
+  readStdinBudgetCoreSpec M A lim
 
 /-- Allocator event envelope of `signal_session_io::write_file`: `[]` on stack-buffered/C-ABI writes, or `alloc(len + 1, 1) ++ dealloc(len + 1, 1)` when `384 ≤ len` (`CString` heap fallback). -/
 def WriteFileEnv (len : Nat) (evs : List AllocEvent) : Prop :=
@@ -793,11 +791,10 @@ def writeFileBudgetCoreSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
       (x.pathA ↦ₛ x.path) ∗ (x.buf ↦ₛ x.bs) ∗ stackAt s0.sp extHookStack ∗
       A.pool lim (M.stepEvents evs st) sf
 
-/-- Budget-threaded counterpart of `CliExt.writeFileSpec`
-    (`Proofs/SpecLemmas/SignalSession/CliExternsFixed.lean:376`). -/
-def writeFileBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (img : Obj.Image) : Spec (CliExt.WriteFileCall × M.σ) :=
-  Spec.inImage (writeFileBudgetCoreSpec M A lim) img
+/-- Budget-threaded counterpart of `CliExt.writeFileSpec`. -/
+abbrev writeFileBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) : Spec (CliExt.WriteFileCall × M.σ) :=
+  writeFileBudgetCoreSpec M A lim
 
 /-- Allocator event envelope of `signal_session_io::write_stdout`: `[]` or a one-time 1024-byte `LineWriter` buffer allocation. -/
 def WriteStdoutEnv (evs : List AllocEvent) : Prop :=
@@ -823,11 +820,10 @@ def writeStdoutBudgetCoreSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
           ProcessOutcome.traceStreamBytes .stdout s0.trace ++ x.bs⌝ ∗
       (x.buf ↦ₛ x.bs) ∗ stackAt s0.sp extHookStack ∗ A.pool lim (M.stepEvents evs st) sf
 
-/-- Budget-threaded counterpart of `CliExt.writeStdoutSpec`
-    (`Proofs/SpecLemmas/SignalSession/CliExternsFixed.lean:399`). -/
-def writeStdoutBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (img : Obj.Image) : Spec (CliExt.WriteStdoutCall × M.σ) :=
-  Spec.inImage (writeStdoutBudgetCoreSpec M A lim) img
+/-- Budget-threaded counterpart of `CliExt.writeStdoutSpec`. -/
+abbrev writeStdoutBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+    (lim : BudgetLimits) : Spec (CliExt.WriteStdoutCall × M.σ) :=
+  writeStdoutBudgetCoreSpec M A lim
 
 private theorem vmPreserved_unmodelled (msg : String) (s : State) :
     VmPreserved s (unmodelled msg s) :=
@@ -875,31 +871,27 @@ theorem vmPreserved_writeStdoutHook (s : State) : VmPreserved s (writeStdoutHook
 
 /-- Hook-table `HookSat` lift from `CliExt.writeFileSpec` to `writeFileBudgetSpec` via `evs := []` when `writeFileName` preserves `VmPreserved`. -/
 theorem hookSat_writeFileBudget_of_hookSat {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) {img : Obj.Image} {ext : String → Option (State → State)}
-    (hSat : HookSat ext writeFileName (CliExt.writeFileSpec img))
+    (lim : BudgetLimits) {ext : String → Option (State → State)}
+    (hSat : HookSat ext writeFileName CliExt.writeFileSpec)
     (hVm : ∀ f, ext writeFileName = some f → ∀ s, VmPreserved s (f s)) :
-    HookSat ext writeFileName (writeFileBudgetSpec M A lim img) := by
+    HookSat ext writeFileName (writeFileBudgetSpec M A lim) := by
   rcases hSat with ⟨f, hf, hok⟩
   refine ⟨f, hf, fun ⟨x, st⟩ R s0 hrun hpre hsp => ?_⟩
-  dsimp only [writeFileBudgetSpec, Spec.inImage, writeFileBudgetCoreSpec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨himg, hpre⟩
+  dsimp only [writeFileBudgetSpec, writeFileBudgetCoreSpec] at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hlen, hpOk, _⟩, hmem⟩
-  have hpre0 : s0.mem ⊨ (CliExt.writeFileSpec img).pre x s0 ∗ (A.pool lim st s0 ∗ R) := by
-    dsimp only [CliExt.writeFileSpec, Spec.inImage]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨himg, ?_⟩
+  have hpre0 : s0.mem ⊨ CliExt.writeFileSpec.pre x s0 ∗ (A.pool lim st s0 ∗ R) := by
+    dsimp only [CliExt.writeFileSpec]
     rw [sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨⟨hx0, hx1, hx2, hx3, hlen, hpOk⟩, by simpa only [sepConj_assoc] using hmem⟩
   rcases hok x (A.pool lim st s0 ∗ R) s0 hrun hpre0 hsp with ⟨hkeep, hsym, hout⟩
   refine ⟨hkeep, hsym, ?_⟩
   rcases hout with ⟨hret, hcs, hpost⟩ | ⟨hpan, hp⟩ | ⟨c, hex, he⟩ | ⟨hoom_s, hoom⟩
   · refine Or.inl ⟨hret, hcs, ?_⟩
-    dsimp only [CliExt.writeFileSpec, Spec.inImage] at hpost
+    dsimp only [CliExt.writeFileSpec] at hpost
     rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
     rcases hpost with ⟨hres, hrest⟩
-    dsimp only [writeFileBudgetSpec, Spec.inImage, writeFileBudgetCoreSpec]
+    dsimp only [writeFileBudgetSpec, writeFileBudgetCoreSpec]
     have hpool : A.pool lim (M.stepEvents [] st) (f s0) = A.pool lim st s0 :=
       A.pool_transport lim st s0 (f s0) (hVm f hf s0)
     have hrest' : (f s0).mem ⊨
@@ -908,40 +900,36 @@ theorem hookSat_writeFileBudget_of_hookSat {M : AllocCostModel} (A : RustCliAllo
     refine Satisfies.mono (sepConj_mono_left (Entails.sepExists_right ([] : List AllocEvent) ?_)) hrest'
     rw [hpool]
     exact Entails.pure_right ⟨writeFileEnv_nil x.path.length, hres⟩ (Entails.refl _)
-  · dsimp only [CliExt.writeFileSpec, Spec.inImage] at hp
+  · dsimp only [CliExt.writeFileSpec] at hp
     rw [satisfies_pure_sepConj] at hp; exact False.elim hp.1
-  · dsimp only [CliExt.writeFileSpec, Spec.inImage] at he
+  · dsimp only [CliExt.writeFileSpec] at he
     rw [satisfies_pure_sepConj] at he; exact False.elim he.1
-  · dsimp only [CliExt.writeFileSpec, Spec.inImage] at hoom
+  · dsimp only [CliExt.writeFileSpec] at hoom
     rw [satisfies_pure_sepConj] at hoom; exact False.elim hoom.1
 
 /-- Hook-table `HookSat` lift from `CliExt.writeStdoutSpec` to `writeStdoutBudgetSpec` via `evs := []` when `writeStdoutName` preserves `VmPreserved`. -/
 theorem hookSat_writeStdoutBudget_of_hookSat {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) {img : Obj.Image} {ext : String → Option (State → State)}
-    (hSat : HookSat ext writeStdoutName (CliExt.writeStdoutSpec img))
+    (lim : BudgetLimits) {ext : String → Option (State → State)}
+    (hSat : HookSat ext writeStdoutName CliExt.writeStdoutSpec)
     (hVm : ∀ f, ext writeStdoutName = some f → ∀ s, VmPreserved s (f s)) :
-    HookSat ext writeStdoutName (writeStdoutBudgetSpec M A lim img) := by
+    HookSat ext writeStdoutName (writeStdoutBudgetSpec M A lim) := by
   rcases hSat with ⟨f, hf, hok⟩
   refine ⟨f, hf, fun ⟨x, st⟩ R s0 hrun hpre hsp => ?_⟩
-  dsimp only [writeStdoutBudgetSpec, Spec.inImage, writeStdoutBudgetCoreSpec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨himg, hpre⟩
+  dsimp only [writeStdoutBudgetSpec, writeStdoutBudgetCoreSpec] at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hx1, _⟩, hmem⟩
-  have hpre0 : s0.mem ⊨ (CliExt.writeStdoutSpec img).pre x s0 ∗ (A.pool lim st s0 ∗ R) := by
-    dsimp only [CliExt.writeStdoutSpec, Spec.inImage]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨himg, ?_⟩
+  have hpre0 : s0.mem ⊨ CliExt.writeStdoutSpec.pre x s0 ∗ (A.pool lim st s0 ∗ R) := by
+    dsimp only [CliExt.writeStdoutSpec]
     rw [sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨⟨hx0, hx1⟩, by simpa only [sepConj_assoc] using hmem⟩
   rcases hok x (A.pool lim st s0 ∗ R) s0 hrun hpre0 hsp with ⟨hkeep, hsym, hout⟩
   refine ⟨hkeep, hsym, ?_⟩
   rcases hout with ⟨hret, hcs, hpost⟩ | ⟨hpan, hp⟩ | ⟨c, hex, he⟩ | ⟨hoom_s, hoom⟩
   · refine Or.inl ⟨hret, hcs, ?_⟩
-    dsimp only [CliExt.writeStdoutSpec, Spec.inImage] at hpost
+    dsimp only [CliExt.writeStdoutSpec] at hpost
     rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
     rcases hpost with ⟨hres, hrest⟩
-    dsimp only [writeStdoutBudgetSpec, Spec.inImage, writeStdoutBudgetCoreSpec]
+    dsimp only [writeStdoutBudgetSpec, writeStdoutBudgetCoreSpec]
     have hpool : A.pool lim (M.stepEvents [] st) (f s0) = A.pool lim st s0 :=
       A.pool_transport lim st s0 (f s0) (hVm f hf s0)
     have hrest' : (f s0).mem ⊨
@@ -950,15 +938,15 @@ theorem hookSat_writeStdoutBudget_of_hookSat {M : AllocCostModel} (A : RustCliAl
     refine Satisfies.mono (sepConj_mono_left (Entails.sepExists_right ([] : List AllocEvent) ?_)) hrest'
     rw [hpool]
     exact Entails.pure_right ⟨writeStdoutEnv_nil, hres⟩ (Entails.refl _)
-  · dsimp only [CliExt.writeStdoutSpec, Spec.inImage] at hp
+  · dsimp only [CliExt.writeStdoutSpec] at hp
     rw [satisfies_pure_sepConj] at hp; exact False.elim hp.1
-  · dsimp only [CliExt.writeStdoutSpec, Spec.inImage] at he
+  · dsimp only [CliExt.writeStdoutSpec] at he
     rw [satisfies_pure_sepConj] at he; exact False.elim he.1
-  · dsimp only [CliExt.writeStdoutSpec, Spec.inImage] at hoom
+  · dsimp only [CliExt.writeStdoutSpec] at hoom
     rw [satisfies_pure_sepConj] at hoom; exact False.elim hoom.1
 
 /-- Budget-threaded counterpart of `CliExt.durationSinceEpochSpec`
-    (`Proofs/SpecLemmas/SignalSession/CliExternsFixed.lean:413`), strengthening `post` with
+    (`Proofs/SpecLemmas/SignalSession/CliExternsFixed.lean`), strengthening `post` with
     `⌜VmPreserved s0 sf⌝`. -/
 def durationSinceEpochBudgetSpec : Spec (BitVec 64 × BitVec 64) :=
   withVmPreserved CliExt.durationSinceEpochSpec
@@ -992,10 +980,10 @@ structure CliExternsBudgetOk [LibsignalPlacement] (P : PEParams) (M : AllocCostM
   bcmp : HookSat ext "bcmp" bcmpSpec
   strlen : HookSat ext "strlen" strlenSpec
   -- The I/O crate.
-  readFile : ∀ img, HookSat ext readFileName (readFileBudgetSpec M A lim img)
-  writeFile : ∀ img, HookSat ext writeFileName (writeFileBudgetSpec M A lim img)
-  readStdin : ∀ img, HookSat ext readStdinName (readStdinBudgetSpec M A lim img)
-  writeStdout : ∀ img, HookSat ext writeStdoutName (writeStdoutBudgetSpec M A lim img)
+  readFile : HookSat ext readFileName (readFileBudgetSpec M A lim)
+  writeFile : HookSat ext writeFileName (writeFileBudgetSpec M A lim)
+  readStdin : HookSat ext readStdinName (readStdinBudgetSpec M A lim)
+  writeStdout : HookSat ext writeStdoutName (writeStdoutBudgetSpec M A lim)
   -- `core` / `std`.
   memrchr : HookSat ext "core::slice::memchr::memrchr" memrchrSpec
   fromUtf8 : HookSat ext "core::str::converts::from_utf8" fromUtf8Spec
@@ -1013,16 +1001,40 @@ structure CliExternsBudgetOk [LibsignalPlacement] (P : PEParams) (M : AllocCostM
   staticDrop : HookSat ext staticDropName zeroizeSpec
   sharedDrop : HookSat ext sharedDropName zeroizeSpec
   -- The PQXDH primitives `P.Q`.
-  compress512 : HookSat ext CryptoVerification.E2E.compress512Name (compress512Spec P.Q)
-  toEdwards : HookSat ext CryptoVerification.E2E.toEdwardsName (toEdwardsSpec P.Q)
-  compress : HookSat ext CryptoVerification.E2E.compressName (pureByteFunctionSpec P.Q.compress false)
-  edNeg : HookSat ext CryptoVerification.E2E.edNegName (pureByteFunctionSpec P.Q.edNeg true)
-  torsionFree : HookSat ext CryptoVerification.E2E.torsionFreeName (torsionFreeSpec P.Q)
-  dsmb : HookSat ext CryptoVerification.E2E.dsmbName (dsmbSpec P.Q)
-  scalarMod : HookSat ext CryptoVerification.E2E.scalarModName (pureByteFunctionSpec P.Q.scalarMod true)
-  scalarWide : HookSat ext CryptoVerification.E2E.scalarWideName (pureByteFunctionSpec P.Q.scalarWide false)
-  kemEncaps : HookSat ext CryptoVerification.E2E.kemEncapsName (kemEncapsSpec P.Q)
-  kemDecaps : HookSat ext CryptoVerification.E2E.kemDecapsName (kemDecapsSpec P.Q)
+  compress512 : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.compress512Name
+    (compress512Spec P.Q)
+  toEdwards : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.toEdwardsName
+    (toEdwardsSpec P.Q)
+  compress : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.compressName
+    (pureByteFunctionSpec
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyCompress false)
+  edNeg : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.edNegName
+    (pureByteFunctionSpec
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyEdNeg true)
+  torsionFree : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.torsionFreeName
+    (torsionFreeSpec P.Q)
+  dsmb : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.dsmbName
+    (dsmbSpec P.Q)
+  scalarMod : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.scalarModName
+    (pureByteFunctionSpec
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyScalarMod true)
+  scalarWide : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.scalarWideName
+    (pureByteFunctionSpec
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.legacyScalarWide false)
+  kemEncaps : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.kemEncapsName
+    (kemEncapsSpec P.Q)
+  kemDecaps : HookSat ext
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.kemDecapsName
+    (kemDecapsSpec P.Q)
   -- SPQR V1's ML-KEM-768 and helpers (`P.Q.K`, HMAC over `P.C.F`).
   spqr : SpqrHooksBudget P.C M A lim P.Q.K ext
 

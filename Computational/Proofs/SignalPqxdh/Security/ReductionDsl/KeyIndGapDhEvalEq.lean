@@ -9,9 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhGrow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEval -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhGrow -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStep -- proof-setup: allow-public-import
 
 /-!
 # End-to-End Evaluation Equivalence for `fgKeyIndGapDhProg`
@@ -20,7 +24,7 @@ Proves that `(fgKeyIndGapDhProg S b.q_total).eval (fun _ => A.1.run) (U, V)` equ
 `GapDH` reduction `(fgKeyIndGapDhAdv4 S b A).run U V` for every bounded `KeyInd` adversary `A`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +38,7 @@ namespace SignalPqxdh.Security.ReductionDsl.KeyIndGapDh
 open SignalPqxdh.Security.ReductionDsl.KeyInd
 
 /-- With `k` game queries still allowed, every non-truncated state list has at most `K - k` entries. -/
-def Inv {S : Setup} (K k : Nat) (st : FgKeyIndSimState S) : Prop :=
+@[expose] def Inv {S : Setup} (K k : Nat) (st : FgKeyIndSimState S) : Prop :=
   k + st.base.principals.length ≤ K ∧
   k + st.base.spkBundles.length ≤ K ∧
   k + st.base.opkEntries.length ≤ K ∧
@@ -165,7 +169,7 @@ theorem runFrom_eq (S : Setup) (K : Nat) (pa : paramsTy.denote)
   simp only [encGdhRS, keyIndRespToVal, keyIndRdec_keyIndRenc,
     map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
 
-def paramsFlatVal (S : Setup) (U V : Bytes) (idx : Nat) : paramsTy.denote :=
+@[expose] def paramsFlatVal (S : Setup) (U V : Bytes) (idx : Nat) : paramsTy.denote :=
   let nA := S.N_id * S.N_spk_tot
   let nC := S.N_send_tot * S.N_spk_tot
   let nB := S.N_send_tot * S.N_id
@@ -213,7 +217,7 @@ theorem fgKeyIndGapDhProg_eval_runFrom (S : Setup) (K : Nat)
     bind_assoc, pure_bind]
   rfl
 
-def fgKeyIndGapDhRunAtFlatComp (S : Setup) (K idx : Nat)
+@[expose] def fgKeyIndGapDhRunAtFlatComp (S : Setup) (K idx : Nat)
     (A : OracleComp (unifSpec + keyIndSpec S) Bool) (U V : Bytes) : OracleComp GdhSimSpec Bytes :=
   let nA := S.N_id * S.N_spk_tot
   let nC := S.N_send_tot * S.N_spk_tot
@@ -290,17 +294,5 @@ theorem fgKeyIndGapDhProg_eval_eq_of_queryBound (S : Setup) (K : Nat)
       (fun q st => fgKeyIndStepOpk_grow _ _ K U V q st) _
       (fun a st _ => gdhFinish_eval_mode3 S K a _ st rfl)
       (A ()) hA secb
-
-/-- Evaluation equivalence between `fgKeyIndGapDhProg S b.q_total` and `fgKeyIndGapDhAdv4 S b A`. -/
-theorem fgKeyIndGapDhProg_eval_eq (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) (U V : Bytes) :
-    (fgKeyIndGapDhProg S b.q_total).eval (fun _ => A.1.run) (U, V) =
-      (fgKeyIndGapDhAdv4 S b A).run U V := by
-  have hA : IsQueryBoundP A.1.run (fun q : ℕ ⊕ KeyIndQuery S => q.isRight = true) b.q_total := by
-    obtain ⟨_, _, _, h, _⟩ := A.2
-    convert h using 1
-    funext q; cases q <;> rfl
-  rw [fgKeyIndGapDhProg_eval_eq_of_queryBound S b.q_total (fun _ => A.1.run) hA U V]
-  rfl
 
 end SignalPqxdh.Security.ReductionDsl.KeyIndGapDh

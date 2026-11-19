@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<Ct2Sampled>::recv_next_epoch` (`0x5fa5c`, `31` instructions)
@@ -22,7 +22,7 @@ import ProofLib.SepLogic.WPp
 `Chunked.SendCt.Ct2Sampled.recv_next_epoch`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Leaves
 
@@ -42,11 +42,8 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.sub_add_cancel BitVec.toNat_zero
-
-noncomputable abbrev leavesProgAtExt (b : BitVec 64) (ext : String → Option (State → State)) : Program :=
-  libsignalSessionCode.rebase b (Rust.withPanics ext)
 
 abbrev dropGluePoly16Name : String :=
   "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>"
@@ -209,83 +206,5 @@ theorem pure_elim_focus {prog : Program} {pc : BitVec 64} {s : State} {φ : Prop
   hf ▸ SepWP.pure_elim h
 
 /-! ## 2. Main Proof: `<Ct2Sampled>::recv_next_epoch` (`0x5fa5c`, 31 insns) -/
-
-theorem ct2_sampled_recv_next_epoch_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdrop : subroutine_ok (leavesProgAtExt b ext)
-      ((leavesProgAtExt b ext).fnAddr dropGluePoly16Name) (dropGluePoly16Spec A)) :
-    subroutine_ok (leavesProgAtExt b ext)
-      ((leavesProgAtExt b ext).fnAddr ct2SampledRecvNextEpochName)
-      (ct2SampledRecvNextEpochSpec A F) := by
-  simp only [ct2SampledRecvNextEpochSpec]
-  have hdrop_raw : subroutine_ok (leavesProgAtExt b ext)
-      ((leavesProgAtExt b ext).fnAddr ct2SampledRecvNextEpochName - 80800#64)
-      (dropGluePoly16Spec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_back (d := 80800) (b := b) (X := Rust.withPanics ext)
-      libsignalSessionCode_fnOff_0x5a664 libsignalSessionCode_fnOff_0x46ac4 (by decide))
-    hdrop
-  code_fetches libsignalSessionCode spqrStatesLeavesBin b
-    (Rust.withPanics ext) libsignalSessionCode_fnOff_0x5a664 370276 124
-  dsimp only [leavesProgAtExt, ct2SampledRecvNextEpochName,
-    BitVec.ofNat_eq_ofNat] at hdrop_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::send_ct::Ct2Sampled>::recv_next_epoch" = entry
-  examples_hide_fetches
-  wp_init x s0
-  rcases x with ⟨outA, stA, st, epoch, out⟩
-  dsimp only at *
-  subst ‹s0.readReg64 (Reg.gpr 0#5) = outA›
-    ‹s0.readReg64 (Reg.gpr 1#5) = stA›
-    ‹s0.readReg64 (Reg.gpr 2#5) = epoch›
-  obtain ⟨hep_ne, hep_add, hout_eq⟩ := ct2Sampled_recv_next_epoch_ok (by assumption)
-  have hfsp_align : ((s0.sp - 32#64) &&& 15#64 == 0#64) = true :=
-    spAligned_sub s0.sp 32#64 (by assumption) (by decide)
-  have hz2 : (s0.readReg64 (Reg.gpr 2#5) == 0#64) = false :=
-    hep_add ▸ ep_add_one_beq_zero_false hep_ne
-  refine SepWP.fold (memRegion_56_unfold (s0.readReg64 (Reg.gpr 0#5))) (by sep_focus) ?_
-  refine SepWP.fold (stackAt_4160_top_unfold s0.sp) (by sep_focus) ?_
-  wp_pull_exists
-  unfold chunkedCt2SampledAt unchunkedCt2SentAt
-  rw [BitVec.add_assoc (s0.readReg64 (Reg.gpr 1#5)) 400#64 48#64,
-      show (400#64 + 48#64 : BitVec 64) = 448#64 from rfl]
-  refine SepWP.fold (polyEncoderAt_entails_tag_vecs_tail A (s0.readReg64 (Reg.gpr 1#5)) st.sending_ct2) (by sep_focus) ?_
-  refine SepWP.fold (authenticatorAt_extract A (s0.readReg64 (Reg.gpr 1#5) + 400#64) st.uc.auth) (by sep_focus) ?_
-  wp_pull_exists
-  rename_i tag vecs g
-  refine pure_elim_focus (φ := vecs.length = NUM_POLYS) (by sep_focus) fun hvecs_len => ?_
-  have hauth_words : wordsAt (s0.readReg64 (Reg.gpr 1#5) + 400#64) (authWordsList g) =
-      (((s0.readReg64 (Reg.gpr 1#5) + 400#64) ↦₆₄ g.v1.w0) ∗
-       ((s0.readReg64 (Reg.gpr 1#5) + 408#64) ↦₆₄ g.v1.w1) ∗
-       ((s0.readReg64 (Reg.gpr 1#5) + 416#64) ↦₆₄ g.v1.w2) ∗
-       ((s0.readReg64 (Reg.gpr 1#5) + 424#64) ↦₆₄ g.v2.w0) ∗
-       ((s0.readReg64 (Reg.gpr 1#5) + 432#64) ↦₆₄ g.v2.w1) ∗
-       ((s0.readReg64 (Reg.gpr 1#5) + 440#64) ↦₆₄ g.v2.w2)) := by
-    dsimp only [authWordsList]
-    simp only [wordsAt_cons_off, wordsAt_nil, sepConj_emp,
-      show (400#64 + 8#64 : BitVec 64) = 408#64 from rfl,
-      show (408#64 + 8#64 : BitVec 64) = 416#64 from rfl,
-      show (416#64 + 8#64 : BitVec 64) = 424#64 from rfl,
-      show (424#64 + 8#64 : BitVec 64) = 432#64 from rfl,
-      show (432#64 + 8#64 : BitVec 64) = 440#64 from rfl]
-  rw [hauth_words]
-  wp_steps
-  refine SepWP.fold (cells4_restore_4160_bottom s0.sp _ _ _ _) (by sep_focus) ?_
-  refine call_dropGluePoly16 hdrop_raw (s0.readReg64 (Reg.gpr 1#5) + 8#64) vecs
-    (by simp only [arm64_norm]; bv_omega)
-    (by simpa only [arm64_norm] using ‹s0.status = .Running›)
-    (by simp only [State.sp, arm64_norm])
-    (by assumption)
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm])
-    (by simp only [Reg.x0, arm64_norm])
-    hvecs_len
-    (by sep_focus)
-    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf htrace_sf => ?_)
-  refine SepWP.fold (Entails.of_eq hauth_words.symm) (by sep_focus) ?_
-  refine SepWP.fold (ct2Sampled_stA_post_combine (s0.readReg64 (Reg.gpr 1#5)) tag st.uc.epoch g) (by sep_focus) ?_
-  refine SepWP.fold (ct2Sampled_outA_recompose A (s0.readReg64 (Reg.gpr 0#5)) st.uc.auth
-    (s0.readReg64 (Reg.gpr 2#5)) out hout_eq g) (by sep_focus) ?_
-  refine SepWP.fold (Entails.of_eq (stackAt_4160_bottom s0.sp).symm) (by sep_focus) ?_
-  wp_done
 
 end CryptoVerification.SpqrV1.States.Leaves

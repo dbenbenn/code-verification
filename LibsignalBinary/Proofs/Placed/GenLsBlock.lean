@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
-public meta import LibsignalBinary.Proofs.Placed.PlacedCallSym -- shake: keep
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.FastDecode -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.BridgeReloc -- proof-setup: allow-public-import
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public meta import LibsignalBinary.Proofs.Placed.PlacedCallSym -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.FastDecode -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib.GenPlacedFetches -- shake: keep
-import LibsignalBinary.Proofs.Placed.BridgeReloc
-import ProofLib.GenPlacedFetches
-import ProofLib.Placed.Multi
 public meta import ProofLib.ProgramReflection -- shake: keep
 public meta import Lean -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.Bridge -- shake: keep
+meta import LibsignalBinary.Proofs.Placed.Bridge
 public meta import ProofLib.GenDecodes -- shake: keep
 
 /-!
@@ -28,7 +30,7 @@ elaborators, emitting per-block `PlacedLib` instances, `RelocTree` and `WordTree
 plain `ADRP`/`:lo12:` steppers, and reflected symbol-resolution rules in $O(\log N)$ kernel steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -118,53 +120,38 @@ section MetaGenLsBlk
 
 open Lean Meta Elab Term Command Tactic
 
-private meta partial def mkIdxTreeExprGls (ty : Expr) (elems : Array Expr) (lo hi : Nat) : Expr :=
-  if _h : lo < hi then
-    if hi - lo == 1 then
-      mkApp2 (Lean.mkConst ``IdxTree.leaf) ty elems[lo]!
-    else
-      let mid := (lo + hi) / 2
-      let l := mkIdxTreeExprGls ty elems lo mid
-      let r := mkIdxTreeExprGls ty elems mid hi
-      mkApp4 (Lean.mkConst ``IdxTree.node) ty (mkNatLit (mid - lo)) l r
-  else
-    mkApp (Lean.mkConst ``IdxTree.empty) ty
+private theorem skip_tail_step {α : Type} {xs ys : List α} {len idx rest : Nat} {v : α}
+    (hlen : xs.length = len)
+    (hge : decide (len ≤ idx) = true)
+    (hsub : idx - len = rest)
+    (htail : ys[rest]? = some v) :
+    (xs ++ ys)[idx]? = some v := by
+  have hle : xs.length ≤ idx := hlen ▸ of_decide_eq_true hge
+  rw [List.getElem?_append_right hle, hlen, hsub]
+  exact htail
 
-elab "blocks_idx_tree_of% " listStx:term:max : term => do
-  let listE ← elabTerm listStx none
-  let elems ← ProofLib.ProgramReflection.listElemsWhnf listE
-  return mkIdxTreeExprGls (Lean.mkConst ``CodeBlock) elems 0 elems.size
+private theorem take_tail_step {α : Type} {xs ys : List α} {len idx : Nat} {v : α}
+    (hlen : xs.length = len)
+    (hlt : decide (idx < len) = true)
+    (hget : xs[idx]? = some v) :
+    (xs ++ ys)[idx]? = some v := by
+  have hlt' : idx < xs.length := hlen ▸ of_decide_eq_true hlt
+  rw [List.getElem?_append_left hlt']
+  exact hget
 
-set_option maxHeartbeats 0 in
-/-- Balanced binary tree of the 624 `CodeBlock` entries of `libsignalSessionBlocks`, precomputed
-    once in `GenLsBlock.olean` so `gen_ls_blk <idx>` looks up block `<idx>` in $O(\log 624) = 10$
-    tree steps without unfolding the other 622 blocks. -/
-noncomputable def lsBlocksTree : IdxTree CodeBlock :=
-  blocks_idx_tree_of% libsignalSessionBlocks
-
-private theorem lsBlocksTree_toList : lsBlocksTree.toList = libsignalSessionLib.blocks := by
-  rfl_kernel
-
-private theorem lsBlocksTree_size : lsBlocksTree.size? = some 624 := by
-  decide +kernel
-
-theorem blockLib_eq_of_lsBlocksTree {lib : PlacedLib} {i : Nat} {blk : CodeBlock}
-    (hget : lsBlocksTree.getFast? i = some blk)
+theorem blockLib_eq_of_blocks_getElem? {lib : PlacedLib} {i : Nat} {blk : CodeBlock}
+    (h1 : libsignalSessionBlocks[i]? = some blk)
     (hlib : lib = { name := "libsignalSession", text := blk, data := libsignalSessionData,
                     exports := libsignalSessionMultiLib.exports }) :
     lib = libsignalSessionLib.blockLib i := by
   subst hlib
-  have hg0 : lsBlocksTree.get? i = some blk :=
-    (IdxTree.getFast?_eq_get? lsBlocksTree i).symm.trans hget
-  have h1 : libsignalSessionLib.blocks[i]? = some blk :=
-    (congrArg (·[i]?) lsBlocksTree_toList.symm).trans
-      ((IdxTree.get?_eq_toList_getElem? lsBlocksTree_size i).symm.trans hg0)
+  have h1' : libsignalSessionLib.blocks[i]? = some blk := h1
   unfold MultiPlacedLib.blockLib
   change PlacedLib.mk "libsignalSession" blk _ _ =
     PlacedLib.mk libsignalSessionLib.name (libsignalSessionLib.blocks.getD i { code := [] })
       libsignalSessionLib.data libsignalSessionLib.exports
   have hgetD : libsignalSessionLib.blocks.getD i { code := [] } = blk := by
-    rw [List.getD_eq_getElem?_getD, h1]; rfl
+    rw [List.getD_eq_getElem?_getD, h1']; rfl
   rw [hgetD]
   rfl
 
@@ -256,22 +243,6 @@ private meta def evalNatExprGls? (e : Expr) : MetaM (Option Nat) := do
   if let some n := r2.nat? then return some n
   return none
 
-private meta partial def lookupIdxTreeExpr (treeE : Expr) (idx : Nat) : MetaM (Option Expr) := do
-  let r ← whnfAll treeE
-  if r.isAppOfArity ``IdxTree.empty 1 then
-    return none
-  else if r.isAppOfArity ``IdxTree.leaf 2 then
-    if idx == 0 then return some (r.getArg! 1) else return none
-  else if r.isAppOfArity ``IdxTree.node 4 then
-    let some leftSz ← evalNatExprGls? (r.getArg! 1)
-      | throwError "gen_ls_blk: invalid leftSz in IdxTree.node"
-    if idx < leftSz then
-      lookupIdxTreeExpr (r.getArg! 2) idx
-    else
-      lookupIdxTreeExpr (r.getArg! 3) (idx - leftSz)
-  else
-    throwError "gen_ls_blk: unexpected IdxTree expression {r}"
-
 private meta partial def collectSymIdxTreeEntries (treeE : Expr)
     (acc : Array (String × Nat × Nat))
     (seen : Std.HashSet String)
@@ -308,6 +279,7 @@ local elab "#init_ls_sym_meta_lits" : command => liftTermElabM <| withExporting 
   let currNs ← getCurrNamespace
   let (entries, _, _) ← collectSymIdxTreeEntries (Lean.mkConst ``lsBlockSymIdxTree) #[] {} {}
   let extElems ← ProofLib.ProgramReflection.listElemsWhnf (Lean.mkConst ``libsignalSessionExterns)
+  let hookedElems ← ProofLib.ProgramReflection.listElemsWhnf (Lean.mkConst ``libsignalHookedExterns)
   let strTy := Lean.mkConst ``String
   let natTy := Lean.mkConst ``Nat
   let natNatTy := mkApp2 (Lean.mkConst ``Prod [.zero, .zero]) natTy natTy
@@ -331,6 +303,15 @@ local elab "#init_ls_sym_meta_lits" : command => liftTermElabM <| withExporting 
     type := mkApp (Lean.mkConst ``List [.zero]) strTy,
     value := buildListExpr0 strTy extLitElems, hints := .abbrev, safety := .safe
   })
+  let mut hookedLitElems : Array Expr := #[]
+  for eE in hookedElems do
+    let s ← evalStrLitGls eE
+    hookedLitElems := hookedLitElems.push (mkStrLit s)
+  addDecl (.defnDecl {
+    name := currNs ++ `lsHookedSymsLits, levelParams := [],
+    type := mkApp (Lean.mkConst ``List [.zero]) strTy,
+    value := buildListExpr0 strTy hookedLitElems, hints := .abbrev, safety := .safe
+  })
 
 set_option maxHeartbeats 0 in
 #init_ls_sym_meta_lits
@@ -338,8 +319,162 @@ set_option maxHeartbeats 0 in
 private meta partial def readLitList (e : Expr) (acc : Array Expr := #[]) : Array Expr :=
   if e.isAppOfArity ``List.cons 3 then
     readLitList (e.getArg! 2) (acc.push (e.getArg! 1))
+  else if e.isAppOfArity ``HAppend.hAppend 6 then
+    readLitList (e.getArg! 5) (readLitList (e.getArg! 4) acc)
   else
     acc
+
+private meta partial def collectBlocksAppendSpine (e : Expr) (acc : Array Name := #[]) : MetaM (Array Name) := do
+  if e.isAppOfArity ``HAppend.hAppend 6 then
+    let lhs := e.getArg! 4
+    let some nm := lhs.constName? | throwError "gen_ls_blk: expected shard constant, got {lhs}"
+    collectBlocksAppendSpine (e.getArg! 5) (acc.push nm)
+  else
+    let some nm := e.constName? | throwError "gen_ls_blk: expected shard constant, got {e}"
+    return acc.push nm
+
+local elab "#init_ls_shard_bounds" : command => do
+  let shardSpecs ← liftTermElabM <| withExporting do
+    let currNs ← getCurrNamespace
+    let ci ← getConstInfo ``libsignalSessionBlocks
+    let shardNames ← collectBlocksAppendSpine ci.value!
+    let natTy := Lean.mkConst ``Nat
+    let strTy := Lean.mkConst ``String
+    let pair1 := mkApp2 (Lean.mkConst ``Prod [.zero, .zero]) natTy strTy
+    let pair2 := mkApp2 (Lean.mkConst ``Prod [.zero, .zero]) natTy pair1
+    let quadTy := mkApp2 (Lean.mkConst ``Prod [.zero, .zero]) natTy pair2
+    let mut specs : Array (Nat × Nat × Nat × Name) := #[]
+    let mut litElems : Array Expr := #[]
+    let mut base : Nat := 0
+    for k in [0 : shardNames.size] do
+      let sName := shardNames[k]!
+      let sci ← getConstInfo sName
+      let slen := (← ProofLib.ProgramReflection.listElemsWhnf sci.value!).size
+      let hi := base + slen
+      specs := specs.push (k, base, hi, sName)
+      let p1 := mkApp4 (Lean.mkConst ``Prod.mk [.zero, .zero]) natTy strTy
+        (mkRawNatLit hi) (mkStrLit sName.toString)
+      let p2 := mkApp4 (Lean.mkConst ``Prod.mk [.zero, .zero]) natTy pair1
+        (mkRawNatLit base) p1
+      let q := mkApp4 (Lean.mkConst ``Prod.mk [.zero, .zero]) natTy pair2
+        (mkRawNatLit k) p2
+      litElems := litElems.push q
+      base := hi
+    addDecl (.defnDecl {
+      name := currNs ++ `lsShardRangesLits, levelParams := [],
+      type := mkApp (Lean.mkConst ``List [.zero]) quadTy,
+      value := buildListExpr0 quadTy litElems, hints := .abbrev, safety := .safe
+    })
+    return specs
+
+  let nShards := shardSpecs.size
+  for idxRev in [0 : nShards] do
+    let k := nShards - 1 - idxRev
+    let (_, _, _, sName) := shardSpecs[k]!
+    let tailId := mkIdent (Name.mkSimple s!"_ls_tail_{k}")
+    let sId := mkIdent (`_root_ ++ sName)
+    if k + 1 == nShards then
+      elabCommand (← `(command|
+        @[reducible] private noncomputable def $tailId:ident : List CodeBlock := $sId:ident
+      ))
+    else
+      let nextTailId := mkIdent (Name.mkSimple s!"_ls_tail_{k + 1}")
+      elabCommand (← `(command|
+        @[reducible] private noncomputable def $tailId:ident : List CodeBlock := $sId:ident ++ $nextTailId:ident
+      ))
+
+  let tail0Id := mkIdent (Name.mkSimple "_ls_tail_0")
+  let tailGet0Id := mkIdent (Name.mkSimple "_ls_tail_get_0")
+  elabCommand (← `(command|
+    private theorem $tailGet0Id:ident {idx : Nat} {blk : CodeBlock}
+        (_hge : decide (0 ≤ idx) = true)
+        (h : ($tail0Id:ident)[idx - 0]? = some blk) :
+        libsignalSessionBlocks[idx]? = some blk := by
+      have h0 : libsignalSessionBlocks = $tail0Id:ident := rfl
+      rw [h0]
+      simpa only [Nat.sub_zero] using h
+  ))
+
+  for (k, base, hi, sName) in shardSpecs do
+    let slen := hi - base
+    let sId := mkIdent (`_root_ ++ sName)
+    let lenThmId := mkIdent (Name.mkSimple s!"_ls_shard_len_{k}")
+    let slenLit := Syntax.mkNumLit (toString slen)
+    let baseLit := Syntax.mkNumLit (toString base)
+    let hiLit := Syntax.mkNumLit (toString hi)
+    let tailGetKId := mkIdent (Name.mkSimple s!"_ls_tail_get_{k}")
+    let blkEqShardId := mkIdent (Name.mkSimple s!"blockLib_eq_of_shard_{k}")
+    elabCommand (← `(command|
+      private theorem $lenThmId:ident : ($sId:ident).length = $slenLit:num := rfl
+    ))
+    if k + 1 < nShards then
+      let tailGetNextId := mkIdent (Name.mkSimple s!"_ls_tail_get_{k + 1}")
+      let nextTailId := mkIdent (Name.mkSimple s!"_ls_tail_{k + 1}")
+      elabCommand (← `(command|
+        theorem $blkEqShardId:ident {lib : PlacedLib} {idx localIdx : Nat} {blk : CodeBlock}
+            (hge : decide ($baseLit:num ≤ idx) = true)
+            (hlt : decide (idx < $hiLit:num) = true)
+            (hsub : idx - $baseLit:num = localIdx)
+            (hget : ($sId:ident)[localIdx]? = some blk)
+            (hlib : lib = { name := "libsignalSession", text := blk, data := libsignalSessionData,
+                            exports := libsignalSessionMultiLib.exports }) :
+            lib = libsignalSessionLib.blockLib idx := by
+          have h1 : $baseLit:num ≤ idx := of_decide_eq_true hge
+          have h2 : idx < $hiLit:num := of_decide_eq_true hlt
+          have hlt_loc : decide (idx - $baseLit:num < $slenLit:num) = true :=
+            decide_eq_true (by omega)
+          have hget' : ($sId:ident)[idx - $baseLit:num]? = some blk := hsub ▸ hget
+          exact blockLib_eq_of_blocks_getElem?
+            ($tailGetKId:ident hge (take_tail_step $lenThmId:ident hlt_loc hget')) hlib
+      ))
+      elabCommand (← `(command|
+        private theorem $tailGetNextId:ident {idx : Nat} {blk : CodeBlock}
+            (hge1 : decide ($hiLit:num ≤ idx) = true)
+            (htail : ($nextTailId:ident)[idx - $hiLit:num]? = some blk) :
+            libsignalSessionBlocks[idx]? = some blk := by
+          have h1 : $hiLit:num ≤ idx := of_decide_eq_true hge1
+          have hge0 : decide ($baseLit:num ≤ idx) = true := decide_eq_true (by omega)
+          have hge_loc : decide ($slenLit:num ≤ idx - $baseLit:num) = true :=
+            decide_eq_true (by omega)
+          have hsub : (idx - $baseLit:num) - $slenLit:num = idx - $hiLit:num := by omega
+          exact $tailGetKId:ident hge0 (skip_tail_step $lenThmId:ident hge_loc hsub htail)
+      ))
+    else
+      elabCommand (← `(command|
+        theorem $blkEqShardId:ident {lib : PlacedLib} {idx localIdx : Nat} {blk : CodeBlock}
+            (hge : decide ($baseLit:num ≤ idx) = true)
+            (_hlt : decide (idx < $hiLit:num) = true)
+            (hsub : idx - $baseLit:num = localIdx)
+            (hget : ($sId:ident)[localIdx]? = some blk)
+            (hlib : lib = { name := "libsignalSession", text := blk, data := libsignalSessionData,
+                            exports := libsignalSessionMultiLib.exports }) :
+            lib = libsignalSessionLib.blockLib idx := by
+          have hget' : ($sId:ident)[idx - $baseLit:num]? = some blk := hsub ▸ hget
+          exact blockLib_eq_of_blocks_getElem? ($tailGetKId:ident hge hget') hlib
+      ))
+
+set_option maxHeartbeats 0 in
+#init_ls_shard_bounds
+
+private meta initialize lsShardRangesCache :
+    IO.Ref (Option (Array (Nat × Nat × Nat × Name))) ←
+  IO.mkRef none
+
+private meta def loadLsShardRanges : CoreM (Array (Nat × Nat × Nat × Name)) := do
+  if let some cached ← lsShardRangesCache.get then
+    return cached
+  let ci ← getConstInfo ``lsShardRangesLits
+  let mut arr : Array (Nat × Nat × Nat × Name) := #[]
+  for qE in readLitList ci.value! do
+    if let .lit (.natVal k) := qE.getArg! 2 then
+      let p2 := qE.getArg! 3
+      if let .lit (.natVal base) := p2.getArg! 2 then
+        let p1 := p2.getArg! 3
+        if let (.lit (.natVal hi), .lit (.strVal s)) := (p1.getArg! 2, p1.getArg! 3) then
+          let nm := (s.splitOn ".").foldl Name.str Name.anonymous
+          arr := arr.push (k, base, hi, nm)
+  lsShardRangesCache.set (some arr)
+  return arr
 
 private meta initialize lsBlockMetaCache :
     IO.Ref (Option (Std.HashMap String (Nat × Nat) × Std.HashSet String × Std.HashMap String Nat)) ←
@@ -369,20 +504,41 @@ private meta def loadLsSymMeta :
   lsBlockMetaCache.set (some res)
   return res
 
-/-- Fast reflection tactic for `(hmem : sym ∈ libsignalSessionExterns)`: looks up `k` in the
-    precomputed literal index table and closes `libsignalSessionExterns[k]? = some sym` by
-    `rfl_kernel` (`0` `String.decEq` calls), falling back to `decide` on non-literal goals. -/
+private meta initialize lsHookedIdxCache : IO.Ref (Option (Std.HashMap String Nat)) ←
+  IO.mkRef none
+
+private meta def loadLsHookedIdx : CoreM (Std.HashMap String Nat) := do
+  if let some cached ← lsHookedIdxCache.get then
+    return cached
+  let ci ← getConstInfo ``lsHookedSymsLits
+  let mut hookedIdx : Std.HashMap String Nat := {}
+  let arr := readLitList ci.value!
+  for i in [0 : arr.size] do
+    if let .lit (.strVal s) := arr[i]! then
+      if !hookedIdx.contains s then
+        hookedIdx := hookedIdx.insert s i
+  lsHookedIdxCache.set (some hookedIdx)
+  return hookedIdx
+
+/-- Fast reflection tactic for `(hmem : sym ∈ libsignalHookedExterns)` or
+    `(hmem : sym ∈ libsignalSessionExterns)`: looks up `k` in the precomputed literal index table
+    and closes `xs[k]? = some sym` by `rfl_kernel` (`0` `String.decEq` calls), falling back to
+    `decide` on non-literal goals. -/
 elab "ls_extern_mem_tac" : tactic => do
   try
     let tgt ← instantiateMVars (← getMainTarget)
     let args := tgt.getAppArgs
     let mut kFound? : Option Nat := none
-    let (_, _, extIdx) ← loadLsSymMeta
+    let idxMap ←
+      if tgt.getUsedConstants.contains ``libsignalHookedExterns then
+        loadLsHookedIdx
+      else
+        (·.2.2) <$> loadLsSymMeta
     for a in args do
       let aTy ← inferType a
       if aTy.isConstOf ``String then
         let s ← evalStrLitGls a
-        if let some k := extIdx.get? s then
+        if let some k := idxMap.get? s then
           kFound? := some k
           break
     match kFound? with
@@ -396,12 +552,12 @@ elab "ls_extern_mem_tac" : tactic => do
 
 theorem ls_externAt?_of_mem [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by ls_extern_mem_tac)
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by ls_extern_mem_tac)
     {bi : Nat} [LsBlockBound bi]
     (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
-  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem hmem
-  exact ls_externAt?_of_blockProg (k := k) (by simp [hk, hget]) hi hunmut
+  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_externAt?_of_blockProg (k := k) (by simp [hk, hget]) hi hunmut hmem
 
 private meta def evalIntLitGls (e : Expr) : MetaM Int := do
   let r ← withTransparency .all (reduce e)
@@ -471,7 +627,7 @@ private meta def wordAtLitProof (textE treeE nE hcodeE hsizeE treeVal : Expr) (o
     cross-block relocation symbol lemmas are namespaced under `relocTag` so parallel
     sibling shards in the same namespace can be merged cleanly. -/
 meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
-    (relocTag : String := "") : CommandElabM Unit := do
+    (relocTag : String := "") (forceRelocDat : Bool := false) : CommandElabM Unit := do
   elabCommand (← `(command| open ProofLib.ProgramReflection ProofLib.GenPlacedFetches))
   let idx := idxStx.getNat
   let currNs ← getCurrNamespace
@@ -480,11 +636,24 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
   if (← getEnv).contains fullBlkLibName then
     return
   let isMutated := idx ∈ ([55, 72, 77, 79, 159, 202, 462, 519] : List Nat)
-  let (blkRaw, blkReduced, codeField, codeBytes, symEntries, relocData, blockSymMap, extSymSet) ←
+  let (shardIdx, localIdx, blkRaw, blkReduced, codeField, codeBytes, symEntries, relocData, weakRefsEmpty, blockSymMap, extSymSet) ←
       liftTermElabM do
     let (blockSymMap, extSymSet, _) ← loadLsSymMeta
-    let some blkRaw ← lookupIdxTreeExpr (Lean.mkConst ``lsBlocksTree) idx
+    let shardRanges ← loadLsShardRanges
+    let mut foundShard? : Option (Nat × Nat × Nat × Name) := none
+    for entry@(_, sBase, sHi, _) in shardRanges do
+      if sBase ≤ idx && idx < sHi then
+        foundShard? := some entry
+        break
+    let some (shardIdx, shardBase, _, shardConstName) := foundShard?
       | throwErrorAt idxStx "gen_ls_blk: block index {idx} out of bounds"
+    let localIdx := idx - shardBase
+    let shardCi ← getConstInfo shardConstName
+    let some shardVal := shardCi.value?
+      | throwErrorAt idxStx "gen_ls_blk: `{shardConstName}` has no definition in MetaM; add `meta import GeneratedLean.LibsignalSessionPlacedObjShard{shardIdx}` to access block {idx}"
+    let shardElems ← ProofLib.ProgramReflection.listElemsWhnf shardVal
+    let some blkRaw := shardElems[localIdx]?
+      | throwErrorAt idxStx "gen_ls_blk: local index {localIdx} out of bounds in `{shardConstName}`"
     let blkWhnf ← whnfAll blkRaw
     let codeField := if blkWhnf.isAppOfArity ``CodeBlock.mk 6 then blkWhnf.getArg! 0
       else mkApp (Lean.mkConst ``CodeBlock.code) blkWhnf
@@ -527,13 +696,13 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
     let relocsLitE := buildListExpr0 (Lean.mkConst ``RelocEntry) relocLitElems
     let weakRefsField := if blkWhnf.isAppOfArity ``CodeBlock.mk 6 then blkWhnf.getArg! 5
       else mkApp (Lean.mkConst ``CodeBlock.weakRefs) blkWhnf
+    let weakRefsEmpty := (← ProofLib.ProgramReflection.listElemsWhnf weakRefsField).isEmpty
     let blkReduced := mkApp6 (Lean.mkConst ``CodeBlock.mk)
       codeField (mkNatLit alignVal) symsLitE relocsLitE (Lean.mkConst ``libsignalSessionExterns) weakRefsField
-    return (blkRaw, blkReduced, codeField, codeBytes, symEntries, relocData, blockSymMap, extSymSet)
+    return (shardIdx, localIdx, blkRaw, blkReduced, codeField, codeBytes, symEntries, relocData, weakRefsEmpty, blockSymMap, extSymSet)
 
   let codeLen := codeBytes.size
   let nWords := codeLen / 4
-  let maxOff := if nWords > 0 then (nWords - 1) * 4 else 0
   let blkLibEqId := mkIdent (Name.mkSimple s!"blkLib_eq_{idx}")
   let blkExternsEqId := mkIdent (Name.mkSimple s!"blkExterns_eq_{idx}")
   let blkPlId := mkIdent (Name.mkSimple s!"blkPl_{idx}")
@@ -544,7 +713,6 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
   let blkTreeId := mkIdent (Name.mkSimple s!"blkTree_{idx}")
   let blkCodeEqId := mkIdent (Name.mkSimple s!"blkCodeEq_{idx}")
   let blkTreeSizeId := mkIdent (Name.mkSimple s!"blkTreeSize_{idx}")
-  let maxOffLit := Syntax.mkNumLit (toString maxOff)
 
   let fullBlkPlName := currNs ++ blkPlId.getId
   let fullBlkPlaceableName := currNs ++ blkPlaceableId.getId
@@ -554,7 +722,7 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
   let fullBlkCodeEqName := currNs ++ blkCodeEqId.getId
   let fullBlkTreeSizeName := currNs ++ blkTreeSizeId.getId
 
-  -- Emit `blkLib_<idx>`, `blkLib_eq_<idx>`, and `blkExterns_eq_<idx>` via kernel trees.
+  -- Emit `blkLib_<idx>`, `blkLib_eq_<idx>`, and `blkExterns_eq_<idx>` via per-shard lookup.
   liftTermElabM <| withExporting do
     let val := mkApp4 (Lean.mkConst ``PlacedLib.mk)
       (mkStrLit "libsignalSession")
@@ -568,10 +736,13 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
     let libE := Lean.mkConst fullBlkLibName
     let optBlkTy := mkApp (Lean.mkConst ``Option [.zero]) (Lean.mkConst ``CodeBlock)
     let someBlkRaw := mkApp2 (Lean.mkConst ``Option.some [.zero]) (Lean.mkConst ``CodeBlock) blkRaw
+    let reflBoolTrue := mkApp2 (Lean.mkConst ``Eq.refl [.succ .zero]) (Lean.mkConst ``Bool) (Lean.mkConst ``Bool.true)
+    let hsubE := mkApp2 (Lean.mkConst ``Eq.refl [.succ .zero]) (Lean.mkConst ``Nat) (mkNatLit localIdx)
     let hgetE := mkApp2 (Lean.mkConst ``Eq.refl [.succ .zero]) optBlkTy someBlkRaw
     let hlibE := mkApp2 (Lean.mkConst ``Eq.refl [.succ .zero]) (Lean.mkConst ``PlacedLib) libE
-    let eqPrf := mkAppN (Lean.mkConst ``blockLib_eq_of_lsBlocksTree)
-      #[libE, mkNatLit idx, blkRaw, hgetE, hlibE]
+    let shardThmNm := `CryptoVerification ++ Name.mkSimple s!"blockLib_eq_of_shard_{shardIdx}"
+    let eqPrf := mkAppN (Lean.mkConst shardThmNm)
+      #[libE, mkNatLit idx, mkNatLit localIdx, blkRaw, reflBoolTrue, reflBoolTrue, hsubE, hgetE, hlibE]
     let eqTy := mkApp3 (Lean.mkConst ``Eq [.succ .zero]) (Lean.mkConst ``PlacedLib)
       libE (mkApp2 (Lean.mkConst ``MultiPlacedLib.blockLib) (Lean.mkConst ``libsignalSessionLib) (mkNatLit idx))
     addDecl (.thmDecl {
@@ -604,10 +775,12 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
           (full_block_placeable $idxStx:num (by decide))
     ))
     elabCommand (← `(command|
+      -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
       noncomputable def $blkPCId:ident [LibsignalFullPlacement] : Program :=
         ($blkLibId:ident).program $blkPlId:ident
     ))
     elabCommand (← `(command|
+      -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
       noncomputable abbrev $lsProgId:ident [LibsignalFullPlacement] (H : LibsignalHooks) : Program :=
         ($blkPCId:ident).rebase ($blkPlId:ident).base H
     ))
@@ -633,10 +806,12 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
           (LibsignalPlacement.block_placeable $idxStx:num (by decide) (by decide))
     ))
     elabCommand (← `(command|
+      -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
       noncomputable def $blkPCId:ident [LibsignalPlacement] : Program :=
         ($blkLibId:ident).program $blkPlId:ident
     ))
     elabCommand (← `(command|
+      -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
       noncomputable abbrev $lsProgId:ident [LibsignalPlacement] (H : LibsignalHooks) : Program :=
         ($blkPCId:ident).rebase ($blkPlId:ident).base H
     ))
@@ -690,7 +865,7 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
     let encKeyTy := mkApp2 (Lean.mkConst ``Prod [.zero, .zero]) natTy natListTy
     let encEntryTy := mkApp2 (Lean.mkConst ``Prod [.zero, .zero]) encKeyTy natTy
     let encEntryMk := mkApp2 (Lean.mkConst ``Prod.mk [.zero, .zero]) encKeyTy natTy
-    let encTy := mkApp (Lean.mkConst ``ProofLib.ObjectLoad.EncSymTable) natTy
+    let encTy := mkApp (Lean.mkConst ``ProofLib.EncSymTable) natTy
     let xsElems := symEntries.map fun (s, off) =>
       mkApp2 charPairMk (mkStrCharsExpr s) (mkNatLit off)
     let encElems := symEntries.map fun (s, off) =>
@@ -714,7 +889,7 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
     let htblTy := mkApp3 (Lean.mkConst ``Eq [.succ .zero]) strListTy symsLhs symsRhs
     let htblVal := mkApp2 (Lean.mkConst ``Eq.refl [.succ .zero]) strListTy symsLhs
     addDecl (.thmDecl { name := shHtblNm, levelParams := [], type := htblTy, value := htblVal })
-    let prepLhs := mkApp2 (Lean.mkConst ``ProofLib.ObjectLoad.prepareCharAssocVal) natTy shXsE
+    let prepLhs := mkApp2 (Lean.mkConst ``ProofLib.prepareCharAssocVal) natTy shXsE
     let heqTy := mkApp3 (Lean.mkConst ``Eq [.succ .zero]) encTy prepLhs shEncE
     let heqVal := mkApp2 (Lean.mkConst ``Eq.refl [.succ .zero]) encTy shEncE
     addDecl (.thmDecl { name := shHeqNm, levelParams := [], type := heqTy, value := heqVal })
@@ -776,10 +951,12 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
         name := fullBlkTreeSizeName, levelParams := [], type := sizeTy, value := sizeVal
       })
     if emitFetches then
-      elabCommand (← `(command|
-        gen_placed_fetches $blkPCId:ident $blkLibId:ident $blkTreeId:ident $blkCodeEqId:ident $blkTreeSizeId:ident
-          via_placement $blkPlId:ident $blkPlaceableId:ident [0 → $maxOffLit:num]
-      ))
+      let mut symSet : Std.HashSet String := {}
+      for (s, _) in symEntries do
+        symSet := symSet.insert s
+      LibsignalBinary.Proofs.Placed.FastDecode.elabFastPlacedFetchesForBlock
+        blkPCId blkLibId blkTreeId blkCodeEqId blkTreeSizeId blkPlId blkPlaceableId
+        nWords relocData symSet weakRefsEmpty
 
   -- Emit plain `ADRP` `pairStep`s and `:lo12:` load/store fetches via tree lookups.
   let mut relocByOff : Std.HashMap Nat (Name × String × Int × Expr) := {}
@@ -1110,7 +1287,7 @@ meta def elabGenLsBlkImpl (idxStx : TSyntax `num) (emitFetches : Bool)
         | none =>
           let hash := UInt64.toNat (Hashable.hash rsym)
           let stdDat := Name.mkSimple s!"ls_resolve_dat_{sanitizeSymIdent rsym}_{hash}"
-          if relocTag.isEmpty || !(← getEnv).contains (currNs ++ stdDat) then
+          if forceRelocDat || relocTag.isEmpty || !(← getEnv).contains (currNs ++ stdDat) then
             addResolveDat (Name.mkSimple s!"ls_resolve_{relocPrefix}dat_{sanitizeSymIdent rsym}_{hash}") rsym
 
   -- Mark `blkPC_<idx>` `[irreducible]` when emitting full fetches so `wp_steps` does not unfold `stubs`.

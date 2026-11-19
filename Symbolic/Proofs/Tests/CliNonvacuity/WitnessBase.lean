@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Refinement.Cli.ExternWitness
+public import Symbolic.Proofs.Tests.Refinement.Cli.ExternWitness -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuityBase
-public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Sem -- shake: keep
 import Symbolic.Proofs.Tests.CliNonvacuity.Defs -- shake: keep
 import Symbolic.Tests.Nonvacuity.SetupTrace -- shake: keep
@@ -24,7 +24,7 @@ Kyber-1024 witness primitives, concrete `myBaseInterp`, `myHooks`, `myParams`, a
 witnesses, and `myInterp_total : ExternInterpretationTotalOnUsedSymbols myInterp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,10 +37,9 @@ open DY.Libsignal.Refinement
   (ExternCryptoLawsHold sha256CompressFunction sha256CompressSymbol x25519AgreementSymbol
    x25519PublicKeySymbol x25519TorsionSymbol aesCbcEncryptSymbol aesCbcDecryptSymbol torsionShift)
 open DY.Libsignal.PQXDH.Refinement
-  (kyberEncapsSymbol kyberDecapsSymbol sha512CompressSymbol toEdwardsSymbol edwardsCompressSymbol
-   edwardsNegSymbol torsionFreeSymbol doubleScalarMulSymbol scalarModOrderSymbol
-   scalarModOrderWideSymbol mlkem768FromSeedSymbol mlkem768ValidatePkSymbol
-   mlkem768Encaps1Symbol mlkem768Encaps2Symbol mlkem768DecapsSymbol libcruxHmacSymbol)
+  (kyberEncapsSymbol kyberDecapsSymbol sha512CompressSymbol mlkem768FromSeedSymbol
+   mlkem768ValidatePkSymbol mlkem768Encaps1Symbol mlkem768Encaps2Symbol mlkem768DecapsSymbol
+   libcruxHmacSymbol)
 open DY.Libsignal.Composed.Refinement
   (ProtocolSetup OpaqueSymbolSemantics Ghost GhostAndSemMatchSetup MatchesEvents
    ExternInterpretationTotalOnUsedSymbols ReturnsLength ProtocolSetupWF
@@ -72,10 +71,10 @@ open Symbolic.Swarm.TRREF.SpqrSemOf (bytesToVec)
 
 /-! ## Keyed Involutive AES-256-CBC (`xorBlock`) -/
 
-def xorKeyMask (k : CryptoGames.CBC.AesKey) : CryptoGames.CBC.Block :=
+@[expose] def xorKeyMask (k : CryptoGames.CBC.AesKey) : CryptoGames.CBC.Block :=
   k.extractLsb' 0 128 ^^^ k.extractLsb' 128 128
 
-def xorBlock (k : CryptoGames.CBC.AesKey) (b : CryptoGames.CBC.Block) : CryptoGames.CBC.Block :=
+@[expose] def xorBlock (k : CryptoGames.CBC.AesKey) (b : CryptoGames.CBC.Block) : CryptoGames.CBC.Block :=
   b ^^^ xorKeyMask k
 
 theorem xorBlock_involutive (k : CryptoGames.CBC.AesKey) (b : CryptoGames.CBC.Block) :
@@ -316,11 +315,11 @@ structure ShaAcc where
   w6 : BitVec 32
   w7 : BitVec 32
 
-def shaMixInit : ShaAcc :=
+@[expose] def shaMixInit : ShaAcc :=
   { w0 := 0x6a09e667#32, w1 := 0xbb67ae85#32, w2 := 0x3c6ef372#32, w3 := 0xa54ff53a#32
     w4 := 0x510e527f#32, w5 := 0x9b05688c#32, w6 := 0x1f83d9ab#32, w7 := 0x5be0cd19#32 }
 
-def shaMixByte (s : ShaAcc) (b : BitVec 8) : ShaAcc :=
+@[expose] def shaMixByte (s : ShaAcc) (b : BitVec 8) : ShaAcc :=
   let v : BitVec 32 := b.setWidth 32
   let t : BitVec 32 := ((s.w0 <<< 7) ||| (s.w0 >>> 25)) + s.w4 + v + 0x9e3779b9#32
   { w0 := s.w1 ^^^ v
@@ -332,10 +331,10 @@ def shaMixByte (s : ShaAcc) (b : BitVec 8) : ShaAcc :=
     w6 := s.w7 ^^^ (t >>> 5)
     w7 := t }
 
-def word32LE (w : BitVec 32) : HwBytes :=
+@[expose] def word32LE (w : BitVec 32) : HwBytes :=
   [w.extractLsb' 0 8, w.extractLsb' 8 8, w.extractLsb' 16 8, w.extractLsb' 24 8]
 
-def mySha256Raw (st blk : ByteString) : HwBytes :=
+@[expose] def mySha256Raw (st blk : ByteString) : HwBytes :=
   let s := (st ++ [0xA5#8] ++ blk).foldl shaMixByte shaMixInit
   word32LE s.w0 ++ word32LE s.w1 ++ word32LE s.w2 ++ word32LE s.w3 ++
     word32LE s.w4 ++ word32LE s.w5 ++ word32LE s.w6 ++ word32LE s.w7
@@ -343,16 +342,16 @@ def mySha256Raw (st blk : ByteString) : HwBytes :=
 @[simp] theorem length_mySha256Raw (st blk : ByteString) :
     (mySha256Raw st blk).length = 32 := rfl
 
-def myKyberCt (pk rand : ByteString) : HwBytes :=
+@[expose] def myKyberCt (pk rand : ByteString) : HwBytes :=
   [0xA1#8] ++ (rand ++ List.replicate 32 0#8).take 32 ++
     (pk ++ List.replicate 32 0#8).take 32 ++ List.replicate 1503 0#8
 
-def myKyberSsFromRand (pk rand : ByteString) : HwBytes :=
+@[expose] def myKyberSsFromRand (pk rand : ByteString) : HwBytes :=
   List.zipWith (fun r p => r ^^^ p ^^^ 0xA2#8)
     ((rand ++ List.replicate 32 0#8).take 32)
     ((pk ++ List.replicate 32 0#8).take 32)
 
-def myKyberDecapRaw (sk ct : ByteString) : HwBytes :=
+@[expose] def myKyberDecapRaw (sk ct : ByteString) : HwBytes :=
   List.zipWith (fun r p => r ^^^ p ^^^ 0xA2#8)
     ((ct.drop 1 ++ List.replicate 32 0#8).take 32)
     ((sk.drop 1536 ++ List.replicate 32 0#8).take 32)
@@ -377,7 +376,7 @@ def myKyberDecapRaw (sk ct : ByteString) : HwBytes :=
 
 /-! ## Witness Interpretation, Hooks, Totality, Contracts, and Agreement -/
 
-def myBaseInterp : ExternInterpretation := fun sym args =>
+@[expose] def myBaseInterp : ExternInterpretation := fun sym args =>
   if sym == sha256CompressSymbol then
     match args with
     | [st, blk] => some (mySha256Raw st blk)
@@ -402,13 +401,9 @@ def myBaseInterp : ExternInterpretation := fun sym args =>
     match args with
     | [sk, ct] => some (myKyberDecapRaw sk ct)
     | _ => some (List.replicate 32 0#8)
-  else if sym == torsionFreeSymbol then
-    match args with
-    | [_] => some [1#8]
-    | _ => cliWitnessInterp sym args
   else cliWitnessInterp sym args
 
-def myHooks : CliHooks :=
+@[expose] def myHooks : CliHooks :=
   { cliWitnessHooks with
     C :=
       { cliWitnessHooks.C with
@@ -416,8 +411,7 @@ def myHooks : CliHooks :=
         E := xorBlock
         D := xorBlock }
     Q :=
-      { cliWitnessHooks.Q with
-        isTorsionFree := fun _ => true
+      { F512 := fun _ _ => List.Vector.replicate 8 0#64
         encaps := fun pk rand =>
           (⟨myKyberCt pk.toList rand.toList, length_myKyberCt pk.toList rand.toList⟩,
            ⟨myKyberSsFromRand pk.toList rand.toList, length_myKyberSsFromRand pk.toList rand.toList⟩)
@@ -425,22 +419,22 @@ def myHooks : CliHooks :=
           ⟨myKyberDecapRaw sk.toList ct.toList, length_myKyberDecapRaw sk.toList ct.toList⟩
         K := nvMlKem } }
 
-def myParams : PEParams := ⟨myHooks.C, myHooks.Q⟩
+@[expose] def myParams : PEParams := ⟨myHooks.C, myHooks.Q⟩
 
-def myInterp : ExternInterpretation :=
+@[expose] def myInterp : ExternInterpretation :=
   interpOfParams myBaseInterp myParams
 
-def isOverriddenBase (sym : String) : Bool :=
+@[expose] def isOverriddenBase (sym : String) : Bool :=
   sym == sha256CompressSymbol || sym == aesCbcEncryptSymbol || sym == aesCbcDecryptSymbol ||
-    sym == kyberEncapsSymbol || sym == kyberDecapsSymbol || sym == torsionFreeSymbol
+    sym == kyberEncapsSymbol || sym == kyberDecapsSymbol
 
 theorem myBaseInterp_other {sym : String} (h : isOverriddenBase sym = false) :
     myBaseInterp sym = cliWitnessInterp sym := by
   unfold isOverriddenBase at h
   simp only [Bool.or_eq_false_iff] at h
-  rcases h with ⟨⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩, h6⟩
+  rcases h with ⟨⟨⟨⟨h1, h2⟩, h3⟩, h4⟩, h5⟩
   funext args
-  simp [myBaseInterp, h1, h2, h3, h4, h5, h6]
+  simp [myBaseInterp, h1, h2, h3, h4, h5]
 
 private theorem returnsLength_other {sym : String} {args : List ByteString} {n : Nat}
     (hsym : isSpqrOrHmacSymbol sym = false) (hbase : isOverriddenBase sym = false)
@@ -468,8 +462,8 @@ theorem length_hmacWith_32
 
 theorem myInterp_total : ExternInterpretationTotalOnUsedSymbols myInterp := by
   have htot := cliWitnessInterp_total
-  rcases htot with ⟨_, _, h3, h4, h5, h6, _, h8, h9, h10, _, _, _, _, _, _⟩
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  rcases htot with ⟨_, _, h3, _, _, _, _, _, _⟩
+  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro pk rand _ _
     refine ⟨myKyberCt pk rand ++ myKyberSsFromRand pk rand, ?_, ?_⟩
     · rw [myInterp, interpOfParams_other myBaseInterp myParams kyberEncapsSymbol [pk, rand] (by decide)]
@@ -481,21 +475,6 @@ theorem myInterp_total : ExternInterpretationTotalOnUsedSymbols myInterp := by
     rfl
   · intro st b hst hb
     exact returnsLength_other (by decide) (by decide) (h3 st b hst hb)
-  · intro u sign hu
-    exact returnsLength_other (by decide) (by decide) (h4 u sign hu)
-  · intro pt hpt
-    exact returnsLength_other (by decide) (by decide) (h5 pt hpt)
-  · intro pt hpt
-    exact returnsLength_other (by decide) (by decide) (h6 pt hpt)
-  · intro pt _
-    rw [myInterp, interpOfParams_other myBaseInterp myParams torsionFreeSymbol [pt] (by decide)]
-    rfl
-  · intro a pt b ha hpt hb
-    exact returnsLength_other (by decide) (by decide) (h8 a pt b ha hpt hb)
-  · intro b hb
-    exact returnsLength_other (by decide) (by decide) (h9 b hb)
-  · intro b hb
-    exact returnsLength_other (by decide) (by decide) (h10 b hb)
   · intro seed hseed
     refine ⟨(myParams.Q.K.keyPair (bytesToVec 64 seed)).toList, ?_, List.Vector.toList_length _⟩
     unfold myInterp interpOfParams

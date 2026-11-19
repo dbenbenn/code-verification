@@ -9,15 +9,33 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetAuxFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetOkFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetAuxFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetOkFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudgetFd
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.Placed
+public import ProofLib.Disproof.Basic
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `FdsGe3Closed`-Threaded Relocatable `read_bundle::{closure#0}` (Block `563`)
@@ -26,7 +44,7 @@ Verifies `withFdsGe3Closed (bundleReadSpecPlaced ...)` on Block `563` under `[Li
 preserving closed file descriptors `fd ≥ 3` across `path`, `read_file`, and allocator hooks.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -1059,33 +1077,5 @@ theorem bundleRead_placed_caller_ok_of_deps_fd [LibsignalPlacement]
     (i := i) (j := 563)
     (bundleRead_placed_ok_of_deps_fd hpLen hAllocFs hjPath hjPath_unmut hPath
       hjRead hjRead_unmut hRead hFs hstk) hi
-
-/-- `keepSet`-guarded `HookSat` specialization of `bundleRead_placed_ok_of_guard_deps_fd`. -/
-theorem bundleRead_placed_ok_of_keep_deps_fd [LibsignalPlacement] {M : AllocCostModel}
-    {keepSet : BitVec 64 → Bool} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} {rd : ReadRule} {pathOk : List (BitVec 8) → Prop}
-    {PathEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop} {pathStk readStk stk : Nat}
-    (hpLen : ∀ p, pathOk p → p.length < 2 ^ 32)
-    (hAllocFs : AllocContractsFsPlaced A lim H)
-    {pathProg : Program} {jPath : Nat} [IsLsBlockProg pathProg jPath H]
-    (hjPath : jPath < 619 := by decide)
-    (hjPath_unmut : (jPath ∈ libsignalMutatedBlocks) = false := by decide)
-    (hPath : subroutine_ok pathProg (lsmpl.base 596)
-      (withFdsGe3Closed (pathSpecPlaced A lim PathEnv pathStk)))
-    (hSat : HookSat H lsReadFileSym
-      (withFdsGe3Closed
-        (withKeepLrAndFds keepSet (readFileSpecPlaced rd pathOk A lim readStk ReadEnv))))
-    (hlr : keepSet ((blkPl_563).base + 44#64) = false)
-    (hFs : TraceFsSound (lsProg_563 H))
-    (hstk : 0x50 + max (max pathStk readStk) extHookStack ≤ stk) :
-    subroutine_ok (lsProg_563 H) (lsmpl.base 563)
-      (withFdsGe3Closed
-        (bundleReadSpecPlaced rd pathOk A lim (BundleReadEnv rd PathEnv ReadEnv) stk)) :=
-  bundleRead_placed_ok_of_guard_deps_fd (lrOk := fun lr => keepSet lr = false)
-    hpLen hAllocFs hjPath hjPath_unmut hPath (jRead := 563) (by decide) (by decide)
-    (lsReadFile_withLsCodeRoLoaded_of_hookSat (callerProg := lsProg_563 H) (i := 563)
-      (hookSat_keepLr_withFds_of_withFds_keepLrAndFds hSat))
-    hlr hFs hstk
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetFd

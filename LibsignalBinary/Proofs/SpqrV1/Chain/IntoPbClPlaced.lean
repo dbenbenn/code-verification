@@ -9,13 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPb
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoopClPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbDecodes
+import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPb
+import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoopClPlaced
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoop
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.ChainPbCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoin -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbLoop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` Proof of `<spqr::chain::Chain>::into_pb` (Block `365`)
@@ -26,7 +33,7 @@ Code-loaded `[LibsignalPlacement]` post-allocation paths and subroutine contract
 `withLsCodeLoaded lsmpl` on cross-block drop-glue callee `287` (`dropChainEpochSliceSpec A`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +48,7 @@ open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
 open CryptoVerification.SpqrV1.Top.ChainFrom
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Layout.L36
-open IntoPbDecodes
+
 
 set_option maxRecDepth 800000
 set_option maxHeartbeats 400000

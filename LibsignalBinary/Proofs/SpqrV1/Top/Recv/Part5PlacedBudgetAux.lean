@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5Placed
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3
@@ -23,6 +23,8 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Pure
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3PlacedBudgetAux
 
 /-!
 # Budget-Threaded Relocatable Version Tail Contracts & `none` Dispatch for `spqr::recv`
@@ -32,7 +34,7 @@ Cost-state-generic and default `SpqrRecvEnv` tail contracts (`V0ChainPlacedTailG
 `versionNegotiation = none` dispatch (`+744..+952`) for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -102,7 +104,7 @@ private theorem align_pre_wp {prog : Program} {target_pc : BitVec 64} {s : State
     chain-ratchet path (`Ordering::Greater`: `pre_pb.versionNegotiation = some vn`,
     `pre_pb.inner = some (.v1 pb)`, `pre.version ≥ vn.minVersion.truncate 8`, and `pre.version >
     1#8`). -/
-def V0ChainPlacedTailGen {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+@[expose] def V0ChainPlacedTailGen {MC : AllocCostModel} (A : RustCliAllocBudget MC)
     (lim : BudgetLimits) (st_cur : MC.σ)
     (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State))
@@ -163,7 +165,7 @@ abbrev V0ChainPlacedTail {MC : AllocCostModel} (A : RustCliAllocBudget MC)
 /-- Cost-state- and postcondition-generic continuation contract at `+1076` for the `init_inner`
     path (`Ordering::Less`: `pre_pb.versionNegotiation = some vn`, `pre_pb.inner = some (.v1
     pb)`, `pre.version ≥ vn.minVersion.truncate 8`, and `pre.version < 1#8`). -/
-def InitInnerPlacedTailGen {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+@[expose] def InitInnerPlacedTailGen {MC : AllocCostModel} (A : RustCliAllocBudget MC)
     (lim : BudgetLimits) (st_cur : MC.σ)
     (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State))
@@ -224,7 +226,7 @@ abbrev InitInnerPlacedTail {MC : AllocCostModel} (A : RustCliAllocBudget MC)
 
 /-- Cost-state- and postcondition-generic `SepWPpLS` continuation contract at `+1532` for the V1
     ratchet path (`Ordering::Equal`). -/
-def V1RatchetPlacedTailLSGen {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+@[expose] def V1RatchetPlacedTailLSGen {MC : AllocCostModel} (A : RustCliAllocBudget MC)
     (lim : BudgetLimits) (st_cur : MC.σ)
     (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State))

@@ -13,9 +13,10 @@ public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Ch
 public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs -- shake: keep
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,7 +54,7 @@ theorem L1_ChainCloneBaseX : True := trivial
 abbrev chainCloneStackX : Nat := 208 + Stage1X.extHookStack
 
 /-- `protoChainCloneSpec` at `chainCloneStackX`. -/
-def protoChainCloneSpecX (A : RustAlloc) : Spec ChainCloneGhost where
+@[expose] def protoChainCloneSpecX (A : RustAlloc) : Spec ChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ protoChainAt A x.gc x.src ∗ A.pool ∗ stackAt s.sp chainCloneStackX
@@ -67,7 +68,7 @@ def protoChainCloneSpecX (A : RustAlloc) : Spec ChainCloneGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- `chainCloneSpec` at `chainCloneStackX`. -/
-def chainCloneSpecX (A : RustAlloc) : Spec ChainCloneGhost where
+@[expose] def chainCloneSpecX (A : RustAlloc) : Spec ChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ chainAt A x.gc x.src ∗ A.pool ∗ stackAt s.sp chainCloneStackX
@@ -81,7 +82,7 @@ def chainCloneSpecX (A : RustAlloc) : Spec ChainCloneGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- `senderChainCloneSpec` at `chainCloneStackX`. -/
-def senderChainCloneSpecX (A : RustAlloc) : Spec SenderChainCloneGhost where
+@[expose] def senderChainCloneSpecX (A : RustAlloc) : Spec SenderChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ optSenderChainAt A x.src (some x.g) (some x.sc) ∗
@@ -96,26 +97,6 @@ def senderChainCloneSpecX (A : RustAlloc) : Spec SenderChainCloneGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-! ## Callee contract abbreviations on `SP2Ext` -/
-
-/-- `Chain::clone [local#1]` at `protoChainCloneSpecX`, in image. -/
-def ProtoChainCloneLocal1OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr chainCloneLocal1Name)
-    ((protoChainCloneSpecX A).inImage img)
-
-/-- `Chain::clone [local#1]` at `chainCloneSpecX`, in image. -/
-def ChainCloneLocal1OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr chainCloneLocal1Name)
-    ((chainCloneSpecX A).inImage img)
-
-/-- `Chain::clone [local#1]` at `senderChainCloneSpecX`, in image. -/
-def SenderChainCloneLocal1OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr chainCloneLocal1Name)
-    ((senderChainCloneSpecX A).inImage img)
-
-/-! ## Stack-frame decomposition -/
 
 theorem stackAt_chainClone_eq_x (sp : BitVec 64) :
     stackAt sp chainCloneStackX =
@@ -396,19 +377,19 @@ theorem sepWPp_of_sepWP_lscl [LibsignalPlacement] {prog : Program} {mid ret : Bi
   SepWPp.of_sepWP (sepWP_mono_lscl hcl h fun _ _ _ _ hclm hnext => hnext hclm)
 
 /-- `Chain::clone [local#1]` (Block `82`) at `protoChainCloneSpecX`, with `LibsignalCodeLoaded`. -/
-def ProtoChainCloneLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ProtoChainCloneLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_82 H) (blkPl_82).base
     (withLsCodeLoaded lsmpl (protoChainCloneSpecX A))
 
 /-- `Chain::clone [local#1]` (Block `82`) at `chainCloneSpecX`, with `LibsignalCodeLoaded`. -/
-def ChainCloneLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainCloneLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_82 H) (blkPl_82).base
     (withLsCodeLoaded lsmpl (chainCloneSpecX A))
 
 /-- `Chain::clone [local#1]` (Block `82`) at `senderChainCloneSpecX`, with `LibsignalCodeLoaded`. -/
-def SenderChainCloneLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SenderChainCloneLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_82 H) (blkPl_82).base
     (withLsCodeLoaded lsmpl (senderChainCloneSpecX A))

@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsVXBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsVXBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Parametric-Panic `MessageDecrypt` Specification (`withStoresDecPlacedSpecVX`)
@@ -20,7 +22,7 @@ Generalizes `DefsPlacedBudget.withStoresDecPlacedSpecV` and `DecSegVPlaced` on `
 replacing `x.recvPanics S answers` with an arbitrary predicate `Extra x answers`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,7 +46,7 @@ open LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlacedBudget
   (DecSegVPlaced withStoresDecPlacedSpecV)
 
 /-- `DefsPlacedBudget.withStoresDecPlacedSpecV` with `x.recvPanics S answers` replaced by `Extra x answers`. -/
-def withStoresDecPlacedSpecVX [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def withStoresDecPlacedSpecVX [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -82,7 +84,7 @@ theorem withStoresDecPlacedSpecV_eq_VX [LibsignalPlacement] {M : AllocCostModel}
         kit kitEnv ikit ikitEnv st0 ist0 Scope (fun x a => x.recvPanics S a) := rfl
 
 /-- Budget-threaded segment step relation over `withStoresDecPlacedSpecVX … Extra`. -/
-def DecSegVXPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def DecSegVXPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)

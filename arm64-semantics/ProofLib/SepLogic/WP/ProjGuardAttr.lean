@@ -89,20 +89,20 @@ def guardConcreteTableProj (projName ctorName : Name)
       return .continue
   return .done e
 
-/-- True when `nm` is an object, image, interned-library, placed-library, or ELF record type whose
+/-- True when `nm` is a program, object, interned-library, placed-library, or ELF record type whose
     fields carry concrete code, symbol, relocation, or layout tables. -/
 def isGuardedTableTypeName (nm : Name) : Bool :=
-  nm == `Arm64.Obj.Image || nm == `Arm64.Obj.LinkedImage ||
-  nm == `Arm64.Obj.ObjectInfo || nm == `Arm64.Obj.SymCodeInfo ||
+  nm == `Arm64.Program ||
+  nm == `Arm64.Obj.ExtractedObj || nm == `Arm64.Obj.SymCodeInfo ||
   nm == `Arm64.Obj.SymDataInfo || nm == `Arm64.Obj.CodeBlock ||
   nm == `Arm64.Obj.PlacedLib || nm == `Arm64.Obj.MultiPlacedLib ||
-  nm == `Arm64.Obj.MultiPlacedLib.SymIndex || nm == `Arm64.Obj.RelocFnIndex ||
+  nm == `Arm64.Obj.MultiPlacedLib.SymIndex ||
   nm == `Arm64.Process.ElfImage ||
   nm == `Arm64.Obj.Interned.Lib || nm == `Arm64.Obj.Interned.Layout ||
   nm == `Arm64.Obj.Interned.Block || nm == `Arm64.Obj.Interned.MultiLib ||
   nm == `Arm64.Obj.Interned.MultiLayout
 
-/-- True when `e` mentions a projection or constant from an object, image, interned-library,
+/-- True when `e` mentions a projection or constant from an object, interned-library,
     placed-library, or symbol-lookup table whose ground evaluation via `simp (config := { decide := true })`
     (`Simp.simpUsingDecide`) would unfold concrete multi-hundred-entry tables in `whnf`. -/
 def hasGuardedTableTerm (e : Expr) : Bool :=
@@ -142,7 +142,7 @@ partial def hasGroundGuardedTableProp (e : Expr) : MetaM Bool := do
   visit e
 
 /-- True when `e` applies a table projection, library address helper, or symbol-table lookup to a
-    non-variable receiver. Local-variable receivers (`img.base`, `lib.fnAddr pl s`, `s0.symtab`,
+    non-variable receiver. Local-variable receivers (`pl.base`, `lib.fnAddr pl s`, `s0.symtab`,
     `lookupBlockSym "fn" blocks`) return `false`. -/
 def hasConcreteGuardedTableTerm (e : Expr) : Bool :=
   (e.find? fun sub =>
@@ -155,8 +155,6 @@ def hasConcreteGuardedTableTerm (e : Expr) : Bool :=
         if isGuardedTableTypeName nm.getPrefix && nm.getString! != "mk" then
           let recvIdx :=
             if nm.getPrefix == `Arm64.Obj.MultiPlacedLib.SymIndex ||
-               nm.getPrefix == `Arm64.Obj.RelocFnIndex ||
-               nm == `Arm64.Obj.LinkedImage.toProgramWithSvc ||
                nm == `Arm64.Obj.MultiPlacedLib.withCodeLoaded ||
                nm == `Arm64.Obj.Interned.Block.idsOk ||
                nm == `Arm64.Obj.Interned.Block.toCodeBlock then 1

@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.TopPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk2Placed
@@ -24,7 +25,7 @@ Roots `SpqrV1/States/{Leaves,RecvCt2Chunk,FromPb,Recv}` under `[LibsignalPlaceme
 the closed `CryptoVerification.SpqrV1.StatesPlacedSeams` bundle from external hook contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,6 +58,7 @@ open CryptoVerification.SpqrV1.Alloc (
   spqrMemmoveSym
   spqrRustNoAllocShimSym
 )
+open CryptoVerification.SpqrV1.GF.Mul2U16 (OnceCallHookOk)
 open CryptoVerification.SpqrV1.Poly.NextChunk (AllocContractsPlaced)
 open CryptoVerification.SpqrV1.Unchunked (spqrLibcruxHmacSym spqrMlkemEncaps2Sym)
 open LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced (FromPbAllocHooks)
@@ -108,7 +110,8 @@ theorem statesPlacedSeams_of_hooks [LibsignalPlacement]
       (mlkemValidatePkSpec K))
     (hencaps2 : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym (mlkemEncaps2Spec K))
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (mlkemDecapsSpec K))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacSpec F A)) :
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacSpec F A))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     StatesPlacedSeams A F K ext :=
   let hshim_sess : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym sessionShimSpec :=
     ProofLib.HookSat.mono hA.shim fun x R _ hpre => ⟨x, R, hpre, fun _ hpost => hpost⟩
@@ -122,6 +125,7 @@ theorem statesPlacedSeams_of_hooks [LibsignalPlacement]
     realloc := hA.realloc
     session_memcpy := hmemcpy_any
     session_memset_region := hmemset
+    once_ok := hOnce
   }
   let hFromPb : FromPbAllocHooks A ext := {
     panic_ok := hA.handleError
@@ -134,7 +138,7 @@ theorem statesPlacedSeams_of_hooks [LibsignalPlacement]
     statesFromPb_ok := states_from_pb_ok_x_placed hFromPb hmemmove0
     statesRecv_ok := states_recv_placed_ok_x_closed hA
       (hookSat_sessionMemmove_of_zero growOneStack hmemmove0)
-      hmemset hval_pk hencaps2 hdecaps hhmac
+      hmemset hval_pk hencaps2 hdecaps hhmac hOnce
     headerSentSendEkChunk_ok := header_sent_send_ek_chunk_placed_ok_x hAllocPlaced
     ct1ReceivedSendEkChunk_ok := ct1_received_send_ek_chunk_placed_ok_x hAllocPlaced
     ct1SampledSendCt1Chunk_ok := ct1_sampled_send_ct1_chunk_placed_ok_x hAllocPlaced

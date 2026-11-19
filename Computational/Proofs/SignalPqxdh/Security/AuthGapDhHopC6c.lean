@@ -9,10 +9,24 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6b
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2b
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6b -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2b -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC5
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 
 /-!
 # `Auth` hybrid hop `G3 → G3.5`: step couplings and monotone bad events
@@ -21,7 +35,7 @@ Establishes the latched `GapDH` bound on `badAuthFgAnyLatched`, the `.roQuery` s
 the `.g3`/`.g3_5` receiver schedule factorization, and the guarded monotone bad-event variants.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 open Classical
@@ -179,7 +193,7 @@ theorem pqxdhAuthAdvLatchedStageImpl_revealDhSecrets_withAuthAdvLatchedRoCache
     (pqxdhAuthAdvStageImpl_revealDhSecrets_withAuthAdvRoCache S P c s.adv)
 
 /-- Post-`.roQuery` state update on `AuthAdvLatchedState S`. -/
-def updateRoQueryLatched {S : Setup} (secrets : Bytes) (c' : List (Bytes × DRKey))
+@[expose] def updateRoQueryLatched {S : Setup} (secrets : Bytes) (c' : List (Bytes × DRKey))
     (s : AuthAdvLatchedState S) : AuthAdvLatchedState S :=
   { s with adv := { s.adv with
       hyb := withAuthHybRoCache c' s.adv.hyb
@@ -378,7 +392,7 @@ theorem relProbUpToBad_roQuery_of_cache_agree_or_bad
           · rw [isAuthG3Abort_updateRoQueryLatched]; exact hAb3
 
 /-- Predicate selecting the 7 queries that do not read or write `roCache`. -/
-def isAuthNonRoQuery {S : Setup} : AuthQuery S → Bool
+@[expose] def isAuthNonRoQuery {S : Setup} : AuthQuery S → Bool
   | .roQuery _           => false
   | .sendOPK _ _ _ _ _   => false
   | .sendNoOPK _ _ _ _ _ => false
@@ -399,7 +413,7 @@ theorem RelProbUpToBad.bind_same_support {β α : Type} {R : α → α → Prop}
     exact probExpect_mono_of_support mx _ _ (fun b hb => (h b hb).2 w6 w5 hw6 hle)
 
 /-- Stage-dependent `drKey` and `roCache'` step of `evalAuthHybridRecvSchedule`. -/
-def evalAuthHybridRecvDrKey {S : Setup} (stage : AuthHybridStage) (useRo : Bool) (P : Primitives)
+@[expose] def evalAuthHybridRecvDrKey {S : Setup} (stage : AuthHybridStage) (useRo : Bool) (P : Primitives)
     (roCache : List (Bytes × DRKey)) (matchedSess? : Option (IdealAuthSession S))
     (isUncorruptedHonestSender : Bool) (secrets : Bytes) :
     ProbComp (DRKey × List (Bytes × DRKey)) :=
@@ -414,7 +428,7 @@ def evalAuthHybridRecvDrKey {S : Setup} (stage : AuthHybridStage) (useRo : Bool)
     evalHkdfOrRo useRo P roCache secrets
 
 /-- Stage-independent core of `evalAuthHybridRecvSchedule` at `.g3` and `.g3_5`. -/
-def evalAuthHybridRecvCore (useRo : Bool) (P : Primitives)
+@[expose] def evalAuthHybridRecvCore (useRo : Bool) (P : Primitives)
     (rootRoCache : List ((Bytes × Bytes) × (Bytes × Bytes)))
     (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry) (msg : PreKeyMsg)
     (drKey : DRKey) :
@@ -433,7 +447,7 @@ def evalAuthHybridRecvCore (useRo : Bool) (P : Primitives)
     | some pt => return some (rk1, ck1_1, pt, rootRoCache')
 
 /-- Post-`drKey` continuation of `evalAuthHybridRecvSchedule` at `.g3` and `.g3_5`. -/
-def evalAuthHybridRecvPost (useRo : Bool) (P : Primitives)
+@[expose] def evalAuthHybridRecvPost (useRo : Bool) (P : Primitives)
     (rootRoCache : List ((Bytes × Bytes) × (Bytes × Bytes)))
     (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry) (msg : PreKeyMsg)
     (drKey : DRKey) (roCache' : List (Bytes × DRKey)) :
@@ -608,7 +622,7 @@ theorem relProbUpToBad_evalAuthHybridRecvPost_bind {α : Type}
 /-! ## Guarded monotone bad events -/
 
 /-- Guard ensuring `initAuthDh1Cand` never evaluates `P.x25519` on the empty fallback key. -/
-def initAuthDh1CandGuard (S : Setup) (P : Primitives)
+@[expose] def initAuthDh1CandGuard (S : Setup) (P : Primitives)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (advKeyPows : List (Bytes × Bytes))
@@ -617,7 +631,7 @@ def initAuthDh1CandGuard (S : Setup) (P : Primitives)
   (principals.find? (fun (idx, _) => idx == sessionSenderIdx s.sid)).isSome
 
 /-- Guard ensuring `respAuthCand` never evaluates `P.x25519` on the empty fallback scalar. -/
-def respAuthCandGuard (S : Setup)
+@[expose] def respAuthCandGuard (S : Setup)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (bKey : Nat × Nat) : Bool :=
   let spkSk : Bytes := match (spkBundles.take S.N_dh).find? (fun (idx, _) => idx == bKey) with
@@ -626,7 +640,7 @@ def respAuthCandGuard (S : Setup)
   !spkSk.isEmpty
 
 /-- Monotone Case A (`DH1`) bad event at `(uIdx, bIdx)`. -/
-def badAuthFgDh1AtMono {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
+@[expose] def badAuthFgDh1AtMono {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
     (st : AuthState S) (advRoLog : List Bytes) (respRecs : List AuthRespRecord) : Bool :=
   match st.principals.find? (fun (u, _) => u == uIdx),
         st.spkBundles.find? (fun (k, _) => spkBundleFlatIdxVal S k == bIdx) with
@@ -645,7 +659,7 @@ def badAuthFgDh1AtMono {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
   | _, _ => false
 
 /-- Monotone Case C (`DH3`) bad event at `(sIdx, bIdx)`. -/
-def badAuthFgDh3AtMono {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
+@[expose] def badAuthFgDh3AtMono {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
     (st : AuthState S) (advRoLog : List Bytes) (respRecs : List AuthRespRecord) : Bool :=
   match st.sessions.find? (fun s => initSessionSlotIdx s.sid == sIdx),
         st.spkBundles.find? (fun (k, _) => spkBundleFlatIdxVal S k == bIdx) with
@@ -661,13 +675,13 @@ def badAuthFgDh3AtMono {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
        (respAuthDh3Cand S P spkErased r == zTarget)))
   | _, _ => false
 
-def badAuthFgDh1LatchedAtMono {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
+@[expose] def badAuthFgDh1LatchedAtMono {S : Setup} (P : Primitives) (maxLen uIdx bIdx : ℕ)
     (hst : AuthFgCutoffState S) : Bool :=
   hst.latchedDh1.contains (uIdx, bIdx) ||
   badAuthFgDh1AtMono P maxLen uIdx bIdx hst.base hst.advRoLog hst.respRecs
 
 /-- Combined sticky-latch monotone bad event (`DH1` and `DH3`). -/
-def badAuthFgAnyLatchedMono {S : Setup} (P : Primitives) (maxLen : ℕ)
+@[expose] def badAuthFgAnyLatchedMono {S : Setup} (P : Primitives) (maxLen : ℕ)
     (hst : AuthFgCutoffState S) : Bool :=
   (List.range S.N_id).any (fun uIdx =>
     (List.range S.N_spk_tot).any (fun bIdx =>

@@ -89,15 +89,20 @@ def fastExecBrkB (fs : FastState) : Option FastState :=
   else
     let oldPage := Arm64.pageAlignUp fs.brk.toNat
     let newPage := Arm64.pageAlignUp addr.toNat
-    if decide (newPage ≤ oldPage) then
+    if newPage == oldPage then
+      some (((fastSetBrk fs addr).writeReg64 Reg.x0 addr).advancePC)
+    else if decide (newPage < oldPage) then
+      let shrinkBase := BitVec.ofNat 64 newPage
       let shrinkBytes := oldPage - newPage
-      if !fs.mem.allPermB (·.mapped) (BitVec.ofNat 64 newPage) shrinkBytes then
+      if fs.mem.canMapB shrinkBase shrinkBytes then
         some ((fs.writeReg64 Reg.x0 fs.brk).advancePC)
+      else if !fs.mem.allPermB (fun p => !p.frozen) shrinkBase shrinkBytes then
+        none
       else if !decide (oldPage ≤ USER_VA_LIMIT) then
         none
       else
-        let reclaimed := fs.mem.countRwB (BitVec.ofNat 64 newPage) shrinkBytes
-        let mem := fs.mem.unmapWritableB (BitVec.ofNat 64 newPage) shrinkBytes
+        let reclaimed := fs.mem.countRwB shrinkBase shrinkBytes
+        let mem := fs.mem.unmapNonFrozenB shrinkBase shrinkBytes
         some (((((fastSetBrk fs addr).setMem mem |>
           fun st => fastSetPhysMemAvail st (fs.physMemAvail + reclaimed)).writeReg64
             Reg.x0 addr)).advancePC)
@@ -118,10 +123,10 @@ theorem fastExecBrk_eq_batched (fs : FastState) :
     fastExecBrk fs = fastExecBrkB fs := by
   unfold fastExecBrk fastExecBrkB
   simp only [FastMem.allPerm_eq_batched, FastMem.countRw_eq_batched,
-    FastMem.unmapWritable_eq_batched, FastMem.canMap_eq_batched, FastMem.mapZero_eq_batched]
+    FastMem.unmapNonFrozen_eq_batched, FastMem.canMap_eq_batched, FastMem.mapZero_eq_batched]
 
 def fastExecMunmapB (fs : FastState) : Option FastState :=
-  let addr := fs.readReg64 Reg.x0
+  let addr := untaggedAddr (fs.readReg64 Reg.x0)
   let len := (fs.readReg64 Reg.x1).toNat
   let size := Arm64.pageAlignUp len
   if addr.toNat % PAGE_SIZE != 0 || len == 0 || !decide (addr.toNat + size ≤ 2 ^ 48) then
@@ -140,32 +145,34 @@ theorem fastExecMunmap_eq_batched (fs : FastState) :
     FastMem.unmapNonFrozen_eq_batched]
 
 def fastExecMremapB (fs : FastState) : Option FastState :=
-  let oldAddr := fs.readReg64 Reg.x0
+  let oldAddr := untaggedAddr (fs.readReg64 Reg.x0)
   let oldLen := (fs.readReg64 Reg.x1).toNat
   let newLen := (fs.readReg64 Reg.x2).toNat
   let flags := fs.readReg64 Reg.x3
   if flags != MREMAP_MAYMOVE then
     none
   else if oldAddr.toNat % PAGE_SIZE != 0 || newLen == 0 ||
-      !decide (newLen ≤ 2 ^ 64 - PAGE_SIZE) then
+      !decide (newLen ≤ USER_VA_LIMIT) then
     some ((fs.writeReg64 Reg.x0 (-EINVAL)).advancePC)
-  else if oldLen == 0 then
+  else if oldLen == 0 || !decide (oldLen ≤ 2 ^ 64 - PAGE_SIZE) then
     none
+  else if fs.oracle.mremapRefusal fs.oracleIdx == some .enomem then
+    some (((fastNextOracle fs).writeReg64 Reg.x0 (-ENOMEM)).advancePC)
   else
     let oldAligned := Arm64.pageAlignUp oldLen
     let newAligned := Arm64.pageAlignUp newLen
     if !decide (oldAddr.toNat + oldAligned ≤ USER_VA_LIMIT) then
-      some ((fs.writeReg64 Reg.x0 (-EINVAL)).advancePC)
+      none
     else if !fs.mem.allPermB (fun p => !p.frozen) oldAddr oldAligned then
       none
     else if fs.mem.canMapB oldAddr oldAligned then
-      some ((fs.writeReg64 Reg.x0 EFAULT_RET).advancePC)
+      some (((fastNextOracle fs).writeReg64 Reg.x0 EFAULT_RET).advancePC)
     else if !fs.mem.allPermB (· == some Perm.rw) oldAddr oldAligned then
       none
     else if !fs.mem.allAnonB oldAddr oldAligned then
       none
-    else if fs.oracle.mremapFail fs.oracleIdx then
-      some (((fastNextOracle fs).writeReg64 Reg.x0 (-ENOMEM)).advancePC)
+    else if fs.oracle.mremapRefusal fs.oracleIdx == some .efault then
+      some (((fastNextOracle fs).writeReg64 Reg.x0 EFAULT_RET).advancePC)
     else
       let fmUnmapped := fs.mem.unmapNonFrozenB oldAddr oldAligned
       match sanitizeMmapAddrFastB fmUnmapped (fs.oracle.mmap fs.oracleIdx) newAligned with
@@ -243,7 +250,7 @@ theorem fastExecMmap_eq_batched (fs : FastState) :
   rfl
 
 def fastExecMprotectB (fs : FastState) : Option FastState :=
-  let addr := fs.readReg64 Reg.x0
+  let addr := untaggedAddr (fs.readReg64 Reg.x0)
   let len := (fs.readReg64 Reg.x1).toNat
   let prot := fs.readReg64 Reg.x2
   let size := Arm64.pageAlignUp len
@@ -251,10 +258,12 @@ def fastExecMprotectB (fs : FastState) : Option FastState :=
     none
   else if addr.toNat % PAGE_SIZE != 0 then
     some ((fs.writeReg64 Reg.x0 (-EINVAL)).advancePC)
-  else if !decide (addr.toNat + size ≤ 2 ^ 48) then
-    none
   else if len == 0 then
     some ((fs.writeReg64 Reg.x0 0#64).advancePC)
+  else if !decide (len ≤ 2 ^ 64 - PAGE_SIZE) || !decide (addr.toNat + size < 2 ^ 64) then
+    some ((fs.writeReg64 Reg.x0 (-ENOMEM)).advancePC)
+  else if !decide (addr.toNat + size ≤ 2 ^ 48) then
+    none
   else if !fs.mem.allPermB (fun p => !p.frozen) addr size then
     none
   else if !fs.mem.allPermB (·.mapped) addr size then
@@ -366,69 +375,5 @@ theorem runElfChunkPlacedLHS_eq_batched (spec : ElfFullSpecPlaced) (inp : Inputs
   cases initFastStateFromBasePlaced (headerElfOfFullPlaced spec) (prebuiltOfFullPlaced spec) inp with
   | none => rfl
   | some fs0 => exact fastRunChunkCachedPlaced_eq_batched _ n _
-
-def checkElfFinalChunkPlacedExited0B (spec : ElfFullSpecPlaced) (inp : Inputs) (n : Nat)
-    (ck : MkCkpt) (outStdout : List (BitVec 8))
-    (outFiles : List (String × List (BitVec 8))) : Bool :=
-  let pb := prebuiltOfFullPlaced spec
-  match initFastStateFromBasePlaced (headerElfOfFullPlaced spec) pb inp with
-  | none => false
-  | some fs0 =>
-    match fastRunChunkCachedPlacedB pb.prog n (ck pb fs0) with
-    | none => false
-    | some fsf => checkFastExited0 fsf outStdout outFiles
-
-theorem checkElfFinalChunkPlacedExited0_eq_batched (spec : ElfFullSpecPlaced) (inp : Inputs)
-    (n : Nat) (ck : MkCkpt) (outStdout : List (BitVec 8))
-    (outFiles : List (String × List (BitVec 8))) :
-    checkElfFinalChunkPlacedExited0 spec inp n ck outStdout outFiles =
-      checkElfFinalChunkPlacedExited0B spec inp n ck outStdout outFiles := by
-  unfold checkElfFinalChunkPlacedExited0 checkElfFinalChunkPlacedExited0B
-  dsimp only
-  cases initFastStateFromBasePlaced (headerElfOfFullPlaced spec) (prebuiltOfFullPlaced spec) inp with
-  | none => rfl
-  | some fs0 => dsimp only; rw [fastRunChunkCachedPlaced_eq_batched]; rfl
-
-def checkElfFinalChunkPlacedExitedB (spec : ElfFullSpecPlaced) (inp : Inputs) (n : Nat)
-    (ck : MkCkpt) (code : BitVec 64) (outStdout : List (BitVec 8))
-    (outFiles : List (String × List (BitVec 8))) : Bool :=
-  let pb := prebuiltOfFullPlaced spec
-  match initFastStateFromBasePlaced (headerElfOfFullPlaced spec) pb inp with
-  | none => false
-  | some fs0 =>
-    match fastRunChunkCachedPlacedB pb.prog n (ck pb fs0) with
-    | none => false
-    | some fsf => checkFastExited fsf code outStdout outFiles
-
-theorem checkElfFinalChunkPlacedExited_eq_batched (spec : ElfFullSpecPlaced) (inp : Inputs)
-    (n : Nat) (ck : MkCkpt) (code : BitVec 64) (outStdout : List (BitVec 8))
-    (outFiles : List (String × List (BitVec 8))) :
-    checkElfFinalChunkPlacedExited spec inp n ck code outStdout outFiles =
-      checkElfFinalChunkPlacedExitedB spec inp n ck code outStdout outFiles := by
-  unfold checkElfFinalChunkPlacedExited checkElfFinalChunkPlacedExitedB
-  dsimp only
-  cases initFastStateFromBasePlaced (headerElfOfFullPlaced spec) (prebuiltOfFullPlaced spec) inp with
-  | none => rfl
-  | some fs0 => dsimp only; rw [fastRunChunkCachedPlaced_eq_batched]; rfl
-
-def checkElfFinalChunkPlacedAbortedB (spec : ElfFullSpecPlaced) (inp : Inputs) (n : Nat)
-    (ck : MkCkpt) : Bool :=
-  let pb := prebuiltOfFullPlaced spec
-  match initFastStateFromBasePlaced (headerElfOfFullPlaced spec) pb inp with
-  | none => false
-  | some fs0 =>
-    match fastRunChunkCachedPlacedB pb.prog n (ck pb fs0) with
-    | none => false
-    | some fsf => checkFastAborted fsf
-
-theorem checkElfFinalChunkPlacedAborted_eq_batched (spec : ElfFullSpecPlaced) (inp : Inputs)
-    (n : Nat) (ck : MkCkpt) :
-    checkElfFinalChunkPlacedAborted spec inp n ck =
-      checkElfFinalChunkPlacedAbortedB spec inp n ck := by
-  unfold checkElfFinalChunkPlacedAborted checkElfFinalChunkPlacedAbortedB
-  dsimp only
-  cases initFastStateFromBasePlaced (headerElfOfFullPlaced spec) (prebuiltOfFullPlaced spec) inp with
-  | none => rfl
-  | some fs0 => dsimp only; rw [fastRunChunkCachedPlaced_eq_batched]; rfl
 
 end Symbolic.BugInjection.Proofs.CliExec.PlacedExecBatched

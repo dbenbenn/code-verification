@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 import Batteries.Data.UInt
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure
-public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieAPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPureA
@@ -24,6 +24,9 @@ import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
 import Symbolic.Proofs.Swarm.CREF.Xpl.NoRatchet
 import Symbolic.Proofs.Swarm.CREF.Xpl.SkippedHit
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.CBad
 
 /-!
 # Receive-Branch Mismatch Exclusions
@@ -35,7 +38,7 @@ a cached skipped-key binary branch (`m.counter < ck.index`) paired with an RNG-f
 `decryptSkipped` (`a2b_not_decryptSkipped_of_rng`).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

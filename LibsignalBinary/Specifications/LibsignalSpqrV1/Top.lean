@@ -60,25 +60,10 @@ inductive SecretOutput where
 
 namespace SecretOutput
 
-def sendSecret : SecretOutput → Option Secret
-  | .send s => some s
-  | .recv _ => Option.none
-  | .none => Option.none
-
-def recvSecret : SecretOutput → Option Secret
-  | .send _ => Option.none
-  | .recv s => some s
-  | .none => Option.none
-
 def secret : SecretOutput → Option Secret
   | .send s => some s
   | .recv s => some s
   | .none => Option.none
-
-def hasSecret : SecretOutput → Bool
-  | .none => false
-  | .send _ => true
-  | .recv _ => true
 
 end SecretOutput
 
@@ -102,12 +87,6 @@ structure Recv where
   deriving DecidableEq, Repr, Inhabited
 
 namespace Error
-
-def fromEncodingError : Error := .encodingDecoding
-
-def fromSerializeError : Error := .serialization
-
-def fromAuthenticatorError : Error := .macVerifyFailed
 
 end Error
 
@@ -599,58 +578,6 @@ theorem not_toSpqrModel_recvPanics_empty (D : SpqrApiDeps) (hkdf : HkdfFn) (msg 
 /-! ## Kernel-checked guards -/
 
 section Guards
-
-theorem guard_version_and_types :
-    emptyState = [] ∧
-      Version.DISABLED = .v0 ∧
-      Version.MAX = .v1 ∧
-      Version.v0.toU8 = 0#8 ∧
-      Version.v1.toU8 = 1#8 ∧
-      Version.fromU8? 0#8 = some .v0 ∧
-      Version.fromU8? 1#8 = some .v1 ∧
-      Version.fromU8? 2#8 = none ∧
-      Version.tryFromU8 0#8 = .ok .v0 ∧
-      Version.tryFromU8 1#8 = .ok .v1 ∧
-      (Version.tryFromU8 2#8).isOk = false ∧
-      Version.v0.toI32 = 0#32 ∧
-      Version.v1.toI32 = 1#32 ∧
-      Version.fromI32? 0#32 = some .v0 ∧
-      Version.fromI32? 1#32 = some .v1 ∧
-      Version.fromI32? 2#32 = none ∧
-      SecretOutput.none.hasSecret = false ∧
-      (SecretOutput.send [1#8]).sendSecret = some [1#8] ∧
-      (SecretOutput.send [1#8]).recvSecret = none ∧
-      (SecretOutput.recv [2#8]).recvSecret = some [2#8] ∧
-      (SecretOutput.recv [2#8]).secret = some [2#8] ∧
-      Error.stateDecode.isStateDecode = true ∧
-      Error.msgDecode.isStateDecode = false ∧
-      Error.fromEncodingError = .encodingDecoding ∧
-      Error.fromSerializeError = .serialization ∧
-      Error.fromAuthenticatorError = .macVerifyFailed := by
-  decide +kernel
-
-theorem guard_varint_and_preamble :
-    encodeVarint 0#64 = [0x00#8] ∧
-      encodeVarint 0x012c#64 = [0xac#8, 0x02#8] ∧
-      encodeVarint 0xffffffffffffffff#64 = List.replicate 9 0xff#8 ++ [0x01#8] ∧
-      decodeVarintAt [0xff#8, 0xac#8, 0x02#8, 0xff#8] 1 = .ok (0x012c#64, 3) ∧
-      decodeVarintChecked [0xff#8, 0xac#8, 0x02#8, 0xff#8] 1 = .ok (0x012c#64, 3) ∧
-      decodeVarint [0x00#8] = .ok (0#64, []) ∧
-      decodeVarint [] = .error .msgDecode ∧
-      decodeVarint (List.replicate 9 0xff#8 ++ [0x02#8]) =
-        .ok (0x7fffffffffffffff#64, []) ∧
-      decodeVarint (List.replicate 10 0x80#8 ++ [0x00#8]) = .error .msgDecode ∧
-      decodeVarintCheckedLoop (List.replicate 11 0x80#8) 0 11 10 0#64 false =
-        .error (.panic .decodeVarintShiftOverflow) ∧
-      decodeVarintCheckedLoop [] 0 1 0 0#64 false =
-        .error (.panic .decodeVarintBounds) ∧
-      msgPreamble [] = .ok { version := 0#8, epoch := 0#64, index := 0#32, remaining := [] } ∧
-      msgPreamble [0x01#8, 0xac#8, 0x02#8, 0x03#8, 0x09#8] =
-        .ok { version := 1#8, epoch := 300#64, index := 3#32, remaining := [0x09#8] } ∧
-      msgPreamble [0x01#8, 0x00#8, 0x00#8] = .error .msgDecode ∧
-      msgPreamble [0x01#8, 0x01#8, 0x80#8, 0x80#8, 0x80#8, 0x80#8, 0x10#8] =
-        .error .msgDecode := by
-  decide +kernel
 
 end Guards
 

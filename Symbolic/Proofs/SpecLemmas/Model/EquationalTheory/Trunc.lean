@@ -19,7 +19,7 @@ Symbolic injectivity, length, attacker-knowledge, and byte-invariant instances f
 truncation `DY.Trunc.trunc8`.
 -/
 
-@[expose] public section
+public section
 
 namespace DY.Trunc
 

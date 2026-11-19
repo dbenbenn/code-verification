@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Frame, `argvAt`, and `argsBuf` Helpers for `main` Hop M1
@@ -18,7 +20,7 @@ Pure input/capacity arithmetic, stack-frame opening/closing lemmas, and `argvAt`
 `argsBuf` loop-accumulation helpers for `main`'s Hop M1 (`M+0x00 → M+0xc0`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -71,17 +73,6 @@ theorem argv_no_nul_at {argv : List String} (hok : ∀ a ∈ argv, PrintableAsci
 
 /-! ## 2. BitVec / capacity arithmetic for `M+0x20 .. M+0x9c` -/
 
-theorem argc_sxtw_eq {n : Nat} (hn : n ≤ 1820) :
-    (BitVec.ofNat 32 (n + 1)).signExtend 64 = BitVec.ofNat 64 (n + 1) := by
-  apply BitVec.eq_of_toNat_eq
-  have h32 : n + 1 < 2 ^ 32 := by omega
-  have hmsb : (BitVec.ofNat 32 (n + 1)).msb = false := by
-    rw [BitVec.msb_eq_false_iff_two_mul_lt, BitVec.toNat_ofNat, Nat.mod_eq_of_lt h32]
-    omega
-  rw [BitVec.toNat_signExtend, hmsb]
-  simp only [Bool.false_eq_true, ↓reduceIte, BitVec.toNat_setWidth, BitVec.toNat_ofNat,
-    Nat.mod_eq_of_lt h32, Nat.mod_eq_of_lt (by omega : n + 1 < 2 ^ 64), Nat.add_zero]
-
 theorem ofNat_succ_beq_zero {n : Nat} (hn : n ≤ 1820) :
     (BitVec.ofNat 64 (n + 1) == 0#64) = false := by
   apply beq_false_of_ne
@@ -122,15 +113,6 @@ theorem ofNat_shl_3 {k : Nat} (hk : k ≤ 1820) :
     Nat.shiftLeft_eq]
   have hmul : k * 2 ^ 3 = 8 * k := by omega
   rw [hmul, Nat.mod_eq_of_lt (by omega : 8 * k < 2 ^ 64)]
-
-theorem ofNat_16_ule_max {n : Nat} (hn : n ≤ 1820) :
-    (0x7ffffffffffffff8#64).ult (BitVec.ofNat 64 (16 * n)) = false := by
-  rw [BitVec.ult_eq_decide, decide_eq_false_iff_not]
-  have h1 : (0x7ffffffffffffff8#64).toNat = 9223372036854775800 := by decide
-  have h2 : (BitVec.ofNat 64 (16 * n)).toNat = 16 * n := by
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega : 16 * n < 2 ^ 64)]
-  rw [h1, h2]
-  omega
 
 theorem ofNat_16_beq_zero {n : Nat} (h0 : 0 < n) (hn : n ≤ 1820) :
     (BitVec.ofNat 64 (16 * n) == 0#64) = false := by
@@ -297,7 +279,7 @@ theorem argvAt_entails_argvAtP (a : BitVec 64) (ss : List (List (BitVec 8))) :
     exact Entails.sepExists_right ((p, s) :: ps)
       (Entails.pure_right rfl (Entails.of_eq (by simp only [argvAtP]; ac_rfl)))
 
-def argvAtPPrefix : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → SepProp
+@[expose] def argvAtPPrefix : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → SepProp
   | _, [] => emp
   | a, (p, s) :: ps => (a ↦₆₄ p) ∗ cStrAt p s ∗ argvAtPPrefix (a + 8#64) ps
 
@@ -319,7 +301,7 @@ theorem argvAtP_append (a : BitVec 64) (xs ys : List (BitVec 64 × List (BitVec 
     rw [haddr]
     ac_rfl
 
-def argsBufPartial (A : RustAlloc) (n : Nat) (buf : BitVec 64)
+@[expose] def argsBufPartial (A : RustAlloc) (n : Nat) (buf : BitVec 64)
     (ps_done : List (BitVec 64 × List (BitVec 8))) : SepProp :=
   A.live buf (16 * n) 8 ∗
     arrayAt (fun pb a => sliceRefAt a pb.1 pb.2.length) 16 buf ps_done ∗

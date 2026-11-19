@@ -10,12 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientIntegration
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsInstPlacedBudgetFd
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KBridges
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSpineB
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsInstPlacedBudgetFd
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KBridges
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSpineB -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import VerifiedLibraries.Mallocng.Spec
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # `CliDecPkPollKitsPlacedOkFds` Discharger at `h2k_ghFixedK` (`ElfSlicesPqOomH2KDecPkPollKits`)
@@ -27,7 +40,7 @@ at `fineHookRustCliAllocBudget`, `cliBudgetLimits`, `cliRunBudgets`,
 `ReadFileRuleEnvFixed cliIo.rd`, `SessDeserializeCancelEnv`, and `h2k_ghFixedK mpl mmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.haveILetI false
@@ -80,24 +93,5 @@ theorem h2k_cliDecPkPollKitsPlacedOkFds
   exact cliDecPkPollKitsPlacedOkFds_of_runHooksBundleFd mmpl (h2k_ghFixedK mpl mmpl) W h547 rfl
     (h2kb_hole2_hG mpl mmpl hLs hMm γ tp)
     (h2ksb_hole2_hHooksBundleFd mpl mmpl hLs hMm W γ tp)
-
-/-- Witness-parametric `CliDecPkPollKitsPlacedOkFds` discharger for any `w : F3CliElfGhostWitnessK`
-satisfying `F3WitnessRunHooksBundleFd w`. -/
-theorem h2k_cliDecPkPollKitsPlacedOkFds_of_witness
-    {mpl mmpl : MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (w : F3CliElfGhostWitnessK mpl mmpl)
-    (hHooks : F3WitnessRunHooksBundleFd w) :
-    letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
-    mpl.base 547 ≠ 0#64 →
-    ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      CliDecPkPollKitsPlacedOkFds
-        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)
-        cliBudgetLimits cliRunBudgets (ReadFileRuleEnvFixed cliIo.rd) SessDeserializeCancelEnv
-        (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W)) := by
-  letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
-  intro h547 W γ tp
-  exact cliDecPkPollKitsPlacedOkFds_of_runHooksBundleFd mmpl w.ghFixed W h547 rfl
-    (h2ksb_witness_hG w hLs γ tp) (hHooks W γ tp)
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KDecPkPollKits

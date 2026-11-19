@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeysBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeysBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
 
@@ -27,7 +27,7 @@ lemmas, envelope-parametric `[LibsignalPlacement]` contracts (`otrEncryptPlacedE
 (block `428`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -69,12 +69,12 @@ open LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget (
 
 /-- `ChainKey::next_chain_key` (Block `39`) strengthened with `VmPreserved s0 sf`
 (`0` heap allocations). -/
-def nextChainKeyPlacedSpec (F : ShaCompress) : Spec ChainKeyGhost :=
+@[expose] def nextChainKeyPlacedSpec (F : ShaCompress) : Spec ChainKeyGhost :=
   withVmPreserved (CryptoVerification.LibsignalTripleRatchet.Encrypt.nextChainKeyPlacedSpec F)
 
 /-- Optional `Vec<u8>` buffer drop envelope: `[]` when capacity is `0`, or one alignment-1
 deallocation of capacity `c` with `0 < c`, `minLen ≤ c`, and `c < 2 ^ 63`. -/
-def OptVecDropEnv (minLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def OptVecDropEnv (minLen : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
     ∃ c : Nat, 0 < c ∧ minLen ≤ c ∧ c < 2 ^ 63 ∧ evs = rustDeallocEvents c 1
 
@@ -103,7 +103,7 @@ theorem freeOnlyEvs_of_optVecDropEnv {minLen : Nat} {evs : List AllocEvent}
 
 /-- Pointer-independent `SignalMessageNewGhost` constructed inside `OTR::encrypt` on the `some`
 branch (`signalMessageNewEvents` depends only on the value fields, never on pointer fields). -/
-def otrSignalMessageNewGhost (C : Crypto) (x : OtrEncryptGhost)
+@[expose] def otrSignalMessageNewGhost (C : Crypto) (x : OtrEncryptGhost)
     (pqrKey : Salt) (pqrMsg : List (BitVec 8)) : SignalMessageNewGhost :=
   let mk := (x.ot.senderChainKey.messageKeys C.F).generateKeys C.F pqrKey
   { messageVersion := x.ot.sessionVersion
@@ -133,7 +133,7 @@ def otrSignalMessageNewGhost (C : Crypto) (x : OtrEncryptGhost)
   (`alloc 32`), `GenerateKeysEnv` (deallocs `seed` and `pqrKey`), AES-256-CBC PKCS#7 ciphertext
   allocation (`(x.ptext.length / 16 + 1) * 16`), `signalMessageNewEvents`, old `pqrState` drop,
   temporary ciphertext `Vec<u8>` drop, and temporary `pqrMsg` `Vec<u8>` drop. -/
-def OtrEncryptStepEnv (C : Crypto) (S : SpqrModel) (uuidParse : UuidParser)
+@[expose] def OtrEncryptStepEnv (C : Crypto) (S : SpqrModel) (uuidParse : UuidParser)
     (SendEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop :=
       fun _ _ evs => evs = [])
     (FmtEnv : List AllocEvent → Prop := FormatInnerEnv)
@@ -330,7 +330,7 @@ theorem fitsEnv_new_of_stepEnv_some {M : AllocCostModel} {lim : BudgetLimits} {s
 
 /-- Envelope-parametric budget specification of `OTR::encrypt` with spatial frame `F`.
 Definitionally equal (`rfl`) to `DefsBudget.otrEncryptPlacedSpecF` at `DefsBudget.OtrEncryptEnv`. -/
-def otrEncryptPlacedEnvSpecF [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def otrEncryptPlacedEnvSpecF [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (EncryptEnv : OtrEncryptGhost → List AllocEvent → Prop) (F : SepProp) :
@@ -351,7 +351,7 @@ def otrEncryptPlacedEnvSpecF [LibsignalPlacement] {M : AllocCostModel} (C : Cryp
 
 /-- Envelope-parametric budget specification of `OTR::encrypt` (`F = emp`).
 Definitionally equal (`rfl`) to `DefsBudget.otrEncryptPlacedSpec` at `DefsBudget.OtrEncryptEnv`. -/
-def otrEncryptPlacedEnvSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def otrEncryptPlacedEnvSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (EncryptEnv : OtrEncryptGhost → List AllocEvent → Prop) :
@@ -379,80 +379,6 @@ abbrev otrEncryptPlacedStepSpecF [LibsignalPlacement] {M : AllocCostModel} (C : 
     Spec (OtrEncryptGhost × M.σ) :=
   otrEncryptPlacedEnvSpecF C A lim ctl uuidParse S
     (OtrEncryptStepEnv C S uuidParse SendEnv FmtEnv) F
-
-abbrev otrEncryptPlacedStepSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (uuidParse : UuidParser) (S : SpqrModel)
-    (SendEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop :=
-      fun _ _ evs => evs = [])
-    (FmtEnv : List AllocEvent → Prop := FormatInnerEnv) :
-    Spec (OtrEncryptGhost × M.σ) :=
-  otrEncryptPlacedEnvSpec C A lim ctl uuidParse S
-    (OtrEncryptStepEnv C S uuidParse SendEnv FmtEnv)
-
-theorem subroutine_ok_otrEncryptPlacedEnv_framed_of_imp [LibsignalPlacement] {M : AllocCostModel}
-    {prog : Program} {entry : BitVec 64}
-    {Q : List (BitVec 8) → List (BitVec 8) → Prop} {F : SepProp}
-    {C : Crypto} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ctl : BitVec 64} {uuidParse : UuidParser} {S : SpqrModel}
-    {Env₁ Env₂ : OtrEncryptGhost → List AllocEvent → Prop}
-    (hImp : ∀ x evs, Q x.ot.pqrState x.rest → x.ptext.length < 2 ^ 32 → Env₁ x evs → Env₂ x evs)
-    (h1 : subroutine_ok prog entry
-      (withLsCodeRoLoaded lsmpl
-        { otrEncryptPlacedEnvSpec C A lim ctl uuidParse S Env₁ with
-          pre := fun (x, st) s =>
-            ⌜Q x.ot.pqrState x.rest⌝ ∗ F ∗
-              (otrEncryptPlacedEnvSpec C A lim ctl uuidParse S Env₁).pre (x, st) s
-          post := fun (x, st) s0 sf =>
-            F ∗ (otrEncryptPlacedEnvSpec C A lim ctl uuidParse S Env₁).post (x, st) s0 sf })) :
-    subroutine_ok prog entry
-      (withLsCodeRoLoaded lsmpl
-        { otrEncryptPlacedEnvSpec C A lim ctl uuidParse S Env₂ with
-          pre := fun (x, st) s =>
-            ⌜Q x.ot.pqrState x.rest⌝ ∗ F ∗
-              (otrEncryptPlacedEnvSpec C A lim ctl uuidParse S Env₂).pre (x, st) s
-          post := fun (x, st) s0 sf =>
-            F ∗ (otrEncryptPlacedEnvSpec C A lim ctl uuidParse S Env₂).post (x, st) s0 sf }) := by
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
-  obtain ⟨hcro, hm1⟩ := extract_withLsCodeRoLoaded hpre
-  dsimp only [otrEncryptPlacedEnvSpec,
-    CryptoVerification.LibsignalTripleRatchet.Encrypt.otrEncryptPlacedSpec] at hm1
-  simp only [sepConj_assoc] at hm1
-  rw [satisfies_pure_sepConj] at hm1
-  obtain ⟨hQ, hm2⟩ := hm1
-  rw [sepConj_left_comm F, satisfies_pure_sepConj] at hm2
-  obtain ⟨hfit2, hm3⟩ := hm2
-  rw [sepConj_left_comm F, satisfies_pure_sepConj] at hm3
-  obtain ⟨hpure, hmem⟩ := hm3
-  have hpt : x.ptext.length < 2 ^ 32 := hpure.2.2.2.2.1
-  have hfit1 : FitsEnv M lim st (Env₁ x) :=
-    FitsEnv.mono (fun evs he => hImp x evs hQ hpt he) hfit2
-  have hpre1 : s0.mem ⊨
-      (withLsCodeRoLoaded lsmpl
-        { otrEncryptPlacedEnvSpec C A lim ctl uuidParse S Env₁ with
-          pre := fun (x, st) s =>
-            ⌜Q x.ot.pqrState x.rest⌝ ∗ F ∗
-              (otrEncryptPlacedEnvSpec C A lim ctl uuidParse S Env₁).pre (x, st) s
-          post := fun (x, st) s0 sf =>
-            F ∗ (otrEncryptPlacedEnvSpec C A lim ctl uuidParse S Env₁).post (x, st) s0 sf }).pre
-        (x, st) s0 ∗ R := by
-    dsimp only [withLsCodeRoLoaded, otrEncryptPlacedEnvSpec] at hpre ⊢
-    simp only [sepConj_assoc] at hpre ⊢
-    exact Satisfies.mono (sepConj_mono_right (sepConj_mono_right
-      (Entails.pure_left fun _ =>
-        Entails.pure_right hfit1 (Entails.refl _)))) hpre
-  refine h1.mono_outcome (x, st) R s0 hpc hrun hpre1 hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
-  · left
-    refine ⟨hret, hcc, ?_⟩
-    dsimp only [withLsCodeRoLoaded, otrEncryptPlacedEnvSpec] at hpost ⊢
-    refine Satisfies.mono (sepConj_mono_left (sepConj_mono_right ?_)) hpost
-    refine Entails.sepExists_mono fun evs => ?_
-    exact Entails.pure_left fun he1 =>
-      Entails.pure_right (hImp x evs hQ hpt he1) (Entails.refl _)
-  · right; left; exact ⟨hpan, hpost⟩
-  · right; right; left; exact ⟨code, hex, hpost⟩
-  · right; right; right; exact ⟨hoom, hpost⟩
 
 /-! ## 4. Representation, Join, Frame-Shift, Panic, & Exit Helpers -/
 
@@ -561,7 +487,7 @@ theorem onPanic_of_nck_budget {C : Crypto} {S : SpqrModel}
 
 /-- Protected postcondition wrapper so `simp ... only [arm64_norm]` during instruction stepping
 never expands `(otrEncryptPlacedEnvSpec ...).post` inside the `SepWPp` goal. -/
-def otrPostBox [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def otrPostBox [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (EncryptEnv : OtrEncryptGhost → List AllocEvent → Prop)
@@ -576,65 +502,5 @@ theorem otrPostBox_eq [LibsignalPlacement] {M : AllocCostModel}
     (otrEncryptPlacedEnvSpec C A lim ctl uuidParse S EncryptEnv).post (x, st0) s0 sf =
       otrPostBox C A lim ctl uuidParse S EncryptEnv x st0 s0 sf :=
   rfl
-
-theorem otrPostBox_framed_eq [LibsignalPlacement] {M : AllocCostModel}
-    (Q : List (BitVec 8) → List (BitVec 8) → Prop) (F : SepProp)
-    (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ctl : BitVec 64) (uuidParse : UuidParser) (S : SpqrModel)
-    (EncryptEnv : OtrEncryptGhost → List AllocEvent → Prop)
-    (x : OtrEncryptGhost) (st0 : M.σ) (s0 sf : State) :
-    (withLsCodeRoLoaded lsmpl
-      { otrEncryptPlacedEnvSpec C A lim ctl uuidParse S EncryptEnv with
-        pre := fun (x, st) s =>
-          ⌜Q x.ot.pqrState x.rest⌝ ∗ F ∗
-            (otrEncryptPlacedEnvSpec C A lim ctl uuidParse S EncryptEnv).pre (x, st) s
-        post := fun (x, st) s0 sf =>
-          F ∗ (otrEncryptPlacedEnvSpec C A lim ctl uuidParse S EncryptEnv).post
-            (x, st) s0 sf }).post (x, st0) s0 sf =
-      (F ∗ otrPostBox C A lim ctl uuidParse S EncryptEnv x st0 s0 sf) :=
-  rfl
-
-theorem sepWP_done_encrypt_budget [LibsignalPlacement] {M : AllocCostModel}
-    {prog : Program} {ret : BitVec 64} {s0 sf : State}
-    {C : Crypto} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ctl : BitVec 64} {uuidParse : UuidParser} {S : SpqrModel}
-    {EncryptEnv : OtrEncryptGhost → List AllocEvent → Prop}
-    {x : OtrEncryptGhost} {st0 : M.σ} {evs : List AllocEvent}
-    {res : Except SignalProtocolError SignalMessage}
-    {ot' : OutgoingTripleRatchet (List (BitVec 8))}
-    {P_f R : SepProp}
-    (hpc : sf.pc = ret) (hrun : sf.status = .Running)
-    (hmod : x.model C S uuidParse = (res, ot'))
-    (hevs : EncryptEnv x evs)
-    (hnotpan : res ≠ .error .panic)
-    (htr : sf.trace = s0.trace)
-    (hspatial : P_f = ((∃∗ pqCap' : BitVec 64, ∃∗ pqPtr' : BitVec 64,
-        otrAt A.repAlloc x.o pqCap' pqPtr' ot') ∗
-      signalMessageResultAt A.repAlloc (utf8 "encrypt") x.ret res ∗
-      (x.ptA ↦ₛ x.ptext) ∗ optAddrAt A.repAlloc x.locA x.loc ∗
-      protocolAddressAt A.repAlloc x.rem x.remA ∗
-      tapeAfter ctl x.cur x.rest (S.draws x.ot.pqrState x.rest) ∗
-      (lsLogFilterAddr ↦₆₄ 0#64) ∗ stackAt s0.sp rootStack ∗
-      A.pool lim (M.stepEvents evs st0) sf) ∗ emp)
-    (hsp : sf.sp = s0.sp) (hcs : CalleeSavedPreserved s0 sf) :
-    SepWP prog ret sf P_f
-      (fun sf' P_f' =>
-        ((sf'.mem ⊨ P_f' ∗ R) →
-          (sf'.mem ⊨ otrPostBox C A lim ctl uuidParse S EncryptEnv x st0 s0 sf' ∗ R)) ∧
-        sf'.sp = s0.sp ∧ CalleeSavedPreserved s0 sf') := by
-  refine SepWP.done hpc hrun ⟨fun hm => ?_, hsp, hcs⟩
-  rw [hspatial] at hm
-  simp only [sepConj_emp] at hm
-  unfold otrPostBox otrEncryptPlacedEnvSpec
-    CryptoVerification.LibsignalTripleRatchet.Encrypt.otrEncryptPlacedSpec
-  dsimp only
-  rw [hmod]
-  dsimp only
-  simp only [otrAt_atState_eq_repAlloc, signalMessageResultAt_atState_eq_repAlloc,
-    optAddrAt_atState_eq_repAlloc, protocolAddressAt_atState_eq_repAlloc]
-  dsimp only [RustCliAllocBudget.atState]
-  refine Satisfies.mono (sepConj_mono_left (Entails.sepExists_intro evs)) ?_
-  simp only [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨hevs, ⟨hnotpan, htr⟩, by simpa only [sepConj_assoc] using hm⟩
 
 end LibsignalBinary.Proofs.TripleRatchet.Encrypt.CoreStepEnvBudget

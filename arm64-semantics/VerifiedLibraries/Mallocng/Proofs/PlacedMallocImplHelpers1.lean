@@ -149,20 +149,20 @@ theorem replaceGroup_props (gs : List GroupDesc) (g g' : GroupDesc)
 end MallocImplH1
 export MallocImplH1 (replaceGroup replaceGroup_props)
 
-theorem fresh_mmap_disjoint_A
-    {m : Memory} {inflight : Nat} {γ : GhostName} {A : MallocngAddrs} {brkStart brk mb : BitVec 64}
+theorem fresh_mmap_disjoint_mode_A
+    {ro : Bool} {m : Memory} {inflight : Nat} {γ : GhostName} {A : MallocngAddrs} {brkStart brk mb : BitVec 64}
     {liveCost peakCost len : Nat} {st : MallocngSt} {R : SepProp}
     (hMem : m ⊨
       (mb ↦ₛ List.replicate len 0#8) ∗
       memMapped mb len ∗
-      MallocngCoreStInflightA inflight γ A brkStart brk liveCost peakCost st ∗
+      MallocngCoreStInflightModeA ro inflight γ A brkStart brk liveCost peakCost st ∗
       R)
     (hMbAl : mb.toNat % 4096 = 0)
     (hLenAl : len % 4096 = 0)
     (hLenPos : 4096 ≤ len)
     (hMbBound : mb.toNat + len ≤ 2 ^ 48) :
     ∀ r ∈ dynamicRootRegions st, DisjointRegions r.1 r.2 mb len := by
-  dsimp only [MallocngCoreStInflightA] at hMem
+  dsimp only [MallocngCoreStInflightModeA] at hMem
   have hwf : MallocngWFInflight inflight A.base brkStart brk liveCost peakCost st := by
     have hCore := Satisfies.drop_left (Satisfies.drop_left hMem)
     rw [sepConj_assoc] at hCore
@@ -246,7 +246,22 @@ theorem fresh_mmap_disjoint_A
       ⟨_, Satisfies.mono (by sep_frame) hMem⟩
     exact Satisfies.disjointRegions_of_memMapped (by omega) (by omega) hSat
 
-theorem createLargeMmapGroup_absorb {γ : GhostName} {A : MallocngAddrs} {brkStart brk m mb : BitVec 64}
+theorem fresh_mmap_disjoint_A
+    {m : Memory} {inflight : Nat} {γ : GhostName} {A : MallocngAddrs} {brkStart brk mb : BitVec 64}
+    {liveCost peakCost len : Nat} {st : MallocngSt} {R : SepProp}
+    (hMem : m ⊨
+      (mb ↦ₛ List.replicate len 0#8) ∗
+      memMapped mb len ∗
+      MallocngCoreStInflightA inflight γ A brkStart brk liveCost peakCost st ∗
+      R)
+    (hMbAl : mb.toNat % 4096 = 0)
+    (hLenAl : len % 4096 = 0)
+    (hLenPos : 4096 ≤ len)
+    (hMbBound : mb.toNat + len ≤ 2 ^ 48) :
+    ∀ r ∈ dynamicRootRegions st, DisjointRegions r.1 r.2 mb len :=
+  fresh_mmap_disjoint_mode_A (ro := false) hMem hMbAl hLenAl hLenPos hMbBound
+
+theorem createLargeMmapGroup_absorb_mode {ro : Bool} {γ : GhostName} {A : MallocngAddrs} {brkStart brk m mb : BitVec 64}
     {liveCost peakCost len : Nat} {st1 : MallocngSt}
     (hwf1 : MallocngWFInflight 1 A.base brkStart brk liveCost peakCost st1)
     (hRes : st1.reservedMetas = [m])
@@ -262,15 +277,15 @@ theorem createLargeMmapGroup_absorb {γ : GhostName} {A : MallocngAddrs} {brkSta
     (A.lock ↦₃₂ 0#32) ∗
     (A.replaced ↦₃₂ 0#32) ∗
     (A.aaReplaced ↦₃₂ 0#32) ∗
-    ((A.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗
-    MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗
+    MallocngAuxvPtrCell ro A.libc st1.auxvPtr ∗
+    MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap ∗
     (m ↦ₛ gNew.metaBytes) ∗
     (mb ↦ₛ groupBytes) ∗
     memMapped mb len ∗
     ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
     ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗
     MappedSet st1.masterDom (OwnedMappedByte st1) ⊢
-      MallocngCoreStInflightA 1 γ A brkStart brk liveCost peakCost st2 := by
+      MallocngCoreStInflightModeA ro 1 γ A brkStart brk liveCost peakCost st2 := by
   intro gNew st2 groupBytes
   have h2_48 : (2 : Nat) ^ 48 < 2 ^ 64 := by omega
   let bDummy : BitVec 64 := BitVec.ofNat 64 (2 ^ 49)
@@ -437,7 +452,7 @@ theorem createLargeMmapGroup_absorb {γ : GhostName} {A : MallocngAddrs} {brkSta
       · rcases List.mem_cons.mp hg with rfl | hg1
         · dsimp [gNew, mkLargeGroup] at hi; rw [hMapMul] at hi; exact Or.inr hi
         · exact Or.inl (Or.inr (Or.inr (Or.inr ⟨g, hg1, hp, hi⟩)))
-  unfold MallocngCoreStInflightA; rw [pure_sepConj_of_true hwf2]
+  unfold MallocngCoreStInflightModeA; rw [pure_sepConj_of_true hwf2]
   have hByteEq : ((mb ↦ₛ groupBytes) ∗ ((m ↦ₛ gNew.metaBytes) ∗ ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal)) =
       ByteMap st2.masterDom (OwnedRwByte st2) st2.byteVal := by rw [hLiftRw, hAbsM, hAbsMb]; exact hRwPredEq
   have hMpEq : (memMapped mb len ∗ MappedSet st1.masterDom (OwnedMappedByte st1)) =
@@ -445,11 +460,38 @@ theorem createLargeMmapGroup_absorb {γ : GhostName} {A : MallocngAddrs} {brkSta
   have hPnFullEq : ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal =
       ProtNoneByteMap st2.masterDom (OwnedProtNoneByte st2) st2.byteVal := hLiftPn.trans hPnEq
   change _ ⊢ MallocngLiveAuth γ st1.liveMap ∗ (A.ctx ↦ₛ st2.ctx.toBytes) ∗ (A.lock ↦₃₂ 0#32) ∗
-    (A.replaced ↦₃₂ 0#32) ∗ (A.aaReplaced ↦₃₂ 0#32) ∗ ((A.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗
-    MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗ ByteMap st2.masterDom (OwnedRwByte st2) st2.byteVal ∗
+    (A.replaced ↦₃₂ 0#32) ∗ (A.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell ro A.libc st1.auxvPtr ∗
+    MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap ∗ ByteMap st2.masterDom (OwnedRwByte st2) st2.byteVal ∗
     ProtNoneByteMap st2.masterDom (OwnedProtNoneByte st2) st2.byteVal ∗
     MappedSet st2.masterDom (OwnedMappedByte st2)
   rw [← hByteEq, ← hMpEq, ← hPnFullEq]; sep_entail
+
+theorem createLargeMmapGroup_absorb {γ : GhostName} {A : MallocngAddrs} {brkStart brk m mb : BitVec 64}
+    {liveCost peakCost len : Nat} {st1 : MallocngSt}
+    (hwf1 : MallocngWFInflight 1 A.base brkStart brk liveCost peakCost st1)
+    (hRes : st1.reservedMetas = [m])
+    (hMbNe : mb ≠ 0#64) (hMbAl : mb.toNat % 4096 = 0)
+    (hLenPos : 4096 ≤ len) (hLenAl : len % 4096 = 0)
+    (hMbBound : mb.toNat + len ≤ 2 ^ 48)
+    (hDisjDyn : ∀ r ∈ dynamicRootRegions st1, DisjointRegions r.1 r.2 mb len) :
+    let gNew := mkLargeGroup m mb len
+    let st2 := mkLargeGroupSt st1 m mb len
+    let groupBytes := unpack64 m ++ List.replicate (len - 8) 0#8
+    MallocngLiveAuth γ st1.liveMap ∗
+    (A.ctx ↦ₛ st2.ctx.toBytes) ∗
+    (A.lock ↦₃₂ 0#32) ∗
+    (A.replaced ↦₃₂ 0#32) ∗
+    (A.aaReplaced ↦₃₂ 0#32) ∗
+    ((A.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗
+    MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗
+    (m ↦ₛ gNew.metaBytes) ∗
+    (mb ↦ₛ groupBytes) ∗
+    memMapped mb len ∗
+    ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
+    ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗
+    MappedSet st1.masterDom (OwnedMappedByte st1) ⊢
+      MallocngCoreStInflightA 1 γ A brkStart brk liveCost peakCost st2 :=
+  createLargeMmapGroup_absorb_mode (ro := false) hwf1 hRes hMbNe hMbAl hLenPos hLenAl hMbBound hDisjDyn
 
 /-! ## Bitmask, `ProtNone` Disjointness, and `SlotWf` Congruence -/
 

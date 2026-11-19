@@ -18,7 +18,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.HelpersC
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Sync
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Inject
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
 
 /-!
 # Deliver step: known chain, case 3a resync accept
@@ -27,7 +27,7 @@ Closes the accepting half of `closeByStateC_deliver_known_resync`, where `resync
 honest record to Fig. 8 and both sides accept with matching plaintext.
 -/
 
-@[expose] public section
+public section
 
 
 open OracleComp OracleSpec ENNReal MeasureTheory

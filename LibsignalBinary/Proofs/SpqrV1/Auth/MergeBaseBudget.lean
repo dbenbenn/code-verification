@@ -10,9 +10,52 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBase
+public import LibsignalBinary.Heap.Fine.CreditInst
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Budget-Threaded Base Specification for `Authenticator::merge`
@@ -22,7 +65,7 @@ Defines the slice-shrinking allocator event envelope `AuthMergeLoopEnv` (boundin
 `PhaseCreditSpec` bounds, and `FitsEnv fineCostModel` non-vacuity witnesses.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,13 +99,13 @@ open CryptoVerification.SpqrV1.Auth
 
 /-- Bounded allocator event envelope of `DecodeError::push` on stack length `n`: `[]`,
 initial 128-byte alloc (`n = 0`), or doubling realloc from `n * 32` to `max (2 * n) 4 * 32`. -/
-def DecodeErrorPushBoundedEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeErrorPushBoundedEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   (n = 0 ∧ evs = rustAllocEvents 128 8) ∨
   (0 < n ∧ evs = rustReallocEvents (n * 32) (max (2 * n) 4 * 32) 8)
 
 /-- Deterministic event envelope of `prost::encoding::bytes::merge::<Vec<u8>, &mut &[u8]>`. -/
-def AuthBytesMerge3EnvCore (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec 8))
+@[expose] def AuthBytesMerge3EnvCore (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   evs = bytesMergeEventsCore wt valCap bs
 
@@ -145,11 +188,11 @@ theorem FitsEnv.authMergeLoop_mono {M : AllocCostModel} {lim : BudgetLimits} {st
 /-! ## Budget-Threaded `Authenticator::merge` Specification -/
 
 /-- Precondition allocation envelope (`errRem = 4`, `byteRem = x.bs.length`). -/
-def AuthMergeEnv (x : AuthMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthMergeEnv (x : AuthMergeGhost) (evs : List AllocEvent) : Prop :=
   AuthMergeLoopEnv 4 x.bs.length evs
 
 /-- Postcondition allocation envelope (`errRem = 0` and `x.bs.length - rest.length` bytes on `Ok`). -/
-def AuthMergePostEnv (x : AuthMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthMergePostEnv (x : AuthMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage ProtoAuthenticator.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 97).toOption with
   | some (_, rest) => AuthMergeLoopEnv 0 (x.bs.length - rest.length) evs
   | none => AuthMergeLoopEnv 4 x.bs.length evs
@@ -163,7 +206,7 @@ theorem authMergePostEnv_imp_pre {x : AuthMergeGhost} {evs : List AllocEvent}
   · exact h
 
 /-- Envelope-parameterized budget-threaded specification of `Authenticator::merge`. -/
-def authMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def authMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : AuthMergeGhost → List AllocEvent → Prop) :
     Spec (AuthMergeGhost × M.σ) where
@@ -191,7 +234,7 @@ def authMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
 
 /-- Budget-threaded specification of `Authenticator::merge`. -/
-def authMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def authMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (AuthMergeGhost × M.σ) :=
   authMergeSpecOfEnv A lim AuthMergeEnv AuthMergePostEnv
 
@@ -410,47 +453,10 @@ theorem authMergeLoopEnv_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCre
 def authMergeWitnessLimits : BudgetLimits :=
   { staticCount := 16, staticBytes := 16 * 1024 * 1024, physCap := 2 ^ 30, enforced := true }
 
-/-- Concrete 5-byte length-delimited `Authenticator` witness input exercising a non-empty allocation trace. -/
-def authMergeWitnessGhost : AuthMergeGhost where
-  wt := .lengthDelimited
-  msgPtr := 0#64
-  msg := { rootKey := [], macKey := [] }
-  bufRef := 0#64
-  slot := 0#64
-  ptr := 0#64
-  bs := [5#8, 10#8, 3#8, 1#8, 2#8, 3#8]
-
 /-- Non-empty trace witness for `DecodeErrorPushBoundedEnv 1`. -/
 theorem decodeErrorPushBoundedEnv_inhabited :
     ∃ evs : List AllocEvent, evs ≠ [] ∧ DecodeErrorPushBoundedEnv 1 evs :=
   ⟨rustReallocEvents 32 128 8, by decide, Or.inr (Or.inr ⟨by decide, rfl⟩)⟩
-
-/-- Non-empty trace witness for `AuthBytesMerge3EnvCore`. -/
-theorem authBytesMerge3EnvCore_inhabited :
-    ∃ evs : List AllocEvent, evs ≠ [] ∧
-      AuthBytesMerge3EnvCore .lengthDelimited 0#64 [3#8, 1#8, 2#8, 3#8] evs :=
-  ⟨bytesMergeEventsCore .lengthDelimited 0#64 [3#8, 1#8, 2#8, 3#8], by decide, rfl⟩
-
-/-- Non-empty trace witness for `AuthMergePostEnv authMergeWitnessGhost`. -/
-theorem authMergePostEnv_inhabited :
-    ∃ evs : List AllocEvent, evs ≠ [] ∧ AuthMergePostEnv authMergeWitnessGhost evs := by
-  refine ⟨bytesMergeEventsCore .lengthDelimited 0#64 [3#8, 1#8, 2#8, 3#8] ++ [], by decide, ?_⟩
-  have hm : mergeBytes .lengthDelimited [3#8, 1#8, 2#8, 3#8] = some ([1#8, 2#8, 3#8], []) := by
-    decide
-  have hstep : AuthMergeLoopEnv 0 6
-      (bytesMergeEventsCore .lengthDelimited 0#64 [3#8, 1#8, 2#8, 3#8] ++ []) :=
-    AuthMergeLoopEnv.bytesStep (byteRem' := 0)
-      .lengthDelimited 0#64 [3#8, 1#8, 2#8, 3#8] [1#8, 2#8, 3#8] []
-      hm (by decide) (by decide) rfl .nil
-  have hparse :
-      (mergeMessage ProtoAuthenticator.mergeField
-        (codecWireTypeToProto authMergeWitnessGhost.wt)
-        authMergeWitnessGhost.msg authMergeWitnessGhost.bs 97).toOption =
-      some ({ rootKey := [1#8, 2#8, 3#8], macKey := [] }, []) := by
-    decide
-  dsimp only [AuthMergePostEnv]
-  rw [hparse]
-  exact hstep
 
 /-- `FitsEnv fineCostModel` witness for `AuthMergeLoopEnv 4 6`. -/
 theorem authMergeLoopEnv_fitsEnv_witness :
@@ -467,29 +473,5 @@ theorem decodeErrorPushBoundedEnv_fitsEnv_witness :
     AuthMergeLoopEnv.errPush (Nat.le_refl 1) h .nil
   rw [List.append_nil] at h1
   exact h1.mono (by decide) (by decide)
-
-theorem authBytesMerge3EnvCore_fitsEnv_witness :
-    FitsEnv fineCostModel authMergeWitnessLimits fineCostModel.init
-      (AuthBytesMerge3EnvCore .lengthDelimited 0#64 [3#8, 1#8, 2#8, 3#8]) := by
-  have hm : mergeBytes .lengthDelimited [3#8, 1#8, 2#8, 3#8] = some ([1#8, 2#8, 3#8], []) := by
-    decide
-  refine authMergeLoopEnv_fitsEnv_witness.mono fun evs h => ?_
-  have h1 : AuthMergeLoopEnv 0 4 (evs ++ []) :=
-    AuthMergeLoopEnv.bytesStep (byteRem' := 0)
-      .lengthDelimited 0#64 [3#8, 1#8, 2#8, 3#8] [1#8, 2#8, 3#8] []
-      hm (by decide) (by decide) h .nil
-  rw [List.append_nil] at h1
-  exact h1.mono (by decide) (by decide)
-
-theorem authMergeEnv_fitsEnv_witness :
-    FitsEnv fineCostModel authMergeWitnessLimits fineCostModel.init
-      (AuthMergeEnv authMergeWitnessGhost) :=
-  authMergeLoopEnv_fitsEnv_witness
-
-/-- `FitsEnv fineCostModel` witness for `AuthMergePostEnv authMergeWitnessGhost`. -/
-theorem authMergePostEnv_fitsEnv_witness :
-    FitsEnv fineCostModel authMergeWitnessLimits fineCostModel.init
-      (AuthMergePostEnv authMergeWitnessGhost) :=
-  authMergeEnv_fitsEnv_witness.mono fun _ h => authMergePostEnv_imp_pre h
 
 end LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget

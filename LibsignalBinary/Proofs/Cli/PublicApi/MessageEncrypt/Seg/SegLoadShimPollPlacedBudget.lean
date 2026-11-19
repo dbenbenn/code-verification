@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadCommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadShimPollPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadCommonPlacedBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadShimPollPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
@@ -23,6 +23,13 @@ import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadShimPoll
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.SymWP
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs -- shake: keep
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegLoadShimPoll
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable `segLoad` Prologue, Load Shim, and Poll (`+0x000..+0x160`)
@@ -32,7 +39,7 @@ and `[LibsignalPlacement]`, threading allocation budgets across `E0`, `kit.loadS
 and `E1` up to the `+0x160` dispatch seam.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -83,7 +90,7 @@ attribute [local wp_norm] spAligned_writeVReg128 loadBoxSize_ofNat_toNat
 /-! ## 1. `WithStoresEncEnv` Reassociation & `LoadRemEnv` -/
 
 /-- Remaining allocation envelope after `loadShim` + `loadPoll` + `Box` dealloc (`+0x160` dispatch). -/
-def LoadRemEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) (parse : UuidParser)
+@[expose] def LoadRemEnv {A : RustAlloc} (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) (parse : UuidParser)
     (kit : SessionStoreSpec A 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist0 : ikit.IdState) (Scope : SessionRecord (List (BitVec 8)) → Prop)
@@ -114,24 +121,6 @@ private theorem cs_x27 {s0 sf : State} (h : CalleeSavedPreserved s0 sf) : sf.rea
 private theorem cs_x28 {s0 sf : State} (h : CalleeSavedPreserved s0 sf) : sf.readReg64 .x28 = s0.readReg64 .x28 := h.2.2.2.2.2.2.2.2.2.1
 private theorem cs_x29 {s0 sf : State} (h : CalleeSavedPreserved s0 sf) : sf.readReg64 .x29 = s0.readReg64 .x29 := h.2.2.2.2.2.2.2.2.2.2.1
 private theorem cs_vregs {s0 sf : State} (h : CalleeSavedPreserved s0 sf) : calleeSavedVRegs sf = calleeSavedVRegs s0 := h.2.2.2.2.2.2.2.2.2.2.2
-
-theorem loadOutResPlaced_atState_eq {M : AllocCostModel}
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s : State)
-    (ans : Except Unit (Option (SessionRecord (List (BitVec 8)))))
-    (w0 w1 w2 w3 w4 w5 w6 : BitVec 64) (tail : List (BitVec 8)) :
-    LoadOutResPlaced Scope A.repAlloc ans w0 w1 w2 w3 w4 w5 w6 tail =
-    LoadOutResPlaced Scope (A.atState lim st s) ans w0 w1 w2 w3 w4 w5 w6 tail := by
-  rcases ans with ⟨⟩ | (_ | _) <;> rfl
-
-theorem dispatchFramePlaced_retag_eq [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s : State)
-    (kit : SessionStoreSpec A.repAlloc 0#64) (st0 : kit.StoreState)
-    (ikit : IdentityStoreSpec A.repAlloc 0#64) (ist0 : ikit.IdState)
-    (ctl : BitVec 64) (x : WithStoresEncGhost) (s0 : State) (v50 : BitVec 64) :
-    dispatchFramePlaced kit st0 ikit ist0 ctl x s0 v50 =
-    dispatchFramePlaced (retagSessionStore (A' := A.atState lim st s) kit) st0
-      (retagIdentityStore (A' := A.atState lim st s) ikit) ist0 ctl x s0 v50 := rfl
 
 /-! ## 2. Straight-Line `by_vm_steps` Blocks (`E0`, Pre-Poll, and `E1` Sub-Blocks) -/
 

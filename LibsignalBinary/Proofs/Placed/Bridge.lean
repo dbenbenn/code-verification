@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import ProofLib.ProgramReflection
-public import GeneratedLean.LibsignalSessionPlacedObj
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
 public meta import ProofLib.ProgramReflection -- shake: keep
 public import ProofLib.Lemmas
 public import ProofLib.SepLogic
@@ -26,7 +26,7 @@ library), $O(\log N)$ `IdxTree` lookup tables for block symbols and `.rodata`, a
 frozen-code memory invariants (`LibsignalRoLoaded`, `LibsignalFrozen`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -41,7 +41,7 @@ open CryptoVerification (libsignalSessionBlocks libsignalSessionData libsignalSe
 /-- Two `MultiPlacedLib`s have the same symbol layout when each block `i` defines the exact same
 `(symbol, offset)` table. Replacing a block's `code` and `relocs` (including zeroing a
 garbage-collected block with `code := []`, `relocs := []`) preserves `SameSymbolLayout`. -/
-def SameSymbolLayout (lib' lib : MultiPlacedLib) : Prop :=
+@[expose] def SameSymbolLayout (lib' lib : MultiPlacedLib) : Prop :=
   lib'.blocks.map (·.symbols) = lib.blocks.map (·.symbols)
 
 theorem SameSymbolLayout.refl (lib : MultiPlacedLib) : SameSymbolLayout lib lib := rfl
@@ -55,7 +55,7 @@ theorem SameSymbolLayout.trans {lib1 lib2 lib3 : MultiPlacedLib}
 
 /-- Block symbol lookup formulated purely over `blocks.map (·.symbols)` so the kernel never
     inspects `CodeBlock.code` or `CodeBlock.relocs`. -/
-def lookupSymInLists (name : String) (i : Nat) : List (List (String × Nat)) → Option (Nat × Nat)
+@[expose] def lookupSymInLists (name : String) (i : Nat) : List (List (String × Nat)) → Option (Nat × Nat)
   | [] => none
   | syms :: rest =>
     match lookup name syms with
@@ -170,9 +170,130 @@ elab "first_block_externs_of% " listStx:term:max : term => do
 
 end
 
-/-- The external hook symbols of `libsignalSessionLib` (shared across all 624 blocks). -/
-def libsignalSessionExterns : List String :=
+open Lean Meta Elab Term in
+local elab "list_len_of% " listStx:term:max : term => do
+  let listE ← elabTerm listStx none
+  let elems ← ProofLib.ProgramReflection.listElemsWhnf listE
+  mkNumeral (Lean.mkConst ``Nat) elems.size
+
+/-- The external hook symbols of `libsignalSessionLib` (shared across all blocks). -/
+@[expose] def libsignalSessionExterns : List String :=
   first_block_externs_of% libsignalSessionBlocks
+
+/-- External symbols of `libsignalSessionLib` whose `externAt?` entry is dispatched on by the
+    compositional `[LibsignalPlacement]` proofs:
+    - the `18` Rust panic traps (`cliPanicSymbolsPlaced`),
+    - the `46` ghost-spec'd linked functions (`cliDehookedSymsPlaced.take 46`), and
+    - `"libsignal_session_rng_fill"` (crate-export RNG hook).
+
+    Unhooked external helpers that the compositional proofs never dispatch on — including the `7`
+    `core::fmt` `Formatter` / `Display::fmt` helpers (two of which, `<u64 as Display>::fmt` and
+    `<usize as Display>::fmt`, alias at a single symbol address in the stock `ld.lld` link) — are
+    deliberately absent. `ElfPlaced.libsignalHookedExterns_tables_guard` checks this list against
+    `cliPanicSymbolsPlaced` and `cliDehookedSymsPlaced`. -/
+@[expose] def libsignalHookedExterns : List String :=
+  -- 18 Rust panic traps (`cliPanicSymbolsPlaced`)
+  ["_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedjjEB4_",
+   "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedyyEB4_",
+   "_RNvNtCs69KKACWg7bl_5alloc5alloc18handle_alloc_error",
+   "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error",
+   "_RNvNtCskxtBwYRO61I_4core6option13expect_failed",
+   "_RNvNtCskxtBwYRO61I_4core6option13unwrap_failed",
+   "_RNvNtCskxtBwYRO61I_4core6result13unwrap_failed",
+   "_RNvNtCskxtBwYRO61I_4core9panicking18panic_bounds_check",
+   "_RNvNtCskxtBwYRO61I_4core9panicking19assert_failed_inner",
+   "_RNvNtCskxtBwYRO61I_4core9panicking5panic",
+   "_RNvNtCskxtBwYRO61I_4core9panicking9panic_fmt",
+   "_RNvNtNtCskxtBwYRO61I_4core5slice5index16slice_index_fail",
+   "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_add_overflow",
+   "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_mul_overflow",
+   "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_shl_overflow",
+   "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_sub_overflow",
+   "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const28panic_const_async_fn_resumed",
+   "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed",
+   -- 46 ghost-spec'd linked functions (`cliDehookedSymsPlaced.take 46`)
+   "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2",
+   "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc",
+   "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc",
+   "_RNvCs1njKG4L9aB3_7___rustc14___rust_realloc",
+   "_RNvCs1njKG4L9aB3_7___rustc19___rust_alloc_zeroed",
+   "_RNvCs9Xul1Kjr0QF_16libsignal_cli_io9read_file",
+   "_RNvCs9Xul1Kjr0QF_16libsignal_cli_io10read_stdin",
+   "memcpy",
+   "memset",
+   "memmove",
+   "bcmp",
+   "strlen",
+   "_RNvNtNtCskxtBwYRO61I_4core5slice6memchr7memrchr",
+   "_RNvNtNtCskxtBwYRO61I_4core3str8converts9from_utf8",
+   "_RNvMs5_NtCsfr5T3GFabw_3std4timeNtB5_10SystemTime14duration_since",
+   "_RNvXs6_NtCsfr5T3GFabw_3std4timeNtB5_10SystemTimeINtNtNtCskxtBwYRO61I_4core3ops5arith3AddNtNtBR_4time8DurationE3add",
+   "_RINvCsdqpLrhraQXi_6subtle9black_boxhECs2wR8L9wiBdT_16curve25519_dalek",
+   "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop",
+   "_RNvXse_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12SharedSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop",
+   "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint10to_edwards",
+   "_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint8compress",
+   "_RNvXso_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtNtNtCskxtBwYRO61I_4core3ops5arith3Neg3neg",
+   "_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint15is_torsion_free",
+   "_RNvMsw_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint35vartime_double_scalar_mul_basepoint",
+   "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar20from_bytes_mod_order",
+   "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar25from_bytes_mod_order_wide",
+   "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk1",
+   "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk2",
+   "_RNvNtCsbvWyylYiyxg_4sha26sha25611compress256",
+   "_RNvCs65XVORQObL2_12libcrux_hmac4hmac",
+   "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_encrypt",
+   "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_decrypt",
+   "_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512",
+   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11encapsulate",
+   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate",
+   "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes9from_seed",
+   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate1",
+   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate2",
+   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental26decapsulate_compressed_key",
+   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes",
+   "_RNvCs9Xul1Kjr0QF_16libsignal_cli_io10write_file",
+   "_RNvCs9Xul1Kjr0QF_16libsignal_cli_io12write_stdout",
+   "_RNvNtCskxtBwYRO61I_4core3fmt5write",
+   "_RNvNvNtCs69KKACWg7bl_5alloc3fmt6format12format_inner",
+   "_RNvXs8_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_9PublicKeyINtNtCskxtBwYRO61I_4core7convert4FromRNtB5_12StaticSecretE4from",
+   "_RNvMs6_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecret14diffie_hellman",
+   -- Crate-export RNG hook
+   "libsignal_session_rng_fill"]
+
+private theorem libsignalHookedExterns_sub_externs_bool :
+    (libsignalHookedExterns.all libsignalSessionExterns.contains) = true := by
+  decide +kernel
+
+theorem mem_libsignalSessionExterns_of_hooked {sym : String}
+    (h : sym ∈ libsignalHookedExterns) : sym ∈ libsignalSessionExterns :=
+  List.contains_iff_mem.mp (List.all_eq_true.mp libsignalHookedExterns_sub_externs_bool sym h)
+
+/-- No dispatched extern target in `libsignalHookedExterns` shares its resolved address `ρ sym`
+    with any other extern `e ∈ libsignalSessionExterns`. -/
+@[expose] def ExternsDistinctOnHooked (ρ : String → BitVec 64) : Prop :=
+  ∀ sym ∈ libsignalHookedExterns, ∀ e ∈ libsignalSessionExterns, ρ e = ρ sym → e = sym
+
+private theorem injOn_of_nodup_map {α β : Type} {xs : List α} {f : α → β}
+    (hnd : (xs.map f).Nodup) :
+    ∀ x ∈ xs, ∀ y ∈ xs, f x = f y → x = y := by
+  induction xs with
+  | nil => intro x hx; cases hx
+  | cons a rest ih =>
+    rw [List.map_cons, List.nodup_cons] at hnd
+    rcases hnd with ⟨hnotmem, hrest⟩
+    intro x hx y hy hxy
+    rcases List.mem_cons.mp hx with rfl | hx' <;>
+      rcases List.mem_cons.mp hy with rfl | hy'
+    · rfl
+    · exact absurd (hxy.symm ▸ List.mem_map_of_mem hy') hnotmem
+    · exact absurd (hxy ▸ List.mem_map_of_mem hx') hnotmem
+    · exact ih hrest x hx' y hy' hxy
+
+theorem ExternsDistinctOnHooked.of_nodup {ρ : String → BitVec 64}
+    (hnd : (libsignalSessionExterns.map ρ).Nodup) : ExternsDistinctOnHooked ρ :=
+  fun sym hsym e he hρ =>
+    injOn_of_nodup_map hnd e he sym (mem_libsignalSessionExterns_of_hooked hsym) hρ
 
 /-- Block indices mutated or garbage-collected across the `cheval26-small-subgroup` and
 `cheval26-weak-state` bug-injection binaries:
@@ -181,17 +302,17 @@ def libsignalSessionExterns : List String :=
 - `55`: `<alloc::vec::Vec<u8>>::append_elements` (GC'd in `cheval26-small-subgroup`);
 - `72, 77, 159, 462, 519`: `try_decrypt_from_record` closures and decryption-failure log helpers
   in `cheval26-weak-state`. -/
-def libsignalMutatedBlocks : List Nat := [55, 72, 77, 79, 159, 202, 462, 519]
+@[expose] def libsignalMutatedBlocks : List Nat := [55, 72, 77, 79, 159, 202, 462, 519]
 
 /-- Placement typeclass for `libsignalSessionLib` requiring single-block placeability on all
 blocks outside `libsignalMutatedBlocks`, satisfied by both the stock binary and the
 `cheval26-small-subgroup` / `cheval26-weak-state` mutant binaries. -/
 class LibsignalPlacement where
   mpl : MultiPlacement
-  -- 624 = libsignalSessionLib.blocks.length (libsignalSessionLib_blocks_length)
-  block_placeable : ∀ i, i < 624 → (i ∈ libsignalMutatedBlocks) = false →
+  -- 624 on stock = libsignalSessionLib.blocks.length (libsignalSessionLib_blocks_length)
+  block_placeable : ∀ i, i < (list_len_of% libsignalSessionBlocks) → (i ∈ libsignalMutatedBlocks) = false →
     (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i)
-  externsDistinct : (libsignalSessionExterns.map mpl.ρ).Nodup
+  externsDistinct : ExternsDistinctOnHooked mpl.ρ
 
 /-- Full placement typeclass for the stock (unmutated) `libsignalSessionLib` binary. Automatically
     provides `[LibsignalPlacement]` via `toLibsignalPlacement`. -/
@@ -203,7 +324,7 @@ abbrev lsρ [LibsignalPlacement] (e : String) : BitVec 64 := LibsignalPlacement.
 
 abbrev LibsignalHooks := String → Option (State → State)
 
-noncomputable abbrev lsBlkProg (pl : MultiPlacement) (i : Nat) (H : LibsignalHooks) : Program :=
+abbrev lsBlkProg (pl : MultiPlacement) (i : Nat) (H : LibsignalHooks) : Program :=
   libsignalSessionLib.blockProgram pl i H
 
 theorem _root_.Arm64.Obj.PlacedLib.program_rebase_self (lib : PlacedLib) (pl : Placement)
@@ -250,19 +371,19 @@ inductive IdxTree (α : Type) where
   | leaf (val : α) : IdxTree α
   | node (leftSz : Nat) (left right : IdxTree α) : IdxTree α
 
-def IdxTree.get? {α : Type} : IdxTree α → Nat → Option α
+@[expose] def IdxTree.get? {α : Type} : IdxTree α → Nat → Option α
   | .empty, _ => none
   | .leaf v, 0 => some v
   | .leaf _, _ + 1 => none
   | .node leftSz l r, i =>
     if i < leftSz then l.get? i else r.get? (i - leftSz)
 
-def IdxTree.toList {α : Type} : IdxTree α → List α
+@[expose] def IdxTree.toList {α : Type} : IdxTree α → List α
   | .empty => []
   | .leaf v => [v]
   | .node _ l r => l.toList ++ r.toList
 
-def IdxTree.size? {α : Type} : IdxTree α → Option Nat
+@[expose] def IdxTree.size? {α : Type} : IdxTree α → Option Nat
   | .empty => some 0
   | .leaf _ => some 1
   | .node leftSz l r =>
@@ -270,7 +391,7 @@ def IdxTree.size? {α : Type} : IdxTree α → Option Nat
     | some ls, some rs => if leftSz == ls then some (ls + rs) else none
     | _, _ => none
 
-def IdxTree.all {α : Type} (p : α → Bool) : IdxTree α → Bool
+@[expose] def IdxTree.all {α : Type} (p : α → Bool) : IdxTree α → Bool
   | .empty => true
   | .leaf v => p v
   | .node _ l r => l.all p && r.all p
@@ -341,7 +462,7 @@ theorem IdxTree.get?_eq_toList_getElem? {α : Type} :
               List.getElem?_append_right (by omega), hllen]
         · cases h
 
-def IdxTree.getFast? {α : Type} : IdxTree α → Nat → Option α
+@[expose] def IdxTree.getFast? {α : Type} : IdxTree α → Nat → Option α
   | .empty, _ => none
   | .leaf v, 0 => some v
   | .leaf _, _ + 1 => none
@@ -359,7 +480,7 @@ theorem IdxTree.getFast?_eq_get? {α : Type} :
     · simp [hi, IdxTree.getFast?_eq_get? l i]
     · simp [hi, Nat.sub_eq, IdxTree.getFast?_eq_get? r (i - leftSz)]
 
-def IdxTree.map {α β : Type} (f : α → β) : IdxTree α → IdxTree β
+@[expose] def IdxTree.map {α β : Type} (f : α → β) : IdxTree α → IdxTree β
   | .empty => .empty
   | .leaf v => .leaf (f v)
   | .node leftSz l r => .node leftSz (l.map f) (r.map f)
@@ -382,7 +503,7 @@ theorem IdxTree.get?_map {α β : Type} (f : α → β) :
     · exact IdxTree.get?_map f l i
     · exact IdxTree.get?_map f r (i - leftSz)
 
-def IdxTree.findSome? {α β : Type} (f : α → Option β) : IdxTree α → Option β
+@[expose] def IdxTree.findSome? {α β : Type} (f : α → Option β) : IdxTree α → Option β
   | .empty => none
   | .leaf v => f v
   | .node _ l r =>
@@ -398,22 +519,22 @@ theorem IdxTree.all_toList {α : Type} (p : α → Bool) :
     simp [IdxTree.all, IdxTree.toList, List.all_append, IdxTree.all_toList p l,
       IdxTree.all_toList p r]
 
-def IdxTree.getD {α : Type} (d : α) (t : IdxTree α) (i : Nat) : α :=
+@[expose] def IdxTree.getD {α : Type} (d : α) (t : IdxTree α) (i : Nat) : α :=
   (t.get? i).getD d
 
 /-- Strided `List Char` hash into `1024` buckets using primitive `Nat.mul`/`Nat.add`/`Nat.mod`
     (hashes every 2nd codepoint to halve recursion steps without invoking `String` operations). -/
-def lsHashCharsStep : List Char → Nat → Nat
+@[expose] def lsHashCharsStep : List Char → Nat → Nat
   | [], h => Nat.mod h 1024
   | [c], h => Nat.mod (Nat.add (Nat.mul h 131) c.val.toNat) 1024
   | c1 :: _ :: cs, h =>
     lsHashCharsStep cs (Nat.mod (Nat.add (Nat.mul h 131) c1.val.toNat) 1048576)
 
-def lsHashChars1024 (cs : List Char) : Nat :=
+@[expose] def lsHashChars1024 (cs : List Char) : Nat :=
   lsHashCharsStep cs 5381
 
 /-- Structural `List Char` equality using primitive `Nat.beq` on codepoints (`0` `String` ops). -/
-def charListBeq : List Char → List Char → Bool
+@[expose] def charListBeq : List Char → List Char → Bool
   | [], [] => true
   | c1 :: r1, c2 :: r2 => if Nat.beq c1.val.toNat c2.val.toNat then charListBeq r1 r2 else false
   | _, _ => false
@@ -442,7 +563,7 @@ theorem charListBeq_iff_eq :
       subst hc
       simpa using charListBeq_iff_eq (l1 := r1) (l2 := r2)
 
-def lookupCharSym (cs : List Char) : List (List Char × Nat) → Option Nat
+@[expose] def lookupCharSym (cs : List Char) : List (List Char × Nat) → Option Nat
   | [] => none
   | (s, off) :: rest => if charListBeq s cs then some off else lookupCharSym cs rest
 
@@ -460,7 +581,7 @@ theorem lookupCharSym_eq_lookup (cs : List Char) :
     · exact lookupCharSym_eq_lookup cs rest
     · rfl
 
-def lookupCharBucket (cs : List Char) : List (List Char × Nat × Nat) → Option (Nat × Nat)
+@[expose] def lookupCharBucket (cs : List Char) : List (List Char × Nat × Nat) → Option (Nat × Nat)
   | [] => none
   | (s, i, off) :: rest => if charListBeq s cs then some (i, off) else lookupCharBucket cs rest
 
@@ -620,29 +741,31 @@ local elab "block_char_sym_bucket_tree_of% " blocksStx:term:max : term => do
   let bktExprs ← bkts.mapM fun b => mkListLit tripleTy b.toList
   return mkIdxTreeExpr listTripleTy bktExprs 0 1024
 
-/-- Balanced binary tree of the 1,248 `SymDataInfo` entries of `libsignalSessionData`. -/
-def lsDataTree : IdxTree SymDataInfo := idx_tree_of% SymDataInfo libsignalSessionData
+/-- Balanced binary tree of the `SymDataInfo` entries of `libsignalSessionData` (`1,248` on stock). -/
+@[expose] def lsDataTree : IdxTree SymDataInfo := idx_tree_of% SymDataInfo libsignalSessionData
 
 theorem lsDataTree_toList : lsDataTree.toList = libsignalSessionLib.data := by
   rfl_kernel
 
-theorem lsDataTree_size : lsDataTree.size? = some 1248 := by decide +kernel
+theorem lsDataTree_size : lsDataTree.size? = some (list_len_of% libsignalSessionData) := by decide +kernel
 
 /-- 1024-bucket hash tree of `(sym, dataIdx)` pairs across `libsignalSessionData` (no `bytes`). -/
-def lsDataSymBucketTree : IdxTree (List (String × Nat)) :=
+@[expose] def lsDataSymBucketTree : IdxTree (List (String × Nat)) :=
   data_sym_bucket_tree_of% libsignalSessionData
 
-/-- Balanced binary tree of `(blk.symbols)` across all 624 blocks of `libsignalSessionBlocks`. -/
-noncomputable def lsBlockSymsTree : IdxTree (List (String × Nat)) :=
+/-- Balanced binary tree of `(blk.symbols)` across all blocks of `libsignalSessionBlocks` (`624` on stock). -/
+-- noncomputable: compiling these 624-block reflected IdxTree literals roughly triples this module's build time
+@[expose] noncomputable def lsBlockSymsTree : IdxTree (List (String × Nat)) :=
   block_syms_tree_of% libsignalSessionBlocks
 
 theorem lsBlockSymsTree_toList :
     lsBlockSymsTree.toList = libsignalSessionLib.blocks.map CodeBlock.symbols := by
   rfl_kernel
 
-theorem lsBlockSymsTree_size : lsBlockSymsTree.size? = some 624 := by decide +kernel
+theorem lsBlockSymsTree_size : lsBlockSymsTree.size? = some (list_len_of% libsignalSessionBlocks) := by decide +kernel
 
-theorem libsignalSessionLib_blocks_length : libsignalSessionLib.blocks.length = 624 := by
+theorem libsignalSessionLib_blocks_length :
+    libsignalSessionLib.blocks.length = (list_len_of% libsignalSessionBlocks) := by
   have h1 := IdxTree.length_toList_of_size? lsBlockSymsTree_size
   have h2 : (lsBlockSymsTree.toList).length = (libsignalSessionLib.blocks.map CodeBlock.symbols).length :=
     congrArg List.length lsBlockSymsTree_toList
@@ -650,8 +773,9 @@ theorem libsignalSessionLib_blocks_length : libsignalSessionLib.blocks.length = 
     List.length_map CodeBlock.symbols
   exact h3.symm.trans (h2.symm.trans h1)
 
-/-- Balanced binary tree of reflected `(symChars, off)` lists across all 624 blocks. -/
-noncomputable def lsBlockCharSymsTree : IdxTree (List (List Char × Nat)) :=
+/-- Balanced binary tree of reflected `(symChars, off)` lists across all blocks (`624` on stock). -/
+-- noncomputable: compiling these 624-block reflected IdxTree literals roughly triples this module's build time
+@[expose] noncomputable def lsBlockCharSymsTree : IdxTree (List (List Char × Nat)) :=
   block_char_syms_tree_of% libsignalSessionBlocks
 
 theorem lsBlockCharSymsTree_map_eq :
@@ -664,12 +788,12 @@ theorem lsBlockCharSymsTree_toList :
   (IdxTree.toList_map toStringSymbols lsBlockCharSymsTree).symm.trans
     ((congrArg IdxTree.toList lsBlockCharSymsTree_map_eq).trans lsBlockSymsTree_toList)
 
-theorem lsBlockCharSymsTree_size : lsBlockCharSymsTree.size? = some 624 := by decide +kernel
+theorem lsBlockCharSymsTree_size : lsBlockCharSymsTree.size? = some (list_len_of% libsignalSessionBlocks) := by decide +kernel
 
-@[instance_reducible]
+@[expose, instance_reducible]
 def LibsignalFullPlacement.ofPlaceable (mpl : MultiPlacement)
     (hpl : libsignalSessionLib.Placeable mpl)
-    (hext : (libsignalSessionExterns.map mpl.ρ).Nodup) : LibsignalFullPlacement where
+    (hext : ExternsDistinctOnHooked mpl.ρ) : LibsignalFullPlacement where
   mpl := mpl
   block_placeable := fun i hi _ =>
     libsignalSessionLib.placeable_blockLib (by rw [libsignalSessionLib_blocks_length]; omega) hpl
@@ -677,24 +801,29 @@ def LibsignalFullPlacement.ofPlaceable (mpl : MultiPlacement)
   placeable := hpl
 
 /-- Balanced binary tree of `(sym, blockIdx)` across `libsignalSessionBlocks`. -/
-noncomputable def lsBlockSymIdxTree : IdxTree (String × Nat) :=
+-- noncomputable: compiling these 624-block reflected IdxTree literals roughly triples this module's build time
+@[expose] noncomputable def lsBlockSymIdxTree : IdxTree (String × Nat) :=
   block_sym_idx_tree_of% libsignalSessionBlocks
 
 /-- 1024-bucket hash tree of `(symChars, blockIdx, symOff)` across `libsignalSessionBlocks`. -/
-noncomputable def lsCharBucketTree : IdxTree (List (List Char × Nat × Nat)) :=
+-- noncomputable: compiling these 624-block reflected IdxTree literals roughly triples this module's build time
+@[expose] noncomputable def lsCharBucketTree : IdxTree (List (List Char × Nat × Nat)) :=
   block_char_sym_bucket_tree_of% libsignalSessionBlocks
 
-noncomputable def lsCharBucketLookup (cs : List Char) : Option (Nat × Nat) :=
+-- noncomputable: depends on `lsCharBucketTree` (kept noncomputable to avoid reflected-literal compile overhead)
+@[expose] noncomputable def lsCharBucketLookup (cs : List Char) : Option (Nat × Nat) :=
   match lsCharBucketTree.getFast? (lsHashChars1024 cs) with
   | some bkt => lookupCharBucket cs bkt
   | none => none
 
-noncomputable def lsNotBlockCharSym (cs : List Char) : Bool :=
+-- noncomputable: depends on `lsCharBucketLookup` / `lsCharBucketTree`
+@[expose] noncomputable def lsNotBlockCharSym (cs : List Char) : Bool :=
   match lsCharBucketLookup cs with
   | none => true
   | some _ => false
 
-noncomputable def checkBlockCharSymAt (cs : List Char) : Option (Nat × Nat) :=
+-- noncomputable: depends on `lsBlockCharSymsTree` / `lsCharBucketTree`
+@[expose] noncomputable def checkBlockCharSymAt (cs : List Char) : Option (Nat × Nat) :=
   match lsCharBucketLookup cs with
   | some (i, off) =>
     match lsBlockCharSymsTree.getFast? i with
@@ -705,12 +834,14 @@ noncomputable def checkBlockCharSymAt (cs : List Char) : Option (Nat × Nat) :=
     | none => none
   | none => none
 
-noncomputable def lsNotBlockSym (name : String) : Bool :=
+-- noncomputable: depends on `lsNotBlockCharSym` / `lsCharBucketTree`
+@[expose] noncomputable def lsNotBlockSym (name : String) : Bool :=
   lsNotBlockCharSym name.toList
 
 /-- Fast $O(1)$-hash + $O(\log B)$-verified lookup of `name` in `libsignalSessionLib.blocks`
     without touching `CodeBlock.code` or `CodeBlock.relocs`. -/
-noncomputable def fastLookupBlockSym (name : String) : Option (Nat × Nat) :=
+-- noncomputable: depends on `checkBlockCharSymAt` / `lsCharBucketTree`
+@[expose] noncomputable def fastLookupBlockSym (name : String) : Option (Nat × Nat) :=
   checkBlockCharSymAt name.toList
 
 private def optPairEq (o : Option (Nat × Nat)) (i off : Nat) : Bool :=
@@ -938,18 +1069,18 @@ theorem lookupBlockSym_of_fast_some {name : String} {i off : Nat}
 
 /-- Every read-only data object `d` of `libsignalSessionLib` holds its initial (relocated) bytes
     `libsignalSessionLib.patchedData pl d` at `pl.ρ d.sym` in `m`, mapped read-only (`Perm.ro`). -/
-def LibsignalRoLoaded (pl : MultiPlacement) (m : Memory) : Prop :=
+@[expose] def LibsignalRoLoaded (pl : MultiPlacement) (m : Memory) : Prop :=
   ∀ d ∈ libsignalSessionLib.data, d.readOnly = true →
     HoldsBytes m (pl.ρ d.sym) (libsignalSessionLib.patchedData pl d) (fun _ => Perm.ro)
 
-def lookupDataBucket (name : String) : List (String × Nat) → Option Nat
+@[expose] def lookupDataBucket (name : String) : List (String × Nat) → Option Nat
   | [] => none
   | (s, idx) :: rest => if s == name then some idx else lookupDataBucket name rest
 
 /-- Fast $O(1)$ bucket lookup of `sym` in `libsignalSessionLib.data`: finds `idx` in
     `lsDataSymBucketTree` without touching `d.bytes` and fetches `lsDataTree.getFast? idx`
     in 11 tree steps. Kept computable for downstream pure `Bool` helpers. -/
-def lsroFind (sym : String) : Option SymDataInfo :=
+@[expose] def lsroFind (sym : String) : Option SymDataInfo :=
   match lsDataSymBucketTree.getFast? (lsHashChars1024 sym.toList) with
   | some bkt =>
     match lookupDataBucket sym bkt with
@@ -985,10 +1116,10 @@ theorem lsroFind_spec {sym : String} {d : SymDataInfo} (h : lsroFind sym = some 
           exact ⟨Eq.mp (congrArg (d' ∈ ·) lsDataTree_toList) (IdxTree.mem_toList_of_get? hg'), hsym⟩
         · cases h
 
-def lsroBytes (sym : String) : List (BitVec 8) :=
+@[expose] def lsroBytes (sym : String) : List (BitVec 8) :=
   ((lsroFind sym).map (·.bytes)).getD []
 
-def lsroPlain (sym : String) : Bool :=
+@[expose] def lsroPlain (sym : String) : Bool :=
   match lsroFind sym with
   | some d => d.readOnly && d.relocs.isEmpty && d.zeroTail == 0
   | none => false
@@ -1013,11 +1144,54 @@ theorem lsro_holds {pl : MultiPlacement} {m : Memory} (hro : LibsignalRoLoaded p
     List.append_nil, hbytes] at hd
   exact hd
 
+private theorem readBytes_getElem? (m : Memory) (p : BitVec 64) (n : Nat) (k : Nat) (hk : k < n) :
+    (m.readBytes p n)[k]? = some (m.read8 (p + BitVec.ofNat 64 k)) := by
+  induction n generalizing p k with
+  | zero => omega
+  | succ n ih =>
+    cases k with
+    | zero => simp [Memory.readBytes_succ]
+    | succ k =>
+      simp only [Memory.readBytes_succ, List.getElem?_cons_succ]
+      rw [ih (p + 1#64) k (by omega)]
+      have hadd : p + 1#64 + BitVec.ofNat 64 k = p + BitVec.ofNat 64 (k + 1) := by bv_arith
+      rw [hadd]
+
+/-- Region-level bridge from `HoldsBytes m addr bytes (fun _ => Perm.ro)` to `m.RO` and `m.readBytes`. -/
+theorem holdsBytes_ro {m : Memory} {addr : BitVec 64} {bytes : List (BitVec 8)}
+    (h : HoldsBytes m addr bytes (fun _ => Perm.ro)) :
+    m.RO addr bytes.length ∧ m.readBytes addr bytes.length = bytes := by
+  refine ⟨fun a ha => ?_, ?_⟩
+  · unfold InRegion at ha
+    have hk : (a - addr).toNat < bytes.length := ha
+    have hp := (h (a - addr).toNat hk).2
+    have heq : addr + BitVec.ofNat 64 (a - addr).toNat = a := by
+      rw [BitVec.ofNat_toNat, BitVec.setWidth_eq]; bv_lin
+    rwa [heq] at hp
+  · apply List.ext_getElem?
+    intro k
+    by_cases hk : k < bytes.length
+    · rw [readBytes_getElem? _ _ _ _ hk, List.getElem?_eq_getElem hk]
+      exact congrArg some (h k hk).1
+    · have h1 : ¬ k < (m.readBytes addr bytes.length).length := by
+        rw [Memory.readBytes_length]; exact hk
+      rw [List.getElem?_eq_none (Nat.le_of_not_lt h1), List.getElem?_eq_none (Nat.le_of_not_lt hk)]
+
+theorem holdsBytes_ro_of_keepsFrozen {m m' : Memory} {addr : BitVec 64} {bs : List (BitVec 8)}
+    (h : HoldsBytes m addr bs (fun _ => Perm.ro)) (hk : m.KeepsFrozen m') :
+    HoldsBytes m' addr bs (fun _ => Perm.ro) := by
+  intro i hi
+  obtain ⟨hb, hp, hlf⟩ := h i hi
+  have hf : m.Frozen (addr + BitVec.ofNat 64 i) := by
+    unfold Memory.Frozen; rw [hp]; rfl
+  obtain ⟨hb', hp', hlf', _⟩ := hk _ hf
+  exact ⟨hb'.trans hb, hp'.trans hp, hlf'.trans hlf⟩
+
 theorem lsro_read {pl : MultiPlacement} {m : Memory} (hro : LibsignalRoLoaded pl m) {sym : String}
     (h : lsroPlain sym = true) :
     m.RO (pl.ρ sym) (lsroBytes sym).length ∧
       m.readBytes (pl.ρ sym) (lsroBytes sym).length = lsroBytes sym :=
-  ProofLib.ObjectLoad.holdsBytes_ro (lsro_holds hro h)
+  holdsBytes_ro (lsro_holds hro h)
 
 theorem lsro_intro {pl : MultiPlacement} {m : Memory} (hro : LibsignalRoLoaded pl m) {sym : String}
     {bs : List (BitVec 8)} (h : lsroPlain sym = true) (hbs : lsroBytes sym = bs)
@@ -1027,7 +1201,7 @@ theorem lsro_intro {pl : MultiPlacement} {m : Memory} (hro : LibsignalRoLoaded p
   rw [hbs] at hro' hrd
   exact IsBlockRO.intro_of_ro (IsBlockRO.pointsToBytesRO _ _ hlen) hro' hrd hP
 
-def lsroCheck (sym : String) (bs : List (BitVec 8)) : Bool :=
+@[expose] def lsroCheck (sym : String) (bs : List (BitVec 8)) : Bool :=
   lsroPlain sym && lsroBytes sym == bs && decide (bs.length ≤ 2 ^ 64)
 
 theorem lsroCheck_spec {sym : String} {bs : List (BitVec 8)} (h : lsroCheck sym bs = true) :
@@ -1090,7 +1264,7 @@ private theorem length_foldl_patchDataReloc_aux {lib : MultiPlacedLib} {pl : Mul
     rw [List.foldl_cons, length_foldl_patchDataReloc_aux rs _ (fun r' hr' => by
       rw [h1]; exact hin r' (.tail _ hr')), h1]
 
-def lsroRO (sym : String) (n : Nat) : Bool :=
+@[expose] def lsroRO (sym : String) (n : Nat) : Bool :=
   match lsroFind sym with
   | some d => d.readOnly &&
       d.relocs.all (fun r => decide (r.off + dataRelocWidth r.kind ≤ d.bytes.length)) &&
@@ -1110,17 +1284,17 @@ theorem lsro_perm {pl : MultiPlacement} {m : Memory} (hro : LibsignalRoLoaded pl
     have hlen : (libsignalSessionLib.patchedData pl d).length = d.bytes.length + d.zeroTail := by
       simp only [MultiPlacedLib.patchedData, List.length_append, List.length_replicate]
       rw [length_foldl_patchDataReloc_aux _ _ h.1.2]
-    have hfull := (ProofLib.ObjectLoad.holdsBytes_ro hd).1
+    have hfull := (holdsBytes_ro hd).1
     intro a ha
     exact hfull a (by unfold InRegion at *; omega)
 
 theorem libsignalRoLoaded_of_keepsFrozen {pl : MultiPlacement} {m m' : Memory}
     (hro : LibsignalRoLoaded pl m) (hk : m.KeepsFrozen m') : LibsignalRoLoaded pl m' :=
-  fun d hmem hrd => ProofLib.ObjectLoad.holdsBytes_ro_of_keepsFrozen (hro d hmem hrd) hk
+  fun d hmem hrd => holdsBytes_ro_of_keepsFrozen (hro d hmem hrd) hk
 
 /-- Combined frozen-memory invariant preserving both `libsignal` `.rodata` and multi-block code
     across arbitrary `Steps` transitions (`KeepsFrozen`). -/
-def LibsignalFrozen (pl : MultiPlacement) (m : Memory) : Prop :=
+@[expose] def LibsignalFrozen (pl : MultiPlacement) (m : Memory) : Prop :=
   LibsignalRoLoaded pl m ∧ libsignalSessionLib.CodeLoaded pl m
 
 theorem libsignalFrozen_of_keepsFrozen {pl : MultiPlacement} {m m' : Memory}
@@ -1182,7 +1356,8 @@ export LibsignalBinary.Proofs.Placed.Bridge (resolve_eq_of_sameSymbolLayout fnAd
 export LibsignalBinary.Proofs.Placed.Bridge (blockPlacement_eq_of_sameSymbolLayout patchDataReloc_eq_of_sameSymbolLayout)
 export LibsignalBinary.Proofs.Placed.Bridge (patchedData_eq_of_sameSymbolLayout blockLib_text_eq_of_block_eq)
 export LibsignalBinary.Proofs.Placed.Bridge (blockProgram_eq_of_sameSymbolLayout sameSymbolLayout_replaceBlock replaceBlock_getD_ne)
-export LibsignalBinary.Proofs.Placed.Bridge (libsignalSessionExterns libsignalMutatedBlocks LibsignalPlacement LibsignalFullPlacement)
+export LibsignalBinary.Proofs.Placed.Bridge (libsignalSessionExterns libsignalHookedExterns mem_libsignalSessionExterns_of_hooked ExternsDistinctOnHooked)
+export LibsignalBinary.Proofs.Placed.Bridge (libsignalMutatedBlocks LibsignalPlacement LibsignalFullPlacement)
 export LibsignalBinary.Proofs.Placed.Bridge (lsmpl lsρ LibsignalHooks lsBlkProg libsignalSessionLib_blockProgram_fnAddr)
 export LibsignalBinary.Proofs.Placed.Bridge (extract_withCodeLoaded subroutine_ok_withCodeLoaded_of_plain IdxTree lsHashCharsStep)
 export LibsignalBinary.Proofs.Placed.Bridge (lsHashChars1024 charListBeq charListBeq_iff_eq lookupCharSym lookupCharSym_eq_lookup)
@@ -1212,4 +1387,7 @@ end CryptoVerification.LibsignalPlacement
 namespace CryptoVerification.LibsignalFullPlacement
 export LibsignalBinary.Proofs.Placed.Bridge.LibsignalFullPlacement (mk toLibsignalPlacement placeable ofPlaceable)
 end CryptoVerification.LibsignalFullPlacement
+namespace CryptoVerification.ExternsDistinctOnHooked
+export LibsignalBinary.Proofs.Placed.Bridge.ExternsDistinctOnHooked (of_nodup)
+end CryptoVerification.ExternsDistinctOnHooked
 -- AUTO-BRIDGE END

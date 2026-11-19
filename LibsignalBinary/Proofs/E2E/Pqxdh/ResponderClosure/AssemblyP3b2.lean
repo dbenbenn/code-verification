@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.FetchDecrypt
+public import LibsignalBinary.Proofs.TripleRatchet.Record.FetchDecrypt -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Post-`try_decrypt_with_state` Dispatch and Error-Tail Assembly for Stage P3
@@ -25,7 +27,7 @@ Layout and framing helpers for the post-`try_decrypt_with_state` (`+0x1cd8#64`) 
 `message_decrypt_prekey::<PqxdhRng>::{closure#0}`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderClosure
@@ -340,28 +342,6 @@ theorem entails_replace_sub {A B F P Q : SepProp}
     (hab : A ⊢ B) (h1 : P = A ∗ F) (h2 : B ∗ F = Q) : P ⊢ Q := by
   rw [h1, ← h2]
   exact sepConj_mono_left hab
-private theorem SepWPp.call_frame_inImage_nopanic {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_false : ∀ sf, spec.onPanic x s sf = ⌜False⌝ := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q Qp := by
-  refine SepWPp.call_frame_frozen_nopanic hF hsym hcall hpc hrun hsp hlr
-    (φ := (img.FrozenLoaded s ∧ s.symtab = img.symtab) ∧ φ)
-    (T := T) (F := F) ?_ ⟨⟨hF, hsym⟩, hφ⟩ hP hpan_false hexit_false hnext hoom_false
-  dsimp only [Spec.inImage]
-  rw [hspec, pure_sepConj_pure_assoc]
-/-! ## 3. Non-Duplicate Error Path Helpers -/
 theorem extractLsb0_8_of_unpack64_cons {w : BitVec 64} {b0 : BitVec 8} {tl : List (BitVec 8)}
     (h : unpack64 w = b0 :: tl) : w.extractLsb' 0 8 = b0 := by
   have h0 : (unpack64 w).head? = some b0 := by rw [h]; rfl
@@ -452,74 +432,6 @@ private theorem growOneSpe_post_zero_eq (A : RustAlloc) (s0 sf : State) (v ptr :
     show 4 * 48 = 192 from rfl, show ([] : List (BitVec 8)).length = 0 from rfl,
     BitVec.ofNat_eq_ofNat, BitVec.add_zero, pointsToBytes_nil,
     emp_sepConj, sepConj_emp, sepConj_assoc]
-/-- Shared precondition frame for `stageP3_sub5_err_nondup_ok` and `stageP3_sub5_err_ok`. -/
-def stageP3ErrPre (A : RustAlloc) (b : BitVec 64) (s0 s : State)
-    (coroPtr outPtr initErrsPtr prevStatesPtr : BitVec 64)
-    (e : SignalProtocolError) (b_2c0 : BitVec 8)
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8))) : SepProp :=
-  ((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗ vecResultAt A (s.sp + 0x270#64) (.error e) ∗
-  sessionStateAt A (s.sp + 0xa90#64) G₂ st₂ ∗ ((s.sp + 0x3ac#64) ↦₈ 3#8) ∗
-  ((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗ ((s.sp + 0x3d0#64) ↦₆₄ initErrsPtr) ∗
-  ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗ sessionStateAt A (coroPtr + 0xf8#64) recG recSt ∗
-  ((coroPtr + 0xe0#64) ↦₆₄ 0#64) ∗ ((coroPtr + 0xe8#64) ↦₆₄ prevStatesPtr) ∗
-  ((coroPtr + 0xf0#64) ↦₆₄ 0#64) ∗ ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗
-  ((b + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) ∗ memRegion outPtr 48 ∗
-  memRegion (s.sp + 0x250#64) 20 ∗ memRegion (s.sp + 0x370#64) 36 ∗
-  memRegion (s.sp + 0x930#64) 48 ∗ decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool ∗
-  stackAt s.sp growOneSpeStack
-/-- Shared postcondition heap for `stageP3_sub5_err_nondup_ok` and `stageP3_sub5_err_ok`. -/
-def stageP3ErrPost (A : RustAlloc) (b : BitVec 64) (s0 s : State)
-    (coroPtr outPtr prevStatesPtr : BitVec 64)
-    (e : SignalProtocolError) : SepProp :=
-  (∃∗ errsCap : BitVec 64, ∃∗ errsPtr : BitVec 64, ∃∗ errsLen : BitVec 64,
-    ((s.sp + 0x3c8#64) ↦₆₄ errsCap) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗
-    ((s.sp + 0x3d8#64) ↦₆₄ errsLen)) ∗ ((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗
-  ((s.sp + 0x3ac#64) ↦₈ 3#8) ∗ memRegion (s.sp + 0xa90#64) 344 ∗
-  memRegion (coroPtr + 0xf8#64) 344 ∗ ((coroPtr + 0xe0#64) ↦₆₄ 0#64) ∗
-  ((coroPtr + 0xe8#64) ↦₆₄ prevStatesPtr) ∗ ((coroPtr + 0xf0#64) ↦₆₄ 0#64) ∗
-  ((coroPtr + 0x2c0#64) ↦₈ 1#8) ∗ ((b + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) ∗
-  recordResultAt A outPtr (.error (SessionState.recordError .preKey e)) ∗
-  memRegion (s.sp + 0x250#64) 20 ∗ memRegion (s.sp + 0x270#64) 48 ∗
-  memRegion (s.sp + 0x370#64) 36 ∗ memRegion (s.sp + 0x930#64) 48 ∗
-  decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool ∗ stackAt s.sp growOneSpeStack
-/-! ## 4. Stage P3 Post-Decrypt Dispatch Helpers -/
-/-- Precondition at `+0x1cd8#64` for `stageP3_sub5_dispatch_ok`. -/
-def stageP3DispatchPre (A : RustAlloc) (b : BitVec 64) (s0 s : State)
-    (coroPtr outPtr initErrsPtr prevStatesPtr : BitVec 64)
-    (res : Except SignalProtocolError (List (BitVec 8))) (b_2c0 : BitVec 8)
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8))) : SepProp :=
-  ((s.sp + 0x88#64) ↦₆₄ (coroPtr + 0xe0#64)) ∗ ((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗
-  vecResultAt A (s.sp + 0x270#64) res ∗ sessionStateAt A (s.sp + 0xa90#64) G₂ st₂ ∗
-  ((s.sp + 0x3ac#64) ↦₈ 3#8) ∗ ((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗
-  ((s.sp + 0x3d0#64) ↦₆₄ initErrsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-  memRegion (s.sp + 0x3e0#64) 344 ∗ sessionStateAt A (coroPtr + 0xf8#64) recG recSt ∗
-  ((coroPtr + 0xe0#64) ↦₆₄ 0#64) ∗ ((coroPtr + 0xe8#64) ↦₆₄ prevStatesPtr) ∗
-  ((coroPtr + 0xf0#64) ↦₆₄ 0#64) ∗ ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗
-  ((b + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) ∗ memRegion outPtr 48 ∗
-  memRegion (s.sp + 0x250#64) 20 ∗ memRegion (s.sp + 0x370#64) 36 ∗
-  memRegion (s.sp + 0x930#64) 48 ∗ decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool ∗
-  stackAt s.sp growOneSpeStack
-/-- Mid-state heap at `+0x34dc#64` after `stageP3_sub5_decResult_ok` on `res = .ok pt`. -/
-def stageP3DispatchOkMid (A : RustAlloc) (b : BitVec 64) (s0 s : State)
-    (coroPtr outPtr initErrsPtr prevStatesPtr ptCap ptPtr : BitVec 64)
-    (pt : List (BitVec 8)) (b_2c0 : BitVec 8)
-    (G₂ : SessionGhost) (st₂ : SessionState (List (BitVec 8))) : SepProp :=
-  ((s.sp + 0x88#64) ↦₆₄ (coroPtr + 0xe0#64)) ∗ ((s.sp + 0xc8#64) ↦₆₄ outPtr) ∗
-  ((s.sp + 0x270#64) ↦₆₄ 0xfffffffffffffffe#64) ∗ ((s.sp + 0x278#64) ↦₆₄ ptCap) ∗
-  ((s.sp + 0x280#64) ↦₆₄ ptPtr) ∗ ((s.sp + 0x288#64) ↦₆₄ BitVec.ofNat 64 pt.length) ∗
-  memRegion (s.sp + 0x290#64) 16 ∗ (ptPtr ↦ₛ pt) ∗
-  (if ptCap = 0#64 then emp
-   else A.live ptPtr ptCap.toNat 1 ∗
-     memRegion (ptPtr + BitVec.ofNat 64 pt.length) (ptCap.toNat - pt.length)) ∗
-  ((s.sp + 0x3ac#64) ↦₈ 3#8) ∗ ((s.sp + 0x3c8#64) ↦₆₄ 0#64) ∗
-  ((s.sp + 0x3d0#64) ↦₆₄ initErrsPtr) ∗ ((s.sp + 0x3d8#64) ↦₆₄ 0#64) ∗
-  memRegion (s.sp + 0x3e0#64) 344 ∗ memRegion (s.sp + 0xa90#64) 344 ∗
-  sessionStateAt A (coroPtr + 0xf8#64) G₂ st₂ ∗ ((coroPtr + 0xe0#64) ↦₆₄ 0#64) ∗
-  ((coroPtr + 0xe8#64) ↦₆₄ prevStatesPtr) ∗ ((coroPtr + 0xf0#64) ↦₆₄ 0#64) ∗
-  ((coroPtr + 0x2c0#64) ↦₈ b_2c0) ∗ ((b + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) ∗
-  memRegion outPtr 48 ∗ memRegion (s.sp + 0x250#64) 20 ∗
-  memRegion (s.sp + 0x370#64) 36 ∗ memRegion (s.sp + 0x930#64) 48 ∗
-  decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool ∗ stackAt s.sp growOneSpeStack
 end P3P4
 
 end CryptoVerification.E2E.Pqxdh.ResponderClosure

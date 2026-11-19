@@ -9,14 +9,50 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Auth1KeyStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthG0G3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthAssembly
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3E
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthPrfHmac
-public import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyHop
+import Computational.Proofs.SignalPqxdh.Auth1KeyStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthG0G3
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthAssembly
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G3
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthPrfHmac
+import Computational.Proofs.SignalPqxdh.Delta.Auth1KeyHop
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5D
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5M1
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5M3d
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC4
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6b
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c1
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c4
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c5
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H2
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5D
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 
 /-!
 # Conditional assembly of the one-key `Auth` bound
@@ -26,7 +62,7 @@ Assembles the one-key authentication hop chain `G0 → G3 → G3.5 → G3.6 → 
 hop, and shallow-to-costed simulator advantage transfers.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open MeasureTheory

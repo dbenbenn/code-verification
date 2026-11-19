@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose
-public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslReadStdin
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslReadStdin -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie -- proof-setup: allow-public-import
 public import VerifiedLibraries.Musl.Proofs.SyscallProof
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.TieSpec
@@ -22,6 +22,9 @@ import ProofLib.Process.FsLemmas
 import ProofLib.SepLogic.WP.StepsProcess
 meta import ProofLib
 meta import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Fixture
 
 /-!
 # 9-Block `musl` Syscall Sub-Library Lemmas on `f3TrialRxProg`
@@ -33,7 +36,7 @@ sub-library (`___errno_location`, `close`, `read` on directories/files/stdin, an
 `O_RDONLY | O_CLOEXEC`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -86,8 +89,8 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie (
 
 private def h2fsreads_muslFullMpl : MultiPlacement where
   base i :=
-    [0x46ba94#64, 0x46bbc0#64, 0x46e1c4#64, 0x46e1e8#64, 0x46e1f8#64,
-     0x46e1fc#64, 0x46e240#64, 0x46e274#64, 0x46bb24#64, 0x4b0000#64, 0x4b1000#64].getD i 0#64
+    [0x476a94#64, 0x476c3c#64, 0x479348#64, 0x47936c#64, 0x47937c#64,
+     0x479380#64, 0x4793c4#64, 0x4793f8#64, 0x476ba0#64, 0x4b0000#64, 0x4b1000#64].getD i 0#64
   ρ s :=
     if s == "muslEmptyCStr" then 0x4b2000#64
     else if s == "__procfdname" then 0x4b3000#64
@@ -177,23 +180,23 @@ private theorem h2fsreads_musl9_blockProgram_eq (i : Nat) (lib : PlacedLib) (pl 
 @[local simp] private theorem h2fsreads_muslSysMpl_eq :
     MuslSysPlacement.mpl = h2fsreads_muslFullMpl := rfl
 @[local simp] private theorem h2fsreads_muslFullMpl_base0 :
-    h2fsreads_muslFullMpl.base 0 = 0x46ba94#64 := rfl
+    h2fsreads_muslFullMpl.base 0 = 0x476a94#64 := rfl
 @[local simp] private theorem h2fsreads_muslFullMpl_base1 :
-    h2fsreads_muslFullMpl.base 1 = 0x46bbc0#64 := rfl
+    h2fsreads_muslFullMpl.base 1 = 0x476c3c#64 := rfl
 @[local simp] private theorem h2fsreads_muslFullMpl_base2 :
-    h2fsreads_muslFullMpl.base 2 = 0x46e1c4#64 := rfl
+    h2fsreads_muslFullMpl.base 2 = 0x479348#64 := rfl
 @[local simp] private theorem h2fsreads_muslFullMpl_base3 :
-    h2fsreads_muslFullMpl.base 3 = 0x46e1e8#64 := rfl
+    h2fsreads_muslFullMpl.base 3 = 0x47936c#64 := rfl
 @[local simp] private theorem h2fsreads_muslFullMpl_base4 :
-    h2fsreads_muslFullMpl.base 4 = 0x46e1f8#64 := rfl
+    h2fsreads_muslFullMpl.base 4 = 0x47937c#64 := rfl
 @[local simp] private theorem h2fsreads_muslFullMpl_base5 :
-    h2fsreads_muslFullMpl.base 5 = 0x46e1fc#64 := rfl
+    h2fsreads_muslFullMpl.base 5 = 0x479380#64 := rfl
 @[local simp] private theorem h2fsreads_muslFullMpl_base6 :
-    h2fsreads_muslFullMpl.base 6 = 0x46e240#64 := rfl
+    h2fsreads_muslFullMpl.base 6 = 0x4793c4#64 := rfl
 @[local simp] private theorem h2fsreads_muslFullMpl_base7 :
-    h2fsreads_muslFullMpl.base 7 = 0x46e274#64 := rfl
+    h2fsreads_muslFullMpl.base 7 = 0x4793f8#64 := rfl
 @[local simp] private theorem h2fsreads_muslFullMpl_base8 :
-    h2fsreads_muslFullMpl.base 8 = 0x46bb24#64 := rfl
+    h2fsreads_muslFullMpl.base 8 = 0x476ba0#64 := rfl
 
 private theorem h2fsreads_condHI_adds_4096_false {a : BitVec 64} (ha : a.toNat ≤ 2 ^ 64 - 4096) :
     ConditionHolds .HI (addsPState64 a 4096#64) = false := by
@@ -505,7 +508,7 @@ private theorem h2fsreads_step_svc_read_dir {prog : Program} {target_pc : BitVec
     {post : State → SepProp → Prop} {oom : State → SepProp} {pc : BitVec 64}
     (hpc : s.pc = pc) (hrun : s.status = .Running)
     (hfetch : prog.fetch pc = some (.system false 0#16))
-    (_hx8 : s.readReg64 .x8 = 63#64)
+    (hx8 : s.readReg64 .x8 = 63#64)
     (hfd : (s.readReg32 .x0).zeroExtend 64 = fd)
     (hfd_lt : fd.toNat < 2 ^ 31 := by omega)
     (hbuf : s.readReg64 .x1 = buf)
@@ -514,27 +517,12 @@ private theorem h2fsreads_step_svc_read_dir {prog : Program} {target_pc : BitVec
     (hkind : desc.kind = .localDir)
     (hrd : desc.accMode.canRead = true)
     (hnext :
-      let s' := (s.writeReg64 .x0 (-BitVec.ofNat 64 (dirReadErrnoNat buf count))).setPC (pc + 4#64)
+      let s' := (s.writeReg64 .x0 (-BitVec.ofNat 64 (dirReadErrnoNat buf count desc.offset))).setPC (pc + 4#64)
       SepWP prog target_pc s' P post oom)
     (hsvc : prog.evalInst (.system false 0#16) s = execRead s) :
-    SepWP prog target_pc s P post oom := by
-  have hpc_eq : s.setPC pc = s := by
-    cases s; simp [State.setPC] at hpc ⊢; exact hpc.symm
-  have hslt : (s.readReg32 .x0).slt 0#32 = false := h2fsreads_readReg32_slt_zero_false hfd hfd_lt
-  have hexec : execRead s =
-      (s.writeReg64 .x0 (-BitVec.ofNat 64 (dirReadErrnoNat buf count))).setPC (pc + 4#64) := by
-    have hk_dir : (FdKind.localDir == FdKind.localDir) = true := rfl
-    have hadv : (s.writeReg64 .x0 (-BitVec.ofNat 64 (dirReadErrnoNat buf count))).advancePC =
-        (s.writeReg64 .x0 (-BitVec.ofNat 64 (dirReadErrnoNat buf count))).setPC (pc + 4#64) := by
-      subst hpc; rfl
-    refine Eq.trans ?_ hadv
-    dsimp only [execRead, execReadCommon, dirReadErrnoNat]
-    rw [hslt, hfd, hbuf, hcnt, hopen]; dsimp only
-    rw [hkind, hrd, hk_dir]
-    by_cases hva : buf.toNat + count.toNat > USER_VA_LIMIT
-    · simp [hva, EFAULT_RET]
-    · simp [hva, EISDIR]
-  exact SepWP.step_pure hpc hrun hfetch (by rw [hpc_eq, hsvc, hexec]) (by cases s; rfl) hnext
+    SepWP prog target_pc s P post oom :=
+  LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose.step_svc_read_dir
+    hpc hrun hfetch hx8 hfd hfd_lt hbuf hcnt hopen hkind hrd hnext hsvc
 
 private def h2fsreads_muslSccpReadDirSpec : Spec (BitVec 64 × BitVec 64 × BitVec 64 × FdEntry) where
   pre := fun (fd, buf, count, desc) s0 =>
@@ -546,8 +534,8 @@ private def h2fsreads_muslSccpReadDirSpec : Spec (BitVec 64 × BitVec 64 × BitV
       s0.fs.fds fd = some desc ∧
       desc.kind = .localDir ∧
       desc.accMode.canRead = true⌝
-  post := fun (_, buf, count, _) s0 sf =>
-    ⌜sf.readReg64 .x0 = -BitVec.ofNat 64 (dirReadErrnoNat buf count) ∧
+  post := fun (_, buf, count, desc) s0 sf =>
+    ⌜sf.readReg64 .x0 = -BitVec.ofNat 64 (dirReadErrnoNat buf count desc.offset) ∧
       sf.fs = s0.fs ∧
       sf.mem = s0.mem ∧
       sf.trace = s0.trace ∧
@@ -613,15 +601,15 @@ private theorem h2fsreads_muslReadDir32_blk_ok :
   · rw [show stackAt s0.sp 32 = stackAt (s0.sp - 16#64) 16 ∗ cells (s0.sp - 16#64) 2 from
       stackAt_split_cells s0.sp 16 2 (by decide)]
     cells_unfold; simp only [wp_norm, arm64_norm]; sep_frame
-  have ⟨h1_err, h2_err⟩ := dirReadErrnoNat_bounds a a_2
-  wp_call_block h2fsreads_muslSyscallRetErr_blk_ok (dirReadErrnoNat a a_2, a_rest_1)
+  have ⟨h1_err, h2_err⟩ := dirReadErrnoNat_bounds a a_2 a_3.offset
+  wp_call_block h2fsreads_muslSyscallRetErr_blk_ok (dirReadErrnoNat a a_2 a_3.offset, a_rest_1)
   rcases ‹StdStatePreserved _ _› with ⟨hfs2, htr2, htp2, hsig2, hb2, hbs2, hp2, hmp2⟩
   simp only [wp_norm, arm64_norm, htp1, hsig1, hb1, hbs1, hp1, hmp1] at hfs2 htr2 htp2 hsig2 hb2 hbs2 hp2 hmp2
   apply SepWP.done (by simp [wp_norm, arm64_norm, *]) (by simp [wp_norm, arm64_norm, *])
   refine ⟨fun hmem => ?_, by simp [wp_norm, arm64_norm, *], ?_⟩
   · first | rw [satisfies_pure_sepConj] | rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨by simp [wp_norm, arm64_norm, *], dirReadErrno32_cases a a_2,
-      dirReadErrno32_ne_eintr a a_2, by simp_all [wp_norm, arm64_norm],
+    refine ⟨⟨by simp [wp_norm, arm64_norm, *], dirReadErrno32_cases a a_2 a_3.offset,
+      dirReadErrno32_ne_eintr a a_2 a_3.offset, by simp_all [wp_norm, arm64_norm],
       by simp_all [wp_norm, arm64_norm], ?_⟩, ProofLib.Satisfies.of_entails hmem ?_⟩
     · refine ⟨?_, ?_, ?_, ?_, ?_, fun _ => ?_⟩ <;> simp [wp_norm, arm64_norm, *]
     · simp only [dirReadErrno32, muslErrnoAddr, wp_norm, arm64_norm, *] at *; sep_frame
@@ -1062,43 +1050,43 @@ private theorem h2fsreads_f3Rx_hooksUnfetched (m : Memory) (_ : f3TrialRxProg.Co
   fun _ pc _ he => False.elim (he (f3TrialRxProg_no_ext pc))
 
 theorem h2fsreads_muslErrnoLocation_ok :
-    subroutine_ok f3TrialRxProg 0x46ba94#64 muslErrnoLocationSpec := by
-  have hfn : h2fsreads_musl9Lib.fnAddr h2fsreads_muslFullMpl "___errno_location" = 0x46ba94#64 := by decide
+    subroutine_ok f3TrialRxProg 0x476a94#64 muslErrnoLocationSpec := by
+  have hfn : h2fsreads_musl9Lib.fnAddr h2fsreads_muslFullMpl "___errno_location" = 0x476a94#64 := by decide
   rw [← hfn]
   exact h2fsreads_musl9Lib.subroutine_ok_of_pureMem (j := 0) (by decide) h2fsreads_muslErrnoLocation_blk_ok
     h2fsreads_progContainsMusl9.codeLoaded h2fsreads_f3Rx_hooksUnfetched f3TrialRxProg_svc
 
 theorem h2fsreads_muslClose48Local_ok :
-    subroutine_ok f3TrialRxProg 0x46e1fc#64 muslClose48LocalSpec := by
-  have hfn : h2fsreads_musl9Lib.fnAddr h2fsreads_muslFullMpl "close" = 0x46e1fc#64 := by decide
+    subroutine_ok f3TrialRxProg 0x479380#64 muslClose48LocalSpec := by
+  have hfn : h2fsreads_musl9Lib.fnAddr h2fsreads_muslFullMpl "close" = 0x479380#64 := by decide
   rw [← hfn]
   exact h2fsreads_musl9Lib.subroutine_ok_of_pureMem (j := 5) (by decide) h2fsreads_muslClose48Local_blk_ok
     h2fsreads_progContainsMusl9.codeLoaded h2fsreads_f3Rx_hooksUnfetched f3TrialRxProg_svc
 
 theorem h2fsreads_muslReadDir32_ok :
-    subroutine_ok f3TrialRxProg 0x46e240#64 muslReadDir32Spec := by
-  have hfn : h2fsreads_musl9Lib.fnAddr h2fsreads_muslFullMpl "read" = 0x46e240#64 := by decide
+    subroutine_ok f3TrialRxProg 0x4793c4#64 muslReadDir32Spec := by
+  have hfn : h2fsreads_musl9Lib.fnAddr h2fsreads_muslFullMpl "read" = 0x4793c4#64 := by decide
   rw [← hfn]
   exact h2fsreads_musl9Lib.subroutine_ok_of_pureMem (j := 6) (by decide) h2fsreads_muslReadDir32_blk_ok
     h2fsreads_progContainsMusl9.codeLoaded h2fsreads_f3Rx_hooksUnfetched f3TrialRxProg_svc
 
 theorem h2fsreads_muslReadFileOrStdio32_ok :
-    subroutine_ok f3TrialRxProg 0x46e240#64 muslReadFileOrStdio32Spec := by
-  have hfn : h2fsreads_musl9Lib.fnAddr h2fsreads_muslFullMpl "read" = 0x46e240#64 := by decide
+    subroutine_ok f3TrialRxProg 0x4793c4#64 muslReadFileOrStdio32Spec := by
+  have hfn : h2fsreads_musl9Lib.fnAddr h2fsreads_muslFullMpl "read" = 0x4793c4#64 := by decide
   rw [← hfn]
   exact h2fsreads_musl9Lib.subroutine_ok_of_pureMem (j := 6) (by decide) h2fsreads_muslReadFileOrStdio32_blk_ok
     h2fsreads_progContainsMusl9.codeLoaded h2fsreads_f3Rx_hooksUnfetched f3TrialRxProg_svc
 
 theorem h2fsreads_muslOpenNoCreatCloexecLocalExec_ok :
-    subroutine_ok f3TrialRxProg 0x46bb24#64 muslOpenNoCreatCloexecLocalExecSpec := by
-  have hfn : h2fsreads_musl9Lib.fnAddr h2fsreads_muslFullMpl "open" = 0x46bb24#64 := by decide
+    subroutine_ok f3TrialRxProg 0x476ba0#64 muslOpenNoCreatCloexecLocalExecSpec := by
+  have hfn : h2fsreads_musl9Lib.fnAddr h2fsreads_muslFullMpl "open" = 0x476ba0#64 := by decide
   rw [← hfn]
   exact h2fsreads_musl9Lib.subroutine_ok_of_pureMem (j := 8) (by decide)
     h2fsreads_muslOpenNoCreatCloexecLocalExec_blk_ok
     h2fsreads_progContainsMusl9.codeLoaded h2fsreads_f3Rx_hooksUnfetched f3TrialRxProg_svc
 
 theorem h2fsreads_muslReadStdin32_ok :
-    subroutine_ok f3TrialRxProg 0x46e240#64 muslReadStdin32Spec := by
+    subroutine_ok f3TrialRxProg 0x4793c4#64 muslReadStdin32Spec := by
   apply subroutine_ok.of_codeLoaded
   rintro ⟨buf, count, desc, oldBuf⟩ R s0 hpc hrun hpre hsp _hL
   simp only [muslReadStdin32Spec, sepConj_assoc, satisfies_pure_sepConj] at hpre

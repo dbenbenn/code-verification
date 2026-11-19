@@ -40,11 +40,12 @@ inductive WriteOutcome where
   deriving Inhabited
 
 /-- Evaluates the `std::fs::write` outcome for path bytes `bs` on `fs`: checks for interior NUL
-    bytes first, returns `ENAMETOOLONG` when `PATH_MAX ≤ bs.length`, and otherwise dispatches to
-    `Arm64.openatPure` with `stdCreateTruncOpenFlags` at `normalizePath (cPathOf bs)`. -/
+    bytes first, returns `EMFILE` (when `fs.allocFd.isNone`) or `ENAMETOOLONG` when
+    `PATH_MAX ≤ bs.length`, and otherwise dispatches to `Arm64.openatPure` with
+    `stdCreateTruncOpenFlags` at `normalizePath (cPathOf bs)`. -/
 def fsWriteOutcome (fs : FsState) (bs : List (BitVec 8)) : WriteOutcome :=
   if 0#8 ∈ bs then .nul
-  else if PATH_MAX ≤ bs.length then .err ENAMETOOLONG
+  else if PATH_MAX ≤ bs.length then .err (if fs.allocFd.isNone then EMFILE else ENAMETOOLONG)
   else
     match Arm64.openatPure fs AT_FDCWD_W32 (cPathOf bs) stdCreateTruncOpenFlags with
     | .trap _ => .trap

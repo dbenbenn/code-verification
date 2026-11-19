@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Specifications.LibsignalPublicApiRepr
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Layout and Loop Helpers for CLI Store Drop Glue
@@ -24,7 +25,7 @@ symbolic-execution lemmas for the inline `Dir` map/tree deallocation loops in `I
 `Stores` drop glue.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
@@ -45,42 +46,6 @@ set_option maxHeartbeats 400000
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-
-/-! ## Function names, offsets, and instruction decodes -/
-
-abbrev cliDropStoresNameH : String := "core::ptr::drop_glue::<libsignal_cli::stores::Stores>"
-
-abbrev cliDropIdentityFilesNameH : String :=
-  "core::ptr::drop_glue::<libsignal_cli::stores::IdentityFiles>"
-
-theorem cliDropStores_fnOff :
-    libsignalSessionCode.fnOff cliDropStoresNameH =
-      num% (ls_off% "core::ptr::drop_glue::<libsignal_cli::stores::Stores>") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_cli::stores::Stores>"
-
-theorem cliDropIdentityFiles_fnOff :
-    libsignalSessionCode.fnOff cliDropIdentityFilesNameH =
-      num% (ls_off% "core::ptr::drop_glue::<libsignal_cli::stores::IdentityFiles>") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_cli::stores::IdentityFiles>"
-
-gen_decodes CryptoVerification.libsignalSessionCode_tree cliDropIdentityFilesBin
-  [(ls_off% "core::ptr::drop_glue::<libsignal_cli::stores::IdentityFiles>") →
-   (ls_off% "core::ptr::drop_glue::<libsignal_cli::stores::IdentityFiles>" + 244)]
-
-gen_decodes CryptoVerification.libsignalSessionCode_tree cliDropStoresBin
-  [(ls_off% "core::ptr::drop_glue::<libsignal_cli::stores::Stores>") →
-   (ls_off% "core::ptr::drop_glue::<libsignal_cli::stores::Stores>" + 456)]
-
-theorem fnAddr_identity_from_stores (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr cliDropStoresNameH +
-      (0#64 - BitVec.ofNat 64
-        (ls_rel% "core::ptr::drop_glue::<libsignal_cli::stores::IdentityFiles>"
-          "core::ptr::drop_glue::<libsignal_cli::stores::Stores>")) =
-      (tripleRatchetProgAtExt b ext).fnAddr cliDropIdentityFilesNameH := by
-  have h1 := cliDropStores_fnOff
-  have h2 := cliDropIdentityFiles_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, h1, h2]
-  bv_omega
 
 /-! ## Arithmetic and bit-vector helpers -/
 
@@ -201,7 +166,7 @@ theorem add_32_add_48 (cur : BitVec 64) : cur + 80#64 = (cur + 48#64) + 32#64 :=
 
 /-! ## Saved-register frame invariant and `SepWP` sequencing -/
 
-@[reducible]
+@[expose, reducible]
 def Saved48Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.readReg64 (Reg.gpr 23#5) = s0.readReg64 (Reg.gpr 23#5) ∧
   s.readReg64 (Reg.gpr 24#5) = s0.readReg64 (Reg.gpr 24#5) ∧
@@ -212,26 +177,6 @@ def Saved48Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.sp = fsp ∧
   s.trace = s0.trace ∧
   calleeSavedVRegs s = calleeSavedVRegs s0
-
-theorem seq_callInvX {prog : Program} {img : Obj.Image} {mid_pc target_pc : BitVec 64}
-    {s : State} {P : SepProp} {post : State → SepProp → Prop}
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h1 : SepWP prog mid_pc s P (fun sm P_m =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab → SepWP prog target_pc sm P_m post)) :
-    SepWP prog target_pc s P post :=
-  ProofLib.SepWP.of_sepWP_inv hfrozen hsym h1
-
-theorem seq_cleanX {prog : Program} {img : Obj.Image} {mid target : BitVec 64} {s : State}
-    {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop}
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h1 : SepWP prog mid s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm))
-    (h2 : ∀ sm : State, sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Q sm →
-      SepWP prog target sm P_mid post) :
-    SepWP prog target s P post := by
-  refine seq_callInvX hfrozen hsym (SepWP.mono h1 ?_)
-  intro sm Pm hpc hrun ⟨hent, hQ⟩ hfrozen_m hsym_m
-  exact SepWP.weaken_pre hent (h2 sm hpc hrun hfrozen_m hsym_m hQ)
 
 /-! ## Stack and heap separation-logic helpers -/
 
@@ -315,7 +260,7 @@ theorem tail_stack_stores_entails (sp fp lr x22 x21 x20 x19 : BitVec 64) :
   rw [tail_stack_stores_eq sp]
   exact sepConj_mono_right (cells6_sub48_entails sp fp lr x22 x21 x20 x19)
 
-def roPathAt (lit : List (BitVec 8)) : SepProp :=
+@[expose] def roPathAt (lit : List (BitVec 8)) : SepProp :=
   ∃∗ p : BitVec 64, p ↦ᵣ lit
 
 theorem strRefAt_entails_memRegion16_ro (a : BitVec 64) (lit : List (BitVec 8)) :
@@ -331,7 +276,7 @@ theorem strRefAt_entails_memRegion16_ro (a : BitVec 64) (lit : List (BitVec 8)) 
       ((a ↦₆₄ p) ∗ ((a + 8#64) ↦₆₄ BitVec.ofNat 64 lit.length)) ∗ (p ↦ᵣ lit) by ac_rfl)) ?_
   exact sepConj_mono hm (Entails.sepExists_right p (Entails.refl _))
 
-def dirRawAt (A : RustAlloc) (d : BitVec 64) (xs : List (List (BitVec 8) × List (BitVec 8))) :
+@[expose] def dirRawAt (A : RustAlloc) (d : BitVec 64) (xs : List (List (BitVec 8) × List (BitVec 8))) :
     SepProp :=
   RustHeap.vecOf A 48 8 (dirEntryAt A) d xs ∗ memRegion (d + 0x18#64) 16
 
@@ -370,12 +315,12 @@ theorem stores_entry_raw_ro (A : RustAlloc) (a : BitVec 64) (g : StoresGhost) :
               (dirAt_entails_raw_ro A (a + 0x118#64) g.pub)))))))) ?_
   exact Entails.of_eq (by ac_rfl)
 
-@[reducible]
+@[expose, reducible]
 def vecPinDeallocX (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
   if (cap == 0#64) = true then emp
   else ⌜0 < cap.toNat ∧ cap.toNat < 2 ^ 63⌝ ∗ A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat
 
-def entryHeadersAt (cur nc np bc bp : BitVec 64) : SepProp :=
+@[expose] def entryHeadersAt (cur nc np bc bp : BitVec 64) : SepProp :=
   (cur ↦₆₄ nc) ∗ ((cur + 8#64) ↦₆₄ np) ∗ memRegion (cur + 16#64) 8 ∗
   ((cur + 24#64) ↦₆₄ bc) ∗ ((cur + 32#64) ↦₆₄ bp) ∗ memRegion (cur + 40#64) 8
 
@@ -781,398 +726,5 @@ theorem cons_len_mul_48 {α : Type} (hd : α) (tl : List α) :
 
 theorem weaken_perm {P P' Q : SepProp} (h : P' ⊢ Q) (heq : P = P') : P ⊢ Q :=
   heq ▸ h
-
-set_option hygiene false in
-local macro "prove_dir_loop" bodyId:ident loopId:ident fnStr:str binId:ident
-    fnEnd:num L:num L12:num L32:num L56:num : command => `(
-  set_option maxHeartbeats 1600000 in
-  theorem $bodyId {A : RustAlloc} {img : Obj.Image}
-      {ext : String → Option (State → State)}
-      (hdealloc : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-        ((tripleRatchetProgAtExt img.base ext).fnAddr $fnStr +
-          bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% $fnStr))
-        ((rustDeallocExternSpecWithStack A extHookStack).inImage img))
-      (s0 : State) (fsp base ptr : BitVec 64)
-      (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-      ∀ (cur cnt : BitVec 64) (e : List (BitVec 8) × List (BitVec 8))
-        (s : State) (Frame : SepProp),
-        s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr $fnStr + bv% ($L12) →
-        s.status = .Running →
-        img.FrozenLoaded s →
-        s.symtab = img.symtab →
-        Saved48Preserved s0 s fsp →
-        s.readReg64 (Reg.gpr 19#5) = base →
-        s.readReg64 (Reg.gpr 20#5) = ptr →
-        s.readReg64 (Reg.gpr 21#5) = cnt →
-        s.readReg64 (Reg.gpr 22#5) = cur + 32#64 →
-        SepWP (tripleRatchetProgAtExt img.base ext)
-          ((tripleRatchetProgAtExt img.base ext).fnAddr $fnStr + bv% ($L))
-          s
-          (dirEntryAt A e cur ∗ A.pool ∗ stackAt fsp extHookStack ∗ Frame)
-          (fun sm Pm =>
-            (Pm ⊢ memRegion cur 48 ∗ A.pool ∗ stackAt fsp extHookStack ∗ Frame) ∧
-            Saved48Preserved s0 sm fsp ∧
-            sm.readReg64 (Reg.gpr 19#5) = base ∧
-            sm.readReg64 (Reg.gpr 20#5) = ptr ∧
-            sm.readReg64 (Reg.gpr 21#5) = cnt ∧
-            sm.readReg64 (Reg.gpr 22#5) = cur + 32#64) := by
-    simp only [Spec.inImage, rustDeallocExternSpecWithStack, LayoutOk] at hdealloc
-    dsimp only [tripleRatchetProgAtExt, BitVec.ofNat_eq_ofNat] at *
-    code_fetches libsignalSessionCode $binId img.base (Rust.withPanics ext)
-      (ls_lemma% fnOff $fnStr) (num% (ls_off% $fnStr)) $fnEnd
-    generalize_entry
-      (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr $fnStr = entry
-    examples_hide_fetches
-    intro cur cnt e s Frame hpc hrun hfrozen hsym hpres hx19 hx20 hx21 hx22
-    rcases hpres with ⟨hx23, hx24, hx25, hx26, hx27, hx28, hsp, htrace, hvregs⟩
-    refine SepWP.weaken_pre (sepConj_mono_left (dirEntryAt_expose A e cur)) ?_
-    wp_pull_exists
-    rename_i nc np bc bp
-    refine seq_cleanX (mid := entry + bv% ($L32))
-      (P_mid := (entryHeadersAt cur nc np bc bp ∗ vecPinDeallocX A bc bp) ∗
-        A.pool ∗ stackAt fsp extHookStack ∗ Frame)
-      (Q := fun sm => Saved48Preserved s0 sm fsp ∧
-        sm.readReg64 (Reg.gpr 19#5) = base ∧ sm.readReg64 (Reg.gpr 20#5) = ptr ∧
-        sm.readReg64 (Reg.gpr 21#5) = cnt ∧ sm.readReg64 (Reg.gpr 22#5) = cur + 32#64)
-      hfrozen hsym ?_ ?_
-    · nth_rw 1 [show vecPinDeallocX A nc np =
-          if (nc == 0#64) = true then emp
-          else ⌜0 < nc.toNat ∧ nc.toNat < 2 ^ 63⌝ ∗ A.live np nc.toNat 1 ∗ memRegion np nc.toNat
-          from rfl]
-      dsimp only [entryHeadersAt]
-      by_cases hnc : (nc == 0#64) = true <;>
-        simp only [hnc, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-      · wp_steps
-        try wp_done
-      · refine SepWP.weaken_pre (Entails.of_eq (show _ =
-          ⌜0 < nc.toNat ∧ nc.toNat < 2 ^ 63⌝ ∗
-            ((cur ↦₆₄ nc) ∗ ((cur + 8#64) ↦₆₄ np) ∗ memRegion (cur + 16#64) 8 ∗
-              ((cur + 24#64) ↦₆₄ bc) ∗ ((cur + 32#64) ↦₆₄ bp) ∗ memRegion (cur + 40#64) 8 ∗
-              A.live np nc.toNat 1 ∗ memRegion np nc.toNat ∗ vecPinDeallocX A bc bp ∗
-              A.pool ∗ stackAt fsp extHookStack ∗ Frame) by ac_rfl)) ?_
-        refine SepWP.pure_elim ?_
-        rintro ⟨hpos, hlt⟩
-        wp_steps
-        wp_call hdealloc (np, nc.toNat, 1)
-        try rw [hsp]
-        try wp_done
-    · intro s1 hpc1 hrun1 hfrozen1 hsym1
-        ⟨⟨hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩,
-          hx19_1, hx20_1, hx21_1, hx22_1⟩
-      have hstep2 : SepWP (libsignalSessionCode.rebase img.base (Rust.withPanics ext))
-          (entry + bv% ($L)) s1
-          ((entryHeadersAt cur nc np bc bp ∗ vecPinDeallocX A bc bp) ∗
-            A.pool ∗ stackAt fsp extHookStack ∗ Frame)
-          (fun sm Pm =>
-            (Pm ⊢ entryHeadersAt cur nc np bc bp ∗ A.pool ∗ stackAt fsp extHookStack ∗ Frame) ∧
-            Saved48Preserved s0 sm fsp ∧
-            sm.readReg64 (Reg.gpr 19#5) = base ∧
-            sm.readReg64 (Reg.gpr 20#5) = ptr ∧
-            sm.readReg64 (Reg.gpr 21#5) = cnt ∧
-            sm.readReg64 (Reg.gpr 22#5) = cur + 32#64) := by
-        dsimp only [entryHeadersAt, vecPinDeallocX]
-        by_cases hbc : (bc == 0#64) = true <;>
-          simp only [hbc, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-        · wp_steps
-          try wp_done
-        · refine SepWP.weaken_pre (Entails.of_eq (show _ =
-            ⌜0 < bc.toNat ∧ bc.toNat < 2 ^ 63⌝ ∗
-              ((cur ↦₆₄ nc) ∗ ((cur + 8#64) ↦₆₄ np) ∗ memRegion (cur + 16#64) 8 ∗
-                ((cur + 24#64) ↦₆₄ bc) ∗ ((cur + 32#64) ↦₆₄ bp) ∗ memRegion (cur + 40#64) 8 ∗
-                A.live bp bc.toNat 1 ∗ memRegion bp bc.toNat ∗
-                A.pool ∗ stackAt fsp extHookStack ∗ Frame) by ac_rfl)) ?_
-          refine SepWP.pure_elim ?_
-          rintro ⟨hpos, hlt⟩
-          wp_steps
-          wp_call hdealloc (bp, bc.toNat, 1)
-          try wp_steps
-          try rw [hsp_1]
-          try wp_done
-      exact SepWP.mono hstep2 (fun sm Pm _ _ h =>
-        ⟨Entails.trans h.1 (sepConj_mono_left (entryHeadersAt_entails_memRegion_48 cur nc np bc bp)),
-          h.2⟩)
-
-  set_option maxHeartbeats 1600000 in
-  theorem $loopId {A : RustAlloc} {img : Obj.Image}
-      {ext : String → Option (State → State)}
-      (hdealloc : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-        ((tripleRatchetProgAtExt img.base ext).fnAddr $fnStr +
-          bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% $fnStr))
-        ((rustDeallocExternSpecWithStack A extHookStack).inImage img))
-      (s0 : State) (fsp base ptr : BitVec 64)
-      (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-      ∀ (rest : List (List (BitVec 8) × List (BitVec 8))) (cur : BitVec 64)
-        (s : State) (Frame : SepProp),
-        rest ≠ [] →
-        rest.length * 48 < 2 ^ 63 →
-        s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr $fnStr + bv% ($L12) →
-        s.status = .Running →
-        img.FrozenLoaded s →
-        s.symtab = img.symtab →
-        Saved48Preserved s0 s fsp →
-        s.readReg64 (Reg.gpr 19#5) = base →
-        s.readReg64 (Reg.gpr 20#5) = ptr →
-        s.readReg64 (Reg.gpr 21#5) = BitVec.ofNat 64 rest.length →
-        s.readReg64 (Reg.gpr 22#5) = cur + 32#64 →
-        SepWP (tripleRatchetProgAtExt img.base ext)
-          ((tripleRatchetProgAtExt img.base ext).fnAddr $fnStr + bv% ($L56))
-          s
-          (arrayAt (dirEntryAt A) 48 cur rest ∗ A.pool ∗ stackAt fsp extHookStack ∗ Frame)
-          (fun sm Pm =>
-            (Pm ⊢ memRegion cur (rest.length * 48) ∗ A.pool ∗ stackAt fsp extHookStack ∗ Frame) ∧
-            Saved48Preserved s0 sm fsp ∧
-            sm.readReg64 (Reg.gpr 19#5) = base ∧
-            sm.readReg64 (Reg.gpr 20#5) = ptr) := by
-    have hbody := @$bodyId A img ext hdealloc s0 fsp base ptr hfsp_align
-    dsimp only [tripleRatchetProgAtExt, BitVec.ofNat_eq_ofNat] at *
-    code_fetches libsignalSessionCode $binId img.base (Rust.withPanics ext)
-      (ls_lemma% fnOff $fnStr) (num% (ls_off% $fnStr)) $fnEnd
-    generalize_entry
-      (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr $fnStr = entry
-    examples_hide_fetches
-    intro rest
-    induction rest with
-    | nil =>
-      intro _ _ _ hne
-      exact absurd rfl hne
-    | cons hd tl ih =>
-      intro cur s Frame _ hlen hpc hrun hfrozen hsym hpres hx19 hx20 hx21 hx22
-      rw [show arrayAt (dirEntryAt A) 48 cur (hd :: tl) =
-            dirEntryAt A hd cur ∗ arrayAt (dirEntryAt A) 48 (cur + 48#64) tl from rfl,
-          sep_pull_entry]
-      refine seq_cleanX (mid := entry + bv% ($L))
-        (P_mid := memRegion cur 48 ∗ A.pool ∗ stackAt fsp extHookStack ∗
-          (arrayAt (dirEntryAt A) 48 (cur + 48#64) tl ∗ Frame))
-        (Q := fun sm => Saved48Preserved s0 sm fsp ∧
-          sm.readReg64 (Reg.gpr 19#5) = base ∧ sm.readReg64 (Reg.gpr 20#5) = ptr ∧
-          sm.readReg64 (Reg.gpr 21#5) = BitVec.ofNat 64 (hd :: tl).length ∧
-          sm.readReg64 (Reg.gpr 22#5) = cur + 32#64)
-        hfrozen hsym
-        (hbody cur (BitVec.ofNat 64 (hd :: tl).length) hd s
-          (arrayAt (dirEntryAt A) 48 (cur + 48#64) tl ∗ Frame)
-          hpc hrun hfrozen hsym hpres hx19 hx20 hx21 hx22) ?_
-      intro s4 hpc4 hrun4 hfrozen4 hsym4
-        ⟨hpres4, hx19_4, hx20_4, hx21_4, hx22_4⟩
-      cases tl with
-      | nil =>
-        rcases hpres4 with ⟨hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hx28_4, hsp_4, htrace_4, hvregs_4⟩
-        simp only [List.length_cons, List.length_nil, Nat.zero_add, Nat.one_mul,
-          BitVec.ofNat_eq_ofNat, arrayAt, emp_sepConj] at hx21_4 ⊢
-        wp_steps
-        try wp_done
-      | cons hd2 tl2 =>
-        have htl_ne : hd2 :: tl2 ≠ [] := List.cons_ne_nil _ _
-        have htl_len := tail_len_mul_48_lt hlen
-        rw [show (hd :: hd2 :: tl2).length = (hd2 :: tl2).length + 1 from rfl,
-            ofNat_succ_eq_add_one] at hx21_4
-        have hne1 := ofNat_add_one_beq_one_false (n := (hd2 :: tl2).length) (by simp) htl_len
-        refine seq_cleanX (mid := entry + bv% ($L12))
-          (P_mid := arrayAt (dirEntryAt A) 48 (cur + 48#64) (hd2 :: tl2) ∗
-            A.pool ∗ stackAt fsp extHookStack ∗ (memRegion cur 48 ∗ Frame))
-          (Q := fun sm => Saved48Preserved s0 sm fsp ∧
-            sm.readReg64 (Reg.gpr 19#5) = base ∧ sm.readReg64 (Reg.gpr 20#5) = ptr ∧
-            sm.readReg64 (Reg.gpr 21#5) = BitVec.ofNat 64 (hd2 :: tl2).length ∧
-            sm.readReg64 (Reg.gpr 22#5) = (cur + 48#64) + 32#64)
-          hfrozen4 hsym4 ?_ ?_
-        · rcases hpres4 with ⟨hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hx28_4, hsp_4, htrace_4, hvregs_4⟩
-          rw [sep_push_entry]
-          wp_steps
-          rw [add_32_add_48]
-          try wp_done
-        · intro s5 hpc5 hrun5 hfrozen5 hsym5 ⟨hpres5, hx19_5, hx20_5, hx21_5, hx22_5⟩
-          refine SepWP.mono
-            (ih (cur + 48#64) s5 (memRegion cur 48 ∗ Frame)
-              htl_ne htl_len hpc5 hrun5 hfrozen5 hsym5 hpres5 hx19_5 hx20_5 hx21_5 hx22_5) ?_
-          intro sf Pf _ _ h
-          refine ⟨Entails.trans h.1 ?_, h.2⟩
-          have hsplit := cons_len_mul_48 hd (hd2 :: tl2)
-          have hbound : 48 + (hd2 :: tl2).length * 48 ≤ 2 ^ 64 := by
-            rw [hsplit]; exact Nat.le_of_lt (Nat.lt_trans hlen (by decide))
-          rw [sep_rejoin_entries, ← hsplit,
-              ProofLib.memRegion_split cur 48 ((hd2 :: tl2).length * 48) hbound]
-          exact Entails.refl _
-)
-
-prove_dir_loop id_loop0_body id_loop0
-  "core::ptr::drop_glue::<libsignal_cli::stores::IdentityFiles>" cliDropIdentityFilesBin
-  92 36 48 68 92
-
-prove_dir_loop id_loop1_body id_loop1
-  "core::ptr::drop_glue::<libsignal_cli::stores::IdentityFiles>" cliDropIdentityFilesBin
-  192 136 148 168 192
-
-prove_dir_loop stores_loop0_body stores_loop0
-  "core::ptr::drop_glue::<libsignal_cli::stores::Stores>" cliDropStoresBin
-  96 40 52 72 96
-
-prove_dir_loop stores_loop1_body stores_loop1
-  "core::ptr::drop_glue::<libsignal_cli::stores::Stores>" cliDropStoresBin
-  204 148 160 180 204
-
-prove_dir_loop stores_loop2_body stores_loop2
-  "core::ptr::drop_glue::<libsignal_cli::stores::Stores>" cliDropStoresBin
-  304 248 260 280 304
-
-prove_dir_loop stores_loop3_body stores_loop3
-  "core::ptr::drop_glue::<libsignal_cli::stores::Stores>" cliDropStoresBin
-  404 348 360 380 404
-
-/-! ## Non-tail inline `Dir` drop block helper -/
-
-set_option hygiene false in
-local macro "prove_dir_nontail" blockId:ident loopId:ident fnStr:str binId:ident
-    fnEnd:num off:num off8:num off16:num off24:num Lstart:num L12:num L56:num Lend:num : command => `(
-  set_option maxHeartbeats 1600000 in
-  theorem $blockId {A : RustAlloc} {img : Obj.Image}
-      {ext : String → Option (State → State)}
-      (hdealloc : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-        ((tripleRatchetProgAtExt img.base ext).fnAddr $fnStr +
-          bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% $fnStr))
-        ((rustDeallocExternSpecWithStack A extHookStack).inImage img))
-      (s0 : State) (fsp base : BitVec 64)
-      (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-      ∀ (xs : List (List (BitVec 8) × List (BitVec 8))) (s : State) (Frame : SepProp),
-        s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr $fnStr + bv% ($Lstart) →
-        s.status = .Running →
-        img.FrozenLoaded s →
-        s.symtab = img.symtab →
-        Saved48Preserved s0 s fsp →
-        s.readReg64 (Reg.gpr 19#5) = base →
-        SepWP (tripleRatchetProgAtExt img.base ext)
-          ((tripleRatchetProgAtExt img.base ext).fnAddr $fnStr + bv% ($Lend))
-          s
-          (dirRawAt A (base + bv% ($off)) xs ∗ A.pool ∗ stackAt fsp extHookStack ∗ Frame)
-          (fun sm Pm =>
-            (Pm ⊢ memRegion (base + bv% ($off)) 40 ∗ A.pool ∗ stackAt fsp extHookStack ∗ Frame) ∧
-            Saved48Preserved s0 sm fsp ∧
-            sm.readReg64 (Reg.gpr 19#5) = base) := by
-    have hloop := @$loopId A img ext hdealloc
-    simp only [Spec.inImage, rustDeallocExternSpecWithStack, LayoutOk] at hdealloc
-    dsimp only [tripleRatchetProgAtExt, BitVec.ofNat_eq_ofNat] at hdealloc hloop ⊢
-    code_fetches libsignalSessionCode $binId img.base (Rust.withPanics ext)
-      (ls_lemma% fnOff $fnStr) (num% (ls_off% $fnStr)) $fnEnd
-    generalize_entry
-      (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr $fnStr = entry
-    examples_hide_fetches
-    intro xs s Frame hpc hrun hfrozen hsym hpres hx19
-    rcases hpres with ⟨hx23, hx24, hx25, hx26, hx27, hx28, hsp, htrace, hvregs⟩
-    have ho8 : (base + bv% ($off)) + 8#64 = base + bv% ($off8) := by bv_omega
-    have ho16 : (base + bv% ($off)) + 16#64 = base + bv% ($off16) := by bv_omega
-    have ho24 : (base + bv% ($off)) + 24#64 = base + bv% ($off24) := by bv_omega
-    refine SepWP.weaken_pre
-      (sepConj_mono_left
-        (dirRawAt_expose_off A base (bv% ($off)) (bv% ($off8)) (bv% ($off16)) (bv% ($off24))
-          ho8 ho16 ho24 xs)) ?_
-    wp_pull_exists
-    rename_i cap ptr
-    refine SepWP.weaken_pre (Entails.of_eq (show _ =
-      ⌜xs.length ≤ cap.toNat ∧ cap.toNat * 48 < 2 ^ 63 ∧ xs.length * 48 < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
-        (((base + bv% ($off)) ↦₆₄ cap) ∗
-          ((base + bv% ($off8)) ↦₆₄ ptr) ∗
-          ((base + bv% ($off16)) ↦₆₄ BitVec.ofNat 64 xs.length) ∗
-          arrayAt (dirEntryAt A) 48 ptr xs ∗
-          (if cap = 0 then emp
-           else A.live ptr (cap.toNat * 48) 8 ∗
-             memRegion (ptr + BitVec.ofNat 64 (xs.length * 48)) ((cap.toNat - xs.length) * 48)) ∗
-          memRegion (base + bv% ($off24)) 16 ∗
-          A.pool ∗ stackAt fsp extHookStack ∗ Frame) by ac_rfl)) ?_
-    refine SepWP.pure_elim ?_
-    rintro ⟨hlen_le, hcap_lt, hlen_lt, hptr_ne⟩
-    refine seq_cleanX (mid := entry + bv% ($L56))
-      (P_mid :=
-        ((base + bv% ($off)) ↦₆₄ cap) ∗
-        ((base + bv% ($off8)) ↦₆₄ ptr) ∗
-        ((base + bv% ($off16)) ↦₆₄ BitVec.ofNat 64 xs.length) ∗
-        memRegion ptr (xs.length * 48) ∗
-        (if cap = 0 then emp
-         else A.live ptr (cap.toNat * 48) 8 ∗
-           memRegion (ptr + BitVec.ofNat 64 (xs.length * 48)) ((cap.toNat - xs.length) * 48)) ∗
-        memRegion (base + bv% ($off24)) 16 ∗
-        A.pool ∗ stackAt fsp extHookStack ∗ Frame)
-      (Q := fun sm =>
-        Saved48Preserved s0 sm fsp ∧
-        sm.readReg64 (Reg.gpr 19#5) = base ∧
-        sm.readReg64 (Reg.gpr 20#5) = ptr)
-      hfrozen hsym ?_ ?_
-    · cases xs with
-      | nil =>
-        simp only [List.length_nil, Nat.zero_mul, arrayAt, memRegion_zero, emp_sepConj]
-        wp_steps
-        try wp_done
-      | cons hd tl =>
-        have hne0 := ofNat_beq_zero_false (n := (hd :: tl).length) (by simp) (by omega)
-        refine seq_callInvX (mid_pc := entry + bv% ($L12)) hfrozen hsym ?_
-        wp_steps
-        refine SepWP.done rfl (by assumption) fun hfrozen_p hsym_p => ?_
-        have hpre_eq :
-            (((base + bv% ($off)) ↦₆₄ cap) ∗
-              ((base + bv% ($off8)) ↦₆₄ ptr) ∗
-              ((base + bv% ($off16)) ↦₆₄ BitVec.ofNat 64 (hd :: tl).length) ∗
-              arrayAt (dirEntryAt A) 48 ptr (hd :: tl) ∗
-              (if cap = 0 then emp
-               else A.live ptr (cap.toNat * 48) 8 ∗
-                 memRegion (ptr + BitVec.ofNat 64 ((hd :: tl).length * 48))
-                   ((cap.toNat - (hd :: tl).length) * 48)) ∗
-              memRegion (base + bv% ($off24)) 16 ∗
-              A.pool ∗ stackAt fsp extHookStack ∗ Frame) =
-            (arrayAt (dirEntryAt A) 48 ptr (hd :: tl) ∗
-              A.pool ∗ stackAt fsp extHookStack ∗
-              (((base + bv% ($off)) ↦₆₄ cap) ∗
-                ((base + bv% ($off8)) ↦₆₄ ptr) ∗
-                ((base + bv% ($off16)) ↦₆₄ BitVec.ofNat 64 (hd :: tl).length) ∗
-                (if cap = 0 then emp
-                 else A.live ptr (cap.toNat * 48) 8 ∗
-                   memRegion (ptr + BitVec.ofNat 64 ((hd :: tl).length * 48))
-                     ((cap.toNat - (hd :: tl).length) * 48)) ∗
-                memRegion (base + bv% ($off24)) 16 ∗ Frame)) := by
-          ac_rfl
-        rw [hpre_eq]
-        refine SepWP.mono
-          (hloop s0 fsp base ptr hfsp_align (hd :: tl) ptr _ _
-            (List.cons_ne_nil _ _) hlen_lt rfl (by assumption) hfrozen_p hsym_p
-            ⟨hx23, hx24, hx25, hx26, hx27, hx28, hsp, htrace, hvregs⟩
-            hx19 rfl rfl rfl) ?_
-        intro sm Pm _ _ h
-        exact ⟨Entails.trans h.1 (Entails.of_eq (by ac_rfl)), h.2⟩
-    · intro sm hpcm hrunm hfrozenm hsymm
-        ⟨⟨hx23_m, hx24_m, hx25_m, hx26_m, hx27_m, hx28_m, hsp_m, htrace_m, hvregs_m⟩,
-          hx19_m, hx20_m⟩
-      refine SepWP.weaken_pre
-        (post_dir_loop_weaken_off A base (bv% ($off)) (bv% ($off8)) (bv% ($off16)) (bv% ($off24))
-          cap ptr ho8 ho16 ho24 xs.length hlen_le hcap_lt _) ?_
-      by_cases hcap : (cap == 0#64) = true <;>
-        simp only [hcap, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-      · wp_steps
-        refine SepWP.weaken_pre
-          (weaken_perm
-            (word_and_32_rest_entails_40_off base (bv% ($off)) (bv% ($off8)) cap ho8
-              (A.pool ∗ stackAt fsp extHookStack ∗ Frame))
-            (by ac_rfl)) ?_
-        try wp_done
-      · have hcap_pos := pos_of_beq_zero_false hcap
-        have hsz_pos : 0 < cap.toNat * 48 := Nat.mul_pos hcap_pos (by decide)
-        wp_steps
-        have hmul := mul_48_reg hcap_lt
-        rw [hmul]
-        wp_call hdealloc (ptr, cap.toNat * 48, 8)
-        refine SepWP.weaken_pre
-          (weaken_perm
-            (word_and_32_rest_entails_40_off base (bv% ($off)) (bv% ($off8)) cap ho8
-              (A.pool ∗ stackAt fsp extHookStack ∗ Frame))
-            (by rw [hsp_m]; ac_rfl)) ?_
-        try wp_done
-)
-
-prove_dir_nontail stores_dir_signed stores_loop0
-  "core::ptr::drop_glue::<libsignal_cli::stores::Stores>" cliDropStoresBin
-  124 80 88 96 104 24 52 96 124
-
-prove_dir_nontail stores_dir_onetime stores_loop1
-  "core::ptr::drop_glue::<libsignal_cli::stores::Stores>" cliDropStoresBin
-  232 200 208 216 224 132 160 204 232
-
-prove_dir_nontail stores_dir_sessions stores_loop2
-  "core::ptr::drop_glue::<libsignal_cli::stores::Stores>" cliDropStoresBin
-  332 240 248 256 264 232 260 304 332
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Helpers

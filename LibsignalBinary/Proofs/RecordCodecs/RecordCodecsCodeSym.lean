@@ -9,7 +9,10 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
 
 /-!
 # Relocatable Per-Block Instruction Fetches for `RecordCodecs`
@@ -17,4 +20,4 @@ public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD
 Re-exports `RecordCodecsCodeSymA..D` covering blocks `18, 65, 84, 257, 546, 555, 558, 559, 562, 595`.
 -/
 
-@[expose] public section
+public section

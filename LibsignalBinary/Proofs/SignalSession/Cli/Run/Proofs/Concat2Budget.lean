@@ -10,7 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2
+public import LibsignalBinary.Proofs.SpqrV1.Chain.Defs
+public import ProofLib.GenPlacedFetches
 
 /-!
 # Budget-Form `<[&[u8]] as alloc::slice::Concat<u8>>::concat` Specification
@@ -19,7 +21,7 @@ Defines the deterministic allocation-event list `cliConcat2Events` and the budge
 specification `cliConcat2Spec` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -34,13 +36,13 @@ open CryptoVerification.SpqrV1.ChainProofs (SliceConcat2Ghost bytesAt)
 
 /-- Deterministic `AllocEvent` list emitted by `<[&[u8]] as Concat<u8>>::concat` on `(bs0, bs1)`:
     `[]` when `bs0.length + bs1.length = 0`, else `rustAllocEvents (bs0.length + bs1.length) 1`. -/
-def cliConcat2Events (bs0 bs1 : List (BitVec 8)) : List AllocEvent :=
+@[expose] def cliConcat2Events (bs0 bs1 : List (BitVec 8)) : List AllocEvent :=
   if bs0.length + bs1.length = 0 then []
   else rustAllocEvents (bs0.length + bs1.length) 1
 
 /-- Budget-form counterpart of `cliConcat2Spec` (`onPanic := ⌜False⌝`, `onOom := ⌜False⌝`
 under `FitsEvents M lim st (cliConcat2Events x.bs0 x.bs1)`). -/
-def cliConcat2Spec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def cliConcat2Spec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (stk : Nat) : Spec (SliceConcat2Ghost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.outVec ∧ s.readReg64 .x1 = x.slicesA ∧ s.readReg64 .x2 = 2#64 ∧

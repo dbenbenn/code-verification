@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -20,7 +20,7 @@ Proves `finish_grow_2_placed_ok` and `finish_grow_2_placed_ok_x` on Block `465` 
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -61,7 +61,7 @@ private theorem stackAt_finishGrow32_gen (sp : BitVec 64) {hookStack : Nat}
       stackAt (sp - 32#64) hookStack ∗ cells (sp - 32#64) 4 :=
   ProofLib.stackAt_split_cells sp hookStack 4 hhook
 
-def finishGrow1AllocSpecG (A : RustAlloc) (hookStack : Nat) : Spec FinishGrow1Call :=
+@[expose] def finishGrow1AllocSpecG (A : RustAlloc) (hookStack : Nat) : Spec FinishGrow1Call :=
   { finishGrow1SpecWithStack A hookStack with
     pre := fun x s =>
       ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
@@ -69,7 +69,7 @@ def finishGrow1AllocSpecG (A : RustAlloc) (hookStack : Nat) : Spec FinishGrow1Ca
         x.cap.toNat ≤ x.new.toNat ∧ 0 < x.new.toNat ∧ x.new.toNat + 1 ≤ 2 ^ 63⌝ ∗
       memRegion x.out 24 ∗ A.pool ∗ stackAt s.sp (hookStack + 32) }
 
-def finishGrow1ReallocSpecG (A : RustAlloc) (hookStack : Nat) : Spec FinishGrow1Call :=
+@[expose] def finishGrow1ReallocSpecG (A : RustAlloc) (hookStack : Nat) : Spec FinishGrow1Call :=
   { finishGrow1SpecWithStack A hookStack with
     pre := fun x s =>
       ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧

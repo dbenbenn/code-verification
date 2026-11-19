@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectEvicted
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectEvicted
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliverInject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupling
@@ -19,6 +19,10 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Reject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Sync
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Inject
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedBase
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectComb
 
 /-!
 # Tracker-halted early, known-chain, and evicted `inject` cases
@@ -27,7 +31,7 @@ Proves the guard/parse/SPQR reject cases, known-chain cases, evicted honest-wire
 salt-mismatch dispatch, and zero X25519 agreement case for `closeByStateCTrack_inject_step`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

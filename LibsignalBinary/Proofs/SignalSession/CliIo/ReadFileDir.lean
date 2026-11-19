@@ -9,8 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileSteps
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileSteps
 public import VerifiedLibraries.Musl.Proofs.SyscallProof
+public import GeneratedLean.SignalSessionIoPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.Sym -- proof-setup: allow-public-import
 
 /-!
 # Directory-FD Read and `EISDIR` / `EFAULT` Exit Path for `read_file`
@@ -20,7 +24,7 @@ on an open `.localDir` descriptor from loop header `+0xd8`: `read` returns `-1` 
 (`≠ 4`), skips `__rust_dealloc` at `cap = 0`, closes `fd`, and returns `Err(())`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -215,7 +219,7 @@ theorem cliIoReadFile_dir_loop [CliIoPlacement]
     have hlr_el : sm_el.readReg64 .lr = cliIoPl03.base + 244#64 := by
       rw [hcpu_el.readReg64 .lr]; simp [arm64_norm]
     have htp_el : sm_el.tpidrEl0 = s0.tpidrEl0 := hacp_rel.2.2.2.1.trans htp_sr
-    let ev := dirReadErrno32 (s0.sp - 4224#64) count
+    let ev := dirReadErrno32 (s0.sp - 4224#64) count desc.offset
     have hev_beq4 : (ev == 4#32) = false := beq_false_of_ne herr_ne4
     let T_el : SepProp :=
       stackAt sm_rd.sp 32 ∗ (stdErrnoAddr s0.tpidrEl0 ↦₃₂ ev) ∗
@@ -255,9 +259,8 @@ theorem cliIoReadFile_dir_loop [CliIoPlacement]
         exact s0.spAligned_sub 8320#64 hsp0
       have hx0_c' : sc'.readReg64 .x0 = stdErrnoAddr s0.tpidrEl0 := (hcpu_c.readReg64 _).trans hx0_se0'
       have hev_zext_beq4 : (BitVec.setWidth 64 ev - 4#64 == 0#64) = false := by
-        rcases dirReadErrno32_cases (s0.sp - 4224#64) count with h21 | h14
-        · dsimp only [ev]; rw [h21]; decide
-        · dsimp only [ev]; rw [h14]; decide
+        rcases dirReadErrno32_cases (s0.sp - 4224#64) count desc.offset with h | h | h <;>
+          (dsimp only [ev]; rw [h]; decide)
       wp_sym_steps
       refine SepWP.done (by simp [arm64_norm]) (by simpa [arm64_norm] using hrun_c')
         fun se_ep hcpu_ep0 hcl_ep hnsp_ep hsym_ep => ?_

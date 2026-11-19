@@ -9,10 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
+public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlaced
 
 /-!
 # Slot- and Cap-Parametric Whole-`main` `FitsEnv` Reducers
@@ -25,14 +39,13 @@ obligations on the four `signal_session::run` callees (`init`, `encrypt`, `decry
 and `decryptPrekey`) together with decidable `1 GiB` RAM and `2 ^ 48` VA cap checks.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomMainFitsReduce
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
 open CryptoVerification (LibsignalPlacement)
@@ -111,8 +124,8 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
 /-! ## Target Abbreviations, 4-Slot Callee Bundle, and `1 GiB` Cap Predicates -/
 
 /-- Whole-`main` binary-kit allocator trace predicate at `cliEncryptBinaryKitSlotEnvExact` and `cliDecryptSignalBinaryKitSlotEnvExact`. -/
-noncomputable abbrev mfr_realCliMainBinaryKitEnvOfExact [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+abbrev mfr_realCliMainBinaryKitEnvOfExact [LibsignalPlacement]
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) : List AllocEvent → Prop :=
   realCliMainBinaryKitEnvOfSlot
     (fun {_M} A B => cliEncryptBinaryKitSlotEnvExact W A B)
@@ -120,7 +133,7 @@ noncomputable abbrev mfr_realCliMainBinaryKitEnvOfExact [LibsignalPlacement]
     img S X W i
 
 /-- Mode-dispatched 4-slot `CliRunCalleeEnvs` bundle parametric in `InitEnvOf`, `EncSlot`, `DecSigSlot`, and `DecPkSlot`, with `pksmEnv := PksmCanonSliceEnv`. -/
-noncomputable def mfr_mkFourSlotCalleeEnvs
+@[expose] def mfr_mkFourSlotCalleeEnvs
     (InitEnvOf : RunCall → List AllocEvent → Prop)
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
@@ -158,7 +171,7 @@ theorem mfr_mkFourSlotCalleeEnvs_eq_slotOf [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks) :
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks) :
     mfr_mkFourSlotCalleeEnvs
       (fun g => (mkBinaryKitRealCalleeEnvsFixed img S X W g).initEnv)
       EncSlot DecSigSlot (cliDecPkCanonSlotEnvExact X W) =
@@ -166,7 +179,7 @@ theorem mfr_mkFourSlotCalleeEnvs_eq_slotOf [LibsignalPlacement]
   rfl
 
 /-- Whole-`main` cumulative byte cap `Δcum` from 4-slot callee caps. -/
-def mfr_fourSlotMainCumOf (initCum encCum decSigCum decPkCum : Nat) : Nat :=
+@[expose] def mfr_fourSlotMainCumOf (initCum encCum decSigCum decPkCum : Nat) : Nat :=
   let runCum := cliRunBinary1MiBCustomPksmCum
     (pksmCanonSliceCum msgCapBytes) initCum encCum decSigCum decPkCum
   123250 + m3PhaseDeltaCum_tight + runCum +
@@ -181,7 +194,7 @@ def mfr_fourSlotMainLiveOf (initLive encLive decSigLive decPkLive : Nat) : Nat :
       (pksmCanonSliceLive msgCapBytes) initLive encLive decSigLive decPkLive)
 
 /-- Whole-`main` peak live byte cap `Δpeak` from 4-slot callee caps. -/
-def mfr_fourSlotMainPeakOf
+@[expose] def mfr_fourSlotMainPeakOf
     (initLive initPeak encLive encPeak decSigLive decSigPeak decPkLive decPkPeak : Nat) : Nat :=
   cliMainTightPeakOf
     (cliRun1MiBCustomPksmLive
@@ -191,14 +204,14 @@ def mfr_fourSlotMainPeakOf
       initPeak encLive encPeak decSigPeak decPkPeak)
 
 /-- Whole-`main` maximum single-allocation request `maxReq` from 4-slot callee caps. -/
-def mfr_fourSlotMainReqOf (initMaxReq encMaxReq decSigMaxReq decPkMaxReq : Nat) : Nat :=
+@[expose] def mfr_fourSlotMainReqOf (initMaxReq encMaxReq decSigMaxReq decPkMaxReq : Nat) : Nat :=
   max (max (16 * 2048) 16384)
     (cliMainTightReqOf
       (cliRunBinary1MiBCustomPksmMaxReq
         (pksmCanonSliceMaxReq msgCapBytes) initMaxReq encMaxReq decSigMaxReq decPkMaxReq))
 
 /-- Whole-`main` scaled mallocng group count `grpS` from 4-slot callee caps. -/
-def mfr_fourSlotMainGrpSOf (initGrpS encGrpS decSigGrpS decPkGrpS : Nat) : Nat :=
+@[expose] def mfr_fourSlotMainGrpSOf (initGrpS encGrpS decSigGrpS decPkGrpS : Nat) : Nat :=
   let runGrpS := cliRunOpenedCustomPksmGrpS msgCapBytes
     (pksmCanonSliceGrpS msgCapBytes) initGrpS encGrpS decSigGrpS decPkGrpS +
     27 * FineScale
@@ -283,7 +296,7 @@ private theorem mfr_optStage_groupSpec {P : List AllocEvent → Prop} {g : Nat}
 
 /-- `PhaseCreditSpec` for `(mkBinaryKitRealCalleeEnvsFixed img S X W g).initEnv` under `CliPqxdhInputs`. -/
 theorem mfr_w3InitFixed_phaseCredit [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (hi_g : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i) :
     PhaseCreditSpec fineCostModel
       ((mkBinaryKitRealCalleeEnvsFixed img S X W g).initEnv)
@@ -298,7 +311,7 @@ theorem mfr_w3InitExact_live_le_peak : w3InitExactLive ≤ w3InitExactPeak := by
 
 /-- `PhaseGroupSpec` for `(mkBinaryKitRealCalleeEnvsFixed img S X W g).initEnv` under `CliPqxdhInputs`. -/
 theorem mfr_w3InitFixed_groupSpec [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (hi_g : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i) :
     PhaseGroupSpec fineCostModel
       ((mkBinaryKitRealCalleeEnvsFixed img S X W g).initEnv)
@@ -696,7 +709,7 @@ theorem mfr_fourSlotMain_fitsEnv_cliBudgetLimits_of_caps
 
 /-- 4-slot + 20-cap whole-`main` `FitsEnv` reducer for `realCliMainBinaryKitEnvOfExact`. -/
 theorem mfr_realCliMainBinaryKitEnvOfExact_fitsEnv_of_four_slots_caps [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i)
     (InitEnvOf : RunCall → List AllocEvent → Prop)
     (EncSlot : ∀ {M : AllocCostModel},
@@ -813,7 +826,7 @@ theorem mfr_realCliMainBinaryKitEnvOfExact_fitsEnv_of_four_slots_caps [Libsignal
 
 /-- 3-slot + 15-cap whole-`main` `FitsEnv` reducer discharging W3 (`initEnv`) and `PksmCanonSliceEnv` internally. -/
 theorem mfr_realCliMainBinaryKitEnvOfExact_fitsEnv_of_slots_caps [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i)
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
@@ -913,7 +926,7 @@ theorem mfr_realCliMainBinaryKitEnvOfExact_fitsEnv_of_slots_caps [LibsignalPlace
 
 /-- Specializes W1 and W2 to `w1EncExact*` and `w2DecSigExact*` while keeping W4 (`DecPkSlot` and its 5 caps) parametric. -/
 theorem mfr_realCliMainBinaryKitEnvOfExact_fitsEnv_of_w4_caps [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i)
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
@@ -1007,7 +1020,7 @@ theorem mfr_realCliMainBinaryKitEnvOfExact_fitsEnv_of_w4_caps [LibsignalPlacemen
 
 /-- Specializes `mfr_realCliMainBinaryKitEnvOfExact_fitsEnv_of_w4_caps` to `w4DecPkExact*`, leaving the six curried W1/W2/W4 credit and group obligations. -/
 theorem mfr_realCliMainBinaryKitEnvOfExact_fitsEnv_of_curried [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i)
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
@@ -1087,7 +1100,7 @@ theorem mfr_realCliMainBinaryKitEnvOfExact_fitsEnv_of_curried [LibsignalPlacemen
 
 /-- Variant accepting `SingleSlotFineSpec` witnesses for `encrypt`, `decryptSignal`, and `decryptPrekey`. -/
 theorem mfr_realCliMainBinaryKitEnvOfExact_fitsEnv_of_singleSlots [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i)
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
@@ -1190,7 +1203,7 @@ theorem mfr_runEnv_sub_and_mainFits_of_hmxSlotEnvs [LibsignalPlacement]
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
     (DecPkSlot : DecPkGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     (sEnvs : RunSlotEnvs)
     {encCum encLive encPeak encMaxReq encGrpS

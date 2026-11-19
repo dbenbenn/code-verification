@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.FilesExtParity
+public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.FilesExtParity -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Input Extensionality for Two-Placement `cliRunPlacedSig`
@@ -19,7 +20,7 @@ Input-visibility predicates (`FilesVisibleRaw`) and `InputsEquivRaw` extensional
 `Placed.cliRunPlacedSig mpl mmpl elf W` and `CliReachesOOMPlaced mpl mmpl elf W`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,11 +31,14 @@ open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
 open CryptoVerification.E2E (PEParams PreKeyBundleFields initiateTapeLen)
 open CryptoVerification.SignalSession (
-  CliHooks CliReachesOOMPlaced Cmd Inputs Outcome OutcomeOrExcusedAbort PqParty PublicBundle
-  baseKeysFile bundleDir cliProcessInputs encodeDir pqInitInputs pqInputs
-  pqRecvInputs pqSendInputs publicBundleOf stdioPaths
+  CliHooks Cmd Inputs Outcome OutcomeOrExcusedAbort PqParty PublicBundle baseKeysFile bundleDir
+  cliProcessInputs encodeDir pqInitInputs pqInputs pqRecvInputs pqSendInputs publicBundleOf
+  stdioPaths
 )
-open CryptoVerification.SignalSession.Placed (CliRunsToPlaced cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (
+  CliReachesOOMPlaced CliReachesSampleNttStuckPlaced
+)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (CliRunsToPlaced cliRunPlacedSig)
 open LibsignalBinary.Proofs.SignalSession.Cli.Parity (
   FilesExtVisibleRaw FilesVisibleRaw InputsEquivRaw LoadableFile
   loadState_eq_of_inputsEquiv_of_visible_of_loadable loadState_error_of_not_loadable_files
@@ -156,22 +160,45 @@ theorem cliRunPlacedSig_some_of_inputsEquiv {mpl mmpl : MultiPlacement} {elf : E
     cases hnone
   · exact hsame.symm.trans hr
 
+/-- Excuse predicates whose witnesses imply `elf.loadState (cliProcessInputs i)` succeeds. -/
+class ExcLoadOk (elf : ElfImage) (exc : Inputs → Prop) : Prop where
+  load_ok : ∀ {i : Inputs}, exc i → ∃ s0, elf.loadState (cliProcessInputs i) = .ok s0
+
+instance instExcLoadOkOOM (mpl mmpl : MultiPlacement) (elf : ElfImage) (W : CliHooks) :
+    ExcLoadOk elf (CliReachesOOMPlaced mpl mmpl elf W) where
+  load_ok | ⟨s0, _, hok, _⟩ => ⟨s0, hok⟩
+
+instance instExcLoadOkSampleNttStuck (mpl mmpl : MultiPlacement) (elf : ElfImage) (W : CliHooks) :
+    ExcLoadOk elf (CliReachesSampleNttStuckPlaced mpl mmpl elf W) where
+  load_ok | ⟨s0, _, hok, _⟩ => ⟨s0, hok⟩
+
+instance instExcLoadOkOr (elf : ElfImage) {e₁ e₂ : Inputs → Prop}
+    [h₁ : ExcLoadOk elf e₁] [h₂ : ExcLoadOk elf e₂] :
+    ExcLoadOk elf (fun i => e₁ i ∨ e₂ i) where
+  load_ok
+    | .inl h => h₁.load_ok h
+    | .inr h => h₂.load_ok h
+
+instance instExcLoadOkFalse (elf : ElfImage) : ExcLoadOk elf (fun _ => False) where
+  load_ok h := h.elim
+
 theorem exited_of_outcomeUpTo_raw_placed {mpl mmpl : MultiPlacement} {elf : ElfImage}
-    {W : CliHooks} {i i₀ : Inputs} {Pred : Outcome → Prop}
+    {W : CliHooks} {exc : Inputs → Prop} [hExc : ExcLoadOk elf exc]
+    {i i₀ : Inputs} {Pred : Outcome → Prop}
     {code : Nat} {out : List (BitVec 8)} {files : String → Option (List (BitVec 8))}
     (hr : cliRunPlacedSig mpl mmpl elf W i = some (.exited code out files))
-    (hup : OutcomeOrExcusedAbort (CliReachesOOMPlaced mpl mmpl elf W)
-      (cliRunPlacedSig mpl mmpl elf W) i₀ Pred)
+    (hup : OutcomeOrExcusedAbort exc (cliRunPlacedSig mpl mmpl elf W) i₀ Pred)
     (heq : InputsEquivRaw i i₀) (hvis : FilesVisibleRaw i.files) (hvis₀ : FilesVisibleRaw i₀.files)
     (hload₀ : ∀ f ∈ i₀.files, hasLeadingSlash f.1 = false ∧ hasDotDot f.1 = false) :
     Pred (.exited code out files) := by
   have hnoErr₀ : ∀ msg, elf.loadState (cliProcessInputs i₀) ≠ .error msg := by
     intro msg herr
-    rcases hup with ⟨_, ho₀, _⟩ | ⟨_, ⟨s0, _, hok, _⟩⟩
+    rcases hup with ⟨_, ho₀, _⟩ | ⟨_, hexc⟩
     · have hn := cliRunPlacedSig_eq_none_of_loadState_error (mpl := mpl) (mmpl := mmpl) (W := W) herr
       rw [ho₀] at hn
       cases hn
-    · rw [herr] at hok
+    · obtain ⟨_, hok⟩ := hExc.load_ok hexc
+      rw [herr] at hok
       cases hok
   have hloadFile₀ : ∀ f ∈ i₀.files, LoadableFile f := fun f hf =>
     ⟨hload₀ f hf, Classical.byContradiction fun hlen => by

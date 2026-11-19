@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecCloneBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecClonePlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecCloneBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecClonePlaced
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Placed.PlacedCallSym
@@ -21,6 +21,9 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Placed `<Vec<Vec<u8>> as Clone>::clone` on 1 Element
@@ -29,7 +32,7 @@ Proves `VecVecClone1PlacedOkStmt M A lim H` (`vecVecClone1_placed_okX_of_ser`) a
 from `SerContractsXPlaced M A lim H` under `FitsEnv M lim st (VecVecClone1Env x)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option relaxedAutoImplicit false
@@ -442,13 +445,5 @@ theorem vecVecClone1_placed_okX_of_ser [LibsignalPlacement] {M : AllocCostModel}
   obtain ⟨⟨hx0, hx1, hx2, hfit⟩, hm⟩ := hpre
   exact ⟨_, R, by simpa only [sepConj_assoc] using hm,
     vvc1_entry_placed hC x st s0 R hpc hrun hs0_align hx0 hx1 hx2 hfit⟩
-
-theorem vecVecClone1_placed_ok_cl_of_ser [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {callerBlk : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg callerBlk H]
-    (hC : SerContractsXPlaced M A lim H) :
-    subroutine_ok callerProg (blkPl_117).base (withLsCl lsmpl (vecVecClone1SpecX M A lim)) :=
-  vecVecClone1_placed_ok_cl (callerProg := callerProg) (vecVecClone1_placed_okX_of_ser hC)
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecClonePlacedBudget

@@ -9,23 +9,23 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
-public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
-public import Computational.Proofs.ReductionDsl.Bridge
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
-public import Computational.Proofs.E2E.UniformStartHop
-public import Computational.Proofs.E2E.Dsl.StartAndExtSmAux
+public import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Bridge -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+public import Computational.Proofs.E2E.UniformStartHop -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.StartAndExtSmAux -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.StatementComposed
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 
 /-!
 # Shared Infrastructure for Single-Session Costed Reductions
 
 Provides the forward-encoding simulation bridge (`eval_eq_simulateQ_of_enc`), `e2eSessionCodec`
 transport lemmas, the initial-state sampler (`initEpoch0GsC`), polynomial `ratchetCostBudget`
-arithmetic, and dummy fallback reductions for single-session `CostedReduction` witnesses.
--/
+arithmetic, and dummy fallback reductions for single-session `CostedReduction` witnesses.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -418,7 +418,7 @@ theorem liftCompCoins_size_le {ι : Type} {T : OracleSpec ι}
       (encT := encT) (decT := decT) (lam := lam) z
     simp only [liftCompCoins, Comp.size]; omega
 
-def idKeyLitE {Γ : List (Ty ESig)} (ik : IdentityKey) :
+@[expose] def idKeyLitE {Γ : List (Ty ESig)} (ik : IdentityKey) :
     Expr EOps Γ CryptoVerification.E2E.Costed.IdKey :=
   e2ePureOp .idKeyOfPbytes (e2ePureOp (.pbytesLit 32 (toU8 ik.publicKey.bytes.toList)) .unit)
 
@@ -436,7 +436,7 @@ theorem cost_idKeyLitE {Γ : List (Ty ESig)} (ik : IdentityKey) :
   simp only [idKeyLitE, cost_e2ePureOp, E2EPureOp.cost, Expr.cost, h32, hlen]
   omega
 
-def idKeyPairLitE {Γ : List (Ty ESig)} (idA idB : IdentityKey) :
+@[expose] def idKeyPairLitE {Γ : List (Ty ESig)} (idA idB : IdentityKey) :
     Expr EOps Γ (.prod CryptoVerification.E2E.Costed.IdKey CryptoVerification.E2E.Costed.IdKey) :=
   .pair (idKeyLitE idA) (idKeyLitE idB)
 
@@ -457,7 +457,7 @@ theorem cost_idKeyPairLitE {Γ : List (Ty ESig)} (idA idB : IdentityKey) :
 
 /-- Samples `(b, k0, spk, ac, pqr)` and builds the encoded initial `SM.GameState` of
 `libsignalSessionSchemeFromEpoch0Keys`. -/
-def initEpoch0GsE2EC (idA idB : IdentityKey) :
+@[expose] def initEpoch0GsE2EC (idA idB : IdentityKey) :
     Comp EOps (coinE2EIface (coinOnlyIface ℓ Pt))
       [.prod CryptoVerification.E2E.Costed.BV256 CryptoVerification.E2E.Costed.BV256]
       (.prod .unit (e2eGsTy ℓ)) :=
@@ -474,7 +474,7 @@ def initEpoch0GsE2EC (idA idB : IdentityKey) :
                       (.pair (.var (.succ .zero)) (.var .zero)))
                     (.var (.succ (.succ (.succ (.succ .zero))))))))))))))
 
-def initEpoch0GsC (idA idB : IdentityKey) :
+@[expose] def initEpoch0GsC (idA idB : IdentityKey) :
     Comp AOps (coinOnlyIface ℓ Pt)
       [.prod BV256 BV256]
       (.prod .unit (liftTy (Pt := Pt) (e2eGsTy ℓ))) :=
@@ -555,7 +555,7 @@ theorem initEpoch0GsC_size_le (idA idB : IdentityKey) :
   dsimp only [initEpoch0GsC]
   omega
 
-def epoch0InitImpl (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (ℓ : ℕ)
+@[expose] def epoch0InitImpl (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (ℓ : ℕ)
     (rc : RootKey × BitVec 256) :
     ProbComp (Unit × GameState (GhostState Bytes) (Plain ℓ) Bytes) := do
   let b ← ($ᵗ Bool : ProbComp Bool)
@@ -639,8 +639,9 @@ def ratchetCostBudgetTight (q qep : ℕ) : ℕ :=
   2 ^ 12 * (q + 1) ^ 2 * (maxForwardJumps + bits qep)
 
 theorem ratchetCostBudgetTight_le_ratchetCostBudget (q qep : ℕ) :
-    ratchetCostBudgetTight q qep ≤ ratchetCostBudget q qep :=
-  le_rfl
+    ratchetCostBudgetTight q qep ≤ ratchetCostBudget q qep := by
+  unfold ratchetCostBudgetTight ratchetCostBudget
+  exact Nat.mul_le_mul_left _ (by omega)
 
 theorem session_cost_le_ratchetCostBudgetTight (q qep cInit cFin cStepBase cStepQ cStepQep : ℕ)
     (hInit : cInit ≤ 50000000)
@@ -708,7 +709,7 @@ theorem session_cost_cubic_le_ratchetCostBudget
   (session_cost_cubic_le_ratchetCostBudgetTight q qep cInit cFin cStepBase cStepQ cStepQ2 cStepQep
     hInit hFin hBase hQ hQ2 hQep).trans (ratchetCostBudgetTight_le_ratchetCostBudget q qep)
 
-def dummyBoolSessionRed {ℓ : ℕ} {Pt : Type}
+@[expose] def dummyBoolSessionRed {ℓ : ℕ} {Pt : Type}
     {O : Ops (atomicSig ℓ Pt)} {ι : Type} {T : OracleSpec ι}
     (I : Iface (atomicSig ℓ Pt) T) (rIn : Ty (atomicSig ℓ Pt)) :
     CostedReduction O I
@@ -737,7 +738,7 @@ theorem dummyBoolSessionRed_totalCost_le {ℓ : ℕ} {Pt : Type}
   simpa using session_cost_le_ratchetCostBudget q qep 6 0 24 0 0
     (by omega) (by omega) (by omega) (by omega) (by omega)
 
-def dummyPairSessionRed {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
+@[expose] def dummyPairSessionRed {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
     {C : Crypto} {K : MlKem}
     {Dh : CryptoGames.CKA.DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
     {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}

@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # In-Image Verification of `drop_glue::<SessionStructure> [local#3]` (`0x70dc0`)
@@ -22,7 +24,7 @@ Separation-logic deallocation helpers for 344-byte `SessionStructure` records an
 proof for `core::ptr::drop_glue::<SessionStructure> [local#3]` at image offset `0x70dc0`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.FromRecordCallees
 
@@ -63,17 +65,6 @@ private theorem dealloc_hookSat_tripleRatchetExterns {A : RustAlloc} (C : Crypto
     CryptoVerification.LibsignalSession.sessionExterns, dhName, pubFromSecretName,
     staticDropName, sharedDropName, rngFillName, uuidTryParseName,
     varintSlowName, noHookNames] using hA.dealloc
-
-private theorem dealloc_ok_at {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_dealloc")) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustDeallocSpec A) :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "__rustc::__rust_dealloc")
-    (dealloc_hookSat_tripleRatchetExterns C ctl hA)
 
 private theorem SepWP.seq_clean {prog : Program} {mid target : BitVec 64} {s : State}
     {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop}

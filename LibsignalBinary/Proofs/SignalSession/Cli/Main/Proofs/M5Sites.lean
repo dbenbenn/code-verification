@@ -9,7 +9,15 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Non-I/O Call-Site Helpers for `main` Hop M5
@@ -18,6 +26,6 @@ Re-exports `CallSites` branch-offset, `main_call_inImage`, and `main_panic_handl
 for M5.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false

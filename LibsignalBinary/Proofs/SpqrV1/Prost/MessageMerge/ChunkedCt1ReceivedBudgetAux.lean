@@ -9,12 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1Received
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1Received
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -25,6 +24,9 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPQR V1: Budget-Threaded Exit, Skip & Key-Decode Helpers for `Chunked.Ct1Received::merge` (Block `303`)
@@ -34,7 +36,7 @@ Proves budget-threaded loop invariants, error exits (`ret_err`, `from_err`, `pus
 (Block `303`) with `withLsCodeRoLoaded lsmpl` callees.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -61,19 +63,7 @@ open CryptoVerification.LibsignalSpqrV1 (V1State)
 open CryptoVerification.LibsignalSpqrV1.Proto (mergeMessage)
 open CryptoVerification.SpqrV1.Auth (WppPost setWidth8_ofNat64_wt)
 open CryptoVerification.SpqrV1.Varint (decodeVarint2Stack)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedCt1ReceivedMergeGhost ChunkedHighCalleeSaved ChunkedLoopRegs SepWPpLscro
-   bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_err chunkedBelow_err_entails
-   chunkedBelow_leaf chunkedBelow_leaf_entails chunkedBelow_skipField3_98
-   chunkedBelow_skipField3_98_entails chunkedCt1ReceivedMerge_fnOff chunkedCt1ReceivedPBAt
-   chunkedCt1ReceivedPBAt_entails_exists chunkedCt1ReceivedPBCapAt
-   chunkedCt1ReceivedPBCapAt_entails_pb chunkedCt1ReceivedPBCapAt_mono chunkedMergeStack
-   chunkedSavedRegs cmp_len_limit_of_gt codecWireTypeToProto
-   memRegion8_memRegion40_entails_48_128 memRegion_48_split2_128 memRegion_48_split_128
-   mergeLoopBin mergeLoopBin_of_decodeVarint_none mergeLoopBin_of_key_ge
-   mergeLoopBin_of_tag_zero mergeLoopBin_of_wt_none
-   pointsTo64_memRegion32_entails_40_128 pointsTo64_memRegion40_entails_48_128
-   protoPrefixStep_chunked_ct1Received_mergeField stackAt_chunkedMerge)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedCt1ReceivedMergeGhost ChunkedHighCalleeSaved ChunkedLoopRegs SepWPpLscro bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_err chunkedBelow_err_entails chunkedBelow_leaf chunkedBelow_leaf_entails chunkedBelow_skipField3_98 chunkedBelow_skipField3_98_entails chunkedCt1ReceivedPBAt chunkedCt1ReceivedPBAt_entails_exists chunkedCt1ReceivedPBCapAt chunkedCt1ReceivedPBCapAt_entails_pb chunkedCt1ReceivedPBCapAt_mono chunkedMergeStack chunkedSavedRegs cmp_len_limit_of_gt codecWireTypeToProto memRegion8_memRegion40_entails_48_128 memRegion_48_split2_128 memRegion_48_split_128 mergeLoopBin mergeLoopBin_of_decodeVarint_none mergeLoopBin_of_key_ge mergeLoopBin_of_tag_zero mergeLoopBin_of_wt_none pointsTo64_memRegion32_entails_40_128 pointsTo64_memRegion40_entails_48_128 protoPrefixStep_chunked_ct1Received_mergeField stackAt_chunkedMerge)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_303 blkPl_303)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget VmPreserved)
@@ -113,7 +103,7 @@ private theorem calleeSavedVRegs_setMem_pre (s : State) (m : Memory) :
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero chunkedCt1ReceivedMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 attribute [local arm64_norm ↓, local wp_norm ↓]
   sp_setMem_pre pc_setMem_pre status_setMem_pre pstate_setMem_pre trace_setMem_pre
   readReg64_setMem_pre readReg32_setMem_pre readReg_setMem_pre calleeSavedVRegs_setMem_pre
@@ -154,7 +144,7 @@ private theorem stackAt_decodeVarint2_raw_eq (sp : BitVec 64) :
     stackAt sp (0x40 + (0x40 + decodeErrorHookStack)) = stackAt sp decodeVarint2Stack := rfl
 
 /-- Budget-threaded loop-header separation-logic bundle at `+192#64` (`(blkPl_303).base + 192#64`). -/
-def ct1ReceivedLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def ct1ReceivedLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.Ct1Received) (bs cur : List (BitVec 8)) (polyBound : Nat) : SepProp :=
@@ -164,7 +154,7 @@ def ct1ReceivedLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     memRegion (s0.sp - 128#64) 48 ∗ chunkedBelow s0.sp ∗ chunkedSavedRegs s0
 
 /-- Budget-threaded error-exit separation-logic bundle at fuel `f` (`f ≤ 6 * bs.length + 12`). -/
-def ct1ReceivedErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def ct1ReceivedErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (f polyBound : Nat) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.Ct1Received) (bs : List (BitVec 8)) : SepProp :=

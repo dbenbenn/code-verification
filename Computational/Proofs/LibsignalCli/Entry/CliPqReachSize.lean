@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
-public import LibsignalBinary.Proofs.SignalSession.PqStep
+public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.PqStep -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.BhAdapterIjHelpersV1Core
 import LibsignalBinary.Proofs.SignalSession.PqClosure
 import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
@@ -23,7 +23,7 @@ for `ReachablePqxdhSession`, bounds non-PQ `SessionRecord` encoding overhead by 
 and establishes multi-step `PqxdhPartyInSpecDomain` closure across `PqSteps`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -688,206 +688,6 @@ theorem initiateState_pqLength_le {X : UnreachedPqxdhPrimitives} {W : PEParams} 
     {g : GhostState Bytes} (h : initiateState X W P me b t = some (x, g)) :
     g.session.pqRatchetState.length ≤ 640 := (initiateState_props h).2.2
 
-theorem recvPrekeyState_pqLength_le {X : UnreachedPqxdhPrimitives} {W : PEParams} {P : Party} {me : LocalIdentity}
-    {k : ResponderPreKeySecrets} {m : PreKeyMessageFields} {rc : BitVec 256} {x : RecordExtras} {g : GhostState Bytes}
-    {pt : Bytes} (h : recvPrekeyState X W P me k m rc = some (some (x, g, pt))) :
-    g.session.pqRatchetState.length ≤ 640 + 80000 := (recvPrekeyState_props h).2.2
-
-private theorem removeOpk_me (st : PqParty) (m : PreKeyMessageFields) : (removeOpk st m).me = st.me := by
-  unfold removeOpk; cases m.opkId <;> rfl
-private theorem markKyberUsed_me {st st1 : PqParty} {m : PreKeyMessageFields}
-    (h : markKyberUsed st m = some st1) : st1.me = st.me := by
-  unfold markKyberUsed at h
-  split at h
-  · injection h with h'; subst h'; rfl
-  · split at h <;> [cases h; (split at h <;> [cases h; (injection h with h'; subst h'; rfl)])]
-private theorem encodeRecordX_eq_of_session_eq (x : RecordExtras) (g₁ g₂ : GhostState Bytes)
-    (hs : g₁.session = g₂.session) :
-    encodeRecordUnderExtras (fun _ => x) g₁ = encodeRecordUnderExtras (fun _ => x) g₂ := by unfold encodeRecordUnderExtras; rw [hs]
-
-private theorem pqStep_session_step
-    {X : UnreachedPqxdhPrimitives} {W : PEParams} {st st' : PqParty}
-    {x' : RecordExtras} {g' : GhostState Bytes}
-    (hwf : PqxdhPartyInSpecDomain W st) (hstep : PqStep X W st st') (hs' : st'.session = some (x', g')) :
-    (∃ g₀' : GhostState Bytes,
-      ReachablePqxdhSession W st'.me x' g₀' ∧ g₀'.party = g'.party ∧ g₀'.session = g'.session) ∧
-    (st.session = none → g'.session.pqRatchetState.length ≤ 640 + 80000) ∧
-    (∀ x g, st.session = some (x, g) →
-      g'.session.pqRatchetState.length ≤ g.session.pqRatchetState.length + 80000) := by
-  cases hstep with
-  | init b t _ out hnone hinit =>
-    unfold pqInitModel at hinit
-    cases ht : st.trusts ⟨⟨b.idPub⟩⟩
-    · rw [ht] at hinit; cases hinit
-    · rw [ht] at hinit; simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte] at hinit
-      rcases hi : initiateState X W st.party st.me b t with _ | ⟨x, g⟩
-      · rw [hi] at hinit; cases hinit
-      · rw [hi] at hinit; simp only [Option.some.injEq, Prod.mk.injEq] at hinit
-        rcases hinit with ⟨rfl, -⟩; simp only [Option.some.injEq, Prod.mk.injEq] at hs'
-        rcases hs' with ⟨hx', hg'⟩; rw [← hx', ← hg']
-        have h640 := initiateState_pqLength_le hi
-        refine ⟨⟨g, ReachablePqxdhSession.initiate X st.party st.me b t x g hi, rfl, rfl⟩, ?_, ?_⟩
-        · intro _; omega
-        · intro _ _ hs; rw [hnone] at hs; cases hs
-  | send m r _ out _ hsend =>
-    unfold pqSendModel at hsend
-    rcases hsess : st.session with _ | ⟨x, g⟩
-    · rw [hsess] at hsend; cases hsend
-    · rw [hsess] at hsend; dsimp only at hsend
-      rcases henc : SessionState.messageEncrypt W.C protoSignalCodec (pqxdhSpqrSession W)
-          ((pqxdhSessionParams W).sendAddrs g.party) m r.toList g.session with ⟨err | msg, s⟩
-      · rw [henc] at hsend; cases err <;> cases hsend
-      · rw [henc] at hsend; dsimp only at hsend
-        rcases hk : g.session.remoteIdentity with _ | k
-        · rw [hk] at hsend; cases hsend
-        · rw [hk] at hsend; dsimp only at hsend
-          cases ht : st.trusts k
-          · rw [ht] at hsend; cases hsend
-          · rw [ht] at hsend
-            simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte,
-              Option.some.injEq, Prod.mk.injEq] at hsend
-            rcases hsend with ⟨rfl, -⟩; simp only [Option.some.injEq, Prod.mk.injEq] at hs'
-            rcases hs' with ⟨hx', hg'⟩; rw [← hx', ← hg']
-            obtain ⟨⟨g₀, hR₀, hp₀, hs₀⟩, -, hlen⟩ := hwf.1 x g hsess
-            have hlen₀ : (encodeRecordUnderExtras (fun _ => x) g₀).length < 2 ^ 31 := by
-              rw [encodeRecordX_eq_of_session_eq x g₀ g hs₀]; exact hlen
-            have hval : ValidState g.session.pqRatchetState := by
-              rw [← hs₀]; exact reachPq_validState_cli hR₀
-            have hpq := pqLength_lt_2_64_of_encodeRecordX hlen
-            obtain ⟨-, -, -, -, salt, pm, hspqr⟩ := messageEncrypt_ok_struct W.C protoSignalCodec
-              (pqxdhSpqrSession W) ((pqxdhSessionParams W).sendAddrs g.party) m r.toList g.session s msg henc
-            have hle := (spqrV1_send_validState_length_le_tight W.C.F W.Q.K g.session.pqRatchetState
-              r.toList s.pqRatchetState salt pm hval hpq hspqr).2
-            refine ⟨⟨((pqxdhSessionParams W).send g₀ m r.toList).1, ReachablePqxdhSession.send m r.toList hR₀ hlen₀, ?_⟩,
-              ?_, ?_⟩
-            · unfold Params.send
-              have hC : (pqxdhSessionParams W).C = W.C := rfl
-              have hcodec : (pqxdhSessionParams W).codec = protoSignalCodec := rfl
-              have hspqr' : (pqxdhSessionParams W).spqr = pqxdhSpqrSession W := rfl
-              rw [hC, hcodec, hspqr', hp₀, hs₀, henc]; exact ⟨rfl, rfl⟩
-            · intro hnone; cases hnone
-            · intro x1 g1 hs1; simp only [Option.some.injEq, Prod.mk.injEq] at hs1
-              rcases hs1 with ⟨_, hg1⟩; rw [← hg1]; dsimp only; omega
-  | recvWhisper c rc _ out _ hrecv =>
-    unfold pqRecvWhisperModel at hrecv
-    rcases hsess : st.session with _ | ⟨x, g⟩
-    · rw [hsess] at hrecv; cases hrecv
-    · rw [hsess] at hrecv; dsimp only at hrecv
-      rcases htry : SignalMessage.tryFrom protoSignalCodec c with _ | msg
-      · rw [htry] at hrecv; cases hrecv
-      · rw [htry] at hrecv; dsimp only [pqxdhSessionDecryptModel] at hrecv
-        rcases hdec : SessionState.tryDecryptFromRecord W.C (pqxdhSpqrSession W)
-            ((pqxdhSessionParams W).expectedAddrs g.party) msg .whisper rc g.session with ⟨err | pt, s⟩
-        · rw [hdec] at hrecv; cases err <;> cases hrecv
-        · rw [hdec] at hrecv; dsimp only at hrecv
-          rcases hk : s.remoteIdentity with _ | k
-          · rw [hk] at hrecv; cases hrecv
-          · rw [hk] at hrecv; dsimp only at hrecv
-            cases ht : st.trusts k
-            · rw [ht] at hrecv; cases hrecv
-            · rw [ht] at hrecv
-              simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte,
-                Option.some.injEq, Prod.mk.injEq] at hrecv
-              rcases hrecv with ⟨rfl, -⟩; simp only [Option.some.injEq, Prod.mk.injEq] at hs'
-              rcases hs' with ⟨hx', hg'⟩; rw [← hx', ← hg']
-              obtain ⟨⟨g₀, hR₀, hp₀, hs₀⟩, -, hlen⟩ := hwf.1 x g hsess
-              have hlen₀ : (encodeRecordUnderExtras (fun _ => x) g₀).length < 2 ^ 31 := by
-                rw [encodeRecordX_eq_of_session_eq x g₀ g hs₀]; exact hlen
-              have hval : ValidState g.session.pqRatchetState := by
-                rw [← hs₀]; exact reachPq_validState_cli hR₀
-              have hpq := pqLength_lt_2_64_of_encodeRecordX hlen
-              obtain ⟨-, -, -, -, salt, hspqr⟩ := tryDecryptFromRecord_ok_struct W.C (pqxdhSpqrSession W)
-                ((pqxdhSessionParams W).expectedAddrs g.party) msg .whisper rc g.session s pt hdec
-              have hle := (spqrV1_recv_validState_length_le_tight W.C.F W.Q.K g.session.pqRatchetState
-                msg.pqRatchet s.pqRatchetState salt hval hpq hspqr).2
-              have hrec₀ : ∃ g₁ res, (pqxdhSessionParams W).receive g₀ c rc = some (g₁, res) ∧
-                  g₁.party = g.party ∧ g₁.session = s := by
-                unfold Params.receive
-                have hC : (pqxdhSessionParams W).C = W.C := rfl
-                have hcodec : (pqxdhSessionParams W).codec = protoSignalCodec := rfl
-                have hspqr' : (pqxdhSessionParams W).spqr = pqxdhSpqrSession W := rfl
-                rw [hcodec, htry, hC, hspqr', hp₀, hs₀]; dsimp only; rw [hdec]
-                exact ⟨_, _, rfl, rfl, rfl⟩
-              rcases hrec₀ with ⟨g₁, res, hrec₁, hp₁, hs₁⟩
-              refine ⟨⟨g₁, ReachablePqxdhSession.recv hR₀ hlen₀ hrec₁, hp₁, hs₁⟩, ?_, ?_⟩
-              · intro hnone; cases hnone
-              · intro x1 g1 hs1; simp only [Option.some.injEq, Prod.mk.injEq] at hs1
-                rcases hs1 with ⟨_, hg1⟩; rw [← hg1]; exact hle
-  | recvPrekey m rc _ out _ _ hrecv =>
-    unfold pqRecvPrekeyModel at hrecv
-    rcases htry : SignalMessage.tryFrom protoSignalCodec m.inner with _ | inner
-    · rw [htry] at hrecv; cases hrecv
-    · rw [htry] at hrecv; dsimp only at hrecv
-      cases ht : st.trusts ⟨⟨m.idPub⟩⟩
-      · rw [ht] at hrecv; cases hrecv
-      · rw [ht] at hrecv; simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte] at hrecv
-        rcases hsess : st.session with _ | ⟨x, g⟩
-        · rw [hsess] at hrecv; dsimp only at hrecv
-          rcases hk : preKeysNamedBy st m with _ | k
-          · rw [hk] at hrecv; cases hrecv
-          · rw [hk] at hrecv; dsimp only at hrecv
-            rcases hrp : recvPrekeyState X W st.party st.me k m rc with _ | _ | ⟨x1, g1, pt⟩
-            · rw [hrp] at hrecv; cases hrecv
-            · rw [hrp] at hrecv; cases hrecv
-            · rw [hrp] at hrecv; dsimp only at hrecv
-              rcases hmk : markKyberUsed st m with _ | st1
-              · rw [hmk] at hrecv; cases hrecv
-              · rw [hmk] at hrecv; simp only [Option.some.injEq, Prod.mk.injEq] at hrecv
-                rcases hrecv with ⟨rfl, -⟩; simp only [Option.some.injEq, Prod.mk.injEq] at hs'
-                rcases hs' with ⟨hx', hg'⟩; rw [← hx', ← hg']
-                have hme : (removeOpk st1 m).me = st.me :=
-                  (removeOpk_me st1 m).trans (markKyberUsed_me hmk)
-                refine ⟨?_, ?_, ?_⟩
-                · dsimp only; rw [hme]
-                  exact ⟨g1, ReachablePqxdhSession.recvPrekey X st.party st.me k m rc x1 g1 pt hrp, rfl, rfl⟩
-                · intro _; exact recvPrekeyState_pqLength_le hrp
-                · intro _ _ hs1; cases hs1
-        · rw [hsess] at hrecv; dsimp only at hrecv
-          by_cases hm_match : PqSessionMatches x g m
-          · simp only [hm_match, ↓reduceIte] at hrecv
-            split_ifs at hrecv
-            · cases hrecv
-            · rcases hdec : SessionState.tryDecryptFromRecord W.C (pqxdhSpqrSession W)
-                  ((pqxdhSessionParams W).expectedAddrs g.party) inner .preKey rc g.session with
-                ⟨err | pt, s⟩
-              · rw [hdec] at hrecv; cases err <;> cases hrecv
-              · rw [hdec] at hrecv; simp only [Option.some.injEq, Prod.mk.injEq] at hrecv
-                rcases hrecv with ⟨rfl, -⟩; simp only [Option.some.injEq, Prod.mk.injEq] at hs'
-                rcases hs' with ⟨hx', hg'⟩; rw [← hx', ← hg']
-                obtain ⟨⟨g₀, hR₀, hp₀, hs₀⟩, -, hlen⟩ := hwf.1 x g hsess
-                have hlen₀ : (encodeRecordUnderExtras (fun _ => x) g₀).length < 2 ^ 31 := by
-                  rw [encodeRecordX_eq_of_session_eq x g₀ g hs₀]; exact hlen
-                have hval : ValidState g.session.pqRatchetState := by
-                  rw [← hs₀]; exact reachPq_validState_cli hR₀
-                have hpq := pqLength_lt_2_64_of_encodeRecordX hlen
-                obtain ⟨-, -, -, -, salt, hspqr⟩ := tryDecryptFromRecord_ok_struct W.C (pqxdhSpqrSession W)
-                  ((pqxdhSessionParams W).expectedAddrs g.party) inner .preKey rc g.session s pt hdec
-                have hle := (spqrV1_recv_validState_length_le_tight W.C.F W.Q.K g.session.pqRatchetState
-                  inner.pqRatchet s.pqRatchetState salt hval hpq hspqr).2
-                have hdec₀ : SessionState.tryDecryptFromRecord W.C (pqxdhSpqrSession W)
-                    ((pqxdhSessionParams W).expectedAddrs g₀.party) inner .preKey rc g₀.session =
-                    (.ok pt, s) := by rw [hp₀, hs₀]; exact hdec
-                obtain ⟨g₁, hR₁, hp₁, hs₁⟩ :=
-                  reachPq_promote W st.me x g₀ m.inner inner rc pt s hR₀ hlen₀ htry hdec₀
-                refine ⟨⟨g₁, hR₁, hp₁.trans hp₀, hs₁⟩, ?_, ?_⟩
-                · intro hnone; cases hnone
-                · intro x1 g1 hs1; simp only [Option.some.injEq, Prod.mk.injEq] at hs1
-                  rcases hs1 with ⟨_, hg1⟩; rw [← hg1]; exact hle
-          · simp only [hm_match, ↓reduceIte] at hrecv; cases hrecv
-
-/-- One-step SPQR state length bound across any accepted `PqStep` from `PqxdhPartyInSpecDomain W st`. -/
-theorem pqStep_pqLength_le
-    {X : UnreachedPqxdhPrimitives} {W : PEParams} {st st' : PqParty}
-    (hwf : PqxdhPartyInSpecDomain W st) (hstep : PqStep X W st st') :
-    (st.session = none →
-      ∀ x' g', st'.session = some (x', g') →
-        g'.session.pqRatchetState.length ≤ 640 + 80000) ∧
-    (∀ x g, st.session = some (x, g) →
-      ∀ x' g', st'.session = some (x', g') →
-        g'.session.pqRatchetState.length ≤ g.session.pqRatchetState.length + 80000) :=
-  ⟨fun hnone _ _ hs' => (pqStep_session_step hwf hstep hs').2.1 hnone,
-   fun x g hs _ _ hs' => (pqStep_session_step hwf hstep hs').2.2 x g hs⟩
-
 /-! ## Non-PQ record overhead and multi-step spec-domain closure -/
 
 private theorem encodeVarintAux_length_le :
@@ -1047,41 +847,6 @@ theorem encodeRecordX_length_le_pq_add_923135_cli
     omega
   omega
 
-theorem encodeRecordX_length_lt_of_pq_add_2100000_lt_cli
-    {W : PEParams} {me : LocalIdentity} {x : RecordExtras} {g : GhostState Bytes}
-    (hR : ReachablePqxdhSession W me x g) (hpq : g.session.pqRatchetState.length + 2100000 < 2 ^ 31) :
-    (encodeRecordUnderExtras (fun _ => x) g).length < 2 ^ 31 := by
-  have hle := encodeRecordX_length_le_pq_add_923135_cli hR; omega
-
-/-- One-step `PqxdhPartyInSpecDomain` and `< 2 ^ 31` record-size closure from an additive
-`pqRatchetState` budget. -/
-theorem wfPq_step_of_pqBudget
-    {X : UnreachedPqxdhPrimitives} {W : PEParams} {st st' : PqParty}
-    (hwf : PqxdhPartyInSpecDomain W st) (hstep : PqStep X W st st') (hlr : lastResortUses st' < 2 ^ 25)
-    (hbud : ∀ x g, st.session = some (x, g) →
-      g.session.pqRatchetState.length + 80000 + 2100000 < 2 ^ 31) :
-    PqxdhPartyInSpecDomain W st' ∧
-      ∀ x' g', st'.session = some (x', g') → (encodeRecordUnderExtras (fun _ => x') g').length < 2 ^ 31 := by
-  have hrec : ∀ x' g', st'.session = some (x', g') →
-      (encodeRecordUnderExtras (fun _ => x') g').length < 2 ^ 31 := by
-    intro x' g' hs'
-    obtain ⟨⟨g₀', hR₀', -, hsess₀'⟩, hnone_bd, hsome_bd⟩ := pqStep_session_step hwf hstep hs'
-    have hpq' : g'.session.pqRatchetState.length + 2100000 < 2 ^ 31 := by
-      rcases hs : st.session with _ | ⟨x, g⟩
-      · have hle := hnone_bd hs; omega
-      · have hle := hsome_bd x g hs; have hb := hbud x g hs; omega
-    have hpq₀' : g₀'.session.pqRatchetState.length + 2100000 < 2 ^ 31 := by
-      rw [hsess₀']; exact hpq'
-    rw [← encodeRecordX_eq_of_session_eq x' g₀' g' hsess₀']
-    exact encodeRecordX_length_lt_of_pq_add_2100000_lt_cli hR₀' hpq₀'
-  have hrec_cap : ∀ x' g', st'.session = some (x', g') →
-      (encodeRecordUnderExtras (fun _ => x') g').length ≤ fileCapBytes := by
-    intro x' g' hs'
-    obtain ⟨⟨g₀', hR₀', -, hsess₀'⟩, -, -⟩ := pqStep_session_step hwf hstep hs'
-    rw [← encodeRecordX_eq_of_session_eq x' g₀' g' hsess₀']
-    exact LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap.reachPq_encodeRecordX_length_le_fileCapBytes hR₀'
-  exact ⟨wfPq_step X W st st' hwf hstep hlr hrec_cap, hrec⟩
-
 /-- `n`-step reflexive-transitive closure of accepted `PqStep` transitions. -/
 inductive PqSteps (X : UnreachedPqxdhPrimitives) (W : PEParams) : ℕ → PqParty → PqParty → Prop
   | refl (st : PqParty) : PqSteps X W 0 st st
@@ -1090,39 +855,5 @@ inductive PqSteps (X : UnreachedPqxdhPrimitives) (W : PEParams) : ℕ → PqPart
 
 theorem PqSteps.single {X : UnreachedPqxdhPrimitives} {W : PEParams} {st₀ st₁ : PqParty}
     (h : PqStep X W st₀ st₁) : PqSteps X W 1 st₀ st₁ := PqSteps.step (PqSteps.refl st₀) h
-
-/-- Multi-step `PqxdhPartyInSpecDomain` and `< 2 ^ 31` record-size closure across `n` accepted CLI
-calls under an additive `pqRatchetState` query budget. -/
-theorem wfPq_of_pqSteps_budget
-    {X : UnreachedPqxdhPrimitives} {W : PEParams} {n : ℕ} {st₀ stₙ : PqParty}
-    (hwf₀ : PqxdhPartyInSpecDomain W st₀) (hnone₀ : st₀.session = none) (hlr₀ : lastResortUses st₀ = 0)
-    (hsteps : PqSteps X W n st₀ stₙ) (hbud : 80000 * (n + 1) + 2100000 < 2 ^ 31)
-    (hn : n < 2 ^ 25) :
-    PqxdhPartyInSpecDomain W stₙ ∧ lastResortUses stₙ ≤ n ∧
-      (∀ x g, stₙ.session = some (x, g) →
-        g.session.pqRatchetState.length ≤ 640 + 80000 * n) ∧
-      (∀ x g, stₙ.session = some (x, g) →
-        (encodeRecordUnderExtras (fun _ => x) g).length < 2 ^ 31) := by
-  induction hsteps with
-  | refl =>
-    refine ⟨hwf₀, by omega, ?_, ?_⟩ <;> (intro _ _ hs; rw [hnone₀] at hs; cases hs)
-  | @step m _ st₁ st₂ _ hlast ih =>
-    obtain ⟨hwf₁, hlr₁, hpq₁, -⟩ := ih hwf₀ hnone₀ hlr₀ (by omega) (by omega)
-    have hlr_step := pqStep_lastResortUses_le X W st₁ st₂ hwf₁.2.2.2.2.2 hlast
-    have hbud₁ : ∀ x g, st₁.session = some (x, g) →
-        g.session.pqRatchetState.length + 80000 + 2100000 < 2 ^ 31 := fun x g hs₁ => by
-      have hle := hpq₁ x g hs₁; omega
-    obtain ⟨hwf₂, hrec₂⟩ := wfPq_step_of_pqBudget hwf₁ hlast (by omega) hbud₁
-    obtain ⟨hnone_bd, hsome_bd⟩ := pqStep_pqLength_le hwf₁ hlast
-    refine ⟨hwf₂, by omega, ?_, hrec₂⟩
-    intro x' g' hs₂
-    rcases hs₁ : st₁.session with _ | ⟨x, g⟩
-    · have hle := hnone_bd hs₁ x' g' hs₂
-      have h1 := Nat.le_mul_of_pos_right 80000 (Nat.succ_pos m)
-      exact Nat.le_trans hle (Nat.add_le_add_left h1 640)
-    · calc g'.session.pqRatchetState.length
-          ≤ g.session.pqRatchetState.length + 80000 := hsome_bd x g hs₁ x' g' hs₂
-        _ ≤ (640 + 80000 * m) + 80000 := Nat.add_le_add_right (hpq₁ x g hs₁) 80000
-        _ = 640 + 80000 * (m + 1) := by rw [Nat.mul_succ, Nat.add_assoc]
 
 end CryptoVerification.LibsignalCli.Entry

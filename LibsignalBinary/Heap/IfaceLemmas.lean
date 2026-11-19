@@ -20,7 +20,7 @@ import ProofLib.SepLogic.WPp
 
 State-predicate and pool/OOM transport combinators, OOM-preserving stack wrappers
 (`Spec.withHookStackOom`, `Spec.withExternStackFromAllocOom'`, `rustCli*SpecWithStack`),
-`.inImage` framing rules, and hook/entry-point bundle projections for `LibsignalBinary.Heap.Iface`.
+and hook/entry-point bundle projections for `LibsignalBinary.Heap.Iface`.
 -/
 
 @[expose] public section
@@ -276,113 +276,12 @@ def rustCliReallocSpecWithStack (A : RustCliAlloc) (stk : Nat) :
           memRegion (sf.readReg64 .x0 + BitVec.ofNat 64 bs.length) (new - bs.length))
   onOom := fun _ s0 sf => ⌜OomPreserved s0 sf⌝
 
-/-! ## OOM-Preserving `.inImage` Map and Stack-Framing Combinators -/
+/-! ## OOM-Preserving Map and Stack-Framing Combinators -/
 
 /-- Drop a framed middle assertion `F` under `⊨` and weaken the left assertion by `P ⊢ P'`. -/
 theorem satisfies_drop_mid_entails {P P' F R : SepProp} {m : Memory}
     (hent : P ⊢ P') (h : m ⊨ P ∗ (F ∗ R)) : m ⊨ P' ∗ R :=
   Satisfies.mono (sepConj_mono_left hent) (Satisfies.drop_mid h)
-
-/-- Lift `ProofLib.subroutine_ok_map_oom'` across `Spec.inImage img` (OOM-preserving analogue of
-`Hooks2.Defs.subroutine_ok_inImage_map'`). -/
-theorem subroutine_ok_inImage_map_oom' {α β : Type} {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {spec : Spec α} {spec' : Spec β}
-    (h : subroutine_ok prog entry (spec.inImage img))
-    (hmap : ∀ (y : β) (R : SepProp) (s0 : State), (s0.mem ⊨ spec'.pre y s0 ∗ R) →
-      ∃ (x : α) (R' : SepProp), (s0.mem ⊨ spec.pre x s0 ∗ R') ∧
-        (∀ sf : State, (sf.mem ⊨ spec.post x s0 sf ∗ R') → (sf.mem ⊨ spec'.post y s0 sf ∗ R)) ∧
-        (∀ sf : State, (sf.mem ⊨ spec.onOom x s0 sf ∗ R') → (sf.mem ⊨ spec'.onOom y s0 sf ∗ R)))
-    (h_no_panic : ∀ x R' s0 sf, sf.status = .Panicked → ¬(sf.mem ⊨ spec.onPanic x s0 sf ∗ R') := by
-      intro _ _ _ _ _ he; exact not_satisfies_false_sepConj he)
-    (h_no_exit : ∀ x code R' s0 sf, sf.status = .Exited code →
-        ¬(sf.mem ⊨ spec.onExit x code s0 sf ∗ R') := by
-      intro _ _ _ _ _ _ he; exact not_satisfies_false_sepConj he) :
-    subroutine_ok prog entry (spec'.inImage img) := by
-  refine subroutine_ok_map_oom' h (fun y R s0 hpre => ?_) h_no_panic h_no_exit
-  simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨hfrozen, hpre'⟩ := hpre
-  obtain ⟨x, R', hm, hpost, hoom⟩ := hmap y R s0 hpre'
-  refine ⟨x, R', ?_, hpost, hoom⟩
-  simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨hfrozen, hm⟩
-
-/-- Panic- and OOM-preserving lift across `Spec.inImage img` (analogue of
-`Hooks2.Defs.subroutine_ok_inImage_map_panic'`). -/
-theorem subroutine_ok_inImage_map_panic_oom' {α β : Type} {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {spec : Spec α} {spec' : Spec β}
-    (h : subroutine_ok prog entry (spec.inImage img))
-    (hmap : ∀ (y : β) (R : SepProp) (s0 : State), (s0.mem ⊨ spec'.pre y s0 ∗ R) →
-      ∃ (x : α) (R' : SepProp), (s0.mem ⊨ spec.pre x s0 ∗ R') ∧
-        (∀ sf : State, (sf.mem ⊨ spec.post x s0 sf ∗ R') → (sf.mem ⊨ spec'.post y s0 sf ∗ R)) ∧
-        (∀ sf : State, (sf.mem ⊨ spec.onPanic x s0 sf ∗ R') →
-          (sf.mem ⊨ spec'.onPanic y s0 sf ∗ R)) ∧
-        (∀ sf : State, (sf.mem ⊨ spec.onOom x s0 sf ∗ R') → (sf.mem ⊨ spec'.onOom y s0 sf ∗ R)))
-    (h_no_exit : ∀ x code R' s0 sf, sf.status = .Exited code →
-        ¬(sf.mem ⊨ spec.onExit x code s0 sf ∗ R') := by
-      intro _ _ _ _ _ _ he; exact not_satisfies_false_sepConj he) :
-    subroutine_ok prog entry (spec'.inImage img) := by
-  refine subroutine_ok_outcome_intro fun y R s0 hpc hrun hpre hsp => ?_
-  simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨hfrozen, hpre'⟩ := hpre
-  obtain ⟨x, R', hm, hpost, hpan, hoom⟩ := hmap y R s0 hpre'
-  have hm_img : s0.mem ⊨ (spec.inImage img).pre x s0 ∗ R' := by
-    simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hfrozen, hm⟩
-  refine h.mono_outcome x R' s0 hpc hrun hm_img hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hp_st, hq⟩ | ⟨code, hex, hq⟩ | ⟨ho_st, hq⟩
-  · exact Or.inl ⟨hret, hcc, hpost sf hq⟩
-  · exact Or.inr (Or.inl ⟨hp_st, hpan sf hq⟩)
-  · exact False.elim (h_no_exit x code R' s0 sf hex hq)
-  · exact Or.inr (Or.inr (Or.inr ⟨ho_st, hoom sf hq⟩))
-
-/-- Frame-carving `.inImage` consequence rule with direct entailment `spec.onOom ⊢ spec'.onOom`
-(dropping the carved frame `F` on `.OutOfMemory` via `Satisfies.drop_mid`). -/
-theorem subroutine_ok_inImage_frame_oom' {α β : Type} {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {spec : Spec α} {spec' : Spec β}
-    (h : subroutine_ok prog entry (spec.inImage img))
-    (hmap : ∀ (y : β) (R : SepProp) (s0 : State), (s0.mem ⊨ spec'.pre y s0 ∗ R) →
-      ∃ (x : α) (F : SepProp), (s0.mem ⊨ spec.pre x s0 ∗ (F ∗ R)) ∧
-        ∀ sf : State, (sf.mem ⊨ spec.post x s0 sf ∗ (F ∗ R)) → (sf.mem ⊨ spec'.post y s0 sf ∗ R))
-    (h_oom : ∀ x y s0 sf, spec.onOom x s0 sf ⊢ spec'.onOom y s0 sf := by
-      intro _ _ _ _; first
-        | exact Entails.refl _
-        | exact Entails.pure_left fun hf => False.elim hf)
-    (h_no_panic : ∀ x R' s0 sf, sf.status = .Panicked → ¬(sf.mem ⊨ spec.onPanic x s0 sf ∗ R') := by
-      intro _ _ _ _ _ he; exact not_satisfies_false_sepConj he)
-    (h_no_exit : ∀ x code R' s0 sf, sf.status = .Exited code →
-        ¬(sf.mem ⊨ spec.onExit x code s0 sf ∗ R') := by
-      intro _ _ _ _ _ _ he; exact not_satisfies_false_sepConj he) :
-    subroutine_ok prog entry (spec'.inImage img) :=
-  subroutine_ok_inImage_map_oom' h
-    (fun y R s0 hpre =>
-      let ⟨x, F, hm, hpost⟩ := hmap y R s0 hpre
-      ⟨x, F ∗ R, hm, hpost, fun sf ho => satisfies_drop_mid_entails (h_oom x y s0 sf) ho⟩)
-    h_no_panic h_no_exit
-
-/-- Panic- and OOM-preserving frame-carving `.inImage` consequence rule with direct entailment
-`spec.onOom ⊢ spec'.onOom`. -/
-theorem subroutine_ok_inImage_frame_panic_oom' {α β : Type} {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {spec : Spec α} {spec' : Spec β}
-    (h : subroutine_ok prog entry (spec.inImage img))
-    (hmap : ∀ (y : β) (R : SepProp) (s0 : State), (s0.mem ⊨ spec'.pre y s0 ∗ R) →
-      ∃ (x : α) (F : SepProp), (s0.mem ⊨ spec.pre x s0 ∗ (F ∗ R)) ∧
-        (∀ sf : State, (sf.mem ⊨ spec.post x s0 sf ∗ (F ∗ R)) →
-          (sf.mem ⊨ spec'.post y s0 sf ∗ R)) ∧
-        (∀ sf : State, (sf.mem ⊨ spec.onPanic x s0 sf ∗ (F ∗ R)) →
-          (sf.mem ⊨ spec'.onPanic y s0 sf ∗ R)))
-    (h_oom : ∀ x y s0 sf, spec.onOom x s0 sf ⊢ spec'.onOom y s0 sf := by
-      intro _ _ _ _; first
-        | exact Entails.refl _
-        | exact Entails.pure_left fun hf => False.elim hf)
-    (h_no_exit : ∀ x code R' s0 sf, sf.status = .Exited code →
-        ¬(sf.mem ⊨ spec.onExit x code s0 sf ∗ R') := by
-      intro _ _ _ _ _ _ he; exact not_satisfies_false_sepConj he) :
-    subroutine_ok prog entry (spec'.inImage img) :=
-  subroutine_ok_inImage_map_panic_oom' h
-    (fun y R s0 hpre =>
-      let ⟨x, F, hm, hpost, hpan⟩ := hmap y R s0 hpre
-      ⟨x, F ∗ R, hm, hpost, hpan, fun sf ho => satisfies_drop_mid_entails (h_oom x y s0 sf) ho⟩)
-    h_no_exit
 
 /-- General frame-entailment rule across normal return, panic, exit, and OOM where abnormal
 outcomes drop the carved frame `Frame x s0` via `Satisfies.drop_mid` and weaken by `⊢`. -/
@@ -409,13 +308,13 @@ theorem subroutine_ok_frame_oom' {α : Type} {prog : Program} {entry : BitVec 64
     rw [← sepConj_assoc]
     exact Satisfies.mono (sepConj_mono_left (hpre x s0)) hm
   refine h.mono_outcome x (Frame x s0 ∗ R) s0 hpc hrun hm' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hp⟩ | ⟨hp_st, hp⟩ | ⟨code, hex_st, hp⟩ | ⟨ho_st, hp⟩
+  rcases hout with ⟨hret, hcc, hp⟩ | ⟨hp_st, hp⟩ | ⟨code, hex_st, hp⟩ | ⟨hoom_st, hp⟩
   · refine Or.inl ⟨hret, hcc, ?_⟩
     rw [← sepConj_assoc] at hp
     exact Satisfies.mono (sepConj_mono_left (hpost x s0 sf)) hp
   · exact Or.inr (Or.inl ⟨hp_st, satisfies_drop_mid_entails (hpan x s0 sf) hp⟩)
   · exact Or.inr (Or.inr (Or.inl ⟨code, hex_st, satisfies_drop_mid_entails (hex x code s0 sf) hp⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨ho_st, satisfies_drop_mid_entails (hoom x s0 sf) hp⟩))
+  · exact Or.inr (Or.inr (Or.inr ⟨hoom_st, satisfies_drop_mid_entails (hoom x s0 sf) hp⟩))
 
 /-- Stack-slack monotonicity for `Spec.withHookStackOom` (`s1 ≤ s2 ≤ 2 ^ 64`), preserving
 normal return, panic, exit, and OOM unconditionally. -/
@@ -441,43 +340,11 @@ theorem subroutine_ok_withHookStackOom_mono {α : Type} {prog : Program} {entry 
     rw [hstack]
     exact Entails.of_eq (by sep_ac_rfl)
 
-/-- Stack-slack monotonicity for `(spec.withHookStackOom s).inImage img` (`s1 ≤ s2 ≤ 2 ^ 64`),
-preserving normal return, panic, exit, and OOM unconditionally. -/
-theorem subroutine_ok_inImage_withHookStackOom_mono {α : Type} {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {spec : Spec α} {s1 s2 : Nat}
-    (hle : s1 ≤ s2) (hbound : s2 ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((spec.withHookStackOom s1).inImage img)) :
-    subroutine_ok prog entry ((spec.withHookStackOom s2).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1)) h ?_ ?_
-  · intro x s0
-    have hsplit : s2 = s1 + (s2 - s1) := by omega
-    have hstack := ProofLib.stackAt_split_bottom s0.sp s1 (s2 - s1) (by omega)
-    rw [← hsplit] at hstack
-    dsimp only [Spec.inImage, Spec.withHookStackOom]
-    rw [hstack]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · intro x s0 sf
-    have hsplit : s2 = s1 + (s2 - s1) := by omega
-    have hstack := ProofLib.stackAt_split_bottom s0.sp s1 (s2 - s1) (by omega)
-    rw [← hsplit] at hstack
-    dsimp only [Spec.inImage, Spec.withHookStackOom]
-    rw [hstack]
-    exact Entails.of_eq (by sep_ac_rfl)
-
 theorem subroutine_ok_withExternStackFromAllocOom' {α : Type} {prog : Program} {entry : BitVec 64}
     {spec : Spec α} (h : subroutine_ok prog entry spec) :
     subroutine_ok prog entry spec.withExternStackFromAllocOom' :=
   subroutine_ok_frame_oom' (fun _ s0 => memRegion (s0.sp - 16384#64) 12288) h
     (fun _ _ => Entails.refl _) (fun _ _ _ => Entails.refl _)
-
-theorem subroutine_ok_inImage_withExternStackFromAllocOom' {α : Type} {prog : Program}
-    {entry : BitVec 64} {img : Obj.Image} {spec : Spec α}
-    (h : subroutine_ok prog entry (spec.inImage img)) :
-    subroutine_ok prog entry (spec.withExternStackFromAllocOom'.inImage img) :=
-  subroutine_ok_frame_oom' (fun _ s0 => memRegion (s0.sp - 16384#64) 12288) h
-    (fun _ _ => Entails.of_eq (by dsimp only [Spec.inImage, Spec.withExternStackFromAllocOom']; sep_ac_rfl))
-    (fun _ _ _ => Entails.refl _)
 
 private theorem stackAt_split_from_allocHookStack (sp : BitVec 64) {stk : Nat}
     (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64) :
@@ -505,22 +372,6 @@ theorem subroutine_ok_rustCliAlloc_withStack {prog : Program} {entry : BitVec 64
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
-theorem subroutine_ok_inImage_rustCliAlloc_withStack {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {A : RustCliAlloc} {zeroed : Bool} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliAllocSpec A zeroed).inImage img)) :
-    subroutine_ok prog entry ((rustCliAllocSpecWithStack A zeroed stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨size, align⟩ s0
-    dsimp only [Spec.inImage, rustCliAllocSpec, rustCliAllocSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨size, align⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliAllocSpec, rustCliAllocSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
 theorem subroutine_ok_rustCliDealloc_withStack {prog : Program} {entry : BitVec 64}
     {A : RustCliAlloc} {stk : Nat}
     (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
@@ -537,22 +388,6 @@ theorem subroutine_ok_rustCliDealloc_withStack {prog : Program} {entry : BitVec 
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
-theorem subroutine_ok_inImage_rustCliDealloc_withStack {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {A : RustCliAlloc} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliDeallocSpec A).inImage img)) :
-    subroutine_ok prog entry ((rustCliDeallocSpecWithStack A stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨p, size, align⟩ s0
-    dsimp only [Spec.inImage, rustCliDeallocSpec, rustCliDeallocSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨p, size, align⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliDeallocSpec, rustCliDeallocSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
 theorem subroutine_ok_rustCliRealloc_withStack {prog : Program} {entry : BitVec 64}
     {A : RustCliAlloc} {stk : Nat}
     (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
@@ -566,22 +401,6 @@ theorem subroutine_ok_rustCliRealloc_withStack {prog : Program} {entry : BitVec 
     exact Entails.of_eq (by sep_ac_rfl)
   · rintro ⟨p, old, align, new, bs⟩ s0 sf
     dsimp only [rustCliReallocSpec, rustCliReallocSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-
-theorem subroutine_ok_inImage_rustCliRealloc_withStack {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {A : RustCliAlloc} {stk : Nat}
-    (hle : allocHookStack ≤ stk) (hbound : stk ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry ((rustCliReallocSpec A).inImage img)) :
-    subroutine_ok prog entry ((rustCliReallocSpecWithStack A stk).inImage img) := by
-  refine subroutine_ok_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) h ?_ ?_
-  · rintro ⟨p, old, align, new, bs⟩ s0
-    dsimp only [Spec.inImage, rustCliReallocSpec, rustCliReallocSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨p, old, align, new, bs⟩ s0 sf
-    dsimp only [Spec.inImage, rustCliReallocSpec, rustCliReallocSpecWithStack]
     rw [stackAt_split_from_allocHookStack s0.sp hle hbound]
     exact Entails.of_eq (by sep_ac_rfl)
 
@@ -757,24 +576,6 @@ theorem _root_.LibsignalBinary.Heap.RustCliAllocHooks.toEntries_stubs {A : RustC
    hH.dealloc_ok_stub hsD hstubD,
    hH.realloc_ok_stub hsR hstubR⟩
 
-theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.alloc_inImage {A : RustCliAlloc}
-    {P : Program} {addrs : RustAllocAddrs} (hE : RustCliAllocEntries A P addrs)
-    (img : Obj.Image) :
-    subroutine_ok P addrs.alloc ((rustCliAllocSpec A false).inImage img) :=
-  subroutine_ok_inImage img hE.alloc
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.dealloc_inImage {A : RustCliAlloc}
-    {P : Program} {addrs : RustAllocAddrs} (hE : RustCliAllocEntries A P addrs)
-    (img : Obj.Image) :
-    subroutine_ok P addrs.dealloc ((rustCliDeallocSpec A).inImage img) :=
-  subroutine_ok_inImage img hE.dealloc
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.realloc_inImage {A : RustCliAlloc}
-    {P : Program} {addrs : RustAllocAddrs} (hE : RustCliAllocEntries A P addrs)
-    (img : Obj.Image) :
-    subroutine_ok P addrs.realloc ((rustCliReallocSpec A).inImage img) :=
-  subroutine_ok_inImage img hE.realloc
-
 theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.alloc_externStack {A : RustCliAlloc}
     {P : Program} {addrs : RustAllocAddrs} (hE : RustCliAllocEntries A P addrs) :
     subroutine_ok P addrs.alloc (rustCliAllocSpec A false).withExternStackFromAllocOom' :=
@@ -789,27 +590,6 @@ theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.realloc_externStack {A :
     {P : Program} {addrs : RustAllocAddrs} (hE : RustCliAllocEntries A P addrs) :
     subroutine_ok P addrs.realloc (rustCliReallocSpec A).withExternStackFromAllocOom' :=
   subroutine_ok_withExternStackFromAllocOom' hE.realloc
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.alloc_externStack_inImage
-    {A : RustCliAlloc} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocEntries A P addrs) (img : Obj.Image) :
-    subroutine_ok P addrs.alloc
-      (((rustCliAllocSpec A false).withExternStackFromAllocOom').inImage img) :=
-  subroutine_ok_inImage img hE.alloc_externStack
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.dealloc_externStack_inImage
-    {A : RustCliAlloc} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocEntries A P addrs) (img : Obj.Image) :
-    subroutine_ok P addrs.dealloc
-      (((rustCliDeallocSpec A).withExternStackFromAllocOom').inImage img) :=
-  subroutine_ok_inImage img hE.dealloc_externStack
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.realloc_externStack_inImage
-    {A : RustCliAlloc} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocEntries A P addrs) (img : Obj.Image) :
-    subroutine_ok P addrs.realloc
-      (((rustCliReallocSpec A).withExternStackFromAllocOom').inImage img) :=
-  subroutine_ok_inImage img hE.realloc_externStack
 
 theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.alloc_withStack
     {A : RustCliAlloc} {P : Program} {addrs : RustAllocAddrs}
@@ -831,27 +611,6 @@ theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.realloc_withStack
     (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
     subroutine_ok P addrs.realloc (rustCliReallocSpecWithStack A stk) :=
   subroutine_ok_rustCliRealloc_withStack hle hbound hE.realloc
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.alloc_withStack_inImage
-    {A : RustCliAlloc} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocEntries A P addrs) (img : Obj.Image) {stk : Nat}
-    (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
-    subroutine_ok P addrs.alloc ((rustCliAllocSpecWithStack A false stk).inImage img) :=
-  subroutine_ok_inImage img (hE.alloc_withStack hle hbound)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.dealloc_withStack_inImage
-    {A : RustCliAlloc} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocEntries A P addrs) (img : Obj.Image) {stk : Nat}
-    (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
-    subroutine_ok P addrs.dealloc ((rustCliDeallocSpecWithStack A stk).inImage img) :=
-  subroutine_ok_inImage img (hE.dealloc_withStack hle hbound)
-
-theorem _root_.LibsignalBinary.Heap.RustCliAllocEntries.realloc_withStack_inImage
-    {A : RustCliAlloc} {P : Program} {addrs : RustAllocAddrs}
-    (hE : RustCliAllocEntries A P addrs) (img : Obj.Image) {stk : Nat}
-    (hle : allocHookStack ≤ stk := by decide) (hbound : stk ≤ 2 ^ 64 := by decide) :
-    subroutine_ok P addrs.realloc ((rustCliReallocSpecWithStack A stk).inImage img) :=
-  subroutine_ok_inImage img (hE.realloc_withStack hle hbound)
 
 /-! ## Transport Focus Check -/
 

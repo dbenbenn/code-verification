@@ -9,22 +9,22 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3F
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3B
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3F
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3B -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key `RootKdfRO` Cutoff Endpoints (`G3.5` and `G3.6`)
@@ -33,7 +33,7 @@ Matches `authRkCutoffExp1Key` at cutoffs `0` and `S.N_sess_tot` with `authFixedE
 stages `.g3_5` and `.g3_6` over `pqxdhAuthImpl1KeyG`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000

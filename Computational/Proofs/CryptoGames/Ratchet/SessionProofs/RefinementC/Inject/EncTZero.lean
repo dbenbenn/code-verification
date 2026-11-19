@@ -21,7 +21,7 @@ Proves `closeByStateC_inject_encT_zero`, closing the inject step when a new ratc
 X25519 agreement so both sides reject.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

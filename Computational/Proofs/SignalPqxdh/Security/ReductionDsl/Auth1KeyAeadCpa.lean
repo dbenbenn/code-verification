@@ -10,12 +10,15 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfBase
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaWire
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaLeaves
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaMid
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaSend
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaWire
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaEval -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaLeaves
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaMid -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaSend
 public import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaEvalExp -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-Key `AeadIndCpa` `ReductionDsl` Program
@@ -25,7 +28,7 @@ Defines `aeadCpaRedProg1Key`, obtained from `aeadCpaRedProg` by replacing `.init
 along with static cost, query-count, and `.Bounded` bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 16000000
@@ -44,26 +47,7 @@ section Cpa1KeyBranches
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List PT}
 
-def cpaNonSend1KeyC (idx : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
-    (q : Var Γ₃ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
-    (send : (opk : Bool) → {Δ' : List PT} → [Ext Γ₁ Δ'] → [Ext Γ₂ Δ'] →
-      Var Δ' sendQTy → Comp pqxdhOps pqPrimIface Δ' cpaPreTy)
-    (inl : {Δ' : List PT} → [Ext Γ₁ Δ'] → Comp pqxdhOps pqPrimIface Δ' (.prod authRespTy cpaStTy) →
-      Comp pqxdhOps pqPrimIface Δ' cpaPreTy) : Comp pqxdhOps pqPrimIface Δ cpaPreTy :=
-  caseSumV (v q) (fun u => inl (wrapCpa idx (initPrin1KeyFixedB K fhst u))) fun q =>
-  caseSumV (v q) (fun u => inl (wrapCpa idx (corruptFixedB K fhst u))) fun q =>
-  caseSumV (v q) (fun x => inl (wrapCpa idx (genSpkFixedB K fhst x))) fun q =>
-  caseSumV (v q) (fun x => inl (wrapCpa idx (genOpkFixedB K fhst x))) fun q =>
-  caseSumV (v q) (fun x => send true x) fun q =>
-  caseSumV (v q) (fun x => send false x) fun q =>
-  caseSumV (v q) (fun x => inl (wrapCpa idx (cpaRecvC S K true fhst x))) fun q =>
-  caseSumV (v q) (fun x => inl (wrapCpa idx (cpaRecvC S K false fhst x))) fun q =>
-  caseSumV (v q) (fun sec => inl (wrapCpa idx (roFixedB K fhst sec))) fun q =>
-  caseSumV (v q) (fun x => inl (wrapCpa idx (roRootFixedB K fhst x))) fun q =>
-  caseSumV (v q) (fun _ => inl (.ret (.pair aNone (.pair (v idx) (.pair (.nat 0) (v fhst)))))) fun sk =>
-  inl (wrapCpa idx (registerFixedB fhst sk))
-
-def cpaNonSendSlot1KeyC {Γ₄ : List PT} (idx : Var Γ₁ .nat) (ns : Var Γ₂ .nat)
+@[expose] def cpaNonSendSlot1KeyC {Γ₄ : List PT} (idx : Var Γ₁ .nat) (ns : Var Γ₂ .nat)
     (fhst : Var Γ₃ authHybridStateFixedTy) (q : Var Γ₄ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (send : (opk : Bool) → {Δ' : List PT} → [Ext Γ₁ Δ'] → [Ext Γ₂ Δ'] → [Ext Γ₃ Δ'] →
@@ -90,7 +74,7 @@ section Prog1Key
 
 variable (S : Setup) (K : Nat)
 
-def cpaStep1KeyC (allowPause : Bool) : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] cpaPreTy :=
+@[expose] def cpaStep1KeyC (allowPause : Bool) : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] cpaPreTy :=
   letV (.fst (.var .zero) : Expr pqxdhOps [cpaStTy, authQueryTy] .nat) fun idx =>
   letV (.fst (.snd (.var (.succ .zero))) :
       Expr pqxdhOps [.nat, cpaStTy, authQueryTy] .nat) fun ns =>
@@ -109,15 +93,15 @@ def cpaStep1KeyC (allowPause : Bool) : Comp pqxdhOps pqPrimIface [cpaStTy, authQ
           else .ret (.inl (.pair aNone (.pair (v idx) (.pair (v ns) (v fhst)))))))
     (fun m => bindV m fun r => .ret (.inl (v r)))
 
-def cpaPre1KeyC : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] cpaPreTy := cpaStep1KeyC S K true
+@[expose] def cpaPre1KeyC : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] cpaPreTy := cpaStep1KeyC S K true
 
-def cpaPost1KeyC : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] (.prod authRespTy cpaStTy) :=
+@[expose] def cpaPost1KeyC : Comp pqxdhOps pqPrimIface [cpaStTy, authQueryTy] (.prod authRespTy cpaStTy) :=
   bindV (cpaStep1KeyC S K false) fun r =>
   caseSumV (v r) (fun d => .ret (v d)) fun _ =>
     .ret (.pair aNone (.var (.succ (.succ .zero)) : Expr pqxdhOps _ cpaStTy))
 
 /-- `ReductionDsl` program for `aeadCpaReductionAuthFixed1Key S b` at list bound `K`. -/
-def aeadCpaRedProg1Key :
+@[expose] def aeadCpaRedProg1Key :
     TwoStageCostedReduction pqxdhOps pqPrimIface (authSpec S) (authCodec S)
       .unit .unit .bool cpaChOutTy (.opt (B 32)) .bool where
   σ          := cpaStTy
@@ -131,20 +115,9 @@ def aeadCpaRedProg1Key :
 
 end Prog1Key
 
-theorem stepAuthOtherPrim1Key_true_eq_of_ne {S : Setup} (q : AuthQuery S)
-    (hq : AuthQuery.NotInitPrin q) (hst : AuthHybridStateFixed S) :
-    SignalPqxdh.Security.stepAuthOtherPrim1Key true S q hst =
-      SignalPqxdh.Security.stepAuthOtherPrim true S q hst := by
-  cases q <;> first | exact absurd rfl (hq _) | rfl
-
 theorem stepAuthCpaNonSendPrim1Key_eq_of_ne {S : Setup} (q : AuthQuery S)
     (hq : AuthQuery.NotInitPrin q) (hst : AuthHybridStateFixed S) :
     stepAuthCpaNonSendPrim1Key S q hst = stepAuthCpaNonSendPrim S q hst := by
-  cases q <;> first | exact absurd rfl (hq _) | rfl
-
-theorem stepAuthCpaCutoffPrim1Key_eq_of_ne {S : Setup} (cut : Nat) (q : AuthQuery S)
-    (hq : AuthQuery.NotInitPrin q) (hst : AuthHybridStateFixed S) :
-    stepAuthCpaCutoffPrim1Key cut S q hst = stepAuthCpaCutoffPrim cut S q hst := by
   cases q <;> first | exact absurd rfl (hq _) | rfl
 
 theorem stepAuthOtherPrim1Key_cpa_initPrin {S : Setup} (u : Fin S.N_id)
@@ -153,62 +126,6 @@ theorem stepAuthOtherPrim1Key_cpa_initPrin {S : Setup} (u : Fin S.N_id)
       AuthSubHops1to3.stepAuthOtherPrim1Key S (.initPrin u) hst := by
   simp only [SignalPqxdh.Security.stepAuthOtherPrim1Key, AuthSubHops1to3.stepAuthOtherPrim1Key, hw,
     Bool.false_eq_true, ite_false]
-
-def stepCpaGen1Key (S : Setup) (ap : Bool) (idx : Nat) (q : AuthQuery S)
-    (hst : AuthHybridStateFixed S) :
-    OracleComp PrimBaseSpec ((AuthResponse × AuthHybridStateFixed S) ⊕
-      ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × AuthHybridStateFixed S))) :=
-  match q with
-  | .sendOPK u i b m0 m1 => cpaSendCollapse ap hst <$> cpaSendShOpk S ap idx u i b m0 m1 hst
-  | .sendNoOPK u i b m0 m1 => cpaSendCollapse ap hst <$> cpaSendShNoOpk S ap idx u i b m0 m1 hst
-  | q' => Sum.inl <$> stepAuthCpaNonSendPrim1Key S q' hst
-
-theorem stepCpaGen1Key_eq_of_ne (S : Setup) (ap : Bool) (idx : Nat) (q : AuthQuery S)
-    (hq : AuthQuery.NotInitPrin q) (hst : AuthHybridStateFixed S) :
-    stepCpaGen1Key S ap idx q hst = stepCpaGen S ap idx q hst := by
-  cases q <;> first | exact absurd rfl (hq _) | rfl
-
-def stepMidCpa1Key (S : Setup) (idx : Nat) (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
-    OracleComp PrimBaseSpec
-      (((authSpec S).Range q × AuthHybridStateFixed S) ⊕
-        ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × AuthHybridStateFixed S))) :=
-  match q with
-  | .sendOPK u i b m0 m1 => cpaSendResToStep <$> cpaSendShOpk S true idx u i b m0 m1 hst
-  | .sendNoOPK u i b m0 m1 => cpaSendResToStep <$> cpaSendShNoOpk S true idx u i b m0 m1 hst
-  | q' => Sum.inl <$> stepAuthCpaNonSendPrim1Key S q' hst
-
-theorem stepCpaGen1Key_true (S : Setup) (idx : Nat) (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
-    stepCpaGen1Key S true idx q hst = stepMidCpa1Key S idx q hst := by
-  cases q
-  case sendOPK u i b m0 m1 =>
-    simp only [stepCpaGen1Key, stepMidCpa1Key]
-    refine congrArg (· <$> _) (funext fun x => ?_)
-    rcases x with ⟨r, h⟩ | ⟨ad, m0', m1', p, h⟩ <;> rfl
-  case sendNoOPK u i b m0 m1 =>
-    simp only [stepCpaGen1Key, stepMidCpa1Key]
-    refine congrArg (· <$> _) (funext fun x => ?_)
-    rcases x with ⟨r, h⟩ | ⟨ad, m0', m1', p, h⟩ <;> rfl
-  all_goals rfl
-
-theorem stepCpaGen1Key_false (S : Setup) (idx : Nat) (q : AuthQuery S)
-    (hst : AuthHybridStateFixed S) :
-    stepCpaGen1Key S false idx q hst = Sum.inl <$> stepAuthCpaCutoffPrim1Key idx S q hst := by
-  cases q
-  case sendOPK u i b m0 m1 =>
-    simp only [stepCpaGen1Key, stepAuthCpaCutoffPrim1Key, cpaSendShOpk, runAuthSendCpaCutoffPrim]
-    split
-    · simp only [map_pure]; rfl
-    · simp only [map_eq_bind_pure_comp, bind_assoc]
-      refine bind_congr fun x => ?_
-      rcases x with ⟨r, h⟩ | ⟨ad, m0', m1', p, h⟩ <;> simp [cpaSendCollapse]
-  case sendNoOPK u i b m0 m1 =>
-    simp only [stepCpaGen1Key, stepAuthCpaCutoffPrim1Key, cpaSendShNoOpk, runAuthSendCpaCutoffPrim]
-    split
-    · simp only [map_pure]; rfl
-    · simp only [map_eq_bind_pure_comp, bind_assoc]
-      refine bind_congr fun x => ?_
-      rcases x with ⟨r, h⟩ | ⟨ad, m0', m1', p, h⟩ <;> simp [cpaSendCollapse]
-  all_goals rfl
 
 theorem cpaStep1KeyC_eval_inr (S : Setup) (K : Nat) (ap : Bool) (sv : cpaStTy.denote) (y : _)
     (qv : authQueryTy.denote) (hq : qv = Sum.inr y) :
@@ -404,93 +321,6 @@ theorem stepMidCpaSlot1Key_leaves (S : Setup) (idx n : Nat) (q : AuthQuery S)
       (stepAuthCpaNonSendPrim1Key_ideal_leaves S n _ shst.2 hI.inv hI.ideal_le).toHoldsOnLeaves
       (fun x ⟨hinv, hideal⟩ => ⟨hinv, hideal, Nat.le_trans hI.slot_le (Nat.le_succ n)⟩)
 
-theorem stepAuthCpaCutoffPrim1Key_leaves (S : Setup) (cut n : Nat) (q : AuthQuery S)
-    (hst : AuthHybridStateFixed S) (hI : CpaInv n hst) :
-    AllLeaves (fun x => CpaInv (n + 1) x.2) (stepAuthCpaCutoffPrim1Key cut S q hst) := by
-  by_cases hI' : AuthQuery.NotInitPrin q
-  · rw [stepAuthCpaCutoffPrim1Key_eq_of_ne cut q hI' hst]
-    exact stepAuthCpaCutoffPrim_leaves S cut n q hst hI
-  · obtain ⟨u, rfl⟩ : ∃ u, q = .initPrin u := by
-      by_contra hne; push Not at hne; exact hI' hne
-    exact stepAuthCpaNonSendPrim1Key_leaves S n _ hst hI
-
-theorem stepMidCpa1Key_leaves (S : Setup) (idx n : Nat) (q : AuthQuery S)
-    (hst : AuthHybridStateFixed S) (hI : CpaInv n hst) :
-    HoldsOnLeaves (PreStepInvP (fun n h => CpaInv n h) (CpaPI S) n) (stepMidCpa1Key S idx q hst) := by
-  cases q
-  case sendOPK u i b m0 m1 =>
-    simp only [stepMidCpa1Key, cpaSendShOpk]
-    split
-    · exact HoldsOnLeaves.pure (hI.mono (Nat.le_succ n))
-    · exact HoldsOnLeaves.map _
-        (tryPauseAuthCpaSendFixedPrim_leaves S true idx n _ u b m0 m1 hst hI).toHoldsOnLeaves
-        (fun x hx => cpaSendResToStep_leaf S n x hx)
-  case sendNoOPK u i b m0 m1 =>
-    simp only [stepMidCpa1Key, cpaSendShNoOpk]
-    split
-    · exact HoldsOnLeaves.pure (hI.mono (Nat.le_succ n))
-    · exact HoldsOnLeaves.map _
-        (tryPauseAuthCpaSendFixedPrim_leaves S true idx n _ u b m0 m1 hst hI).toHoldsOnLeaves
-        (fun x hx => cpaSendResToStep_leaf S n x hx)
-  all_goals
-    exact HoldsOnLeaves.map _ (stepAuthCpaNonSendPrim1Key_leaves S n _ hst hI).toHoldsOnLeaves
-      (fun x hx => hx)
-
-theorem stepUntilCpa1Key_eq (S : Setup) (idx : Nat) (mx : OracleComp (unifSpec + authSpec S) Bool)
-    (fuel : Nat) (hst : AuthHybridStateFixed S) :
-    stepUntilAuthCpaChallengeFixedPrim1Key idx S false mx fuel hst =
-      Gcpa <$> stepUntilPauseFuel false (stepMidCpa1Key S idx) mx fuel hst := by
-  refine stepUntilPauseFuel_char false (stepMidCpa1Key S idx) Gcpa
-    (fun mx fuel h => stepUntilAuthCpaChallengeFixedPrim1Key idx S false mx fuel h) ?_ ?_ ?_ ?_
-    mx fuel hst
-  · intro a fuel s; rfl
-  · intro uq k fuel s
-    simp only [stepUntilAuthCpaChallengeFixedPrim1Key]
-    rw [OracleComp.construct_query_bind]
-    rfl
-  · intro gq k s
-    simp only [stepUntilAuthCpaChallengeFixedPrim1Key]
-    rw [OracleComp.construct_query_bind]
-    rfl
-  · intro gq k fuel s
-    simp only [stepUntilAuthCpaChallengeFixedPrim1Key]
-    rw [OracleComp.construct_query_bind]
-    cases gq
-    case sendOPK u i b m0 m1 =>
-      simp only [stepMidCpa1Key, cpaSendShOpk]
-      split
-      · simp only [map_pure, pure_bind]; rfl
-      · rw [bind_map_left]
-        refine bind_congr fun x => ?_
-        rcases x with ⟨r, h⟩ | ⟨ad, m0', m1', p, h⟩ <;> rfl
-    case sendNoOPK u i b m0 m1 =>
-      simp only [stepMidCpa1Key, cpaSendShNoOpk]
-      split
-      · simp only [map_pure, pure_bind]; rfl
-      · rw [bind_map_left]
-        refine bind_congr fun x => ?_
-        rcases x with ⟨r, h⟩ | ⟨ad, m0', m1', p, h⟩ <;> rfl
-    all_goals
-      simp only [stepMidCpa1Key]
-      rw [bind_map_left]
-
-theorem runWithPrimStepFuel1Key_eq (S : Setup) (idx : Nat)
-    (mx : OracleComp (unifSpec + authSpec S) Bool) (fuel : Nat) (hst : AuthHybridStateFixed S) :
-    runWithPrimStepFuel false (stepAuthCpaCutoffPrim1Key idx S) mx fuel hst =
-      runWithFuelPrim false (stepAuthCpaCutoffPrim1Key idx S) mx fuel hst := by
-  have := runWithFuelPrim_char false (stepAuthCpaCutoffPrim1Key idx S) id
-    (fun mx fuel h => runWithPrimStepFuel false (stepAuthCpaCutoffPrim1Key idx S) mx fuel h)
-    (fun _ _ _ => rfl)
-    (fun uq k fuel s => by
-      simp only [runWithPrimStepFuel]; rw [OracleComp.construct_query_bind]
-      rfl)
-    (fun gq k s => by
-      simp only [runWithPrimStepFuel]; rw [OracleComp.construct_query_bind]; rfl)
-    (fun gq k fuel s => by
-      simp only [runWithPrimStepFuel]; rw [OracleComp.construct_query_bind])
-    mx fuel hst
-  rw [this, id_map]
-
 def GcpaSlot1Key {S : Setup} :
     Option (Bytes × Bytes × Bytes) ×
       RedProg2State (authSpec S) Bool (AuthCpaPausePayload S) (CpaSlotSt S) →
@@ -558,12 +388,6 @@ theorem runWithPrimStepFuelSlot1Key_eq (S : Setup) (idx : Nat)
     mx fuel shst
   rw [this, id_map]
 
-theorem cpaFinish1Key_eval (S : Setup) (K idx : Nat) (c? : Option Bytes) (b' : Bool)
-    (hst : AuthHybridStateFixed S) (hB : AuthListsBounded K hst) :
-    (aeadCpaRedProg1Key S K).finish.eval (.cons (cpaStToVal idx hst) (.cons b' (.cons c? .nil))) =
-      AuthSubHops1to3.finalizeAuthFixedPrim S true b' hst.toAuthHybridState :=
-  cpaFinish_eval S K idx c? b' hst hB
-
 theorem cpaInit_slot1Key_eval (S : Setup) (K : Nat) :
     (aeadCpaRedProg1Key S K).init.eval (.cons () .nil) =
       (do
@@ -607,7 +431,7 @@ theorem cpaFinish_slot1Key_eval (S : Setup) (K idx : Nat) (c? : Option Bytes) (b
   cpaFinish_slot_eval S K idx c? b' shst hB
 
 /-- `AeadIndCpa` adversary obtained by running `aeadCpaRedProg1Key` at capacity and fuel `b.q_total`. -/
-def aeadCpaDsl1KeyAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : AeadIndCpaAdv where
+@[expose] def aeadCpaDsl1KeyAdv (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : AeadIndCpaAdv where
   State := Mid (authSpec S) Bool (aeadCpaRedProg1Key S b.q_total).π.denote
     (aeadCpaRedProg1Key S b.q_total).σ.denote cpaChOutTy.denote
   choose := do
@@ -842,13 +666,6 @@ theorem aeadCpaRedProg1Key_totalQueries_le (w : pqPrimIface.Tag → ℕ)
   exacts [h1, h2]
 
 end Cpa1KeyCost
-
-/-- Step-cost budget for `aeadCpaRedProg1Key`. -/
-theorem aeadCpaRedProg1Key_totalCost_budget (S : Setup) (b : QueryBudget) :
-    (aeadCpaRedProg1Key S b.q_total).totalCost b.q_total ≤
-      SignalPqxdh.Security.stepCostBudget S b :=
-  (aeadCpaRedProg1Key_totalCost_le S b.q_total b.q_total).trans
-    (aeadCpaRedProg_totalCost_le_security S b)
 
 /-- Primitive-query budget for `aeadCpaRedProg1Key`. -/
 theorem aeadCpaRedProg1Key_totalQueries_budget (S : Setup) (b : QueryBudget) :

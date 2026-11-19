@@ -9,10 +9,17 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon
+import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon
 public import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
-public import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
+import LibsignalBinary.Proofs.CodeLayout
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.OpcodeExclusion
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
 
 /-!
 # Instruction Decode Lemmas and Range-Fetch Tactics for `libsignal_e2e`
@@ -21,7 +28,7 @@ Generates instruction decode theorems and range-fetch tactics for `libsignal_e2e
 (`0x43a38..0x43d1c`), `session_send` (`0x47cd8..0x47f20`), and `session_recv` (`0x469c8..0x46c20`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Bin
 

@@ -9,18 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Identity
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Identity
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import ProofLib.SepLogic.WP.Apply
+import ProofLib.Sep
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` Relocatable Contracts for `Getters/Identity`
@@ -30,7 +31,7 @@ Establishes `[LibsignalPlacement]` contracts with `VmPreserved` and panic-freedo
 `SessionState::remote_identity_key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -83,7 +84,7 @@ attribute [local irreducible] Program.fetch Program.externAt? VmPreserved
 
 /-! ## `<PublicKey as TryFrom<&[u8]>>::try_from` with `VmPreserved` -/
 
-def pkTryFromPlacedBudgetSpec [LibsignalPlacement] :
+@[expose] def pkTryFromPlacedBudgetSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64) :=
   withVmPreserved pkTryFromPlacedSpec
 
@@ -180,7 +181,7 @@ theorem pkTryFrom_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
       try simp only [sepConj_assoc, *]
       wp_done
 
-def pkTryFromOkPlacedSpec [LibsignalPlacement] :
+@[expose] def pkTryFromOkPlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64 × BitVec 64) where
   pre := fun (p, bs, pk, out, out33) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧
@@ -202,20 +203,12 @@ theorem pkTryFromOk_placed_ok [LibsignalPlacement] (H : String → Option (State
   refine ⟨(p, bs, out), memRegion (out + 40#64) 8 ∗ R, ?_, fun sf hpost => ?_⟩
   · simp only [pkTryFromPlacedBudgetSpec, withVmPreserved, pkTryFromPlacedSpec, pkTryFromSpec,
       lsLogOff, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx8⟩, ?_⟩
-    rw [ProofLib.memRegion_split' (b := out) (n := 33) (k := 7) (b' := out + 33#64)
-          rfl (by bv_omega) (by decide)]
-    rw [ProofLib.memRegion_split' (b := out + 33#64) (n := 7) (k := 8) (b' := out + 40#64)
-          rfl (by bv_omega) (by decide)] at hmem
-    convert hmem using 1; sep_ac_rfl
+    exact ⟨⟨hx0, hx1, hx8⟩, Satisfies.mono (by sep_interval) hmem⟩
   · simp only [pkTryFromPlacedBudgetSpec, withVmPreserved, pkTryFromPlacedSpec, pkTryFromSpec,
       lsLogOff, hdes, pkTryFromResultAt, sepConj_assoc, satisfies_pure_sepConj] at hpost
     rcases hpost with ⟨hvm, htr, hpost⟩
     simp only [pkTryFromOkPlacedSpec, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hvm, htr⟩, ?_⟩
-    rw [ProofLib.memRegion_split' (b := out + 33#64) (n := 7) (k := 8) (b' := out + 40#64)
-          rfl (by bv_omega) (by decide)]
-    convert hpost using 1; sep_ac_rfl
+    exact ⟨⟨hvm, htr⟩, Satisfies.mono (by sep_interval) hpost⟩
 
 /-! ## Stack Layout Splitting Helpers -/
 
@@ -239,24 +232,7 @@ private theorem memRegion_33_localKeyChunks (ret : BitVec 64) :
       (∃∗ v15 : BitVec 64, (ret + 16#64) ↦₆₄ v15) ∗
       (∃∗ v23 : BitVec 64, (ret + 24#64) ↦₆₄ v23) ∗
       (∃∗ v31 : BitVec 8, (ret + 32#64) ↦₈ v31) := by
-  rw [ProofLib.memRegion_split' (b := ret) (n := 1) (k := 32)
-        (b' := ret + 1#64) rfl (add_ofNat_eq_add ret 1#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 1#64) (n := 8) (k := 24)
-        (b' := ret + 9#64) rfl (add_add_ofNat_eq_add ret 1#64 9#64 8 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 9#64) (n := 1) (k := 23)
-        (b' := ret + 10#64) rfl (add_add_ofNat_eq_add ret 9#64 10#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 10#64) (n := 4) (k := 19)
-        (b' := ret + 14#64) rfl (add_add_ofNat_eq_add ret 10#64 14#64 4 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 14#64) (n := 2) (k := 17)
-        (b' := ret + 16#64) rfl (add_add_ofNat_eq_add ret 14#64 16#64 2 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 16#64) (n := 8) (k := 9)
-        (b' := ret + 24#64) rfl (add_add_ofNat_eq_add ret 16#64 24#64 8 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 24#64) (n := 8) (k := 1)
-        (b' := ret + 32#64) rfl (add_add_ofNat_eq_add ret 24#64 32#64 8 rfl) (by decide),
-      memRegion_one ret, memRegion_eight (ret + 1#64), memRegion_one (ret + 9#64),
-      memRegion_four (ret + 10#64), memRegion_two (ret + 14#64),
-      memRegion_eight (ret + 16#64), memRegion_eight (ret + 24#64),
-      memRegion_one (ret + 32#64)]
+  sep_interval_eq
 
 private theorem stackAt_localIdentityKey_split (sp : BitVec 64) :
     stackAt sp localIdentityKeyStack =
@@ -265,22 +241,7 @@ private theorem stackAt_localIdentityKey_split (sp : BitVec 64) :
       (∃∗ w : BitVec 32, (sp - 8#64) ↦₃₂ w) ∗
       (∃∗ h : BitVec 16, (sp - 4#64) ↦₁₆ h) ∗
       memRegion (sp - 2#64) 2 := by
-  simp only [stackAt, localIdentityKeyStack]
-  rw [show BitVec.ofNat 64 80 = 80#64 from rfl,
-      ProofLib.memRegion_split' (b := sp - 80#64) (n := 33) (k := 47)
-        (b' := sp - 47#64) rfl (sub_add_ofNat_eq_sub sp 80#64 47#64 33 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 47#64) (n := 15) (k := 32)
-        (b' := sp - 32#64) rfl (sub_add_ofNat_eq_sub sp 47#64 32#64 15 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 32#64) (n := 24) (k := 8)
-        (b' := sp - 8#64) rfl (sub_add_ofNat_eq_sub sp 32#64 8#64 24 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 8#64) (n := 4) (k := 4)
-        (b' := sp - 4#64) rfl (sub_add_ofNat_eq_sub sp 8#64 4#64 4 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 4#64) (n := 2) (k := 2)
-        (b' := sp - 2#64) rfl (sub_add_ofNat_eq_sub sp 4#64 2#64 2 rfl) (by decide),
-      (memRegion_cells (sp - 32#64) 3 (by decide) :
-        memRegion (sp - 32#64) 24 = cells (sp - 32#64) 3),
-      memRegion_four (sp - 8#64),
-      memRegion_two (sp - 4#64)]
+  dsimp only [stackAt, localIdentityKeyStack]; sep_interval_eq
 
 private theorem vecGhostAt_eq_of_nil (A : RustAlloc) (g : VecGhost) (a : BitVec 64)
     (hnil : g.bytes = []) :
@@ -289,11 +250,8 @@ private theorem vecGhostAt_eq_of_nil (A : RustAlloc) (g : VecGhost) (a : BitVec 
       vecU8Buf A g.cap g.ptr g.bytes := by
   unfold vecGhostAt
   rw [vecU8At_eq_header_sep_buf, hnil]
-  change ((a ↦₆₄ g.cap) ∗ ((a + 8#64) ↦₆₄ g.ptr) ∗ ((a + 16#64) ↦₆₄ 0#64)) ∗
-      vecU8Buf A g.cap g.ptr [] =
-    (a ↦₆₄ g.cap) ∗ ((a + 8#64) ↦₆₄ g.ptr) ∗ ((a + 16#64) ↦₆₄ 0#64) ∗
-      vecU8Buf A g.cap g.ptr []
-  simp only [sepConj_assoc]
+  dsimp only [CryptoVerification.RustHeap.vecHeader, List.length_nil, BitVec.ofNat_eq_ofNat]
+  exact Entails.antisymm (by bi_entail) (by bi_entail)
 
 private theorem pointsTo16_zero (a : BitVec 64) :
     (a ↦₁₆ 0#16) = (a ↦₈ 0#8) ∗ ((a + 1#64) ↦₈ 0#8) := by
@@ -307,21 +265,12 @@ private theorem pointsTo16_256 (a : BitVec 64) :
 
 private theorem memRegion_34_none_split (ret : BitVec 64) :
     memRegion ret 34 = (∃∗ h0 : BitVec 16, ret ↦₁₆ h0) ∗ memRegion (ret + 2#64) 32 := by
-  rw [ProofLib.memRegion_split' (b := ret) (n := 2) (k := 32)
-        (b' := ret + 2#64) rfl (by bv_omega) (by decide),
-      memRegion_two ret]
+  sep_interval_eq
 
 private theorem stackAt_remoteIdentityKey_none_split (sp : BitVec 64) :
     stackAt sp remoteIdentityKeyStack =
       memRegion (sp - 144#64) 112 ∗ cells (sp - 32#64) 3 ∗ memRegion (sp - 8#64) 8 := by
-  simp only [stackAt, remoteIdentityKeyStack]
-  rw [show BitVec.ofNat 64 144 = 144#64 from rfl,
-      ProofLib.memRegion_split' (b := sp - 144#64) (n := 112) (k := 32)
-        (b' := sp - 32#64) rfl (by bv_omega) (by decide),
-      ProofLib.memRegion_split' (b := sp - 32#64) (n := 24) (k := 8)
-        (b' := sp - 8#64) rfl (by bv_omega) (by decide),
-      (memRegion_cells (sp - 32#64) 3 (by decide) :
-        memRegion (sp - 32#64) 24 = cells (sp - 32#64) 3)]
+  dsimp only [stackAt, remoteIdentityKeyStack]; sep_interval_eq
 
 private theorem sevenLo_eq_sevenHi (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8) :
     ((a ↦₃₂ (b3 ++ b2 ++ b1 ++ b0)) ∗ ((a + 4#64) ↦₈ b4) ∗ ((a + 5#64) ↦₈ b5) ∗ ((a + 6#64) ↦₈ b6)) =
@@ -409,7 +358,7 @@ private theorem vecGhostAt_ss_24_of_pos (A : RustAlloc) (g : VecGhost) (ss : Bit
   have h32 : ss + 24#64 + 8#64 = ss + 32#64 := by bv_omega
   have h40 : ss + 24#64 + 16#64 = ss + 40#64 := by bv_omega
   rw [h32, h40]
-  sep_ac_rfl
+  exact Entails.antisymm (by bi_entail) (by bi_entail)
 
 private theorem remoteKeyChunks_ret_2 (ret : BitVec 64)
     (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
@@ -420,17 +369,7 @@ private theorem remoteKeyChunks_ret_2 (ret : BitVec 64)
       ((ret + 6#64) ↦₈ b4) ∗ ((ret + 7#64) ↦₈ b5) ∗ ((ret + 8#64) ↦₈ b6) ∗
       ((ret + 9#64) ↦₁₆ v7) ∗ ((ret + 11#64) ↦₃₂ v9) ∗ ((ret + 15#64) ↦₁₆ v13) ∗
       ((ret + 17#64) ↦₆₄ v15) ∗ ((ret + 25#64) ↦₆₄ v23) ∗ ((ret + 33#64) ↦₈ v31) := by
-  dsimp only [remoteKeyChunks]
-  have hr6 : ret + 2#64 + 4#64 = ret + 6#64 := add_add_eq_add ret 2#64 6#64 4#64 rfl
-  have hr7 : ret + 2#64 + 5#64 = ret + 7#64 := add_add_eq_add ret 2#64 7#64 5#64 rfl
-  have hr8 : ret + 2#64 + 6#64 = ret + 8#64 := add_add_eq_add ret 2#64 8#64 6#64 rfl
-  have hr9 : ret + 2#64 + 7#64 = ret + 9#64 := add_add_eq_add ret 2#64 9#64 7#64 rfl
-  have hr11 : ret + 2#64 + 9#64 = ret + 11#64 := add_add_eq_add ret 2#64 11#64 9#64 rfl
-  have hr15 : ret + 2#64 + 13#64 = ret + 15#64 := add_add_eq_add ret 2#64 15#64 13#64 rfl
-  have hr17 : ret + 2#64 + 15#64 = ret + 17#64 := add_add_eq_add ret 2#64 17#64 15#64 rfl
-  have hr25 : ret + 2#64 + 23#64 = ret + 25#64 := add_add_eq_add ret 2#64 25#64 23#64 rfl
-  have hr33 : ret + 2#64 + 31#64 = ret + 33#64 := add_add_eq_add ret 2#64 33#64 31#64 rfl
-  rw [hr6, hr7, hr8, hr9, hr11, hr15, hr17, hr25, hr33]
+  dsimp only [remoteKeyChunks]; sep_interval_eq
 
 private theorem remoteKeyChunks_sp_79 (sp : BitVec 64)
     (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
@@ -441,17 +380,7 @@ private theorem remoteKeyChunks_sp_79 (sp : BitVec 64)
       ((sp - 75#64) ↦₈ b4) ∗ ((sp - 74#64) ↦₈ b5) ∗ ((sp - 73#64) ↦₈ b6) ∗
       ((sp - 72#64) ↦₁₆ v7) ∗ ((sp - 70#64) ↦₃₂ v9) ∗ ((sp - 66#64) ↦₁₆ v13) ∗
       ((sp - 64#64) ↦₆₄ v15) ∗ ((sp - 56#64) ↦₆₄ v23) ∗ ((sp - 48#64) ↦₈ v31) := by
-  dsimp only [remoteKeyChunks]
-  have h75 : sp - 79#64 + 4#64 = sp - 75#64 := ibv_sub_add_eq_sub sp 79#64 75#64 4#64 rfl
-  have h74 : sp - 79#64 + 5#64 = sp - 74#64 := ibv_sub_add_eq_sub sp 79#64 74#64 5#64 rfl
-  have h73 : sp - 79#64 + 6#64 = sp - 73#64 := ibv_sub_add_eq_sub sp 79#64 73#64 6#64 rfl
-  have h72 : sp - 79#64 + 7#64 = sp - 72#64 := ibv_sub_add_eq_sub sp 79#64 72#64 7#64 rfl
-  have h70 : sp - 79#64 + 9#64 = sp - 70#64 := ibv_sub_add_eq_sub sp 79#64 70#64 9#64 rfl
-  have h66 : sp - 79#64 + 13#64 = sp - 66#64 := ibv_sub_add_eq_sub sp 79#64 66#64 13#64 rfl
-  have h64 : sp - 79#64 + 15#64 = sp - 64#64 := ibv_sub_add_eq_sub sp 79#64 64#64 15#64 rfl
-  have h56 : sp - 79#64 + 23#64 = sp - 56#64 := ibv_sub_add_eq_sub sp 79#64 56#64 23#64 rfl
-  have h48 : sp - 79#64 + 31#64 = sp - 48#64 := ibv_sub_add_eq_sub sp 79#64 48#64 31#64 rfl
-  rw [h75, h74, h73, h72, h70, h66, h64, h56, h48]
+  dsimp only [remoteKeyChunks]; sep_interval_eq
 
 private theorem sevenLo_sp_79 (sp : BitVec 64)
     (b0 b1 b2 b3 b4 b5 b6 : BitVec 8) (rest : SepProp) :
@@ -590,26 +519,7 @@ private theorem memRegion_34_remoteKeyChunks (ret : BitVec 64) :
       (∃∗ r17 : BitVec 64, (ret + 17#64) ↦₆₄ r17) ∗
       (∃∗ r25 : BitVec 64, (ret + 25#64) ↦₆₄ r25) ∗
       (∃∗ r33 : BitVec 8, (ret + 33#64) ↦₈ r33) := by
-  rw [ProofLib.memRegion_split' (b := ret) (n := 2) (k := 32)
-        (b' := ret + 2#64) rfl (add_ofNat_eq_add ret 2#64 2 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 2#64) (n := 4) (k := 28)
-        (b' := ret + 6#64) rfl (add_add_ofNat_eq_add ret 2#64 6#64 4 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 6#64) (n := 1) (k := 27)
-        (b' := ret + 7#64) rfl (add_add_ofNat_eq_add ret 6#64 7#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 7#64) (n := 1) (k := 26)
-        (b' := ret + 8#64) rfl (add_add_ofNat_eq_add ret 7#64 8#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 8#64) (n := 1) (k := 25)
-        (b' := ret + 9#64) rfl (add_add_ofNat_eq_add ret 8#64 9#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 9#64) (n := 8) (k := 17)
-        (b' := ret + 17#64) rfl (add_add_ofNat_eq_add ret 9#64 17#64 8 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 17#64) (n := 8) (k := 9)
-        (b' := ret + 25#64) rfl (add_add_ofNat_eq_add ret 17#64 25#64 8 rfl) (by decide),
-      ProofLib.memRegion_split' (b := ret + 25#64) (n := 8) (k := 1)
-        (b' := ret + 33#64) rfl (add_add_ofNat_eq_add ret 25#64 33#64 8 rfl) (by decide),
-      memRegion_two ret, memRegion_four (ret + 2#64),
-      memRegion_one (ret + 6#64), memRegion_one (ret + 7#64), memRegion_one (ret + 8#64),
-      memRegion_eight (ret + 9#64), memRegion_eight (ret + 17#64),
-      memRegion_eight (ret + 25#64), memRegion_one (ret + 33#64)]
+  sep_interval_eq
 
 private theorem stackAt_remoteIdentityKey_some_split (sp : BitVec 64) :
     stackAt sp remoteIdentityKeyStack =
@@ -639,67 +549,7 @@ private theorem stackAt_remoteIdentityKey_some_split (sp : BitVec 64) :
       (∃∗ w : BitVec 32, (sp - 8#64) ↦₃₂ w) ∗
       (∃∗ h : BitVec 16, (sp - 4#64) ↦₁₆ h) ∗
       memRegion (sp - 2#64) 2 := by
-  simp only [stackAt, remoteIdentityKeyStack]
-  rw [show BitVec.ofNat 64 144 = 144#64 from rfl,
-      ProofLib.memRegion_split' (b := sp - 144#64) (n := 8) (k := 136)
-        (b' := sp - 136#64) rfl (sub_add_ofNat_eq_sub sp 144#64 136#64 8 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 136#64) (n := 1) (k := 135)
-        (b' := sp - 135#64) rfl (sub_add_ofNat_eq_sub sp 136#64 135#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 135#64) (n := 1) (k := 134)
-        (b' := sp - 134#64) rfl (sub_add_ofNat_eq_sub sp 135#64 134#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 134#64) (n := 1) (k := 133)
-        (b' := sp - 133#64) rfl (sub_add_ofNat_eq_sub sp 134#64 133#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 133#64) (n := 4) (k := 129)
-        (b' := sp - 129#64) rfl (sub_add_ofNat_eq_sub sp 133#64 129#64 4 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 129#64) (n := 1) (k := 128)
-        (b' := sp - 128#64) rfl (sub_add_ofNat_eq_sub sp 129#64 128#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 128#64) (n := 8) (k := 120)
-        (b' := sp - 120#64) rfl (sub_add_ofNat_eq_sub sp 128#64 120#64 8 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 120#64) (n := 1) (k := 119)
-        (b' := sp - 119#64) rfl (sub_add_ofNat_eq_sub sp 120#64 119#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 119#64) (n := 7) (k := 112)
-        (b' := sp - 112#64) rfl (sub_add_ofNat_eq_sub sp 119#64 112#64 7 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 112#64) (n := 8) (k := 104)
-        (b' := sp - 104#64) rfl (sub_add_ofNat_eq_sub sp 112#64 104#64 8 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 104#64) (n := 1) (k := 103)
-        (b' := sp - 103#64) rfl (sub_add_ofNat_eq_sub sp 104#64 103#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 103#64) (n := 7) (k := 96)
-        (b' := sp - 96#64) rfl (sub_add_ofNat_eq_sub sp 103#64 96#64 7 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 96#64) (n := 4) (k := 92)
-        (b' := sp - 92#64) rfl (sub_add_ofNat_eq_sub sp 96#64 92#64 4 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 92#64) (n := 1) (k := 91)
-        (b' := sp - 91#64) rfl (sub_add_ofNat_eq_sub sp 92#64 91#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 91#64) (n := 1) (k := 90)
-        (b' := sp - 90#64) rfl (sub_add_ofNat_eq_sub sp 91#64 90#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 90#64) (n := 1) (k := 89)
-        (b' := sp - 89#64) rfl (sub_add_ofNat_eq_sub sp 90#64 89#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 89#64) (n := 2) (k := 87)
-        (b' := sp - 87#64) rfl (sub_add_ofNat_eq_sub sp 89#64 87#64 2 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 87#64) (n := 4) (k := 83)
-        (b' := sp - 83#64) rfl (sub_add_ofNat_eq_sub sp 87#64 83#64 4 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 83#64) (n := 2) (k := 81)
-        (b' := sp - 81#64) rfl (sub_add_ofNat_eq_sub sp 83#64 81#64 2 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 81#64) (n := 1) (k := 80)
-        (b' := sp - 80#64) rfl (sub_add_ofNat_eq_sub sp 81#64 80#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 80#64) (n := 33) (k := 47)
-        (b' := sp - 47#64) rfl (sub_add_ofNat_eq_sub sp 80#64 47#64 33 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 47#64) (n := 15) (k := 32)
-        (b' := sp - 32#64) rfl (sub_add_ofNat_eq_sub sp 47#64 32#64 15 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 32#64) (n := 24) (k := 8)
-        (b' := sp - 8#64) rfl (sub_add_ofNat_eq_sub sp 32#64 8#64 24 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 8#64) (n := 4) (k := 4)
-        (b' := sp - 4#64) rfl (sub_add_ofNat_eq_sub sp 8#64 4#64 4 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 4#64) (n := 2) (k := 2)
-        (b' := sp - 2#64) rfl (sub_add_ofNat_eq_sub sp 4#64 2#64 2 rfl) (by decide),
-      memRegion_one (sp - 136#64), memRegion_one (sp - 135#64), memRegion_one (sp - 134#64),
-      memRegion_four (sp - 133#64), memRegion_eight (sp - 128#64), memRegion_one (sp - 120#64),
-      memRegion_eight (sp - 112#64), memRegion_one (sp - 104#64),
-      memRegion_four (sp - 96#64), memRegion_one (sp - 92#64),
-      memRegion_one (sp - 91#64), memRegion_one (sp - 90#64),
-      memRegion_two (sp - 89#64), memRegion_four (sp - 87#64), memRegion_two (sp - 83#64),
-      (memRegion_cells (sp - 32#64) 3 (by decide) :
-        memRegion (sp - 32#64) 24 = cells (sp - 32#64) 3),
-      memRegion_four (sp - 8#64), memRegion_two (sp - 4#64)]
+  dsimp only [stackAt, remoteIdentityKeyStack]; sep_interval_eq
 
 private theorem memRegion_sp_80_33_remoteKeyChunks (sp : BitVec 64) :
     memRegion (sp - 80#64) 33 =
@@ -714,32 +564,7 @@ private theorem memRegion_sp_80_33_remoteKeyChunks (sp : BitVec 64) :
       (∃∗ k15 : BitVec 64, (sp - 64#64) ↦₆₄ k15) ∗
       (∃∗ k23 : BitVec 64, (sp - 56#64) ↦₆₄ k23) ∗
       (∃∗ k31 : BitVec 8, (sp - 48#64) ↦₈ k31) := by
-  rw [ProofLib.memRegion_split' (b := sp - 80#64) (n := 1) (k := 32)
-        (b' := sp - 79#64) rfl (sub_add_ofNat_eq_sub sp 80#64 79#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 79#64) (n := 1) (k := 31)
-        (b' := sp - 78#64) rfl (sub_add_ofNat_eq_sub sp 79#64 78#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 78#64) (n := 1) (k := 30)
-        (b' := sp - 77#64) rfl (sub_add_ofNat_eq_sub sp 78#64 77#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 77#64) (n := 1) (k := 29)
-        (b' := sp - 76#64) rfl (sub_add_ofNat_eq_sub sp 77#64 76#64 1 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 76#64) (n := 4) (k := 25)
-        (b' := sp - 72#64) rfl (sub_add_ofNat_eq_sub sp 76#64 72#64 4 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 72#64) (n := 2) (k := 23)
-        (b' := sp - 70#64) rfl (sub_add_ofNat_eq_sub sp 72#64 70#64 2 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 70#64) (n := 4) (k := 19)
-        (b' := sp - 66#64) rfl (sub_add_ofNat_eq_sub sp 70#64 66#64 4 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 66#64) (n := 2) (k := 17)
-        (b' := sp - 64#64) rfl (sub_add_ofNat_eq_sub sp 66#64 64#64 2 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 64#64) (n := 8) (k := 9)
-        (b' := sp - 56#64) rfl (sub_add_ofNat_eq_sub sp 64#64 56#64 8 rfl) (by decide),
-      ProofLib.memRegion_split' (b := sp - 56#64) (n := 8) (k := 1)
-        (b' := sp - 48#64) rfl (sub_add_ofNat_eq_sub sp 56#64 48#64 8 rfl) (by decide),
-      memRegion_one (sp - 80#64), memRegion_one (sp - 79#64),
-      memRegion_one (sp - 78#64), memRegion_one (sp - 77#64),
-      memRegion_four (sp - 76#64), memRegion_two (sp - 72#64),
-      memRegion_four (sp - 70#64), memRegion_two (sp - 66#64),
-      memRegion_eight (sp - 64#64), memRegion_eight (sp - 56#64),
-      memRegion_one (sp - 48#64)]
+  sep_interval_eq
 
 /-! ## `SessionState` Identity-Key Getters -/
 

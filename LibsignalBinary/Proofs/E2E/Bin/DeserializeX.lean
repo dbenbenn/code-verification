@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Bin.Record
+public import LibsignalBinary.Proofs.E2E.Bin.Record -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Record.L1GX.BodyDefs
 import LibsignalBinary.Proofs.ConsumeMessageKey.CanonKey
 import LibsignalBinary.Proofs.E2E.Bin.OpenSegs
@@ -18,6 +18,7 @@ import LibsignalBinary.Proofs.E2E.Record.L1GX.Body
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Fields
 import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.ProstSSGXRepr
 import LibsignalBinary.Proofs.E2E.RecordX.LengthP
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `SessionRecord::deserialize` (`0x16ed4`) on PQXDH-Scope Records
@@ -28,12 +29,11 @@ Transports `Record.L1GX.deserializeBodyXExact_ok` to `recordDeserializeOpenSpecP
 specialized to `RecordX.DeserializeScopeP`), parameterized by the `merge_field` contract `hMF`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Bin.DeserX
 
-open Arm64 ProofLib ProofLib.ObjectLoad
-open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
+open Arm64 ProofLib open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalPublicApi
@@ -41,10 +41,10 @@ open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.Bin
 
 /-- `Bin.RecordCanonical` specialized to the decoder scope `RecordX.DeserializeScopeP`. -/
-def RecordCanonicalP (stateBytes : List (BitVec 8)) (s : Session (List (BitVec 8))) : Prop :=
+@[expose] def RecordCanonicalP (stateBytes : List (BitVec 8)) (s : Session (List (BitVec 8))) : Prop :=
   stateBytes = encodeRecord ⟨some s⟩ ∧ RecordX.DeserializeScopeP ⟨some s⟩ ∧ ∃ G, BinCanonSession G s
 
-def recordDeserializeOpenSpecP (A : RustAlloc) :
+@[expose] def recordDeserializeOpenSpecP (A : RustAlloc) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × Session (List (BitVec 8))) where
   pre := fun (ptr, bs, out, sess) st =>
     ⌜st.readReg64 .x0 = ptr ∧ (st.readReg64 .x1).toNat = bs.length ∧
@@ -56,10 +56,6 @@ def recordDeserializeOpenSpecP (A : RustAlloc) :
         sessionRecordAt A out ⟨0#64, 8#64, some G⟩ ⟨some sess⟩) ∗
       A.pool ∗ stackAt s0.sp recordDeserializeStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-private abbrev binProgX (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Program :=
-  tripleRatchetProg img C ctl abs
 
 private theorem stackAt_sub_splitX (sp : BitVec 64) (k m : Nat) (hkm : k ≤ m)
     (hm : m ≤ 2 ^ 64) :
@@ -82,14 +78,6 @@ private theorem stackAt_recordDeserialize_splitX (sp : BitVec 64) :
         (recordDeserializeStack - Record.recDeserializeStack) ∗
       stackAt sp Record.recDeserializeStack :=
   stackAt_sub_splitX sp Record.recDeserializeStack recordDeserializeStack (by decide) (by decide)
-
-theorem img_eq_sessionImg0X {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img) (hb0 : img.base = 0#64) :
-    img = Record.sessionImg0 := by
-  have h1 : libsignalSessionImage.load 0#64 = .ok img := hb0 ▸ himg
-  have h2 : libsignalSessionImage.load 0#64 = .ok Record.sessionImg0 :=
-    Record.EntryAux.sessionImg0_base ▸ Record.loads_sessionImg0
-  exact Except.ok.inj (h1.symm.trans h2)
 
 private theorem vecAt_prev_zero_eqX (out : BitVec 64) :
     vecAt Record.A0 24 8 (fun (_ : Unit) _ => emp) out 0#64 8#64 [] =
@@ -173,87 +161,5 @@ theorem deserOutRecordX_entails_binCanonSession {G0 : SessionGhost}
   dsimp only
   rw [vecAt_prev_zero_eqX]
   exact Entails.refl _
-
-/-- `SessionRecord::deserialize` against `recordDeserializeOpenSpecP A`, given `merge_field`
-contract `hMF`. -/
-private theorem sessionRecord_deserialize_okX (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (img : Obj.Image) (abs : String → Option (State → State))
-    (hLoads : Obj.Loads libsignalSessionImage img)
-    (hAlloc : AllocHooks Record.A0 abs)
-    (hMF : Record.DeserializeSeed.DeserializeCallees C ctl abs →
-      Record.L1GX.MergeFieldXOk C ctl (fun _ => True) abs)
-    (hb0 : img.base = 0#64) (hA0 : A = Record.A0) :
-    subroutine_ok (binProgX img C ctl abs)
-      (img.base + deserializeOff) ((recordDeserializeOpenSpecP A).inImage img) := by
-  subst hA0
-  have himg_eq := img_eq_sessionImg0X hLoads hb0
-  have hb_eq : img.base = Record.sessionImg0.base :=
-    hb0.trans Record.EntryAux.sessionImg0_base.symm
-  have hAddr :
-      (tripleRatchetProgAt img.base C ctl abs).fnAddr Record.recDeserializeName =
-        img.base + deserializeOff := by
-    rw [tripleRatchetProgAt, Program.fnAddr_rebase, deserialize_fnOff]
-  have hC := Record.DeserializeSeed.deserializeCallees_ok_of_hooks C ctl hAlloc
-  have hdeser : subroutine_ok (binProgX img C ctl abs)
-      (img.base + deserializeOff) Record.L1GX.deserializeXExactSpec := by
-    rw [binProgX, tripleRatchetProg_eq_tripleRatchetProgAt hLoads, ← hAddr, hb_eq]
-    exact Record.L1GX.deserializeBodyXExact_ok C ctl hC (hMF hC)
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨ptr, bs, out, sess⟩ R s0 hpc hrun hpre hal
-  have hpre' := hpre
-  dsimp only [Spec.inImage, recordDeserializeOpenSpecP] at hpre'
-  rw [stackAt_recordDeserialize_splitX s0.sp, sepConj_assoc, satisfies_pure_sepConj] at hpre'
-  rcases hpre' with ⟨⟨hF, hsym⟩, hpre'⟩
-  have hF0 : Record.sessionImg0.FrozenLoaded s0 := himg_eq ▸ hF
-  have hsym0 : s0.symtab = Record.sessionImg0.symtab := himg_eq ▸ hsym
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre'
-  rcases hpre' with ⟨⟨hx0, hx1_nat, hx8, hbs, hr, G0, hG0⟩, hmem⟩
-  subst hbs
-  have hlen_lt : (Record.encodeRecord ⟨some sess⟩).length < 2 ^ 21 :=
-    RecordX.encodeRecord_length_lt_P hr
-  have hx1 : s0.readReg64 .x1 = BitVec.ofNat 64 (Record.encodeRecord ⟨some sess⟩).length := by
-    apply BitVec.eq_of_toNat_eq
-    rw [hx1_nat, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  let x_l1 : Record.DeserializeGeneral.DeserializeGenGhost := ⟨ptr, out, ⟨some sess⟩⟩
-  let R_l1 : SepProp :=
-    Record.A0.pool ∗
-    memRegion (s0.sp - BitVec.ofNat 64 recordDeserializeStack)
-      (recordDeserializeStack - Record.recDeserializeStack) ∗ R
-  have hpre_l1 : s0.mem ⊨ Record.L1GX.deserializeXExactSpec.pre x_l1 s0 ∗ R_l1 := by
-    dsimp only [Record.L1GX.deserializeXExactSpec, Record.L1GX.deserializeXSpec, x_l1, R_l1]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx8, hr, hF0, hsym0⟩, ?_⟩
-    convert hmem using 1; ac_rfl
-  refine hdeser.mono_outcome x_l1 R_l1 s0 hpc hrun hpre_l1 hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Record.L1GX.deserializeXExactSpec, Record.L1GX.deserOutRawX, x_l1, R_l1] at hq
-    have hrepr := deserOutRecordX_entails_binCanonSession sess hG0 hr out
-    have hq' := Satisfies.mono
-      (sepConj_mono_left (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hrepr)))) hq
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq'
-    rcases hq' with ⟨htr, hq_mem⟩
-    dsimp only [Spec.inImage, recordDeserializeOpenSpecP]
-    rw [stackAt_recordDeserialize_splitX s0.sp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htr, ?_⟩
-    convert hq_mem using 1; ac_rfl
-  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-    dsimp only [Record.L1GX.deserializeXExactSpec, Record.L1GX.deserializeXSpec,
-      Record.Serialization.allocPanic, Spec.inImage, recordDeserializeOpenSpecP, R_l1] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    rcases hq with ⟨hfail, hq_mem⟩
-    refine ⟨hfail, ?_⟩
-    have hany : (anyHeap ∗ Record.A0.pool ∗
-        memRegion (s0.sp - BitVec.ofNat 64 recordDeserializeStack)
-          (recordDeserializeStack - Record.recDeserializeStack)) ∗ R ⊢ anyHeap ∗ R :=
-      sepConj_mono_left (entails_anyHeap _)
-    refine Satisfies.mono hany ?_
-    convert hq_mem using 1; ac_rfl
-  · dsimp only [Record.L1GX.deserializeXExactSpec, Record.L1GX.deserializeXSpec] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact hq.1.elim
-  · dsimp only [Record.L1GX.deserializeXExactSpec, Record.L1GX.deserializeXSpec] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact hq.1.elim
 
 end CryptoVerification.E2E.Bin.DeserX

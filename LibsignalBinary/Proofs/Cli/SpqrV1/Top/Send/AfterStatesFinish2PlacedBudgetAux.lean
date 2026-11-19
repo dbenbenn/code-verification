@@ -10,14 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ProtoPolyPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.UnchunkedPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish2Placed
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ProtoPolyPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.UnchunkedPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish2Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
@@ -30,6 +30,8 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChain
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish2
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
 
 /-!
 # Budget-Threaded Auxiliary Drop Callees & Unchunked Field Drops (Block `427`)
@@ -38,7 +40,7 @@ Proves relocatable callee bridges for `PolynomialEncoder` and `UnchunkedCt1Sent`
 and budget-threaded unchunked field-drop steps (`+6472`, `+7568`, `+7644`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -53,7 +55,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish2PlacedBud
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open scoped CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification
-  (LibsignalPlacement libsignalSessionCode ls_subroutine_ok_of_block lsmpl
+  (LibsignalPlacement ls_subroutine_ok_of_block lsmpl
    subroutine_ok_withLsCodeLoaded_of_plain withLsCodeLoaded)
 open CryptoVerification.Cli.SpqrV1.Top.Send
   (spqrSendPlacedEntry spqrSendPlacedProg)
@@ -116,7 +118,7 @@ private theorem send_noneCap2_add_two_beq_zero :
 private theorem send_noneCap2_add_two_bne_zero :
     (0xfffffffffffffffe#64 + 2#64 != 0#64) = false := rfl
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff Program.fnAddr
   v1StatePBPinnedAt
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry
 attribute [local simp, local arm64_norm, local wp_norm]

@@ -21,7 +21,7 @@ Lifts `LibcMallocImplFineStmt` (`blk09`) across the `default_malloc` (`blk04`) t
 `placed_defaultMalloc_fine_of_impl` and `placed_malloc_fine_entry_ok` over `FineBudget`.
 -/
 
-@[expose] public noncomputable section
+@[expose] public section
 
 set_option autoImplicit false
 

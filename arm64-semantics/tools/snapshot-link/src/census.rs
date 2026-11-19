@@ -46,11 +46,19 @@ use anyhow::{Context, Result};
 use object::read::elf::{ElfFile64, SectionHeader};
 use object::{Endianness, Object, ObjectSection, ObjectSymbol, SectionFlags, SymbolFlags};
 use rust_obj2lean::trusted_common::{
-    ObjObject, ObjSection, RelocType, SymBind, SymKind, SymSection,
+    ObjObject, ObjSection, RelocKind, RelocType, SymBind, SymKind, SymSection,
 };
-use rust_obj2lean::untrusted_legacy_linker::{self, patch_code};
+use rust_obj2lean::untrusted_placed::patch::{code_reloc_in_range, patch_reloc_word};
 use serde_json::{Value, json};
 use std::collections::{BTreeMap, HashMap, HashSet};
+
+fn patch_code(ty: RelocType, insn: u32, target: u64, place: u64) -> Option<u32> {
+    if ty == RelocType::None {
+        return Some(insn);
+    }
+    let kind = RelocKind::from_reloc_type(ty)?;
+    code_reloc_in_range(kind, place, target).then(|| patch_reloc_word(kind, insn, place, target))
+}
 
 const SHF_WRITE: u64 = 0x1;
 const SHF_ALLOC: u64 = 0x2;
@@ -786,7 +794,7 @@ fn classify_text(
     if !is_got
         && ts
             .iter()
-            .any(|&t| patch_code(r.rtype, orig, t, p).ok() == Some(w))
+            .any(|&t| patch_code(r.rtype, orig, t, p) == Some(w))
     {
         return (Class::Exact, vec![w]);
     }
@@ -830,9 +838,8 @@ fn classify_text(
                 return (k, vec![w0, w1]);
             }
             if got
-                && patch_code(RelocType::AdrPrelPgHi21, t0, t, pa).ok() == Some(w0)
-                && patch_code(RelocType::AddAbsLo12Nc, relax::ldr_to_add(t1), t, pa + 4).ok()
-                    == Some(w1)
+                && patch_code(RelocType::AdrPrelPgHi21, t0, t, pa) == Some(w0)
+                && patch_code(RelocType::AddAbsLo12Nc, relax::ldr_to_add(t1), t, pa + 4) == Some(w1)
             {
                 return (Class::GotToAdrpAdd, vec![w0, w1]);
             }
@@ -840,8 +847,8 @@ fn classify_text(
             {
                 let slot = page + imm;
                 if e.u64_at(slot) == Some(t)
-                    && patch_code(RelocType::AdrGotPage, t0, slot, pa).ok() == Some(w0)
-                    && patch_code(RelocType::Ld64GotLo12Nc, t1, slot, pa + 4).ok() == Some(w1)
+                    && patch_code(RelocType::AdrGotPage, t0, slot, pa) == Some(w0)
+                    && patch_code(RelocType::Ld64GotLo12Nc, t1, slot, pa + 4) == Some(w1)
                 {
                     return (Class::GotUnrelaxed, vec![w0, w1]);
                 }
@@ -849,7 +856,7 @@ fn classify_text(
         }
     }
     if matches!(r.rtype, RelocType::Call26 | RelocType::Jump26) {
-        if weak && patch_code(r.rtype, orig, p + 4, p).ok() == Some(w) {
+        if weak && patch_code(r.rtype, orig, p + 4, p) == Some(w) {
             return (Class::WeakUndefBranch, vec![w]);
         }
         if let Some(d) = relax::branch_target(w, p)
@@ -909,112 +916,6 @@ fn classify_data(c: &Census, t: RelocType, p: u64, ts: &[u64]) -> Class {
         }
         _ => Class::Unsupported,
     }
-}
-
-/// Compare the library's text in the executable with the text region `untrusted_legacy_linker` lays out
-/// for the same objects: per-section offset deltas, the fill of the gaps between sections, and
-/// the non-relocated bytes of the whole region.
-fn trusted_layout(c: &Census, k: usize, im: &StockImage) -> Value {
-    let layout = if im.page_separate_data {
-        untrusted_legacy_linker::DataLayout::PageSeparated
-    } else {
-        untrusted_legacy_linker::DataLayout::Interleaved
-    };
-    let li_img =
-        match untrusted_legacy_linker::link_with_layout(&im.objects, &im.externs, 0, layout) {
-            Ok(x) => x,
-            Err(e) => return json!({"error": format!("{e:#}")}),
-        };
-    let lis: Vec<usize> = (0..c.libs.len())
-        .filter(|&li| c.libs[li].image == k)
-        .collect();
-    let text_end = li_img
-        .stubs
-        .iter()
-        .map(|s| s.1)
-        .min()
-        .unwrap_or(li_img.code.len() as u64);
-    // Region mask: relocated words of every text section at its trusted offset.
-    let mut mask = vec![false; li_img.code.len()];
-    let mut secs = Vec::new(); // (trusted off, size, placed base)
-    let mut deltas: BTreeMap<i64, usize> = BTreeMap::new();
-    let mut gcd = Vec::new();
-    for (oi, &li) in lis.iter().enumerate() {
-        let o = c.libs[li].obj;
-        for (j, s) in o.sections.iter().enumerate() {
-            let Some(Some(off)) = li_img.sec_off.get(oi).and_then(|v| v.get(j)).copied() else {
-                continue;
-            };
-            if !is_exec(s) {
-                continue;
-            }
-            for (b, m) in c.masks[li][j].iter().enumerate() {
-                if *m {
-                    mask[off as usize + b] = true;
-                }
-            }
-            match &c.place[li][j] {
-                Place::Bases { bases, .. } if bases.len() == 1 => {
-                    *deltas.entry(bases[0] as i64 - off as i64).or_default() += 1;
-                    secs.push((off, s.size, Some(bases[0])));
-                }
-                Place::Bases { bases, .. } => {
-                    secs.push((off, s.size, None));
-                    gcd.push(format!("{} (ambiguous: {} bases)", s.name, bases.len()));
-                }
-                _ => {
-                    secs.push((off, s.size, None));
-                    if s.size > 0 {
-                        gcd.push(format!("{} ({} B)", s.name, s.size));
-                    }
-                }
-            }
-        }
-    }
-    let uniform = deltas.len() == 1 && gcd.is_empty();
-    let mut region = Value::Null;
-    if let Some((&delta, _)) = deltas.iter().max_by_key(|(_, n)| **n) {
-        // Compare `[0, text_end)` of the trusted code with the executable at `delta`.
-        let (mut diff, mut gap_zero, mut gap_trap, mut gap_other) =
-            (0usize, 0usize, 0usize, 0usize);
-        let mut samples = Vec::new();
-        let in_sec = |b: u64| secs.iter().any(|&(o, n, _)| o <= b && b < o + n);
-        for b in 0..text_end {
-            let a = (b as i64 + delta) as u64;
-            let Some(x) = c.elf.bytes(a, 1) else {
-                diff += 1;
-                continue;
-            };
-            let (x, t) = (x[0], li_img.code[b as usize]);
-            if !in_sec(b) {
-                match x {
-                    0 => gap_zero += 1,
-                    0xd4 => gap_trap += 1,
-                    _ => gap_other += 1,
-                }
-                continue;
-            }
-            if !mask[b as usize] && x != t {
-                diff += 1;
-                if samples.len() < 10 {
-                    samples.push(json!({"off": hex(b), "addr": hex(a), "trusted": t, "elf": x}));
-                }
-            }
-        }
-        region = json!({
-            "delta": hex(delta as u64), "textEnd": hex(text_end),
-            "nonRelocByteDiffsInSections": diff, "diffSamples": samples,
-            "gapBytesInExecutable": {"zero": gap_zero, "trap0xd4": gap_trap, "other": gap_other},
-        });
-    }
-    json!({
-        "textSections": secs.len(),
-        "deltaHistogram": Value::Object(deltas.iter().map(|(d, n)| (format!("{:#x}", *d as u64), json!(n))).collect()),
-        "sameIntraBlockOffsets": uniform,
-        "missingOrAmbiguousSections": gcd,
-        "trustedPadding": "zero",
-        "region": region,
-    })
 }
 
 fn hex(v: u64) -> String {
@@ -1418,7 +1319,6 @@ pub fn census(elf_bytes: &[u8], images: &[StockImage]) -> Result<Value> {
             "text": range_json(&mut text_ranges, true),
             "data": range_json(&mut data_ranges, false),
             "textOutputSections": text_out,
-            "trustedLinkerTextLayout": trusted_layout(&c, k, im),
             "dataOutputSections": data_out,
         }));
     }

@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptRelPure
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptRelPureB
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.ExplainOKPure
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Fresh Pre-Key `recv` Accept Assembly
@@ -28,7 +29,7 @@ Combines `RecvAcceptContractPure`, `RpkAcceptBin`, `AcceptD.AcceptTieD`,
 the `code = 0` accept branch of a fresh pre-key `recv` call.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 cref_hide_foreign_instances

@@ -11,7 +11,7 @@ module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Model
 public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
-import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
+public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep -- proof-setup: allow-public-import
 
 /-!
 # SPQR V1: Top-Level `States`, `Chain::encoded_len`, and `encodeState_len_lt` Bounds
@@ -22,7 +22,7 @@ every constructed `Chain` satisfies `ChainEncodedLenFits` (`< 2^61`) and every o
 from `send`, `recv`, `spqrV1`, and `spqrV1Recv` has length `< 2^61`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.StateSize
 
@@ -311,7 +311,7 @@ theorem ucCt2Sent_from_pb_raw_eq {F : ShaCompress} {pb : V1State.Unchunked.Ct2Se
 /-- Well-formedness bound on `receiving_ct1.ptsNeeded` in `States.headerSent` (checked by
 `Chunked.SendEk.HeaderSent.from_pb` at `src/v1/chunked/send_ek/serialize.rs:53–57` and established by
 `KeysSampled.recv_ct1_chunk` at `src/v1/chunked/send_ek.rs:88`). -/
-def StatesPtsNeededBound {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
+@[expose] def StatesPtsNeededBound {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
   | .headerSent s => s.receiving_ct1.ptsNeeded ≤ 480
   | _ => True
 
@@ -833,12 +833,6 @@ theorem decodeState_spqrDeps_raw_le {F : ShaCompress} {K : MlKem}
       rw [hdec] at h; have hinj := Except.ok.inj h; subst hinj
       rw [pbToPqRatchetState_pqRatchetStateToPb]; exact decodeState_rawPqState_le hdec
 
-/-- Any `ChainPB` whose `rawChain` is bounded by `356 * 2^32` satisfies
-`chainPBEncodedLen pb < 2^61` (and `< 2^63`, `< 2^64`, `ChainEncodedLenFits pb`). -/
-theorem chainPBEncodedLen_lt_of_rawChain_le {pb : ChainPB} (h : rawChain pb ≤ 356 * 2 ^ 32) :
-    chainPBEncodedLen pb < 2 ^ 61 ∧ chainPBEncodedLen pb < 2 ^ 63 ∧ ChainEncodedLenFits pb := by
-  have h1 := chainPBEncodedLen_le_rawChain pb; refine ⟨by omega, by omega, ?_⟩; unfold ChainEncodedLenFits; omega
-
 /-- Any `PqRatchetState` whose `rawPqState` is bounded by `356 * 2^32 + 2000000` has
 `(Proto.encodeState st).length < 2^61` (and `< 2^62 - 10`, `< 2^63`, `< 2^64`). -/
 theorem encodeState_length_lt_of_rawPqState_le {st : PqRatchetState}
@@ -1118,21 +1112,6 @@ theorem recv_state_len_lt (F : ShaCompress) (K : MlKem) (hkdf : HkdfFn)
             | some es =>
               dsimp only [] at h7; rcases except_bind_eq_ok h7 with ⟨chain1, hc1, h8⟩
               rw [SpqrApiResult.ofChainPanic_eq_ok] at hc1; exact htail chain1 (Chain.addEpoch_raw_le hkdf chain0 es hc1) h8
-
-/-- Under `s.length < 2^32` and `decodeState (spqrDeps F K) s = .ok statePb`, any `Chain`
-obtained from `statePb` by `Chain.fromPb` or `chainFrom` followed by at most two `addEpoch` /
-`chainFrom` steps and one `sendKey` or `recvKey` step satisfies `chainPBEncodedLen c.intoPb < 2^61`
-and `ChainEncodedLenFits c.intoPb`. -/
-theorem chain_encodedLen_fits_of_decodeState (F : ShaCompress) (K : MlKem)
-    {s : SerializedState} {statePb : PqRatchetStatePB V1State} {c : Chain}
-    (hs : s.length < 2 ^ 32) (hdec : decodeState (spqrDeps F K) s = .ok statePb)
-    (hc : rawChain c.intoPb ≤ optRaw rawChain statePb.chain + 1000 + 36 * 2 ^ 32) :
-    chainPBEncodedLen c.intoPb < 2 ^ 61 ∧ chainPBEncodedLen c.intoPb < 2 ^ 63 ∧
-      ChainEncodedLenFits c.intoPb := by
-  have hraw := decodeState_spqrDeps_raw_le hdec
-  have hch : optRaw rawChain statePb.chain ≤ rawPqState (pbToPqRatchetState statePb) := by
-    simp [pbToPqRatchetState, rawPqState]; omega
-  apply chainPBEncodedLen_lt_of_rawChain_le; omega
 
 /-- Under `DEV-SPQR3` (`s.length < 2^32`), `(spqrV1 F K).send s tape = some (s', salt, msg)`
 implies `s'.length < 2^61` (and `< 2^62 - 10`, `< 2^63`, `< 2^64`). -/

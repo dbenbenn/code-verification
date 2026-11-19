@@ -32,7 +32,7 @@ Discharges `XlateExcWSpec` by combining `XlateExcW.xlate_exc_w_of_movesToCli` wi
 acceptance bridge `XlateMovesToCli.acceptsViaCliMoves_to_acceptsViaCli`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

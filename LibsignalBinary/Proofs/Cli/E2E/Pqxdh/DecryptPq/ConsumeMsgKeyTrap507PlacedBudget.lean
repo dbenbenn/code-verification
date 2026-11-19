@@ -9,13 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ConsumeMsgKeySub507PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ConsumeMsgKeyTrap507Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyTrapPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ConsumeMsgKeySub507PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ConsumeMsgKeyTrap507Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyTrapPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.ExtSegMidS4A
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.VerifyMacTrap507PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyHelpersPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Segment `S4` (`ConsumeMsgKey`) Seam on Block `507`
@@ -25,7 +32,7 @@ Budget-threaded (`RustCliAllocBudget M`) verification of Segment `S4` (`S4SeamPl
 `CmkSeg4Env` / `s4DefaultEnv` allocation envelopes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -76,6 +83,10 @@ open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget SeqEnv rustCliDeallocBudgetSpec
 )
 open LibsignalBinary.Heap.SpecBudget (FmtWriteEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  CliFmtWriteProtoAddrCall CliFmtWriteVtableKind cliFmtWriteProtoAddr_exactEvs_mem_cliFmtWriteEnv
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (CliFmtWriteEnv)
 open LibsignalBinary.Proofs.Placed.BudgetPoolSync (hooksException sepWP_seg_ls_vm)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget (tryDecryptOnPanic)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs (steps_of_sepWP_placed_state)
@@ -99,7 +110,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget (
   cmkRawSpecPlaced steps_call_out_placed_cro
 )
 open LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget (
-  addrDisplayEnvSpec addrDisplaySpec
+  AddrDisplayGhost addrDisplayEnvSpec addrDisplaySpec
 )
 
 attribute [local irreducible] Program.fetch Program.externAt?
@@ -110,6 +121,15 @@ attribute [local simp, local wp_norm, local arm64_norm] extractLsb0_8_append56
 @[local simp, local wp_norm, local arm64_norm]
 private theorem extractLsb32_32_append32 (hi lo : BitVec 32) :
     (hi ++ lo).extractLsb' 32 32 = hi := by bv_kernel
+
+private theorem empty_vecU8At_intro (A : RustAlloc) (v : BitVec 64) :
+    (v ↦₆₄ 0#64) ∗ ((v + 8#64) ↦₆₄ 1#64) ∗ ((v + 16#64) ↦₆₄ 0#64) ⊢
+    vecU8At A v 0#64 1#64 [] := by
+  dsimp only [vecU8At, vecHeader]
+  simp only [List.length_nil, BitVec.ofNat_eq_ofNat, ↓reduceIte, sepConj_emp, sepConj_assoc]
+  have hp : 0 ≤ (0#64).toNat ∧ (0#64).toNat < 2 ^ 63 ∧ (1#64 : BitVec 64) ≠ 0#64 := by
+    decide
+  exact Entails.trans (Entails.pure_right hp (Entails.refl _)) (Entails.of_eq (by sep_ac_rfl))
 
 private theorem ratchetAt_atState_eq {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) :
@@ -173,10 +193,11 @@ theorem consumeMsgKey_507_placed_ok_ofEnv [LibsignalPlacement] {M : AllocCostMod
     (hcmk_call : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H) (lsmpl.base 24)
       (withLsCodeRoLoaded lsmpl (cmkRawSpecPlaced C.F A lim CmkEnv)))
     (hdealloc : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H)
-      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
+      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hFmtWriteSub : ∀ evs, CliFmtWriteEnv evs → fmtWriteEnv evs := by intro _ h; exact h) :
     S4SeamPlaced ((blkPC_508).rebase (blkPl_508).base H) (blkPl_508).base
       C A lim ctl uuidTryParse S (CmkSeg4Env fmtWriteEnv) := by
-  intro x st trG tr st1 ck draws R s0 s hfits hS4 hL
+  intro x st trG tr st1 ck draws R s0 s hlen hfits hS4 hL
   rcases hS4 with ⟨hpc, ⟨hrun, hsp, hsp0_al, hsp_al, hfp, htrace, hcl, hvregs⟩,
     hx12, hx19, hx20, hx21, hx22, hx23, hx24, hx25, hmem⟩
   change s.pc = (blkPl_508).base + 996#64 at hpc
@@ -264,6 +285,7 @@ theorem consumeMsgKey_507_placed_ok_ofEnv [LibsignalPlacement] {M : AllocCostMod
   refine steps_of_sepWP_placed_state hmem0 hL hcl
     (mid := lsmpl.base 215)
     (RegMid := fun sm1 =>
+      sm1.readReg64 .x0 = x.remA ∧
       sm1.readReg64 .x1 = sp + 1024#64 ∧
       sm1.readReg64 .x19 = x.ret ∧
       sm1.readReg64 .x20 = sp + 320#64 ∧
@@ -288,10 +310,11 @@ theorem consumeMsgKey_507_placed_ok_ofEnv [LibsignalPlacement] {M : AllocCostMod
       memRegion (sp + 320#64) 416 ∗
       ((sp + 736#64) ↦ₛ chainKeyBytes ck) ∗
       memRegion (sp + 772#64) 204 ∗
-      vecU8 A.repAlloc (sp + 976#64) [] ∗
+      vecU8At A.repAlloc (sp + 976#64) 0#64 1#64 [] ∗
       memRegion (sp + 1000#64) 24 ∗
       ((sp + 1024#64) ↦₆₄ (sp + 976#64)) ∗
-      memRegion (sp + 1032#64) 40 ∗
+      ((sp + 1032#64) ↦₆₄ CliFmtWriteVtableKind.cliHandshake.vtableAddr) ∗
+      memRegion (sp + 1040#64) 32 ∗
       memRegion (sp + 1072#64) 336 ∗
       protocolAddressAt A.repAlloc x.rem x.remA ∗
       protocolAddressAt A.repAlloc x.loc x.locA ∗
@@ -367,7 +390,7 @@ theorem consumeMsgKey_507_placed_ok_ofEnv [LibsignalPlacement] {M : AllocCostMod
       rw [hf]
       exact Entails.refl _
     refine SepWP.focus_weaken hck_fold (by sep_focus) ?_
-    have hv_empty := empty_vecU8_intro A.repAlloc (sp + 976#64)
+    have hv_empty := empty_vecU8At_intro A.repAlloc (sp + 976#64)
     simp only [BitVec.add_assoc, BitVec.reduceAdd] at hv_empty
     refine SepWP.focus_weaken hv_empty (by sep_focus) ?_
     refine SepWP.focus_weaken (pointsTo32_entails_memRegion (sp + 432#64) w8) (by sep_focus) ?_
@@ -390,29 +413,55 @@ theorem consumeMsgKey_507_placed_ok_ofEnv [LibsignalPlacement] {M : AllocCostMod
     have hm1000 : memRegion (sp + 1000#64) 24 =
         memRegion (sp + 1000#64) 8 ∗ (memRegion (sp + 1008#64) 8 ∗ memRegion (sp + 1016#64) 8) := by
       rw [mr_cut_add sp 1000 8 16 (by decide), mr_cut_add sp 1008 8 8 (by decide)]
-    have hm1032 : memRegion (sp + 1032#64) 40 =
-        memRegion (sp + 1032#64) 8 ∗ (memRegion (sp + 1040#64) 8 ∗ (memRegion (sp + 1048#64) 8 ∗
-        (memRegion (sp + 1056#64) 8 ∗ memRegion (sp + 1064#64) 8))) := by
-      rw [mr_cut_add sp 1032 8 32 (by decide),
-        mr_cut_add sp 1040 8 24 (by decide),
+    have hm1040 : memRegion (sp + 1040#64) 32 =
+        memRegion (sp + 1040#64) 8 ∗ (memRegion (sp + 1048#64) 8 ∗
+        (memRegion (sp + 1056#64) 8 ∗ memRegion (sp + 1064#64) 8)) := by
+      rw [mr_cut_add sp 1040 8 24 (by decide),
         mr_cut_add sp 1048 8 16 (by decide),
         mr_cut_add sp 1056 8 8 (by decide)]
-    rw [hm320, hm1000, hm1032]
+    rw [hm320, hm1000, hm1040]
+    dsimp only [CliFmtWriteVtableKind.vtableAddr, CliFmtWriteVtableKind.vtableSym]
     wp_done
   · intro sm1 hpc1 hrun1 hcl1 hL1
-      ⟨hx1_1, hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hfp1, hlr1, hsp1, hsp_al1, htr1, hvregs1⟩
+      ⟨hx0_1, hx1_1, hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hfp1, hlr1, hsp1, hsp_al1, htr1, hvregs1⟩
       hm1
     have hm1032_split : memRegion (sp + 1032#64) 40 =
         (∃∗ vt : BitVec 64, (sp + 1032#64) ↦₆₄ vt) ∗ memRegion (sp + 1040#64) 32 := by
       rw [mr_cut_add sp 1032 8 32 (by decide), memRegion_eight (sp + 1032#64)]
-    rw [hm1032_split] at hm1
-    simp only [sepConj_assoc, sepExists_sepConj_left, sepExists_sepConj_right,
-      satisfies_sepExists] at hm1
-    rcases hm1 with ⟨vt, hm1⟩
     have hfits_disp : FitsEnv M lim st fmtWriteEnv := hfits.seq_left
+    let dispG : AddrDisplayGhost :=
+      { addrPtr := x.remA
+        rem := x.rem
+        f := sp + 1024#64
+        v := sp + 976#64
+        cap0 := 0#64
+        ptr0 := 1#64
+        vtKind := .cliHandshake
+        bs := [] }
+    let dispCall : CliFmtWriteProtoAddrCall :=
+      { v := sp + 976#64
+        cap0 := 0#64
+        ptr0 := 1#64
+        x2 := 0#64
+        x3 := 0#64
+        namePtr := x.remA
+        nameCap := x.rem.name.cap
+        nameDataPtr := x.rem.name.ptr
+        shimBlock := 216
+        devPtr := x.remA + 24#64
+        bs := []
+        nameBs := x.rem.name.bytes
+        argsRo := false
+        strRefRo := false
+        strSrcRo := false
+        devRo := false
+        dev := x.rem.device
+        vtKind := .cliHandshake }
+    have hlen60 : x.rem.name.bytes.length < 2 ^ 60 := by omega
+    have hexact_disp : fmtWriteEnv dispG.exactEvs :=
+      hFmtWriteSub _ (cliFmtWriteProtoAddr_exactEvs_mem_cliFmtWriteEnv dispCall rfl rfl hlen)
     have hpre_disp : sm1.mem ⊨
-        (addrDisplayEnvSpec M A lim fmtWriteEnv).pre
-          (sp + 1024#64, sp + 976#64, vt, ([] : List (BitVec 8)), st) sm1 ∗
+        (addrDisplayEnvSpec M A lim fmtWriteEnv).pre (dispG, st) sm1 ∗
         ((sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
           trAt A.repAlloc (sp + 56#64) trG tr ∗
           memRegion x.ret 48 ∗
@@ -427,21 +476,20 @@ theorem consumeMsgKey_507_placed_ok_ofEnv [LibsignalPlacement] {M : AllocCostMod
           memRegion (sp + 1000#64) 24 ∗
           memRegion (sp + 1040#64) 32 ∗
           memRegion (sp + 1072#64) 336 ∗
-          protocolAddressAt A.repAlloc x.rem x.remA ∗
           protocolAddressAt A.repAlloc x.loc x.locA ∗
           signalMessageAt A.repAlloc x.msgG x.msgA x.msg ∗
           cliTapeAfter ctl x.cur x.rest draws ∗
           logOff tryDecryptPlacedImg ∗
           memRegion (sp - BitVec.ofNat 64 tryDecryptSubStack) (tryDecryptSubStack - addrDisplayStack) ∗
           tryDecryptSavedRegs s0.sp s0) ∗ R) := by
-      dsimp only [addrDisplayEnvSpec]
+      dsimp only [addrDisplayEnvSpec, dispG]
       rw [hsp1]
       rw [stackAt_sub sp tryDecryptSubStack addrDisplayStack] at hm1
       rw [sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨hx1_1, hfits_disp⟩, ?_⟩
+      refine ⟨⟨hx0_1, hx1_1, hlen60, hfits_disp, hexact_disp⟩, ?_⟩
       simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc] at hm1 ⊢
       arm64_sep_close
-    refine steps_call_out_placed_cro (sp + 1024#64, sp + 976#64, vt, ([] : List (BitVec 8)), st)
+    refine steps_call_out_placed_cro (dispG, st)
       haddrDisplay hpc1 hrun1 hsp_al1 hlr1 hcl1 hL1 hpre_disp ?_ ?_
     · intro sf _ hpost
       dsimp only [addrDisplayEnvSpec] at hpost
@@ -460,7 +508,7 @@ theorem consumeMsgKey_507_placed_ok_ofEnv [LibsignalPlacement] {M : AllocCostMod
       have hfp_f1 : sf1.readReg64 .fp = sp + 1408#64 := hfp_cs1.trans hfp1
       have hvregs_f1 : calleeSavedVRegs sf1 = calleeSavedVRegs s0 := hvregs_cs1.trans hvregs1
       have hsp_f1 : sf1.sp = sp := hspf1.trans hsp1
-      dsimp only [addrDisplayEnvSpec] at hpost1
+      dsimp only [addrDisplayEnvSpec, dispG] at hpost1
       rw [hsp1] at hpost1
       simp only [vecU8, vecU8At, vecHeader, RustCliAllocBudget.repAlloc_live,
         sepConj_assoc, sepExists_sepConj_left, sepExists_sepConj_right,
@@ -505,7 +553,7 @@ theorem consumeMsgKey_507_placed_ok_ofEnv [LibsignalPlacement] {M : AllocCostMod
         rw [hm1032_split, stackAt_sub sp tryDecryptSubStack addrDisplayStack]
         simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc,
           sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpost1 ⊢
-        refine ⟨vt, ?_⟩
+        refine ⟨CliFmtWriteVtableKind.cliHandshake.vtableAddr, ?_⟩
         arm64_sep_close
       let msgW : BitVec 32 := (sf1.readReg64 .x24).setWidth 32
       have hmsgW_byte : msgW.setWidth 8 = msgTypeByte x.msgType := by
@@ -783,6 +831,6 @@ theorem consumeMsgKey_507_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
     S4SeamPlaced ((blkPC_508).rebase (blkPl_508).base H) (blkPl_508).base
       C A lim ctl uuidTryParse S s4DefaultEnv :=
-  consumeMsgKey_507_placed_ok_ofEnv C A lim ctl S FmtWriteEnv H haddrDisplay hcmk_call hdealloc
+  consumeMsgKey_507_placed_ok_ofEnv C A lim ctl S CliFmtWriteEnv H haddrDisplay hcmk_call hdealloc
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ConsumeMsgKeyTrap507PlacedBudget

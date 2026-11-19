@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1 -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -37,39 +41,12 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 open CryptoVerification.SignalSession CryptoVerification.SignalSession.Cli
 open CryptoVerification.SignalSession.Cli.Main.Placed
 
-/-! ## `cliExternsPlaced` Row Lookups (`27` rows) and Block-`617` Stub Plumbing -/
+/-! ## `cliExternsPlaced` Row Lookups (`14` rows) and Block-`617` Stub Plumbing -/
 
-private def mainHookKeysPlaced : List String :=
-  ["_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512",
-   "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint10to_edwards",
-   "_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint8compress",
-   "_RNvXso_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtNtNtCskxtBwYRO61I_4core3ops5arith3Neg3neg",
-   "_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint15is_torsion_free",
-   "_RNvMsw_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint35vartime_double_scalar_mul_basepoint",
-   "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar20from_bytes_mod_order",
-   "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar25from_bytes_mod_order_wide",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11encapsulate",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate",
-   "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes9from_seed",
-   "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk1",
-   "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk2",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate1",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate2",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental26decapsulate_compressed_key",
-   "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes",
-   "_RNvCs65XVORQObL2_12libcrux_hmac4hmac",
-   lsWriteFileSym,
-   lsWriteStdoutSym,
-   lsFmtWriteSym,
-   lsFormatInnerSym,
-   lsCompress256Sym,
-   lsAesEncSym,
-   lsAesDecSym,
-   lsPubFromSecretSym,
-   lsDiffieHellmanSym]
+private def mainHookKeysPlaced : List String := []
 
 private theorem mainHookKeysPlaced_eq (mmpl : Obj.MultiPlacement) (W : CliHooks) :
-    (cliHookTablePlaced mmpl W).map Prod.fst = mainHookKeysPlaced := rfl
+    (LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliHookTablePlaced mmpl W).map Prod.fst = mainHookKeysPlaced := rfl
 
 private theorem mainHookKeysPlaced_nodup : mainHookKeysPlaced.Nodup := by
   unfold mainHookKeysPlaced
@@ -92,7 +69,7 @@ private theorem lookup_of_mem_nodup_main {α : Type} :
       simp [List.lookup, hne, lookup_of_mem_nodup_main rest n v hnd.2 htail]
 
 theorem main_cliExternsPlaced_row (mmpl : Obj.MultiPlacement) (W : CliHooks) {sym : String}
-    {h : State → State} (hm : (sym, h) ∈ cliHookTablePlaced mmpl W)
+    {h : State → State} (hm : (sym, h) ∈ LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliHookTablePlaced mmpl W)
     (hnp : isCliPanicSymbolPlaced sym = false := by
       simp [isCliPanicSymbolPlaced, cliPanicSymbolsPlaced, Rust.isPanicSymbol,
         lsWriteFileSym, lsWriteStdoutSym, lsMemrchrSym, lsFromUtf8Sym,
@@ -133,7 +110,7 @@ theorem cliExternsPlaced_memcpy_none (mmpl : Obj.MultiPlacement) (W : CliHooks) 
 theorem hook_stub_placed_ok [LibsignalPlacement] {α : Type} {H : LibsignalHooks} {sym : String}
     {h : State → State} {spec : Spec α}
     (hext : H sym = some h) (hh : HookOk h spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok (lsProg_617 H) (lsρ sym)
       (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl spec) :=
   LibsignalPublicApi.StoreKit.subroutine_ok_withLsCodeRoLoaded_of_plain <|
@@ -142,7 +119,7 @@ theorem hook_stub_placed_ok [LibsignalPlacement] {α : Type} {H : LibsignalHooks
 theorem cli_stub_placed_ok [LibsignalPlacement] {α : Type} (mmpl : Obj.MultiPlacement)
     (W : CliHooks) {sym : String} {h : State → State} {spec : Spec α}
     (hext : cliExternsPlaced mmpl W sym = some h) (hh : HookOk h spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ sym)
       (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl spec) :=
   hook_stub_placed_ok hext hh hmem

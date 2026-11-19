@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCoins
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCoins -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeStore
 import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Pre-Key Store Lookups and Consumption Agreement on `pqRecvInputs`
@@ -22,7 +24,7 @@ membership, Kyber pre-key marking (`KyberGhost.mark`), and one-time EC pre-key r
 (`removePreKey`) on `runFiles (pqRecvInputs W st c rc)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -233,7 +235,7 @@ theorem kyberBaseKeys_get_pqRecv (W : PEParams) (st : PqParty) (c : List (BitVec
   rw [find?_lastResort_baseKeys st hnd id]
   cases List.lookup id st.kyberLastResort <;> rfl
 
-def kyberLookup (st : PqParty) (id : BitVec 32) : Option PqKyberKey :=
+@[expose] def kyberLookup (st : PqParty) (id : BitVec 32) : Option PqKyberKey :=
   match List.lookup id st.kyberOneTime with
   | some (some k) => some k
   | _ => (List.lookup id st.kyberLastResort).map (·.1)

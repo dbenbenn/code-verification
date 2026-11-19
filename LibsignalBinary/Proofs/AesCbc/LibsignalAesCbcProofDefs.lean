@@ -21,7 +21,7 @@ Key-encoding helper `keyToBytes` and reference `memcpy`/`memset` register-hook t
 `LibsignalBinary.Specifications.LibsignalAesCbc`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification
 namespace LibsignalAesCbc
@@ -32,12 +32,12 @@ abbrev keyToBytes (k : AesKey) : List (BitVec 8) := toLEBytes 32 k
 
 /-- `memcpy(dst = x0, src = x1, n = x2) -> dst`: `mem[dst .. dst+n] := mem[src .. src+n]`
 (source read before writing). -/
-def memcpyHook (s : State) : State :=
+@[expose] def memcpyHook (s : State) : State :=
   returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 .x0)
     (s.mem.readBytes (s.readReg64 .x1) (s.readReg64 .x2).toNat)))
 
 /-- `memset(dst = x0, c = x1, n = x2) -> dst`: `n` copies of the byte `c mod 256` at `dst`. -/
-def memsetHook (s : State) : State :=
+@[expose] def memsetHook (s : State) : State :=
   returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 .x0)
     (List.replicate (s.readReg64 .x2).toNat ((s.readReg64 .x1).truncate 8))))
 

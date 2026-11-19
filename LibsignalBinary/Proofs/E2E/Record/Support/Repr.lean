@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalPublicApiRepr
-public import LibsignalBinary.Proofs.E2E.Record.Support.Phi
+public import LibsignalBinary.Proofs.E2E.Record.Support.Phi -- proof-setup: allow-public-import
 
 /-!
 # Scope predicates, `HonestEnv`, and reachable-session invariant `Inv`
@@ -19,7 +19,7 @@ Defines the `SessionRecord` scope predicates (`RecordInScope`, `RecordPqEmpty`, 
 `InScope`), the binary execution environment `HonestEnv`, and the reachable-session invariant `Inv`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record
 
@@ -33,18 +33,18 @@ export CryptoVerification.LibsignalPublicApiRepr (AddrVal serializeAddrVals OptU
 /-! ## Scope predicates (`RecordInScope`, `RecordPqEmpty`, `RecordRepr`, `InScope`) -/
 
 /-- Public-API scope constraints on the current session of `r` (distinct identities, 32-byte seeds, clamped sender scalar, bounded counters). -/
-def RecordInScope (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def RecordInScope (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ s, r.currentSession = some s →
     s.state.remoteIdentity ≠ some s.state.localIdentity ∧ SeedsLen32 s.state ∧
       s.state.receiverChains.length < 2 ^ 32 ∧
       ∀ k, s.pendingKyberPreKey = some k → k.ciphertext.length < 2 ^ 32
 
 /-- Every current session in `r` has an empty `pqRatchetState` (SPQR disabled). -/
-def RecordPqEmpty (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def RecordPqEmpty (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ s, r.currentSession = some s → s.state.pqRatchetState = []
 
 /-- Binary layout bounds on `r`: bounded `receiverChains` / `messageKeys` lengths, non-zero registration IDs, and 33-byte `aliceBaseKey`. -/
-def RecordRepr (r : SessionRecord Bytes) : Prop :=
+@[expose] def RecordRepr (r : SessionRecord Bytes) : Prop :=
   ∀ s, r.currentSession = some s →
     (∀ c ∈ s.state.receiverChains, c.messageKeys.length ≤ maxMessageKeys) ∧
       (∀ sc, s.state.senderChain = some sc →
@@ -52,53 +52,13 @@ def RecordRepr (r : SessionRecord Bytes) : Prop :=
       s.Wf ∧ s.aliceBaseKey.length < 2 ^ 32
 
 /-- Conjunction of `RecordInScope`, `RecordPqEmpty`, and `RecordRepr`. -/
-def InScope (r : SessionRecord Bytes) : Prop := RecordInScope r ∧ RecordPqEmpty r ∧ RecordRepr r
+@[expose] def InScope (r : SessionRecord Bytes) : Prop := RecordInScope r ∧ RecordPqEmpty r ∧ RecordRepr r
 
 /-! ## `HonestEnv` and reachable-session invariant `Inv` -/
 
-/-- Binary execution environment bundling `Crypto`, `RustAlloc`, party identities, addresses, and `SessionExtras`. -/
-structure HonestEnv where
-  C : Crypto
-  A : RustAlloc
-  ctl : BitVec 64
-  uuidParse : UuidParser
-  img : Obj.Image
-  encRecord : SessionRecord Bytes → Bytes
-  decRecord : Bytes → Option (SessionRecord Bytes)
-  hooks : SessionRecord Bytes → String → Option (State → State)
-  idOf : Party → IdentityKey
-  addr : Party → AddrVal
-  now : SystemTime
-  extras : Party → SessionExtras
-  retAddr : BitVec 64
-  encEntry : SessionRecord Bytes → Party → Bytes → State
-  tfEntry : SessionRecord Bytes → Party → Bytes → State
-  decEntry : SessionRecord Bytes → Party → State → BitVec 256 → State
-
 namespace HonestEnv
 
-variable (E : HonestEnv)
-
-/-- The session model's parameters for this environment instance. -/
-def params : Params Bytes Unit :=
-  ⟨E.C, protoSignalCodec, spqrOffB, E.idOf .A, E.idOf .B,
-    serializeAddrVals (serviceIdParse uuidTryParse) (E.addr .A) (E.addr .B),
-    serializeAddrVals (serviceIdParse uuidTryParse) (E.addr .B) (E.addr .A)⟩
-
-/-- The record an honest store holds for ghost state `g`. -/
-def recOf (g : GhostState Bytes) : SessionRecord Bytes := toRecord E.extras g
-
 end HonestEnv
-
-/-- The identity key of a party's own session at the instance's parameters. -/
-def ownId (E : HonestEnv) : Party → IdentityKey
-  | .A => E.params.idA
-  | .B => E.params.idB
-
-/-- Reachable-session invariant at `E.params`: `InScope (E.recOf g)` and matching party identity keys. -/
-def Inv (E : HonestEnv) (g : GhostState Bytes) : Prop :=
-  InScope (E.recOf g) ∧ g.session.localIdentity = ownId E g.party ∧
-    g.session.remoteIdentity = some (ownId E g.party.other)
 
 namespace SeedLengthFacts
 

@@ -27,7 +27,7 @@ sender ratchet private keys, empty post-quantum state, epoch alignment, record-l
 and `< 2 ^ 20` record encoding length bounds.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Reach
 
@@ -44,12 +44,12 @@ attribute [local simp] exec_pure exec_throw exec_get exec_set exec_modify exec_m
 
 /-- The session-level part of `RecordRepr`: at most `maxMessageKeys` (2000) skipped message keys per
 receiver chain, and a clamped sender ratchet private key. -/
-def SessRepr (st : SessionState Bytes) : Prop :=
+@[expose] def SessRepr (st : SessionState Bytes) : Prop :=
   (∀ c ∈ st.receiverChains, c.messageKeys.length ≤ maxMessageKeys) ∧
     (∀ sc, st.senderChain = some sc →
       Ratchet.clampScalar sc.ratchetKey.privateKey.bytes = sc.ratchetKey.privateKey.bytes)
 
-def RatchetRepr (r : RatchetState) : Prop :=
+@[expose] def RatchetRepr (r : RatchetState) : Prop :=
   (∀ c ∈ r.receiverChains, c.messageKeys.length ≤ maxMessageKeys) ∧
     (∀ sc, r.senderChain = some sc →
       Ratchet.clampScalar sc.ratchetKey.privateKey.bytes = sc.ratchetKey.privateKey.bytes)
@@ -575,7 +575,7 @@ theorem messageEncrypt_ok_props (C : Crypto) (codec : SignalMessageProtoCodec) (
 /-! ## `SessionInv` and `ReachInv`: Inductive Bundle over `Reach (spqrOffSessionParams C) g` -/
 
 /-- The session-level invariant of a reachable ghost state `g` at `C : Crypto`. -/
-def SessionInv (_C : Crypto) (g : GhostState Bytes) : Prop :=
+@[expose] def SessionInv (_C : Crypto) (g : GhostState Bytes) : Prop :=
   SeedsLen32 g.session ∧
     g.session.receiverChains.length ≤ maxReceiverChains ∧
     g.session.pqRatchetState = [] ∧
@@ -585,7 +585,7 @@ def SessionInv (_C : Crypto) (g : GhostState Bytes) : Prop :=
 
 /-- The full invariant of a reachable ghost state `g` at `C : Crypto`: `SessionInv` plus epoch
 alignment `g.Aligned`. -/
-def ReachInv (C : Crypto) (g : GhostState Bytes) : Prop :=
+@[expose] def ReachInv (C : Crypto) (g : GhostState Bytes) : Prop :=
   SessionInv C g ∧ g.Aligned
 
 theorem reachInv_initA (C : Crypto) (k : InitKeys) : ReachInv C ((spqrOffSessionParams C).initA k) := by
@@ -809,7 +809,7 @@ theorem reach_remoteIdentity_ne_local (C : Crypto) {g : GhostState Bytes}
 /-! ## Record-Level Bridges (`sessionOf`, `toRecord extrasM`, `DeserializeScope`, `encodeRecord`) -/
 
 /-- The `Session Bytes` stored inside `Record.toRecord Record.extrasM g`. -/
-def sessionOf (g : GhostState Bytes) : Session Bytes :=
+@[expose] def sessionOf (g : GhostState Bytes) : Session Bytes :=
   { state := g.session
     pendingPreKey := if g.session.pendingPreKey then some (Record.extrasM g.party).pending else none
     pendingKyberPreKey := none
@@ -979,15 +979,6 @@ theorem sessionInv_of_recv_ok (C : Crypto) {g : GhostState Bytes} (msg : SignalM
     sessRepr_tryDecryptFromRecord (spqrOffSessionParams C).C ((spqrOffSessionParams C).expectedAddrs g.party) msg .whisper rc
       g.session s pt hrep hd'
   exact ⟨hseeds', hlen', hpq', hloc'.trans hloc, hrem'.trans hrem, hrep'⟩
-
-theorem reach_recordInv (C : Crypto) (E : HonestEnv) {g : GhostState Bytes}
-    (hE : E.recOf g = Record.toRecord Record.extrasM g)
-    (hid : ∀ p, ownId E p = partyIdentityKey p)
-    (hg : Reach (spqrOffSessionParams C) g) :
-    Record.Inv E g := by
-  refine ⟨hE.symm ▸ reach_inScope C hg, ?_, ?_⟩
-  · rw [reach_localIdentity_eq C hg, hid]
-  · rw [reach_remoteIdentity_eq C hg, hid]
 
 theorem canonSession_of_canonRecord {gr : RecordGhost} {g : GhostState Bytes}
     (hc : Serialization.CanonRecord gr (Record.toRecord Record.extrasM g)) :

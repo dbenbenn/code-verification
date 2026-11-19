@@ -24,7 +24,7 @@ Shows that projecting `cliPqxdhExpFlagged`'s input log with `sendTapesOfInputs` 
 retained-directory projection to `CoinLogM`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -104,10 +104,6 @@ private theorem writerT_run_pure {ω α : Type} (a : α) :
 
 private theorem writerT_run_liftM {ω α : Type} (c : ProbComp α) :
     (liftM c : WriterT (List ω) ProbComp α).run = (fun a => (a, [])) <$> c := rfl
-
-private theorem writerT_run_map {ω α β : Type} (f : α → β)
-    (m : WriterT (List ω) ProbComp α) :
-    (f <$> m).run = Prod.map f id <$> m.run := rfl
 
 private theorem writerT_run_bind {ω α β : Type}
     (m : WriterT (List ω) ProbComp α) (k : α → WriterT (List ω) ProbComp β) :

@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetAux
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
 
 /-!
 # Budget-Threaded Relocatable Arm `R0` Proof
@@ -24,7 +29,7 @@ Defines the Arm `R0` allocation-event envelope `PreEnv` and proves `run_hop_pre_
 `run_hop_pre_of_slots_placed_ok` on Block `579` under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -95,13 +100,13 @@ open LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget (rustDeallocExternSpecWit
 /-! ## Allocation-Event Envelopes (`PreAfterGetEnv`, `PreEnv`) -/
 
 /-- Post-`Dir::get("address")` allocation-event envelope of Arm `R0` (`FreeOnlyEvs` on `Err`, or `addressEvents uuidTryParse ownB` plus optional buffer deallocation on `Ok`). -/
-def PreAfterGetEnv (g : RunCall) (evs : List AllocEvent) : Prop :=
+@[expose] def PreAfterGetEnv (g : RunCall) (evs : List AllocEvent) : Prop :=
   match StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") with
   | .error () => FreeOnlyEvs evs
   | .ok ownB => SeqEnv (· = addressEvents uuidTryParse ownB) FreeOnlyEvs evs
 
 /-- Full Arm `R0` allocation-event envelope from `AtRunEntryPlaced` (`R+0x0`) to `AtDispatchPlaced` (`R+0x214`) or `AtRejectPlaced` (`R+0x124`). -/
-def PreEnv (cEnvs : RunCalleesEnvs) (g : RunCall) (evs : List AllocEvent) : Prop :=
+@[expose] def PreEnv (cEnvs : RunCalleesEnvs) (g : RunCall) (evs : List AllocEvent) : Prop :=
   SeqEnv (cEnvs.dirGet (runFiles g.i) StoresGhost.opened.identity.own (utf8 "address"))
     (PreAfterGetEnv g) evs
 

@@ -11,12 +11,15 @@ module
 
 public import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkLeakProgStep -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkLeakTier2 -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.HaltedSpkDefs
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.HaltedSpkDefs
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SpkHop2Red
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 import Computational.Proofs.E2E.ComposedPrefixHelpers
 import Mathlib.Tactic.Ring
+public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.Bridge
 
 /-!
 # Tracker-Halted Promoted `CostedReduction` for `spkLeakRed`
@@ -153,7 +156,7 @@ private theorem q_add_eleven_le_spkTier1Budget (q' qep' : ℕ) :
     (by omega) (by omega) (by omega) (by omega) (by omega)
   omega
 
-def spkLeakRedHaltedTier1 (ℓ q qep : ℕ) :
+@[expose] def spkLeakRedHaltedTier1 (ℓ q qep : ℕ) :
     SpkLeakRedProg Pt ℓ C K Dh encPt encT decT lam :=
   if ℓ < 10 ^ 6 then
     spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep
@@ -167,106 +170,6 @@ private theorem spkLeakRedHaltedTier1_totalQueries_le (ℓ q qep : ℕ) :
   · simp only [spkLeakRedRInProgHaltedReal, CostedReduction.totalQueries,
       spkInitHaltedC_queries, spkStepHaltedC_queries, Comp.queries]; omega
   · rw [dummyBoolSessionRed_totalQueries]; omega
-
-private theorem spkLeakRedHaltedTier1_totalCost_le (ℓ q qep : ℕ) {qep' : ℕ} (hqep : qep ≤ qep') :
-    (spkLeakRedHaltedTier1 (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).totalCost
-      q ≤ ratchetCostBudget q qep' := by
-  unfold spkLeakRedHaltedTier1
-  split_ifs with hℓ
-  · have hinit := spkInitHaltedC_cost (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT idA idB lam
-    have hstep := spkStepHaltedC_cost (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT lam q qep
-    have hbQep1 : bits qep ≤ bits qep' := bits_mono hqep
-    have hbQep2 : bits (qep + 1) ≤ bits qep' + 1 :=
-      (bits_succ_le qep).trans (Nat.add_le_add_right (bits_mono hqep) 1)
-    have hdiv : ℓ / 32 + 1 ≤ 31251 := by omega
-    have hhandle :
-        max 1
-          ((spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).handle.cost +
-            16) ≤ 173700000 + 18000 * q + 64 * bits qep' := by
-      rw [spkLeakRedRInProgHaltedReal_handle_cost C K Dh encPt encT decT idA idB lam ℓ q qep]
-      generalize (spkStepHaltedC (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT lam q qep).cost = cStep
-        at hstep ⊢
-      omega
-    have hmul :
-        q * max 1
-          ((spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).handle.cost +
-            16) ≤ q * (173700000 + 18000 * q + 64 * bits qep') :=
-      Nat.mul_le_mul_left q hhandle
-    have hinit_le :
-        (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).init.cost ≤
-          2100000 := by
-      rw [spkLeakRedRInProgHaltedReal_init_cost C K Dh encPt encT decT idA idB lam ℓ q qep]
-      exact hinit
-    have hfin_le :
-        (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).finish.cost ≤
-          100 := by
-      change (Comp.ret (orE (boolEq (.fst (.snd (.snd (.fst .v0)))) .v1)
-        (.fst (.snd (.snd (.snd (.fst .v0))))) :
-        Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
-          [spkHaltedStTy ℓ Pt, .bool] .bool)).cost ≤ 100
-      dsimp only [orE, boolEq, Comp.cost, Expr.cost, Expr.v0, Expr.v1]
-      decide
-    have htot :
-        (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).totalCost q ≤
-          2100000 + q * (173700000 + 18000 * q + 64 * bits qep') + 100 := by
-      dsimp only [CostedReduction.totalCost, extractPtPrfIface, atomicPrfIface, e2eSessionCodec]
-      generalize (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).init.cost =
-        ci at hinit_le ⊢
-      generalize (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).handle.cost =
-        ch at hhandle hmul ⊢
-      generalize (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).finish.cost =
-        cf at hfin_le ⊢
-      omega
-    exact htot.trans (session_cost_le_ratchetCostBudget q qep' 2100000 100 173700000 18000 64
-      (by omega) (by omega) (by omega) (by omega) (by omega))
-  · exact dummyBoolSessionRed_totalCost_le _ rfl _ q qep'
-
-private theorem spkLeakRedHaltedTier1_size_le_of_clamp (ℓ q qep : ℕ) {qep' : ℕ}
-    (hqep_B : qep + 1 ≤ ratchetCostBudget q qep') :
-    (spkLeakRedHaltedTier1 (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).size ≤
-      reductionSizeBudget + 2 ^ 12 * bits (ratchetCostBudget q qep') := by
-  unfold spkLeakRedHaltedTier1
-  split_ifs with hℓ
-  · have hinit := spkInitHaltedC_size_le (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT idA idB lam
-    have hstep := spkStepHaltedC_size_le (ℓ := ℓ) (Pt := Pt) C K Dh encPt encT decT lam q qep
-    have hqB : q + 11 ≤ ratchetCostBudget q qep' := q_add_eleven_le_ratchetCostBudget q qep'
-    have hbq : bits q ≤ bits (ratchetCostBudget q qep') := bits_mono (by omega)
-    have hbq1 : bits (q + 1) ≤ bits (ratchetCostBudget q qep') := bits_mono (by omega)
-    have hbqep : bits qep ≤ bits (ratchetCostBudget q qep') := bits_mono (by omega)
-    have hbqep1 : bits (qep + 1) ≤ bits (ratchetCostBudget q qep') := bits_mono hqep_B
-    have hinit_le :
-        (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).init.size ≤
-          6000 := by
-      rw [spkLeakRedRInProgHaltedReal_init_size C K Dh encPt encT decT idA idB lam ℓ q qep]
-      exact hinit.trans (by decide)
-    have hhandle_le :
-        (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).handle.size ≤
-          1730000 + 160 * bits (ratchetCostBudget q qep') := by
-      rw [spkLeakRedRInProgHaltedReal_handle_size C K Dh encPt encT decT idA idB lam ℓ q qep]
-      omega
-    have hfin_le :
-        (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).finish.size ≤
-          100 := by
-      change (Comp.ret (orE (boolEq (.fst (.snd (.snd (.fst .v0)))) .v1)
-        (.fst (.snd (.snd (.snd (.fst .v0))))) :
-        Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
-          [spkHaltedStTy ℓ Pt, .bool] .bool)).size ≤ 100
-      dsimp only [orE, boolEq, Comp.size, Expr.size, Expr.v0, Expr.v1]
-      decide
-    have hsz :
-        (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).size ≤
-          1737000 + 160 * bits (ratchetCostBudget q qep') := by
-      dsimp only [CostedReduction.size]
-      generalize (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).init.size =
-        si at hinit_le ⊢
-      generalize (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).handle.size =
-        sh at hhandle_le ⊢
-      generalize (spkLeakRedRInProgHaltedReal (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).finish.size =
-        sf at hfin_le ⊢
-      omega
-    exact size_le_budget_of_log_cost (by decide) (by decide) hsz
-  · exact (dummyBoolSessionRed_size_le (extractPtPrfIface ℓ Pt) BV256).trans
-      (Nat.le_add_right _ _)
 
 private theorem spkLeakRedHaltedTier1_totalCost_le_tier1 (ℓ q qep : ℕ) {qep' : ℕ} (hqep : qep ≤ qep') :
     (spkLeakRedHaltedTier1 (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).totalCost q ≤
@@ -375,68 +278,6 @@ theorem spkLeakRedRInProgHalted_totalQueries_le (ℓ q qep : ℕ) :
   split_ifs
   · exact spkLeakRedHaltedTier1_totalQueries_le C K Dh encPt encT decT idA idB lam ℓ q qep
   · exact spkLeakRedHaltedTier2_totalQueries_le C K Dh encPt encT decT lam idA idB ℓ q qep
-
-theorem spkLeakRedRInProgHalted_totalCost_le (ℓ q qep : ℕ) {qep' : ℕ} (hqep : qep ≤ qep') :
-    (spkLeakRedRInProgHalted (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).totalCost
-      q ≤ ratchetCostBudget q qep' := by
-  unfold spkLeakRedRInProgHalted
-  split_ifs
-  · exact spkLeakRedHaltedTier1_totalCost_le C K Dh encPt encT decT idA idB lam ℓ q qep hqep
-  · exact spkLeakRedHaltedTier2_totalCost_le_ratchet C K Dh encPt encT decT lam idA idB ℓ q qep hqep
-
-theorem spkLeakRedRInProgHalted_size_le_of_clamp (ℓ q qep : ℕ) {qep' : ℕ}
-    (hqep_B : qep + 1 ≤ ratchetCostBudget q qep') :
-    (spkLeakRedRInProgHalted (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).size ≤
-      reductionSizeBudget + 2 ^ 12 * bits (ratchetCostBudget q qep') := by
-  unfold spkLeakRedRInProgHalted
-  split_ifs
-  · exact spkLeakRedHaltedTier1_size_le_of_clamp C K Dh encPt encT decT idA idB lam ℓ q qep hqep_B
-  · exact spkLeakRedHaltedTier2_size_le_of_clamp C K Dh encPt encT decT lam idA idB ℓ q qep hqep_B
-
-theorem spkLeakRedRInProgHalted_size_le (ℓ q qep : ℕ) {qep' : ℕ} (hqep_q : qep ≤ q + 10) :
-    (spkLeakRedRInProgHalted (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).size ≤
-      reductionSizeBudget + 2 ^ 12 * bits (ratchetCostBudget q qep') := by
-  have hqB := q_add_eleven_le_ratchetCostBudget q qep'
-  exact spkLeakRedRInProgHalted_size_le_of_clamp C K Dh encPt encT decT idA idB lam ℓ q qep
-    (by omega)
-
-theorem spkLeakRedRInProgHalted_gRedBounded_of_clamp (ℓ q qep : ℕ) {qep' : ℕ}
-    (hqep : qep ≤ qep') (hqep_B : qep + 1 ≤ ratchetCostBudget q qep') :
-    GRedBounded
-      (spkLeakRedRInProgHalted (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep)
-      (fun _ => 1) (fun _ => 0) q (q + 1) (ratchetCostBudget q qep') :=
-  gRedBounded_of_bounds _ (fun _ => 1) (fun _ => 0) q (q + 1) (ratchetCostBudget q qep')
-    (spkLeakRedRInProgHalted_totalCost_le C K Dh encPt encT decT idA idB lam ℓ q qep hqep)
-    (spkLeakRedRInProgHalted_size_le_of_clamp C K Dh encPt encT decT idA idB lam ℓ q qep hqep_B)
-    (spkLeakRedRInProgHalted_totalQueries_le C K Dh encPt encT decT idA idB lam ℓ q qep)
-    (atomicSessionOps_sizeHonest ℓ Pt C K Dh encPt encT decT lam)
-    (atomicSamplers_sizeHonest ℓ Pt)
-
-theorem spkLeakRedRInProgHalted_gRedBounded_of_le (ℓ q qep : ℕ) {qep' : ℕ}
-    (hqep_q : qep ≤ q + 10) (hqep : qep ≤ qep') :
-    GRedBounded
-      (spkLeakRedRInProgHalted (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep)
-      (fun _ => 1) (fun _ => 0) q (q + 1) (ratchetCostBudget q qep') :=
-  gRedBounded_of_bounds _ (fun _ => 1) (fun _ => 0) q (q + 1) (ratchetCostBudget q qep')
-    (spkLeakRedRInProgHalted_totalCost_le C K Dh encPt encT decT idA idB lam ℓ q qep hqep)
-    (spkLeakRedRInProgHalted_size_le C K Dh encPt encT decT idA idB lam ℓ q qep hqep_q)
-    (spkLeakRedRInProgHalted_totalQueries_le C K Dh encPt encT decT idA idB lam ℓ q qep)
-    (atomicSessionOps_sizeHonest ℓ Pt C K Dh encPt encT decT lam)
-    (atomicSamplers_sizeHonest ℓ Pt)
-
-theorem spkLeakRedRInProgHalted_gRedBounded (ℓ q qep : ℕ) (hqep : qep ≤ q + 10) :
-    GRedBounded
-      (spkLeakRedRInProgHalted (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep)
-      (fun _ => 1) (fun _ => 0) q (q + 1) (ratchetCostBudget q qep) :=
-  spkLeakRedRInProgHalted_gRedBounded_of_le C K Dh encPt encT decT idA idB lam ℓ q qep hqep
-    (Nat.le_refl qep)
-
-theorem spkLeakRedRInProgHalted_gRedBounded_succ (ℓ q qep : ℕ) (hqep : qep ≤ q + 10) :
-    GRedBounded
-      (spkLeakRedRInProgHalted (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep)
-      (fun _ => 1) (fun _ => 0) q (q + 1) (ratchetCostBudget q (qep + 1)) :=
-  spkLeakRedRInProgHalted_gRedBounded_of_le C K Dh encPt encT decT idA idB lam ℓ q qep hqep
-    (Nat.le_succ qep)
 
 theorem spkLeakRedRInProgHalted_gRedBounded_tight (ℓ q qep : ℕ) (hqep : qep ≤ q + 10) :
     GRedBounded
@@ -748,15 +589,6 @@ theorem spkLeakRedRInProgHalted_eval (ℓ q qep : ℕ) (s : BitVec 256)
   split_ifs
   · exact spkLeakRedHaltedTier1_eval C K Dh encPt encT decT idA idB lam ℓ q qep s A hA hℓ
   · exact spkLeakRedHaltedTier2_eval C K Dh encPt encT decT lam idA idB ℓ q qep s A hA hℓ
-
-theorem spkLeakRedRInProgHalted_eval_paramsV1 (ℓ q qep : ℕ) (s : BitVec 256)
-    (A : CryptoGames.SM.Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (hA : MakesAtMostQueries A q) (hℓ : ℓ < 10 ^ 6) :
-    (spkLeakRedRInProgHalted (Pt := Pt) C K Dh encPt encT decT idA idB lam ℓ q qep).eval
-        (fun _ => A) s =
-      spkLeakRedTrackHalted (Pt := Pt) (ℓ := ℓ) K (paramsV1 C K idA idB)
-        Dh encPt encT decT qep s A :=
-  spkLeakRedRInProgHalted_eval C K Dh encPt encT decT idA idB lam ℓ q qep s A hA hℓ
 
 end EvalAgreement
 

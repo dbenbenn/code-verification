@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPureA
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSpqrPureA -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -38,7 +38,7 @@ Proves composed-trace preservation of `SpqrInitDirOK` across protocol moves and
 relates `spqrModelOf.recv` outputs to symbolic `DY.Spqr.spqrRecv` states and keys.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -75,7 +75,7 @@ open Swarm.Phase0WholeFunctionBridge
 open DY.Libsignal.Refinement (ExternCryptoLawsHold)
 
 /-- Any `InitState.SubF` view of `b` has a valid `spqrParamsDir?`. -/
-def SpqrInitDirOK (b : DY.Bytes) : Prop :=
+@[expose] def SpqrInitDirOK (b : DY.Bytes) : Prop :=
   ∀ authKey params,
     b.view? DY.Spqr.InitState.SubF = some ⟨authKey, params⟩ →
     (DY.Spqr.spqrParamsDir? params).isSome = true

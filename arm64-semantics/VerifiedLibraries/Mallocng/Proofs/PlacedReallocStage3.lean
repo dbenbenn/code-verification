@@ -168,7 +168,7 @@ theorem sc63_post_mremap_addrs {newBase : BitVec 64} {needed extra newSz : Nat}
 /-! ## Reconvergence Tail -/
 
 set_option maxHeartbeats 400000 in
-theorem realloc_s3_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase 14 b)
+theorem realloc_s3_finish_ok [MallocngMultiPlacement] {ro : Bool} {b : BitVec 64} (hb : BlkBase 14 b)
     (γ : GhostName) (tp brkStart : BitVec 64) (bgt : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
     (s0 s : State) (st : MallocngSt)
     (hCount : MallocngCountIvsWF bgt ivs0 st)
@@ -228,8 +228,8 @@ theorem realloc_s3_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
         (maddrs.lock ↦₃₂ 0#32) ∗
         (maddrs.replaced ↦₃₂ 0#32) ∗
         (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-        MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+        MallocngAuxvPtrCell ro maddrs.libc st.auxvPtr ∗
+        MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
         MallocngTightBlock γ p oldSz al ∗ Frame))
       (fun sf Pf =>
@@ -237,7 +237,7 @@ theorem realloc_s3_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
           sf.mem.perm = s.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
           sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = newQ ∧
           (Pf ⊢ stackFrame s0 800 ∗
-            MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+            MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
             ⌜(MallocngTightInitBlock γ al).pureWf newQ (newSz, keptBs)⌝ ∗
             (MallocngTightInitBlock γ al).interp newQ (newSz, keptBs) ∗
             Frame))) oom := by
@@ -283,8 +283,8 @@ theorem realloc_s3_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
            (maddrs.lock ↦₃₂ 0#32) ∗
            (maddrs.replaced ↦₃₂ 0#32) ∗
            (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-           ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-           MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+           MallocngAuxvPtrCell ro maddrs.libc st.auxvPtr ∗
+           MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
            ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
            MallocngTightBlock γ p oldSz al ∗ Frame)))
         (fun sf Pf =>
@@ -292,7 +292,7 @@ theorem realloc_s3_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
             sf.mem.perm = s.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
             sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = newQ ∧
             (Pf ⊢ stackFrame s0 800 ∗
-              MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+              MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
               ⌜(MallocngTightInitBlock γ al).pureWf newQ (newSz, keptBs)⌝ ∗
               (MallocngTightInitBlock γ al).interp newQ (newSz, keptBs) ∗
               Frame))) oom := by
@@ -305,13 +305,13 @@ theorem realloc_s3_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
           (g.metaPtr ↦ₛ ({ g with mem := newBase, maplen := needed / 4096 } : GroupDesc).metaBytes) ∗
           ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ MallocngLiveAuth γ st.liveMap ∗
           (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-          ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+          MallocngAuxvPtrCell ro maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
           MallocngTightBlock γ p oldSz al ∗ Frame ∗ R)
         (Satisfies.mono (Entails.of_eq (by
           generalize (MallocngRoTablesAt maddrs) = PRo
           generalize (ReallocMremapFrame maddrs tp st g) = PFr
           generalize (ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal) = PPn
-          generalize (MallocngAuxvState γ st.auxvPtr st.auxvSnap) = PAu
+          generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu
           ac_rfl)) hm))
     rintro ⟨hDisjMa, hDisjGp, hDisjAp, hDisjRg⟩
     have hPermRel2 :
@@ -334,27 +334,27 @@ theorem realloc_s3_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
          (maddrs.lock ↦₃₂ 0#32) ∗
          (maddrs.replaced ↦₃₂ 0#32) ∗
          (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-         ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-         MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+         MallocngAuxvPtrCell ro maddrs.libc st.auxvPtr ∗
+         MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
          ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
          MallocngTightBlock γ p oldSz al) ∗ Frame)
       (Entails.of_eq (by
         generalize (MallocngRoTablesAt maddrs) = PRo
         generalize (ReallocMremapFrame maddrs tp st g) = PFr
         generalize (ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal) = PPn
-        generalize (MallocngAuxvState γ st.auxvPtr st.auxvSnap) = PAu
+        generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu
         ac_rfl)) ?_
     apply sepWP_bupd_pre (Q :=
         ReallocSavedLo s0 (s0.sp - 80#64) ∗
         (memRegion (s0.sp - 80#64 + 48#64) 8 ∗ memRegion (s0.sp - 80#64 + 56#64) 8 ∗
          memRegion (s0.sp - 80#64 + 64#64) 8 ∗ memRegion (s0.sp - 80#64 + 72#64) 8) ∗
         stackFrameAt (s0.sp - 80#64) 720 ∗
-        (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 s2 ∗
+        (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 s2 ∗
          ⌜(MallocngTightInitBlock γ al).pureWf newP (newSz, keptBs)⌝ ∗
          (MallocngTightInitBlock γ al).interp newP (newSz, keptBs) ∗ Frame))
     · have hwf2 : MallocngWF maddrs.base brkStart s2.brk bgt.liveCost bgt.peakCost st := by
         rwa [hbrk2]
-      have hAbs := reallocMremap_absorb (newP := newP) (al := al) γ maddrs tp brkStart bgt ivs0 s0 s2 st
+      have hAbs := reallocMremap_absorb (ro := ro) (newP := newP) (al := al) γ maddrs tp brkStart bgt ivs0 s0 s2 st
         hCount hwf2 hg hIdx0 origBs tailBs hOrigLe hTailLen hSlot0 hSc63 errnoVal bsFinal
         hNewLo hNewHi hNeedEq hNewBaseGe hNewBaseAl hNewBaseFit hNewPNat
         (hproc2.2.2.1.trans htp0) (hproc2.2.2.2.1.trans hbrks0)
@@ -385,8 +385,8 @@ theorem realloc_s3_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
      (maddrs.lock ↦₃₂ 0#32) ∗
      (maddrs.replaced ↦₃₂ 0#32) ∗
      (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-     ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-     MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+     MallocngAuxvPtrCell ro maddrs.libc st.auxvPtr ∗
+     MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
      ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
      MallocngTightBlock γ p oldSz al ∗ Frame) = RestEnv
   refine (fun {P post} (h : ∀ post', post' = post →
@@ -431,7 +431,7 @@ private theorem sepWP_bind_state {prog : Program} {ret : BitVec 64} {s : State} 
     (h : ∀ sFin, sFin = s → SepWP prog ret sFin P post oom) : SepWP prog ret s P post oom := h s rfl
 
 set_option maxHeartbeats 400000 in
-theorem realloc_s3_post_mremap_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase 14 b)
+theorem realloc_s3_post_mremap_ok [MallocngMultiPlacement] {ro : Bool} {b : BitVec 64} (hb : BlkBase 14 b)
     (γ : GhostName) (tp brkStart : BitVec 64) (bgt : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
     (s0 s : State) (st : MallocngSt)
     (hCount : MallocngCountIvsWF bgt ivs0 st)
@@ -477,7 +477,7 @@ theorem realloc_s3_post_mremap_ok [MallocngMultiPlacement] {b : BitVec 64} (hb :
         ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ ReallocMremapFrame maddrs tp st g ∗
         MallocngLiveAuth γ st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
         (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+        MallocngAuxvPtrCell ro maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
         MallocngTightBlock γ p oldSz al ∗ Frame))
       (fun sf Pf =>
@@ -485,7 +485,7 @@ theorem realloc_s3_post_mremap_ok [MallocngMultiPlacement] {b : BitVec 64} (hb :
           sf.mem.perm = s.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
           sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = newQ ∧
           (Pf ⊢ stackFrame s0 800 ∗
-            MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+            MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
             ⌜(MallocngTightInitBlock γ al).pureWf newQ (newSz, keptBs)⌝ ∗
             (MallocngTightInitBlock γ al).interp newQ (newSz, keptBs) ∗ Frame))) oom := by
   intro sp1 bf keptBs bsRemap0
@@ -544,7 +544,7 @@ theorem realloc_s3_post_mremap_ok [MallocngMultiPlacement] {b : BitVec 64} (hb :
      ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ ReallocMremapFrame maddrs tp st g ∗
      MallocngLiveAuth γ st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
      (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-     ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+     MallocngAuxvPtrCell ro maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
      ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
      MallocngTightBlock γ p oldSz al ∗ Frame) = RestEnv
   refine (fun {P post} (h : ∀ post', post = post' →
@@ -609,7 +609,7 @@ theorem realloc_s3_post_mremap_ok [MallocngMultiPlacement] {b : BitVec 64} (hb :
     refine SepWP.weaken_pre (Entails.of_eq (by
       generalize (MallocngRoTablesAt maddrs) = PRo; generalize (ReallocMremapFrame maddrs tp st g) = PFr
       generalize (ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal) = PPn
-      generalize (MallocngAuxvState γ st.auxvPtr st.auxvSnap) = PAu; ac_rfl))
+      generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu; ac_rfl))
       (SepWP.mono (realloc_s3_finish_ok hb γ tp brkStart bgt ivs0 s0 sFin st hCount hwf hg hIdx0
         origBs tailBs hOrigLe hTailLen hSlot0 hSc63 errnoVal hNewLo hNewHi hNeedSymm.symm
         hNewBaseGe hNewBaseAl hNewBaseFit hOldRw hPermF hpcF hrunF hbrkF hprocF htp0 hbrks0
@@ -690,7 +690,7 @@ theorem realloc_s3_post_mremap_ok [MallocngMultiPlacement] {b : BitVec 64} (hb :
       refine SepWP.weaken_pre (Entails.of_eq (by
         generalize (MallocngRoTablesAt maddrs) = PRo; generalize (ReallocMremapFrame maddrs tp st g) = PFr
         generalize (ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal) = PPn
-        generalize (MallocngAuxvState γ st.auxvPtr st.auxvSnap) = PAu; ac_rfl))
+        generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu; ac_rfl))
         (SepWP.mono (realloc_s3_finish_ok hb γ tp brkStart bgt ivs0 s0 sFin st hCount hwf hg hIdx0
           origBs tailBs hOrigLe hTailLen hSlot0 hSc63 errnoVal hNewLo hNewHi hNeedSymm.symm
           hNewBaseGe hNewBaseAl hNewBaseFit hOldRw hPermF hpcF hrunF hbrkF hprocF htp0 hbrks0
@@ -760,7 +760,7 @@ theorem realloc_s3_post_mremap_ok [MallocngMultiPlacement] {b : BitVec 64} (hb :
       refine SepWP.weaken_pre (Entails.of_eq (by
         generalize (MallocngRoTablesAt maddrs) = PRo; generalize (ReallocMremapFrame maddrs tp st g) = PFr
         generalize (ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal) = PPn
-        generalize (MallocngAuxvState γ st.auxvPtr st.auxvSnap) = PAu; ac_rfl))
+        generalize (MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap) = PAu; ac_rfl))
         (SepWP.mono (realloc_s3_finish_ok hb γ tp brkStart bgt ivs0 s0 sFin st hCount hwf hg hIdx0
           origBs tailBs hOrigLe hTailLen hSlot0 hSc63 errnoVal hNewLo hNewHi hNeedSymm.symm
           hNewBaseGe hNewBaseAl hNewBaseFit hOldRw hPermF hpcF hrunF hbrkF hprocF htp0 hbrks0

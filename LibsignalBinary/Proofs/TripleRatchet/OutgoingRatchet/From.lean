@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Decode
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Frame
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case1
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case3
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case4
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Decode -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Frame -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case1
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case2
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case3
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Case4
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Verification of `OutgoingTripleRatchet::from_session_state`
@@ -23,7 +24,7 @@ Combines the four branch proofs (`Case1`–`Case4`) into `otrFrom_ok_ext`, `otrF
 `otrFrom_placed_ok` for `<OutgoingTripleRatchet>::from_session_state`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.OutgoingRatchet
 
@@ -36,47 +37,6 @@ open CryptoVerification.LibsignalTripleRatchet.Getters
 open ProofLib.ProgramReflection
 
 /-! ## Top-level `otrFrom_ok` theorem -/
-
-theorem otrFrom_ok_ext {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hA : AllocContracts img.base A ext)
-    (hDeser : DeserializeExtOk img.base ext)
-    (hRemIk : RemoteIdentityKeyExtOk img A ext)
-    (hDropSpe : DropSpeExtOk img A ext) :
-    OtrFromExtOk img A ext := by
-  apply subroutine_ok_of_cases4
-    (P₁ := fun x => x.st.senderChain = none)
-    (P₂ := fun x => ∃ sc, x.st.senderChain = some sc ∧ 256 ≤ x.st.version.toNat)
-    (P₃ := fun x => ∃ sc, x.st.senderChain = some sc ∧
-      ¬ 256 ≤ x.st.version.toNat ∧ x.st.remoteIdentity = none)
-    (P₄ := fun x => ∃ sc rem, x.st.senderChain = some sc ∧
-      ¬ 256 ≤ x.st.version.toNat ∧ x.st.remoteIdentity = some rem)
-  · intro x
-    cases hsc : x.st.senderChain with
-    | none => exact Or.inl rfl
-    | some sc =>
-      by_cases hver : 256 ≤ x.st.version.toNat
-      · exact Or.inr (Or.inl ⟨sc, rfl, hver⟩)
-      · cases hrem : x.st.remoteIdentity with
-        | none => exact Or.inr (Or.inr (Or.inl ⟨sc, rfl, hver, rfl⟩))
-        | some rem => exact Or.inr (Or.inr (Or.inr ⟨sc, rem, rfl, hver, rfl⟩))
-  · exact otrFrom_case1_ok_ext himg
-  · exact otrFrom_case2_ok_ext himg hA hDeser
-  · exact otrFrom_case3_ok_ext himg hA hDeser hRemIk
-  · exact otrFrom_case4_ok_ext himg hDeser hRemIk hDropSpe
-
-theorem otrFrom_ok {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hA : AllocHooks A abs)
-    (hDeser : DeserializeOk img.base C ctl abs)
-    (hRemIk : RemoteIdentityKeyOk img C A ctl abs)
-    (hDropSpe : DropSpeOk img C A ctl abs) :
-    OtrFromOk img C A ctl abs :=
-  otrFrom_ok_ext himg (AllocContracts.of_tripleRatchetProgAt img.base C A ctl abs hA) hDeser hRemIk hDropSpe
-
-/-! ## Relocatable `[LibsignalPlacement]` `otrFrom_placed_ok` theorem -/
 
 theorem otrFrom_placed_ok_of_contracts [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

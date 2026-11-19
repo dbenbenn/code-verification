@@ -10,13 +10,27 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevVerNePlaced
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.ResponderCanonicalPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerSeqFreePlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevVerNePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwnedPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.ResponderCanonicalPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerSeqFreePlacedBudget
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Closed Leaf Witnesses for Linked `recv-prekey` (`W4`)
@@ -24,7 +38,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerSeqFreePlacedBud
 Assembles the closed leaf contracts over the two-argument hook table
 `cliGhostExterns gh (cliExternsPlaced mmpl W)` at `fineHookRustCliAllocBudget γ mmpl tp brkStart`
 (parametric in `gh : CliGhostHooks`):
-1. `formatInnerBudgetSpec` and `fmtWriteBudgetSpec` `HookSat` witnesses;
+1. `formatInnerCallCliLsSpec` and `fmtWriteProtoAddrCliLsSpec` `HookSat` witnesses from `gh.extra`;
 2. `aesDecBudgetSpec` and `aesDecWeakBudgetSpec` `HookSat` witnesses over `mallocng`;
 3. `RunHooksPlaced` over `cliGhostExterns gh` (`cliRunHooksPlaced_of_ghost`);
 4. Subroutine contracts for Block `14` (`SessionStructure::encode_raw`), Block `46`
@@ -32,7 +46,7 @@ Assembles the closed leaf contracts over the two-argument hook table
    (`Pqxdh::accept` success and owned-error paths).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,34 +59,25 @@ open CryptoVerification (
 )
 open CryptoVerification.LibsignalTripleRatchet (withLsFrozen)
 open CryptoVerification.E2E (
-  UnreachedPqxdhPrimitives aesDecHookMallocng fmtWriteHook0 formatInnerHook0 modelPrims
+  UnreachedPqxdhPrimitives aesDecHookMallocng modelPrims
 )
 open CryptoVerification.E2E.Pqxdh.ResponderCore (ofSignalPqxdhPrimitives)
 open CryptoVerification.E2E.Record (encodeRecord)
 open CryptoVerification.E2E.Record.Placed (lsProg_46)
 open CryptoVerification.SignalSession (
-  CliHooks cliExternsPlaced cliHookTablePlaced
-  lsAesDecSym lsFmtWriteSym lsFormatInnerSym lsMemcpySym lsMemsetSym lsReadFileSym lsReadStdinSym
-  lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli
-  lsRustNoAllocShimSymCli lsRustReallocSymCli lsStringCloneSym
+  CliHooks cliExternsPlaced lsAesDecSym lsFmtWriteSym lsFormatInnerSym lsStringCloneSym
 )
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliHookTablePlaced)
 open CryptoVerification.SignalSession.Cli.RunGlue (
-  CliGhostHooks IsFsC cliExternsPlaced_row cliExtraGhostSyms cliGhostExterns cliGhostExterns_other
-)
-open CryptoVerification.SignalSession.Cli.Slots (
-  aesDec_row_placed fmtWrite_row_placed formatInner_row_placed
+  CliGhostHooks IsFsC cliGhostExterns cliGhostExterns_extra_some
 )
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched (
   pqxdhLogClosurePlacedSpec pqxdh_log_closure_frozen_placed_ok_of_block
 )
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget)
-open LibsignalBinary.Heap.Fine (
-  fineCostModel fmtWriteHook0_budget_ok formatInnerHook0_budget_ok
-)
+open LibsignalBinary.Heap.Fine (fineCostModel)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (stringCloneBudgetSpec)
-open LibsignalBinary.Heap.SpecBudget (
-  aesDecBudgetSpec aesDecWeakBudgetSpec fmtWriteBudgetSpec formatInnerBudgetSpec
-)
+open LibsignalBinary.Heap.SpecBudget (aesDecBudgetSpec aesDecWeakBudgetSpec)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (
   pqxdhAcceptOptFieldsFrozenPlacedSpec
 )
@@ -93,6 +98,10 @@ open LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget (
   RecordDeserializeCancelEnv sessDeserializeCancel_recordEnv_fine_specPlaced_ok
 )
 open Symbolic.Swarm.TRREF.B3Defs (DeserializeScopeP_Q NonEmptyV1Q)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (hookSat_withLsRet withLsRet)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  fmtWriteProtoAddrCliLsSpec formatInnerCallCliLsSpec
+)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget (RunHooksPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget (
   CliGhostAllocHooks CliGhostSpqrAllocHooks
@@ -104,81 +113,76 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Stag
   cliPqxdhAccept_err_owned_full_placed_ok cliPqxdhAccept_opt_fields_full_placed_ok
 )
 
-/-! ## 1. Non-Ghost Row Lookup on `cliGhostExterns gh (cliExternsPlaced mmpl W)` -/
+/-! ## 1. Closed Formatting & `mallocng` AES-CBC Hook Contracts on `cliGhostExterns` -/
 
-private theorem cliGhost_row_eq (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {sym : String} {f : State → State}
-    (hrow : (sym, f) ∈ cliHookTablePlaced mmpl W)
-    (h1 : sym ≠ lsRustAllocSymCli := by decide)
-    (h2 : sym ≠ lsRustDeallocSymCli := by decide)
-    (h3 : sym ≠ lsRustReallocSymCli := by decide)
-    (h4 : sym ≠ lsRustAllocZeroedSymCli := by decide)
-    (h5 : sym ≠ lsRustNoAllocShimSymCli := by decide)
-    (h6 : sym ≠ lsStringCloneSym := by decide)
-    (h7 : sym ≠ lsReadFileSym := by decide)
-    (h8 : sym ≠ lsReadStdinSym := by decide)
-    (h9 : sym ≠ lsMemsetSym := by decide)
-    (h10 : sym ≠ lsMemcpySym := by decide)
-    (hExtra : cliExtraGhostSyms.contains sym = false ∨ gh.extra.lookup sym = none := by
-      left; decide) :
-    cliGhostExterns gh (cliExternsPlaced mmpl W) sym = some f :=
-  (cliGhostExterns_other gh (cliExternsPlaced mmpl W) h1 h2 h3 h4 h5 h6 h7 h8 h9 h10 hExtra).trans
-    (cliExternsPlaced_row mmpl W hrow)
-
-/-! ## 2. Closed Formatting & `mallocng` AES-CBC Hook Contracts on `cliGhostExterns` -/
-
-/-- `formatInnerBudgetSpec` `HookSat` at `cliGhostExterns gh (cliExternsPlaced mmpl W)`. -/
-theorem cliFormatInner_budget_sat {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) :
+/-- `formatInnerCallCliLsSpec` `HookSat` at `cliGhostExterns gh (cliExternsPlaced mmpl W)`
+from `gh.extra.lookup lsFormatInnerSym = some f`. -/
+theorem cliFormatInnerCall_cliLs_sat [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
+    {f : State → State}
+    (hLook : gh.extra.lookup lsFormatInnerSym = some f)
+    (hOk : HookOk f (formatInnerCallCliLsSpec M A lim)) :
     HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsFormatInnerSym
-      (formatInnerBudgetSpec M A lim) :=
-  ⟨formatInnerHook0, cliGhost_row_eq mmpl gh W (formatInner_row_placed mmpl W),
-    formatInnerHook0_budget_ok M A lim⟩
+      (formatInnerCallCliLsSpec M A lim) :=
+  ⟨f, cliGhostExterns_extra_some gh (cliExternsPlaced mmpl W) hLook, hOk⟩
 
-/-- `fmtWriteBudgetSpec` `HookSat` at `cliGhostExterns gh (cliExternsPlaced mmpl W)`. -/
-theorem cliFmtWrite_budget_sat {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) :
+/-- `fmtWriteProtoAddrCliLsSpec` `HookSat` at `cliGhostExterns gh (cliExternsPlaced mmpl W)`
+from `gh.extra.lookup lsFmtWriteSym = some f`. -/
+theorem cliFmtWriteProtoAddr_cliLs_sat [LibsignalPlacement]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
+    {f : State → State}
+    (hLook : gh.extra.lookup lsFmtWriteSym = some f)
+    (hOk : HookOk f (fmtWriteProtoAddrCliLsSpec M A lim)) :
     HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsFmtWriteSym
-      (fmtWriteBudgetSpec M A lim) :=
-  ⟨fmtWriteHook0, cliGhost_row_eq mmpl gh W (fmtWrite_row_placed mmpl W),
-    fmtWriteHook0_budget_ok M A lim⟩
+      (fmtWriteProtoAddrCliLsSpec M A lim) :=
+  ⟨f, cliGhostExterns_extra_some gh (cliExternsPlaced mmpl W) hLook, hOk⟩
 
 /-- `aesDecBudgetSpec` `HookSat` at `cliGhostExterns gh (cliExternsPlaced mmpl W)` over
 `fineHookRustCliAllocBudget γ mmpl tp brkStart`. -/
-theorem cliAesDec_budget_sat (γ : GhostName) (mmpl : Obj.MultiPlacement)
+theorem cliAesDec_budget_sat [LibsignalPlacement] (γ : GhostName) (mmpl : Obj.MultiPlacement)
     (tp brkStart : BitVec 64) (lim : BudgetLimits)
     (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (gh : CliGhostHooks) (W : CliHooks) :
+    (gh : CliGhostHooks) (W : CliHooks)
+    (hLook : gh.extra.lookup lsAesDecSym = some (aesDecHookMallocng mmpl W.C.D)) :
     HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
-      (aesDecBudgetSpec W.C.D fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim) :=
-  fineAesDec_budget_hookSat γ tp brkStart lim hPl W.C.D
-    (cliGhost_row_eq mmpl gh W (aesDec_row_placed mmpl W))
+      (withLsRet (aesDecBudgetSpec W.C.D fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :=
+  hookSat_withLsRet
+    (fineAesDec_budget_hookSat γ tp brkStart lim hPl W.C.D
+      (cliGhostExterns_extra_some gh (cliExternsPlaced mmpl W) hLook))
 
 /-- `aesDecWeakBudgetSpec` `HookSat` at `cliGhostExterns gh (cliExternsPlaced mmpl W)` over
 `fineHookRustCliAllocBudget γ mmpl tp brkStart`. -/
 theorem cliAesDecWeak_budget_sat (γ : GhostName) (mmpl : Obj.MultiPlacement)
     (tp brkStart : BitVec 64) (lim : BudgetLimits)
     (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (gh : CliGhostHooks) (W : CliHooks) :
+    (gh : CliGhostHooks) (W : CliHooks)
+    (hLook : gh.extra.lookup lsAesDecSym = some (aesDecHookMallocng mmpl W.C.D)) :
     HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
       (aesDecWeakBudgetSpec W.C.D fineCostModel
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim) :=
   fineAesDecWeak_budget_hookSat γ tp brkStart lim hPl W.C.D
-    (cliGhost_row_eq mmpl gh W (aesDec_row_placed mmpl W))
+    (cliGhostExterns_extra_some gh (cliExternsPlaced mmpl W) hLook)
 
-/-! ## 3. Closed `RunHooksPlaced` & Stage-1 Subroutine Leaf Witnesses -/
+/-! ## 2. Closed `RunHooksPlaced` & Stage-1 Subroutine Leaf Witnesses -/
 
-/-- `RunHooksPlaced` at `cliGhostExterns gh (cliExternsPlaced mmpl W)` (parametric in `gh` and
-`String::clone`, discharging `format_inner` automatically). -/
+/-- `RunHooksPlaced` at `cliGhostExterns gh (cliExternsPlaced mmpl W)` from
+`CliGhostSpqrAllocHooks` and `HookSat` witnesses for `String::clone`, `format_inner`, and
+`fmt::write`. -/
 theorem cliRunHooksPlaced_of_ghost [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hG : CliGhostSpqrAllocHooks M A lim gh)
     (hStrFsT : ∀ f, gh.stringClone = some f → HookFsTraced IsFsC f)
     (hStrClone : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsStringCloneSym
-      (stringCloneBudgetSpec M A lim)) :
+      (stringCloneBudgetSpec M A lim))
+    (hFmtInner : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsFormatInnerSym
+      (formatInnerCallCliLsSpec M A lim))
+    (hFmtWrite : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M A lim)) :
     RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-  RunHooksPlaced.of_hooks mmpl gh W hG hStrFsT hStrClone (cliFormatInner_budget_sat mmpl gh W)
+  RunHooksPlaced.of_hooks mmpl gh W hG hStrFsT hStrClone hFmtInner hFmtWrite
 
 /-- Block `14` (`SessionStructure::encode_raw`) pre-reserved `0`-alloc contract from
 `SerContractsXPlaced`. -/
@@ -216,13 +220,16 @@ theorem cliPqxdhAcceptOptFields_frozen_placed_ok [LibsignalFullPlacement]
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     [IsLsBlockProg callerProg i (cliGhostExterns gh (cliExternsPlaced mmpl W))]
-    (hG : CliGhostAllocHooks M A lim gh) :
+    (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec) :
     subroutine_ok callerProg (lsmpl.base 79)
       (pqxdhAcceptOptFieldsFrozenPlacedSpec
         (ofSignalPqxdhPrimitives (modelPrims X ⟨W.C, W.Q⟩))
         A lim
         (AcceptOptFieldsEnv (ofSignalPqxdhPrimitives (modelPrims X ⟨W.C, W.Q⟩)))) :=
-  cliPqxdhAccept_opt_fields_full_placed_ok X mmpl gh W hG
+  cliPqxdhAccept_opt_fields_full_placed_ok X mmpl gh W hG hF hX hDecaps
 
 /-- Block `79` (`Pqxdh::accept` owned error, mutated) `withLsFrozen` + `AcceptOptFieldsEnv`
 contract at `cliGhostExterns gh (cliExternsPlaced mmpl W)` under `[LibsignalFullPlacement]`. -/
@@ -231,12 +238,15 @@ theorem cliPqxdhAcceptErrOwned_frozen_placed_ok [LibsignalFullPlacement]
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     [IsLsBlockProg callerProg i (cliGhostExterns gh (cliExternsPlaced mmpl W))]
-    (hG : CliGhostAllocHooks M A lim gh) :
+    (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec) :
     subroutine_ok callerProg (lsmpl.base 79)
       (pqxdhAcceptErrOwnedFrozenPlacedSpec
         (ofSignalPqxdhPrimitives (modelPrims X ⟨W.C, W.Q⟩))
         A lim
         (AcceptOptFieldsEnv (ofSignalPqxdhPrimitives (modelPrims X ⟨W.C, W.Q⟩)))) :=
-  cliPqxdhAccept_err_owned_full_placed_ok X mmpl gh W hG
+  cliPqxdhAccept_err_owned_full_placed_ok X mmpl gh W hG hF hX hDecaps
 
 end LibsignalBinary.Proofs.PeakBudget.RealCliDecPkSlotOk

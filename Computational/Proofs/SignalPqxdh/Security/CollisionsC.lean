@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsB -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 
 /-!
 # Supermartingale Public-Key Collision Bounds
@@ -226,27 +226,27 @@ theorem kemCollProbKeyInd_le_bound (useRo : Bool) (S : Setup) (P : Primitives)
 
 /-! ## EC collision supermartingale -/
 
-def ecPrinSlotIdx (u : Nat) : Nat := u
+@[expose] def ecPrinSlotIdx (u : Nat) : Nat := u
 
-def ecSpkSlotIdx (S : Setup) (p : Nat × Nat) : Nat :=
+@[expose] def ecSpkSlotIdx (S : Setup) (p : Nat × Nat) : Nat :=
   S.N_id + spkSlotFlatIdx S p
 
-def ecOpkSlotIdx (S : Setup) (p : Nat × Nat × Nat) : Nat :=
+@[expose] def ecOpkSlotIdx (S : Setup) (p : Nat × Nat × Nat) : Nat :=
   S.N_id + S.N_spk_tot + opkSlotFlatIdx S p
 
-def IsSendSessionId (S : Setup) : SessionId S → Prop
+@[expose] def IsSendSessionId (S : Setup) : SessionId S → Prop
   | .sendOPK _ _     => True
   | .sendNoOPK _ _   => True
   | .recvOPK _ _ _   => False
   | .recvNoOPK _ _ _ => False
 
-def sessSlotFlatIdx (S : Setup) : SessionId S → Nat
+@[expose] def sessSlotFlatIdx (S : Setup) : SessionId S → Nat
   | .sendOPK u i     => u.val * S.N_send_opk + i.val
   | .sendNoOPK u i   => S.N_id * S.N_send_opk + (u.val * S.N_send_no_opk + i.val)
   | .recvOPK _ _ _   => 0
   | .recvNoOPK _ _ _ => 0
 
-def ecSessSlotIdx (S : Setup) (sid : SessionId S) : Nat :=
+@[expose] def ecSessSlotIdx (S : Setup) (sid : SessionId S) : Nat :=
   S.N_id + S.N_spk_tot + S.N_opk_tot + sessSlotFlatIdx S sid
 
 theorem ecSpkSlotIdx_inj (S : Setup) {k1 k2 : Nat × Nat}
@@ -383,7 +383,7 @@ theorem ecSessSlotIdx_inj (S : Setup) {s1 s2 : SessionId S}
     (heq : ecSessSlotIdx S s1 = ecSessSlotIdx S s2) : s1 = s2 :=
   sessSlotFlatIdx_inj S h1 h2 (Nat.add_left_cancel heq)
 
-def hasTaggedPairCollAt (tagged : List (Nat × Bytes)) (s1 s2 : Nat) : Bool :=
+@[expose] def hasTaggedPairCollAt (tagged : List (Nat × Bytes)) (s1 s2 : Nat) : Bool :=
   decide (s2 < s1) &&
   match tagged.find? (fun p => p.1 == s1), tagged.find? (fun p => p.1 == s2) with
   | some (_, pk1), some (_, pk2) => pk1 == pk2
@@ -438,7 +438,7 @@ theorem exists_distinct_of_hasDuplicateBytes_map_snd :
         exists_distinct_of_hasDuplicateBytes_map_snd xs hnodup.2 hdup
       exact ⟨p1, List.mem_cons_of_mem x hp1, p2, List.mem_cons_of_mem x hp2, hne, hpk⟩
 
-def ValidTaggedPks (N : Nat) (tagged : List (Nat × Bytes)) : Prop :=
+@[expose] def ValidTaggedPks (N : Nat) (tagged : List (Nat × Bytes)) : Prop :=
   (∀ p ∈ tagged, p.1 < N) ∧ (tagged.map Prod.fst).Nodup
 
 theorem hasDuplicateBytes_map_snd_imp_any_double_range (N : Nat)
@@ -465,7 +465,7 @@ theorem hasDuplicateBytes_map_snd_imp_any_double_range (N : Nat)
 
 /-- Lower-triangle (`s2 < s1`) supermartingale potential for X25519 public-key collisions, charging
     `Pfixed_pk_ec` while either slot is unfilled. -/
-noncomputable def ecPairPotential (P : Primitives) (tagged : List (Nat × Bytes)) (s1 s2 : Nat) :
+@[expose] noncomputable def ecPairPotential (P : Primitives) (tagged : List (Nat × Bytes)) (s1 s2 : Nat) :
   ℝ≥0∞ :=
   if s2 < s1 then
     match tagged.find? (fun p => p.1 == s1), tagged.find? (fun p => p.1 == s2) with
@@ -746,23 +746,23 @@ theorem ecCollProb_le_of_step
 
 /-! ## Slot-list invariants -/
 
-def ValidPrincipals (S : Setup) (principals : List (Nat × PrincipalEntry)) : Prop :=
+@[expose] def ValidPrincipals (S : Setup) (principals : List (Nat × PrincipalEntry)) : Prop :=
   (∀ e ∈ principals, e.1 < S.N_id) ∧
   (principals.map Prod.fst).Nodup
 
-def ValidSpkBundles (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) : Prop :=
+@[expose] def ValidSpkBundles (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) : Prop :=
   (∀ e ∈ spkBundles, e.1.1 < S.N_id ∧ e.1.2 < S.N_recv) ∧
   (spkBundles.map (fun e => ecSpkSlotIdx S e.1)).Nodup
 
-def ValidOpkEntries (S : Setup) (opkEntries : List ((Nat × Nat × Nat) × OpkEntry)) : Prop :=
+@[expose] def ValidOpkEntries (S : Setup) (opkEntries : List ((Nat × Nat × Nat) × OpkEntry)) : Prop :=
   (∀ e ∈ opkEntries, e.1.1 < S.N_id ∧ e.1.2.1 < S.N_recv ∧ e.1.2.2 < S.N_opk) ∧
   (opkEntries.map (fun e => ecOpkSlotIdx S e.1)).Nodup
 
-def ValidSessionIds (S : Setup) (sids : List (SessionId S)) : Prop :=
+@[expose] def ValidSessionIds (S : Setup) (sids : List (SessionId S)) : Prop :=
   (∀ s ∈ sids, IsSendSessionId S s) ∧
   (sids.map (ecSessSlotIdx S)).Nodup
 
-def ValidEcLists (S : Setup)
+@[expose] def ValidEcLists (S : Setup)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
@@ -778,7 +778,7 @@ theorem validEcLists_nil (S : Setup) : ValidEcLists S [] [] [] [] :=
    ⟨fun _ h => False.elim (List.not_mem_nil h), List.nodup_nil⟩,
    ⟨fun _ h => False.elim (List.not_mem_nil h), List.nodup_nil⟩⟩
 
-def ecTaggedFromLists (S : Setup) (P : Primitives)
+@[expose] def ecTaggedFromLists (S : Setup) (P : Primitives)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
@@ -1306,13 +1306,13 @@ theorem validSpkBundles_map_revealed (S : Setup) (P : Primitives) (key : Nat × 
 
 /-! ## `KeyInd` EC collision step -/
 
-def sessPksKeyInd (S : Setup) (st : KeyIndState S) : List (SessionId S × Bytes) :=
+@[expose] def sessPksKeyInd (S : Setup) (st : KeyIndState S) : List (SessionId S × Bytes) :=
   st.sessions.map (fun s => (s.sid, s.hdr.ekAPk))
 
-def ecTaggedKeyInd (S : Setup) (P : Primitives) (st : KeyIndState S) : List (Nat × Bytes) :=
+@[expose] def ecTaggedKeyInd (S : Setup) (P : Primitives) (st : KeyIndState S) : List (Nat × Bytes) :=
   ecTaggedFromLists S P st.principals st.spkBundles st.opkEntries (sessPksKeyInd S st)
 
-def ValidKeyIndEc (S : Setup) (st : KeyIndState S) : Prop :=
+@[expose] def ValidKeyIndEc (S : Setup) (st : KeyIndState S) : Prop :=
   ValidEcLists S st.principals st.spkBundles st.opkEntries ((sessPksKeyInd S st).map Prod.fst)
 
 theorem map_snd_ecTaggedKeyInd (S : Setup) (P : Primitives) (st : KeyIndState S) :
@@ -1746,7 +1746,7 @@ theorem pqxdhKeyIndImpl_ec_step (useRo : Bool) (S : Setup) (P : Primitives)
         dsimp only [sessPksKeyInd]
         rw [h_rev.2]
 
-def hasUpperTaggedPairCollAt (tagged : List (Nat × Bytes)) (s1 s2 : Nat) : Bool :=
+@[expose] def hasUpperTaggedPairCollAt (tagged : List (Nat × Bytes)) (s1 s2 : Nat) : Bool :=
   decide (s1 < s2) &&
   match tagged.find? (fun p => p.1 == s1), tagged.find? (fun p => p.1 == s2) with
   | some (_, v1), some (_, v2) => v1 == v2
@@ -1775,7 +1775,7 @@ theorem hasDuplicateBytes_map_snd_imp_any_upper_double_range (N : Nat)
     simp [hgt, hf1, hf2, hpk]
 
 /-- Upper-triangle (`s1 < s2`) supermartingale potential for initiator `dh2` collisions. -/
-noncomputable def dh2UpperPairPotential (tagged : List (Nat × Bytes)) (s1 s2 : Nat) : ℝ≥0∞ :=
+@[expose] noncomputable def dh2UpperPairPotential (tagged : List (Nat × Bytes)) (s1 s2 : Nat) : ℝ≥0∞ :=
   if s1 < s2 then
     match tagged.find? (fun p => p.1 == s1), tagged.find? (fun p => p.1 == s2) with
     | some (_, dh1), some (_, dh2) =>
@@ -1905,10 +1905,10 @@ theorem probExpect_dh2UpperPairPotential_cons_fresh_le (P : Primitives)
         simp only [hs1, hs2, Bool.false_eq_true, ↓reduceIte, probExpect_const, le_rfl]
   · simp [hlt, probExpect_const]
 
-def sessDh2sKeyInd (S : Setup) (P : Primitives) (st : KeyIndState S) : List (SessionId S × Bytes) :=
+@[expose] def sessDh2sKeyInd (S : Setup) (P : Primitives) (st : KeyIndState S) : List (SessionId S × Bytes) :=
   st.sessions.map (fun s => (s.sid, P.x25519 s.ekASk s.peerIkPk))
 
-def dh2TaggedKeyInd (S : Setup) (P : Primitives) (st : KeyIndState S) : List (Nat × Bytes) :=
+@[expose] def dh2TaggedKeyInd (S : Setup) (P : Primitives) (st : KeyIndState S) : List (Nat × Bytes) :=
   (sessDh2sKeyInd S P st).map (fun (sid, dh2) => (ecSessSlotIdx S sid, dh2))
 
 theorem map_snd_dh2TaggedKeyInd (S : Setup) (P : Primitives) (st : KeyIndState S) :

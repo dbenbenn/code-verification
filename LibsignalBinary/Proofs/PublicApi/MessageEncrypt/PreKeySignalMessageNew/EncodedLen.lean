@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Split
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Split -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.EncodedLenPf
 
 /-!
@@ -20,7 +20,7 @@ Entry-point proof that `<libsignal_protocol::proto::wire::PreKeySignalMessage as
 protobuf tags 1–8 without arithmetic overflow under `PreKeyMsgWireLengthsFit`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.EncodedLen
 
@@ -31,26 +31,6 @@ open CryptoVerification.LibsignalTripleRatchet.Prost
 open CryptoVerification.LibsignalPublicApiRepr CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.LibsignalPublicApi CryptoVerification.LibsignalPublicApi.MessageEncrypt
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.Split
-
-variable {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-  {abs : String → Option (State → State)}
-
-theorem encodedLen_ok_ext {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    PreKeyMsgEncodedLenOk_ext img A ext :=
-  EncodedLenPf.preKeyMsgEncodedLen_ok_ext himg
-
-theorem encodedLen_ok_trap (himg : Obj.Loads libsignalSessionImage img) :
-    PreKeyMsgEncodedLenOk_trap img C A abs :=
-  EncodedLenPf.preKeyMsgEncodedLen_ok_trap himg
-
-/-- `<wire::PreKeySignalMessage as prost::message::Message>::encoded_len` (`0x2da84`) satisfies
-`preKeyMsgEncodedLenSpec A`. -/
-theorem encodedLen_ok (himg : Obj.Loads libsignalSessionImage img) :
-    PreKeyMsgEncodedLenOk img C A ctl abs :=
-  EncodedLenPf.preKeyMsgEncodedLen_ok himg
-
-/-! ## Relocatable Placement Proofs -/
 
 open CryptoVerification.LibsignalPublicApi.Placed
 

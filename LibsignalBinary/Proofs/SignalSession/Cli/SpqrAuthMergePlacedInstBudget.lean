@@ -9,15 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrAuthMergePlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3ClPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
+import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrAuthMergePlacedInst
+import LibsignalBinary.Proofs.SpqrV1.Auth.MergeClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3ClPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBase
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrVarintPlacedInst
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 
 /-!
 # Budget-Threaded Code-Loaded Placed `Authenticator::merge` (Block `295`) CLI Instantiations
@@ -29,7 +42,7 @@ and `CliGhostAllocHooks M A lim gh`, providing hook-polymorphic, own-block, `blo
 caller-block-polymorphic corollaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -234,22 +247,6 @@ theorem cliDecodeVarint2_cl [LibsignalPlacement]
     (hookSat_of_hExt hExt (by decide) (cliExternsPlaced_shim_budget_sat mmpl gh W hA.shim_eq))
     (hookSat_of_hExt hExt (by decide) (cliExternsPlaced_alloc_budget_sat mmpl gh W hA))
 
-theorem cliDecodeVarint2X_cl [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {H : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    subroutine_ok
-      ((blkPC_291).rebase (blkPl_291).base H)
-      (lsmpl.base 291)
-      (withLsCodeLoaded lsmpl (decodeVarint2SpecX A lim)) := by
-  rw [← ls_blockPlacement_base (i := 291)]
-  exact decodeVarint2_cl_placed_ok_x
-    (hookSat_of_hExt hExt (by decide) (cliExternsPlaced_shim_budget_sat mmpl gh W hA.shim_eq))
-    (hookSat_of_hExt hExt (by decide) (cliExternsPlaced_alloc_budget_sat mmpl gh W hA))
-
 theorem cliSkipField3_cl [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -336,19 +333,6 @@ theorem cliDecodeErrorFrom_at_block_cl [LibsignalPlacement]
       (withLsCodeLoaded lsmpl (decodeErrorFromBudgetSpec M A lim)) :=
   ls_subroutine_ok_of_block (i := i) (j := 261) (cliDecodeErrorFrom_cl mmpl gh W hA hExt) hi
 
-theorem cliDecodeErrorFrom_at_block_cro [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {callerProg : Program} {i : Nat} {H : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    [hcaller : IsLsBlockProg callerProg i H]
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 261)
-      (withLsCodeRoLoaded lsmpl (decodeErrorFromBudgetSpec M A lim)) :=
-  ls_subroutine_ok_cro_of_cl (i := i) (j := 261) (cliDecodeErrorFrom_cl mmpl gh W hA hExt) hi
-
 theorem cliDecodeErrorPush_at_block_cl [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -361,19 +345,6 @@ theorem cliDecodeErrorPush_at_block_cl [LibsignalPlacement]
     subroutine_ok callerProg (lsmpl.base 257)
       (withLsCodeLoaded lsmpl (decodeErrorPushBudgetSpec M A lim)) :=
   ls_subroutine_ok_of_block (i := i) (j := 257) (cliDecodeErrorPush_cl mmpl gh W hA hExt) hi
-
-theorem cliDecodeErrorPush_at_block_cro [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {callerProg : Program} {i : Nat} {H : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    [hcaller : IsLsBlockProg callerProg i H]
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 257)
-      (withLsCodeRoLoaded lsmpl (decodeErrorPushBudgetSpec M A lim)) :=
-  ls_subroutine_ok_cro_of_cl (i := i) (j := 257) (cliDecodeErrorPush_cl mmpl gh W hA hExt) hi
 
 theorem cliDecodeVarint2_at_block_cl [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -388,19 +359,6 @@ theorem cliDecodeVarint2_at_block_cl [LibsignalPlacement]
       (withLsCodeLoaded lsmpl (decodeVarint2Spec A lim)) :=
   ls_subroutine_ok_of_block (i := i) (j := 291) (cliDecodeVarint2_cl mmpl gh W hA hExt) hi
 
-theorem cliDecodeVarint2_at_block_cro [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {callerProg : Program} {i : Nat} {H : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    [hcaller : IsLsBlockProg callerProg i H]
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 291)
-      (withLsCodeRoLoaded lsmpl (decodeVarint2Spec A lim)) :=
-  ls_subroutine_ok_cro_of_cl (i := i) (j := 291) (cliDecodeVarint2_cl mmpl gh W hA hExt) hi
-
 theorem cliSkipField3_at_block_cl [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -413,19 +371,6 @@ theorem cliSkipField3_at_block_cl [LibsignalPlacement]
     subroutine_ok callerProg (lsmpl.base 263)
       (withLsCodeLoaded lsmpl (skipField3Spec A lim)) :=
   ls_subroutine_ok_of_block (i := i) (j := 263) (cliSkipField3_cl mmpl gh W hA hExt) hi
-
-theorem cliSkipField3_at_block_cro [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {callerProg : Program} {i : Nat} {H : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    [hcaller : IsLsBlockProg callerProg i H]
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 263)
-      (withLsCodeRoLoaded lsmpl (skipField3Spec A lim)) :=
-  ls_subroutine_ok_cro_of_cl (i := i) (j := 263) (cliSkipField3_cl mmpl gh W hA hExt) hi
 
 theorem cliBytesMerge3_at_block_cro [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -454,28 +399,6 @@ theorem cliBytesMerge3_at_block_callInv [LibsignalPlacement]
   subroutine_ok_callInv_of_cro (cliBytesMerge3_at_block_cro mmpl gh W hA hExt hi)
 
 /-! ## Own-block rebased Block `295` (`Authenticator::merge`) contracts -/
-
-theorem cliAuthMerge_cro_env [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {PreEnv PostEnv : AuthMergeGhost → List AllocEvent → Prop}
-    (hPre : ∀ x evs, AuthPlacedMergeEnv x evs → PreEnv x evs)
-    (hPost : ∀ x evs, AuthPlacedMergePostEnv x evs → PostEnv x evs)
-    {H : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    subroutine_ok
-      ((blkPC_295).rebase (blkPl_295).base H)
-      (lsmpl.base 295)
-      (withLsCodeRoLoaded lsmpl (authMergeSpecOfEnv A lim PreEnv PostEnv)) := by
-  rw [← ls_blockPlacement_base (i := 295)]
-  exact auth_merge_cl_placed_ok_of_contracts_env hPre hPost
-    (cliDecodeErrorFrom_at_block_cl mmpl gh W hA hExt)
-    (cliDecodeErrorPush_at_block_cl mmpl gh W hA hExt)
-    (cliDecodeVarint2_at_block_cl mmpl gh W hA hExt)
-    (cliSkipField3_at_block_cl mmpl gh W hA hExt)
-    (cliBytesMerge3_at_block_cro mmpl gh W hA hExt)
 
 theorem cliAuthMerge_cro [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -601,24 +524,6 @@ theorem cliBytesMerge3_blockProgram_callInv [LibsignalPlacement]
     (prog := (blkPC_290).rebase (blkPl_290).base (Rust.withPanics ext))]
   exact cliBytesMerge3_callInv mmpl gh W hA (hExt_withPanics mmpl gh W hExt)
 
-theorem cliAuthMerge_blockProgram_cro_env [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {PreEnv PostEnv : AuthMergeGhost → List AllocEvent → Prop}
-    (hPre : ∀ x evs, AuthPlacedMergeEnv x evs → PreEnv x evs)
-    (hPost : ∀ x evs, AuthPlacedMergePostEnv x evs → PostEnv x evs)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    subroutine_ok
-      (libsignalSessionLib.blockProgram lsmpl 295 (Rust.withPanics ext))
-      (lsmpl.base 295)
-      (withLsCodeRoLoaded lsmpl (authMergeSpecOfEnv A lim PreEnv PostEnv)) := by
-  rw [← IsLsBlockProg.eq_blockProgram
-    (prog := (blkPC_295).rebase (blkPl_295).base (Rust.withPanics ext))]
-  exact cliAuthMerge_cro_env mmpl gh W hA hPre hPost (hExt_withPanics mmpl gh W hExt)
-
 theorem cliAuthMerge_blockProgram_cro [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -650,23 +555,6 @@ theorem cliAuthMerge_blockProgram_callInv [LibsignalPlacement]
   exact cliAuthMerge_callInv mmpl gh W hA (hExt_withPanics mmpl gh W hExt)
 
 /-! ## Caller-block-polymorphic Block `295` contracts -/
-
-/-- Envelope-parameterized transfer of Block `295` (`Authenticator::merge`, `withLsCodeRoLoaded`) to any caller block `i`. -/
-theorem cliAuthMerge_at_block_cro_env [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {PreEnv PostEnv : AuthMergeGhost → List AllocEvent → Prop}
-    (hPre : ∀ x evs, AuthPlacedMergeEnv x evs → PreEnv x evs)
-    (hPost : ∀ x evs, AuthPlacedMergePostEnv x evs → PostEnv x evs)
-    {callerProg : Program} {i : Nat} {H : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    [hcaller : IsLsBlockProg callerProg i H]
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 295)
-      (withLsCodeRoLoaded lsmpl (authMergeSpecOfEnv A lim PreEnv PostEnv)) :=
-  ls_subroutine_ok_cro_of_cro (i := i) (j := 295) (cliAuthMerge_cro_env mmpl gh W hA hPre hPost hExt) hi
 
 /-- Transfers Block `295` (`Authenticator::merge`, `withLsCodeRoLoaded`) to any caller block `i`. -/
 theorem cliAuthMerge_at_block_cro [LibsignalPlacement]

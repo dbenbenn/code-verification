@@ -16,6 +16,7 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.NewFromSliceInvariant
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.CtEqRO
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat`-backed `black_box` Sibling of `VerifySignaturePlacedA` Segments 2 and 3a
@@ -40,12 +41,13 @@ open CryptoVerification
   (LibsignalHooks LibsignalPlacement blkPC_204 blkPl_204 ls_hook_ok_any)
 open CryptoVerification.E2E.Pqxdh.Shared
   (and64_mask255_ite_1_0 blockBuf_tail32_pack blockBuf_tail32_unpack bv_add_neg64 bv_sub_sub_lit
-   bytesToBv8 bytesToBv8_append cell_split7 cells_10_merge cells_16_merge csinc_eq_zero32_ite_1_0
+   bytesToBv8 bytesToBv8_append cell_split7 cells_10_merge cells_16_merge
+   compressInPlaceStubSpec compressInPlaceStubSpecPlaced csinc_eq_zero32_ite_1_0
    exists_pad97_cells exists_unpack64_of_length_64 exists_unpack64_revWords64_of_length_64 first7
    first7_pack fitBv8 fitBv8_64_sha512CompressOutBytes pqxdhHookStack
    readReg32_setMem_setPC_pre readReg32_setPC_pre readReg64_setMem_setPC_pre readReg64_setPC_pre
    readReg_setMem_setPC_pre readReg_setPC_pre revWords64 revWords64_length sha512CompressOutBytes
-   sha512CompressOutBytes_length sp_setMem_setPC_pre sp_setPC_pre)
+   sha512CompressOutBytes_length sp_setMem_setPC_pre sp_setPC_pre verifySig_strip_withLsRet_204)
 open LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedASat
   (VerifySignaturePlacedHooks'Sat)
 open SignalPqxdh (Bytes Primitives encodeBitLen128BE encodeBitLen64BE)
@@ -99,8 +101,13 @@ public theorem verifySig_seg2_1569_placed_sat [LibsignalPlacement]
         sm.readReg64 (.gpr 29#5) = s.readReg64 (.gpr 29#5) ∧
         calleeSavedVRegs sm = calleeSavedVRegs s ∧ sm.trace = s.trace) := by
   have hmemcpy := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.memcpy
-  have hsha := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.sha512Compress
-  clear hH
+  have hshaRaw := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.sha512Compress
+  have hsha1 := verifySig_strip_withLsRet_204 (prog := (blkPC_204).rebase (blkPl_204).base H)
+    456#64 hshaRaw
+  have hsha2 := verifySig_strip_withLsRet_204 (prog := (blkPC_204).rebase (blkPl_204).base H)
+    512#64 hshaRaw
+  dsimp only [compressInPlaceStubSpecPlaced, compressInPlaceStubSpec] at hsha1 hsha2
+  clear hH hshaRaw
   have hlen_m64_bv : (bytesToBv8 (m.take 64)).length = 64 := by simp [bytesToBv8, hm]
   have hlen_m1408 : ((m.drop 64).take 1408).length = 128 * 11 := by simp [hm]
   have hlen_m1408_bv : (bytesToBv8 ((m.drop 64).take 1408)).length = 1408 := by
@@ -150,13 +157,13 @@ public theorem verifySig_seg2_1569_placed_sat [LibsignalPlacement]
     rfl
   apply ProofLib.SepWP.replace_pre (hPQ := Entails.of_eq hmerge128) (by sep_frame)
   wp_steps
-  wp_call hsha ⟨fsp + 688#64, st0, fsp + 560#64, pre64 ++ m.take 64, 1⟩
+  wp_call hsha1 ⟨fsp + 688#64, st0, fsp + 560#64, pre64 ++ m.take 64, 1⟩
   rw [fitBv8_64_sha512CompressOutBytes]
   apply ProofLib.SepWP.replace_pre (hPQ := hbuf128_weaken) (by sep_frame)
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
   apply SepWP.exists_left; intro _
   wp_steps
-  wp_call hsha ⟨fsp + 688#64, sha512CompressOutBytes P st0 (pre64 ++ m.take 64), msgPtr + 64#64,
+  wp_call hsha2 ⟨fsp + 688#64, sha512CompressOutBytes P st0 (pre64 ++ m.take 64), msgPtr + 64#64,
     (m.drop 64).take 1408, 11⟩
   rw [fitBv8_64_sha512CompressOutBytes]
   wp_steps
@@ -247,7 +254,9 @@ public theorem verifySig_seg3a_placed_sat [LibsignalPlacement]
         sm.readReg64 (.gpr 23#5) = fsp + 800#64 ∧ sm.readReg64 (.gpr 29#5) = fsp + 1152#64 ∧
         calleeSavedVRegs sm = calleeSavedVRegs s ∧ sm.trace = s.trace) := by
   have hmemset := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.memset
-  have hsha := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.sha512Compress
+  have hsha := verifySig_strip_withLsRet_204 (prog := (blkPC_204).rebase (blkPl_204).base H)
+    808#64 (ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.sha512Compress)
+  dsimp only [compressInPlaceStubSpecPlaced, compressInPlaceStubSpec] at hsha
   have hwide := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.scalarWide
   clear hH
   obtain ⟨b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, _p12, _p13, hp1, hp2, hp3⟩ :=

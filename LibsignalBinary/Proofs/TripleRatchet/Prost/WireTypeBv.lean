@@ -19,13 +19,10 @@ import VCVio.Prelude.Core
 Symmetry trigger lemma for `WireType` equality used across Prost decoding proofs.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Prost
 
 open CryptoVerification.LibsignalProtoCodec
-
-theorem wireType_bv_trigger (a b : WireType) (h : a = b) : b = a :=
-  h.symm
 
 end CryptoVerification.LibsignalTripleRatchet.Prost

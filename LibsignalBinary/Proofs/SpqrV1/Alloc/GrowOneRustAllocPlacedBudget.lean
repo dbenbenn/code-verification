@@ -11,14 +11,14 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
@@ -32,7 +32,7 @@ Proves `RustCliAllocBudget M` `[LibsignalPlacement]` contracts for blocks 620
 and 621 (`RawVec<Vec<u8>>::grow_one`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -564,7 +564,7 @@ theorem finish_grow_622_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
 abbrev growOneU8SmallStack : Nat := (allocHookStack + 32) + 64
 
 /-- Prefix-preserving budget contract (`bs.length ≤ cap.toNat`) for `RawVec<u8>::grow_one` at `growOneU8SmallStack`. -/
-def growOneU8BsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneU8BsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length ≤ cap.toNat ∧ ptr ≠ 0#64 ∧

@@ -10,16 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public meta import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpers -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
@@ -32,7 +32,7 @@ Proves the `RustCliAllocBudget`-threaded `[LibsignalPlacement]` contract
 (Block `362`) against `nextKeyInternalSpecX hkdf M A lim`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -100,7 +100,7 @@ theorem allocCallPreserved_trans {s0 s1 s2 : State}
 
 /-- Strengthen a pure/crypto non-allocating `Spec α` with `AllocCallPreserved s0 sf ∧ VmPreserved s0 sf`
 so both `AllocCallPreserved` and `A.pool lim st` transport across the call. -/
-def withAllocVmPreserved {α : Type} (spec : Spec α) : Spec α :=
+@[expose] def withAllocVmPreserved {α : Type} (spec : Spec α) : Spec α :=
   { spec with
     post := fun x s0 sf => ⌜AllocCallPreserved s0 sf ∧ VmPreserved s0 sf⌝ ∗ spec.post x s0 sf }
 

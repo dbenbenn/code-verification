@@ -10,26 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Kdf.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.KdfCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.KdfCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Chain.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.SpqrV1.Auth.SpqrAuthCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-
-/-!
-# `spqr::kdf::hkdf_to_vec`
-
-Separation-logic specifications and proofs for `spqr::kdf::hkdf_to_vec` (`0x631c8`, Block `378`),
-which zero-allocates a `Vec<u8>` output buffer and tail-calls `spqr::kdf::hkdf_to_slice`.
--/
-
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -64,11 +55,6 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 open CryptoVerification.LibsignalSpqrV1 CryptoVerification.SpqrV1.ChainProofs
 open CryptoVerification.CodeLayout CryptoVerification.SpqrV1.Layout.L3
 
-export CryptoVerification.SpqrV1.ChainProofs
-  (hkdfToSliceSpqrSpec HkdfToSliceSpqrOkX
-   hkdfToSliceStackExt hkdfToSliceSpecExt hkdfToSliceSpqrSpecExt
-   HkdfToSliceSpqrOkExt HkdfToSliceOkExt)
-
 structure HkdfToVecGhost where
   outVec : BitVec 64
   saltRO : Bool
@@ -85,7 +71,7 @@ structure HkdfToVecGhost where
 /-- Separation-logic specification of `spqr::kdf::hkdf_to_vec` (`0x631c8`, 47 instructions) for
     `okmLen ∈ {32, 64, 96}` and `32 ≤ info.length < 55`: takes `outVec` in `x8` and `(salt, ikm, info, okmLen)`
     in `x0..x6`, writing `hkdf salt ikm info okmLen` as a `Vec<u8>` at `outVec` or panicking on OOM. -/
-def hkdfToVecSpec (A : RustAlloc) (hkdf : HkdfFn) : Spec HkdfToVecGhost where
+@[expose] def hkdfToVecSpec (A : RustAlloc) (hkdf : HkdfFn) : Spec HkdfToVecGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.outVec ∧
       s.readReg64 .x0 = x.saltA ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.salt.length ∧
@@ -112,18 +98,6 @@ def hkdfToVecSpec (A : RustAlloc) (hkdf : HkdfFn) : Spec HkdfToVecGhost where
 abbrev hkdfToVecSpqrSpec (A : RustAlloc) (hkdf : HkdfFn) : Spec HkdfToVecGhost :=
   hkdfToVecSpec A hkdf
 
-/-- `spqr::kdf::hkdf_to_vec` meets `(hkdfToVecSpec A hkdf).inImage img` on
-`tripleRatchetProgAtExt img.base ext`. -/
-def HkdfToVecOkX (img : Obj.Image) (A : RustAlloc) (hkdf : HkdfFn)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr hkdfToVecName)
-    ((hkdfToVecSpec A hkdf).inImage img)
-
-abbrev HkdfToVecSpqrOkX (img : Obj.Image) (A : RustAlloc) (hkdf : HkdfFn)
-    (ext : String → Option (State → State)) : Prop :=
-  HkdfToVecOkX img A hkdf ext
-
 /-- Stack budget (in bytes) required by `spqr::kdf::hkdf_to_vec` under `CliExternsOk`:
 96-byte prologue frame (`sp - 96`) plus `hkdfToSliceStackExt = 17616` (`17712` B total). -/
 abbrev hkdfToVecStackExt : Nat := 96 + hkdfToSliceStackExt
@@ -131,7 +105,7 @@ abbrev hkdfToVecStackExt : Nat := 96 + hkdfToSliceStackExt
 /-- Contract-parameterized (`CliExternsOk`) SL specification of `spqr::kdf::hkdf_to_vec`
 (`0x631c8`, 47 instructions): threads `(¬x.saltRO ∨ x.salt.length ≤ 64) ∧ (¬x.ikmRO ∨ x.ikm.length < 64)`
 and `hkdfToVecStackExt` (`17712` B) to the tail-called `spqr::kdf::hkdf_to_slice`. -/
-def hkdfToVecSpecExt (A : RustAlloc) (hkdf : HkdfFn) : Spec HkdfToVecGhost where
+@[expose] def hkdfToVecSpecExt (A : RustAlloc) (hkdf : HkdfFn) : Spec HkdfToVecGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.outVec ∧
       s.readReg64 .x0 = x.saltA ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.salt.length ∧
@@ -160,32 +134,11 @@ def hkdfToVecSpecExt (A : RustAlloc) (hkdf : HkdfFn) : Spec HkdfToVecGhost where
 abbrev hkdfToVecSpqrSpecExt (A : RustAlloc) (hkdf : HkdfFn) : Spec HkdfToVecGhost :=
   hkdfToVecSpecExt A hkdf
 
-/-- `spqr::kdf::hkdf_to_vec` meets `(hkdfToVecSpecExt A hkdf).inImage img` on
-`tripleRatchetProgAtExt img.base ext`. -/
-def HkdfToVecOkExt (img : Obj.Image) (A : RustAlloc) (hkdf : HkdfFn)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr hkdfToVecName)
-    ((hkdfToVecSpecExt A hkdf).inImage img)
-
-abbrev HkdfToVecSpqrOkExt (img : Obj.Image) (A : RustAlloc) (hkdf : HkdfFn)
-    (ext : String → Option (State → State)) : Prop :=
-  HkdfToVecOkExt img A hkdf ext
-
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_lemma% fnOff "spqr::kdf::hkdf_to_vec")
-  (ls_lemma% fnOff "spqr::kdf::hkdf_to_slice")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc_zeroed")
-  (ls_stub% "alloc::raw_vec::handle_error")
-
-gen_decodes_len libsignalSessionCode_tree libsignalSessionCode "spqr::kdf::hkdf_to_vec" 188
-
 private theorem memRegion_zero (a : BitVec 64) : memRegion a 0 = emp := by
   have hb := IsBlock.pointsToBytes a []
   rw [pointsToBytes_nil] at hb
@@ -327,126 +280,6 @@ private theorem layoutOk_okmLen {n : Nat} (hpos : 0 < n) (hle : n ≤ 8160) :
 
 /-! ## Proof of `spqr::kdf::hkdf_to_vec` (`0x631c8`, 47 instructions) -/
 
-private theorem of_sepWP_inImage {prog : Program} {ret mid : BitVec 64} {s : State} {P : SepProp}
-    {Q Qp : State → SepProp → Prop} (img : Obj.Image)
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P (fun sm Pm =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab → SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  obtain ⟨sm, hsteps, ⟨-, -, Pm, hmm, hnext⟩ | ⟨_, hfalse⟩⟩ := h.elim hm hL
-  · obtain ⟨sf, hsteps', hout⟩ :=
-      hnext (hsteps.frozenLoaded hfl) (hsteps.symtab_eq.trans hsym) R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · rw [satisfies_pure_sepConj] at hfalse
-    exact hfalse.1.elim
-
-/-- `spqr::kdf::hkdf_to_vec` (`0x631c8`, 47 instructions) meets `(hkdfToVecSpec A hkdf).inImage img`
-    on `tripleRatchetProgAtExt img.base ext`. -/
-theorem hkdf_to_vec_ok_ext (img : Obj.Image) (A : RustAlloc) (hkdf : HkdfFn)
-    (ext : String → Option (State → State))
-    (hA : AllocContracts img.base A ext)
-    (hZero : HookSat ext allocZeroedName (rustAllocZeroedSpec A))
-    (hSlice : HkdfToSliceSpqrOkX img hkdf ext) :
-    HkdfToVecOkX img A hkdf ext := by
-  unfold HkdfToVecOkX
-  have hspec_eq : (hkdfToVecSpec A hkdf).inImage img = {
-    pre := fun x s =>
-      ⌜img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗
-      ⌜s.readReg64 .x8 = x.outVec ∧
-        s.readReg64 .x0 = x.saltA ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.salt.length ∧
-        s.readReg64 .x2 = x.ikmA ∧ s.readReg64 .x3 = BitVec.ofNat 64 x.ikm.length ∧
-        s.readReg64 .x4 = x.infoA ∧ s.readReg64 .x5 = BitVec.ofNat 64 x.info.length ∧
-        s.readReg64 .x6 = BitVec.ofNat 64 x.okmLen ∧
-        x.salt.length < 2 ^ 63 ∧ x.ikm.length < 2 ^ 63 ∧
-        32 ≤ x.info.length ∧ x.info.length < 55 ∧
-        (x.okmLen = 32 ∨ x.okmLen = 64 ∨ x.okmLen = 96)⌝ ∗
-        memRegion x.outVec 24 ∗
-        bytesAt x.saltRO x.saltA x.salt ∗
-        bytesAt x.ikmRO x.ikmA x.ikm ∗
-        bytesAt x.infoRO x.infoA x.info ∗
-        A.pool ∗
-        memRegion (s.sp - 16384#64) 12192 ∗
-        stackAt (s.sp - 96#64) allocHookStack ∗
-        cells (s.sp - 96#64) 12
-    post := (hkdfToVecSpec A hkdf).post
-    onPanic := (hkdfToVecSpec A hkdf).onPanic
-  } := by
-    simp only [hkdfToVecSpec, Spec.inImage, stackAt_hkdfToVec, sepConj_assoc]
-  rw [hspec_eq]
-  clear hspec_eq
-  simp only [hkdfToVecSpec, memRegion_24_cells]
-  cells_unfold
-  have hshim := hA.shim_ok_at hkdfToVecName
-    (ls_rel% "spqr::kdf::hkdf_to_vec" "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  have halloc := alloc_zeroed_ok_at_ext img.base A ext hZero hkdfToVecName
-    (ls_rel% "spqr::kdf::hkdf_to_vec" "__rustc::__rust_alloc_zeroed")
-  have hpanic := panic_at_handle_error_ext img.base ext hkdfToVecName
-    (ls_rel% "spqr::kdf::hkdf_to_vec" "alloc::raw_vec::handle_error")
-  have hslice_at := sub_ok_at_of_fnAddr hSlice hkdfToVecName
-    (ls_rel% "spqr::kdf::hkdf_to_vec" "spqr::kdf::hkdf_to_slice")
-  simp only [hkdfToSliceSpqrSpec, hkdfToSliceSpec] at hslice_at
-  clear hA hZero hSlice
-  wpp_init x s0
-  code_fetches_len CryptoVerification.libsignalSessionCode
-    libsignalSessionCode img.base (Rust.withPanics ext) "spqr::kdf::hkdf_to_vec" 188
-  have hpc' : s0.pc = (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr hkdfToVecName := by
-    rw [hpc, Program.fnAddr_rebase]; simp [hkdfToVecName]
-  clear hpc
-  rename_i hpc
-  dsimp only [tripleRatchetProgAtExt] at hshim halloc hpanic hslice_at ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr hkdfToVecName = entry
-  examples_hide_fetches
-  obtain ⟨outVec, saltRO, saltA, salt, ikmRO, ikmA, ikm, infoRO, infoA, info, okmLen⟩ := x
-  dsimp only at *
-  have hokm_pos : 0 < okmLen := by
-    have := ‹okmLen = 32 ∨ okmLen = 64 ∨ okmLen = 96›; omega
-  have hokm_le : okmLen ≤ 8160 := by
-    have := ‹okmLen = 32 ∨ okmLen = 64 ∨ okmLen = 96›; omega
-  have htoNat : (BitVec.ofNat 64 okmLen).toNat = okmLen := okmLen_toNat hokm_le
-  have hlsb63 : (BitVec.ofNat 64 okmLen).getLsbD 63 = false := okmLen_getLsbD_63 hokm_le
-  have hne0 : BitVec.ofNat 64 okmLen ≠ 0#64 := okmLen_ne_zero hokm_pos hokm_le
-  have hbeq0 : (BitVec.ofNat 64 okmLen == 0#64) = false := okmLen_beq_zero hokm_pos hokm_le
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlay : LayoutOk okmLen 1 := layoutOk_okmLen hokm_pos hokm_le
-  apply of_sepWP_inImage (mid := entry + 104#64) img ‹img.FrozenLoaded s0› ‹s0.symtab = img.symtab›
-  wp_steps
-  wp_apply
-  wp_steps
-  wp_apply
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  intro hfl_1 hsym_1
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    simp only [hoom, ite_true, sepConj_assoc]
-    refine sepWPp_pure_mid fun htrace => ?_
-    apply SepWPp.of_sepWP
-      (mid := entry + bv% (ls_rel% "spqr::kdf::hkdf_to_vec" "alloc::raw_vec::handle_error"))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.panic (by wp_norm_lhs) hpanic fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked
-        (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace, ‹sf.trace = s0.trace›])) hm
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, sepConj_assoc]
-    refine sepWPp_pure_mid fun ⟨hmod, htrace⟩ => ?_
-    apply of_sepWP_inImage (mid := entry + 188#64) img hfl_1 hsym_1
-    rw [‹sf.sp = s0.sp - 96#64›]
-    wp_steps
-    apply SepWP.fold (zeroed_entails_memRegion (sf_1.readReg64 (Reg.gpr 0#5)) okmLen) (by sep_focus)
-    apply SepWP.fold (stackAt_hkdfToVec_fold s0.sp _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus)
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    intro hfl_2 hsym_2
-    apply SepWPp.of_sepWP_ret
-    wp_apply
-    apply SepWP.fold (vecU8_exact_entails A outVec (sf_1.readReg64 (Reg.gpr 0#5))
-      (hkdf salt ikm info okmLen) okmLen hokm_pos hokm_le
-      ‹(hkdf salt ikm info okmLen).length = okmLen› hoom) (by sep_focus)
-    wp_done
-
-/-! ## Contract-Parameterized (`*Ext`) Proof of `spqr::kdf::hkdf_to_vec` -/
-
 private theorem stackAt_hkdfToVecExt_tail (sp : BitVec 64) :
     stackAt sp hkdfToVecStackExt =
       memRegion (sp - 17712#64) 96 ∗ stackAt sp hkdfToSliceStackExt :=
@@ -505,129 +338,6 @@ private theorem stackAt_hkdfToVecExt_fold (sp : BitVec 64)
       (Entails.sepExists_right v6 (Entails.sepExists_right v7 (Entails.sepExists_right v8
         (Entails.sepExists_right v9 (Entails.sepExists_right v10
           (Entails.sepExists_right v11 (Entails.refl _))))))))))))
-
-/-- `spqr::kdf::hkdf_to_vec` (`0x631c8`, 47 instructions) meets `(hkdfToVecSpecExt A hkdf).inImage img`
-    on `tripleRatchetProgAtExt img.base ext` under `AllocContractsX img A ext` and `HkdfToSliceSpqrOkExt`. -/
-theorem hkdf_to_vec_ok_extX (img : Obj.Image) (A : RustAlloc) (hkdf : HkdfFn)
-    (ext : String → Option (State → State))
-    (hA : AllocContractsX img A ext)
-    (hZero : HookSat ext allocZeroedName (rustAllocZeroedSpec A))
-    (hSlice : HkdfToSliceSpqrOkExt img hkdf ext) :
-    HkdfToVecOkExt img A hkdf ext := by
-  unfold HkdfToVecOkExt
-  have hspec_eq : (hkdfToVecSpecExt A hkdf).inImage img = {
-    pre := fun x s =>
-      ⌜img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗
-      ⌜s.readReg64 .x8 = x.outVec ∧
-        s.readReg64 .x0 = x.saltA ∧ s.readReg64 .x1 = BitVec.ofNat 64 x.salt.length ∧
-        s.readReg64 .x2 = x.ikmA ∧ s.readReg64 .x3 = BitVec.ofNat 64 x.ikm.length ∧
-        s.readReg64 .x4 = x.infoA ∧ s.readReg64 .x5 = BitVec.ofNat 64 x.info.length ∧
-        s.readReg64 .x6 = BitVec.ofNat 64 x.okmLen ∧
-        x.salt.length < 2 ^ 63 ∧ x.ikm.length < 2 ^ 63 ∧
-        (¬x.saltRO ∨ x.salt.length ≤ 64) ∧
-        (¬x.ikmRO ∨ x.ikm.length < 64) ∧
-        32 ≤ x.info.length ∧ x.info.length < 55 ∧
-        (x.okmLen = 32 ∨ x.okmLen = 64 ∨ x.okmLen = 96)⌝ ∗
-        memRegion x.outVec 24 ∗
-        bytesAt x.saltRO x.saltA x.salt ∗
-        bytesAt x.ikmRO x.ikmA x.ikm ∗
-        bytesAt x.infoRO x.infoA x.info ∗
-        A.pool ∗
-        memRegion (s.sp - 17712#64) 1232 ∗
-        stackAt (s.sp - 96#64) extHookStack ∗
-        cells (s.sp - 96#64) 12
-    post := (hkdfToVecSpecExt A hkdf).post
-    onPanic := (hkdfToVecSpecExt A hkdf).onPanic
-  } := by
-    simp only [hkdfToVecSpecExt, Spec.inImage, stackAt_hkdfToVecExt_shim, sepConj_assoc]
-  rw [hspec_eq]
-  clear hspec_eq
-  simp only [hkdfToVecSpecExt, memRegion_24_cells]
-  cells_unfold
-  have hshim := hA.session_shim_ok_at hkdfToVecName
-    (ls_rel% "spqr::kdf::hkdf_to_vec" "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  have halloc := alloc_zeroed_ok_at_ext img.base A ext hZero hkdfToVecName
-    (ls_rel% "spqr::kdf::hkdf_to_vec" "__rustc::__rust_alloc_zeroed")
-  have hpanic := panic_at_handle_error_ext img.base ext hkdfToVecName
-    (ls_rel% "spqr::kdf::hkdf_to_vec" "alloc::raw_vec::handle_error")
-  have hslice_at := sub_ok_at_of_fnAddr hSlice hkdfToVecName
-    (ls_rel% "spqr::kdf::hkdf_to_vec" "spqr::kdf::hkdf_to_slice")
-  simp only [hkdfToSliceSpqrSpecExt, hkdfToSliceSpecExt] at hslice_at
-  clear hA hZero hSlice
-  wpp_init x s0
-  code_fetches_len CryptoVerification.libsignalSessionCode
-    libsignalSessionCode img.base (Rust.withPanics ext) "spqr::kdf::hkdf_to_vec" 188
-  have hpc' : s0.pc = (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr hkdfToVecName := by
-    rw [hpc, Program.fnAddr_rebase]; simp [hkdfToVecName]
-  clear hpc
-  rename_i hpc
-  dsimp only [tripleRatchetProgAtExt] at hshim halloc hpanic hslice_at ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr hkdfToVecName = entry
-  examples_hide_fetches
-  obtain ⟨outVec, saltRO, saltA, salt, ikmRO, ikmA, ikm, infoRO, infoA, info, okmLen⟩ := x
-  dsimp only at *
-  have hokm_pos : 0 < okmLen := by
-    have := ‹okmLen = 32 ∨ okmLen = 64 ∨ okmLen = 96›; omega
-  have hokm_le : okmLen ≤ 8160 := by
-    have := ‹okmLen = 32 ∨ okmLen = 64 ∨ okmLen = 96›; omega
-  have htoNat : (BitVec.ofNat 64 okmLen).toNat = okmLen := okmLen_toNat hokm_le
-  have hlsb63 : (BitVec.ofNat 64 okmLen).getLsbD 63 = false := okmLen_getLsbD_63 hokm_le
-  have hne0 : BitVec.ofNat 64 okmLen ≠ 0#64 := okmLen_ne_zero hokm_pos hokm_le
-  have hbeq0 : (BitVec.ofNat 64 okmLen == 0#64) = false := okmLen_beq_zero hokm_pos hokm_le
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlay : LayoutOk okmLen 1 := layoutOk_okmLen hokm_pos hokm_le
-  apply of_sepWP_inImage
-    (mid := entry + bv% (ls_rel% "spqr::kdf::hkdf_to_vec" "__rustc::__rust_no_alloc_shim_is_unstable_v2"))
-    img ‹img.FrozenLoaded s0› ‹s0.symtab = img.symtab›
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  intro hfl_0 hsym_0
-  apply of_sepWP_inImage (mid := entry + 104#64) img hfl_0 hsym_0
-  wp_apply
-  apply SepWP.fold (stackAt_extHook_split_alloc s0.sp) (by sep_focus)
-  wp_steps
-  wp_apply
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  intro hfl_1 hsym_1
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    simp only [hoom, ite_true, sepConj_assoc]
-    refine sepWPp_pure_mid fun htrace => ?_
-    apply SepWPp.of_sepWP
-      (mid := entry + bv% (ls_rel% "spqr::kdf::hkdf_to_vec" "alloc::raw_vec::handle_error"))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.panic (by wp_norm_lhs) hpanic fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked
-        (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace, ‹sf.trace = s0.trace›])) hm
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, sepConj_assoc]
-    refine sepWPp_pure_mid fun ⟨hmod, htrace⟩ => ?_
-    apply of_sepWP_inImage (mid := entry + 188#64) img hfl_1 hsym_1
-    rw [‹sf.sp = s0.sp - 96#64›]
-    wp_steps
-    apply SepWP.fold (zeroed_entails_memRegion (sf_1.readReg64 (Reg.gpr 0#5)) okmLen) (by sep_focus)
-    apply SepWP.fold (stackAt_hkdfToVecExt_fold s0.sp _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus)
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    intro hfl_2 hsym_2
-    apply SepWPp.of_sepWP_ret
-    wp_apply
-    apply SepWP.fold (stackAt_hkdfToVecExt_tail_fold s0.sp) (by sep_focus)
-    apply SepWP.fold (vecU8_exact_entails A outVec (sf_1.readReg64 (Reg.gpr 0#5))
-      (hkdf salt ikm info okmLen) okmLen hokm_pos hokm_le
-      ‹(hkdf salt ikm info okmLen).length = okmLen› hoom) (by sep_focus)
-    wp_done
-
-theorem hkdf_to_vec_ok_ext' (img : Obj.Image) (A : RustAlloc) (hkdf : HkdfFn)
-    (ext : String → Option (State → State))
-    (hA : AllocContracts img.base A ext)
-    (hZero : HookSat ext allocZeroedName (rustAllocZeroedSpec A))
-    (hSlice : HkdfToSliceSpqrOkExt img hkdf ext) :
-    HkdfToVecOkExt img A hkdf ext :=
-  hkdf_to_vec_ok_extX img A hkdf ext (AllocContractsX.of_AllocContracts hA) hZero hSlice
-
-/-! ## Multi-Placed `[LibsignalPlacement]` Proof of `spqr::kdf::hkdf_to_vec` (Block `378`) -/
 
 abbrev spqrRustAllocZeroedSym : String :=
   "_RNvCs1njKG4L9aB3_7___rustc19___rust_alloc_zeroed"

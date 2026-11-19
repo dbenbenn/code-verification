@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushA
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvDefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Defs
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Defs
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Placed Tag 7 (`receiver_chains`) 104-Byte Move and `grow_one` Helpers
@@ -21,14 +25,14 @@ Re-exports the 104-byte `prostChainGAt` move and `prostSSGQAt` helpers from `Pre
 and proves `[LibsignalPlacement]` `growOneChainSpecX` precondition/postcondition bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
-open Std Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection CryptoVerification.CodeLayout
+open Std Arm64 ProofLib ProofLib.ProgramReflection CryptoVerification.CodeLayout
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
@@ -169,18 +173,6 @@ theorem growOne_plain_pre_eq_q (q cap ptr : BitVec 64)
       stackAt q Stage1X.growOneChainStackX) :=
   growOne_plain_pre_eq_q_ext A0 q cap ptr bs s hsp
 
-theorem growOne_lscl_pre_eq_q [LibsignalPlacement] (q cap ptr : BitVec 64)
-    (bs : List (BitVec 8)) (s : State) (hsp : s.sp = q) :
-    (withLsCl lsmpl (Stage1X.growOneChainSpecX A0)).pre (q + 0x978#64, cap, ptr, bs) s =
-    (⌜bs.length = cap.toNat * 104 ∧ s.readReg64 .x0 = q + 0x978#64 ∧
-        ptr ≠ 0#64 ∧ 8 + max (2 * cap.toNat) 4 * 104 ≤ 2 ^ 63⌝ ∗
-      (((q + 0x978#64) ↦₆₄ cap) ∗ ((q + 0x980#64) ↦₆₄ ptr) ∗
-        (if cap = 0#64 then emp else A0.live ptr bs.length 8 ∗ (ptr ↦ₛ bs)) ∗
-        A0.pool ∗
-        stackAt q Stage1X.growOneChainStackX)) ∗
-    ⌜LibsignalCodeLoaded lsmpl s.mem⌝ :=
-  growOne_lscl_pre_eq_q_ext A0 q cap ptr bs s hsp
-
 theorem growOne_plain_post_elim_sp_q (q cap ptr : BitVec 64)
     (cs : List ChainG) (bs : List (BitVec 8)) (s_pre sf : State)
     (hsp : s_pre.sp = q)
@@ -200,27 +192,5 @@ theorem growOne_plain_post_elim_sp_q (q cap ptr : BitVec 64)
         A0.pool ∗
         stackAt q Stage1X.growOneChainStackX :=
   growOne_plain_post_elim_sp_q_ext A0 q cap ptr cs bs s_pre sf hsp hfull hlt5 hbs
-
-theorem growOne_lscl_post_elim_sp_q [LibsignalPlacement] (q cap ptr : BitVec 64)
-    (cs : List ChainG) (bs : List (BitVec 8)) (s_pre sf : State)
-    (hsp : s_pre.sp = q)
-    (hfull : cs.length = cap.toNat)
-    (hlt5 : cs.length < maxReceiverChains)
-    (hbs : bs.length = cap.toNat * 104) :
-    (withLsCl lsmpl (Stage1X.growOneChainSpecX A0)).post
-        (q + 0x978#64, cap, ptr, bs) s_pre sf ⊢
-      ⌜LibsignalCodeLoaded lsmpl sf.mem⌝ ∗
-      ⌜sf.trace = s_pre.trace⌝ ∗
-      ∃∗ cap' : BitVec 64, ∃∗ p' : BitVec 64,
-        ⌜cs.length < cap'.toNat ∧ cap'.toNat * 104 < 2 ^ 63 ∧ p' ≠ 0#64⌝ ∗
-        ((q + 0x978#64) ↦₆₄ cap') ∗ ((q + 0x980#64) ↦₆₄ p') ∗
-        A0.live p' (cap'.toNat * 104) 8 ∗
-        (p' ↦ₛ bs) ∗
-        memRegion (p' + BitVec.ofNat 64 cs.length * 104#64) 104 ∗
-        memRegion (p' + BitVec.ofNat 64 ((cs.length + 1) * 104))
-          ((cap'.toNat - (cs.length + 1)) * 104) ∗
-        A0.pool ∗
-        stackAt q Stage1X.growOneChainStackX :=
-  growOne_lscl_post_elim_sp_q_ext A0 q cap ptr cs bs s_pre sf hsp hfull hlt5 hbs
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec

@@ -10,20 +10,20 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Fetch
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionLenAux.Pure
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization.SerializeBodyAux
 
@@ -302,7 +302,7 @@ theorem sessionInline_exists_tail {G : SessionGhost} {st : SessionState (List (B
   rw [hbs, List.length_append, unpack64_length] at hlen
   omega
 
-def sessionAtHeap (A : RustAlloc) (G : SessionGhost)
+@[expose] def sessionAtHeap (A : RustAlloc) (G : SessionGhost)
     (s : LibsignalSessionApi.Session (List (BitVec 8))) : SepProp :=
   ⌜PendingRel G.pending s.pendingPreKey ∧ KyberRel G.kyber s.pendingKyberPreKey ∧
     G.alice.bytes = s.aliceBaseKey ∧ G.regIds.take 4 = leBytes 4 s.remoteRegistrationId.toNat ∧
@@ -380,41 +380,14 @@ theorem sessionAt_pack_head_tail (A : RustAlloc) (dst : BitVec 64)
 
 /-! ## Callee specifications lifted to `serializeSubStack` -/
 
-def vecVecCloneSubSpec : Spec VecVecCloneGhost where
+@[expose] def vecVecCloneSubSpec : Spec VecVecCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧ s.readReg64 .x2 = 0#64⌝ ∗
       memRegion x.dst 24 ∗ stackAt s.sp serializeSubStack
   post := fun x s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ vecHeader x.dst 0#64 8#64 0#64 ∗ stackAt s0.sp serializeSubStack
 
-theorem vecVecClone_sub_ok {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hVV : OkAt b C ctl abs vecVecCloneName vecVecCloneEmptySpec) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-      vecVecCloneSubSpec := by
-  have hrel : (tripleRatchetProgAt b C ctl abs).fnAddr vecVecCloneName =
-      (tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize") := by
-    simp only [tripleRatchetProgAt, Program.fnAddr_rebase, libsignalSessionCode_fnOff_vecVecClone,
-      libsignalSessionCode_fnOff_serialize, BitVec.add_assoc]
-    rfl
-  rw [← hrel]
-  refine subroutine_ok_frame_weaken
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStack)
-      (serializeSubStack - vecVecCloneStack))
-    hVV
-    (fun x s0 => ?_)
-    (fun x s0 sf => ?_)
-    (fun _ _ _ => Entails.pure_left False.elim)
-    (fun _ _ _ _ => rfl)
-  · simp only [vecVecCloneSubSpec, vecVecCloneEmptySpec,
-      stackAt_serializeSub_split s0.sp vecVecCloneStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [vecVecCloneSubSpec, vecVecCloneEmptySpec,
-      stackAt_serializeSub_split s0.sp vecVecCloneStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-def sessionCloneSubSpec (A : RustAlloc) : Spec SessionCloneGhost where
+@[expose] def sessionCloneSubSpec (A : RustAlloc) : Spec SessionCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       sessionStateReprAt A x.src x.G x.s ∗ memRegion x.dst 344 ∗ A.pool ∗ stackAt s.sp serializeSubStack
@@ -425,34 +398,7 @@ def sessionCloneSubSpec (A : RustAlloc) : Spec SessionCloneGhost where
       A.pool ∗ stackAt s0.sp serializeSubStack
   onPanic := allocPanic
 
-theorem sessionClone_sub_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hClone : OkAt b C ctl abs sessionCloneName (sessionCloneSpec A)) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-      (sessionCloneSubSpec A) := by
-  have hrel : (tripleRatchetProgAt b C ctl abs).fnAddr sessionCloneName =
-      (tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as core::clone::Clone>::clone" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize") := by
-    simp only [tripleRatchetProgAt, Program.fnAddr_rebase, libsignalSessionCode_fnOff_sessionClone,
-      libsignalSessionCode_fnOff_serialize, BitVec.add_assoc]
-    rfl
-  rw [← hrel]
-  refine subroutine_ok_frame_weaken
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStack)
-      (serializeSubStack - sessionCloneStack))
-    hClone
-    (fun x s0 => ?_)
-    (fun x s0 sf => ?_)
-    (fun x s0 sf => allocPanic_frame_entails x s0 sf _)
-    (fun _ _ _ _ => rfl)
-  · simp only [sessionCloneSubSpec, sessionCloneSpec,
-      stackAt_serializeSub_split s0.sp sessionCloneStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [sessionCloneSubSpec, sessionCloneSpec,
-      stackAt_serializeSub_split s0.sp sessionCloneStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-def sessionLenSubSpec (A : RustAlloc) : Spec SessionLenGhost where
+@[expose] def sessionLenSubSpec (A : RustAlloc) : Spec SessionLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (encSessionMem x.G x.s).length < 2 ^ 32⌝ ∗
       sessionStateReprAt A x.ss x.G x.s ∗ stackAt s.sp serializeSubStack
@@ -460,34 +406,7 @@ def sessionLenSubSpec (A : RustAlloc) : Spec SessionLenGhost where
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (encSessionMem x.G x.s).length ∧ sf.trace = s0.trace⌝ ∗
       sessionStateReprAt A x.ss x.G x.s ∗ stackAt s0.sp serializeSubStack
 
-theorem sessionLen_sub_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hLen : OkAt b C ctl abs sessionLenName (sessionLenSpec A)) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encoded_len" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-      (sessionLenSubSpec A) := by
-  have hrel : (tripleRatchetProgAt b C ctl abs).fnAddr sessionLenName =
-      (tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encoded_len" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize") := by
-    simp only [tripleRatchetProgAt, Program.fnAddr_rebase, libsignalSessionCode_fnOff_sessionLen,
-      libsignalSessionCode_fnOff_serialize, BitVec.add_assoc]
-    rfl
-  rw [← hrel]
-  refine subroutine_ok_frame_weaken
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStack)
-      (serializeSubStack - sessionLenStack))
-    hLen
-    (fun x s0 => ?_)
-    (fun x s0 sf => ?_)
-    (fun _ _ _ => Entails.pure_left False.elim)
-    (fun _ _ _ _ => rfl)
-  · simp only [sessionLenSubSpec, sessionLenSpec,
-      stackAt_serializeSub_split s0.sp sessionLenStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [sessionLenSubSpec, sessionLenSpec,
-      stackAt_serializeSub_split s0.sp sessionLenStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-def encodeVarintSubSpec (A : RustAlloc) : Spec Prost.EncodeVarintGhost where
+@[expose] def encodeVarintSubSpec (A : RustAlloc) : Spec Prost.EncodeVarintGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧ x.bs.length + 10 < 2 ^ 62⌝ ∗
       vecU8At A x.v x.cap x.ptr x.bs ∗ A.pool ∗ stackAt s.sp serializeSubStack
@@ -501,38 +420,7 @@ def encodeVarintSubSpec (A : RustAlloc) : Spec Prost.EncodeVarintGhost where
       A.pool ∗ stackAt s0.sp serializeSubStack
   onPanic := allocPanic
 
-theorem encodeVarint_sub_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hEV : Prost.EncodeVarintOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (2 ^ 64 + (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") - (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")))
-      (encodeVarintSubSpec A) := by
-  have hrel : (tripleRatchetProgAt b C ctl abs).fnAddr Prost.encodeVarintName =
-      (tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (2 ^ 64 + (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") - (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) := by
-    simp only [tripleRatchetProgAt, Program.fnAddr_rebase, libsignalSessionCode_fnOff_encodeVarint,
-      libsignalSessionCode_fnOff_serialize, BitVec.add_assoc]
-    rfl
-  rw [← hrel]
-  refine subroutine_ok_frame_weaken
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStack)
-      (serializeSubStack - Prost.encodeVarintStack))
-    hEV
-    (fun x s0 => ?_)
-    (fun x s0 sf => ?_)
-    (fun x s0 sf => allocPanic_frame_entails x s0 sf _)
-    (fun _ _ _ _ => rfl)
-  · simp only [encodeVarintSubSpec, Prost.encodeVarintSpec,
-      stackAt_serializeSub_split s0.sp Prost.encodeVarintStack (by decide)]
-    refine Entails.trans (sepConj_mono_left (Entails.pure_mono
-      (ψ := s0.readReg64 .x0 = x.val ∧ s0.readReg64 .x1 = x.v ∧
-        (x.bs.length + 10 ≤ x.cap.toNat ∨ x.bs.length + 10 < 2 ^ 62))
-      fun ⟨h0, h1, h2⟩ => ⟨h0, h1, Or.inr h2⟩)) ?_
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [encodeVarintSubSpec, Prost.encodeVarintSpec,
-      stackAt_serializeSub_split s0.sp Prost.encodeVarintStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-def encodeRawSubSpec (A : RustAlloc) : Spec EncodeRawGhost where
+@[expose] def encodeRawSubSpec (A : RustAlloc) : Spec EncodeRawGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x1 = x.v ∧
       x.bs.length + (encSessionMem x.G x.s).length < 2 ^ 32⌝ ∗
@@ -545,34 +433,7 @@ def encodeRawSubSpec (A : RustAlloc) : Spec EncodeRawGhost where
       A.pool ∗ stackAt s0.sp serializeSubStack
   onPanic := allocPanic
 
-theorem encodeRaw_sub_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hRaw : OkAt b C ctl abs encodeRawName (encodeRawSpec A)) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>") - (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")))
-      (encodeRawSubSpec A) := by
-  have hrel : (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName =
-      (tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>") - (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) := by
-    simp only [tripleRatchetProgAt, Program.fnAddr_rebase, libsignalSessionCode_fnOff_encodeRaw,
-      libsignalSessionCode_fnOff_serialize, BitVec.add_assoc]
-    rfl
-  rw [← hrel]
-  refine subroutine_ok_frame_weaken
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStack)
-      (serializeSubStack - encodeRawStack))
-    hRaw
-    (fun x s0 => ?_)
-    (fun x s0 sf => ?_)
-    (fun x s0 sf => allocPanic_frame_entails x s0 sf _)
-    (fun _ _ _ _ => rfl)
-  · simp only [encodeRawSubSpec, encodeRawSpec,
-      stackAt_serializeSub_split s0.sp encodeRawStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [encodeRawSubSpec, encodeRawSpec,
-      stackAt_serializeSub_split s0.sp encodeRawStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-def dropLocal1SubSpec (A : RustAlloc) : Spec DropSessionStructureGhost where
+@[expose] def dropLocal1SubSpec (A : RustAlloc) : Spec DropSessionStructureGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
       sessionStateAt A x.ss x.G x.st ∗ A.pool ∗ stackAt s.sp serializeSubStack
@@ -580,34 +441,7 @@ def dropLocal1SubSpec (A : RustAlloc) : Spec DropSessionStructureGhost where
     ⌜sf.trace = s0.trace⌝ ∗
       memRegion x.ss 344 ∗ A.pool ∗ stackAt s0.sp serializeSubStack
 
-theorem dropLocal1_sub_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hDrop : FromRecordCallees.DropSessionStructureLocal1Ok b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#1]") - (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")))
-      (dropLocal1SubSpec A) := by
-  have hrel : (tripleRatchetProgAt b C ctl abs).fnAddr FromRecordCallees.dropSessionStructureLocal1Name =
-      (tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#1]") - (ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) := by
-    simp only [tripleRatchetProgAt, Program.fnAddr_rebase, libsignalSessionCode_fnOff_dropLocal1,
-      libsignalSessionCode_fnOff_serialize, BitVec.add_assoc]
-    rfl
-  rw [← hrel]
-  refine subroutine_ok_frame_weaken
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStack)
-      (serializeSubStack - FromRecordCallees.dropSessionStructureLocal1Stack))
-    hDrop
-    (fun x s0 => ?_)
-    (fun x s0 sf => ?_)
-    (fun _ _ _ => Entails.pure_left False.elim)
-    (fun _ _ _ _ => rfl)
-  · simp only [dropLocal1SubSpec, FromRecordCallees.dropSessionStructureLocal1Spec,
-      stackAt_serializeSub_split s0.sp FromRecordCallees.dropSessionStructureLocal1Stack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [dropLocal1SubSpec, FromRecordCallees.dropSessionStructureLocal1Spec,
-      stackAt_serializeSub_split s0.sp FromRecordCallees.dropSessionStructureLocal1Stack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-def rustAllocSubSpec (A : RustAlloc) : Spec (Nat × Nat) where
+@[expose] def rustAllocSubSpec (A : RustAlloc) : Spec (Nat × Nat) where
   pre := fun (size, align) s =>
     ⌜(s.readReg64 .x0).toNat = size ∧ (s.readReg64 .x1).toNat = align ∧
       LayoutOk size align⌝ ∗
@@ -620,30 +454,6 @@ def rustAllocSubSpec (A : RustAlloc) : Spec (Nat × Nat) where
        ⌜p.toNat % align = 0 ∧ sf.trace = s0.trace⌝ ∗
          A.live p size align ∗ memRegion p size) ∗
       A.pool ∗ stackAt s0.sp serializeSubStack
-
-theorem alloc_sub_ok {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr serializeName + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-      (rustAllocSubSpec A) := by
-  have halloc := alloc_ok_at_norm (b := b) (C := C) (ctl := ctl)
-    (name := serializeName) (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) hA (by
-      simp only [libsignalSessionCode_fnOff_serialize, arm64_norm])
-  refine subroutine_ok_frame_weaken
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStack)
-      (serializeSubStack - allocHookStack))
-    halloc
-    (fun ⟨size, align⟩ s0 => ?_)
-    (fun ⟨size, align⟩ s0 sf => ?_)
-    (fun _ _ _ => Entails.pure_left False.elim)
-    (fun _ _ _ _ => rfl)
-  · simp only [rustAllocSubSpec, rustAllocSpec,
-      stackAt_serializeSub_split s0.sp allocHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [rustAllocSubSpec, rustAllocSpec,
-      stackAt_serializeSub_split s0.sp allocHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
 
 theorem vecU8At_init_byte (A : RustAlloc) (v cap ptr : BitVec 64) (b0 : BitVec 8)
     (hcap_pos : 1 ≤ cap.toNat) (hcap_lt : cap.toNat < 2 ^ 63) (hptr : ptr ≠ 0) :

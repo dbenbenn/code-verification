@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpiloguePlaced
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 4 (`EkSentCt1Received`, `+248`) — Shared Helpers
@@ -25,7 +26,7 @@ Relocatable Block-`333` callee contracts, `+7084` error exit, and inline
 `Option<ProtoPolynomialDecoder>` deallocation (`+5360..+5440 -> +7084`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -67,7 +68,7 @@ theorem v4_sub_ok_dealloc_125316_placed [LibsignalPlacement]
   spqr_hook_ok_of_mem hA.dealloc
 
 /-- Placed contract hypothesis for `<EkSentCt1Received>::from_pb` (Block `348`) on `lsProg_333`. -/
-def EkSentCt1ReceivedFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def EkSentCt1ReceivedFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_333 (Rust.withPanics ext)) (lsmpl.base 348)
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedFromPbSpec A F))

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Soundness
 import Computational.Proofs.ReductionDsl.Size
 
@@ -19,7 +19,7 @@ import Computational.Proofs.ReductionDsl.Size
 Syntactic step-cost, oracle-query, and AST-size bounds for `sigKeyIndProg` and `shcrKeyIndProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 100000
@@ -32,7 +32,7 @@ open OracleSpec OracleComp
 namespace SignalPqxdh.Security.ReductionDsl.KeyInd
 
 /-- Polynomial step-cost budget for `KeyInd` and `Auth` reductions. -/
-def stepCostBudget (S : Setup) (b : QueryBudget) : Nat :=
+@[expose] def stepCostBudget (S : Setup) (b : QueryBudget) : Nat :=
   2 ^ 16 * (b.q_total + 1) * (b.q_total + S.N_dh + S.N_sess_tot + 1) +
     2 ^ 11 * S.N_dh ^ 2 + 2 ^ 8 * S.N_dh * S.N_sess_tot
 
@@ -806,7 +806,7 @@ theorem Expr.cost_pos {S : Sig} {O : Ops S} {Γ : List (Ty S)} {t : Ty S} (e : E
 /-! ## Handler and reduction cost bounds -/
 
 /-- Loop bound for `KeyInd` game-state lists across at most `b.q_total` queries. -/
-def keyIndLoopBound (b : QueryBudget) : Nat := 2 * b.q_total + 1
+@[expose] def keyIndLoopBound (b : QueryBudget) : Nat := 2 * b.q_total + 1
 
 theorem bits_le_add_one (n : Nat) : bits n ≤ n + 1 :=
   ReductionDsl.bits_le_succ n
@@ -822,21 +822,6 @@ theorem nRecv_le_spk_tot (S : Setup) : nRecv S ≤ S.N_spk_tot := by
 theorem bits_nRecv_le (S : Setup) : bits (nRecv S) ≤ S.N_dh + 1 := by
   have h1 := bits_le_add_one (nRecv S)
   have h2 := nRecv_le_spk_tot S
-  unfold Setup.N_dh
-  omega
-
-theorem bits_N_id_le (S : Setup) : bits S.N_id ≤ S.N_dh + 1 := by
-  have h1 := bits_le_add_one S.N_id
-  unfold Setup.N_dh
-  omega
-
-theorem bits_N_spk_tot_le (S : Setup) : bits S.N_spk_tot ≤ S.N_dh + 1 := by
-  have h1 := bits_le_add_one S.N_spk_tot
-  unfold Setup.N_dh
-  omega
-
-theorem bits_N_send_tot_le (S : Setup) : bits S.N_send_tot ≤ S.N_dh + 1 := by
-  have h1 := bits_le_add_one S.N_send_tot
   unfold Setup.N_dh
   omega
 
@@ -916,73 +901,6 @@ theorem security_stepCostBudget_le (S : Setup) (b : QueryBudget) :
       (b.q_total + 1) * (2 ^ 16 * (b.q_total + S.N_dh + S.N_sess_tot + 1)) := by ring
   omega
 
-theorem total_le_stepCostBudget (S : Setup) (b : QueryBudget) (c0 h : Nat)
-    (hc : c0 ≤ 2 ^ 16 * (b.q_total + S.N_dh + S.N_sess_tot + 1))
-    (hh : h ≤ 2 ^ 16 * (b.q_total + S.N_dh + S.N_sess_tot + 1)) :
-    c0 + b.q_total * h ≤ stepCostBudget S b := by
-  unfold stepCostBudget
-  generalize b.q_total + S.N_dh + S.N_sess_tot + 1 = X at *
-  have h1 : b.q_total * h ≤ b.q_total * (2 ^ 16 * X) := Nat.mul_le_mul_left _ hh
-  have h2 : 2 ^ 16 * X + b.q_total * (2 ^ 16 * X) = 2 ^ 16 * (b.q_total + 1) * X := by ring
-  have h3 : 2 ^ 16 * (b.q_total + 1) * X ≤
-      2 ^ 16 * (b.q_total + 1) * X + 2 ^ 11 * S.N_dh ^ 2 + 2 ^ 8 * S.N_dh * S.N_sess_tot :=
-    le_trans (Nat.le_add_right _ _) (Nat.le_add_right _ _)
-  omega
-
-theorem sigKeyIndProg_totalCost_le_security_of_le (useRo : Bool) (S : Setup) (b : QueryBudget)
-    (K : Nat) (hK : K ≤ keyIndLoopBound b) :
-    (sigKeyIndProg useRo S K).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  have hh := sigKeyIndProg_handle_cost_le useRo S K
-  have hi := sigKeyIndProg_init_cost useRo S K
-  have hf := sigKeyIndProg_finish_cost_le useRo S K
-  have hKB : keyIndLoopBound b = 2 * b.q_total + 1 := rfl
-  have hIdLeDh : S.N_id ≤ S.N_dh := by unfold Setup.N_dh; omega
-  have hbId : bits S.N_id ≤ Nat.log 2 S.N_dh + 1 := by
-    rw [bits_eq_log2_succ]
-    exact Nat.add_le_add_right (Nat.log_mono_right hIdLeDh) 1
-  have hbMin : bits (min K S.N_spk_tot) ≤ K + 1 :=
-    (ReductionDsl.bits_mono (Nat.min_le_left _ _)).trans (bits_le_add_one K)
-  have hu : pqxdhEufCmaIface.uCost = 1 := rfl
-  have hc : (keyIndCodec S).codecCost = 32 := rfl
-  rw [CostedReduction.totalCost, hu, hc]
-  unfold _root_.SignalPqxdh.Security.stepCostBudget
-  dsimp only
-  generalize hq : b.q_total = q at hKB ⊢
-  cases q with
-  | zero =>
-    omega
-  | succ q' =>
-    have hmd3 : min K S.N_dh ≤ 3 * min (q' + 1) S.N_dh := by omega
-    have hms3 : min K S.N_sess_tot ≤ 3 * min (q' + 1) S.N_sess_tot := by omega
-    set M_dh := min (q' + 1) S.N_dh
-    set M_sess := min (q' + 1) S.N_sess_tot
-    have hMax : max 1 ((sigKeyIndProg useRo S K).handle.cost + 32) ≤
-        2 ^ 16 * (q' + 2) + 2 ^ 15 * (M_dh + M_sess) := by omega
-    have hMul := Nat.mul_le_mul_left (q' + 1) hMax
-    have hRest : (sigKeyIndProg useRo S K).init.cost + (sigKeyIndProg useRo S K).finish.cost ≤
-        (2 ^ 16 * (q' + 2) + 2 ^ 15 * (M_dh + M_sess)) +
-          2 ^ 10 * (q' + 1 + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) := by
-      have hLog : Nat.log 2 S.N_dh ≤
-          2 ^ 10 * (q' + 1 + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) := by
-        have hle1 : 1 ≤ 2 ^ 10 * (q' + 1 + 1) := by omega
-        have hle2 : Nat.log 2 S.N_dh ≤ Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot :=
-          Nat.le_add_right _ _
-        have hmul := Nat.mul_le_mul hle1 hle2
-        omega
-      omega
-    have hComb : (q' + 1) * (2 ^ 16 * (q' + 2) + 2 ^ 15 * (M_dh + M_sess)) +
-        (2 ^ 16 * (q' + 2) + 2 ^ 15 * (M_dh + M_sess)) =
-        2 ^ 16 * (q' + 1 + 1) * (q' + 1 + 1) +
-          2 ^ 15 * (q' + 1 + 1) * (M_dh + M_sess) := by ring
-    omega
-
-theorem sigKeyIndProg_totalCost_le_of_le (useRo : Bool) (S : Setup) (b : QueryBudget)
-    (K : Nat) (hK : K ≤ keyIndLoopBound b) :
-    (sigKeyIndProg useRo S K).totalCost b.q_total ≤ stepCostBudget S b :=
-  (sigKeyIndProg_totalCost_le_security_of_le useRo S b K hK).trans
-    (security_stepCostBudget_le S b)
-
 theorem shcrPostC_cost_tight_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
     (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     (shcrPostC (Δ := Δ) S K s q).cost ≤
@@ -996,23 +914,10 @@ theorem shcrPostC_cost_tight_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
     cost_v, Comp.cost]
   omega
 
-theorem shcrPostC_cost_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcrPostC (Δ := Δ) S K s q).cost ≤
-      18910 + bits (nRecv S) + (min K S.N_dh) * 7980 + (min K S.N_sess_tot) * 7362 + K * 3806 := by
-  have h := shcrPostC_cost_tight_le (Δ := Δ) S K s q
-  omega
-
 theorem shcrKeyIndProg_handlePost_cost_tight_le (S : Setup) (Q K : Nat) :
     (shcrKeyIndProg S Q K).handlePost.cost ≤
       18910 + (min K S.N_dh) * 7980 + (min K S.N_sess_tot) * 7362 + K * 3806 :=
   shcrPostC_cost_tight_le S K (Γ₁ := [shcrStTy, keyIndQueryTy])
-    (Γ₂ := [keyIndQueryTy]) (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
-
-theorem shcrKeyIndProg_handlePost_cost_le (S : Setup) (Q K : Nat) :
-    (shcrKeyIndProg S Q K).handlePost.cost ≤
-      18910 + bits (nRecv S) + (min K S.N_dh) * 7980 + (min K S.N_sess_tot) * 7362 + K * 3806 :=
-  shcrPostC_cost_le S K (Γ₁ := [shcrStTy, keyIndQueryTy])
     (Γ₂ := [keyIndQueryTy]) (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
 
 theorem shcrPreC_cost_tight_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
@@ -1024,23 +929,10 @@ theorem shcrPreC_cost_tight_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
   have hPost := shcrPostC_cost_tight_le S K (Γ₁ := Γ₁) (Γ₂ := Γ₂) (Δ := (.opt pauseTy) :: Δ) s q
   omega
 
-theorem shcrPreC_cost_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    (s : Var Γ₁ shcrStTy) (q : Var Γ₂ keyIndQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
-    (shcrPreC (Δ := Δ) S K s q).cost ≤
-      22778 + bits (nRecv S) + (min K S.N_dh) * 8804 + (min K S.N_sess_tot) * 7362 + K * 4063 := by
-  have h := shcrPreC_cost_tight_le (Δ := Δ) S K s q
-  omega
-
 theorem shcrKeyIndProg_handlePre_cost_tight_le (S : Setup) (Q K : Nat) :
     (shcrKeyIndProg S Q K).handlePre.cost ≤
       22778 + (min K S.N_dh) * 8804 + (min K S.N_sess_tot) * 7362 + K * 4063 :=
   shcrPreC_cost_tight_le S K (Γ₁ := [shcrStTy, keyIndQueryTy])
-    (Γ₂ := [keyIndQueryTy]) (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
-
-theorem shcrKeyIndProg_handlePre_cost_le (S : Setup) (Q K : Nat) :
-    (shcrKeyIndProg S Q K).handlePre.cost ≤
-      22778 + bits (nRecv S) + (min K S.N_dh) * 8804 + (min K S.N_sess_tot) * 7362 + K * 4063 :=
-  shcrPreC_cost_le S K (Γ₁ := [shcrStTy, keyIndQueryTy])
     (Γ₂ := [keyIndQueryTy]) (Δ := [shcrStTy, keyIndQueryTy]) .zero .zero
 
 theorem shcrKeyIndProg_resume_cost (S : Setup) (Q K : Nat) :
@@ -1102,81 +994,16 @@ theorem shcrKeyIndProg_chDone_cost (S : Setup) (Q K : Nat) :
     (shcrKeyIndProg S Q K).chDone.cost = 5 := by
   simp [shcrKeyIndProg, scTPk, Comp.cost, Expr.cost]
 
-theorem shcrKeyIndProg_totalCost_le_security_of_le (S : Setup) (b : QueryBudget)
-    (K : Nat) (hK : K ≤ keyIndLoopBound b) :
-    (shcrKeyIndProg S b.q_total K).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  have hKB : keyIndLoopBound b = 2 * b.q_total + 1 := rfl
-  unfold _root_.SignalPqxdh.Security.stepCostBudget
-  dsimp only
-  generalize hq : b.q_total = q at hKB ⊢
-  have h1 := shcrKeyIndProg_handlePre_cost_tight_le S q K
-  have h2 := shcrKeyIndProg_handlePost_cost_tight_le S q K
-  have h3 := shcrKeyIndProg_resume_cost S q K
-  have h4 := shcrKeyIndProg_finish_cost S q K
-  have h5 := shcrKeyIndProg_init_cost_le S q K
-  have h6 := shcrKeyIndProg_chDone_cost S q K
-  have hu : SignalPqxdh.LegacyCosted.pqPrimIface.uCost = 1 := rfl
-  have hc : (keyIndCodec S).codecCost = 32 := rfl
-  rw [TwoStageCostedReduction.totalCost, hu, hc, h4, h6]
-  cases q with
-  | zero =>
-    have hmd1 : min K S.N_dh ≤ K := Nat.min_le_left _ _
-    have hms1 : min K S.N_sess_tot ≤ K := Nat.min_le_left _ _
-    have hlog : 3 * Nat.log 2 S.N_dh ≤
-        2 ^ 10 * (0 + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) := by omega
-    omega
-  | succ q' =>
-    have hmd3 : min K S.N_dh ≤ 3 * min (q' + 1) S.N_dh := by omega
-    have hms3 : min K S.N_sess_tot ≤ 3 * min (q' + 1) S.N_sess_tot := by omega
-    set M_dh := min (q' + 1) S.N_dh
-    set M_sess := min (q' + 1) S.N_sess_tot
-    have hMax : max 1 (max (shcrKeyIndProg S (q' + 1) K).handlePre.cost
-        (shcrKeyIndProg S (q' + 1) K).handlePost.cost + 32) ≤
-        2 ^ 16 * (q' + 2) + 2 ^ 15 * (M_dh + M_sess) := by omega
-    have hMul := Nat.mul_le_mul_left (q' + 1) hMax
-    have hRest : (shcrKeyIndProg S (q' + 1) K).init.cost +
-        max 5 (shcrKeyIndProg S (q' + 1) K).resume.cost + (20 + (q' + 1) * 11168) ≤
-        (2 ^ 16 * (q' + 2) + 2 ^ 15 * (M_dh + M_sess)) +
-          2 ^ 10 * (q' + 1 + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) := by
-      have hLog : 3 * Nat.log 2 S.N_dh ≤
-          2 ^ 10 * (q' + 1 + 1) * (Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot) := by
-        have hle1 : 3 ≤ 2 ^ 10 * (q' + 1 + 1) := by omega
-        have hle2 : Nat.log 2 S.N_dh ≤ Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot :=
-          Nat.le_add_right _ _
-        exact Nat.mul_le_mul hle1 hle2
-      omega
-    have hComb : (q' + 1) * (2 ^ 16 * (q' + 2) + 2 ^ 15 * (M_dh + M_sess)) +
-        (2 ^ 16 * (q' + 2) + 2 ^ 15 * (M_dh + M_sess)) =
-        2 ^ 16 * (q' + 1 + 1) * (q' + 1 + 1) +
-          2 ^ 15 * (q' + 1 + 1) * (M_dh + M_sess) := by ring
-    omega
-
-theorem shcrKeyIndProg_totalCost_le_security (S : Setup) (b : QueryBudget) :
-    (shcrKeyIndProg S b.q_total (keyIndLoopBound b)).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b :=
-  shcrKeyIndProg_totalCost_le_security_of_le S b (keyIndLoopBound b) le_rfl
-
-theorem shcrKeyIndProg_totalCost_le_of_le (S : Setup) (b : QueryBudget)
-    (K : Nat) (hK : K ≤ keyIndLoopBound b) :
-    (shcrKeyIndProg S b.q_total K).totalCost b.q_total ≤ stepCostBudget S b :=
-  (shcrKeyIndProg_totalCost_le_security_of_le S b K hK).trans
-    (security_stepCostBudget_le S b)
-
-theorem shcrKeyIndProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (shcrKeyIndProg S b.q_total (keyIndLoopBound b)).totalCost b.q_total ≤ stepCostBudget S b :=
-  shcrKeyIndProg_totalCost_le_of_le S b (keyIndLoopBound b) le_rfl
-
 /-! ## Primitive-query weights and bounds -/
 
-def primW : pqPrimIface.Tag → ℕ := fun _ => 1
-def primWS : pqPrimIface.smp.Samp → ℕ := fun _ => 0
+@[expose] def primW : pqPrimIface.Tag → ℕ := fun _ => 1
+@[expose] def primWS : pqPrimIface.smp.Samp → ℕ := fun _ => 0
 
-def sigPrimW : pqxdhEufCmaIface.Tag → ℕ
+@[expose] def sigPrimW : pqxdhEufCmaIface.Tag → ℕ
   | .inl _ => 1
   | .inr _ => 0
 
-def sigWS : pqxdhEufCmaIface.smp.Samp → ℕ := fun _ => 0
+@[expose] def sigWS : pqxdhEufCmaIface.smp.Samp → ℕ := fun _ => 0
 
 @[simp] theorem queries_liftBase {Γ : List PT} {τ : PT} (c : Comp pqxdhOps pqPrimIface Γ τ) :
     (liftBase c).queries sigPrimW sigWS = c.queries primW primWS := by
@@ -1743,82 +1570,6 @@ section SizeBounds
   simp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps, _root_.SignalPqxdh.LegacyCosted.pqBytesOps,
     Ops.sum, Sum.elim_inl]
 
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 1200000 in
-theorem sigKeyIndProg_size_le (useRo : Bool) (S : Setup) (K : Nat) :
-    (sigKeyIndProg useRo S K).size ≤ 100 * bits K + 12000 := by
-  have hInitFin : (sigKeyIndProg useRo S K).init.size + (sigKeyIndProg useRo S K).finish.size ≤
-      bits K + 100 := by
-    dsimp only [sigKeyIndProg]
-    have hbMin : bits (min K S.N_spk_tot) ≤ bits K :=
-      _root_.ReductionDsl.bits_mono (Nat.min_le_left _ _)
-    have hbMin' : bits (K.min S.N_spk_tot) ≤ bits K :=
-      _root_.ReductionDsl.bits_mono (Nat.min_le_left _ _)
-    split <;> {
-      simp only [emptyStE, stMk, sgForgery, eCaseOpt, liftBase,
-        bindV, v, litB, sBool, sIndex, Comp.size, Expr.size, bits_0]
-      simp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps,
-        _root_.SignalPqxdh.LegacyCosted.pqBytesOps, Ops.sum, Sum.elim_inl]
-      omega
-    }
-  have hHandle : (sigKeyIndProg useRo S K).handle.size ≤ 99 * bits K + 11900 := by
-    cases useRo <;> {
-      dsimp only [sigKeyIndProg]
-      simp (config := { maxSteps := 1000000 }) only [
-        sigHandleC, sigInitPrinB, sigCorruptB, sigGenSpkB, sigInitiateB, onGame, extractC, widenEC,
-        sgGame, sgTarget, sgPk, sgForgery, sgBudget, sgUpd,
-        initPrinB, corruptB, genSpkB, genOpkB, initSidE, initFinishC, preCheckC, checkSigsC,
-        initiateC, initiateOpkB, initiateNoOpkB, acceptOpkB, acceptNoOpkB,
-        testB, revealB, roB, revealDhB, registerB, revealSpkB,
-        findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
-        resolveSigPkC, honestPeerC, checkProvC, partnerC, recordRespC, hkdfOrRoC,
-        aiIkSk, aiSpkSk, aiOpkSk, aiPqSk, aiReplay, aiHdr, acceptKeysC,
-        qK, qJ, qO, qHdr, qKJO,
-        stSecb, stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv,
-        stMk, stUpd,
-        peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted, peMk, peUpd,
-        sbSpkSk, sbSpkPk, sbSpkSig, sbPqspkSk, sbPqspkPk, sbPqspkSig, sbRevealed, sbMk, sbUpd,
-        oeOpkSk, oeOpkPk, oeConsumed, oeMk, oeUpd,
-        seSid, seHonestPeer, sePeerIk, sePeerSpk, sePeerOpk, sePeerPqspk,
-        seSpkHon, seOpkHon, sePqspkHon, seEkASk, seFresh, seDrReal, seDrRand, seHdr,
-        seTested, seRevealed, seMk, seUpd,
-        reSid, reRespIk, reSpk, reOpk, rePqspk, reHdr, reSenderHonest, reDrReal, reDrRand,
-        reTested, reRevealed, reMk, reUpd,
-        buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-        hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-        rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rAccFresh, rDrKey, rDh, rSpkSk,
-        isSomeE, getDBytes, optFst, optSnd, dhOptNZ, guardE, rs, kyberCheckE, freshE, emptyStE,
-        orE, mulRight, natEq, nat2Eq, nat3Eq, optBytesEq, optU32Eq, sidEq, kyberEq, nonZero32,
-        buildSecretsE, eLet2,
-        liftBase,
-        v, bindV, letV, caseOptV, caseSumV, findMV, anyMV,
-        eLet, eCaseOpt, eCaseSum, eFind, eAny, eMap,
-        litB, catB, consB, widenB, lenB, eqB, u32OfNat, eqU32,
-        sBool, sBytes32, sRandom64, sDrKey96, sIndex,
-        qX25519, qX25519Base, qIsCanonical, qPow8,
-        qSigPkGen, qSigSign, qSigVerify,
-        qKemKeyGen, qKemEncaps, qKemDecaps, qHkdfDerive96,
-        qChalSign, encEC, encKEM,
-        Comp.size, Expr.size, ↓reduceIte, Bool.false_eq_true, Bool.true_eq_false,
-        Bool.not_true, Bool.not_false]
-      simp only [_root_.SignalPqxdh.LegacyCosted.pqxdhOps,
-        _root_.SignalPqxdh.LegacyCosted.pqBytesOps, _root_.SignalPqxdh.LegacyCosted.pqU32Ops,
-        Ops.sum, Sum.elim_inl, Sum.elim_inr]
-      have : bits 0 = 1 := bits_0
-      have : bits 1 = 1 := bits_1
-      have : bits 32 = 6 := bits_32
-      have : bits (min K S.N_dh) ≤ bits K := _root_.ReductionDsl.bits_mono (Nat.min_le_left _ _)
-      have : bits (K.min S.N_dh) ≤ bits K := _root_.ReductionDsl.bits_mono (Nat.min_le_left _ _)
-      have : bits (min K S.N_sess_tot) ≤ bits K := _root_.ReductionDsl.bits_mono (Nat.min_le_left _ _)
-      have : bits (K.min S.N_sess_tot) ≤ bits K := _root_.ReductionDsl.bits_mono (Nat.min_le_left _ _)
-      have : bits (min K S.N_spk_tot) ≤ bits K := _root_.ReductionDsl.bits_mono (Nat.min_le_left _ _)
-      have : bits (K.min S.N_spk_tot) ≤ bits K := _root_.ReductionDsl.bits_mono (Nat.min_le_left _ _)
-      omega
-    }
-  unfold _root_.ReductionDsl.CostedReduction.size
-  omega
-
 set_option maxRecDepth 100000 in
 set_option maxHeartbeats 800000 in
 private theorem shcrPostC_size_le_tight (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
@@ -1947,27 +1698,6 @@ theorem keyIndLoopBound_le_security_stepCostBudget (S : Setup) (b : QueryBudget)
     have : 1 ≤ b.q_total + 1 := by omega
     have hmul := Nat.mul_le_mul_left (2 ^ 16 * (b.q_total + 1)) this
     omega
-  omega
-
-theorem sigKeyIndProg_size_le_stepCostBudget (useRo : Bool) (S : Setup) (b : QueryBudget)
-    (K : Nat) (hK : K ≤ keyIndLoopBound b) :
-    (sigKeyIndProg useRo S K).size ≤
-      12000 + 100 * bits (_root_.SignalPqxdh.Security.stepCostBudget S b) := by
-  have h1 := sigKeyIndProg_size_le useRo S K
-  have h2 : bits K ≤ bits (_root_.SignalPqxdh.Security.stepCostBudget S b) :=
-    _root_.ReductionDsl.bits_mono (hK.trans (keyIndLoopBound_le_security_stepCostBudget S b))
-  omega
-
-theorem shcrKeyIndProg_size_le_stepCostBudget (S : Setup) (b : QueryBudget)
-    (K : Nat) (hK : K ≤ keyIndLoopBound b) :
-    (shcrKeyIndProg S b.q_total K).size ≤
-      29000 + 266 * bits (_root_.SignalPqxdh.Security.stepCostBudget S b) := by
-  have h1 := shcrKeyIndProg_size_le_tight S b.q_total K
-  have hq : b.q_total ≤ keyIndLoopBound b := by unfold keyIndLoopBound; omega
-  have hbQ : bits b.q_total ≤ bits (_root_.SignalPqxdh.Security.stepCostBudget S b) :=
-    _root_.ReductionDsl.bits_mono (hq.trans (keyIndLoopBound_le_security_stepCostBudget S b))
-  have hbK : bits K ≤ bits (_root_.SignalPqxdh.Security.stepCostBudget S b) :=
-    _root_.ReductionDsl.bits_mono (hK.trans (keyIndLoopBound_le_security_stepCostBudget S b))
   omega
 
 end SizeBounds

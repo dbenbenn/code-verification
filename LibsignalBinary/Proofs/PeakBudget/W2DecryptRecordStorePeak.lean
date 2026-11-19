@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # W2 `try_decrypt_from_record` and `WithStoresDecEnv` Credit Bridges
@@ -20,7 +22,7 @@ order for `try_decrypt_from_record` seam envelopes (`SegTailEnv` through `Record
 envelopes, and the `Scope`-guarded `WithStoresDecEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -102,17 +104,6 @@ theorem phaseCreditSpec_boxAlloc_small {M : AllocCostModel} [HasFineReallocCredi
     PhaseCreditSpec M (BoxAllocEnv boxSize) (2 * boxSize + 9539) 0 0 boxSize := by
   refine (PhaseCreditSpec.or_of_imp ?_ (PhaseCreditSpec.nil M)
     (phaseCreditSpec_rustAlloc_small_aff hM (al := 8) (by omega) hsmall)).mono
-    (by omega) (by omega) (by omega) (by omega)
-  rintro evs (⟨_, rfl⟩ | ⟨_, h2⟩)
-  · exact Or.inl rfl
-  · exact Or.inr h2
-
-theorem phaseCreditSpec_boxAlloc_aff {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (boxSize : Nat) :
-    PhaseCreditSpec M (BoxAllocEnv boxSize)
-      (2 * boxSize + 9539) (boxSize + 8195) (boxSize + 8195) boxSize := by
-  refine (PhaseCreditSpec.or_of_imp ?_ (PhaseCreditSpec.nil M)
-    (PhaseCreditSpec.rustAlloc_aff hM (req := boxSize) (al := 8) (by omega))).mono
     (by omega) (by omega) (by omega) (by omega)
   rintro evs (⟨_, rfl⟩ | ⟨_, h2⟩)
   · exact Or.inl rfl

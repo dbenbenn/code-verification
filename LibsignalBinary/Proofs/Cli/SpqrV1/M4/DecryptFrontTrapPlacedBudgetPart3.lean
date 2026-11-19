@@ -8,8 +8,8 @@ limitations under the License.
 -/
 
 module
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 meta import Lean -- shake: keep
@@ -30,13 +30,18 @@ import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.CallsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyBudgetSat
 import ProofLib.SepLogic.Entry
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 /-!
 # Budget-Threaded CLI Block `433` Segment `S7` Seam
 
 Proves `s7_433_cli` (`S7SeamPlaced`) on Block `433` under `[LibsignalPlacement]` and
 `RustCliAllocBudget M`.
 -/
-@[expose] public section
+public section
 set_option autoImplicit false
 namespace LibsignalBinary.Proofs.Cli.SpqrV1.M4.DecryptFrontTrapPlacedBudgetPart3
 open Arm64 ProofLib SepProp
@@ -59,23 +64,24 @@ open CryptoVerification.LibsignalTripleRatchet.InImage.UuidTryParse (ParserRegsP
   parseHyphenated_of_parts parserTryParseResultAt parserTryParseResultAt_some_eq parserTryParseResultAt_sp56_none parserTryParseResultAt_sp56_some parserTryParseSpec sepWP_parser_branch
   sepWP_parser_hyph36 stackAt_parser_split stackAt_uuid_split subroutine_ok_of_sepWP_simple urn_all_eq uuidResultAt_some_eq uuidTryParse_of_other_len)
 open CryptoVerification.LibsignalTripleRatchetRepr (decodeHex32 parseHyphenated parseSimple uuidTryParse)
-open CryptoVerification.SignalSession (CliHooks cliExternsPlaced cliHookTablePlaced lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli lsStringCloneSym)
+open CryptoVerification.SignalSession (CliHooks cliExternsPlaced lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli lsStringCloneSym)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliHookTablePlaced)
 open CryptoVerification.SignalSession.Cli.MainHops.UuidFs (decodeHex32_placed_okFs)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks cliExternsPlaced_row cliGhostExterns cliGhostExterns_other cliGhostExterns_shim)
-open CryptoVerification.SignalSession.Cli.Slots (cliGhostExterns_sat_of_cliExternsPlaced compress256_row_placed)
+open CryptoVerification.SignalSession.Cli.Slots (cliGhostExterns_sat_of_cliExternsPlaced)
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget VmPreserved)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlacedBudget (s7Env verifyMac_433_placed_ok)
 open LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget (S7SeamPlaced)
 open LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAux (hmacExcHooks hmacExcHooks_compress hmacExcHooks_memcpy runsTo_block_lift_vm stripExecOutside_readBytes stripExecOutside_readable stripExecOutside_rw unstrip_frame)
-open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget (CliGhostAllocHooks cliExternsPlaced_alloc_budget_sat cliExternsPlaced_compress256Multi_budget_sat cliExternsPlaced_dealloc_budget_sat cliExternsPlaced_exactMemcpy_sat cliExternsPlaced_noAllocShim_budget_sat cliExternsPlaced_sessionMemcpyRegion_budget_sat cliExternsPlaced_sessionMemsetRegion_budget_sat cliExternsPlaced_shim_budget_sat cliGhostExterns_blackBoxSat_budget_sat)
+open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget (CliGhostAllocHooks cliExternsPlaced_alloc_budget_sat cliExternsPlaced_dealloc_budget_sat cliExternsPlaced_exactMemcpy_sat cliExternsPlaced_noAllocShim_budget_sat cliExternsPlaced_sessionMemcpyRegion_budget_sat cliExternsPlaced_sessionMemsetRegion_budget_sat cliExternsPlaced_shim_budget_sat cliGhostExterns_blackBoxSat_budget_sat cliGhostExterns_compress256_roBudget_sat)
 open LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.InstancesBudgetSat (new_from_slice_placed_cro_budget_ok_at_block_sat)
 open LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget (checkBlockSafeVm isTotalTrapHooks_vmTrapHooks sepWP_lsBlock_vmPreserved stripS_readReg64 stripS_sp stripS_trace vmTrapHooks)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (noAllocShim_hookOk)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget (public_key_serialize_placed_ok)
+open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat (newFromSliceBudgetSpecSat)
 open LibsignalBinary.Proofs.TripleRatchet.InImageCallees.CallsBudget (parse_sid_placed_ok_at_of_code)
 open LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget (uuidTryParseCodeBudgetSpec)
-open LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux (newFromSliceBudgetSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyBudgetSat (verifyMacWithAddresses_placed_cro_ok_sat)
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -259,16 +265,22 @@ private theorem cliGhost_row (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W 
 private theorem new_from_slice_60_cro_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hG : CliGhostAllocHooks M A lim g) :
-    subroutine_ok ((blkPC_60).rebase (blkPl_60).base (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 114) (withLsCodeRoLoaded lsmpl (newFromSliceBudgetSpec W.C.F)) :=
-  new_from_slice_placed_cro_budget_ok_at_block_sat W.C.F
+    (hG : CliGhostAllocHooks M A lim g)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress) :
+    subroutine_ok ((blkPC_60).rebase (blkPl_60).base (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 114) (withLsCodeRoLoaded lsmpl (newFromSliceBudgetSpecSat W.C.F)) :=
+  new_from_slice_placed_cro_budget_ok_at_block_sat
+    (callerProg := (blkPC_60).rebase (blkPl_60).base (cliGhostExterns g (cliExternsPlaced mmpl W)))
+    (i := 60) W.C.F
     (cliExternsPlaced_exactMemcpy_sat mmpl g W hG)
-    (cliGhost_row mmpl g W (compress256_row_placed mmpl W))
+    (LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs.hookSatCompress256_cliGhostExterns_of_extraOk_eq
+      g (cliExternsPlaced mmpl W) hG.extraOk hF)
 /-- `S7SeamPlaced` on Block `433` at `cliGhostExterns g (cliExternsPlaced mmpl W)`. -/
 theorem s7_433_cli [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hG : CliGhostAllocHooks M A lim g) (ctl : BitVec 64) (S : SpqrModel) :
+    (hG : CliGhostAllocHooks M A lim g)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (ctl : BitVec 64) (S : SpqrModel) :
     S7SeamPlaced
       ((blkPC_434).rebase (blkPl_434).base (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (blkPl_434).base W.C A lim ctl uuidTryParse S (s7Env W.C.F uuidTryParse) := by
@@ -278,13 +290,13 @@ theorem s7_433_cli [LibsignalPlacement] {M : AllocCostModel}
     (subroutine_ok_withLsCodeLoaded_of_plain (pl := lsmpl) (public_key_serialize_placed_ok ⟨hookNoop, (cliGhostExterns_shim g _).trans (congrArg some hG.shim_eq), noAllocShim_hookOk⟩ (cliExternsPlaced_alloc_budget_sat mmpl g W hG))))
   have hvmac62 := verifyMacWithAddresses_placed_cro_ok_sat W.C M A lim uuidTryParse H
     (parse_sid_placed_ok_at_of_code (prog := (blkPC_61).rebase (blkPl_61).base H) (uuidTryParse_placed_vm_ok H))
-    (new_from_slice_60_cro_ok mmpl g W hG) hpk60
+    (new_from_slice_60_cro_ok mmpl g W hG hF) hpk60
     (cliGhostExterns_blackBoxSat_budget_sat g (cliExternsPlaced mmpl W) hG.extraOk)
     (cliExternsPlaced_noAllocShim_budget_sat mmpl g W hG.shim_eq)
     (cliExternsPlaced_alloc_budget_sat mmpl g W hG)
     (cliExternsPlaced_dealloc_budget_sat mmpl g W hG)
     (cliExternsPlaced_sessionMemcpyRegion_budget_sat mmpl g W hG)
-    (cliGhostExterns_sat_of_cliExternsPlaced mmpl g W (cliExternsPlaced_compress256Multi_budget_sat mmpl W))
+    (hF ▸ cliGhostExterns_compress256_roBudget_sat g (cliExternsPlaced mmpl W) hG.extraOk)
     (cliExternsPlaced_sessionMemsetRegion_budget_sat mmpl g W hG)
   exact verifyMac_433_placed_ok W.C A lim ctl S H
     (keys_ls_subroutine_ok_of_block_cro (callerProg := (blkPC_434).rebase (blkPl_434).base H) hvmac62)

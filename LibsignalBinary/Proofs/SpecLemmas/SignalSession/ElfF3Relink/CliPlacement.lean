@@ -14,7 +14,9 @@ public import ProofLib.Placed
 public import VerifiedLibraries.Mallocng.Proofs.PlacedInterned
 public import LibsignalBinary.Heap.Fine.F3LayoutData
 public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Fixture
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Fixture -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars
 
 /-!
 # `mallocngLib` Placement Witnesses on `f3TrialElf`
@@ -26,7 +28,7 @@ with segment-disjoint byte-patch preservation helpers for `patchElfTokensPlaced`
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.CliPlacement
 
@@ -61,51 +63,6 @@ theorem mallocngLib_in_f3TrialElf :
   exact Obj.Interned.checkMultiDisjoint_spec mallocngMultiL_names f3TrialElfSyms_eq
     (by decide +kernel)
 
-theorem mallocngLib_codeLoaded_f3Trial {inputs : ProcessInputs} {s : State}
-    (hload : f3TrialElf.loadState inputs = .ok s) :
-    VerifiedLibraries.mallocngLib.CodeLoaded f3MallocngMpl s.mem :=
-  VerifiedLibraries.mallocngLib.codeLoaded_of_inElf mallocngLib_in_f3TrialElf.1
-    mallocngLib_in_f3TrialElf.2.1 hload
-
-theorem mallocngLib_codeBlocksPermRX_f3Trial {inputs : ProcessInputs} {s : State}
-    (hload : f3TrialElf.loadState inputs = .ok s) :
-    CodeBlocksPermRX f3MallocngMpl s :=
-  codeBlocksPermRX_of_codeLoaded (mallocngLib_codeLoaded_f3Trial hload)
-
-theorem mallocngLib_dataInit_f3Trial {inputs : ProcessInputs} {s : State}
-    (hload : f3TrialElf.loadState inputs = .ok s) :
-    s.mem ⊨ VerifiedLibraries.mallocngLib.dataInit f3MallocngMpl :=
-  VerifiedLibraries.mallocngLib.satisfies_dataInit_of_inElf mallocngLib_in_f3TrialElf.1
-    mallocngLib_in_f3TrialElf.2.1 hload (by decide) mallocngLib_in_f3TrialElf.2.2
-
 /-! ## Segment-Disjoint `patchElfByte` Preservation -/
-
-/-- `patchRegionByte addr val r = r` when `addr` lies outside `[r.start, r.start + r.bytes.length)`
-without 64-bit wraparound. -/
-theorem patchRegionByte_eq_self_of_disjoint {addr : BitVec 64} {val : BitVec 8}
-    {r : Snapshot.Region}
-    (hnoWrap : r.start.toNat + r.bytes.length ≤ 2 ^ 64)
-    (hdisj : addr.toNat < r.start.toNat ∨ r.start.toNat + r.bytes.length ≤ addr.toNat) :
-    patchRegionByte addr val r = r := by
-  have hnotLt : ¬ (addr - r.start).toNat < r.bytes.length := by
-    have ha := addr.isLt
-    have hs := r.start.isLt
-    rw [BitVec.toNat_sub]
-    rcases hdisj with hlt | hge
-    · have hmod : (2 ^ 64 - r.start.toNat + addr.toNat) % 2 ^ 64 =
-          2 ^ 64 - r.start.toNat + addr.toNat :=
-        Nat.mod_eq_of_lt (by omega)
-      rw [hmod]
-      omega
-    · have hmod : (2 ^ 64 - r.start.toNat + addr.toNat) % 2 ^ 64 =
-          addr.toNat - r.start.toNat := by
-        have hsplit : 2 ^ 64 - r.start.toNat + addr.toNat =
-            2 ^ 64 + (addr.toNat - r.start.toNat) := by omega
-        rw [hsplit, Nat.add_mod_left, Nat.mod_eq_of_lt (by omega)]
-      rw [hmod]
-      omega
-  unfold patchRegionByte
-  dsimp only
-  simp only [hnotLt, ↓reduceIte]
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.CliPlacement

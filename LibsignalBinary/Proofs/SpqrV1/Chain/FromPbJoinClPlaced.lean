@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoin
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbDecodes
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoin -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Code-Loaded Join-Point and Cleanup Proofs for `<spqr::chain::Chain>::from_pb` (Block `364`)
@@ -25,7 +25,7 @@ threading `withLsCodeLoaded lsmpl` contracts on cross-block drop-glue callees `2
 (`dropChainEpochSliceSpec A`) and `288` (`dropProtoEpochSliceSpec A`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +40,6 @@ open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
 open CryptoVerification.SpqrV1.Top.ChainFrom
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Layout.L26
-open FromPbDecodes
 
 set_option maxRecDepth 800000
 set_option maxHeartbeats 400000

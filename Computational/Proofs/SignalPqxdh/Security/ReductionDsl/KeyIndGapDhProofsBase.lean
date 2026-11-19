@@ -11,8 +11,8 @@ module
 
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.CostUB -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.SoundnessTwoClass -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.ReductionDsl.SoundnessTwoClass
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim
 import Computational.Proofs.ReductionDsl.Size
 

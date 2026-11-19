@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers
 public import ProofLib.SepLogic.WPp
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
 import all Init.Data.String.Defs
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Arm `R1a` Proof for `signal_session::run`
@@ -26,7 +32,7 @@ Proves `run_hop_init1_of_slots` and `run_hop_init1_placed_ok` (`R+0x214 → R+0x
 Block `579` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

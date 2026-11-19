@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommon
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommon -- proof-setup: allow-public-import
 
 /-!
 # `[LibsignalPlacement]` Call-Step Helpers for `prost::encoding::bytes::encode_repeated`
@@ -18,7 +18,7 @@ Provides `EncRepeatedCalleeSavedPlaced` (`StepInvPlaced`) and generic call stepp
 `memcpy`, `encode_varint`, and `do_reserve_and_handle`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Varint
 
@@ -31,7 +31,7 @@ open CryptoVerification.SpqrV1.Alloc
 
 /-- Callee-saved registers `x26..x28` untouched by `encode_repeated` (`x19..x25, fp` are saved on stack),
 together with `StepInvPlaced s0 s` (`StepInv` + `KeepsFrozen`) for `[LibsignalPlacement]` propagation. -/
-def EncRepeatedCalleeSavedPlaced (s0 s : State) : Prop :=
+@[expose] def EncRepeatedCalleeSavedPlaced (s0 s : State) : Prop :=
   s.readReg64 (Reg.gpr 26#5) = s0.readReg64 (Reg.gpr 26#5) ∧
   s.readReg64 (Reg.gpr 27#5) = s0.readReg64 (Reg.gpr 27#5) ∧
   s.readReg64 (Reg.gpr 28#5) = s0.readReg64 (Reg.gpr 28#5) ∧
@@ -63,7 +63,7 @@ theorem EncRepeatedCalleeSavedPlaced.step {s0 s1 s2 : State}
     EncRepeatedCalleeSavedPlaced s0 s2 :=
   h01.trans ⟨hx26, hx27, hx28, hvregs, hinv⟩
 
-def withEncRepeatedCSPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α where
+@[expose] def withEncRepeatedCSPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α where
   pre := fun x s => ⌜EncRepeatedCalleeSavedPlaced s0 s⌝ ∗ spec.pre x s
   post := spec.post
   onPanic := spec.onPanic

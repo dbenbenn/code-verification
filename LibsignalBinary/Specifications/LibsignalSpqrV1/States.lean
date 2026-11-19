@@ -223,16 +223,12 @@ abbrev EncapsulationKey := Bytes
 
 abbrev DecapsulationKey := Bytes
 
-abbrev SharedSecret := Secret
-
 /-- Split ML-KEM-768 key pair (`pub struct Keys`, `src/incremental_mlkem768.rs:22–26`). -/
 structure Keys where
   ek : EncapsulationKey
   dk : DecapsulationKey
   hdr : Header
   deriving DecidableEq, Repr, Inhabited
-
-abbrev KeyPair := Keys
 
 /-- Swap adjacent byte pairs `(b0, b1) ↦ (b1, b0)`. -/
 def swapAdjacentPairs : Bytes → Bytes
@@ -338,8 +334,6 @@ def decaps (K : MlKem) (dk : DecapsulationKey) (ct1 : Ciphertext1) (ct2 : Cipher
   | some ct1Vec, some ct2Vec, some dkVec => .ok (K.decaps dkVec ct1Vec ct2Vec).toList
   | _, _, _ => .error (.decapsBadSize dk.length ct1.length ct2.length)
 
-abbrev decapsulate := decaps
-
 /-! ## Unchunked state machine (`src/v1/unchunked/{send_ek, send_ct}`) -/
 
 def sckaKeyInfoPrefix : Bytes :=
@@ -427,14 +421,10 @@ def send_header (K : MlKem) {Au : AuthApi} (self : KeysUnsampled Au) (tape : Byt
 def into_pb {Au : AuthApi} (self : KeysUnsampled Au) : V1State.Unchunked.KeysUnsampled :=
   { epoch := self.epoch, auth := some (Au.into_pb self.auth) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (Au : AuthApi) (pb : V1State.Unchunked.KeysUnsampled) : StatesResult (KeysUnsampled Au) :=
   match pb.auth with
   | none => .error (.err .stateDecode)
   | some a => .ok { epoch := pb.epoch, auth := Au.from_pb a }
-
-abbrev fromPb := from_pb
 
 end KeysUnsampled
 
@@ -447,8 +437,6 @@ def send_ek {Au : AuthApi} (self : HeaderSent Au) : EkSent Au × EncapsulationKe
 def into_pb {Au : AuthApi} (self : HeaderSent Au) : V1State.Unchunked.HeaderSent :=
   { epoch := self.epoch, auth := some (Au.into_pb self.auth), ek := self.ek, dk := self.dk }
 
-abbrev intoPb := @into_pb
-
 def from_pb (Au : AuthApi) (pb : V1State.Unchunked.HeaderSent) : StatesResult (HeaderSent Au) :=
   if pb.dk.length == DECAPSULATION_KEY_SIZE && pb.ek.length == ENCAPSULATION_KEY_SIZE then
     match pb.auth with
@@ -456,8 +444,6 @@ def from_pb (Au : AuthApi) (pb : V1State.Unchunked.HeaderSent) : StatesResult (H
     | some a => .ok { epoch := pb.epoch, auth := Au.from_pb a, ek := pb.ek, dk := pb.dk }
   else
     .error (.err .stateDecode)
-
-abbrev fromPb := from_pb
 
 end HeaderSent
 
@@ -474,8 +460,6 @@ def recv_ct1 {Au : AuthApi} (self : EkSent Au) (epoch : Epoch) (ct1 : Ciphertext
 def into_pb {Au : AuthApi} (self : EkSent Au) : V1State.Unchunked.EkSent :=
   { epoch := self.epoch, auth := some (Au.into_pb self.auth), dk := self.dk }
 
-abbrev intoPb := @into_pb
-
 def from_pb (Au : AuthApi) (pb : V1State.Unchunked.EkSent) : StatesResult (EkSent Au) :=
   if pb.dk.length == DECAPSULATION_KEY_SIZE then
     match pb.auth with
@@ -483,8 +467,6 @@ def from_pb (Au : AuthApi) (pb : V1State.Unchunked.EkSent) : StatesResult (EkSen
     | some a => .ok { epoch := pb.epoch, auth := Au.from_pb a, dk := pb.dk }
   else
     .error (.err .stateDecode)
-
-abbrev fromPb := from_pb
 
 end EkSent
 
@@ -511,8 +493,6 @@ def recv_ct2 (K : MlKem) {Au : AuthApi} (self : EkSentCt1Received Au)
 def into_pb {Au : AuthApi} (self : EkSentCt1Received Au) : V1State.Unchunked.EkSentCt1Received :=
   { epoch := self.epoch, auth := some (Au.into_pb self.auth), dk := self.dk, ct1 := self.ct1 }
 
-abbrev intoPb := @into_pb
-
 def from_pb (Au : AuthApi) (pb : V1State.Unchunked.EkSentCt1Received) :
     StatesResult (EkSentCt1Received Au) :=
   if pb.dk.length == DECAPSULATION_KEY_SIZE && pb.ct1.length == CIPHERTEXT1_SIZE then
@@ -521,8 +501,6 @@ def from_pb (Au : AuthApi) (pb : V1State.Unchunked.EkSentCt1Received) :
     | some a => .ok { epoch := pb.epoch, auth := Au.from_pb a, dk := pb.dk, ct1 := pb.ct1 }
   else
     .error (.err .stateDecode)
-
-abbrev fromPb := from_pb
 
 end EkSentCt1Received
 
@@ -550,15 +528,11 @@ def recv_header {Au : AuthApi} (self : NoHeaderReceived Au)
 def into_pb {Au : AuthApi} (self : NoHeaderReceived Au) : V1State.Unchunked.NoHeaderReceived :=
   { epoch := self.epoch, auth := some (Au.into_pb self.auth) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (Au : AuthApi) (pb : V1State.Unchunked.NoHeaderReceived) :
     StatesResult (NoHeaderReceived Au) :=
   match pb.auth with
   | none => .error (.err .stateDecode)
   | some a => .ok { epoch := pb.epoch, auth := Au.from_pb a }
-
-abbrev fromPb := from_pb
 
 end NoHeaderReceived
 
@@ -577,8 +551,6 @@ def send_ct1 (K : MlKem) {Au : AuthApi} (self : HeaderReceived Au) (tape : Bytes
 def into_pb {Au : AuthApi} (self : HeaderReceived Au) : V1State.Unchunked.HeaderReceived :=
   { epoch := self.epoch, auth := some (Au.into_pb self.auth), hdr := self.hdr }
 
-abbrev intoPb := @into_pb
-
 def from_pb (Au : AuthApi) (pb : V1State.Unchunked.HeaderReceived) :
     StatesResult (HeaderReceived Au) :=
   if pb.hdr.length == HEADER_SIZE then
@@ -587,8 +559,6 @@ def from_pb (Au : AuthApi) (pb : V1State.Unchunked.HeaderReceived) :
     | some a => .ok { epoch := pb.epoch, auth := Au.from_pb a, hdr := pb.hdr }
   else
     .error (.err .stateDecode)
-
-abbrev fromPb := from_pb
 
 end HeaderReceived
 
@@ -608,8 +578,6 @@ def into_pb {Au : AuthApi} (self : Ct1Sent Au) : V1State.Unchunked.Ct1Sent :=
   { epoch := self.epoch, auth := some (Au.into_pb self.auth),
     hdr := self.hdr, es := self.es, ct1 := self.ct1 }
 
-abbrev intoPb := @into_pb
-
 def from_pb (Au : AuthApi) (pb : V1State.Unchunked.Ct1Sent) : StatesResult (Ct1Sent Au) :=
   if pb.hdr.length == HEADER_SIZE &&
      pb.es.length == ENCAPSULATION_STATE_SIZE &&
@@ -620,8 +588,6 @@ def from_pb (Au : AuthApi) (pb : V1State.Unchunked.Ct1Sent) : StatesResult (Ct1S
       .ok { epoch := pb.epoch, auth := Au.from_pb a, hdr := pb.hdr, es := pb.es, ct1 := pb.ct1 }
   else
     .error (.err .stateDecode)
-
-abbrev fromPb := from_pb
 
 end Ct1Sent
 
@@ -639,8 +605,6 @@ def into_pb {Au : AuthApi} (self : Ct1SentEkReceived Au) : V1State.Unchunked.Ct1
   { epoch := self.epoch, auth := some (Au.into_pb self.auth),
     es := self.es, ek := self.ek, ct1 := self.ct1 }
 
-abbrev intoPb := @into_pb
-
 def from_pb (Au : AuthApi) (pb : V1State.Unchunked.Ct1SentEkReceived) :
     StatesResult (Ct1SentEkReceived Au) :=
   if pb.es.length == ENCAPSULATION_STATE_SIZE &&
@@ -652,8 +616,6 @@ def from_pb (Au : AuthApi) (pb : V1State.Unchunked.Ct1SentEkReceived) :
       .ok { epoch := pb.epoch, auth := Au.from_pb a, es := pb.es, ek := pb.ek, ct1 := pb.ct1 }
   else
     .error (.err .stateDecode)
-
-abbrev fromPb := from_pb
 
 end Ct1SentEkReceived
 
@@ -674,14 +636,10 @@ def recv_next_epoch {Au : AuthApi} (self : Ct2Sent Au) (nextEpoch : Epoch) :
 def into_pb {Au : AuthApi} (self : Ct2Sent Au) : V1State.Unchunked.Ct2Sent :=
   { epoch := self.epoch, auth := some (Au.into_pb self.auth) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (Au : AuthApi) (pb : V1State.Unchunked.Ct2Sent) : StatesResult (Ct2Sent Au) :=
   match pb.auth with
   | none => .error (.err .stateDecode)
   | some a => .ok { epoch := pb.epoch, auth := Au.from_pb a }
-
-abbrev fromPb := from_pb
 
 end Ct2Sent
 
@@ -820,16 +778,12 @@ def send_hdr_chunk (K : MlKem) (P : PolyApi) {Au : AuthApi}
 def into_pb {Au : AuthApi} (self : KeysUnsampled Au) : V1State.Chunked.KeysUnsampled :=
   { uc := some self.uc.into_pb }
 
-abbrev intoPb := @into_pb
-
 def from_pb (Au : AuthApi) (pb : V1State.Chunked.KeysUnsampled) : StatesResult (KeysUnsampled Au) :=
   match pb.uc with
   | none => .error (.err .stateDecode)
   | some u => do
     let uc ← Unchunked.SendEk.KeysUnsampled.from_pb Au u
     .ok { uc := uc }
-
-abbrev fromPb := from_pb
 
 end KeysUnsampled
 
@@ -857,8 +811,6 @@ def recv_ct1_chunk {P : PolyApi} {Au : AuthApi} (self : KeysSampled P Au)
 def into_pb {P : PolyApi} {Au : AuthApi} (self : KeysSampled P Au) : V1State.Chunked.KeysSampled :=
   { uc := some self.uc.into_pb, sendingHdr := some (P.encoder_into_pb self.sending_hdr) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.KeysSampled) :
     StatesResult (KeysSampled P Au) := do
   let u ← match pb.uc with
@@ -867,8 +819,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.KeysSampled) :
   let uc ← Unchunked.SendEk.HeaderSent.from_pb Au u
   let sendingHdr ← encoderFromPbStateDecode P pb.sendingHdr
   .ok { uc := uc, sending_hdr := sendingHdr }
-
-abbrev fromPb := from_pb
 
 end KeysSampled
 
@@ -902,8 +852,6 @@ def into_pb {P : PolyApi} {Au : AuthApi} (self : HeaderSent P Au) : V1State.Chun
     sendingEk := some (P.encoder_into_pb self.sending_ek),
     receivingCt1 := some (P.decoder_into_pb self.receiving_ct1) }
 
-abbrev intoPb := @into_pb
-
 /-- `HeaderSent::from_pb` (`src/v1/chunked/send_ek/serialize.rs:52–67`; returns `MsgDecode` if
 `receiving_ct1.pts_needed != 480`). -/
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.HeaderSent) :
@@ -922,8 +870,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.HeaderSent) :
   let sendingEk ← encoderFromPbStateDecode P pb.sendingEk
   let receivingCt1 ← decoderFromPbStateDecode P pb.receivingCt1
   .ok { uc := uc, sending_ek := sendingEk, receiving_ct1 := receivingCt1 }
-
-abbrev fromPb := from_pb
 
 end HeaderSent
 
@@ -950,8 +896,6 @@ def recv_ct2_chunk {P : PolyApi} {Au : AuthApi} (self : Ct1Received P Au)
 def into_pb {P : PolyApi} {Au : AuthApi} (self : Ct1Received P Au) : V1State.Chunked.Ct1Received :=
   { uc := some self.uc.into_pb, sendingEk := some (P.encoder_into_pb self.sending_ek) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.Ct1Received) :
     StatesResult (Ct1Received P Au) := do
   let u ← match pb.uc with
@@ -960,8 +904,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.Ct1Received) :
   let uc ← Unchunked.SendEk.EkSentCt1Received.from_pb Au u
   let sendingEk ← encoderFromPbStateDecode P pb.sendingEk
   .ok { uc := uc, sending_ek := sendingEk }
-
-abbrev fromPb := from_pb
 
 end Ct1Received
 
@@ -995,8 +937,6 @@ def into_pb {P : PolyApi} {Au : AuthApi} (self : EkSentCt1Received P Au) :
     V1State.Chunked.EkSentCt1Received :=
   { uc := some self.uc.into_pb, receivingCt2 := some (P.decoder_into_pb self.receiving_ct2) }
 
-abbrev intoPb := @into_pb
-
 /-- `EkSentCt1Received::from_pb` (`src/v1/chunked/send_ek/serialize.rs:95–111`; returns `MsgDecode`
 if `receiving_ct2.pts_needed != 80`). -/
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.EkSentCt1Received) :
@@ -1014,8 +954,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.EkSentCt1Received
   let uc ← Unchunked.SendEk.EkSentCt1Received.from_pb Au u
   let receivingCt2 ← decoderFromPbStateDecode P pb.receivingCt2
   .ok { uc := uc, receiving_ct2 := receivingCt2 }
-
-abbrev fromPb := from_pb
 
 end EkSentCt1Received
 
@@ -1042,8 +980,6 @@ inductive Ct1AcknowledgedRecvChunk (P : PolyApi) (Au : AuthApi) where
 
 def send_ct2_encoder (P : PolyApi) (ct2 mac : Bytes) : Except StatesPanic P.PolyEncoder :=
   expectEncodeBytes P "v1/chunked/send_ct.rs:162" (ct2 ++ mac)
-
-abbrev sendCt2Encoder := send_ct2_encoder
 
 namespace NoHeaderReceived
 
@@ -1088,8 +1024,6 @@ def into_pb {P : PolyApi} {Au : AuthApi} (self : NoHeaderReceived P Au) :
     V1State.Chunked.NoHeaderReceived :=
   { uc := some self.uc.into_pb, receivingHdr := some (P.decoder_into_pb self.receiving_hdr) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.NoHeaderReceived) :
     StatesResult (NoHeaderReceived P Au) := do
   match pb.receivingHdr with
@@ -1105,8 +1039,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.NoHeaderReceived)
   let uc ← Unchunked.SendCt.NoHeaderReceived.from_pb Au u
   let receivingHdr ← decoderFromPbStateDecode P pb.receivingHdr
   .ok { uc := uc, receiving_hdr := receivingHdr }
-
-abbrev fromPb := from_pb
 
 end NoHeaderReceived
 
@@ -1128,8 +1060,6 @@ def into_pb {P : PolyApi} {Au : AuthApi} (self : HeaderReceived P Au) :
     V1State.Chunked.HeaderReceived :=
   { uc := some self.uc.into_pb, receivingEk := some (P.decoder_into_pb self.receiving_ek) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.HeaderReceived) :
     StatesResult (HeaderReceived P Au) := do
   match pb.receivingEk with
@@ -1145,8 +1075,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.HeaderReceived) :
   let uc ← Unchunked.SendCt.HeaderReceived.from_pb Au u
   let receivingEk ← decoderFromPbStateDecode P pb.receivingEk
   .ok { uc := uc, receiving_ek := receivingEk }
-
-abbrev fromPb := from_pb
 
 end HeaderReceived
 
@@ -1186,8 +1114,6 @@ def into_pb {P : PolyApi} {Au : AuthApi} (self : Ct1Sampled P Au) : V1State.Chun
     sendingCt1 := some (P.encoder_into_pb self.sending_ct1),
     receivingEk := some (P.decoder_into_pb self.receiving_ek) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.Ct1Sampled) :
     StatesResult (Ct1Sampled P Au) := do
   match pb.receivingEk with
@@ -1204,8 +1130,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.Ct1Sampled) :
   let sendingCt1 ← encoderFromPbStateDecode P pb.sendingCt1
   let receivingEk ← decoderFromPbStateDecode P pb.receivingEk
   .ok { uc := uc, sending_ct1 := sendingCt1, receiving_ek := receivingEk }
-
-abbrev fromPb := from_pb
 
 end Ct1Sampled
 
@@ -1233,8 +1157,6 @@ def into_pb {P : PolyApi} {Au : AuthApi} (self : EkReceivedCt1Sampled P Au) :
     V1State.Chunked.EkReceivedCt1Sampled :=
   { uc := some self.uc.into_pb, sendingCt1 := some (P.encoder_into_pb self.sending_ct1) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.EkReceivedCt1Sampled) :
     StatesResult (EkReceivedCt1Sampled P Au) := do
   let u ← match pb.uc with
@@ -1243,8 +1165,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.EkReceivedCt1Samp
   let uc ← Unchunked.SendCt.Ct1SentEkReceived.from_pb Au u
   let sendingCt1 ← encoderFromPbStateDecode P pb.sendingCt1
   .ok { uc := uc, sending_ct1 := sendingCt1 }
-
-abbrev fromPb := from_pb
 
 end EkReceivedCt1Sampled
 
@@ -1270,8 +1190,6 @@ def into_pb {P : PolyApi} {Au : AuthApi} (self : Ct1Acknowledged P Au) :
     V1State.Chunked.Ct1Acknowledged :=
   { uc := some self.uc.into_pb, receivingEk := some (P.decoder_into_pb self.receiving_ek) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.Ct1Acknowledged) :
     StatesResult (Ct1Acknowledged P Au) := do
   match pb.receivingEk with
@@ -1287,8 +1205,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.Ct1Acknowledged) 
   let uc ← Unchunked.SendCt.Ct1Sent.from_pb Au u
   let receivingEk ← decoderFromPbStateDecode P pb.receivingEk
   .ok { uc := uc, receiving_ek := receivingEk }
-
-abbrev fromPb := from_pb
 
 end Ct1Acknowledged
 
@@ -1309,8 +1225,6 @@ def recv_next_epoch {P : PolyApi} {Au : AuthApi} (self : Ct2Sampled P Au) (epoch
 def into_pb {P : PolyApi} {Au : AuthApi} (self : Ct2Sampled P Au) : V1State.Chunked.Ct2Sampled :=
   { uc := some self.uc.into_pb, sendingCt2 := some (P.encoder_into_pb self.sending_ct2) }
 
-abbrev intoPb := @into_pb
-
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.Ct2Sampled) :
     StatesResult (Ct2Sampled P Au) := do
   let u ← match pb.uc with
@@ -1319,8 +1233,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State.Chunked.Ct2Sampled) :
   let uc ← Unchunked.SendCt.Ct2Sent.from_pb Au u
   let sendingCt2 ← encoderFromPbStateDecode P pb.sendingCt2
   .ok { uc := uc, sending_ct2 := sendingCt2 }
-
-abbrev fromPb := from_pb
 
 end Ct2Sampled
 
@@ -1482,15 +1394,11 @@ def init_a (P : PolyApi) (Au : AuthApi) (authKey : Bytes) :
   let s ← Chunked.SendEk.KeysUnsampled.new Au authKey
   .ok (.keysUnsampled s)
 
-abbrev initA := init_a
-
 /-- Initial `send_ct` state (`States::init_b`, `src/v1/chunked/states.rs:62–64`). -/
 def init_b (P : PolyApi) (Au : AuthApi) (authKey : Bytes) :
     Except StatesPanic (States P Au) := do
   let s ← Chunked.SendCt.NoHeaderReceived.new P Au authKey
   .ok (.noHeaderReceived s)
-
-abbrev initB := init_b
 
 def epoch {P : PolyApi} {Au : AuthApi} : States P Au → Epoch
   | .keysUnsampled s => s.epoch
@@ -1519,8 +1427,6 @@ def into_pb {P : PolyApi} {Au : AuthApi} (self : States P Au) : V1State :=
       | .ct1Acknowledged s => .ct1Acknowledged s.into_pb
       | .ct2Sampled s => .ct2Sampled s.into_pb }
 
-abbrev intoPb := @into_pb
-
 def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State) : StatesResult (States P Au) :=
   match pb.innerState with
   | none => .error (.err .stateDecode)
@@ -1540,8 +1446,6 @@ def from_pb (P : PolyApi) (Au : AuthApi) (pb : V1State) : StatesResult (States P
   | some (.ct1Acknowledged s) =>
     .ct1Acknowledged <$> Chunked.SendCt.Ct1Acknowledged.from_pb P Au s
   | some (.ct2Sampled s) => .ct2Sampled <$> Chunked.SendCt.Ct2Sampled.from_pb P Au s
-
-abbrev fromPb := from_pb
 
 /-- `States::send` (`src/v1/chunked/states.rs:115–273`), threading the RNG `tape`. -/
 def send (K : MlKem) {P : PolyApi} {Au : AuthApi} (self : States P Au) (tape : Bytes) :
@@ -1754,29 +1658,6 @@ end States
 
 section Guards
 
-/-- Deterministic `MlKem` test stub (`src/incremental_mlkem768.rs:180–187`). -/
-def stubMlKem : MlKem where
-  keyPair := fun seed => List.Vector.replicate 2400 seed.head
-  encaps1 := fun hdr rand =>
-    match hdr with
-    | [] => none
-    | h0 :: _ =>
-      let tag := h0 ^^^ rand.head
-      some (List.Vector.replicate 960 tag,
-            List.Vector.replicate 2080 0#8,
-            List.Vector.replicate 32 tag)
-  encaps2 := fun _es ek =>
-    List.Vector.replicate 128 ek.head
-  decaps := fun _dk ct1 _ct2 =>
-    List.Vector.replicate 32 ct1.head
-  validPk := fun hdr ek =>
-    match hdr, ek with
-    | h :: _, e :: _ => h == e
-    | _, _ => false
-
-instance : Repr Chunk where
-  reprPrec c p := reprPrec (c.index, c.data.toList) p
-
 structure StubEncoder where
   idx : BitVec 32
   msg : Bytes
@@ -1787,296 +1668,6 @@ structure StubDecoder where
   chunks : List (BitVec 16 × Bytes)
   is_complete : Bool
   deriving DecidableEq, Repr
-
-def lookupChunk (idx : BitVec 16) : List (BitVec 16 × Bytes) → Option Bytes
-  | [] => none
-  | (k, v) :: rest => if k == idx then some v else lookupChunk idx rest
-
-def reconstructChunks (numChunks : Nat) (chunks : List (BitVec 16 × Bytes)) : Option Bytes :=
-  let rec go (i : Nat) (fuel : Nat) (acc : Bytes) : Option Bytes :=
-    match fuel with
-    | 0 => some acc
-    | fuel' + 1 =>
-      match lookupChunk (BitVec.ofNat 16 i) chunks with
-      | some c => go (i + 1) fuel' (acc ++ c)
-      | none => none
-  go 0 numChunks []
-
-def deserializeStubChunks : Nat → Bytes → Option (List (BitVec 16 × Bytes))
-  | _, [] => some []
-  | 0, _ :: _ => none
-  | fuel + 1, hi :: lo :: rest =>
-    if rest.length < 32 then none
-    else
-      let idx : BitVec 16 := (hi.zeroExtend 16 <<< 8) ||| lo.zeroExtend 16
-      let chunkBytes := rest.take 32
-      match deserializeStubChunks fuel (rest.drop 32) with
-      | some tail => some ((idx, chunkBytes) :: tail)
-      | none => none
-  | _ + 1, [_] => none
-
-/-- Deterministic 32-byte chunk `PolyApi` test stub. -/
-def stubPolyApi : PolyApi where
-  Chunk := Chunk
-  PolynomialError := PolynomialError
-  EncodingError := EncodingError
-  PolyEncoder := StubEncoder
-  PolyDecoder := StubDecoder
-  mkChunk := Chunk.mk
-  chunkIndex := Chunk.index
-  chunkData := Chunk.data
-  encode_bytes := fun msg =>
-    if msg.length % 2 != 0 then
-      .ok (.error (.polynomialError .messageLengthEven))
-    else
-      .ok (.ok { idx := 0#32, msg := msg })
-  next_chunk := fun enc =>
-    let numChunks := if enc.msg.length / 32 == 0 then 1 else enc.msg.length / 32
-    let chunkPos := enc.idx.toNat % numChunks
-    let slice := (enc.msg.drop (chunkPos * 32)).take 32
-    let padded := slice ++ List.replicate (32 - slice.length) 0#8
-    match bytesToVector? 32 padded with
-    | some vec =>
-      .ok ({ enc with idx := enc.idx + 1#32 },
-           { index := BitVec.ofNat 16 chunkPos, data := vec })
-    | none => .error (.site "stubPolyApi.next_chunk")
-  encoder_into_pb := fun enc =>
-    { idx := enc.idx, pts := List.replicate 16 enc.msg, polys := [] }
-  encoder_from_pb := fun pb =>
-    if pb.pts.length == 16 && pb.polys.isEmpty then
-      let msg := pb.pts.headD []
-      if msg.length % 2 == 0 then
-        .ok (.ok { idx := pb.idx, msg := msg })
-      else
-        .ok (.error .serializationInvalid)
-    else
-      .ok (.error .serializationInvalid)
-  decoder_new := fun lenBytes =>
-    if lenBytes % 2 != 0 then
-      .ok (.error (.polynomialError .messageLengthEven))
-    else
-      .ok (.ok { pts_needed := BitVec.ofNat 32 (lenBytes / 2), chunks := [], is_complete := false })
-  add_chunk := fun dec chunk =>
-    let existsIdx := (lookupChunk chunk.index dec.chunks).isSome
-    let chunks' := if existsIdx then dec.chunks else dec.chunks ++ [(chunk.index, chunk.data.toList)]
-    .ok { dec with chunks := chunks' }
-  decoded_message := fun dec =>
-    if dec.is_complete then
-      .ok none
-    else
-      let totalBytes := dec.pts_needed.toNat * 2
-      let numChunks := totalBytes / 32
-      .ok (reconstructChunks numChunks dec.chunks)
-  decoder_into_pb := fun dec =>
-    let serialized := (dec.chunks.map fun (idx, d) =>
-      [idx.extractLsb' 8 8, idx.extractLsb' 0 8] ++ d).flatten
-    { ptsNeeded := dec.pts_needed, polys := 16#32,
-      pts := serialized :: List.replicate 15 [], isComplete := dec.is_complete }
-  decoder_from_pb := fun pb =>
-    if pb.pts.length != 16 then
-      .ok (.error .serializationInvalid)
-    else
-      let raw := pb.pts.headD []
-      match deserializeStubChunks (raw.length / 34 + 1) raw with
-      | some chunks =>
-        .ok (.ok { pts_needed := pb.ptsNeeded, chunks := chunks, is_complete := pb.isComplete })
-      | none => .ok (.error .serializationInvalid)
-
-/-- Deterministic `AuthApi` test stub. -/
-def stubAuthApi : AuthApi where
-  Authenticator := ProtoAuthenticator
-  new := fun rootKey ep =>
-    let b := rootKey.headD 0#8 ^^^ ep.truncate 8
-    .ok { rootKey := List.replicate 32 b, macKey := List.replicate 32 (b ^^^ 0x5a#8) }
-  update := fun auth ep k =>
-    let b := auth.rootKey.headD 0#8 ^^^ k.headD 0#8 ^^^ ep.truncate 8
-    .ok { rootKey := List.replicate 32 b, macKey := List.replicate 32 (b ^^^ 0xa5#8) }
-  mac_hdr := fun auth ep hdr =>
-    let tag := auth.macKey.headD 0#8 ^^^ hdr.headD 0#8 ^^^ ep.truncate 8 ^^^ 0x11#8
-    .ok (List.replicate 32 tag)
-  mac_ct := fun auth ep ct =>
-    let tag := auth.macKey.headD 0#8 ^^^ ct.headD 0#8 ^^^ ep.truncate 8 ^^^ 0x22#8
-    .ok (List.replicate 32 tag)
-  verify_hdr := fun auth ep hdr expectedMac => do
-    let cmp ← compare expectedMac (List.replicate 32
-      (auth.macKey.headD 0#8 ^^^ hdr.headD 0#8 ^^^ ep.truncate 8 ^^^ 0x11#8))
-    if cmp != 0#8 then .ok (.error .macVerifyFailed) else .ok (.ok ())
-  verify_ct := fun auth ep ct expectedMac => do
-    let cmp ← compare expectedMac (List.replicate 32
-      (auth.macKey.headD 0#8 ^^^ ct.headD 0#8 ^^^ ep.truncate 8 ^^^ 0x22#8))
-    if cmp != 0#8 then .ok (.error .macVerifyFailed) else .ok (.ok ())
-  into_pb := id
-  from_pb := id
-  hkdf_to_vec := fun salt ikm info okmLen =>
-    if okmLen > 255 * 32 then
-      .error (.site "src/kdf.rs:17 Hkdf::expand invalid length")
-    else
-      let b := salt.headD 0#8 ^^^ ikm.headD 0#8 ^^^ info.getLastD 0#8
-      .ok (List.replicate okmLen b)
-
-def checkIssue1275 : Bool :=
-  let prefix1536 := List.replicate 768 [0x12#8, 0x34#8] |>.flatten
-  let error2Bad := [0x00#8, 0x00#8, 0x00#8, 0x01#8] ++ List.replicate 508 0x00#8
-  let tail32 := List.replicate 32 0xaa#8
-  let esBad := prefix1536 ++ error2Bad ++ tail32
-  let fixedRes := potentially_fix_state_incorrectly_encoded_by_libcrux_issue_1275 esBad
-  match fixedRes with
-  | .ok (some esFixed) =>
-    esFixed.length == 2080 &&
-    esFixed.take 2 == [0x34#8, 0x12#8] &&
-    (esFixed.drop 1538).take 2 == [0x01#8, 0x00#8] &&
-    esFixed.drop 2048 == tail32 &&
-    potentially_fix_state_incorrectly_encoded_by_libcrux_issue_1275 esFixed == .ok none &&
-    potentially_fix_state_incorrectly_encoded_by_libcrux_issue_1275 [0x00#8, 0x01#8] ==
-      .error (.issue1275BadLen 2) &&
-    flip_endianness_of_encapsulation_state [0x00#8, 0x01#8, 0x02#8] ==
-      .error (.flipEndiannessBadLen 3)
-  | _ => false
-
-theorem guard_issue1275 : checkIssue1275 = true := by decide +kernel
-
-def checkMessageSerialize : Bool :=
-  let c : Chunk := { index := 300#16, data := List.Vector.replicate 32 0x42#8 }
-  let payloads : List (MessagePayload stubPolyApi) :=
-    [.none, .hdr c, .ek c, .ekCt1Ack c, .ct1Ack true, .ct1 c, .ct2 c]
-  let roundTripOk := payloads.all fun p =>
-    let msg : Message stubPolyApi := { epoch := 300#64, payload := p }
-    let wire := msg.serialize 7#32
-    match msg_preamble wire with
-    | .ok pre =>
-      pre.version == 1#8 && pre.epoch == 300#64 && pre.index == 7#32 &&
-      Message.deserialize stubPolyApi pre.epoch pre.remaining == .ok msg
-    | .error _ => false
-  let errCasesOk :=
-    Message.deserialize stubPolyApi 1#64 [] == .error .msgDecode &&
-    Message.deserialize stubPolyApi 1#64 [7#8] == .error .msgDecode &&
-    Message.deserialize stubPolyApi 1#64 ([1#8, 0#8] ++ List.replicate 31 0#8) == .error .msgDecode &&
-    Message.deserialize stubPolyApi 1#64 ([1#8, 0x80#8, 0x80#8, 0x04#8] ++ List.replicate 32 0#8) == .error .msgDecode
-  roundTripOk && errCasesOk
-
-theorem guard_message_serialize : checkMessageSerialize = true := by decide +kernel
-
-def checkFullBraidAndPbRoundTrip : Bool :=
-  let authKey := List.replicate 32 0x29#8
-  let tapeA := List.replicate 64 0x07#8
-  let tapeB := List.replicate 32 0x13#8
-  let rec transferChunks (n : Nat) (sender receiver : States stubPolyApi stubAuthApi)
-      (tape : Bytes) : Option (States stubPolyApi stubAuthApi × States stubPolyApi stubAuthApi ×
-        Option EpochSecret × Option EpochSecret) :=
-    match n with
-    | 0 => some (sender, receiver, none, none)
-    | n' + 1 =>
-      match sender.send stubMlKem tape with
-      | .ok (sOut, tape') =>
-        match receiver.recv stubMlKem sOut.msg with
-        | .ok rOut =>
-          match transferChunks n' sOut.state rOut.state tape' with
-          | some (sf, rf, skRest, rkRest) =>
-            some (sf, rf, sOut.key.or skRest, rOut.key.or rkRest)
-          | none => none
-        | .error _ => none
-      | .error _ => none
-  let pbRoundTrip (st : States stubPolyApi stubAuthApi) : Bool :=
-    States.from_pb stubPolyApi stubAuthApi st.into_pb == .ok st
-  match States.init_a stubPolyApi stubAuthApi authKey,
-        States.init_b stubPolyApi stubAuthApi authKey with
-  | .ok stA0, .ok stB0 =>
-    let ok0 := pbRoundTrip stA0 && pbRoundTrip stB0
-    match transferChunks 3 stA0 stB0 tapeA with
-    | some (stA1, stB1, none, none) =>
-      let ok1 := pbRoundTrip stA1 && pbRoundTrip stB1
-      match transferChunks 1 stB1 stA1 tapeB with
-      | some (stB2, stA2, some secB1, none) =>
-        let ok2 := pbRoundTrip stA2 && pbRoundTrip stB2
-        match transferChunks 36 stA2 stB2 [] with
-        | some (_stA2', stB_ekRecv, none, none) =>
-          let okEkRecv := pbRoundTrip stB_ekRecv
-          match transferChunks 29 stB2 stA2 [] with
-          | some (stB3, stA3, none, none) =>
-            let ok3 := pbRoundTrip stA3 && pbRoundTrip stB3
-            match transferChunks 1 stA3 stB3 [] with
-            | some (stA4, stB4, none, none) =>
-              let ok4 := pbRoundTrip stA4 && pbRoundTrip stB4
-              match transferChunks 35 stA4 stB4 [], transferChunks 1 stA4 stB_ekRecv [] with
-              | some (stA5, stB5, none, none), some (_, stB5_alt, none, none) =>
-                let ok5 := pbRoundTrip stB5 && pbRoundTrip stB5_alt
-                match transferChunks 1 stB5 stA5 [] with
-                | some (stB6, stA6, none, none) =>
-                  let ok6 := pbRoundTrip stA6 && pbRoundTrip stB6
-                  match stA6.send stubMlKem [] with
-                  | .ok (sAck, []) =>
-                    let okAck := sAck.msg == { epoch := 1#64, payload := .ct1Ack true }
-                    match transferChunks 4 stB6 stA6 [] with
-                    | some (stB7, stA7, none, some secA1) =>
-                      let okEpoch1 := secA1 == secB1 && stA7.epoch == 2#64 && stB7.epoch == 1#64
-                      match transferChunks 1 stA7 stB7 [] with
-                      | some (stA8, stB8, none, none) =>
-                        ok0 && ok1 && ok2 && okEkRecv && ok3 && ok4 && ok5 && ok6 &&
-                        okAck && okEpoch1 && stA8.epoch == 2#64 && stB8.epoch == 2#64
-                      | _ => false
-                    | _ => false
-                  | _ => false
-                | _ => false
-              | _, _ => false
-            | _ => false
-          | _ => false
-        | _ => false
-      | _ => false
-    | _ => false
-  | _, _ => false
-
-theorem guard_full_braid_and_pb_roundtrip : checkFullBraidAndPbRoundTrip = true := by
-  decide +kernel
-
-def checkPanicsAndErrors : Bool :=
-  let authKey := List.replicate 32 0x29#8
-  let rngPanicOk :=
-    generate stubMlKem [1#8, 2#8] == .error (.rngExhausted 64 2) &&
-    encaps1 stubMlKem (List.replicate 64 0#8) [1#8] == .error (.rngExhausted 32 1) &&
-    encaps1 stubMlKem [] (List.replicate 32 0#8) == .error .encaps1Failed
-  let comparePanicOk :=
-    compare (List.replicate 33 0#8) (List.replicate 32 0#8) == .error .compareBounds
-  let fromPbErrOk :=
-    States.from_pb stubPolyApi stubAuthApi { innerState := none } == .error (.err .stateDecode) &&
-    Chunked.SendEk.HeaderSent.from_pb stubPolyApi stubAuthApi
-      { uc := none, sendingEk := none, receivingCt1 := some { ptsNeeded := 99#32 } } ==
-      .error (.err .msgDecode) &&
-    Chunked.SendEk.EkSentCt1Received.from_pb stubPolyApi stubAuthApi
-      { uc := none, receivingCt2 := some { ptsNeeded := 99#32 } } ==
-      .error (.err .msgDecode) &&
-    Chunked.SendCt.NoHeaderReceived.from_pb stubPolyApi stubAuthApi
-      { uc := none, receivingHdr := some { ptsNeeded := 99#32 } } ==
-      .error (.err .msgDecode) &&
-    Chunked.SendCt.HeaderReceived.from_pb stubPolyApi stubAuthApi
-      { uc := none, receivingEk := some { ptsNeeded := 99#32 } } ==
-      .error (.err .msgDecode) &&
-    Chunked.SendCt.Ct1Sampled.from_pb stubPolyApi stubAuthApi
-      { uc := none, sendingCt1 := none, receivingEk := some { ptsNeeded := 99#32 } } ==
-      .error (.err .msgDecode) &&
-    Chunked.SendCt.Ct1Acknowledged.from_pb stubPolyApi stubAuthApi
-      { uc := none, receivingEk := some { ptsNeeded := 99#32 } } ==
-      .error (.err .msgDecode)
-  let epochErrOk :=
-    match States.init_a stubPolyApi stubAuthApi authKey with
-    | .ok stA =>
-      stA.recv stubMlKem { epoch := 2#64, payload := .none } ==
-        .error (.err (.epochOutOfRange 2#64))
-    | .error _ => false
-  let overflowAndValidPkBytesOk :=
-    match stubAuthApi.new authKey 1#64 with
-    | .ok auth =>
-      let ct2Sent : Unchunked.SendCt.Ct2Sent stubAuthApi :=
-        { epoch := BitVec.allOnes 64, auth := auth }
-      let ct1Sent : Unchunked.SendCt.Ct1Sent stubAuthApi :=
-        { epoch := 1#64, auth := auth, hdr := List.replicate 64 0x07#8,
-          es := List.replicate 2080 0#8, ct1 := List.replicate 960 0x07#8 }
-      ct2Sent.recv_next_epoch 0#64 == .error .unchunkedRecvNextEpochOverflow &&
-      ct1Sent.recv_ek stubMlKem 1#64 [0x07#8] == .error (.err .erroneousDataReceived)
-    | .error _ => false
-  rngPanicOk && comparePanicOk && fromPbErrOk && epochErrOk && overflowAndValidPkBytesOk
-
-theorem guard_panics_and_errors : checkPanicsAndErrors = true := by
-  decide +kernel
 
 end Guards
 

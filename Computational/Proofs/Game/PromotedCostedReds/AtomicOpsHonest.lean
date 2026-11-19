@@ -22,7 +22,7 @@ Proves `SampSizeHonest` and unit-domain properties for `atomicBaseSamplers` and 
 of carriers, block sizes, and step costs over `Baseline1103`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -213,7 +213,10 @@ theorem atomicBaseSamplers_sizeHonest (ℓ : ℕ) (Pt : Type) :
 theorem atomicSamplers_sizeHonest (ℓ : ℕ) (Pt : Type) [SampleableType Pt] :
     SampSizeHonest (atomicSamplers ℓ Pt) :=
   ReductionDsl.SampSizeHonest.unifSamplers (S := atomicSig ℓ Pt) ReductionDsl.AtomicUnifBase.sort ReductionDsl.AtomicUnifBase.cost
-    (fun b _ => by cases b <;> rfl)
+    (fun b _ => by
+      cases b <;>
+        dsimp [atomicSig, AtomicSort.blocks, AtomicUnifBase.sort, AtomicUnifBase.cost] <;>
+        omega)
 
 /-! ## Helper bounds for wire, SPQR, and session-state operations -/
 
@@ -1272,18 +1275,18 @@ inductive B1103Sort where
   | fin (n : ℕ) | pk | idKey | plain | ghostSt | binSt
   deriving DecidableEq
 
-def ιSort : B1103Sort → AtomicSort
+@[expose] def ιSort : B1103Sort → AtomicSort
   | .pbytes w => .pbytes w | .pu32 => .pu32 | .bytes w => .bytes w | .u8 => .u8 | .u32 => .u32
   | .u64 => .u64 | .bv128 => .bv128 | .bv256 => .bv256 | .bv512 => .bv512 | .fin n => .fin n
   | .pk => .pk | .idKey => .idKey | .plain => .plain | .ghostSt => .ghostSt | .binSt => .binSt
 
-@[reducible] def B1103Sort.den (ℓ : ℕ) : B1103Sort → Type
+@[expose, reducible] def B1103Sort.den (ℓ : ℕ) : B1103Sort → Type
   | .pbytes _ => SignalPqxdh.Bytes | .pu32 => UInt32 | .bytes _ => Bytes | .u8 => BitVec 8
   | .u32 => BitVec 32 | .u64 => BitVec 64 | .bv128 => BitVec 128 | .bv256 => BitVec 256
   | .bv512 => BitVec 512 | .fin n => Fin n | .pk => PublicKey | .idKey => IdentityKey
   | .plain => Plain ℓ | .ghostSt => GhostState Bytes | .binSt => BinState
 
-def B1103Sort.blocks (ℓ : ℕ) : (s : B1103Sort) → s.den ℓ → ℕ
+@[expose] def B1103Sort.blocks (ℓ : ℕ) : (s : B1103Sort) → s.den ℓ → ℕ
   | .pbytes w, x => (x.length + w - 1) / w
   | .pu32, _ => 1
   | .bytes w, x => (x.length + w - 1) / w
@@ -1305,11 +1308,11 @@ theorem ιSort_blocks_eq (ℓ : ℕ) (Pt : Type) (s : B1103Sort) :
 
 inductive B1103Unif where | bv256 | bv512 deriving DecidableEq
 
-def ιBaseUnif : B1103Unif → AtomicBaseUnif | .bv256 => .bv256 | .bv512 => .bv512
+@[expose] def ιBaseUnif : B1103Unif → AtomicBaseUnif | .bv256 => .bv256 | .bv512 => .bv512
 
 def ιUnif : B1103Unif → AtomicUnifBase | .bv256 => .bv256 | .bv512 => .bv512
 
-def B1103Unif.cost : B1103Unif → ℕ | .bv256 => 1 | .bv512 => 2
+@[expose] def B1103Unif.cost : B1103Unif → ℕ | .bv256 => 1 | .bv512 => 2
 
 theorem ιUnif_cost_eq (b : B1103Unif) (ℓ : ℕ) (Pt : Type) [SampleableType Pt] :
     (atomicBaseSamplers ℓ Pt).sCost (.base (ιBaseUnif b)) = b.cost ∧
@@ -1375,7 +1378,7 @@ def ιPureOp : B1103PureOp → AtomicPureOp
   | .spqrStateJoin => .spqrStateJoin | .ghostStateSplit => .ghostStateSplit
   | .ghostStateJoin => .ghostStateJoin | .encodeSessionRecord => .encodeSessionRecord
 
-def B1103PureOp.cost (ℓ : ℕ) : B1103PureOp → ℕ
+@[expose] def B1103PureOp.cost (ℓ : ℕ) : B1103PureOp → ℕ
   | .pbytesLit w v => w + v.length | .pbytesCat m n | .pbytesEq m n => m + n
   | .pbytesCons _ w | .pbytesTake w | .pbytesDrop w => w + 1 | .pbytesWiden w d => w + d
   | .pbytesTakeK w k => w + k | .pbytesLen w => bits w + 1
@@ -1427,7 +1430,7 @@ inductive B1103CryptoOp where
   | spqrChainFromVn | spqrChainAddEpoch | spqrChainNextKey
   deriving DecidableEq, Repr
 
-def B1103CryptoOp.cost (ℓ : ℕ) : B1103CryptoOp → ℕ
+@[expose] def B1103CryptoOp.cost (ℓ : ℕ) : B1103CryptoOp → ℕ
   | .x25519 | .x25519Base | .pow8 | .sessionKeyPairGen | .chainStep => 8
   | .isCanonical => 2
   | .sigSign | .sigVerify => 60

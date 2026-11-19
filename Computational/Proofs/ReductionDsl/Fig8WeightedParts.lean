@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+public import Computational.Proofs.ReductionDsl.Fig8ExcessCosts -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.ReductionDsl.CostUB
+public import Computational.Proofs.ReductionDsl.Fig8SourceCosts -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Size
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +39,7 @@ theorem compCostW_le_of_parts {S : Sig} {O : Ops S}
 
 
 
-def fig8AtomicStepBound (q qep : ℕ) : ℕ :=
+@[expose] def fig8AtomicStepBound (q qep : ℕ) : ℕ :=
   let L := q + 1
   let B := (q + 1) * (maxForwardJumps + 1)
   100000 * L + L * (3 * ReductionDsl.bits qep + 60) + 120 * B +

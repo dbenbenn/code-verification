@@ -9,15 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefs
-import LibsignalBinary.Proofs.Cli.ShardFill.TryDecryptStateRatchetCoins
-import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.AuthDecryptDefs
-import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.VerifyMac
-import LibsignalBinary.Proofs.Common.CallInv
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
+import LibsignalBinary.Proofs.TripleRatchet.InImage.SpqrRecvEmpty.Defs
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Getters.Defs
+import LibsignalBinary.Proofs.Cli.Specifications.LibsignalTripleRatchet
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.VCGen
+import ProofLib
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Model
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 
@@ -28,7 +32,7 @@ Proves `S7SeamPlaced` (`VerifyMacStatePlaced` to `AesDecryptStatePlaced` / `ErrT
 CLI Block `433` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

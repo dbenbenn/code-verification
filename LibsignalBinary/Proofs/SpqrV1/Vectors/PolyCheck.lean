@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Poly
-public import LibsignalBinary.Proofs.SpqrV1.Vectors.Polynomial
-public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Polynomial
+public import LibsignalBinary.Proofs.SpqrV1.Vectors.Polynomial -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Polynomial -- proof-setup: allow-public-import
 public meta import LibsignalBinary.Specifications.LibsignalSpqrV1.Poly
 
 /-!
@@ -21,14 +21,14 @@ Checks `PolyEncoder`, `PolyDecoder`, protobuf round-trips, and Lagrange basis ta
 `Poly.lean` against `Vectors/Polynomial.lean` via `decide +kernel` (on `polyMsg64`) and `#guard`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Vectors.PolyCheck
 
 open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1.Vectors.Polynomial
 
-def encodeVarintAux : Nat → Nat → List (BitVec 8)
+@[expose] def encodeVarintAux : Nat → Nat → List (BitVec 8)
   | 0, _ => []
   | fuel + 1, n =>
     if n < 128 then
@@ -36,18 +36,18 @@ def encodeVarintAux : Nat → Nat → List (BitVec 8)
     else
       BitVec.ofNat 8 ((n % 128) + 128) :: encodeVarintAux fuel (n / 128)
 
-def encodeVarint (n : Nat) : List (BitVec 8) :=
+@[expose] def encodeVarint (n : Nat) : List (BitVec 8) :=
   encodeVarintAux 10 n
 
 /-- Proto3 wire encoding of `ProtoPolynomialEncoder` (`src/proto/pq_ratchet.proto:8–16`). -/
-def encodeProtoPolynomialEncoder (pb : ProtoPolynomialEncoder) : List (BitVec 8) :=
+@[expose] def encodeProtoPolynomialEncoder (pb : ProtoPolynomialEncoder) : List (BitVec 8) :=
   let f1 := if pb.idx == 0#32 then [] else 0x08#8 :: encodeVarint pb.idx.toNat
   let f2 := pb.pts.flatMap (fun b => 0x12#8 :: encodeVarint b.length ++ b)
   let f3 := pb.polys.flatMap (fun b => 0x1a#8 :: encodeVarint b.length ++ b)
   f1 ++ f2 ++ f3
 
 /-- Proto3 wire encoding of `ProtoPolynomialDecoder` (`src/proto/pq_ratchet.proto:18–23`). -/
-def encodeProtoPolynomialDecoder (pb : ProtoPolynomialDecoder) : List (BitVec 8) :=
+@[expose] def encodeProtoPolynomialDecoder (pb : ProtoPolynomialDecoder) : List (BitVec 8) :=
   let f1 := if pb.ptsNeeded == 0#32 then [] else 0x08#8 :: encodeVarint pb.ptsNeeded.toNat
   let f2 := if pb.polys == 0#32 then [] else 0x10#8 :: encodeVarint pb.polys.toNat
   let f3 := pb.pts.flatMap (fun b => 0x1a#8 :: encodeVarint b.length ++ b)
@@ -55,7 +55,7 @@ def encodeProtoPolynomialDecoder (pb : ProtoPolynomialDecoder) : List (BitVec 8)
   f1 ++ f2 ++ f3 ++ f4
 
 /-- Step `PolyEncoder.nextChunk` across a list of expected `ChunkVec`s. -/
-def checkEncoderChunks : PolyEncoder → List ChunkVec → Option PolyEncoder
+@[expose] def checkEncoderChunks : PolyEncoder → List ChunkVec → Option PolyEncoder
   | enc, [] => some enc
   | enc, expected :: rest =>
     match enc.nextChunk with
@@ -68,7 +68,7 @@ def checkEncoderChunks : PolyEncoder → List ChunkVec → Option PolyEncoder
 
 /-- Check `PolyEncoder` (`encodeBytes`, `intoPb`/`fromPb` in `Points` state, all `nextChunk` outputs,
 and `intoPb`/`fromPb` in `Polys` state) against a `PolyMsgTestVec`. -/
-def checkEncoderBundle (v : PolyMsgTestVec) : Bool :=
+@[expose] def checkEncoderBundle (v : PolyMsgTestVec) : Bool :=
   match PolyEncoder.encodeBytes v.msg with
   | .ok (.ok enc0) =>
     let pb0 := enc0.intoPb
@@ -90,7 +90,7 @@ def checkEncoderBundle (v : PolyMsgTestVec) : Bool :=
   | _ => false
 
 /-- Step a `PolyDecoder` through `chunkIndices` for one `DecoderScenarioVec`. -/
-def checkDecoderScenarioSteps (v : PolyMsgTestVec) (s : DecoderScenarioVec) :
+@[expose] def checkDecoderScenarioSteps (v : PolyMsgTestVec) (s : DecoderScenarioVec) :
     Nat → PolyDecoder → List (BitVec 16) → Bool
   | _, _, [] => false
   | step, dec, cidx :: rest =>
@@ -142,10 +142,6 @@ def checkAllScenarios (v : PolyMsgTestVec) : Bool :=
     match polyMsg64.scenarios with
     | s :: _ => checkDecoderScenario polyMsg64 s
     | [] => false
-
-/-- Kernel-checked `checkEncoderBundle` and first `DecoderScenarioVec` on `polyMsg64`. -/
-theorem check_polyMsg64_kernel : runCheckPolyMsg64Kernel = true := by
-  decide +kernel
 
 /-! ## Full Differential Vector and Basis-Table Guards -/
 

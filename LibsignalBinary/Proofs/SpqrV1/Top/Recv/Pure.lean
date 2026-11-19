@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Model
 import ProofLib.SepLogic.WP.StateNorm
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -74,16 +74,6 @@ theorem spqrV1Recv_recvPanics_of_panic
 cannot rule out a panic; these lemmas derive `¬ recvPanics` from the unprojected Rust-level result
 or from a projected `.ok _` / `.error true`.
 -/
-
-/-- A Rust-level `.ok r` of `LibsignalSpqrV1.recv` rules out a model panic. -/
-theorem spqrV1Recv_noPanic_of_ok
-    {F : CryptoGames.LibsignalSession.ShaCompress} {K : MlKem}
-    {stateBytes msgBytes : Bytes} {r : Recv}
-    (h : LibsignalSpqrV1.recv (spqrDeps F K) (spqrHkdfWith F) stateBytes msgBytes = .ok r) :
-    ¬ (spqrV1Recv F K).recvPanics stateBytes msgBytes := by
-  rw [spqrV1Recv_recvPanics_eq]
-  simp only [toSpqrRecvModel, recvPanicsB, h]
-  decide
 
 /-- A Rust-level `.error (.err e)` of `LibsignalSpqrV1.recv` rules out a model panic. -/
 theorem spqrV1Recv_noPanic_of_err

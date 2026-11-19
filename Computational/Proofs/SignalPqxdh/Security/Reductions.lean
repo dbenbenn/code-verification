@@ -9,9 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHmac
-public import Computational.Proofs.SpecLemmas.Pqxdh.Security.Headline
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHmac -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Pqxdh.Security.Headline
+public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf -- proof-setup: allow-public-import
 
 /-!
 # Shallow Concrete Reductions for PQXDH
@@ -20,7 +25,7 @@ Bundles the shallow concrete reductions used in the game-hop proofs into `pqxdhK
 (`KeyInd2KeyReductionFamily S`) and `pqxdhAuthSimulators` (`AuthReductionFamily S`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,13 +34,13 @@ namespace SignalPqxdh.Security
 open SignalPqxdh
 
 /-- The shallow two-key key-indistinguishability reductions. -/
-def pqxdhKeyIndSimulators (S : Setup) : KeyInd2KeyReductionFamily S where
+@[expose] def pqxdhKeyIndSimulators (S : Setup) : KeyInd2KeyReductionFamily S where
   sig  := sigReductionKeyInd S
   shcr := shcrReductionKeyInd S
   gdh  := fgKeyIndGapDhAdv4 S
 
 /-- The shallow authentication reductions. -/
-def pqxdhAuthSimulators (S : Setup) : AuthReductionFamily S where
+@[expose] def pqxdhAuthSimulators (S : Setup) : AuthReductionFamily S where
   sig  := sigReductionAuth S
   shcr := shcrReductionAuth S
   gdh  := fgAuthGapDhAdv4 S

@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.M3Interfaces
-public import Computational.Proofs.E2E.Dsl.PqxdhSim
-public import Computational.Proofs.E2E.Dsl.SpqrSim
-public import Computational.Proofs.E2E.Dsl.DrSessionSim
-public import Computational.Proofs.E2E.Dsl.E2EStateRepr
-public import Computational.Proofs.E2E.Dsl.FreshnessSim
-public import Computational.Proofs.E2E.Dsl.LocalSessionStep
-public import Computational.Proofs.E2E.Dsl.StartAndExtSm
+public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.PqxdhSim -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.E2EStateRepr -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.FreshnessSim -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.LocalSessionStep -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.StartAndExtSm -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 
 /-!
@@ -27,7 +27,7 @@ and `e2eOps`, wiring together the PQXDH simulator, SPQR-backed Double Ratchet se
 driver guard and freshness handlers, local multi-session `SM` handler, and session promotion.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +50,7 @@ open Computational.Proofs.E2E.Dsl.LocalSessionStep (localSessionStepIface stepLo
 open Computational.Proofs.E2E.Dsl.StartAndExtSm (startAndExtSmIface
   finishStartSpkCost promoteSlotKCost extSmStepCost)
 
-def concreteDrSessionSim (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives)
+@[expose] def concreteDrSessionSim (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives)
     (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     DrSessionSimIface ℓ P C K decT encT :=
@@ -863,7 +863,7 @@ end StartAndExtSize
 end SizeBounds
 
 /-- Concrete `DrvStateGuardFreshIface` wired from `E2EStateRepr` and `FreshnessSim`. -/
-def drvStateGuardFreshIface (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
+@[expose] def drvStateGuardFreshIface (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     DrvStateGuardFreshIface ℓ S P C K decT encT where
@@ -962,7 +962,7 @@ def drvStateGuardFreshIface (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
       (decT := decT) (encT := encT) I₀ qStart nAdv σE b'E flipE ρ σ ki qep hP hσ hInsts hReach.setup
 
 /-- Complete concrete `M3SubprogramsIface` bundle over `e2eSig ℓ` and `e2eOps ℓ P C K decT encT`. -/
-def m3Subprograms (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
+@[expose] def m3Subprograms (ℓ : ℕ) (S : SignalPqxdh.Setup) {Pt : Type}
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     M3SubprogramsIface ℓ S P C K decT encT where

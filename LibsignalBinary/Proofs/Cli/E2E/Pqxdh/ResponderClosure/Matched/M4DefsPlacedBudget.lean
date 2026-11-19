@@ -11,13 +11,18 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StepsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StoreStepsPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StepsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StoreStepsPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Matched-Session Stage P4: Bundles and Statement
@@ -27,7 +32,7 @@ Defines the matched-session Stage P4 (`opkIdIsSome = 2#32`) allocation envelopes
 spatial bundles, three-way outcome `StageP4MatchedBranchPlaced`, and `StageP4MatchedPlacedStmt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -77,7 +82,7 @@ open LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget (
 /-- Allocation envelope on the `save_identity = Err` path of matched-session Stage P4:
 `SaveStepEnv` (`save_identity` shim + poll + `Box` dealloc) followed by `FreeOnlyEvs`
 (`drop_glue<SessionStructure>` + `pt` buffer dealloc). -/
-def StageP4MatchedSaveErrEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4MatchedSaveErrEnv {A : RustAlloc} {b : BitVec 64}
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist0 : ikit.IdState) (rem : AddrVal) (remoteIk : IdentityKey) :
     List AllocEvent → Prop :=
@@ -86,7 +91,7 @@ def StageP4MatchedSaveErrEnv {A : RustAlloc} {b : BitVec 64}
 /-- Allocation envelope on the `save_identity = Ok` (`store_session = Ok` or `Err`) path of
 matched-session Stage P4: `SaveStepEnv` followed by `StoreStepEnv` followed by `FreeOnlyEvs`
 (coroutine `SessionStructure` / `previous_sessions` / `pt` teardown deallocations). -/
-def StageP4MatchedStoreStepEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4MatchedStoreStepEnv {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (kitEnv : SessionStoreBudgetEnv kit)
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (sst0 : kit.StoreState) (ist0 : ikit.IdState)
@@ -96,7 +101,7 @@ def StageP4MatchedStoreStepEnv {A : RustAlloc} {b : BitVec 64}
     (SeqEnv (StoreStepEnv kit kitEnv sst0 rem ⟨some ss⟩) FreeOnlyEvs)
 
 /-- Full Stage-P4 matched-path allocation envelope covering both `saveErr` and `ok`/`storeErr`. -/
-def StageP4MatchedEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4MatchedEnv {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (kitEnv : SessionStoreBudgetEnv kit)
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (sst0 : kit.StoreState) (ist0 : ikit.IdState)
@@ -140,7 +145,7 @@ theorem fitsEnv_saveStep_of_matched {M : AllocCostModel} {lim : BudgetLimits} {s
 
 /-- Budget-threaded shared spatial resources across `P4.1` (`save_identity`) and `P4.4`
 (`store_session`) on matched-session Stage P4 (`opkIdIsSome = 2#32`) under `[LibsignalPlacement]`. -/
-def stageP4MatchedSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) {b : BitVec 64}
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (s0 s s_pool : State)
@@ -207,7 +212,7 @@ theorem stageP4MatchedSharedPlaced_eq_atState [LibsignalPlacement] {M : AllocCos
 
 /-- Budget-threaded spatial precondition at `+0x34dc` for matched-session Stage P4 under
 `[LibsignalPlacement]`. -/
-def stageP4MatchedPrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedPrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ) {b : BitVec 64}
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (s0 s : State)
@@ -255,7 +260,7 @@ theorem stageP4MatchedPrePlaced_eq_atState [LibsignalPlacement] {M : AllocCostMo
 
 /-- Budget-threaded spatial postcondition at `s0.readReg64 .x30` for matched-session Stage P4
 under `[LibsignalPlacement]`. -/
-def stageP4MatchedExitAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedExitAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ) {b : BitVec 64}
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (s0 s sf : State)
@@ -355,7 +360,7 @@ theorem StageP4MatchedBranchPlaced.exists_env [LibsignalPlacement] {M : AllocCos
 /-- Budget-threaded relocatable `[LibsignalPlacement]` Stage P4
 (`(blkPl_518).base + 0x34dc → s0.readReg64 .x30`) statement for `opkIdIsSome = 2#32`
 (`onPanic = fun _ _ => False`). -/
-def StageP4MatchedPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP4MatchedPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=
   ∀ (ext : String → Option (State → State))
     {Scope : SessionRecord (List (BitVec 8)) → Prop}

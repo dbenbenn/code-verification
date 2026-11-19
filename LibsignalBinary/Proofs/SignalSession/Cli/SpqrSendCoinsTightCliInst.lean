@@ -9,33 +9,33 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.FinalPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPlacedBudget
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.FinalPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
 public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightBuckets
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightHelpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrChainPlacedInstBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrChunkedMergePlacedInstBudget
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightBuckets
+public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrChainPlacedInstBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrChunkedMergePlacedInstBudget
 public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrExactEnvDefs
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrHmacHookSatBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInstBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrStatesIntoPbPlacedInstBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudgetInst
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializePlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrHmacHookSatBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInstBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrStatesIntoPbPlacedInstBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudgetInst
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializePlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopRegionsPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -44,6 +44,28 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Top
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.TopPhase3
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ChainEpochPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesTopPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegsBudget
 
 /-!
 # Cap-Free & Guarded-Tight `spqr::send::<Coins>` and `SpqrV1PlacedSeamsOfEnv`
@@ -61,7 +83,7 @@ and `SpqrV1PlacedSeamsOfEnv` on `cliGhostExterns`:
   `AllocEvent.alloc (2 ^ 64)` violates `withinMaxAlloc`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -78,11 +100,11 @@ open CryptoVerification.Cli.SpqrV1.Top.Send
    spqrLogLevelZeroPlacedAt spqrSendDropJumpTablePlacedAt spqrSendEncodeJumpTablePlacedAt
    spqrSendFullRoPlacedAt spqrSendRoPlacedAt statesFromPbJumpTablePlacedAt)
 open CryptoVerification.CliRatchet.SendPlaced (blkPC_427 blkPl_427)
-open CryptoVerification.E2E (pqxdhSpqrModel)
+open CryptoVerification.E2E (libcruxHmacHookMallocng pqxdhSpqrModel)
 open CryptoVerification.LibsignalSpqrV1
   (Bytes ChainPB Error MlKem PqRatchetState States StatesResult V1Send V1State
-   pbToPqRatchetState pqRatchetStateToPb spqrAuthApi spqrDecodeState spqrHkdfWith spqrPolyApi
-   spqrV1)
+   pbToPqRatchetState pqRatchetStateToPb sha256Compress spqrAuthApi spqrDecodeState spqrHkdfWith
+   spqrPolyApi spqrV1)
 open CryptoVerification.LibsignalTripleRatchet
   (LibsignalCodeRoLoaded SendCall VecArg keys_ls_subroutine_ok_of_block_cro
    subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded withLsCodeRoLoaded)
@@ -106,6 +128,7 @@ open CryptoVerification.SpqrV1.States.Leaves
 open CryptoVerification.SpqrV1.Top.DecodeState
   (DecodeStateGhost V1InnerHeapPred canonicalV1InnerHeap decodeStateResultAt decodeStateStackX
    optProtoInnerStateAt_canonical_eq_drop optVersionNegotiationPBTailAt)
+open CryptoVerification.SpqrV1.Top.MessageDeserialize (spqrFormatInnerSym)
 open CryptoVerification.SpqrV1.Top.MessageSerialize
   (MessageSerializeGhost messageAt messageSerializeStackX)
 open CryptoVerification.SpqrV1.Top.Send
@@ -139,11 +162,11 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
   (AllocContractsPlaced CoinsFillPlacedOkX SpqrSendPlacedContractsOfEnv spqrSendPlacedEntry
    spqrSendPlacedProg spqrSendStatesJumpTablePlacedAt)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.FinalPlacedBudget
-  (SpqrSendBudgetActiveContinuationPlaced
-   spqrSendCoins_placed_ok_of_contracts_and_continuation_ofEnv spqrSendPhase1Rest0)
+  (SpqrSendBudgetActiveContinuationDispPlaced
+   spqrSendCoins_disp_placed_ok_of_contracts_and_continuation_ofEnv spqrSendPhase1Rest0)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget
-  (decodeStatePlacedSpecXOfEnv messageSerializeSpecXOfEnv spqrSendCoinsPlacedSpecOfEnv
-   spqrSendCoinsPlacedSpecTOfEnv statesFromPbPlacedSpecXOfEnv)
+  (decodeStatePlacedSpecXOfEnv messageSerializeSpecXOfEnv spqrSendCoinsDispPlacedSpecOfEnv
+   spqrSendCoinsDispPlacedSpecTOfEnv statesFromPbPlacedSpecXOfEnv)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudget
   (step_send_statesSend_tight_placed)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux
@@ -151,7 +174,8 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAu
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
   (HeaderReceived1aEnv)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget
-  (SendPhase3EnvOfEnv step_send_from_314d8_ofEnv_placed)
+  (SendPhase3EnvOfEnv step_send_from_314d8_disp_ofEnv_placed)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (spqrSendResultDispAt)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPlacedBudget (SpqrSendExtraContractsPlaced)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopRegionsPlacedBudget
   (step_send_arm_headerReceived_encaps1_none_ofEnv_placed)
@@ -201,6 +225,9 @@ open LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
   (MessageSerializeEnv messageSerializeEvents)
 open LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializePlacedBudget
   (messageSerialize_placed_ok_of_hooks)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs
+  (formatInnerCallCliLsSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget (SpqrSendBudgetEnv)
 
 /-!
@@ -251,7 +278,7 @@ and `FromPbValEnv` (`<States>::from_pb`), keeping `StatesSendTightEnv`,
   `SpqrExactEnvDefs.SpqrSendCoinsTightLinkedEnv F K sc`).
 - At `(fun _ => DecodeStateTightEnv, fun _ => StatesFromPbTightEnv)`, this is definitionally (`rfl`)
   equal to the guarded encrypt slot's `sendEnv`. -/
-def hpt_SpqrSendCoinsOfDecodeFromPbBytesEnv (F : ShaCompress) (K : MlKem)
+@[expose] def hpt_SpqrSendCoinsOfDecodeFromPbBytesEnv (F : ShaCompress) (K : MlKem)
     (DecBytesEnv : List (BitVec 8) → List AllocEvent → Prop)
     (FromPbValEnv : V1State → List AllocEvent → Prop) : SpqrSendBudgetEnv :=
   fun stBs rest evs =>
@@ -299,12 +326,12 @@ abbrev hpt_SpqrSendCoinsCodecTightBytesEnv (F : ShaCompress) (K : MlKem) : SpqrS
 
 /-- Implication-guarded `SpqrSendBudgetEnv` (`Guard stBs → BaseBytesEnv stBs rest evs`: false-guard branch reduces to `True`, whose `FitsEnv` is unsatisfiable by
 `hpt_not_fitsEnv_of_univ`). -/
-def hpt_SpqrSendGuardedImplBytesEnv
+@[expose] def hpt_SpqrSendGuardedImplBytesEnv
     (Guard : List (BitVec 8) → Prop) (BaseBytesEnv : SpqrSendBudgetEnv) : SpqrSendBudgetEnv :=
   fun stBs rest evs => Guard stBs → BaseBytesEnv stBs rest evs
 
 /-- `if-then-else`-guarded `SpqrSendBudgetEnv` (`if Guard stBs then BaseBytesEnv stBs rest evs else True`). -/
-noncomputable def hpt_SpqrSendGuardedIteBytesEnv
+@[expose] def hpt_SpqrSendGuardedIteBytesEnv
     (Guard : List (BitVec 8) → Prop) (BaseBytesEnv : SpqrSendBudgetEnv) : SpqrSendBudgetEnv :=
   fun stBs rest evs =>
     haveI := Classical.propDecidable (Guard stBs)
@@ -408,7 +435,7 @@ theorem hpt_cliMessageSerialize_exact_placed_ok [LibsignalPlacement]
       (lsmpl.base 352)
       (withLsCodeRoLoaded lsmpl
         (messageSerializeSpecXOfEnv spqrPolyApi M A lim (MessageSerializeEnv spqrPolyApi))) := by
-  have hc := cliSpqrSendAllocContractsPlacedExt mmpl gh W hA.toCliGhostAllocHooks (fun _ _ => rfl)
+  have hc := cliSpqrSendAllocContractsPlacedExt mmpl gh W hA (fun _ _ => rfl)
   have hraw := messageSerialize_placed_ok_of_hooks spqrPolyApi A lim
     (cliGhostExterns gh (cliExternsPlaced mmpl W))
     hc.handle_error
@@ -523,7 +550,7 @@ theorem hpt_cliSpqrSend_decodeState_xOfEnv_on [LibsignalPlacement]
     (fun _ _ _ _ hp => hp)
 
 /-- Block `333` (`<States>::from_pb`) on `spqrSendPlacedProg` lifted from
-`(cliStatesPlacedSeams mmpl gh W hA hHmac).statesFromPb_on` to
+`(cliStatesPlacedSeams mmpl gh W hA hF hK hHmac).statesFromPb_on` to
 `SeamSpecsPlacedBudget.statesFromPbPlacedSpecXOfEnv` for any `FromPbValEnv` containing
 `FromPb.DefsBudget.StatesFromPbEnv`. -/
 theorem hpt_cliSpqrSend_statesFromPb_xOfEnv_on [LibsignalPlacement]
@@ -532,8 +559,10 @@ theorem hpt_cliSpqrSend_statesFromPb_xOfEnv_on [LibsignalPlacement]
     {FromPbValEnv : V1State → List AllocEvent → Prop}
     (hFromPbSub : ∀ v1 evs, StatesFromPbEnv v1 evs → FromPbValEnv v1 evs)
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec W.C.F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec W.C.F M A lim))) :
     subroutine_ok (spqrSendPlacedProg (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 333)
       (withLsCodeRoLoaded lsmpl
@@ -543,7 +572,7 @@ theorem hpt_cliSpqrSend_statesFromPb_xOfEnv_on [LibsignalPlacement]
       (withLsCodeRoLoaded lsmpl
         (LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget.statesFromPbPlacedSpecX
           M A lim W.C.F)) :=
-    (cliStatesPlacedSeams mmpl gh W hA hHmac).statesFromPb_on
+    (cliStatesPlacedSeams mmpl gh W hA hF hK hHmac).statesFromPb_on
   have hjt_eq :
       CryptoVerification.SpqrV1.States.FromPb.statesFromPbJumpTablePlacedAt =
         statesFromPbJumpTablePlacedAt := rfl
@@ -610,24 +639,26 @@ theorem hpt_cliSpqrSend_statesFromPb_xOfEnv_on [LibsignalPlacement]
 private theorem hpt_cliSpqrSend_chainAddEpoch_on [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh) :
+    (hA : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = sha256Compress) :
     subroutine_ok (spqrSendPlacedProg (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 368)
       (withLsCodeRoLoaded lsmpl (chainAddEpochSpecX (spqrHkdfWith W.C.F) M A lim)) :=
   keys_ls_subroutine_ok_of_block_cro (i := 427) (j := 368)
     (subroutine_ok_withLsCodeRoLoaded_of_withLsCallInv
-      (cliChainAddEpoch_placed_ok mmpl gh W hA (hpt_hExt_withPanics_id mmpl gh W)))
+      (cliChainAddEpoch_placed_ok mmpl gh W hA hF (hpt_hExt_withPanics_id mmpl gh W)))
 
 private theorem hpt_cliSpqrSend_chainSendKey_on [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh) :
+    (hA : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = sha256Compress) :
     subroutine_ok (spqrSendPlacedProg (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 367)
       (withLsCodeRoLoaded lsmpl (chainSendKeySpecX (spqrHkdfWith W.C.F) M A lim)) :=
   keys_ls_subroutine_ok_of_block_cro (i := 427) (j := 367)
     (subroutine_ok_withLsCodeRoLoaded_of_withLsCallInv
-      (cliChainSendKey_placed_ok mmpl gh W hA (hpt_hExt_withPanics_id mmpl gh W)))
+      (cliChainSendKey_placed_ok mmpl gh W hA hF (hpt_hExt_withPanics_id mmpl gh W)))
 
 private theorem hpt_cliSpqrSend_coinsFill_on [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -657,8 +688,10 @@ theorem hpt_spqrSendPlacedContractsOfEnv_of_cli [LibsignalPlacement]
     (hDecSub : ∀ bs evs, DecodeStateBytesEnv bs evs → DecBytesEnv bs evs)
     (hFromPbSub : ∀ v1 evs, StatesFromPbEnv v1 evs → FromPbValEnv v1 evs)
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec W.C.F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec W.C.F M A lim))) :
     SpqrSendPlacedContractsOfEnv M canonicalV1InnerHeap A lim 0#64 W.C W.Q.K
       (fun g => DecBytesEnv g.st.bytes)
       (fun g => FromPbValEnv g.pb)
@@ -673,27 +706,27 @@ theorem hpt_spqrSendPlacedContractsOfEnv_of_cli [LibsignalPlacement]
       LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget.EkReceivedCt1SampledSendCt1ChunkEnv
       LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget.Ct2SampledSendCt2ChunkEnv
       (cliGhostExterns gh (cliExternsPlaced mmpl W)) := by
-  have hAlloc := cliSpqrSendAllocContractsPlaced mmpl gh W hA.toCliGhostAllocHooks
-  have hS := cliStatesPlacedSeams mmpl gh W hA hHmac
+  have hAlloc := cliSpqrSendAllocContractsPlaced mmpl gh W hA
+  have hS := cliStatesPlacedSeams mmpl gh W hA hF hK hHmac
   exact
     { h_inner_eq := optProtoInnerStateAt_canonical_eq_drop A.repAlloc
       alloc := hAlloc
       coinsFill_ok := hpt_cliSpqrSend_coinsFill_on mmpl gh W hA.toCliGhostAllocHooks
       decodeState_ok := hpt_cliSpqrSend_decodeState_xOfEnv_on mmpl gh W hDecSub hA.toCliGhostAllocHooks
-      statesFromPb_ok := hpt_cliSpqrSend_statesFromPb_xOfEnv_on mmpl gh W hFromPbSub hA hHmac
+      statesFromPb_ok := hpt_cliSpqrSend_statesFromPb_xOfEnv_on mmpl gh W hFromPbSub hA hF hK hHmac
       statesIntoPb_ok := cliStatesIntoPb_sendCoins_exact_ok mmpl gh W hA.toCliGhostAllocHooks
       chainFromPb_ok := cliSpqrSend_chainFromPb_ok mmpl gh W hA.toCliGhostAllocHooks
-      chainFromVn_ok := cliSpqrSend_chainFromVn_ok mmpl gh W hA.toCliGhostAllocHooks
-      chainAddEpoch_ok := hpt_cliSpqrSend_chainAddEpoch_on mmpl gh W hA.toCliGhostAllocHooks
-      chainSendKey_ok := hpt_cliSpqrSend_chainSendKey_on mmpl gh W hA.toCliGhostAllocHooks
+      chainFromVn_ok := cliSpqrSend_chainFromVn_ok mmpl gh W hA.toCliGhostAllocHooks hF
+      chainAddEpoch_ok := hpt_cliSpqrSend_chainAddEpoch_on mmpl gh W hA.toCliGhostAllocHooks hF
+      chainSendKey_ok := hpt_cliSpqrSend_chainSendKey_on mmpl gh W hA.toCliGhostAllocHooks hF
       chainIntoPb_ok := cliSpqrSend_chainIntoPb_ok mmpl gh W hA.toCliGhostAllocHooks
       messageSerialize_ok := hpt_cliSpqrSend_messageSerialize_exact_on mmpl gh W hA
       encodeVarint_ok := hpt_cliSpqrSend_encodeVarint_on mmpl gh W hA
       authMacHdr_ok := cliAuthMacHdr_placed_ok mmpl gh W hA hHmac
-      authUpdate_ok := cliAuthUpdate_placed_ok mmpl gh W hA
-      hkdfToVec_ok := cliHkdfToVec_placed_ok mmpl gh W hA
+      authUpdate_ok := cliAuthUpdate_placed_ok mmpl gh W hA hF
+      hkdfToVec_ok := cliHkdfToVec_placed_ok mmpl gh W hA hF
       encodeBytes_ok := cliEncodeBytesPlacedOkX mmpl gh W hA.toCliGhostAllocHooks
-      polyNextChunk_ok := cliPolyNextChunkPlacedOkX mmpl gh W hA.toCliGhostAllocHooks
+      polyNextChunk_ok := cliPolyNextChunkPlacedOkX mmpl gh W hA
       headerSentSendEkChunk_ok := hS.headerSentSendEkChunk_on
       ct1ReceivedSendEkChunk_ok := hS.ct1ReceivedSendEkChunk_on
       ct1SampledSendCt1Chunk_ok := hS.ct1SampledSendCt1Chunk_on
@@ -767,7 +800,7 @@ theorem hpt_spqrSendBudgetActiveContinuation_placed_ok_tight [LibsignalPlacement
            FreeOnlyEvs evs_tail
        | .error (.panic _) => False) →
       Env x (evs_dec ++ evs_fpb ++ evs_tail)) :
-    SpqrSendBudgetActiveContinuationPlaced M A lim ctl C.F K
+    SpqrSendBudgetActiveContinuationDispPlaced M A lim ctl C.F K
       EnvDecode EnvFromPb Env ext := by
   intro x s0 st0 R hlen hrest_len hfits0 hsp_align pq v1 st_states evs_dec evs_fpb
     hdec hinner hfrom hevs_dec hevs_fpb w0 w1 hw0 sf hcrlf hpcf hrunf hspf htrf
@@ -988,7 +1021,7 @@ theorem hpt_spqrSendBudgetActiveContinuation_placed_ok_tight [LibsignalPlacement
           dsimp only [FrameArm, Rest314d8]; sep_ac_rfl
         _ = _ := by rw [hreg]; sep_ac_rfl
     rw [hP3196_eq]
-    refine step_send_from_314d8_ofEnv_placed (M.stepEvents evs_ss bSt) hA
+    refine step_send_from_314d8_disp_ofEnv_placed (M.stepEvents evs_ss bSt) hA
       hEx.panic_hook hEx.panicSubOverflow_hook
       hEx.dropChainEpochSlice_raw_ok hEx.dropChunkedStates_ok hC.chainFromPb_ok hC.chainFromVn_ok
       hC.chainAddEpoch_ok hC.chainSendKey_ok hC.chainIntoPb_ok hC.messageSerialize_ok
@@ -1036,7 +1069,7 @@ theorem hpt_spqrSendBudgetActiveContinuation_placed_ok_tight [LibsignalPlacement
         rw [M.stepEvents_append, M.stepEvents_append]
       rw [hsend_eq, hdraws_eq, hstep_eq]
       refine Entails.pure_right ⟨Nat.sub_le _ _, htr_f, hnp⟩ (Entails.trans hPf' ?_)
-      dsimp only [Rest314d8, RestTail, spqrSendFullRoPlacedAt, spqrSendRoPlacedAt]
+      dsimp only [spqrSendResultDispAt, Rest314d8, RestTail, spqrSendFullRoPlacedAt, spqrSendRoPlacedAt]
       have hinto_eq :
           CryptoVerification.Cli.SpqrV1.Top.Send.statesIntoPbJumpTablePlacedAt =
             statesIntoPbJumpTablePlacedAt := rfl
@@ -1140,9 +1173,9 @@ theorem hpt_spqrSendCoins_placed_ok_of_contracts_tight [LibsignalPlacement]
     (hEx : SpqrSendExtraContractsPlaced M A lim ctl C K ext) :
     subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        (spqrSendCoinsPlacedSpecTOfEnv M A lim ctl (spqrV1 C.F K)
+        (spqrSendCoinsDispPlacedSpecTOfEnv M A lim ctl (spqrV1 C.F K)
           (hpt_SpqrSendCoinsOfDecodeFromPbEnv C.F K DecBytesEnv FromPbValEnv))) := by
-  refine spqrSendCoins_placed_ok_of_contracts_and_continuation_ofEnv hC ?_ ?_ ?_ ?_ ?_
+  refine spqrSendCoins_disp_placed_ok_of_contracts_and_continuation_ofEnv hC ?_ ?_ ?_ ?_ ?_
     (hpt_spqrSendBudgetActiveContinuation_placed_ok_tight hA hC hEx ?_ ?_)
   · intro x _ st0 _ _ hfits0 evs hevs
     apply hfits0 evs
@@ -1240,8 +1273,10 @@ theorem hpt_cliSpqrSendCoins_placed_ok_of_decode_fromPb [LibsignalPlacement]
     (hDecSub : ∀ bs evs, DecodeStateBytesEnv bs evs → DecBytesEnv bs evs)
     (hFromPbSub : ∀ v1 evs, StatesFromPbEnv v1 evs → FromPbValEnv v1 evs)
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec W.C.F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec W.C.F M A lim))) :
     subroutine_ok
       ((blkPC_427).rebase (blkPl_427).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
@@ -1250,15 +1285,15 @@ theorem hpt_cliSpqrSendCoins_placed_ok_of_decode_fromPb [LibsignalPlacement]
           (pqxdhSpqrModel ⟨W.C, W.Q⟩)
           (hpt_SpqrSendCoinsOfDecodeFromPbEnv W.C.F W.Q.K DecBytesEnv FromPbValEnv))) := by
   have hraw := hpt_spqrSendCoins_placed_ok_of_contracts_tight
-    (cliSpqrSendAllocContractsPlaced mmpl gh W hA.toCliGhostAllocHooks)
-    (hpt_spqrSendPlacedContractsOfEnv_of_cli mmpl gh W hDecSub hFromPbSub hA hHmac)
-    (spqrSendExtraContractsPlaced_of_cli mmpl gh W hA hHmac)
+    (cliSpqrSendAllocContractsPlaced mmpl gh W hA)
+    (hpt_spqrSendPlacedContractsOfEnv_of_cli mmpl gh W hDecSub hFromPbSub hA hF hK hHmac)
+    (spqrSendExtraContractsPlaced_of_cli mmpl gh W hA hK hHmac)
   have hblk_wp : subroutine_ok
       (libsignalSessionLib.blockProgram lsmpl 427
         (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
       (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        (spqrSendCoinsPlacedSpecTOfEnv M A lim 0#64 (spqrV1 W.C.F W.Q.K)
+        (spqrSendCoinsDispPlacedSpecTOfEnv M A lim 0#64 (spqrV1 W.C.F W.Q.K)
           (hpt_SpqrSendCoinsOfDecodeFromPbEnv W.C.F W.Q.K DecBytesEnv FromPbValEnv))) := by
     rwa [← IsLsBlockProg.eq_blockProgram
       (prog := spqrSendPlacedProg (cliGhostExterns gh (cliExternsPlaced mmpl W)))]
@@ -1273,14 +1308,14 @@ theorem hpt_cliSpqrSendCoins_placed_ok_of_decode_fromPb [LibsignalPlacement]
         (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        (spqrSendCoinsPlacedSpecTOfEnv M A lim 0#64 (spqrV1 W.C.F W.Q.K)
+        (spqrSendCoinsDispPlacedSpecTOfEnv M A lim 0#64 (spqrV1 W.C.F W.Q.K)
           (hpt_SpqrSendCoinsOfDecodeFromPbEnv W.C.F W.Q.K DecBytesEnv FromPbValEnv))) := by
     simpa only [hwp_eq] using hblk_wp
   have hok : subroutine_ok
       ((blkPC_427).rebase (blkPl_427).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        (spqrSendCoinsPlacedSpecTOfEnv M A lim 0#64 (spqrV1 W.C.F W.Q.K)
+        (spqrSendCoinsDispPlacedSpecTOfEnv M A lim 0#64 (spqrV1 W.C.F W.Q.K)
           (hpt_SpqrSendCoinsOfDecodeFromPbEnv W.C.F W.Q.K DecBytesEnv FromPbValEnv))) :=
     ls_subroutine_ok_of_blockProgram_cro
       (callerProg := (blkPC_427).rebase (blkPl_427).base
@@ -1298,8 +1333,8 @@ theorem hpt_cliSpqrSendCoins_placed_ok_of_decode_fromPb [LibsignalPlacement]
     (fun (sc, stB) _ s hpre => by
       dsimp only [CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded,
         SpqrV1PlacedSeamsBudget.spqrSendCoinsPlacedSpecTOfEnv,
-        LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget.spqrSendCoinsPlacedSpec,
-        withLsCodeRoLoaded, spqrSendCoinsPlacedSpecTOfEnv, spqrSendCoinsPlacedSpecOfEnv]
+        LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget.spqrSendCoinsDispPlacedSpec,
+        withLsCodeRoLoaded, spqrSendCoinsDispPlacedSpecTOfEnv, spqrSendCoinsDispPlacedSpecOfEnv]
         at hpre ⊢
       rw [heq_cro s.mem] at hpre
       rw [hcoinsAt]
@@ -1307,8 +1342,8 @@ theorem hpt_cliSpqrSendCoins_placed_ok_of_decode_fromPb [LibsignalPlacement]
     (fun (sc, stB) _ s0 sf hpost => by
       dsimp only [CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded,
         SpqrV1PlacedSeamsBudget.spqrSendCoinsPlacedSpecTOfEnv,
-        LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget.spqrSendCoinsPlacedSpec,
-        withLsCodeRoLoaded, spqrSendCoinsPlacedSpecTOfEnv, spqrSendCoinsPlacedSpecOfEnv]
+        LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget.spqrSendCoinsDispPlacedSpec,
+        withLsCodeRoLoaded, spqrSendCoinsDispPlacedSpecTOfEnv, spqrSendCoinsDispPlacedSpecOfEnv]
         at hpost ⊢
       rw [hcoinsAfter] at hpost
       refine Satisfies.mono ?_ hpost
@@ -1327,8 +1362,10 @@ theorem hpt_cliSpqrSendCoins_placed_ok_tightLinked [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec W.C.F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec W.C.F M A lim))) :
     subroutine_ok
       ((blkPC_427).rebase (blkPl_427).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
@@ -1336,7 +1373,7 @@ theorem hpt_cliSpqrSendCoins_placed_ok_tightLinked [LibsignalPlacement]
         (SpqrV1PlacedSeamsBudget.spqrSendCoinsPlacedSpecTOfEnv M A lim 0#64
           (pqxdhSpqrModel ⟨W.C, W.Q⟩) (SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K))) :=
   hpt_cliSpqrSendCoins_placed_ok_of_decode_fromPb mmpl gh W
-    (fun _ _ h => h) (fun _ _ h => h) hA hHmac
+    (fun _ _ h => h) (fun _ _ h => h) hA hF hK hHmac
 
 /-- `hHmac`-discharged Block `427` producer at `SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K` on
 `(fineCostModel, fineHookRustCliAllocBudget γ mmpl tp brkStart)`. -/
@@ -1345,7 +1382,10 @@ theorem hpt_cliSpqrSendCoins_placed_ok_tightLinked_fine [LibsignalPlacement]
     (lim : BudgetLimits) (gh : CliGhostHooks) (W : CliHooks)
     (hPl_mng : VerifiedLibraries.mallocngLib.Placeable mmpl)
     (hGSpqr : CliGhostSpqrAllocHooks fineCostModel
-      (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim gh) :
+      (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (hHmacLookup : gh.extra.lookup spqrLibcruxHmacSym = some (libcruxHmacHookMallocng mmpl W.C.F)) :
     subroutine_ok
       ((blkPC_427).rebase (blkPl_427).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
@@ -1353,8 +1393,8 @@ theorem hpt_cliSpqrSendCoins_placed_ok_tightLinked_fine [LibsignalPlacement]
         (SpqrV1PlacedSeamsBudget.spqrSendCoinsPlacedSpecTOfEnv fineCostModel
           (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim 0#64
           (pqxdhSpqrModel ⟨W.C, W.Q⟩) (SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K))) :=
-  hpt_cliSpqrSendCoins_placed_ok_tightLinked mmpl gh W hGSpqr
-    (hpo_cliLibcruxHmac_budget_hookSat γ mmpl tp brkStart lim gh W hPl_mng)
+  hpt_cliSpqrSendCoins_placed_ok_tightLinked mmpl gh W hGSpqr hF hK
+    (hpo_cliLibcruxHmac_budget_hookSat γ mmpl tp brkStart lim gh W hPl_mng hHmacLookup)
 
 /-- `(M, I)`-generic `hHmac`-discharged Block `427` producer at
 `SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K` on `mallocngHookRustCliAllocBudget`. -/
@@ -1364,7 +1404,10 @@ theorem hpt_cliSpqrSendCoins_placed_ok_tightLinked_mallocngHook [LibsignalPlacem
     (lim : BudgetLimits) (gh : CliGhostHooks) (W : CliHooks)
     (hPl_mng : VerifiedLibraries.mallocngLib.Placeable mmpl)
     (hGSpqr : CliGhostSpqrAllocHooks M
-      (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim gh) :
+      (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (hHmacLookup : gh.extra.lookup spqrLibcruxHmacSym = some (libcruxHmacHookMallocng mmpl W.C.F)) :
     subroutine_ok
       ((blkPC_427).rebase (blkPl_427).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
@@ -1372,42 +1415,56 @@ theorem hpt_cliSpqrSendCoins_placed_ok_tightLinked_mallocngHook [LibsignalPlacem
         (SpqrV1PlacedSeamsBudget.spqrSendCoinsPlacedSpecTOfEnv M
           (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim 0#64
           (pqxdhSpqrModel ⟨W.C, W.Q⟩) (SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K))) :=
-  hpt_cliSpqrSendCoins_placed_ok_tightLinked mmpl gh W hGSpqr
-    (hpo_cliLibcruxHmac_mallocngHook_budget_hookSat hS γ mmpl tp brkStart lim gh W hPl_mng)
+  hpt_cliSpqrSendCoins_placed_ok_tightLinked mmpl gh W hGSpqr hF hK
+    (hpo_cliLibcruxHmac_mallocngHook_budget_hookSat hS γ mmpl tp brkStart lim gh W hPl_mng
+      hHmacLookup)
 
 /-- Complete `SpqrV1PlacedSeamsOfEnv` assembly at `(InitialStateEnv W.C.F, CliSpqrRecvTightLinkedEnv W,
-SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K)` for arbitrary `(M, A, lim)` given `hA` and `hHmac`. -/
+SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K)` for arbitrary `(M, A, lim)` given `hA`, `hF`, `hK`, `hHmac`, and `hFmt`. -/
 theorem hpt_spqrV1PlacedSeams_tightLinked_of_hmac [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec W.C.F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec W.C.F M A lim)))
+    (hFmt : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrFormatInnerSym
+      (formatInnerCallCliLsSpec M A lim)) :
     SpqrV1PlacedSeamsOfEnv M A lim mmpl gh W
       (InitialStateEnv W.C.F)
       (CliSpqrRecvTightLinkedEnv W)
       (SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K) :=
-  spqrV1PlacedSeamsOfEnv_of_sendCoins mmpl gh W hA hHmac
+  spqrV1PlacedSeamsOfEnv_of_sendCoins mmpl gh W hA hF hK hHmac
     (fun _ _ h => h) (fun _ _ _ h => h)
-    (hpt_cliSpqrSendCoins_placed_ok_tightLinked mmpl gh W hA hHmac)
+    (hpt_cliSpqrSendCoins_placed_ok_tightLinked mmpl gh W hA hF hK hHmac)
+    hFmt
 
 /-- Complete `hHmac`-discharged `SpqrV1PlacedSeamsOfEnv` assembly at
 `(InitialStateEnv W.C.F, CliSpqrRecvTightLinkedEnv W, SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K)` on
-`(fineCostModel, fineHookRustCliAllocBudget γ mmpl tp brkStart)` from ONLY
-`VerifiedLibraries.mallocngLib.Placeable mmpl` and `CliGhostSpqrAllocHooks` ...`). -/
+`(fineCostModel, fineHookRustCliAllocBudget γ mmpl tp brkStart)` from
+`VerifiedLibraries.mallocngLib.Placeable mmpl`, `CliGhostSpqrAllocHooks`, `hF`, `hK`, `hHmacLookup`, and `hFmt`. -/
 theorem hpt_spqrV1PlacedSeams_tightLinked [LibsignalPlacement]
     (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
     (lim : BudgetLimits) (gh : CliGhostHooks) (W : CliHooks)
     (hPl_mng : VerifiedLibraries.mallocngLib.Placeable mmpl)
     (hGSpqr : CliGhostSpqrAllocHooks fineCostModel
-      (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim gh) :
+      (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (hHmacLookup : gh.extra.lookup spqrLibcruxHmacSym = some (libcruxHmacHookMallocng mmpl W.C.F))
+    (hFmt : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrFormatInnerSym
+      (formatInnerCallCliLsSpec fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :
     SpqrV1PlacedSeamsOfEnv fineCostModel
       (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim mmpl gh W
       (InitialStateEnv W.C.F)
       (CliSpqrRecvTightLinkedEnv W)
       (SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K) :=
-  spqrV1PlacedSeamsOfEnv_tightLinked_of_sendCoins γ mmpl tp brkStart lim gh W hPl_mng hGSpqr
-    (hpt_cliSpqrSendCoins_placed_ok_tightLinked_fine γ mmpl tp brkStart lim gh W hPl_mng hGSpqr)
+  spqrV1PlacedSeamsOfEnv_tightLinked_of_sendCoins γ mmpl tp brkStart lim gh W hPl_mng hGSpqr hF hK
+    hHmacLookup
+    (hpt_cliSpqrSendCoins_placed_ok_tightLinked_fine γ mmpl tp brkStart lim gh W hPl_mng hGSpqr hF
+      hK hHmacLookup)
+    hFmt
 
 /-- `(M, I)`-generic `hHmac`-discharged `SpqrV1PlacedSeamsOfEnv` assembly at
 `(InitialStateEnv W.C.F, CliSpqrRecvTightLinkedEnv W, SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K)` on
@@ -1418,15 +1475,22 @@ theorem hpt_spqrV1PlacedSeams_tightLinked_mallocngHook [LibsignalPlacement]
     (lim : BudgetLimits) (gh : CliGhostHooks) (W : CliHooks)
     (hPl_mng : VerifiedLibraries.mallocngLib.Placeable mmpl)
     (hGSpqr : CliGhostSpqrAllocHooks M
-      (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim gh) :
+      (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (hHmacLookup : gh.extra.lookup spqrLibcruxHmacSym = some (libcruxHmacHookMallocng mmpl W.C.F))
+    (hFmt : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrFormatInnerSym
+      (formatInnerCallCliLsSpec M (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim)) :
     SpqrV1PlacedSeamsOfEnv M
       (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim mmpl gh W
       (InitialStateEnv W.C.F)
       (CliSpqrRecvTightLinkedEnv W)
       (SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K) :=
-  spqrV1PlacedSeamsOfEnv_mallocngHook_of_sendCoins hS γ mmpl tp brkStart lim gh W hPl_mng hGSpqr
+  spqrV1PlacedSeamsOfEnv_mallocngHook_of_sendCoins hS γ mmpl tp brkStart lim gh W hPl_mng hGSpqr hF
+    hK hHmacLookup
     (hpt_cliSpqrSendCoins_placed_ok_tightLinked_mallocngHook hS γ mmpl tp brkStart lim gh W
-      hPl_mng hGSpqr)
+      hPl_mng hGSpqr hF hK hHmacLookup)
+    hFmt
 
 /-! ## 5. Guarded-Tight Block `427` & `SpqrV1PlacedSeamsOfEnv` Producers -/
 
@@ -1442,20 +1506,22 @@ theorem hpt_cliSpqrSendCoins_placed_ok_guarded [LibsignalPlacement]
     (hTrue : ∀ sc evs, Guard sc → SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K sc evs → SendEnv sc evs)
     (hFalse : ∀ sc evs, ¬ Guard sc → SendEnv sc evs)
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec W.C.F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec W.C.F M A lim))) :
     subroutine_ok
       ((blkPC_427).rebase (blkPl_427).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
       (CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
         (SpqrV1PlacedSeamsBudget.spqrSendCoinsPlacedSpecTOfEnv M A lim 0#64
           (pqxdhSpqrModel ⟨W.C, W.Q⟩) SendEnv)) := by
-  have hok := hpt_cliSpqrSendCoins_placed_ok_tightLinked mmpl gh W hA hHmac
+  have hok := hpt_cliSpqrSendCoins_placed_ok_tightLinked mmpl gh W hA hF hK hHmac
   exact subroutine_ok_mono hok
     (fun (sc, stB) _ _ hpre => by
       dsimp only [CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded,
         SpqrV1PlacedSeamsBudget.spqrSendCoinsPlacedSpecTOfEnv,
-        LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget.spqrSendCoinsPlacedSpec]
+        LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget.spqrSendCoinsDispPlacedSpec]
         at hpre ⊢
       refine Satisfies.mono ?_ hpre
       refine sepConj_mono_left ?_
@@ -1470,7 +1536,7 @@ theorem hpt_cliSpqrSendCoins_placed_ok_guarded [LibsignalPlacement]
     (fun (sc, stB) _ _ _ hpost => by
       dsimp only [CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded,
         SpqrV1PlacedSeamsBudget.spqrSendCoinsPlacedSpecTOfEnv,
-        LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget.spqrSendCoinsPlacedSpec]
+        LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlacedBudget.spqrSendCoinsDispPlacedSpec]
         at hpost ⊢
       refine Satisfies.mono ?_ hpost
       refine sepConj_mono_left ?_
@@ -1494,7 +1560,10 @@ theorem hpt_cliSpqrSendCoins_placed_ok_guarded_fine [LibsignalPlacement]
     (hFalse : ∀ sc evs, ¬ Guard sc → SendEnv sc evs)
     (hPl_mng : VerifiedLibraries.mallocngLib.Placeable mmpl)
     (hGSpqr : CliGhostSpqrAllocHooks fineCostModel
-      (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim gh) :
+      (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (hHmacLookup : gh.extra.lookup spqrLibcruxHmacSym = some (libcruxHmacHookMallocng mmpl W.C.F)) :
     subroutine_ok
       ((blkPC_427).rebase (blkPl_427).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
@@ -1502,8 +1571,8 @@ theorem hpt_cliSpqrSendCoins_placed_ok_guarded_fine [LibsignalPlacement]
         (SpqrV1PlacedSeamsBudget.spqrSendCoinsPlacedSpecTOfEnv fineCostModel
           (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim 0#64
           (pqxdhSpqrModel ⟨W.C, W.Q⟩) SendEnv)) :=
-  hpt_cliSpqrSendCoins_placed_ok_guarded mmpl gh W hTrue hFalse hGSpqr
-    (hpo_cliLibcruxHmac_budget_hookSat γ mmpl tp brkStart lim gh W hPl_mng)
+  hpt_cliSpqrSendCoins_placed_ok_guarded mmpl gh W hTrue hFalse hGSpqr hF hK
+    (hpo_cliLibcruxHmac_budget_hookSat γ mmpl tp brkStart lim gh W hPl_mng hHmacLookup)
 
 /-- Leaf-parametric implication-guarded Block `427` producer on `(DecBytesEnv, FromPbValEnv)`
 (`hpt_SpqrSendGuardedImplBytesEnv Guard (hpt_SpqrSendCoinsOfDecodeFromPbBytesEnv W.C.F W.Q.K DecBytesEnv FromPbValEnv)`):
@@ -1519,8 +1588,10 @@ theorem hpt_cliSpqrSendCoins_placed_ok_guarded_leaves_imp [LibsignalPlacement]
       spqrDecodeState bs = .ok pq → pq.inner = some (.v1 v1) →
       StatesFromPbEnv v1 evs → FromPbValEnv v1 evs)
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec W.C.F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec W.C.F M A lim))) :
     subroutine_ok
       ((blkPC_427).rebase (blkPl_427).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
@@ -1537,7 +1608,7 @@ theorem hpt_cliSpqrSendCoins_placed_ok_guarded_leaves_imp [LibsignalPlacement]
         (hFromPbGuard sc.st.bytes · · · hG)
         hevs)
     (fun _ _ hnG hG => absurd hG hnG)
-    hA hHmac
+    hA hF hK hHmac
 
 /-- Leaf-parametric `if-then-else`-guarded Block `427` producer on `(DecBytesEnv, FromPbValEnv)`. -/
 theorem hpt_cliSpqrSendCoins_placed_ok_guarded_leaves_ite [LibsignalPlacement]
@@ -1551,8 +1622,10 @@ theorem hpt_cliSpqrSendCoins_placed_ok_guarded_leaves_ite [LibsignalPlacement]
       spqrDecodeState bs = .ok pq → pq.inner = some (.v1 v1) →
       StatesFromPbEnv v1 evs → FromPbValEnv v1 evs)
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec W.C.F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec W.C.F M A lim))) :
     subroutine_ok
       ((blkPC_427).rebase (blkPl_427).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 427)
@@ -1571,7 +1644,7 @@ theorem hpt_cliSpqrSendCoins_placed_ok_guarded_leaves_ite [LibsignalPlacement]
         hevs)
     (fun sc _ hnG => by
       simp only [hpt_SpqrSendGuardedIteBytesEnv, hnG, ↓reduceIte])
-    hA hHmac
+    hA hF hK hHmac
 
 /-- Guarded `SpqrV1PlacedSeamsOfEnv` assembly on `(fineCostModel, fineHookRustCliAllocBudget)` for
 any `Guard : SendCall → Prop` and `SendEnv : SendCall → List AllocEvent → Prop`. -/
@@ -1584,14 +1657,21 @@ theorem hpt_spqrV1PlacedSeams_guarded [LibsignalPlacement]
     (hFalse : ∀ sc evs, ¬ Guard sc → SendEnv sc evs)
     (hPl_mng : VerifiedLibraries.mallocngLib.Placeable mmpl)
     (hGSpqr : CliGhostSpqrAllocHooks fineCostModel
-      (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim gh) :
+      (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim gh)
+    (hF : W.C.F = sha256Compress)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (hHmacLookup : gh.extra.lookup spqrLibcruxHmacSym = some (libcruxHmacHookMallocng mmpl W.C.F))
+    (hFmt : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) spqrFormatInnerSym
+      (formatInnerCallCliLsSpec fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim)) :
     SpqrV1PlacedSeamsOfEnv fineCostModel
       (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim mmpl gh W
       (InitialStateEnv W.C.F)
       (CliSpqrRecvTightLinkedEnv W)
       SendEnv :=
-  spqrV1PlacedSeamsOfEnv_tightLinked_of_sendCoins γ mmpl tp brkStart lim gh W hPl_mng hGSpqr
+  spqrV1PlacedSeamsOfEnv_tightLinked_of_sendCoins γ mmpl tp brkStart lim gh W hPl_mng hGSpqr hF hK
+    hHmacLookup
     (hpt_cliSpqrSendCoins_placed_ok_guarded_fine γ mmpl tp brkStart lim gh W hTrue hFalse
-      hPl_mng hGSpqr)
+      hPl_mng hGSpqr hF hK hHmacLookup)
+    hFmt
 
 end LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsTightCliInst

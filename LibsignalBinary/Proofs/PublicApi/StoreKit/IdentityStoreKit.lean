@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKit
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.StoreKit.Identity
 
@@ -61,32 +62,31 @@ theorem PublicApiHooks.toNoStores {C : Crypto} {A : RustAlloc} {S : SpqrModel}
     on `Ok(t)`, word 0 is `-2` (`0xFFFFFFFFFFFFFFFE`), byte 8 is `1` (`true`) or `0` (`false`),
     and bytes `9..48` are uninspected (`memRegion (out + 9) 39`);
     on `Err(())`, word 0 is `speWord 26` followed by the `ApplicationCallbackError` payload. -/
-def trustPollOutAt (b out : BitVec 64) : Except Unit Bool → SepProp
+@[expose] def trustPollOutAt (b out : BitVec 64) : Except Unit Bool → SepProp
   | .ok t =>
     (out ↦₆₄ 0xFFFFFFFFFFFFFFFE#64) ∗ ((out + 8#64) ↦₈ (if t then 1#8 else 0#8)) ∗
       memRegion (out + 9#64) 39
   | .error () =>
-    (out ↦₆₄ 0x800000000000001A#64) ∗ ((out + 8#64) ↦₆₄ (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}")))) ∗
+    (out ↦₆₄ 0x800000000000001A#64) ∗ ((out + 8#64) ↦₆₄ b) ∗
       errTailAt b out ∗ memRegion (out + 0x28#64) 8
 
 /-- The 48-byte `Poll<Result<IdentityChange, SPE>>` written by `save_identity`'s future poll:
     on `Ok(c)`, word 0 is `-2` (`0xFFFFFFFFFFFFFFFE`), `u32` at `+8` is `1` (`replacedExisting`)
     or `0` (`newOrUnchanged`), and bytes `12..48` are uninspected (`memRegion (out + 0xc) 36`);
     on `Err(())`, word 0 is `speWord 26` followed by the `ApplicationCallbackError` payload. -/
-def savePollOutAt (b out : BitVec 64) : Except Unit IdentityChange → SepProp
+@[expose] def savePollOutAt (b out : BitVec 64) : Except Unit IdentityChange → SepProp
   | .ok c =>
     (out ↦₆₄ 0xFFFFFFFFFFFFFFFE#64) ∗
       ((out + 8#64) ↦₃₂ (if c == .replacedExisting then 1#32 else 0#32)) ∗
       memRegion (out + 0xc#64) 36
   | .error () =>
-    (out ↦₆₄ 0x800000000000001A#64) ∗ ((out + 8#64) ↦₆₄ (b + bv% (ls_reloc% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}")))) ∗
+    (out ↦₆₄ 0x800000000000001A#64) ∗ ((out + 8#64) ↦₆₄ b) ∗
       errTailAt b out ∗ memRegion (out + 0x28#64) 8
 
 /-- Pure data, trace projections, answer relations, and separation-logic predicates of an
     `IdentityKeyStore` implementation. -/
 structure IdentityStoreSpec (A : RustAlloc) (b : BitVec 64) where
-  /-- `IdentityKeyStore` trait-object vtable address (`E₀`: `b + 0x4dc20#64`; `M`: `b + 0x4dd88#64`;
-      `InMem`: `b + 0x4dce8#64`). -/
+  /-- `IdentityKeyStore` trait-object vtable address. -/
   id_vt : BitVec 64
   /-- Logical state of the identity store (`Unit` for `E₀`). -/
   IdState : Type
@@ -171,7 +171,7 @@ namespace IdentityStoreSpec
 variable {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
 
 /-- Resulting `IdState` after executing a list of `StoreCall`s starting from `ist0`. -/
-def idFinal (ist0 : ikit.IdState) (ans : StoreAnswers (List (BitVec 8)) Unit) :
+@[expose] def idFinal (ist0 : ikit.IdState) (ans : StoreAnswers (List (BitVec 8)) Unit) :
     List (StoreCall AddrVal (List (BitVec 8))) → ikit.IdState
   | [] => ist0
   | .isTrustedIdentity rem k dir :: cs =>
@@ -183,7 +183,7 @@ def idFinal (ist0 : ikit.IdState) (ans : StoreAnswers (List (BitVec 8)) Unit) :
 /-- Pure relation tying `ist0` and `ans` across a list of `StoreCall`s: requires `ikit.trustRel`
     on every `.isTrustedIdentity` call and `ikit.saveRel` on every `.saveIdentity` call
     (threading `trustUpdate` / `saveUpdate` across the call list). -/
-def idCallsRel (ist0 : ikit.IdState) (ans : StoreAnswers (List (BitVec 8)) Unit) :
+@[expose] def idCallsRel (ist0 : ikit.IdState) (ans : StoreAnswers (List (BitVec 8)) Unit) :
     List (StoreCall AddrVal (List (BitVec 8))) → Prop
   | [] => True
   | .isTrustedIdentity rem k dir :: cs =>
@@ -196,7 +196,7 @@ def idCallsRel (ist0 : ikit.IdState) (ans : StoreAnswers (List (BitVec 8)) Unit)
 
 /-- Combined trace events emitted by a single `StoreCall` under `kit : SessionStoreSpec A b` and
     `ikit : IdentityStoreSpec A b`. -/
-def callEvs (kit : SessionStoreSpec A b)
+@[expose] def callEvs (kit : SessionStoreSpec A b)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (ans : StoreAnswers (List (BitVec 8)) Unit) :
     StoreCall AddrVal (List (BitVec 8)) → List TraceEvent
@@ -206,7 +206,7 @@ def callEvs (kit : SessionStoreSpec A b)
   | .storeSession rem r' => kit.storeEvs encRecord rem r' ans.storeSession
 
 /-- Combined trace events emitted by a list of `StoreCall`s under `kit` and `ikit`. -/
-def traceOfWith (kit : SessionStoreSpec A b)
+@[expose] def traceOfWith (kit : SessionStoreSpec A b)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (ans : StoreAnswers (List (BitVec 8)) Unit)
     (calls : List (StoreCall AddrVal (List (BitVec 8)))) : List TraceEvent :=
@@ -298,7 +298,7 @@ theorem hookSaveBoxAt_memRegion (box self addrA keyA : BitVec 64) (st : BitVec 8
 
 /-- Canonical `HookIdentityStore` instance of `IdentityStoreSpec` at a given vtable address `id_vt`
     (`b + 0x4dc20#64` in `E₀`, `b + 0x4dd88#64` in Variant M). -/
-def hookIdentityStoreSpecAt (A : RustAlloc) (b id_vt : BitVec 64) : IdentityStoreSpec A b where
+@[expose] def hookIdentityStoreSpecAt (A : RustAlloc) (b id_vt : BitVec 64) : IdentityStoreSpec A b where
   id_vt := id_vt
   IdState := Unit
   identityAt := fun _ _ => .emp
@@ -308,15 +308,15 @@ def hookIdentityStoreSpecAt (A : RustAlloc) (b id_vt : BitVec 64) : IdentityStor
   saveRel := fun _ _ _ _ => True
   trustEvs := fun rem k dir ans => [trustEvent rem k dir ans]
   saveEvs := fun rem k ans => [saveEvent rem k ans]
-  trustShimOff := bv% (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" + 184)
-  trustFutVtOff := bv% (ls_xref% (ls_off% "<libsignal_protocol::proto::fingerprint::CombinedFingerprints as core::fmt::Debug>::fmt" + 60) (ls_off% "<libsignal_protocol::proto::fingerprint::CombinedFingerprints as core::fmt::Debug>::fmt" + 64) + 16)
-  trustPollOff := bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 16328)
-  trustFutDropOff := bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744)
+  trustShimOff := 0#64
+  trustFutVtOff := 0#64
+  trustPollOff := 0#64
+  trustFutDropOff := 256#64
   trustBoxSize := 32
-  saveShimOff := bv% (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#3]" + 88)
-  saveFutVtOff := bv% (ls_xref% (ls_off% "<libsignal_protocol::protocol::PlaintextContent as core::convert::From<libsignal_protocol::protocol::DecryptionErrorMessage>>::from" + 600) (ls_off% "<libsignal_protocol::protocol::PlaintextContent as core::convert::From<libsignal_protocol::protocol::DecryptionErrorMessage>>::from" + 604) + 8)
-  savePollOff := bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 16192)
-  saveFutDropOff := bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744)
+  saveShimOff := 0#64
+  saveFutVtOff := 0#64
+  savePollOff := 0#64
+  saveFutDropOff := 256#64
   saveBoxSize := 32
   trustShimStack := identityShimStack
   trustPollStack := identityPollStack
@@ -336,15 +336,15 @@ def hookIdentityStoreSpecAt (A : RustAlloc) (b id_vt : BitVec 64) : IdentityStor
   trustBoxSize_lt := by decide
   saveBoxSize_lt := by decide
   trustFutDrop_ne_zero := fun hb h => by
-    rw [show b = 0#64 - bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744) by rw [← h, BitVec.add_sub_cancel]] at hb
+    rw [show b = 0#64 - 256#64 by rw [← h, BitVec.add_sub_cancel]] at hb
     exact absurd hb (by decide)
   saveFutDrop_ne_zero := fun hb h => by
-    rw [show b = 0#64 - bv% (ls_off% "<[u8] as subtle::ConstantTimeEq>::ct_eq" + 15744) by rw [← h, BitVec.add_sub_cancel]] at hb
+    rw [show b = 0#64 - 256#64 by rw [← h, BitVec.add_sub_cancel]] at hb
     exact absurd hb (by decide)
 
-/-- Canonical `E₀` (`HookIdentityStore` at `b + 0x4dc20#64`) instance of `IdentityStoreSpec`. -/
+/-- Canonical `E₀` (`HookIdentityStore`) instance of `IdentityStoreSpec`. -/
 abbrev hookIdentityStoreSpec (A : RustAlloc) (b : BitVec 64) : IdentityStoreSpec A b :=
-  hookIdentityStoreSpecAt A b (b + bv% (ls_xref% (ls_off% "<libsignal_protocol::proto::wire::PreKeySignalMessage as core::fmt::Debug>::fmt" + 136) (ls_off% "<libsignal_protocol::proto::wire::PreKeySignalMessage as core::fmt::Debug>::fmt" + 140) + 16))
+  hookIdentityStoreSpecAt A b b
 
 theorem hookIdentityStoreSpecAt_idCallsRel_true {A : RustAlloc} {b id_vt : BitVec 64}
     (ans : StoreAnswers (List (BitVec 8)) Unit) :
@@ -378,7 +378,7 @@ theorem hookIdentityStoreSpecAt_traceOfWith_eq_hook {A : RustAlloc} {b id_vt : B
     cases c <;> rfl
 
 /-- Generic `is_trusted_identity` shim spec parameterized by `ikit : IdentityStoreSpec A b`. -/
-def kitTrustShimSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) :
+@[expose] def kitTrustShimSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) :
     Spec (IdentityShimCall × BitVec 8) where
   pre := fun (x, d) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x1 = x.addrA ∧ s.readReg64 .x2 = x.keyA ∧
@@ -392,7 +392,7 @@ def kitTrustShimSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Generic `save_identity` shim spec parameterized by `ikit : IdentityStoreSpec A b`. -/
-def kitSaveShimSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) :
+@[expose] def kitSaveShimSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) :
     Spec IdentityShimCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x1 = x.addrA ∧ s.readReg64 .x2 = x.keyA⌝ ∗
@@ -406,7 +406,7 @@ def kitSaveShimSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A 
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Generic `is_trusted_identity` poll spec parameterized by `ikit : IdentityStoreSpec A b`. -/
-def kitTrustPollSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) :
+@[expose] def kitTrustPollSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) :
     Spec (IdentityPollCall × Direction × BitVec 64 × ikit.IdState) where
   pre := fun (x, d, self, ist0) s =>
     ⌜s.readReg64 .x0 = x.fut ∧ s.readReg64 .x8 = x.out ∧ ikit.addrOk x.call.addr.val⌝ ∗
@@ -428,7 +428,7 @@ def kitTrustPollSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Generic `save_identity` poll spec parameterized by `ikit : IdentityStoreSpec A b`. -/
-def kitSavePollSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) :
+@[expose] def kitSavePollSpec {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) :
     Spec (IdentityPollCall × BitVec 64 × ikit.IdState) where
   pre := fun (x, self, ist0) s =>
     ⌜s.readReg64 .x0 = x.fut ∧ s.readReg64 .x8 = x.out ∧ ikit.addrOk x.call.addr.val⌝ ∗
@@ -459,150 +459,10 @@ abbrev kitSavePollSpecE {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpe
     Spec (IdentityPollCall × BitVec 64 × ikit.IdState) :=
   withEnvPre (kitSavePollSpec ikit) fun s => ikit.envOk s.fs.files
 
-/-! ### In-Image Poll Contracts (`logOff img` and `.inImage img`) -/
-
-/-- `spec` with `logOff img` added to the precondition and returned unchanged in the
-postcondition. -/
-abbrev withLogOff {α : Type} (spec : Spec α) (img : Obj.Image) : Spec α :=
-  { spec with
-    pre := fun x s => spec.pre x s ∗ logOff img
-    post := fun x s0 sf => spec.post x s0 sf ∗ logOff img }
-
-/-- A proof of `spec` is a proof of `withLogOff spec img`: frame `logOff img` (the panic outcome
-must absorb it). -/
-theorem subroutine_ok_withLogOff {α : Type} {prog : Program} {entry : BitVec 64} {spec : Spec α}
-    (img : Obj.Image) (h : subroutine_ok prog entry spec)
-    (hpan : ∀ x s0 sf, spec.onPanic x s0 sf ∗ logOff img ⊢ spec.onPanic x s0 sf)
-    (hexit : ∀ x code s0 sf, spec.onExit x code s0 sf = ⌜False⌝ := by intros; rfl)
-    (hoom : ∀ x s0 sf, spec.onOom x s0 sf = ⌜False⌝ := by intros; rfl) :
-    subroutine_ok prog entry (withLogOff spec img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hp hsp => ?_
-  have hp' : s0.mem ⊨ spec.pre x s0 ∗ (logOff img ∗ R) := by
-    rw [← sepConj_assoc]; exact hp
-  refine (h.to_outcome x (logOff img ∗ R) s0 hpc hrun hp' hsp).mono_outcome fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan_st, hq⟩ | ⟨code, _, hq⟩ | ⟨_, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    show sf.mem ⊨ (spec.post x s0 sf ∗ logOff img) ∗ R
-    rw [sepConj_assoc]; exact hq
-  · refine Or.inr (Or.inl ⟨hpan_st, ?_⟩)
-    show sf.mem ⊨ spec.onPanic x s0 sf ∗ R
-    rw [← sepConj_assoc] at hq
-    exact Satisfies.mono (sepConj_mono_left (hpan x s0 sf)) hq
-  · rw [hexit] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · rw [hoom] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-
-/-- The `is_trusted_identity` poll contract of an in-image identity store: `kitTrustPollSpecE`
-plus `logOff img`, under the image invariant. -/
-abbrev kitTrustPollSpecI {A : RustAlloc} {b : BitVec 64} (img : Obj.Image)
-    (ikit : IdentityStoreSpec A b) :
-    Spec (IdentityPollCall × Direction × BitVec 64 × ikit.IdState) :=
-  (withLogOff (kitTrustPollSpecE ikit) img).inImage img
-
-/-- The `save_identity` poll contract of an in-image identity store: `kitSavePollSpecE` plus
-`logOff img`, under the image invariant. -/
-abbrev kitSavePollSpecI {A : RustAlloc} {b : BitVec 64} (img : Obj.Image)
-    (ikit : IdentityStoreSpec A b) :
-    Spec (IdentityPollCall × BitVec 64 × ikit.IdState) :=
-  (withLogOff (kitSavePollSpecE ikit) img).inImage img
-
-theorem inImage_pre_intro {α : Type} {spec : Spec α} {img : Obj.Image} {x : α} {s : State}
-    {R : SepProp} (hfr : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpre : s.mem ⊨ spec.pre x s ∗ R) :
-    s.mem ⊨ (spec.inImage img).pre x s ∗ R := by
-  show s.mem ⊨ (⌜img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗ spec.pre x s) ∗ R
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨⟨hfr, hsym⟩, hpre⟩
-
-theorem subroutine_ok_withStepsPost_inImage {α : Type} {prog : Program} {entry : BitVec 64}
-    {spec : Spec α} {img : Obj.Image} (h : subroutine_ok prog entry (spec.inImage img)) :
-    subroutine_ok prog entry ((withStepsPost prog spec).inImage img) :=
-  subroutine_ok_withStepsPost h
-
 /-- The identity store's own trace events contain no file system event (`FsCtx`'s `Q`). -/
-def IdentityStoreSpec.Quiet {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) : Prop :=
+@[expose] def IdentityStoreSpec.Quiet {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b) : Prop :=
   (∀ rem k dir ans, NoFsEv (ikit.trustEvs rem k dir ans)) ∧
     (∀ rem k ans, NoFsEv (ikit.saveEvs rem k ans))
-
-/-- Read-only `.rodata` vtable slots required by `ikit : IdentityStoreSpec A img.base` under
-    `img.FrozenLoaded`. -/
-structure IdentityVtablesOk {A : RustAlloc} (img : Obj.Image)
-    (ikit : IdentityStoreSpec A img.base) : Prop where
-  saveSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((ikit.id_vt + 0x28#64) ↦₆₄ᵣ (img.base + ikit.saveShimOff)) ∗ P
-  trustSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((ikit.id_vt + 0x30#64) ↦₆₄ᵣ (img.base + ikit.trustShimOff)) ∗ P
-  saveFutDrop : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + ikit.saveFutVtOff) ↦₆₄ᵣ (img.base + ikit.saveFutDropOff)) ∗ P
-  saveFutSize : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + ikit.saveFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 ikit.saveBoxSize) ∗ P
-  saveFutAlign : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + ikit.saveFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P
-  saveFutPoll : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + ikit.saveFutVtOff + 0x18#64) ↦₆₄ᵣ (img.base + ikit.savePollOff)) ∗ P
-  trustFutDrop : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + ikit.trustFutVtOff) ↦₆₄ᵣ (img.base + ikit.trustFutDropOff)) ∗ P
-  trustFutSize : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + ikit.trustFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 ikit.trustBoxSize) ∗ P
-  trustFutAlign : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + ikit.trustFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P
-  trustFutPoll : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + ikit.trustFutVtOff + 0x18#64) ↦₆₄ᵣ (img.base + ikit.trustPollOff)) ∗ P
-
-/-- Full `IdentityStoreKitOk` bundle for an `IdentityStoreSpec`. -/
-structure IdentityStoreKitOk {A : RustAlloc} {b : BitVec 64} (ikit : IdentityStoreSpec A b)
-    (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop where
-  trustShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.trustShimOff)
-    (kitTrustShimSpec ikit)
-  trustPoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.trustPollOff)
-    (kitTrustPollSpecE ikit)
-  trustFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.trustFutDropOff)
-    futDropSpec
-  saveShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.saveShimOff)
-    (kitSaveShimSpec ikit)
-  savePoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.savePollOff)
-    (kitSavePollSpecE ikit)
-  saveFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.saveFutDropOff)
-    futDropSpec
-
-/-- The `IdentityStoreKitOk` bundle the MessageDecrypt / MessageEncrypt segments use: the shim and
-poll contracts may assume the image invariant (`.inImage img`), and the polls also `logOff img`
-(`kitTrustPollSpecI` / `kitSavePollSpecI`). Every `IdentityStoreKitOk` gives one
-(`IdentityStoreKitOk.toI`); an in-image identity store proves it directly. -/
-structure IdentityStoreKitOkI {A : RustAlloc} {b : BitVec 64} (img : Obj.Image)
-    (ikit : IdentityStoreSpec A b) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop where
-  trustShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.trustShimOff)
-    ((kitTrustShimSpec ikit).inImage img)
-  trustPoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.trustPollOff)
-    (kitTrustPollSpecI img ikit)
-  trustFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.trustFutDropOff)
-    futDropSpec
-  saveShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.saveShimOff)
-    ((kitSaveShimSpec ikit).inImage img)
-  savePoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.savePollOff)
-    (kitSavePollSpecI img ikit)
-  saveFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + ikit.saveFutDropOff)
-    futDropSpec
-
-/-- An identity store that assumes nothing about the image gives `IdentityStoreKitOkI`. -/
-theorem IdentityStoreKitOk.toI {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
-    {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)} {img : Obj.Image}
-    (h : IdentityStoreKitOk ikit C ctl abs) : IdentityStoreKitOkI img ikit C ctl abs where
-  trustShim := subroutine_ok_inImage_of_subroutine_ok img h.trustShim
-  trustPoll := subroutine_ok_inImage_of_subroutine_ok img
-    (subroutine_ok_withLogOff img h.trustPoll fun _ _ _ => by
-      dsimp only [kitTrustPollSpecE, withEnvPre, kitTrustPollSpec]
-      rw [sepConj_assoc]; exact sepConj_mono_right (entails_anyHeap _))
-  trustFutDrop := h.trustFutDrop
-  saveShim := subroutine_ok_inImage_of_subroutine_ok img h.saveShim
-  savePoll := subroutine_ok_inImage_of_subroutine_ok img
-    (subroutine_ok_withLogOff img h.savePoll fun _ _ _ => by
-      dsimp only [kitSavePollSpecE, withEnvPre, kitSavePollSpec]
-      rw [sepConj_assoc]; exact sepConj_mono_right (entails_anyHeap _))
-  saveFutDrop := h.saveFutDrop
 
 end CryptoVerification.LibsignalPublicApi.StoreKit.Identity
 
@@ -616,10 +476,6 @@ export Identity
    hookIdentityStoreSpecAt_idCallsRel_true hookIdentityStoreSpec_idCallsRel_true
    hookIdentityStoreSpecAt_traceOfWith_eq_hook
    kitTrustShimSpec kitSaveShimSpec
-   kitTrustPollSpec kitSavePollSpec kitTrustPollSpecE kitSavePollSpecE
-   withLogOff subroutine_ok_withLogOff kitTrustPollSpecI kitSavePollSpecI
-   inImage_pre_intro subroutine_ok_withStepsPost_inImage
-   IdentityVtablesOk
-   IdentityStoreKitOk IdentityStoreKitOkI IdentityStoreKitOk.toI)
+   kitTrustPollSpec kitSavePollSpec kitTrustPollSpecE kitSavePollSpecE)
 
 end CryptoVerification.LibsignalPublicApi.StoreKit

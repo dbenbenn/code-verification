@@ -11,33 +11,34 @@ module
 
 public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedBase
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInitCost
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+import Computational.Proofs.SessionCostedBase
 
 /-!
 # Static Cost, Size, Query, and `GRedBounded` Proofs for `SimDeliverForgeHalted`
 
 Proves total query, execution cost, syntactic size, and `GRedBounded` bounds for
-`simDeliverForgeRedProgHalted`.
--/
+`simDeliverForgeRedProgHalted`.-/
+
+namespace Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedCost
 
 public section
 
 set_option autoImplicit false
-
-namespace Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedCost
+set_option linter.unusedSectionVars false
 
 open OracleSpec OracleComp
 open _root_.ReductionDsl (Sig Ops Iface Ty Expr Comp Var CostedReduction bits
   reductionSizeBudget isGameQuery atomicSig atomicSessionOps fig8SmIfaceDF e2eSessionCodec
   PlainT BV256 BV512 U32 B smQT lpubT fig8CtT)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.SM (pGet pSet sendsInE)
-open CryptoGames.SM.Construction.DeliverForge (MakesAtMostQueriesDF specDF)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart)
-open CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.SM (pGet pSet sendsInE)
+open _root_.CryptoGames.SM.Construction.DeliverForge (MakesAtMostQueriesDF specDF)
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart)
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState)
 open CryptoVerification.LibsignalSpqrV1 (MlKem)
 open CryptoVerification.LibsignalSession (GRedBounded ratchetCostBudget ratchetCostBudget_pos)
 open CryptoVerification.E2E (Bytes paramsV1)
@@ -112,7 +113,6 @@ private theorem hopAOps {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
   · change 2 * 0 ≤ 8 + 3; omega
   · change 2 * 0 ≤ 8 + 1; omega
 
-noncomputable section
 set_option linter.unusedSectionVars false
 
 variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -124,7 +124,9 @@ local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 local notation "DFIface" => fig8SmIfaceDF ℓ Pt
 
 private theorem hb0_bits : bits 0 = 1 := by decide
+
 private theorem hb1_bits : bits 1 = 1 := by decide
+
 private theorem hb2_bits : bits 2 = 2 := by decide
 
 private theorem nextKemCandPolyC_queries_zero {ι : Type} {T : OracleSpec ι} {I : Iface ASig T}

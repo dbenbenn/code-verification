@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2Base
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
 import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2
 import ProofLib.SepLogic.WPp
@@ -27,7 +26,7 @@ at `0x37c68` (`197` instructions, calling `Ct1Sent::encoded_len [local#1]`,
 `do_reserve_and_handle [local#2]`, and `memcpy`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -66,101 +65,81 @@ local macro "cs_step " hcs:term:max hinv:term:max : term =>
   `(UnchunkedEncodeCalleeSavedPlaced.step $hcs (by simp only [arm64_norm]) (by simp only [arm64_norm])
     (by simp only [arm64_norm]) (by simp only [arm64_norm]) (by simp only [arm64_norm]) $hinv)
 
-def IsCt1Enc1EntryProg (prog : Program) (entry encLen_pc varint_pc auth_pc reserve_pc memcpy_pc : BitVec 64) : Prop :=
-  (∃ b ext, prog = tripleRatchetProgAtExt b ext ∧ entry = (tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name ∧
-    encLen_pc = entry + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#1]") ∧
-    varint_pc = entry + bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#2]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]") ∧
-    auth_pc = entry + bv% (2 ^ 64 - ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#1]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]") ∧
-    reserve_pc = entry + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#2]") ∧
-    memcpy_pc = entry + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "memcpy")) ∨
+@[expose] def IsCt1Enc1EntryProg (prog : Program) (entry encLen_pc varint_pc auth_pc reserve_pc memcpy_pc : BitVec 64) : Prop :=
+  False ∨
   (∃ (_ : LibsignalPlacement) (H : String → Option (State → State)),
     prog = lsProg_156 H ∧ entry = (blkPl_156).base ∧ encLen_pc = (blkPl_180).base ∧ varint_pc = (blkPl_148).base ∧
     auth_pc = lsmpl.base 151 ∧ reserve_pc = (blkPl_157).base ∧ memcpy_pc = lsρ lsMemcpySym)
 
-private theorem bv_bl_off_eq (a d k : BitVec 64) : d - k = a + d - (a + k) := by bv_omega
-
 theorem ct1_enc1_fetch_entry {prog : Program} {entry p1 p2 p3 p4 p5 : BitVec 64} {instr : Instr}
     (hfn : IsCt1Enc1EntryProg prog entry p1 p2 p3 p4 p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name) = some instr)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_156 H).fetch ((blkPl_156).base + 0#64) = some instr) :
     prog.fetch entry = some instr := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, -, -, -, -⟩ | ⟨inst, H, rfl, rfl, -, -, -, -, -⟩; exact hext b ext
-  letI := inst; have h := @hpl inst H; rwa [BitVec.add_zero] at h
+  rcases hfn with h | ⟨inst, H, rfl, rfl, -, -, -, -, -⟩
+  · nomatch h
+  · letI := inst; have h := @hpl inst H; rwa [BitVec.add_zero] at h
 
 theorem ct1_enc1_fetch_add {prog : Program} {entry p1 p2 p3 p4 p5 : BitVec 64} {k : Nat} {instr : Instr}
     (hfn : IsCt1Enc1EntryProg prog entry p1 p2 p3 p4 p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + BitVec.ofNat 64 k) = some instr)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_156 H).fetch ((blkPl_156).base + BitVec.ofNat 64 k) = some instr) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some instr := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, -, -, -, -⟩ | ⟨_, H, rfl, rfl, -, -, -, -, -⟩; exact hext b ext; exact hpl H
+  rcases hfn with h | ⟨_, H, rfl, rfl, -, -, -, -, -⟩
+  · nomatch h
+  · exact hpl H
 
-theorem ct1_enc1_fetch_bl_encLen {prog : Program} {entry encLen_pc p2 p3 p4 p5 : BitVec 64} {k : Nat} {off : BitVec 64}
+theorem ct1_enc1_fetch_bl_encLen {prog : Program} {entry encLen_pc p2 p3 p4 p5 : BitVec 64} {k : Nat}
     (hfn : IsCt1Enc1EntryProg prog entry encLen_pc p2 p3 p4 p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + BitVec.ofNat 64 k) = some (Instr.bl off))
-    (hoff : off = bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#1]") - BitVec.ofNat 64 k)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_156 H).fetch ((blkPl_156).base + BitVec.ofNat 64 k) =
       some (Instr.bl ((blkPl_156).ρ "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#1]" - (blkPl_156).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some (Instr.bl (encLen_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, rfl, -, -, -, -⟩ | ⟨inst, H, rfl, rfl, rfl, -, -, -, -⟩
-  · have hf := hext b ext; rw [hoff, bv_bl_off_eq] at hf; exact hf
+  rcases hfn with h | ⟨inst, H, rfl, rfl, rfl, -, -, -, -⟩
+  · nomatch h
   · letI := inst; have h := @hpl inst H; simp only [blkPl_156_ρ, ls_resolve_blk_180] at h
     rw [show lsmpl.base 180 - (blkPl_156).base - BitVec.ofNat 64 k = (blkPl_180).base - ((blkPl_156).base + BitVec.ofNat 64 k) by change (blkPl_180).base - (blkPl_156).base - BitVec.ofNat 64 k = _; bv_omega] at h; exact h
 
-theorem ct1_enc1_fetch_bl_varint {prog : Program} {entry p1 varint_pc p3 p4 p5 : BitVec 64} {k : Nat} {off : BitVec 64}
+theorem ct1_enc1_fetch_bl_varint {prog : Program} {entry p1 varint_pc p3 p4 p5 : BitVec 64} {k : Nat}
     (hfn : IsCt1Enc1EntryProg prog entry p1 varint_pc p3 p4 p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + BitVec.ofNat 64 k) = some (Instr.bl off))
-    (hoff : off = bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#2]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]") - BitVec.ofNat 64 k)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_156 H).fetch ((blkPl_156).base + BitVec.ofNat 64 k) =
       some (Instr.bl ((blkPl_156).ρ "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#2]" - (blkPl_156).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some (Instr.bl (varint_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, rfl, -, -, -⟩ | ⟨inst, H, rfl, rfl, -, rfl, -, -, -⟩
-  · have hf := hext b ext; rw [hoff, bv_bl_off_eq] at hf; exact hf
+  rcases hfn with h | ⟨inst, H, rfl, rfl, -, rfl, -, -, -⟩
+  · nomatch h
   · letI := inst; have h := @hpl inst H; simp only [blkPl_156_ρ, ls_resolve_blk_148] at h
     rw [show lsmpl.base 148 - (blkPl_156).base - BitVec.ofNat 64 k = (blkPl_148).base - ((blkPl_156).base + BitVec.ofNat 64 k) by change (blkPl_148).base - (blkPl_156).base - BitVec.ofNat 64 k = _; bv_omega] at h; exact h
 
-theorem ct1_enc1_fetch_bl_auth {prog : Program} {entry p1 p2 auth_pc p4 p5 : BitVec 64} {k : Nat} {off : BitVec 64}
+theorem ct1_enc1_fetch_bl_auth {prog : Program} {entry p1 p2 auth_pc p4 p5 : BitVec 64} {k : Nat}
     (hfn : IsCt1Enc1EntryProg prog entry p1 p2 auth_pc p4 p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + BitVec.ofNat 64 k) = some (Instr.bl off))
-    (hoff : off = bv% (2 ^ 64 - ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#1]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]") - BitVec.ofNat 64 k)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_156 H).fetch ((blkPl_156).base + BitVec.ofNat 64 k) =
       some (Instr.bl ((blkPl_156).ρ "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#1]" - (blkPl_156).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some (Instr.bl (auth_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, -, rfl, -, -⟩ | ⟨inst, H, rfl, rfl, -, -, rfl, -, -⟩
-  · have hf := hext b ext; rw [hoff, bv_bl_off_eq] at hf; exact hf
+  rcases hfn with h | ⟨inst, H, rfl, rfl, -, -, rfl, -, -⟩
+  · nomatch h
   · letI := inst; have h := @hpl inst H; simp only [blkPl_156_ρ, ls_resolve_blk_151] at h
     rw [show lsmpl.base 151 - (blkPl_156).base - BitVec.ofNat 64 k = lsmpl.base 151 - ((blkPl_156).base + BitVec.ofNat 64 k) by bv_omega] at h; exact h
 
-theorem ct1_enc1_fetch_bl_reserve {prog : Program} {entry p1 p2 p3 reserve_pc p5 : BitVec 64} {k : Nat} {off : BitVec 64}
+theorem ct1_enc1_fetch_bl_reserve {prog : Program} {entry p1 p2 p3 reserve_pc p5 : BitVec 64} {k : Nat}
     (hfn : IsCt1Enc1EntryProg prog entry p1 p2 p3 reserve_pc p5)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + BitVec.ofNat 64 k) = some (Instr.bl off))
-    (hoff : off = bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#2]") - BitVec.ofNat 64 k)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_156 H).fetch ((blkPl_156).base + BitVec.ofNat 64 k) =
       some (Instr.bl ((blkPl_156).ρ "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#2]" - (blkPl_156).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some (Instr.bl (reserve_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, -, -, rfl, -⟩ | ⟨inst, H, rfl, rfl, -, -, -, rfl, -⟩
-  · have hf := hext b ext; rw [hoff, bv_bl_off_eq] at hf; exact hf
+  rcases hfn with h | ⟨inst, H, rfl, rfl, -, -, -, rfl, -⟩
+  · nomatch h
   · letI := inst; have h := @hpl inst H; simp only [blkPl_156_ρ, ls_resolve_blk_157] at h
     rw [show lsmpl.base 157 - (blkPl_156).base - BitVec.ofNat 64 k = (blkPl_157).base - ((blkPl_156).base + BitVec.ofNat 64 k) by change (blkPl_157).base - (blkPl_156).base - BitVec.ofNat 64 k = _; bv_omega] at h; exact h
 
-theorem ct1_enc1_fetch_bl_memcpy {prog : Program} {entry p1 p2 p3 p4 memcpy_pc : BitVec 64} {k : Nat} {off : BitVec 64}
+theorem ct1_enc1_fetch_bl_memcpy {prog : Program} {entry p1 p2 p3 p4 memcpy_pc : BitVec 64} {k : Nat}
     (hfn : IsCt1Enc1EntryProg prog entry p1 p2 p3 p4 memcpy_pc)
-    (hext : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + BitVec.ofNat 64 k) = some (Instr.bl off))
-    (hoff : off = bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "memcpy") - BitVec.ofNat 64 k)
     (hpl : ∀ [LibsignalPlacement] (H : String → Option (State → State)), (lsProg_156 H).fetch ((blkPl_156).base + BitVec.ofNat 64 k) =
       some (Instr.bl ((blkPl_156).ρ "memcpy" - (blkPl_156).base - BitVec.ofNat 64 k))) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some (Instr.bl (memcpy_pc - (entry + BitVec.ofNat 64 k))) := by
-  rcases hfn with ⟨b, ext, rfl, rfl, -, -, -, -, rfl⟩ | ⟨inst, H, rfl, rfl, -, -, -, -, rfl⟩
-  · have hf := hext b ext; rw [hoff, bv_bl_off_eq] at hf; exact hf
+  rcases hfn with h | ⟨inst, H, rfl, rfl, -, -, -, -, rfl⟩
+  · nomatch h
   · letI := inst; have h := @hpl inst H
     rw [show (blkPl_156).ρ "memcpy" - (blkPl_156).base - BitVec.ofNat 64 k = lsρ lsMemcpySym - ((blkPl_156).base + BitVec.ofNat 64 k) by change lsρ lsMemcpySym - (blkPl_156).base - BitVec.ofNat 64 k = _; bv_omega] at h; exact h
 
 open Lean Meta Elab Tactic ProofLib in
 /-- Fetch instructions in `[kStart, kEnd)` for `encode<Ct1Sent> [local#1]`. -/
 elab "ct1_enc1_fetches_range " hfn:term:max kStart:num kEnd:num : tactic => do
-  let off := 0x37d4c
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let fnOff := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ct1SentEncode1_fnOff
   let fEntry := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ct1_enc1_fetch_entry
   let fAdd := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ct1_enc1_fetch_add
   let fEncLen := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ct1_enc1_fetch_bl_encLen
@@ -170,25 +149,23 @@ elab "ct1_enc1_fetches_range " hfn:term:max kStart:num kEnd:num : tactic => do
   let fMemcpy := mkIdent `CryptoVerification.SpqrV1.Prost.MessageEncode.ct1_enc1_fetch_bl_memcpy
   for i in [kStart.getNat / 4 : kEnd.getNat / 4] do
     let k := 4 * i
-    let dec := mkIdent (Name.str `CryptoVerification.SpqrV1.Prost.MessageEncode
-      ("libsignalSessionBin_decode_" ++ "0x" ++ String.ofList (Nat.toDigits 16 (off + k))))
     let kHex := String.ofList (Nat.toDigits 16 k)
     let lsFetch := mkIdent (`CryptoVerification |>.str s!"blkPC_156_rebase_fetch_0x{kHex}")
     let kq := Syntax.mkNumLit (toString k)
     if k == 0 then
-      evalTactic (← `(tactic| have := $fEntry $hfn (fun b ext => $fetchEntry (b := b) (H := Rust.withPanics ext) $fnOff (by decide) $dec) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fEntry $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else if k == 68 then
-      evalTactic (← `(tactic| have := $fEncLen (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (by decide) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fEncLen (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else if k == 76 || k == 128 || k == 212 || k == 320 || k == 428 then
-      evalTactic (← `(tactic| have := $fVarint (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (by decide) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fVarint (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else if k == 152 then
-      evalTactic (← `(tactic| have := $fAuth (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (by decide) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fAuth (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else if k == 508 || k == 532 || k == 556 || k == 580 || k == 636 || k == 660 || k == 716 || k == 740 then
-      evalTactic (← `(tactic| have := $fReserve (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (by decide) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fReserve (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else if k == 252 || k == 360 || k == 468 then
-      evalTactic (← `(tactic| have := $fMemcpy (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (by decide) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fMemcpy (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
     else
-      evalTactic (← `(tactic| have := $fAdd (k := $kq) $hfn (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff (by decide) $dec) (fun [LibsignalPlacement] H => $lsFetch _ H)))
+      evalTactic (← `(tactic| have := $fAdd (k := $kq) $hfn (fun [LibsignalPlacement] H => $lsFetch _ H)))
 
 /-! ## 1. Stage 1: Outer Header -/
 
@@ -906,26 +883,6 @@ theorem step_ct1_ct1f_1 {resStack : Nat} (hres : resStack + 48 + 128 < 2 ^ 64)
 
 /-! ## 7. Epilogue & Top-Level `subroutine_ok` for `encode<Ct1Sent> [local#1]` -/
 
-theorem ct1SentEncode1_encodedLen1_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#1]") = (tripleRatchetProgAtExt b ext).fnAddr ct1SentEncodedLenLocal1Name := by
-  have h1 := (ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]"); have h2 := (ls_lemma% fnOff "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#1]")
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, ct1SentEncode1Name, ct1SentEncodedLenLocal1Name, h1, h2]; bv_omega
-
-theorem ct1SentEncode1_encodeVarint2_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#2]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]") = (tripleRatchetProgAtExt b ext).fnAddr encodeVarint2Name := by
-  have h1 := (ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]"); have h2 := (ls_lemma% fnOff "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#2]")
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, ct1SentEncode1Name, encodeVarint2Name, h1, h2]; bv_omega
-
-theorem ct1SentEncode1_authEncode1_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#1]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]") = (tripleRatchetProgAtExt b ext).fnAddr authEncode1Name := by
-  have h1 := (ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]"); have h2 := (ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#1]")
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, ct1SentEncode1Name, authEncode1Name, h1, h2]; bv_omega
-
-theorem ct1SentEncode1_doReserve2_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#2]") = (tripleRatchetProgAtExt b ext).fnAddr doReserve2Name := by
-  have h1 := (ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]"); have h2 := (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#2]")
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, ct1SentEncode1Name, doReserve2Name, h1, h2]; bv_omega
-
 /-- Epilogue (`+0x1e0 .. +0x1f4`) of `encode<Ct1Sent> [local#1]`. -/
 theorem step_ct1_epilogue_1 {resStack : Nat} (hres : resStack + 48 + 128 < 2 ^ 64)
     {prog : Program} {entry encLen_pc varint_pc auth_pc reserve_pc memcpy_pc : BitVec 64}
@@ -938,14 +895,14 @@ theorem step_ct1_epilogue_1 {resStack : Nat} (hres : resStack + 48 + 128 < 2 ^ 6
       ((sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
       ((sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((sp - 8#64) ↦₆₄ s0.readReg64 .x19)) ∗ F)
     (hnext : ∀ (sf : State), sf.pc = s0.readReg64 .lr → sf.status = .Running → sf.sp = sp →
-      sf.trace = s0.trace → CalleeSavedPreserved s0 sf → StepInv s0 sf →
+      sf.trace = s0.trace → CalleeSavedPreserved s0 sf → StepInvPlaced s0 sf →
       Q sf (stackAt sp (unchunkedMsgEncodeStackOf resStack) ∗ F)) :
     SepWPp prog (s0.readReg64 .lr) s P Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncodeOnPanic s0 sf ∗ R)) := by
   ct1_enc1_fetches_range hfn 480 500; examples_hide_fetches; subst hP
   have hsp_aligned := sp_sub_64_aligned halign
   apply SepWPp.of_sepWP_cs_placed (mid := s0.readReg64 .lr); wp_steps; apply SepWP.done an an; intro hinv
   have hcs' := cs_step hcs hinv
-  refine SepWPp.weaken_pre ?_ (SepWPp.done an an (hnext _ an an an an ⟨an, an, an, an, an, hcs'.1, hcs'.2.1, hcs'.2.2.1, hcs'.2.2.2.1, hcs'.2.2.2.2.1, an, hcs'.2.2.2.2.2.1⟩ hcs'.2.2.2.2.2.2.1))
+  refine SepWPp.weaken_pre ?_ (SepWPp.done an an (hnext _ an an an an ⟨an, an, an, an, an, hcs'.1, hcs'.2.1, hcs'.2.2.1, hcs'.2.2.2.1, hcs'.2.2.2.2.1, an, hcs'.2.2.2.2.2.1⟩ hcs'.2.2.2.2.2.2))
   rw [stackAt_unchunkedMsgEncode hres sp]; refine sepConj_mono_left (sepConj_mono_right ?_)
   exact Entails.sepExists_right (s0.readReg64 .fp) (Entails.sepExists_right (s0.readReg64 .lr)
     (Entails.sepExists_right (s0.readReg64 .x23) (Entails.sepExists_right sv3
@@ -1047,62 +1004,6 @@ theorem ct1SentEncode1_gen_ok_prog {resStack : Nat} (hres : resStack + 48 + 128 
   rw [hpure, pure_true, emp_sepConj, ct1SentPBPinnedAt, unchunked5PinnedAt, ← bs0_append_encodeCt1SentMsg x.bs x.m]
   dsimp only [bs5, bs4, bs3, bs2, bs1] at hm; rw [sepConj_emp] at hm; convert hm using 1; ac_rfl
 
-/-- General `SepWPp` correctness for `encode<Ct1Sent> [local#1]` at `(tripleRatchetProgAtExt b ext)`. -/
-theorem ct1SentEncode1_gen_ok_ext {resStack : Nat} (hres : resStack + 48 + 128 < 2 ^ 64)
-    {b : BitVec 64} {A : RustAlloc} {ext : String → Option (State → State)} {x : Ct1SentEncodePinnedGhost} {R : SepProp} {s0 : State}
-    (hencLen : subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#1]")) (withUnchunkedEncodeCSPlaced s0 (ct1SentEncodedLenPinnedSpec A)))
-    (henc : subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#2]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]")) (withUnchunkedEncodeCSPlaced s0 (encodeVarintFitSpecOf resStack A)))
-    (hauth : subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#1]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]")) (withUnchunkedEncodeCSPlaced s0 (authEncodePinnedSpecOf resStack A)))
-    (hdoReserve : subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#2]")) (withUnchunkedEncodeCSPlaced s0 (doReserve2SpecOf resStack A)))
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "memcpy")) sessionMemcpyRegionSpec)
-    (hpc : s0.pc = (tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name) (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨ (ct1SentEncodePinnedSpecOf resStack A).pre x s0 ∗ R) (hsp : s0.spAligned = true) :
-    ∃ P, (s0.mem ⊨ P ∗ R) ∧ SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 .lr) s0 P
-      (fun s' Q => ((s'.mem ⊨ Q ∗ R) → (s'.mem ⊨ (ct1SentEncodePinnedSpecOf resStack A).post x s0 s' ∗ R)) ∧ s'.sp = s0.sp ∧ CalleeSavedPreserved s0 s')
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (ct1SentEncodePinnedSpec A).onPanic x s0 sf ∗ R)) :=
-  ct1SentEncode1_gen_ok_prog hres (Or.inl ⟨b, ext, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩)
-    hencLen henc hauth hdoReserve hmemcpy hpc hrun hpre hsp
-
-theorem ct1_sent_encode_1_pinned_ok_ext {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    Ct1SentEncode1PinnedOkExt b A ext := by
-  apply subroutine_ok_of_sepWPp; intro x R s0 hpc hrun hpre hsp
-  have hencLen0 : subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#1]")) (ct1SentEncodedLenPinnedSpec A) := by
-    rw [ct1SentEncode1_encodedLen1_fnAddr_eq]; exact ct1SentEncodedLen_local1_pinned_ok_ext b A ext
-  have henc0 : subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#2]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]")) (encodeVarintFitSpecOf doReserveStack A) := by
-    rw [ct1SentEncode1_encodeVarint2_fnAddr_eq]; exact encode_varint2_fit_ok_ext hA
-  have hauth0 : subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#1]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]")) (authEncodePinnedSpecOf doReserveStack A) := by
-    rw [ct1SentEncode1_authEncode1_fnAddr_eq]; exact auth_encode_1_pinned_ok_ext hA
-  have hdoReserve0 : subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#2]")) (doReserve2SpecOf doReserveStack A) := by
-    rw [ct1SentEncode1_doReserve2_fnAddr_eq]; exact do_reserve2_ok_ext hA
-  have hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "memcpy")) sessionMemcpyRegionSpec :=
-    hA.session_memcpy_region_ok_at ct1SentEncode1Name (num% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "memcpy")) (by rw [(ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]"), (ls_stub% "memcpy")])
-  obtain ⟨P, hP, hwp⟩ := ct1SentEncode1_gen_ok_ext (by decide)
-    (subroutine_ok_withUnchunkedEncodeCSPlaced s0 hencLen0) (subroutine_ok_withUnchunkedEncodeCSPlaced s0 henc0)
-    (subroutine_ok_withUnchunkedEncodeCSPlaced s0 hauth0) (subroutine_ok_withUnchunkedEncodeCSPlaced s0 hdoReserve0) hmemcpy hpc hrun hpre hsp
-  exact ⟨P, R, hP, hwp⟩
-
-theorem ct1_sent_encode_1_pinned_ok_ext_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts img.base A ext) :
-    Ct1SentEncode1PinnedOkX img A ext := by
-  have hdoReserve := do_reserve2_ok_ext_x (img := img) hA
-  apply subroutine_ok_of_sepWPp; intro x R s0 hpc hrun hpre hsp
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre; obtain ⟨hinv0, hpre⟩ := hpre
-  have hencLen0 : subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent as prost::message::Message>::encoded_len [local#1]")) (ct1SentEncodedLenPinnedSpec A) := by
-    rw [ct1SentEncode1_encodedLen1_fnAddr_eq]; exact ct1SentEncodedLen_local1_pinned_ok_ext img.base A ext
-  have henc0 : subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr ct1SentEncode1Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#2]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]")) ((encodeVarintFitSpecOf doReserveStackX A).inImage img) := by
-    rw [ct1SentEncode1_encodeVarint2_fnAddr_eq]; exact encodeVarint2_fit_ok_ext_x img A ext hdoReserve
-  have hauth0 : subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr ct1SentEncode1Name + bv% (2 ^ 64 - ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::Authenticator, alloc::vec::Vec<u8>> [local#1]" "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]")) ((authEncodePinnedSpecOf doReserveStackX A).inImage img) := by
-    rw [ct1SentEncode1_authEncode1_fnAddr_eq]; exact auth_encode_1_pinned_ok_ext_x hA
-  have hdoReserve0 : subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#2]")) ((doReserve2SpecOf doReserveStackX A).inImage img) := by
-    rw [ct1SentEncode1_doReserve2_fnAddr_eq]; exact hdoReserve
-  have hmemcpy : subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr ct1SentEncode1Name + bv% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "memcpy")) sessionMemcpyRegionSpec :=
-    hA.session_memcpy_region_ok_at ct1SentEncode1Name (num% (ls_rel% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]" "memcpy")) (by rw [(ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, alloc::vec::Vec<u8>> [local#1]"), (ls_stub% "memcpy")])
-  obtain ⟨P, hP, hwp⟩ := ct1SentEncode1_gen_ok_ext (by decide)
-    (subroutine_ok_withUnchunkedEncodeCSPlaced s0 hencLen0) (subroutine_ok_withUnchunkedEncodeCSPlaced_x img s0 hinv0 henc0)
-    (subroutine_ok_withUnchunkedEncodeCSPlaced_x img s0 hinv0 hauth0) (subroutine_ok_withUnchunkedEncodeCSPlaced_x img s0 hinv0 hdoReserve0) hmemcpy hpc hrun hpre hsp
-  exact ⟨P, R, hP, hwp⟩
-
 theorem ct1SentEncode_post_unpinned_of_pinned {resStack : Nat} {A : RustAlloc}
     {x : Ct1SentEncodeGhost} {g : Unchunked5PBGhost} {s0 sf : State} {R : SepProp}
     (hq : sf.mem ⊨ (ct1SentEncodePinnedSpecOf resStack A).post ⟨x.msgA, g, x.m, x.v, x.cap, x.ptr, x.bs⟩ s0 sf ∗ R) :
@@ -1125,21 +1026,6 @@ theorem ct1SentEncode_unpinned_of_pinned {resStack : Nat} {prog : Program} {entr
   rw [ct1SentPBAt, unchunked5At_eq_exists_pinned] at hpre
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpre; rcases hpre with ⟨g, hpre⟩
   refine hpinned.mono_outcome ⟨x.msgA, g, x.m, x.v, x.cap, x.ptr, x.bs⟩ R s0 hpc hrun hpre hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | hrest
-  · exact Or.inl ⟨hret, hcc, ct1SentEncode_post_unpinned_of_pinned hq⟩
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr hrest)
-
-theorem ct1SentEncode_unpinned_of_pinned_x {resStack : Nat} {img : Obj.Image} {prog : Program} {entry : BitVec 64} {A : RustAlloc}
-    (hpinned : subroutine_ok prog entry ((ct1SentEncodePinnedSpecOf resStack A).inImage img)) :
-    subroutine_ok prog entry ((ct1SentEncodeSpecOf resStack A).inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre; obtain ⟨hinv0, hpre⟩ := hpre
-  dsimp only [ct1SentEncodeSpecOf] at hpre; rw [ct1SentPBAt, unchunked5At_eq_exists_pinned] at hpre
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpre; rcases hpre with ⟨g, hpre⟩
-  have hpre' : s0.mem ⊨ ((ct1SentEncodePinnedSpecOf resStack A).inImage img).pre ⟨x.msgA, g, x.m, x.v, x.cap, x.ptr, x.bs⟩ s0 ∗ R := by
-    rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]; exact ⟨hinv0, hpre⟩
-  refine hpinned.mono_outcome ⟨x.msgA, g, x.m, x.v, x.cap, x.ptr, x.bs⟩ R s0 hpc hrun hpre' hsp fun sf hout => ?_
   rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | hrest
   · exact Or.inl ⟨hret, hcc, ct1SentEncode_post_unpinned_of_pinned hq⟩
   · exact Or.inr (Or.inl ⟨hpan, hq⟩)

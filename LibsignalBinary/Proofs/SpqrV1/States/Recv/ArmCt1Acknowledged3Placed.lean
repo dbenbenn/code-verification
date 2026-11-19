@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged3
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged2Placed
@@ -30,7 +30,7 @@ Relocatable `[LibsignalPlacement]` `.done` path, Branch C composition, and top-l
 `.ct1Acknowledged` contract `states_recv_ct1Acknowledged_placed_ok_ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -125,16 +125,10 @@ theorem ct1Ack_step_4468_done_4924_placed [LibsignalPlacement]
         sm.readReg64 .x26 = w.b0.w5 ∧ sm.readReg64 .x29 = s.readReg64 .x29 ∧
         sm.readReg64 .x30 = w.b3.w8 ∧ TraceCalleeSaved sm s) := by
   subst hsp
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 4468 28
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 13292 372
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 18148 4
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 18160 64
-  states_recv_fetches_range (blkPl_332).base (Rust.withPanics ext) 19360 156
   rw [lsmpl_base_332_eq] at hpc ⊢
   dsimp only [lsProg_332, noneCap, BitVec.ofNat_eq_ofNat] at hpc ⊢
   generalize_entry ((blkPC_332).rebase (blkPl_332).base (Rust.withPanics ext)).fnAddr
     "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
   wp_simp_pre [words57At, sendEkSpillsAt, ct1AckSpillsDone4924, words10At, pointsTo128, noneCap,
     bv_add_lit_add_lit_recv, Nat.reduceAdd, sepConj_assoc]
   wp_steps 256

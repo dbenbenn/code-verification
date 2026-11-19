@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTight
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTight
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Tight Panic Contracts for `try_decrypt_with_state`
@@ -21,7 +22,7 @@ Defines `tryDecryptOnPanicTight` and `tryDecryptFnOnPanicTight` over `RustCliAll
 and `.weaken` bridges to `DefsBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +58,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget (
 /-- Budget-threaded tight panic postcondition for `try_decrypt_with_state`: drops both
     `S.recvPanics` and `allocFailedIn`, keeping only `(x.model C S parse).1 = .error .panic`
     and trace monotonicity. -/
-def tryDecryptOnPanicTight (C : Crypto) (S : SpqrModel) (parse : UuidParser)
+@[expose] def tryDecryptOnPanicTight (C : Crypto) (S : SpqrModel) (parse : UuidParser)
     (x : TryDecryptGhost) (s0 sf : State) : SepProp :=
   ⌜(x.model C S parse).1 = .error .panic ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
@@ -74,7 +75,7 @@ theorem tryDecryptOnPanicTight_weaken {C : Crypto} {parse : UuidParser} {S : Spq
   exact ⟨⟨Or.inl hp, htr⟩, hmem⟩
 
 /-- `DefsBudget.tryDecryptRawSpecPlaced` with tight `onPanic := tryDecryptOnPanicTight`. -/
-def tryDecryptRawSpecTightPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptRawSpecTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -83,7 +84,7 @@ def tryDecryptRawSpecTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     onPanic := fun (x, _) s0 sf => tryDecryptOnPanicTight C S parse x s0 sf }
 
 /-- `DefsBudget.tryDecryptSpecPlaced` with tight `onPanic := tryDecryptOnPanicTight`. -/
-def tryDecryptSpecTightPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptSpecTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -117,7 +118,7 @@ theorem reaches_outcome_tight_weaken_placed [LibsignalPlacement] {M : AllocCostM
   · exact Or.inr (Or.inr (Or.inl hexit))
   · exact Or.inr (Or.inr (Or.inr hoom))
 
-def ErrTailSeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ErrTailSeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -134,7 +135,7 @@ def ErrTailSeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     reaches_outcome prog (tryDecryptSpecTightPlaced C A lim ctl parse S tdEnv)
       (x, st_init) R s0 s
 
-def S1SeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S1SeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -154,7 +155,7 @@ def S1SeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
         ∃ evs trG, s1OkEnv x evs ∧
           FindChainStatePlaced entry A lim (M.stepEvents evs st) ctl x trG tr st1 R s0 s'
 
-def S3SeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S3SeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -235,7 +236,7 @@ theorem S3SeamTightPlaced.weaken [LibsignalPlacement] {M : AllocCostModel}
 /-! ## 2. `Stage2ContractsX` (`decFn` / `X`) Tight Panic Contracts & Seams -/
 
 /-- Budget-threaded tight panic postcondition for `tryDecryptFnSpecPlaced` (`decFn` variant). -/
-def tryDecryptFnOnPanicTight (C : Crypto)
+@[expose] def tryDecryptFnOnPanicTight (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
     (S : SpqrModel) (parse : UuidParser)
     (x : TryDecryptGhost) (s0 sf : State) : SepProp :=
@@ -255,7 +256,7 @@ theorem tryDecryptFnOnPanicTight_weaken {C : Crypto}
   obtain ⟨⟨hp, htr⟩, hmem⟩ := h
   exact ⟨⟨Or.inl hp, htr⟩, hmem⟩
 
-def tryDecryptFnRawSpecTightPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptFnRawSpecTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
@@ -265,7 +266,7 @@ def tryDecryptFnRawSpecTightPlaced [LibsignalPlacement] {M : AllocCostModel}
   { tryDecryptFnRawSpecPlaced C decFn A lim ctl parse S tdEnv with
     onPanic := fun (x, _) s0 sf => tryDecryptFnOnPanicTight C decFn S parse x s0 sf }
 
-def tryDecryptFnSpecTightPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptFnSpecTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
@@ -305,7 +306,7 @@ theorem reaches_outcome_fn_tight_weaken_placed [LibsignalPlacement] {M : AllocCo
   · exact Or.inr (Or.inr (Or.inl hexit))
   · exact Or.inr (Or.inr (Or.inr hoom))
 
-def ErrTailSeamTightXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ErrTailSeamTightXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -324,7 +325,7 @@ def ErrTailSeamTightXPlaced [LibsignalPlacement] {M : AllocCostModel}
     reaches_outcome prog (tryDecryptFnSpecTightPlaced C decFn A lim ctl parse S tdEnv)
       (x, st_init) R s0 s
 
-def S1SeamTightXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S1SeamTightXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -346,7 +347,7 @@ def S1SeamTightXPlaced [LibsignalPlacement] {M : AllocCostModel}
         ∃ evs trG, s1OkEnv x evs ∧
           FindChainStatePlaced entry A lim (M.stepEvents evs st) ctl x trG tr st1 R s0 s'
 
-def S3SeamTightXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S3SeamTightXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))

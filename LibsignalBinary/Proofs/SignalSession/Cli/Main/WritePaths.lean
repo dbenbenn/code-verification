@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
 import LibsignalBinary.Proofs.SignalSession.Cli.Specs
 import LibsignalBinary.Proofs.TripleRatchet.InImage.UuidTryParse.DecodeHex32
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Store Write-Path Validity for `main`
@@ -27,7 +28,7 @@ Because `serviceIdParse uuidParse` constrains the byte length (36 or 40 bytes) f
 `uuidTryParse`, `serviceIdParse_compOk` discharges `CompOk` unconditionally.
 -/
 
-@[expose] public section
+public section
 
 set_option warningAsError false
 
@@ -45,12 +46,12 @@ open CryptoVerification.SignalSession.Cli.Decimal.Helpers
 /-! ## Path Components -/
 
 /-- Allowed byte values in store path components: `-`, `.`, `0`–`9`, `:`, `A`–`Z`, and `a`–`z`. -/
-def nameCode (b : BitVec 8) : Bool :=
+@[expose] def nameCode (b : BitVec 8) : Bool :=
   b.toNat == 45 || b.toNat == 46 || (48 ≤ b.toNat && b.toNat ≤ 58) ||
     (65 ≤ b.toNat && b.toNat ≤ 90) || (97 ≤ b.toNat && b.toNat ≤ 122)
 
 /-- Valid path component: every byte satisfies `nameCode` and at least one byte is not `.` (excluding `""`, `.`, and `..`). -/
-def CompOk (p : List (BitVec 8)) : Prop :=
+@[expose] def CompOk (p : List (BitVec 8)) : Prop :=
   (∀ b ∈ p, nameCode b = true) ∧ ∃ b ∈ p, b ≠ 0x2e#8
 
 instance (p : List (BitVec 8)) : Decidable (CompOk p) :=
@@ -220,7 +221,7 @@ theorem cliWrOk_own {name : List (BitVec 8)} (hn : CompOk name) (hlen : name.len
     Nat.lt_trans hlen' (by decide)⟩
 
 /-- Store subdirectory names opened by `Stores::open()` (excluding the root `""`). -/
-def storeDirs : List (List (BitVec 8)) :=
+@[expose] def storeDirs : List (List (BitVec 8)) :=
   [utf8 "identities", utf8 "signed-pre-keys", utf8 "one-time-kyber-pre-keys",
     utf8 "last-resort-kyber-pre-keys", utf8 "one-time-pre-keys", utf8 "sessions", utf8 "public"]
 
@@ -292,20 +293,6 @@ theorem baseKeysName_length (id : BitVec 32) : (baseKeysName id).length ≤ 20 :
   have := keyName_length id
   omega
 
-theorem dot_ok : (∀ b ∈ utf8 ".", nameCode b = true) ∧ (utf8 ".").length = 1 := by
-  decide +kernel
-
-theorem compOk_addressText {a : LibsignalPublicApiRepr.AddrVal} (h : CompOk a.name) :
-    CompOk (addressText a) :=
-  compOk_append (compOk_append h dot_ok.1) (compOk_decimalText _).1
-
-theorem addressText_length (a : LibsignalPublicApiRepr.AddrVal) :
-    (addressText a).length ≤ a.name.length + 4 := by
-  unfold addressText
-  rw [List.length_append, List.length_append, dot_ok.2]
-  have := decimalText_length_le 3 a.device.toNat (by omega) (Nat.lt_trans a.device.isLt (by decide))
-  omega
-
 /-- For any `uuidParse`, `serviceIdParse` accepts only 36-byte (ACI) or 40-byte (`PNI:`) names. -/
 theorem serviceIdParse_length {uuidParse : UuidParser} {name : List (BitVec 8)}
     {r : Bool × List.Vector (BitVec 8) 16} (h : serviceIdParse uuidParse name = some r) :
@@ -331,15 +318,6 @@ theorem serviceIdParse_length {uuidParse : UuidParser} {name : List (BitVec 8)}
 
 /-! ## Per-Constructor `cliWrOk` Lemmas -/
 
-theorem cliWrOk_peer {name : List (BitVec 8)} (hn : CompOk name) (hlen : name.length ≤ 40) :
-    cliWrOk (pathOf (utf8 "identities") name) :=
-  cliWrOk_storeDir (by decide +kernel) hn (by omega)
-
-theorem cliWrOk_session {a : LibsignalPublicApiRepr.AddrVal} (hn : CompOk a.name)
-    (hlen : a.name.length ≤ 40) : cliWrOk (pathOf (utf8 "sessions") (addressText a)) :=
-  cliWrOk_storeDir (by decide +kernel) (compOk_addressText hn)
-    (by have := addressText_length a; omega)
-
 theorem cliWrOk_keyName {dir : List (BitVec 8)} (hd : dir ∈ storeDirs) (id : BitVec 32) :
     cliWrOk (pathOf dir (keyName id)) :=
   cliWrOk_storeDir hd (compOk_keyName id) (by have := keyName_length id; omega)
@@ -350,7 +328,7 @@ theorem cliWrOk_baseKeys (id : BitVec 32) :
     (by have := baseKeysName_length id; omega)
 
 /-- Party-local identity files (`IdentityFiles::create`). -/
-def ownFiles : List (List (BitVec 8)) :=
+@[expose] def ownFiles : List (List (BitVec 8)) :=
   [utf8 "address", utf8 "identity-key-pair", utf8 "registration-id"]
 
 theorem ownFiles_ok : ∀ n ∈ ownFiles, CompOk n ∧ n.length ≤ 17 := by decide +kernel
@@ -360,59 +338,10 @@ theorem cliWrOk_ownFile {name : List (BitVec 8)} (hn : name ∈ ownFiles) :
   cliWrOk_own (ownFiles_ok name hn).1
     (by have := (ownFiles_ok name hn).2; have : NAME_MAX = 255 := rfl; omega)
 
-/-- Public identity files (`PublicFiles::identity`). -/
-def pubFiles : List (List (BitVec 8)) := [utf8 "identity-key", utf8 "registration-id"]
-
-theorem pubFiles_ok : ∀ n ∈ pubFiles, CompOk n ∧ n.length ≤ 15 := by decide +kernel
-
-theorem cliWrOk_pubFile {name : List (BitVec 8)} (hn : name ∈ pubFiles) :
-    cliWrOk (pathOf (utf8 "public") name) :=
-  cliWrOk_storeDir (by decide +kernel) (pubFiles_ok name hn).1
-    (by have := (pubFiles_ok name hn).2; omega)
-
-/-- Key subdirectories under `public/`. -/
-def pubKeyDirs : List (List (BitVec 8)) :=
-  [utf8 "signed-pre-keys", utf8 "one-time-pre-keys", utf8 "one-time-kyber-pre-keys",
-    utf8 "last-resort-kyber-pre-keys"]
-
-theorem pubKeyDirs_sub : ∀ d ∈ pubKeyDirs, d ∈ storeDirs := by decide +kernel
-
-theorem cliWrOk_pubKey {sub : List (BitVec 8)} (hs : sub ∈ pubKeyDirs) (id : BitVec 32) :
-    cliWrOk (pathOf (utf8 "public") (pathOf sub (keyName id))) := by
-  have hpub : CompOk (utf8 "public") ∧ (utf8 "public").length = 6 := by decide +kernel
-  have hsub := storeDirs_ok sub (pubKeyDirs_sub sub hs)
-  have hk := compOk_keyName id
-  have he : pathOf (utf8 "public") (pathOf sub (keyName id)) =
-      [0x2f#8].intercalate [utf8 "public", sub, keyName id] := by
-    rw [pathOf_eq_path hpub.1.ne_nil, pathOf_eq_path hsub.1.ne_nil, List.intercalate_cons_cons,
-      List.intercalate_cons_cons, List.intercalate_singleton]
-  have hlenp : (pathOf (utf8 "public") (pathOf sub (keyName id))).length < cliPathMaxBytes := by
-    rw [length_pathOf hpub.1.ne_nil, length_pathOf hsub.1.ne_nil, hpub.2]
-    have := keyName_length id
-    have := hsub.2
-    have : cliPathMaxBytes = 4096 := rfl
-    omega
-  refine ⟨?_, Nat.lt_trans hlenp (by decide)⟩
-  rw [he] at hlenp ⊢
-  refine pathOk_intercalate _ (List.cons_ne_nil _ _) ?_ ?_ hlenp
-  · intro c hc
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
-    rcases hc with hc | hc | hc <;> rw [hc]
-    · exact hpub.1
-    · exact hsub.1
-    · exact hk
-  · intro c hc
-    have hk_len := keyName_length id
-    have hsub_len := hsub.2
-    have hpub_len := hpub.2
-    have hnm : NAME_MAX = 255 := rfl
-    simp only [List.mem_cons, List.not_mem_nil, or_false] at hc
-    rcases hc with hc | hc | hc <;> rw [hc] <;> omega
-
 /-! ## Store Ghost Invariant `StoresWrOk` -/
 
 /-- Every modified entry in `d` maps to a path satisfying `ok`. -/
-def DirWrOk (ok : List (BitVec 8) → Prop) (d : DirGhost) : Prop :=
+@[expose] def DirWrOk (ok : List (BitVec 8) → Prop) (d : DirGhost) : Prop :=
   ∀ e ∈ d.changed, ok (pathOf d.path e.1)
 
 theorem DirWrOk.new (ok : List (BitVec 8) → Prop) (path : List (BitVec 8)) :
@@ -542,187 +471,5 @@ theorem DirWrOk.mark_lastResort {ok : List (BitVec 8) → Prop} {rd : ReadRule} 
   all_goals first | exact hd | exact hd.put hn _
 
 /-! ## Service-ID Names Under `uuidTryParse` -/
-
-theorem hexNibble_nameCode : ∀ b : BitVec 8, (hexNibble b).isSome = true →
-    nameCode b = true ∧ b ≠ 0x2e#8 := by
-  decide +kernel
-
-theorem decodeHex_hex : ∀ (l : List (BitVec 8)) (r : List (BitVec 8)), l.length % 2 = 0 →
-    decodeHex l = some r → ∀ b ∈ l, (hexNibble b).isSome = true
-  | [], _, _, _, b, hb => absurd hb List.not_mem_nil
-  | [_], _, hl, _, _, _ => by simp at hl
-  | hi :: lo :: rest, r, hl, h, b, hb => by
-    unfold decodeHex at h
-    cases hh : hexNibble hi with
-    | none => simp [hh] at h
-    | some x =>
-      cases hl' : hexNibble lo with
-      | none => simp [hh, hl'] at h
-      | some y =>
-        cases hr : decodeHex rest with
-        | none => simp [hh, hl', hr] at h
-        | some z =>
-          simp only [List.mem_cons] at hb
-          rcases hb with rfl | rfl | hb
-          · simp [hh]
-          · simp [hl']
-          · exact decodeHex_hex rest z (by simp only [List.length_cons] at hl; omega) hr b hb
-
-theorem decodeHex32_hex {l : List (BitVec 8)} {u : List.Vector (BitVec 8) 16} (hl : l.length = 32)
-    (h : decodeHex32 l = some u) : ∀ b ∈ l, (hexNibble b).isSome = true := by
-  unfold decodeHex32 at h
-  cases hd : decodeHex l with
-  | none => simp [hd] at h
-  | some r => exact decodeHex_hex l r (by omega) hd
-
-theorem mem_drop_take_of {s : List (BitVec 8)} {b : BitVec 8} {i d k : Nat} (hi : s[i]? = some b)
-    (h1 : d ≤ i) (h2 : i < d + k) : b ∈ (s.drop d).take k := by
-  have he : ((s.drop d).take k)[i - d]? = some b := by
-    rw [List.getElem?_take, ite_eq_left_of_eq_true _ _ (eq_true (show i - d < k by omega)),
-      List.getElem?_drop, Nat.add_sub_cancel' h1, hi]
-  exact List.mem_of_getElem? he
-
-/-- `parseHyphenated` succeeds only on 36-byte `CompOk` strings of hex digits and `-`. -/
-theorem parseHyphenated_compOk {s : List (BitVec 8)} {u : List.Vector (BitVec 8) 16}
-    (h : parseHyphenated s = some u) : CompOk s ∧ s.length = 36 := by
-  unfold parseHyphenated at h
-  split at h
-  · rename_i hc
-    obtain ⟨hlen, h8, h13, h18, h23⟩ := hc
-    have hgl : (s.take 8 ++ (s.drop 9).take 4 ++ (s.drop 14).take 4 ++ (s.drop 19).take 4 ++
-        s.drop 24).length = 32 := by
-      simp only [List.length_append, List.length_take, List.length_drop]
-      omega
-    have hg := decodeHex32_hex hgl h
-    have hhex : ∀ b ∈ s, nameCode b = true := by
-      intro b hb
-      obtain ⟨i, hi⟩ := List.getElem?_of_mem hb
-      have hlt : i < 36 := by
-        rw [← hlen]
-        exact (List.getElem?_eq_some_iff.mp hi).1
-      have hhy : nameCode hyphen = true := by decide +kernel
-      have hmem : i = 8 ∨ i = 13 ∨ i = 18 ∨ i = 23 ∨
-          b ∈ s.take 8 ++ (s.drop 9).take 4 ++ (s.drop 14).take 4 ++ (s.drop 19).take 4 ++
-            s.drop 24 := by
-        by_cases hA : i < 8
-        · right; right; right; right
-          simp only [List.mem_append]
-          left; left; left; left
-          have := mem_drop_take_of (k := 8) (d := 0) hi (by omega) (by omega)
-          simpa using this
-        by_cases hB : 9 ≤ i ∧ i < 13
-        · right; right; right; right
-          simp only [List.mem_append]
-          left; left; left; right
-          exact mem_drop_take_of hi hB.1 (by omega)
-        by_cases hC : 14 ≤ i ∧ i < 18
-        · right; right; right; right
-          simp only [List.mem_append]
-          left; left; right
-          exact mem_drop_take_of hi hC.1 (by omega)
-        by_cases hD : 19 ≤ i ∧ i < 23
-        · right; right; right; right
-          simp only [List.mem_append]
-          left; right
-          exact mem_drop_take_of hi hD.1 (by omega)
-        by_cases hE : 24 ≤ i
-        · right; right; right; right
-          simp only [List.mem_append]
-          right
-          have he : (s.drop 24)[i - 24]? = some b := by
-            rw [List.getElem?_drop, Nat.add_sub_cancel' hE, hi]
-          exact List.mem_of_getElem? he
-        omega
-      rcases hmem with rfl | rfl | rfl | rfl | hm
-      · rw [h8] at hi; cases hi; exact hhy
-      · rw [h13] at hi; cases hi; exact hhy
-      · rw [h18] at hi; cases hi; exact hhy
-      · rw [h23] at hi; cases hi; exact hhy
-      · exact (hexNibble_nameCode b (hg b hm)).1
-    have hs0 : s.take 8 ≠ [] := by
-      intro h0
-      have := congrArg List.length h0
-      simp only [List.length_take, List.length_nil] at this
-      omega
-    obtain ⟨b0, hb0⟩ := List.exists_mem_of_ne_nil _ hs0
-    have hg0 := hg b0 (by simp only [List.mem_append]; left; left; left; left; exact hb0)
-    exact ⟨⟨hhex, b0, List.mem_of_mem_take hb0, (hexNibble_nameCode b0 hg0).2⟩, hlen⟩
-  · simp at h
-
-theorem uuidTryParse_of_length36 {s : List (BitVec 8)} (hs : s.length = 36) :
-    uuidTryParse s = parseHyphenated s := by
-  unfold uuidTryParse
-  rw [ite_eq_right_of_eq_false _ _ (eq_false (show ¬s.length = 32 by omega)),
-    ite_eq_left_of_eq_true _ _ (eq_true hs)]
-
-theorem pniPrefix_ok : (∀ b ∈ pniPrefix, nameCode b = true) ∧ CompOk pniPrefix ∧
-    pniPrefix.length = 4 := by
-  decide +kernel
-
-/-- Any name accepted by `serviceIdParse uuidTryParse` satisfies `CompOk` and has length 36 or 40. -/
-theorem serviceIdParse_compOk {n : List (BitVec 8)} {r : Bool × List.Vector (BitVec 8) 16}
-    (h : serviceIdParse uuidTryParse n = some r) : CompOk n ∧ n.length ≤ 40 := by
-  unfold serviceIdParse tryParseHyphenated at h
-  split at h
-  · rename_i hpre
-    obtain ⟨t, rfl⟩ := List.isPrefixOf_iff_prefix.mp hpre
-    rw [List.drop_left] at h
-    split at h
-    · rename_i hl
-      unfold hyphenatedLength at hl
-      obtain ⟨u, hu, -⟩ := Option.map_eq_some_iff.mp h
-      rw [uuidTryParse_of_length36 hl] at hu
-      have ht := (parseHyphenated_compOk hu).1
-      have hcomp : CompOk (pniPrefix ++ t) := by
-        obtain ⟨hall, b, hb, hne⟩ := ht
-        refine ⟨fun x hx => ?_, b, List.mem_append_right _ hb, hne⟩
-        rcases List.mem_append.mp hx with hx | hx
-        · exact pniPrefix_ok.1 x hx
-        · exact hall x hx
-      refine ⟨hcomp, ?_⟩
-      rw [List.length_append, pniPrefix_ok.2.2, hl]
-    · simp at h
-  · split at h
-    · rename_i hl
-      unfold hyphenatedLength at hl
-      obtain ⟨u, hu, -⟩ := Option.map_eq_some_iff.mp h
-      rw [uuidTryParse_of_length36 hl] at hu
-      exact ⟨(parseHyphenated_compOk hu).1, by omega⟩
-    · simp at h
-
-theorem cliWrOk_peer_tryParse {name : List (BitVec 8)} {r : Bool × List.Vector (BitVec 8) 16}
-    (h : serviceIdParse uuidTryParse name = some r) :
-    cliWrOk (pathOf (utf8 "identities") name) :=
-  cliWrOk_peer (serviceIdParse_compOk h).1 (serviceIdParse_compOk h).2
-
-theorem cliWrOk_session_tryParse {a : LibsignalPublicApiRepr.AddrVal}
-    {r : Bool × List.Vector (BitVec 8) 16} (h : serviceIdParse uuidTryParse a.name = some r) :
-    cliWrOk (pathOf (utf8 "sessions") (addressText a)) :=
-  cliWrOk_session (serviceIdParse_compOk h).1 (serviceIdParse_compOk h).2
-
-theorem addrParse_name {uuidParse : UuidParser} {bs : List (BitVec 8)} {v : AddrV}
-    (h : addrParse uuidParse bs = some v) : ∃ r, serviceIdParse uuidParse v.name = some r := by
-  unfold addrParse at h
-  split at h
-  · simp at h
-  · rename_i name dev _
-    split at h
-    · rename_i r d hs _
-      split at h
-      · cases h
-        exact ⟨r, hs⟩
-      · simp at h
-    · simp at h
-
-theorem cliWrOk_peer_addrParse {bs : List (BitVec 8)} {v : AddrV}
-    (h : addrParse uuidTryParse bs = some v) : cliWrOk (pathOf (utf8 "identities") v.name) :=
-  have ⟨_, hs⟩ := addrParse_name h
-  cliWrOk_peer_tryParse hs
-
-theorem cliWrOk_session_addrParse {bs : List (BitVec 8)} {v : AddrV}
-    {a : LibsignalPublicApiRepr.AddrVal} (h : addrParse uuidTryParse bs = some v)
-    (hname : a.name = v.name) : cliWrOk (pathOf (utf8 "sessions") (addressText a)) :=
-  have ⟨_, hs⟩ := addrParse_name h
-  cliWrOk_session_tryParse (hname ▸ hs)
 
 end CryptoVerification.SignalSession.Cli.MainHops

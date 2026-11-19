@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 
 /-!
 # Pure Cryptographic Packaging for Extern Interpretations
@@ -18,7 +18,7 @@ Packages an `ExternInterpretation` and AES-CBC block cipher operations into
 `CryptoGames.LibsignalSession.Crypto` and proves basic projection lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +39,7 @@ theorem vec32_toList_of_length_32' (b : List (BitVec 8)) (hb : b.length = 32) :
 
 /-- Packages `interpretation` and AES-CBC block cipher operations `E` and `D` into
 `CryptoGames.LibsignalSession.Crypto`. -/
-def cryptoOf' (interpretation : ExternInterpretation)
+@[expose] def cryptoOf' (interpretation : ExternInterpretation)
     (E D : AesKey → Block → Block := fun _ b => b) :
     Crypto where
   F := sha256CompressFunction interpretation

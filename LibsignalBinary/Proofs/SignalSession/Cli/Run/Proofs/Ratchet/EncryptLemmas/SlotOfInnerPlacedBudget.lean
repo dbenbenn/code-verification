@@ -11,18 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInner
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux
-public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInner -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.PanicAndWire
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Outer Slot Reduction for `encrypt` (Placed)
@@ -32,7 +34,7 @@ Defines `withStoresEncPlacedSpecVT_cli` and the slot allocation envelope `CliEnc
 the inner encrypt contract.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -118,13 +120,13 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget (
 
 /-! ## Allocator-parametric placed CLI store kits -/
 
-noncomputable abbrev w1SessKitPlaced [LibsignalPlacement] (A : RustAlloc) (B : RunBudgets)
+abbrev w1SessKitPlaced [LibsignalPlacement] (A : RustAlloc) (B : RunBudgets)
     (F : FsFiles) (peer : AddrGhost) : SessionStoreSpec A 0#64 :=
   cliSessionStoreSpecPlaced A cliIo.rd F cliWrOk scopeKit peer
     loadShimNeed (loadPollNeed B.readFile)
     storeShimNeed storePollNeedX
 
-noncomputable abbrev w1IdKitPlaced [LibsignalPlacement] (A : RustAlloc) (B : RunBudgets)
+abbrev w1IdKitPlaced [LibsignalPlacement] (A : RustAlloc) (B : RunBudgets)
     (F : FsFiles) (peer : AddrGhost) : IdentityStoreSpec A 0#64 :=
   cliIdentityStoreSpecPlaced A cliIo.rd F cliWrOk peer
     trustShimNeed (trustPollNeed B.readFile)
@@ -203,7 +205,7 @@ theorem w1IdKitPlaced_idFinal_eq [LibsignalPlacement] (A : RustAlloc) (B : RunBu
 /-! ## Budget-threaded inner encrypt specification and slot envelope -/
 
 /-- Disjunctive, `F0`-framed budget-threaded inner encrypt contract under `[LibsignalPlacement]`. -/
-def withStoresEncPlacedSpecVT_cli_F0 [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def withStoresEncPlacedSpecVT_cli_F0 [LibsignalPlacement] {M : AllocCostModel}
     (F0 : SepProp) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit)
     (st0 : kit.StoreState)
@@ -229,7 +231,7 @@ abbrev withStoresEncPlacedSpecVT_cli [LibsignalPlacement] {M : AllocCostModel} :
 
 /-- Allocation-event envelope for the `encrypt` wrapper slot (`lsProg_464`), instantiating
 `WithStoresEncEnv` at `w1SessKitPlaced`, `w1IdKitPlaced`, and `StoresGhost.opened`. -/
-def CliEncryptSlotEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliEncryptSlotEnv [LibsignalPlacement] {M : AllocCostModel}
     (P : PEParams) (A : RustCliAllocBudget M) (B : RunBudgets)
     (sendEnv : SpqrSendBudgetEnv)
     (kitEnv : ∀ F peer, SessionStoreBudgetEnv (w1SessKitPlaced A.repAlloc B F peer))
@@ -254,7 +256,7 @@ private theorem loadSession_some_of_model_ok {C : Crypto} {S : SpqrModel} {uuidP
   · simp [hl] at hok
   · exact ⟨r, rfl⟩
 
-private noncomputable def w1SlotAnsOfRc (F : FsFiles)
+private def w1SlotAnsOfRc (F : FsFiles)
     (rc : Except (ApiError AddrVal Unit) CiphertextMessage ×
       List (StoreCall AddrVal (List (BitVec 8)))) : SlotAns CiphertextMessage :=
   match rc with

@@ -11,24 +11,29 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2AuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFoldsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1FoldsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1OkFoldPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonStage2AuxPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFoldsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1FoldsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1OkFoldPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFolds
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFolds -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1OkFold
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Budget-Threaded Stage P2 Spatial Folds for Non-Canonical Wire Encodings
@@ -37,7 +42,7 @@ Spatial entry/exit folds and frame-preservation lemmas for Stage P2 of `decrypt_
 non-canonical `PreKeySignalMessage` wire encodings under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -46,7 +51,7 @@ set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PollPlacedBudget
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open scoped CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchet
 open CryptoGames.LibsignalSession (SignalMessage SessionState)
 open CryptoGames.LibsignalSessionApi (ApiError PreKeySignalMessage Session SessionRecord)
@@ -87,7 +92,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedB
 
 export LibsignalBinary.Proofs.SignalSession.Cli.D3 (p2Over_not_sessMatchesMsg_d3)
 
-def pathAMsgRemInnerAtD3 (A_r : RustAlloc) (g : PreKeyMsgGhost) (msgA : BitVec 64)
+@[expose] def pathAMsgRemInnerAtD3 (A_r : RustAlloc) (g : PreKeyMsgGhost) (msgA : BitVec 64)
     (pm : PreKeySignalMessage) : SepProp :=
   ⌜g.kyberPtr ≠ 0 ∧ 1569 < 2 ^ 63⌝ ∗ A_r.live g.kyberPtr 1569 1 ∗ memRegion (msgA + 0xa4#64) 4 ∗
   boxU8At A_r (msgA + 0x80#64) g.serPtr pm.serialized ∗ memRegion (msgA + 0xf1#64) 7
@@ -175,7 +180,7 @@ theorem p2MsgFields_reassemble_slices_d3 (A_r : RustAlloc) (g : PreKeyMsgGhost) 
   exact Entails.trans (sepConj_mono_left hoptU32)
     (Entails.of_eq (by simp only [boxU8At, BitVec.add_assoc, BitVec.reduceAdd]; sep_ac_rfl))
 
-def pathAInnerFrameD3Placed {M : AllocCostModel} {A_b : RustCliAllocBudget M} {lim : BudgetLimits}
+@[expose] def pathAInnerFrameD3Placed {M : AllocCostModel} {A_b : RustCliAllocBudget M} {lim : BudgetLimits}
     {DecPkEnv : DecPkGhost → List AllocEvent → Prop} {B : RunBudgets} {S : RunSem}
     [LibsignalPlacement] (A_r : RustAlloc)
     (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A_b lim DecPkEnv B S))
@@ -232,18 +237,6 @@ private theorem pull_pure_msg_group {M1 M2 M3 Tail : SepProp} {φ : Prop} :
 private theorem pull_pure_after7 {A1 A2 A3 A4 A5 A6 A7 Rest : SepProp} {φ : Prop} :
     A1 ∗ (A2 ∗ (A3 ∗ (A4 ∗ (A5 ∗ (A6 ∗ (A7 ∗ (⌜φ⌝ ∗ Rest))))))) =
       ⌜φ⌝ ∗ (A1 ∗ (A2 ∗ (A3 ∗ (A4 ∗ (A5 ∗ (A6 ∗ (A7 ∗ Rest))))))) := by sep_ac_rfl
-
-theorem pathAInnerFrameD3_dup_kyberPtr_placed {M : AllocCostModel} {A_b : RustCliAllocBudget M}
-    {lim : BudgetLimits} {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    {B : RunBudgets} {S : RunSem} [LibsignalPlacement] (A_r : RustAlloc)
-    (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A_b lim DecPkEnv B S))
-    (i : SignalMessage) (rngPtr sp : BitVec 64) :
-    pathAInnerFrameD3Placed A_r y i rngPtr sp ⊢
-      ⌜y.g.msgG.kyberPtr ≠ 0#64⌝ ∗ pathAInnerFrameD3Placed A_r y i rngPtr sp := by
-  unfold pathAInnerFrameD3Placed
-  repeat (first
-    | exact dup_pure_sepConj_left (pathAMsgRemInnerAtD3_dup_kyberPtr A_r y.g.msgG y.g.msgA y.g.msg)
-    | refine dup_pure_sepConj_right ?_)
 
 private abbrev p2EntryTail {M : AllocCostModel} {A_b : RustCliAllocBudget M} {lim : BudgetLimits}
     {DecPkEnv : DecPkGhost → List AllocEvent → Prop} {B : RunBudgets} {S : RunSem}

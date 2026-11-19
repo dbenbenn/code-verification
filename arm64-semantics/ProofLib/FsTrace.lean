@@ -11,6 +11,7 @@ module
 
 public import ProofLib.Invariant
 public import ProofLib.Lemmas
+public import ProofLib.SimpAttrs
 public import ProofLib.OpcodeExclusion
 public import ProofLib.Process
 
@@ -217,6 +218,9 @@ private theorem fsTraced_execPpoll (s : State) : FsTraced isFs s (execPpoll s) :
   fs_traced_eq
 private theorem fsTraced_execSetTidAddress (s : State) :
     FsTraced isFs s (execSetTidAddress s) := FsTraced.of_eq rfl rfl
+private theorem fsTraced_execFutex (s : State) :
+    FsTraced isFs s (execFutex s) := by
+  dsimp (config := { zetaHave := true }) only [execFutex]; fs_traced_eq
 private theorem fsTraced_execSchedGetaffinity (s : State) :
     FsTraced isFs s (execSchedGetaffinity s) := by
   dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]; fs_traced_eq
@@ -229,7 +233,14 @@ private theorem fsTraced_execBrk (s : State) : FsTraced isFs s (execBrk s) := by
 private theorem fsTraced_execMunmap (s : State) : FsTraced isFs s (execMunmap s) := by
   dsimp (config := { zetaHave := true }) only [execMunmap]; fs_traced_eq
 private theorem fsTraced_execMremap (s : State) : FsTraced isFs s (execMremap s) := by
-  dsimp (config := { zetaHave := true }) only [execMremap]; fs_traced_eq
+  dsimp (config := { zetaHave := true }) only [execMremap]
+  repeat' (apply fsTraced_ite <;> intro)
+  any_goals exact FsTraced.of_eq rfl rfl
+  cases sanitizeMmapAddr (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+      (s.oracle.mmap s.oracleIdx) (pageAlignUp (s.readReg64 Reg.x2).toNat)
+  · exact FsTraced.of_eq rfl rfl
+  · dsimp only; repeat' (apply fsTraced_ite <;> intro)
+    all_goals exact FsTraced.of_eq rfl rfl
 private theorem fsTraced_execMprotect (s : State) : FsTraced isFs s (execMprotect s) := by
   dsimp (config := { zetaHave := true }) only [execMprotect]; fs_traced_eq
 private theorem fsTraced_execMadvise (s : State) : FsTraced isFs s (execMadvise s) := by
@@ -240,11 +251,85 @@ private theorem fsTraced_execGetpid (s : State) : FsTraced isFs s (execGetpid s)
   FsTraced.of_eq rfl rfl
 private theorem fsTraced_execRtSigprocmask (s : State) :
     FsTraced isFs s (execRtSigprocmask s) := by
-  dsimp (config := { zetaHave := true }) only [execRtSigprocmask]; fs_traced_eq
+  have htr : ∀ (st : State), (st.trace = s.trace ∧ st.fs.files = s.fs.files) →
+      FsTraced isFs s st := fun _ ⟨h1, h2⟩ => FsTraced.of_eq h1 h2
+  have hite : ∀ {c : Bool} {a b : State},
+      (a.trace = s.trace ∧ a.fs.files = s.fs.files) →
+      (b.trace = s.trace ∧ b.fs.files = s.fs.files) →
+      ((if c = true then a else b).trace = s.trace ∧
+       (if c = true then a else b).fs.files = s.fs.files) := by
+    intro c a b ha hb; cases c <;> assumption
+  apply htr
+  unfold execRtSigprocmask
+  dsimp only
+  refine hite ⟨rfl, rfl⟩ <| hite ⟨rfl, rfl⟩ <| hite ⟨rfl, rfl⟩ <| hite ⟨rfl, rfl⟩ <| hite ⟨rfl, rfl⟩ ?_
+  have hs1 : ∀ s1 : State, (s1.trace = s.trace ∧ s1.fs.files = s.fs.files) →
+      let s2 :=
+        if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+        else if (!decide ((s.readReg64 Reg.x2).toNat + 8 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 8) = true then
+          (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        else
+          ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (leBytes64 s.sigMask))).writeReg64 Reg.x0 0#64).advancePC
+      let res :=
+        let deliverable := s2.sigPending &&& ~~~s2.sigMask
+        if (deliverable == 0#64) = true then s2
+        else if (deliverable == SIGABRT_MASK) = true then
+          let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+          let disp := (s3.getSigAction LINUX_SIGABRT).handler
+          if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+          else if (disp == SIG_IGN) = true then s3
+          else s3.setStatus (.Exception "unmodeled signal handler delivery")
+        else s2.setStatus (.Exception "unmodeled pending signal delivery")
+      res.trace = s.trace ∧ res.fs.files = s.fs.files := by
+    intro s1 h1
+    have hs2 : ∀ s2 : State, (s2.trace = s.trace ∧ s2.fs.files = s.fs.files) →
+        let res :=
+          let deliverable := s2.sigPending &&& ~~~s2.sigMask
+          if (deliverable == 0#64) = true then s2
+          else if (deliverable == SIGABRT_MASK) = true then
+            let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+            let disp := (s3.getSigAction LINUX_SIGABRT).handler
+            if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+            else if (disp == SIG_IGN) = true then s3
+            else s3.setStatus (.Exception "unmodeled signal handler delivery")
+          else s2.setStatus (.Exception "unmodeled pending signal delivery")
+        res.trace = s.trace ∧ res.fs.files = s.fs.files := by
+      intro s2 h2
+      dsimp only
+      refine hite h2 (hite ?_ h2)
+      exact hite h2 (hite h2 h2)
+    apply hs2
+    exact hite h1 (hite h1 h1)
+  apply hs1
+  exact hite ⟨rfl, rfl⟩ ⟨rfl, rfl⟩
 private theorem fsTraced_execSigaltstack (s : State) : FsTraced isFs s (execSigaltstack s) := by
   dsimp (config := { zetaHave := true }) only [execSigaltstack]; fs_traced_eq
 private theorem fsTraced_execRtSigaction (s : State) : FsTraced isFs s (execRtSigaction s) := by
-  dsimp (config := { zetaHave := true }) only [execRtSigaction]; fs_traced_eq
+  have htr : ∀ (st : State), (st.trace = s.trace ∧ st.fs.files = s.fs.files) →
+      FsTraced isFs s st := fun _ ⟨h1, h2⟩ => FsTraced.of_eq h1 h2
+  have hite : ∀ {c : Bool} {a b : State},
+      (a.trace = s.trace ∧ a.fs.files = s.fs.files) →
+      (b.trace = s.trace ∧ b.fs.files = s.fs.files) →
+      ((if c = true then a else b).trace = s.trace ∧
+       (if c = true then a else b).fs.files = s.fs.files) := by
+    intro c a b ha hb; cases c <;> assumption
+  apply htr
+  unfold execRtSigaction
+  dsimp only
+  refine hite ⟨rfl, rfl⟩ <| hite ⟨rfl, rfl⟩ <| hite ⟨rfl, rfl⟩ <| hite ⟨rfl, rfl⟩ <|
+    hite ⟨rfl, rfl⟩ <| hite ⟨rfl, rfl⟩ ?_
+  have hs1 : ∀ s1 : State, (s1.trace = s.trace ∧ s1.fs.files = s.fs.files) →
+      let res :=
+        if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+        else if (!decide ((s.readReg64 Reg.x2).toNat + 32 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 32) = true then
+          (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        else
+          ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (SigAction.toBytes (s.getSigAction (s.readReg32 Reg.x0))))).writeReg64 Reg.x0 0#64).advancePC
+      res.trace = s.trace ∧ res.fs.files = s.fs.files := by
+    intro s1 h1
+    exact hite h1 (hite h1 h1)
+  apply hs1
+  exact hite ⟨rfl, rfl⟩ (hite ⟨rfl, rfl⟩ ⟨rfl, rfl⟩)
 private theorem fsTraced_execTkill (s : State) : FsTraced isFs s (execTkill s) := by
   dsimp (config := { zetaHave := true }) only [execTkill]; fs_traced_eq
 private theorem fsTraced_execTgkill (s : State) : FsTraced isFs s (execTgkill s) := by
@@ -289,7 +374,7 @@ theorem fsTraced_execOpenat (hsem : ∀ e, e.isFsChange = true → isFs e) (s : 
   | none =>
     cases readCString s.mem (s.readReg64 Reg.x1) with
     | trap _ => exact FsTraced.of_eq rfl rfl
-    | errno _ => exact FsTraced.of_eq rfl rfl
+    | errno _ => cases s.fs.allocFd <;> exact FsTraced.of_eq rfl rfl
     | ok rawPath => exact fsTraced_openatPure hsem s _ rawPath _ _
 
 /-- `write`: on a file descriptor other than 1 and 2 with `count > 0`, the files change and the
@@ -347,7 +432,7 @@ private theorem standardEntry_fsTraced (hsem : ∀ e, e.isFsChange = true → is
     List.mem_cons, List.not_mem_nil, or_false]
   rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
             rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
+            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
   · exact fsTraced_execReadCommon s false
   · exact fsTraced_execWrite hsem s
   · exact fsTraced_execReadv hsem s
@@ -376,6 +461,7 @@ private theorem standardEntry_fsTraced (hsem : ∀ e, e.isFsChange = true → is
   · exact fsTraced_execClockGettime s
   · exact fsTraced_execGetrandom s
   · exact fsTraced_execSetTidAddress s
+  · exact fsTraced_execFutex s
   · exact fsTraced_execSchedGetaffinity s
   · exact fsTraced_execGetpid s
   · exact fsTraced_execGetpid s
@@ -433,14 +519,14 @@ theorem Steps.fsTracedWithSvc {prog : Program}
 theorem Step.fsTraced {prog : Program} (hsem : ∀ e, e.isFsChange = true → isFs e)
     (hhooks : ∀ pc f, prog.externAt? pc = some f → HookFsTraced isFs f)
     {s s' : State} (h : Step prog s s')
-    (hsvc : prog.svc = execSyscall := by first | rfl | simp [ProofLib.wp_norm, ProofLib.arm64_norm]) :
+    (hsvc : prog.svc = execSyscall := by first | rfl | simp [wp_norm, arm64_norm]) :
     FsTraced isFs s s' :=
   h.fsTracedWithSvc (hsvc ▸ execSyscall_fsTraced hsem) hhooks
 
 theorem Steps.fsTraced {prog : Program} (hsem : ∀ e, e.isFsChange = true → isFs e)
     (hhooks : ∀ pc f, prog.externAt? pc = some f → HookFsTraced isFs f)
     {s s' : State} (h : Steps prog s s')
-    (hsvc : prog.svc = execSyscall := by first | rfl | simp [ProofLib.wp_norm, ProofLib.arm64_norm]) :
+    (hsvc : prog.svc = execSyscall := by first | rfl | simp [wp_norm, arm64_norm]) :
     FsTraced isFs s s' :=
   h.fsTracedWithSvc (hsvc ▸ execSyscall_fsTraced hsem) hhooks
 
@@ -449,14 +535,14 @@ theorem Steps.fsTraced {prog : Program} (hsem : ∀ e, e.isFsChange = true → i
 theorem Steps.files_eq_of_noFs {prog : Program} (hsem : ∀ e, e.isFsChange = true → isFs e)
     (hhooks : ∀ pc f, prog.externAt? pc = some f → HookFsTraced isFs f)
     {s s' : State} (h : Steps prog s s')
-    (hsvc : prog.svc = execSyscall := by first | rfl | simp [ProofLib.wp_norm, ProofLib.arm64_norm]) :
+    (hsvc : prog.svc = execSyscall := by first | rfl | simp [wp_norm, arm64_norm]) :
     ∃ d, s'.trace = s.trace ++ d ∧ ((∀ e ∈ d, ¬ isFs e) → s'.fs.files = s.fs.files) :=
   h.fsTraced hsem hhooks hsvc
 
 theorem Step.files_eq_of_noFs {prog : Program} (hsem : ∀ e, e.isFsChange = true → isFs e)
     (hhooks : ∀ pc f, prog.externAt? pc = some f → HookFsTraced isFs f)
     {s s' : State} (h : Step prog s s')
-    (hsvc : prog.svc = execSyscall := by first | rfl | simp [ProofLib.wp_norm, ProofLib.arm64_norm]) :
+    (hsvc : prog.svc = execSyscall := by first | rfl | simp [wp_norm, arm64_norm]) :
     ∃ d, s'.trace = s.trace ++ d ∧ ((∀ e ∈ d, ¬ isFs e) → s'.fs.files = s.fs.files) :=
   h.fsTraced hsem hhooks hsvc
 
@@ -494,7 +580,7 @@ theorem Steps.trace_prefixWithSvc {prog : Program}
 theorem Step.trace_prefix {prog : Program}
     (hhooks : ∀ pc f, prog.externAt? pc = some f → ∀ s, ∃ d, (f s).trace = s.trace ++ d)
     {s s' : State} (h : Step prog s s')
-    (hsvc : prog.svc = execSyscall := by first | rfl | simp [ProofLib.wp_norm, ProofLib.arm64_norm]) :
+    (hsvc : prog.svc = execSyscall := by first | rfl | simp [wp_norm, arm64_norm]) :
     ∃ d, s'.trace = s.trace ++ d :=
   h.trace_prefixWithSvc
     (fun t => hsvc ▸ (execSyscall_fsTraced (isFs := fun _ => True) (fun _ _ => trivial) t).elim
@@ -505,7 +591,7 @@ theorem Step.trace_prefix {prog : Program}
 theorem Steps.trace_prefix {prog : Program}
     (hhooks : ∀ pc f, prog.externAt? pc = some f → ∀ s, ∃ d, (f s).trace = s.trace ++ d)
     {s s' : State} (h : Steps prog s s')
-    (hsvc : prog.svc = execSyscall := by first | rfl | simp [ProofLib.wp_norm, ProofLib.arm64_norm]) :
+    (hsvc : prog.svc = execSyscall := by first | rfl | simp [wp_norm, arm64_norm]) :
     ∃ d, s'.trace = s.trace ++ d :=
   h.trace_prefixWithSvc
     (fun t => hsvc ▸ (execSyscall_fsTraced (isFs := fun _ => True) (fun _ _ => trivial) t).elim
@@ -588,7 +674,7 @@ theorem execOpenat_filesLeMaxLfs {s : State} (h : s.fs.FilesLeMaxLfs) :
   | none =>
     cases readCString s.mem (s.readReg64 Reg.x1) with
     | trap _ => exact h
-    | errno _ => exact h
+    | errno _ => cases s.fs.allocFd <;> exact h
     | ok rawPath => exact openatPure_filesLeMaxLfs h _ rawPath _ _
 
 private theorem filesLeMaxLfs_ite {s₁ s₂ : State} {c : Prop} [Decidable c]
@@ -642,7 +728,7 @@ theorem execSyscall_filesLeMaxLfs {s : State} (h : s.fs.FilesLeMaxLfs) :
       List.mem_cons, List.not_mem_nil, or_false]
     rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
               rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-              rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
+              rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
     · obtain ⟨d, _, hf⟩ := fsTraced_execReadCommon (isFs := fun _ => False) s false
       exact h.of_files_eq (hf (fun _ _ hp => hp))
     · exact execWrite_filesLeMaxLfs h
@@ -692,6 +778,8 @@ theorem execSyscall_filesLeMaxLfs {s : State} (h : s.fs.FilesLeMaxLfs) :
     · obtain ⟨d, _, hf⟩ := fsTraced_execGetrandom (isFs := fun _ => False) s
       exact h.of_files_eq (hf (fun _ _ hp => hp))
     · exact h
+    · obtain ⟨d, _, hf⟩ := fsTraced_execFutex (isFs := fun _ => False) s
+      exact h.of_files_eq (hf (fun _ _ hp => hp))
     · obtain ⟨d, _, hf⟩ := fsTraced_execSchedGetaffinity (isFs := fun _ => False) s
       exact h.of_files_eq (hf (fun _ _ hp => hp))
     · exact h
@@ -706,7 +794,7 @@ theorem execSyscall_filesLeMaxLfs {s : State} (h : s.fs.FilesLeMaxLfs) :
 theorem Step.filesLeMaxLfs {prog : Program}
     (hhooks : ∀ pc f, prog.externAt? pc = some f → ∀ t, t.fs.FilesLeMaxLfs → (f t).fs.FilesLeMaxLfs)
     {s s' : State} (hstep : Step prog s s') (h : s.fs.FilesLeMaxLfs)
-    (hsvc : prog.svc = execSyscall := by first | rfl | simp [ProofLib.wp_norm, ProofLib.arm64_norm]) :
+    (hsvc : prog.svc = execSyscall := by first | rfl | simp [wp_norm, arm64_norm]) :
     s'.fs.FilesLeMaxLfs := by
   cases hstep with
   | @exec inst _ _ =>
@@ -725,7 +813,7 @@ theorem Step.filesLeMaxLfs {prog : Program}
 theorem Steps.filesLeMaxLfs {prog : Program}
     (hhooks : ∀ pc f, prog.externAt? pc = some f → ∀ t, t.fs.FilesLeMaxLfs → (f t).fs.FilesLeMaxLfs)
     {s s' : State} (hsteps : Steps prog s s') (h : s.fs.FilesLeMaxLfs)
-    (hsvc : prog.svc = execSyscall := by first | rfl | simp [ProofLib.wp_norm, ProofLib.arm64_norm]) :
+    (hsvc : prog.svc = execSyscall := by first | rfl | simp [wp_norm, arm64_norm]) :
     s'.fs.FilesLeMaxLfs := by
   induction hsteps with
   | refl _ => exact h
@@ -745,10 +833,11 @@ private example (ext : String → Option (State → State))
     ∃ d, b.trace = a.trace ++ d :=
   run.trace_prefix hk
 
-private example (img : Obj.Image) (ext : String → Option (State → State))
-    (hk : ∀ pc f, (Program.ofImage img ext).externAt? pc = some f → ∀ t, ∃ d, (f t).trace = t.trace ++ d)
-    {a b : State} (run : Steps (Program.ofImage img ext) a b) :
-    ∃ d, b.trace = a.trace ++ d :=
+private example (code : List (BitVec 8)) (b : BitVec 64) (ext : String → Option (State → State))
+    (hk : ∀ pc f, (({ code := code } : Program).rebase b ext).externAt? pc = some f →
+      ∀ t, ∃ d, (f t).trace = t.trace ++ d)
+    {a s' : State} (run : Steps (({ code := code } : Program).rebase b ext) a s') :
+    ∃ d, s'.trace = a.trace ++ d :=
   run.trace_prefix hk
 end ApiCheck
 

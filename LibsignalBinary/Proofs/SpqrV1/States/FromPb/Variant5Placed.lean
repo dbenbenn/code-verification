@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5aPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5bPlaced
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5cPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5d
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5dPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 5 (`NoHeaderReceived`, `+1344`)
@@ -27,7 +28,7 @@ Relocatable Block-`333` top-level composition from `+1344` to return for
 `InnerState.noHeaderReceived`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +68,7 @@ set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
 
 attribute [local irreducible]
-  Program.fetch Program.externAt? Program.fnOff libsignalSessionCode
+  Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_333
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append

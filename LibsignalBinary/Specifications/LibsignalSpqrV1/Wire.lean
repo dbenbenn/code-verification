@@ -51,11 +51,7 @@ inductive Version where
 
 namespace Version
 
-abbrev V0 : Version := .v0
-
 abbrev V1 : Version := .v1
-
-abbrev DISABLED : Version := .v0
 
 abbrev MAX : Version := .v1
 
@@ -67,11 +63,6 @@ def fromU8? (value : BitVec 8) : Option Version :=
   if value == 0#8 then some .v0
   else if value == 1#8 then some .v1
   else none
-
-def tryFromU8 (value : BitVec 8) : Except String Version :=
-  match fromU8? value with
-  | some v => .ok v
-  | none => .error s!"Expected 0 or 1, got {value.toNat}"
 
 def toI32 : Version → BitVec 32
   | .v0 => 0#32
@@ -148,21 +139,8 @@ structure MsgPreamble where
 
 namespace MsgPreamble
 
-def toLibsignalSpqr (p : MsgPreamble) : CryptoVerification.LibsignalSpqr.MsgPreamble :=
-  ⟨p.version, p.epoch, p.index, p.remaining⟩
-
 def ofLibsignalSpqr (p : CryptoVerification.LibsignalSpqr.MsgPreamble) : MsgPreamble :=
   ⟨p.version, p.epoch, p.index, p.remaining⟩
-
-@[simp]
-theorem toEmptyOk_ofEmptyOk (p : CryptoVerification.LibsignalSpqr.MsgPreamble) :
-    (ofLibsignalSpqr p).toLibsignalSpqr = p := by
-  cases p; rfl
-
-@[simp]
-theorem ofEmptyOk_toEmptyOk (p : MsgPreamble) :
-    ofLibsignalSpqr p.toLibsignalSpqr = p := by
-  cases p; rfl
 
 end MsgPreamble
 

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.SDet.InputsInj
-public import Symbolic.Proofs.Refinement.Composed.Cli.SDet.EncodeDirInj
-public import Symbolic.Proofs.Refinement.Composed.Cli.SDet.ModelCongr
+import Symbolic.Proofs.Refinement.Composed.Cli.SDet.InputsInj
+import Symbolic.Proofs.Refinement.Composed.Cli.SDet.EncodeDirInj
+public import Symbolic.Proofs.Refinement.Composed.Cli.SDet.ModelCongr -- proof-setup: allow-public-import
 
 /-!
 # Determinism of the PQXDH CLI Model
@@ -20,7 +20,7 @@ Instantiates `sdetBridges` from the input-extraction and directory-injectivity m
 proves `sdet`, establishing `PqModelPost` from `Draft.PqModelRel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import Batteries.Data.List.Lemmas
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.ModelMono
@@ -23,7 +23,7 @@ and `blk` matched by `δ`, whenever the cut before `blk` cannot fall strictly in
 visible entries (in particular when `blk` starts with a `.recv` or `.pt` event).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -291,11 +291,11 @@ theorem vis_tail_not_recv_pt (m : Move) (tr : ExecTrace) :
 /-! ## The generic split -/
 
 /-- No cut admissible for `B` falls strictly inside the entry list `l`. -/
-def b5_NoCutMove (B : VisEntry → VisEntry → Prop) (l : List VisEntry) : Prop :=
+@[expose] def b5_NoCutMove (B : VisEntry → VisEntry → Prop) (l : List VisEntry) : Prop :=
   ∀ (k : Nat) (a b : VisEntry), 0 < k → l[k - 1]? = some a → l[k]? = some b → ¬ B a b
 
 /-- No cut admissible for `B` falls strictly inside one move's entries, along the run. -/
-def b5_NoCutFrom (B : VisEntry → VisEntry → Prop) : List Move → ExecTrace → Prop
+@[expose] def b5_NoCutFrom (B : VisEntry → VisEntry → Prop) : List Move → ExecTrace → Prop
   | [], _ => True
   | m :: ms, tr => b5_NoCutMove B (m.vis tr) ∧ b5_NoCutFrom B ms (m.next tr)
 

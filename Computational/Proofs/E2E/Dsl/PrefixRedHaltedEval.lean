@@ -828,22 +828,6 @@ theorem twoStage_stage12_comp_eq
   dsimp only [Function.comp_def, mapOut1Enc, atomicPrefixCtxEnc]
   rw [h2]
 
-theorem evalDist_twoStage_stage12_eq
-    (spec : TwoStageAtomicSimSpec S Pt ℓ O b qStart qDR DrvSt π_ref)
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (hB : TargetAdvBounded S B_A b qStart qDR)
-    {β : Type} [MeasurableSpace β]
-    (game2 : IdentityKey → IdentityKey → BitVec 256 →
-      OracleComp
-        (unifSpec + CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) Bool →
-      ProbComp β)
-    (fuel1 fuel2 : ℕ) (dflt flip : Bool) :
-    𝒟[stageOneAsProbComp (spec.R.eval1 (fun _ => B_A) () fuel1 dflt) >>= fun o =>
-      game2 o.1.1 o.1.2.1 o.1.2.2 (spec.R.eval2 o.2 flip fuel2 dflt)] =
-    𝒟[stageOneAsProbComp (spec.R_ref.eval1 (fun _ => B_A) () fuel1 dflt) >>= fun o =>
-      game2 o.1.idA o.1.idB o.1.spkCoins (spec.R_ref.eval2 o.2 flip fuel2 dflt)] :=
-  congrArg evalDist (twoStage_stage12_comp_eq spec B_A hB game2 fuel1 fuel2 dflt flip)
-
 end SimProofs
 
 end Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval

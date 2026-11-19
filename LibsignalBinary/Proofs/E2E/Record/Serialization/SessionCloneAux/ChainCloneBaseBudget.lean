@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneBase
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-threaded `<Chain as Clone>::clone` specifications
@@ -22,18 +22,19 @@ Defines the budget-threaded `protoChainCloneSpec` (`onPanic = ⌜False⌝`, `onO
 predicates for block `82`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneBaseBudget
+
+open CryptoVerification.LibsignalTripleRatchet (trTrapProgAt)
 
 open Arm64 ProofLib SepProp
 open CryptoGames.LibsignalSession (Crypto)
 open CryptoVerification (LibsignalPlacement)
 open CryptoVerification.E2E.Record.Placed (blkPl_82 lsProg_82)
 open CryptoVerification.LibsignalSessionRepr (ChainGhost)
-open CryptoVerification.LibsignalTripleRatchet (trTrapProgAt tripleRatchetProgAt)
 open CryptoVerification.LibsignalTripleRatchet.ChainCloneLocal1 (
   protoChainAt chainCloneLocal1Name
 )
@@ -51,7 +52,7 @@ open LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget (
 
 /-- Budget-threaded `protoChainAt` specification of `<Chain as Clone>::clone`, ruling out OOM and
 `handle_error` panics under `FitsEnv M lim st (ChainCloneEnv x.gc)`. -/
-def protoChainCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def protoChainCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainCloneGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧
@@ -70,60 +71,37 @@ def protoChainCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-! ## Fixed-base contract predicates -/
 
-def ProtoChainCloneLocal1Ok_trap (M : AllocCostModel) (b : BitVec 64) (C : Crypto)
+@[expose] def ProtoChainCloneLocal1Ok_trap (M : AllocCostModel) (b : BitVec 64) (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name)
     (protoChainCloneSpec M A lim)
 
-def ProtoChainCloneLocal1Ok (M : AllocCostModel) (b : BitVec 64) (C : Crypto)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name)
-    (protoChainCloneSpec M A lim)
-
-def ChainCloneLocal1Ok_trap (M : AllocCostModel) (b : BitVec 64) (C : Crypto)
+@[expose] def ChainCloneLocal1Ok_trap (M : AllocCostModel) (b : BitVec 64) (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name)
     (chainCloneSpec M A lim)
 
-def ChainCloneLocal1Ok (M : AllocCostModel) (b : BitVec 64) (C : Crypto)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name)
-    (chainCloneSpec M A lim)
-
-def SenderChainCloneLocal1Ok_trap (M : AllocCostModel) (b : BitVec 64) (C : Crypto)
+@[expose] def SenderChainCloneLocal1Ok_trap (M : AllocCostModel) (b : BitVec 64) (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name)
     (senderChainCloneSpec M A lim)
-
-def SenderChainCloneLocal1Ok (M : AllocCostModel) (b : BitVec 64) (C : Crypto)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name)
-    (senderChainCloneSpec M A lim)
-
-/-! ## Relocatable `[LibsignalPlacement]` contract predicates (block `82`) -/
 
 section Placed
 
-def ProtoChainCloneLocal1PlacedOk [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def ProtoChainCloneLocal1PlacedOk [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_82 H) (blkPl_82).base (protoChainCloneSpec M A lim)
 
-def ChainCloneLocal1PlacedOk [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def ChainCloneLocal1PlacedOk [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_82 H) (blkPl_82).base (chainCloneSpec M A lim)
 
-def SenderChainCloneLocal1PlacedOk [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def SenderChainCloneLocal1PlacedOk [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_82 H) (blkPl_82).base (senderChainCloneSpec M A lim)

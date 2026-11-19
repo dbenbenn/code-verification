@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 import all Init.Data.Nat.Bitwise.Basic
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked1
@@ -26,6 +26,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerChunked3aPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncodePlaced
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send`: `V1State::encode_raw` Branches (`idx = 1, 8`)
@@ -35,7 +36,7 @@ Relocatable symbolic execution of the `.keysSampled` (`idx = 1`, `+8612..+10916`
 (Block `124`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.style.longLine false
 set_option autoImplicit false
@@ -75,7 +76,7 @@ attribute [local arm64_norm]
   ls_resolve_blk_186 ls_resolve_blk_188 ls_resolve_blk_189 ls_resolve_blk_192
   ls_resolve_blk_193
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32
   ProofLib.truncate32_ofNat64 EncodedLen.hwVarintLen_eq_ofNat_varintLen_norm

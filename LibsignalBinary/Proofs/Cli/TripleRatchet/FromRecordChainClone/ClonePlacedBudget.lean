@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedPrefixBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedPrefixBudget
 public import LibsignalBinary.Heap.SpecBudget
 public meta import Lean
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
@@ -21,6 +21,13 @@ import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedDefs
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Clone
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `session_structure::Chain::clone` Proof
@@ -30,7 +37,7 @@ Proves `chainCloneSpec M A lim` and `senderChainCloneSpec M A lim` for
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

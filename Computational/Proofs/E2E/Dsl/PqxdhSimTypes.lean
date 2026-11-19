@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
-public import Computational.Proofs.E2E.Dsl.TablesHonest
-public import Computational.Proofs.E2E.Dsl.ClampsLossless
-public import Computational.Proofs.GameHop.ReductionDsl.CostUB
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.TablesHonest -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.ClampsLossless
+public import Computational.Proofs.GameHop.ReductionDsl.CostUB -- proof-setup: allow-public-import
 
 /-!
 # Shared Types, Hooks, and Helpers for E2E PQXDH Simulation
@@ -22,7 +22,7 @@ inductive list-length invariants `KeyIndSetupBounded` and `stListBounded`, and p
 hooks (`E2EPqxdhHooks`) and helper programs for simulating `SignalPqxdh.pqxdhKeyIndImpl1KeyReal`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -82,7 +82,7 @@ instance Ext.step {ℓ : ℕ} {Γ Δ : List (Ty (e2eSig ℓ))} {σ : Ty (e2eSig 
     Ext Γ (σ :: Δ) :=
   ⟨fun x => .succ (h.wk x)⟩
 
-def v {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ Δ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)}
+@[expose] def v {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ Δ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)}
     [h : Ext Γ Δ] (x : Var Γ τ) : Expr O Δ τ :=
   .var (h.wk x)
 
@@ -117,80 +117,80 @@ section Binders
 
 variable {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {ι : Type} {T : OracleSpec ι} {I : Iface (e2eSig ℓ) T}
 
-def eLet {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
+@[expose] def eLet {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
     (e : Expr O Γ τ) (k : Var (τ :: Γ) τ → Expr O (τ :: Γ) υ) : Expr O Γ υ :=
   .letE e (k .zero)
 
-def eLet2 {Γ : List (Ty (e2eSig ℓ))} {α β υ : Ty (e2eSig ℓ)}
+@[expose] def eLet2 {Γ : List (Ty (e2eSig ℓ))} {α β υ : Ty (e2eSig ℓ)}
     (e : Expr O Γ (.prod α β))
     (k : Var (α :: .prod α β :: Γ) α →
          Var (β :: α :: .prod α β :: Γ) β →
          Expr O (β :: α :: .prod α β :: Γ) υ) : Expr O Γ υ :=
   eLet e fun p => eLet (.fst (v p)) fun a => eLet (.snd (v p)) fun b => k a b
 
-def eCaseOpt {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
+@[expose] def eCaseOpt {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
     (e : Expr O Γ (.opt τ)) (n : Expr O Γ υ)
     (s : Var (τ :: Γ) τ → Expr O (τ :: Γ) υ) : Expr O Γ υ :=
   .caseOpt e n (s .zero)
 
-def eCaseSum {Γ : List (Ty (e2eSig ℓ))} {α β υ : Ty (e2eSig ℓ)}
+@[expose] def eCaseSum {Γ : List (Ty (e2eSig ℓ))} {α β υ : Ty (e2eSig ℓ)}
     (e : Expr O Γ (.sum α β))
     (l : Var (α :: Γ) α → Expr O (α :: Γ) υ)
     (r : Var (β :: Γ) β → Expr O (β :: Γ) υ) : Expr O Γ υ :=
   .caseSum e (l .zero) (r .zero)
 
-def eFind {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (K : ℕ)
+@[expose] def eFind {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (K : ℕ)
     (l : Expr O Γ (.list τ)) (p : Var (τ :: Γ) τ → Expr O (τ :: Γ) .bool) :
     Expr O Γ (.opt τ) :=
   .findB K l (p .zero)
 
-def eAny {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (K : ℕ)
+@[expose] def eAny {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (K : ℕ)
     (l : Expr O Γ (.list τ)) (p : Var (τ :: Γ) τ → Expr O (τ :: Γ) .bool) :
     Expr O Γ .bool :=
   .anyB K l (p .zero)
 
-def eMap {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)} (K : ℕ)
+@[expose] def eMap {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)} (K : ℕ)
     (l : Expr O Γ (.list τ)) (f : Var (τ :: Γ) τ → Expr O (τ :: Γ) υ) :
     Expr O Γ (.list υ) :=
   .mapB K l (f .zero)
 
-def bindV {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
+@[expose] def bindV {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
     (c : Comp O I Γ τ) (k : Var (τ :: Γ) τ → Comp O I (τ :: Γ) υ) : Comp O I Γ υ :=
   .bind c (k .zero)
 
-def letV {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
+@[expose] def letV {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
     (e : Expr O Γ τ) (k : Var (τ :: Γ) τ → Comp O I (τ :: Γ) υ) : Comp O I Γ υ :=
   .bind (.ret e) (k .zero)
 
-def bindV2 {Γ : List (Ty (e2eSig ℓ))} {α β υ : Ty (e2eSig ℓ)}
+@[expose] def bindV2 {Γ : List (Ty (e2eSig ℓ))} {α β υ : Ty (e2eSig ℓ)}
     (c : Comp O I Γ (.prod α β))
     (k : Var (α :: .prod α β :: Γ) α →
          Var (β :: α :: .prod α β :: Γ) β →
          Comp O I (β :: α :: .prod α β :: Γ) υ) : Comp O I Γ υ :=
   bindV c fun p => letV (.fst (v p)) fun a => letV (.snd (v p)) fun b => k a b
 
-def caseOptV {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
+@[expose] def caseOptV {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
     (e : Expr O Γ (.opt τ)) (n : Comp O I Γ υ)
     (s : Var (τ :: Γ) τ → Comp O I (τ :: Γ) υ) : Comp O I Γ υ :=
   .caseOpt e n (s .zero)
 
-def caseSumV {Γ : List (Ty (e2eSig ℓ))} {α β υ : Ty (e2eSig ℓ)}
+@[expose] def caseSumV {Γ : List (Ty (e2eSig ℓ))} {α β υ : Ty (e2eSig ℓ)}
     (e : Expr O Γ (.sum α β))
     (l : Var (α :: Γ) α → Comp O I (α :: Γ) υ)
     (r : Var (β :: Γ) β → Comp O I (β :: Γ) υ) : Comp O I Γ υ :=
   .caseSum e (l .zero) (r .zero)
 
-def findMV {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (K : ℕ)
+@[expose] def findMV {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (K : ℕ)
     (l : Expr O Γ (.list τ)) (p : Var (τ :: Γ) τ → Comp O I (τ :: Γ) .bool) :
     Comp O I Γ (.opt τ) :=
   .findM K l (p .zero)
 
-def anyMV {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (K : ℕ)
+@[expose] def anyMV {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (K : ℕ)
     (l : Expr O Γ (.list τ)) (p : Var (τ :: Γ) τ → Comp O I (τ :: Γ) .bool) :
     Comp O I Γ .bool :=
   .anyM K l (p .zero)
 
-def mapMV {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)} (K : ℕ)
+@[expose] def mapMV {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)} (K : ℕ)
     (l : Expr O Γ (.list τ)) (f : Var (τ :: Γ) τ → Comp O I (τ :: Γ) υ) :
     Comp O I Γ (.list υ) :=
   .mapM K l (f .zero)
@@ -326,12 +326,6 @@ theorem anyML_pure {m : Type → Type} [Monad m] [LawfulMonad m] {α : Type}
     simp only [anyML, List.any_cons]
     cases p x <;> simp [anyML_pure p xs]
 
-theorem mapML_pure {m : Type → Type} [Monad m] [LawfulMonad m] {α β : Type}
-    (f : α → β) : ∀ (l : List α), mapML (fun x => (pure (f x) : m β)) l = pure (l.map f)
-  | [] => rfl
-  | x :: xs => by
-    simp [mapML, mapML_pure f xs]
-
 theorem findML_map {m : Type → Type} [Monad m] [LawfulMonad m] {α β : Type}
     (g : α → β) (p : β → m Bool) :
     ∀ (l : List α), findML p (l.map g) = Option.map g <$> findML (fun x => p (g x)) l
@@ -400,7 +394,7 @@ theorem anyML_congr {m : Type → Type} [Monad m] {α : Type}
 /-! ## Direct `ProbComp` interface and primitive hooks -/
 
 /-- Coin-only `ReductionDsl` interface into `unifSpec` with uniform samplers `e2eSamplers ℓ`. -/
-@[reducible] def e2eProbIface (ℓ : ℕ) : Iface (e2eSig ℓ) unifSpec where
+@[expose, reducible] def e2eProbIface (ℓ : ℕ) : Iface (e2eSig ℓ) unifSpec where
   fwdU n := query (spec := unifSpec) n
   uCost := 1
   Tag := Empty
@@ -416,7 +410,7 @@ theorem anyML_congr {m : Type → Type} [Monad m] {α : Type}
   unfold Iface.liftP e2eProbIface
   exact simulateQ_id' p
 
-@[reducible] def stepAIface (ℓ : ℕ) {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) :
+@[expose, reducible] def stepAIface (ℓ : ℕ) {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) :
     Iface (e2eSig ℓ) T :=
   { I₀ with smp := e2eSamplers ℓ }
 
@@ -441,7 +435,7 @@ structure HooksNoTargetQueries {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {ι : Type} {T
   sampBool_q : ∀ {Γ : List (Ty (e2eSig ℓ))},
     compQueriesUB w (fun _ => 0) (H.sampBool (Γ := Γ)) = 0
 
-@[reducible] def mkStepAPqxdhHooks (ℓ : ℕ) {Pt : Type} (P : Primitives) (C : Crypto) (K : MlKem)
+@[expose, reducible] def mkStepAPqxdhHooks (ℓ : ℕ) {Pt : Type} (P : Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) :
     E2EPqxdhHooks ℓ (e2eOps ℓ P C K decT encT) (stepAIface ℓ I₀) where
@@ -474,14 +468,14 @@ theorem mkStepAPqxdhHooks_noQueries (ℓ : ℕ) {Pt : Type} (P : Primitives) (C 
 
 /-! ## Value representations for `KeyIndState` -/
 
-@[reducible] def e2ePrincipalEntryTy {ℓ : ℕ} : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2ePrincipalEntryTy {ℓ : ℕ} : Ty (e2eSig ℓ) :=
   .prod (PB 32) (.prod (PB 32) (.prod (PB 32) (.prod (PB 32) .bool)))
 
-@[simp] def e2ePrincipalEntryToVal {ℓ : ℕ} (p : PrincipalEntry) :
+@[expose, simp] def e2ePrincipalEntryToVal {ℓ : ℕ} (p : PrincipalEntry) :
     (e2ePrincipalEntryTy (ℓ := ℓ)).denote :=
   (p.secIKA0, (p.ikAPk, (p.secIKAsign, (p.ikSignPk, p.corrupted))))
 
-@[simp] def e2eValToPrincipalEntry {ℓ : ℕ} (v : (e2ePrincipalEntryTy (ℓ := ℓ)).denote) :
+@[expose, simp] def e2eValToPrincipalEntry {ℓ : ℕ} (v : (e2ePrincipalEntryTy (ℓ := ℓ)).denote) :
     PrincipalEntry :=
   ⟨v.1, v.2.1, v.2.2.1, v.2.2.2.1, v.2.2.2.2⟩
 
@@ -493,15 +487,15 @@ theorem mkStepAPqxdhHooks_noQueries (ℓ : ℕ) {Pt : Type} (P : Primitives) (C 
     e2ePrincipalEntryToVal (ℓ := ℓ) (e2eValToPrincipalEntry (ℓ := ℓ) v) = v := by
   rcases v with ⟨_, _, _, _, _⟩; rfl
 
-@[reducible] def e2eSpkBundleEntryTy {ℓ : ℕ} : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eSpkBundleEntryTy {ℓ : ℕ} : Ty (e2eSig ℓ) :=
   .prod (PB 32) (.prod (PB 32) (.prod (PB 64)
     (.prod (PB 3168) (.prod (PB 1568) (.prod (PB 64) .bool)))))
 
-@[simp] def e2eSpkBundleEntryToVal {ℓ : ℕ} (b : SpkBundleEntry) :
+@[expose, simp] def e2eSpkBundleEntryToVal {ℓ : ℕ} (b : SpkBundleEntry) :
     (e2eSpkBundleEntryTy (ℓ := ℓ)).denote :=
   (b.spkSk, (b.spkPk, (b.spkSig, (b.pqspkSk, (b.pqspkPk, (b.pqspkSig, b.revealed))))))
 
-@[simp] def e2eValToSpkBundleEntry {ℓ : ℕ} (v : (e2eSpkBundleEntryTy (ℓ := ℓ)).denote) :
+@[expose, simp] def e2eValToSpkBundleEntry {ℓ : ℕ} (v : (e2eSpkBundleEntryTy (ℓ := ℓ)).denote) :
     SpkBundleEntry :=
   ⟨v.1, v.2.1, v.2.2.1, v.2.2.2.1, v.2.2.2.2.1, v.2.2.2.2.2.1, v.2.2.2.2.2.2⟩
 
@@ -513,13 +507,13 @@ theorem mkStepAPqxdhHooks_noQueries (ℓ : ℕ) {Pt : Type} (P : Primitives) (C 
     e2eSpkBundleEntryToVal (ℓ := ℓ) (e2eValToSpkBundleEntry (ℓ := ℓ) v) = v := by
   rcases v with ⟨_, _, _, _, _, _, _⟩; rfl
 
-@[reducible] def e2eOpkEntryTy {ℓ : ℕ} : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eOpkEntryTy {ℓ : ℕ} : Ty (e2eSig ℓ) :=
   .prod (PB 32) (.prod (PB 32) .bool)
 
-@[simp] def e2eOpkEntryToVal {ℓ : ℕ} (o : OpkEntry) : (e2eOpkEntryTy (ℓ := ℓ)).denote :=
+@[expose, simp] def e2eOpkEntryToVal {ℓ : ℕ} (o : OpkEntry) : (e2eOpkEntryTy (ℓ := ℓ)).denote :=
   (o.opkSk, (o.opkPk, o.consumed))
 
-@[simp] def e2eValToOpkEntry {ℓ : ℕ} (v : (e2eOpkEntryTy (ℓ := ℓ)).denote) : OpkEntry :=
+@[expose, simp] def e2eValToOpkEntry {ℓ : ℕ} (v : (e2eOpkEntryTy (ℓ := ℓ)).denote) : OpkEntry :=
   ⟨v.1, v.2.1, v.2.2⟩
 
 @[simp] theorem e2eValToOpkEntry_toVal {ℓ : ℕ} (o : OpkEntry) :
@@ -530,19 +524,19 @@ theorem mkStepAPqxdhHooks_noQueries (ℓ : ℕ) {Pt : Type} (P : Primitives) (C 
     e2eOpkEntryToVal (ℓ := ℓ) (e2eValToOpkEntry (ℓ := ℓ) v) = v := by
   rcases v with ⟨_, _, _⟩; rfl
 
-@[reducible] def e2eInitiatorEntryTy (ℓ : ℕ) (S : Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eInitiatorEntryTy (ℓ : ℕ) (S : Setup) : Ty (e2eSig ℓ) :=
   .prod (sidT S) (.prod (.opt .nat) (.prod (PB 32) (.prod (PB 32) (.prod (.opt (PB 32))
     (.prod (PB 1568) (.prod .bool (.prod .bool (.prod .bool (.prod (PB 32) (.prod .bool
       (.prod drKeyT (.prod drKeyT (.prod hdrT (.prod .bool .bool))))))))))))))
 
-@[simp] def e2eInitiatorEntryToVal {ℓ : ℕ} {S : Setup} (s : KeyIndInitiatorEntry S) :
+@[expose, simp] def e2eInitiatorEntryToVal {ℓ : ℕ} {S : Setup} (s : KeyIndInitiatorEntry S) :
     (e2eInitiatorEntryTy ℓ S).denote :=
   (sidV s.sid, (s.honestPeer, (s.peerIkPk, (s.peerSpkPk, (s.peerOpkPk?,
     (s.peerPqspkPk, (s.spkHonest, (s.opkHonest, (s.pqspkHonest, (s.ekASk, (s.fresh,
       (drKeyV s.drKeyReal, (drKeyV s.drKeyRand,
         (hdrV s.hdr, (s.tested, s.revealed)))))))))))))))
 
-@[simp] def e2eValToInitiatorEntry {ℓ : ℕ} {S : Setup}
+@[expose, simp] def e2eValToInitiatorEntry {ℓ : ℕ} {S : Setup}
     (v : (e2eInitiatorEntryTy ℓ S).denote) : KeyIndInitiatorEntry S :=
   ⟨sidOfV v.1, v.2.1, v.2.2.1, v.2.2.2.1, v.2.2.2.2.1, v.2.2.2.2.2.1,
    v.2.2.2.2.2.2.1, v.2.2.2.2.2.2.2.1, v.2.2.2.2.2.2.2.2.1, v.2.2.2.2.2.2.2.2.2.1,
@@ -562,17 +556,17 @@ theorem mkStepAPqxdhHooks_noQueries (ℓ : ℕ) {Pt : Type} (P : Primitives) (C 
   rcases v with ⟨_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _⟩
   simp
 
-@[reducible] def e2eRespEntryTy (ℓ : ℕ) (S : Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eRespEntryTy (ℓ : ℕ) (S : Setup) : Ty (e2eSig ℓ) :=
   .prod (sidT S) (.prod (PB 32) (.prod (PB 32) (.prod (.opt (PB 32)) (.prod (PB 1568)
     (.prod hdrT (.prod .bool (.prod drKeyT (.prod drKeyT (.prod .bool .bool)))))))))
 
-@[simp] def e2eRespEntryToVal {ℓ : ℕ} {S : Setup} (r : KeyIndRespEntry S) :
+@[expose, simp] def e2eRespEntryToVal {ℓ : ℕ} {S : Setup} (r : KeyIndRespEntry S) :
     (e2eRespEntryTy ℓ S).denote :=
   (sidV r.sid, (r.respIkPk, (r.spkPk, (r.opkPk?, (r.pqspkPk,
     (hdrV r.hdr, (r.senderHonest,
       (drKeyV r.drKeyReal, (drKeyV r.drKeyRand, (r.tested, r.revealed))))))))))
 
-@[simp] def e2eValToRespEntry {ℓ : ℕ} {S : Setup}
+@[expose, simp] def e2eValToRespEntry {ℓ : ℕ} {S : Setup}
     (v : (e2eRespEntryTy ℓ S).denote) : KeyIndRespEntry S :=
   ⟨sidOfV v.1, v.2.1, v.2.2.1, v.2.2.2.1, v.2.2.2.2.1,
    hdrOfV (ℓ := ℓ) v.2.2.2.2.2.1, v.2.2.2.2.2.2.1,
@@ -591,7 +585,7 @@ theorem mkStepAPqxdhHooks_noQueries (ℓ : ℕ) {Pt : Type} (P : Primitives) (C 
   simp
 
 /-- `ReductionDsl` value representation of `SignalPqxdh.KeyIndState S`. -/
-@[reducible] def e2eKeyIndStateTy (ℓ : ℕ) (S : Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eKeyIndStateTy (ℓ : ℕ) (S : Setup) : Ty (e2eSig ℓ) :=
   .prod .bool (.prod (.list (.prod .nat e2ePrincipalEntryTy))
     (.prod (.list (.prod (.prod .nat .nat) e2eSpkBundleEntryTy))
       (.prod (.list (.prod (.prod .nat (.prod .nat .nat)) e2eOpkEntryTy))
@@ -602,7 +596,7 @@ theorem mkStepAPqxdhHooks_noQueries (ℓ : ℕ) {Pt : Type} (P : Primitives) (C 
                 (.prod (.list (.prod (PB 192) drKeyT))
                        (.list (.prod (PB 32) (PB 32))))))))))))
 
-@[simp] def e2eKeyIndStateToVal {ℓ : ℕ} {S : Setup} (st : KeyIndState S) :
+@[expose, simp] def e2eKeyIndStateToVal {ℓ : ℕ} {S : Setup} (st : KeyIndState S) :
     (e2eKeyIndStateTy ℓ S).denote :=
   (st.secb,
    (st.principals.map (Prod.map id (e2ePrincipalEntryToVal (ℓ := ℓ))),
@@ -616,7 +610,7 @@ theorem mkStepAPqxdhHooks_noQueries (ℓ : ℕ) {Pt : Type} (P : Primitives) (C 
            (st.roCache.map (Prod.map id (drKeyV (ℓ := ℓ))),
             st.advKeys))))))))))
 
-@[simp] def e2eValToKeyIndState {ℓ : ℕ} {S : Setup}
+@[expose, simp] def e2eValToKeyIndState {ℓ : ℕ} {S : Setup}
     (v : (e2eKeyIndStateTy ℓ S).denote) : KeyIndState S :=
   { secb := v.1
     principals := v.2.1.map (Prod.map id (e2eValToPrincipalEntry (ℓ := ℓ)))
@@ -643,7 +637,7 @@ theorem mkStepAPqxdhHooks_noQueries (ℓ : ℕ) {Pt : Type} (P : Primitives) (C 
 
 /-! ## State-length invariants -/
 
-def isInitSid {S : Setup} : SessionId S → Bool
+@[expose] def isInitSid {S : Setup} : SessionId S → Bool
   | .sendOPK _ _ => true
   | .sendNoOPK _ _ => true
   | .recvOPK _ _ _ => false
@@ -840,10 +834,6 @@ theorem sessions_le {S : Setup} {st : KeyIndState S} (h : KeyIndSetupBounded S s
       dsimp [encSid, Setup.N_send_tot]
       omega
   simpa using nodup_lt_length_le hnd' hlt'
-
-theorem roCache_length {S : Setup} {st : KeyIndState S} (h : KeyIndSetupBounded S st) :
-    st.roCache.length = 0 := by
-  simp [h.roCache_nil]
 
 end KeyIndSetupBounded
 
@@ -2073,14 +2063,14 @@ section Helpers
 variable {ℓ : ℕ} {S : Setup} {O : Ops (e2eSig ℓ)} {ι : Type} {T : OracleSpec ι}
   {I : Iface (e2eSig ℓ) T}
 
-def orE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) : Expr O Γ .bool :=
+@[expose] def orE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) : Expr O Γ .bool :=
   .not (.and (.not a) (.not b))
 
 @[simp] theorem eval_orE {Γ : List (Ty (e2eSig ℓ))} (a b : Expr O Γ .bool) (ρ : Env Γ) :
     (orE a b).eval ρ = (a.eval ρ || b.eval ρ) := by
   simp [orE, Expr.eval]
 
-def isSomeE {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (e : Expr O Γ (.opt τ)) :
+@[expose] def isSomeE {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (e : Expr O Γ (.opt τ)) :
     Expr O Γ .bool :=
   .caseOpt e (.bool false) (.bool true)
 
@@ -2090,7 +2080,7 @@ def isSomeE {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (e : Expr O Γ 
   simp only [isSomeE, Expr.eval]
   cases e.eval ρ <;> rfl
 
-def isNoneE {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (e : Expr O Γ (.opt τ)) :
+@[expose] def isNoneE {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (e : Expr O Γ (.opt τ)) :
     Expr O Γ .bool :=
   .caseOpt e (.bool true) (.bool false)
 
@@ -2100,7 +2090,7 @@ def isNoneE {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)} (e : Expr O Γ 
   simp only [isNoneE, Expr.eval]
   cases e.eval ρ <;> rfl
 
-def optMapE {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
+@[expose] def optMapE {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
     (e : Expr O Γ (.opt τ)) (f : Var (τ :: Γ) τ → Expr O (τ :: Γ) υ) : Expr O Γ (.opt υ) :=
   eCaseOpt e .none fun x => .some (f x)
 
@@ -2110,7 +2100,7 @@ def optMapE {Γ : List (Ty (e2eSig ℓ))} {τ υ : Ty (e2eSig ℓ)}
   simp only [optMapE, eCaseOpt, Expr.eval]
   cases e.eval ρ <;> rfl
 
-def nat2EqE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def nat2EqE {Γ : List (Ty (e2eSig ℓ))}
     (a b : Expr O Γ (.prod .nat .nat)) : Expr O Γ .bool :=
   .and (.eqN (.fst a) (.fst b)) (.eqN (.snd a) (.snd b))
 
@@ -2124,7 +2114,7 @@ def nat2EqE {Γ : List (Ty (e2eSig ℓ))}
   · by_cases h2 : a2 = b2 <;> simp [h1, h2, BEq.beq]
   · simp [h1, BEq.beq]
 
-def nat3EqE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def nat3EqE {Γ : List (Ty (e2eSig ℓ))}
     (a b : Expr O Γ (.prod .nat (.prod .nat .nat))) : Expr O Γ .bool :=
   .and (.eqN (.fst a) (.fst b)) (nat2EqE (.snd a) (.snd b))
 
@@ -2140,7 +2130,7 @@ def nat3EqE {Γ : List (Ty (e2eSig ℓ))}
     · simp [h1, h2, BEq.beq]
   · simp [h1, BEq.beq]
 
-def nat4EqE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def nat4EqE {Γ : List (Ty (e2eSig ℓ))}
     (a b : Expr O Γ (.prod .nat (.prod .nat (.prod .nat .nat)))) : Expr O Γ .bool :=
   .and (.eqN (.fst a) (.fst b)) (nat3EqE (.snd a) (.snd b))
 
@@ -2158,11 +2148,11 @@ def nat4EqE {Γ : List (Ty (e2eSig ℓ))}
     · simp [h1, h2, BEq.beq]
   · simp [h1, BEq.beq]
 
-def finValE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} {n : ℕ}
+@[expose] def finValE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} {n : ℕ}
     (e : Expr O Γ (FinT n)) : Expr O Γ .nat :=
   H.pureOp (.finVal n) e
 
-def sidKeyE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def sidKeyE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (s : Expr O Γ (sidT S)) : Expr O Γ (.prod .nat (.prod .nat (.prod .nat .nat))) :=
   eCaseSum s
     (fun p => .pair (.nat 0) (.pair (finValE H (.fst (v p)))
@@ -2176,11 +2166,11 @@ def sidKeyE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
         (fun p => .pair (.nat 3) (.pair (finValE H (.fst (v p)))
           (.pair (finValE H (.fst (.snd (v p)))) (finValE H (.snd (.snd (v p)))))))))
 
-def sidEqE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def sidEqE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (a b : Expr O Γ (sidT S)) : Expr O Γ .bool :=
   nat4EqE (sidKeyE H a) (sidKeyE H b)
 
-def optEqByE {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)}
+@[expose] def optEqByE {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)}
     (eqElem : ∀ {Δ : List (Ty (e2eSig ℓ))}, Expr O Δ τ → Expr O Δ τ → Expr O Δ .bool)
     (a b : Expr O Γ (.opt τ)) : Expr O Γ .bool :=
   eLet (.pair a b) fun ab =>
@@ -2189,131 +2179,131 @@ def optEqByE {Γ : List (Ty (e2eSig ℓ))} {τ : Ty (e2eSig ℓ)}
       (fun x => eCaseOpt (.snd (v ab)) (.bool false)
         (fun y => eqElem (v x) (v y)))
 
-def optPu32EqE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def optPu32EqE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (a b : Expr O Γ (.opt PU32)) : Expr O Γ .bool :=
   optEqByE (fun x y => H.pureOp .pu32Eq (.pair x y)) a b
 
-def optPb32EqE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def optPb32EqE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (a b : Expr O Γ (.opt (PB 32))) : Expr O Γ .bool :=
   optEqByE (fun x y => H.pureOp (.pbytesEq 32 32) (.pair x y)) a b
 
 /-! ### Record projections and updaters -/
 
-def peSec0 {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) : Expr O Γ (PB 32) :=
+@[expose] def peSec0 {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) : Expr O Γ (PB 32) :=
   .fst e
-def peIkPk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) : Expr O Γ (PB 32) :=
+@[expose] def peIkPk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) : Expr O Γ (PB 32) :=
   .fst (.snd e)
-def peSecSign {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) : Expr O Γ (PB 32) :=
+@[expose] def peSecSign {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) : Expr O Γ (PB 32) :=
   .fst (.snd (.snd e))
-def peSignPk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) : Expr O Γ (PB 32) :=
+@[expose] def peSignPk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) : Expr O Γ (PB 32) :=
   .fst (.snd (.snd (.snd e)))
-def peCorr {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) : Expr O Γ .bool :=
+@[expose] def peCorr {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) : Expr O Γ .bool :=
   .snd (.snd (.snd (.snd e)))
 
-def peSetCorrE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) :
+@[expose] def peSetCorrE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2ePrincipalEntryTy) :
     Expr O Γ e2ePrincipalEntryTy :=
   eLet e fun x =>
     .pair (peSec0 (v x)) (.pair (peIkPk (v x)) (.pair (peSecSign (v x))
       (.pair (peSignPk (v x)) (.bool true))))
 
-def beSpkSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 32) :=
+@[expose] def beSpkSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 32) :=
   .fst e
-def beSpkPk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 32) :=
+@[expose] def beSpkPk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 32) :=
   .fst (.snd e)
-def beSpkSig {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 64) :=
+@[expose] def beSpkSig {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 64) :=
   .fst (.snd (.snd e))
-def bePqSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 3168) :=
+@[expose] def bePqSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 3168) :=
   .fst (.snd (.snd (.snd e)))
-def bePqPk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 1568) :=
+@[expose] def bePqPk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 1568) :=
   .fst (.snd (.snd (.snd (.snd e))))
-def bePqSig {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 64) :=
+@[expose] def bePqSig {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ (PB 64) :=
   .fst (.snd (.snd (.snd (.snd (.snd e)))))
-def beRev {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ .bool :=
+@[expose] def beRev {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) : Expr O Γ .bool :=
   .snd (.snd (.snd (.snd (.snd (.snd e)))))
 
-def beSetRevE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) :
+@[expose] def beSetRevE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eSpkBundleEntryTy) :
     Expr O Γ e2eSpkBundleEntryTy :=
   eLet e fun x =>
     .pair (beSpkSk (v x)) (.pair (beSpkPk (v x)) (.pair (beSpkSig (v x))
       (.pair (bePqSk (v x)) (.pair (bePqPk (v x)) (.pair (bePqSig (v x)) (.bool true))))))
 
-def oeSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eOpkEntryTy) : Expr O Γ (PB 32) := .fst e
-def oePk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eOpkEntryTy) : Expr O Γ (PB 32) :=
+@[expose] def oeSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eOpkEntryTy) : Expr O Γ (PB 32) := .fst e
+@[expose] def oePk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eOpkEntryTy) : Expr O Γ (PB 32) :=
   .fst (.snd e)
-def oeCons {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eOpkEntryTy) : Expr O Γ .bool :=
+@[expose] def oeCons {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eOpkEntryTy) : Expr O Γ .bool :=
   .snd (.snd e)
 
-def oeSetConsE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eOpkEntryTy) : Expr O Γ e2eOpkEntryTy :=
+@[expose] def oeSetConsE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ e2eOpkEntryTy) : Expr O Γ e2eOpkEntryTy :=
   eLet e fun x => .pair (oeSk (v x)) (.pair (oePk (v x)) (.bool true))
 
-def bndIkB {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ (PB 32) := .fst b
-def bndSpkId {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ PU32 := .fst (.snd b)
-def bndSpkB {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ (PB 32) :=
+@[expose] def bndIkB {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ (PB 32) := .fst b
+@[expose] def bndSpkId {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ PU32 := .fst (.snd b)
+@[expose] def bndSpkB {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ (PB 32) :=
   .fst (.snd (.snd b))
-def bndSpkSig {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ (PB 64) :=
+@[expose] def bndSpkSig {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ (PB 64) :=
   .fst (.snd (.snd (.snd b)))
-def bndOpkB {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) :
+@[expose] def bndOpkB {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) :
     Expr O Γ (.opt (.prod PU32 (PB 32))) :=
   .fst (.snd (.snd (.snd (.snd b))))
-def bndPqId {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ PU32 :=
+@[expose] def bndPqId {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ PU32 :=
   .fst (.snd (.snd (.snd (.snd (.snd b)))))
-def bndPqB {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ (PB 1568) :=
+@[expose] def bndPqB {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ (PB 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd b))))))
-def bndPqSig {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ (PB 64) :=
+@[expose] def bndPqSig {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ (PB 64) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd b))))))
 
-def hdrIkA {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ (PB 32) := .fst h
-def hdrEkA {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ (PB 32) := .fst (.snd h)
-def hdrSpkId {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ PU32 :=
+@[expose] def hdrIkA {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ (PB 32) := .fst h
+@[expose] def hdrEkA {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ (PB 32) := .fst (.snd h)
+@[expose] def hdrSpkId {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ PU32 :=
   .fst (.snd (.snd h))
-def hdrOpkId {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ (.opt PU32) :=
+@[expose] def hdrOpkId {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ (.opt PU32) :=
   .fst (.snd (.snd (.snd h)))
-def hdrPqId {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ PU32 :=
+@[expose] def hdrPqId {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ PU32 :=
   .fst (.snd (.snd (.snd (.snd h))))
-def hdrKemCt {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ (PB 1568) :=
+@[expose] def hdrKemCt {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ (PB 1568) :=
   .snd (.snd (.snd (.snd (.snd h))))
 
-def ieSid {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieSid {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ (sidT S) := .fst e
-def ieHonPeer {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieHonPeer {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ (.opt .nat) := .fst (.snd e)
-def iePeerIk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def iePeerIk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ (PB 32) := .fst (.snd (.snd e))
-def iePeerSpk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def iePeerSpk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ (PB 32) := .fst (.snd (.snd (.snd e)))
-def iePeerOpk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def iePeerOpk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ (.opt (PB 32)) := .fst (.snd (.snd (.snd (.snd e))))
-def iePeerPq {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def iePeerPq {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ (PB 1568) := .fst (.snd (.snd (.snd (.snd (.snd e)))))
-def ieSpkHon {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieSpkHon {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-def ieOpkHon {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieOpkHon {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
-def iePqHon {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def iePqHon {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))
-def ieEkSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieEkSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ (PB 32) := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))
-def ieFresh {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieFresh {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))))
-def ieReal {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieReal {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ drKeyT :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))))
-def ieRand {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieRand {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ drKeyT :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))))))
-def ieHdr {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieHdr {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ hdrT :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))))))
-def ieTested {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieTested {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))))))))
-def ieRev {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieRev {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ .bool :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))))))))
 
-def ieSetTestedE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieSetTestedE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ (e2eInitiatorEntryTy ℓ S) :=
   eLet e fun x =>
     .pair (ieSid (v x)) (.pair (ieHonPeer (v x)) (.pair (iePeerIk (v x))
@@ -2323,7 +2313,7 @@ def ieSetTestedE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntry
             (.pair (ieRand (v x)) (.pair (ieHdr (v x))
               (.pair (.bool true) (ieRev (v x))))))))))))))))
 
-def ieSetRevE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
+@[expose] def ieSetRevE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S)) :
     Expr O Γ (e2eInitiatorEntryTy ℓ S) :=
   eLet e fun x =>
     .pair (ieSid (v x)) (.pair (ieHonPeer (v x)) (.pair (iePeerIk (v x))
@@ -2333,7 +2323,7 @@ def ieSetRevE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy 
             (.pair (ieRand (v x)) (.pair (ieHdr (v x))
               (.pair (ieTested (v x)) (.bool true)))))))))))))))
 
-def ieSetRandE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S))
+@[expose] def ieSetRandE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy ℓ S))
     (rk : Expr O Γ drKeyT) : Expr O Γ (e2eInitiatorEntryTy ℓ S) :=
   eLet (.pair e rk) fun p =>
     .pair (ieSid (.fst (v p))) (.pair (ieHonPeer (.fst (v p))) (.pair (iePeerIk (.fst (v p)))
@@ -2345,30 +2335,30 @@ def ieSetRandE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eInitiatorEntryTy
                 (.pair (ieHdr (.fst (v p)))
                   (.pair (ieTested (.fst (v p))) (ieRev (.fst (v p)))))))))))))))))
 
-def reSid {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reSid {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ (sidT S) := .fst e
-def reIk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reIk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ (PB 32) := .fst (.snd e)
-def reSpk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reSpk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ (PB 32) := .fst (.snd (.snd e))
-def reOpk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reOpk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ (.opt (PB 32)) := .fst (.snd (.snd (.snd e)))
-def rePq {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def rePq {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ (PB 1568) := .fst (.snd (.snd (.snd (.snd e))))
-def reHdr {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reHdr {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ hdrT := .fst (.snd (.snd (.snd (.snd (.snd e)))))
-def reSendHon {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reSendHon {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-def reReal {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reReal {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ drKeyT := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
-def reRand {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reRand {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ drKeyT := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))))
-def reTested {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reTested {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))
-def reRev {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reRev {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ .bool := .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))))
 
-def reSetTestedE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reSetTestedE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ (e2eRespEntryTy ℓ S) :=
   eLet e fun x =>
     .pair (reSid (v x)) (.pair (reIk (v x)) (.pair (reSpk (v x)) (.pair (reOpk (v x))
@@ -2376,7 +2366,7 @@ def reSetTestedE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy �
         (.pair (reReal (v x)) (.pair (reRand (v x))
           (.pair (.bool true) (reRev (v x)))))))))))
 
-def reSetRevE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
+@[expose] def reSetRevE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S)) :
     Expr O Γ (e2eRespEntryTy ℓ S) :=
   eLet e fun x =>
     .pair (reSid (v x)) (.pair (reIk (v x)) (.pair (reSpk (v x)) (.pair (reOpk (v x))
@@ -2384,7 +2374,7 @@ def reSetRevE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S
         (.pair (reReal (v x)) (.pair (reRand (v x))
           (.pair (reTested (v x)) (.bool true))))))))))
 
-def reSetRandE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S))
+@[expose] def reSetRandE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ S))
     (rk : Expr O Γ drKeyT) : Expr O Γ (e2eRespEntryTy ℓ S) :=
   eLet (.pair e rk) fun p =>
     .pair (reSid (.fst (v p))) (.pair (reIk (.fst (v p))) (.pair (reSpk (.fst (v p)))
@@ -2392,56 +2382,56 @@ def reSetRandE {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (e2eRespEntryTy ℓ 
         (.pair (reSendHon (.fst (v p))) (.pair (reReal (.fst (v p)))
           (.pair (.snd (v p)) (.pair (reTested (.fst (v p))) (reRev (.fst (v p))))))))))))
 
-def stSecb {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stSecb {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ .bool := .fst st
-def stPrin {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stPrin {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.list (.prod .nat e2ePrincipalEntryTy)) := .fst (.snd st)
-def stSpk {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stSpk {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.list (.prod (.prod .nat .nat) e2eSpkBundleEntryTy)) := .fst (.snd (.snd st))
-def stOpk {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stOpk {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.list (.prod (.prod .nat (.prod .nat .nat)) e2eOpkEntryTy)) :=
   .fst (.snd (.snd (.snd st)))
-def stSess {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stSess {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.list (e2eInitiatorEntryTy ℓ S)) := .fst (.snd (.snd (.snd (.snd st))))
-def stResp {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stResp {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.list (e2eRespEntryTy ℓ S)) := .fst (.snd (.snd (.snd (.snd (.snd st)))))
-def stUsedOpk {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stUsedOpk {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.list (.prod .nat (.prod .nat .nat))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd st))))))
-def stUsedNoOpk {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stUsedNoOpk {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.list (.prod .nat (.prod .nat .nat))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd st)))))))
-def stSeen {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stSeen {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.list (.prod .nat (.prod PU32 (.prod PU32 (PB 32))))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd st))))))))
-def stRo {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stRo {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.list (.prod (PB 192) drKeyT)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd st)))))))))
-def stAdv {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
+@[expose] def stAdv {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.list (.prod (PB 32) (PB 32))) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd st)))))))))
 
-def setPrinE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
+@[expose] def setPrinE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (ps : Expr O Γ (.list (.prod .nat e2ePrincipalEntryTy))) :
     Expr O Γ (e2eKeyIndStateTy ℓ S) :=
   eLet (.pair st ps) fun p =>
     .pair (stSecb (.fst (v p))) (.pair (.snd (v p)) (.snd (.snd (.fst (v p)))))
 
-def setSpkE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
+@[expose] def setSpkE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (bs : Expr O Γ (.list (.prod (.prod .nat .nat) e2eSpkBundleEntryTy))) :
     Expr O Γ (e2eKeyIndStateTy ℓ S) :=
   eLet (.pair st bs) fun p =>
     .pair (stSecb (.fst (v p))) (.pair (stPrin (.fst (v p)))
       (.pair (.snd (v p)) (.snd (.snd (.snd (.fst (v p)))))))
 
-def setOpkE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
+@[expose] def setOpkE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (os : Expr O Γ (.list (.prod (.prod .nat (.prod .nat .nat)) e2eOpkEntryTy))) :
     Expr O Γ (e2eKeyIndStateTy ℓ S) :=
   eLet (.pair st os) fun p =>
     .pair (stSecb (.fst (v p))) (.pair (stPrin (.fst (v p))) (.pair (stSpk (.fst (v p)))
       (.pair (.snd (v p)) (.snd (.snd (.snd (.snd (.fst (v p)))))))))
 
-def setSessE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
+@[expose] def setSessE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (ss : Expr O Γ (.list (e2eInitiatorEntryTy ℓ S))) :
     Expr O Γ (e2eKeyIndStateTy ℓ S) :=
   eLet (.pair st ss) fun p =>
@@ -2449,7 +2439,7 @@ def setSessE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ
       (.pair (stOpk (.fst (v p))) (.pair (.snd (v p))
         (.snd (.snd (.snd (.snd (.snd (.fst (v p)))))))))))
 
-def setRespE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
+@[expose] def setRespE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (rs : Expr O Γ (.list (e2eRespEntryTy ℓ S))) :
     Expr O Γ (e2eKeyIndStateTy ℓ S) :=
   eLet (.pair st rs) fun p =>
@@ -2457,7 +2447,7 @@ def setRespE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ
       (.pair (stOpk (.fst (v p))) (.pair (stSess (.fst (v p)))
         (.pair (.snd (v p)) (.snd (.snd (.snd (.snd (.snd (.snd (.fst (v p)))))))))))))
 
-def setAdvE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
+@[expose] def setAdvE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (ak : Expr O Γ (.list (.prod (PB 32) (PB 32)))) :
     Expr O Γ (e2eKeyIndStateTy ℓ S) :=
   eLet (.pair st ak) fun p =>
@@ -2466,7 +2456,7 @@ def setAdvE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ 
         (.pair (stUsedOpk (.fst (v p))) (.pair (stUsedNoOpk (.fst (v p)))
           (.pair (stSeen (.fst (v p))) (.pair (stRo (.fst (v p))) (.snd (v p)))))))))))
 
-def setAcceptOpkE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
+@[expose] def setAcceptOpkE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (os : Expr O Γ (.list (.prod (.prod .nat (.prod .nat .nat)) e2eOpkEntryTy)))
     (used : Expr O Γ (.list (.prod .nat (.prod .nat .nat))))
     (seen : Expr O Γ (.list (.prod .nat (.prod PU32 (.prod PU32 (PB 32)))))) :
@@ -2478,7 +2468,7 @@ def setAcceptOpkE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateT
           (.pair (.snd (.snd (.snd (v p))))
             (.pair (stRo (.fst (v p))) (stAdv (.fst (v p))))))))))))
 
-def setAcceptNoOpkE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
+@[expose] def setAcceptNoOpkE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (used : Expr O Γ (.list (.prod .nat (.prod .nat .nat))))
     (seen : Expr O Γ (.list (.prod .nat (.prod PU32 (.prod PU32 (PB 32)))))) :
     Expr O Γ (e2eKeyIndStateTy ℓ S) :=
@@ -2489,58 +2479,58 @@ def setAcceptNoOpkE {Γ : List (Ty (e2eSig ℓ))} (st : Expr O Γ (e2eKeyIndStat
           (.pair (.snd (.snd (v p)))
             (.pair (stRo (.fst (v p))) (stAdv (.fst (v p))))))))))))
 
-def rNoneE {Γ : List (Ty (e2eSig ℓ))} : Expr O Γ keyIndRT := .inl .unit
-def rInitPrinE {Γ : List (Ty (e2eSig ℓ))} (ik s : Expr O Γ (PB 32)) : Expr O Γ keyIndRT :=
+@[expose] def rNoneE {Γ : List (Ty (e2eSig ℓ))} : Expr O Γ keyIndRT := .inl .unit
+@[expose] def rInitPrinE {Γ : List (Ty (e2eSig ℓ))} (ik s : Expr O Γ (PB 32)) : Expr O Γ keyIndRT :=
   .inr (.inl (.pair ik s))
-def rPkE {Γ : List (Ty (e2eSig ℓ))} (pk : Expr O Γ (PB 32)) : Expr O Γ keyIndRT :=
+@[expose] def rPkE {Γ : List (Ty (e2eSig ℓ))} (pk : Expr O Γ (PB 32)) : Expr O Γ keyIndRT :=
   .inr (.inr (.inl pk))
-def rCorrE {Γ : List (Ty (e2eSig ℓ))} (ik s : Expr O Γ (PB 32)) : Expr O Γ keyIndRT :=
+@[expose] def rCorrE {Γ : List (Ty (e2eSig ℓ))} (ik s : Expr O Γ (PB 32)) : Expr O Γ keyIndRT :=
   .inr (.inr (.inr (.inl (.pair ik s))))
-def rBundleE {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ keyIndRT :=
+@[expose] def rBundleE {Γ : List (Ty (e2eSig ℓ))} (b : Expr O Γ bundleT) : Expr O Γ keyIndRT :=
   .inr (.inr (.inr (.inr (.inl b))))
-def rHdrE {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ keyIndRT :=
+@[expose] def rHdrE {Γ : List (Ty (e2eSig ℓ))} (h : Expr O Γ hdrT) : Expr O Γ keyIndRT :=
   .inr (.inr (.inr (.inr (.inr (.inl h)))))
-def rInitUnfreshE {Γ : List (Ty (e2eSig ℓ))} (dk : Expr O Γ drKeyT) (h : Expr O Γ hdrT) :
+@[expose] def rInitUnfreshE {Γ : List (Ty (e2eSig ℓ))} (dk : Expr O Γ drKeyT) (h : Expr O Γ hdrT) :
     Expr O Γ keyIndRT :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inl (.pair dk h)))))))
-def rAcceptFreshE {Γ : List (Ty (e2eSig ℓ))} : Expr O Γ keyIndRT :=
+@[expose] def rAcceptFreshE {Γ : List (Ty (e2eSig ℓ))} : Expr O Γ keyIndRT :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl .unit)))))))
-def rDrKeyE {Γ : List (Ty (e2eSig ℓ))} (dk : Expr O Γ drKeyT) : Expr O Γ keyIndRT :=
+@[expose] def rDrKeyE {Γ : List (Ty (e2eSig ℓ))} (dk : Expr O Γ drKeyT) : Expr O Γ keyIndRT :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl dk))))))))
 def rDhSecretsE {Γ : List (Ty (e2eSig ℓ))}
     (l1 l2 l3 l4 : Expr O Γ (.list (PB 32))) : Expr O Γ keyIndRT :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr
     (.inl (.pair l1 (.pair l2 (.pair l3 l4))))))))))))
-def rSpkSkE {Γ : List (Ty (e2eSig ℓ))} (sk : Expr O Γ (PB 32)) : Expr O Γ keyIndRT :=
+@[expose] def rSpkSkE {Γ : List (Ty (e2eSig ℓ))} (sk : Expr O Γ (PB 32)) : Expr O Γ keyIndRT :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr sk)))))))))
 
-def rsE {Γ : List (Ty (e2eSig ℓ))} (r : Expr O Γ keyIndRT)
+@[expose] def rsE {Γ : List (Ty (e2eSig ℓ))} (r : Expr O Γ keyIndRT)
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) :
     Expr O Γ (.prod keyIndRT (e2eKeyIndStateTy ℓ S)) :=
   .pair r st
 
 /-! ### Protocol encoding and bookkeeping -/
 
-def encECWideE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def encECWideE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (pk : Expr O Γ (PB 32)) : Expr O Γ (PB 1569) :=
   H.pureOp (.pbytesWiden 33 1536) (H.pureOp (.pbytesCons TAG_EC_DJB 32) pk)
 
-def encKEME (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def encKEME (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (pk : Expr O Γ (PB 1568)) : Expr O Γ (PB 1569) :=
   H.pureOp (.pbytesCons TAG_KYBER_1024 1568) pk
 
-def zero32E (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} : Expr O Γ (PB 32) :=
+@[expose] def zero32E (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} : Expr O Γ (PB 32) :=
   H.pureOp (.pbytesLit 32 (List.replicate 32 0)) .unit
 
-def dhNonZeroE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def dhNonZeroE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (dh : Expr O Γ (PB 32)) : Expr O Γ .bool :=
   .not (H.pureOp (.pbytesEq 32 32) (.pair dh (zero32E H)))
 
-def dhOptNonZeroE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def dhOptNonZeroE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (dh4? : Expr O Γ (.opt (PB 32))) : Expr O Γ .bool :=
   eCaseOpt dh4? (.bool true) fun dh => dhNonZeroE H (v dh)
 
-def buildSecretsE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def buildSecretsE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (dh1 dh2 dh3 : Expr O Γ (PB 32)) (dh4? : Expr O Γ (.opt (PB 32)))
     (ss : Expr O Γ (PB 32)) : Expr O Γ (PB 192) :=
   eLet (.pair (H.pureOp (.pbytesCat (32 + 32 + 32) 32)
@@ -2556,7 +2546,7 @@ def buildSecretsE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
           (.pair (H.pureOp (.pbytesCat (32 + 32 + 32 + 32) 32) (.pair (.fst (v p)) (v dh4)))
             (.snd (.snd (v p)))))
 
-def checkSeenEFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def checkSeenEFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (used : Expr O Γ (.list (.prod .nat (.prod PU32 (.prod PU32 (PB 32))))))
     (k : Expr O Γ .nat) (pqspkId spkId : Expr O Γ PU32) (ekAPk : Expr O Γ (PB 32)) :
     Expr O Γ (.prod .bool (.list (.prod .nat (.prod PU32 (.prod PU32 (PB 32)))))) :=
@@ -2572,7 +2562,7 @@ def checkSeenEFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2e
       (.pair (.bool false) (.fst (v p)))
       (.pair (.bool true) (.cons (.snd (v p)) (.fst (v p))))
 
-def checkSeenE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def checkSeenE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (used : Expr O Γ (.list (.prod .nat (.prod PU32 (.prod PU32 (PB 32))))))
     (k : Expr O Γ .nat) (pqspkId spkId : Expr O Γ PU32) (ekAPk : Expr O Γ (PB 32)) :
     Expr O Γ (.prod .bool (.list (.prod .nat (.prod PU32 (.prod PU32 (PB 32)))))) :=
@@ -2588,7 +2578,7 @@ def checkSeenE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
       (.pair (.bool false) (.fst (v p)))
       (.pair (.bool true) (.cons (.snd (v p)) (.fst (v p))))
 
-def isTestableEFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isTestableEFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) (sid : Expr O Γ (sidT S)) : Expr O Γ .bool :=
   eLet (.pair st sid) fun p =>
     eCaseOpt
@@ -2601,7 +2591,7 @@ def isTestableEFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2
         (fun r => .and (.and (reSendHon (v r)) (.not (reTested (v r)))) (.not (reRev (v r)))))
       (fun e => .and (.and (ieFresh (v e)) (.not (ieTested (v e)))) (.not (ieRev (v e))))
 
-def isTestableE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isTestableE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) (sid : Expr O Γ (sidT S)) : Expr O Γ .bool :=
   eLet (.pair st sid) fun p =>
     eCaseOpt
@@ -2616,25 +2606,25 @@ def isTestableE (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
 
 /-! ### Monadic sampling and primitive helpers -/
 
-def sBytes32C (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} : Comp O I Γ (PB 32) :=
+@[expose] def sBytes32C (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} : Comp O I Γ (PB 32) :=
   bindV H.sampBv256 fun w => .ret (H.pureOp .bv256ToPbytes32 (v w))
 
-def sRandom64C (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} : Comp O I Γ (PB 64) :=
+@[expose] def sRandom64C (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} : Comp O I Γ (PB 64) :=
   bindV (sBytes32C H) fun b1 =>
     bindV (sBytes32C H) fun b2 =>
       .ret (H.pureOp (.pbytesCat 32 32) (.pair (v b1) (v b2)))
 
-def sDrKey96C (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} : Comp O I Γ drKeyT :=
+@[expose] def sDrKey96C (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} : Comp O I Γ drKeyT :=
   bindV (sBytes32C H) fun rk =>
     bindV (sBytes32C H) fun ck =>
       bindV (sBytes32C H) fun pk =>
         .ret (.pair (v rk) (.pair (v ck) (v pk)))
 
-def sKemKeyGenC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} :
+@[expose] def sKemKeyGenC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))} :
     Comp O I Γ (.prod (PB 1568) (PB 3168)) :=
   bindV (sRandom64C H) fun seed => H.callPrim .kemKeyGen (v seed)
 
-def findHonestCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def findHonestCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (principals : Expr O Γ (.list (.prod .nat e2ePrincipalEntryTy)))
     (ikB : Expr O Γ (PB 32)) :
     Comp O I Γ (.opt (.prod .nat e2ePrincipalEntryTy)) :=
@@ -2644,7 +2634,7 @@ def findHonestCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2
         bindV (H.callPrim .pow8 (peIkPk (.snd (v e)))) fun pEnt =>
           .ret (H.pureOp (.pbytesEq 32 32) (.pair (v pIk) (v pEnt)))
 
-def findHonestC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def findHonestC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (principals : Expr O Γ (.list (.prod .nat e2ePrincipalEntryTy)))
     (ikB : Expr O Γ (PB 32)) :
     Comp O I Γ (.opt (.prod .nat e2ePrincipalEntryTy)) :=
@@ -2654,7 +2644,7 @@ def findHonestC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
         bindV (H.callPrim .pow8 (peIkPk (.snd (v e)))) fun pEnt =>
           .ret (H.pureOp (.pbytesEq 32 32) (.pair (v pIk) (v pEnt)))
 
-def isAdvRegC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isAdvRegC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (advKeys : Expr O Γ (.list (.prod (PB 32) (PB 32))))
     (pk : Expr O Γ (PB 32)) : Comp O I Γ .bool :=
   letV (.pair advKeys pk) fun ap =>
@@ -2663,7 +2653,7 @@ def isAdvRegC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig �
         bindV (H.callPrim .pow8 (.snd (v e))) fun pEnt =>
           .ret (H.pureOp (.pbytesEq 32 32) (.pair (v pPk) (v pEnt)))
 
-def isGameSpkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isGameSpkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (spkBundles : Expr O Γ (.list (.prod (.prod .nat .nat) e2eSpkBundleEntryTy)))
     (pk : Expr O Γ (PB 32)) : Comp O I Γ .bool :=
   letV (.pair spkBundles pk) fun bp =>
@@ -2672,7 +2662,7 @@ def isGameSpkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2e
         bindV (H.callPrim .pow8 (beSpkPk (.snd (v b)))) fun pB =>
           .ret (H.pureOp (.pbytesEq 32 32) (.pair (v pB) (v pPk)))
 
-def isGameSpkC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isGameSpkC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (spkBundles : Expr O Γ (.list (.prod (.prod .nat .nat) e2eSpkBundleEntryTy)))
     (pk : Expr O Γ (PB 32)) : Comp O I Γ .bool :=
   letV (.pair spkBundles pk) fun bp =>
@@ -2681,7 +2671,7 @@ def isGameSpkC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
         bindV (H.callPrim .pow8 (beSpkPk (.snd (v b)))) fun pB =>
           .ret (H.pureOp (.pbytesEq 32 32) (.pair (v pB) (v pPk)))
 
-def isGameOpkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isGameOpkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (opkEntries : Expr O Γ (.list (.prod (.prod .nat (.prod .nat .nat)) e2eOpkEntryTy)))
     (pk : Expr O Γ (PB 32)) : Comp O I Γ .bool :=
   letV (.pair opkEntries pk) fun op =>
@@ -2690,7 +2680,7 @@ def isGameOpkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2e
         bindV (H.callPrim .pow8 (oePk (.snd (v o)))) fun pO =>
           .ret (H.pureOp (.pbytesEq 32 32) (.pair (v pO) (v pPk)))
 
-def isGameOpkC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def isGameOpkC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (opkEntries : Expr O Γ (.list (.prod (.prod .nat (.prod .nat .nat)) e2eOpkEntryTy)))
     (pk : Expr O Γ (PB 32)) : Comp O I Γ .bool :=
   letV (.pair opkEntries pk) fun op =>
@@ -2699,7 +2689,7 @@ def isGameOpkC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
         bindV (H.callPrim .pow8 (oePk (.snd (v o)))) fun pO =>
           .ret (H.pureOp (.pbytesEq 32 32) (.pair (v pO) (v pPk)))
 
-def koskBundleOkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def koskBundleOkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) (bundle : Expr O Γ bundleT) : Comp O I Γ .bool :=
   letV (.pair st bundle) fun sb =>
     bindV (findHonestCFuel (S := S) H nFuel (stPrin (.fst (v sb))) (bndIkB (.snd (v sb)))) fun hIk =>
@@ -2718,7 +2708,7 @@ def koskBundleOkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (
                                  (orE (v gSpk) (v aSpk)))
                            (v okOpk))
 
-def koskBundleOkC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def koskBundleOkC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) (bundle : Expr O Γ bundleT) : Comp O I Γ .bool :=
   letV (.pair st bundle) fun sb =>
     bindV (findHonestC (S := S) H (stPrin (.fst (v sb))) (bndIkB (.snd (v sb)))) fun hIk =>
@@ -2737,49 +2727,49 @@ def koskBundleOkC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSi
                                  (orE (v gSpk) (v aSpk)))
                            (v okOpk))
 
-def koskSenderOkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def koskSenderOkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) (ikAPk : Expr O Γ (PB 32)) : Comp O I Γ .bool :=
   letV (.pair st ikAPk) fun si =>
     bindV (findHonestCFuel (S := S) H nFuel (stPrin (.fst (v si))) (.snd (v si))) fun hIk =>
       bindV (isAdvRegC H nFuel (stAdv (.fst (v si))) (.snd (v si))) fun aIk =>
         .ret (orE (isSomeE (v hIk)) (v aIk))
 
-def koskSenderOkC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def koskSenderOkC (H : E2EPqxdhHooks ℓ O I) (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) (ikAPk : Expr O Γ (PB 32)) : Comp O I Γ .bool :=
   letV (.pair st ikAPk) fun si =>
     bindV (findHonestC (S := S) H (stPrin (.fst (v si))) (.snd (v si))) fun hIk =>
       bindV (isAdvRegC H nAdv (stAdv (.fst (v si))) (.snd (v si))) fun aIk =>
         .ret (orE (isSomeE (v hIk)) (v aIk))
 
-def resolveSigPkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def resolveSigPkCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (principals : Expr O Γ (.list (.prod .nat e2ePrincipalEntryTy)))
     (ikB : Expr O Γ (PB 32)) : Comp O I Γ (PB 32) :=
   letV (.pair principals ikB) fun pi =>
     bindV (findHonestCFuel (S := S) H nFuel (.fst (v pi)) (.snd (v pi))) fun h =>
       .ret (eCaseOpt (v h) (.snd (v pi)) fun e => peSignPk (.snd (v e)))
 
-def resolveSigPkC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def resolveSigPkC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (principals : Expr O Γ (.list (.prod .nat e2ePrincipalEntryTy)))
     (ikB : Expr O Γ (PB 32)) : Comp O I Γ (PB 32) :=
   letV (.pair principals ikB) fun pi =>
     bindV (findHonestC (S := S) H (.fst (v pi)) (.snd (v pi))) fun h =>
       .ret (eCaseOpt (v h) (.snd (v pi)) fun e => peSignPk (.snd (v e)))
 
-def honestPeerCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def honestPeerCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (principals : Expr O Γ (.list (.prod .nat e2ePrincipalEntryTy)))
     (ikB : Expr O Γ (PB 32)) : Comp O I Γ (.opt .nat) :=
   bindV (findHonestCFuel (S := S) H nFuel principals ikB) fun h =>
     .ret (eCaseOpt (v h) .none fun e =>
       .ite (.not (peCorr (.snd (v e)))) (.some (.fst (v e))) .none)
 
-def honestPeerC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def honestPeerC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (principals : Expr O Γ (.list (.prod .nat e2ePrincipalEntryTy)))
     (ikB : Expr O Γ (PB 32)) : Comp O I Γ (.opt .nat) :=
   bindV (findHonestC (S := S) H principals ikB) fun h =>
     .ret (eCaseOpt (v h) .none fun e =>
       .ite (.not (peCorr (.snd (v e)))) (.some (.fst (v e))) .none)
 
-def checkProvCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def checkProvCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) (bundle : Expr O Γ bundleT) :
     Comp O I Γ (.prod .bool (.prod .bool .bool)) :=
   letV (.pair st bundle) fun sb =>
@@ -2812,7 +2802,7 @@ def checkProvCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2e
                       fun opkHon =>
                         .ret (.pair (v spkHon) (.pair (v opkHon) (v pqHon))))
 
-def checkProvC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def checkProvC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) (bundle : Expr O Γ bundleT) :
     Comp O I Γ (.prod .bool (.prod .bool .bool)) :=
   letV (.pair st bundle) fun sb =>
@@ -2845,13 +2835,13 @@ def checkProvC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
                       fun opkHon =>
                         .ret (.pair (v spkHon) (.pair (v opkHon) (v pqHon))))
 
-def optPow8C (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def optPow8C (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (pk? : Expr O Γ (.opt (PB 32))) : Comp O I Γ (.opt (PB 32)) :=
   caseOptV pk?
     (.ret .none)
     (fun pk => bindV (H.callPrim .pow8 (v pk)) fun p => .ret (.some (v p)))
 
-def partnerC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def partnerC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (s : Expr O Γ (e2eInitiatorEntryTy ℓ S))
     (r : Expr O Γ (e2eRespEntryTy ℓ S)) : Comp O I Γ .bool :=
   letV (.pair s r) fun sr =>
@@ -2880,7 +2870,7 @@ def partnerC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
         (H.pureOp (.pbytesEq 1568 1568)
           (.pair (hdrKemCt (ieHdr (.fst (v sr)))) (hdrKemCt (reHdr (.snd (v sr)))))))
 
-def partnerRandKeyCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def partnerRandKeyCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (respSessions : Expr O Γ (.list (e2eRespEntryTy ℓ S)))
     (s : Expr O Γ (e2eInitiatorEntryTy ℓ S)) : Comp O I Γ (.opt drKeyT) :=
   letV (.pair respSessions s) fun rs =>
@@ -2888,7 +2878,7 @@ def partnerRandKeyCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty
       partnerC H (.snd (v rs)) (v r)) fun found =>
       .ret (optMapE (v found) fun r => reRand (v r))
 
-def partnerRandKeyC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def partnerRandKeyC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (respSessions : Expr O Γ (.list (e2eRespEntryTy ℓ S)))
     (s : Expr O Γ (e2eInitiatorEntryTy ℓ S)) : Comp O I Γ (.opt drKeyT) :=
   letV (.pair respSessions s) fun rs =>
@@ -2896,7 +2886,7 @@ def partnerRandKeyC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
       partnerC H (.snd (v rs)) (v r)) fun found =>
       .ret (optMapE (v found) fun r => reRand (v r))
 
-def recordRespCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def recordRespCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (r : Expr O Γ (e2eRespEntryTy ℓ S)) : Comp O I Γ (e2eKeyIndStateTy ℓ S) :=
   letV (.pair st r) fun sr =>
@@ -2910,7 +2900,7 @@ def recordRespCFuel (H : E2EPqxdhHooks ℓ O I) (nFuel : ℕ) {Γ : List (Ty (e2
           .ret (setRespE (.fst (v sr))
             (.cons (reSetRandE (.snd (v sr)) (v rk)) (stResp (.fst (v sr)))))
 
-def recordRespC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def recordRespC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S))
     (r : Expr O Γ (e2eRespEntryTy ℓ S)) : Comp O I Γ (e2eKeyIndStateTy ℓ S) :=
   letV (.pair st r) fun sr =>
@@ -2928,24 +2918,24 @@ abbrev accInpTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (PB 32) (.prod (PB 32) (.prod (.opt (PB 32))
     (.prod (PB 3168) (.prod .bool (.prod .bool hdrT)))))
 
-def accIkSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ (PB 32) :=
+@[expose] def accIkSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ (PB 32) :=
   .fst e
-def accSpkSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ (PB 32) :=
+@[expose] def accSpkSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ (PB 32) :=
   .fst (.snd e)
-def accOpkSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) :
+@[expose] def accOpkSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) :
     Expr O Γ (.opt (PB 32)) :=
   .fst (.snd (.snd e))
-def accPqSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ (PB 3168) :=
+@[expose] def accPqSk {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ (PB 3168) :=
   .fst (.snd (.snd (.snd e)))
-def accTp {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ .bool :=
+@[expose] def accTp {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ .bool :=
   .fst (.snd (.snd (.snd (.snd e))))
-def accRp {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ .bool :=
+@[expose] def accRp {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd e)))))
-def accHdr {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ hdrT :=
+@[expose] def accHdr {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (accInpTy ℓ)) : Expr O Γ hdrT :=
   .snd (.snd (.snd (.snd (.snd (.snd e)))))
 
 /-- Simulates `Model.acceptKeys P` in `Comp`. -/
-def acceptKeysC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def acceptKeysC (H : E2EPqxdhHooks ℓ O I) {Γ : List (Ty (e2eSig ℓ))}
     (ikBSk spkBSk : Expr O Γ (PB 32))
     (opkBSk? : Expr O Γ (.opt (PB 32)))
     (pqspkBSk : Expr O Γ (PB 3168))

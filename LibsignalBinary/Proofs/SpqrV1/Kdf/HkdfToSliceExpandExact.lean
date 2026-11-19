@@ -11,20 +11,19 @@ module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExpand -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtractExact -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtractExact
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
-# `HookSatExactMemcpy` Siblings of `SpqrV1.Kdf.HkdfToSliceExpand` (`HkdfToSliceExpandExact`, Block `379`)
+# `HookSatExactMemcpy` siblings of `SpqrV1.Kdf.HkdfToSliceExpand` (Block `379`)
 
-- **Role:** `Role::Proof` (untrusted proof module outside the TCB; #1255 mc2 Cone 3).
-- **Overview:**
-  Replaces `h_memcpy : H lsMemcpySym = some memcpyHook` on Expand Block-1 `memcpy` segments
-  (`seg_b1b_placed_runsTo` and `seg_b1d_placed_runsTo`) of Block `379` (`spqr::kdf::hkdf_to_slice`)
-  with `(h_mc : HookSatExactMemcpy H lsMemcpySym)` via `s2_memcpy_step_placed_429_exact`, keeping all
-  cut predicates (`StateB1Memcpy`, `StateB1Fin`, `StateB1RetFin`, `StateB1Done`) **100% unchanged**.
+Replaces `h_memcpy : H lsMemcpySym = some memcpyHook` on Expand Block-1 `memcpy` segments
+(`seg_b1b_placed_runsTo` and `seg_b1d_placed_runsTo`) of Block `379` (`spqr::kdf::hkdf_to_slice`)
+with `h_mc : HookSatExactMemcpy H lsMemcpySym` via `s2_memcpy_step_placed_429_exact`, keeping all
+cut predicates (`StateB1Memcpy`, `StateB1Fin`, `StateB1RetFin`, `StateB1Done`) unchanged.
 -/
 
 public section

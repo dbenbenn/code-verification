@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectAmbBase
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectAmbBase
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliver
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliverInject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupling
@@ -18,6 +18,10 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.HelpersC
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedBase
 
 /-!
 # Tracker-halted ambiguous new-chain `inject` cases
@@ -28,7 +32,7 @@ Proves `closeByStateCTrack_inject_newChain_amb_inWin_false_find_none` and
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 

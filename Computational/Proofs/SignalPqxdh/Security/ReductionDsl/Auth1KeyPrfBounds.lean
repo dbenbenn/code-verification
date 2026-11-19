@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H2
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
+public import Computational.Proofs.SignalPqxdh.Security.SigHopA -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # Query Bounds for the One-Key `PrfMsgKeys` Reduction
@@ -20,7 +22,7 @@ Establishes `PrfMsgKeysAdv.Bounded` and `primQueryBudget` compliance for the one
 simulator `prfMsgKeysReductionAuthFixed1Key` and `ReductionDsl` adversary `prfMsgKeys1KeyDslAdv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -157,11 +157,11 @@ theorem cliTrace_take_16_eq : cliTrace.take 16 =
       .accept (acceptAt 42), .recv (wireAt 43), .rng cliCoins4, .pt (ptAt 78), .rng (rngAt 79), .send (sendAt 80) ] := rfl
 
 theorem not_kyberMismatch_cli_8 {i : ExternInterpretation} {r : Records}
-    (hfits : compFits Witnesses.Cheval26WeakStateIdx1.setup i r) :
+    (hfits : SetupMatches Witnesses.Cheval26WeakStateIdx1.setup i r) :
     ∀ p, parsePreKeyWire (wireAt 40) = some p → ¬ KyberMismatch i r p := not_kyberMismatch_at (Or.inl rfl) hfits
 
 theorem not_kyberMismatch_cli_16 {i : ExternInterpretation} {r : Records}
-    (hfits : compFits Witnesses.Cheval26WeakStateIdx1.setup i r) :
+    (hfits : SetupMatches Witnesses.Cheval26WeakStateIdx1.setup i r) :
     ∀ p, parsePreKeyWire (wireAt 81) = some p → ¬ KyberMismatch i r p := not_kyberMismatch_at (Or.inr rfl) hfits
 
 theorem wireAt_40_head_ne_whisper : (wireAt 40).head? ≠ some DY.Libsignal.TripleRatchet.Refinement.wireWhisperTag :=
@@ -1137,7 +1137,7 @@ theorem not_knownBaseKeyOn_take6 {r : Records} {S : Sem} {g : Ghost}
   have hnk := not_knownBaseKey_cli_16 hp hex_cli; unfold KnownBaseKey at hnk; rwa [htr] at hnk
 
 theorem spec_half_pinned :
-    cliCompShape.SpecHalf (cliCompFitsPinned Witnesses.Cheval26WeakStateIdx1Cli.setup)
+    cliCompShape.SpecHalf (CliSetupMatchesPinned Witnesses.Cheval26WeakStateIdx1Cli.setup)
       Witnesses.Cheval26WeakStateIdx1Cli.trace := by
   intro (iw : cliCompShape.Interp) (r : Records) hfits
   have hwf : ProtocolSetupWF r := hfits.1.1.1
@@ -1206,8 +1206,8 @@ theorem spec_half_pinned :
           fun τ ms hex_cli _ hnb htr hsalts hpre hpt => ?_
         simpa [hmsg] using noBscCliAt_16_sub hfits0 hex hp81 hex_cli hnb htr hsalts hpre hpt
 
-theorem cliCompFitsPinned_satisfiable :
-    ∃ iw r, cliCompFitsPinned Witnesses.Cheval26WeakStateIdx1Cli.setup iw r :=
-  Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.cliCompFitsPinned_satisfiable_ws1
+theorem cliSetupMatchesPinned_satisfiable :
+    ∃ iw r, CliSetupMatchesPinned Witnesses.Cheval26WeakStateIdx1Cli.setup iw r :=
+  Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.cliSetupMatchesPinned_satisfiable_ws1
 
 end Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.CliBridge

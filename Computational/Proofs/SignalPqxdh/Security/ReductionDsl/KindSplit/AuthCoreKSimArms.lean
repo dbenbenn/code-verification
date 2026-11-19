@@ -191,23 +191,6 @@ theorem corruptB_preserves_online_ro (Q : ℕ) {n : ℕ} {Γ₁ Γ₂ Δ : List 
     simp only [List.length_map, List.length_take]
     exact Nat.le_trans (Nat.min_le_right _ _) hb.principals_le
 
-theorem genSpkKB_fuel_eq (S : Setup) (b : QueryBudget) {n : ℕ}
-    {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    (st : Var Γ₁ authStateTy) (x : Var Γ₂ (.prod .nat .nat))
-    [h₁ : Ext Γ₁ Δ] [Ext Γ₂ Δ] (env : Env Δ)
-    (hb : AuthBaseValOnlineBounded n (env.get (h₁.wk st)))
-    (hn : n ≤ (AuthKindFuels.ofBudget S b).K_on) :
-    (genSpkKB (AuthKindFuels.ofBudget S b) st x).eval env =
-      (genSpkB b.q_total st x).eval env := by
-  have hSK := List.take_of_length_le (Nat.le_trans hb.spkBundles_le hn)
-  have hSQ := List.take_of_length_le
-    (Nat.le_trans (Nat.le_trans hb.spkBundles_le hn) (AuthKindFuels.K_on_le_q_total S b))
-  have hPK := List.take_of_length_le (Nat.le_trans hb.principals_le hn)
-  have hPQ := List.take_of_length_le
-    (Nat.le_trans (Nat.le_trans hb.principals_le hn) (AuthKindFuels.K_on_le_q_total S b))
-  simp only [genSpkKB, genSpkB, Comp.iteC, caseOptV, Comp.caseOptC, eAny, Expr.anyBounded,
-    eFind, Expr.findBounded, stSpks, stPrin, v, Comp.eval, Expr.eval, hSK, hSQ, hPK, hPQ]
-
 theorem genSpkB_preserves_online_ro (Q : ℕ) {n : ℕ} {Γ₁ Γ₂ Δ : List (Ty pqSig)}
     (st : Var Γ₁ authStateTy) (x : Var Γ₂ (.prod .nat .nat))
     [h₁ : Ext Γ₁ Δ] [Ext Γ₂ Δ] (env : Env Δ)
@@ -388,46 +371,6 @@ private theorem resolveSigPkC_fuel_eq (S : Setup) (b : QueryBudget) {n : ℕ}
   dsimp only [resolveSigPkC, letV, Comp.letC, bindV, Comp.eval]
   simp only [pure_bind]
   rw [findHonestC_fuel_eq S b st (h := @Ext.step _ _ _ h) (v Var.vz) (.cons (ik.eval env) env) hb hn]
-
-private theorem honestPeerC_fuel_eq (S : Setup) (b : QueryBudget) {n : ℕ}
-    {Γ Δ : List (Ty pqSig)} (st : Var Γ authStateTy) [h : Ext Γ Δ]
-    (ik : Expr pqxdhOps Δ (B 32)) (env : Env Δ)
-    (hb : AuthBaseValOnlineBounded n (env.get (h.wk st)))
-    (hn : n ≤ (AuthKindFuels.ofBudget S b).K_on) :
-    (honestPeerC S (AuthKindFuels.ofBudget S b).K_on st ik).eval env =
-      (honestPeerC S b.q_total st ik).eval env := by
-  dsimp only [honestPeerC, bindV, Comp.eval]
-  rw [findHonestC_fuel_eq S b st ik env hb hn]
-
-theorem extractKC_fuel_eq (S : Setup) (b : QueryBudget) {n : ℕ}
-    {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List (Ty pqSig)}
-    (tp : Var Γ₁ .nat) (tpk : Var Γ₂ (B 32))
-    (st : Var Γ₃ authStateTy) (bu : Var Γ₄ preKeyBundleTy)
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [h₃ : Ext Γ₃ Δ] [Ext Γ₄ Δ] (env : Env Δ)
-    (hb : AuthBaseValOnlineBounded n (env.get (h₃.wk st)))
-    (hn : n ≤ (AuthKindFuels.ofBudget S b).K_on) :
-    (extractKC S (AuthKindFuels.ofBudget S b) tp tpk st bu).eval env =
-      (extractC S b.q_total tp tpk st bu).eval env := by
-  have hSK := List.take_of_length_le (Nat.le_trans hb.spkBundles_le hn)
-  have hSQ := List.take_of_length_le
-    (Nat.le_trans (Nat.le_trans hb.spkBundles_le hn) (AuthKindFuels.K_on_le_q_total S b))
-  dsimp only [extractKC, extractC, bindV, Comp.eval]
-  rw [honestPeerC_fuel_eq S b st _ env hb hn]
-  refine congrArg (_ >>= ·) (funext fun peer =>
-    congrArg (_ >>= ·) (funext fun v1 =>
-      congrArg (_ >>= ·) (funext fun v2 => ?_)))
-  have hpeer : (Env.cons (t := .bool) v2
-      (Env.cons (t := .bool) v1 (Env.cons (t := .opt .nat) peer env))).get
-      ((@Ext.step _ _ _ (@Ext.step _ _ _ (@Ext.refl _))).wk Var.vz) = peer := rfl
-  simp only [_root_.SignalPqxdh.Security.ReductionDsl.AuthHs.eCaseOpt, v, Expr.eval, hpeer]
-  cases peer with
-  | none => rfl
-  | some k =>
-    have hget : (Env.cons (t := .nat) k
-        (Env.cons (t := .bool) v2 (Env.cons (t := .bool) v1 (Env.cons (t := .opt .nat) (some k) env)))).get
-        ((@Ext.step _ _ _ (@Ext.step _ _ _ (@Ext.step _ _ _ (@Ext.step _ _ _ h₃)))).wk st) =
-      env.get (h₃.wk st) := rfl
-    simp only [eAny, Expr.anyBounded, stSpks, Expr.eval, hget, hSK, hSQ]
 
 theorem preCheckC_fuel_eq (S : Setup) (b : QueryBudget) (opk : Bool) {n : ℕ}
     {Γ₁ Γ₂ Δ : List (Ty pqSig)}

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBad
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

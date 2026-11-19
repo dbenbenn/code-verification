@@ -26,6 +26,7 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTable
 import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem
 public import Computational.Specifications.Pqxdh.Bound
 public import Computational.Specifications.Pqxdh.Security.Headline
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigBounds
 
 /-!
 # Cost, Query, Size, and Block Bounds for `sigKeyInd1KeyKindAtomicProg`

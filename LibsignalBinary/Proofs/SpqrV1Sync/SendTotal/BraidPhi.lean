@@ -25,7 +25,7 @@ Proves that `States.send` increases the braid potential `phiB` by at most `1` an
 never increases `phiB` (`st_bPhi`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

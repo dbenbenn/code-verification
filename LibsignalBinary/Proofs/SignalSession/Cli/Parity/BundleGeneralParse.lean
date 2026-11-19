@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bundle
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bundle -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecDefs
+import LibsignalBinary.Proofs.SpecLemmas.FsFold
 
 /-!
 # Equivalence of `parseBundleDir` and `readBundleV`
@@ -20,7 +21,7 @@ on 1813-byte `PreKeyBundleFields` encodings, along with pointwise `filesOf` eval
 `PublicBundle.files`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,17 +48,17 @@ private theorem dite_neg {α : Type} {c : Prop} [inst : Decidable c] (hc : ¬ c)
 /-! ## `parseBundleDir` and `readBundleV` Equivalence -/
 
 /-- Normalizes a serialized Curve25519 public key (`0x05 :: rest` with `32 ≤ rest.length`). -/
-def normDjbKey : List (BitVec 8) → Option (List (BitVec 8))
+@[expose] def normDjbKey : List (BitVec 8) → Option (List (BitVec 8))
   | b :: rest => if b = 5#8 ∧ 32 ≤ rest.length then some (5#8 :: rest.take 32) else none
   | [] => none
 
 /-- Normalizes a serialized Kyber-1024 public key (`0x08 :: rest` with `rest.length = 1568`). -/
-def normKyberKey : List (BitVec 8) → Option (List (BitVec 8))
+@[expose] def normKyberKey : List (BitVec 8) → Option (List (BitVec 8))
   | b :: rest => if b = 8#8 ∧ rest.length = 1568 then some (8#8 :: rest) else none
   | [] => none
 
 /-- Byte-level bundle directory parser matching `read_bundle` at `device = 1#8`. -/
-def parseBundleDir (d : String → Option (List (BitVec 8))) (dirName : String) : Option PublicBundle :=
+@[expose] def parseBundleDir (d : String → Option (List (BitVec 8))) (dirName : String) : Option PublicBundle :=
   let fileBytes (name : String) : List (BitVec 8) := (d (dirName ++ "/" ++ name)).getD []
   do
     let identityKey ← normDjbKey (fileBytes "identity-key")
@@ -74,7 +75,7 @@ def parseBundleDir (d : String → Option (List (BitVec 8))) (dirName : String) 
            kyberId, kyberKey, kyberSig, oneTime }
 
 /-- 1813-byte serialized bundle representation of a `PublicBundle` (`PreKeyBundleFields.bytes` layout). -/
-def publicBundleBytes (pb : PublicBundle) : List (BitVec 8) :=
+@[expose] def publicBundleBytes (pb : PublicBundle) : List (BitVec 8) :=
   let opk : List (BitVec 8) := match pb.oneTime with
     | some (i, k) => 1#8 :: CryptoVerification.SignalSession.le32 i ++ k
     | none => 0#8 :: List.replicate 37 0#8

@@ -13,8 +13,7 @@ public import Arm64.Trusted.ISA.State
 public import Arm64.Trusted.ISA.Memory
 public import Arm64.Trusted.Process.Loader
 public import ProofLib.Invariant
-public import LibsignalBinary.Specifications.LibsignalE2E.HooksCommon
-public import LibsignalBinary.Specifications.SignalSession.CliRun
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRunFixed -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMem
 
 /-!
@@ -35,7 +34,7 @@ namespace Symbolic.BugInjection.Proofs.CliExec.FastHooksAux
 
 open Arm64 Arm64.Process ProofLib
 open CryptoVerification.RustHeap
-open CryptoVerification.E2E (heapBase heapSize HeapBlockFitsAt bumpAddr?)
+open CryptoVerification.E2E (HeapBlockFitsAt bumpAddr? bumpAddr?_eq_classical heapBase heapSize)
 open CryptoVerification.SignalSession (PathOk ancestors blockingAncestor? fsView filesOf
   stdioPaths Utf8Ok)
 open Symbolic.BugInjection.Proofs.CliExec.RadixMemAux (sub_lt_iff_range)
@@ -885,7 +884,8 @@ theorem fastBumpAlloc_some_sound {ivs ivs' : List (Nat × Nat)} {m : Memory}
           rw [heapAddr_toNat (by omega)] at hmod'
           exact alignOffsetFrom_min halign (Nat.zero_le k') hlt hmod'
         refine ⟨?_, ?_⟩
-        · simp only [bumpAddr?, dite_eq_left_of_eq_true (eq_true hex), hfind_eq]
+        · rw [bumpAddr?_eq_classical]
+          simp only [hex, ↓reduceDIte, hfind_eq]
         · refine hag.of_perm_eq (fun a => ?_)
           simp [Memory.perm, Memory.mapFresh]
       · simp [hk0] at hsome
@@ -906,7 +906,8 @@ theorem fastBumpAlloc_some_sound {ivs ivs' : List (Nat × Nat)} {m : Memory}
           rw [Nat.find_eq_iff]
           exact ⟨hfits, fun k' hlt => hmin k' (Nat.zero_le k') hlt⟩
         refine ⟨?_, hwf', ?_⟩
-        · simp only [bumpAddr?, dite_eq_left_of_eq_true (eq_true hex), hfind_eq]
+        · rw [bumpAddr?_eq_classical]
+          simp only [hex, ↓reduceDIte, hfind_eq]
         · intro j hj_lt
           rw [hin' j]
           have hkend : k + size ≤ heapSize := hfits.2.2.1

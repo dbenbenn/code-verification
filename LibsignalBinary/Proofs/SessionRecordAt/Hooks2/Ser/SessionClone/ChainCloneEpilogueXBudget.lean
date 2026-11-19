@@ -9,17 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneEpilogueBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneEpilogueX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneEpilogueBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneEpilogueX
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `Chain::clone [local#1]` Epilogue and Stub Helpers (Block `82`)
@@ -28,7 +31,7 @@ Verifies the relocatable epilogue (`+736 → ret`), `ProtoChainCloneLocal1Placed
 lifts, and Block `82` extern stub call helpers under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -298,9 +301,6 @@ theorem senderChainClone_of_chainClone_placed_x [LibsignalPlacement]
   · simp only [withLsCodeLoaded, protoChainCloneSpecX, sepConj_assoc] at hpost
     exact (not_satisfies_false_sepConj hpost).elim
 
-abbrev senderChainClone_of_protoChainClone_placed_x :=
-  @senderChainClone_of_chainClone_placed_x
-
 /-! ## Relocatable epilogue (`+736 → ret`, Block `82`) -/
 
 attribute [local irreducible] Program.fetch Program.externAt?
@@ -549,15 +549,6 @@ theorem alloc_placed_ok_at_x [LibsignalPlacement] {M : AllocCostModel}
       (withLsCl lsmpl (rustCliAllocBudgetSpecWithStack M A lim false extHookStack)) :=
   hC.alloc.alloc (callerProg := lsProg_82 H)
 
-theorem allocNoOom_call_placed_ok_at_x [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {s : State} (hC : SerContractsXPlaced M A lim H)
-    (hcl : LibsignalCodeLoaded lsmpl s.mem) :
-    subroutine_ok (lsProg_82 H) (lsρ lsRustAllocSym)
-      (withMemEq s.mem
-        (rustCliAllocNoOomSpecWithStack M A lim false extHookStack)) :=
-  hC.alloc.allocNoOom_call (callerProg := lsProg_82 H) hcl
-
 theorem memcpy_placed_ok_at_x [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
     (hC : SerContractsXPlaced M A lim H) :
@@ -575,20 +566,6 @@ theorem shim_placed_ok_at_stateX_82 [LibsignalPlacement] {M : AllocCostModel}
         post := fun (_ : Unit) s0 sf =>
           ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗ stackAt s0.sp extHookStack } :=
   shim_placed_ok_at_stateX (shim_placed_ok_at_x hC) hcl
-
-theorem alloc_placed_ok_at_stateX_82 [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {s : State} (hC : SerContractsXPlaced M A lim H)
-    (hcl : LibsignalCodeLoaded lsmpl s.mem) :
-    subroutine_ok (lsProg_82 H) (lsρ lsRustAllocSym)
-      { pre := fun (size, align, st) s' =>
-          ⌜s'.mem = s.mem ∧
-            (s'.readReg64 .x0).toNat = size ∧ (s'.readReg64 .x1).toNat = align ∧
-            RustLayoutOk size align ∧ LsRetAddr624 (s'.readReg64 .lr)⌝ ∗
-          A.pool lim st s' ∗ stackAt s'.sp extHookStack
-        post := (rustCliAllocBudgetSpecWithStack M A lim false extHookStack).post
-        onOom := (rustCliAllocBudgetSpecWithStack M A lim false extHookStack).onOom } :=
-  alloc_placed_ok_at_stateX (alloc_placed_ok_at_x hC) hcl
 
 theorem allocNoOom_placed_ok_at_stateX_82 [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}

@@ -9,17 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.SessionOnlyKitEPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.SessionOnlyKitEPlaced
 public meta import ProofLib
 public meta import Lean
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import all LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -116,7 +119,7 @@ theorem stagedRes_storeErr_placed_intro (A : RustAlloc)
   rw [hpull]
   exact sepConj_mono_right (sepConj_mono hstr (sepConj_mono hd (sepConj_mono hvt hw5)))
 
-def pollOutPlacedRel {α : Type} (strPtr vt o2 o3 o4 o5 : BitVec 64) (o1 : BitVec 32) :
+@[expose] def pollOutPlacedRel {α : Type} (strPtr vt o2 o3 o4 o5 : BitVec 64) (o1 : BitVec 32) :
     Except Unit α → Prop
   | .ok _ => True
   | .error () =>
@@ -155,7 +158,7 @@ theorem stagedRes_storeErr_of_pollOutPlacedRel {α : Type} (A : RustAlloc)
   · rw [BitVec.extractLsb'_append_eq_right, ← ho5, bitvec64_eta32]
   · exact BitVec.extractLsb'_append_eq_left.symm
 
-def withLsRoClBox {α : Type} (pl : Obj.MultiPlacement) (spec : Spec α) : Spec α :=
+@[expose] def withLsRoClBox {α : Type} (pl : Obj.MultiPlacement) (spec : Spec α) : Spec α :=
   StoreKit.withLsRoCl pl spec
 
 theorem box_lscro {α : Type} {prog : Program} {entry : BitVec 64}

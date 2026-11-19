@@ -10,11 +10,12 @@ limitations under the License.
 module
 
 public import Aesop.BuiltinRules
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
+meta import GeneratedLean.LibsignalSessionPlacedObjShard23
 
 /-!
 # Relocatable Per-Block Fetches for `Cli/SpqrV1/Varint` (Blocks `451`, `448`)
@@ -23,7 +24,7 @@ Generates `[LibsignalPlacement]` per-block fetch and relocation lemmas for `enco
 (Block `451`) and `encode_repeated [local#3]` (Block `448`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

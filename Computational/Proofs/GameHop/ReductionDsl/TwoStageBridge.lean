@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Reductions.ReductionDsl.Core
-public import Computational.Proofs.GameHop.StateSim
+public import Computational.Proofs.GameHop.StateSim -- proof-setup: allow-public-import
 
 /-!
 # Two-Stage `ReductionDsl` Simulation Bridges
@@ -22,7 +22,7 @@ two-stage experiment congruence (`twoStageExp_congr_of_support`).
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.ReductionDsl.TwoStageBridge
 
@@ -40,7 +40,7 @@ inductive RedProg2State {κ : Type} (GSpec : OracleSpec.{0, 0} κ) (AOut PauseVa
       (cont : GSpec.Range q → OracleComp (unifSpec + GSpec) AOut)
 
 /-- Stage-1 fueled runner parameterized by coin forwarding `fwdU`. -/
-def stepUntilPauseFuelGen {ι κ : Type} {T : OracleSpec.{0, 0} ι} {GSpec : OracleSpec.{0, 0} κ}
+@[expose] def stepUntilPauseFuelGen {ι κ : Type} {T : OracleSpec.{0, 0} ι} {GSpec : OracleSpec.{0, 0} κ}
     {AOut PauseVal ChOut1 St : Type}
     (fwdU : (n : ℕ) → OracleComp T (Fin (n + 1)))
     (defaultAOut : AOut)
@@ -66,7 +66,7 @@ def stepUntilPauseFuelGen {ι κ : Type} {T : OracleSpec.{0, 0} ι} {GSpec : Ora
     mx fuel st
 
 /-- Stage-2 fueled runner parameterized by coin forwarding `fwdU`. -/
-def runWithFuelGen {ι κ : Type} {T : OracleSpec.{0, 0} ι} {GSpec : OracleSpec.{0, 0} κ}
+@[expose] def runWithFuelGen {ι κ : Type} {T : OracleSpec.{0, 0} ι} {GSpec : OracleSpec.{0, 0} κ}
     {St α : Type}
     (fwdU : (n : ℕ) → OracleComp T (Fin (n + 1)))
     (defaultVal : α)
@@ -86,7 +86,7 @@ def runWithFuelGen {ι κ : Type} {T : OracleSpec.{0, 0} ι} {GSpec : OracleSpec
         | f' + 1 => do let (resp, s') ← step gq s; r resp f' s')
     mx fuel st
 
-def midOfStepUntilPause {κ : Type} {G : OracleSpec.{0, 0} κ} {α π σ χ : Type} (dfltCh : χ) :
+@[expose] def midOfStepUntilPause {κ : Type} {G : OracleSpec.{0, 0} κ} {α π σ χ : Type} (dfltCh : χ) :
     Option χ × RedProg2State G α π σ → Mid G α π σ χ
   | (_, .done a s) => .done a s
   | (c?, .paused t p s k) => .paused t (c?.getD dfltCh) p s k
@@ -103,7 +103,7 @@ theorem midOfStepUntilPause_stepUntilPauseOfMid
     midOfStepUntilPause dfltCh (stepUntilPauseOfMid m) = m := by
   cases m <;> rfl
 
-def RedProg2State.mapSt {κ : Type} {G : OracleSpec.{0, 0} κ} {AOut P P' St St' : Type}
+@[expose] def RedProg2State.mapSt {κ : Type} {G : OracleSpec.{0, 0} κ} {AOut P P' St St' : Type}
     (g : P → P') (f : St → St') : RedProg2State G AOut P St → RedProg2State G AOut P' St'
   | .done a s => .done a (f s)
   | .paused q p s c => .paused q (g p) (f s) c
@@ -329,24 +329,6 @@ theorem runWithFuelGen_char {α St R : Type}
       · rw [hzero, runWithFuelGen_inr_zero, map_pure]
       · rw [hsucc, runWithFuelGen_inr_succ, map_bind]
         exact congrArg _ (funext fun x => ih x.1 fuel x.2)
-
-/-- Congruence for two-stage experiments related by a stage-1 state map `F` under a leaf invariant
-`Inv`. -/
-theorem twoStageExp_congr_of_support {ι' : Type} {S : OracleSpec.{0, 0} ι'}
-    {Ch StA StB Out : Type}
-    (impl : QueryImpl T (OracleComp S))
-    (stage1A : OracleComp T (Ch × StA))
-    (stage1B : OracleComp T (Ch × StB))
-    (Inv : StA → Prop) (F : StA → StB)
-    (midA : Ch → StA → OracleComp S Out)
-    (midB : Ch → StB → OracleComp S Out)
-    (h1 : stage1B = Prod.map id F <$> stage1A)
-    (hInv : AllSupport (fun x => Inv x.2) (simulateQ impl stage1A))
-    (h2 : ∀ ch s, Inv s → midB ch (F s) = midA ch s) :
-    (simulateQ impl stage1B >>= fun x => midB x.1 x.2) =
-      (simulateQ impl stage1A >>= fun x => midA x.1 x.2) := by
-  rw [h1, simulateQ_map, bind_map_left]
-  exact hInv.bind_congr _ _ fun ⟨ch, s⟩ hs => h2 ch s hs
 
 end UnfoldAndChar
 

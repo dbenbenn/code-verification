@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingD
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingD -- proof-setup: allow-public-import
 import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
 import VCVio.EvalDist.Monad.Basic
 
@@ -20,7 +20,7 @@ Couples the lazy tagged `KeyInd` runs up to `lazyStop` and relates equal `drKeyR
 to `keyIndPartner` under session and key-store invariants.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -175,7 +175,7 @@ theorem relCoupled_testSession_setLazyView {S : Setup}
 /-- Monotone extension on `KeyIndAdvCutoffState S`: `advRoLog`, `sessions`, and `respSessions`
     only grow, and `tested`/`revealed` only flip from `false` to `true`, preserving `drKeyReal`,
     `drKeyRand`, `fresh`, `senderHonest`, and `sid`. -/
-def ViewExtends {S : Setup} (adv adv' : KeyIndAdvCutoffState S) : Prop :=
+@[expose] def ViewExtends {S : Setup} (adv adv' : KeyIndAdvCutoffState S) : Prop :=
   (∀ sec, adv.advRoLog.contains sec = true → adv'.advRoLog.contains sec = true) ∧
   (∀ s ∈ adv.shCr.base.sessions, ∃ s' ∈ adv'.shCr.base.sessions,
     s'.sid = s.sid ∧ s'.drKeyReal = s.drKeyReal ∧ s'.drKeyRand = s.drKeyRand ∧ s'.fresh = s.fresh ∧
@@ -262,7 +262,7 @@ theorem lazyStop_mono_of_viewExtends {S : Setup} {adv adv' : KeyIndAdvCutoffStat
 /-- Unified postcondition for every non-`testSession` query in `tagStepView`:
     simultaneously implies `ViewExtends adv adv'` (hence `lazyStop` monotonicity) and
     `RelCoupled` step preservation of `LazyTagCacheAgree` up to `lazyStop`. -/
-def ValidNonTestTagStep {S : Setup} (adv : KeyIndAdvCutoffState S)
+@[expose] def ValidNonTestTagStep {S : Setup} (adv : KeyIndAdvCutoffState S)
     (post : LazyPost) (adv' : KeyIndAdvCutoffState S) : Prop :=
   ViewExtends adv adv' ∧
   (∀ k, testedRealKeyInView adv' k = testedRealKeyInView adv k) ∧
@@ -804,40 +804,6 @@ theorem viewExtends_of_tagStepTestSession {S : Setup} (testReal : Bool)
             List.mem_map_of_mem hx, ?_⟩
           cases x.sid == sid <;> simp
 
-theorem viewExtends_of_tagStepView {S : Setup} (testReal : Bool) (P : Primitives)
-    (q : KeyIndQuery S) (adv : KeyIndAdvCutoffState S)
-    {y : LazyPost × KeyIndAdvCutoffState S}
-    (hy : y ∈ support (tagStepView testReal S P q adv)) :
-    ViewExtends adv y.2 := by
-  by_cases hTest : ∃ sid, q = .testSession sid
-  · rcases hTest with ⟨sid, rfl⟩
-    exact viewExtends_of_tagStepTestSession testReal sid adv hy
-  · exact (validNonTestTagStep_of_tagStepView testReal P q
-      (fun sid hEq => hTest ⟨sid, hEq⟩) adv hy).1
-
-theorem lazyStop_mono_pqxdhKeyIndAdvTagImpl_false_false {S : Setup}
-    (testReal : Bool) (P : Primitives) (q : KeyIndQuery S) (lst : KeyIndLazyState S)
-    (hStop : lazyStop lst.adv = true)
-    {y : KeyIndResponse × KeyIndLazyState S}
-    (hy : y ∈ support ((pqxdhKeyIndAdvTagImpl false false testReal S P q).run lst)) :
-    lazyStop y.2.adv = true := by
-  dsimp only [pqxdhKeyIndAdvTagImpl, mkLazyKeyIndImpl, liftTagView, StateT.run_mk] at hy
-  simp only [bind_assoc, pure_bind, MonadAttach.mem_support_bind] at hy
-  rcases hy with ⟨⟨post, adv'⟩, hStep, hRun⟩
-  rw [lazyStop_runLazyPost_false_false post (setLazyView adv' lst) hRun]
-  have hExt := viewExtends_of_tagStepView testReal P q (getLazyView lst) hStep
-  have hStopView : lazyStop (getLazyView lst) = true := by
-    simpa [getLazyView] using hStop
-  simpa [setLazyView] using lazyStop_mono_of_viewExtends hExt hStopView
-
-theorem tagStepView_eq_of_ne_testSession {S : Setup} (P : Primitives)
-    (q : KeyIndQuery S) (hNeTest : ∀ sid, q ≠ .testSession sid)
-    (adv : KeyIndAdvCutoffState S) :
-    tagStepView false S P q adv = tagStepView true S P q adv := by
-  cases q with
-  | testSession sid => exact False.elim (hNeTest sid rfl)
-  | _ => rfl
-
 theorem relCoupled_tagStepTestSession {S : Setup} (P : Primitives) (sid : SessionId S)
     (lst5 lst6 : KeyIndLazyState S) (hAg : LazyTagCacheAgree lst5 lst6) :
     RelCoupled
@@ -1010,27 +976,6 @@ theorem relCoupled_tagStepTestSession {S : Setup} (P : Primitives) (sid : Sessio
           r.drKeyReal.rootKey r.drKeyRand.rootKey KeyIndResponse.drKeyResp
           hAg hRo5Eq hPairNew hPairMono hPairSplit
 
-theorem relCoupled_pqxdhKeyIndAdvTagImpl_false_false_step {S : Setup} (P : Primitives)
-    (q : KeyIndQuery S) (lst5 lst6 : KeyIndLazyState S)
-    (hAg : LazyTagCacheAgree lst5 lst6) :
-    RelCoupled
-      (fun y5 y6 =>
-        (y5.1 = y6.1 ∧ LazyTagCacheAgree y5.2 y6.2) ∨
-        (lazyStop y5.2.adv = true ∧ lazyStop y6.2.adv = true))
-      ((pqxdhKeyIndAdvTagImpl false false false S P q).run lst5)
-      ((pqxdhKeyIndAdvTagImpl false false true S P q).run lst6) := by
-  by_cases hTest : ∃ sid, q = .testSession sid
-  · rcases hTest with ⟨sid, rfl⟩
-    exact relCoupled_tagStepTestSession P sid lst5 lst6 hAg
-  · have hNeTest : ∀ sid, q ≠ .testSession sid := fun sid hEq => hTest ⟨sid, hEq⟩
-    dsimp only [pqxdhKeyIndAdvTagImpl, mkLazyKeyIndImpl, liftTagView, StateT.run_mk]
-    simp only [bind_assoc, pure_bind]
-    rw [← hAg.1, ← tagStepView_eq_of_ne_testSession P q hNeTest (getLazyView lst5)]
-    refine RelCoupled.bind_same (tagStepView false S P q (getLazyView lst5)) ?_
-    rintro ⟨post, adv'⟩ hy
-    have hStepView := validNonTestTagStep_of_tagStepView false P q hNeTest (getLazyView lst5) hy
-    exact relCoupled_runLazyPost_of_validNonTestTagStep lst5 lst6 post adv' hAg hStepView
-
 open Proofs.SignalPqxdh.Security.FgGapDh
 
 theorem eq_of_isCanonical_of_pow8_eq (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
@@ -1139,14 +1084,14 @@ theorem eq_kemCt_and_pqspkPk_of_hasBadKemShCrRecords_false {S : Setup} (P : Prim
   simp only [hDec, decide_true, Bool.true_and, decide_eq_false_iff_not, not_or] at hPairFalse
   exact ⟨Classical.not_not.mp hPairFalse.1, Classical.not_not.mp hPairFalse.2⟩
 
-def respBundleIdx {S : Setup} : SessionId S → Option (Nat × Nat)
+@[expose] def respBundleIdx {S : Setup} : SessionId S → Option (Nat × Nat)
   | .recvOPK k j _   => some (k.val, j.val)
   | .recvNoOPK k j _ => some (k.val, j.val)
   | _                => none
 
 /-- Structural invariant on an initiator session `s ∈ hst.base.sessions` in
     `pqxdhKeyIndAdvTagImpl`. -/
-def ValidInitSession (S : Setup) (P : Primitives) (hst : KeyIndShCrState S)
+@[expose] def ValidInitSession (S : Setup) (P : Primitives) (hst : KeyIndShCrState S)
     (s : KeyIndInitiatorEntry S) : Prop :=
   initSessionSlotIdx s.sid < S.N_send_tot ∧
   s.ekASk.length = 32 ∧
@@ -1193,7 +1138,7 @@ def ValidInitSession (S : Setup) (P : Primitives) (hst : KeyIndShCrState S)
 
 /-- Structural invariant on a responder session `r ∈ hst.base.respSessions` in
     `pqxdhKeyIndAdvTagImpl`. -/
-def ValidRespSession (S : Setup) (P : Primitives) (hst : KeyIndShCrState S)
+@[expose] def ValidRespSession (S : Setup) (P : Primitives) (hst : KeyIndShCrState S)
     (r : KeyIndRespEntry S) : Prop :=
   ∃ (k : Fin S.N_id) (j : Fin S.N_recv) (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
     (ss : Bytes) (recEntry : _root_.Proofs.SignalPqxdh.Security.RecvKemRecord),
@@ -1234,7 +1179,7 @@ def ValidRespSession (S : Setup) (P : Primitives) (hst : KeyIndShCrState S)
         (some (P.x25519 oEntry.opkSk r.hdr.ekAPk)) ss))
 
 /-- Key-generation well-formedness on `principals`, `spkBundles`, and `opkEntries`. -/
-def ValidKeyStores (S : Setup) (P : Primitives) (st : KeyIndState S) : Prop :=
+@[expose] def ValidKeyStores (S : Setup) (P : Primitives) (st : KeyIndState S) : Prop :=
   ValidPrincipals S st.principals ∧
   ValidSpkBundles S st.spkBundles ∧
   ValidOpkEntries S st.opkEntries ∧

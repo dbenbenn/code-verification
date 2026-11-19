@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Common
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVec
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Common
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVec -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Common -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`): Relocatable Shared Helpers
@@ -24,7 +25,7 @@ Defines `lsProg_350` (`blockProgram lsmpl 350`), fetch macros, and relocatable f
 and callee bridges for `<EkSentCt1Received>::recv_ct2_chunk` (`514` instructions).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -199,7 +200,7 @@ elab "wpp_call_lscro_recvCt2 " hcall:term:max a:term:max hinv:term:max : tactic 
       ty.forEach fun sub => do
         if sub.isConst then
           let nm := sub.constName!
-          if nm != ``Arm64.Spec.mk && nm != ``Arm64.Spec.inImage &&
+          if nm != ``Arm64.Spec.mk &&
               nm != ``withLsCodeRoLoaded then
             let subTy ← inferType sub
             if subTy.getForallBody.isAppOf ``Arm64.Spec then

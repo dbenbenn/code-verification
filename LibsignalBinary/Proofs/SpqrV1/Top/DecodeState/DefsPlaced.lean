@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `[LibsignalPlacement]` Definitions for `spqr::decode_state` (Block `325`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -35,7 +35,7 @@ noncomputable abbrev decodeStatePlacedProg [LibsignalPlacement] (ext : String â†
   (blkPC_325).rebase (blkPl_325).base (Rust.withPanics ext)
 
 /-- Relocatable entry address of `spqr::decode_state` (Block `325`). -/
-noncomputable abbrev decodeStatePlacedEntry [LibsignalPlacement] : BitVec 64 :=
+abbrev decodeStatePlacedEntry [LibsignalPlacement] : BitVec 64 :=
   (blkPl_325).base
 
 end CryptoVerification.SpqrV1.Top.DecodeState

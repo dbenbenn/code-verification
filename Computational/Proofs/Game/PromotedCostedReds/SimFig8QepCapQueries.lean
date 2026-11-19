@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.GameProofDefs
+import Computational.Proofs.CryptoGames.SM.GameProofDefs
 public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalRefinesCDefs
 import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.QueryBounds
@@ -43,8 +43,6 @@ open CryptoGames.SM (RecvResult)
 open CryptoGames.LibsignalSM.Proofs.QueryBounds
   (QInr hQu_QInr isQueryBoundP_congr isQueryBoundP_liftProb QB
    qb_simSend qb_fwd qb_onAccept qb_onAnswer)
-
-noncomputable section
 
 private def QBC {PQ Pt : Type} {ℓ : ℕ} {α : Type}
     (x : StateT (LibsignalToModularSchemeSimState PQ Pt ℓ) (Fig8Comp Pt ℓ) α) (n : ℕ) : Prop :=
@@ -377,7 +375,5 @@ theorem libsignalToModularSchemeSim_queries
     (qbc_simImplC_inl P Dh encT decT qep fig fs)
     (qbc_simImplC_inr P Dh encT decT qep fig fs)
     q A hq
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimFig8QepCapQueries

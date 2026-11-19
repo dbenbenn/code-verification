@@ -40,11 +40,11 @@ theorem seg38_eq : seg 38 2 = [.pt (ptAt 38), .send (sendAt 39)] := rfl
 theorem seg0_tail_safe : ∀ e ∈ (seg 0 35).tail, RngEventSafe e := by decide
 theorem seg0_tail_ne_fillFresh64 : ∀ b : HwBytes, .rng b ∈ (seg 0 35).tail → ∀ t ∈ ([11, 16, 17] : List Nat), b ≠ fillFresh t 64 := fun b hb => (seg0_tail_safe (.rng b) hb).1
 theorem seg0_tail_untagged4 : ∀ b : HwBytes, .rng b ∈ (seg 0 35).tail → Untagged4 b := fun b hb => (seg0_tail_safe (.rng b) hb).2
-theorem ptAt35_len_ne_64 : (ptAt 35).length ≠ 64 := by decide
+theorem ptAt35_len_lt_48 : (ptAt 35).length < 48 := by decide
 theorem ptAt35_untagged4 : Untagged4 (ptAt 35) := by decide
 set_option maxRecDepth 20000 in theorem rngAt36_ne_fillFresh64 : ∀ t ∈ ([11, 16, 17] : List Nat), rngAt 36 ≠ fillFresh t 64 := by decide
 set_option maxRecDepth 20000 in theorem rngAt36_untagged4 : Untagged4 (rngAt 36) := by decide
-theorem ptAt38_len_ne_64 : (ptAt 38).length ≠ 64 := by decide
+theorem ptAt38_len_lt_48 : (ptAt 38).length < 48 := by decide
 theorem ptAt38_untagged4 : Untagged4 (ptAt 38) := by decide
 theorem compKyberE1_untagged4 : Untagged4 compKyberE1 := by decide
 theorem setup_aliceId_untagged4 : Untagged4 setup.aliceId := by decide
@@ -58,7 +58,7 @@ theorem rngAt36_inits_safe : ∀ c ∈ (rngAt 36).inits, RngEventSafe (.rng c) :
 set_option maxRecDepth 20000 in
 theorem cliCoins2Fast_inits_safe : ∀ c ∈ cliCoins2Fast.inits, RngEventSafe (.rng c) := by decide
 
-theorem draws_of_encVis_two {i : ExternInterpretation} {r : Records} {S : Sem} {g : Ghost} {tr₃ : ExecTrace} {me : Participant} {sIdx : Nat} {stA : DY.Libsignal.TripleRatchet.TRState} {cl pq : Nat} {wr : Nat × Nat} {pt w : HwBytes} (hm₂ : List.Forall₂ (EventMatchesEntry i r S g) [.pt pt, .send w] (encVis tr₃ (CompPrefixInvEnc.encNextTr tr₃ me sIdx stA cl pq) (some wr) true)) (hpt_len : pt.length ≠ 64) (hpt_u : Untagged4 pt) : cl = 0 ∧ CompFreshDistinct.FreshSafeTerm i S g (randTerm tr₃.length 32) ∧ RandUntaggedTerm i S g (randTerm tr₃.length 32) ∧ (g.σ tr₃.length 32).length ≠ 64 ∧ CompFreshDistinct.FreshSafeTerm i S g (randTerm (tr₃.length + 1) cl) ∧ RandUntaggedTerm i S g (randTerm (tr₃.length + 1) cl) := by
+theorem draws_of_encVis_two {i : ExternInterpretation} {r : Records} {S : Sem} {g : Ghost} {tr₃ : ExecTrace} {me : Participant} {sIdx : Nat} {stA : DY.Libsignal.TripleRatchet.TRState} {cl pq : Nat} {wr : Nat × Nat} {pt w : HwBytes} (hm₂ : List.Forall₂ (EventMatchesEntry i r S g) [.pt pt, .send w] (encVis tr₃ (CompPrefixInvEnc.encNextTr tr₃ me sIdx stA cl pq) (some wr) true)) (hpt_len : pt.length < 48) (hpt_u : Untagged4 pt) : cl = 0 ∧ CompFreshDistinct.FreshSafeTerm i S g (randTerm tr₃.length 32) ∧ RandUntaggedTerm i S g (randTerm tr₃.length 32) ∧ (g.σ tr₃.length 32).length < 48 ∧ CompFreshDistinct.FreshSafeTerm i S g (randTerm (tr₃.length + 1) cl) ∧ RandUntaggedTerm i S g (randTerm (tr₃.length + 1) cl) := by
   unfold encVis encSend at hm₂; rw [newRandoms_encNextTr, CompPrefixInvEnc.lastSent_encNextTr] at hm₂
   by_cases hcl : cl = 0
   · subst hcl
@@ -92,11 +92,11 @@ theorem draws_of_encVis_coinSplit {i : ExternInterpretation} {r : Records} {S : 
     {cl pq : Nat} {wr : Nat × Nat} {pt coins w : HwBytes} {b1 : List MachineEvent}
     (hc1 : DY.Libsignal.Composed.Refinement.Cli.CoinSplit [.pt pt, .rng coins, .send w] b1)
     (hm₁ : List.Forall₂ (EventMatchesEntry i r S g) b1 (encVis tr₂ (CompPrefixInvEnc.encNextTr tr₂ me sIdx stA cl pq) (some wr) true))
-    (hpt_len : pt.length ≠ 64) (hpt_u : Untagged4 pt)
+    (hpt_len : pt.length < 48) (hpt_u : Untagged4 pt)
     (hcoins : ∀ c ∈ coins.inits, (∀ t ∈ ([11, 16, 17] : List Nat), c ≠ fillFresh t 64) ∧ Untagged4 c) :
     CompFreshDistinct.FreshSafeTerm i S g (randTerm tr₂.length 32) ∧
     RandUntaggedTerm i S g (randTerm tr₂.length 32) ∧
-    (g.σ tr₂.length 32).length ≠ 64 ∧
+    (g.σ tr₂.length 32).length < 48 ∧
     CompFreshDistinct.FreshSafeTerm i S g (randTerm (tr₂.length + 1) cl) ∧
     RandUntaggedTerm i S g (randTerm (tr₂.length + 1) cl) := by
   have ⟨bs, _, hpref, hblk⟩ : ∃ bs : List HwBytes, (∀ p ∈ bs, p ≠ []) ∧ bs.flatten <+: coins ∧ b1 = .pt pt :: (bs.map MachineEvent.rng ++ [.send w]) := by
@@ -140,9 +140,9 @@ theorem pref40 : WsIdx1PrefDefs.Pref40Hyp := by
   rw [take_eq_self_of_forall2_length hvis₀ (by rw [aliceVis_iniAliceStartTr_length]; decide), seg0_eq] at hvis₀
   have hd₀_f := freshSafeTerm_draws_of_aliceVis hvis₀ seg0_tail_ne_fillFresh64; have hd₀_u := randUntaggedTerm_draws_of_aliceVis hvis₀ seg0_tail_untagged4 (randUntaggedTerm_randTerm_of_gamma_eq hpre.hent₁ compKyberE1_untagged4); rw [CompRX0NBSC38Parts.encrypt_vis_eq, hnext₁] at hvis₁
   have hc1' : DY.Libsignal.Composed.Refinement.Cli.CoinSplit [.pt (ptAt 35), .rng (rngAt 36), .send (sendAt 37)] b1 := seg35_eq ▸ hc1
-  obtain ⟨hm₁_f, hm₁_u, hm₁_len, hcoins₁_f, hcoins₁_u⟩ := draws_of_encVis_coinSplit hc1' hvis₁ ptAt35_len_ne_64 ptAt35_untagged4 (fun c hc => rngAt36_inits_safe c hc)
+  obtain ⟨hm₁_f, hm₁_u, hm₁_len, hcoins₁_f, hcoins₁_u⟩ := draws_of_encVis_coinSplit hc1' hvis₁ ptAt35_len_lt_48 ptAt35_untagged4 (fun c hc => rngAt36_inits_safe c hc)
   rw [CompRX0NBSC38Parts.encrypt_vis_eq, hnext₂] at hvis₂
-  obtain ⟨hm₂_f, hm₂_u, hm₂_len, hcoins₂_f, hcoins₂_u⟩ := draws_of_encVis_coinSplit hc2 hvis₂ ptAt38_len_ne_64 ptAt38_untagged4 (fun c hc => cliCoins2Fast_inits_safe c hc)
+  obtain ⟨hm₂_f, hm₂_u, hm₂_len, hcoins₂_f, hcoins₂_u⟩ := draws_of_encVis_coinSplit hc2 hvis₂ ptAt38_len_lt_48 ptAt38_untagged4 (fun c hc => cliCoins2Fast_inits_safe c hc)
   have hsec_f := freshSafeTerm_setupSecret hpre.compat hwf hsec3_eq hsec4_eq hsec5_eq; have hpub_f := freshSafeTerm_setupPublic hpre.compat hwf hsec3_eq hsec4_eq hsec5_eq
   have hpub2_key_f : CompFreshDistinct.FreshSafeTerm compI0 S g (DY.X25519.x25519Key (setupPublic r 2)) := by rw [x25519Key_setupPublic_2 hwf.1]; exact hpub_f 2
   have hpub4_key_f : CompFreshDistinct.FreshSafeTerm compI0 S g (DY.X25519.x25519Key (setupPublic r 4)) := by rw [x25519Key_setupPublic_4 hwf.1]; exact hpub_f 4

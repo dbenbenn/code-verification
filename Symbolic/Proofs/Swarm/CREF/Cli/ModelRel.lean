@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 
 /-!
 # CLI Model Relation Inversion Lemmas
@@ -18,7 +18,7 @@ Inversion and constructor lemmas for `PqModelRel`, `pqxdhExpectedOutcome`, and
 `OutcomeMatchesModelExceptPath`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

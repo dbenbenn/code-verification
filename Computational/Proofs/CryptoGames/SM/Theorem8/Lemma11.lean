@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
+public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux -- proof-setup: allow-public-import
 import VCVio.OracleComp.EvalDist.Measure
 
 /-!
@@ -22,7 +22,7 @@ to `redFSAuth j` in the FS-AEAD game by hoisting session `j`'s uniform key sampl
 the FS-AEAD oracle simulation.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -48,7 +48,7 @@ variable (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
 
 local notation "LHM" => HM nilSpec (LState T Sig K I)
 
-def lookupFLFixed (j : ℕ) (k_fs : K) (Ik : I) : LHM K := do
+@[expose] def lookupFLFixed (j : ℕ) (k_fs : K) (Ik : I) : LHM K := do
   let s ← get
   match s.table.lookup Ik with
   | some k => return k
@@ -58,7 +58,7 @@ def lookupFLFixed (j : ℕ) (k_fs : K) (Ik : I) : LHM K := do
     modify fun s => { s with table := (Ik, k_use) :: s.table }
     return k_use
 
-def rootLFixed (j : ℕ) (k_fs : K) (t : ℕ) (Ik : I) (σ : Sig) : LHM (Sig × K × Option I) := do
+@[expose] def rootLFixed (j : ℕ) (k_fs : K) (t : ℕ) (Ik : I) (σ : Sig) : LHM (Sig × K × Option I) := do
   if mo.tStar < t then
     let p := prng.up σ Ik
     return (p.1, p.2, none)
@@ -80,7 +80,7 @@ def rootLFixed (j : ℕ) (k_fs : K) (t : ℕ) (Ik : I) (σ : Sig) : LHM (Sig × 
     let p := prng.up σ Ik
     return (p.1, p.2, none)
 
-def hooksLocalFixed (j : ℕ) (k_fs : K) :
+@[expose] def hooksLocalFixed (j : ℕ) (k_fs : K) :
     Hooks nilSpec (LState T Sig K I) Γ T Sig SS RS M E CCoins Γ Sig
       (SS × Option ℕ) (RS × Option ℕ) where
   startSend _ _ t γ σ r := do
@@ -120,7 +120,7 @@ def hooksLocalFixed (j : ℕ) (k_fs : K) :
   reveal _ _ vp := do
     return some (realParty vp vp.γ vp.root (vp.vS.map Prod.fst) (fun t => (vp.vR t).map Prod.fst))
 
-def initLocalFixed (j : ℕ) (k_fs : K) :
+@[expose] def initLocalFixed (j : ℕ) (k_fs : K) :
     LHM (Option (PartyState Γ T Sig (SS × Option ℕ) (RS × Option ℕ) ×
       PartyState Γ T Sig (SS × Option ℕ) (RS × Option ℕ))) := do
   let kr ← StateT.lift (sampleT KR)
@@ -130,14 +130,14 @@ def initLocalFixed (j : ℕ) (k_fs : K) :
   return some (mkParties (cka.initA kc) (cka.initB kc) σ
     (fs.initSender k, idx?) (fs.initReceiver k, idx?))
 
-def stepLFixed (j : ℕ) (k_fs : K) (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
+@[expose] def stepLFixed (j : ℕ) (k_fs : K) (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
     (esL : EStateL Γ T Sig SS RS M E K I) :
     ProbComp ((SMSpec Γ T Sig SS RS M CCoins E).Range q × EStateL Γ T Sig SS RS M E K I) :=
   simulateQ lImpl
     ((implE (hooksLocalFixed cka prng fs mo j k_fs) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run
       esL)
 
-def runLocAtFixed (j : ℕ) (k_fs : K) (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runLocAtFixed (j : ℕ) (k_fs : K) (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
   let r ← simulateQ lImpl
     ((simulateQ (implE (hooksLocalFixed cka prng fs mo j k_fs)
@@ -145,7 +145,7 @@ def runLocAtFixed (j : ℕ) (k_fs : K) (oa : SMComp Γ T Sig SS RS M CCoins E Bo
   pure (authOut (2 + Δcka) mo.policy r.2 && (r.2.h.lastIdx == some j))
 
 /-- Local `H2` authenticity game restricted to session `j` with key fixed to `k_fs`. -/
-def localAuthAtFixed (j : ℕ) (k_fs : K) (tL : Option ℕ) (t : ℕ)
+@[expose] def localAuthAtFixed (j : ℕ) (k_fs : K) (tL : Option ℕ) (t : ℕ)
     (A : SchemeAdversary Γ T Sig SS RS M CCoins E) : ProbComp Bool := do
   let mo : Mode := ⟨true, tL, t⟩
   let (vs, h) ← simulateQ lImpl ((initLocalFixed cka prng fs lam mo j k_fs).run {})
@@ -698,12 +698,12 @@ theorem evalDist_runLocAt_eq_fixed_of_lt {j : ℕ} (k_fs : K)
 
 /-! ### `ShiftLe` key-hoisting coupling -/
 
-def TabSessInv (s : LState T Sig K I) : Prop :=
+@[expose] def TabSessInv (s : LState T Sig K I) : Prop :=
   ¬ (mo.tL.isSome = true ∧ mo.tStar = mo.tH) →
     ∀ Ik, (s.table.lookup Ik).isSome = decide (Ik ∈ s.sessions)
 
 /-- Relational coupling for shifting `k_fs ← $ᵗ K` from session `j`'s creation to the top level. -/
-def ShiftLe {α : Type} (j : ℕ) (getH : α → LState T Sig K I)
+@[expose] def ShiftLe {α : Type} (j : ℕ) (getH : α → LState T Sig K I)
     (mL : ProbComp α) (mF : K → ProbComp α) : Prop :=
   ∀ (contL : α → ProbComp Bool) (contF : K → α → ProbComp Bool),
     (∀ a, j < (getH a).sessions.length → ∀ k_fs, 𝒟[contL a] {true} ≤ 𝒟[contF k_fs a] {true}) →
@@ -1462,7 +1462,7 @@ abbrev EStateF (Γ T Sig SS RS M E K I : Type) :=
 abbrev FSGameState (SS RS T M E : Type) :=
   FSAEAD.State SS RS (Header T) M E
 
-def stepF (j : ℕ) (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
+@[expose] def stepF (j : ℕ) (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
     (esF : EStateF Γ T Sig SS RS M E K I) (st : FSGameState SS RS T M E) :
     ProbComp (((SMSpec Γ T Sig SS RS M CCoins E).Range q ×
       EStateF Γ T Sig SS RS M E K I) × FSGameState SS RS T M E) :=
@@ -1570,13 +1570,13 @@ theorem evalDist_runF_eq_one_of_win (j : ℕ)
 
 /-! ### Absorbing `LHSDead` state -/
 
-def RWrongSession (j : ℕ) (esL : EStateL Γ T Sig SS RS M E K I) : Prop :=
+@[expose] def RWrongSession (j : ℕ) (esL : EStateL Γ T Sig SS RS M E K I) : Prop :=
   let vpR := esL.g.st (Party.receiverOf mo.tStar)
   mo.tStar ≤ vpR.tcur ∧
   ∀ rs, vpR.vR mo.tStar ≠ some (rs, some j)
 
 /-- Terminal / doomed LHS states from which `runLocAtFixed` outputs `true` with probability `0`. -/
-def LHSDead (j : ℕ) (esL : EStateL Γ T Sig SS RS M E K I) : Prop :=
+@[expose] def LHSDead (j : ℕ) (esL : EStateL Γ T Sig SS RS M E K I) : Prop :=
   ((esL.abort || esL.g.win) = true ∧
     (authOut (2 + Δcka) mo.policy esL && (esL.h.lastIdx == some j)) = false) ∨
   (esL.abort = false ∧ esL.g.win = false ∧ (∀ P, (esL.g.st P).id = P) ∧ RWrongSession mo j esL)
@@ -2050,7 +2050,7 @@ theorem evalDist_runLocAtFixed_eq_zero_of_not_validGuess (j : ℕ) (k_fs : K)
 /-! ### Bookkeeping coupling `BookSync` -/
 
 /-- Synchronization between `sL : LState` and `sF : FSState` on `sessions`, `table`, and `cache`. -/
-def BookSync (j : ℕ) (k_fs : K) (sL : LState T Sig K I)
+@[expose] def BookSync (j : ℕ) (k_fs : K) (sL : LState T Sig K I)
     (sF : FSState T Sig K I SS RS E) : Prop :=
   sL.sessions = sF.sessions ∧
   sL.sessions.Nodup ∧
@@ -2488,7 +2488,7 @@ theorem simulateQ_implFS_injectQuery (h : Header T) (e : E)
     StateT.modifyGet]
   rfl
 
-def SenderIsJ (j : ℕ) (esL : EStateL Γ T Sig SS RS M E K I) : Prop :=
+@[expose] def SenderIsJ (j : ℕ) (esL : EStateL Γ T Sig SS RS M E K I) : Prop :=
   (mo.tStar = 0 ∧ j = 0) ∨
   ∃ Tc σc k, esL.h.cache mo.tStar = some (Tc, σc, k, some j)
 
@@ -2587,7 +2587,7 @@ structure SyncLFS (j : ℕ) (k_fs : K)
     healedBy esL.g.tL (2 + Δcka) mo.tStar = false ∧
     (∀ r ∈ esL.g.trans, r.pos.epoch = mo.tStar → corrAt < r.pos.idx → r.pos ∈ esL.g.comp)
 
-def StepRelFS {α : Type} (j : ℕ) (k_fs : K)
+@[expose] def StepRelFS {α : Type} (j : ℕ) (k_fs : K)
     (rL : α × EStateL Γ T Sig SS RS M E K I)
     (rF : (α × EStateF Γ T Sig SS RS M E K I) × FSGameState SS RS T M E) : Prop :=
   LHSDead Δcka mo j rL.2 ∨
@@ -3416,7 +3416,7 @@ theorem syncLFS_fsSend_corrupt (j : ℕ) (k_fs : K) (P : Party)
     rw [hsc, Option.getD_some] at hlt_r
     exact (hs.hcorr_sync c₀ hsc).2.2.2 r hr hepoch_r hlt_r
 
-def vSendTail {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
+@[expose] def vSendTail {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (ctx : Ctx Γv T Sv SSv RSv M E) (P : Party) (vp₁ : VP Γv T Sv SSv RSv) (m : M) :
     HM tspec HS (Option (VP Γv T Sv SSv RSv × (Header T × E))) := do
@@ -5148,7 +5148,7 @@ theorem syncLFS_with_book (j : ℕ) (k_fs : K)
         rw [hSenderJ_iff]
         exact hs.hcorr_sync corrAt hcorr }
 
-def vRecvTail {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
+@[expose] def vRecvTail {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (ctx : Ctx Γv T Sv SSv RSv M E) (P : Party) (s₁ : VP Γv T Sv SSv RSv)
     (c : Header T × E) (rec : Option (Record M (Header T × E))) :
@@ -5251,7 +5251,7 @@ theorem accept_update_self {St Msg C : Type} (s : GameState St Msg C) (P : Party
     { s.accept P st' pos with st := Function.update (s.accept P st' pos).st P st' } = s.accept P st' pos := by
   simp [GameState.accept]
 
-def deliverTail {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
+@[expose] def deliverTail {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (P : Party) (c : Header T × E) (r : Record M (Header T × E))
     (s₁ : VP Γv T Sv SSv RSv)
@@ -5617,7 +5617,7 @@ theorem leComp_deliverE (j : ℕ) (k_fs : K) (hauth : mo.auth = true)
           simp only [hvRecvF, StateT.run_bind]
           congr 3
 
-def injectTail {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
+@[expose] def injectTail {tspec : OracleSpec.{0, 0} ι} {Γv Sv SSv RSv HS : Type}
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (P : Party) (c : Header T × E) (s₁ : VP Γv T Sv SSv RSv)
     (es : EState (VP Γv T Sv SSv RSv) M (Header T × E) HS) :

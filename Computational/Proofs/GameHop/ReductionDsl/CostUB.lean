@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.GameHop.ReductionDsl.CostAttr
+public import Computational.Proofs.GameHop.ReductionDsl.CostAttr -- proof-setup: allow-public-import
 public import Computational.Specifications.Reductions.ReductionDsl.Core
 
 /-!
@@ -22,7 +22,7 @@ tactic.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.ReductionDsl.CostUB
 
@@ -34,7 +34,7 @@ section ExprCostUB
 variable {S : Sig} {O : Ops S}
 
 /-- Upper bound on `Expr.cost` replacing every `max` with `+`. -/
-def exprCostUB : {Γ : List (Ty S)} → {t : Ty S} → Expr O Γ t → ℕ
+@[expose] def exprCostUB : {Γ : List (Ty S)} → {t : Ty S} → Expr O Γ t → ℕ
   | _, _, .var _ => 1
   | _, _, .unit => 1
   | _, _, .bool _ => 1
@@ -229,7 +229,7 @@ open OracleSpec
 variable {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
 
 /-- Upper bound on `Comp.cost` replacing every `max` with `+`. -/
-def compCostUB : {Γ : List (Ty S)} → {t : Ty S} → Comp O I Γ t → ℕ
+@[expose] def compCostUB : {Γ : List (Ty S)} → {t : Ty S} → Comp O I Γ t → ℕ
   | _, _, .ret e => exprCostUB e + 1
   | _, _, .bind c k => compCostUB c + compCostUB k + 1
   | _, _, .ite b c d => exprCostUB b + (compCostUB c + compCostUB d) + 1
@@ -322,7 +322,7 @@ theorem compCost_le_costUB : ∀ {Γ : List (Ty S)} {t : Ty S} (c : Comp O I Γ 
     compCostUB (.foldM K l z f) = exprCostUB l + exprCostUB z + K * (compCostUB f + 1) + 1 := rfl
 
 /-- Upper bound on `Comp.queries` replacing every `max` with `+`. -/
-def compQueriesUB (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) :
+@[expose] def compQueriesUB (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) :
     {Γ : List (Ty S)} → {t : Ty S} → Comp O I Γ t → ℕ
   | _, _, .ret _ => 0
   | _, _, .bind c k => compQueriesUB w ws c + compQueriesUB w ws k

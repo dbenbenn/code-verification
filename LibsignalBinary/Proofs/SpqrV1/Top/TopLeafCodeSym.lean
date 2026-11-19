@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard13
+meta import GeneratedLean.LibsignalSessionPlacedObjShard14
+meta import GeneratedLean.LibsignalSessionPlacedObjShard17
 
 /-!
 # Relocatable Per-Block Fetches for `SpqrV1/Top` Leaf and Mid Functions
@@ -22,7 +25,7 @@ Provides relocatable instruction fetches for `spqr::chain_from`, `spqr::init_inn
 `Message::deserialize`, and `Message::serialize`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

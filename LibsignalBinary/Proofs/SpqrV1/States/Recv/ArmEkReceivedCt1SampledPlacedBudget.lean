@@ -11,12 +11,12 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
@@ -25,6 +25,13 @@ import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledSteps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1Sampled
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledStepsPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledStepsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<States>::recv` (Block `332`) — `.ekReceivedCt1Sampled` Arm (Budget-Threaded)
@@ -34,7 +41,7 @@ Allocator-event envelopes (`StatesRecvEkReceivedCt1SampledPreEnv` /
 and top-level `[LibsignalPlacement]` contracts for `.ekReceivedCt1Sampled` (tag `10#64`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -97,7 +104,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 
 /-- Boolean predicate matching the `.ct1Ack true` and `.ekCt1Ack _` payload arms of
     `<States>::recv` on `.ekReceivedCt1Sampled`. -/
-def isEkAckPayload (p : MessagePayload spqrPolyApi) : Bool :=
+@[expose] def isEkAckPayload (p : MessagePayload spqrPolyApi) : Bool :=
   match p with
   | .ct1Ack true => true
   | .ekCt1Ack _ => true
@@ -107,7 +114,7 @@ def isEkAckPayload (p : MessagePayload spqrPolyApi) : Bool :=
     on state `st`: sequences `UnchunkedSendCt2Env` with
     `SendCt2EncoderBytesPreEnv ct2.length mac.length` when `st.uc.send_ct2 K = .ok (outUc, ct2, mac)`,
     and `[]` otherwise. -/
-def EkReceivedCt1SampledAckPreEnv {F : ShaCompress} (K : MlKem)
+@[expose] def EkReceivedCt1SampledAckPreEnv {F : ShaCompress} (K : MlKem)
     (st : Chunked.SendCt.EkReceivedCt1Sampled spqrPolyApi (spqrAuthApi F))
     (evs : List AllocEvent) : Prop :=
   match st.uc.send_ct2 K with
@@ -120,7 +127,7 @@ def EkReceivedCt1SampledAckPreEnv {F : ShaCompress} (K : MlKem)
 
 /-- Postcondition envelope of `<EkReceivedCt1Sampled>::recv_ct1_ack` (`Block 343`) on state `st`:
     `EkReceivedCt1SampledAckPreEnv K st` followed by `FreeOnlyEvs`. -/
-def EkReceivedCt1SampledAckPostEnv {F : ShaCompress} (K : MlKem)
+@[expose] def EkReceivedCt1SampledAckPostEnv {F : ShaCompress} (K : MlKem)
     (st : Chunked.SendCt.EkReceivedCt1Sampled spqrPolyApi (spqrAuthApi F))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (EkReceivedCt1SampledAckPreEnv K st) FreeOnlyEvs evs
@@ -137,17 +144,11 @@ theorem ekReceivedCt1SampledAckPreEnv_nonempty {F : ShaCompress} (K : MlKem)
     obtain ⟨e2, h2⟩ := sendCt2EncoderBytesPreEnv_nonempty ct2.length mac.length
     exact ⟨e1 ++ e2, SeqEnv.append h1 h2⟩
 
-theorem ekReceivedCt1SampledAckPostEnv_nonempty {F : ShaCompress} (K : MlKem)
-    (st : Chunked.SendCt.EkReceivedCt1Sampled spqrPolyApi (spqrAuthApi F)) :
-    ∃ evs, EkReceivedCt1SampledAckPostEnv K st evs :=
-  let ⟨evs, h⟩ := ekReceivedCt1SampledAckPreEnv_nonempty K st
-  ⟨evs, Or.inl h⟩
-
 /-- Exact allocation-phase prefix envelope for the `.ekReceivedCt1Sampled` arm of `<States>::recv`
     (Block `332`): `EkReceivedCt1SampledAckPreEnv K st` on same-epoch `.ct1Ack true` / `.ekCt1Ack _`,
     and `[]` on all non-allocating branches (`msg.epoch > st.uc.epoch`, `msg.epoch < st.uc.epoch`,
     or non-ack payload). -/
-def StatesRecvEkReceivedCt1SampledPreEnv {F : ShaCompress} (K : MlKem)
+@[expose] def StatesRecvEkReceivedCt1SampledPreEnv {F : ShaCompress} (K : MlKem)
     (x : StatesRecvGhost F) (evs : List AllocEvent) : Prop :=
   match x.self with
   | .ekReceivedCt1Sampled st =>
@@ -161,7 +162,7 @@ def StatesRecvEkReceivedCt1SampledPreEnv {F : ShaCompress} (K : MlKem)
     (Block `332`): `FreeOnlyEvs` on `msg.epoch > st.uc.epoch` (state drop),
     `EkReceivedCt1SampledAckPostEnv K st` on same-epoch `.ct1Ack true` / `.ekCt1Ack _`,
     and `[]` on all no-op branches. -/
-def StatesRecvEkReceivedCt1SampledPostEnv {F : ShaCompress} (K : MlKem)
+@[expose] def StatesRecvEkReceivedCt1SampledPostEnv {F : ShaCompress} (K : MlKem)
     (x : StatesRecvGhost F) (evs : List AllocEvent) : Prop :=
   match x.self with
   | .ekReceivedCt1Sampled st =>
@@ -803,52 +804,6 @@ theorem states_recv_ekReceivedCt1Sampled_placed_ok_ext_ofPrePostEnv [LibsignalPl
         rw [hrecv, LibsignalBinary.Heap.AllocCostModel.stepEvents_nil, A.pool_of_vmPreserved hvm5f]
         exact Entails.of_eq (by sep_ac_rfl)
 
-/-- Envelope-parametric budget-threaded relocatable `.ekReceivedCt1Sampled` variant contract
-    under `withLsCodeRoLoaded` (ready for `states_recv_placed_ok_ext_of_variants_ofPrePostEnv`). -/
-theorem states_recv_ekReceivedCt1Sampled_placed_cro_ok_ext_ofPrePostEnv [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (F : ShaCompress) (K : MlKem)
-    {envs : StatesRecvCalleeEnvs F}
-    {PreEnv PostEnv : StatesRecvGhost F → List AllocEvent → Prop}
-    (ext : String → Option (State → State))
-    (hC : DefsPlacedBudget.StatesRecvPlacedContractsOfEnv M A lim F K envs ext)
-    (st : Chunked.SendCt.EkReceivedCt1Sampled spqrPolyApi (spqrAuthApi F))
-    (msg : Message spqrPolyApi)
-    (hPreAck : ∀ (outA selfA msgA fsp : BitVec 64)
-      (outSt : Chunked.SendCt.Ct2Sampled spqrPolyApi (spqrAuthApi F)) (st_cost : M.σ),
-      msg.epoch = st.uc.epoch →
-      isEkAckPayload msg.payload = true →
-      st.recv_ct1_ack K st.uc.epoch = .ok outSt →
-      FitsEnv M lim st_cost (PreEnv ⟨outA, selfA, msgA, .ekReceivedCt1Sampled st, msg⟩) →
-      FitsEnv M lim st_cost
-        (envs.ekReceivedCt1SampledRecvCt1AckPre ⟨fsp + 976#64, fsp + 1856#64, st, outSt⟩))
-    (hPostGt : ∀ (outA selfA msgA : BitVec 64) (evs : List AllocEvent),
-      msg.epoch > st.uc.epoch →
-      FreeOnlyEvs evs →
-      PostEnv ⟨outA, selfA, msgA, .ekReceivedCt1Sampled st, msg⟩ evs)
-    (hPostLt : ∀ (outA selfA msgA : BitVec 64),
-      msg.epoch < st.uc.epoch →
-      PostEnv ⟨outA, selfA, msgA, .ekReceivedCt1Sampled st, msg⟩ [])
-    (hPostAck : ∀ (outA selfA msgA fsp : BitVec 64)
-      (outSt : Chunked.SendCt.Ct2Sampled spqrPolyApi (spqrAuthApi F)) (evs : List AllocEvent),
-      msg.epoch = st.uc.epoch →
-      isEkAckPayload msg.payload = true →
-      st.recv_ct1_ack K st.uc.epoch = .ok outSt →
-      envs.ekReceivedCt1SampledRecvCt1AckPost ⟨fsp + 976#64, fsp + 1856#64, st, outSt⟩ evs →
-      PostEnv ⟨outA, selfA, msgA, .ekReceivedCt1Sampled st, msg⟩ evs)
-    (hPostNoAck : ∀ (outA selfA msgA : BitVec 64),
-      msg.epoch = st.uc.epoch →
-      isEkAckPayload msg.payload = false →
-      PostEnv ⟨outA, selfA, msgA, .ekReceivedCt1Sampled st, msg⟩ []) :
-    subroutine_ok (lsProg_332 (Rust.withPanics ext))
-      (lsmpl.base 332)
-      (withLsCodeRoLoaded lsmpl
-        (statesRecvVariantPlacedSpecOfPrePostEnv M A lim F K
-          (.ekReceivedCt1Sampled st) msg PreEnv PostEnv)) :=
-  subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded_spec
-    (states_recv_ekReceivedCt1Sampled_placed_ok_ext_ofPrePostEnv A lim F K ext hC st msg
-      hPreAck hPostGt hPostLt hPostAck hPostNoAck)
-
 /-- Canonical exact-envelope budget-threaded relocatable `.ekReceivedCt1Sampled` variant contract
     under `withLsCodeLoaded` (`StatesRecvEkReceivedCt1SampledPreEnv` /
     `StatesRecvEkReceivedCt1SampledPostEnv`). -/
@@ -902,25 +857,6 @@ theorem states_recv_ekReceivedCt1Sampled_placed_ok_ext [LibsignalPlacement]
       rw [hno] at ha
       exact Bool.false_ne_true ha.2
     rw [ite_neg hnotgt, ite_neg hnotack]
-
-/-- Canonical exact-envelope budget-threaded relocatable `.ekReceivedCt1Sampled` variant contract
-    under `withLsCodeRoLoaded`. -/
-theorem states_recv_ekReceivedCt1Sampled_placed_cro_ok_ext [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (F : ShaCompress) (K : MlKem)
-    (ext : String → Option (State → State))
-    (hC : DefsPlacedBudget.StatesRecvPlacedContracts M A lim F K ext)
-    (st : Chunked.SendCt.EkReceivedCt1Sampled spqrPolyApi (spqrAuthApi F))
-    (msg : Message spqrPolyApi) :
-    subroutine_ok (lsProg_332 (Rust.withPanics ext))
-      (lsmpl.base 332)
-      (withLsCodeRoLoaded lsmpl
-        (statesRecvVariantPlacedSpecOfPrePostEnv M A lim F K
-          (.ekReceivedCt1Sampled st) msg
-          (StatesRecvEkReceivedCt1SampledPreEnv K)
-          (StatesRecvEkReceivedCt1SampledPostEnv K))) :=
-  subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded_spec
-    (states_recv_ekReceivedCt1Sampled_placed_ok_ext A lim F K ext hC st msg)
 
 /-- Single-envelope (`StatesRecvEkReceivedCt1SampledEnv K`) budget-threaded relocatable
     `.ekReceivedCt1Sampled` variant contract under `withLsCodeLoaded`. -/

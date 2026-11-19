@@ -10,21 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import Lean -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym
 import ProofLib.SepLogic.WP.Apply
+public meta import ProofLib.SepLogic.WP
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `VmPreserved` Relocatable Contracts for `find_receiver_chain_index` (Blocks 26, 201, 212, 213)
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.LoopBudget
 
@@ -79,7 +81,7 @@ open LibsignalBinary.Proofs.Placed.BudgetVmSteps (trapHooks)
 /-! ## `VmPreserved` Lifting Across `subtle::black_box::<u8>` (Block 213) -/
 
 /-- Hook table mapping `lsBlackBoxU8Sym` to `blackBoxHook` and trapping all other externs. -/
-def bbTrapHooks : String → Option (State → State) :=
+@[expose] def bbTrapHooks : String → Option (State → State) :=
   fun n => if n = lsBlackBoxU8Sym then some blackBoxHook else trapHooks n
 
 private theorem findSome?_override_none :
@@ -318,22 +320,22 @@ attribute [local simp, local wp_norm, local arm64_norm] Bool.and_assoc
 
 /-! ## `VmPreserved` Contracts for Blocks 201, 212, and 213 -/
 
-def deserializePlacedBudgetSpec [LibsignalPlacement] : Spec DeserGhost :=
+@[expose] def deserializePlacedBudgetSpec [LibsignalPlacement] : Spec DeserGhost :=
   withVmPreserved deserializePlacedSpec
 
-def deserializeMemPlacedSpec [LibsignalPlacement] :
+@[expose] def deserializeMemPlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) :=
   withVmPreserved CryptoVerification.LibsignalSession.FindReceiverChainIndex.deserializeMemPlacedSpec
 
-noncomputable def ctEqSliceBudgetSpec :
+@[expose] def ctEqSliceBudgetSpec :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) :=
   withVmPreserved ctEqSliceSpec
 
-noncomputable def publicKeyEqBudgetSpec :
+@[expose] def publicKeyEqBudgetSpec :
     Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey × BitVec 64) :=
   withVmPreserved publicKeyEqSpec
 
-def publicKeyEqMemSpec :
+@[expose] def publicKeyEqMemSpec :
     Spec (BitVec 64 × PublicKey × BitVec 64 × PublicKey × BitVec 64) :=
   withVmPreserved CryptoVerification.LibsignalSession.FindReceiverChainIndex.publicKeyEqMemSpec
 
@@ -714,10 +716,10 @@ theorem find_loop_placed_ok_zero [LibsignalPlacement] {H : String → Option (St
     (zero_add_len_lt_of_mul_104 hlen_lt) hlen_lt
   simpa only [emp_sepConj, Nat.add_zero, Option.map_id'] using h
 
-def findPlacedAllocSpec [LibsignalPlacement] (A : RustAlloc) : Spec FindIndexGhost :=
+@[expose] def findPlacedAllocSpec [LibsignalPlacement] (A : RustAlloc) : Spec FindIndexGhost :=
   withVmPreserved (CryptoVerification.LibsignalSession.FindReceiverChainIndex.findPlacedSpec A)
 
-def findPlacedSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M) :
+@[expose] def findPlacedSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M) :
     Spec FindIndexGhost :=
   findPlacedAllocSpec A.repAlloc
 

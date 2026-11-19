@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingB
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.Collisions
 
 /-!
 # `Auth` hybrid hop `G3 → G3.5`: `.recvOPK` and `.recvNoOPK` step couplings
@@ -20,7 +21,7 @@ Couples the receiver key schedule and `.recvOPK`/`.recvNoOPK` transitions betwee
 up to `badAuthFgAnyLatchedMono`, given the subcase premises.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 open SignalPqxdh SignalPqxdh.Security
@@ -82,7 +83,7 @@ theorem respAuthCand_eraseSpkBundlesFg_eq_of_ne {S : Setup} (P : Primitives)
 
 /-- Witness that an RO input `secrets : Bytes` was constructed by an earlier responder
     handshake recorded in `s3.adv.respRecs`. -/
-def AuthRespRoOrigin {S : Setup} (P : Primitives) (s3 : AuthAdvLatchedState S)
+@[expose] def AuthRespRoOrigin {S : Setup} (P : Primitives) (s3 : AuthAdvLatchedState S)
     (secrets : Bytes) : Prop :=
   ∃ (r : AuthRespRecord) (rKem : _root_.SignalPqxdh.Security.RecvKemRecord) (b_r : SpkBundleEntry),
     r ∈ s3.adv.respRecs ∧
@@ -438,7 +439,7 @@ theorem relProbUpToBad_evalAuthHybridRecvSchedule_bind {S : Setup} {α : Type}
             ((secrets, dk) :: hst3.base.roCache) k35 k3 hNone (hPostMiss dk hdk)
 
 /-- Pure pre-schedule validation for `.recvOPK k j o msg` on `st : AuthState S`. -/
-def parseAuthRecvOPKPre {S : Setup} (P : Primitives)
+@[expose] def parseAuthRecvOPKPre {S : Setup} (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg) (st : AuthState S) :
     Option (PrincipalEntry × SpkBundleEntry × OpkEntry ×
       List (Nat × KeyId × KeyId × Bytes) × Bytes) :=
@@ -467,7 +468,7 @@ def parseAuthRecvOPKPre {S : Setup} (P : Primitives)
           | some ss => some (kEntry, bEntry, oEntry, usedTriples', ss)
 
 /-- Pure pre-schedule validation for `.recvNoOPK k j l msg` on `st : AuthState S`. -/
-def parseAuthRecvNoOPKPre {S : Setup} (P : Primitives)
+@[expose] def parseAuthRecvNoOPKPre {S : Setup} (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg) (st : AuthState S) :
     Option (PrincipalEntry × SpkBundleEntry × List (Nat × KeyId × KeyId × Bytes) × Bytes) :=
   if true && st.hasWonAuth then none
@@ -504,14 +505,14 @@ theorem parseAuthRecvNoOPKPre_withAuthBaseRoCache {S : Setup} (P : Primitives)
     parseAuthRecvNoOPKPre P k j l msg (withAuthBaseRoCache c st) =
       parseAuthRecvNoOPKPre P k j l msg st := rfl
 
-def wrapAuthAdvLatchedRecv {S : Setup} (k : Fin S.N_id) (j : Fin S.N_recv)
+@[expose] def wrapAuthAdvLatchedRecv {S : Setup} (k : Fin S.N_id) (j : Fin S.N_recv)
     (msg : PreKeyMsg) (s : AuthAdvLatchedState S) (p : AuthResponse × AuthHybridState S) :
     AuthResponse × AuthAdvLatchedState S :=
   let rRec : AuthRespRecord :=
     { bKey := (k.val, j.val), ikAPk := msg.hdr.ikAPk, ekAPk := msg.hdr.ekAPk }
   (p.1, { s with adv := { s.adv with hyb := p.2, respRecs := rRec :: s.adv.respRecs } })
 
-def finishLatchedRecvOPK {S : Setup} (P : Primitives)
+@[expose] def finishLatchedRecvOPK {S : Setup} (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
     (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry) (oEntry : OpkEntry)
     (usedTriples' : List (Nat × KeyId × KeyId × Bytes)) (msg : PreKeyMsg)
@@ -522,7 +523,7 @@ def finishLatchedRecvOPK {S : Setup} (P : Primitives)
   wrapAuthAdvLatchedRecv k j msg s
     (finishAuthHybridRecvOPK true P k j o kEntry bEntry oEntry usedTriples' msg hstDec res?)
 
-def finishLatchedRecvNoOPK {S : Setup} (P : Primitives)
+@[expose] def finishLatchedRecvNoOPK {S : Setup} (P : Primitives)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk)
     (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
     (usedTriples' : List (Nat × KeyId × KeyId × Bytes)) (msg : PreKeyMsg)

@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallback
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackPlaced
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallback -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackPlaced
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSetup
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Placed Fallback Setup
@@ -28,7 +31,7 @@ Relocatable `[LibsignalPlacement]` verification of fallback dispatch (`+1136 -> 
 `RustCliAllocBudget M`, `BudgetLimits`, and `AllocXsAndBasisEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -113,10 +116,10 @@ attribute [local simp, local arm64_norm, local wp_norm]
 
 /-- Exact allocator event sequence of `allocXsAndBasis` (`+1804..+4116`, Block `416`) for `n` points:
     `4 * n` bytes (alignment `2`) for `xsPtr`, followed by `24 * n` bytes (alignment `8`) for `basisPtr`. -/
-def allocXsAndBasisEvents (n : Nat) : List AllocEvent :=
+@[expose] def allocXsAndBasisEvents (n : Nat) : List AllocEvent :=
   rustAllocEvents (4 * n) 2 ++ rustAllocEvents (24 * n) 8
 
-def AllocXsAndBasisEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def AllocXsAndBasisEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = allocXsAndBasisEvents n
 
 theorem fitsEnv_allocXsAndBasis_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} (n : Nat) :

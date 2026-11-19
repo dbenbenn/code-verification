@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 
 /-!
@@ -20,7 +20,7 @@ together with length bounds showing every decoded field slice is strictly shorte
 protobuf body.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -386,29 +386,6 @@ theorem decodeProtoLoop_field_length_lt {fuel n : ℕ} {m0 m : ProtoPreKeySignal
           simp only [hm] at hd
           have ⟨h0', hrest'⟩ := mergeProtoField_lengths h0 (Nat.lt_of_lt_of_le hrest hbs) hm
           exact ih h0' (by omega) hd
-
-theorem decodeProtoLoop_field_length_le {fuel n : ℕ} {m0 m : ProtoPreKeySignalMessage}
-    {bs : List (BitVec 8)}
-    (h0 : (∀ v, m0.baseKey = some v → v.length ≤ n) ∧
-          (∀ v, m0.identityKey = some v → v.length ≤ n) ∧
-          (∀ v, m0.message = some v → v.length ≤ n) ∧
-          (∀ v, m0.kyberCiphertext = some v → v.length ≤ n))
-    (hbs : bs.length ≤ n)
-    (hd : decodeProtoLoop fuel m0 bs = some m) :
-    (∀ v, m.baseKey = some v → v.length ≤ n) ∧
-    (∀ v, m.identityKey = some v → v.length ≤ n) ∧
-    (∀ v, m.message = some v → v.length ≤ n) ∧
-    (∀ v, m.kyberCiphertext = some v → v.length ≤ n) := by
-  have hlt := decodeProtoLoop_field_length_lt (n := n + 1)
-    ⟨fun v hv => Nat.lt_succ_of_le (h0.1 v hv),
-     fun v hv => Nat.lt_succ_of_le (h0.2.1 v hv),
-     fun v hv => Nat.lt_succ_of_le (h0.2.2.1 v hv),
-     fun v hv => Nat.lt_succ_of_le (h0.2.2.2 v hv)⟩
-    (Nat.le_succ_of_le hbs) hd
-  exact ⟨fun v hv => Nat.le_of_lt_succ (hlt.1 v hv),
-         fun v hv => Nat.le_of_lt_succ (hlt.2.1 v hv),
-         fun v hv => Nat.le_of_lt_succ (hlt.2.2.1 v hv),
-         fun v hv => Nat.le_of_lt_succ (hlt.2.2.2 v hv)⟩
 
 theorem decodeProto_field_length_lt {body m} (hd : decodeProto body = some m) :
     (∀ v, m.baseKey = some v → v.length < body.length) ∧

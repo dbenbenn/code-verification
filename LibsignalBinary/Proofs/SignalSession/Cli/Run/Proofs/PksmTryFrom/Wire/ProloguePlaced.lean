@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.Prologue
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.OkBridgePlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.Prologue
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.OkBridgePlaced
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodePure
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrAt -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 
 /-!
 # Relocatable `[LibsignalPlacement]` Prologue and Early-Error Branches (`+0x000..+0x0f4`)
@@ -25,7 +28,7 @@ Proves the empty-slice, legacy/unrecognized-version, frame-initialization, empty
 loop-entry prologue segments on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -58,8 +61,6 @@ open RunProofs.Pksm
 private abbrev SepWPp := Wire.SepWPp
 private abbrev SepWP.done := @Wire.SepWP.done
 private abbrev SepWPp.of_sepWP := @Wire.SepWPp.of_sepWP
-private abbrev SepWPp.of_sepWP_frozen := @Wire.SepWPp.of_sepWP_frozen
-private abbrev SepWPp.of_sepWP_end := @Wire.SepWPp.of_sepWP_end
 private abbrev SepWPp.panic := @Wire.SepWPp.panic
 private abbrev SepWPp.frame_tryFrom := @Wire.SepWPp.frame_tryFrom
 private abbrev SepWPp.bind := @Wire.SepWPp.bind

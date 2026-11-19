@@ -9,9 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostK -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostK
 import ProofLib.OpcodeExclusion
 import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhost -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Closed-Trap Discharge of `keepMemcpyBlk20 mmpl (u.readReg64 .lr) = false` (`HooksDehook.MemcpyLrTrap`)
@@ -82,7 +88,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhost (
     - `.ret rn` has `rn = .lr`,
     - sequential fallthrough (`advancePC`) has `off + 4 < 396`, and
     - PC-relative branch offsets `relOff` satisfy `(BitVec.ofNat 64 off + relOff).toNat < 396`. -/
-def isBlk20SafeInstr (off : Nat) (inst : Instr) : Bool :=
+@[expose] def isBlk20SafeInstr (off : Nat) (inst : Instr) : Bool :=
   match inst with
   | .ret rn => decide (rn = .lr)
   | .nop => decide (off + 4 < 396)
@@ -121,32 +127,6 @@ theorem memcpyWords_all_safe :
       | none => false) = true := by
   decide +kernel
 
-/-- Kernel census: `memcpySymWords` (`blk20`) contains exactly `7` `ret .lr` instructions. -/
-theorem memcpyWords_ret_count :
-    ((List.range 99).countP fun k =>
-      match memcpySymWords[k]? >>= decode with
-      | some (.ret .lr) => true
-      | _ => false) = 7 := by
-  decide +kernel
-
-/-- Kernel census: `memcpySymWords` (`blk20`) contains exactly `10` internal conditional branches
-    (`bCond`, `cbz`, `tbz`). -/
-theorem memcpyWords_condBranch_count :
-    ((List.range 99).countP fun k =>
-      match memcpySymWords[k]? >>= decode with
-      | some (.bCond _ _) | some (.cbz _ _ _ _) | some (.tbz _ _ _ _ _) => true
-      | _ => false) = 10 := by
-  decide +kernel
-
-/-- Kernel census: `memcpySymWords` (`blk20`) contains `0` `bl`/`blr`/`br`/`b`/`system` (`svc`/`brk`)
-    instructions. -/
-theorem memcpyWords_callOrUncondBranchOrSystem_count :
-    ((List.range 99).countP fun k =>
-      match memcpySymWords[k]? >>= decode with
-      | some (.bl _) | some (.blr _) | some (.br _) | some (.b _) | some (.system _ _) => true
-      | _ => false) = 0 := by
-  decide +kernel
-
 private theorem isBlk20SafeInstr_not_isSvc0 {off : Nat} {inst : Instr}
     (h : isBlk20SafeInstr off inst = true) :
     inst.isSvc0 = false := by
@@ -155,7 +135,7 @@ private theorem isBlk20SafeInstr_not_isSvc0 {off : Nat} {inst : Instr}
 /-- Single-instruction outcome for an instruction inside `blk20` (`396` B) on arbitrary state `s`:
     either faults with `.Exception msg`, or remains `.Running` with unchanged `lr` and `pc`
     equal to `s.readReg64 .lr` or `base + off'` (`off' < 396`). -/
-def Blk20StepOutcome (base : BitVec 64) (s s' : State) : Prop :=
+@[expose] def Blk20StepOutcome (base : BitVec 64) (s s' : State) : Prop :=
   (∃ msg, s'.status = .Exception msg) ∨
   (s'.status = .Running ∧
    s'.readReg64 .lr = s.readReg64 .lr ∧
@@ -412,18 +392,6 @@ theorem codeLoaded_stripExecOutside_blk20
   rw [mallocngBlockProg20_code_length] at hoff
   exact hkeep off hoff
 
-/-- Lift `(pureWordsProg (mmpl.base 20) memcpySymWords).CodeLoaded m` into `stripExecOutside keep m`
-    whenever `KeepCoversBlk20 keep mmpl` holds. -/
-theorem codeLoaded_stripExecOutside_pure20
-    {keep : BitVec 64 → Bool} {mmpl : Obj.MultiPlacement} {m : Memory}
-    (hkeep : KeepCoversBlk20 keep mmpl)
-    (hL : (pureWordsProg (mmpl.base 20) memcpySymWords).CodeLoaded m) :
-    (pureWordsProg (mmpl.base 20) memcpySymWords).CodeLoaded (stripExecOutside keep m) := by
-  refine codeLoaded_stripExecOutside_of_keep (fun off hoff => ?_) hL
-  change off < (Program.ofWords 0#64 memcpySymWords).code.length at hoff
-  have hlen : (Program.ofWords 0#64 memcpySymWords).code.length = 396 := by decide +kernel
-  exact hkeep off (by omega)
-
 /-- Any instruction dynamically fetched by `P_ghost.fetchMem m pc = some inst` at an address `pc`
     with `keepMemcpyBlk20 mmpl pc = true` when `mallocngBlockProg mmpl 20` is loaded in `m` lies at
     some offset `off < 396` from `mmpl.base 20` and satisfies `isBlk20SafeInstr off inst = true`. -/
@@ -495,7 +463,7 @@ theorem fetchMem_blk20_safe
 
 /-- Hook-level trap preservation at `lr = L`: on any `.Running` state `w` with `w.readReg64 .lr = L`,
     `f w` either transitions to `.Exception _` or stays `.Running` at `pc = L` with `lr = L`. -/
-def Blk20TrapHook (L : BitVec 64) (f : State → State) : Prop :=
+@[expose] def Blk20TrapHook (L : BitVec 64) (f : State → State) : Prop :=
   ∀ w : State, w.status = .Running → w.readReg64 .lr = L →
     (∃ msg, (f w).status = .Exception msg) ∨
     ((f w).status = .Running ∧ (f w).pc = L ∧ (f w).readReg64 .lr = L)
@@ -535,21 +503,6 @@ theorem blk20TrapHook_linkedCallHook {α : Type}
   · refine Or.inl ⟨"ghost-hook precondition violated", ?_⟩
     simp [hAct]
 
-/-- Generic `linkedCallHook` trap lemma for any `K`-narrowed contract (`¬ ActiveRealPre spec w` when
-    `w.readReg64 .lr = L`), independent of `fallback` (covers all `K`-route ghost hooks when `keep`
-    covers `blk20`). -/
-theorem blk20TrapHook_linkedCallHook_of_not_pre {α : Type}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entryTarget : BitVec 64}
-    {spec : Spec α} {fallback : State → State} {L : BitVec 64}
-    (hnoPre : ∀ w : State, w.readReg64 .lr = L → ¬ ActiveRealPre spec w) :
-    Blk20TrapHook L (linkedCallHook keep P_real P_sub entryTarget spec fallback) := by
-  classical
-  intro w _ hlr
-  have hnp := hnoPre w hlr
-  refine Or.inl ⟨"ghost-hook precondition violated", ?_⟩
-  unfold linkedCallHook
-  simp [hnp]
-
 /-- Plain `memcpyGhostHook` satisfies `Blk20TrapHook L` whenever `keep L = true`. -/
 theorem blk20TrapHook_memcpyGhostHook
     {keep : BitVec 64 → Bool} {L : BitVec 64}
@@ -575,7 +528,7 @@ theorem blk20TrapHook_memcpyGhostHookK
 /-! ## 3. Closed-Trap Impossibility & General Global `hlr_calls` Theorems -/
 
 /-- Closed-trap invariant on `blk20` (`396` B at `mmpl.base 20`) with pinned `lr = L`. -/
-def Blk20TrapInv (mmpl : Obj.MultiPlacement) (L : BitVec 64) (w : State) : Prop :=
+@[expose] def Blk20TrapInv (mmpl : Obj.MultiPlacement) (L : BitVec 64) (w : State) : Prop :=
   w.status = .Running ∧
   keepMemcpyBlk20 mmpl w.pc = true ∧
   w.readReg64 .lr = L ∧
@@ -749,32 +702,6 @@ theorem blk20_lr_trap_false_gen
     obtain ⟨f_call, hext_u, htrap_call⟩ := hmis u.pc hne
     exact blk20_lr_trap_of_step htrap_call hblk20_ext hext_u
       (hsteps_s0_u.codeLoaded hCode0) h1 hrest hrun_u hrun_sf hnoex_sf hnhalt_sf
-
-/-- **Non-`.Running` terminal corollary (`blk20_lr_trap_false_nonRunning`):**
-    Specializes `blk20_lr_trap_false_gen` when `sf.status ≠ .Running` (covering `.Exited _`,
-    `.Panicked`, `.OutOfMemory`, and `.Signaled _` with zero PC conditions on `sf`). -/
-theorem blk20_lr_trap_false_nonRunning
-    {P_ghost P_real : Program} {mmpl : Obj.MultiPlacement}
-    (hblk20_ext : ∀ pc, keepMemcpyBlk20 mmpl pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧ ∀ L, keepMemcpyBlk20 mmpl L = true → Blk20TrapHook L f)
-    (hmis : ∀ pc, P_ghost.externAt? pc ≠ P_real.externAt? pc →
-      ∃ f, P_ghost.externAt? pc = some f ∧ ∀ L, keepMemcpyBlk20 mmpl L = true → Blk20TrapHook L f)
-    {s0 sf : State}
-    (hCode0 : (mallocngBlockProg mmpl 20 Syscall.standard).CodeLoaded s0.mem)
-    (hrun_sf : sf.status ≠ .Running)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      P_ghost.externAt? u.pc ≠ P_real.externAt? u.pc →
-      keepMemcpyBlk20 mmpl (u.readReg64 .lr) = false :=
-  blk20_lr_trap_false_gen hblk20_ext hmis hCode0
-    (fun hr => False.elim (hrun_sf hr))
-    (fun hr => False.elim (hrun_sf hr))
-    hnoex_sf hnhalt_sf
 
 /-- **Subroutine-outcome corollary (`blk20_lr_trap_false_subroutineOutcome`):**
     Specializes `blk20_lr_trap_false_gen` directly to any `SubroutineOutcome spec x R s0 sf`

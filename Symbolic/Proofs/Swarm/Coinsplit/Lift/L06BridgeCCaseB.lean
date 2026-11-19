@@ -41,6 +41,7 @@ import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
 import Symbolic.Proofs.Swarm.CREF.Xpl.NoRatchet
 import Symbolic.Proofs.Swarm.CREF.Xpl.SkippedHit
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge
 
 /-!
 # Ratchet Decrypt Collision Bridge
@@ -50,7 +51,7 @@ Proves `BridgeCCaseBSpec`: when the binary session decrypts `inner_wire` with a 
 draws zero `.rng` events before `.accept out` yields `RecvCollision interp' r S g ms t_rep`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

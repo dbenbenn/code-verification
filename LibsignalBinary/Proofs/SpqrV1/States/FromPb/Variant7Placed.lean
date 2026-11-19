@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7kPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7aPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7kPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7aPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7dPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7fPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7gPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9Placed
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 7 (`Ct1Sampled`, Block `333`) — Top-Level Proof
@@ -26,7 +27,7 @@ jump-table target `+1056` in Block `333`), composing the `<Ct1Sent>::from_pb`,
 `<PolyEncoder>::from_pb`, and `<PolyDecoder>::from_pb` stages into `states_from_pb_ct1Sampled_ok_ext_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000

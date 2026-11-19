@@ -9,21 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.SignedAssembly
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.RecordCodecs.SignedAssembly
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKeyBudget
+import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKeyBudget
 import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Fetches
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.FetchesBudget
+import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.FetchesBudget
 import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecode
-public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecodeBudget
+import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeyDecodeBudget
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSome
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Signed and Kyber Pre-Key Record Decoder Assembly
@@ -33,7 +33,7 @@ import ProofLib.SepLogic.WPp
 `SignedPortDepsPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false

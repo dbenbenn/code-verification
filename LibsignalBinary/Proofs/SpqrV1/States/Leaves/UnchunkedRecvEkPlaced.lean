@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.UnchunkedRecvEk
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::unchunked::send_ct::Ct1Sent>::recv_ek` (Relocatable, Block `338`)
@@ -22,7 +23,7 @@ Relocatable `[LibsignalPlacement]` proofs on `lsProg_338 (Rust.withPanics ext)` 
 `unchunked_ct1_sent_recv_ek_placed_ok_x` and `unchunked_ct1_sent_recv_ek_placed_cl_ok_x`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

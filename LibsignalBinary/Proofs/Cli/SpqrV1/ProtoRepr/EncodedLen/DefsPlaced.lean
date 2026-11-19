@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.Defs
-public import GeneratedLean.LibsignalSessionPlacedObj
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.PlacedCallSym
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
@@ -22,7 +22,7 @@ Defines `[LibsignalPlacement]` block indices and entry resolution for CLI Blocks
 `479`, `482`, `487`, `492`, `496`, `499`, and `500`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.M4.DecryptPlaced
+public import LibsignalBinary.Proofs.SpqrV1.M4.DecryptPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Record.Defs
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
@@ -27,7 +27,7 @@ Relocatable `[LibsignalPlacement]` verification of the `try_decrypt_from_record`
 (Block `197`) against `recordDecryptPlacedSpecT`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSpqrV1.M4
 
@@ -48,7 +48,7 @@ open CryptoVerification.SpqrV1.GF.Mul2U16
 
 /-- `recordDecryptPlacedSpec` with the pq state shorter than `2^32` bytes in the pre and
 `tokenInitPlacedAt` framed, as `tryDecryptPlacedSpecT`. -/
-def recordDecryptPlacedSpecT [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def recordDecryptPlacedSpecT [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec RecordDecryptGhost :=
   { recordDecryptPlacedSpec C A ctl uuidParse S with
     pre := fun x s =>
@@ -92,14 +92,14 @@ theorem subroutine_ok_recordTryDecryptPlacedSpecT [LibsignalPlacement]
         rw [satisfies_pure_sepConj, satisfies_pure_sepConj]
         exact ⟨hpre'.1, ⟨hpre'.2.1, hpre'.2.2.1⟩, hpre'.2.2.2⟩
       dsimp only [tryDecryptPlacedSpecT, withLsCodeRoLoaded, Decrypt.tryDecryptSpecPlaced,
-        Decrypt.tryDecryptRawSpecPlaced, tryDecryptSpec, Spec.inImage,
+        Decrypt.tryDecryptRawSpecPlaced,
         Record.tryDecryptPlacedSpec, FromRecordCallees.lsLogOff] at hgoal ⊢
       rw [Decrypt.logOff_tryDecryptPlacedImg]
       exact Eq.mp (congrArg (SepProp.Satisfies · _) (by ac_rfl)) hgoal)
     (fun x R s0 sf hpost => by
       dsimp only [tryDecryptPlacedSpecT, recordTryDecryptPlacedSpecT, withLsCodeLoaded,
         withLsCodeRoLoaded, Decrypt.tryDecryptSpecPlaced, Decrypt.tryDecryptRawSpecPlaced,
-        tryDecryptSpec, Spec.inImage, Record.tryDecryptPlacedSpec,
+        Record.tryDecryptPlacedSpec,
         FromRecordCallees.lsLogOff] at hpost ⊢
       rw [Decrypt.logOff_tryDecryptPlacedImg] at hpost
       exact Eq.mp (congrArg (SepProp.Satisfies · _) (by ac_rfl)) hpost)

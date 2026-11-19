@@ -1160,8 +1160,8 @@ fn package_passes() {
     let rendered = tree.render();
     assert!(
         rendered.contains("Arm64/")
-            && rendered.contains("[mixed: tcb + proof + testing + infra + doc]")
-            && rendered.contains("Arm64/Legacy/"),
+            && rendered.contains("[mixed: tcb + testing + infra + doc]")
+            && !rendered.contains("Arm64/Legacy/"),
         "{rendered}"
     );
     assert!(
@@ -1260,7 +1260,6 @@ fn trust_category_classification() {
         ("tools/rust-obj2lean/src/trusted_common/mod.rs", Some(Tcb)),
         ("tools/rust-obj2lean/src/trusted_extractor/mod.rs", Some(Tcb)),
         ("tools/rust-obj2lean/src/trusted_extractor/extracted_obj.rs", Some(Tcb)),
-        ("tools/rust-obj2lean/src/untrusted_legacy_linker/mod.rs", Some(Proof)),
         ("tools/rust-obj2lean/src/lib.rs", Some(Tcb)),
         ("tools/arm64-verification-engine/src/lib.rs", None),
         ("tools/proc-snapshot/src/untrusted_foo.rs", Some(Infra)),
@@ -1307,7 +1306,6 @@ fn trust_category_classification() {
         ("tools/tcb-map/Cargo.toml", Some(Testing)),
         ("tools/rust-obj2lean/src/test_infra/placed_lld_diff.rs", Some(Testing)),
         ("tools/rust-obj2lean/src/tests.rs", Some(Testing)),
-        ("tools/rust-obj2lean/src/untrusted_legacy_linker/tests.rs", Some(Testing)),
         ("tools/rust-obj2lean/src/trusted_common/reloc_tests.rs", Some(Testing)),
         ("tools/rust-obj2lean/src/trusted_extractor/test_util.rs", Some(Testing)),
         ("tools/rust-obj2lean/src/trusted_common/attestation.rs", Some(Tcb)),
@@ -1316,9 +1314,6 @@ fn trust_category_classification() {
         ("scripts/dev/check-trust-guards.sh", Some(Testing)),
         ("ProofLib/TrustedClosure.lean", Some(Testing)),
         // Proof
-        ("Arm64/Legacy.lean", Some(Proof)),
-        ("Arm64/Legacy/Object/LinkedImage.lean", Some(Proof)),
-        ("Arm64/Legacy/Spec/Library.lean", Some(Proof)),
         ("ProofLib.lean", Some(Proof)),
         ("ProofLib/Placed/LabelsCheck.lean", Some(Proof)),
         ("ProofLib/Placed/LabelsCoverage.lean", Some(Proof)),
@@ -1329,8 +1324,6 @@ fn trust_category_classification() {
         ("CaseStudies/Widget/Proofs/ParseSym.lean", Some(Proof)),
         ("CaseStudies/Widget/Witness/ParseWitness.lean", Some(Proof)),
         ("CaseStudies/Widget/Generated/WidgetObj.lean", Some(Proof)),
-        ("CaseStudies/Widget/Generated/WidgetObj.code.bin", Some(Proof)),
-        ("CaseStudies/Widget/Generated/WidgetObj.data.bin", Some(Proof)),
         ("CaseStudies/Widget/Generated/WidgetCode.lean", Some(Proof)),
         ("CaseStudies/Widget/Generated/WidgetElfFacts.lean", Some(Proof)),
         ("tools/rust-obj2lean/src/untrusted_lemmas/mod.rs", Some(Proof)),
@@ -1622,29 +1615,6 @@ fn spec_allowlists_have_no_stale_entries() {
         assert!(
             has_spec_line_rule || has_spec_attr,
             "`{path}` is permitted to define macros/syntax/notations, so it must actually use one (move pure definitions to `Arm64/Trusted/Spec/` or remove stale `SPEC_MACRO_SYNTAX_ALLOWLIST` entries)"
-        );
-    }
-    assert!(
-        crate::policy::LEGACY_LINKED_IMAGE_IMPORTERS
-            .windows(2)
-            .all(|w| w[0] < w[1]),
-        "LEGACY_LINKED_IMAGE_IMPORTERS must be strictly sorted"
-    );
-    for &mod_name in crate::policy::LEGACY_LINKED_IMAGE_IMPORTERS {
-        let rel = format!("{}.lean", mod_name.replace('.', "/"));
-        let full = root.join(&rel);
-        assert!(
-            full.exists(),
-            "stale allowlist entry `{mod_name}` (`{rel}`): file does not exist; remove it from LEGACY_LINKED_IMAGE_IMPORTERS"
-        );
-        let source = fs::read_to_string(&full).unwrap();
-        let code = strip_comments_and_strings(&source);
-        let imports = crate::lex::extract_imports_from_str(&code, &source);
-        assert!(
-            imports.iter().any(|e| {
-                e.imported == "Arm64.Legacy" || e.imported.starts_with("Arm64.Legacy.")
-            }),
-            "`{mod_name}` (`{rel}`) no longer directly imports `Arm64.Legacy*`; remove it from LEGACY_LINKED_IMAGE_IMPORTERS"
         );
     }
 }
@@ -2201,6 +2171,8 @@ fn trusted_tcb_directory_classification_fails_closed_on_unclassified_modules() {
         ("Arm64/Trusted/Surface/NewMacro.lean", "import Lean.Elab.Term\ndef m := 0\n"),
         ("Arm64/Trusted/Spec/NewSemanticSpec.lean", "import Lean.Elab.Term\ndef s := 0\n"),
         ("Arm64/NewRoot.lean", "def r := 0\n"),
+        ("Arm64/Legacy.lean", "def l := 0\n"),
+        ("Arm64/Legacy/Object/LinkedImage.lean", "def li := 0\n"),
         ("Arm64/Trusted/NewTop.lean", "def t := 0\n"),
         ("Arm64/Trusted/Surface.lean", "def u := 0\n"),
         ("Arm64/Trusted/Unknown/Foo.lean", "def f := 0\n"),
@@ -2223,6 +2195,8 @@ fn trusted_tcb_directory_classification_fails_closed_on_unclassified_modules() {
     );
     for unclassified in [
         "Arm64/NewRoot.lean",
+        "Arm64/Legacy.lean",
+        "Arm64/Legacy/Object/LinkedImage.lean",
         "Arm64/Trusted/NewTop.lean",
         "Arm64/Trusted/Surface.lean",
         "Arm64/Trusted/Unknown/Foo.lean",
@@ -2556,49 +2530,6 @@ fn no_case_studies_exempts_filtered_equivalence_imports_from_unresolved() {
     assert!(
         has(&filtered, path, "unresolved import `ProofLib.Missing`"),
         "{filtered:#?}"
-    );
-}
-
-#[test]
-fn legacy_linked_image_import_allowlist_enforced() {
-    let v = check(&[
-        ("Arm64/Legacy.lean", "def l := 0\n"),
-        (
-            "Arm64/Legacy/Object/LinkedImage.lean",
-            "import Arm64.Legacy\ndef li := 0\n",
-        ),
-        (
-            "ProofLib/ObjectLoad.lean",
-            "import Arm64.Legacy\ndef ok := 0\n",
-        ),
-        (
-            "ProofLib/NewUnlisted.lean",
-            "import Arm64.Legacy\ndef bad := 0\n",
-        ),
-        (
-            "CaseStudies/Alpha/Proofs/Main.lean",
-            "import Arm64.Legacy\ndef bad2 := 0\n",
-        ),
-    ]);
-    assert!(
-        !v.iter().any(|x| x.path == "Arm64/Legacy/Object/LinkedImage.lean"),
-        "{v:#?}"
-    );
-    assert!(
-        !v.iter().any(|x| x.path == "ProofLib/ObjectLoad.lean"),
-        "{v:#?}"
-    );
-    assert!(
-        has(&v, "ProofLib/NewUnlisted.lean", "legacy-linked-image-import"),
-        "{v:#?}"
-    );
-    assert!(
-        has(
-            &v,
-            "CaseStudies/Alpha/Proofs/Main.lean",
-            "legacy-linked-image-import"
-        ),
-        "{v:#?}"
     );
 }
 

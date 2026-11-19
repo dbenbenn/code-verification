@@ -10,10 +10,11 @@ limitations under the License.
 module
 
 import all Init.Data.String.Defs
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendCoinsBridge
-public import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureC
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendCoinsBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureC -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendEvalBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendRecordInj
+public import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureA -- proof-setup: allow-public-import
 
 /-!
 # Send Evaluation and Canonical Post-State Bridge
@@ -23,7 +24,7 @@ Connects `SessionState.messageEncryptW` and `pqSendModel` under `ModelHookBridge
 under the coin prefix `sendCoinsOf interp g.session.pqRatchetState r_coins`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

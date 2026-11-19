@@ -10,19 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlacedBudgetAux2
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2BudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2Budget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlacedBudgetAux2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Code-Loaded Drop Glue for `PqRatchetState` (Block `270`)
@@ -32,7 +36,7 @@ for Block `270` (`drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>`), re-exp
 from `ProtoTopClPlacedBudgetAux2`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

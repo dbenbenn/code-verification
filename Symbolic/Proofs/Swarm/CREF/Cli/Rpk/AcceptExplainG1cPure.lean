@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineShapeModKemInv
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptExplainG1cPureA
+import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineShapeModKemInv
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptExplainG1cPureA -- proof-setup: allow-public-import
 import DY.Trace.Basic
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.ModelMono
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -32,7 +32,7 @@ Proves `rpk_not_bsG1cOwnKeyCase`, ruling out `BsG1cOwnKeyCase` during Bob's pre-
 when the derived message-key seed `seed'` is not attacker-known.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

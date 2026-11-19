@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
@@ -26,6 +26,21 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Steps
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Specs
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
 
 /-!
 # Budget-Threaded Relocatable `spqr::send::<HookRng>` Phase 1a Steps (Block 124)
@@ -34,7 +49,7 @@ Verifies `spqr_send_decode_state_err_step_placed` and `spqr_send_decode_state_ok
 with `VmPreserved` and `RustCliAllocBudget` pool transport.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -71,6 +86,9 @@ open CryptoVerification.SpqrV1.Top.Send
 open CryptoVerification.SpqrV1.Top.Send.Placed (blkPC_124 blkPl_124)
 open LibsignalBinary.Heap
   (AllocCallPreserved AllocCostModel BudgetLimits RustCliAllocBudget VmPreserved)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (SpqrErrorValidTag spqrSendResultDispAt spqrSendResultDispAt_entails_spqrSendResultAt
+   spqrSendResultDispAt_none_of_byte)
 open LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget (AllocContractsPlaced)
 open LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1PlacedBudget (spqr_send_epilogue_4632_placed)
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
@@ -214,6 +232,162 @@ private theorem align_pre_vm {prog : Program} {target : BitVec 64} {s0 s : State
       (fun sm Pm => sm.tpidrEl0 = s0.tpidrEl0 ∧ (Pm ⊢ P_mid) ∧ Q sm) :=
   SepWP.mono hwp fun _ _ _ _ ⟨htp, hPm, hQ⟩ => ⟨htp, Entails.trans hPm h, hQ⟩
 
+/-! ## Display-Tag Byte/Word Packing and Unpacking Helpers -/
+
+theorem pointsTo8_memRegion7_entails_pointsTo64_tag (a : BitVec 64) (d : BitVec 8) :
+    (a ↦₈ d) ∗ memRegion (a + 1#64) 7 ⊢
+      ∃∗ w : BitVec 64, ⌜w.truncate 8 = d⌝ ∗ (a ↦₆₄ w) := by
+  rw [ProofLib.memRegion_eq_exists_bytes (a + 1#64) 7 (by decide)]
+  simp only [sepExists_sepConj_right]
+  apply Entails.sepExists_elim; intro bs
+  have hpull : ((a ↦₈ d) ∗ (⌜bs.length = 7⌝ ∗ ((a + 1#64) ↦ₛ bs))) =
+      ⌜bs.length = 7⌝ ∗ ((a ↦₈ d) ∗ ((a + 1#64) ↦ₛ bs)) := by sep_ac_rfl
+  rw [hpull]
+  apply Entails.pure_left; intro hlen
+  rcases bs with _ | ⟨b1, _ | ⟨b2, _ | ⟨b3, _ | ⟨b4, _ | ⟨b5, _ | ⟨b6, _ | ⟨b7, _ | _⟩⟩⟩⟩⟩⟩⟩ <;>
+    try (simp at hlen)
+  rw [← pointsToBytes_cons, ProofLib.pointsToBytes8_eq_pointsTo64]
+  refine Entails.sepExists_right (b7 ++ b6 ++ b5 ++ b4 ++ b3 ++ b2 ++ b1 ++ d) ?_
+  exact Entails.pure_right (by bv_bits) (Entails.refl _)
+
+theorem pointsTo8_memRegion3_entails_pointsTo32_tag (a : BitVec 64) (d : BitVec 8) :
+    (a ↦₈ d) ∗ memRegion (a + 1#64) 3 ⊢
+      ∃∗ w : BitVec 32, ⌜w.truncate 8 = d⌝ ∗ (a ↦₃₂ w) := by
+  rw [ProofLib.memRegion_eq_exists_bytes (a + 1#64) 3 (by decide)]
+  simp only [sepExists_sepConj_right]
+  apply Entails.sepExists_elim; intro bs
+  have hpull : ((a ↦₈ d) ∗ (⌜bs.length = 3⌝ ∗ ((a + 1#64) ↦ₛ bs))) =
+      ⌜bs.length = 3⌝ ∗ ((a ↦₈ d) ∗ ((a + 1#64) ↦ₛ bs)) := by sep_ac_rfl
+  rw [hpull]
+  apply Entails.pure_left; intro hlen
+  rcases bs with _ | ⟨b1, _ | ⟨b2, _ | ⟨b3, _ | _⟩⟩⟩ <;> try (simp at hlen)
+  rw [← pointsToBytes_cons, ProofLib.pointsToBytes4_eq_pointsTo32]
+  refine Entails.sepExists_right (b3 ++ b2 ++ b1 ++ d) ?_
+  exact Entails.pure_right (by bv_bits) (Entails.refl _)
+
+theorem pointsTo64_entails_pointsTo8_memRegion7 (a w : BitVec 64) :
+    (a ↦₆₄ w) ⊢ (a ↦₈ w.truncate 8) ∗ memRegion (a + 1#64) 7 := by
+  rw [ProofLib.pointsTo64_eq_pointsToBytes, ProofLib.unpack64, pointsToBytes_cons]
+  have h0 : w.extractLsb' 0 8 = w.truncate 8 := by bv_bits
+  rw [h0]
+  exact sepConj_mono_right (ProofLib.pointsToBytes_entails_memRegion (a + 1#64) _)
+
+theorem err_ret_entails_sendResultDispAt_none (A : RustAlloc) (ret : BitVec 64)
+    (w1 w2 w3 : BitVec 64) (htag : SpqrErrorValidTag (w1.truncate 8)) :
+    (ret ↦₆₄ noneCap) ∗
+      ((ret + 8#64) ↦₆₄ w1) ∗
+      ((ret + 16#64) ↦₆₄ w2) ∗
+      ((ret + 24#64) ↦₆₄ w3) ∗
+      memRegion (ret + 32#64) 40 ⊢
+      spqrSendResultDispAt A ret none := by
+  have hw1 := pointsTo64_entails_pointsTo8_memRegion7 (ret + 8#64) w1
+  have ha9 : (ret + 8#64) + 1#64 = ret + 9#64 := by bv_omega
+  rw [ha9] at hw1
+  have htail :
+      memRegion (ret + 9#64) 7 ∗ ((ret + 16#64) ↦₆₄ w2) ∗
+        ((ret + 24#64) ↦₆₄ w3) ∗ memRegion (ret + 32#64) 40 ⊢
+        memRegion (ret + 9#64) 63 := by
+    rw [ProofLib.memRegion_split' (b := ret + 9#64) (n := 7) (k := 56)
+          (b' := ret + 16#64) rfl (by bv_omega) (by decide),
+        ProofLib.memRegion_split' (b := ret + 16#64) (n := 8) (k := 48)
+          (b' := ret + 24#64) rfl (by bv_omega) (by decide),
+        ProofLib.memRegion_split' (b := ret + 24#64) (n := 8) (k := 40)
+          (b' := ret + 32#64) rfl (by bv_omega) (by decide)]
+    exact sepConj_mono_right
+      (sepConj_mono (ProofLib.pointsTo64_entails_memRegion (ret + 16#64) w2)
+        (sepConj_mono_left (ProofLib.pointsTo64_entails_memRegion (ret + 24#64) w3)))
+  refine Entails.trans (sepConj_mono_right (sepConj_mono_left hw1)) ?_
+  refine Entails.trans
+    (Entails.of_eq (show _ =
+      (ret ↦₆₄ CryptoVerification.LibsignalTripleRatchetRepr.errTag) ∗
+        ((ret + 8#64) ↦₈ w1.truncate 8) ∗
+        (memRegion (ret + 9#64) 7 ∗ ((ret + 16#64) ↦₆₄ w2) ∗
+          ((ret + 24#64) ↦₆₄ w3) ∗ memRegion (ret + 32#64) 40) by
+      have herr : noneCap = CryptoVerification.LibsignalTripleRatchetRepr.errTag := rfl
+      rw [herr]; sep_ac_rfl)) ?_
+  exact Entails.trans (sepConj_mono_right (sepConj_mono_right htail))
+    (spqrSendResultDispAt_none_of_byte A ret (w1.truncate 8) htag)
+
+theorem sendResultDispAt_none_of_dwords_words (A : RustAlloc) (ret : BitVec 64)
+    (d0 d1 : BitVec 32) (w2 w3 : BitVec 64)
+    (htag : SpqrErrorValidTag (d0.truncate 8)) :
+    (ret ↦₆₄ noneCap) ∗
+      ((ret + 8#64) ↦₃₂ d0) ∗
+      ((ret + 12#64) ↦₃₂ d1) ∗
+      ((ret + 16#64) ↦₆₄ w2) ∗
+      ((ret + 24#64) ↦₆₄ w3) ∗
+      memRegion (ret + 32#64) 40 ⊢
+      spqrSendResultDispAt A ret none := by
+  have ha12 : (ret + 8#64) + 4#64 = ret + 12#64 := by bv_omega
+  have hpair : ((ret + 8#64) ↦₃₂ d0) ∗ ((ret + 12#64) ↦₃₂ d1) =
+      ((ret + 8#64) ↦₆₄ (d1 ++ d0)) := by
+    rw [← ha12, ProofLib.pointsTo32_pair]
+  have htr : (d1 ++ d0).truncate 8 = d0.truncate 8 := by bv_bits
+  refine Entails.trans
+    (Entails.of_eq (show _ =
+      (ret ↦₆₄ noneCap) ∗
+        (((ret + 8#64) ↦₃₂ d0) ∗ ((ret + 12#64) ↦₃₂ d1)) ∗
+        ((ret + 16#64) ↦₆₄ w2) ∗ ((ret + 24#64) ↦₆₄ w3) ∗
+        memRegion (ret + 32#64) 40 by sep_ac_rfl)) ?_
+  rw [hpair]
+  exact err_ret_entails_sendResultDispAt_none A ret (d1 ++ d0) w2 w3
+    (by rw [htr]; exact htag)
+
+theorem decodeStateResultAt_err_entails_head32_320_tag (H_inner : V1InnerHeapPred)
+    (A : RustAlloc) (a : BitVec 64) (e : Error) :
+    decodeStateResultAt H_inner A a (.error e) ⊢
+      ∃∗ w1 : BitVec 64, ∃∗ w2 : BitVec 64, ∃∗ w3 : BitVec 64,
+        ⌜w1.truncate 8 = CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e⌝ ∗
+        (a ↦₆₄ CryptoVerification.SpqrV1.Top.DecodeState.none2Cap) ∗
+        ((a + 8#64) ↦₆₄ w1) ∗
+        ((a + 16#64) ↦₆₄ w2) ∗
+        ((a + 24#64) ↦₆₄ w3) ∗
+        memRegion (a + 32#64) 320 := by
+  unfold decodeStateResultAt
+  rw [ProofLib.memRegion_split' (b := a + 9#64) (n := 7) (k := 336)
+        (b' := a + 16#64) rfl (by bv_omega) (by decide)]
+  have hw1 :
+      ((a + 8#64) ↦₈ CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e) ∗
+        memRegion (a + 9#64) 7 ⊢
+        ∃∗ w1 : BitVec 64,
+          ⌜w1.truncate 8 = CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e⌝ ∗
+          ((a + 8#64) ↦₆₄ w1) := by
+    have ha9 : (a + 8#64) + 1#64 = a + 9#64 := by bv_omega
+    simpa [ha9] using
+      pointsTo8_memRegion7_entails_pointsTo64_tag (a + 8#64)
+        (CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e)
+  refine Entails.trans
+    (Entails.of_eq (show _ =
+      (((a + 8#64) ↦₈ CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e) ∗
+        memRegion (a + 9#64) 7) ∗
+      (a ↦₆₄ CryptoVerification.SpqrV1.Top.DecodeState.none2Cap) ∗
+      memRegion (a + 16#64) 336 by sep_ac_rfl)) ?_
+  refine Entails.trans (sepConj_mono_left hw1) ?_
+  simp only [sepExists_sepConj_left]
+  apply Entails.sepExists_elim; intro w1
+  have hpull1 :
+      ((⌜w1.truncate 8 = CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e⌝ ∗
+        ((a + 8#64) ↦₆₄ w1)) ∗
+       (a ↦₆₄ CryptoVerification.SpqrV1.Top.DecodeState.none2Cap) ∗
+       memRegion (a + 16#64) 336) =
+      ⌜w1.truncate 8 = CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e⌝ ∗
+        ((a ↦₆₄ CryptoVerification.SpqrV1.Top.DecodeState.none2Cap) ∗
+         ((a + 8#64) ↦₆₄ w1) ∗ memRegion (a + 16#64) 336) := by sep_ac_rfl
+  rw [hpull1]
+  apply Entails.pure_left; intro hw1_eq
+  rw [ProofLib.memRegion_split' (b := a + 16#64) (n := 8) (k := 328)
+        (b' := a + 24#64) rfl (by bv_omega) (by decide),
+      ProofLib.memRegion_eight (a + 16#64)]
+  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+  apply Entails.sepExists_elim; intro w2
+  rw [ProofLib.memRegion_split' (b := a + 24#64) (n := 8) (k := 320)
+        (b' := a + 32#64) rfl (by bv_omega) (by decide),
+      ProofLib.memRegion_eight (a + 24#64)]
+  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
+  apply Entails.sepExists_elim; intro w3
+  refine Entails.sepExists_right w1 (Entails.sepExists_right w2 (Entails.sepExists_right w3 ?_))
+  exact Entails.pure_right hw1_eq (Entails.of_eq (by sep_ac_rfl))
+
 variable [LibsignalPlacement]
 
 /-! ## `memcpy` Region Contract on `spqrSendPlacedProg` -/
@@ -238,17 +412,6 @@ theorem spqrSend_session_memcpy_region_ok_placed {M : AllocCostModel}
       sessionMemcpyBudgetSpec, sessionMemcpySpec, stackAt] at hm ⊢
     rw [ProofLib.memRegion_zero] at hm
     exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm
-
-theorem spqrSend_session_memcpy_region_raw_ok_placed {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsPlaced M A lim ext) :
-    subroutine_ok (spqrSendPlacedProg ext) (lsρ "memcpy") sessionMemcpyRegionSpec := by
-  refine subroutine_ok_mono (spqrSend_session_memcpy_region_ok_placed hA)
-    (fun _ _ _ hp => hp) (fun _ _ _ _ hq => ?_)
-  dsimp only [sessionMemcpyRegionBudgetSpec] at hq
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-  exact hq.2
 
 /-! ## `Err(e)` Return Path After `spqr::decode_state` (`+80 -> s0.lr`) -/
 
@@ -353,10 +516,116 @@ theorem spqr_send_decode_state_err_step_placed {H_inner : V1InnerHeapPred} {A : 
     exact ⟨hvm1.trans hvm2, acp_trans hacp1 hacp2,
       Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hsp_f, hcc_f, htr_f.trans htr2⟩
 
-theorem spqr_send_decode_state_err_step_pool_placed {H_inner : V1InnerHeapPred}
+/-- Display-tag-strengthened `Err(e)` return path after `spqr::decode_state` (`+80 -> s0.lr`),
+    writing `spqrSendResultDispAt A ret none` under `SpqrErrorValidTag (DecodeState.spqrErrorTag e)`. -/
+theorem spqr_send_decode_state_err_step_disp_placed {H_inner : V1InnerHeapPred} {A : RustAlloc}
+    {ext : String → Option (State → State)}
+    (s0 s : State) (ret : BitVec 64) (e : Error) (Rest : SepProp)
+    (htag : SpqrErrorValidTag (CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e))
+    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
+    (hpc : s.pc = spqrSendPlacedEntry + 80#64)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = s0.sp - 0x1f80#64)
+    (hx19 : s.readReg64 .x19 = ret)
+    (hx26 : s.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64)
+    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0 := by simp only [wp_norm, arm64_norm, *]) :
+    SepWP (spqrSendPlacedProg ext) (s0.readReg64 .x30) s
+      (stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+        memRegion (s0.sp - 0x1f80#64) 0x1260 ∗
+        decodeStateResultAt H_inner A ((s0.sp - 0x1f80#64) + 0x1260#64) (.error e) ∗
+        memRegion ((s0.sp - 0x1f80#64) + 0x13c0#64) (0x1f20 - 0x13c0) ∗
+        spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
+        memRegion ret 72 ∗
+        Rest)
+      (fun sf Pf =>
+        VmPreserved s sf ∧
+        AllocCallPreserved s sf ∧
+        (Pf ⊢ stackAt s0.sp spqrSendStack ∗ spqrSendResultDispAt A ret none ∗ Rest) ∧
+        sf.sp = s0.sp ∧
+        CalleeSavedPreserved s0 sf ∧
+        sf.trace = s.trace) := by
+  have hfsp_align : ((s0.sp - 0x1f80#64) &&& 15#64 == 0#64) = true :=
+    ProofLib.spAligned_sub s0.sp 0x1f80#64 hsp0_align (by decide)
+  refine SepWP.seq
+    (mid := spqrSendPlacedEntry + 4632#64)
+    (Mid := fun sm Pm =>
+      VmPreserved s sm ∧
+      AllocCallPreserved s sm ∧
+      (Pm ⊢
+        stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
+        memRegion (s0.sp - 0x1f80#64) 0x1f20 ∗
+        spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
+        (spqrSendResultDispAt A ret none ∗ Rest)) ∧
+      sm.sp = s0.sp - 0x1f80#64 ∧
+      sm.trace = s.trace ∧
+      calleeSavedVRegs sm = calleeSavedVRegs s0)
+    ?_ ?_
+  · dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, BitVec.ofNat_eq_ofNat] at hpc ⊢
+    generalize hfsp_eq : s0.sp - 8064#64 = fsp at hsp hfsp_align hx26 ⊢
+    refine SepWP.weaken_pre
+      (sepConj_mono_right
+        (sepConj_mono (memRegion_1260_split_190 fsp)
+          (sepConj_mono (decodeStateResultAt_err_entails_head32_320_tag H_inner A (fsp + 4704#64) e)
+            (sepConj_mono_right (sepConj_mono_right
+              (sepConj_mono_left (memRegion_ret_72_split_err ret))))))) ?_
+    wp_simp_pre [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
+    apply ProofLib.SepWP.exists_left; intro r0
+    apply ProofLib.SepWP.exists_left; intro rw8
+    apply ProofLib.SepWP.exists_left; intro rw16
+    apply ProofLib.SepWP.exists_left; intro rw24
+    apply ProofLib.SepWP.exists_left; intro w1
+    apply ProofLib.SepWP.exists_left; intro w2
+    apply ProofLib.SepWP.exists_left; intro w3
+    apply ProofLib.SepWP.exists_left; intro w190
+    apply ProofLib.SepWP.exists_left; intro w198
+    apply ProofLib.SepWP.exists_left; intro w1a0
+    refine SepWP.focus_pure (by sep_focus) fun hw1_eq => ?_
+    have htag_w1 : SpqrErrorValidTag (w1.truncate 8) := by
+      change SpqrErrorValidTag (BitVec.setWidth 8 w1)
+      rw [hw1_eq]; exact htag
+    by_vm_steps (
+      wp_steps
+      refine align_pre_vm_acp ?_ ?_
+      · have hframe := decode_state_err_frame_rejoin fsp w1 w2 w3
+        have hret := err_ret_entails_sendResultDispAt_none A ret w1 w2 w3 htag_w1
+        refine Entails.trans
+          (Entails.of_eq (show _ =
+            (memRegion fsp 400 ∗
+             ((fsp + 400#64) ↦₆₄ w1) ∗
+             ((fsp + 408#64) ↦₆₄ w2) ∗
+             ((fsp + 416#64) ↦₆₄ w3) ∗
+             memRegion (fsp + 424#64) (0x1260 - 0x1a8) ∗
+             ((fsp + 4704#64) ↦₆₄ CryptoVerification.SpqrV1.Top.DecodeState.none2Cap) ∗
+             ((fsp + 4712#64) ↦₆₄ w1) ∗
+             ((fsp + 4720#64) ↦₆₄ w2) ∗
+             ((fsp + 4728#64) ↦₆₄ w3) ∗
+             memRegion (fsp + 4736#64) 320 ∗
+             memRegion (fsp + 5056#64) (0x1f20 - 0x13c0)) ∗
+            ((ret ↦₆₄ noneCap) ∗
+             ((ret + 8#64) ↦₆₄ w1) ∗
+             ((ret + 16#64) ↦₆₄ w2) ∗
+             ((ret + 24#64) ↦₆₄ w3) ∗
+             memRegion (ret + 32#64) 40) ∗
+            (stackAt fsp spqrSendCalleeStack ∗
+             spqrSendSavedRegs fsp s0 ∗
+             Rest) by sep_ac_rfl)) ?_
+        refine Entails.trans (sepConj_mono hframe (sepConj_mono_left hret)) ?_
+        exact Entails.of_eq (by sep_ac_rfl)
+      · wp_done)
+  · intro s2 P2 hpc2 hrun2 ⟨hvm1, hacp1, hP2, hsp2, htr2, hvregs2⟩
+    refine SepWP.weaken_pre hP2 ?_
+    have hep := spqr_send_epilogue_4632_placed (ext := ext) s0 s2
+      (spqrSendResultDispAt A ret none ∗ Rest) hsp0_align hpc2 hrun2 hsp2 hvregs2
+    refine SepWP.mono hep ?_
+    intro sf Pf _ _ ⟨hvm2, hacp2, hPf, hsp_f, hcc_f, htr_f⟩
+    exact ⟨hvm1.trans hvm2, acp_trans hacp1 hacp2,
+      Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hsp_f, hcc_f, htr_f.trans htr2⟩
+
+theorem spqr_send_decode_state_err_step_pool_disp_placed {H_inner : V1InnerHeapPred}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : String → Option (State → State)}
     (s0 s : State) (st : M.σ) (ret : BitVec 64) (e : Error) (Rest : SepProp)
+    (htag : SpqrErrorValidTag (CryptoVerification.SpqrV1.Top.DecodeState.spqrErrorTag e))
     (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
     (hpc : s.pc = spqrSendPlacedEntry + 80#64)
     (hrun : s.status = .Running)
@@ -376,14 +645,14 @@ theorem spqr_send_decode_state_err_step_pool_placed {H_inner : V1InnerHeapPred}
       (fun sf Pf =>
         VmPreserved s sf ∧
         AllocCallPreserved s sf ∧
-        (Pf ⊢ stackAt s0.sp spqrSendStack ∗ spqrSendResultAt A.repAlloc ret none ∗
+        (Pf ⊢ stackAt s0.sp spqrSendStack ∗ spqrSendResultDispAt A.repAlloc ret none ∗
           A.pool lim st sf ∗ Rest) ∧
         sf.sp = s0.sp ∧
         CalleeSavedPreserved s0 sf ∧
         sf.trace = s.trace) := by
-  have herr := spqr_send_decode_state_err_step_placed (H_inner := H_inner) (A := A.repAlloc)
+  have herr := spqr_send_decode_state_err_step_disp_placed (H_inner := H_inner) (A := A.repAlloc)
     (ext := ext) s0 s ret e (A.pool lim st s ∗ Rest)
-    hsp0_align hpc hrun hsp hx19 hx26 hvregs
+    htag hsp0_align hpc hrun hsp hx19 hx26 hvregs
   refine SepWP.mono herr ?_
   intro sf Pf _ _ ⟨hvm, hacp, hPf, hsp_f, hcc_f, htr_f⟩
   refine ⟨hvm, hacp, ?_, hsp_f, hcc_f, htr_f⟩
@@ -585,67 +854,5 @@ theorem spqr_send_decode_state_ok_to_156_placed {H_inner : V1InnerHeapPred}
          Rest) by sep_ac_rfl)) ?_
     refine Entails.trans (sepConj_mono hci (sepConj_mono_left hsrc)) ?_
     exact Entails.of_eq (by sep_ac_rfl)
-
-theorem spqr_send_decode_state_ok_to_156_pool_placed {H_inner : V1InnerHeapPred}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsPlaced M A lim ext)
-    (s0 s : State) (st : M.σ) (ret : BitVec 64) (pq : PqRatchetState) (Rest : SepProp)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = spqrSendPlacedEntry + 80#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 0x1f80#64)
-    (hx19 : s.readReg64 .x19 = ret)
-    (hx21 : s.readReg64 .x21 = (s0.sp - 0x1f80#64) + 0x1260#64)
-    (hx26 : s.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64) :
-    SepWP (spqrSendPlacedProg ext) (spqrSendPlacedEntry + 156#64) s
-      (stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
-        memRegion (s0.sp - 0x1f80#64) 0x1260 ∗
-        decodeStateResultAt H_inner A.repAlloc ((s0.sp - 0x1f80#64) + 0x1260#64) (.ok pq) ∗
-        memRegion ((s0.sp - 0x1f80#64) + 0x13c0#64) (0x1f20 - 0x13c0) ∗
-        spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
-        A.pool lim st s ∗
-        Rest)
-      (fun sm Pm =>
-        VmPreserved s sm ∧
-        ∃ w0 w1 w2 w3 w30 w38 w40 w48 : BitVec 64,
-        ∃ bs16 : List (BitVec 8),
-          w0 ≠ CryptoVerification.SpqrV1.Top.DecodeState.none2Cap ∧
-          bs16.length = 16 ∧
-          (Pm ⊢
-            stackAt (s0.sp - 0x1f80#64) spqrSendCalleeStack ∗
-            memRegion (s0.sp - 0x1f80#64) 0x30 ∗
-            (((s0.sp - 0x1f80#64) + 0x30#64) ↦₆₄ w30) ∗
-            (((s0.sp - 0x1f80#64) + 0x38#64) ↦₆₄ w38) ∗
-            (((s0.sp - 0x1f80#64) + 0x40#64) ↦₆₄ w40) ∗
-            (((s0.sp - 0x1f80#64) + 0x48#64) ↦₆₄ w48) ∗
-            (((s0.sp - 0x1f80#64) + 0x50#64) ↦ₛ bs16) ∗
-            optChainPBAt A.repAlloc ((s0.sp - 0x1f80#64) + 0x60#64) pq.chain ∗
-            optProtoPqRatchetInnerAt H_inner A.repAlloc ((s0.sp - 0x1f80#64) + 0xb0#64) pq.inner ∗
-            (((s0.sp - 0x1f80#64) + 0x190#64) ↦₆₄ w1) ∗
-            (((s0.sp - 0x1f80#64) + 0x198#64) ↦₆₄ w2) ∗
-            (((s0.sp - 0x1f80#64) + 0x1a0#64) ↦₆₄ w3) ∗
-            memRegion ((s0.sp - 0x1f80#64) + 0x1a8#64) (0x1f20 - 0x1a8) ∗
-            (relocOptVersionNegotiationPBTailAt A.repAlloc w0 w1 pq.versionNegotiation).1
-              ((unpack64 w2 ++ unpack64 w3) ++ bs16) ∗
-            spqrSendSavedRegs (s0.sp - 0x1f80#64) s0 ∗
-            A.pool lim st sm ∗
-            Rest) ∧
-          sm.sp = s0.sp - 0x1f80#64 ∧
-          sm.readReg64 .x19 = ret ∧
-          sm.readReg64 .x20 = (s0.sp - 0x1f80#64) + 0x30#64 ∧
-          sm.readReg64 .x23 = w0 ∧
-          sm.readReg64 .x26 = (s0.sp - 0x1f80#64) + 0x1260#64 ∧
-          sm.trace = s.trace ∧
-          calleeSavedVRegs sm = calleeSavedVRegs s) := by
-  have h156 := spqr_send_decode_state_ok_to_156_placed (H_inner := H_inner) hA s0 s ret pq
-    (A.pool lim st s ∗ Rest) hsp0_align hpc hrun hsp hx19 hx21 hx26
-  refine SepWP.mono h156 ?_
-  rintro sm Pm _ _ ⟨hvm, w0, w1, w2, w3, w30, w38, w40, w48, bs16, hw0, hl16, hPm,
-    hsp_m, hx19_m, hx20_m, hx23_m, hx26_m, htr_m, hvregs_m⟩
-  refine ⟨hvm, w0, w1, w2, w3, w30, w38, w40, w48, bs16, hw0, hl16, ?_,
-    hsp_m, hx19_m, hx20_m, hx23_m, hx26_m, htr_m, hvregs_m⟩
-  rw [A.pool_transport lim st s sm hvm]
-  exact Entails.trans hPm (Entails.of_eq (by sep_ac_rfl))
 
 end LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget

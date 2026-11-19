@@ -11,19 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.EntryPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.HeadPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudgetAux
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.EntryPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.HeadPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Capacity-Explicit Entry and Loop-Head Helpers for Block `518` Exact Decode
@@ -33,7 +34,7 @@ Defines the capacity-explicit `SessionStructure` loop invariant (`b518x_vecU8Fre
 for Block-`518` Entry (`+0x1ee8 → +0x216c`) and Loop Head (`+0x2160 → +0x216c` / `+0x2620`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -92,11 +93,11 @@ local macro "wp_steps_sync_518 " ext:term:max mid:term : tactic => `(tactic| (
 
 /-! ## Capacity-Explicit `SSGQ` and Loop-Heap Invariant -/
 
-def b518x_vecU8Fresh0A (A : RustAlloc) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def b518x_vecU8Fresh0A (A : RustAlloc) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if bs = [] then ∃∗ ptr : BitVec 64, vecU8At A p 0#64 ptr []
   else vecU8 A p bs
 
-def b518x_prostSSGQAtCapA (A : RustAlloc) (ss : BitVec 64) (v : SSGQ) : SepProp :=
+@[expose] def b518x_prostSSGQAtCapA (A : RustAlloc) (ss : BitVec 64) (v : SSGQ) : SepProp :=
   b518x_vecU8Fresh0A A ss v.base.lik ∗
     b518x_vecU8Fresh0A A (ss + 0x18#64) v.base.rik ∗
     b518x_vecU8Fresh0A A (ss + 0x30#64) v.base.root ∗
@@ -117,7 +118,7 @@ def b518x_prostSSGQAtCapA (A : RustAlloc) (ss : BitVec 64) (v : SSGQ) : SepProp 
       (((ss + 0x148#64) ↦₃₂ v.base.version) ∗ ((ss + 0x14c#64) ↦₃₂ v.base.prevCounter) ∗
         ((ss + 0x150#64) ↦₃₂ v.ext.remReg) ∗ ((ss + 0x154#64) ↦₃₂ v.ext.locReg))
 
-def b518x_overDecHeapCapA {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def b518x_overDecHeapCapA {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) (g : OverDecG) (rest : List (BitVec 8))
     (v : SSGQ) : SepProp :=
   overPrevElemRestBudget A g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗

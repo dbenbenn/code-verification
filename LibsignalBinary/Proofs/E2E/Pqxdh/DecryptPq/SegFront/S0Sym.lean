@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.CodeLayout
 public import LibsignalBinary.Specifications.LibsignalSession
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+public import ProofLib.GenDecodes
+public import ProofLib.VCGen
 
 /-!
 # Prologue and Identity-Check Helpers (`S0Spec`) for `try_decrypt_with_state::<HookRng>`
@@ -21,7 +22,7 @@ Stack-frame initialization and `local_identity_key` / `is_same_account` call hel
 (`+0x000 → +0x1d8`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegA
 
@@ -79,7 +80,7 @@ theorem bytes17_shift_eq (a : BitVec 64)
   simp only [BitVec.add_assoc, BitVec.reduceAdd] at h1
   rw [h1, ← sepConj_assoc, bytes9_64_8_eq_8_64 a b6 b7 b8 b9 b10 b11 b12 b13 b14, sepConj_assoc]
 
-def localGroupA (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
+@[expose] def localGroupA (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
     (w0 w1 w2 : BitVec 64) (b31 : BitVec 8) : SepProp :=
   (a ↦₃₂ pack32 b0 b1 b2 b3) ∗
   ((a + 4#64) ↦₈ b4) ∗
@@ -90,7 +91,7 @@ def localGroupA (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
   ((a + 23#64) ↦₆₄ w2) ∗
   ((a + 31#64) ↦₈ b31)
 
-def localGroupB (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
+@[expose] def localGroupB (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
     (w0 w1 w2 : BitVec 64) (b31 : BitVec 8) : SepProp :=
   (a ↦₈ b0) ∗
   ((a + 1#64) ↦₈ b1) ∗
@@ -134,7 +135,7 @@ theorem exists_localGroupA_of_length_32 {bs : List (BitVec 8)} (h : bs.length = 
   simp only [List.cons_append, List.nil_append, pointsToBytes_cons, pointsToBytes_nil,
     sepConj_emp, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
 
-def remoteGroupC (a : BitVec 64) (w0 : BitVec 32) (b4 b5 : BitVec 8)
+@[expose] def remoteGroupC (a : BitVec 64) (w0 : BitVec 32) (b4 b5 : BitVec 8)
     (b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 : BitVec 8)
     (w3 : BitVec 64) (b31 : BitVec 8) : SepProp :=
   (a ↦₃₂ w0) ∗
@@ -146,7 +147,7 @@ def remoteGroupC (a : BitVec 64) (w0 : BitVec 32) (b4 b5 : BitVec 8)
   ((a + 23#64) ↦₆₄ w3) ∗
   ((a + 31#64) ↦₈ b31)
 
-def remoteGroupD (a : BitVec 64) (w0 : BitVec 32) (b4 b5 : BitVec 8)
+@[expose] def remoteGroupD (a : BitVec 64) (w0 : BitVec 32) (b4 b5 : BitVec 8)
     (b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 : BitVec 8)
     (w3 : BitVec 64) (b31 : BitVec 8) : SepProp :=
   (a ↦₃₂ w0) ∗
@@ -237,19 +238,5 @@ theorem localGroupA_1280_to_B (sp : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
      (sp + 1311#64) ↦₈ b31) := by
   simpa only [localGroupA, localGroupB, BitVec.add_assoc, BitVec.reduceAdd] using
     localGroupA_eq_localGroupB (sp + 1280#64) b0 b1 b2 b3 b4 b5 b6 w0 w1 w2 b31
-
-theorem adrp_0xc0_tryDecrypt_eq_logFilterAddr {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {entry : BitVec 64} (hentry : entry = img.base + 454648#64) :
-    ((entry + 192#64 &&& 18446744073709547520#64) + bv% (page% (ls_sym%
-      "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) - 0x6f000)) + bv% ((ls_sym%
-      "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) % 4096) =
-      CryptoVerification.LibsignalSession.logFilterAddr img := by
-  have hbal := ProofLib.base_aligned_of_loads himg
-  rw [hentry, BitVec.add_assoc img.base, adrp_page_of_aligned hbal,
-      CryptoVerification.LibsignalSession.logFilterAddr]
-  have hmask : ((454648#64 + 192#64 : BitVec 64) &&& 18446744073709547520#64) = 454656#64 := rfl
-  rw [hmask]
-  bv_omega
 
 end CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegA

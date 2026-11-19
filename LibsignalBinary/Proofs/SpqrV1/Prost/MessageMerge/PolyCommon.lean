@@ -16,11 +16,10 @@ import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4K
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4K -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlaced
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneSysrootExt
@@ -39,7 +38,7 @@ Provides `Vec<Vec<u8>>` buffer and `<RawVec<Vec<u8>>>::grow_one` separation-logi
 lemmas, and shared exit/skip lemmas for `PolynomialDecoder::merge` (`0x4e10c`, Block `296`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 
@@ -78,7 +77,7 @@ theorem bv64_add24_add16 (a : BitVec 64) : a + 24#64 + 16#64 = a + 40#64 := by b
 /-! ## 1. `Vec<Vec<u8>>` Buffer & `grow_one` Bridge Lemmas -/
 
 /-- The 24 little-endian bytes of a `Vec<u8>` header `{cap, ptr, len}`. -/
-def vecU8ElemBytes (pin : VecPin) (bs : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def vecU8ElemBytes (pin : VecPin) (bs : List (BitVec 8)) : List (BitVec 8) :=
   unpack64 pin.cap ++ unpack64 pin.ptr ++ unpack64 (BitVec.ofNat 64 bs.length)
 
 @[simp]
@@ -96,7 +95,7 @@ theorem vecHeader_eq_pointsToBytes_elem (v : BitVec 64) (pin : VecPin) (bs : Lis
   rw [h16]
 
 /-- Detached heap buffer of a `Vec<u8>`. -/
-def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -107,7 +106,7 @@ theorem vecU8At_eq_header_sep_buf (A : RustAlloc) (v cap ptr : BitVec 64) (bs : 
   unfold vecU8At vecU8Buf; ac_rfl
 
 /-- Concatenated 24-byte `Vec<u8>` headers for `pins` and `bss`. -/
-def vecU8ArrayBytes : List VecPin → List (List (BitVec 8)) → List (BitVec 8)
+@[expose] def vecU8ArrayBytes : List VecPin → List (List (BitVec 8)) → List (BitVec 8)
   | pin :: pins, bs :: bss => vecU8ElemBytes pin bs ++ vecU8ArrayBytes pins bss
   | _, _ => []
 
@@ -124,7 +123,7 @@ theorem vecU8ArrayBytes_length {pins : List VecPin} {bss : List (List (BitVec 8)
       simp only [vecU8ArrayBytes, List.length_append, vecU8ElemBytes_length, ih h, List.length_cons]; omega
 
 /-- Detached heap buffers of a list of `Vec<u8>` elements. -/
-def vecU8ArrayHeaps (A : RustAlloc) : List VecPin → List (List (BitVec 8)) → SepProp
+@[expose] def vecU8ArrayHeaps (A : RustAlloc) : List VecPin → List (List (BitVec 8)) → SepProp
   | pin :: pins, bs :: bss => vecU8Buf A pin.cap pin.ptr bs ∗ vecU8ArrayHeaps A pins bss
   | _, _ => emp
 
@@ -374,14 +373,14 @@ theorem vecU8At_zero_eq_cells (A : RustAlloc) (sp : BitVec 64) :
 abbrev polyBelowStack : Nat := skipField3Stack 97
 abbrev polyMergeStack : Nat := 160 + polyBelowStack
 
-def polySavedRegs (sp : BitVec 64) (s0 : State) (v_pad : BitVec 64) : SepProp :=
+@[expose] def polySavedRegs (sp : BitVec 64) (s0 : State) (v_pad : BitVec 64) : SepProp :=
   ((sp - 80#64) ↦₆₄ s0.readReg64 .x29) ∗ ((sp - 72#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp - 64#64) ↦₆₄ s0.readReg64 .x25) ∗ ((sp - 56#64) ↦₆₄ v_pad) ∗
   ((sp - 48#64) ↦₆₄ s0.readReg64 .x24) ∗ ((sp - 40#64) ↦₆₄ s0.readReg64 .x23) ∗
   ((sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
   ((sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((sp - 8#64) ↦₆₄ s0.readReg64 .x19)
 
-def polySavedRegsAny (sp : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def polySavedRegsAny (sp : BitVec 64) (s0 : State) : SepProp :=
   ∃∗ v_pad : BitVec 64, polySavedRegs sp s0 v_pad
 
 theorem polySavedRegs_entails_any (sp : BitVec 64) (s0 : State) (v_pad : BitVec 64) :
@@ -576,7 +575,7 @@ theorem protoPolynomialEncoderAt_entails_exists (A : RustAlloc) (a : BitVec 64) 
   Entails.sepExists_intro (P := fun m' => protoPolynomialEncoderAt A a (polyEncoderToProto m')) m
 
 /-- Callee-saved registers `x26..x28` not spilled by the 160-byte prologue (`x19..x25` and `x29, x30` are spilled). -/
-def PolyCalleeSaved (s0 s : State) : Prop :=
+@[expose] def PolyCalleeSaved (s0 s : State) : Prop :=
   s.readReg64 .x26 = s0.readReg64 .x26 ∧
   s.readReg64 .x27 = s0.readReg64 .x27 ∧
   s.readReg64 .x28 = s0.readReg64 .x28 ∧
@@ -599,7 +598,7 @@ Bound `x.msg.pts.length + x.bs.length < 2 ^ 56` is discharged by callers (`V1Sta
 in `State::deserialize`) from the serialized state slice bound `x.st.bytes.length < 2 ^ 32` (`DEV-SPQR3`
 in `spqrSendSpecT` / `spqrRecvSpecExactKeyBounded`) via `polynomialDecoder_mergeMessage_pts_le` (since every element of
 `pts` consumes at least 2 wire bytes, `pts.length + rem.length ≤ st.bytes.length < 2 ^ 32 < 2 ^ 56`). -/
-def polyDecoderMergeSpec (A : RustAlloc) : Spec PolyDecoderMergeGhost where
+@[expose] def polyDecoderMergeSpec (A : RustAlloc) : Spec PolyDecoderMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧ s.readReg64 .x1 = x.msgPtr ∧
       s.readReg64 .x2 = x.bufRef ∧ x.msg.pts.length + x.bs.length < 2 ^ 56⌝ ∗
@@ -633,7 +632,7 @@ Bounds `x.msg.pts.length + x.bs.length < 2 ^ 56` and `x.msg.polys.length + x.bs.
 are discharged by callers (`V1State.Chunked.*::merge` in `State::deserialize`) from the serialized state
 slice bound `x.st.bytes.length < 2 ^ 32` (`DEV-SPQR3` in `spqrSendSpecT` / `spqrRecvSpecExactKeyBounded`) via
 `polynomialEncoder_mergeMessage_pts_polys_le`. -/
-def polyEncoderMergeSpec (A : RustAlloc) : Spec PolyEncoderMergeGhost where
+@[expose] def polyEncoderMergeSpec (A : RustAlloc) : Spec PolyEncoderMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧ s.readReg64 .x1 = x.msgPtr ∧
       s.readReg64 .x2 = x.bufRef ∧ x.msg.pts.length + x.bs.length < 2 ^ 56 ∧
@@ -917,40 +916,8 @@ theorem slt_two_ofNat32_true {n : Nat} (hge3 : 3 ≤ n) (hlt : n < 2 ^ 31) :
   refine ⟨h1, ?_⟩
   rw [sf_truncate32_ofNat64]; exact h1
 
-theorem growOneVecU8_ok_at_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hA : AllocContracts b A ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff growOneVecU8Name := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (growOneVecU8Spec A) :=
-  CryptoVerification.SpqrV1.Alloc.growOneVecU8_sysroot_ok_at_ext hA name k hk
-
-theorem growOneVecU8_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOneVecU8Name) (growOneVecU8Spec A) :=
-  CryptoVerification.SpqrV1.Alloc.growOneVecU8_sysroot_ok_ext hA
-
-theorem growOneVecU8_ok_at_ext_4k (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hA : CryptoVerification.SpqrV1.Alloc.AllocContracts4K b A ext) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff growOneVecU8Name := by
-      simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) (growOneVecU8Spec A) :=
-  CryptoVerification.SpqrV1.Alloc.growOneVecU8_sysroot_ok_at_ext_4k hA name k hk
-
-theorem growOneVecU8_ok_ext_4k (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hA : CryptoVerification.SpqrV1.Alloc.AllocContracts4K b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr growOneVecU8Name) (growOneVecU8Spec A) :=
-  CryptoVerification.SpqrV1.Alloc.growOneVecU8_sysroot_ok_ext_4k hA
-
 /-- Loop-header separation-logic bundle at `+0x0a4` (`0x4e1b0`). -/
-def polyDecoderLoopPre (A : RustAlloc) (s0 : State) (msgPtr bufRef slot ptr : BitVec 64)
+@[expose] def polyDecoderLoopPre (A : RustAlloc) (s0 : State) (msgPtr bufRef slot ptr : BitVec 64)
     (m : PolynomialDecoder) (bs cur : List (BitVec 8)) : SepProp :=
   stackAt (s0.sp - 160#64) polyBelowStack ∗ memRegion (s0.sp - 160#64) 32 ∗
     memRegion (s0.sp - 128#64) 48 ∗ polySavedRegsAny s0.sp s0 ∗
@@ -958,198 +925,10 @@ def polyDecoderLoopPre (A : RustAlloc) (s0 : State) (msgPtr bufRef slot ptr : Bi
     (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur ∗ A.pool
 
 /-- Error-exit separation-logic bundle at `+0x070`, `+0x07c`, `+0x380`. -/
-def polyDecoderErrFrame (A : RustAlloc) (s0 : State) (msgPtr bufRef slot ptr : BitVec 64)
+@[expose] def polyDecoderErrFrame (A : RustAlloc) (s0 : State) (msgPtr bufRef slot ptr : BitVec 64)
     (m : PolynomialDecoder) (bs : List (BitVec 8)) : SepProp :=
   polySavedRegsAny s0.sp s0 ∗ protoPolynomialDecoderAt A msgPtr (polyDecoderToProto m) ∗
     (bufRef ↦₆₄ slot) ∗ memRegion slot 16 ∗ (ptr ↦ₛ bs) ∗ A.pool
-
-/-- Shared exit from `+0x07c` (`entry + 124#64`) when `x1 = err ≠ 0#64` owns `decodeErrorAtStackLen A err 0`. -/
-theorem polyDecoder_err0_ret_exit {b : BitVec 64} {A : RustAlloc} {H : String → Option (State → State)}
-    {x : PolyDecoderMergeGhost} {R : SepProp} {s0 s : State} {m : PolynomialDecoder} {err : BitVec 64}
-    (hnone : (Proto.mergeMessage PolynomialDecoder.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption = none)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName + 124#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 160#64)
-    (htr : s.trace = s0.trace) (hx1 : s.readReg64 (Reg.gpr 1#5) = err)
-    (herr : err ≠ 0#64) (hcs : PolyCalleeSaved s0 s) :
-    SepWPp (libsignalSessionCode.rebase b H) (s0.readReg64 Reg.lr) s
-      (decodeErrorAtStackLen A err 0 ∗ stackAt (s0.sp - 160#64) polyBelowStack ∗
-        memRegion (s0.sp - 160#64) 32 ∗ memRegion (s0.sp - 128#64) 48 ∗
-        polyDecoderErrFrame A s0 x.msgPtr x.bufRef x.slot x.ptr m x.bs)
-      (WppPost (polyDecoderMergeSpec A) x R s0) (WppPanic R s0) := by
-  obtain ⟨hx26, hx27, hx28, hvregs⟩ := hcs
-  polyDecoderMerge_fetches b H 124 32
-  generalize_entry (libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName = entry; examples_hide_fetches
-  apply SepWPp.of_sepWP_ret; unfold WppPost polyDecoderMergeSpec
-  simp only [hnone, polyDecoderErrFrame, polySavedRegsAny, polySavedRegs,
-    sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc, arm64_norm, htr, hsp, hx1]
-  apply SepWP.exists_elim; intro v_pad
-  apply SepWP.fold (decodeErrorWith_zero_entails_le1 A err) (by sep_focus)
-  apply SepWP.fold (protoPolynomialDecoderAt_entails_exists A x.msgPtr m) (by sep_focus)
-  wp_steps
-  apply SepWP.fold (stackAt_polyMerge_epilogue s0.sp s0 v_pad) (by unfold polySavedRegs; sep_focus)
-  wp_done
-
-/-- Shared exit from `+0x070` (`entry + 112#64`): calls `DecodeError::from` on `(s0.sp - 128#64, w)`
-and returns at `+0x078..+0x098`. -/
-theorem polyDecoder_from_err_exit {b : BitVec 64} {A : RustAlloc} {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H) ((libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName + 0xffffffffffffcc94#64) (decodeErrorFromSpec A))
-    {x : PolyDecoderMergeGhost} {R : SepProp} {s0 s : State} {m : PolynomialDecoder} {w : BitVec 64}
-    (hnone : (Proto.mergeMessage PolynomialDecoder.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption = none)
-    (hw : KindNoHeap w) (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName + 112#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 160#64)
-    (htr : s.trace = s0.trace) (hcs : PolyCalleeSaved s0 s) :
-    SepWPp (libsignalSessionCode.rebase b H) (s0.readReg64 Reg.lr) s
-      (((s0.sp - 128#64) ↦₆₄ w) ∗ memRegion (s0.sp - 120#64) 40 ∗
-        stackAt (s0.sp - 160#64) polyBelowStack ∗ memRegion (s0.sp - 160#64) 32 ∗
-        polyDecoderErrFrame A s0 x.msgPtr x.bufRef x.slot x.ptr m x.bs)
-      (WppPost (polyDecoderMergeSpec A) x R s0) (WppPanic R s0) := by
-  obtain ⟨hx26, hx27, hx28, hvregs⟩ := hcs
-  polyDecoderMerge_fetches b H 112 44
-  generalize_entry (libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName = entry; examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + 0xffffffffffffcc94#64)
-  conv => arg 4; rw [polyBelow_decodeErrorHook s0.sp, polyDecoderErrFrame]; simp only [sepConj_assoc]
-  wp_steps; wp_reach
-  refine SepWPp.call_frame (x := (s0.sp - 128#64, w))
-    (ret_pc := entry + 120#64) hFromCall (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-    (by simp only [State.spAligned, hsp, arm64_norm]; exact hsp_align) (by simp only [arm64_norm])
-    (by dsimp only [decodeErrorFromSpec]; simp only [arm64_norm, hsp]; rfl)
-    hw (by sep_focus) (fun _ _ _ _ hex => allowPanic_not_exited hex)
-    (fun sf _ hpan => allowPanic_frame' (by simp only [arm64_norm, htr]) hpan) ?_
-  intro sm hpcm hrunm hspm hcsm; simp only [CalleeSavedPreserved] at hcsm
-  obtain ⟨_, _, _, _, _, _, _, hx26_m, hx27_m, hx28_m, _, hvregs_m⟩ := hcsm
-  simp (config := { decide := true }) only [arm64_norm, hsp, hx26, hx27, hx28, hvregs] at hpcm hspm hx26_m hx27_m hx28_m hvregs_m
-  apply SepWPp.of_sepWP_ret; unfold WppPost polyDecoderMergeSpec
-  simp only [decodeErrorFromSpec, hnone, polySavedRegsAny, polySavedRegs,
-    sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc, arm64_norm, htr, hsp, hspm]
-  apply SepWP.exists_elim; intro v_pad
-  apply SepWP.fold (polyBelow_decodeErrorHook_entails s0.sp) (by sep_focus)
-  apply SepWP.fold (memRegion8_memRegion40_entails_48_160 s0.sp) (by sep_focus)
-  wp_steps
-  apply SepWP.fold (decodeErrorWith_zero_entails_le1 A _) (by sep_focus)
-  apply SepWP.fold (protoPolynomialDecoderAt_entails_exists A x.msgPtr m) (by sep_focus)
-  apply SepWP.fold (stackAt_polyMerge_epilogue s0.sp s0 v_pad) (by unfold polySavedRegs; sep_focus)
-  wp_done
-
-/-- Shared exit from `+0x380` (`entry + 896#64`): calls `DecodeError::push` on `(s0.sp - 128#64, err, 0)`
-and returns at `+0x384..+0x388` + `+0x07c..+0x098`. -/
-theorem polyDecoder_push_err_exit {b : BitVec 64} {A : RustAlloc} {H : String → Option (State → State)}
-    (hPushCall : subroutine_ok (libsignalSessionCode.rebase b H) ((libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName + 0xffffffffffffc99c#64) (decodeErrorPushSpec A))
-    {x : PolyDecoderMergeGhost} {R : SepProp} {s0 s : State} {m : PolynomialDecoder} {err : BitVec 64}
-    (hnone : (Proto.mergeMessage PolynomialDecoder.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption = none)
-    (herr : err ≠ 0#64) (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName + 896#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 160#64)
-    (htr : s.trace = s0.trace) (hx0 : s.readReg64 (Reg.gpr 0#5) = s0.sp - 128#64)
-    (hcs : PolyCalleeSaved s0 s) :
-    SepWPp (libsignalSessionCode.rebase b H) (s0.readReg64 Reg.lr) s
-      (((s0.sp - 128#64) ↦₆₄ err) ∗ decodeErrorAtStackLen A err 0 ∗
-        memRegion (s0.sp - 120#64) 40 ∗ stackAt (s0.sp - 160#64) polyBelowStack ∗
-        memRegion (s0.sp - 160#64) 32 ∗ polyDecoderErrFrame A s0 x.msgPtr x.bufRef x.slot x.ptr m x.bs)
-      (WppPost (polyDecoderMergeSpec A) x R s0) (WppPanic R s0) := by
-  obtain ⟨hx26, hx27, hx28, hvregs⟩ := hcs
-  polyDecoderMerge_fetches b H 896 12; polyDecoderMerge_fetches b H 124 32
-  generalize_entry (libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName = entry; examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + 0xffffffffffffc99c#64)
-  conv => arg 4; rw [polyBelow_decodeErrorHook s0.sp, polyDecoderErrFrame]; simp only [sepConj_assoc]
-  wp_steps; wp_reach
-  refine SepWPp.call_frame (x := (s0.sp - 128#64, err, 0))
-    (ret_pc := entry + 900#64) hPushCall (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-    (by simp only [State.spAligned, hsp, arm64_norm]; exact hsp_align) (by simp only [arm64_norm])
-    (by dsimp only [decodeErrorPushSpec]; simp only [arm64_norm, hsp, hx0]; rfl)
-    (by decide : 0 < 2 ^ 32) (by sep_focus)
-    (fun _ _ _ _ hex => allowPanic_not_exited hex) (fun sf _ hpan => allowPanic_frame' (by simp only [arm64_norm, htr]) hpan) ?_
-  intro sm hpcm hrunm hspm hcsm; simp only [CalleeSavedPreserved] at hcsm
-  obtain ⟨_, _, _, _, _, _, _, hx26_m, hx27_m, hx28_m, _, hvregs_m⟩ := hcsm
-  simp (config := { decide := true }) only [arm64_norm, hsp, hx26, hx27, hx28, hvregs] at hpcm hspm hx26_m hx27_m hx28_m hvregs_m
-  apply SepWPp.of_sepWP_ret; unfold WppPost polyDecoderMergeSpec
-  simp only [decodeErrorPushSpec, hnone, polySavedRegsAny, polySavedRegs,
-    sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc, arm64_norm, htr, hsp, hspm]
-  apply SepWP.exists_elim; intro v_pad
-  apply SepWP.fold (polyBelow_decodeErrorHook_entails s0.sp) (by sep_focus)
-  wp_steps
-  apply SepWP.fold (decodeErrorWith_one_entails_le1 A err) (by sep_focus)
-  apply SepWP.fold (protoPolynomialDecoderAt_entails_exists A x.msgPtr m) (by sep_focus)
-  apply SepWP.fold (pointsTo64_memRegion40_entails_48_160 s0.sp err) (by sep_focus)
-  apply SepWP.fold (stackAt_polyMerge_epilogue s0.sp s0 v_pad) (by unfold polySavedRegs; sep_focus)
-  wp_done
-
-/-- Step lemma for unknown field tags (`tag ∉ {1, 2, 3, 4}`) at `+0x140` (`entry + 320#64`). -/
-theorem polyDecoder_skip_step {b : BitVec 64} {img : Obj.Image} {A : RustAlloc} {H : String → Option (State → State)}
-    (hSkipCall : subroutine_ok (libsignalSessionCode.rebase b H) ((libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName + 0xffffffffffffda68#64) (skipField3Spec A))
-    {x : PolyDecoderMergeGhost} {R : SepProp} {s0 s : State} {m : PolynomialDecoder} {rest : List (BitVec 8)} {iwt : WireType} {tag limit : Nat}
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true) (hrest_le : rest.length ≤ x.bs.length)
-    (hrest_lt : rest.length < 2 ^ 63) (hrest_suf : IsDropSuffix x.bs rest)
-    (htag_lt : tag < 2 ^ 32) (hnone_of_sf : skipField (2 * rest.length + 2) 97 tag iwt rest = none →
-      (Proto.mergeMessage PolynomialDecoder.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption = none)
-    (hcont : ∀ (rest' : List (BitVec 8)) (s' : State),
-      skipField (2 * rest.length + 2) 97 tag iwt rest = some rest' →
-      s'.pc = (libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName + 164#64 →
-      s'.status = .Running → s'.sp = s0.sp - 160#64 → s'.trace = s0.trace →
-      s'.readReg64 (Reg.gpr 19#5) = x.bufRef → s'.readReg64 (Reg.gpr 20#5) = x.msgPtr →
-      s'.readReg64 (Reg.gpr 21#5) = x.slot → s'.readReg64 (Reg.gpr 22#5) = BitVec.ofNat 64 limit →
-      s'.readReg64 (Reg.gpr 23#5) = 1#64 → s'.readReg64 (Reg.gpr 24#5) = 24#64 →
-      PolyCalleeSaved s0 s' → ImgCallInv img s' →
-      SepWPp (libsignalSessionCode.rebase b H) (s0.readReg64 Reg.lr) s'
-        (polyDecoderLoopPre A s0 x.msgPtr x.bufRef x.slot x.ptr m x.bs rest')
-        (WppPost (polyDecoderMergeSpec A) x R s0) (WppPanic R s0))
-    (hpc : s.pc = (libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName + 320#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 160#64) (htr : s.trace = s0.trace)
-    (hx0 : s.readReg64 (Reg.gpr 0#5) = BitVec.ofNat 64 iwt.toNat)
-    (hx1 : (s.readReg64 (Reg.gpr 1#5)).setWidth 32 = BitVec.ofNat 32 tag)
-    (hx19 : s.readReg64 (Reg.gpr 19#5) = x.bufRef) (hx20 : s.readReg64 (Reg.gpr 20#5) = x.msgPtr)
-    (hx21 : s.readReg64 (Reg.gpr 21#5) = x.slot) (hx22 : s.readReg64 (Reg.gpr 22#5) = BitVec.ofNat 64 limit)
-    (hx23 : s.readReg64 (Reg.gpr 23#5) = 1#64) (hx24 : s.readReg64 (Reg.gpr 24#5) = 24#64)
-    (hcs : PolyCalleeSaved s0 s) (hinv : ImgCallInv img s) :
-    SepWPp (libsignalSessionCode.rebase b H) (s0.readReg64 Reg.lr) s
-      (polyDecoderLoopPre A s0 x.msgPtr x.bufRef x.slot x.ptr m x.bs rest)
-      (WppPost (polyDecoderMergeSpec A) x R s0) (WppPanic R s0) := by
-  obtain ⟨hx26, hx27, hx28, hvregs⟩ := hcs; let restPtr : BitVec 64 := x.ptr + BitVec.ofNat 64 (x.bs.length - rest.length)
-  have herr0_exit := @polyDecoder_err0_ret_exit b A H x R s0
-  polyDecoderMerge_fetches b H 320 24
-  generalize_entry (libsignalSessionCode.rebase b H).fnAddr polyDecoderMergeName = entry; examples_hide_fetches
-  apply SepWPp.of_sepWP_img (mid := entry + 0xffffffffffffda68#64) hinv
-  conv => arg 4; rw [polyDecoderLoopPre, sliceCursorAfter_eq_split hrest_le hrest_suf]; simp only [sepConj_assoc]
-  wp_steps; wp_reach; intro hinv
-  refine SepWPp.call_frame_keep (x := ⟨iwt, tag, 97, x.bufRef, x.slot, restPtr, rest⟩)
-    (ret_pc := entry + 332#64) hSkipCall hinv (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-    (by simp only [State.spAligned, hsp, arm64_norm]; exact hsp_align) (by simp only [arm64_norm])
-    (by dsimp only [skipField3Spec]; simp only [arm64_norm, hsp, hx0, hx1, hx19, setWidth8_ofNat64_wt]; rfl)
-    (⟨htag_lt, by decide, hrest_lt⟩ : tag < 2 ^ 32 ∧ 97 < 2 ^ 32 ∧ rest.length < 2 ^ 63)
-    (by sep_focus)
-    (fun _ _ _ _ hex => allowPanic_not_exited hex) (fun sf _ hpan => allowPanic_frame' (by simp only [arm64_norm, htr]) hpan) ?_
-  intro sm hpcm hrunm hspm hcsm hinvm; simp only [CalleeSavedPreserved] at hcsm
-  obtain ⟨hx19_m, hx20_m, hx21_m, hx22_m, hx23_m, hx24_m, _, hx26_m, hx27_m, hx28_m, _, hvregs_m⟩ := hcsm
-  simp (config := { decide := true }) only [arm64_norm, hsp, hx19, hx20, hx21, hx22, hx23, hx24, hx26, hx27, hx28, hvregs] at hpcm hrunm hspm hx19_m hx20_m hx21_m hx22_m hx23_m hx24_m hx26_m hx27_m hx28_m hvregs_m
-  cases hsf : skipField (2 * rest.length + 2) 97 tag iwt rest with
-  | none =>
-    have hnone := hnone_of_sf hsf
-    apply SepWPp.of_sepWP (mid := entry + 124#64)
-    (conv => arg 4; simp only [skipField3Spec, hsf, sepConj_assoc, arm64_norm, hsp]); apply SepWP.pure_elim; rintro ⟨htrm, hsm0⟩
-    have hcbnz : (sm.readReg64 (Reg.gpr 0#5) == 0#64) = false := beq_eq_false_iff_ne.mpr hsm0
-    apply SepWP.fold (pointsToBytes_prefix_join hrest_le hrest_suf) (by sep_focus)
-    wp_steps; wp_reach
-    apply SepWPp.weaken_pre (P' := decodeErrorAtStackLen A (sm.readReg64 (Reg.gpr 0#5)) 0 ∗ stackAt (s0.sp - 160#64) polyBelowStack ∗ memRegion (s0.sp - 160#64) 32 ∗ memRegion (s0.sp - 128#64) 48 ∗ polyDecoderErrFrame A s0 x.msgPtr x.bufRef x.slot x.ptr m x.bs) (Entails.of_eq (by dsimp only [polyDecoderErrFrame]; ac_rfl))
-    exact herr0_exit hnone hsp_align
-      (by simp only [arm64_norm]) (by simp only [arm64_norm, hrunm]) (by simp only [arm64_norm, hspm]) (by simp only [arm64_norm, htrm, htr])
-      (by simp only [arm64_norm]) hsm0
-      ⟨by simp only [arm64_norm, hx26_m], by simp only [arm64_norm, hx27_m], by simp only [arm64_norm, hx28_m], by simp only [arm64_norm, hvregs_m]⟩
-  | some rest' =>
-    have hrest'_le : rest'.length ≤ rest.length := (skip_length _).1 _ _ _ _ _ hsf
-    apply SepWPp.of_sepWP_img (mid := entry + 164#64) hinvm
-    (conv => arg 4; simp only [skipField3Spec, hsf, sepConj_assoc, arm64_norm, hsp]); apply SepWP.pure_elim; rintro ⟨htrm, hsm0⟩
-    apply SepWP.fold (sliceCursorAfter_join hrest_le hrest_suf hrest'_le) (by sep_focus)
-    wp_steps; wp_reach; intro hinvm
-    apply SepWPp.weaken_pre (P' := polyDecoderLoopPre A s0 x.msgPtr x.bufRef x.slot x.ptr m x.bs rest')
-      (Entails.of_eq (by dsimp only [polyDecoderLoopPre]; ac_rfl))
-    exact hcont rest' _ hsf
-      (by simp only [arm64_norm]) (by simp only [arm64_norm, hrunm]) (by simp only [arm64_norm, hspm]) (by simp only [arm64_norm, htrm, htr])
-      (by simp only [arm64_norm, hx19_m]) (by simp only [arm64_norm, hx20_m]) (by simp only [arm64_norm, hx21_m]) (by simp only [arm64_norm, hx22_m])
-      (by simp only [arm64_norm, hx23_m]) (by simp only [arm64_norm, hx24_m])
-      ⟨by simp only [arm64_norm, hx26_m], by simp only [arm64_norm, hx27_m], by simp only [arm64_norm, hx28_m], by simp only [arm64_norm, hvregs_m]⟩ hinvm
-
-/-! ## 5. Relocatable `[LibsignalPlacement]` Exit/Skip Lemmas for `PolynomialDecoder` (Block `296`) -/
 
 /-- Placed shared exit from `+0x07c` (`(blkPl_296).base + 124#64`) when `x1 = err ≠ 0#64` owns `decodeErrorAtStackLen A err 0`. -/
 theorem polyDecoder_err0_ret_exit_placed [LibsignalPlacement] {A : RustAlloc} {H : String → Option (State → State)}

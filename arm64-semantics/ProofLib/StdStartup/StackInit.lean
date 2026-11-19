@@ -305,6 +305,8 @@ structure InitialStackInfo (img : ElfImage) (inputs : ProcessInputs) (s0 : State
   s0_exclFails    : s0.exclFails = inputs.init.oracle.exclFails
   s0_sigActions   : s0.sigActions = fun _ => {}
   s0_sigAltStack  : s0.sigAltStack = {}
+  s0_sigMask      : s0.sigMask = 0#64
+  s0_sigPending   : s0.sigPending = 0#64
   s0_physMemAvail : s0.physMemAvail = inputs.init.physMemAvail
   sp0_align16     : (StackLayout.of img inputs).sp0.toNat % 16 = 0
   random_align16  : (StackLayout.of img inputs).randomAddr.toNat % 16 = 0
@@ -486,12 +488,12 @@ theorem loadState_initialStackInfo {img : ElfImage} {inputs : ProcessInputs} {s0
   have h_hr : inputs.init.stackTop.toNat - inputs.init.stackSize + inputs.init.stackSize / 2 ≤ L0.sp0.toNat ∧ inputs.init.stackTop.toNat - inputs.init.stackSize + 262144 ≤ L0.sp0.toNat := ⟨by omega, by omega⟩
   have h_ab : 1 ≤ inputs.argv.length ∧ inputs.argv.length < 2 ^ 31 ∧ inputs.envp.length < 2 ^ 31 := ⟨hargc_pos, by omega, by omega⟩
   have ⟨h_p1, h_p2, h_p3, h_stack_all⟩ := stackRegion_mem_props hwf hbrk (sp0 := L0.sp0) (stackBytes := tb ++ ib) (by omega) (by rw [List.length_append, hinfo_len]; omega) htop_le
-  have ⟨hr1, hr2, hr3, hr4, hr5, hr6, hr7, hr8, hr9, hr10, hr11, hr12, hr13, hr14, hr15, hrsas, hr16, hs0_mem⟩ :
+  have ⟨hr1, hr2, hr3, hr4, hr5, hr6, hr7, hr8, hr9, hr10, hr11, hr12, hr13, hr14, hr15, hrsas, hrsm, hrsp, hr16, hs0_mem⟩ :
       s0.regs = RegFile.empty ∧ s0.vregs = VRegFile.empty ∧ s0.sp = L0.sp0 ∧ s0.pc = img.entry ∧ s0.pstate = PState.zero ∧ s0.status = .Running ∧
       s0.tpidrEl0 = 0#64 ∧ s0.brk = img.brkStart ∧ s0.brkStart = img.brkStart ∧ s0.fs = initFsState inputs ∧ s0.trace = [] ∧ s0.oracle = inputs.init.oracle ∧
-      s0.oracleIdx = 0 ∧ s0.exclFails = inputs.init.oracle.exclFails ∧ s0.sigActions = (fun _ => {}) ∧ s0.sigAltStack = {} ∧ s0.physMemAvail = inputs.init.physMemAvail ∧
+      s0.oracleIdx = 0 ∧ s0.exclFails = inputs.init.oracle.exclFails ∧ s0.sigActions = (fun _ => {}) ∧ s0.sigAltStack = {} ∧ s0.sigMask = 0#64 ∧ s0.sigPending = 0#64 ∧ s0.physMemAvail = inputs.init.physMemAvail ∧
       s0.mem = (Memory.mk (Snapshot.loadCellAt (img.segments ++ [{ start := L0.sp0, perm := Perm.rw, bytes := tb ++ ib }]))).mapZero (BitVec.ofNat 64 (inputs.init.stackTop.toNat - inputs.init.stackSize)) inputs.init.stackSize := by
-    rw [hs0]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
+    rw [hs0]; exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   have h_nolf : ∀ a : BitVec 64, s0.mem.isLazyFree a = false := fun a => by
     rw [hs0_mem, Memory.isLazyFree_mapZero]
     exact Snapshot.isLazyFree_loadCellAt _ a
@@ -503,7 +505,7 @@ theorem loadState_initialStackInfo {img : ElfImage} {inputs : ProcessInputs} {s0
   have h_plat_addr : L0.randomAddr + BitVec.ofNat 64 ((inputs.init.auxv.randomBytes ++ List.replicate L0.infoPadLen 0#8).length) = L0.platformAddr := by simp only [List.length_append, List.length_replicate, hx.random16, hplat_def]
   rw [h_plat_addr] at h_pu; obtain ⟨h_plat, h_ustr⟩ := holdsBytes_append.mp h_pu
   clear h_stack_all h_tb h_ib h_tb1 h_tb2 h_tb3 h_rp h_pu h_tb_split h_ib_split hsp_plus_tb h_envp_addr h_auxv_addr h_plat_addr; subst hL_eq
-  exact ⟨hr1, hr2, hr3, hr4, hr5, hr6, hr7, hr8, hr9, hr10, hr11, hr12, hr13, hr14, hr15, hrsas, hr16,
+  exact ⟨hr1, hr2, hr3, hr4, hr5, hr6, hr7, hr8, hr9, hr10, hr11, hr12, hr13, hr14, hr15, hrsas, hrsm, hrsp, hr16,
     h_sp0_16, h_rand_16, ⟨hs.top_aligned.1, htop_mod16, htop_le⟩, hs.base_floor, h_hr, h_ab, hargv_eq, henvp_eq, hupper_eq, hauxE_def,
     ⟨hargvT_nat, henvpT_nat, hauxvT_nat, h_aux_le, hplat_nat, hargvB_nat, henvpB_nat, hexec_nat, hupper_top⟩, h_p1, h_nolf, h_p2, h_p3, h_argc, h_argv, h_envp, h_auxv, h_rand, h_plat, h_ustr⟩
 /-- Total loader + `InitialStackInfo` unpacking when `img.brkStart.toNat ≤ STACK_BASE_MIN`. -/

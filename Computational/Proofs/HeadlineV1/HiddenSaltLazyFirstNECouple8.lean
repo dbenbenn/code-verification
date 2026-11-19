@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple7
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple7 -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEWinSplit4
@@ -21,19 +21,16 @@ import VCVio.EvalDist.Monad.Basic
 # `SyncInv` Preservation Across `deliver` Steps
 
 Proves `SyncInv` preservation across `deliver` queries and establishes the non-probe,
-rejected-probe, and non-lazy-probe `FirstNECoupledInvD` step lemmas.
--/
+rejected-probe, and non-lazy-probe `FirstNECoupledInvD` step lemmas.-/
 
-@[expose] public section
+namespace CryptoVerification.LibsignalSession.HeadlineV1
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal
 
-namespace CryptoVerification.LibsignalSession.HeadlineV1
 
 open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
 open CryptoVerification.LibsignalProtoCodec
@@ -571,21 +568,16 @@ theorem firstNECoupledInvD_deliver_pure_step {α : Type}
       𝒟[(simulateQ (firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q) (u u₁)).run
           (sC₁, (g₁, fl₁, dead₁), tr₁) >>=
         fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-        𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL (u u₁) sC₁ sent₁ m₁'
-            (s_cell₁ t tL) >>=
-          fun z => pure (cellWinPred tL t z.2)] {true}) :
+      stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep (u u₁) sC₁ sent₁ m₁' s_cell₁) :
     𝒟[(simulateQ (firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q)
         (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
           (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)).run
         (sC, (g, false, false), tr) >>=
       fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL
-          (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
-            (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
-          sC sent m' (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
+    stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep
+      (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
+      sC sent m' s_cell := by
   let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
   let fs := lFS P.C P.codec ℓ encT idOf 25000
   let sC₁ := updAmbSimStateC Pt b sC
@@ -599,10 +591,21 @@ theorem firstNECoupledInvD_deliver_pure_step {α : Type}
       syncInv_updAmbSimStateC Pt P Dh encPt encT idOf lam qep b sC sent m' g
         (s_cell 0 none) hsync⟩)
   refine le_trans (hih ans sC₁ g false false tr' sent m' s_cell hinv₁) ?_
-  refine sum_cellSimRun_le_of_post_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-    _ (u ans) sC sC₁ sent sent m' m' g s_cell s_cell fun t _ tL _ => Or.inr ?_
-  exact cellSimRun_deliver_pure_eq P ℓ Dh encPt encT decT idOf lam qep t tL Q w u
-    sC sC₁ ans sent m' (s_cell t tL) (hpure (deliverForgeHook Pt ℓ))
+  have hwin₀ : (s_cell 0 none).win = false :=
+    (hbody.2 0 (Finset.mem_range.mpr (by omega))).1.win_df_false
+  let q_del : OracleComp (unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (Option (RecvResult (Plain ℓ))) :=
+    liftM (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))))
+  refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+    q_del u ans sC sC₁ sent sent m' m' g s_cell s_cell hwin₀ hwin₀
+    (fun t _ => ?_) (fun t _ tL _ => Or.inr ?_)
+  · rw [← bind_pure q_del,
+      cellSimRun_deliver_pure_eq P ℓ Dh encPt encT decT idOf lam qep t none Q w pure
+        sC sC₁ ans sent m' (s_cell 0 none) (hpure (deliverForgeHook Pt ℓ))]
+    simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+  · exact cellSimRun_deliver_pure_eq P ℓ Dh encPt encT decT idOf lam qep t tL Q w u
+      sC sC₁ ans sent m' (s_cell t tL) (hpure (deliverForgeHook Pt ℓ))
 
 omit [SampleableType Pt] in
 theorem probeStep_of_guardC_probe_rejected {PQ PQC : Type} {ℓ : ℕ}
@@ -696,21 +699,16 @@ theorem firstNECoupledInvD_deliver_probe_none_step {α : Type} {ℓ : ℕ}
       𝒟[(simulateQ (firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q) (u u₁)).run
           (sC₁, (g₁, fl₁, dead₁), tr₁) >>=
         fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-        𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL (u u₁) sC₁ sent₁ m₁'
-            (s_cell₁ t tL) >>=
-          fun z => pure (cellWinPred tL t z.2)] {true}) :
+      stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep (u u₁) sC₁ sent₁ m₁' s_cell₁) :
     𝒟[(simulateQ (firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q)
         (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
           (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)).run
         (sC, (g, false, false), tr) >>=
       fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL
-          (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
-            (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
-          sC sent m' (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
+    stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep
+      (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
+      sC sent m' s_cell := by
   let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
   let fs := lFS P.C P.codec ℓ encT idOf 25000
   let sC₁ := updAmbSimStateC Pt b sC
@@ -725,15 +723,29 @@ theorem firstNECoupledInvD_deliver_probe_none_step {α : Type} {ℓ : ℕ}
       syncInv_updAmbSimStateC Pt P Dh encPt encT idOf lam qep b sC sent m' g
         (s_cell 0 none) hsync⟩)
   refine le_trans (hih (some RecvResult.rejected) sC₁ g false false tr' sent m' s_cell hinv₁) ?_
-  refine sum_cellSimRun_le_of_post_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-    _ (u (some RecvResult.rejected)) sC sC₁ sent sent m' m' g s_cell s_cell fun t ht tL htL => ?_
-  rcases (hbody.2 t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
-  · exact Or.inl hdoomed
-  · right
-    rw [cellSimRun_deliver_query_bind,
-      runCellStep_guardC_probe_rejected_of_receive_none Pt P encT decT qep t tL fig fs Q w c'
-        sC sC₁ sent m' hrel_sh hrcv (hprobe (deliverForgeHook Pt ℓ)),
-      pure_bind]
+  have ht0 : 0 ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (by omega)
+  have hwin₀ : (s_cell 0 none).win = false := (hbody.2 0 ht0).1.win_df_false
+  let q_del : OracleComp (unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (Option (RecvResult (Plain ℓ))) :=
+    liftM (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))))
+  refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+    q_del u (some RecvResult.rejected) sC sC₁ sent sent m' m' g s_cell s_cell hwin₀ hwin₀
+    (fun t _ => ?_) (fun t ht tL htL => ?_)
+  · rcases (hbody.2 0 ht0).2.2 none (Finset.mem_insert_self none _) with hdoomed | ⟨hrel0, _, _, _⟩
+    · exact absurd hdoomed (CellK4Doomed.not_of_not_B1 (by simp))
+    · rw [← bind_pure q_del, cellSimRun_deliver_query_bind,
+        runCellStep_guardC_probe_rejected_of_receive_none Pt P encT decT qep t none fig fs Q w c'
+          sC sC₁ sent m' hrel0 hrcv (hprobe (deliverForgeHook Pt ℓ)),
+        pure_bind]
+      simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+  · rcases (hbody.2 t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
+    · exact Or.inl hdoomed
+    · right
+      rw [cellSimRun_deliver_query_bind,
+        runCellStep_guardC_probe_rejected_of_receive_none Pt P encT decT qep t tL fig fs Q w c'
+          sC sC₁ sent m' hrel_sh hrcv (hprobe (deliverForgeHook Pt ℓ)),
+        pure_bind]
 
 theorem firstNECoupledInvD_deliver_probe_nonlazy_step {α : Type} {ℓ : ℕ}
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
@@ -760,12 +772,10 @@ theorem firstNECoupledInvD_deliver_probe_nonlazy_step {α : Type} {ℓ : ℕ}
           (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)).run
         (sC, (g, false, false), tr) >>=
       fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL
-          (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
-            (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
-          sC sent m' (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
+    stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep
+      (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
+      sC sent m' s_cell := by
   rw [simulateQ_firstNESimImpl'_deliver_query_bind, hrun, pure_bind,
     fl_false_of_dead_support P K InvPQ ℓ Dh encPt encT decT idOf lam qep q
       (u ans) sC₁ g₁ false true tr' ⟨rfl, rfl⟩]
@@ -962,6 +972,7 @@ theorem corrsKeptRecvInv_with_base {PQ : Type} {ℓ : ℕ}
     CorrsKeptRecvInv { sC with base := b' } g :=
   h
 
-end CryptoVerification.LibsignalSession.HeadlineV1
 
 end
+
+end CryptoVerification.LibsignalSession.HeadlineV1

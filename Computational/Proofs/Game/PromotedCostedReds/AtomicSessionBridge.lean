@@ -10,10 +10,12 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
-public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
-public import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
-public import Computational.Proofs.E2E.Dsl.SpqrSim
-public import Computational.Proofs.E2E.Dsl.DrSessionSim
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.SpqrSimRecv -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.SpqrSimSend -- proof-setup: allow-public-import
 
 /-!
 # Bridge from `e2eSig` / `e2eOps` to `atomicSig` / `atomicSessionOps`
@@ -23,7 +25,7 @@ Translates oracle-free and coin-sampling `ReductionDsl` programs from `Costed.e2
 the SPQR and Double Ratchet session simulators.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -64,34 +66,34 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-@[reducible] def sessPureOp {Γ : List (Ty ASig)} (o : AtomicPureOp)
+@[expose, reducible] def sessPureOp {Γ : List (Ty ASig)} (o : AtomicPureOp)
     (a : Expr AOps Γ (o.dom ℓ Pt)) : Expr AOps Γ (o.cod ℓ Pt) :=
   ReductionDsl.Expr.op (O := AOps) (Sum.inl (Sum.inl (Sum.inl (Sum.inl o)))) a
 
-@[reducible] def sessPtEncOp {Γ : List (Ty ASig)} (o : AtomicPtEncOp)
+@[expose, reducible] def sessPtEncOp {Γ : List (Ty ASig)} (o : AtomicPtEncOp)
     (a : Expr AOps Γ ((atomicPtEncOps ℓ encT).dom o)) :
     Expr AOps Γ ((atomicPtEncOps ℓ encT).cod o) :=
   ReductionDsl.Expr.op (O := AOps) (Sum.inl (Sum.inl (Sum.inl (Sum.inr (Sum.inl o))))) a
 
-@[reducible] def sessSymOp {Γ : List (Ty ASig)} (o : AtomicSymOp)
+@[expose, reducible] def sessSymOp {Γ : List (Ty ASig)} (o : AtomicSymOp)
     (a : Expr AOps Γ (o.dom ℓ Pt)) : Expr AOps Γ (o.cod ℓ Pt) :=
   ReductionDsl.Expr.op (O := AOps) (Sum.inl (Sum.inl (Sum.inl (Sum.inr (Sum.inr o))))) a
 
-@[reducible] def sessGroupOp {Γ : List (Ty ASig)} (o : AtomicGroupOp)
+@[expose, reducible] def sessGroupOp {Γ : List (Ty ASig)} (o : AtomicGroupOp)
     (a : Expr AOps Γ (o.dom ℓ Pt)) : Expr AOps Γ (o.cod ℓ Pt) :=
   ReductionDsl.Expr.op (O := AOps) (Sum.inl (Sum.inl (Sum.inr o))) a
 
-@[reducible] def sessPtDecOp {Γ : List (Ty ASig)} (o : AtomicPtDecOp)
+@[expose, reducible] def sessPtDecOp {Γ : List (Ty ASig)} (o : AtomicPtDecOp)
     (a : Expr AOps Γ ((atomicPtDecOps ℓ decT).dom o)) :
     Expr AOps Γ ((atomicPtDecOps ℓ decT).cod o) :=
   ReductionDsl.Expr.op (O := AOps) (Sum.inl (Sum.inr (Sum.inl o))) a
 
-@[reducible] def sessCurveOp {Γ : List (Ty ASig)} (o : AtomicCurveCheckOp)
+@[expose, reducible] def sessCurveOp {Γ : List (Ty ASig)} (o : AtomicCurveCheckOp)
     (a : Expr AOps Γ ((atomicCurveCheckOps ℓ decT encT).dom o)) :
     Expr AOps Γ ((atomicCurveCheckOps ℓ decT encT).cod o) :=
   ReductionDsl.Expr.op (O := AOps) (Sum.inl (Sum.inr (Sum.inr o))) a
 
-@[reducible] def sessSpqrKemOp {Γ : List (Ty ASig)} (o : AtomicSpqrKemOp)
+@[expose, reducible] def sessSpqrKemOp {Γ : List (Ty ASig)} (o : AtomicSpqrKemOp)
     (a : Expr AOps Γ (o.dom ℓ Pt)) : Expr AOps Γ (o.cod ℓ Pt) :=
   ReductionDsl.Expr.op (O := AOps) (Sum.inr o) a
 
@@ -174,7 +176,7 @@ section CoinSamplers
 
 variable {ℓ : ℕ} {Pt : Type} [SampleableType Pt]
 
-def atomicDraw256 {O : Ops (atomicSig ℓ Pt)} {ι : Type} {T : OracleSpec ι}
+@[expose] def atomicDraw256 {O : Ops (atomicSig ℓ Pt)} {ι : Type} {T : OracleSpec ι}
     {I : Iface (atomicSig ℓ Pt) T} (h : I.smp = atomicSamplers ℓ Pt := by rfl)
     {Γ : List (Ty (atomicSig ℓ Pt))} : Comp O I Γ BV256 := by
   rcases I with ⟨fwdU, uCost, Tag, dom, cod, enc, dec, qCost, smp⟩
@@ -184,7 +186,7 @@ def atomicDraw256 {O : Ops (atomicSig ℓ Pt)} {ι : Type} {T : OracleSpec ι}
     (I := ⟨fwdU, uCost, Tag, dom, cod, enc, dec, qCost, atomicSamplers ℓ Pt⟩)
     (ReductionDsl.UniformSamplerTag.base ReductionDsl.AtomicUnifBase.bv256) .unit
 
-def atomicDraw512 {O : Ops (atomicSig ℓ Pt)} {ι : Type} {T : OracleSpec ι}
+@[expose] def atomicDraw512 {O : Ops (atomicSig ℓ Pt)} {ι : Type} {T : OracleSpec ι}
     {I : Iface (atomicSig ℓ Pt) T} (h : I.smp = atomicSamplers ℓ Pt := by rfl)
     {Γ : List (Ty (atomicSig ℓ Pt))} : Comp O I Γ BV512 := by
   rcases I with ⟨fwdU, uCost, Tag, dom, cod, enc, dec, qCost, smp⟩
@@ -255,7 +257,7 @@ def atomicDrawPt {O : Ops (atomicSig ℓ Pt)} {ι : Type} {T : OracleSpec ι}
 @[simp] theorem atomicDrawPt_cost {O : Ops (atomicSig ℓ Pt)} {ι : Type} {T : OracleSpec ι}
     {I : Iface (atomicSig ℓ Pt) T} (h : I.smp = atomicSamplers ℓ Pt)
     {Γ : List (Ty (atomicSig ℓ Pt))} :
-    (atomicDrawPt (O := O) (I := I) h (Γ := Γ)).cost = 2 := by
+    (atomicDrawPt (O := O) (I := I) h (Γ := Γ)).cost = 13 := by
   rcases I with ⟨fwdU, uCost, Tag, dom, cod, enc, dec, qCost, smp⟩
   dsimp only at h
   subst h
@@ -293,7 +295,7 @@ end CoinSamplers
 /-! ## Sort, type, and value lifting -/
 
 /-- Dummy `SignalPqxdh.Primitives` record used to instantiate `P`-independent session programs before translating them into `atomicSessionOps`. -/
-def zeroPqxdhPrims : SignalPqxdh.Primitives where
+@[expose] def zeroPqxdhPrims : SignalPqxdh.Primitives where
   x25519 := fun _ _ => []
   x25519Base := fun _ => []
   isCanonical := fun _ => false
@@ -307,8 +309,8 @@ def zeroPqxdhPrims : SignalPqxdh.Primitives where
   scalarFromWide := fun _ => []
   montToEd := fun _ _ => none
   isTorsionFree := fun _ => false
-  edNeg := fun _ => []
-  doubleScalarMulBasepoint := fun _ _ _ => []
+  edNeg := fun _ => VerifiedLibraries.Common.edZero
+  doubleScalarMulBasepoint := fun _ _ _ => VerifiedLibraries.Common.edZero
   compress := fun _ => []
   kemKeyGen := fun _ => ([], [])
   kemEncaps := fun _ _ => none
@@ -329,7 +331,7 @@ def zeroPqxdhPrims : SignalPqxdh.Primitives where
   aesEncBlock := fun _ _ => []
   aesDecBlock := fun _ _ => []
 
-@[reducible] def liftSort : Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.E2ESort → AtomicSort
+@[expose, reducible] def liftSort : Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.E2ESort → AtomicSort
   | .pbytes w => .pbytes w
   | .pu32 => .pu32
   | .bytes w => .bytes w
@@ -346,7 +348,7 @@ def zeroPqxdhPrims : SignalPqxdh.Primitives where
   | .ghostSt => .ghostSt
   | .binSt => .binSt
 
-@[reducible] def liftTy {ℓ : ℕ} {Pt : Type} :
+@[expose, reducible] def liftTy {ℓ : ℕ} {Pt : Type} :
     Ty (Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.e2eSig ℓ) → Ty (atomicSig ℓ Pt)
   | .base b => .base (liftSort b)
   | .unit => .unit
@@ -358,12 +360,12 @@ def zeroPqxdhPrims : SignalPqxdh.Primitives where
   | .list t => .list (liftTy t)
   | .tbl t => .tbl (liftTy t)
 
-@[reducible] def liftCtx {ℓ : ℕ} {Pt : Type} :
+@[expose, reducible] def liftCtx {ℓ : ℕ} {Pt : Type} :
     List (Ty (Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.e2eSig ℓ)) → List (Ty (atomicSig ℓ Pt))
   | [] => []
   | t :: Γ => liftTy t :: liftCtx Γ
 
-def liftBaseVal {ℓ : ℕ} {Pt : Type} :
+@[expose] def liftBaseVal {ℓ : ℕ} {Pt : Type} :
     (b : Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.E2ESort) → b.den ℓ → (liftSort b).den ℓ Pt
   | .pbytes _, x => x
   | .pu32, x => x
@@ -381,7 +383,7 @@ def liftBaseVal {ℓ : ℕ} {Pt : Type} :
   | .ghostSt, x => x
   | .binSt, x => x
 
-def liftVal {ℓ : ℕ} {Pt : Type} :
+@[expose] def liftVal {ℓ : ℕ} {Pt : Type} :
     {t : Ty (Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.e2eSig ℓ)} → t.denote → (liftTy (Pt := Pt) t).denote
   | .base b, x => liftBaseVal b x
   | .unit, () => ()
@@ -464,13 +466,13 @@ theorem liftVal_heq {ℓ : ℕ} {Pt : Type} :
   | .list t, xs => list_map_heq (liftTy_denote_eq t) liftVal liftVal_heq xs
   | .tbl t, m => tbl_map_heq (liftTy_denote_eq t) liftVal liftVal_heq m
 
-def liftVar {ℓ : ℕ} {Pt : Type} :
+@[expose] def liftVar {ℓ : ℕ} {Pt : Type} :
     {Γ : List (Ty (Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.e2eSig ℓ))} → {t : Ty (Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.e2eSig ℓ)} →
     Var Γ t → Var (liftCtx (Pt := Pt) Γ) (liftTy (Pt := Pt) t)
   | _, _, .zero => .zero
   | _, _, .succ v => .succ (liftVar v)
 
-def liftEnv {ℓ : ℕ} {Pt : Type} :
+@[expose] def liftEnv {ℓ : ℕ} {Pt : Type} :
     {Γ : List (Ty (Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.e2eSig ℓ))} → Env Γ → Env (liftCtx (Pt := Pt) Γ)
   | [], .nil => .nil
   | _ :: _, .cons x ρ => .cons (liftVal x) (liftEnv ρ)
@@ -527,7 +529,7 @@ local notation "EOps" => Computational.Proofs.SpecLemmas.Reductions.E2E.Composit
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-def liftPureOpExpr {Γ : List (Ty ASig)} :
+@[expose] def liftPureOpExpr {Γ : List (Ty ASig)} :
     (o : Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.E2EPureOp) →
     Expr AOps Γ (liftTy (Pt := Pt) (o.dom ℓ)) →
     Expr AOps Γ (liftTy (Pt := Pt) (o.cod ℓ))
@@ -618,14 +620,14 @@ def liftPureOpExpr {Γ : List (Ty ASig)} :
   | .ghostStateJoin, a => sessPureOp .ghostStateJoin a
   | .encodeSessionRecord, a => sessPureOp .encodeSessionRecord a
 
-def liftCurveOpExpr {Γ : List (Ty ASig)} :
+@[expose] def liftCurveOpExpr {Γ : List (Ty ASig)} :
     (cc : Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.E2ECurveCheckOp) →
     Expr AOps Γ (liftTy (Pt := Pt) ((Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.e2eCurveCheckOps ℓ decT encT).dom cc)) →
     Expr AOps Γ (liftTy (Pt := Pt) ((Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.e2eCurveCheckOps ℓ decT encT).cod cc))
   | .decEncCheck, a => sessCurveOp .decEncCheck a
   | .checkRatchetKeyOnCurve, a => sessCurveOp .checkRatchetKeyOnCurve a
 
-def liftCryptoOpExpr {Γ : List (Ty ASig)} :
+@[expose] def liftCryptoOpExpr {Γ : List (Ty ASig)} :
     (c : Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.E2ECryptoOp) →
     Expr AOps Γ (liftTy (Pt := Pt) (c.dom ℓ)) →
     Expr AOps Γ (liftTy (Pt := Pt) (c.cod ℓ))
@@ -658,7 +660,7 @@ def liftCryptoOpExpr {Γ : List (Ty ASig)} :
   | .spqrChainAddEpoch, a => sessSpqrKemOp .spqrChainAddEpoch a
   | .spqrChainNextKey, a => sessSpqrKemOp .spqrChainNextKey a
 
-def liftOpExpr {Γ : List (Ty ASig)} :
+@[expose] def liftOpExpr {Γ : List (Ty ASig)} :
     (o : (EOps).Op) →
     Expr AOps Γ (liftTy (Pt := Pt) ((EOps).dom o)) →
     Expr AOps Γ (liftTy (Pt := Pt) ((EOps).cod o))
@@ -667,7 +669,7 @@ def liftOpExpr {Γ : List (Ty ASig)} :
   | .inr (.inr c), a => liftCryptoOpExpr c a
 
 /-- Total expression compiler from `Costed.e2eOps` at `zeroPqxdhPrims` into `atomicSessionOps`. -/
-def liftExpr :
+@[expose] def liftExpr :
     {Γ : List (Ty ESig)} → {t : Ty ESig} →
     Expr EOps Γ t →
     Expr AOps (liftCtx (Pt := Pt) Γ) (liftTy (Pt := Pt) t)
@@ -1226,7 +1228,7 @@ theorem liftExpr_eval {Γ : List (Ty ESig)} {t : Ty ESig} (e : Expr EOps Γ t) (
     funext j
     by_cases hj : j = i.eval ρ <;> simp [hj, liftVal]
 
-@[reducible] def emptyE2EIface {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) :
+@[expose, reducible] def emptyE2EIface {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) :
     Iface ESig T where
   fwdU := I'.fwdU
   uCost := I'.uCost
@@ -1239,7 +1241,7 @@ theorem liftExpr_eval {Γ : List (Ty ESig)} {t : Ty ESig} (e : Expr EOps Γ t) (
   smp := ReductionDsl.Samplers.empty
 
 /-- Lift an oracle-free and sampler-free `Comp` from `Costed.e2eOps` into `atomicSessionOps`. -/
-def liftCompEmpty {ι : Type} {T : OracleSpec ι} {I' : Iface ASig T} :
+@[expose] def liftCompEmpty {ι : Type} {T : OracleSpec ι} {I' : Iface ASig T} :
     {Γ : List (Ty ESig)} → {t : Ty ESig} →
     Comp EOps (emptyE2EIface I') Γ t →
     Comp AOps I' (liftCtx (Pt := Pt) Γ) (liftTy (Pt := Pt) t)
@@ -1473,7 +1475,7 @@ theorem liftCompEmpty_eval {ι : Type} {T : OracleSpec ι} {I' : Iface ASig T}
       (fun x acc => ihf (.cons x (.cons acc ρ)))
       ((l.eval ρ).take Kb) (z.eval ρ)
 
-@[reducible] def coinE2EIface {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) :
+@[expose, reducible] def coinE2EIface {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) :
     Iface ESig T where
   fwdU := I'.fwdU
   uCost := I'.uCost
@@ -1485,11 +1487,11 @@ theorem liftCompEmpty_eval {ι : Type} {T : OracleSpec ι} {I' : Iface ASig T}
   qCost := Empty.elim
   smp := Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.e2eSamplers ℓ
 
-def coinE2ESamplers {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) :
+@[expose] def coinE2ESamplers {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T) :
     E2ECoinSamplers ℓ zeroPqxdhPrims C K decT encT (coinE2EIface I') :=
   mkE2ECoinSamplers I'.fwdU I'.uCost Empty Empty.elim Empty.elim (·.elim) (·.elim) Empty.elim
 
-def liftSampComp [SampleableType Pt] {ι : Type} {T : OracleSpec ι} :
+@[expose] def liftSampComp [SampleableType Pt] {ι : Type} {T : OracleSpec ι} :
     (I' : Iface ASig T) → (hsmp : I'.smp = atomicSamplers ℓ Pt) → {Γ : List (Ty ASig)} →
     (s : UniformSamplerTag Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.E2EUnifBase) →
     Expr AOps Γ .unit →
@@ -1534,7 +1536,7 @@ private theorem liftSampComp_eval [SampleableType Pt] {ι : Type} {T : OracleSpe
   rcases s with _ | N | (_ | _) <;> exact (id_map _).symm
 
 /-- Lift a coin-sampling, oracle-free `Comp` from `Costed.e2eOps` into `atomicSessionOps`. -/
-def liftCompCoins [SampleableType Pt] {ι : Type} {T : OracleSpec ι} {I' : Iface ASig T}
+@[expose] def liftCompCoins [SampleableType Pt] {ι : Type} {T : OracleSpec ι} {I' : Iface ASig T}
     (hsmp : I'.smp = atomicSamplers ℓ Pt := by rfl) :
     {Γ : List (Ty ESig)} → {t : Ty ESig} →
     Comp EOps (coinE2EIface I') Γ t →
@@ -1718,12 +1720,12 @@ section Renaming
 
 variable {S0 : Sig} {O0 : Ops S0}
 
-def liftRen {Γ₁ Γ₂ : List (Ty S0)} {u : Ty S0}
+@[expose] def liftRen {Γ₁ Γ₂ : List (Ty S0)} {u : Ty S0}
     (f : ∀ {t}, Var Γ₁ t → Var Γ₂ t) : ∀ {t}, Var (u :: Γ₁) t → Var (u :: Γ₂) t
   | _, .zero => .zero
   | _, .succ v => .succ (f v)
 
-def pullEnv : {Γ₁ Γ₂ : List (Ty S0)} →
+@[expose] def pullEnv : {Γ₁ Γ₂ : List (Ty S0)} →
     (∀ {t}, Var Γ₁ t → Var Γ₂ t) → Env Γ₂ → Env Γ₁
   | [], _, _, _ => .nil
   | _ :: _, _, f, ρ => .cons (ρ.get (f .zero)) (pullEnv (fun v => f (.succ v)) ρ)
@@ -1745,7 +1747,7 @@ private theorem pullEnv_liftRen {Γ₁ Γ₂ : List (Ty S0)} {u : Ty S0}
     | cons _ _ ih => intro g; exact congrArg (ReductionDsl.Env.cons _) (ih (fun v => g (.succ v)))
   exact congrArg (ReductionDsl.Env.cons x) (hsucc f)
 
-def renExpr : {Γ₁ Γ₂ : List (Ty S0)} → {t : Ty S0} →
+@[expose] def renExpr : {Γ₁ Γ₂ : List (Ty S0)} → {t : Ty S0} →
     (∀ {u}, Var Γ₁ u → Var Γ₂ u) → Expr O0 Γ₁ t → Expr O0 Γ₂ t
   | _, _, _, f, .var v => .var (f v)
   | _, _, _, _, .unit => .unit
@@ -1836,7 +1838,7 @@ theorem renExpr_eval {Γ₁ Γ₂ : List (Ty S0)} {t : Ty S0}
     congr 2; funext x acc
     rw [ihg (liftRen (liftRen f)) (.cons x (.cons acc ρ)), pullEnv_liftRen, pullEnv_liftRen]
 
-def renComp {ι : Type} {T : OracleSpec ι} {I0 : Iface S0 T} :
+@[expose] def renComp {ι : Type} {T : OracleSpec ι} {I0 : Iface S0 T} :
     {Γ₁ Γ₂ : List (Ty S0)} → {t : Ty S0} →
     (∀ {u}, Var Γ₁ u → Var Γ₂ u) → Comp O0 I0 Γ₁ t → Comp O0 I0 Γ₂ t
   | _, _, _, f, .ret e => .ret (renExpr f e)
@@ -1924,10 +1926,10 @@ theorem renComp_eval {ι : Type} {T : OracleSpec ι} {I0 : Iface S0 T}
     congr 1; funext x acc
     rw [ihg (liftRen (liftRen f)) (.cons x (.cons acc ρ)), pullEnv_liftRen, pullEnv_liftRen]
 
-def wk1Ren {a : Ty S0} {Γ : List (Ty S0)} : ∀ {t}, Var [a] t → Var (a :: Γ) t
+@[expose] def wk1Ren {a : Ty S0} {Γ : List (Ty S0)} : ∀ {t}, Var [a] t → Var (a :: Γ) t
   | _, .zero => .zero
 
-def wk1Expr {a b : Ty S0} {Γ : List (Ty S0)} (e : Expr O0 [a] b) : Expr O0 (a :: Γ) b :=
+@[expose] def wk1Expr {a b : Ty S0} {Γ : List (Ty S0)} (e : Expr O0 [a] b) : Expr O0 (a :: Γ) b :=
   renExpr wk1Ren e
 
 @[simp] theorem wk1Expr_cost {a b : Ty S0} {Γ : List (Ty S0)} (e : Expr O0 [a] b) :
@@ -1939,7 +1941,7 @@ def wk1Expr {a b : Ty S0} {Γ : List (Ty S0)} (e : Expr O0 [a] b) : Expr O0 (a :
     (wk1Expr e).eval (.cons x ρ) = e.eval (.cons x .nil) :=
   renExpr_eval wk1Ren e (.cons x ρ)
 
-def wk1Comp {ι : Type} {T : OracleSpec ι} {I0 : Iface S0 T} {a b : Ty S0} {Γ : List (Ty S0)}
+@[expose] def wk1Comp {ι : Type} {T : OracleSpec ι} {I0 : Iface S0 T} {a b : Ty S0} {Γ : List (Ty S0)}
     (c : Comp O0 I0 [a] b) : Comp O0 I0 (a :: Γ) b :=
   renComp wk1Ren c
 
@@ -1977,7 +1979,7 @@ local notation "ESig" => Computational.Proofs.SpecLemmas.Reductions.E2E.Composit
 local notation "EOps" => Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.e2eOps ℓ zeroPqxdhPrims C K decT encT
 
 /-- Closed SPQR V1 send simulator over `atomicSessionOps` and any `I' : Iface ASig T`. -/
-def spqrSendAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
+@[expose] def spqrSendAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (.prod (B 32) BV512)) :
     Comp AOps I' Γ (.opt (.prod (B 32) (.prod (.opt BV256) (B 32)))) :=
@@ -2042,7 +2044,7 @@ theorem spqrSendAtomicC_eval {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     (t := .opt (.prod (Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.B 32) (.prod (.opt Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.BV256) (Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.B 32)))) _))
 
 /-- Closed SPQR V1 receive simulator over `atomicSessionOps` and any `I' : Iface ASig T`. -/
-def spqrRecvAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
+@[expose] def spqrRecvAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (.prod (B 32) (B 32))) :
     Comp AOps I' Γ (.opt (.prod (B 32) (.opt BV256))) :=
@@ -2109,7 +2111,7 @@ theorem spqrRecvAtomicC_eval {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     (t := .opt (.prod (Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.B 32) (.opt Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.BV256))) _))
 
 /-- Full Double Ratchet + SPQR V1 `Params.send` simulator over `atomicSessionOps`. -/
-def drSendAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
+@[expose] def drSendAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (.prod GhostStT (.prod PlainT BV512))) :
     Comp AOps I' Γ (.prod GhostStT (B 32)) :=
@@ -2173,11 +2175,11 @@ theorem drSendAtomicC_eval_params {ι : Type} {T : OracleSpec ι} (I' : Iface AS
   exact congrArg pure (eq_of_heq (liftVal_heq (Pt := Pt)
     (t := .prod Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.GhostStT (Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables.B 32)) _))
 
-@[reducible] def drRecvAtomicOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def drRecvAtomicOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .opt (.prod GhostStT (.prod .nat (.prod .nat PlainT)))
 
 /-- Full Double Ratchet + SPQR V1 `Params.receive` simulator over `atomicSessionOps`. -/
-def drReceiveAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
+@[expose] def drReceiveAtomicC {ι : Type} {T : OracleSpec ι} (I' : Iface ASig T)
     {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (.prod GhostStT (.prod (B 32) BV256))) :
     Comp AOps I' Γ (drRecvAtomicOutT ℓ Pt) :=

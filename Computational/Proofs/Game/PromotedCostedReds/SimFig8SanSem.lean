@@ -9,20 +9,23 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.QueryBounds
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort.SimAndSM
-public import Computational.Proofs.SpqrV1Sync.TopStateTight
+public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.QueryBounds -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort.SimAndSM -- proof-setup: allow-public-import
+public import Computational.Proofs.SpqrV1Sync.TopStateTight -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 
 /-!
 # Query Invariants and SPQR Tightness for `simFig8ClampSan`
 
 Proves query count, equal-public-challenge, and short-public-part invariants for `simFig8ClampSan`,
-together with initial establishment and step preservation of `SanExtra`.
--/
+together with initial establishment and step preservation of `SanExtra`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,9 +56,9 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost (fig8IdSemH
 
 section QueryInvariants
 
-open CryptoGames.LibsignalSM.Proofs.QueryBounds
+open _root_.CryptoGames.LibsignalSM.Proofs.QueryBounds
   (FSpec QInr QEq hQu_QInr hQu_QEq isQueryBoundP_congr isQueryBoundP_simulateQ_run_zero)
-open CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
   (QShort hQu_QShort SendMsgsOk badSendMsg shortB_mkPub)
 
 private theorem liftProb_isQueryBoundP_zero {Pt α : Type} {ℓ : ℕ}
@@ -423,7 +426,7 @@ end QueryInvariants
 
 section PqInv
 
-def PqInv {PQ Pt : Type} {ℓ : ℕ} (G : PQ → Prop)
+@[expose] def PqInv {PQ Pt : Type} {ℓ : ℕ} (G : PQ → Prop)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) : Prop :=
   ∀ Q, G (sC.base.pq Q)
 

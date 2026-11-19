@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.HookDischarge.RustStd.TimeDurationSince -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.HookDischarge.RustStd.TimeDurationSince
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookG -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookG
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TrapSafeWords -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TrapSafeWords
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Card `CC-R0` (Row 2) — `duration_since` Route-`R0` `GhostRowReplayOn` (`HooksDehook.DurationSinceGhostReplays`)
@@ -173,14 +179,6 @@ theorem durationSinceSubProg_codeLoaded_of_stripExecOutside {timeMpl : Obj.Multi
   rw [ProofLib.strip_isLazyFree] at hlf
   exact ⟨hbyte, hperm, hlf⟩
 
-theorem durationSinceSubProg_codeLoaded_stripExecOutside_iff {timeMpl : Obj.MultiPlacement}
-    {mem : Memory} :
-    (durationSinceSubProg timeMpl).CodeLoaded
-        (stripExecOutside (keepR_durationSince timeMpl) mem) ↔
-      (durationSinceSubProg timeMpl).CodeLoaded mem :=
-  ⟨durationSinceSubProg_codeLoaded_of_stripExecOutside,
-   durationSinceSubProg_codeLoaded_stripExecOutside⟩
-
 /-- Route-`R0` (`withLsRet`) `W`-independent ghost hook for `lsDurationSinceSym`. -/
 @[expose] noncomputable def durationSinceGhost [LibsignalPlacement]
     (timeMpl : Obj.MultiPlacement) : State → State :=
@@ -238,40 +236,6 @@ theorem durationSinceGhost_bounded_ok [LibsignalPlacement]
     (hookOk_withLsRet_durationSinceBounded_of_master
       (durationSinceGhost_masterLs_ok timeMpl hpl hb1))
 
-theorem durationSinceGhost_bounded_withVmPreserved_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hb1 : timeMpl.base 1 = timeMpl.base 0 + subTimespecByteLen) :
-    HookOk (durationSinceGhost timeMpl)
-      (withVmPreserved
-        (withLsRet CryptoVerification.SignalSession.Cli.Slots.durationSinceBoundedSpec)) :=
-  hookOk_withVmPreserved (durationSinceGhost_bounded_ok timeMpl hpl hb1)
-    (durationSinceGhost_vmPreserved timeMpl hpl hb1)
-
-theorem durationSinceGhost_bounded_withAlloc_ls_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hb1 : timeMpl.base 1 = timeMpl.base 0 + subTimespecByteLen)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (durationSinceGhost timeMpl)
-      (withAlloc A lim
-        (withLsRet CryptoVerification.SignalSession.Cli.Slots.durationSinceBoundedSpec)) :=
-  hookOk_withAlloc_of_withVmPreserved A lim
-    (durationSinceGhost_bounded_withVmPreserved_ok timeMpl hpl hb1)
-
-theorem durationSinceGhost_bounded_withAlloc_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hb1 : timeMpl.base 1 = timeMpl.base 0 + subTimespecByteLen)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (durationSinceGhost timeMpl)
-      (withLsRet
-        (withAlloc A lim CryptoVerification.SignalSession.Cli.Slots.durationSinceBoundedSpec)) := by
-  rw [withLsRet_withAlloc]
-  exact hookOk_withAlloc_of_withVmPreserved A lim
-    (hookOk_withVmPreserved (durationSinceGhost_bounded_ok timeMpl hpl hb1)
-      (durationSinceGhost_vmPreserved timeMpl hpl hb1))
-
 theorem durationSinceGhost_epochAt_ok [LibsignalPlacement]
     (timeMpl : Obj.MultiPlacement)
     (hpl : timeMultiLib.Placeable timeMpl)
@@ -281,40 +245,6 @@ theorem durationSinceGhost_epochAt_ok [LibsignalPlacement]
   hookOk_congr (rfl : withLsRet _ = withLsRet _)
     (hookOk_withLsRet_durationSinceEpochAt_of_master
       (durationSinceGhost_masterLs_ok timeMpl hpl hb1) ⟨hlo, hhi⟩)
-
-theorem durationSinceGhost_epochAt_withVmPreserved_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hb1 : timeMpl.base 1 = timeMpl.base 0 + subTimespecByteLen)
-    (stk : Nat) (hlo : 208 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (durationSinceGhost timeMpl)
-      (withVmPreserved (withLsRet (durationSinceEpochAtSpec stk))) :=
-  hookOk_withVmPreserved (durationSinceGhost_epochAt_ok timeMpl hpl hb1 stk hlo hhi)
-    (durationSinceGhost_vmPreserved timeMpl hpl hb1)
-
-theorem durationSinceGhost_epochAt_withAlloc_ls_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hb1 : timeMpl.base 1 = timeMpl.base 0 + subTimespecByteLen)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (stk : Nat) (hlo : 208 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (durationSinceGhost timeMpl)
-      (withAlloc A lim (withLsRet (durationSinceEpochAtSpec stk))) :=
-  hookOk_withAlloc_of_withVmPreserved A lim
-    (durationSinceGhost_epochAt_withVmPreserved_ok timeMpl hpl hb1 stk hlo hhi)
-
-theorem durationSinceGhost_epochAt_withAlloc_ok [LibsignalPlacement]
-    (timeMpl : Obj.MultiPlacement)
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hb1 : timeMpl.base 1 = timeMpl.base 0 + subTimespecByteLen)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (stk : Nat) (hlo : 208 ≤ stk) (hhi : stk ≤ 2 ^ 64) :
-    HookOk (durationSinceGhost timeMpl)
-      (withLsRet (withAlloc A lim (durationSinceEpochAtSpec stk))) := by
-  rw [withLsRet_withAlloc]
-  exact hookOk_withAlloc_of_withVmPreserved A lim
-    (hookOk_withVmPreserved (durationSinceGhost_epochAt_ok timeMpl hpl hb1 stk hlo hhi)
-      (durationSinceGhost_vmPreserved timeMpl hpl hb1))
 
 /-! ## 3. `ExecFrozen` Preservation & Generic-`InvS` `GhostRowReplayOn` -/
 
@@ -548,38 +478,6 @@ theorem durationSinceGhost_rowSpecOk [LibsignalPlacement]
     simp only [hd1, hd2, hd3, hd4, hd5, hd6, Bool.false_eq_true, ↓reduceIte]
     exact durationSinceGhost_durationSinceRowSpec timeMpl hpl hb1
 
-/-- Behind-stub `GhostRowOk` bundle (`GhostRowSpecOk` ∧ `GhostRowReplayOn`) for `lsDurationSinceSym`. -/
-theorem durationSinceGhost_rowOk_of_stub [LibsignalPlacement]
-    (mpl mmpl timeMpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hpl : timeMultiLib.Placeable timeMpl)
-    (hb1 : timeMpl.base 1 = timeMpl.base 0 + subTimespecByteLen)
-    (hCL : ∀ u : State, InvS u → (durationSinceSubProg timeMpl).CodeLoaded u.mem)
-    (hRo : ∀ u : State, InvS u →
-      RoDataAt u.mem (timeMpl.ρ timeRodataCst16Sym) timePlacedData0)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hKeep : ∀ lr : BitVec 64, LsRetAddr624 lr → keepR_durationSince timeMpl lr = false)
-    (hRealHullNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_durationSince timeMpl pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none)
-    (hRealStubNone : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
-        (libsignalSessionLib.resolve mpl lsDurationSinceSym) = none)
-    (hStub : ∀ W : CliHooks,
-      StubReachesTargetOn
-        (fun m =>
-          (durationSinceSubProg timeMpl).CodeLoaded m ∧
-            RoDataAt m (timeMpl.ρ timeRodataCst16Sym) timePlacedData0)
-        (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (libsignalSessionLib.resolve mpl lsDurationSinceSym)
-        (timeMpl.base 0 + subTimespecByteLen)) :
-    GhostRowOk mpl mmpl InvS EG lsDurationSinceSym (fun _ => True)
-      (durationSinceGhost timeMpl) :=
-  ⟨durationSinceGhost_rowSpecOk timeMpl hpl hb1,
-   durationSinceGhost_rowReplayOn_of_stub mpl mmpl timeMpl InvS EG hpl hb1 hCL hRo hInvKeep
-     hKeep hRealHullNoExt hRealStubNone hStub⟩
-
 /-- **Full per-row `GhostRowOk` bundle (`GhostRowSpecOk` ∧ `GhostRowReplayOn`)** for
     `lsDurationSinceSym` (`entryGuard := fun _ => True`). -/
 theorem durationSinceGhost_rowOk [LibsignalPlacement]
@@ -603,26 +501,5 @@ theorem durationSinceGhost_rowOk [LibsignalPlacement]
   ⟨durationSinceGhost_rowSpecOk timeMpl hpl hb1,
    durationSinceGhost_rowReplayOn mpl mmpl timeMpl InvS EG hpl hb1 hTargetEq hCL hRo hInvKeep
      hKeep hRealHullNoExt⟩
-
-theorem extraEntryGuard_durationSince_arm
-    {mpl : Obj.MultiPlacement} {guardOf : String → State → Prop} {s0 : State}
-    (hGuardEq : guardOf lsDurationSinceSym s0 ↔ durationSinceEntryGuard mpl s0) :
-    guardOf lsDurationSinceSym s0 :=
-  hGuardEq.mpr trivial
-
-theorem extraEntryGuard_singleton_durationSince [LibsignalPlacement]
-    {mpl timeMpl : Obj.MultiPlacement} {guardOf : String → State → Prop}
-    {g : CliGhostHooks} {s0 : State}
-    (hg : g.extra = [(lsDurationSinceSym, durationSinceGhost timeMpl)])
-    (hGuardEq : guardOf lsDurationSinceSym s0 ↔ durationSinceEntryGuard mpl s0) :
-    ExtraEntryGuard guardOf g s0 := by
-  intro sym _ _ hLook
-  rw [hg] at hLook
-  simp only [List.lookup] at hLook
-  by_cases hSym : (sym == lsDurationSinceSym) = true
-  · have hEq := eq_of_beq hSym
-    subst hEq
-    exact hGuardEq.mpr trivial
-  · simp [hSym] at hLook
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceGhostReplays

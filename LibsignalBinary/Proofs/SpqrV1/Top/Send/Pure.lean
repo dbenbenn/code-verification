@@ -25,7 +25,7 @@ Provides pure unfolding, early-return, and size-bound lemmas bridging `(spqrV1 F
 and `Message.serialize`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

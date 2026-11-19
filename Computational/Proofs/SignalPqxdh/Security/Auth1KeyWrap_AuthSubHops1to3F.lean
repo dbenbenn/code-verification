@@ -9,18 +9,18 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.Constructions.SampleableType.Measure
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3F
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3F -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key `SlotM` Bridge for `RootKdfRO` (`G3.5` to `G3.6`)
@@ -29,7 +29,7 @@ Defines the single-identity-key `RootKdfRO` cutoff oracle and experiment over `p
 and proves the `SlotM` pre-sampling equivalence `evalDist_preSample_authRk_eq_cutoff1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -42,7 +42,7 @@ open _root_.Proofs.SignalPqxdh.Security.FgGapDh
 
 namespace SignalPqxdh.Security.AuthSubHops1to3
 
-def authRkStepWith1Key (S : Setup) (P : Primitives)
+@[expose] def authRkStepWith1Key (S : Setup) (P : Primitives)
     (sampRkAt : Nat → ProbComp Bytes) (useIdealRkAt : Nat → Bool)
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     ProbComp ((authSpec S).Range q × AuthHybridStateFixed S) :=
@@ -243,16 +243,16 @@ theorem authRkStepWith_after1Key (S : Setup) (P : Primitives) (idx : Nat) (useId
     simp only [hEqF, Bool.false_eq_true, ↓reduceIte]
   all_goals rfl
 
-def authRkCutoffImpl1Key (S : Setup) (P : Primitives) (cutoff : Nat) :
+@[expose] def authRkCutoffImpl1Key (S : Setup) (P : Primitives) (cutoff : Nat) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) :=
   fun q => StateT.mk (authRkStepWith1Key S P (fun _ => sampleBytes32) (fun s => decide (s < cutoff)) q)
 
-def rootRoAuthImpl1Key (S : Setup) (P : Primitives) (idx : Nat) (rkStar : Bytes) :
+@[expose] def rootRoAuthImpl1Key (S : Setup) (P : Primitives) (idx : Nat) (rkStar : Bytes) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) :=
   fun q => StateT.mk (authRkStepWith1Key S P (fun s => if s == idx then pure rkStar else sampleBytes32)
     (fun s => decide (s < idx)) q)
 
-noncomputable def authRkCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat)
+@[expose] def authRkCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -261,7 +261,7 @@ noncomputable def authRkCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat
   let (b', finalSt) ← (simulateQ fullImpl A.run).run initSt
   finalizeAuthFixed P secb b' finalSt.toAuthHybridState
 
-noncomputable def authRkCutoffAdv1Key (S : Setup) (P : Primitives) (cutoff : Nat)
+@[expose] noncomputable def authRkCutoffAdv1Key (S : Setup) (P : Primitives) (cutoff : Nat)
     (A : AuthAdversary S) : ℝ :=
   (𝒟[authRkCutoffExp1Key S P cutoff A].boolBias).toReal
 

@@ -67,14 +67,14 @@ theorem mallocngTightOomCond_of_perm_eq {svc : State → State} {req peak : Nat}
   MallocngTightOomCond.of_pre_perm hFs hTr hSig (funext fun a => (hPerm a).symm) h
 
 /-- Lift `hMalloc : LibcMallocImplPlaced24Stmt` (`blk09`) to any hook-free caller program `P`. -/
-theorem placed_libcMallocImpl24_ok [MallocngMultiPlacement] {P : Program}
-    (hMalloc : LibcMallocImplPlaced24Stmt)
+theorem placed_libcMallocImpl24_ok [MallocngMultiPlacement] {ro : Bool} {P : Program}
+    (hMalloc : LibcMallocImplPlaced24Stmt ro)
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat)
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 9) (libcMallocImplPlacedSpec24 γ tp brkStart b ivs0 req) :=
+    subroutine_ok P (mbase 9) (libcMallocImplPlacedSpec24 γ tp brkStart b ivs0 req ro) :=
   subroutine_ok_block_to_block (j := 9) (by decide)
     (hMalloc γ tp brkStart b ivs0 req) hext hsvc
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -19,7 +19,7 @@ Connects evaluation of the `ReductionDsl` branches in `KeyIndCore` to the refere
 handler `pqxdhKeyIndImplPrim` when all game-state lists lie within the loop bound `K`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -184,7 +184,7 @@ theorem anyMPrim_map {α β : Type} (f : α → β)
     anyMPrim p (L.map f) = anyMPrim (fun x => p (f x)) L := by
   simp only [← anyML_prim, anyML_map]
 
-def sidEqV : sessionIdTy.denote → sessionIdTy.denote → Bool
+@[expose] def sidEqV : sessionIdTy.denote → sessionIdTy.denote → Bool
   | .inl a, .inl b => a.1 == b.1 && a.2 == b.2
   | .inr (.inl a), .inr (.inl b) => a.1 == b.1 && a.2 == b.2
   | .inr (.inr (.inl a)), .inr (.inr (.inl b)) => a.1 == b.1 && (a.2.1 == b.2.1 && a.2.2 == b.2.2)
@@ -271,14 +271,14 @@ theorem nat2_beq (x : ℕ × ℕ) (a b : ℕ) :
     (x == (a, b)) = (x.1 == a && x.2 == b) := by
   rcases x with ⟨p, q⟩; rfl
 
-def encRS {S : Setup} (p : KeyIndResponse × KeyIndState S) : RS.denote :=
+@[expose] def encRS {S : Setup} (p : KeyIndResponse × KeyIndState S) : RS.denote :=
   (keyIndRespToVal p.1, keyIndStateToVal p.2)
 
-def decPrin (l : List (Nat × principalEntryTy.denote)) : List (Nat × PrincipalEntry) :=
+@[expose] def decPrin (l : List (Nat × principalEntryTy.denote)) : List (Nat × PrincipalEntry) :=
   l.map (Prod.map id valToPrincipalEntry)
-def decSpks (l : List ((Nat × Nat) × spkBundleEntryTy.denote)) :
+@[expose] def decSpks (l : List ((Nat × Nat) × spkBundleEntryTy.denote)) :
     List ((Nat × Nat) × SpkBundleEntry) := l.map (Prod.map id valToSpkBundleEntry)
-def decOpks (l : List ((Nat × Nat × Nat) × opkEntryTy.denote)) :
+@[expose] def decOpks (l : List ((Nat × Nat × Nat) × opkEntryTy.denote)) :
     List ((Nat × Nat × Nat) × OpkEntry) := l.map (Prod.map id valToOpkEntry)
 
 @[simp] theorem decPrin_enc (l : List (Nat × PrincipalEntry)) :
@@ -406,7 +406,7 @@ theorem decOpks_rt (l : (Ty.list (.prod (.prod .nat (.prod .nat .nat)) opkEntryT
   · cases x <;> rfl
   · cases x <;> rfl
 
-def decRo (l : List (Bytes × drKeyTy.denote)) : List (Bytes × DRKey) :=
+@[expose] def decRo (l : List (Bytes × drKeyTy.denote)) : List (Bytes × DRKey) :=
   l.map (Prod.map id valToDrKey)
 @[simp] theorem decRo_enc (l : List (Bytes × DRKey)) :
     decRo (l.map (Prod.map id drKeyToVal)) = l := by
@@ -416,7 +416,7 @@ theorem decRo_rt (l : (Ty.list (.prod (B 192) drKeyTy)).denote) :
   simp only [decRo, drKeyToVal, valToDrKey, List.map_map]
   exact (List.map_id'' (fun _ => rfl) l).symm
 
-def evalHkdfOrRoK (K : Nat) (useRo : Bool) (roCache : List (Bytes × DRKey)) (secrets : Bytes) :
+@[expose] def evalHkdfOrRoK (K : Nat) (useRo : Bool) (roCache : List (Bytes × DRKey)) (secrets : Bytes) :
     OracleComp PrimBaseSpec (DRKey × List (Bytes × DRKey)) := do
   if !useRo then
     let dk ← primQ (.hkdfDerive96 secrets)
@@ -455,7 +455,7 @@ def evalHkdfOrRoK (K : Nat) (useRo : Bool) (roCache : List (Bytes × DRKey)) (se
     · simp [hf]
     · simp [hf]
 
-def acceptKeysV (ikSk spkSk : Bytes) (opkSk : Option Bytes) (pqSk : Bytes) (replay : Bool)
+@[expose] def acceptKeysV (ikSk spkSk : Bytes) (opkSk : Option Bytes) (pqSk : Bytes) (replay : Bool)
     (hdr : HandshakeHdr) : OracleComp PrimBaseSpec (Option DRKey) :=
   acceptKeysPrim ⟨ikSk, [], spkSk, [], opkSk, pqSk, [], true, replay, hdr⟩
 
@@ -489,7 +489,7 @@ set_option maxHeartbeats 1000000 in
       simp [buildSecrets, _root_.guard, dhOptNonZero, ite_unit_bind, ite_none_unit_bind, opt_map_ite] <;>
       rfl
 
-def checkProvK (S : Setup) (K : Nat) (principals : List (Nat × PrincipalEntry))
+@[expose] def checkProvK (S : Setup) (K : Nat) (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
     (bundle : PreKeyBundleInput) : OracleComp PrimBaseSpec (Bool × Bool × Bool) := do

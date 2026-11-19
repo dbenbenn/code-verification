@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenBase
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.KeyPairCallees
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonical
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import LibsignalBinary.Proofs.E2E.Bin.ApiEncResultLoose -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Prefix, Epilogue, and Empty-State Proof for `libsignal_pqxdh_e2e::open`
@@ -24,7 +24,7 @@ Proves the role-dispatch and allocation prefix (`+0x000..+0x1b8`), the 29-word `
 (`+0x2a4..+0x328`), and `openEmpty_subroutine_ok` (`x5 = 0#64`) for `libsignal_pqxdh_e2e::open`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.WireEntries
 
@@ -33,7 +33,7 @@ set_option linter.unusedVariables false
 set_option maxRecDepth 200000
 set_option maxHeartbeats 800000
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ObjectLoad.RoDataFactsAux
+open Arm64 ProofLib
 open ProofLib.ProgramReflection CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
@@ -98,7 +98,7 @@ private theorem symtab_setPC_openP (s : State) (pc : BitVec 64) :
 private theorem symtab_setMem_setPC_openP (s : State) (pc : BitVec 64) (m : Memory) :
     ((s.setPC pc).setMem m).symtab = s.symtab := by cases s; rfl
 
-def OpenX27VPreserved (s1 s2 : State) : Prop :=
+@[expose] def OpenX27VPreserved (s1 s2 : State) : Prop :=
   s1.readReg64 .x27 = s2.readReg64 .x27 ∧ calleeSavedVRegs s1 = calleeSavedVRegs s2
 
 @[simp, arm64_norm]
@@ -114,7 +114,7 @@ theorem OpenX27VPreserved.trans {s1 s2 s3 : State}
 
 /-! ## Stack, Address, and Hook Helpers -/
 
-def openSavedRegsAtP (s0 : State) : SepProp :=
+@[expose] def openSavedRegsAtP (s0 : State) : SepProp :=
   ((s0.sp - 0x60#64) ↦₆₄ s0.readReg64 .x29) ∗ ((s0.sp - 0x58#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((s0.sp - 0x50#64) ↦₆₄ s0.readReg64 .x28) ∗ memRegion (s0.sp - 0x48#64) 8 ∗
   ((s0.sp - 0x40#64) ↦₆₄ s0.readReg64 .x26) ∗ ((s0.sp - 0x38#64) ↦₆₄ s0.readReg64 .x25) ∗
@@ -134,12 +134,6 @@ theorem openSavedRegsAtP_eq (s0 : State) :
     openSavedRegsAtP s0 = openPqxdhSavedRegsAt s0 := by
   unfold openSavedRegsAtP openPqxdhSavedRegsAt
   rw [ProofLib.memRegion_eight (s0.sp - 0x48#64)]
-
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
 
 theorem stackAt_openPqxdhStack_split (sp0 : BitVec 64) :
     stackAt sp0 openPqxdhStack =
@@ -282,7 +276,7 @@ local elab_rules : tactic
       g.assign prf
     replaceMainGoal []
 
-def openSavedRegsSpAtP (sp : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def openSavedRegsSpAtP (sp : BitVec 64) (s0 : State) : SepProp :=
   ((sp + 1104#64) ↦₆₄ s0.readReg64 .x29) ∗ ((sp + 1112#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp + 1120#64) ↦₆₄ s0.readReg64 .x28) ∗ memRegion (sp + 1128#64) 8 ∗
   ((sp + 1136#64) ↦₆₄ s0.readReg64 .x26) ∗ ((sp + 1144#64) ↦₆₄ s0.readReg64 .x25) ∗
@@ -309,25 +303,6 @@ theorem openSavedRegsAtP_eq_sp (s0 : State) (sp : BitVec 64) (hsp : sp = s0.sp -
 
 /-! ## Segment 1 Composition (`+0x000..+0x0bc`) -/
 
-theorem sepWP_bind_segExit_sp2 {α : Type} {C : Crypto} {ctl : BitVec 64}
-    {img : Obj.Image} {abs : String → Option (State → State)}
-    {spec : Spec α} {g : α} {R : SepProp} {P F : SepProp} {target_pc : BitVec 64} {s0 s : State}
-    {post : State → SepProp → Prop} {next : State → Prop}
-    (himg : Obj.Loads libsignalSessionImage img) (hm : s.mem ⊨ P ∗ F)
-    (hwp : SepWP (tripleRatchetProgAt img.base C ctl abs) target_pc s P post)
-    (hcont : ∀ s1 P_f, Steps (tripleRatchetProgAt img.base C ctl abs) s s1 →
-      s1.pc = target_pc → s1.status = .Running → (s1.mem ⊨ P_f ∗ F) → post s1 P_f →
-      SegExit (binProg img C ctl abs) spec g R s0 s1 next) :
-    SegExit (binProg img C ctl abs) spec g R s0 s next := by
-  intro hL
-  have hprog : binProg img C ctl abs = tripleRatchetProgAt img.base C ctl abs :=
-    tripleRatchetProg_eq_tripleRatchetProgAt himg
-  obtain ⟨s1, hst1, ⟨hpc1, hrun1, P_f, hm1, hpost1⟩ | ⟨_, _hoom⟩⟩ := SepWP.elim hwp hm (hprog ▸ hL)
-  rotate_left; · first | exact False.elim _hoom | exact (not_satisfies_false_sepConj _hoom).elim
-  have hst1_bin : Steps (binProg img C ctl abs) s s1 := hprog ▸ hst1
-  obtain ⟨sf, hst2, hout⟩ := hcont s1 P_f hst1 hpc1 hrun1 hm1 hpost1 (hst1_bin.codeLoaded hL)
-  exact ⟨sf, Steps.trans hst1_bin hst2, hout⟩
-
 theorem memRegion_36_elim (a : BitVec 64) {m : Memory} {R : SepProp}
     (hm : m ⊨ memRegion a 36 ∗ R) :
     ∃ (d0 d1 d2 d3 : BitVec 64) (dw8 : BitVec 32),
@@ -351,36 +326,5 @@ theorem copy36_post_fold (src dst : BitVec 64) (bs : List (BitVec 8))
      ((dst + 24#64) ↦₆₄ r3) ∗ ((dst + 32#64) ↦₃₂ rw8)) =
       (src ↦ᵣ bs) ∗ (dst ↦ₛ bs) := by
   rw [hro src, hrw dst]; simp only [sepConj_assoc]
-
-def OpenSeam0bcP (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (uuidParse : UuidParser) (img : Obj.Image) (abs : String → Option (State → State))
-    (outPtr mePtr statePtr stateLenBv : BitVec 64)
-    (meBytes : List (BitVec 8)) (role : Role)
-    (F_rest R : SepProp) (s0 s : State) : Prop :=
-  s.pc = (tripleRatchetProgAt img.base C ctl abs).fnAddr openPqxdhName + 0x0bc#64 ∧
-    s.status = .Running ∧ s.spAligned = true ∧
-    s0.spAligned = true ∧ openPqxdhStack ≤ s0.sp.toNat ∧
-    s.sp = s0.sp - 0x4b0#64 ∧
-    s.tpidrEl0 = s0.tpidrEl0 ∧ ExecOnlyIn (Program.ofImage img) s.mem ∧
-    s.trace = s0.trace ∧
-    s.readReg64 .x19 = outPtr ∧
-    s.readReg64 .x20 = stateLenBv ∧
-    s.readReg64 .x21 = statePtr ∧
-    s.readReg64 .x22 = mePtr ∧
-    OpenX27VPreserved s s0 ∧
-    s.readReg64 .x29 = s0.sp - 0x60#64 ∧
-    meBytes.length = 36 ∧
-    img.FrozenLoaded s ∧
-    ∃ (meBuf peerBuf : BitVec 64) (tlsCur : Option (BitVec 64 × BitVec 64)),
-      s.readReg64 .x23 = meBuf ∧ s.readReg64 .x0 = peerBuf ∧
-      meBuf ≠ 0#64 ∧ peerBuf ≠ 0#64 ∧
-      (s.mem ⊨
-        (meBuf ↦ₛ role.nameBytes) ∗ A.live meBuf 36 1 ∗
-        (peerBuf ↦ₛ role.peer.nameBytes) ∗ A.live peerBuf 36 1 ∗
-        memRegion s.sp 0x450 ∗ openSavedRegsAtP s0 ∗
-        memRegion outPtr 232 ∗ (mePtr ↦ₛ meBytes) ∗
-        tlsKeysAt (s0.tpidrEl0 + tlsKeysTpoff) tlsCur ∗
-        A.pool ∗ memRegion (s0.sp - openPqxdhStack) (openPqxdhStack - 0x4b0) ∗
-        F_rest ∗ R ∗ anyHeap)
 
 end CryptoVerification.E2E.Pqxdh.WireEntries

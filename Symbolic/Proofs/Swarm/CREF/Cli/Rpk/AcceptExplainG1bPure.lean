@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.MacInv
+public import Symbolic.Proofs.Swarm.CREF.MacInv -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.EquationalTheory.DiffieHellman
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import Symbolic.Specifications.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptExplainG1bAux
@@ -38,7 +38,7 @@ Proves `rpk_bsG1bHonestSendCase`: when Bob's pre-key receive matches an honest s
 decrypt under the same `(salt', seed')`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -103,7 +103,7 @@ private theorem g1b_gamma_x25519Key_eq (i : ExternInterpretation) (S : OpaqueSym
     (ek sk : DY.Bytes)
     (hkey : DY.X25519.normalizeX25519Key ek = DY.DiffieHellman.dhPk sk)
     (hek_canon : DY.X25519.leValue ((gamma i S g ek).map BitVec.toNat) < DY.X25519.p25519)
-    (hek_tf : DY.Libsignal.PQXDH.Refinement.X25519TorsionFree i (gamma i S g ek)) :
+    (hek_tf : DY.Libsignal.PQXDH.Refinement.X25519TorsionFree (gamma i S g ek)) :
     gamma i S g (DY.X25519.normalizeX25519Key ek) = gamma i S g ek := by
   unfold DY.X25519.normalizeX25519Key at hkey ⊢
   cases hview : ek.view? DY.X25519.Variant.SubF with
@@ -193,7 +193,7 @@ theorem rpk_bsG1bHonestSendCase
     (hek_len : (gamma interpretation S g x'.ek).length = 32)
     (hek_canon : DY.X25519.leValue ((gamma interpretation S g x'.ek).map BitVec.toNat) < DY.X25519.p25519)
     (hek_notlow : DY.X25519.isLowOrderKey ((gamma interpretation S g x'.ek).map BitVec.toNat) = false ∧
-      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interpretation (gamma interpretation S g x'.ek))
+      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree (gamma interpretation S g x'.ek))
     (hlow' : TripleRatchet.x25519LowOrder msg'.ratchetKey = false)
     (hdec_wire : interpretation DY.Libsignal.Refinement.aesCbcDecryptSymbol
       [gamma interpretation S g msg'.ciphertext,

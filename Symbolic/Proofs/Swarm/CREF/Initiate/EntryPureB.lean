@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPureA
-public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono
-public import Symbolic.Proofs.Swarm.CREF.OpkRelC
-public import Symbolic.Proofs.Swarm.CREF.Sanitize
+public import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.OpkRelC
+public import Symbolic.Proofs.Swarm.CREF.Sanitize -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyFrame
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyTR
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CBadG2Pure
@@ -21,7 +21,8 @@ import Symbolic.Proofs.Swarm.CREF.Initiate.ModelPure
 import Symbolic.Proofs.Swarm.CREF.ModelSplit
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.ReadVis
-public import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
 
 /-!
 # `session_initiate` `PureCRelAt` and `Clean` Stepping
@@ -31,7 +32,7 @@ extensions for rejected and accepted `session_initiate` calls, and `BobRecordBas
 preservation (`bks_ini_ok`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

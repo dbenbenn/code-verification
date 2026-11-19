@@ -9,26 +9,41 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
-public import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyBPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.Int32ArmsPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyBPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.Int32ArmsPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.Push
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
-import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.BytesArms -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowAmortizedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+public import ProofLib.Placed.OpcodeExclusion
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Capacity-Bounded Loop Helpers and `<DecodeError>::push` Contracts
@@ -39,7 +54,7 @@ capacity-tracking `ProtoPreKeySignalMessage` invariants (`WirePreKeyCapsMatch`,
 `decodeErrorPushPK_tail_placed_wpX` lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -151,7 +166,7 @@ theorem fitsEnv_growAmortized_of_decodeErrorPushBounded {M : AllocCostModel}
   fun _ hevs => hevs ▸ h _ (decodeErrorPushBoundedEnv_growAmortizedEvents hn)
 
 /-- Tight Block `257` contract at `decodeErrorHookStack` guarded by `DecodeErrorPushBoundedEnv`. -/
-def decodeErrorPushBoundedBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def decodeErrorPushBoundedBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BitVec 64 × BitVec 64 × Nat × M.σ) where
   pre := fun (d, e, n, st) s =>
     ⌜s.readReg64 .x0 = d ∧ n < 2 ^ 32 ∧ FitsEnv M lim st (DecodeErrorPushBoundedEnv n)⌝ ∗
@@ -487,7 +502,7 @@ theorem bytes_merge_exact_placed_ok_x_e4 [LibsignalPlacement] {M : AllocCostMode
 `kyberCiphertext ↔ .rk`, `baseKey ↔ .ct`, `identityKey ↔ .pq`, `message ↔ .ad`.
 Defined as a conjunction (rather than a `structure`) so `WirePreKeyCapsMatch g { m with <u32> := o } caps`
 is definitionally equal (`rfl`) to `WirePreKeyCapsMatch g m caps`. -/
-def WirePreKeyCapsMatch (g : WirePreKeyGhost) (m : ProtoPreKeySignalMessage)
+@[expose] def WirePreKeyCapsMatch (g : WirePreKeyGhost) (m : ProtoPreKeySignalMessage)
     (caps : SigTryFromCaps) : Prop :=
   optFieldCapMatch m.kyberCiphertext g.kyberCt caps.rk ∧
     optFieldCapMatch m.baseKey g.baseKey caps.ct ∧
@@ -497,7 +512,7 @@ def WirePreKeyCapsMatch (g : WirePreKeyGhost) (m : ProtoPreKeySignalMessage)
 /-- Capacity-tracked stack `proto::wire::PreKeySignalMessage` invariant. Needs no slice-length
 parameter `n` because PKSM decode arms always carry `bs.length < 2 ^ 32`, giving
 `bytesMergeCapOk_of_len_lt32` unconditionally. -/
-def wirePreKeyLoopCapsOf (A : RustAlloc) (a : BitVec 64) (caps : SigTryFromCaps)
+@[expose] def wirePreKeyLoopCapsOf (A : RustAlloc) (a : BitVec 64) (caps : SigTryFromCaps)
     (m : ProtoPreKeySignalMessage) : SepProp :=
   ∃∗ g : WirePreKeyGhost, ⌜WirePreKeyCapsMatch g m caps⌝ ∗ wirePreKeyAt A g a m
 
@@ -645,7 +660,7 @@ theorem vecU8At_message_entails_wirePreKeyLoopCapsOf (A : RustAlloc)
 
 /-! ### `u32` Field-Splitting & Update Equalities -/
 
-def wirePreKeyVecsCapsOf (A : RustAlloc) (a : BitVec 64) (caps : SigTryFromCaps)
+@[expose] def wirePreKeyVecsCapsOf (A : RustAlloc) (a : BitVec 64) (caps : SigTryFromCaps)
     (m : ProtoPreKeySignalMessage) : SepProp :=
   ∃∗ g : WirePreKeyGhost, ⌜WirePreKeyCapsMatch g m caps⌝ ∗
     optVecU8At A g.kyberCt a m.kyberCiphertext ∗
@@ -662,7 +677,7 @@ theorem wirePreKeyLoopCapsOf_eq_vecs_u32s (A : RustAlloc) (a : BitVec 64) (caps 
   unfold wirePreKeyLoopCapsOf wirePreKeyAt wirePreKeyVecsCapsOf
   simp only [sepExists_sepConj_left, sepConj_assoc]
 
-def wirePreKeyRestCaps1 (A : RustAlloc) (sp' : BitVec 64) (caps : SigTryFromCaps)
+@[expose] def wirePreKeyRestCaps1 (A : RustAlloc) (sp' : BitVec 64) (caps : SigTryFromCaps)
     (m : ProtoPreKeySignalMessage) : SepProp :=
   wirePreKeyVecsCapsOf A (sp' + 312#64) caps m ∗ optU32At (sp' + 408#64) m.registrationId ∗
     optU32At (sp' + 424#64) m.signedPreKeyId ∗ optU32At (sp' + 432#64) m.kyberPreKeyId
@@ -680,7 +695,7 @@ theorem wirePreKeyLoopCapsOf_update_preKeyId (A : RustAlloc) (sp' : BitVec 64)
       wirePreKeyLoopCapsOf A (sp' + 312#64) caps { m with preKeyId := o } := by
   rw [wirePreKeyLoopCapsOf_eq_preKeyId A sp' caps { m with preKeyId := o }]; rfl
 
-def wirePreKeyRestCaps5 (A : RustAlloc) (sp' : BitVec 64) (caps : SigTryFromCaps)
+@[expose] def wirePreKeyRestCaps5 (A : RustAlloc) (sp' : BitVec 64) (caps : SigTryFromCaps)
     (m : ProtoPreKeySignalMessage) : SepProp :=
   wirePreKeyVecsCapsOf A (sp' + 312#64) caps m ∗ optU32At (sp' + 416#64) m.preKeyId ∗
     optU32At (sp' + 424#64) m.signedPreKeyId ∗ optU32At (sp' + 432#64) m.kyberPreKeyId
@@ -698,7 +713,7 @@ theorem wirePreKeyLoopCapsOf_update_regId (A : RustAlloc) (sp' : BitVec 64)
       wirePreKeyLoopCapsOf A (sp' + 312#64) caps { m with registrationId := o } := by
   rw [wirePreKeyLoopCapsOf_eq_regId A sp' caps { m with registrationId := o }]; rfl
 
-def wirePreKeyRestCaps6 (A : RustAlloc) (sp' : BitVec 64) (caps : SigTryFromCaps)
+@[expose] def wirePreKeyRestCaps6 (A : RustAlloc) (sp' : BitVec 64) (caps : SigTryFromCaps)
     (m : ProtoPreKeySignalMessage) : SepProp :=
   wirePreKeyVecsCapsOf A (sp' + 312#64) caps m ∗ optU32At (sp' + 408#64) m.registrationId ∗
     optU32At (sp' + 416#64) m.preKeyId ∗ optU32At (sp' + 432#64) m.kyberPreKeyId
@@ -716,7 +731,7 @@ theorem wirePreKeyLoopCapsOf_update_signedPreKeyId (A : RustAlloc) (sp' : BitVec
       wirePreKeyLoopCapsOf A (sp' + 312#64) caps { m with signedPreKeyId := o } := by
   rw [wirePreKeyLoopCapsOf_eq_signedPreKeyId A sp' caps { m with signedPreKeyId := o }]; rfl
 
-def wirePreKeyRestCaps7 (A : RustAlloc) (sp' : BitVec 64) (caps : SigTryFromCaps)
+@[expose] def wirePreKeyRestCaps7 (A : RustAlloc) (sp' : BitVec 64) (caps : SigTryFromCaps)
     (m : ProtoPreKeySignalMessage) : SepProp :=
   wirePreKeyVecsCapsOf A (sp' + 312#64) caps m ∗ optU32At (sp' + 408#64) m.registrationId ∗
     optU32At (sp' + 416#64) m.preKeyId ∗ optU32At (sp' + 424#64) m.signedPreKeyId
@@ -773,7 +788,7 @@ theorem sepWP_done_sync_pool_111 [LibsignalPlacement] {M : AllocCostModel}
     ⟨hv_real, hpost m_real⟩
 
 /-- Exit postcondition at `+0x460` (`1120`) indexed by `(rem : Nat) (caps : SigTryFromCaps)`. -/
-def preKeyLoopExitPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def preKeyLoopExitPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (rem : Nat) (caps : SigTryFromCaps)
     (s0 : State) (sp' sret len ptr0 : BitVec 64) (vb : BitVec 8) (ptr : BitVec 64)

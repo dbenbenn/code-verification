@@ -9,11 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.SpqrSimChain
+public import Computational.Proofs.E2E.Dsl.SpqrSimChain -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopSend
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidPhi
 import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpqrV1Sync.TopStateTight -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.ClampsLossless
+public import Computational.Proofs.E2E.Dsl.TablesHonest -- proof-setup: allow-public-import
 
 /-!
 # SPQR V1 `ReductionDsl` Send Simulation
@@ -22,7 +26,7 @@ Implements `spqrSendComp` over `e2eOps` and proves its static cost bound, zero o
 count, and functional equivalence with `spqrV1SessionUniformCoins` on `TopStateTight` states.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -64,7 +68,7 @@ open CryptoVerification.SpqrV1Sync.SendTotal (TopWitness TopStateTight TopStateT
   sendKey_err_of_ge sendAfterStates_err_of_sendKey_err st_recvSmallAdd_tight
   st_recvSmallSend_tight)
 
-def spqrRunSendChainComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrRunSendChainComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (vn? : Expr (e2eOps ℓ P C K decT encT) Γ (.opt spqrVnT))
@@ -145,7 +149,7 @@ private theorem addEpoch_links_le_four (F : ShaCompress) (chE chain1 : Chain)
     omega
 
 /-- Simulates `(spqrV1SessionUniformCoins C.F K).send` in `ReductionDsl`. -/
-def spqrSendComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrSendComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (e : Expr (e2eOps ℓ P C K decT encT) Γ (.prod (B 32) BV512)) :

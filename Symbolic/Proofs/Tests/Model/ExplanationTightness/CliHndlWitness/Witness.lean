@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.WIT.Pure
+public import Symbolic.Proofs.Swarm.WIT.Pure -- proof-setup: allow-public-import
 public import Symbolic.Proofs.SpecLemmas.ByteSpecs
 public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuityBase
 import DY.ALaCarte.Basic
@@ -22,6 +22,9 @@ import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
 import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateDir
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateDirAux
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4SymbolicBridge
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Edwards
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 
 /-!
 # Concrete Machine-Free Witness for `cli_hndl_witness`
@@ -31,7 +34,7 @@ guarded CLI trace (`init`, `breakDH`, `invertDH`) for `cli_hndl_witness`. The sy
 explanation (`Explains`, `BrokenDH`, `AliceDone`, `HNDLPremise`) lives in `Explains.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +48,7 @@ open DY.Libsignal.Refinement (ExternCryptoLawsHold x25519AgreementSymbol x25519P
   x25519TorsionSymbol torsionShift aesCbcEncryptSymbol aesCbcDecryptSymbol
   sha256CompressFunction)
 open DY.Libsignal.PQXDH.Refinement (X25519TorsionShiftsRejected
-  kyberEncapsSymbol kyberDecapsSymbol toEdwardsSymbol torsionFreeSymbol)
+  kyberEncapsSymbol kyberDecapsSymbol)
 open DY.Libsignal.Composed.Refinement (X25519PubCanonical)
 open DY.Libsignal.Composed.Refinement.Cli (ExternContractsHoldCli ModelAgree)
 open Symbolic.Proofs.Swarm.WIT.Pure (exampleBasepoint exampleAgreement length_exampleAgreement
@@ -55,7 +58,7 @@ open Symbolic.Proofs.Swarm.WIT.Pure (exampleBasepoint exampleAgreement length_ex
 /-! ## Concrete Machine-Free Interpretation and Model Parameters -/
 
 /-- Identity block cipher for the machine-free CBC witness. -/
-def idBlock : CryptoGames.CBC.AesKey → CryptoGames.CBC.Block → CryptoGames.CBC.Block :=
+@[expose] def idBlock : CryptoGames.CBC.AesKey → CryptoGames.CBC.Block → CryptoGames.CBC.Block :=
   fun _ b => b
 
 private theorem cbcEncrypt_eq (f : ByteSpecs.Block → ByteSpecs.Block) :
@@ -275,8 +278,8 @@ private theorem aesCbcEncrypt_of_decrypt_id (c p : List (BitVec 8))
         · cases hdec
 
 /-- Concrete machine-free `ExternInterpretation`: `witnessInterpretation` equipped with
-AES-256-CBC-PKCS#7 over `idBlock` and `torsionFreeSymbol` mapped to `[1#8]`. -/
-def hndlInterp : ExternInterpretation := fun sym args =>
+AES-256-CBC-PKCS#7 over `idBlock`. -/
+@[expose] def hndlInterp : ExternInterpretation := fun sym args =>
   if sym = aesCbcEncryptSymbol then
     match args with
     | [p, k, iv] =>
@@ -289,23 +292,21 @@ def hndlInterp : ExternInterpretation := fun sym args =>
       CryptoGames.LibsignalSession.aesCbcDecrypt idBlock
         (CryptoGames.HKDF.bytesToKey32 k) (CryptoGames.CBC.bytesToBlock iv) c
     | _ => none
-  else if sym = torsionFreeSymbol then
-    some [1#8]
   else
     witnessInterpretation sym args
 
 private theorem hndlInterp_other {s : String}
-    (he : s ≠ aesCbcEncryptSymbol) (hd : s ≠ aesCbcDecryptSymbol) (htf : s ≠ torsionFreeSymbol) :
+    (he : s ≠ aesCbcEncryptSymbol) (hd : s ≠ aesCbcDecryptSymbol) :
     hndlInterp s = witnessInterpretation s := by
-  funext args; simp [hndlInterp, he, hd, htf]
+  funext args; simp [hndlInterp, he, hd]
 
 theorem hndlInterp_cryptoEquationsHold : ExternCryptoLawsHold hndlInterp := by
   have ha : hndlInterp x25519AgreementSymbol = witnessInterpretation x25519AgreementSymbol :=
-    hndlInterp_other (by decide) (by decide) (by decide)
+    hndlInterp_other (by decide) (by decide)
   have hp : hndlInterp x25519PublicKeySymbol = witnessInterpretation x25519PublicKeySymbol :=
-    hndlInterp_other (by decide) (by decide) (by decide)
+    hndlInterp_other (by decide) (by decide)
   have ht : hndlInterp x25519TorsionSymbol = witnessInterpretation x25519TorsionSymbol :=
-    hndlInterp_other (by decide) (by decide) (by decide)
+    hndlInterp_other (by decide) (by decide)
   have hts : ∀ p t, torsionShift hndlInterp p t = torsionShift witnessInterpretation p t :=
     fun p t => by unfold torsionShift; rw [ht]
   have hwEq := witnessInterpretation_cryptoEquationsHold
@@ -334,12 +335,12 @@ theorem hndlInterp_cryptoEquationsHold : ExternCryptoLawsHold hndlInterp := by
         simp only [hndlInterp, hne, ↓reduceIte] at hdec ⊢
         exact congrArg some (aesCbcEncrypt_of_decrypt_id c p _ _ hdec)
       hmac_tag_length := fun k d tag h => by
-        have hm := hndlInterp_other (s := "libcrux_hmac::hmac") (by decide) (by decide) (by decide)
+        have hm := hndlInterp_other (s := "libcrux_hmac::hmac") (by decide) (by decide)
         rw [hm] at h
         exact hwEq.hmac_tag_length k d tag h }
 
 theorem hndlInterp_torsionShiftsRejected : X25519TorsionShiftsRejected hndlInterp := by
-  intro s t k _hk h1 h2
+  intro s t k _hk h1 h2 _htf
   have hnone : ∀ args, hndlInterp x25519TorsionSymbol args = none := fun _ => rfl
   have hts : torsionShift hndlInterp
       ((hndlInterp x25519PublicKeySymbol [s]).getD []) t =
@@ -354,22 +355,21 @@ theorem hndlInterp_torsionShiftsRejected : X25519TorsionShiftsRejected hndlInter
 theorem hndlInterp_contracts : ExternContractsHoldCli hndlInterp := by
   refine ⟨hndlInterp_cryptoEquationsHold, ?_, hndlInterp_torsionShiftsRejected⟩
   intro s
-  rw [hndlInterp_other (by decide) (by decide) (by decide)]
+  rw [hndlInterp_other (by decide) (by decide)]
   exact witnessInterpretation_pubCanonical s
 
-def repVec (n : Nat) (x : BitVec 8) : List.Vector (BitVec 8) n :=
+@[expose] def repVec (n : Nat) (x : BitVec 8) : List.Vector (BitVec 8) n :=
   ⟨List.replicate n x, List.length_replicate⟩
 
-def hndlMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
+@[expose] def hndlMlKem : CryptoVerification.LibsignalSpqrV1.MlKem where
   keyPair _ := repVec 2400 0#8
   encaps1 _ _ := some (repVec 960 0#8, repVec 2080 0#8, repVec 32 0#8)
   encaps2 _ _ := repVec 128 0#8
   decaps _ _ _ := repVec 32 0#8
   validPk _ _ := true
 
-/-- Concrete model primitives `P : PEParams` agreeing with `hndlInterp` and accepting `0^64`
-XEdDSA signatures (`isTorsionFree = true`, `montToEd = some 0^160`, `compress = 0^32`). -/
-def hndlP : PEParams where
+/-- Concrete model primitives `P : PEParams` agreeing with `hndlInterp` and with `F512 = 0^8`. -/
+@[expose] def hndlP : PEParams where
   C :=
     { F := sha256CompressFunction hndlInterp
       E := idBlock
@@ -379,28 +379,21 @@ def hndlP : PEParams where
         ⟨exampleAgreement a.toList exampleBasepoint,
          length_exampleAgreement a.toList exampleBasepoint⟩ }
   Q :=
-    { F512 := fun st _ => st
-      scalarMod := fun _ => repVec 32 0#8
-      scalarWide := fun _ => repVec 32 0#8
-      montToEd := fun _ _ => some (repVec 160 0#8)
-      isTorsionFree := fun _ => true
-      edNeg := fun _ => repVec 160 0#8
-      dsmb := fun _ _ _ => repVec 160 0#8
-      compress := fun _ => repVec 32 0#8
+    { F512 := fun _ _ => List.Vector.replicate 8 0#64
       encaps := fun _ _ => (repVec 1568 0#8, repVec 32 0#8)
       decaps := fun _ _ => repVec 32 0#8
       K := hndlMlKem }
 
 private theorem hndlInterp_of_witnessLength {s : String} {n : Nat}
-    (hw : witnessLength s = some n) (htf : s ≠ torsionFreeSymbol) (args : List ByteString) :
+    (hw : witnessLength s = some n) (args : List ByteString) :
     hndlInterp s args = some (List.replicate n 0#8) := by
   have he : s ≠ aesCbcEncryptSymbol := by rintro rfl; cases hw
   have hd : s ≠ aesCbcDecryptSymbol := by rintro rfl; cases hw
-  rw [hndlInterp_other he hd htf]
+  rw [hndlInterp_other he hd]
   simp [witnessInterpretation, hw]
 
 theorem hndlP_modelAgree : ModelAgree hndlInterp hndlP := by
-  refine ⟨rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro p k iv _ _
     simp only [hndlInterp, ↓reduceIte]
     rfl
@@ -409,26 +402,18 @@ theorem hndlP_modelAgree : ModelAgree hndlInterp hndlP := by
     simp only [hndlInterp, hne, ↓reduceIte]
     rfl
   · intro a b
-    rw [hndlInterp_other (by decide) (by decide) (by decide)]
+    rw [hndlInterp_other (by decide) (by decide)]
     rfl
   · intro a
-    rw [hndlInterp_other (by decide) (by decide) (by decide)]
+    rw [hndlInterp_other (by decide) (by decide)]
     rfl
   · intro pk rand
-    rw [hndlInterp_of_witnessLength (n := 1600) (by decide) (by decide)]
+    rw [hndlInterp_of_witnessLength (n := 1600) (by decide)]
     dsimp only [hndlP, repVec]
     exact congrArg some (List.replicate_add 1568 32 0#8)
   · intro sk ct
-    rw [hndlInterp_of_witnessLength (n := 32) (by decide) (by decide)]
+    rw [hndlInterp_of_witnessLength (n := 32) (by decide)]
     rfl
-  · intro u sign
-    rw [hndlInterp_of_witnessLength (n := 160) (by decide) (by decide)]
-    rfl
-  · intro pt
-    have h1 : torsionFreeSymbol ≠ aesCbcEncryptSymbol := by decide
-    have h2 : torsionFreeSymbol ≠ aesCbcDecryptSymbol := by decide
-    dsimp only [hndlP]
-    simp only [hndlInterp, h1, h2, ↓reduceIte, decide_true]
 
 /-! ## Concrete `ProtocolSetup`, `OpaqueSymbolSemantics`, and `Ghost` -/
 
@@ -443,7 +428,7 @@ open CryptoVerification.SignalSession (publicBundleOf bundleDir filesOf)
 
 /-- Concrete fresh-value table: `5#8^32` for runtime draws (`22 <= t`, `n = 32`), and
 `[t, 0, ..., 0]` of length `n` for setup timestamps (`t < 22`). -/
-def hndlFresh (t n : Nat) : HwBytes :=
+@[expose] def hndlFresh (t n : Nat) : HwBytes :=
   if 22 ≤ t ∧ n = 32 then List.replicate 32 5#8
   else BitVec.ofNat 8 t :: List.replicate (n - 1) 0
 
@@ -453,7 +438,7 @@ theorem hndlFresh_length (t n : Nat) (hn : n ≠ 0) : (hndlFresh t n).length = n
   · simp [h.2]
   · simp; omega
 
-def hndlSem : OpaqueSymbolSemantics where
+@[expose] def hndlSem : OpaqueSymbolSemantics where
   init := fun _ _ => []
   chainKey := fun _ _ _ => []
   sendState := fun _ _ => []
@@ -464,13 +449,13 @@ def hndlSem : OpaqueSymbolSemantics where
   kemPk := fun _ => List.replicate 1568 0#8
   kemDecap := fun _ _ => List.replicate 32 0#8
   vk := fun _ => []
-  sign := fun _ _ _ => List.replicate 64 0#8
+  sign := fun _ _ _ => 1#8 :: List.replicate 63 0#8
 
-def hndlGhost : Ghost where
+@[expose] def hndlGhost : Ghost where
   σ := hndlFresh
   addr := fun _ => []
 
-def hndlRecords : ProtocolSetup where
+@[expose] def hndlRecords : ProtocolSetup where
   alice := "alice"
   bob := "bob"
   withOpk := false
@@ -518,7 +503,7 @@ private theorem hndl_gamma_kemPk (sk : DY.Bytes) :
   rfl
 
 private theorem hndl_gamma_sign (sk n m : DY.Bytes) :
-    gamma hndlInterp hndlSem hndlGhost (DY.Signature.sign sk n m) = List.replicate 64 0#8 := by
+    gamma hndlInterp hndlSem hndlGhost (DY.Signature.sign sk n m) = 1#8 :: List.replicate 63 0#8 := by
   unfold gamma gamma'
   show ((({sk, nonce := n, msg := m} : DY.Signature.Sign.SubF DY.Bytes).pack).rec
     (concretizeAll hndlInterp hndlSem hndlGhost)).bytes = _
@@ -528,7 +513,7 @@ private theorem hndl_gamma_sign (sk n m : DY.Bytes) :
 theorem hndlRecords_ne : hndlRecords.alice ≠ hndlRecords.bob := by decide
 
 private theorem hndlRecords_opaque_5 :
-    hndlRecords.opaqueBytes (setupPublic hndlRecords 5) = List.replicate 64 0#8 := by
+    hndlRecords.opaqueBytes (setupPublic hndlRecords 5) = 1#8 :: List.replicate 63 0#8 := by
   rw [Symbolic.Swarm.CREF.b1_setupPublic_5 hndlRecords hndlRecords_ne]
   exact hndl_gamma_sign _ _ _
 
@@ -538,7 +523,7 @@ private theorem hndlRecords_opaque_6 :
   exact hndl_gamma_kemPk _
 
 private theorem hndlRecords_opaque_7 :
-    hndlRecords.opaqueBytes (setupPublic hndlRecords 7) = List.replicate 64 0#8 := by
+    hndlRecords.opaqueBytes (setupPublic hndlRecords 7) = 1#8 :: List.replicate 63 0#8 := by
   rw [Symbolic.Swarm.CREF.b1_setupPublic_7 hndlRecords hndlRecords_ne]
   exact hndl_gamma_sign _ _ _
 
@@ -558,11 +543,11 @@ theorem hndlRecords_wf : ProtocolSetupWF hndlRecords := by
           hndlFresh 11 64, hndlFresh 16 64, hndlFresh 17 64].Nodup
     decide
   · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.spkSigTerm]
-    rw [hndlRecords_opaque_5]; exact List.length_replicate
+    rw [hndlRecords_opaque_5]; simp
   · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkPubTerm]
     rw [hndlRecords_opaque_6]; exact List.length_replicate
   · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkSigTerm]
-    rw [hndlRecords_opaque_7]; exact List.length_replicate
+    rw [hndlRecords_opaque_7]; simp
   · exact List.length_replicate
   · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkPubTerm]
     rw [hndlRecords_opaque_6]
@@ -574,7 +559,7 @@ theorem hndlRecords_wf : ProtocolSetupWF hndlRecords := by
 theorem hndlCompat : GhostAndSemMatchSetup hndlInterp hndlRecords hndlSem hndlGhost := by
   refine ⟨fun _ _ => rfl, fun _ _ => rfl, fun ct => ?_⟩
   unfold kyberDecapsBytes
-  rw [hndlInterp_of_witnessLength (n := 32) (by decide) (by decide)]
+  rw [hndlInterp_of_witnessLength (n := 32) (by decide)]
   rfl
 
 /-! ## Concrete CLI `init` Call, `PqModelRel`, `CliTraces`, and `InvertsGuarded` -/
@@ -601,13 +586,13 @@ open Symbolic.Swarm.CREF.Cli.Slots (aliceInitPqParty alicePqParty_aliceInitPqPar
   wfPq_aliceInitPqParty pqInitInputs_files_eq AliceDirState)
 open Symbolic.Proofs.Swarm.WIT.Pure (exampleAgreement_of_not_low example_result
   exampleBasepoint_not_low uOf_exampleBasepoint)
-open Symbolic.Proofs.Tests.Refinement.Cli.NonVacuityHelpers (nvX ofU8_toU8 u8Vec_vecU8 vecU8_length)
+open Symbolic.Proofs.Tests.Refinement.Cli.NonVacuityHelpers (nvX nvSigZero64 ofU8_toU8 u8Vec_vecU8 vecU8_length)
 
-def hndlStA0 : PqParty := aliceInitPqParty hndlInterp hndlRecords
+@[expose] def hndlStA0 : PqParty := aliceInitPqParty hndlInterp hndlRecords
 
-def hndlMeB : LocalIdentity := ⟨vec32 (secretBytes hndlRecords 1), hndlRecords.regIdB⟩
+@[expose] def hndlMeB : LocalIdentity := ⟨vec32 (secretBytes hndlRecords 1), hndlRecords.regIdB⟩
 
-def hndlKeysB : ResponderPreKeySecrets where
+@[expose] def hndlKeysB : ResponderPreKeySecrets where
   spkId := hndlRecords.spkId
   spkPriv := vec32 (secretBytes hndlRecords 2)
   kpkId := hndlRecords.kpkId
@@ -615,10 +600,10 @@ def hndlKeysB : ResponderPreKeySecrets where
   kpkSec := repVec 3168 0#8
   opk := none
 
-def hndlBundleB : PreKeyBundleFields :=
-  honestBundle hndlP.C hndlMeB hndlKeysB (repVec 64 0#8) (repVec 64 0#8)
+@[expose] def hndlBundleB : PreKeyBundleFields :=
+  honestBundle hndlP.C hndlMeB hndlKeysB nvSigZero64 nvSigZero64
 
-def hndlTape : List.Vector (BitVec 8) initiateTapeLen :=
+@[expose] def hndlTape : List.Vector (BitVec 8) initiateTapeLen :=
   repVec initiateTapeLen 5#8
 
 private theorem hndlBundleB_idPub :
@@ -668,11 +653,11 @@ theorem hndlBundleB_honest :
       kk, kyberKey, DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkPubTerm]
     rw [hndlRecords_opaque_6]; rfl
   have hss_eq : hndlBundleB.spkSig.toList = ss := by
-    dsimp only [hndlBundleB, honestBundle, repVec, ss,
+    dsimp only [hndlBundleB, honestBundle, nvSigZero64, ss,
       DY.Libsignal.Composed.Refinement.ProtocolSetup.spkSigTerm]
     rw [hndlRecords_opaque_5]; rfl
   have hks_eq : hndlBundleB.kpkSig.toList = ks := by
-    dsimp only [hndlBundleB, honestBundle, repVec, ks,
+    dsimp only [hndlBundleB, honestBundle, nvSigZero64, ks,
       DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkSigTerm]
     rw [hndlRecords_opaque_7]; rfl
   have hblob : bundleBlob (publicBundleOf hndlBundleB) =
@@ -746,29 +731,134 @@ private theorem hndl_x25519_pub_ne_zero (x : List UInt8) (v : List.Vector (BitVe
   rw [hndlP_X_keyPairOf_pub] at h'
   exact exampleAgreement_pub_ne_zero _ _ h'
 
-private theorem sha512Ref_hndl (msg : List UInt8) :
-    SignalPqxdh.sha512Ref (blockLevelPrims nvX hndlP) msg = SignalPqxdh.sha512InitState := by
-  have hstep : ∀ blk, SignalPqxdh.sha512Step (blockLevelPrims nvX hndlP)
-      SignalPqxdh.sha512InitState blk = SignalPqxdh.sha512InitState := fun _ => rfl
-  have hfold : ∀ blocks : List (List UInt8),
-      blocks.foldl (SignalPqxdh.sha512Step (blockLevelPrims nvX hndlP)) SignalPqxdh.sha512InitState =
-        SignalPqxdh.sha512InitState := by
-    intro blocks
-    induction blocks with
-    | nil => rfl
-    | cons blk tl ih => simp only [List.foldl_cons, hstep]; exact ih
-  dsimp only [SignalPqxdh.sha512Ref]
-  rw [hfold]
+section HndlCurveHelpers
+
+set_option maxRecDepth 8192
+
+open VerifiedLibraries.Common (
+  edOrderL fpInv recoverXEven leBytesToNat
+  EdPoint edZero edBasepoint edOnCurve edAdd edNeg edSub edSmul encodeEd
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.CurveSpecs (montToEdwards)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4RefBridge (
+  montLiftEd montLiftEd_some_onCurve xeddsaVerifyRef_blockLevelPrims_eq
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Phase4SymbolicBridge (
+  montLiftEd_eq_some_of_witness
+)
+open LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.Edwards (
+  edOnCurve_edZero edOnCurve_edBasepoint edAdd_edZero edNeg_edZero edSmul_eq_edNatSmul
+)
+
+attribute [local irreducible] fpInv recoverXEven montLiftEd montToEdwards edSmul
+
+private def hndlSigZeroEd64 : List UInt8 := (1 : UInt8) :: List.replicate 63 0
+
+private def hndlIdPubEd : EdPoint :=
+  ⟨33304128707865079652137154594158750135640529194297972700686322598875833255992,
+   9649340769776349618630915417390658987772498722136713669954798667326094136659⟩
+
+private theorem hndl_ite_true {α : Sort _} {p : Prop} [Decidable p] (h : p) (a b : α) :
+    (if p then a else b) = a := by simp [h]
+
+private theorem hndl_secretBytes_1 : secretBytes hndlRecords 1 = hndlFresh 5 32 := by
+  unfold secretBytes
+  rw [Symbolic.Swarm.CREF.b1_setupRandomsAt_eq hndlRecords hndlRecords_ne]
   rfl
 
-private theorem sigVerify_hndl_zero64 (ikPk msg : List UInt8) (hik : ikPk.length = 32) :
-    (modelPrims nvX hndlP).sigVerify ikPk msg (vecU8 (repVec 64 0#8)) = true := by
-  have hsig : vecU8 (repVec 64 0#8) = List.replicate 64 0 := rfl
-  dsimp only [modelPrims]
+private theorem hndlBundleB_idPub_closed :
+    hndlBundleB.idPub = (keyPairOf hndlP.C (vec32 (hndlFresh 5 32))).publicKey.bytes := by
+  dsimp only [hndlBundleB, honestBundle, hndlMeB]
+  rw [hndl_secretBytes_1]
+
+private theorem hndlBundleB_idPub_montLiftEd :
+    montLiftEd hndlBundleB.idPub 0#8 = some hndlIdPubEd := by
+  rw [hndlBundleB_idPub_closed]
+  exact (montLiftEd_eq_some_of_witness (uNat := 11) (inv1my := 6) (P := hndlIdPubEd)
+    (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).1
+    _ 0#8 (by decide) (by decide)
+
+private theorem hndl_sha512Pad_len_ge_128 (msg : List UInt8) :
+    128 ≤ (SignalPqxdh.sha512Pad msg).length := by
+  unfold SignalPqxdh.sha512Pad SignalPqxdh.encodeBitLen128BE SignalPqxdh.encodeBitLen64BE
+  simp only [List.length_append, List.length_cons, List.length_nil, List.length_replicate]
+  set rem := (msg.length + 17) % 128
+  have hrem_lt : rem < 128 := Nat.mod_lt _ (by decide)
+  by_cases h0 : rem == 0
+  · have hr0 : rem = 0 := beq_iff_eq.mp h0
+    simp only [h0, ↓reduceIte]; omega
+  · simp only [h0, Bool.false_eq_true, ↓reduceIte]; omega
+
+private theorem hndl_foldl_const_aux {α β : Type} (f : α → β → α) (z : α)
+    (hf : ∀ s x, f s x = z) :
+    ∀ (l : List β), l.foldl f z = z
+  | [] => rfl
+  | _ :: rest => by simp only [List.foldl_cons, hf]; exact hndl_foldl_const_aux f z hf rest
+
+private theorem hndl_foldl_const {α β : Type} (f : α → β → α) (z : α)
+    (hf : ∀ s x, f s x = z) :
+    ∀ (l : List β) (init : α), l ≠ [] → l.foldl f init = z
+  | [], _, hne => absurd rfl hne
+  | _ :: rest, _, _ => by
+    simp only [List.foldl_cons, hf]
+    exact hndl_foldl_const_aux f z hf rest
+
+private theorem hndl_sha512_zero (msg : List UInt8) :
+    SignalPqxdh.sha512Ref (blockLevelPrims nvX hndlP) msg = List.replicate 64 0 := by
+  unfold SignalPqxdh.sha512Ref SignalPqxdh.chunkBlocks
+  dsimp only []
+  have hdiv : 1 ≤ (SignalPqxdh.sha512Pad msg).length / 128 :=
+    Nat.div_pos (hndl_sha512Pad_len_ge_128 msg) (by decide)
+  have hne : ((List.range ((SignalPqxdh.sha512Pad msg).length / 128)).map
+      (fun i => ((SignalPqxdh.sha512Pad msg).drop (i * 128)).take 128)) ≠ [] := by
+    intro heq
+    have hl := congrArg List.length heq
+    simp at hl
+    omega
+  have hstep : ∀ s b, SignalPqxdh.sha512Step (blockLevelPrims nvX hndlP) s b = List.replicate 64 0 := by
+    intro s b
+    unfold SignalPqxdh.sha512Step
+    dsimp only [blockLevelPrims, hndlP]
+    decide
+  rw [hndl_foldl_const _ (List.replicate 64 0) hstep _ _ hne]
+  decide
+
+private theorem sigVerify_hndl_sigZero64 (msg : List UInt8) :
+    (modelPrims nvX hndlP).sigVerify (vecU8 hndlBundleB.idPub) msg (vecU8 nvSigZero64) = true := by
+  have hsig : vecU8 nvSigZero64 = hndlSigZeroEd64 := by decide
   rw [hsig]
-  unfold SignalPqxdh.xeddsaVerifyRef
-  simp only [hik, List.length_replicate, beq_self_eq_true, Bool.true_and, sha512Ref_hndl]
-  rfl
+  have hmont := hndlBundleB_idPub_montLiftEd
+  have hP_on : edOnCurve hndlIdPubEd = true := montLiftEd_some_onCurve hmont
+  change SignalPqxdh.xeddsaVerifyRef
+    ({ blockLevelPrims nvX hndlP with sha512 := SignalPqxdh.sha512Ref (blockLevelPrims nvX hndlP) })
+    (vecU8 hndlBundleB.idPub) msg hndlSigZeroEd64 = true
+  rw [xeddsaVerifyRef_blockLevelPrims_eq]
+  have hcond : ((vecU8 hndlBundleB.idPub).length == 32 &&
+      hndlSigZeroEd64.length == 64 &&
+      ((hndlSigZeroEd64.getD 63 0 &&& 0x60) == 0)) = true := by
+    rw [vecU8_length]; decide
+  rw [hndl_ite_true hcond]
+  dsimp only
+  have hs0 : ((hndlSigZeroEd64.getD 63 0 &&& 0x80) >>> 7).toBitVec = 0#8 := by decide
+  rw [hs0, u8Vec_vecU8, hmont]
+  dsimp only
+  rw [hndl_sha512_zero]
+  have hh0 : leBytesToNat (u8Vec 64 (List.replicate 64 (0 : UInt8))).toList % edOrderL = 0 := by
+    decide
+  have hsNat0 : leBytesToNat (u8Vec 32
+      ((hndlSigZeroEd64.drop 32).take 31 ++ [(hndlSigZeroEd64.drop 32).getD 31 0 &&& 0x7F])).toList %
+      edOrderL = 0 := by decide
+  rw [hh0, hsNat0,
+    edSmul_eq_edNatSmul (by decide) edOnCurve_edBasepoint,
+    edSmul_eq_edNatSmul (by decide) hP_on]
+  change (toU8 (encodeEd (edSub edZero edZero)) == hndlSigZeroEd64.take 32) = true
+  have hsub0 : edSub edZero edZero = edZero := by
+    change edAdd edZero (edNeg edZero) = edZero
+    rw [edNeg_edZero, edAdd_edZero edOnCurve_edZero]
+  rw [hsub0]
+  decide
+
+end HndlCurveHelpers
 
 set_option maxRecDepth 8192 in
 theorem hndl_pqInitModel_ok :
@@ -776,11 +866,10 @@ theorem hndl_pqInitModel_ok :
   have htrust : hndlStA0.trusts ⟨⟨hndlBundleB.idPub⟩⟩ = true :=
     (alicePqParty_trusts_iff (alicePqParty_aliceInitPqParty hndlInterp hndlRecords)
       hndlInterp_cryptoEquationsHold hndlBundleB).mpr hndlBundleB_idPub
-  have hikB : (vecU8 hndlBundleB.idPub).length = 32 := vecU8_length _
-  have hsig1 := sigVerify_hndl_zero64 (vecU8 hndlBundleB.idPub)
-    (SignalPqxdh.encodeEC (vecU8 hndlBundleB.spkPub)) hikB
-  have hsig2 := sigVerify_hndl_zero64 (vecU8 hndlBundleB.idPub)
-    (SignalPqxdh.encodeKEM (vecU8 (repVec 1568 0#8))) hikB
+  have hsig1 := sigVerify_hndl_sigZero64
+    (SignalPqxdh.encodeEC (vecU8 hndlBundleB.spkPub))
+  have hsig2 := sigVerify_hndl_sigZero64
+    (SignalPqxdh.encodeKEM (vecU8 (repVec 1568 0#8)))
   have hkem : (modelPrims nvX hndlP).kemEncaps (vecU8 (repVec 1568 0#8))
       (vecU8 (initiateKemCoins hndlTape)) =
       some (vecU8 (repVec 32 0#8), vecU8 (repVec 1568 0#8)) := rfl
@@ -793,8 +882,8 @@ theorem hndl_pqInitModel_ok :
     dsimp only [initiateInput]
     rw [show hndlBundleB.opk = none from rfl,
       show hndlBundleB.kpkPub = repVec 1568 0#8 from rfl,
-      show hndlBundleB.spkSig = repVec 64 0#8 from rfl,
-      show hndlBundleB.kpkSig = repVec 64 0#8 from rfl]
+      show hndlBundleB.spkSig = nvSigZero64 from rfl,
+      show hndlBundleB.kpkSig = nvSigZero64 from rfl]
     dsimp only [Option.map]
     unfold SignalPqxdh.Model.initiateKeys
     simp only [«guard», bind, Bind.bind, Option.bind, pure, Pure.pure, Option.map, ↓reduceIte,
@@ -820,14 +909,14 @@ theorem hndl_pqInitModel_ok :
   simp only [bind, Except.bind, pure, Except.pure, hcc, ↓reduceIte]
   exact ⟨_, rfl⟩
 
-def hndlCall : CliCall where
+@[expose] def hndlCall : CliCall where
   party := hndlRecords.alice
   cmd := .init (peerOf hndlRecords hndlRecords.alice) bundleDir
   bundle := (publicBundleOf hndlBundleB).files bundleDir
   stdin := []
   coins := hndlTape.toList
 
-def hndlInputs : Inputs :=
+@[expose] def hndlInputs : Inputs :=
   pqInitInputs hndlP hndlStA0 hndlBundleB hndlTape
 
 theorem hndlCall_runInput : runInput hndlCall = bundleBlob (publicBundleOf hndlBundleB) := by
@@ -936,12 +1025,12 @@ theorem hndlInputs_for :
     rw [Bool.or_eq_false_iff] at hl
     exact ⟨hl.1, hl.2, Nat.le_trans (Nat.le_of_lt hsz) (by decide)⟩
 
-def hndlSkA : HwBytes := secretBytes hndlRecords 0
-def hndlPkA : HwBytes := pubBytes hndlInterp hndlSkA
+@[expose] def hndlSkA : HwBytes := secretBytes hndlRecords 0
+@[expose] def hndlPkA : HwBytes := pubBytes hndlInterp hndlSkA
 
-def hndlInitEv : RunEvent := runEventOf hndlCall (some (0, []))
+@[expose] def hndlInitEv : RunEvent := runEventOf hndlCall (some (0, []))
 
-def hndlEvs : List CliEvent :=
+@[expose] def hndlEvs : List CliEvent :=
   [.run hndlInitEv, .env .breakDH, .env (.invertDH hndlPkA hndlSkA)]
 
 theorem hndl_cliTraces :

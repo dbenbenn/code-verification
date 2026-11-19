@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # `signal_session::run`: Placed Continuation Abbreviations
@@ -21,7 +23,7 @@ Relocatable (`[LibsignalPlacement]`) continuation abbreviations (`JoinKPlaced`, 
 and `run_hop_dropSpeOwned_placed` on Block `579` (`lsProg_579`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

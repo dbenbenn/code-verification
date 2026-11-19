@@ -12,33 +12,47 @@ module
 public import LibsignalBinary.Heap.Fine.CreditInst
 public import LibsignalBinary.Heap.Fine.Inv
 public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliElfMallocngHarness
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Collect.EntryPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Collect.StepsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2DispatchPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.TryAllocateIn3PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliElfMallocngHarness
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlacedSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Collect.EntryPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Collect.StepsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2DispatchPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.PoolSliceBoundInst
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.TryAllocateIn3PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudgetSat -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 
 /-!
 # Stdin-Capped Entry Budget Fit (`MainEntryBudgetFitsCap`) and `main` Lifts
@@ -50,7 +64,7 @@ Block-`579` `runSpecTightPlaced` contracts to `MainOkCliExtPqB2NeedLocksPlacedAt
 `MainOkCliExtOverB2NeedLocksPlacedAt` on Block `617`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -61,8 +75,9 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib
 open CryptoVerification
-  (LibsignalHooks LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns
-   ls_externAt?_of_mem ls_hook_ok_ultra_of_mem lsmpl lsρ)
+  (ExternsDistinctOnHooked LibsignalHooks LibsignalPlacement
+   libsignalHookedExterns libsignalMutatedBlocks ls_externAt?_of_mem ls_hook_ok_ultra_of_mem lsmpl
+   lsρ)
 open CryptoVerification.E2E (PEParams UnreachedPqxdhPrimitives)
 open CryptoVerification.LibsignalPublicApi.StoreKit
   (FsFiles subroutine_ok_rocl_of_plain withLsRoCl)
@@ -78,13 +93,13 @@ open CryptoVerification.SignalSession.Cli
 open CryptoVerification.SignalSession.Cli.Placed (lsProg_588)
 open CryptoVerification.SignalSession.Cli.Main.Placed (lsProg_617)
 open CryptoVerification.SignalSession.Cli.MainHops
-  (CallV DomainArgv IoModel LsCodeInv RunCall cliExternsPlaced_writeFile cliExternsPlaced_writeStdout
+  (CallV DomainArgv IoModel LsCodeInv RunCall
    cliIo cliMainStk cliResStack cliWrOk cli_hstk64 cli_resStack_callees
    fromUtf8Hook_ok hparse_of_domains inputOf lsHandleErrorSymMain mProgPlaced mainFrameSize
    namedWrites parseArgs)
 open CryptoVerification.SignalSession.Cli.RunCompose (RunSem runRel runRel_dom)
 open CryptoVerification.SignalSession.Cli.RunGlue
-  (CliGhostHooks cliGhostExterns cliGhostExterns_other)
+  (CliGhostHooks cliGhostExterns)
 open CryptoVerification.SignalSession.Cli.Slots
   (cliExternsPlaced_panic_all cliGhostExterns_panic_all)
 open CryptoVerification.SpqrV1.Alloc (reserveCapStride)
@@ -139,16 +154,23 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
   (allocNoOomExtern_fs_rocl reserve16_placed_ok reserve1_placed_ok)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.TryAllocateIn3PlacedBudget
   (tryAllocateIn3_placed_okFs_of_hooks_at)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
+open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlacedSat
+  (MainIoBoundedPlacedSat MainIoOfPlacedSat)
+open LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs
+  (writeFileSpecPlacedSat writeFileStackFloor_le_extHookStack writeStdoutSpecPlacedSat
+   writeStdoutStackFloor_le_extHookStack)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
   (AllocContractsFsPlaced MainIoPlaced ReadFileRuleEnv readFileLitSpecPlaced readStdinSpecPlaced
    writeFileSpecPlaced writeStdoutSpecPlaced)
+open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudgetSat (MainIoPlacedSat)
 open VerifiedLibraries.Mallocng (mallocngAddrsOfPlacement)
 
 /-! ## Stdin-capped entry budget-fit predicates -/
 
 /-- Entry cost-model budget-fit predicate across `M1`..`M6`, guarding the `M4` continuation with
 `(inputOf i c).length ≤ stdinCapBytes`. -/
-def MainEntryBudgetFitsCap (M : AllocCostModel) (lim : BudgetLimits) (st0 : M.σ)
+@[expose] def MainEntryBudgetFitsCap (M : AllocCostModel) (lim : BudgetLimits) (st0 : M.σ)
     (io : IoModel) (uuidParse : UuidParser)
     (RunEnv : RunCall → List AllocEvent → Prop)
     (Run : Inputs → RunAnswer → Prop) : Prop :=
@@ -202,7 +224,7 @@ theorem mainEntryBudgetFitsCap_mono_run
           ⟨hm3'.1, fun hin a resP callP storesP inpP coinsP hrun =>
             hm3'.2 hin a resP callP storesP inpP coinsP (himp i a hrun)⟩⟩⟩⟩
 
-def domScopedRun (Dom : Inputs → Prop) (Run₀ : Inputs → RunAnswer → Prop)
+@[expose] def domScopedRun (Dom : Inputs → Prop) (Run₀ : Inputs → RunAnswer → Prop)
     (i : Inputs) (a : RunAnswer) : Prop :=
   Dom i ∧ Run₀ i a
 
@@ -233,7 +255,7 @@ theorem mainEntryBudgetFitsCap_pqScopedRun
   mainEntryBudgetFitsCap_mono_run (fun _ _ hr => hr.2) h
 
 /-- `ReadEnv`-parametric generalization of `MainEntryBudgetFitsCap` over `M3EnvReadOf`. -/
-def MainEntryBudgetFitsCapOf (M : AllocCostModel) (lim : BudgetLimits) (st0 : M.σ)
+@[expose] def MainEntryBudgetFitsCapOf (M : AllocCostModel) (lim : BudgetLimits) (st0 : M.σ)
     (io : IoModel) (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (uuidParse : UuidParser)
     (RunEnv : RunCall → List AllocEvent → Prop)
@@ -321,7 +343,7 @@ theorem mainEntryBudgetFitsCapOf_pqScopedRun
 private theorem ls_hook_placed_rocl_ok_local [LibsignalPlacement] {α : Type}
     {H : LibsignalHooks} {sym : String} {spec : Spec α}
     (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok (lsProg_617 H) (lsρ sym) (withLsRoCl lsmpl spec) :=
   subroutine_ok_rocl_of_plain <|
     ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617) hsat hmem
@@ -377,15 +399,15 @@ theorem mainCalleesBlk617_of_allocFs_and_hooks_cliResStack [LibsignalPlacement]
 
 /-! ## Continuation state invariants and `B2MainRemainingHops` -/
 
-def B2St5Cap (M : AllocCostModel) (lim : BudgetLimits) (_i : Inputs) (_c : CallV)
+@[expose] def B2St5Cap (M : AllocCostModel) (lim : BudgetLimits) (_i : Inputs) (_c : CallV)
     (_sg : StoresGhost) (ok : Bool) (st5 : M.σ) : Prop :=
   FitsEnv M lim st5 (M6Env ok)
 
-def B2St4Cap (M : AllocCostModel) (lim : BudgetLimits) (_i : Inputs) (_c : CallV)
+@[expose] def B2St4Cap (M : AllocCostModel) (lim : BudgetLimits) (_i : Inputs) (_c : CallV)
     (sg : StoresGhost) (st4 : M.σ) : Prop :=
   ∀ (ok : Bool), FitsEnv M lim st4 (SeqEnv (M5Env sg) (M6Env ok))
 
-def B2St3Cap (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel)
+@[expose] def B2St3Cap (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel)
     (RunEnv : RunCall → List AllocEvent → Prop) (Run : Inputs → RunAnswer → Prop)
     (i : Inputs) (c : CallV) (st3 : M.σ) : Prop :=
   (∀ evs_f : List AllocEvent, FreeOnlyEvs evs_f → FitsEvents M lim st3 evs_f) ∧
@@ -403,7 +425,7 @@ def B2St3Cap (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel)
         (∀ pw ∈ sg.writes, io.pathOk pw.1 ∧ pw.1.length < 2 ^ 32) →
         B2St4Cap M lim i c sg st4
 
-def B2St2Cap (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel)
+@[expose] def B2St2Cap (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel)
     (RunEnv : RunCall → List AllocEvent → Prop) (Run : Inputs → RunAnswer → Prop)
     (i : Inputs) (c : CallV) (st2 : M.σ) : Prop :=
   FitsEnv M lim st2 (M3Env io i c) ∧
@@ -414,7 +436,7 @@ def B2St2Cap (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel)
       B2St3Cap M lim io RunEnv Run i c (M.stepEvents evs_m3 st2))
 
 /-- Coordinatewise dominance on `FineBudget` across all 6 watermark and live-63 fields. -/
-def FineBudgetDom (b₁ b₂ : FineBudget) : Prop :=
+@[expose] def FineBudgetDom (b₁ b₂ : FineBudget) : Prop :=
   b₁.cumSmallBytes ≤ b₂.cumSmallBytes ∧
   b₁.cumSmallGroupsS ≤ b₂.cumSmallGroupsS ∧
   b₁.live63Bytes ≤ b₂.live63Bytes ∧
@@ -674,7 +696,7 @@ private theorem entryM2CollectEnv_fineBudgetDom_peak {n : Nat} (hn : 1 ≤ n)
       rw [hL, hR]
       exact fineBudgetDom_stepEvents evs₂ (fineBudgetDom_alloc64_realloc0_64 st1)
 
-def B2St1Cap (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel) (uuidParse : UuidParser)
+@[expose] def B2St1Cap (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel) (uuidParse : UuidParser)
     (RunEnv : RunCall → List AllocEvent → Prop) (Run : Inputs → RunAnswer → Prop)
     (i : Inputs) (st1 : M.σ) : Prop :=
   FitsEnv M lim st1 (M2PreDeallocEnv uuidParse (i.argv.map bytesOfString)) ∧
@@ -688,7 +710,7 @@ def B2St1Cap (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel) (uuidParse
         (M.stepEvents (m2DispatchEvents uuidParse (i.argv.map bytesOfString))
           (M.stepEvents evs_c st1)))
 
-def B2St0Cap (M : AllocCostModel) (st0 : M.σ) (i : Inputs) (st : M.σ) : Prop :=
+@[expose] def B2St0Cap (M : AllocCostModel) (st0 : M.σ) (i : Inputs) (st : M.σ) : Prop :=
   CliInputsOk i ∧ st = st0
 
 theorem b2St0Cap_init (M : AllocCostModel) (st0 : M.σ) (i : Inputs) (hok : CliInputsOk i) :
@@ -784,7 +806,7 @@ theorem b2MainRemainingHopsCap_of_allocFs_and_io [LibsignalPlacement]
     step6 := fun hst5 hs hexit =>
       main_m6_m6Env_pool_proof_placed hc hio hst5 hstk cli_hstk64 hs hexit }
 
-def B2St2CapOf (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel)
+@[expose] def B2St2CapOf (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (RunEnv : RunCall → List AllocEvent → Prop) (Run : Inputs → RunAnswer → Prop)
     (i : Inputs) (c : CallV) (st2 : M.σ) : Prop :=
@@ -807,7 +829,7 @@ private theorem b2St2CapOf_of_fineBudgetDom {lim : BudgetLimits} {io : IoModel}
      ⟨fun evs_f hf => fitsEvents_of_fineBudgetDom evs_f hdom3 ((h.2 evs_m3 hm3).1 evs_f hf),
       fun hin => b2St3Cap_of_fineBudgetDom hdom3 ((h.2 evs_m3 hm3).2 hin)⟩⟩
 
-def B2St1CapOf (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel)
+@[expose] def B2St1CapOf (M : AllocCostModel) (lim : BudgetLimits) (io : IoModel)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (uuidParse : UuidParser)
     (RunEnv : RunCall → List AllocEvent → Prop) (Run : Inputs → RunAnswer → Prop)
@@ -1031,7 +1053,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCap_plac
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -1079,7 +1101,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCap
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -1136,7 +1158,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCap
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -1192,18 +1214,6 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCap
 theorem cliExternsPlaced_handleErrorMain (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     cliExternsPlaced mmpl W lsHandleErrorSymMain = some Rust.panicked :=
   cliExternsPlaced_panic_all mmpl W lsHandleErrorSymMain (by decide)
-
-theorem cliGhostExterns_writeFile (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
-    (W : CliHooks) :
-    cliGhostExterns gh (cliExternsPlaced mmpl W) lsWriteFileSym = some writeFileHook :=
-  (cliGhostExterns_other gh _ (by decide) (by decide) (by decide)
-    (by decide) (by decide) (by decide)).trans (cliExternsPlaced_writeFile mmpl W)
-
-theorem cliGhostExterns_writeStdout (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
-    (W : CliHooks) :
-    cliGhostExterns gh (cliExternsPlaced mmpl W) lsWriteStdoutSym = some writeStdoutHook :=
-  (cliGhostExterns_other gh _ (by decide) (by decide) (by decide)
-    (by decide) (by decide) (by decide)).trans (cliExternsPlaced_writeStdout mmpl W)
 
 theorem cliGhostExterns_handleErrorMain (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
     (W : CliHooks) :
@@ -1294,17 +1304,17 @@ theorem writeFileHook_budget_ok_placed {M : AllocCostModel} (A : RustCliAllocBud
 
 theorem writeFile_budget_rocl_ok_of_lookup [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks} (stk : Nat)
-    (hLookup : H lsWriteFileSym = some writeFileHook) :
+    (hWriteFile : HookSat H lsWriteFileSym (withLsRet (writeFileSpecPlacedSat cliIo A lim stk))) :
     subroutine_ok (lsProg_617 H) (lsρ lsWriteFileSym)
-      (withLsRoCl lsmpl (writeFileSpecPlaced cliIo A lim stk)) :=
-  ls_hook_placed_rocl_ok_local ⟨writeFileHook, hLookup, writeFileHook_budget_ok_placed A lim stk⟩
+      (withLsRoCl lsmpl (withLsRet (writeFileSpecPlacedSat cliIo A lim stk))) :=
+  ls_hook_placed_rocl_ok_local hWriteFile
 
 theorem writeStdout_budget_rocl_ok_of_lookup [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks} (stk : Nat)
-    (hLookup : H lsWriteStdoutSym = some writeStdoutHook) :
+    (hWriteStdout : HookSat H lsWriteStdoutSym (withLsRet (writeStdoutSpecPlacedSat A lim stk))) :
     subroutine_ok (lsProg_617 H) (lsρ lsWriteStdoutSym)
-      (withLsRoCl lsmpl (writeStdoutSpecPlaced A lim stk)) :=
-  ls_hook_placed_rocl_ok_local ⟨writeStdoutHook, hLookup, writeStdoutHook_budget_ok_placed A lim stk⟩
+      (withLsRoCl lsmpl (withLsRet (writeStdoutSpecPlacedSat A lim stk))) :=
+  ls_hook_placed_rocl_ok_local hWriteStdout
 
 theorem mainIoPlaced_cliExterns_of_readSubroutines [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1312,12 +1322,19 @@ theorem mainIoPlaced_cliExterns_of_readSubroutines [LibsignalPlacement] {M : All
     (hReadStdin : subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ lsReadStdinSym)
       (withLsRoCl lsmpl (readStdinSpecPlaced cliIo A lim stk)))
     (hReadFile : subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ lsReadFileSym)
-      (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk))) :
-    MainIoPlaced A lim (cliExternsPlaced mmpl W) cliIo stk where
+      (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk)))
+    (hstk : extHookStack ≤ stk := by decide)
+    (hWriteFile : HookSat (cliExternsPlaced mmpl W) lsWriteFileSym
+      (withLsRet (writeFileSpecPlacedSat cliIo A lim stk)))
+    (hWriteStdout : HookSat (cliExternsPlaced mmpl W) lsWriteStdoutSym
+      (withLsRet (writeStdoutSpecPlacedSat A lim stk))) :
+    MainIoPlacedSat A lim (cliExternsPlaced mmpl W) cliIo stk where
   readStdin := hReadStdin
   readFile := hReadFile
-  writeFile := writeFile_budget_rocl_ok_of_lookup stk (cliExternsPlaced_writeFile mmpl W)
-  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk (cliExternsPlaced_writeStdout mmpl W)
+  writeFile := writeFile_budget_rocl_ok_of_lookup stk hWriteFile
+  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk hWriteStdout
+  hWriteFileStack := Nat.le_trans writeFileStackFloor_le_extHookStack hstk
+  hWriteStdoutStack := Nat.le_trans writeStdoutStackFloor_le_extHookStack hstk
 
 theorem mainIoBoundedPlaced_cliExterns_of_readSubroutines [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1326,12 +1343,19 @@ theorem mainIoBoundedPlaced_cliExterns_of_readSubroutines [LibsignalPlacement] {
     (hReadStdin : subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ lsReadStdinSym)
       (withLsRoCl lsmpl (readStdinSpecOfPlaced cliIo A lim stk StdinEnv)))
     (hReadFile : subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ lsReadFileSym)
-      (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk))) :
-    MainIoBoundedPlaced A lim (cliExternsPlaced mmpl W) cliIo stk StdinEnv where
+      (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk)))
+    (hstk : extHookStack ≤ stk := by decide)
+    (hWriteFile : HookSat (cliExternsPlaced mmpl W) lsWriteFileSym
+      (withLsRet (writeFileSpecPlacedSat cliIo A lim stk)))
+    (hWriteStdout : HookSat (cliExternsPlaced mmpl W) lsWriteStdoutSym
+      (withLsRet (writeStdoutSpecPlacedSat A lim stk))) :
+    MainIoBoundedPlacedSat A lim (cliExternsPlaced mmpl W) cliIo stk StdinEnv where
   readStdin := hReadStdin
   readFile := hReadFile
-  writeFile := writeFile_budget_rocl_ok_of_lookup stk (cliExternsPlaced_writeFile mmpl W)
-  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk (cliExternsPlaced_writeStdout mmpl W)
+  writeFile := writeFile_budget_rocl_ok_of_lookup stk hWriteFile
+  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk hWriteStdout
+  hWriteFileStack := Nat.le_trans writeFileStackFloor_le_extHookStack hstk
+  hWriteStdoutStack := Nat.le_trans writeStdoutStackFloor_le_extHookStack hstk
 
 theorem mainIoPlaced_cliGhostExterns_of_readSubroutines [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1341,12 +1365,19 @@ theorem mainIoPlaced_cliGhostExterns_of_readSubroutines [LibsignalPlacement] {M 
         (lsρ lsReadStdinSym) (withLsRoCl lsmpl (readStdinSpecPlaced cliIo A lim stk)))
     (hReadFile :
       subroutine_ok (lsProg_617 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-        (lsρ lsReadFileSym) (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk))) :
-    MainIoPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) cliIo stk where
+        (lsρ lsReadFileSym) (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk)))
+    (hstk : extHookStack ≤ stk := by decide)
+    (hWriteFile : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsWriteFileSym
+      (withLsRet (writeFileSpecPlacedSat cliIo A lim stk)))
+    (hWriteStdout : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsWriteStdoutSym
+      (withLsRet (writeStdoutSpecPlacedSat A lim stk))) :
+    MainIoPlacedSat A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) cliIo stk where
   readStdin := hReadStdin
   readFile := hReadFile
-  writeFile := writeFile_budget_rocl_ok_of_lookup stk (cliGhostExterns_writeFile mmpl gh W)
-  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk (cliGhostExterns_writeStdout mmpl gh W)
+  writeFile := writeFile_budget_rocl_ok_of_lookup stk hWriteFile
+  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk hWriteStdout
+  hWriteFileStack := Nat.le_trans writeFileStackFloor_le_extHookStack hstk
+  hWriteStdoutStack := Nat.le_trans writeStdoutStackFloor_le_extHookStack hstk
 
 theorem mainIoBoundedPlaced_cliGhostExterns_of_readSubroutines [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1358,12 +1389,19 @@ theorem mainIoBoundedPlaced_cliGhostExterns_of_readSubroutines [LibsignalPlaceme
         (withLsRoCl lsmpl (readStdinSpecOfPlaced cliIo A lim stk StdinEnv)))
     (hReadFile :
       subroutine_ok (lsProg_617 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-        (lsρ lsReadFileSym) (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk))) :
-    MainIoBoundedPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) cliIo stk StdinEnv where
+        (lsρ lsReadFileSym) (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk)))
+    (hstk : extHookStack ≤ stk := by decide)
+    (hWriteFile : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsWriteFileSym
+      (withLsRet (writeFileSpecPlacedSat cliIo A lim stk)))
+    (hWriteStdout : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsWriteStdoutSym
+      (withLsRet (writeStdoutSpecPlacedSat A lim stk))) :
+    MainIoBoundedPlacedSat A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) cliIo stk StdinEnv where
   readStdin := hReadStdin
   readFile := hReadFile
-  writeFile := writeFile_budget_rocl_ok_of_lookup stk (cliGhostExterns_writeFile mmpl gh W)
-  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk (cliGhostExterns_writeStdout mmpl gh W)
+  writeFile := writeFile_budget_rocl_ok_of_lookup stk hWriteFile
+  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk hWriteStdout
+  hWriteFileStack := Nat.le_trans writeFileStackFloor_le_extHookStack hstk
+  hWriteStdoutStack := Nat.le_trans writeStdoutStackFloor_le_extHookStack hstk
 
 /-! ## `MainIoOfPlaced` and `MainEntryBudgetFitsCapOf` specializations -/
 
@@ -1375,12 +1413,19 @@ theorem mainIoOfPlaced_cliExterns_of_readSubroutines [LibsignalPlacement] {M : A
     (hReadStdin : subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ lsReadStdinSym)
       (withLsRoCl lsmpl (readStdinSpecOfPlaced cliIo A lim stk StdinEnv)))
     (hReadFile : subroutine_ok (lsProg_617 (cliExternsPlaced mmpl W)) (lsρ lsReadFileSym)
-      (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk ReadEnv))) :
-    MainIoOfPlaced A lim (cliExternsPlaced mmpl W) cliIo stk StdinEnv ReadEnv where
+      (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk ReadEnv)))
+    (hstk : extHookStack ≤ stk := by decide)
+    (hWriteFile : HookSat (cliExternsPlaced mmpl W) lsWriteFileSym
+      (withLsRet (writeFileSpecPlacedSat cliIo A lim stk)))
+    (hWriteStdout : HookSat (cliExternsPlaced mmpl W) lsWriteStdoutSym
+      (withLsRet (writeStdoutSpecPlacedSat A lim stk))) :
+    MainIoOfPlacedSat A lim (cliExternsPlaced mmpl W) cliIo stk StdinEnv ReadEnv where
   readStdin := hReadStdin
   readFile := hReadFile
-  writeFile := writeFile_budget_rocl_ok_of_lookup stk (cliExternsPlaced_writeFile mmpl W)
-  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk (cliExternsPlaced_writeStdout mmpl W)
+  writeFile := writeFile_budget_rocl_ok_of_lookup stk hWriteFile
+  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk hWriteStdout
+  hWriteFileStack := Nat.le_trans writeFileStackFloor_le_extHookStack hstk
+  hWriteStdoutStack := Nat.le_trans writeStdoutStackFloor_le_extHookStack hstk
 
 theorem mainIoOfPlaced_cliGhostExterns_of_readSubroutines [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1393,12 +1438,19 @@ theorem mainIoOfPlaced_cliGhostExterns_of_readSubroutines [LibsignalPlacement]
         (withLsRoCl lsmpl (readStdinSpecOfPlaced cliIo A lim stk StdinEnv)))
     (hReadFile :
       subroutine_ok (lsProg_617 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-        (lsρ lsReadFileSym) (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk ReadEnv))) :
-    MainIoOfPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) cliIo stk StdinEnv ReadEnv where
+        (lsρ lsReadFileSym) (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A lim stk ReadEnv)))
+    (hstk : extHookStack ≤ stk := by decide)
+    (hWriteFile : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsWriteFileSym
+      (withLsRet (writeFileSpecPlacedSat cliIo A lim stk)))
+    (hWriteStdout : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsWriteStdoutSym
+      (withLsRet (writeStdoutSpecPlacedSat A lim stk))) :
+    MainIoOfPlacedSat A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) cliIo stk StdinEnv ReadEnv where
   readStdin := hReadStdin
   readFile := hReadFile
-  writeFile := writeFile_budget_rocl_ok_of_lookup stk (cliGhostExterns_writeFile mmpl gh W)
-  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk (cliGhostExterns_writeStdout mmpl gh W)
+  writeFile := writeFile_budget_rocl_ok_of_lookup stk hWriteFile
+  writeStdout := writeStdout_budget_rocl_ok_of_lookup stk hWriteStdout
+  hWriteFileStack := Nat.le_trans writeFileStackFloor_le_extHookStack hstk
+  hWriteStdoutStack := Nat.le_trans writeStdoutStackFloor_le_extHookStack hstk
 
 theorem b2MainSpecTightNeedLocksFineAt_of_runTight_and_budgetFitsCapOf_lsmpl [LibsignalPlacement]
     {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
@@ -1479,7 +1531,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_pl
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -1526,7 +1578,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -1579,7 +1631,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf
     {mpl mmpl : Obj.MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.ReprPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchPlaced
@@ -29,7 +29,7 @@ Proves stage-by-stage `SepWPp` lemmas and `ekSentCt1ReceivedEncode1_gen_placed_o
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -57,9 +57,7 @@ open CryptoVerification.SpqrV1.Auth
 open CryptoVerification.SpqrV1.Prost.MessageEncode hiding
   reserveCap_one_bounds cap_toNat_eq_of_beq lt_cap_toNat_of_beq_false
   EkSentCt1ReceivedEncode1PinnedPlacedOkExt EkSentCt1ReceivedEncode1PlacedOkExt
-  EkSentCt1ReceivedEncode1PinnedPlacedOkX EkSentCt1ReceivedEncode1PlacedOkX
   Ct1SentEncode1PinnedPlacedOkExt Ct1SentEncode1PlacedOkExt
-  Ct1SentEncode1PinnedPlacedOkX Ct1SentEncode1PlacedOkX
   step_ek_hdr_1_placed step_ek_epoch_1_placed step_ek_auth_1_placed
   step_ek_dk_1_placed step_ek_ct1_1_placed step_ek_epilogue_1_placed
   ek_sent_ct1_received_encode_1_pinned_placed_ok ek_sent_ct1_received_encode_1_placed_ok

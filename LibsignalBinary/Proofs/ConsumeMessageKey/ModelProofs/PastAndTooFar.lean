@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
 import ProofLib.Lemmas
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SessionModel.PastAndTooFar
 

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
+import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
+import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvWhisperEval
 import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
 import Symbolic.Proofs.Swarm.CREF.RecvWire.SlotPure
@@ -19,6 +19,8 @@ import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvWhisperCodec
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvWhisperReject
 import Symbolic.Proofs.Swarm.CREF.Cli.World.TurnPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import LibsignalBinary.Specifications.SignalSession.Run
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
 
 /-!
 # Whisper Receive Turn and Leak-Record Transitions
@@ -27,7 +29,7 @@ Proves `CliTurn.after` and `leakRecords` transition lemmas for CLI `recv` calls 
 inputs (`wireWhisperTag :: body`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

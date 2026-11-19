@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileOpenSteps
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileDir
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileLoop
-public import LibsignalBinary.Proofs.SignalSession.CliIo.FinishGrow
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileOpenSteps
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileDir
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileLoop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.CliIo.FinishGrow
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslOpenDeterministic -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinProof -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadFileSteps
 
 /-!
 # Placement-Generic Proof of `signal_session_io::read_file`
@@ -26,7 +29,7 @@ Proves `cliIoReadFileGen_ok`, `cliIoReadFile_ok`, and `cliIoReadFileRo_ok` for
   allocator OOM via `cliIoReadFileOom`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -96,7 +99,7 @@ abbrev cliIoOpenEntry (pathBytes : List (BitVec 8)) (kind : FdKind) : FdEntry :=
     cloexec := true, offset := 0, kind := kind }
 
 /-- Spatial + `fs` postcondition of `signal_session_io::read_file`. -/
-def cliIoReadFileResult {oom : State → State → Prop} (A : RustStdAlloc oom)
+@[expose] def cliIoReadFileResult {oom : State → State → Prop} (A : RustStdAlloc oom)
     (sret : BitVec 64) (pathBytes : List (BitVec 8)) (lb lk : Nat) (s0 sf : State) : SepProp :=
   if 4096 ≤ pathBytes.length ∨ 0#8 ∈ pathBytes then
     ⌜sf.fs = s0.fs⌝ ∗
@@ -116,7 +119,7 @@ def cliIoReadFileResult {oom : State → State → Prop} (A : RustStdAlloc oom)
         A.pool lb lk sf
 
 /-- OOM postcondition of `signal_session_io::read_file` (reachable only on `.ok fd .localFile`). -/
-def cliIoReadFileOom (oom : State → State → Prop) (pathBytes : List (BitVec 8))
+@[expose] def cliIoReadFileOom (oom : State → State → Prop) (pathBytes : List (BitVec 8))
     (s0 sf : State) : SepProp :=
   ⌜pathBytes.length < 4096 ∧ 0#8 ∉ pathBytes ∧
     ∃ fd, classifyOpenRdonly s0.fs (cPathOf pathBytes) = .ok fd .localFile ∧
@@ -128,7 +131,7 @@ def cliIoReadFileOom (oom : State → State → Prop) (pathBytes : List (BitVec 
 /-- Permission-parametric Hoare contract for `signal_session_io::read_file(path: &str)`
     (`ro = false` for read-write `↦ₛ`, `ro = true` for read-only `↦ᵣ`).
     Ghost argument: `(sret, pathPtr, pathBytes, lb, lk)`. -/
-def cliIoReadFileGenSpec (ro : Bool) {oom : State → State → Prop} (A : RustStdAlloc oom)
+@[expose] def cliIoReadFileGenSpec (ro : Bool) {oom : State → State → Prop} (A : RustStdAlloc oom)
     (stackBytes : Nat) : Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × Nat × Nat) where
   pre := fun (sret, pathPtr, pathBytes, lb, lk) s0 =>
     ⌜8432 + Rust.hookStack ≤ stackBytes ∧
@@ -163,10 +166,6 @@ def cliIoReadFileGenSpec (ro : Bool) {oom : State → State → Prop} (A : RustS
 /-- Read-write (`↦ₛ`) specialization of `cliIoReadFileGenSpec`. -/
 abbrev cliIoReadFileSpec {oom : State → State → Prop} (A : RustStdAlloc oom) (stackBytes : Nat) :=
   cliIoReadFileGenSpec false A stackBytes
-
-/-- Read-only (`↦ᵣ`) specialization of `cliIoReadFileGenSpec`. -/
-abbrev cliIoReadFileRoSpec {oom : State → State → Prop} (A : RustStdAlloc oom) (stackBytes : Nat) :=
-  cliIoReadFileGenSpec true A stackBytes
 
 section
 arm64_proof_prelude
@@ -954,72 +953,6 @@ theorem cliIoReadFileGen_ok (ro : Bool) {oom : State → State → Prop} (A : Ru
           rw [pure_sepConj_of_true hpres]
           refine Satisfies.mono (sepConj_mono_left ?_) hm_out
           exact Entails.trans (sepConj_mono_left hent) (by sep_entail)
-
-/-- Read-write (`↦ₛ`) specialization of `cliIoReadFileGen_ok`. -/
-theorem cliIoReadFile_ok {oom : State → State → Prop} (A : RustStdAlloc oom)
-    {mpl : MultiPlacement} (hpl : signalSessionIoMultiLib.Placeable mpl)
-    {P : Program} {stackBytes : Nat}
-    (hsvc : P.svc = Syscall.standard)
-    (hext_os : ExternPreservesOracleSymtab P)
-    (hext3 : CliIoBlockNoExtern mpl P 3)
-    (hext4 : CliIoBlockNoExtern mpl P 4)
-    (hopen : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoOpenSym)
-      muslOpenRdonlyDetSpec)
-    (herrno : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoErrnoLocationSym)
-      muslErrnoLocationSpec)
-    (hread_dir : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadSym)
-      muslReadDir32Spec)
-    (hread_file : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadSym)
-      muslReadFileOrStdio32Spec)
-    (hclose : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoCloseSym)
-      muslClose48LocalSpec)
-    (hmemcpy : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoMemcpySym)
-      stdMemcpySpec)
-    (hshim : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustNoAllocShimSym)
-      allocAllocShimSpec)
-    (halloc : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustAllocSym)
-      (rustStdAllocSpec A))
-    (hrealloc : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustReallocSym)
-      (rustStdReallocSpec A))
-    (hdealloc : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustDeallocSym)
-      (rustStdDeallocSpec A)) :
-    subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadFileSym)
-      (signalSessionIoMultiLib.withCodeLoaded mpl (cliIoReadFileSpec A stackBytes)) :=
-  cliIoReadFileGen_ok false A hpl hsvc hext_os hext3 hext4
-    hopen herrno hread_dir hread_file hclose hmemcpy hshim halloc hrealloc hdealloc
-
-/-- Read-only (`↦ᵣ`) specialization of `cliIoReadFileGen_ok`. -/
-theorem cliIoReadFileRo_ok {oom : State → State → Prop} (A : RustStdAlloc oom)
-    {mpl : MultiPlacement} (hpl : signalSessionIoMultiLib.Placeable mpl)
-    {P : Program} {stackBytes : Nat}
-    (hsvc : P.svc = Syscall.standard)
-    (hext_os : ExternPreservesOracleSymtab P)
-    (hext3 : CliIoBlockNoExtern mpl P 3)
-    (hext4 : CliIoBlockNoExtern mpl P 4)
-    (hopen : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoOpenSym)
-      muslOpenRdonlyDetSpec)
-    (herrno : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoErrnoLocationSym)
-      muslErrnoLocationSpec)
-    (hread_dir : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadSym)
-      muslReadDir32Spec)
-    (hread_file : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadSym)
-      muslReadFileOrStdio32Spec)
-    (hclose : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoCloseSym)
-      muslClose48LocalSpec)
-    (hmemcpy : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoMemcpySym)
-      stdMemcpySpec)
-    (hshim : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustNoAllocShimSym)
-      allocAllocShimSpec)
-    (halloc : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustAllocSym)
-      (rustStdAllocSpec A))
-    (hrealloc : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustReallocSym)
-      (rustStdReallocSpec A))
-    (hdealloc : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustDeallocSym)
-      (rustStdDeallocSpec A)) :
-    subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadFileSym)
-      (signalSessionIoMultiLib.withCodeLoaded mpl (cliIoReadFileRoSpec A stackBytes)) :=
-  cliIoReadFileGen_ok true A hpl hsvc hext_os hext3 hext4
-    hopen herrno hread_dir hread_file hclose hmemcpy hshim halloc hrealloc hdealloc
 
 end
 

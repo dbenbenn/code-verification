@@ -24,7 +24,7 @@ Provides:
   and `withMsgEnc48CS` lifting for non-panicking leaf functions.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -43,7 +43,7 @@ set_option maxHeartbeats 400000
 /-! ## 1. `Vec<Vec<u8>>` (`Poly.vecVecU8PinnedAt` / `Poly.vecVecU8At`) Unpacking -/
 
 /-- Heap buffer of `Vec<Vec<u8>>` (element stride `24`, align `8`) detached from its 24-byte `vecHeader`. -/
-def vecVecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bss : List (List (BitVec 8))) : SepProp :=
+@[expose] def vecVecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bss : List (List (BitVec 8))) : SepProp :=
   vecBuf A vecHeaderBytes 8 (fun bs addr => vecU8 A addr bs) cap ptr bss
 
 theorem vecVecU8PinnedAt_eq_header_buf (A : RustAlloc) (pin : VecPin) (h : BitVec 64)
@@ -89,7 +89,7 @@ theorem ofNat_vecVec_length_beq_zero_of_lt {bss : List (List (BitVec 8))} (hlt :
 
 /-- Remainder of an element `rustBytesVecAt A p bs` (`cap` at `p`, `ptr` at `p + 8`, and heap buffer)
     detached from its `.len` word at `p + 16#64`. -/
-def vecU8ElemRest (A : RustAlloc) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8ElemRest (A : RustAlloc) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64,
     (p ↦₆₄ cap) ∗ ((p + 8#64) ↦₆₄ ptr) ∗ vecU8Buf A cap ptr bs
 
@@ -135,21 +135,21 @@ theorem protoPolynomialEncoderAt_eq_exists_pinned (A : RustAlloc) (a : BitVec 64
 
 /-- Proto3 encoded length of a `bool` field with a 1-byte tag (`tag ∈ 1..15`):
     `2` when `v = true`, `0` when `v = false`. -/
-def boolFieldEncodedLen (v : Bool) : Nat :=
+@[expose] def boolFieldEncodedLen (v : Bool) : Nat :=
   if v then 2 else 0
 
 /-- Per-element body length (without 1-byte tag) of `bs : List (BitVec 8)` in a repeated `bytes` field:
     `bs.length + varintLen (BitVec.ofNat 64 bs.length)`. -/
-def bytesElemBodyEncodedLen (bs : List (BitVec 8)) : Nat :=
+@[expose] def bytesElemBodyEncodedLen (bs : List (BitVec 8)) : Nat :=
   bs.length + varintLen (BitVec.ofNat 64 bs.length)
 
 /-- Sum of `bytesElemBodyEncodedLen` over `vs : List (List (BitVec 8))`. -/
-def repeatedBytesBodiesEncodedLen (vs : List (List (BitVec 8))) : Nat :=
+@[expose] def repeatedBytesBodiesEncodedLen (vs : List (List (BitVec 8))) : Nat :=
   vs.foldl (fun acc bs => acc + bytesElemBodyEncodedLen bs) 0
 
 /-- Proto3 encoded length of a `repeated bytes` (`Vec<Vec<u8>>`) field with a 1-byte tag (`tag ∈ 1..15`):
     `repeatedBytesBodiesEncodedLen vs + vs.length`. -/
-def repeatedBytesFieldEncodedLen (vs : List (List (BitVec 8))) : Nat :=
+@[expose] def repeatedBytesFieldEncodedLen (vs : List (List (BitVec 8))) : Nat :=
   repeatedBytesBodiesEncodedLen vs + vs.length
 
 private theorem foldl_bytesElemBody_add (init : Nat) (vs : List (List (BitVec 8))) :
@@ -205,16 +205,16 @@ theorem repeatedBytesFieldEncodedLen_eq_proto (tag : BitVec 32) (vs : List (List
     omega
 
 /-- Convert `ProtoPolynomialDecoder` to `PolynomialDecoder`. -/
-def ProtoPolynomialDecoder.toPB (pb : ProtoPolynomialDecoder) : PolynomialDecoder :=
+@[expose] def ProtoPolynomialDecoder.toPB (pb : ProtoPolynomialDecoder) : PolynomialDecoder :=
   { ptsNeeded := pb.ptsNeeded, polys := pb.polys, pts := pb.pts, isComplete := pb.isComplete }
 
 /-- Convert `ProtoPolynomialEncoder` to `PolynomialEncoder`. -/
-def ProtoPolynomialEncoder.toPB (pb : ProtoPolynomialEncoder) : PolynomialEncoder :=
+@[expose] def ProtoPolynomialEncoder.toPB (pb : ProtoPolynomialEncoder) : PolynomialEncoder :=
   { idx := pb.idx, pts := pb.pts, polys := pb.polys }
 
 /-- Encoded length of `spqr::proto::pq_ratchet::PolynomialDecoder`:
     tag 1 `pts_needed: u32` + tag 2 `polys: u32` + tag 3 `pts: Vec<Vec<u8>>` + tag 4 `is_complete: bool`. -/
-def polynomialDecoderPBEncodedLen (pb : ProtoPolynomialDecoder) : Nat :=
+@[expose] def polynomialDecoderPBEncodedLen (pb : ProtoPolynomialDecoder) : Nat :=
   u32VarintFieldEncodedLen pb.ptsNeeded +
     u32VarintFieldEncodedLen pb.polys +
     repeatedBytesFieldEncodedLen pb.pts +
@@ -232,7 +232,7 @@ theorem polynomialDecoderPBEncodedLen_eq_proto (pb : ProtoPolynomialDecoder) :
 
 /-- Encoded length of `spqr::proto::pq_ratchet::PolynomialEncoder`:
     tag 1 `idx: u32` + tag 2 `pts: Vec<Vec<u8>>` + tag 3 `polys: Vec<Vec<u8>>`. -/
-def polynomialEncoderPBEncodedLen (pb : ProtoPolynomialEncoder) : Nat :=
+@[expose] def polynomialEncoderPBEncodedLen (pb : ProtoPolynomialEncoder) : Nat :=
   u32VarintFieldEncodedLen pb.idx +
     repeatedBytesFieldEncodedLen pb.pts +
     repeatedBytesFieldEncodedLen pb.polys
@@ -266,7 +266,7 @@ abbrev PolynomialDecoderEncodedLenPinnedGhost :=
 abbrev PolynomialDecoderEncodedLenGhost :=
   UnpinnedEncLenGhost ProtoPolynomialDecoder
 
-def polynomialDecoderEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def polynomialDecoderEncodedLenPinnedSpec (A : RustAlloc) :
     Spec PolynomialDecoderEncodedLenPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ polynomialDecoderPBEncodedLen x.m < 2 ^ 64⌝ ∗
@@ -275,7 +275,7 @@ def polynomialDecoderEncodedLenPinnedSpec (A : RustAlloc) :
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (polynomialDecoderPBEncodedLen x.m) ∧ sf.trace = s0.trace⌝ ∗
       Poly.protoPolynomialDecoderPinnedAt A x.g x.a x.m ∗ stackAt s0.sp polyEncodedLenStack
 
-def polynomialDecoderEncodedLenSpec (A : RustAlloc) :
+@[expose] def polynomialDecoderEncodedLenSpec (A : RustAlloc) :
     Spec PolynomialDecoderEncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ polynomialDecoderPBEncodedLen x.m < 2 ^ 64⌝ ∗
@@ -289,7 +289,7 @@ abbrev PolynomialEncoderEncodedLenPinnedGhost :=
 abbrev PolynomialEncoderEncodedLenGhost :=
   UnpinnedEncLenGhost ProtoPolynomialEncoder
 
-def polynomialEncoderEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def polynomialEncoderEncodedLenPinnedSpec (A : RustAlloc) :
     Spec PolynomialEncoderEncodedLenPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ polynomialEncoderPBEncodedLen x.m < 2 ^ 64⌝ ∗
@@ -298,7 +298,7 @@ def polynomialEncoderEncodedLenPinnedSpec (A : RustAlloc) :
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 (polynomialEncoderPBEncodedLen x.m) ∧ sf.trace = s0.trace⌝ ∗
       Poly.protoPolynomialEncoderPinnedAt A x.g x.a x.m ∗ stackAt s0.sp polyEncodedLenStack
 
-def polynomialEncoderEncodedLenSpec (A : RustAlloc) :
+@[expose] def polynomialEncoderEncodedLenSpec (A : RustAlloc) :
     Spec PolynomialEncoderEncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ polynomialEncoderPBEncodedLen x.m < 2 ^ 64⌝ ∗
@@ -371,7 +371,7 @@ theorem vecVecU8Buf_ne_zero_of_cons {A : RustAlloc} {cap ptr : BitVec 64}
   simp at hle
 
 /-- Unpacked representation of `Poly.protoPolynomialDecoderPinnedAt`. -/
-def polynomialDecoderUnpacked (A : RustAlloc) (g : Poly.ProtoPolynomialDecoderGhost)
+@[expose] def polynomialDecoderUnpacked (A : RustAlloc) (g : Poly.ProtoPolynomialDecoderGhost)
     (a : BitVec 64) (pb : ProtoPolynomialDecoder) : SepProp :=
   (a ↦₆₄ g.pts.cap) ∗ ((a + 8#64) ↦₆₄ g.pts.ptr) ∗
     ((a + 16#64) ↦₆₄ BitVec.ofNat 64 pb.pts.length) ∗
@@ -414,7 +414,7 @@ theorem polynomialDecoderUnpacked_pts_bounds {A : RustAlloc} {g : Poly.ProtoPoly
   exact vecVecU8Buf_ne_zero_of_cons hbuf
 
 /-- Unpacked representation of `Poly.protoPolynomialEncoderPinnedAt`. -/
-def polynomialEncoderUnpacked (A : RustAlloc) (g : Poly.ProtoPolynomialEncoderGhost)
+@[expose] def polynomialEncoderUnpacked (A : RustAlloc) (g : Poly.ProtoPolynomialEncoderGhost)
     (a : BitVec 64) (pb : ProtoPolynomialEncoder) : SepProp :=
   (a ↦₆₄ g.pts.cap) ∗ ((a + 8#64) ↦₆₄ g.pts.ptr) ∗
     ((a + 16#64) ↦₆₄ BitVec.ofNat 64 pb.pts.length) ∗

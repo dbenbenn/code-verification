@@ -12,6 +12,32 @@ module
 public import Computational.Proofs.E2E.Dsl.HaltedPrefixSubprogsAux -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.Dsl.M3PqxdhSize
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
+public import Computational.Proofs.E2E.Dsl.E2EStateRepr -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.FreshnessSim -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.PqxdhSim -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.StartAndExtSm -- proof-setup: allow-public-import
+public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.M3Subprograms
+import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+import Computational.Proofs.E2E.ComposedKeyIndHop
+import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.Soundness
+import Mathlib.Data.List.Dedup
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Halted Multi-Session Prefix Subprograms
@@ -434,54 +460,6 @@ theorem finishPrefixHaltedC_cost (b : SignalPqxdh.QueryBudget) (qStart : ℕ)
   simp only [finishPrefixHaltedC, finishPrefixHaltedCost, lift1Comp_cost, Expr.cost, Expr.v0] at hb ⊢
   omega
 
-theorem finishPrefixHaltedC_size (b : SignalPqxdh.QueryBudget) (qStart : ℕ)
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (σE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (drvTy S ℓ Pt))
-    (bOutE flipE : Expr (atomicE2EOps ℓ P C K decT encT) Γ .bool) :
-    (finishPrefixHaltedC b qStart σE bOutE flipE).size ≤
-      σE.size + bOutE.size + flipE.size + finishPrefixHaltedSize S qStart := by
-  have hb := M3Subprograms.size_finishPrefixC ℓ S P C K decT encT
-    (CryptoVerification.E2E.Costed.e2eSessionTargetIface ℓ) qStart b.q_total
-    (Γ := [.prod (e2eDrvStateTy S ℓ) (.prod .bool .bool)])
-    (.fst .v0) (.fst (.snd .v0)) (.snd (.snd .v0))
-  simp only [finishPrefixHaltedC, finishPrefixHaltedSize, lift1Comp_size, Expr.size, Expr.v0] at hb ⊢
-  omega
-
-theorem finishPrefixHaltedC_queries (b : SignalPqxdh.QueryBudget) (qStart : ℕ)
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (σE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (drvTy S ℓ Pt))
-    (bOutE flipE : Expr (atomicE2EOps ℓ P C K decT encT) Γ .bool)
-    (w : (e2eSessionTargetIface ℓ Pt).Tag → ℕ) :
-    (finishPrefixHaltedC b qStart σE bOutE flipE).queries w (fun _ => 0) = 0 := by
-  rw [finishPrefixHaltedC, lift1Comp_queries]
-  exact FreshnessSim.queries_finishPrefixC
-    (CryptoVerification.E2E.Costed.e2eSessionTargetIface ℓ) qStart b.q_total _ _ _
-    (fun g => w (liftSessionTag g))
-
-theorem finishPrefixHaltedC_eval (b : SignalPqxdh.QueryBudget) (qStart : ℕ)
-    (hP : SignalPqxdh.WellFormedPrimitivesδ P)
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (σE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (drvTy S ℓ Pt))
-    (bOutE flipE : Expr (atomicE2EOps ℓ P C K decT encT) Γ .bool)
-    (ρ : Env Γ) (σ : BHE2EDrvState S ℓ)
-    (hσ : σE.eval ρ = drvEnc σ) (hInsts : σ.insts.length ≤ qStart)
-    (hReach : KeyIndReachBounded S b.q_total σ.st) :
-    (finishPrefixHaltedC b qStart σE bOutE flipE).eval ρ =
-      (e2eSessionTargetIface ℓ Pt).liftP
-        (bhShallowFinishPrefix P σ (bOutE.eval ρ) (flipE.eval ρ)) := by
-  have harg : (Expr.pair σE (.pair bOutE flipE)).eval ρ =
-      liftVal (Pt := Pt) (t := .prod (e2eDrvStateTy S ℓ) (.prod .bool .bool))
-        (e2eDrvStateEnc σ, (bOutE.eval ρ, flipE.eval ρ)) := by
-    dsimp only [Expr.eval]; rw [hσ, ← liftVal_e2eDrvStateEnc_eq]; rfl
-  rw [finishPrefixHaltedC, lift1Comp_eval _ _ ρ _ harg,
-    FreshnessSim.eval_finishPrefixC _ qStart b.q_total _ _ _ _ σ
-      (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P) 0 hP rfl hInsts hReach.setup]
-  exact id_map _
-
-private theorem costedLiftP_eq_atomicLiftP {α : Type} (p : ProbComp α) :
-    (CryptoVerification.E2E.Costed.e2eSessionTargetIface ℓ).liftP p =
-      (e2eSessionTargetIface ℓ Pt).liftP p := rfl
-
 private theorem liftVal_sidV_eq (sid : SignalPqxdh.SessionId S) :
     liftVal (Pt := Pt) (t := CryptoVerification.E2E.Costed.sidT S)
       (CryptoVerification.E2E.Costed.sidV sid) = sidV (ℓ := ℓ) (Pt := Pt) sid :=
@@ -658,46 +636,6 @@ theorem kiStepHaltedC_cost (qStart : ℕ) (b : SignalPqxdh.QueryBudget)
     Comp.cost, Expr.cost, Expr.v0] at hok hst hset hmir ⊢
   omega
 
-theorem kiStepHaltedC_size {pqxdhStepSize : ℕ → ℕ}
-    (hpqSz : ∀ (nAdv : ℕ) {Γ : List (Ty (e2eSig ℓ))}
-      (stE : Expr (e2eOps ℓ P C K decT encT) Γ (PqxdhSimTypes.e2eKeyIndStateTy ℓ S))
-      (qE : Expr (e2eOps ℓ P C K decT encT) Γ (CryptoVerification.E2E.Costed.keyIndQT S)),
-      ((PqxdhSim.pqxdhSimIface ℓ S P C K decT encT).stepC
-        (CryptoVerification.E2E.Costed.e2eSessionTargetIface ℓ) nAdv stE qE).size ≤
-        stE.size + qE.size + pqxdhStepSize nAdv)
-    (qStart : ℕ) (b : SignalPqxdh.QueryBudget) {Γ : List (Ty (atomicSig ℓ Pt))}
-    (σE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (drvTy S ℓ Pt))
-    (kqE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (keyIndQT (ℓ := ℓ) (Pt := Pt) S)) :
-    (kiStepHaltedC qStart b σE kqE).size ≤
-      σE.size + kqE.size + kiStepHaltedSize pqxdhStepSize qStart b := by
-  let τ0 : Ty (e2eSig ℓ) := .prod (e2eDrvStateTy S ℓ) (CryptoVerification.E2E.Costed.keyIndQT S)
-  let τr : Ty (e2eSig ℓ) :=
-    .prod CryptoVerification.E2E.Costed.keyIndRT (PqxdhSimTypes.e2eKeyIndStateTy ℓ S)
-  have hok := E2EStateRepr.size_kiQueryOkE (ℓ := ℓ) (S := S) (P := P) (C := C) (K := K)
-    (decT := decT) (encT := encT) b.q_total qStart (Γ := [τ0]) (.fst .v0) (.snd .v0)
-  have hst := hpqSz b.q_total (Γ := [τ0]) (StartAndExtSmAux.drvSt (.fst .v0)) (.snd .v0)
-  have hset := M3Interfaces.size_drvSetStE (O := e2eOps ℓ P C K decT encT) (S := S) (ℓ := ℓ)
-    (Γ := [τr, τ0]) (.fst (.var (.succ .zero))) (.snd .v0)
-  have hmir := E2EStateRepr.size_bhE2EMirrorE (ℓ := ℓ) (S := S) (P := P) (C := C) (K := K)
-    (decT := decT) (encT := encT) (Γ := [τr, τ0])
-    (M3Interfaces.drvSetStE (.fst (.var (.succ .zero))) (.snd .v0))
-    (.snd (.var (.succ .zero))) (.fst .v0)
-  dsimp only [τ0, τr] at hok hst hset hmir
-  simp only [kiStepHaltedC, kiStepBodyC, kiStepHaltedSize, lift1Comp_size, StartAndExtSmAux.drvSt,
-    Comp.size, Expr.size, Expr.v0] at hok hst hset hmir ⊢
-  omega
-
-theorem kiStepHaltedC_queries (qStart : ℕ) (b : SignalPqxdh.QueryBudget)
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (σE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (drvTy S ℓ Pt))
-    (kqE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (keyIndQT (ℓ := ℓ) (Pt := Pt) S))
-    (w : (e2eSessionTargetIface ℓ Pt).Tag → ℕ) :
-    (kiStepHaltedC qStart b σE kqE).queries w (fun _ => 0) = 0 := by
-  simp only [kiStepHaltedC, kiStepBodyC, Comp.queries, lift1Comp_queries,
-    (PqxdhSim.pqxdhSimIface ℓ S P C K decT encT).stepC_queries
-      (CryptoVerification.E2E.Costed.e2eSessionTargetIface ℓ),
-    Nat.add_zero, Nat.max_self]
-
 private theorem stepALiftP_eq_atomicLiftP (Pt : Type) {α : Type} (p : ProbComp α) :
     (PqxdhSimTypes.stepAIface ℓ
       (CryptoVerification.E2E.Costed.e2eSessionTargetIface ℓ)).liftP p =
@@ -752,89 +690,6 @@ private theorem liftVal_kiBodySome (kr : SignalPqxdh.KeyIndResponse) (σ1 : BHE2
       (CryptoVerification.E2E.Costed.keyIndRenc kr, e2eDrvStateEnc σ1) =
     (keyIndRenc (ℓ := ℓ) (Pt := Pt) kr, drvEnc (Pt := Pt) σ1) := by
   cases kr <;> exact eq_of_heq (liftVal_heq _)
-
-theorem kiStepHaltedC_eval (qStart qep : ℕ) (b : SignalPqxdh.QueryBudget)
-    (hP : SignalPqxdh.WellFormedPrimitivesδ P)
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (σE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (drvTy S ℓ Pt))
-    (kqE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (keyIndQT (ℓ := ℓ) (Pt := Pt) S))
-    (ρ : Env Γ) (σ : BHE2EDrvState S ℓ) (kq : SignalPqxdh.KeyIndQuery S)
-    (hσ : σE.eval ρ = drvEnc σ) (hkq : kqE.eval ρ = keyIndQenc kq)
-    (hMir : DrvQueryBounded b.q_total qStart σ)
-    (hReach : KeyIndReachBounded S b.q_total σ.st) :
-    (kiStepHaltedC qStart b σE kqE).eval ρ =
-      (e2eSessionTargetIface ℓ Pt).liftP
-        ((fun out => (atomicGameRespEnc out.1, drvEnc out.2)) <$>
-          bhShallowStepPreNonCtl P (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P)
-            C K qep decT encT σ (.inl (.inl kq))) := by
-  have harg : (Expr.pair σE kqE).eval ρ =
-      liftVal (Pt := Pt) (t := .prod (e2eDrvStateTy S ℓ) (CryptoVerification.E2E.Costed.keyIndQT S))
-        (e2eDrvStateEnc σ, CryptoVerification.E2E.Costed.keyIndQenc kq) := by
-    dsimp only [Expr.eval]; rw [hσ, hkq, ← liftVal_e2eDrvStateEnc_eq, ← liftVal_keyIndQenc_eq]; rfl
-  have hev : (E2EStateRepr.kiQueryOkE (P := P) (C := C) (K := K) (decT := decT) (encT := encT)
-      b.q_total qStart (.fst .v0) (.snd .v0)).eval
-      (.cons (e2eDrvStateEnc σ, CryptoVerification.E2E.Costed.keyIndQenc kq) .nil) =
-      (bhDrvKiQueryOk P σ.toModelDriverBase kq && !kiCorruptPromoted σ kq) := by
-    rw [E2EStateRepr.eval_kiQueryOkE (Pt := Pt) b.q_total qStart hP
-      (.fst .v0) (.snd .v0) _ rfl rfl hMir.prins_le hMir.instMeta_le]
-    refine congrArg (fun x => bhDrvKiQueryOk P σ.toModelDriverBase kq && !x) ?_
-    clear hkq harg; cases kq <;> rfl
-  rw [bhShallowStepPreNonCtl_ki]
-  dsimp only [kiStepHaltedC, Comp.eval]
-  rw [lift1Comp_eval _ _ ρ _ harg]
-  dsimp only [kiStepBodyC, Comp.eval]
-  rw [hev]
-  cases hok : bhDrvKiQueryOk P σ.toModelDriverBase kq
-  · simp only [Bool.false_and, Bool.not_false, Bool.false_eq_true, ↓reduceIte,
-      map_pure, pure_bind, atomicLiftP_pure]
-    congr 1
-    change (Sum.inl (Sum.inl (liftVal (Pt := Pt)
-        (t := .prod CryptoVerification.E2E.Costed.keyIndRT (e2eDrvStateTy S ℓ))
-        (.inl (), e2eDrvStateEnc σ)).1),
-      (liftVal (Pt := Pt)
-        (t := .prod CryptoVerification.E2E.Costed.keyIndRT (e2eDrvStateTy S ℓ))
-        (.inl (), e2eDrvStateEnc σ)).2) = _
-    rw [liftVal_kiBodyNone]; rfl
-  · cases hpr : kiCorruptPromoted σ kq
-    · simp only [Bool.not_false, Bool.and_self, Bool.not_true, Bool.false_eq_true, ↓reduceIte]
-      rw [(PqxdhSim.pqxdhSimIface ℓ S P C K decT encT).stepC_eval
-        (CryptoVerification.E2E.Costed.e2eSessionTargetIface ℓ) b.q_total _ _ _ σ.st kq hP
-        (by simp [StartAndExtSmAux.drvSt, Expr.eval, Expr.v0, e2eDrvStateEnc]) rfl
-        hReach.setup hReach.advKeys_le, stepALiftP_eq_atomicLiftP Pt]
-      simp only [atomicLiftP_bind, atomicLiftP_pure, map_eq_bind_pure_comp,
-        Function.comp_def, bind_assoc, pure_bind]
-      refine bind_congr fun ⟨kr, st'⟩ => congrArg pure ?_
-      have hmir : (E2EStateRepr.bhE2EMirrorE (P := P) (C := C) (K := K) (decT := decT) (encT := encT)
-          (M3Interfaces.drvSetStE (.fst (.var (.succ .zero))) (.snd .v0))
-          (.snd (.var (.succ .zero))) (.fst .v0)).eval
-          (.cons (CryptoVerification.E2E.Costed.keyIndRenc kr,
-            PqxdhSimTypes.e2eKeyIndStateToVal st')
-            (.cons (e2eDrvStateEnc σ, CryptoVerification.E2E.Costed.keyIndQenc kq) .nil)) =
-          e2eDrvStateEnc (bhE2EMirror { σ with st := st' } kq kr) :=
-        E2EStateRepr.eval_bhE2EMirrorE_enc (Pt := Pt) _ _ _ _ { σ with st := st' } kq kr
-          (M3Interfaces.eval_drvSetStE _ _ _ rfl rfl) rfl rfl
-      dsimp only [Expr.v0] at hmir
-      dsimp only [Expr.eval, Expr.v0, Env.get, atomicGameRespEnc]
-      rw [hmir]
-      change (Sum.inl (Sum.inl (liftVal (Pt := Pt)
-          (t := .prod CryptoVerification.E2E.Costed.keyIndRT (e2eDrvStateTy S ℓ))
-          (CryptoVerification.E2E.Costed.keyIndRenc kr,
-            e2eDrvStateEnc (bhE2EMirror { σ with st := st' } kq kr))).1),
-        (liftVal (Pt := Pt)
-          (t := .prod CryptoVerification.E2E.Costed.keyIndRT (e2eDrvStateTy S ℓ))
-          (CryptoVerification.E2E.Costed.keyIndRenc kr,
-            e2eDrvStateEnc (bhE2EMirror { σ with st := st' } kq kr))).2) = _
-      rw [liftVal_kiBodySome]; rfl
-    · simp only [Bool.not_true, Bool.and_false, Bool.false_eq_true, ↓reduceIte,
-        map_pure, pure_bind, atomicLiftP_pure]
-      congr 1
-      change (Sum.inl (Sum.inl (liftVal (Pt := Pt)
-          (t := .prod CryptoVerification.E2E.Costed.keyIndRT (e2eDrvStateTy S ℓ))
-          (.inl (), e2eDrvStateEnc σ)).1),
-        (liftVal (Pt := Pt)
-          (t := .prod CryptoVerification.E2E.Costed.keyIndRT (e2eDrvStateTy S ℓ))
-          (.inl (), e2eDrvStateEnc σ)).2) = _
-      rw [liftVal_kiBodyNone]; rfl
 
 private theorem size_extractDrKey32E_aux {Γ : List (Ty (e2eSig ℓ))}
     (krE : Expr (e2eOps ℓ P C K decT encT) Γ CryptoVerification.E2E.Costed.keyIndRT) :

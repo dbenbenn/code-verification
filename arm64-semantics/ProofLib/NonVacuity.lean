@@ -178,7 +178,6 @@ private def hoareWrapperCompanionNames : Array Name := #[
   ``Arm64.fn_subroutine_ok,
   ``Arm64.Program.relocSubroutineOk,
   ``Arm64.Program.alignedSubroutineOk,
-  `Arm64.Obj.LinkedImage.subroutineOk,
   ``Arm64.FnPtrSpec,
   ``Arm64.SafeFnPtrSpec,
   ``Arm64.ToBaseSpec.toSpec,
@@ -195,8 +194,7 @@ private def hoareJudgmentRootNames : Array Name := #[
   ``Arm64.Program.safeSubroutineOk,
   ``Arm64.fn_subroutine_ok,
   ``Arm64.Program.relocSubroutineOk,
-  ``Arm64.Program.alignedSubroutineOk,
-  `Arm64.Obj.LinkedImage.subroutineOk
+  ``Arm64.Program.alignedSubroutineOk
 ]
 
 private def resolveUnfoldSet (ids : Array (TSyntax `ident)) : CoreM NameSet := do

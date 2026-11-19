@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop
+public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbLeaf
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import ProofLib.BV.WidthNorm
@@ -24,7 +24,7 @@ import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
 `ChainPB` (depth 2), and `VersionNegotiationPB` (depth 1) when the encoded length fits in 64 bits.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Codec
 
@@ -61,10 +61,6 @@ theorem loopsTo_chainEpoch (c : ChainEpochPB) (h : (ChainEpochPB.encodeRaw c).le
     (optMessage_sub _ _ _ 2#32 _ _ (Nat.le_refl _) (by omega) loopsTo_epochDirection)
     (fun _ _ _ => by simp [ChainEpochPB.mergeField]; rfl)
   exact (LoopsTo.append protoPrefixStep_chainEpochPB_mergeField hA hB).congr_res (by cases c; rfl)
-
-theorem decode_chainEpoch (c : ChainEpochPB) (h : (ChainEpochPB.encodeRaw c).length < 2 ^ 64) :
-    ChainEpochPB.decode (ChainEpochPB.encodeRaw c) = .ok c :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_chainEpoch c h)
 
 /-! ## `ChainPB` -/
 
@@ -120,10 +116,6 @@ theorem loopsTo_chain (c : ChainPB) (h : (ChainPB.encodeRaw c).length < 2 ^ 64) 
     protoPrefixStep_chainPB_mergeField hE).append protoPrefixStep_chainPB_mergeField hF).congr_res
     (by cases c; rfl)
 
-theorem decode_chain (c : ChainPB) (h : (ChainPB.encodeRaw c).length < 2 ^ 64) :
-    ChainPB.decode (ChainPB.encodeRaw c) = .ok c :=
-  decodeTop_of_loopsTo _ 2 _ _ (by decide) (loopsTo_chain c h)
-
 /-! ## `VersionNegotiationPB` -/
 
 theorem loopsTo_versionNegotiation (v : VersionNegotiationPB)
@@ -153,11 +145,6 @@ theorem loopsTo_versionNegotiation (v : VersionNegotiationPB)
   exact (((LoopsTo.append protoPrefixStep_versionNegotiationPB_mergeField hA hB).append
     protoPrefixStep_versionNegotiationPB_mergeField hC).append
     protoPrefixStep_versionNegotiationPB_mergeField hD).congr_res (by cases v; rfl)
-
-theorem decode_versionNegotiation (v : VersionNegotiationPB)
-    (h : (VersionNegotiationPB.encodeRaw v).length < 2 ^ 64) :
-    VersionNegotiationPB.decode (VersionNegotiationPB.encodeRaw v) = .ok v :=
-  decodeTop_of_loopsTo _ 1 _ _ (by decide) (loopsTo_versionNegotiation v h)
 
 /-! ## Sanity checks -/
 

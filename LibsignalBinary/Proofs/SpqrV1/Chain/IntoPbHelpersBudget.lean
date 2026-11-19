@@ -10,10 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.ChainPbCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Chain.ChainPbCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Specifications for `<spqr::chain::Chain>::into_pb` (Block `365`)
@@ -23,7 +25,7 @@ cost-model-parametric specifications (`chainIntoPbPinnedSpec`, `chainIntoPbSpec`
 `chainIntoPbPinnedSpecX`, `chainIntoPbSpecX`) for `<spqr::chain::Chain>::into_pb` (Block `365`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +43,7 @@ open LibsignalBinary.Heap
 /-- Precondition allocation envelope of `<spqr::chain::Chain>::into_pb`:
 `[]` when `x.chain.links = []`, or `rustAllocEvents (x.chain.links.length * 112) 8` when
 `x.chain.links ≠ []` (executed before any deallocation). -/
-def ChainIntoPbAllocEnv (x : ChainIntoPbCall) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainIntoPbAllocEnv (x : ChainIntoPbCall) (evs : List AllocEvent) : Prop :=
   if x.chain.links = [] then
     evs = []
   else
@@ -50,7 +52,7 @@ def ChainIntoPbAllocEnv (x : ChainIntoPbCall) (evs : List AllocEvent) : Prop :=
 /-- Full postcondition event envelope of `<spqr::chain::Chain>::into_pb`:
 `FreeOnlyEvs` when `x.chain.links = []`, or the initial `links` buffer allocation followed by
 `FreeOnlyEvs` deallocations when `x.chain.links ≠ []`. -/
-def ChainIntoPbEnv (x : ChainIntoPbCall) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainIntoPbEnv (x : ChainIntoPbCall) (evs : List AllocEvent) : Prop :=
   if x.chain.links = [] then
     FreeOnlyEvs evs
   else
@@ -73,7 +75,7 @@ theorem fitsEnv_chainIntoPbAllocEnv_of_chainIntoPbEnv {M : AllocCostModel}
 
 /-- Budget-threaded pinned spec of `<spqr::chain::Chain>::into_pb` at `chainIntoPbStack`
 (`onPanic = ⌜False⌝`). -/
-def chainIntoPbPinnedSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainIntoPbPinnedSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainIntoPbCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.chainPtr ∧
@@ -93,7 +95,7 @@ def chainIntoPbPinnedSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Budget-threaded unpinned `ProtoRepr.chainPBAt` spec of `<spqr::chain::Chain>::into_pb`
 at `chainIntoPbStack` (`onPanic = ⌜False⌝`). -/
-def chainIntoPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainIntoPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainIntoPbCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.chainPtr ∧
@@ -109,7 +111,7 @@ def chainIntoPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Budget-threaded pinned spec of `<spqr::chain::Chain>::into_pb` at `chainIntoPbStackX`
 (`onPanic = ⌜False⌝`). -/
-def chainIntoPbPinnedSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainIntoPbPinnedSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainIntoPbCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.chainPtr ∧
@@ -129,7 +131,7 @@ def chainIntoPbPinnedSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Budget-threaded unpinned `ProtoRepr.chainPBAt` spec of `<spqr::chain::Chain>::into_pb`
 at `chainIntoPbStackX` (`onPanic = ⌜False⌝`). -/
-def chainIntoPbSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainIntoPbSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainIntoPbCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.chainPtr ∧
@@ -143,28 +145,28 @@ def chainIntoPbSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
       memRegion x.chainPtr 88 ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp chainIntoPbStackX
 
-def ChainIntoPbPinnedPlacedOk [LibsignalPlacement]
+@[expose] def ChainIntoPbPinnedPlacedOk [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_365).rebase (blkPl_365).base H)
     (blkPl_365).base
     (chainIntoPbPinnedSpec M A lim)
 
-def ChainIntoPbPlacedOk [LibsignalPlacement]
+@[expose] def ChainIntoPbPlacedOk [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_365).rebase (blkPl_365).base H)
     (blkPl_365).base
     (chainIntoPbSpec M A lim)
 
-def ChainIntoPbPinnedPlacedOkX [LibsignalPlacement]
+@[expose] def ChainIntoPbPinnedPlacedOkX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_365).rebase (blkPl_365).base H)
     (blkPl_365).base
     (chainIntoPbPinnedSpecX M A lim)
 
-def ChainIntoPbPlacedOkX [LibsignalPlacement]
+@[expose] def ChainIntoPbPlacedOkX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_365).rebase (blkPl_365).base H)

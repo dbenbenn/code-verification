@@ -9,21 +9,41 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitCodecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeyVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdKeyPairVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdRegIdVtablesPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4None
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitCodecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionVtablesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtablesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeyVtablesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdKeyPairVtablesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdRegIdVtablesPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4None
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4KyberRefused -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` CLI Store Kits and Vtable/Quietness Helpers
@@ -33,7 +53,7 @@ Defines the six `[LibsignalPlacement]` CLI poll store kits (`cliPoll*KitPlaced` 
 bundles (`stageP1VtablesPlacedAt`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,12 +76,12 @@ open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer (CliGhostHo
 noncomputable abbrev dpPollProgPlaced [LibsignalPlacement] (ext : String → Option (State → State)) : Program :=
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.stageP1ProgPlaced ext
 
-noncomputable abbrev dpPollEntryPlaced [LibsignalPlacement] : BitVec 64 :=
+abbrev dpPollEntryPlaced [LibsignalPlacement] : BitVec 64 :=
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.stageP1EntryPlaced
 
 /-! ## 1. Placed 6-Kit Bundle (`cliPoll*KitPlaced`) & `storesAt` Bridge -/
 
-def cliPollSessKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollSessKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (peer : AddrGhost) (σ : DpKitStk) :
     SessionStoreSpec A 0#64 :=
   { cliPollSessKit A 0#64 F0 Scope peer σ with
@@ -78,35 +98,35 @@ def cliPollSessKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     loadFutDrop_ne_zero := fun _ => lsDropOffPlaced_ne_zero
     storeFutDrop_ne_zero := fun _ => lsDropOffPlaced_ne_zero }
 
-def cliPollIdKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollIdKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (peer : AddrGhost) (σ : DpKitStk) : IdentityStoreSpec A 0#64 :=
   cliIdStoreSpecFullPlaced A cliIo.rd F0 cliWrOk peer
     σ.idTrustShim σ.idTrustPoll σ.idSaveShim σ.idSavePoll
 
-def cliPollSelfKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollSelfKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (peer : AddrGhost) (σ : DpKitStk) :
     IdentitySelf.IdentitySelfStoreSpec (cliPollIdKitPlaced A F0 peer σ) :=
   cliIdSelfSpecFullPlaced A cliIo.rd F0 cliWrOk peer
     σ.kpShim σ.kpPoll σ.regIdShim σ.regIdPoll
 
-def cliPollPkKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollPkKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (pid : BitVec 32) (σ : DpKitStk) : PreKeyStoreSpec A 0#64 :=
   cliPreKeyStoreSpecPlaced A cliIo.rd F0 cliWrOk pid
     σ.pkGetShim σ.pkGetPoll σ.pkRemoveShim σ.pkRemovePoll
 
-def cliPollSpkKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollSpkKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (sid : BitVec 32) (σ : DpKitStk) : SignedPreKeyStoreSpec A 0#64 :=
   cliSignedPreKeyStoreSpecPlaced A cliIo.rd F0 cliWrOk sid
     σ.spkGetShim σ.spkGetPoll
 
-def cliPollKpkKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollKpkKitPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (kid ksid : BitVec 32) (kbk : PublicKey) (σ : DpKitStk) : KyberPreKeyStoreSpec A 0#64 :=
   cliKpkStoreSpecFullPlaced A cliIo.rd F0 cliWrOk kid ksid kbk
     σ.kpkGetShim σ.kpkGetPoll σ.kpkMarkShim σ.kpkMarkPoll
 
 /-- The separating conjunction of all 5 placed CLI store kits' spatial predicates plus the untouched
 `pub` directory at `a + 0x118#64` (definitionally equal to `cliPollStoresKitsAt A 0#64...`). -/
-def cliPollStoresKitsAtPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
+@[expose] def cliPollStoresKitsAtPlaced [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (peer : AddrGhost)
     (pid sid kid : BitVec 32) (kbk : PublicKey) (σ : DpKitStk)
     (a : BitVec 64) (g : StoresGhost) : SepProp :=
@@ -249,21 +269,6 @@ theorem cliPollStageP4_fsAt_placed [LibsignalPlacement] {mmpl : Obj.MultiPlaceme
          cliPollPkPlaced_quiet F0 pid (cliKitStk B),
          cliPollKpkPlaced_quiet F0 kid sid kbk (cliKitStk B)⟩,
         hh.fs (dpPollProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) 518, ⟨hf, hf, hf, hf⟩⟩
-
-theorem cliPollStageP4Refused_fsAt_placed [LibsignalPlacement] {mmpl : Obj.MultiPlacement}
-    {g : CliGhostHooks} {W : CliHooks}
-    (hh : RunHooksPlaced E2E.HooksE.A0 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-    (F0 : FsFiles) (peer : AddrGhost) (kid sid : BitVec 32) (kbk : PublicKey)
-    (B : RunBudgets) {s : State} (hf : s.fs.files = F0) :
-    FsAt
-      (fun F => (cliPollIdKitPlaced E2E.HooksE.A0 F0 peer (cliKitStk B)).envOk F ∧
-                (cliPollKpkKitPlaced E2E.HooksE.A0 F0 kid sid kbk (cliKitStk B)).envOk F)
-      ((cliPollIdKitPlaced E2E.HooksE.A0 F0 peer (cliKitStk B)).Quiet ∧
-       (cliPollKpkKitPlaced E2E.HooksE.A0 F0 kid sid kbk (cliKitStk B)).Quiet)
-      (dpPollProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) s :=
-  .inr ⟨⟨cliPollIdPlaced_quiet F0 peer (cliKitStk B),
-         cliPollKpkPlaced_quiet F0 kid sid kbk (cliKitStk B)⟩,
-        hh.fs (dpPollProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) 518, ⟨hf, hf⟩⟩
 
 /-! ## 3. Placed Vtable Bundles (`cliPoll*_vtablesPlacedOk` & `stageP1VtablesPlacedAt`) -/
 
@@ -408,7 +413,7 @@ theorem cliPollSelf_vtablesPlacedOk [LibsignalPlacement] {A : RustAlloc}
       cliIdRegIdFutPoll_placed_ok hro hP
 
 /-- Read-only vtable cells required by Stage P1 at `b := 0#64`. -/
-def stageP1VtablesPlacedAt {A : RustAlloc}
+@[expose] def stageP1VtablesPlacedAt {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64) : SepProp :=
   ((kit.ss_vt + 0x18#64) ↦₆₄ᵣ (0#64 + kit.loadShimOff)) ∗
   ((ikit.id_vt + 0x30#64) ↦₆₄ᵣ (0#64 + ikit.trustShimOff)) ∗

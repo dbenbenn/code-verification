@@ -1,0 +1,14 @@
+diff --git a/rust/protocol/src/session_management.rs b/rust/protocol/src/session_management.rs
+--- a/rust/protocol/src/session_management.rs
++++ b/rust/protocol/src/session_management.rs
+@@ -251,6 +251,10 @@
+         }
+     };
+ 
++    session_store
++        .store_session(remote_address, &session_record)
++        .await?;
++
+     let ptext = try_decrypt_from_record(
+         &mut session_record,
+         remote_address,

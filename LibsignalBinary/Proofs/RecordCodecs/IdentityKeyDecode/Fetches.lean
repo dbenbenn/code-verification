@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
-public import LibsignalBinary.Specifications.RecordCodecsBinary
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsBinary -- proof-setup: allow-public-import
 
 /-!
 # `IdentityKey::decode` Instruction Fetches and Call Transfer
@@ -21,7 +20,7 @@ Instruction-fetch lemmas and `[LibsignalPlacement]` cross-block call transfer fo
 `IdentityKey::decode` (Block `18`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,28 +28,6 @@ namespace CryptoVerification.RecordCodecsBinary.IdentityKeyDecode.Helpers
 
 open Arm64 ProofLib CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification CryptoVerification.RecordCodecs.Placed
-
-gen_decodes libsignalSessionCode_tree ikDec
-  [(ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode") →
-   (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode" + 264)]
-
-theorem ikDec_pkTryFrom_call_ok {img : Obj.Image} {ext : String → Option (State → State)}
-    (hpk : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr pkTryFromName) (pkTryFromCodeSpec img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr identityKeyDecodeName +
-        BitVec.ofNat 64
-          (num% (ls_off% "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from" -
-                 ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode")))
-      (pkTryFromCodeSpec img) :=
-  sub_ok_at_of_fnAddr hpk identityKeyDecodeName
-    (num% (ls_off% "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from" -
-           ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode"))
-    (by
-      rw [(ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::decode"),
-          (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from")])
-
-/-! ## Relocatable `[LibsignalPlacement]` Call Transfer -/
 
 theorem ikDec_pkTryFrom_placed_call_ok [LibsignalPlacement]
     {H : String → Option (State → State)}

@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Chain.ChainPbCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.ChainPbCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 
 /-!
 # Budget-Threaded Specifications for `<spqr::chain::Chain>::add_epoch` (Block `368`)
@@ -23,7 +23,7 @@ Defines the allocator event envelope `ChainAddEpochEnv` and cost-model-parametri
 `chainAddEpochSpecX`, `chainAddEpochSpecExt`, and `ChainAddEpochPlacedOkX` for Block `368`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,7 +49,7 @@ open LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget (vecDequeGrowEvents)
 4. `rust_alloc(72, 1)` + `rust_alloc(32, 1)` for `recv` (`prev` cap 72, `next` len 32);
 5. `vecDequeGrowEvents G.linksCap` if `self.links.length = G.linksCap.toNat`;
 6. `rust_dealloc(esPin.cap, 1)` if `esPin.cap ≠ 0`. -/
-def chainAddEpochEvents (x : ChainAddEpochGhost) : List AllocEvent :=
+@[expose] def chainAddEpochEvents (x : ChainAddEpochGhost) : List AllocEvent :=
   rustAllocEvents 32 1 ++
     (if x.G.nextRoot.cap = 0#64 then [] else rustDeallocEvents x.G.nextRoot.cap.toNat 1) ++
     rustAllocEvents 72 1 ++
@@ -60,13 +60,13 @@ def chainAddEpochEvents (x : ChainAddEpochGhost) : List AllocEvent :=
     (if x.esPin.cap = 0#64 then [] else rustDeallocEvents x.esPin.cap.toNat 1)
 
 /-- Relational allocator event envelope of `<spqr::chain::Chain>::add_epoch`. -/
-def ChainAddEpochEnv (hkdf : HkdfFn) (x : ChainAddEpochGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainAddEpochEnv (hkdf : HkdfFn) (x : ChainAddEpochGhost) (evs : List AllocEvent) : Prop :=
   match Chain.addEpoch hkdf x.self x.epochSecret with
   | .error _ => evs = []
   | .ok _ => evs = chainAddEpochEvents x
 
 /-- Budget-threaded spec of `<spqr::chain::Chain>::add_epoch` at `chainAddEpochStackX`. -/
-def chainAddEpochSpecX [LibsignalPlacement] (hkdf : HkdfFn) (M : AllocCostModel)
+@[expose] def chainAddEpochSpecX [LibsignalPlacement] (hkdf : HkdfFn) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (ChainAddEpochGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.selfPtr ∧ s.readReg64 .x1 = x.esPtr ∧
@@ -90,7 +90,7 @@ def chainAddEpochSpecX [LibsignalPlacement] (hkdf : HkdfFn) (M : AllocCostModel)
     ⌜(Chain.addEpoch hkdf x.self x.epochSecret).isOk = false ∧ sf.trace = s0.trace⌝ ∗ anyHeap
 
 /-- Budget-threaded spec of `<spqr::chain::Chain>::add_epoch` at `chainAddEpochStackExt` (`17808` B). -/
-def chainAddEpochSpecExt [LibsignalPlacement] (hkdf : HkdfFn) (M : AllocCostModel)
+@[expose] def chainAddEpochSpecExt [LibsignalPlacement] (hkdf : HkdfFn) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (ChainAddEpochGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.selfPtr ∧ s.readReg64 .x1 = x.esPtr ∧
@@ -113,7 +113,7 @@ def chainAddEpochSpecExt [LibsignalPlacement] (hkdf : HkdfFn) (M : AllocCostMode
   onPanic := fun (x, _) s0 sf =>
     ⌜(Chain.addEpoch hkdf x.self x.epochSecret).isOk = false ∧ sf.trace = s0.trace⌝ ∗ anyHeap
 
-def ChainAddEpochPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn)
+@[expose] def ChainAddEpochPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_368).rebase (blkPl_368).base H)

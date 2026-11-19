@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumMult1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed `lagrange_sum` Specialization and Cleanup
@@ -22,7 +24,7 @@ Specializes `lagrangeSumAndFree_gen_placed_sepWPp` (`+2608 -> +4004`) to `comple
 and verifies per-iteration slot cleanup (`+4004 -> +976 / +4424`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -112,7 +114,7 @@ theorem lagrangeSumAndFree_placed_sepWPp [LibsignalPlacement] {A : RustAlloc}
          ((fsp + 664#64) ↦₆₄ u664') ∗
          ((fsp + 672#64) ↦₆₄ u672') ∗
          reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
-         stackAt fsp lagrangePrepareStack ∗ Frame)
+         onceScratch416 fsp ∗ stackAt fsp lagrangePrepareStack ∗ Frame)
         Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R))) :
     SepWPp ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (s0.readReg64 (Reg.gpr 30#5)) s
@@ -130,7 +132,7 @@ theorem lagrangeSumAndFree_placed_sepWPp [LibsignalPlacement] {A : RustAlloc}
        ((fsp + 648#64) ↦₆₄ u648) ∗
        memRegion (fsp + 656#64) 24 ∗
        reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
-       stackAt fsp lagrangePrepareStack ∗ Frame)
+       onceScratch416 fsp ∗ stackAt fsp lagrangePrepareStack ∗ Frame)
       Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R)) := by
   refine SepWPp.weaken_pre (Entails.of_eq (by ac_rfl))
     (lagrangeSumAndFree_gen_placed_sepWPp hA pts (completePointsBasisPure pts)

@@ -10,7 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitE
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # External-Hook-Generic `SessionOnlyKitOkS` Bundle
@@ -20,7 +22,7 @@ Generalizes `SessionOnlyKitOkS` from `tripleRatchetProgAt img.base C ctl abs` to
 conversions `.toE` and `.ofE`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,51 +34,6 @@ open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalPubli
 open CryptoVerification.LibsignalPublicApi CryptoVerification.LibsignalSession
 open CryptoGames CryptoGames.LibsignalSessionApi
 open CryptoVerification.LibsignalPublicApi.StoreSession CryptoVerification.LibsignalPublicApi.StoreKit
-
-/-- Ext-generic session-store-only `subroutine_ok` bundle (load/store shims, polls, and future
-drops) at `tripleRatchetProgAtExt img.base ext`. -/
-structure SessionOnlyKitOkSE {A : RustAlloc} {img : Obj.Image} (kit : SessionStoreSpec A img.base)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (ext : String → Option (State → State)) : Prop where
-  loadShim : subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + kit.loadShimOff)
-    ((kitLoadShimSpec kit).inImage img)
-  loadPoll : subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + kit.loadPollOff)
-    (kitLoadPollSpecSE img kit Scope encRecord)
-  loadFutDrop : subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + kit.loadFutDropOff)
-    futDropSpec
-  storeShim : subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + kit.storeShimOff)
-    ((kitStoreShimSpec kit).inImage img)
-  storePoll : subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + kit.storePollOff)
-    ((kitStorePollSpecE kit encRecord).inImage img)
-  storeFutDrop : subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + kit.storeFutDropOff)
-    futDropSpec
-
-theorem SessionOnlyKitOkS.toE {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {C : Crypto} {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (h : SessionOnlyKitOkS kit Scope C encRecord ctl abs) :
-    SessionOnlyKitOkSE kit Scope encRecord (tripleRatchetExterns C ctl abs) :=
-  ⟨h.loadShim, h.loadPoll, h.loadFutDrop, h.storeShim, h.storePoll, h.storeFutDrop⟩
-
-theorem SessionOnlyKitOkSE.ofE {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {C : Crypto} {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (h : SessionOnlyKitOkSE kit Scope encRecord (tripleRatchetExterns C ctl abs)) :
-    SessionOnlyKitOkS kit Scope C encRecord ctl abs :=
-  ⟨h.loadShim, h.loadPoll, h.loadFutDrop, h.storeShim, h.storePoll, h.storeFutDrop⟩
-
-theorem SessionStoreKitOkSE.toSessionOnly {A : RustAlloc} {img : Obj.Image}
-    {kit : SessionStoreSpec A img.base} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {ext : String → Option (State → State)}
-    (h : SessionStoreKitOkSE kit Scope encRecord ext) :
-    SessionOnlyKitOkSE kit Scope encRecord ext :=
-  ⟨h.loadShim, h.loadPoll, h.loadFutDrop, h.storeShim, h.storePoll, h.storeFutDrop⟩
-
-/-! ## Relocatable `[LibsignalPlacement]` Proofs -/
 
 section Placed
 

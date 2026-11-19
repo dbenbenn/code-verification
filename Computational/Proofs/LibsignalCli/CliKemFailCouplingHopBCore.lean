@@ -13,15 +13,16 @@ public import Computational.Specifications.Game.StatementPqOomGame
 public import Computational.Specifications.Session.StatementSession
 public import Computational.Specifications.Composition.StatementModel
 public import Computational.Specifications.Assumptions.KeyInd1KeyReal
-public import Computational.Proofs.LibsignalCli.StatementPqSecure
+import Computational.Proofs.LibsignalCli.StatementPqSecure
 public import Computational.Proofs.LibsignalCli.CliKemFailCouplingDefs
-public import Computational.Proofs.LibsignalCli.CliPqAdapterDefs
+import Computational.Proofs.LibsignalCli.CliPqAdapterDefs
 import Computational.Proofs.LibsignalCli.Oom.Faithful
-public import Computational.Proofs.LibsignalCli.CliPqAdapterRemoteIdInv
-public import Computational.Proofs.LibsignalCli.CliPqAdapterSmSendCorrA
-public import Computational.Proofs.LibsignalCli.CliPqAdapterCoupling
-public import Computational.Proofs.LibsignalCli.CliPqBadKemBound
-public import Computational.Proofs.LibsignalCli.CliKemFailCouplingHopBCoreAux
+public import Computational.Proofs.LibsignalCli.CliPqAdapterRemoteIdInv -- proof-setup: allow-public-import
+public import Computational.Proofs.LibsignalCli.CliPqAdapterSmSendCorrA -- proof-setup: allow-public-import
+import Computational.Proofs.LibsignalCli.CliPqAdapterCoupling
+import Computational.Proofs.LibsignalCli.CliPqBadKemBound
+public import Computational.Proofs.LibsignalCli.CliKemFailCouplingHopBCoreAux -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsB -- proof-setup: allow-public-import
 
 /-!
 # Coin-logged composed adapter and step-coupling combinators
@@ -30,7 +31,7 @@ Defines `cliAdapterCoinStepCoupled` and proves `tr`/`ch` unfoldings for
 `cliComposedAdapterImplWithCoinLogged` alongside empty-log step-coupling combinators.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -181,7 +182,7 @@ theorem cliComposedAdapterImplWithCoinLogged_ch_run
 
 /-- Single-step coin-logged coupling between a projected CLI driver step and a composed `L_bh`
 adapter step. -/
-def cliAdapterCoinStepCoupled {S : SignalPqxdh.Setup} {ℓ : ℕ} {α : Type}
+@[expose] def cliAdapterCoinStepCoupled {S : SignalPqxdh.Setup} {ℓ : ℕ} {α : Type}
     (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (b : Bool) (qStart' : ℕ) (qs_rem' : ℕ → ℕ)
     (c_cli : ProbComp (((α × ModelDriverState S ℓ) × SignalPqxdh.KeyIndState S) × List (BitVec 512)))

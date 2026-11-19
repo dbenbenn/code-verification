@@ -13,6 +13,7 @@ public import Computational.Specifications.Pqxdh.Game
 public import ToMathlib.MeasureTheory.DiscreteInstances
 public import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.ModelProofDefs
 import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model
+import LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.PointCodec
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
@@ -23,7 +24,7 @@ Concrete toy `Primitives` instances (`idealRoundtripPrimitives` and `cwfPrimitiv
 `WellFormedPrimitives` and the KEM public-key collision bound without importing test modules.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -40,14 +41,36 @@ theorem fitBytes_of_length_eq {n : Nat} {bs : Bytes} (h : bs.length = n) : fitBy
   subst h
   simp [fitBytes]
 
-def clamp32 (bs : Bytes) : Bytes :=
+@[expose] def clamp32 (bs : Bytes) : Bytes :=
   (fitBytes 32 bs).map (fun b => b &&& 0x7F)
 
-def isCanonical32 (pk : Bytes) : Bool :=
+@[expose] def isCanonical32 (pk : Bytes) : Bool :=
   pk.length == 32 && scalarIsInRange pk
 
-def reduceCanon32 (bs : Bytes) : Bytes :=
+@[expose] def reduceCanon32 (bs : Bytes) : Bytes :=
   if isCanonical32 bs then bs else clamp32 bs
+
+@[expose] def toyEdOfBytes (bs : Bytes) : VerifiedLibraries.Common.EdPoint :=
+  ⟨VerifiedLibraries.Common.leBytesToNat ((fitBytes 32 bs).map UInt8.toBitVec), 0⟩
+
+@[expose] def bytesOfToyEd (pt : VerifiedLibraries.Common.EdPoint) : Bytes :=
+  (VerifiedLibraries.Common.natToLeBytes 32 pt.x).map UInt8.ofBitVec
+
+@[simp] theorem bytesOfToyEd_length (pt : VerifiedLibraries.Common.EdPoint) :
+    (bytesOfToyEd pt).length = 32 := by
+  simp [bytesOfToyEd, VerifiedLibraries.Common.natToLeBytes]
+
+@[simp] theorem bytesOfToyEd_toyEdOfBytes (bs : Bytes) :
+    bytesOfToyEd (toyEdOfBytes bs) = fitBytes 32 bs := by
+  dsimp only [bytesOfToyEd, toyEdOfBytes]
+  have hnat :=
+    LibsignalBinary.Proofs.HookDischarge.EdwardsPoint.Math.PointCodec.natToLeBytes_leBytesToNat
+      ((fitBytes 32 bs).map UInt8.toBitVec)
+  have hlen : ((fitBytes 32 bs).map UInt8.toBitVec).length = 32 := by simp [fitBytes_length]
+  rw [hlen] at hnat
+  rw [hnat, List.map_map]
+  change (fitBytes 32 bs).map (fun b => UInt8.ofBitVec b.toBitVec) = fitBytes 32 bs
+  simp
 
 theorem xorBytes_comm (a b : Bytes) : xorBytes a b = xorBytes b a := by
   unfold xorBytes
@@ -60,7 +83,7 @@ theorem xorBytes_comm (a b : Bytes) : xorBytes a b = xorBytes b a := by
     | cons y ys =>
       simp [List.zipWith, UInt8.xor_comm, ih ys]
 
-def testPrimitivesBase : Primitives where
+@[expose] def testPrimitivesBase : Primitives where
   x25519 := fun sk pk => xorBytes (clamp32 sk) (clamp32 pk)
   x25519Base := clamp32
   isCanonical := isCanonical32
@@ -74,12 +97,12 @@ def testPrimitivesBase : Primitives where
   scalarFromBytesModOrder := clamp32
   scalarFromWide := fun b => clamp32 (b.take 32)
   montToEd := fun u s =>
-    if s == 0 && isCanonical32 u then some (u ++ List.replicate 128 0) else none
-  isTorsionFree := fun pt => isCanonical32 (pt.take 32)
-  edNeg := fun pt => fitBytes 160 (clamp32 (pt.take 32))
+    if s == 0 && isCanonical32 u then some (toyEdOfBytes u) else none
+  isTorsionFree := fun pt => isCanonical32 (bytesOfToyEd pt)
+  edNeg := fun pt => toyEdOfBytes (clamp32 (bytesOfToyEd pt))
   doubleScalarMulBasepoint := fun h a _s =>
-    fitBytes 160 (clamp32 (xorBytes (clamp32 h) (clamp32 (a.take 32))))
-  compress := fun pt => clamp32 (pt.take 32)
+    toyEdOfBytes (clamp32 (xorBytes (clamp32 h) (clamp32 (bytesOfToyEd a))))
+  compress := fun pt => clamp32 (bytesOfToyEd pt)
   kemKeyGen := fun seed => (fitBytes 1568 (seed.take 32), fitBytes 3168 seed)
   kemEncaps := fun pk coins =>
     some (fitBytes 32 (pk.take 4 ++ coins.take 4),
@@ -123,16 +146,16 @@ def testPrimitivesBase : Primitives where
 
 /-- Clamps a byte to bits 3–4 with bit 3 set (`(b &&& 0x18) ||| 0x08`), invariant under RFC 7748
 scalar clamping, non-zero, and canonical (`< 237`). -/
-def clampIdealByte (b : UInt8) : UInt8 :=
+@[expose] def clampIdealByte (b : UInt8) : UInt8 :=
   (b &&& 0x18) ||| 0x08
 
-def clampIdeal32 (bs : Bytes) : Bytes :=
+@[expose] def clampIdeal32 (bs : Bytes) : Bytes :=
   (fitBytes 32 bs).map clampIdealByte
 
-def reduceCanonIdeal32 (bs : Bytes) : Bytes :=
+@[expose] def reduceCanonIdeal32 (bs : Bytes) : Bytes :=
   if isCanonical32 bs then bs else clampIdeal32 bs
 
-def idealX25519 (sk pk : Bytes) : Bytes :=
+@[expose] def idealX25519 (sk pk : Bytes) : Bytes :=
   clampIdeal32 (xorBytes (clampIdeal32 sk) (clampIdeal32 pk))
 
 theorem clampIdealByte_idem (b : UInt8) :
@@ -170,7 +193,7 @@ theorem getD_31_clampIdeal32_and_80 (bs : Bytes) :
   simp only [Option.map_some, Option.getD_some]
   exact clampIdealByte_and_80 _
 
-def idealLeafPrimitives : Primitives :=
+@[expose] def idealLeafPrimitives : Primitives :=
   { testPrimitivesBase with
     x25519 := idealX25519
     x25519Base := clampIdeal32
@@ -184,11 +207,11 @@ def idealLeafPrimitives : Primitives :=
     scalarFromBytesModOrder := clampIdeal32
     scalarFromWide := fun b => clampIdeal32 (b.take 32)
     montToEd := fun u s =>
-      if s == 0 && isCanonical32 u then some (u ++ List.replicate 128 0) else none
-    isTorsionFree := fun pt => isCanonical32 (pt.take 32)
-    edNeg := fun pt => fitBytes 160 (clampIdeal32 (pt.take 32))
-    doubleScalarMulBasepoint := fun _h _a s => fitBytes 160 (clampIdeal32 s)
-    compress := fun pt => clampIdeal32 (pt.take 32)
+      if s == 0 && isCanonical32 u then some (toyEdOfBytes u) else none
+    isTorsionFree := fun pt => isCanonical32 (bytesOfToyEd pt)
+    edNeg := fun pt => toyEdOfBytes (clampIdeal32 (bytesOfToyEd pt))
+    doubleScalarMulBasepoint := fun _h _a s => toyEdOfBytes (clampIdeal32 s)
+    compress := fun pt => clampIdeal32 (bytesOfToyEd pt)
     kemKeyGen := fun seed => (fitBytes 1568 (seed.take 32), fitBytes 3168 seed)
     kemEncaps := fun _pk coins =>
       let ss := fitBytes 32 coins
@@ -207,7 +230,7 @@ def idealLeafPrimitives : Primitives :=
 
 /-- Ideal roundtrip primitives with composite KDF, AEAD, SHA-512, and XEdDSA fields tied to their
 `Model` reference constructions over `idealLeafPrimitives`. -/
-def idealRoundtripPrimitives : Primitives :=
+@[expose] def idealRoundtripPrimitives : Primitives :=
   let P1 : Primitives := { idealLeafPrimitives with
     sha512          := sha512Ref idealLeafPrimitives
     hkdfDerive96    := hkdfDerive96Ref idealLeafPrimitives
@@ -290,15 +313,15 @@ theorem idealAesBlock_corr (k blk : Bytes) (_hk : k.length = 32) (hb : blk.lengt
   rw [fitBytes_of_length_eq hxorLen]
   exact xorBytes_cancel_left (fitBytes 16 k) blk (by rw [h16k, hb])
 
-def cwfMask (i : Nat) : UInt8 := if i = 0 then 0xF8 else if i = 31 then 0x3F else 0xFF
+@[expose] def cwfMask (i : Nat) : UInt8 := if i = 0 then 0xF8 else if i = 31 then 0x3F else 0xFF
 
-def cwfFix (i : Nat) : UInt8 := if i = 0 then 0x01 else 0x00
+@[expose] def cwfFix (i : Nat) : UInt8 := if i = 0 then 0x01 else 0x00
 
-def cwfByte (i : Nat) (b : UInt8) : UInt8 := (b &&& cwfMask i) ||| cwfFix i
+@[expose] def cwfByte (i : Nat) (b : UInt8) : UInt8 := (b &&& cwfMask i) ||| cwfFix i
 
 /-- Projects a byte string to 32 canonical bytes preserving RFC 7748 clamped bits (size-32 fibres
 over uniform 32-byte inputs). -/
-def cwfC (bs : Bytes) : Bytes :=
+@[expose] def cwfC (bs : Bytes) : Bytes :=
   List.ofFn (fun i : Fin 32 => cwfByte i.val ((fitBytes 32 bs).getD i.val 0))
 
 theorem cwfByte_cases (i : Nat) :
@@ -387,9 +410,9 @@ theorem cwfC_clamp (sk : Bytes) : cwfC (clampScalar25519 sk) = cwfC sk := by
   rw [cwfC_getD _ i hi, cwfC_getD _ i hi, fitBytes_of_length_eq (clampScalar25519_length sk),
     clampScalar25519_getD sk i hi, cwfByte_clampByte]
 
-def cwfX25519 (sk pk : Bytes) : Bytes := cwfC (xorBytes (cwfC sk) (cwfC pk))
+@[expose] def cwfX25519 (sk pk : Bytes) : Bytes := cwfC (xorBytes (cwfC sk) (cwfC pk))
 
-def cwfCanon (pk : Bytes) : Bool := pk.length == 32 && cwfC pk == pk
+@[expose] def cwfCanon (pk : Bytes) : Bool := pk.length == 32 && cwfC pk == pk
 
 theorem cwfX25519_comm (a b : Bytes) : cwfX25519 a b = cwfX25519 b a := by
   unfold cwfX25519; rw [xorBytes_comm]
@@ -432,15 +455,15 @@ theorem cwfX25519_inj (a pk1 pk2 : Bytes) (h : cwfX25519 a pk1 = cwfX25519 a pk2
   rw [fitBytes_of_length_eq (cwfC_length _)] at e1 e2
   rw [e1, e2]; exact this
 
-def cwfZero : Bytes := List.replicate 32 0
+@[expose] def cwfZero : Bytes := List.replicate 32 0
 
-def cwfGood (p : Bytes) : Bool := p.length == 32 && p != cwfZero
+@[expose] def cwfGood (p : Bytes) : Bool := p.length == 32 && p != cwfZero
 
-def cwfP8 (p : Bytes) : Bytes := if cwfGood p then cwfC p else cwfZero
+@[expose] def cwfP8 (p : Bytes) : Bytes := if cwfGood p then cwfC p else cwfZero
 
-def cwfX (sk pk : Bytes) : Bytes := if cwfGood pk then cwfX25519 sk pk else cwfZero
+@[expose] def cwfX (sk pk : Bytes) : Bytes := if cwfGood pk then cwfX25519 sk pk else cwfZero
 
-def cwfDh (x y : Bytes) : Bytes := if cwfGood x && cwfGood y then cwfX25519 x y else cwfZero
+@[expose] def cwfDh (x y : Bytes) : Bytes := if cwfGood x && cwfGood y then cwfX25519 x y else cwfZero
 
 theorem cwfGood_cwfC (bs : Bytes) : cwfGood (cwfC bs) = true := by
   simpa [cwfGood, cwfC_length, cwfZero] using cwfC_ne_zero bs
@@ -514,14 +537,14 @@ theorem cwfDh_cwfC_left (a pk : Bytes) : cwfDh (cwfC a) pk = cwfX a pk := by
 theorem cwfDh_comm (x y : Bytes) : cwfDh x y = cwfDh y x := by
   unfold cwfDh; rw [Bool.and_comm, cwfX25519_comm]
 
-def cwfLeafPrimitives : Primitives :=
+@[expose] def cwfLeafPrimitives : Primitives :=
   { idealLeafPrimitives with
     x25519 := cwfX
     x25519Base := cwfC
     isCanonical := cwfCanon
     sigPkGen := cwfC
-    montToEd := fun u s => if s == 0 && cwfCanon u then some (u ++ List.replicate 128 0) else none
-    isTorsionFree := fun pt => cwfCanon (pt.take 32)
+    montToEd := fun u s => if s == 0 && cwfCanon u then some (toyEdOfBytes u) else none
+    isTorsionFree := fun pt => cwfCanon (bytesOfToyEd pt)
     kemEncaps := fun pk coins =>
       if pk.length == kyberPkLen then
         let ss := fitBytes 32 coins
@@ -534,7 +557,7 @@ def cwfLeafPrimitives : Primitives :=
       cwfGood x && cwfGood y && (cwfC x == x || cwfC y == y) && cwfP8 z == cwfP8 (cwfDh x y) }
 
 /-- Concrete `CryptoWellFormedPrimitives` witness over `cwfLeafPrimitives`. -/
-def cwfPrimitives : Primitives :=
+@[expose] def cwfPrimitives : Primitives :=
   let P1 : Primitives := { cwfLeafPrimitives with
     sha512          := sha512Ref cwfLeafPrimitives
     hkdfDerive96    := hkdfDerive96Ref cwfLeafPrimitives
@@ -566,10 +589,10 @@ theorem cwfPrimitives_isCanonical_eq_isCanonicalRef (pk : Bytes) :
   · obtain ⟨hlen, hfix⟩ := cwfCanon_spec hc
     have h80 : (pk.getD 31 0 &&& 0x80) = 0 := by rw [← hfix]; exact cwfC_and_80 pk
     have hr : scalarIsInRange pk = true := by rw [← hfix]; exact cwfC_scalarIsInRange pk
-    have htake : (pk ++ List.replicate 128 0).take 32 = pk := by
-      rw [List.take_append_of_le_length (by omega), List.take_of_length_le (by omega)]
+    have htoy : bytesOfToyEd (toyEdOfBytes pk) = pk := by
+      rw [bytesOfToyEd_toyEdOfBytes, fitBytes_of_length_eq hlen]
     rw [hc, hlen, h80, hr]
-    simp only [beq_self_eq_true, Bool.and_self, ↓reduceIte, htake, hc]
+    simp only [beq_self_eq_true, Bool.and_self, ↓reduceIte, htoy, hc]
   · have hfalse : cwfCanon pk = false := Bool.eq_false_iff.mpr hc
     simp [hfalse]
 
@@ -605,14 +628,11 @@ theorem cwfPrimitives_sig_corr (sk msg r : Bytes) :
     rw [h80, hpk_canon]; decide
   have hsScalar : clampIdeal32 (capR.take 31 ++ [capR.getD 31 0 &&& 0x7F]) = capR :=
     clampIdeal32_clamped31 _
-  have hfit_take : (fitBytes 160 capR).take 32 = capR := by
-    unfold fitBytes
-    rw [List.take_append_of_le_length (by rw [List.length_take, hcapR_len]; omega)]
-    rw [List.take_take, Nat.min_eq_left (by decide)]
-    exact List.take_of_length_le (by omega)
+  have htoy_capR : bytesOfToyEd (toyEdOfBytes capR) = capR := by
+    rw [bytesOfToyEd_toyEdOfBytes, fitBytes_of_length_eq hcapR_len]
   have hclamp_capR : clampIdeal32 capR = capR := clampIdeal32_idem _
   rw [hcond1, hcond2]
-  simp only [↓reduceIte, htake_sig, hdrop_sig, hsScalar, hclamp_capR, hfit_take, beq_self_eq_true]
+  simp only [↓reduceIte, htake_sig, hdrop_sig, hsScalar, hclamp_capR, htoy_capR, beq_self_eq_true]
 
 theorem cwfPrimitives_onCurveKey_iff (pk : Bytes) :
     onCurveKey cwfPrimitives pk ↔ cwfGood pk = true := by
@@ -718,20 +738,7 @@ theorem cwfPrimitives_wellFormed : WellFormedPrimitives cwfPrimitives where
     rfl
   scalarFromBytesModOrder_len := clampIdeal32_length
   scalarFromWide_len := fun b => clampIdeal32_length (b.take 32)
-  montToEd_len := by
-    intro u s pt h
-    dsimp only [cwfPrimitives, cwfLeafPrimitives] at h
-    split at h <;> rename_i hcond
-    · injection h with hpt
-      subst hpt
-      rw [Bool.and_eq_true] at hcond
-      have hu : u.length = 32 := (cwfCanon_spec hcond.2).1
-      rw [List.length_append, hu, List.length_replicate]
-    · contradiction
-  edNeg_len := fun pt => fitBytes_length 160 (clampIdeal32 (pt.take 32))
-  doubleScalarMulBasepoint_len := fun _h _a s =>
-    fitBytes_length 160 (clampIdeal32 s)
-  compress_len := fun pt => clampIdeal32_length (pt.take 32)
+  compress_len := fun pt => clampIdeal32_length (bytesOfToyEd pt)
   sigVerify_eq_xeddsaVerifyRef := fun _ _ _ => rfl
   isCanonical_eq_isCanonicalRef := cwfPrimitives_isCanonical_eq_isCanonicalRef
   kemKeyGen_valid := fun seed =>

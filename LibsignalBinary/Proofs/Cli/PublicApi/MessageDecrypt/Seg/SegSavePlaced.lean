@@ -9,14 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSave
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.SessionOnlyKitEPlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSave
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.SessionOnlyKitEPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -229,7 +234,7 @@ theorem segSave_call_placed_wp [LibsignalPlacement] {A : RustAlloc}
     simp only [↓reduceIte, emp_sepConj]
     exact Entails.of_eq (by ac_rfl)
 
-def wsSaveFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
+@[expose] def wsSaveFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) (ist : ikit.IdState) : SepProp :=
   ((sp + 0xe8#64) ↦₆₄ x.remA) ∗ ((sp + 0x108#64) ↦₆₄ s0.readReg64 .x5) ∗
   ((sp + 0x110#64) ↦₆₄ ikit.id_vt) ∗
@@ -241,7 +246,7 @@ def wsSaveFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentitySt
   ikit.identityAt (s0.readReg64 .x5) ist ∗
   FromRecordCallees.lsLogOff ∗ protocolAddressAt A x.rem x.remA ∗ A.pool ∗ stackAt sp (saveCallStack ikit)
 
-def wsSaveFixedRestPlaced (A : RustAlloc)
+@[expose] def wsSaveFixedRestPlaced (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) (st : kit.StoreState) : SepProp :=
   wsSavedRegs s0.sp s0 ∗ ((sp + 0xf8#64) ↦₆₄ s0.readReg64 .x3) ∗
@@ -313,7 +318,7 @@ theorem wsFixed_wsEnv_save_join_placed [LibsignalPlacement] (A : RustAlloc)
   unfold wsEnvPlaced
   exact Entails.of_eq (by ac_rfl)
 
-def wsSaveCallPrePlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
+@[expose] def wsSaveCallPrePlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) (ist : ikit.IdState)
     (k : IdentityKey) (c0 c1 d0 d1 d2 d3 : BitVec 64) (d5 : BitVec 32) : SepProp :=
   ((sp + 0xe8#64) ↦₆₄ x.remA) ∗ ((sp + 0x108#64) ↦₆₄ s0.readReg64 .x5) ∗
@@ -330,7 +335,7 @@ def wsSaveCallPrePlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentitySto
   memRegion (sp + 0x5f0#64) 48 ∗ FromRecordCallees.lsLogOff ∗ protocolAddressAt A x.rem x.remA ∗
   ((sp + 0x2a8#64) ↦ₛ k.publicKey.bytes.toList) ∗ A.pool ∗ stackAt sp (saveCallStack ikit)
 
-def wsSaveFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsSaveFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp : BitVec 64) (st : kit.StoreState)
@@ -394,7 +399,7 @@ theorem trusted_entails_saveCallPre_placed [LibsignalPlacement] (C : Crypto) (A 
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
   exact Entails.of_eq (by ac_rfl)
 
-def wsSaveCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
+@[expose] def wsSaveCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) (ist : ikit.IdState)
     (k : IdentityKey) (ans_save : Except Unit IdentityChange)
     (box strPtr o2 o3 o4 o5 : BitVec 64) (o1 o6 : BitVec 32) : SepProp :=
@@ -416,7 +421,7 @@ def wsSaveCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc) (ikit : Ide
   FromRecordCallees.lsLogOff ∗ protocolAddressAt A x.rem x.remA ∗ ((sp + 0x2a8#64) ↦ₛ k.publicKey.bytes.toList) ∗
   A.pool ∗ stackAt sp (saveCallStack ikit)
 
-def wsSavePostCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsSavePostCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp : BitVec 64) (st : kit.StoreState) (ist' : ikit.IdState)
@@ -770,7 +775,7 @@ theorem segSaveVPlaced_ok [LibsignalPlacement] {C : Crypto} {A : RustAlloc} {ctl
         ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · rw [hx26_2, hx26_1, hx26, hsp]
       · rw [hx28_2]; decide
-      · rw [hmod.1]; decide
+      · rw [hmod.1]; nofun
       · intro p; rw [hmod.1]; exact nofun
       · intro r hr; dsimp only at hr; rw [hload] at hr; cases hr; exact hscope
       · rw [hmod.2]; exact ⟨hload ▸ hscope.2, trivial⟩

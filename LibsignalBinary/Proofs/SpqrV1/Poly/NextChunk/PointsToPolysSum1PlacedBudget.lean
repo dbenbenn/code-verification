@@ -9,17 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysDefs
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSum1Placed
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysDefs
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSum1Placed -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysFallbackLoop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSumMult1Placed
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded `Poly::lagrange_sum` Helpers
@@ -29,7 +32,7 @@ setup, clone, and deallocation helpers threading `RustCliAllocBudget M`, `Budget
 `LagrangeSumCloneEnv`, and `LagrangeSumDeallocEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -136,10 +139,10 @@ private theorem ptr_add_two_mul_succ (ptr : BitVec 64) (j : Nat) :
 
 /-- Per-iteration `Poly::clone` allocation event sequence (`+2668 -> +2736`, Block `416`):
     `2 * n` bytes at alignment `2`. -/
-def lagrangeSumCloneEvents (n : Nat) : List AllocEvent :=
+@[expose] def lagrangeSumCloneEvents (n : Nat) : List AllocEvent :=
   rustAllocEvents (2 * n) 2
 
-def LagrangeSumCloneEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def LagrangeSumCloneEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = lagrangeSumCloneEvents n
 
 theorem fitsEnv_lagrangeSumClone_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -163,10 +166,10 @@ example :
 
 /-- Per-iteration `clonePtr` deallocation event sequence (`+2640 -> +2668 / +3908`, Block `416`):
     `2 * n` bytes at alignment `2`. -/
-def lagrangeSumDeallocEvents (n : Nat) : List AllocEvent :=
+@[expose] def lagrangeSumDeallocEvents (n : Nat) : List AllocEvent :=
   rustDeallocEvents (2 * n) 2
 
-def LagrangeSumDeallocEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def LagrangeSumDeallocEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = lagrangeSumDeallocEvents n
 
 theorem lagrangeSumDeallocEvents_freeOnly (n : Nat) : FreeOnlyEvs (lagrangeSumDeallocEvents n) :=

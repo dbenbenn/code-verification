@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish1
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -18,6 +18,7 @@ import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChain
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send`: Return Assembly, Epoch Dealloc, and Initial `PqRatchetState` Drop
@@ -27,7 +28,7 @@ Relocatable return struct assembly (`+6216..+6328`), epoch-secret check (`+6328.
 (Block `124`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +68,7 @@ private theorem send_noneCap2_add_two_beq_zero :
 private theorem send_noneCap2_add_two_bne_zero :
     (0xfffffffffffffffe#64 + 2#64 != 0#64) = false := rfl
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff Program.fnAddr
   v1StatePBPinnedAt
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero Drop.noneCap_add_two_beq_zero
@@ -499,7 +500,7 @@ theorem step_send_drop_vn_chain_32134_placed {A : RustAlloc}
         ⟨by wp_norm_goal, by wp_norm_goal, by wp_norm_goal,
           by wp_norm_goal, by wp_norm_goal, by wp_norm_goal, Entails.of_eq (by ac_rfl)⟩
 
-def spqrSendDropJumpTablePlacedExpanded : SepProp :=
+@[expose] def spqrSendDropJumpTablePlacedExpanded : SepProp :=
   ((lsρ spqrSendRoSym + 44#64) ↦₈ᵣ 0xbb#8) ∗ ((lsρ spqrSendRoSym + 45#64) ↦₈ᵣ 0x00#8) ∗
   ((lsρ spqrSendRoSym + 46#64) ↦₈ᵣ 0x00#8) ∗ ((lsρ spqrSendRoSym + 47#64) ↦₈ᵣ 0x00#8) ∗
   ((lsρ spqrSendRoSym + 48#64) ↦₈ᵣ 0x7b#8) ∗ ((lsρ spqrSendRoSym + 49#64) ↦₈ᵣ 0x00#8) ∗

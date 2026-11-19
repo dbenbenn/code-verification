@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit
-public import LibsignalBinary.Specifications.RecordCodecsBinary.SignedPreKey
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeySpec
 
 /-!
 # Abstract `KyberPreKeyStore` Interface (`KyberPreKeyStoreSpec`)
@@ -22,7 +22,7 @@ Store-kit interface for the `dyn KyberPreKeyStore` methods invoked by `decrypt_p
   `Poll::Ready<Result<(), SignalProtocolError>>` (`kpkMarkPollOutAt`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -162,7 +162,7 @@ abbrev KyberPreKeyStoreKit := KyberPreKeyStoreSpec
     * `.ok r`: `kit.RecOk r` and `signedPreKeyStructAt A out r.signedPreKey` (`88` B);
     * `.error e`: word 0 is `-1` (`errTag`), bytes `8..56` hold `speErrAt kit.getErr (out + 8) e`,
       and bytes `56..88` are uninspected (`memRegion (out + 0x38) 32`). -/
-def kpkGetPollOutAt {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpec A b)
+@[expose] def kpkGetPollOutAt {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpec A b)
     (out : BitVec 64) : Except kit.GetErr KyberPreKeyRecord → SepProp
   | .ok r => ⌜kit.RecOk r⌝ ∗ signedPreKeyStructAt A out r.signedPreKey
   | .error e =>
@@ -175,7 +175,7 @@ abbrev kpkMarkPollOutAt {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreS
   unitSpePollOutAt kit.markErr out
 
 /-- Generic `get_kyber_pre_key` shim spec parameterized by `kit : KyberPreKeyStoreSpec A b`. -/
-def kitKpkGetShimSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpec A b) :
+@[expose] def kitKpkGetShimSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpec A b) :
     Spec PreKeyShimCall where
   pre := fun x s =>
     ⌜(b &&& 0xfff#64) = 0#64 ∧ s.readReg64 .x0 = x.self ∧ s.readReg32 .x1 = x.id⌝ ∗
@@ -189,7 +189,7 @@ def kitKpkGetShimSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpe
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Generic `mark_kyber_pre_key_used` shim spec parameterized by `kit : KyberPreKeyStoreSpec A b`. -/
-def kitKpkMarkShimSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpec A b) :
+@[expose] def kitKpkMarkShimSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpec A b) :
     Spec KyberMarkShimCall where
   pre := fun x s =>
     ⌜(b &&& 0xfff#64) = 0#64 ∧ s.readReg64 .x0 = x.self ∧ s.readReg32 .x1 = x.id ∧
@@ -204,7 +204,7 @@ def kitKpkMarkShimSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSp
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Generic `get_kyber_pre_key` poll spec parameterized by `kit : KyberPreKeyStoreSpec A b`. -/
-def kitKpkGetPollSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpec A b) :
+@[expose] def kitKpkGetPollSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpec A b) :
     Spec (PreKeyPollCall × kit.KpkState) where
   pre := fun (x, st0) s =>
     ⌜(b &&& 0xfff#64) = 0#64 ∧ s.readReg64 .x0 = x.fut ∧ s.readReg64 .x8 = x.out ∧
@@ -224,7 +224,7 @@ def kitKpkGetPollSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpe
 /-- Generic `mark_kyber_pre_key_used` poll spec parameterized by `kit : KyberPreKeyStoreSpec A b`.
     The borrowed 32-byte EC `PublicKey` at `x.baseKeyA` (`x.baseKeyA ↦ₛ x.baseKey.bytes.toList`,
     matching `IdentityStoreKit` and `publicKeySerializeSpec`) is preserved across the poll. -/
-def kitKpkMarkPollSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpec A b) :
+@[expose] def kitKpkMarkPollSpec {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeyStoreSpec A b) :
     Spec (KyberMarkPollCall × kit.KpkState) where
   pre := fun (x, st0) s =>
     ⌜(b &&& 0xfff#64) = 0#64 ∧ s.readReg64 .x0 = x.fut ∧ s.readReg64 .x8 = x.out ∧
@@ -255,70 +255,9 @@ abbrev kitKpkMarkPollSpecE {A : RustAlloc} {b : BitVec 64} (kit : KyberPreKeySto
   withEnvPre (kitKpkMarkPollSpec kit) fun s => kit.envOk s.fs.files
 
 /-- The Kyber pre-key store's own trace events contain no file-system event (`FsCtx`'s `Q`). -/
-def KyberPreKeyStoreSpec.Quiet {A : RustAlloc} {b : BitVec 64}
+@[expose] def KyberPreKeyStoreSpec.Quiet {A : RustAlloc} {b : BitVec 64}
     (kit : KyberPreKeyStoreSpec A b) : Prop :=
   (∀ id ans, NoFsEv (kit.getEvs id ans)) ∧
     (∀ id signedId bk ans, NoFsEv (kit.markEvs id signedId bk ans))
-
-/-- Read-only `.rodata` vtable slots required by `kit : KyberPreKeyStoreSpec A img.base` under
-    `img.FrozenLoaded`. Store `drop_in_place` and `save_kyber_pre_key` (`+0x20`) are never called
-    by `decrypt_prekey`. -/
-structure KyberPreKeyVtablesOk {A : RustAlloc} (img : Obj.Image)
-    (kit : KyberPreKeyStoreSpec A img.base) : Prop where
-  getSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((kit.kpk_vt + 0x18#64) ↦₆₄ᵣ (img.base + kit.getShimOff)) ∗ P
-  markSlot : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((kit.kpk_vt + 0x28#64) ↦₆₄ᵣ (img.base + kit.markShimOff)) ∗ P
-  getFutDrop : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.getFutVtOff) ↦₆₄ᵣ (img.base + kit.getFutDropOff)) ∗ P
-  getFutSize : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.getFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 kit.getBoxSize) ∗ P
-  getFutAlign : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.getFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P
-  getFutPoll : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.getFutVtOff + 0x18#64) ↦₆₄ᵣ (img.base + kit.getPollOff)) ∗ P
-  markFutDrop : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.markFutVtOff) ↦₆₄ᵣ (img.base + kit.markFutDropOff)) ∗ P
-  markFutSize : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.markFutVtOff + 8#64) ↦₆₄ᵣ BitVec.ofNat 64 kit.markBoxSize) ∗ P
-  markFutAlign : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.markFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P
-  markFutPoll : ∀ {s : State} {P : SepProp}, img.FrozenLoaded s → (s.mem ⊨ P) →
-    s.mem ⊨ ((img.base + kit.markFutVtOff + 0x18#64) ↦₆₄ᵣ (img.base + kit.markPollOff)) ∗ P
-
-/-- Code-contract bundle for `kit : KyberPreKeyStoreSpec A b` (without `img.FrozenLoaded`). -/
-structure KyberPreKeyStoreKitOk {A : RustAlloc} {b : BitVec 64}
-    (kit : KyberPreKeyStoreSpec A b) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop where
-  getShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.getShimOff)
-    (kitKpkGetShimSpec kit)
-  getPoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.getPollOff)
-    (kitKpkGetPollSpecE kit)
-  getFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.getFutDropOff)
-    futDropSpec
-  markShim : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.markShimOff)
-    (kitKpkMarkShimSpec kit)
-  markPoll : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.markPollOff)
-    (kitKpkMarkPollSpecE kit)
-  markFutDrop : subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + kit.markFutDropOff)
-    futDropSpec
-
-/-- Image-relocated code-contract bundle (`Spec.inImage ... img`, providing `img.FrozenLoaded`
-    to every shim, poll, and future drop). -/
-structure KyberPreKeyStoreKitOkImg {A : RustAlloc} (img : Obj.Image)
-    (kit : KyberPreKeyStoreSpec A img.base) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop where
-  getShim : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.getShimOff)
-    ((kitKpkGetShimSpec kit).inImage img)
-  getPoll : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.getPollOff)
-    ((kitKpkGetPollSpecE kit).inImage img)
-  getFutDrop : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.getFutDropOff)
-    (futDropSpec.inImage img)
-  markShim : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.markShimOff)
-    ((kitKpkMarkShimSpec kit).inImage img)
-  markPoll : subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + kit.markPollOff)
-    ((kitKpkMarkPollSpecE kit).inImage img)
-  markFutDrop : subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    (img.base + kit.markFutDropOff) (futDropSpec.inImage img)
 
 end CryptoVerification.LibsignalPublicApi.StoreKit

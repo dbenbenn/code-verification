@@ -10,14 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPt
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPt -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Drop Glue for `[sorted_vec::SortedSet<Pt>; 16]` (Block `264`)
@@ -26,7 +27,7 @@ Defines `dropGlueSortedSetPt16Spec` under `RustCliAllocBudget M` (`FreeOnlyEvs`)
 deallocation combinators, and the relocatable `[LibsignalPlacement]` proof for Block `264`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -59,7 +60,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Budget-Threaded Specifications -/
 
-def dropGlueSortedSetPt16SpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropGlueSortedSetPt16SpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropGlueSortedSetPt16Ghost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.arrA ∧ x.vecs.length = NUM_POLYS⌝ ∗
@@ -71,7 +72,7 @@ def dropGlueSortedSetPt16SpecBase (M : AllocCostModel) (A : RustCliAllocBudget M
       memRegion x.arrA polyArrayBytes ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp dropGluePoly16Stack
 
-def dropGlueSortedSetPt16Spec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropGlueSortedSetPt16Spec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropGlueSortedSetPt16Ghost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.arrA ∧ x.vecs.length = NUM_POLYS ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗

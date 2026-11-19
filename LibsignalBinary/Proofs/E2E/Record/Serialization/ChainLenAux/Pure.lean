@@ -10,8 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 
@@ -19,7 +18,7 @@ import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 # Pure arithmetic and layout lemmas for `Chain::encoded_len` (`0x26aa0`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization
 
@@ -253,11 +252,11 @@ theorem ult_ofNat_add_left_of_lt {a b : Nat} (h : a + b < 2 ^ 64) :
 
 /-- Encoded byte length of a `message_keys` element inside `Chain::encoded_len`, excluding the
 1-byte field tag added once after the loop. -/
-def mkBodyLen (mk : MessageKeyGenerator) : Nat :=
+@[expose] def mkBodyLen (mk : MessageKeyGenerator) : Nat :=
   (encMessageKey mk).length + (encodeVarint (BitVec.ofNat 64 (encMessageKey mk).length)).length
 
 /-- Sum of `mkBodyLen` over a list of `MessageKeyGenerator`s. -/
-def mksBodyLen : List MessageKeyGenerator → Nat
+@[expose] def mksBodyLen : List MessageKeyGenerator → Nat
   | [] => 0
   | mk :: rest => mkBodyLen mk + mksBodyLen rest
 
@@ -370,7 +369,7 @@ theorem stackAt_chainLen_split (sp : BitVec 64) :
       stackAt (sp - 64#64) msgKeyLenStack ∗ cells (sp - 64#64) 8 :=
   ProofLib.stackAt_split_cells sp msgKeyLenStack 8 (by decide)
 
-@[reducible]
+@[expose, reducible]
 def chainLenSavedAt (sp fp lr x23 v3 x22 x21 x20 x19 : BitVec 64) : SepProp :=
   ((sp - 64#64) ↦₆₄ fp) ∗ ((sp - 56#64) ↦₆₄ lr) ∗
   ((sp - 48#64) ↦₆₄ x23) ∗ ((sp - 40#64) ↦₆₄ v3) ∗
@@ -402,7 +401,7 @@ theorem stack_restore_chainLen (sp fp lr x23 v3 x22 x21 x20 x19 : BitVec 64) :
   exact sepConj_mono_right (chainLenSavedAt_entails_cells sp fp lr x23 v3 x22 x21 x20 x19)
 
 /-- Preservation of `x24..x28`, stack alignment at `fsp`, and execution trace. -/
-@[reducible]
+@[expose, reducible]
 def Saved64Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.readReg64 .x24 = s0.readReg64 .x24 ∧
   s.readReg64 .x25 = s0.readReg64 .x25 ∧
@@ -411,14 +410,6 @@ def Saved64Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.readReg64 .x28 = s0.readReg64 .x28 ∧
   s.sp = fsp ∧
   (s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0)
-
-theorem msgKeyLen_fnAddr_eq (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr msgKeyLenName =
-      (tripleRatchetProgAt b C ctl abs).fnAddr chainLenName + bv% (ls_off% "<libsignal_protocol::proto::storage::session_structure::chain::MessageKey as prost::message::Message>::encoded_len" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as prost::message::Message>::encoded_len") := by
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::proto::storage::session_structure::chain::MessageKey as prost::message::Message>::encoded_len"),
-    (ls_lemma% fnOff "<libsignal_protocol::proto::storage::session_structure::Chain as prost::message::Message>::encoded_len"), BitVec.add_assoc]
-  rfl
 
 theorem SepWP.seq_clean {prog : Program} {mid target : BitVec 64} {s : State}
     {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop}
@@ -515,7 +506,7 @@ theorem optChainKeyAt_dup_bounds (A : RustAlloc) (pin : VecPin) (ck : Option Cha
     rintro ⟨_, hcap⟩
     exact Entails.pure_right (fun _ _ => hcap) (Entails.refl _)
 
-@[reducible]
+@[expose, reducible]
 def vecMksTail (A : RustAlloc) (cap ptr : BitVec 64) (n : Nat) : SepProp :=
   if cap = 0 then emp
   else A.live ptr (cap.toNat * 104) 8 ∗
@@ -577,7 +568,7 @@ theorem vecAt_mks_restore (A : RustAlloc) (base cap ptr : BitVec 64)
   rw [hpull]
   exact sepConj_mono_right (vecBuf_restore_arrayAt A 104 8 (messageKeyAt A) cap ptr mks hlen hlt hptr)
 
-@[reducible]
+@[expose, reducible]
 def chainFieldsAt (A : RustAlloc) (g : ChainGhost) (c : ReceiverChain) (a : BitVec 64) : SepProp :=
   (a ↦₆₄ g.srk.cap) ∗ ((a + 8#64) ↦₆₄ g.srk.ptr) ∗
   ((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.srk.bytes.length) ∗
@@ -764,7 +755,4 @@ theorem zip_map_snd_eq {α β : Type} {xs : List α} {ys : List β} (h : xs.leng
       simp [ih h]
 
 end CryptoVerification.E2E.Record.Serialization
-
-
-
 

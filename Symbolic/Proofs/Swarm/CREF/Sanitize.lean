@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import Mathlib.Data.List.TakeDrop
 import Mathlib.Data.Set.Operations
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
@@ -27,7 +27,7 @@ Defines `clearStuckWrap` and `sanitizeMoves`, which clear `wrapped = true` on `d
 `ReadCollision`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +45,7 @@ namespace Sanitize
 /-- Clears `wrapped = true` on a `decrypt` or `decryptSkipped` move whose message index `mi` is out
 of range on `tr`, leaving `Move.next` and `Move.vis` unchanged so stuck wrapped moves do not report
 `prekeyPath? = some true`. -/
-def clearStuckWrap (tr : ExecTrace) : Move → Move
+@[expose] def clearStuckWrap (tr : ExecTrace) : Move → Move
   | .decrypt me si mi pq sp w =>
     .decrypt me si mi pq sp (w && (tr.getMessageSentAt mi).isSome)
   | .decryptSkipped me si mi k pq sp w =>
@@ -112,7 +112,7 @@ theorem callCount_pos_of_clearStuckWrap_prekeyPath? {m : Move} {tr : ExecTrace}
 
 /-- Sanitize a move sequence from initial trace `tr` by applying `clearStuckWrap` at each step's
 running trace. -/
-def sanitizeMoves : ExecTrace → List Move → List Move
+@[expose] def sanitizeMoves : ExecTrace → List Move → List Move
   | _, [] => []
   | tr, m :: ms => clearStuckWrap tr m :: sanitizeMoves (m.next tr) ms
 

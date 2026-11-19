@@ -23,7 +23,7 @@ Strengthens `RootMmapParamsOk sc cnt_f len` on `alloc_group`'s root `mmap` path 
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 

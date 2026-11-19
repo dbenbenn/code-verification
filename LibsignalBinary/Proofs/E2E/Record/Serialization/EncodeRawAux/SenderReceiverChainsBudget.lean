@@ -11,16 +11,16 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.SenderReceiverChains
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.SenderReceiverChains
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
-import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.Fetch
+import Mathlib.Tactic.ToAdditive
+import Mathlib.Tactic.ToDual
 import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.PrologueVersionLocalIdentity
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
@@ -34,7 +34,7 @@ loop (tag 7) in block `14` (`+0x1cc..+0x218`), threading `RustCliAllocBudget M`.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.SenderReceiverChainsBudget
 
@@ -86,7 +86,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero bv_add_neg80_2
 
 /-- Segment allocation envelope for `encode::<Chain>`, subsumed by `DefsBudget.EncodeChainEnv`. -/
-def encodeChainSegEnv (x : EncodeChainGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def encodeChainSegEnv (x : EncodeChainGhost) (evs : List AllocEvent) : Prop :=
   EncRawSegEnv x.bs.length (lenField x.tag (encChainMem x.gc)).length evs
 
 theorem encodeChainSegEnv_sub_encodeChainEnv (x : EncodeChainGhost) {evs : List AllocEvent}
@@ -94,7 +94,7 @@ theorem encodeChainSegEnv_sub_encodeChainEnv (x : EncodeChainGhost) {evs : List 
   h.mono (by omega) (Nat.le_max_right _ _)
 
 /-- Allocation envelope for tag 6 (`sender_chain`) over `DefsBudget.EncodeChainEnv`. -/
-def SenderTag6Env (senderG : Option SenderChainGhost) (sender : Option SenderChain)
+@[expose] def SenderTag6Env (senderG : Option SenderChainGhost) (sender : Option SenderChain)
     (a v cap ptr : BitVec 64) (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   match senderG, sender with
   | some g, some sc =>

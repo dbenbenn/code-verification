@@ -10,14 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefs
-public import LibsignalBinary.Proofs.E2E.Record.Support.Hooks
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymC
+public import LibsignalBinary.Proofs.E2E.Record.Support.Hooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymC -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-public import LibsignalBinary.Proofs.E2E.Record.Support.Image
-public import LibsignalBinary.Proofs.E2E.Record.Support.SeedModel
+public import Aesop.BuiltinRules
+public import Mathlib.Tactic.ToAdditive
+public import Mathlib.Tactic.ToDual
+public import LibsignalBinary.Proofs.E2E.Record.Support.SeedModel -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPFrozen
 
 /-!
@@ -35,7 +37,7 @@ contracts (`mergeFieldSeedSpec`, `chainMergeSeedSpec`, `DeserializeCallees`, and
   `+0x18`, empty `message_keys` at `+0x30`, and `Option<ChainKey>` at `+0x48`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeSeed
 
@@ -66,7 +68,7 @@ structure SSV where
   sender : Option ChainV
   pending : Option (List (BitVec 8))
 
-def SSV.empty : SSV := ⟨0, [], [], [], [], none, none⟩
+@[expose] def SSV.empty : SSV := ⟨0, [], [], [], [], none, none⟩
 
 /-- One field of `seedSession f`, with its decoded payload. -/
 inductive SeedField where
@@ -85,23 +87,23 @@ inductive SeedField where
   /-- Tag `9` (`pending_pre_key` `PendingPreKey` message with `base_key` at tag `2`). -/
   | pending (baseKey : List (BitVec 8))
 
-def SeedField.tag : SeedField → Nat
+@[expose] def SeedField.tag : SeedField → Nat
   | .version _ => 1 | .lik _ => 2 | .rik _ => 3 | .root _ => 4
   | .sender _ => 6 | .recv _ => 7 | .pending _ => 9
 
-def SeedField.wt : SeedField → WireType
+@[expose] def SeedField.wt : SeedField → WireType
   | .version _ => .varint
   | _ => .lengthDelimited
 
 /-- Protobuf encoding of `c` matching `pbChain`: `srk` (tag `1`), optional private key (tag `2`),
 and `chain_key` (tag `3`). -/
-def ChainV.enc (c : ChainV) : List (BitVec 8) :=
+@[expose] def ChainV.enc (c : ChainV) : List (BitVec 8) :=
   pbBytes 1 c.srk ++ (if c.priv = [] then [] else pbBytes 2 c.priv) ++
     (match c.ck with
      | some (i, k) => pbBytes 3 (pbVarint 1 i.toNat ++ pbBytes 2 k)
      | none => [])
 
-def SeedField.payload : SeedField → List (BitVec 8)
+@[expose] def SeedField.payload : SeedField → List (BitVec 8)
   | .version v => pbVarintBody 5 v.toNat
   | .lik b => [BitVec.ofNat 8 b.length] ++ b
   | .rik b => [BitVec.ofNat 8 b.length] ++ b
@@ -110,15 +112,15 @@ def SeedField.payload : SeedField → List (BitVec 8)
   | .recv c => [BitVec.ofNat 8 c.enc.length] ++ c.enc
   | .pending k => [BitVec.ofNat 8 (pbBytes 2 k).length] ++ pbBytes 2 k
 
-def SeedField.enc (fl : SeedField) : List (BitVec 8) :=
+@[expose] def SeedField.enc (fl : SeedField) : List (BitVec 8) :=
   pbKey fl.tag (if fl.wt = .varint then 0 else 2) ++ fl.payload
 
-def seedChain (pub : List (BitVec 8)) (priv : Option (List (BitVec 8))) (key : List (BitVec 8))
+@[expose] def seedChain (pub : List (BitVec 8)) (priv : Option (List (BitVec 8))) (key : List (BitVec 8))
     (index : Nat) : ChainV :=
   ⟨pbPubkey pub, priv.getD [], some (BitVec.ofNat 32 index, key)⟩
 
 /-- Ordered list of protobuf fields emitted by `seedSession f`. -/
-def seedFields (f : List (BitVec 8)) : List SeedField :=
+@[expose] def seedFields (f : List (BitVec 8)) : List SeedField :=
   [.version 4, .lik (pbPubkey (seedSlice f 0 32)), .rik (pbPubkey (seedSlice f 32 32)),
     .root (seedSlice f 64 32)] ++
   (if f.getD 96 0 = 1 then
@@ -129,7 +131,7 @@ def seedFields (f : List (BitVec 8)) : List SeedField :=
   (if f.getD 266 0 = 1 then [.pending (pbPubkey (List.replicate 32 0#8))] else [])
 
 /-- Effect of `SessionStructure::merge_field` on `SSV` for one seed field. -/
-def SSV.apply (v : SSV) : SeedField → SSV
+@[expose] def SSV.apply (v : SSV) : SeedField → SSV
   | .version x => { v with version := x }
   | .lik b => { v with lik := b }
   | .rik b => { v with rik := b }
@@ -138,14 +140,14 @@ def SSV.apply (v : SSV) : SeedField → SSV
   | .recv c => { v with recv := v.recv ++ [c] }
   | .pending k => { v with pending := some k }
 
-def ssvAfter (f : List (BitVec 8)) (k : Nat) : SSV :=
+@[expose] def ssvAfter (f : List (BitVec 8)) (k : Nat) : SSV :=
   ((seedFields f).take k).foldl SSV.apply SSV.empty
 
 /-! ## Memory Layouts -/
 
 /-- 104-byte prost `session_structure::Chain` layout at `a`: `sender_ratchet_key` at `+0x00`,
 `sender_ratchet_key_private` at `+0x18`, empty `message_keys` at `+0x30`, and `optChainKeyAt` at `+0x48`. -/
-def prostChainAt (A : RustAlloc) (a : BitVec 64) (c : ChainV) : SepProp :=
+@[expose] def prostChainAt (A : RustAlloc) (a : BitVec 64) (c : ChainV) : SepProp :=
   vecU8 A a c.srk ∗ vecU8 A (a + 0x18#64) c.priv ∗
     vecOf A 104 8 (fun (_ : Unit) _ => emp) (a + 0x30#64) [] ∗
     match c.ck with
@@ -158,7 +160,7 @@ at `SessionStructure::default()`: `local_identity_public` at `+0x00`, `remote_id
 `+0x18`, `root_key` at `+0x30`, `receiver_chains` at `+0x48`, `alice_base_key` at `+0x60`,
 `pq_ratchet_state` at `+0x78`, `sender_chain` at `+0x90`, `pending_pre_key` at `+0xf8`,
 `pending_kyber_pre_key` at `+0x128`, and scalar fields at `+0x148..+0x158`. -/
-def prostSSAt (A : RustAlloc) (ss : BitVec 64) (v : SSV) : SepProp :=
+@[expose] def prostSSAt (A : RustAlloc) (ss : BitVec 64) (v : SSV) : SepProp :=
   vecU8 A ss v.lik ∗ vecU8 A (ss + 0x18#64) v.rik ∗ vecU8 A (ss + 0x30#64) v.root ∗
     vecOf A 104 8 (fun c a => prostChainAt A a c) (ss + 0x48#64) v.recv ∗
     vecU8 A (ss + 0x60#64) [] ∗ vecU8 A (ss + 0x78#64) [] ∗
@@ -202,28 +204,6 @@ structure MergeFieldGhost where
   tail : List (BitVec 8)
   f : List (BitVec 8)
 
-/-- Contract of `SessionStructure::merge_field` (`0x581c`) on one seed field satisfying `P`:
-advances the slice cursor past `fld.payload`, updates `prostSSAt` from `v` to `v.apply fld`, and
-returns `x0 = 0`. -/
-def mergeFieldSeedSpec (P : SeedField → Prop) : Spec MergeFieldGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
-      (s.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 x.fld.wt.toNat ∧ s.readReg64 .x3 = x.bufRef ∧
-      (s.readReg64 .x4).setWidth 32 = 99#32 ∧ P x.fld ∧ SeedOk x.f ∧ x.fld ∈ seedFields x.f ∧
-      (x.fld matches .sender _ → x.v.sender = none) ∧
-      (x.fld matches .pending _ → x.v.pending = none) ∧
-      (x.fld matches .recv _ → x.v.recv = []) ∧
-      (x.fld.payload ++ x.tail).length < 2 ^ 32 ∧
-      sessionImg0.FrozenLoaded s ∧ s.symtab = sessionImg0.symtab⌝ ∗
-      prostSSAt A0 x.ss x.v ∗ (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAt x.slot x.ptr (x.fld.payload ++ x.tail) ∗ stackAt s.sp mergeFieldStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace ∧ sf.readReg64 .x0 = 0#64⌝ ∗ prostSSAt A0 x.ss (x.v.apply x.fld) ∗
-      (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAfter x.slot x.ptr (x.fld.payload ++ x.tail) x.tail ∗
-      stackAt s0.sp mergeFieldStack
-  onPanic := Serialization.allocPanic
-
 /-- Ghost state for a seed `prost::encoding::message::merge::<Chain>` call. -/
 structure ChainMergeGhost where
   a : BitVec 64
@@ -233,50 +213,6 @@ structure ChainMergeGhost where
   ptr : BitVec 64
   tail : List (BitVec 8)
   f : List (BitVec 8)
-
-/-- Contract of `prost::encoding::message::merge::<Chain>` (`0x3974`) on a seed chain `c`: decodes
-`[len] ++ c.enc` into a default-initialized `prostChainAt` slot at `a` and returns `x0 = 0`. -/
-def chainMergeSeedSpec : Spec ChainMergeGhost where
-  pre := fun x s =>
-    ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.bufRef ∧
-      (s.readReg64 .x3).setWidth 32 = 99#32 ∧ SeedOk x.f ∧
-      (SeedField.sender x.c ∈ seedFields x.f ∨ SeedField.recv x.c ∈ seedFields x.f) ∧
-      ([BitVec.ofNat 8 x.c.enc.length] ++ x.c.enc ++ x.tail).length < 2 ^ 32 ∧
-      sessionImg0.FrozenLoaded s ∧ s.symtab = sessionImg0.symtab⌝ ∗
-      prostChainAt A0 x.a ⟨[], [], none⟩ ∗ (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAt x.slot x.ptr ([BitVec.ofNat 8 x.c.enc.length] ++ x.c.enc ++ x.tail) ∗
-      stackAt s.sp chainMergeStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace ∧ sf.readReg64 .x0 = 0#64⌝ ∗ prostChainAt A0 x.a x.c ∗
-      (x.bufRef ↦₆₄ x.slot) ∗
-      Prost.sliceCursorAfter x.slot x.ptr ([BitVec.ofNat 8 x.c.enc.length] ++ x.c.enc ++ x.tail)
-        x.tail ∗
-      stackAt s0.sp chainMergeStack
-  onPanic := Serialization.allocPanic
-
-/-! ## Callee Bundles -/
-
-/-- Callee contracts required by seed `SessionRecord::deserialize` on `tripleRatchetProgAt`:
-`decode_varint_slice`, `int32::merge`, `bytes::merge`, and `RawVec<Chain>::grow_one`. -/
-def DeserializeCallees (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  Prost.DecodeVarintSliceOk sessionImg0.base C A0 ctl abs ∧
-    Prost.Int32MergeOk sessionImg0.base C A0 ctl abs ∧
-    Prost.BytesMergeOk sessionImg0 C A0 ctl abs ∧
-    subroutine_ok (tripleRatchetProgAt sessionImg0.base C ctl abs)
-      ((tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr
-        "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")
-      ((CryptoVerification.LibsignalSession.growOneSpec A0).inImage sessionImg0)
-
-def MergeFieldSeedOk (C : Crypto) (ctl : BitVec 64)
-    (P : SeedField → Prop) (abs : String → Option (State → State)) : Prop :=
-  Serialization.OkAt sessionImg0.base C ctl abs mergeFieldName (mergeFieldSeedSpec P)
-
-def ChainMergeSeedOk (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  Serialization.OkAt sessionImg0.base C ctl abs chainMergeName chainMergeSeedSpec
-
-/-! ## Relocatable `[LibsignalPlacement]` Contracts and Callee Bundles -/
 
 section Placed
 
@@ -288,7 +224,7 @@ abbrev mergeFieldRodataSym : String :=
 
 /-- Image-free base contract of `SessionStructure::merge_field` (block `15`) on one seed field
 restricted by `P`. -/
-def mergeFieldSeedRawSpec (P : SeedField → Prop) : Spec MergeFieldGhost where
+@[expose] def mergeFieldSeedRawSpec (P : SeedField → Prop) : Spec MergeFieldGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.fld.tag ∧
       (s.readReg64 .x2).setWidth 8 = BitVec.ofNat 8 x.fld.wt.toNat ∧ s.readReg64 .x3 = x.bufRef ∧
@@ -310,7 +246,7 @@ abbrev mergeFieldSeedPlacedSpec [LibsignalPlacement] (P : SeedField → Prop) : 
   LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (mergeFieldSeedRawSpec P)
 
 /-- Image-free base contract of `message::merge<Chain>` (block `11`) on one of seed's chains. -/
-def chainMergeSeedRawSpec : Spec ChainMergeGhost where
+@[expose] def chainMergeSeedRawSpec : Spec ChainMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.bufRef ∧
       (s.readReg64 .x3).setWidth 32 = 99#32 ∧ SeedOk x.f ∧
@@ -335,7 +271,7 @@ abbrev chainMergeSeedPlacedSpec [LibsignalPlacement] : Spec ChainMergeGhost :=
 * `int32::merge` (block `8`),
 * `bytes::merge` (block `7`, carrying `LibsignalCodeRoLoaded lsmpl`),
 * `RawVec<Chain>::grow_one` (block `43`). -/
-def DeserializeCalleesPlaced [LibsignalPlacement]
+@[expose] def DeserializeCalleesPlaced [LibsignalPlacement]
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_76).rebase (blkPl_76).base H) (blkPl_76).base
       (withLsCodeLoaded lsmpl (Prost.decodeVarintSliceSpec A0)) ∧
@@ -346,11 +282,11 @@ def DeserializeCalleesPlaced [LibsignalPlacement]
     subroutine_ok ((blkPC_43).rebase (blkPl_43).base H) (blkPl_43).base
       (withLsCodeLoaded lsmpl (CryptoVerification.LibsignalSession.growOneSpec A0))
 
-def MergeFieldSeedPlacedOk [LibsignalPlacement]
+@[expose] def MergeFieldSeedPlacedOk [LibsignalPlacement]
     (P : SeedField → Prop) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_15 H) (blkPl_15).base (mergeFieldSeedPlacedSpec P)
 
-def ChainMergeSeedPlacedOk [LibsignalPlacement]
+@[expose] def ChainMergeSeedPlacedOk [LibsignalPlacement]
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_11 H) (blkPl_11).base chainMergeSeedPlacedSpec
 

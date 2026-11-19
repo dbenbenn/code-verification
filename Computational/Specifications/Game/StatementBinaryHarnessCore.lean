@@ -751,15 +751,6 @@ def CliAdapterCostBounded {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (bhAdapterCostBudgetByKind S b qStart qDR ℓ) ∧
   CliAdapterForwardsKinds L qKind
 
-/-! ## ML-KEM totality hypothesis -/
-
-/-- `K.encaps1` succeeds on all 64-byte SPQR headers (`Encaps1Total K`) and on all `K.fromSeed`
-PQXDH public keys (`DEV-KFF1`). -/
-def MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds (K : LibsignalSpqrV1.MlKem) : Prop :=
-  Encaps1Total K ∧
-  ∀ (s : List.Vector (BitVec 8) 64) (r : List.Vector (BitVec 8) 32),
-    (K.encaps1 (K.fromSeed s).1.toList r).isSome = true
-
 /-! ## Query budgets, model-state driver, and composition cost budgets -/
 
 def bhIsInstQueryWithSpqr {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC : Type} (k : ℕ) :

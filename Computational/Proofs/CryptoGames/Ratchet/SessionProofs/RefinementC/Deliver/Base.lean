@@ -23,7 +23,7 @@ Reduction of `stepSimCEager` on non-stopping `deliver` calls to `simRecvStepC`, 
 state-preserving rejection combinators and the out-of-transit, SPQR-panic, and SPQR-error cases.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

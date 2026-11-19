@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBaseBudget
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExactPlacedBudget
@@ -21,6 +21,10 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1SentPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EkSentCt1ReceivedPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBudget
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Unconditional `[LibsignalPlacement]` Closure for `PqRatchetState::encode_to_vec` (`Block 426`)
@@ -30,7 +34,7 @@ Discharges all 7 sub-message encoder callee contracts (`ChainParams`, `EpochDire
 `FinalPlacedBudget` to establish unconditional `[LibsignalPlacement]` contracts for `Block 426`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -388,41 +392,6 @@ theorem etv_ct1SentEncode_placed_ok_x [LibsignalPlacement]
 
 /-! ## 2. Unconditional Top-Level `[LibsignalPlacement]` Closure (`Block 426`) -/
 
-theorem pqRatchetStateEncodeToVec_ro_pinned_noOom_placed_ok_ext [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (h_panic : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat (Rust.withPanics ext) spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat (Rust.withPanics ext) lsMemcpySym sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base (Rust.withPanics ext))
-      (blkPl_426).base
-      (withLsCodeLoaded lsmpl (pqRatchetStateEncodeToVecRoPinnedNoOomPlacedSpecOf doReserveStack A lim)) :=
-  pqRatchetStateEncodeToVec_ro_pinned_noOom_placed_ok_of_contracts
-    h_panic hshim halloc hrealloc hmc
-    (etv_encodeChainParams_exact_placed_ok h_panic hshim halloc hrealloc)
-    (etv_encodeEpochDirection_exact_placed_ok h_panic hshim halloc hrealloc hmc)
-    (etv_authEncode_exact_placed_ok h_panic hshim halloc hrealloc hmc)
-    (etv_polyEncoderEncode_budget_exact_placed_ok hmc)
-    (etv_polyDecoderEncode_budget_exact_placed_ok hmc)
-    (etv_ekSentCt1ReceivedEncode_placed_ok h_panic hshim halloc hrealloc hmc)
-    (etv_ct1SentEncode_placed_ok h_panic hshim halloc hrealloc hmc)
-
-theorem pqRatchetStateEncodeToVec_ro_noOom_placed_ok_ext [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (h_panic : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat (Rust.withPanics ext) spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat (Rust.withPanics ext) lsMemcpySym sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base (Rust.withPanics ext))
-      (blkPl_426).base
-      (withLsCodeLoaded lsmpl (pqRatchetStateEncodeToVecRoNoOomPlacedSpecOf doReserveStack A lim)) :=
-  pqRatchetStateEncodeToVec_ro_noOom_placed_ok_of_pinned
-    (pqRatchetStateEncodeToVec_ro_pinned_noOom_placed_ok_ext h_panic hshim halloc hrealloc hmc)
-
 theorem pqRatchetStateEncodeToVec_ro_pinned_placed_ok_ext [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : String → Option (State → State)}
@@ -457,43 +426,6 @@ theorem pqRatchetStateEncodeToVec_ro_placed_ok_ext [LibsignalPlacement]
       (withLsCodeLoaded lsmpl (pqRatchetStateEncodeToVecRoPlacedSpecOf doReserveStack A lim)) :=
   pqRatchetStateEncodeToVec_ro_placed_ok_of_pinned
     (pqRatchetStateEncodeToVec_ro_pinned_placed_ok_ext h_panic hshim halloc hrealloc hmc)
-
-theorem pqRatchetStateEncodeToVec_pinned_noOom_placed_ok_ext [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (h_panic : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat (Rust.withPanics ext) spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat (Rust.withPanics ext) lsMemcpySym sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base (Rust.withPanics ext))
-      (blkPl_426).base
-      (withLsRoLoaded lsmpl (withLsCodeLoaded lsmpl
-        (pqRatchetStateEncodeToVecPinnedNoOomSpecOf doReserveStackX A lim))) :=
-  pqRatchetStateEncodeToVec_pinned_noOom_placed_ok_of_contracts
-    h_panic hshim halloc hrealloc hmc
-    (etv_encodeChainParams_exact_placed_ok_x h_panic hshim halloc hrealloc)
-    (etv_encodeEpochDirection_exact_placed_ok_x h_panic hshim halloc hrealloc hmc)
-    (etv_authEncode_exact_placed_ok_x h_panic hshim halloc hrealloc hmc)
-    (etv_polyEncoderEncode_budget_exact_placed_ok_x hmc)
-    (etv_polyDecoderEncode_budget_exact_placed_ok_x hmc)
-    (etv_ekSentCt1ReceivedEncode_placed_ok_x h_panic hshim halloc hrealloc hmc)
-    (etv_ct1SentEncode_placed_ok_x h_panic hshim halloc hrealloc hmc)
-
-theorem pqRatchetStateEncodeToVec_noOom_placed_ok_ext [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (h_panic : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat (Rust.withPanics ext) spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat (Rust.withPanics ext) lsMemcpySym sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok ((blkPC_426).rebase (blkPl_426).base (Rust.withPanics ext))
-      (blkPl_426).base
-      (withLsRoLoaded lsmpl (withLsCodeLoaded lsmpl
-        (pqRatchetStateEncodeToVecNoOomSpecOf doReserveStackX A lim))) :=
-  pqRatchetStateEncodeToVec_noOom_placed_ok_of_pinned
-    (pqRatchetStateEncodeToVec_pinned_noOom_placed_ok_ext h_panic hshim halloc hrealloc hmc)
 
 theorem pqRatchetStateEncodeToVec_pinned_placed_ok_ext [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

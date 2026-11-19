@@ -11,16 +11,21 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags456
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags456BudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123Budget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags456
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags456BudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefs
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123BudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<SignalMessage>::new` Segment 2b (`+0x278 .. +0x3dc`)
@@ -30,7 +35,7 @@ budget-threaded segment lemmas (`0` allocations) for optional fields 5 (`pq_ratc
 (`addresses`) (`+0x2e0 → +0x3dc`) on Block `63`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -736,77 +741,6 @@ theorem new_encode_tag56_wpp_placed [LibsignalPlacement] {M : AllocCostModel}
       Qp :=
   new_encode_tag56_wpp_placed_at (varStack := encodeVarintStack) (cmStack := computeMacStack)
     (by decide) (by decide) h_mc (by rwa [← encodeVarintSpec_eq_withStack])
-    x sp0 rkPtr ctCopyPtr pqCap pqCopyPtr addrCap addrPtr serPtr w408
-    hct_le hpq_lt hserPtr hpq_pin haddrCap
-    s hcl hpc hrun hsp hsp_align hx19 hx20 hx21 hx23 hx24 hx25 hx26 hx27 hx28 hx29
-
-theorem new_encode_tag56_wpp_placed_x [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ} {parse : UuidParser}
-    {H : LibsignalHooks} {Qp : State → SepProp → Prop}
-    (h_mc : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (hVarint : subroutine_ok ((blkPC_63).rebase (blkPl_63).base H) (lsmpl.base 10)
-      (withLsCodeLoaded lsmpl (encodeVarintSpecX A lim)))
-    (x : SignalMessageNewGhost)
-    (sp0 rkPtr ctCopyPtr pqCap pqCopyPtr addrCap addrPtr serPtr w408 : BitVec 64)
-    (hct_le : x.ciphertext.length ≤ 2 ^ 32)
-    (hpq_lt : x.pqRatchet.length < 2 ^ 32)
-    (hserPtr : serPtr ≠ 0#64)
-    (hpq_pin : PqPinOk pqCap pqCopyPtr x.pqRatchet)
-    (haddrCap : addrCap = if (x.addresses parse).isSome then 36#64 else noneCap)
-    (s : State)
-    (hcl : LibsignalCodeLoaded lsmpl s.mem)
-    (hpc : s.pc = (blkPl_63).base + 736#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 416#64)
-    (hsp_align : s.spAligned = true)
-    (hx19 : s.readReg64 .x19 = BitVec.ofNat 64 x.ciphertext.length)
-    (hx20 : s.readReg64 .x20 = pqCap)
-    (hx21 : s.readReg64 .x21 = 33#64)
-    (hx23 : s.readReg64 .x23 = x.previousCounter.zeroExtend 64)
-    (hx24 : s.readReg64 .x24 = x.ret)
-    (hx25 : s.readReg64 .x25 = BitVec.ofNat 64 (x.serPrefix4 parse).length)
-    (hx26 : s.readReg64 .x26 = ctCopyPtr)
-    (hx27 : s.readReg64 .x27 = BitVec.ofNat 64 x.pqRatchet.length)
-    (hx28 : s.readReg64 .x28 = rkPtr)
-    (hx29 : s.readReg64 .x29 = sp0 - 96#64) :
-    SepWPp ((blkPC_63).rebase (blkPl_63).base H)
-      ((blkPl_63).base + 988#64)
-      s
-      (((sp0 - 408#64) ↦₆₄ w408) ∗
-       ((sp0 - 392#64) ↦₆₄ pqCopyPtr) ∗
-       ((sp0 - 344#64) ↦₆₄ 32#64) ∗
-       wireSignalMessageAt A.repAlloc (x.mkPins rkPtr ctCopyPtr pqCap pqCopyPtr addrCap addrPtr)
-         (sp0 - 288#64) (x.protoMsg parse) ∗
-       vecU8At A.repAlloc (sp0 - 176#64)
-         (BitVec.ofNat 64 ((encode (x.protoMsg parse)).length + 9))
-         serPtr (x.serPrefix4 parse) ∗
-       A.pool lim st s ∗ stackAt (sp0 - 416#64) computeMacStackX)
-      (fun sm Pm =>
-        (sm.sp = sp0 - 416#64 ∧
-         sm.spAligned = true ∧
-         sm.readReg64 .x19 = BitVec.ofNat 64 x.ciphertext.length ∧
-         sm.readReg64 .x20 = 32#64 ∧
-         sm.readReg64 .x21 = 33#64 ∧
-         sm.readReg64 .x22 = addrCap ∧
-         sm.readReg64 .x23 = x.previousCounter.zeroExtend 64 ∧
-         sm.readReg64 .x24 = x.ret ∧
-         sm.readReg64 .x25 = BitVec.ofNat 64 (x.serPrefix6 parse).length ∧
-         sm.readReg64 .x27 = BitVec.ofNat 64 x.pqRatchet.length ∧
-         sm.readReg64 .x29 = sp0 - 96#64 ∧
-         TraceVRegsEq sm s) ∧
-        (Pm ⊢
-          ((sp0 - 408#64) ↦₆₄ rkPtr) ∗
-          ((sp0 - 392#64) ↦₆₄ pqCopyPtr) ∗
-          ((sp0 - 344#64) ↦₆₄ ctCopyPtr) ∗
-          wireSignalMessageAt A.repAlloc (x.mkPins rkPtr ctCopyPtr pqCap pqCopyPtr addrCap addrPtr)
-            (sp0 - 288#64) (x.protoMsg parse) ∗
-          vecU8At A.repAlloc (sp0 - 176#64)
-            (BitVec.ofNat 64 ((encode (x.protoMsg parse)).length + 9))
-            serPtr (x.serPrefix6 parse) ∗
-          A.pool lim st sm ∗ stackAt (sp0 - 416#64) computeMacStackX))
-      Qp :=
-  new_encode_tag56_wpp_placed_at (varStack := encodeVarintStackX) (cmStack := computeMacStackX)
-    (by decide) (by decide) h_mc (by rwa [← encodeVarintSpecX_eq_withStack])
     x sp0 rkPtr ctCopyPtr pqCap pqCopyPtr addrCap addrPtr serPtr w408
     hct_le hpq_lt hserPtr hpq_pin haddrCap
     s hcl hpc hrun hsp hsp_align hx19 hx20 hx21 hx23 hx24 hx25 hx26 hx27 hx28 hx29

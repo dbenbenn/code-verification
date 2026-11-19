@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SR.SendSpecWPure
-import ProofLib.Lemmas
+public import Symbolic.Proofs.SR.SendSpecWPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
 
 /-!
@@ -20,7 +19,7 @@ Proves `.ok` inversion lemmas for `tryDecryptWithStateW`, `TripleRatchet.decrypt
 `ensureReceiverChain`, `dhRatchetStep`, and `consumeMessageKey`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

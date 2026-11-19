@@ -10,15 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Steps
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Steps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::init_inner` (`Block 324`): VM-Preserving Relocatable Step Lemmas
@@ -27,7 +29,7 @@ Proves `VmPreserved`-strengthened relocatable `[LibsignalPlacement]` basic-block
 for `spqr::init_inner` (`Block 324`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

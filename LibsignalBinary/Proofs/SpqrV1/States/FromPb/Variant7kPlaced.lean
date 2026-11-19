@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7k
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7k -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7aPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7gPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7hPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant7jPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 7 (`Ct1Sampled`, Block `333`) — Part K
@@ -26,7 +27,7 @@ Relocatable (`Obj.MultiPlacedLib`) post-call stage compositions (`+3720`, `+7348
 discharge of `V7Ok7404PropPlaced` for Variant 7 (`InnerState.ct1Sampled`).
 -/
 
-@[expose] public section
+public section
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -180,7 +181,7 @@ theorem v7_seq_err_4632_wpp_placed
 
 /-- Placed hypothesis for the final `Ok(dec)` success path (`+7404 -> +7468 -> +8180 -> s0.x30`)
 of Variant 7 (`InnerState.ct1Sampled`). -/
-def V7Ok7404PropPlaced {A : RustAlloc} {F : ShaCompress}
+@[expose] def V7Ok7404PropPlaced {A : RustAlloc} {F : ShaCompress}
     {ext : String → Option (State → State)} (s0 : State) (out pbA : BitVec 64)
     (s : V1State.Chunked.Ct1Sampled) : Prop :=
   ∀ (s1 : State) (c1 p1 l1 c2 p2 l2 c3 p3 l3 c4 p4 l4 c5 p5 l5 : BitVec 64)

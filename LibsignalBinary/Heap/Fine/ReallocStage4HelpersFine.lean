@@ -24,7 +24,7 @@ tail (`+0x284 → ret`).
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -218,7 +218,7 @@ theorem commit_stage4_malloc_raw [MallocngMultiPlacement]
     let bf1 := FineBudget.stepReallocAdd align newSz bgt
     MallocngRoTablesA maddrs ∗
     ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-    MallocngCoreStA (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ∗
+    MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ∗
     MallocngRuntime maddrs tp ∗
     (q ↦ₛ bsNew) ∗
     MallocngBlockToken (fineBaseGam γ) q newSz ⊢
@@ -256,7 +256,7 @@ theorem commit_stage4_malloc_raw [MallocngMultiPlacement]
         (fun k => by change st'.liveMap.req k = _; rw [hLiveMap', MallocngLiveMap.insert_req]) hMetaLe'
   let RestSpatial :=
     MallocngRoTablesA maddrs ∗
-    MallocngCoreStA (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ∗
+    MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ∗
     MallocngRuntime maddrs tp ∗
     (q ↦ₛ bsNew) ∗
     MallocngBlockToken (fineBaseGam γ) q newSz
@@ -270,19 +270,19 @@ theorem commit_stage4_malloc_raw [MallocngMultiPlacement]
   dsimp only [RestSpatial]
   have hCoreEnt :
       ghostMapAuth (fineAlignGam γ) alignMap1 ∗
-      MallocngCoreStA (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ⊢
+      MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ⊢
         ∃∗ stx : MallocngSt, ∃∗ amx : BitVec 64 → Option Nat,
         ∃∗ lcx : Nat, ∃∗ pcx : Nat,
           FineCoreStInflightA 0 γ maddrs brkStart s2.brk bf1
             (dynamicRootRegions st') amx lcx pcx stx :=
     Entails.sepExists_right st' (Entails.sepExists_right alignMap1
       (Entails.sepExists_right bCoarse.liveCost (Entails.sepExists_right bCoarse.peakCost
-        (by unfold FineCoreStInflightA MallocngCoreStA
+        (by unfold FineCoreStInflightA MallocngCoreStModeA
             exact Entails.pure_right hInv' (Entails.refl _)))))
   have hEnvEnt :
       (MallocngRoTablesA maddrs ∗
        (ghostMapAuth (fineAlignGam γ) alignMap1 ∗
-        MallocngCoreStA (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st')) ∗
+        MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st')) ∗
       MallocngRuntime maddrs tp ⊢
         FineEnv γ maddrs tp brkStart bf1 (dynamicRootRegions st') s2 := by
     unfold FineEnv
@@ -300,7 +300,7 @@ theorem commit_stage4_malloc_raw [MallocngMultiPlacement]
   refine Entails.trans (Q :=
       ((MallocngRoTablesA maddrs ∗
         (ghostMapAuth (fineAlignGam γ) alignMap1 ∗
-         MallocngCoreStA (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st')) ∗
+         MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st')) ∗
        MallocngRuntime maddrs tp) ∗
       ((q ↦ₛ bsNew) ∗
        (MallocngBlockToken (fineBaseGam γ) q newSz ∗
@@ -309,7 +309,7 @@ theorem commit_stage4_malloc_raw [MallocngMultiPlacement]
       change (ghostMapAuth (fineAlignGam γ) alignMap1 ∗
           ghostMapElem (fineAlignGam γ) q (max align 16)) ∗
           (MallocngRoTablesA maddrs ∗
-           MallocngCoreStA (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ∗
+           MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ∗
            MallocngRuntime maddrs tp ∗ (q ↦ₛ bsNew) ∗
            MallocngBlockToken (fineBaseGam γ) q newSz) = _
       ac_rfl)) ?_

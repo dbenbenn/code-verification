@@ -9,9 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.Defs
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.NonVmSteps
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # SPQR V1 Polynomial Coefficient and State Encoding Size Bounds
@@ -20,7 +35,7 @@ Linear byte-length upper bounds on decoded `GF(2^16)` polynomial coefficients
 (`decodePbPolysTotal`) and protobuf-encoded `PqRatchetState` and `V1State` values.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

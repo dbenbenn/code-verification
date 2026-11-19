@@ -9,22 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneErrPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserClonePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.SpecBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneErrPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserClonePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.SpecBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CallHelpersParsePlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CallHelpersPlacedBudget
@@ -35,6 +35,16 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneErr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.RoFrame
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Budget-Threaded Stage 4a (`spk` / `kpk` Deserialization and Heap Clones) of Arm `R1b`
@@ -45,7 +55,7 @@ Defines the Stage 4a allocation-event envelopes (`R1bKpkCloneOkEnv`, `R1bKpkClon
 `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -297,13 +307,13 @@ local elab:10 (priority := high) "r1b_call_frame_dc" "<|" h:term:10 : term <= ex
   Lean.Meta.mkAppM ``sepWPp_weaken_pre #[ent, hExpr]
 
 /-- Success-path allocation-event envelope of `r1b_step_kpk_clone_2584_placed`: `kem::Key::deserialize` on `kpkKey` followed by the 64-byte `kpkSig` heap clone. -/
-def R1bKpkCloneOkEnv (kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def R1bKpkCloneOkEnv (kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = kemDeserializeEvents kpkKey ++ rustAllocEvents 64 1
 
 example : R1bKpkCloneOkEnv [] (kemDeserializeEvents [] ++ rustAllocEvents 64 1) := rfl
 
 /-- Error-path allocation-event envelope of `r1b_step_kpk_clone_2584_placed`: `kem::Key::deserialize` failure on `kpkKey` followed by `FreeOnlyEvs`. -/
-def R1bKpkCloneErrEnv (kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def R1bKpkCloneErrEnv (kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   match kemPkDeserialize kpkKey with
   | .ok _ => False
   | _ => SeqEnv (fun e => e = kemDeserializeEvents kpkKey) FreeOnlyEvs evs
@@ -312,7 +322,7 @@ example : R1bKpkCloneErrEnv [] (kemDeserializeEvents []) :=
   Or.inl rfl
 
 /-- Success-path allocation-event envelope of `r1b_step_deser_clone_placed`: 64-byte `spkSig` clone, `kem::Key::deserialize` on `kpkKey`, and 64-byte `kpkSig` clone. -/
-def R1bDeserCloneOkEnv (kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def R1bDeserCloneOkEnv (kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = rustAllocEvents 64 1 ++ kemDeserializeEvents kpkKey ++ rustAllocEvents 64 1
 
 example :
@@ -320,7 +330,7 @@ example :
       (rustAllocEvents 64 1 ++ kemDeserializeEvents [] ++ rustAllocEvents 64 1) := rfl
 
 /-- Error-path allocation-event envelope of `r1b_step_deser_clone_placed`: `<PublicKey>::deserialize` failure (`FreeOnlyEvs`), or 64-byte `spkSig` clone followed by `kem::Key::deserialize` failure and `FreeOnlyEvs`. -/
-def R1bDeserCloneErrEnv (spkKey kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def R1bDeserCloneErrEnv (spkKey kpkKey : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   match PublicKey.deserialize spkKey with
   | .error _ => FreeOnlyEvs evs
   | .ok _ =>

@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrComp
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreHol
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrComp -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreHol
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential -- proof-setup: allow-public-import
 
 /-!
 # `shcrKeyIndProg` Branch Evaluation
@@ -20,7 +21,7 @@ Proves that the `KemShCr` DSL handler branches (`shcrInitiateC`, `shcrGenSpkB`, 
 `shcrPostC`) evaluate to their shallow counterparts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

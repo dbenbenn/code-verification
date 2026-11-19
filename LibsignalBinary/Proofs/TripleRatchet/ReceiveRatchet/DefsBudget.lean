@@ -10,9 +10,53 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
 public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.Defs
+public import LibsignalBinary.Heap.Fine.CreditInst
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `TripleRatchet::apply_to_session_state` Specifications
@@ -22,7 +66,7 @@ specifications (`trApplySpec`, `trApplySpecX`), and `PhaseCreditSpec` / `FitsEnv
 `<TripleRatchet>::apply_to_session_state`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +89,7 @@ open CryptoVerification.LibsignalTripleRatchet (TrApplyGhost)
     `<TripleRatchet>::apply_to_session_state`:
     `senderRatchetKey.public` (`33` B), `senderRatchetKey.private` (`33` B),
     `senderChainKey` (`32` B), and two temporary `32` B key clones, all at `align = 1`. -/
-def TrApplySenderAllocEnv : List AllocEvent → Prop :=
+@[expose] def TrApplySenderAllocEnv : List AllocEvent → Prop :=
   SeqEnv (fun evs => evs = rustAllocEvents 33 1)
     (SeqEnv (fun evs => evs = rustAllocEvents 33 1)
       (SeqEnv (fun evs => evs = rustAllocEvents 32 1)
@@ -57,14 +101,14 @@ def TrApplySenderAllocEnv : List AllocEvent → Prop :=
     2. Old `rootKey` / receiver-chain drops (`FreeOnlyEvs`);
     3. Optional `senderChain` allocations (`evs = [] ∨ TrApplySenderAllocEnv evs`);
     4. Epilogue drops (`FreeOnlyEvs`). -/
-def TrApplyEnv : List AllocEvent → Prop :=
+@[expose] def TrApplyEnv : List AllocEvent → Prop :=
   SeqEnv (fun evs => evs = rustAllocEvents 32 1)
     (SeqEnv FreeOnlyEvs
       (SeqEnv (fun evs => evs = [] ∨ TrApplySenderAllocEnv evs) FreeOnlyEvs))
 
 /-- Budget-threaded specification of `<TripleRatchet>::apply_to_session_state`
     at `trApplyStack` (`onOom = ⌜False⌝`, `onPanic = ⌜False⌝`). -/
-def trApplySpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def trApplySpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (TrApplyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜FitsEnv M lim st TrApplyEnv⌝ ∗
@@ -78,7 +122,7 @@ def trApplySpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLim
 
 /-- Budget-threaded specification of `<TripleRatchet>::apply_to_session_state`
     at `trApplyStackX` (`onOom = ⌜False⌝`, `onPanic = ⌜False⌝`). -/
-def trApplySpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def trApplySpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (TrApplyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜FitsEnv M lim st TrApplyEnv⌝ ∗
@@ -118,38 +162,5 @@ theorem trApplyEnv_senderSome_mem :
             (rustAllocEvents 32 1 ++ rustAllocEvents 32 1)))) := by
     simpa using SeqEnv.append FreeOnlyEvs.nil hmid
   exact SeqEnv.append rfl hfree
-
-/-- Parametric `PhaseCreditSpec` for `TrApplyEnv` under `ModelHyps M`. -/
-theorem trApplyEnv_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) :
-    PhaseCreditSpec M TrApplyEnv 57622 49364 49364 33 := by
-  have h32 := PhaseCreditSpec.rustAlloc_aff hM (req := 32) (al := 1) (by decide)
-  have h33 := PhaseCreditSpec.rustAlloc_aff hM (req := 33) (al := 1) (by decide)
-  have hfr := PhaseCreditSpec.freeOnly_of_hyps hM
-  have hsnd : PhaseCreditSpec M TrApplySenderAllocEnv 48019 41137 41137 33 :=
-    (h33.seq (h33.seq (h32.seq (h32.seq h32)))).mono
-      (by decide) (by decide) (by decide) (by decide)
-  have hopt : PhaseCreditSpec M (fun evs => evs = [] ∨ TrApplySenderAllocEnv evs)
-      48019 41137 41137 33 :=
-    ((PhaseCreditSpec.nil M).or hsnd).congr_mono (fun _ h => h)
-      (by decide) (by decide) (by decide) (by decide)
-  exact (h32.seq (hfr.seq (hopt.seq hfr))).mono
-    (by decide) (by decide) (by decide) (by decide)
-
-/-- Non-vacuity witness: `TrApplyEnv` satisfies `FitsEnv fineCostModel` from `fineCostModel.init`
-under an explicit 1 GiB RAM budget (`enforced = true`). -/
-theorem trApplyEnv_fitsEnv_witness :
-    FitsEnv fineCostModel
-      { staticCount := 16, staticBytes := 16 * 1024 * 1024,
-        physCap := 2 ^ 30, enforced := true }
-      fineCostModel.init TrApplyEnv := by
-  refine fitsEnv_fineCostModel_of_phaseCredit
-    (trApplyEnv_phaseCreditSpec fineCostModel_modelHyps)
-    (by decide) rfl ?_ ?_
-  · unfold fineStepReserveOfCum FineStepBound fineMaxMetaAreasOfCum pageAlignUp PAGE_SIZE
-    decide
-  · unfold fineStepReserveOfCum FineStepBound fineMaxMetaAreasOfCum fineDynIvsOfCum
-      fineMaxGroupsOfCum pageAlignUp MMAP_MIN_ADDR PAGE_SIZE
-    decide
 
 end LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.DefsBudget

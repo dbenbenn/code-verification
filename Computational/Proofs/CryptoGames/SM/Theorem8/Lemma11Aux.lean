@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
 /-!
@@ -21,7 +21,7 @@ Defines the quantitative `ProbComp` coupling `LeComp`, the local `H2` reference 
 `localAuth`, `localAuthAt`), and the session-index union bound used in ACD19 Lemma 11.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -95,7 +95,7 @@ theorem evalDist_bind_le_sum (p : ProbComp α) (q : ℕ) (F : α → ProbComp Bo
           lintegral_finsetSum _ fun _ _ => Measurable.of_discrete
 
 /-- Relational quantitative coupling for `{true}`-probabilities on `ProbComp`. -/
-def LeComp (R : α → β → Prop) (x : ProbComp α) (y : ProbComp β) : Prop :=
+@[expose] def LeComp (R : α → β → Prop) (x : ProbComp α) (y : ProbComp β) : Prop :=
   ∀ (F₁ : α → ProbComp Bool) (F₂ : β → ProbComp Bool),
     (∀ a b, R a b → 𝒟[F₁ a] {true} ≤ 𝒟[F₂ b] {true}) →
     𝒟[x >>= F₁] {true} ≤ 𝒟[y >>= F₂] {true}
@@ -179,7 +179,7 @@ theorem simulateQ_sampleT_run {ι : Type} {tspec : OracleSpec.{0, 0} ι} {σ α 
     (($ᵗ α : ProbComp α) >>= fun a => pure (a, st)) :=
   simulateQ_liftM_run oimpl ($ᵗ α) st
 
-def fsWin {α : Type} (fs : FSAEADScheme K SS RS AD M E)
+@[expose] def fsWin {α : Type} (fs : FSAEADScheme K SS RS AD M E)
     (oa : FSAEAD.AdversaryComp SS RS AD M E α) : ProbComp Bool := do
   let b ← $ᵗ Bool
   let k ← $ᵗ K
@@ -261,7 +261,7 @@ open Engine
 variable {St₁ St₂ Msg C : Type} [DecidableEq Msg] [DecidableEq C]
   {g₁ g₁' : SM.GameState St₁ Msg C} {g₂ g₂' : SM.GameState St₂ Msg C}
 
-def eraseSt {St Msg C : Type} (g : SM.GameState St Msg C) : SM.GameState Unit Msg C :=
+@[expose] def eraseSt {St Msg C : Type} (g : SM.GameState St Msg C) : SM.GameState Unit Msg C :=
   { st := fun _ => ()
     epoch := g.epoch
     idx := g.idx
@@ -481,11 +481,11 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
 variable (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
   (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ) (mo : Mode)
 
-def nilSpec : OracleSpec.{0, 0} Empty := fun e => nomatch e
+@[expose] def nilSpec : OracleSpec.{0, 0} Empty := fun e => nomatch e
 
-def nilImpl : QueryImpl nilSpec ProbComp := fun e => nomatch e
+@[expose] def nilImpl : QueryImpl nilSpec ProbComp := fun e => nomatch e
 
-def lImpl : QueryImpl (unifSpec + nilSpec) ProbComp :=
+@[expose] def lImpl : QueryImpl (unifSpec + nilSpec) ProbComp :=
   QueryImpl.ofLift unifSpec ProbComp + nilImpl
 
 @[simp]
@@ -517,7 +517,7 @@ structure LState (T Sig K I : Type) where
 
 local notation "LHM" => HM nilSpec (LState T Sig K I)
 
-def lookupFL (Ik : I) : LHM K := do
+@[expose] def lookupFL (Ik : I) : LHM K := do
   match (← get).table.lookup Ik with
   | some k => return k
   | none =>
@@ -525,19 +525,19 @@ def lookupFL (Ik : I) : LHM K := do
     modify fun s => { s with table := (Ik, k) :: s.table }
     return k
 
-def regSess (Ik : I) : LHM ℕ := do
+@[expose] def regSess (Ik : I) : LHM ℕ := do
   let s ← get
   if Ik ∈ s.sessions then return s.sessions.idxOf Ik
   else
     set { s with sessions := s.sessions ++ [Ik] }
     return s.sessions.length
 
-def regSessOf (sid : Option I) : LHM (Option ℕ) :=
+@[expose] def regSessOf (sid : Option I) : LHM (Option ℕ) :=
   match sid with
   | none => pure none
   | some Ik => some <$> regSess Ik
 
-def rootL (t : ℕ) (Ik : I) (σ : Sig) : LHM (Sig × K × Option I) := do
+@[expose] def rootL (t : ℕ) (Ik : I) (σ : Sig) : LHM (Sig × K × Option I) := do
   if mo.tStar < t then
     let p := prng.up σ Ik
     return (p.1, p.2, none)
@@ -557,7 +557,7 @@ def rootL (t : ℕ) (Ik : I) (σ : Sig) : LHM (Sig × K × Option I) := do
     let p := prng.up σ Ik
     return (p.1, p.2, none)
 
-def hooksLocal : Hooks nilSpec (LState T Sig K I) Γ T Sig SS RS M E CCoins Γ Sig
+@[expose] def hooksLocal : Hooks nilSpec (LState T Sig K I) Γ T Sig SS RS M E CCoins Γ Sig
     (SS × Option ℕ) (RS × Option ℕ) where
   startSend _ _ t γ σ r := do
     let coins ← match r with
@@ -596,7 +596,7 @@ def hooksLocal : Hooks nilSpec (LState T Sig K I) Γ T Sig SS RS M E CCoins Γ S
   reveal _ _ vp := do
     return some (realParty vp vp.γ vp.root (vp.vS.map Prod.fst) (fun t => (vp.vR t).map Prod.fst))
 
-def initLocal : LHM (Option (PartyState Γ T Sig (SS × Option ℕ) (RS × Option ℕ) ×
+@[expose] def initLocal : LHM (Option (PartyState Γ T Sig (SS × Option ℕ) (RS × Option ℕ) ×
     PartyState Γ T Sig (SS × Option ℕ) (RS × Option ℕ))) := do
   let kr ← StateT.lift (sampleT KR)
   let kc ← StateT.lift (sampleT KC)
@@ -617,12 +617,12 @@ abbrev SMSpec (Γ T Sig SS RS M CCoins E : Type) :=
 abbrev SMComp (Γ T Sig SS RS M CCoins E : Type) :=
   OracleComp (SMSpec Γ T Sig SS RS M CCoins E)
 
-def pImpl :
+@[expose] def pImpl :
     QueryImpl (unifSpec + PRFPRNG.spec Sig I K) (StateT (PRFPRNG.GameState Sig I K) ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (PRFPRNG.GameState Sig I K) ProbComp)
     + PRFPRNG.oracleImpl prng
 
-def stepP (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
+@[expose] def stepP (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) :
     ProbComp (((SMSpec Γ T Sig SS RS M CCoins E).Range q × EStateP Γ T Sig SS RS M E K) ×
       PRFPRNG.GameState Sig I K) :=
@@ -630,34 +630,34 @@ def stepP (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
     ((implE (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run
       esP)).run sp
 
-def stepL (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
+@[expose] def stepL (q : (SMSpec Γ T Sig SS RS M CCoins E).Domain)
     (esL : EStateL Γ T Sig SS RS M E K I) :
     ProbComp ((SMSpec Γ T Sig SS RS M CCoins E).Range q × EStateL Γ T Sig SS RS M E K I) :=
   simulateQ lImpl
     ((implE (hooksLocal cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run esL)
 
-def runP (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runP (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) : ProbComp Bool := do
   let r ← (simulateQ (pImpl prng)
     ((simulateQ (implE (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy)
       oa).run esP)).run sp
   pure (authOut (2 + Δcka) mo.policy r.1.2)
 
-def runLoc (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runLoc (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
   let r ← simulateQ lImpl
     ((simulateQ (implE (hooksLocal cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy)
       oa).run esL)
   pure (authOut (2 + Δcka) mo.policy r.2)
 
-def runLocAt (j : ℕ) (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runLocAt (j : ℕ) (oa : SMComp Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
   let r ← simulateQ lImpl
     ((simulateQ (implE (hooksLocal cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy)
       oa).run esL)
   pure (authOut (2 + Δcka) mo.policy r.2 && (r.2.h.lastIdx == some j))
 
-def localAuth (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def localAuth (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     ProbComp Bool := do
   let mo : Mode := ⟨true, tL, t⟩
   let (vs, h) ← simulateQ lImpl ((initLocal cka prng fs lam mo).run {})
@@ -668,7 +668,7 @@ def localAuth (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M 
       { st := fun P => match P with | .A => vA | .B => vB, b := false }
     runLoc cka prng fs Δcka qep mo A { g, h }
 
-def localAuthAt (j : ℕ) (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
+@[expose] def localAuthAt (j : ℕ) (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
     ProbComp Bool := do
   let mo : Mode := ⟨true, tL, t⟩
   let (vs, h) ← simulateQ lImpl ((initLocal cka prng fs lam mo).run {})
@@ -1727,7 +1727,7 @@ theorem run_corrImpl (sp : PRFPRNG.GameState Sig I K) :
   unfold PRFPRNG.corrImpl
   by_cases hprf : sp.prf = true <;> simp [hprf]
 
-def RelCache (cP : Option (T × Option Sig × K)) (cL : Option (T × Sig × K × Option ℕ)) : Prop :=
+@[expose] def RelCache (cP : Option (T × Option Sig × K)) (cL : Option (T × Sig × K × Option ℕ)) : Prop :=
   (cP = none ∧ cL = none) ∨
   ∃ Tc σP σL k idx?,
     cP = some (Tc, σP, k) ∧ cL = some (Tc, σL, k, idx?) ∧ (∀ s, σP = some s → s = σL)
@@ -1744,7 +1744,7 @@ structure RelVP (e : ℕ) (P : Party) (vpP : VP Γ T (Option Sig) SS RS)
   vR_eq : ∀ t, vpP.vR t = (vpL.vR t).map Prod.fst
   root_eq : ∀ s, vpP.root = some s → s = vpL.root
 
-def RootRel (t : ℕ) (hP : PRNGState T Sig K) (sp : PRFPRNG.GameState Sig I K)
+@[expose] def RootRel (t : ℕ) (hP : PRNGState T Sig K) (sp : PRFPRNG.GameState Sig I K)
     (hL : LState T Sig K I)
     (rP : (Option (Option Sig × K) × PRNGState T Sig K) × PRFPRNG.GameState Sig I K)
     (rL : (Sig × K × Option I) × LState T Sig K I) : Prop :=
@@ -2237,7 +2237,7 @@ theorem leComp_startRecv_PRNG_local {e : ℕ} {P : Party}
       · exact Or.inr (Or.inr ⟨γ', σP', σL', k', idx', h1, h2, h3, h4, h5, h6, h7, h8, h9,
           fun hne => False.elim (hne h10)⟩)
 
-def VRecvRel (e : ℕ) (P : Party) (c : Header T × E)
+@[expose] def VRecvRel (e : ℕ) (P : Party) (c : Header T × E)
     (vpL : VP Γ T Sig (SS × Option ℕ) (RS × Option ℕ))
     (hP : PRNGState T Sig K) (sp : PRFPRNG.GameState Sig I K)
     (hL : LState T Sig K I)
@@ -2397,7 +2397,7 @@ structure SyncPL (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Si
     esL.h.cache (max (esL.g.epoch .A) (esL.g.epoch .B)) = some (Tc, σc, k, idx?) →
     max (esL.g.epoch .A) (esL.g.epoch .B) < mo.tStar → σc = sp.σ
 
-def StepRel {α : Type}
+@[expose] def StepRel {α : Type}
     (rP : (α × EStateP Γ T Sig SS RS M E K) × PRFPRNG.GameState Sig I K)
     (rL : α × EStateL Γ T Sig SS RS M E K I) : Prop :=
   rP.1.2.abort = true ∨ (rP.1.1 = rL.1 ∧ SyncPL Δcka mo rP.1.2 rP.2 rL.2)

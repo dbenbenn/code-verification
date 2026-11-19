@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFit
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKit
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # CLI Pre-Key, Signed Pre-Key, and Kyber `get` Store Specifications
@@ -23,7 +25,7 @@ Instantiates `PreKeyStoreSpec` (`OneTimePreKeyFiles`), `SignedPreKeyStoreSpec`
 and 56/48/88-byte sret postcondition bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,32 +39,6 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.RecordCodecs CryptoVerification.RecordCodecsBinary
 open CryptoVerification.SignalSession.Cli
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced (FdsGe3Closed)
-
-/-! ## Offsets -/
-
-/-- The `get_pre_key` shim. -/
-abbrev cliPkGetShimOff : BitVec 64 :=
-  bv% (ls_off% "<libsignal_cli::stores::OneTimePreKeyFiles as libsignal_protocol::storage::traits::PreKeyStore>::get_pre_key")
-
-/-- The `get_pre_key` future's poll. -/
-abbrev cliPkGetPollOff : BitVec 64 :=
-  bv% (ls_off% "<libsignal_cli::stores::OneTimePreKeyFiles as libsignal_protocol::storage::traits::PreKeyStore>::get_pre_key::{closure#0}")
-
-/-- The `remove_pre_key` shim. -/
-abbrev cliPkRemoveShimOff : BitVec 64 :=
-  bv% (ls_off% "<libsignal_cli::stores::OneTimePreKeyFiles as libsignal_protocol::storage::traits::PreKeyStore>::remove_pre_key")
-
-/-- The `remove_pre_key` future's poll. -/
-abbrev cliPkRemovePollOff : BitVec 64 :=
-  bv% (ls_off% "<libsignal_cli::stores::OneTimePreKeyFiles as libsignal_protocol::storage::traits::PreKeyStore>::remove_pre_key::{closure#0}")
-
-/-- The `get_signed_pre_key` shim. -/
-abbrev cliSpkGetShimOff : BitVec 64 :=
-  bv% (ls_off% "<libsignal_cli::stores::SignedPreKeyFiles as libsignal_protocol::storage::traits::SignedPreKeyStore>::get_signed_pre_key")
-
-/-- The `get_signed_pre_key` future's poll. -/
-abbrev cliSpkGetPollOff : BitVec 64 :=
-  bv% (ls_off% "<libsignal_cli::stores::SignedPreKeyFiles as libsignal_protocol::storage::traits::SignedPreKeyStore>::get_signed_pre_key::{closure#0}")
 
 /-! ## Separation-logic word and region helpers -/
 
@@ -265,7 +241,7 @@ structure CliGetErr where
   w5 : BitVec 64
 
 /-- Heap and `.rodata` ownership for `InvalidState("read", String)`. -/
-def cliReadErrHeap (A : RustAlloc) (cap ptr len w4 w5 : BitVec 64) : SepProp :=
+@[expose] def cliReadErrHeap (A : RustAlloc) (cap ptr len w4 w5 : BitVec 64) : SepProp :=
   (∃∗ bs : List (BitVec 8),
     ⌜BitVec.ofNat 64 bs.length = len ∧ bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
@@ -275,7 +251,7 @@ def cliReadErrHeap (A : RustAlloc) (cap ptr len w4 w5 : BitVec 64) : SepProp :=
 
 /-- 48-byte `SignalProtocolError` layout for `get_*_pre_key`, with missing-id SPE index `w`
 (`13` for `get_pre_key`, `14` for `get_signed_pre_key`, `15` for `get_kyber_pre_key`). -/
-def cliGetErrSpec (A : RustAlloc) (w : Nat) (hw : w < 32 := by decide) : SpeErrSpec CliGetErr where
+@[expose] def cliGetErrSpec (A : RustAlloc) (w : Nat) (hw : w < 32 := by decide) : SpeErrSpec CliGetErr where
   w0 := fun e => match e.tag with
     | .missing => speWord w
     | .readErr => speWord 1
@@ -337,7 +313,7 @@ structure CliReadErr where
   w5 : BitVec 64
 
 /-- 48-byte `SignalProtocolError` layout for `CliReadErr` (`speWord 1` + `cliReadErrHeap`). -/
-def cliReadErrSpec (A : RustAlloc) : SpeErrSpec CliReadErr where
+@[expose] def cliReadErrSpec (A : RustAlloc) : SpeErrSpec CliReadErr where
   w0 := fun _ => speWord 1
   w1 := fun e => e.cap
   w2 := fun e => e.ptr
@@ -351,7 +327,7 @@ def cliReadErrSpec (A : RustAlloc) : SpeErrSpec CliReadErr where
 
 /-! ## Pure answer relations -/
 
-def pkAnsErrTag? {α : Type} : PkAns α → Option CliGetErrTag
+@[expose] def pkAnsErrTag? {α : Type} : PkAns α → Option CliGetErrTag
   | .found _ => none
   | .missing => some .missing
   | .readErr => some .readErr
@@ -359,7 +335,7 @@ def pkAnsErrTag? {α : Type} : PkAns α → Option CliGetErrTag
 
 /-- Kit answer relation matching `pa : PkAns α` arm-for-arm against `Except CliGetErr α` with
 unconstrained inline words on `.error`. -/
-def cliGetAnsRel {α : Type} (pa : PkAns α) : Except CliGetErr α → Prop
+@[expose] def cliGetAnsRel {α : Type} (pa : PkAns α) : Except CliGetErr α → Prop
   | .ok r => pa = .found r
   | .error e => pkAnsErrTag? pa = some e.tag
 
@@ -604,7 +580,7 @@ structure CliPkInv (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → 
   oneLt : d.changed.length < 2 ^ 32 ∧
     (d.changed.length + 1 < 2 ^ 32 ∨ keyName pid ∈ d.changed.map Prod.fst)
 
-def cliPkStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliPkStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (pid : BitVec 32) (self : BitVec 64) (d : DirGhost) :
     SepProp :=
   ⌜CliPkInv rd F0 pathOk pid d⌝ ∗ dirAt A self d
@@ -651,10 +627,10 @@ theorem CliPkInv.removePreKey {rd : ReadRule} {F0 : FsFiles} {pathOk : List (Bit
         exact hlen
 
 /-- Concrete `PreKeyStoreSpec` for `OneTimePreKeyFiles` at key `pid` and initial files `F0`. -/
-def cliPreKeyStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliPreKeyStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (pid : BitVec 32)
     (getShimStk getPollStk removeShimStk removePollStk : Nat) : PreKeyStoreSpec A b where
-  pk_vt := b + cliPkVtOff
+  pk_vt := b
   PkState := DirGhost
   storeAt := cliPkStoreAt A rd F0 pathOk pid
   getIdOk := fun id => id = pid
@@ -672,14 +648,14 @@ def cliPreKeyStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsF
     match ans with
     | .ok () => (removePreKey rd F0 d id).1 = .ok ()
     | .error _ => (removePreKey rd F0 d id).1 = .error ()
-  getShimOff := cliPkGetShimOff
-  getFutVtOff := cliPkGetFutVtOff
-  getPollOff := cliPkGetPollOff
+  getShimOff := 0#64
+  getFutVtOff := 0#64
+  getPollOff := 0#64
   getFutDropOff := cliIdFutDropOff
   getBoxSize := 16
-  removeShimOff := cliPkRemoveShimOff
-  removeFutVtOff := cliPkRemoveFutVtOff
-  removePollOff := cliPkRemovePollOff
+  removeShimOff := 0#64
+  removeFutVtOff := 0#64
+  removePollOff := 0#64
   removeFutDropOff := cliIdFutDropOff
   removeBoxSize := 16
   getShimStack := getShimStk
@@ -723,22 +699,6 @@ theorem cliPreKeyStoreSpec_quiet {A : RustAlloc} {b : BitVec 64}
     (cliPreKeyStoreSpec A b rd F0 pathOk pid s1 s2 s3 s4).Quiet :=
   ⟨fun _ _ => by simp [cliPreKeyStoreSpec, NoFsEv],
     fun _ _ => by simp [cliPreKeyStoreSpec, NoFsEv]⟩
-
-theorem cliPreKeyStoreSpec_vtablesOk {A : RustAlloc} {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop) (pid : BitVec 32)
-    (s1 s2 s3 s4 : Nat) :
-    PreKeyVtablesOk img (cliPreKeyStoreSpec A img.base rd F0 pathOk pid s1 s2 s3 s4) where
-  getSlot := cliPkGetSlot_ok himg
-  removeSlot := cliPkRemoveSlot_ok himg
-  getFutDrop := (cliPkGetFutVt_ok himg).drop
-  getFutSize := (cliPkGetFutVt_ok himg).size
-  getFutAlign := (cliPkGetFutVt_ok himg).align
-  getFutPoll := (cliPkGetFutVt_ok himg).poll
-  removeFutDrop := (cliPkRemoveFutVt_ok himg).drop
-  removeFutSize := (cliPkRemoveFutVt_ok himg).size
-  removeFutAlign := (cliPkRemoveFutVt_ok himg).align
-  removeFutPoll := (cliPkRemoveFutVt_ok himg).poll
 
 /-- End-to-end 56-byte sret bridge for `get_pre_key`: `pkGetAnsAt` on the poll's `pkAnsOf` answer
 entails the kit's existential post answer (`getRel` + `preKeyGetPollOutAt`). -/
@@ -829,17 +789,17 @@ structure CliSpkInv (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) →
   nameOk : PkNameOk pathOk d sid
   sizeOk : PkSizeOk rd F0 d sid
 
-def cliSpkStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliSpkStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (sid : BitVec 32) (self : BitVec 64) (d : DirGhost) :
     SepProp :=
   ⌜CliSpkInv rd F0 pathOk sid d⌝ ∗ dirAt A self d
 
 /-- Concrete `SignedPreKeyStoreSpec` for `SignedPreKeyFiles` at key `sid` and initial files `F0`
 (88-byte sret, missing-id SPE index `14`). -/
-def cliSignedPreKeyStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliSignedPreKeyStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (sid : BitVec 32)
     (getShimStk getPollStk : Nat) : SignedPreKeyStoreSpec A b where
-  spk_vt := b + cliSpkVtOff
+  spk_vt := b
   SpkState := DirGhost
   storeAt := cliSpkStoreAt A rd F0 pathOk sid
   idOk := fun id => id = sid
@@ -849,9 +809,9 @@ def cliSignedPreKeyStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0
   getErr := cliGetErrSpec A 14
   getRel := fun d id ans =>
     cliGetAnsRel (pkAnsOf SignedPreKeyRecord.deserialize (d.get rd F0 (keyName id))) ans
-  getShimOff := cliSpkGetShimOff
-  getFutVtOff := cliSpkGetFutVtOff
-  getPollOff := cliSpkGetPollOff
+  getShimOff := 0#64
+  getFutVtOff := 0#64
+  getPollOff := 0#64
   getFutDropOff := cliIdFutDropOff
   getBoxSize := 16
   getShimStack := getShimStk
@@ -885,17 +845,6 @@ theorem cliSignedPreKeyStoreSpec_quiet {A : RustAlloc} {b : BitVec 64}
     (s1 s2 : Nat) :
     (cliSignedPreKeyStoreSpec A b rd F0 pathOk sid s1 s2).Quiet :=
   fun _ _ => by simp [cliSignedPreKeyStoreSpec, NoFsEv]
-
-theorem cliSignedPreKeyStoreSpec_vtablesOk {A : RustAlloc} {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop) (sid : BitVec 32)
-    (s1 s2 : Nat) :
-    SignedPreKeyVtablesOk img (cliSignedPreKeyStoreSpec A img.base rd F0 pathOk sid s1 s2) where
-  getSlot := cliSpkGetSlot_ok himg
-  getFutDrop := (cliSpkGetFutVt_ok himg).drop
-  getFutSize := (cliSpkGetFutVt_ok himg).size
-  getFutAlign := (cliSpkGetFutVt_ok himg).align
-  getFutPoll := (cliSpkGetFutVt_ok himg).poll
 
 /-- End-to-end 88-byte sret bridge for `get_signed_pre_key`: `spkAnsAt` (`pkAnsAt … 88 14`)
 matches `spkGetPollOutAt` (`errTag`, `speErrAt (out + 8)`, `memRegion (out + 0x38) 32`) arm by arm. -/
@@ -945,7 +894,7 @@ theorem spkAnsAt_entails_pollOut (A : RustAlloc) (b : BitVec 64)
 
 /-- `get_kyber_pre_key` half (`CliKpkGetSide`) of `KyberMarkFit.cliKpkStoreSpec` (88-byte sret,
 missing-id SPE index `15`). -/
-def cliKpkGetSide (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliKpkGetSide (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (_pathOk : List (BitVec 8) → Prop) (kid : BitVec 32) : CliKpkGetSide where
   RecOk := fun _ => True
   getIdOk := fun id => id = kid
@@ -990,26 +939,6 @@ theorem cliKpkStoreSpec_quiet {A : RustAlloc} {b : BitVec 64}
     (cliKpkStoreSpec A b rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox).Quiet :=
   ⟨fun _ _ => by simp [cliKpkStoreSpec, NoFsEv],
     fun _ _ _ => by simp [cliKpkStoreSpec, NoFsEv]⟩
-
-theorem cliKpkStoreSpec_vtablesOk {A : RustAlloc} {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop)
-    (kid ksid : BitVec 32) (kbk : PublicKey) (G : CliKpkGetSide) (s1 s2 s3 s4 : Nat)
-    (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
-    (hMarkBox : ∀ box self baseKeyA id signedId st,
-      kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32) :
-    KyberPreKeyVtablesOk img
-      (cliKpkStoreSpec A img.base rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox) where
-  getSlot := cliKpkGetSlot_ok himg
-  markSlot := cliKpkMarkSlot_ok himg
-  getFutDrop := (cliKpkGetFutVt_ok himg).drop
-  getFutSize := (cliKpkGetFutVt_ok himg).size
-  getFutAlign := (cliKpkGetFutVt_ok himg).align
-  getFutPoll := (cliKpkGetFutVt_ok himg).poll
-  markFutDrop := (cliKpkMarkFutVt_ok himg).drop
-  markFutSize := (cliKpkMarkFutVt_ok himg).size
-  markFutAlign := (cliKpkMarkFutVt_ok himg).align
-  markFutPoll := (cliKpkMarkFutVt_ok himg).poll
 
 /-- End-to-end 88-byte sret bridge for `get_kyber_pre_key`: `kpkAnsAt` (`pkAnsAt … 88 15`)
 matches `kpkGetPollOutAt` (`errTag`, `speErrAt (out + 8)`, `memRegion (out + 0x38) 32`) arm by arm. -/

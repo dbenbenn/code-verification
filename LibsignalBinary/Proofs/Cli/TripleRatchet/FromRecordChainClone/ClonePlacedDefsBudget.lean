@@ -11,10 +11,11 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedDefs
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.Bridge
 
 /-!
 # Budget-Threaded `Chain::clone` Placed Definitions
@@ -23,7 +24,7 @@ Defines the `RustCliAllocBudget M` / `VmPreserved` subroutine contracts `protoCh
 `sessionShimSpec`, and `sessionMemcpySpec` for relocatable CLI `Chain::clone`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +46,7 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget (ChainCloneEnv)
 
-def protoChainCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def protoChainCloneSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainCloneGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧
@@ -204,11 +205,11 @@ theorem epilogue_post_entails (M : AllocCostModel) (A : RustCliAllocBudget M)
   rw [hgroup]
   exact sepConj_mono hg' (sepConj_mono_right (sepConj_mono_right hst))
 
-def sessionShimSpec : Spec Unit where
+@[expose] def sessionShimSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝
 
-def sessionMemcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def sessionMemcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧
      s0.readReg64 .x1 = src ∧

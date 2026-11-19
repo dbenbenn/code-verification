@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedDeliverAux
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedDeliverAux -- proof-setup: allow-public-import
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple3
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple4
@@ -23,16 +23,15 @@ import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNELeafTransmit
 # Online-Halted `corr`, `inject`, and `transmit` Coupling
 
 **Checked by Lean.** Unfolds `firstNEHalted'` and `cellSimRunTrackHalted` on non-`deliver` queries
-and proves the halted per-query coupling steps for `corr`, `inject`, and `transmit`.
--/
+and proves the halted per-query coupling steps for `corr`, `inject`, and `transmit`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 open scoped MeasureTheory
 open Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHalted (firstNEHalted' splitSimImplHalted_non_deliver_run)
-open Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedDeliverAux (cellSimRunTrackHalted cellSimRunTrackHalted_corr_query_bind cellSimRunTrackHalted_inr_query_bind cellTrackLift_eq_runCellStep simImplCTrackHalted_chall simImplCTrackHalted_transmit sum_cellSimRunTrackHalted_le_of_doomed_or_eq)
+open Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedDeliverAux (cellSimRunTrackHalted cellSimRunTrackHalted_corr_query_bind cellSimRunTrackHalted_inr_query_bind cellTrackLift_eq_runCellStep simImplCTrackHalted_chall simImplCTrackHalted_transmit stage2CellBucketSumRunTrackHalted sum_stage2_halted_le_of_cell0_pure_step)
 open CryptoGames (Party SMScheme)
 open CryptoGames.CBC (Plain)
 open CryptoGames.CKA (DHFun)
@@ -43,11 +42,9 @@ open CryptoGames.Ratchet.LibsignalSim (Fig8C Fig8Comp Fig8St SimState inReceiveO
 open CryptoGames.Ratchet.LibsignalSimC (Hook LibsignalToModularSchemeSimState probeHook)
 open CryptoGames.SM (noAliceCorrWhileAliceBelowEpoch10)
 open CryptoGames.SM.Thm1 (Mirror)
-open CryptoVerification.LibsignalSession.HeadlineV1 (FirstNECellFamilyInvT_body FirstNECoupledInvD FirstNEInTransOriginInv SyncInv cellShift cellWinPred corrStepGhost corrStepStateC deliverForgeHook_lift_liftM_run drawRc drawRq firstNECoupledOriginInvT_corr_step firstNESimImpl firstNESimImpl_corr_accepted firstNESimImpl_corr_refused fullImplBaseDFCellPaper runCellStep runCellStep_bind runCellStep_liftC_sC_eq runCellStep_pure runCellStep_set runCellStep_simCorrC_accepted_cell runCellStep_simCorrC_refused simSendQFig simulateQ_fullImplBaseDFCellPaper_liftM_probComp simulateQ_simImplDF'Paper_liftM_probComp syncInv_corr_step updSimStateCSend)
+open CryptoVerification.LibsignalSession.HeadlineV1 (FirstNECellFamilyInvT_body FirstNECoupledInvD FirstNEInTransOriginInv SyncInv cellShift corrStepGhost corrStepStateC deliverForgeHook_lift_liftM_run drawRc drawRq firstNECoupledOriginInvT_corr_step firstNESimImpl firstNESimImpl_corr_accepted firstNESimImpl_corr_refused fullImplBaseDFCellPaper runCellStep runCellStep_bind runCellStep_liftC_sC_eq runCellStep_pure runCellStep_set runCellStep_simCorrC_accepted_cell runCellStep_simCorrC_refused s_win_of_cellWinPred simSendQFig simulateQ_fullImplBaseDFCellPaper_liftM_probComp simulateQ_simImplDF'Paper_liftM_probComp syncInv_corr_step updSimStateCSend)
 
 namespace Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedSend
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec
@@ -875,7 +872,8 @@ theorem firstNECoupledInvD_corr_halted_query_step {α : Type}
     (g : CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
     (tr : KemFailTrackState P.C.F) (sent : List (Fig8C Pt))
     (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
-    (s_cell : ℕ → Option ℕ → CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s_cell :
+      ℕ → Option ℕ → CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
     (hbody : FirstNECellFamilyInvT_body qep g m' s_cell)
     (horig : FirstNEInTransOriginInv qep sC.snaps g s_cell)
     (hsync : SyncInv P Dh encPt encT idOf lam qep sC sent m' g (s_cell 0 none))
@@ -889,24 +887,24 @@ theorem firstNECoupledInvD_corr_halted_query_step {α : Type}
         ℕ → Option ℕ → CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)),
       FirstNECoupledInvD P Dh encPt encT idOf lam qep fl₁ dead₁ sC₁ sent₁ m₁' g₁ s_cell₁ →
       𝒟[(simulateQ (firstNEHalted' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q) (u u₁)).run
-          (sC₁, (g₁, fl₁, dead₁), tr₁) >>=
-        fun z => pure z.2.2.1.2.1] {true} ≤
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t,
-        𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL (u u₁) sC₁ tr₁ sent₁
-            m₁' (s_cell₁ t tL) >>=
-          fun z => pure (cellWinPred tL t z.2)] {true}) :
+          (sC₁, (g₁, fl₁, dead₁), tr₁) >>= fun z => pure z.2.2.1.2.1] {true} ≤
+      stage2CellBucketSumRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep (u u₁) sC₁ tr₁ sent₁
+        m₁' s_cell₁) :
     𝒟[(simulateQ (firstNEHalted' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q)
         (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
           (BitVec 512) (List (BitVec 8))) (.inr (.inr Q)) >>= u)).run
-        (sC, (g, false, false), tr) >>=
-      fun z => pure z.2.2.1.2.1] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ CryptoGames.SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep t tL
-          (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
-            (BitVec 512) (List (BitVec 8))) (.inr (.inr Q)) >>= u)
-          sC tr sent m' (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
+        (sC, (g, false, false), tr) >>= fun z => pure z.2.2.1.2.1] {true} ≤
+    stage2CellBucketSumRunTrackHalted P K ℓ Dh encPt encT decT idOf lam qep
+      (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inr Q)) >>= u)
+      sC tr sent m' s_cell := by
   rcases hbody with ⟨hcol, hrel_all⟩
+  have ht0 : 0 ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (by omega)
+  have hwin0 : (s_cell 0 none).win = false := (hrel_all 0 ht0).1.win_df_false
+  let q_corr : OracleComp (unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (Option (GhostState (List (BitVec 8)))) :=
+    liftM (OracleSpec.query (spec := unifSpec + CryptoGames.SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (.inr (.inr Q)))
   rw [simulateQ_firstNEHalted'_corr_eq_firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep
     q Q u sC g false false tr]
   by_cases href : sC.base.stopped = true ∨
@@ -917,11 +915,16 @@ theorem firstNECoupledInvD_corr_halted_query_step {α : Type}
     refine le_trans
       (hih none sC g false false tr sent m' s_cell
         (Or.inr (Or.inr ⟨rfl, rfl, ⟨hcol, hrel_all⟩, horig, hsync⟩))) ?_
-    refine sum_cellSimRunTrackHalted_le_of_doomed_or_eq P K ℓ Dh encPt encT decT idOf lam qep
-      _ (u none) sC sC tr tr g sent sent m' m' s_cell s_cell fun t _ tL _ => Or.inr ?_
-    rw [cellSimRunTrackHalted_corr_query_bind,
-      runCellStep_simCorrC_refused P encT Dh _ qep t tL Q sC sent m' (s_cell t tL) href,
-      pure_bind]
+    refine sum_stage2_halted_le_of_cell0_pure_step P K ℓ Dh encPt encT decT idOf lam qep
+      q_corr u none sC sC tr tr g sent sent m' m' s_cell s_cell hwin0 hwin0
+      (fun t _ => ?_) (fun t _ tL _ => Or.inr ?_)
+    · rw [← bind_pure q_corr, cellSimRunTrackHalted_corr_query_bind,
+        runCellStep_simCorrC_refused P encT Dh _ qep t none Q sC sent m' (s_cell 0 none) href,
+        pure_bind]
+      simp [cellSimRunTrackHalted, simulateQ_pure, StateT.run_pure]
+    · rw [cellSimRunTrackHalted_corr_query_bind,
+        runCellStep_simCorrC_refused P encT Dh _ qep t tL Q sC sent m' (s_cell t tL) href,
+        pure_bind]
   · rw [not_or, Bool.not_eq_true, Bool.not_eq_true] at href
     rcases href with ⟨hstop, href'⟩
     rcases hsync.1 hstop with ⟨s_R, hmeta⟩
@@ -930,7 +933,6 @@ theorem firstNECoupledInvD_corr_halted_query_step {α : Type}
       simpa [List.map_map, Function.comp_def] using h
     obtain ⟨hallow_g, hallow_m⟩ :=
       hsync.2.1.corr_sync hmeta.hchall_fig8.symm hmeta.hcomp_fig8.symm htrans_pos href'
-    have ht0 : 0 ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (by omega)
     have hwin_g : g.win = false := (hrel_all 0 ht0).1.win_mir_false
     rw [firstNESimImpl_corr_accepted P K InvPQ ℓ Dh encPt encT decT idOf lam qep q Q sC g false tr
       hstop href' hwin_g hallow_g, pure_bind]
@@ -938,6 +940,10 @@ theorem firstNECoupledInvD_corr_halted_query_step {α : Type}
         ℕ → Option ℕ → CryptoGames.SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) :=
       fun t tL => if (s_cell t tL).win then s_cell t tL
         else CryptoGames.SM.Construction.DeliverForge.afterCorrShifted (cellShift tL t) (s_cell t tL) Q
+    have hs0 : s_cell₁ 0 none =
+        CryptoGames.SM.Construction.DeliverForge.afterCorrShifted (cellShift none 0) (s_cell 0 none) Q := by
+      dsimp only [s_cell₁]
+      simp [hwin0]
     have hsnaps_sub : ∀ snap ∈ sC.snaps,
         snap ∈ (corrStepStateC P encT Dh sC Q (g.st Q)).snaps :=
       fun _ h => List.mem_cons_of_mem _ h
@@ -945,38 +951,57 @@ theorem firstNECoupledInvD_corr_halted_query_step {α : Type}
       (Or.inr ⟨rfl, hcol, hrel_all, horig⟩) hsnaps_sub hallow_g
     have hinvD₁ : FirstNECoupledInvD P Dh encPt encT idOf lam qep false false
         (corrStepStateC P encT Dh sC Q (g.st Q)) sent (m'.afterCorr Q) (g.afterCorr Q) s_cell₁ := by
-      rcases hcoupled₁ with hwin | ⟨_, hcol₁, hrel₁, horig₁⟩
-      · exact Or.inl hwin
+      rcases hcoupled₁ with ⟨t, ht, tL, htL, hwin_cell⟩ | ⟨_, hcol₁, hrel₁, horig₁⟩
+      · exfalso
+        rcases (hrel_all t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
+        · dsimp only [s_cell₁] at hwin_cell
+          simp only [hdoomed.2.2.2, ↓reduceIte, hdoomed.cellWinPred_eq_false] at hwin_cell
+          cases hwin_cell
+        · have hw := s_win_of_cellWinPred hwin_cell
+          dsimp only [s_cell₁] at hw
+          simp only [hrel_sh.win_df_false, Bool.false_eq_true, ↓reduceIte,
+            CryptoGames.SM.Construction.DeliverForge.afterCorrShifted,
+            CryptoGames.SM.GameState.leak] at hw
       · refine Or.inr (Or.inr ⟨rfl, rfl, ⟨hcol₁, hrel₁⟩, horig₁, ?_⟩)
         have hsync₁ := syncInv_corr_step P Dh encPt encT idOf lam qep Q hsync
           (hrel_all 0 ht0).1.epoch_eq hstop hallow_g
-        have hs0 : s_cell₁ 0 none =
-            CryptoGames.SM.Construction.DeliverForge.afterCorrShifted (cellShift none 0) (s_cell 0 none) Q := by
-          dsimp only [s_cell₁]
-          simp [(hrel_all 0 ht0).1.win_df_false]
         rwa [hs0]
+    have hwin₁ : (s_cell₁ 0 none).win = false := by
+      rw [hs0]
+      simp [CryptoGames.SM.Construction.DeliverForge.afterCorrShifted,
+        CryptoGames.SM.GameState.leak, hwin0]
     refine le_trans
       (hih (some (corrStepGhost P encT Dh sC.base Q (g.st Q)))
         (corrStepStateC P encT Dh sC Q (g.st Q)) (g.afterCorr Q) false false tr sent
         (m'.afterCorr Q) s_cell₁ hinvD₁) ?_
-    refine sum_cellSimRunTrackHalted_le_of_doomed_or_eq P K ℓ Dh encPt encT decT idOf lam qep
-      _ (u (some (corrStepGhost P encT Dh sC.base Q (g.st Q))))
+    refine sum_stage2_halted_le_of_cell0_pure_step P K ℓ Dh encPt encT decT idOf lam qep
+      q_corr u (some (corrStepGhost P encT Dh sC.base Q (g.st Q)))
       sC (corrStepStateC P encT Dh sC Q (g.st Q)) tr tr (g.afterCorr Q) sent sent
-      m' (m'.afterCorr Q) s_cell s_cell₁ fun t ht tL htL => ?_
-    rcases (hrel_all t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
-    · left
-      dsimp only [s_cell₁]
-      simp only [hdoomed.2.2.2, ↓reduceIte]
-      exact hdoomed.of_corrs_sub (fun _ h => List.mem_cons_of_mem _ h)
-    · right
-      dsimp only [s_cell₁]
-      simp only [hrel_sh.win_df_false, Bool.false_eq_true, ↓reduceIte]
-      rw [cellSimRunTrackHalted_corr_query_bind,
-        runCellStep_simCorrC_accepted_cell P encT Dh _ qep t tL Q sC sent m' (s_cell t tL) g
-          hstop href' hallow_m hrel_sh.win_df_false (hrel_sh.corrAllowedPaper_df Q)
-          (congrFun hrel_sh.st_eq Q),
-        pure_bind]
-
-end
+      m' (m'.afterCorr Q) s_cell s_cell₁ hwin0 hwin₁
+      (fun t _ => ?_) (fun t ht tL htL => ?_)
+    · have hsh_eq :
+          CryptoGames.SM.Construction.DeliverForge.afterCorrShifted (cellShift none t) (s_cell 0 none) Q =
+          s_cell₁ 0 none := by
+        rw [hs0]
+        simp [cellShift]
+      rw [← bind_pure q_corr, cellSimRunTrackHalted_corr_query_bind,
+        runCellStep_simCorrC_accepted_cell P encT Dh _ qep t none Q sC sent m' (s_cell 0 none) g
+          hstop href' hallow_m hwin0 ((hrel_all 0 ht0).1.corrAllowedPaper_df Q)
+          (congrFun (hrel_all 0 ht0).1.st_eq Q),
+        hsh_eq, pure_bind]
+      simp [cellSimRunTrackHalted, simulateQ_pure, StateT.run_pure]
+    · rcases (hrel_all t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
+      · left
+        dsimp only [s_cell₁]
+        simp only [hdoomed.2.2.2, ↓reduceIte]
+        exact hdoomed.of_corrs_sub (fun _ h => List.mem_cons_of_mem _ h)
+      · right
+        dsimp only [s_cell₁]
+        simp only [hrel_sh.win_df_false, Bool.false_eq_true, ↓reduceIte]
+        rw [cellSimRunTrackHalted_corr_query_bind,
+          runCellStep_simCorrC_accepted_cell P encT Dh _ qep t tL Q sC sent m' (s_cell t tL) g
+            hstop href' hallow_m hrel_sh.win_df_false (hrel_sh.corrAllowedPaper_df Q)
+            (congrFun hrel_sh.st_eq Q),
+          pure_bind]
 
 end Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedSend

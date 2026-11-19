@@ -10,24 +10,24 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8cPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8cPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8Placed
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8cPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
@@ -42,8 +42,21 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8PlacedBudgetAux2
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8b
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8d -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8bPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8dPlaced
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -129,20 +142,20 @@ theorem seq_clean_lscl_st [LibsignalPlacement] {prog : Program}
 
 /-- Exact binary length check on `V1State.Unchunked.Ct1SentEkReceived` (`es = 2080`,
     `ct1 = 960`, `ek = 1152`). -/
-def ekReceivedCt1SampledUcLenOk (u : CryptoVerification.LibsignalSpqrV1.V1State.Unchunked.Ct1SentEkReceived) : Bool :=
+@[expose] def ekReceivedCt1SampledUcLenOk (u : CryptoVerification.LibsignalSpqrV1.V1State.Unchunked.Ct1SentEkReceived) : Bool :=
   u.es.length == ENCAPSULATION_STATE_SIZE &&
     u.ct1.length == CIPHERTEXT1_SIZE &&
     u.ek.length == ENCAPSULATION_KEY_SIZE
 
 /-- Tail budget precondition at `+10836` after cloning `auth` and freeing the input `auth` buffers. -/
-def EkReceivedCt1SampledTailFits (M : AllocCostModel) (lim : BudgetLimits) (st : M.σ)
+@[expose] def EkReceivedCt1SampledTailFits (M : AllocCostModel) (lim : BudgetLimits) (st : M.σ)
     (optEnc : Option PolynomialEncoder) : Prop :=
   match optEnc with
   | none => True
   | some pbEnc => FitsEnv M lim st (EncoderFromPbAllocEnv (pbToProtoPolyEncoder pbEnc))
 
 /-- Tail allocator event envelope emitted from `+10836` to return. -/
-def EkReceivedCt1SampledTailEnv (optEnc : Option PolynomialEncoder)
+@[expose] def EkReceivedCt1SampledTailEnv (optEnc : Option PolynomialEncoder)
     (evs : List AllocEvent) : Prop :=
   match optEnc with
   | none => FreeOnlyEvs evs
@@ -153,7 +166,7 @@ def EkReceivedCt1SampledTailEnv (optEnc : Option PolynomialEncoder)
     `authFromPbEvents auth` when `sendingCt1 = none`, and `authFromPbEvents auth` optionally
     followed by `FreeOnlyEvs` old-`auth` cleanup + `EncoderFromPbAllocEnv` when
     `sendingCt1 = some pbEnc`. -/
-def EkReceivedCt1SampledFromPbAllocEnv (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.EkReceivedCt1Sampled)
+@[expose] def EkReceivedCt1SampledFromPbAllocEnv (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.EkReceivedCt1Sampled)
     (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => evs = []
@@ -174,7 +187,7 @@ def EkReceivedCt1SampledFromPbAllocEnv (s : CryptoVerification.LibsignalSpqrV1.V
 
 /-- Complete allocator event envelope for Variant 8 (`InnerState.ekReceivedCt1Sampled`) of
     `<States>::from_pb`, including `FreeOnlyEvs` drops of input/temporary buffers on all paths. -/
-def EkReceivedCt1SampledFromPbEnv (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.EkReceivedCt1Sampled)
+@[expose] def EkReceivedCt1SampledFromPbEnv (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.EkReceivedCt1Sampled)
     (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => FreeOnlyEvs evs
@@ -969,46 +982,6 @@ theorem states_from_pb_ekReceivedCt1Sampled_1764_placed [LibsignalPlacement]
             hlen hes hek hct1 hauth hcl4 hsp0_align hpc4 hrun4 hsp4
             hx19_4 hx23_4 hx26_4 hx27_4 htr4)
 
-theorem states_from_pb_ekReceivedCt1Sampled_1764_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.EkReceivedCt1Sampled)
-    (hpts : optEncoderPtsBound s.sendingCt1)
-    (st : M.σ) (s0 s1 : State) (hcl1 : LibsignalCodeLoaded lsmpl s1.mem)
-    (out pbA : BitVec 64)
-    (hfits : FitsEnv M lim st (EkReceivedCt1SampledFromPbAllocEnv s))
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 1764#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx23_1 : s1.readReg64 .x23 = (s0.sp - 2400#64) + 848#64)
-    (hx27_1 : s1.readReg64 .x27 = pbA)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s1
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        memRegion (s0.sp - 2400#64) 2304 ∗
-        statesFromPbSavedCells s0 ∗
-        memRegion out chunkedStatesSize ∗
-        optProtoInnerStateAt A.repAlloc pbA (some (.ekReceivedCt1Sampled s)) ∗
-        statesFromPbJumpTablePlacedAt ∗
-        A.pool lim st s1)
-      (fun sf Pf =>
-        ∃ evs : List AllocEvent,
-          EkReceivedCt1SampledFromPbEnv s evs ∧
-          (Pf ⊢
-            resultChunkedStatesAt A.repAlloc (F := F) out
-              (CryptoVerification.LibsignalSpqrV1.States.from_pb spqrPolyApi (spqrAuthApi F) { innerState := some (.ekReceivedCt1Sampled s) }) ∗
-            memRegion pbA optProtoInnerStateSize ∗
-            statesFromPbJumpTablePlacedAt ∗
-            A.pool lim (M.stepEvents evs st) sf ∗
-            stackAt s0.sp statesFromPbStack) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace) := by
-  exact states_from_pb_ekReceivedCt1Sampled_1764_placed (F := F) hA
-    (encoder_from_pb_ok_of_alloc_placed hA) s hpts st s0 s1 hcl1 out pbA hfits
-    hsp0_align hpc1 hrun1 hsp1 hx19_1 hx23_1 hx27_1 htr1
-
 /-! ## 5. Tagged Dispatch + Top-Level `subroutine_ok` Contracts (`[LibsignalPlacement]`) -/
 
 /-- Lift a tagged-variant `SepWP` body at `+off` (threading `LibsignalCodeLoaded`) to `subroutine_ok`
@@ -1185,17 +1158,5 @@ theorem states_from_pb_ekReceivedCt1Sampled_ok_ext_placed [LibsignalPlacement]
   exact states_from_pb_ekReceivedCt1Sampled_ok_ext_of_env_placed hA henc s
     (fun _ => fitsEnv_ekReceivedCt1SampledAlloc_of_statesFromPbEnv s)
     (fun _ hfits _ hevs => ekReceivedCt1SampledFromPbEnv_sub_statesFromPbEnv s hfits hevs)
-
-theorem states_from_pb_ekReceivedCt1Sampled_ok_ext_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (s : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.EkReceivedCt1Sampled) :
-    subroutine_ok (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333)
-      (withLsCodeLoaded lsmpl
-        (DefsBudget.statesFromPbVariantPlacedSpec M A lim F
-          { innerState := some (.ekReceivedCt1Sampled s) })) := by
-  exact states_from_pb_ekReceivedCt1Sampled_ok_ext_placed hA (encoder_from_pb_ok_of_alloc_placed hA) s
 
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant8PlacedBudget

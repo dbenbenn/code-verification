@@ -12,19 +12,19 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.LoopPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.LoopPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.Push
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable Loop Proofs for `<PolyDecoder as Decoder>::add_chunk`
@@ -34,7 +34,7 @@ Relocatable `[LibsignalPlacement]` proofs of the inner binary-search loop (`+260
 `RustCliAllocBudget M`, `VmPreserved`, and `AllocCallPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -92,12 +92,11 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
   readReg32_setPC_pre readReg32_setMem_setPC_pre
   readReg_setPC_pre readReg_setMem_setPC_pre
   calleeSavedVRegs_setPC_pre calleeSavedVRegs_setMem_setPC_pre
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓] (ls_stub% "memmove")
 
 /-! ## Specification Combinator & `VmPreserved` CPS Helpers -/
 
 /-- Strengthen a `Spec α` postcondition with `AllocCallPreserved s0 sf`. -/
-def withAllocCallPreserved {α : Type} (spec : Spec α) : Spec α :=
+@[expose] def withAllocCallPreserved {α : Type} (spec : Spec α) : Spec α :=
   { spec with post := fun x s0 sf => ⌜AllocCallPreserved s0 sf⌝ ∗ spec.post x s0 sf }
 
 private def withInvSpec {α : Type} (Inv : State → State → Prop) (spec : Spec α) : Spec α :=

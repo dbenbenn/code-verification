@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 
 /-!
 # Bridging `ReductionDsl` reductions to `simulateQ`
@@ -18,7 +18,7 @@ Relational simulation bridges connecting `CostedReduction.eval` and fuel-bounded
 `simulateQ` under a game-query budget invariant.
 -/
 
-@[expose] public section
+public section
 
 namespace ReductionDsl
 
@@ -145,35 +145,5 @@ theorem CostedReduction.eval_eq_simulateQ_of_abs {κ : Type} {G : OracleSpec κ}
   rw [← hsim, bind_map_left]
   refine bind_congr_of_mem_support' ((simulateQ R.impl (A a)).run s₀) (fun ⟨b, s₁⟩ hr₁ => ?_)
   exact hfin s₁ b (hinvEnd (b, s₁) hr₁)
-
-theorem runFuel_eq_simulateQ {κ : Type} {G : OracleSpec κ} {C : GameCodec S G} {σ : Ty S}
-    (h : Comp O I [σ, C.Q] (.prod C.R σ)) {α : Type} (dflt : α) :
-    ∀ {oa : OracleComp (unifSpec + G) α} {q : ℕ},
-      oa.IsQueryBoundP (isGameQuery (G := G)) q →
-      ∀ {fuel : ℕ}, q ≤ fuel → ∀ (s : σ.denote),
-        runFuel h dflt oa fuel s = (simulateQ (handlerImpl h) oa).run s := by
-  intro oa
-  induction oa using OracleComp.inductionOn with
-  | pure a =>
-    intro q _ fuel _ s
-    simp [runFuel, simulateQ_pure]
-  | query_bind q mx ih =>
-    intro qB hq fuel hfuel s
-    rw [isQueryBoundP_query_bind_iff] at hq
-    cases q with
-    | inl n =>
-      rw [run_simulateQ_query_bind]
-      simp only [runFuel, construct_query_bind, handlerImpl, StateT.run_lift, bind_assoc, pure_bind]
-      refine bind_congr fun u => ih u (hq.2 u) hfuel s
-    | inr t =>
-      have hpos : 0 < qB := hq.1.resolve_left (by simp [isGameQuery])
-      obtain ⟨m, rfl⟩ : ∃ m, qB = m + 1 := ⟨qB - 1, by omega⟩
-      have hqm : ∀ u, (mx u).IsQueryBoundP (isGameQuery (G := G)) m := by
-        intro u; simpa [isGameQuery] using hq.2 u
-      obtain ⟨f, rfl⟩ : ∃ f, fuel = f + 1 := ⟨fuel - 1, by omega⟩
-      have hle : m ≤ f := by omega
-      rw [run_simulateQ_query_bind]
-      simp only [runFuel, construct_query_bind, handlerImpl, StateT.run_mk, bind_assoc, pure_bind]
-      refine bind_congr fun p => ih (C.rdec t p.1) (hqm _) hle p.2
 
 end ReductionDsl

@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTight
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTight -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Model
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightModel
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Pure Model & Tight-`onPanic` Helpers (`spqrDropPanic`)
@@ -20,7 +21,7 @@ Defines `spqrDropPanic` (clearing `S.recvPanics` to `false`) and proves
 `model_spqrDropPanic_eq_of_ne_panic` when `(x.model C S uuidTryParse).1 ≠ .error .panic`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +37,7 @@ open CryptoVerification.LibsignalTripleRatchet.DecryptPq.Model
 
 /-- Copy of `S` with `recvPanics` cleared to `false`. Used to tighten non-panicking / alloc-only
 seams where `(x.model C S uuidTryParse).1 ≠ .error .panic`. -/
-def spqrDropPanic (S : SpqrModel) : SpqrModel :=
+@[expose] def spqrDropPanic (S : SpqrModel) : SpqrModel :=
   { S with recvPanics := fun _ _ => false }
 
 /-- Whenever `(x.model C S uuidTryParse).1 ≠ .error .panic`, `x.model` evaluates identically under

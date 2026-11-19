@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrAuthMergePlacedInstBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDecodeStatePlacedInstBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrUnchunkedMergePlacedInstBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ExactPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrAuthMergePlacedInstBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDecodeStatePlacedInstBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrUnchunkedMergePlacedInstBudget
+import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ExactPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlacedBudget
 import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
 import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.BytesMergeCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderClPlaced
@@ -26,6 +26,25 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Heap.GrowOneSpecs
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBase
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefs
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 
 /-!
 # Budget-Threaded Placed `MessageMerge` Leaf Instantiations
@@ -36,7 +55,7 @@ Proves code-and-rodata-loaded placed budget contracts for `bytes::merge` (Block 
 `Unchunked.{EkSentCt1Received,Ct1Sent}::merge` (Blocks 311, 312).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -409,22 +428,6 @@ theorem cliUnchunkedEkSentCt1ReceivedMerge_311_cro [LibsignalPlacement]
   cliUnchunkedEkSentCt1ReceivedMerge_311_of_auth mmpl gh W hA hExt
     (cliAuthMergeBase_blockProgram_cro mmpl gh W hA hExt)
 
-/-- Closed caller-lifted contract for Block `311` (`unchunked::EkSentCt1Received::merge`). -/
-theorem cliUnchunkedEkSentCt1ReceivedMerge_at_block_cro [LibsignalPlacement]
-    {callerProg : Program} {i : Nat}
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    [IsLsBlockProg callerProg i (Rust.withPanics ext)]
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 311)
-      (withLsCodeRoLoaded lsmpl (unchunkedEkSentCt1ReceivedMergeSpec A lim)) :=
-  cliUnchunkedEkSentCt1ReceivedMerge_caller_of_auth mmpl gh W hA hExt
-    (cliAuthMergeBase_blockProgram_cro mmpl gh W hA hExt) hi
-
 /-- Closed own-block `blockProgram` contract for Block `312` (`unchunked::Ct1Sent::merge`). -/
 theorem cliUnchunkedCt1SentMerge_312_cro [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -438,21 +441,5 @@ theorem cliUnchunkedCt1SentMerge_312_cro [LibsignalPlacement]
       (withLsCodeRoLoaded lsmpl (unchunkedCt1SentMergeSpec A lim)) :=
   cliUnchunkedCt1SentMerge_312_of_auth mmpl gh W hA hExt
     (cliAuthMergeBase_blockProgram_cro mmpl gh W hA hExt)
-
-/-- Closed caller-lifted contract for Block `312` (`unchunked::Ct1Sent::merge`). -/
-theorem cliUnchunkedCt1SentMerge_at_block_cro [LibsignalPlacement]
-    {callerProg : Program} {i : Nat}
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    [IsLsBlockProg callerProg i (Rust.withPanics ext)]
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 312)
-      (withLsCodeRoLoaded lsmpl (unchunkedCt1SentMergeSpec A lim)) :=
-  cliUnchunkedCt1SentMerge_caller_of_auth mmpl gh W hA hExt
-    (cliAuthMergeBase_blockProgram_cro mmpl gh W hA hExt) hi
 
 end LibsignalBinary.Proofs.SignalSession.Cli.SpqrMessageMergeLeavesPlacedInstBudget

@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Pqxdh.Bound
-public import Computational.Proofs.GameHop.StateSim -- proof-setup: allow-public-import
-public import Computational.Proofs.GameHop.Fel -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.Collisions -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.SigHop1Key -- proof-setup: allow-public-import
+import Computational.Proofs.GameHop.StateSim
+import Computational.Proofs.GameHop.Fel
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SignalPqxdh.Security.SigHop1Key
 public import Computational.Proofs.SignalPqxdh.Security.RoKemHop1Key -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key -- proof-setup: allow-public-import
 
@@ -198,13 +198,6 @@ theorem KeyIndActiveLengths.toBounded {S : Setup} {q_on : Nat} {st : KeyIndState
     (h : KeyIndActiveLengths S q_on st) (P : Primitives) : KeyIndActiveBounded P st q_on :=
   ⟨h.principals_le, h.spkBundles_le, h.opkEntries_le, h.sessions_le,
    h.sessionsOpk_le, h.allHonestEcPks_le P⟩
-
-theorem KeyIndActiveLengths.sendOpk_bne_none_le {S : Setup} {q_on : Nat} {st : KeyIndState S}
-    (h : KeyIndActiveLengths S q_on st) :
-    st.sessions.countP (fun e => e.hdr.opkId? != none) ≤ activeSendOpkCount S q_on := by
-  have heq : (fun e : KeyIndInitiatorEntry S => e.hdr.opkId? != none) =
-      (fun e => e.hdr.opkId?.isSome) := by funext e; cases e.hdr.opkId? <;> rfl
-  rw [heq]; exact h.sendOpk_le
 
 theorem keyIndActiveLengths_of_valid_and_total {S : Setup} {q_on : Nat} {st : KeyIndState S}
     (hV : KeyIndSlotValid S st) (hOn : ecTotalCount st ≤ q_on) :
@@ -694,16 +687,6 @@ theorem keyIndActiveLengths_of_simulateQ_1Key {α : Type} (S : Setup) (P : Primi
   keyIndActiveLengths_of_simulateQ_impl S (pqxdhKeyIndImpl1KeyRo S P)
     (pqxdhKeyIndImpl1KeyRo_slotValid_and_step S P) oa rem q_on hqb st hV hbud
 
-theorem keyIndActiveLengths_of_simulateQ {α : Type} (useRo : Bool) (S : Setup) (P : Primitives)
-    (oa : OracleComp (unifSpec + keyIndSpec S) α) (rem q_on : Nat)
-    (hqb : oa.IsQueryBoundP isKeyIndOnlineQuery rem)
-    (st : KeyIndState S) (hV : KeyIndSlotValid S st) (hbud : ecTotalCount st + rem ≤ q_on) :
-    ∀ z ∈ support ((simulateQ ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (KeyIndState S) ProbComp) + pqxdhKeyIndImpl useRo S P) oa).run st),
-      KeyIndSlotValid S z.2 ∧ KeyIndActiveLengths S q_on z.2 :=
-  keyIndActiveLengths_of_simulateQ_impl S (pqxdhKeyIndImpl useRo S P)
-    (pqxdhKeyIndImpl_slotValid_and_step useRo S P) oa rem q_on hqb st hV hbud
-
 theorem keyIndActiveLengths_of_runKeyInd1KeySim (S : Setup) (P : Primitives) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) :
     ∀ x ∈ support (runKeyInd1KeySim S P A.1), KeyIndActiveLengths S b.q_on x.2.2 := by
@@ -712,16 +695,6 @@ theorem keyIndActiveLengths_of_runKeyInd1KeySim (S : Setup) (P : Primitives) (b 
     Set.mem_singleton_iff] at hx
   rcases hx with ⟨secb, _, ⟨b', finalSt⟩, hmem, rfl⟩
   exact (keyIndActiveLengths_of_simulateQ_1Key S P A.1.run b.q_on b.q_on A.2.2.2.2.2
-    (KeyIndState.empty S secb) (keyIndSlotValid_empty S secb) (by simp) (b', finalSt) hmem).2
-
-theorem keyIndActiveLengths_of_runKeyIndSim (useRo : Bool) (S : Setup) (P : Primitives)
-    (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
-    ∀ x ∈ support (runKeyIndSim useRo S P A.1), KeyIndActiveLengths S b.q_on x.2.2 := by
-  intro x hx
-  simp only [runKeyIndSim, MonadAttach.mem_support_bind, support_pure,
-    Set.mem_singleton_iff] at hx
-  rcases hx with ⟨secb, _, ⟨b', finalSt⟩, hmem, rfl⟩
-  exact (keyIndActiveLengths_of_simulateQ useRo S P A.1.run b.q_on b.q_on A.2.2.2.2.2
     (KeyIndState.empty S secb) (keyIndSlotValid_empty S secb) (by simp) (b', finalSt) hmem).2
 
 theorem keyIndActiveLengths_of_runKeyInd1KeyShCrSim (S : Setup) (P : Primitives) (b : QueryBudget)
@@ -826,206 +799,6 @@ theorem pqxdhKeyIndImpl_preserves_spkBundles_nonGen {S : Setup} (useRo : Bool)
       <;> simp [hEq]
   | acceptOPK _ _ _ _ | testSession _ | revealSessionKey _
   | acceptNoOPK _ _ _ _ | roQuery _ | registerKey _ | revealDhSecrets => exact h.2.1
-
-theorem pqxdhKeyInd1KeyShCrImpl_activeStep (S : Setup) (P : Primitives)
-    (q : KeyIndQuery S) (hst : KeyIndShCrState S) (hV : ShCrKemRecsValid hst) :
-    ∀ x ∈ support ((pqxdhKeyInd1KeyShCrImpl false S P q).run hst),
-      ShCrKemRecsValid x.2 ∧
-      (if isKeyIndSendQuery (.inr q) then x.2.sendCount ≤ hst.sendCount + 1
-       else x.2.sendCount = hst.sendCount) := by
-  have hInitStep : ∀ (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput)
-      (x : KeyIndResponse × KeyIndShCrState S),
-      x ∈ support ((runShCrInitiate2 P KeyIndState.principals KeyIndResponse.noneResp
-        (preCheckKeyInd S P sid u bundle) sid bundle
-        (finishKeyIndBase S P sid bundle)).run hst) →
-      ShCrKemRecsValid x.2 ∧ x.2.sendCount ≤ hst.sendCount + 1 := by
-    intro sid u bundle x hx
-    rcases mem_support_runShCrInitiate2 P KeyIndState.principals KeyIndResponse.noneResp
-        (preCheckKeyInd S P sid u bundle) sid bundle
-        (finishKeyIndBase S P sid bundle) hst x hx with
-      ⟨rfl, _⟩ | ⟨uInfo, _, _, rfl | ⟨ekASk, ss, kemCt, out, hout, rfl⟩⟩
-    · exact ⟨hV, Nat.le_succ _⟩
-    · exact ⟨⟨fun i hi => Nat.lt_succ_of_lt (hV.1 i hi), hV.2⟩, le_rfl⟩
-    · have hsend := applyShCrFinish_send sid bundle.pqspkB ss kemCt hst out
-      refine ⟨⟨fun i hi => ?_, fun r hr => ?_⟩, by omega⟩
-      · rcases hsend.2 i hi with hi_old | ⟨_, _, _, _⟩
-        · have := hV.1 i hi_old; omega
-        · have := hsend.1; omega
-      · have hbase_spk : (SignalPqxdh.Security.RoKem.applyShCrFinish sid bundle.pqspkB ss kemCt
-            hst out).2.base.spkBundles = hst.base.spkBundles := by
-          rcases out with ⟨resp, none | base'⟩
-          · rfl
-          · exact finishKeyIndBase_spkBundles S P sid bundle uInfo ekASk ss kemCt hst.base
-              (resp, some base') hout base' rfl
-        have hr' : r ∈ hst.recvKemRecs := by rcases out with ⟨_, none | _⟩ <;> exact hr
-        rcases hV.2 r hr' with ⟨hk, hj, hb, hmem⟩
-        exact ⟨hk, hj, hb, hbase_spk.symm ▸ hmem⟩
-  have hAccStep : ∀ (k : Fin S.N_id) (j : Fin S.N_recv) (hdr : HandshakeHdr)
-      (m : StateT (KeyIndState S) ProbComp KeyIndResponse)
-      (hm : ∀ y ∈ support (m.run hst.base), y.2.spkBundles = hst.base.spkBundles)
-      (x : KeyIndResponse × KeyIndShCrState S),
-      x ∈ support ((runShCrAcceptGeneric P KeyIndState.spkBundles isNoneKeyIndResp m k j hdr).run
-        hst) →
-      ShCrKemRecsValid x.2 ∧ x.2.sendCount = hst.sendCount := by
-    intro k j hdr m hm x hx; unfold runShCrAcceptGeneric at hx
-    simp only [StateT.run_bind, MonadAttach.mem_support_bind] at hx
-    rcases hx with ⟨y, hy, hx⟩
-    have hy_step := liftShCrBase_kemRecs_step m hst hV (fun z hz p hp => hm z hz ▸ hp) y hy
-    rcases mem_support_recordAcceptKemGeneric P KeyIndState.spkBundles isNoneKeyIndResp
-        k j hdr y.1 y.2 x hx with rfl | ⟨idxPair, bEntry, _, hfind, _, rfl⟩
-    · exact hy_step
-    · refine ⟨⟨hy_step.1.1, fun r hr => ?_⟩, hy_step.2⟩
-      rcases List.mem_cons.mp hr with rfl | hr_old
-      · have hmem_b := List.mem_of_find?_eq_some hfind
-        rw [beq_iff_eq.mp (List.find?_eq_some_iff_append.mp hfind).1] at hmem_b
-        exact ⟨k.isLt, j.isLt, rfl, List.mem_map_of_mem hmem_b⟩
-      · exact hy_step.1.2 r hr_old
-  intro x hx
-  cases q with
-  | initPrin u =>
-    simpa [isKeyIndSendQuery] using liftShCrBase_kemRecs_step
-      (pqxdhKeyIndImpl1KeyRo S P (.initPrin u)) hst hV
-      (fun y hy p hp => pqxdhKeyIndImpl1KeyRo_initPrin_preserves_spkBundles S P u hst.base y hy ▸ hp)
-      x hx
-  | genSPK u j =>
-    dsimp only [pqxdhKeyInd1KeyShCrImpl, pqxdhKeyIndShCrImpl] at hx
-    rw [runShCrGenSPKGeneric_false_run] at hx
-    simpa [isKeyIndSendQuery] using liftShCrBase_kemRecs_step _ hst hV (fun y hy p hp => by
-      rcases mem_support_genSpkBaseGeneric P KeyIndState.principals KeyIndState.spkBundles
-          (fun st bs => { st with spkBundles := bs })
-          KeyIndResponse.noneResp KeyIndResponse.bundleResp u j hst.base y hy with
-        rfl | ⟨_, _, _, _, _, _, _, rfl⟩
-      · exact hp
-      · exact List.mem_cons_of_mem _ hp) x hx
-  | initiateOPK u i bundle =>
-    dsimp only [pqxdhKeyInd1KeyShCrImpl, pqxdhKeyIndShCrImpl] at hx
-    cases hNone : bundle.opkB?.isNone <;> rw [hNone] at hx
-    · simp only [Bool.false_eq_true, ↓reduceIte] at hx
-      simpa [isKeyIndSendQuery] using hInitStep (.sendOPK u i) u bundle x hx
-    · simp only [↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hx
-      subst hx; exact ⟨hV, by simp [isKeyIndSendQuery]⟩
-  | initiateNoOPK u i bundle =>
-    dsimp only [pqxdhKeyInd1KeyShCrImpl, pqxdhKeyIndShCrImpl] at hx
-    cases hSome : bundle.opkB?.isSome <;> rw [hSome] at hx
-    · simp only [Bool.false_eq_true, ↓reduceIte] at hx
-      simpa [isKeyIndSendQuery] using hInitStep (.sendNoOPK u i) u bundle x hx
-    · simp only [↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hx
-      subst hx; exact ⟨hV, by simp [isKeyIndSendQuery]⟩
-  | acceptOPK k j o hdr =>
-    simpa [isKeyIndSendQuery] using hAccStep k j hdr _
-      (pqxdhKeyIndImpl_preserves_spkBundles_nonGen true P _ hst.base
-        (fun _ _ h => by cases h) (fun _ _ h => by cases h)) x hx
-  | acceptNoOPK k j l hdr =>
-    simpa [isKeyIndSendQuery] using hAccStep k j hdr _
-      (pqxdhKeyIndImpl_preserves_spkBundles_nonGen true P _ hst.base
-        (fun _ _ h => by cases h) (fun _ _ h => by cases h)) x hx
-  | revealSpkSk u j =>
-    simpa [isKeyIndSendQuery] using liftShCrBase_kemRecs_step
-      (pqxdhKeyIndImpl true S P (.revealSpkSk u j)) hst hV (fun y hy p hp => by
-        rcases mem_support_pqxdhKeyIndImpl true S P (.revealSpkSk u j) hst.base y hy with hEq | hEq
-        · rwa [hEq]
-        · rw [hEq]; dsimp only
-          have hm : (hst.base.spkBundles.map (fun (idx, b) =>
-              if idx == (u.val, j.val) then (idx, { b with revealed := true }) else (idx, b))).map
-              (fun (idx, b) => (idx, b.pqspkPk, b.pqspkSk)) =
-              hst.base.spkBundles.map (fun (idx, b) => (idx, b.pqspkPk, b.pqspkSk)) := by
-            rw [List.map_map]
-            exact List.map_congr_left fun ⟨_, _⟩ _ => by simp only [Function.comp_def]; split_ifs <;> rfl
-          rwa [hm]) x hx
-  | corruptIK _ | genOPK _ _ _ | testSession _ | revealSessionKey _
-  | registerKey _ | roQuery _ | revealDhSecrets =>
-    simpa [isKeyIndSendQuery] using liftShCrBase_kemRecs_step _ hst hV
-      (fun y hy p hp => pqxdhKeyIndImpl_preserves_spkBundles_nonGen true P _ hst.base
-        (fun _ _ h => by cases h) (fun _ _ h => by cases h) y hy ▸ hp) x hx
-
-private theorem runKeyInd1KeyShCrSim_kemRecs_and_send
-    (S : Setup) (P : Primitives) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
-    (secb out : Bool) (finalHst : KeyIndShCrState S)
-    (hsupp : (secb, out, finalHst) ∈ support (runKeyInd1KeyShCrSim S P A.1)) :
-    ShCrKemRecsValid finalHst ∧ finalHst.sendCount ≤ activeSendCount S b.q_on := by
-  simp only [runKeyInd1KeyShCrSim, MonadAttach.mem_support_bind, support_pure,
-    Set.mem_singleton_iff] at hsupp
-  rcases hsupp with ⟨_, _, ⟨_, _⟩, hmem, heq⟩
-  rcases Prod.mk.inj heq with ⟨rfl, heq2⟩
-  rcases Prod.mk.inj heq2 with ⟨rfl, rfl⟩
-  let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-    (StateT (KeyIndShCrState S) ProbComp) + pqxdhKeyInd1KeyShCrImpl false S P
-  have hInitV : ShCrKemRecsValid ({ base := KeyIndState.empty S secb } : KeyIndShCrState S) :=
-    ⟨fun _ h => False.elim (List.not_mem_nil h), fun _ h => False.elim (List.not_mem_nil h)⟩
-  have hSend := simulateQ_count_le_of_queryBound impl isKeyIndSendQuery ShCrKemRecsValid
-    (fun s => s.sendCount)
-    (fun t s hs z hz => by
-      cases t with
-      | inl _ =>
-        simp only [impl, QueryImpl.add_apply_inl, QueryImpl.liftTarget_apply,
-          QueryImpl.ofLift_apply, StateT.run_monadLift, monadLift_self,
-          MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hz
-        rcases hz with ⟨_, _, rfl⟩; exact ⟨hs, by simp [isKeyIndSendQuery]⟩
-      | inr gq => exact pqxdhKeyInd1KeyShCrImpl_activeStep S P gq s hs z hz)
-    A.1.run S.N_send_tot S.N_send_tot A.2.2.1
-    { base := KeyIndState.empty S secb } hInitV (by simp) (out, finalHst) hmem
-  have hOn := (simulateQ_count_le_of_queryBound impl isKeyIndOnlineQuery ShCrKemRecsValid
-    (fun s => s.sendCount)
-    (fun t s hs z hz => by
-      cases t with
-      | inl _ =>
-        simp only [impl, QueryImpl.add_apply_inl, QueryImpl.liftTarget_apply,
-          QueryImpl.ofLift_apply, StateT.run_monadLift, monadLift_self,
-          MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hz
-        rcases hz with ⟨_, _, rfl⟩; exact ⟨hs, by simp [isKeyIndOnlineQuery]⟩
-      | inr gq =>
-        have hst_step := pqxdhKeyInd1KeyShCrImpl_activeStep S P gq s hs z hz
-        refine ⟨hst_step.1, ?_⟩
-        by_cases hsend : isKeyIndSendQuery (.inr gq)
-        · have hon : isKeyIndOnlineQuery (.inr gq) := by
-            cases gq <;> simp [isKeyIndSendQuery, isKeyIndOnlineQuery] at hsend ⊢
-          simpa [hsend, hon] using hst_step.2
-        · have hcnt : z.2.sendCount = s.sendCount := by simpa [hsend] using hst_step.2
-          split_ifs <;> omega)
-    A.1.run b.q_on b.q_on A.2.2.2.2.2
-    { base := KeyIndState.empty S secb } hInitV (by simp) (out, finalHst) hmem).2
-  exact ⟨hSend.1, Nat.le_min.mpr ⟨hOn, hSend.2⟩⟩
-
-/-- Every reachable final state of `runKeyInd1KeyShCrSim` satisfies `KeyIndActiveBounded` and
-    `sendCount ≤ activeSendCount S b.q_on`. -/
-theorem runKeyInd1KeyShCrSim_mem_support_activeBounded
-    (S : Setup) (P : Primitives) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
-    (secb out : Bool) (finalHst : KeyIndShCrState S)
-    (hsupp : (secb, out, finalHst) ∈ support (runKeyInd1KeyShCrSim S P A.1)) :
-    KeyIndActiveBounded P finalHst.base b.q_on ∧
-      finalHst.sendCount ≤ activeSendCount S b.q_on :=
-  ⟨(keyIndActiveLengths_of_runKeyInd1KeyShCrSim S P b A (secb, out, finalHst) hsupp).toBounded P,
-   (runKeyInd1KeyShCrSim_kemRecs_and_send S P b A secb out finalHst hsupp).2⟩
-
-/-- Creation-order active-count bounds on `initKemRecs` and `recvKemRecs` in
-    `runKeyInd1KeyShCrSim`. -/
-theorem runKeyInd1KeyShCrSim_mem_support_kemRecs_active
-    (S : Setup) (P : Primitives) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
-    (secb out : Bool) (finalHst : KeyIndShCrState S)
-    (hsupp : (secb, out, finalHst) ∈ support (runKeyInd1KeyShCrSim S P A.1)) :
-    (∀ i ∈ finalHst.initKemRecs, i.sendIdx < activeSendCount S b.q_on) ∧
-    (∀ r ∈ finalHst.recvKemRecs,
-      r.k < S.N_id ∧ r.j < S.N_recv ∧ r.bIdx = spkSlotFlatIdx S (r.k, r.j) ∧
-      ∃ spkOrd < activeSpkCount S b.q_on, ∃ bEntry,
-        finalHst.base.spkBundles.reverse[spkOrd]? = some ((r.k, r.j), bEntry) ∧
-        bEntry.pqspkPk = r.pqspkPk ∧ bEntry.pqspkSk = r.pqspkSk) := by
-  have hBase := (keyIndActiveLengths_of_runKeyInd1KeyShCrSim S P b A
-    (secb, out, finalHst) hsupp).toBounded P
-  rcases runKeyInd1KeyShCrSim_kemRecs_and_send S P b A secb out finalHst hsupp with ⟨hV, hSend⟩
-  refine ⟨fun i hi => Nat.lt_of_lt_of_le (hV.1 i hi) hSend, fun r hr => ?_⟩
-  rcases hV.2 r hr with ⟨hk, hj, hb, hmem_map⟩
-  rcases List.mem_map.mp hmem_map with ⟨⟨idx, bEntry⟩, hmem_b, heq_b⟩
-  rcases Prod.mk.inj heq_b with ⟨hidx, heq_pk⟩
-  rcases Prod.mk.inj heq_pk with ⟨hpk, hsk⟩
-  subst hidx
-  have hmem_rev : ((r.k, r.j), bEntry) ∈ finalHst.base.spkBundles.reverse :=
-    List.mem_reverse.mpr hmem_b
-  rcases List.mem_iff_getElem.mp hmem_rev with ⟨spkOrd, hlt_rev, hget⟩
-  have hlt_act : spkOrd < activeSpkCount S b.q_on := by
-    rw [List.length_reverse] at hlt_rev
-    exact Nat.lt_of_lt_of_le hlt_rev hBase.spkBundles_le
-  exact ⟨hk, hj, hb, spkOrd, hlt_act, bEntry,
-    by rw [List.getElem?_eq_getElem hlt_rev, hget], hpk, hsk⟩
 
 end
 

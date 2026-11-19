@@ -20,14 +20,14 @@ agreement `ModelAgree`, and the PQXDH run relation `PqModelRel`, forming the mac
 intermediate target `CompRefinesCliModel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace DY.Libsignal.Composed.Refinement
 
 /-- Zero-pads or truncates `b` to 32 bytes. -/
-def vec32 (b : HwBytes) : List.Vector (BitVec 8) 32 := ⟨(b ++ List.replicate 32 0).take 32, by simp⟩
+@[expose] def vec32 (b : HwBytes) : List.Vector (BitVec 8) 32 := ⟨(b ++ List.replicate 32 0).take 32, by simp⟩
 
 end DY.Libsignal.Composed.Refinement
 
@@ -37,8 +37,7 @@ open CryptoProofLib.Refinement (ByteString ExternInterpretation)
 open DY.Libsignal (HwBytes)
 open DY.Libsignal.Refinement (sha256CompressFunction x25519AgreementSymbol x25519PublicKeySymbol
   aesCbcEncryptSymbol aesCbcDecryptSymbol)
-open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol kyberDecapsSymbol toEdwardsSymbol
-  torsionFreeSymbol)
+open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol kyberDecapsSymbol)
 open CryptoGames.LibsignalSession (GhostState)
 open CryptoVerification.E2E (PreKeyBundleFields PreKeyMessageFields UnreachedPqxdhPrimitives PEParams RecordExtras initiateTapeLen
   wireWhisper wirePrekey)
@@ -47,8 +46,8 @@ open CryptoVerification.SignalSession (Inputs Outcome PqParty filesOf pqInitInpu
   PqSessionMatches PqxdhPartyInSpecDomain OutcomeMatchesModelExceptPath sessionFile partyAddress)
 
 /-- Agreement between `interp` and the model primitives `P` on SHA-256 compression, AES-256-CBC,
-X25519, Kyber-1024, Montgomery-to-Edwards conversion, and torsion checking. -/
-def ModelAgree (interp : ExternInterpretation) (P : PEParams) : Prop :=
+X25519, and Kyber-1024. -/
+@[expose] def ModelAgree (interp : ExternInterpretation) (P : PEParams) : Prop :=
   P.C.F = sha256CompressFunction interp ∧
   (∀ p k iv : ByteString, k.length = 32 → iv.length = 16 →
     interp aesCbcEncryptSymbol [p, k, iv] =
@@ -66,14 +65,10 @@ def ModelAgree (interp : ExternInterpretation) (P : PEParams) : Prop :=
     interp kyberEncapsSymbol [pk.toList, rand.toList] =
       some ((P.Q.encaps pk rand).1.toList ++ (P.Q.encaps pk rand).2.toList)) ∧
   (∀ (sk : List.Vector (BitVec 8) 3168) (ct : List.Vector (BitVec 8) 1568),
-    interp kyberDecapsSymbol [sk.toList, ct.toList] = some (P.Q.decaps sk ct).toList) ∧
-  (∀ (u : List.Vector (BitVec 8) 32) (sign : BitVec 8),
-    interp toEdwardsSymbol [u.toList, [sign]] = (P.Q.montToEd u sign).map List.Vector.toList) ∧
-  (∀ pt : List.Vector (BitVec 8) 160,
-    P.Q.isTorsionFree pt = decide (interp torsionFreeSymbol [pt.toList] = some [1#8]))
+    interp kyberDecapsSymbol [sk.toList, ct.toList] = some (P.Q.decaps sk ct).toList)
 
 /-- Equivalence of CLI `Inputs` up to directory-snapshot extensionality under `filesOf`. -/
-def InputsEquiv (i i' : Inputs) : Prop :=
+@[expose] def InputsEquiv (i i' : Inputs) : Prop :=
   i.argv = i'.argv ∧ i.dirs = i'.dirs ∧ i.stdin = i'.stdin ∧
     ∀ p, filesOf i.files p = filesOf i'.files p
 
@@ -83,14 +78,14 @@ open CryptoVerification.E2E (encodeRecordUnderExtras encStateUnderExtras lenFiel
 
 /-- Serialized `RecordStructure` produced when promoting a non-matching session `(x, g)` beneath
 a newly established session `(x', g')`, clearing `pendingPreKey` on the archived session. -/
-def noMatchRecordBytes (x : RecordExtras) (g : GhostState HwBytes) (x' : RecordExtras)
+@[expose] def noMatchRecordBytes (x : RecordExtras) (g : GhostState HwBytes) (x' : RecordExtras)
     (g' : GhostState HwBytes) : HwBytes :=
   encodeRecordUnderExtras (fun _ => x') g' ++
     lenField 2 (encStateUnderExtras x { g.session with pendingPreKey := false })
 
 /-- Specifies that when `pqRecvPrekeyModel` accepts on a cleared session and produces `(x', g')`,
 an exited run writes `noMatchRecordBytes x g x' g'` to the peer session file. -/
-def NoMatchSessionFile (X : UnreachedPqxdhPrimitives) (P : PEParams) (st : PqParty) (x : RecordExtras)
+@[expose] def NoMatchSessionFile (X : UnreachedPqxdhPrimitives) (P : PEParams) (st : PqParty) (x : RecordExtras)
     (g : GhostState HwBytes) (m : PreKeyMessageFields) (rc : BitVec 256) (o : Outcome) : Prop :=
   ∀ st' out x' g', pqRecvPrekeyModel X P { st with session := none } m rc = some (some (st', out)) →
     st'.session = some (x', g') →
@@ -102,7 +97,7 @@ open CryptoVerification.E2E (pqxdhSpqrSession pqxdhSessionParams)
 
 /-- Extracts `PreKeyMessageFields` from a pre-key message body when `parsePreKey` succeeds at
 version 4 with a 1568-byte Kyber ciphertext prefixed by `0x08`. -/
-def preKeyOfBody? (body : HwBytes) : Option PreKeyMessageFields :=
+@[expose] def preKeyOfBody? (body : HwBytes) : Option PreKeyMessageFields :=
   match parsePreKey body, decodePreKey (body.drop 1) with
   | some q, some raw =>
     if q.version = 4 then
@@ -119,12 +114,12 @@ def preKeyOfBody? (body : HwBytes) : Option PreKeyMessageFields :=
 
 /-- Checks whether an existing session `(x, g)` matches parsed pre-key fields `q` on
 `aliceBaseKey` and `sessionVersion`. -/
-def PqFieldsMatch (x : RecordExtras) (g : GhostState HwBytes) (q : PreKeyFields) : Prop :=
+@[expose] def PqFieldsMatch (x : RecordExtras) (g : GhostState HwBytes) (q : PreKeyFields) : Prop :=
   x.aliceBaseKey = q.baseKey.take 33 ∧ g.session.sessionVersion.toNat = q.version
 
 /-- Model transition for decrypting a parsed pre-key message `q` against a matching existing
 session `(x, g)`. -/
-def pqRecvMatchingFieldsModel (P : PEParams) (st : PqParty) (x : RecordExtras)
+@[expose] def pqRecvMatchingFieldsModel (P : PEParams) (st : PqParty) (x : RecordExtras)
     (g : GhostState HwBytes) (q : PreKeyFields) (rc : BitVec 256) :
     Option (Option (PqParty × HwBytes)) :=
   let idA : IdentityKey := ⟨⟨vec32 (q.identityKey.drop 1)⟩⟩
@@ -142,12 +137,12 @@ open CryptoVerification.SignalSession (pqInputs publicBundleOf bundleDir)
 
 /-- CLI `init` inputs for party `st` over an arbitrary bundle file list `files` and 192-byte
 randomness tape `t`. -/
-def pqInitInputsF (P : PEParams) (st : PqParty) (files : List (String × HwBytes))
+@[expose] def pqInitInputsF (P : PEParams) (st : PqParty) (files : List (String × HwBytes))
     (t : List.Vector (BitVec 8) initiateTapeLen) : Inputs :=
   pqInputs P st (.init (partyAddress st.party.other) bundleDir) files t.toList []
 
 /-- Outcome equivalence up to `scrub` on directory snapshots. -/
-def ScrubAgree : Outcome → Outcome → Prop
+@[expose] def ScrubAgree : Outcome → Outcome → Prop
   | .aborted, .aborted => True
   | .exited c out fs, .exited c' out' fs' => c = c' ∧ out = out' ∧ ∀ p, scrub fs p = scrub fs' p
   | _, _ => False
@@ -239,12 +234,12 @@ structure PqModelPost (_interp : ExternInterpretation) (P : PEParams) (i : Input
     o = .exited 1 [] (filesOf (pqInitInputsF P st files t).files)
 
 /-- Run relation satisfied when execution aborts or exits in a state satisfying `PqModelPost`. -/
-def PqModelRel (interp : ExternInterpretation) (P : PEParams) (i : Inputs)
+@[expose] def PqModelRel (interp : ExternInterpretation) (P : PEParams) (i : Inputs)
     (o : Option Outcome) : Prop :=
   o = some .aborted ∨ ∃ out_o, o = some out_o ∧ PqModelPost interp P i out_o
 
 /-- Whole-protocol CLI refinement instantiated with `ModelAgree` and `PqModelRel`. -/
-def CompRefinesCliModel : Prop :=
+@[expose] def CompRefinesCliModel : Prop :=
   CompRefinesCli ModelAgree PqModelRel
 
 end DY.Libsignal.Composed.Refinement.Cli

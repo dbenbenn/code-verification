@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.RecvPlacedCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpoch
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States2
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.RecvPlacedCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpoch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.Defs
 public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Defs
@@ -32,7 +32,7 @@ Relocatable program, `.rodata` jump-table bundles, callee specifications, and
 `SpqrRecvPlacedContracts` for `spqr::recv` (Block `329`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -76,12 +76,12 @@ noncomputable abbrev spqrRecvPlacedProg (ext : String → Option (State → Stat
   (blkPC_329).rebase (blkPl_329).base (Rust.withPanics ext)
 
 /-- Symbolic entry address of Block `329` (`spqr::recv`). -/
-noncomputable abbrev spqrRecvPlacedEntry : BitVec 64 := (blkPl_329).base
+abbrev spqrRecvPlacedEntry : BitVec 64 := (blkPl_329).base
 
 /-- Relocatable `SepWPp` enriched with `LibsignalCodeRoLoaded lsmpl s.mem`, automatically
     preserved across `Steps` (`SepWPpLS.of_sepWP`) and available to `withLsCodeRoLoaded lsmpl`
     callee contracts (relocatable counterpart of `SepWPpI`). -/
-def SepWPpLS (prog : Program) (ret : BitVec 64) (s : State) (P : SepProp)
+@[expose] def SepWPpLS (prog : Program) (ret : BitVec 64) (s : State) (P : SepProp)
     (Q Q_err : State → SepProp → Prop) : Prop :=
   LibsignalCodeRoLoaded lsmpl s.mem → SepWPp prog ret s P Q Q_err
 
@@ -150,29 +150,29 @@ theorem seq_clean_lscl {prog : Program} {mid target : BitVec 64} {s : State}
     SepWP.weaken_pre hPm (h2 sm hp hr hcl' hQ))
 
 /-- Relocatable `.rodata` jump table for `<States>::from_pb` (Block `333`). -/
-def statesFromPbJumpTablePlacedAt : SepProp :=
+@[expose] def statesFromPbJumpTablePlacedAt : SepProp :=
   (lsρ "spqr:.rodata.<spqr::v1::chunked::states::States>::from_pb") ↦ᵣ
     States.FromPb.statesFromPbJumpTableBytes
 
 /-- Relocatable `.rodata` jump table for `<States>::recv` (Block `332`). -/
-def statesRecvJumpTablePlacedAt : SepProp :=
+@[expose] def statesRecvJumpTablePlacedAt : SepProp :=
   (lsρ "spqr:.rodata.<spqr::v1::chunked::states::States>::recv") ↦ᵣ
     States.Recv.statesRecvJumpTableBytes
 
 /-- Relocatable `.rodata` bundle required by `<States>::recv` (Block `332`). -/
-def statesRecvRoPlacedAt : SepProp :=
+@[expose] def statesRecvRoPlacedAt : SepProp :=
   statesRecvJumpTablePlacedAt ∗
   Unchunked.unchunkedSendCt2PlacedRoAt ∗
   GF.Mul2U16.tokenInitPlacedAt ∗
   GF.UnacceleratedMul.reduceTablePlacedAt
 
 /-- Relocatable `.rodata` jump table for `<States>::into_pb` (Block `334`). -/
-def statesIntoPbJumpTablePlacedAt : SepProp :=
+@[expose] def statesIntoPbJumpTablePlacedAt : SepProp :=
   (lsρ "spqr:.rodata.<spqr::v1::chunked::states::States>::into_pb") ↦ᵣ
     States.IntoPb.statesIntoPbJumpTableBytes
 
 /-- Combined relocatable `.rodata` separation-logic resource for `spqr::recv` (Block `329`). -/
-def spqrRecvRoPlacedAt : SepProp :=
+@[expose] def spqrRecvRoPlacedAt : SepProp :=
   Prost.MessageMerge.v1StateJumpTablesPlacedAt ∗
   statesFromPbJumpTablePlacedAt ∗
   statesRecvRoPlacedAt ∗
@@ -181,7 +181,7 @@ def spqrRecvRoPlacedAt : SepProp :=
 /-! ## 2. Relocatable Callee Specifications for Block `329` (`spqr::recv`) -/
 
 /-- Relocatable specification for `spqr::decode_state` (Block `325`). -/
-def decodeStatePlacedSpecX (H_inner : V1InnerHeapPred) (A : RustAlloc) : Spec DecodeStateGhost where
+@[expose] def decodeStatePlacedSpecX (H_inner : V1InnerHeapPred) (A : RustAlloc) : Spec DecodeStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.outPtr ∧
       s.readReg64 .x0 = x.st.v ∧
@@ -199,7 +199,7 @@ def decodeStatePlacedSpecX (H_inner : V1InnerHeapPred) (A : RustAlloc) : Spec De
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Relocatable specification for `spqr::init_inner` (Block `324`). -/
-def initInnerPlacedSpecX (A : RustAlloc) (F : ShaCompress) : Spec InitInnerGhost where
+@[expose] def initInnerPlacedSpecX (A : RustAlloc) (F : ShaCompress) : Spec InitInnerGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧
       s.readReg32 .x1 = x.v.toI32 ∧
@@ -221,7 +221,7 @@ def initInnerPlacedSpecX (A : RustAlloc) (F : ShaCompress) : Spec InitInnerGhost
   onPanic := fun _ s0 sf => initInnerOnPanic s0 sf
 
 /-- Relocatable specification for `<States>::from_pb` (Block `333`). -/
-def statesFromPbPlacedSpecX (A : RustAlloc) (F : ShaCompress) : Spec StatesFromPbGhost where
+@[expose] def statesFromPbPlacedSpecX (A : RustAlloc) (F : ShaCompress) : Spec StatesFromPbGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.pbA ∧ v1StatePtsBound x.pb⌝ ∗
       memRegion x.out chunkedStatesSize ∗
@@ -237,7 +237,7 @@ def statesFromPbPlacedSpecX (A : RustAlloc) (F : ShaCompress) : Spec StatesFromP
   onPanic := fun _ s0 sf => statesFromPbOnPanic s0 sf
 
 /-- Relocatable specification for `<States>::recv` (Block `332`). -/
-def statesRecvPlacedSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) : Spec (StatesRecvGhost F) where
+@[expose] def statesRecvPlacedSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) : Spec (StatesRecvGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.outA ∧
       s.readReg64 .x1 = x.selfA ∧
@@ -258,7 +258,7 @@ def statesRecvPlacedSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) : Spec (S
   onPanic := fun x s0 sf => statesRecvOnPanic K x s0 sf
 
 /-- Relocatable specification for `<States>::into_pb` (Block `334`). -/
-def statesIntoPbPlacedSpecX (A : RustAlloc) (F : ShaCompress) : Spec (StatesIntoPbGhost F) where
+@[expose] def statesIntoPbPlacedSpecX (A : RustAlloc) (F : ShaCompress) : Spec (StatesIntoPbGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.stA⌝ ∗
       memRegion x.out Drop.optProtoInnerStateSize ∗

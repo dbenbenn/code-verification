@@ -23,7 +23,7 @@ Separation-logic contracts and stack budgets for compiled `uuid` and `libsignal-
 - `<ProtocolAddress as Display>::fmt` (`addrDisplaySpec`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -36,13 +36,13 @@ open CryptoVerification.LibsignalTripleRatchetRepr
 /-- The 32-byte `Result<Uuid, uuid::Error>` that `try_parse` writes at `out`: `some u` = word 0
 `uuidOkTag`, the UUID at `+4..+20`, 12 bytes unspecified; `none` = word 0 `uuidErrParseOther`, 28
 bytes unspecified. -/
-def uuidResultAt (out : BitVec 64) : Option (List.Vector (BitVec 8) 16) → SepProp
+@[expose] def uuidResultAt (out : BitVec 64) : Option (List.Vector (BitVec 8) 16) → SepProp
   | some u => (out ↦₃₂ uuidOkTag) ∗ ((out + 4#64) ↦ₛ u.toList) ∗ memRegion (out + 20#64) 12
   | none => (out ↦₃₂ uuidErrParseOther) ∗ memRegion (out + 4#64) 28
 
 /-- Stack-free contract for `<uuid::Uuid>::try_parse(x0 = ptr, x1 = len)` (sret `x8`, 32 bytes):
 writes `uuidResultAt out (parse bs)`. Ghost: `(p, bs, out)`. -/
-def uuidTryParseSpec (parse : UuidParser) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
+@[expose] def uuidTryParseSpec (parse : UuidParser) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p, bs, out) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ s.readReg64 .x8 = out⌝ ∗
       (p ↦ₛ bs) ∗ memRegion out 32
@@ -54,12 +54,12 @@ def uuidTryParseSpec (parse : UuidParser) : Spec (BitVec 64 × List (BitVec 8) �
 abbrev uuidTryParseStack : Nat := 0xC0
 
 /-- `uuidTryParseSpec parse` with stack budget `uuidTryParseStack`. -/
-def uuidTryParseCodeSpec (parse : UuidParser) :
+@[expose] def uuidTryParseCodeSpec (parse : UuidParser) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun x s => (uuidTryParseSpec parse).pre x s ∗ stackAt s.sp uuidTryParseStack
   post := fun x s0 sf => (uuidTryParseSpec parse).post x s0 sf ∗ stackAt s0.sp uuidTryParseStack
 /-- `uuidTryParseSpec uuidTryParse` with configurable stack budget `hookStack`. -/
-def uuidTryParseStackSpec (hookStack : Nat := 0) :
+@[expose] def uuidTryParseStackSpec (hookStack : Nat := 0) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun x s => (uuidTryParseSpec uuidTryParse).pre x s ∗ stackAt s.sp hookStack
   post := fun x s0 sf => (uuidTryParseSpec uuidTryParse).post x s0 sf ∗ stackAt s0.sp hookStack
@@ -73,14 +73,14 @@ abbrev parseSidStack : Nat := 0x50 + uuidTryParseStack
 abbrev parseSidFrameStack : Nat := 0x50
 
 /-- `parseSidSpec (serviceIdParse parse)` augmented with stack budget `parseSidStack`. -/
-def parseSidCodeSpec (parse : UuidParser) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
+@[expose] def parseSidCodeSpec (parse : UuidParser) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun x s => (parseSidSpec (serviceIdParse parse)).pre x s ∗ stackAt s.sp parseSidStack
   post := fun x s0 sf =>
     (parseSidSpec (serviceIdParse parse)).post x s0 sf ∗ stackAt s0.sp parseSidStack
 
 /-- Stack-framed variant of `parseSidCodeSpec uuidTryParse`, threading
 `stackAt (s.sp - 80#64) hookStack` below `parseSidFrameStack`. -/
-def parseSidCodeStackSpec (hookStack : Nat := 0) :
+@[expose] def parseSidCodeStackSpec (hookStack : Nat := 0) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun x s =>
     (parseSidSpec (serviceIdParse uuidTryParse)).pre x s ∗
@@ -91,17 +91,9 @@ def parseSidCodeStackSpec (hookStack : Nat := 0) :
 
 /-! ## `<PublicKey as TryFrom<&[u8]>>::try_from` -/
 
-/-- `pkTryFromSpec` augmented with `logOff img` (so the `log::Log::log` trailing-bytes warning
-path is skipped without allocating a stack frame). -/
-def pkTryFromCodeSpec (img : Obj.Image) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
-  pre := fun x s => pkTryFromSpec.pre x s ∗ logOff img
-  post := fun x s0 sf => pkTryFromSpec.post x s0 sf ∗ logOff img
-
-/-! ## `PrivateKey::serialize` -/
-
 /-- `<PrivateKey>::serialize(x0 = &self)` (sret `x8`, `Vec<u8>`): allocates a fresh 32-byte
 `Vec<u8>` copy of `bs` at `ret`. Ghost: `(k, bs, ret)`. -/
-def privSerializeSpec (A : RustAlloc) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
+@[expose] def privSerializeSpec (A : RustAlloc) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (k, bs, ret) s =>
     ⌜s.readReg64 .x0 = k ∧ s.readReg64 .x8 = ret ∧ bs.length = 32⌝ ∗ (k ↦ₛ bs) ∗
       memRegion ret 24 ∗ A.pool ∗ stackAt s.sp extHookStack
@@ -113,7 +105,7 @@ def privSerializeSpec (A : RustAlloc) : Spec (BitVec 64 × List (BitVec 8) × Bi
 abbrev privSerializeStackX : Nat := extHookStack + 32
 
 /-- `privSerializeSpec A` at stack budget `privSerializeStackX`. -/
-def privSerializeSpecX (A : RustAlloc) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
+@[expose] def privSerializeSpecX (A : RustAlloc) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (k, bs, ret) s =>
     ⌜s.readReg64 .x0 = k ∧ s.readReg64 .x8 = ret ∧ bs.length = 32⌝ ∗ (k ↦ₛ bs) ∗
       memRegion ret 24 ∗ A.pool ∗ stackAt s.sp privSerializeStackX
@@ -129,7 +121,7 @@ abbrev addrDisplayStack : Nat := extHookStack + 0x30
 /-- `<ProtocolAddress as Display>::fmt(x0 = &addr, x1 = &Formatter)`: delegates to
 `core::fmt::write` on the `Formatter` writer `(v, vt)`, returning `w0 = 0` and updating `v` to
 an owned `Vec<u8>`. Ghost: `(f, v, vt, bs)`. -/
-def addrDisplaySpec (A : RustAlloc) :
+@[expose] def addrDisplaySpec (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (f, v, vt, bs) s =>
     ⌜s.readReg64 .x1 = f⌝ ∗ (f ↦₆₄ v) ∗ ((f + 8#64) ↦₆₄ vt) ∗ vecU8 A v bs ∗ A.pool ∗

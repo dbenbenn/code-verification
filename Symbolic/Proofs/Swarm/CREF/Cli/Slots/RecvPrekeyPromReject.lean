@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure
-public import Symbolic.Proofs.Swarm.CREF.Sanitize
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.CallCountPure
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sanitize -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.CallCountPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -28,7 +28,7 @@ or stopped promote pre-key `recv` calls (`rpkProm_reject_live`), dispatching par
 wires through `Sanitize.sanitizeMoves` and unparseable wires through bare `Move.reject []`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

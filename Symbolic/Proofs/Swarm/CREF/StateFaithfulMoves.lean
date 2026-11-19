@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -45,7 +45,7 @@ successful state-storing move appends a child snapshot for the same participant 
 initiator flag and therefore invalidates `isCurrentSnapshot` at the parent index.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

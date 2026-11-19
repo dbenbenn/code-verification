@@ -62,29 +62,6 @@ private theorem boolDist_fst_le_prEvent_of_agree {α : Type} (exp exp₀ : ProbC
     (measurableSet_singleton true)).trans
     (measureETVDist_map_le_prEvent_of_agree exp exp₀ Prod.fst badEv hagree hbad_eq.ge)
 
-/-- Runs that agree off `bad` have CLI advantages differing by at most `2 * CliPqxdhFlagProb`. -/
-theorem cliPqAdvantage_le_add_badProb (S : SignalPqxdh.Setup) {run run₀ : CliRun}
-    (X : UnreachedPqxdhPrimitives) (W : PEParams) (l qep : Nat) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (A : CliGameAdversary S l (BitVec 512))
-    {bad : Inputs → Prop} (hrun : ∀ i, ¬ bad i → run i = run₀ i) :
-    CliPqxdhAdvantage S run X W l qep decT encT A ≤
-      CliPqxdhAdvantage S run₀ X W l qep decT encT A +
-        2 * CliPqxdhFlagProb S run X W l qep decT encT A bad := by
-  unfold CliPqxdhAdvantage CliPqxdhFlagProb
-  rw [← cli_pq_exp_b_faithful_proof S run X W l qep decT encT A,
-    ← cli_pq_exp_b_faithful_proof S run₀ X W l qep decT encT A]
-  refine boolBias_le_add_two_mul_of_boolDist_le _ _ _
-    (boolDist_fst_le_prEvent_of_agree
-      (cliPqxdhExpFlagged S run X W l qep decT encT A)
-      (cliPqxdhExpFlagged S run₀ X W l qep decT encT A)
-      (fun z => ∃ i ∈ z.2, bad i) fun p => ?_)
-  have hnot (z : Bool × List Inputs) : ¬ (∃ i ∈ z.2, bad i) ↔ GoodLog bad z.2 :=
-    ⟨fun h i hi hb => h ⟨i, hi, hb⟩, fun hg ⟨i, hi, hb⟩ => hg i hi hb⟩
-  rw [prEvent_congr _ _ (fun z => p z ∧ GoodLog bad z.2) (fun z => and_congr_right fun _ => hnot z),
-    prEvent_congr _ _ (fun z => p z ∧ GoodLog bad z.2) (fun z => and_congr_right fun _ => hnot z)]
-  exact cliPqxdhExpFlagged_agree S X W l qep decT encT A hrun p
-
 /-- Bounds `boolDist` between `Prod.fst <$> exp` and `exp_H` via a single partition on `kemEv` and
 `badEv`. -/
 theorem boolDist_fst_le_add_prEvent_of_agree {α : Type} (exp exp₀ : ProbComp (Bool × α))
@@ -175,29 +152,5 @@ theorem cliPqAdvantage_le_add_kemFail (S : SignalPqxdh.Setup) (run : CliRun)
     unfold CliPqxdhFlagProb
     exact prEvent_eq_zero_of_forall_not _ _ (by rintro _ ⟨_, _, hf⟩; exact hf)
   simpa only [hzero, mul_zero, add_zero] using h
-
-/-- Specialization of `cliPqAdvantage_le_add_kemFail_and_badProb` when `cliPqxdhExpFlagged` at
-`run₀` agrees off `KemFailBad` with a paired experiment `exp₀ : ProbComp (Bool × List Inputs)`. -/
-theorem cliPqAdvantage_le_add_kemFail_and_badProb_of_agree (S : SignalPqxdh.Setup)
-    {run run₀ : CliRun} (X : UnreachedPqxdhPrimitives) (W : PEParams) (l qep : Nat) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (A : CliGameAdversary S l (BitVec 512))
-    (exp₀ : ProbComp (Bool × List Inputs))
-    {bad : Inputs → Prop} (hrun : ∀ i, ¬ bad i → run i = run₀ i)
-    (hagree : ∀ p : Bool × List Inputs → Prop,
-      Pr{let z ← cliPqxdhExpFlagged S run₀ X W l qep decT encT A}[
-        p z ∧ ¬ (W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = true)] =
-      Pr{let z ← exp₀}[
-        p z ∧ ¬ (W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = true)]) :
-    CliPqxdhAdvantage S run X W l qep decT encT A ≤
-      𝒟[Prod.fst <$> exp₀].boolBias +
-        2 * CliKemFailProb S run X W l qep decT encT A +
-        2 * CliPqxdhFlagProb S run X W l qep decT encT A bad := by
-  have h := cliPqAdvantage_le_add_kemFail_and_badProb S (run := run) (run₀ := run₀)
-    X W l qep decT encT A (Prod.fst <$> exp₀) 0 hrun fun b => ?_
-  · simpa only [mul_zero, add_zero] using h
-  · rw [add_zero, ← prEvent_eq_evalDist_singleton (Prod.fst <$> exp₀) b, prEvent_map,
-      hagree (fun z => z.1 = b)]
-    exact prEvent_mono exp₀ _ _ fun _ hz => hz.1
 
 end Computational.Proofs.LibsignalCli.Oom.Transfer

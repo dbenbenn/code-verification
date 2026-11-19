@@ -10,9 +10,8 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
 
@@ -23,7 +22,7 @@ Defines `rcvAccBlk` for an accepting whisper receive call block and proves that 
 `RecvBlockShape`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

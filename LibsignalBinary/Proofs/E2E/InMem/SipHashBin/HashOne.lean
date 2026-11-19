@@ -9,18 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.RoundLemmas
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.RoundLemmas -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.Specs
 public import ProofLib.SepLogic.WP
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.Decodes
 import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.Write36
 import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.WriteU8
 import LibsignalBinary.Proofs.E2E.InMem.SipHashModel.Lemmas
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import ProofLib.GenDecodes
 
 /-!
 # Correctness of `RandomState::hash_one::<&ProtocolAddress>`
@@ -30,7 +29,7 @@ hashes a 36-byte UUID name, `0xff` string terminator, and 1-byte `device_id` via
 to `SipHasher13::write` followed by an inlined `SipHasher13::finish`, returning `hashAddrBv`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.SipHashBin
 
@@ -78,51 +77,17 @@ theorem sepWP_exists_elim {α : Sort _} {prog : Program} {pc : BitVec 64} {s : A
 
 /-! ## Call-Site Transport of `SipHasher13::write` -/
 
-theorem sipWrite36_ok_at_hashOne (b : BitVec 64) (ext : HookMap) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr hashOneAddrName + bv% (ls_off% "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write" - ls_off% "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>"))
-      sipWrite36Spec := by
-  have h1 : libsignalSessionCode.fnOff hashOneAddrName = num% (ls_off% "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>") :=
-    (ls_lemma% fnOff "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>")
-  have h2 : libsignalSessionCode.fnOff sipWriteName = num% (ls_off% "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write") :=
-    (ls_lemma% fnOff "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write")
-  have haddr :
-      (RebasedProg b ext).fnAddr hashOneAddrName + bv% (ls_off% "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write" - ls_off% "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>") =
-      (RebasedProg b ext).fnAddr sipWriteName := by
-    simp only [RebasedProg, Program.fnAddr_rebase, h1, h2]
-    rw [BitVec.add_assoc]; rfl
-  rw [haddr]
-  exact sipWrite36_ok b ext
-
 /-- `BitVec 8` wrapper around `SipHasher13.writeU8` avoiding raw `UInt8.ofBitVec`
 inside postcondition lambdas during `foldStructEtaTarget`. -/
-def writeBv8 (h : SipHasher13) (b : BitVec 8) : SipHasher13 :=
+@[expose] def writeBv8 (h : SipHasher13) (b : BitVec 8) : SipHasher13 :=
   h.writeU8 (UInt8.ofBitVec b)
 
-def sipWriteBv8Spec : Spec SipWriteU8Ghost where
+@[expose] def sipWriteBv8Spec : Spec SipWriteU8Ghost where
   pre := sipWriteU8Spec.pre
   post := fun x s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗
       sipHasher13At x.hAddr (writeBv8 x.h x.b) ∗
       (x.bPtr ↦₈ x.b)
-
-theorem sipWriteU8_ok_at_hashOne (b : BitVec 64) (ext : HookMap) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr hashOneAddrName + bv% (ls_off% "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write" - ls_off% "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>"))
-      sipWriteBv8Spec := by
-  have h1 : libsignalSessionCode.fnOff hashOneAddrName = num% (ls_off% "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>") :=
-    (ls_lemma% fnOff "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>")
-  have h2 : libsignalSessionCode.fnOff sipWriteName = num% (ls_off% "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write") :=
-    (ls_lemma% fnOff "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write")
-  have haddr :
-      (RebasedProg b ext).fnAddr hashOneAddrName + bv% (ls_off% "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write" - ls_off% "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>") =
-      (RebasedProg b ext).fnAddr sipWriteName := by
-    simp only [RebasedProg, Program.fnAddr_rebase, h1, h2]
-    rw [BitVec.add_assoc]; rfl
-  rw [haddr]
-  exact sipWriteU8_ok b ext
-
-/-! ## Stack Frame Decomposition -/
 
 theorem stackAt_hashOne_eq (sp : BitVec 64) :
     stackAt sp hashOneAddrStack =
@@ -383,89 +348,5 @@ end HashOne
 open HashOne
 
 attribute [local irreducible] Program.fnOff
-
-set_option maxHeartbeats 1600000 in
-/-- `<RandomState as BuildHasher>::hash_one::<&ProtocolAddress>` satisfies
-`hashOneAddrBorrow36Spec` on `RebasedProg b ext`. -/
-theorem hashOneAddrBorrow36_ok (b : BitVec 64) (ext : HookMap) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr hashOneAddrName)
-      hashOneAddrBorrow36Spec := by
-  have h_w36 := sipWrite36_ok_at_hashOne b ext
-  have h_wu8 := sipWriteU8_ok_at_hashOne b ext
-  simp only [hashOneAddrBorrow36Spec]
-  have hfn : libsignalSessionCode.fnOff hashOneAddrName = num% (ls_off% "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>") :=
-    (ls_lemma% fnOff "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>")
-  code_fetches CryptoVerification.libsignalSessionCode libsignalSessionBin b ext hfn (num% (ls_off% "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>")) 380
-  clear hfn
-  dsimp only [RebasedProg, hashOneAddrName, BitVec.ofNat_eq_ofNat] at h_w36 h_wu8 ⊢
-  generalize_entry (libsignalSessionCode.rebase b ext).fnAddr
-    "<std::hash::random::RandomState as core::hash::BuildHasher>::hash_one::<&libsignal_core::address::ProtocolAddress>" = entry
-  generalize_entry (libsignalSessionCode.rebase b ext) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  wp_init x s0
-  examples_hide_fetches
-  obtain ⟨k0, k1, addr, ptr, name, dev⟩ := x
-  dsimp only at *
-  unfold addrBorrowAt
-  rw [h]
-  wp_conv_pre => rw [stackAt_hashOne_eq s0.sp]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  repeat' (apply sepWP_exists_elim; intro _)
-  wp_steps
-  -- Call 1: write(ptr, 36)
-  let h0 := SipHasher13.newWithKeys (UInt64.ofBitVec k0) (UInt64.ofBitVec k1)
-  have hh0_len : h0.length + 36 < 2 ^ 64 := by change 0 + 36 < 2 ^ 64; decide
-  have hh0_nt : h0.ntail = 0 := rfl
-  refine SepWP.fold (Entails.of_eq (sipHasher13At_newWithKeys s0.sp k0 k1)) (by sep_focus) ?_
-  wp_apply
-  wp_steps
-  -- Call 2: write(&0xff, 1)
-  let h1 := h0.write (name.map UInt8.ofBitVec)
-  have hh1_len_eq : h1.length = 36 := by
-    simp [h1, h0, SipHasher13.write_length, h]
-  have hh1_nt_eq : h1.ntail = 4 := by
-    rw [show h1 = h0.write (name.map UInt8.ofBitVec) from rfl,
-        SipHasher13.write_of_ntail_zero h0 (name.map UInt8.ofBitVec) hh0_nt]
-    simp [h]
-  have hh1_len : h1.length + 1 < 2 ^ 64 := by rw [hh1_len_eq]; decide
-  have hh1_nt1 : 1 ≤ h1.ntail := by rw [hh1_nt_eq]; decide
-  have hh1_nt6 : h1.ntail ≤ 6 := by rw [hh1_nt_eq]; decide
-  wp_apply
-  wp_steps
-  -- Call 3: write(&dev, 1)
-  let h2 := writeBv8 h1 0xff#8
-  have hh2_len_eq : h2.length = 37 := by
-    simp [h2, writeBv8, SipHasher13.writeU8_length, hh1_len_eq]
-  have hh2_nt_eq : h2.ntail = 5 := by
-    rw [show h2 = h1.writeU8 (UInt8.ofBitVec 0xff#8) from rfl,
-        SipHasher13.writeU8_of_ntail_between h1 (UInt8.ofBitVec 0xff#8)
-          (by omega) (by omega)]
-    dsimp only
-    omega
-  have hh2_len : h2.length + 1 < 2 ^ 64 := by rw [hh2_len_eq]; decide
-  have hh2_nt1 : 1 ≤ h2.ntail := by rw [hh2_nt_eq]; decide
-  have hh2_nt6 : h2.ntail ≤ 6 := by rw [hh2_nt_eq]; decide
-  wp_apply
-  -- Inlined SipHasher13::finish
-  let h3 := writeBv8 h2 dev
-  have hh3_len_eq : h3.length = 38 := by
-    simp [h3, writeBv8, SipHasher13.writeU8_length, hh2_len_eq]
-  have hh3_nt_eq : h3.ntail = 6 := by
-    rw [show h3 = h2.writeU8 (UInt8.ofBitVec dev) from rfl,
-        SipHasher13.writeU8_of_ntail_between h2 (UInt8.ofBitVec dev)
-          (by omega) (by omega)]
-    dsimp only
-    omega
-  have hh3_unfold := sipHasher13At_sp_sub_68 s0.sp h3
-    (by rw [hh3_len_eq]; decide) (by rw [hh3_nt_eq]; decide)
-  rw [hh3_len_eq, hh3_nt_eq] at hh3_unfold
-  refine SepWP.fold (Entails.of_eq hh3_unfold) (by sep_focus) ?_
-  wp_steps
-  refine SepWP.fold (rejoin_stack_hashOne s0.sp _ _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-  have hhash_eq : hashAddrBv k0 k1 name dev = h3.finish.toBitVec := rfl
-  rw [hhash_eq, toBitVec_finish_of_length_38 h3 hh3_len_eq]
-  dsimp only [finishCRoundBv, finishDRound1Bv, finishDRound2Bv, finishDRound3XorBv]
-  wp_done
 
 end CryptoVerification.E2E.InMem.SipHashBin

@@ -22,7 +22,7 @@ Defines the symbolic `HasFineReallocCredit (M : AllocCostModel)` typeclass over 
   and `peakLarge`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

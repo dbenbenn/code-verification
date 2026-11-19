@@ -9,22 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.SessionOnlyKitE
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.SessionOnlyKitE -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX
-import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText
-import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal
-import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get
-import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOneX
-import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SignalSession.Cli.Specs
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommon
+import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put
 import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityFutDropExt
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadShim
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollX
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShim
+import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # CLI `SessionOnlyKitOkSE` Assembly
@@ -34,7 +34,7 @@ shim, poll, and `futDrop` contracts over an arbitrary allocator, `ReadRule`, ini
 `SessionRecord` scope, and external-hook map.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +48,6 @@ open CryptoVerification.LibsignalPublicApiRepr
 open CryptoVerification.LibsignalPublicApi
 open CryptoVerification.LibsignalPublicApi.StoreSession
 open CryptoVerification.LibsignalPublicApi.StoreKit
-open CryptoVerification.SignalSession.Cli.Store
 open CryptoVerification.SignalSession.Cli.MainHops
 
 /-! ## Stack bounds -/
@@ -159,241 +158,5 @@ private theorem storePoll_post_sat {p : Prop} {q : Except Unit Unit → Prop} {i
   exact sepConj_mono_right (sepConj_mono_left (Entails.pure_right hinv' (Entails.refl dir0)))
 
 /-! ## Kit assembly -/
-
-/-- Assemble `SessionOnlyKitOkSE` for `cliSessionStoreSpec` from `RunHooks`, `read_file`,
-`SessionRecord::deserialize`, and `SessionRecord::serialize` contracts. -/
-theorem cliSessKitOkSE {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    {rd : ReadRule} {F0 : FsFiles} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {peer : AddrGhost} {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hh : RunSkeleton.RunHooks img A ext)
-    (hRead : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr Cli.readFileName)
-      (readFileSpec rd cliWrOk A img readStk))
-    (hDeser : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordDeserializeName)
-      (sessDeserializeSpec Scope A img))
-    (hSer : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordSerializeName)
-      ((Proofs.libsignal.Hooks2.serializeCanonSpecX A).inImage img))
-    (hs1 : loadShimNeed ≤ s1) (hs2 : loadPollNeed readStk ≤ s2)
-    (hs3 : storeShimNeed ≤ s3) (hs4 : storePollNeedX ≤ s4) :
-    MessageDecrypt.SessionOnlyKitOkSE
-      (cliSessionStoreSpec A img.base rd F0 cliWrOk Scope peer s1 s2 s3 s4)
-      Scope E2E.Record.encodeRecord ext := by
-  have hb : (img.base &&& 0xfff#64) = 0#64 := RunSkeleton.base_aligned himg
-  have hC : AllocContractsX img A ext := hh.alloc
-  have hRes := RunSkeleton.reserve_ok hh (Nat.le_refl doReserveStackX)
-  have hDec := Decimal.decimal_ok_of_deps hRes (Nat.le_refl decNeed) hb
-  have hAddr := AddressText.addressText_ok_of_deps hC hRes hDec (Nat.le_refl addrTextNeed) hb
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-  · -- loadShim
-    have h := LoadShim.sessLoadShim_ok_of_deps hC hs1 hb
-    rw [cliSessLoadShim_fnAddr] at h
-    exact h
-  · -- loadPoll
-    have hGet := Get.dirGet_ok_of_deps (pathOk := cliWrOk) himg (fun _ hp => hp.2) hC
-      hh.memcpyRO hh.bcmp (RunSkeleton.path_ok himg hh (Nat.le_refl RunSkeleton.pathNeed))
-      hRead hh.fs (Nat.le_refl (RunSkeleton.RunBudgets.dirGetNeed ⟨readStk⟩)) hb
-    have h := LoadPoll.sessLoadPoll_ok_of_deps hC hAddr hGet hDeser hh.fs hs2 hb
-    rw [cliSessLoadPoll_fnAddr] at h
-    refine subroutine_ok_map_panic h ?_
-    rintro ⟨call, self, d⟩ R s0 hpre
-    obtain ⟨hfiles, ⟨_, _, _, _, haddr⟩, hinv⟩ := extract_pure3 hpre
-    have hname : call.addr.name.bytes = peer.name.bytes := congrArg AddrVal.name haddr
-    refine ⟨⟨call, self, d⟩, R, ?_, ?_, fun _ hpan => hpan⟩
-    · exact Satisfies.mono
-        (sepConj_mono_left
-          (poll_pre_entails fun hfiles' ⟨hfl, hsym, hx0, hx8, haddr'⟩ hinv' =>
-            ⟨⟨hfl, hsym⟩, hx0, hx8, hname ▸ hinv'.nameLt, haddr' ▸ hinv'.textLt, hinv'.pathLt,
-              haddr' ▸ hinv'.pathOk, fun bs hbs => by
-                rw [hfiles', haddr'] at hbs
-                obtain ⟨bs₀, hget₀, hwf₀⟩ := hinv'.getOk
-                rw [hget₀] at hbs
-                cases hbs
-                exact hwf₀⟩))
-        hpre
-    · intro sf hpost
-      refine loadPoll_post_sat hinv (fun gr ans ⟨⟨hgr, htr⟩, hans⟩ => ?_) hpost
-      rw [hfiles, haddr] at hgr
-      obtain ⟨bs₀, hget₀, _⟩ := hinv.getOk
-      rw [hget₀] at hgr
-      subst hgr
-      refine ⟨⟨⟨bs₀, haddr.symm ▸ hget₀, hans⟩, by
-        show sf.trace = s0.trace ++ []
-        rw [List.append_nil]
-        exact htr⟩, ?_⟩
-      cases bs₀ with
-      | nil =>
-        have hans' : ans = .ok none := hans
-        subst hans'
-        exact Entails.refl _
-      | cons b bs =>
-        obtain ⟨r, hans', _, hsc⟩ := hans
-        subst hans'
-        exact Entails.pure_right hsc (Entails.refl _)
-  · -- loadFutDrop
-    exact cliIdFutDrop_ok_ext
-  · -- storeShim
-    have h := StoreShim.sessStoreShim_ok_of_deps hC hs3 hb
-    rw [cliSessStoreShim_fnAddr] at h
-    exact h
-  · -- storePoll
-    have hGrow := GrowOne.growOneDir_ok_x hC (Nat.le_refl growOneDirNeed) hb
-    have hPut := Put.dirPut_ok_of_deps hC hh.bcmp hGrow (Nat.le_refl dirPutNeed) hb
-    have h := StorePollX.sessStorePoll_ok_of_depsX hC hAddr hSer hPut hs4 hb
-    rw [cliSessStorePoll_fnAddr] at h
-    refine subroutine_ok_map_panic h ?_
-    rintro ⟨call, self, d⟩ R s0 hpre
-    obtain ⟨_, ⟨_, _, hrec, haddr⟩, hinv⟩ := extract_storePoll_pure hpre
-    have hname : call.call.addr.name.bytes = peer.name.bytes := congrArg AddrVal.name haddr
-    refine ⟨⟨call, self, d⟩, R, ?_, ?_, fun _ hpan => hpan⟩
-    · exact Satisfies.mono
-        (sepConj_mono_left
-          (storePoll_pre_entails fun _ ⟨hx0, hx8, hrec', _⟩ hinv' =>
-            ⟨hx0, hx8, hname ▸ hinv'.nameLt, hrec'.2, hinv'.changedLt.1⟩))
-        hpre
-    · intro sf hpost
-      exact storePoll_post_sat
-        (fun htr => ⟨rfl, by
-          show sf.trace = s0.trace ++ []
-          rw [List.append_nil]
-          exact htr⟩)
-        (cliSessionStoreSpec_storeUpdate_inv (ans := .ok ()) hinv haddr hrec)
-        rfl rfl hpost
-  · -- storeFutDrop
-    exact cliIdFutDrop_ok_ext
-
-/-- Variant of `cliSessKitOkSE` taking minimal hook contracts and pool-threaded
-`sessDeserializeExtSpec`. -/
-theorem cliSessKitOkSE_of_deps {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {rd : ReadRule} {F0 : FsFiles} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {peer : AddrGhost} {roStk readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hC : AllocContractsX img A ext)
-    (hRO : HookSat ext memcpyName (SpqrV1.Alloc.sessionMemcpyRegionROSpecWithStack roStk))
-    (hBcmp : HookSat ext cliBcmpName cliBcmpSpec)
-    (hFs : TraceFsSound (tripleRatchetProgAtExt img.base ext))
-    (hRead : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr Cli.readFileName)
-      (readFileSpec rd cliWrOk A img readStk))
-    (hDeser : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordDeserializeName)
-      (sessDeserializeExtSpec Scope A img))
-    (hSer : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordSerializeName)
-      ((Proofs.libsignal.Hooks2.serializeCanonSpecX A).inImage img))
-    (hs1 : loadShimNeed ≤ s1) (hs2 : loadPollNeed readStk ≤ s2)
-    (hs3 : storeShimNeed ≤ s3) (hs4 : storePollNeedX ≤ s4)
-    (hro : roStk ≤ extHookStack := by decide) :
-    MessageDecrypt.SessionOnlyKitOkSE
-      (cliSessionStoreSpec A img.base rd F0 cliWrOk Scope peer s1 s2 s3 s4)
-      Scope E2E.Record.encodeRecord ext := by
-  have hb : (img.base &&& 0xfff#64) = 0#64 := RunSkeleton.base_aligned himg
-  have hRes := cliDoReserve_ok hC (Nat.le_refl doReserveStackX)
-  have hDec := Decimal.decimal_ok_of_deps hRes (Nat.le_refl decNeed) hb
-  have hAddr := AddressText.addressText_ok_of_deps hC hRes hDec (Nat.le_refl addrTextNeed) hb
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_⟩
-  · -- loadShim
-    have h := LoadShim.sessLoadShim_ok_of_deps hC hs1 hb
-    rw [cliSessLoadShim_fnAddr] at h
-    exact h
-  · -- loadPoll
-    have hPath := Path.path_ok_of_deps_withStack hC hRO hRes
-      (Nat.le_refl RunSkeleton.pathNeed) hb hro
-    have hGet := Get.dirGet_ok_of_deps_withStack (pathOk := cliWrOk) himg (fun _ hp => hp.2) hC
-      hRO hBcmp hPath hRead hFs (Nat.le_refl (RunSkeleton.RunBudgets.dirGetNeed ⟨readStk⟩)) hb hro
-    have h := LoadPoll.sessLoadPoll_ok_of_deps_ext hC hAddr hGet hDeser hFs hs2 hb
-    rw [cliSessLoadPoll_fnAddr] at h
-    refine subroutine_ok_map_panic h ?_
-    rintro ⟨call, self, d⟩ R s0 hpre
-    obtain ⟨hfiles, ⟨_, _, _, _, haddr⟩, hinv⟩ := extract_pure3 hpre
-    have hname : call.addr.name.bytes = peer.name.bytes := congrArg AddrVal.name haddr
-    refine ⟨⟨call, self, d⟩, R, ?_, ?_, fun _ hpan => hpan⟩
-    · exact Satisfies.mono
-        (sepConj_mono_left
-          (poll_pre_entails fun hfiles' ⟨hfl, hsym, hx0, hx8, haddr'⟩ hinv' =>
-            ⟨⟨hfl, hsym⟩, hx0, hx8, hname ▸ hinv'.nameLt, haddr' ▸ hinv'.textLt, hinv'.pathLt,
-              haddr' ▸ hinv'.pathOk, fun bs hbs => by
-                rw [hfiles', haddr'] at hbs
-                obtain ⟨bs₀, hget₀, hwf₀⟩ := hinv'.getOk
-                rw [hget₀] at hbs
-                cases hbs
-                exact hwf₀⟩))
-        hpre
-    · intro sf hpost
-      refine loadPoll_post_sat hinv (fun gr ans ⟨⟨hgr, htr⟩, hans⟩ => ?_) hpost
-      rw [hfiles, haddr] at hgr
-      obtain ⟨bs₀, hget₀, _⟩ := hinv.getOk
-      rw [hget₀] at hgr
-      subst hgr
-      refine ⟨⟨⟨bs₀, haddr.symm ▸ hget₀, hans⟩, by
-        show sf.trace = s0.trace ++ []
-        rw [List.append_nil]
-        exact htr⟩, ?_⟩
-      cases bs₀ with
-      | nil =>
-        have hans' : ans = .ok none := hans
-        subst hans'
-        exact Entails.refl _
-      | cons b bs =>
-        obtain ⟨r, hans', _, hsc⟩ := hans
-        subst hans'
-        exact Entails.pure_right hsc (Entails.refl _)
-  · -- loadFutDrop
-    exact cliIdFutDrop_ok_ext
-  · -- storeShim
-    have h := StoreShim.sessStoreShim_ok_of_deps hC hs3 hb
-    rw [cliSessStoreShim_fnAddr] at h
-    exact h
-  · -- storePoll
-    have hGrow := GrowOne.growOneDir_ok_x hC (Nat.le_refl growOneDirNeed) hb
-    have hPut := Put.dirPut_ok_of_deps hC hBcmp hGrow (Nat.le_refl dirPutNeed) hb
-    have h := StorePollX.sessStorePoll_ok_of_depsX hC hAddr hSer hPut hs4 hb
-    rw [cliSessStorePoll_fnAddr] at h
-    refine subroutine_ok_map_panic h ?_
-    rintro ⟨call, self, d⟩ R s0 hpre
-    obtain ⟨_, ⟨_, _, hrec, haddr⟩, hinv⟩ := extract_storePoll_pure hpre
-    have hname : call.call.addr.name.bytes = peer.name.bytes := congrArg AddrVal.name haddr
-    refine ⟨⟨call, self, d⟩, R, ?_, ?_, fun _ hpan => hpan⟩
-    · exact Satisfies.mono
-        (sepConj_mono_left
-          (storePoll_pre_entails fun _ ⟨hx0, hx8, hrec', _⟩ hinv' =>
-            ⟨hx0, hx8, hname ▸ hinv'.nameLt, hrec'.2, hinv'.changedLt.1⟩))
-        hpre
-    · intro sf hpost
-      exact storePoll_post_sat
-        (fun htr => ⟨rfl, by
-          show sf.trace = s0.trace ++ []
-          rw [List.append_nil]
-          exact htr⟩)
-        (cliSessionStoreSpec_storeUpdate_inv (ans := .ok ()) hinv haddr hrec)
-        rfl rfl hpost
-  · -- storeFutDrop
-    exact cliIdFutDrop_ok_ext
-
-theorem cliSessKitOkSE_ext_of_hooks {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {rd : ReadRule} {F0 : FsFiles} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {peer : AddrGhost} {readStk s1 s2 s3 s4 : Nat}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hh : RunSkeleton.RunHooksExt img A ext)
-    (hRead : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr Cli.readFileName)
-      (readFileSpec rd cliWrOk A img readStk))
-    (hDeser : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordDeserializeName)
-      (sessDeserializeExtSpec Scope A img))
-    (hSer : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr recordSerializeName)
-      ((Proofs.libsignal.Hooks2.serializeCanonSpecX A).inImage img))
-    (hs1 : loadShimNeed ≤ s1) (hs2 : loadPollNeed readStk ≤ s2)
-    (hs3 : storeShimNeed ≤ s3) (hs4 : storePollNeedX ≤ s4) :
-    MessageDecrypt.SessionOnlyKitOkSE
-      (cliSessionStoreSpec A img.base rd F0 cliWrOk Scope peer s1 s2 s3 s4)
-      Scope E2E.Record.encodeRecord ext :=
-  cliSessKitOkSE_of_deps himg hh.alloc hh.memcpyRO hh.bcmp hh.fs hRead hDeser hSer
-    hs1 hs2 hs3 hs4
 
 end CryptoVerification.SignalSession.Cli.KitInst.SessKit

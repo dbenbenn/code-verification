@@ -9,12 +9,20 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEnc
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEnc -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacMu
 import Computational.Proofs.GameHop.ReductionDsl.PeelSim
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

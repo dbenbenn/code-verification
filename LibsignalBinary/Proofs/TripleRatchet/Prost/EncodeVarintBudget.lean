@@ -9,11 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintStagesBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintStagesBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefs
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
 
 /-!
 # Budget-Threaded Verification of `prost::encoding::varint::encode_varint`
@@ -22,7 +34,7 @@ Assembles the relocatable `[LibsignalPlacement]` verification of `encode_varint:
 (block 10, calling block 13) against `EncDefsBudget.encodeVarintSpec` and `encodeVarintSpecX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -315,18 +327,6 @@ theorem encode_varint_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       (withLsCodeLoaded lsmpl (encodeVarintSpec A lim)) :=
   encode_varint_placed_ok_of_doReserve A lim H (do_reserve_placed_ok hshim halloc hrealloc)
 
-/-- Variant of `encode_varint_placed_ok` accepting `NoOom` `HookSat` contracts directly. -/
-theorem encode_varint_placed_ok_noOom [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocNoOomSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocNoOomSpec M A lim)) :
-    subroutine_ok ((blkPC_10).rebase (blkPl_10).base H)
-      (blkPl_10).base
-      (withLsCodeLoaded lsmpl (encodeVarintSpec A lim)) :=
-  encode_varint_placed_ok_of_doReserve A lim H (do_reserve_placed_ok_noOom hshim halloc hrealloc)
-
 /-- Relocatable `prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]`
 (Block `10`, calling Block `13`) meets `withLsCodeLoaded lsmpl (encodeVarintSpecX A lim)`. -/
 theorem encode_varint_placed_ok_of_doReserve_x [LibsignalPlacement] {M : AllocCostModel}
@@ -356,17 +356,5 @@ theorem encode_varint_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
       (blkPl_10).base
       (withLsCodeLoaded lsmpl (encodeVarintSpecX A lim)) :=
   encode_varint_placed_ok_of_doReserve_x A lim H (do_reserve_placed_ok_x hshim halloc hrealloc)
-
-/-- Variant of `encode_varint_placed_ok_x` accepting `NoOom` `HookSat` contracts directly. -/
-theorem encode_varint_placed_ok_x_noOom [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocNoOomSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocNoOomSpec M A lim)) :
-    subroutine_ok ((blkPC_10).rebase (blkPl_10).base H)
-      (blkPl_10).base
-      (withLsCodeLoaded lsmpl (encodeVarintSpecX A lim)) :=
-  encode_varint_placed_ok_of_doReserve_x A lim H (do_reserve_placed_ok_x_noOom hshim halloc hrealloc)
 
 end LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget

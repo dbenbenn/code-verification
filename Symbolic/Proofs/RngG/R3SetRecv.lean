@@ -18,7 +18,7 @@ Auxiliary list last-element update and drop lemmas together with `UInt32`/`BitVe
 and arithmetic rewrites.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

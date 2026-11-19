@@ -27,7 +27,7 @@ Closes `deliver` of an honest wire from an evicted epoch, either rejecting on a 
 dispatching salt mismatches (DEV-LS36) to the `EvictedMismatch` hops.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

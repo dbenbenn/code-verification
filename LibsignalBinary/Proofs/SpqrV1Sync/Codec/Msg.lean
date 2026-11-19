@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.VarintPure
+public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.VarintPure -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
 public import Batteries.Tactic.OpenPrivate
-public meta import LibsignalBinary.Proofs.SpqrV1Sync.Codec.VarintPure
+public meta import LibsignalBinary.Proofs.SpqrV1Sync.Codec.VarintPure -- proof-setup: allow-public-import
 public meta import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
 public import ProofLib
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
 
 set_option autoImplicit false
 
@@ -31,14 +32,14 @@ the `ct1Ack` wire tag always deserializes to `.ct1Ack true`), `msg_preamble` fol
 `Message.deserialize` recovers `(1, m.epoch, index)` and `m`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Codec
 
 open CryptoVerification.LibsignalSpqrV1 hiding WireType DecodeErr decodeVarint encodeVarint
 open CryptoGames.LibsignalSession (ShaCompress)
 /-- Trailing chunk bytes written after the message-type tag by `Message.serialize`. -/
-def payloadBytes {P : PolyApi} : MessagePayload P → Bytes
+@[expose] def payloadBytes {P : PolyApi} : MessagePayload P → Bytes
   | .hdr c | .ek c | .ekCt1Ack c | .ct1 c | .ct2 c => encode_chunk c
   | .none | .ct1Ack _ => []
 

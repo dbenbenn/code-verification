@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5CallsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopATailPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5CallsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopATailPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlaced
 meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
@@ -21,6 +21,12 @@ import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Mem
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded M5 Inner Loop A Slash Push & Name Append (`M+0x948 .. M+0x980`)
@@ -29,7 +35,7 @@ Budget-threaded verification of `m5_loop_a_slash_and_name_placed` on Block `617`
 advancing `A.pool` by `M5LoopATailEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -78,21 +84,21 @@ attribute [local arm64_norm]
 
 /-- Final `String` capacity produced by `M+0x948 .. M+0x980` starting from post-`reserve1(1)`
 capacity `cap1`. -/
-def m5LoopATailCap (cap1 : Nat) (dir name : List (BitVec 8)) : Nat :=
+@[expose] def m5LoopATailCap (cap1 : Nat) (dir name : List (BitVec 8)) : Nat :=
   if cap1 - (dir.length + 1) < name.length then
     reserveCap cap1 (dir.length + 1) name.length
   else
     cap1
 
 /-- Deterministic allocator event list of `m5_loop_a_slash_and_name_placed` (`M+0x948 .. M+0x980`). -/
-def m5LoopATailEvents (cap1 : Nat) (dir name : List (BitVec 8)) : List AllocEvent :=
+@[expose] def m5LoopATailEvents (cap1 : Nat) (dir name : List (BitVec 8)) : List AllocEvent :=
   if cap1 - (dir.length + 1) < name.length then
     rustReallocEvents cap1 (reserveCap cap1 (dir.length + 1) name.length) 1
   else
     []
 
 /-- Allocator event envelope of `m5_loop_a_slash_and_name_placed`. -/
-def M5LoopATailEnv (cap1 : Nat) (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def M5LoopATailEnv (cap1 : Nat) (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = m5LoopATailEvents cap1 dir name
 
 example : ∃ evs, M5LoopATailEnv 4 [0x61#8] [0x62#8] evs :=

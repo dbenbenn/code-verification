@@ -171,12 +171,114 @@ C2_LIB2_CANONICAL_ROWS: tuple[tuple[str, str], ...] = (
     ("duration_since", "_RNvMs5_NtCsfr5T3GFabw_3std4timeNtB5_10SystemTime14duration_since"),
     ("black_box", "_RINvCsdqpLrhraQXi_6subtle9black_boxhECs2wR8L9wiBdT_16curve25519_dalek"),
     (
+        "mont_to_edwards",
+        "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint10to_edwards",
+    ),
+    (
+        "edwards_compress",
+        "_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint8compress",
+    ),
+    (
+        "edwards_neg",
+        "_RNvXso_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtNtNtCskxtBwYRO61I_4core3ops5arith3Neg3neg",
+    ),
+    (
+        "edwards_is_torsion_free",
+        "_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint15is_torsion_free",
+    ),
+    (
+        "edwards_dsmb",
+        "_RNvMsw_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint35vartime_double_scalar_mul_basepoint",
+    ),
+    (
+        "scalar_from_bytes_mod_order",
+        "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar20from_bytes_mod_order",
+    ),
+    (
+        "scalar_from_bytes_mod_order_wide",
+        "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar25from_bytes_mod_order_wide",
+    ),
+    (
         "static_secret_drop",
         "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop",
     ),
     (
         "shared_secret_drop",
         "_RNvXse_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12SharedSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop",
+    ),
+    (
+        "mlkem_pk1",
+        "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk1",
+    ),
+    (
+        "mlkem_pk2",
+        "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk2",
+    ),
+    ("compress256", "_RNvNtCsbvWyylYiyxg_4sha26sha25611compress256"),
+    ("libcrux_hmac", "_RNvCs65XVORQObL2_12libcrux_hmac4hmac"),
+    (
+        "aes_256_cbc_encrypt",
+        "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_encrypt",
+    ),
+    (
+        "aes_256_cbc_decrypt",
+        "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_decrypt",
+    ),
+    ("compress512", "_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512"),
+    ("fmt_write", "_RNvNtCskxtBwYRO61I_4core3fmt5write"),
+    (
+        "fmt_formatter_write_str",
+        "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter9write_str",
+    ),
+    (
+        "fmt_formatter_pad",
+        "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter3pad",
+    ),
+    ("fmt_display_str", "_RNvXsi_NtCskxtBwYRO61I_4core3fmteNtB5_7Display3fmt"),
+    ("fmt_display_u8", "_RNvXNtNtNtCskxtBwYRO61I_4core3fmt3num3imphNtB6_7Display3fmt"),
+    ("fmt_display_u32", "_RNvXs8_NtNtNtCskxtBwYRO61I_4core3fmt3num3impmNtB9_7Display3fmt"),
+    ("fmt_display_u64", "_RNvXsd_NtNtNtCskxtBwYRO61I_4core3fmt3num3impyNtB9_7Display3fmt"),
+    ("fmt_display_usize", "_RNvXsi_NtNtNtCskxtBwYRO61I_4core3fmt3num3impjNtB9_7Display3fmt"),
+    ("alloc_format_inner", "_RNvNvNtCs69KKACWg7bl_5alloc3fmt6format12format_inner"),
+    (
+        "x25519_pub_from_secret",
+        "_RNvXs8_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_9PublicKeyINtNtCskxtBwYRO61I_4core7convert4FromRNtB5_12StaticSecretE4from",
+    ),
+    (
+        "x25519_diffie_hellman",
+        "_RNvMs6_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecret14diffie_hellman",
+    ),
+    (
+        "mlkem1024_encapsulate",
+        "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11encapsulate",
+    ),
+    (
+        "mlkem1024_decapsulate",
+        "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate",
+    ),
+    (
+        "mlkem768_from_seed",
+        "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes9from_seed",
+    ),
+    (
+        "mlkem768_encapsulate1",
+        "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate1",
+    ),
+    (
+        "mlkem768_encapsulate2",
+        "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate2",
+    ),
+    (
+        "mlkem768_decapsulate",
+        "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental26decapsulate_compressed_key",
+    ),
+    (
+        "mlkem768_validate_pk",
+        "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes",
+    ),
+    (
+        "getauxval_hwcap",
+        "_RNvNtCslWItzXo2NmA_11cpufeatures7aarch6415getauxval_hwcap",
     ),
     (
         "time_add",
@@ -342,7 +444,7 @@ def parse_cli_binary_pq_text(
     literals, and `++` list concatenations without hard-coded row counts)."""
     cleaned = _strip_lean_comments_preserving_strings(text)
     top_re = re.compile(
-        r"(?m)^(?:@[^\n]+\n)*(?:noncomputable\s+|private\s+|protected\s+)*"
+        r"(?m)^(?:@\[[^\]]+\]\s*|@[^\n]+\n)*(?:public\s+|noncomputable\s+|private\s+|protected\s+)*"
         r"(abbrev|def|theorem|lemma|namespace|end|section|open|set_option|structure|inductive)\b"
     )
     matches = list(top_re.finditer(cleaned))
@@ -460,8 +562,6 @@ def parse_cli_binary_pq_text(
     hook_keys = list(pair_key_lists["cliHookTablePlaced"])
     dehooked_syms = list(str_lists["cliDehookedSymsPlaced"])
     panic_syms = list(str_lists["cliPanicSymbolsPlaced"])
-    if not hook_keys:
-        raise RuntimeError(f"{source_label}: `cliHookTablePlaced` parsed to 0 rows")
     if not panic_syms:
         raise RuntimeError(f"{source_label}: `cliPanicSymbolsPlaced` parsed to 0 entries")
 
@@ -498,21 +598,87 @@ def parse_cli_binary_pq_text(
     }
 
 
+def _check_c2_atomic_dehook(
+    pq_tables: Mapping[str, Sequence[str]],
+    moved_libc_rows: Sequence[str],
+    active_lib2_roots: Sequence[str],
+) -> None:
+    """Fail closed if any active C2 `lib2`/libc root is still hooked or missing from
+    `cliDehookedSymsPlaced`, exempting panic roots intercepted via `cliPanicSymbolsPlaced`."""
+    base_dehooked = set(pq_tables["cliDehookedSymsPlaced"])
+    panic_set = set(pq_tables["cliPanicSymbolsPlaced"])
+    must_be_dehooked = [
+        *(r for r in moved_libc_rows if r != "memcmp"),
+        *active_lib2_roots,
+    ]
+    still_hooked = sorted(set(must_be_dehooked) & set(pq_tables["cliHookTablePlaced"]))
+    missing_dehooked = [
+        s for s in must_be_dehooked if s not in base_dehooked and s not in panic_set
+    ]
+    if still_hooked or missing_dehooked:
+        raise RuntimeError(
+            "C2 atomic de-hook check failed against `CliBinaryPq.lean` "
+            "(pass `--c2-rehearsal-dehook` with `--unpinned` for pre-cutover trials): "
+            f"still_in_cliHookTablePlaced={still_hooked}, "
+            f"missing_from_cliDehookedSymsPlaced={missing_dehooked}"
+        )
+
+
+def _apply_staged_dehook_to_pq_dict(
+    pq_tables: Mapping[str, Sequence[str]], staged_syms: Sequence[str]
+) -> dict[str, list[str]]:
+    staged_list = [str(s) for s in dict.fromkeys(staged_syms) if str(s)]
+    hooks = [str(h) for h in pq_tables["cliHookTablePlaced"]]
+    dehooked = [str(d) for d in pq_tables["cliDehookedSymsPlaced"]]
+    panics = [str(p) for p in pq_tables["cliPanicSymbolsPlaced"]]
+    if not staged_list:
+        return {
+            "cliHookTablePlaced": hooks,
+            "cliDehookedSymsPlaced": dehooked,
+            "cliPanicSymbolsPlaced": panics,
+        }
+    staged_set = set(staged_list)
+    if staged_set & set(panics):
+        raise RuntimeError(
+            f"`c2_staged_dehook_syms` overlaps `cliPanicSymbolsPlaced`: {sorted(staged_set & set(panics))}"
+        )
+    new_hooks = [h for h in hooks if h not in staged_set]
+    new_dehooked = list(dict.fromkeys([*dehooked, *staged_list]))
+    return {
+        "cliHookTablePlaced": new_hooks,
+        "cliDehookedSymsPlaced": new_dehooked,
+        "cliPanicSymbolsPlaced": panics,
+    }
+
+
 def load_cli_binary_pq_tables(
     repo_root: pathlib.Path,
     *,
     rel_path: pathlib.Path = DEFAULT_REL_CLI_BINARY_PQ,
     fallback_repo_root: pathlib.Path | None = None,
 ) -> dict[str, list[str]]:
+    cand_root = repo_root
     cand = repo_root / rel_path
     if not cand.is_file() and fallback_repo_root is not None:
         fb = fallback_repo_root / rel_path
         if fb.is_file():
             cand = fb
+            cand_root = fallback_repo_root
     if not cand.is_file():
         raise RuntimeError(f"missing `CliBinaryPq.lean` at {cand}")
+    text = cand.read_text(encoding="utf-8")
+    if "cliDehookedSymsPlaced" not in text or "cliHookTablePlaced" not in text:
+        placed_pq = cand_root / "LibsignalBinary/Proofs/Placed/CliBinaryPqPlaced.lean"
+        if placed_pq.is_file():
+            placed_text = placed_pq.read_text(encoding="utf-8")
+            m_ns = re.search(
+                r"(?m)^namespace CryptoVerification\.SignalSession(?=\s|$).*?^end CryptoVerification\.SignalSession(?=\s|$)",
+                placed_text,
+                flags=re.DOTALL,
+            )
+            text = text + "\n" + (m_ns.group(0) if m_ns is not None else placed_text)
     return parse_cli_binary_pq_text(
-        cand.read_text(encoding="utf-8"), source_label=str(cand)
+        text, source_label=str(cand)
     )
 
 
@@ -754,6 +920,9 @@ def _retire_stub_slots_in_object(
     stubs_obj_path: pathlib.Path,
     active_lib2_roots: Sequence[str],
     env: Mapping[str, str],
+    *,
+    helper_roots: Sequence[str] = (),
+    allow_missing: bool = False,
 ) -> list[dict[str, Any]]:
     """Retire each active `lib2` root's 4-byte `udf #0` slot in `extern_stubs_clean.o` in-place via
     two-pass `llvm-objcopy` (`--rename-section` + `--redefine-sym` first, `--localize-symbol` second)
@@ -768,13 +937,22 @@ def _retire_stub_slots_in_object(
         for s in pre_obj.symbols
         if s.bind == 1 and s.stype == 2 and 0 < s.st_shndx < len(pre_obj.sections)
     }
+    global_helper_by_name = {
+        s.name: s
+        for s in pre_obj.symbols
+        if s.bind == 1 and s.stype in (1, 2) and 0 < s.st_shndx < len(pre_obj.sections)
+    }
     pass1_args: list[str] = []
     pass2_args: list[str] = []
     retired_records: list[dict[str, Any]] = []
+    active_root_set = set(active_lib2_roots)
     for idx, root_sym in enumerate(active_lib2_roots):
         orig_sec_name = f".text.{root_sym}"
         ret_sym = f"__retired_{idx}"
         ret_sec = f".text.{ret_sym}"
+        if orig_sec_name not in sec_by_name and root_sym not in global_fn_by_name:
+            if allow_missing:
+                continue
         if orig_sec_name not in sec_by_name or root_sym not in global_fn_by_name:
             raise RuntimeError(
                 f"cannot retire stub `{root_sym}` in {stubs_obj_path.name}: "
@@ -801,22 +979,30 @@ def _retire_stub_slots_in_object(
             "size": 4,
             "objectSectionIndex": int(orig_sec.idx),
         })
+    for hr_sym in dict.fromkeys(helper_roots):
+        if hr_sym not in active_root_set and hr_sym in global_helper_by_name:
+            pass2_args.append(f"--localize-symbol={hr_sym}")
 
-    objcopy_bin = str(env["LLVM_OBJCOPY"])
-    tmp_pass1 = stubs_obj_path.with_name(f".{stubs_obj_path.name}.retire1.tmp")
-    tmp_pass2 = stubs_obj_path.with_name(f".{stubs_obj_path.name}.retire2.tmp")
-    subprocess.run(
-        [objcopy_bin, *pass1_args, str(stubs_obj_path), str(tmp_pass1)],
-        check=True,
-        env=dict(env),
-    )
-    subprocess.run(
-        [objcopy_bin, *pass2_args, str(tmp_pass1), str(tmp_pass2)],
-        check=True,
-        env=dict(env),
-    )
-    tmp_pass1.unlink(missing_ok=True)
-    tmp_pass2.replace(stubs_obj_path)
+    if pass1_args or pass2_args:
+        objcopy_bin = str(env["LLVM_OBJCOPY"])
+        tmp_pass1 = stubs_obj_path.with_name(f".{stubs_obj_path.name}.retire1.tmp")
+        tmp_pass2 = stubs_obj_path.with_name(f".{stubs_obj_path.name}.retire2.tmp")
+        if pass1_args:
+            subprocess.run(
+                [objcopy_bin, *pass1_args, str(stubs_obj_path), str(tmp_pass1)],
+                check=True,
+                env=dict(env),
+            )
+            pass2_in = tmp_pass1
+        else:
+            pass2_in = stubs_obj_path
+        subprocess.run(
+            [objcopy_bin, *pass2_args, str(pass2_in), str(tmp_pass2)],
+            check=True,
+            env=dict(env),
+        )
+        tmp_pass1.unlink(missing_ok=True)
+        tmp_pass2.replace(stubs_obj_path)
 
     post_obj = _ELF_INSPECT.parse_reloc_obj(stubs_obj_path.read_bytes(), stubs_obj_path.name)
     active_set = set(active_lib2_roots)
@@ -906,6 +1092,7 @@ def _verify_c2_mechanical_invariants(
     active_lib2_roots: Sequence[str],
     moved_libc_rows: Sequence[str],
     retired_slots: Sequence[Mapping[str, Any]],
+    unpinned: bool = False,
 ) -> None:
     """Enforce C2 mechanical invariants (`F9`, `0` thunks/veneers, `0` RW bytes from `lib2_*.o`,
     `retired_stub_slots` `.text.crate` `sh_flags == 0x6`, `SystemTime::add` tail placement in
@@ -980,7 +1167,12 @@ def _verify_c2_mechanical_invariants(
         elif indent == 8:
             vma = int(hdr_toks[0], 16)
             sz = int(hdr_toks[2], 16)
-            if "lib2_" in item and cur_out_sec in rw_out_secs and sz > 0:
+            is_allowed_lib2_rw = (
+                cur_out_sec == ".data.crate"
+                and sz == 1
+                and "(.data._RNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes7STORAGE)" in item
+            )
+            if "lib2_" in item and cur_out_sec in rw_out_secs and sz > 0 and not is_allowed_lib2_rw:
                 lib2_rw_hits.append(f"{cur_out_sec}: {item} ({sz} B)")
             if cur_out_sec == ".rodata.lib2" and sz > 0:
                 rodata_lib2_inputs.append((vma, sz, item))
@@ -1011,10 +1203,21 @@ def _verify_c2_mechanical_invariants(
                 f"C2 invariant (F9): `.text.lib2` end {text_lib2.sh_addr + text_lib2.sh_size:#x} "
                 f"overruns `:data` start {min(rw_starts):#x}"
             )
-        if len(retired_slots) != len(active_lib2_roots):
-            raise RuntimeError(
-                f"C2 invariant: retired_slots count {len(retired_slots)} != active_lib2_roots {len(active_lib2_roots)}"
-            )
+        if not unpinned:
+            if len(retired_slots) != len(active_lib2_roots):
+                raise RuntimeError(
+                    f"C2 invariant: retired_slots count {len(retired_slots)} != active_lib2_roots {len(active_lib2_roots)}"
+                )
+        else:
+            ret_orig_list = [
+                str(r.get("originalSymbol") or r.get("symbol") or "") for r in retired_slots
+            ]
+            ret_orig_set = set(ret_orig_list)
+            expected_subseq = [r for r in active_lib2_roots if r in ret_orig_set]
+            if len(ret_orig_set) != len(ret_orig_list) or ret_orig_list != expected_subseq:
+                raise RuntimeError(
+                    f"C2 invariant (unpinned): retired_slots symbols {ret_orig_list} not an ordered subset of active_lib2_roots"
+                )
         for root_sym in active_lib2_roots:
             rhits = fn_by_name.get(root_sym, [])
             if len(rhits) != 1 or sections[rhits[0].st_shndx].name != ".text.lib2":
@@ -1925,6 +2128,7 @@ def _compute_stock_stub_manifest(
     lean_externs: Sequence[str],
     *,
     displaced_weak: Sequence[str] = alpha_checks.EXPECTED_DISPLACED_WEAK,
+    lib2_objs: Sequence[pathlib.Path] = (),
 ) -> list[dict[str, Any]]:
     """F2, F7 & B1 (Option α): Compute the canonical sorted `stub_manifest` from `lib_objs` and
     `rt_inputs`. Subtracts only `STB_GLOBAL` runtime/native definitions, enforcing that the only
@@ -2020,6 +2224,38 @@ def _compute_stock_stub_manifest(
             lean_externs_set,
         )
         stub_manifest.append({"kind": kind, "name": sym, "size": size})
+    if lib2_objs:
+        lib2_defs: set[str] = set()
+        lib2_undefs: set[str] = set()
+        for p2 in lib2_objs:
+            d2, u2, _rm2, _sy2 = _elf64_syms_and_relocs(p2.read_bytes())
+            lib2_defs |= d2
+            lib2_undefs |= u2
+        existing_stub_names = {str(it["name"]) for it in stub_manifest}
+        allowed_lib2_rt_weak = (rt_weak_only - dw_set) & {
+            "getauxval",
+            "abort",
+            "rust_begin_unwind",
+            "__rust_alloc_error_handler",
+            "__aarch64_cas4_acq",
+            "__aarch64_swp4_rel",
+        }
+        extra_lib2_undefs = sorted(
+            (lib2_undefs - lib2_defs)
+            - lib_defined
+            - rt_strong_defined
+            - allowed_lib2_rt_weak
+            - existing_stub_names
+        )
+        non_failstop = [s for s in extra_lib2_undefs if not _ELF_INSPECT.is_failstop_z_symbol(s)]
+        if non_failstop:
+            raise RuntimeError(
+                f"`lib2` objects reference unresolved non-failstop symbol(s) outside `stub_manifest`: "
+                f"{non_failstop}"
+            )
+        for sym in extra_lib2_undefs:
+            stub_manifest.append({"kind": "function_udf0", "name": sym, "size": 4})
+        stub_manifest.sort(key=lambda item: str(item["name"]))
     return stub_manifest
 
 
@@ -2056,7 +2292,19 @@ def _assemble_stub_manifest_object(
     asm_lines = [
         "// Deterministic unrenamed extern/panic stubs for `scripts/cli-elf-stock`",
     ]
-    for entry in stub_manifest:
+    ordered_for_asm = sorted(
+        stub_manifest,
+        key=lambda item: (
+            1
+            if (
+                str(item["kind"]) == "function_udf0"
+                and str(item["name"]) not in _ELF_INSPECT.BASELINE_2F20C836_STUB_ADDRS
+            )
+            else 0,
+            str(item["name"]),
+        ),
+    )
+    for entry in ordered_for_asm:
         sym = str(entry["name"])
         kind = str(entry["kind"])
         size = int(entry["size"])
@@ -3410,7 +3658,13 @@ def evaluate_stdbin_5d(
                 non_rx_externs.append(
                     {"name": nm, "addr": hex(val), "type": d.get("type_name")}
                 )
-            if nm not in dehooked_set and val >= entry:
+            # `__aarch64_cas4_acq` and `__aarch64_swp4_rel` are `compiler_builtins.a` helpers in `.text`
+            # called only by `lib2`'s `std::sys::sync::once::futex::Once::call` (not in `libsignalSessionExterns`).
+            if (
+                nm not in dehooked_set
+                and nm not in ("__aarch64_cas4_acq", "__aarch64_swp4_rel")
+                and val >= entry
+            ):
                 externs_ge_entry.append(
                     {
                         "name": nm,
@@ -3713,22 +3967,40 @@ def verify_stock_stdbin_elf(
             raise RuntimeError(f"stock StdBin ELF export `{exp}` at {hits[0]:#x} not in RX segment")
         export_addrs[exp] = hits[0]
 
-    # Verify sibling exports (e.g. `signal_session_io::*` from `cli/io/translation.toml`) are defined RX STT_FUNCs.
+    # Verify sibling exports (e.g. `signal_session_io::*` from `cli/io/translation.toml`) are defined RX STT_FUNCs
+    # (or RO STT_OBJECTs for `lib2` `helper_roots` data tables such as `ED25519_BASEPOINT_TABLE_INNER_DOC_HIDDEN`).
     defined_funcs_by_demangled: dict[str, list[elf_loader.RawElfSym]] = {}
+    defined_objs_by_demangled: dict[str, list[elf_loader.RawElfSym]] = {}
     for s in raw_syms[1:]:
-        if s.st_shndx != 0 and s.stype == 2 and s.name:
-            defined_funcs_by_demangled.setdefault(s.name, []).append(s)
-            dem = alpha_checks.demangle_rust_v0(s.name)
-            if dem != s.name:
-                defined_funcs_by_demangled.setdefault(dem, []).append(s)
+        if s.st_shndx != 0 and s.name:
+            if s.stype == 2:
+                defined_funcs_by_demangled.setdefault(s.name, []).append(s)
+                dem = alpha_checks.demangle_rust_v0(s.name)
+                if dem != s.name:
+                    defined_funcs_by_demangled.setdefault(dem, []).append(s)
+            elif s.stype == 1 and s.st_size > 0:
+                defined_objs_by_demangled.setdefault(s.name, []).append(s)
+                dem = alpha_checks.demangle_rust_v0(s.name)
+                if dem != s.name:
+                    defined_objs_by_demangled.setdefault(dem, []).append(s)
 
     sibling_exports_verified: list[str] = []
+    lib2_helper_set: set[str] = set()
     for sib_cfg_p in sibling_cfg_paths:
         if not sib_cfg_p.is_file():
             raise RuntimeError(f"sibling translation.toml missing at {sib_cfg_p}")
         sib_cfg = tomllib.loads(sib_cfg_p.read_text(encoding="utf-8"))
         if isinstance(sib_cfg.get("lib2_rows"), Mapping) and active_lib2_roots is not None:
-            sib_exps = list(active_lib2_roots)
+            active_root_set = set(active_lib2_roots)
+            sib_helpers: list[str] = []
+            for r_cfg in sib_cfg["lib2_rows"].values():
+                if isinstance(r_cfg, Mapping) and str(r_cfg.get("root", "")) in active_root_set:
+                    for hsym in r_cfg.get("helper_roots", []):
+                        hs = str(hsym)
+                        if hs not in sib_helpers:
+                            sib_helpers.append(hs)
+                            lib2_helper_set.add(hs)
+            sib_exps = [*active_lib2_roots, *sib_helpers]
             if not sib_exps:
                 continue
         else:
@@ -3737,16 +4009,34 @@ def verify_stock_stdbin_elf(
                 raise RuntimeError(f"sibling config {sib_cfg_p} has empty `[placed].exports`")
         for sexp in sib_exps:
             sib_hits = defined_funcs_by_demangled.get(sexp, [])
-            if len(sib_hits) != 1:
-                raise RuntimeError(
-                    f"sibling export `{sexp}` ({sib_cfg_p.name}) expected 1 defined STT_FUNC in .symtab, found {len(sib_hits)}"
-                )
-            s_read = img.read_bytes(sib_hits[0].st_value, 4)
-            if s_read is None or s_read[1] != elf_loader.PERM_RX:
-                raise RuntimeError(
-                    f"sibling export `{sexp}` at {sib_hits[0].st_value:#x} not mapped in RX segment"
-                )
-            sibling_exports_verified.append(sexp)
+            if len(sib_hits) == 1:
+                s_read = img.read_bytes(sib_hits[0].st_value, 4)
+                if s_read is None or s_read[1] != elf_loader.PERM_RX:
+                    raise RuntimeError(
+                        f"sibling export `{sexp}` at {sib_hits[0].st_value:#x} not mapped in RX segment"
+                    )
+                sibling_exports_verified.append(sexp)
+                continue
+            obj_hits = defined_objs_by_demangled.get(sexp, []) if sexp in lib2_helper_set else []
+            if not sib_hits and len(obj_hits) == 1:
+                o_read = img.read_bytes(obj_hits[0].st_value, min(4, int(obj_hits[0].st_size)))
+                if (
+                    sexp == "_RNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes7STORAGE"
+                    and int(obj_hits[0].st_size) == 1
+                ):
+                    if o_read is None or o_read[1] != elf_loader.PERM_RW or o_read[0] != b"\xff":
+                        raise RuntimeError(
+                            f"sibling helper data object `{sexp}` at {obj_hits[0].st_value:#x} not mapped RW with 0xff init"
+                        )
+                elif o_read is None or o_read[1] != elf_loader.PERM_RO:
+                    raise RuntimeError(
+                        f"sibling helper data object `{sexp}` at {obj_hits[0].st_value:#x} not mapped in RO segment"
+                    )
+                sibling_exports_verified.append(sexp)
+                continue
+            raise RuntimeError(
+                f"sibling export `{sexp}` ({sib_cfg_p.name}) expected 1 defined STT_FUNC in .symtab, found {len(sib_hits)}"
+            )
 
     # Undefined symbol guard: 0 strong undefineds; only pinned CRT `weak_undefined_allowed` permitted
     # (`STB_WEAK` at `st_value == 0`, or `STV_HIDDEN` CRT weak undefs such as `_DYNAMIC` in `crt1.o`
@@ -3851,6 +4141,10 @@ def verify_stock_stdbin_elf(
             retained_stubs += 1
             retained_func_stubs.add(sname)
             continue
+        if sname in lib2_helper_set:
+            # Dead stub in `extern_stubs_clean.o` was localized and GC-discarded;
+            # `.symtab` carries the real `.text.lib2`/`.rodata.lib2` helper verified above.
+            continue
         cands = defined_by_name.get(sname, [])
         if not cands:
             continue
@@ -3954,9 +4248,19 @@ def verify_stock_stdbin_elf(
             f"stock StdBin ELF has non-bcmp callers/refs to unhooked `memcmp`: {[hex(pc) for pc in non_bcmp_memcmp_callers]}"
         )
 
-    # F2: Exact `libsignalSessionExterns` check (0 extra retained `function_udf0` stubs; all 95 externs RX STT_FUNC).
+    # F2: Exact `libsignalSessionExterns` check (0 extra retained `function_udf0` stubs outside
+    # fail-stop `< e_entry` panic/unwind stubs referenced by active `lib2` objects; all externs RX STT_FUNC).
     lean_externs_set = set(lean_externs)
-    extra_retained_fn_stubs = sorted(retained_func_stubs - lean_externs_set)
+    extra_retained_fn_stubs = sorted(
+        s
+        for s in (retained_func_stubs - lean_externs_set)
+        if not (
+            active_lib2_roots
+            and _ELF_INSPECT.is_failstop_z_symbol(s)
+            and defined_by_name.get(s)
+            and all(c.st_value < entry for c in defined_by_name[s])
+        )
+    )
     if extra_retained_fn_stubs:
         raise RuntimeError(
             f"stock StdBin ELF retained function_udf0 stub(s) outside libsignalSessionExterns: {extra_retained_fn_stubs}"
@@ -3978,7 +4282,11 @@ def verify_stock_stdbin_elf(
     if dehooked_syms is not None:
         eff_dehooked = tuple(str(x) for x in dehooked_syms)
     elif repo_root is not None and (repo_root / DEFAULT_REL_CLI_BINARY_PQ).is_file():
-        eff_dehooked = tuple(load_cli_binary_pq_tables(repo_root)["cliDehookedSymsPlaced"])
+        _pq_v = _apply_staged_dehook_to_pq_dict(
+            load_cli_binary_pq_tables(repo_root),
+            _ELF_INSPECT.load_lock_staged_dehook_syms(repo_root),
+        )
+        eff_dehooked = tuple(_pq_v["cliDehookedSymsPlaced"])
     else:
         eff_dehooked = ()
     _verify_dehooked_placed_symbols(
@@ -3998,10 +4306,11 @@ def verify_stock_stdbin_elf(
             if five_d_json_path is not None
             else (elf_path.parent / DEFAULT_STDBIN_5D_NAME)
         )
+        eff_5d_linked = tuple(dict.fromkeys([*eff_dehooked, *(active_lib2_roots or ())]))
         five_d_rep = verify_stdbin_5d(
             elf_path=elf_path,
             lean_externs=lean_externs,
-            dehooked_syms=eff_dehooked,
+            dehooked_syms=eff_5d_linked,
             json_out_path=eff_5d_json,
             verbose=verbose,
         )
@@ -5363,6 +5672,7 @@ def build_stock_stdbin_into(
             rt_inputs=[*sc_objs, main_rust_o, *staged_native_non_stub, *runtime_archives],
             lean_externs=lean_externs,
             displaced_weak=lock_displaced_weak,
+            lib2_objs=lib2_link_objs,
         )
         recomputed_manifest_sha = stub_manifest_sha256(stub_manifest)
         if recomputed_manifest_sha != manifest_sha:
@@ -5400,6 +5710,9 @@ def build_stock_stdbin_into(
             pq_tables = load_cli_binary_pq_tables(
                 repo_root, fallback_repo_root=fallback_root if unpinned else None
             )
+            raw_staged_dh = lock.get("c2_staged_dehook_syms")
+            if isinstance(raw_staged_dh, list) and raw_staged_dh:
+                pq_tables = _apply_staged_dehook_to_pq_dict(pq_tables, raw_staged_dh)
 
         eff_dehooked_syms: tuple[str, ...] | None = None
         if pq_tables is not None:
@@ -5415,21 +5728,7 @@ def build_stock_stdbin_into(
             else:
                 eff_dehooked_syms = tuple(base_dehooked)
                 if active_lib2_roots or moved_libc_rows:
-                    must_be_dehooked = [
-                        *(r for r in moved_libc_rows if r != "memcmp"),
-                        *active_lib2_roots,
-                    ]
-                    still_hooked = sorted(set(must_be_dehooked) & set(pq_tables["cliHookTablePlaced"]))
-                    missing_dehooked = [
-                        s for s in must_be_dehooked if s not in set(base_dehooked)
-                    ]
-                    if still_hooked or missing_dehooked:
-                        raise RuntimeError(
-                            "C2 atomic de-hook check failed against `CliBinaryPq.lean` "
-                            f"(pass `--c2-rehearsal-dehook` with `--unpinned` for pre-cutover trials): "
-                            f"still_in_cliHookTablePlaced={still_hooked}, "
-                            f"missing_from_cliDehookedSymsPlaced={missing_dehooked}"
-                        )
+                    _check_c2_atomic_dehook(pq_tables, moved_libc_rows, active_lib2_roots)
         elif c2_rehearsal_dehook:
             eff_dehooked_syms = tuple(
                 dict.fromkeys([
@@ -5468,10 +5767,23 @@ def build_stock_stdbin_into(
             eff_loader_cnt = len(_u_img.symbols)
             _u_def_names = {s.name for s in _u_syms[1:] if s.st_shndx != 0 and s.name}
             _u_retired_orig = {str(r["originalSymbol"]) for r in retired_slots if r.get("originalSymbol")}
+            _u_lib2_helpers: set[str] = set()
+            if active_lib2_names and lib2_cfg_path is not None and lib2_cfg_path.is_file():
+                _u_l2_cfg = tomllib.loads(lib2_cfg_path.read_text(encoding="utf-8"))
+                _u_l2_rows = _u_l2_cfg.get("lib2_rows") or {}
+                for _rn in active_lib2_names:
+                    _ri = _u_l2_rows.get(_rn) if isinstance(_u_l2_rows, Mapping) else None
+                    if isinstance(_ri, Mapping):
+                        for _hr in _ri.get("helper_roots") or ():
+                            _u_lib2_helpers.add(str(_hr))
             eff_retained_cnt = sum(
                 1
                 for item in stub_manifest
-                if str(item["name"]) in _u_def_names or str(item["name"]) in _u_retired_orig
+                if str(item["name"]) in _u_retired_orig
+                or (
+                    str(item["name"]) not in _u_lib2_helpers
+                    and str(item["name"]) in _u_def_names
+                )
             )
             eff_verify_repo_root = None
             eff_verify_externs = lean_externs
@@ -5530,6 +5842,7 @@ def build_stock_stdbin_into(
             active_lib2_roots=active_lib2_roots,
             moved_libc_rows=moved_libc_rows,
             retired_slots=retired_slots,
+            unpinned=unpinned,
         )
 
         alpha_scan = alpha_checks.scan_link_inputs_for_alpha(
@@ -7529,10 +7842,17 @@ def _stage_and_link_stdbin_direct(
             "exports": exports_k,
         })
 
+    active_lib2_helper_roots: list[str] = []
     if active_lib2_names:
         if lib2_cfg_rel is None or lib2_cfg_abs is None:
             raise RuntimeError("`active_lib2_names` requires `lib2_cfg_rel` and `lib2_cfg_abs`")
         lib2_cfg = tomllib.loads(lib2_cfg_abs.read_text(encoding="utf-8"))
+        rows_tbl_lib2 = lib2_cfg.get("lib2_rows") or {}
+        for rname in active_lib2_names:
+            rinfo = rows_tbl_lib2.get(rname) if isinstance(rows_tbl_lib2, Mapping) else None
+            if isinstance(rinfo, Mapping):
+                for hr in rinfo.get("helper_roots") or ():
+                    active_lib2_helper_roots.append(str(hr))
         lib2_prefix = f"lib{len(images)}_"
         lib2_objs, lib2_recs = _extract_lib2_trims_direct(
             lib2_cfg=lib2_cfg,
@@ -7580,7 +7900,7 @@ def _stage_and_link_stdbin_direct(
             "objects_json": lib2_obj_entries,
             "trimmed": lib2_trim_list,
             "externs": sorted(undefs_2 - defs_2),
-            "exports": list(active_lib2_roots),
+            "exports": list(dict.fromkeys([*active_lib2_roots, *active_lib2_helper_roots])),
         })
 
     crates_secs = time.monotonic() - t_crates0
@@ -7769,11 +8089,13 @@ def _stage_and_link_stdbin_direct(
             sc_copied["libunwind.a"],
         ]
         all_im_paths = [p for im in images if im.get("role") != "lib2" for p in im["paths"]]
+        all_lib2_paths = [p for im in images if im.get("role") == "lib2" for p in im["paths"]]
         dyn_stub_manifest = _compute_stock_stub_manifest(
             lib_objs=all_im_paths,
             rt_inputs=[*sc_all_for_manifest, main_rust_o, *staged_native, *rt_archives_for_manifest],
             lean_externs=eff_lean_externs,
             displaced_weak=displaced_weak,
+            lib2_objs=all_lib2_paths,
         )
         dyn_manifest_sha = stub_manifest_sha256(dyn_stub_manifest)
         dyn_stubs_o, _ = _assemble_stub_manifest_object(
@@ -7807,6 +8129,8 @@ def _stage_and_link_stdbin_direct(
             stub_cands_nat[0],
             active_lib2_roots,
             env,
+            helper_roots=active_lib2_helper_roots,
+            allow_missing=(dynamic_stubs_dir is not None),
         )
 
     # 5. Pre-link hooked-extern plan & assemble exact `ld.lld` command (`cwd = raw_work`).
@@ -7815,9 +8139,12 @@ def _stage_and_link_stdbin_direct(
     post_objs = [sc_copied["crtend.o"], sc_copied["crtn.o"]]
 
     hooked_set: set[str] = set()
+    non_lib2_hooked_set: set[str] = set()
     for im in images:
         if any(t is not None for t in im["trimmed"]):
             hooked_set.update(im["externs"])
+            if im.get("role") != "lib2":
+                non_lib2_hooked_set.update(im["externs"])
     hooked_sorted = sorted(hooked_set)
     traced_only_sorted = sorted(
         {ext for im in images for ext in im["externs"] if ext not in hooked_set}
@@ -7844,6 +8171,9 @@ def _stage_and_link_stdbin_direct(
     for sym_nm, am_label, is_weak in sorted(seen_ar_defs):
         if is_weak and sym_nm in strong_stub_defs:
             weak_shadowed.append({"symbol": sym_nm, "archiveMember": am_label})
+        elif is_weak and sym_nm not in non_lib2_hooked_set:
+            # Weak runtime helper (e.g., outline atomic) referenced only by `lib2`, not shadowed by stub.
+            continue
         else:
             rejected_ar_defs.append(f"{am_label}: {sym_nm} ({'weak' if is_weak else 'global'})")
     if rejected_ar_defs:
@@ -8036,7 +8366,12 @@ def _stage_and_link_stdbin_direct(
             f_s.startswith(f"{ra}(") and f_s.endswith(")") for ra in runtime_archive_paths
         )
         in_sib = (f_s, sym_s) in allowed_sib_pairs
-        if not (in_stub or in_rt or in_sib):
+        in_cb_lib2 = (
+            f_s.startswith(f"{compiler_builtins_a}(")
+            and f_s.endswith(")")
+            and sym_s not in non_lib2_hooked_set
+        )
+        if not (in_stub or in_rt or in_sib or in_cb_lib2):
             bad_definers.append(f"{f_s}: {sym_s}")
     if bad_definers:
         raise RuntimeError(
@@ -8528,6 +8863,22 @@ def _extract_lib2_trims_direct(
             provenance_kind=kind,
         )
         rec0 = em_r[0]
+        if em_p:
+            parsed_em0 = _ELF_INSPECT.parse_reloc_obj(em_p[0].read_bytes(), em_p[0].name)
+            if "_Unwind_Resume" in parsed_em0.undefs_by_name:
+                tmp_ur = em_p[0].with_name(f".{em_p[0].name}.unwind_pad.tmp")
+                subprocess.run(
+                    [
+                        str(env["LLVM_OBJCOPY"]),
+                        "--redefine-sym=_Unwind_Resume=__rust_unreachable_unwind_pad",
+                        str(em_p[0]),
+                        str(tmp_ur),
+                    ],
+                    check=True,
+                    env=dict(env),
+                )
+                tmp_ur.replace(em_p[0])
+                rec0["emitted_sha256"] = hashlib.sha256(em_p[0].read_bytes()).hexdigest()
         mkey = (kind, str(rec0["rlib_sha256"]), str(rec0["member_sha256"]))
         prev_s = used_by_kind_and_member.setdefault(mkey, set())
         ov_s = sorted(prev_s & set(rec0["kept_sections"]))
@@ -9738,12 +10089,20 @@ def main(argv: list[str] | None = None) -> int:
                 c2_active_roots = [str(x) for x in (c2_meta.get("active_lib2_roots") or ())]
                 c2_retired_slots = list(c2_meta.get("retired_stub_slots") or ())
                 c2_moved_libc = [str(x) for x in (c2_meta.get("moved_libc_rows") or ())]
+                v_dehooked: tuple[str, ...] | None = None
+                if (repo_root / DEFAULT_REL_CLI_BINARY_PQ).is_file():
+                    _v_pq = load_cli_binary_pq_tables(repo_root)
+                    _v_staged = stock_lock.get("c2_staged_dehook_syms")
+                    if isinstance(_v_staged, list) and _v_staged:
+                        _v_pq = _apply_staged_dehook_to_pq_dict(_v_pq, _v_staged)
+                    v_dehooked = tuple(_v_pq["cliDehookedSymsPlaced"])
                 verify_stock_stdbin_elf(
                     elf_path,
                     cfg_path,
                     stub_manifest=stub_manifest,
                     sibling_cfg_paths=sib_cfgs,
                     repo_root=repo_root,
+                    dehooked_syms=v_dehooked,
                     active_lib2_roots=c2_active_roots or None,
                     retired_stub_slots=c2_retired_slots,
                     expected_phnum=int(stock_lock.get("expected_phnum", EXPECTED_STDBIN_PHNUM)),

@@ -12,12 +12,19 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `initialize_bob_session` (Block `75`) at SPQR V1
@@ -27,7 +34,7 @@ at SPQR V1, composing `InitBobCutPlacedBudget` (`Pqxdh::accept` at Block `79`), 
 `spqr::initial_state` seam (`lsmpl.base 327`), and `InitBobPlacedBudget` under `InitBobV1EnvOfEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -53,9 +60,8 @@ open CryptoVerification.E2E.Pqxdh.ResponderCore (PrimitivesMatchCrypto acceptKey
   bobFrameAtSpqr bobParamsFieldsAt bobSession344Bv8V1 bobSpqrCutCells initBobSavedRegs
   pqxdhAcceptFieldsAt_split pqxdhAcceptOptFieldsAt pqxdhAcceptRestAt stackAt_initBob_entry
   withBobMemInv)
-open CryptoVerification.E2E.Pqxdh.ResponderClosure (stageP2bStack)
 open CryptoVerification.Cli.E2E.V1 (bobSpqrCutCells_eq_paramsAt bobSpqrParams bobSpqrVecBuf
-  bobV1_stack_extra bobV1_stack_join vecU8At_eq_header_bobBuf)
+  vecU8At_eq_header_bobBuf)
 open CryptoVerification.SpqrV1.Top.InitialState (InitialStateGhost initialStateResultAt
   initialStateStack initialStateValue paramsAt)
 open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits FitsEnv FitsEvents
@@ -67,7 +73,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (framelessMemcpyBudge
 open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionMemcpyRegionBudgetSpec
   sessionShimBudgetSpec)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (pqxdhAcceptOptFieldsFrozenPlacedSpec
-  pqxdhAcceptOptFieldsInnerPlacedSpec pqxdhAcceptOptFieldsPlacedSpec)
+  pqxdhAcceptOptFieldsInnerPlacedSpec pqxdhAcceptOptFieldsPlacedSpec pqxdhAcceptPlacedStack)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget (AcceptOptFieldsEnv)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget (
   PqxdhPlacedHookContracts hookSat_noAllocShimBudget_of_rustAllocShimVm)
@@ -86,13 +92,13 @@ open LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget (InitialSta
 
 /-- `InitialStateGhost` witness passed by `initialize_bob_session` (Block `75`) to
 `spqr::initial_state` (`lsmpl.base 327`) at entry stack pointer `sp0`. -/
-def bobSpqrGhost (sp0 : BitVec 64) (pqrKey : Bytes) : InitialStateGhost :=
+@[expose] def bobSpqrGhost (sp0 : BitVec 64) (pqrKey : Bytes) : InitialStateGhost :=
   ⟨sp0 - 488#64, sp0 - 768#64, sp0 - 576#64, bobSpqrParams pqrKey⟩
 
 /-- Envelope-parametric allocation event predicate for `initialize_bob_session` (Block `75`) on the
 SPQR V1 accepting path: `Pqxdh::accept`, followed by `spqr::initial_state`, followed by
 `InitBobSessionBuildEnv`. -/
-def InitBobV1EnvOfEnv
+@[expose] def InitBobV1EnvOfEnv
     (AcceptEnv : AcceptKeysInput → List AllocEvent → Prop)
     (InitEnv : InitialStateGhost → List AllocEvent → Prop)
     (sp0 : BitVec 64) (inp : AcceptKeysInput) (pqrKey : Bytes) :
@@ -101,7 +107,7 @@ def InitBobV1EnvOfEnv
 
 /-- Concrete allocation event envelope for `initialize_bob_session` (Block `75`) at SPQR V1,
 instantiating `AcceptOptFieldsEnv P` and `InitialStateEnv F`. -/
-def InitBobV1Env (P : Primitives) (F : ShaCompress)
+@[expose] def InitBobV1Env (P : Primitives) (F : ShaCompress)
     (sp0 : BitVec 64) (inp : AcceptKeysInput) (pqrKey : Bytes) :
     List AllocEvent → Prop :=
   InitBobV1EnvOfEnv (AcceptOptFieldsEnv P) (InitialStateEnv F) sp0 inp pqrKey
@@ -119,7 +125,7 @@ abbrev spqrInitialStatePlacedInnerSpec [LibsignalPlacement]
   initialStatePlacedSpec M A lim F
 
 /-- Envelope-parametric plain `subroutine_ok` seam for `spqr::initial_state` at `lsmpl.base 327`. -/
-def InitialStatePlacedOkOfEnv [LibsignalPlacement]
+@[expose] def InitialStatePlacedOkOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (InitEnv : InitialStateGhost → List AllocEvent → Prop) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_75 H) (lsmpl.base 327)
@@ -132,7 +138,7 @@ abbrev InitialStatePlacedOk [LibsignalPlacement]
 
 /-- Envelope-parametric `withBobMemInv Φ`-guarded `subroutine_ok` seam for `spqr::initial_state` at
 `lsmpl.base 327` on `lsProg_75 H`. -/
-def InitialStateMemInvPlacedOkOfEnv [LibsignalPlacement]
+@[expose] def InitialStateMemInvPlacedOkOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (Φ : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (InitEnv : InitialStateGhost → List AllocEvent → Prop)
     (H : LibsignalHooks) : Prop :=
@@ -375,14 +381,51 @@ private theorem sub768_merge_280_placed (sp0 : BitVec 64) (rk pq ck : Bytes)
                     (sepConj_mono hm_pq576
                       (Entails.refl _))))))))))
 
+/-- Placed stack frame (`42,752` B = `768 + 41,984`) for `initialize_bob_session` (Block `75`)
+at SPQR V1 (`Pqxdh::accept` placed frame `41,984` B >= `spqr::initial_state` frame `18,176` B). -/
+abbrev bobTailV1PlacedStack : Nat := 768 + pqxdhAcceptPlacedStack
+
+private theorem bobTailV1PlacedStack_split (sp0 : BitVec 64) :
+    stackAt sp0 bobTailV1PlacedStack =
+      memRegion (sp0 - 42752#64) 25600 ∗ stackAt sp0 (768 + pqxdhEntryStack) := by
+  simp only [stackAt, bobTailV1PlacedStack, pqxdhAcceptPlacedStack, pqxdhEntryStack]
+  have hb1 : sp0 - BitVec.ofNat 64 (768 + (16384 + 25600)) = sp0 - 42752#64 := rfl
+  have hb2 : sp0 - BitVec.ofNat 64 (768 + 16384) = sp0 - 17152#64 := rfl
+  rw [hb1, hb2]
+  exact ProofLib.memRegion_split' (b := sp0 - 42752#64) (n := 25600) (k := 17152)
+    (b' := sp0 - 17152#64) rfl (by bv_omega) (by decide)
+
+private theorem bobV1_placed_to_initialState (sp0 : BitVec 64) :
+    stackAt (sp0 - 768#64) pqxdhAcceptPlacedStack =
+      memRegion (sp0 - 42752#64) 23808 ∗ stackAt (sp0 - 768#64) initialStateStack := by
+  have his : initialStateStack = 18176 := by decide
+  rw [his]
+  simp only [stackAt, pqxdhAcceptPlacedStack, pqxdhEntryStack]
+  have hb1 : sp0 - 768#64 - BitVec.ofNat 64 (16384 + 25600) = sp0 - 42752#64 := by bv_omega
+  have hb2 : sp0 - 768#64 - BitVec.ofNat 64 18176 = sp0 - 18944#64 := by bv_omega
+  rw [hb1, hb2]
+  exact ProofLib.memRegion_split' (b := sp0 - 42752#64) (n := 23808) (k := 18176)
+    (b' := sp0 - 18944#64) rfl (by bv_omega) (by decide)
+
+private theorem bobV1_placed_from_initialState (sp0 : BitVec 64) :
+    memRegion (sp0 - 42752#64) 23808 ∗ stackAt (sp0 - 768#64) initialStateStack =
+      memRegion (sp0 - 42752#64) 25600 ∗ stackAt (sp0 - 768#64) pqxdhEntryStack := by
+  rw [← bobV1_placed_to_initialState sp0]
+  simp only [stackAt, pqxdhAcceptPlacedStack, pqxdhEntryStack]
+  have hb1 : sp0 - 768#64 - BitVec.ofNat 64 (16384 + 25600) = sp0 - 42752#64 := by bv_omega
+  have hb2 : sp0 - 768#64 - BitVec.ofNat 64 16384 = sp0 - 17152#64 := by bv_omega
+  rw [hb1, hb2]
+  exact ProofLib.memRegion_split' (b := sp0 - 42752#64) (n := 25600) (k := 16384)
+    (b' := sp0 - 17152#64) rfl (by bv_omega) (by decide)
+
 private theorem stack_final_eq_placed (sp0 : BitVec 64) :
-    memRegion (sp0 - 768#64 - BitVec.ofNat 64 initialStateStack) 0x700 ∗
+    memRegion (sp0 - 42752#64) 25600 ∗
     stackAt (sp0 - 768#64) pqxdhEntryStack ∗
     memRegion (sp0 - 768#64) 280 ∗
     memRegion (sp0 - 488#64) 344 ∗
     memRegion (sp0 - 144#64) 48 ∗
     memRegion (sp0 - 96#64) 96 =
-      stackAt sp0 (stageP2bStack + 0x700) := by
+      stackAt sp0 bobTailV1PlacedStack := by
   have hsplit :
       memRegion (sp0 - 488#64) 344 ∗ memRegion (sp0 - 144#64) 48 =
       memRegion (sp0 - 488#64) 104 ∗ memRegion (sp0 - 384#64) 288 := by
@@ -390,7 +433,7 @@ private theorem stack_final_eq_placed (sp0 : BitVec 64) :
         (b' := sp0 - 144#64) rfl (by bv_omega) (by decide)).symm,
       ProofLib.memRegion_split' (b := sp0 - 488#64) (n := 104) (k := 288)
         (b' := sp0 - 384#64) rfl (by bv_omega) (by decide)]
-  rw [bobV1_stack_extra sp0, stackAt_initBob_entry sp0,
+  rw [bobTailV1PlacedStack_split sp0, stackAt_initBob_entry sp0,
     ← (ProofLib.memRegion_cells (sp0 - 96#64) 12 (by decide) :
       memRegion (sp0 - 96#64) 96 = cells (sp0 - 96#64) 12),
     ← sepConj_assoc (memRegion (sp0 - 488#64) 344), hsplit]
@@ -491,7 +534,7 @@ abbrev BobSessionV1Post [LibsignalPlacement]
       (ratchetPubBoxPtr ↦ₛ bytesToBv8 (encodeEC spkBPk)) ∗ A.live ratchetPubBoxPtr 33 1 ∗
       (ratchetPrivBoxPtr ↦ₛ bytesToBv8 inp.spkBSk) ∗ A.live ratchetPrivBoxPtr 32 1 ∗
       (chainKeyBoxPtr ↦ₛ bytesToBv8 drKey.chainKey) ∗ A.live chainKeyBoxPtr 32 1 ∗
-      (lsLogFilterAddr ↦₆₄ 0#64) ∗ stackAt s0.sp (stageP2bStack + 0x700) ∗
+      (lsLogFilterAddr ↦₆₄ 0#64) ∗ stackAt s0.sp bobTailV1PlacedStack ∗
       A.pool lim (M.stepEvents evs st) sf ∗ Frame) ∧
     sf.status = ExecStatus.Running ∧ sf.pc = s0.readReg64 (.gpr 30#5) ∧ sf.sp = s0.sp ∧
     CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace
@@ -532,7 +575,7 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F AcceptEnv InitEnv s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame)
       Qp := by
@@ -541,15 +584,10 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
   have hsp0_align : (s0.sp &&& 15#64 == 0#64) = true := by
     simpa only [State.spAligned] using hsp_align
   have hfits1 : FitsEnv M lim st (AcceptEnv inp) := hfits.seq_left
-  let Frame1 : SepProp :=
-    memRegion (s0.sp - 768#64 - BitVec.ofNat 64 initialStateStack) 0x700 ∗ Frame
   have hpb3 := initBob_to_spqr_full_memInv_placed_of_accept (Qp := Qp) hkf hWF h_accept s0 st inp
-    ikBPk spkBPk argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame1
+    ikBPk spkBPk argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame
     hΦ0 hfits1 hrun hpc hsp_align h_3 h_4 h_5 h_6 h_7 h_8 h_9 h_10 h_11 hacc
-  refine sepWPp_seq_placed
-    (SepWPp.weaken_pre
-      (Entails.of_eq (by dsimp only [Frame1]; rw [bobV1_stack_extra s0.sp]; ac_rfl))
-      hpb3) ?_
+  refine sepWPp_seq_placed hpb3 ?_
   intro s1 P1 hpc1 hrun1
     ⟨⟨evs1, hevs1, hent1⟩, hΦ1, _, hsp1,
      hx0_1, hx8_1, hx19_1, hx20_1, hx21_1, hx23_1, hx27_1, hx30_1, htr1, hvregs1⟩
@@ -565,7 +603,8 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
     (argPtr ↦ₛ bytesToBv8 ikBPk) ∗
     pqxdhAcceptOptFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr inp ∗
     ((argPtr + 297#64) ↦₈ 0#8) ∗
-    memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗ Frame
+    memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗
+    memRegion (s0.sp - 42752#64) 23808 ∗ Frame
   have hent1_call : P1 ⊢
       (paramsAt (s0.sp - 488#64) (s0.sp - 576#64) (bobSpqrParams drKey.pqrKey) ∗
        ((s0.sp - 576#64) ↦ₛ (bobSpqrParams drKey.pqrKey).authKey) ∗
@@ -573,9 +612,9 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
        (lsLogFilterAddr ↦₆₄ 0#64) ∗
        A.pool lim st1 s1 ∗ stackAt s1.sp initialStateStack) ∗ FrameCall := by
     refine Entails.trans hent1 ?_
-    dsimp only [Frame1, FrameCall, st1]
+    dsimp only [FrameCall, st1]
     rw [bobSpqrCutCells_eq_paramsAt s0.sp ratchetKeyPairPtr drKey.rootKey drKey.pqrKey
-      drKey.chainKey spkBPk inp.spkBSk hlen_pq, hsp1]
+      drKey.chainKey spkBPk inp.spkBSk hlen_pq, bobV1_placed_to_initialState s0.sp, hsp1]
     have hrearr :
         (paramsAt (s0.sp - 488#64) (s0.sp - 576#64) (bobSpqrParams drKey.pqrKey) ∗
          ((s0.sp - 576#64) ↦ₛ (bobSpqrParams drKey.pqrKey).authKey) ∗
@@ -588,14 +627,13 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
         pqxdhAcceptOptFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr inp ∗
         ((argPtr + 297#64) ↦₈ 0#8) ∗ memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗
         (lsLogFilterAddr ↦₆₄ 0#64) ∗
-        stackAt (s0.sp - 768#64) pqxdhEntryStack ∗ A.pool lim (M.stepEvents evs1 st) s1 ∗
-        (memRegion (s0.sp - 768#64 - BitVec.ofNat 64 initialStateStack) 0x700 ∗ Frame) =
+        (memRegion (s0.sp - 42752#64) 23808 ∗ stackAt (s0.sp - 768#64) initialStateStack) ∗
+        A.pool lim (M.stepEvents evs1 st) s1 ∗ Frame =
         bobFrameAtSpqr s0.sp drKey.rootKey drKey.pqrKey drKey.chainKey ∗
-        (memRegion (s0.sp - 768#64 - BitVec.ofNat 64 initialStateStack) 0x700 ∗
-         stackAt (s0.sp - 768#64) pqxdhEntryStack) ∗
         (paramsAt (s0.sp - 488#64) (s0.sp - 576#64) (bobSpqrParams drKey.pqrKey) ∗
          ((s0.sp - 576#64) ↦ₛ (bobSpqrParams drKey.pqrKey).authKey) ∗
          (lsLogFilterAddr ↦₆₄ 0#64) ∗ A.pool lim (M.stepEvents evs1 st) s1 ∗
+         stackAt (s0.sp - 768#64) initialStateStack ∗
          ((s0.sp - 656#64) ↦ₛ bytesToBv8 drKey.rootKey) ∗
          ((s0.sp - 624#64) ↦ₛ bytesToBv8 drKey.chainKey) ∗
          (ratchetKeyPairPtr ↦ₛ bytesToBv8 spkBPk) ∗
@@ -603,8 +641,8 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
          (argPtr ↦ₛ bytesToBv8 ikBPk) ∗
          pqxdhAcceptOptFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr inp ∗
          ((argPtr + 297#64) ↦₈ 0#8) ∗ memRegion outPtr 344 ∗
-         initBobSavedRegs s0.sp s0 ∗ Frame) := by ac_rfl
-    rw [hrearr, bobV1_stack_join s0.sp]
+         initBobSavedRegs s0.sp s0 ∗ memRegion (s0.sp - 42752#64) 23808 ∗ Frame) := by ac_rfl
+    rw [hrearr]
     exact Entails.trans
       (sepConj_mono_left
         (bobFrameAtSpqr_entails_placed s0.sp drKey.rootKey drKey.pqrKey drKey.chainKey hlen_rk))
@@ -653,7 +691,7 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
       pqxdhAcceptRestAt argPtr pqskPtr ctSlicePtr ctBufPtr inp ∗
       ((argPtr + 297#64) ↦₈ 0#8) ∗ initBobSavedRegs s0.sp s0 ∗
       (lsLogFilterAddr ↦₆₄ 0#64) ∗
-      memRegion (s0.sp - 768#64 - BitVec.ofNat 64 initialStateStack) 0x700 ∗ Frame
+      memRegion (s0.sp - 42752#64) 25600 ∗ Frame
     have hent2 :
         paramsAt (s0.sp - 488#64) (s0.sp - 576#64) (bobSpqrParams drKey.pqrKey) ∗
         ((s0.sp - 576#64) ↦ₛ (bobSpqrParams drKey.pqrKey).authKey) ∗
@@ -674,17 +712,15 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
         memRegion outPtr 344 ∗
         stackAt (s0.sp - 768#64) pqxdhEntryStack ∗ A.pool lim st2 s2 ∗ Frame2 := by
       dsimp only [FrameCall, Frame2, bobFrameRestPlaced]
-      rw [← bobV1_stack_join s0.sp,
-        pqxdhAcceptFieldsAt_split argPtr pqskPtr ctSlicePtr ctBufPtr inp]
-      have hrearr :
+      rw [pqxdhAcceptFieldsAt_split argPtr pqskPtr ctSlicePtr ctBufPtr inp]
+      have hrearr0 :
           paramsAt (s0.sp - 488#64) (s0.sp - 576#64) (bobSpqrParams drKey.pqrKey) ∗
           ((s0.sp - 576#64) ↦ₛ (bobSpqrParams drKey.pqrKey).authKey) ∗
           ((s0.sp - 768#64) ↦₆₄ 0#64) ∗ ((s0.sp - 760#64) ↦₆₄ spqrCap) ∗
           ((s0.sp - 752#64) ↦₆₄ spqrBufPtr) ∗ ((s0.sp - 744#64) ↦₆₄ spqrLen) ∗
           bobSpqrVecBuf A.repAlloc spqrCap spqrBufPtr v ∗
           (lsLogFilterAddr ↦₆₄ 0#64) ∗ A.pool lim st2 s2 ∗
-          (memRegion (s0.sp - 768#64 - BitVec.ofNat 64 initialStateStack) 0x700 ∗
-           stackAt (s0.sp - 768#64) pqxdhEntryStack) ∗
+          stackAt (s0.sp - 768#64) initialStateStack ∗
           (((s0.sp - 656#64) ↦ₛ bytesToBv8 drKey.rootKey) ∗
            ((s0.sp - 624#64) ↦ₛ bytesToBv8 drKey.chainKey) ∗
            (ratchetKeyPairPtr ↦ₛ bytesToBv8 spkBPk) ∗
@@ -701,11 +737,12 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
             ((argPtr + 160#64) ↦ₛ bytesToBv8 inp.hdr.ekAPk) ∗
             pqxdhAcceptRestAt argPtr pqskPtr ctSlicePtr ctBufPtr inp) ∗
            ((argPtr + 297#64) ↦₈ 0#8) ∗ memRegion outPtr 344 ∗
-           initBobSavedRegs s0.sp s0 ∗ Frame) =
+           initBobSavedRegs s0.sp s0 ∗ memRegion (s0.sp - 42752#64) 23808 ∗ Frame) =
           (paramsAt (s0.sp - 488#64) (s0.sp - 576#64) (bobSpqrParams drKey.pqrKey) ∗
            ((s0.sp - 452#64) ↦ₛ bytesToBv8 drKey.pqrKey) ∗
            ((s0.sp - 420#64) ↦ₛ bytesToBv8 drKey.chainKey) ∗
            ((s0.sp - 388#64) ↦₃₂ 0#32) ∗ memRegion (s0.sp - 384#64) 288) ∗
+          (memRegion (s0.sp - 42752#64) 23808 ∗ stackAt (s0.sp - 768#64) initialStateStack) ∗
           (((s0.sp - 768#64) ↦₆₄ 0#64) ∗ ((s0.sp - 760#64) ↦₆₄ spqrCap) ∗
            ((s0.sp - 752#64) ↦₆₄ spqrBufPtr) ∗ ((s0.sp - 744#64) ↦₆₄ spqrLen) ∗
            ((s0.sp - 656#64) ↦ₛ bytesToBv8 drKey.rootKey) ∗
@@ -716,7 +753,7 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
            (ratchetKeyPairPtr ↦ₛ bytesToBv8 spkBPk) ∗
            ((ratchetKeyPairPtr + 32#64) ↦ₛ bytesToBv8 inp.spkBSk) ∗
            memRegion outPtr 344 ∗
-           stackAt (s0.sp - 768#64) pqxdhEntryStack ∗ A.pool lim st2 s2 ∗
+           A.pool lim st2 s2 ∗
            bobSpqrVecBuf A.repAlloc spqrCap spqrBufPtr v ∗
            ((s0.sp - 736#64) ↦ₛ bytesToBv8 drKey.pqrKey) ∗
            ((s0.sp - 704#64) ↦ₛ bytesToBv8 drKey.chainKey) ∗
@@ -726,10 +763,8 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
            memRegion (s0.sp - 544#64) 56 ∗
            pqxdhAcceptRestAt argPtr pqskPtr ctSlicePtr ctBufPtr inp ∗
            ((argPtr + 297#64) ↦₈ 0#8) ∗ initBobSavedRegs s0.sp s0 ∗
-           (lsLogFilterAddr ↦₆₄ 0#64) ∗
-           memRegion (s0.sp - 768#64 - BitVec.ofNat 64 initialStateStack) 0x700 ∗ Frame) := by
-        ac_rfl
-      rw [hrearr]
+           (lsLogFilterAddr ↦₆₄ 0#64) ∗ Frame) := by ac_rfl
+      rw [hrearr0, bobV1_placed_from_initialState s0.sp]
       exact Entails.trans
         (sepConj_mono_left (sub488_merge_placed s0.sp drKey.pqrKey drKey.chainKey hlen_pq hlen_ck))
         (Entails.of_eq (by ac_rfl))
@@ -769,7 +804,7 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
       (ratchetPrivBoxPtr ↦ₛ bytesToBv8 inp.spkBSk) ∗ A.live ratchetPrivBoxPtr 32 1 ∗
       (chainKeyBoxPtr ↦ₛ bytesToBv8 drKey.chainKey) ∗ A.live chainKeyBoxPtr 32 1 ∗
       (lsLogFilterAddr ↦₆₄ 0#64) ∗
-      memRegion (s0.sp - 768#64 - BitVec.ofNat 64 initialStateStack) 0x700 ∗
+      memRegion (s0.sp - 42752#64) 25600 ∗
       stackAt (s0.sp - 768#64) pqxdhEntryStack ∗
       memRegion (s0.sp - 768#64) 280 ∗ memRegion (s0.sp - 488#64) 344 ∗
       memRegion (s0.sp - 144#64) 48 ∗ A.pool lim (M.stepEvents evsFull st) s3 ∗ Frame
@@ -807,7 +842,7 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
            pqxdhAcceptRestAt argPtr pqskPtr ctSlicePtr ctBufPtr inp ∗
            ((argPtr + 297#64) ↦₈ 0#8) ∗ initBobSavedRegs s0.sp s0 ∗
            (lsLogFilterAddr ↦₆₄ 0#64) ∗
-           memRegion (s0.sp - 768#64 - BitVec.ofNat 64 initialStateStack) 0x700 ∗ Frame) =
+           memRegion (s0.sp - 42752#64) 25600 ∗ Frame) =
           (memRegion (s0.sp - 768#64) 32 ∗
            ((s0.sp - 736#64) ↦ₛ bytesToBv8 drKey.pqrKey) ∗
            ((s0.sp - 704#64) ↦ₛ bytesToBv8 drKey.chainKey) ∗
@@ -837,7 +872,7 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
            (ratchetPrivBoxPtr ↦ₛ bytesToBv8 inp.spkBSk) ∗ A.live ratchetPrivBoxPtr 32 1 ∗
            (chainKeyBoxPtr ↦ₛ bytesToBv8 drKey.chainKey) ∗ A.live chainKeyBoxPtr 32 1 ∗
            (lsLogFilterAddr ↦₆₄ 0#64) ∗
-           memRegion (s0.sp - 768#64 - BitVec.ofNat 64 initialStateStack) 0x700 ∗
+           memRegion (s0.sp - 42752#64) 25600 ∗
            stackAt (s0.sp - 768#64) pqxdhEntryStack ∗
            memRegion (s0.sp - 488#64) 344 ∗ memRegion (s0.sp - 144#64) 48 ∗
            A.pool lim (M.stepEvents evsFull st) s3 ∗ Frame) := by ac_rfl
@@ -890,7 +925,7 @@ theorem initializeBobSession_ok_v1_memInv_placed_of_accept [LibsignalPlacement]
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F AcceptEnv InitEnv s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_memInv_placed_of_accept_of_session hkf hΦ_cl hWF
@@ -929,7 +964,7 @@ theorem initializeBobSession_ok_v1_placed_of_accept_of_session [LibsignalPlaceme
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F AcceptEnv InitEnv s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
@@ -964,7 +999,7 @@ theorem initializeBobSession_ok_v1_placed_of_accept [LibsignalPlacement]
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F AcceptEnv InitEnv s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_memInv_placed_of_accept
@@ -999,7 +1034,7 @@ theorem initializeBobSession_ok_v1_frozen_placed_of_accept_of_session [Libsignal
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F AcceptEnv InitEnv s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_memInv_placed_of_accept_of_session
@@ -1035,7 +1070,7 @@ theorem initializeBobSession_ok_v1_frozen_placed_of_accept [LibsignalPlacement]
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F AcceptEnv InitEnv s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_memInv_placed_of_accept
@@ -1072,7 +1107,7 @@ theorem initializeBobSession_ok_v1_full_placed_of_env_of_session [LibsignalFullP
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F (AcceptOptFieldsEnv P) InitEnv s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_frozen_placed_of_accept_of_session hWF
@@ -1104,7 +1139,7 @@ theorem initializeBobSession_ok_v1_full_placed_of_session [LibsignalFullPlacemen
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F (AcceptOptFieldsEnv P) (InitialStateEnv F) s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_full_placed_of_env_of_session hWF hP hH hmemcpy hinit
@@ -1134,7 +1169,7 @@ theorem initializeBobSession_ok_v1_full_placed_of_env_std [LibsignalFullPlacemen
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F (AcceptOptFieldsEnv P) InitEnv s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_full_placed_of_env_of_session hWF hP hH
@@ -1165,7 +1200,7 @@ theorem initializeBobSession_ok_v1_full_placed_std [LibsignalFullPlacement]
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F (AcceptOptFieldsEnv P) (InitialStateEnv F) s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_full_placed_of_env_std hWF hP hH hmemcpy hinit

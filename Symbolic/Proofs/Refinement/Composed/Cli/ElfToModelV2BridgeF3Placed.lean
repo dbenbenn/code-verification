@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Support.Phi
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomSpecF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.ElfInputsExtF3
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
-public import Symbolic.Proofs.Refinement.Composed.Cli.BundleInitElfF3Placed
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
-public import Symbolic.Proofs.Refinement.Composed.Cli.ModelB2
-public import Symbolic.Proofs.Refinement.Composed.Cli.PksmParseEquiv
-public import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
+import LibsignalBinary.Proofs.E2E.Record.Support.Phi
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomSpecF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.ElfInputsExtF3
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
+import Symbolic.Proofs.Refinement.Composed.Cli.BundleInitElfF3Placed
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ModelB2 -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.Composed.Cli.PksmParseEquiv
+public import Symbolic.Proofs.Refinement.Composed.Cli.Transfer -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Refinement.ElfBinding
+public import Symbolic.Proofs.SpecLemmas.ElfBindingPlaced -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Refinement.Statement
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+import Symbolic.Proofs.Refinement.Composed.Cli.ElfRealGuardBridge
 
 /-!
 # Whole-Process ELF to Guarded Model Refinement Bridge
@@ -31,7 +34,7 @@ Discharges all 16 clauses of `PqModelPostB2` on exited runs of a two-placement
 `CompRefinesCliBinaryPlacedAt` and `CompRefinesCliBinaryPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,8 +50,8 @@ open DY.Libsignal.Composed.Refinement (
 )
 open DY.Libsignal.Composed.Refinement.Cli (
   CompRefinesCliBinaryPlaced CompRefinesCliBinaryPlacedAt CompRefinesCliModelB2 CompRefinesCliR
-  DirectorySnapshot FilesVisible HooksMatchInterpretation InputsEquiv ModelAgree PqFieldsMatch
-  PqModelPostB2 PqModelRelB2 ScrubAgree TraceInv compRefinesCliR_of_inv elfRelPlaced
+  DirectorySnapshot FilesVisible HooksMatchInterpretation HooksMatchPlaced InputsEquiv ModelAgree
+  PqFieldsMatch PqModelPostB2 PqModelRelB2 ScrubAgree TraceInv compRefinesCliR_of_inv elfRelPlaced
   pqRecvMatchingFieldsModel preKeyOfBody?
 )
 open Symbolic.Proofs.Refinement.Composed.Cli (
@@ -63,11 +66,12 @@ open CryptoVerification.E2E (
 )
 open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
 open CryptoVerification.SignalSession (
-  CliHooks CliPqxdhElfCorrectPlaced CliReachesOOMPlaced Inputs LoadablePath Outcome
-  OutcomeOrExcusedAbort PqParty filesOf libsignalSessionLib loadable_pqInitInputs
+  CliHooks Inputs LoadablePath Outcome
+  OutcomeOrExcusedAbort PqParty cliProcessInputs filesOf libsignalSessionLib loadable_pqInitInputs
   loadable_pqRecvInputs loadable_pqSendInputs pqInitInputs pqRecvInputs pqSendInputs
 )
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliReachesOOMPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open CryptoVerification.SignalSession.Cli.RunProofs (SessMatchesPm pkToE? pkVecTag?)
 open CryptoVerification.SignalSession.Cli.RunProofs.Pksm (decodeProto kyberOk pksmParse)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3 (
@@ -78,7 +82,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomSpecF3 (
   CliPqBinaryV2OomF3Placed LibsignalCliPqBinaryV2OomF3Placed LibsignalCliPqBinaryV2OomF3PlacedAt
 )
 open LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.ElfInputsExtF3 (
-  exited_of_or_none_outcomeUpTo_eq_raw_placed exited_of_outcomeUpTo_raw_placed
+  ExcLoadOk exited_of_or_none_outcomeUpTo_eq_raw_placed exited_of_outcomeUpTo_raw_placed
   filesVisibleRaw_pqInitInputs filesVisibleRaw_pqRecvInputs filesVisibleRaw_pqSendInputs
 )
 open Symbolic.Proofs.Refinement.Composed.Cli.BundleInitElfF3Placed (
@@ -271,23 +275,23 @@ private theorem pqRecvMatchingFieldsModel_eq_pqRecvMatchingModel_f3 (P : PEParam
 /-! ## Input extensionality for `cliRunPlacedSig` -/
 
 theorem exited_of_outcomeUpTo_f3 {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks}
-    {i i₀ : Inputs} {Pred : Outcome → Prop}
+    {exc : Inputs → Prop} {i i₀ : Inputs} {Pred : Outcome → Prop}
     {code : Nat} {out : HwBytes} {files : DirectorySnapshot}
     (hr : cliRunPlacedSig mpl mmpl elf W i = some (.exited code out files))
-    (hup : OutcomeOrExcusedAbort (CliReachesOOMPlaced mpl mmpl elf W)
-      (cliRunPlacedSig mpl mmpl elf W) i₀ Pred)
+    (hup : OutcomeOrExcusedAbort exc (cliRunPlacedSig mpl mmpl elf W) i₀ Pred)
     (heq : InputsEquiv i i₀) (hvis : FilesVisible i.files) (hvis₀ : FilesVisible i₀.files)
-    (hload₀ : ∀ f ∈ i₀.files, LoadablePath f.1) :
+    (hload₀ : ∀ f ∈ i₀.files, LoadablePath f.1)
+    (hexcLoad : ∀ {j : Inputs}, exc j → ∃ s0, elf.loadState (cliProcessInputs j) = .ok s0) :
     Pred (.exited code out files) :=
-  exited_of_outcomeUpTo_raw_placed hr hup heq (fun f hf => ⟨(hvis f hf).1, (hvis f hf).2.1⟩)
+  @exited_of_outcomeUpTo_raw_placed mpl mmpl elf W exc ⟨hexcLoad⟩ i i₀ Pred code out files hr hup
+    heq (fun f hf => ⟨(hvis f hf).1, (hvis f hf).2.1⟩)
     (fun f hf => ⟨(hvis₀ f hf).1, (hvis₀ f hf).2.1⟩) hload₀
 
 private theorem exited_of_outcomeUpTo_f3_visRaw {mpl mmpl : MultiPlacement} {elf : ElfImage}
-    {W : CliHooks} {i i₀ : Inputs} {Pred : Outcome → Prop}
+    {W : CliHooks} {exc : Inputs → Prop} [ExcLoadOk elf exc] {i i₀ : Inputs} {Pred : Outcome → Prop}
     {code : Nat} {out : HwBytes} {files : DirectorySnapshot}
     (hr : cliRunPlacedSig mpl mmpl elf W i = some (.exited code out files))
-    (hup : OutcomeOrExcusedAbort (CliReachesOOMPlaced mpl mmpl elf W)
-      (cliRunPlacedSig mpl mmpl elf W) i₀ Pred)
+    (hup : OutcomeOrExcusedAbort exc (cliRunPlacedSig mpl mmpl elf W) i₀ Pred)
     (heq : InputsEquiv i i₀) (hvis : FilesVisible i.files)
     (hvis₀ : LibsignalBinary.Proofs.SignalSession.Cli.Parity.FilesVisibleRaw i₀.files)
     (hload₀ : ∀ f ∈ i₀.files, LoadablePath f.1) :
@@ -312,43 +316,58 @@ private def defaultExtrasV2F3 : UnreachedPqxdhPrimitives :=
     isValidDhTriple := fun _ _ _ => false }
 
 /-- Establishes `PqModelPostB2` for any exited run of a `CliPqBinaryV2OomF3Placed` ELF image under
-`FilesVisible i.files`. -/
+the 9 closed primitive equations of `realCliHooks` and `FilesVisible i.files`. -/
 theorem pqModelPostB2_of_cliElf_exited_f3 {mpl mmpl : MultiPlacement} {elf : ElfImage}
     (hv2 : CliPqBinaryV2OomF3Placed mpl mmpl elf)
-    (interp : ExternInterpretation) {W : CliHooks} {i : Inputs}
-    {code : Nat} {out : HwBytes} {files : DirectorySnapshot}
+    (interp : ExternInterpretation) {W : CliHooks}
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hE : W.C.E = CryptoGames.AES256.aes256Enc)
+    (hD : W.C.D = CryptoGames.AES256.aes256Dec)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec)
+    (hDec : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    {i : Inputs} {code : Nat} {out : HwBytes} {files : DirectorySnapshot}
     (hvis : FilesVisible i.files)
     (hr : cliRunPlacedSig mpl mmpl elf W i = some (.exited code out files)) :
     PqModelPostB2 interp ⟨W.C, W.Q⟩ i (.exited code out files) := by
-  have hbase : CliPqxdhElfCorrectPlaced mpl mmpl elf := hv2.base
+  have hbase := hv2.base
   refine
     { init := fun X st b t hwf hsess heq =>
-        exited_of_outcomeUpTo_f3_visRaw hr (((hbase.2 W X).1 st hwf).1 b t hsess) heq hvis
+        exited_of_outcomeUpTo_f3_visRaw hr
+          (((hbase.2 W hF hE hD hX hPub hF512 hEnc hDec hK X).1 st hwf).1 b t hsess) heq hvis
           (filesVisible_pqInitInputs_f3 _ st b t) (loadable_pqInitInputs _ st b t).2
       send := fun st m coins hwf hlen heq =>
         exited_of_outcomeUpTo_f3_visRaw hr
-          (((hbase.2 W defaultExtrasV2F3).1 st hwf).2.1 m coins hlen) heq hvis
+          (((hbase.2 W hF hE hD hX hPub hF512 hEnc hDec hK defaultExtrasV2F3).1 st hwf).2.1 m coins hlen)
+          heq hvis
           (filesVisible_pqSendInputs_f3 _ st m coins) (loadable_pqSendInputs _ st m coins).2
       recvWhisper := fun st body rc hwf hlen heq =>
         exited_of_outcomeUpTo_f3_visRaw hr
-          (((hbase.2 W defaultExtrasV2F3).1 st hwf).2.2.1 body rc hlen) heq hvis
+          (((hbase.2 W hF hE hD hX hPub hF512 hEnc hDec hK defaultExtrasV2F3).1 st hwf).2.2.1 body rc hlen)
+          heq hvis
           (filesVisible_pqRecvInputs_f3 _ st (wireWhisper :: body) rc)
           (loadable_pqRecvInputs _ st (wireWhisper :: body) rc).2
       recvPrekey := fun X st m rc hwf hlen hmatch heq =>
-        exited_of_outcomeUpTo_f3_visRaw hr (((hbase.2 W X).1 st hwf).2.2.2.1 m rc hlen hmatch)
+        exited_of_outcomeUpTo_f3_visRaw hr
+          (((hbase.2 W hF hE hD hX hPub hF512 hEnc hDec hK X).1 st hwf).2.2.2.1 m rc hlen hmatch)
           heq hvis (filesVisible_pqRecvInputs_f3 _ st (wirePrekey :: m.bytes) rc)
           (loadable_pqRecvInputs _ st (wirePrekey :: m.bytes) rc).2
       recvPrekeyNoMatch := fun X st x g m rc hwf hsess hlen hnomatch heq =>
-        exited_of_outcomeUpTo_f3_visRaw hr ((hbase.2 W X).2 st hwf x g hsess m rc hlen hnomatch)
+        exited_of_outcomeUpTo_f3_visRaw hr
+          ((hbase.2 W hF hE hD hX hPub hF512 hEnc hDec hK X).2 st hwf x g hsess m rc hlen hnomatch)
           heq hvis (filesVisible_pqRecvInputs_f3 _ st (wirePrekey :: m.bytes) rc)
           (loadable_pqRecvInputs _ st (wirePrekey :: m.bytes) rc).2
       recvOther := fun st c rc hwf hlen hw hp heq =>
         exited_of_outcomeUpTo_f3_visRaw hr
-          (((hbase.2 W defaultExtrasV2F3).1 st hwf).2.2.2.2 c rc hlen hw hp) heq hvis
+          (((hbase.2 W hF hE hD hX hPub hF512 hEnc hDec hK defaultExtrasV2F3).1 st hwf).2.2.2.2 c rc hlen hw hp)
+          heq hvis
           (filesVisible_pqRecvInputs_f3 _ st c rc) (loadable_pqRecvInputs _ st c rc).2
       recvPrekeyNoMatchSession := fun X st x g m rc hwf hsess hlen hcap hnomatch heq => by
         have hout := exited_of_outcomeUpTo_f3_visRaw hr
-          (hv2.canonicalNoMatch W X st hwf x g hsess m rc hlen hnomatch)
+          (hv2.canonicalNoMatch W hF hE hD hX hPub hF512 hEnc hDec hK X st hwf x g hsess m rc hlen hnomatch)
           heq hvis (filesVisible_pqRecvInputs_f3 _ st (wirePrekey :: m.bytes) rc)
           (loadable_pqRecvInputs _ st (wirePrekey :: m.bytes) rc).2
         simp only [Nat.not_lt.mpr hcap, ↓reduceIte] at hout
@@ -357,7 +376,7 @@ theorem pqModelPostB2_of_cliElf_exited_f3 {mpl mmpl : MultiPlacement} {elf : Elf
         exited_of_outcomeUpTo_f3_visRaw
           (Pred := (· = .exited 2 []
             (filesOf (pqRecvInputs ⟨W.C, W.Q⟩ st (wirePrekey :: body) rc).files)))
-          hr (hv2.recvOverStdinCap W st hwf body rc hover)
+          hr (hv2.recvOverStdinCap W hF hE hD hX hPub hF512 hEnc hDec hK st hwf body rc hover)
           heq hvis (filesVisible_pqRecvInputs_f3 _ st (wirePrekey :: body) rc)
           (loadable_pqRecvInputs _ st (wirePrekey :: body) rc).2
       recvPrekeyReject := fun st body rc hwf hlen hcap hnone heq => by
@@ -367,7 +386,7 @@ theorem pqModelPostB2_of_cliElf_exited_f3 {mpl mmpl : MultiPlacement} {elf : Elf
           · rw [hnone] at hq
             cases hq
         have hout := exited_of_outcomeUpTo_f3_visRaw
-          hr (hv2.pksmParseNone W st hwf body rc hlen hpnone)
+          hr (hv2.pksmParseNone W hF hE hD hX hPub hF512 hEnc hDec hK st hwf body rc hlen hpnone)
           heq hvis (filesVisible_pqRecvInputs_f3 _ st (wirePrekey :: body) rc)
           (loadable_pqRecvInputs _ st (wirePrekey :: body) rc).2
         simpa only [Nat.not_lt.mpr hcap, ↓reduceIte] using hout
@@ -383,7 +402,7 @@ theorem pqModelPostB2_of_cliElf_exited_f3 {mpl mmpl : MultiPlacement} {elf : Elf
             fun x g hs hsm =>
               hnomatch x g hs ((pqFieldsMatch_iff_sessMatchesPm_f3 x g hq hpm).mpr hsm)
           have hout := exited_of_outcomeUpTo_f3_visRaw
-            hr (hv2.untypedReject W st hwf body pm rc hlen hpm huntyped hnsm)
+            hr (hv2.untypedReject W hF hE hD hX hPub hF512 hEnc hDec hK st hwf body pm rc hlen hpm huntyped hnsm)
             heq hvis (filesVisible_pqRecvInputs_f3 _ st (wirePrekey :: body) rc)
             (loadable_pqRecvInputs _ st (wirePrekey :: body) rc).2
           simpa only [Nat.not_lt.mpr hcap, ↓reduceIte] using hout
@@ -396,7 +415,7 @@ theorem pqModelPostB2_of_cliElf_exited_f3 {mpl mmpl : MultiPlacement} {elf : Elf
             (pqFieldsMatch_iff_sessMatchesPm_f3 x g hq hpm).mp hfm
           rw [pqRecvMatchingFieldsModel_eq_pqRecvMatchingModel_f3 ⟨W.C, W.Q⟩ st x g rc hq hpm]
           have hout := exited_of_outcomeUpTo_f3_visRaw
-            hr (hv2.matchingPathB W st x g body pm rc hwf hsess (Nat.succ_le_of_lt hlen) hpm hsm)
+            hr (hv2.matchingPathB W hF hE hD hX hPub hF512 hEnc hDec hK st x g body pm rc hwf hsess (Nat.succ_le_of_lt hlen) hpm hsm)
             heq hvis (filesVisible_pqRecvInputs_f3 _ st (wirePrekey :: body) rc)
             (loadable_pqRecvInputs _ st (wirePrekey :: body) rc).2
           simpa only [Nat.not_lt.mpr hcap, ↓reduceIte] using hout
@@ -409,7 +428,7 @@ theorem pqModelPostB2_of_cliElf_exited_f3 {mpl mmpl : MultiPlacement} {elf : Elf
         | some pm =>
           rw [hpm] at hbind
           have hout := exited_of_outcomeUpTo_f3_visRaw
-            hr (hv2.validMatch W X st hwf body pm m rc hlen hpm hbind hinner hmatch)
+            hr (hv2.validMatch W hF hE hD hX hPub hF512 hEnc hDec hK X st hwf body pm m rc hlen hpm hbind hinner hmatch)
             heq hvis (filesVisible_pqRecvInputs_f3 _ st (wirePrekey :: body) rc)
             (loadable_pqRecvInputs _ st (wirePrekey :: body) rc).2
           simpa only [Nat.not_lt.mpr hcap, ↓reduceIte] using hout
@@ -422,90 +441,103 @@ theorem pqModelPostB2_of_cliElf_exited_f3 {mpl mmpl : MultiPlacement} {elf : Elf
         | some pm =>
           rw [hpm] at hbind
           have hout := exited_of_outcomeUpTo_f3_visRaw hr
-            (hv2.validOver W X st hwf x g hsess body pm m rc hlen hpm hbind hinner hnomatch)
+            (hv2.validOver W hF hE hD hX hPub hF512 hEnc hDec hK X st hwf x g hsess body pm m rc hlen hpm hbind hinner hnomatch)
             heq hvis (filesVisible_pqRecvInputs_f3 _ st (wirePrekey :: body) rc)
             (loadable_pqRecvInputs _ st (wirePrekey :: body) rc).2
           simp only [Nat.not_lt.mpr hcap, ↓reduceIte] at hout
           exact hout
       initFiles := fun X _ _ _ _ hwf hsess hb hcap hparse heq =>
-        scrubAgree_of_eq (exited_of_or_none_outcomeUpTo_eq_f3 hr
+        scrubAgree_of_eq (exited_of_or_none_outcomeUpTo_eq_f3 (exc := fun _ => False) hr
           (outcomeUpTo_pqInitFiles_exact_or_none_of_f3_inputsEquiv
-            hv2 W X heq hwf hsess hb hcap hparse))
+            hv2 W hF hE hD hX hPub hF512 hEnc hDec hK X heq hwf hsess hb hcap hparse))
       initOverFileCap := fun _ _ _ hwf hsess hb hover heq =>
-        exited_of_or_none_outcomeUpTo_eq_f3 hr
+        exited_of_or_none_outcomeUpTo_eq_f3 (exc := fun _ => False) hr
           (outcomeUpTo_pqInitOverCap_or_none_of_f3_inputsEquiv
-            hv2 W heq hwf hsess hb hover)
+            hv2 W hF hE hD hX hPub hF512 hEnc hDec hK heq hwf hsess hb hover)
       initReject := fun _ _ _ hwf hsess hb hparse heq =>
-        exited_of_or_none_outcomeUpTo_eq_f3 hr
+        exited_of_or_none_outcomeUpTo_eq_f3 (exc := fun _ => False) hr
           (outcomeUpTo_pqInitReject_or_none_of_f3_inputsEquiv
-            hv2 W heq hwf hsess hb hparse) }
+            hv2 W hF hE hD hX hPub hF512 hEnc hDec hK heq hwf hsess hb hparse) }
 
 /-! ## Whole-protocol refinement transfers -/
 
-private theorem PqModelRelB2.of_post_f3 {interp : ExternInterpretation} {P : PEParams}
-    {i : Inputs} {out_o : Outcome} (h : PqModelPostB2 interp P i out_o) :
-    PqModelRelB2 interp P i (some out_o) :=
-  Or.inr ⟨out_o, rfl, h⟩
-
 theorem traceInv_elfRelPlaced_pqModelRelB2_f3 {mpl mmpl : MultiPlacement} {elf : ElfImage}
     (hv2 : CliPqBinaryV2OomF3Placed mpl mmpl elf)
-    (interp : ExternInterpretation) (W : CliHooks) (r : ProtocolSetup) :
-    TraceInv (elfRelPlaced mpl mmpl elf interp W) (PqModelRelB2 interp ⟨W.C, W.Q⟩)
-      interp r (fun _ => True) where
-  clear _ _ _ := trivial
-  step _ _ _ _ _ _ _ _ hin hr :=
-    ⟨PqModelRelB2.of_post_f3 (pqModelPostB2_of_cliElf_exited_f3 hv2 interp hin.2.2.2.2 hr),
-      trivial⟩
-  stop _ _ _ o _ _ _ _ ho :=
-    ⟨o, Or.inl (Or.inl ho), ho⟩
+    {interp : ExternInterpretation} {W : CliHooks} {r : ProtocolSetup}
+    (hext : DY.Libsignal.Composed.Refinement.Cli.ExternContractsHoldCli interp)
+    (hAgree : HooksMatchInterpretation interp W)
+    (_hE : W.C.E = CryptoGames.AES256.aes256Enc)
+    (_hD : W.C.D = CryptoGames.AES256.aes256Dec)
+    (hr : DY.Libsignal.Composed.Refinement.ProtocolSetupWF r) :
+    ∃ I : DY.Libsignal.Composed.Refinement.Cli.CliTurn → Prop,
+      I (DY.Libsignal.Composed.Refinement.Cli.CliTurn.init
+        (DY.Libsignal.Composed.Refinement.Cli.initDirs interp r)) ∧
+      TraceInv (elfRelPlaced mpl elf interp W) (PqModelRelB2 interp ⟨W.C, W.Q⟩) interp r I :=
+  Symbolic.Proofs.Refinement.Composed.Cli.ElfRealGuardBridge.traceInv_of_real_postB2
+    hext ((hooksAgree_iff_modelAgree_f3 interp W).mp hAgree) hr
+    (fun hfb hRel =>
+      pqModelPostB2_of_cliElf_exited_f3 hv2 interp
+        (W := DY.Libsignal.Composed.Refinement.Cli.realCliHooks)
+        rfl rfl rfl rfl rfl rfl rfl rfl rfl hfb
+        ((congrFun (LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliRunPlacedSig_eq mpl mmpl elf
+          DY.Libsignal.Composed.Refinement.Cli.realCliHooks) _).trans hRel))
 
 theorem compRefinesCliR_elfPlaced_of_modelB2_f3 {mpl mmpl : MultiPlacement} {elf : ElfImage}
-    {dirs : ExternInterpretation → ProtocolSetup → Participant → DirectorySnapshot}
     (hv2 : CliPqBinaryV2OomF3Placed mpl mmpl elf)
-    (hM : CompRefinesCliR ModelAgree PqModelRelB2 dirs) :
-    CompRefinesCliR HooksMatchInterpretation (elfRelPlaced mpl mmpl elf) dirs :=
+    (hM : CompRefinesCliModelB2) :
+    DY.Libsignal.Composed.Refinement.Cli.CompRefinesCli
+      DY.Libsignal.Composed.Refinement.Cli.HooksMatchPlaced
+      (elfRelPlaced mpl elf) :=
   compRefinesCliR_of_inv
-    (fun interp W _ hAgree =>
+    (fun interp W hext ⟨hAgree, hE, hD⟩ =>
       ⟨⟨W.C, W.Q⟩, (hooksAgree_iff_modelAgree_f3 interp W).mp hAgree,
-        fun r _ => ⟨fun _ => True, trivial, traceInv_elfRelPlaced_pqModelRelB2_f3 hv2 interp W r⟩⟩)
+        fun _r hr => traceInv_elfRelPlaced_pqModelRelB2_f3 hv2 hext hAgree hE hD hr⟩)
     hM
 
 theorem compRefinesCliBinaryPlacedAt_of_modelB2_f3 {mpl mmpl : MultiPlacement}
     {bytes : List (BitVec 8)} {elf : ElfImage}
     (hparse : ElfImage.parse bytes = .ok elf)
+    (hcm : CryptoVerification.SignalSession.Placed.CliElfCodeMatchesPlaced mpl elf)
     (hv2 : CliPqBinaryV2OomF3Placed mpl mmpl elf)
-    (hprog : DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl mmpl elf)
+    (hprog : DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl elf)
     (hM : CompRefinesCliModelB2) :
-    CompRefinesCliBinaryPlacedAt mpl mmpl bytes :=
-  ⟨elf, hparse, hv2.base.1, hprog, compRefinesCliR_elfPlaced_of_modelB2_f3 hv2 hM⟩
+    CompRefinesCliBinaryPlacedAt mpl bytes :=
+  ⟨elf, hparse, hcm, hprog, compRefinesCliR_elfPlaced_of_modelB2_f3 hv2 hM⟩
 
 theorem compRefinesCliBinaryPlaced_of_modelB2_f3 {bytes : List (BitVec 8)}
-    (hAt : ∀ mpl mmpl : MultiPlacement,
+    (hAt : ∀ mpl : MultiPlacement,
       libsignalSessionLib.LinkedAt bytes mpl →
-      mallocngLib.LinkedAt bytes mmpl →
-      CompRefinesCliBinaryPlacedAt mpl mmpl bytes) :
+      CompRefinesCliBinaryPlacedAt mpl bytes) :
     CompRefinesCliBinaryPlaced bytes :=
   hAt
 
 theorem compRefinesCliBinaryPlacedAt_of_v2OomF3Bytes {mpl mmpl : MultiPlacement}
     {bytes : List (BitVec 8)}
+    (hcm : ∀ elf : ElfImage, ElfImage.parse bytes = .ok elf →
+      CryptoVerification.SignalSession.Placed.CliElfCodeMatchesPlaced mpl elf)
     (hv2 : LibsignalCliPqBinaryV2OomF3PlacedAt mpl mmpl bytes)
     (hprog : ∀ elf : ElfImage, ElfImage.parse bytes = .ok elf →
-      DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl mmpl elf)
+      DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl elf)
     (hM : CompRefinesCliModelB2) :
-    CompRefinesCliBinaryPlacedAt mpl mmpl bytes := by
+    CompRefinesCliBinaryPlacedAt mpl bytes := by
   obtain ⟨elf, hparse, hv2Elf⟩ := hv2
-  exact compRefinesCliBinaryPlacedAt_of_modelB2_f3 hparse hv2Elf (hprog elf hparse) hM
+  exact compRefinesCliBinaryPlacedAt_of_modelB2_f3 hparse (hcm elf hparse) hv2Elf (hprog elf hparse) hM
 
 theorem compRefinesCliBinaryPlaced_of_v2OomF3Bytes {bytes : List (BitVec 8)}
+    (hmng : mallocngLib.LinkedIn bytes)
+    (hcm : ∀ mpl : MultiPlacement, libsignalSessionLib.LinkedAt bytes mpl →
+      ∀ elf : ElfImage, ElfImage.parse bytes = .ok elf →
+        CryptoVerification.SignalSession.Placed.CliElfCodeMatchesPlaced mpl elf)
     (hv2 : LibsignalCliPqBinaryV2OomF3Placed bytes)
     (hprog : ∀ mpl mmpl : MultiPlacement,
       libsignalSessionLib.LinkedAt bytes mpl → mallocngLib.LinkedAt bytes mmpl →
       ∀ elf : ElfImage, ElfImage.parse bytes = .ok elf →
-        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl mmpl elf)
+        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl elf)
     (hM : CompRefinesCliModelB2) :
-    CompRefinesCliBinaryPlaced bytes :=
-  fun mpl mmpl hLs hMm =>
-    compRefinesCliBinaryPlacedAt_of_v2OomF3Bytes (hv2 mpl mmpl hLs hMm) (hprog mpl mmpl hLs hMm) hM
+    CompRefinesCliBinaryPlaced bytes := by
+  intro mpl hLs
+  obtain ⟨mmpl, hMm⟩ := hmng
+  exact compRefinesCliBinaryPlacedAt_of_v2OomF3Bytes (hcm mpl hLs) (hv2 mpl mmpl hLs hMm)
+    (hprog mpl mmpl hLs hMm) hM
 
 end Symbolic.Proofs.Refinement.Composed.Cli.ElfToModelV2BridgeF3Placed

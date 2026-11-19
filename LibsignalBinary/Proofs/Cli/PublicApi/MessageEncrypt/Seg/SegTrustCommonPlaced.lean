@@ -10,20 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommon
-public import LibsignalBinary.Proofs.Common.StringClonePlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.StringClonePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
 import all Init.Data.String.Defs
+public import ProofLib.RegChain
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Relocatable Shared Helpers for `segTrust`, `segSave`, and `segApplyStore`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

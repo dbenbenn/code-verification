@@ -9,23 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrLeafCodecCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvCreditHelpers
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrLeafCodecCredit
+public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvCreditHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -172,7 +176,7 @@ theorem decodedMessageTotal_some_length {dec : PolyDecoder} {out : Bytes}
         (collectPointsVecsTotal dec 0 dec.pts.length false []).2
         dec.ptsNeeded 0 (List.replicate 16 none) []
 
-def optBytesLen : Option Bytes → Nat
+@[expose] def optBytesLen : Option Bytes → Nat
   | none => 0
   | some bs => bs.length
 
@@ -401,14 +405,14 @@ theorem sliceConcat2Events_phaseCreditSpec {M : AllocCostModel} [HasFineReallocC
   · exact PhaseCreditSpec.rustAlloc_aff hM (req := n) (al := 1) (by decide)
 
 /-- Allocation step for `extend_from_slice(mac)` inside `send_ct2_encoder`. -/
-def SendCt2EncoderGrowEnv (ct2Len macLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def SendCt2EncoderGrowEnv (ct2Len macLen : Nat) (evs : List AllocEvent) : Prop :=
   (macLen = 0 ∧ evs = []) ∨
     ∃ newCap : Nat,
       1 ≤ newCap ∧ newCap ≤ 2 * ct2Len + macLen + 8 ∧
       evs = (if ct2Len = 0 then rustAllocEvents newCap 1 else rustReallocEvents ct2Len newCap 1)
 
 /-- Binary-order allocator trace envelope for `spqr::v1::chunked::send_ct::send_ct2_encoder`. -/
-def SendCt2EncoderEnv (ct2Len macLen : Nat) : List AllocEvent → Prop :=
+@[expose] def SendCt2EncoderEnv (ct2Len macLen : Nat) : List AllocEvent → Prop :=
   SeqEnv (· = sliceConcat2Events ct2Len)
     (SeqEnv (SendCt2EncoderGrowEnv ct2Len macLen)
       (SeqEnv (EncodeBytesEnv (ct2Len + macLen)) FreeOnlyEvs))
@@ -459,7 +463,7 @@ theorem sendCt2Encoder_128_32_phaseCreditSpec {M : AllocCostModel} [HasFineReall
   (sendCt2Encoder_phaseCreditSpec hM 128 32).mono (by omega) (by omega) (by omega) (by omega)
 
 /-- Binary-order allocator trace envelope for `<Authenticator>::update`. -/
-def AuthUpdateEnv (rootKeyLen kLen : Nat) : List AllocEvent → Prop :=
+@[expose] def AuthUpdateEnv (rootKeyLen kLen : Nat) : List AllocEvent → Prop :=
   SeqEnv (· = sliceConcat2Events (rootKeyLen + kLen))
     (SeqEnv (· = sliceConcat2Events (Authenticator.updateLabel.length + 8))
       (SeqEnv (· = rustAllocEvents 64 1)
@@ -488,7 +492,7 @@ theorem authUpdate_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
     (by omega) (by omega) (by omega) (by omega)
 
 /-- Value-parameterized allocator trace envelope for `<Ct1SentEkReceived>::send_ct2`. -/
-def UnchunkedSendCt2BySizesEnv (es : Bytes) (ct1Len : Nat) : List AllocEvent → Prop :=
+@[expose] def UnchunkedSendCt2BySizesEnv (es : Bytes) (ct1Len : Nat) : List AllocEvent → Prop :=
   ConcatEnv
     (ConcatEnv
       (ConcatEnv (· = sendCt2Seg23Events es) (SendCt2Reserve128Env ct1Len))
@@ -580,7 +584,7 @@ theorem recvHdrChunkTail_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCre
         (by omega) (by omega) (by omega) (by omega)
 
 /-- Value-parameterized allocator trace envelope for `<NoHeaderReceived>::recv_hdr_chunk`. -/
-def NoHeaderReceivedRecvHdrChunkBodyEnv {F : ShaCompress}
+@[expose] def NoHeaderReceivedRecvHdrChunkBodyEnv {F : ShaCompress}
     (s : NoHeaderReceived spqrPolyApi (spqrAuthApi F)) (epoch : Epoch) (chunk : Chunk)
     (evs : List AllocEvent) : Prop :=
   if epoch != s.uc.epoch then
@@ -636,26 +640,14 @@ theorem noHeaderReceivedRecvHdrChunkBody_phaseCreditSpec {F : ShaCompress}
       (threePhase_peak_le hraw hdec0 (by decide) (by decide) (by decide) (by decide))
       (by omega)
 
-theorem noHeaderReceivedRecvHdrChunk_phaseCreditSpec {F : ShaCompress}
-    {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M)
-    (x : NoHeaderReceivedRecvHdrChunkGhost F)
-    (hpts : x.self.receiving_hdr.ptsNeeded ≤ 48) :
-    let rawDec := rawPolyDec (protoPolyDecoderToPb x.self.receiving_hdr.intoPb)
-    PhaseCreditSpec M (NoHeaderReceivedRecvHdrChunkEnv x)
-      (436 * rawDec + 1476445)
-      (374 * rawDec + 1262312)
-      (374 * rawDec + 1262312)
-      (max 256 (2 * rawDec + 16)) :=
-  noHeaderReceivedRecvHdrChunkBody_phaseCreditSpec hM x.self x.epoch x.chunk hpts
-
 /-- Slice allocations splitting `ct2Full` into `mac` and `ct2` (`128` bytes) in `<EkSentCt1Received>::recv_ct2_chunk`.
 -/
-def recvCt2AllocMacCt2Events (ct2FullLen : Nat) : List AllocEvent :=
+@[expose] def recvCt2AllocMacCt2Events (ct2FullLen : Nat) : List AllocEvent :=
   (if ct2FullLen = 128 then [] else rustAllocEvents (ct2FullLen - 128) 1) ++
     rustAllocEvents 128 1
 
 /-- Post-`decoded_message` allocator trace envelope for `<EkSentCt1Received>::recv_ct2_chunk`. -/
-def RecvCt2ChunkTailEnv (rootKeyLen ct1Len : Nat) : Option Bytes → List AllocEvent → Prop
+@[expose] def RecvCt2ChunkTailEnv (rootKeyLen ct1Len : Nat) : Option Bytes → List AllocEvent → Prop
   | none, evs => FreeOnlyEvs evs
   | some ct2Full, evs =>
     if ct2Full.length < 128 then
@@ -671,7 +663,7 @@ def RecvCt2ChunkTailEnv (rootKeyLen ct1Len : Nat) : Option Bytes → List AllocE
         evs
 
 /-- Pre-state-pinned allocator trace envelope for `<EkSentCt1Received>::recv_ct2_chunk`. -/
-def EkSentCt1ReceivedRecvCt2ChunkEnv {F : ShaCompress}
+@[expose] def EkSentCt1ReceivedRecvCt2ChunkEnv {F : ShaCompress}
     (s : EkSentCt1Received spqrPolyApi (spqrAuthApi F)) (epoch : Epoch) (chunk : Chunk)
     (evs : List AllocEvent) : Prop :=
   if epoch != s.uc.epoch then
@@ -759,7 +751,7 @@ theorem recvCt2ChunkTail_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCre
 
 /-- Post-`decoded_message` tail envelope for `<Ct1Sampled>::recv_ek_chunk` and `<Ct1Acknowledged>::recv_ek_chunk`.
 -/
-def RecvEkChunkSendCt2TailEnv (sendCt2OnDone : Bool) (es : Bytes) (ct1Len : Nat) :
+@[expose] def RecvEkChunkSendCt2TailEnv (sendCt2OnDone : Bool) (es : Bytes) (ct1Len : Nat) :
     Option Bytes → List AllocEvent → Prop
   | none, evs => FreeOnlyEvs evs
   | some ekBytes, evs =>
@@ -799,7 +791,7 @@ theorem recvEkChunkSendCt2Tail_phaseCreditSpec {M : AllocCostModel} [HasFineReal
       exact (PhaseCreditSpec.freeOnly_of_hyps hM).mono (by omega) (by omega) (by omega) (by omega)
 
 /-- Whether `msg.payload` triggers `<EkReceivedCt1Sampled>::send_ct2` in `<States>::recv`. -/
-def isEkReceivedCt1AckMsg (msg : Message spqrPolyApi) : Bool :=
+@[expose] def isEkReceivedCt1AckMsg (msg : Message spqrPolyApi) : Bool :=
   match msg.payload with
   | .ct1Ack true => true
   | .ekCt1Ack _ => true
@@ -807,7 +799,7 @@ def isEkReceivedCt1AckMsg (msg : Message spqrPolyApi) : Bool :=
 
 /-- Pre-state-pinned allocator trace envelope for `<spqr::v1::chunked::states::States>::recv` across all 12 dispatch arms.
 -/
-def StatesRecvEnv {F : ShaCompress}
+@[expose] def StatesRecvEnv {F : ShaCompress}
     (st : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
     List AllocEvent → Prop :=
   match st with
@@ -898,24 +890,24 @@ def StatesRecvEnv {F : ShaCompress}
       FreeOnlyEvs
   | .ct2Sampled _ => FreeOnlyEvs
 
-def statesRecvDeltaCum {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
+@[expose] def statesRecvDeltaCum {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
   436 * rawV1State st.into_pb + 12000000
 
-def statesRecvDeltaLive {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
+@[expose] def statesRecvDeltaLive {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
   374 * rawV1State st.into_pb + 10200000
 
-def statesRecvDeltaPeak {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
+@[expose] def statesRecvDeltaPeak {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
   374 * rawV1State st.into_pb + 10200000
 
 /-- Tightened `Δlive` bound when `8195 ≤ smallMaxReq M` (keeping Lagrange interpolation temporaries in small classes).
 -/
-def statesRecvSmall8kDeltaLive {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
+@[expose] def statesRecvSmall8kDeltaLive {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
   374 * rawV1State st.into_pb + 280000
 
-def statesRecvSmall8kDeltaPeak {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
+@[expose] def statesRecvSmall8kDeltaPeak {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
   374 * rawV1State st.into_pb + 280000
 
-def statesRecvMaxReq {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
+@[expose] def statesRecvMaxReq {F : ShaCompress} (st : States spqrPolyApi (spqrAuthApi F)) : Nat :=
   2 * rawV1State st.into_pb + 2080
 
 theorem statesRecvEnv_nonempty {F : ShaCompress}
@@ -1528,32 +1520,6 @@ theorem statesRecv_small8k_phaseCreditSpec {F : ShaCompress}
     · exact hFree
   | ct2Sampled _ => exact hFree
 
-/-- `States.from_pb` corollary of `statesRecv_phaseCreditSpec`. -/
-theorem statesRecv_of_from_pb_phaseCreditSpec {F : ShaCompress}
-    {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M)
-    {pb : V1State} {st : States spqrPolyApi (spqrAuthApi F)}
-    (hfrom : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st)
-    (msg : Message spqrPolyApi) :
-    PhaseCreditSpec M (StatesRecvEnv st msg)
-      (statesRecvDeltaCum st)
-      (statesRecvDeltaLive st)
-      (statesRecvDeltaPeak st)
-      (statesRecvMaxReq st) :=
-  statesRecv_phaseCreditSpec hM st msg (StatesDecPtsNeededBound.of_from_pb hfrom)
-
-theorem statesRecv_small8k_of_from_pb_phaseCreditSpec {F : ShaCompress}
-    {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M)
-    (hsmall8k : 8195 ≤ HasFineReallocCredit.smallMaxReq M)
-    {pb : V1State} {st : States spqrPolyApi (spqrAuthApi F)}
-    (hfrom : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st)
-    (msg : Message spqrPolyApi) :
-    PhaseCreditSpec M (StatesRecvEnv st msg)
-      (statesRecvDeltaCum st)
-      (statesRecvSmall8kDeltaLive st)
-      (statesRecvSmall8kDeltaPeak st)
-      (statesRecvMaxReq st) :=
-  statesRecv_small8k_phaseCreditSpec hM hsmall8k st msg (StatesDecPtsNeededBound.of_from_pb hfrom)
-
 /-! ## Concrete `fineCostModel` Instantiation and `FitsEnv` Bounds -/
 
 theorem statesRecv_fineCostModel_phaseCreditSpec {F : ShaCompress}
@@ -1729,7 +1695,7 @@ theorem decoderFromPbStateDecode_pts_length_16 {pb? : Option PolynomialDecoder} 
 
 /-- Protocol field-size invariant (`dec.pts.length = 16`, `ek.length = 1152`, `ct1.length = 960`) established by `States.from_pb`.
 -/
-def StatesProtocolSizes {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
+@[expose] def StatesProtocolSizes {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
   | .keysUnsampled _ => True
   | .keysSampled s => s.uc.ek.length = 1152
   | .headerSent s => s.receiving_ct1.pts.length = 16
@@ -1988,34 +1954,31 @@ theorem StatesProtocolSizes.of_from_pb {F : ShaCompress}
       trivial
 
 /-- Tight `Δcum` bound (`1,647,247` bytes) for `<States>::recv` on `fineCostModel`. -/
-def statesRecvTightDeltaCum : Nat := 1647247
+@[expose] def statesRecvTightDeltaCum : Nat := 1647247
 
 /-- Conservative `Δcum` bound (`5,335,951` bytes) without assuming `ptsNeeded ≥ 32`. -/
 def statesRecvTightAnyKDeltaCum : Nat := 5335951
 
 /-- Exact sub-phase sum (`1,435,018` bytes) under the 576-point per-slot cap. -/
-def statesRecvTightExactDeltaCum : Nat := 1435018
+@[expose] def statesRecvTightExactDeltaCum : Nat := 1435018
 
-def statesRecvTightDeltaLive : Nat := 0
+@[expose] def statesRecvTightDeltaLive : Nat := 0
 
-def statesRecvTightDeltaPeak : Nat := 0
+@[expose] def statesRecvTightDeltaPeak : Nat := 0
 
 def statesRecvTightMaxReq : Nat := 4608
 
-def statesRecvTightRawMaxReq : Nat := 93776
+@[expose] def statesRecvTightRawMaxReq : Nat := 93776
 
 /-- `FineScale`-scaled slot-group bound (`3 * FineScale * 1244`, `3,732` groups) for `<States>::recv`.
 -/
-def statesRecvTightGroupS : Nat := 3 * FineScale * 1244
+@[expose] def statesRecvTightGroupS : Nat := 3 * FineScale * 1244
 
 theorem statesRecvTightExactDeltaCum_eq :
     statesRecvTightExactDeltaCum = 206800 + 1022346 + 205872 := rfl
 
 theorem statesRecvTightExactDeltaCum_le :
     statesRecvTightExactDeltaCum ≤ statesRecvTightDeltaCum := by decide
-
-theorem statesRecvTightDeltaCum_le_anyK :
-    statesRecvTightDeltaCum ≤ statesRecvTightAnyKDeltaCum := by decide
 
 /-- Per-slot point-count cap (`s.vec.length ≤ cap`) and 32-byte `rootKey` bound on active `PolyDecoder` states.
 -/
@@ -2523,19 +2486,6 @@ theorem statesRecv_tight_phaseCreditSpec {F : ShaCompress}
   (statesRecv_tight_exact_phaseCreditSpec st msg hbound hproto hslot).mono
     statesRecvTightExactDeltaCum_le (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 4608)
 
-theorem statesRecv_tight_anyK_phaseCreditSpec {F : ShaCompress}
-    (st : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
-    (hbound : StatesPtsBoundedAt 640 st ∧ StatesDecPtsNeededBound st)
-    (hproto : StatesProtocolSizes st)
-    (hslot : StatesDecSlotCap 576 st) :
-    PhaseCreditSpec fineCostModel (StatesRecvEnv st msg)
-      statesRecvTightAnyKDeltaCum
-      statesRecvTightDeltaLive
-      statesRecvTightDeltaPeak
-      statesRecvTightMaxReq :=
-  (statesRecv_tight_phaseCreditSpec st msg hbound hproto hslot).mono
-    statesRecvTightDeltaCum_le_anyK (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 4608)
-
 private theorem raw46880_dec_cum_le {ptsSum rawDec : Nat}
     (hraw : rawDec = 4 * ptsSum + 22 * 16)
     (hle : rawDec ≤ 46880) :
@@ -2806,22 +2756,6 @@ theorem statesRecv_tight_of_protocolSizes_46880_phaseCreditSpec {F : ShaCompress
         exact (h1.seq (h2.seq h3)).mono (by decide) (by decide) (by decide) (by decide)
     · exact hFree
   | ct2Sampled _ => exact hFree
-
-/-- `States.from_pb` corollary of `statesRecv_tight_of_protocolSizes_46880_phaseCreditSpec`. -/
-theorem statesRecv_tight_of_from_pb_46880_phaseCreditSpec {F : ShaCompress}
-    {pb : V1State} {st : States spqrPolyApi (spqrAuthApi F)}
-    (hfrom : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st)
-    (hraw46 : rawV1State st.into_pb ≤ 46880)
-    (msg : Message spqrPolyApi) :
-    PhaseCreditSpec fineCostModel (StatesRecvEnv st msg)
-      statesRecvTightDeltaCum
-      statesRecvTightDeltaLive
-      statesRecvTightDeltaPeak
-      statesRecvTightRawMaxReq :=
-  statesRecv_tight_of_protocolSizes_46880_phaseCreditSpec st msg
-    (StatesProtocolSizes.of_from_pb hfrom)
-    (StatesDecPtsNeededBound.of_from_pb hfrom)
-    hraw46
 
 /-! ### `NonFreeBound` and `PhaseGroupSpec` for `StatesRecvEnv` -/
 
@@ -3098,19 +3032,10 @@ theorem statesRecv_tight_phaseGroupSpec {F : ShaCompress}
     PhaseGroupSpec fineCostModel (StatesRecvEnv st msg) statesRecvTightGroupS :=
   PhaseGroupSpec.of_nonFreeBound fineCostModel (statesRecv_tight_nonFreeBound st msg hproto hpts)
 
-theorem statesRecv_tight_of_from_pb_phaseGroupSpec {F : ShaCompress}
-    {pb : V1State} {st : States spqrPolyApi (spqrAuthApi F)}
-    (hfrom : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st)
-    (msg : Message spqrPolyApi) :
-    PhaseGroupSpec fineCostModel (StatesRecvEnv st msg) statesRecvTightGroupS :=
-  statesRecv_tight_phaseGroupSpec st msg
-    (StatesProtocolSizes.of_from_pb hfrom)
-    (StatesDecPtsNeededBound.of_from_pb hfrom)
-
 /-! ### Protocol-Guarded Envelope Bridges (`StatesRecvProtoEnv`) -/
 
 /-- Decidable `Bool` mirror of `StatesProtocolSizes`. -/
-def isStatesProtoSized {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Bool
+@[expose] def isStatesProtoSized {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Bool
   | .keysUnsampled _ => true
   | .keysSampled s => s.uc.ek.length == 1152
   | .headerSent s => s.receiving_ct1.pts.length == 16
@@ -3134,7 +3059,7 @@ theorem isStatesProtoSized_eq_true_iff {F : ShaCompress}
 
 /-- Protocol-sized wrapper around `StatesRecvEnv` (coinciding with `StatesRecvEnv` on every `States.from_pb` output).
 -/
-def StatesRecvProtoEnv {F : ShaCompress}
+@[expose] def StatesRecvProtoEnv {F : ShaCompress}
     (st : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
     List AllocEvent → Prop :=
   if isStatesProtoSized st then StatesRecvEnv st msg else FreeOnlyEvs
@@ -3200,7 +3125,7 @@ theorem statesRecvProtoEnv_tight_groupSpec {F : ShaCompress}
 
 /-- `250 MiB` (`262,144,000` bytes) physical RAM limit paired with `nonVacLimits` static image allowances.
 -/
-def nonVacLimits250MiB : BudgetLimits :=
+@[expose] def nonVacLimits250MiB : BudgetLimits :=
   { nonVacLimits with physCap := 250 * 1024 * 1024 }
 
 /-- `FitsEnv fineCostModel` bound for `StatesRecvEnv` under `nonVacLimits250MiB` and `StatesDecSlotCap 576`.
@@ -3211,29 +3136,6 @@ theorem statesRecv_tight_fitsEnv_groups_250mb {F : ShaCompress}
     (hproto : StatesProtocolSizes st)
     (hslot : StatesDecSlotCap 576 st) :
     FitsEnv fineCostModel nonVacLimits250MiB fineCostModel.init (StatesRecvEnv st msg) :=
-  fitsEnv_fineCostModel_of_phaseCredit_groups (grpB := 3732)
-    (statesRecv_tight_phaseCreditSpec st msg hbound hproto hslot)
-    (statesRecv_tight_phaseGroupSpec st msg hproto hbound.2)
-    (Nat.le_refl 0) (by decide +kernel) rfl (by decide +kernel) (by decide +kernel)
-
-/-- Slot-cap-free `States.from_pb` `FitsEnv fineCostModel` bound under `nonVacLimits250MiB`. -/
-theorem statesRecv_tight_from_pb_46880_fitsEnv_groups_250mb {F : ShaCompress}
-    {pb : V1State} {st : States spqrPolyApi (spqrAuthApi F)}
-    (hfrom : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st)
-    (hraw46 : rawV1State st.into_pb ≤ 46880)
-    (msg : Message spqrPolyApi) :
-    FitsEnv fineCostModel nonVacLimits250MiB fineCostModel.init (StatesRecvEnv st msg) :=
-  fitsEnv_fineCostModel_of_phaseCredit_groups (grpB := 3732)
-    (statesRecv_tight_of_from_pb_46880_phaseCreditSpec hfrom hraw46 msg)
-    (statesRecv_tight_of_from_pb_phaseGroupSpec hfrom msg)
-    (Nat.le_refl 0) (by decide +kernel) rfl (by decide +kernel) (by decide +kernel)
-
-theorem statesRecv_tight_fitsEnv_groups {F : ShaCompress}
-    (st : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi)
-    (hbound : StatesPtsBoundedAt 640 st ∧ StatesDecPtsNeededBound st)
-    (hproto : StatesProtocolSizes st)
-    (hslot : StatesDecSlotCap 576 st) :
-    FitsEnv fineCostModel nonVacLimits fineCostModel.init (StatesRecvEnv st msg) :=
   fitsEnv_fineCostModel_of_phaseCredit_groups (grpB := 3732)
     (statesRecv_tight_phaseCreditSpec st msg hbound hproto hslot)
     (statesRecv_tight_phaseGroupSpec st msg hproto hbound.2)

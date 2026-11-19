@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfGenFin
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfGenFin -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.NewFromSliceInvariants
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixed
 import LibsignalBinary.Specifications.LibsignalE2E.State -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Multi-Block `finalize_fixed` (Block `123`)
@@ -24,7 +25,7 @@ Proves the multi-block `compress256Hook` step `s2_compress256_multi_step_placed`
 (`blocks.length % 64 = 0`, `blocks.length ≤ 192`, `rem.length < 56`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

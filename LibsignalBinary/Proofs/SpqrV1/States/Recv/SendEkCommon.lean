@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledDefs
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledDefs
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendChunk1
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -23,7 +23,7 @@ Word-grid split/merge lemmas, stack-frame layouts (`4,240`-byte frame), `Relocat
 and shared `Ok(V1Recv)` writeback epilogue (`0x59e88..0x59ff0`, `+18996 -> +19356`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Recv
 
@@ -53,7 +53,7 @@ theorem bv_add_lit_add_lit_recv (x : BitVec 64) (a b : Nat) :
     x + BitVec.ofNat 64 a + BitVec.ofNat 64 b = x + BitVec.ofNat 64 (a + b) := by
   rw [BitVec.add_assoc, BitVec.ofNat_add_ofNat]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit bv_sub_sub_recv BitVec.sub_add_cancel BitVec.toNat_zero
   Leaves.extractLsb'_0_64_append Leaves.extractLsb'_64_64_append
 
@@ -102,13 +102,13 @@ structure Words10 where
   w8 : BitVec 64
   w9 : BitVec 64
 
-def words10List (b : Words10) : List (BitVec 64) :=
+@[expose] def words10List (b : Words10) : List (BitVec 64) :=
   [b.w0, b.w1, b.w2, b.w3, b.w4, b.w5, b.w6, b.w7, b.w8, b.w9]
 
 @[simp]
 theorem length_words10List (b : Words10) : (words10List b).length = 10 := rfl
 
-def words10At (a : BitVec 64) (b : Words10) : SepProp :=
+@[expose] def words10At (a : BitVec 64) (b : Words10) : SepProp :=
   (a ↦₆₄ b.w0) ∗ ((a + 8#64) ↦₆₄ b.w1) ∗ ((a + 16#64) ↦₆₄ b.w2) ∗ ((a + 24#64) ↦₆₄ b.w3) ∗
   ((a + 32#64) ↦₆₄ b.w4) ∗ ((a + 40#64) ↦₆₄ b.w5) ∗ ((a + 48#64) ↦₆₄ b.w6) ∗ ((a + 56#64) ↦₆₄ b.w7) ∗
   ((a + 64#64) ↦₆₄ b.w8) ∗ ((a + 72#64) ↦₆₄ b.w9)
@@ -143,7 +143,7 @@ structure Words5x10 where
   b3 : Words10
   b4 : Words10
 
-def words5x10List (p : Words5x10) : List (BitVec 64) :=
+@[expose] def words5x10List (p : Words5x10) : List (BitVec 64) :=
   words10List p.b0 ++ words10List p.b1 ++ words10List p.b2 ++ words10List p.b3 ++ words10List p.b4
 
 @[simp]
@@ -220,7 +220,7 @@ structure Words63 where
   q60 : BitVec 128
   w62 : BitVec 64
 
-def words63List (w : Words63) : List (BitVec 64) :=
+@[expose] def words63List (w : Words63) : List (BitVec 64) :=
   words10List w.b0 ++ words10List w.b1 ++ words10List w.b2 ++
   words10List w.b3 ++ words10List w.b4 ++ words10List w.b5 ++
   [w.q60.extractLsb' 0 64, w.q60.extractLsb' 64 64, w.w62]
@@ -228,7 +228,7 @@ def words63List (w : Words63) : List (BitVec 64) :=
 @[simp]
 theorem length_words63List (w : Words63) : (words63List w).length = 63 := rfl
 
-def words63At (a : BitVec 64) (w : Words63) : SepProp :=
+@[expose] def words63At (a : BitVec 64) (w : Words63) : SepProp :=
   words10At a w.b0 ∗
   words10At (a + 80#64) w.b1 ∗
   words10At (a + 160#64) w.b2 ∗
@@ -380,7 +380,7 @@ theorem chunkedCt1ReceivedAt_extract63 (A : RustAlloc) {F : ShaCompress} (a : Bi
   rw [words63At_eq_wordsAt, ← words63List_mkWords63_50_13]
   exact wordsExtract_sepConj rfl (fun _ => rfl)
 
-def mkWords63_13_50 (g : FourVecWords) (ep : BitVec 64) (p : Words5x10) : Words63 :=
+@[expose] def mkWords63_13_50 (g : FourVecWords) (ep : BitVec 64) (p : Words5x10) : Words63 :=
   { b0 := ⟨g.v1.w0, g.v1.w1, g.v1.w2, g.rest.v1.w0, g.rest.v1.w1, g.rest.v1.w2,
            g.rest.auth.v1.w0, g.rest.auth.v1.w1, g.rest.auth.v1.w2, g.rest.auth.v2.w0⟩
     b1 := ⟨g.rest.auth.v2.w1, g.rest.auth.v2.w2, ep,
@@ -421,7 +421,7 @@ theorem chunkedEkSentCt1ReceivedAt_extract63 (A : RustAlloc) {F : ShaCompress} (
   rw [words63At_eq_wordsAt, ← words63List_mkWords63_13_50]
   exact wordsExtract_sepConj rfl (fun _ => rfl)
 
-def mkWords63_50_10_3 (p : Words5x10) (g : ThreeVecWords) (ep : BitVec 64) (v : VecWords) : Words63 :=
+@[expose] def mkWords63_50_10_3 (p : Words5x10) (g : ThreeVecWords) (ep : BitVec 64) (v : VecWords) : Words63 :=
   { b0 := p.b0
     b1 := p.b1
     b2 := p.b2
@@ -540,7 +540,7 @@ structure SendEkSpills where
   w230 : BitVec 64
   q3c0 : BitVec 128
 
-def sendEkSpillsAt (fsp : BitVec 64) (sp : SendEkSpills) : SepProp :=
+@[expose] def sendEkSpillsAt (fsp : BitVec 64) (sp : SendEkSpills) : SepProp :=
   words10At (fsp + 8#64) sp.b0 ∗
   words10At (fsp + 88#64) sp.b1 ∗
   words10At (fsp + 168#64) sp.b2 ∗
@@ -556,7 +556,7 @@ def sendEkSpillsAt (fsp : BitVec 64) (sp : SendEkSpills) : SepProp :=
   ((fsp + 560#64) ↦₆₄ sp.w230) ∗
   ((fsp + 960#64) ↦₁₂₈ sp.q3c0)
 
-def sendEkUnusedAt (fsp : BitVec 64) : SepProp :=
+@[expose] def sendEkUnusedAt (fsp : BitVec 64) : SepProp :=
   memRegion fsp 8 ∗
   memRegion (fsp + 568#64) 8 ∗
   memRegion (fsp + 952#64) 8 ∗
@@ -786,40 +786,6 @@ attribute [local arm64_norm, local wp_norm]
 @[local arm64_norm, local wp_norm] theorem sp_sub_16_add_8_recv (sp : BitVec 64) : (sp - 16#64) + 8#64 = sp - 8#64 := by bv_omega
 @[local arm64_norm, local wp_norm] theorem sp_sub_96_add_96_recv (sp : BitVec 64) : (sp - 96#64) + 96#64 = sp := by bv_omega
 
-/-- Shared epilogue `0x59fd0..0x59ff0` (`+19324 -> +19356`):
-    restores `sp`, `x19..x30`, and returns to `s0.readReg64 .x30`. -/
-theorem states_recv_epilogue_59fd0 {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s : State) (P_rest : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 19324#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 4240#64)
-    (hsp_align : s0.spAligned = true)
-    (htr : TraceCalleeSaved s s0) :
-    SepWP (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) s
-      (P_rest ∗
-        stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
-        memRegion (s0.sp - 4240#64) 4144 ∗
-        statesRecvSavedCells s0)
-      (fun sf Pf =>
-        (Pf ⊢ P_rest ∗ stackAt s0.sp statesRecvStackX) ∧
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf ∧
-        sf.trace = s0.trace) := by
-  states_recv_fetches_range b (Rust.withPanics ext) 19324 36
-  dsimp only [tripleRatchetProgAtExt, statesRecvName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
-  wp_conv_pre => dsimp only [statesRecvSavedCells]
-  have hsp_align' : (s0.sp &&& 15#64 == 0#64) = true := hsp_align
-  generalize hsp0 : s0.sp = sp0 at hsp hsp_align' ⊢
-  wp_steps
-  subst hsp0
-  refine SepWP.fold (F := P_rest) (stack_restore_statesRecv s0) ?_ ?_
-  · unfold statesRecvSavedCells
-    ac_rfl
-  · wp_done
-
 /-- Framed `memcpy` call rule that relocates any `Relocatable n F` predicate from `src` to `dst`,
     leaving `memRegion src n` at `src`, and forwards `CalleeSavedPreserved s sf`. -/
 theorem call_memcpy_relocate_cs {prog : Program} {entry ret_pc target_pc : BitVec 64}
@@ -868,7 +834,7 @@ theorem call_memcpy_relocate_cs {prog : Program} {entry ret_pc target_pc : BitVe
 /-- The 63 words (`504` bytes) written to `words63At (outA + 8#64)` by the shared
     `Ok(V1Recv)` writeback block `0x59e88..0x59fa0` from register state `s` and
     stack spills `sp : SendEkSpills`. -/
-def writebackWords63 (s : State) (sp : SendEkSpills) : Words63 :=
+@[expose] def writebackWords63 (s : State) (sp : SendEkSpills) : Words63 :=
   { b0 := ⟨s.readReg64 .x1, s.readReg64 .x8, sp.w61, sp.b5.w6, sp.b4.w6,
            sp.b4.w5, sp.w62, sp.b3.w5, sp.b5.w3, sp.b5.w0⟩
     b1 := ⟨sp.b4.w3, sp.b4.w7, sp.b4.w1, sp.b3.w6, sp.b5.w2,
@@ -982,126 +948,5 @@ theorem memRegion_960_entails_writebackOut (outA : BitVec 64) :
     (Entails.sepExists_right q888 (Entails.sepExists_right q904
       (Entails.sepExists_right w920 (Entails.sepExists_right w928
         (Entails.sepExists_right w936 (Entails.sepExists_right q944 (Entails.refl _))))))))
-
-set_option maxHeartbeats 1200000 in
-/-- Shared `Ok(V1Recv)` writeback + epilogue `0x59e88..0x59ff0` (`+18996 -> +19356`):
-    - Stores `sp.b2.w7` to `[outA + 0]` and `writebackWords63 s sp` (`504`B) to `[outA + 8 .. outA + 512)`.
-    - Calls `memcpy(outA + 512#64, (s0.sp - 4240#64) + 576#64, 376)` at `0x59fa4` to relocate `F_tail`.
-    - Writes `40`B at `[outA + 888 .. outA + 928)` (folded into `memRegion (outA + 888#64) 40`) and
-      `32`B at `[outA + 928 .. outA + 960)` (`sp.b2.w8`, `s.readReg64 .x20`, `sp.q200`).
-    - Folds the `4144`B stack frame and executes `0x59fd0..0x59ff0` to return to `s0.readReg64 .x30`. -/
-theorem states_recv_writeback_59e88 {b : BitVec 64} {ext : String → Option (State → State)}
-    (hmemcpy : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr memcpyName) sessionMemcpyRegionSpec)
-    {F_tail : BitVec 64 → SepProp} (hrel : Relocatable 376 F_tail)
-    (s0 s : State) (outA : BitVec 64) (sp : SendEkSpills) (P_rest : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesRecvName + 18996#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 4240#64)
-    (hsp_align : s0.spAligned = true)
-    (hx19 : s.readReg64 .x19 = outA)
-    (htr : TraceCalleeSaved s s0) :
-    SepWP (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) s
-      (P_rest ∗
-        memRegion outA v1RecvSize ∗
-        stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
-        sendEkSpillsAt (s0.sp - 4240#64) sp ∗
-        F_tail ((s0.sp - 4240#64) + 576#64) ∗
-        memRegion ((s0.sp - 4240#64) + 976#64) 880 ∗
-        memRegion ((s0.sp - 4240#64) + 1856#64) 880 ∗
-        sendEkUnusedAt (s0.sp - 4240#64) ∗
-        statesRecvSavedCells s0)
-      (fun sf Pf =>
-        (Pf ⊢
-          P_rest ∗
-          (outA ↦₆₄ sp.b2.w7) ∗
-          words63At (outA + 8#64) (writebackWords63 s sp) ∗
-          F_tail (outA + 512#64) ∗
-          memRegion (outA + 888#64) 40 ∗
-          ((outA + 928#64) ↦₆₄ sp.b2.w8) ∗
-          ((outA + 936#64) ↦₆₄ s.readReg64 .x20) ∗
-          ((outA + 944#64) ↦₁₂₈ sp.q200) ∗
-          stackAt s0.sp statesRecvStackX) ∧
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf ∧
-        sf.trace = s0.trace) := by
-  have hmemcpy_raw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesRecvName +
-        bv% (ls_rel% "<spqr::v1::chunked::states::States>::recv" "memcpy"))
-      sessionMemcpyRegionSpec := Leaves.sub_ok_of_addr_eq
-    (fnAddr_fwd_eq (d := num% (ls_rel% "<spqr::v1::chunked::states::States>::recv" "memcpy"))
-      (b := b) (X := Rust.withPanics ext)
-      statesRecv_fnOff (ls_stub% "memcpy") (by decide)).symm hmemcpy
-  have hepilogue := @states_recv_epilogue_59fd0 b ext s0
-  states_recv_fetches_range b (Rust.withPanics ext) 18996 328
-  dsimp only [tripleRatchetProgAtExt, statesRecvName, BitVec.ofNat_eq_ofNat] at hmemcpy_raw hepilogue hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::recv" = entry
-  examples_hide_fetches
-  have hsp_align' : (s0.sp &&& 15#64 == 0#64) = true := hsp_align
-  have hfsp_align : ((s0.sp - 4240#64) &&& 15#64 == 0#64) = true :=
-    spAligned_sub s0.sp 4240#64 hsp_align (by decide)
-  refine SepWP.fold (memRegion_960_entails_writebackOut outA) (by sep_focus) ?_
-  wp_pull_exists; rename_i v0 w_init q888 q904 w920 w928 w936 q944
-  generalize hsp0 : s0.sp = sp0 at hsp hsp_align' hfsp_align ⊢
-  wp_conv_pre =>
-    dsimp only [sendEkSpillsAt, words63At, words10At]
-    simp only [pointsTo128_eq_pair64_recv, BitVec.add_assoc, arm64_norm]
-  wp_steps
-  refine call_memcpy_relocate_cs (ret_pc := entry + 19284#64)
-    hmemcpy_raw hrel (outA + 512#64) (sp0 - 3664#64)
-    rfl hrun hsp hfsp_align rfl htr rfl rfl rfl (by sep_focus) ?_
-  intro sf1 hpc1 hrun1 hsp1 hcs1 htr1
-  have hx19_1 : sf1.readReg64 .x19 = outA := hcs1.1.trans hx19
-  have hx20_1 : sf1.readReg64 .x20 = s.readReg64 .x20 := hcs1.2.1
-  wp_steps
-  subst hsp0
-  refine SepWP.fold
-    (F := P_rest ∗
-      (outA ↦₆₄ sp.b2.w7) ∗
-      words63At (outA + 8#64) (writebackWords63 s sp) ∗
-      F_tail (outA + 512#64) ∗
-      ((outA + 928#64) ↦₆₄ sp.b2.w8) ∗
-      ((outA + 936#64) ↦₆₄ s.readReg64 .x20) ∗
-      ((outA + 944#64) ↦₁₂₈ sp.q200) ∗
-      stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
-      statesRecvSavedCells s0)
-    (sepConj_mono (q2_w1_entails_memRegion_40 (outA + 888#64) sp.q210 sp.q220 sp.w230)
-      (sendEkFrame_entails_memRegion_4144 (s0.sp - 4240#64) sp))
-    ?_ ?_
-  · dsimp only [words63At, writebackWords63, sendEkSpillsAt, words10At, Reg.x0, Reg.x1, Reg.x2,
-      Reg.x3, Reg.x4, Reg.x5, Reg.x6, Reg.x7, Reg.x8, Reg.x9, Reg.x10, Reg.x11, Reg.x12, Reg.x13,
-      Reg.x14, Reg.x15, Reg.x16, Reg.x17, Reg.x20, Reg.x21, Reg.x22, Reg.x23, Reg.x24, Reg.x25,
-      Reg.x26, Reg.x27, Reg.x28, Reg.x30]
-    simp only [pointsTo128_eq_pair64_recv, BitVec.add_assoc, arm64_norm]
-    ac_rfl
-  · rw [show (memRegion (outA + 888#64) 40 ∗ memRegion (s0.sp - 4240#64) 4144) ∗
-        (P_rest ∗ (outA ↦₆₄ sp.b2.w7) ∗ words63At (outA + 8#64) (writebackWords63 s sp) ∗
-          F_tail (outA + 512#64) ∗ ((outA + 928#64) ↦₆₄ sp.b2.w8) ∗
-          ((outA + 936#64) ↦₆₄ s.readReg64 .x20) ∗ ((outA + 944#64) ↦₁₂₈ sp.q200) ∗
-          stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗ statesRecvSavedCells s0) =
-        (P_rest ∗ (outA ↦₆₄ sp.b2.w7) ∗ words63At (outA + 8#64) (writebackWords63 s sp) ∗
-          F_tail (outA + 512#64) ∗ memRegion (outA + 888#64) 40 ∗
-          ((outA + 928#64) ↦₆₄ sp.b2.w8) ∗ ((outA + 936#64) ↦₆₄ s.readReg64 .x20) ∗
-          ((outA + 944#64) ↦₁₂₈ sp.q200)) ∗
-        stackAt (s0.sp - 4240#64) statesRecvCalleeStackX ∗
-        memRegion (s0.sp - 4240#64) 4144 ∗
-        statesRecvSavedCells s0 by ac_rfl]
-    refine SepWP.mono
-      (hepilogue _
-        (P_rest ∗
-          (outA ↦₆₄ sp.b2.w7) ∗
-          words63At (outA + 8#64) (writebackWords63 s sp) ∗
-          F_tail (outA + 512#64) ∗
-          memRegion (outA + 888#64) 40 ∗
-          ((outA + 928#64) ↦₆₄ sp.b2.w8) ∗
-          ((outA + 936#64) ↦₆₄ s.readReg64 .x20) ∗
-          ((outA + 944#64) ↦₁₂₈ sp.q200))
-        rfl ?_ ?_ hsp_align ?_)
-      (fun sf Pf _ _ ⟨hPf, hsp_sf, hcs_sf, htr_sf⟩ =>
-        ⟨Entails.trans hPf (Entails.of_eq (by ac_rfl)), hsp_sf, hcs_sf, htr_sf⟩)
-    · exact hrun1
-    · exact hsp1
-    · exact htr1
 
 end CryptoVerification.SpqrV1.States.Recv

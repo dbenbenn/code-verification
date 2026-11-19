@@ -13,66 +13,57 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostRep
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveGhost -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveGhostK -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveGhostReplays -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveLrTrap -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveGhostReplays
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveLrTrap
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemmoveLrTrapBase -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.MemmoveRowSpec -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.MemmoveRowSpec
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
-# Card CC-MEMMOVE (`memmove`) — `"memmove"` `CliGhostHooks.extra` Specs, `GhostRowSpecOk`, `GhostRowReplayOn`, & `GhostRowOk` (`HooksDehook.MemmoveExtraReplays`)
+# `"memmove"` `CliGhostHooks.extra` Specs, `GhostRowSpecOk`, `GhostRowReplayOn`, and `GhostRowOk` (`HooksDehook.MemmoveExtraReplays`)
 
-Cutover-2 `c`-card assembly for the `libc.a` `"memmove"` row over the `239`-word (`956` B)
-`.text.b_pre` hull `bPreHullWords` (`memcpy` at `m := resolve mpl "memcpy"`, 1-word `0#32` pad at
-`m + 396`, `memset` at `m + 400`, `memmove` at `m + 660`), leaving the GO'd
-`HooksDehook.MemmoveGhostReplays` module completely untouched:
+Assembles the `libc.a` `"memmove"` row over the `239`-word (`956` B) `.text.b_pre` hull
+`bPreHullWords` (`memcpy` at `m := resolve mpl "memcpy"`, 1-word `0#32` pad at `m + 396`,
+`memset` at `m + 400`, `memmove` at `m + 660`):
 
-1. **`.text.b_pre` Hull Carrier, `keepR_memmove`, `W`-Independent `memmoveGhost`, & `GhostRowSpecOk` (`§1`–`§2`):**
-   - Defines `memcpyEntry mpl := libsignalSessionLib.resolve mpl "memcpy"`,
-     `memmoveEntry mpl := libsignalSessionLib.resolve mpl "memmove"`,
-     `keepR_memmove mpl := keepBPreHull (memcpyEntry mpl)`,
-     `memmoveHullWords mpl := bPreHullWords (memcpyEntry mpl) (libsignalSessionLib.resolve mpl) bPrePadWord`,
-     `memmoveSubProg mpl := pureWordsProg (memcpyEntry mpl) (memmoveHullWords mpl)`, and
-     `memmoveGhost mpl _mmpl := f3EmptyMemmoveGhostHook (keepR_memmove mpl) (memmoveSubProg mpl)
-       (memcpyEntry mpl + bPreMemmoveByteOff)` (`W`-free: `P_real := emptyStdProg`,
-       `fallback := hookMemmove`, definitionally equal to `f3PureMemmoveGhostHook`).
-   - Proves **unconditional** (`0` layout or memory premises) `memmoveGhost_vmPreserved`,
-     `memmoveGhost_allocCallPreserved`, `memmoveGhost_fs`, `memmoveGhost_fsT`, all `#1348`
-     `*BoundedSpec` `HookOk` arms (`libcMemmoveBoundedSpec`, `sessionMemmoveBoundedSpec`,
-     `sessionMemmoveBoundedBudgetSpec`, `withVmPreserved`, and `withAlloc`),
-     `memmoveGhost_memmoveRowSpec`, and **`memmoveGhost_rowSpecOk`**
-     (`GhostRowSpecOk "memmove" (memmoveGhost mpl mmpl)` against the `CC-ROWSPEC` narrowed
-     `MemmoveRowSpec`).
-2. **3-Entry `.text.b_pre` Hull & Interior-`TrapHook` `GhostRowReplayOn` & `GhostRowOk` (`§3`):**
+1. `.text.b_pre` hull carrier, `keepR_memmove`, `W`-independent `memmoveGhost`, and
+   `GhostRowSpecOk` (`§1`–`§2`):
+   - Defines `memcpyEntry`, `memmoveEntry`, `keepR_memmove`, `memmoveHullWords`, `memmoveSubProg`,
+     and `memmoveGhost` (`P_real := emptyStdProg`, `fallback := hookMemmove`, definitionally equal
+     to `f3PureMemmoveGhostHook`).
+   - Proves unconditional (`0` layout or memory premises) `memmoveGhost_vmPreserved`,
+     `memmoveGhost_allocCallPreserved`, `memmoveGhost_fs`, `memmoveGhost_fsT`, bounded `HookOk`
+     arms (`libcMemmoveBoundedSpec`, `sessionMemmoveBoundedSpec`,
+     `sessionMemmoveBoundedBudgetSpec`, `withVmPreserved`, `withAlloc`),
+     `memmoveGhost_memmoveRowSpec`, and `memmoveGhost_rowSpecOk` (`GhostRowSpecOk "memmove"`
+     against `MemmoveRowSpec`).
+2. 3-entry `.text.b_pre` hull and interior-`TrapHook` `GhostRowReplayOn` / `GhostRowOk` (`§3`):
    - Proves `memmoveGhost_rowReplayOn`, `memmoveGhost_rowOk`,
      `memmoveGhost_rowReplayOn_of_interior`, and `memmoveGhost_rowOk_of_interior` over arbitrary
-     `InvS : State → Prop` using L3-d `MemmoveLrTrap`'s `hother`-free 3-entry `.text.b_pre` hull
-     (`["memmove", "memcpy", "memset"]`) `C4`+`F1`+`H1` closed-`lr` trap
-     (`bPreHull_keepLr_false_after_hook_of_codeLoaded_u` + `bPreHull_reg_ext_forall_of_entries`),
-     matching verbatim the premise shapes of `Lib2LayoutFacts.lean @ a230f2671b:392-402, :355-362`
+     `InvS : State → Prop` using `MemmoveLrTrap`'s `hother`-free 3-entry (`["memmove", "memcpy",
+     "memset"]`) closed-`lr` trap corollaries matching the `Lib2LayoutFacts` premise shapes
      (`f3RowSyms_ghostProg617_externAt_none_of_ne_entries` and `f3RxSeg_ghostProg617_externAt_entry`),
      plus the `K`-narrowed spare `memmoveGhostK_rowReplayOn`.
 
-## Scope Disclosures (`REV-PILOT` N1–N3 + `L3-d`)
-- **N1 (post-Cutover-2 only):** `hRealHullNoExt` (and `hRealRxNoExt` in `ElfMemmoveEntryGuard`)
-  requires `"memmove"` (alongside Stage A `"memcpy"` / `"memset"`) to be removed from
-  `cliHookTablePlaced` (`C2ExternTableFacts.realRxNoExtern`, `Lib2LayoutFacts.lean @ a230f2671b:317`,
-  discharged by `rfl_kernel` at C2 rebase). On pre-cutover `train`, `"memmove"` is still hooked on
-  `P_real`, so the replay arm is usable only post-Cutover-2.
-- **N2 (`K` replay has no spec partner):** `memmoveGhostK_rowReplayOn` is honest, but no
-  `GhostRowSpecOk "memmove" (memmoveGhostK …)` exists because `*BoundedSpec.pre` has no
-  `lr ∉ keepR_memmove` conjunct while `memmoveGhostK` raises `.Exception` when
-  `lr ∈ keepR_memmove`. The usable `ExtraListOk` / `GhostRowOk` route for `"memmove"` is the
-  guarded `memmoveGhost` + `memmoveEntryGuard`; `memmoveGhostK` replays are spares only.
-- **N3 (singleton helper covers 1 row):** `ElfMemmoveEntryGuard.extraEntryGuard_singleton_memmove`
-  covers `g.extra = [("memmove", memmoveGhost mpl mmpl)]` only. At Cutover 2, the multi-row
-  `g.extra` table assembles `ExtraListEntryGuard` from per-arm `extraEntryGuard_memmove_arm`
-  helpers across all active rows.
-- **L3-d (`hother`-free multi-ghost route vs. single-stub `MemmoveGhostReplays`):** The earlier
-  GO'd `MemmoveGhostReplays` single-stub packagers retain single-stub `hother`, whereas
-  `MemmoveExtraReplays` and `ElfMemmoveEntryGuard` build strictly on L3-d `MemmoveLrTrap`'s
-  `hother`-free 3-entry (`["memmove", "memcpy", "memset"]`) `C4`+`F1`+`H1` corollaries.
+## Scope Notes
+- `hRealHullNoExt` (and `hRealRxNoExt` in `ElfMemmoveEntryGuard`) requires `"memmove"`, `"memcpy"`,
+  and `"memset"` to be absent from `cliHookTablePlaced` (the unhooked stock ELF layout).
+- `memmoveGhostK_rowReplayOn` has no `GhostRowSpecOk` partner because `*BoundedSpec.pre` has no
+  `lr ∉ keepR_memmove` conjunct while `memmoveGhostK` raises `.Exception` when `lr ∈ keepR_memmove`.
+  The usable `ExtraListOk` / `GhostRowOk` route for `"memmove"` is the guarded `memmoveGhost` +
+  `memmoveEntryGuard`; `memmoveGhostK` replays are spares only.
+- `ElfMemmoveEntryGuard.extraEntryGuard_singleton_memmove` covers only the singleton table
+  `[("memmove", memmoveGhost mpl mmpl)]`; multi-row `g.extra` tables assemble `ExtraListEntryGuard`
+  from per-arm helpers (`extraEntryGuard_memmove_arm`).
+- Unlike the single-stub packagers in `MemmoveGhostReplays` (which take a single-stub `hother`
+  hypothesis), `MemmoveExtraReplays` and `ElfMemmoveEntryGuard` build on `MemmoveLrTrap`'s
+  `hother`-free 3-entry (`["memmove", "memcpy", "memset"]`) corollaries.
 -/
 
 set_option autoImplicit false
@@ -150,7 +141,7 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGe
 @[expose] def memcpyEntry (mpl : Obj.MultiPlacement) : BitVec 64 :=
   libsignalSessionLib.resolve mpl "memcpy"
 
-/-- Resolved `"memmove"` symbol address (`= memcpyEntry mpl + bPreMemmoveByteOff` on C2 `2C`). -/
+/-- Resolved `"memmove"` symbol address (`= memcpyEntry mpl + bPreMemmoveByteOff`). -/
 @[expose] def memmoveEntry (mpl : Obj.MultiPlacement) : BitVec 64 :=
   libsignalSessionLib.resolve mpl "memmove"
 
@@ -234,11 +225,6 @@ theorem memmoveSubProg_codeLoaded_of_stripExecOutside {mpl : Obj.MultiPlacement}
     (memmoveSubProg mpl).CodeLoaded m :=
   codeLoaded_of_stripExecOutside hCL
 
-theorem memmoveSubProg_codeLoaded_stripExecOutside_iff (mpl : Obj.MultiPlacement) (m : Memory) :
-    (memmoveSubProg mpl).CodeLoaded (stripExecOutside (keepR_memmove mpl) m) ↔
-      (memmoveSubProg mpl).CodeLoaded m :=
-  ⟨memmoveSubProg_codeLoaded_of_stripExecOutside, memmoveSubProg_codeLoaded_stripExecOutside⟩
-
 /-- Canonical `W`-independent ghost `"memmove"` hook for `CliGhostHooks.extra`. -/
 @[expose] noncomputable def memmoveGhost (mpl _mmpl : Obj.MultiPlacement) : State → State :=
   f3EmptyMemmoveGhostHook (keepR_memmove mpl) (memmoveSubProg mpl)
@@ -255,12 +241,6 @@ theorem memmoveGhost_eq_f3Pure (mpl mmpl : Obj.MultiPlacement) :
         (libsignalSessionLib.resolve mpl) bPrePadWord := by
   dsimp only [memmoveGhost, f3PureMemmoveGhostHook, memmoveSubProg, memmoveHullWords]
 
-theorem memmoveGhostK_eq_f3Pure (mpl mmpl : Obj.MultiPlacement) :
-    memmoveGhostK mpl mmpl =
-      f3PureMemmoveGhostHookK (keepR_memmove mpl) (memcpyEntry mpl)
-        (libsignalSessionLib.resolve mpl) bPrePadWord := by
-  dsimp only [memmoveGhostK, f3PureMemmoveGhostHookK, memmoveSubProg, memmoveHullWords]
-
 /-- Entry-state `lr` guard for `memmoveGhost` on Block `617`: `s0.lr` is outside the `956` B
     `.text.b_pre` hull and unequal to the `"memmove"` entry (`rfl`-matching
     `MemmoveLrTrapBase.MemmoveEntryGuard` and `Lib2LayoutFacts.f3BatchLEntryGuard_of_startupLr`). -/
@@ -274,21 +254,7 @@ theorem memmoveEntryGuard_iff (mpl : Obj.MultiPlacement) (s0 : State) :
         s0.readReg64 .lr ≠ libsignalSessionLib.resolve mpl "memmove") :=
   Iff.rfl
 
-theorem memmoveEntryGuard_eq_base (mpl : Obj.MultiPlacement) (s0 : State) :
-    memmoveEntryGuard mpl s0 = MemmoveEntryGuard (memcpyEntry mpl) (memmoveEntry mpl) s0 := by
-  dsimp only [memmoveEntryGuard, MemmoveEntryGuard, keepR_memmove, memmoveEntry]
-
-theorem memmoveEntryGuard_of_keepR_false {mpl : Obj.MultiPlacement} {s0 : State}
-    (hMemmoveOff : memmoveEntry mpl = memcpyEntry mpl + bPreMemmoveByteOff)
-    (h : keepR_memmove mpl (s0.readReg64 .lr) = false) :
-    memmoveEntryGuard mpl s0 := by
-  refine ⟨h, fun hEq => ?_⟩
-  have hIn : keepR_memmove mpl (s0.readReg64 .lr) = true := by
-    rw [hEq]
-    exact keepR_memmove_entry hMemmoveOff
-  cases h.symm.trans hIn
-
-/-! ## 2. Unconditional `#1348` Bounded `HookOk` Suite (`0` Layout or Memory Premises) -/
+/-! ## 2. Unconditional Bounded `HookOk` Suite (`0` Layout or Memory Premises) -/
 
 theorem memmoveGhost_fs (mpl mmpl : Obj.MultiPlacement) (s : State) :
     (memmoveGhost mpl mmpl s).fs = s.fs :=
@@ -304,11 +270,6 @@ theorem memmoveGhostK_fs (mpl mmpl : Obj.MultiPlacement) (s : State) :
     (memmoveGhostK mpl mmpl s).fs = s.fs :=
   f3EmptyMemmoveGhostHookK_fs (keepR_memmove mpl) (memmoveSubProg mpl)
     (memcpyEntry mpl + bPreMemmoveByteOff) s
-
-theorem memmoveGhostK_fsT (mpl mmpl : Obj.MultiPlacement) :
-    HookFsTraced IsFsC (memmoveGhostK mpl mmpl) :=
-  f3EmptyMemmoveGhostHookK_fsT (keepR_memmove mpl) (memmoveSubProg mpl)
-    (memcpyEntry mpl + bPreMemmoveByteOff)
 
 theorem memmoveGhost_vmPreserved (mpl mmpl : Obj.MultiPlacement) (s : State) :
     VmPreserved s (memmoveGhost mpl mmpl s) :=
@@ -328,62 +289,17 @@ theorem memmoveGhost_allocCallPreserved (mpl mmpl : Obj.MultiPlacement) (s : Sta
     (memmoveSubProg_externAt_none mpl) (memmoveSubProg_hasWords mpl)
     (resolve_memcpy_eq_memcpyEntry mpl) s
 
-theorem memmoveGhost_master_ok (mpl mmpl : Obj.MultiPlacement) :
-    HookOk (memmoveGhost mpl mmpl) masterMemmoveSpec :=
-  f3EmptyMemmoveGhostHook_master_ok (memmoveSubProg_svc mpl)
-    (memmoveSubProg_externAt_none mpl) (memmoveSubProg_hasWords mpl)
-    (resolve_memcpy_eq_memcpyEntry mpl)
-
-theorem memmoveGhostK_masterK_ok (mpl mmpl : Obj.MultiPlacement) :
-    HookOk (memmoveGhostK mpl mmpl) (memmoveSpecK (keepR_memmove mpl) masterMemmoveSpec) :=
-  f3EmptyMemmoveGhostHookK_masterK_ok (memmoveSubProg_svc mpl)
-    (memmoveSubProg_externAt_none mpl) (memmoveSubProg_hasWords mpl)
-    (resolve_memcpy_eq_memcpyEntry mpl)
-
 theorem memmoveGhost_libcBounded_ok (mpl mmpl : Obj.MultiPlacement) (stk : Nat) :
     HookOk (memmoveGhost mpl mmpl) (libcMemmoveBoundedSpec stk) :=
   f3EmptyMemmoveGhostHook_libcBounded_ok (memmoveSubProg_svc mpl)
     (memmoveSubProg_externAt_none mpl) (memmoveSubProg_hasWords mpl)
     (resolve_memcpy_eq_memcpyEntry mpl) stk
 
-theorem memmoveGhost_libcBounded_budget_ok (mpl mmpl : Obj.MultiPlacement) (stk : Nat) :
-    HookOk (memmoveGhost mpl mmpl) (withVmPreserved (libcMemmoveBoundedSpec stk)) :=
-  f3EmptyMemmoveGhostHook_libcBounded_budget_ok (memmoveSubProg_svc mpl)
-    (memmoveSubProg_externAt_none mpl) (memmoveSubProg_hasWords mpl)
-    (resolve_memcpy_eq_memcpyEntry mpl) stk
-
-theorem memmoveGhost_libcBounded_withAlloc_ok (mpl mmpl : Obj.MultiPlacement)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) :
-    HookOk (memmoveGhost mpl mmpl) (withAlloc A lim (libcMemmoveBoundedSpec stk)) :=
-  f3EmptyMemmoveGhostHook_libcBounded_withAlloc_ok (memmoveSubProg_svc mpl)
-    (memmoveSubProg_externAt_none mpl) (memmoveSubProg_hasWords mpl)
-    (resolve_memcpy_eq_memcpyEntry mpl) A lim stk
-
 theorem memmoveGhost_sessionBounded_ok (mpl mmpl : Obj.MultiPlacement) (stk : Nat) :
     HookOk (memmoveGhost mpl mmpl) (sessionMemmoveBoundedSpec stk) :=
   f3EmptyMemmoveGhostHook_sessionBounded_ok (memmoveSubProg_svc mpl)
     (memmoveSubProg_externAt_none mpl) (memmoveSubProg_hasWords mpl)
     (resolve_memcpy_eq_memcpyEntry mpl) stk
-
-theorem memmoveGhost_sessionBoundedBudget_ok (mpl mmpl : Obj.MultiPlacement) (stk : Nat) :
-    HookOk (memmoveGhost mpl mmpl) (sessionMemmoveBoundedBudgetSpec stk) :=
-  f3EmptyMemmoveGhostHook_sessionBoundedBudget_ok (memmoveSubProg_svc mpl)
-    (memmoveSubProg_externAt_none mpl) (memmoveSubProg_hasWords mpl)
-    (resolve_memcpy_eq_memcpyEntry mpl) stk
-
-theorem memmoveGhost_sessionBounded_withAlloc_ok (mpl mmpl : Obj.MultiPlacement)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) :
-    HookOk (memmoveGhost mpl mmpl) (withAlloc A lim (sessionMemmoveBoundedSpec stk)) :=
-  f3EmptyMemmoveGhostHook_sessionBounded_withAlloc_ok (memmoveSubProg_svc mpl)
-    (memmoveSubProg_externAt_none mpl) (memmoveSubProg_hasWords mpl)
-    (resolve_memcpy_eq_memcpyEntry mpl) A lim stk
-
-theorem memmoveGhost_sessionBoundedBudget_withAlloc_ok (mpl mmpl : Obj.MultiPlacement)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) :
-    HookOk (memmoveGhost mpl mmpl) (withAlloc A lim (sessionMemmoveBoundedBudgetSpec stk)) :=
-  f3EmptyMemmoveGhostHook_sessionBoundedBudget_withAlloc_ok (memmoveSubProg_svc mpl)
-    (memmoveSubProg_externAt_none mpl) (memmoveSubProg_hasWords mpl)
-    (resolve_memcpy_eq_memcpyEntry mpl) A lim stk
 
 theorem memmoveGhost_memmoveRowSpec (mpl mmpl : Obj.MultiPlacement) :
     MemmoveRowSpec (memmoveGhost mpl mmpl) :=
@@ -431,8 +347,8 @@ theorem memmoveGhostK_preserves_execFrozen (mpl mmpl : Obj.MultiPlacement)
   hfr.of_perm_eq (memmoveGhostK_vmPreserved mpl mmpl u).2.2.1
 
 /-- Generic-`InvS` `GhostRowReplayOn` for `memmoveGhost` over the 3-entry `.text.b_pre` hull
-    (`["memmove", "memcpy", "memset"]`), consuming L3-d's `hother`-free corollaries and matching
-    verbatim the 3-entry premise shapes of `Lib2LayoutFacts.lean @ a230f2671b:392-402, :355-362`:
+    (`["memmove", "memcpy", "memset"]`), using `MemmoveLrTrap`'s `hother`-free corollaries and
+    matching the `Lib2LayoutFacts` premise shapes:
     - `hGhostOffEntries`: `f3RowSyms_ghostProg617_externAt_none_of_ne_entries`
     - `hGhostEntry`: `f3RxSeg_ghostProg617_externAt_entry`
     - `hMemmoveExt`, `hMemcpyTrap`, `hMemsetTrap`: per-entry `TrapHook` dispatch on `EG W`. -/
@@ -570,129 +486,6 @@ theorem memmoveGhost_rowOk [LibsignalPlacement]
   ⟨memmoveGhost_rowSpecOk mpl mmpl,
    memmoveGhost_rowReplayOn mpl mmpl InvS EG hMemmoveOff hCL hInvKeep hRealHullNoExt
      hGhostOffEntries hGhostEntry hMemmoveExt hMemcpyTrap hMemsetTrap⟩
-
-/-- Entry-excluded interior-`TrapHook` variant of `memmoveGhost_rowReplayOn` (matching
-    `BcmpGhostReplays.bcmpGhost_rowReplayOn_of_interior` /
-    `StrlenGhostReplays.strlenGhost_rowReplayOn_of_interior`). -/
-theorem memmoveGhost_rowReplayOn_of_interior
-    (mpl mmpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hMemmoveOff : memmoveEntry mpl = memcpyEntry mpl + bPreMemmoveByteOff)
-    (hCL : ∀ u : State, InvS u → (memmoveSubProg mpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? (libsignalSessionLib.resolve mpl "memmove") =
-        some (memmoveGhost mpl mmpl))
-    (hRealHullNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_memmove mpl pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none)
-    (hInteriorGhost : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_memmove mpl pc = true →
-      pc ≠ libsignalSessionLib.resolve mpl "memmove" →
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-        ∃ g, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some g ∧
-          ∀ L : BitVec 64, keepR_memmove mpl L = true → TrapHook L g) :
-    GhostRowReplayOn mpl mmpl InvS EG "memmove" (memmoveEntryGuard mpl)
-      (memmoveGhost mpl mmpl) where
-  preserves_execFrozen := fun u _ _ hfr =>
-    ⟨memmoveGhost_preserves_execFrozen mpl mmpl hfr,
-     memmoveGhost_fs mpl mmpl u⟩
-  replay_at_stub := by
-    intro W s0 sf _ _ _ hEntry hRetPc hNoExSf hNotHaltSf
-    have hRegExt : ∀ L : BitVec 64, keepR_memmove mpl L = true →
-        ∀ pc : BitVec 64, keepR_memmove mpl pc = true →
-          (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-            ∃ g, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some g ∧ TrapHook L g := by
-      intro L hL pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl "memmove"
-      · rw [hEq]
-        exact Or.inr ⟨memmoveGhost mpl mmpl, hGhostAt W,
-          trapHook_f3EmptyMemmoveGhostHook (memmoveSubProg mpl)
-            (memcpyEntry mpl + bPreMemmoveByteOff) hL⟩
-      · rcases hInteriorGhost W hk hEq with hNone | ⟨gStub, hSome, hTrap⟩
-        · exact Or.inl hNone
-        · exact Or.inr ⟨gStub, hSome, hTrap L hL⟩
-    right
-    refine ⟨hRealHullNoExt W (keepR_memmove_entry hMemmoveOff), ?_⟩
-    intro u _ hStepsAfter hpc hrun hnoex hkf hfr hInvU
-    have hCodeU : (memmoveSubProg mpl).CodeLoaded u.mem := hCL u hInvU
-    have hLrOut : keepR_memmove mpl (u.readReg64 .lr) = false :=
-      bPreHull_keepLr_false_after_hook_of_codeLoaded_u
-        (memmoveSubProg_hasWords mpl)
-        (resolve_memcpy_eq_memcpyEntry mpl)
-        hRegExt
-        (fun _ hL => trapHook_f3EmptyMemmoveGhostHook (memmoveSubProg mpl)
-          (memcpyEntry mpl + bPreMemmoveByteOff) hL)
-        hEntry.1
-        hRetPc
-        hNoExSf
-        hNotHaltSf
-        u
-        hStepsAfter
-        hrun
-        hCodeU
-        hkf
-    have hCodeStrip :
-        (memmoveSubProg mpl).CodeLoaded (stripExecOutside (keepR_memmove mpl) u.mem) :=
-      memmoveSubProg_codeLoaded_stripExecOutside hCodeU
-    obtain ⟨_, _, hfr_fu, hfs_fu, hvis⟩ :=
-      f3EmptyMemmoveGhostHook_visitedIn
-        (keepR := keepR_memmove mpl)
-        (P_sub := memmoveSubProg mpl)
-        (m := memcpyEntry mpl)
-        (resolve := libsignalSessionLib.resolve mpl)
-        (padWord := bPrePadWord)
-        (memmoveSubProg_svc mpl)
-        (memmoveSubProg_externAt_none mpl)
-        (memmoveSubProg_hasWords mpl)
-        (resolve_memcpy_eq_memcpyEntry mpl)
-        hrun
-        hnoex
-        hfr
-        hLrOut
-        hCodeStrip
-    have hStepsSetPC :
-        Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-          (u.setPC (memcpyEntry mpl + bPreMemmoveByteOff))
-          (memmoveGhost mpl mmpl u) :=
-      h2fsgen_steps_lift_of_visitedIn_noExtern
-        (P1 := emptyStdProg)
-        (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (emptyStdProg_svc.trans (realProg617_svc mpl mmpl W).symm)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fun _ hk => hRealHullNoExt W hk)
-        hvis
-    have hpc_target : u.pc = memcpyEntry mpl + bPreMemmoveByteOff := by
-      have hpc' : u.pc = memmoveEntry mpl := hpc
-      exact hpc'.trans hMemmoveOff
-    rw [setPC_eq_self_of_pc_eq hpc_target] at hStepsSetPC
-    exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (memmoveGhost mpl mmpl u) hInvU hkf hfs_fu⟩
-
-/-- Entry-excluded interior-`TrapHook` variant of `memmoveGhost_rowOk`. -/
-theorem memmoveGhost_rowOk_of_interior [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hMemmoveOff : memmoveEntry mpl = memcpyEntry mpl + bPreMemmoveByteOff)
-    (hCL : ∀ u : State, InvS u → (memmoveSubProg mpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? (libsignalSessionLib.resolve mpl "memmove") =
-        some (memmoveGhost mpl mmpl))
-    (hRealHullNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_memmove mpl pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none)
-    (hInteriorGhost : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_memmove mpl pc = true →
-      pc ≠ libsignalSessionLib.resolve mpl "memmove" →
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-        ∃ g, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some g ∧
-          ∀ L : BitVec 64, keepR_memmove mpl L = true → TrapHook L g) :
-    GhostRowOk mpl mmpl InvS EG "memmove" (memmoveEntryGuard mpl) (memmoveGhost mpl mmpl) :=
-  ⟨memmoveGhost_rowSpecOk mpl mmpl,
-   memmoveGhost_rowReplayOn_of_interior mpl mmpl InvS EG hMemmoveOff hCL hInvKeep hGhostAt
-     hRealHullNoExt hInteriorGhost⟩
 
 /-- `K`-narrowed `memmoveGhostK` spare `GhostRowReplayOn` (`entryGuard := fun _ => True`). -/
 theorem memmoveGhostK_rowReplayOn

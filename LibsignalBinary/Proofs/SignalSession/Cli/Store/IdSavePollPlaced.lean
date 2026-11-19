@@ -9,12 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsBinary
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.SymPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEq
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.BranchesPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `<IdentityFiles as IdentityKeyStore>::save_identity::{closure#0}`
@@ -24,7 +36,7 @@ caller-polymorphic transfer and specializations discharging `IdentityKey::decode
 `PublicKey::eq`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

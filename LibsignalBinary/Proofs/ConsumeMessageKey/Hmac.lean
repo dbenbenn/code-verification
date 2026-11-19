@@ -21,18 +21,12 @@ Proves that `libsignal_protocol::crypto::hmac_sha256` (`0x20b88`, Block 73) with
 `<Hmac<Sha256> as KeyInit>::new_from_slice` (`0x2b3b0`, Block 114) satisfies `hmacSpec F`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession
 
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
-
-/-- `libsignal_protocol::crypto::hmac_sha256` satisfies `HmacOk`. -/
-theorem hmac_sha256_ok (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (alloc : String → Option (State → State)) (himg : Obj.Loads libsignalSessionImage img) :
-    HmacOk img F alloc := by
-  exact CryptoHmacSha256.hmac_sha256_ok' img F alloc himg
 
 namespace CryptoHmacSha256
 
@@ -50,7 +44,7 @@ theorem rodata_placed_sha256IV [LibsignalPlacement] {m : Memory}
   rwa [← haddr, shaStateBytes_length] at h
 
 /-- Relocatable `hmac_sha256` specification under `LibsignalRoLoaded`. -/
-def hmacPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) : Spec HmacGhost where
+@[expose] def hmacPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) : Spec HmacGhost where
   pre := fun (out, ka, key, ia, inp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = ka ∧ (s.readReg64 .x2).toNat = key.length ∧
       s.readReg64 .x3 = ia ∧ (s.readReg64 .x4).toNat = inp.length ∧ key.length = 32 ∧

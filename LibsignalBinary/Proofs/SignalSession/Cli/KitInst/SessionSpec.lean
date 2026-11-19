@@ -9,8 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionVtables
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtables -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # CLI `SessionFiles` Store Specification
@@ -20,7 +25,7 @@ Defines the pure store invariant `CliSessInv`, the separation-logic store predic
 `SessionFiles(Dir)`, together with its vtable, quietness, and invariant-preservation lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +56,7 @@ structure CliSessInv (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) �
     (d.changed.length + 1 < 2 ^ 32 ∨ addressText peer.val ∈ d.changed.map Prod.fst)
 
 /-- `SessionFiles` layout at `self`: its `Dir` at `+0x00` and `CliSessInv`. -/
-def cliSessStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliSessStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (peer : AddrGhost) (self : BitVec 64) (d : DirGhost) : SepProp :=
   ⌜CliSessInv rd F0 pathOk Scope peer d⌝ ∗ dirAt A self d
@@ -60,14 +65,14 @@ def cliSessStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
 
 /-- Trace events of a single `StoreCall`: empty for `load_session`/`store_session`, and
 `trustEvent`/`saveEvent` for identity calls. -/
-def cliSessCallEvs (ans : StoreAnswers (List (BitVec 8)) Unit) :
+@[expose] def cliSessCallEvs (ans : StoreAnswers (List (BitVec 8)) Unit) :
     StoreCall AddrVal (List (BitVec 8)) → List TraceEvent
   | .loadSession _ => []
   | .isTrustedIdentity rem k dir => [trustEvent rem k dir ans.isTrustedIdentity]
   | .saveIdentity rem k => [saveEvent rem k ans.saveIdentity]
   | .storeSession _ _ => []
 
-def cliSessTraceOf (_encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
+@[expose] def cliSessTraceOf (_encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (ans : StoreAnswers (List (BitVec 8)) Unit)
     (calls : List (StoreCall AddrVal (List (BitVec 8)))) : List TraceEvent :=
   (calls.map (cliSessCallEvs ans)).flatten
@@ -76,12 +81,12 @@ def cliSessTraceOf (_encRecord : SessionRecord (List (BitVec 8)) → List (BitVe
 
 /-- Concrete `SessionStoreSpec` for CLI `SessionFiles` at peer `peer`, scope `Scope`, and initial
 files `F0`. -/
-def cliSessionStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliSessionStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (peer : AddrGhost) (loadShimStk loadPollStk storeShimStk storePollStk : Nat) :
     SessionStoreSpec A b where
-  ss_vt := b + cliSessVtOff
-  id_vt := b + cliIdVtOff
+  ss_vt := b
+  id_vt := b
   StoreState := DirGhost
   storeAt := cliSessStoreAt A rd F0 pathOk Scope peer
   addrOk := fun rem => rem = peer.val
@@ -100,14 +105,14 @@ def cliSessionStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : Fs
   traceOf_load_trust_save := fun _ _ _ _ _ => rfl
   traceOf_all4 := fun _ _ _ _ _ _ => rfl
   traceOf_load_store := fun _ _ _ _ => rfl
-  loadShimOff := cliSessLoadShimOff
-  loadFutVtOff := cliSessLoadFutVtOff
-  loadPollOff := cliSessLoadPollOff
+  loadShimOff := 0#64
+  loadFutVtOff := 0#64
+  loadPollOff := 0#64
   loadFutDropOff := cliIdFutDropOff
   loadBoxSize := 24
-  storeShimOff := cliSessStoreShimOff
-  storeFutVtOff := cliSessStoreFutVtOff
-  storePollOff := cliSessStorePollOff
+  storeShimOff := 0#64
+  storeFutVtOff := 0#64
+  storePollOff := 0#64
   storeFutDropOff := cliIdFutDropOff
   storeBoxSize := 32
   loadShimStack := loadShimStk
@@ -128,39 +133,6 @@ def cliSessionStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : Fs
   storeFutDrop_ne_zero := fun hb h => by
     rw [show b = 0#64 - cliIdFutDropOff by rw [← h, BitVec.add_sub_cancel]] at hb
     exact absurd hb (by decide)
-
-section
-variable {A : RustAlloc} {img : Obj.Image} {rd : ReadRule} {F0 : FsFiles}
-  {pathOk : List (BitVec 8) → Prop} {Scope : SessionRecord (List (BitVec 8)) → Prop}
-  {peer : AddrGhost} {s1 s2 s3 s4 : Nat}
-
-theorem cliSessKitOffsets :
-    CliSessKitOffsets img (cliSessionStoreSpec A img.base rd F0 pathOk Scope peer s1 s2 s3 s4) where
-  ssVt := rfl
-  loadShim := rfl
-  storeShim := rfl
-  loadFutVt := rfl
-  storeFutVt := rfl
-  loadPoll := rfl
-  storePoll := rfl
-  loadFutDrop := rfl
-  storeFutDrop := rfl
-  loadBoxSize := rfl
-  storeBoxSize := rfl
-
-/-- Vtable validity (`SessionOnlyVtablesOk`) for `cliSessionStoreSpec`. -/
-theorem cliSessionStoreSpec_vtablesOk (himg : Obj.Loads libsignalSessionImage img) :
-    CryptoVerification.LibsignalPublicApi.MessageDecrypt.SessionOnlyVtablesOk img
-      (cliSessionStoreSpec A img.base rd F0 pathOk Scope peer s1 s2 s3 s4) :=
-  cliSessionOnlyVtablesOk himg cliSessKitOffsets
-
-/-- `cliSessionStoreSpec` emits no filesystem trace events (`Quiet`). -/
-theorem cliSessionStoreSpec_quiet :
-    (cliSessionStoreSpec A img.base rd F0 pathOk Scope peer s1 s2 s3 s4).Quiet :=
-  ⟨fun _ _ _ => by simp [cliSessionStoreSpec, NoFsEv],
-    fun _ _ _ _ => by simp [cliSessionStoreSpec, NoFsEv]⟩
-
-end
 
 /-! ## Invariant preservation -/
 
@@ -228,37 +200,6 @@ theorem cliSessionStoreSpec_storeUpdate_inv {A : RustAlloc} {b : BitVec 64} {rd 
 
 section
 variable {b : BitVec 64} {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-
-theorem cliKitProg_eq :
-    tripleRatchetProgAtExt b (tripleRatchetExterns C ctl abs) = tripleRatchetProgAt b C ctl abs :=
-  rfl
-
-theorem cliSessLoadShim_fnAddr {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).fnAddr sessLoadShimName = b + cliSessLoadShimOff := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, sessLoadShim_fnOff, cliSessLoadShimOff]
-
-theorem cliSessStoreShim_fnAddr {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).fnAddr sessStoreShimName = b + cliSessStoreShimOff := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, sessStoreShim_fnOff,
-    cliSessStoreShimOff]
-
-theorem cliSessLoadPoll_fnAddr {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).fnAddr sessLoadPollName = b + cliSessLoadPollOff := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, sessLoadPoll_fnOff, cliSessLoadPollOff]
-
-theorem cliSessStorePoll_fnAddr {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).fnAddr sessStorePollName = b + cliSessStorePollOff := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, sessStorePoll_fnOff,
-    cliSessStorePollOff]
-
-theorem cliSess_kitProg {α : Type} {spec : Spec α} {name : String} {off : BitVec 64}
-    (haddr : ∀ ext : String → Option (State → State),
-      (tripleRatchetProgAtExt b ext).fnAddr name = b + off)
-    (h : subroutine_ok (tripleRatchetProgAtExt b (tripleRatchetExterns C ctl abs))
-      ((tripleRatchetProgAtExt b (tripleRatchetExterns C ctl abs)).fnAddr name) spec) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) (b + off) spec := by
-  rw [haddr] at h
-  exact h
 
 end
 

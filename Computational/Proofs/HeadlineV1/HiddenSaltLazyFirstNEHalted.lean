@@ -9,26 +9,37 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltV1
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNESplit
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNESkeleton
+public import Computational.Proofs.HeadlineV1.HiddenSaltV1Defs -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNESplit -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNESkeleton
 import ProofLib.SepLogic.WP.StateNorm
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Online-Halted Hidden-Salt Game Split
 
 Reassociates `hiddenSaltGameTrackHalted` with `kemFailSimImplHalted` and splits its bad-event
-probability into the sticky-dead-ghost simulations `firstNEHalted'` and `evictOnlyHalted'`.
--/
+probability into the sticky-dead-ghost simulations `firstNEHalted'` and `evictOnlyHalted'`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHalted
 
-noncomputable section
+section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
@@ -36,13 +47,13 @@ open OracleComp OracleSpec ENNReal MeasureTheory
 open CryptoVerification.LibsignalSpqrV1 (MlKem coinBytes spqrV1SessionUniformCoins)
 open CryptoVerification.SpqrV1Sync.SendTotal (Encaps1Total TopState)
 open CryptoVerification.LibsignalProtoCodec
-open CryptoGames CryptoGames.LibsignalSM CryptoGames.LibsignalSM.Inst
-open CryptoGames.Ratchet CryptoGames.CKA CryptoGames.SM CryptoGames.SM.Construction
-open CryptoGames.SM.Engine CryptoGames.SM.Thm1 CryptoGames.SM.Thm1L17
-open CryptoGames.LibsignalSession CryptoGames.Ratchet.LibsignalInst
-open CryptoGames.Ratchet.LibsignalSim CryptoGames.Ratchet.LibsignalSimC
-open CryptoGames.LibsignalSM.Proofs
-open CryptoGames.LibsignalSM.Proofs.Refinement
+open _root_.CryptoGames _root_.CryptoGames.LibsignalSM _root_.CryptoGames.LibsignalSM.Inst
+open _root_.CryptoGames.Ratchet _root_.CryptoGames.CKA _root_.CryptoGames.SM _root_.CryptoGames.SM.Construction
+open _root_.CryptoGames.SM.Engine _root_.CryptoGames.SM.Thm1 _root_.CryptoGames.SM.Thm1L17
+open _root_.CryptoGames.LibsignalSession _root_.CryptoGames.Ratchet.LibsignalInst
+open _root_.CryptoGames.Ratchet.LibsignalSim _root_.CryptoGames.Ratchet.LibsignalSimC
+open _root_.CryptoGames.LibsignalSM.Proofs
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement
   (KemFailTrackState KemFailSimM initKemFailTrack stepKemFailSend stepKemFailDeliver
    runProbeStep kemFailSendStep kemFailSimImpl deliverForgeHook SpqrCLocal badCoin_prob_le
    simRecvStepC kemFailSendStepPostCoin kemFailSendStepHalted kemFailSimImplHalted
@@ -53,7 +64,7 @@ open CryptoVerification.LibsignalSession
 open CryptoVerification.LibsignalSession.HeadlineV1
 open HMAC HKDF CBC LibsignalAead AEADScheme MACScheme WireAEAD FSAEAD
 
-def cleanCand {F : ShaCompress} (tr : KemFailTrackState F) : KemFailTrackState F :=
+@[expose] def cleanCand {F : ShaCompress} (tr : KemFailTrackState F) : KemFailTrackState F :=
   { tr with cand := none }
 
 @[simp]
@@ -64,9 +75,6 @@ theorem cleanCand_cand {F : ShaCompress} (tr : KemFailTrackState F) :
 theorem cleanCand_idem {F : ShaCompress} (tr : KemFailTrackState F) :
     cleanCand (cleanCand tr) = cleanCand tr := rfl
 
-theorem cleanCand_eq_self_of_cand_eq_none {F : ShaCompress} {tr : KemFailTrackState F}
-    (hc : tr.cand = none) : cleanCand tr = tr := by
-  cases tr; simp [cleanCand] at hc ⊢; exact hc.symm
 
 @[simp]
 theorem initKemFailTrack_cand (F : ShaCompress) (pqrKey : BitVec 256) :
@@ -76,11 +84,6 @@ theorem initKemFailTrack_cand (F : ShaCompress) (pqrKey : BitVec 256) :
 theorem cleanCand_initKemFailTrack (F : ShaCompress) (pqrKey : BitVec 256) :
     cleanCand (initKemFailTrack F pqrKey) = initKemFailTrack F pqrKey := rfl
 
-theorem stepKemFailSend_cand_sticky_local {F : ShaCompress} (K : MlKem) (tr : KemFailTrackState F)
-    (Q : Party) (rq : BitVec 512) {p : CryptoVerification.SpqrV1Sync.InSync.Seed ×
-      CryptoVerification.SpqrV1Sync.Braid.EncRand} (hc : tr.cand = some p) :
-    (stepKemFailSend F K tr Q rq).cand = some p := by
-  unfold stepKemFailSend; cases (tr.st Q).send K (coinBytes rq) <;> simp [hc]
 
 theorem stepKemFailDeliver_cand_eq {F : ShaCompress} (K : MlKem) (tr : KemFailTrackState F)
     (Q : Party) (j : ℕ) : (stepKemFailDeliver F K tr Q j).cand = tr.cand := by
@@ -94,19 +97,6 @@ theorem stepKemFailDeliver_cand_eq {F : ShaCompress} (K : MlKem) (tr : KemFailTr
     | error _ => rfl
     | ok out => dsimp only; split_ifs <;> (try cases tr.c) <;> rfl
 
-theorem cleanCand_stepKemFailDeliver {F : ShaCompress} (K : MlKem) (tr : KemFailTrackState F)
-    (Q : Party) (j : ℕ) :
-    cleanCand (stepKemFailDeliver F K tr Q j) = stepKemFailDeliver F K (cleanCand tr) Q j := by
-  unfold cleanCand stepKemFailDeliver
-  dsimp only
-  cases h : tr.sentB[j]? with
-  | none => rfl
-  | some p =>
-    rcases p with ⟨m, _⟩
-    dsimp only
-    cases hr : CryptoVerification.LibsignalSpqrV1.States.recv K (tr.st Q) m with
-    | error _ => rfl
-    | ok out => dsimp only; split_ifs <;> (try cases tr.c) <;> rfl
 
 /-! ## Simulator state reassociation -/
 
@@ -601,7 +591,10 @@ private theorem kemFailSimImplHalted_flag_true_of_true
       (.inr (.inr Q)) sC g tr z hz
 
 open Classical in
-def splitSimImplHalted
+/-- Noncomputable: branches on `EvictedSpurHistSimInvLazy`, which quantifies over an arbitrary
+unbundled predicate `InvPQ : ℕ → List (BitVec 8) → Prop`, an abstract non-`Fintype` carrier `Pt`,
+and uncountable function spaces (`epExp : ℕ → BitVec 256`, `winBefore : ℕ → Bool`). -/
+@[expose] noncomputable def splitSimImplHalted
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (updFl : Bool → Bool → Bool → Bool → Bool)
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
@@ -635,7 +628,7 @@ def splitSimImplHalted
     set (sC', (g', fl', dead), tr')
     return ans
 
-abbrev firstNEHalted'
+noncomputable abbrev firstNEHalted'
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
     (InvPQ : ℕ → List (BitVec 8) → Prop) (ℓ : ℕ)
@@ -644,7 +637,7 @@ abbrev firstNEHalted'
   splitSimImplHalted (fun fl hlazy hprobe dead => fl || (hlazy && hprobe && !dead))
     P K InvPQ ℓ Dh encPt encT decT idOf lam qep q
 
-abbrev evictOnlyHalted'
+noncomputable abbrev evictOnlyHalted'
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
     (InvPQ : ℕ → List (BitVec 8) → Prop) (ℓ : ℕ)

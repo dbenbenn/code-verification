@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDh
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDh -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import VCVio.EvalDist.Monad.Basic
 
@@ -21,7 +21,7 @@ Proves evaluation equivalence for `advKeyPows`-backed KOSK and SPK lookups and d
 scan-bound invariant `AgBnd`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

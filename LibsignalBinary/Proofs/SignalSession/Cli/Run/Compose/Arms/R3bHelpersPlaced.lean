@@ -9,11 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ModelBridge
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ModelBridge
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.States -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `signal_session::run` Arm `R3b`: Shared Placed Helpers
@@ -23,7 +36,7 @@ Arm `R3b` (`run_hop_recvBad_placed_ok` and `run_hop_recvP_placed_ok`) on Block `
 (`runProgPlaced H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -234,21 +247,6 @@ theorem r3b_files_of_trace_eq {P : Program} (hP : TraceFsSound P) {s sm : State}
 
 abbrev r3b_stOf {P : Memory → Prop} {s : State} (_ : P s.mem) : State := s
 
-theorem r3b_cs_regs {s sf : State} (hcs : CalleeSavedPreserved s sf) :
-    sf.readReg64 (.gpr 19#5) = s.readReg64 (.gpr 19#5) ∧
-    sf.readReg64 (.gpr 20#5) = s.readReg64 (.gpr 20#5) ∧
-    sf.readReg64 (.gpr 21#5) = s.readReg64 (.gpr 21#5) ∧
-    sf.readReg64 (.gpr 22#5) = s.readReg64 (.gpr 22#5) ∧
-    sf.readReg64 (.gpr 23#5) = s.readReg64 (.gpr 23#5) ∧
-    sf.readReg64 (.gpr 24#5) = s.readReg64 (.gpr 24#5) ∧
-    sf.readReg64 (.gpr 25#5) = s.readReg64 (.gpr 25#5) ∧
-    sf.readReg64 (.gpr 26#5) = s.readReg64 (.gpr 26#5) ∧
-    sf.readReg64 (.gpr 27#5) = s.readReg64 (.gpr 27#5) ∧
-    sf.readReg64 (.gpr 28#5) = s.readReg64 (.gpr 28#5) ∧
-    sf.readReg64 .fp = s.readReg64 .fp ∧
-    calleeSavedVRegs sf = calleeSavedVRegs s :=
-  hcs
-
 theorem r3b_extractLsb_append_lo (hi lo : BitVec 64) :
     (hi ++ lo).extractLsb' 0 64 = lo := by bv_bits
 theorem r3b_extractLsb_append_hi (hi lo : BitVec 64) :
@@ -408,7 +406,7 @@ theorem r3b_peel_end {α : Sort _} {A : SepProp} {P : α → SepProp} {G : SepPr
     (h : ∀ x : α, A ∗ P x ⊢ G) : A ∗ (∃∗ x, P x) ⊢ G := by
   rw [sepExists_sepConj_right]; exact Entails.sepExists_elim h
 
-def r3b_vecHeap (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def r3b_vecHeap (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     if cap = 0 then emp
     else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -435,7 +433,7 @@ structure r3b_W6 where
   w4 : BitVec 64
   w5 : BitVec 64
 
-def r3b_slot6 (a : BitVec 64) (e : r3b_W6) : SepProp :=
+@[expose] def r3b_slot6 (a : BitVec 64) (e : r3b_W6) : SepProp :=
   (a ↦₆₄ e.w0) ∗ ((a + 8#64) ↦₆₄ e.w1) ∗ ((a + 16#64) ↦₆₄ e.w2) ∗
     ((a + 24#64) ↦₆₄ e.w3) ∗ ((a + 32#64) ↦₆₄ e.w4) ∗ ((a + 40#64) ↦₆₄ e.w5)
 
@@ -679,7 +677,7 @@ structure r3b_W5 where
   w3 : BitVec 64
   w4 : BitVec 64
 
-def r3b_slot5 (a : BitVec 64) (e : r3b_W5) : SepProp :=
+@[expose] def r3b_slot5 (a : BitVec 64) (e : r3b_W5) : SepProp :=
   (a ↦₆₄ e.w0) ∗ ((a + 8#64) ↦₆₄ e.w1) ∗ ((a + 16#64) ↦₆₄ e.w2) ∗
     ((a + 24#64) ↦₆₄ e.w3) ∗ ((a + 32#64) ↦₆₄ e.w4)
 
@@ -720,7 +718,7 @@ structure r3b_W30 where
   b4 : r3b_W5
   b5 : r3b_W5
 
-def r3b_slot30 (a : BitVec 64) (w : r3b_W30) : SepProp :=
+@[expose] def r3b_slot30 (a : BitVec 64) (w : r3b_W30) : SepProp :=
   r3b_slot5 a w.b0 ∗ r3b_slot5 (a + 40#64) w.b1 ∗ r3b_slot5 (a + 80#64) w.b2 ∗
     r3b_slot5 (a + 120#64) w.b3 ∗ r3b_slot5 (a + 160#64) w.b4 ∗ r3b_slot5 (a + 200#64) w.b5
 
@@ -762,13 +760,13 @@ theorem r3b_slot30_to_mem240 (a : BitVec 64) (w : r3b_W30) :
           (sepConj_mono (r3b_slot5_to_mem40 (a + 160#64) w.b4)
             (r3b_slot5_to_mem40 (a + 200#64) w.b5)))))
 
-def r3b_Own1 (a : BitVec 64) (P : SepProp) : SepProp :=
+@[expose] def r3b_Own1 (a : BitVec 64) (P : SepProp) : SepProp :=
   ∃∗ w : BitVec 64, (a ↦₆₄ w) ∗ ((a ↦₆₄ w) -∗ P)
 
-def r3b_Own5 (a : BitVec 64) (P : SepProp) : SepProp :=
+@[expose] def r3b_Own5 (a : BitVec 64) (P : SepProp) : SepProp :=
   ∃∗ e : r3b_W5, r3b_slot5 a e ∗ (r3b_slot5 a e -∗ P)
 
-def r3b_Own30 (a : BitVec 64) (P : SepProp) : SepProp :=
+@[expose] def r3b_Own30 (a : BitVec 64) (P : SepProp) : SepProp :=
   ∃∗ w : r3b_W30, r3b_slot30 a w ∗ (r3b_slot30 a w -∗ P)
 
 theorem r3b_own1_u64 (a v : BitVec 64) :
@@ -1194,7 +1192,7 @@ theorem r3b_addr_unpack (A : RustAlloc) (g : AddrGhost)
   apply r3b_pure2; intro hhi
   exact Entails.sepExists_right hi (Entails.pure_right hhi (Entails.of_eq (by ac_rfl)))
 
-def r3b_shufMid (w m : r3b_W30) : r3b_W30 :=
+@[expose] def r3b_shufMid (w m : r3b_W30) : r3b_W30 :=
   { b0 := ⟨w.b3.w0, w.b3.w1, w.b3.w2, w.b3.w3, w.b3.w4⟩
     b1 := ⟨w.b4.w0, w.b4.w1, w.b4.w2, w.b4.w3, w.b4.w4⟩
     b2 := ⟨w.b5.w0, w.b5.w1, w.b5.w2, w.b5.w3, w.b5.w4⟩

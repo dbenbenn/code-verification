@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
+import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
 
 /-!
 # `PureCRel` Projections, Monotonicity, and Record Erasure
@@ -22,7 +23,7 @@ Provides projection lemmas for `PureCRel`, move-list monotonicity for `PureCPrev
 session record.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

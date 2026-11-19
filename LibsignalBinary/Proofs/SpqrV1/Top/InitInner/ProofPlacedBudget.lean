@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Auth.NewBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Auth.NewBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofPlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
 
 /-!
 # `spqr::init_inner` (`Block 324`): Relocatable `[LibsignalPlacement]` Budget Verification
@@ -24,7 +29,7 @@ Wires unconditional well-sizedness of `initV1State` (`States.IntoPb` on `Block 3
 to prove `init_inner_placed_ok_unconditional` and `init_inner_placed_ok_x_unconditional`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -263,55 +268,6 @@ theorem statesIntoPb_initV1State_324_of_alloc_cl [LibsignalPlacement]
       (states_into_pb_variant_of_bounds_of_alloc_cl_placed hA_into henc_raw hdec_raw
         (initV1State F d authKey) (statesIntoPbWellSized_initV1State F d authKey)))
 
-/-- Discharge `statesIntoPbJumpTablePlacedAt` from `LibsignalRoLoaded lsmpl s0.mem` on
-    `initInnerPlacedSpecXOfEnv`. -/
-theorem initInnerPlacedRoSpecXOfEnv_of_placedSpecXOfEnv [LibsignalPlacement]
-    {P : Program} {addr : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {Env : InitInnerGhost → List AllocEvent → Prop}
-    (h : subroutine_ok P addr (withLsCodeLoaded lsmpl (initInnerPlacedSpecXOfEnv M A lim F Env))) :
-    subroutine_ok P addr (withLsCodeRoLoaded lsmpl (initInnerPlacedRoSpecXOfEnv M A lim F Env)) := by
-  refine subroutine_ok_outcome_intro fun (x, st) R s0 hpc hrun hpre hal => ?_
-  dsimp only [withLsCodeRoLoaded] at hpre
-  rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj] at hpre
-  obtain ⟨⟨hcl, hro⟩, hpre0⟩ := hpre
-  have hjt : s0.mem ⊨ statesIntoPbJumpTablePlacedAt ∗
-      ((initInnerPlacedRoSpecXOfEnv M A lim F Env).pre (x, st) s0 ∗ R) :=
-    lsro_statesIntoPbJumpTablePlacedAt (s := s0) hro hpre0
-  have hpre' : s0.mem ⊨
-      (withLsCodeLoaded lsmpl (initInnerPlacedSpecXOfEnv M A lim F Env)).pre (x, st) s0 ∗ R := by
-    dsimp only [withLsCodeLoaded]
-    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hcl, ?_⟩
-    dsimp only [initInnerPlacedSpecXOfEnv, initInnerPlacedRoSpecXOfEnv] at hjt ⊢
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hjt
-  refine h.mono_outcome (x, st) R s0 hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [withLsCodeRoLoaded, withLsCodeLoaded,
-      initInnerPlacedRoSpecXOfEnv, initInnerPlacedSpecXOfEnv] at hpost ⊢
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
-    rcases hpost with ⟨evs, hpost⟩
-    refine ⟨evs, ?_⟩
-    have hpost_reord : sf.mem ⊨ statesIntoPbJumpTablePlacedAt ∗
-        ((⌜sf.trace = s0.trace ∧ Env x evs⌝ ∗
-          initInnerResultAt A.repAlloc (F := F) x.out x.v x.d x.authKey ∗
-          (x.akPtr ↦ₛ x.authKey) ∗
-          A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp initInnerStackX) ∗ R) :=
-      Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
-    exact Satisfies.of_sep_right hpost_reord
-  · exact (not_satisfies_false_sepConj hpan).elim
-  · exact (not_satisfies_false_sepConj hex).elim
-  · exact (not_satisfies_false_sepConj hoom).elim
-
-/-- Specialize `initInnerPlacedRoSpecXOfEnv_of_placedSpecXOfEnv` to `InitInnerEnv F`. -/
-theorem initInnerPlacedRoSpecX_of_placedSpecX [LibsignalPlacement]
-    {P : Program} {addr : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    (h : subroutine_ok P addr (withLsCodeLoaded lsmpl (initInnerPlacedSpecX M A lim F))) :
-    subroutine_ok P addr (withLsCodeRoLoaded lsmpl (initInnerPlacedRoSpecX M A lim F)) :=
-  initInnerPlacedRoSpecXOfEnv_of_placedSpecXOfEnv h
-
 /-! ## 4. Top-Level Relocatable `[LibsignalPlacement]` Verification Theorems -/
 
 /-- Top-level verification of `spqr::init_inner` on
@@ -360,28 +316,6 @@ theorem init_inner_placed_ok_x [LibsignalPlacement]
   init_inner_placed_ok_x_of_intoPb hshim halloc hmemcpy
     (withLsCallInv_authNewBudgetSpec_of_authNewSpec hauth) hinto
 
-/-- `.rodata`-free top-level verification of `spqr::init_inner` (`Block 324`) against
-    `withLsCodeRoLoaded lsmpl (initInnerPlacedRoSpecX M A lim F)`. -/
-theorem init_inner_placed_ro_ok_x [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hshim : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2")
-      noAllocShimBudgetSpec)
-    (halloc : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc")
-      (rustCliAllocBudgetSpec M A lim false))
-    (hmemcpy : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsρ "memcpy") framelessMemcpyBudgetSpec)
-    (hauth : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsmpl.base 340) (authNewSpec F M A lim))
-    (hinto : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsmpl.base 334) (withLsCodeLoaded lsmpl (statesIntoPbPlacedSpec M A lim F))) :
-    subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (blkPl_324).base (withLsCodeRoLoaded lsmpl (initInnerPlacedRoSpecX M A lim F)) :=
-  initInnerPlacedRoSpecX_of_placedSpecX
-    (init_inner_placed_ok_ext hshim halloc hmemcpy hauth hinto)
-
 /-- Top-level verification of `spqr::init_inner` (`Block 324`) on
     `libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext)` at `lsmpl.base 324`
     (`InitInnerPlacedOkX M A lim F ext`), parameterized by `hIntoPb : StatesIntoPbPlacedOkExt M A lim F ext`. -/
@@ -425,33 +359,6 @@ theorem states_into_pb_placed_ok_x_blockProgram [LibsignalPlacement]
     (hIntoPb : StatesIntoPbPlacedOkExt M A lim F ext) :
     StatesIntoPbPlacedOkX M A lim F ext :=
   statesIntoPbPlacedOkX_of_statesIntoPbPlacedOkExt hIntoPb
-
-/-- Unconditional exact-envelope `<States>::into_pb` verification on
-    `libsignalSessionLib.blockProgram lsmpl 334` (`StatesIntoPbExactPlacedOkX M A lim F ext`). -/
-theorem states_into_pb_exact_placed_ok_x_blockProgram [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    StatesIntoPbExactPlacedOkX M A lim F ext :=
-  states_into_pb_placed_env_ok_x_blockProgram hA henc_raw hdec_raw hmemcpy_raw
-
-/-- `states_into_pb_exact_placed_ok_x_blockProgram` deriving `hmemcpy_raw` from `hA`. -/
-theorem states_into_pb_exact_placed_of_alloc_ok_x_blockProgram [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim)) :
-    StatesIntoPbExactPlacedOkX M A lim F ext :=
-  states_into_pb_placed_env_of_alloc_ok_x_blockProgram hA henc_raw hdec_raw
 
 /-- Unconditional top-level verification of `spqr::init_inner` (`Block 324`) on
     `libsignalSessionLib.blockProgram lsmpl 324` (`InitInnerPlacedOkX M A lim F ext`), wired
@@ -515,77 +422,6 @@ theorem init_inner_placed_ok_unconditional_of_alloc [LibsignalPlacement]
     (statesIntoPb_initV1State_324_of_alloc_cl hA_into henc_raw hdec_raw .a2b)
     (statesIntoPb_initV1State_324_of_alloc_cl hA_into henc_raw hdec_raw .b2a)
   dsimp only [InitInnerPlacedOkX]
-  have hprog : (blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext) =
-      libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext) :=
-    (inferInstance : IsLsBlockProg
-      ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      324 (Rust.withPanics ext)).eq_blockProgram
-  have hbase : (blkPl_324).base = lsmpl.base 324 := rfl
-  rwa [hprog, hbase] at hok
-
-/-- Unconditional `withLsCallInv lsmpl` verification of `spqr::init_inner` (`Block 324`) on
-    `libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext)` at `lsmpl.base 324`,
-    wired directly from `AuthNewPlacedOk F M A lim (Rust.withPanics ext)` (`Block 340`) and
-    `States.IntoPb.TopPlacedBudget` (`Block 334`). -/
-theorem init_inner_placed_ok_x_unconditional [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hshim : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2")
-      noAllocShimBudgetSpec)
-    (halloc : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc")
-      (rustCliAllocBudgetSpec M A lim false))
-    (hmemcpy : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsρ "memcpy") framelessMemcpyBudgetSpec)
-    (hAuth : AuthNewPlacedOk F M A lim (Rust.withPanics ext))
-    (hA_into : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim))
-    (hmemcpy_into : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext))
-      (lsmpl.base 324)
-      (withLsCallInv lsmpl (initInnerPlacedSpecX M A lim F)) := by
-  have hok := init_inner_placed_ok_x_of_arms hshim halloc hmemcpy
-    (withLsCallInv_authNewBudgetSpec_of_authNewSpec (authNew_324_of_placedOk hAuth))
-    (statesIntoPb_initV1State_324_cl hA_into henc_raw hdec_raw hmemcpy_into .a2b)
-    (statesIntoPb_initV1State_324_cl hA_into henc_raw hdec_raw hmemcpy_into .b2a)
-  have hprog : (blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext) =
-      libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext) :=
-    (inferInstance : IsLsBlockProg
-      ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      324 (Rust.withPanics ext)).eq_blockProgram
-  have hbase : (blkPl_324).base = lsmpl.base 324 := rfl
-  rwa [hprog, hbase] at hok
-
-/-- `init_inner_placed_ok_x_unconditional` deriving `hmemcpy_into` from `hA_into`. -/
-theorem init_inner_placed_ok_x_unconditional_of_alloc [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hshim : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2")
-      noAllocShimBudgetSpec)
-    (halloc : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc")
-      (rustCliAllocBudgetSpec M A lim false))
-    (hmemcpy : subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
-      (lsρ "memcpy") framelessMemcpyBudgetSpec)
-    (hAuth : AuthNewPlacedOk F M A lim (Rust.withPanics ext))
-    (hA_into : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (encoderIntoPbSpec M A lim))
-    (hdec_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (decoderIntoPbSpec M A lim)) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext))
-      (lsmpl.base 324)
-      (withLsCallInv lsmpl (initInnerPlacedSpecX M A lim F)) := by
-  have hok := init_inner_placed_ok_x_of_arms hshim halloc hmemcpy
-    (withLsCallInv_authNewBudgetSpec_of_authNewSpec (authNew_324_of_placedOk hAuth))
-    (statesIntoPb_initV1State_324_of_alloc_cl hA_into henc_raw hdec_raw .a2b)
-    (statesIntoPb_initV1State_324_of_alloc_cl hA_into henc_raw hdec_raw .b2a)
   have hprog : (blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext) =
       libsignalSessionLib.blockProgram lsmpl 324 (Rust.withPanics ext) :=
     (inferInstance : IsLsBlockProg

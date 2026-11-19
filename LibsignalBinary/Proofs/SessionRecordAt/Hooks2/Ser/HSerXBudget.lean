@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExtBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerX
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExtBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerX
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExtBudget
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropSsLocal1ExtBudget
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRawXBudget
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyXBudget
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `SessionRecord::serialize` Assembly (Block `52`)
@@ -27,7 +29,7 @@ Composes the budget-threaded Block `14` (`SessionStructure::encode_raw`), Block 
 (`SessionRecord::serialize`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -166,23 +168,5 @@ theorem hSer_placed_cl_of_clone [LibsignalPlacement]
     subroutine_ok callerProg (lsmpl.base 52)
       (withLsCl lsmpl (recordSerializeSpecX M A lim)) :=
   recordSerialize_placed_cl_of_serializeX (serialize_placed_ext_of_clone hC hClone)
-
-theorem hSer_placed_ext_of_stage2 [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} (hC : Stage2ContractsPlaced A lim H)
-    (hClone : SessionClonePlacedOkX M A lim H) :
-    subroutine_ok (lsProg_52 H) (blkPl_52).base
-      (withLsCodeLoaded lsmpl (recordSerializeSpecX M A lim)) :=
-  hSer_placed_ext_of_clone (serContractsXPlaced_of_stage2ContractsPlaced hC) hClone
-
-theorem hSer_placed_cl_of_stage2 [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H]
-    (hC : Stage2ContractsPlaced A lim H)
-    (hClone : SessionClonePlacedOkX M A lim H) :
-    subroutine_ok callerProg (lsmpl.base 52)
-      (withLsCl lsmpl (recordSerializeSpecX M A lim)) :=
-  hSer_placed_cl_of_clone (serContractsXPlaced_of_stage2ContractsPlaced hC) hClone
 
 end LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerXBudget

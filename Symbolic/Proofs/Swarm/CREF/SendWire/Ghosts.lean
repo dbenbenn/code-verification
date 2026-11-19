@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
@@ -28,7 +28,7 @@ ghost updaters (`sendGhost`, `sendPendingGhost`), and `MatchedPrefix` / `Explain
 for `session_send_wire` moves.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,14 +44,14 @@ open DY.Libsignal.TripleRatchet (TRState trMsgKeys trHonestWireMsg kdfCk)
 `ALICE_NAME = "8a6f1c2e-3b4d-4e5f-9a0b-1c2d3e4f5a6b"` (ACI tag `0x00`, 16 UUID bytes, device `0x01`)
 followed by `BOB_NAME = "5d3e2f10-7a8b-4c9d-8e0f-a1b2c3d4e5f6"` (ACI tag `0x00`, 16 UUID bytes,
 device `0x01`). -/
-def pqHarnessAddrBytes : HwBytes :=
+@[expose] def pqHarnessAddrBytes : HwBytes :=
   [0x00#8, 0x8a#8, 0x6f#8, 0x1c#8, 0x2e#8, 0x3b#8, 0x4d#8, 0x4e#8, 0x5f#8,
    0x9a#8, 0x0b#8, 0x1c#8, 0x2d#8, 0x3e#8, 0x4f#8, 0x5a#8, 0x6b#8, 0x01#8,
    0x00#8, 0x5d#8, 0x3e#8, 0x2f#8, 0x10#8, 0x7a#8, 0x8b#8, 0x4c#8, 0x9d#8,
    0x8e#8, 0x0f#8, 0xa1#8, 0xb2#8, 0xc3#8, 0xd4#8, 0xe5#8, 0xf6#8, 0x01#8]
 
 /-- Symbolic `TrWireMsg` constructed by `messageEncrypt` at trace timestamp `ts` with `coinsLen`. -/
-def encWire (st : TRState) (coinsLen ts : Nat) : DY.Bytes :=
+@[expose] def encWire (st : TRState) (coinsLen ts : Nat) : DY.Bytes :=
   let m := randTerm ts 32
   let coinsTerm := randTerm (ts + 1) coinsLen
   let (_, key, pqMsg) := Spqr.spqrSend st.spqr coinsTerm
@@ -61,7 +61,7 @@ def encWire (st : TRState) (coinsLen ts : Nat) : DY.Bytes :=
     (DY.SymEnc.symEnc keys.cipherKey keys.iv m) pqMsg
 
 /-- Symbolic 8-byte MAC appended by `messageEncrypt` at trace timestamp `ts` with `coinsLen`. -/
-def encMac (st : TRState) (coinsLen ts : Nat) : DY.Bytes :=
+@[expose] def encMac (st : TRState) (coinsLen ts : Nat) : DY.Bytes :=
   let coinsTerm := randTerm (ts + 1) coinsLen
   let (_, key, _) := Spqr.spqrSend st.spqr coinsTerm
   let (_, seed) := TripleRatchet.kdfCk st.cks
@@ -69,11 +69,11 @@ def encMac (st : TRState) (coinsLen ts : Nat) : DY.Bytes :=
   TripleRatchet.computeMac keys.macKey st.myIk st.peerIk (encWire st coinsLen ts)
 
 /-- Full inner `SignalMessage` term (`encWire || encMac`) sent by `messageEncrypt`. -/
-def encMsg (st : TRState) (coinsLen ts : Nat) : DY.Bytes :=
+@[expose] def encMsg (st : TRState) (coinsLen ts : Nat) : DY.Bytes :=
   DY.Concat.concat (encWire st coinsLen ts) (encMac st coinsLen ts)
 
 /-- Post-state `TRState` stored by `messageEncrypt` at trace timestamp `ts` with `coinsLen`. -/
-def encSt (st : TRState) (coinsLen ts : Nat) : TRState :=
+@[expose] def encSt (st : TRState) (coinsLen ts : Nat) : TRState :=
   { st with
     cks := (TripleRatchet.kdfCk st.cks).1
     ns := st.ns + 1
@@ -95,7 +95,7 @@ theorem gamma_randTerm_ne_zero (interpretation : ExternInterpretation) (S : Opaq
   simp [concretizeRandom, hn, node]
 
 /-- Recognizes a `TrWireMsg` term whose symmetric encryption plaintext is `randTerm ts 32`. -/
-def isFreshSendWire (ts : Nat) (w : DY.Bytes) : Bool :=
+@[expose] def isFreshSendWire (ts : Nat) (w : DY.Bytes) : Bool :=
   match w.view? DY.TrWire.TrWireMsg.SubF with
   | some x =>
     match x.ciphertext.view? DY.SymEnc.Enc.SubF with
@@ -106,24 +106,24 @@ def isFreshSendWire (ts : Nat) (w : DY.Bytes) : Bool :=
     | none => false
   | none => false
 
-def updateFreshAt (σ : Nat → Nat → HwBytes) (ts n : Nat) (m : HwBytes) : Nat → Nat → HwBytes :=
+@[expose] def updateFreshAt (σ : Nat → Nat → HwBytes) (ts n : Nat) (m : HwBytes) : Nat → Nat → HwBytes :=
   fun i k => if i = ts ∧ k = n then m else σ i k
 
-def clearSendAddr (g : Ghost) (ts : Nat) : Ghost :=
+@[expose] def clearSendAddr (g : Ghost) (ts : Nat) : Ghost :=
   { g with addr := fun w => if isFreshSendWire ts w then [] else g.addr w }
 
-def setSendAddr (g : Ghost) (ts : Nat) (addr : HwBytes) : Ghost :=
+@[expose] def setSendAddr (g : Ghost) (ts : Nat) (addr : HwBytes) : Ghost :=
   { g with addr := fun w => if isFreshSendWire ts w then addr else g.addr w }
 
 /-- Whisper `session_send_wire` ghost update: binds `(ts, 32)` to `pt`, `(ts + 1, coins.length)` to
 `coins`, and sets `addr := []` on the fresh `encWire`. -/
-def sendGhost (g : Ghost) (ts : Nat) (pt coins : HwBytes) : Ghost :=
+@[expose] def sendGhost (g : Ghost) (ts : Nat) (pt coins : HwBytes) : Ghost :=
   let g₁ := { g with σ := updateFreshAt g.σ ts 32 pt }
   clearSendAddr { g₁ with σ := updateFreshAt g₁.σ (ts + 1) coins.length coins } ts
 
 /-- Pending-prekey `session_send_wire` ghost update: binds `(ts, 32)` to `pt`,
 `(ts + 1, coins.length)` to `coins`, and sets `addr := pqHarnessAddrBytes` on the fresh `encWire`. -/
-def sendPendingGhost (g : Ghost) (ts : Nat) (pt coins : HwBytes) : Ghost :=
+@[expose] def sendPendingGhost (g : Ghost) (ts : Nat) (pt coins : HwBytes) : Ghost :=
   setSendAddr
     { g with σ := updateFreshAt (updateFreshAt g.σ ts 32 pt) (ts + 1) coins.length coins }
     ts pqHarnessAddrBytes

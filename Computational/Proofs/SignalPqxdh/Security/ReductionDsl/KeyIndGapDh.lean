@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore -- proof-setup: allow-public-import
 
 /-!
 # Costed `ReductionDsl` Reduction: `KeyInd` `GapDH`
@@ -19,7 +19,7 @@ Expresses the unified 4-leg Fiedler–Günther `GapDH` simulator `fgKeyIndGapDhA
 (`fgKeyIndGapDhProg`) and tuple-keyed (`fgKeyIndGapDh2Prog`) forms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ end
 
 /-! ## `pqGapDhIface` Query and Lifting Shorthands -/
 
-def ddhQ {Γ : List PT} (x y z : Expr pqxdhOps Γ (B 32)) : Comp pqxdhOps pqGapDhIface Γ .bool :=
+@[expose] def ddhQ {Γ : List PT} (x y z : Expr pqxdhOps Γ (B 32)) : Comp pqxdhOps pqGapDhIface Γ .bool :=
   Comp.query (I := pqGapDhIface) (Sum.inr ()) (.pair x (.pair y z))
 
 abbrev gPrim {Γ : List PT} {τ : PT} (c : Comp pqxdhOps pqPrimIface Γ τ) : Comp pqxdhOps pqGapDhIface Γ τ :=
@@ -45,18 +45,18 @@ abbrev gPrim {Γ : List PT} {τ : PT} (c : Comp pqxdhOps pqPrimIface Γ τ) : Co
 
 /-! ## Value Types and Accessors for Simulator State -/
 
-def fePos1 {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ fgPosTy := .fst e
-def fePos2 {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ fgPosTy := .fst (.snd e)
-def fePos3 {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ fgPosTy :=
+@[expose] def fePos1 {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ fgPosTy := .fst e
+@[expose] def fePos2 {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ fgPosTy := .fst (.snd e)
+@[expose] def fePos3 {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ fgPosTy :=
   .fst (.snd (.snd e))
-def fePos4 {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ (.opt fgPosTy) :=
+@[expose] def fePos4 {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ (.opt fgPosTy) :=
   .fst (.snd (.snd (.snd e)))
-def feSs {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def feSs {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd e))))
-def feDk {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ drKeyTy :=
+@[expose] def feDk {Γ : List PT} (e : Expr pqxdhOps Γ fgPatchEntryTy) : Expr pqxdhOps Γ drKeyTy :=
   .snd (.snd (.snd (.snd (.snd e))))
 
-def feMk {Γ : List PT} (p1 p2 p3 : Expr pqxdhOps Γ fgPosTy) (p4 : Expr pqxdhOps Γ (.opt fgPosTy))
+@[expose] def feMk {Γ : List PT} (p1 p2 p3 : Expr pqxdhOps Γ fgPosTy) (p4 : Expr pqxdhOps Γ (.opt fgPosTy))
     (ss : Expr pqxdhOps Γ (B 32)) (dk : Expr pqxdhOps Γ drKeyTy) : Expr pqxdhOps Γ fgPatchEntryTy :=
   .pair p1 (.pair p2 (.pair p3 (.pair p4 (.pair ss dk))))
 
@@ -66,27 +66,27 @@ abbrev paramsTy : PT :=
   .prod (B 32) (.prod (B 32) (.prod (B 32) (.prod .bool (.prod .nat (.prod .bool
     (.prod .nat (.prod .nat (.prod .bool (.prod .nat .nat)))))))))
 
-def paU {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ (B 32) := .fst p
-def paV {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd p)
-def paUp {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd p))
-def paPrinFlag {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def paU {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ (B 32) := .fst p
+@[expose] def paV {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd p)
+@[expose] def paUp {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd p))
+@[expose] def paPrinFlag {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .bool :=
   .fst (.snd (.snd (.snd p)))
-def paPrinIdx {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .nat :=
+@[expose] def paPrinIdx {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .nat :=
   .fst (.snd (.snd (.snd (.snd p))))
-def paDhFlag {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def paDhFlag {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd p)))))
-def paEphIdx {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .nat :=
+@[expose] def paEphIdx {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .nat :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd p))))))
-def paSpkIdx {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .nat :=
+@[expose] def paSpkIdx {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .nat :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd p)))))))
-def paOpkMode {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def paOpkMode {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p))))))))
-def paOpkIdx {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .nat :=
+@[expose] def paOpkIdx {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .nat :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p)))))))))
-def paMode {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .nat :=
+@[expose] def paMode {Γ : List PT} (p : Expr pqxdhOps Γ paramsTy) : Expr pqxdhOps Γ .nat :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p)))))))))
 
-def paMk {Γ : List PT} (U V Up : Expr pqxdhOps Γ (B 32)) (pf : Expr pqxdhOps Γ .bool)
+@[expose] def paMk {Γ : List PT} (U V Up : Expr pqxdhOps Γ (B 32)) (pf : Expr pqxdhOps Γ .bool)
     (pi : Expr pqxdhOps Γ .nat) (df : Expr pqxdhOps Γ .bool) (ei si : Expr pqxdhOps Γ .nat)
     (om : Expr pqxdhOps Γ .bool) (oi md : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ paramsTy :=
   .pair U (.pair V (.pair Up (.pair pf (.pair pi (.pair df (.pair ei (.pair si
@@ -100,24 +100,24 @@ abbrev simTy : PT :=
         (.prod (.list (B 192))
           (.list (.prod (B 32) (B 32))))))
 
-def smBase {Γ : List PT} (s : Expr pqxdhOps Γ simTy) : Expr pqxdhOps Γ keyIndStateTy := .fst s
-def smFgL {Γ : List PT} (s : Expr pqxdhOps Γ simTy) : Expr pqxdhOps Γ (.list fgPatchEntryTy) :=
+@[expose] def smBase {Γ : List PT} (s : Expr pqxdhOps Γ simTy) : Expr pqxdhOps Γ keyIndStateTy := .fst s
+@[expose] def smFgL {Γ : List PT} (s : Expr pqxdhOps Γ simTy) : Expr pqxdhOps Γ (.list fgPatchEntryTy) :=
   .fst (.snd s)
-def smRaw {Γ : List PT} (s : Expr pqxdhOps Γ simTy) :
+@[expose] def smRaw {Γ : List PT} (s : Expr pqxdhOps Γ simTy) :
     Expr pqxdhOps Γ (.list (.prod (B 192) drKeyTy)) := .fst (.snd (.snd s))
-def smLog {Γ : List PT} (s : Expr pqxdhOps Γ simTy) : Expr pqxdhOps Γ (.list (B 192)) :=
+@[expose] def smLog {Γ : List PT} (s : Expr pqxdhOps Γ simTy) : Expr pqxdhOps Γ (.list (B 192)) :=
   .fst (.snd (.snd (.snd s)))
-def smPows {Γ : List PT} (s : Expr pqxdhOps Γ simTy) :
+@[expose] def smPows {Γ : List PT} (s : Expr pqxdhOps Γ simTy) :
     Expr pqxdhOps Γ (.list (.prod (B 32) (B 32))) := .snd (.snd (.snd (.snd s)))
 
-def smMk {Γ : List PT} (base : Expr pqxdhOps Γ keyIndStateTy)
+@[expose] def smMk {Γ : List PT} (base : Expr pqxdhOps Γ keyIndStateTy)
     (fgL : Expr pqxdhOps Γ (.list fgPatchEntryTy))
     (raw : Expr pqxdhOps Γ (.list (.prod (B 192) drKeyTy)))
     (log : Expr pqxdhOps Γ (.list (B 192)))
     (pows : Expr pqxdhOps Γ (.list (.prod (B 32) (B 32)))) : Expr pqxdhOps Γ simTy :=
   .pair base (.pair fgL (.pair raw (.pair log pows)))
 
-def smUpd {Γ : List PT} (s : Expr pqxdhOps Γ simTy)
+@[expose] def smUpd {Γ : List PT} (s : Expr pqxdhOps Γ simTy)
     (base : Expr pqxdhOps Γ keyIndStateTy := smBase s)
     (fgL : Expr pqxdhOps Γ (.list fgPatchEntryTy) := smFgL s)
     (raw : Expr pqxdhOps Γ (.list (.prod (B 192) drKeyTy)) := smRaw s)
@@ -127,23 +127,23 @@ def smUpd {Γ : List PT} (s : Expr pqxdhOps Γ simTy)
 
 abbrev gdhStateTy : PT := .prod paramsTy simTy
 
-def simStateToVal {S : Setup} (st : FgKeyIndSimState S) : simTy.denote :=
+@[expose] def simStateToVal {S : Setup} (st : FgKeyIndSimState S) : simTy.denote :=
   (keyIndStateToVal st.base, (st.fgL.map fgPatchEntryToVal,
     (st.rawRoCache.map (Prod.map id drKeyToVal), (st.advRoLog, st.advKeyPows))))
 
 /-! ## DDH-Consistency Table Helpers -/
 
-def mkSecretPosC {Γ : List PT} (z : Expr pqxdhOps Γ (B 32)) : Comp pqxdhOps pqGapDhIface Γ fgPosTy :=
+@[expose] def mkSecretPosC {Γ : List PT} (z : Expr pqxdhOps Γ (B 32)) : Comp pqxdhOps pqGapDhIface Γ fgPosTy :=
   letV z fun zV =>
   bindV (gPrim (qIsCanonical (v zV))) fun c => .ret (.inl (.pair (v zV) (v c)))
 
-def mkPairPosC {Γ : List PT} (pk1 pk2 : Expr pqxdhOps Γ (B 32)) : Comp pqxdhOps pqGapDhIface Γ fgPosTy :=
+@[expose] def mkPairPosC {Γ : List PT} (pk1 pk2 : Expr pqxdhOps Γ (B 32)) : Comp pqxdhOps pqGapDhIface Γ fgPosTy :=
   letV (.pair pk1 pk2) fun pp =>
   bindV (gPrim (qPow8 (.fst (v pp)))) fun w1 =>
   bindV (gPrim (qPow8 (.snd (v pp)))) fun w2 =>
   .ret (.inr (.pair (.fst (v pp)) (.pair (.snd (v pp)) (.pair (v w1) (v w2)))))
 
-def computePosC {Γ : List PT} (sk1 sk2 pk1 pk2 : Expr pqxdhOps Γ (B 32)) :
+@[expose] def computePosC {Γ : List PT} (sk1 sk2 pk1 pk2 : Expr pqxdhOps Γ (B 32)) :
     Comp pqxdhOps pqGapDhIface Γ fgPosTy :=
   .ite (.not (natEq (lenB sk1) (.nat 0)))
     (bindV (gPrim (qX25519 (.pair sk1 pk2))) fun z => mkSecretPosC (v z))
@@ -151,7 +151,7 @@ def computePosC {Γ : List PT} (sk1 sk2 pk1 pk2 : Expr pqxdhOps Γ (B 32)) :
       (bindV (gPrim (qX25519 (.pair sk2 pk1))) fun z => mkSecretPosC (v z))
       (mkPairPosC pk1 pk2))
 
-def computeOptPosInitC {Γ : List PT} (sk1 pk1 : Expr pqxdhOps Γ (B 32))
+@[expose] def computeOptPosInitC {Γ : List PT} (sk1 pk1 : Expr pqxdhOps Γ (B 32))
     (opkB? : Expr pqxdhOps Γ (.opt (.prod U32 (B 32)))) :
     Comp pqxdhOps pqGapDhIface Γ (.opt fgPosTy) :=
   letV (.pair (.pair sk1 pk1) opkB?) fun spo =>
@@ -159,7 +159,7 @@ def computeOptPosInitC {Γ : List PT} (sk1 pk1 : Expr pqxdhOps Γ (B 32))
     bindV (computePosC (.fst (.fst (v spo))) (litB 32 []) (.snd (.fst (v spo))) (.snd (v p)))
       fun pos => .ret (.some (v pos))
 
-def ddhEqC {Γ : List PT} (p1 p2 : Expr pqxdhOps Γ fgPosTy) : Comp pqxdhOps pqGapDhIface Γ .bool :=
+@[expose] def ddhEqC {Γ : List PT} (p1 p2 : Expr pqxdhOps Γ fgPosTy) : Comp pqxdhOps pqGapDhIface Γ .bool :=
   letV (.pair p1 p2) fun pp =>
   caseSumV (.fst (v pp))
     (fun s1 =>
@@ -182,7 +182,7 @@ def ddhEqC {Γ : List PT} (p1 p2 : Expr pqxdhOps Γ fgPosTy) : Comp pqxdhOps pqG
           let w4 := .snd (.snd (.snd (v q2)))
           .ret (orE (.and (eqB w1 w3) (eqB w2 w4)) (.and (eqB w1 w4) (eqB w2 w3)))))
 
-def ddhEqOptC {Γ : List PT} (p1? p2? : Expr pqxdhOps Γ (.opt fgPosTy)) :
+@[expose] def ddhEqOptC {Γ : List PT} (p1? p2? : Expr pqxdhOps Γ (.opt fgPosTy)) :
     Comp pqxdhOps pqGapDhIface Γ .bool :=
   letV (.pair p1? p2?) fun pp =>
   caseOptV (.fst (v pp))
@@ -191,7 +191,7 @@ def ddhEqOptC {Γ : List PT} (p1? p2? : Expr pqxdhOps Γ (.opt fgPosTy)) :
       caseOptV (.snd (v pp)) (.ret (.bool false)) fun p2 =>
         ddhEqC (v p1) (v p2)
 
-def entryMatchesC {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
+@[expose] def entryMatchesC {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ]
     (pos1 : Var Γ₁ fgPosTy) (pos2 : Var Γ₂ fgPosTy) (pos3 : Var Γ₃ fgPosTy)
     (pos4? : Var Γ₄ (.opt fgPosTy)) (ss : Var Γ₅ (B 32))
@@ -204,7 +204,7 @@ def entryMatchesC {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
      bindV (ddhEqOptC (v pos4?) (fePos4 (v e))) fun b4 =>
      .ret (.and (.and (.and (v b1) (v b2)) (v b3)) (v b4)))
 
-def fgPatchC (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
+@[expose] def fgPatchC (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ]
     (pos1 : Var Γ₁ fgPosTy) (pos2 : Var Γ₂ fgPosTy) (pos3 : Var Γ₃ fgPosTy)
     (pos4? : Var Γ₄ (.opt fgPosTy)) (ss : Var Γ₅ (B 32))
@@ -219,11 +219,11 @@ def fgPatchC (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
 
 /-! ## KOSK and Partner Helpers -/
 
-def isAdvPowsE (K : Nat) {Γ : List PT} (pows : Expr pqxdhOps Γ (.list (.prod (B 32) (B 32))))
+@[expose] def isAdvPowsE (K : Nat) {Γ : List PT} (pows : Expr pqxdhOps Γ (.list (.prod (B 32) (B 32))))
     (wPk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ .bool :=
   eLet (.pair pows wPk) fun pw => eAny K (.fst (v pw)) fun p => eqB (.snd (v p)) (.snd (v pw))
 
-def koskSenderOkPowsC (S : Setup) (K : Nat) {Γ Δ : List PT} [Ext Γ Δ]
+@[expose] def koskSenderOkPowsC (S : Setup) (K : Nat) {Γ Δ : List PT} [Ext Γ Δ]
     (st : Var Γ keyIndStateTy) (pows : Expr pqxdhOps Δ (.list (.prod (B 32) (B 32))))
     (ik : Expr pqxdhOps Δ (B 32)) : Comp pqxdhOps pqPrimIface Δ .bool :=
   letV (.pair pows ik) fun pi =>
@@ -231,7 +231,7 @@ def koskSenderOkPowsC (S : Setup) (K : Nat) {Γ Δ : List PT} [Ext Γ Δ]
   bindV (qPow8 (.snd (v pi))) fun wIk =>
   .ret (orE (isSomeE (v hp)) (isAdvPowsE K (.fst (v pi)) (v wIk)))
 
-def koskBundleOkPowsC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def koskBundleOkPowsC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (st : Var Γ₁ keyIndStateTy) (pows : Expr pqxdhOps Δ (.list (.prod (B 32) (B 32))))
     (bu : Var Γ₂ preKeyBundleTy) : Comp pqxdhOps pqPrimIface Δ .bool :=
   letV pows fun pV =>
@@ -248,7 +248,7 @@ def koskBundleOkPowsC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ�
           (orE (v gSpk) (isAdvPowsE K (v pV) (v wSpk))))
     (v opkOk))
 
-def lookupSpkSkC (S : Setup) (K : Nat) {Γ Δ : List PT} [Ext Γ Δ]
+@[expose] def lookupSpkSkC (S : Setup) (K : Nat) {Γ Δ : List PT} [Ext Γ Δ]
     (st : Var Γ keyIndStateTy) (pows : Expr pqxdhOps Δ (.list (.prod (B 32) (B 32))))
     (spkPk : Expr pqxdhOps Δ (B 32)) : Comp pqxdhOps pqPrimIface Δ (B 32) :=
   letV (.pair pows spkPk) fun ps =>
@@ -262,25 +262,25 @@ def lookupSpkSkC (S : Setup) (K : Nat) {Γ Δ : List PT} [Ext Γ Δ]
       fun p => .fst (v p))
     fun sb => sbSpkSk (.snd (v sb)))
 
-def chooseRespRandC (S : Setup) (K : Nat) {Γ Δ : List PT} [Ext Γ Δ]
+@[expose] def chooseRespRandC (S : Setup) (K : Nat) {Γ Δ : List PT} [Ext Γ Δ]
     (st : Var Γ keyIndStateTy) (r : Var Δ keyIndRespEntryTy) : Comp pqxdhOps pqGapDhIface Δ drKeyTy :=
   bindV (gPrim (findMV (min K S.N_dh) (stSess (v st)) fun s => partnerC s r)) fun f =>
   caseOptV (v f) (gPrim sDrKey96) fun s => .ret (seDrRand (v s))
 
-def chooseInitRandC (S : Setup) (K : Nat) {Γ Δ : List PT} [Ext Γ Δ]
+@[expose] def chooseInitRandC (S : Setup) (K : Nat) {Γ Δ : List PT} [Ext Γ Δ]
     (st : Var Γ keyIndStateTy) (s : Var Δ keyIndSessionEntryTy) : Comp pqxdhOps pqGapDhIface Δ drKeyTy :=
   bindV (gPrim (findMV (min K S.N_sess_tot) (stResps (v st)) fun r => partnerC s r)) fun f =>
   caseOptV (v f) (gPrim sDrKey96) fun r => .ret (reDrRand (v r))
 
 /-! ## Index Arithmetic and Byte-Slice Helpers -/
 
-def spkFlatIdxE (S : Setup) {Γ : List PT} (u j : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .nat :=
+@[expose] def spkFlatIdxE (S : Setup) {Γ : List PT} (u j : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .nat :=
   .add (mulRight u (Nat.min S.N_recv S.N_spk_tot)) j
 
-def opkFlatIdxE (S : Setup) {Γ : List PT} (u j o : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .nat :=
+@[expose] def opkFlatIdxE (S : Setup) {Γ : List PT} (u j o : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .nat :=
   .add (mulRight (spkFlatIdxE S u j) (Nat.min S.N_opk S.N_opk_tot)) o
 
-def initSlotIdxE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .nat :=
+@[expose] def initSlotIdxE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .nat :=
   eCaseSum sid
     (fun ui => .add (mulRight (.fst (v ui)) (Nat.min S.N_send_opk S.N_send_opk_tot)) (.snd (v ui)))
     fun s1 => eCaseSum (v s1)
@@ -288,7 +288,7 @@ def initSlotIdxE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ sessionIdTy)
         (.add (mulRight (.fst (v ui)) (Nat.min S.N_send_no_opk S.N_send_no_opk_tot)) (.snd (v ui))))
       fun _ => .nat S.N_send_tot
 
-def respBundleKeyE {Γ : List PT} (sid : Expr pqxdhOps Γ sessionIdTy) :
+@[expose] def respBundleKeyE {Γ : List PT} (sid : Expr pqxdhOps Γ sessionIdTy) :
     Expr pqxdhOps Γ (.prod .nat .nat) :=
   eCaseSum sid
     (fun ui => .pair (.fst (v ui)) (.nat 0))
@@ -298,12 +298,12 @@ def respBundleKeyE {Γ : List PT} (sid : Expr pqxdhOps Γ sessionIdTy) :
         (fun kjo => .pair (.fst (v kjo)) (.fst (.snd (v kjo))))
         (fun kjl => .pair (.fst (v kjl)) (.fst (.snd (v kjl))))
 
-def slice32 {Γ : List PT} (off : Nat) (bs : Expr pqxdhOps Γ (B 192)) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def slice32 {Γ : List PT} (off : Nat) (bs : Expr pqxdhOps Γ (B 192)) : Expr pqxdhOps Γ (B 32) :=
   takeKB 192 32 (dropB (.nat off) bs)
 
 /-! ## Random-Oracle Handler -/
 
-def roRawFallbackC (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def roRawFallbackC (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (sm : Var Γ₁ simTy) (sec : Var Γ₂ (B 192)) :
     Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy simTy) :=
   caseOptV (eFind K (smRaw (v sm)) fun p => eqB (.fst (v p)) (v sec))
@@ -314,7 +314,7 @@ def roRawFallbackC (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ�
     fun p =>
       .ret (.pair (rDrKey (.snd (v p))) (smUpd (v sm) (log := .cons (v sec) (smLog (v sm)))))
 
-def roParsedC (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def roParsedC (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (sm : Var Γ₁ simTy) (sec : Var Γ₂ (B 192)) :
     Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy simTy) :=
   .ite (.not (eqB (takeKB 192 32 (v sec)) (litB 32 F_X25519)))
@@ -342,20 +342,20 @@ def roParsedC (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
 
 /-! ## Simulator Query Branches -/
 
-def wrapBase {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def wrapBase {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pa : Var Γ₁ paramsTy) (sm : Var Γ₂ simTy)
     (c : Comp pqxdhOps pqPrimIface Δ (.prod keyIndRespTy keyIndStateTy)) :
     Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy gdhStateTy) :=
   bindV (gPrim c) fun r =>
   .ret (.pair (.fst (v r)) (.pair (v pa) (smUpd (v sm) (base := .snd (v r)))))
 
-def wrapSim {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
+@[expose] def wrapSim {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
     (pa : Var Γ₁ paramsTy)
     (c : Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy simTy)) :
     Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy gdhStateTy) :=
   bindV c fun r => .ret (.pair (.fst (v r)) (.pair (v pa) (.snd (v r))))
 
-def initPrinGdhB (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def initPrinGdhB (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ paramsTy) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (u : Var Γ₄ .nat) : Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy simTy) :=
@@ -372,7 +372,7 @@ def initPrinGdhB (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
      let bSt' := stUpd (v bSt) (prin := .cons (.pair (v u) e) (stPrin (v bSt)))
      .ret (.pair (rInitPrin (v ikPk) (v pkS)) (smUpd (v sm) (base := bSt'))))
 
-def genSpkGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def genSpkGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ paramsTy) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (x : Var Γ₄ (.prod .nat .nat)) :
@@ -403,7 +403,7 @@ def genSpkGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
         let bSt' := stUpd (v bSt) (spks := .cons (.pair (v x) bE) (stSpks (v bSt)))
         .ret (.pair (rBundle buOut) (smUpd (v sm) (base := bSt'))))
 
-def genOpkGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def genOpkGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ paramsTy) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (x : Var Γ₄ (.prod .nat (.prod .nat .nat))) :
@@ -421,7 +421,7 @@ def genOpkGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
      let bSt' := stUpd (v bSt) (opks := .cons (.pair (v x) oE) (stOpks (v bSt)))
      .ret (.pair (rPk (v opkPk)) (smUpd (v sm) (base := bSt'))))
 
-def initiateGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def initiateGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ paramsTy) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (hasOpk : Bool) (x : Var Γ₄ initQTy) :
@@ -481,7 +481,7 @@ def initiateGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
                      (.pair (rInitUnfresh (v dkReal) (v hdr)) (v smV))
                      fun _ => .pair (rHdr (v hdr)) (v smV))))))
 
-def finishAcceptGdhC (S : Setup) (K : Nat)
+@[expose] def finishAcceptGdhC (S : Setup) (K : Nat)
     {Γ₂ Γ₃ Γ₄ Γ₅ Γ₆ Γ₇ Δ : List PT}
     [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     [Ext Γ₅ Δ] [Ext Γ₆ Δ] [Ext Γ₇ Δ]
@@ -515,7 +515,7 @@ def finishAcceptGdhC (S : Setup) (K : Nat)
   letV (smUpd (v sm) (base := bSt') (fgL := v fgL')) fun smV =>
   .ret (eCaseOpt (v shOpt) (.pair (rDrKey (v dk)) (v smV)) fun _ => .pair rAccFresh (v smV))
 
-def acceptOpkGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def acceptOpkGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ paramsTy) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (x : Var Γ₄ accQTy) :
@@ -604,7 +604,7 @@ def acceptOpkGdhB (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
                                  (.cons (qKJO (v x)) (stUsedO (v bSt)))
                                  (stUsedN (v bSt)) (.snd (v kybR)) patchR))))))
 
-def acceptNoOpkGdhB (S : Setup) (K : Nat) {Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def acceptNoOpkGdhB (S : Setup) (K : Nat) {Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (x : Var Γ₄ accQTy) :
@@ -654,7 +654,7 @@ def acceptNoOpkGdhB (S : Setup) (K : Nat) {Γ₂ Γ₃ Γ₄ Δ : List PT}
                        .none (stOpks (v bSt)) (stUsedO (v bSt))
                        (.cons (qKJO (v x)) (stUsedN (v bSt))) (.snd (v kybR)) patchR))))
 
-def registerGdhB {Γ₂ Γ₃ Γ₄ Δ : List PT} [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
+@[expose] def registerGdhB {Γ₂ Γ₃ Γ₄ Δ : List PT} [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy) (sk : Var Γ₄ (B 32)) :
     Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy simTy) :=
   .ite (.not (natEq (lenB (v sk)) (.nat 32)))
@@ -668,7 +668,7 @@ def registerGdhB {Γ₂ Γ₃ Γ₄ Δ : List PT} [Ext Γ₂ Δ] [Ext Γ₃ Δ] 
 /-! ## Query Dispatcher -/
 
 /-- Full 14-constructor `KeyIndQuery` handler for `fgKeyIndGapDhProg`. -/
-def gdhHandle (S : Setup) (K : Nat) :
+@[expose] def gdhHandle (S : Setup) (K : Nat) :
     Comp pqxdhOps pqGapDhIface [gdhStateTy, keyIndQueryTy] (.prod keyIndRespTy gdhStateTy) :=
   let st : Var [gdhStateTy, keyIndQueryTy] gdhStateTy := .zero
   let q : Var [gdhStateTy, keyIndQueryTy] keyIndQueryTy := .succ .zero
@@ -694,21 +694,21 @@ def gdhHandle (S : Setup) (K : Nat) :
 
 /-- Search `advRoLog` at 32-byte slice offset `off` (`32` for DH1, `64` for DH2, `96` for DH3, `128` for DH4)
 for a candidate `z` satisfying `DDH(U, V, z)`. -/
-def logFindC (K off : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def logFindC (K off : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pa : Var Γ₁ paramsTy) (sm : Var Γ₂ simTy) :
     Comp pqxdhOps pqGapDhIface Δ (B 32) :=
   let cands := eMap K (smLog (v sm)) fun sec => slice32 off (v sec)
   bindV (findMV K cands fun z => ddhQ (paU (v pa)) (paV (v pa)) (v z)) fun found =>
   .ret (eCaseOpt (v found) (litB 32 (List.replicate 32 0)) fun z => v z)
 
-def spkPowsC (S : Setup) (K : Nat) {Γ : List PT} (spks : Expr pqxdhOps Γ
+@[expose] def spkPowsC (S : Setup) (K : Nat) {Γ : List PT} (spks : Expr pqxdhOps Γ
     (.list (.prod (.prod .nat .nat) spkBundleEntryTy))) :
     Comp pqxdhOps pqGapDhIface Γ (.list (.prod (B 32) (B 32))) :=
   mapMV (min K S.N_dh) spks fun sb =>
     bindV (gPrim (qPow8 (sbSpkPk (.snd (v sb))))) fun w =>
     .ret (.pair (sbSpkSk (.snd (v sb))) (v w))
 
-def lookupFromPowsE (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def lookupFromPowsE (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (spkPows : Var Γ₁ (.list (.prod (B 32) (B 32))))
     (advPows : Var Γ₂ (.list (.prod (B 32) (B 32))))
     (wSpk : Var Δ (B 32)) : Expr pqxdhOps Δ (B 32) :=
@@ -718,7 +718,7 @@ def lookupFromPowsE (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ 
       fun p => .fst (v p))
     fun p => .fst (v p)
 
-def initDh1CandC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def initDh1CandC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (spkPows : Var Γ₁ (.list (.prod (B 32) (B 32))))
     (advPows : Var Γ₂ (.list (.prod (B 32) (B 32))))
     (s : Var Δ keyIndSessionEntryTy) : Comp pqxdhOps pqGapDhIface Δ (B 32) :=
@@ -726,7 +726,7 @@ def initDh1CandC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ]
   let spkSk := lookupFromPowsE S K spkPows advPows wSpk
   gPrim (qX25519 (.pair spkSk (hdIkAPk (seHdr (v s)))))
 
-def respDh1CandC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def respDh1CandC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (spks : Var Γ₁ (.list (.prod (.prod .nat .nat) spkBundleEntryTy)))
     (r : Var Γ₂ keyIndRespEntryTy) : Comp pqxdhOps pqGapDhIface Δ (B 32) :=
   let spkSk := eCaseOpt (eFind (min K S.N_dh) (v spks) fun sb =>
@@ -735,7 +735,7 @@ def respDh1CandC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ]
     fun sb => sbSpkSk (.snd (v sb))
   gPrim (qX25519 (.pair spkSk (hdIkAPk (reHdr (v r)))))
 
-def findMapStepC {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def findMapStepC {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pa : Var Γ₁ paramsTy) (acc : Var Γ₂ (.opt (B 32)))
     (cand : Comp pqxdhOps pqGapDhIface Δ (B 32)) : Comp pqxdhOps pqGapDhIface Δ (.opt (B 32)) :=
   caseOptV (v acc)
@@ -744,7 +744,7 @@ def findMapStepC {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
      .ret (.ite (v ok) (.some (v z)) .none))
     fun _ => .ret (v acc)
 
-def extractMode0C (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def extractMode0C (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pa : Var Γ₁ paramsTy) (sm : Var Γ₂ simTy) : Comp pqxdhOps pqGapDhIface Δ (B 32) :=
   let cands := eMap K (smLog (v sm)) fun sec => slice32 32 (v sec)
   bindV (findMV K cands fun z => ddhQ (paU (v pa)) (paV (v pa)) (v z)) fun f1 =>
@@ -762,7 +762,7 @@ def extractMode0C (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ
     fun z => .ret (v z)
 
 /-- Full CDH extractor dispatching on `paMode pa ∈ {0, 1, 2, 3}`. -/
-def gdhFinish (S : Setup) (K : Nat) :
+@[expose] def gdhFinish (S : Setup) (K : Nat) :
     Comp pqxdhOps pqGapDhIface [gdhStateTy, .bool] (B 32) :=
   let st : Var [gdhStateTy, .bool] gdhStateTy := .zero
   letV (.fst (v st)) fun pa =>
@@ -776,26 +776,26 @@ def gdhFinish (S : Setup) (K : Nat) :
 
 /-! ## Initialization and `CostedReduction` Packaging (`fgKeyIndGapDhProg`) -/
 
-def emptySimE {Γ : List PT} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ simTy :=
+@[expose] def emptySimE {Γ : List PT} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ simTy :=
   smMk (emptyStE secb) .nil .nil .nil .nil
 
-def initParamsDh (S : Setup) {Γ : List PT}
+@[expose] def initParamsDh (S : Setup) {Γ : List PT}
     (useDh1 : Expr pqxdhOps Γ .bool) (tIdx spkIdx : Expr pqxdhOps Γ .nat)
     (U V : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ paramsTy :=
   paMk U V U useDh1 tIdx useDh1 tIdx spkIdx (.bool false) (.nat S.N_opk_tot)
     (.ite useDh1 (.nat 0) (.nat 1))
 
-def initParamsIk (S : Setup) {Γ : List PT}
+@[expose] def initParamsIk (S : Setup) {Γ : List PT}
     (tIdx pIdx : Expr pqxdhOps Γ .nat) (U V : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ paramsTy :=
   paMk U V V (.bool true) pIdx (.bool false) tIdx (.nat S.N_spk_tot)
     (.bool false) (.nat S.N_opk_tot) (.nat 2)
 
-def initParamsOpk (S : Setup) {Γ : List PT}
+@[expose] def initParamsOpk (S : Setup) {Γ : List PT}
     (tIdx oIdx : Expr pqxdhOps Γ .nat) (U V : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ paramsTy :=
   paMk U V U (.bool false) (.nat S.N_id) (.bool false) tIdx (.nat S.N_spk_tot)
     (.bool true) oIdx (.nat 3)
 
-def initParamsFlat (S : Setup) {Γ : List PT}
+@[expose] def initParamsFlat (S : Setup) {Γ : List PT}
     (U V : Expr pqxdhOps Γ (B 32)) (idx : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ paramsTy :=
   let nA := S.N_id * S.N_spk_tot
   let nC := S.N_send_tot * S.N_spk_tot
@@ -813,7 +813,7 @@ def initParamsFlat (S : Setup) {Γ : List PT}
         (let r := Expr.sub idx (.nat (nA + nC + nB))
          initParamsOpk S (.divK S.N_opk_tot r) (.modK S.N_opk_tot r) U V)))
 
-def initAdv4 (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
+@[expose] def initAdv4 (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
     Comp pqxdhOps pqGapDhIface Γ gdhStateTy :=
   letV (.pair U V) fun uv =>
   bindV (gPrim (sIndex (fgTotalIndexCount S))) fun idx =>
@@ -821,7 +821,7 @@ def initAdv4 (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
   .ret (.pair (initParamsFlat S (.fst (v uv)) (.snd (v uv)) (v idx)) (emptySimE (v secb)))
 
 /-- Flat-indexed `CostedReduction` program for `fgKeyIndGapDhAdv4 S b` with loop bound `K`. -/
-def fgKeyIndGapDhProg (S : Setup) (K : Nat) :
+@[expose] def fgKeyIndGapDhProg (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqGapDhIface (keyIndSpec S) (keyIndCodec S)
       (.prod (B 32) (B 32)) .unit .bool (B 32) where
   σ      := gdhStateTy
@@ -846,25 +846,25 @@ abbrev params2Ty : PT :=
     (.prod (.opt ephTargetTy) (.prod (.opt spkTargetTy)
       (.prod .bool (.prod (.opt opkTargetTy) .nat))))))))
 
-def pa2U {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (B 32) := .fst p
-def pa2V {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (B 32) := .fst (.snd p)
-def pa2Up {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd p))
-def pa2PrinTarget {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (.opt .nat) :=
+@[expose] def pa2U {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (B 32) := .fst p
+@[expose] def pa2V {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (B 32) := .fst (.snd p)
+@[expose] def pa2Up {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd p))
+@[expose] def pa2PrinTarget {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd p)))
-def pa2DhFlag {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ .bool :=
+@[expose] def pa2DhFlag {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ .bool :=
   .fst (.snd (.snd (.snd (.snd p))))
-def pa2EphTarget {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (.opt ephTargetTy) :=
+@[expose] def pa2EphTarget {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (.opt ephTargetTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd p)))))
-def pa2SpkTarget {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (.opt spkTargetTy) :=
+@[expose] def pa2SpkTarget {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (.opt spkTargetTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd p))))))
-def pa2OpkMode {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ .bool :=
+@[expose] def pa2OpkMode {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd p)))))))
-def pa2OpkTarget {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (.opt opkTargetTy) :=
+@[expose] def pa2OpkTarget {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ (.opt opkTargetTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p))))))))
-def pa2Mode {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ .nat :=
+@[expose] def pa2Mode {Γ : List PT} (p : Expr pqxdhOps Γ params2Ty) : Expr pqxdhOps Γ .nat :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p))))))))
 
-def pa2Mk {Γ : List PT} (U V Up : Expr pqxdhOps Γ (B 32))
+@[expose] def pa2Mk {Γ : List PT} (U V Up : Expr pqxdhOps Γ (B 32))
     (pt : Expr pqxdhOps Γ (.opt .nat)) (df : Expr pqxdhOps Γ .bool)
     (et : Expr pqxdhOps Γ (.opt ephTargetTy)) (st : Expr pqxdhOps Γ (.opt spkTargetTy))
     (om : Expr pqxdhOps Γ .bool) (ot : Expr pqxdhOps Γ (.opt opkTargetTy))
@@ -874,7 +874,7 @@ def pa2Mk {Γ : List PT} (U V Up : Expr pqxdhOps Γ (B 32))
 abbrev gdhState2Ty : PT := .prod params2Ty simTy
 
 /-- Semantic projection from tuple-keyed `params2Ty.denote` to flat `paramsTy.denote`. -/
-def params2ToFlat (S : Setup) (p : params2Ty.denote) : paramsTy.denote :=
+@[expose] def params2ToFlat (S : Setup) (p : params2Ty.denote) : paramsTy.denote :=
   let (U, (V, (Up, (pt, (df, (et, (st, (om, (ot, md))))))))) := p
   let eiRaw := match et with
     | none => S.N_send_tot
@@ -894,7 +894,7 @@ def params2ToFlat (S : Setup) (p : params2Ty.denote) : paramsTy.denote :=
       (u * Nat.min S.N_recv S.N_spk_tot + j) * Nat.min S.N_opk S.N_opk_tot + o
   (U, (V, (Up, (pf, (pi, (df, (ei, (si, (om, (oi, md))))))))))
 
-def ephSidMatchesE {Γ₁ Δ : List PT} [Ext Γ₁ Δ] (sid : Var Γ₁ sessionIdTy)
+@[expose] def ephSidMatchesE {Γ₁ Δ : List PT} [Ext Γ₁ Δ] (sid : Var Γ₁ sessionIdTy)
     (tgt : Expr pqxdhOps Δ (.opt ephTargetTy)) : Expr pqxdhOps Δ .bool :=
   eCaseOpt tgt (.bool false) fun t =>
     eCaseSum (v sid)
@@ -903,20 +903,20 @@ def ephSidMatchesE {Γ₁ Δ : List PT} [Ext Γ₁ Δ] (sid : Var Γ₁ sessionI
         (fun ui => .and (.not (.fst (v t))) (nat2Eq (v ui) (.snd (v t))))
         fun _ => .bool false
 
-def wrapBase2 {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def wrapBase2 {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy)
     (c : Comp pqxdhOps pqPrimIface Δ (.prod keyIndRespTy keyIndStateTy)) :
     Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy gdhState2Ty) :=
   bindV (gPrim c) fun r =>
   .ret (.pair (.fst (v r)) (.pair (v pa) (smUpd (v sm) (base := .snd (v r)))))
 
-def wrapSim2 {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
+@[expose] def wrapSim2 {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
     (pa : Var Γ₁ params2Ty)
     (c : Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy simTy)) :
     Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy gdhState2Ty) :=
   bindV c fun r => .ret (.pair (.fst (v r)) (.pair (v pa) (.snd (v r))))
 
-def initPrinGdh2B (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def initPrinGdh2B (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (u : Var Γ₄ .nat) : Comp pqxdhOps pqGapDhIface Δ (.prod keyIndRespTy simTy) :=
@@ -933,7 +933,7 @@ def initPrinGdh2B (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
      let bSt' := stUpd (v bSt) (prin := .cons (.pair (v u) e) (stPrin (v bSt)))
      .ret (.pair (rInitPrin (v ikPk) (v pkS)) (smUpd (v sm) (base := bSt'))))
 
-def genSpkGdh2B (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def genSpkGdh2B (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (x : Var Γ₄ (.prod .nat .nat)) :
@@ -964,7 +964,7 @@ def genSpkGdh2B (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
         let bSt' := stUpd (v bSt) (spks := .cons (.pair (v x) bE) (stSpks (v bSt)))
         .ret (.pair (rBundle buOut) (smUpd (v sm) (base := bSt'))))
 
-def genOpkGdh2B (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def genOpkGdh2B (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (x : Var Γ₄ (.prod .nat (.prod .nat .nat))) :
@@ -981,7 +981,7 @@ def genOpkGdh2B (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
      let bSt' := stUpd (v bSt) (opks := .cons (.pair (v x) oE) (stOpks (v bSt)))
      .ret (.pair (rPk (v opkPk)) (smUpd (v sm) (base := bSt'))))
 
-def initiateGdh2B (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def initiateGdh2B (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (hasOpk : Bool) (x : Var Γ₄ initQTy) :
@@ -1041,7 +1041,7 @@ def initiateGdh2B (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
                      (.pair (rInitUnfresh (v dkReal) (v hdr)) (v smV))
                      fun _ => .pair (rHdr (v hdr)) (v smV))))))
 
-def acceptOpkGdh2B (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
+@[expose] def acceptOpkGdh2B (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
     (x : Var Γ₄ accQTy) :
@@ -1131,7 +1131,7 @@ def acceptOpkGdh2B (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
                                  (stUsedN (v bSt)) (.snd (v kybR)) patchR))))))
 
 /-- Tuple-keyed 14-constructor `KeyIndQuery` handler for `fgKeyIndGapDh2Prog`. -/
-def gdhHandle2 (S : Setup) (K : Nat) :
+@[expose] def gdhHandle2 (S : Setup) (K : Nat) :
     Comp pqxdhOps pqGapDhIface [gdhState2Ty, keyIndQueryTy] (.prod keyIndRespTy gdhState2Ty) :=
   let st : Var [gdhState2Ty, keyIndQueryTy] gdhState2Ty := .zero
   let q : Var [gdhState2Ty, keyIndQueryTy] keyIndQueryTy := .succ .zero
@@ -1153,14 +1153,14 @@ def gdhHandle2 (S : Setup) (K : Nat) :
   caseSumV (v r12) (fun sk => wrapSim2 pa (registerGdhB sm bSt sk))
                    (fun x => wrapBase2 pa sm (revealSpkB K bSt x))
 
-def logFind2C (K off : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def logFind2C (K off : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) :
     Comp pqxdhOps pqGapDhIface Δ (B 32) :=
   let cands := eMap K (smLog (v sm)) fun sec => slice32 off (v sec)
   bindV (findMV K cands fun z => ddhQ (pa2U (v pa)) (pa2V (v pa)) (v z)) fun found =>
   .ret (eCaseOpt (v found) (litB 32 (List.replicate 32 0)) fun z => v z)
 
-def findMapStep2C {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def findMapStep2C {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pa : Var Γ₁ params2Ty) (acc : Var Γ₂ (.opt (B 32)))
     (cand : Comp pqxdhOps pqGapDhIface Δ (B 32)) : Comp pqxdhOps pqGapDhIface Δ (.opt (B 32)) :=
   caseOptV (v acc)
@@ -1169,7 +1169,7 @@ def findMapStep2C {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
      .ret (.ite (v ok) (.some (v z)) .none))
     fun _ => .ret (v acc)
 
-def extractMode0_2C (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def extractMode0_2C (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) : Comp pqxdhOps pqGapDhIface Δ (B 32) :=
   let cands := eMap K (smLog (v sm)) fun sec => slice32 32 (v sec)
   bindV (findMV K cands fun z => ddhQ (pa2U (v pa)) (pa2V (v pa)) (v z)) fun f1 =>
@@ -1187,7 +1187,7 @@ def extractMode0_2C (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ 
     fun z => .ret (v z)
 
 /-- Tuple-keyed CDH extractor for `fgKeyIndGapDh2Prog`. -/
-def gdhFinish2 (S : Setup) (K : Nat) :
+@[expose] def gdhFinish2 (S : Setup) (K : Nat) :
     Comp pqxdhOps pqGapDhIface [gdhState2Ty, .bool] (B 32) :=
   let st : Var [gdhState2Ty, .bool] gdhState2Ty := .zero
   letV (.fst (v st)) fun pa =>
@@ -1202,7 +1202,7 @@ def gdhFinish2 (S : Setup) (K : Nat) :
 /-- Exact `Bernoulli(A / (A + B))` sampler of constant AST size: for `1 ≤ A ≤ B`, draws
 `x ← [0, A + B)` and `y₁, y₂ ← [0, A)` and tests `x < y₁ + y₂ + 1`
 (since `∑_{y₁, y₂ < A} (y₁ + y₂ + 1) = A³`). -/
-def bernoulliRatioGdhC {Δ : List PT} (A B : Nat) : Comp pqxdhOps pqGapDhIface Δ .bool :=
+@[expose] def bernoulliRatioGdhC {Δ : List PT} (A B : Nat) : Comp pqxdhOps pqGapDhIface Δ .bool :=
   if A = 0 then
     .ret (.bool false)
   else if B = 0 then
@@ -1219,7 +1219,7 @@ def bernoulliRatioGdhC {Δ : List PT} (A B : Nat) : Comp pqxdhOps pqGapDhIface �
     .ret (.not (.lt (v x) (.add (.add (v y1) (v y2)) (.nat 1))))
 
 /-- Weighted binary choice (`w1 : w2`) omitting zero-weight arms at the Lean meta-level. -/
-def chooseArm2C {Γ₁ Δ : List PT} {α : PT} [Ext Γ₁ Δ] (w1 w2 : Nat)
+@[expose] def chooseArm2C {Γ₁ Δ : List PT} {α : PT} [Ext Γ₁ Δ] (w1 w2 : Nat)
     (c1 c2 : ∀ {Δ' : List PT} [Ext Γ₁ Δ'], Comp pqxdhOps pqGapDhIface Δ' α) :
     Comp pqxdhOps pqGapDhIface Δ α :=
   if w1 = 0 then c2
@@ -1228,14 +1228,14 @@ def chooseArm2C {Γ₁ Δ : List PT} {α : PT} [Ext Γ₁ Δ] (w1 w2 : Nat)
     bindV (bernoulliRatioGdhC w1 w2) fun b =>
     .ite (v b) c1 c2
 
-def samplePrin2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt .nat) :=
+@[expose] def samplePrin2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt .nat) :=
   if S.N_id = 0 then
     .ret .none
   else
     bindV (gPrim (sIndex S.N_id)) fun u =>
     .ret (.some (v u))
 
-def sampleSpkPair2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt spkTargetTy) :=
+@[expose] def sampleSpkPair2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt spkTargetTy) :=
   if S.N_spk_tot = 0 then
     .ret .none
   else
@@ -1243,7 +1243,7 @@ def sampleSpkPair2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (
     bindV (gPrim (sIndex S.N_recv)) fun j =>
     .ret (.some (.pair (v u) (v j)))
 
-def sampleOpkTriple2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt opkTargetTy) :=
+@[expose] def sampleOpkTriple2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt opkTargetTy) :=
   if S.N_opk_tot = 0 then
     .ret .none
   else
@@ -1252,7 +1252,7 @@ def sampleOpkTriple2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ
     bindV (gPrim (sIndex S.N_opk)) fun o =>
     .ret (.some (.pair (v u) (.pair (v j) (v o))))
 
-def sampleSendOpkTarget2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt ephTargetTy) :=
+@[expose] def sampleSendOpkTarget2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt ephTargetTy) :=
   if S.N_send_opk_tot = 0 then
     .ret .none
   else
@@ -1260,7 +1260,7 @@ def sampleSendOpkTarget2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIfac
     bindV (gPrim (sIndex S.N_send_opk)) fun i =>
     .ret (.some (.pair (.bool true) (.pair (v u) (v i))))
 
-def sampleSendNoOpkTarget2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt ephTargetTy) :=
+@[expose] def sampleSendNoOpkTarget2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt ephTargetTy) :=
   if S.N_send_no_opk_tot = 0 then
     .ret .none
   else
@@ -1268,7 +1268,7 @@ def sampleSendNoOpkTarget2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIf
     bindV (gPrim (sIndex S.N_send_no_opk)) fun i =>
     .ret (.some (.pair (.bool false) (.pair (v u) (v i))))
 
-def sampleSendTarget2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt ephTargetTy) :=
+@[expose] def sampleSendTarget2C (S : Setup) {Δ : List PT} : Comp pqxdhOps pqGapDhIface Δ (.opt ephTargetTy) :=
   if S.N_send_tot = 0 then
     .ret .none
   else
@@ -1302,7 +1302,7 @@ def sampleDhParams2C (S : Setup) {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
 
 /-- Tuple-keyed 4-mode parameter sampler matching `initParamsFlat S U V <$> sampleIndex (fgTotalIndexCount S)`
 under `params2ToFlat S`. -/
-def initParams2C (S : Setup) {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
+@[expose] def initParams2C (S : Setup) {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
     (uv : Var Γ₁ (.prod (B 32) (B 32))) : Comp pqxdhOps pqGapDhIface Δ params2Ty :=
   if fgTotalIndexCount S = 0 then
     let U := .fst (v uv)
@@ -1347,7 +1347,7 @@ def initParams2C (S : Setup) {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
             let V := .snd (v uv)
             .ret (pa2Mk U V U .none (.bool false) (v et) .none (.bool true) (v ot) (.nat 3))))
 
-def initAdv4_2 (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
+@[expose] def initAdv4_2 (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
     Comp pqxdhOps pqGapDhIface Γ gdhState2Ty :=
   letV (.pair U V) fun uv =>
   bindV (initParams2C S uv) fun pa =>
@@ -1356,7 +1356,7 @@ def initAdv4_2 (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
 
 /-- Tuple-keyed `CostedReduction` program for `fgKeyIndGapDhAdv4 S b` with loop bound `K`,
 whose AST size is independent of `S.N_*`. -/
-def fgKeyIndGapDh2Prog (S : Setup) (K : Nat) :
+@[expose] def fgKeyIndGapDh2Prog (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqGapDhIface (keyIndSpec S) (keyIndCodec S)
       (.prod (B 32) (B 32)) .unit .bool (B 32) where
   σ      := gdhState2Ty

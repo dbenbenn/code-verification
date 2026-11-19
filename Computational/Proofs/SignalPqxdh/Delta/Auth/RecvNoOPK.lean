@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Delta.AuthDefs
+import Computational.Proofs.SignalPqxdh.Security.Collisions
 
 /-!
 # PQXDH δ Authentication: `.recvNoOPK` Step Coupling
@@ -18,7 +19,7 @@ public import Computational.Proofs.SignalPqxdh.Delta.AuthDefs
 and `.g3` send-latched `.recvNoOPK` steps up to `badSendδ` under `CryptoWellFormedPrimitivesδ`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

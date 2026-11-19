@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtables
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityVtables -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # CLI `IdentityFiles` Store Specification
@@ -22,7 +25,7 @@ and the concrete `IdentityStoreSpec` instance `cliIdentityStoreSpec` for
 invariant-preservation lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +54,7 @@ structure CliIdInv (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → 
     (g.peers.changed.length + 1 < 2 ^ 32 ∨ peer.val.name ∈ g.peers.changed.map Prod.fst)
 
 /-- `IdentityFiles` layout at `self`: `own` at `+0x00`, `peers` at `+0x28`, and `CliIdInv`. -/
-def cliIdStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliIdStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost) (self : BitVec 64) (g : IdGhost) :
     SepProp :=
   ⌜CliIdInv rd F0 pathOk peer g⌝ ∗ dirAt A self g.own ∗ dirAt A (self + 0x28#64) g.peers
@@ -64,10 +67,10 @@ def cliIdStoreAt (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
 `+0x28`) while leaving `own` unchanged across trust and save updates. `trustRel` is
 direction-independent (trust-on-first-use), and `saveRel` excludes `.error` (`IdFileWf` rules out
 key-decode errors). -/
-def cliIdentityStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
+@[expose] def cliIdentityStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : FsFiles)
     (pathOk : List (BitVec 8) → Prop) (peer : AddrGhost)
     (trustShimStk trustPollStk saveShimStk savePollStk : Nat) : IdentityStoreSpec A b where
-  id_vt := b + cliIdVtOff
+  id_vt := b
   IdState := IdGhost
   identityAt := cliIdStoreAt A rd F0 pathOk peer
   addrOk := fun rem => rem = peer.val
@@ -79,14 +82,14 @@ def cliIdentityStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : F
   saveRel := fun g rem k ans => ∃ c, g.saveAns rd F0 rem k = .ok c ∧ ans = .ok c
   trustEvs := fun _ _ _ _ => []
   saveEvs := fun _ _ _ => []
-  trustShimOff := cliIdTrustShimOff
-  trustFutVtOff := cliIdTrustFutVtOff
-  trustPollOff := cliIdTrustPollOff
+  trustShimOff := 0#64
+  trustFutVtOff := 0#64
+  trustPollOff := 0#64
   trustFutDropOff := cliIdFutDropOff
   trustBoxSize := 32
-  saveShimOff := cliIdSaveShimOff
-  saveFutVtOff := cliIdSaveFutVtOff
-  savePollOff := cliIdSavePollOff
+  saveShimOff := 0#64
+  saveFutVtOff := 0#64
+  savePollOff := 0#64
   saveFutDropOff := cliIdFutDropOff
   saveBoxSize := 32
   trustShimStack := trustShimStk
@@ -95,8 +98,8 @@ def cliIdentityStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : F
   savePollStack := savePollStk
   trustBoxAt := idTrustBoxAt
   saveBoxAt := idSaveBoxAt
-  trustBoxAt_memRegion := (hookIdentityStoreSpecAt A b (b + cliIdVtOff)).trustBoxAt_memRegion
-  saveBoxAt_memRegion := (hookIdentityStoreSpecAt A b (b + cliIdVtOff)).saveBoxAt_memRegion
+  trustBoxAt_memRegion := (hookIdentityStoreSpecAt A b b).trustBoxAt_memRegion
+  saveBoxAt_memRegion := (hookIdentityStoreSpecAt A b b).saveBoxAt_memRegion
   trustBoxSize_ne_zero := by decide
   saveBoxSize_ne_zero := by decide
   trustBoxSize_lt := by decide
@@ -107,56 +110,6 @@ def cliIdentityStoreSpec (A : RustAlloc) (b : BitVec 64) (rd : ReadRule) (F0 : F
   saveFutDrop_ne_zero := fun hb h => by
     rw [show b = 0#64 - cliIdFutDropOff by rw [← h, BitVec.add_sub_cancel]] at hb
     exact absurd hb (by decide)
-
-section
-variable {A : RustAlloc} {img : Obj.Image} {rd : ReadRule} {F0 : FsFiles}
-  {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost} {s1 s2 s3 s4 : Nat}
-
-theorem cliIdKitOffsets :
-    CliIdKitOffsets img (cliIdentityStoreSpec A img.base rd F0 pathOk peer s1 s2 s3 s4) where
-  idVt := rfl
-  saveShim := rfl
-  trustShim := rfl
-  saveFutVt := rfl
-  trustFutVt := rfl
-  savePoll := rfl
-  trustPoll := rfl
-  saveFutDrop := rfl
-  trustFutDrop := rfl
-  saveBoxSize := rfl
-  trustBoxSize := rfl
-
-/-- Vtable validity (`IdentityVtablesOk`) for `cliIdentityStoreSpec`. -/
-theorem cliIdentityStoreSpec_vtablesOk (himg : Obj.Loads libsignalSessionImage img) :
-    IdentityVtablesOk img (cliIdentityStoreSpec A img.base rd F0 pathOk peer s1 s2 s3 s4) :=
-  cliIdentityVtablesOk himg cliIdKitOffsets
-
-/-- `cliIdentityStoreSpec` emits no filesystem trace events (`Quiet`). -/
-theorem cliIdentityStoreSpec_quiet :
-    (cliIdentityStoreSpec A img.base rd F0 pathOk peer s1 s2 s3 s4).Quiet :=
-  ⟨fun _ _ _ _ => by simp [cliIdentityStoreSpec, NoFsEv],
-    fun _ _ _ => by simp [cliIdentityStoreSpec, NoFsEv]⟩
-
-end
-
-section
-variable {A : RustAlloc} {b : BitVec 64} {rd : ReadRule} {F0 : FsFiles}
-  {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost} {s1 s2 s3 s4 : Nat}
-  {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-
-theorem cliIdentityStoreSpec_trustFutDrop :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + (cliIdentityStoreSpec A b rd F0 pathOk peer s1 s2 s3 s4).trustFutDropOff)
-      futDropSpec :=
-  cliIdFutDrop_ok
-
-theorem cliIdentityStoreSpec_saveFutDrop :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      (b + (cliIdentityStoreSpec A b rd F0 pathOk peer s1 s2 s3 s4).saveFutDropOff)
-      futDropSpec :=
-  cliIdFutDrop_ok
-
-end
 
 /-! ## Invariant preservation and answer totality -/
 
@@ -269,22 +222,6 @@ end
 
 section
 variable {b : BitVec 64}
-
-theorem cliIdSaveShim_fnAddr {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).fnAddr idSaveShimName = b + cliIdSaveShimOff := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idSaveShim_fnOff, cliIdSaveShimOff]
-
-theorem cliIdTrustShim_fnAddr {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).fnAddr idTrustShimName = b + cliIdTrustShimOff := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idTrustShim_fnOff, cliIdTrustShimOff]
-
-theorem cliIdSavePoll_fnAddr {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).fnAddr idSavePollName = b + cliIdSavePollOff := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idSavePoll_fnOff, cliIdSavePollOff]
-
-theorem cliIdTrustPoll_fnAddr {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).fnAddr idTrustPollName = b + cliIdTrustPollOff := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idTrustPoll_fnOff, cliIdTrustPollOff]
 
 end
 

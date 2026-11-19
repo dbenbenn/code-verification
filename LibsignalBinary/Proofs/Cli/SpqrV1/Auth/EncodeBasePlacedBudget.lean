@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.ReprPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.ReprPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
-public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced1 -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
@@ -31,7 +31,7 @@ Defines budget-threaded `AuthEncode1*PlacedOk*` and exact-capacity contract prop
 `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -121,28 +121,28 @@ private theorem sepWP_done_vm_placed {prog : Program} {target_pc : BitVec 64} {s
 /-! ## 1. Budget-Threaded Placed Contract Propositions (Block `454`) -/
 
 /-- `encode<Authenticator> [local#3]` (Block `454`) meets `authEncodePinnedSpec A lim` under `[LibsignalPlacement]`. -/
-def AuthEncode1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_454 H) (blkPl_454).base
     (withLsCodeLoaded lsmpl (authEncodePinnedSpec A lim))
 
 /-- `encode<Authenticator> [local#3]` (Block `454`) meets `authEncodeSpec A lim` under `[LibsignalPlacement]`. -/
-def AuthEncode1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_454 H) (blkPl_454).base
     (withLsCodeLoaded lsmpl (authEncodeSpec A lim))
 
 /-- `encode<Authenticator> [local#3]` (Block `454`) meets `authEncodePinnedSpecX A lim` under `[LibsignalPlacement]`. -/
-def AuthEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_454 H) (blkPl_454).base
     (withLsCodeLoaded lsmpl (authEncodePinnedSpecX A lim))
 
 /-- `encode<Authenticator> [local#3]` (Block `454`) meets `authEncodeSpecX A lim` under `[LibsignalPlacement]`. -/
-def AuthEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AuthEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_454 H) (blkPl_454).base
@@ -159,14 +159,14 @@ abbrev AuthEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
   AuthEncode1PlacedOk A lim H
 
 /-- Exact-capacity 0-allocation (`VmPreserved`) pinned contract on Block `454`. -/
-def AuthEncode1ExactPlacedOk [LibsignalPlacement] (resStack : Nat) {M : AllocCostModel}
+@[expose] def AuthEncode1ExactPlacedOk [LibsignalPlacement] (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_454 H) (blkPl_454).base
     (withLsCodeLoaded lsmpl (authEncodeExactSpecOf resStack A lim))
 
 /-- Exact-capacity 0-allocation (`VmPreserved`) unpinned contract on Block `454`. -/
-def AuthEncode1ExactUnpinnedPlacedOk [LibsignalPlacement] (resStack : Nat) {M : AllocCostModel}
+@[expose] def AuthEncode1ExactUnpinnedPlacedOk [LibsignalPlacement] (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_454 H) (blkPl_454).base

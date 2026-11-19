@@ -30,7 +30,7 @@ Folds `AllocSlotFineTrace` and inline `try_avail` claims into `AllocSlotInvPres`
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -214,7 +214,7 @@ def MallocImplFineRawSuccessBody [MallocngMultiPlacement]
      (g'.isMmapped = true → bs = List.replicate req 0#8)⌝ ∗
     MallocngRoTablesA maddrs ∗
     ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-    MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk
+    MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk
       bCoarse.liveCost bCoarse.peakCost st' ∗
     MallocngRuntime maddrs tp ∗
     (p ↦ₛ bs) ∗
@@ -300,7 +300,7 @@ theorem mallocImpl_enframe_finish_raw_fine [MallocngMultiPlacement]
       (MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
        MallocngRoTablesA maddrs ∗
        ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-       MallocngCoreStInflightA 1 (fineBaseGam γ) maddrs brkStart s.brk bud.liveCost bud.peakCost st1 ∗
+       MallocngCoreStInflightModeA true 1 (fineBaseGam γ) maddrs brkStart s.brk bud.liveCost bud.peakCost st1 ∗
        MallocngRuntime maddrs tp)
       (fun sf P_f =>
         sf.sp = s0.sp ∧ sf.brk = s.brk ∧ sf.mem.perm = s.mem.perm ∧
@@ -345,13 +345,13 @@ theorem mallocImpl_enframe_finish_raw_fine [MallocngMultiPlacement]
   let rwTail := ByteMap st1.masterDom
     (fun a => (OwnedRwByte st1 a ∧ ¬ InRegion (start - 4#64) g.stride a) ∧ ¬ InRegion g.metaPtr 40 a) st1.byteVal
   let coreStatic := (maddrs.ctx ↦ₛ st1.ctx.toBytes) ∗ (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗
-    (maddrs.aaReplaced ↦₃₂ 0#32) ∗ ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗
-    MallocngAuxvState (fineBaseGam γ) st1.auxvPtr st1.auxvSnap ∗
+    (maddrs.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell true maddrs.libc st1.auxvPtr ∗
+    MallocngAuxvStateRo true (fineBaseGam γ) st1.auxvPtr st1.auxvSnap ∗
     ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗ MappedSet st1.masterDom (OwnedMappedByte st1)
   let envTail := stackFrameAt (s0.sp - 80#64) 624 ∗ MallocngRoTablesA maddrs ∗
     ghostMapAuth (fineAlignGam γ) alignMap0 ∗ MallocngRuntime maddrs tp ∗
     MallocngBlockToken (fineBaseGam γ) p req ∗ MallocngLiveAuth (fineBaseGam γ) liveMap' ∗ coreStatic ∗ rwTail
-  dsimp only [MallocngCoreStInflightA]
+  dsimp only [MallocngCoreStInflightModeA]
   rw [hExtSlot, hExtMeta]
   wp_conv_pre => simp only [hwf1, pure_true, emp_sepConj]
   refine sepWP_bupd_focus (mallocngBlock_alloc_bupd (fineBaseGam γ) st1.liveMap p req 0 hBlkWf hFresh1) (h := ?_)
@@ -359,8 +359,8 @@ theorem mallocImpl_enframe_finish_raw_fine [MallocngMultiPlacement]
       MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗ MallocngRoTablesA maddrs ∗
       ghostMapAuth (fineAlignGam γ) alignMap0 ∗
       (maddrs.ctx ↦ₛ st1.ctx.toBytes) ∗ (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗
-      (maddrs.aaReplaced ↦₃₂ 0#32) ∗ ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗
-      MallocngAuxvState (fineBaseGam γ) st1.auxvPtr st1.auxvSnap ∗
+      (maddrs.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell true maddrs.libc st1.auxvPtr ∗
+      MallocngAuxvStateRo true (fineBaseGam γ) st1.auxvPtr st1.auxvSnap ∗
       ((start - 4#64) ↦ₛ slotBs) ∗ (g.metaPtr ↦ₛ g.metaBytes) ∗ rwTail ∗
       ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗
       MappedSet st1.masterDom (OwnedMappedByte st1) ∗ MallocngRuntime maddrs tp) =
@@ -375,8 +375,8 @@ theorem mallocImpl_enframe_finish_raw_fine [MallocngMultiPlacement]
       MallocngRoTablesA maddrs = roA, MallocngRuntime maddrs tp = rtA,
       (maddrs.ctx ↦ₛ st1.ctx.toBytes) = cA, (maddrs.lock ↦₃₂ 0#32) = lkA,
       (maddrs.replaced ↦₃₂ 0#32) = rpA, (maddrs.aaReplaced ↦₃₂ 0#32) = aaA,
-      ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) = lbA,
-      MallocngAuxvState (fineBaseGam γ) st1.auxvPtr st1.auxvSnap = axA,
+      MallocngAuxvPtrCell true maddrs.libc st1.auxvPtr = lbA,
+      MallocngAuxvStateRo true (fineBaseGam γ) st1.auxvPtr st1.auxvSnap = axA,
       ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal = pnA,
       MappedSet st1.masterDom (OwnedMappedByte st1) = mpA
     ac_rfl
@@ -426,8 +426,8 @@ theorem mallocImpl_enframe_finish_raw_fine [MallocngMultiPlacement]
         ghostMapAuth (fineAlignGam γ) alignMap0 ∗
         (MallocngLiveAuth (fineBaseGam γ) st2.liveMap ∗ (maddrs.ctx ↦ₛ st2.ctx.toBytes) ∗
          (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-         ((maddrs.libc + 8#64) ↦₆₄ st2.auxvPtr) ∗
-         MallocngAuxvState (fineBaseGam γ) st2.auxvPtr st2.auxvSnap ∗
+         MallocngAuxvPtrCell true maddrs.libc st2.auxvPtr ∗
+         MallocngAuxvStateRo true (fineBaseGam γ) st2.auxvPtr st2.auxvSnap ∗
          ByteMap st2.masterDom (OwnedRwByte st2) st2.byteVal ∗
          ProtNoneByteMap st2.masterDom (OwnedProtNoneByte st2) st2.byteVal ∗
          MappedSet st2.masterDom (OwnedMappedByte st2)) ∗
@@ -463,8 +463,8 @@ theorem mallocImpl_enframe_finish_raw_fine [MallocngMultiPlacement]
       MallocngRoTablesA maddrs = roA, MallocngRuntime maddrs tp = rtA,
       (maddrs.ctx ↦ₛ st1.ctx.toBytes) = cA, (maddrs.lock ↦₃₂ 0#32) = lkA,
       (maddrs.replaced ↦₃₂ 0#32) = rpA, (maddrs.aaReplaced ↦₃₂ 0#32) = aaA,
-      ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) = lbA,
-      MallocngAuxvState (fineBaseGam γ) st1.auxvPtr st1.auxvSnap = axA,
+      MallocngAuxvPtrCell true maddrs.libc st1.auxvPtr = lbA,
+      MallocngAuxvStateRo true (fineBaseGam γ) st1.auxvPtr st1.auxvSnap = axA,
       ProtNoneByteMap st2.masterDom (OwnedProtNoneByte st2) st2.byteVal = pnA,
       MappedSet st2.masterDom (OwnedMappedByte st2) = mpA
     ac_rfl
@@ -527,16 +527,16 @@ theorem mallocImpl_enframe_finish_raw_fine [MallocngMultiPlacement]
     ⟨hsf_x0, hsf_proc.2.2.1.trans htp0, hsf_proc.2.2.2.1.trans hbrkS0,
       hBlkWf, readBytesFromMap_length .., hNoOrph2, hwf2_sf, hCountIvs2, hRawRel, hZeroU⟩
   have hCoreEq :
-      MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk bCoarse.liveCost bCoarse.peakCost st2 =
+      MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk bCoarse.liveCost bCoarse.peakCost st2 =
       (MallocngLiveAuth (fineBaseGam γ) st2.liveMap ∗ (maddrs.ctx ↦ₛ st2.ctx.toBytes) ∗
        (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-       ((maddrs.libc + 8#64) ↦₆₄ st2.auxvPtr) ∗
-       MallocngAuxvState (fineBaseGam γ) st2.auxvPtr st2.auxvSnap ∗
+       MallocngAuxvPtrCell true maddrs.libc st2.auxvPtr ∗
+       MallocngAuxvStateRo true (fineBaseGam γ) st2.auxvPtr st2.auxvSnap ∗
        ByteMap st2.masterDom (OwnedRwByte st2) st2.byteVal ∗
        ProtNoneByteMap st2.masterDom (OwnedProtNoneByte st2) st2.byteVal ∗
        MappedSet st2.masterDom (OwnedMappedByte st2)) := by
     have hwf2' : MallocngWFInflight 0 maddrs.base brkStart sf.brk bCoarse.liveCost bCoarse.peakCost st2 := hwf2_sf
-    dsimp only [MallocngCoreStA, MallocngCoreStInflightA]
+    dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA]
     rw [propext ⟨fun _ => trivial, fun _ => hwf2'⟩, pure_true, emp_sepConj]
   rw [propext ⟨fun _ => trivial, fun _ => hPure⟩, pure_true, emp_sepConj, hCoreEq]
   exact Entails.refl _
@@ -612,7 +612,7 @@ theorem mallocImpl_join_epilogue_raw_fine [MallocngMultiPlacement]
       (MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
        MallocngRoTablesA maddrs ∗
        ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-       MallocngCoreStInflightA 1 (fineBaseGam γ) maddrs brkStart s.brk bud.liveCost bud.peakCost st1 ∗
+       MallocngCoreStInflightModeA true 1 (fineBaseGam γ) maddrs brkStart s.brk bud.liveCost bud.peakCost st1 ∗
        MallocngRuntime maddrs tp)
       (fun sf P_f =>
         (P_f ⊢ MallocImplFineRawSuccessPost γ tp brkStart b ivs0 req s0 sf) ∧
@@ -646,8 +646,8 @@ theorem mallocImpl_join_epilogue_raw_fine [MallocngMultiPlacement]
       (maddrs.smallCntTab ↦ᵣ mallocngSmallCntTabBytes) ∗
       (maddrs.debruijnAlloc ↦ᵣ mallocngDebruijn32Table)
     let coreRest := MallocngLiveAuth (fineBaseGam γ) st1.liveMap ∗ (maddrs.ctx ↦ₛ st1.ctx.toBytes) ∗
-      (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗ ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗
-      MallocngAuxvState (fineBaseGam γ) st1.auxvPtr st1.auxvSnap ∗ rwTail ∗
+      (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell true maddrs.libc st1.auxvPtr ∗
+      MallocngAuxvStateRo true (fineBaseGam γ) st1.auxvPtr st1.auxvSnap ∗ rwTail ∗
       ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗
       MappedSet st1.masterDom (OwnedMappedByte st1)
     let unlockFrame := MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
@@ -657,10 +657,10 @@ theorem mallocImpl_join_epilogue_raw_fine [MallocngMultiPlacement]
     have hRoSplit : MallocngRoTablesA maddrs = ((maddrs.sizeClasses ↦ᵣ sizeClassBytes) ∗ roTail) := rfl
     have hPreInit : (MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
         MallocngRoTablesA maddrs ∗ ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-        MallocngCoreStInflightA 1 (fineBaseGam γ) maddrs brkStart s.brk bud.liveCost bud.peakCost st1 ∗
+        MallocngCoreStInflightModeA true 1 (fineBaseGam γ) maddrs brkStart s.brk bud.liveCost bud.peakCost st1 ∗
         MallocngRuntime maddrs tp) = ((maddrs.lock ↦₃₂ 0#32) ∗ unlockFrame) := by
       rw [hRoSplit]
-      dsimp only [MallocngCoreStInflightA, unlockFrame, coreRest, start, slotBs, rwTail]
+      dsimp only [MallocngCoreStInflightModeA, unlockFrame, coreRest, start, slotBs, rwTail]
       rw [propext ⟨fun _ => trivial, fun _ => hwf1⟩, pure_true, emp_sepConj, hExtSlot, hExtMeta]
       generalize ((g.slotStart idx - 4#64) ↦ₛ readBytesFromMap st1.byteVal (g.slotStart idx - 4#64) g.stride) = pS,
         (g.metaPtr ↦ₛ g.metaBytes) = pM,
@@ -669,11 +669,11 @@ theorem mallocImpl_join_epilogue_raw_fine [MallocngMultiPlacement]
         (maddrs.lock ↦₃₂ 0#32) = pLk,
         (maddrs.replaced ↦₃₂ 0#32) = pRp,
         (maddrs.aaReplaced ↦₃₂ 0#32) = pAa,
-        ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) = pLb,
+        MallocngAuxvPtrCell true maddrs.libc st1.auxvPtr = pLb,
         (maddrs.sizeClasses ↦ᵣ sizeClassBytes) = pSc,
         roTail = pRo, ghostMapAuth (fineAlignGam γ) alignMap0 = pGa,
         MallocngLiveAuth (fineBaseGam γ) st1.liveMap = pGm,
-        MallocngAuxvState (fineBaseGam γ) st1.auxvPtr st1.auxvSnap = pAx,
+        MallocngAuxvStateRo true (fineBaseGam γ) st1.auxvPtr st1.auxvSnap = pAx,
         stackFrameAt (s0.sp - 80#64) 624 = pSf,
         ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal = pPn,
         MappedSet st1.masterDom (OwnedMappedByte st1) = pMp,
@@ -768,10 +768,10 @@ theorem mallocImpl_join_epilogue_raw_fine [MallocngMultiPlacement]
          coreRest ∗ MallocngRuntime maddrs tp)) =
         (MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
          MallocngRoTablesA maddrs ∗ ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-         MallocngCoreStInflightA 1 (fineBaseGam γ) maddrs brkStart s3.brk bud.liveCost bud.peakCost st1 ∗
+         MallocngCoreStInflightModeA true 1 (fineBaseGam γ) maddrs brkStart s3.brk bud.liveCost bud.peakCost st1 ∗
          MallocngRuntime maddrs tp) := by
       rw [hRoSplit]
-      dsimp only [MallocngCoreStInflightA, coreRest, start, slotBs, rwTail]
+      dsimp only [MallocngCoreStInflightModeA, coreRest, start, slotBs, rwTail]
       rw [propext ⟨fun _ => trivial, fun _ => hwf3⟩, pure_true, emp_sepConj, hExtSlot, hExtMeta]
       generalize ((g.slotStart idx - 4#64) ↦ₛ readBytesFromMap st1.byteVal (g.slotStart idx - 4#64) g.stride) = pS,
         (g.metaPtr ↦ₛ g.metaBytes) = pM,
@@ -780,11 +780,11 @@ theorem mallocImpl_join_epilogue_raw_fine [MallocngMultiPlacement]
         (maddrs.lock ↦₃₂ 0#32) = pLk,
         (maddrs.replaced ↦₃₂ 0#32) = pRp,
         (maddrs.aaReplaced ↦₃₂ 0#32) = pAa,
-        ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) = pLb,
+        MallocngAuxvPtrCell true maddrs.libc st1.auxvPtr = pLb,
         (maddrs.sizeClasses ↦ᵣ sizeClassBytes) = pSc,
         roTail = pRo, ghostMapAuth (fineAlignGam γ) alignMap0 = pGa,
         MallocngLiveAuth (fineBaseGam γ) st1.liveMap = pGm,
-        MallocngAuxvState (fineBaseGam γ) st1.auxvPtr st1.auxvSnap = pAx,
+        MallocngAuxvStateRo true (fineBaseGam γ) st1.auxvPtr st1.auxvSnap = pAx,
         stackFrameAt (s0.sp - 80#64) 624 = pSf,
         ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal = pPn,
         MappedSet st1.masterDom (OwnedMappedByte st1) = pMp,

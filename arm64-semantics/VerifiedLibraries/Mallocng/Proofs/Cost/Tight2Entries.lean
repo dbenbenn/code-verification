@@ -98,9 +98,9 @@ private theorem tight2_libcMallocImpl_tok_ok (hK : LibcMallocImplPlacedTightKStm
 private theorem tight2_libcMallocImpl24_ok : LibcMallocImplPlaced24Stmt := by
   intro _ γ tp brkStart b ivs0 req
   have hB2 :=
-    placed_libcMallocImpl24B2_uncond_ok
-      placed_allocMeta_full_ok
-      (placed_allocSlot_full_ok placed_allocMeta_full_ok)
+    placed_libcMallocImpl24B2_uncond_ok (ro := false)
+      (placed_allocMeta_full_ok (ro := false))
+      (placed_allocSlot_full_ok (ro := false) (placed_allocMeta_full_ok (ro := false)))
       γ tp brkStart b ivs0 req
   refine subroutine_ok_mono hB2 (fun _ _ _ hp => hp) (fun _ _ s0 sf hq => ?_)
     (hoom := fun _ _ _ _ ho => ?_)

@@ -9,22 +9,30 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochPlaced
-public import LibsignalBinary.Proofs.SpqrV1.M4.DecryptPlaced
-public import LibsignalBinary.Proofs.SpqrV1.M4.EncryptPlaced
-public import LibsignalBinary.Proofs.SpqrV1.M4.RecordDecryptPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.IntoPbCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlaced
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.ProofPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.FinalPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.RecvPlacedCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesPolyExactPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.SendPlacedCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.TopPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochPlaced
+import LibsignalBinary.Proofs.SpqrV1.M4.DecryptPlaced
+import LibsignalBinary.Proofs.SpqrV1.M4.EncryptPlaced
+import LibsignalBinary.Proofs.SpqrV1.M4.RecordDecryptPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.IntoPbCodeSym
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlaced
+import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.ProofPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.FinalPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.RecvPlacedCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesPolyExactPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.SendPlacedCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.TopPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Relocatable `Subset A4b` Proof Barrel
@@ -34,4 +42,4 @@ Umbrella module rooting `SpqrV1/Drop/ChainEpochPlaced` (blocks `143, 269, 287`),
 `SpqrV1/M4` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section

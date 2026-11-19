@@ -9,8 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Security.Model
+public import LibsignalBinary.Specifications.SignalSession.Run
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Refinement.CliSetup
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Refinement.Statement
+public import Symbolic.Specifications.Refinement.TraceExplanation
 
 /-!
 # Move-Based Assembly-Level Security Definitions
@@ -19,7 +25,7 @@ Move-based counterparts (`*Moves`) of the trace-level security predicates over `
 used as intermediate targets before bridging to the unified-attacker specification.
 -/
 
-@[expose] public section
+public section
 
 namespace DY.Libsignal.Composed.Refinement
 
@@ -65,7 +71,7 @@ open CryptoVerification.SignalSession (Inputs Outcome)
 
 /-- Whole-protocol security over `CliTracesMoves` from initial directory snapshots `dirs`,
 parameterized by run relation `R`. -/
-def CompAsmSecurityCliRMoves {ω : Type} (Agree : ExternInterpretation → ω → Prop)
+@[expose] def CompAsmSecurityCliRMoves {ω : Type} (Agree : ExternInterpretation → ω → Prop)
     (R : ExternInterpretation → ω → Inputs → Option Outcome → Prop)
     (dirs : ExternInterpretation → ProtocolSetup → Participant → DirectorySnapshot) : Prop :=
   ∀ interp : ExternInterpretation, ExternContractsHoldCli interp →
@@ -79,7 +85,7 @@ def CompAsmSecurityCliRMoves {ω : Type} (Agree : ExternInterpretation → ω �
         CollisionAfterExplainedPrefixMoves interp r S who ok τ
 
 /-- `CompAsmSecurityCliRMoves` instantiated at `initDirs`. -/
-def CompAsmSecurityCliMoves {ω : Type} (Agree : ExternInterpretation → ω → Prop)
+@[expose] def CompAsmSecurityCliMoves {ω : Type} (Agree : ExternInterpretation → ω → Prop)
     (R : ExternInterpretation → ω → Inputs → Option Outcome → Prop) : Prop :=
   CompAsmSecurityCliRMoves Agree R initDirs
 

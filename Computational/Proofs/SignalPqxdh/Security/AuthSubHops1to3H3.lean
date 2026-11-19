@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H1
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H1 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H2
@@ -17,7 +17,7 @@ import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open OracleSpec OracleComp MeasureTheory ENNReal BigOperators
 namespace SignalPqxdh.Security
@@ -25,7 +25,7 @@ open SignalPqxdh
 open _root_.Proofs.SignalPqxdh.Security
 open RoKem
 namespace AuthSubHops1to3
-def finishAuthSendMkSlotsH3 {S : Setup} (P : Primitives) (sid : SessionId S) (uEntry : PrincipalEntry)
+@[expose] def finishAuthSendMkSlotsH3 {S : Setup} (P : Primitives) (sid : SessionId S) (uEntry : PrincipalEntry)
     (peerPrincipal? : Option (Nat × PrincipalEntry)) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (ekASk ekAPk ss kemCt ephASk ephAPk : Bytes) (drKey : DRKey) (rk1 mkSeed ck1_1 : Bytes)
     (spqrSalt? : Option Bytes) (pqRatchetMsg msgPlain : Bytes)
@@ -35,12 +35,12 @@ def finishAuthSendMkSlotsH3 {S : Setup} (P : Primitives) (sid : SessionId S) (uE
     ekASk ekAPk ss kemCt ephASk ephAPk drKey rk1 mkSeed ck1_1
     spqrSalt? pqRatchetMsg msgPlain hst deriveMessageKeys
   (resp, { hst0 with slots := hst.slots })
-def prepareAuthSendMkSlotsH3 (S : Setup) (P : Primitives)
+@[expose] def prepareAuthSendMkSlotsH3 (S : Setup) (P : Primitives)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) : ProbComp (PreparedAuthSend S) :=
   PreparedAuthSend.mapState (fun s => { s with slots := hst.slots }) <$>
     prepareAuthSendMk S P sid u bundle m0 m1 hst
-def finishAuthRecvMkSlotsH3 {S : Setup} (P : Primitives) (msg : PreKeyMsg) (prep : PreparedAuthRecv S)
+@[expose] def finishAuthRecvMkSlotsH3 {S : Setup} (P : Primitives) (msg : PreKeyMsg) (prep : PreparedAuthRecv S)
     (drKey : DRKey) (rk1 ck1_1 : Bytes) (recvCount' : Nat)
     (mkSaltCache' : List ((SessionId S × Option Bytes) × (Nat × MessageKeys)))
     (slots' : AuthSlotState) (deriveMessageKeys : MessageKeys) :
@@ -347,7 +347,7 @@ theorem simulateQ_prfMkFullImpl_deriveMkQ_bind {Cache β : Type} (P : Primitives
         (simulateQ fullImpl (k mk)).run cache') := by
   intro fullImpl
   rw [simulateQ_bind, StateT.run_bind, simulateQ_prfMkFullImpl_deriveMkQ]
-def authMkSendRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkSendRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) (sentChal : Bool) (cache : Cache) :
@@ -379,7 +379,7 @@ def authMkSendRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
         ekASk ekAPk ss kemCt ephASk ephAPk drKey rk1 mkSeed ck1_1
         spqrSalt? pqRatchetMsg msgPlain hst deriveMessageKeys
       pure (resp, ((hst', sentChal), cache))
-def finishAuthRecvUnmatchedRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def finishAuthRecvUnmatchedRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (msg : PreKeyMsg) (prep : PreparedAuthRecv S) (drKey : DRKey) (rk1 : Bytes)
     (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat)
@@ -403,7 +403,7 @@ def finishAuthRecvUnmatchedRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cac
     let ck1_1 ← sampleBytes32
     let deriveMessageKeys := P.deriveMsgKeys mkSeed spqrSalt?
     pure (finishAuthRecvMk P msg prep drKey rk1 ck1_1 recvCount' mkSaltCache deriveMessageKeys, cache)
-def matchedSameEphMkRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def matchedSameEphMkRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (s : IdealAuthSession S) (spqrSalt? : Option Bytes) (recvCount : Nat)
     (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) (cache : Cache) :
@@ -429,7 +429,7 @@ def matchedSameEphMkRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Ty
         pure ((mk, ((s.sid, spqrSalt?), (recvCount, mk)) :: mkSaltCache), cache)
   else
     pure ((P.deriveMsgKeys s.mkSeed spqrSalt?, mkSaltCache), cache)
-def authMkRecvRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkRecvRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecv S))
     (hst : AuthHybridStateFixed S) (sentChal : Bool) (cache : Cache) :
@@ -496,7 +496,7 @@ def authMkRecvRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
         let (resp, hst') := prep.finish res?
         pure ((resp, { toAuthHybridState := hst', recvCount := recvCount', mkSaltCache :=
                        hst.mkSaltCache }), cache)
-def authMkStepRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkStepRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) (sentChal : Bool) (cache : Cache) :
     ProbComp ((authSpec S).Range q × ((AuthHybridStateFixed S × Bool) × Cache)) :=
@@ -518,12 +518,12 @@ def authMkStepRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
   | qOther => do
     let (resp, hst') ← authCkOtherStep S P qOther hst
     pure (resp, ((hst', sentChal), cache))
-def authMkRedProbImpl (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkRedProbImpl (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache)) :
     QueryImpl (authSpec S) (StateT ((AuthHybridStateFixed S × Bool) × Cache) ProbComp) :=
   fun q => StateT.mk (fun ((hst, sentChal), cache) =>
     authMkStepRedProb S P idx evalPrf q hst sentChal cache)
-def authMkSlotsSendRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkSlotsSendRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) (sentChal : Bool) (cache : Cache) :
@@ -556,7 +556,7 @@ def authMkSlotsSendRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Typ
         ekASk ekAPk ss kemCt ephASk ephAPk drKey rk1 mkSeed ck1_1
         spqrSalt? pqRatchetMsg msgPlain hst1 deriveMessageKeys
       pure (resp, ((hst', sentChal), cache))
-def finishAuthRecvUnmatchedSlotsRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def finishAuthRecvUnmatchedSlotsRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (msg : PreKeyMsg) (prep : PreparedAuthRecv S) (drKey : DRKey) (rk1 : Bytes)
     (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat)
@@ -583,7 +583,7 @@ def finishAuthRecvUnmatchedSlotsRedProb (S : Setup) (P : Primitives) (idx : Nat)
     let deriveMessageKeys := P.deriveMsgKeys mkSeed spqrSalt?
     pure (finishAuthRecvMkSlotsH3 P msg prep drKey rk1 ck1_1 recvCount' mkSaltCache slots'
       deriveMessageKeys, cache)
-def matchedSameEphMkSlotsRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def matchedSameEphMkSlotsRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (s : IdealAuthSession S) (sIdx : Nat) (spqrSalt? : Option Bytes) (recvCount : Nat)
     (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) (cache : Cache) :
@@ -608,7 +608,7 @@ def matchedSameEphMkSlotsRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache
         pure ((mk, ((s.sid, spqrSalt?), (recvCount, mk)) :: mkSaltCache), cache)
   else
     pure ((P.deriveMsgKeys s.mkSeed spqrSalt?, mkSaltCache), cache)
-def authMkSlotsRecvRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkSlotsRecvRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecv S))
     (hst : AuthHybridStateFixed S) (sentChal : Bool) (cache : Cache) :
@@ -677,7 +677,7 @@ def authMkSlotsRecvRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Typ
         let (resp, hst') := prep.finish res?
         pure ((resp, { toAuthHybridState := hst', recvCount := recvCount',
                        mkSaltCache := hst.mkSaltCache, slots := hst.slots }), cache)
-def authMkSlotsStepRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkSlotsStepRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) (sentChal : Bool) (cache : Cache) :
     ProbComp ((authSpec S).Range q × ((AuthHybridStateFixed S × Bool) × Cache)) :=
@@ -699,7 +699,7 @@ def authMkSlotsStepRedProb (S : Setup) (P : Primitives) (idx : Nat) {Cache : Typ
   | qOther => do
     let (resp, hst') ← authCkOtherStep S P qOther hst
     pure (resp, ((hst', sentChal), cache))
-def authMkSlotsRedProbImpl (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
+@[expose] def authMkSlotsRedProbImpl (S : Setup) (P : Primitives) (idx : Nat) {Cache : Type}
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache)) :
     QueryImpl (authSpec S) (StateT ((AuthHybridStateFixed S × Bool) × Cache) ProbComp) :=
   fun q => StateT.mk (fun ((hst, sentChal), cache) =>
@@ -796,120 +796,6 @@ theorem authMkSlotsSendRedProb_cacheAuthAdvKeysFixed {Cache : Type} (S : Setup) 
     · split
       · simp only [map_bind]; rfl
       · simp only [map_bind]; rfl
-theorem authMkSendRedProb_cacheAuthAdvKeysFixed {Cache : Type} (S : Setup) (P : Primitives)
-  (idx : Nat)
-    (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
-    (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
-    (hst : AuthHybridStateFixed S) (sentChal : Bool) (cache : Cache) :
-    authMkSendRedProb S P idx evalPrf sid u bundle m0 m1 (cacheAuthAdvKeysFixed P hst) sentChal
-      cache =
-      (fun (resp, ((hst', sentChal'), cache')) =>
-        (resp, ((cacheAuthAdvKeysFixed P hst', sentChal'), cache'))) <$>
-      authMkSendRedProb S P idx evalPrf sid u bundle m0 m1 hst sentChal cache := by
-  unfold authMkSendRedProb
-  rw [prepareAuthSendMk_cacheAuthAdvKeysFixed, bind_map_left, map_bind]
-  congr 1; funext prep
-  cases prep with
-  | done resp hst' =>
-    simp [PreparedAuthSend.mapState]
-  | idealMk uEntry peerPrincipal? ekASk ekAPk ss kemCt ephASk ephAPk
-      drKey rk1 spqrSalt? pqRatchetMsg msgPlain =>
-    dsimp only [PreparedAuthSend.mapState]
-    split
-    · simp only [map_bind]; rfl
-    · split
-      · simp only [map_bind]; rfl
-      · simp only [map_bind]; rfl
-theorem simulateQ_finishAuthRecvUnmatchedReduction {Cache : Type} (S : Setup) (P : Primitives)
-  (idx : Nat)
-    (impl : QueryImpl prfMsgKeysSpec (StateT Cache ProbComp))
-    (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S) (drKey : DRKey) (rk1 : Bytes)
-    (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat)
-    (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys)))
-    (sentChal : Bool) (cache : Cache)
-    (hPrin : prep.finishTag.hstDec.base.principals.length ≤ S.N_dh)
-    (hSentOPK : prep.finishTag.hstDec.base.sentOPKEvents.length ≤ S.N_dh)
-    (hSentNoOPK : prep.finishTag.hstDec.base.sentNoOPKEvents.length ≤ S.N_dh) :
-    let fullImpl := (primBaseImpl P).liftTarget (StateT Cache ProbComp) + impl
-    let evalPrf := fun s c => (impl (.derive (effectiveHkdfSaltBytes s))).run c
-    (simulateQ fullImpl
-      (finishAuthRecvUnmatchedReduction S idx msg prep drKey rk1 spqrSalt? rSlot recvCount'
-        mkSaltCache sentChal)).run cache =
-      finishAuthRecvUnmatchedRedProb S P idx evalPrf msg (prep.toPure true P) drKey rk1
-        spqrSalt? rSlot recvCount' mkSaltCache sentChal cache := by
-  intro fullImpl evalPrf
-  unfold finishAuthRecvUnmatchedReduction finishAuthRecvUnmatchedSlotsReduction
-    finishAuthRecvUnmatchedRedProb
-  dsimp only
-  split
-  · rw [simulateQ_prfMkFullImpl_embedUnifMk_bind]
-    congr 1; funext ck1_1
-    cases sentChal
-    · simp only [Bool.not_false, ↓reduceIte, simulateQ_prfMkFullImpl_deriveMkQ_bind]
-      congr 1; funext ⟨deriveMessageKeys, cache'⟩
-      rw [simulateQ_prfMkFullImpl_embedPrimMk,
-          ← finishAuthRecvMkPrim,
-          simulateQ_finishAuthRecvMkPrim S P msg prep drKey rk1 ck1_1 recvCount' mkSaltCache deriveMessageKeys
-            hPrin hSentOPK hSentNoOPK,
-          pure_bind]
-    · simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte,
-        simulateQ_prfMkFullImpl_embedUnifMk_bind]
-      congr 1; funext deriveMessageKeys
-      rw [pure_bind, simulateQ_prfMkFullImpl_embedPrimMk,
-          ← finishAuthRecvMkPrim,
-          simulateQ_finishAuthRecvMkPrim S P msg prep drKey rk1 ck1_1 recvCount' mkSaltCache deriveMessageKeys
-            hPrin hSentOPK hSentNoOPK,
-          pure_bind]
-  · split
-    · rw [simulateQ_prfMkFullImpl_embedUnifMk_bind]
-      congr 1; funext ck1_1
-      rw [simulateQ_prfMkFullImpl_embedUnifMk_bind]
-      congr 1; funext deriveMessageKeys
-      rw [simulateQ_prfMkFullImpl_embedPrimMk,
-          ← finishAuthRecvMkPrim,
-          simulateQ_finishAuthRecvMkPrim S P msg prep drKey rk1 ck1_1 recvCount' mkSaltCache deriveMessageKeys
-            hPrin hSentOPK hSentNoOPK,
-          pure_bind]
-    · rw [simulateQ_prfMkFullImpl_embedUnifMk_bind]
-      congr 1; funext mkSeed
-      rw [simulateQ_prfMkFullImpl_embedUnifMk_bind]
-      congr 1; funext ck1_1
-      rw [simulateQ_prfMkFullImpl_embedPrimMk_bind, simulateQ_primQ_deriveMsgKeys, pure_bind,
-          simulateQ_prfMkFullImpl_embedPrimMk,
-          ← finishAuthRecvMkPrim,
-          simulateQ_finishAuthRecvMkPrim S P msg prep drKey rk1 ck1_1 recvCount' mkSaltCache _
-            hPrin hSentOPK hSentNoOPK,
-          pure_bind]
-theorem simulateQ_matchedSameEphMkReduction {Cache : Type} (S : Setup) (P : Primitives) (idx : Nat)
-    (impl : QueryImpl prfMsgKeysSpec (StateT Cache ProbComp))
-    (s : IdealAuthSession S) (spqrSalt? : Option Bytes) (recvCount : Nat)
-    (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) (cache : Cache) :
-    let fullImpl := (primBaseImpl P).liftTarget (StateT Cache ProbComp) + impl
-    let evalPrf := fun s c => (impl (.derive (effectiveHkdfSaltBytes s))).run c
-    (simulateQ fullImpl (matchedSameEphMkReduction S idx s spqrSalt? recvCount mkSaltCache)).run
-      cache =
-      matchedSameEphMkRedProb S P idx evalPrf s spqrSalt? recvCount mkSaltCache cache := by
-  intro fullImpl evalPrf
-  unfold matchedSameEphMkReduction matchedSameEphMkSlotsReduction matchedSameEphMkRedProb
-  dsimp only
-  split
-  · split
-    · rfl
-    · cases mkSaltCache.find? (fun (k, _) => mkSaltKeyMatch k s.sid spqrSalt?) with
-      | some entry => rcases entry with ⟨_, ⟨_, mk⟩⟩; rfl
-      | none =>
-        rw [simulateQ_prfMkFullImpl_deriveMkQ_bind]
-        rfl
-  · split
-    · split
-      · rfl
-      · cases mkSaltCache.find? (fun (k, _) => mkSaltKeyMatch k s.sid spqrSalt?) with
-        | some entry => rcases entry with ⟨_, ⟨_, mk⟩⟩; rfl
-        | none =>
-          rw [simulateQ_prfMkFullImpl_embedUnifMk_bind]
-          rfl
-    · rw [simulateQ_prfMkFullImpl_embedPrimMk_bind, simulateQ_primQ_deriveMsgKeys, pure_bind]
-      rfl
 theorem simulateQ_finishAuthRecvUnmatchedSlotsReduction {Cache : Type} (S : Setup) (P : Primitives)
     (idx : Nat)
     (impl : QueryImpl prfMsgKeysSpec (StateT Cache ProbComp))
@@ -1100,133 +986,6 @@ theorem simulateQ_authMkRecvReduction {Cache : Type} (S : Setup) (P : Primitives
             simulateQ_recvFinishTag_runPrim S true P prep.finishTag _ hPrin hSentOPK hSentNoOPK,
             pure_bind]
         rfl
-theorem finishAuthRecvUnmatchedRedProb_cacheAuthAdvKeysFixed {Cache : Type} (S : Setup)
-  (P : Primitives) (idx : Nat)
-    (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
-    (msg : PreKeyMsg) (prep : PreparedAuthRecvPrim S) (drKey : DRKey) (rk1 : Bytes)
-    (spqrSalt? : Option Bytes) (rSlot recvCount' : Nat)
-    (mkSaltCache : List ((SessionId S × Option Bytes) × (Nat × MessageKeys)))
-    (sentChal : Bool) (cache : Cache) :
-    finishAuthRecvUnmatchedRedProb S P idx evalPrf msg
-      ((prep.mapState (cacheAuthAdvKeys P)).toPure true P)
-      drKey rk1 spqrSalt? rSlot recvCount' mkSaltCache sentChal cache =
-    (fun ((resp, hst'), cache') => ((resp, cacheAuthAdvKeysFixed P hst'), cache')) <$>
-      finishAuthRecvUnmatchedRedProb S P idx evalPrf msg (prep.toPure true P)
-        drKey rk1 spqrSalt? rSlot recvCount' mkSaltCache sentChal cache := by
-  unfold finishAuthRecvUnmatchedRedProb
-  dsimp only
-  split
-  · simp only [map_bind]
-    congr 1; funext ck1_1
-    cases sentChal
-    · simp only [Bool.not_false, ↓reduceIte, map_bind]
-      congr 1; funext ⟨deriveMessageKeys, cache'⟩
-      simp [finishAuthRecvMk_mapState_cacheAuthAdvKeys]
-    · simp only [Bool.not_true, Bool.false_eq_true, ↓reduceIte, map_bind]
-      congr 1; funext deriveMessageKeys
-      simp [finishAuthRecvMk_mapState_cacheAuthAdvKeys]
-  · split
-    · simp only [map_bind]
-      congr 1; funext ck1_1
-      congr 1; funext deriveMessageKeys
-      simp [finishAuthRecvMk_mapState_cacheAuthAdvKeys]
-    · simp only [map_bind]
-      congr 1; funext mkSeed
-      congr 1; funext ck1_1
-      simp [finishAuthRecvMk_mapState_cacheAuthAdvKeys]
-theorem authMkRecvRedProb_cacheAuthAdvKeysFixed {Cache : Type} (S : Setup) (P : Primitives)
-  (idx : Nat)
-    (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
-    (msg : PreKeyMsg) (prep? : Option (PreparedAuthRecvPrim S))
-    (hst : AuthHybridStateFixed S) (sentChal : Bool) (cache : Cache) :
-    authMkRecvRedProb S P idx evalPrf msg
-      ((prep?.map (PreparedAuthRecvPrim.mapState (cacheAuthAdvKeys P))).map
-        (PreparedAuthRecvPrim.toPure true P))
-      (cacheAuthAdvKeysFixed P hst) sentChal cache =
-    (fun ((resp, hst'), cache') => ((resp, cacheAuthAdvKeysFixed P hst'), cache')) <$>
-      authMkRecvRedProb S P idx evalPrf msg (prep?.map (PreparedAuthRecvPrim.toPure true P))
-        hst sentChal cache := by
-  unfold authMkRecvRedProb
-  cases prep? with
-  | none =>
-    simp [cacheAuthAdvKeysFixed]
-  | some prep =>
-    dsimp only [Option.map]
-    have hMatch : ((prep.mapState (cacheAuthAdvKeys P)).toPure true P).matchedSess? =
-        (prep.toPure true P).matchedSess? := rfl
-    have hHon : ((prep.mapState (cacheAuthAdvKeys P)).toPure true P).isUncorruptedHonestSender =
-        (prep.toPure true P).isUncorruptedHonestSender := rfl
-    have hEph : ((prep.mapState (cacheAuthAdvKeys P)).toPure true P).sameEph =
-        (prep.toPure true P).sameEph := rfl
-    have hSec : ((prep.mapState (cacheAuthAdvKeys P)).toPure true P).secrets =
-        (prep.toPure true P).secrets := rfl
-    have hDh : ((prep.mapState (cacheAuthAdvKeys P)).toPure true P).dhRatchet =
-        (prep.toPure true P).dhRatchet := rfl
-    have hKE : ((prep.mapState (cacheAuthAdvKeys P)).toPure true P).kEntry =
-        (prep.toPure true P).kEntry := rfl
-    have hRo : ((prep.mapState (cacheAuthAdvKeys P)).toPure true P).hstDec.base.roCache =
-        (prep.toPure true P).hstDec.base.roCache := by
-      simp [PreparedAuthRecvPrim.mapState, PreparedAuthRecvPrim.toPure]
-    have hRootRo : ((prep.mapState (cacheAuthAdvKeys P)).toPure true P).hstDec.base.rootRoCache =
-        (prep.toPure true P).hstDec.base.rootRoCache := by
-      simp [PreparedAuthRecvPrim.mapState, PreparedAuthRecvPrim.toPure]
-    have hRecvCnt : (cacheAuthAdvKeysFixed P hst).recvCount = hst.recvCount := rfl
-    have hMkCache : (cacheAuthAdvKeysFixed P hst).mkSaltCache = hst.mkSaltCache := rfl
-    rw [hMatch, hHon, hEph, hSec, hDh, hKE, hRo, hRootRo, hRecvCnt, hMkCache]
-    split
-    · cases (prep.toPure true P).matchedSess? with
-      | some s =>
-        dsimp only
-        split
-        · cases P.spqrInitRecv s.drKey.pqrKey msg.pqRatchetMsg with
-          | none =>
-            unfold PreparedAuthRecvPrim.mapState PreparedAuthRecvPrim.toPure
-            simp [cacheAuthAdvKeysFixed, recvFinishTag_mapState_toPure_fst,
-                   recvFinishTag_mapState_toPure_snd]
-          | some pqr =>
-            rcases pqr with ⟨_, spqrSalt?⟩
-            dsimp only
-            simp only [map_bind]
-            congr 1; funext ⟨⟨mk, mkSaltCache'⟩, cache'⟩
-            simp [finishAuthRecvMk_mapState_cacheAuthAdvKeys]
-        · simp only [map_bind]
-          congr 1; funext rk1
-          cases P.spqrInitRecv s.drKey.pqrKey msg.pqRatchetMsg with
-          | none =>
-            unfold PreparedAuthRecvPrim.mapState PreparedAuthRecvPrim.toPure
-            simp [cacheAuthAdvKeysFixed, recvFinishTag_mapState_toPure_fst,
-                   recvFinishTag_mapState_toPure_snd]
-          | some pqr =>
-            rcases pqr with ⟨_, spqrSalt?⟩
-            exact finishAuthRecvUnmatchedRedProb_cacheAuthAdvKeysFixed S P idx evalPrf msg prep
-              s.drKey rk1 spqrSalt? _ _ hst.mkSaltCache sentChal cache
-      | none =>
-        dsimp only
-        simp only [map_bind]
-        congr 1; funext drKey
-        congr 1; funext rk1
-        cases P.spqrInitRecv drKey.pqrKey msg.pqRatchetMsg with
-        | none =>
-          unfold PreparedAuthRecvPrim.mapState PreparedAuthRecvPrim.toPure
-          simp [cacheAuthAdvKeysFixed, recvFinishTag_mapState_toPure_fst,
-                 recvFinishTag_mapState_toPure_snd]
-        | some pqr =>
-          rcases pqr with ⟨_, spqrSalt?⟩
-          exact finishAuthRecvUnmatchedRedProb_cacheAuthAdvKeysFixed S P idx evalPrf msg prep
-            drKey rk1 spqrSalt? _ _ hst.mkSaltCache sentChal cache
-    · simp only [map_bind]
-      congr 1; funext ⟨drKey, roCache'⟩
-      congr 1; funext ⟨⟨rk1, ck1_0⟩, rootRoCache'⟩
-      cases P.spqrInitRecv drKey.pqrKey msg.pqRatchetMsg with
-      | none =>
-        unfold PreparedAuthRecvPrim.mapState PreparedAuthRecvPrim.toPure
-        simp [cacheAuthAdvKeysFixed, recvFinishTag_mapState_toPure_fst,
-               recvFinishTag_mapState_toPure_snd]
-      | some pqr =>
-        rcases pqr with ⟨_, spqrSalt?⟩
-        unfold PreparedAuthRecvPrim.mapState PreparedAuthRecvPrim.toPure
-        simp [cacheAuthAdvKeysFixed, recvFinishTag_mapState_toPure_fst,
-               recvFinishTag_mapState_toPure_snd]
 theorem finishAuthRecvUnmatchedSlotsRedProb_cacheAuthAdvKeysFixed {Cache : Type} (S : Setup)
     (P : Primitives) (idx : Nat)
     (evalPrf : Option Bytes → Cache → ProbComp (MessageKeys × Cache))
@@ -2057,17 +1816,17 @@ theorem simulateQ_authMkReductionRun_eq_redProb {Cache : Type} (S : Setup) (P : 
                                                         hst').toAuthHybridState
             hVC.principals_le hVC.spkBundles_le hVC.opkEntries_le hVC.sessions_le hVC.validKem]
       simp [cacheAuthAdvKeysFixed, finalizeAuthFixed_cacheAuthAdvKeys])
-def restoreIdealMkAtIdx {S : Setup} (idx : Nat) (mkSeedStar : Bytes)
+@[expose] def restoreIdealMkAtIdx {S : Setup} (idx : Nat) (mkSeedStar : Bytes)
     (s : IdealAuthSession S) : IdealAuthSession S :=
   if sessionSlotIndex s.sid == idx then { s with mkSeed := mkSeedStar } else s
-def restoreAuthMkAtIdx {S : Setup} (idx : Nat) (mkSeedStar : Bytes)
+@[expose] def restoreAuthMkAtIdx {S : Setup} (idx : Nat) (mkSeedStar : Bytes)
     (hst : AuthHybridState S) : AuthHybridState S :=
   { hst with idealSessions := hst.idealSessions.map (restoreIdealMkAtIdx idx mkSeedStar) }
-def filterOutMkSaltCacheAtIdx {S : Setup} (idx : Nat)
+@[expose] def filterOutMkSaltCacheAtIdx {S : Setup} (idx : Nat)
     (c : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))) :
     List ((SessionId S × Option Bytes) × (Nat × MessageKeys)) :=
   c.filter (fun (k, _) => !(sessionSlotIndex k.1 == idx))
-def restoreAuthFixedMkAtIdx {S : Setup} (idx : Nat) (mkSeedStar : Bytes)
+@[expose] def restoreAuthFixedMkAtIdx {S : Setup} (idx : Nat) (mkSeedStar : Bytes)
     (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
   { toAuthHybridState := restoreAuthMkAtIdx idx mkSeedStar hst.toAuthHybridState
     recvCount := hst.recvCount
@@ -2128,7 +1887,7 @@ def restoreAuthFixedMkAtIdx {S : Setup} (idx : Nat) (mkSeedStar : Bytes)
   | some s =>
     dsimp only [Option.map, restoreIdealMkAtIdx]
     split <;> rfl
-def restorePreparedAuthRecvMk {S : Setup} (idx : Nat) (mkSeedStar : Bytes)
+@[expose] def restorePreparedAuthRecvMk {S : Setup} (idx : Nat) (mkSeedStar : Bytes)
     (prep : PreparedAuthRecv S) : PreparedAuthRecv S :=
   { prep with
     hstDec := restoreAuthMkAtIdx idx mkSeedStar prep.hstDec
@@ -2159,204 +1918,12 @@ theorem finishAuthHybridRecvOPK_restoreAuthMkAtIdx {S : Setup} (checkAuth : Bool
       rcases p with ⟨_, senderEntry⟩
       dsimp only
       cases senderEntry.corrupted <;> rfl
-theorem finishAuthHybridRecvNoOPK_restoreAuthMkAtIdx {S : Setup} (checkAuth : Bool) (P : Primitives)
-    (idx : Nat) (mkSeedStar : Bytes) (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk)
-    (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
-    (usedTriples' : List (Nat × KeyId × KeyId × Bytes)) (msg : PreKeyMsg)
-    (hstDec : AuthHybridState S) (res?) :
-    let x := finishAuthHybridRecvNoOPK checkAuth P k j l kEntry bEntry usedTriples' msg hstDec res?
-    (x.1, restoreAuthMkAtIdx idx mkSeedStar x.2) =
-      finishAuthHybridRecvNoOPK checkAuth P k j l kEntry bEntry usedTriples' msg
-        (restoreAuthMkAtIdx idx mkSeedStar hstDec) res? := by
-  dsimp only [restoreAuthMkAtIdx]
-  unfold finishAuthHybridRecvNoOPK
-  cases res? with
-  | none => rfl
-  | some r =>
-    rcases r with ⟨drKey, rk1, ck1_1, pt, roCache', rootRoCache'⟩
-    dsimp only
-    cases findHonestPrincipal P hstDec.base.principals msg.hdr.ikAPk with
-    | none => rfl
-    | some p =>
-      rcases p with ⟨_, senderEntry⟩
-      dsimp only
-      cases senderEntry.corrupted <;> rfl
-theorem prepareAuthHybridRecvOPK_restoreAuthMkAtIdx {S : Setup} (checkAuth : Bool) (P : Primitives)
-    (idx : Nat) (mkSeedStar : Bytes) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
-    (msg : PreKeyMsg) (hst : AuthHybridState S) :
-    prepareAuthHybridRecvOPK checkAuth P k j o msg (restoreAuthMkAtIdx idx mkSeedStar hst) =
-      (prepareAuthHybridRecvOPK checkAuth P k j o msg hst).map
-        (restorePreparedAuthRecvMk idx mkSeedStar) := by
-  unfold prepareAuthHybridRecvOPK restorePreparedAuthRecvMk
-  dsimp only [restoreAuthMkAtIdx_base]
-  split; · rfl
-  split; · rfl
-  split; · rfl
-  split; · rfl
-  split
-  · split; · rfl
-    split; · rfl
-    split
-    · rfl
-    · simp only [Option.map_some, restoreAuthMkAtIdx_initKemRecs, restoreAuthMkAtIdx_recvKemRecs,
-        restoreAuthMkAtIdx_idealSessions, find?_matchIdealAuthHandshake_restoreIdealMkAtIdx]
-      congr 2
-      · exact match_sameEph_map_restoreIdealMkAtIdx P idx mkSeedStar _ _
-      · funext res?
-        apply Eq.symm
-        exact finishAuthHybridRecvOPK_restoreAuthMkAtIdx checkAuth P idx mkSeedStar k j o _ _ _ _
-          msg _ res?
-  · rfl
-theorem prepareAuthHybridRecvNoOPK_restoreAuthMkAtIdx {S : Setup} (checkAuth : Bool)
-  (P : Primitives)
-    (idx : Nat) (mkSeedStar : Bytes) (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk)
-    (msg : PreKeyMsg) (hst : AuthHybridState S) :
-    prepareAuthHybridRecvNoOPK checkAuth P k j l msg (restoreAuthMkAtIdx idx mkSeedStar hst) =
-      (prepareAuthHybridRecvNoOPK checkAuth P k j l msg hst).map
-        (restorePreparedAuthRecvMk idx mkSeedStar) := by
-  unfold prepareAuthHybridRecvNoOPK restorePreparedAuthRecvMk
-  dsimp only [restoreAuthMkAtIdx_base]
-  split; · rfl
-  split; · rfl
-  split; · rfl
-  split; · rfl
-  split
-  · split; · rfl
-    split
-    · rfl
-    · simp only [Option.map_some, restoreAuthMkAtIdx_initKemRecs, restoreAuthMkAtIdx_recvKemRecs,
-        restoreAuthMkAtIdx_idealSessions, find?_matchIdealAuthHandshake_restoreIdealMkAtIdx]
-      congr 2
-      · exact match_sameEph_map_restoreIdealMkAtIdx P idx mkSeedStar _ _
-      · funext res?
-        apply Eq.symm
-        exact finishAuthHybridRecvNoOPK_restoreAuthMkAtIdx checkAuth P idx mkSeedStar k j l _ _ _
-          msg _ res?
-  · rfl
 private theorem ite_elim_false_first₂ {α β : Sort*} (R : α → β → Prop) {c : Prop} [Decidable c]
     {t₁ e₁ : α} {t₂ e₂ : β} (he : ¬ c → R e₁ e₂) (ht : c → R t₁ t₂) :
     R (if c then t₁ else e₁) (if c then t₂ else e₂) := by
   by_cases h : c
   · simpa [h] using ht h
   · simpa [h] using he h
-theorem prepareAuthSendMk_restoreAuthFixedMkAtIdx (S : Setup) (P : Primitives)
-    (idx : Nat) (mkSeedStar : Bytes)
-    (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
-    (hst : AuthHybridStateFixed S) :
-    prepareAuthSendMk S P sid u bundle m0 m1 (restoreAuthFixedMkAtIdx idx mkSeedStar hst) =
-      PreparedAuthSend.mapState (restoreAuthFixedMkAtIdx idx mkSeedStar) <$>
-        prepareAuthSendMk S P sid u bundle m0 m1 hst := by
-  unfold prepareAuthSendMk finishAuthHybridSend restoreAuthFixedMkAtIdx restoreAuthMkAtIdx
-  dsimp only
-  cases hst.toAuthHybridState.base.hasWonAuth <;> simp only [Bool.false_eq_true, ↓reduceIte]
-  swap; · simp [PreparedAuthSend.mapState]
-  cases (m0.length != m1.length) <;> simp only [Bool.false_eq_true, ↓reduceIte]
-  · cases hst.toAuthHybridState.base.usedSendSessions.contains sid <;> simp only
-      [Bool.false_eq_true, ↓reduceIte]
-    · cases hst.toAuthHybridState.base.principals.find? (fun (idx, _) => idx == u.val) with
-      | none => simp [PreparedAuthSend.mapState]
-      | some uPair =>
-        rcases uPair with ⟨_, uEntry⟩
-        dsimp only
-        refine ite_elim_false_first₂
-          (fun m₁ m₂ => m₁ = PreparedAuthSend.mapState (restoreAuthFixedMkAtIdx idx mkSeedStar) <$> m₂)
-          (fun _ => ?_) (fun _ => ?_) <;>
-          (unfold restoreAuthFixedMkAtIdx restoreAuthMkAtIdx; dsimp only)
-        · cases (!koskBundleOk P hst.toAuthHybridState.base.principals
-            hst.toAuthHybridState.base.spkBundles hst.toAuthHybridState.base.opkEntries
-            hst.toAuthHybridState.base.advKeys bundle) <;>
-            simp only [Bool.false_eq_true, ↓reduceIte]
-          · simp only [map_bind]
-            congr 1; funext ekASk; congr 1; funext kemCoins; congr 1; funext ephASk; congr 1; funext
-              spqrCoins
-            cases (!(P.sigVerify (resolveSigPk P hst.toAuthHybridState.base.principals bundle.ikB)
-                (encodeEC bundle.spkB) bundle.spkSig &&
-              P.sigVerify (resolveSigPk P hst.toAuthHybridState.base.principals bundle.ikB)
-                (encodeKEM bundle.pqspkB) bundle.pqspkSig)) <;>
-              simp only [Bool.false_eq_true, ↓reduceIte]
-            · cases P.kemEncaps bundle.pqspkB kemCoins with
-              | none => simp [PreparedAuthSend.mapState]
-              | some pair =>
-                rcases pair with ⟨ss, kemCt⟩
-                dsimp only
-                refine ite_elim_false_first₂
-                  (fun m₁ m₂ => m₁ = PreparedAuthSend.mapState (restoreAuthFixedMkAtIdx idx mkSeedStar) <$> m₂)
-                  (fun h_ideal => ?_) (fun _ => ?_) <;>
-                  (unfold restoreAuthFixedMkAtIdx restoreAuthMkAtIdx; dsimp only)
-                · simp only [map_bind]
-                  congr 1; funext ⟨drKey, roCache'⟩
-                  congr 1; funext ⟨⟨rk1, ck1_0⟩, rootRoCache'⟩
-                  cases P.spqrInitSend drKey.pqrKey spqrCoins with
-                  | none => simp [PreparedAuthSend.mapState]
-                  | some spqrVal =>
-                    rcases spqrVal with ⟨_, spqrSalt?, pqRatchetMsg⟩
-                    dsimp only
-                    simp [PreparedAuthSend.mapState, h_ideal]
-                · simp only [map_bind]
-                  congr 1; funext drKey
-                  congr 1; funext rk1
-                  cases P.spqrInitSend drKey.pqrKey spqrCoins with
-                  | none => simp [PreparedAuthSend.mapState]
-                  | some spqrVal =>
-                    rcases spqrVal with ⟨_, spqrSalt?, pqRatchetMsg⟩
-                    simp [PreparedAuthSend.mapState]
-            · simp [PreparedAuthSend.mapState]
-          · simp [PreparedAuthSend.mapState]
-        · simp [PreparedAuthSend.mapState]
-    · simp [PreparedAuthSend.mapState]
-  · simp [PreparedAuthSend.mapState]
-theorem finishAuthSendMk_restoreAuthFixedMkAtIdx_eq {S : Setup} (P : Primitives)
-    (idx : Nat) (mkSeedStar : Bytes)
-    (sid : SessionId S) (hIdx : (sessionSlotIndex sid == idx) = true)
-    (uEntry : PrincipalEntry) (peerPrincipal? : Option (Nat × PrincipalEntry))
-    (bundle : PreKeyBundleInput) (m0 m1 : Bytes) (ekASk ekAPk ss kemCt ephASk ephAPk : Bytes)
-    (drKey : DRKey) (rk1 ck1_1 : Bytes) (spqrSalt? : Option Bytes) (pqRatchetMsg msgPlain : Bytes)
-    (hst : AuthHybridStateFixed S) (deriveMessageKeys : MessageKeys) :
-    finishAuthSendMk P sid uEntry peerPrincipal? bundle m0 m1
-      ekASk ekAPk ss kemCt ephASk ephAPk drKey rk1 mkSeedStar ck1_1
-      spqrSalt? pqRatchetMsg msgPlain (restoreAuthFixedMkAtIdx idx mkSeedStar hst) deriveMessageKeys =
-    let (resp, hst') := finishAuthSendMk P sid uEntry peerPrincipal? bundle m0 m1
-      ekASk ekAPk ss kemCt ephASk ephAPk drKey rk1 [] ck1_1
-      spqrSalt? pqRatchetMsg msgPlain hst deriveMessageKeys
-    (resp, restoreAuthFixedMkAtIdx idx mkSeedStar hst') := by
-  unfold finishAuthSendMk finishAuthHybridSend restoreAuthFixedMkAtIdx restoreAuthMkAtIdx
-  dsimp only
-  simp only [Prod.mk.injEq, AuthHybridStateFixed.mk.injEq, AuthHybridState.mk.injEq, true_and,
-    and_true]
-  refine ite_elim_false_first₂ (fun s₁ s₂ => s₁ = List.map (restoreIdealMkAtIdx idx mkSeedStar) s₂)
-    (fun _ => rfl) (fun _ => ?_)
-  simp [restoreIdealMkAtIdx, hIdx]
-theorem finishAuthSendMk_restoreAuthFixedMkAtIdx_ne {S : Setup} (P : Primitives)
-    (idx : Nat) (mkSeedStar : Bytes)
-    (sid : SessionId S) (hNe : (sessionSlotIndex sid == idx) = false)
-    (uEntry : PrincipalEntry) (peerPrincipal? : Option (Nat × PrincipalEntry))
-    (bundle : PreKeyBundleInput) (m0 m1 : Bytes) (ekASk ekAPk ss kemCt ephASk ephAPk : Bytes)
-    (drKey : DRKey) (rk1 mkSeed ck1_1 : Bytes)
-    (spqrSalt? : Option Bytes) (pqRatchetMsg msgPlain : Bytes)
-    (hst : AuthHybridStateFixed S) (deriveMessageKeys : MessageKeys) :
-    finishAuthSendMk P sid uEntry peerPrincipal? bundle m0 m1
-      ekASk ekAPk ss kemCt ephASk ephAPk drKey rk1 mkSeed ck1_1
-      spqrSalt? pqRatchetMsg msgPlain (restoreAuthFixedMkAtIdx idx mkSeedStar hst) deriveMessageKeys =
-    let (resp, hst') := finishAuthSendMk P sid uEntry peerPrincipal? bundle m0 m1
-      ekASk ekAPk ss kemCt ephASk ephAPk drKey rk1 mkSeed ck1_1
-      spqrSalt? pqRatchetMsg msgPlain hst deriveMessageKeys
-    (resp, restoreAuthFixedMkAtIdx idx mkSeedStar hst') := by
-  unfold finishAuthSendMk finishAuthHybridSend restoreAuthFixedMkAtIdx restoreAuthMkAtIdx
-  dsimp only
-  simp only [Prod.mk.injEq, AuthHybridStateFixed.mk.injEq, AuthHybridState.mk.injEq, true_and,
-    and_true]
-  refine ite_elim_false_first₂ (fun s₁ s₂ => s₁ = List.map (restoreIdealMkAtIdx idx mkSeedStar) s₂)
-    (fun _ => rfl) (fun _ => ?_)
-  simp [restoreIdealMkAtIdx, hNe]
-theorem finishAuthRecvMk_restorePreparedAuthRecvMk {S : Setup} (P : Primitives)
-    (idx : Nat) (mkSeedStar : Bytes) (msg : PreKeyMsg) (prep : PreparedAuthRecv S)
-    (drKey : DRKey) (rk1 ck1_1 : Bytes) (recvCount' : Nat)
-    (mkSaltCache' : List ((SessionId S × Option Bytes) × (Nat × MessageKeys)))
-    (deriveMessageKeys : MessageKeys) :
-    finishAuthRecvMk P msg (restorePreparedAuthRecvMk idx mkSeedStar prep)
-      drKey rk1 ck1_1 recvCount' (filterOutMkSaltCacheAtIdx idx mkSaltCache') deriveMessageKeys =
-    let (resp, hst') := finishAuthRecvMk P msg prep drKey rk1 ck1_1 recvCount' mkSaltCache' deriveMessageKeys
-    (resp, restoreAuthFixedMkAtIdx idx mkSeedStar hst') := rfl
 theorem find?_filterOutMkSaltCacheAtIdx_of_ne {S : Setup} (idx : Nat)
     (sid : SessionId S) (salt? : Option Bytes) (hNe : (sessionSlotIndex sid == idx) = false) :
     ∀ (c : List ((SessionId S × Option Bytes) × (Nat × MessageKeys))),
@@ -2378,29 +1945,6 @@ theorem find?_filterOutMkSaltCacheAtIdx_of_ne {S : Setup} (idx : Nat)
         simp [mkSaltKeyMatch, hSidNe]
       rw [List.find?, hne_pair, ← filterOutMkSaltCacheAtIdx]
       exact find?_filterOutMkSaltCacheAtIdx_of_ne idx sid salt? hNe rest
-theorem filterOutMkSaltCacheAtIdx_cons_of_ne {S : Setup} (idx : Nat)
-    (sid : SessionId S) (salt? : Option Bytes) (v : Nat × MessageKeys)
-    (c : List ((SessionId S × Option Bytes) × (Nat × MessageKeys)))
-    (hNe : (sessionSlotIndex sid == idx) = false) :
-    filterOutMkSaltCacheAtIdx idx (((sid, salt?), v) :: c) =
-      ((sid, salt?), v) :: filterOutMkSaltCacheAtIdx idx c := by
-  unfold filterOutMkSaltCacheAtIdx
-  simp [hNe]
-theorem filterOutMkSaltCacheAtIdx_cons_of_eq {S : Setup} (idx : Nat)
-    (sid : SessionId S) (salt? : Option Bytes) (v : Nat × MessageKeys)
-    (c : List ((SessionId S × Option Bytes) × (Nat × MessageKeys)))
-    (hEq : (sessionSlotIndex sid == idx) = true) :
-    filterOutMkSaltCacheAtIdx idx (((sid, salt?), v) :: c) =
-      filterOutMkSaltCacheAtIdx idx c := by
-  unfold filterOutMkSaltCacheAtIdx
-  simp [hEq]
-theorem authCkOtherStep_restoreAuthFixedMkAtIdx {S : Setup} (P : Primitives)
-    (idx : Nat) (mkSeedStar : Bytes) (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
-    authCkOtherStep S P q (restoreAuthFixedMkAtIdx idx mkSeedStar hst) =
-      Prod.map id (restoreAuthFixedMkAtIdx idx mkSeedStar) <$> authCkOtherStep S P q hst := by
-  unfold authCkOtherStep restoreAuthFixedMkAtIdx restoreAuthMkAtIdx
-  dsimp only
-  cases hst.toAuthHybridState.base.hasWonAuth <;> simp [map_eq_bind_pure_comp, Prod.map]
 theorem finishAuthSendMk_idealSessions_props {S : Setup} (P : Primitives)
     (sid : SessionId S) (uEntry : PrincipalEntry) (peerPrincipal? : Option (Nat × PrincipalEntry))
     (bundle : PreKeyBundleInput) (m0 m1 : Bytes) (ekASk ekAPk ss kemCt ephASk ephAPk : Bytes)
@@ -2431,40 +1975,5 @@ theorem sendSlotIndex?_of_isSendSessionId {S : Setup} {sid : SessionId S}
   | sendNoOPK _ _ => rfl
   | recvOPK _ _ _ => cases hSend
   | recvNoOPK _ _ _ => cases hSend
-theorem sentChal_false_of_send_idealMk {S : Setup} {idx : Nat} {sid : SessionId S}
-    {hst : AuthHybridStateFixed S} {sentChal : Bool}
-    (hSent : sentChal = true → idx < S.N_send_tot ∧ authSlotFired S idx hst = true)
-    (hSend : IsSendSessionId S sid)
-    (hCont : hst.toAuthHybridState.base.usedSendSessions.contains sid = false)
-    (hIdx : (sessionSlotIndex sid == idx) = true) :
-    authSlotFired S idx hst = false ∧ sentChal = false := by
-  have hSlot : sendSlotIndex? sid = some idx := by
-    rw [sendSlotIndex?_of_isSendSessionId hSend, beq_iff_eq.mp hIdx]
-  have hNF : authSlotFired S idx hst = false := by
-    cases hF : authSlotFired S idx hst
-    · rfl
-    · have := contains_sid_of_authSlotFired hF hSlot
-      rw [hCont] at this; cases this
-  have hSC : sentChal = false := by
-    cases hS : sentChal
-    · rfl
-    · have := (hSent hS).2
-      rw [hNF] at this; cases this
-  exact ⟨hNF, hSC⟩
-theorem sentChal_false_of_recv_slot {S : Setup} {idx : Nat}
-    {hst : AuthHybridStateFixed S} {sentChal : Bool}
-    (hSent : sentChal = true → idx < S.N_send_tot ∧ authSlotFired S idx hst = true)
-    (hIdx : (S.N_send_tot + hst.recvCount == idx) = true) :
-    authSlotFired S idx hst = false ∧ sentChal = false := by
-  have hEq : S.N_send_tot + hst.recvCount = idx := beq_iff_eq.mp hIdx
-  have hNlt : ¬ (idx < S.N_send_tot) := by omega
-  have hNF : authSlotFired S idx hst = false := by
-    unfold authSlotFired
-    simp [← hEq]
-  have hSC : sentChal = false := by
-    cases hS : sentChal
-    · rfl
-    · exact False.elim (hNlt (hSent hS).1)
-  exact ⟨hNF, hSC⟩
 end AuthSubHops1to3
 end SignalPqxdh.Security

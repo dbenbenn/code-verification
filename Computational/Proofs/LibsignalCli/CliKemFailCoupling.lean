@@ -13,9 +13,9 @@ public import Computational.Specifications.Game.StatementPqOomGame
 public import Computational.Specifications.Session.StatementSession
 public import Computational.Specifications.Composition.StatementModel
 public import Computational.Specifications.Assumptions.KeyInd1KeyReal
-public import Computational.Proofs.LibsignalCli.StatementPqSecure
-public import Computational.Proofs.LibsignalCli.CliPqAdapterDefs
-public import Computational.Proofs.LibsignalCli.CliPqBadKemBound
+import Computational.Proofs.LibsignalCli.StatementPqSecure
+import Computational.Proofs.LibsignalCli.CliPqAdapterDefs
+public import Computational.Proofs.LibsignalCli.CliPqBadKemBound -- proof-setup: allow-public-import
 public import Computational.Proofs.LibsignalCli.CliKemFailCouplingDefs
 import Computational.Proofs.LibsignalCli.CliKemFailCouplingHopA
 import Computational.Proofs.LibsignalCli.CliKemFailCouplingHopB
@@ -30,7 +30,7 @@ the SPQR V1 send-coin log of `cliE2EExpWithKiCoinLogged` (`DEV-CLI18`), yielding
 halted-game bounds on `CliPqxdhAdvantage`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -185,109 +185,5 @@ theorem exists_cliKemFail_e2eCoinLogged_bound
     two_mul_cliBadKemProb_modelPrims_le_kemCorrTerm S ℓ qep X run₀ W decT encT δ_kem hKemBin A,
     fun val => cliPqxdhExpFlagged_good_val_le_e2eCoinLogged S ℓ run₀ X W hCli hK_tot hP
       Dh encPt encT decT qep hℓ hDh hX hdec hdum hz hD b_bud qStart qs hq32 A hA val⟩
-
-/-- Bounds `CliPqxdhAdvantage` by the bias of a halted experiment `exp_H` plus
-`kemDecapsFailureTerm` and `2 * CliKemFailProb`. -/
-theorem cliPqAdvantage_le_of_e2eHalted
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (S : SignalPqxdh.Setup) (ℓ : ℕ)
-    (run : CliRun) (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (hCli : CliSpecPqxdh run X W)
-    (hK_tot : MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds W.Q.K)
-    (hP : SignalPqxdh.CryptoWellFormedPrimitivesδ (modelPrims X W))
-    (δ_kem : ℝ≥0∞) (hKemBin : SignalPqxdh.KemDeltaCorrect (modelPrims X W) δ_kem)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (qep : ℕ) (hℓ : ℓ < 10 ^ 6)
-    (hDh : Dh.Commutes) (hX : X25519RealizesDh W.C Dh encPt encT)
-    (hdec : ∀ T, decT (encT T) = some T)
-    (hdum : ∀ T, encT T ≠ dummyKey) (hz : ∀ x, Dh.dh x 0 = 0)
-    (hD : ∀ k x, W.C.D k (W.C.E k x) = x)
-    (b_bud : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ)
-    (hq32 : ∀ k < qStart, 2 * (qs k + 1) + 25002 < 2 ^ 32)
-    (A : CliGameAdversary S ℓ (BitVec 512))
-    (hA : CliGameAdversaryPerInstanceBounded A b_bud qStart qs)
-    (exp_H : ProbComp Bool)
-    (hHalted : ∀ val : Bool,
-      let P := modelPrims X W
-      let B_Lbh := (L_bh (S := S) (ℓ := ℓ) (PQC := BitVec 512) decT encT).eval
-        (fun _ => cliGameAdversaryReassoc A) ()
-      Pr{let w ← cliE2EExpWithKiCoinLogged true S P
-          (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P) W.C W.Q.K ℓ qep decT encT B_Lbh}[
-        w.1 = val ∧ ¬ (W.Q.K.KemFailBad (w.2.map coinBytes) = true)] ≤
-      Pr{let b ← exp_H}[b = val]) :
-    CliPqxdhAdvantage S run X W ℓ qep decT encT A ≤
-      𝒟[exp_H].boolBias +
-        SignalPqxdh.Security.kemDecapsFailureTerm S δ_kem +
-        2 * CliKemFailProb S run X W ℓ qep decT encT A := by
-  obtain ⟨δ_extra, hδ, hCoupl⟩ := exists_cliKemFail_e2eCoinLogged_bound S ℓ run X W hCli hK_tot hP
-    δ_kem hKemBin Dh encPt encT decT qep hℓ hDh hX hdec hdum hz hD b_bud qStart qs hq32 A hA
-  have hGood : ∀ val : Bool,
-      Pr{let z ← cliPqxdhExpFlagged S run X W ℓ qep decT encT A}[
-          z.1 = val ∧ W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = false] ≤
-        Pr{let b ← exp_H}[b = val] + δ_extra := by
-    intro val
-    have hnot :
-        Pr{let z ← cliPqxdhExpFlagged S run X W ℓ qep decT encT A}[
-            z.1 = val ∧ W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = false] =
-          Pr{let z ← cliPqxdhExpFlagged S run X W ℓ qep decT encT A}[
-            z.1 = val ∧ ¬ (W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = true)] :=
-      prEvent_congr _ _ _ fun z => by simp
-    rw [hnot]
-    exact (hCoupl val).trans (add_le_add (hHalted val) le_rfl)
-  exact (cliPqAdvantage_le_of_good_val_le S run X W ℓ qep decT encT A exp_H δ_extra hGood).trans
-    (add_le_add (add_le_add le_rfl hδ) le_rfl)
-
-/-- Variant of `cliPqAdvantage_le_of_e2eHalted` incorporating an excused-abort predicate `bad` on
-`run`. -/
-theorem cliPqAdvantage_le_of_e2eHalted_and_badProb
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (S : SignalPqxdh.Setup) (ℓ : ℕ)
-    {run run₀ : CliRun} (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    {bad : Inputs → Prop} (hrun : ∀ i, ¬ bad i → run i = run₀ i)
-    (hCli₀ : CliSpecPqxdh run₀ X W)
-    (hK_tot : MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds W.Q.K)
-    (hP : SignalPqxdh.CryptoWellFormedPrimitivesδ (modelPrims X W))
-    (δ_kem : ℝ≥0∞) (hKemBin : SignalPqxdh.KemDeltaCorrect (modelPrims X W) δ_kem)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (qep : ℕ) (hℓ : ℓ < 10 ^ 6)
-    (hDh : Dh.Commutes) (hX : X25519RealizesDh W.C Dh encPt encT)
-    (hdec : ∀ T, decT (encT T) = some T)
-    (hdum : ∀ T, encT T ≠ dummyKey) (hz : ∀ x, Dh.dh x 0 = 0)
-    (hD : ∀ k x, W.C.D k (W.C.E k x) = x)
-    (b_bud : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ)
-    (hq32 : ∀ k < qStart, 2 * (qs k + 1) + 25002 < 2 ^ 32)
-    (A : CliGameAdversary S ℓ (BitVec 512))
-    (hA : CliGameAdversaryPerInstanceBounded A b_bud qStart qs)
-    (exp_H : ProbComp Bool)
-    (hHalted : ∀ val : Bool,
-      let P := modelPrims X W
-      let B_Lbh := (L_bh (S := S) (ℓ := ℓ) (PQC := BitVec 512) decT encT).eval
-        (fun _ => cliGameAdversaryReassoc A) ()
-      Pr{let w ← cliE2EExpWithKiCoinLogged true S P
-          (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P) W.C W.Q.K ℓ qep decT encT B_Lbh}[
-        w.1 = val ∧ ¬ (W.Q.K.KemFailBad (w.2.map coinBytes) = true)] ≤
-      Pr{let b ← exp_H}[b = val]) :
-    CliPqxdhAdvantage S run X W ℓ qep decT encT A ≤
-      𝒟[exp_H].boolBias +
-        SignalPqxdh.Security.kemDecapsFailureTerm S δ_kem +
-        2 * CliKemFailProb S run X W ℓ qep decT encT A +
-        2 * CliPqxdhFlagProb S run X W ℓ qep decT encT A bad := by
-  obtain ⟨δ_extra, hδ, hCoupl⟩ := exists_cliKemFail_e2eCoinLogged_bound S ℓ run₀ X W hCli₀ hK_tot hP
-    δ_kem hKemBin Dh encPt encT decT qep hℓ hDh hX hdec hdum hz hD b_bud qStart qs hq32 A hA
-  have hGood : ∀ val : Bool,
-      Pr{let z ← cliPqxdhExpFlagged S run₀ X W ℓ qep decT encT A}[
-          z.1 = val ∧ W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = false] ≤
-        Pr{let b ← exp_H}[b = val] + δ_extra := by
-    intro val
-    have hnot :
-        Pr{let z ← cliPqxdhExpFlagged S run₀ X W ℓ qep decT encT A}[
-            z.1 = val ∧ W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = false] =
-          Pr{let z ← cliPqxdhExpFlagged S run₀ X W ℓ qep decT encT A}[
-            z.1 = val ∧ ¬ (W.Q.K.KemFailBad (z.2.filterMap cliCoinsTape?) = true)] :=
-      prEvent_congr _ _ _ fun z => by simp
-    rw [hnot]
-    exact (hCoupl val).trans (add_le_add (hHalted val) le_rfl)
-  exact (cliPqAdvantage_le_of_good_val_le_and_badProb S X W ℓ qep decT encT A hrun exp_H δ_extra
-    hGood).trans (add_le_add (add_le_add (add_le_add le_rfl hδ) le_rfl) le_rfl)
 
 end Computational.Proofs.LibsignalCli.CliKemFailCoupling

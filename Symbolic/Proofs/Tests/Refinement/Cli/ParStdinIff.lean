@@ -20,7 +20,7 @@ equivalence on `.init` and `.send`, and equivalence across all whisper and canon
 `.recv` inputs (`stdinBounded_iff_p3`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

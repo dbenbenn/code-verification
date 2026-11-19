@@ -18,10 +18,9 @@ import all Init.Data.String.TakeDrop
 /-!
 # Public Session API Specifications over Store Hooks (`LibsignalPublicApi`)
 
-**Checked by Lean.** Hoare specifications (`decryptSignalSpec`, `encryptSpec`) for
-`session_message_decrypt_signal` and `session_message_encrypt` against the session-API model
-(`messageDecryptSignal`, `messageEncrypt` in `LibsignalSessionApi.lean`) over any store
-implementation satisfying `PublicApiHooks`.
+**Checked by Lean.** Store-hook contracts (`PublicApiHooks`) and call ghosts (`DecryptGhost`,
+`EncryptGhost`) for `session_message_decrypt_signal` and `session_message_encrypt` against the
+session-API model (`messageDecryptSignal`, `messageEncrypt` in `LibsignalSessionApi.lean`).
 
 ## Store-Hook Scope and Panic Boundary
 
@@ -46,8 +45,6 @@ open CryptoVerification.LibsignalPublicApiRepr CryptoVerification.LibsignalProto
 
 /-! ## Symbol names -/
 
-/-- The decrypt entry (`0x3a4a8`, 2451 instructions; `src/lib.rs`). -/
-abbrev decryptEntryName : String := "session_message_decrypt_signal"
 /-- The encrypt entry (`0x3caf4`, 1009 instructions; `src/lib.rs`). -/
 abbrev encryptEntryName : String := "session_message_encrypt"
 /-- `message_encrypt::<HookRng>` on `dyn` stores (`0x3caf4`, 1009 instructions; `src/lib.rs`). -/
@@ -210,8 +207,8 @@ def timeHookNames : List String := [timeAddHookName, durationSinceHookName]
 
 /-- **`<SystemTime as Add<Duration>>::add(self, dur) -> SystemTime`** for a whole number of
 seconds (`std/time.rs:738–748`): `self` in `x0` (`tv_sec`) / `w1` (`tv_nsec`), the duration in `x2`
-(seconds) / `w3` (nanoseconds, 0 at every call site), `x4` the panic `Location`. Returns W0's
-`checkedAddSecs` in `x0` / `w1`; panics exactly when it is `none` (`expect("overflow when adding
+(seconds) / `w3` (nanoseconds, 0 at every call site), `x4` the panic `Location`. Returns
+`SystemTime.checkedAddSecs` in `x0` / `w1`; panics exactly when it is `none` (`expect("overflow when adding
 duration to `SystemTime`")`, `std/time.rs:747`). Ghost: `(self, secs)`. -/
 def timeAddSpec : Spec (SystemTime × Nat) where
   pre := fun (t, secs) s =>
@@ -241,7 +238,7 @@ def durationSinceSpec : Spec (BitVec 64 × BitVec 64) where
 /-! ## `<String as Clone>::clone` (the address clone of two errors)
 
 `ProtocolAddress::clone` (derived) is inlined: a call of the `alloc` stub `<String as Clone>::clone`
-on the name, then an inline copy of the device byte. W0 error outcomes reach it: `SessionNotFound`
+on the name, then an inline copy of the device byte. Session-API error outcomes reach it: `SessionNotFound`
 (decrypt `_with_stores+0x4b0`; encrypt `+0x1d0`, `+0x424`, `+0x798`) and `UntrustedIdentity`
 (decrypt `+0x225c`, encrypt `+0xd18`); every site is `add x8, sp, #..; mov x0, <&address>; bl`. -/
 
@@ -302,7 +299,7 @@ structure DecryptGhost where
   cur : BitVec 64
   rest : List (BitVec 8)
 
-/-- W0's result and call trace on the store answers `answers` (coins = the first 32 tape bytes,
+/-- Session-API model result and call trace on the store answers `answers` (coins = the first 32 tape bytes,
 addresses parsed by the triple ratchet's model of the compiled parser). -/
 def DecryptGhost.model (C : Crypto) (S : SpqrModel) (uuidParse : UuidParser) (x : DecryptGhost)
     (answers : StoreAnswers (List (BitVec 8)) Unit) :
@@ -338,44 +335,6 @@ def DecryptGhost.recvPanics (S : SpqrModel) (x : DecryptGhost)
       S.recvPanics s.state.pqRatchetState x.msg.pqRatchet
   | none => False
 
-/-- **The binding spec of `session_message_decrypt_signal`** (`message_decrypt_signal`,
-`session_management.rs:297–354`, on the hook stores). Normal return: for some store answers (those
-in the trace), W0 does not panic, the trace grew by W0's calls with their answers, the sret holds
-W0's result (`apiDecResultAt`), the borrowed message and addresses are unchanged, the tape advanced
-by `draws`. Panic only on a failed allocation, or (with the loaded record in the trace) when W0
-panics or `spqr::recv` panics on the loaded session's inputs.
-
-On a panic, the guarantee is only that the trace extends `s0 ++ [load]`. "Nothing stored on panic"
-is **not** guaranteed, because the triple-ratchet panic contracts (`recordDecryptSpec`, the spqr
-hooks, `format_inner`, the allocation-panic hooks) allow arbitrary trace growth. The message and the
-two addresses are separate blocks (`∗`): aliased borrowed inputs are out of scope. -/
-def decryptSignalSpec (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser)
-    (S : SpqrModel) (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (img : Obj.Image) : Spec DecryptGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.msgA ∧ s.readReg64 .x1 = x.remA ∧ s.readReg64 .x2 = x.locA ∧
-          s.readReg64 .x8 = x.ret ∧ entryStack ≤ s.sp.toNat⌝ ∗
-        signalMessageAt A x.msgG x.msgA x.msg ∗ protocolAddressAt A x.rem x.remA ∗
-        protocolAddressAt A x.loc x.locA ∗ memRegion x.ret 48 ∗ tapeAt ctl x.cur x.rest ∗
-        logOff img ∗ stackAt s.sp entryStack ∗ A.pool
-      post := fun x s0 sf =>
-        ∃∗ answers : StoreAnswers (List (BitVec 8)) Unit,
-          ⌜(x.model C S uuidParse answers).1 ≠ .error .panic ∧
-            sf.trace = s0.trace ++ (x.model C S uuidParse answers).2.map (storeEvent encRecord answers)⌝ ∗
-          apiDecResultAt A x.ret (x.model C S uuidParse answers).1 ∗
-          signalMessageAt A x.msgG x.msgA x.msg ∗ protocolAddressAt A x.rem x.remA ∗
-          protocolAddressAt A x.loc x.locA ∗ tapeAfter ctl x.cur x.rest (x.draws C answers) ∗
-          logOff img ∗ stackAt s0.sp entryStack ∗ A.pool
-      onPanic := fun x s0 sf =>
-        ⌜s0.trace <+: sf.trace ∧
-          (allocFailedIn s0 sf ∨
-            ∃ answers : StoreAnswers (List (BitVec 8)) Unit,
-              s0.trace ++ [loadEvent encRecord x.rem.val answers.loadSession] <+: sf.trace ∧
-              ((x.model C S uuidParse answers).1 = .error .panic ∨ x.recvPanics S answers))⌝ ∗
-          anyHeap }
-    img
-
 /-! ## `session_message_encrypt` -/
 
 /-- Ghost of an encrypt call (`ptext: &[u8]` `x0` / `x1`, `remote_address` `x2`, `local_address`
@@ -394,7 +353,7 @@ structure EncryptGhost where
   cur : BitVec 64
   rest : List (BitVec 8)
 
-/-- W0's result and call trace on the store answers `answers` (the SPQR coins = the whole remaining
+/-- Session-API model result and call trace on the store answers `answers` (the SPQR coins = the whole remaining
 tape, as `OtrEncryptGhost.model`). -/
 def EncryptGhost.model (C : Crypto) (S : SpqrModel) (uuidParse : UuidParser) (x : EncryptGhost)
     (answers : StoreAnswers (List (BitVec 8)) Unit) :
@@ -402,7 +361,7 @@ def EncryptGhost.model (C : Crypto) (S : SpqrModel) (uuidParse : UuidParser) (x 
   messageEncrypt C protoSignalCodec S.spqr (serializeAddrVals (serviceIdParse uuidParse)) answers
     x.ptext x.rem.val x.loc.val x.now x.rest
 
-/-- The post-quantum state `spqr::send` is called with, if W0 reaches `OTR::encrypt` (steps 1–5 of
+/-- The post-quantum state `spqr::send` is called with, if `messageEncrypt` reaches `OTR::encrypt` (steps 1–5 of
 `messageEncrypt`: a loaded current session, `from_session_state` succeeds, the remote identity is
 present, and an unacknowledged session is not stale); `none` otherwise. -/
 def EncryptGhost.sendState (x : EncryptGhost) (answers : StoreAnswers (List (BitVec 8)) Unit) :
@@ -434,59 +393,6 @@ it is reached. -/
 def EncryptGhost.sendPanics (S : SpqrModel) (x : EncryptGhost)
     (answers : StoreAnswers (List (BitVec 8)) Unit) : Prop :=
   ∃ st, x.sendState answers = some st ∧ S.sendPanics st x.rest
-
-/-- **The binding spec of `session_message_encrypt`** (`message_encrypt`,
-`session_management.rs:43–151`, on the hook stores). Precondition: a plaintext shorter than `2^32`
-bytes (as `otrEncryptSpec`), a valid `SystemTime` (`tv_nsec < 10^9`, Rust's validity
-invariant of `Nanoseconds`) and a non-null local address pointer (Rust's validity invariant of
-`&ProtocolAddress`; `OTR::encrypt` gets it as `Option<&_>`, null niche, `otrEncryptSpec`).
-Normal return: for some store answers (those in the trace), W0 does
-not panic, the trace grew by W0's calls with their answers, the sret holds W0's result
-(`apiEncResultAt`), the borrowed plaintext and addresses are unchanged, the tape advanced by
-`draws`. Panic only on a failed allocation, or (with the load in the trace) when W0 panics or
-`spqr::send` panics on its inputs.
-
-On a panic, the guarantee is only that the trace extends `s0 ++ [load]`. "Nothing stored on panic"
-is **not** guaranteed, because the triple-ratchet panic contracts (the reused `OTR::encrypt` /
-`spqrSendSpec`, the spqr hooks, `format_inner`, the allocation-panic hooks) allow arbitrary trace
-growth. The plaintext and the two addresses are separate blocks (`∗`): aliased borrowed inputs (e.g.
-a plaintext inside an address name) are out of scope. -/
-def encryptSpec (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser)
-    (S : SpqrModel) (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
-    (img : Obj.Image) : Spec EncryptGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ptA ∧ (s.readReg64 .x1).toNat = x.ptext.length ∧
-          x.ptext.length < 2 ^ 32 ∧ s.readReg64 .x2 = x.remA ∧ s.readReg64 .x3 = x.locA ∧
-          x.locA ≠ 0#64 ∧
-          s.readReg64 .x4 = x.now.tvSec ∧ (s.readReg64 .x5).setWidth 32 = x.now.tvNsec ∧
-          x.now.tvNsec.toNat < 10 ^ 9 ∧ s.readReg64 .x8 = x.ret ∧ entryStack ≤ s.sp.toNat⌝ ∗
-        (x.ptA ↦ₛ x.ptext) ∗ protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
-        memRegion x.ret 248 ∗ tapeAt ctl x.cur x.rest ∗ logOff img ∗ stackAt s.sp entryStack ∗
-        A.pool
-      post := fun x s0 sf =>
-        ∃∗ answers : StoreAnswers (List (BitVec 8)) Unit,
-          ⌜(x.model C S uuidParse answers).1 ≠ .error .panic ∧
-            sf.trace = s0.trace ++ (x.model C S uuidParse answers).2.map (storeEvent encRecord answers)⌝ ∗
-          apiEncResultAt A x.ret (x.model C S uuidParse answers).1 ∗
-          (x.ptA ↦ₛ x.ptext) ∗ protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
-          tapeAfter ctl x.cur x.rest (x.draws S answers) ∗ logOff img ∗ stackAt s0.sp entryStack ∗
-          A.pool
-      onPanic := fun x s0 sf =>
-        ⌜s0.trace <+: sf.trace ∧
-          (allocFailedIn s0 sf ∨
-            ∃ answers : StoreAnswers (List (BitVec 8)) Unit,
-              s0.trace ++ [loadEvent encRecord x.rem.val answers.loadSession] <+: sf.trace ∧
-              ((x.model C S uuidParse answers).1 = .error .panic ∨ x.sendPanics S answers))⌝ ∗
-          anyHeap }
-    img
-
-/-! ## Encrypt with SPQR off (D2; for the end-to-end SM theorem) -/
-
-/-- **The loaded record's current session, if any, has an empty post-quantum state** (SPQR off:
-`OutgoingTripleRatchet.fromSessionState` then hands `spqr::send` the empty state). -/
-def RecordPqEmpty (r : SessionRecord (List (BitVec 8))) : Prop :=
-  ∀ s, r.currentSession = some s → s.state.pqRatchetState = []
 
 /-! ## Guards (kernel-checked) -/
 

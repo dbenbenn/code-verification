@@ -11,7 +11,7 @@ module
 
 public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import Computational.Proofs.LibsignalCli.MainHaltedDefs
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
+import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore
 import Computational.Proofs.LibsignalCli.MainHaltedKeyInd
 import Computational.Proofs.LibsignalCli.MainHaltedLazy1Key
 import Computational.Proofs.LibsignalCli.MainHaltedPrefix

@@ -11,6 +11,7 @@ module
 
 public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocGroupStage1
 public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotHelpers3
+public import VerifiedLibraries.Mallocng.Proofs.Cost.Fine.GroupsFreeMono
 
 /-!
 # Stage 1 Symbolic Execution for Outer `alloc_slot`
@@ -471,49 +472,49 @@ private theorem metaPtr_add28_aligned {m : BitVec 64}
   rw [add_ofNat_toNat (by omega), show (3 : Nat) = 2 ^ 2 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod]
   omega
 
-def MallocngCoreFixedA (γ : GhostName) (A : MallocngAddrs) (st : MallocngSt) : SepProp :=
+def MallocngCoreFixedA (ro : Bool) (γ : GhostName) (A : MallocngAddrs) (st : MallocngSt) : SepProp :=
   MallocngLiveAuth γ st.liveMap ∗
   (A.lock ↦₃₂ 0#32) ∗
   (A.replaced ↦₃₂ 0#32) ∗
   (A.aaReplaced ↦₃₂ 0#32) ∗
-  ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗
-  MallocngAuxvState γ st.auxvPtr st.auxvSnap
+  MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗
+  MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap
 
-theorem sepWP_coreSt_wf {prog : Program} {exit_pc : BitVec 64} {s : State}
+theorem sepWP_coreSt_wf {ro : Bool} {prog : Program} {exit_pc : BitVec 64} {s : State}
     {inflight : Nat} {γ : GhostName} {A : MallocngAddrs} {brkStart : BitVec 64}
     {liveCost peakCost : Nat} {st : MallocngSt} {Frame : SepProp}
     {post : State → SepProp → Prop} {oom : State → SepProp}
     (h : MallocngWFInflight inflight A.base brkStart s.brk liveCost peakCost st →
       SepWP prog exit_pc s
-        (MallocngCoreStInflightA inflight γ A brkStart s.brk liveCost peakCost st ∗ Frame)
+        (MallocngCoreStInflightModeA ro inflight γ A brkStart s.brk liveCost peakCost st ∗ Frame)
         post oom) :
     SepWP prog exit_pc s
-      (MallocngCoreStInflightA inflight γ A brkStart s.brk liveCost peakCost st ∗ Frame)
+      (MallocngCoreStInflightModeA ro inflight γ A brkStart s.brk liveCost peakCost st ∗ Frame)
       post oom := by
-  conv => arg 4; simp only [MallocngCoreStInflightA, sepConj_assoc]
+  conv => arg 4; simp only [MallocngCoreStInflightModeA, sepConj_assoc]
   apply SepWP.pure_elim
   intro hwf
   have hh := h hwf
-  conv at hh => arg 4; simp only [MallocngCoreStInflightA, sepConj_assoc, pure_sepConj_of_true hwf]
+  conv at hh => arg 4; simp only [MallocngCoreStInflightModeA, sepConj_assoc, pure_sepConj_of_true hwf]
   exact hh
 
-theorem coreSt_eq_parts {inflight : Nat} {γ : GhostName} {A : MallocngAddrs}
+theorem coreSt_eq_parts {ro : Bool} {inflight : Nat} {γ : GhostName} {A : MallocngAddrs}
     {brkStart brk : BitVec 64} {liveCost peakCost : Nat} {st : MallocngSt}
     (hwf : MallocngWFInflight inflight A.base brkStart brk liveCost peakCost st) :
-    MallocngCoreStInflightA inflight γ A brkStart brk liveCost peakCost st =
+    MallocngCoreStInflightModeA ro inflight γ A brkStart brk liveCost peakCost st =
       ((A.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
        MappedSet st.masterDom (OwnedMappedByte st) ∗
-       MallocngCoreFixedA γ A st) := by
-  simp only [MallocngCoreStInflightA, MallocngCoreFixedA, pure_sepConj_of_true hwf]
+       MallocngCoreFixedA ro γ A st) := by
+  simp only [MallocngCoreStInflightModeA, MallocngCoreFixedA, pure_sepConj_of_true hwf]
   generalize MallocngLiveAuth γ st.liveMap = G0
   generalize (A.ctx ↦ₛ st.ctx.toBytes) = G1
   generalize (A.lock ↦₃₂ 0#32) = G2
   generalize (A.replaced ↦₃₂ 0#32) = G3
   generalize (A.aaReplaced ↦₃₂ 0#32) = G4
-  generalize ((A.libc + 8#64) ↦₆₄ st.auxvPtr) = G5
-  generalize MallocngAuxvState γ st.auxvPtr st.auxvSnap = G6
+  generalize MallocngAuxvPtrCell ro A.libc st.auxvPtr = G5
+  generalize MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap = G6
   generalize ByteMap st.masterDom (OwnedRwByte st) st.byteVal = G7
   generalize ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal = G8
   generalize MappedSet st.masterDom (OwnedMappedByte st) = G9
@@ -531,11 +532,11 @@ abbrev AllocSlotStPres (sc : Nat) (st0 st : MallocngSt) : Prop :=
   st.ctx.active.length = st0.ctx.active.length ∧
   (∀ k : Nat, k < sc → ∀ hk1 : k < st.ctx.active.length, ∀ hk0 : k < st0.ctx.active.length,
     st.ctx.active[k]'hk1 = st0.ctx.active[k]'hk0) ∧
-  Cost.GroupsGrpMono st0.groups st.groups
+  (Cost.GroupsGrpMono st0.groups st.groups ∧ Cost.Fine.GroupsFreeMono st0.groups st.groups)
 
 theorem AllocSlotStPres.rfl {sc : Nat} {st : MallocngSt} : AllocSlotStPres sc st st :=
   ⟨Eq.refl _, Eq.refl _, Eq.refl _, Eq.refl _, Eq.refl _, Eq.refl _, Eq.refl _, fun _ _ _ _ => Eq.refl _,
-   Cost.GroupsGrpMono.refl _⟩
+   ⟨Cost.GroupsGrpMono.refl _, Cost.Fine.GroupsFreeMono.refl _⟩⟩
 
 theorem AllocSlotStPres.trans {sc : Nat} {st0 st1 st2 : MallocngSt}
     (h01 : AllocSlotStPres sc st0 st1) (h12 : AllocSlotStPres sc st1 st2) : AllocSlotStPres sc st0 st2 :=
@@ -546,7 +547,8 @@ theorem AllocSlotStPres.trans {sc : Nat} {st0 st1 st2 : MallocngSt}
    fun k hk hk2 hk0 => by
      have hk1 : k < st1.ctx.active.length := h01.2.2.2.2.2.2.1.symm ▸ hk0
      exact (h12.2.2.2.2.2.2.2.1 k hk hk2 hk1).trans (h01.2.2.2.2.2.2.2.1 k hk hk1 hk0),
-   h01.2.2.2.2.2.2.2.2.trans h12.2.2.2.2.2.2.2.2⟩
+   ⟨h01.2.2.2.2.2.2.2.2.1.trans h12.2.2.2.2.2.2.2.2.1,
+    h01.2.2.2.2.2.2.2.2.2.trans h12.2.2.2.2.2.2.2.2.2⟩⟩
 
 theorem groupsGrpMono_map {gs : List GroupDesc} (f : GroupDesc → GroupDesc)
     (hf : ∀ g ∈ gs, (f g).sc = g.sc ∧ (f g).maplen ≤ g.maplen) :
@@ -559,7 +561,7 @@ theorem groupsGrpMono_map_ite {gs : List GroupDesc} {g g1 : GroupDesc} (hg : g �
     rw [hSc] at hs ⊢
     exact Nat.le_trans (Nat.mul_le_mul_right _ hMl) (hU g hg (by omega) hs)
 
-theorem wp_allocSlot_activate [MallocngMultiPlacement]
+theorem wp_allocSlot_activate [MallocngMultiPlacement] {ro : Bool}
     (_hw0 : Blk08HasWords0 mallocngFaultSvc) (_hr0 : Blk08Range0)
     (hw348 : Blk08HasWords348 mallocngFaultSvc) (hr348 : Blk08Range348)
     {inflight sc : Nat} (hsc : sc < 48) {γ : GhostName} {brkStart : BitVec 64}
@@ -573,7 +575,7 @@ theorem wp_allocSlot_activate [MallocngMultiPlacement]
     (hx2 : s.readReg64 .x2 = g.metaPtr) :
     SepWP ((mallocngBlockProg mmpl 8 msvc).withSvc mallocngFaultSvc)
       (mbase 8 + allocSlotOff_bounces_chk) s
-      (MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ Frame)
+      (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ Frame)
       (fun sf P_f =>
         ∃ st1 : MallocngSt, ∃ g1 ∈ st1.groups,
           sf.status = .Running ∧ sf.sp = s.sp ∧ sf.spAligned = s.spAligned ∧
@@ -585,7 +587,7 @@ theorem wp_allocSlot_activate [MallocngMultiPlacement]
           sf.readReg64 .x0 = BitVec.zeroExtend 64 g1.availMask ∧
           (∀ r, r ≠ .x0 → r ≠ .x1 → r ≠ .x3 → r ≠ .x4 → r ≠ .x5 → r ≠ .x6 →
             sf.readReg64 r = s.readReg64 r) ∧
-          P_f = (MallocngCoreStInflightA inflight γ maddrs brkStart sf.brk liveCost peakCost st1 ∗ Frame))
+          P_f = (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart sf.brk liveCost peakCost st1 ∗ Frame))
       (fun _ => ⌜False⌝) := by
   apply sepWP_coreSt_wf; intro hwf
   have h1 : sc < st.ctx.active.length := by rw [hwf.ctx_lens.1]; exact hsc
@@ -604,7 +606,7 @@ theorem wp_allocSlot_activate [MallocngMultiPlacement]
       s1.readReg64 .x0 = g.mem ∧ s1.readReg64 .x2 = g.metaPtr ∧
       s1.readReg64 .x3 = 2#64 ∧ s1.readReg64 .x5 = g.metaPtr + 28#64 ∧
       (∀ r, r ≠ .x0 → r ≠ .x3 → r ≠ .x5 → s1.readReg64 r = s.readReg64 r) ∧
-      P1 = (MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ Frame)) ?_ ?_
+      P1 = (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ Frame)) ?_ ?_
   · conv => arg 4; rw [coreSt_eq_parts hwf, hBmExt, GroupDesc.metaBytes_pointsTo, hAv0]; simp only [sepConj_assoc]
     dsimp only [allocSlotOff_activate, allocSlotOff_11c] at hpc ⊢
     wp_sym_steps
@@ -625,7 +627,7 @@ theorem wp_allocSlot_activate [MallocngMultiPlacement]
         s2.readReg64 .x3 = BitVec.zeroExtend 64 hiMask ∧
         s2.readReg64 .x5 = g.metaPtr + 28#64 ∧
         (∀ r, r ≠ .x0 → r ≠ .x3 → r ≠ .x5 → s2.readReg64 r = s.readReg64 r) ∧
-        P2 = (MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ Frame)) ?_ ?_
+        P2 = (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ Frame)) ?_ ?_
     · have hw1_3 : BitVec.setWidth 32 (s1.readReg64 (Reg.gpr 3#5)) = 2#32 := by simp [hs1_3]
       have hIdxNat : (g.activeByte.toNat % 4294967296 &&& 31) % 32 = g.activeByte.toNat &&& 31 := by
         have hLt4G : g.activeByte.toNat < 4294967296 := Nat.lt_trans g.activeByte.isLt (by decide)
@@ -658,7 +660,7 @@ theorem wp_allocSlot_activate [MallocngMultiPlacement]
           s3.readReg64 .x4 = BitVec.zeroExtend 64 newFreed ∧
           s3.readReg64 .x5 = g.metaPtr + 28#64 ∧
           (∀ r, r ≠ .x0 → r ≠ .x1 → r ≠ .x3 → r ≠ .x4 → r ≠ .x5 → s3.readReg64 r = s.readReg64 r) ∧
-          P3 = (MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ Frame)) ?_ ?_
+          P3 = (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ Frame)) ?_ ?_
       · have hw2_3 : BitVec.setWidth 32 (s2.readReg64 (Reg.gpr 3#5)) = hiMask := by simp [hs2_3]
         conv => arg 4; rw [coreSt_eq_parts hwf, hBmExt, GroupDesc.metaBytes_pointsTo]; simp only [sepConj_assoc]
         dsimp only [allocSlotOff_stxr_entry, allocSlotOff_stxr_loop] at hpc2 ⊢
@@ -682,8 +684,8 @@ theorem wp_allocSlot_activate [MallocngMultiPlacement]
           (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
           ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
           MappedSet st.masterDom (OwnedMappedByte st) ∗
-          MallocngCoreFixedA γ maddrs st ∗ Frame
-        have hPreStxr : (MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ Frame) =
+          MallocngCoreFixedA ro γ maddrs st ∗ Frame
+        have hPreStxr : (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ Frame) =
             (((g.metaPtr + 28#64) ↦₃₂ g.freedMask) ∗ StxrFrame) := by
           rw [coreSt_eq_parts hwf, hBmExt, GroupDesc.metaBytes_pointsTo]
           simp only [StxrFrame, RestBm, sepConj_assoc]
@@ -726,7 +728,12 @@ theorem wp_allocSlot_activate [MallocngMultiPlacement]
            by simpa [State.spAligned] using hal4.trans hal3,
            (hpsp3.trans hpsp4).trans psp_rfl,
            ⟨rfl, rfl, hEff1, hCnt1, rfl, hDyn1, by simp [hCtxEq], fun _ _ _ _ => by simp [hCtxEq],
-            groupsGrpMono_map_ite hg g.metaPtr rfl (Nat.le_refl _)⟩,
+            ⟨groupsGrpMono_map_ite hg g.metaPtr rfl (Nat.le_refl _),
+             Cost.Fine.GroupsFreeMono.map_ite hg g.metaPtr rfl rfl rfl rfl rfl
+               (Cost.Fine.SlotUserSub.ofFn_keepUser g.slots _ fun i p req eff hEq => by
+                 split at hEq
+                 · cases hEq
+                 · exact hEq)⟩⟩,
            rfl, hScEq, hActFrNe,
            fun h1' => by simp [st1, g1],
            by simpa using hs4_2,
@@ -743,7 +750,7 @@ theorem wp_allocSlot_activate [MallocngMultiPlacement]
             rw [GroupDesc.metaBytes_pointsTo g.metaPtr g1]
             have hPkd : g1.packedWord = g.packedWord := rfl
             rw [hPkd]; dsimp only [g1]; ac_rfl
-          have hFix : MallocngCoreFixedA γ maddrs st = MallocngCoreFixedA γ maddrs st1 := rfl
+          have hFix : MallocngCoreFixedA ro γ maddrs st = MallocngCoreFixedA ro γ maddrs st1 := rfl
           have hCtxPts : (maddrs.ctx ↦ₛ st.ctx.toBytes) = (maddrs.ctx ↦ₛ st1.ctx.toBytes) := by
             rw [hCtxEq]
           dsimp only [newAvail, cntMask] at hMetaFold
@@ -802,7 +809,7 @@ theorem group_lastIdx_maplen_bounds {inflight : Nat} {base brkStart brk : BitVec
 
 abbrev allocSlotOff_164 : BitVec 64 := words_insn_off% blk08Words 0x78617806#32
 
-theorem wp_allocSlot_bump_active [MallocngMultiPlacement]
+theorem wp_allocSlot_bump_active [MallocngMultiPlacement] {ro : Bool}
     (_hw0 : Blk08HasWords0 mallocngFaultSvc) (_hr0 : Blk08Range0)
     (hw348 : Blk08HasWords348 mallocngFaultSvc) (hr348 : Blk08Range348)
     {inflight sc : Nat} (hsc : sc < 48) {γ : GhostName} {brkStart : BitVec 64}
@@ -816,7 +823,7 @@ theorem wp_allocSlot_bump_active [MallocngMultiPlacement]
     (hw3 : s.readReg32 .x3 = BitVec.ofNat 32 g.activeIdx) :
     SepWP ((mallocngBlockProg mmpl 8 msvc).withSvc mallocngFaultSvc)
       (mbase 8 + allocSlotOff_activate) s
-      (MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
+      (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
        MallocngRoTablesA maddrs ∗ Frame)
       (fun sf P_f =>
         ∃ st1 : MallocngSt, ∃ g1 ∈ st1.groups,
@@ -828,7 +835,7 @@ theorem wp_allocSlot_bump_active [MallocngMultiPlacement]
           (∀ h1 : sc < st1.ctx.active.length, st1.ctx.active[sc]'h1 = g1.metaPtr) ∧
           sf.readReg64 .x2 = g1.metaPtr ∧
           (∀ r, r ≠ .x0 → r ≠ .x1 → r ≠ .x2 → r ≠ .x3 → r ≠ .x6 → sf.readReg64 r = s.readReg64 r) ∧
-          P_f = (MallocngCoreStInflightA inflight γ maddrs brkStart sf.brk liveCost peakCost st1 ∗
+          P_f = (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart sf.brk liveCost peakCost st1 ∗
             MallocngRoTablesA maddrs ∗ Frame))
       (fun _ => ⌜False⌝) := by
   apply sepWP_coreSt_wf; intro hwf
@@ -846,7 +853,7 @@ theorem wp_allocSlot_bump_active [MallocngMultiPlacement]
       s1.readReg64 .x1 = BitVec.ofNat 64 sc ∧
       s1.readReg32 .x3 = BitVec.ofNat 32 (g.activeIdx + 2) ∧
       (∀ r, r ≠ .x0 → r ≠ .x1 → r ≠ .x3 → s1.readReg64 r = s.readReg64 r) ∧
-      P1 = (MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
+      P1 = (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
         MallocngRoTablesA maddrs ∗ Frame)) ?_ ?_
   · have hw0_3 : BitVec.setWidth 32 (s.readReg64 (Reg.gpr 3#5)) = BitVec.ofNat 32 g.activeIdx := hw3
     have hPkdSc := (GroupDesc.packedWord_fields g hLast (by omega) hMapLt).2.2.2
@@ -880,7 +887,7 @@ theorem wp_allocSlot_bump_active [MallocngMultiPlacement]
         s2.readReg32 .x3 = BitVec.ofNat 32 (g.activeIdx + 2) ∧
         s2.readReg32 .x1 = BitVec.ofNat 32 (g.activeIdx + 2) * BitVec.ofNat 32 (slotStride sc) + 16#32 ∧
         (∀ r, r ≠ .x0 → r ≠ .x1 → r ≠ .x3 → r ≠ .x6 → s2.readReg64 r = s.readReg64 r) ∧
-        P2 = (MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
+        P2 = (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
           MallocngRoTablesA maddrs ∗ Frame)) ?_ ?_
     · have hw1_3 : BitVec.setWidth 32 (s1.readReg64 (Reg.gpr 3#5)) = BitVec.ofNat 32 (g.activeIdx + 2) := hs1_3
       conv => arg 4; rw [hRoSc, hScOff]; simp only [sepConj_assoc]
@@ -915,7 +922,7 @@ theorem wp_allocSlot_bump_active [MallocngMultiPlacement]
           s4.readReg32 .x3 = cntF ∧
           s4.readReg64 .x5 = g.mem ∧
           (∀ r, r ≠ .x0 → r ≠ .x1 → r ≠ .x2 → r ≠ .x3 → r ≠ .x6 → s4.readReg64 r = s.readReg64 r) ∧
-          P4 = (MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
+          P4 = (MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
             MallocngRoTablesA maddrs ∗ Frame)) ?_ ?_
       · conv => arg 4; rw [coreSt_eq_parts hwf, hBmMeta, GroupDesc.metaBytes_pointsTo]; simp only [sepConj_assoc]; rw [split_m32_byte0 g.metaPtr g.packedWord]; simp only [sepConj_assoc]
         dsimp only [allocSlotOff_ps_done, allocSlotOff_19c] at hpc3 ⊢
@@ -958,7 +965,9 @@ theorem wp_allocSlot_bump_active [MallocngMultiPlacement]
           ⟨st1, g1, hg1Mem, by simp [hrun4], by simpa using hsp4,
            by simpa [State.spAligned] using hal4, hpsp4.trans psp_rfl,
            ⟨rfl, rfl, hEff1, hCnt1, rfl, hDyn1, rfl, fun _ _ _ _ => rfl,
-            groupsGrpMono_map_ite hg g.metaPtr rfl (Nat.le_refl _)⟩,
+            ⟨groupsGrpMono_map_ite hg g.metaPtr rfl (Nat.le_refl _),
+             Cost.Fine.GroupsFreeMono.map_ite hg g.metaPtr rfl rfl rfl rfl rfl
+               (Cost.Fine.SlotUserSub.refl _)⟩⟩,
            rfl, hScEq, hAv0, hActFrNe1, fun h1' => hHead h1',
            by simpa using hs4_2,
            fun r r0 r1 r2 r3 r6 => ?_, ?_⟩
@@ -966,7 +975,7 @@ theorem wp_allocSlot_bump_active [MallocngMultiPlacement]
           simp only [State.readReg64_setPC, State.readReg64_setMem, State.readReg64_setPState,
             State.readReg64_writeReg64_ne _ _ _ _ r1, State.readReg64_writeReg64_ne _ _ _ _ r0]
         · simp only [State.setPC, State.setMem, State.setPState, State.writeReg64] at hwf1' ⊢
-          have hFix : MallocngCoreFixedA γ maddrs st = MallocngCoreFixedA γ maddrs st1 := rfl
+          have hFix : MallocngCoreFixedA ro γ maddrs st = MallocngCoreFixedA ro γ maddrs st1 := rfl
           have hCtxPts : (maddrs.ctx ↦ₛ st.ctx.toBytes) = (maddrs.ctx ↦ₛ st1.ctx.toBytes) := rfl
           rw [and_imm32_0x1f_byte, hByte0Last, hMaxAdd, bfxil_w32_0_5_byte]
           rw [← pointsToBytes_singleton (g.mem + 8#64) newActB]

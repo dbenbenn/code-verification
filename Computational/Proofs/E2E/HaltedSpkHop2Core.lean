@@ -10,7 +10,16 @@ limitations under the License.
 module
 
 public import Computational.Proofs.E2E.HaltedSpkDefs
-public import Computational.Proofs.E2E.SpkHop1
+import Computational.Proofs.E2E.SpkHop1
+public import Computational.Proofs.E2E.SpkHop1B -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop1C -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop1D -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop1E -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Tracker-Halted Hop-2 Core Combinators
@@ -19,7 +28,7 @@ Defines `runHop2Track` — the `lazyImpl` evaluator for `hop2ImplTrackHalted` �
 congruence, `prfReal` unfolding, `patchGamePartyIdx` commutation, and absorbing-state reductions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -68,7 +77,7 @@ variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 
 /-- Run an adversary computation `oa` in `hop2ImplTrackHalted` under `lazyImpl` starting from
 game/hook state `st`, session tracker `tr`, and PRF table `tbl`, returning `st'.2.bad`. -/
-def runHop2Track {ℓ : ℕ} {β : Type}
+@[expose] def runHop2Track {ℓ : ℕ} {β : Type}
     (P : Params Bytes (BitVec 512)) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256)
     (h : Hop2Hyb Pt)

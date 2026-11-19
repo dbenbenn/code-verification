@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
+import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
 import Computational.Proofs.E2E.Dsl.ClampsLossless
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
 
 /-!
 # Atomic Send-Step Helpers for `KemFailRed`
@@ -24,7 +25,7 @@ Defines `fig8MirT` mirror helpers, the libcrux issue-1275 endianness fixup and
 along with their `.eval` characterizations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,11 +73,11 @@ local notation "sSpqr" => sOpSpqr (C := C) (K := K) (Dh := Dh) (encPt := encPt)
 
 /-! ## Mirror projections -/
 
-def boolOrE {O' : Ops ASig} {Γ : List (Ty ASig)} (a b : Expr O' Γ .bool) : Expr O' Γ .bool :=
+@[expose] def boolOrE {O' : Ops ASig} {Γ : List (Ty ASig)} (a b : Expr O' Γ .bool) : Expr O' Γ .bool :=
   .ite a (.bool true) b
-def boolEqE {O' : Ops ASig} {Γ : List (Ty ASig)} (a b : Expr O' Γ .bool) : Expr O' Γ .bool :=
+@[expose] def boolEqE {O' : Ops ASig} {Γ : List (Ty ASig)} (a b : Expr O' Γ .bool) : Expr O' Γ .bool :=
   .ite a b (.not b)
-def fgSt {O' : Ops ASig} {Γ : List (Ty ASig)} (g : Expr O' Γ (fig8GsT ℓ Pt)) :
+@[expose] def fgSt {O' : Ops ASig} {Γ : List (Ty ASig)} (g : Expr O' Γ (fig8GsT ℓ Pt)) :
     Expr O' Γ (.prod (fig8StT (ℓ := ℓ) (Pt := Pt)) (fig8StT (ℓ := ℓ) (Pt := Pt))) := .fst g
 def fgMir {O' : Ops ASig} {Γ : List (Ty ASig)} (g : Expr O' Γ (fig8GsT ℓ Pt)) :
     Expr O' Γ (fig8MirT ℓ Pt) := .snd g
@@ -179,18 +180,18 @@ def fgAfterCorrE {O' : Ops ASig} {Γ : List (Ty ASig)} (Lq : ℕ)
      fgMirMk (fgB m2) (fgWin m2) (fgEpoch m2) (fgIdx m2) (fgTL m2)
        (fgTrans m2) (fgChall m2) (fgComp m2) (fgMaxAcc m2) (fgLeaks m2)
        (.cons (.pair p0 (pGet (fgEpoch m0) p0)) (fgCorrs m2)))
-def trE_e {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) : Expr O' Γ U64 := .fst tr
-def trE_c {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) :
+@[expose] def trE_e {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) : Expr O' Γ U64 := .fst tr
+@[expose] def trE_c {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) :
     Expr O' Γ (kemCoinsT ℓ Pt) := .fst (.snd tr)
-def trE_st {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) :
+@[expose] def trE_st {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) :
     Expr O' Γ (.prod (B 32) (B 32)) := .fst (.snd (.snd tr))
-def trE_sentB {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) :
+@[expose] def trE_sentB {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) :
     Expr O' Γ (.list (kemSentEntryT ℓ Pt)) := .fst (.snd (.snd (.snd tr)))
-def trE_sendCtr {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) :
+@[expose] def trE_sendCtr {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) :
     Expr O' Γ (.prod (.tbl .nat) (.tbl .nat)) := .fst (.snd (.snd (.snd (.snd tr))))
-def trE_cand {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) :
+@[expose] def trE_cand {O' : Ops ASig} {Γ : List (Ty ASig)} (tr : Expr O' Γ (kemTrackT ℓ Pt)) :
     Expr O' Γ (.opt (.prod BV512 BV256)) := .snd (.snd (.snd (.snd (.snd tr))))
-def trMk {O' : Ops ASig} {Γ : List (Ty ASig)} (e : Expr O' Γ U64) (c : Expr O' Γ (kemCoinsT ℓ Pt))
+@[expose] def trMk {O' : Ops ASig} {Γ : List (Ty ASig)} (e : Expr O' Γ U64) (c : Expr O' Γ (kemCoinsT ℓ Pt))
     (st : Expr O' Γ (.prod (B 32) (B 32))) (sentB : Expr O' Γ (.list (kemSentEntryT ℓ Pt)))
     (sendCtr : Expr O' Γ (.prod (.tbl .nat) (.tbl .nat)))
     (cand : Expr O' Γ (.opt (.prod BV512 BV256))) : Expr O' Γ (kemTrackT ℓ Pt) :=
@@ -207,11 +208,11 @@ def kfMk {O' : Ops ASig} {Γ : List (Ty ASig)} (sC : Expr O' Γ (simFullT ℓ Pt
 
 /-! ## Issue-1275 fixup and `honestExchangeFailsAtomicC` -/
 
-def bytes2EqLitE {Γ : List (Ty ASig)} (x : Expr AOps Γ (B 2)) (b0 b1 : BitVec 8) :
+@[expose] def bytes2EqLitE {Γ : List (Ty ASig)} (x : Expr AOps Γ (B 2)) (b0 b1 : BitVec 8) :
     Expr AOps Γ .bool :=
   sPure (.bytesEq 2 2) (.pair x (sPure (.bytesLit 2 [b0, b1]) .unit))
 
-def issue1275ScanStepE {Γ : List (Ty ASig)} :
+@[expose] def issue1275ScanStepE {Γ : List (Ty ASig)} :
     Expr AOps (.prod (B 512) (.opt .bool) :: Γ) (.prod (B 512) (.opt .bool)) :=
   let rem : Expr AOps (.prod (B 512) (.opt .bool) :: Γ) (B 512) := .fst .v0
   .caseOpt (.snd .v0)
@@ -230,7 +231,7 @@ def issue1275ScanStepE {Γ : List (Ty ASig)} :
       (.pair rem (.some (.bool false))))
     .v1
 
-def swapPairsStepE {Γ : List (Ty ASig)} :
+@[expose] def swapPairsStepE {Γ : List (Ty ASig)} :
     Expr AOps (.prod (B 2048) (B 2048) :: Γ) (.prod (B 2048) (B 2048)) :=
   let rem : Expr AOps (.prod (B 2048) (B 2048) :: Γ) (B 2048) := .fst .v0
   let acc : Expr AOps (.prod (B 2048) (B 2048) :: Γ) (B 2048) := .snd .v0
@@ -244,7 +245,7 @@ def swapPairsStepE {Γ : List (Ty ASig)} :
     .v0
 
 /-- Atomic computation for `(potentiallyFixStateIncorrectlyEncodedByLibcruxIssue1275Bytes es).getD es`. -/
-def issue1275FixEsC {Γ : List (Ty ASig)} (esE : Expr AOps Γ (B 2080)) :
+@[expose] def issue1275FixEsC {Γ : List (Ty ASig)} (esE : Expr AOps Γ (B 2080)) :
     Comp AOps (coinOnlyIface ℓ Pt) Γ (B 2080) :=
   .bind (.ret esE)
     (let errSlice : Expr AOps (B 2080 :: Γ) (B 512) :=
@@ -268,7 +269,7 @@ def issue1275FixEsC {Γ : List (Ty ASig)} (esE : Expr AOps Γ (B 2080)) :
           (.ret .v1)))
 
 /-- Atomic computation for `K.honestExchangeFails` on `seedE` and `randE`. -/
-def honestExchangeFailsAtomicC {Γ : List (Ty ASig)}
+@[expose] def honestExchangeFailsAtomicC {Γ : List (Ty ASig)}
     (seedE : Expr AOps Γ BV512) (randE : Expr AOps Γ BV256) :
     Comp AOps (coinOnlyIface ℓ Pt) Γ .bool :=
   .bind (.ret (.pair (sSpqr .kem768FromSeed seedE) randE))
@@ -295,19 +296,19 @@ def honestExchangeFailsAtomicC {Γ : List (Ty ASig)}
 
 /-! ## Braid tracker send step -/
 
-def encRandBvAtomicE {Γ : List (Ty ASig)} (rqE : Expr AOps Γ BV512) : Expr AOps Γ BV256 :=
+@[expose] def encRandBvAtomicE {Γ : List (Ty ASig)} (rqE : Expr AOps Γ BV512) : Expr AOps Γ BV256 :=
   sPure .bytesToBv256 (sPure (.bytesTakeK 64 32) (sPure .bv512ToBytes64 rqE))
 
-def isKeysUnsampledV1E {Γ : List (Ty ASig)} (v1E : Expr AOps Γ (B 32)) : Expr AOps Γ .bool :=
+@[expose] def isKeysUnsampledV1E {Γ : List (Ty ASig)} (v1E : Expr AOps Γ (B 32)) : Expr AOps Γ .bool :=
   sPure (.bytesEq 1 1) (.pair (sPure (.bytesTakeK 32 1) v1E) (sPure (.bytesLit 1 [0x0a#8]) .unit))
 
-def isHeaderReceivedV1E {Γ : List (Ty ASig)} (v1E : Expr AOps Γ (B 32)) : Expr AOps Γ .bool :=
+@[expose] def isHeaderReceivedV1E {Γ : List (Ty ASig)} (v1E : Expr AOps Γ (B 32)) : Expr AOps Γ .bool :=
   sPure (.bytesEq 1 1) (.pair (sPure (.bytesTakeK 32 1) v1E) (sPure (.bytesLit 1 [0x3a#8]) .unit))
 
-def ekSideIsAE {Γ : List (Ty ASig)} (eE : Expr AOps Γ U64) : Expr AOps Γ .bool :=
+@[expose] def ekSideIsAE {Γ : List (Ty ASig)} (eE : Expr AOps Γ U64) : Expr AOps Γ .bool :=
   .eqN (.modK 2 (sPure .u64ToNat eE)) (.nat 1)
 
-def nextKemCoinsAtomicE {Γ : List (Ty ASig)}
+@[expose] def nextKemCoinsAtomicE {Γ : List (Ty ASig)}
     (cE : Expr AOps Γ (kemCoinsT ℓ Pt)) (v1QE : Expr AOps Γ (B 32))
     (rqE : Expr AOps Γ BV512) : Expr AOps Γ (kemCoinsT ℓ Pt) :=
   eLet (.pair cE (.pair v1QE rqE))
@@ -329,7 +330,7 @@ def nextKemCoinsAtomicE {Γ : List (Ty ASig)}
            (.inr (.inl .v0)))
          (.inr (.inr .v0))))
 
-def nextKemCandAtomicC {Γ : List (Ty ASig)}
+@[expose] def nextKemCandAtomicC {Γ : List (Ty ASig)}
     (trE : Expr AOps Γ (kemTrackT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (rqE : Expr AOps Γ BV512) :
     Comp AOps (coinOnlyIface ℓ Pt) Γ (.opt (.prod BV512 BV256)) :=
@@ -367,7 +368,7 @@ def nextKemCandAtomicC {Γ : List (Ty ASig)}
           (.ret .none))
        (.ret (.some .v0)))
 
-def stepPostKemSendE (q : ℕ) {Γ : List (Ty ASig)}
+@[expose] def stepPostKemSendE (q : ℕ) {Γ : List (Ty ASig)}
     (trE : Expr AOps Γ (kemTrackT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (rqE : Expr AOps Γ BV512) (candE : Expr AOps Γ (.opt (.prod BV512 BV256))) :
     Expr AOps Γ (.prod (kemTrackT ℓ Pt) (kemTrackT ℓ Pt)) :=
@@ -405,7 +406,7 @@ def stepPostKemSendE (q : ℕ) {Γ : List (Ty ASig)}
         .pair trFull trCandOnly1))
 
 /-- Atomic computation returning `(stepKemFailSend tr Q rq, { tr with cand := (stepKemFailSend tr Q rq).cand })`. -/
-def stepKemFailSendAtomicC (q : ℕ) {Γ : List (Ty ASig)}
+@[expose] def stepKemFailSendAtomicC (q : ℕ) {Γ : List (Ty ASig)}
     (trE : Expr AOps Γ (kemTrackT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (rqE : Expr AOps Γ BV512) :
     Comp AOps (coinOnlyIface ℓ Pt) Γ (.prod (kemTrackT ℓ Pt) (kemTrackT ℓ Pt)) :=

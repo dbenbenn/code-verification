@@ -9,10 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrVarintPlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeClPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrVarintPlacedInst
+import LibsignalBinary.Proofs.SpqrV1.Auth.MergeClPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.Assembly
+import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3ClPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Code-Loaded Placed `Authenticator::merge` (Block `295`) CLI Instantiations
@@ -24,7 +36,7 @@ under `[LibsignalPlacement]` and `[CliSpqrExt W H]`, providing own-block, `block
 caller-block-polymorphic (`[IsLsBlockProg callerProg i H]`) corollaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

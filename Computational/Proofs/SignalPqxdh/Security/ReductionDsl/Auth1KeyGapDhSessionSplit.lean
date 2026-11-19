@@ -9,9 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhBounds
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhSessionSplit
-public import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhSessionSplit
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SoundnessTwoClass -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhProofs -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
 
 /-!
 # Session-Split Primitive and Bilinear DDH Query Bounds for `fgAuth1KeyGapDhProg`
@@ -22,7 +29,7 @@ public import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 bilinear potential and per-branch DDH query bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,7 +40,7 @@ open SignalPqxdh SignalPqxdh.LegacyCosted SignalPqxdh.Security SignalPqxdh.Secur
 open OracleSpec OracleComp
 
 /-- Whether an `Auth` query creates a session (`sendOPK`, `sendNoOPK`, `recvOPK`, `recvNoOPK`). -/
-def isAuthSessionQ {S : Setup} : AuthQuery S → Bool
+@[expose] def isAuthSessionQ {S : Setup} : AuthQuery S → Bool
   | .sendOPK _ _ _ _ _   => true
   | .sendNoOPK _ _ _ _ _ => true
   | .recvOPK _ _ _ _     => true
@@ -81,7 +88,7 @@ section Branches
 
 variable {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List (Ty pqSig)}
 
-def fgStepNSC (S : Setup) (K : Nat) (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy)
+@[expose] def fgStepNSC (S : Setup) (K : Nat) (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy)
     (q : Var Γ₃ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ RSF :=
   caseSumV (v q) (fun u => fgInitPrinC K pa sim u) fun q =>
   caseSumV (v q) (fun u => onBaseF sim fun g => corruptB K g u) fun q =>
@@ -96,7 +103,7 @@ def fgStepNSC (S : Setup) (K : Nat) (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ f
   caseSumV (v q) (fun _ => .ret (.pair aNone (v sim))) fun sk =>
   fgRegisterC sim sk
 
-def a1gStepNSC (S : Setup) (K : Nat) (st : Var Γ₁ a1gStTy) (q : Var Γ₂ authQueryTy)
+@[expose] def a1gStepNSC (S : Setup) (K : Nat) (st : Var Γ₁ a1gStTy) (q : Var Γ₂ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : CS Δ (.prod authRespTy a1gStTy) :=
   letV (.fst (.fst (v st))) fun pa =>
   letV (.snd (.fst (v st))) fun sim =>
@@ -112,7 +119,7 @@ def a1gStepNSC (S : Setup) (K : Nat) (st : Var Γ₁ a1gStTy) (q : Var Γ₂ aut
   bindV (KeyInd1KeyGapDh.liftGdhComp (fgStepNSC S K pa sim q)) fun r =>
   .ret (.pair (.fst (v r)) (.pair (.pair (v pa) (.snd (v r))) (v sigB)))
 
-def fgStep2NSC (K : Nat) (pa : Var Γ₁ a1gParams2Ty) (sim : Var Γ₂ fgSimTy)
+@[expose] def fgStep2NSC (K : Nat) (pa : Var Γ₁ a1gParams2Ty) (sim : Var Γ₂ fgSimTy)
     (q : Var Γ₃ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : CG Δ RSF :=
   caseSumV (v q) (fun u => fgInitPrin2C K pa sim u) fun q =>
   caseSumV (v q) (fun u => onBaseF sim fun g => corruptB K g u) fun q =>
@@ -127,7 +134,7 @@ def fgStep2NSC (K : Nat) (pa : Var Γ₁ a1gParams2Ty) (sim : Var Γ₂ fgSimTy)
   caseSumV (v q) (fun _ => .ret (.pair aNone (v sim))) fun sk =>
   fgRegisterC sim sk
 
-def a1gStep2NSC (K : Nat) (st : Var Γ₁ a1g2StTy) (q : Var Γ₂ authQueryTy)
+@[expose] def a1gStep2NSC (K : Nat) (st : Var Γ₁ a1g2StTy) (q : Var Γ₂ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : CS Δ (.prod authRespTy a1g2StTy) :=
   letV (.fst (.fst (v st))) fun pa =>
   letV (.snd (.fst (v st))) fun sim =>
@@ -157,25 +164,6 @@ def a1g2HandleNS (K : Nat) :
     CS [a1g2StTy, authQueryTy] (.prod authRespTy a1g2StTy) :=
   a1gStep2NSC K (.vz : Var [a1g2StTy, authQueryTy] a1g2StTy)
     (.vs .vz : Var [a1g2StTy, authQueryTy] authQueryTy)
-
-theorem a1gHandleNS_queries_prim_le (S : Setup) (K : Nat) :
-    (a1gHandleNS S K).queries KeyInd1KeyGapDh.wPrim1Key KeyInd1KeyGapDh.wsZero1Key ≤ 32 := by
-  simp only [
-    a1gHandleNS, a1gStepNSC, Comp.letC, a1gPreC, a1gInitPrinC, a1gGenSpkC,
-    a1g_liftGdhComp_queries_prim, KeyInd1KeyGapDh.sigChalQ_dsl_queries_prim,
-    queries_liftChal_gdhPrimW, queries_queryDdh_prim,
-    fgStepNSC,
-    fgInitPrinC, fgGenSpkC, fgRoC, fgRoRootC, fgRegisterC,
-    onBaseF, corruptB, genOpkB,
-    mkSecretPosC, ddhEqC, ddhEqOptC,
-    entryMatchesC, patchC, rootPatchC,
-    findMV, Comp.sampleBytes32, Comp.sampleDrKey96C, Comp.queryPrim,
-    primW, primWS, gdhPrimW, gdhWS,
-    bindV, letV, caseOptV, caseSumV,
-    Comp.sampleBytes32C, Comp.sampleRandom64C, Comp.queryPrimC,
-    a1g_wPrim_inl, a1g_wsZero1Key, Comp.queries,
-    Nat.zero_max, Nat.max_zero, max_self, Nat.add_zero, Nat.zero_add, Nat.mul_zero]
-  omega
 
 theorem a1g2HandleNS_queries_prim_le (K : Nat) :
     (a1g2HandleNS K).queries KeyInd1KeyGapDh.wPrim1Key KeyInd1KeyGapDh.wsZero1Key ≤ 32 := by
@@ -339,18 +327,18 @@ theorem ddhGdh_ddhQ (X Y Z : Bytes) :
   (isQueryBoundP_query_iff (spec := FgGapDh.GdhSimSpec) a1g_isDdhGdh
     (Sum.inr (X, Y, Z)) 1).2 (fun _ => Nat.zero_lt_one)
 
-def a1g_isSecPoS : FgGapDh.FgPoS → Bool
+@[expose] def a1g_isSecPoS : FgGapDh.FgPoS → Bool
   | .secret _ _ => true
   | .pair _ _ _ _ => false
 
-def a1g_isSecOpt : Option FgGapDh.FgPoS → Bool
+@[expose] def a1g_isSecOpt : Option FgGapDh.FgPoS → Bool
   | none => true
   | some p => a1g_isSecPoS p
 
-def a1g_isSecPatch (e : FgGapDh.FgPatchEntry) : Bool :=
+@[expose] def a1g_isSecPatch (e : FgGapDh.FgPatchEntry) : Bool :=
   a1g_isSecPoS e.pos1 && a1g_isSecPoS e.pos2 && a1g_isSecPoS e.pos3 && a1g_isSecOpt e.pos4?
 
-def a1g_isSecRoot (e : FgRootEntry) : Bool :=
+@[expose] def a1g_isSecRoot (e : FgRootEntry) : Bool :=
   a1g_isSecPoS e.dhPos
 
 theorem ddhGdh_mkSecretPos (z : Bytes) :
@@ -696,18 +684,18 @@ theorem ddhGdh_fgRootPatch_sess (maxLen : ℕ) (rk : Bytes) (p : FgGapDh.FgPoS)
       · exact Or.inr (Or.inr (by simp [hSec]))
       · exact Or.inr (Or.inl (by simp [hSec]))
 
-def a1g_rDone {S : Setup} (st : FgAuthSimState S) : ℕ := st.fgL.countP a1g_isSecPatch
-def a1g_sDone {S : Setup} (st : FgAuthSimState S) : ℕ := st.fgL.countP (fun e => !a1g_isSecPatch e)
-def a1g_rtRDone {S : Setup} (st : FgAuthSimState S) : ℕ := st.fgRootL.countP a1g_isSecRoot
-def a1g_rtSDone {S : Setup} (st : FgAuthSimState S) : ℕ := st.fgRootL.countP (fun e => !a1g_isSecRoot e)
+@[expose] def a1g_rDone {S : Setup} (st : FgAuthSimState S) : ℕ := st.fgL.countP a1g_isSecPatch
+@[expose] def a1g_sDone {S : Setup} (st : FgAuthSimState S) : ℕ := st.fgL.countP (fun e => !a1g_isSecPatch e)
+@[expose] def a1g_rtRDone {S : Setup} (st : FgAuthSimState S) : ℕ := st.fgRootL.countP a1g_isSecRoot
+@[expose] def a1g_rtSDone {S : Setup} (st : FgAuthSimState S) : ℕ := st.fgRootL.countP (fun e => !a1g_isSecRoot e)
 
-def a1g_phiMain (rD sD rR sR : ℕ) : ℕ :=
+@[expose] def a1g_phiMain (rD sD rR sR : ℕ) : ℕ :=
   4 * rD * sR + 4 * rR * (sD + sR) + 4 * sD * sR + 2 * sR * (sR - 1)
 
-def a1g_phiRoot (rtRD rtSD rtRR sR : ℕ) : ℕ :=
+@[expose] def a1g_phiRoot (rtRD rtSD rtRR sR : ℕ) : ℕ :=
   rtRD * sR + rtRR * (rtSD + sR) + rtSD * sR + sR * (sR - 1)
 
-def a1g_authPhi {S : Setup} (st : FgAuthSimState S) (rR rtRR sR : ℕ) : ℕ :=
+@[expose] def a1g_authPhi {S : Setup} (st : FgAuthSimState S) (rR rtRR sR : ℕ) : ℕ :=
   a1g_phiMain (a1g_rDone st) (a1g_sDone st) rR sR + a1g_phiRoot (a1g_rtRDone st) (a1g_rtSDone st) rtRR sR
 
 theorem a1g_phiMain_ro (rD sD r' sR rD' : ℕ) (h : rD' ≤ rD + 1) :
@@ -770,7 +758,7 @@ theorem ddhGdh_step_pure {S : Setup} (r : AuthResponse) (st : FgAuthSimState S)
   simp only [support_pure, Set.mem_singleton_iff] at hp
   subst hp; exact hP
 
-def a1g_RoStepPost {S : Setup} (st st' : FgAuthSimState S) : Prop :=
+@[expose] def a1g_RoStepPost {S : Setup} (st st' : FgAuthSimState S) : Prop :=
   a1g_rDone st' ≤ a1g_rDone st + 1 ∧ a1g_sDone st' = a1g_sDone st ∧ st'.fgRootL = st.fgRootL
 
 theorem ddhGdh_fgRoQueryAuthGdh {S : Setup} (maxLen : ℕ) (secrets : Bytes)
@@ -838,7 +826,7 @@ theorem ddhGdh_fgRoRootQueryAuthGdh {S : Setup} (maxLen : ℕ) (rk dh : Bytes)
     ((ddhGdh_mkSecretPos dh).2 pos hpos)).2 out hout
   exact ⟨hP.1, hP.2, rfl⟩
 
-def a1g_SessStepPost {S : Setup} (st st' : FgAuthSimState S) : Prop :=
+@[expose] def a1g_SessStepPost {S : Setup} (st st' : FgAuthSimState S) : Prop :=
   ((a1g_rDone st' = a1g_rDone st ∧ a1g_sDone st' = a1g_sDone st) ∨
    (a1g_rDone st' = a1g_rDone st + 1 ∧ a1g_sDone st' = a1g_sDone st) ∨
    (a1g_rDone st' = a1g_rDone st ∧ a1g_sDone st' = a1g_sDone st + 1)) ∧

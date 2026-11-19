@@ -1,0 +1,32 @@
+--- a/rust/protocol/src/double_ratchet.rs
++++ b/rust/protocol/src/double_ratchet.rs
+@@ -337,7 +337,7 @@ impl RatchetState {
+         // Remove before deserializing. If from_pb fails the key was corrupt
+         // and unrecoverable — slightly different from main which preserves it,
+         // but the outcome (error) is the same.
+-        let key_pb = keys.remove(pos);
++        let key_pb = keys[pos].clone();
+         MessageKeyGenerator::from_pb(key_pb)
+             .map(Some)
+             .map_err(InvalidSessionError)
+--- a/rust/protocol/src/triple_ratchet.rs
++++ b/rust/protocol/src/triple_ratchet.rs
+@@ -227,6 +227,7 @@ impl TripleRatchet {
+         let chain_key = self
+             .ratchet
+             .ensure_receiver_chain(their_ephemeral, csprng)?;
++        let is_skipped = chain_key.index() > counter;
+         let message_key_gen = self.ratchet.consume_message_key(
+             their_ephemeral,
+             chain_key,
+@@ -292,7 +293,9 @@ impl TripleRatchet {
+         };
+ 
+         // Commit SPQR state only after all verification passed
+-        self.pqr_state = new_pqr_state;
++        if !is_skipped {
++            self.pqr_state = new_pqr_state;
++        }
+ 
+         Ok(ptext)
+     }

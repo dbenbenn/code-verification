@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.NewFromSlice
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepDefs
@@ -18,7 +17,7 @@ import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Extract
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxHeartbeats 16000000
 set_option maxRecDepth 200000
@@ -36,42 +35,6 @@ open CryptoVerification.E2E.Pqxdh.Shared
 open CryptoVerification.E2E.Pqxdh.ResponderCore
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local arm64_norm ↓, local wp_norm ↓]
-  sp_setPC_pre sp_setMem_setPC_pre
-  readReg64_setPC_pre readReg64_setMem_setPC_pre
-  readReg32_setPC_pre readReg32_setMem_setPC_pre
-  readReg_setPC_pre readReg_setMem_setPC_pre
-  CryptoVerification.libsignalSessionCode_fnOff_0x3e6e0
-  CryptoVerification.libsignalSessionCode_fnOff_0x1fa74
-  CryptoVerification.libsignalSessionCode_fnOff_0x1ceb8
-  CryptoVerification.libsignalSessionCode_fnOff_0x3dc30
-  CryptoVerification.libsignalSessionCode_fnOff_0x14d14
-  CryptoVerification.libsignalSessionCode_fnOff_0x21c6c
-  CryptoVerification.libsignalSessionCode_fnOff_0x125a4
-  CryptoVerification.libsignalSessionCode_fnOff_0x11c98
-  CryptoVerification.libsignalSessionCode_fnOff_0x117e8
-  CryptoVerification.libsignalSessionCode_fnOff_0x12064
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-  (ls_stub% "alloc::alloc::handle_alloc_error")
-  (ls_stub% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop")
-  (ls_stub% "libsignal_session_rng_fill")
-theorem SepWPp.bind_loaded {prog : Program} {img : Obj.Image} {mid target : BitVec 64}
-    {s : State} {P : SepProp} {Qm post Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab) (h1 : SepWPp prog mid s P Qm Qp)
-    (h2 : ∀ sm Pm, sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Qm sm Pm → SepWPp prog target sm Pm post Qp) :
-    SepWPp prog target s P post Qp := by
-  unfold SepWPp at h1 ⊢
-  intro R hm hL
-  rcases h1 R hm hL with ⟨sm, hsteps, ⟨hpcm, hrunm, Pm, hmm, hQ⟩ | hpan⟩
-  · rcases h2 sm Pm hpcm hrunm (hF.of_keepsFrozen hsteps.keepsFrozen)
-      (hsteps.symtab_eq.trans hsym) hQ R hmm (hsteps.codeLoaded hL) with ⟨sf, hsteps', hout⟩
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr hpan⟩
 theorem stackAt_tryClone_split_alloc (fsp : BitVec 64) :
     stackAt fsp tryCloneFromRefStack =
       stackAt fsp allocHookStack ∗ memRegion (fsp - 4144#64) 48 := by
@@ -173,8 +136,7 @@ theorem buildSecrets_take32 (dh1 dh2 dh3 : Bytes) (dh4? : Option Bytes) (kemSs :
     simp [buildSecrets, F_X25519, discontinuityBytes, List.append_assoc,
       List.take_append_of_le_length]
 open CryptoVerification.LibsignalTripleRatchet.Keys
-open CryptoVerification.LibsignalTripleRatchet.Decrypt.DhStep (rngFill_ok_at_tripleRatchet
-  rngFillAfter0Spec)
+open CryptoVerification.LibsignalTripleRatchet.Decrypt.DhStep (rngFillAfter0Spec)
 attribute [local simp, local arm64_norm, local wp_norm]
   clamp_byte0_norm clamp_byte0_norm32 clamp_byte31_bfxil_norm clamp_byte31_bfxil_norm'
 theorem tapeAfter_vec32 (ctl cur : BitVec 64) (v : List.Vector (BitVec 8) 32) (rest : List (BitVec
@@ -189,7 +151,7 @@ theorem tapeAfter_vec32 (ctl cur : BitVec 64) (v : List.Vector (BitVec 8) 32) (r
     rw [pointsToBytes_append, hv_len, h32]
   rw [hlen, h32, hpts, BitVec.add_zero, Nat.sub_zero]
   ac_rfl
-def sp2Rng32Spec (ctl : BitVec 64) :
+@[expose] def sp2Rng32Spec (ctl : BitVec 64) :
     Spec (BitVec 64 × BitVec 64 × List.Vector (BitVec 8) 32 × List (BitVec 8)) where
   pre := fun (destPtr, cur, v, rest) s =>
     ⌜s.readReg64 .x0 = destPtr ∧ s.readReg64 .x1 = 32#64⌝ ∗ memRegion destPtr 32 ∗
@@ -197,38 +159,6 @@ def sp2Rng32Spec (ctl : BitVec 64) :
   post := fun (destPtr, cur, v, rest) s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ (destPtr ↦ₛ v.toList) ∗ (cur ↦ₛ v.toList) ∗
       tapeAfter ctl (cur + 32#64) rest 0
-theorem sp2Rng32_ok_at {img : Obj.Image} {C : Crypto} {ctl : BitVec 64} {absHooks : String → Option
-    (State → State)} {name : String} {k : Nat} (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "libsignal_session_rng_fill" := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl absHooks)
-      ((tripleRatchetProgAt img.base C ctl absHooks).fnAddr name + BitVec.ofNat 64 k)
-      (sp2Rng32Spec ctl) := by
-  have hrng := rngFill_ok_at_tripleRatchet (b := img.base) (C := C) (ctl := ctl)
-    (abs := absHooks) (name := name) (k := k) hk
-  refine subroutine_ok_outcome_intro fun ⟨destPtr, cur, v, rest⟩ R s0 hpc hrun hpre hsp => ?_
-  dsimp only [sp2Rng32Spec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1⟩, hpre⟩
-  have hx1_nat : (s0.readReg64 .x1).toNat = 32 := by rw [hx1]; rfl
-  have hpre' : s0.mem ⊨ (rngFillAfter0Spec ctl).pre (destPtr, 32, cur, v.toList ++ rest) s0 ∗ R :=
-    by
-    dsimp only [rngFillAfter0Spec]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1_nat⟩, hpre⟩
-  refine hrng.mono_outcome (destPtr, 32, cur, v.toList ++ rest) R s0 hpc hrun hpre' hsp
-    fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | hpan
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [rngFillAfter0Spec] at hq
-    have hv_len : v.toList.length = 32 := v.2
-    have htake : ((v.toList ++ rest) ++ List.replicate 32 0#8).take 32 = v.toList := by
-      rw [List.append_assoc, List.take_append_of_le_length (by omega),
-        List.take_of_length_le (by omega)]
-    have hmin : min 32 (v.toList ++ rest).length = 32 := by simp [hv_len]
-    rw [htake, hmin, tapeAfter_vec32 ctl cur v rest] at hq
-    dsimp only [sp2Rng32Spec]
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hq
-  · exact Or.inr hpan
 theorem memRegion24_eq_cells3 (base : BitVec 64) :
     memRegion base 24 = ∃∗ w0 : BitVec 64, ∃∗ w1 : BitVec 64, ∃∗ w2 : BitVec 64,
         (base ↦₆₄ w0) ∗ ((base + 8#64) ↦₆₄ w1) ∗ ((base + 16#64) ↦₆₄ w2) := by
@@ -317,24 +247,6 @@ theorem pointsTo_vec32_clamp_fold (a : BitVec 64) (v : List.Vector (BitVec 8) 32
 open CryptoGames.HMAC CryptoGames.HKDF
 @[simp, arm64_norm]
 abbrev createChainStack : Nat := LibsignalTripleRatchet.createChainStack
-theorem pqxdh_createChain_ok_trap
-    {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {absHooks : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hA : AllocHooks A absHooks) :
-    CreateChainOk_trap img C A absHooks :=
-  Keys.createChain_ok_trap himg (ConsumeMessageKeyTransfer.ctEqRO_ok_trap _ _ _)
-    (extract_ok_trap img C absHooks (ConsumeMessageKeyTransfer.new_from_slice_ok_trap _ _ _ himg))
-    (expand_multi_info_ok_trap img.base C absHooks) hA
-theorem pqxdh_createChain_ok
-    {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {absHooks : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hA : AllocHooks A absHooks) :
-    CreateChainOk img C A ctl absHooks := by
-  unfold CreateChainOk CreateChainOkExt
-  simp only [← trTrapProgAt_fnAddr_eq]
-  exact subroutine_ok_kit_of_trTrap (pqxdh_createChain_ok_trap (C := C) himg hA)
 theorem stackAt_createChain_split_alloc (fsp : BitVec 64) :
     stackAt fsp createChainStack =
       stackAt fsp allocHookStack ∗ memRegion (fsp - 4832#64) 736 := by

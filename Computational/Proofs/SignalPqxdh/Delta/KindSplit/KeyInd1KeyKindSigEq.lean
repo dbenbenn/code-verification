@@ -14,7 +14,7 @@ public import Computational.Proofs.ReductionDsl.StepSim -- proof-setup: allow-pu
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreKSimBase -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhKSimBase -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhKSimBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhKSimA
 
 public section
@@ -50,10 +50,6 @@ open Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapD
   (sigKeyInd1KeyKindAtomicProg_forgetSim)
 
 namespace Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindSigEq
-
-theorem pqxdhKeyInd1KeyKindCostedSims_sig_eq (S : Setup) :
-    (pqxdhKeyInd1KeyKindCostedSims S).sig = sigKeyInd1KeyKindAtomicProg S :=
-  rfl
 
 private theorem isQueryBoundP_of_imp {ι₀ : Type} {spec : OracleSpec ι₀} {α : Type}
     {oa : OracleComp spec α} {p p₀ : ι₀ → Prop}
@@ -147,12 +143,6 @@ theorem pqxdhKeyInd1KeyKindCostedSims_eval_sig_eq
     ({ run := r, q_sig := 2 * min S.N_spk_tot S.N_recv, q_ddh := gdhQueryBudget S b,
        q_prim := gdhPrimQueryBudget S b } : GapSigEufCmaAdv))
     (funext fun pk => sigKeyInd1KeyKindAtomicProg_eval_eq S b A pk)
-
-theorem gapSigEufCma_keyInd1KeyKind_eq
-    (Prim : Primitives) (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
-    GapSigEufCma Prim Prim.isValidDhTriple ((pqxdhKeyInd1KeyKindCostedSims S).eval.sig b A) =
-      GapSigEufCma Prim Prim.isValidDhTriple ((pqxdhKeyInd1KeyActiveCostedSims S).eval.sig b A) := by
-  rw [pqxdhKeyInd1KeyKindCostedSims_eval_sig_eq S b A]
 
 theorem gapSigEufCmaReal_keyInd1KeyKind_eq
     (Prim : Primitives) (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :

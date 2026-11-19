@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` Specifications for Polynomial and Chunked `encoded_len`
@@ -19,7 +20,7 @@ public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1
 `V1State.Chunked.{Ct1Sampled,HeaderSent}::encoded_len`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,32 +35,32 @@ open CryptoVerification.SpqrV1.ProtoRepr
    ChunkedCt1SampledEncodedLenPinnedGhost ChunkedCt1SampledEncodedLenGhost
    ChunkedHeaderSentEncodedLenPinnedGhost ChunkedHeaderSentEncodedLenGhost)
 
-def polynomialDecoderEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def polynomialDecoderEncodedLenPinnedSpec (A : RustAlloc) :
     Spec PolynomialDecoderEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.polynomialDecoderEncodedLenPinnedSpec A)
 
-def polynomialDecoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialDecoderEncodedLenGhost :=
+@[expose] def polynomialDecoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialDecoderEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.polynomialDecoderEncodedLenSpec A)
 
-def polynomialEncoderEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def polynomialEncoderEncodedLenPinnedSpec (A : RustAlloc) :
     Spec PolynomialEncoderEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.polynomialEncoderEncodedLenPinnedSpec A)
 
-def polynomialEncoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialEncoderEncodedLenGhost :=
+@[expose] def polynomialEncoderEncodedLenSpec (A : RustAlloc) : Spec PolynomialEncoderEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.polynomialEncoderEncodedLenSpec A)
 
-def chunkedCt1SampledEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def chunkedCt1SampledEncodedLenPinnedSpec (A : RustAlloc) :
     Spec ChunkedCt1SampledEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.chunkedCt1SampledEncodedLenPinnedSpec A)
 
-def chunkedCt1SampledEncodedLenSpec (A : RustAlloc) : Spec ChunkedCt1SampledEncodedLenGhost :=
+@[expose] def chunkedCt1SampledEncodedLenSpec (A : RustAlloc) : Spec ChunkedCt1SampledEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.chunkedCt1SampledEncodedLenSpec A)
 
-def chunkedHeaderSentEncodedLenPinnedSpec (A : RustAlloc) :
+@[expose] def chunkedHeaderSentEncodedLenPinnedSpec (A : RustAlloc) :
     Spec ChunkedHeaderSentEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.chunkedHeaderSentEncodedLenPinnedSpec A)
 
-def chunkedHeaderSentEncodedLenSpec (A : RustAlloc) : Spec ChunkedHeaderSentEncodedLenGhost :=
+@[expose] def chunkedHeaderSentEncodedLenSpec (A : RustAlloc) : Spec ChunkedHeaderSentEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.chunkedHeaderSentEncodedLenSpec A)
 
 end LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget

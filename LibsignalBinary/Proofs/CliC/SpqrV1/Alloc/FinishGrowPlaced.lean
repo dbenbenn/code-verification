@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow
-public import LibsignalBinary.Proofs.CliC.SpqrV1.Alloc.FinishGrow
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CliC.SpqrV1.Alloc.FinishGrow
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import ProofLib.FsTrace
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `RawVecInner::finish_grow` Proofs for `CliC`
@@ -23,7 +30,7 @@ Proves `[LibsignalPlacement]` zero-capacity (`__rust_alloc`) and non-zero-capaci
 (`__rust_realloc`) contracts for `CliC` `RawVecInner::finish_grow [local#10]` (Block `587`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -103,7 +110,7 @@ private theorem stackAt_finishGrow_gen (sp : BitVec 64) {hookStack : Nat}
       stackAt (sp - 48#64) hookStack ∗ cells (sp - 48#64) 6 :=
   ProofLib.stackAt_split_cells sp hookStack 6 hhook
 
-def finishGrow8AllocSpecG (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCall :=
+@[expose] def finishGrow8AllocSpecG (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCall :=
   { finishGrowSpecWithStack A hookStack with
     pre := fun x s =>
       ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
@@ -113,7 +120,7 @@ def finishGrow8AllocSpecG (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCal
         LayoutOk (x.new.toNat * x.stride.toNat) x.align.toNat⌝ ∗
       memRegion x.out 24 ∗ A.pool ∗ stackAt s.sp (hookStack + 48) }
 
-def finishGrow8ReallocSpecG (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCall :=
+@[expose] def finishGrow8ReallocSpecG (A : RustAlloc) (hookStack : Nat) : Spec FinishGrowCall :=
   { finishGrowSpecWithStack A hookStack with
     pre := fun x s =>
       ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧

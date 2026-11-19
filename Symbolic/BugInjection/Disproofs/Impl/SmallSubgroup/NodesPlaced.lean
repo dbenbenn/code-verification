@@ -34,18 +34,18 @@ set_option autoImplicit false
 namespace Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.NodesPlaced
 
 open Symbolic.BugInjection (cliCompShapePlaced)
-open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (cliCompFitsPinned)
+open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (CliSetupMatchesPinned)
 open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.MutantLink (mutantMpl mutantMmpl)
 open CryptoVerification.BugInjection (mutantCliElfBytes)
 
 #guard CryptoVerification.BugInjection.mutant == "cheval26-small-subgroup"
 
 /-- Parsing `mutantCliElfBytes` yields an ELF image whose execution at `(mutantMpl, mutantMmpl)`
-produces `Cheval26SmallSubgroupHighBitCli.trace` under `cliCompFitsPinned setup`. -/
+produces `Cheval26SmallSubgroupHighBitCli.trace` under `CliSetupMatchesPinned setup`. -/
 theorem impl_half_bytes_placed :
     ∀ elf : Arm64.Process.ElfImage, Arm64.Process.ElfImage.parse mutantCliElfBytes = .ok elf →
       (cliCompShapePlaced mutantMpl mutantMmpl).ImplHalf
-        (cliCompFitsPinned Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
+        (CliSetupMatchesPinned Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
         elf Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.trace :=
   Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.ImplPlaced.impl_half_bytes_placed_of_runs
     Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Base.ssSpec_valid

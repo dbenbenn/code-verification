@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacRun
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEnc
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacRun -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEnc -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaLeaves
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaSend
@@ -19,6 +19,12 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacMu
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacRecv
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacSend
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
 
 /-!
 # Evaluation Equivalence and Wiring for `prfHmacRedProg`
@@ -28,7 +34,7 @@ reduction `prfHmacReductionAuth S b A`. Packages the DSL reduction as `prfHmacDs
 establishes experiment equivalence and query-budget compliance.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -133,7 +139,7 @@ theorem hmPostC_eval {Δ : List PT} (a : Expr pqxdhOps Δ (.prod hmSendContTy (B
   rfl
 
 /-- Encoding of a handled query's result as a `(resp, state)` value. -/
-def hmOutToVal {S : Setup} (jt : Nat) (r : HmRes S) : (Ty.prod authRespTy hmStTy).denote :=
+@[expose] def hmOutToVal {S : Setup} (jt : Nat) (r : HmRes S) : (Ty.prod authRespTy hmStTy).denote :=
   (authRespToVal r.1.1, hmStToVal jt r.1.2 r.2)
 
 set_option maxHeartbeats 4000000 in
@@ -254,7 +260,7 @@ theorem hmStep_leaves (n jt : Nat) (q : AuthQuery S) (hst : AuthHybridStateFixed
     exact AllLeaves.bind_const _ fun t => AllLeaves.pure (hcB.post_inv t)
 
 /-- The DSL step function of `CostedReduction.eval` for `prfHmacRedProg`. -/
-def hmDslStep :
+@[expose] def hmDslStep :
     (q : AuthQuery S) → hmStTy.denote →
       OracleComp PrfHmacSimSpec ((authSpec S).Range q × hmStTy.denote) :=
   fun q st => do
@@ -343,7 +349,7 @@ theorem hmInv_empty (secb : Bool) : HmInv 0 (AuthHybridStateFixed.empty S secb) 
 
 /-- Shallow `prfHmacReductionAuth` computation parameterized directly by an arbitrary adversary
     computation `runA`. -/
-def prfHmacReductionAuthRun (runA : OracleComp (unifSpec + authSpec S) Bool) :
+@[expose] def prfHmacReductionAuthRun (runA : OracleComp (unifSpec + authSpec S) Bool) :
     OracleComp PrfHmacSimSpec Bool := do
   let j ← prfHmacUnif (RoKem.sampleIndexRange (S.N_send_tot + S.N_recv_tot))
   let (_, st) ← prfMuRun j (aeadMuIntReductionAuthRun S ⟨runA⟩) {}
@@ -395,7 +401,7 @@ section Adv
 variable (S : Setup)
 
 /-- The `ReductionDsl` `PrfHmac` adversary with primitive-query budget `primQueryBudget S b`. -/
-def prfHmacDslAdv (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
+@[expose] def prfHmacDslAdv (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
     PrfHmacAdv where
   run := (prfHmacRedProg S b.q_total).eval (fun _ => A.1.run) ()
   q_prf := (prfHmacReductionAuth S b A).q_prf
@@ -404,21 +410,6 @@ def prfHmacDslAdv (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
 theorem prfHmacDslAdv_run (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
     (prfHmacDslAdv S b A).run = (prfHmacReductionAuth S b A).run :=
   prfHmacRedProg_eval_eq S b A
-
-theorem prfHmacRedProg_evalDist_eq (P : Primitives) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    𝒟[prfHmacExp P (prfHmacDslAdv S b A)] = 𝒟[prfHmacExp P (prfHmacReductionAuth S b A)] := by
-  have h : prfHmacDslAdv S b A =
-      { prfHmacReductionAuth S b A with q_prim := primQueryBudget S b } := by
-    unfold prfHmacDslAdv
-    rw [prfHmacRedProg_eval_eq]
-  rw [h]
-  rfl
-
-theorem prfHmacRedProg_prfHmac_eq (P : Primitives) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) :
-    PrfHmac P (prfHmacDslAdv S b A) = PrfHmac P (prfHmacReductionAuth S b A) := by
-  simp only [PrfHmac, prfHmacRedProg_evalDist_eq]
 
 /-- `prfHmacDslAdv` satisfies its declared query budgets. -/
 theorem prfHmacDslAdv_bounded (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :

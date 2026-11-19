@@ -21,7 +21,7 @@ protocol version branches (`< 1`, `= 1` via `TopRecvEqualStmt`, and `> 1` during
 negotiation).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

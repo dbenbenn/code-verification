@@ -37,7 +37,7 @@ arm64_proof_prelude
 
 /-! ## Recursive Cut-Point Contracts -/
 
-abbrev AllocSlotFullPostProp [MallocngMultiPlacement]
+abbrev AllocSlotFullPostProp [MallocngMultiPlacement] {ro : Bool}
     (sc req inflight : Nat) (γ : GhostName) (tp brkStart : BitVec 64)
     (liveCost peakCost peakCount : Nat) (st0 : MallocngSt) (s0 sf : State) : SepProp :=
   ∃∗ st' : MallocngSt, ∃∗ idx : Nat,
@@ -55,9 +55,9 @@ abbrev AllocSlotFullPostProp [MallocngMultiPlacement]
      (totalClaimedSlots st0 = 0 → ∀ U : Nat, peakCount ≤ U →
        Cost.GroupsGrpBound U st0.groups → Cost.GroupsGrpBound U st'.groups)⌝ ∗
     stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗ MallocngRoTablesA maddrs ∗
-    MallocngRuntime maddrs tp ∗ MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
+    MallocngRuntime maddrs tp ∗ MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
 
-@[expose] def AllocSlotAtDepthFullStmt (sc : Nat) : Prop :=
+@[expose] def AllocSlotAtDepthFullStmt (sc : Nat) (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement] (req inflight : Nat) (_hSc : sc < 48) (_hReq : req ≤ nominalSlotCap sc)
     (_hInflight : inflight + allocSlotDepthBound sc ≤ 6) (γ : GhostName) (tp brkStart : BitVec 64)
     (liveCost peakCost peakCount : Nat) (st : MallocngSt) (_hCount : totalLiveCount st ≤ peakCount),
@@ -65,27 +65,27 @@ abbrev AllocSlotFullPostProp [MallocngMultiPlacement]
       pre := fun (_ : Unit) s0 =>
         ⌜s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart ∧ (s0.readReg32 .x0).toNat = sc ∧ (s0.readReg64 .x1).toNat = req⌝ ∗
         stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗ MallocngRoTablesA maddrs ∗
-        MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp
+        MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp
       post := fun _ s0 sf =>
-        AllocSlotFullPostProp sc req inflight γ tp brkStart liveCost peakCost peakCount st s0 sf
+        AllocSlotFullPostProp (ro := ro) sc req inflight γ tp brkStart liveCost peakCost peakCount st s0 sf
       onOom := fun _ s0 sf =>
         ⌜MallocngPlacedOomCond msvc (2 * (allocSlotDepthBound sc + 1)) (allocSlotPlacedByteBound sc peakCount) s0 sf⌝ })
 
-abbrev AllocSlotFullPostBody [MallocngMultiPlacement]
+abbrev AllocSlotFullPostBody [MallocngMultiPlacement] {ro : Bool}
     (sc req inflight : Nat) (γ : GhostName) (tp brkStart : BitVec 64)
     (liveCost peakCost peakCount : Nat) (st0 : MallocngSt) (s0 sf : State) (P_f : SepProp) : Prop :=
-  P_f ⊢ AllocSlotFullPostProp sc req inflight γ tp brkStart liveCost peakCost peakCount st0 s0 sf
+  P_f ⊢ AllocSlotFullPostProp (ro := ro) sc req inflight γ tp brkStart liveCost peakCost peakCount st0 s0 sf
 
-abbrev AllocSlotFullPost [MallocngMultiPlacement]
+abbrev AllocSlotFullPost [MallocngMultiPlacement] {ro : Bool}
     (sc req inflight : Nat) (γ : GhostName) (tp brkStart : BitVec 64)
     (liveCost peakCost peakCount : Nat) (st0 : MallocngSt) (s0 sf : State) (P_f : SepProp) : Prop :=
-  AllocSlotFullPostBody sc req inflight γ tp brkStart liveCost peakCost peakCount st0 s0 sf P_f ∧
+  AllocSlotFullPostBody (ro := ro) sc req inflight γ tp brkStart liveCost peakCost peakCount st0 s0 sf P_f ∧
   sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
-@[expose] def AllocGroupAtOffFullStmt : Prop :=
+@[expose] def AllocGroupAtOffFullStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement] (sc req inflight : Nat) (_hSc : sc < 48) (_hReq : req ≤ nominalSlotCap sc)
     (_hInflight : inflight + allocSlotDepthBound sc ≤ 6)
-    (_hRec : ∀ pSc, pSc < 48 → allocSlotDepthBound pSc < allocSlotDepthBound sc → AllocSlotAtDepthFullStmt pSc)
+    (_hRec : ∀ pSc, pSc < 48 → allocSlotDepthBound pSc < allocSlotDepthBound sc → AllocSlotAtDepthFullStmt pSc ro)
     (γ : GhostName) (tp brkStart : BitVec 64) (liveCost peakCost peakCount : Nat) (st0 st : MallocngSt)
     (_hCount : totalLiveCount st ≤ peakCount) (_hAct0 : ∀ h : sc < st.ctx.active.length, st.ctx.active[sc]'h = 0#64)
     (_hStRel : st.reservedMetas = st0.reservedMetas ∧ st.liveMap = st0.liveMap ∧
@@ -106,9 +106,9 @@ abbrev AllocSlotFullPost [MallocngMultiPlacement]
         (s0.readReg64 .x23) (s0.readReg64 .x24) (s0.readReg64 .x25) (s0.readReg64 .x26)
         (s0.readReg64 .x27) (s0.readReg64 .x28) ∗
        stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗
-       MallocngRoTablesA maddrs ∗ MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
+       MallocngRoTablesA maddrs ∗ MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗
        MallocngRuntime maddrs tp)
-      (AllocSlotFullPost sc req inflight γ tp brkStart liveCost peakCost peakCount st0 s0)
+      (AllocSlotFullPost (ro := ro) sc req inflight γ tp brkStart liveCost peakCost peakCount st0 s0)
       (fun sf => ⌜MallocngPlacedOomCond msvc (2 * (allocSlotDepthBound sc + 1))
                    (allocSlotPlacedByteBound sc peakCount) s0 sf⌝)
 

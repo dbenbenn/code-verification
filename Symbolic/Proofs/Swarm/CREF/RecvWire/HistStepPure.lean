@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
 import Symbolic.Proofs.Swarm.CREF.TR.RecvHistDecAvail
@@ -23,7 +23,7 @@ preservation across a `DecryptBy` move (`rcvHist_snoc_of_parts`, `rcvHist_store_
 `SkippedInstallByteFresh`, `PureTRRecordStateInv`, and `RecRecvRkOk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

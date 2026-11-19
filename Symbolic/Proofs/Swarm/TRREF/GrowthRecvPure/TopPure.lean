@@ -14,6 +14,7 @@ public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvB.Defs
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesAPure
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.StatesPure
+import Symbolic.Proofs.Swarm.SHARED.StateSizePure
 
 /-!
 # SPQR V1 `spqrRecvB` OOO-Bound Preservation and Byte-Length Growth
@@ -23,7 +24,7 @@ Proves `spqr_recv_growth`: for any `st msg st' : Bytes` and `k? : Option Bytes` 
 `SpqrOooBounded st'` holds and `st'.length ≤ st.length + 2^17`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

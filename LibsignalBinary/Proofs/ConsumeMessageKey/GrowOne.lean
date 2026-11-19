@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Core
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Core -- proof-setup: allow-public-import
 
 /-!
 # Refinement of `RawVec<MessageKey>::grow_one`
@@ -18,19 +18,12 @@ Proves that `alloc::raw_vec::RawVec<T>::grow_one` (`0x15cac`, 104-byte 8-aligned
 `RawVecInner::finish_grow` (`0x15de4`) satisfy `growOneSpec A`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession
 
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
-
-/-- `RawVec<MessageKey>::grow_one` satisfies `GrowOneOk`. -/
-theorem grow_one_ok (img : Obj.Image) (F : ShaState → List (BitVec 8) → ShaState)
-    (alloc : String → Option (State → State)) (himg : Obj.Loads libsignalSessionImage img)
-    (A : RustAlloc) (hA : AllocHooks A alloc) :
-    GrowOneOk img F alloc A := by
-  exact RawVecGrowOne.grow_one_ok' img F alloc A himg hA
 
 theorem finish_grow_zero_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

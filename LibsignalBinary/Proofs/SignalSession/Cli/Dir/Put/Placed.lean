@@ -9,18 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Pure
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Pure -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `[LibsignalPlacement]` `<signal_session::stores::Dir>::put::<alloc::string::String>` (Block `542`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -54,7 +62,7 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.hsp_592_add_96_eq_sp
 
 /-- Untouched callee-saved state across `Dir::put::<String>` (`x28`, `v8..v15`, and `StepInvPlaced`). -/
-def PutCalleeSavedPlaced (s0 s : State) : Prop :=
+@[expose] def PutCalleeSavedPlaced (s0 s : State) : Prop :=
   s.readReg64 (Reg.gpr 28#5) = s0.readReg64 (Reg.gpr 28#5) ∧
   calleeSavedVRegs s = calleeSavedVRegs s0 ∧
   StepInvPlaced s0 s
@@ -81,7 +89,7 @@ theorem PutCalleeSavedPlaced.step {s0 s1 s2 : State}
     PutCalleeSavedPlaced s0 s2 :=
   h01.trans ⟨hx28, hvregs, hinv⟩
 
-def withPutCSPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α where
+@[expose] def withPutCSPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α where
   pre := fun x s => ⌜PutCalleeSavedPlaced s0 s⌝ ∗ spec.pre x s
   post := spec.post
   onPanic := spec.onPanic
@@ -836,7 +844,7 @@ theorem step_miss_p [LibsignalPlacement] {A : RustAlloc}
 private structure Hide (P : Prop) : Prop where
   out : P
 
-@[irreducible] def PutCalleeOkPlaced [LibsignalPlacement] {α : Type}
+@[expose, irreducible] def PutCalleeOkPlaced [LibsignalPlacement] {α : Type}
     (H : LibsignalHooks) (target : BitVec 64) (spec : Spec α) : Prop :=
   subroutine_ok (lsProg_542 H) target spec
 

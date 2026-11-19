@@ -614,18 +614,6 @@ private def checkColSums : Bool :=
 private theorem checkColSums_true : checkColSums = true := by
   decide +kernel
 
-theorem coarseAlt_bounds {sc sc' : Nat} (hsc : sc < 48)
-    (halt : sc' = sc ∨ sc' = coarseAlt sc) :
-    sc' < 48 ∧ slotWt sc' ≤ coarseSlotWt sc ∧ grpWtS sc' ≤ coarseGrpWtS sc := by
-  unfold coarseSlotWt coarseGrpWtS
-  rcases halt with rfl | rfl
-  · exact ⟨hsc, Nat.le_max_left _ _, Nat.le_max_left _ _⟩
-  · refine ⟨?_, Nat.le_max_right _ _, Nat.le_max_right _ _⟩
-    unfold coarseAlt coarseBumpable
-    by_cases hb : 4 ≤ sc ∧ sc ≤ 31 ∧ sc ≠ 6 ∧ sc % 2 = 0
-    · simp [hb]; omega
-    · simp [hb, hsc]
-
 private theorem linForm_sum_rows (xs : List Nat) (f : Nat → Nat → Nat) (pk : List Nat) :
     (xs.map fun r => linForm (f r) pk).sum =
       linForm (fun j => (xs.map fun r => f r j).sum) pk := by

@@ -11,15 +11,35 @@ module
 
 public import LibsignalBinary.Heap.Fine.PoolNeedLocks
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudgetSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudgetSat
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInstSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1PlacedRoBudgetSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2PlacedBudgetSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInstSat
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1PlacedRoBudgetSat
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2PlacedBudgetSat
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMainEntryFits -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudgetFdSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4PlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.PoolSliceBound
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.PoolSliceBoundInst
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkComposePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseArgsShape
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # `HookSat` Sibling of `ElfSlicesPqOomH2KMainEntryFits` (`ElfSlicesPqOomH2KMainEntryFitsSat`)
@@ -36,7 +56,7 @@ contracts across all 6 general-`ext` theorems of `ElfSlicesPqOomH2KMainEntryFits
 recovering the two `cliGhostExterns` instantiations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -47,7 +67,8 @@ namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMainE
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib
 open CryptoVerification
-  (LibsignalHooks LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns lsmpl)
+  (ExternsDistinctOnHooked LibsignalHooks LibsignalPlacement
+  libsignalMutatedBlocks lsmpl)
 open CryptoVerification.E2E (UnreachedPqxdhPrimitives)
 open CryptoVerification.LibsignalPublicApi.StoreKit (FsFiles)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
@@ -107,16 +128,17 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1PlacedRoBudgetSat
   (main_m1_ro_pool_placed_step1_of_sat)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2PlacedBudgetSat
   (b2_step2_pool_placed_of_hooks_sat)
-open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudgetFd
-  (MainIoOfPlacedFd main_m3_bounded_readOf_pool_placed_proof_fd)
+open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudgetFdSat
+  (MainIoOfPlacedFdSat main_m3_bounded_readOf_pool_placed_proof_fd_sat)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4PlacedBudget
   (main_m4_sendOverCap_pool_placed_proof)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4PlacedBudgetFd
-  (main_m4_pool_placed_proof_preFd)
+  (main_m4_pool_placed_proof_fd)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5PlacedBudget
-  (main_m5_of_proof_placed)
+  (main_m5_of_proof_placed_sat)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6PlacedBudget
-  (main_m6_of_m6Env_pool_proof_placed)
+  (main_m6_of_m6Env_pool_proof_placed_sat)
+open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.PoolSliceBound (FitsEnvCap)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget (ExitKPoolPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
   (CliGhostAllocHooks allocContractsFsPlaced_of_hooks
@@ -126,17 +148,17 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
   (AllocContractsFsPlaced)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KIfaces
-  (runSpecTightPlacedPreFd)
+  (runSpecTightPlacedFd)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMainEntryFits
-  (B2MainRemainingHopsPreFd subroutine_ok_runSpecTightPlacedPreFd_mono_run)
+  (B2MainRemainingHopsPreFd subroutine_ok_runSpecTightPlacedFd_mono_run)
 open VerifiedLibraries.Mallocng (mallocngAddrsOfPlacement)
 
-private theorem runSpecTightPlacedPreFd_eq_m4 [LibsignalPlacement] {M : AllocCostModel}
+private theorem runSpecTightPlacedFd_eq_m4 [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (RunEnv : RunCall → List AllocEvent → Prop) (uuidParse : UuidParser)
     (Run : Inputs → RunAnswer → Prop) (wrOk : List (BitVec 8) → Prop) (resStack : Nat) :
-    runSpecTightPlacedPreFd CodeOk A lim RunEnv uuidParse Run wrOk resStack =
-      LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4PlacedBudgetFd.runSpecTightPlacedPreFd
+    runSpecTightPlacedFd CodeOk A lim RunEnv uuidParse Run wrOk resStack =
+      LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4PlacedBudgetFd.runSpecTightPlacedFd
         CodeOk A lim RunEnv uuidParse Run wrOk resStack :=
   rfl
 
@@ -151,14 +173,16 @@ theorem b2MainRemainingHopsCapOf_of_allocFs_and_io_preFd_sat [LibsignalPlacement
     {RunEnv : RunCall → List AllocEvent → Prop}
     {Run : Inputs → RunAnswer → Prop}
     (hFs : AllocContractsFsPlaced (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W))
-    (hioOf : MainIoOfPlacedFd (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W)
+    (hioOf : MainIoOfPlacedFdSat (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W)
       cliIo hookStack ReadStdinBoundedEnv ReadEnv)
     (hutf8 : HookSat (ext W) lsFromUtf8Sym (withVmPreserved (fromUtf8AsciiSpec hookStack)))
     (hutf8RO : HookSat (ext W) lsFromUtf8Sym (withVmPreserved (fromUtf8AsciiSpecRO hookStack)))
     (hmemrchr : HookSat (ext W) lsMemrchrSym (withLsRet (withVmPreserved (memrchrSpec extHookStack))))
     (hmemrchrRO : HookSat (ext W) lsMemrchrSym (withLsRet (withVmPreserved (memrchrSpecRO extHookStack))))
     (hpan : ext W lsHandleErrorSymMain = some Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide) :
+    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
+    (henf : lim.enforced = true := by decide)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE := by decide) :
     B2MainRemainingHopsPreFd CodeOk mmpl ext W brkStart lim γ tp
       (B2St1CapOf fineCostModel lim cliIo ReadEnv uuidTryParse RunEnv Run)
       (B2St2CapOf fineCostModel lim cliIo ReadEnv RunEnv Run)
@@ -173,7 +197,7 @@ theorem b2MainRemainingHopsCapOf_of_allocFs_and_io_preFd_sat [LibsignalPlacement
         (fun hst1 _ _ => hst1.1)
         (fun hst1 _ _ hevs_c hvcap hp => hst1.2 _ _ _ hevs_c hvcap hp)
     step3 := fun hst2 hs0fs hs0tr hstdin hcoinsOk hcoins hpc hs _hpan hexit hnext =>
-      main_m3_bounded_readOf_pool_placed_proof_fd hc hioOf hstk cli_hstk64 hs0fs hs0tr hstdin
+      main_m3_bounded_readOf_pool_placed_proof_fd_sat hc hioOf hstk cli_hstk64 hs0fs hs0tr hstdin
         hcoinsOk hcoins hpc hst2.1 hs hexit
         fun s' cc cp ic ip evs hevs hin hat4 hfds' =>
           hnext s' cc cp ic ip _ ((hst2.2 evs hevs).2 hin) hin hat4 hfds'
@@ -182,8 +206,8 @@ theorem b2MainRemainingHopsCapOf_of_allocFs_and_io_preFd_sat [LibsignalPlacement
     step4_call := fun hrun {_i _a _c _w s0 _s _buf _p0 coinsCap coinsPtr _inCap inPtr _ps _st3 _Q _Qp}
         hst3 hsp hs0tr hRun hnover hpc hs hfds hpan hexit hnext =>
       let _ := coinsCap
-      main_m4_pool_placed_proof_preFd hc
-        (runSpecTightPlacedPreFd_eq_m4 CodeOk _ lim RunEnv uuidTryParse Run cliWrOk cliResStack ▸ hrun)
+      main_m4_pool_placed_proof_fd hc
+        (runSpecTightPlacedFd_eq_m4 CodeOk _ lim RunEnv uuidTryParse Run cliWrOk cliResStack ▸ hrun)
         hstk cli_hstk64 hsp hs0tr hRun
         (fun peer hc_eq => Nat.le_of_not_lt fun hgt => hnover ⟨⟨peer, hc_eq ▸ hpc⟩, hgt⟩)
         hpc
@@ -193,21 +217,22 @@ theorem b2MainRemainingHopsCapOf_of_allocFs_and_io_preFd_sat [LibsignalPlacement
           (s0.sp - BitVec.ofNat 64 mainFrameSize + 0x310#64)
           inPtr coinsPtr hRun).1
         hs hfds hpan hexit
-        fun s' sg out evs hevs hans hwr htr hat4e =>
+        fun s' sg out evs hevs hans hwr htr hat4e hfds' =>
           hnext s' sg out _
             (((hst3.2 _
               (s0.sp - BitVec.ofNat 64 mainFrameSize + 0x1b8#64)
               (s0.sp - BitVec.ofNat 64 mainFrameSize + 0x78#64)
               (s0.sp - BitVec.ofNat 64 mainFrameSize + 0x310#64)
               inPtr coinsPtr hRun).2 evs hevs).2 sg out hans hwr)
-            hans hwr htr hat4e
-    step5 := fun hst4 _hs0tr hpaths hs _hpan hnext =>
-      main_m5_of_proof_placed hc hioOf.toWriteOnlyMainIo (hst4 false).seq_left hstk cli_hstk64
-        hpaths hs
+            hans hwr htr hat4e hfds'
+    step5 := fun hst4 _hs0tr hpaths hs hfds _hpan hnext =>
+      main_m5_of_proof_placed_sat hc hioOf.toWriteOnlyMainIoSat henf hphys
+        (FitsEnvCap.of_seq_writeStdout (hst4 true)).1 hstk cli_hstk64 hpaths hs hfds
         fun s' _evs ok outCap outPtr hevs hcom htr hstdout hat6 =>
           hnext s' ok outCap outPtr _ ((hst4 ok).seq_right hevs) hcom htr hstdout hat6
     step6 := fun hst5 hs hexit =>
-      main_m6_of_m6Env_pool_proof_placed hc hioOf.toWriteOnlyMainIo hst5 hstk cli_hstk64 hs hexit }
+      main_m6_of_m6Env_pool_proof_placed_sat hc hioOf.toWriteOnlyMainIoSat hst5 hstk cli_hstk64 hs
+        hexit }
 
 /-! ## SWAR-Padded Pre-Fd Block-`617` Hop Composer & `hhops`-Level `579 → 617` Lifts -/
 
@@ -370,6 +395,7 @@ theorem b2_main_ok_tight_needLocks_with_inv_placed_preFd_pad [LibsignalPlacement
         a = some (some (namedWrites g.writes, out)) →
         (∀ pw ∈ g.writes, io.pathOk pw.1 ∧ pw.1.length < 2 ^ 32) → s.trace <+: s'.trace →
         AtM4EndTightPlaced CodeOk i s0 s' c i.argv.length buf inCap →
+        FdsGe3Closed s'.fs →
         ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s'
           (ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 (inputOf i c).length) (inputOf i c) ∗
             argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
@@ -397,6 +423,7 @@ theorem b2_main_ok_tight_needLocks_with_inv_placed_preFd_pad [LibsignalPlacement
       s0.trace = [] →
       (∀ pw ∈ g.writes, io.pathOk pw.1 ∧ pw.1.length < 2 ^ 32) →
       AtM4EndPlaced CodeOk i s0 s c i.argv.length buf inCap →
+      FdsGe3Closed s.fs →
       (∀ sf Pf, allocFailedIn s0 sf → Qp sf Pf) →
       (∀ (s' : State) (ok : Bool) (outCap outPtr : BitVec 64) (st5 : M.σ),
         St5 i c g ok st5 →
@@ -605,9 +632,9 @@ theorem b2_main_ok_tight_needLocks_with_inv_placed_preFd_pad [LibsignalPlacement
               · rw [hfs_f, hfiles', hfs0]
                 rfl
               · rw [htr_f, hstdout']
-            · intro s4 g out st4 hst4 hans hwr _ hs4
+            · intro s4 g out st4 hst4 hans hwr _ hs4 hfds4
               subst hans
-              refine step5 hst4 htr0 hwr hs4.toAtM4EndPlaced (hpanicA R') ?_
+              refine step5 hst4 htr0 hwr hs4.toAtM4EndPlaced hfds4 (hpanicA R') ?_
               · intro s5 ok outCap outPtr st5 hst5 hcommit htr45 hstdout5 hs5
                 refine step6 hst5 hs5 ?_
                 · refine exitKPool_b2NeedLocks_tight_placed hneed hstk_frame
@@ -653,7 +680,7 @@ theorem b2MainSpecTightNeedLocksFineAtPad_of_runTight_lsmpl_preFd_sat [Libsignal
       FitsEvents fineCostModel lim fineCostModel.init (rustAllocEvents (16 * i.argv.length) 8) ∧
         St1 i (fineCostModel.stepEvents (rustAllocEvents (16 * i.argv.length) 8) fineCostModel.init))
     (hrun : subroutine_ok (mProgPlaced (ext W)) (lsmpl.base 579)
-      (runSpecTightPlacedPreFd CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart)
+      (runSpecTightPlacedFd CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart)
         lim RunEnv uuidTryParse Run cliWrOk cliResStack))
     (hhops : B2MainRemainingHopsPreFd CodeOk mmpl ext W brkStart lim γ tp
       St1 St2 St3 St4 St5 RunEnv Run) :
@@ -698,7 +725,7 @@ theorem b2MainSpecTightNeedLocksFineAtPad_of_domScopedRunSem_lsmpl_preFd_sat [Li
       FitsEvents fineCostModel lim fineCostModel.init (rustAllocEvents (16 * i.argv.length) 8) ∧
         St1 i (fineCostModel.stepEvents (rustAllocEvents (16 * i.argv.length) 8) fineCostModel.init))
     (hrun : subroutine_ok (mProgPlaced (ext W)) (lsmpl.base 579)
-      (runSpecTightPlacedPreFd CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart)
+      (runSpecTightPlacedFd CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart)
         lim RunEnv uuidTryParse (runRel S) cliWrOk cliResStack))
     (hhops : B2MainRemainingHopsPreFd CodeOk mmpl ext W brkStart lim γ tp
       St1 St2 St3 St4 St5 RunEnv (domScopedRun Dom (runRel S))) :
@@ -710,7 +737,7 @@ theorem b2MainSpecTightNeedLocksFineAtPad_of_domScopedRunSem_lsmpl_preFd_sat [Li
   b2MainSpecTightNeedLocksFineAtPad_of_runTight_lsmpl_preFd_sat
     hlibc hfs_eq (hparse_of_domains fun _ _ hr => domScopedRun_dom hr)
     hstrlenRO hc_alloc hstk hSt0 hSt01
-    (subroutine_ok_runSpecTightPlacedPreFd_mono_run (fun _ _ hr => hr.2) hrun)
+    (subroutine_ok_runSpecTightPlacedFd_mono_run (fun _ _ hr => hr.2) hrun)
     hhops
 
 /-! ## Capped `MainEntryBudgetFitsCapOf` `579 → 617` & End-to-End `hmain` / `hover` `HookSat` Lifts -/
@@ -732,7 +759,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_runTight_and_budgetFitsCapOf_lsmpl_pre
     (hfs_eq : ∀ i : Inputs, initFsState (inputsOf i) = initFsState (cliInputs i))
     (hparse : ∀ i a, Run i a → (parseArgs uuidTryParse (i.argv.map bytesOfString)).isSome)
     (hFs : AllocContractsFsPlaced (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W))
-    (hioOf : MainIoOfPlacedFd (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W)
+    (hioOf : MainIoOfPlacedFdSat (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W)
       cliIo hookStack ReadStdinBoundedEnv ReadEnv)
     (hstrlenRO : HookSat (ext W) "strlen" (strlenSpecROSat hookStack))
     (hutf8 : HookSat (ext W) lsFromUtf8Sym (withVmPreserved (fromUtf8AsciiSpec hookStack)))
@@ -744,8 +771,10 @@ theorem b2MainSpecTightNeedLocksFineAt_of_runTight_and_budgetFitsCapOf_lsmpl_pre
     (hfitCap : MainEntryBudgetFitsCapOf fineCostModel lim fineCostModel.init cliIo ReadEnv
       uuidTryParse RunEnv Run)
     (hrun : subroutine_ok (mProgPlaced (ext W)) (lsmpl.base 579)
-      (runSpecTightPlacedPreFd CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart)
-        lim RunEnv uuidTryParse Run cliWrOk cliResStack)) :
+      (runSpecTightPlacedFd CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart)
+        lim RunEnv uuidTryParse Run cliWrOk cliResStack))
+    (henf : lim.enforced = true := by decide)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE := by decide) :
     subroutine_ok (cliProgExtPlacedAt lsmpl ext 617 W) (lsmpl.base 617)
       (b2MainSpecTightNeedLocksFineAtPad libcAddr CodeOk
         (fineHookRustCliAllocBudget γ mmpl tp brkStart)
@@ -756,7 +785,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_runTight_and_budgetFitsCapOf_lsmpl_pre
     (b2St01_of_mainEntryBudgetFitsCapOf hfitCap)
     hrun
     (b2MainRemainingHopsCapOf_of_allocFs_and_io_preFd_sat
-      hFs hioOf hutf8 hutf8RO hmemrchr hmemrchrRO hpan hstk)
+      hFs hioOf hutf8 hutf8RO hmemrchr hmemrchrRO hpan hstk henf hphys)
 
 /-- `HookSat` sibling of `b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_lsmpl_preFd`
     (`ElfSlicesPqOomH2KMainEntryFits.lean:1260`), dropping unused `err`. -/
@@ -773,7 +802,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_ls
     (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
     (hfs_eq : ∀ i : Inputs, initFsState (inputsOf i) = initFsState (cliInputs i))
     (hFs : AllocContractsFsPlaced (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W))
-    (hioOf : MainIoOfPlacedFd (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W)
+    (hioOf : MainIoOfPlacedFdSat (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W)
       cliIo hookStack ReadStdinBoundedEnv ReadEnv)
     (hstrlenRO : HookSat (ext W) "strlen" (strlenSpecROSat hookStack))
     (hutf8 : HookSat (ext W) lsFromUtf8Sym (withVmPreserved (fromUtf8AsciiSpec hookStack)))
@@ -785,8 +814,10 @@ theorem b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_ls
     (hfitCap : MainEntryBudgetFitsCapOf fineCostModel lim fineCostModel.init cliIo ReadEnv
       uuidTryParse RunEnv (domScopedRun Dom (runRel S)))
     (hrun : subroutine_ok (mProgPlaced (ext W)) (lsmpl.base 579)
-      (runSpecTightPlacedPreFd CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart)
-        lim RunEnv uuidTryParse (runRel S) cliWrOk cliResStack)) :
+      (runSpecTightPlacedFd CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart)
+        lim RunEnv uuidTryParse (runRel S) cliWrOk cliResStack))
+    (henf : lim.enforced = true := by decide)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE := by decide) :
     subroutine_ok (cliProgExtPlacedAt lsmpl ext 617 W) (lsmpl.base 617)
       (b2MainSpecTightNeedLocksFineAtPad libcAddr CodeOk
         (fineHookRustCliAllocBudget γ mmpl tp brkStart)
@@ -798,7 +829,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_ls
     (b2St01_of_mainEntryBudgetFitsCapOf hfitCap)
     hrun
     (b2MainRemainingHopsCapOf_of_allocFs_and_io_preFd_sat
-      hFs hioOf hutf8 hutf8RO hmemrchr hmemrchrRO hpan hstk)
+      hFs hioOf hutf8 hutf8RO hmemrchr hmemrchrRO hpan hstk henf hphys)
 
 /-- `HookSat` sibling of `b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_placed_preFd`
     (`ElfSlicesPqOomH2KMainEntryFits.lean:1301`), dropping unused `err`. -/
@@ -806,7 +837,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_pl
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -820,7 +851,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_pl
     (hfs_eq : ∀ i : Inputs, initFsState (inputsOf i) = initFsState (cliInputs i))
     (hFs : @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
       (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W))
-    (hioOf : @MainIoOfPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
+    (hioOf : @MainIoOfPlacedFdSat (libsignalPlacementOf mpl hblk hext_nodup) _
       (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack
       ReadStdinBoundedEnv ReadEnv)
     (hstrlenRO : HookSat (ext W) "strlen" (strlenSpecROSat hookStack))
@@ -838,9 +869,11 @@ theorem b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_pl
       uuidTryParse RunEnv (domScopedRun Dom (runRel S)))
     (hrun : @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
       (mpl.base 579)
-      (@runSpecTightPlacedPreFd (libsignalPlacementOf mpl hblk hext_nodup) _
+      (@runSpecTightPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
         CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim RunEnv uuidTryParse (runRel S)
-        cliWrOk cliResStack)) :
+        cliWrOk cliResStack))
+    (henf : lim.enforced = true := by decide)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE := by decide) :
     subroutine_ok (cliProgExtPlacedAt mpl ext 617 W) (mpl.base 617)
       (b2MainSpecTightNeedLocksFineAtPad libcAddr CodeOk
         (fineHookRustCliAllocBudget γ mmpl tp brkStart)
@@ -850,7 +883,7 @@ theorem b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_pl
   letI : LsCodeInv CodeOk := hCI
   exact b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_lsmpl_preFd_sat Dom S
     hlibc hfs_eq hFs hioOf hstrlenRO hutf8 hutf8RO hmemrchr hmemrchrRO hpan hstk hfitCap
-    hrun
+    hrun henf hphys
 
 /-- `HookSat` sibling of `mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf_preFd`
     (`ElfSlicesPqOomH2KMainEntryFits.lean:1347`), dropping `errOf` and re-anchoring to
@@ -859,7 +892,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf_preFd_
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -872,7 +905,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf_preFd_
       @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W))
     (hioOf : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoOfPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
+      @MainIoOfPlacedFdSat (libsignalPlacementOf mpl hblk hext_nodup) _
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack
         ReadStdinBoundedEnv ReadEnv)
     (hstrlenRO : ∀ W : CliHooks, HookSat (ext W) "strlen" (strlenSpecROSat hookStack))
@@ -899,10 +932,12 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf_preFd_
       ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
         @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
           (mpl.base 579)
-          (@runSpecTightPlacedPreFd (libsignalPlacementOf mpl hblk hext_nodup) _
+          (@runSpecTightPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
             CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (RunEnv X W γ tp) uuidTryParse
             (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
+            cliWrOk cliResStack))
+    (henf : lim.enforced = true := by decide)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE := by decide) :
     MainOkCliExtPqB2NeedLocksPadPlacedAt mpl mmpl ext 617 cliProcessInputs CodeOk
       libcAddr brkStart cliMainStk lim :=
   mainOkCliExtPqB2NeedLocksPadPlacedAt_of_pqScopedMainSubroutine hblk hext_nodup
@@ -914,7 +949,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf_preFd_
         hlibc initFsState_cliProcessInputs_eq
         (hFs W γ tp) (hioOf W γ tp)
         (hstrlenRO W) (hutf8 W) (hutf8RO W) (hmemrchr W) (hmemrchrRO W) (hpan W) hstk
-        (hfitCap h547 X W γ tp) (hrun h547 X W γ tp)
+        (hfitCap h547 X W γ tp) (hrun h547 X W γ tp) henf hphys
 
 /-- `HookSat` sibling of `mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf_preFd`
     (`ElfSlicesPqOomH2KMainEntryFits.lean:1401`), dropping `errOf` and re-anchoring to
@@ -923,7 +958,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf_preF
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -936,7 +971,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf_preF
       @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W))
     (hioOf : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoOfPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
+      @MainIoOfPlacedFdSat (libsignalPlacementOf mpl hblk hext_nodup) _
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack
         ReadStdinBoundedEnv ReadEnv)
     (hstrlenRO : ∀ W : CliHooks, HookSat (ext W) "strlen" (strlenSpecROSat hookStack))
@@ -963,10 +998,12 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf_preF
       ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
         @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
           (mpl.base 579)
-          (@runSpecTightPlacedPreFd (libsignalPlacementOf mpl hblk hext_nodup) _
+          (@runSpecTightPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
             CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (RunEnv X W γ tp) uuidTryParse
             (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
+            cliWrOk cliResStack))
+    (henf : lim.enforced = true := by decide)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE := by decide) :
     MainOkCliExtOverB2NeedLocksPadPlacedAt mpl mmpl ext 617 cliProcessInputs CodeOk
       libcAddr brkStart cliMainStk lim :=
   mainOkCliExtOverB2NeedLocksPadPlacedAt_of_pqScopedMainSubroutine hblk hext_nodup
@@ -978,7 +1015,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCapOf_preF
         hlibc initFsState_cliProcessInputs_eq
         (hFs W γ tp) (hioOf W γ tp)
         (hstrlenRO W) (hutf8 W) (hutf8RO W) (hmemrchr W) (hmemrchrRO W) (hpan W) hstk
-        (hfitCap h547 X W γ tp) (hrun h547 X W γ tp)
+        (hfitCap h547 X W γ tp) (hrun h547 X W γ tp) henf hphys
 
 /-- `toSat` bridge for `mainOkCliExtPqB2NeedLocksPlacedAt_cliGhostExterns_of_runTight_and_budgetFitsCapOf_preFd`
     (`ElfSlicesPqOomH2KMainEntryFits.lean:1456`), discharging `strlen`, `from_utf8`, and `memrchr`
@@ -987,7 +1024,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_cliGhostExterns_of_runTight_and_budget
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     (ghOf : CliHooks → CliGhostHooks)
@@ -1000,7 +1037,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_cliGhostExterns_of_runTight_and_budget
       @CliGhostAllocHooks (libsignalPlacementOf mpl hblk hext_nodup) fineCostModel
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ghOf W))
     (hioOf : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoOfPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
+      @MainIoOfPlacedFdSat (libsignalPlacementOf mpl hblk hext_nodup) _
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim
         (cliGhostExterns (ghOf W) (cliExternsPlaced mmpl W)) cliIo hookStack
         ReadStdinBoundedEnv ReadEnv)
@@ -1016,10 +1053,12 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_cliGhostExterns_of_runTight_and_budget
           (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup)
             (cliGhostExterns (ghOf W) (cliExternsPlaced mmpl W)))
           (mpl.base 579)
-          (@runSpecTightPlacedPreFd (libsignalPlacementOf mpl hblk hext_nodup) _
+          (@runSpecTightPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
             CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (RunEnv X W γ tp) uuidTryParse
             (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
+            cliWrOk cliResStack))
+    (henf : lim.enforced = true := by decide)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE := by decide) :
     MainOkCliExtPqB2NeedLocksPadPlacedAt mpl mmpl
       (fun W => cliGhostExterns (ghOf W) (cliExternsPlaced mmpl W)) 617 cliProcessInputs CodeOk
       libcAddr brkStart cliMainStk lim :=
@@ -1050,7 +1089,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_cliGhostExterns_of_runTight_and_budget
       exact cliGhostExterns_memrchrRO_budget_sat (ghOf W) (cliExternsPlaced mmpl W)
         (hG W 0 0#64).extraOk (Nat.le_refl extHookStack) (by decide))
     (fun W => cliGhostExterns_handleErrorMain mmpl (ghOf W) W)
-    hstk hfitCap hrun
+    hstk hfitCap hrun henf hphys
 
 /-- `toSat` bridge for `mainOkCliExtOverB2NeedLocksPlacedAt_cliGhostExterns_of_runTight_and_budgetFitsCapOf_preFd`
     (`ElfSlicesPqOomH2KMainEntryFits.lean:1511`), discharging `strlen`, `from_utf8`, and `memrchr`
@@ -1059,7 +1098,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_cliGhostExterns_of_runTight_and_budg
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     (ghOf : CliHooks → CliGhostHooks)
@@ -1072,7 +1111,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_cliGhostExterns_of_runTight_and_budg
       @CliGhostAllocHooks (libsignalPlacementOf mpl hblk hext_nodup) fineCostModel
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ghOf W))
     (hioOf : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoOfPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
+      @MainIoOfPlacedFdSat (libsignalPlacementOf mpl hblk hext_nodup) _
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim
         (cliGhostExterns (ghOf W) (cliExternsPlaced mmpl W)) cliIo hookStack
         ReadStdinBoundedEnv ReadEnv)
@@ -1088,10 +1127,12 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_cliGhostExterns_of_runTight_and_budg
           (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup)
             (cliGhostExterns (ghOf W) (cliExternsPlaced mmpl W)))
           (mpl.base 579)
-          (@runSpecTightPlacedPreFd (libsignalPlacementOf mpl hblk hext_nodup) _
+          (@runSpecTightPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
             CodeOk (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (RunEnv X W γ tp) uuidTryParse
             (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
+            cliWrOk cliResStack))
+    (henf : lim.enforced = true := by decide)
+    (hphys : lim.physCap ≤ Arm64.FS_SAFE_MAX_FILESIZE := by decide) :
     MainOkCliExtOverB2NeedLocksPadPlacedAt mpl mmpl
       (fun W => cliGhostExterns (ghOf W) (cliExternsPlaced mmpl W)) 617 cliProcessInputs CodeOk
       libcAddr brkStart cliMainStk lim :=
@@ -1122,6 +1163,6 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_cliGhostExterns_of_runTight_and_budg
       exact cliGhostExterns_memrchrRO_budget_sat (ghOf W) (cliExternsPlaced mmpl W)
         (hG W 0 0#64).extraOk (Nat.le_refl extHookStack) (by decide))
     (fun W => cliGhostExterns_handleErrorMain mmpl (ghOf W) W)
-    hstk hfitCap hrun
+    hstk hfitCap hrun henf hphys
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMainEntryFitsSat

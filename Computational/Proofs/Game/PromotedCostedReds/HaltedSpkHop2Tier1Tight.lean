@@ -13,6 +13,7 @@ public import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkHop2Step -- 
 import Computational.Proofs.E2E.Dsl.DrSessionSimRecv
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInitCost
+import Computational.Proofs.E2E.Dsl.SpqrSimSend
 
 /-!
 # Tight Tier-1 Cost Bounds for Tracker-Halted Hop 2
@@ -53,7 +54,7 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedInitCost (initKemTra
 open Computational.Proofs.Game.PromotedCostedReds.KemFailRedSendCorrSub (trE_cand)
 open Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitnessSub (
   kemOnDeliverPostAtomicE kemOnDeliverPostAtomicE_cost)
-open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg (
+open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs (
   compCoinToPrf cost_compCoinToPrf Hop2Mode
   drawBoolCoin_cost draw256Coin draw256Coin_cost
   sPureOp sGroupOp cost_sPureOp cost_sGroupOp

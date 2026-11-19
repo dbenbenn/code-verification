@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.Encode1Placed
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93Placed
 import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlaced
@@ -24,7 +24,7 @@ Defines `[LibsignalPlacement]` contract predicates and `withUnchunkedEncodeCSPla
 for CLI Blocks `458` (`EkSentCt1Received::encode`) and `459` (`Ct1Sent::encode`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,9 +46,7 @@ open CryptoVerification.SpqrV1.Auth hiding
   reserveCap_one_bounds cap_toNat_eq_of_beq lt_cap_toNat_of_beq_false
 open CryptoVerification.SpqrV1.Prost.MessageEncode hiding
   EkSentCt1ReceivedEncode1PinnedPlacedOkExt EkSentCt1ReceivedEncode1PlacedOkExt
-  EkSentCt1ReceivedEncode1PinnedPlacedOkX EkSentCt1ReceivedEncode1PlacedOkX
   Ct1SentEncode1PinnedPlacedOkExt Ct1SentEncode1PlacedOkExt
-  Ct1SentEncode1PinnedPlacedOkX Ct1SentEncode1PlacedOkX
 open CryptoVerification.Cli.SpqrV1.Alloc.Placed
 open CryptoVerification.Cli.SpqrV1.Varint.Placed
 open CryptoVerification.Cli.SpqrV1.Auth.Placed
@@ -65,75 +63,75 @@ open CryptoVerification.Cli.SpqrV1.ProtoRepr
 
 /-! ## 1. Placed Contract Predicates for Blocks `458` & `459` -/
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_458 H) (blkPl_458).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpec A))
 
-def EkSentCt1ReceivedEncode1PlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentCt1ReceivedEncode1PlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_458 H) (blkPl_458).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpec A))
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_458 H) (blkPl_458).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpecX A))
 
-def EkSentCt1ReceivedEncode1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentCt1ReceivedEncode1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_458 H) (blkPl_458).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpecX A))
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   EkSentCt1ReceivedEncode1PinnedPlacedOk A (Rust.withPanics ext)
 
-def EkSentCt1ReceivedEncode1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentCt1ReceivedEncode1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   EkSentCt1ReceivedEncode1PlacedOk A (Rust.withPanics ext)
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   EkSentCt1ReceivedEncode1PinnedPlacedOkX A (Rust.withPanics ext)
 
-def EkSentCt1ReceivedEncode1PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentCt1ReceivedEncode1PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   EkSentCt1ReceivedEncode1PlacedOkX A (Rust.withPanics ext)
 
-def Ct1SentEncode1PinnedPlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct1SentEncode1PinnedPlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_459 H) (blkPl_459).base
     (withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpec A))
 
-def Ct1SentEncode1PlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct1SentEncode1PlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_459 H) (blkPl_459).base
     (withLsCodeLoaded lsmpl (ct1SentEncodeSpec A))
 
-def Ct1SentEncode1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct1SentEncode1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_459 H) (blkPl_459).base
     (withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpecX A))
 
-def Ct1SentEncode1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct1SentEncode1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_459 H) (blkPl_459).base
     (withLsCodeLoaded lsmpl (ct1SentEncodeSpecX A))
 
-def Ct1SentEncode1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct1SentEncode1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   Ct1SentEncode1PinnedPlacedOk A (Rust.withPanics ext)
 
-def Ct1SentEncode1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct1SentEncode1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   Ct1SentEncode1PlacedOk A (Rust.withPanics ext)
 
-def Ct1SentEncode1PinnedPlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct1SentEncode1PinnedPlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   Ct1SentEncode1PinnedPlacedOkX A (Rust.withPanics ext)
 
-def Ct1SentEncode1PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct1SentEncode1PlacedOkExtX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   Ct1SentEncode1PlacedOkX A (Rust.withPanics ext)
 

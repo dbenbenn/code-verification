@@ -9,11 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.StateWitness
-public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.AllocWitnessPlaced
-public import LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCallees
+public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.StateWitness -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.AllocWitnessPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -93,7 +102,7 @@ theorem baseMemPlaced_unmapped_arena [LibsignalPlacement] {B : BitVec 64} {m₀ 
   rw [hperm2, hperm1]
   exact hum0
 
-def ValidMemPlaced (mBase : Memory) (_B : BitVec 64) (P : SepProp) : Prop :=
+@[expose] def ValidMemPlaced (mBase : Memory) (_B : BitVec 64) (P : SepProp) : Prop :=
   ∃ m : Memory, m ⊨ P ∧ m.perm = mBase.perm ∧ mBase.KeepsFrozen m
 
 theorem ValidMemPlaced.init [LibsignalPlacement] {B : BitVec 64} {m₀ : Memory}
@@ -253,7 +262,7 @@ theorem validMemPlaced_populated [LibsignalPlacement] {B : BitVec 64} {m₀ : Me
   ac_rfl
 
 /-- Relocatable non-vacuity statement for `cmkPlacedRoSpec`. -/
-def CmkPlacedNonVacStmt [LibsignalPlacement]
+@[expose] def CmkPlacedNonVacStmt [LibsignalPlacement]
     (F : ShaState → List (BitVec 8) → ShaState) (B : BitVec 64) (m₀ : Memory) : Prop :=
   PlacedWitnessBase B m₀ →
     ∃ (A : RustAlloc) (H : LibsignalHooks),

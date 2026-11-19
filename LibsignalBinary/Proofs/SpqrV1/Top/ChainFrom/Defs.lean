@@ -25,7 +25,7 @@ Note: `spqr::decode_varint` and `spqr::msg_preamble` are inlined into `spqr::rec
 `SpqrRecvEmpty/Proof.lean` and `LibsignalSpqrV1/Wire.lean`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.ChainFrom
 
@@ -72,7 +72,7 @@ structure ChainPBGhost where
 
 /-- Forget the per-epoch `VecPin`s of `g : ChainPBGhost` to obtain the top-level
     `ProtoRepr.ChainPBGhost` (`{ links := ⟨g.linksCap, g.linksPtr⟩, nextRoot := ⟨g.nextRoot.cap, g.nextRoot.ptr⟩ }`). -/
-def ChainPBGhost.toProtoRepr (g : ChainPBGhost) : CryptoVerification.SpqrV1.ProtoRepr.ChainPBGhost :=
+@[expose] def ChainPBGhost.toProtoRepr (g : ChainPBGhost) : CryptoVerification.SpqrV1.ProtoRepr.ChainPBGhost :=
   { links := ⟨g.linksCap, g.linksPtr⟩, nextRoot := ⟨g.nextRoot.cap, g.nextRoot.ptr⟩ }
 
 /-- `pqrpb::chain::epoch::EpochDirection` (`EpochDirectionPB`) at `a` (56 bytes = `0x38`, align 8),
@@ -103,7 +103,7 @@ abbrev chainEpochPBAt (A : RustAlloc) (gep : ChainEpochPBGhost × ChainEpochPB) 
 - `+0x38..+0x40` (8B): `send_epoch: u64`
 - `+0x40..+0x4c` (12B): `params: Option<ChainParams>` (`optChainParamsPBAt`)
 - `+0x4c..+0x50` (4B): `direction: i32` -/
-def chainPBAt (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) (pb : ChainPB) : SepProp :=
+@[expose] def chainPBAt (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) (pb : ChainPB) : SepProp :=
   ⌜g.epochs.length = pb.links.length⌝ ∗
     vecAt A chainEpochSize chainEpochAlign (chainEpochPBAt A)
       a g.linksCap g.linksPtr (g.epochs.zip pb.links) ∗
@@ -118,14 +118,14 @@ def chainPBAt (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) (pb : ChainPB) 
   `memRegion (a + 0x08#64) 72`.
 - `some pb`: `chainPBAt A g a pb` (where `g.linksCap.toNat * 112 < 2 ^ 63`, so `a ↦₆₄ g.linksCap`
   satisfies `g.linksCap ≠ noneCap`). -/
-def optChainPBAt (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) : Option ChainPB → SepProp
+@[expose] def optChainPBAt (A : RustAlloc) (g : ChainPBGhost) (a : BitVec 64) : Option ChainPB → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 0x08#64) 72
   | some pb => chainPBAt A g a pb
 
 /-- `Option<&pqrpb::pq_ratchet_state::VersionNegotiation>` passed in register `vnOptPtr` (`x2`):
 - `none`: `vnOptPtr = 0#64` and `emp`.
 - `some vn`: `vnOptPtr ≠ 0#64` and `versionNegotiationPBAt A pin vnOptPtr vn`. -/
-def optVersionNegotiationRefAt (A : RustAlloc) (pin : VecPin) (vnOptPtr : BitVec 64) :
+@[expose] def optVersionNegotiationRefAt (A : RustAlloc) (pin : VecPin) (vnOptPtr : BitVec 64) :
     Option VersionNegotiationPB → SepProp
   | none => ⌜vnOptPtr = 0#64⌝
   | some vn => ⌜vnOptPtr ≠ 0#64⌝ ∗ versionNegotiationPBAt A pin vnOptPtr vn
@@ -490,7 +490,7 @@ structure ChainFromPbCall where
 * `x8 = out` (88-byte `Result<Chain, Error>` return slot), `x0 = pbPtr` (80-byte `pqrpb::Chain`).
 * Consumes `chainPBAt A x.gPb x.pbPtr x.pb` (leaving `memRegion x.pbPtr 80` in the caller's stack
   slot) and writes `chainResultAt A x.out (Chain.fromPb x.pb)` at `x.out` (or panics on OOM). -/
-def chainFromPbSpecX (A : RustAlloc) : Spec ChainFromPbCall where
+@[expose] def chainFromPbSpecX (A : RustAlloc) : Spec ChainFromPbCall where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.pbPtr⌝ ∗
       memRegion x.out 88 ∗ chainPBAt A x.gPb x.pbPtr x.pb ∗
@@ -501,16 +501,6 @@ def chainFromPbSpecX (A : RustAlloc) : Spec ChainFromPbCall where
       memRegion x.pbPtr 80 ∗
       A.pool ∗ stackAt s0.sp chainFromPbStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- `<spqr::chain::Chain>::from_pb` meets `(chainFromPbSpecX A).inImage img` on
-`tripleRatchetProgAtExt img.base ext`. -/
-def ChainFromPbOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainFromPbName)
-    ((chainFromPbSpecX A).inImage img)
-
-/-! ## Target spec: `spqr::chain_from` (`0x531ac`, 76 instructions) -/
 
 /-- Ghost arguments of `spqr::chain_from` (`0x531ac`). -/
 structure ChainFromCall where
@@ -532,7 +522,7 @@ against the pure model `chainFrom hkdf x.pb x.vn` (`LibsignalBinary/Specificatio
   `Option<pqrpb::Chain>`), `x2 = x.vnOptPtr` (`Option<&VersionNegotiationPB>`).
 * Writes `chainResultAt A x.out (chainFrom hkdf x.pb x.vn)` to `x.out`, leaves `memRegion x.pbPtr 80`
   at `x.pbPtr`, and preserves `optVersionNegotiationRefAt A x.vnPin x.vnOptPtr x.vn`. -/
-def chainFromSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainFromCall where
+@[expose] def chainFromSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainFromCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbPtr ∧ s.readReg64 .x2 = x.vnOptPtr⌝ ∗
       memRegion x.out 88 ∗
@@ -547,22 +537,12 @@ def chainFromSpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainFromCall where
       A.pool ∗ stackAt s0.sp chainFromStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-/-- `spqr::chain_from` (`0x531ac`) meets `(chainFromSpecX hkdf A).inImage img` on
-`tripleRatchetProgAtExt img.base ext`. -/
-def ChainFromOkX (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainFromName)
-    ((chainFromSpecX hkdf A).inImage img)
-
-/-! ## Contract-Backed (`*Ext`) Specifications (`chainFromStackExt = 18176` B) -/
-
 /-- `spqr::chain_from` stack budget under `CliExternsOk` (`144 + 192 + chainNewStackExt = 18176` B). -/
 abbrev chainFromStackExt : Nat := 336 + chainNewStackExt
 
 /-- Contract-backed spec of `spqr::chain_from` (`0x531ac`, 76 instructions) at
 `chainFromStackExt` (`18176` B). -/
-def chainFromSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainFromCall where
+@[expose] def chainFromSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainFromCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbPtr ∧ s.readReg64 .x2 = x.vnOptPtr⌝ ∗
       memRegion x.out 88 ∗
@@ -576,12 +556,5 @@ def chainFromSpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainFromCall where
       optVersionNegotiationRefAt A x.vnPin x.vnOptPtr x.vn ∗
       A.pool ∗ stackAt s0.sp chainFromStackExt
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Contract-backed callee-contract predicate for `spqr::chain_from` (`0x531ac`). -/
-def ChainFromOkExt (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainFromName)
-    ((chainFromSpecExt hkdf A).inImage img)
 
 end CryptoVerification.SpqrV1.Top.ChainFrom

@@ -16,6 +16,8 @@ import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+import Computational.Proofs.ReductionDsl.Bridge
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Tracker-Halted Promoted `CostedReduction` for `uniformStart`
@@ -300,17 +302,6 @@ theorem uniformStartRedHalted_size_le {qep' : ℕ} (hqep_q : qep ≤ q + 10) :
   have hqB := q_add_eleven_le_ratchetCostBudget q qep'
   exact uniformStartRedHalted_size_le_of_clamp C K Dh encPt encT decT idA idB lam ℓ q qep (by omega)
 
-theorem uniformStartRedHalted_gRedBounded_of_clamp {qep' : ℕ}
-    (hqep : qep ≤ qep') (hqep_B : qep + 1 ≤ ratchetCostBudget q qep') :
-    GRedBounded (uniformStartRedHalted C K Dh encPt encT decT idA idB lam ℓ q qep)
-      Empty.elim (fun _ => 0) q 0 (ratchetCostBudget q qep') :=
-  gRedBounded_of_bounds _ Empty.elim (fun _ => 0) q 0 (ratchetCostBudget q qep')
-    (uniformStartRedHalted_totalCost_le C K Dh encPt encT decT idA idB lam ℓ q qep hqep)
-    (uniformStartRedHalted_size_le_of_clamp C K Dh encPt encT decT idA idB lam ℓ q qep hqep_B)
-    (Nat.le_of_eq (uniformStartRedHalted_totalQueries_zero C K Dh encPt encT decT idA idB lam ℓ q qep))
-    (atomicSessionOps_sizeHonest ℓ Pt C K Dh encPt encT decT lam)
-    (atomicSamplers_sizeHonest ℓ Pt)
-
 theorem uniformStartRedHalted_gRedBounded_of_le {qep' : ℕ}
     (hqep_q : qep ≤ q + 10) (hqep : qep ≤ qep') :
     GRedBounded (uniformStartRedHalted C K Dh encPt encT decT idA idB lam ℓ q qep)
@@ -321,12 +312,6 @@ theorem uniformStartRedHalted_gRedBounded_of_le {qep' : ℕ}
     (Nat.le_of_eq (uniformStartRedHalted_totalQueries_zero C K Dh encPt encT decT idA idB lam ℓ q qep))
     (atomicSessionOps_sizeHonest ℓ Pt C K Dh encPt encT decT lam)
     (atomicSamplers_sizeHonest ℓ Pt)
-
-theorem uniformStartRedHalted_gRedBounded (hqep : qep ≤ q + 10) :
-    GRedBounded (uniformStartRedHalted C K Dh encPt encT decT idA idB lam ℓ q qep)
-      Empty.elim (fun _ => 0) q 0 (ratchetCostBudget q qep) :=
-  uniformStartRedHalted_gRedBounded_of_le C K Dh encPt encT decT idA idB lam ℓ q qep
-    hqep (Nat.le_refl qep)
 
 theorem uniformStartRedHalted_gRedBounded_succ (hqep : qep ≤ q + 10) :
     GRedBounded (uniformStartRedHalted C K Dh encPt encT decT idA idB lam ℓ q qep)

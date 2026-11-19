@@ -12,6 +12,8 @@ module
 public import Computational.Proofs.ReductionDsl.SM.RedCKA -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Potential
 import Computational.Proofs.ReductionDsl.Notation
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
 
 /-!
 # Potential-based CKA query bounds

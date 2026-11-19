@@ -20,6 +20,7 @@ public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ContractsExt -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Region-Local `memset` Code Verification & Master Spec (`HooksDehook.MemsetCode`)
@@ -131,15 +132,6 @@ theorem mallocng_blk21_code_length :
 theorem memsetWordsSym_length :
     memsetWordsSym.length = 65 := rfl
 
-/-- `mallocng_blk21_memset.code` is definitionally `mallocngWordsLE memsetWordsSym`. -/
-theorem mallocng_blk21_code_eq_memsetWordsSym :
-    mallocng_blk21_memset.code = mallocngWordsLE memsetWordsSym := rfl
-
-/-- `mallocng_blk21_memset.code` is byte-identical to `(Program.ofWords 0#64 memsetWordsSym).code`. -/
-theorem mallocng_blk21_code_eq_ofWords :
-    mallocng_blk21_memset.code = (Program.ofWords 0#64 memsetWordsSym).code := by
-  decide +kernel
-
 private theorem patchedWord_of_relocs_nil {blk : Obj.CodeBlock} (hrel : blk.relocs = [])
     (pl : Obj.Placement) (off : Nat) :
     blk.patchedWord pl off = blk.wordAt off := by
@@ -159,9 +151,6 @@ private theorem ofWords_memset_readWordOff_all :
     ((List.range memsetWordsSym.length).all fun i =>
       (Program.ofWords 0#64 memsetWordsSym).readWordOff (4 * i) == memsetWordsSym[i]?) = true := by
   decide +kernel
-
-private theorem ofWords_code_indep (base : BitVec 64) (words : List (BitVec 32)) :
-    (Program.ofWords base words).code = (Program.ofWords 0#64 words).code := rfl
 
 private theorem readWordOff_eq_of_code_eq {P Q : Program} (h : P.code = Q.code) (off : Nat) :
     P.readWordOff off = Q.readWordOff off := by
@@ -233,12 +222,6 @@ theorem stdMemset_pre_of_masterMemset_pre {x : BitVec 64 × BitVec 8 × Nat} {R 
     rw [← hx2, BitVec.ofNat_toNat, BitVec.setWidth_eq]
   exact ⟨⟨hx0, hx1, hx2', hlt⟩, hm⟩
 
-/-- Region-local `subroutine_ok` for `memsetSymSpec` on any `P_sub` holding `memsetWordsSym`. -/
-theorem subroutine_ok_memsetSym_of_hasWords {P_sub : Program} {entry : BitVec 64}
-    (hwords : P_sub.hasWords entry memsetWordsSym) :
-    subroutine_ok P_sub entry memsetSymSpec :=
-  memset_codeAt_ok_sym P_sub entry hwords
-
 /-- Region-local `subroutine_ok` for `stdMemsetSpec` on any hook-free `P_sub` holding
     `memsetWordsSym`. -/
 theorem subroutine_ok_stdMemset_of_hasWords {P_sub : Program} {entry : BitVec 64}
@@ -273,63 +256,6 @@ theorem subroutine_ok_masterMemsetK_of_hasWords (keep : BitVec 64 → Bool)
   dsimp only [memsetSpecK] at hp
   rw [sepConj_assoc, satisfies_pure_sepConj] at hp
   exact hp.2
-
-/-- `mallocngBlockProg mmpl 21 svc` satisfies `memsetSymSpec` at `mmpl.base 21`. -/
-theorem mallocngBlock21_memsetSym_ok (mmpl : Obj.MultiPlacement)
-    (svc : State → State := Syscall.standard) :
-    subroutine_ok (mallocngBlockProg mmpl 21 svc) (mmpl.base 21) memsetSymSpec :=
-  subroutine_ok_memsetSym_of_hasWords (mallocngBlockProg21_hasWords mmpl svc)
-
-/-- `mallocngBlockProg mmpl 21 Syscall.standard` satisfies `stdMemsetSpec` at `mmpl.base 21`. -/
-theorem mallocngBlock21_stdMemset_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (mallocngBlockProg mmpl 21 Syscall.standard) (mmpl.base 21) stdMemsetSpec :=
-  subroutine_ok_stdMemset_of_hasWords
-    (mallocngBlockProg21_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg21_hasWords mmpl Syscall.standard)
-
-/-- `mallocngBlockProg mmpl 21 Syscall.standard` satisfies `masterMemsetSpec` at `mmpl.base 21`. -/
-theorem mallocngBlock21_masterMemset_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (mallocngBlockProg mmpl 21 Syscall.standard) (mmpl.base 21) masterMemsetSpec :=
-  subroutine_ok_masterMemset_of_hasWords
-    (mallocngBlockProg21_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg21_hasWords mmpl Syscall.standard)
-
-/-- `mallocngBlockProg mmpl 21 Syscall.standard` satisfies `memsetSpecK keep masterMemsetSpec` at
-    `mmpl.base 21`. -/
-theorem mallocngBlock21_masterMemsetK_ok (keep : BitVec 64 → Bool) (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (mallocngBlockProg mmpl 21 Syscall.standard) (mmpl.base 21)
-      (memsetSpecK keep masterMemsetSpec) :=
-  subroutine_ok_masterMemsetK_of_hasWords keep
-    (mallocngBlockProg21_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg21_hasWords mmpl Syscall.standard)
-
-/-- `pureWordsProg (mmpl.base 21) memsetWordsSym` satisfies `memsetSymSpec` at `mmpl.base 21`. -/
-theorem pureWordsProg21_memsetSym_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 21) memsetWordsSym) (mmpl.base 21) memsetSymSpec :=
-  subroutine_ok_memsetSym_of_hasWords (pureWordsProg_memset_hasWords (mmpl.base 21))
-
-/-- `pureWordsProg (mmpl.base 21) memsetWordsSym` satisfies `stdMemsetSpec` at `mmpl.base 21`. -/
-theorem pureWordsProg21_stdMemset_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 21) memsetWordsSym) (mmpl.base 21) stdMemsetSpec :=
-  subroutine_ok_stdMemset_of_hasWords
-    (pureWordsProg_externAt_none (mmpl.base 21) memsetWordsSym)
-    (pureWordsProg_memset_hasWords (mmpl.base 21))
-
-/-- `pureWordsProg (mmpl.base 21) memsetWordsSym` satisfies `masterMemsetSpec` at `mmpl.base 21`. -/
-theorem pureWordsProg21_masterMemset_ok (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 21) memsetWordsSym) (mmpl.base 21) masterMemsetSpec :=
-  subroutine_ok_masterMemset_of_hasWords
-    (pureWordsProg_externAt_none (mmpl.base 21) memsetWordsSym)
-    (pureWordsProg_memset_hasWords (mmpl.base 21))
-
-/-- `pureWordsProg (mmpl.base 21) memsetWordsSym` satisfies `memsetSpecK keep masterMemsetSpec`
-    at `mmpl.base 21`. -/
-theorem pureWordsProg21_masterMemsetK_ok (keep : BitVec 64 → Bool) (mmpl : Obj.MultiPlacement) :
-    subroutine_ok (pureWordsProg (mmpl.base 21) memsetWordsSym) (mmpl.base 21)
-      (memsetSpecK keep masterMemsetSpec) :=
-  subroutine_ok_masterMemsetK_of_hasWords keep
-    (pureWordsProg_externAt_none (mmpl.base 21) memsetWordsSym)
-    (pureWordsProg_memset_hasWords (mmpl.base 21))
 
 /-! ## 3. Fallback `hookMemset` Soundness for `masterMemsetSpec` -/
 

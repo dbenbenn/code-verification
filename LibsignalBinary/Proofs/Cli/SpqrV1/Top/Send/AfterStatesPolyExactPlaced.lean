@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeated1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncoder1Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeated1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncoder1Placed -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `encode_repeated [local#3]` (Block `448`) & Exact-Capacity `PolynomialEncoder::encode [local#3]` (Block `456`)
@@ -19,7 +19,7 @@ Re-exports `encode_repeated_1_59_placed_ok{_x}` (Block `448`) and
 `encode_polyEncoder_1_exact_pinned_placed_ok{_x}` (Block `456`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.DefsW
+public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Prost.DefsW -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Defs
 import ProofLib.SepLogic.WPp
 
@@ -20,7 +20,7 @@ Fetch macro, stack-frame decomposition, and `memcpy` / `Bytes` vtable-drop helpe
 `prost::encoding::bytes::merge` (`0x2788`) on `contractProg img.base ext` and under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,30 +41,8 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bytesMerge_fnOff
-
-/-- Fetch hypotheses for `bytes::merge` (`0x2788`) on arbitrary `H`, from fn-relative offset `k0`, `len` bytes. -/
-elab "merge_fetches_H " b:term:max H:term:max
-    hfn:term:max k0:term:max len:term:max : tactic => open Lean Meta Elab Tactic in do
-  let offLit := Syntax.mkNumLit (toString (← CryptoVerification.CodeLayout.evalNat (← `((num% (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]")))) "merge_fetches_H "))
-  let k0Lit := Syntax.mkNumLit (toString (← CryptoVerification.CodeLayout.evalNat k0 "merge_fetches_H "))
-  let lenLit := Syntax.mkNumLit (toString (← CryptoVerification.CodeLayout.evalNat len "merge_fetches_H "))
-  let hfnId : Ident ← if hfn.raw.isIdent then pure ⟨hfn.raw⟩ else do
-    let g ← getMainGoal
-    let c? ← g.withContext do
-      tryCatchRuntimeEx (do
-        let e := (← instantiateMVars (← Term.elabTermAndSynthesize hfn none)).consumeMData
-        return if e.isConst then some e.constName! else none) (fun _ => pure none)
-    match c? with
-    | some c => pure (mkCIdentFrom hfn c)
-    | none =>
-      let id := mkIdent `_hfn_layout
-      evalTactic (← `(tactic| have $id := $hfn))
-      pure id
-  evalTactic (← `(tactic| code_fetches_range CryptoVerification.libsignalSessionCode CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin $b $H $hfnId:ident $offLit:num $k0Lit:num $lenLit:num))
-
 /-- `memcpy` contract with `decodeVarintSliceStackW` (`24656` bytes). -/
-def sessionMemcpySpecBMX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def sessionMemcpySpecBMX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
       (memRegion dst bs.length ∗ (src ↦ₛ bs) ∗ stackAt s0.sp decodeVarintSliceStackW)
@@ -158,7 +136,7 @@ theorem stackAt_sliceX_to_doReserveX (sp0 : BitVec 64) :
 
 abbrev bytesVtableDropStackBMX : Nat := CryptoVerification.LibsignalTripleRatchet.extHookStack + 48
 
-def bytesVtableDropSpecBMX (A : RustAlloc) (ptr : BitVec 64) (bs : List (BitVec 8))
+@[expose] def bytesVtableDropSpecBMX (A : RustAlloc) (ptr : BitVec 64) (bs : List (BitVec 8))
     (off : Nat) : Spec Unit where
   pre := fun _ s =>
     ⌜off ≤ bs.length ∧
@@ -196,7 +174,7 @@ abbrev MergePanicW (A : RustAlloc) (x : BytesMergeGhost) (s0 : State) (R : SepPr
     (sf : State) (P_f : SepProp) : Prop :=
   (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (bytesMergeRawSpecW A).onPanic x s0 sf ∗ R)
 
-def bm_HighCalleeSavedX (s0 s : State) : Prop :=
+@[expose] def bm_HighCalleeSavedX (s0 s : State) : Prop :=
   s.readReg64 .x25 = s0.readReg64 .x25 ∧
   s.readReg64 .x26 = s0.readReg64 .x26 ∧
   s.readReg64 .x27 = s0.readReg64 .x27 ∧

@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
-public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF
-public import Computational.Proofs.ReductionDsl.SM.GameCosted
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort
-public import Computational.Proofs.SpqrV1Sync.SendTotal
+public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort -- proof-setup: allow-public-import
+import Computational.Proofs.SpqrV1Sync.SendTotal
 import Computational.Proofs.SpqrV1Sync.SendTotalExtras
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
 public import Computational.Specifications.Session.StatementComposed
-public import Computational.Proofs.SpecLemmas.Session.UniformStart
+import Computational.Proofs.SpecLemmas.Session.UniformStart
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement
 import Computational.Proofs.E2E.Dsl.ClampsLossless
 import Computational.Proofs.GameHop.CompDedup
@@ -32,6 +32,10 @@ import Computational.Proofs.SignalWireRoundTrip
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.Bridge
+import Computational.Proofs.SessionCostedBase
 
 /-!
 # Game Loop, Cost Bounds, and Clamping Equivalence for `simFig8`
@@ -41,7 +45,7 @@ and `GRedBounded` bounds, and clamping-equivalence theorems (`simFig8Clamp`, `si
 `SessionCostedReductions.simFig8`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -86,11 +90,11 @@ open Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
 /-! ## State encodings -/
 
 /-- `SM.Record (Plain ℓ) Bytes` encoded in `atomicSig ℓ Pt`. -/
-@[reducible] def simRecT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def simRecT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod posTy (.prod (PlainT (ℓ := ℓ) (Pt := Pt)) (B (ℓ := ℓ) (Pt := Pt) 32))
 
 /-- `GameState Unit (Plain ℓ) Bytes` encoded in `atomicSig ℓ Pt`. -/
-@[reducible] def simMirT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def simMirT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod .bool
     (.prod .bool
       (.prod (.prod .nat .nat)
@@ -104,11 +108,11 @@ open Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
                       (.list (.prod .bool .nat)))))))))))
 
 /-- `GhostChain` encoded in `atomicSig ℓ Pt`: `(key?, (epoch, (last, skipped)))`. -/
-@[reducible] def ghostChainT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def ghostChainT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (.opt (PK (ℓ := ℓ) (Pt := Pt))) (.prod .nat (.prod .nat (.list .nat)))
 
 /-- `SimState Bytes Pt ℓ` encoded in `atomicSig ℓ Pt`. -/
-@[reducible] def simBaseT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def simBaseT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simMirT ℓ Pt)
     (.prod (.prod (B (ℓ := ℓ) (Pt := Pt) 32) (B (ℓ := ℓ) (Pt := Pt) 32))
       (.prod (.prod (U32 (ℓ := ℓ) (Pt := Pt)) (U32 (ℓ := ℓ) (Pt := Pt)))
@@ -118,19 +122,19 @@ open Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
               (.prod .nat .bool))))))
 
 /-- `Kept Pt` encoded in `atomicSig ℓ Pt`: `(full?, rsTbl)`. -/
-@[reducible] def keptT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def keptT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (.opt (fig8StT (ℓ := ℓ) (Pt := Pt))) (.tbl (.opt (fsRecvStT (ℓ := ℓ) (Pt := Pt))))
 
 /-- Corruption snapshot `(Party × ℕ × GhostState Bytes)` encoded in `atomicSig ℓ Pt`. -/
-@[reducible] def snapT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def snapT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod .bool (.prod .nat (GhostStT (ℓ := ℓ) (Pt := Pt)))
 
 /-- Sent entry `(Fig8C Pt × RatchetSenderState)` encoded in `atomicSig ℓ Pt`. -/
-@[reducible] def sentEntryT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def sentEntryT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (fig8CtT (ℓ := ℓ) (Pt := Pt)) (fsSendStT (ℓ := ℓ) (Pt := Pt))
 
 /-- Full `LibsignalToModularSchemeSimState Bytes Pt ℓ` encoded in `atomicSig ℓ Pt`. -/
-@[reducible] def simFullT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def simFullT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simBaseT ℓ Pt)
     (.prod (.prod (keptT ℓ Pt) (keptT ℓ Pt))
       (.prod (.list (sentEntryT ℓ Pt)) (.list (snapT ℓ Pt))))
@@ -139,10 +143,10 @@ section StateEncodings
 
 variable {ℓ : ℕ} {Pt : Type}
 
-def simRecEnc (r : Record (Plain ℓ) Bytes) : (simRecT ℓ Pt).denote :=
+@[expose] def simRecEnc (r : Record (Plain ℓ) Bytes) : (simRecT ℓ Pt).denote :=
   (posEnc r.pos, (r.msg, r.ct))
 
-def simRecDec (v : (simRecT ℓ Pt).denote) : Record (Plain ℓ) Bytes :=
+@[expose] def simRecDec (v : (simRecT ℓ Pt).denote) : Record (Plain ℓ) Bytes :=
   ⟨posDec v.1, v.2.1, v.2.2⟩
 
 @[simp] theorem simRecDec_simRecEnc (r : Record (Plain ℓ) Bytes) :
@@ -153,7 +157,7 @@ def simRecDec (v : (simRecT ℓ Pt).denote) : Record (Plain ℓ) Bytes :=
     simRecEnc (simRecDec (Pt := Pt) v) = v := by
   rcases v with ⟨p, m, c⟩; simp [simRecEnc, simRecDec]
 
-def simMirEnc (s : GameState Unit (Plain ℓ) Bytes) : (simMirT ℓ Pt).denote :=
+@[expose] def simMirEnc (s : GameState Unit (Plain ℓ) Bytes) : (simMirT ℓ Pt).denote :=
   (s.b,
    (s.win,
     ((s.epoch .A, s.epoch .B),
@@ -166,7 +170,7 @@ def simMirEnc (s : GameState Unit (Plain ℓ) Bytes) : (simMirT ℓ Pt).denote :
            (s.leaks,
             s.corrs.map (fun pe => (partyEnc pe.1, pe.2))))))))))))
 
-def simMirDec (v : (simMirT ℓ Pt).denote) : GameState Unit (Plain ℓ) Bytes :=
+@[expose] def simMirDec (v : (simMirT ℓ Pt).denote) : GameState Unit (Plain ℓ) Bytes :=
   let (b, (win, (epAB, (idxAB, (tL, (trs, (chall, (comp, (maAB, (leaks, corrs)))))))))) := v
   { st := fun _ => ()
     epoch := fun | .A => epAB.1 | .B => epAB.2
@@ -198,20 +202,20 @@ def simMirDec (v : (simMirT ℓ Pt).denote) : GameState Unit (Plain ℓ) Bytes :
         (fun pe : Party × ℕ => (partyEnc pe.1, pe.2))) = id by
       funext ⟨p, e⟩; simp, List.map_id]
 
-def ghostChainEnc (g : GhostChain) : (ghostChainT ℓ Pt).denote :=
+@[expose] def ghostChainEnc (g : GhostChain) : (ghostChainT ℓ Pt).denote :=
   (g.key, (g.epoch, (g.last, g.skipped)))
 
-def ghostChainDec (v : (ghostChainT ℓ Pt).denote) : GhostChain :=
+@[expose] def ghostChainDec (v : (ghostChainT ℓ Pt).denote) : GhostChain :=
   ⟨v.1, v.2.1, v.2.2.1, v.2.2.2⟩
 
 @[simp] theorem ghostChainDec_ghostChainEnc (g : GhostChain) :
     ghostChainDec (ℓ := ℓ) (Pt := Pt) (ghostChainEnc g) = g := by
   cases g; rfl
 
-def honestPairEnc (wc : Bytes × Fig8C Pt) : Bytes × (fig8CtT (ℓ := ℓ) (Pt := Pt)).denote :=
+@[expose] def honestPairEnc (wc : Bytes × Fig8C Pt) : Bytes × (fig8CtT (ℓ := ℓ) (Pt := Pt)).denote :=
   (wc.1, fig8CtV wc.2)
 
-def honestPairDec (v : Bytes × (fig8CtT (ℓ := ℓ) (Pt := Pt)).denote) : Bytes × Fig8C Pt :=
+@[expose] def honestPairDec (v : Bytes × (fig8CtT (ℓ := ℓ) (Pt := Pt)).denote) : Bytes × Fig8C Pt :=
   (v.1, fig8CtOfV v.2)
 
 private theorem extractLsb'_zero_bytesToKey32_cons (b : BitVec 8) (acc : BitVec 256) :
@@ -285,7 +289,7 @@ theorem keyToBytes32_bytesToKey32 (bs : List (BitVec 8)) (h : bs.length = 32) :
     honestPairDec (ℓ := ℓ) (Pt := Pt) (honestPairEnc wc) = wc := by
   rcases wc with ⟨w, c⟩; simp [honestPairEnc, honestPairDec]
 
-def simBaseEnc (s : SimState Bytes Pt ℓ) : (simBaseT ℓ Pt).denote :=
+@[expose] def simBaseEnc (s : SimState Bytes Pt ℓ) : (simBaseT ℓ Pt).denote :=
   (simMirEnc s.mir,
    ((s.pq .A, s.pq .B),
     ((s.pn .A, s.pn .B),
@@ -294,7 +298,7 @@ def simBaseEnc (s : SimState Bytes Pt ℓ) : (simBaseT ℓ Pt).denote :=
        (((s.chains .A).map ghostChainEnc, (s.chains .B).map ghostChainEnc),
         (s.amb, s.stopped)))))))
 
-def simBaseDec (v : (simBaseT ℓ Pt).denote) : SimState Bytes Pt ℓ :=
+@[expose] def simBaseDec (v : (simBaseT ℓ Pt).denote) : SimState Bytes Pt ℓ :=
   let (mir, (pqAB, (pnAB, (unackA, (honest, (chainsAB, (amb, stopped))))))) := v
   { mir := simMirDec mir
     pq := fun | .A => pqAB.1 | .B => pqAB.2
@@ -320,10 +324,10 @@ def simBaseDec (v : (simBaseT ℓ Pt).denote) : SimState Bytes Pt ℓ :=
       simp [show (ghostChainDec (ℓ := ℓ) (Pt := Pt) ∘ ghostChainEnc :
         GhostChain → GhostChain) = id by funext g; simp]
 
-def keptEnc (k : Kept Pt) : (keptT ℓ Pt).denote :=
+@[expose] def keptEnc (k : Kept Pt) : (keptT ℓ Pt).denote :=
   (k.full.map fig8StV, fun t => (k.rs t).map fsRecvStV)
 
-def keptDec (v : (keptT ℓ Pt).denote) : Kept Pt :=
+@[expose] def keptDec (v : (keptT ℓ Pt).denote) : Kept Pt :=
   ⟨v.1.map fig8StOfV, fun t => (v.2 t).map fsRecvStOfV⟩
 
 @[simp] theorem fsSendStOfV_fsSendStV (s : CryptoGames.FSAEAD.RatchetSenderState (BitVec 256)) :
@@ -356,21 +360,21 @@ def keptDec (v : (keptT ℓ Pt).denote) : Kept Pt :=
   · cases full <;> simp
   · funext t; cases rs t <;> simp
 
-def snapEnc (e : Party × ℕ × GhostState Bytes) : (snapT ℓ Pt).denote :=
+@[expose] def snapEnc (e : Party × ℕ × GhostState Bytes) : (snapT ℓ Pt).denote :=
   (partyEnc e.1, (e.2.1, e.2.2))
 
-def snapDec (v : (snapT ℓ Pt).denote) : Party × ℕ × GhostState Bytes :=
+@[expose] def snapDec (v : (snapT ℓ Pt).denote) : Party × ℕ × GhostState Bytes :=
   (partyDec v.1, (v.2.1, v.2.2))
 
 @[simp] theorem snapDec_snapEnc (e : Party × ℕ × GhostState Bytes) :
     snapDec (ℓ := ℓ) (Pt := Pt) (snapEnc e) = e := by
   rcases e with ⟨p, ep, g⟩; simp [snapEnc, snapDec]
 
-def sentEntryEnc (e : Fig8C Pt × CryptoGames.FSAEAD.RatchetSenderState (BitVec 256)) :
+@[expose] def sentEntryEnc (e : Fig8C Pt × CryptoGames.FSAEAD.RatchetSenderState (BitVec 256)) :
     (sentEntryT ℓ Pt).denote :=
   (fig8CtV e.1, fsSendStV e.2)
 
-def sentEntryDec (v : (sentEntryT ℓ Pt).denote) :
+@[expose] def sentEntryDec (v : (sentEntryT ℓ Pt).denote) :
     Fig8C Pt × CryptoGames.FSAEAD.RatchetSenderState (BitVec 256) :=
   (fig8CtOfV v.1, fsSendStOfV v.2)
 
@@ -379,12 +383,12 @@ def sentEntryDec (v : (sentEntryT ℓ Pt).denote) :
     sentEntryDec (ℓ := ℓ) (Pt := Pt) (sentEntryEnc e) = e := by
   rcases e with ⟨c, v⟩; simp [sentEntryEnc, sentEntryDec]
 
-def simFullEnc (sC : LibsignalToModularSchemeSimState Bytes Pt ℓ) : (simFullT ℓ Pt).denote :=
+@[expose] def simFullEnc (sC : LibsignalToModularSchemeSimState Bytes Pt ℓ) : (simFullT ℓ Pt).denote :=
   (simBaseEnc sC.base,
    ((keptEnc (sC.kept .A), keptEnc (sC.kept .B)),
     (sC.sent.map sentEntryEnc, sC.snaps.map snapEnc)))
 
-def simFullDec (v : (simFullT ℓ Pt).denote) : LibsignalToModularSchemeSimState Bytes Pt ℓ :=
+@[expose] def simFullDec (v : (simFullT ℓ Pt).denote) : LibsignalToModularSchemeSimState Bytes Pt ℓ :=
   let (base, (keptAB, (sent, snaps))) := v
   { base := simBaseDec base
     kept := fun | .A => keptDec keptAB.1 | .B => keptDec keptAB.2
@@ -419,7 +423,7 @@ theorem atomicSpqrV1InitOp_lossless (C : Crypto) (K : MlKem)
   List.take_of_length_le
     (Nat.le_trans (spqrV1Init_length_le_158 C.F K _ pqrKey) (by decide))
 
-def initSimMirE {O' : Ops ASig} {Γ : List (Ty ASig)} : Expr O' Γ (simMirT ℓ Pt) :=
+@[expose] def initSimMirE {O' : Ops ASig} {Γ : List (Ty ASig)} : Expr O' Γ (simMirT ℓ Pt) :=
   .pair (.bool false)
     (.pair (.bool false)
       (.pair (.pair (.nat 0) (.nat 0))
@@ -431,10 +435,10 @@ def initSimMirE {O' : Ops ASig} {Γ : List (Ty ASig)} : Expr O' Γ (simMirT ℓ 
                   (.pair (.pair (.tconst (.nat 0)) (.tconst (.nat 0)))
                     (.pair .nil .nil)))))))))
 
-def keptUnknownE {O' : Ops ASig} {Γ : List (Ty ASig)} : Expr O' Γ (keptT ℓ Pt) :=
+@[expose] def keptUnknownE {O' : Ops ASig} {Γ : List (Ty ASig)} : Expr O' Γ (keptT ℓ Pt) :=
   .pair .none (.tconst .none)
 
-def initSimCE {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt}
+@[expose] def initSimCE {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt}
     {encPt : Pt → Bytes} {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
     {Γ : List (Ty ASig)}
     (pqA pqB : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ (B 32)) :
@@ -477,7 +481,7 @@ theorem cost_initSimCE {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt}
   omega
 
 /-- Concrete `init` computation for `simFig8` over `atomicSessionOps` and `fig8SmIface`. -/
-def simFig8InitC (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simFig8InitC (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) :
     Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIface ℓ Pt)
       [.unit] (.prod .unit (simFullT ℓ Pt)) :=
@@ -511,7 +515,7 @@ theorem simFig8InitC_cost_le (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) P
   rw [hdraw]
   omega
 
-def simFig8InitImpl (C : Crypto) (K : MlKem) :
+@[expose] def simFig8InitImpl (C : Crypto) (K : MlKem) :
     Fig8Comp Pt ℓ (Unit × LibsignalToModularSchemeSimState Bytes Pt ℓ) := do
   let pqrKey ← (liftM ($ᵗ (BitVec 256) : ProbComp (BitVec 256)) : Fig8Comp Pt ℓ (BitVec 256))
   return ((), initSimC (spqrV1Init C.F K .a2b pqrKey) (spqrV1Init C.F K .b2a pqrKey))
@@ -565,7 +569,7 @@ theorem simFig8InitC_eval (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
   rw [hpair]
   rfl
 
-def simFig8FinishC (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simFig8FinishC (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) :
     Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIface ℓ Pt)
       [simFullT ℓ Pt, .bool] .bool :=
@@ -591,7 +595,7 @@ theorem simFig8FinishC_cost_le (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256)
 
 /-- Assemble `simFig8` as a `CostedReduction` from any step handler `step` on `simFullT ℓ Pt`,
 with automatic fallback to `dummyBoolSessionRed` when `¬ (ℓ < 10 ^ 6)`. -/
-def simFig8ProgOfStep (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def simFig8ProgOfStep (C : Crypto) (K : MlKem) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
     (step : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIface ℓ Pt)
       [simFullT ℓ Pt, smQT (ℓ := ℓ) (Pt := Pt)]
@@ -686,7 +690,7 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
 
 /-- Total syntactic description bit-length of a session-level `CostedReduction` over
 `atomicSessionOps` and `fig8SmIface` (charging `8` bits per sampler and oracle tag). -/
-def atomicFig8RedDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def atomicFig8RedDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
     {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
     {κ : Type} {G : OracleSpec κ} {GC : GameCodec (atomicSig ℓ Pt) G}
@@ -1321,11 +1325,11 @@ open Computational.Proofs.GameHop.CompDedup
    run'_simulateQ_eq_of_idem_proj)
 
 /-- Truncate each receiver chain's `skippedKeys` list in `Fig8St Pt` to at most `B_skip` entries. -/
-def fig8StTruncSk {Pt : Type} (B_skip : ℕ) (st : Fig8St Pt) : Fig8St Pt :=
+@[expose] def fig8StTruncSk {Pt : Type} (B_skip : ℕ) (st : Fig8St Pt) : Fig8St Pt :=
   { st with
     vR := fun t => (st.vR t).map fun v => { v with skippedKeys := v.skippedKeys.take B_skip } }
 
-def fig8StTruncSkOpt {Pt : Type} (B_skip? : Option ℕ) (st : Fig8St Pt) : Fig8St Pt :=
+@[expose] def fig8StTruncSkOpt {Pt : Type} (B_skip? : Option ℕ) (st : Fig8St Pt) : Fig8St Pt :=
   match B_skip? with
   | none => st
   | some B_skip => fig8StTruncSk B_skip st
@@ -1335,7 +1339,7 @@ def fig8StTruncSkOpt {Pt : Type} (B_skip? : Option ℕ) (st : Fig8St Pt) : Fig8S
 
 /-- Identity `SemHook` forwarding `SM.spec` queries to the underlying `Fig8Spec Pt ℓ` game
 (with optional `B_skip?` truncation on `corrQuery` outputs). -/
-def fig8IdSemHook {PQC Pt : Type} [SampleableType PQC] {ℓ : ℕ}
+@[expose] def fig8IdSemHook {PQC Pt : Type} [SampleableType PQC] {ℓ : ℕ}
     (B_skip? : Option ℕ := none) :
     SemHook PQC Pt ℓ
       (unifSpec + CryptoGames.SM.spec (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ)
@@ -2458,7 +2462,7 @@ theorem fig8StTruncSkOpt_eq_self {Pt : Type} (B_skip? : Option ℕ) (st : Fig8St
 
 /-- Semantic corruption hook matching `SimFig8State.toGhostE` + `keptUpdateCorrE` directly:
 `toGhost` receives `fig8StTruncSkOpt B_skip? fig8st` while `Kept.ofSt` keeps `fig8st` untruncated. -/
-def semCorrHookTG {PQ PQC Pt : Type} {ℓ : ℕ}
+@[expose] def semCorrHookTG {PQ PQC Pt : Type} {ℓ : ℕ}
     (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (B_skip? : Option ℕ) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (Q : Party) :
     Fig8Comp Pt ℓ (Option (GhostState PQ) × LibsignalToModularSchemeSimState PQ Pt ℓ) := do
@@ -2491,7 +2495,7 @@ def semCorrHookTG {PQ PQC Pt : Type} {ℓ : ℕ}
           snaps := (Q, sC.base.mir.epoch Q, ghostOut) :: sC.snaps }
       return (some ghostOut, sC')
 
-def semCorrHookTGDedup {PQ PQC Pt : Type} {ℓ : ℕ}
+@[expose] def semCorrHookTGDedup {PQ PQC Pt : Type} {ℓ : ℕ}
     (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (B_skip? : Option ℕ) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (Q : Party) :
     Fig8Comp Pt ℓ (Option (GhostState PQ) × LibsignalToModularSchemeSimState PQ Pt ℓ) := do
@@ -2524,7 +2528,7 @@ def semCorrHookTGDedup {PQ PQC Pt : Type} {ℓ : ℕ}
           snaps := (Q, sC.base.mir.epoch Q, ghostOut) :: sC.snaps }
       return (some ghostOut, sC')
 
-def simFig8OracleTG {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC] {ℓ : ℕ}
+@[expose] def simFig8OracleTG {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC] {ℓ : ℕ}
     (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (qep B : ℕ) (B_skip? : Option ℕ := none) :
@@ -2538,7 +2542,7 @@ def simFig8OracleTG {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableTyp
     Prod.map id Prod.fst <$>
       semHandleHook P Dh encPt encT decT lam (fig8IdSemHook (PQC := PQC) none) qep B t sC ()
 
-def simFig8OracleTGDedup {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC] {ℓ : ℕ}
+@[expose] def simFig8OracleTGDedup {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC] {ℓ : ℕ}
     (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (qep B : ℕ) (B_skip? : Option ℕ := none) :
@@ -2553,7 +2557,7 @@ def simFig8OracleTGDedup {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampleab
       semHandleHookDedup P Dh encPt encT decT lam (fig8IdSemHook (PQC := PQC) none) qep B t sC ()
 
 /-- `B`-clamped semantic counterpart of `Refine.libsignalToModularSchemeSim` using `simFig8OracleTG`. -/
-def simFig8ClampTG {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC]
+@[expose] def simFig8ClampTG {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC]
     (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (qep B : ℕ) (B_skip? : Option ℕ := none)

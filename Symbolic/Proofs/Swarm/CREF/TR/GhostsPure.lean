@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 public import ProofLib.Lemmas
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -24,7 +24,7 @@ session-state relations (`sessionOf`, `StateRel`, `TRKeyShape`, `IkShape`, `TRNs
 composed model (`DY.Libsignal.Composed`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -138,7 +138,7 @@ open DY.Libsignal.TripleRatchet
 
 abbrev serializedKey (b : HwBytes) : HwBytes := ecKey b
 
-def sessionOf (interpretation : ExternInterpretation) (gam : DY.Bytes → HwBytes) (st : TRState) :
+@[expose] def sessionOf (interpretation : ExternInterpretation) (gam : DY.Bytes → HwBytes) (st : TRState) :
     SessionRec :=
   let sk := clamp (gam st.dhs)
   { sessionVersion := 4
@@ -164,7 +164,7 @@ def sessionOf (interpretation : ExternInterpretation) (gam : DY.Bytes → HwByte
     aliceBaseKey := []
     pqRatchetState := gam st.spqr }
 
-def eraseUnmodelled (s : SessionRec) : SessionRec :=
+@[expose] def eraseUnmodelled (s : SessionRec) : SessionRec :=
   { s with
     aliceBaseKey := []
     remoteRegistrationId := 0
@@ -172,15 +172,15 @@ def eraseUnmodelled (s : SessionRec) : SessionRec :=
     pendingPreKey := none
     pendingKyberPreKey := none }
 
-def eraseSkipped (s : SessionRec) : SessionRec :=
+@[expose] def eraseSkipped (s : SessionRec) : SessionRec :=
   { s with receiverChains := s.receiverChains.map fun c => { c with messageKeys := [] } }
 
-def StateRel (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (st : TRState)
+@[expose] def StateRel (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (st : TRState)
     (rec : RecordRec) : Prop :=
   rec.previous = [] ∧
     eraseSkipped (eraseUnmodelled rec.current) = sessionOf interpretation (gamma interpretation S g) st
 
-def sentBodies (acc : List MachineEvent) : List HwBytes :=
+@[expose] def sentBodies (acc : List MachineEvent) : List HwBytes :=
   acc.filterMap fun
     | .send m => sentBody m
     | _ => none
@@ -200,11 +200,11 @@ structure TRKeyShape (interpretation : ExternInterpretation) (S : OpaqueSymbolSe
   peerIk_ser :
     serializedKey ((gamma interpretation S g st.peerIk).drop 1) = gamma interpretation S g st.peerIk
 
-def IkShape (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) : Prop :=
+@[expose] def IkShape (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) : Prop :=
   (pubBytes interpretation (secretBytes r₀ 0)).length = 32 ∧
   (pubBytes interpretation (secretBytes r₀ 2)).length = 32
 
-def TRNsBound (r₀ : ProtocolSetup) (ms : List Move) (sent : List HwBytes) : Prop :=
+@[expose] def TRNsBound (r₀ : ProtocolSetup) (ms : List Move) (sent : List HwBytes) : Prop :=
   ∀ (p : Participant) (stateIdx : Nat) (st : TRState),
     ((PersistentLocalState.getLocalState p stateIdx : Traceful TRState).run (runTraceMoves r₀ ms)).1 =
       some st →

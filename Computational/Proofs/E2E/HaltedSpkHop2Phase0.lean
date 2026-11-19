@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.HaltedSpkHop2Core
-public import Computational.Proofs.E2E.SpkHop1Phases01
+public import Computational.Proofs.E2E.HaltedSpkHop2Core -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop1Phases01 -- proof-setup: allow-public-import
 
 /-!
 # Tracker-Halted Hop-2 Phase 0
@@ -19,7 +19,7 @@ Lifts Phase 0 of the Hop-2 hybrid step to `KemFailSessionTrack`-halted reduction
 `hop2PrfRedKTrackHalted`, `hop2PrgRedKTrackHalted`), parameterized by `Hop2TrackPhase1Bound`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

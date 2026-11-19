@@ -21,7 +21,7 @@ Dispatches the new-epoch case-3a `deliver` step with a known `predictReceiveWith
 its rejecting and accepting branches.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.PqxdhTables
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf
+public import Computational.Proofs.ReductionDsl.PqxdhTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf -- proof-setup: allow-public-import
 
 /-!
 # `ReductionDsl` Programs for `Auth` Key-Schedule PRF Simulators
@@ -20,7 +20,7 @@ Defines `prfCkRedProg` and `prfMsgKeysRedProg`, the `ReductionDsl` witnesses for
 `AuthHybridStateFixed` types, combinators, and finalization helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,30 +39,30 @@ abbrev PT : Type := Ty pqSig
 /-! ## Value Type Aliases and Encodings -/
 
 abbrev preKeyBundleTy : PT := bundleT
-@[simp] def preKeyBundleToVal (b : PreKeyBundleInput) : preKeyBundleTy.denote := bundleV b
+@[expose, simp] def preKeyBundleToVal (b : PreKeyBundleInput) : preKeyBundleTy.denote := bundleV b
 
 abbrev handshakeHdrTy : PT := hdrT
-@[simp] def handshakeHdrToVal (h : HandshakeHdr) : handshakeHdrTy.denote := hdrV h
+@[expose, simp] def handshakeHdrToVal (h : HandshakeHdr) : handshakeHdrTy.denote := hdrV h
 
 abbrev preKeyMsgTy : PT := preKeyMsgT
-@[simp] def preKeyMsgToVal (m : PreKeyMsg) : preKeyMsgTy.denote := preKeyMsgV m
+@[expose, simp] def preKeyMsgToVal (m : PreKeyMsg) : preKeyMsgTy.denote := preKeyMsgV m
 
 abbrev sessionIdTy : PT := sidT
-@[simp] def sessionIdToVal {S : Setup} (s : SessionId S) : sessionIdTy.denote := sidV s
+@[expose, simp] def sessionIdToVal {S : Setup} (s : SessionId S) : sessionIdTy.denote := sidV s
 
 abbrev drKeyTy : PT := drKeyT
-@[simp] def drKeyToVal (k : DRKey) : drKeyTy.denote := drKeyV k
+@[expose, simp] def drKeyToVal (k : DRKey) : drKeyTy.denote := drKeyV k
 
 abbrev msgKeysTy : PT := msgKeysT
-@[simp] def msgKeysToVal (k : MessageKeys) : msgKeysTy.denote := msgKeysV k
-@[simp] def valToMsgKeys (v : msgKeysTy.denote) : MessageKeys := msgKeysOfV v
+@[expose, simp] def msgKeysToVal (k : MessageKeys) : msgKeysTy.denote := msgKeysV k
+@[expose, simp] def valToMsgKeys (v : msgKeysTy.denote) : MessageKeys := msgKeysOfV v
 
 abbrev authQueryTy : PT := authQT
-@[simp] def authQueryToVal {S : Setup} (q : AuthQuery S) : authQueryTy.denote := authQenc q
+@[expose, simp] def authQueryToVal {S : Setup} (q : AuthQuery S) : authQueryTy.denote := authQenc q
 
 abbrev authRespTy : PT := authRT
-@[simp] def authRespToVal (r : AuthResponse) : authRespTy.denote := authRenc r
-@[simp] def valToAuthResp (v : authRespTy.denote) : AuthResponse := authRdec v
+@[expose, simp] def authRespToVal (r : AuthResponse) : authRespTy.denote := authRenc r
+@[expose, simp] def valToAuthResp (v : authRespTy.denote) : AuthResponse := authRdec v
 
 @[simp] theorem valToAuthResp_authRespToVal (r : AuthResponse) :
     valToAuthResp (authRespToVal r) = r :=
@@ -70,48 +70,48 @@ abbrev authRespTy : PT := authRT
 
 abbrev principalEntryTy : PT :=
   .prod (B 32) (.prod (B 32) (.prod (B 32) (.prod (B 32) .bool)))
-@[simp] def principalEntryToVal (e : PrincipalEntry) : principalEntryTy.denote :=
+@[expose, simp] def principalEntryToVal (e : PrincipalEntry) : principalEntryTy.denote :=
   (e.secIKA0, (e.ikAPk, (e.secIKAsign, (e.ikSignPk, e.corrupted))))
 
 abbrev spkBundleEntryTy : PT :=
   .prod (B 32) (.prod (B 32) (.prod (B 64)
     (.prod (B 3168) (.prod (B 1568) (.prod (B 64) .bool)))))
-@[simp] def spkBundleEntryToVal (b : SpkBundleEntry) : spkBundleEntryTy.denote :=
+@[expose, simp] def spkBundleEntryToVal (b : SpkBundleEntry) : spkBundleEntryTy.denote :=
   (b.spkSk, (b.spkPk, (b.spkSig, (b.pqspkSk, (b.pqspkPk, (b.pqspkSig, b.revealed))))))
 
 abbrev opkEntryTy : PT := .prod (B 32) (.prod (B 32) .bool)
-@[simp] def opkEntryToVal (o : OpkEntry) : opkEntryTy.denote :=
+@[expose, simp] def opkEntryToVal (o : OpkEntry) : opkEntryTy.denote :=
   (o.opkSk, (o.opkPk, o.consumed))
 
 abbrev sentOPKEventTy : PT :=
   .prod (B 32) (.prod (B 32) (.prod (B 32) (.prod (B 32)
     (.prod (B 32) (.prod (B 1568) (.prod (B 1568) (.prod (B 32) .bool)))))))
-@[simp] def sentOPKEventToVal (e : SentOPKEvent) : sentOPKEventTy.denote :=
+@[expose, simp] def sentOPKEventToVal (e : SentOPKEvent) : sentOPKEventTy.denote :=
   (e.a0, (e.b0, (e.sb, (e.ob, (e.a1, (e.pk1, (e.ct, (e.m, e.matched))))))))
 
 abbrev sentNoOPKEventTy : PT :=
   .prod (B 32) (.prod (B 32) (.prod (B 32)
     (.prod (B 32) (.prod (B 1568) (.prod (B 1568) (.prod (B 32) .bool))))))
-@[simp] def sentNoOPKEventToVal (e : SentNoOPKEvent) : sentNoOPKEventTy.denote :=
+@[expose, simp] def sentNoOPKEventToVal (e : SentNoOPKEvent) : sentNoOPKEventTy.denote :=
   (e.a0, (e.b0, (e.sb, (e.a1, (e.pk1, (e.ct, (e.m, e.matched)))))))
 
 abbrev recvdOPKEventTy : PT :=
   .prod .bool (.prod (B 32) (.prod (B 32) (.prod (B 32) (.prod (B 32)
     (.prod (B 32) (.prod (B 1568) (.prod (B 1568) (B 32))))))))
-@[simp] def recvdOPKEventToVal (e : RecvdOPKEvent) : recvdOPKEventTy.denote :=
+@[expose, simp] def recvdOPKEventToVal (e : RecvdOPKEvent) : recvdOPKEventTy.denote :=
   (e.bCorr, (e.a0, (e.b0, (e.sb, (e.ob, (e.a1, (e.pk1, (e.ct, e.m))))))))
 
 abbrev recvdNoOPKEventTy : PT :=
   .prod .bool (.prod (B 32) (.prod (B 32)
     (.prod (B 32) (.prod (B 32) (.prod (B 1568) (.prod (B 1568) (B 32)))))))
-@[simp] def recvdNoOPKEventToVal (e : RecvdNoOPKEvent) : recvdNoOPKEventTy.denote :=
+@[expose, simp] def recvdNoOPKEventToVal (e : RecvdNoOPKEvent) : recvdNoOPKEventTy.denote :=
   (e.bCorr, (e.a0, (e.b0, (e.sb, (e.a1, (e.pk1, (e.ct, e.m)))))))
 
 abbrev authSessionEntryTy : PT :=
   .prod sessionIdTy (.prod (B 32) (.prod (B 32) (.prod (.opt (B 32)) (.prod (B 1568)
     (.prod .bool (.prod .bool (.prod .bool
       (.prod (B 32) (.prod (B 32) (.prod .bool .bool))))))))))
-@[simp] def authSessionEntryToVal {S : Setup} (s : AuthInitiatorEntry S) :
+@[expose, simp] def authSessionEntryToVal {S : Setup} (s : AuthInitiatorEntry S) :
     authSessionEntryTy.denote :=
   (sessionIdToVal s.sid, (s.peerIkPk, (s.peerSpkPk, (s.peerOpkPk?, (s.peerPqspkPk,
     (s.spkHonest, (s.opkHonest, (s.pqspkHonest,
@@ -119,13 +119,13 @@ abbrev authSessionEntryTy : PT :=
 
 abbrev initKemRecordTy : PT :=
   .prod sessionIdTy (.prod (B 1568) (.prod (B 1568) (B 32)))
-@[simp] def initKemRecordToVal {S : Setup}
+@[expose, simp] def initKemRecordToVal {S : Setup}
     (r : _root_.SignalPqxdh.Security.InitKemRecord S) : initKemRecordTy.denote :=
   (sessionIdToVal r.sid, (r.pqspkPk, (r.kemCt, r.kemSs)))
 
 abbrev recvKemRecordTy : PT :=
   .prod .nat (.prod .nat (.prod (B 1568) (.prod (B 3168) (.prod (B 1568) (B 32)))))
-@[simp] def recvKemRecordToVal
+@[expose, simp] def recvKemRecordToVal
     (r : _root_.SignalPqxdh.Security.RecvKemRecord) : recvKemRecordTy.denote :=
   (r.k, (r.j, (r.pqspkPk, (r.pqspkSk, (r.kemCt, r.kemSs)))))
 
@@ -134,7 +134,7 @@ abbrev idealAuthSessionTy : PT :=
     (.prod (B 32) (.prod (B 1568) (.prod (B 1568) (.prod (B 32) (.prod (.opt (B 32))
       (.prod (B 32) (.prod (B 158) (.prod (B 32) (.prod (B 32) (.prod drKeyTy
         (.prod (B 32) (.prod (B 32) (.prod (B 32) (.prod (B 32) msgKeysTy))))))))))))))))))
-@[simp] def idealAuthSessionToVal {S : Setup} (s : IdealAuthSession S) :
+@[expose, simp] def idealAuthSessionToVal {S : Setup} (s : IdealAuthSession S) :
     idealAuthSessionTy.denote :=
   (sessionIdToVal s.sid, (s.ikAPk, (s.peerIkPk, (s.peerSpkPk, (s.peerOpkPk?,
     (s.ekAPk, (s.peerPqspkPk, (s.kemCt, (s.ephAPk, (s.spqrSalt?,
@@ -159,7 +159,7 @@ abbrev authStateTy : PT :=
                               (.prod (.list (.prod (.prod (B 32) (B 32)) (.prod (B 32) (B 32))))
                                 (.list (.prod (B 32) (B 32))))))))))))))))))
 
-@[simp] def authStateToVal {S : Setup} (st : AuthState S) : authStateTy.denote :=
+@[expose, simp] def authStateToVal {S : Setup} (st : AuthState S) : authStateTy.denote :=
   (st.secb, (st.hasWonAuth,
     (st.principals.map (Prod.map id principalEntryToVal),
     (st.spkBundles.map (Prod.map id spkBundleEntryToVal),
@@ -181,7 +181,7 @@ abbrev authHybridStateTy : PT :=
     (.prod (.list initKemRecordTy)
       (.prod (.list recvKemRecordTy) (.list idealAuthSessionTy)))
 
-@[simp] def authHybridStateToVal {S : Setup} (hst : AuthHybridState S) :
+@[expose, simp] def authHybridStateToVal {S : Setup} (hst : AuthHybridState S) :
     authHybridStateTy.denote :=
   (authStateToVal hst.base, (hst.initKemRecs.map initKemRecordToVal,
     (hst.recvKemRecs.map recvKemRecordToVal, hst.idealSessions.map idealAuthSessionToVal)))
@@ -194,13 +194,13 @@ abbrev recvSlotTblTy : PT := .tbl (.opt .nat)
 abbrev authSlotStateTy : PT :=
   .prod .nat (.prod sendSlotTblTy (.prod sendSlotTblTy recvSlotTblTy))
 
-@[simp] def authSlotStateToVal (ss : AuthSlotState) : authSlotStateTy.denote :=
+@[expose, simp] def authSlotStateToVal (ss : AuthSlotState) : authSlotStateTy.denote :=
   (ss.nextSlot, (ss.sendOpkTbl, (ss.sendNoOpkTbl, ss.recvTbl)))
 
 abbrev authHybridStateFixedTy : PT :=
   .prod authHybridStateTy (.prod .nat (.prod authMkSaltCacheTy authSlotStateTy))
 
-@[simp] def authHybridStateFixedWithSlotsToVal {S : Setup}
+@[expose, simp] def authHybridStateFixedWithSlotsToVal {S : Setup}
     (hst : AuthHybridStateFixed S) (ss : AuthSlotState) :
     authHybridStateFixedTy.denote :=
   (authHybridStateToVal hst.toAuthHybridState, (hst.recvCount,
@@ -208,7 +208,7 @@ abbrev authHybridStateFixedTy : PT :=
       ((sessionIdToVal sid, salt?), (rc, msgKeysToVal mk))),
      authSlotStateToVal ss)))
 
-@[simp] def authHybridStateFixedToVal {S : Setup} (hst : AuthHybridStateFixed S) :
+@[expose, simp] def authHybridStateFixedToVal {S : Setup} (hst : AuthHybridStateFixed S) :
     authHybridStateFixedTy.denote :=
   authHybridStateFixedWithSlotsToVal hst hst.slots
 
@@ -222,21 +222,21 @@ instance (priority := high) Ext.refl {Γ : List PT} : Ext Γ Γ := ⟨fun x => x
 instance Ext.step {Γ Δ : List PT} {σ : PT} [h : Ext Γ Δ] : Ext Γ (σ :: Δ) :=
   ⟨fun x => .succ (h.wk x)⟩
 
-def v {Γ Δ : List PT} {τ : PT} [h : Ext Γ Δ] (x : Var Γ τ) : Expr pqxdhOps Δ τ := .var (h.wk x)
+@[expose] def v {Γ Δ : List PT} {τ : PT} [h : Ext Γ Δ] (x : Var Γ τ) : Expr pqxdhOps Δ τ := .var (h.wk x)
 
-def boolOr {Γ : List PT} (a b : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ .bool :=
+@[expose] def boolOr {Γ : List PT} (a b : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ .bool :=
   .ite a (.bool true) b
 
-def boolBeq {Γ : List PT} (a b : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ .bool :=
+@[expose] def boolBeq {Γ : List PT} (a b : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ .bool :=
   .ite a b (.not b)
 
-def Comp.letC {ι : Type} {T : OracleSpec ι}
+@[expose] def Comp.letC {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List PT} {a b : PT}
     (e : Expr pqxdhOps Γ a) (k : Comp pqxdhOps I (a :: Γ) b) : Comp pqxdhOps I Γ b :=
   .bind (.ret e) k
 
 /-- Lifts a primitive-only `Comp` into `pqChalIface C` by routing all queries to `.inl`. -/
-def liftPrimComp {C : ChallengerOracle} :
+@[expose] def liftPrimComp {C : ChallengerOracle} :
     {Γ : List PT} → {t : PT} → Comp pqxdhOps pqPrimIface Γ t → Comp pqxdhOps (pqChalIface C) Γ t
   | _, _, .ret e => .ret e
   | _, _, .bind m k => .bind (liftPrimComp m) (liftPrimComp k)
@@ -252,381 +252,381 @@ def liftPrimComp {C : ChallengerOracle} :
   | _, _, .consumeFirstM K l p mk => .consumeFirstM K l (liftPrimComp p) mk
   | _, _, .foldM K l init step => .foldM K l init (liftPrimComp step)
 
-def bindV {ι : Type} {T : OracleSpec ι}
+@[expose] def bindV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List PT} {τ₁ τ₂ : PT}
     (m : Comp pqxdhOps I Γ τ₁) (k : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) : Comp pqxdhOps I Γ τ₂ :=
   .bind m (k .zero)
 
-def letV {ι : Type} {T : OracleSpec ι}
+@[expose] def letV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List PT} {τ₁ τ₂ : PT}
     (e : Expr pqxdhOps Γ τ₁) (k : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) : Comp pqxdhOps I Γ τ₂ :=
   Comp.letC e (k .zero)
 
-def caseOptV {ι : Type} {T : OracleSpec ι}
+@[expose] def caseOptV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List PT} {τ₁ τ₂ : PT}
     (o : Expr pqxdhOps Γ (.opt τ₁)) (kn : Comp pqxdhOps I Γ τ₂)
     (ks : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) : Comp pqxdhOps I Γ τ₂ :=
   .caseOpt o kn (ks .zero)
 
-def caseSumV {ι : Type} {T : OracleSpec ι}
+@[expose] def caseSumV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List PT} {τ₁ τ₂ τ : PT}
     (s : Expr pqxdhOps Γ (.sum τ₁ τ₂))
     (kl : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ)
     (kr : Var (τ₂ :: Γ) τ₂ → Comp pqxdhOps I (τ₂ :: Γ) τ) : Comp pqxdhOps I Γ τ :=
   .caseSum s (kl .zero) (kr .zero)
 
-def findMV {ι : Type} {T : OracleSpec ι}
+@[expose] def findMV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List PT} {τ : PT}
     (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
     (p : Var (τ :: Γ) τ → Comp pqxdhOps I (τ :: Γ) .bool) : Comp pqxdhOps I Γ (.opt τ) :=
   .findM K xs (p .zero)
 
-def anyMV {ι : Type} {T : OracleSpec ι}
+@[expose] def anyMV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List PT} {τ : PT}
     (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
     (p : Var (τ :: Γ) τ → Comp pqxdhOps I (τ :: Γ) .bool) : Comp pqxdhOps I Γ .bool :=
   .anyM K xs (p .zero)
 
-def consumeFirstMV {ι : Type} {T : OracleSpec ι}
+@[expose] def consumeFirstMV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List PT} {τ : PT}
     (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
     (p : Var (τ :: Γ) τ → Comp pqxdhOps I (τ :: Γ) .bool)
     (mark : Var (τ :: Γ) τ → Expr pqxdhOps (τ :: Γ) τ) : Comp pqxdhOps I Γ (.prod .bool (.list τ)) :=
   .consumeFirstM K xs (p .zero) (mark .zero)
 
-def eLet {Γ : List PT} {τ₁ τ₂ : PT} (e : Expr pqxdhOps Γ τ₁)
+@[expose] def eLet {Γ : List PT} {τ₁ τ₂ : PT} (e : Expr pqxdhOps Γ τ₁)
     (k : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ₂) : Expr pqxdhOps Γ τ₂ := .letE e (k .zero)
 
-def eLet2 {Γ : List PT} {τ₁ τ₂ τ : PT} (a : Expr pqxdhOps Γ τ₁) (b : Expr pqxdhOps Γ τ₂)
+@[expose] def eLet2 {Γ : List PT} {τ₁ τ₂ τ : PT} (a : Expr pqxdhOps Γ τ₁) (b : Expr pqxdhOps Γ τ₂)
     (k : Var (τ₁ :: .prod τ₁ τ₂ :: Γ) τ₁ → Var (τ₂ :: τ₁ :: .prod τ₁ τ₂ :: Γ) τ₂ →
       Expr pqxdhOps (τ₂ :: τ₁ :: .prod τ₁ τ₂ :: Γ) τ) :
     Expr pqxdhOps Γ τ :=
   eLet (.pair a b) fun p => eLet (.fst (v p)) fun x => eLet (.snd (v p)) fun y => k x y
 
-def eCaseOpt {Γ : List PT} {τ₁ τ₂ : PT} (o : Expr pqxdhOps Γ (.opt τ₁)) (kn : Expr pqxdhOps Γ τ₂)
+@[expose] def eCaseOpt {Γ : List PT} {τ₁ τ₂ : PT} (o : Expr pqxdhOps Γ (.opt τ₁)) (kn : Expr pqxdhOps Γ τ₂)
     (ks : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ₂) : Expr pqxdhOps Γ τ₂ := .caseOpt o kn (ks .zero)
 
-def eCaseSum {Γ : List PT} {τ₁ τ₂ τ : PT} (s : Expr pqxdhOps Γ (.sum τ₁ τ₂))
+@[expose] def eCaseSum {Γ : List PT} {τ₁ τ₂ τ : PT} (s : Expr pqxdhOps Γ (.sum τ₁ τ₂))
     (kl : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ)
     (kr : Var (τ₂ :: Γ) τ₂ → Expr pqxdhOps (τ₂ :: Γ) τ) : Expr pqxdhOps Γ τ :=
   .caseSum s (kl .zero) (kr .zero)
 
-def eFind {Γ : List PT} {τ : PT} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
+@[expose] def eFind {Γ : List PT} {τ : PT} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
     (p : Var (τ :: Γ) τ → Expr pqxdhOps (τ :: Γ) .bool) : Expr pqxdhOps Γ (.opt τ) := .findB K xs (p .zero)
 
-def eAny {Γ : List PT} {τ : PT} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
+@[expose] def eAny {Γ : List PT} {τ : PT} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ))
     (p : Var (τ :: Γ) τ → Expr pqxdhOps (τ :: Γ) .bool) : Expr pqxdhOps Γ .bool := .anyB K xs (p .zero)
 
-def eMap {Γ : List PT} {τ₁ τ₂ : PT} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ₁))
+@[expose] def eMap {Γ : List PT} {τ₁ τ₂ : PT} (K : Nat) (xs : Expr pqxdhOps Γ (.list τ₁))
     (f : Var (τ₁ :: Γ) τ₁ → Expr pqxdhOps (τ₁ :: Γ) τ₂) : Expr pqxdhOps Γ (.list τ₂) :=
   .mapB K xs (f .zero)
 
-def litB {Γ : List PT} (w : ℕ+) (bs : Bytes) : Expr pqxdhOps Γ (B w) :=
+@[expose] def litB {Γ : List PT} (w : ℕ+) (bs : Bytes) : Expr pqxdhOps Γ (B w) :=
   Expr.op (O := pqxdhOps) (Sum.inl (.lit w bs)) .unit
 
-def catB {Γ : List PT} (m n : ℕ+) (a : Expr pqxdhOps Γ (B m)) (b : Expr pqxdhOps Γ (B n)) :
+@[expose] def catB {Γ : List PT} (m n : ℕ+) (a : Expr pqxdhOps Γ (B m)) (b : Expr pqxdhOps Γ (B n)) :
     Expr pqxdhOps Γ (B (m + n)) :=
   Expr.op (O := pqxdhOps) (Sum.inl (.cat m n)) (.pair a b)
 
-def bytesCons {Γ : List PT} (b : UInt8) (w : ℕ+) (x : Expr pqxdhOps Γ (B w)) :
+@[expose] def bytesCons {Γ : List PT} (b : UInt8) (w : ℕ+) (x : Expr pqxdhOps Γ (B w)) :
     Expr pqxdhOps Γ (B (w + 1)) :=
   Expr.op (O := pqxdhOps) (Sum.inl (.cons b w)) x
 
-def widenB {Γ : List PT} (w d : ℕ+) (x : Expr pqxdhOps Γ (B w)) :
+@[expose] def widenB {Γ : List PT} (w d : ℕ+) (x : Expr pqxdhOps Γ (B w)) :
     Expr pqxdhOps Γ (B (w + d)) :=
   Expr.op (O := pqxdhOps) (Sum.inl (.widen w d)) x
 
-def takeKB {Γ : List PT} (w k : ℕ+) (x : Expr pqxdhOps Γ (B w)) :
+@[expose] def takeKB {Γ : List PT} (w k : ℕ+) (x : Expr pqxdhOps Γ (B w)) :
     Expr pqxdhOps Γ (B k) :=
   Expr.op (O := pqxdhOps) (Sum.inl (.takeK w k)) x
 
-def bytesLen {Γ : List PT} (w : ℕ+) (x : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ .nat :=
+@[expose] def bytesLen {Γ : List PT} (w : ℕ+) (x : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ .nat :=
   Expr.op (O := pqxdhOps) (Sum.inl (.len w)) x
 
-def bytesBeq {Γ : List PT} (w : ℕ+) (a b : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ .bool :=
+@[expose] def bytesBeq {Γ : List PT} (w : ℕ+) (a b : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ .bool :=
   Expr.op (O := pqxdhOps) (Sum.inl (.eq w w)) (.pair a b)
 
-def bytesVarint {Γ : List PT} (n : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ (B 10) :=
+@[expose] def bytesVarint {Γ : List PT} (n : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ (B 10) :=
   Expr.op (O := pqxdhOps) (Sum.inl .varint) n
 
-def u32OfNat {Γ : List PT} (n : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ U32 :=
+@[expose] def u32OfNat {Γ : List PT} (n : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ U32 :=
   Expr.op (O := pqxdhOps) (Sum.inr .ofNat) n
 
-def u32Beq {Γ : List PT} (a b : Expr pqxdhOps Γ U32) : Expr pqxdhOps Γ .bool :=
+@[expose] def u32Beq {Γ : List PT} (a b : Expr pqxdhOps Γ U32) : Expr pqxdhOps Γ .bool :=
   Expr.op (O := pqxdhOps) (Sum.inr .eq) (.pair a b)
 
-def samplePrim {Γ : List PT} (s : PSamp) : Comp pqxdhOps pqPrimIface Γ s.ty :=
+@[expose] def samplePrim {Γ : List PT} (s : PSamp) : Comp pqxdhOps pqPrimIface Γ s.ty :=
   Comp.sample (I := pqPrimIface) s .unit
 
-def sampleChal {C : ChallengerOracle} {Γ : List PT} (s : PSamp) : Comp pqxdhOps (pqChalIface C) Γ s.ty :=
+@[expose] def sampleChal {C : ChallengerOracle} {Γ : List PT} (s : PSamp) : Comp pqxdhOps (pqChalIface C) Γ s.ty :=
   Comp.sample (I := pqChalIface C) s .unit
 
-def queryPrim {Γ : List PT} (g : PTag) (e : Expr pqxdhOps Γ g.dom) : Comp pqxdhOps pqPrimIface Γ g.cod :=
+@[expose] def queryPrim {Γ : List PT} (g : PTag) (e : Expr pqxdhOps Γ g.dom) : Comp pqxdhOps pqPrimIface Γ g.cod :=
   Comp.query (I := pqPrimIface) g e
 
-def queryDeriveMk {Γ : List PT} (e : Expr pqxdhOps Γ (.opt (B 32))) :
+@[expose] def queryDeriveMk {Γ : List PT} (e : Expr pqxdhOps Γ (.opt (B 32))) :
     Comp pqxdhOps pqPrfMkIface Γ msgKeysTy :=
   Comp.query (I := pqPrfMkIface) (Sum.inr (32 : ℕ+)) e
 
 /-! ## Field Projections and Constructors -/
 
-def peSecIKA0 {Γ} (e : Expr pqxdhOps Γ principalEntryTy) : Expr pqxdhOps Γ (B 32) := .fst e
-def peIkAPk {Γ} (e : Expr pqxdhOps Γ principalEntryTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-def peSecIKAsign {Γ} (e : Expr pqxdhOps Γ principalEntryTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def peSecIKA0 {Γ} (e : Expr pqxdhOps Γ principalEntryTy) : Expr pqxdhOps Γ (B 32) := .fst e
+@[expose] def peIkAPk {Γ} (e : Expr pqxdhOps Γ principalEntryTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
+@[expose] def peSecIKAsign {Γ} (e : Expr pqxdhOps Γ principalEntryTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd e))
-def peIkSignPk {Γ} (e : Expr pqxdhOps Γ principalEntryTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def peIkSignPk {Γ} (e : Expr pqxdhOps Γ principalEntryTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd e)))
-def peCorrupted {Γ} (e : Expr pqxdhOps Γ principalEntryTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def peCorrupted {Γ} (e : Expr pqxdhOps Γ principalEntryTy) : Expr pqxdhOps Γ .bool :=
   .snd (.snd (.snd (.snd e)))
 
-def sbSpkSk {Γ} (e : Expr pqxdhOps Γ spkBundleEntryTy) : Expr pqxdhOps Γ (B 32) := .fst e
-def sbSpkPk {Γ} (e : Expr pqxdhOps Γ spkBundleEntryTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-def sbPqspkSk {Γ} (e : Expr pqxdhOps Γ spkBundleEntryTy) : Expr pqxdhOps Γ (B 3168) :=
+@[expose] def sbSpkSk {Γ} (e : Expr pqxdhOps Γ spkBundleEntryTy) : Expr pqxdhOps Γ (B 32) := .fst e
+@[expose] def sbSpkPk {Γ} (e : Expr pqxdhOps Γ spkBundleEntryTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
+@[expose] def sbPqspkSk {Γ} (e : Expr pqxdhOps Γ spkBundleEntryTy) : Expr pqxdhOps Γ (B 3168) :=
   .fst (.snd (.snd (.snd e)))
-def sbPqspkPk {Γ} (e : Expr pqxdhOps Γ spkBundleEntryTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def sbPqspkPk {Γ} (e : Expr pqxdhOps Γ spkBundleEntryTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd e))))
 
-def oeOpkSk {Γ} (e : Expr pqxdhOps Γ opkEntryTy) : Expr pqxdhOps Γ (B 32) := .fst e
-def oeOpkPk {Γ} (e : Expr pqxdhOps Γ opkEntryTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-def oeConsumed {Γ} (e : Expr pqxdhOps Γ opkEntryTy) : Expr pqxdhOps Γ .bool := .snd (.snd e)
+@[expose] def oeOpkSk {Γ} (e : Expr pqxdhOps Γ opkEntryTy) : Expr pqxdhOps Γ (B 32) := .fst e
+@[expose] def oeOpkPk {Γ} (e : Expr pqxdhOps Γ opkEntryTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
+@[expose] def oeConsumed {Γ} (e : Expr pqxdhOps Γ opkEntryTy) : Expr pqxdhOps Γ .bool := .snd (.snd e)
 
-def pkbIkB {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (B 32) := .fst b
-def pkbSpkId {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ U32 := .fst (.snd b)
-def pkbSpkB {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd b))
-def pkbSpkSig {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (B 64) :=
+@[expose] def pkbIkB {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (B 32) := .fst b
+@[expose] def pkbSpkId {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ U32 := .fst (.snd b)
+@[expose] def pkbSpkB {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd b))
+@[expose] def pkbSpkSig {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (B 64) :=
   .fst (.snd (.snd (.snd b)))
-def pkbOpkB? {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (.opt (.prod U32 (B 32))) :=
+@[expose] def pkbOpkB? {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (.opt (.prod U32 (B 32))) :=
   .fst (.snd (.snd (.snd (.snd b))))
-def pkbPqspkId {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ U32 :=
+@[expose] def pkbPqspkId {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ U32 :=
   .fst (.snd (.snd (.snd (.snd (.snd b)))))
-def pkbPqspkB {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def pkbPqspkB {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd b))))))
-def pkbPqspkSig {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (B 64) :=
+@[expose] def pkbPqspkSig {Γ} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ (B 64) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd b))))))
 
-def hdrIkAPk {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ (B 32) := .fst h
-def hdrEkAPk {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd h)
-def hdrSpkId {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ U32 := .fst (.snd (.snd h))
-def hdrOpkId? {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ (.opt U32) :=
+@[expose] def hdrIkAPk {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ (B 32) := .fst h
+@[expose] def hdrEkAPk {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd h)
+@[expose] def hdrSpkId {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ U32 := .fst (.snd (.snd h))
+@[expose] def hdrOpkId? {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ (.opt U32) :=
   .fst (.snd (.snd (.snd h)))
-def hdrPqspkId {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ U32 :=
+@[expose] def hdrPqspkId {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ U32 :=
   .fst (.snd (.snd (.snd (.snd h))))
-def hdrKemCt {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def hdrKemCt {Γ} (h : Expr pqxdhOps Γ handshakeHdrTy) : Expr pqxdhOps Γ (B 1568) :=
   .snd (.snd (.snd (.snd (.snd h))))
 
-def pkmHdr {Γ} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ handshakeHdrTy := .fst m
-def pkmEphAPk {Γ} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd m)
-def pkmPqRatchetMsg {Γ} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def pkmHdr {Γ} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ handshakeHdrTy := .fst m
+@[expose] def pkmEphAPk {Γ} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd m)
+@[expose] def pkmPqRatchetMsg {Γ} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd m))
-def pkmAeadCt {Γ} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ (B 32) := .snd (.snd (.snd m))
+@[expose] def pkmAeadCt {Γ} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ (B 32) := .snd (.snd (.snd m))
 
-def soA0 {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst e
-def soB0 {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-def soSb {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
-def soOb {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def soA0 {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst e
+@[expose] def soB0 {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
+@[expose] def soSb {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
+@[expose] def soOb {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd e)))
-def soA1 {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def soA1 {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd e))))
-def soPk1 {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def soPk1 {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd e)))))
-def soCt {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def soCt {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-def soM {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def soM {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
-def soMatched {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def soMatched {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ .bool :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
-def soMarkMatched {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ sentOPKEventTy :=
+@[expose] def soMarkMatched {Γ} (e : Expr pqxdhOps Γ sentOPKEventTy) : Expr pqxdhOps Γ sentOPKEventTy :=
   .pair (soA0 e) (.pair (soB0 e) (.pair (soSb e) (.pair (soOb e)
     (.pair (soA1 e) (.pair (soPk1 e) (.pair (soCt e) (.pair (soM e) (.bool true))))))))
 
-def snoA0 {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst e
-def snoB0 {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-def snoSb {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
-def snoA1 {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def snoA0 {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst e
+@[expose] def snoB0 {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
+@[expose] def snoSb {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
+@[expose] def snoA1 {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd e)))
-def snoPk1 {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def snoPk1 {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd e))))
-def snoCt {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def snoCt {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd e)))))
-def snoM {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def snoM {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-def snoMatched {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def snoMatched {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ .bool :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-def snoMarkMatched {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ sentNoOPKEventTy :=
+@[expose] def snoMarkMatched {Γ} (e : Expr pqxdhOps Γ sentNoOPKEventTy) : Expr pqxdhOps Γ sentNoOPKEventTy :=
   .pair (snoA0 e) (.pair (snoB0 e) (.pair (snoSb e)
     (.pair (snoA1 e) (.pair (snoPk1 e) (.pair (snoCt e) (.pair (snoM e) (.bool true)))))))
 
-def roBCorr {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ .bool := .fst e
-def roA0 {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-def roB0 {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
-def roSb {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def roBCorr {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ .bool := .fst e
+@[expose] def roA0 {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
+@[expose] def roB0 {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
+@[expose] def roSb {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd e)))
-def roOb {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def roOb {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd e))))
-def roA1 {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def roA1 {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd e)))))
-def roPk1 {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def roPk1 {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-def roCt {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def roCt {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
-def roM {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def roM {Γ} (e : Expr pqxdhOps Γ recvdOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
 
-def rnoBCorr {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ .bool := .fst e
-def rnoA0 {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
-def rnoB0 {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
-def rnoSb {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def rnoBCorr {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ .bool := .fst e
+@[expose] def rnoA0 {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd e)
+@[expose] def rnoB0 {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
+@[expose] def rnoSb {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd e)))
-def rnoA1 {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def rnoA1 {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd e))))
-def rnoPk1 {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def rnoPk1 {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd e)))))
-def rnoCt {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def rnoCt {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-def rnoM {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def rnoM {Γ} (e : Expr pqxdhOps Γ recvdNoOPKEventTy) : Expr pqxdhOps Γ (B 32) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd e))))))
 
-def aseSpkHonest {Γ} (s : Expr pqxdhOps Γ authSessionEntryTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def aseSpkHonest {Γ} (s : Expr pqxdhOps Γ authSessionEntryTy) : Expr pqxdhOps Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
-def asePqspkHonest {Γ} (s : Expr pqxdhOps Γ authSessionEntryTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def asePqspkHonest {Γ} (s : Expr pqxdhOps Γ authSessionEntryTy) : Expr pqxdhOps Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))
-def aseEkASk {Γ} (s : Expr pqxdhOps Γ authSessionEntryTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def aseEkASk {Γ} (s : Expr pqxdhOps Γ authSessionEntryTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))
-def aseFresh {Γ} (s : Expr pqxdhOps Γ authSessionEntryTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def aseFresh {Γ} (s : Expr pqxdhOps Γ authSessionEntryTy) : Expr pqxdhOps Γ .bool :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))
-def aseChallenged {Γ} (s : Expr pqxdhOps Γ authSessionEntryTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def aseChallenged {Γ} (s : Expr pqxdhOps Γ authSessionEntryTy) : Expr pqxdhOps Γ .bool :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))
 
-def ikrPqspkPk {Γ} (r : Expr pqxdhOps Γ initKemRecordTy) : Expr pqxdhOps Γ (B 1568) := .fst (.snd r)
-def ikrKemCt {Γ} (r : Expr pqxdhOps Γ initKemRecordTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def ikrPqspkPk {Γ} (r : Expr pqxdhOps Γ initKemRecordTy) : Expr pqxdhOps Γ (B 1568) := .fst (.snd r)
+@[expose] def ikrKemCt {Γ} (r : Expr pqxdhOps Γ initKemRecordTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd r))
-def ikrKemSs {Γ} (r : Expr pqxdhOps Γ initKemRecordTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def ikrKemSs {Γ} (r : Expr pqxdhOps Γ initKemRecordTy) : Expr pqxdhOps Γ (B 32) :=
   .snd (.snd (.snd r))
 
-def rkrPqspkPk {Γ} (r : Expr pqxdhOps Γ recvKemRecordTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def rkrPqspkPk {Γ} (r : Expr pqxdhOps Γ recvKemRecordTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd r))
-def rkrKemCt {Γ} (r : Expr pqxdhOps Γ recvKemRecordTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def rkrKemCt {Γ} (r : Expr pqxdhOps Γ recvKemRecordTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd r))))
-def rkrKemSs {Γ} (r : Expr pqxdhOps Γ recvKemRecordTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def rkrKemSs {Γ} (r : Expr pqxdhOps Γ recvKemRecordTy) : Expr pqxdhOps Γ (B 32) :=
   .snd (.snd (.snd (.snd (.snd r))))
 
-def iasSid {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ sessionIdTy := .fst s
-def iasIkAPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd s)
-def iasPeerIkPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def iasSid {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ sessionIdTy := .fst s
+@[expose] def iasIkAPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) := .fst (.snd s)
+@[expose] def iasPeerIkPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd s))
-def iasPeerSpkPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def iasPeerSpkPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd s)))
-def iasPeerOpkPk? {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (.opt (B 32)) :=
+@[expose] def iasPeerOpkPk? {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (.opt (B 32)) :=
   .fst (.snd (.snd (.snd (.snd s))))
-def iasEkAPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def iasEkAPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
-def iasPeerPqspkPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def iasPeerPqspkPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd s))))))
-def iasKemCt {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 1568) :=
+@[expose] def iasKemCt {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 1568) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))
-def iasEphAPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def iasEphAPk {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))
-def iasSpqrSalt? {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (.opt (B 32)) :=
+@[expose] def iasSpqrSalt? {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (.opt (B 32)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))
-def iasDrKey {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ drKeyTy :=
+@[expose] def iasDrKey {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ drKeyTy :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))))))
-def iasRk1 {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def iasRk1 {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))))))))
-def iasMkSeed {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def iasMkSeed {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))))))))))
-def iasCk1_1 {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def iasCk1_1 {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))))))))))
-def iasMsgKeys {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ msgKeysTy :=
+@[expose] def iasMsgKeys {Γ} (s : Expr pqxdhOps Γ idealAuthSessionTy) : Expr pqxdhOps Γ msgKeysTy :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))))))))))
 
-def asSecb {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ .bool := .fst st
-def asHasWonAuth {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ .bool := .fst (.snd st)
-def asPrincipals {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asSecb {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ .bool := .fst st
+@[expose] def asHasWonAuth {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ .bool := .fst (.snd st)
+@[expose] def asPrincipals {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod .nat principalEntryTy)) :=
   .fst (.snd (.snd st))
-def asSpkBundles {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asSpkBundles {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod (.prod .nat .nat) spkBundleEntryTy)) :=
   .fst (.snd (.snd (.snd st)))
-def asOpkEntries {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asOpkEntries {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod (.prod .nat (.prod .nat .nat)) opkEntryTy)) :=
   .fst (.snd (.snd (.snd (.snd st))))
-def asSessions {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ (.list authSessionEntryTy) :=
+@[expose] def asSessions {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ (.list authSessionEntryTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd st)))))
-def asUsedSendSessions {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ (.list sessionIdTy) :=
+@[expose] def asUsedSendSessions {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ (.list sessionIdTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd st))))))
-def asUsedRecvOPK {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asUsedRecvOPK {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod .nat (.prod .nat .nat))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd st)))))))
-def asUsedRecvNoOPK {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asUsedRecvNoOPK {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod .nat (.prod .nat .nat))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd st))))))))
-def asUsedKyberTriples {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asUsedKyberTriples {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod .nat (.prod U32 (.prod U32 (B 32))))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd st)))))))))
-def asSentOPKEvents {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ (.list sentOPKEventTy) :=
+@[expose] def asSentOPKEvents {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ (.list sentOPKEventTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd st))))))))))
-def asSentNoOPKEvents {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asSentNoOPKEvents {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list sentNoOPKEventTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd st)))))))))))
-def asRecvdOPKEvents {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ (.list recvdOPKEventTy) :=
+@[expose] def asRecvdOPKEvents {Γ} (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ (.list recvdOPKEventTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd st))))))))))))
-def asRecvdNoOPKEvents {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asRecvdNoOPKEvents {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list recvdNoOPKEventTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd st)))))))))))))
-def asRoCache {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asRoCache {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod (B 192) drKeyTy)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd st))))))))))))))
-def asRootRoCache {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asRootRoCache {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod (.prod (B 32) (B 32)) (.prod (B 32) (B 32)))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd st)))))))))))))))
-def asAdvKeys {Γ} (st : Expr pqxdhOps Γ authStateTy) :
+@[expose] def asAdvKeys {Γ} (st : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ (.list (.prod (B 32) (B 32))) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd
     (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd st)))))))))))))))
 
-def ahsBase {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy) : Expr pqxdhOps Γ authStateTy := .fst hst
-def ahsInitKemRecs {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy) :
+@[expose] def ahsBase {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy) : Expr pqxdhOps Γ authStateTy := .fst hst
+@[expose] def ahsInitKemRecs {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy) :
     Expr pqxdhOps Γ (.list initKemRecordTy) :=
   .fst (.snd hst)
-def ahsRecvKemRecs {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy) :
+@[expose] def ahsRecvKemRecs {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy) :
     Expr pqxdhOps Γ (.list recvKemRecordTy) :=
   .fst (.snd (.snd hst))
-def ahsIdealSessions {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy) :
+@[expose] def ahsIdealSessions {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy) :
     Expr pqxdhOps Γ (.list idealAuthSessionTy) :=
   .snd (.snd (.snd hst))
 
-def ahsfHybrid {Γ} (hst : Expr pqxdhOps Γ authHybridStateFixedTy) :
+@[expose] def ahsfHybrid {Γ} (hst : Expr pqxdhOps Γ authHybridStateFixedTy) :
     Expr pqxdhOps Γ authHybridStateTy := .fst hst
-def ahsfRecvCount {Γ} (hst : Expr pqxdhOps Γ authHybridStateFixedTy) :
+@[expose] def ahsfRecvCount {Γ} (hst : Expr pqxdhOps Γ authHybridStateFixedTy) :
     Expr pqxdhOps Γ .nat := .fst (.snd hst)
-def ahsfMkSaltCache {Γ} (hst : Expr pqxdhOps Γ authHybridStateFixedTy) :
+@[expose] def ahsfMkSaltCache {Γ} (hst : Expr pqxdhOps Γ authHybridStateFixedTy) :
     Expr pqxdhOps Γ authMkSaltCacheTy := .fst (.snd (.snd hst))
-@[reducible] def ahsfSlots {Γ} (hst : Expr pqxdhOps Γ authHybridStateFixedTy) :
+@[expose, reducible] def ahsfSlots {Γ} (hst : Expr pqxdhOps Γ authHybridStateFixedTy) :
     Expr pqxdhOps Γ authSlotStateTy := .snd (.snd (.snd hst))
 
-def natEq {Γ : List PT} (a b : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .bool := .eqN a b
-def natLt {Γ : List PT} (a b : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .bool := .lt a b
-def nat2Eq {Γ : List PT} (a b : Expr pqxdhOps Γ (.prod .nat .nat)) : Expr pqxdhOps Γ .bool :=
+@[expose] def natEq {Γ : List PT} (a b : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .bool := .eqN a b
+@[expose] def natLt {Γ : List PT} (a b : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .bool := .lt a b
+@[expose] def nat2Eq {Γ : List PT} (a b : Expr pqxdhOps Γ (.prod .nat .nat)) : Expr pqxdhOps Γ .bool :=
   .and (natEq (.fst a) (.fst b)) (natEq (.snd a) (.snd b))
-def nat3Eq {Γ : List PT} (a b : Expr pqxdhOps Γ (.prod .nat (.prod .nat .nat))) : Expr pqxdhOps Γ .bool :=
+@[expose] def nat3Eq {Γ : List PT} (a b : Expr pqxdhOps Γ (.prod .nat (.prod .nat .nat))) : Expr pqxdhOps Γ .bool :=
   .and (natEq (.fst a) (.fst b)) (nat2Eq (.snd a) (.snd b))
-def bytes2Eq {Γ : List PT} (a b : Expr pqxdhOps Γ (.prod (B 32) (B 32))) : Expr pqxdhOps Γ .bool :=
+@[expose] def bytes2Eq {Γ : List PT} (a b : Expr pqxdhOps Γ (.prod (B 32) (B 32))) : Expr pqxdhOps Γ .bool :=
   .and (bytesBeq 32 (.fst a) (.fst b)) (bytesBeq 32 (.snd a) (.snd b))
 
-def optU32Eq {Γ : List PT} (a b : Expr pqxdhOps Γ (.opt U32)) : Expr pqxdhOps Γ .bool :=
+@[expose] def optU32Eq {Γ : List PT} (a b : Expr pqxdhOps Γ (.opt U32)) : Expr pqxdhOps Γ .bool :=
   eLet2 a b fun a b => eCaseOpt (v a)
     (eCaseOpt (v b) (.bool true) fun _ => .bool false)
     fun x => eCaseOpt (v b) (.bool false) fun y => u32Beq (v x) (v y)
 
-def sidEq {Γ : List PT} (a b : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def sidEq {Γ : List PT} (a b : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .bool :=
   eLet2 a b fun a b => eCaseSum (v a)
     (fun x => eCaseSum (v b) (fun y => nat2Eq (v x) (v y)) fun _ => .bool false)
     fun a1 => eCaseSum (v a1)
@@ -640,38 +640,38 @@ def sidEq {Γ : List PT} (a b : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ
           eCaseSum (v b1) (fun _ => .bool false) fun b2 =>
             eCaseSum (v b2) (fun _ => .bool false) fun y => nat3Eq (v x) (v y)
 
-def saltBytesE {Γ : List PT} (o : Expr pqxdhOps Γ (.opt (B 32))) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def saltBytesE {Γ : List PT} (o : Expr pqxdhOps Γ (.opt (B 32))) : Expr pqxdhOps Γ (B 32) :=
   eCaseOpt o (litB 32 (List.replicate 32 0)) fun s =>
     takeKB 64 32 (catB 32 32 (v s) (litB 32 (List.replicate 32 0)))
 
-def sameSaltKeyE {Γ : List PT} (a b : Expr pqxdhOps Γ (.opt (B 32))) : Expr pqxdhOps Γ .bool :=
+@[expose] def sameSaltKeyE {Γ : List PT} (a b : Expr pqxdhOps Γ (.opt (B 32))) : Expr pqxdhOps Γ .bool :=
   bytesBeq 32 (saltBytesE a) (saltBytesE b)
 
-def kyberEq {Γ : List PT}
+@[expose] def kyberEq {Γ : List PT}
     (a b : Expr pqxdhOps Γ (.prod .nat (.prod U32 (.prod U32 (B 32))))) : Expr pqxdhOps Γ .bool :=
   .and (natEq (.fst a) (.fst b))
     (.and (u32Beq (.fst (.snd a)) (.fst (.snd b)))
       (.and (u32Beq (.fst (.snd (.snd a))) (.fst (.snd (.snd b))))
         (bytesBeq 32 (.snd (.snd (.snd a))) (.snd (.snd (.snd b))))))
 
-def isSomeE {Γ : List PT} {τ : PT} (o : Expr pqxdhOps Γ (.opt τ)) : Expr pqxdhOps Γ .bool :=
+@[expose] def isSomeE {Γ : List PT} {τ : PT} (o : Expr pqxdhOps Γ (.opt τ)) : Expr pqxdhOps Γ .bool :=
   .caseOpt o (.bool false) (.bool true)
 
-def optFst {Γ : List PT} {τ₁ τ₂ : PT} (o : Expr pqxdhOps Γ (.opt (.prod τ₁ τ₂))) :
+@[expose] def optFst {Γ : List PT} {τ₁ τ₂ : PT} (o : Expr pqxdhOps Γ (.opt (.prod τ₁ τ₂))) :
     Expr pqxdhOps Γ (.opt τ₁) :=
   eCaseOpt o .none fun p => .some (.fst (v p))
 
-def optSnd {Γ : List PT} {τ₁ τ₂ : PT} (o : Expr pqxdhOps Γ (.opt (.prod τ₁ τ₂))) :
+@[expose] def optSnd {Γ : List PT} {τ₁ τ₂ : PT} (o : Expr pqxdhOps Γ (.opt (.prod τ₁ τ₂))) :
     Expr pqxdhOps Γ (.opt τ₂) :=
   eCaseOpt o .none fun p => .some (.snd (v p))
 
-def encEC {Γ : List PT} (pk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 33) :=
+@[expose] def encEC {Γ : List PT} (pk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 33) :=
   bytesCons TAG_EC_DJB 32 pk
 
-def encKEM {Γ : List PT} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhOps Γ (B 1569) :=
+@[expose] def encKEM {Γ : List PT} (pk : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhOps Γ (B 1569) :=
   bytesCons TAG_KYBER_1024 1568 pk
 
-def firstMsgADE {Γ : List PT} (ikA ikB eph pq : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 158) :=
+@[expose] def firstMsgADE {Γ : List PT} (ikA ikB eph pq : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 158) :=
   catB 115 43
     (catB 111 4
       (catB 67 44
@@ -683,7 +683,7 @@ def firstMsgADE {Γ : List PT} (ikA ikB eph pq : Expr pqxdhOps Γ (B 32)) : Expr
       (bytesCons ((8 * 5 + 2 : Nat).toUInt8) 42
         (catB 10 32 (bytesVarint (bytesLen 32 pq)) pq)))
 
-def buildSecretsE {Γ : List PT} (dh1 dh2 dh3 : Expr pqxdhOps Γ (B 32))
+@[expose] def buildSecretsE {Γ : List PT} (dh1 dh2 dh3 : Expr pqxdhOps Γ (B 32))
     (dh4? : Expr pqxdhOps Γ (.opt (B 32))) (ss : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 192) :=
   eLet2 (.pair dh1 (.pair dh2 (.pair dh3 ss))) dh4? fun p d =>
     eCaseOpt (v d)
@@ -706,7 +706,7 @@ def buildSecretsE {Γ : List PT} (dh1 dh2 dh3 : Expr pqxdhOps Γ (B 32))
             (v dh4))
           (.snd (.snd (.snd (v p))))
 
-def kyberCheckE {Γ : List PT} (K : Nat)
+@[expose] def kyberCheckE {Γ : List PT} (K : Nat)
     (used : Expr pqxdhOps Γ (.list (.prod .nat (.prod U32 (.prod U32 (B 32))))))
     (entry : Expr pqxdhOps Γ (.prod .nat (.prod U32 (.prod U32 (B 32))))) :
     Expr pqxdhOps Γ (.prod .bool (.list (.prod .nat (.prod U32 (.prod U32 (B 32)))))) :=
@@ -715,7 +715,7 @@ def kyberCheckE {Γ : List PT} (K : Nat)
       (.pair (.bool false) (v u))
       (.pair (.bool true) (.cons (v e) (v u)))
 
-def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .nat :=
+@[expose] def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .nat :=
   eCaseSum sid
     (fun ui => .add (.mulK (if S.N_id = 0 then 0 else S.N_send_opk) (.fst (v ui))) (.snd (v ui)))
     fun r1 => eCaseSum (v r1)
@@ -723,22 +723,22 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
         (.add (.mulK (if S.N_id = 0 then 0 else S.N_send_no_opk) (.fst (v ui))) (.snd (v ui))))
       fun _ => .nat 0
 
-@[reducible] def assNext {Γ} (ss : Expr pqxdhOps Γ authSlotStateTy) : Expr pqxdhOps Γ .nat := .fst ss
-@[reducible] def assSendOpk {Γ} (ss : Expr pqxdhOps Γ authSlotStateTy) :
+@[expose, reducible] def assNext {Γ} (ss : Expr pqxdhOps Γ authSlotStateTy) : Expr pqxdhOps Γ .nat := .fst ss
+@[expose, reducible] def assSendOpk {Γ} (ss : Expr pqxdhOps Γ authSlotStateTy) :
     Expr pqxdhOps Γ sendSlotTblTy := .fst (.snd ss)
-@[reducible] def assSendNoOpk {Γ} (ss : Expr pqxdhOps Γ authSlotStateTy) :
+@[expose, reducible] def assSendNoOpk {Γ} (ss : Expr pqxdhOps Γ authSlotStateTy) :
     Expr pqxdhOps Γ sendSlotTblTy := .fst (.snd (.snd ss))
-@[reducible] def assRecv {Γ} (ss : Expr pqxdhOps Γ authSlotStateTy) :
+@[expose, reducible] def assRecv {Γ} (ss : Expr pqxdhOps Γ authSlotStateTy) :
     Expr pqxdhOps Γ recvSlotTblTy := .snd (.snd (.snd ss))
-@[reducible] def assMk {Γ} (next : Expr pqxdhOps Γ .nat)
+@[expose, reducible] def assMk {Γ} (next : Expr pqxdhOps Γ .nat)
     (opkT noOpkT : Expr pqxdhOps Γ sendSlotTblTy) (recvT : Expr pqxdhOps Γ recvSlotTblTy) :
     Expr pqxdhOps Γ authSlotStateTy :=
   .pair next (.pair opkT (.pair noOpkT recvT))
 
-@[reducible] def emptyAuthSlotStE {Γ} : Expr pqxdhOps Γ authSlotStateTy :=
+@[expose, reducible] def emptyAuthSlotStE {Γ} : Expr pqxdhOps Γ authSlotStateTy :=
   assMk (.nat 0) (.tconst (.tconst .none)) (.tconst (.tconst .none)) (.tconst .none)
 
-@[reducible] def lookupSendSlotE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
+@[expose, reducible] def lookupSendSlotE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
     (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ (.opt .nat) :=
   eLet2 ss sid fun s sidV =>
     eCaseSum (v sidV)
@@ -747,11 +747,11 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
         (fun ui => .tget (.tget (assSendNoOpk (v s)) (.fst (v ui))) (.snd (v ui)))
         fun _ => .none
 
-@[reducible] def lookupSendSlotOrZeroE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
+@[expose, reducible] def lookupSendSlotOrZeroE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
     (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .nat :=
   eCaseOpt (lookupSendSlotE ss sid) (.nat 0) fun k => v k
 
-@[reducible] def allocSendSlotE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
+@[expose, reducible] def allocSendSlotE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
     (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ (.prod .nat authSlotStateTy) :=
   eLet2 ss sid fun s sidV =>
     eCaseSum (v sidV)
@@ -780,15 +780,15 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
               fun k => .pair (v k) (v s))
         fun _ => .pair (.nat 0) (v s)
 
-@[reducible] def lookupRecvSlotE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
+@[expose, reducible] def lookupRecvSlotE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
     (rc : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ (.opt .nat) :=
   .tget (assRecv ss) rc
 
-@[reducible] def lookupRecvSlotOrZeroE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
+@[expose, reducible] def lookupRecvSlotOrZeroE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
     (rc : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .nat :=
   eCaseOpt (lookupRecvSlotE ss rc) (.nat 0) fun k => v k
 
-@[reducible] def allocRecvSlotE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
+@[expose, reducible] def allocRecvSlotE {Γ : List PT} (ss : Expr pqxdhOps Γ authSlotStateTy)
     (rc : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ (.prod .nat authSlotStateTy) :=
   eLet2 ss rc fun s rcV =>
     eCaseOpt (.tget (assRecv (v s)) (v rcV))
@@ -800,29 +800,29 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
             (.tset (assRecv (v s)) (v rcV) (.some (v k)))))
       fun k => .pair (v k) (v s)
 
-@[reducible] def peMk {Γ} (s0 ik s1 sp : Expr pqxdhOps Γ (B 32)) (c : Expr pqxdhOps Γ .bool) :
+@[expose, reducible] def peMk {Γ} (s0 ik s1 sp : Expr pqxdhOps Γ (B 32)) (c : Expr pqxdhOps Γ .bool) :
     Expr pqxdhOps Γ principalEntryTy :=
   .pair s0 (.pair ik (.pair s1 (.pair sp c)))
 
-@[reducible] def peUpd {Γ} (e : Expr pqxdhOps Γ principalEntryTy)
+@[expose, reducible] def peUpd {Γ} (e : Expr pqxdhOps Γ principalEntryTy)
     (corrupted : Expr pqxdhOps Γ .bool := peCorrupted e) : Expr pqxdhOps Γ principalEntryTy :=
   peMk (peSecIKA0 e) (peIkAPk e) (peSecIKAsign e) (peIkSignPk e) corrupted
 
-@[reducible] def sbMk {Γ} (sk pk : Expr pqxdhOps Γ (B 32)) (sig : Expr pqxdhOps Γ (B 64))
+@[expose, reducible] def sbMk {Γ} (sk pk : Expr pqxdhOps Γ (B 32)) (sig : Expr pqxdhOps Γ (B 64))
     (pqsk : Expr pqxdhOps Γ (B 3168)) (pqpk : Expr pqxdhOps Γ (B 1568))
     (pqsig : Expr pqxdhOps Γ (B 64)) (rev : Expr pqxdhOps Γ .bool) :
     Expr pqxdhOps Γ spkBundleEntryTy :=
   .pair sk (.pair pk (.pair sig (.pair pqsk (.pair pqpk (.pair pqsig rev)))))
 
-@[reducible] def oeMk {Γ} (sk pk : Expr pqxdhOps Γ (B 32)) (cons : Expr pqxdhOps Γ .bool) :
+@[expose, reducible] def oeMk {Γ} (sk pk : Expr pqxdhOps Γ (B 32)) (cons : Expr pqxdhOps Γ .bool) :
     Expr pqxdhOps Γ opkEntryTy :=
   .pair sk (.pair pk cons)
 
-@[reducible] def oeUpd {Γ} (e : Expr pqxdhOps Γ opkEntryTy)
+@[expose, reducible] def oeUpd {Γ} (e : Expr pqxdhOps Γ opkEntryTy)
     (consumed : Expr pqxdhOps Γ .bool := oeConsumed e) : Expr pqxdhOps Γ opkEntryTy :=
   oeMk (oeOpkSk e) (oeOpkPk e) consumed
 
-@[reducible] def buMk {Γ} (ikB : Expr pqxdhOps Γ (B 32)) (spkId : Expr pqxdhOps Γ U32)
+@[expose, reducible] def buMk {Γ} (ikB : Expr pqxdhOps Γ (B 32)) (spkId : Expr pqxdhOps Γ U32)
     (spkB : Expr pqxdhOps Γ (B 32)) (spkSig : Expr pqxdhOps Γ (B 64))
     (opkB? : Expr pqxdhOps Γ (.opt (.prod U32 (B 32)))) (pqspkId : Expr pqxdhOps Γ U32)
     (pqspkB : Expr pqxdhOps Γ (B 1568)) (pqspkSig : Expr pqxdhOps Γ (B 64)) :
@@ -830,16 +830,16 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
   .pair ikB (.pair spkId (.pair spkB (.pair spkSig
     (.pair opkB? (.pair pqspkId (.pair pqspkB pqspkSig))))))
 
-@[reducible] def hdMk {Γ} (ikA ekA : Expr pqxdhOps Γ (B 32)) (spkId : Expr pqxdhOps Γ U32)
+@[expose, reducible] def hdMk {Γ} (ikA ekA : Expr pqxdhOps Γ (B 32)) (spkId : Expr pqxdhOps Γ U32)
     (opkId? : Expr pqxdhOps Γ (.opt U32)) (pqspkId : Expr pqxdhOps Γ U32)
     (kemCt : Expr pqxdhOps Γ (B 1568)) : Expr pqxdhOps Γ handshakeHdrTy :=
   .pair ikA (.pair ekA (.pair spkId (.pair opkId? (.pair pqspkId kemCt))))
 
-@[reducible] def pmMk {Γ} (hdr : Expr pqxdhOps Γ handshakeHdrTy)
+@[expose, reducible] def pmMk {Γ} (hdr : Expr pqxdhOps Γ handshakeHdrTy)
     (eph pq ct : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ preKeyMsgTy :=
   .pair hdr (.pair eph (.pair pq ct))
 
-@[reducible] def seMk {Γ} (sid : Expr pqxdhOps Γ sessionIdTy)
+@[expose, reducible] def seMk {Γ} (sid : Expr pqxdhOps Γ sessionIdTy)
     (peerIk peerSpk : Expr pqxdhOps Γ (B 32)) (peerOpk? : Expr pqxdhOps Γ (.opt (B 32)))
     (peerPqspk : Expr pqxdhOps Γ (B 1568)) (spkHon opkHon pqspkHon : Expr pqxdhOps Γ .bool)
     (ekASk ephASk : Expr pqxdhOps Γ (B 32)) (fresh chal : Expr pqxdhOps Γ .bool) :
@@ -848,7 +848,7 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
     (.pair spkHon (.pair opkHon (.pair pqspkHon
       (.pair ekASk (.pair ephASk (.pair fresh chal))))))))))
 
-@[reducible] def iasMk {Γ} (sid : Expr pqxdhOps Γ sessionIdTy)
+@[expose, reducible] def iasMk {Γ} (sid : Expr pqxdhOps Γ sessionIdTy)
     (ikA peerIk peerSpk : Expr pqxdhOps Γ (B 32)) (peerOpk? : Expr pqxdhOps Γ (.opt (B 32)))
     (ekA : Expr pqxdhOps Γ (B 32)) (peerPqspk kemCt : Expr pqxdhOps Γ (B 1568))
     (ephA : Expr pqxdhOps Γ (B 32)) (spqrSalt? : Expr pqxdhOps Γ (.opt (B 32)))
@@ -861,37 +861,37 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
       (.pair pqMsg (.pair ad (.pair aeadCt (.pair msgPlain (.pair drKey
         (.pair rk1 (.pair ck1_0 (.pair mkSeed (.pair ck1_1 deriveMessageKeys))))))))))))))))))
 
-@[reducible] def soMk {Γ} (a0 b0 sb ob a1 : Expr pqxdhOps Γ (B 32))
+@[expose, reducible] def soMk {Γ} (a0 b0 sb ob a1 : Expr pqxdhOps Γ (B 32))
     (pk1 ct : Expr pqxdhOps Γ (B 1568)) (m : Expr pqxdhOps Γ (B 32)) (matched : Expr pqxdhOps Γ .bool) :
     Expr pqxdhOps Γ sentOPKEventTy :=
   .pair a0 (.pair b0 (.pair sb (.pair ob (.pair a1 (.pair pk1 (.pair ct (.pair m matched)))))))
 
-@[reducible] def snoMk {Γ} (a0 b0 sb a1 : Expr pqxdhOps Γ (B 32))
+@[expose, reducible] def snoMk {Γ} (a0 b0 sb a1 : Expr pqxdhOps Γ (B 32))
     (pk1 ct : Expr pqxdhOps Γ (B 1568)) (m : Expr pqxdhOps Γ (B 32)) (matched : Expr pqxdhOps Γ .bool) :
     Expr pqxdhOps Γ sentNoOPKEventTy :=
   .pair a0 (.pair b0 (.pair sb (.pair a1 (.pair pk1 (.pair ct (.pair m matched))))))
 
-@[reducible] def roMk {Γ} (bCorr : Expr pqxdhOps Γ .bool) (a0 b0 sb ob a1 : Expr pqxdhOps Γ (B 32))
+@[expose, reducible] def roMk {Γ} (bCorr : Expr pqxdhOps Γ .bool) (a0 b0 sb ob a1 : Expr pqxdhOps Γ (B 32))
     (pk1 ct : Expr pqxdhOps Γ (B 1568)) (m : Expr pqxdhOps Γ (B 32)) :
     Expr pqxdhOps Γ recvdOPKEventTy :=
   .pair bCorr (.pair a0 (.pair b0 (.pair sb (.pair ob (.pair a1 (.pair pk1 (.pair ct m)))))))
 
-@[reducible] def rnoMk {Γ} (bCorr : Expr pqxdhOps Γ .bool) (a0 b0 sb a1 : Expr pqxdhOps Γ (B 32))
+@[expose, reducible] def rnoMk {Γ} (bCorr : Expr pqxdhOps Γ .bool) (a0 b0 sb a1 : Expr pqxdhOps Γ (B 32))
     (pk1 ct : Expr pqxdhOps Γ (B 1568)) (m : Expr pqxdhOps Γ (B 32)) :
     Expr pqxdhOps Γ recvdNoOPKEventTy :=
   .pair bCorr (.pair a0 (.pair b0 (.pair sb (.pair a1 (.pair pk1 (.pair ct m))))))
 
-@[reducible] def ikrMk {Γ} (sid : Expr pqxdhOps Γ sessionIdTy)
+@[expose, reducible] def ikrMk {Γ} (sid : Expr pqxdhOps Γ sessionIdTy)
     (pqPk ct : Expr pqxdhOps Γ (B 1568)) (ss : Expr pqxdhOps Γ (B 32)) :
     Expr pqxdhOps Γ initKemRecordTy :=
   .pair sid (.pair pqPk (.pair ct ss))
 
-@[reducible] def rkrMk {Γ} (k j : Expr pqxdhOps Γ .nat) (pqPk : Expr pqxdhOps Γ (B 1568))
+@[expose, reducible] def rkrMk {Γ} (k j : Expr pqxdhOps Γ .nat) (pqPk : Expr pqxdhOps Γ (B 1568))
     (pqSk : Expr pqxdhOps Γ (B 3168)) (ct : Expr pqxdhOps Γ (B 1568)) (ss : Expr pqxdhOps Γ (B 32)) :
     Expr pqxdhOps Γ recvKemRecordTy :=
   .pair k (.pair j (.pair pqPk (.pair pqSk (.pair ct ss))))
 
-@[reducible] def stMk {Γ} (secb hasWon : Expr pqxdhOps Γ .bool)
+@[expose, reducible] def stMk {Γ} (secb hasWon : Expr pqxdhOps Γ .bool)
     (prin : Expr pqxdhOps Γ (.list (.prod .nat principalEntryTy)))
     (spks : Expr pqxdhOps Γ (.list (.prod (.prod .nat .nat) spkBundleEntryTy)))
     (opks : Expr pqxdhOps Γ (.list (.prod (.prod .nat (.prod .nat .nat)) opkEntryTy)))
@@ -910,7 +910,7 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
     (.pair usedO (.pair usedN (.pair kyb (.pair sOE (.pair sNE (.pair rOE (.pair rNE
       (.pair ro (.pair root adv)))))))))))))))
 
-@[reducible] def stUpd {Γ} (e : Expr pqxdhOps Γ authStateTy)
+@[expose, reducible] def stUpd {Γ} (e : Expr pqxdhOps Γ authStateTy)
     (secb : Expr pqxdhOps Γ .bool := asSecb e)
     (hasWon : Expr pqxdhOps Γ .bool := asHasWonAuth e)
     (prin : Expr pqxdhOps Γ (.list (.prod .nat principalEntryTy)) := asPrincipals e)
@@ -933,13 +933,13 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
     (adv : Expr pqxdhOps Γ (.list (.prod (B 32) (B 32))) := asAdvKeys e) : Expr pqxdhOps Γ authStateTy :=
   stMk secb hasWon prin spks opks sess usedS usedO usedN kyb sOE sNE rOE rNE ro root adv
 
-@[reducible] def ahsMk {Γ} (base : Expr pqxdhOps Γ authStateTy)
+@[expose, reducible] def ahsMk {Γ} (base : Expr pqxdhOps Γ authStateTy)
     (initR : Expr pqxdhOps Γ (.list initKemRecordTy))
     (recvR : Expr pqxdhOps Γ (.list recvKemRecordTy))
     (idealS : Expr pqxdhOps Γ (.list idealAuthSessionTy)) : Expr pqxdhOps Γ authHybridStateTy :=
   .pair base (.pair initR (.pair recvR idealS))
 
-@[reducible] def ahsUpd {Γ} (e : Expr pqxdhOps Γ authHybridStateTy)
+@[expose, reducible] def ahsUpd {Γ} (e : Expr pqxdhOps Γ authHybridStateTy)
     (base : Expr pqxdhOps Γ authStateTy := ahsBase e)
     (initR : Expr pqxdhOps Γ (.list initKemRecordTy) := ahsInitKemRecs e)
     (recvR : Expr pqxdhOps Γ (.list recvKemRecordTy) := ahsRecvKemRecs e)
@@ -947,17 +947,17 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
     Expr pqxdhOps Γ authHybridStateTy :=
   ahsMk base initR recvR idealS
 
-@[reducible] def ahsfMkSlots {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy)
+@[expose, reducible] def ahsfMkSlots {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy)
     (rc : Expr pqxdhOps Γ .nat) (cache : Expr pqxdhOps Γ authMkSaltCacheTy)
     (slots : Expr pqxdhOps Γ authSlotStateTy) :
     Expr pqxdhOps Γ authHybridStateFixedTy :=
   .pair hst (.pair rc (.pair cache slots))
 
-@[reducible] def ahsfMk {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy) (rc : Expr pqxdhOps Γ .nat)
+@[expose, reducible] def ahsfMk {Γ} (hst : Expr pqxdhOps Γ authHybridStateTy) (rc : Expr pqxdhOps Γ .nat)
     (cache : Expr pqxdhOps Γ authMkSaltCacheTy) : Expr pqxdhOps Γ authHybridStateFixedTy :=
   ahsfMkSlots hst rc cache emptyAuthSlotStE
 
-@[reducible] def ahsfUpdSlots {Γ} (e : Expr pqxdhOps Γ authHybridStateFixedTy)
+@[expose, reducible] def ahsfUpdSlots {Γ} (e : Expr pqxdhOps Γ authHybridStateFixedTy)
     (hst : Expr pqxdhOps Γ authHybridStateTy := ahsfHybrid e)
     (rc : Expr pqxdhOps Γ .nat := ahsfRecvCount e)
     (cache : Expr pqxdhOps Γ authMkSaltCacheTy := ahsfMkSaltCache e)
@@ -965,44 +965,44 @@ def sessionSlotIndexE (S : Setup) {Γ : List PT} (sid : Expr pqxdhOps Γ session
     Expr pqxdhOps Γ authHybridStateFixedTy :=
   ahsfMkSlots hst rc cache slots
 
-@[reducible] def ahsfUpd {Γ} (e : Expr pqxdhOps Γ authHybridStateFixedTy)
+@[expose, reducible] def ahsfUpd {Γ} (e : Expr pqxdhOps Γ authHybridStateFixedTy)
     (hst : Expr pqxdhOps Γ authHybridStateTy := ahsfHybrid e)
     (rc : Expr pqxdhOps Γ .nat := ahsfRecvCount e)
     (cache : Expr pqxdhOps Γ authMkSaltCacheTy := ahsfMkSaltCache e) :
     Expr pqxdhOps Γ authHybridStateFixedTy :=
   ahsfMkSlots hst rc cache (ahsfSlots e)
 
-def emptyAuthStE {Γ} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ authStateTy :=
+@[expose] def emptyAuthStE {Γ} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ authStateTy :=
   stMk secb (.bool false) .nil .nil .nil .nil .nil .nil .nil .nil .nil .nil .nil .nil .nil .nil .nil
 
-def emptyAuthHybridStE {Γ} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ authHybridStateTy :=
+@[expose] def emptyAuthHybridStE {Γ} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ authHybridStateTy :=
   ahsMk (emptyAuthStE secb) .nil .nil .nil
 
-def emptyAuthHybridStFixedE {Γ} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ authHybridStateFixedTy :=
+@[expose] def emptyAuthHybridStFixedE {Γ} (secb : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ authHybridStateFixedTy :=
   ahsfMk (emptyAuthHybridStE secb) (.nat 0) .nil
 
-def aNone {Γ : List PT} : Expr pqxdhOps Γ authRespTy := .inl .unit
-def aInitPrin {Γ : List PT} (ik s : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aNone {Γ : List PT} : Expr pqxdhOps Γ authRespTy := .inl .unit
+@[expose] def aInitPrin {Γ : List PT} (ik s : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inl (.pair ik s))
-def aPk {Γ : List PT} (pk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aPk {Γ : List PT} (pk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inl pk))
-def aCorr {Γ : List PT} (ik s : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aCorr {Γ : List PT} (ik s : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inl (.pair ik s))))
-def aBundle {Γ : List PT} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aBundle {Γ : List PT} (b : Expr pqxdhOps Γ preKeyBundleTy) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inl b))))
-def aSendFresh {Γ : List PT} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aSendFresh {Γ : List PT} (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inl m)))))
-def aSendUnfresh {Γ : List PT} (dk : Expr pqxdhOps Γ drKeyTy) (rk ck : Expr pqxdhOps Γ (B 32))
+@[expose] def aSendUnfresh {Γ : List PT} (dk : Expr pqxdhOps Γ drKeyTy) (rk ck : Expr pqxdhOps Γ (B 32))
     (m : Expr pqxdhOps Γ preKeyMsgTy) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inl (.pair dk (.pair rk (.pair ck m)))))))))
-def aRecvHonest {Γ : List PT} : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aRecvHonest {Γ : List PT} : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl .unit)))))))
-def aRecvUnfresh {Γ : List PT} (dk : Expr pqxdhOps Γ drKeyTy) (rk ck pt : Expr pqxdhOps Γ (B 32)) :
+@[expose] def aRecvUnfresh {Γ : List PT} (dk : Expr pqxdhOps Γ drKeyTy) (rk ck pt : Expr pqxdhOps Γ (B 32)) :
     Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl (.pair dk (.pair rk (.pair ck pt)))))))))))
-def aDrKey {Γ : List PT} (dk : Expr pqxdhOps Γ drKeyTy) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aDrKey {Γ : List PT} (dk : Expr pqxdhOps Γ drKeyTy) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl dk)))))))))
-def aRootKdf {Γ : List PT} (rk ck : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
+@[expose] def aRootKdf {Γ : List PT} (rk ck : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ authRespTy :=
   .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl (.pair rk ck)))))))))))
 
 abbrev sendQTy : PT :=
@@ -1011,13 +1011,13 @@ abbrev recvQTy : PT := .prod .nat (.prod .nat (.prod .nat preKeyMsgTy))
 abbrev RSF : PT := .prod authRespTy authHybridStateFixedTy
 abbrev RSH : PT := .prod authRespTy authHybridStateTy
 
-def sendGuardE {Γ : List PT} (opk : Bool) (x : Expr pqxdhOps Γ sendQTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def sendGuardE {Γ : List PT} (opk : Bool) (x : Expr pqxdhOps Γ sendQTy) : Expr pqxdhOps Γ .bool :=
   if opk then .not (isSomeE (pkbOpkB? (.fst (.snd (.snd x)))))
   else isSomeE (pkbOpkB? (.fst (.snd (.snd x))))
 
 /-! ## Finalization Predicates -/
 
-@[reducible] def allHonestEcPksAuthDslK (S : Setup) (K : Nat) {Γ : List PT} :
+@[expose, reducible] def allHonestEcPksAuthDslK (S : Setup) (K : Nat) {Γ : List PT} :
     Comp pqxdhOps pqPrimIface (authStateTy :: Γ) (.list (B 32)) :=
   .bind
     (.mapM (min K S.N_dh) (asPrincipals (.var .zero))
@@ -1041,7 +1041,7 @@ def sendGuardE {Γ : List PT} (opk : Bool) (x : Expr pqxdhOps Γ sendQTy) : Expr
                 (.var (.succ .zero)))
               (.var .zero))))))
 
-def allHonestEcPksAuthDsl (S : Setup) {Γ : List PT} :
+@[expose] def allHonestEcPksAuthDsl (S : Setup) {Γ : List PT} :
     Comp pqxdhOps pqPrimIface (authStateTy :: Γ) (.list (B 32)) :=
   .bind
     (.mapM S.N_dh (asPrincipals (.var .zero))
@@ -1065,7 +1065,7 @@ def allHonestEcPksAuthDsl (S : Setup) {Γ : List PT} :
                 (.var (.succ .zero)))
               (.var .zero))))))
 
-def hasDuplicateBytesDsl (w : ℕ+) (K : Nat) {Γ : List PT}
+@[expose] def hasDuplicateBytesDsl (w : ℕ+) (K : Nat) {Γ : List PT}
     (xs : Expr pqxdhOps Γ (.list (B w))) : Expr pqxdhOps Γ .bool :=
   .fst (.foldrB K xs (.pair (.bool false) .nil)
     (.pair
@@ -1074,18 +1074,18 @@ def hasDuplicateBytesDsl (w : ℕ+) (K : Nat) {Γ : List PT}
         (.fst (.var (.succ .zero))))
       (.cons (.var .zero) (.snd (.var (.succ .zero))))))
 
-def hasBadSigAuthDsl (K : Nat) {Γ : List PT}
+@[expose] def hasBadSigAuthDsl (K : Nat) {Γ : List PT}
     (hst : Expr pqxdhOps Γ authHybridStateTy) : Expr pqxdhOps Γ .bool :=
   .anyB K (asSessions (ahsBase hst))
     (.and (aseFresh (.var .zero))
       (boolOr (.not (aseSpkHonest (.var .zero))) (.not (asePqspkHonest (.var .zero)))))
 
-def hasKemPkCollisionAuthDsl (K : Nat) {Γ : List PT}
+@[expose] def hasKemPkCollisionAuthDsl (K : Nat) {Γ : List PT}
     (hst : Expr pqxdhOps Γ authHybridStateTy) : Expr pqxdhOps Γ .bool :=
   hasDuplicateBytesDsl 1568 K
     (.mapB K (asSpkBundles (ahsBase hst)) (sbPqspkPk (.snd (.var .zero))))
 
-def hasBadKemShCrRecordsDsl (K : Nat) {Γ : List PT}
+@[expose] def hasBadKemShCrRecordsDsl (K : Nat) {Γ : List PT}
     (hst : Expr pqxdhOps Γ authHybridStateTy) : Expr pqxdhOps Γ .bool :=
   eLet hst fun h =>
     eAny K (ahsInitKemRecs (v h)) fun iRec =>
@@ -1096,7 +1096,7 @@ def hasBadKemShCrRecordsDsl (K : Nat) {Γ : List PT}
             (.not (bytesBeq 1568 (rkrKemCt (v rRec)) (ikrKemCt (v iRec))))
             (.not (bytesBeq 1568 (ikrPqspkPk (v iRec)) (rkrPqspkPk (v rRec)))))
 
-def notAllChallengedCleanDsl (K : Nat) {Γ : List PT}
+@[expose] def notAllChallengedCleanDsl (K : Nat) {Γ : List PT}
     (st : Expr pqxdhOps Γ authStateTy) : Expr pqxdhOps Γ .bool :=
   .not
     (.not
@@ -1105,7 +1105,7 @@ def notAllChallengedCleanDsl (K : Nat) {Γ : List PT}
           (boolOr (.not (aseChallenged (.var .zero)))
             (.and (aseFresh (.var .zero)) (asePqspkHonest (.var .zero)))))))
 
-def finalizeAuthFixedBodyDsl (S : Setup) (K : Nat) {Γ : List PT} :
+@[expose] def finalizeAuthFixedBodyDsl (S : Setup) (K : Nat) {Γ : List PT} :
     Comp pqxdhOps pqPrimIface
       (.list (B 32) :: authStateTy :: authHybridStateTy :: .bool :: .bool :: Γ) .bool :=
   .ite
@@ -1126,7 +1126,7 @@ def finalizeAuthFixedBodyDsl (S : Setup) (K : Nat) {Γ : List PT} :
           (.var (.succ (.succ (.succ (.succ .zero)))))))))
 
 /-- Evaluates `finalizeAuthFixedPrim` in `ReductionDsl` with list bound `K`. -/
-def finalizeAuthFixedDsl (S : Setup) (K : Nat) {Γ : List PT} :
+@[expose] def finalizeAuthFixedDsl (S : Setup) (K : Nat) {Γ : List PT} :
     Comp pqxdhOps pqPrimIface (authHybridStateTy :: .bool :: .bool :: Γ) .bool :=
   Comp.letC (ahsBase (.var .zero))
     (.bind (allHonestEcPksAuthDslK S K)
@@ -1138,7 +1138,7 @@ section SharedAuthStepHelpers
 
 variable (S : Setup) (K : Nat) {Γ Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
 
-def findHonestC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
+@[expose] def findHonestC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ (.opt (.prod .nat principalEntryTy)) :=
   letV ik fun ik =>
     findMV (min K S.N_dh) (asPrincipals (v st)) fun e =>
@@ -1146,26 +1146,26 @@ def findHonestC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 
         bindV (queryPrim .pow8 (peIkAPk (.snd (v e)))) fun p2 =>
           .ret (bytesBeq 32 (v p1) (v p2))
 
-def isAdvRegC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
+@[expose] def isAdvRegC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   bindV (queryPrim .pow8 pk) fun p =>
     .ret (eAny K (asAdvKeys (v st)) fun e => bytesBeq 32 (v p) (.fst (v e)))
 
-def isGameSpkC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
+@[expose] def isGameSpkC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   letV pk fun pk =>
     anyMV (min K S.N_dh) (asSpkBundles (v st)) fun e =>
       bindV (queryPrim .pow8 (sbSpkPk (.snd (v e)))) fun p1 =>
         bindV (queryPrim .pow8 (v pk)) fun p2 => .ret (bytesBeq 32 (v p1) (v p2))
 
-def isGameOpkC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
+@[expose] def isGameOpkC (st : Var Γ authStateTy) [Ext Γ Δ] (pk : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   letV pk fun pk =>
     anyMV (min K S.N_dh) (asOpkEntries (v st)) fun e =>
       bindV (queryPrim .pow8 (oeOpkPk (.snd (v e)))) fun p1 =>
         bindV (queryPrim .pow8 (v pk)) fun p2 => .ret (bytesBeq 32 (v p1) (v p2))
 
-def koskBundleOkC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy)
+@[expose] def koskBundleOkC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ .bool :=
   bindV (findHonestC S K st (pkbIkB (v bu))) fun f =>
   bindV (isAdvRegC K st (pkbIkB (v bu))) fun idA =>
@@ -1180,20 +1180,20 @@ def koskBundleOkC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy)
       .ret (.and (.and (boolOr (isSomeE (v f)) (v idA)) (boolOr (v spkG) (v spkA)))
         (boolOr (v opkG) (v opkA)))
 
-def koskSenderOkC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
+@[expose] def koskSenderOkC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ .bool :=
   letV ik fun ik =>
   bindV (findHonestC S K st (v ik)) fun f =>
   bindV (isAdvRegC K st (v ik)) fun idA =>
   .ret (boolOr (isSomeE (v f)) (v idA))
 
-def resolveSigPkC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
+@[expose] def resolveSigPkC (st : Var Γ authStateTy) [Ext Γ Δ] (ik : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ (B 32) :=
   letV ik fun ik =>
   bindV (findHonestC S K st (v ik)) fun f =>
   .ret (eCaseOpt (v f) (v ik) fun e => peIkSignPk (.snd (v e)))
 
-def hkdfRoC (st : Var Γ authStateTy) [Ext Γ Δ] (sec : Expr pqxdhOps Δ (B 192)) :
+@[expose] def hkdfRoC (st : Var Γ authStateTy) [Ext Γ Δ] (sec : Expr pqxdhOps Δ (B 192)) :
     Comp pqxdhOps pqPrimIface Δ (.prod drKeyTy (.list (.prod (B 192) drKeyTy))) :=
   letV sec fun sec =>
   caseOptV (eFind K (asRoCache (v st)) fun e => bytesBeq 192 (.fst (v e)) (v sec))
@@ -1201,7 +1201,7 @@ def hkdfRoC (st : Var Γ authStateTy) [Ext Γ Δ] (sec : Expr pqxdhOps Δ (B 192
       .ret (.pair (v dk) (.cons (.pair (v sec) (v dk)) (asRoCache (v st)))))
     fun e => .ret (.pair (.snd (v e)) (asRoCache (v st)))
 
-def rootRoC (st : Var Γ authStateTy) [Ext Γ Δ] (rk dh : Expr pqxdhOps Δ (B 32)) :
+@[expose] def rootRoC (st : Var Γ authStateTy) [Ext Γ Δ] (rk dh : Expr pqxdhOps Δ (B 32)) :
     Comp pqxdhOps pqPrimIface Δ
       (.prod (.prod (B 32) (B 32)) (.list (.prod (.prod (B 32) (B 32)) (.prod (B 32) (B 32))))) :=
   letV (.pair rk dh) fun inp =>
@@ -1211,7 +1211,7 @@ def rootRoC (st : Var Γ authStateTy) [Ext Γ Δ] (rk dh : Expr pqxdhOps Δ (B 3
         (asRootRoCache (v st)))))
     fun e => .ret (.pair (.snd (v e)) (asRootRoCache (v st)))
 
-def checkBundleProvenanceExactC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy)
+@[expose] def checkBundleProvenanceExactC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ (.prod .bool (.prod .bool .bool)) :=
   bindV (findHonestC S K st (pkbIkB (v bu))) fun f =>
   caseOptV (v f) (.ret (.pair (.bool false) (.pair (.bool false) (.bool false)))) fun p =>
@@ -1229,7 +1229,7 @@ def checkBundleProvenanceExactC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ pre
       .ret (.and (natEq (.fst (.fst (v e))) (v k)) (bytesBeq 32 (v p1) (v p2)))) fun opkH =>
   .ret (.pair (v spkH) (.pair (v opkH) (v pqspkH)))
 
-def checkBundleSpkHonIdealC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy)
+@[expose] def checkBundleSpkHonIdealC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ .bool :=
   bindV (findHonestC S K st (pkbIkB (v bu))) fun f =>
   caseOptV (v f) (.ret (.bool false)) fun p =>
@@ -1243,7 +1243,7 @@ def checkBundleSpkHonIdealC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyB
         (.and (peCorrupted (v pE)) (bytesBeq 32 (v p1) (v p2)))
         (bytesBeq 32 (sbSpkPk (.snd (v b))) (pkbSpkB (v bu)))))
 
-def matchSentOPKC (r : Var Γ₁ recvdOPKEventTy) (s : Var Γ₂ sentOPKEventTy)
+@[expose] def matchSentOPKC (r : Var Γ₁ recvdOPKEventTy) (s : Var Γ₂ sentOPKEventTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ .bool :=
   bindV (queryPrim .pow8 (roA0 (v r))) fun pa0r =>
   bindV (queryPrim .pow8 (soA0 (v s))) fun pa0s =>
@@ -1275,7 +1275,7 @@ def matchSentOPKC (r : Var Γ₁ recvdOPKEventTy) (s : Var Γ₂ sentOPKEventTy)
       (bytesBeq 1568 (roCt (v r)) (soCt (v s))))
     (bytesBeq 32 (roM (v r)) (soM (v s))))
 
-def matchSentNoOPKC (r : Var Γ₁ recvdNoOPKEventTy) (s : Var Γ₂ sentNoOPKEventTy)
+@[expose] def matchSentNoOPKC (r : Var Γ₁ recvdNoOPKEventTy) (s : Var Γ₂ sentNoOPKEventTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ .bool :=
   bindV (queryPrim .pow8 (rnoA0 (v r))) fun pa0r =>
   bindV (queryPrim .pow8 (snoA0 (v s))) fun pa0s =>
@@ -1303,7 +1303,7 @@ def matchSentNoOPKC (r : Var Γ₁ recvdNoOPKEventTy) (s : Var Γ₂ sentNoOPKEv
       (bytesBeq 1568 (rnoCt (v r)) (snoCt (v s))))
     (bytesBeq 32 (rnoM (v r)) (snoM (v s))))
 
-def matchIdealAuthHandshakeC {Γ₆ : List PT}
+@[expose] def matchIdealAuthHandshakeC {Γ₆ : List PT}
     (ikB : Var Γ₁ (B 32)) (spkB : Var Γ₂ (B 32)) (opkB? : Var Γ₃ (.opt (B 32)))
     (pqspkB : Var Γ₄ (B 1568)) (hdr : Var Γ₅ handshakeHdrTy) (s : Var Γ₆ idealAuthSessionTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ] [Ext Γ₆ Δ] :
@@ -1352,7 +1352,7 @@ abbrev recvFinishResTy : PT :=
     (.prod (.list (.prod (B 192) drKeyTy))
       (.list (.prod (.prod (B 32) (B 32)) (.prod (B 32) (B 32)))))))))
 
-def recvFinishTagRunC (tag : Var Γ₁ recvFinishTagTy) (res? : Expr pqxdhOps Δ recvFinishResTy)
+@[expose] def recvFinishTagRunC (tag : Var Γ₁ recvFinishTagTy) (res? : Expr pqxdhOps Δ recvFinishResTy)
     [Ext Γ₁ Δ] : Comp pqxdhOps pqPrimIface Δ RSH :=
   letV res? fun res? =>
   caseSumV (v tag)
@@ -1443,24 +1443,24 @@ abbrev preparedAuthRecvTy : PT :=
       (.prod (.opt idealAuthSessionTy) (.prod .bool
         (.prod authHybridStateTy recvFinishTagTy))))))))
 
-@[reducible] def parKEntry {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
+@[expose, reducible] def parKEntry {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
     Expr pqxdhOps Γ principalEntryTy := .fst p
-@[reducible] def parSecrets {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
+@[expose, reducible] def parSecrets {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
     Expr pqxdhOps Γ (B 192) := .fst (.snd (.snd (.snd p)))
-@[reducible] def parDhRatchet {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
+@[expose, reducible] def parDhRatchet {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd (.snd (.snd p))))
-@[reducible] def parIsUncorrSender {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
+@[expose, reducible] def parIsUncorrSender {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
     Expr pqxdhOps Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd p)))))
-@[reducible] def parMatchedSess? {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
+@[expose, reducible] def parMatchedSess? {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
     Expr pqxdhOps Γ (.opt idealAuthSessionTy) := .fst (.snd (.snd (.snd (.snd (.snd (.snd p))))))
-@[reducible] def parSameEph {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
+@[expose, reducible] def parSameEph {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
     Expr pqxdhOps Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd p)))))))
-@[reducible] def parHstDec {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
+@[expose, reducible] def parHstDec {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
     Expr pqxdhOps Γ authHybridStateTy := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p))))))))
-@[reducible] def parFinishTag {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
+@[expose, reducible] def parFinishTag {Γ} (p : Expr pqxdhOps Γ preparedAuthRecvTy) :
     Expr pqxdhOps Γ recvFinishTagTy := .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd p))))))))
 
-def prepareAuthHybridRecvC (opk : Bool) (hst : Var Γ₁ authHybridStateTy) (x : Var Γ₂ recvQTy)
+@[expose] def prepareAuthHybridRecvC (opk : Bool) (hst : Var Γ₁ authHybridStateTy) (x : Var Γ₂ recvQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ (.opt preparedAuthRecvTy) :=
   letV (ahsBase (v hst)) fun st =>
   .ite (asHasWonAuth (v st)) (.ret .none) <|
@@ -1577,7 +1577,7 @@ abbrev finishSendArgsTy : PT :=
               (.prod (.list (.prod (B 192) drKeyTy))
                 (.list (.prod (.prod (B 32) (B 32)) (.prod (B 32) (B 32)))))))))))))))))))
 
-def finishAuthHybridSendC (hst : Var Γ₁ authHybridStateTy) (args : Expr pqxdhOps Δ finishSendArgsTy)
+@[expose] def finishAuthHybridSendC (hst : Var Γ₁ authHybridStateTy) (args : Expr pqxdhOps Δ finishSendArgsTy)
     [Ext Γ₁ Δ] : Comp pqxdhOps pqPrimIface Δ RSH :=
   letV args fun a =>
   letV (ahsBase (v hst)) fun st =>
@@ -1660,11 +1660,11 @@ def finishAuthHybridSendC (hst : Var Γ₁ authHybridStateTy) (args : Expr pqxdh
       (aSendUnfresh (v drKey) (v rk1) (v ck1_1) (v wireMsg))) fun resp =>
   .ret (.pair (v resp) (v hst'))
 
-def fhstSetBase {Γ} (fhst : Expr pqxdhOps Γ authHybridStateFixedTy) (base' : Expr pqxdhOps Γ authStateTy) :
+@[expose] def fhstSetBase {Γ} (fhst : Expr pqxdhOps Γ authHybridStateFixedTy) (base' : Expr pqxdhOps Γ authStateTy) :
     Expr pqxdhOps Γ authHybridStateFixedTy :=
   ahsfUpd fhst (hst := ahsUpd (ahsfHybrid fhst) (base := base'))
 
-def initPrinFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat)
+@[expose] def initPrinFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
   letV (ahsBase (ahsfHybrid (v fhst))) fun st =>
   .ite (asHasWonAuth (v st)) (.ret (.pair aNone (v fhst))) <|
@@ -1676,7 +1676,7 @@ def initPrinFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat
     (fhstSetBase (v fhst) (stUpd (v st) (prin := .cons
       (.pair (v u) (peMk (v s0) (v ik) (v s1) (v sp) (.bool false))) (asPrincipals (v st))))))
 
-def corruptFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat)
+@[expose] def corruptFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
   letV (ahsBase (ahsfHybrid (v fhst))) fun st =>
   .ite (asHasWonAuth (v st)) (.ret (.pair aNone (v fhst))) <|
@@ -1687,7 +1687,7 @@ def corruptFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat)
       .ite (natEq (.fst (v x)) (v u))
         (.pair (.fst (v x)) (peUpd (.snd (v x)) (corrupted := .bool true))) (v x)))))
 
-def genSpkFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ (.prod .nat .nat))
+@[expose] def genSpkFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ (.prod .nat .nat))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
   letV (ahsBase (ahsfHybrid (v fhst))) fun st =>
   .ite (asHasWonAuth (v st)) (.ret (.pair aNone (v fhst))) <|
@@ -1712,7 +1712,7 @@ def genSpkFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ (.prod
       (sbMk (v spkSk) (v spkPk) (v sig1) (.snd (v kp)) (.fst (v kp)) (v sig2) (.bool false)))
       (asSpkBundles (v st))))))
 
-def genOpkFixedB (fhst : Var Γ₁ authHybridStateFixedTy)
+@[expose] def genOpkFixedB (fhst : Var Γ₁ authHybridStateFixedTy)
     (x : Var Γ₂ (.prod .nat (.prod .nat .nat)))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
   letV (ahsBase (ahsfHybrid (v fhst))) fun st =>
@@ -1724,14 +1724,14 @@ def genOpkFixedB (fhst : Var Γ₁ authHybridStateFixedTy)
     (fhstSetBase (v fhst) (stUpd (v st) (opks := .cons
       (.pair (v x) (oeMk (v sk) (v pk) (.bool false))) (asOpkEntries (v st))))))
 
-def roFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (sec : Var Γ₂ (B 192))
+@[expose] def roFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (sec : Var Γ₂ (B 192))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
   letV (ahsBase (ahsfHybrid (v fhst))) fun st =>
   .ite (asHasWonAuth (v st)) (.ret (.pair aNone (v fhst))) <|
   bindV (hkdfRoC K st (v sec)) fun r =>
   .ret (.pair (aDrKey (.fst (v r))) (fhstSetBase (v fhst) (stUpd (v st) (ro := .snd (v r)))))
 
-def roRootFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ (.prod (B 32) (B 32)))
+@[expose] def roRootFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ (.prod (B 32) (B 32)))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
   letV (ahsBase (ahsfHybrid (v fhst))) fun st =>
   .ite (asHasWonAuth (v st)) (.ret (.pair aNone (v fhst))) <|
@@ -1739,7 +1739,7 @@ def roRootFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ (.prod
   .ret (.pair (aRootKdf (.fst (.fst (v r))) (.snd (.fst (v r))))
     (fhstSetBase (v fhst) (stUpd (v st) (root := .snd (v r)))))
 
-def registerFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (sk : Var Γ₂ (B 32))
+@[expose] def registerFixedB (fhst : Var Γ₁ authHybridStateFixedTy) (sk : Var Γ₂ (B 32))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
   letV (ahsBase (ahsfHybrid (v fhst))) fun st =>
   .ite (asHasWonAuth (v st)) (.ret (.pair aNone (v fhst))) <|
@@ -1757,18 +1757,18 @@ end SharedAuthStepHelpers
 abbrev prfCkStTy : PT :=
   .prod .bool (.prod .nat (.prod (.prod (B 32) (B 32)) authHybridStateFixedTy))
 
-@[reducible] def ckSecb {Γ} (s : Expr pqxdhOps Γ prfCkStTy) : Expr pqxdhOps Γ .bool := .fst s
-@[reducible] def ckIdx {Γ} (s : Expr pqxdhOps Γ prfCkStTy) : Expr pqxdhOps Γ .nat := .fst (.snd s)
-@[reducible] def ckChal {Γ} (s : Expr pqxdhOps Γ prfCkStTy) : Expr pqxdhOps Γ (.prod (B 32) (B 32)) :=
+@[expose, reducible] def ckSecb {Γ} (s : Expr pqxdhOps Γ prfCkStTy) : Expr pqxdhOps Γ .bool := .fst s
+@[expose, reducible] def ckIdx {Γ} (s : Expr pqxdhOps Γ prfCkStTy) : Expr pqxdhOps Γ .nat := .fst (.snd s)
+@[expose, reducible] def ckChal {Γ} (s : Expr pqxdhOps Γ prfCkStTy) : Expr pqxdhOps Γ (.prod (B 32) (B 32)) :=
   .fst (.snd (.snd s))
-@[reducible] def ckFhst {Γ} (s : Expr pqxdhOps Γ prfCkStTy) : Expr pqxdhOps Γ authHybridStateFixedTy :=
+@[expose, reducible] def ckFhst {Γ} (s : Expr pqxdhOps Γ prfCkStTy) : Expr pqxdhOps Γ authHybridStateFixedTy :=
   .snd (.snd (.snd s))
 
 section PrfCkBranches
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
 
-def sampCkPairC (ideal : Expr pqxdhOps Δ .bool) : Comp pqxdhOps pqPrimIface Δ (.prod (B 32) (B 32)) :=
+@[expose] def sampCkPairC (ideal : Expr pqxdhOps Δ .bool) : Comp pqxdhOps pqPrimIface Δ (.prod (B 32) (B 32)) :=
   letV ideal fun ideal =>
   bindV (samplePrim .bytes32) fun ck =>
   .ite (v ideal)
@@ -1777,14 +1777,14 @@ def sampCkPairC (ideal : Expr pqxdhOps Δ .bool) : Comp pqxdhOps pqPrimIface Δ 
     (bindV (queryPrim .chainKdfSeed (v ck)) fun m =>
      bindV (queryPrim .chainKdfNext (v ck)) fun c => .ret (.pair (v m) (v c)))
 
-def sampAtCkC (idx : Expr pqxdhOps Δ .nat) (chalP : Expr pqxdhOps Δ (.prod (B 32) (B 32)))
+@[expose] def sampAtCkC (idx : Expr pqxdhOps Δ .nat) (chalP : Expr pqxdhOps Δ (.prod (B 32) (B 32)))
     (s : Expr pqxdhOps Δ .nat) : Comp pqxdhOps pqPrimIface Δ (.prod (B 32) (B 32)) :=
   letV (.pair idx (.pair chalP s)) fun a =>
   .ite (natEq (.snd (.snd (v a))) (.fst (v a)))
     (.ret (.fst (.snd (v a))))
     (sampCkPairC (natLt (.snd (.snd (v a))) (.fst (v a))))
 
-def authCkSendB (opk : Bool) (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
+@[expose] def authCkSendB (opk : Bool) (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
     (fhst : Var Γ₃ authHybridStateFixedTy) (x : Var Γ₄ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
     Comp pqxdhOps pqPrimIface Δ RSF :=
@@ -1899,7 +1899,7 @@ def authCkSendB (opk : Bool) (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B
      .ret (.pair (.fst (v out))
        (ahsfMkSlots (.snd (v out)) (ahsfRecvCount (v fhst)) .nil (v ss))))
 
-def finishAuthRecvCkC (msg : Var Γ₁ preKeyMsgTy) (prep : Var Γ₂ preparedAuthRecvTy)
+@[expose] def finishAuthRecvCkC (msg : Var Γ₁ preKeyMsgTy) (prep : Var Γ₂ preparedAuthRecvTy)
     (drKey : Expr pqxdhOps Δ drKeyTy) (rk1 : Expr pqxdhOps Δ (B 32))
     (spqrSalt? : Expr pqxdhOps Δ (.opt (B 32))) (rc' : Expr pqxdhOps Δ .nat)
     (p : Expr pqxdhOps Δ (.prod (B 32) (B 32)))
@@ -1924,7 +1924,7 @@ def finishAuthRecvCkC (msg : Var Γ₁ preKeyMsgTy) (prep : Var Γ₂ preparedAu
   bindV (recvFinishTagRunC S K fTag (v res?)) fun out =>
   .ret (.pair (.fst (v out)) (ahsfMk (.snd (v out)) (v rc') .nil))
 
-def authCkRecvB (opk : Bool) (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
+@[expose] def authCkRecvB (opk : Bool) (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
     (fhst : Var Γ₃ authHybridStateFixedTy) (x : Var Γ₄ recvQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
     Comp pqxdhOps pqPrimIface Δ RSF :=
@@ -2001,7 +2001,7 @@ def authCkRecvB (opk : Bool) (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B
          bindV (recvFinishTagRunC S K fTag (v res?)) fun out =>
          .ret (.pair (.fst (v out)) (ahsfMkSlots (.snd (v out)) (v rc') .nil (v ss))))
 
-def authCkStepC (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
+@[expose] def authCkStepC (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
     (fhst : Var Γ₃ authHybridStateFixedTy) (q : Var Γ₄ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
     Comp pqxdhOps pqPrimIface Δ RSF :=
@@ -2020,7 +2020,7 @@ def authCkStepC (idx : Var Γ₁ .nat) (chalP : Var Γ₂ (.prod (B 32) (B 32)))
 
 end PrfCkBranches
 
-@[reducible] def prfCkInitDslK (S : Setup) (K : Nat) :
+@[expose, reducible] def prfCkInitDslK (S : Setup) (K : Nat) :
     Comp pqxdhOps pqPrimIface [.prod (B 32) (B 32)] (.prod .unit prfCkStTy) :=
   bindV (samplePrim (.index (min K S.N_sess_tot))) fun idx =>
   bindV (samplePrim .bool) fun secb =>
@@ -2028,7 +2028,7 @@ end PrfCkBranches
     (.pair (v secb) (.pair (v idx)
       (.pair (.var (.succ (.succ .zero))) (emptyAuthHybridStFixedE (v secb))))))
 
-def prfCkInitDsl (S : Setup) :
+@[expose] def prfCkInitDsl (S : Setup) :
     Comp pqxdhOps pqPrimIface [.prod (B 32) (B 32)] (.prod .unit prfCkStTy) :=
   bindV (samplePrim (.index S.N_sess_tot)) fun idx =>
   bindV (samplePrim .bool) fun secb =>
@@ -2036,7 +2036,7 @@ def prfCkInitDsl (S : Setup) :
     (.pair (v secb) (.pair (v idx)
       (.pair (.var (.succ (.succ .zero))) (emptyAuthHybridStFixedE (v secb))))))
 
-def prfCkHandleDsl (S : Setup) (K : Nat) :
+@[expose] def prfCkHandleDsl (S : Setup) (K : Nat) :
     Comp pqxdhOps pqPrimIface [prfCkStTy, authQueryTy] (.prod authRespTy prfCkStTy) :=
   letV (.var .zero : Expr pqxdhOps [prfCkStTy, authQueryTy] prfCkStTy) fun s =>
   letV (ckSecb (v s)) fun secb =>
@@ -2047,14 +2047,14 @@ def prfCkHandleDsl (S : Setup) (K : Nat) :
     (.succ .zero : Var [prfCkStTy, authQueryTy] authQueryTy)) fun r =>
   .ret (.pair (.fst (v r)) (.pair (v secb) (.pair (v idx) (.pair (v chalP) (.snd (v r))))))
 
-def prfCkFinishDsl (S : Setup) (K : Nat) : Comp pqxdhOps pqPrimIface [prfCkStTy, .bool] .bool :=
+@[expose] def prfCkFinishDsl (S : Setup) (K : Nat) : Comp pqxdhOps pqPrimIface [prfCkStTy, .bool] .bool :=
   letV (ckSecb (.var .zero)) fun _secb =>
   letV (.var (.succ (.succ .zero)) : Expr pqxdhOps [.bool, prfCkStTy, .bool] .bool) fun _b' =>
   letV (ahsfHybrid (ckFhst (.var (.succ (.succ .zero))))) fun _finalSt =>
   finalizeAuthFixedDsl S K
 
 /-- `ReductionDsl` witness for `prfCkReductionAuthFixed` with list-traversal bound `K`. -/
-def prfCkRedProg (S : Setup) (K : Nat) :
+@[expose] def prfCkRedProg (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqPrimIface (authSpec S) (authCodec S)
       (.prod (B 32) (B 32)) .unit .bool .bool where
   σ      := prfCkStTy
@@ -2070,14 +2070,14 @@ abbrev prfMkCoreTy : PT :=
 /-- Full state `(bud, core)` of `prfMsgKeysRedProg`, pairing remaining challenger budget with `prfMkCoreTy`. -/
 abbrev prfMkStTy : PT := .prod .nat prfMkCoreTy
 
-@[reducible] def mkcSecb {Γ} (c : Expr pqxdhOps Γ prfMkCoreTy) : Expr pqxdhOps Γ .bool := .fst c
-@[reducible] def mkcIdx {Γ} (c : Expr pqxdhOps Γ prfMkCoreTy) : Expr pqxdhOps Γ .nat := .fst (.snd c)
-@[reducible] def mkcSentChal {Γ} (c : Expr pqxdhOps Γ prfMkCoreTy) : Expr pqxdhOps Γ .bool :=
+@[expose, reducible] def mkcSecb {Γ} (c : Expr pqxdhOps Γ prfMkCoreTy) : Expr pqxdhOps Γ .bool := .fst c
+@[expose, reducible] def mkcIdx {Γ} (c : Expr pqxdhOps Γ prfMkCoreTy) : Expr pqxdhOps Γ .nat := .fst (.snd c)
+@[expose, reducible] def mkcSentChal {Γ} (c : Expr pqxdhOps Γ prfMkCoreTy) : Expr pqxdhOps Γ .bool :=
   .fst (.snd (.snd c))
-@[reducible] def mkcFhst {Γ} (c : Expr pqxdhOps Γ prfMkCoreTy) :
+@[expose, reducible] def mkcFhst {Γ} (c : Expr pqxdhOps Γ prfMkCoreTy) :
     Expr pqxdhOps Γ authHybridStateFixedTy :=
   .snd (.snd (.snd c))
-@[reducible] def mkcMk {Γ} (secb : Expr pqxdhOps Γ .bool) (idx : Expr pqxdhOps Γ .nat)
+@[expose, reducible] def mkcMk {Γ} (secb : Expr pqxdhOps Γ .bool) (idx : Expr pqxdhOps Γ .nat)
     (sc : Expr pqxdhOps Γ .bool) (fhst : Expr pqxdhOps Γ authHybridStateFixedTy) :
     Expr pqxdhOps Γ prfMkCoreTy :=
   .pair secb (.pair idx (.pair sc fhst))
@@ -2106,13 +2106,13 @@ section PrfMsgKeysBranches
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
 
-def wrapMkBase (core : Var Γ₁ prfMkCoreTy) [Ext Γ₁ Δ] (m : Comp pqxdhOps pqPrimIface Δ RSF) :
+@[expose] def wrapMkBase (core : Var Γ₁ prfMkCoreTy) [Ext Γ₁ Δ] (m : Comp pqxdhOps pqPrimIface Δ RSF) :
     Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy :=
   bindV m fun r =>
   .ret (.inl (.pair (.fst (v r))
     (mkcMk (mkcSecb (v core)) (mkcIdx (v core)) (mkcSentChal (v core)) (.snd (v r)))))
 
-def finishAuthSendMkC (fhst : Var Γ₁ authHybridStateFixedTy)
+@[expose] def finishAuthSendMkC (fhst : Var Γ₁ authHybridStateFixedTy)
     (sid : Expr pqxdhOps Δ sessionIdTy) (uE : Expr pqxdhOps Δ principalEntryTy)
     (pp : Expr pqxdhOps Δ (.opt (.prod .nat principalEntryTy))) (isFresh : Expr pqxdhOps Δ .bool)
     (bu : Expr pqxdhOps Δ preKeyBundleTy) (m01 : Expr pqxdhOps Δ (.prod (B 32) (B 32)))
@@ -2158,7 +2158,7 @@ def finishAuthSendMkC (fhst : Var Γ₁ authHybridStateFixedTy)
               (.pair (asRoCache (v st)) (asRootRoCache (v st))))))))))))))))))) fun out =>
   .ret (.pair (.fst (v out)) (ahsfUpd (v fhst) (hst := .snd (v out))))
 
-def finishAuthRecvMkC (msg : Var Γ₁ preKeyMsgTy) (prep : Var Γ₂ preparedAuthRecvTy)
+@[expose] def finishAuthRecvMkC (msg : Var Γ₁ preKeyMsgTy) (prep : Var Γ₂ preparedAuthRecvTy)
     (drKey : Expr pqxdhOps Δ drKeyTy) (rk1 ck1_1 : Expr pqxdhOps Δ (B 32)) (rc' : Expr pqxdhOps Δ .nat)
     (cache' : Expr pqxdhOps Δ authMkSaltCacheTy) (mks : Expr pqxdhOps Δ msgKeysTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ RSF :=
@@ -2181,7 +2181,7 @@ def finishAuthRecvMkC (msg : Var Γ₁ preKeyMsgTy) (prep : Var Γ₂ preparedAu
   bindV (recvFinishTagRunC S K fTag (v res?)) fun out =>
   .ret (.pair (.fst (v out)) (ahsfMk (.snd (v out)) (v rc') (v cache')))
 
-def authMkSendPreB (opk : Bool) (core : Var Γ₁ prfMkCoreTy) (x : Var Γ₂ sendQTy)
+@[expose] def authMkSendPreB (opk : Bool) (core : Var Γ₁ prfMkCoreTy) (x : Var Γ₂ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy :=
   letV (mkcSecb (v core)) fun secb =>
   letV (mkcIdx (v core)) fun idx =>
@@ -2307,7 +2307,7 @@ def authMkSendPreB (opk : Bool) (core : Var Γ₁ prfMkCoreTy) (x : Var Γ₂ se
        (mkcMk (v secb) (v idx) (v sentChal)
          (ahsfUpd (v fhst) (hst := .snd (v out)))))))
 
-def finishRecvUnmatchedMkPreC (core : Var Γ₁ prfMkCoreTy) (msg : Var Γ₂ preKeyMsgTy)
+@[expose] def finishRecvUnmatchedMkPreC (core : Var Γ₁ prfMkCoreTy) (msg : Var Γ₂ preKeyMsgTy)
     (prep : Var Γ₃ preparedAuthRecvTy) (drKey : Expr pqxdhOps Δ drKeyTy) (rk1 : Expr pqxdhOps Δ (B 32))
     (spqrSalt? : Expr pqxdhOps Δ (.opt (B 32))) (rSlot rc' : Expr pqxdhOps Δ .nat)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy :=
@@ -2350,7 +2350,7 @@ def finishRecvUnmatchedMkPreC (core : Var Γ₁ prfMkCoreTy) (msg : Var Γ₂ pr
        .ret (.inl (.pair (.fst (v res))
          (mkcMk (v secb) (v idx) (v sentChal) (ahsfUpdSlots (.snd (v res)) (slots := v ssV)))))))
 
-def authMkRecvPreB (opk : Bool) (core : Var Γ₁ prfMkCoreTy) (x : Var Γ₂ recvQTy)
+@[expose] def authMkRecvPreB (opk : Bool) (core : Var Γ₁ prfMkCoreTy) (x : Var Γ₂ recvQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy :=
   letV (mkcSecb (v core)) fun secb =>
   letV (mkcIdx (v core)) fun idx =>
@@ -2486,7 +2486,7 @@ def authMkRecvPreB (opk : Bool) (core : Var Γ₁ prfMkCoreTy) (x : Var Γ₂ re
          .ret (.inl (.pair (.fst (v out))
            (mkcMk (v secb) (v idx) (v sentChal) (ahsfMkSlots (.snd (v out)) (v rc') (v cache) (v ss))))))
 
-def prfMkStepPreC (core : Var Γ₁ prfMkCoreTy) (q : Var Γ₂ authQueryTy)
+@[expose] def prfMkStepPreC (core : Var Γ₁ prfMkCoreTy) (q : Var Γ₂ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ prfMkStepPreTy :=
   letV (mkcFhst (v core)) fun fhst =>
   caseSumV (v q) (fun u => wrapMkBase core (initPrinFixedB K fhst u)) fun q =>
@@ -2502,7 +2502,7 @@ def prfMkStepPreC (core : Var Γ₁ prfMkCoreTy) (q : Var Γ₂ authQueryTy)
   caseSumV (v q) (fun _ => .ret (.inl (.pair aNone (v core)))) fun sk =>
   wrapMkBase core (registerFixedB fhst sk)
 
-def prfMkStepPostC (cont : Var Γ₁ prfMkChalContTy) (mk : Var Γ₂ msgKeysTy)
+@[expose] def prfMkStepPostC (cont : Var Γ₁ prfMkChalContTy) (mk : Var Γ₂ msgKeysTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ (.prod authRespTy prfMkCoreTy) :=
   caseSumV (v cont)
     (fun sCont =>
@@ -2558,7 +2558,7 @@ def prfMkStepPostC (cont : Var Γ₁ prfMkChalContTy) (mk : Var Γ₂ msgKeysTy)
 
 end PrfMsgKeysBranches
 
-@[reducible] def prfMsgKeysInitDslK (S : Setup) (K : Nat) :
+@[expose, reducible] def prfMsgKeysInitDslK (S : Setup) (K : Nat) :
     Comp pqxdhOps pqPrfMkIface [.unit] (.prod .unit prfMkStTy) :=
   bindV (sampleChal (.index (min K S.N_sess_tot))) fun idx =>
   bindV (sampleChal .bool) fun secb =>
@@ -2566,7 +2566,7 @@ end PrfMsgKeysBranches
     (.pair (.nat (min K S.N_recv_tot + 1))
       (mkcMk (v secb) (v idx) (.bool false) (emptyAuthHybridStFixedE (v secb)))))
 
-def prfMsgKeysInitDsl (S : Setup) :
+@[expose] def prfMsgKeysInitDsl (S : Setup) :
     Comp pqxdhOps pqPrfMkIface [.unit] (.prod .unit prfMkStTy) :=
   bindV (sampleChal (.index S.N_sess_tot)) fun idx =>
   bindV (sampleChal .bool) fun secb =>
@@ -2574,7 +2574,7 @@ def prfMsgKeysInitDsl (S : Setup) :
     (.pair (.nat (S.N_recv_tot + 1))
       (mkcMk (v secb) (v idx) (.bool false) (emptyAuthHybridStFixedE (v secb)))))
 
-def prfMsgKeysHandleDsl (S : Setup) (K : Nat) :
+@[expose] def prfMsgKeysHandleDsl (S : Setup) (K : Nat) :
     Comp pqxdhOps pqPrfMkIface [prfMkStTy, authQueryTy] (.prod authRespTy prfMkStTy) :=
   letV (.var .zero : Expr pqxdhOps [prfMkStTy, authQueryTy] prfMkStTy) fun s =>
   letV (.fst (v s)) fun bud =>
@@ -2593,7 +2593,7 @@ def prfMsgKeysHandleDsl (S : Setup) (K : Nat) :
          .ret (.pair (.fst (v post))
            (.pair (.sub (v bud) (.nat 1)) (.snd (v post)))))
 
-def prfMsgKeysFinishDsl (S : Setup) (K : Nat) : Comp pqxdhOps pqPrfMkIface [prfMkStTy, .bool] .bool :=
+@[expose] def prfMsgKeysFinishDsl (S : Setup) (K : Nat) : Comp pqxdhOps pqPrfMkIface [prfMkStTy, .bool] .bool :=
   liftPrimComp
     (letV (.snd (.var .zero)) fun core =>
      letV (mkcSecb (v core)) fun _secb =>
@@ -2603,7 +2603,7 @@ def prfMsgKeysFinishDsl (S : Setup) (K : Nat) : Comp pqxdhOps pqPrfMkIface [prfM
      finalizeAuthFixedDsl S K)
 
 /-- `ReductionDsl` witness for `prfMsgKeysReductionAuthFixed` with list-traversal bound `K`. -/
-def prfMsgKeysRedProg (S : Setup) (K : Nat) :
+@[expose] def prfMsgKeysRedProg (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqPrfMkIface (authSpec S) (authCodec S)
       .unit .unit .bool .bool where
   σ      := prfMkStTy

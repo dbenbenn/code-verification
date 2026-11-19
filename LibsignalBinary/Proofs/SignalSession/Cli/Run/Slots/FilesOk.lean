@@ -20,6 +20,9 @@ import LibsignalBinary.Proofs.E2E.Reach.BundleCommon
 import LibsignalBinary.Proofs.E2E.Reach.SmSessionCap
 import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Store-File Well-Formedness for Wrapper Slots (`filesOk₀` and `RunFilesOk`)
@@ -30,7 +33,7 @@ bounds, path guards, well-formed session/identity files (`SessFileWf`, `IdFileWf
 between `me` and `peer`, and discharges them on Signal-Message and PQXDH domain inputs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -63,6 +66,7 @@ structure FilesOkPeer (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : Fs
   sessGet : ∃ bs, StoresGhost.opened.sessions.get cliIo.rd F (Cli.addressText peer) = .ok bs ∧
     SessFileWf Scope bs
   idGet : ∃ bs, StoresGhost.opened.identity.peers.get cliIo.rd F peer.name = .ok bs ∧ IdFileWf bs
+  nameLe40 : peer.name.length ≤ 40
 
 private def kutf8 (s : String) : List (BitVec 8) :=
   (s.toList.flatMap String.utf8EncodeChar).map fun b => BitVec.ofNat 8 b.toNat
@@ -138,14 +142,14 @@ theorem distinctSid_iff_not_sameServiceId (peer me : AddrVal) :
 
 /-- Store-file well-formedness predicate combining `FilesOkPeer`, `DistinctSid` between `me` and
 `peer`, and an auxiliary file invariant `extra`. -/
-def filesOk₀ (Scope : SessionRecord (List (BitVec 8)) → Prop) (extra : FsFiles → Prop)
+@[expose] def filesOk₀ (Scope : SessionRecord (List (BitVec 8)) → Prop) (extra : FsFiles → Prop)
     (F : FsFiles) (peer me : AddrVal) : Prop :=
   FilesOkPeer Scope F peer ∧ DistinctSid uuidTryParse me.name peer.name ∧ extra F
 
 /-! ## Domain party addresses and `ServiceId` distinctness -/
 
 /-- Session-API `AddrVal` of domain party `P` (`utf8 (partyAddressName P)`, device ID `1`). -/
-def partyAddr (P : Party) : AddrVal := ⟨utf8 (partyAddressName P), 1#8⟩
+@[expose] def partyAddr (P : Party) : AddrVal := ⟨utf8 (partyAddressName P), 1#8⟩
 
 private theorem partyAddr_eq (P : Party) : partyAddr P = ⟨kutf8 (partyAddressName P), 1#8⟩ := by
   unfold partyAddr
@@ -156,13 +160,14 @@ theorem partyAddr_peerOk (P : Party) :
       cliIo.pathOk (pathOf (utf8 "sessions") (Cli.addressText (partyAddr P))) ∧
       cliIo.pathOk (pathOf (utf8 "identities") (partyAddr P).name) ∧
       (pathOf (utf8 "sessions") (Cli.addressText (partyAddr P))).length < 2 ^ 32 ∧
-      (pathOf (utf8 "identities") (partyAddr P).name).length < 2 ^ 32 := by
+      (pathOf (utf8 "identities") (partyAddr P).name).length < 2 ^ 32 ∧
+      (partyAddr P).name.length ≤ 40 := by
   unfold cliIo
   simp only [partyAddr_eq, addressText_eq, pathOf_eq, utf8_eq_kutf8]
   cases P <;> exact ⟨of_decide_eq_true rfl, of_decide_eq_true rfl,
     ⟨rfl, of_decide_eq_true rfl⟩,
     ⟨rfl, of_decide_eq_true rfl⟩,
-    of_decide_eq_true rfl, of_decide_eq_true rfl⟩
+    of_decide_eq_true rfl, of_decide_eq_true rfl, of_decide_eq_true rfl⟩
 
 private theorem addrParse_party_shape (P : Party) :
     (addrParse uuidTryParse (bytesOfString (partyAddress P).text)).map (fun v => (v.name, v.device)) =
@@ -269,13 +274,13 @@ theorem callPeer_of_cmd (cmd : Cmd) {P : Party} (hP : cmdPeer cmd = partyAddress
 /-! ## Session and identity file contents on domain inputs -/
 
 /-- Serialized session file bytes of a `PqParty` (`encodeRecordUnderExtras`, or `[]` when absent). -/
-def pqSessBytes (st : PqParty) : List (BitVec 8) :=
+@[expose] def pqSessBytes (st : PqParty) : List (BitVec 8) :=
   match st.session with
   | some (x, g) => encodeRecordUnderExtras (fun _ => x) g
   | none => []
 
 /-- Serialized peer identity-key bytes of a `PqParty` (`k.serialize`, or `[]` when absent). -/
-def pqIdBytes (st : PqParty) : List (BitVec 8) :=
+@[expose] def pqIdBytes (st : PqParty) : List (BitVec 8) :=
   match st.peerId with
   | some k => k.serialize
   | none => []
@@ -1133,10 +1138,10 @@ theorem filesOkPeer_sm {Scope : SessionRecord (List (BitVec 8)) → Prop} (g : G
     (hS : Scope (E2E.Record.toRecord E2E.Record.extrasM g))
     (hcap : (E2E.encodeRecord g).length ≤ fileCapBytes) :
     FilesOkPeer Scope (runFiles (smInputs g cmd coins stdin)) (partyAddr g.party.other) := by
-  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := partyAddr_peerOk g.party.other
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7⟩ := partyAddr_peerOk g.party.other
   exact ⟨h1, h2, h3, h4, h5, h6,
     ⟨_, smSessGet g cmd coins stdin hcap, .inr ⟨_, (E2E.Reach.encodeRecord_eq_toRecord g).symm, hS⟩⟩,
-    ⟨_, smIdGet g cmd coins stdin, .inr ⟨partyIdentityKey g.party.other, rfl⟩⟩⟩
+    ⟨_, smIdGet g cmd coins stdin, .inr ⟨partyIdentityKey g.party.other, rfl⟩⟩, h7⟩
 
 theorem filesOkPeer_smSend {Scope : SessionRecord (List (BitVec 8)) → Prop}
     (g : GhostState Bytes) (m : List (BitVec 8))
@@ -1176,10 +1181,10 @@ theorem filesOkPeer_pqInit {Scope : SessionRecord (List (BitVec 8)) → Prop} (W
       Scope (E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g))
     (hcap : (pqSessBytes st).length ≤ fileCapBytes) :
     FilesOkPeer Scope (runFiles (pqInitInputs W st b t)) (partyAddr st.party.other) := by
-  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := partyAddr_peerOk st.party.other
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7⟩ := partyAddr_peerOk st.party.other
   exact ⟨h1, h2, h3, h4, h5, h6,
     ⟨_, pqSessGet_init W st b t hcap, pqSessBytes_wf st hS⟩,
-    ⟨_, pqIdGet_init W st b t, pqIdBytes_wf st⟩⟩
+    ⟨_, pqIdGet_init W st b t, pqIdBytes_wf st⟩, h7⟩
 
 theorem filesOkPeer_pqSend {Scope : SessionRecord (List (BitVec 8)) → Prop} (W : PEParams)
     (st : PqParty) (m : List (BitVec 8)) (r : List.Vector (BitVec 8) 64)
@@ -1187,10 +1192,10 @@ theorem filesOkPeer_pqSend {Scope : SessionRecord (List (BitVec 8)) → Prop} (W
       Scope (E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g))
     (hcap : (pqSessBytes st).length ≤ fileCapBytes) :
     FilesOkPeer Scope (runFiles (pqSendInputs W st m r)) (partyAddr st.party.other) := by
-  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := partyAddr_peerOk st.party.other
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7⟩ := partyAddr_peerOk st.party.other
   exact ⟨h1, h2, h3, h4, h5, h6,
     ⟨_, pqSessGet_send W st m r hcap, pqSessBytes_wf st hS⟩,
-    ⟨_, pqIdGet_send W st m r, pqIdBytes_wf st⟩⟩
+    ⟨_, pqIdGet_send W st m r, pqIdBytes_wf st⟩, h7⟩
 
 theorem filesOkPeer_pqRecv {Scope : SessionRecord (List (BitVec 8)) → Prop} (W : PEParams)
     (st : PqParty) (c : List (BitVec 8)) (rc : BitVec 256)
@@ -1198,10 +1203,10 @@ theorem filesOkPeer_pqRecv {Scope : SessionRecord (List (BitVec 8)) → Prop} (W
       Scope (E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g))
     (hcap : (pqSessBytes st).length ≤ fileCapBytes) :
     FilesOkPeer Scope (runFiles (pqRecvInputs W st c rc)) (partyAddr st.party.other) := by
-  obtain ⟨h1, h2, h3, h4, h5, h6⟩ := partyAddr_peerOk st.party.other
+  obtain ⟨h1, h2, h3, h4, h5, h6, h7⟩ := partyAddr_peerOk st.party.other
   exact ⟨h1, h2, h3, h4, h5, h6,
     ⟨_, pqSessGet_recv W st c rc hcap, pqSessBytes_wf st hS⟩,
-    ⟨_, pqIdGet_recv W st c rc, pqIdBytes_wf st⟩⟩
+    ⟨_, pqIdGet_recv W st c rc, pqIdBytes_wf st⟩, h7⟩
 
 /-! ## Bridge to `RunFilesOk` -/
 

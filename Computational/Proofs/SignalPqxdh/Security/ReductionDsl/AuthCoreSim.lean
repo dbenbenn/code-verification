@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -20,7 +20,7 @@ Reduction-independent evaluation equivalence lemmas for the `Auth` handler branc
 shallow `pqxdhAuthSimImplPrim` under `AuthBaseListsBounded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,25 +9,33 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollaries
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.EntryPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropChain2Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSessionStructure3Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwnedPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedB
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonicalPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.TopPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.TopPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollaries
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.EntryPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropChain2Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSessionStructure3Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwnedPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedB
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonicalPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlaced
+import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlaced
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.TopPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.TopPlaced
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Relocatable `Subset A4` Proof Barrel
@@ -36,4 +44,4 @@ Umbrella module rooting `SpqrV1/Poly/NextChunk`, `SpqrV1/Auth`,
 `SpqrV1/Prost/{MessageEncode,EncodeToVec}`, and `E2E/Pqxdh` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section

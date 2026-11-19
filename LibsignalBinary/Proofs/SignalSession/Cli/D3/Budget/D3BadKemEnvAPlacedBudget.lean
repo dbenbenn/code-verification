@@ -11,29 +11,42 @@ module
 
 public import Arm64.Trusted.Process.Semantics
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3AuxPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4AuxPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V3StepsPlacedBudget
-public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3AuxPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4AuxPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V3StepsPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
+import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
+import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.Digits
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliBinaryPqProofDefs
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
 public import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel
 public import LibsignalBinary.Specifications.SignalSession.PqDir
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V3StepsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrusted -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Untyped/Bad-KEM Rejection Envelopes and Key-File Bounds
@@ -42,7 +55,7 @@ Defines the untyped and bad-KEM rejection allocation envelopes for `decrypt_prek
 `DecPkKeyFilesBounded` unconditionally on `CliPqxdhInputs` and `pqRecvInputs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -106,12 +119,12 @@ open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (publicKeySerializeEv
 
 /-! ## 1. Untyped / Bad-KEM Rejection Envelopes -/
 
-def StageP2V3RejectEnv : List AllocEvent → Prop :=
+@[expose] def StageP2V3RejectEnv : List AllocEvent → Prop :=
   SeqEnv (fun evs => evs = publicKeySerializeEvents)
     (SeqEnv (fun evs => evs = rustDeallocEvents 33 1)
       (SeqEnv (fun evs => evs = rustAllocEvents x3dhUnsupportedBytes.length 1) FreeOnlyEvs))
 
-def DecPkD3UntypedPollEnv [LibsignalPlacement] {A : RustAlloc} (B : RunBudgets)
+@[expose] def DecPkD3UntypedPollEnv [LibsignalPlacement] {A : RustAlloc} (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (P2Env : DecPkGhost → Option (SessionRecord (List (BitVec 8))) → List AllocEvent → Prop)
@@ -124,7 +137,7 @@ def DecPkD3UntypedPollEnv [LibsignalPlacement] {A : RustAlloc} (B : RunBudgets)
         (cliPollIdBudgetEnv A g.F g.peer B ReadEnv)
         StoresGhost.opened.identity g.peer.val g.msg.identityKey) (P2Env g opt) evs
 
-def PqxdhAcceptBadKemErrEnv (evs : List AllocEvent) : Prop :=
+@[expose] def PqxdhAcceptBadKemErrEnv (evs : List AllocEvent) : Prop :=
   evs = [.alloc 28] ∨
   evs = [.alloc 192, .free 1 192] ∨
   evs = [.alloc 192, .alloc 32, .free 1 32, .free 1 192] ∨
@@ -134,7 +147,7 @@ def PqxdhAcceptBadKemErrEnv (evs : List AllocEvent) : Prop :=
   evs = [.alloc 192, .alloc 32, .free 1 32, .alloc 32, .free 1 32, .alloc 32, .free 1 32,
     .alloc 32, .free 1 32, .free 1 192]
 
-def StageP2BadKemRejectEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def StageP2BadKemRejectEnv [LibsignalPlacement] {A : RustAlloc}
     (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (AcceptErrEnv : List AllocEvent → Prop)
@@ -164,7 +177,7 @@ def StageP2BadKemRejectEnv [LibsignalPlacement] {A : RustAlloc}
   P2V1Arm5EnvOfAcceptErr spkBox spkPoll kpkBox kpkPoll pkBox pkPoll kpBox opkId? kpPoll
     AcceptErrEnv evs
 
-def StageP2UntypedRejectEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def StageP2UntypedRejectEnv [LibsignalPlacement] {A : RustAlloc}
     (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (AcceptErrEnv : List AllocEvent → Prop)
@@ -172,7 +185,7 @@ def StageP2UntypedRejectEnv [LibsignalPlacement] {A : RustAlloc}
     (evs : List AllocEvent) : Prop :=
   StageP2V3RejectEnv evs ∨ StageP2BadKemRejectEnv (A := A) B ReadEnv AcceptErrEnv g opt evs
 
-def DecPkD3UntypedEnvOf [LibsignalPlacement] {A : RustAlloc}
+@[expose] def DecPkD3UntypedEnvOf [LibsignalPlacement] {A : RustAlloc}
     (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -181,7 +194,7 @@ def DecPkD3UntypedEnvOf [LibsignalPlacement] {A : RustAlloc}
   DecPkD3UntypedPollEnv (A := A) B ReadEnv DeserEnv
     (StageP2UntypedRejectEnv (A := A) B ReadEnv AcceptErrEnv) g evs
 
-def DecPkD3UntypedEnv [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecPkD3UntypedEnv [LibsignalPlacement] (A : RustAlloc)
     (_W : CliHooks) (B : RunBudgets)
     (g : DecPkGhost) (evs : List AllocEvent) : Prop :=
   DecPkD3UntypedEnvOf (A := A) B (ReadFileRuleEnv cliIo.rd)
@@ -194,7 +207,7 @@ abbrev DecPkD3UntypedRejectEnv := @DecPkD3UntypedEnv
 /-- Byte-length bounds on the five pre-key and own-identity files read during Stage P2 of
 `decrypt_prekey` (`identity-key-pair ≤ 256`, `signed-pre-keys ≤ 512`, `one-time-pre-keys ≤ 256`,
 and `one-time-kyber-pre-keys` / `last-resort-kyber-pre-keys ≤ 4900`). -/
-def DecPkKeyFilesBounded (F : FsFiles) : Prop :=
+@[expose] def DecPkKeyFilesBounded (F : FsFiles) : Prop :=
   (∀ bs, cliIo.rd F (pathOf StoresGhost.opened.identity.own.path (utf8 "identity-key-pair")) =
     .ok bs → bs.length ≤ 256) ∧
   (∀ id bs, cliIo.rd F (pathOf StoresGhost.opened.signed.path (keyName id)) =
@@ -296,7 +309,7 @@ private theorem normalizePath_string_append_slash {dir s : String}
   have h := normalizePath_of_cons_slash (pre := dir.toList) s.toList hns hne (by rw [hof]; exact hndot)
   simpa [hof, hof_s] using h
 
-def kutf8 (s : String) : List (BitVec 8) :=
+@[expose] def kutf8 (s : String) : List (BitVec 8) :=
   (s.toList.flatMap String.utf8EncodeChar).map fun b => BitVec.ofNat 8 b.toNat
 
 theorem byteArray_toList_eq_data : ∀ (bs : ByteArray), bs.toList = bs.data.toList

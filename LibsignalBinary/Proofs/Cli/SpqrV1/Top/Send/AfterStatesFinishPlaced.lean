@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish1Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesFinish2Placed
 import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpoch
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -26,7 +26,7 @@ Proves the remaining `PolynomialDecoder` share-vector drop loops, looping `Inner
 and full `PqRatchetState` drop dispatch under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +52,7 @@ set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 set_option linter.unusedSectionVars false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff Program.fnAddr
   v1StatePBPinnedAt spqrSendDropJumpTablePlacedAt optProtoPolynomialEncoderAt optProtoUnchunkedCt1SentAt
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero ofNat_add_one_sub_one spqrSendPlacedEntry
 

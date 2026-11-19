@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedA
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignaturePlacedA -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignature
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
 import ProofLib.SepLogic.WPFrozen
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option maxRecDepth 200000
 
 namespace CryptoVerification.E2E.Pqxdh.Shared
 
@@ -24,6 +27,8 @@ open Arm64 ProofLib CryptoVerification
 open CryptoVerification.LibsignalSession
 open CryptoVerification.E2E.Pqxdh
 open SignalPqxdh
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
+  (packEdBytes unpackEdBytes unpackEdBytes_packEdBytes)
 
 /-!
 # Relocatable `VerifySignature` — Block `204` Segment 1, Epilogues, and Tail
@@ -353,11 +358,11 @@ theorem verifySig_seq_seg_lscro {prog : Program} {mid target : BitVec 64} {s : S
       SepWP.weaken_pre hent (h2 sm hpc hrun hcrom hQ)
 
 theorem verifySig_xeddsaVerifyRef_of_montToEd_none (P : Primitives) {pk m sig : Bytes}
-    (hmont : P.montToEd pk ((sig.getD 63 0 &&& 0x80) >>> 7) = none) :
+    (hmont : P.montToEdBytes pk ((sig.getD 63 0 &&& 0x80) >>> 7) = none) :
     xeddsaVerifyRef P pk m sig = false := by
   unfold xeddsaVerifyRef
   dsimp only
-  rw [hmont]
+  rw [Option.map_eq_none_iff.mp hmont]
   split <;> rfl
 
 theorem verifySig_xeddsaVerifyRef_of_60_false (P : Primitives) {pk m sig : Bytes}
@@ -367,37 +372,51 @@ theorem verifySig_xeddsaVerifyRef_of_60_false (P : Primitives) {pk m sig : Bytes
   rw [h60, Bool.and_false]
   rfl
 
-theorem verifySig_xeddsaVerifyRef_of_some (P : Primitives) (m : Bytes) {pk sig edPt : Bytes}
+theorem verifySig_xeddsaVerifyRef_of_some (P : Primitives) (hWF : VerifySignaturePrims P)
+    (m : Bytes) {pk sig edPt : Bytes}
     (hpk : pk.length = 32) (hsig : sig.length = 64)
     (h60 : (sig.getD 63 0 &&& 0x60 == 0) = true)
-    (hmont : P.montToEd pk ((sig.getD 63 0 &&& 0x80) >>> 7) = some edPt) :
-    (let capA := P.compress edPt
-     let minusCapA := P.edNeg edPt
+    (hmont : P.montToEdBytes pk ((sig.getD 63 0 &&& 0x80) >>> 7) = some edPt) :
+    (let capA := P.compressBytes edPt
+     let minusCapA := P.edNegBytes edPt
      let capR := sig.take 32
      let sRaw := sig.drop 32
      let sClamped := sRaw.take 31 ++ [sRaw.getD 31 0 &&& 0x7F]
      let h := P.scalarFromWide (P.sha512 (capR ++ capA ++ m))
      let sScalar := P.scalarFromBytesModOrder sClamped
-     let capRCheck := P.compress (P.doubleScalarMulBasepoint h minusCapA sScalar)
+     let capRCheck := P.compressBytes (P.doubleScalarMulBasepointBytes h minusCapA sScalar)
      if (capRCheck == capR) = true then (1#64 : BitVec 64) else 0#64) =
     (if xeddsaVerifyRef P pk m sig = true then 1#64 else 0#64) := by
+  rcases Option.map_eq_some_iff.mp hmont with ⟨pt0, hmont0, rfl⟩
+  have hpt0 := hWF.montToEd_lt _ _ pt0 hmont0
+  have hunp0 : unpackEdBytes (packEdBytes pt0) = pt0 :=
+    unpackEdBytes_packEdBytes hpt0.1 hpt0.2
+  have hneg_lt := hWF.edNeg_lt pt0
+  have hunp_neg : unpackEdBytes (P.edNegBytes (packEdBytes pt0)) = P.edNeg pt0 := by
+    simp only [_root_.SignalPqxdh.Primitives.edNegBytes, hunp0]
+    exact unpackEdBytes_packEdBytes hneg_lt.1 hneg_lt.2
   have heq : xeddsaVerifyRef P pk m sig =
-      (let capA := P.compress edPt
-       let minusCapA := P.edNeg edPt
+      (let capA := P.compressBytes (packEdBytes pt0)
+       let minusCapA := P.edNegBytes (packEdBytes pt0)
        let capR := sig.take 32
        let sRaw := sig.drop 32
        let sClamped := sRaw.take 31 ++ [sRaw.getD 31 0 &&& 0x7F]
        let h := P.scalarFromWide (P.sha512 (capR ++ capA ++ m))
        let sScalar := P.scalarFromBytesModOrder sClamped
-       let capRCheck := P.compress (P.doubleScalarMulBasepoint h minusCapA sScalar)
+       let capRCheck := P.compressBytes (P.doubleScalarMulBasepointBytes h minusCapA sScalar)
        capRCheck == capR) := by
     unfold xeddsaVerifyRef
     have hpkb : (pk.length == 32) = true := beq_iff_eq.mpr hpk
     have hsigb : (sig.length == 64) = true := beq_iff_eq.mpr hsig
     rw [hpkb, hsigb, h60]
-    dsimp only [Bool.true_and, ↓reduceIte]
-    rw [hmont]
-    rfl
+    simp only [Bool.and_self, ↓reduceIte, hmont0,
+      _root_.SignalPqxdh.Primitives.compressBytes,
+      _root_.SignalPqxdh.Primitives.doubleScalarMulBasepointBytes, hunp0, hunp_neg]
+    have hd_lt := hWF.doubleScalarMulBasepoint_lt
+      (P.scalarFromWide (P.sha512 (sig.take 32 ++ P.compress pt0 ++ m)))
+      (P.edNeg pt0)
+      (P.scalarFromBytesModOrder ((sig.drop 32).take 31 ++ [(sig.drop 32).getD 31 0 &&& 0x7F]))
+    rw [unpackEdBytes_packEdBytes hd_lt.1 hd_lt.2]
   rw [heq]
 
 /-! ## Block `204` Segment 1 and Epilogues -/
@@ -537,7 +556,7 @@ theorem verifySig_epilogue_false_placed [LibsignalPlacement]
 
 theorem verifySig_seg1a_none_placed [LibsignalPlacement]
     (P : Primitives) (H : LibsignalHooks) (s : State) (fsp : BitVec 64)
-    (pk : Bytes) (signBit : UInt8) (Frame : SepProp) (hmont : P.montToEd pk signBit = none)
+    (pk : Bytes) (signBit : UInt8) (Frame : SepProp) (hmont : P.montToEdBytes pk signBit = none)
     (hfsp_align : fsp &&& 15#64 == 0#64) (hrun : s.status = ExecStatus.Running)
     (hpc : s.pc = (blkPl_204).base + 84#64) (hsp : s.sp = fsp) :
     SepWP ((blkPC_204).rebase (blkPl_204).base H) ((blkPl_204).base + 1096#64) s
@@ -562,7 +581,7 @@ theorem verifySig_seg1b_placed [LibsignalPlacement]
     (P : Primitives) (H : LibsignalHooks) (hWF : VerifySignaturePrims P)
     (hH : VerifySignaturePlacedHooks' P H) (s : State) (fsp : BitVec 64)
     (pk edPt : Bytes) (signBit : UInt8) (Frame : SepProp)
-    (hmont : P.montToEd pk signBit = some edPt) (hfsp_align : fsp &&& 15#64 == 0#64)
+    (hmont : P.montToEdBytes pk signBit = some edPt) (hfsp_align : fsp &&& 15#64 == 0#64)
     (hrun : s.status = ExecStatus.Running)
     (hpc : s.pc = (blkPl_204).base + 84#64) (hsp : s.sp = fsp) :
     SepWP ((blkPC_204).rebase (blkPl_204).base H) ((blkPl_204).base + 232#64) s
@@ -570,7 +589,7 @@ theorem verifySig_seg1b_placed [LibsignalPlacement]
        dalekMontToEdOutAt P (fsp + 800#64) pk signBit ∗ stackAt fsp pqxdhHookStack ∗ Frame)
       (fun sm Pm =>
         (Pm ⊢ memRegion (fsp + 48#64) 160 ∗ ((fsp + 208#64) ↦ₛ bytesToBv8 edPt) ∗
-          ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compress edPt)) ∗ memRegion (fsp + 800#64) 168 ∗
+          ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compressBytes edPt)) ∗ memRegion (fsp + 800#64) 168 ∗
           stackAt fsp pqxdhHookStack ∗ Frame) ∧
         sm.status = ExecStatus.Running ∧
         sm.pc = (blkPl_204).base + 232#64 ∧ sm.sp = fsp ∧
@@ -607,7 +626,7 @@ theorem verifySig_seg1b_placed [LibsignalPlacement]
   simp only [BitVec.add_assoc, BitVec.reduceAdd] at hed_208
   apply ProofLib.SepWP.replace_pre (hPQ := Entails.of_eq hed_208) (by sep_frame)
   wp_call hcomp ⟨fsp + 48#64, edPt, fsp + 368#64⟩
-  wp_simp_pre_fast [fitBv8_of_length_eq (hWF.compress_len _), hsp, hsp_sf]
+  wp_simp_pre_fast [fitBv8_of_length_eq (hWF.compressBytes_len _), hsp, hsp_sf]
   have hm160_48 := pointsToBytes_entails_memRegion_n (fsp + 48#64) _ hed_bv_len
   apply ProofLib.SepWP.replace_pre (hPQ := hm160_48) (by sep_frame)
   apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
@@ -648,16 +667,16 @@ theorem verifySig_seg1c_placed [LibsignalPlacement]
     (hx22 : s.readReg64 (.gpr 22#5) = BitVec.zeroExtend 64 (sig.getD 63 0).toBitVec) :
     SepWP ((blkPC_204).rebase (blkPl_204).base H) ((blkPl_204).base + 320#64) s
       (memRegion fsp 4 ∗ memRegion (fsp + 4#64) 4 ∗ cells (fsp + 8#64) 1 ∗
-       ((fsp + 208#64) ↦ₛ bytesToBv8 edPt) ∗ ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compress edPt)) ∗
+       ((fsp + 208#64) ↦ₛ bytesToBv8 edPt) ∗ ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compressBytes edPt)) ∗
        memRegion (fsp + 400#64) 160 ∗ cells (fsp + 560#64) 8 ∗ memRegion (fsp + 687#64) 1 ∗
        cells (fsp + 688#64) 10 ∗ (sigPtr ↦ₛ bytesToBv8 sig) ∗ stackAt fsp pqxdhHookStack ∗ Frame)
       (fun sm Pm =>
         (Pm ⊢ memRegion fsp 4 ∗
           ((fsp + 4#64) ↦₃₂ (BitVec.zeroExtend 32 ((bytesToBv8 sig).getD 63 0#8) &&& 0x7f#32)) ∗
           ((fsp + 8#64) ↦₆₄ sigPtr) ∗ memRegion (fsp + 208#64) 160 ∗
-          ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compress edPt)) ∗
-          ((fsp + 400#64) ↦ₛ bytesToBv8 (P.edNeg edPt)) ∗
-          ((fsp + 560#64) ↦ₛ bytesToBv8 (sig.take 32 ++ P.compress edPt)) ∗
+          ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compressBytes edPt)) ∗
+          ((fsp + 400#64) ↦ₛ bytesToBv8 (P.edNegBytes edPt)) ∗
+          ((fsp + 560#64) ↦ₛ bytesToBv8 (sig.take 32 ++ P.compressBytes edPt)) ∗
           ((fsp + 687#64) ↦₈ 64#8) ∗ ((fsp + 688#64) ↦ₛ sha512IVBytesLE) ∗
           ((fsp + 752#64) ↦₆₄ 0#64) ∗ ((fsp + 760#64) ↦₆₄ 0#64) ∗ (sigPtr ↦ₛ bytesToBv8 sig) ∗
           stackAt fsp pqxdhHookStack ∗ Frame) ∧
@@ -673,8 +692,8 @@ theorem verifySig_seg1c_placed [LibsignalPlacement]
   clear hH
   have hsig32_bv : (bytesToBv8 (sig.take 32)).length = 32 := by simp [bytesToBv8, hsig]
   obtain ⟨r0, r1, r2, r3, _, hsig32_cells⟩ := exists_unpack64_of_length_32 hsig32_bv
-  have hcapA_bv : (bytesToBv8 (P.compress edPt)).length = 32 := by
-    simp [bytesToBv8, hWF.compress_len]
+  have hcapA_bv : (bytesToBv8 (P.compressBytes edPt)).length = 32 := by
+    simp [bytesToBv8, hWF.compressBytes_len]
   obtain ⟨a0, a1, a2, a3, _, hcapA_cells⟩ := exists_unpack64_of_length_32 hcapA_bv
   rw [ProofLib.memRegion_four (fsp + 4#64), ProofLib.memRegion_one (fsp + 687#64)]
   cells_pre_unfold_fast
@@ -718,8 +737,8 @@ theorem verifySig_seg1c_placed [LibsignalPlacement]
   simp only [BitVec.add_assoc, BitVec.reduceAdd] at hcapA_592
   apply ProofLib.SepWP.replace_pre (hPQ := Entails.of_eq hcapA_592) (by sep_frame)
   have hmerge_560 :
-      ((fsp + 560#64) ↦ₛ bytesToBv8 (sig.take 32)) ∗ ((fsp + 592#64) ↦ₛ bytesToBv8 (P.compress edPt)) =
-        ((fsp + 560#64) ↦ₛ bytesToBv8 (sig.take 32 ++ P.compress edPt)) := by
+      ((fsp + 560#64) ↦ₛ bytesToBv8 (sig.take 32)) ∗ ((fsp + 592#64) ↦ₛ bytesToBv8 (P.compressBytes edPt)) =
+        ((fsp + 560#64) ↦ₛ bytesToBv8 (sig.take 32 ++ P.compressBytes edPt)) := by
     rw [bytesToBv8_append, pointsToBytes_append, hsig32_bv, BitVec.add_assoc]; rfl
   apply ProofLib.SepWP.replace_pre (hPQ := Entails.of_eq hmerge_560) (by sep_frame)
   have hedPt_bv : (bytesToBv8 edPt).length = 160 := by simp [bytesToBv8, hedPt]
@@ -747,7 +766,7 @@ theorem verifySig_tail_from_548_placed [LibsignalPlacement]
     (hblkL : (blkCnt = 0#64 ∧ L = 97) ∨ (blkCnt = 12#64 ∧ L = 1633))
     (hsha_eq : revWords64 (sha512CompressOutBytes P st
       (tail97 ++ [0x80] ++ List.replicate 14 0 ++ encodeBitLen128BE L)) =
-        P.sha512 (sig.take 32 ++ P.compress edPt ++ m))
+        P.sha512 (sig.take 32 ++ P.compressBytes edPt ++ m))
     (hfsp_align : fsp &&& 15#64 == 0#64) (hrun : s.status = ExecStatus.Running)
     (hpc : s.pc = (blkPl_204).base + 548#64)
     (hsp : s.sp = fsp) (hx23 : s.readReg64 (.gpr 23#5) = fsp + 800#64)
@@ -757,8 +776,8 @@ theorem verifySig_tail_from_548_placed [LibsignalPlacement]
        ((fsp + 4#64) ↦₃₂ (BitVec.zeroExtend 32 ((bytesToBv8 sig).getD 63 0#8) &&& 0x7f#32)) ∗
        ((fsp + 8#64) ↦₆₄ sigPtr) ∗ memRegion (fsp + 16#64) 32 ∗
        memRegion (fsp + 48#64) 160 ∗ memRegion (fsp + 208#64) 160 ∗
-       ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compress edPt)) ∗
-       ((fsp + 400#64) ↦ₛ bytesToBv8 (P.edNeg edPt)) ∗
+       ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compressBytes edPt)) ∗
+       ((fsp + 400#64) ↦ₛ bytesToBv8 (P.edNegBytes edPt)) ∗
        ((fsp + 560#64) ↦ₛ bytesToBv8 tail97) ∗ memRegion (fsp + 657#64) 30 ∗
        ((fsp + 687#64) ↦₈ 97#8) ∗ ((fsp + 688#64) ↦ₛ bytesToBv8 st) ∗
        ((fsp + 752#64) ↦₆₄ blkCnt) ∗ ((fsp + 760#64) ↦₆₄ 0#64) ∗
@@ -775,14 +794,14 @@ theorem verifySig_tail_from_548_placed [LibsignalPlacement]
         (Pm ⊢ (sigPtr ↦ₛ bytesToBv8 sig) ∗ stackAt (fsp + 1248#64) (pqxdhHookStack + 1248) ∗ Frame) ∧
         sm.status = ExecStatus.Running ∧ sm.pc = retAddr ∧ sm.sp = fsp + 1248#64 ∧
         sm.readReg64 (.gpr 0#5) =
-          (let capA := P.compress edPt
-           let minusCapA := P.edNeg edPt
+          (let capA := P.compressBytes edPt
+           let minusCapA := P.edNegBytes edPt
            let capR := sig.take 32
            let sRaw := sig.drop 32
            let sClamped := sRaw.take 31 ++ [sRaw.getD 31 0 &&& 0x7F]
            let h := P.scalarFromWide (P.sha512 (capR ++ capA ++ m))
            let sScalar := P.scalarFromBytesModOrder sClamped
-           let capRCheck := P.compress (P.doubleScalarMulBasepoint h minusCapA sScalar)
+           let capRCheck := P.compressBytes (P.doubleScalarMulBasepointBytes h minusCapA sScalar)
            if (capRCheck == capR) = true then 1#64 else 0#64) ∧
         sm.readReg64 (.gpr 19#5) = x19_0 ∧ sm.readReg64 (.gpr 20#5) = x20_0 ∧
         sm.readReg64 (.gpr 21#5) = x21_0 ∧ sm.readReg64 (.gpr 22#5) = x22_0 ∧
@@ -798,8 +817,8 @@ theorem verifySig_tail_from_548_placed [LibsignalPlacement]
      ((fsp + 4#64) ↦₃₂ (BitVec.zeroExtend 32 ((bytesToBv8 sig).getD 63 0#8) &&& 0x7f#32)) ∗
      ((fsp + 8#64) ↦₆₄ sigPtr) ∗ memRegion (fsp + 16#64) 32 ∗
      memRegion (fsp + 48#64) 160 ∗ memRegion (fsp + 208#64) 160 ∗
-     ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compress edPt)) ∗
-     ((fsp + 400#64) ↦ₛ bytesToBv8 (P.edNeg edPt)) ∗
+     ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compressBytes edPt)) ∗
+     ((fsp + 400#64) ↦ₛ bytesToBv8 (P.edNegBytes edPt)) ∗
      memRegion (fsp + 1136#64) 16 ∗
      ((fsp + 1152#64) ↦₆₄ x29_0) ∗ ((fsp + 1160#64) ↦₆₄ retAddr) ∗
      ((fsp + 1168#64) ↦₆₄ x28_0) ∗ ((fsp + 1176#64) ↦₆₄ x27_0) ∗
@@ -813,13 +832,13 @@ theorem verifySig_tail_from_548_placed [LibsignalPlacement]
   intro s1 hpc1 hrun1 hcl1 ⟨_, _, hsp1, hx23_1, hx29_1, hv1, htr1⟩
   rw [hsha_eq, fitBv8_of_length_eq (hWF.scalarFromWide_len _)]
   apply ProofLib.SepWP.replace_pre (hPQ := Entails.of_eq (seg3a_to_seg3b_split fsp)) (by sep_frame)
-  have hnegA : (P.edNeg edPt).length = 160 := hWF.edNeg_len edPt
-  have hh : (P.scalarFromWide (P.sha512 (sig.take 32 ++ P.compress edPt ++ m))).length = 32 :=
+  have hnegA : (P.edNegBytes edPt).length = 160 := hWF.edNeg_len edPt
+  have hh : (P.scalarFromWide (P.sha512 (sig.take 32 ++ P.compressBytes edPt ++ m))).length = 32 :=
     hWF.scalarFromWide_len _
   apply verifySig_seq_seg (verifySig_seg3b_placed P H hWF hH s1 fsp sigPtr
-    sig (P.edNeg edPt) (P.scalarFromWide (P.sha512 (sig.take 32 ++ P.compress edPt ++ m)))
+    sig (P.edNegBytes edPt) (P.scalarFromWide (P.sha512 (sig.take 32 ++ P.compressBytes edPt ++ m)))
     (memRegion fsp 4 ∗ memRegion (fsp + 16#64) 32 ∗ memRegion (fsp + 48#64) 160 ∗
-     memRegion (fsp + 208#64) 160 ∗ ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compress edPt)) ∗
+     memRegion (fsp + 208#64) 160 ∗ ((fsp + 368#64) ↦ₛ bytesToBv8 (P.compressBytes edPt)) ∗
      cells (fsp + 560#64) 16 ∗ cells (fsp + 688#64) 10 ∗ memRegion (fsp + 960#64) 48 ∗
      memRegion (fsp + 1040#64) 96 ∗ memRegion (fsp + 1136#64) 16 ∗
      ((fsp + 1152#64) ↦₆₄ x29_0) ∗ ((fsp + 1160#64) ↦₆₄ retAddr) ∗
@@ -831,7 +850,7 @@ theorem verifySig_tail_from_548_placed [LibsignalPlacement]
     hcl1 hsig hnegA hh hfsp_align hrun1 hpc1 hsp1 hx23_1 hx29_1)
     (Entails.of_eq (by ac_rfl))
   intro s2 hpc2 hrun2 ⟨_, _, hsp2, hx0_2, hv2, htr2⟩
-  have hcapA : (P.compress edPt).length = 32 := hWF.compress_len edPt
+  have hcapA : (P.compressBytes edPt).length = 32 := hWF.compressBytes_len edPt
   apply ProofLib.SepWP.replace_pre
     (hPQ := seg3b_to_epilogue_merge fsp
       (BitVec.zeroExtend 32 ((bytesToBv8 sig).getD 63 0#8) &&& 0x7f#32) sigPtr hcapA hnegA hh)

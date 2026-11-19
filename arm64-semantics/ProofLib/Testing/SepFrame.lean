@@ -21,11 +21,18 @@ normalization and region carving/merging, contract projections, transparent abbr
 `@[sep_unfold]` and opaque definitions, and negative/diagnostic `#guard_msgs` cases.
 -/
 
-@[expose] public section
-
 namespace Testing.SepFrame
 
 open Arm64 ProofLib
+
+public section
+
+/-- Non-exposed `def` spatial bundle: stays a single opaque atom unless tagged `@[sep_unfold]` or `@[expose]`. -/
+def twoCellsOpaque (p q v w : BitVec 64) : SepProp := (p ↦₆₄ v) ∗ (q ↦₆₄ w)
+
+end
+
+@[expose] public section
 
 variable (m : Memory) (a b c : BitVec 64) (x y z w : BitVec 64) (R : SepProp)
 
@@ -206,9 +213,6 @@ example (h : m ⊨ (a ↦₆₄ x) ∗ (b ↦₆₄ y) ∗ (y ↦₆₄ w)) :
 /-- A transparent two-cell predicate: `sep_frame` unfolds `abbrev` atoms whose body is a `∗`-tree. -/
 abbrev twoCells (p q v w : BitVec 64) : SepProp := (p ↦₆₄ v) ∗ (q ↦₆₄ w)
 
-/-- The same body as a `def`: stays a single opaque atom. -/
-def twoCellsOpaque (p q v w : BitVec 64) : SepProp := (p ↦₆₄ v) ∗ (q ↦₆₄ w)
-
 /-- info: sep_frame: frame := a ↦₆₄ x -/
 #guard_msgs in
 example (h : m ⊨ twoCells a b x y ∗ (c ↦₆₄ z)) : ∃ F, m ⊨ ((c ↦₆₄ z) ∗ (b ↦₆₄ y)) ∗ F :=
@@ -280,7 +284,7 @@ error: sep_frame: no hypothesis atom matches goal atom
 unmatched hypothesis atoms: twoCellsOpaque a b x y
 hint: context atom `twoCellsOpaque a b x
   y` uses composite definition `Testing.SepFrame.twoCellsOpaque` while target atom `a ↦₆₄
-  x` is a raw spatial atom; unfold or fold `Testing.SepFrame.twoCellsOpaque` so both sides are at the same abstraction level
+  x` is a raw spatial atom; mark `Testing.SepFrame.twoCellsOpaque` with `@[sep_unfold]` (or `@[expose]` / `abbrev`), or unfold/fold `Testing.SepFrame.twoCellsOpaque` so both sides are at the same abstraction level
 -/
 #guard_msgs in
 example (h : m ⊨ twoCellsOpaque a b x y) : m ⊨ (a ↦₆₄ x) ∗ (b ↦₆₄ y) := by
@@ -383,7 +387,7 @@ example (bs : List (BitVec 8)) (h : m ⊨ (a ↦ₛ bs) ∗ R) : m ⊨ ((a + 8#6
 /--
 error: frame_split: no match for twoCellsOpaque a b x y in precondition
 hint: target atom `twoCellsOpaque a b x
-  y` uses composite definition `Testing.SepFrame.twoCellsOpaque`; unfold or fold `Testing.SepFrame.twoCellsOpaque` so both sides are at the same abstraction level
+  y` uses composite definition `Testing.SepFrame.twoCellsOpaque`; mark `Testing.SepFrame.twoCellsOpaque` with `@[sep_unfold]` (or `@[expose]` / `abbrev`), or unfold/fold `Testing.SepFrame.twoCellsOpaque` so both sides are at the same abstraction level
 candidates: a ↦₆₄ x, b ↦₆₄ y
 -/
 #guard_msgs in
@@ -395,7 +399,7 @@ example (h : m ⊨ (a ↦₆₄ x) ∗ (b ↦₆₄ y)) : m ⊨ twoCellsOpaque a
 error: frame_split: no match for a ↦₆₄ x in precondition
 hint: context atom `twoCellsOpaque a b x
   y` uses composite definition `Testing.SepFrame.twoCellsOpaque` while target atom `a ↦₆₄
-  x` is a raw spatial atom; unfold or fold `Testing.SepFrame.twoCellsOpaque` so both sides are at the same abstraction level
+  x` is a raw spatial atom; mark `Testing.SepFrame.twoCellsOpaque` with `@[sep_unfold]` (or `@[expose]` / `abbrev`), or unfold/fold `Testing.SepFrame.twoCellsOpaque` so both sides are at the same abstraction level
 candidates: twoCellsOpaque a b x y
 -/
 #guard_msgs in
@@ -640,5 +644,54 @@ example (ptr : BitVec 64) (bad_len len : Nat)
     m ⊨ (new_ctrl ↦ₛ List.replicate bad_len 255#8) ∗ R := by
   intro new_ctrl
   wp_frame_split
+
+/-! ## `memRegionOrExistsCellInfo?` arity and `.bvar 0` value guards -/
+
+-- 0-arg bound-variable body (`∃∗ Rx : SepProp, Rx`) alongside `memRegion` must not panic in `getArg!`.
+example (p : BitVec 64) (h : m ⊨ memRegion p 8 ∗ (∃∗ Rx : SepProp, Rx) ∗ R) :
+    ∃ F, m ⊨ (memRegion p 8 ∗ (∃∗ Rx : SepProp, Rx)) ∗ F :=
+  frame_exists_of (by sep_frame)
+
+example (p : BitVec 64) (h : m ⊨ memRegion p 8 ∗ R) :
+    m ⊨ memRegion p 8 ∗ (∃∗ Rx : SepProp, Rx) := by
+  sep_frame
+
+example (p : BitVec 64) (h : m ⊨ memRegion p 8 ∗ (∃∗ Rx : SepProp, Rx) ∗ R) :
+    m ⊨ (∃∗ Rx : SepProp, Rx) ∗ memRegion p 8 ∗ R := by
+  sep_entail
+
+example (p : BitVec 64) :
+    memRegion p 8 ∗ (∃∗ Rx : SepProp, Rx) ⊢ (∃∗ Rx : SepProp, Rx) ∗ memRegion p 8 := by
+  sep_entail
+
+-- Non-`.bvar 0` value argument (`∃∗ v : BitVec 64, p ↦₆₄ (v + 1#64)`) alongside `memRegion` must
+-- not be treated as a raw `memRegion p 8` cell (which would produce an ill-typed `memRegion_eight` proof).
+example (p q : BitVec 64) (h : m ⊨ memRegion q 8 ∗ (p ↦₆₄ (x + 1#64)) ∗ R) :
+    ∃ F, m ⊨ (memRegion q 8 ∗ (∃∗ v : BitVec 64, p ↦₆₄ (v + 1#64))) ∗ F :=
+  frame_exists_of (by sep_frame)
+
+example (p q : BitVec 64) (h : m ⊨ memRegion q 8 ∗ (p ↦₆₄ (x + 1#64)) ∗ R) :
+    m ⊨ (∃∗ v : BitVec 64, p ↦₆₄ (v + 1#64)) ∗ memRegion q 8 ∗ R := by
+  sep_entail
+
+example (p : BitVec 64) :
+    memRegion p 8 ∗ (∃∗ v : BitVec 64, p ↦₆₄ (v + 1#64)) ⊢
+      (∃∗ v : BitVec 64, p ↦₆₄ (v + 1#64)) ∗ memRegion p 8 := by
+  sep_entail
+
+-- Valid `∃∗ v : BitVec 64, p ↦₆₄ v` alongside `memRegion` continues to carve/match cleanly.
+example (p : BitVec 64) (h : m ⊨ memRegion p 16 ∗ R) :
+    ∃ F, m ⊨ (∃∗ v : BitVec 64, p ↦₆₄ v) ∗ F :=
+  frame_exists_of (by sep_frame)
+
+example (p : BitVec 64) (h : m ⊨ memRegion p 16 ∗ R) :
+    m ⊨ (∃∗ v : BitVec 64, p ↦₆₄ v) ∗ memRegion (p + 8#64) 8 ∗ R := by
+  sep_entail
+
+example (p : BitVec 64) :
+    memRegion p 8 ∗ R ⊢ (∃∗ v : BitVec 64, p ↦₆₄ v) ∗ R := by
+  sep_entail
+
+end
 
 end Testing.SepFrame

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.SignalSession.CliLabels
+public import LibsignalBinary.Proofs.Placed.CliLabels -- proof-setup: allow-public-import
 public import ProofLib.Placed.LabelsInterned
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliLabelsLfoCert
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliLabelsLfoCert -- proof-setup: allow-public-import
 import ProofLib.ProgramReflection
 meta import ProofLib.ProgramReflection
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,9 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+meta import GeneratedLean.LibsignalSessionPlacedObjShard24
+meta import GeneratedLean.LibsignalSessionPlacedObjShard25
 
 /-!
 # Relocatable Per-Block Fetches for `signal_session_ratchet` Helper Blocks (Part C)

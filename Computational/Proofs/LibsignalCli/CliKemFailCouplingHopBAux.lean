@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.CliKemFailCouplingHopBCore
+public import Computational.Proofs.LibsignalCli.CliKemFailCouplingHopBCore -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.Oom.Faithful
 import VCVio.EvalDist.MeasureTVDist.Event
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.LibsignalCli.CliPqAdapterCoupling -- proof-setup: allow-public-import
 
 /-!
 # Coin-logged send/challenge couplings and multi-query `simulateQ` induction
@@ -21,7 +22,7 @@ Proves coin-logged `tr` and `ch` per-instance SM oracle couplings, the multi-que
 coupling bound, and the whole-game good-log probability inequality modulo the step bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

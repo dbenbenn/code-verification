@@ -9,17 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Collect.StepsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Collect.StepsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Frame
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `main` M2 Collect Loop Steps (`M+0xc0 → M+0x2f4 / M+0x1b0`)
@@ -29,7 +35,7 @@ Block `617` with read-only `argvAtROP` and `RustCliAllocBudget M`, threading `A.
 `M2CollectLoopEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -89,7 +95,7 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
 /-- Remaining frame of `argvAtROP a ps` with `ps[k].1 ↦ᵣ ps[k].2` extracted for reading. -/
-def argvAtROPRest : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → Nat → SepProp
+@[expose] def argvAtROPRest : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → Nat → SepProp
   | a, [], _ => a ↦₆₄ᵣ 0#64
   | a, (p, s) :: rest, 0 =>
     (a ↦₆₄ᵣ p) ∗ ((p + BitVec.ofNat 64 s.length) ↦ᵣ [0#8]) ∗ argvAtROP (a + 8#64) rest
@@ -185,7 +191,7 @@ abbrev m2LoopMem {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLi
   A.pool lim st s ∗ m2LoopRest A.repAlloc s0 stk n buf p0 ps Statics
 
 /-- Deterministic reallocation events emitted when `reserve16` grows `Vec<&str>` at index `k = vcap.toNat`. -/
-def m2GrowEventsAt (k : Nat) : List AllocEvent :=
+@[expose] def m2GrowEventsAt (k : Nat) : List AllocEvent :=
   let new := reserveCapStride 16 k k 1
   rustReallocEvents (16 * k) (16 * new) 8
 

@@ -19,7 +19,7 @@ Defines `ProcessResult.ofState?`, `ProcessSafe`, `ProcessRunsTo`, `ElfRunsTo`, a
 `outcomeOf` over `LibsignalBinary.Specifications.SignalSession.Process`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace CryptoVerification.SignalSession
@@ -28,7 +28,7 @@ namespace ProcessResult
 
 /-- Extracts a `ProcessResult` from a terminal machine state: `.Exited code` yields
 `.exited code stdout s.fs`, `.Panicked` yields `.aborted`, and all other statuses yield `none`. -/
-def ofState? (s : State) : Option ProcessResult :=
+@[expose] def ofState? (s : State) : Option ProcessResult :=
   match s.status with
   | .Exited code => some (.exited code (ProcessOutcome.traceStreamBytes .stdout s.trace) s.fs)
   | .Panicked => some .aborted
@@ -37,22 +37,22 @@ def ofState? (s : State) : Option ProcessResult :=
 end ProcessResult
 
 /-- Every state reachable from `s0` either has a `ProcessResult` or is `.Running` and can step. -/
-def ProcessSafe (prog : Program) (s0 : State) : Prop :=
+@[expose] def ProcessSafe (prog : Program) (s0 : State) : Prop :=
   ∀ s', Steps prog s0 s' →
     (ProcessResult.ofState? s').isSome ∨ (s'.status = .Running ∧ ∃ s'', Step prog s' s'')
 
 /-- `prog` is `ProcessSafe` from `s0` and reaches a state with result `r`. -/
-def ProcessRunsTo (prog : Program) (s0 : State) (r : ProcessResult) : Prop :=
+@[expose] def ProcessRunsTo (prog : Program) (s0 : State) (r : ProcessResult) : Prop :=
   ProcessSafe prog s0 ∧ ∃ sf, Steps prog s0 sf ∧ ProcessResult.ofState? sf = some r
 
 /-- `img.loadState inputs` succeeds and `ProcessRunsTo prog s0 r` holds from the loaded state. -/
-def ElfRunsTo (img : ElfImage) (prog : Program) (inputs : ProcessInputs)
+@[expose] def ElfRunsTo (img : ElfImage) (prog : Program) (inputs : ProcessInputs)
     (r : ProcessResult) : Prop :=
   ∃ s0, img.loadState inputs = .ok s0 ∧ ProcessRunsTo prog s0 r
 
 open Classical in
 /-- Partial function selecting the unique `r` satisfying `ElfRunsTo img prog inputs r`, or `none` if none exists. -/
-noncomputable def outcomeOf (img : ElfImage) (prog : Program) (inputs : ProcessInputs) :
+@[expose] noncomputable def outcomeOf (img : ElfImage) (prog : Program) (inputs : ProcessInputs) :
     Option ProcessResult :=
   if h : ∃ r, ElfRunsTo img prog inputs r then some (Classical.choose h) else none
 

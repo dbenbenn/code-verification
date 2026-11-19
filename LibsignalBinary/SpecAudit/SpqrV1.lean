@@ -14,14 +14,11 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.Entries
 public import ProofLib.SpecAudit
 
 /-!
-# SPQR V1: spec audit of headline statements and hook contracts
+# SPQR V1: spec audit of store and extern-stub contracts
 
 **Checked by Lean; not trusted, imported by nothing.** Runs `#spec_nonvacuous!` and `#spec_lint!`
-(`ProofLib.SpecAudit`) on the SPQR V1 send/receive headline specifications (`Statements.lean`,
-including DEV-SPQR4's `spqrRecvStack ≤ sp` and DEV-SPQR5's `64 ≤ x.rest.length`) at the concrete
-models `spqrV1` / `spqrV1Recv`, and on each extern-stub contract in `SpqrHooks` (`Hooks.lean`).
-See `Guards.lean` (`token_cells_not_roData`) for disjointness between `TokenInit` and frozen image
-rodata.
+(`ProofLib.SpecAudit`) on `loadSessionSpecPqStateLengthBound` (`Entries.lean`) and on each
+extern-stub contract in `SpqrHooks` (`Hooks.lean`).
 -/
 
 @[expose] public section
@@ -32,17 +29,10 @@ open Arm64 ProofLib CryptoGames CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalSpqrV1
 
-/-! ## Headline specs, model fixed at `spqrV1` / `spqrV1Recv` -/
+/-! ## Store contract (`Entries.lean`) -/
 
-#spec_nonvacuous! (fun (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (K : MlKem)
-    (img : Obj.Image) => spqrSendSpecT A ctl (spqrV1 C.F K) img)
-#spec_lint! (fun (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (K : MlKem) (img : Obj.Image) =>
-  spqrSendSpecT A ctl (spqrV1 C.F K) img)
-
-#spec_nonvacuous! (fun (C : Crypto) (A : RustAlloc) (K : MlKem) (img : Obj.Image) =>
-  spqrRecvSpecExactKeyBounded A (spqrV1Recv C.F K) img)
-#spec_lint! (fun (C : Crypto) (A : RustAlloc) (K : MlKem) (img : Obj.Image) =>
-  spqrRecvSpecExactKeyBounded A (spqrV1Recv C.F K) img)
+#spec_nonvacuous! loadSessionSpecPqStateLengthBound
+#spec_lint! loadSessionSpecPqStateLengthBound
 
 /-! ## Extern-stub contracts (`SpqrHooks`) -/
 

@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
-public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.HeldRecPure
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.HeldRecPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.Composed.Cli.ParD3PureGates
 import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
 import Symbolic.Proofs.Swarm.CREF.Cli.DirBridge
@@ -30,6 +30,8 @@ import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyPromSlot
 import Symbolic.Proofs.Swarm.CREF.Cli.TopSlotsSend
 import Symbolic.Proofs.Swarm.CREF.Cli.World.TurnPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Cli.TopDispatch
 
 /-!
 # Shadow-Turn Simulation and Responder Pre-Key Receive Slot
@@ -39,7 +41,7 @@ shadow turns and proves `slot_rpk_d3_pqModelRel` dispatching responder `recv` ca
 `PqModelRel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -227,7 +229,7 @@ theorem pqTurnSim1A_nonBob_after {interp : ExternInterpretation} {P : PEParams} 
 
 /-! ## Call conversion and step helpers -/
 
-def toCliCallNone (c : CliCall) : CliCall :=
+@[expose] def toCliCallNone (c : CliCall) : CliCall :=
   { party := c.party, cmd := c.cmd, bundle := [], stdin := c.stdin, coins := c.coins }
 
 theorem inputsFor_toCliCallNone {c : CliCall} {d : DirectorySnapshot} {i : Inputs}

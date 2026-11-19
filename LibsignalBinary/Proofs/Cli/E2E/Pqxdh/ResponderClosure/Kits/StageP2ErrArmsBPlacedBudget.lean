@@ -9,16 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsBPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrBPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsBPlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsB
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrBPlaced
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Store-Error Unwind Arms 3–4
@@ -27,7 +31,7 @@ Defines `FreeOnlyEvs` event lists and proves `RustCliAllocBudget M` / `VmPreserv
 to `s0.readReg64 .x30` on Block `518` for Store-Error Arms 3 (`+0x09c4`) and 4 (`+0x07bc`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -111,13 +115,13 @@ local macro "sep_norm" : tactic =>
 
 /-- Exact deallocation event list for Arm 3 (`get_pre_key` `.error` unwind:
 `opkFutPtr`, `pkBuf` `1568` B, `skBuf` `3168` B, plus error funnel). -/
-def p2Arm3ErrEvents (opkBoxSize : Nat) (prevCap : BitVec 64) : List AllocEvent :=
+@[expose] def p2Arm3ErrEvents (opkBoxSize : Nat) (prevCap : BitVec 64) : List AllocEvent :=
   (rustDeallocEvents opkBoxSize 8 ++ rustDeallocEvents 1568 1 ++ rustDeallocEvents 3168 1) ++
     p2ErrFunnelEvents prevCap
 
 /-- Exact deallocation event list for Arm 4 (`get_identity_key_pair` `.error` unwind:
 `idKpFutPtr`, `pkBuf` `1568` B, `skBuf` `3168` B, plus error funnel). -/
-def p2Arm4ErrEvents (kpBoxSize : Nat) (prevCap : BitVec 64) : List AllocEvent :=
+@[expose] def p2Arm4ErrEvents (kpBoxSize : Nat) (prevCap : BitVec 64) : List AllocEvent :=
   (rustDeallocEvents kpBoxSize 8 ++ rustDeallocEvents 1568 1 ++ rustDeallocEvents 3168 1) ++
     p2ErrFunnelEvents prevCap
 

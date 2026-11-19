@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInstPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.S_d2c
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeTop
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
-public import LibsignalBinary.Proofs.E2E.V1.ReachSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInstPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.S_d2c -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeTop
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
+import LibsignalBinary.Proofs.E2E.V1.ReachSteps
 public import LibsignalBinary.Specifications.SignalSession.PqDirNoMatch
-public import LibsignalBinary.Proofs.E2E.Epochs
+import LibsignalBinary.Proofs.E2E.Epochs
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCommit
@@ -26,8 +26,18 @@ import all Init.Data.Repr
 import Init.Data.String.Basic
 import Init.Data.String.Defs
 import Init.Data.ToString.Basic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.GamePaths
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,7 +59,7 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 /-- Exact 2-session `SessionRecord` bytes written by libsignal on D2(c) (`NoMatch`):
 field 1 holds the newly promoted PQXDH responder session `(x', gs)` and field 2 archives the
 displaced current session `(x₀, g₀)` with its pending pre-key fields cleared. -/
-def d2cRecordBytes_placed (x' x₀ : RecordExtras) (gs g₀ : GhostState (List (BitVec 8))) :
+@[expose] def d2cRecordBytes_placed (x' x₀ : RecordExtras) (gs g₀ : GhostState (List (BitVec 8))) :
     List (BitVec 8) :=
   encodeRecordUnderExtras (fun _ => x') gs ++
     E2E.Record.lenField 2 (encStateUnderExtras x₀ { g₀.session with pendingPreKey := false })
@@ -60,7 +70,7 @@ responder model answer `pqRecvPrekeyModel X W { st with session := none } m rc`:
 * `some none`: rejection (`.exited 1 [] (filesOf i.files)`);
 * `some (some (st', out))`: exit `0` with `out` on stdout and `st'`'s directory overwritten at
   `sessionFile (partyAddress peer)` by the 2-session record `d2cRecordBytes_placed x' x₀ gs g₀`. -/
-def d2cObserve_placed (W : PEParams) (i : Inputs) (peer : Party)
+@[expose] def d2cObserve_placed (W : PEParams) (i : Inputs) (peer : Party)
     (x₀ : RecordExtras) (g₀ : GhostState (List (BitVec 8)))
     (r : Option (Option (PqParty × List (BitVec 8)))) : Outcome :=
   match r with
@@ -79,48 +89,6 @@ abbrev Outcome.AgreeExceptNormPlaced : String → Outcome → Outcome → Prop :
 abbrev ObservedExceptNormPlaced : PEParams → Inputs → String →
     Option (Option (PqParty × List (BitVec 8))) → Outcome → Prop :=
   OutcomeMatchesModelExceptPath
-
-/-- `fsView` depends on the path string only through `Arm64.normalizePath`. -/
-theorem fsView_congr_norm_placed {fs : Arm64.FsState} {q p : String}
-    (hn : Arm64.normalizePath q = Arm64.normalizePath p) :
-    fsView fs q = fsView fs p := by
-  unfold fsView FsState.files FsState.getEntry
-  rw [hn]
-
-/-- Why `Outcome.AgreeExcept` must compare `Arm64.normalizePath`: if `fsView fs1` and `fsView fs2`
-agreed at all raw strings `q ≠ sessionFile (partyAddress P)`, evaluating at
-`q := "./" ++ sessionFile (partyAddress P)` would force equality at `sessionFile (partyAddress P)`
-as well, because `q ≠ p` as strings while `Arm64.normalizePath q = Arm64.normalizePath p`. -/
-theorem fsView_raw_agreeExcept_forces_eq_placed (fs1 fs2 : Arm64.FsState) (P : Party)
-    (h : ∀ q, q ≠ sessionFile (partyAddress P) → fsView fs1 q = fsView fs2 q) :
-    fsView fs1 (sessionFile (partyAddress P)) = fsView fs2 (sessionFile (partyAddress P)) := by
-  let p := sessionFile (partyAddress P)
-  let q := "./" ++ p
-  have hne : q ≠ p := by
-    cases P <;> decide
-  have hnorm : Arm64.normalizePath q = Arm64.normalizePath p := by
-    cases P <;> decide
-  rw [← fsView_congr_norm_placed (fs := fs1) hnorm, ← fsView_congr_norm_placed (fs := fs2) hnorm]
-  exact h q hne
-
-/-- `filesOf` specialization of `fsView_raw_agreeExcept_forces_eq_placed`. -/
-theorem filesOf_raw_agreeExcept_forces_eq_placed (L1 L2 : List (String × List (BitVec 8))) (P : Party)
-    (h : ∀ q, q ≠ sessionFile (partyAddress P) → filesOf L1 q = filesOf L2 q) :
-    filesOf L1 (sessionFile (partyAddress P)) = filesOf L2 (sessionFile (partyAddress P)) :=
-  fsView_raw_agreeExcept_forces_eq_placed _ _ P h
-
-/-- `d2cRecordBytes_placed x' x₀ gs g₀` is strictly longer than (hence distinct from)
-`encodeRecordUnderExtras (fun _ => x') gs` because `lenField 2` prepends a non-empty protobuf tag+varint
-header. -/
-theorem d2cRecordBytes_ne_encodeRecordX_placed (x' x₀ : RecordExtras)
-    (gs g₀ : GhostState (List (BitVec 8))) :
-    d2cRecordBytes_placed x' x₀ gs g₀ ≠ encodeRecordUnderExtras (fun _ => x') gs := by
-  intro heq
-  have hlen := congrArg List.length heq
-  unfold d2cRecordBytes_placed E2E.Record.lenField at hlen
-  have hkey : (encodeKey 2 .lengthDelimited).length = 1 := by decide
-  rw [List.length_append, List.length_append, List.length_append, hkey] at hlen
-  omega
 
 end CryptoVerification.SignalSession
 
@@ -147,7 +115,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer (CliGhostHo
 /-- Placed caller-side D2(c) `decrypt_prekey` wrapper slot bundle: specialized to `decPkDefD2c`
 and `DecPkOkD2c` at `Slots.scopeIn` and `cliDecryptPrekeyNeed cliRunBudgets_placed`, unrestricted
 on `m.inner` (`m.inner.length + 2048 < 2 ^ 32`, covering all versions and non-matching sessions). -/
-def DecPkD2cSlotOkPlaced [LibsignalPlacement]
+@[expose] def DecPkD2cSlotOkPlaced [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (S : RunSem) (needs : RunNeeds),
     S.filesOk = Slots.filesOk₀ Slots.scopeIn (fun _ => True) →
@@ -159,7 +127,7 @@ def DecPkD2cSlotOkPlaced [LibsignalPlacement]
 
 /-- `LibsignalFrozen`-guarded counterpart of `DecPkD2cSlotOkPlaced`
 (`slotsOfSigPkFrozenPlaced E2E.HooksE.A0 S needs`). -/
-def DecPkD2cSlotOkFrozenPlaced [LibsignalPlacement]
+@[expose] def DecPkD2cSlotOkFrozenPlaced [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (S : RunSem) (needs : RunNeeds),
     S.filesOk = Slots.filesOk₀ Slots.scopeIn (fun _ => True) →
@@ -170,7 +138,7 @@ def DecPkD2cSlotOkFrozenPlaced [LibsignalPlacement]
       (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 520)
 
 /-- Placed `PreKeySignalMessage::try_from` slot obligation at `Pksm.pksmParse` on Block `579`. -/
-def PksmSlotOkPlaced [LibsignalPlacement]
+@[expose] def PksmSlotOkPlaced [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ S : RunSem, S.pksmParse = Pksm.pksmParse →
     subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W)))
@@ -703,18 +671,6 @@ theorem commitOk_pqRecvPrekey_decPkDefD2c_placed {S : RunSem} {X : UnreachedPqxd
         intro pw hpw
         exact writeOk_pqRecvInputs_allTargets_d2c W st (wirePrekey :: c) rc kpkId opkId
           (hsub pw hpw)
-
-/-- `decPkCommitOk` bundle obligation for `decPkDefD2c` at `Slots.scopeIn`. -/
-theorem decPkCommitOk_d2c_cli_placed {X : UnreachedPqxdhPrimitives} {W : PEParams}
-    (S : RunSem) (st : PqParty) (m : PreKeyMessageFields) (rc : BitVec 256)
-    (hdec : S.decryptPrekey = decPkDefD2c X W Slots.scopeIn)
-    (_hpksm : S.pksmParse = Pksm.pksmParse)
-    (_hwf : PqxdhPartyInSpecDomain W st)
-    (_hm : m.inner.length + 2048 < 2 ^ 32)
-    (_hmatch : ∀ x g, st.session = some (x, g) → PqSessionMatches x g m) :
-    CommitOk (pqRecvInputs W st (wirePrekey :: m.bytes) rc)
-      (MainResult.ofAnswer (runAns S (pqRecvInputs W st (wirePrekey :: m.bytes) rc))) :=
-  commitOk_pqRecvPrekey_decPkDefD2c_placed hdec st m.bytes rc
 
 /-! ## 3. Agreement of `decPkDefD2c` on Empty / Matching Sessions (`PqDecryptPrekeyAgrees`) -/
 

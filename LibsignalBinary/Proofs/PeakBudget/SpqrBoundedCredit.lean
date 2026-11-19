@@ -9,14 +9,49 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrPolyBounds
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SpqrPolyBounds
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # SPQR V1 Bounded-Event and State Codec `PhaseCreditSpec` Bounds
@@ -32,7 +67,7 @@ Establishes `PhaseCreditSpec` bounds for:
 4. Tight monotone small-class bucket envelope `SpqrTightEvs` and `StatesIntoPbTightEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -288,27 +323,27 @@ theorem fineCostModel_spqrLowInterceptHyps : SpqrLowInterceptHyps fineCostModel 
   hSmallAlloc77 r _ := smallAllocCost_le_77_mul_add r
 
 /-- Count of `.alloc` / `.aligned` events in `evs`. -/
-def freshAllocCount : List AllocEvent → Nat
+@[expose] def freshAllocCount : List AllocEvent → Nat
   | [] => 0
   | .alloc _ :: tl => freshAllocCount tl + 1
   | .aligned _ _ :: tl => freshAllocCount tl + 1
   | _ :: tl => freshAllocCount tl
 
 /-- Count of `.realloc` events in `evs`. -/
-def reallocCount : List AllocEvent → Nat
+@[expose] def reallocCount : List AllocEvent → Nat
   | [] => 0
   | .realloc _ _ _ :: tl => reallocCount tl + 1
   | _ :: tl => reallocCount tl
 
 /-- Sum of `eventStepReq` across all events in `evs`. -/
-def totalStepReq : List AllocEvent → Nat
+@[expose] def totalStepReq : List AllocEvent → Nat
   | [] => 0
   | ev :: tl => eventStepReq ev + totalStepReq tl
 
 /-- Total-request bounded `AllocEvent` envelope: bounds `.alloc`/`.aligned` count by `maxAllocs`,
 `.realloc` count by `maxReallocs`, total `eventStepReq` sum by `totalReq`, and per-event request /
 alignment by `(maxReq, 16)`. -/
-def SpqrBoundedTotalEvs (maxAllocs maxReallocs totalReq maxReq : Nat)
+@[expose] def SpqrBoundedTotalEvs (maxAllocs maxReallocs totalReq maxReq : Nat)
     (evs : List AllocEvent) : Prop :=
   freshAllocCount evs ≤ maxAllocs ∧
   reallocCount evs ≤ maxReallocs ∧
@@ -645,7 +680,7 @@ theorem initialState_small_phaseCreditSpec {M : AllocCostModel} [HasFineReallocC
 /-- Monotone piecewise upper envelope on `fineSmallAllocCost req` across `req ≤ 79,236`
 (accounting for the `sc = 8..9` nested/root bump `9,789` B on `125..156` B, e.g. mid-epoch
 64-point `128`-byte `PolyEncoder` / `PolyDecoder` slices). -/
-def spqrAllocTightCost (req : Nat) : Nat :=
+@[expose] def spqrAllocTightCost (req : Nat) : Nat :=
   if req ≤ 12 then 188
   else if req ≤ 44 then 738
   else if req ≤ 108 then 1997
@@ -659,14 +694,14 @@ theorem spqrAllocTightCost_mono {r₁ r₂ : Nat} (h : r₁ ≤ r₂) :
 
 /-- Per-event tight `cumSmall` weight (`0` on `.free`, `spqrAllocTightCost` on `.alloc`/`.aligned`,
 `9,789` on `.realloc` up to `384` B). -/
-def spqrEventTightCost : AllocEvent → Nat
+@[expose] def spqrEventTightCost : AllocEvent → Nat
   | .free _ _ => 0
   | .alloc req => spqrAllocTightCost req
   | .aligned _ req => spqrAllocTightCost req
   | .realloc _ _ _ => 9789
 
 /-- Additive tight `cumSmall` trace weight across `evs`. -/
-def spqrTraceTightCost : List AllocEvent → Nat
+@[expose] def spqrTraceTightCost : List AllocEvent → Nat
   | [] => 0
   | ev :: tl => spqrEventTightCost ev + spqrTraceTightCost tl
 
@@ -800,7 +835,7 @@ theorem fineCostModel_spqrTightHyps : SpqrTightHyps fineCostModel where
 /-- Tight small-class event envelope: bounds non-free op count by `maxOps`, tight `cumSmall` trace
 weight by `cumCap`, `.realloc` target sizes by `384` B, and per-event `(eventStepReq, eventStepAlign)`
 by `(maxReq, 16)`. -/
-def SpqrTightEvs (maxOps cumCap maxReq : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrTightEvs (maxOps cumCap maxReq : Nat) (evs : List AllocEvent) : Prop :=
   nonFreeCount evs ≤ maxOps ∧
   spqrTraceTightCost evs ≤ cumCap ∧
   (∀ al o n, AllocEvent.realloc al o n ∈ evs → n ≤ 384) ∧
@@ -813,11 +848,6 @@ theorem SpqrTightEvs.nil (maxOps cumCap maxReq : Nat) :
     cases h
   · intro _ h
     cases h
-
-theorem SpqrTightEvs.nonFreeCount_le {maxOps cumCap maxReq : Nat} {evs : List AllocEvent}
-    (h : SpqrTightEvs maxOps cumCap maxReq evs) :
-    nonFreeCount evs ≤ maxOps :=
-  h.1
 
 theorem SpqrTightEvs.mono {n₁ n₂ c₁ c₂ r₁ r₂ : Nat} {evs : List AllocEvent}
     (hn : n₁ ≤ n₂) (hc : c₁ ≤ c₂) (hr : r₁ ≤ r₂)
@@ -1015,13 +1045,13 @@ theorem spqrTightEvs_fine_phaseCreditSpec (maxOps cumCap : Nat) {maxReq : Nat}
 /-- Tight `<States>::into_pb` (`Block 334`) allocation envelope under `StatesPtsBoundedAt 640` +
 `StatesDecPtsNeededBound`: `≤ 42` small allocs (`≤ 128`), `cumSmall ≤ 376,193` B, `Δlive = 0`,
 `Δpeak = 0`, `maxReq = 2,400` B (zero existential binders). -/
-def StatesIntoPbTightEnv (evs : List AllocEvent) : Prop :=
+@[expose] def StatesIntoPbTightEnv (evs : List AllocEvent) : Prop :=
   SpqrTightEvs 42 376193 2400 evs
 
-def statesIntoPbTightDeltaCum : Nat := 376193
-def statesIntoPbTightDeltaLive : Nat := 0
-def statesIntoPbTightDeltaPeak : Nat := 0
-def statesIntoPbTightMaxReq : Nat := 2400
+@[expose] def statesIntoPbTightDeltaCum : Nat := 376193
+@[expose] def statesIntoPbTightDeltaLive : Nat := 0
+@[expose] def statesIntoPbTightDeltaPeak : Nat := 0
+@[expose] def statesIntoPbTightMaxReq : Nat := 2400
 
 theorem statesIntoPbTightEnv_nonFreeCount_le {evs : List AllocEvent}
     (h : StatesIntoPbTightEnv evs) :

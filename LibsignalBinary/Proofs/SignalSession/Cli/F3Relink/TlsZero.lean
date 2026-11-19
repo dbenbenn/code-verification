@@ -16,7 +16,9 @@ public import ProofLib.StdStartup.StackInit
 public import ProofLib.StdStartup.Layout
 public import ProofLib.StdStartup.MemOps
 public import ProofLib.StdStartup.MuslTls
-public import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import ProofLib
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Minimal `StdBinaryLayout` Projection and `PT_TLS` `0/0/0/0` Static TLS
@@ -29,7 +31,7 @@ and `musl` startup/exit, `RUST_LSE_INIT`, `mallocng`, and `rdl_shim` in `rxSeg` 
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.F3Relink.TlsZero
 
@@ -39,7 +41,7 @@ open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.StdStartup
 
 /-- The 29 `rxSeg` code entrypoints executed by F3 `musl` startup, `RUST_LSE_INIT`, and `exit`
     (`L.cMainAddr` lives in `.img.text`, not `rxSeg`, so its 4-byte alignment is checked separately). -/
-def f3CodeAddrs (L : StdBinaryLayout) : List (BitVec 64) :=
+@[expose] def f3CodeAddrs (L : StdBinaryLayout) : List (BitVec 64) :=
   [ L.startAddr, L.startCAddr, L.libcStartMainAddr, L.initLibcAddr, L.memsetAddr,
     L.staticInitTlsAddr, L.copyTlsAddr, L.memcpyAddr, L.initTpAddr, L.setThreadAreaAddr,
     L.dummy1Addr, L.libcStartMainStage2Addr, L.libcStartInitAddr, L.initFnAddr, L.initLseAddr,
@@ -48,11 +50,11 @@ def f3CodeAddrs (L : StdBinaryLayout) : List (BitVec 64) :=
     L.oflLockFnAddr, L.lockFnAddr, L.closeFileAddr, L.sysExitAddr ]
 
 /-- Initial `.data` atoms excluding `stderr` and unused `std::rt` `STDOUT`/`CLEANUP` globals. -/
-def f3DataNoStderrAtoms (L : StdBinaryLayout) : List RwAtom :=
+@[expose] def f3DataNoStderrAtoms (L : StdBinaryLayout) : List RwAtom :=
   [ .u32 L.defaultStacksizeAddr 0x20000#32, .u64 L.stderrUsedAddr L.stderrFileAddr ]
 
 /-- Initial `.bss` atoms excluding unused `std::rt` `ARGC`/`ARGV`/`PAGE_SIZE`/`THREAD_ID` globals. -/
-def f3BssAtoms (L : StdBinaryLayout) : List RwAtom :=
+@[expose] def f3BssAtoms (L : StdBinaryLayout) : List RwAtom :=
   [ .u32 L.threadListLockAddr 0#32, .u64 L.sysinfoAddr 0#64, .u64 L.hwcapAddr 0#64,
     .u8 L.finalizedAddr 0#8, .u8 L.initializedAddr 0#8,
     .u64 L.stdDetectCacheAddr 0#64, .u64 L.environAddr 0#64,
@@ -61,28 +63,28 @@ def f3BssAtoms (L : StdBinaryLayout) : List RwAtom :=
   (if L.stdoutUsedAddr == L.stdinUsedAddr then [] else [.u64 L.stdoutUsedAddr 0#64]) ++
   [ .u64 L.oflHeadAddr 0#64, .u32 L.oflLockAddr 0#32 ]
 
-def f3NonStderrAtoms (L : StdBinaryLayout) : List RwAtom :=
+@[expose] def f3NonStderrAtoms (L : StdBinaryLayout) : List RwAtom :=
   L.initFiniAtoms ++ L.gotAtoms ++ f3DataNoStderrAtoms L ++ L.libcAtoms ++ L.tlsAtoms ++
     f3BssAtoms L ++ L.extraRwAtoms
 
-def f3StdRwAtoms (L : StdBinaryLayout) : List RwAtom :=
+@[expose] def f3StdRwAtoms (L : StdBinaryLayout) : List RwAtom :=
   L.initFiniAtoms ++ L.gotAtoms ++ f3DataNoStderrAtoms L ++ L.stderrFileAtoms ++ L.libcAtoms ++
     L.tlsAtoms ++ f3BssAtoms L
 
-def f3AllRwAtoms (L : StdBinaryLayout) : List RwAtom :=
+@[expose] def f3AllRwAtoms (L : StdBinaryLayout) : List RwAtom :=
   f3StdRwAtoms L ++ L.extraRwAtoms
 
 /-- Minimal read-only PHDR + empty C-string constants for F3 `musl` startup. -/
-def F3RoConstants (L : StdBinaryLayout) : SepProp :=
+@[expose] def F3RoConstants (L : StdBinaryLayout) : SepProp :=
   (L.phdrAddr ↦ᵣ L.phdrBytes) ∗ (L.emptyCStrAddr ↦₈ᵣ 0#8)
 
-def F3DataGlobals (L : StdBinaryLayout) : SepProp :=
+@[expose] def F3DataGlobals (L : StdBinaryLayout) : SepProp :=
   rwAtomListSep (f3DataNoStderrAtoms L) ∗ StdStderrFile L
 
-def F3BssGlobals (L : StdBinaryLayout) : SepProp :=
+@[expose] def F3BssGlobals (L : StdBinaryLayout) : SepProp :=
   rwAtomListSep (f3BssAtoms L)
 
-def F3InitGlobals (L : StdBinaryLayout) : SepProp :=
+@[expose] def F3InitGlobals (L : StdBinaryLayout) : SepProp :=
   StdInitFiniGlobals L ∗ StdGotGlobals L ∗ F3DataGlobals L ∗ StdLibcGlobals L ∗ StdTlsGlobals L ∗
     F3BssGlobals L
 
@@ -94,7 +96,7 @@ theorem f3AllRwAtoms_sep_eq (L : StdBinaryLayout) :
 
 /-- Validate the `phnum × 56` B program header table with an empty `PT_TLS` (`0/0/0/0`) at
     `L.tlsPhdrIdx`. -/
-def f3CheckPhdrTable (L : StdBinaryLayout) : Bool :=
+@[expose] def f3CheckPhdrTable (L : StdBinaryLayout) : Bool :=
   0 < L.phnum && L.phdrAddr.toNat % 8 == 0 && L.phdrBytes.length == L.phnum * 56 &&
   L.tlsPhdrIdx < L.phnum &&
   listReadU32LE L.phdrBytes 0 == 6 && listReadU64LE L.phdrBytes 16 == L.phdrAddr.toNat &&
@@ -112,13 +114,13 @@ def f3CheckPhdrTable (L : StdBinaryLayout) : Bool :=
      else ptype != 7)
 
 /-- Validate `roSeg` (`emptyCStrAddr` + `extraRoSlices`, e.g. `mallocngRoTablesBytes`). -/
-def f3CheckRoSegment (L : StdBinaryLayout) (roSeg : Snapshot.Region) (roLen : Nat) : Bool :=
+@[expose] def f3CheckRoSegment (L : StdBinaryLayout) (roSeg : Snapshot.Region) (roLen : Nat) : Bool :=
   roSeg.perm == Perm.ro &&
   checkSegSlice roSeg roLen L.emptyCStrAddr [0#8] &&
   L.extraRoSlices.all (fun (a, bs) => checkSegSlice roSeg roLen a bs)
 
 /-- Validate `rwSeg` alignments, initial byte slices, and pairwise disjointness for F3 globals. -/
-def f3CheckRwSegment (L : StdBinaryLayout) (rwSeg : Snapshot.Region) (rwLen : Nat) : Bool :=
+@[expose] def f3CheckRwSegment (L : StdBinaryLayout) (rwSeg : Snapshot.Region) (rwLen : Nat) : Bool :=
   rwSeg.perm == Perm.rw && L.builtinTlsAddr.toNat % 8 == 0 && L.mainTlsAddr.toNat % 8 == 0 &&
   L.libcAddr.toNat % 8 == 0 && L.stderrFileAddr.toNat % 8 == 0 &&
   L.initArrayAddr.toNat % 8 == 0 && L.finiArrayAddr.toNat % 8 == 0 && L.gotAddr.toNat % 8 == 0 &&
@@ -131,7 +133,7 @@ def f3CheckRwSegment (L : StdBinaryLayout) (rwSeg : Snapshot.Region) (rwLen : Na
   intervalsPairwiseDisjoint ((f3AllRwAtoms L).map fun x => (x.addr.toNat, x.rawBytes.length))
 
 /-- Kernel-decidable validator checking that `img` conforms to the minimal F3 `StdBinaryLayout`. -/
-def f3MatchesImage (L : StdBinaryLayout) (img : ElfImage) : Bool :=
+@[expose] def f3MatchesImage (L : StdBinaryLayout) (img : ElfImage) : Bool :=
   fastWellFormed img && img.entry == L.startAddr && img.phdrVaddr == L.phdrAddr &&
   img.phnum == L.phnum && img.brkStart == L.brkStart &&
   (0x10000 ≤ L.brkStart.toNat && L.brkStart.toNat ≤ 2 ^ 30) &&
@@ -438,16 +440,16 @@ theorem extractF3LayoutImageFacts {L : StdBinaryLayout} {img : ElfImage}
 
 /-- Zero-initialized DTV pointer and two-word DTV array inside `builtin_tls` when `PT_TLS` is
     `0/0/0/0` (`tls_size = 0xe0`, `dtv = td + 0xd0`). -/
-def F3DtvZero (td : BitVec 64) : SepProp :=
+@[expose] def F3DtvZero (td : BitVec 64) : SepProp :=
   ((td + 0xc0#64) ↦₆₄ 0#64) ∗ ((td + 0xd0#64) ↦₆₄ 0#64) ∗ ((td + 0xd8#64) ↦₆₄ 0#64)
 
 /-- Post-`__copy_tls` DTV pointer (`td + 0xc0 ↦ td + 0xd0`) and `[1, td + 0xc8]` DTV array. -/
-def F3DtvInit (td : BitVec 64) : SepProp :=
+@[expose] def F3DtvInit (td : BitVec 64) : SepProp :=
   ((td + 0xc0#64) ↦₆₄ (td + 0xd0#64)) ∗ ((td + 0xd0#64) ↦₆₄ 1#64) ∗
     ((td + 0xd8#64) ↦₆₄ (td + 0xc8#64))
 
 /-- Untouched zero-padding slices inside `builtin_tls` (`0x150` B total) for `PT_TLS` `0/0/0/0`. -/
-def F3BuiltinTlsPad (td : BitVec 64) : SepProp :=
+@[expose] def F3BuiltinTlsPad (td : BitVec 64) : SepProp :=
   ((td + 0x2c#64) ↦ₛ List.replicate 0x4c 0#8) ∗
   ((td + 0x80#64) ↦ₛ List.replicate 0x18 0#8) ∗
   ((td + 0xa0#64) ↦ₛ List.replicate 0x20 0#8) ∗
@@ -455,20 +457,20 @@ def F3BuiltinTlsPad (td : BitVec 64) : SepProp :=
   ((td + 0xe0#64) ↦ₛ List.replicate 0x70 0#8)
 
 /-- Initialized `main_tls` descriptor written by `static_init_tls` for `PT_TLS` `0/0/0/0`. -/
-def F3MainTlsInit (L : StdBinaryLayout) : SepProp :=
+@[expose] def F3MainTlsInit (L : StdBinaryLayout) : SepProp :=
   (L.mainTlsAddr ↦₆₄ 0#64) ∗ ((L.mainTlsAddr + 0x08#64) ↦₆₄ 0#64) ∗
   ((L.mainTlsAddr + 0x10#64) ↦₆₄ 0#64) ∗ ((L.mainTlsAddr + 0x18#64) ↦₆₄ 0#64) ∗
   ((L.mainTlsAddr + 0x20#64) ↦₆₄ 8#64) ∗ ((L.mainTlsAddr + 0x28#64) ↦₆₄ 0#64)
 
 /-- Initialized `__libc.{tls_head, tls_size, tls_align, tls_cnt}` for `PT_TLS` `0/0/0/0`
     (`tls_size = 0xe0`, `tls_align = 8`, `tls_cnt = 1`). -/
-def F3LibcTlsInit (L : StdBinaryLayout) : SepProp :=
+@[expose] def F3LibcTlsInit (L : StdBinaryLayout) : SepProp :=
   ((L.libcAddr + 0x10#64) ↦₆₄ L.mainTlsAddr) ∗ ((L.libcAddr + 0x18#64) ↦₆₄ 0xe0#64) ∗
   ((L.libcAddr + 0x20#64) ↦₆₄ 8#64) ∗ ((L.libcAddr + 0x28#64) ↦₆₄ 1#64)
 
 /-- Bundled post-`static_init_tls` TLS state for `PT_TLS` `0/0/0/0` (excluding `errno` at
     `td + 0x24 = tp - 0xa4`). -/
-def F3TlsState (L : StdBinaryLayout) (sysinfoVal : BitVec 64) : SepProp :=
+@[expose] def F3TlsState (L : StdBinaryLayout) (sysinfoVal : BitVec 64) : SepProp :=
   StdTdInit L sysinfoVal ∗ F3DtvInit L.builtinTlsAddr ∗ F3BuiltinTlsPad L.builtinTlsAddr ∗
     F3MainTlsInit L ∗ F3LibcTlsInit L
 
@@ -776,7 +778,7 @@ private theorem copyTls_align_zero {a : BitVec 64} (h : a.toNat % 8 = 0) :
   have := align8_and_seven h; bv_bits
 
 /-- Total-correctness contract for `__copy_tls(L.builtinTlsAddr)` under `PT_TLS` `0/0/0/0`. -/
-def f3CopyTlsSpec (L : StdBinaryLayout) : Spec Unit where
+@[expose] def f3CopyTlsSpec (L : StdBinaryLayout) : Spec Unit where
   pre := fun _ s0 =>
     ⌜s0.readReg64 .x0 = L.builtinTlsAddr⌝ ∗
     (memRegion (s0.sp - 0x50#64) 0x50 ∗ F3DtvZero L.builtinTlsAddr ∗
@@ -1248,7 +1250,7 @@ private theorem aux_words_split (p a0 a1 a2 a3 a4 a5 : BitVec 64) (tl : List (Bi
   simp only [pointsToWords64_cons, BitVec.add_assoc]; rfl
 
 /-- Total-correctness contract for `musl` `static_init_tls(aux)` under `PT_TLS` `0/0/0/0`. -/
-def f3StaticInitTlsSpec (L : StdBinaryLayout) :
+@[expose] def f3StaticInitTlsSpec (L : StdBinaryLayout) :
     Spec (BitVec 64 × List (BitVec 64) × BitVec 8 × BitVec 64) where
   pre := fun (auxPtr, aux, canDo0, sysinfoVal) s0 =>
     ⌜s0.readReg64 .x0 = auxPtr ∧ aux[3]? = some L.phdrAddr ∧
@@ -1417,7 +1419,7 @@ end
 
 /-- Minimal syscall handler accepting only `SYS_set_tid_address` (`x8 = 96`) and faulting on every
 other `svc #0`, proving no other syscall occurs during stage-1/stage-2 startup. -/
-def f3SetTidOnlySvc (s : State) : State :=
+@[expose] def f3SetTidOnlySvc (s : State) : State :=
   if s.readReg64 .x8 == 96#64 then execSetTidAddress s
   else s.setStatus (.Exception "unexpected syscall in F3 startup")
 

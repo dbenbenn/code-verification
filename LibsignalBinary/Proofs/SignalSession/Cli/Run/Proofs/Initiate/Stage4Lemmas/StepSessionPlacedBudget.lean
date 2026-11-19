@@ -9,26 +9,57 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.CellsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSessionPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.CellsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSessionPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Decode
+import Mathlib.Tactic.Basic
+import Mathlib.Tactic.ToAdditive
+import Mathlib.Tactic.ToDual
+import Lean
+import Lean.Elab.SyntheticMVars
+import Lean.Meta.Reduce
+import ProofLib.GenDecodes
+import ProofLib.GenPlacedFetches
+import ProofLib.ProgramReflection
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.SepLogic.WP.ControlTactics
+import ProofLib.VCGen
+import ProofLib
+import ProofLib.FsTrace
+import ProofLib.Placed.Multi
+import ProofLib.ProgramReflection.Variant.TrapTransfer
+import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
 import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Link
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Frames -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.FramesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSession
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Stage 4 Segment 3 (`[LibsignalPlacement]`): `SessionState` Construction and Move (`+4848 → +5252`)
@@ -37,15 +68,13 @@ Verifies Stage 4 Segment 3 (`+4848 → +5252`) under `RustCliAllocBudget M`, adv
 `stage4StepSessionEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 set_option linter.unusedSimpArgs false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSessionPlacedBudget
 
@@ -133,10 +162,10 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 @[local arm64_norm ↓, local wp_norm ↓] private theorem vregs_setMem' (s : State) (m : Memory) : calleeSavedVRegs (s.setMem m) = calleeSavedVRegs s := by cases s; rfl
 
 /-- Allocator events emitted across Stage 4 Segment 3 (`+4848 → +5252`). -/
-def stage4StepSessionEvents : List AllocEvent :=
+@[expose] def stage4StepSessionEvents : List AllocEvent :=
   sessionStateNewEvents ++ withReceiverChainEmptyEvents ++ withSenderChainNoneEvents
 
-def Stage4StepSessionEnv (evs : List AllocEvent) : Prop :=
+@[expose] def Stage4StepSessionEnv (evs : List AllocEvent) : Prop :=
   evs = stage4StepSessionEvents
 
 theorem fitsEnv_stage4StepSession_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -979,4 +1008,3 @@ theorem stage4_step_session_placed [LibsignalPlacement] {M : AllocCostModel}
   }
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSessionPlacedBudget
-end

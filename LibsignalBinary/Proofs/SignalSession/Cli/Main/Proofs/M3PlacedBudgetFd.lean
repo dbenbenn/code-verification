@@ -9,15 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3ReadPlacedBudgetFd
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3ReadPlacedBudgetFd
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Descriptor-Threaded `MainIoOfPlacedFd` & `main` Hop M3 (`M+0x568 → M+0x5dc`, Block `617`)
@@ -27,7 +36,7 @@ Threads `FdsGe3Closed` from initial filesystem state across `main`'s Hop M3 (`re
 downstream hops `M5` and `M6`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -122,7 +131,7 @@ structure MainIoOfPlacedFd [LibsignalPlacement] {M : AllocCostModel}
     `M : AllocCostModel`, `lim : BudgetLimits`, and `st : M.σ`. Used to instantiate the unused
     `{StdinEnv, ReadEnv}` parameters of `main_m5_of_proof_placed` and
     `main_m6_of_m6Env_pool_proof_placed` without re-proving `M5` or `M6`. -/
-def VacuousIoAllocEnv : List AllocEvent → Prop :=
+@[expose] def VacuousIoAllocEnv : List AllocEvent → Prop :=
   fun evs => evs = [.alloc (2 ^ 64)]
 
 private theorem not_fitsEnv_vacuousIoAllocEnv {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -174,11 +183,11 @@ private theorem msb_false_of_lt {x : BitVec 64} (hlt : x.toNat < 2 ^ 63) :
   omega
 
 set_option maxHeartbeats 1200000 in
-/-- `FdsGe3Closed`-threaded twin of `M3ReadPlacedBudget.step_stdin_0x59c_readOf_pool_placed`:
-    discharges `FdsGe3Closed` at `read_stdin` from `hs0fs`, preserves `FdsGe3Closed` across
-    `read_stdin` via `hio.readStdin`, and threads it through `read_file("coins")` into `hnext`. -/
-theorem step_stdin_0x59c_readOf_pool_placed_fd [LibsignalPlacement] {CodeOk : Memory → Prop}
-    [LsCodeInv CodeOk]
+/-- Subroutine-parametric `FdsGe3Closed`-threaded twin of
+    `M3ReadPlacedBudget.step_stdin_0x59c_readOf_pool_placed`: takes `hstdin_ok` and `hread_ok`
+    directly so both `MainIoOfPlacedFd` and `MainIoOfPlacedFdSat` share this proof. -/
+theorem step_stdin_0x59c_readOf_pool_placed_subroutine_fd [LibsignalPlacement]
+    {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
     {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {ms : M.σ}
     {uuidParse : UuidParser} {io : IoModel}
@@ -188,7 +197,10 @@ theorem step_stdin_0x59c_readOf_pool_placed_fd [LibsignalPlacement] {CodeOk : Me
     {buf : BitVec 64} {ps : List (BitVec 64 × List (BitVec 8))} {ArgvFrame : SepProp}
     {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
     (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
-    (hio : MainIoOfPlacedFd A lim H io hookStack StdinEnv ReadEnv)
+    (hstdin_ok : subroutine_ok (lsProg_617 H) (lsρ lsReadStdinSym)
+      (withLsRoCl lsmpl (withFdsGe3Closed (readStdinSpecOfPlaced io A lim hookStack StdinEnv))))
+    (hread_ok : subroutine_ok (lsProg_617 H) (lsρ lsReadFileSym)
+      (withLsRoCl lsmpl (withLsRetAddr624AndFds (readFileLitSpecPlaced io A lim hookStack ReadEnv))))
     (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
     (hstk64 : stk ≤ 2 ^ 63)
     (hs0fs : s0.fs = initFsState (cliInputs i))
@@ -241,14 +253,6 @@ theorem step_stdin_0x59c_readOf_pool_placed_fd [LibsignalPlacement] {CodeOk : Me
         A.pool lim ms st ∗ cliStaticsPlaced ∗ mainLitsBlk617)
       Q Qp oom := by
   set fsp := s0.sp - BitVec.ofNat 64 mainFrameSize
-  have hstdin_ok :
-      subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsρ lsReadStdinSym)
-        (withLsRoCl lsmpl (withFdsGe3Closed (readStdinSpecOfPlaced io A lim hookStack StdinEnv))) :=
-    hio.readStdin
-  have hread_ok :
-      subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsρ lsReadFileSym)
-        (withLsRoCl lsmpl (withLsRetAddr624AndFds (readFileLitSpecPlaced io A lim hookStack ReadEnv))) :=
-    hio.readFile
   have hsub_le : hookStack ≤ stk - mainFrameSize := by omega
   have hsub64 : stk - mainFrameSize ≤ 2 ^ 64 := by omega
   have hfit_stdin_env : FitsEnv M lim ms (StdinEnv i.stdin) :=
@@ -547,18 +551,88 @@ theorem step_stdin_0x59c_readOf_pool_placed_fd [LibsignalPlacement] {CodeOk : Me
         (sepConj_mono_left hin_inv)) ?_
       exact Entails.of_eq (by sep_ac_rfl)
 
+/-- `FdsGe3Closed`-threaded twin of `M3ReadPlacedBudget.step_stdin_0x59c_readOf_pool_placed`:
+    discharges `FdsGe3Closed` at `read_stdin` from `hs0fs`, preserves `FdsGe3Closed` across
+    `read_stdin` via `hio.readStdin`, and threads it through `read_file("coins")` into `hnext`. -/
+theorem step_stdin_0x59c_readOf_pool_placed_fd [LibsignalPlacement] {CodeOk : Memory → Prop}
+    [LsCodeInv CodeOk]
+    {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {ms : M.σ}
+    {uuidParse : UuidParser} {io : IoModel}
+    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
+    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
+    {i : Inputs} {c : CallV} {w : CallW} {s0 s st : State} {stk hookStack resStack : Nat}
+    {buf : BitVec 64} {ps : List (BitVec 64 × List (BitVec 8))} {ArgvFrame : SepProp}
+    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoOfPlacedFd A lim H io hookStack StdinEnv ReadEnv)
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hs0fs : s0.fs = initFsState (cliInputs i))
+    (hstdin : io.stdin (initFsState (cliInputs i)) = some i.stdin)
+    (hcoinsOk : io.pathOk (utf8 "coins"))
+    (hcoins : ∀ r, io.rd (initFsState (cliInputs i)).files (utf8 "coins") = r →
+      r = .ok (coinsOf i) ∨ (r = .error () ∧ ¬ CoinsReadable i))
+    (hfit : FitsEnv M lim ms (M3StdinEnvReadOf StdinEnv ReadEnv i))
+    (htag_gt1 : 1 < c.tag)
+    (hs_tr : s.trace = s0.trace)
+    (hst : InMainPlaced CodeOk s0 st 0x59c)
+    (hst_tr : st.trace = s.trace)
+    (hst_fs : st.fs = s0.fs)
+    (hx19 : st.readReg64 (.gpr 19#5) = buf)
+    (hx20 : st.readReg64 (.gpr 20#5) = BitVec.ofNat 64 c.tag)
+    (hx22 : st.readReg64 (.gpr 22#5) = w.w2)
+    (hx24 : st.readReg64 (.gpr 24#5) = BitVec.ofNat 64 i.argv.length)
+    (hx25 : st.readReg64 (.gpr 25#5) = w.w0)
+    (hx26 : st.readReg64 (.gpr 26#5) = w.w6)
+    (hw5_orr : (st.readReg64 (.gpr 28#5) ||| st.readReg64 (.gpr 21#5)) = w.w5)
+    (hexit : ExitKPoolPlaced CodeOk H A lim s0 stk
+      (fun code s' => code = 2 ∧ s'.fs.files = (initFsState (cliInputs i)).files ∧
+        (¬ CoinsReadable i ∨ (1 < c.tag ∧ stdinCapBytes < i.stdin.length)) ∧ s'.trace = s.trace)
+      Q Qp)
+    (hnext : ∀ (s' : State) (coinsCap coinsPtr inCap inPtr : BitVec 64)
+        (evs : List AllocEvent),
+      M3StdinEnvReadOf StdinEnv ReadEnv i evs →
+      (inputOf i c).length ≤ stdinCapBytes →
+      AtM4Placed CodeOk i s0 s' w c i.argv.length buf coinsCap coinsPtr inCap →
+      FdsGe3Closed s'.fs →
+      ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s'
+        (ownedBytes A.repAlloc coinsCap coinsPtr (BitVec.ofNat 64 (coinsOf i).length) (coinsOf i) ∗
+          ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 (inputOf i c).length) (inputOf i c) ∗
+          callHeap A.repAlloc w c ∗ argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
+          ArgvFrame ∗
+          mainSaved s0 ∗
+          locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+            (m4CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) w inPtr (coinsOf i).length) ∗
+          stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+          A.pool lim (M.stepEvents evs ms) s' ∗
+          cliStaticsPlaced ∗ mainLitsBlk617)
+        Q Qp oom) :
+    SepWPp (mProgPlaced H) (s0.readReg64 .lr) st
+      (callHeap A.repAlloc w c ∗ argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
+        ArgvFrame ∗
+        mainSaved s0 ∗
+        locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (callCellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) w) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim ms st ∗ cliStaticsPlaced ∗ mainLitsBlk617)
+      Q Qp oom :=
+  step_stdin_0x59c_readOf_pool_placed_subroutine_fd hc hio.readStdin hio.readFile hstk hstk64
+    hs0fs hstdin hcoinsOk hcoins hfit htag_gt1 hs_tr hst hst_tr hst_fs hx19 hx20 hx22 hx24 hx25
+    hx26 hw5_orr hexit hnext
+
 set_option maxHeartbeats 800000 in
 private theorem step_empty_in_0x57c_pool_placed_fd [LibsignalPlacement] {CodeOk : Memory → Prop}
     [LsCodeInv CodeOk] {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {ms : M.σ} {uuidParse : UuidParser}
-    {io : IoModel} {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
+    {io : IoModel} {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
     {i : Inputs} {c : CallV} {w : CallW} {s0 s st : State}
     {stk hookStack resStack : Nat} {buf : BitVec 64}
     {ps : List (BitVec 64 × List (BitVec 8))} {ArgvFrame : SepProp}
     {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
     (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
-    (hio : MainIoOfPlacedFd A lim H io hookStack StdinEnv ReadEnv)
+    (hread_ok : subroutine_ok (lsProg_617 H) (lsρ lsReadFileSym)
+      (withLsRoCl lsmpl (withLsRetAddr624AndFds (readFileLitSpecPlaced io A lim hookStack ReadEnv))))
     (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
     (hstk64 : stk ≤ 2 ^ 63)
     (hs0fs : s0.fs = initFsState (cliInputs i))
@@ -675,7 +749,7 @@ private theorem step_empty_in_0x57c_pool_placed_fd [LibsignalPlacement] {CodeOk 
     (step_from_0x5b0_readOf_pool_placed_subroutine_fd
       (inOk := true) (inCap := 0#64) (inPtr := 1#64) (x27 := 0#64)
       (c := c) (w := w) (ps := ps) (ArgvFrame := ArgvFrame)
-      hc hio.readFile hstk hstk64 hcoinsOk hcoins hfit hs_tr hin1
+      hc hread_ok hstk hstk64 hcoinsOk hcoins hfit hs_tr hin1
       (by simpa only [arm64_norm, hst_fs, hs0fs] using fdsGe3Closed_initFsState (cliInputs i))
       (by (try simp only [arm64_norm, hx19]); try rfl)
       (by (try simp only [arm64_norm, hx20]); try rfl)
@@ -744,10 +818,10 @@ private theorem step_empty_in_0x57c_pool_placed_fd [LibsignalPlacement] {CodeOk 
   exact Entails.of_eq (by sep_ac_rfl)
 
 set_option maxHeartbeats 1200000 in
-/-- `FdsGe3Closed`-threaded twin of `M3PlacedBudget.main_m3_readOf_pool_placed_proof`:
-    steps `M+0x568 → M+0x5dc` on Block `617`, delivering `FdsGe3Closed s'.fs` alongside
-    `AtM4Placed` to `hnext`. -/
-theorem main_m3_readOf_pool_placed_proof_fd [LibsignalPlacement] {CodeOk : Memory → Prop}
+/-- Subroutine-parametric `FdsGe3Closed`-threaded twin of
+    `M3PlacedBudget.main_m3_readOf_pool_placed_proof`: takes `hstdin_ok` and `hread_ok` directly
+    so both `MainIoOfPlacedFd` and `MainIoOfPlacedFdSat` share this proof. -/
+theorem main_m3_readOf_pool_placed_subroutine_fd [LibsignalPlacement] {CodeOk : Memory → Prop}
     [LsCodeInv CodeOk]
     {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {ms : M.σ}
@@ -758,7 +832,10 @@ theorem main_m3_readOf_pool_placed_proof_fd [LibsignalPlacement] {CodeOk : Memor
     {stk hookStack resStack : Nat} {buf : BitVec 64} {ps : List (BitVec 64 × List (BitVec 8))}
     {ArgvFrame : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
     (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
-    (hio : MainIoOfPlacedFd A lim H io hookStack StdinEnv ReadEnv)
+    (hstdin_ok : subroutine_ok (lsProg_617 H) (lsρ lsReadStdinSym)
+      (withLsRoCl lsmpl (withFdsGe3Closed (readStdinSpecOfPlaced io A lim hookStack StdinEnv))))
+    (hread_ok : subroutine_ok (lsProg_617 H) (lsρ lsReadFileSym)
+      (withLsRoCl lsmpl (withLsRetAddr624AndFds (readFileLitSpecPlaced io A lim hookStack ReadEnv))))
     (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
     (hstk64 : stk ≤ 2 ^ 63)
     (hs0fs : s0.fs = initFsState (cliInputs i)) (hs0tr : s0.trace = [])
@@ -839,7 +916,7 @@ theorem main_m3_readOf_pool_placed_proof_fd [LibsignalPlacement] {CodeOk : Memor
     }
     refine SepWPp.weaken_pre ?_
       (step_empty_in_0x57c_pool_placed_fd (ArgvFrame := ArgvFrame)
-        hc hio hstk hstk64 hs0fs hcoinsOk hcoins hfit0
+        hc hread_ok hstk hstk64 hs0fs hcoinsOk hcoins hfit0
         (by simp [CallV.tag]) hs.trace hin1
         (by (try simp only [arm64_norm]); try rfl)
         (by (try simp only [arm64_norm, hs.fs]); try rfl)
@@ -898,7 +975,7 @@ theorem main_m3_readOf_pool_placed_proof_fd [LibsignalPlacement] {CodeOk : Memor
     }
     refine SepWPp.weaken_pre ?_
       (step_empty_in_0x57c_pool_placed_fd (ArgvFrame := ArgvFrame)
-        hc hio hstk hstk64 hs0fs hcoinsOk hcoins hfit1
+        hc hread_ok hstk hstk64 hs0fs hcoinsOk hcoins hfit1
         (by simp [CallV.tag]) hs.trace hin1
         (by (try simp only [arm64_norm]); try rfl)
         (by (try simp only [arm64_norm, hs.fs]); try rfl)
@@ -953,8 +1030,8 @@ theorem main_m3_readOf_pool_placed_proof_fd [LibsignalPlacement] {CodeOk : Memor
       spAligned := hs.base.spAligned
     }
     refine SepWPp.weaken_pre ?_
-      (step_stdin_0x59c_readOf_pool_placed_fd (ArgvFrame := ArgvFrame)
-        hc hio hstk hstk64 hs0fs hstdin hcoinsOk hcoins hfit2
+      (step_stdin_0x59c_readOf_pool_placed_subroutine_fd (ArgvFrame := ArgvFrame)
+        hc hstdin_ok hread_ok hstk hstk64 hs0fs hstdin hcoinsOk hcoins hfit2
         (by simp [CallV.tag]) hs.trace hin1
         (by (try simp only [arm64_norm]); try rfl)
         (by (try simp only [arm64_norm, hs.fs]); try rfl)
@@ -1009,8 +1086,8 @@ theorem main_m3_readOf_pool_placed_proof_fd [LibsignalPlacement] {CodeOk : Memor
       spAligned := hs.base.spAligned
     }
     refine SepWPp.weaken_pre ?_
-      (step_stdin_0x59c_readOf_pool_placed_fd (ArgvFrame := ArgvFrame)
-        hc hio hstk hstk64 hs0fs hstdin hcoinsOk hcoins hfit3
+      (step_stdin_0x59c_readOf_pool_placed_subroutine_fd (ArgvFrame := ArgvFrame)
+        hc hstdin_ok hread_ok hstk hstk64 hs0fs hstdin hcoinsOk hcoins hfit3
         (by simp [CallV.tag]) hs.trace hin1
         (by (try simp only [arm64_norm]); try rfl)
         (by (try simp only [arm64_norm, hs.fs]); try rfl)
@@ -1031,6 +1108,63 @@ theorem main_m3_readOf_pool_placed_proof_fd [LibsignalPlacement] {CodeOk : Memor
       (by simp only [arm64_norm]) (by simp only [arm64_norm]) (by simp only [arm64_norm])
       (by simp only [arm64_norm]) (fun _ => by simp only [arm64_norm])]
     exact Entails.refl _
+
+/-- `FdsGe3Closed`-threaded twin of `M3PlacedBudget.main_m3_readOf_pool_placed_proof`:
+    steps `M+0x568 → M+0x5dc` on Block `617`, delivering `FdsGe3Closed s'.fs` alongside
+    `AtM4Placed` to `hnext`. -/
+theorem main_m3_readOf_pool_placed_proof_fd [LibsignalPlacement] {CodeOk : Memory → Prop}
+    [LsCodeInv CodeOk]
+    {M : AllocCostModel} {H : LibsignalHooks} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {ms : M.σ}
+    {uuidParse : UuidParser} {io : IoModel}
+    {StdinEnv : List (BitVec 8) → List AllocEvent → Prop}
+    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
+    {i : Inputs} {c : CallV} {w : CallW} {s0 s : State}
+    {stk hookStack resStack : Nat} {buf : BitVec 64} {ps : List (BitVec 64 × List (BitVec 8))}
+    {ArgvFrame : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
+    (hc : MainCalleesBlk617 A lim H uuidParse hookStack resStack)
+    (hio : MainIoOfPlacedFd A lim H io hookStack StdinEnv ReadEnv)
+    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hs0fs : s0.fs = initFsState (cliInputs i)) (hs0tr : s0.trace = [])
+    (hstdin : io.stdin (initFsState (cliInputs i)) = some i.stdin)
+    (hcoinsOk : io.pathOk (utf8 "coins"))
+    (hcoins : ∀ r, io.rd (initFsState (cliInputs i)).files (utf8 "coins") = r →
+      r = .ok (coinsOf i) ∨ (r = .error () ∧ ¬ CoinsReadable i))
+    (hparse : parseArgs uuidParse (i.argv.map bytesOfString) = some c)
+    (hfit : FitsEnv M lim ms (M3EnvReadOf StdinEnv ReadEnv i c))
+    (hs : AtCallPlaced CodeOk s0 s w i.argv.length buf)
+    (hexit : ExitKPoolPlaced CodeOk H A lim s0 stk
+      (fun code s' => code = 2 ∧ s'.fs.files = (initFsState (cliInputs i)).files ∧
+        (¬ CoinsReadable i ∨ (1 < c.tag ∧ stdinCapBytes < i.stdin.length)) ∧ s'.trace = s.trace)
+      Q Qp)
+    (hnext : ∀ (s' : State) (coinsCap coinsPtr inCap inPtr : BitVec 64)
+        (evs : List AllocEvent),
+      M3EnvReadOf StdinEnv ReadEnv i c evs →
+      (inputOf i c).length ≤ stdinCapBytes →
+      AtM4Placed CodeOk i s0 s' w c i.argv.length buf coinsCap coinsPtr inCap →
+      FdsGe3Closed s'.fs →
+      ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s'
+        (ownedBytes A.repAlloc coinsCap coinsPtr (BitVec.ofNat 64 (coinsOf i).length) (coinsOf i) ∗
+          ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 (inputOf i c).length) (inputOf i c) ∗
+          callHeap A.repAlloc w c ∗ argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
+          ArgvFrame ∗
+          mainSaved s0 ∗
+          locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+            (m4CellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) w inPtr (coinsOf i).length) ∗
+          stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+          A.pool lim (M.stepEvents evs ms) s' ∗ cliStaticsPlaced ∗ mainLitsBlk617)
+        Q Qp oom) :
+    ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s
+      (callHeap A.repAlloc w c ∗ argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
+        ArgvFrame ∗
+        mainSaved s0 ∗ locals (s0.sp - BitVec.ofNat 64 mainFrameSize)
+          (callCellsPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize) w) ∗
+        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+        A.pool lim ms s ∗ cliStaticsPlaced ∗ mainLitsBlk617)
+      Q Qp oom :=
+  main_m3_readOf_pool_placed_subroutine_fd hc hio.readStdin hio.readFile hstk hstk64 hs0fs hs0tr
+    hstdin hcoinsOk hcoins hparse hfit hs hexit hnext
 
 theorem main_m3_bounded_readOf_pool_placed_proof_fd [LibsignalPlacement] {CodeOk : Memory → Prop}
     [LsCodeInv CodeOk]

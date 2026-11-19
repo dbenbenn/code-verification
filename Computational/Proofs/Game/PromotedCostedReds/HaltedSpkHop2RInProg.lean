@@ -12,13 +12,14 @@ module
 public import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkHop2Step -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkHop2Tier2Step -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.HaltedSpkDefs
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkHop2Eval
 import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkHop2Tier1Tight
 import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkHop2Tier2Eval
 import Computational.Proofs.ReductionDsl.SpkHop2Red
 import Computational.Proofs.Game.PromotedCostedReds.DrSessionSimSize
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
 
 /-!
 # Tracker-Halted Promoted `CostedReduction`s for Hop 2
@@ -79,7 +80,7 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness (KemT
   KemTrackDeliverInv.mono)
 open Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitnessSub (listNthOptB
   b64Take48ToB32E kemTrackDeliverAtomicE kemOnDeliverPostAtomicE)
-open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg (hop2FullStTy hop2ChallTy
+open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs (hop2FullStTy hop2ChallTy
   Hop2Mode Hop2EvalSpec Hop2AuxBounded
   prgCoinMode prgLiftedMode prfOracleMode prgLiftedMode_evalSpec prfOracleMode_evalSpec
   compCoinToPrf compCoinToPrf_wk1Comp compCoinToPrf_eval_eq_liftM
@@ -367,7 +368,7 @@ private theorem simulateQ_flattenStateT {ι : Type} {ospec : OracleSpec.{0, 0} �
     congr 1; funext z
     simpa only [flattenStateT, map_eq_bind_pure_comp, Function.comp_def] using ih z.1.1 z.1.2 z.2
 
-@[expose] noncomputable def hop2InitBridgeTrackImpl (k : ℕ)
+@[expose] def hop2InitBridgeTrackImpl (k : ℕ)
     (sc : BitVec 256 × (BitVec 256 × BitVec 256)) :
     Hop2Comp Pt
       (Unit × ((GameState (GhostState Bytes) (Plain ℓ) Bytes × Hop2Aux Pt) ×

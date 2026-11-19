@@ -15,8 +15,8 @@ public import Computational.Specifications.Pqxdh.Security.CostedBudgets
 public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhK -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhK
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhKSimBase -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.StepSim
 import Computational.Proofs.GameHop.ReductionDsl.SupportWP
@@ -30,6 +30,8 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEva
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableDefs
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreK
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreKSimBase
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigEval
 
 /-!
 # State-Growing Non-Session Step Simulation for Shadow-Indexed `KeyInd` Gap-DH
@@ -236,36 +238,6 @@ private theorem eAny_eq_of_le {Γ : List PT} {τ : PT} {K₁ K₂ : ℕ}
   simp only [eAny, Expr.eval,
     List.take_of_length_le hLen, List.take_of_length_le (Nat.le_trans hLen hLe)]
 
-private theorem initPrinGdh2B_eq_of_le {K₁ K₂ : ℕ}
-    {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
-    (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy) (u : Var Γ₄ .nat)
-    (env : Env Δ)
-    (hLen : (stPrinList ((v bSt).eval env)).length ≤ K₁) (hLe : K₁ ≤ K₂) :
-    (initPrinGdh2B K₁ pa sm bSt u).eval env = (initPrinGdh2B K₂ pa sm bSt u).eval env := by
-  simp only [initPrinGdh2B, Comp.eval]
-  rw [eAny_eq_of_le _ _ _ (by simpa [stPrin, stPrinList, Expr.eval] using hLen) hLe]
-
-private theorem genSpkGdh2B_eq_of_le {K₁ K₂ : ℕ}
-    {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
-    (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
-    (x : Var Γ₄ (.prod .nat .nat)) (env : Env Δ) {c : Fin 3 → ℕ}
-    (hInv : BaseOnlineLenInv c ((v bSt).eval env)) (hc : c 0 ≤ K₁) (hLe : K₁ ≤ K₂) :
-    (genSpkGdh2B K₁ pa sm bSt x).eval env = (genSpkGdh2B K₂ pa sm bSt x).eval env := by
-  have hSpks := Nat.le_trans hInv.spks_le hc
-  have hPrin := Nat.le_trans hInv.prin_le hc
-  simp only [genSpkGdh2B, caseOptV, Comp.eval]
-  rw [eAny_eq_of_le _ _ _ (by simpa [stSpks, stSpksList, Expr.eval] using hSpks) hLe,
-      eFind_eq_of_le _ _ _ (by simpa [stPrin, stPrinList, Expr.eval] using hPrin) hLe]
-
-private theorem genOpkGdh2B_eq_of_le {K₁ K₂ : ℕ}
-    {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
-    (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
-    (x : Var Γ₄ (.prod .nat (.prod .nat .nat))) (env : Env Δ)
-    (hLen : (stOpksList ((v bSt).eval env)).length ≤ K₁) (hLe : K₁ ≤ K₂) :
-    (genOpkGdh2B K₁ pa sm bSt x).eval env = (genOpkGdh2B K₂ pa sm bSt x).eval env := by
-  simp only [genOpkGdh2B, Comp.eval]
-  rw [eAny_eq_of_le _ _ _ (by simpa [stOpks, stOpksList, Expr.eval] using hLen) hLe]
-
 section LocalUnsupHelpers
 open _root_.SignalPqxdh.LegacyCosted (
   pqChalIface pqPrimIface gapDhDdhOracle sigAndDdhOracle pqSamplers bundleT
@@ -413,30 +385,6 @@ private theorem gdhHandle2_unsupported (S : Setup) (K : Nat) :
     acceptNoOpkGdhB, finishAcceptGdhC, corruptB, testB, roParsedC, roRawFallbackC,
     revealB, registerGdhB, revealSpkB, letV, bindV, caseOptV, caseSumV, Comp.queries]
 
-private theorem wrapNoFg_initPrinGdh2B_unsup (K : Nat) :
-    (wrapNoFgArm (qPayTy := .nat) fun pa sm bSt u => wrapSim2 pa (initPrinGdh2B K pa sm bSt u)).queries
-      tlGapDhKeyInd.unsupportedW (fun _ => 0) = 0 := by
-  change (wrapNoFgArm fun pa sm bSt u => wrapSim2 pa (initPrinGdh2B K pa sm bSt u)).queries zGapDhW zGapDhWS = 0
-  simp [wrapNoFgArm, initPrinGdh2B, Comp.queries]
-
-private theorem wrapNoFg_genSpkGdh2B_unsup (K : Nat) :
-    (wrapNoFgArm (qPayTy := .prod .nat .nat) fun pa sm bSt x => wrapSim2 pa (genSpkGdh2B K pa sm bSt x)).queries
-      tlGapDhKeyInd.unsupportedW (fun _ => 0) = 0 := by
-  change (wrapNoFgArm fun pa sm bSt x => wrapSim2 pa (genSpkGdh2B K pa sm bSt x)).queries zGapDhW zGapDhWS = 0
-  simp [wrapNoFgArm, genSpkGdh2B, Comp.queries]
-
-private theorem wrapNoFg_genOpkGdh2B_unsup (K : Nat) :
-    (wrapNoFgArm (qPayTy := .prod .nat (.prod .nat .nat)) fun pa sm bSt x => wrapSim2 pa (genOpkGdh2B K pa sm bSt x)).queries
-      tlGapDhKeyInd.unsupportedW (fun _ => 0) = 0 := by
-  change (wrapNoFgArm fun pa sm bSt x => wrapSim2 pa (genOpkGdh2B K pa sm bSt x)).queries zGapDhW zGapDhWS = 0
-  simp [wrapNoFgArm, genOpkGdh2B, Comp.queries]
-
-private theorem wrapNoFg_registerGdhB_unsup :
-    (wrapNoFgArm (qPayTy := B 32) fun pa sm bSt sk => wrapSim2 pa (registerGdhB sm bSt sk)).queries
-      tlGapDhKeyInd.unsupportedW (fun _ => 0) = 0 := by
-  change (wrapNoFgArm fun pa sm bSt sk => wrapSim2 pa (registerGdhB sm bSt sk)).queries zGapDhW zGapDhWS = 0
-  simp [wrapNoFgArm, registerGdhB, Comp.queries]
-
 private theorem sig1KeyActiveHandleC_unsupported (S : Setup) (K : Nat) :
     (sig1KeyActiveHandleC S K).queries tlSigDdhKeyInd.unsupportedW (fun _ => 0) = 0 := by
   have hGdh : ∀ {Δ} (ρ : ∀ {τ}, Var [gdhState2Ty, keyIndQueryTy] τ → Var Δ τ),
@@ -497,50 +445,6 @@ private theorem gdhSimInv_unchanged_online {S : Setup} {b : QueryBudget}
       (Nat.le_succ _))
     rfl rfl rfl (Nat.le_succ _)
 
-private theorem initPrinGdh2B_inv {S : Setup} {b : QueryBudget} {K : ℕ}
-    {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
-    (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy) (u : Var Γ₄ .nat)
-    (env : Env Δ) {c : Fin 3 → ℕ} {t : KeyIndQuery S}
-    {smVal : simTy.denote} {sh : fgShadowAtomicTy.denote}
-    (hSm : (v sm).eval env = smVal) (hBSt : (v bSt).eval env = smVal.1)
-    (hInv : GdhSimInv S b c (embedVal simTy smVal, sh))
-    (hOn : keyIndQueryKind t = 0)
-    {p : (keyIndRespTy.prod simTy).denote}
-    (hp : p ∈ support ((initPrinGdh2B K pa sm bSt u).eval env)) :
-    GdhSimInv S b (bumpPred (keyIndSimPred S) c t) (embedVal simTy p.2, sh) := by
-  have hBase := baseOnlineLenInv_of_gdhSimInv hInv
-  unfold initPrinGdh2B at hp
-  simp only [Comp.eval] at hp
-  split_ifs at hp
-  · simp only [mem_support_pure_iff, Expr.eval] at hp
-    rw [hp, hSm]; exact gdhSimInv_unchanged_online hInv hOn
-  · simp only [letV, bindV, Comp.eval, pure_bind, mem_support_bind_iff, mem_support_pure_iff] at hp
-    rcases hp with ⟨sk0, _, pk0, _, skS, _, pkS, _, rfl⟩
-    simp only [v, Expr.eval] at hSm hBSt
-    refine GdhSimInv.upd_online_base_pows hInv hOn ?_ ?_ ?_ ?_ ?_
-    · refine BaseOnlineLenInv.upd_online hBase hOn ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ <;>
-        simp only [smUpd, smMk, stUpd, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.stMk,
-          stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN,
-          stKyb, stAdv, smFgL, smRaw, smLog, smPows,
-          stPrinList, stSpksList, stOpksList, stSessList, stRespsList, stUsedOList, stUsedNList,
-          stKybList, stAdvList, v,
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ',
-          Expr.eval, hBSt, List.length_cons, Nat.le_refl, Nat.le_succ]
-    · simp only [smUpd, smMk, smFgL, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', Expr.eval, hSm]
-    · simp only [smUpd, smMk, smRaw, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', Expr.eval, hSm]
-    · simp only [smUpd, smMk, smLog, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', Expr.eval, hSm]
-    · simp only [smUpd, smMk, smPows, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', Expr.eval, hSm, Nat.le_succ]
-
 private theorem genSpkGdh2B_inv {S : Setup} {b : QueryBudget} {K : ℕ}
     {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
@@ -592,50 +496,6 @@ private theorem genSpkGdh2B_inv {S : Setup} {b : QueryBudget} {K : ℕ}
           _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
           _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', Expr.eval, hSm, Nat.le_succ]
 
-private theorem genOpkGdh2B_inv {S : Setup} {b : QueryBudget} {K : ℕ}
-    {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
-    (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy)
-    (x : Var Γ₄ (.prod .nat (.prod .nat .nat))) (env : Env Δ) {c : Fin 3 → ℕ} {t : KeyIndQuery S}
-    {smVal : simTy.denote} {sh : fgShadowAtomicTy.denote}
-    (hSm : (v sm).eval env = smVal) (hBSt : (v bSt).eval env = smVal.1)
-    (hInv : GdhSimInv S b c (embedVal simTy smVal, sh))
-    (hOn : keyIndQueryKind t = 0)
-    {p : (keyIndRespTy.prod simTy).denote}
-    (hp : p ∈ support ((genOpkGdh2B K pa sm bSt x).eval env)) :
-    GdhSimInv S b (bumpPred (keyIndSimPred S) c t) (embedVal simTy p.2, sh) := by
-  have hBase := baseOnlineLenInv_of_gdhSimInv hInv
-  unfold genOpkGdh2B at hp
-  simp only [Comp.eval] at hp
-  split_ifs at hp
-  · simp only [mem_support_pure_iff, Expr.eval] at hp
-    rw [hp, hSm]; exact gdhSimInv_unchanged_online hInv hOn
-  · simp only [letV, bindV, Comp.eval, pure_bind, mem_support_bind_iff, mem_support_pure_iff] at hp
-    rcases hp with ⟨opkSkRaw, _, opkPkRaw, _, rfl⟩
-    simp only [v, Expr.eval] at hSm hBSt
-    refine GdhSimInv.upd_online_base_pows hInv hOn ?_ ?_ ?_ ?_ ?_
-    · refine BaseOnlineLenInv.upd_online hBase hOn ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ <;>
-        simp only [smUpd, smMk, stUpd, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.stMk,
-          stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN,
-          stKyb, stAdv, smFgL, smRaw, smLog, smPows,
-          stPrinList, stSpksList, stOpksList, stSessList, stRespsList, stUsedOList, stUsedNList,
-          stKybList, stAdvList, v,
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ',
-          Expr.eval, hBSt, List.length_cons, Nat.le_refl, Nat.le_succ]
-    · simp only [smUpd, smMk, smFgL, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', Expr.eval, hSm]
-    · simp only [smUpd, smMk, smRaw, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', Expr.eval, hSm]
-    · simp only [smUpd, smMk, smLog, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', Expr.eval, hSm]
-    · simp only [smUpd, smMk, smPows, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', Expr.eval, hSm, Nat.le_succ]
-
 private theorem registerGdhB_inv {S : Setup} {b : QueryBudget}
     {Γ₂ Γ₃ Γ₄ Δ : List PT} [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ]
     (sm : Var Γ₂ simTy) (bSt : Var Γ₃ keyIndStateTy) (sk : Var Γ₄ (B 32))
@@ -680,248 +540,6 @@ private theorem registerGdhB_inv {S : Setup} {b : QueryBudget}
         _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
         _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', Expr.eval, hSm,
         List.length_cons, Nat.le_refl]
-
-private theorem gdhShadowHandle2_noFg_step {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
-    {gl : GdhAtomicLift A}
-    {evalGdh : ∀ {α : Type}, OracleComp _root_.SignalPqxdh.Security.FgGapDh.GdhSimSpec α → OracleComp T α}
-    (hgl : GdhAtomicLiftValid gl evalGdh)
-    (S : Setup) (b : QueryBudget) (t : KeyIndQuery S)
-    {qPayTy : PT} {PayAtomic : Ty pqAtomicSig}
-    (pay : PayAtomic.denote) (payLeg : qPayTy.denote)
-    (payE : Expr pqAtomicOps
-      (PayAtomic :: [.prod (embedTy gdhState2Ty) fgShadowAtomicTy, (pqKeyIndCodec S).Q])
-      (embedTy qPayTy))
-    (bodyK bodyQ :
-      Var [params2Ty, gdhState2Ty, qPayTy] params2Ty →
-      Var [simTy, params2Ty, gdhState2Ty, qPayTy] simTy →
-      Var [keyIndStateTy, simTy, params2Ty, gdhState2Ty, qPayTy] keyIndStateTy →
-      Var [gdhState2Ty, qPayTy] qPayTy →
-      Comp pqxdhOps pqGapDhIface
-        [keyIndStateTy, simTy, params2Ty, gdhState2Ty, qPayTy]
-        (.prod keyIndRespTy simTy))
-    (hUnsupK :
-      (wrapNoFgArm fun pa sm bSt x => wrapSim2 pa (bodyK pa sm bSt x)).queries
-        tlGapDhKeyInd.unsupportedW (fun _ => 0) = 0)
-    (hDispK : ∀ s' : gdhShadowState2AtomicTy.denote,
-      (gdhShadowHandle2Atomic gl S (keyIndKFuelsOfBudget S b)).eval
-        (.cons s' (.cons ((pqKeyIndCodec S).qenc t) .nil)) =
-      (liftKind0NoFgArm gl S payE (wrapNoFgArm fun pa sm bSt x => wrapSim2 pa (bodyK pa sm bSt x))).eval
-        (.cons pay (.cons s' (.cons ((pqKeyIndCodec S).qenc t) .nil))))
-    (hPayE : ∀ s' : gdhShadowState2AtomicTy.denote,
-      payE.eval (.cons pay (.cons s' (.cons ((pqKeyIndCodec S).qenc t) .nil))) =
-        embedVal qPayTy payLeg)
-    (hDispQ : ∀ (pa : params2Ty.denote) (sm : simTy.denote),
-      (gdhHandle2 S b.q_total).eval
-        (.cons (pa, sm) (.cons ((_root_.SignalPqxdh.LegacyCosted.keyIndCodec S).qenc t) .nil)) =
-      (wrapSim2 (.zero : Var [params2Ty, gdhState2Ty, qPayTy] params2Ty)
-        (bodyQ .zero .zero .zero (.succ .zero))).eval
-        (.cons sm.1 (.cons sm (.cons pa (.cons (pa, sm) (.cons payLeg .nil))))))
-    (hFuelEq : ∀ (c : Fin 3 → ℕ) (pa : params2Ty.denote) (sm : simTy.denote)
-        (fgSh : fgShadowAtomicTy.denote),
-      (∀ j, c j ≤ keyIndSimBounds b j) →
-      GdhSimInv S b c (embedVal simTy sm, fgSh) →
-      (bodyK .zero .zero .zero (.succ .zero)).eval
-        (.cons sm.1 (.cons sm (.cons pa (.cons (pa, sm) (.cons payLeg .nil))))) =
-      (bodyQ .zero .zero .zero (.succ .zero)).eval
-        (.cons sm.1 (.cons sm (.cons pa (.cons (pa, sm) (.cons payLeg .nil))))))
-    (hInvStep : ∀ (c : Fin 3 → ℕ) (pa : params2Ty.denote) (sm : simTy.denote)
-        (fgSh : fgShadowAtomicTy.denote) (r : (keyIndRespTy.prod simTy).denote),
-      GdhSimInv S b c (embedVal simTy sm, fgSh) →
-      r ∈ support ((bodyK .zero .zero .zero (.succ .zero)).eval
-        (.cons sm.1 (.cons sm (.cons pa (.cons (pa, sm) (.cons payLeg .nil)))))) →
-      GdhSimInv S b (bumpPred (keyIndSimPred S) c t) (embedVal simTy r.2, fgSh)) :
-    KeyIndStepSim S b forgetGdhShadow2 (Gdh2SimInv S b)
-      (gdhShadowHandle2Atomic gl S (keyIndKFuelsOfBudget S b))
-      (liftKeyIndHandle gl.tl S (gl.liftI (gdhHandle2 S b.q_total))) t := by
-  intro c s' hB _hRoom hInv
-  let pa := (projVal gdhState2Ty s'.1).1
-  let sm := (projVal gdhState2Ty s'.1).2
-  have hs1 : embedVal gdhState2Ty (pa, sm) = s'.1 :=
-    AtomicLift.embedVal_projVal gdhState2Ty s'.1
-  have hInvSm : GdhSimInv S b c (embedVal simTy sm, s'.2) := by
-    have h2 : (embedVal gdhState2Ty (pa, sm)).2 = embedVal simTy sm := rfl
-    rw [← h2, hs1]; exact hInv
-  have hArmEval :
-      (liftKind0NoFgArm gl S payE (wrapNoFgArm fun pa sm bSt x => wrapSim2 pa (bodyK pa sm bSt x))).eval
-        (.cons pay (.cons s' (.cons ((pqKeyIndCodec S).qenc t) .nil))) =
-      (fun v0 => (v0.1, (v0.2, s'.2))) <$>
-        (embedVal (.prod keyIndRespTy gdhState2Ty) <$>
-          evalGdh ((wrapSim2 (.zero : Var [params2Ty, gdhState2Ty, qPayTy] params2Ty)
-            (bodyK .zero .zero .zero (.succ .zero))).eval
-            (.cons sm.1 (.cons sm (.cons pa (.cons (pa, sm) (.cons payLeg .nil))))))) := by
-    unfold liftKind0NoFgArm
-    simp only [Comp.eval, runAt2_eval, _root_.ReductionDsl.Expr.v0, _root_.ReductionDsl.Expr.v1,
-      _root_.ReductionDsl.Expr.v2, Expr.eval, Env.get, hPayE s', map_eq_bind_pure_comp,
-      Function.comp_def]
-    have hEnv :
-        (Env.cons s'.1 (.cons (embedVal qPayTy payLeg) .nil) :
-          Env [embedTy gdhState2Ty, embedTy qPayTy]) =
-        embedEnv (.cons (pa, sm) (.cons payLeg .nil) : Env [gdhState2Ty, qPayTy]) := by
-      rw [← hs1]
-    rw [hEnv, hgl.liftGdhAtomic_eval _ hUnsupK _]
-    simp only [wrapNoFgArm, letV, smBase, v,
-      _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-      _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-      _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_zero',
-      _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ',
-      Comp.eval, Expr.eval, pure_bind, map_eq_bind_pure_comp, Function.comp_def]
-  rw [hDispK s', hArmEval]
-  refine ⟨?_, ?_⟩
-  · rw [Functor.map_map, Functor.map_map]
-    have hRhs :
-        (liftKeyIndHandle gl.tl S (gl.liftI (gdhHandle2 S b.q_total))).eval
-          (.cons (forgetGdhShadow2 s') (.cons ((pqKeyIndCodec S).qenc t) .nil)) =
-        embedVal (.prod keyIndRespTy gdhState2Ty) <$>
-          evalGdh ((gdhHandle2 S b.q_total).eval
-            (.cons (pa, sm) (.cons ((_root_.SignalPqxdh.LegacyCosted.keyIndCodec S).qenc t) .nil))) := by
-      have hf : forgetGdhShadow2 s' = embedVal gdhState2Ty (pa, sm) := hs1.symm
-      rw [hf]
-      exact (liftKeyIndHandle_eval gl.tl S (gl.liftI (gdhHandle2 S b.q_total))
-        ((hgl.unsupported_eq (gdhHandle2 S b.q_total)).trans (gdhHandle2_unsupported S b.q_total))
-        (pa, sm) t).trans
-        (congrArg (Functor.map (embedVal (.prod keyIndRespTy gdhState2Ty)))
-          (hgl.eval_liftI (gdhHandle2 S b.q_total) _))
-    rw [hRhs, hDispQ pa sm]
-    simp only [wrapSim2, bindV, Comp.eval, hFuelEq c pa sm s'.2 hB hInvSm]
-    rfl
-  · intro p hp
-    simp only [map_eq_bind_pure_comp, Function.comp_def, mem_support_bind_iff, mem_support_pure_iff] at hp
-    rcases hp with ⟨_, ⟨p0, hp0, rfl⟩, rfl⟩
-    have hp0' := hgl.mem_support_evalGdh hp0
-    simp only [wrapSim2, bindV, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-      _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-      _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_zero',
-      _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ',
-      Comp.eval, Expr.eval, mem_support_bind_iff, mem_support_pure_iff] at hp0'
-    rcases hp0' with ⟨r0, hr0, rfl⟩
-    exact hInvStep c pa sm s'.2 r0 hInvSm hr0
-
-theorem gdhShadowHandle2Atomic_hStep_initPrin {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
-    {gl : GdhAtomicLift A}
-    {evalGdh : ∀ {α : Type}, OracleComp _root_.SignalPqxdh.Security.FgGapDh.GdhSimSpec α → OracleComp T α}
-    (hgl : GdhAtomicLiftValid gl evalGdh)
-    (S : Setup) (b : QueryBudget) (u : Fin S.N_id) :
-    KeyIndStepSim S b forgetGdhShadow2 (Gdh2SimInv S b)
-      (gdhShadowHandle2Atomic gl S (keyIndKFuelsOfBudget S b))
-      (liftKeyIndHandle gl.tl S (gl.liftI (gdhHandle2 S b.q_total)))
-      (.initPrin u) := by
-  refine gdhShadowHandle2_noFg_step hgl S b (.initPrin u) u u.val
-    (aop (.finVal S.N_id) .v0)
-    (fun pa sm bSt u => initPrinGdh2B (keyIndKFuelsOfBudget S b).kOn pa sm bSt u)
-    (fun pa sm bSt u => initPrinGdh2B b.q_total pa sm bSt u)
-    (wrapNoFg_initPrinGdh2B_unsup _)
-    (fun s' => by
-      unfold gdhShadowHandle2Atomic
-      exact dispatchKeyIndQ_eval S _ _ _ _ _ _ _ _ _ _ _ _ _ _ s' (.initPrin u))
-    (fun _ => rfl)
-    (fun pa sm => by
-      simp only [gdhHandle2, _root_.SignalPqxdh.LegacyCosted.keyIndCodec,
-        _root_.SignalPqxdh.LegacyCosted.keyIndQenc, letV, caseSumV, smBase, v,
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_zero',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ',
-        Comp.eval, Expr.eval, pure_bind]; rfl)
-    (fun c pa sm fgSh hB hInv => by
-      have hBase := baseOnlineLenInv_of_gdhSimInv hInv
-      exact initPrinGdh2B_eq_of_le _ _ _ _ _
-        (Nat.le_trans hBase.prin_le (c0_le_kOn hBase hB)) (kOn_le_q_total S b))
-    (fun c pa sm fgSh r hInv hr =>
-      initPrinGdh2B_inv _ _ _ _ _ rfl rfl hInv rfl hr)
-
-theorem gdhShadowHandle2Atomic_hStep_genSPK {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
-    {gl : GdhAtomicLift A}
-    {evalGdh : ∀ {α : Type}, OracleComp _root_.SignalPqxdh.Security.FgGapDh.GdhSimSpec α → OracleComp T α}
-    (hgl : GdhAtomicLiftValid gl evalGdh)
-    (S : Setup) (b : QueryBudget) (u : Fin S.N_id) (j : Fin S.N_recv) :
-    KeyIndStepSim S b forgetGdhShadow2 (Gdh2SimInv S b)
-      (gdhShadowHandle2Atomic gl S (keyIndKFuelsOfBudget S b))
-      (liftKeyIndHandle gl.tl S (gl.liftI (gdhHandle2 S b.q_total)))
-      (.genSPK u j) := by
-  refine gdhShadowHandle2_noFg_step hgl S b (.genSPK u j) (u, j) (u.val, j.val)
-    (finPairToNatE S.N_id S.N_recv .v0)
-    (fun pa sm bSt x => genSpkGdh2B (keyIndKFuelsOfBudget S b).kOn pa sm bSt x)
-    (fun pa sm bSt x => genSpkGdh2B b.q_total pa sm bSt x)
-    (wrapNoFg_genSpkGdh2B_unsup _)
-    (fun s' => by
-      unfold gdhShadowHandle2Atomic
-      exact dispatchKeyIndQ_eval S _ _ _ _ _ _ _ _ _ _ _ _ _ _ s' (.genSPK u j))
-    (fun _ => rfl)
-    (fun pa sm => by
-      simp only [gdhHandle2, _root_.SignalPqxdh.LegacyCosted.keyIndCodec,
-        _root_.SignalPqxdh.LegacyCosted.keyIndQenc, letV, caseSumV, smBase, v,
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_zero',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ',
-        Comp.eval, Expr.eval, pure_bind]; rfl)
-    (fun c pa sm fgSh hB hInv => by
-      have hBase := baseOnlineLenInv_of_gdhSimInv hInv
-      exact genSpkGdh2B_eq_of_le _ _ _ _ _ hBase (c0_le_kOn hBase hB) (kOn_le_q_total S b))
-    (fun c pa sm fgSh r hInv hr =>
-      genSpkGdh2B_inv _ _ _ _ _ rfl rfl hInv rfl hr)
-
-theorem gdhShadowHandle2Atomic_hStep_genOPK {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
-    {gl : GdhAtomicLift A}
-    {evalGdh : ∀ {α : Type}, OracleComp _root_.SignalPqxdh.Security.FgGapDh.GdhSimSpec α → OracleComp T α}
-    (hgl : GdhAtomicLiftValid gl evalGdh)
-    (S : Setup) (b : QueryBudget) (u : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) :
-    KeyIndStepSim S b forgetGdhShadow2 (Gdh2SimInv S b)
-      (gdhShadowHandle2Atomic gl S (keyIndKFuelsOfBudget S b))
-      (liftKeyIndHandle gl.tl S (gl.liftI (gdhHandle2 S b.q_total)))
-      (.genOPK u j o) := by
-  refine gdhShadowHandle2_noFg_step hgl S b (.genOPK u j o) (u, (j, o)) (u.val, (j.val, o.val))
-    (finTripleToNatE S.N_id S.N_recv S.N_opk .v0)
-    (fun pa sm bSt x => genOpkGdh2B (keyIndKFuelsOfBudget S b).kOn pa sm bSt x)
-    (fun pa sm bSt x => genOpkGdh2B b.q_total pa sm bSt x)
-    (wrapNoFg_genOpkGdh2B_unsup _)
-    (fun s' => by
-      unfold gdhShadowHandle2Atomic
-      exact dispatchKeyIndQ_eval S _ _ _ _ _ _ _ _ _ _ _ _ _ _ s' (.genOPK u j o))
-    (fun _ => rfl)
-    (fun pa sm => by
-      simp only [gdhHandle2, _root_.SignalPqxdh.LegacyCosted.keyIndCodec,
-        _root_.SignalPqxdh.LegacyCosted.keyIndQenc, letV, caseSumV, smBase, v,
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_zero',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ',
-        Comp.eval, Expr.eval, pure_bind]; rfl)
-    (fun c pa sm fgSh hB hInv => by
-      have hBase := baseOnlineLenInv_of_gdhSimInv hInv
-      exact genOpkGdh2B_eq_of_le _ _ _ _ _
-        (Nat.le_trans hBase.opks_le (c0_le_kOn hBase hB)) (kOn_le_q_total S b))
-    (fun c pa sm fgSh r hInv hr =>
-      genOpkGdh2B_inv _ _ _ _ _ rfl rfl hInv rfl hr)
-
-theorem gdhShadowHandle2Atomic_hStep_registerKey {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
-    {gl : GdhAtomicLift A}
-    {evalGdh : ∀ {α : Type}, OracleComp _root_.SignalPqxdh.Security.FgGapDh.GdhSimSpec α → OracleComp T α}
-    (hgl : GdhAtomicLiftValid gl evalGdh)
-    (S : Setup) (b : QueryBudget) (sk : Bytes) :
-    KeyIndStepSim S b forgetGdhShadow2 (Gdh2SimInv S b)
-      (gdhShadowHandle2Atomic gl S (keyIndKFuelsOfBudget S b))
-      (liftKeyIndHandle gl.tl S (gl.liftI (gdhHandle2 S b.q_total)))
-      (.registerKey sk) := by
-  refine gdhShadowHandle2_noFg_step hgl S b (.registerKey sk) sk sk .v0
-    (fun _ sm bSt sk => registerGdhB sm bSt sk)
-    (fun _ sm bSt sk => registerGdhB sm bSt sk)
-    wrapNoFg_registerGdhB_unsup
-    (fun s' => by
-      unfold gdhShadowHandle2Atomic
-      exact dispatchKeyIndQ_eval S _ _ _ _ _ _ _ _ _ _ _ _ _ _ s' (.registerKey sk))
-    (fun _ => rfl)
-    (fun pa sm => by
-      simp only [gdhHandle2, _root_.SignalPqxdh.LegacyCosted.keyIndCodec,
-        _root_.SignalPqxdh.LegacyCosted.keyIndQenc, letV, caseSumV, smBase, v,
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_zero',
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ',
-        Comp.eval, Expr.eval, pure_bind]; rfl)
-    (fun _ _ _ _ _ _ => rfl)
-    (fun c _ sm fgSh r hInv hr =>
-      registerGdhB_inv _ _ _ _ rfl rfl hInv rfl hr)
 
 section L2AHelpers
 open _root_.SignalPqxdh.LegacyCosted (keyIndCodec keyIndQenc pqPrimIface)
@@ -1118,23 +736,23 @@ private theorem l2a_decide_eq_fixSent_of_le_mOn {S : Setup} {b : QueryBudget} {n
     decide (n = x) = decide (n = fixSent S b x) := by
   simpa [beq_iff_eq] using beq_fixSent_of_le_mOn (S := S) (b := b) (n := x) hn
 
-private noncomputable def l2a_evalSDBytes32 :=
+private def l2a_evalSDBytes32 :=
   (liftGdhComp (gPrim (sBytes32 (Γ := [])))).eval .nil
-private noncomputable def l2a_evalSDRandom64 :=
+private def l2a_evalSDRandom64 :=
   (liftGdhComp (gPrim (sRandom64 (Γ := [])))).eval .nil
 private def l2a_litB32_nil : Bytes :=
   (litB (Γ := []) 32 []).eval .nil
 private theorem l2a_eval_litB32_nil {Γ : List PT} (ρ : Env Γ) :
     (litB 32 []).eval ρ = l2a_litB32_nil := rfl
-private noncomputable def l2a_evalSDX25519Base (x : Bytes) :=
+private def l2a_evalSDX25519Base (x : Bytes) :=
   (liftGdhComp (gPrim (qX25519Base (Γ := [B 32]) (.var .zero)))).eval (.cons x .nil)
-private noncomputable def l2a_evalSDKemKeyGen (seed : Bytes) :=
+private def l2a_evalSDKemKeyGen (seed : Bytes) :=
   (liftGdhComp (gPrim (qKemKeyGen (Γ := [B 64]) (.var .zero)))).eval (.cons seed .nil)
-private noncomputable def l2a_evalSDSigSign (m : ℕ+)
+private def l2a_evalSDSigSign (m : ℕ+)
     (arg : (Ty.prod (B 32) (.prod (B m) (B 64))).denote) :=
   (liftGdhComp (gPrim (qSigSign m (Γ := [.prod (B 32) (.prod (B m) (B 64))]) (.var .zero)))).eval
     (.cons arg .nil)
-private noncomputable def l2a_evalSDSigChal (m : ℕ+) (msg : Bytes) :=
+private def l2a_evalSDSigChal (m : ℕ+) (msg : Bytes) :=
   (sigChalQ_dsl m (Γ := [B m]) (.var .zero)).eval (.cons msg .nil)
 
 private theorem l2a_eval_liftGdhComp_sBytes32 {Γ : List PT} (ρ : Env Γ) :
@@ -1327,13 +945,6 @@ private def fixSigLeg (S : Setup) (b : QueryBudget)
     (st : sig1KeyActiveStTy.denote) : sig1KeyActiveStTy.denote :=
   (st.1, (st.2.1, (fixSent S b st.2.2.1, st.2.2.2)))
 
-private theorem mem_support_liftGdhToSigDdh_eval {Γ : List PT} {t : PT}
-    {c : Comp pqxdhOps pqGapDhIface Γ t} {env : Env Γ} {x : t.denote}
-    (hx : x ∈ support ((_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.liftGdhToSigDdh c).eval env)) :
-    x ∈ support (c.eval env) := by
-  rw [_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.liftGdhToSigDdh_eval] at hx
-  exact _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.AllOut_embedGdhSigDdh (fun _ h => h) x hx
-
 private theorem sigNoFg_step (S : Setup) (b : QueryBudget) (t : KeyIndQuery S)
     {qPayTy : PT} {PayAtomic : Ty pqAtomicSig}
     (pay : PayAtomic.denote) (payLeg : qPayTy.denote)
@@ -1417,21 +1028,21 @@ private theorem decide_eq_fixSent_of_le_mOn {S : Setup} {b : QueryBudget} {len n
     decide (len = n) = decide (len = fixSent S b n) := by
   simpa [beq_iff_eq] using beq_fixSent_of_le_mOn (S := S) (b := b) (n := n) hLen
 
-private noncomputable def evalS1Bytes32 :=
+private def evalS1Bytes32 :=
   (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.s1Prim
     (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.sBytes32 (Γ := []))).eval .nil
-private noncomputable def evalS1Random64 :=
+private def evalS1Random64 :=
   (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.s1Prim
     (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.sRandom64 (Γ := []))).eval .nil
-private noncomputable def evalS1X25519Base (x : Bytes) :=
+private def evalS1X25519Base (x : Bytes) :=
   (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.s1Prim
     (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.qX25519Base (Γ := [B 32]) (.var .zero))).eval
     (.cons x .nil)
-private noncomputable def evalS1KemKeyGen (seed : Bytes) :=
+private def evalS1KemKeyGen (seed : Bytes) :=
   (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.s1Prim
     (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.qKemKeyGen (Γ := [B 64]) (.var .zero))).eval
     (.cons seed .nil)
-private noncomputable def evalQSigDdhSign (m : ℕ+) (msg : Bytes) :=
+private def evalQSigDdhSign (m : ℕ+) (msg : Bytes) :=
   (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.qSigDdhSign m (Γ := [B m]) (.var .zero)).eval
     (.cons msg .nil)
 private theorem eval_s1Prim_sBytes32 {Γ : List PT} (ρ : Env Γ) :

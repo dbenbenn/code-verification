@@ -12,6 +12,7 @@ module
 public import Std.Tactic.BVDecide
 public import Arm64
 public import Arm64.Trusted.Spec.SepLogicModel
+public import ProofLib.Meta.Compat
 import ProofLib.SepLogic.Model
 import ProofLib.Hoare.Model
 public import ProofLib.SepLogic.Defs
@@ -2112,6 +2113,180 @@ theorem setSigAltStack_setSigAltStack (s : State) (sas1 sas2 : SigAltStack) :
 theorem sigAltStack_setSigAction (s : State) (sig : BitVec 32) (act : SigAction) :
     (s.setSigAction sig act).sigAltStack = s.sigAltStack := by cases s; rfl
 
+@[simp, arm64_norm, wp_norm]
+theorem getSigAction_setSigMask (s : State) (m : BitVec 64) (sig : BitVec 32) :
+    (s.setSigMask m).getSigAction sig = s.getSigAction sig := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem sigActions_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).sigActions = s.sigActions := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem sigAltStack_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).sigAltStack = s.sigAltStack := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem regs_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).regs = s.regs := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem vregs_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).vregs = s.vregs := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem readReg64_setSigMask (s : State) (m : BitVec 64) (r : Reg) :
+    (s.setSigMask m).readReg64 r = s.readReg64 r := by cases s; cases r <;> rfl
+@[simp, arm64_norm, wp_norm]
+theorem readReg32_setSigMask (s : State) (m : BitVec 64) (r : Reg) :
+    (s.setSigMask m).readReg32 r = s.readReg32 r := by cases s; cases r <;> rfl
+@[simp, arm64_norm, wp_norm]
+theorem readReg_setSigMask (s : State) (m : BitVec 64) (w : Width) (r : Reg) :
+    (s.setSigMask m).readReg w r = s.readReg w r := by cases s; cases w <;> cases r <;> rfl
+@[simp, arm64_norm, wp_norm]
+theorem readVReg128_setSigMask (s : State) (m : BitVec 64) (idx : BitVec 5) :
+    (s.setSigMask m).readVReg128 idx = s.readVReg128 idx := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem readVReg64_setSigMask (s : State) (m : BitVec 64) (idx : BitVec 5) :
+    (s.setSigMask m).readVReg64 idx = s.readVReg64 idx := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem readVReg32_setSigMask (s : State) (m : BitVec 64) (idx : BitVec 5) :
+    (s.setSigMask m).readVReg32 idx = s.readVReg32 idx := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem sp_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).sp = s.sp := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem spAligned_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).spAligned = s.spAligned := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem pc_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).pc = s.pc := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem pstate_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).pstate = s.pstate := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem mem_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).mem = s.mem := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem tpidrEl0_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).tpidrEl0 = s.tpidrEl0 := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem fpsr_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).fpsr = s.fpsr := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem brkStart_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).brkStart = s.brkStart := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem brk_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).brk = s.brk := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem fs_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).fs = s.fs := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem oracle_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).oracle = s.oracle := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem oracleIdx_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).oracleIdx = s.oracleIdx := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem exclFails_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).exclFails = s.exclFails := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem exclWillFail_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).exclWillFail = s.exclWillFail := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem trace_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).trace = s.trace := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem status_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).status = s.status := by cases s; rfl
+attribute [wp_norm] State.symtab_setSigMask State.sym_setSigMask
+
+@[simp, arm64_norm, wp_norm]
+theorem setSigMask_setSigMask (s : State) (m1 m2 : BitVec 64) :
+    (s.setSigMask m1).setSigMask m2 = s.setSigMask m2 := by cases s; rfl
+
+@[simp, arm64_norm, wp_norm]
+theorem getSigAction_setSigPending (s : State) (p : BitVec 64) (sig : BitVec 32) :
+    (s.setSigPending p).getSigAction sig = s.getSigAction sig := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem sigActions_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).sigActions = s.sigActions := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem sigAltStack_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).sigAltStack = s.sigAltStack := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem regs_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).regs = s.regs := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem vregs_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).vregs = s.vregs := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem readReg64_setSigPending (s : State) (p : BitVec 64) (r : Reg) :
+    (s.setSigPending p).readReg64 r = s.readReg64 r := by cases s; cases r <;> rfl
+@[simp, arm64_norm, wp_norm]
+theorem readReg32_setSigPending (s : State) (p : BitVec 64) (r : Reg) :
+    (s.setSigPending p).readReg32 r = s.readReg32 r := by cases s; cases r <;> rfl
+@[simp, arm64_norm, wp_norm]
+theorem readReg_setSigPending (s : State) (p : BitVec 64) (w : Width) (r : Reg) :
+    (s.setSigPending p).readReg w r = s.readReg w r := by cases s; cases w <;> cases r <;> rfl
+@[simp, arm64_norm, wp_norm]
+theorem readVReg128_setSigPending (s : State) (p : BitVec 64) (idx : BitVec 5) :
+    (s.setSigPending p).readVReg128 idx = s.readVReg128 idx := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem readVReg64_setSigPending (s : State) (p : BitVec 64) (idx : BitVec 5) :
+    (s.setSigPending p).readVReg64 idx = s.readVReg64 idx := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem readVReg32_setSigPending (s : State) (p : BitVec 64) (idx : BitVec 5) :
+    (s.setSigPending p).readVReg32 idx = s.readVReg32 idx := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem sp_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).sp = s.sp := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem spAligned_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).spAligned = s.spAligned := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem pc_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).pc = s.pc := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem pstate_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).pstate = s.pstate := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem mem_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).mem = s.mem := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem tpidrEl0_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).tpidrEl0 = s.tpidrEl0 := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem fpsr_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).fpsr = s.fpsr := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem brkStart_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).brkStart = s.brkStart := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem brk_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).brk = s.brk := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem fs_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).fs = s.fs := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem oracle_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).oracle = s.oracle := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem oracleIdx_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).oracleIdx = s.oracleIdx := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem exclFails_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).exclFails = s.exclFails := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem exclWillFail_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).exclWillFail = s.exclWillFail := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem trace_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).trace = s.trace := by cases s; rfl
+@[simp, arm64_norm, wp_norm]
+theorem status_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).status = s.status := by cases s; rfl
+attribute [wp_norm] State.symtab_setSigPending State.sym_setSigPending
+
+@[simp, arm64_norm, wp_norm]
+theorem setSigPending_setSigPending (s : State) (p1 p2 : BitVec 64) :
+    (s.setSigPending p1).setSigPending p2 = s.setSigPending p2 := by cases s; rfl
+
 end State
 
 /-! ## Small-Step Operational Semantics Lemmas -/
@@ -2555,7 +2730,8 @@ theorem calleeSavedVRegs_writeVReg128_ite (s : State) (v : BitVec 5) (val : BitV
       by_cases hi : v = i
       · subst hi; simp [State.writeVReg128, VRegFile.read, VRegFile.write]
       · have hvi : i ≠ v := fun h' => hi h'.symm
-        simp [State.writeVReg128, VRegFile.read, VRegFile.write, hi, hvi]
+        have hbeq : (v == i) = false := beq_eq_false_iff_ne.mpr hi
+        simp [State.writeVReg128, VRegFile.read, VRegFile.write, hvi, hbeq]
     rw [hlane 8#5, hlane 9#5, hlane 10#5, hlane 11#5,
         hlane 12#5, hlane 13#5, hlane 14#5, hlane 15#5]
   · have hf : isCalleeSavedVReg v = false := Bool.eq_false_iff.mpr h

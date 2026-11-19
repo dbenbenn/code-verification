@@ -9,19 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwnedPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonicalPlaced
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwnedPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlacedBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonicalPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedBBudget
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `[LibsignalFullPlacement]` Corollaries for `Pqxdh::accept` and `initialize_bob_session`
@@ -32,7 +34,7 @@ Proves `VmPreserved`-strengthened `<PublicKey>::is_canonical` (Block `202`) unde
 `vecAppendElements_fast_placed_ok_cl` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -61,13 +63,17 @@ open CryptoVerification.E2E.Pqxdh.Shared (
 )
 open CryptoVerification.E2E.Pqxdh.Initiator (
   AcceptKeysInput Bytes DRKey Primitives StructuralPrims WellSizedAcceptKeysInput
-  bytesToBv8 cryptoBoolRegStubSpec dalekMontToEdOutBv8 dalekMontToEdStubSpec pqxdhEntryStack
+  bytesToBv8 cryptoBoolRegStubSpec dalekMontToEdOutBv8 dalekMontToEdStubSpec
 )
 open CryptoVerification.E2E.Pqxdh.Initiator.Model (acceptKeys)
 open CryptoVerification.E2E.Pqxdh.ResponderCore (
   BobCutPost PrimitivesMatchCrypto
   bobFrameAtSpqr bobParamsFieldsAt bobSpqrCutCells initBobSavedRegs pqxdhAcceptOptFieldsAt
   toSignalPqxdhPrimitives
+  toSignalPqxdhPrimitives_dalekMontToEdOutAt_eq
+  toSignalPqxdhPrimitives_isCanonicalRef_eq
+  toSignalPqxdhPrimitives_isTorsionFreeBytes_eq
+  toSignalPqxdhPrimitives_montToEd_lt
 )
 open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget VmPreserved
@@ -79,7 +85,7 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlacedBudget (
   vecAppendElements_fast_placed_ok_cl
 )
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (
-  ecPubKeyIsCanonicalCallSpec pqxdhAcceptOptFieldsFrozenPlacedSpec
+  ecPubKeyIsCanonicalCallSpec pqxdhAcceptOptFieldsFrozenPlacedSpec pqxdhAcceptPlacedStack
 )
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget (AcceptOptFieldsEnv)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedBBudget (
@@ -416,7 +422,8 @@ private theorem pack64_4_allOnes_eq_drop1_take30 (keyBytes : SBytes) (h : keyByt
     exact ⟨⟨⟨h1, h2, h3, h4, h5, h6, h7, h8⟩, ⟨h9, h10, h11, h12, h13, h14, h15, h16⟩⟩,
            ⟨h17, h18, h19, h20, h21, h22, h23, h24⟩, ⟨h23, h24, h25, h26, h27, h28, h29, h30⟩⟩
 
-private theorem ecPubKeyIsCanonical_tail_eq (P : SignalPqxdh.Primitives) (keyBytes edPt : SBytes)
+private theorem ecPubKeyIsCanonical_tail_eq (P : SignalPqxdh.Primitives) (keyBytes : SBytes)
+    (edPt : VerifiedLibraries.Common.EdPoint)
     (h : keyBytes.length = 32)
     (hmont : P.montToEd keyBytes 0 = some edPt)
     (htors : P.isTorsionFree edPt = true)
@@ -482,9 +489,9 @@ set_option maxHeartbeats 1600000 in
 private theorem isCanonical_placed_vm_ok'_placed [LibsignalFullPlacement]
     {P : SignalPqxdh.Primitives} {H : LibsignalHooks}
     (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
-    (hmontLen : ∀ u s ed, P.montToEd u s = some ed → ed.length = 160)
+    (hmontLt : ∀ u s pt, P.montToEd u s = some pt → pt.x < 256 ^ 80 ∧ pt.y < 256 ^ 80)
     (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubVmSpecPlaced P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubVmSpec P.isTorsionFree 160)) :
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubVmSpec P.isTorsionFreeBytes 160)) :
     subroutine_ok ((blkPC_202).rebase (blkPl_202).base H)
       (blkPl_202).base
       (withVmPreserved (CryptoVerification.E2E.Pqxdh.Shared.ecPubKeyIsCanonicalCallSpec P)) := by
@@ -493,7 +500,7 @@ private theorem isCanonical_placed_vm_ok'_placed [LibsignalFullPlacement]
       (lsρ lsDalekMontToEdSym) (dalekMontToEdStubVmSpecPlaced P) :=
     ls_hook_ok_any hmontHook
   have htors_call : subroutine_ok ((blkPC_202).rebase (blkPl_202).base H)
-      (lsρ lsDalekTorsionFreeSym) (cryptoBoolRegStubVmSpec P.isTorsionFree 160) :=
+      (lsρ lsDalekTorsionFreeSym) (cryptoBoolRegStubVmSpec P.isTorsionFreeBytes 160) :=
     ls_hook_ok_any htorsHook
   clear hmontHook htorsHook
   dsimp only [dalekMontToEdStubVmSpecPlaced, dalekMontToEdStubSpecPlaced] at hmont_call
@@ -542,10 +549,12 @@ private theorem isCanonical_placed_vm_ok'_placed [LibsignalFullPlacement]
     wp_conv_pre => rw [← hpk_sp_tail]
     have hvm12 : VmPreserved s0 sf := hvm1.trans ‹VmPreserved _ sf›
     have htr1 : sf.trace = s0.trace := by simp_all
-    cases hmont : P.montToEd keyBytes 0 with
+    cases hmont0 : P.montToEd keyBytes 0 with
     | none =>
+      have hmont : P.montToEdBytes keyBytes 0 = none := by
+        simp [SignalPqxdh.Primitives.montToEdBytes, hmont0]
       have hcanon_none : isCanonicalRef P keyBytes = false := by
-        simp [isCanonicalRef, hmont]
+        simp [isCanonicalRef, hmont0]
       rw [hcanon_none]
       apply sepWP_vm_trans hvm12
       by_vm_steps (
@@ -556,8 +565,13 @@ private theorem isCanonical_placed_vm_ok'_placed [LibsignalFullPlacement]
           (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
             (memRegion168_of_cell_and_memRegion160 (s0.sp - 360#64) 0#64 _))))) ?_
         wp_done)
-    | some edPt =>
-      have hed_len : edPt.length = 160 := hmontLen keyBytes 0 edPt hmont
+    | some edPt0 =>
+      let edPt : Bytes :=
+        LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.packEdBytes edPt0
+      have hmont : P.montToEdBytes keyBytes 0 = some edPt := by
+        simp [SignalPqxdh.Primitives.montToEdBytes, hmont0, edPt]
+      have hed_len : edPt.length = 160 :=
+        LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.packEdBytes_length edPt0
       have hed_bv_len : (sBytesToBv8 edPt).length = 160 := by
         simp [sBytesToBv8, CryptoVerification.E2E.Pqxdh.Shared.bytesToBv8, hed_len]
       obtain ⟨e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15,
@@ -596,16 +610,21 @@ private theorem isCanonical_placed_vm_ok'_placed [LibsignalFullPlacement]
         wp_call htors_call ⟨s0.sp - 192#64, edPt⟩
         have hvm23 : VmPreserved s0 sf_1 := hvm12.trans (hvm2.trans ‹VmPreserved _ sf_1›)
         have htr2 : sf_1.trace = s0.trace := by simp_all
+        have hlt := hmontLt keyBytes 0 edPt0 hmont0
+        have htors_eq : P.isTorsionFreeBytes edPt = P.isTorsionFree edPt0 := by
+          simp [SignalPqxdh.Primitives.isTorsionFreeBytes, edPt,
+            LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.unpackEdBytes_packEdBytes hlt.1 hlt.2]
         have hx0_tors :
             BitVec.setWidth 32 (sf_1.readReg64 (Reg.gpr 0#5)) =
-              (if P.isTorsionFree edPt then 1#32 else 0#32) := by assumption
+              (if P.isTorsionFree edPt0 then 1#32 else 0#32) := by
+          rwa [← htors_eq]
         refine SepWP.weaken_pre (memRegion160_of_bytes160 (s0.sp - 192#64) hed_bv_len _) ?_
         apply sepWP_vm_trans hvm23
         by_vm_steps (
-          cases htors : P.isTorsionFree edPt with
+          cases htors : P.isTorsionFree edPt0 with
           | false =>
             have hcanon_false : isCanonicalRef P keyBytes = false := by
-              simp [isCanonicalRef, hmont, htors]
+              simp [isCanonicalRef, hmont0, htors]
             rw [hcanon_false]
             simp only [htors, Bool.false_eq_true, ite_false] at hx0_tors
             have hx0_8 : BitVec.setWidth 8 (sf_1.readReg64 (Reg.gpr 0#5)) = 0#8 := by
@@ -671,7 +690,7 @@ private theorem isCanonical_placed_vm_ok'_placed [LibsignalFullPlacement]
                 have hlen_beq : (keyBytes.length == 32) = true := beq_iff_eq.mpr h
                 have hcanon_b0 : isCanonicalRef P keyBytes = true := by
                   simp only [isCanonicalRef, scalarIsInRange, hlen_beq, hb31_u8, hb0_u8,
-                    hmont, htors]
+                    hmont0, htors]
                   rfl
                 rw [hcanon_b0]
                 simp only [ite_true]
@@ -691,43 +710,41 @@ private theorem isCanonical_placed_vm_ok'_placed [LibsignalFullPlacement]
                 wp_conv_pre => rw [← hfocus64 17 (by decide), hfocus64 23 (by decide)]
                 wp_steps
                 wp_conv_pre => rw [← hfocus64 23 (by decide)]
-                rw [ecPubKeyIsCanonical_tail_eq P keyBytes edPt h hmont htors hb31_u8 hb0_u8]
+                rw [ecPubKeyIsCanonical_tail_eq P keyBytes edPt0 h hmont0 htors hb31_u8 hb0_u8]
                 wp_done)))
 
 private theorem isCanonical_placed_vm_ok'_cl [LibsignalFullPlacement]
     {callerProg : Program} {i : Nat}
     {P : SignalPqxdh.Primitives} {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
     (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
-    (hmontLen : ∀ u s ed, P.montToEd u s = some ed → ed.length = 160)
+    (hmontLt : ∀ u s pt, P.montToEd u s = some pt → pt.x < 256 ^ 80 ∧ pt.y < 256 ^ 80)
     (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubVmSpecPlaced P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubVmSpec P.isTorsionFree 160)) :
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubVmSpec P.isTorsionFreeBytes 160)) :
     subroutine_ok callerProg (lsmpl.base 202)
       (libsignalSessionLib.withCodeLoaded lsmpl
         (withVmPreserved (CryptoVerification.E2E.Pqxdh.Shared.ecPubKeyIsCanonicalCallSpec P))) :=
   full_ls_subroutine_ok_of_plain (j := 202)
-    (isCanonical_placed_vm_ok'_placed hisCanon hmontLen hmontHook htorsHook)
+    (isCanonical_placed_vm_ok'_placed hisCanon hmontLt hmontHook htorsHook)
 
 /-! ## 2. Closed `[LibsignalFullPlacement]` Budget Corollaries for `Accept` & `InitBob*` -/
 
-private theorem dalekMontToEdOutBv8_entails_outAt (P : Primitives) (outPtr : BitVec 64)
-    (inBytes : Bytes) (signBit : UInt8) :
+private theorem dalekMontToEdOutBv8_entails_outAt (P : Primitives)
+    (hmontLen : ∀ u s pt, P.montToEd u s = some pt → pt.length = 160)
+    (outPtr : BitVec 64) (inBytes : Bytes) (signBit : UInt8) :
     (outPtr ↦ₛ dalekMontToEdOutBv8 P inBytes signBit) ⊢
       dalekMontToEdOutAt (toSignalPqxdhPrimitives P) outPtr inBytes signBit := by
-  unfold dalekMontToEdOutBv8 dalekMontToEdOutAt
+  rw [toSignalPqxdhPrimitives_dalekMontToEdOutAt_eq P hmontLen]
+  unfold dalekMontToEdOutBv8 CryptoVerification.E2E.Pqxdh.ResponderCore.dalekMontToEdOutAt
   change (outPtr ↦ₛ match P.montToEd inBytes signBit with
     | some edPt => CryptoVerification.E2E.Pqxdh.Initiator.u64le 1#64 ++
         CryptoVerification.E2E.Pqxdh.Initiator.fitBv8 160 edPt
     | none => CryptoVerification.E2E.Pqxdh.Initiator.u64le 0#64 ++ List.replicate 160 0#8) ⊢
     match P.montToEd inBytes signBit with
-    | some edPt => outPtr ↦ₛ (CryptoVerification.E2E.Pqxdh.Shared.u64le 1#64 ++
-        CryptoVerification.E2E.Pqxdh.Shared.fitBv8 160 edPt)
+    | some edPt => outPtr ↦ₛ (CryptoVerification.E2E.Pqxdh.Initiator.u64le 1#64 ++
+        CryptoVerification.E2E.Pqxdh.Initiator.fitBv8 160 edPt)
     | none => (outPtr ↦₆₄ 0#64) ∗ memRegion (outPtr + 8#64) 160
   cases P.montToEd inBytes signBit with
   | some edPt =>
-    dsimp only
-    have hu1 : CryptoVerification.E2E.Pqxdh.Initiator.u64le 1#64 =
-        CryptoVerification.E2E.Pqxdh.Shared.u64le 1#64 := by decide
-    rw [hu1]
     exact Entails.refl _
   | none =>
     dsimp only
@@ -770,14 +787,21 @@ theorem ecPubKeyIsCanonical_placed_ok_cl [LibsignalFullPlacement]
       rw [hb_eq] at hq'
       exact Satisfies.mono
         (sepConj_mono_right (sepConj_mono_left (sepConj_mono_left
-          (dalekMontToEdOutBv8_entails_outAt P gm.outPtr gm.inBytes gm.signBit))))
+          (dalekMontToEdOutBv8_entails_outAt P hWF.montToEd_len
+            gm.outPtr gm.inBytes gm.signBit))))
         hq'.2
     · exact ⟨hkf, hsym, Or.inr hrest⟩
   have htorsVm :
       HookSat H lsDalekTorsionFreeSym
-        (cryptoBoolRegStubVmSpec (toSignalPqxdhPrimitives P).isTorsionFree 160) := by
+        (cryptoBoolRegStubVmSpec (toSignalPqxdhPrimitives P).isTorsionFreeBytes 160) := by
     obtain ⟨fnT, hfnT, hokT⟩ := htorsHook
     refine ⟨fnT, hfnT, fun gt Rt st hrunt hpret hspt => ?_⟩
+    have hlen : gt.inBytes.length = 160 := by
+      have hp := hpret
+      dsimp only [cryptoBoolRegStubVmSpec,
+        CryptoVerification.E2E.Pqxdh.Shared.cryptoBoolRegStubSpec] at hp
+      rw [sepConj_assoc, satisfies_pure_sepConj] at hp
+      exact hp.1.2
     rcases hokT ⟨gt.inPtr, gt.inBytes⟩ Rt st hrunt hpret hspt with
       ⟨hkf, hsym, ⟨hret, hcc, hq⟩ | hrest⟩
     · refine ⟨hkf, hsym, Or.inl ⟨hret, hcc, ?_⟩⟩
@@ -788,11 +812,14 @@ theorem ecPubKeyIsCanonical_placed_ok_cl [LibsignalFullPlacement]
       rcases hq with ⟨hvm, hq'⟩
       rw [sepConj_assoc, satisfies_pure_sepConj] at hq'
       rw [sepConj_assoc, satisfies_pure_sepConj]
+      rw [toSignalPqxdhPrimitives_isTorsionFreeBytes_eq P gt.inBytes hlen]
       exact ⟨⟨hvm, hq'.1⟩, hq'.2⟩
     · exact ⟨hkf, hsym, Or.inr hrest⟩
   refine subroutine_ok_outcome_intro fun g R s0 hpc hrun hpre hsp => ?_
   exact (isCanonical_placed_vm_ok'_cl (P := toSignalPqxdhPrimitives P)
-    hWF.isCanonical_eq_isCanonicalRef hWF.montToEd_len hmontVm htorsVm).mono_outcome
+    (fun k => (hWF.isCanonical_eq_isCanonicalRef k).trans
+      (toSignalPqxdhPrimitives_isCanonicalRef_eq P hWF.montToEd_len k).symm)
+    (toSignalPqxdhPrimitives_montToEd_lt P) hmontVm htorsVm).mono_outcome
     ⟨g.keyPtr, g.keyBytes⟩ R s0 hpc hrun hpre hsp fun _ hout => hout
 
 /-- Closed `[LibsignalFullPlacement]` budget-threaded contract for `Pqxdh::accept` (Block `79`)
@@ -942,7 +969,7 @@ theorem initBob_to_spqr_full_placed [LibsignalFullPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (fun sf P_f =>
         (∃ evs : List AllocEvent, AcceptOptFieldsEnv P inp evs ∧
           (P_f ⊢
@@ -954,7 +981,7 @@ theorem initBob_to_spqr_full_placed [LibsignalFullPlacement]
             ((argPtr + 297#64) ↦₈ 0#8) ∗
             memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗
             (lsLogFilterAddr ↦₆₄ 0#64) ∗
-            stackAt (s0.sp - 768#64) pqxdhEntryStack ∗
+            stackAt (s0.sp - 768#64) pqxdhAcceptPlacedStack ∗
             A.pool lim (M.stepEvents evs st) sf ∗ Frame)) ∧
         LibsignalFrozen lsmpl sf.mem ∧
         sf.status = ExecStatus.Running ∧ sf.sp = s0.sp - 768#64 ∧
@@ -1001,7 +1028,7 @@ theorem initBob_to_spqr_full_placed_std [LibsignalFullPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (fun sf P_f =>
         (∃ evs : List AllocEvent, AcceptOptFieldsEnv P inp evs ∧
           (P_f ⊢
@@ -1013,7 +1040,7 @@ theorem initBob_to_spqr_full_placed_std [LibsignalFullPlacement]
             ((argPtr + 297#64) ↦₈ 0#8) ∗
             memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗
             (lsLogFilterAddr ↦₆₄ 0#64) ∗
-            stackAt (s0.sp - 768#64) pqxdhEntryStack ∗
+            stackAt (s0.sp - 768#64) pqxdhAcceptPlacedStack ∗
             A.pool lim (M.stepEvents evs st) sf ∗ Frame)) ∧
         LibsignalFrozen lsmpl sf.mem ∧
         sf.status = ExecStatus.Running ∧ sf.sp = s0.sp - 768#64 ∧
@@ -1063,7 +1090,7 @@ theorem initializeBobSession_cut_full_placed [LibsignalFullPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk sameAccountByte ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (BobCutPost (blkPl_75).base s0 ratchetKeyPairPtr
         drKey.rootKey drKey.pqrKey drKey.chainKey spkBPk inp.spkBSk Frame)
       Qp :=
@@ -1102,7 +1129,7 @@ theorem initializeBobSession_cut_full_placed_std [LibsignalFullPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk sameAccountByte ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (BobCutPost (blkPl_75).base s0 ratchetKeyPairPtr
         drKey.rootKey drKey.pqrKey drKey.chainKey spkBPk inp.spkBSk Frame)
       Qp :=

@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import Computational.Proofs.E2E.HaltedSpkDefs
-public import Computational.Proofs.E2E.HaltedSpkHop2Init
-public import Computational.Proofs.E2E.HaltedSpkHop2Phase2Last
+public import Computational.Proofs.E2E.HaltedSpkHop2Init -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.HaltedSpkHop2Phase2Last -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.HaltedSpkHop2Phase0
 import Computational.Proofs.E2E.HaltedSpkHop2Phase1
 
@@ -19,12 +19,12 @@ import Computational.Proofs.E2E.HaltedSpkHop2Phase1
 # Tracker-Halted Hop-2 Hybrid Lemmas
 
 Re-exports the tracker-halted Hop-2 initial bridge and terminal hybrid bound, and composes Phases 2,
-1, and 0 to prove `evalDist_hop2PrfRedKTrackHalted_true_le_hop2PrgRedKTrackHalted_succ`.
--/
+1, and 0 to prove `evalDist_hop2PrfRedKTrackHalted_true_le_hop2PrgRedKTrackHalted_succ`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 namespace Computational.Proofs.E2E.HaltedSpkHop2Lemmas
 

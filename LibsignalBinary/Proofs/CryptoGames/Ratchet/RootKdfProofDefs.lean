@@ -19,7 +19,7 @@ public import LibsignalBinary.Specifications.CryptoGames.PRNG.Defs
 One-step `rootKdf` PRG game (`rootStepPRG`) and its HMAC-PRF reduction (`rootStepRed`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 namespace CryptoGames
@@ -32,7 +32,7 @@ def rootStepPRG (F : ShaState → List (BitVec 8) → ShaState) {Pt : Type}
   ⟨fun σ => rootKdf F σ (enc I)⟩
 
 /-- PRF reduction for `rootStepPRG`: queries `extractPRF` at `I`, expands the output, and runs `B`. -/
-def rootStepRed (F : ShaState → List (BitVec 8) → ShaState) {Pt : Type} (I : Pt)
+@[expose] def rootStepRed (F : ShaState → List (BitVec 8) → ShaState) {Pt : Type} (I : Pt)
     (B : PRGScheme.PRGAdversary (RootKey × ChainKey)) : PRFAdversary Pt (BitVec 256) :=
   show OracleComp (unifSpec + prfSpec Pt (BitVec 256)) Bool from do
   let prk ← evalQuery (Input := Pt) (Tag := BitVec 256) I

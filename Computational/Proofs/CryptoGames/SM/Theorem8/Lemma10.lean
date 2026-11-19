@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux -- proof-setup: allow-public-import
 import VCVio.OracleComp.EvalDist.Measure
 
 /-!
@@ -19,7 +19,7 @@ import VCVio.OracleComp.EvalDist.Measure
 of `redCKAAuth` by the real PRF-PRNG branch of `redPRNGAuth`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -97,23 +97,23 @@ theorem simulateQ_sampleT_run_id {ι : Type} {tspec : OracleSpec.{0, 0} ι} {S �
     (($ᵗ α : ProbComp α) >>= fun a => pure (a, st)) :=
   simulateQ_sampleT_run impl st
 
-def initES_C (tL : Option ℕ) (kr : KR) (kc : KC) : EStateC Γ T Sig SS RS M E I :=
+@[expose] def initES_C (tL : Option ℕ) (kr : KR) (kc : KC) : EStateC Γ T Sig SS RS M E I :=
   let out := prng.up (prng.init kr) lam
   let γA := match tL with | none => some (cka.initA kc) | some _ => none
   let γB := match tL with | none => some (cka.initB kc) | some _ => none
   let vp := mkParties (T := T) γA γB out.1 (fs.initSender out.2) (fs.initReceiver out.2)
   { g := { st := fun P => match P with | .A => vp.1 | .B => vp.2, b := false }, h := {} }
 
-def initES_P (σv : Option Sig) (kr : KR) (kc : KC) : EStateP Γ T Sig SS RS M E K :=
+@[expose] def initES_P (σv : Option Sig) (kr : KR) (kc : KC) : EStateP Γ T Sig SS RS M E K :=
   let out := prng.up (prng.init kr) lam
   let vp := mkParties (T := T) (cka.initA kc) (cka.initB kc) σv
     (fs.initSender out.2) (fs.initReceiver out.2)
   { g := { st := fun P => match P with | .A => vp.1 | .B => vp.2, b := false }, h := {} }
 
-def initSP (tL : Option ℕ) (kr : KR) : PRFPRNG.GameState Sig I K :=
+@[expose] def initSP (tL : Option ℕ) (kr : KR) : PRFPRNG.GameState Sig I K :=
   { σ := (prng.up (prng.init kr) lam).1, corr := tL.isSome, b := false }
 
-def initSP_zero (kr : KR) : PRFPRNG.GameState Sig I K :=
+@[expose] def initSP_zero (kr : KR) : PRFPRNG.GameState Sig I K :=
   { σ := prng.init kr, prf := true, b := false }
 
 theorem sync_init_none_zero (kr : KR) (kc kc_ext : KC) :

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyB
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodePure
@@ -19,6 +19,12 @@ import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `[LibsignalPlacement]` Decode-Loop Head and Inlined `decode_key`
@@ -28,7 +34,7 @@ tail blocks (`+0x120`, `+0x2ec`, `+0x324`), and inlined `decode_key` (`+0x0f4..+
 `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -80,7 +86,7 @@ attribute [local arm64_norm, local wp_norm]
   bv_add_neg_192 bv_add_neg_196 bv_add_neg_200 bv_add_neg_216 bv_add_neg_512
 
 /-- Exit postcondition at `+0x460` (`1120`) under `[LibsignalPlacement]`. -/
-def preKeyLoopExitPostPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def preKeyLoopExitPostPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (sp' sret len ptr0 : BitVec 64) (vb : BitVec 8) (ptr : BitVec 64)
     (bs : List (BitVec 8)) (res : Option ProtoPreKeySignalMessage) :
     State → SepProp → Prop :=

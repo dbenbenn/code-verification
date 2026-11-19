@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed
-public import Computational.Proofs.CryptoGames.SM.Theorem1.Queries
+public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem1.Queries -- proof-setup: allow-public-import
 import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
 
 /-!
@@ -22,7 +22,7 @@ Proves `privRedB_queries`, showing that the blanked privacy reduction `ThmB.priv
 as many SM oracle queries as the underlying adversary.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec
 

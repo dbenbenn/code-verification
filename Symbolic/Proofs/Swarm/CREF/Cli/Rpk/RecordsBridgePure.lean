@@ -35,7 +35,7 @@ Defines the intermediate setup traces `setupTr1`..`setupTr5` for `Composed.Refin
 and characterizes `setupTrace` when `r.alice = r.bob`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -161,7 +161,7 @@ private theorem Fails.requireTracePredicate {p : DY.ExecTrace → Bool} {tr : DY
 
 open DY.Libsignal.Composed.Refinement (randTerm)
 
-def setupTr1 (a : DY.Participant) : DY.ExecTrace :=
+@[expose] def setupTr1 (a : DY.Participant) : DY.ExecTrace :=
   ((((Trace.nil.append (RndE 32)).append
     (EvE (.IdentityRegistered a (DY.DiffieHellman.dhPk (randTerm 0 32))
       (DY.Signature.vk (randTerm 0 32)) true))).append

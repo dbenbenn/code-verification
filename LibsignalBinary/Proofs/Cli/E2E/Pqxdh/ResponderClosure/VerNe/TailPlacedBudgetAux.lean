@@ -12,16 +12,20 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2PlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2PlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3b
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderStore.SessionRecordCallees
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSpe2Ext
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenVerNeBlocks
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -35,6 +39,18 @@ import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneBase
 import LibsignalBinary.Proofs.TripleRatchet.Record.SegTail
 import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2
+public import ProofLib.MallocngBridge
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
 
 /-!
 # Budget-Threaded Relocatable Version-Mismatch Tail Envelope and Part A (`+0x2cfc → +0x3410`)
@@ -45,7 +61,7 @@ allocation step (`+0x33b0 → +0x33b4`), and Part A (`over_ver_ne_tail_partA_cli
 Block `518` (`lsProg_518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -122,7 +138,7 @@ local macro "wp_steps_sync_518 " ext:term:max mid:term : tactic => `(tactic| (
 /-- Allocation event envelope for `VerNe/TailPlacedBudget` (`+0x2cfc → s0.readReg64 .x30`):
 17-byte `"decryption failed"` allocation followed by free-only cleanup (`errs` dealloc,
 `SessionStructure` drop, and K2 `previous_sessions` epilogue). -/
-def VerNeTailEnv : List AllocEvent → Prop :=
+@[expose] def VerNeTailEnv : List AllocEvent → Prop :=
   SeqEnv (· = rustAllocEvents 17 1) FreeOnlyEvs
 
 theorem fitsAlloc17_of_fitsEnv {M : AllocCostModel} {lim : BudgetLimits} {st0 : M.σ}

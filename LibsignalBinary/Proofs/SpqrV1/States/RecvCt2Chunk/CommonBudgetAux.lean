@@ -12,16 +12,22 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
-public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Common
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonExt
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
+public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonExt
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 public import ProofLib.SepLogic.WPp
+public meta import ProofLib
+public meta import ProofLib.GenPlacedFetches
+public meta import ProofLib.SepLogic.WP
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk`: Budget Postconditions & Stack Framing
@@ -30,7 +36,7 @@ Envelope-parametric and canonical `SepWPp` postconditions (`recvCt2ChunkBudgetPo
 stack-frame bridges (`19,552` B vs `20,272` B), and `AllocContracts4K` / `DeallocOkExt` helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -45,13 +51,12 @@ open CryptoVerification.LibsignalTripleRatchet
   (DoReserveCall reserveCap sessionMemcpyRegionSpec withStack)
 open CryptoVerification.LibsignalSpqrV1 (Bytes LibcruxHmacCall MlKem)
 open CryptoVerification.SpqrV1.Auth (AuthenticatorGhost)
-open CryptoVerification.SpqrV1.Auth.MacHdrFacts (SepWPp.call_allowPanic_inImage_mid)
+
 open CryptoVerification.SpqrV1.ChainProofs (bytesAt_false bytesAt_true)
 open CryptoVerification.SpqrV1.ChainProofs.NextKeyInternalFacts (onPanic_entails_of_trace_eq)
 open CryptoVerification.SpqrV1.Poly.AddChunk (addChunkTotal)
 open CryptoVerification.SpqrV1.Poly.DecodedMessage (decodedMessageTotal)
-open CryptoVerification.SpqrV1.States.RecvCt2Chunk
-  (RecvCt2ChunkGhost SplitBytes recvCt2ChunkRoAt stackAt_recvCt2ChunkExt_eq_X)
+open CryptoVerification.SpqrV1.States.RecvCt2Chunk (RecvCt2ChunkGhost SplitBytes stackAt_recvCt2ChunkExt_eq_X)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv FitsEvents FreeOnlyEvs
    RustCliAllocBudget SeqEnv VmPreserved fitsEvents_append rustAllocEvents rustDeallocEvents)
@@ -67,7 +72,6 @@ open LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsBudget
   (OptSecret32AllocEnv RecvCt2ChunkEnv RecvCt2PostDecapsEnv RecvCt2ReserveCt1Env RecvCt2TailEnv
    optSecret32AllocEnv_nonempty recvCt2ChunkBudgetOnPanic recvCt2ChunkEnv_of_stillReceiving
-   recvCt2ChunkSpec recvCt2ChunkSpecExt recvCt2ChunkSpecExtOfEnv recvCt2ChunkSpecOfEnv
    recvCt2HmacEvents recvCt2MacCt2AllocEvents recvCt2PostDecapsEnv_nonempty
    recvCt2PreAuthUpdateEvents recvCt2ReserveCt1Env_nonempty recvCt2TailEnv_nonempty)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
@@ -121,208 +125,12 @@ theorem allowPanic_isPanic_budget_recvCt2 {P : Prop} {s0 sf : State} {Q R : SepP
 
 /-! ## Fixed-Offset Budget `SepWPp` Postconditions & Stack-Frame Lift -/
 
-/-- Envelope-parametric normal-return `SepWPp` postcondition for `recv_ct2_chunk`
-(`recvCt2ChunkStackX = 19552`B). -/
-abbrev recvCt2ChunkBudgetPostQOfEnv (img : Obj.Image) (K : MlKem) (F : ShaCompress)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (Env : RecvCt2ChunkGhost F → List AllocEvent → Prop)
-    (x : RecvCt2ChunkGhost F) (st : M.σ) (s0 : State) (R : SepProp) :
-    State → SepProp → Prop :=
-  fun sf P_f =>
-    ((sf.mem ⊨ P_f ∗ R) →
-      (sf.mem ⊨
-        (recvCt2ChunkRoAt img ∗
-          (recvCt2ChunkSpecOfEnv K F M A lim img.base Env).post (x, st) s0 sf) ∗ R)) ∧
-      sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
-
-/-- Canonical normal-return `SepWPp` postcondition for `recv_ct2_chunk`
-(`recvCt2ChunkStackX = 19552`B). -/
-abbrev recvCt2ChunkBudgetPostQ (img : Obj.Image) (K : MlKem) (F : ShaCompress)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (x : RecvCt2ChunkGhost F) (st : M.σ) (s0 : State) (R : SepProp) :
-    State → SepProp → Prop :=
-  recvCt2ChunkBudgetPostQOfEnv img K F M A lim RecvCt2ChunkEnv x st s0 R
-
-/-- Envelope-parametric contract-backed (`*Ext`) normal-return `SepWPp` postcondition for
-`recv_ct2_chunk` (`recvCt2ChunkStackExt = 20272`B). -/
-abbrev recvCt2ChunkBudgetPostQExtOfEnv (img : Obj.Image) (K : MlKem) (F : ShaCompress)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (Env : RecvCt2ChunkGhost F → List AllocEvent → Prop)
-    (x : RecvCt2ChunkGhost F) (st : M.σ) (s0 : State) (R : SepProp) :
-    State → SepProp → Prop :=
-  fun sf P_f =>
-    ((sf.mem ⊨ P_f ∗ R) →
-      (sf.mem ⊨
-        (recvCt2ChunkRoAt img ∗
-          (recvCt2ChunkSpecExtOfEnv K F M A lim img.base Env).post (x, st) s0 sf) ∗ R)) ∧
-      sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
-
-/-- Canonical contract-backed (`*Ext`) normal-return `SepWPp` postcondition for `recv_ct2_chunk`
-(`recvCt2ChunkStackExt = 20272`B). -/
-abbrev recvCt2ChunkBudgetPostQExt (img : Obj.Image) (K : MlKem) (F : ShaCompress)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (x : RecvCt2ChunkGhost F) (st : M.σ) (s0 : State) (R : SepProp) :
-    State → SepProp → Prop :=
-  recvCt2ChunkBudgetPostQExtOfEnv img K F M A lim RecvCt2ChunkEnv x st s0 R
-
 /-- Panic `SepWPp` postcondition for `recv_ct2_chunk` (shared across `X` and `Ext` stacks). -/
 abbrev recvCt2ChunkBudgetPostQp {F : ShaCompress} (K : MlKem)
     (x : RecvCt2ChunkGhost F) (s0 : State) (R : SepProp) :
     State → SepProp → Prop :=
   fun sf P_f =>
     (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ recvCt2ChunkBudgetOnPanic K x s0 sf ∗ R)
-
-/-- Frame the bottom `720` stack bytes `memRegion (s0.sp - 20272#64) 720` out of a terminal
-`SepWPp` segment proved against `recvCt2ChunkBudgetPostQOfEnv` (`19552`B) to obtain
-`recvCt2ChunkBudgetPostQExtOfEnv` (`20272`B). -/
-theorem sepWPp_frame_recvCt2_budget_ext {prog : Program} {img : Obj.Image}
-    {K : MlKem} {F : ShaCompress}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Env : RecvCt2ChunkGhost F → List AllocEvent → Prop}
-    {x : RecvCt2ChunkGhost F} {st : M.σ} {s0 s : State} {P R : SepProp}
-    (h : SepWPp prog (s0.readReg64 .x30) s P
-      (recvCt2ChunkBudgetPostQOfEnv img K F M A lim Env x st s0
-        (memRegion (s0.sp - 20272#64) 720 ∗ R))
-      (recvCt2ChunkBudgetPostQp K x s0
-        (memRegion (s0.sp - 20272#64) 720 ∗ R))) :
-    SepWPp prog (s0.readReg64 .x30) s (P ∗ memRegion (s0.sp - 20272#64) 720)
-      (recvCt2ChunkBudgetPostQExtOfEnv img K F M A lim Env x st s0 R)
-      (recvCt2ChunkBudgetPostQp K x s0 R) := by
-  intro R_in hmem hcode
-  have hmem' : s.mem ⊨ P ∗ (memRegion (s0.sp - 20272#64) 720 ∗ R_in) := by
-    simpa only [sepConj_assoc] using hmem
-  obtain ⟨sf, hsteps, hout⟩ := h (memRegion (s0.sp - 20272#64) 720 ∗ R_in) hmem' hcode
-  refine ⟨sf, hsteps, ?_⟩
-  rcases hout with ⟨hpc, hrun, P_f, hPf_in, ⟨hQ, hsp, hcs⟩⟩ | ⟨hpan, P_f, hPf_in, hQp⟩ | ⟨_, hfalse⟩
-  · refine Or.inl ⟨hpc, hrun, P_f ∗ memRegion (s0.sp - 20272#64) 720, ?_, ?_⟩
-    · simpa only [sepConj_assoc] using hPf_in
-    · refine ⟨fun hPf_R => ?_, hsp, hcs⟩
-      have hPf_R' : sf.mem ⊨ P_f ∗ (memRegion (s0.sp - 20272#64) 720 ∗ R) := by
-        simpa only [sepConj_assoc] using hPf_R
-      have hpost := hQ hPf_R'
-      dsimp only [recvCt2ChunkSpecOfEnv] at hpost
-      dsimp only [recvCt2ChunkSpecExtOfEnv]
-      simp only [sepExists_sepConj_right, sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
-      rcases hpost with ⟨evs, hpost⟩
-      refine ⟨evs, ?_⟩
-      rw [stackAt_recvCt2ChunkExt_eq_X s0.sp]
-      exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
-  · refine Or.inr (Or.inl ⟨hpan, P_f ∗ memRegion (s0.sp - 20272#64) 720, ?_, ?_⟩)
-    · simpa only [sepConj_assoc] using hPf_in
-    · intro hPf_R
-      have hPf_R' : sf.mem ⊨ P_f ∗ (memRegion (s0.sp - 20272#64) 720 ∗ R) := by
-        simpa only [sepConj_assoc] using hPf_R
-      have hpan_post := hQp hPf_R'
-      dsimp only [recvCt2ChunkBudgetOnPanic] at hpan_post ⊢
-      have harrange :
-          (⌜(x.self.recv_ct2_chunk K x.epoch x.chunk).isPanic = true ∧ s0.trace <+: sf.trace⌝ ∗
-            anyHeap) ∗ (memRegion (s0.sp - 20272#64) 720 ∗ R) =
-          (⌜(x.self.recv_ct2_chunk K x.epoch x.chunk).isPanic = true ∧ s0.trace <+: sf.trace⌝ ∗
-            (anyHeap ∗ memRegion (s0.sp - 20272#64) 720)) ∗ R := by sep_ac_rfl
-      rw [harrange] at hpan_post
-      exact Satisfies.mono
-        (sepConj_mono_left (sepConj_mono_right (entails_anyHeap _))) hpan_post
-  · exact (not_satisfies_false_sepConj hfalse).elim
-
-/-! ## Mid-Function `SepWPp` Budget Call Tactic (`wpp_call_inImage_recvCt2_budget`) -/
-
-open Lean Elab Tactic Meta in
-elab "wpp_call_inImage_recvCt2_budget " hcall:term:max a:term:max hF:term:max : tactic => do
-  let hcallCopyId ← freshIdent `hcall_copy
-  let sfId ← freshIdent `sf
-  let hpcId ← freshIdent `hpc_sf
-  let hrunId ← freshIdent `hrun_sf
-  let hspId ← freshIdent `hsp_sf
-  let hcsId ← freshIdent `hcs_sf
-  let hFId ← freshIdent `hF_sf
-  evalTactic (← `(tactic| (
-    have $hcallCopyId := $hcall
-    apply (SepWPp.call_allowPanic_inImage_mid $hcallCopyId (x := $a) $hF)
-    wp_focus_close (first | wp_norm_goal | wp_norm_lhs)
-    wp_focus_close wp_norm_lhs
-    wp_focus_close (first | wp_norm_lhs | wp_norm_goal)
-    wp_focus_close (first | wp_norm_lhs | wp_norm_goal)
-  )))
-  let gsAfterSetup ← getGoals
-  let gPre :: gPanic :: gErr :: gCont :: rest := gsAfterSetup
-    | throwError "wpp_call_inImage_recvCt2_budget: unexpected subgoals"
-  setGoals [gPre]
-  evalTactic (← `(tactic| intro _R' _hmR'))
-  let ghostMVars ← etaExpandGoalProdMVarsWithNames
-  evalTactic (← `(tactic| (
-    wp_unfold_specs
-    try dsimp only
-    try simp (config := { decide := true }) only [
-      bytesAt_true, bytesAt_false,
-      sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-      satisfies_pure_sepConj, sepConj_assoc,
-      wp_norm, arm64_norm] at _hmR'
-    try simp (config := { decide := true }) only [
-      bytesAt_true, bytesAt_false,
-      sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-      satisfies_pure_sepConj, sepConj_assoc,
-      wp_norm, arm64_norm, *]
-  )))
-  evalTactic (← `(tactic| repeat' (first | apply And.intro | arm64_instantiate_sep_exists)))
-  wpDischargeCallSubgoalsCore ghostMVars (some hcallCopyId)
-  setGoals (gPanic :: gErr :: gCont :: rest)
-  evalTactic (← `(tactic| (
-    wp_focus_close (wp_unfold_specs; intro _; first
-      | exact onPanic_pure_entails_recvCt2 (by wp_norm_lhs)
-      | exact onPanic_entails_of_trace_eq (by wp_norm_lhs)
-      | exact Entails.pure_left False.elim)
-    wp_focus_close (wp_unfold_specs; exact ⟨fun _ _ => rfl, fun _ => rfl⟩)
-    try clear $hcallCopyId
-    intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident $hFId:ident
-  )))
-  foldStructEtaTarget
-  for _ in [:2] do
-    let mvarId ← getMainGoal
-    let ref ← IO.mkRef #[]
-    mvarId.withContext do
-      let ty ← instantiateMVars (← mvarId.getType)
-      ty.forEach fun sub => do
-        if sub.isConst then
-          let nm := sub.constName!
-          if nm != ``Arm64.Spec.mk && nm != ``Arm64.Spec.inImage then
-            let subTy ← inferType sub
-            if subTy.getForallBody.isAppOf ``Arm64.Spec then
-              let arr ← ref.get
-              if !arr.any (fun i => i.getId == nm) then
-                ref.set (arr.push (mkIdent nm))
-    let ids ← ref.get
-    for id in ids do
-      let _ ← tryTactic (evalTactic (← `(tactic| dsimp only [$id:ident])))
-  let _ ← tryTactic (evalTactic (← `(tactic| dsimp only)))
-  for hId in [hspId, hcsId] do
-    let _ ← tryTactic (evalTactic (← `(tactic| dsimp only at $hId:ident)))
-    let _ ← tryTactic (evalTactic (← `(tactic|
-      simp (config := { decide := true }) only [
-        ← disjointRegions_iff_disjoint64,
-        ← disjointRegions_iff_disjoint128,
-        Arm64.CalleeSavedPreserved,
-        wp_norm, arm64_norm] at $hId:ident)))
-  let mut worklist : List Ident := [hspId, hcsId]
-  while !worklist.isEmpty do
-    let currId :: rest := worklist | break
-    worklist := rest
-    let mvarId ← getMainGoal
-    let lctx ← mvarId.withContext getLCtx
-    if let some decl := lctx.findFromUserName? currId.getId then
-      let ty ← mvarId.withContext (instantiateMVars decl.type)
-      if ty.isAppOfArity ``And 2 then
-        let h1 ← freshIdent `h
-        if ← tryTactic (evalTactic (← `(tactic| rcases $currId:ident with ⟨$h1:ident, $currId:ident⟩))) then
-          worklist := h1 :: currId :: worklist
-  let _ ← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| (
-    conv =>
-      arg 4
-      simp (config := { decide := true }) only [
-        stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
-        sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc,
-        wp_norm, arm64_norm, $hspId:ident]))))
-
-/-! ## Stack-Framed & `.inImage` `VmPreserved` `SplitBytes` Relocation Lifts -/
 
 theorem SplitBytes.memcpyVm_withStack_ok {prog : Program} {entry : BitVec 64}
     {n : Nat} {P : BitVec 64 → SepProp} (S : SplitBytes n P) (hn : n < 2 ^ 64)
@@ -399,90 +207,6 @@ theorem SplitBytes.memcpyVm_withStack_ok {prog : Program} {entry : BitVec 64}
       memcpyRegionSpec] at hpost
     rw [satisfies_pure_sepConj] at hpost
     exact False.elim hpost.1
-
-theorem SplitBytes.memcpyVm_withStack_inImage_ok {img : Obj.Image} {prog : Program}
-    {entry : BitVec 64} {n : Nat} {P : BitVec 64 → SepProp}
-    (S : SplitBytes n P) (hn : n < 2 ^ 64) (hookStack : Nat)
-    (hmc : subroutine_ok prog entry ((withStack sessionMemcpyRegionBudgetSpec hookStack).inImage img)) :
-    subroutine_ok prog entry
-      ((withStack (DefsBudget.SplitBytes.memcpyVmSpec S) hookStack).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨dst, src⟩ R0 s_c hpc_c hrun_c hpre_c hsp_c => ?_
-  dsimp only [Spec.inImage, withStack, DefsBudget.SplitBytes.memcpyVmSpec, withVmPreserved,
-    SplitBytes.memcpySpec] at hpre_c
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre_c
-  rcases hpre_c with ⟨hinv_c, hpre_c⟩
-  rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre_c
-  rcases hpre_c with ⟨⟨hx0, hx1, hx2⟩, hmem⟩
-  have h2 := Satisfies.mono (sepConj_mono_left (sepConj_mono_right (S.to_bytes src))) hmem
-  simp only [sepExists_sepConj_right, sepExists_sepConj_left, satisfies_sepExists] at h2
-  rcases h2 with ⟨bs, h3⟩
-  have hpull :
-      (memRegion dst n ∗ (⌜bs.length = n⌝ ∗ (src ↦ₛ bs) ∗ S.heap bs)) ∗
-        (stackAt s_c.sp hookStack ∗ R0) =
-      ⌜bs.length = n⌝ ∗
-        (memRegion dst n ∗ (src ↦ₛ bs) ∗ stackAt s_c.sp hookStack ∗ (S.heap bs ∗ R0)) := by
-    sep_ac_rfl
-  rw [hpull, satisfies_pure_sepConj] at h3
-  rcases h3 with ⟨hlen, h4⟩
-  have hpre_mc :
-      s_c.mem ⊨
-        ((withStack sessionMemcpyRegionBudgetSpec hookStack).inImage img).pre (dst, src, bs) s_c ∗
-          (S.heap bs ∗ R0) := by
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec,
-      memcpyRegionSpec]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hinv_c, ?_⟩
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, by rw [hx2, hlen, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hn]⟩, ?_⟩
-    rw [hlen]
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) h4
-  refine (hmc.to_outcome (dst, src, bs) (S.heap bs ∗ R0) s_c hpc_c hrun_c hpre_mc hsp_c).mono_outcome
-    fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
-  · left
-    refine ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec,
-      memcpyRegionSpec] at hpost
-    simp only [sepConj_assoc] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨hvm, hpost1⟩
-    rw [satisfies_pure_sepConj] at hpost1
-    rcases hpost1 with ⟨⟨hx0_sf, htr_sf⟩, hpost_mem⟩
-    dsimp only [Spec.inImage, withStack, DefsBudget.SplitBytes.memcpyVmSpec, withVmPreserved,
-      SplitBytes.memcpySpec]
-    simp only [sepConj_assoc]
-    rw [satisfies_pure_sepConj]
-    refine ⟨hvm, ?_⟩
-    rw [satisfies_pure_sepConj]
-    refine ⟨⟨htr_sf, hx0_sf⟩, ?_⟩
-    have harrange :
-        (dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ stackAt s_c.sp hookStack ∗ S.heap bs ∗ R0 =
-        (((dst ↦ₛ bs) ∗ S.heap bs) ∗ (src ↦ₛ bs)) ∗ (stackAt s_c.sp hookStack ∗ R0) := by
-      sep_ac_rfl
-    rw [harrange] at hpost_mem
-    have hsrc_mr : (src ↦ₛ bs) ⊢ memRegion src n := hlen ▸ pointsToBytes_entails_memRegion src bs
-    have hstep := Satisfies.mono
-      (sepConj_mono_left (sepConj_mono (S.of_bytes dst bs hlen) hsrc_mr)) hpost_mem
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hstep
-  · right; left
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec,
-      memcpyRegionSpec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
-  · right; right; left
-    refine ⟨code, hex, ?_⟩
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec,
-      memcpyRegionSpec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
-  · right; right; right
-    refine ⟨hoom, ?_⟩
-    dsimp only [Spec.inImage, withStack, sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec,
-      memcpyRegionSpec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
-
-/-! ## Per-Branch `RecvCt2ChunkEnv` Constructors & Sequential `FitsEnv` Projections -/
 
 theorem fitsEnv_seqEnv_left {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
     {E1 E2 : List AllocEvent → Prop} (hne2 : ∃ e2, E2 e2)

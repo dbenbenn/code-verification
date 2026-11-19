@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpoch
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpoch -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Chunked Braid Send-Chunk Leaf Transitions 1 (`SendChunk1`)
@@ -22,7 +22,7 @@ import ProofLib.SepLogic.WPp
 (`0x5d860`, `39` insns).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Leaves
 
@@ -37,6 +37,7 @@ open CryptoVerification.SpqrV1.Auth
 open CryptoVerification.SpqrV1.GF.UnacceleratedMul
 open CryptoVerification.SpqrV1.GF.Mul2U16
 open CryptoVerification.SpqrV1.Poly
+open CryptoVerification.SpqrV1.Poly.NextChunk (polyNextChunkStack)
 open CryptoVerification.SpqrV1.Drop
 open CryptoVerification.CodeLayout
 
@@ -44,13 +45,9 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-@[simp, arm64_norm ↓, wp_norm ↓]
-abbrev libsignalSessionCode_fnOff_memcpy :=
-  ls_stub% "memcpy"
-
 theorem bv_sub_sub (x y z : BitVec 64) : (x - y) - z = x - (y + z) := by bv_omega
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit bv_sub_sub BitVec.sub_add_cancel BitVec.toNat_zero
 
 /-! ## 1. Shared Subroutine Call Helpers (`call_memcpy_relocate` & `call_polyNextChunk`) -/
@@ -65,7 +62,7 @@ theorem fnAddr_fwd_eq {c : Program} {f1 f2 : String} {o1 o2 d : Nat}
   bv_omega
 
 /-- Callee-saved register values `x19..x27` tracked across mid-function `BL` calls. -/
-def Regs19To27Eq (s : State) (v19 v20 : BitVec 64) (s0 : State) : Prop :=
+@[expose] def Regs19To27Eq (s : State) (v19 v20 : BitVec 64) (s0 : State) : Prop :=
   s.readReg64 (Reg.gpr 19#5) = v19 ∧
   s.readReg64 (Reg.gpr 20#5) = v20 ∧
   s.readReg64 (Reg.gpr 21#5) = s0.readReg64 (Reg.gpr 21#5) ∧
@@ -160,83 +157,6 @@ theorem call_memcpy_relocate {prog : Program} {entry ret_pc target_pc : BitVec 6
     refine SepWP.fold (relocate_post_entails dst src hlen Frame) (sepConj_emp _).symm ?_
     rw [sepConj_emp]
     exact hnext sf hpc_sf hrun_sf (hsp_sf.trans hsp) (hregs.of_cs hcs_sf) (htr.trans htrace)
-
-theorem of_sepWP_inImage {prog : Program} {img : Obj.Image} {mid ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P (fun sm Pm =>
-      img.FrozenLoaded sm ∧ sm.symtab = img.symtab → SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  obtain ⟨sm, hsteps, ⟨-, -, Pm, hmm, hnext⟩ | hoom⟩ := h.elim hm hL
-  · obtain ⟨sf, hsteps', hout⟩ :=
-      hnext ⟨hF.of_keepsFrozen hsteps.keepsFrozen, hsteps.symtab_eq.trans hsym⟩ R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr hoom)⟩
-
-/-- Framed call rule for `(polyNextChunkSpec A img.base).inImage img` (`0x6a384`), bridging from `SepWP`
-before the call to `SepWPp` (propagating `allocFailedIn s0 sf`) and back to `SepWP` after the call. -/
-theorem call_polyNextChunk {A : RustAlloc} {img : Obj.Image} {prog : Program} {entry ret_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry ((polyNextChunkSpec A img.base).inImage img))
-    (hb : img.base &&& 0xfff#64 = 0#64)
-    (outChunkA encA : BitVec 64) (enc enc' : PolyEncoder) (chunk : Chunk)
-    {s0 s : State} {sp_call v19 v20 : BitVec 64} {P Frame R : SepProp}
-    {post : State → SepProp → Prop}
-    (hpc : s.pc = entry)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htrace : s.trace = s0.trace)
-    (hregs : Regs19To27Eq s v19 v20 s0)
-    (hx8 : s.readReg64 Reg.x8 = outChunkA)
-    (hx0 : s.readReg64 Reg.x0 = encA)
-    (hnc : enc.nextChunk = .ok (enc', chunk))
-    (hsplit : P = (memRegion outChunkA chunkSize ∗ polyEncoderAt A encA enc ∗
-      tokenInitAt img.base ∗ reduceTableAt img.base ∗ A.pool ∗ stackAt sp_call polyNextChunkStack) ∗ Frame)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = sp_call → Regs19To27Eq sf v19 v20 s0 → sf.trace = s0.trace →
-      SepWP prog (s0.readReg64 Reg.lr) sf
-        ((chunkAt outChunkA chunk ∗ polyEncoderAt A encA enc' ∗
-          tokenInitAt img.base ∗ reduceTableAt img.base ∗ A.pool ∗ stackAt sp_call polyNextChunkStack) ∗ Frame) post) :
-    SepWP prog entry s P
-      (fun sm Pm =>
-        img.FrozenLoaded sm ∧ sm.symtab = img.symtab →
-        SepWPp prog (s0.readReg64 Reg.lr) sm Pm post
-          (fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-            (sf.mem ⊨ ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap ∗ R))) := by
-  apply SepWP.done hpc hrun
-  intro hinv
-  refine SepWPp.call hcall (x := ⟨outChunkA, encA, enc, enc', chunk⟩) (F := Frame)
-    hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
-    (fun _ _ _ _ h => allowPanic_not_exited h)
-    (fun sf _ hmem => ?_)
-    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
-  · intro R' hm
-    rw [hsplit] at hm
-    dsimp only [Spec.inImage, polyNextChunkSpec]
-    rw [hsp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hm ⊢
-    exact ⟨⟨hinv.1, hinv.2⟩, ⟨hb, hx8, hx0, hnc⟩, hm⟩
-  · rw [← sepConj_assoc]
-    refine allowPanic_frame (fun ⟨haf, htr_sub⟩ => ?_) hmem
-    unfold allocFailedIn at haf ⊢
-    rw [htrace] at haf htr_sub
-    exact ⟨haf, htr_sub⟩
-  · dsimp only [Spec.inImage, polyNextChunkSpec]
-    rw [hsp, sepConj_assoc]
-    refine SepWPp.pure_left fun htr => ?_
-    apply SepWPp.of_sepWP_ret
-    have hassoc :
-        (chunkAt outChunkA chunk ∗ polyEncoderAt A encA enc' ∗
-          tokenInitAt img.base ∗ reduceTableAt img.base ∗ A.pool ∗ stackAt sp_call polyNextChunkStack) ∗ Frame =
-        (chunkAt outChunkA chunk ∗ (polyEncoderAt A encA enc' ∗
-          (tokenInitAt img.base ∗ (reduceTableAt img.base ∗
-            (A.pool ∗ stackAt sp_call polyNextChunkStack))))) ∗ Frame := by ac_rfl
-    rw [← hassoc]
-    exact hnext sf hpc_sf hrun_sf (hsp_sf.trans hsp) (hregs.of_cs hcs_sf) (htr.trans htrace)
-
-/-! ## 2. Shared `wordsAt` Unfolding & Recomposition Lemmas -/
 
 theorem wordsAt_4 (a : BitVec 64) (w0 w1 w2 w3 : BitVec 64) :
     wordsAt a [w0, w1, w2, w3] =
@@ -514,192 +434,6 @@ theorem chunkedEkReceivedCt1SampledAt_recompose_sp (A : RustAlloc) {F : ShaCompr
   rw [huc, hoff]
   exact Entails.refl _
 
-theorem ek_received_ct1_sampled_send_ct1_chunk_ok_ext {A : RustAlloc} {F : ShaCompress}
-    {img : Obj.Image} {ext : String → Option (State → State)}
-    (hmemcpy : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr memcpyName) sessionMemcpyRegionSpec)
-    (hnextChunk : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr polyNextChunkName)
-      ((polyNextChunkSpec A img.base).inImage img)) :
-    subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr ekReceivedCt1SampledSendCt1ChunkName)
-      ((ekReceivedCt1SampledSendCt1ChunkSpec A F img.base).inImage img) := by
-  simp only [Spec.inImage, ekReceivedCt1SampledSendCt1ChunkSpec]
-  have hmemcpy_raw : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr ekReceivedCt1SampledSendCt1ChunkName +
-        (bv% (ls_rel% "<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>::send_ct1_chunk" "memcpy")))
-      sessionMemcpyRegionSpec := sub_ok_of_addr_eq
-    (fnAddr_fwd_eq (d := (num% (ls_rel% "<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>::send_ct1_chunk" "memcpy"))) (b := img.base) (X := Rust.withPanics ext)
-      libsignalSessionCode_fnOff_0x58dd8 libsignalSessionCode_fnOff_memcpy (by decide)).symm
-    hmemcpy
-  have hnext_raw : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr ekReceivedCt1SampledSendCt1ChunkName + 49588#64)
-      ((polyNextChunkSpec A img.base).inImage img) := sub_ok_of_addr_eq
-    (fnAddr_fwd_eq (d := 49588) (b := img.base) (X := Rust.withPanics ext)
-      libsignalSessionCode_fnOff_0x58dd8 libsignalSessionCode_fnOff_0x64f8c (by decide)).symm
-    hnextChunk
-  code_fetches libsignalSessionCode spqrStatesLeavesBin img.base
-    (Rust.withPanics ext) libsignalSessionCode_fnOff_0x58dd8 363992 128
-  dsimp only [leavesProgAtExt, ekReceivedCt1SampledSendCt1ChunkName,
-    BitVec.ofNat_eq_ofNat] at hmemcpy_raw hnext_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::send_ct::EkReceivedCt1Sampled>::send_ct1_chunk" = entry
-  examples_hide_fetches
-  wpp_init x s0
-  rcases x with ⟨outA, stA, st, outSt, chunk⟩
-  dsimp only at *
-  subst ‹s0.readReg64 (Reg.gpr 8#5) = outA›
-    ‹s0.readReg64 (Reg.gpr 0#5) = stA›
-  obtain ⟨hnc_ok, hout_eq⟩ := ekReceivedCt1Sampled_send_ct1_chunk_ok (by assumption)
-  have hfsp_align : ((s0.sp - 960#64) &&& 15#64 == 0#64) = true :=
-    spAligned_sub s0.sp 960#64 (by assumption) (by decide)
-  apply of_sepWP_inImage (mid := entry + 49588#64) (by assumption) (by assumption)
-  wp_conv_pre =>
-    rw [ProofLib.memRegion_split' (b := s0.readReg64 (Reg.gpr 8#5)) (n := 528) (k := chunkSize)
-        (b' := s0.readReg64 (Reg.gpr 8#5) + 528#64) rfl rfl (by decide),
-        stackAt_960_split s0.sp]
-    unfold chunkedEkReceivedCt1SampledAt
-  refine SepWP.fold (cells_16_unfold (s0.sp - 160#64)) (by sep_focus) ?_
-  refine SepWP.fold (cells_4_unfold (s0.sp - 32#64)) (by sep_focus) ?_
-  wp_pull_exists
-  refine SepWP.fold (unchunkedCt1SentEkReceivedAt_extract A
-    (s0.readReg64 (Reg.gpr 0#5) + 400#64) st.uc) (by sep_focus) ?_
-  wp_pull_exists
-  rename_i g
-  have hst_words :
-      wordsAt (s0.readReg64 (Reg.gpr 0#5) + 400#64) (fiveVecWordsList g st.uc.epoch) =
-      (((s0.readReg64 (Reg.gpr 0#5) + 400#64) ↦₆₄ g.v1.w0) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 408#64) ↦₆₄ g.v1.w1) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 416#64) ↦₆₄ g.v1.w2) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 424#64) ↦₆₄ g.rest.v1.w0) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 432#64) ↦₆₄ g.rest.v1.w1) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 440#64) ↦₆₄ g.rest.v1.w2) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 448#64) ↦₆₄ g.rest.rest.v1.w0) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 456#64) ↦₆₄ g.rest.rest.v1.w1) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 464#64) ↦₆₄ g.rest.rest.v1.w2) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 472#64) ↦₆₄ g.rest.rest.auth.v1.w0) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 480#64) ↦₆₄ g.rest.rest.auth.v1.w1) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 488#64) ↦₆₄ g.rest.rest.auth.v1.w2) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 496#64) ↦₆₄ g.rest.rest.auth.v2.w0) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 504#64) ↦₆₄ g.rest.rest.auth.v2.w1) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 512#64) ↦₆₄ g.rest.rest.auth.v2.w2) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 520#64) ↦₆₄ st.uc.epoch)) := by
-    dsimp only [fiveVecWordsList, ekSentCt1ReceivedWordsList, ekSentWordsList,
-      ct2SentWordsList, authWordsList, vecWordsList, List.append]
-    simp only [wordsAt_16, BitVec.add_assoc, arm64_norm]
-  have hsp_words :
-      wordsAt (s0.sp - 160#64) (fiveVecWordsList g st.uc.epoch) =
-      (((s0.sp - 160#64) ↦₆₄ g.v1.w0) ∗
-       ((s0.sp - 152#64) ↦₆₄ g.v1.w1) ∗
-       ((s0.sp - 144#64) ↦₆₄ g.v1.w2) ∗
-       ((s0.sp - 136#64) ↦₆₄ g.rest.v1.w0) ∗
-       ((s0.sp - 128#64) ↦₆₄ g.rest.v1.w1) ∗
-       ((s0.sp - 120#64) ↦₆₄ g.rest.v1.w2) ∗
-       ((s0.sp - 112#64) ↦₆₄ g.rest.rest.v1.w0) ∗
-       ((s0.sp - 104#64) ↦₆₄ g.rest.rest.v1.w1) ∗
-       ((s0.sp - 96#64) ↦₆₄ g.rest.rest.v1.w2) ∗
-       ((s0.sp - 88#64) ↦₆₄ g.rest.rest.auth.v1.w0) ∗
-       ((s0.sp - 80#64) ↦₆₄ g.rest.rest.auth.v1.w1) ∗
-       ((s0.sp - 72#64) ↦₆₄ g.rest.rest.auth.v1.w2) ∗
-       ((s0.sp - 64#64) ↦₆₄ g.rest.rest.auth.v2.w0) ∗
-       ((s0.sp - 56#64) ↦₆₄ g.rest.rest.auth.v2.w1) ∗
-       ((s0.sp - 48#64) ↦₆₄ g.rest.rest.auth.v2.w2) ∗
-       ((s0.sp - 40#64) ↦₆₄ st.uc.epoch)) := by
-    dsimp only [fiveVecWordsList, ekSentCt1ReceivedWordsList, ekSentWordsList,
-      ct2SentWordsList, authWordsList, vecWordsList, List.append]
-    simp only [wordsAt_16, arm64_norm]
-  wp_conv_pre =>
-    rw [hst_words]
-    simp only [wordsAt_16, arm64_norm]
-  wp_steps
-  refine call_memcpy_relocate hmemcpy_raw (s0 := s0) (Relocatable.of_polyEncoderAt A st.sending_ct1)
-    (s0.sp - 960#64) (s0.readReg64 (Reg.gpr 0#5))
-    (ret_pc := entry + 68#64) (sp_call := s0.sp - 960#64)
-    (v19 := s0.readReg64 (Reg.gpr 8#5)) (v20 := s0.readReg64 (Reg.gpr 20#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using ‹s0.status = .Running›)
-    (by simp only [State.sp, arm64_norm])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> simp only [arm64_norm])
-    (by simp only [Reg.x0, arm64_norm])
-    (by simp only [Reg.x1, arm64_norm])
-    (by simp only [Reg.x2, arm64_norm])
-    (by sep_focus)
-    (fun sf1 hpc1 hrun1 hsp1 hregs1 htr1 => ?_)
-  rcases hregs1 with ⟨hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hvregs_1⟩
-  refine SepWP.fold (Entails.of_eq hst_words.symm) (by sep_focus) ?_
-  refine SepWP.fold (Entails.of_eq hsp_words.symm) (by sep_focus) ?_
-  refine SepWP.fold (uc_copy_recompose (k := 128) (by decide)
-    (s0.readReg64 (Reg.gpr 0#5)) (s0.sp - 160#64)
-    (fiveVecWordsList g st.uc.epoch) rfl) (by sep_focus) ?_
-  wp_steps
-  refine call_polyNextChunk hnext_raw (by assumption)
-    (s0.readReg64 (Reg.gpr 8#5) + 528#64) (s0.sp - 960#64)
-    st.sending_ct1 outSt.sending_ct1 chunk
-    (ret_pc := entry + 80#64) (sp_call := s0.sp - 960#64)
-    (v19 := s0.readReg64 (Reg.gpr 8#5)) (v20 := s0.readReg64 (Reg.gpr 20#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using hrun1)
-    (by simp only [State.sp, arm64_norm, hsp1])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm, htr1])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-        simp only [arm64_norm, hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hvregs_1])
-    (by simp only [Reg.x8, arm64_norm, hx19_1])
-    (by simp only [Reg.x0, arm64_norm, hsp1])
-    hnc_ok
-    (by sep_focus)
-    (fun sf2 hpc2 hrun2 hsp2 hregs2 htr2 => ?_)
-  rcases hregs2 with ⟨hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hvregs_2⟩
-  wp_steps
-  refine call_memcpy_relocate hmemcpy_raw (s0 := s0) (Relocatable.of_polyEncoderAt A outSt.sending_ct1)
-    (s0.sp - 560#64) (s0.sp - 960#64)
-    (ret_pc := entry + 96#64) (sp_call := s0.sp - 960#64)
-    (v19 := s0.readReg64 (Reg.gpr 8#5)) (v20 := s0.readReg64 (Reg.gpr 20#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using hrun2)
-    (by simp only [State.sp, arm64_norm, hsp2])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm, htr2])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-        simp only [arm64_norm, hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hvregs_2])
-    (by simp only [Reg.x0, arm64_norm, hsp2])
-    (by simp only [Reg.x1, arm64_norm, hsp2])
-    (by simp only [Reg.x2, arm64_norm])
-    (by sep_focus)
-    (fun sf3 hpc3 hrun3 hsp3 hregs3 htr3 => ?_)
-  rcases hregs3 with ⟨hx19_3, hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hvregs_3⟩
-  refine SepWP.fold (chunkedEkReceivedCt1SampledAt_recompose_sp A s0.sp st outSt hout_eq)
-    (by sep_focus) ?_
-  wp_steps
-  refine call_memcpy_relocate hmemcpy_raw (s0 := s0) (Relocatable.of_chunkedEkReceivedCt1SampledAt A outSt)
-    (s0.readReg64 (Reg.gpr 8#5)) (s0.sp - 560#64)
-    (ret_pc := entry + 112#64) (sp_call := s0.sp - 960#64)
-    (v19 := s0.readReg64 (Reg.gpr 8#5)) (v20 := s0.readReg64 (Reg.gpr 20#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using hrun3)
-    (by simp only [State.sp, arm64_norm, hsp3])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm, htr3])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-        simp only [arm64_norm, hx19_3, hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hvregs_3])
-    (by simp only [Reg.x0, arm64_norm, hx19_3])
-    (by simp only [Reg.x1, arm64_norm, hsp3])
-    (by simp only [Reg.x2, arm64_norm])
-    (by sep_focus)
-    (fun sf4 hpc4 hrun4 hsp4 hregs4 htr4 => ?_)
-  rcases hregs4 with ⟨hx19_4, hx20_4, hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hvregs_4⟩
-  wp_steps
-  refine SepWP.fold (stackAt_960_rejoin s0.sp _ _ _ _) (by sep_focus) ?_
-  wp_done
-
-/-! ## 4. Proof 3: `<Ct2Sampled>::send_ct2_chunk` (`0x5f9d4`, 34 insns) -/
-
 theorem stackAt_896_split (sp : BitVec 64) :
     stackAt sp (polyNextChunkStack + 896) =
       stackAt (sp - 896#64) polyNextChunkStack ∗
@@ -760,172 +494,6 @@ theorem chunkedCt2SampledAt_recompose_sp (A : RustAlloc) {F : ShaCompress}
   unfold chunkedCt2SampledAt
   rw [huc, hoff]
   exact Entails.refl _
-
-theorem ct2_sampled_send_ct2_chunk_ok_ext {A : RustAlloc} {F : ShaCompress}
-    {img : Obj.Image} {ext : String → Option (State → State)}
-    (hmemcpy : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr memcpyName) sessionMemcpyRegionSpec)
-    (hnextChunk : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr polyNextChunkName)
-      ((polyNextChunkSpec A img.base).inImage img)) :
-    subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr ct2SampledSendCt2ChunkName)
-      ((ct2SampledSendCt2ChunkSpec A F img.base).inImage img) := by
-  simp only [Spec.inImage, ct2SampledSendCt2ChunkSpec]
-  have hmemcpy_raw : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr ct2SampledSendCt2ChunkName +
-        (bv% (ls_rel% "<spqr::v1::chunked::send_ct::Ct2Sampled>::send_ct2_chunk" "memcpy")))
-      sessionMemcpyRegionSpec := sub_ok_of_addr_eq
-    (fnAddr_fwd_eq (d := (num% (ls_rel% "<spqr::v1::chunked::send_ct::Ct2Sampled>::send_ct2_chunk" "memcpy"))) (b := img.base) (X := Rust.withPanics ext)
-      libsignalSessionCode_fnOff_0x5a5dc libsignalSessionCode_fnOff_memcpy (by decide)).symm
-    hmemcpy
-  have hnext_raw : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr ct2SampledSendCt2ChunkName + 43440#64)
-      ((polyNextChunkSpec A img.base).inImage img) := sub_ok_of_addr_eq
-    (fnAddr_fwd_eq (d := 43440) (b := img.base) (X := Rust.withPanics ext)
-      libsignalSessionCode_fnOff_0x5a5dc libsignalSessionCode_fnOff_0x64f8c (by decide)).symm
-    hnextChunk
-  code_fetches libsignalSessionCode spqrStatesLeavesBin img.base
-    (Rust.withPanics ext) libsignalSessionCode_fnOff_0x5a5dc 370140 136
-  dsimp only [leavesProgAtExt, ct2SampledSendCt2ChunkName,
-    BitVec.ofNat_eq_ofNat] at hmemcpy_raw hnext_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::send_ct::Ct2Sampled>::send_ct2_chunk" = entry
-  examples_hide_fetches
-  wpp_init x s0
-  rcases x with ⟨outA, stA, st, outSt, chunk⟩
-  dsimp only at *
-  subst ‹s0.readReg64 (Reg.gpr 8#5) = outA›
-    ‹s0.readReg64 (Reg.gpr 0#5) = stA›
-  obtain ⟨hnc_ok, hout_eq⟩ := ct2Sampled_send_ct2_chunk_ok (by assumption)
-  have hfsp_align : ((s0.sp - 896#64) &&& 15#64 == 0#64) = true :=
-    spAligned_sub s0.sp 896#64 (by assumption) (by decide)
-  apply of_sepWP_inImage (mid := entry + 43440#64) (by assumption) (by assumption)
-  wp_conv_pre =>
-    rw [ProofLib.memRegion_split' (b := s0.readReg64 (Reg.gpr 8#5)) (n := 456) (k := chunkSize)
-        (b' := s0.readReg64 (Reg.gpr 8#5) + 456#64) rfl rfl (by decide),
-        stackAt_896_split s0.sp]
-    unfold chunkedCt2SampledAt
-  refine SepWP.fold (cells_7_unfold (s0.sp - 88#64)) (by sep_focus) ?_
-  refine SepWP.fold (cells_4_unfold (s0.sp - 32#64)) (by sep_focus) ?_
-  wp_pull_exists
-  refine SepWP.fold (unchunkedCt2SentAt_extract A
-    (s0.readReg64 (Reg.gpr 0#5) + 400#64) st.uc) (by sep_focus) ?_
-  wp_pull_exists
-  rename_i g
-  have hst_words :
-      wordsAt (s0.readReg64 (Reg.gpr 0#5) + 400#64) (ct2SentWordsList g st.uc.epoch) =
-      (((s0.readReg64 (Reg.gpr 0#5) + 400#64) ↦₆₄ g.v1.w0) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 408#64) ↦₆₄ g.v1.w1) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 416#64) ↦₆₄ g.v1.w2) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 424#64) ↦₆₄ g.v2.w0) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 432#64) ↦₆₄ g.v2.w1) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 440#64) ↦₆₄ g.v2.w2) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 448#64) ↦₆₄ st.uc.epoch)) := by
-    dsimp only [ct2SentWordsList, authWordsList, vecWordsList, List.append]
-    simp only [wordsAt_7, BitVec.add_assoc, arm64_norm]
-  have hsp_words :
-      wordsAt (s0.sp - 88#64) (ct2SentWordsList g st.uc.epoch) =
-      (((s0.sp - 88#64) ↦₆₄ g.v1.w0) ∗
-       ((s0.sp - 80#64) ↦₆₄ g.v1.w1) ∗
-       ((s0.sp - 72#64) ↦₆₄ g.v1.w2) ∗
-       ((s0.sp - 64#64) ↦₆₄ g.v2.w0) ∗
-       ((s0.sp - 56#64) ↦₆₄ g.v2.w1) ∗
-       ((s0.sp - 48#64) ↦₆₄ g.v2.w2) ∗
-       ((s0.sp - 40#64) ↦₆₄ st.uc.epoch)) := by
-    dsimp only [ct2SentWordsList, authWordsList, vecWordsList, List.append]
-    simp only [wordsAt_7, arm64_norm]
-  wp_conv_pre =>
-    rw [hst_words]
-    simp only [wordsAt_7, arm64_norm]
-  wp_steps
-  refine call_memcpy_relocate hmemcpy_raw (s0 := s0) (Relocatable.of_polyEncoderAt A st.sending_ct2)
-    (s0.sp - 888#64) (s0.readReg64 (Reg.gpr 0#5))
-    (ret_pc := entry + 76#64) (sp_call := s0.sp - 896#64)
-    (v19 := s0.readReg64 (Reg.gpr 8#5)) (v20 := s0.readReg64 (Reg.gpr 20#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using ‹s0.status = .Running›)
-    (by simp only [State.sp, arm64_norm])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> simp only [arm64_norm])
-    (by simp only [Reg.x0, arm64_norm])
-    (by simp only [Reg.x1, arm64_norm])
-    (by simp only [Reg.x2, arm64_norm])
-    (by sep_focus)
-    (fun sf1 hpc1 hrun1 hsp1 hregs1 htr1 => ?_)
-  rcases hregs1 with ⟨hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hvregs_1⟩
-  refine SepWP.fold (Entails.of_eq hst_words.symm) (by sep_focus) ?_
-  refine SepWP.fold (Entails.of_eq hsp_words.symm) (by sep_focus) ?_
-  refine SepWP.fold (uc_copy_recompose (k := 56) (by decide)
-    (s0.readReg64 (Reg.gpr 0#5)) (s0.sp - 88#64)
-    (ct2SentWordsList g st.uc.epoch) rfl) (by sep_focus) ?_
-  wp_steps
-  refine call_polyNextChunk hnext_raw (by assumption)
-    (s0.readReg64 (Reg.gpr 8#5) + 456#64) (s0.sp - 888#64)
-    st.sending_ct2 outSt.sending_ct2 chunk
-    (ret_pc := entry + 88#64) (sp_call := s0.sp - 896#64)
-    (v19 := s0.readReg64 (Reg.gpr 8#5)) (v20 := s0.readReg64 (Reg.gpr 20#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using hrun1)
-    (by simp only [State.sp, arm64_norm, hsp1])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm, htr1])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-        simp only [arm64_norm, hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hvregs_1])
-    (by simp only [Reg.x8, arm64_norm, hx19_1])
-    (by simp only [Reg.x0, arm64_norm, hsp1])
-    hnc_ok
-    (by sep_focus)
-    (fun sf2 hpc2 hrun2 hsp2 hregs2 htr2 => ?_)
-  rcases hregs2 with ⟨hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hvregs_2⟩
-  wp_steps
-  refine call_memcpy_relocate hmemcpy_raw (s0 := s0) (Relocatable.of_polyEncoderAt A outSt.sending_ct2)
-    (s0.sp - 488#64) (s0.sp - 888#64)
-    (ret_pc := entry + 104#64) (sp_call := s0.sp - 896#64)
-    (v19 := s0.readReg64 (Reg.gpr 8#5)) (v20 := s0.readReg64 (Reg.gpr 20#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using hrun2)
-    (by simp only [State.sp, arm64_norm, hsp2])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm, htr2])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-        simp only [arm64_norm, hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hvregs_2])
-    (by simp only [Reg.x0, arm64_norm, hsp2])
-    (by simp only [Reg.x1, arm64_norm, hsp2])
-    (by simp only [Reg.x2, arm64_norm])
-    (by sep_focus)
-    (fun sf3 hpc3 hrun3 hsp3 hregs3 htr3 => ?_)
-  rcases hregs3 with ⟨hx19_3, hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hvregs_3⟩
-  refine SepWP.fold (chunkedCt2SampledAt_recompose_sp A s0.sp st outSt hout_eq)
-    (by sep_focus) ?_
-  wp_steps
-  refine call_memcpy_relocate hmemcpy_raw (s0 := s0) (Relocatable.of_chunkedCt2SampledAt A outSt)
-    (s0.readReg64 (Reg.gpr 8#5)) (s0.sp - 488#64)
-    (ret_pc := entry + 120#64) (sp_call := s0.sp - 896#64)
-    (v19 := s0.readReg64 (Reg.gpr 8#5)) (v20 := s0.readReg64 (Reg.gpr 20#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using hrun3)
-    (by simp only [State.sp, arm64_norm, hsp3])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm, htr3])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-        simp only [arm64_norm, hx19_3, hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hvregs_3])
-    (by simp only [Reg.x0, arm64_norm, hx19_3])
-    (by simp only [Reg.x1, arm64_norm, hsp3])
-    (by simp only [Reg.x2, arm64_norm])
-    (by sep_focus)
-    (fun sf4 hpc4 hrun4 hsp4 hregs4 htr4 => ?_)
-  rcases hregs4 with ⟨hx19_4, hx20_4, hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hvregs_4⟩
-  wp_steps
-  refine SepWP.fold (stackAt_896_rejoin s0.sp _ _ _ _) (by sep_focus) ?_
-  wp_done
-
-/-! ## 5. Proof 4: `<HeaderSent>::send_ek_chunk` (`0x5d860`, 39 insns) -/
 
 theorem stackAt_1328_split (sp : BitVec 64) :
     stackAt sp (polyNextChunkStack + 1328) =
@@ -995,196 +563,5 @@ theorem chunkedHeaderSentAt_recompose_sp (A : RustAlloc) {F : ShaCompress}
   unfold chunkedHeaderSentAt
   rw [huc, hdec, hoff1, hoff2]
   exact Entails.refl _
-
-theorem header_sent_send_ek_chunk_ok_ext {A : RustAlloc} {F : ShaCompress}
-    {img : Obj.Image} {ext : String → Option (State → State)}
-    (hmemcpy : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr memcpyName) sessionMemcpyRegionSpec)
-    (hnextChunk : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr polyNextChunkName)
-      ((polyNextChunkSpec A img.base).inImage img)) :
-    subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr headerSentSendEkChunkName)
-      ((headerSentSendEkChunkSpec A F img.base).inImage img) := by
-  simp only [Spec.inImage, headerSentSendEkChunkSpec]
-  have hmemcpy_raw : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr headerSentSendEkChunkName +
-        (bv% (ls_rel% "<spqr::v1::chunked::send_ek::HeaderSent>::send_ek_chunk" "memcpy")))
-      sessionMemcpyRegionSpec := sub_ok_of_addr_eq
-    (fnAddr_fwd_eq (d := (num% (ls_rel% "<spqr::v1::chunked::send_ek::HeaderSent>::send_ek_chunk" "memcpy"))) (b := img.base) (X := Rust.withPanics ext)
-      libsignalSessionCode_fnOff_0x58468 libsignalSessionCode_fnOff_memcpy (by decide)).symm
-    hmemcpy
-  have hnext_raw : subroutine_ok (leavesProgAtExt img.base ext)
-      ((leavesProgAtExt img.base ext).fnAddr headerSentSendEkChunkName + 52004#64)
-      ((polyNextChunkSpec A img.base).inImage img) := sub_ok_of_addr_eq
-    (fnAddr_fwd_eq (d := 52004) (b := img.base) (X := Rust.withPanics ext)
-      libsignalSessionCode_fnOff_0x58468 libsignalSessionCode_fnOff_0x64f8c (by decide)).symm
-    hnextChunk
-  code_fetches libsignalSessionCode spqrStatesLeavesBin img.base
-    (Rust.withPanics ext) libsignalSessionCode_fnOff_0x58468 361576 156
-  dsimp only [leavesProgAtExt, headerSentSendEkChunkName,
-    BitVec.ofNat_eq_ofNat] at hmemcpy_raw hnext_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::send_ek::HeaderSent>::send_ek_chunk" = entry
-  examples_hide_fetches
-  wpp_init x s0
-  rcases x with ⟨outA, stA, st, outSt, chunk⟩
-  dsimp only at *
-  subst ‹s0.readReg64 (Reg.gpr 8#5) = outA›
-    ‹s0.readReg64 (Reg.gpr 0#5) = stA›
-  obtain ⟨hnc_ok, hout_eq⟩ := headerSent_send_ek_chunk_ok (by assumption)
-  have hfsp_align : ((s0.sp - 1328#64) &&& 15#64 == 0#64) = true :=
-    spAligned_sub s0.sp 1328#64 (by assumption) (by decide)
-  apply of_sepWP_inImage (mid := entry + 52004#64) (by assumption) (by assumption)
-  wp_conv_pre =>
-    rw [ProofLib.memRegion_split' (b := s0.readReg64 (Reg.gpr 8#5)) (n := 880) (k := chunkSize)
-        (b' := s0.readReg64 (Reg.gpr 8#5) + 880#64) rfl rfl (by decide),
-        stackAt_1328_split s0.sp]
-    unfold chunkedHeaderSentAt
-  refine SepWP.fold (cells_1_unfold (s0.sp - 1328#64)) (by sep_focus) ?_
-  refine SepWP.fold (cells_10_unfold (s0.sp - 528#64)) (by sep_focus) ?_
-  refine SepWP.fold (cells_6_unfold (s0.sp - 48#64)) (by sep_focus) ?_
-  wp_pull_exists
-  refine SepWP.fold (unchunkedEkSentAt_extract A
-    (s0.readReg64 (Reg.gpr 0#5) + 400#64) st.uc) (by sep_focus) ?_
-  wp_pull_exists
-  rename_i g
-  have hst_words :
-      wordsAt (s0.readReg64 (Reg.gpr 0#5) + 400#64) (ekSentWordsList g st.uc.epoch) =
-      (((s0.readReg64 (Reg.gpr 0#5) + 400#64) ↦₆₄ g.v1.w0) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 408#64) ↦₆₄ g.v1.w1) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 416#64) ↦₆₄ g.v1.w2) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 424#64) ↦₆₄ g.auth.v1.w0) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 432#64) ↦₆₄ g.auth.v1.w1) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 440#64) ↦₆₄ g.auth.v1.w2) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 448#64) ↦₆₄ g.auth.v2.w0) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 456#64) ↦₆₄ g.auth.v2.w1) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 464#64) ↦₆₄ g.auth.v2.w2) ∗
-       ((s0.readReg64 (Reg.gpr 0#5) + 472#64) ↦₆₄ st.uc.epoch)) := by
-    dsimp only [ekSentWordsList, ct2SentWordsList, authWordsList, vecWordsList, List.append]
-    simp only [wordsAt_10, BitVec.add_assoc, arm64_norm]
-  have hsp_words :
-      wordsAt (s0.sp - 528#64) (ekSentWordsList g st.uc.epoch) =
-      (((s0.sp - 528#64) ↦₆₄ g.v1.w0) ∗
-       ((s0.sp - 520#64) ↦₆₄ g.v1.w1) ∗
-       ((s0.sp - 512#64) ↦₆₄ g.v1.w2) ∗
-       ((s0.sp - 504#64) ↦₆₄ g.auth.v1.w0) ∗
-       ((s0.sp - 496#64) ↦₆₄ g.auth.v1.w1) ∗
-       ((s0.sp - 488#64) ↦₆₄ g.auth.v1.w2) ∗
-       ((s0.sp - 480#64) ↦₆₄ g.auth.v2.w0) ∗
-       ((s0.sp - 472#64) ↦₆₄ g.auth.v2.w1) ∗
-       ((s0.sp - 464#64) ↦₆₄ g.auth.v2.w2) ∗
-       ((s0.sp - 456#64) ↦₆₄ st.uc.epoch)) := by
-    dsimp only [ekSentWordsList, ct2SentWordsList, authWordsList, vecWordsList, List.append]
-    simp only [wordsAt_10, arm64_norm]
-  wp_conv_pre =>
-    rw [hst_words]
-    simp only [wordsAt_10, arm64_norm]
-  wp_steps
-  refine SepWP.fold (cell_0_rejoin_400 s0.sp 1328#64 1320#64 0#64 (by bv_omega)) (by sep_focus) ?_
-  refine call_memcpy_relocate hmemcpy_raw (s0 := s0) (Relocatable.of_polyEncoderAt A st.sending_ek)
-    (s0.sp - 1328#64) (s0.readReg64 (Reg.gpr 0#5))
-    (ret_pc := entry + 72#64) (sp_call := s0.sp - 1328#64)
-    (v19 := s0.readReg64 (Reg.gpr 0#5)) (v20 := s0.readReg64 (Reg.gpr 8#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using ‹s0.status = .Running›)
-    (by simp only [State.sp, arm64_norm])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> simp only [arm64_norm])
-    (by simp only [Reg.x0, arm64_norm])
-    (by simp only [Reg.x1, arm64_norm])
-    (by simp only [Reg.x2, arm64_norm])
-    (by sep_focus)
-    (fun sf1 hpc1 hrun1 hsp1 hregs1 htr1 => ?_)
-  rcases hregs1 with ⟨hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hvregs_1⟩
-  wp_steps
-  refine call_memcpy_relocate hmemcpy_raw (s0 := s0) (Relocatable.of_polyDecoderAt A st.receiving_ct1)
-    (s0.sp - 448#64) (s0.readReg64 (Reg.gpr 0#5) + 480#64)
-    (ret_pc := entry + 92#64) (sp_call := s0.sp - 1328#64)
-    (v19 := s0.readReg64 (Reg.gpr 0#5)) (v20 := s0.readReg64 (Reg.gpr 8#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using hrun1)
-    (by simp only [State.sp, arm64_norm, hsp1])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm, htr1])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-        simp only [arm64_norm, hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hvregs_1])
-    (by simp only [Reg.x0, arm64_norm, hsp1])
-    (by simp only [Reg.x1, arm64_norm, hx19_1])
-    (by simp only [Reg.x2, arm64_norm])
-    (by sep_focus)
-    (fun sf2 hpc2 hrun2 hsp2 hregs2 htr2 => ?_)
-  rcases hregs2 with ⟨hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hvregs_2⟩
-  refine SepWP.fold (Entails.of_eq hst_words.symm) (by sep_focus) ?_
-  refine SepWP.fold (Entails.of_eq hsp_words.symm) (by sep_focus) ?_
-  refine SepWP.fold (uc_dec_copy_recompose (k := 80) (by decide) (by decide)
-    (s0.readReg64 (Reg.gpr 0#5)) (s0.sp - 528#64) (by bv_omega)
-    (ekSentWordsList g st.uc.epoch) rfl) (by sep_focus) ?_
-  wp_steps
-  refine call_polyNextChunk hnext_raw (by assumption)
-    (s0.readReg64 (Reg.gpr 8#5) + 880#64) (s0.sp - 1328#64)
-    st.sending_ek outSt.sending_ek chunk
-    (ret_pc := entry + 104#64) (sp_call := s0.sp - 1328#64)
-    (v19 := s0.readReg64 (Reg.gpr 0#5)) (v20 := s0.readReg64 (Reg.gpr 8#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using hrun2)
-    (by simp only [State.sp, arm64_norm, hsp2])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm, htr2])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-        simp only [arm64_norm, hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hvregs_2])
-    (by simp only [Reg.x8, arm64_norm, hx20_2])
-    (by simp only [Reg.x0, arm64_norm, hsp2])
-    hnc_ok
-    (by sep_focus)
-    (fun sf3 hpc3 hrun3 hsp3 hregs3 htr3 => ?_)
-  rcases hregs3 with ⟨hx19_3, hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hvregs_3⟩
-  wp_steps
-  refine call_memcpy_relocate hmemcpy_raw (s0 := s0) (Relocatable.of_polyEncoderAt A outSt.sending_ek)
-    (s0.sp - 928#64) (s0.sp - 1328#64)
-    (ret_pc := entry + 120#64) (sp_call := s0.sp - 1328#64)
-    (v19 := s0.readReg64 (Reg.gpr 0#5)) (v20 := s0.readReg64 (Reg.gpr 8#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using hrun3)
-    (by simp only [State.sp, arm64_norm, hsp3])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm, htr3])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-        simp only [arm64_norm, hx19_3, hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hvregs_3])
-    (by simp only [Reg.x0, arm64_norm, hsp3])
-    (by simp only [Reg.x1, arm64_norm, hsp3])
-    (by simp only [Reg.x2, arm64_norm])
-    (by sep_focus)
-    (fun sf4 hpc4 hrun4 hsp4 hregs4 htr4 => ?_)
-  rcases hregs4 with ⟨hx19_4, hx20_4, hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hvregs_4⟩
-  refine SepWP.fold (chunkedHeaderSentAt_recompose_sp A s0.sp st outSt hout_eq)
-    (by sep_focus) ?_
-  wp_steps
-  refine call_memcpy_relocate hmemcpy_raw (s0 := s0) (Relocatable.of_chunkedHeaderSentAt A outSt)
-    (s0.readReg64 (Reg.gpr 8#5)) (s0.sp - 928#64)
-    (ret_pc := entry + 136#64) (sp_call := s0.sp - 1328#64)
-    (v19 := s0.readReg64 (Reg.gpr 0#5)) (v20 := s0.readReg64 (Reg.gpr 8#5))
-    (by simp only [arm64_norm])
-    (by simpa only [arm64_norm] using hrun4)
-    (by simp only [State.sp, arm64_norm, hsp4])
-    hfsp_align
-    (by simp only [Reg.lr, arm64_norm])
-    (by simp only [arm64_norm, htr4])
-    (by refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;>
-        simp only [arm64_norm, hx19_4, hx20_4, hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hvregs_4])
-    (by simp only [Reg.x0, arm64_norm, hx20_4])
-    (by simp only [Reg.x1, arm64_norm, hsp4])
-    (by simp only [Reg.x2, arm64_norm])
-    (by sep_focus)
-    (fun sf5 hpc5 hrun5 hsp5 hregs5 htr5 => ?_)
-  rcases hregs5 with ⟨hx19_5, hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx26_5, hx27_5, hvregs_5⟩
-  wp_steps
-  refine SepWP.fold (stackAt_1328_rejoin s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-  wp_done
 
 end CryptoVerification.SpqrV1.States.Leaves

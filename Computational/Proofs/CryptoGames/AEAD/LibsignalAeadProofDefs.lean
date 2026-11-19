@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 
 /-!
 # Libsignal Per-Message AEAD Definitions
@@ -21,23 +21,23 @@ Proof-side definitions for libsignal's Encrypt-then-MAC message AEAD (`msgAead`)
 send/receive operations (`send`, `recv`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames
 namespace LibsignalAead
 open CBC HMAC
 
 /-- Left-inverse property `parse ∘ encode = some` for a wire encoding. -/
-def RoundTrip {H : Type} {n : ℕ} (enc : WireEnc H n) : Prop :=
+@[expose] def RoundTrip {H : Type} {n : ℕ} (enc : WireEnc H n) : Prop :=
   ∀ h c, enc.parse (enc.encode h c) = some (h, c)
 
 /-- MAC input bytes `ids ‖ encode h c` authenticated by `msgAead`. -/
-def macInput {H : Type} {n : ℕ} (enc : WireEnc H n) :
+@[expose] def macInput {H : Type} {n : ℕ} (enc : WireEnc H n) :
     (SerializedIdentityKeys × H) × List.Vector Block n → List (BitVec 8)
   | ((ids, h), c) => ids.toList ++ enc.encode h c
 
 /-- Per-message Encrypt-then-MAC AEAD combining `cbcPkcs7` with 8-byte HMAC-SHA256 over `macInput enc`. -/
-def msgAead {H : Type} (E D : AesKey → Block → Block) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def msgAead {H : Type} (E D : AesKey → Block → Block) (F : ShaState → List (BitVec 8) → ShaState)
     (ℓ : ℕ) (enc : WireEnc H (nBlocks ℓ)) :
     AEADScheme ((AesKey × Block) × BitVec 256) (SerializedIdentityKeys × H) (Plain ℓ)
       (List.Vector Block (nBlocks ℓ) × BitVec 64) :=
@@ -45,7 +45,7 @@ def msgAead {H : Type} (E D : AesKey → Block → Block) (F : ShaState → List
 
 /-- Receiver wire decryption returning both header and plaintext (DEV-AEAD9): verifies the MAC over
 `ids ‖ wire.1`, parses the header and body, decrypts, and checks addresses. -/
-def recv {H : Type} (E D : AesKey → Block → Block) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def recv {H : Type} (E D : AesKey → Block → Block) (F : ShaState → List (BitVec 8) → ShaState)
     (ℓ : ℕ) (enc : WireEnc H (nBlocks ℓ)) (addrs : H → Option (List (BitVec 8)))
     (k : (AesKey × Block) × BitVec 256) (ids : SerializedIdentityKeys) (expected : Option (List (BitVec 8)))
     (wire : List (BitVec 8) × BitVec 64) : Option (H × Plain ℓ) :=
@@ -59,7 +59,7 @@ def recv {H : Type} (E D : AesKey → Block → Block) (F : ShaState → List (B
   else none
 
 /-- Encrypts and MACs `(h, m)` under `msgAead` and serializes the header and ciphertext body. -/
-def send {H : Type} (E D : AesKey → Block → Block) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def send {H : Type} (E D : AesKey → Block → Block) (F : ShaState → List (BitVec 8) → ShaState)
     (ℓ : ℕ) (enc : WireEnc H (nBlocks ℓ)) (k : (AesKey × Block) × BitVec 256) (ids : SerializedIdentityKeys)
     (h : H) (m : Plain ℓ) : List (BitVec 8) × BitVec 64 :=
   let ct := (msgAead E D F ℓ enc).enc k (ids, h) m

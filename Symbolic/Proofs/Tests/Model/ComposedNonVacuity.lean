@@ -56,7 +56,7 @@ Proves the non-vacuity and premise-satisfiability theorems (`sanityHonestSession
 concrete witness traces `wTr` and `wTrOpk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

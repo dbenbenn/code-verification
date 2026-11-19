@@ -11,57 +11,71 @@ module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
+import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
 public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
-public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
+import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
+import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal
+import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
+import LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
+import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W2RecvWhisperRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateTightSpec
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTightCredit
+import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Decimal.ExecPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPoll.LayoutPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeser
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
 
 /-!
 # Slot-Parametric Exact-Kit Whole-`main` `FitsEnv` Closure
@@ -76,14 +90,13 @@ Proves whole-`main` `FitsEnv fineCostModel` on
 whole-`main` `FitsEnv` theorems.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact
 
-open Arm64.Obj (Image)
 open Arm64.Process (ProcessInputs bytesOfString initFsState)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage Session SessionRecord)
 open CryptoVerification (LibsignalPlacement)
@@ -968,7 +981,7 @@ private theorem ckx_w3Fixed_groups {peerAddr : AddrV}
 
 /-- Binary-kit W3 (`init`) `SingleSlotFineSpec` at `W3InitBinaryKitSlotEnvFixed` under the
 `105`-byte `identity-key-pair` cap. -/
-def binaryKitW3Fixed_fineSpec (g : RunCall)
+@[expose] def binaryKitW3Fixed_fineSpec (g : RunCall)
     (hikp : ∀ bs,
       StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "identity-key-pair") =
         .ok bs → bs.length ≤ 105) :
@@ -1274,7 +1287,7 @@ private theorem ckx_binaryKitSlotInit_imp_w3Fixed [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall} (hi_g : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i) :
     ∀ evs, (mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g).initEnv evs →
       (match g.c with
@@ -1299,7 +1312,7 @@ theorem binaryKitSlotInit_credit [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (hi_g : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i) :
     PhaseCreditSpec fineCostModel
       ((mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g).initEnv)
@@ -1314,7 +1327,7 @@ theorem binaryKitSlotInit_groups [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (hi_g : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i) :
     PhaseGroupSpec fineCostModel
       ((mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g).initEnv)
@@ -1325,12 +1338,12 @@ theorem binaryKitSlotInit_groups [LibsignalPlacement]
 
 /-- `SingleSlotFineSpec` on `(mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g).initEnv`
 under `CliPqxdhInputs ⟨W.C, W.Q⟩ g.i`. -/
-def binaryKitSlotInit_fineSpec [LibsignalPlacement]
+@[expose] def binaryKitSlotInit_fineSpec [LibsignalPlacement]
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (hi_g : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i) :
     SingleSlotFineSpec
       ((mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g).initEnv) where
@@ -1346,38 +1359,38 @@ def binaryKitSlotInit_fineSpec [LibsignalPlacement]
 
 /-! ## Exact-Kit Ceiling Constants -/
 
-def w3InitExactCum : Nat := w3InitRealCum + 4500000
-def w3InitExactLive : Nat := w3InitRealLive + 65536
-def w3InitExactPeak : Nat := w3InitRealPeak + 65536
-def w3InitExactMaxReq : Nat := w3InitRealMaxReq + 65536
-def w3InitExactGrpS : Nat := w3InitRealGrpS + 1500 * FineScale
+@[expose] def w3InitExactCum : Nat := w3InitRealCum + 4500000
+@[expose] def w3InitExactLive : Nat := w3InitRealLive + 65536
+@[expose] def w3InitExactPeak : Nat := w3InitRealPeak + 65536
+@[expose] def w3InitExactMaxReq : Nat := w3InitRealMaxReq + 65536
+@[expose] def w3InitExactGrpS : Nat := w3InitRealGrpS + 1500 * FineScale
 
 /-- W1 (`send`) Exact-kit ceiling (`maxDecodeOps ≤ 128`, `+45` ops above `83`). -/
-def w1EncExactCum : Nat := w1SendRealDcanCum + 45 * 738
-def w1EncExactLive : Nat := w1SendRealDcanPeak
-def w1EncExactPeak : Nat := w1SendRealDcanPeak
-def w1EncExactMaxReq : Nat := w1SendRealDcanMaxReq
-def w1EncExactGrpS : Nat := w1SendRealDcanGrpS + 45 * (3 * FineScale)
+@[expose] def w1EncExactCum : Nat := w1SendRealDcanCum + 45 * 738
+@[expose] def w1EncExactLive : Nat := w1SendRealDcanPeak
+@[expose] def w1EncExactPeak : Nat := w1SendRealDcanPeak
+@[expose] def w1EncExactMaxReq : Nat := w1SendRealDcanMaxReq
+@[expose] def w1EncExactGrpS : Nat := w1SendRealDcanGrpS + 45 * (3 * FineScale)
 
 /-- W2 (`recv` whisper) Exact-kit ceiling (`maxDecodeOps ≤ 128` + `25,000`-jump `CmkSeg4Env`,
 covering both `10`-grow tight and `11 * 143,484` bounds without subtracting `oldSeg4`). -/
-def w2DecSigExactCum : Nat :=
+@[expose] def w2DecSigExactCum : Nat :=
   w2RecvWhisperRealDcanCum + ((25000 + 2) * 738 + 11 * 143484) + 45 * 738
-def w2DecSigExactLive : Nat := w2RecvWhisperRealDcanPeak
-def w2DecSigExactPeak : Nat := w2RecvWhisperRealDcanPeak
-def w2DecSigExactMaxReq : Nat := w2RecvWhisperRealDcanMaxReq
-def w2DecSigExactGrpS : Nat :=
+@[expose] def w2DecSigExactLive : Nat := w2RecvWhisperRealDcanPeak
+@[expose] def w2DecSigExactPeak : Nat := w2RecvWhisperRealDcanPeak
+@[expose] def w2DecSigExactMaxReq : Nat := w2RecvWhisperRealDcanMaxReq
+@[expose] def w2DecSigExactGrpS : Nat :=
   w2RecvWhisperRealDcanGrpS + ((25000 + 2) * 16659 + 11 * (3 * FineScale)) + 45 * (3 * FineScale)
 
 /-- W4 (`recv-prekey`) Exact-kit ceiling (`d3RecvW4ExtCum + 20,000,000`), covering `0..1`
 archived sessions, `25,000`-jump `CmkSeg4Env`, `VerNe-prev1` deserialization, and `maxDecodeOps ≤ 128`. -/
-def w4DecPkExactCum : Nat := d3RecvW4ExtCum + 20000000
-def w4DecPkExactLive : Nat := d3RecvW4ExtLive
-def w4DecPkExactPeak : Nat := d3RecvW4ExtPeak
-def w4DecPkExactMaxReq : Nat := 4194368
-def w4DecPkExactGrpS : Nat := d3RecvW4ExtGrpS + 2000 * FineScale
+@[expose] def w4DecPkExactCum : Nat := d3RecvW4ExtCum + 20000000
+@[expose] def w4DecPkExactLive : Nat := d3RecvW4ExtLive
+@[expose] def w4DecPkExactPeak : Nat := d3RecvW4ExtPeak
+@[expose] def w4DecPkExactMaxReq : Nat := 4194368
+@[expose] def w4DecPkExactGrpS : Nat := d3RecvW4ExtGrpS + 2000 * FineScale
 
-def exactMainCumOf (encCum decSigCum decPkCum : Nat) : Nat :=
+@[expose] def exactMainCumOf (encCum decSigCum decPkCum : Nat) : Nat :=
   let runCum := cliRunBinary1MiBCustomPksmCum
     (pksmCanonSliceCum msgCapBytes) w3InitExactCum encCum decSigCum decPkCum
   123250 + m3PhaseDeltaCum_tight + runCum +
@@ -1385,12 +1398,12 @@ def exactMainCumOf (encCum decSigCum decPkCum : Nat) : Nat :=
       (10 * max (4 * cliMaxDirPathBytes + cliMaxAddrTextBytes + 16) 16 + 4 * 9539) +
     m6DeltaCum
 
-def exactMainLiveOf (encLive decSigLive decPkLive : Nat) : Nat :=
+@[expose] def exactMainLiveOf (encLive decSigLive decPkLive : Nat) : Nat :=
   cliMainTightLiveOf
     (cliRun1MiBCustomPksmLive
       (pksmCanonSliceLive msgCapBytes) w3InitExactLive encLive decSigLive decPkLive)
 
-def exactMainPeakOf (encLive encPeak decSigPeak decPkPeak : Nat) : Nat :=
+@[expose] def exactMainPeakOf (encLive encPeak decSigPeak decPkPeak : Nat) : Nat :=
   cliMainTightPeakOf
     (cliRun1MiBCustomPksmLive
       (pksmCanonSliceLive msgCapBytes) w3InitExactLive encLive decSigPeak decPkLive)
@@ -1400,7 +1413,7 @@ def exactMainPeakOf (encLive encPeak decSigPeak decPkPeak : Nat) : Nat :=
 where
   decPkLive := decPkPeak
 
-def exactMainPeakGenOf
+@[expose] def exactMainPeakGenOf
     (encLive encPeak decSigLive decSigPeak decPkLive decPkPeak : Nat) : Nat :=
   cliMainTightPeakOf
     (cliRun1MiBCustomPksmLive
@@ -1409,35 +1422,35 @@ def exactMainPeakGenOf
       (pksmCanonSliceLive msgCapBytes) (pksmCanonSlicePeak msgCapBytes)
       w3InitExactPeak encLive encPeak decSigPeak decPkPeak)
 
-def exactMainReqOf (encMaxReq decSigMaxReq decPkMaxReq : Nat) : Nat :=
+@[expose] def exactMainReqOf (encMaxReq decSigMaxReq decPkMaxReq : Nat) : Nat :=
   max (max (16 * 2048) 16384)
     (cliMainTightReqOf
       (cliRunBinary1MiBCustomPksmMaxReq
         (pksmCanonSliceMaxReq msgCapBytes) w3InitExactMaxReq encMaxReq decSigMaxReq decPkMaxReq))
 
-def exactMainGrpSOf (encGrpS decSigGrpS decPkGrpS : Nat) : Nat :=
+@[expose] def exactMainGrpSOf (encGrpS decSigGrpS decPkGrpS : Nat) : Nat :=
   let runGrpS := cliRunOpenedCustomPksmGrpS msgCapBytes
     (pksmCanonSliceGrpS msgCapBytes) w3InitExactGrpS encGrpS decSigGrpS decPkGrpS +
     27 * FineScale
   cliMainWidenedSetupFineGrpS + runGrpS +
     cliMaxDirtyEntries * (12 * FineScale) + 3 * FineScale
 
-def exactCeilingMainCum : Nat :=
+@[expose] def exactCeilingMainCum : Nat :=
   exactMainCumOf w1EncExactCum w2DecSigExactCum w4DecPkExactCum
 
-def exactCeilingMainLive : Nat :=
+@[expose] def exactCeilingMainLive : Nat :=
   exactMainLiveOf w1EncExactLive w2DecSigExactLive w4DecPkExactLive
 
-def exactCeilingMainPeak : Nat :=
+@[expose] def exactCeilingMainPeak : Nat :=
   exactMainPeakGenOf
     w1EncExactLive w1EncExactPeak
     w2DecSigExactLive w2DecSigExactPeak
     w4DecPkExactLive w4DecPkExactPeak
 
-def exactCeilingMainReq : Nat :=
+@[expose] def exactCeilingMainReq : Nat :=
   exactMainReqOf w1EncExactMaxReq w2DecSigExactMaxReq w4DecPkExactMaxReq
 
-def exactCeilingMainGrpS : Nat :=
+@[expose] def exactCeilingMainGrpS : Nat :=
   exactMainGrpSOf w1EncExactGrpS w2DecSigExactGrpS w4DecPkExactGrpS
 
 /-- The `@128` + `25,000`-jump + `6`-trial Exact-kit ceiling fits within `1 GiB` RAM and `2 ^ 48` VA. -/
@@ -1476,7 +1489,7 @@ private def ckx_slotCalleeFineSpecs [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall}
     (Senc : SingleSlotFineSpec
       ((mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g).encEnv))
@@ -1533,7 +1546,7 @@ private theorem ckx_slotCalleeFineSpecs_bounds [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall}
     (Senc : SingleSlotFineSpec
       ((mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g).encEnv))
@@ -1635,7 +1648,7 @@ theorem realCliMainBinaryKitEnvOfSlot_fitsEnv_of_caps [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {encCum encLive encPeak encMaxReq encGrpS
      decSigCum decSigLive decSigPeak decSigMaxReq decSigGrpS
      decPkCum decPkLive decPkPeak decPkMaxReq decPkGrpS : Nat}
@@ -1858,7 +1871,7 @@ theorem realCliMainBinaryKitEnvOfSlot_fitsEnv_of_slotSpecs [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (S_enc : ∀ (g : RunCall),
       CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
       parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c →
@@ -1922,7 +1935,7 @@ theorem realCliMainBinaryKitEnvOfSlot_fitsEnv_cliBudgetLimits_of_slotSpecs [Libs
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (S_enc : ∀ (g : RunCall),
       CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
       parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c →
@@ -1970,7 +1983,7 @@ theorem realCliMainBinaryKitEnvOfSlot_fitsEnv_cliBudgetLimits_of_curried [Libsig
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (hEncCredit : ∀ (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
       (A : RustCliAllocBudget M) (w1R : W1BinarySendParams),
       CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →

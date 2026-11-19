@@ -9,14 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegStoreAux
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSavePlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.SessionOnlyKitEPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegStoreAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSavePlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.SessionOnlyKitEPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegSaveAuxPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSave
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -178,7 +184,7 @@ theorem segStore_tail_placed_err [LibsignalPlacement] {H : LibsignalHooks}
   wp_steps
   wp_done
 
-def wsStoreFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def wsStoreFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (x : DecryptGhost) (s0 : State)
     (sp : BitVec 64) (st : kit.StoreState) : SepProp :=
   ((sp + 0xe8#64) ↦₆₄ x.remA) ∗ ((sp + 0xf8#64) ↦₆₄ s0.readReg64 .x3) ∗
@@ -191,7 +197,7 @@ def wsStoreFixedEnvPlaced [LibsignalPlacement] (A : RustAlloc)
   protocolAddressAt A x.rem x.remA ∗ kit.storeAt (s0.readReg64 .x3) st ∗
   A.pool ∗ stackAt sp (storeCallStack kit)
 
-def wsStoreFixedRestPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def wsStoreFixedRestPlaced [LibsignalPlacement] (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (s0 : State) (sp : BitVec 64) (ist : ikit.IdState) : SepProp :=
   wsSavedRegs s0.sp s0 ∗ ((sp + 0x108#64) ↦₆₄ s0.readReg64 .x5) ∗
@@ -264,7 +270,7 @@ theorem wsFixed_wsEnv_store_join_placed [LibsignalPlacement] (A : RustAlloc)
   unfold wsEnvPlaced
   exact Entails.of_eq (by ac_rfl)
 
-def wsStoreCallPrePlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def wsStoreCallPrePlaced [LibsignalPlacement] (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (x : DecryptGhost) (s0 : State)
     (sp r26 : BitVec 64) (g : RecordGhost) (rec' : SessionRecord (List (BitVec 8)))
     (st : kit.StoreState) (c0 c1 d0 d1 d2 d3 : BitVec 64) (d5 : BitVec 32) : SepProp :=
@@ -282,7 +288,7 @@ def wsStoreCallPrePlaced [LibsignalPlacement] (A : RustAlloc)
   sessionRecordAt A (r26 + 0x80#64) g rec' ∗ kit.storeAt (s0.readReg64 .x3) st ∗
   A.pool ∗ stackAt sp (storeCallStack kit)
 
-def wsStoreFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsStoreFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp : BitVec 64) (ist : ikit.IdState) (pt : List (BitVec 8)) : SepProp :=
@@ -344,7 +350,7 @@ theorem storeCall_entails_storeCallPre_placed [LibsignalPlacement] (C : Crypto) 
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
   exact Entails.of_eq (by ac_rfl)
 
-def wsStoreCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def wsStoreCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc)
     (kit : SessionStoreSpec A 0#64) (x : DecryptGhost) (s0 : State)
     (sp r26 : BitVec 64) (g : RecordGhost) (rec' : SessionRecord (List (BitVec 8)))
     (st : kit.StoreState) (ans_store : Except Unit Unit)
@@ -367,7 +373,7 @@ def wsStoreCallPostSpatialPlaced [LibsignalPlacement] (A : RustAlloc)
   (if ans_store.isOk then emp else (strPtr ↦ᵣ storeHookStr)) ∗
   A.pool ∗ stackAt sp (storeCallStack kit)
 
-def wsStorePostCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsStorePostCommonRestPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp : BitVec 64) (st : kit.StoreState) (ist : ikit.IdState)
@@ -487,7 +493,7 @@ theorem storePostCommon_err_entails_placed [LibsignalPlacement] (C : Crypto) (A 
   rw [memRegion_300_280_store_split]
   exact Entails.of_eq (by ac_rfl)
 
-def wsStoreTailOkPre_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
+@[expose] def wsStoreTailOkPre_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
     (G : SessionGhost) (st : SessionState (List (BitVec 8)))
     (v1 : BitVec 32) (v2 v3 : BitVec 64) (v4 : BitVec 32)
     (s0_580 s1_588 : BitVec 64) (s2_lo s2_hi : BitVec 32) (s3_598 : BitVec 64) (s4_5a0 : BitVec 32)
@@ -503,7 +509,7 @@ def wsStoreTailOkPre_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
   ((sp + 0x594#64) ↦₃₂ s2_hi) ∗ ((sp + 0x598#64) ↦₆₄ s3_598) ∗ ((sp + 0x5a0#64) ↦₃₂ s4_5a0) ∗
   A.pool ∗ stackAt sp storeSegStack
 
-def wsStoreTailOkPost_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
+@[expose] def wsStoreTailOkPost_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
     (v1 : BitVec 32) (v2 v3 : BitVec 64) (v4 : BitVec 32)
     (s2_hi : BitVec 32) (s3_598 : BitVec 64) (s4_5a0 : BitVec 32) : SepProp :=
   ((sp + 0x120#64) ↦₆₄ prevCap) ∗ ((sp + 0x128#64) ↦₆₄ prevPtr) ∗ ((sp + 0x130#64) ↦₆₄ 0#64) ∗
@@ -514,7 +520,7 @@ def wsStoreTailOkPost_placed (A : RustAlloc) (sp prevCap prevPtr : BitVec 64)
   ((sp + 0x580#64) ↦₆₄ v2) ∗ ((sp + 0x588#64) ↦₆₄ v3) ∗ ((sp + 0x590#64) ↦₆₄ (s2_hi ++ v4)) ∗
   ((sp + 0x598#64) ↦₆₄ s3_598) ∗ ((sp + 0x5a0#64) ↦₃₂ s4_5a0) ∗ A.pool ∗ stackAt sp storeSegStack
 
-def wsStoreTailOkFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def wsStoreTailOkFramePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
     (x : DecryptGhost) (ans : StoreAnswers (List (BitVec 8)) Unit)
     (s0 : State) (sp cap ptr : BitVec 64) (st : kit.StoreState) (ist : ikit.IdState)

@@ -13,7 +13,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessio
 
 set_option warningAsError false
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -28,20 +28,20 @@ namespace CryptoVerification.SessionModel
 
 open CryptoGames CryptoGames.HMAC CryptoGames.HKDF CryptoGames.LibsignalSession
 /-- Iterated chain-key step (`n` applications of `nextChainKey` without `u32::MAX` overflow checks). -/
-def chainStepN (F : ShaCompress) : ℕ → ChainKey → ChainKey
+@[expose] def chainStepN (F : ShaCompress) : ℕ → ChainKey → ChainKey
   | 0, ck => ck
   | n + 1, ck =>
     chainStepN F n ⟨bytesToKey32 (Ratchet.chainHmac F ck.key Ratchet.chainKeySeed), ck.index + 1⟩
 
 /-- Skipped message keys generated across `n` chain steps from `ck`, ordered newest first. -/
-def skippedKeys (F : ShaCompress) : ℕ → ChainKey → List MessageKeyGenerator
+@[expose] def skippedKeys (F : ShaCompress) : ℕ → ChainKey → List MessageKeyGenerator
   | 0, _ => []
   | n + 1, ck =>
     skippedKeys F n ⟨bytesToKey32 (Ratchet.chainHmac F ck.key Ratchet.chainKeySeed), ck.index + 1⟩ ++
       [ck.messageKeys F]
 
 /-- Representation invariant: each receiver chain holds at most `maxMessageKeys` (2000) non-empty seeds. -/
-def ChainsOk (st : RatchetState) : Prop :=
+@[expose] def ChainsOk (st : RatchetState) : Prop :=
   ∀ c ∈ st.receiverChains, c.messageKeys.length ≤ maxMessageKeys ∧ ∀ k ∈ c.messageKeys, k.seed ≠ []
 
 end CryptoVerification.SessionModel

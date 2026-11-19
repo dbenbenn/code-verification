@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Game.StatementBinaryHarnessCore
-public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers
+import Computational.Proofs.SpecLemmas.Game.StatementBinaryHarnessCore
+public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.StateSim
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SM.GameCosted
@@ -22,7 +22,7 @@ Proves `IsQueryBoundP` preservation across `cliGameAdversaryReassoc`, `L_bh.eval
 `bhShallowRunFuel`, and two-stage `run1`/`eval1` continuations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -43,7 +43,7 @@ section QueryBounds
 
 variable {S : SignalPqxdh.Setup} {ℓ : ℕ} {PQC Pt : Type}
 
-def bhClassifyComposed (pKi : SignalPqxdh.KeyIndQuery S → Bool)
+@[expose] def bhClassifyComposed (pKi : SignalPqxdh.KeyIndQuery S → Bool)
     (pCtl : BHDRCtlQuery S → Bool) (pInst : ℕ → Bool) :
     (cliGameSpec S ℓ PQC).Domain → Bool
   | .inl (.inl (.inl _)) => false
@@ -51,7 +51,7 @@ def bhClassifyComposed (pKi : SignalPqxdh.KeyIndQuery S → Bool)
   | .inl (.inr cq) => pCtl cq
   | .inr ⟨i, _⟩ => pInst i
 
-def bhClassifyGameOnly (pKi : SignalPqxdh.KeyIndQuery S → Bool)
+@[expose] def bhClassifyGameOnly (pKi : SignalPqxdh.KeyIndQuery S → Bool)
     (pCtl : BHDRCtlQuery S → Bool) (pInst : ℕ → Bool) :
     (bhGameSpec S ℓ PQC).Domain → Bool
   | .inl (.inl kq) => pKi kq
@@ -65,7 +65,7 @@ abbrev bhClassifyGame (pKi : SignalPqxdh.KeyIndQuery S → Bool)
     | .inl _ => false
     | .inr t => bhClassifyGameOnly pKi pCtl pInst t
 
-def bhClassifyTargetOnly (pKi : SignalPqxdh.KeyIndQuery S → Bool)
+@[expose] def bhClassifyTargetOnly (pKi : SignalPqxdh.KeyIndQuery S → Bool)
     (pCtl : BHDRCtlQuery S → Bool) (pInst : ℕ → Bool) :
     (bhTargetGameSpec S ℓ PQC).Domain → Bool
   | .inl (.inl kq) => pKi kq
@@ -79,7 +79,7 @@ abbrev bhClassifyTarget (pKi : SignalPqxdh.KeyIndQuery S → Bool)
     | .inl _ => false
     | .inr t => bhClassifyTargetOnly pKi pCtl pInst t
 
-def bhAdvToGameImpl (S : SignalPqxdh.Setup) (ℓ : ℕ) (PQC : Type) :
+@[expose] def bhAdvToGameImpl (S : SignalPqxdh.Setup) (ℓ : ℕ) (PQC : Type) :
     QueryImpl (cliGameSpec S ℓ PQC) (OracleComp (unifSpec + bhGameSpec S ℓ PQC)) :=
   fun q => match q with
     | .inl (.inl (.inl m)) =>
@@ -114,238 +114,6 @@ theorem isQueryBoundP_bhAdvRun
     (h : A.run.IsQueryBoundP (fun q => bhClassifyComposed pKi pCtl pInst q = true) n) :
     (cliGameAdversaryReassoc A).IsQueryBoundP (fun q => bhClassifyGame pKi pCtl pInst q = true) n :=
   isQueryBoundP_bhAdvRun_aux pKi pCtl pInst A.run n h
-
-private theorem isQueryBoundP_bhFwdU_target
-    (pKi : SignalPqxdh.KeyIndQuery S → Bool)
-    (pCtl : BHDRCtlQuery S → Bool) (pInst : ℕ → Bool) (n : ℕ) :
-    (bhFwdU (G := bhTargetGameSpec S ℓ PQC) n).IsQueryBoundP
-      (fun q => bhClassifyTarget pKi pCtl pInst q = true) 0 :=
-  (isQueryBoundP_query_iff (spec := unifSpec + bhTargetGameSpec S ℓ PQC)
-    (fun q => bhClassifyTarget pKi pCtl pInst q = true) (Sum.inl n) 0).2
-    (by simp [bhClassifyTarget])
-
-private theorem qb_queryTarget_bind {α : Type}
-    (pKi : SignalPqxdh.KeyIndQuery S → Bool)
-    (pCtl : BHDRCtlQuery S → Bool) (pInst : ℕ → Bool)
-    (q' : (bhTargetGameSpec S ℓ PQC).Domain) (m : ℕ)
-    (hq : (if bhClassifyTargetOnly pKi pCtl pInst q' then 1 else 0) ≤ m)
-    (k : (bhTargetGameSpec S ℓ PQC).Range q' →
-      OracleComp (unifSpec + bhTargetGameSpec S ℓ PQC) α)
-    (hk : ∀ r, (k r).IsQueryBoundP (fun q => bhClassifyTarget pKi pCtl pInst q = true) 0) :
-    (bhShallowQueryTarget q' >>= k).IsQueryBoundP
-      (fun q => bhClassifyTarget pKi pCtl pInst q = true) m := by
-  have h1 : (bhShallowQueryTarget q').IsQueryBoundP
-      (fun q => bhClassifyTarget pKi pCtl pInst q = true)
-      (if bhClassifyTargetOnly pKi pCtl pInst q' then 1 else 0) := by
-    unfold bhShallowQueryTarget
-    rw [isQueryBoundP_query_iff]
-    by_cases hp : bhClassifyTargetOnly pKi pCtl pInst q' = true <;>
-      simp [bhClassifyTarget, hp]
-  exact (isQueryBoundP_bind h1 (fun r _ => hk r)).mono (by omega)
-
-theorem isQueryBoundP_bhShallowAdapterGameStep
-    (pKi : SignalPqxdh.KeyIndQuery S → Bool)
-    (pCtl : BHDRCtlQuery S → Bool) (pInst : ℕ → Bool)
-    (s : CliAdapterState S)
-    (t : (bhGameSpec S ℓ PQC).Domain) :
-    (bhShallowAdapterGameStep t s).IsQueryBoundP
-      (fun q => bhClassifyTarget pKi pCtl pInst q = true)
-      (if bhClassifyGameOnly pKi pCtl pInst t then 1 else 0) := by
-  let P_tgt : (unifSpec + bhTargetGameSpec S ℓ PQC).Domain → Prop :=
-    fun q => bhClassifyTarget pKi pCtl pInst q = true
-  rcases t with (kq | cq) | ⟨i, (((⟨p, m, r⟩ | ⟨p, m0, m1, r⟩) | ⟨p, c⟩) | ⟨p, c⟩) | p⟩
-  · dsimp only [bhShallowAdapterGameStep, bhClassifyGameOnly]
-    exact qb_queryTarget_bind pKi pCtl pInst (.inl (.inl kq)) _ le_rfl _
-      (fun _ => isQueryBoundP_pure P_tgt _ 0)
-  · cases cq with
-    | startDR sid =>
-      dsimp only [bhShallowAdapterGameStep, bhClassifyGameOnly]
-      refine qb_queryTarget_bind pKi pCtl pInst (.inl (.inr (.startDR sid))) _ le_rfl _
-        (fun optIdx => ?_)
-      cases optIdx with
-      | none => exact isQueryBoundP_pure P_tgt _ 0
-      | some idx =>
-        cases (bhShallowStepMirrorGuard (.inr (s.2.2, sid))).2 <;>
-          exact isQueryBoundP_pure P_tgt _ 0
-  · dsimp only [bhShallowAdapterGameStep, bhClassifyGameOnly]
-    cases s.1 i with
-    | none => exact isQueryBoundP_pure P_tgt _ _
-    | some inst =>
-      dsimp only
-      refine qb_queryTarget_bind pKi pCtl pInst
-        (.inr ⟨i, .inl (.inl (.inl (.inl (p, m, r))))⟩) _ le_rfl _ (fun optCt => ?_)
-      cases optCt <;> exact isQueryBoundP_pure P_tgt _ 0
-  · dsimp only [bhShallowAdapterGameStep, bhClassifyGameOnly]
-    cases s.1 i with
-    | none => exact isQueryBoundP_pure P_tgt _ _
-    | some inst =>
-      dsimp only
-      refine qb_queryTarget_bind pKi pCtl pInst
-        (.inr ⟨i, .inl (.inl (.inl (.inr (p, m0, m1, r))))⟩) _ le_rfl _ (fun optCt => ?_)
-      cases optCt <;> exact isQueryBoundP_pure P_tgt _ 0
-  · cases p with
-    | B =>
-      dsimp only [bhShallowAdapterGameStep, bhClassifyGameOnly]
-      cases s.1 i with
-      | none => exact isQueryBoundP_pure P_tgt _ _
-      | some inst =>
-        dsimp only
-        cases bhShallowParsePreKey c with
-        | none =>
-          dsimp only
-          cases bhShallowSplitWhisper c with
-          | none =>
-            dsimp only
-            exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-              (fun _ => isQueryBoundP_pure P_tgt _ 0)
-          | some body =>
-            dsimp only
-            cases bhShallowParsePreKey body with
-            | none =>
-              dsimp only
-              cases bhShallowSplitWhisper (bhShallowWrapWhisper body) <;> dsimp only <;>
-                exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-                  (fun _ => isQueryBoundP_pure P_tgt _ 0)
-            | some _ =>
-              dsimp only
-              exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-                (fun _ => isQueryBoundP_pure P_tgt _ 0)
-        | some hdr_inner =>
-          dsimp only
-          cases bhShallowSplitWhisper (bhShallowWrapWhisper hdr_inner.2) <;> dsimp only <;>
-            exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-              (fun _ => isQueryBoundP_pure P_tgt _ 0)
-    | A =>
-      dsimp only [bhShallowAdapterGameStep, bhClassifyGameOnly]
-      cases bhShallowSplitWhisper c with
-      | none =>
-        dsimp only
-        cases bhShallowSplitWhisper (bhShallowWrapWhisper c) with
-        | none =>
-          dsimp only
-          exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-            (fun _ => isQueryBoundP_pure P_tgt _ 0)
-        | some _ => dsimp only; exact isQueryBoundP_pure P_tgt _ _
-      | some body =>
-        dsimp only
-        cases bhShallowSplitWhisper (bhShallowWrapWhisper body) with
-        | none => dsimp only; exact isQueryBoundP_pure P_tgt _ _
-        | some _ =>
-          dsimp only
-          exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-            (fun _ => isQueryBoundP_pure P_tgt _ 0)
-  · cases p with
-    | B =>
-      dsimp only [bhShallowAdapterGameStep, bhClassifyGameOnly]
-      cases bhShallowSplitWhisper c with
-      | none =>
-        dsimp only
-        cases bhShallowParsePreKey c with
-        | none =>
-          dsimp only
-          exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-            (fun _ => isQueryBoundP_pure P_tgt _ 0)
-        | some hdr_inner =>
-          dsimp only
-          cases (decide (c.length ≤ stdinCapBytes) && shortCiphertext c &&
-              decide (hdr_inner.2.length + 2048 < 2 ^ 32)) <;>
-            simp only [Bool.false_eq_true, ↓reduceIte]
-          · exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-              (fun _ => isQueryBoundP_pure P_tgt _ 0)
-          · cases s.1 i with
-            | none =>
-              dsimp only
-              exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-                (fun _ => isQueryBoundP_pure P_tgt _ 0)
-            | some inst =>
-              dsimp only
-              cases bhShallowSplitWhisper (bhShallowWrapWhisper hdr_inner.2) with
-              | none =>
-                dsimp only
-                cases (bhShallowUpdateInstMeta inst false false c).1 <;>
-                    simp only [Bool.false_eq_true, ↓reduceIte] <;>
-                  exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-                    (fun _ => isQueryBoundP_pure P_tgt _ 0)
-              | some _ =>
-                dsimp only
-                exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-                  (fun _ => isQueryBoundP_pure P_tgt _ 0)
-      | some body =>
-        dsimp only
-        cases (decide (c.length ≤ stdinCapBytes) && shortCiphertext c) <;>
-          simp only [Bool.false_eq_true, ↓reduceIte]
-        · exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-            (fun _ => isQueryBoundP_pure P_tgt _ 0)
-        · cases bhShallowParsePreKey body with
-          | none =>
-            dsimp only
-            cases bhShallowSplitWhisper (bhShallowWrapWhisper body) <;> dsimp only <;>
-              exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-                (fun _ => isQueryBoundP_pure P_tgt _ 0)
-          | some _ =>
-            dsimp only
-            exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-              (fun _ => isQueryBoundP_pure P_tgt _ 0)
-    | A =>
-      dsimp only [bhShallowAdapterGameStep, bhClassifyGameOnly]
-      cases bhShallowSplitWhisper c with
-      | none => dsimp only; exact isQueryBoundP_pure P_tgt _ _
-      | some body =>
-        dsimp only
-        cases (decide (c.length ≤ stdinCapBytes) && shortCiphertext c) <;>
-          simp only [Bool.false_eq_true, ↓reduceIte]
-        · exact isQueryBoundP_pure P_tgt _ _
-        · cases bhShallowParsePreKey body with
-          | none =>
-            dsimp only
-            cases bhShallowSplitWhisper (bhShallowWrapWhisper body) <;> dsimp only <;>
-              exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-                (fun _ => isQueryBoundP_pure P_tgt _ 0)
-          | some _ =>
-            dsimp only
-            exact qb_queryTarget_bind pKi pCtl pInst _ _ le_rfl _
-              (fun _ => isQueryBoundP_pure P_tgt _ 0)
-  · dsimp only [bhShallowAdapterGameStep, bhClassifyGameOnly]
-    cases s.1 i with
-    | none => exact isQueryBoundP_pure P_tgt _ _
-    | some inst =>
-      dsimp only
-      refine qb_queryTarget_bind pKi pCtl pInst (.inr ⟨i, .inr p⟩) _ le_rfl _ (fun optG => ?_)
-      cases optG <;> exact isQueryBoundP_pure P_tgt _ 0
-
-/-- `L_bh.eval` preserves `IsQueryBoundP` for any query classifier `(pKi, pCtl, pInst)`. -/
-theorem isQueryBoundP_L_bh_eval
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (pKi : SignalPqxdh.KeyIndQuery S → Bool)
-    (pCtl : BHDRCtlQuery S → Bool) (pInst : ℕ → Bool)
-    (A : CliGameAdversary S ℓ PQC) (n : ℕ)
-    (h : A.run.IsQueryBoundP (fun q => bhClassifyComposed pKi pCtl pInst q = true) n) :
-    ((L_bh (S := S) (ℓ := ℓ) (PQC := PQC) decT encT).eval
-      (fun _ => cliGameAdversaryReassoc A) ()).IsQueryBoundP
-      (fun q => bhClassifyTarget pKi pCtl pInst q = true) n := by
-  let P_tgt : (unifSpec + bhTargetGameSpec S ℓ PQC).Domain → Prop :=
-    fun q => bhClassifyTarget pKi pCtl pInst q = true
-  have hAdv := isQueryBoundP_bhAdvRun pKi pCtl pInst A n h
-  have hstep : ∀ (q : (unifSpec + bhGameSpec S ℓ PQC).Domain)
-      (s : CliAdapterState S),
-      (((L_bh (S := S) (ℓ := ℓ) (PQC := PQC) decT encT).impl q).run s).IsQueryBoundP
-        P_tgt (if bhClassifyGame pKi pCtl pInst q = true then 1 else 0) := by
-    intro q s
-    cases q with
-    | inl m =>
-      show (bhFwdU (G := bhTargetGameSpec S ℓ PQC) m >>= fun a => pure (a, s)).IsQueryBoundP P_tgt 0
-      exact isQueryBoundP_bind (n := 0) (m := 0)
-        (isQueryBoundP_bhFwdU_target (S := S) (ℓ := ℓ) (PQC := PQC) pKi pCtl pInst m)
-        (fun a _ => isQueryBoundP_pure P_tgt (a, s) 0)
-    | inr t =>
-      exact isQueryBoundP_bhShallowAdapterGameStep pKi pCtl pInst s t
-  have hsim := simulateQ_run_StateT_of_step_le hstep hAdv
-  unfold BhShallowRed.eval L_bh
-  dsimp only
-  exact (isQueryBoundP_bind (isQueryBoundP_pure P_tgt ((), cliAdapterInitState S) 0)
-    (fun ⟨_, s⟩ _ =>
-      isQueryBoundP_bind (hsim s)
-        (fun ⟨b, _⟩ _ => isQueryBoundP_pure P_tgt b 0))).mono (by omega)
 
 section PrefixQueryBound
 

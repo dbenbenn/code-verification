@@ -9,18 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part4PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part4PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5PlacedBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.ProofPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.IntoPbCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
 
 /-!
 # Budget-Threaded Relocatable Contract Wiring & Composition for `spqr::recv`
@@ -30,7 +38,7 @@ relocatable budget specifications (`spqrRecvPlacedSpecXTOfEnv`), and top-level t
 for `spqr::recv` (Block `329`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -87,6 +95,8 @@ open LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
 open LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
   (dropOptProtoInnerStatePlacedSpec dropProtoPqRatchetStatePlacedSpec)
 open LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget (dropChunkedStatesLocal2PlacedSpec)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (recvResultExactKeyDispAt recvResultExactKeyDispAt_entails_exactKeyAt)
 open LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
   (PqRatchetStateEncodeToVecPlacedOkExt pqRatchetStateEncodeToVecSpecX)
 open LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget (withLsRoLoaded)
@@ -179,7 +189,7 @@ theorem memcpy_plain {MC : AllocCostModel}
       exact ⟨⟨hq.2.1.1, hq.2.1.2, hq.1⟩, hq.2.2⟩)
 
 /-- Envelope-parametric Block `324` (`spqr::init_inner`) placed contract predicate. -/
-def InitInnerPlacedOkXOfEnv (MC : AllocCostModel)
+@[expose] def InitInnerPlacedOkXOfEnv (MC : AllocCostModel)
     (A : RustCliAllocBudget MC) (lim : BudgetLimits) (F : ShaCompress)
     (InitEnv : InitInnerGhost → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -191,7 +201,7 @@ def InitInnerPlacedOkXOfEnv (MC : AllocCostModel)
 
 /-- Envelope-parametric Block `334` (`<States>::into_pb`) placed contract predicate on
     `blkPC_334`. -/
-def StatesIntoPbPlacedOkXOfEnv (MC : AllocCostModel)
+@[expose] def StatesIntoPbPlacedOkXOfEnv (MC : AllocCostModel)
     (A : RustCliAllocBudget MC) (lim : BudgetLimits) (F : ShaCompress)
     (IntoPbEnv : StatesIntoPbGhost F → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -433,7 +443,7 @@ theorem spqrRecvPlacedContracts_of_okX
 
 /-- Envelope-parametric relocatable raw budget specification of `spqr::recv` (`Block 329`) with
     `recvResultExactKeyAt` (without `withLsCodeRoLoaded`). -/
-def spqrRecvPlacedRawSpecXOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+@[expose] def spqrRecvPlacedRawSpecXOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
     (lim : BudgetLimits) (M : SpqrRecvModel)
     (Env : VecArg → VecArg → List AllocEvent → Prop) :
     Spec ((VecArg × VecArg × BitVec 64) × MC.σ) where
@@ -454,7 +464,7 @@ def spqrRecvPlacedRawSpecXOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC
 
 /-- Envelope-parametric relocatable budget specification of `spqr::recv` (`Block 329`) with
     `withLsCodeRoLoaded lsmpl`. -/
-def spqrRecvPlacedSpecXOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+@[expose] def spqrRecvPlacedSpecXOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
     (lim : BudgetLimits) (M : SpqrRecvModel)
     (Env : VecArg → VecArg → List AllocEvent → Prop) :
     Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
@@ -463,7 +473,7 @@ def spqrRecvPlacedSpecXOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
 /-- Envelope-parametric relocatable raw budget specification of `spqr::recv` (`Block 329`)
     enriched with `tokenInitPlacedAt` and input/stack bounds (`st.bytes.length < 2 ^ 32 ∧
     msg.bytes.length < 2 ^ 40 ∧ spqrRecvStack ≤ s.sp.toNat`). -/
-def spqrRecvPlacedRawSpecXTOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+@[expose] def spqrRecvPlacedRawSpecXTOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
     (lim : BudgetLimits) (M : SpqrRecvModel)
     (Env : VecArg → VecArg → List AllocEvent → Prop) :
     Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
@@ -476,7 +486,7 @@ def spqrRecvPlacedRawSpecXTOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget M
 
 /-- Envelope-parametric relocatable budget specification of `spqr::recv` (`Block 329`) enriched
     with `tokenInitPlacedAt`, input/stack bounds, and `withLsCodeRoLoaded lsmpl`. -/
-def spqrRecvPlacedSpecXTOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+@[expose] def spqrRecvPlacedSpecXTOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
     (lim : BudgetLimits) (M : SpqrRecvModel)
     (Env : VecArg → VecArg → List AllocEvent → Prop) :
     Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
@@ -506,6 +516,102 @@ abbrev spqrRecvPlacedSpecXT {MC : AllocCostModel} (A : RustCliAllocBudget MC)
     (lim : BudgetLimits) (M : SpqrRecvModel) :
     Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
   spqrRecvPlacedSpecXTOfEnv A lim M SpqrRecvEnv
+
+/-- Strengthened envelope-parametric relocatable raw budget specification of `spqr::recv`
+    (`Block 329`) with `recvResultExactKeyDispAt` (without `withLsCodeRoLoaded`). -/
+@[expose] def spqrRecvPlacedRawDispSpecXOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+    (lim : BudgetLimits) (M : SpqrRecvModel)
+    (Env : VecArg → VecArg → List AllocEvent → Prop) :
+    Spec ((VecArg × VecArg × BitVec 64) × MC.σ) where
+  pre := fun ((st, msg, ret), st_cost) s =>
+    ⌜s.readReg64 .x0 = st.v ∧ s.readReg64 .x1 = msg.v ∧ s.readReg64 .x8 = ret ∧
+      FitsEnv MC lim st_cost (Env st msg)⌝ ∗
+      st.at A.repAlloc ∗ msg.at A.repAlloc ∗ memRegion ret 48 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
+      A.pool lim st_cost s ∗ stackAt s.sp spqrRecvStack
+  post := fun ((st, msg, ret), st_cost) s0 sf =>
+    ∃∗ evs : List AllocEvent,
+      ⌜sf.trace = s0.trace ∧ Env st msg evs ∧ ¬ M.recvPanics st.bytes msg.bytes⌝ ∗
+      st.at A.repAlloc ∗ msg.at A.repAlloc ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      (lsLogFilterAddr ↦₆₄ 0#64) ∗
+      A.pool lim (MC.stepEvents evs st_cost) sf ∗ stackAt s0.sp spqrRecvStack
+  onPanic := fun ((st, msg, _), _) s0 sf =>
+    ⌜M.recvPanics st.bytes msg.bytes ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
+
+/-- Strengthened envelope-parametric relocatable budget specification of `spqr::recv` (`Block 329`)
+    with `recvResultExactKeyDispAt` and `withLsCodeRoLoaded lsmpl`. -/
+@[expose] def spqrRecvPlacedDispSpecXOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+    (lim : BudgetLimits) (M : SpqrRecvModel)
+    (Env : VecArg → VecArg → List AllocEvent → Prop) :
+    Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
+  withLsCodeRoLoaded lsmpl (spqrRecvPlacedRawDispSpecXOfEnv A lim M Env)
+
+/-- Strengthened envelope-parametric relocatable raw budget specification of `spqr::recv`
+    (`Block 329`) with `recvResultExactKeyDispAt`, `tokenInitPlacedAt`, and input/stack bounds. -/
+@[expose] def spqrRecvPlacedRawDispSpecXTOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+    (lim : BudgetLimits) (M : SpqrRecvModel)
+    (Env : VecArg → VecArg → List AllocEvent → Prop) :
+    Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
+  { spqrRecvPlacedRawDispSpecXOfEnv A lim M Env with
+    pre := fun x s =>
+      ⌜x.1.1.bytes.length < 2 ^ 32 ∧ x.1.2.1.bytes.length < 2 ^ 40 ∧ spqrRecvStack ≤ s.sp.toNat⌝ ∗
+        tokenInitPlacedAt ∗ (spqrRecvPlacedRawDispSpecXOfEnv A lim M Env).pre x s
+    post := fun x s0 sf =>
+      tokenInitPlacedAt ∗ (spqrRecvPlacedRawDispSpecXOfEnv A lim M Env).post x s0 sf }
+
+/-- Strengthened envelope-parametric relocatable budget specification of `spqr::recv` (`Block 329`)
+    with `recvResultExactKeyDispAt`, `tokenInitPlacedAt`, input/stack bounds, and
+    `withLsCodeRoLoaded lsmpl`. -/
+@[expose] def spqrRecvPlacedDispSpecXTOfEnv {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+    (lim : BudgetLimits) (M : SpqrRecvModel)
+    (Env : VecArg → VecArg → List AllocEvent → Prop) :
+    Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
+  { spqrRecvPlacedDispSpecXOfEnv A lim M Env with
+    pre := fun x s =>
+      ⌜x.1.1.bytes.length < 2 ^ 32 ∧ x.1.2.1.bytes.length < 2 ^ 40 ∧ spqrRecvStack ≤ s.sp.toNat⌝ ∗
+        tokenInitPlacedAt ∗ (spqrRecvPlacedDispSpecXOfEnv A lim M Env).pre x s
+    post := fun x s0 sf =>
+      tokenInitPlacedAt ∗ (spqrRecvPlacedDispSpecXOfEnv A lim M Env).post x s0 sf }
+
+abbrev spqrRecvPlacedRawDispSpecX {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+    (lim : BudgetLimits) (M : SpqrRecvModel) :
+    Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
+  spqrRecvPlacedRawDispSpecXOfEnv A lim M SpqrRecvEnv
+
+abbrev spqrRecvPlacedDispSpecX {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+    (lim : BudgetLimits) (M : SpqrRecvModel) :
+    Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
+  spqrRecvPlacedDispSpecXOfEnv A lim M SpqrRecvEnv
+
+abbrev spqrRecvPlacedRawDispSpecXT {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+    (lim : BudgetLimits) (M : SpqrRecvModel) :
+    Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
+  spqrRecvPlacedRawDispSpecXTOfEnv A lim M SpqrRecvEnv
+
+abbrev spqrRecvPlacedDispSpecXT {MC : AllocCostModel} (A : RustCliAllocBudget MC)
+    (lim : BudgetLimits) (M : SpqrRecvModel) :
+    Spec ((VecArg × VecArg × BitVec 64) × MC.σ) :=
+  spqrRecvPlacedDispSpecXTOfEnv A lim M SpqrRecvEnv
+
+/-- Monotonicity bridge weakening `spqrRecvPlacedDispSpecXTOfEnv` back to
+    `spqrRecvPlacedSpecXTOfEnv` via `recvResultExactKeyDispAt_entails_exactKeyAt`. -/
+theorem subroutine_ok_spqrRecvPlacedSpecXTOfEnv_of_disp {MC : AllocCostModel}
+    {prog : Program} {entry : BitVec 64}
+    {A : RustCliAllocBudget MC} {lim : BudgetLimits} {M : SpqrRecvModel}
+    {Env : VecArg → VecArg → List AllocEvent → Prop}
+    (h : subroutine_ok prog entry (spqrRecvPlacedDispSpecXTOfEnv A lim M Env)) :
+    subroutine_ok prog entry (spqrRecvPlacedSpecXTOfEnv A lim M Env) := by
+  refine subroutine_ok_mono h (fun _ _ _ hp => hp) ?_
+  rintro ⟨⟨st, msg, ret⟩, st_cost⟩ R s0 sf hpost
+  dsimp only [spqrRecvPlacedDispSpecXTOfEnv, spqrRecvPlacedDispSpecXOfEnv,
+    spqrRecvPlacedRawDispSpecXOfEnv, spqrRecvPlacedSpecXTOfEnv, spqrRecvPlacedSpecXOfEnv,
+    spqrRecvPlacedRawSpecXOfEnv, withLsCodeRoLoaded,
+    CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded] at hpost ⊢
+  exact Satisfies.mono (sepConj_mono_left (sepConj_mono_right
+    (Entails.sepExists_mono fun evs => sepConj_mono_right (sepConj_mono_right
+      (sepConj_mono_right (sepConj_mono_left
+        (recvResultExactKeyDispAt_entails_exactKeyAt A.repAlloc ret
+          (M.recv st.bytes msg.bytes)))))))) hpost
 
 /-- Envelope-parametric `SepWPpLS` execution of `spqr::recv` (`Block 329`) from entry to
     `s0.readReg64 .x30` combining `step_prologue_to_312_placed_ofEnv`
@@ -569,6 +675,168 @@ theorem spqrRecv_placed_sepWPpLS_of_tails_ofEnv {MC : AllocCostModel}
         hpc1 hrun1 hsp1 htr1 hx0_1 hx19_1 hx21_1 hx22_1 hx23_1 hx24_1 hx25_1 hx29_1 hP1)
 
 /-- Envelope-parametric `subroutine_ok` proof that `spqr::recv` (`Block 329`) satisfies
+    `spqrRecvPlacedDispSpecXTOfEnv A lim (spqrV1Recv F K) Env` on `spqrRecvPlacedProg ext` given
+    `SpqrRecvPlacedContractsOfEnv` and the 3 version-branch tail contracts. -/
+theorem spqrRecv_placed_disp_ok_of_tails_ofEnv {MC : AllocCostModel}
+    (H_inner : V1InnerHeapPred)
+    {A : RustCliAllocBudget MC} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {DecodePreEnv DecodePostEnv : DecodeStateGhost → List AllocEvent → Prop}
+    {InitEnv : InitInnerGhost → List AllocEvent → Prop}
+    {FromPbEnv : V1State → List AllocEvent → Prop}
+    {RecvEnv : StatesRecvGhost F → List AllocEvent → Prop}
+    {IntoPbEnv : StatesIntoPbGhost F → List AllocEvent → Prop}
+    {ext : String → Option (State → State)}
+    (Env : VecArg → VecArg → List AllocEvent → Prop)
+    (hC : SpqrRecvPlacedContractsOfEnv H_inner A lim F K
+      DecodePreEnv DecodePostEnv InitEnv FromPbEnv RecvEnv IntoPbEnv ext)
+    (hnil : ∀ (st msg : VecArg), st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      (∃ st_cost : MC.σ, FitsEnv MC lim st_cost (Env st msg)) → Env st msg [])
+    (hFit_dec : ∀ (st msg : VecArg) (ret : BitVec 64) (s0 : State) (st_cost : MC.σ)
+      (pre : MsgPreamble),
+      st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      s0.spAligned = true → spqrRecvStack ≤ s0.sp.toNat →
+      FitsEnv MC lim st_cost (Env st msg) →
+      msgPreamble msg.bytes = .ok pre →
+      FitsEnv MC lim st_cost (DecodePreEnv ⟨st, s0.sp - 3056#64⟩))
+    (hEnv_dec : ∀ (st msg : VecArg) (ret : BitVec 64) (s0 : State) (st_cost : MC.σ)
+      (pre : MsgPreamble),
+      st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      s0.spAligned = true → spqrRecvStack ≤ s0.sp.toNat →
+      FitsEnv MC lim st_cost (Env st msg) →
+      msgPreamble msg.bytes = .ok pre →
+      ∀ evs_dec, DecodePostEnv ⟨st, s0.sp - 3056#64⟩ evs_dec →
+        ∀ evs_d, FreeOnlyEvs evs_d → Env st msg (evs_dec ++ evs_d))
+    (hv0 : ∀ (st msg : VecArg) (ret : BitVec 64) (s0 : State) (st_cost : MC.σ) (R : SepProp),
+      st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      s0.spAligned = true → spqrRecvStack ≤ s0.sp.toNat →
+      FitsEnv MC lim st_cost (Env st msg) →
+      ∀ evs_dec, DecodePostEnv ⟨st, s0.sp - 3056#64⟩ evs_dec →
+        V0ChainPlacedTailGen A lim (MC.stepEvents evs_dec st_cost) F K ext st msg ret s0
+          (spqrRecvPlacedPostOfEnv A lim st_cost (Env st msg) (spqrV1Recv F K) st msg ret s0 R) R)
+    (hinit : ∀ (st msg : VecArg) (ret : BitVec 64) (s0 : State) (st_cost : MC.σ) (R : SepProp),
+      st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      s0.spAligned = true → spqrRecvStack ≤ s0.sp.toNat →
+      FitsEnv MC lim st_cost (Env st msg) →
+      ∀ evs_dec, DecodePostEnv ⟨st, s0.sp - 3056#64⟩ evs_dec →
+        InitInnerPlacedTailGen A lim (MC.stepEvents evs_dec st_cost) F K ext st msg ret s0
+          (spqrRecvPlacedPostOfEnv A lim st_cost (Env st msg) (spqrV1Recv F K) st msg ret s0 R) R)
+    (hv1 : ∀ (st msg : VecArg) (ret : BitVec 64) (s0 : State) (st_cost : MC.σ) (R : SepProp),
+      st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      s0.spAligned = true → spqrRecvStack ≤ s0.sp.toNat →
+      FitsEnv MC lim st_cost (Env st msg) →
+      ∀ evs_dec, DecodePostEnv ⟨st, s0.sp - 3056#64⟩ evs_dec →
+        V1RatchetPlacedTailLSGen A lim (MC.stepEvents evs_dec st_cost) F K ext st msg ret s0
+          (spqrRecvPlacedPostOfEnv A lim st_cost (Env st msg) (spqrV1Recv F K) st msg ret s0 R) R) :
+    subroutine_ok (spqrRecvPlacedProg ext) spqrRecvPlacedEntry
+      (spqrRecvPlacedDispSpecXTOfEnv A lim (spqrV1Recv F K) Env) := by
+  have hok_core : subroutine_ok (spqrRecvPlacedProg ext) spqrRecvPlacedEntry
+      { spqrRecvPlacedDispSpecXTOfEnv A lim (spqrV1Recv F K) Env with
+        post := fun ((st, msg, ret), st_cost) s0 sf =>
+          spqrRecvPlacedCorePostOfEnv A lim st_cost (Env st msg) (spqrV1Recv F K) st msg ret s0 sf } := by
+    apply subroutine_ok_of_sepWPp
+    intro ⟨⟨st, msg, ret⟩, st_cost⟩ R s0 hpc hrun hpre hsp_align
+    dsimp only [spqrRecvPlacedDispSpecXTOfEnv, spqrRecvPlacedDispSpecXOfEnv,
+      withLsCodeRoLoaded, CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded,
+      spqrRecvPlacedRawDispSpecXOfEnv] at hpre ⊢
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
+    rcases hpre with ⟨⟨hst_len, hmsg_len, hsp_lo⟩, hpre⟩
+    have hpre1 :
+        s0.mem ⊨ ⌜LibsignalCodeRoLoaded lsmpl s0.mem⌝ ∗
+          (⌜s0.readReg64 .x0 = st.v ∧ s0.readReg64 .x1 = msg.v ∧ s0.readReg64 .x8 = ret ∧
+              FitsEnv MC lim st_cost (Env st msg)⌝ ∗
+            ((lsLogFilterAddr ↦₆₄ 0#64) ∗ tokenInitPlacedAt ∗
+              (st.at A.repAlloc ∗ msg.at A.repAlloc ∗ memRegion ret 48 ∗
+                A.pool lim st_cost s0 ∗ stackAt s0.sp spqrRecvStack ∗ R))) :=
+      Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre
+    rw [satisfies_pure_sepConj] at hpre1
+    rcases hpre1 with ⟨hcrl0, hpre2⟩
+    rw [satisfies_pure_sepConj] at hpre2
+    rcases hpre2 with ⟨⟨hx0, hx1, hx8, hfit0⟩, hmem0⟩
+    have hmem_ro :
+        s0.mem ⊨ spqrRecvRoPlacedAt ∗
+          (st.at A.repAlloc ∗ msg.at A.repAlloc ∗ memRegion ret 48 ∗
+            A.pool lim st_cost s0 ∗ stackAt s0.sp spqrRecvStack ∗ R) :=
+      lsro_spqrRecvRoPlacedAt hcrl0.2 hmem0
+    let P0 :=
+      spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗ memRegion ret 48 ∗
+        A.pool lim st_cost s0 ∗ stackAt s0.sp spqrRecvStack
+    have hP0 : s0.mem ⊨ P0 ∗ R :=
+      Satisfies.mono (Entails.of_eq (by dsimp only [P0]; ac_rfl)) hmem_ro
+    exact ⟨P0, R, hP0,
+      spqrRecv_placed_sepWPpLS_of_tails_ofEnv H_inner (Env st msg) hC st msg ret s0 P0 R hst_len
+        (hnil st msg hst_len hmsg_len ⟨st_cost, hfit0⟩)
+        (fun pre hpre_eq => hFit_dec st msg ret s0 st_cost pre hst_len hmsg_len hsp_align hsp_lo hfit0 hpre_eq)
+        (fun pre hpre_eq => hEnv_dec st msg ret s0 st_cost pre hst_len hmsg_len hsp_align hsp_lo hfit0 hpre_eq)
+        (hv0 st msg ret s0 st_cost R hst_len hmsg_len hsp_align hsp_lo hfit0)
+        (hinit st msg ret s0 st_cost R hst_len hmsg_len hsp_align hsp_lo hfit0)
+        (hv1 st msg ret s0 st_cost R hst_len hmsg_len hsp_align hsp_lo hfit0)
+        hpc hrun hsp_align hx0 hx1 hx8 rfl hcrl0⟩
+  refine subroutine_ok_mono hok_core (fun _ _ _ h => h) ?_
+  rintro ⟨⟨st, msg, ret⟩, st_cost⟩ R s0 sf hcore
+  dsimp only [spqrRecvPlacedCorePostOfEnv] at hcore
+  simp only [sepExists_sepConj_left, satisfies_sepExists] at hcore
+  rcases hcore with ⟨evs, hcore⟩
+  have hro :
+      sf.mem ⊨ spqrRecvRoPlacedAt ∗
+        (⌜sf.trace = s0.trace ∧ Env st msg evs ∧ ¬ (spqrV1Recv F K).recvPanics st.bytes msg.bytes⌝ ∗
+          st.at A.repAlloc ∗ msg.at A.repAlloc ∗
+          recvResultExactKeyDispAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
+          A.pool lim (MC.stepEvents evs st_cost) sf ∗ stackAt s0.sp spqrRecvStack ∗ R) :=
+    Satisfies.mono (Entails.of_eq (by ac_rfl)) hcore
+  have hlt := spqrRecvRoPlacedAt_restore hro
+  dsimp only [spqrRecvPlacedDispSpecXTOfEnv, spqrRecvPlacedDispSpecXOfEnv,
+    withLsCodeRoLoaded, CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded,
+    spqrRecvPlacedRawDispSpecXOfEnv]
+  simp only [sepExists_sepConj_right, sepExists_sepConj_left, satisfies_sepExists]
+  exact ⟨evs, Satisfies.mono (Entails.of_eq (by ac_rfl)) hlt⟩
+
+theorem spqrRecv_placed_disp_ok_of_tails {MC : AllocCostModel}
+    (H_inner : V1InnerHeapPred)
+    {A : RustCliAllocBudget MC} {lim : BudgetLimits}
+    {F : ShaCompress} {K : MlKem}
+    {ext : String → Option (State → State)}
+    (hC : SpqrRecvPlacedContracts H_inner A lim F K ext)
+    (hFit_dec : ∀ (st msg : VecArg) (ret : BitVec 64) (s0 : State) (st_cost : MC.σ)
+      (pre : MsgPreamble),
+      st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      s0.spAligned = true → spqrRecvStack ≤ s0.sp.toNat →
+      FitsEnv MC lim st_cost (SpqrRecvEnv st msg) →
+      msgPreamble msg.bytes = .ok pre →
+      FitsEnv MC lim st_cost (DecodeStateEnv ⟨st, s0.sp - 3056#64⟩))
+    (hEnv_dec : ∀ (st msg : VecArg) (ret : BitVec 64) (s0 : State) (st_cost : MC.σ)
+      (pre : MsgPreamble),
+      st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      s0.spAligned = true → spqrRecvStack ≤ s0.sp.toNat →
+      FitsEnv MC lim st_cost (SpqrRecvEnv st msg) →
+      msgPreamble msg.bytes = .ok pre →
+      ∀ evs_dec, DecodeStateEnv ⟨st, s0.sp - 3056#64⟩ evs_dec →
+        ∀ evs_d, FreeOnlyEvs evs_d → SpqrRecvEnv st msg (evs_dec ++ evs_d))
+    (hv0 : ∀ (st msg : VecArg) (ret : BitVec 64) (s0 : State) (st_cost : MC.σ) (R : SepProp),
+      st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      s0.spAligned = true → spqrRecvStack ≤ s0.sp.toNat →
+      FitsEnv MC lim st_cost (SpqrRecvEnv st msg) →
+      ∀ evs_dec, DecodeStateEnv ⟨st, s0.sp - 3056#64⟩ evs_dec →
+        V0ChainPlacedTail A lim st_cost evs_dec F K ext st msg ret s0 R)
+    (hinit : ∀ (st msg : VecArg) (ret : BitVec 64) (s0 : State) (st_cost : MC.σ) (R : SepProp),
+      st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      s0.spAligned = true → spqrRecvStack ≤ s0.sp.toNat →
+      FitsEnv MC lim st_cost (SpqrRecvEnv st msg) →
+      ∀ evs_dec, DecodeStateEnv ⟨st, s0.sp - 3056#64⟩ evs_dec →
+        InitInnerPlacedTail A lim st_cost evs_dec F K ext st msg ret s0 R)
+    (hv1 : ∀ (st msg : VecArg) (ret : BitVec 64) (s0 : State) (st_cost : MC.σ) (R : SepProp),
+      st.bytes.length < 2 ^ 32 → msg.bytes.length < 2 ^ 40 →
+      s0.spAligned = true → spqrRecvStack ≤ s0.sp.toNat →
+      FitsEnv MC lim st_cost (SpqrRecvEnv st msg) →
+      ∀ evs_dec, DecodeStateEnv ⟨st, s0.sp - 3056#64⟩ evs_dec →
+        V1RatchetPlacedTailLS A lim st_cost evs_dec F K ext st msg ret s0 R) :
+    subroutine_ok (spqrRecvPlacedProg ext) spqrRecvPlacedEntry
+      (spqrRecvPlacedDispSpecXT A lim (spqrV1Recv F K)) :=
+  spqrRecv_placed_disp_ok_of_tails_ofEnv H_inner SpqrRecvEnv hC
+    (fun _ _ _ _ _ => SpqrBoundedEvs.nil _ _)
+    hFit_dec hEnv_dec hv0 hinit hv1
+
+/-- Envelope-parametric `subroutine_ok` proof that `spqr::recv` (`Block 329`) satisfies
     `spqrRecvPlacedSpecXTOfEnv A lim (spqrV1Recv F K) Env` on `spqrRecvPlacedProg ext` given
     `SpqrRecvPlacedContractsOfEnv` and the 3 version-branch tail contracts. -/
 theorem spqrRecv_placed_ok_of_tails_ofEnv {MC : AllocCostModel}
@@ -623,67 +891,9 @@ theorem spqrRecv_placed_ok_of_tails_ofEnv {MC : AllocCostModel}
         V1RatchetPlacedTailLSGen A lim (MC.stepEvents evs_dec st_cost) F K ext st msg ret s0
           (spqrRecvPlacedPostOfEnv A lim st_cost (Env st msg) (spqrV1Recv F K) st msg ret s0 R) R) :
     subroutine_ok (spqrRecvPlacedProg ext) spqrRecvPlacedEntry
-      (spqrRecvPlacedSpecXTOfEnv A lim (spqrV1Recv F K) Env) := by
-  have hok_core : subroutine_ok (spqrRecvPlacedProg ext) spqrRecvPlacedEntry
-      { spqrRecvPlacedSpecXTOfEnv A lim (spqrV1Recv F K) Env with
-        post := fun ((st, msg, ret), st_cost) s0 sf =>
-          spqrRecvPlacedCorePostOfEnv A lim st_cost (Env st msg) (spqrV1Recv F K) st msg ret s0 sf } := by
-    apply subroutine_ok_of_sepWPp
-    intro ⟨⟨st, msg, ret⟩, st_cost⟩ R s0 hpc hrun hpre hsp_align
-    dsimp only [spqrRecvPlacedSpecXTOfEnv, spqrRecvPlacedSpecXOfEnv,
-      withLsCodeRoLoaded, CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded,
-      spqrRecvPlacedRawSpecXOfEnv] at hpre ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-    rcases hpre with ⟨⟨hst_len, hmsg_len, hsp_lo⟩, hpre⟩
-    have hpre1 :
-        s0.mem ⊨ ⌜LibsignalCodeRoLoaded lsmpl s0.mem⌝ ∗
-          (⌜s0.readReg64 .x0 = st.v ∧ s0.readReg64 .x1 = msg.v ∧ s0.readReg64 .x8 = ret ∧
-              FitsEnv MC lim st_cost (Env st msg)⌝ ∗
-            ((lsLogFilterAddr ↦₆₄ 0#64) ∗ tokenInitPlacedAt ∗
-              (st.at A.repAlloc ∗ msg.at A.repAlloc ∗ memRegion ret 48 ∗
-                A.pool lim st_cost s0 ∗ stackAt s0.sp spqrRecvStack ∗ R))) :=
-      Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre
-    rw [satisfies_pure_sepConj] at hpre1
-    rcases hpre1 with ⟨hcrl0, hpre2⟩
-    rw [satisfies_pure_sepConj] at hpre2
-    rcases hpre2 with ⟨⟨hx0, hx1, hx8, hfit0⟩, hmem0⟩
-    have hmem_ro :
-        s0.mem ⊨ spqrRecvRoPlacedAt ∗
-          (st.at A.repAlloc ∗ msg.at A.repAlloc ∗ memRegion ret 48 ∗
-            A.pool lim st_cost s0 ∗ stackAt s0.sp spqrRecvStack ∗ R) :=
-      lsro_spqrRecvRoPlacedAt hcrl0.2 hmem0
-    let P0 :=
-      spqrRecvRoPlacedAt ∗ st.at A.repAlloc ∗ msg.at A.repAlloc ∗ memRegion ret 48 ∗
-        A.pool lim st_cost s0 ∗ stackAt s0.sp spqrRecvStack
-    have hP0 : s0.mem ⊨ P0 ∗ R :=
-      Satisfies.mono (Entails.of_eq (by dsimp only [P0]; ac_rfl)) hmem_ro
-    exact ⟨P0, R, hP0,
-      spqrRecv_placed_sepWPpLS_of_tails_ofEnv H_inner (Env st msg) hC st msg ret s0 P0 R hst_len
-        (hnil st msg hst_len hmsg_len ⟨st_cost, hfit0⟩)
-        (fun pre hpre_eq => hFit_dec st msg ret s0 st_cost pre hst_len hmsg_len hsp_align hsp_lo hfit0 hpre_eq)
-        (fun pre hpre_eq => hEnv_dec st msg ret s0 st_cost pre hst_len hmsg_len hsp_align hsp_lo hfit0 hpre_eq)
-        (hv0 st msg ret s0 st_cost R hst_len hmsg_len hsp_align hsp_lo hfit0)
-        (hinit st msg ret s0 st_cost R hst_len hmsg_len hsp_align hsp_lo hfit0)
-        (hv1 st msg ret s0 st_cost R hst_len hmsg_len hsp_align hsp_lo hfit0)
-        hpc hrun hsp_align hx0 hx1 hx8 rfl hcrl0⟩
-  refine subroutine_ok_mono hok_core (fun _ _ _ h => h) ?_
-  rintro ⟨⟨st, msg, ret⟩, st_cost⟩ R s0 sf hcore
-  dsimp only [spqrRecvPlacedCorePostOfEnv] at hcore
-  simp only [sepExists_sepConj_left, satisfies_sepExists] at hcore
-  rcases hcore with ⟨evs, hcore⟩
-  have hro :
-      sf.mem ⊨ spqrRecvRoPlacedAt ∗
-        (⌜sf.trace = s0.trace ∧ Env st msg evs ∧ ¬ (spqrV1Recv F K).recvPanics st.bytes msg.bytes⌝ ∗
-          st.at A.repAlloc ∗ msg.at A.repAlloc ∗
-          recvResultExactKeyAt A.repAlloc ret ((spqrV1Recv F K).recv st.bytes msg.bytes) ∗
-          A.pool lim (MC.stepEvents evs st_cost) sf ∗ stackAt s0.sp spqrRecvStack ∗ R) :=
-    Satisfies.mono (Entails.of_eq (by ac_rfl)) hcore
-  have hlt := spqrRecvRoPlacedAt_restore hro
-  dsimp only [spqrRecvPlacedSpecXTOfEnv, spqrRecvPlacedSpecXOfEnv,
-    withLsCodeRoLoaded, CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded,
-    spqrRecvPlacedRawSpecXOfEnv]
-  simp only [sepExists_sepConj_right, sepExists_sepConj_left, satisfies_sepExists]
-  exact ⟨evs, Satisfies.mono (Entails.of_eq (by ac_rfl)) hlt⟩
+      (spqrRecvPlacedSpecXTOfEnv A lim (spqrV1Recv F K) Env) :=
+  subroutine_ok_spqrRecvPlacedSpecXTOfEnv_of_disp
+    (spqrRecv_placed_disp_ok_of_tails_ofEnv H_inner Env hC hnil hFit_dec hEnv_dec hv0 hinit hv1)
 
 theorem spqrRecv_placed_ok_of_tails {MC : AllocCostModel}
     (H_inner : V1InnerHeapPred)

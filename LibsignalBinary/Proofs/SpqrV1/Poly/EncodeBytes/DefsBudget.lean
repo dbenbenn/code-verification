@@ -22,7 +22,7 @@ allocator event envelopes (`encodeBytesAllocEvents`, `EncodeBytesEnv`), and `Rus
 specifications (`encodeBytesSpec`, `encodeBytesSpecX`) for Block `417`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -44,7 +44,7 @@ open LibsignalBinary.Heap
 
 /-- Scan all 4-byte words of `blk` to verify absence of both `SVC #0` and `MSR TPIDR_EL0, Xt`
     under any `Obj.Placement`. -/
-def checkBytesSafeVm (blk : Obj.CodeBlock) : Nat → List (BitVec 8) → Bool
+@[expose] def checkBytesSafeVm (blk : Obj.CodeBlock) : Nat → List (BitVec 8) → Bool
   | _, [] => true
   | off, b0 :: b1 :: b2 :: b3 :: rest =>
     let w := Obj.wordOfBytesLE [b0, b1, b2, b3] 0
@@ -56,7 +56,7 @@ def checkBytesSafeVm (blk : Obj.CodeBlock) : Nat → List (BitVec 8) → Bool
 
 /-- Decidable check that `blk.patched pl` contains neither `SVC #0` nor `MSR TPIDR_EL0, Xt`
     for any `pl : Obj.Placement`. -/
-def checkBlockSafeVm (blk : Obj.CodeBlock) : Bool :=
+@[expose] def checkBlockSafeVm (blk : Obj.CodeBlock) : Bool :=
   checkBytesSafeVm blk 0 blk.code &&
   blk.relocs.all (fun r => VerifiedLibraries.RustStd.relocKindSafeNoSvc0 r.kind)
 
@@ -329,12 +329,12 @@ theorem placedLib_rebase_allInstrs_safeVm (lib : Obj.PlacedLib) (pl : Obj.Placem
       exact patchedWord_safeVm pl hchk hal hlen
 
 /-- Total trap hook table mapping every symbol to an immediate `.Exception`. -/
-def vmTrapHooks : String → Option (State → State) :=
+@[expose] def vmTrapHooks : String → Option (State → State) :=
   fun _ => some (fun s => s.setStatus (.Exception "extern_trap"))
 
 /-- A hook table `Htrap` traps every symbol: every `sym` maps to `some f` that never leaves
     `status = .Running`. Satisfied by both `vmTrapHooks` and `Rust.withPanics vmTrapHooks`. -/
-def IsTotalTrapHooks (Htrap : String → Option (State → State)) : Prop :=
+@[expose] def IsTotalTrapHooks (Htrap : String → Option (State → State)) : Prop :=
   ∀ sym : String, ∃ f : State → State, Htrap sym = some f ∧ ∀ s : State, (f s).status ≠ .Running
 
 theorem isTotalTrapHooks_vmTrapHooks : IsTotalTrapHooks vmTrapHooks :=
@@ -610,19 +610,19 @@ theorem calleeSavedPreserved_of_stripS_right {keep : BitVec 64 → Bool} {s0 sm 
     `<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::encode_bytes`:
     16 calls to `__rust_alloc(msgLen, 2)` when `msgLen ≤ 1048576 ∧ msgLen % 2 = 0 ∧ 0 < msgLen`,
     and `[]` on the empty (`msgLen = 0`), odd-length, and too-long (`> 1048576`) branches. -/
-def encodeBytesAllocEvents (msgLen : Nat) : List AllocEvent :=
+@[expose] def encodeBytesAllocEvents (msgLen : Nat) : List AllocEvent :=
   if msgLen ≤ 1048576 ∧ msgLen % 2 = 0 ∧ 0 < msgLen then
     (List.replicate 16 (rustAllocEvents msgLen 2)).flatten
   else
     []
 
-def EncodeBytesEnv (msgLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def EncodeBytesEnv (msgLen : Nat) (evs : List AllocEvent) : Prop :=
   evs = encodeBytesAllocEvents msgLen
 
 /-- Envelope-parameterized budget-threaded specification of
     `<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::encode_bytes`
     (Block `417`, 209 instructions). -/
-def encodeBytesSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def encodeBytesSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : EncodeBytesGhost → List AllocEvent → Prop) :
     Spec (EncodeBytesGhost × M.σ) where
@@ -644,7 +644,7 @@ def encodeBytesSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Canonical budget-threaded specification of `<PolyEncoder as Encoder>::encode_bytes`
     (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def encodeBytesSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def encodeBytesSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeBytesGhost × M.σ) :=
   encodeBytesSpecOfEnv A lim
     (fun x => EncodeBytesEnv x.msg.length)
@@ -652,7 +652,7 @@ def encodeBytesSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Extended-stack (`encodeBytesStackX = 560 + extHookStack`) envelope-parameterized
     budget-threaded specification of `<PolyEncoder as Encoder>::encode_bytes`. -/
-def encodeBytesSpecXOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def encodeBytesSpecXOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : EncodeBytesGhost → List AllocEvent → Prop) :
     Spec (EncodeBytesGhost × M.σ) where
@@ -674,7 +674,7 @@ def encodeBytesSpecXOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Extended-stack canonical budget-threaded specification of
     `<PolyEncoder as Encoder>::encode_bytes`. -/
-def encodeBytesSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def encodeBytesSpecX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeBytesGhost × M.σ) :=
   encodeBytesSpecXOfEnv A lim
     (fun x => EncodeBytesEnv x.msg.length)
@@ -720,14 +720,14 @@ theorem encodeBytesSpecX_of_encodeBytesSpec {P : Program} {addr : BitVec 64}
     subroutine_ok P addr (encodeBytesSpecX A lim) :=
   encodeBytesSpecXOfEnv_of_encodeBytesSpecOfEnv h
 
-def EncodeBytesPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeBytesPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_417).rebase (blkPl_417).base (Rust.withPanics ext))
     (blkPl_417).base
     (encodeBytesSpec A lim)
 
-def EncodeBytesPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodeBytesPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_417).rebase (blkPl_417).base (Rust.withPanics ext))

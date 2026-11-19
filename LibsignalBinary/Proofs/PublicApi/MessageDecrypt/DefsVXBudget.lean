@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PublicApiCodeSym
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsVX
+import LibsignalBinary.Proofs.Placed.PublicApiCodeSym
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsVX
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `withStoresDecPlacedSpecVX`
@@ -21,7 +22,7 @@ an arbitrary parameter `Extra x answers`, lifting `DefsBudget.DecSegVPlaced` to 
 `decSegVXPlaced_chain` under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +46,7 @@ open LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
   (DecSegVPlaced withStoresDecPlacedSpecV)
 
 /-- `DefsBudget.withStoresDecPlacedSpecV` with `x.recvPanics S answers` generalized to `Extra x answers`. -/
-def withStoresDecPlacedSpecVX [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def withStoresDecPlacedSpecVX [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -82,7 +83,7 @@ theorem withStoresDecPlacedSpecV_eq_VX [LibsignalPlacement] {M : AllocCostModel}
       withStoresDecPlacedSpecVX C A lim ctl parse S tdEnv encRecord
         kit kitEnv ikit ikitEnv st0 ist0 Scope (fun x a => x.recvPanics S a) := rfl
 
-def DecSegVXPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def DecSegVXPlaced [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)

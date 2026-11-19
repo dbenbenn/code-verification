@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced -- proof-setup: allow-public-import
 public meta import Lean
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # `signal_session::run` Arm `R2`: `Send` Hop Contract (`R+0x214` → Join/Reject)
@@ -21,7 +24,7 @@ Relocatable (`[LibsignalPlacement]`) hop contracts `RunHopSendPlaced` and `RunHo
 for Arm `R2` on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +42,7 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 /-- Parametric-slot relocatable (`[LibsignalPlacement]`) Arm `R2` hop contract: from
 `AtDispatchPlaced` (`R+0x214`) on `g.c = .send peerV`, calls `wrap_encrypt` and prepends wire tag
 `0x02` or `0x03` to reach `JoinKPlaced` or `RejectKPlaced`. -/
-def RunHopSendPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopSendPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (slots : RunSlots) (resStack : Nat) : Prop :=
   ∀ {g : RunCall} {s0 s : State} {me : MeAtDispatch} {peerV : AddrV}
     {Q Qp : State → SepProp → Prop},
@@ -61,7 +64,7 @@ def RunHopSendPlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : Rust
 /-- Relocatable (`[LibsignalPlacement]`) Arm `R2` hop contract: from `AtDispatchPlaced` (`R+0x214`)
 on `g.c = .send peerV`, calls `wrap_encrypt` and prepends wire tag `0x02` or `0x03` to reach
 `JoinKPlaced` or `RejectKPlaced`. -/
-def RunHopSendPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopSendPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) : Prop :=
   RunHopSendPlacedOf CodeOk A H B S (slotsOfPlaced A S needs) resStack
 

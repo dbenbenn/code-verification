@@ -10,9 +10,11 @@ limitations under the License.
 module
 
 public import Arm64
+public import ProofLib.Meta.Compat
 public import ProofLib.PrologueFrame
 public import ProofLib.BV.Arith
 public meta import Lean
+meta import Arm64.Trusted.Surface.IncludeBytes
 import Arm64.Trusted.Spec.SepLogic
 
 /-!
@@ -279,26 +281,98 @@ end
 public meta section
 
 open Lean Meta in
-/-- Unfold `e` to weak-head normal form, zeta-reducing any `let` chunks, and return the elements
-    of the resulting `List.cons` spine without touching the element `Expr`s. -/
+/-- Unfold `e` along concrete list constructors (`List.cons`, `List.nil`,
+    `Arm64.IncludeBytes.cons16`, `List.append`, `HAppend.hAppend`, `List.flatten`, `let` bindings,
+    and exposed chunk constants) and return the element `Expr`s without touching them. -/
 partial def listElemsWhnf (e : Expr) : MetaM (Array Expr) := do
+  let env ← getEnv
   let mut elems : Array Expr := #[]
-  let mut cur := e
+  let mut stk : Array Expr := #[e]
   for _ in [0 : 100000000] do
+    let some raw := stk.back? | break
+    stk := stk.pop
+    let mut cur := raw.consumeMData
     while cur.isLet do
-      cur := cur.letBody!.instantiate1 cur.letValue!
-    if !cur.isAppOfArity ``List.cons 3 then
-      cur ← withTransparency .all (whnf cur)
+      cur := (cur.letBody!.instantiate1 cur.letValue!).consumeMData
     if cur.isAppOfArity ``List.cons 3 then
       elems := elems.push (cur.getArg! 1)
-      cur := cur.getArg! 2
+      stk := stk.push (cur.getArg! 2)
+    else if cur.isAppOfArity ``List.nil 1 then
+      pure ()
+    else if cur.isAppOfArity ``Arm64.IncludeBytes.cons16 17 then
+      let args := cur.getAppArgs
+      for j in [0:16] do
+        elems := elems.push args[j]!
+      stk := stk.push args[16]!
+    else if cur.isAppOfArity ``List.append 3 then
+      stk := (stk.push (cur.getArg! 2)).push (cur.getArg! 1)
+    else if cur.isAppOfArity ``HAppend.hAppend 6 then
+      let ty ← withTransparency .all (whnf (cur.getArg! 0))
+      if ty.isAppOfArity ``List 1 then
+        stk := (stk.push (cur.getArg! 5)).push (cur.getArg! 4)
+      else
+        let w ← withTransparency .all (whnf cur)
+        if w != cur then stk := stk.push w else break
+    else if cur.isAppOfArity ``List.flatten 2 then
+      let mut outer := cur.getArg! 1
+      let mut chunks : Array Expr := #[]
+      let mut ok := true
+      for _ in [0 : 1000000] do
+        outer := outer.consumeMData
+        while outer.isLet do
+          outer := (outer.letBody!.instantiate1 outer.letValue!).consumeMData
+        if outer.isAppOfArity ``List.cons 3 then
+          chunks := chunks.push (outer.getArg! 1)
+          outer := outer.getArg! 2
+        else if outer.isAppOfArity ``List.nil 1 then
+          break
+        else
+          let w ← withTransparency .all (whnf outer)
+          if w.isAppOfArity ``List.cons 3 then
+            chunks := chunks.push (w.getArg! 1)
+            outer := w.getArg! 2
+          else if w.isAppOfArity ``List.nil 1 then
+            break
+          else
+            ok := false
+            break
+      if ok then
+        for i in [0 : chunks.size] do
+          stk := stk.push chunks[chunks.size - 1 - i]!
+      else
+        let w ← withTransparency .all (whnf cur)
+        if w.isAppOfArity ``List.cons 3 then
+          elems := elems.push (w.getArg! 1)
+          stk := stk.push (w.getArg! 2)
+        else if w.isAppOfArity ``List.nil 1 then
+          pure ()
+        else
+          break
+    else if let .const c us := cur then
+      match env.find? c with
+      | some (.defnInfo d) =>
+        let v := if d.levelParams.isEmpty then d.value
+          else d.value.instantiateLevelParams d.levelParams us
+        stk := stk.push v
+      | _ =>
+        let w ← withTransparency .all (whnf cur)
+        if w != cur then stk := stk.push w else break
     else
-      break
+      let w ← withTransparency .all (whnf cur)
+      if w.isAppOfArity ``List.cons 3 then
+        elems := elems.push (w.getArg! 1)
+        stk := stk.push (w.getArg! 2)
+      else if w.isAppOfArity ``List.nil 1 then
+        pure ()
+      else if w != cur then
+        stk := stk.push w
+      else
+        break
   return elems
 
 open Lean Elab Term Meta in
 /-- Build a balanced `WordTree` from `<prog>.code` at elaboration time, unfolding `<prog>`
-    (e.g. `Program.mk`, `Program.ofImage`, or an `Obj.Image` constant) by `whnf`, unwrapping
+    (e.g. a `Program.mk` constant) by `whnf`, unwrapping
     `Expr.letE` chunks from list literals and reusing the exact `BitVec 8` `Expr` nodes so
     `<prog>.code = <tree>.toBytes` checks by pointer equality in the kernel. -/
 scoped elab "word_tree_of% " progId:ident : term => do

@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Defs
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3c
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3c -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3d
+import LibsignalBinary.Proofs.E2E.Reach.BundleCommon
 
 /-!
 # SPQR V1 Bob `SessionState` Packing
@@ -21,7 +22,7 @@ heap-allocated key boxes and `p2BobSpqrVecBuf` into `sessionStateAt A ss G st` a
 `ss`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,7 +50,7 @@ set_option linter.unusedSimpArgs false
 
 /-- Ghost layout for a freshly-initialized SPQR V1 Bob `SessionState`
 (`receiverChains = []`, `pq = ⟨spqrCap, spqrBufPtr⟩`, `pending = none`, `kyber = none`). -/
-def mkBobGhostV1 (locIdPtr remIdPtr rootKeyPtr aliceBasePtr spqrCap spqrBufPtr : BitVec 64)
+@[expose] def mkBobGhostV1 (locIdPtr remIdPtr rootKeyPtr aliceBasePtr spqrCap spqrBufPtr : BitVec 64)
     (locIdBytes remIdBytes aliceBaseBytes : List (BitVec 8))
     (sg : SenderChainGhost) (f248 f24c : BitVec 32) : SessionGhost :=
   { localIk := ⟨33#64, locIdPtr, locIdBytes⟩
@@ -440,7 +441,7 @@ private theorem p2_clampScalar_of_clampBv8List {spkPrivBytes : List (BitVec 8)}
   exact Reach.clampScalar_idem ⟨spkPrivBytes, hlen⟩
 
 /-- Canonical SPQR V1 Bob `SessionState` constructed from `AcceptKeysInput` and `drKey`. -/
-def p2BobInitSessionV1 (ikBPk spkBPk : SignalPqxdh.Bytes) (inp : AcceptKeysInput)
+@[expose] def p2BobInitSessionV1 (ikBPk spkBPk : SignalPqxdh.Bytes) (inp : AcceptKeysInput)
     (drKey : DRKey) (pq : List (BitVec 8))
     (hik : ikBPk.length = 32) (hrem : inp.hdr.ikAPk.length = 32)
     (hspk_pub : spkBPk.length = 32) (hspk_priv : (bytesToBv8 inp.spkBSk).length = 32) :

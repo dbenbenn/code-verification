@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollaries
+public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollaries
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `initialize_bob_session` (Block `75`) at SPQR V1
@@ -23,7 +26,7 @@ Relocatable (`[LibsignalPlacement]` / `[LibsignalFullPlacement]`) proofs of `ini
 `spqr::initial_state` seam at `lsmpl.base 327`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -48,7 +51,7 @@ open CryptoVerification.SpqrV1.Top.InitialState
    initialStateResultAt initialStateOnPanic)
 
 /-- Relocatable inner `Spec` of `spqr::initial_state` (Block `327`) at `lsLogFilterAddr`. -/
-def _root_.CryptoVerification.Cli.E2E.V1.spqrInitialStatePlacedInnerSpec [LibsignalPlacement]
+@[expose] def _root_.CryptoVerification.Cli.E2E.V1.spqrInitialStatePlacedInnerSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) : Spec InitialStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.pA ∧
@@ -70,7 +73,7 @@ def _root_.CryptoVerification.Cli.E2E.V1.spqrInitialStatePlacedInnerSpec [Libsig
   onPanic := fun _ s0 sf => initialStateOnPanic s0 sf
 
 /-- Plain `subroutine_ok` seam for `spqr::initial_state` at `lsmpl.base 327`. -/
-def _root_.CryptoVerification.Cli.E2E.V1.InitialStatePlacedOk [LibsignalPlacement]
+@[expose] def _root_.CryptoVerification.Cli.E2E.V1.InitialStatePlacedOk [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_75 H) (lsmpl.base 327)
     (CryptoVerification.Cli.E2E.V1.spqrInitialStatePlacedInnerSpec A F)
@@ -78,7 +81,7 @@ def _root_.CryptoVerification.Cli.E2E.V1.InitialStatePlacedOk [LibsignalPlacemen
 /-- `withBobMemInv Φ`-guarded `subroutine_ok` seam for `spqr::initial_state` at `lsmpl.base 327`
 (instantiates to `withLsCodeRoLoaded lsmpl` for `Φ = LibsignalCodeRoLoaded lsmpl` and
 `withLsFrozen lsmpl` for `Φ = LibsignalFrozen lsmpl`). -/
-def _root_.CryptoVerification.Cli.E2E.V1.InitialStateMemInvPlacedOk [LibsignalPlacement]
+@[expose] def _root_.CryptoVerification.Cli.E2E.V1.InitialStateMemInvPlacedOk [LibsignalPlacement]
     (Φ : Memory → Prop) (A : RustAlloc) (F : ShaCompress) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_75 H) (lsmpl.base 327)
     (withBobMemInv Φ (CryptoVerification.Cli.E2E.V1.spqrInitialStatePlacedInnerSpec A F))

@@ -9,28 +9,35 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.AssemblyPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.Core
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegBatch1Placed
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegDispatchExtPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegRegionNoneExtPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegPostSomeExtPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegTrustExtPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegUntrustedExtPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegSaveExtPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegStoreExtPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegErrTeardownExtPlaced
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.AssemblyPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.Core -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegBatch1Placed
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegDispatchExtPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegRegionNoneExtPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegPostSomeExtPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegTrustExtPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegUntrustedExtPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegSaveExtPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegStoreExtPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegErrTeardownExtPlaced
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegBatch1
 import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegErrTeardownExt
-import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegPostSomeExt
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefs
 import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegRegionNoneExt
-import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegSaveExt
+import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.StoreCallSite
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux
 import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegStoreExt
-import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.SegTrustExt
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegTrustAux
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridge
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsVXPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegDispatchPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegRegionSomePlaced
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegRegionSome
 
 /-!
 # Relocatable Token-Framed `MessageDecrypt` Assembly (`WithStoresVT.CorePlaced`)
@@ -40,7 +47,7 @@ for token-framed `withStoresDecPlacedSpecVTPF` / `withStoresDecPlacedSpecVTP` (t
 weak `RecordInScopeP` and `IdOrDistinctSid`) and `withStoresDecPlacedSpecVTF` / `withStoresDecPlacedSpecVT`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -61,7 +68,7 @@ open CryptoVerification.CliRatchet.DecPlaced
 /-! ## Token-framed `withStoresDecPlacedSpecVT` and `withStoresDecPlacedSpecVTP` -/
 
 /-- `withStoresDecPlacedSpecV` with token invariant `F0` framed in `pre` and `post`. -/
-def withStoresDecPlacedSpecVTF [LibsignalPlacement] (F0 : SepProp)
+@[expose] def withStoresDecPlacedSpecVTF [LibsignalPlacement] (F0 : SepProp)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser)
     (S : SpqrModel) (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
@@ -89,7 +96,7 @@ abbrev withStoresDecPlacedSpecVT [LibsignalPlacement]
     C A ctl parse S encRecord kit ikit st0 ist0 Scope
 
 /-- Tight-panic `withStoresDecPlacedSpecVX` (`Extra := fun _ _ => False`) with `F0` framed. -/
-def withStoresDecPlacedSpecVTPF [LibsignalPlacement] (F0 : SepProp)
+@[expose] def withStoresDecPlacedSpecVTPF [LibsignalPlacement] (F0 : SepProp)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser)
     (S : SpqrModel) (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)
@@ -119,7 +126,7 @@ abbrev withStoresDecPlacedSpecVTP [LibsignalPlacement]
 /-! ## Record-level relocatable specifications (`P`, `T`, `TPTight`) -/
 
 /-- `recordDecryptPlacedSpec` weakened to `remoteIdentity ≠ some localIdentity ∨ DistinctSid uuidParse loc rem`. -/
-def recordDecryptPlacedSpecP [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def recordDecryptPlacedSpecP [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec RecordDecryptGhost :=
   { recordDecryptPlacedSpec C A ctl uuidParse S with
     pre := fun x s =>
@@ -138,7 +145,7 @@ def recordDecryptPlacedSpecP [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (
       FromRecordCallees.lsLogOff ∗ stackAt s.sp rootStack ∗ A.pool }
 
 /-- `recordDecryptPlacedSpec` with `pqRatchetState.length < 2 ^ 32` and `F0` framed. -/
-def recordDecryptPlacedSpecTF [LibsignalPlacement] (F0 : SepProp)
+@[expose] def recordDecryptPlacedSpecTF [LibsignalPlacement] (F0 : SepProp)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser) (S : SpqrModel) :
     Spec RecordDecryptGhost :=
   { recordDecryptPlacedSpec C A ctl uuidParse S with
@@ -155,7 +162,7 @@ abbrev recordDecryptPlacedSpecT [LibsignalPlacement]
   recordDecryptPlacedSpecTF SpqrV1.GF.Mul2U16.tokenInitPlacedAt C A ctl uuidParse S
 
 /-- `recordDecryptPlacedSpecTF` with weak `recordDecryptPlacedSpecP` precondition and tight `recordDecryptOnPanicTight`. -/
-def recordDecryptPlacedSpecTPTightF [LibsignalPlacement] (F0 : SepProp)
+@[expose] def recordDecryptPlacedSpecTPTightF [LibsignalPlacement] (F0 : SepProp)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser) (S : SpqrModel) :
     Spec RecordDecryptGhost :=
   { recordDecryptPlacedSpecTF F0 C A ctl uuidParse S with
@@ -173,7 +180,7 @@ abbrev recordDecryptPlacedSpecTPTight [LibsignalPlacement]
 /-! ## Weak-precondition `RegionSomeStatePVPlaced` and `segDispatchVP_placed_ok` -/
 
 /-- `RegionSomeStateVPlaced` weakened to `recordDecryptPlacedSpecP`. -/
-def RegionSomeStatePVPlaced [LibsignalPlacement] (C : Crypto) {A : RustAlloc} (ctl : BitVec 64)
+@[expose] def RegionSomeStatePVPlaced [LibsignalPlacement] (C : Crypto) {A : RustAlloc} (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
     (encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8))
     (kit : SessionStoreSpec A 0#64) (ikit : IdentityStoreSpec A 0#64)

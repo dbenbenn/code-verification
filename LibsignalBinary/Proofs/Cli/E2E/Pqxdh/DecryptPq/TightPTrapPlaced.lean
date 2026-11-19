@@ -9,24 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.DefsP
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TightPModel
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightModel
-public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Root
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTight
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.TightTargets
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepTightTargets
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKey
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeys
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecrypt
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchet
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.DefsP -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TightPModel -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightModel
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Root
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTight
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.TightTargets
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepTightTargets
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecv
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKey
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeys
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMac
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecrypt
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchet
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Model
@@ -41,7 +42,7 @@ and outcome-lifting lemmas for `try_decrypt_with_state::<signal_session_handshak
 `lsmpl.base 329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -66,7 +67,7 @@ theorem blk507_base_eq [LibsignalPlacement] : (blkPl_508).base = lsmpl.base 508 
 
 /-- Relocatable `[LibsignalPlacement]` CLI `tryDecryptPlacedSpec` weakened to `DistinctSid`
 (`remoteIdentity ≠ some localIdentity ∨ DistinctSid`). -/
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.tryDecryptPlacedSpecP
+@[expose] def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.tryDecryptPlacedSpecP
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost where
   pre := fun x s =>
@@ -84,28 +85,28 @@ def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.tryDecryptPlacedSpecP
   post := (CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec C A ctl uuidParse S).post
   onPanic := (CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec C A ctl uuidParse S).onPanic
 
-/-- Relocatable `[LibsignalPlacement]` `tryDecryptSpecTP` over `tryDecryptPlacedSpecP` with `TokenInit`. -/
-def _root_.CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecTP
+/-- Relocatable `[LibsignalPlacement]` `tryDecryptSpecTP` over `tryDecryptPlacedSpecP` with `tokenInitPlacedAt`. -/
+@[expose] def _root_.CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecTP
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   { CryptoVerification.Cli.LibsignalTripleRatchet.tryDecryptPlacedSpecP C A ctl uuidParse S with
     pre := fun x s =>
       ⌜x.st.pqRatchetState.length < 2 ^ 32⌝ ∗
-        LibsignalSpqrV1.TokenInit tryDecryptPlacedImg ∗
+        SpqrV1.GF.Mul2U16.tokenInitPlacedAt ∗
         (CryptoVerification.Cli.LibsignalTripleRatchet.tryDecryptPlacedSpecP C A ctl uuidParse S).pre x s
     post := fun x s0 sf =>
-      LibsignalSpqrV1.TokenInit tryDecryptPlacedImg ∗
+      SpqrV1.GF.Mul2U16.tokenInitPlacedAt ∗
         (CryptoVerification.Cli.LibsignalTripleRatchet.tryDecryptPlacedSpecP C A ctl uuidParse S).post x s0 sf }
 
 /-- Relocatable `[LibsignalPlacement]` `tryDecryptPlacedSpecTP` with tight `onPanic`. -/
-def _root_.CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecTPTight
+@[expose] def _root_.CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecTPTight
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   { CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecTP C A ctl uuidParse S with
     onPanic := CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPqOnPanicTight C S uuidParse }
 
 /-- `tryDecryptPlacedSpecP` restricted to `Q x.st.pqRatchetState` with frame `F` and tight `onPanic`. -/
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.tryDecryptPlacedSpecQF_PTight
+@[expose] def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.tryDecryptPlacedSpecQF_PTight
     [LibsignalPlacement] (Q : List (BitVec 8) → Prop) (F : SepProp) (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   { CryptoVerification.Cli.LibsignalTripleRatchet.tryDecryptPlacedSpecP C A ctl parse S with
@@ -220,7 +221,7 @@ theorem reaches_outcome_tryDecryptSpecQF_PTight_of_afterCmk_placed [LibsignalPla
   · exact (not_satisfies_false_sepConj hqe).elim
   · exact (not_satisfies_false_sepConj hoom).elim
 
-def tryDecryptPlacedTightSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def tryDecryptPlacedTightSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   { CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec C A ctl parse S with
     onPanic := tryDecryptOnPanicTight C S parse }
@@ -284,23 +285,23 @@ theorem reaches_outcome_tight_of_spqrDropPanic_placed [LibsignalPlacement]
   · exact (not_satisfies_false_sepConj hqe).elim
   · exact (not_satisfies_false_sepConj hoom).elim
 
-/-- Relocatable `[LibsignalPlacement]` `tryDecryptSpecT` over `tryDecryptPlacedSpec` with `TokenInit`. -/
-def _root_.CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecT
+/-- Relocatable `[LibsignalPlacement]` `tryDecryptSpecT` over `tryDecryptPlacedSpec` with `tokenInitPlacedAt`. -/
+@[expose] def _root_.CryptoVerification.Cli.LibsignalSpqrV1.tryDecryptPlacedSpecT
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   { CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec C A ctl uuidParse S with
     pre := fun x s =>
       ⌜x.st.pqRatchetState.length < 2 ^ 32⌝ ∗
-        LibsignalSpqrV1.TokenInit tryDecryptPlacedImg ∗
+        SpqrV1.GF.Mul2U16.tokenInitPlacedAt ∗
         (CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec C A ctl uuidParse S).pre x s
     post := fun x s0 sf =>
-      LibsignalSpqrV1.TokenInit tryDecryptPlacedImg ∗
+      SpqrV1.GF.Mul2U16.tokenInitPlacedAt ∗
         (CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec C A ctl uuidParse S).post x s0 sf }
 
 /-! ## Placed Run Statement Abbreviations -/
 
 /-- `[LibsignalPlacement]` twin of `TryDecryptPqV1RunStmt_trap`. -/
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.TryDecryptPqV1RunStmtPlaced
+@[expose] def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.TryDecryptPqV1RunStmtPlaced
     [LibsignalPlacement]
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (K : LibsignalSpqrV1.MlKem) (abs : String → Option (State → State)) : Prop :=
@@ -313,7 +314,7 @@ def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.TryDecryptPqV
           (LibsignalSpqrV1.spqrV1 C.F K)))
 
 /-- `[LibsignalPlacement]` twin of `TryDecryptPqV1RunStmtP_trap`. -/
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.TryDecryptPqV1RunStmtPPlaced
+@[expose] def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.TryDecryptPqV1RunStmtPPlaced
     [LibsignalPlacement]
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (K : LibsignalSpqrV1.MlKem) (abs : String → Option (State → State)) : Prop :=
@@ -326,7 +327,7 @@ def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.TryDecryptPqV
           (LibsignalSpqrV1.spqrV1 C.F K)))
 
 /-- `[LibsignalPlacement]` twin of `TryDecryptPqV1RunStmtPTight_trap`. -/
-def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.TryDecryptPqV1RunStmtPTightPlaced
+@[expose] def _root_.CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.TryDecryptPqV1RunStmtPTightPlaced
     [LibsignalPlacement]
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (K : LibsignalSpqrV1.MlKem) (abs : String → Option (State → State)) : Prop :=

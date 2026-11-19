@@ -10,10 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import VerifiedLibraries.Musl.Spec
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Placed CLI `IdentityFiles` Store Specification
@@ -21,7 +29,7 @@ import Arm64.Trusted.Spec.SepLogic
 Relocatable `[LibsignalPlacement]` instantiation of `cliIdentityStoreSpec` at base `0#64`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace CryptoVerification.SignalSession.Cli.KitInst
@@ -39,7 +47,7 @@ open CryptoVerification.SignalSession.Cli.Placed
 open CryptoVerification.SignalSession.Cli.RunProofs.Initiate.StoreCalleesProofs
 
 /-- Relocatable `IdentityStoreSpec` for CLI `IdentityFiles` at base `0#64`. -/
-def cliIdentityStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def cliIdentityStoreSpecPlaced [LibsignalPlacement] (A : RustAlloc)
     (rd : ReadRule) (F0 : FsFiles) (pathOk : List (BitVec 8) → Prop)
     (peer : AddrGhost) (s1 s2 s3 s4 : Nat) : IdentityStoreSpec A 0#64 :=
   { cliIdentityStoreSpec A 0#64 rd F0 pathOk peer s1 s2 s3 s4 with
@@ -60,29 +68,5 @@ theorem cliIdentityStoreSpecPlaced_quiet [LibsignalPlacement] {A : RustAlloc}
     {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost} {s1 s2 s3 s4 : Nat} :
     (cliIdentityStoreSpecPlaced A rd F0 pathOk peer s1 s2 s3 s4).Quiet :=
   ⟨fun _ _ _ _ => NoFsEv.nil, fun _ _ _ => NoFsEv.nil⟩
-
-theorem cliIdentityStoreSpecPlaced_saveUpdate_inv [LibsignalPlacement] {A : RustAlloc}
-    {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost} {s1 s2 s3 s4 : Nat}
-    {g : IdGhost} {rem : AddrVal} {k : IdentityKey} {ans : Except Unit IdentityChange}
-    (hinv : CliIdInv rd F0 pathOk peer g) (hrem : rem = peer.val) :
-    CliIdInv rd F0 pathOk peer
-      ((cliIdentityStoreSpecPlaced A rd F0 pathOk peer s1 s2 s3 s4).saveUpdate g rem k ans) :=
-  cliIdentityStoreSpec_saveUpdate_inv (A := A) (b := 0#64)
-    (s1 := s1) (s2 := s2) (s3 := s3) (s4 := s4) (k := k) (ans := ans) hinv hrem
-
-theorem cliIdentityStoreSpecPlaced_saveUpdate_own [LibsignalPlacement] {A : RustAlloc}
-    {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost} {s1 s2 s3 s4 : Nat}
-    {g : IdGhost} {rem : AddrVal} {k : IdentityKey} {ans : Except Unit IdentityChange} :
-    ((cliIdentityStoreSpecPlaced A rd F0 pathOk peer s1 s2 s3 s4).saveUpdate g rem k ans).own =
-      g.own :=
-  cliIdentityStoreSpec_saveUpdate_own (A := A) (b := 0#64) (rd := rd) (F0 := F0)
-    (pathOk := pathOk) (peer := peer) (s1 := s1) (s2 := s2) (s3 := s3) (s4 := s4)
-    (g := g) (rem := rem) (k := k) (ans := ans)
-
-theorem cliIdentityStoreSpecPlaced_futDrop [LibsignalPlacement] (H : LibsignalHooks) :
-    subroutine_ok (lsProg_547 H) (lsmpl.base 547) futDropSpec :=
-  futDrop_block_placed_ok H
 
 end CryptoVerification.SignalSession.Cli.KitInst

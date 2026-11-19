@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepCorrSend
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliver
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliverInject
-public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepCorrSend -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliver
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliverInject
+public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.BucketAuthBridge -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events
 import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma17
 import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Defs
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepBase
 
 /-!
 # Proof of `libsignal_refines`
@@ -26,10 +32,9 @@ public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 Lean's kernel checks every proof in it: you do not need to read it to trust those theorems.
 
 Combines the per-query `CloseByState` step lemmas, initial-state coupling, and bad-event bounds to
-prove `libsignal_refines_proof`.
--/
+prove `libsignal_refines_proof`.-/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -312,6 +317,18 @@ theorem simNoneWinEvent_le_auth (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (Bit
   run_win_prob_le_auth (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (2 + 1) (qep + 1) (by omega)
     (LibsignalSim.simRun P Dh encT decT qep none A)
 
+theorem simNoneWinEvent_le_bucketAuth (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (A : LibAdv PQ PQC ℓ) :
+    let sm := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
+    𝒟[simNoneWinEvent P ℓ Dh encPt encT decT idOf lam qep A] {true} ≤
+      ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1),
+        CryptoGames.SM.BucketAuthBridge.bucketAuthAdvantage sm (2 + 1) (qep + 1) tL
+          (Thm1.challSim (2 + 1) (qep + 1) (LibsignalSim.simRun P Dh encT decT qep none A)) :=
+  CryptoGames.SM.BucketAuthBridge.run_win_prob_le_bucketAuth
+    (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (2 + 1) (qep + 1) (by omega)
+    (LibsignalSim.simRun P Dh encT decT qep none A)
+
 /-- Bounds the boolean distribution distance between `libsignalSessionScheme` (`configR1OnCurve`)
 and `lFig8` (`Config.h1` with `simRun`) by the spurious-step, ambiguous-receive, collision, and
 epoch-0 bad events. -/
@@ -469,6 +486,71 @@ theorem libsignal_refines_proof (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (Bit
           SM.Config.h1 (LibsignalSim.simRun P Dh encT decT qep none A)
         + 2 * ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
             SM.authAdvantage sm (2 + 1) (qep + 1) tL t
+              (Thm1.challSim (2 + 1) (qep + 1) (LibsignalSim.simRun P Dh encT decT qep none A))
+        + 2 * LibsignalSim.forgedEpochStartSpuriousStepTerm P.C.F encPt Dh q
+        + 2 * LibsignalSim.spuriousStepTerm P.C.F encPt Dh q qep
+        + 2 * LibsignalSim.epoch0Term P ℓ encPt lam onImage qep q A
+        + 2 * ((qep + 2) * (q + qep + 2) * δ) := by
+        rw [hcS]
+        ring
+
+/-- Stage-2 `canon`-bucket counterpart of `libsignal_refines_proof` routing `simNoneWinEvent`
+through `BucketAuthBridge.run_win_prob_le_bucketAuth`. -/
+theorem libsignal_refines_proof_bucket (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (hX : X25519RealizesDh P.C Dh encPt encT) (hdec : ∀ T, decT (encT T) = some T)
+    (hrt : SignalRoundTripShort P.codec) (hL : LengthsOk P ℓ) (hfit : SignalEncodeFits32 P.codec)
+    (hinj : Function.Injective encT) (hdum : ∀ T, encT T ≠ dummyKey) (hz : ∀ x, Dh.dh x 0 = 0)
+    (hS : SpqrOffCorrectLocal P.spqr) (idOf : Party → IdentityKey)
+    (hid : idOf .A = P.idA ∧ idOf .B = P.idB) (lam : Pt) (qep q : ℕ) (hq32 : q < 2 ^ 32) (δ : ℝ≥0∞)
+    (hδ : ∀ Q : Pt, 𝒟[($ᵗ BitVec 256 : ProbComp (BitVec 256))] {x | Dh.dh x Dh.base = Q} ≤ δ)
+    (A : LibAdv PQ PQC ℓ) (hq : SM.MakesAtMostQueries A q) :
+    SM.hybridAdvantageR (libsignalSessionScheme P ℓ encPt lam) (2 + 1) qep (configR1OnCurve (ratchetKeyAdmissible P.codec decT encT)) A ≤
+        SM.hybridAdvantage (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (2 + 1) (qep + 1)
+          SM.Config.h1 (LibsignalSim.simRun P Dh encT decT qep none A)
+      + 2 * ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1),
+          CryptoGames.SM.BucketAuthBridge.bucketAuthAdvantage
+            (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam) (2 + 1) (qep + 1) tL
+            (Thm1.challSim (2 + 1) (qep + 1) (LibsignalSim.simRun P Dh encT decT qep none A))
+      + 2 * LibsignalSim.forgedEpochStartSpuriousStepTerm P.C.F encPt Dh q
+      + 2 * LibsignalSim.spuriousStepTerm P.C.F encPt Dh q qep
+      + 2 * LibsignalSim.epoch0Term P ℓ encPt lam (ratchetKeyAdmissible P.codec decT encT) qep q A
+      + 2 * ((qep + 2) * (q + qep + 2) * δ) := by
+  have hrt : RoundTrip.RtHyp P ℓ := ⟨hrt, hL, hfit⟩
+  let onImage := ratchetKeyAdmissible P.codec decT encT
+  let sm := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
+  set cR := 𝒟[SM.gameR (libsignalSessionScheme P ℓ encPt lam) 3 qep (configR1OnCurve onImage) A]
+  set cS := 𝒟[SM.game sm 3 (qep + 1) SM.Config.h1 (LibsignalSim.simRun P Dh encT decT qep none A)]
+  have hbias : cR.boolBias ≤ cS.boolBias + 2 * cR.boolDist cS :=
+    boolBias_le_add_two_mul_boolDist cR cS
+  have hdist := sim_game_boolDist_le P ℓ Dh encPt encT decT hX hdec hrt hinj hdum hz hS idOf hid
+    lam qep q hq32 δ hδ A hq
+  have heps0 := eps0Event_le_eps0 P ℓ Dh encPt encT decT hX hdec hinj hdum hrt lam qep q A hq
+  have hauth := simNoneWinEvent_le_bucketAuth P ℓ Dh encPt encT decT idOf lam qep A
+  have hcS : cS.boolBias =
+      SM.hybridAdvantage sm (2 + 1) (qep + 1) SM.Config.h1
+        (LibsignalSim.simRun P Dh encT decT qep none A) := rfl
+  unfold SM.hybridAdvantageR
+  calc cR.boolBias
+      ≤ cS.boolBias + 2 * cR.boolDist cS := hbias
+    _ ≤ cS.boolBias + 2 * (
+          (LibsignalSim.forgedEpochStartSpuriousStepTerm P.C.F encPt Dh q +
+            𝒟[simNoneWinEvent P ℓ Dh encPt encT decT idOf lam qep A] {true}) +
+          (LibsignalSim.spuriousStepTerm P.C.F encPt Dh q qep + (qep + 2) * (q + qep + 2) * δ) +
+          𝒟[eps0Event P ℓ encPt lam onImage qep A] {true}) := by
+        gcongr
+    _ ≤ cS.boolBias + 2 * (
+          (LibsignalSim.forgedEpochStartSpuriousStepTerm P.C.F encPt Dh q +
+            ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1),
+              CryptoGames.SM.BucketAuthBridge.bucketAuthAdvantage sm (2 + 1) (qep + 1) tL
+                (Thm1.challSim (2 + 1) (qep + 1) (LibsignalSim.simRun P Dh encT decT qep none A))) +
+          (LibsignalSim.spuriousStepTerm P.C.F encPt Dh q qep + (qep + 2) * (q + qep + 2) * δ) +
+          LibsignalSim.epoch0Term P ℓ encPt lam onImage qep q A) := by
+        gcongr
+    _ = SM.hybridAdvantage sm (2 + 1) (qep + 1)
+          SM.Config.h1 (LibsignalSim.simRun P Dh encT decT qep none A)
+        + 2 * ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1),
+            CryptoGames.SM.BucketAuthBridge.bucketAuthAdvantage sm (2 + 1) (qep + 1) tL
               (Thm1.challSim (2 + 1) (qep + 1) (LibsignalSim.simRun P Dh encT decT qep none A))
         + 2 * LibsignalSim.forgedEpochStartSpuriousStepTerm P.C.F encPt Dh q
         + 2 * LibsignalSim.spuriousStepTerm P.C.F encPt Dh q qep

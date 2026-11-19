@@ -14,24 +14,39 @@ public import Arm64.Trusted.Spec.SepLogic
 public import LibsignalBinary.Heap.Fine.CostModel
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinkedAux
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinkedAux
 public import LibsignalBinary.Proofs.PeakBudget.RealCliDecPkGuardedDefs
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TopPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinkedBase
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Guarded wide `W4` (`decrypt_prekey`) poll-to-binary-kit bridge (`CliDpPollTrustedWideBridge`)
@@ -45,7 +60,7 @@ Connects `[LibsignalFullPlacement]` D2(c) `decrypt_prekey` poll producers to
 4. Consumer `hRunSub` guard eliminators and `Cmk + VerNe-prev1` slot envelopes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -181,14 +196,10 @@ theorem not_fitsEnv_top (M : AllocCostModel) (lim : BudgetLimits) (st : M.σ) :
   unfold AllocEvent.withinMaxAlloc at hev
   omega
 
-theorem not_fitsEnv_top_cliBudgetLimits (st : fineCostModel.σ) :
-    ¬ FitsEnv fineCostModel cliBudgetLimits st (fun _ => True) :=
-  not_fitsEnv_top fineCostModel cliBudgetLimits st
-
 /-! ## C3/C4-tied and `SeqFree` D2(c) linked poll envelopes -/
 
 /-- `PollOverPathCPlacedBudgetAux.CliStageP4Prev1Envs` bundle at `cliPollSessPrev1SeqFreeStorePollEnv`. -/
-def cliPollStageP4Prev1SeqFreeEnvsAux [LibsignalPlacement] (A : RustAlloc)
+@[expose] def cliPollStageP4Prev1SeqFreeEnvsAux [LibsignalPlacement] (A : RustAlloc)
     (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
     (pid kpkId spkId : BitVec 32) (kbk : PublicKey)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop) :
@@ -202,7 +213,7 @@ def cliPollStageP4Prev1SeqFreeEnvsAux [LibsignalPlacement] (A : RustAlloc)
 `cliPollSessBudgetEnv` (`SerializeCanonEnvX`) with `cliPollSessSeqFreeBudgetEnv`
 (`RecordSerializeSeqFreeValidEnv`) on Stage P4 of Paths A and B so Stage-P4 `store_session` traces
 land in `W4BinaryStageP4{Matched,PathA}WideEnvAllFixed`. -/
-def CliDpPollTrustedSeqFreeEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CliDpPollTrustedSeqFreeEnv [LibsignalPlacement] {A : RustAlloc}
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -286,7 +297,7 @@ def CliDpPollTrustedSeqFreeEnv [LibsignalPlacement] {A : RustAlloc}
 C3 (`StageP3ErrM3Env`) and C4 (`StageP3VerNePrev1Env verNeEnv`) explicitly tied to `g` via
 `g.msg = pmOfE m i`, `pkStoreKeys`, `keyPair`, `regId`, `acceptKeys`, and
 `SessionExtraRel recG (pathAInitSession ...)`. -/
-def CliDpPollPathCTiedEnvOf [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CliDpPollPathCTiedEnvOf [LibsignalPlacement] {A : RustAlloc}
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
@@ -387,7 +398,7 @@ def CliDpPollPathCTiedEnvOf [LibsignalPlacement] {A : RustAlloc}
 
 /-- C3/C4-tied counterpart of `DecPkD2cSlotOkLinkedAux.CliDpPollD2cWideEnv` parametric in
 `verNeEnv`. -/
-def CliDpPollD2cTiedWideEnvOf [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CliDpPollD2cTiedWideEnvOf [LibsignalPlacement] {A : RustAlloc}
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
@@ -421,23 +432,9 @@ abbrev CliDpPollD2cTiedLinkedEnvOf [LibsignalPlacement] {A : RustAlloc}
     P2PathAErrEnv P2PathAOkEnv P2OverErrEnv P2OverOkEnv
     (fun W => TryDecryptCliLinkedEnv W.C W.Q.K) p4Envs g evs
 
-abbrev CliDpPollD2cTiedLinkedEnv [LibsignalPlacement] {A : RustAlloc}
-    (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
-    (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
-    (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
-    (P2PathAErrEnv P2PathAOkEnv : DecPkGhost → List AllocEvent → Prop)
-    (P2OverErrEnv P2OverOkEnv :
-      DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
-    (p4Envs : ∀ (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
-      (pid kpkId spkId : BitVec 32) (kbk : PublicKey),
-      CliStageP4Prev1Envs (A := A) B F0 peer pid kpkId spkId kbk)
-    (g : DecPkGhost) (evs : List AllocEvent) : Prop :=
-  CliDpPollD2cTiedLinkedEnvOf (A := A) VerNeTightTopEnv W X B ReadEnv DeserEnv
-    P2PathAErrEnv P2PathAOkEnv P2OverErrEnv P2OverOkEnv p4Envs g evs
-
 /-- `verNeEnv`-parametric `SeqFree` D2(c) linked poll envelope (`TryDecryptCliLinkedEnv W.C W.Q.K`
 + `SeqFree` Stage P4 across Paths A, B, and C, with C3 and C4 tied to `g`). -/
-def CliDpPollD2cSeqFreeLinkedEnvOf [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CliDpPollD2cSeqFreeLinkedEnvOf [LibsignalPlacement] {A : RustAlloc}
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
@@ -493,11 +490,6 @@ abbrev CliDpPollD2cSeqFreeConcreteEnvOf [LibsignalPlacement]
     (fun B F0 peer pid kpkId spkId kbk =>
       cliPollStageP4Prev1SeqFreeEnvsAux A B F0 peer pid kpkId spkId kbk ReadEnv)
     g evs
-
-abbrev CliDpPollD2cSeqFreeConcreteEnv [LibsignalPlacement]
-    (A : RustAlloc) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (g : DecPkGhost) (evs : List AllocEvent) : Prop :=
-  CliDpPollD2cSeqFreeConcreteEnvOf VerNeTightTopEnv A X W g evs
 
 /-! ## Parametric guarded `DecPkD2cSlotOk` slot wrappers -/
 
@@ -569,64 +561,6 @@ theorem decPkD2cSlotOkPlacedAtOf_targetGuarded_of_unguarded [LibsignalPlacement]
     refine not_fitsEnv_top M lim st (fun evs _ => ?_)
     exact hfit evs ((hSlot x evs).mpr (fun h => False.elim (hTight h)))
 
-/-- Specialization of `decPkD2cSlotOkPlacedAtOf_targetGuarded_of_unguarded` to `realCliDecPkBinaryWideSlotEnvGuardedFixed X W`. -/
-theorem decPkD2cSlotOkPlacedAtOf_guarded_of_unguarded [LibsignalPlacement]
-    (CodeOk : Memory → Prop) {M : AllocCostModel}
-    {H : LibsignalHooks} {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (hSlot : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvGuardedFixed X W g e)
-    (hUnguarded : DecPkD2cSlotOkPlacedAtOf CodeOk H X W A lim DecPkEnv₀)
-    (hBridge : ∀ g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ g evs →
-      realCliDecPkBinaryWideSlotEnvFixed X W g evs) :
-    DecPkD2cSlotOkPlacedAtOf CodeOk H X W A lim DecPkEnv :=
-  decPkD2cSlotOkPlacedAtOf_targetGuarded_of_unguarded CodeOk hSlot hUnguarded hBridge
-
-theorem decPkD2cSlotOkFrozenPlacedAt_guarded_of_unguarded [LibsignalPlacement]
-    {M : AllocCostModel}
-    {H : LibsignalHooks} {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (hSlot : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvGuardedFixed X W g e)
-    (hUnguarded : DecPkD2cSlotOkFrozenPlacedAt H X W A lim DecPkEnv₀)
-    (hBridge : ∀ g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ g evs →
-      realCliDecPkBinaryWideSlotEnvFixed X W g evs) :
-    DecPkD2cSlotOkFrozenPlacedAt H X W A lim DecPkEnv :=
-  decPkD2cSlotOkPlacedAtOf_guarded_of_unguarded (LibsignalFrozen lsmpl) hSlot hUnguarded hBridge
-
-theorem decPkD2cSlotOkFrozenPlaced_guarded_of_unguarded [LibsignalPlacement]
-    {M : AllocCostModel}
-    {mmpl : Obj.MultiPlacement} {gh : CliGhostHooks} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ : UnreachedPqxdhPrimitives → DecPkGhost → List AllocEvent → Prop}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (X : UnreachedPqxdhPrimitives)
-    (hSlot : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvGuardedFixed X W g e)
-    (hUnguarded : ∀ X',
-      DecPkD2cSlotOkFrozenPlacedAt (cliGhostExterns gh (cliExternsPlaced mmpl W)) X' W A lim
-        (DecPkEnv₀ X'))
-    (hBridge : ∀ X' g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ X' g evs →
-      realCliDecPkBinaryWideSlotEnvFixed X' W g evs) :
-    DecPkD2cSlotOkFrozenPlaced mmpl gh W A lim DecPkEnv := by
-  intro X'
-  have hSlot' : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvGuardedFixed X' W g e := by
-    intro g e
-    rw [hSlot g e]
-  exact decPkD2cSlotOkPlacedAtOf_guarded_of_unguarded (LibsignalFrozen lsmpl)
-    hSlot' (hUnguarded X') (hBridge X')
-
 /-! ## Consumer `hRunSub` guard eliminators -/
 
 /-- Generic `PeerSpqrStateTight640`-guarded eliminator for any `TargetEnv`. -/
@@ -656,34 +590,11 @@ theorem targetEnv_of_guarded_cliPqInputs_recv
   rw [hF, hpeer]
   exact peerSpqrStateTight640_of_cliPqInputs_recv hi hparse
 
-/-- Discharges a `PeerSpqrStateTight640`-guarded `DecPkEnv` back to unguarded
-`realCliDecPkBinaryWideSlotEnvFixed X W x evs` from any `PeerSpqrStateTight640` witness. -/
-theorem realCliDecPkBinaryWideSlotEnvFixed_of_guarded_tight [LibsignalPlacement]
-    {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop} {x : DecPkGhost} {evs : List AllocEvent}
-    (hSlot : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvGuardedFixed X W g e)
-    (hTight : PeerSpqrStateTight640 W.C.F W.Q.K x.F x.peer.val)
-    (hevs : DecPkEnv x evs) :
-    realCliDecPkBinaryWideSlotEnvFixed X W x evs :=
-  targetEnv_of_guarded_tight hSlot hTight hevs
-
-/-- Discharges the `PeerSpqrStateTight640` guard on `realCliDecPkBinaryWideSlotEnvGuardedFixed` under `CliPqxdhInputs` at `.recv peer`. -/
-theorem realCliDecPkBinaryWideSlotEnvFixed_of_guarded_cliPqInputs_recv [LibsignalPlacement]
-    {X : UnreachedPqxdhPrimitives} {W : CliHooks} {i : Inputs} {peer : AddrV}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop} {x : DecPkGhost} {evs : List AllocEvent}
-    (hSlot : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvGuardedFixed X W g e)
-    (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hF : x.F = runFiles i) (hpeer : x.peer.val = addrValOf peer)
-    (hevs : DecPkEnv x evs) :
-    realCliDecPkBinaryWideSlotEnvFixed X W x evs :=
-  targetEnv_of_guarded_cliPqInputs_recv hSlot hi hparse hF hpeer hevs
-
 /-! ## `W4RecvPrekeyCmkSlot` and `VerNe-prev1` slot envelopes, wrappers, and eliminators -/
 
 /-- Path-C Stage-P3 step envelope for `W4RecvPrekeyCmkSlot`, combining `W4StageP3Prev1WideEnvOf verNeEnv`
 with `W4RecvPrekeyTryDecACCmkEnvOf LoopAdvEnv maxOps w.base`. -/
-def w4c_verNePrev1P3PathCEnvOf
+@[expose] def w4c_verNePrev1P3PathCEnvOf
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
     (w : W4BinaryRecvPrekeyParamsCmk) : List AllocEvent → Prop :=
@@ -707,25 +618,6 @@ abbrev realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf [LibsignalPlacement]
   realCliDecPkBinaryWideSlotEnvCmkWithP3CFixedOf LoopAdvEnv maxOps
     (w4c_verNePrev1P3PathCEnvOf verNeEnv LoopAdvEnv maxOps) X W x evs
 
-/-- Default `(VerNeTightTopEnv, CmkLoopAdvanceEvs, 109)` unguarded `Cmk + VerNe-prev1` W4 slot
-envelope. -/
-abbrev realCliDecPkBinaryWideSlotEnvCmkVerNeFixed [LibsignalPlacement]
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x : DecPkGhost) (evs : List AllocEvent) : Prop :=
-  realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf
-    VerNeTightTopEnv CmkLoopAdvanceEvs w4c_defaultDecodeMaxOps X W x evs
-
-theorem realCliDecPkBinaryWideSlotEnvCmkFixedOf_sub_verNeOf [LibsignalPlacement]
-    {verNeEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {LoopAdvEnv : W4LoopAdvEnv} {maxOps : Nat}
-    {X : UnreachedPqxdhPrimitives} {W : CliHooks} {x : DecPkGhost} {evs : List AllocEvent}
-    (h : realCliDecPkBinaryWideSlotEnvCmkFixedOf LoopAdvEnv maxOps X W x evs) :
-    realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf verNeEnv LoopAdvEnv maxOps X W x evs :=
-  realCliDecPkBinaryWideSlotEnvCmkWithP3CFixedOf_mono
-    (w4c_loopAdvSub_refl LoopAdvEnv) (Nat.le_refl maxOps)
-    (fun _ _ hp3 => hp3.elim Or.inl fun hw => Or.inr (w4StageP3Prev1WideEnvOf_of_wide hw))
-    h
-
 /-- `(verNeEnv, LoopAdvEnv, maxOps)`-parametric `PeerSpqrStateTight640`-guarded `Cmk + VerNe-prev1` W4 slot envelope. -/
 abbrev realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf [LibsignalPlacement]
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
@@ -734,224 +626,6 @@ abbrev realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf [LibsignalPlacement]
     (x : DecPkGhost) (evs : List AllocEvent) : Prop :=
   realCliDecPkBinaryWideSlotEnvCmkWithP3CGuardedFixedOf LoopAdvEnv maxOps
     (w4c_verNePrev1P3PathCEnvOf verNeEnv LoopAdvEnv maxOps) X W x evs
-
-/-- Default `(VerNeTightTopEnv, CmkLoopAdvanceEvs, 109)` `PeerSpqrStateTight640`-guarded `Cmk + VerNe-prev1` W4 slot envelope. -/
-abbrev realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed [LibsignalPlacement]
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x : DecPkGhost) (evs : List AllocEvent) : Prop :=
-  realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf
-    VerNeTightTopEnv CmkLoopAdvanceEvs w4c_defaultDecodeMaxOps X W x evs
-
-theorem realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf_ghost_congr [LibsignalPlacement]
-    (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x y : DecPkGhost)
-    (hp : x.peer.val = y.peer.val) (hm : x.me.val = y.me.val)
-    (hs : x.stores = y.stores) (hcp : x.coinsP = y.coinsP)
-    (hf : x.F = y.F) (hc : x.coins = y.coins) (hmsg : x.msg = y.msg) :
-    realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf verNeEnv LoopAdvEnv maxOps X W x =
-      realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf verNeEnv LoopAdvEnv maxOps X W y :=
-  realCliDecPkBinaryWideSlotEnvCmkWithP3CGuardedFixedOf_ghost_congr
-    LoopAdvEnv maxOps (w4c_verNePrev1P3PathCEnvOf verNeEnv LoopAdvEnv maxOps)
-    X W x y hp hm hs hcp hf hc hmsg
-
-theorem realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed_ghost_congr [LibsignalPlacement]
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x y : DecPkGhost)
-    (hp : x.peer.val = y.peer.val) (hm : x.me.val = y.me.val)
-    (hs : x.stores = y.stores) (hcp : x.coinsP = y.coinsP)
-    (hf : x.F = y.F) (hc : x.coins = y.coins) (hmsg : x.msg = y.msg) :
-    realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed X W x =
-      realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed X W y :=
-  realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf_ghost_congr
-    VerNeTightTopEnv CmkLoopAdvanceEvs w4c_defaultDecodeMaxOps X W x y hp hm hs hcp hf hc hmsg
-
-/-- `(LoopAdvEnv, maxOps, P3PathCEnv)`-parametric `CodeOk` guarded-slot wrapper at
-`realCliDecPkBinaryWideSlotEnvCmkWithP3CGuardedFixedOf`. -/
-theorem decPkD2cSlotOkPlacedAtOf_cmkWithP3CGuarded_of_unguarded [LibsignalPlacement]
-    (CodeOk : Memory → Prop) {M : AllocCostModel}
-    {LoopAdvEnv : W4LoopAdvEnv} {maxOps : Nat}
-    {P3PathCEnv : W4BinaryRecvPrekeyParamsCmk → List AllocEvent → Prop}
-    {H : LibsignalHooks} {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (hSlot : ∀ g e, DecPkEnv g e ↔
-      realCliDecPkBinaryWideSlotEnvCmkWithP3CGuardedFixedOf LoopAdvEnv maxOps P3PathCEnv X W g e)
-    (hUnguarded : DecPkD2cSlotOkPlacedAtOf CodeOk H X W A lim DecPkEnv₀)
-    (hBridge : ∀ g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ g evs →
-      realCliDecPkBinaryWideSlotEnvCmkWithP3CFixedOf LoopAdvEnv maxOps P3PathCEnv X W g evs) :
-    DecPkD2cSlotOkPlacedAtOf CodeOk H X W A lim DecPkEnv :=
-  decPkD2cSlotOkPlacedAtOf_targetGuarded_of_unguarded CodeOk hSlot hUnguarded hBridge
-
-theorem decPkD2cSlotOkFrozenPlacedAt_cmkWithP3CGuarded_of_unguarded [LibsignalPlacement]
-    {M : AllocCostModel}
-    {LoopAdvEnv : W4LoopAdvEnv} {maxOps : Nat}
-    {P3PathCEnv : W4BinaryRecvPrekeyParamsCmk → List AllocEvent → Prop}
-    {H : LibsignalHooks} {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (hSlot : ∀ g e, DecPkEnv g e ↔
-      realCliDecPkBinaryWideSlotEnvCmkWithP3CGuardedFixedOf LoopAdvEnv maxOps P3PathCEnv X W g e)
-    (hUnguarded : DecPkD2cSlotOkFrozenPlacedAt H X W A lim DecPkEnv₀)
-    (hBridge : ∀ g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ g evs →
-      realCliDecPkBinaryWideSlotEnvCmkWithP3CFixedOf LoopAdvEnv maxOps P3PathCEnv X W g evs) :
-    DecPkD2cSlotOkFrozenPlacedAt H X W A lim DecPkEnv :=
-  decPkD2cSlotOkPlacedAtOf_cmkWithP3CGuarded_of_unguarded
-    (LibsignalFrozen lsmpl) hSlot hUnguarded hBridge
-
-theorem decPkD2cSlotOkFrozenPlaced_cmkWithP3CGuarded_of_unguarded [LibsignalPlacement]
-    {M : AllocCostModel}
-    {LoopAdvEnv : W4LoopAdvEnv} {maxOps : Nat}
-    {P3PathCEnv : W4BinaryRecvPrekeyParamsCmk → List AllocEvent → Prop}
-    {mmpl : Obj.MultiPlacement} {gh : CliGhostHooks} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ : UnreachedPqxdhPrimitives → DecPkGhost → List AllocEvent → Prop}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (X : UnreachedPqxdhPrimitives)
-    (hSlot : ∀ g e, DecPkEnv g e ↔
-      realCliDecPkBinaryWideSlotEnvCmkWithP3CGuardedFixedOf LoopAdvEnv maxOps P3PathCEnv X W g e)
-    (hUnguarded : ∀ X',
-      DecPkD2cSlotOkFrozenPlacedAt (cliGhostExterns gh (cliExternsPlaced mmpl W)) X' W A lim
-        (DecPkEnv₀ X'))
-    (hBridge : ∀ X' g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ X' g evs →
-      realCliDecPkBinaryWideSlotEnvCmkWithP3CFixedOf LoopAdvEnv maxOps P3PathCEnv X' W g evs) :
-    DecPkD2cSlotOkFrozenPlaced mmpl gh W A lim DecPkEnv := by
-  intro X'
-  have hSlot' : ∀ g e, DecPkEnv g e ↔
-      realCliDecPkBinaryWideSlotEnvCmkWithP3CGuardedFixedOf LoopAdvEnv maxOps P3PathCEnv X' W g e := by
-    intro g e
-    rw [hSlot g e]
-  exact decPkD2cSlotOkPlacedAtOf_cmkWithP3CGuarded_of_unguarded
-    (LibsignalFrozen lsmpl) hSlot' (hUnguarded X') (hBridge X')
-
-/-- `(verNeEnv, LoopAdvEnv, maxOps)`-specialized `CodeOk` guarded-slot wrapper at
-`realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf`. -/
-theorem decPkD2cSlotOkPlacedAtOf_cmkVerNeGuardedOf_of_unguarded [LibsignalPlacement]
-    (CodeOk : Memory → Prop) {M : AllocCostModel}
-    {verNeEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {LoopAdvEnv : W4LoopAdvEnv} {maxOps : Nat}
-    {H : LibsignalHooks} {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (hSlot : ∀ g e, DecPkEnv g e ↔
-      realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf verNeEnv LoopAdvEnv maxOps X W g e)
-    (hUnguarded : DecPkD2cSlotOkPlacedAtOf CodeOk H X W A lim DecPkEnv₀)
-    (hBridge : ∀ g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ g evs →
-      realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf verNeEnv LoopAdvEnv maxOps X W g evs) :
-    DecPkD2cSlotOkPlacedAtOf CodeOk H X W A lim DecPkEnv :=
-  decPkD2cSlotOkPlacedAtOf_cmkWithP3CGuarded_of_unguarded CodeOk hSlot hUnguarded hBridge
-
-theorem decPkD2cSlotOkPlacedAtOf_cmkVerNeGuarded_of_unguarded [LibsignalPlacement]
-    (CodeOk : Memory → Prop) {M : AllocCostModel}
-    {H : LibsignalHooks} {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (hSlot : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed X W g e)
-    (hUnguarded : DecPkD2cSlotOkPlacedAtOf CodeOk H X W A lim DecPkEnv₀)
-    (hBridge : ∀ g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ g evs →
-      realCliDecPkBinaryWideSlotEnvCmkVerNeFixed X W g evs) :
-    DecPkD2cSlotOkPlacedAtOf CodeOk H X W A lim DecPkEnv :=
-  decPkD2cSlotOkPlacedAtOf_cmkVerNeGuardedOf_of_unguarded CodeOk hSlot hUnguarded hBridge
-
-theorem decPkD2cSlotOkFrozenPlacedAt_cmkVerNeGuardedOf_of_unguarded [LibsignalPlacement]
-    {M : AllocCostModel}
-    {verNeEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {LoopAdvEnv : W4LoopAdvEnv} {maxOps : Nat}
-    {H : LibsignalHooks} {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (hSlot : ∀ g e, DecPkEnv g e ↔
-      realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf verNeEnv LoopAdvEnv maxOps X W g e)
-    (hUnguarded : DecPkD2cSlotOkFrozenPlacedAt H X W A lim DecPkEnv₀)
-    (hBridge : ∀ g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ g evs →
-      realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf verNeEnv LoopAdvEnv maxOps X W g evs) :
-    DecPkD2cSlotOkFrozenPlacedAt H X W A lim DecPkEnv :=
-  decPkD2cSlotOkFrozenPlacedAt_cmkWithP3CGuarded_of_unguarded hSlot hUnguarded hBridge
-
-theorem decPkD2cSlotOkFrozenPlacedAt_cmkVerNeGuarded_of_unguarded [LibsignalPlacement]
-    {M : AllocCostModel}
-    {H : LibsignalHooks} {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (hSlot : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed X W g e)
-    (hUnguarded : DecPkD2cSlotOkFrozenPlacedAt H X W A lim DecPkEnv₀)
-    (hBridge : ∀ g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ g evs →
-      realCliDecPkBinaryWideSlotEnvCmkVerNeFixed X W g evs) :
-    DecPkD2cSlotOkFrozenPlacedAt H X W A lim DecPkEnv :=
-  decPkD2cSlotOkFrozenPlacedAt_cmkVerNeGuardedOf_of_unguarded hSlot hUnguarded hBridge
-
-theorem decPkD2cSlotOkFrozenPlaced_cmkVerNeGuardedOf_of_unguarded [LibsignalPlacement]
-    {M : AllocCostModel}
-    {verNeEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {LoopAdvEnv : W4LoopAdvEnv} {maxOps : Nat}
-    {mmpl : Obj.MultiPlacement} {gh : CliGhostHooks} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ : UnreachedPqxdhPrimitives → DecPkGhost → List AllocEvent → Prop}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (X : UnreachedPqxdhPrimitives)
-    (hSlot : ∀ g e, DecPkEnv g e ↔
-      realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixedOf verNeEnv LoopAdvEnv maxOps X W g e)
-    (hUnguarded : ∀ X',
-      DecPkD2cSlotOkFrozenPlacedAt (cliGhostExterns gh (cliExternsPlaced mmpl W)) X' W A lim
-        (DecPkEnv₀ X'))
-    (hBridge : ∀ X' g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ X' g evs →
-      realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf verNeEnv LoopAdvEnv maxOps X' W g evs) :
-    DecPkD2cSlotOkFrozenPlaced mmpl gh W A lim DecPkEnv :=
-  decPkD2cSlotOkFrozenPlaced_cmkWithP3CGuarded_of_unguarded X hSlot hUnguarded hBridge
-
-/-- Default `(VerNeTightTopEnv, CmkLoopAdvanceEvs, 109)` universal-`X` `DecPkD2cSlotOkFrozenPlaced` guarded-slot wrapper. -/
-theorem decPkD2cSlotOkFrozenPlaced_cmkVerNeGuarded_of_unguarded [LibsignalPlacement]
-    {M : AllocCostModel}
-    {mmpl : Obj.MultiPlacement} {gh : CliGhostHooks} {W : CliHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv₀ : UnreachedPqxdhPrimitives → DecPkGhost → List AllocEvent → Prop}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    (X : UnreachedPqxdhPrimitives)
-    (hSlot : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed X W g e)
-    (hUnguarded : ∀ X',
-      DecPkD2cSlotOkFrozenPlacedAt (cliGhostExterns gh (cliExternsPlaced mmpl W)) X' W A lim
-        (DecPkEnv₀ X'))
-    (hBridge : ∀ X' g evs,
-      filesOk₀ scopeIn (fun _ => True) g.F g.peer.val g.me.val →
-      DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn g.F g.peer.val g.me.val g.msg →
-      PeerSpqrStateTight640 W.C.F W.Q.K g.F g.peer.val →
-      DecPkEnv₀ X' g evs →
-      realCliDecPkBinaryWideSlotEnvCmkVerNeFixed X' W g evs) :
-    DecPkD2cSlotOkFrozenPlaced mmpl gh W A lim DecPkEnv :=
-  decPkD2cSlotOkFrozenPlaced_cmkVerNeGuardedOf_of_unguarded X hSlot hUnguarded hBridge
 
 /-- `(LoopAdvEnv, maxOps, P3PathCEnv)`-parametric `hRunSub` eliminator from `PeerSpqrStateTight640`. -/
 theorem realCliDecPkBinaryWideSlotEnvCmkWithP3CFixedOf_of_guarded_tight [LibsignalPlacement]
@@ -993,15 +667,6 @@ theorem realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf_of_guarded_tight [Libsignal
     realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf verNeEnv LoopAdvEnv maxOps X W x evs :=
   realCliDecPkBinaryWideSlotEnvCmkWithP3CFixedOf_of_guarded_tight hSlot hTight hevs
 
-theorem realCliDecPkBinaryWideSlotEnvCmkVerNeFixed_of_guarded_tight [LibsignalPlacement]
-    {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop} {x : DecPkGhost} {evs : List AllocEvent}
-    (hSlot : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed X W g e)
-    (hTight : PeerSpqrStateTight640 W.C.F W.Q.K x.F x.peer.val)
-    (hevs : DecPkEnv x evs) :
-    realCliDecPkBinaryWideSlotEnvCmkVerNeFixed X W x evs :=
-  realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf_of_guarded_tight hSlot hTight hevs
-
 theorem realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf_of_guarded_cliPqInputs_recv [LibsignalPlacement]
     {verNeEnv : List (BitVec 8) → List AllocEvent → Prop}
     {LoopAdvEnv : W4LoopAdvEnv} {maxOps : Nat}
@@ -1015,19 +680,6 @@ theorem realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf_of_guarded_cliPqInputs_recv
     (hevs : DecPkEnv x evs) :
     realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf verNeEnv LoopAdvEnv maxOps X W x evs :=
   realCliDecPkBinaryWideSlotEnvCmkWithP3CFixedOf_of_guarded_cliPqInputs_recv
-    hSlot hi hparse hF hpeer hevs
-
-/-- Default `(VerNeTightTopEnv, CmkLoopAdvanceEvs, 109)` `hRunSub` eliminator at `.recv peer` under `CliPqxdhInputs ⟨W.C, W.Q⟩ i`. -/
-theorem realCliDecPkBinaryWideSlotEnvCmkVerNeFixed_of_guarded_cliPqInputs_recv [LibsignalPlacement]
-    {X : UnreachedPqxdhPrimitives} {W : CliHooks} {i : Inputs} {peer : AddrV}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop} {x : DecPkGhost} {evs : List AllocEvent}
-    (hSlot : ∀ g e, DecPkEnv g e ↔ realCliDecPkBinaryWideSlotEnvCmkVerNeGuardedFixed X W g e)
-    (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i)
-    (hparse : parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.recv peer))
-    (hF : x.F = runFiles i) (hpeer : x.peer.val = addrValOf peer)
-    (hevs : DecPkEnv x evs) :
-    realCliDecPkBinaryWideSlotEnvCmkVerNeFixed X W x evs :=
-  realCliDecPkBinaryWideSlotEnvCmkVerNeFixedOf_of_guarded_cliPqInputs_recv
     hSlot hi hparse hF hpeer hevs
 
 end LibsignalBinary.Proofs.PeakBudget.CliDpPollTrustedWideBridge

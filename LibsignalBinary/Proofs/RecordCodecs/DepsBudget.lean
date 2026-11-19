@@ -9,17 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.Deps
+import LibsignalBinary.Proofs.RecordCodecs.Deps
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Heap.Fine.CreditInst
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsBinary -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
 
 /-!
 # Budget-Threaded Record Decoder Envelopes and Callee Contracts
@@ -30,7 +47,7 @@ public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 `[LibsignalPlacement]` dependency bundles (`CodecHooksPlaced`, `PortDepsPlaced`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -75,14 +92,14 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
 /-- Deterministic `DecodeError::push` allocation envelope at stack length `n`:
 no-op when `n < cap`, initial `4 * 32 = 128` B allocation when `n = cap = 0`, or
 doubling `realloc` from `n * 32` to `max (2 * n) 4 * 32` when `0 < n = cap`. -/
-def DecodeErrorPushBoundedEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeErrorPushBoundedEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   (n = 0 ∧ evs = rustAllocEvents (4 * 32) 8) ∨
   (0 < n ∧ evs = rustReallocEvents (n * 32) (max (2 * n) 4 * 32) 8)
 
 /-- Bounded-envelope counterpart of `decodeErrorPushExternBudgetSpecWithStack`,
 using `DecodeErrorPushBoundedEnv n` so `FitsEnv` is satisfiable at `n = 0`. -/
-def decodeErrorPushBoundedExternBudgetSpecWithStack (M : AllocCostModel)
+@[expose] def decodeErrorPushBoundedExternBudgetSpecWithStack (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (hookStack : Nat := extHookStack) :
     Spec (BitVec 64 × BitVec 64 × Nat × M.σ) where
   pre := fun (d, e, n, st) s =>
@@ -293,7 +310,7 @@ theorem fitsEnv_recordCodecLoop_mono_fuel {M : AllocCostModel} {lim : BudgetLimi
   hFit.mono fun _ h => h.mono_fuel hle
 
 /-- Optional `Vec<u8>` buffer deallocation (`cap = 0` or `dealloc(ptr, cap, 1)`). -/
-def OptByteFreeEnv (evs : List AllocEvent) : Prop :=
+@[expose] def OptByteFreeEnv (evs : List AllocEvent) : Prop :=
   evs = [] ∨ ∃ cap : Nat, 0 < cap ∧ cap < 2 ^ 63 ∧ evs = rustDeallocEvents cap 1
 
 theorem OptByteFreeEnv.nil : OptByteFreeEnv [] := Or.inl rfl
@@ -303,7 +320,7 @@ theorem OptByteFreeEnv.dealloc {cap : Nat} (hpos : 0 < cap) (hlt : cap < 2 ^ 63)
   Or.inr ⟨cap, hpos, hlt, rfl⟩
 
 /-- Up to two `Vec<u8>` buffer deallocations (`public_key`, `private_key`). -/
-def TwoOptByteFreeEnv (evs : List AllocEvent) : Prop :=
+@[expose] def TwoOptByteFreeEnv (evs : List AllocEvent) : Prop :=
   ∃ e1 e2 : List AllocEvent, OptByteFreeEnv e1 ∧ OptByteFreeEnv e2 ∧ evs = e1 ++ e2
 
 theorem TwoOptByteFreeEnv.nil : TwoOptByteFreeEnv [] :=
@@ -319,7 +336,7 @@ theorem TwoOptByteFreeEnv.pair {e1 e2 : List AllocEvent}
 
 /-- Protobuf decode-error cleanup: up to two `Vec<u8>` buffer deallocations (`pub`/`pk`, `priv`/`sk`)
 followed by `drop_glue::<DecodeError>`. -/
-def RecordCodecErrCleanupEnv (evs : List AllocEvent) : Prop :=
+@[expose] def RecordCodecErrCleanupEnv (evs : List AllocEvent) : Prop :=
   ∃ evsF evsD : List AllocEvent,
     TwoOptByteFreeEnv evsF ∧ DropDecodeErrorEnv evsD ∧ evs = evsF ++ evsD
 
@@ -330,7 +347,7 @@ theorem RecordCodecErrCleanupEnv.of_two_drop {e1 e2 evsD : List AllocEvent}
 
 /-- Fuel-parameterized event envelope for `PreKeyRecord::deserialize` sub-proofs:
 `PkSubEnv (2 * len + 3) len` equals `PreKeyDeserializeEnv len` definitionally (`rfl`). -/
-def PkSubEnv (fuel maxLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def PkSubEnv (fuel maxLen : Nat) (evs : List AllocEvent) : Prop :=
   RecordCodecLoopEnv fuel maxLen evs ∨
   ∃ evsL evsC : List AllocEvent,
     RecordCodecLoopEnv fuel maxLen evsL ∧ RecordCodecErrCleanupEnv evsC ∧
@@ -384,7 +401,7 @@ theorem PreKeyDeserializeEnv.of_loop_errCleanup {len : Nat} {evsL evsC : List Al
 /-- Post-loop deallocation envelope of `<IdentityKeyPair as TryFrom<&[u8]>>::try_from`:
 frees up to two temporary `Vec<u8>` buffers (`Ok` or key-validation `Err`), or drops
 `DecodeError` and frees up to two `Vec<u8>` buffers (protobuf `Err`). -/
-def IkpPostCleanupEnv (evs : List AllocEvent) : Prop :=
+@[expose] def IkpPostCleanupEnv (evs : List AllocEvent) : Prop :=
   TwoOptByteFreeEnv evs ∨ RecordCodecErrCleanupEnv evs
 
 theorem IkpPostCleanupEnv.nil : IkpPostCleanupEnv [] :=
@@ -400,7 +417,7 @@ theorem IkpPostCleanupEnv.of_errCleanup {evs : List AllocEvent} (h : RecordCodec
 
 /-- Fuel-parameterized event envelope for `IdentityKeyPair::try_from` sub-proofs:
 `IkpSubEnv (2 * len + 3) len` equals `IdentityKeyPairTryFromEnv len` definitionally (`rfl`). -/
-def IkpSubEnv (fuel maxLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def IkpSubEnv (fuel maxLen : Nat) (evs : List AllocEvent) : Prop :=
   ∃ evsL evsC : List AllocEvent,
     RecordCodecLoopEnv fuel maxLen evsL ∧ IkpPostCleanupEnv evsC ∧
     evs = evsL ++ evsC
@@ -493,7 +510,7 @@ structure PortDepsPlaced [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Image-free inner budget-threaded specification of `PreKeyRecord::deserialize`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under `FitsEnv`). -/
-def preKeyDeserializeRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def preKeyDeserializeRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.bytesA ∧ (s.readReg64 .x1).toNat = x.bytes.length ∧
@@ -517,7 +534,7 @@ abbrev preKeyDeserializePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
 /-- Image-free inner budget-threaded specification of
 `<IdentityKeyPair as TryFrom<&[u8]>>::try_from` using `lsLogOff`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under `FitsEnv`). -/
-def identityKeyPairTryFromRawSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def identityKeyPairTryFromRawSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DecodeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.bytesA ∧ (s.readReg64 .x1).toNat = x.bytes.length ∧
@@ -540,7 +557,7 @@ abbrev identityKeyPairTryFromPlacedSpec [LibsignalPlacement] {M : AllocCostModel
 
 /-- Image-free inner specification of `IdentityKey::decode` over `A : RustCliAllocBudget M`
 using `lsLogOff` (`IdentityKey::decode` performs zero heap allocations). -/
-def identityKeyDecodeRawSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def identityKeyDecodeRawSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) : Spec DecodeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.bytesA ∧ (s.readReg64 .x1).toNat = x.bytes.length ∧
@@ -571,7 +588,7 @@ theorem ls_dealloc_lscro_ok [LibsignalPlacement] {M : AllocCostModel}
       (ls_hook_ok_of_mem (sym := lsRustDeallocSym) hdealloc (by decide) hi hi_unmut))
 
 /-- Panic postcondition ruling out all panics under `FitsEnv`. -/
-def noPanicQp (_s0 : State) : State → SepProp → Prop :=
+@[expose] def noPanicQp (_s0 : State) : State → SepProp → Prop :=
   fun _ _ => False
 
 theorem sepWPp_frame_noPanic {prog : Program} {ret : BitVec 64} {s0 s : State}

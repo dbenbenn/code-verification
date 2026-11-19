@@ -9,20 +9,31 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.AgreesOutsideReadHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignalPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.AgreesOutsideReadHooks -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignalPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.Common
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Encrypt
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.DropSpe.ProofPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Budget-Threaded Placed D2(c) `signal_session::run` Composition
@@ -32,7 +43,7 @@ Composes budget-threaded `signal_session::run` (Block `579`) and its Block-`617`
 D2(c) (`decPkDefD2c` / `DecPkOkD2c`) over `CliGhostHooks`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -293,43 +304,9 @@ theorem cliPubCallees_of_arms_placed [LibsignalPlacement]
         hh stk hstk hstk64 (by decide)
     arms := harms }
 
-/-- Discharges all 7 fields of `CliPubCalleesPlaced` at `cliRunCalleesEnvs ReadEnv` and
-`cliRunArmEnvs (cliRunCalleesEnvs ReadEnv) sEnvs PksmTryFromEnv` from `CliRunHooksBundle` via
-`AllPlacedBudget.runArmsPlaced_ok`. -/
-theorem cliPubCallees_d2c_ok [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {sEnvs : RunSlotEnvs} {PksmTryFromEnv : PksmGhost → List AllocEvent → Prop}
-    (W : CliHooks)
-    (hHooks : CliRunHooksBundle mmpl g W A lim ReadEnv)
-    (hinit_addr : ∀ g d2 fsp,
-      sEnvs.initiate (r1cInitGhost g d2 fsp) = sEnvs.initiate (r1cInitGhost g d2 0#64) := by
-      intros; rfl)
-    (henc_addr : ∀ g peerV peerG meG fsp,
-      peerG.val = addrValOf peerV →
-      sEnvs.encrypt (r2EncGhost g peerG meG fsp) =
-        sEnvs.encrypt (r2EncGhost g (r2PeerGhost0 peerV) meG 0#64) := by
-      intros; rfl)
-    (hdec_ghost : ∀ g fsp w peerV meG msgG m,
-      sEnvs.decryptSignal (r3aDecSigGhost g fsp (r3aPeerGhost w peerV) meG msgG m) =
-        sEnvs.decryptSignal (r3aDecSigGhost0 g peerV meG m) := by
-      intros; rfl)
-    (hpksm_addr : ∀ x y : PksmGhost, x.bytes = y.bytes → PksmTryFromEnv x = PksmTryFromEnv y := by
-      intros; rfl)
-    (hdp_ghost : ∀ x y : DecPkGhost,
-      x.peer.val = y.peer.val → x.me.val = y.me.val →
-      x.stores = y.stores → x.coinsP = y.coinsP →
-      x.F = y.F → x.coins = y.coins → x.msg = y.msg →
-      sEnvs.decryptPrekey x = sEnvs.decryptPrekey y := by intros; rfl) :
-    CliPubCalleesPlaced mmpl g A lim (cliRunCalleesEnvs ReadEnv) sEnvs
-      (cliRunArmEnvs (cliRunCalleesEnvs ReadEnv) sEnvs PksmTryFromEnv) W :=
-  cliPubCallees_of_arms_placed mmpl g W hHooks fun _ _ =>
-    runArmsPlaced_ok hinit_addr henc_addr hdec_ghost hpksm_addr hdp_ghost
-
 /-- Builds `SemPlacedBudget.RunSlotEnvs` from `CliSlotEnvs`, `InitEnv`, and `DecPkEnv` via
 `CliEncryptSlotEnv` and `CliDecryptSignalSlotEnv`. -/
-noncomputable def runSlotEnvsOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def runSlotEnvsOf [LibsignalPlacement] {M : AllocCostModel}
     (W : CliHooks) (A : RustCliAllocBudget M)
     (slotEnvs : CliSlotEnvs)
     (InitEnv : InitGhost → List AllocEvent → Prop)
@@ -588,71 +565,6 @@ theorem hrun_cli_d2c_placed [LibsignalPlacement]
         cliWrOk cliResStack) :=
   subroutine_ok_runSpecPlaced_of_tight
     (hrun_cli_d2c_tight_placed mmpl g X W h547 hHooks hreadEq hpub hslots hinit hdecPk hpksm)
-
-/-- One-shot D2(c) `signal_session::run` (Block `579`) assembly over any `g : CliGhostHooks`,
-building `CliRunHooksBundle` and `CliPubCalleesPlaced` from `RunHooksPlaced` and
-`HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsReadFileSym …`. -/
-theorem hrun_cli_d2c_tight_of_ghost_hooks [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk0 : Nat}
-    {slotEnvs : CliSlotEnvs}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    {PksmTryFromEnv : PksmGhost → List AllocEvent → Prop}
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (h547 : lsmpl.base 547 ≠ 0#64)
-    (hpos : 0 < stk0) (hle : stk0 ≤ cliRunBudgets.readFile)
-    (hh : RunHooksPlaced A lim (cliGhostExterns g (cliExternsPlaced mmpl W)))
-    (hsat : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsReadFileSym
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk0 slotEnvs.readFile))
-    (hslots : CliSlotCalleesPlaced mmpl g X W A lim slotEnvs)
-    (hinit : CliInitSlotOkPlaced mmpl g A lim InitEnv X W)
-    (hdecPk : DecPkD2cSlotOkPlaced mmpl g W A lim DecPkEnv)
-    (hpksm : PksmSlotOkPlaced mmpl g W A lim PksmTryFromEnv)
-    (hinit_addr : ∀ gc d2 fsp,
-      InitEnv (r1cInitGhost gc d2 fsp) = InitEnv (r1cInitGhost gc d2 0#64) := by
-      intros; rfl)
-    (henc_addr : ∀ gc peerV peerG meG fsp,
-      peerG.val = addrValOf peerV →
-      (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv).encrypt (r2EncGhost gc peerG meG fsp) =
-        (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv).encrypt
-          (r2EncGhost gc (r2PeerGhost0 peerV) meG 0#64) := by
-      intros; rfl)
-    (hdec_ghost : ∀ gc fsp w peerV meG msgG m,
-      (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv).decryptSignal
-          (r3aDecSigGhost gc fsp (r3aPeerGhost w peerV) meG msgG m) =
-        (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv).decryptSignal
-          (r3aDecSigGhost0 gc peerV meG m) := by
-      intros; rfl)
-    (hpksm_addr : ∀ x y : PksmGhost, x.bytes = y.bytes → PksmTryFromEnv x = PksmTryFromEnv y := by
-      intros; rfl)
-    (hdp_ghost : ∀ x y : DecPkGhost,
-      x.peer.val = y.peer.val → x.me.val = y.me.val →
-      x.stores = y.stores → x.coinsP = y.coinsP →
-      x.F = y.F → x.coins = y.coins → x.msg = y.msg →
-      DecPkEnv x = DecPkEnv y := by intros; rfl) :
-    subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 579)
-      (runSpecTightPlaced (LibsignalCodeRoLoaded lsmpl) A lim
-        (RunEnv (cliRunArmEnvs (cliRunCalleesEnvs slotEnvs.readFile)
-          (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv) PksmTryFromEnv
-          (cliRunSem X W
-            (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-            (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-            pksmParse)))
-        uuidTryParse
-        (runRel (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse))
-        cliWrOk cliResStack) := by
-  have hHooks : CliRunHooksBundle mmpl g W A lim slotEnvs.readFile :=
-    cliRunHooksBundle_of_hookSat_mono_stk mmpl g W hpos hle hh hsat
-  refine hrun_cli_d2c_tight_placed
-    (cEnvs := cliRunCalleesEnvs slotEnvs.readFile)
-    (aEnvs := cliRunArmEnvs (cliRunCalleesEnvs slotEnvs.readFile)
-      (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv) PksmTryFromEnv)
-    mmpl g X W h547 hHooks rfl ?_ hslots hinit hdecPk hpksm
-  exact cliPubCallees_d2c_ok mmpl g W hHooks hinit_addr henc_addr hdec_ghost hpksm_addr hdp_ghost
 
 
 /-! ## `LibsignalFrozen` / `[LibsignalFullPlacement]` D2(c) `signal_session::run` Composition -/
@@ -972,116 +884,5 @@ theorem hrun_cli_d2c_tight_full_placed [CryptoVerification.LibsignalFullPlacemen
     (hdecPk X _ (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))
       (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv) rfl rfl rfl rfl rfl)
     (hpksm _ rfl)
-
-/-- `[LibsignalFullPlacement]` D2(c) `runSpecPlaced (LibsignalFrozen lsmpl)` assembly on
-`mProgPlaced`. -/
-theorem hrun_cli_d2c_full_placed [CryptoVerification.LibsignalFullPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {slotEnvs : CliSlotEnvs}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    {aEnvs : RunSem → RunArmEnvs}
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (h547 : lsmpl.base 547 ≠ 0#64)
-    (hHooks : CliRunHooksBundle mmpl g W A lim cEnvs.readFile)
-    (hreadEq : slotEnvs.readFile = cEnvs.readFile)
-    (hpub : CliPubCalleesFrozenPlaced mmpl g A lim cEnvs
-      (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv) aEnvs W)
-    (hslots :
-      LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudget.CliSlotCalleesFullPlaced
-        mmpl g X W A lim slotEnvs)
-    (hinit : CliInitSlotOkPlaced mmpl g A lim InitEnv X W)
-    (hdecPk :
-      LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget.DecPkD2cSlotOkFrozenPlaced
-        mmpl g W A lim DecPkEnv)
-    (hpksm : PksmSlotOkPlaced mmpl g W A lim
-      (aEnvs (cliRunSem X W
-        (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-        (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-        pksmParse)).pksmTryFrom) :
-    subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 579)
-      (runSpecPlaced (CryptoVerification.LibsignalFrozen lsmpl) A lim
-        (RunEnv (aEnvs (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)))
-        uuidTryParse
-        (runRel (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse))
-        cliWrOk cliResStack) :=
-  subroutine_ok_runSpecPlaced_of_tight
-    (hrun_cli_d2c_tight_full_placed mmpl g X W h547 hHooks hreadEq hpub hslots hinit hdecPk hpksm)
-
-/-- One-shot `[LibsignalFullPlacement]` D2(c) `signal_session::run` (Block `579`) assembly at
-`LibsignalFrozen lsmpl` over any `g : CliGhostHooks`, building `CliRunHooksBundle` and
-`CliPubCalleesFrozenPlaced` from `RunHooksPlaced` and `HookSat … lsReadFileSym …`. -/
-theorem hrun_cli_d2c_tight_full_of_ghost_hooks [CryptoVerification.LibsignalFullPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk0 : Nat}
-    {slotEnvs : CliSlotEnvs}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    {PksmTryFromEnv : PksmGhost → List AllocEvent → Prop}
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (h547 : lsmpl.base 547 ≠ 0#64)
-    (hpos : 0 < stk0) (hle : stk0 ≤ cliRunBudgets.readFile)
-    (hh : RunHooksPlaced A lim (cliGhostExterns g (cliExternsPlaced mmpl W)))
-    (hsat : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsReadFileSym
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk0 slotEnvs.readFile))
-    (hslots :
-      LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudget.CliSlotCalleesFullPlaced
-        mmpl g X W A lim slotEnvs)
-    (hinit : CliInitSlotOkPlaced mmpl g A lim InitEnv X W)
-    (hdecPk :
-      LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchDefsPlacedBudget.DecPkD2cSlotOkFrozenPlaced
-        mmpl g W A lim DecPkEnv)
-    (hpksm : PksmSlotOkPlaced mmpl g W A lim PksmTryFromEnv)
-    (hinit_addr : ∀ gc d2 fsp,
-      InitEnv (r1cInitGhost gc d2 fsp) = InitEnv (r1cInitGhost gc d2 0#64) := by
-      intros; rfl)
-    (henc_addr : ∀ gc peerV peerG meG fsp,
-      peerG.val = addrValOf peerV →
-      (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv).encrypt (r2EncGhost gc peerG meG fsp) =
-        (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv).encrypt
-          (r2EncGhost gc (r2PeerGhost0 peerV) meG 0#64) := by
-      intros; rfl)
-    (hdec_ghost : ∀ gc fsp w peerV meG msgG m,
-      (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv).decryptSignal
-          (r3aDecSigGhost gc fsp (r3aPeerGhost w peerV) meG msgG m) =
-        (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv).decryptSignal
-          (r3aDecSigGhost0 gc peerV meG m) := by
-      intros; rfl)
-    (hpksm_addr : ∀ x y : PksmGhost, x.bytes = y.bytes → PksmTryFromEnv x = PksmTryFromEnv y := by
-      intros; rfl)
-    (hdp_ghost : ∀ x y : DecPkGhost,
-      x.peer.val = y.peer.val → x.me.val = y.me.val →
-      x.stores = y.stores → x.coinsP = y.coinsP →
-      x.F = y.F → x.coins = y.coins → x.msg = y.msg →
-      DecPkEnv x = DecPkEnv y := by intros; rfl) :
-    subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 579)
-      (runSpecTightPlaced (CryptoVerification.LibsignalFrozen lsmpl) A lim
-        (RunEnv (cliRunArmEnvs (cliRunCalleesEnvs slotEnvs.readFile)
-          (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv) PksmTryFromEnv
-          (cliRunSem X W
-            (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-            (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-            pksmParse)))
-        uuidTryParse
-        (runRel (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse))
-        cliWrOk cliResStack) := by
-  have hHooks : CliRunHooksBundle mmpl g W A lim slotEnvs.readFile :=
-    cliRunHooksBundle_of_hookSat_mono_stk mmpl g W hpos hle hh hsat
-  refine hrun_cli_d2c_tight_full_placed
-    (cEnvs := cliRunCalleesEnvs slotEnvs.readFile)
-    (aEnvs := cliRunArmEnvs (cliRunCalleesEnvs slotEnvs.readFile)
-      (runSlotEnvsOf W A slotEnvs InitEnv DecPkEnv) PksmTryFromEnv)
-    mmpl g X W h547 hHooks rfl ?_ hslots hinit hdecPk hpksm
-  exact cliPubCallees_d2c_frozen_ok mmpl g W hHooks hinit_addr henc_addr hdec_ghost hpksm_addr hdp_ghost
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget

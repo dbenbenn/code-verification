@@ -9,18 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bBadPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bHelpersPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bBadPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bHelpersPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bHelpersPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `signal_session::run` Arm `R3b`: Bad-Wire and Reject Sub-Hop
@@ -30,7 +34,7 @@ reject-cleanup lemmas (including `CodeOk`-parametric variants) on Block `579` (`
 under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -78,11 +82,11 @@ attribute [local simp, local arm64_norm, local wp_norm] runPcPlaced_eq BitVec.of
 
 /-- Exact deallocation event list for dropping an `AddrGhost` name buffer with capacity `cap`
 (`align = 1`). -/
-def r3bFreeCapEvs (cap : BitVec 64) : List AllocEvent :=
+@[expose] def r3bFreeCapEvs (cap : BitVec 64) : List AllocEvent :=
   if cap = 0#64 then [] else rustDeallocEvents cap.toNat 1
 
 /-- Exact deallocation event list for `r3b_reject_from_fec_placed` (`meG.name` then `peerG.name`). -/
-def r3bFreeMePeerEvs (meG peerG : AddrGhost) : List AllocEvent :=
+@[expose] def r3bFreeMePeerEvs (meG peerG : AddrGhost) : List AllocEvent :=
   r3bFreeCapEvs meG.name.cap ++ r3bFreeCapEvs peerG.name.cap
 
 theorem r3bFreeCapEvs_freeOnly (cap : BitVec 64) : FreeOnlyEvs (r3bFreeCapEvs cap) := by

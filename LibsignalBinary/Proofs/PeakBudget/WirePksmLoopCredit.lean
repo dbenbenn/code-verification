@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Multi-Step 4-Field Protobuf Loop & Error-Tail Fine-Credit Bounds
@@ -26,7 +27,7 @@ Nominal-type-agnostic `PhaseCreditSpec` and `PhaseGroupSpec` combinators for
 4. Post-loop `into_boxed_slice` and `try_clone_from_ref` length-bounded combinators.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -223,7 +224,7 @@ theorem phaseCreditSpec_errTail2_aff {M : AllocCostModel} [HasFineReallocCredit 
 
 /-- Nominal-type-agnostic inductive invariant for a 4-field `Vec<u8>` protobuf decode loop
 terminated by a tail phase `(tc, tl, tp, tr)` with remaining byte budget `rem`. -/
-def ProtoLoop4StateInv (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def ProtoLoop4StateInv (M : AllocCostModel) [HasFineReallocCredit M]
     (tc tl tp tr rem : Nat) (caps : ProtoCaps4) (evs : List AllocEvent) : Prop :=
   (∀ ev ∈ evs, eventStepReq ev ≤ max tr (max 128 (2 * rem)) ∧ eventStepAlign ev ≤ 16) ∧
   ∀ (st : M.σ) (L0 used N : Nat),
@@ -442,42 +443,6 @@ theorem phaseCreditSpec_tryCloneBounded_le {M : AllocCostModel} [HasFineReallocC
 
 /-! ## Tight `WireLowInterceptHyps` Loop, Error-Tail, & Post-Loop Combinators -/
 
-/-- Small-regime (`128 ≤ S`) 1-push protobuf decode error tail: zero `liveLarge` and `peakLarge`
-delta (`(19478, 0, 0, 128)`). -/
-theorem phaseCreditSpec_errTail1_S {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {S : Nat} (hSm : HasFineReallocCredit.smallMaxReq M = S) (hS128 : 128 ≤ S)
-    (Env : List AllocEvent → Prop)
-    (hEnv : ∀ evs, Env evs →
-      ∃ evs_core evs_free,
-        evs = evs_core ++ evs_free ∧
-        FreeOnlyEvs evs_free ∧
-        (evs_core = [] ∨
-         evs_core = rustAllocEvents 72 8 ∨
-         ∃ evs_p, evs_core = rustAllocEvents 72 8 ++ evs_p ∧
-           (evs_p = [] ∨ evs_p = rustAllocEvents 128 8))) :
-    PhaseCreditSpec M Env 19478 0 0 128 := by
-  have h72Sm : 72 ≤ HasFineReallocCredit.smallMaxReq M := by omega
-  have h128Sm : 128 ≤ HasFineReallocCredit.smallMaxReq M := by omega
-  have hOpt72 : PhaseCreditSpec M (fun e => e = [] ∨ e = rustAllocEvents 72 8) 9683 0 0 72 :=
-    ((PhaseCreditSpec.nil M).or
-      ((PhaseCreditSpec.rustAlloc_small M (req := 72) (al := 8) (by decide) (by decide) h72Sm).mono
-        (hM.smallAlloc_le h72Sm) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 72))).mono
-      (by decide) (by decide) (by decide) (by decide)
-  have hPush0 : PhaseCreditSpec M (fun e => e = [] ∨ e = rustAllocEvents 128 8) 9795 0 0 128 :=
-    ((PhaseCreditSpec.nil M).or
-      ((PhaseCreditSpec.rustAlloc_small M (req := 128) (al := 8) (by decide) (by decide) h128Sm).mono
-        (hM.smallAlloc_le h128Sm) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 128))).mono
-      (by decide) (by decide) (by decide) (by decide)
-  have hFree : PhaseCreditSpec M FreeOnlyEvs 0 0 0 0 := PhaseCreditSpec.freeOnly_of_hyps hM
-  refine (((hOpt72.seq hPush0).seq hFree).of_imp (fun evs hE => ?_)).mono
-    (by decide) (by decide) (by decide) (by decide)
-  obtain ⟨evs_core, evs_free, rfl, hFr, hCore⟩ := hEnv evs hE
-  refine Or.inr ⟨evs_core, evs_free, rfl, ?_, hFr⟩
-  rcases hCore with rfl | rfl | ⟨evs_p, rfl, hp⟩
-  · exact Or.inr ⟨[], [], rfl, Or.inl rfl, Or.inl rfl⟩
-  · exact Or.inr ⟨rustAllocEvents 72 8, [], by simp, Or.inr rfl, Or.inl rfl⟩
-  · exact Or.inr ⟨rustAllocEvents 72 8, evs_p, rfl, Or.inr rfl, hp⟩
-
 /-- Small-regime (`128 ≤ S`) 2-push protobuf decode error tail: zero `liveLarge` and `peakLarge`
 delta (`(29273, 0, 0, 128)`). -/
 theorem phaseCreditSpec_errTail2_S {M : AllocCostModel} [HasFineReallocCredit M]
@@ -519,7 +484,7 @@ theorem phaseCreditSpec_errTail2_S {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-- Tight `S`-parameterized inductive invariant for a 4-field `Vec<u8>` protobuf decode loop
 tracking amortized capacity growth (`minSum` + `remGrows`) and `g`-sum `sc = 63` bounds. -/
-def ProtoLoop4StateInvS (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def ProtoLoop4StateInvS (M : AllocCostModel) [HasFineReallocCredit M]
     (S tc tl tp tr rem : Nat) (caps : ProtoCaps4) (evs : List AllocEvent) : Prop :=
   (∀ ev ∈ evs, eventStepReq ev ≤ max tr (max 128 (2 * rem)) ∧ eventStepAlign ev ≤ 16) ∧
   ∀ (st : M.σ) (g : ProtoCaps4) (L0 N : Nat),
@@ -894,7 +859,7 @@ theorem phaseGroupSpec_errTail2 {M : AllocCostModel} [HasFineGroupCredit M]
     Or.inr ⟨e72 ++ ep0, ep1, rfl, Or.inr ⟨e72, ep0, rfl, h72, hp0⟩, hp1⟩, hf⟩
 
 /-- Modular inductive invariant for 4-field `Vec<u8>` protobuf decode loop group accounting. -/
-def ProtoLoop4GroupInv (M : AllocCostModel) [HasFineGroupCredit M]
+@[expose] def ProtoLoop4GroupInv (M : AllocCostModel) [HasFineGroupCredit M]
     (tg rem : Nat) (caps : ProtoCaps4) (evs : List AllocEvent) : Prop :=
   ∀ (st : M.σ) (N : Nat),
     rem ≤ N →

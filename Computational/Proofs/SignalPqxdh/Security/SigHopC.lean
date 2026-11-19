@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.SigHopB
+public import Computational.Proofs.SignalPqxdh.Security.SigHopB -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -670,7 +670,7 @@ end SigGameLens
 
 
 
-def CommutesRel {St R : Type} (proj : St → St) (st : St)
+@[expose] def CommutesRel {St R : Type} (proj : St → St) (st : St)
     (m1 m2 : StateT St ProbComp R) : Prop :=
   (m1.run (proj st)) = Prod.map id proj <$> (m2.run st)
 
@@ -734,7 +734,7 @@ theorem koskSenderOk_erasePrinSk (P : Primitives) (k : Nat)
   unfold koskSenderOk
   rw [isGameIdKey_erasePrinSk]
 
-def eraseKeyInd (S : Setup) (k : Nat) (st : KeyIndState S) : KeyIndState S :=
+@[expose] def eraseKeyInd (S : Setup) (k : Nat) (st : KeyIndState S) : KeyIndState S :=
   { st with principals := erasePrinSk k st.principals }
 
 theorem CommutesRel.recordKeyIndResp_bind (S : Setup) (P : Primitives) (k : Nat)
@@ -859,7 +859,7 @@ theorem pqxdhKeyIndImpl_other_commutes (useRo : Bool) (S : Setup) (P : Primitive
         [eraseKeyInd]; prove_commutes_rel
 
 
-def SatisfiesAt {St R : Type} (Q : St → Prop) (st : St) (m : StateT St ProbComp R) : Prop :=
+@[expose] def SatisfiesAt {St R : Type} (Q : St → Prop) (st : St) (m : StateT St ProbComp R) : Prop :=
   ∀ x ∈ support (m.run st), Q x.2
 
 theorem SatisfiesAt.pure {St R : Type} (Q : St → Prop) (st : St) (x : R) (h0 : Q st) :
@@ -902,11 +902,11 @@ theorem SatisfiesAt.set_of_pres {St R : Type} (Q : St → Prop) (st st' : St)
   rw [hf x hx]
   exact h_st'
 
-def badPeersKeyInd {S : Setup} (st : KeyIndState S) : List Bytes :=
+@[expose] def badPeersKeyInd {S : Setup} (st : KeyIndState S) : List Bytes :=
   (st.sessions.filter (fun s => s.fresh && (!s.spkHonest ||
       !s.pqspkHonest))).map (fun s => s.peerIkPk)
 
-def InitPostKeyInd {S : Setup} (P : Primitives) (bundle : PreKeyBundleInput) (st st' :
+@[expose] def InitPostKeyInd {S : Setup} (P : Primitives) (bundle : PreKeyBundleInput) (st st' :
     KeyIndState S) : Prop :=
   st'.principals = st.principals ∧ st'.spkBundles = st.spkBundles ∧
   (badPeersKeyInd st' = badPeersKeyInd st ∨
@@ -1132,7 +1132,7 @@ theorem pqxdhKeyIndImpl_other_pres (useRo : Bool) (S : Setup) (P : Primitives)
       subst hx
       exact ⟨rfl, spksPreserved_map_revealed S P (u.val, j.val) st.spkBundles, rfl⟩
 
-def keyIndSigLens (S : Setup) : SigGameLens S (KeyIndState S) KeyIndResponse where
+@[expose] def keyIndSigLens (S : Setup) : SigGameLens S (KeyIndState S) KeyIndResponse where
   prins        := fun st => st.principals
   putPrins     := fun st p => { st with principals := p }
   spks         := fun st => st.spkBundles
@@ -1151,7 +1151,7 @@ def keyIndSigLens (S : Setup) : SigGameLens S (KeyIndState S) KeyIndResponse whe
   badPeers_putSpks  := fun _ _ => rfl
   putPrins_putSpks  := fun _ _ _ => rfl
 
-noncomputable def stepKeyIndForSig (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] def stepKeyIndForSig (useRo : Bool) (S : Setup) (P : Primitives)
     (q : KeyIndQuery S) (s : SigReductionState (KeyIndState S)) :
     ProbComp (SigStepResult (SigReductionState (KeyIndState S)) KeyIndResponse) :=
   if s.forgery.isSome then

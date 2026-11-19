@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSpqrPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Auth.NewBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainStatesClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.TopPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSpqrPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInst
+public import LibsignalBinary.Proofs.SpqrV1.Auth.NewBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainStatesClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.TopPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
@@ -38,6 +38,25 @@ import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.StepsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.StepsPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpoch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States2BudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Drop.States2Budget
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
 
 /-!
 # Budget-Threaded Relocatable `spqr::initial_state` & Drop Instantiations
@@ -50,7 +69,7 @@ Proves placed budget contracts under `CliGhostAllocHooks` and `CliGhostSpqrAlloc
 - Closed `spqr::initial_state` (Block 327) and cross-block corollaries for Block 75 and Block 521.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -651,12 +670,13 @@ theorem cliAuthUpdate_placed_ok [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
     {H : String → Option (State → State)}
     (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
       H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
     AuthUpdatePlacedOk W.C.F M A lim H := by
   let _ : HkdfPlacedHooksExactSat W.C.F H :=
-    HkdfPlacedHooksExactSat.of_allocHooks_ext (mmpl := mmpl) (W := W) hA.toCliGhostAllocHooks hExt
+    HkdfPlacedHooksExactSat.of_allocHooks_ext (mmpl := mmpl) (W := W) hA.toCliGhostAllocHooks hF hExt
   have h_concat_386 : subroutine_ok ((blkPC_386).rebase (blkPl_386).base H)
       (lsmpl.base 386) (withLsCodeLoaded lsmpl (sliceConcat2Spec M A lim)) := by
     rw [← ls_blockPlacement_base (i := 386)]
@@ -686,6 +706,7 @@ theorem cliAuthNew_placed_ok [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
     {H : String → Option (State → State)}
     (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
       H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
@@ -693,7 +714,7 @@ theorem cliAuthNew_placed_ok [LibsignalPlacement]
   have h_upd_341 : subroutine_ok ((blkPC_341).rebase (blkPl_341).base H)
       (lsmpl.base 341) (withLsCallInv lsmpl (authUpdateSpec W.C.F M A lim)) := by
     rw [← ls_blockPlacement_base (i := 341)]
-    exact cliAuthUpdate_placed_ok mmpl gh W hA hExt
+    exact cliAuthUpdate_placed_ok mmpl gh W hA hF hExt
   have h_upd : subroutine_ok ((blkPC_340).rebase (blkPl_340).base H)
       (lsmpl.base 341) (withLsCallInv lsmpl (authUpdateSpec W.C.F M A lim)) :=
     ls_subroutine_ok_callInv_of_block (i := 340) (j := 341) h_upd_341
@@ -707,6 +728,7 @@ theorem cliInitInner_callInv_placed_ok [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
     {ext : String → Option (State → State)}
     (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
       ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
@@ -720,7 +742,7 @@ theorem cliInitInner_callInv_placed_ok [LibsignalPlacement]
       (hExt_withPanics mmpl gh W hExt) (i := 324))
     (withLsCallInv_authNewBudgetSpec_of_authNewSpec
       (authNew_324_of_placedOk
-        (cliAuthNew_placed_ok mmpl gh W hA (hExt_withPanics mmpl gh W hExt))))
+        (cliAuthNew_placed_ok mmpl gh W hA hF (hExt_withPanics mmpl gh W hExt))))
     (cliStatesIntoPb_initV1State_cl mmpl gh W hA.toCliGhostAllocHooks hExt .a2b)
     (cliStatesIntoPb_initV1State_cl mmpl gh W hA.toCliGhostAllocHooks hExt .b2a)
 
@@ -1085,6 +1107,7 @@ theorem cliSpqrInitialState_placed_ok_ext [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
     {ext : String → Option (State → State)}
     (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
       ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
@@ -1098,7 +1121,7 @@ theorem cliSpqrInitialState_placed_ok_ext [LibsignalPlacement]
         (hExt_withPanics mmpl gh W hExt) (i := 327))
       (cliFramelessMemcpyBudget_at_block mmpl gh W hA.toCliGhostAllocHooks
         (hExt_withPanics mmpl gh W hExt) (i := 327))
-      (cliInitInner_callInv_placed_ok mmpl gh W hA hExt)
+      (cliInitInner_callInv_placed_ok mmpl gh W hA hF hExt)
       (cliEncodeToVec_placed_ok mmpl gh W hA.toCliGhostAllocHooks hExt)
       (cliDrop_270_cl_rebase mmpl gh W hA.toCliGhostAllocHooks hExt))
 
@@ -1107,12 +1130,13 @@ theorem cliSpqrInitialState_placed_ok_blockProgram_ext [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
     {ext : String → Option (State → State)}
     (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
       ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
     InitialStatePlacedOkBlockProgram M A lim W.C.F ext := by
   let _ := instIsLsBlockProg_327 (Rust.withPanics ext)
-  have hok := cliSpqrInitialState_placed_ok_ext mmpl gh W hA hExt
+  have hok := cliSpqrInitialState_placed_ok_ext mmpl gh W hA hF hExt
   dsimp only [InitialStatePlacedOkBlockProgram, InitialStatePlacedOkX] at hok ⊢
   rw [IsLsBlockProg.eq_blockProgram (prog := initialStatePlacedProg ext),
     initialStatePlacedEntry, ls_blockPlacement_base (i := 327)] at hok
@@ -1123,12 +1147,13 @@ theorem cliSpqrInitialState_placed_ok_blockProgram_ext [LibsignalPlacement]
 theorem cliSpqrInitialState_placed_ok_closed [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostSpqrAllocHooks M A lim gh) :
+    (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress) :
     subroutine_ok
       (libsignalSessionLib.blockProgram lsmpl 327 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 327)
       (withLsCodeRoLoaded lsmpl (spqrInitialStatePlacedInnerSpec M A lim W.C.F)) := by
-  have hok := cliSpqrInitialState_placed_ok_blockProgram_ext mmpl gh W hA
+  have hok := cliSpqrInitialState_placed_ok_blockProgram_ext mmpl gh W hA hF
     (ext := cliGhostExterns gh (cliExternsPlaced mmpl W)) (fun _ _ => rfl)
   dsimp only [InitialStatePlacedOkBlockProgram] at hok
   rwa [withPanics_eq_of_isPanicSymbol (cliGhostExterns_isPanic' mmpl gh W)] at hok
@@ -1139,12 +1164,13 @@ theorem cliSpqrInitialState_at_block [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
     {callerProg : Program} {i : Nat}
     [hcaller : IsLsBlockProg callerProg i (cliGhostExterns gh (cliExternsPlaced mmpl W))]
     (_hi : i < 619 := by decide) :
     subroutine_ok callerProg (lsmpl.base 327)
       (withLsCodeRoLoaded lsmpl (spqrInitialStatePlacedInnerSpec M A lim W.C.F)) := by
-  have hcallee := cliSpqrInitialState_placed_ok_closed mmpl gh W hA
+  have hcallee := cliSpqrInitialState_placed_ok_closed mmpl gh W hA hF
   apply subroutine_ok_outcome_intro
   intro x R s0 hpc hrun hpre hsp
   have hcrl : LibsignalCodeRoLoaded lsmpl s0.mem := by
@@ -1172,36 +1198,16 @@ theorem cliSpqrInitialState_at_block [LibsignalPlacement]
     rw [hcaller.eq_blockProgram]; rfl
   exact reaches_outcome_steps (Steps.of_sameHooks hext hsvc hstepsQ) (reaches_outcome.of_outcome hout)
 
-/-- `BobTailV1PlacedBudget.InitialStateMemInvPlacedOk` (`LibsignalCodeRoLoaded lsmpl`) on
-    `lsProg_75 (cliGhostExterns gh (cliExternsPlaced mmpl W))`. -/
-theorem cliSpqrInitialState_lsProg75 [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostSpqrAllocHooks M A lim gh) :
-    InitialStateMemInvPlacedOk M (CryptoVerification.LibsignalTripleRatchet.LibsignalCodeRoLoaded lsmpl)
-      A lim W.C.F (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-  cliSpqrInitialState_at_block mmpl gh W hA
-    (callerProg := lsProg_75 (cliGhostExterns gh (cliExternsPlaced mmpl W))) (i := 75)
-
-/-- `BobTailV1PlacedBudget.InitialStateMemInvPlacedOk` (`LibsignalFrozen lsmpl`) on
-    `lsProg_75 (cliGhostExterns gh (cliExternsPlaced mmpl W))`. -/
-theorem cliSpqrInitialState_frozen_lsProg75 [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostSpqrAllocHooks M A lim gh) :
-    InitialStateMemInvPlacedOk M (LibsignalFrozen lsmpl)
-      A lim W.C.F (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-  initialStateFrozenPlacedOk_of_codeRoLoaded (cliSpqrInitialState_lsProg75 mmpl gh W hA)
-
 /-- `StepSpqrPlacedBudget.spqrInitialStateInnerSpec` seam on `initProgPlaced mmpl gh W` (`Block 521`). -/
 theorem cliSpqrInitialState_initProg [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostSpqrAllocHooks M A lim gh) :
+    (hA : CliGhostSpqrAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress) :
     subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 327)
       (withLsCodeRoLoaded lsmpl
         (spqrInitialStateInnerSpec A lim
           (fun (p : Params) => InitialStateEnv W.C.F ⟨0#64, 0#64, 0#64, p⟩) W.C.F)) :=
-  cliSpqrInitialState_at_block mmpl gh W hA (callerProg := initProgPlaced mmpl gh W) (i := 521)
+  cliSpqrInitialState_at_block mmpl gh W hA hF (callerProg := initProgPlaced mmpl gh W) (i := 521)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget

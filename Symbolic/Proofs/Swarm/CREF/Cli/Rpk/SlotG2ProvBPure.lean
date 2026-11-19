@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSkippedG1AtPureA
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SlotG2SuppliesPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.IfacePure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.SkippedNotJunkFixPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSkippedG1AtPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SlotG2SuppliesPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.IfacePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.SkippedNotJunkFixPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SlotG2ProvBPureA
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SpinePeelPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -26,7 +26,7 @@ import Symbolic.Proofs.Swarm.CREF.TR.SkippedVarLit
 import Symbolic.Proofs.Swarm.CREF.TR.VarRecvSeedKnown
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
 
 /-!
 # Skipped-Key Ratchet-Key Dispatch
@@ -36,7 +36,7 @@ honest skeleton uniqueness, and X25519 variant ratchet keys to establish
 `SkippedPkDispatchAtK`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

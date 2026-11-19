@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Model
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Root
 
 /-!
 # Budget-Threaded Relocatable Root Composition for `try_decrypt_with_state`
@@ -22,7 +23,7 @@ budget-threaded segment seams (`S0SeamPlaced` .. `S9SeamPlaced` and `ErrTailSeam
 over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -11,13 +11,15 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.InnerInstPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.InnerInstPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Inner Contract Transfer and Slot Proof for `encrypt` (Placed)
@@ -26,7 +28,7 @@ Budget-pool counterparts of `W1InnerPlacedOk`, cross-block transfer from Block `
 (`signal_session_ratchet::encrypt`) to caller blocks `i < 619`, and `cliEncrypt_slot_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -74,7 +76,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.S
 )
 
 /-- Budget-threaded Block-`464` inner `withStoresEncPlacedSpecVT_cli` contract over `P : PEParams` and `H : LibsignalHooks`. -/
-def W1InnerPlacedOkH [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def W1InnerPlacedOkH [LibsignalPlacement] {M : AllocCostModel}
     (P : PEParams) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : LibsignalHooks) (B : RunBudgets)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)

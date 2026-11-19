@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1 -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` — Part 4: Relocation Combinators & Partial `memcpy`
@@ -23,7 +24,7 @@ Address-independent relocation combinators (`relocatedHeap`, `Relocatable`), the
 `PolyDecoder` `Relocatable` instances for Arms 2, 4, 5, 6, and 9.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.IntoPb
 
@@ -65,7 +66,7 @@ theorem bv_add_add_lit' (x : BitVec 64) (a b : Nat) :
 
 /-- Address-independent heap resource for relocating a `SepProp` family `F : BitVec 64 → SepProp`
     along with its inline byte slice `bs`. -/
-def relocatedHeap (F : BitVec 64 → SepProp) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def relocatedHeap (F : BitVec 64 → SepProp) (bs : List (BitVec 8)) : SepProp :=
   ∃∗ P : SepProp, ⌜∀ dst : BitVec 64, (dst ↦ₛ bs) ∗ P ⊢ F dst⌝ ∗ P
 
 theorem relocatedHeap_intro {F : BitVec 64 → SepProp} {bs : List (BitVec 8)} (P : SepProp)
@@ -84,7 +85,7 @@ theorem relocatedHeap_recompose (F : BitVec 64 → SepProp) (bs : List (BitVec 8
 
 /-- `Relocatable n F` means that for any `src`, `F src` decomposes into an `n`-byte slice
     `(src ↦ₛ bs)` (`bs.length = n`) and `relocatedHeap F bs`. -/
-def Relocatable (n : Nat) (F : BitVec 64 → SepProp) : Prop :=
+@[expose] def Relocatable (n : Nat) (F : BitVec 64 → SepProp) : Prop :=
   ∀ src : BitVec 64,
     F src ⊢ ∃∗ bs : List (BitVec 8),
       ⌜bs.length = n⌝ ∗ (src ↦ₛ bs) ∗ relocatedHeap F bs
@@ -353,102 +354,6 @@ theorem memcpy_keep_relocate_recombine {k m : Nat} {off : BitVec 64}
   exact sepConj_mono
     (sepConj_mono hdst1 (relocatedHeap_recompose G bs2 (dst + off)))
     (sepConj_mono (relocatedHeap_recompose F bs1 src) hsrc2)
-
-/-- Call `memcpy` inside `SepWPp`, keeping `F src` (`k` bytes) at `src` and
-    relocating `G (src + off)` (`m` bytes) to `dst + off`. -/
-theorem call_memcpy_keep_relocate {b memcpy_pc : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hmemcpy_raw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      memcpy_pc
-      sessionMemcpyRegionSpec)
-    {k m n : Nat} {off : BitVec 64}
-    {F G : BitVec 64 → SepProp}
-    (hoff : off = BitVec.ofNat 64 k)
-    (hkm : k + m = n)
-    (hF : Relocatable k F)
-    (hG : Relocatable m G)
-    (dst src : BitVec 64)
-    {s0 s : State} {ret_pc : BitVec 64} {P Frame R : SepProp}
-    {Q : State → SepProp → Prop}
-    (hpc : s.pc = memcpy_pc)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 1520#64)
-    (hsp_align : ((s0.sp - 1520#64) &&& 15#64 == 0#64) = true)
-    (hlr : s.readReg64 .x30 = ret_pc)
-    (htrace : TraceCalleeSaved s s0)
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : s.readReg64 .x1 = src)
-    (hx2 : (s.readReg64 .x2).toNat = n)
-    (hsplit : P = (memRegion dst n ∗ (F src ∗ G (src + off))) ∗ Frame)
-    (hnext : ∀ sf : State,
-      sf.pc = ret_pc →
-      sf.status = .Running →
-      sf.sp = s0.sp - 1520#64 →
-      CalleeSavedPreserved s sf →
-      TraceCalleeSaved sf s0 →
-      SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) sf
-        (((memRegion dst k ∗ G (dst + off)) ∗
-          (F src ∗ memRegion (src + off) m)) ∗ Frame)
-        Q (StatesIntoPbPanic s0 R)) :
-    SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) s P
-      Q (StatesIntoPbPanic s0 R) := by
-  have hpre_split :
-      P ⊢ ∃∗ bs1 : List (BitVec 8), ∃∗ bs2 : List (BitVec 8),
-        ⌜bs1.length = k ∧ bs2.length = m ∧ (bs1 ++ bs2).length = n⌝ ∗
-        (memRegion dst n ∗ (src ↦ₛ (bs1 ++ bs2))) ∗
-        (relocatedHeap F bs1 ∗ relocatedHeap G bs2 ∗ Frame) := by
-    rw [hsplit]
-    refine Entails.trans (sepConj_mono_left (sepConj_mono_right
-      (memcpy_keep_relocate_split hoff hkm hF hG dst src))) ?_
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-    apply Entails.sepExists_elim; intro bs1
-    apply Entails.sepExists_elim; intro bs2
-    rw [sepConj_left_comm (memRegion dst n), sepConj_assoc (⌜_⌝)]
-    apply Entails.pure_left; intro hpure
-    refine Entails.sepExists_right bs1 (Entails.sepExists_right bs2 ?_)
-    refine Entails.pure_right hpure ?_
-    exact Entails.of_eq (by ac_rfl)
-  refine SepWPp.weaken_pre hpre_split ?_
-  refine SepWPp.exists_elim fun bs1 => SepWPp.exists_elim fun bs2 => ?_
-  refine SepWPp.pure_left fun ⟨hlen1, hlen2, hlen12⟩ => ?_
-  refine SepWPp.call hmemcpy_raw (x := (dst, src, bs1 ++ bs2))
-    (F := relocatedHeap F bs1 ∗ relocatedHeap G bs2 ∗ Frame)
-    hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
-    (fun _ _ _ _ h => by
-      dsimp only [sessionMemcpyRegionSpec, memcpyRegionSpec] at h
-      simp only [sepConj_assoc, satisfies_pure_sepConj] at h
-      exact h.1.elim)
-    (fun _ _ h => by
-      dsimp only [sessionMemcpyRegionSpec, memcpyRegionSpec] at h
-      simp only [sepConj_assoc, satisfies_pure_sepConj] at h
-      exact h.1.elim)
-    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
-  · intro R' hm
-    dsimp only [sessionMemcpyRegionSpec, memcpyRegionSpec]
-    rw [hlen12]
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hm ⊢
-    exact ⟨⟨hx0, hx1, hx2⟩, hm⟩
-  · dsimp only [sessionMemcpyRegionSpec, memcpyRegionSpec]
-    rw [sepConj_assoc]
-    refine SepWPp.pure_left fun ⟨_, htr⟩ => ?_
-    have hrec := memcpy_keep_relocate_recombine (F := F) (G := G) hoff hlen1 hlen2 dst src
-    have hpost_ent :
-        (((dst ↦ₛ (bs1 ++ bs2)) ∗ (src ↦ₛ (bs1 ++ bs2))) ∗
-          (relocatedHeap F bs1 ∗ relocatedHeap G bs2 ∗ Frame)) ⊢
-        (((memRegion dst k ∗ G (dst + off)) ∗
-          (F src ∗ memRegion (src + off) m)) ∗ Frame) := by
-      have hreord :
-          (((dst ↦ₛ (bs1 ++ bs2)) ∗ (src ↦ₛ (bs1 ++ bs2))) ∗
-            (relocatedHeap F bs1 ∗ relocatedHeap G bs2 ∗ Frame)) =
-          ((dst ↦ₛ (bs1 ++ bs2)) ∗ (src ↦ₛ (bs1 ++ bs2)) ∗
-            relocatedHeap F bs1 ∗ relocatedHeap G bs2) ∗ Frame := by ac_rfl
-      rw [hreord]
-      exact sepConj_mono_left hrec
-    refine SepWPp.weaken_pre hpost_ent ?_
-    exact hnext sf hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf
-      ⟨htr.trans htrace.1, hcs_sf.2.2.2.2.2.2.2.2.2.2.2.trans htrace.2⟩
-
-/-! ## 3. Word-Tuple and Encoder/Decoder `Relocatable` Instances -/
 
 /-- `Relocatable 48` for 6 consecutive 64-bit words starting at `a`. -/
 theorem Relocatable.words6 (w0 w1 w2 w3 w4 w5 : BitVec 64) :

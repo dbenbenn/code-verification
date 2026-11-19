@@ -17,6 +17,10 @@ public import VerifiedLibraries.RustStd.Generated.TimePlacedObj
 import ProofLib.OpcodeExclusion
 import ProofLib.Placed.Pair
 import ProofLib.ProgramReflection.Variant.TrapTransfer
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Generic `lr`-Trap Classifier over Multi-Block Word Lists (`HooksDehook.TrapSafeWords`)
@@ -592,14 +596,6 @@ theorem codeLoaded_stripExecOutside_of_keep
   rw [ProofLib.strip_read8, ProofLib.strip_perm_of_keep (hkeep i hi), ProofLib.strip_isLazyFree]
   exact ⟨hL.byte_eq i hi, hL.perm_eq i hi, hL.isLazyFree_eq i hi⟩
 
-theorem regionCodeLoaded_stripExecOutside
-    {keep : BitVec 64 → Bool} {progs : List Program} {m : Memory}
-    (hkeep : ∀ P_sub ∈ progs, ∀ off : Nat, off < P_sub.code.length →
-      keep (P_sub.base + BitVec.ofNat 64 off) = true)
-    (hCode : RegionCodeLoaded progs m) :
-    RegionCodeLoaded progs (ProofLib.stripExecOutside keep m) :=
-  fun P_sub hmem => codeLoaded_stripExecOutside_of_keep (hkeep P_sub hmem) (hCode P_sub hmem)
-
 private theorem readWordOff_some_bounds {prog : Program} {o : Nat} {w : BitVec 32}
     (h : prog.readWordOff o = some w) :
     o % 4 = 0 ∧ o + 4 ≤ prog.code.length := by
@@ -724,16 +720,6 @@ theorem trapHook_linkedCallHook {α : Type}
       have hfalse := hR.2.1; rw [hlr, hkeepL] at hfalse; exact Bool.noConfusion hfalse
     simp only [hAct, hnoReal, ↓reduceDIte]; exact hfb w hrun hlr
   · refine Or.inl ⟨"ghost-hook precondition violated", ?_⟩; simp [hAct]
-
-theorem trapHook_linkedCallHook_of_not_pre {α : Type}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entryTarget : BitVec 64}
-    {spec : Spec α} {fallback : State → State} {L : BitVec 64}
-    (hnoPre : ∀ w : State, w.readReg64 .lr = L → ¬ ActiveRealPre spec w) :
-    TrapHook L (linkedCallHook keep P_real P_sub entryTarget spec fallback) := by
-  classical
-  intro w _ hlr; have hnp := hnoPre w hlr
-  refine Or.inl ⟨"ghost-hook precondition violated", ?_⟩
-  unfold linkedCallHook; simp [hnp]
 
 /-! ## 3. Closed-Trap Invariant, `trap_impossible`, and `lr_trap_at_call` -/
 
@@ -977,32 +963,6 @@ theorem blockSafe_of_patchCalls {region : TrapRegion} {base : BitVec 64}
 /-- Sanity check: `memsetWordsSym` (65 words, `mallocng` block 21) passes `checkWordsTrapSafe`. -/
 theorem memsetWords_all_safe : checkWordsTrapSafe memsetWordsSym [] = true := by decide
 
-/-- Sanity check: re-deriving `MemsetLrTrap.blk21_lr_trap_at_call` from `lr_trap_at_call`. -/
-theorem memset_lr_trap_at_call
-    {P_ghost : Program} {mmpl : Obj.MultiPlacement} {f_ms : State → State} {u sf : State}
-    (htrap_of_in : keepMemsetBlk21 mmpl (u.readReg64 .lr) = true →
-      TrapHook (u.readReg64 .lr) f_ms)
-    (hblk21_ext : ∀ pc, keepMemsetBlk21 mmpl pc = true →
-      P_ghost.externAt? pc = none ∨ P_ghost.externAt? pc = some f_ms)
-    (hext_u : P_ghost.externAt? u.pc = some f_ms)
-    (hCode_u : (mallocngBlockProg mmpl 21 Syscall.standard).CodeLoaded u.mem)
-    (hsteps_u_sf : Steps P_ghost u sf) (hrun_u : u.status = .Running)
-    (hrun_sf : sf.status ≠ .Running) (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    keepMemsetBlk21 mmpl (u.readReg64 .lr) = false := by
-  have hkeep_eq : ∀ pc, keepOf [(mmpl.base 21, memsetWordsSym)] pc = keepMemsetBlk21 mmpl pc := by
-    intro pc; simp only [keepOf, List.any_cons, List.any_nil, Bool.or_false, keepBlock,
-      memsetWordsSym_length, keepMemsetBlk21]; rfl
-  rw [← hkeep_eq]
-  exact lr_trap_at_call (regionWordsSafe_single (mmpl.base 21) memsetWords_all_safe)
-    (fun blk hmem => by
-      rw [List.mem_singleton] at hmem; subst hmem
-      exact ⟨mallocngBlockProg mmpl 21 Syscall.standard, List.mem_singleton.mpr rfl,
-        mallocngBlockProg21_hasWords mmpl Syscall.standard⟩)
-    (fun hL => htrap_of_in (hkeep_eq _ ▸ hL)) (fun pc hkp => hblk21_ext pc (hkeep_eq _ ▸ hkp))
-    hext_u (fun P hP => by rw [List.mem_singleton] at hP; subst hP; exact hCode_u)
-    hsteps_u_sf hrun_u hrun_sf hnoex_sf hnhalt_sf
-
 /-- `memcmp` (`memcmpLibcaWords`, 13 words, reloc-free) passes `checkWordsTrapSafe`. -/
 theorem memcmp_all_safe : checkWordsTrapSafe memcmpLibcaWords [] = true := by decide
 
@@ -1176,17 +1136,4 @@ theorem fromUtf8_all_safe : checkCodeBlockTrapSafe (coreMultiLib.blockLib 1).tex
 theorem fromUtf8_regionWordsSafe (pl : Obj.Placement) :
     RegionWordsSafe [(pl.base, codeBlockPatchedWords (coreMultiLib.blockLib 1).text pl)] :=
   regionWordsSafe_codeBlock pl fromUtf8_all_safe
-set_option maxRecDepth 200000 in
-/-- Negative check 1: `memrchr` (`(coreMultiLib.blockLib 2).text`, 74 words) is rejected (`false`). -/
-theorem memrchr_not_all_safe : checkCodeBlockTrapSafe (coreMultiLib.blockLib 2).text = false := by decide
-set_option maxRecDepth 200000 in
-/-- Negative check 2a: `Timespec::sub_timespec` (`(timeMultiLib.blockLib 0).text`, 60 words) is rejected (`false`). -/
-theorem subTimespec_not_all_safe : checkCodeBlockTrapSafe (timeMultiLib.blockLib 0).text = false := by decide
-set_option maxRecDepth 200000 in
-/-- Negative check 2b: `SystemTime::duration_since` (`(timeMultiLib.blockLib 1).text`, 20 words) is rejected (`false`). -/
-theorem durationSince_not_all_safe : checkCodeBlockTrapSafe (timeMultiLib.blockLib 1).text = false := by decide
-set_option maxRecDepth 200000 in
-/-- Negative check 3: `SystemTime::add` (`(timeMultiLib.blockLib 2).text`, 24 words) is rejected (`false`). -/
-theorem timeAdd_not_all_safe : checkCodeBlockTrapSafe (timeMultiLib.blockLib 2).text = false := by decide
-
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.TrapSafeWords

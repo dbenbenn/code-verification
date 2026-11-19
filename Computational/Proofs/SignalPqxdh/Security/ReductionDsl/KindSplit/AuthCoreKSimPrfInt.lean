@@ -20,6 +20,18 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCore
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimPrfBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimPrfHm
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimRo
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaSend
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacMu
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.ReductionDsl.AtomicSizeHonest
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaProofs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacProofs
 
 /-!
 # Forgetful Step-Simulation for One-Key `Auth` `PrfHmac`
@@ -1768,23 +1780,6 @@ private theorem rootRoC_allLeaves {K : ℕ} {Γ Δ : List PT}
   subst hst; exact AllLeaves_of_mem_support (rootRoC_step st rk dh env hRoot)
 
 
-private theorem MuValBounded.of_atom {n : ℕ} (mAtom : (embedTy muStTy).denote)
-    (hk : mAtom.1.length ≤ n) (hc : mAtom.2.1.length ≤ n) (hp : mAtom.2.2.1.length ≤ n) :
-    MuValBounded n (projVal muStTy mAtom) := by
-  refine ⟨?_, ?_, ?_⟩
-  · simpa only [muStTy, projVal, List.length_map] using hk
-  · simpa only [muStTy, projVal, List.length_map] using hc
-  · simpa only [muStTy, projVal, List.length_map] using hp
-
-private theorem MuValBounded.to_embed {n : ℕ} {mst : muStTy.denote} (hb : MuValBounded n mst) :
-    (embedVal muStTy mst).1.length ≤ n ∧
-    (embedVal muStTy mst).2.1.length ≤ n ∧
-    (embedVal muStTy mst).2.2.1.length ≤ n := by
-  refine ⟨?_, ?_, ?_⟩
-  · simpa only [muStTy, embedVal, List.length_map] using hb.keys_le
-  · simpa only [muStTy, embedVal, List.length_map] using hb.chal_le
-  · simpa only [muStTy, embedVal, List.length_map] using hb.pend_le
-
 private theorem hmRecv_hmKeyIdC_fuel_eq {K₁ K₂ n : ℕ} {Δ : List PT}
     (a : Expr pqxdhOps Δ (.prod muKeyIdTy muStTy)) (env : Env Δ)
     (hb : MuValBounded n (a.eval env).2) (h₁ : n ≤ K₁) (h₂ : n ≤ K₂) :
@@ -2387,6 +2382,7 @@ private theorem hmRecv_hmRecvPrepC_fuel_eq (S : Setup) {K₁ K₂ n : ℕ} (opk 
     (by simpa only [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hbSt) h₁ h₂)
     fun _ => rfl
 
+set_option maxHeartbeats 400000 in
 private theorem hmRecv_hmRecvPrepC_leaves (S : Setup) (K : ℕ) {n : ℕ} (opk : Bool)
     {Γ₁ Γ₂ Δ : List PT} (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ recvQTy)
     [h₁_ext : Ext Γ₁ Δ] [Ext Γ₂ Δ] (env : Env Δ)
@@ -2729,6 +2725,7 @@ private theorem hmRecvKC_leaves (S : Setup) (K_on K_ro : ℕ) {n : ℕ} (opk : B
     rw [env_get_zero]
     exact ⟨r, rfl, by simpa only [Ext.step_wk, env_get_succ] using hr⟩
 
+set_option maxHeartbeats 400000 in
 private theorem hmRecvArm_sim (S : Setup) (b : QueryBudget) (opk : Bool)
     (c : Fin 4 → ℕ) (s' : authHmShadowStTy.denote) (t : AuthQuery S)
     {xAtom : authRecvQAtomicTy.denote}
@@ -2816,10 +2813,10 @@ private theorem hmRecvArm_sim (S : Setup) (b : QueryBudget) (opk : Bool)
       (Γ₃ := [muStTy, recvQTy]) (Γ₄ := [recvQTy])
       (Δ := [.nat, authHybridStateFixedTy, muStTy, recvQTy])
       .zero .zero .zero .zero _
-      (by simpa [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hb0)
-      (by simpa [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hMu0)
-      (by simpa [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hRo0)
-      (by simpa [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hRoot0)
+      (by simpa only [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hb0)
+      (by simpa only [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hMu0)
+      (by simpa only [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hRo0)
+      (by simpa only [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hRoot0)
       hOnQ hOnQ hRoQ hRoQ hRootQ hRootQ] at hpre
     obtain ⟨r, rfl, hr⟩ := AllLeaves_mem_support
       (hmRecvKC_leaves S b.q_total b.q_total opk
@@ -2828,10 +2825,10 @@ private theorem hmRecvArm_sim (S : Setup) (b : QueryBudget) (opk : Bool)
         (Γ₃ := [muStTy, recvQTy]) (Γ₄ := [recvQTy])
         (Δ := [.nat, authHybridStateFixedTy, muStTy, recvQTy])
         .zero .zero .zero .zero _
-        (by simpa [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hb0)
-        (by simpa [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hMu0)
-        (by simpa [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using Nat.le_trans hRo0 hRoQ)
-        (by simpa [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using Nat.le_trans hRoot0 hRootQ))
+        (by simpa only [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hb0)
+        (by simpa only [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hMu0)
+        (by simpa only [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using Nat.le_trans hRo0 hRoQ)
+        (by simpa only [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using Nat.le_trans hRoot0 hRootQ))
       hpre
     dsimp only [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] at hr
     exact ⟨⟨hr.fixed_le, hr.ro_step, hr.root_step⟩, hr.mu_le⟩

@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBad
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2AdapterPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PkDispatchAtPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepNoRatchetWAtHelpersPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2AdapterPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.PkDispatchAtPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepNoRatchetWAtHelpersPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BinPure -- proof-setup: allow-public-import
 
 /-!
 # Branch Interfaces and Run-Level Context for Session Promotion
@@ -27,7 +30,7 @@ relation `SkippedPkDispatchAtK`, and the clean-prefix run-level context `PromRaw
 supply predicate `PromRawCtxSupply`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -47,7 +50,7 @@ open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
 open CryptoProofLib.Refinement (ExternInterpretation)
 open Symbolic.Swarm.CREF.TR Symbolic.Swarm.CREF.CliPure.TR Symbolic.Swarm.CREF.TR.RecvDecStep Symbolic.Swarm.CREF.CliPure.TR.RecvDecStep Symbolic.Swarm.CREF.CliPure.TR.RecvDecStepAt
 
-def PromDecSelCases (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromDecSelCases (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) : Prop :=
   ∀ (j : Nat) (e' : PromTurn) (mid acc : List MachineEvent)
     (rec b : HwBytes) (sm : StateAndMessage) (pf : PreKeyFields)
@@ -59,7 +62,7 @@ def PromDecSelCases (interpretation : ExternInterpretation) (r : ProtocolSetup) 
       PromDecSelRatchetDH sess pf.inner mid coins
 
 /-- Skipped-key public-key dispatch relation over `RecvCollision` and `ReselectCollision`. -/
-def SkippedPkDispatchAtK
+@[expose] def SkippedPkDispatchAtK
     (interpretation : ExternInterpretation)
     (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms₁ : List Move) (_τ₁ : List MachineEvent) : Prop :=
@@ -114,7 +117,7 @@ structure PromRawCtx (interpretation : ExternInterpretation) (r : ProtocolSetup)
   pkSk : SkippedPkDispatchAtK interpretation r S g ms acc
   abs' : TR.G1.G1cAttackerBuiltSeedExcl' interpretation r S g ms
 
-def PromRawCtxSupply (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromRawCtxSupply (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) : Prop :=
   ∀ (j : Nat) (e' : PromTurn) (mid acc : List MachineEvent)
     (rec b : HwBytes) (sm : StateAndMessage) (pf : PreKeyFields)

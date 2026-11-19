@@ -15,40 +15,21 @@ public import ProofLib.SepLogic.WP.StepsProcess
 public import LibsignalBinary.Heap.SpecBudget
 import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
--- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
--- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.HookDischarge.Libc.Common
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
 
 /-!
-# Byte-Exact `StaticSecret::drop` and `SharedSecret::drop` Hook Discharge (`LibsignalBinary.Proofs.HookDischarge.Generics.ZeroizeDrop`)
+# Byte-Exact `StaticSecret::drop` and `SharedSecret::drop` Discharge (`LibsignalBinary.Proofs.HookDischarge.Generics.ZeroizeDrop`)
 
-Real-bytes discharge of the `x25519-dalek` 32-byte zeroize drop contracts in `signal-session`:
+Real-bytes discharge of the `x25519-dalek` 32-byte zeroize drop routines in `signal-session`:
 
 1. **`<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop`** (`zeroize32Words` /
    `zeroize32Instrs`, `63` 32-bit instruction words = `252` bytes, `0` B stack; matches
    `arm64-semantics/CaseStudies/Curve25519NeonEquiv/Proofs/Serial/Code.lean` `zeroize32Words`
    word-for-word) and the byte-for-byte identical body of
-   **`<curve25519_dalek::montgomery::MontgomeryPoint as zeroize::Zeroize>::zeroize`**.
+   **`<curve25519_dalek::montgomery::MontgomeryPoint as zeroize::Zeroize>::zeroize`**, proved
+   against `ProcessFieldsPreserved` + `zeroizeSecretSpec` (`zeroize32_zeroizeSecretProcessSpec_ok`).
 2. **`<x25519_dalek::x25519::SharedSecret as core::ops::drop::Drop>::drop`** (`sharedSecretDropInstrs`,
-   `1` 32-bit unconditional tail-branch `b targetAddr` when `targetAddr - addr` is encodable as an
-   ARM64 `B` `imm26 × 4` offset, `0` B stack) given the explicit code premise that
-   `<MontgomeryPoint as Zeroize>::zeroize` (`zeroize32Instrs` / `zeroize32Words`) is loaded at
-   `targetAddr`.
-
-Covers every contract shape consumed by placed callers on `main` (process/budget `hasWords` variants
-carry `h_no_ext : ∀ pc, P.externAt? pc = none` for hook-free sub-programs; `keepsFs` variants are
-helper extras):
-- `CryptoVerification.LibsignalTripleRatchet.zeroizeSecretSpec` and `keepsFs zeroizeSecretSpec`,
-- `LibsignalBinary.Heap.SpecBudget.withVmPreserved zeroizeSecretSpec` (`rfl`/defeq-equal by body,
-  not kernel-checked in this PR, to `DhStepBudgetSteps.zeroizeSecretBudgetSpec`),
-  `keepsFs (withVmPreserved zeroizeSecretSpec)`, and
-  `withFsPred Pfs (withVmPreserved zeroizeSecretSpec)` (`rfl`/defeq-equal by body, not
-  kernel-checked in this PR, to `AgreeBudgetFd.withFsPred Pfs (withVmPreserved zeroizeSecretSpec)`),
-- `CryptoVerification.SignalSession.CliExt.zeroizeSpec`, `keepsFs zeroizeSpec`,
-  `withVmPreserved zeroizeSpec`, `keepsFs (withVmPreserved zeroizeSpec)`, and `zeroizeSpec.inImage img`,
-- stack-parameterized `withStack` variants (`Libc.Common.withStack` and `Libc.Common.keepsFs` are
-  `rfl`/defeq-equal by body to `Hooks2.withStack` / `CliExt.withStack` and `Arm64.Spec.keepsFs`).
+   `1` 32-bit unconditional tail-branch `b targetAddr`, lifted via `tailJump_subroutine_ok`).
 -/
 
 public section
@@ -60,12 +41,9 @@ namespace LibsignalBinary.Proofs.HookDischarge.Generics.ZeroizeDrop
 open Arm64 ProofLib
 open ProofLib.StdStartup (hasInstrs)
 open Arm64.Process (pureWordsProg pureWordsProg_hasWords)
-open CryptoVerification.LibsignalTripleRatchet (zeroizeSecretSpec extHookStack)
-open CryptoVerification.SignalSession.CliExt (zeroizeSpec)
+open CryptoVerification.LibsignalTripleRatchet (zeroizeSecretSpec)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
-open LibsignalBinary.Proofs.HookDischarge.Libc.Common (keepsFs withStack
-  subroutine_ok_drop_keepsFs subroutine_ok_withStack
-  subroutine_ok_withStack_keepsFs)
+open LibsignalBinary.Proofs.HookDischarge.Libc.Common (keepsFs subroutine_ok_drop_keepsFs)
 
 /-! ## 1. Mirror of `AgreeBudgetFd.withFsPred` & Generic Process-Preservation Combinators -/
 
@@ -260,10 +238,6 @@ theorem subroutine_ok_keepsFs_withVmPreserved_of_pureWords {α : Type}
 @[expose] def sharedSecretDropInstrs (addr targetAddr : BitVec 64) : List Instr :=
   [ .b (targetAddr - addr) ]
 
-/-- `withStack zeroizeSecretSpec extHookStack` is definitionally (`rfl`) `CliExt.zeroizeSpec`. -/
-theorem withStack_zeroizeSecretSpec_extHookStack :
-    withStack zeroizeSecretSpec extHookStack = zeroizeSpec := rfl
-
 private theorem pureWordsProg_hasWords_zeroize32 (entry : BitVec 64) :
     (pureWordsProg entry zeroize32Words).hasWords entry zeroize32Words :=
   pureWordsProg_hasWords (by decide +kernel) (by
@@ -358,7 +332,7 @@ private theorem write8_zero32_eq (bs : List (BitVec 8)) (h : bs.length = 32) :
   iterate 32 rw [ByteSlice.write8_fillPrefix bs 0#8 _ (by omega)]
   exact ByteSlice.fillPrefix_full h
 
-/-! ## 3. Row 25 (`StaticSecret::drop`) & `<MontgomeryPoint as Zeroize>::zeroize` -/
+/-! ## 3. `StaticSecret::drop`, `<MontgomeryPoint as Zeroize>::zeroize`, & Tail-Jump Combinator -/
 
 set_option maxHeartbeats 1600000 in
 /-- Unstacked `keepsFs` bridge (`0` stack bytes required): `zeroize32Instrs` at `addr` satisfies
@@ -457,56 +431,11 @@ theorem zeroize32_zeroizeSecretSpec_keepsFs_ok {P : Program} {addr : BitVec 64}
       exact CalleeSavedPreserved.rfl s0
 
 /-- Unstacked bridge (`0` stack bytes required): `zeroize32Instrs` at `addr` satisfies
-    `zeroizeSecretSpec` (exact consumer spec of `Initiate/HooksPlaced`, `ResponderCore/CryptoCalleesPlaced`,
-    and `TripleRatchet/Keys/Agree`). -/
+    `zeroizeSecretSpec`. -/
 theorem zeroize32_zeroizeSecretSpec_ok {P : Program} {addr : BitVec 64}
     (hcode : hasInstrs P addr zeroize32Instrs) :
     subroutine_ok P addr zeroizeSecretSpec :=
   subroutine_ok_drop_keepsFs (zeroize32_zeroizeSecretSpec_keepsFs_ok hcode)
-
-/-- `withFsPred Pfs` variant of `zeroize32_zeroizeSecretSpec_ok`. -/
-theorem zeroize32_zeroizeSecretSpec_withFsPred_ok {P : Program} {addr : BitVec 64}
-    (Pfs : FsState → Prop) (hcode : hasInstrs P addr zeroize32Instrs) :
-    subroutine_ok P addr (withFsPred Pfs zeroizeSecretSpec) :=
-  subroutine_ok_withFsPred_of_keepsFs Pfs (zeroize32_zeroizeSecretSpec_keepsFs_ok hcode)
-
-/-- Stack-parameterized `keepsFs` bridge for `StaticSecret::drop` (`hookStack` arbitrary). -/
-theorem staticSecretDrop_withStack_keepsFs_ok {P : Program} {addr : BitVec 64}
-    (hookStack : Nat) (hcode : hasInstrs P addr zeroize32Instrs) :
-    subroutine_ok P addr (keepsFs (withStack zeroizeSecretSpec hookStack)) :=
-  subroutine_ok_withStack_keepsFs hookStack (zeroize32_zeroizeSecretSpec_keepsFs_ok hcode)
-
-/-- Primary `keepsFs` bridge for `cliHookTable` row 25: `zeroize32Instrs` at `addr` satisfies
-    `keepsFs CliExt.zeroizeSpec`. -/
-theorem staticSecretDrop_zeroizeSpec_keepsFs_ok {P : Program} {addr : BitVec 64}
-    (hcode : hasInstrs P addr zeroize32Instrs) :
-    subroutine_ok P addr (keepsFs zeroizeSpec) :=
-  staticSecretDrop_withStack_keepsFs_ok extHookStack hcode
-
-/-- Primary bridge for `cliHookTable` row 25 (`CliExternsOk.staticDrop`): `zeroize32Instrs` at
-    `addr` satisfies `CliExt.zeroizeSpec`. -/
-theorem staticSecretDrop_zeroizeSpec_ok {P : Program} {addr : BitVec 64}
-    (hcode : hasInstrs P addr zeroize32Instrs) :
-    subroutine_ok P addr zeroizeSpec :=
-  subroutine_ok_drop_keepsFs (staticSecretDrop_zeroizeSpec_keepsFs_ok hcode)
-
-/-- `.inImage img` variant of `staticSecretDrop_zeroizeSpec_ok`. -/
-theorem staticSecretDrop_zeroizeSpec_inImage_ok {P : Program} {addr : BitVec 64} (img : Obj.Image)
-    (hcode : hasInstrs P addr zeroize32Instrs) :
-    subroutine_ok P addr (zeroizeSpec.inImage img) :=
-  subroutine_ok_inImage img (staticSecretDrop_zeroizeSpec_ok hcode)
-
-/-- `hasWords` corollary of `zeroize32_zeroizeSecretSpec_ok`. -/
-theorem zeroize32_zeroizeSecretSpec_hasWords_ok {P : Program} {addr : BitVec 64}
-    (hc : P.hasWords addr zeroize32Words) :
-    subroutine_ok P addr zeroizeSecretSpec :=
-  zeroize32_zeroizeSecretSpec_ok (hasInstrs_of_hasWords hc)
-
-/-- `hasWords` corollary of `staticSecretDrop_zeroizeSpec_ok`. -/
-theorem staticSecretDrop_zeroizeSpec_hasWords_ok {P : Program} {addr : BitVec 64}
-    (hc : P.hasWords addr zeroize32Words) :
-    subroutine_ok P addr zeroizeSpec :=
-  staticSecretDrop_zeroizeSpec_ok (hasInstrs_of_hasWords hc)
 
 /-- Full `ProcessFieldsPreserved` unstacked bridge for `zeroize32Words` at `addr` on a hook-free
     program `P`. -/
@@ -521,63 +450,6 @@ theorem zeroize32_zeroizeSecretProcessSpec_ok {P : Program} {addr : BitVec 64}
     (pureWordsProg_noSvcMsr_zeroize32 addr) hc h_no_ext
     (h_pre_mem := by intro _ s _; cases s; rfl)
     (h_post_mem := by intro _ s0 sf _ _; cases s0; cases sf; rfl)
-
-/-- Process- and VM-preserving unstacked `keepsFs` bridge: `zeroize32Words` at `addr` on a
-    hook-free program satisfies `keepsFs (withVmPreserved zeroizeSecretSpec)`. -/
-theorem zeroize32_zeroizeSecretBudgetSpec_keepsFs_ok {P : Program} {addr : BitVec 64}
-    (hc : P.hasWords addr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (keepsFs (withVmPreserved zeroizeSecretSpec)) :=
-  subroutine_ok_keepsFs_withVmPreserved_of_pureWords
-    (zeroize32_zeroizeSecretSpec_ok (pureWordsProg_hasInstrs_zeroize32 addr))
-    (pureWordsProg_noSvcMsr_zeroize32 addr) hc h_no_ext
-
-/-- Process- and VM-preserving unstacked bridge: `zeroize32Words` at `addr` on a hook-free
-    program satisfies `withVmPreserved zeroizeSecretSpec` (`rfl`/defeq-equal by body to
-    `DhStepBudgetSteps.zeroizeSecretBudgetSpec`; exact consumer spec of `Initiate/HooksPlacedBudget`,
-    `CliHookSatPlacedBudget`, `ResponderCore/CryptoCalleesPlacedBudget`, `AgreeBudget`,
-    `CreateChainBudget`, `DhStepBudgetSteps`, `DhStep433PlacedBudget`, and `RootTrapPlacedBudgetPart4`). -/
-theorem zeroize32_zeroizeSecretBudgetSpec_ok {P : Program} {addr : BitVec 64}
-    (hc : P.hasWords addr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (withVmPreserved zeroizeSecretSpec) :=
-  subroutine_ok_drop_keepsFs (zeroize32_zeroizeSecretBudgetSpec_keepsFs_ok hc h_no_ext)
-
-/-- Process-, VM-, and `FsState`-predicate-preserving unstacked bridge: `zeroize32Words` at `addr`
-    on a hook-free program satisfies `withFsPred Pfs (withVmPreserved zeroizeSecretSpec)` (exact
-    consumer spec of `AgreeBudgetFd`, `CreateChainBudgetFd`, and `ResponderCore/CryptoBridgePlacedBudgetFd`). -/
-theorem zeroize32_zeroizeSecretBudgetSpec_withFsPred_ok {P : Program} {addr : BitVec 64}
-    (Pfs : FsState → Prop)
-    (hc : P.hasWords addr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (withFsPred Pfs (withVmPreserved zeroizeSecretSpec)) :=
-  subroutine_ok_withFsPred_of_keepsFs Pfs (zeroize32_zeroizeSecretBudgetSpec_keepsFs_ok hc h_no_ext)
-
-/-- Stack-parameterized `keepsFs` + `withVmPreserved` bridge for `StaticSecret::drop`. -/
-theorem staticSecretDrop_withStack_budget_keepsFs_ok {P : Program} {addr : BitVec 64}
-    (hookStack : Nat)
-    (hc : P.hasWords addr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (keepsFs (withStack (withVmPreserved zeroizeSecretSpec) hookStack)) :=
-  subroutine_ok_withStack_keepsFs hookStack (zeroize32_zeroizeSecretBudgetSpec_keepsFs_ok hc h_no_ext)
-
-/-- `keepsFs (withVmPreserved CliExt.zeroizeSpec)` bridge for `StaticSecret::drop`. -/
-theorem staticSecretDrop_zeroizeBudgetSpec_keepsFs_ok {P : Program} {addr : BitVec 64}
-    (hc : P.hasWords addr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (keepsFs (withVmPreserved zeroizeSpec)) :=
-  subroutine_ok_keepsFs_withVmPreserved_of_pureWords
-    (staticSecretDrop_zeroizeSpec_ok (pureWordsProg_hasInstrs_zeroize32 addr))
-    (pureWordsProg_noSvcMsr_zeroize32 addr) hc h_no_ext
-
-/-- `withVmPreserved CliExt.zeroizeSpec` bridge for `StaticSecret::drop`. -/
-theorem staticSecretDrop_zeroizeBudgetSpec_ok {P : Program} {addr : BitVec 64}
-    (hc : P.hasWords addr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (withVmPreserved zeroizeSpec) :=
-  subroutine_ok_drop_keepsFs (staticSecretDrop_zeroizeBudgetSpec_keepsFs_ok hc h_no_ext)
-
-/-! ## 4. Row 26 (`SharedSecret::drop` `1`-Instruction Tail-Jump) -/
 
 /-- Generic tail-jump combinator: a single unconditional `b (targetAddr - addr)` at `addr`
     inherits any PC-independent, non-panicking, non-exiting, non-OOM
@@ -622,148 +494,5 @@ theorem tailJump_subroutine_ok {α : Type} {P : Program} {addr targetAddr : BitV
     rw [sepConj_emp, hpost_pc]
     apply SepWP.done hpc_f hrun_f
     exact ⟨fun hm => hm, hsp_f, hcs_f⟩
-
-/-- Unstacked `keepsFs` bridge for `SharedSecret::drop` (`0` stack bytes required), given
-    `<MontgomeryPoint as Zeroize>::zeroize` (`zeroize32Instrs`) loaded at `targetAddr`. -/
-theorem sharedSecretDrop_zeroizeSecretSpec_keepsFs_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : hasInstrs P targetAddr zeroize32Instrs) :
-    subroutine_ok P addr (keepsFs zeroizeSecretSpec) :=
-  tailJump_subroutine_ok hb (zeroize32_zeroizeSecretSpec_keepsFs_ok htgt)
-
-/-- Unstacked bridge for `SharedSecret::drop` (`zeroizeSecretSpec`), matching placed callers in
-    `Initiate/HooksPlaced`, `ResponderCore/CryptoCalleesPlaced`, and `TripleRatchet/Keys/Agree`. -/
-theorem sharedSecretDrop_zeroizeSecretSpec_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : hasInstrs P targetAddr zeroize32Instrs) :
-    subroutine_ok P addr zeroizeSecretSpec :=
-  tailJump_subroutine_ok hb (zeroize32_zeroizeSecretSpec_ok htgt)
-
-/-- `withFsPred Pfs` variant of `sharedSecretDrop_zeroizeSecretSpec_ok`. -/
-theorem sharedSecretDrop_zeroizeSecretSpec_withFsPred_ok {P : Program}
-    {addr targetAddr : BitVec 64} (Pfs : FsState → Prop)
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : hasInstrs P targetAddr zeroize32Instrs) :
-    subroutine_ok P addr (withFsPred Pfs zeroizeSecretSpec) :=
-  tailJump_subroutine_ok hb (zeroize32_zeroizeSecretSpec_withFsPred_ok Pfs htgt)
-
-/-- Primary `keepsFs` bridge for `cliHookTable` row 26: `SharedSecret::drop` at `addr`
-    tail-jumping to `MontgomeryPoint::zeroize` (`zeroize32Instrs`) at `targetAddr` satisfies
-    `keepsFs CliExt.zeroizeSpec`. -/
-theorem sharedSecretDrop_zeroizeSpec_keepsFs_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : hasInstrs P targetAddr zeroize32Instrs) :
-    subroutine_ok P addr (keepsFs zeroizeSpec) :=
-  tailJump_subroutine_ok hb (staticSecretDrop_zeroizeSpec_keepsFs_ok htgt)
-
-/-- Primary bridge for `cliHookTable` row 26 (`CliExternsOk.sharedDrop`): `SharedSecret::drop` at
-    `addr` tail-jumping to `MontgomeryPoint::zeroize` (`zeroize32Instrs`) at `targetAddr` satisfies
-    `CliExt.zeroizeSpec`. -/
-theorem sharedSecretDrop_zeroizeSpec_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : hasInstrs P targetAddr zeroize32Instrs) :
-    subroutine_ok P addr zeroizeSpec :=
-  tailJump_subroutine_ok hb (staticSecretDrop_zeroizeSpec_ok htgt)
-
-/-- `.inImage img` variant of `sharedSecretDrop_zeroizeSpec_ok`. -/
-theorem sharedSecretDrop_zeroizeSpec_inImage_ok {P : Program}
-    {addr targetAddr : BitVec 64} (img : Obj.Image)
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : hasInstrs P targetAddr zeroize32Instrs) :
-    subroutine_ok P addr (zeroizeSpec.inImage img) :=
-  subroutine_ok_inImage img (sharedSecretDrop_zeroizeSpec_ok hb htgt)
-
-/-- `hasWords` target corollary of `sharedSecretDrop_zeroizeSecretSpec_ok`. -/
-theorem sharedSecretDrop_zeroizeSecretSpec_hasWords_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : P.hasWords targetAddr zeroize32Words) :
-    subroutine_ok P addr zeroizeSecretSpec :=
-  sharedSecretDrop_zeroizeSecretSpec_ok hb (hasInstrs_of_hasWords htgt)
-
-/-- `hasWords` target corollary of `sharedSecretDrop_zeroizeSpec_ok`. -/
-theorem sharedSecretDrop_zeroizeSpec_hasWords_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : P.hasWords targetAddr zeroize32Words) :
-    subroutine_ok P addr zeroizeSpec :=
-  sharedSecretDrop_zeroizeSpec_ok hb (hasInstrs_of_hasWords htgt)
-
-/-- Full `ProcessFieldsPreserved` unstacked bridge for `SharedSecret::drop` on a hook-free `P`. -/
-theorem sharedSecretDrop_zeroizeSecretProcessSpec_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : P.hasWords targetAddr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr
-      { zeroizeSecretSpec with
-        post := fun x s0 sf => ⌜ProcessFieldsPreserved s0 sf⌝ ∗ zeroizeSecretSpec.post x s0 sf } :=
-  tailJump_subroutine_ok hb (zeroize32_zeroizeSecretProcessSpec_ok htgt h_no_ext)
-
-/-- Process- and VM-preserving unstacked `keepsFs` bridge for `SharedSecret::drop`, given
-    `hasInstrs` for the `1`-insn tail-branch at `addr` and `hasWords` for
-    `<MontgomeryPoint as Zeroize>::zeroize` (`zeroize32Words`) at `targetAddr` on a hook-free `P`. -/
-theorem sharedSecretDrop_zeroizeSecretBudgetSpec_keepsFs_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : P.hasWords targetAddr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (keepsFs (withVmPreserved zeroizeSecretSpec)) :=
-  tailJump_subroutine_ok hb (zeroize32_zeroizeSecretBudgetSpec_keepsFs_ok htgt h_no_ext)
-
-/-- Process- and VM-preserving unstacked bridge for `SharedSecret::drop` (`withVmPreserved zeroizeSecretSpec`,
-    `rfl`/defeq-equal by body to `DhStepBudgetSteps.zeroizeSecretBudgetSpec`), matching placed callers in
-    `Initiate/HooksPlacedBudget`, `CliHookSatPlacedBudget`, `ResponderCore/CryptoCalleesPlacedBudget`,
-    `AgreeBudget`, `CreateChainBudget`, `DhStepBudgetSteps`, `DhStep433PlacedBudget`, and
-    `RootTrapPlacedBudgetPart4`. -/
-theorem sharedSecretDrop_zeroizeSecretBudgetSpec_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : P.hasWords targetAddr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (withVmPreserved zeroizeSecretSpec) :=
-  tailJump_subroutine_ok hb (zeroize32_zeroizeSecretBudgetSpec_ok htgt h_no_ext)
-
-/-- Process-, VM-, and `FsState`-predicate-preserving unstacked bridge for `SharedSecret::drop`
-    (`withFsPred Pfs (withVmPreserved zeroizeSecretSpec)`), matching placed callers in
-    `AgreeBudgetFd`, `CreateChainBudgetFd`, and `ResponderCore/CryptoBridgePlacedBudgetFd`. -/
-theorem sharedSecretDrop_zeroizeSecretBudgetSpec_withFsPred_ok {P : Program}
-    {addr targetAddr : BitVec 64} (Pfs : FsState → Prop)
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : P.hasWords targetAddr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (withFsPred Pfs (withVmPreserved zeroizeSecretSpec)) :=
-  tailJump_subroutine_ok hb (zeroize32_zeroizeSecretBudgetSpec_withFsPred_ok Pfs htgt h_no_ext)
-
-/-- Stack-parameterized `keepsFs` + `withVmPreserved` bridge for `SharedSecret::drop`. -/
-theorem sharedSecretDrop_withStack_budget_keepsFs_ok {P : Program}
-    {addr targetAddr : BitVec 64} (hookStack : Nat)
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : P.hasWords targetAddr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (keepsFs (withStack (withVmPreserved zeroizeSecretSpec) hookStack)) :=
-  tailJump_subroutine_ok hb (staticSecretDrop_withStack_budget_keepsFs_ok hookStack htgt h_no_ext)
-
-/-- `keepsFs (withVmPreserved CliExt.zeroizeSpec)` bridge for `SharedSecret::drop`. -/
-theorem sharedSecretDrop_zeroizeBudgetSpec_keepsFs_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : P.hasWords targetAddr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (keepsFs (withVmPreserved zeroizeSpec)) :=
-  tailJump_subroutine_ok hb (staticSecretDrop_zeroizeBudgetSpec_keepsFs_ok htgt h_no_ext)
-
-/-- `withVmPreserved CliExt.zeroizeSpec` bridge for `SharedSecret::drop`. -/
-theorem sharedSecretDrop_zeroizeBudgetSpec_ok {P : Program}
-    {addr targetAddr : BitVec 64}
-    (hb : hasInstrs P addr (sharedSecretDropInstrs addr targetAddr))
-    (htgt : P.hasWords targetAddr zeroize32Words)
-    (h_no_ext : ∀ pc, P.externAt? pc = none) :
-    subroutine_ok P addr (withVmPreserved zeroizeSpec) :=
-  tailJump_subroutine_ok hb (staticSecretDrop_zeroizeBudgetSpec_ok htgt h_no_ext)
 
 end LibsignalBinary.Proofs.HookDischarge.Generics.ZeroizeDrop

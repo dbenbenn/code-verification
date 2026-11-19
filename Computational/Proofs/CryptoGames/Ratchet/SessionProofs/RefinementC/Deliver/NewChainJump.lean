@@ -25,7 +25,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 Closes the new-epoch `deliver` step when the message counter exceeds the skip bound (`25000 < i - 1`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

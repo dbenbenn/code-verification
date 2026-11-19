@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.OptImageHelper
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Common.InImageLift -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts
@@ -27,7 +27,7 @@ and relocatable `[LibsignalPlacement]` (`clear_unacknowledged_pre_key_message_pl
 for `<SessionState>::clear_unacknowledged_pre_key_message`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Getters
 
@@ -44,7 +44,7 @@ set_option linter.unusedSimpArgs false
 attribute [local irreducible] Program.fetch Program.externAt?
 
 /-- The part of `sessionStateAt` not touched by `clear_unacknowledged_pre_key_message`. -/
-def sessionStateRest (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionStateRest (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) : SepProp :=
   vecGhostAt A G.localIk ss ∗ vecGhostAt A G.remoteIk (ss + 0x18#64) ∗
     vecU8At A (ss + 0x30#64) G.root.cap G.root.ptr (keyToBytes32 st.rootKey) ∗
@@ -255,7 +255,7 @@ theorem clearUpk_strengthen_post {prog : Program} {target_pc : BitVec 64} {s : S
   apply Entails.sepExists_elim; intro x_3; refine Entails.sepExists_right x_3 ?_
   exact sepConj_mono_right (sepConj_mono_left himp)
 
-def clearUpkSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec ClearUpkGhost where
+@[expose] def clearUpkSpecWithStack (A : RustAlloc) (hookStack : Nat) : Spec ClearUpkGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
       sessionStateAt A x.ss x.G x.st ∗ A.pool ∗ stackAt s.sp (32 + hookStack)
@@ -285,152 +285,12 @@ private theorem SepWP.of_sepWP_stop {prog : Program}
   unfold optStop at h
   exact SepWP.cut h
 
-private theorem SepWP.of_sepWP_optStop {prog : Program} {oimg : Option Obj.Image}
-    {mid target_pc : BitVec 64} {s : State} {P : SepProp} {post : State → SepProp → Prop}
-    (hinv : OptCallInv oimg s)
-    (h : SepWP prog (optStop mid) s P
-      (fun sm Pm => OptCallInv oimg sm → SepWP prog target_pc sm Pm post)) :
-    SepWP prog target_pc s P post := by
-  unfold optStop at h
-  exact SepWP.seq_optImage hinv h
-
 private theorem SepWP.done_optStop {prog : Program} {mid : BitVec 64}
     {s : State} {P : SepProp} {post : State → SepProp → Prop}
     (hpc : s.pc = mid) (hrun : s.status = .Running) (hpost : post s P) :
     SepWP prog (optStop mid) s P post := by
   unfold optStop
   exact SepWP.done hpc hrun hpost
-
-/-- Unified parameterized proof of `SessionState::clear_unacknowledged_pre_key_message` (`0x12404`)
-over `oimg : Option Obj.Image` and `hookStack : Nat`. -/
-theorem clear_unacknowledged_pre_key_message_ok_of_dealloc_opt
-    (oimg : Option Obj.Image) (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) (hookStack : Nat)
-    (hstack : hookStack + 32 ≤ 2 ^ 64 := by decide)
-    (hdealloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr clearUpkName +
-        bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::state::session::SessionState>::clear_unacknowledged_pre_key_message"))
-      (specWithOptInv oimg (rustDeallocExternSpecWithStack A hookStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr clearUpkName)
-      (specWithOptInv oimg (clearUpkSpecWithStack A hookStack)) := by
-  unfold specWithOptInv clearUpkSpecWithStack
-  code_fetches libsignalSessionCode CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin b
-    (Rust.withPanics ext) (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionState>::clear_unacknowledged_pre_key_message") (num% (ls_off% "<libsignal_protocol::state::session::SessionState>::clear_unacknowledged_pre_key_message")) 88
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨ss, G, st⟩ := x
-  dsimp only at *
-  have hinv0 : OptCallInv oimg s0 := by assumption
-  subst h
-  rw [sessionStateAt_split_upk, stackAt_clearUpk_opt (by omega) s0.sp]
-  cells_unfold
-  wp_pull_exists
-  refine SepWP.pure_elim ?_
-  rintro ⟨hloc, hrem, hchains, hpending, hreg, hlik_len, hrik_len⟩
-  refine SepWP.weaken_pre
-    (sepConj_mono
-      (optTailVecAt_entails_deallocX A 48 (by decide) (by decide)
-        (s0.readReg64 (Reg.gpr 0#5) + 0xf8#64) G.pending)
-      (sepConj_mono_left
-        (optTailVecAt_entails_deallocX A 32 (by decide) (by decide)
-          (s0.readReg64 (Reg.gpr 0#5) + 0x128#64) G.kyber))) ?_
-  wp_pull_exists
-  rename_i cap2 ptr2 cap1 ptr1
-  refine clearUpk_strengthen_post
-    (sessionStateAt_cleared_upk_intro A (s0.readReg64 (Reg.gpr 0#5)) ptr1 ptr2 G st
-      hloc hrem hchains hreg hlik_len hrik_len) ?_
-  apply SepWP.of_sepWP_optStop hinv0
-  wp_steps
-  apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-  intro hinv_a
-  by_cases h1 : cap1.slt 1#64 = true <;>
-    simp only [h1, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj] at hinv_a ⊢
-  · apply SepWP.of_sepWP_optStop hinv_a
-    wp_steps
-    apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-    intro hinv_b
-    by_cases h2 : cap2.slt 1#64 = true <;>
-      simp only [h2, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj] at hinv_b ⊢
-    · wp_steps
-      wp_done
-    · refine SepWP.focus_pure (by sep_focus) ?_
-      rintro ⟨hpos2, hlt2⟩
-      have hlay2 : LayoutOk cap2.toNat 1 := ⟨hpos2, ⟨0, rfl⟩, by omega⟩
-      apply SepWP.of_sepWP_optStop hinv_b
-      wp_steps
-      apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-      intro hinv_c
-      wp_call hdealloc (ptr2, cap2.toNat, 1)
-      wp_steps
-      wp_done
-  · refine SepWP.focus_pure (by sep_focus) ?_
-    rintro ⟨hpos1, hlt1⟩
-    have hlay1 : LayoutOk cap1.toNat 1 := ⟨hpos1, ⟨0, rfl⟩, by omega⟩
-    apply SepWP.of_sepWP_optStop hinv_a
-    wp_steps
-    apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-    intro hinv_b
-    apply SepWP.of_sepWP_optStop hinv_b
-    wp_call hdealloc (ptr1, cap1.toNat, 1)
-    wp_steps
-    apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-    intro hinv_b'
-    by_cases h2 : cap2.slt 1#64 = true <;>
-      simp only [h2, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj] at hinv_b' ⊢
-    · wp_steps
-      wp_done
-    · refine SepWP.focus_pure (by sep_focus) ?_
-      rintro ⟨hpos2, hlt2⟩
-      have hlay2 : LayoutOk cap2.toNat 1 := ⟨hpos2, ⟨0, rfl⟩, by omega⟩
-      apply SepWP.of_sepWP_optStop hinv_b'
-      wp_steps
-      apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-      intro hinv_c
-      wp_call hdealloc (ptr2, cap2.toNat, 1)
-      rw [hsp_sf]
-      wp_steps
-      wp_done
-
-theorem clear_unacknowledged_pre_key_message_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr clearUpkName)
-      (clearUpkSpec A) :=
-  subroutine_ok_of_optNone
-    (clear_unacknowledged_pre_key_message_ok_of_dealloc_opt none b A ext allocHookStack (by decide)
-      (dealloc_opt_of_base (name := clearUpkName) (k := num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::state::session::SessionState>::clear_unacknowledged_pre_key_message")) hA (by fnoff_eq)))
-
-theorem clear_unacknowledged_pre_key_message_ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State))
-    (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr clearUpkName)
-      (clearUpkSpec A) :=
-  clear_unacknowledged_pre_key_message_ok_ext b A _ (AllocContracts.of_tripleRatchetProgAt_trap b C A abs hA)
-
-/-- `SessionState::clear_unacknowledged_pre_key_message` (`0x12404`) meets `clearUpkSpec A` on `tripleRatchetProgAt`. -/
-theorem clear_unacknowledged_pre_key_message_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State))
-    (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr clearUpkName)
-      (clearUpkSpec A) :=
-  subroutine_ok_kit_of_trTrap (clear_unacknowledged_pre_key_message_ok_trap b C A abs hA)
-
-/-- `SessionState::clear_unacknowledged_pre_key_message` (`0x12404`) meets `(clearUpkSpecX A).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-theorem clear_unacknowledged_pre_key_message_ok_x (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr clearUpkName)
-      ((clearUpkSpecX A).inImage img) :=
-  clear_unacknowledged_pre_key_message_ok_of_dealloc_opt (some img) img.base A ext extHookStack (by decide)
-    (dealloc_opt_of_x (name := clearUpkName) (k := num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "<libsignal_protocol::state::session::SessionState>::clear_unacknowledged_pre_key_message")) hA (by fnoff_eq))
-
-/-! ## Relocatable `[LibsignalPlacement]` Contract (Block `35`) -/
 
 abbrev lsRustDeallocSym : String := "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc"
 
@@ -442,92 +302,6 @@ theorem ls_hook_ok_rustDealloc [LibsignalPlacement] {α : Type} {prog : Program}
   have hmem : lsRustDeallocSym ∈ libsignalSessionExterns := by decide
   obtain ⟨k, hk, hget⟩ := List.getElem_of_mem hmem
   exact ls_hook_ok (k := k) (by simp [hk, hget]) hsat hi hunmut
-
-/-- Block `35`: `SessionState::clear_unacknowledged_pre_key_message` meets `clearUpkSpecWithStack`
-    under `[LibsignalPlacement]` given a `subroutine_ok` contract for `__rust_dealloc`. -/
-theorem clear_unacknowledged_pre_key_message_placed_ok_of_dealloc_opt [LibsignalPlacement]
-    (oimg : Option Obj.Image) (A : RustAlloc)
-    (H : String → Option (State → State)) (hookStack : Nat)
-    (hstack : hookStack + 32 ≤ 2 ^ 64 := by decide)
-    (hdealloc : subroutine_ok ((blkPC_35).rebase (blkPl_35).base H)
-      (lsρ lsRustDeallocSym)
-      (specWithOptInv oimg (rustDeallocExternSpecWithStack A hookStack))) :
-    subroutine_ok ((blkPC_35).rebase (blkPl_35).base H) (blkPl_35).base
-      (specWithOptInv oimg (clearUpkSpecWithStack A hookStack)) := by
-  unfold specWithOptInv clearUpkSpecWithStack
-  wp_init x s0
-  obtain ⟨ss, G, st⟩ := x
-  dsimp only at *
-  have hinv0 : OptCallInv oimg s0 := by assumption
-  subst h
-  rw [sessionStateAt_split_upk, stackAt_clearUpk_opt (by omega) s0.sp]
-  cells_unfold
-  wp_pull_exists
-  refine SepWP.pure_elim ?_
-  rintro ⟨hloc, hrem, hchains, hpending, hreg, hlik_len, hrik_len⟩
-  refine SepWP.weaken_pre
-    (sepConj_mono
-      (optTailVecAt_entails_deallocX A 48 (by decide) (by decide)
-        (s0.readReg64 (Reg.gpr 0#5) + 0xf8#64) G.pending)
-      (sepConj_mono_left
-        (optTailVecAt_entails_deallocX A 32 (by decide) (by decide)
-          (s0.readReg64 (Reg.gpr 0#5) + 0x128#64) G.kyber))) ?_
-  wp_pull_exists
-  rename_i cap2 ptr2 cap1 ptr1
-  refine clearUpk_strengthen_post
-    (sessionStateAt_cleared_upk_intro A (s0.readReg64 (Reg.gpr 0#5)) ptr1 ptr2 G st
-      hloc hrem hchains hreg hlik_len hrik_len) ?_
-  apply SepWP.of_sepWP_optStop hinv0
-  wp_steps
-  apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-  intro hinv_a
-  by_cases h1 : cap1.slt 1#64 = true <;>
-    simp only [h1, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj] at hinv_a ⊢
-  · apply SepWP.of_sepWP_optStop hinv_a
-    wp_steps
-    apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-    intro hinv_b
-    by_cases h2 : cap2.slt 1#64 = true <;>
-      simp only [h2, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj] at hinv_b ⊢
-    · wp_steps
-      wp_done
-    · refine SepWP.focus_pure (by sep_focus) ?_
-      rintro ⟨hpos2, hlt2⟩
-      have hlay2 : LayoutOk cap2.toNat 1 := ⟨hpos2, ⟨0, rfl⟩, by omega⟩
-      apply SepWP.of_sepWP_optStop hinv_b
-      wp_steps
-      apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-      intro hinv_c
-      wp_call hdealloc (ptr2, cap2.toNat, 1)
-      wp_steps
-      wp_done
-  · refine SepWP.focus_pure (by sep_focus) ?_
-    rintro ⟨hpos1, hlt1⟩
-    have hlay1 : LayoutOk cap1.toNat 1 := ⟨hpos1, ⟨0, rfl⟩, by omega⟩
-    apply SepWP.of_sepWP_optStop hinv_a
-    wp_steps
-    apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-    intro hinv_b
-    apply SepWP.of_sepWP_optStop hinv_b
-    wp_call hdealloc (ptr1, cap1.toNat, 1)
-    wp_steps
-    apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-    intro hinv_b'
-    by_cases h2 : cap2.slt 1#64 = true <;>
-      simp only [h2, Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj] at hinv_b' ⊢
-    · wp_steps
-      wp_done
-    · refine SepWP.focus_pure (by sep_focus) ?_
-      rintro ⟨hpos2, hlt2⟩
-      have hlay2 : LayoutOk cap2.toNat 1 := ⟨hpos2, ⟨0, rfl⟩, by omega⟩
-      apply SepWP.of_sepWP_optStop hinv_b'
-      wp_steps
-      apply SepWP.done_optStop (by wp_norm_lhs) (by wp_norm_lhs)
-      intro hinv_c
-      wp_call hdealloc (ptr2, cap2.toNat, 1)
-      rw [hsp_sf]
-      wp_steps
-      wp_done
 
 /-- Block `35`: `SessionState::clear_unacknowledged_pre_key_message` meets `clearUpkSpecWithStack`
     under `[LibsignalPlacement]` given a `subroutine_ok` contract for `__rust_dealloc`

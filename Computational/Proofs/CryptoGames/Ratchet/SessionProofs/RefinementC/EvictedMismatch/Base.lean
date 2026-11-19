@@ -22,7 +22,7 @@ differs from its honest salt (`DEV-LS36`), where the C side may increment `amb` 
 stopping run at `k = some amb`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

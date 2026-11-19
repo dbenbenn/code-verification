@@ -9,22 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureFrozenPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `signal_session::run` Composition
@@ -35,7 +39,7 @@ over `RunArmEnvs`, and proves `run_ok_placed`, `run_ok_frozen_placed`, cross-blo
 envelope-monotonicity / `runSpecAnyPlaced` corollaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -119,7 +123,7 @@ structure RunArmsPlaced [LibsignalPlacement] {M : AllocCostModel}
   recvBad : RunHopRecvBadPlaced CodeOk A lim sEnvs H B S needs resStack
 
 /-- Allocation-event envelope of Arm `R1c` (`init3`) once `readBundleV` succeeds on `(dir, peerV)`. -/
-def RunInit3Env (aEnvs : RunArmEnvs) (g : RunCall) (meV peerV : AddrV)
+@[expose] def RunInit3Env (aEnvs : RunArmEnvs) (g : RunCall) (meV peerV : AddrV)
     (dir : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   match readBundleV (runFiles g.i) dir peerV.device with
   | none => False
@@ -132,7 +136,7 @@ def RunInit3Env (aEnvs : RunArmEnvs) (g : RunCall) (meV peerV : AddrV)
 
 /-- Sequential allocation-event envelope of Arms `R1b` (`init2`) followed by `R1c` (`init3`) once
 `identity-key` is read and decoded. -/
-def RunInit2ChainEnv (aEnvs : RunArmEnvs) (g : RunCall) (meV peerV : AddrV)
+@[expose] def RunInit2ChainEnv (aEnvs : RunArmEnvs) (g : RunCall) (meV peerV : AddrV)
     (dir : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   match bundleFile (runFiles g.i) dir "identity-key" with
   | none => False
@@ -147,7 +151,7 @@ def RunInit2ChainEnv (aEnvs : RunArmEnvs) (g : RunCall) (meV peerV : AddrV)
         SeqEnv (aEnvs.init2 g d1) (RunInit3Env aEnvs g meV peerV dir) evs
 
 /-- Post-dispatch (`R+0x214`) allocation-event envelope at own-address ghost `me : MeAtDispatch`. -/
-def RunArmAtMeEnv (aEnvs : RunArmEnvs) (g : RunCall) (me : MeAtDispatch)
+@[expose] def RunArmAtMeEnv (aEnvs : RunArmEnvs) (g : RunCall) (me : MeAtDispatch)
     (evs : List AllocEvent) : Prop :=
   match g.c with
   | .keygen _ _ => False
@@ -167,7 +171,7 @@ def RunArmAtMeEnv (aEnvs : RunArmEnvs) (g : RunCall) (me : MeAtDispatch)
       else FreeOnlyEvs evs
 
 /-- Post-dispatch (`R+0x214`) allocation-event envelope determined by `Stores::identity.own`. -/
-def RunDispatchEnv (aEnvs : RunArmEnvs) (g : RunCall) (evs : List AllocEvent) : Prop :=
+@[expose] def RunDispatchEnv (aEnvs : RunArmEnvs) (g : RunCall) (evs : List AllocEvent) : Prop :=
   match StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") with
   | .error () => False
   | .ok ownB =>
@@ -181,12 +185,12 @@ def RunDispatchEnv (aEnvs : RunArmEnvs) (g : RunCall) (evs : List AllocEvent) : 
         RunArmAtMeEnv aEnvs g (.some meV meG) evs
 
 /-- Pre-epilogue (`R0` followed by dispatch arm) allocation-event envelope of `signal_session::run`. -/
-def RunCoreEnv (aEnvs : RunArmEnvs) (g : RunCall) (evs : List AllocEvent) : Prop :=
+@[expose] def RunCoreEnv (aEnvs : RunArmEnvs) (g : RunCall) (evs : List AllocEvent) : Prop :=
   SeqEnv (aEnvs.pre g) (RunDispatchEnv aEnvs g) evs
 
 /-- Exact end-to-end allocation-event envelope of `signal_session::run` (Block `579`), composing
 `RunCoreEnv aEnvs g` with the pure-deallocation epilogue (`FreeOnlyEvs`) of Arm `J`. -/
-def RunEnv (aEnvs : RunArmEnvs) (g : RunCall) (evs : List AllocEvent) : Prop :=
+@[expose] def RunEnv (aEnvs : RunArmEnvs) (g : RunCall) (evs : List AllocEvent) : Prop :=
   SeqEnv (RunCoreEnv aEnvs g) FreeOnlyEvs evs
 
 /-! ## Section 2: Internal Seam Projection Lemmas -/
@@ -502,55 +506,6 @@ theorem run_ok_placed_at_block [LibsignalPlacement] {M : AllocCostModel}
     dsimp only [withLsRoCl] at hpost
     rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
     exact hpost.2
-
-/-- Envelope monotonicity of `runSpecPlaced`: any coarser envelope `Env₂` containing `Env₁`
-(`∀ g evs, Env₁ g evs → Env₂ g evs`) inherits `subroutine_ok` (`FitsEnv` is contravariant in
-`pre` and `Env` is covariant in `post`). -/
-theorem subroutine_ok_runSpecPlaced_mono_env [LibsignalPlacement] {M : AllocCostModel}
-    {P : Program} {entry : BitVec 64} {CodeOk : Memory → Prop}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Env₁ Env₂ : RunCall → List AllocEvent → Prop}
-    {uuidParse : CryptoVerification.LibsignalTripleRatchetRepr.UuidParser}
-    {Run : Inputs → RunAnswer → Prop} {wrOk : List (BitVec 8) → Prop} {resStack : Nat}
-    (hsub : ∀ g evs, Env₁ g evs → Env₂ g evs)
-    (hok : subroutine_ok P entry (runSpecPlaced CodeOk A lim Env₁ uuidParse Run wrOk resStack)) :
-    subroutine_ok P entry (runSpecPlaced CodeOk A lim Env₂ uuidParse Run wrOk resStack) := by
-  refine subroutine_ok_mono hok ?_ ?_ (fun _ _ _ _ hp => hp)
-  · rintro ⟨g, st⟩ R s0 hpre
-    simp only [runSpecPlaced, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨⟨hc, hr, hp, hx0, hx1, hx2, hx3, hx4, hfs, hout, hspb, hfits, hlr⟩, hmem⟩
-    exact ⟨⟨hc, hr, hp, hx0, hx1, hx2, hx3, hx4, hfs, hout, hspb, hfits.mono (hsub g), hlr⟩, hmem⟩
-  · rintro ⟨g, st⟩ R s0 sf hpost
-    dsimp only [runSpecPlaced] at hpost ⊢
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
-    rcases hpost with ⟨evs, hpost⟩
-    refine ⟨evs, ?_⟩
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    exact ⟨⟨hsub g evs hpost.1.1, hpost.1.2⟩, hpost.2⟩
-
-/-- Specialize `runSpecPlaced` to the envelope-erased `runSpecAnyPlaced` whenever `Env g` fits at
-every `(g, st)`. -/
-theorem subroutine_ok_runSpecAnyPlaced_of_placed [LibsignalPlacement] {M : AllocCostModel}
-    {P : Program} {entry : BitVec 64} {CodeOk : Memory → Prop}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Env : RunCall → List AllocEvent → Prop}
-    {uuidParse : CryptoVerification.LibsignalTripleRatchetRepr.UuidParser}
-    {Run : Inputs → RunAnswer → Prop} {wrOk : List (BitVec 8) → Prop} {resStack : Nat}
-    (hfits : ∀ g st, FitsEnv M lim st (Env g))
-    (hok : subroutine_ok P entry (runSpecPlaced CodeOk A lim Env uuidParse Run wrOk resStack)) :
-    subroutine_ok P entry (runSpecAnyPlaced CodeOk A lim uuidParse Run wrOk resStack) := by
-  refine subroutine_ok_mono hok ?_ ?_ (fun _ _ _ _ hp => hp)
-  · rintro ⟨g, st⟩ R s0 hpre
-    simp only [runSpecAnyPlaced, runSpecPlaced, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨⟨hc, hr, hp, hx0, hx1, hx2, hx3, hx4, hfs, hout, hspb, hlr⟩, hmem⟩
-    exact ⟨⟨hc, hr, hp, hx0, hx1, hx2, hx3, hx4, hfs, hout, hspb, hfits g st, hlr⟩, hmem⟩
-  · rintro ⟨g, st⟩ R s0 sf hpost
-    dsimp only [runSpecPlaced, runSpecAnyPlaced] at hpost ⊢
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
-    rcases hpost with ⟨evs, hpost⟩
-    refine ⟨M.stepEvents evs st, ?_⟩
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    exact ⟨hpost.1.2, hpost.2⟩
 
 
 /-! ## Section 4: `LibsignalFrozen` / `[LibsignalFullPlacement]` Composition -/

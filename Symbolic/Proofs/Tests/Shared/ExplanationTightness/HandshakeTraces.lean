@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession
+public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.ALaCarte.Basic
 import DY.ALaCarte.Ordering
@@ -35,18 +35,18 @@ import Symbolic.Specifications.Model.EquationalTheory.Spqr
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import Symbolic.Proofs.Tests.Shared.Composed.PrunedSpecLemmas
 import Symbolic.DYBridge.DY.ALaCarte.Basic
-import Symbolic.DYBridge.DY.Trace.Basic
+public import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Trace.BaseAttackerKnowledge
 import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
-import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -87,7 +87,7 @@ private theorem snoc_le (tr : ExecTrace) (entry : ExecTrace.Entry) : tr ≤ Trac
   Trace.le.extend tr tr entry (Trace.le_refl tr)
 
 /-- Collects all events of type `E` logged on `tr` (newest first). -/
-def eventsOn (E : Type) [ExecTraceTypes.Has (ProtocolEvent.ExecEntryT E)] :
+@[expose] def eventsOn (E : Type) [ExecTraceTypes.Has (ProtocolEvent.ExecEntryT E)] :
     ExecTrace → List E
   | .nil => []
   | .snoc tr entry =>
@@ -224,14 +224,14 @@ theorem siPremise_of_noCompromise {tr : ExecTrace} (hno : NoCompromise tr)
 /-! ## Witness Traces -/
 
 /-- `t8` followed by `exposeSpqr "alice" 30` on `stA0` (`ExposedSpqr` at 54, network at 55). -/
-def trExpSpqrA : ExecTrace := exposeSpqrTr t8 "alice" stA0
+@[expose] def trExpSpqrA : ExecTrace := exposeSpqrTr t8 "alice" stA0
 
 /-- `t8` followed by `exposeSpqr "bob" 53` on `stB1` (`ExposedSpqr` at 54, network at 55). -/
-def trExpSpqrB : ExecTrace := exposeSpqrTr t8 "bob" stB1
+@[expose] def trExpSpqrB : ExecTrace := exposeSpqrTr t8 "bob" stB1
 
 /-- `t8` followed by `exposeKey "alice" 30 (.ckr (dhPk spkB))` on `stA0` (`ExposedCKr` at 54,
 network at 55). -/
-def trExpCkrA : ExecTrace := exposeCkrTr t8 "alice" stA0 cA0
+@[expose] def trExpCkrA : ExecTrace := exposeCkrTr t8 "alice" stA0 cA0
 
 abbrev trPqr : ExecTrace := trExpSpqrA
 abbrev trPqrB : ExecTrace := trExpSpqrB

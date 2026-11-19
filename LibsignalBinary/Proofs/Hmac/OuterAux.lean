@@ -21,7 +21,7 @@ Pure lemmas relating `shaStateBytes`, `readShaState`, `chunks64`, and 32-bit byt
 to big-endian SHA-256 digest words.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification
 namespace LibsignalHmac

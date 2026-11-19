@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3F
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3B
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3F -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3B -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
 import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.EvalDist.Monad.Basic
@@ -23,7 +23,7 @@ Proves the boundary equivalences for `authRkCutoffExp` (`0` vs `.g3_5` and `S.N_
 `.g3_6`) together with `rootRoCache` length bounds and `cacheHasRk` monotonicity.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -38,7 +38,7 @@ namespace SignalPqxdh.Security.AuthSubHops1to3
 
 /-! ## Cutoff boundary equivalences -/
 
-def normAuthFixed {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
+@[expose] def normAuthFixed {S : Setup} (hst : AuthHybridStateFixed S) : AuthHybridStateFixed S :=
   { toAuthHybridState := hst.toAuthHybridState, recvCount := hst.recvCount }
 
 @[simp] theorem normAuthFixed_empty (S : Setup) (secb : Bool) :
@@ -73,7 +73,7 @@ theorem evalDist_sampleDRKey96_bind_eq (F : DRKey → ProbComp Bool) :
   refine OracleComp.evalDist_bind_congr_of_support sampleBytes32 _ _ fun ck _ => ?_
   rw [OracleComp.evalDist_bind_bind_swap]
 
-def InvRkIdealSid {S : Setup} (hst : AuthHybridState S) : Prop :=
+@[expose] def InvRkIdealSid {S : Setup} (hst : AuthHybridState S) : Prop :=
   ∀ s ∈ hst.idealSessions, sessionSlotIndex s.sid < S.N_sess_tot
 
 theorem invRkIdealSid_empty (S : Setup) (secb : Bool) :
@@ -127,7 +127,7 @@ private theorem forall_support_pure {α : Type} (x : α) (P : α → Prop) (h : 
   rw [support_pure, Set.mem_singleton_iff] at hb
   exact hb ▸ h
 
-def InvRkIdealSidAt {S : Setup} (mx : ProbComp (AuthResponse × AuthHybridState S)) : Prop :=
+@[expose] def InvRkIdealSidAt {S : Setup} (mx : ProbComp (AuthResponse × AuthHybridState S)) : Prop :=
   ∀ x ∈ support mx, InvRkIdealSid x.2
 
 theorem InvRkIdealSidAt.pure {S : Setup} {x : AuthResponse × AuthHybridState S}
@@ -720,12 +720,12 @@ theorem authRkCutoffAdv_end_eq_g3_6 (S : Setup) (P : Primitives)
 
 /-! ## `rootRoCache` length bounds -/
 
-def isAuthSendQueryB {S : Setup} : (Nat ⊕ AuthQuery S) → Bool
+@[expose] def isAuthSendQueryB {S : Setup} : (Nat ⊕ AuthQuery S) → Bool
   | .inr (.sendOPK _ _ _ _ _)   => true
   | .inr (.sendNoOPK _ _ _ _ _) => true
   | _                           => false
 
-def isAuthRoRootQueryB {S : Setup} : (Nat ⊕ AuthQuery S) → Bool
+@[expose] def isAuthRoRootQueryB {S : Setup} : (Nat ⊕ AuthQuery S) → Bool
   | .inr (.roRootQuery _ _) => true
   | _                       => false
 
@@ -741,7 +741,7 @@ def isAuthRoRootQueryB {S : Setup} : (Nat ⊕ AuthQuery S) → Bool
   · simp [isAuthRoRootQueryB, isAuthRoRootQuery]
   · cases q <;> simp [isAuthRoRootQueryB, isAuthRoRootQuery]
 
-def AuthRootRoCacheLenLe {S : Setup} (hst : AuthHybridStateFixed S) (k : Nat)
+@[expose] def AuthRootRoCacheLenLe {S : Setup} (hst : AuthHybridStateFixed S) (k : Nat)
     (mx : ProbComp (AuthResponse × AuthHybridStateFixed S)) : Prop :=
   ∀ y ∈ support mx,
     y.2.toAuthHybridState.base.rootRoCache.length ≤
@@ -907,7 +907,7 @@ theorem authCkOtherStep_roRootQuery_eq {S : Setup} (P : Primitives)
   simp [StateT.run_bind, StateT.run_get, StateT.run_monadLift, monadLift_self,
     StateT.run_set, pure_bind]
 
-def IsAuthOtherNonRoRoot {S : Setup} (q : AuthQuery S) : Prop :=
+@[expose] def IsAuthOtherNonRoRoot {S : Setup} (q : AuthQuery S) : Prop :=
   (∀ u i bundle m0 m1, q ≠ .sendOPK u i bundle m0 m1) ∧
   (∀ u i bundle m0 m1, q ≠ .sendNoOPK u i bundle m0 m1) ∧
   (∀ k j o msg, q ≠ .recvOPK k j o msg) ∧

@@ -14,6 +14,50 @@ public import Computational.Proofs.E2E.Dsl.KindRedHaltedEval -- proof-setup: all
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitness -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedStartSessionSim -- proof-setup: allow-public-import
 public import Computational.Proofs.SpecLemmas.Session.KemFailTrackEpochClamp -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.ComposedKeyIndHop
+import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.E2E.Dsl.LocalSessionStep
+import Computational.Proofs.E2E.Dsl.LocalSessionStepAux
+import Computational.Proofs.E2E.Dsl.M3Subprograms
+import Computational.Proofs.E2E.Dsl.PqxdhSim
+import Computational.Proofs.E2E.Dsl.PqxdhSimBranches
+import Computational.Proofs.E2E.Dsl.StartAndExtSm
+import Computational.Proofs.E2E.TagSync1KeyReal
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.SignalPqxdh.Security.SigHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHopC
+import Mathlib.Data.List.Dedup
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Halted Multi-Session Handshake Reduction Instantiation
@@ -224,27 +268,6 @@ structure ValidHaltedKindSubprograms
         (subs.finishKindE qStart σE bOutE).eval ρ =
           (bOutE.eval ρ == σH.1.b || bhE2EDrvWon σH.1 σH.1.b)
 
-theorem kindRedHalted_gRedBounded_of_valid
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey} {SessH : Type}
-    {subs : HaltedKindSubprograms S (Pt := Pt) ℓ P C K decT encT SessH}
-    {T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey SessH}
-    {TrackInv : ℕ → SessH → Prop}
-    {b : SignalPqxdh.QueryBudget} {qStart qDR qInst qep : ℕ}
-    (hValid : ValidHaltedKindSubprograms subs T TrackInv b qStart qInst qep) :
-    let qTot := b.q_total + qStart + qDR
-    GRedBounded (kindRedHalted subs b qStart qInst qep)
-      (fun _ => 1) (fun _ => 0) qTot (2 * qTot) (bhE2ECostBudget S b qStart qDR qInst qep ℓ) := by
-  dsimp only
-  rcases hValid.sizeBound_le qDR with ⟨C₀, C₁, hC₀, hC₁, hSz⟩
-  exact kindRedHalted_gRedBounded subs b qStart qInst qep (b.q_total + qStart + qDR)
-    (bhE2ECostBudget S b qStart qDR qInst qep ℓ)
-    (totalCost_le_bhE2ECostBudget_of_step_endpoint S b qStart qDR qInst qep ℓ
-      (b.q_total + qStart + qDR) _ _ (le_refl _) hValid.endpointCost_le hValid.stepCost_le)
-    (kindRedHalted_size_le_budget subs b qStart qInst qep
-      (bhE2ECostBudget S b qStart qDR qInst qep ℓ) C₀ C₁ hC₀ hC₁ hSz)
-
 theorem kindRedHalted_queryBounded_of_inst_gen
     {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
     {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
@@ -259,21 +282,6 @@ theorem kindRedHalted_queryBounded_of_inst_gen
       (keyIndReductionBudget S qStart b) :=
   Computational.Proofs.E2E.Dsl.KindRedHalted.kindRedHalted_queryBounded_inst
     subs b qStart (∑ k ∈ Finset.range qStart, qs k) qInst qep B_A hB.toKindTargetAdvBounded
-
-theorem kindRedHalted_queryBounded_of_inst
-    {S : SignalPqxdh.Setup} {Pt : Type} {ℓ : ℕ}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey} {SessH : Type}
-    (subs : HaltedKindSubprograms S (Pt := Pt) ℓ P C K decT encT SessH)
-    (b : SignalPqxdh.QueryBudget) (qStart qep : ℕ) (qs : ℕ → ℕ)
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (hB : HaltedTargetAdvPerInstanceBounded B_A b qStart qs) :
-    SignalPqxdh.QueryBounded
-      (⟨(kindRedHalted subs b qStart (∑ k ∈ Finset.range qStart, qs k) qep).eval
-        (fun _ => B_A) ()⟩ : SignalPqxdh.KeyIndAdversary S)
-      (keyIndReductionBudget S qStart b) :=
-  kindRedHalted_queryBounded_of_inst_gen subs b qStart (∑ k ∈ Finset.range qStart, qs k) qep qs
-    B_A hB
 
 /-! ## `OneStageAtomicSimSpec` instantiation and `.eval` equivalence -/
 
@@ -985,28 +993,6 @@ theorem mkKindSubprogramsHaltedClamped_sizeBound_le
     HaltedStartSessionSim.prepStartSpkClampedSize, HaltedStartSessionSim.drvBitSize,
     HaltedStartSessionSim.finishStartSpkHaltedClampedSize]
   omega
-
-/-- Unconditional `GRedBounded` under `bhE2ECostBudget` for `kindRedHalted` with `mkKindSubprogramsHaltedClamped`. -/
-theorem kindRedHalted_clamped_gRedBounded
-    {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
-    {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
-    {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {TrackInv : ℕ → KemFailSessionTrack C.F Bytes → Prop}
-    (smStep : HaltedLocalSmKindStepInst S ℓ Pt P C K decT encT TrackInv)
-    (b : SignalPqxdh.QueryBudget) (qStart qDR qInst qep : ℕ) :
-    let qTot := b.q_total + qStart + qDR
-    GRedBounded (kindRedHalted (mkKindSubprogramsHaltedClamped smStep b) b qStart qInst qep)
-      (fun _ => 1) (fun _ => 0) qTot (2 * qTot) (bhE2ECostBudget S b qStart qDR qInst qep ℓ) := by
-  dsimp only
-  exact kindRedHalted_gRedBounded (mkKindSubprogramsHaltedClamped smStep b) b qStart qInst qep
-    (b.q_total + qStart + qDR) (bhE2ECostBudget S b qStart qDR qInst qep ℓ)
-    (totalCost_le_bhE2ECostBudget_of_step_endpoint S b qStart qDR qInst qep ℓ
-      (b.q_total + qStart + qDR) _ _ (le_refl _)
-      (mkKindSubprogramsHaltedClamped_endpointCost_le smStep b qStart qInst qep)
-      (mkKindSubprogramsHaltedClamped_stepCost_le smStep b qStart qInst qep))
-    (kindRedHalted_size_le_budget (mkKindSubprogramsHaltedClamped smStep b) b qStart qInst qep
-      (bhE2ECostBudget S b qStart qDR qInst qep ℓ) 510000 530 (by omega) (by omega)
-      (mkKindSubprogramsHaltedClamped_sizeBound_le smStep b qStart qDR qInst qep))
 
 end ClampedHandshake
 

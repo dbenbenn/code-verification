@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
-public import Computational.Proofs.E2E.SignedAdv
+public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SignedAdv -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Final
 import Computational.Proofs.E2E.ComposedPrefixHelpers
 
@@ -21,7 +21,7 @@ Bounds the bias of a prefix-indexed mixture of `fromAEADPRG` FS-AEAD games (`the
 by single averaged chain-PRG reductions per hop plus `multiOtBranch` mixture distances.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal CryptoGames CryptoGames.Lazy
 open CryptoGames.FSAEAD CryptoGames.FSAEAD.Thm5 CryptoGames.FSAEAD.Thm5.Ends

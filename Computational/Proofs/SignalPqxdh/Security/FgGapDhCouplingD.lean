@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingC
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingC -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 
@@ -21,7 +21,7 @@ reduces `keyIndAdvG3` to a `RelCoupled` coupling of lazy tagged runs, and define
 `LazyTagCacheAgree` and `lazyStop`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -767,86 +767,6 @@ theorem evalDist_step_relEagerTag {S : Setup} (testReal : Bool) (P : Primitives)
   | acceptNoOPK k j l hdr =>
     exact evalDist_step_relEagerTag_acceptNoOPK testReal P k j l hdr adv lst hRel k1 k2 hk
 
-theorem evalDist_simulateQ_testImpl_eq_tagImpl_true_true {S : Setup} {α : Type}
-    (testReal : Bool) (P : Primitives)
-    (obs1 : α × KeyIndAdvCutoffState S → ProbComp Bool)
-    (obs2 : α × KeyIndLazyState S → ProbComp Bool)
-    (hObs : ∀ a s1 s2, RelEagerTag s1 s2 → 𝒟[obs1 (a, s1)] = 𝒟[obs2 (a, s2)])
-    (oa : OracleComp (unifSpec + keyIndSpec S) α)
-    (adv : KeyIndAdvCutoffState S) (lst : KeyIndLazyState S)
-    (hRel : RelEagerTag adv lst) :
-    let full1 := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (KeyIndAdvCutoffState S)
-      ProbComp) +
-      pqxdhKeyIndAdvTestImpl testReal S P
-    let full2 := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (KeyIndLazyState S)
-      ProbComp) +
-      pqxdhKeyIndAdvTagImpl true true testReal S P
-    𝒟[(_root_.simulateQ full1 oa).run adv >>= obs1] =
-      𝒟[(_root_.simulateQ full2 oa).run lst >>= obs2] :=
-  CacheLens.evalDist_simulateQ_eq_of_rel RelEagerTag
-    (pqxdhKeyIndAdvTestImpl testReal S P)
-    (pqxdhKeyIndAdvTagImpl true true testReal S P)
-    (fun q s1 s2 hR k1 k2 hk => evalDist_step_relEagerTag testReal P q s1 s2 hR k1 k2 hk)
-    obs1 obs2 hObs oa adv lst hRel
-
-theorem evalDist_simulateQ_testImpl_finalizeKeyIndG3_eq_tagImpl_false_false {S : Setup}
-    (testReal : Bool) (P : Primitives) (secb : Bool)
-    (oa : OracleComp (unifSpec + keyIndSpec S) Bool) :
-    let initTrue : KeyIndAdvCutoffState S :=
-      { shCr := { base := KeyIndState.empty S true }, advRoLog := [] }
-    let fullTest := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (KeyIndAdvCutoffState S)
-      ProbComp) +
-      pqxdhKeyIndAdvTestImpl testReal S P
-    let full00 := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (KeyIndLazyState S)
-      ProbComp) +
-      pqxdhKeyIndAdvTagImpl false false testReal S P
-    𝒟[(_root_.simulateQ fullTest oa).run initTrue >>= fun p => finalizeKeyIndG3 S P secb p.1
-      p.2.shCr] =
-      𝒟[(_root_.simulateQ full00 oa).run (KeyIndLazyState.empty S) >>=
-        fun p => finalizeKeyIndG3 S P secb p.1 p.2.adv.shCr] := by
-  intro initTrue fullTest full00
-  rw [evalDist_simulateQ_testImpl_eq_tagImpl_true_true testReal P
-    (fun p => finalizeKeyIndG3 S P secb p.1 p.2.shCr)
-    (fun p => finalizeKeyIndG3 S P secb p.1 p.2.adv.shCr)
-    (fun a s1 s2 ⟨hEq, _⟩ => by
-      subst hEq
-      dsimp only [resolveLazyAdv]
-      rw [finalizeKeyIndG3_resolveLazyShCr])
-    oa initTrue (KeyIndLazyState.empty S) (relEagerTag_empty S)]
-  exact evalDist_simulateQ_pqxdhKeyIndAdvTagImpl_true_true_eq_false_false testReal P oa
-    (isInvariant_randLens_finalizeKeyIndG3 S P secb)
-    (isInvariant_roLens_finalizeKeyIndG3 S P secb)
-    (KeyIndLazyState.empty S)
-
-theorem evalDist_simulateQ_testImpl_badKeyIndFgAny_eq_tagImpl_false_false {S : Setup}
-    (testReal : Bool) (P : Primitives) (maxLen : ℕ)
-    (oa : OracleComp (unifSpec + keyIndSpec S) Bool) :
-    let initTrue : KeyIndAdvCutoffState S :=
-      { shCr := { base := KeyIndState.empty S true }, advRoLog := [] }
-    let fullTest := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (KeyIndAdvCutoffState S)
-      ProbComp) +
-      pqxdhKeyIndAdvTestImpl testReal S P
-    let full00 := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (KeyIndLazyState S)
-      ProbComp) +
-      pqxdhKeyIndAdvTagImpl false false testReal S P
-    𝒟[(_root_.simulateQ fullTest oa).run initTrue >>=
-        fun p => pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog)] =
-      𝒟[(_root_.simulateQ full00 oa).run (KeyIndLazyState.empty S) >>=
-        fun p => pure (badKeyIndFgAny4 P maxLen p.2.adv.shCr.base p.2.adv.advRoLog)] := by
-  intro initTrue fullTest full00
-  rw [evalDist_simulateQ_testImpl_eq_tagImpl_true_true testReal P
-    (fun p => pure (badKeyIndFgAny4 P maxLen p.2.shCr.base p.2.advRoLog))
-    (fun p => pure (badKeyIndFgAny4 P maxLen p.2.adv.shCr.base p.2.adv.advRoLog))
-    (fun a s1 s2 ⟨hEq, _⟩ => by
-      subst hEq
-      dsimp only [resolveLazyAdv, resolveLazyShCr]
-      rw [badKeyIndFgAny_resolveLazyBase])
-    oa initTrue (KeyIndLazyState.empty S) (relEagerTag_empty S)]
-  exact evalDist_simulateQ_pqxdhKeyIndAdvTagImpl_true_true_eq_false_false testReal P oa
-    (isInvariant_randLens_badKeyIndFgAny S P maxLen)
-    (isInvariant_roLens_badKeyIndFgAny S P maxLen)
-    (KeyIndLazyState.empty S)
-
 theorem RelCoupled.and_support {α β : Type} {R : α → β → Prop}
     {m5 : ProbComp α} {m6 : ProbComp β}
     (h : RelCoupled R m5 m6) :
@@ -898,7 +818,7 @@ theorem RelCoupled.and_support {α β : Type} {R : α → β → Prop}
       · simp only [w5', hx5, ↓reduceIte, le_top]
     · simp only [w6', hx6, ↓reduceIte, zero_le]
 
-def lookupCache {K : Type} [BEq K] (c : List (K × DRKey)) (k : K) : Option DRKey :=
+@[expose] def lookupCache {K : Type} [BEq K] (c : List (K × DRKey)) (k : K) : Option DRKey :=
   (c.find? (fun (x, _) => x == k)).map Prod.snd
 
 @[simp]
@@ -963,21 +883,21 @@ theorem relCoupled_evalCache_of_lookup_eq {K : Type} [BEq K] [LawfulBEq K]
 
 /-- Whether `sec` can appear in `ro5` (`testReal = false` lazy `roCache`):
     either in `adv.advRoLog`, or as `drKeyReal.rootKey` of an unfresh or revealed session. -/
-def ro5KeyInView {S : Setup} (adv : KeyIndAdvCutoffState S) (sec : Bytes) : Bool :=
+@[expose] def ro5KeyInView {S : Setup} (adv : KeyIndAdvCutoffState S) (sec : Bytes) : Bool :=
   adv.advRoLog.contains sec ||
   adv.shCr.base.sessions.any (fun s => (!s.fresh || s.revealed) && (s.drKeyReal.rootKey == sec)) ||
   adv.shCr.base.respSessions.any (fun r => (!r.senderHonest || r.revealed) && (r.drKeyReal.rootKey
     == sec))
 
-def testedRealKeyInView {S : Setup} (adv : KeyIndAdvCutoffState S) (sec : Bytes) : Bool :=
+@[expose] def testedRealKeyInView {S : Setup} (adv : KeyIndAdvCutoffState S) (sec : Bytes) : Bool :=
   adv.shCr.base.sessions.any (fun s => s.tested && (s.drKeyReal.rootKey == sec)) ||
   adv.shCr.base.respSessions.any (fun r => r.tested && (r.drKeyReal.rootKey == sec))
 
-def testedRandKeyInView {S : Setup} (adv : KeyIndAdvCutoffState S) (kRand : Bytes) : Bool :=
+@[expose] def testedRandKeyInView {S : Setup} (adv : KeyIndAdvCutoffState S) (kRand : Bytes) : Bool :=
   adv.shCr.base.sessions.any (fun s => s.tested && (s.drKeyRand.rootKey == kRand)) ||
   adv.shCr.base.respSessions.any (fun r => r.tested && (r.drKeyRand.rootKey == kRand))
 
-def testedPairInView {S : Setup} (adv : KeyIndAdvCutoffState S) (kReal kRand : Bytes) : Bool :=
+@[expose] def testedPairInView {S : Setup} (adv : KeyIndAdvCutoffState S) (kReal kRand : Bytes) : Bool :=
   adv.shCr.base.sessions.any (fun s =>
     s.tested && (s.drKeyReal.rootKey == kReal) && (s.drKeyRand.rootKey == kRand)) ||
   adv.shCr.base.respSessions.any (fun r =>
@@ -985,7 +905,7 @@ def testedPairInView {S : Setup} (adv : KeyIndAdvCutoffState S) (kReal kRand : B
 
 /-- Sticky stop predicate firing when a tested session's `kReal` enters `ro5KeyInView` or two
     tested sessions conflict on `kReal`/`kRand` or `sid`. -/
-def lazyStop {S : Setup} (adv : KeyIndAdvCutoffState S) : Bool :=
+@[expose] def lazyStop {S : Setup} (adv : KeyIndAdvCutoffState S) : Bool :=
   adv.shCr.base.sessions.any (fun s => s.tested && ro5KeyInView adv s.drKeyReal.rootKey) ||
   adv.shCr.base.respSessions.any (fun r => r.tested && ro5KeyInView adv r.drKeyReal.rootKey) ||
   adv.shCr.base.sessions.any (fun s1 => s1.tested &&
@@ -1034,7 +954,7 @@ theorem roCache_withAdvRoCache {S : Setup} (c : List (Bytes × DRKey))
 
 /-- Cache agreement invariant between `lst5` (`testReal = false`) and `lst6` (`testReal = true`)
     in `pqxdhKeyIndAdvTagImpl false false`. -/
-def LazyTagCacheAgree {S : Setup} (lst5 lst6 : KeyIndLazyState S) : Prop :=
+@[expose] def LazyTagCacheAgree {S : Setup} (lst5 lst6 : KeyIndLazyState S) : Prop :=
   getLazyView lst5 = getLazyView lst6 ∧
   (∀ sec, ro5KeyInView lst5.adv sec = false →
     lookupCache lst5.adv.shCr.base.roCache sec = none) ∧

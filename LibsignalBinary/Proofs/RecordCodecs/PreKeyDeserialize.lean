@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeLoop
+public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeLoop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeFields
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
 
@@ -23,7 +23,7 @@ Block `65`): decodes `PreKeyRecordStructure` (`id`, `public_key`, `private_key`)
 `DecodeError` to `InvalidProtobufEncoding` after freeing partial `Vec<u8>` buffers.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.RecordCodecsBinary.PreKeyDeserialize
 
@@ -31,62 +31,6 @@ open Arm64 ProofLib CryptoGames.LibsignalSession CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalTripleRatchet.Wire
 open CryptoVerification.RecordCodecsBinary.PreKeyDeserialize.Helpers
-
-/-- `PreKeyRecord::deserialize` meets `preKeyDeserializeSpec` at any 4 KiB-aligned image base,
-given the 4 prost/dealloc hooks (`PreKeyDeserializeHooks`) and the proved callees (`DecodeDeps`). -/
-theorem preKeyDeserialize_ok_of_hooks {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : PreKeyDeserializeHooks img A ext) (d : DecodeDeps img A ext)
-    (hb : (img.base &&& 0xfff#64) = 0#64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName)
-      (preKeyDeserializeSpec A img) := by
-  let _ := hb
-  refine subroutine_ok.of_codeLoaded fun x R s0 hpc hrun hpre hsp hL => ?_
-  dsimp only [preKeyDeserializeSpec, Spec.inImage] at hpre
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, hsym⟩, ⟨hx0, hx1_nat, hlt, hx8⟩, hmem⟩
-  have hx1 : s0.readReg64 .x1 = BitVec.ofNat 64 x.bytes.length := by
-    rw [← hx1_nat, BitVec.ofNat_toNat, BitVec.setWidth_eq]
-  have hmem' : s0.mem ⊨
-      ((x.bytesA ↦ₛ x.bytes) ∗ memRegion x.ret 56 ∗
-        stackAt s0.sp smallRootStack ∗ A.pool) ∗ R := by
-    ac_nf at hmem ⊢
-  have h1 := prologue_000_to_224_wp hC d (x := x) hlt hpc hrun hsp hF hsym hx0 hx1 hx8
-  have hfull : Wire.SepWPp (tripleRatchetProgAtExt img.base ext)
-      (s0.readReg64 .x30) s0
-      ((x.bytesA ↦ₛ x.bytes) ∗ memRegion x.ret 56 ∗
-        stackAt s0.sp smallRootStack ∗ A.pool)
-      (fun sf Pf =>
-        sf.sp = s0.sp ∧ (calleeSavedVRegs sf = calleeSavedVRegs s0 → CalleeSavedPreserved s0 sf) ∧
-        (Pf ⊢ (preKeyDeserializeSpec A img).post x s0 sf))
-      (tryFromQp s0) := by
-    refine Wire.SepWPp.bind h1 ?_
-    intro sm Pm hpcm hrunm ⟨hstm, hentm⟩
-    exact Wire.SepWPp.mono_pre hentm
-      (epilogue_224_wp (A := A) (x := x) hstm hpcm hrunm)
-  obtain ⟨sf, hsteps, hex⟩ := hfull R hmem' hL
-  refine reaches_outcome_steps hsteps (reaches_outcome.of_outcome ?_)
-  rcases hex with ⟨hpc_f, hrun_f, Pf, hmf, ⟨hsp_f, hcs_f, hent_f⟩, hv_f⟩ | ⟨hpan, Pf, hmf, htr_f⟩ | ⟨_, hoom⟩
-  · exact Or.inl ⟨⟨hpc_f, hsp_f, hrun_f⟩, ⟨hsp_f, hcs_f hv_f⟩,
-      Satisfies.mono (sepConj_mono_left hent_f) hmf⟩
-  · exact Or.inr (Or.inl ⟨hpan, htr_f R hmf⟩)
-  · exact (allowPanic_not_exited hoom).elim
-
-/-- `PreKeyRecord::deserialize` meets `preKeyDeserializeSpec` at any 4 KiB-aligned image base,
-given the hooks (`Stage2ContractsX`) and the proved callees (`DecodeDeps`). -/
-theorem preKeyDeserialize_ok_of_deps {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext) (d : DecodeDeps img A ext)
-    (hb : (img.base &&& 0xfff#64) = 0#64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr preKeyDeserializeName)
-      (preKeyDeserializeSpec A img) :=
-  preKeyDeserialize_ok_of_hooks (PreKeyDeserializeHooks.of_stage2 hC) d hb
-
-/-! ## Relocatable `[LibsignalPlacement]` Merge, Loop, Prologue, and Root Proof (Block `65`) -/
 
 namespace Helpers
 section Placed

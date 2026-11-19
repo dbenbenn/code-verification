@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize
+public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.DecoderCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
@@ -21,8 +21,11 @@ import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecvEqual
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopSend
 import LibsignalBinary.Proofs.SpqrV1Sync.TopSize
 import ProofLib.BV.WidthNorm
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -97,12 +100,12 @@ structure TopStateTightW (F : ShaCompress) (K : MlKem) (bytes authKey : Bytes)
   hcp : ValidStateChainParams bytes
 
 /-- Existentially packaged tight SPQR V1 serialized state (`V1`, always non-empty). -/
-def TopStateTight (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Prop :=
+@[expose] def TopStateTight (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Prop :=
   ∃ authKey dir secret st sendEp sendCtr recvSet vn? ch? chE,
     TopStateTightW F K bytes authKey dir secret st sendEp sendCtr recvSet vn? ch? chE
 
 /-- Either empty (`V0`) or a `TopStateTight` V1 state. -/
-def SpqrStateTight640 (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Prop :=
+@[expose] def SpqrStateTight640 (F : ShaCompress) (K : MlKem) (bytes : Bytes) : Prop :=
   bytes = [] ∨ TopStateTight F K bytes
 
 theorem TopStateTight.toSpqrStateTight640 {F : ShaCompress} {K : MlKem} {bytes : Bytes}

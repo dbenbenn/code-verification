@@ -10,9 +10,27 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1Placed
+import LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1Placed
 public import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.Fine.CreditInst
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Whole-Program `FitsEnv` to Never-OOM and Strict Placed CLI Composition
@@ -23,7 +41,7 @@ all PQXDH/SPQR CLI subcommands, both for parametric `CliRunCalleeEnvs` families 
 `mkExistentialRealCalleeEnvs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -31,39 +49,39 @@ set_option maxRecDepth 200000
 namespace LibsignalBinary.Proofs.PeakBudget.CliNoOomOfFitsEnv
 
 open Arm64 (GhostName Memory State Steps subroutine_ok)
-open Arm64.Obj (Image MultiPlacement)
+open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage ProcessInputs ProcessTerminatedOutcome bytesOfString)
-open CryptoVerification (libsignalMutatedBlocks libsignalSessionExterns)
+open CryptoVerification (ExternsDistinctOnHooked libsignalMutatedBlocks)
 open CryptoVerification.E2E (PEParams UnreachedPqxdhPrimitives wirePrekey wireWhisper)
 open CryptoVerification.LibsignalPublicApi.StoreKit (FsFiles)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
 open CryptoVerification.RustHeap (allocFailedEvent)
 open CryptoVerification.SignalSession
-  (CliHooks CliPqxdhElfCorrectPlaced CliPqxdhInputs CliReachesOOMPlaced CliRun
-   CliSpecPqxdh CliSpecPqxdhNoMatch Inputs Outcome PqSessionMatches cliExternsPlaced
-   cliInputs_eq_cliProcessInputs cliProcessInputs fromUtf8Hook libsignalSessionLib
-   lsFromUtf8Sym lsMemrchrSym memrchrHook stdinCapBytes strlenHook)
+  (CliHooks CliPqxdhInputs CliRun CliSpecPqxdh CliSpecPqxdhNoMatch
+  Inputs Outcome PqSessionMatches cliExternsPlaced cliInputs_eq_cliProcessInputs
+  cliProcessInputs fromUtf8Hook libsignalSessionLib lsFromUtf8Sym lsMemrchrSym memrchrHook
+  stdinCapBytes strlenHook)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced
+  (CliPqxdhElfCorrectPlaced CliReachesOOMPlaced)
 open CryptoVerification.SignalSession.Cli (cliInputs loadState_fs_trace)
 open CryptoVerification.SignalSession.Cli.MainHops
   (LsCodeInv RunCall cliIo cliMainStk cliResStack cliWrOk
    inputOf lsHandleErrorSymMain mProgPlaced mainFrameSize parseArgs)
 open CryptoVerification.SignalSession.Cli.RunCompose (runRel)
-open CryptoVerification.SignalSession.Placed (cliProgPlacedSig cliTokenPatchPlaced)
+open CryptoVerification.SignalSession.Placed (cliTokenPatchPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliProgPlacedSig)
 open LibsignalBinary.Heap (AllocEvent BudgetLimits FitsEnv FreeOnlyEvs SeqEnv)
 open LibsignalBinary.Heap.Fine (fineCostModel fineHookRustCliAllocBudget)
 open LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
   (cliBudgetLimits cliDefaultStaticBytes cliDefaultStaticCount cliOneGiB)
-open LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs (mkExistentialRealCalleeEnvs)
+
 open LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak (CliRunCalleeEnvs)
 open LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
   (CliRunBinaryEnv RealCliMainBinaryEnvOf)
 open LibsignalBinary.Proofs.PeakBudget.CliTopBudgetReal (cliRealNinetyPctOneGiB)
 open LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
-  (mainEntryBudgetFitsCap_of_fitsEnv
-   mainEntryBudgetFitsCap_of_realMainEnvFits_1GiB
-   mainEntryBudgetFitsCap_of_realMainEnvFits_90pct
-   mainEntryBudgetFitsCap_of_realMainEnvFits_cliBudgetLimits)
+  (mainEntryBudgetFitsCap_of_fitsEnv)
 open LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter (CliMainBoundedSetupEnv)
 open LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux (sessionCapBytes)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget (libsignalPlacementOf)
@@ -108,7 +126,7 @@ def defaultUnreachedPqxdhPrimitives : UnreachedPqxdhPrimitives where
 
 /-- Execution of `cliProgExtPlacedSigAt mpl ext idx W` from `elf.loadState (inputsOf i)` with
 `cliTokenPatchPlaced mpl` reaches a state with `sf.status = .OutOfMemory`. -/
-def CliReachesOOMExtOnInputsAt (mpl : MultiPlacement)
+@[expose] def CliReachesOOMExtOnInputsAt (mpl : MultiPlacement)
     (ext : CliHooks → String → Option (State → State)) (idx : Nat)
     (inputsOf : Inputs → ProcessInputs) (elf : ElfImage) (W : CliHooks) (i : Inputs) : Prop :=
   ∃ s0 sf : State,
@@ -253,6 +271,7 @@ theorem cliPqxdhAllocNeverFailsPlaced_of_extProgEq
     (hext : ExternPreservesNoAllocFailed (ext W)) :
     CliPqxdhAllocNeverFailsPlaced mpl mmpl elf W := by
   intro i _ s0 s hload hsteps
+  change Steps (cliProgPlacedSig mpl mmpl W) _ _ at hsteps
   rw [hprog] at hsteps
   exact allocNeverFailsExtPlacedAt_of_externPreserves hext i s0 s hload hsteps
 
@@ -270,7 +289,7 @@ theorem mainOkCliExtPqB2NeedLocksPlacedAt_of_kitEnvFits_and_runTight
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -335,7 +354,7 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_kitEnvFits_and_runTight
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     {ext : CliHooks → String → Option (State → State)}
@@ -395,528 +414,5 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_of_kitEnvFits_and_runTight
     hrun
 
 /-! ## `mkExistentialRealCalleeEnvs` Whole-Program `FitsEnv` Composition -/
-
-/-- Concrete binary-exact `RunCall → List AllocEvent → Prop` envelope at `(mpl, img, X, W)`. -/
-noncomputable def realCliRunBinaryEnvOf
-    {mpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    (img : Image) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (rc : RunCall) : List AllocEvent → Prop :=
-  CliRunBinaryEnv cliIo.rd
-    (@mkExistentialRealCalleeEnvs (libsignalPlacementOf mpl hblk hext_nodup)
-      img (cliRunSemD2c_placed X W) ⟨W.C, W.Q⟩ rc)
-    sessionCapBytes rc
-
-/-- Concrete `CalleeEnvs` family at `(mpl, img, X, W)`. -/
-noncomputable def realCliCalleeEnvsOf
-    {mpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    (img : Image) (X : UnreachedPqxdhPrimitives) (W : CliHooks) :
-    RunCall → CliRunCalleeEnvs :=
-  @mkExistentialRealCalleeEnvs (libsignalPlacementOf mpl hblk hext_nodup)
-    img (cliRunSemD2c_placed X W) ⟨W.C, W.Q⟩
-
-/-- `MainOkCliExtPqB2NeedLocksPlacedAt` from whole-`main` `FitsEnv` at `cliRealNinetyPctOneGiB ≤ lim.physCap`. -/
-theorem mainOkCliExtPq_of_realMainEnvFits_90pct
-    {mpl mmpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    {CodeOk : Memory → Prop}
-    (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
-    {ext : CliHooks → String → Option (State → State)}
-    (utf8Err : CliHooks → List (BitVec 8) → BitVec 64 × BitVec 16)
-    {libcAddr brkStart : BitVec 64} {lim : BudgetLimits} {hookStack : Nat}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap)
-    (img : Image)
-    (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
-    (hFs : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W))
-    (hio : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack)
-    (hioBounded : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoBoundedPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack
-        ReadStdinBoundedEnv)
-    (hstrlen : ∀ W : CliHooks, ext W "strlen" = some strlenHook)
-    (hutf8 : ∀ W : CliHooks, ext W lsFromUtf8Sym = some (fromUtf8Hook (utf8Err W)))
-    (hmemrchr : ∀ W : CliHooks, ext W lsMemrchrSym = some memrchrHook)
-    (hpan : ∀ W : CliHooks, ext W lsHandleErrorSymMain = some Arm64.Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
-    (hrun : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
-          (mpl.base 579)
-          (@runSpecTightPlaced (libsignalPlacementOf mpl hblk hext_nodup)
-            (libsignalPlacementOf mpl hblk hext_nodup) _ CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim
-            (realCliRunBinaryEnvOf hblk hext_nodup img X W) uuidTryParse
-            (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
-    MainOkCliExtPqB2NeedLocksPlacedAt mpl mmpl ext 617 cliProcessInputs CodeOk
-      libcAddr brkStart cliMainStk lim :=
-  mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCap
-    hblk hext_nodup hCI utf8Err (fun X W _ _ => realCliRunBinaryEnvOf hblk hext_nodup img X W)
-    hlibc hFs hio hioBounded hstrlen hutf8 hmemrchr hpan hstk
-    (fun _ X W _ _ =>
-      @mainEntryBudgetFitsCap_of_realMainEnvFits_90pct
-        (libsignalPlacementOf mpl hblk hext_nodup) lim henf hsb hsc hcap90 img X W)
-    hrun
-
-/-- `MainOkCliExtOverB2NeedLocksPlacedAt` from whole-`main` `FitsEnv` at `cliRealNinetyPctOneGiB ≤ lim.physCap`. -/
-theorem mainOkCliExtOver_of_realMainEnvFits_90pct
-    {mpl mmpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    {CodeOk : Memory → Prop}
-    (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
-    {ext : CliHooks → String → Option (State → State)}
-    (utf8Err : CliHooks → List (BitVec 8) → BitVec 64 × BitVec 16)
-    {libcAddr brkStart : BitVec 64} {lim : BudgetLimits} {hookStack : Nat}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap90 : cliRealNinetyPctOneGiB ≤ lim.physCap)
-    (img : Image)
-    (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
-    (hFs : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W))
-    (hio : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack)
-    (hioBounded : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoBoundedPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack
-        ReadStdinBoundedEnv)
-    (hstrlen : ∀ W : CliHooks, ext W "strlen" = some strlenHook)
-    (hutf8 : ∀ W : CliHooks, ext W lsFromUtf8Sym = some (fromUtf8Hook (utf8Err W)))
-    (hmemrchr : ∀ W : CliHooks, ext W lsMemrchrSym = some memrchrHook)
-    (hpan : ∀ W : CliHooks, ext W lsHandleErrorSymMain = some Arm64.Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
-    (hrun : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
-          (mpl.base 579)
-          (@runSpecTightPlaced (libsignalPlacementOf mpl hblk hext_nodup)
-            (libsignalPlacementOf mpl hblk hext_nodup) _ CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim
-            (realCliRunBinaryEnvOf hblk hext_nodup img X W) uuidTryParse
-            (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
-    MainOkCliExtOverB2NeedLocksPlacedAt mpl mmpl ext 617 cliProcessInputs CodeOk
-      libcAddr brkStart cliMainStk lim :=
-  mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCap
-    hblk hext_nodup hCI utf8Err (fun X W _ _ => realCliRunBinaryEnvOf hblk hext_nodup img X W)
-    hlibc hFs hio hioBounded hstrlen hutf8 hmemrchr hpan hstk
-    (fun _ X W _ _ =>
-      @mainEntryBudgetFitsCap_of_realMainEnvFits_90pct
-        (libsignalPlacementOf mpl hblk hext_nodup) lim henf hsb hsc hcap90 img X W)
-    hrun
-
-/-- `MainOkCliExtPqB2NeedLocksPlacedAt` from whole-`main` `FitsEnv` at `cliOneGiB ≤ lim.physCap`. -/
-theorem mainOkCliExtPq_of_realMainEnvFits_1GiB
-    {mpl mmpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    {CodeOk : Memory → Prop}
-    (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
-    {ext : CliHooks → String → Option (State → State)}
-    (utf8Err : CliHooks → List (BitVec 8) → BitVec 64 × BitVec 16)
-    {libcAddr brkStart : BitVec 64} {lim : BudgetLimits} {hookStack : Nat}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap1G : cliOneGiB ≤ lim.physCap)
-    (img : Image)
-    (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
-    (hFs : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W))
-    (hio : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack)
-    (hioBounded : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoBoundedPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack
-        ReadStdinBoundedEnv)
-    (hstrlen : ∀ W : CliHooks, ext W "strlen" = some strlenHook)
-    (hutf8 : ∀ W : CliHooks, ext W lsFromUtf8Sym = some (fromUtf8Hook (utf8Err W)))
-    (hmemrchr : ∀ W : CliHooks, ext W lsMemrchrSym = some memrchrHook)
-    (hpan : ∀ W : CliHooks, ext W lsHandleErrorSymMain = some Arm64.Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
-    (hrun : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
-          (mpl.base 579)
-          (@runSpecTightPlaced (libsignalPlacementOf mpl hblk hext_nodup)
-            (libsignalPlacementOf mpl hblk hext_nodup) _ CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim
-            (realCliRunBinaryEnvOf hblk hext_nodup img X W) uuidTryParse
-            (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
-    MainOkCliExtPqB2NeedLocksPlacedAt mpl mmpl ext 617 cliProcessInputs CodeOk
-      libcAddr brkStart cliMainStk lim :=
-  mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCap
-    hblk hext_nodup hCI utf8Err (fun X W _ _ => realCliRunBinaryEnvOf hblk hext_nodup img X W)
-    hlibc hFs hio hioBounded hstrlen hutf8 hmemrchr hpan hstk
-    (fun _ X W _ _ =>
-      @mainEntryBudgetFitsCap_of_realMainEnvFits_1GiB
-        (libsignalPlacementOf mpl hblk hext_nodup) lim henf hsb hsc hcap1G img X W)
-    hrun
-
-/-- `MainOkCliExtOverB2NeedLocksPlacedAt` from whole-`main` `FitsEnv` at `cliOneGiB ≤ lim.physCap`. -/
-theorem mainOkCliExtOver_of_realMainEnvFits_1GiB
-    {mpl mmpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    {CodeOk : Memory → Prop}
-    (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
-    {ext : CliHooks → String → Option (State → State)}
-    (utf8Err : CliHooks → List (BitVec 8) → BitVec 64 × BitVec 16)
-    {libcAddr brkStart : BitVec 64} {lim : BudgetLimits} {hookStack : Nat}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap1G : cliOneGiB ≤ lim.physCap)
-    (img : Image)
-    (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
-    (hFs : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W))
-    (hio : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack)
-    (hioBounded : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoBoundedPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim (ext W) cliIo hookStack
-        ReadStdinBoundedEnv)
-    (hstrlen : ∀ W : CliHooks, ext W "strlen" = some strlenHook)
-    (hutf8 : ∀ W : CliHooks, ext W lsFromUtf8Sym = some (fromUtf8Hook (utf8Err W)))
-    (hmemrchr : ∀ W : CliHooks, ext W lsMemrchrSym = some memrchrHook)
-    (hpan : ∀ W : CliHooks, ext W lsHandleErrorSymMain = some Arm64.Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
-    (hrun : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
-          (mpl.base 579)
-          (@runSpecTightPlaced (libsignalPlacementOf mpl hblk hext_nodup)
-            (libsignalPlacementOf mpl hblk hext_nodup) _ CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim
-            (realCliRunBinaryEnvOf hblk hext_nodup img X W) uuidTryParse
-            (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
-    MainOkCliExtOverB2NeedLocksPlacedAt mpl mmpl ext 617 cliProcessInputs CodeOk
-      libcAddr brkStart cliMainStk lim :=
-  mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCap
-    hblk hext_nodup hCI utf8Err (fun X W _ _ => realCliRunBinaryEnvOf hblk hext_nodup img X W)
-    hlibc hFs hio hioBounded hstrlen hutf8 hmemrchr hpan hstk
-    (fun _ X W _ _ =>
-      @mainEntryBudgetFitsCap_of_realMainEnvFits_1GiB
-        (libsignalPlacementOf mpl hblk hext_nodup) lim henf hsb hsc hcap1G img X W)
-    hrun
-
-/-- `MainOkCliExtPqB2NeedLocksPlacedAt` at `cliBudgetLimits` (`1 GiB`) and `mkExistentialRealCalleeEnvs`. -/
-theorem mainOkCliExtPq_of_realMainEnvFits
-    {mpl mmpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    {CodeOk : Memory → Prop}
-    (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
-    {ext : CliHooks → String → Option (State → State)}
-    (utf8Err : CliHooks → List (BitVec 8) → BitVec 64 × BitVec 16)
-    {libcAddr brkStart : BitVec 64} {hookStack : Nat}
-    (img : Image)
-    (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
-    (hFs : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits (ext W))
-    (hio : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits (ext W) cliIo hookStack)
-    (hioBounded : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoBoundedPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits (ext W) cliIo hookStack
-        ReadStdinBoundedEnv)
-    (hstrlen : ∀ W : CliHooks, ext W "strlen" = some strlenHook)
-    (hutf8 : ∀ W : CliHooks, ext W lsFromUtf8Sym = some (fromUtf8Hook (utf8Err W)))
-    (hmemrchr : ∀ W : CliHooks, ext W lsMemrchrSym = some memrchrHook)
-    (hpan : ∀ W : CliHooks, ext W lsHandleErrorSymMain = some Arm64.Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
-    (hrun : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
-          (mpl.base 579)
-          (@runSpecTightPlaced (libsignalPlacementOf mpl hblk hext_nodup)
-            (libsignalPlacementOf mpl hblk hext_nodup) _ CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits
-            (realCliRunBinaryEnvOf hblk hext_nodup img X W) uuidTryParse
-            (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
-    MainOkCliExtPqB2NeedLocksPlacedAt mpl mmpl ext 617 cliProcessInputs CodeOk
-      libcAddr brkStart cliMainStk cliBudgetLimits :=
-  mainOkCliExtPqB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCap
-    hblk hext_nodup hCI utf8Err (fun X W _ _ => realCliRunBinaryEnvOf hblk hext_nodup img X W)
-    hlibc hFs hio hioBounded hstrlen hutf8 hmemrchr hpan hstk
-    (fun _ X W _ _ =>
-      @mainEntryBudgetFitsCap_of_realMainEnvFits_cliBudgetLimits
-        (libsignalPlacementOf mpl hblk hext_nodup) img X W)
-    hrun
-
-/-- `MainOkCliExtOverB2NeedLocksPlacedAt` at `cliBudgetLimits` (`1 GiB`) and `mkExistentialRealCalleeEnvs`. -/
-theorem mainOkCliExtOver_of_realMainEnvFits
-    {mpl mmpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    {CodeOk : Memory → Prop}
-    (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
-    {ext : CliHooks → String → Option (State → State)}
-    (utf8Err : CliHooks → List (BitVec 8) → BitVec 64 × BitVec 16)
-    {libcAddr brkStart : BitVec 64} {hookStack : Nat}
-    (img : Image)
-    (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
-    (hFs : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits (ext W))
-    (hio : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits (ext W) cliIo hookStack)
-    (hioBounded : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoBoundedPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits (ext W) cliIo hookStack
-        ReadStdinBoundedEnv)
-    (hstrlen : ∀ W : CliHooks, ext W "strlen" = some strlenHook)
-    (hutf8 : ∀ W : CliHooks, ext W lsFromUtf8Sym = some (fromUtf8Hook (utf8Err W)))
-    (hmemrchr : ∀ W : CliHooks, ext W lsMemrchrSym = some memrchrHook)
-    (hpan : ∀ W : CliHooks, ext W lsHandleErrorSymMain = some Arm64.Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
-    (hrun : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
-          (mpl.base 579)
-          (@runSpecTightPlaced (libsignalPlacementOf mpl hblk hext_nodup)
-            (libsignalPlacementOf mpl hblk hext_nodup) _ CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits
-            (realCliRunBinaryEnvOf hblk hext_nodup img X W) uuidTryParse
-            (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
-    MainOkCliExtOverB2NeedLocksPlacedAt mpl mmpl ext 617 cliProcessInputs CodeOk
-      libcAddr brkStart cliMainStk cliBudgetLimits :=
-  mainOkCliExtOverB2NeedLocksPlacedAt_of_runTight_and_budgetFitsCap
-    hblk hext_nodup hCI utf8Err (fun X W _ _ => realCliRunBinaryEnvOf hblk hext_nodup img X W)
-    hlibc hFs hio hioBounded hstrlen hutf8 hmemrchr hpan hstk
-    (fun _ X W _ _ =>
-      @mainEntryBudgetFitsCap_of_realMainEnvFits_cliBudgetLimits
-        (libsignalPlacementOf mpl hblk hext_nodup) img X W)
-    hrun
-
-/-! ## Strict Placed ELF Correctness and Never-OOM Corollaries -/
-
-/-- Strict placed ELF correctness (`CliPqxdhExtElfCorrectStrictPlacedAt`) from whole-`main` `FitsEnv`. -/
-theorem cliPqxdhExtElfCorrectStrictPlacedAt_of_realMainEnvFits
-    {mpl mmpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    {CodeOk : Memory → Prop}
-    (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
-    {ext : CliHooks → String → Option (State → State)}
-    (utf8Err : CliHooks → List (BitVec 8) → BitVec 64 × BitVec 16)
-    {exitStk : Nat} {libcAddr : BitVec 64} {hookStack : Nat} {elf : ElfImage}
-    (img : Image)
-    (hext : ∀ W : CliHooks, ExternPreservesNoAllocFailed (ext W))
-    (H : CliElfExtB2NeedLocksAssumptions mpl mmpl ext 617 cliProcessInputs
-      exitStk libcAddr cliMainStk CodeOk cliBudgetLimits elf)
-    (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
-    (hFs : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W))
-    (hio : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W) cliIo hookStack)
-    (hioBounded : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoBoundedPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W) cliIo hookStack
-        ReadStdinBoundedEnv)
-    (hstrlen : ∀ W : CliHooks, ext W "strlen" = some strlenHook)
-    (hutf8 : ∀ W : CliHooks, ext W lsFromUtf8Sym = some (fromUtf8Hook (utf8Err W)))
-    (hmemrchr : ∀ W : CliHooks, ext W lsMemrchrSym = some memrchrHook)
-    (hpan : ∀ W : CliHooks, ext W lsHandleErrorSymMain = some Arm64.Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
-    (hrun : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
-          (mpl.base 579)
-          (@runSpecTightPlaced (libsignalPlacementOf mpl hblk hext_nodup)
-            (libsignalPlacementOf mpl hblk hext_nodup) _ CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits
-            (realCliRunBinaryEnvOf hblk hext_nodup img X W) uuidTryParse
-            (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
-    CliPqxdhExtElfCorrectStrictPlacedAt mpl mmpl ext 617 elf :=
-  cliPqxdhExtOnInputsElfCorrectStrictPlacedAt_of_b2NeedLocksAssumptions hext H
-    (mainOkCliExtPq_of_realMainEnvFits hblk hext_nodup hCI utf8Err img hlibc hFs hio hioBounded
-      hstrlen hutf8 hmemrchr hpan hstk hrun)
-    (mainOkCliExtOver_of_realMainEnvFits hblk hext_nodup hCI utf8Err img hlibc hFs hio hioBounded
-      hstrlen hutf8 hmemrchr hpan hstk hrun)
-
-/-- Every `CliPqxdhInputs ⟨W.C, W.Q⟩ i` input across all PQXDH/SPQR CLI subcommands satisfies
-`¬ CliReachesOOMExtPlacedAt`. -/
-theorem not_cliReachesOOMExtPlacedAt_of_realMainEnvFits
-    {mpl mmpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    {CodeOk : Memory → Prop}
-    (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
-    {ext : CliHooks → String → Option (State → State)}
-    (utf8Err : CliHooks → List (BitVec 8) → BitVec 64 × BitVec 16)
-    {exitStk : Nat} {libcAddr : BitVec 64} {hookStack : Nat} {elf : ElfImage}
-    (img : Image)
-    (hext : ∀ W : CliHooks, ExternPreservesNoAllocFailed (ext W))
-    (H : CliElfExtB2NeedLocksAssumptions mpl mmpl ext 617 cliProcessInputs
-      exitStk libcAddr cliMainStk CodeOk cliBudgetLimits elf)
-    (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
-    (hFs : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W))
-    (hio : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W) cliIo hookStack)
-    (hioBounded : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoBoundedPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W) cliIo hookStack
-        ReadStdinBoundedEnv)
-    (hstrlen : ∀ W : CliHooks, ext W "strlen" = some strlenHook)
-    (hutf8 : ∀ W : CliHooks, ext W lsFromUtf8Sym = some (fromUtf8Hook (utf8Err W)))
-    (hmemrchr : ∀ W : CliHooks, ext W lsMemrchrSym = some memrchrHook)
-    (hpan : ∀ W : CliHooks, ext W lsHandleErrorSymMain = some Arm64.Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
-    (hrun : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
-          (mpl.base 579)
-          (@runSpecTightPlaced (libsignalPlacementOf mpl hblk hext_nodup)
-            (libsignalPlacementOf mpl hblk hext_nodup) _ CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits
-            (realCliRunBinaryEnvOf hblk hext_nodup img X W) uuidTryParse
-            (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack))
-    (W : CliHooks) {i : Inputs} (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i) :
-    ¬ CliReachesOOMExtPlacedAt mpl ext 617 elf W i :=
-  not_cliReachesOOMExtPlacedAt_of_strict
-    (cliPqxdhExtElfCorrectStrictPlacedAt_of_realMainEnvFits hblk hext_nodup hCI utf8Err img
-      hext H hlibc hFs hio hioBounded hstrlen hutf8 hmemrchr hpan hstk hrun)
-    W hi
-
-/-- `CliPqxdhElfCorrectStrictPlaced` when
-`cliProgPlacedSig mpl mmpl W = cliProgExtPlacedSigAt mpl ext 617 W`. -/
-theorem cliPqxdhElfCorrectStrictPlaced_of_realMainEnvFits
-    {mpl mmpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    {CodeOk : Memory → Prop}
-    (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
-    {ext : CliHooks → String → Option (State → State)}
-    (utf8Err : CliHooks → List (BitVec 8) → BitVec 64 × BitVec 16)
-    {exitStk : Nat} {libcAddr : BitVec 64} {hookStack : Nat} {elf : ElfImage}
-    (img : Image)
-    (hprog : ∀ W : CliHooks, cliProgPlacedSig mpl mmpl W = cliProgExtPlacedSigAt mpl ext 617 W)
-    (hext : ∀ W : CliHooks, ExternPreservesNoAllocFailed (ext W))
-    (H : CliElfExtB2NeedLocksAssumptions mpl mmpl ext 617 cliProcessInputs
-      exitStk libcAddr cliMainStk CodeOk cliBudgetLimits elf)
-    (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
-    (hFs : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W))
-    (hio : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W) cliIo hookStack)
-    (hioBounded : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoBoundedPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W) cliIo hookStack
-        ReadStdinBoundedEnv)
-    (hstrlen : ∀ W : CliHooks, ext W "strlen" = some strlenHook)
-    (hutf8 : ∀ W : CliHooks, ext W lsFromUtf8Sym = some (fromUtf8Hook (utf8Err W)))
-    (hmemrchr : ∀ W : CliHooks, ext W lsMemrchrSym = some memrchrHook)
-    (hpan : ∀ W : CliHooks, ext W lsHandleErrorSymMain = some Arm64.Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
-    (hrun : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
-          (mpl.base 579)
-          (@runSpecTightPlaced (libsignalPlacementOf mpl hblk hext_nodup)
-            (libsignalPlacementOf mpl hblk hext_nodup) _ CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits
-            (realCliRunBinaryEnvOf hblk hext_nodup img X W) uuidTryParse
-            (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
-    CliPqxdhElfCorrectStrictPlaced mpl mmpl elf :=
-  cliPqxdhElfCorrectStrictPlaced_of_extProgEq hprog
-    (cliPqxdhExtElfCorrectStrictPlacedAt_of_realMainEnvFits hblk hext_nodup hCI utf8Err img
-      hext H hlibc hFs hio hioBounded hstrlen hutf8 hmemrchr hpan hstk hrun)
-
-/-- `CliPqxdhElfCorrectPlaced` when
-`cliProgPlacedSig mpl mmpl W = cliProgExtPlacedSigAt mpl ext 617 W`. -/
-theorem cliPqxdhElfCorrectPlaced_of_realMainEnvFits
-    {mpl mmpl : MultiPlacement}
-    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
-      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
-    {CodeOk : Memory → Prop}
-    (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
-    {ext : CliHooks → String → Option (State → State)}
-    (utf8Err : CliHooks → List (BitVec 8) → BitVec 64 × BitVec 16)
-    {exitStk : Nat} {libcAddr : BitVec 64} {hookStack : Nat} {elf : ElfImage}
-    (img : Image)
-    (hprog : ∀ W : CliHooks, cliProgPlacedSig mpl mmpl W = cliProgExtPlacedSigAt mpl ext 617 W)
-    (hext : ∀ W : CliHooks, ExternPreservesNoAllocFailed (ext W))
-    (H : CliElfExtB2NeedLocksAssumptions mpl mmpl ext 617 cliProcessInputs
-      exitStk libcAddr cliMainStk CodeOk cliBudgetLimits elf)
-    (hlibc : libcAddr = (mallocngAddrsOfPlacement mmpl).libc)
-    (hFs : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @AllocContractsFsPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W))
-    (hio : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W) cliIo hookStack)
-    (hioBounded : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      @MainIoBoundedPlaced (libsignalPlacementOf mpl hblk hext_nodup) _
-        (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits (ext W) cliIo hookStack
-        ReadStdinBoundedEnv)
-    (hstrlen : ∀ W : CliHooks, ext W "strlen" = some strlenHook)
-    (hutf8 : ∀ W : CliHooks, ext W lsFromUtf8Sym = some (fromUtf8Hook (utf8Err W)))
-    (hmemrchr : ∀ W : CliHooks, ext W lsMemrchrSym = some memrchrHook)
-    (hpan : ∀ W : CliHooks, ext W lsHandleErrorSymMain = some Arm64.Rust.panicked)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk := by decide)
-    (hrun : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        @subroutine_ok _ (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup) (ext W))
-          (mpl.base 579)
-          (@runSpecTightPlaced (libsignalPlacementOf mpl hblk hext_nodup)
-            (libsignalPlacementOf mpl hblk hext_nodup) _ CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp elf.brkStart) cliBudgetLimits
-            (realCliRunBinaryEnvOf hblk hext_nodup img X W) uuidTryParse
-            (runRel (cliRunSemD2c_placed X W))
-            cliWrOk cliResStack)) :
-    CliPqxdhElfCorrectPlaced mpl mmpl elf :=
-  cliPqxdhElfCorrectPlaced_of_extProgEq hprog
-    (cliPqxdhExtElfCorrectStrictPlacedAt_of_realMainEnvFits hblk hext_nodup hCI utf8Err img
-      hext H hlibc hFs hio hioBounded hstrlen hutf8 hmemrchr hpan hstk hrun)
 
 end LibsignalBinary.Proofs.PeakBudget.CliNoOomOfFitsEnv

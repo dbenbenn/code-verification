@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesBridge1
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesBridge1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainResolvePlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainStepPlaced
@@ -22,7 +22,7 @@ Relocatable composition of chain resolution, `add_epoch`, `send_key`, `Chain::in
 epilogue steps (`+3196 -> +4000 / +4576 / panic`) in `spqr::send::<HookRng>` (Block `124`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,7 +46,7 @@ open CryptoVerification.SpqrV1.Top.Send.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 
 attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp
@@ -410,13 +410,13 @@ theorem step_send_key_err_315f4_to_31a3c_placed {A : RustAlloc} {F : ShaCompress
 
 /-! ## 3. Phase 3b–3c Chain Resolution & Step Composition (`+3196 -> +4000 / +4576 / panic`) -/
 
-noncomputable def sendChainTargetPCPlaced
+@[expose] def sendChainTargetPCPlaced
     (res : SpqrApiResult (BitVec 32 × Bytes × Option ChainPB)) : BitVec 64 :=
   match res with
   | .ok _ => spqrSendPlacedEntry + 4000#64
   | .error _ => spqrSendPlacedEntry + 4576#64
 
-def sendChainPostPlaced {F : ShaCompress} (A : RustAlloc)
+@[expose] def sendChainPostPlaced {F : ShaCompress} (A : RustAlloc)
     (s0 : State) (sp ret x23 : BitVec 64) (st1 : States spqrPolyApi (spqrAuthApi F)) (Frame : SepProp)
     (res : SpqrApiResult (BitVec 32 × Bytes × Option ChainPB)) (sf : State) (Q : SepProp) : Prop :=
   match res with

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1 -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesPolyPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93Placed
@@ -24,7 +24,7 @@ Proves `[LibsignalPlacement]` `subroutine_ok` contracts for CLI Block `486` (cal
 `480`, and `493`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -675,23 +675,23 @@ private theorem ct1Sampled_486_pinned_lscl_ok [LibsignalPlacement] (A : RustAllo
 
 /-! ## Exported Placed Contracts for Block `486` (`chunked::Ct1Sampled::encoded_len [local#3]`) -/
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_486 (Rust.withPanics ext)) (blkPl_486).base
     (withLsCodeLoaded lsmpl (chunkedCt1SampledEncodedLenPinnedSpec A))
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedCt1SampledEncodedLenLocal1PlacedOkExt
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedCt1SampledEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_486 (Rust.withPanics ext)) (blkPl_486).base
     (withLsCodeLoaded lsmpl (chunkedCt1SampledEncodedLenSpec A))
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOkExt
     A (tripleRatchetExterns C ctl abs)
 
-def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedCt1SampledEncodedLenLocal1PlacedOk
+@[expose] def _root_.CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedCt1SampledEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   CryptoVerification.Cli.SpqrV1.ProtoRepr.ChunkedCt1SampledEncodedLenLocal1PlacedOkExt

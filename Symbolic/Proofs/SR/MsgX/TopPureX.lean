@@ -9,14 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SR.RecvSpecWPure
-public import Symbolic.Proofs.SpecLemmas.CliPureBytes
-import ProofLib.Lemmas
+public import Symbolic.Proofs.SR.RecvSpecWPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
 import Symbolic.Proofs.RngG.R3ModelInv
-public import Symbolic.Proofs.Refinement.RngFree.SendSpecPure -- shake: keep
-public import Symbolic.Proofs.RngG.R3Canon -- shake: keep
+import Symbolic.Proofs.Refinement.RngFree.SendSpecPure -- shake: keep
+import Symbolic.Proofs.RngG.R3Canon -- shake: keep
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

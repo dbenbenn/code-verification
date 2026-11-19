@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemBounds
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigEval
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemBounds -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigEval -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Soundness
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemProofs
 
 /-!
@@ -21,7 +21,7 @@ Packages syntactic step-cost and semantic query bounds (`SigEufCmaAdv.Bounded`) 
 `sigKeyIndDslAdv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,11 +44,6 @@ theorem sigKeyIndDslAdv_q_prim_le (useRo : Bool) (S : Setup) (b : QueryBudget)
   rw [sigKeyIndDslAdv_q_prim]
   unfold primQueryBudget
   nlinarith
-
-theorem sigKeyIndDslProg_totalCost_le (useRo : Bool) (S : Setup) (b : QueryBudget) :
-    (sigKeyIndDslProg useRo S b).totalCost b.q_total ≤ stepCostBudget S b :=
-  sigKeyIndProg_totalCost_le_of_le useRo S b b.q_total
-    (show b.q_total ≤ 2 * b.q_total + 1 by omega)
 
 theorem sigKeyIndDslProg_totalPrimQueries_le (useRo : Bool) (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) :

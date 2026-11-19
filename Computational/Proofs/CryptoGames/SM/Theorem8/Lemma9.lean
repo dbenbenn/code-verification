@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9Aux
+public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9Aux -- proof-setup: allow-public-import
 import VCVio.OracleComp.EvalDist.Measure
 
 /-!
@@ -22,7 +22,7 @@ real world (`b = false`) of `redCKAAuth` in the CKA game via oracle-by-oracle co
 runs.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -42,7 +42,7 @@ variable (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
   (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
   (tL : Option ℕ) (tStar : ℕ)
 
-def runL {α : Type} (oa : AdversaryComp (PartyState Γ T Sig SS RS) M CCoins (Header T × E) α)
+@[expose] def runL {α : Type} (oa : AdversaryComp (PartyState Γ T Sig SS RS) M CCoins (Header T × E) α)
     (s : GameState (PartyState Γ T Sig SS RS) M (Header T × E)) : ProbComp Bool :=
   ((simulateQ
     ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
@@ -50,7 +50,7 @@ def runL {α : Type} (oa : AdversaryComp (PartyState Γ T Sig SS RS) M CCoins (H
       oracleImpl (scheme cka prng fs lam) (2 + Δcka) qep (Config.auth tStar))
     oa).run s) >>= fun res => pure (res.2.win && authLosingConditionsAvoided (2 + Δcka) tL tStar res.2)
 
-def runR {α : Type} (oa : AdversaryComp (PartyState Γ T Sig SS RS) M CCoins (Header T × E) α)
+@[expose] def runR {α : Type} (oa : AdversaryComp (PartyState Γ T Sig SS RS) M CCoins (Header T × E) α)
     (es : EState (PartyState (Option Γ) T Sig SS RS) M (Header T × E) (CKAState T I))
     (sc : CKA.GameState Γ T) : ProbComp Bool :=
   ((simulateQ

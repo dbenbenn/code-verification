@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded In-Image Callee Contracts for `signal-session` `main`
@@ -21,7 +22,7 @@ paired with their deterministic `AllocEvent` envelopes (`AddressEnv`, `Reserve16
 `TryAllocateInEnv`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,12 +42,12 @@ open CryptoVerification.SignalSession.Cli.MainHops (AddressCall Reserve16Call ad
 
 /-- Deterministic `AllocEvent` list emitted by `signal_session::address`:
 `[]` when `addrParse` returns `none`, else `rustAllocEvents a.name.length 1` for the owned name. -/
-def addressEvents (uuidParse : UuidParser) (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def addressEvents (uuidParse : UuidParser) (bs : List (BitVec 8)) : List AllocEvent :=
   match addrParse uuidParse bs with
   | none => []
   | some a => rustAllocEvents a.name.length 1
 
-def AddressEnv (uuidParse : UuidParser) (x : AddressCall) (evs : List AllocEvent) : Prop :=
+@[expose] def AddressEnv (uuidParse : UuidParser) (x : AddressCall) (evs : List AllocEvent) : Prop :=
   evs = addressEvents uuidParse x.bs
 
 theorem addressEnv_events (uuidParse : UuidParser) (x : AddressCall) :
@@ -59,7 +60,7 @@ theorem fitsEvents_address_of_fitsEnv (M : AllocCostModel) (lim : BudgetLimits) 
     FitsEvents M lim st (addressEvents uuidParse x.bs) :=
   h (addressEvents uuidParse x.bs) rfl
 
-def addressSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def addressSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (uuidParse : UuidParser) (resStack : Nat) : Spec (AddressCall × M.σ) where
   pre := fun (x, st) s0 =>
     ⌜s0.readReg64 .x0 = x.out ∧ s0.readReg64 .x1 = x.p ∧
@@ -79,26 +80,21 @@ def addressSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLim
 /-! ## `do_reserve_and_handle` (`reserve16Spec`) -/
 
 /-- Deterministic `AllocEvent` list emitted by `reserve16` (`additional = 1`, `stride = 16`, `align = 8`). -/
-def reserve16Events (x : Reserve16Call) : List AllocEvent :=
+@[expose] def reserve16Events (x : Reserve16Call) : List AllocEvent :=
   let new := reserveCapStride 16 x.cap.toNat (x.bs.length / 16) 1
   if x.cap = 0#64 then
     rustAllocEvents (16 * new) 8
   else
     rustReallocEvents (16 * x.cap.toNat) (16 * new) 8
 
-def Reserve16Env (x : Reserve16Call) (evs : List AllocEvent) : Prop :=
+@[expose] def Reserve16Env (x : Reserve16Call) (evs : List AllocEvent) : Prop :=
   evs = reserve16Events x
 
 theorem reserve16Env_events (x : Reserve16Call) :
     Reserve16Env x (reserve16Events x) :=
   rfl
 
-theorem fitsEvents_reserve16_of_fitsEnv (M : AllocCostModel) (lim : BudgetLimits) (st : M.σ)
-    (x : Reserve16Call) (h : FitsEnv M lim st (Reserve16Env x)) :
-    FitsEvents M lim st (reserve16Events x) :=
-  h (reserve16Events x) rfl
-
-def reserve16Spec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def reserve16Spec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (resStack : Nat) : Spec (Reserve16Call × M.σ) where
   pre := fun (x, st) s0 =>
     ⌜s0.readReg64 .x0 = x.v ∧ s0.readReg64 .x1 = BitVec.ofNat 64 (x.bs.length / 16) ∧
@@ -115,10 +111,10 @@ def reserve16Spec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetL
 
 /-! ## `try_allocate_in` (`tryAllocateInSpecOf`) -/
 
-def tryAllocateInEvents (x : TryAllocateInCall) : List AllocEvent :=
+@[expose] def tryAllocateInEvents (x : TryAllocateInCall) : List AllocEvent :=
   rustAllocEvents (x.new.toNat * x.stride.toNat) x.align.toNat
 
-def TryAllocateInEnv (x : TryAllocateInCall) (evs : List AllocEvent) : Prop :=
+@[expose] def TryAllocateInEnv (x : TryAllocateInCall) (evs : List AllocEvent) : Prop :=
   evs = tryAllocateInEvents x
 
 theorem tryAllocateInEnv_events (x : TryAllocateInCall) :
@@ -132,7 +128,7 @@ theorem fitsEvents_tryAllocateIn_of_fitsEnv (M : AllocCostModel) (lim : BudgetLi
 
 /-- Total-correctness (`FitsEnv`) contract of `try_allocate_in`: under `LayoutOk` and `FitsEnv`,
 `__rust_alloc` cannot return null, so the `Err(AllocError)` (`tag = 1`) branch is dead. -/
-def tryAllocateInSpecOf {M : AllocCostModel} (resStack : Nat) (A : RustCliAllocBudget M)
+@[expose] def tryAllocateInSpecOf {M : AllocCostModel} (resStack : Nat) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (TryAllocateInCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.new ∧
@@ -151,7 +147,7 @@ def tryAllocateInSpecOf {M : AllocCostModel} (resStack : Nat) (A : RustCliAllocB
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp resStack
 
 /-- Conditional-OOM variant of `tryAllocateInSpecOf` without `FitsEnv` in `pre`. -/
-def tryAllocateInCondSpecOf {M : AllocCostModel} (resStack : Nat) (A : RustCliAllocBudget M)
+@[expose] def tryAllocateInCondSpecOf {M : AllocCostModel} (resStack : Nat) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (TryAllocateInCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.new ∧

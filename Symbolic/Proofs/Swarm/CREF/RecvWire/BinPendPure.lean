@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval
 import Symbolic.Proofs.Swarm.TRREF.EncodeRecordPqInj
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
 
 /-!
 # Entry Record Canonicity under `PureCRecRel`
@@ -21,7 +25,7 @@ Defines `TRRecordCanonPend` for records that may still carry Alice's pending pre
 derives it from `PureCRecRel` together with `SpqrOooBounded` and the input length bound.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

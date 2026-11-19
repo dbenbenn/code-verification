@@ -15,6 +15,12 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode --
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceHullAux
 import ProofLib.Hoare.Model
 import ProofLib.SepLogic.WP.StepsProcess
+public import LibsignalBinary.Proofs.HookDischarge.RustStd.DurationSinceVm -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Region-Local `SystemTime::duration_since` Code Verification & Master Spec (`HooksDehook.DurationSinceCode`)
@@ -826,14 +832,6 @@ theorem hookOk_of_keepsFs {α : Type} {f : State → State} {spec : Spec α}
   · exact Or.inr (Or.inr (Or.inl hex))
   · exact Or.inr (Or.inr (Or.inr hoom))
 
-/-- Any `HookOk f spec` weakens to `HookOk f (spec.inImage img)`. -/
-theorem hookOk_inImage {α : Type} {f : State → State} {spec : Spec α} (img : Image)
-    (hh : HookOk f spec) : HookOk f (spec.inImage img) := by
-  intro x R s0 hrun hpre hsp
-  dsimp only [Spec.inImage] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hh x R s0 hrun hpre.2 hsp
-
 private theorem systemTime_entails_memRegion16_local (p s1 : BitVec 64) (n1 : BitVec 32) :
     ((p ↦₆₄ s1) ∗ ((p + 8#64) ↦₃₂ n1) ∗ memRegion (p + 12#64) 4) ⊢ memRegion p 16 := by
   rw [memRegion_split3_ord p 16 8 4 (by decide) (by decide)]
@@ -1033,16 +1031,6 @@ theorem hookOk_durationSinceBoundedAllocBudget_of_master {f : State → State}
     HookOk f durationSinceBoundedAllocBudgetSpec :=
   hookOk_durationSinceBoundedBudgetAt_of_master hh hvm (by decide)
 
-theorem hookOk_durationSinceBounded_inImage_of_master {f : State → State}
-    (img : Image) (hh : HookOk f masterDurationSinceSpec) :
-    HookOk f (durationSinceBoundedSpec.inImage img) :=
-  hookOk_inImage img (hookOk_durationSinceBounded_of_master hh)
-
-theorem hookOk_durationSinceBoundedBudget_inImage_of_master {f : State → State}
-    (img : Image) (hh : HookOk f masterDurationSinceSpec) (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (durationSinceBoundedBudgetSpec.inImage img) :=
-  hookOk_inImage img (hookOk_durationSinceBoundedBudget_of_master hh hvm)
-
 theorem hookOk_durationSinceEpoch_of_master {f : State → State}
     (hh : HookOk f masterDurationSinceSpec) : HookOk f durationSinceEpochSpec :=
   hookOk_durationSinceEpochAt_of_master hh (by decide)
@@ -1080,15 +1068,5 @@ theorem hookOk_durationSinceEpochAllocBudget_of_master {f : State → State}
     (hh : HookOk f masterDurationSinceSpec) (hvm : ∀ s, VmPreserved s (f s)) :
     HookOk f durationSinceEpochAllocBudgetSpec :=
   hookOk_durationSinceEpochBudgetAt_of_master hh hvm (by decide)
-
-theorem hookOk_durationSinceEpoch_inImage_of_master {f : State → State}
-    (img : Image) (hh : HookOk f masterDurationSinceSpec) :
-    HookOk f (durationSinceEpochSpec.inImage img) :=
-  hookOk_inImage img (hookOk_durationSinceEpoch_of_master hh)
-
-theorem hookOk_durationSinceEpochBudget_inImage_of_master {f : State → State}
-    (img : Image) (hh : HookOk f masterDurationSinceSpec) (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (durationSinceEpochBudgetSpec.inImage img) :=
-  hookOk_inImage img (hookOk_durationSinceEpochBudget_of_master hh hvm)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceCode

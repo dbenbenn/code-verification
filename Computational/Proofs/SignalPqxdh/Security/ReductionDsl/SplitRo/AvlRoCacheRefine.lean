@@ -70,40 +70,15 @@ theorem findB_min_eval_eq {t : Ty S} (K L : ℕ)
     (Expr.findB (min K L) l p).eval ρ = (Expr.findB K l p).eval ρ := by
   simp only [Expr.eval, take_min_right_of_length_le K hL]
 
-theorem findB_min_left_eval_eq {t : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list t)) (p : Expr O (t :: Γ) .bool) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Expr.findB (min L K) l p).eval ρ = (Expr.findB K l p).eval ρ := by
-  simp only [Expr.eval, take_min_left_of_length_le K hL]
-
 theorem anyB_min_eval_eq {t : Ty S} (K L : ℕ)
     (l : Expr O Γ (.list t)) (p : Expr O (t :: Γ) .bool) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
     (Expr.anyB (min K L) l p).eval ρ = (Expr.anyB K l p).eval ρ := by
   simp only [Expr.eval, take_min_right_of_length_le K hL]
 
-theorem anyB_min_left_eval_eq {t : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list t)) (p : Expr O (t :: Γ) .bool) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Expr.anyB (min L K) l p).eval ρ = (Expr.anyB K l p).eval ρ := by
-  simp only [Expr.eval, take_min_left_of_length_le K hL]
-
 theorem mapB_min_eval_eq {a b : Ty S} (K L : ℕ)
     (l : Expr O Γ (.list a)) (f : Expr O (a :: Γ) b) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
     (Expr.mapB (min K L) l f).eval ρ = (Expr.mapB K l f).eval ρ := by
   simp only [Expr.eval, take_min_right_of_length_le K hL]
-
-theorem mapB_min_left_eval_eq {a b : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list a)) (f : Expr O (a :: Γ) b) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Expr.mapB (min L K) l f).eval ρ = (Expr.mapB K l f).eval ρ := by
-  simp only [Expr.eval, take_min_left_of_length_le K hL]
-
-theorem foldrB_min_eval_eq {a b : Ty S} (K L : ℕ) (l : Expr O Γ (.list a)) (z : Expr O Γ b)
-    (f : Expr O (a :: b :: Γ) b) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Expr.foldrB (min K L) l z f).eval ρ = (Expr.foldrB K l z f).eval ρ := by
-  simp only [Expr.eval, take_min_right_of_length_le K hL]
-
-theorem foldrB_min_left_eval_eq {a b : Ty S} (K L : ℕ) (l : Expr O Γ (.list a)) (z : Expr O Γ b)
-    (f : Expr O (a :: b :: Γ) b) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Expr.foldrB (min L K) l z f).eval ρ = (Expr.foldrB K l z f).eval ρ := by
-  simp only [Expr.eval, take_min_left_of_length_le K hL]
 
 section CompFuelIdentity
 
@@ -115,82 +90,10 @@ theorem findM_min_eval_eq {t : Ty S} (K L : ℕ)
     (Comp.findM (min K L) l p).eval ρ = (Comp.findM K l p).eval ρ := by
   simp only [Comp.eval, take_min_right_of_length_le K hL]
 
-theorem findM_min_left_eval_eq {t : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list t)) (p : Comp O I (t :: Γ) .bool) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Comp.findM (min L K) l p).eval ρ = (Comp.findM K l p).eval ρ := by
-  simp only [Comp.eval, take_min_left_of_length_le K hL]
-
 theorem anyM_min_eval_eq {t : Ty S} (K L : ℕ)
     (l : Expr O Γ (.list t)) (p : Comp O I (t :: Γ) .bool) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
     (Comp.anyM (min K L) l p).eval ρ = (Comp.anyM K l p).eval ρ := by
   simp only [Comp.eval, take_min_right_of_length_le K hL]
-
-theorem anyM_min_left_eval_eq {t : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list t)) (p : Comp O I (t :: Γ) .bool) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Comp.anyM (min L K) l p).eval ρ = (Comp.anyM K l p).eval ρ := by
-  simp only [Comp.eval, take_min_left_of_length_le K hL]
-
-theorem mapM_min_eval_eq {a b : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list a)) (f : Comp O I (a :: Γ) b) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Comp.mapM (min K L) l f).eval ρ = (Comp.mapM K l f).eval ρ := by
-  simp only [Comp.eval, take_min_right_of_length_le K hL]
-
-theorem mapM_min_left_eval_eq {a b : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list a)) (f : Comp O I (a :: Γ) b) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Comp.mapM (min L K) l f).eval ρ = (Comp.mapM K l f).eval ρ := by
-  simp only [Comp.eval, take_min_left_of_length_le K hL]
-
-theorem consumeFirstM_min_eval_eq {t : Ty S} (K L : ℕ) (l : Expr O Γ (.list t))
-    (p : Comp O I (t :: Γ) .bool) (mk : Expr O (t :: Γ) t) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Comp.consumeFirstM (min K L) l p mk).eval ρ = (Comp.consumeFirstM K l p mk).eval ρ := by
-  simp only [Comp.eval, take_min_right_of_length_le K hL]
-
-theorem consumeFirstM_min_left_eval_eq {t : Ty S} (K L : ℕ) (l : Expr O Γ (.list t))
-    (p : Comp O I (t :: Γ) .bool) (mk : Expr O (t :: Γ) t) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Comp.consumeFirstM (min L K) l p mk).eval ρ = (Comp.consumeFirstM K l p mk).eval ρ := by
-  simp only [Comp.eval, take_min_left_of_length_le K hL]
-
-theorem foldM_min_eval_eq {a b : Ty S} (K L : ℕ) (l : Expr O Γ (.list a)) (z : Expr O Γ b)
-    (f : Comp O I (a :: b :: Γ) b) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Comp.foldM (min K L) l z f).eval ρ = (Comp.foldM K l z f).eval ρ := by
-  simp only [Comp.eval, take_min_right_of_length_le K hL]
-
-theorem foldM_min_left_eval_eq {a b : Ty S} (K L : ℕ) (l : Expr O Γ (.list a)) (z : Expr O Γ b)
-    (f : Comp O I (a :: b :: Γ) b) (ρ : Env Γ) (hL : (l.eval ρ).length ≤ L) :
-    (Comp.foldM (min L K) l z f).eval ρ = (Comp.foldM K l z f).eval ρ := by
-  simp only [Comp.eval, take_min_left_of_length_le K hL]
-
-theorem findM_min_simulateQ_eq {m : Type → Type} [Monad m]
-    (qi : QueryImpl T m) {t : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list t)) (p : Comp O I (t :: Γ) .bool) (ρ : Env Γ)
-    (hL : (l.eval ρ).length ≤ L) :
-    simulateQ qi ((Comp.findM (min K L) l p).eval ρ) =
-      simulateQ qi ((Comp.findM K l p).eval ρ) := by
-  rw [findM_min_eval_eq K L l p ρ hL]
-
-theorem anyM_min_simulateQ_eq {m : Type → Type} [Monad m]
-    (qi : QueryImpl T m) {t : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list t)) (p : Comp O I (t :: Γ) .bool) (ρ : Env Γ)
-    (hL : (l.eval ρ).length ≤ L) :
-    simulateQ qi ((Comp.anyM (min K L) l p).eval ρ) =
-      simulateQ qi ((Comp.anyM K l p).eval ρ) := by
-  rw [anyM_min_eval_eq K L l p ρ hL]
-
-theorem findM_min_isQueryBoundP_iff {t : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list t)) (p : Comp O I (t :: Γ) .bool) (ρ : Env Γ)
-    (P : T.Domain → Prop) [DecidablePred P] (n : ℕ)
-    (hL : (l.eval ρ).length ≤ L) :
-    ((Comp.findM (min K L) l p).eval ρ).IsQueryBoundP P n ↔
-      ((Comp.findM K l p).eval ρ).IsQueryBoundP P n := by
-  rw [findM_min_eval_eq K L l p ρ hL]
-
-theorem anyM_min_isQueryBoundP_iff {t : Ty S} (K L : ℕ)
-    (l : Expr O Γ (.list t)) (p : Comp O I (t :: Γ) .bool) (ρ : Env Γ)
-    (P : T.Domain → Prop) [DecidablePred P] (n : ℕ)
-    (hL : (l.eval ρ).length ≤ L) :
-    ((Comp.anyM (min K L) l p).eval ρ).IsQueryBoundP P n ↔
-      ((Comp.anyM K l p).eval ρ).IsQueryBoundP P n := by
-  rw [anyM_min_eval_eq K L l p ρ hL]
 
 end CompFuelIdentity
 end FuelIdentity
@@ -271,10 +174,6 @@ theorem roEntriesOf_length_le {K V E : Type} (valOf : E → V) (ts : List (Tagge
     (roEntriesOf valOf ts).length ≤ ts.length :=
   List.length_filterMap_le _ _
 
-theorem sessEntriesOf_length_le {K E : Type} (ts : List (TaggedEntry K E)) :
-    (sessEntriesOf ts).length ≤ ts.length :=
-  List.length_filterMap_le _ _
-
 theorem ShadowRel.tagged_length_eq {K V E : Type} [BEq K] {cap : ℕ} {valOf : E → V}
     {l : List E} {tagged : List (TaggedEntry K E)} {avlLookup : K → Option (V × ℕ)}
     {sess : List (ℕ × E)} {ctr : ℕ}
@@ -282,14 +181,6 @@ theorem ShadowRel.tagged_length_eq {K V E : Type} [BEq K] {cap : ℕ} {valOf : E
     tagged.length = l.length := by
   have := congrArg List.length h.forget_eq
   simpa using this
-
-theorem ShadowRel.sess_length_le {K V E : Type} [BEq K] {cap : ℕ} {valOf : E → V}
-    {l : List E} {tagged : List (TaggedEntry K E)} {avlLookup : K → Option (V × ℕ)}
-    {sess : List (ℕ × E)} {ctr : ℕ}
-    (h : ShadowRel cap valOf l tagged avlLookup sess ctr) :
-    sess.length ≤ l.length := by
-  rw [h.sess_eq, ← h.tagged_length_eq]
-  exact sessEntriesOf_length_le tagged
 
 theorem ShadowRel.ro_length_le {K V E : Type} [BEq K] {cap : ℕ} {valOf : E → V}
     {l : List E} {tagged : List (TaggedEntry K E)} {avlLookup : K → Option (V × ℕ)}
@@ -541,17 +432,6 @@ theorem findML_take_eq_shadowScanSplit {ι : Type} {T : OracleSpec ι} {K V E : 
     ← hRel.forget_eq, hRel.avl_eq k, hRel.sess_eq]
   exact findML_tagged_eq_shadowScanSplit valOf k p tagged hRel.tagged_pairwise_gt hp_ro
 
-theorem findML_take_eq_shadowScanUnified {ι : Type} {T : OracleSpec ι} {K V E : Type} [BEq K]
-    {cap K_sess : ℕ} {valOf : E → V} {l : List E} {tagged : List (TaggedEntry K E)}
-    {avlLookup : K → Option (V × ℕ)} {sess : List (ℕ × E)} {ctr : ℕ}
-    (hRel : ShadowRel cap valOf l tagged avlLookup sess ctr)
-    (hSessCap : sess.length ≤ K_sess) (k : K) (p : E → OracleComp T Bool)
-    (hp_ro : ∀ te ∈ tagged, ∀ k', te.tag = .ro k' → p te.entry = pure (k' == k)) :
-    Option.map valOf <$> findML p (l.take cap) =
-      shadowScanUnified valOf p (avlLookup k) (sess.take K_sess) := by
-  rw [shadowScanUnified_eq_split]
-  exact findML_take_eq_shadowScanSplit hRel hSessCap k p hp_ro
-
 theorem findML_take_eq_shadowScanMinIdx {ι : Type} {T : OracleSpec ι} {K V E : Type} [BEq K]
     {cap K_sess : ℕ} {valOf : E → V} {l : List E} {tagged : List (TaggedEntry K E)}
     {avlLookup : K → Option (V × ℕ)} {sess : List (ℕ × E)} {ctr : ℕ}
@@ -562,26 +442,6 @@ theorem findML_take_eq_shadowScanMinIdx {ι : Type} {T : OracleSpec ι} {K V E :
       shadowScanMinIdx valOf p (avlLookup k) (sess.take K_sess) := by
   rw [shadowScanMinIdx_eq_split]
   exact findML_take_eq_shadowScanSplit hRel hSessCap k p hp_ro
-
-/-- Scanning `sess` with clamped fuel `min cap L_sess` agrees with `Comp.findM cap lE pC` under
-    `ShadowRel`. -/
-theorem comp_findM_eq_shadowScanSplit {S : Sig} {O : Ops S}
-    {ι : Type} {T : OracleSpec ι} {I : Iface S T} {Γ : List (Ty S)}
-    {K V : Type} [BEq K] {eTy : Ty S} {cap L_sess : ℕ} {valOf : eTy.denote → V}
-    {l : List eTy.denote} {tagged : List (TaggedEntry K eTy.denote)}
-    {avlLookup : K → Option (V × ℕ)} {sess : List (ℕ × eTy.denote)} {ctr : ℕ}
-    (hRel : ShadowRel cap valOf l tagged avlLookup sess ctr) (hSessL : sess.length ≤ L_sess)
-    (lE : Expr O Γ (.list eTy)) (pC : Comp O I (eTy :: Γ) .bool) (ρ : Env Γ)
-    (hlE : lE.eval ρ = l) (k : K)
-    (hp_ro : ∀ te ∈ tagged, ∀ k', te.tag = .ro k' →
-      pC.eval (.cons te.entry ρ) = pure (k' == k)) :
-    Option.map valOf <$> (Comp.findM cap lE pC).eval ρ =
-      shadowScanSplit valOf (fun e => pC.eval (.cons e ρ))
-        (avlLookup k) (sess.take (min cap L_sess)) := by
-  have hSessMin : sess.length ≤ min cap L_sess :=
-    Nat.le_min.mpr ⟨Nat.le_trans hRel.sess_length_le hRel.len_le, hSessL⟩
-  simp only [Comp.eval, hlE]
-  exact findML_take_eq_shadowScanSplit hRel hSessMin k (fun e => pC.eval (.cons e ρ)) hp_ro
 
 /-- If `none` is in the support of `Option.map valOf <$> findML p (l.take cap)` under `ShadowRel`,
     then `avlLookup k = none`. -/
@@ -717,20 +577,6 @@ end Preservation
 
 section LengthAwareKeys
 
-theorem bytes_beq_false_of_length_ne {a b : Bytes} (h : a.length ≠ b.length) :
-    (a == b) = false := by
-  cases hab : (a == b)
-  · rfl
-  · exfalso
-    exact h (congrArg List.length (eq_of_beq hab))
-
-theorem pair32_beq_false_of_length_ne {rk1 dh1 rk2 dh2 : Bytes}
-    (h : rk1.length ≠ rk2.length ∨ dh1.length ≠ dh2.length) :
-    ((rk1 == rk2) && (dh1 == dh2)) = false := by
-  rcases h with h1 | h2
-  · rw [bytes_beq_false_of_length_ne h1, Bool.false_and]
-  · rw [bytes_beq_false_of_length_ne h2, Bool.and_false]
-
 @[simp] theorem ofU8_length_eq (bs : Bytes) :
     (CryptoVerification.E2E.ofU8 bs).length = bs.length := by
   simp [CryptoVerification.E2E.ofU8]
@@ -743,36 +589,6 @@ theorem ofU8_beq_false_of_length_ne {a b : Bytes} (h : a.length ≠ b.length) :
     have hLen := congrArg List.length (eq_of_beq hab)
     simp only [ofU8_length_eq] at hLen
     exact h hLen
-
-/-- Secrets of lengths `160`, `192`, and `∉ {160, 192}` are pairwise distinct under `Bytes` and
-    `E2E.ofU8` equality. -/
-theorem c5_b192_key_no_collision_160_192_raw
-    {k160 k192 kraw : Bytes}
-    (h160 : k160.length = 160) (h192 : k192.length = 192)
-    (hraw160 : kraw.length ≠ 160) (hraw192 : kraw.length ≠ 192) :
-    (k160 == k192) = false ∧
-    (k160 == kraw) = false ∧
-    (k192 == kraw) = false ∧
-    (CryptoVerification.E2E.ofU8 k160 == CryptoVerification.E2E.ofU8 k192) = false ∧
-    (CryptoVerification.E2E.ofU8 k160 == CryptoVerification.E2E.ofU8 kraw) = false ∧
-    (CryptoVerification.E2E.ofU8 k192 == CryptoVerification.E2E.ofU8 kraw) = false := by
-  have hne_160_192 : k160.length ≠ k192.length := by omega
-  have hne_160_raw : k160.length ≠ kraw.length := by omega
-  have hne_192_raw : k192.length ≠ kraw.length := by omega
-  exact ⟨bytes_beq_false_of_length_ne hne_160_192,
-    bytes_beq_false_of_length_ne hne_160_raw,
-    bytes_beq_false_of_length_ne hne_192_raw,
-    ofU8_beq_false_of_length_ne hne_160_192,
-    ofU8_beq_false_of_length_ne hne_160_raw,
-    ofU8_beq_false_of_length_ne hne_192_raw⟩
-
-theorem c5_pair32_key_no_collision_of_length_ne {rk1 dh1 rk2 dh2 : Bytes}
-    (h : rk1.length ≠ rk2.length ∨ dh1.length ≠ dh2.length) :
-    ((CryptoVerification.E2E.ofU8 rk1 == CryptoVerification.E2E.ofU8 rk2) &&
-     (CryptoVerification.E2E.ofU8 dh1 == CryptoVerification.E2E.ofU8 dh2)) = false := by
-  rcases h with h1 | h2
-  · rw [ofU8_beq_false_of_length_ne h1, Bool.false_and]
-  · rw [ofU8_beq_false_of_length_ne h2, Bool.and_false]
 
 end LengthAwareKeys
 

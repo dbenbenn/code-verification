@@ -301,11 +301,6 @@ theorem eval_ite {Γ : List (Ty pqAtomicSig)} {t : Ty pqAtomicSig}
     (c : Expr pqAtomicOps Γ .bool) (a b : Expr pqAtomicOps Γ t) (ρ : Env Γ) :
     (Expr.ite c a b).eval ρ = if c.eval ρ then a.eval ρ else b.eval ρ := rfl
 
-theorem eval_tset {Γ : List (Ty pqAtomicSig)} {t : Ty pqAtomicSig}
-    (m : Expr pqAtomicOps Γ (.tbl t)) (i : Expr pqAtomicOps Γ .nat)
-    (a : Expr pqAtomicOps Γ t) (ρ : Env Γ) :
-    (Expr.tset m i a).eval ρ = tsetPure (m.eval ρ) (i.eval ρ) (a.eval ρ) := rfl
-
 theorem eval_joinHeightE {Γ : List (Ty pqAtomicSig)}
     (a b : Expr pqAtomicOps Γ .nat) (ρ : Env Γ) :
     (joinHeightE a b).eval ρ = joinHeightPure (a.eval ρ) (b.eval ρ) := rfl

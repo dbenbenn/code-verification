@@ -11,27 +11,33 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwindPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwindPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4MarkKyber
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4RemovePreKey
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4RemovePreKeyProof
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4RemovePreKey -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwind
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKey
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP4
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyPlaced
 
 /-!
 # Budget-Threaded Relocatable Stage P4.3 Dispatch Proof: `remove_pre_key`
@@ -41,7 +47,7 @@ Budget-threaded `[LibsignalPlacement]` Substage P4.3 dispatch proofs on Block `5
 `StageP4RemoveErrEnv` on `Err(e)` (`→ s0.readReg64 .x30`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -150,7 +156,7 @@ private theorem removePoll_pre_intro_placed {M : AllocCostModel} {A : RustCliAll
 /-! ## Allocation envelopes, spatial bundles, and remove-only kit -/
 
 /-- `remove_pre_key` shim + poll + `Box` dealloc step envelope. -/
-def RemoveStepEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def RemoveStepEnv {A : RustAlloc} {b : BitVec 64}
     (pkKit : PreKeyStoreSpec A b) (pkKitEnv : PreKeyStoreBudgetEnv pkKit)
     (pst0 : pkKit.PkState) (opkId : BitVec 32) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv pkKit.removeBoxSize)
@@ -160,14 +166,14 @@ def RemoveStepEnv {A : RustAlloc} {b : BitVec 64}
 /-- Allocation envelope on the `remove_pre_key = Err(e)` path of Stage P4.3:
 `RemoveStepEnv` (`remove_pre_key` shim + poll + `Box` dealloc) followed by `FreeOnlyEvs`
 (`drop_glue<SessionStructure>` + `pt` buffer dealloc). -/
-def StageP4RemoveErrEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4RemoveErrEnv {A : RustAlloc} {b : BitVec 64}
     (pkKit : PreKeyStoreSpec A b) (pkKitEnv : PreKeyStoreBudgetEnv pkKit)
     (pst0 : pkKit.PkState) (opkId : BitVec 32) : List AllocEvent → Prop :=
   SeqEnv (RemoveStepEnv pkKit pkKitEnv pst0 opkId) FreeOnlyEvs
 
 /-- Resources shared unchanged across Placed Substage P4.3 (`remove_pre_key`), separating the
 stack-frame anchor `s` from the pool state `s_pool`. -/
-def stageP4RemovePreKeySharedPlaced {M : AllocCostModel}
+@[expose] def stageP4RemovePreKeySharedPlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (pkKit : PreKeyStoreSpec A.repAlloc 0#64)
     (s0 s s_pool : State)
@@ -183,7 +189,7 @@ def stageP4RemovePreKeySharedPlaced {M : AllocCostModel}
   stackAt s.sp (removePreKeyCallStack pkKit)
 
 /-- Spatial precondition of Placed Substage P4.3 at `0#64 + pkKit.removeShimOff`. -/
-def stageP4RemovePreKeyPrePlaced {M : AllocCostModel}
+@[expose] def stageP4RemovePreKeyPrePlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ)
     (pkKit : PreKeyStoreSpec A.repAlloc 0#64)
     (s0 s : State)
@@ -206,7 +212,7 @@ def stageP4RemovePreKeyPrePlaced {M : AllocCostModel}
   pkKit.storeAt preKeyStorePtr pst0
 
 /-- Spatial postcondition of Placed Substage P4.3 after `Ok(())` + deallocation (`+0x3cc`). -/
-def stageP4RemovePreKeyOkPostPlaced {M : AllocCostModel}
+@[expose] def stageP4RemovePreKeyOkPostPlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st1 : M.σ)
     (pkKit : PreKeyStoreSpec A.repAlloc 0#64)
     (s0 s s1 : State)
@@ -231,7 +237,7 @@ def stageP4RemovePreKeyOkPostPlaced {M : AllocCostModel}
   pkKit.storeAt preKeyStorePtr (pkKit.removeUpdate pst0 opkId (.ok ()))
 
 /-- Spatial postcondition of Placed Substage P4.3 on `Err(e)` at `s0.readReg64 .x30`. -/
-def stageP4RemovePreKeyErrPostPlaced {M : AllocCostModel}
+@[expose] def stageP4RemovePreKeyErrPostPlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ)
     (pkKit : PreKeyStoreSpec A.repAlloc 0#64)
     (s0 s sf : State)

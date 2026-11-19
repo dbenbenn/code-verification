@@ -20,7 +20,7 @@ public import LibsignalBinary.Specifications.LibsignalSignalMessage
 All-or-nothing error preservation lemmas, raw-wire `messageDecrypt`, and wire `(ser, tag)` splitting.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames
 namespace LibsignalSession
@@ -41,7 +41,7 @@ theorem tryDecryptFromRecord_error {PQ PQC : Type} [Inhabited PQ] (C : Crypto)
 
 /-- `message_decrypt_signal` decryption on raw wire bytes (`SignalMessage::try_from` followed by
 `try_decrypt_from_record` with `msg_type = Whisper`, omitting identity-trust and store steps). -/
-def messageDecrypt {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (codec : SignalMessageProtoCodec)
+@[expose] def messageDecrypt {PQ PQC : Type} [Inhabited PQ] (C : Crypto) (codec : SignalMessageProtoCodec)
     (spqr : Spqr PQ PQC)
     (expected : Option (List (BitVec 8))) (wire : List (BitVec 8)) (coins : BitVec 256)
     (record : SessionState PQ) :
@@ -66,7 +66,7 @@ end SessionState
 
 /-- Splits a serialized `SignalMessage` into the prefix before the MAC and the 8-byte MAC as a
 little-endian `BitVec 64`. -/
-def SignalMessage.wire (m : SignalMessage) : List (BitVec 8) × BitVec 64 :=
+@[expose] def SignalMessage.wire (m : SignalMessage) : List (BitVec 8) × BitVec 64 :=
   (m.serialized.take (m.serialized.length - macLength),
     bytesToWord64LE (m.serialized.drop (m.serialized.length - macLength)))
 

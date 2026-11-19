@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach -- proof-setup: allow-public-import
 import Comparse.Basic
 import DY.Comparse
 import DY.Trace.Basic
@@ -21,7 +21,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompRatchet
@@ -48,7 +48,7 @@ serialized stored session states (`storedStates`), serialized stored PQXDH secre
 (`storedSecrets`), and `BobDone` base keys (`bobDoneBaseKeys`) have timestamps below `n`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -106,7 +106,7 @@ def g2s_SidLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
       StampsLt i S g ts e.st.state.sid
 
 /-- Every `HandshakeSession` event logged on `tr` has a `sid` stamped below `ts`. -/
-def g2s_HSLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) (tr : ExecTrace) :
+@[expose] def g2s_HSLt (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (ts : Nat) (tr : ExecTrace) :
     Prop :=
   ∀ s d, tr.EventLogged (ComposedEvent.HandshakeSession s d) → StampsLt i S g ts s.sid
 
@@ -388,7 +388,7 @@ theorem g2s_W_bobStart (b a : Participant) (kh : DY.Libsignal.PQXDH.BobKeyHandle
   refine g2s_W.of_pres ?_
   g2s_tac
 
-def g2s_Inv (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (tr : ExecTrace) : Prop :=
+@[expose] def g2s_Inv (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (tr : ExecTrace) : Prop :=
   ∀ ts, tr.length ≤ ts → TraceEntriesLt i S g ts tr → g2s_HSLt i S g ts tr
 
 theorem g2s_inv_of_W {i : ExternInterpretation} {S : OpaqueSymbolSemantics} {g : Ghost} {α : Type} {x : Traceful α}

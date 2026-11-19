@@ -9,23 +9,38 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkA1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.GamePaths
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignalPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
-public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkA1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.GamePaths
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignalPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
+public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import all Init.Data.Repr
 import Init.Data.ToString.Basic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Scope, Stack Budget, and `CommitOk` Helpers for `RunInstPlaced`
@@ -33,7 +48,7 @@ import Init.Data.ToString.Basic
 Relocatable `[LibsignalPlacement]` counterpart of `RunInst/ScopeAndCommit.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -125,10 +140,10 @@ theorem ratchetScopeCoversPq_scopeIn_placed (W : PEParams) :
 /-! ## 2. Concrete budgets and stack reserve proof -/
 
 /-- Concrete `RunBudgets` at `extHookStack` (`16384`). -/
-def cliRunBudgets_placed : RunBudgets := ⟨extHookStack⟩
+@[expose] def cliRunBudgets_placed : RunBudgets := ⟨extHookStack⟩
 
 /-- Concrete `RunNeeds` at `cliRunBudgets_placed` with a parameterized `decryptPrekey` slot budget. -/
-def cliRunNeeds_placed (decPkNeed : Nat) : RunNeeds where
+@[expose] def cliRunNeeds_placed (decPkNeed : Nat) : RunNeeds where
   encrypt := cliEncryptNeed_placed cliRunBudgets_placed
   decryptSignal := cliDecryptSignalNeed_placed cliRunBudgets_placed
   initiate := cliInitiateNeed cliRunBudgets_placed
@@ -363,7 +378,7 @@ private theorem pathOf_sess_addrValE (P : Party) :
   rw [← utf8_append_local, ← utf8_append_local]
   rfl
 
-def okPeerPath (P : Party) (p : List (BitVec 8)) : Prop :=
+@[expose] def okPeerPath (P : Party) (p : List (BitVec 8)) : Prop :=
   (∀ b ∈ p, b.toNat < 128) ∧
     (pathStr p = identityFile (partyAddressName P) ∨ pathStr p = sessionFile (partyAddress P))
 
@@ -391,7 +406,7 @@ private theorem okPeerPath_sess (P : Party) :
     exact of_decide_eq_true (List.all_eq_true.mp hall b hb)
   · unfold pathStr; rw [utf8_eq_kutf8Local]; cases P <;> rfl
 
-def StoreCallPeerPlaced (peer : AddrVal) : StoreCall AddrVal (List (BitVec 8)) → Prop
+@[expose] def StoreCallPeerPlaced (peer : AddrVal) : StoreCall AddrVal (List (BitVec 8)) → Prop
   | .saveIdentity rem _ => rem = peer
   | .storeSession rem _ => rem = peer
   | _ => True

@@ -10,9 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.Specs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
-import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.Decodes
 import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.RoundLemmas
 import LibsignalBinary.Proofs.E2E.InMem.SipHashModel.Lemmas
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -25,7 +23,7 @@ Proves `sipWriteU8_ok`: `<Hasher<Sip13Rounds> as Hasher>::write` on a 1-byte sli
 `1 ≤ h.ntail ≤ 6` appends the byte into `tail` without compressing, matching `SipHasher13.writeU8`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.SipHashBin
 
@@ -71,35 +69,5 @@ end WriteU8
 open WriteU8
 
 attribute [local irreducible] Program.fnOff
-
-/-- `SipHasher13::write` on a 1-byte slice with `1 ≤ ntail ≤ 6` satisfies `sipWriteU8Spec`. -/
-theorem sipWriteU8_ok (b : BitVec 64) (ext : HookMap) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr sipWriteName)
-      sipWriteU8Spec := by
-  simp only [sipWriteU8Spec]
-  have hfn : libsignalSessionCode.fnOff sipWriteName = num% (ls_off% "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write") :=
-    (ls_lemma% fnOff "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write")
-  code_fetches CryptoVerification.libsignalSessionCode libsignalSessionBin b ext hfn (num% (ls_off% "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write")) 228
-  clear hfn
-  dsimp only [RebasedProg, sipWriteName, BitVec.ofNat_eq_ofNat] at ⊢
-  generalize_entry (libsignalSessionCode.rebase b ext).fnAddr
-    "<core::hash::sip::Hasher<core::hash::sip::Sip13Rounds> as core::hash::Hasher>::write" = entry
-  generalize_entry (libsignalSessionCode.rebase b ext) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  wp_init x s0
-  examples_hide_fetches
-  obtain ⟨hAddr, bPtr, hasher, byteVal⟩ := x
-  dsimp only at *
-  rw [sipHasher13At_writeU8 hAddr hasher byteVal h_4 h_5 h]
-  unfold sipHasher13At sipStateAt
-  have hnt_cases :
-      hasher.ntail = 1 ∨ hasher.ntail = 2 ∨ hasher.ntail = 3 ∨
-      hasher.ntail = 4 ∨ hasher.ntail = 5 ∨ hasher.ntail = 6 := by omega
-  rcases hnt_cases with hnt | hnt | hnt | hnt | hnt | hnt <;> {
-    rw [hnt]
-    wp_steps
-    wp_done
-  }
 
 end CryptoVerification.E2E.InMem.SipHashBin

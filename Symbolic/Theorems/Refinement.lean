@@ -12,26 +12,29 @@ module
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import Symbolic.Specifications.Refinement.ElfBinding
 import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.RefinementElf
+import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.RealPrims
 
 /-!
 # Trace Refinement for the `libsignal-cli` Binary
 
 **Trusted: the statement.**
 
-Proves `comp_refines_cli_placed` (`CompRefinesCliBinaryPlaced cliElfBytes`,
-`Symbolic/Specifications/Refinement/ElfBinding.lean`), built by `lake build CliElfLib`. Across every
-pair of multi-block placements `(mpl, mmpl)` linked in `cliElfBytes`
-(`LibsignalBinary/Specifications/SignalSession/CliElf.lean`), the compiled AArch64 `libsignal-cli`
-binary refines the composed `PQXDH ∘ SPQR ∘ Triple Ratchet` symbolic model up to cryptographic byte
-collisions, and every reachable guarded CLI call terminates with a process outcome
-(`CliElfProgressPlaced`: no fault, trap, or divergence; `SIGABRT` aborts terminate the trace at
-`CliTraces.stop`).
+Proves `comp_refines_cli` (`CompRefinesCliBinary cliElfBytes`,
+`Symbolic/Specifications/Refinement/ElfBinding.lean`), built by `lake build CliElfLib`. For the
+parsed AArch64 `libsignal-cli` ELF image (`cliElfBytes`,
+`LibsignalBinary/Specifications/SignalSession/CliElf.lean`) executing from plain loaded ELF memory
+(`ElfImage.loadState`, zero initial memory patches) under `cliProgElf addrs`, with its 18 Rust
+panic and 5 `SampleNTT` addresses resolved from `.symtab` (`resolveCliElfAddrs`), the binary
+refines the composed `PQXDH ∘ SPQR ∘ Triple Ratchet` symbolic model up to cryptographic byte
+collisions, and every reachable guarded CLI call either terminates with a process outcome or reaches
+a non-terminating `SampleNTT` matrix seed (`CliElfProgress`: no fault, trap, or unexcused
+divergence, DEV-CLI22; `SIGABRT` aborts terminate the trace at `CliTraces.stop`).
 
 Combined with `Symbolic/Theorems/ModelSecurity.lean` via `comp_refinement_preservation_cli`
-(`Symbolic/Theorems/RefinementPreservation.lean`), this yields `signal_session_secure_placed`
-(`Symbolic/Theorems/Security.lean`). Non-vacuity of the extern and hook hypotheses is proved in
-`Symbolic/Tests/ExternWitness.lean`; placement witnesses and symbol-label gate A (`A-LINK`,
-`Computational/docs/TRUSTED_BASE.md`) are exported in `Symbolic/Theorems/Security.lean`.
+(`Symbolic/Theorems/RefinementPreservation.lean`), this yields `signal_session_secure`
+(`Symbolic/Theorems/Security.lean`). Non-vacuity of the extern and hook hypotheses (including
+`HooksMatchPlaced` at FIPS 197 `aes256Enc` / `aes256Dec`) is proved in
+`Symbolic/Tests/ExternWitness.lean`.
 -/
 
 @[expose] public section
@@ -41,19 +44,40 @@ set_option autoImplicit false
 namespace Proven.Refinement
 
 open CryptoVerification.SignalSession (cliElfBytes)
-open DY.Libsignal.Composed.Refinement.Cli (CompRefinesCliBinaryPlaced)
+open DY.Libsignal.Composed.Refinement.Cli (CompRefinesCliBinary)
 
-/-- Relocatable trace refinement and progress for the SHA-256-pinned `libsignal-cli` AArch64 binary
-(`CompRefinesCliBinaryPlaced cliElfBytes`, `Symbolic/Specifications/Refinement/ElfBinding.lean`).
-For every pair of multi-block placements `mpl` (`libsignalSessionLib.LinkedAt cliElfBytes mpl`) and
-`mmpl` (`VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl`), `cliElfBytes` parses as an ELF
-image satisfying `CliElfCodeMatchesPlaced mpl mmpl`, every reachable guarded CLI call terminates
-with a process outcome (`CliElfProgressPlaced mpl mmpl`), and under any valid cryptographic extern
-interpretation and matching CLI hooks, every guarded execution trace of `cliRunPlacedSig mpl mmpl`
-from `initDirs` is explained by a reachable model run (`Explains`) or encounters a cryptographic
-collision after an explained prefix (`CollisionAfterExplainedPrefix`). -/
-theorem comp_refines_cli_placed :
-    CompRefinesCliBinaryPlaced cliElfBytes :=
-  Symbolic.Proofs.TopLevelHelpers.Composed.Cli.comp_refines_cli_placed_proof
+/-- Trace refinement and progress for the SHA-256-pinned `libsignal-cli` AArch64 binary
+(`CompRefinesCliBinary cliElfBytes`, `Symbolic/Specifications/Refinement/ElfBinding.lean`).
+`cliElfBytes` parses as an ELF image whose 18 panic and 5 `SampleNTT` addresses resolve from
+`.symtab` (`resolveCliElfAddrs`); every reachable guarded CLI call running from plain ELF memory
+terminates with a process outcome except on a non-terminating `SampleNTT` matrix seed
+(`CliElfProgress`, DEV-CLI22); and under any valid cryptographic extern interpretation and matching
+CLI hooks, every guarded execution trace of `cliRunElf` from `initDirs` is explained by a reachable
+model run (`Explains`) or encounters a cryptographic collision after an explained prefix
+(`CollisionAfterExplainedPrefix`). -/
+theorem comp_refines_cli :
+    CompRefinesCliBinary cliElfBytes :=
+  Symbolic.Proofs.TopLevelHelpers.Composed.Cli.comp_refines_cli_proof
+
+open DY.Libsignal.Composed.Refinement.Cli (CompRefinesCliBinaryReal RealPrimsAdmissible)
+
+/-- The closed primitives executed by the linked ELF (`realCliHooks`) obey the symbolic laws:
+some extern interpretation satisfies `ExternContractsHoldCli` and agrees with `realCliHooks`
+(`RealPrimsAdmissible`, `Symbolic/Specifications/Refinement/ElfBinding.lean`). -/
+theorem real_prims_admissible :
+    RealPrimsAdmissible :=
+  Symbolic.Proofs.TopLevelHelpers.Composed.Cli.real_prims_admissible_proof
+
+/-- Trace refinement and progress for the SHA-256-pinned `libsignal-cli` AArch64 binary at the
+real primitives (`CompRefinesCliBinaryReal cliElfBytes`,
+`Symbolic/Specifications/Refinement/ElfBinding.lean`): the real primitives obey the symbolic laws;
+`cliElfBytes` parses and resolves its `.symtab` addresses; every reachable guarded CLI call
+terminates except on a non-terminating `SampleNTT` seed (DEV-CLI22); and for every extern
+interpretation that satisfies the symbolic laws and agrees with `realCliHooks`, every guarded
+execution trace of `cliRunElf` from `initDirs` (no `RealHooksAgreeOnInput` filter) is explained by
+a reachable model run or encounters a cryptographic collision after an explained prefix. -/
+theorem comp_refines_cli_real :
+    CompRefinesCliBinaryReal cliElfBytes :=
+  Symbolic.Proofs.TopLevelHelpers.Composed.Cli.comp_refines_cli_real_proof
 
 end Proven.Refinement

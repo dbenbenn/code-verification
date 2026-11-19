@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -45,7 +45,7 @@ monotonicity lemmas for `PeerFaithful`, `StateFaithful`, `RoleFaithful`, `PathFa
 `OutcomeFaithful`, and `ReadFaithful` across wire and environment moves.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -64,7 +64,7 @@ open DY.Libsignal.TripleRatchet
 @[simp] theorem sinfo_me (st : DRState) (p : Participant) : (st.sessionInfo p).me = p := rfl
 
 /-- `TrialCtx` built for a receive chain `c` of state `st` at `counter` in `whisperTrials`. -/
-def chainTrialCtx (st : TRState) (own : List DY.Bytes) (c : RecvChain) (counter : UInt32) :
+@[expose] def chainTrialCtx (st : TRState) (own : List DY.Bytes) (c : RecvChain) (counter : UInt32) :
     TrialCtx :=
   match consumeMessageKey c counter with
   | none =>
@@ -76,7 +76,7 @@ def chainTrialCtx (st : TRState) (own : List DY.Bytes) (c : RecvChain) (counter 
       ownSalts := own, seed? := some seed }
 
 /-- `TrialCtx` built for a cached `SkippedKeyStored` seed in `whisperTrials`. -/
-def skippedTrialCtx (st : TRState) (own : List DY.Bytes) (s : SessionInfo) (seed : DY.Bytes) :
+@[expose] def skippedTrialCtx (st : TRState) (own : List DY.Bytes) (s : SessionInfo) (seed : DY.Bytes) :
     TrialCtx :=
   { peerIk := st.peerIk, myIk := st.myIk, extra := [],
     ownSalts := if st.sessionInfo s.me = s then own else [],

@@ -22,7 +22,7 @@ Frame-polymorphic instruction-level step lemmas for `get_stride` and `enframe` i
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 

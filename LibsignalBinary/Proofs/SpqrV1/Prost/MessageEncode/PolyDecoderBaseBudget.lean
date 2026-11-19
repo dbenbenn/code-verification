@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBaseBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBase
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Shared Base for `prost::encoding::message::encode::<PolynomialDecoder, Vec<u8>>`
@@ -23,11 +24,13 @@ allocator event envelopes (`EncodePolyDecoder{Pinned,}Env`), `RustCliAllocBudget
 specifications, and pinned-to-unpinned bridges for `PolynomialDecoder::encode` (`[local#1, 2]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBaseBudget
+
+open CryptoVerification.LibsignalTripleRatchet (doReserveStack doReserveStackX)
 
 open Arm64 Arm64.Obj ProofLib SepProp
 open LibsignalBinary.Heap
@@ -37,8 +40,6 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
   (VecU8EncodeEnv fitsEnv_vecU8EncodeEnv_of_spare)
 open CryptoVerification.RustHeap (RustAlloc vecU8At)
 open CryptoVerification.LibsignalSpqrV1 (ProtoPolynomialDecoder)
-open CryptoVerification.LibsignalTripleRatchet
-  (doReserveStack doReserveStackX tripleRatchetProgAtExt)
 open CryptoVerification.LibsignalTripleRatchet.Prost (StepInvPlaced sp_sub_48_aligned)
 open CryptoVerification.SpqrV1.Poly
   (ProtoPolynomialDecoderGhost protoPolynomialDecoderAt protoPolynomialDecoderPinnedAt)
@@ -55,7 +56,7 @@ open CryptoVerification.SpqrV1.Prost.MessageEncode
 /-! ## 1. `VmPreserved`-Strengthened `polynomialDecoderEncodedLenElemsOutSpec` & Call Wrapper -/
 
 /-- `VmPreserved`-strengthened `polynomialDecoderEncodedLenElemsOutSpec` (`0` allocations). -/
-def polynomialDecoderEncodedLenElemsOutSpec (A : RustAlloc) :
+@[expose] def polynomialDecoderEncodedLenElemsOutSpec (A : RustAlloc) :
     Spec PolynomialDecoderEncodedLenPinnedGhost :=
   withVmPreserved
     (CryptoVerification.SpqrV1.Prost.MessageEncode.polynomialDecoderEncodedLenElemsOutSpec A)
@@ -201,12 +202,12 @@ theorem step_msg48rep_polyDecLen_call_prog {resStack : Nat} (hres : resStack + 1
 /-! ## 2. Budget-Threaded Specifications of `encode<PolynomialDecoder>` (`[local#1, 2]`) -/
 
 /-- Concrete allocator event envelope of `encode<PolynomialDecoder>` (pinned ghost). -/
-def EncodePolyDecoderPinnedEnv (x : EncodePolyDecoderPinnedGhost)
+@[expose] def EncodePolyDecoderPinnedEnv (x : EncodePolyDecoderPinnedGhost)
     (evs : List AllocEvent) : Prop :=
   VecU8EncodeEnv x.cap.toNat (x.bs.length + (encodePolyDecoderMsg x.tag x.dec).length) evs
 
 /-- Concrete allocator event envelope of `encode<PolynomialDecoder>` (unpinned ghost). -/
-def EncodePolyDecoderEnv (x : EncodePolyDecoderGhost)
+@[expose] def EncodePolyDecoderEnv (x : EncodePolyDecoderGhost)
     (evs : List AllocEvent) : Prop :=
   VecU8EncodeEnv x.cap.toNat (x.bs.length + (encodePolyDecoderMsg x.tag x.dec).length) evs
 
@@ -217,7 +218,7 @@ theorem encodePolyDecoderPinnedEnv_eq_nil_of_spare
   VecU8EncodeEnv.eq_nil_of_le hle h
 
 /-- Envelope-parameterized pinned budget specification of `encode<PolynomialDecoder>`. -/
-def encodePolyDecoderPinnedSpecOfEnv (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodePolyDecoderPinnedSpecOfEnv (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv : EncodePolyDecoderPinnedGhost → (List AllocEvent → Prop) → Prop)
     (PostEnv : EncodePolyDecoderPinnedGhost → List AllocEvent → Prop) :
@@ -249,7 +250,7 @@ def encodePolyDecoderPinnedSpecOfEnv (resStack : Nat) {M : AllocCostModel}
       stackAt s0.sp (msgEnc48RepeatedStackOf resStack)
 
 /-- Envelope-parameterized unpinned budget specification of `encode<PolynomialDecoder>`. -/
-def encodePolyDecoderSpecOfEnv (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodePolyDecoderSpecOfEnv (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv : EncodePolyDecoderGhost → (List AllocEvent → Prop) → Prop)
     (PostEnv : EncodePolyDecoderGhost → List AllocEvent → Prop) :
@@ -281,7 +282,7 @@ def encodePolyDecoderSpecOfEnv (resStack : Nat) {M : AllocCostModel}
       stackAt s0.sp (msgEnc48RepeatedStackOf resStack)
 
 /-- Concrete pinned budget specification of `encode<PolynomialDecoder>`. -/
-def encodePolyDecoderPinnedSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodePolyDecoderPinnedSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodePolyDecoderPinnedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -311,7 +312,7 @@ def encodePolyDecoderPinnedSpecOf (resStack : Nat) {M : AllocCostModel}
       stackAt s0.sp (msgEnc48RepeatedStackOf resStack)
 
 /-- Concrete unpinned budget specification of `encode<PolynomialDecoder>`. -/
-def encodePolyDecoderSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodePolyDecoderSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodePolyDecoderGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -341,7 +342,7 @@ def encodePolyDecoderSpecOf (resStack : Nat) {M : AllocCostModel}
       stackAt s0.sp (msgEnc48RepeatedStackOf resStack)
 
 /-- Exact-capacity 0-allocation (`VmPreserved`) pinned contract of `encode<PolynomialDecoder>`. -/
-def encodePolyDecoderPinnedExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def encodePolyDecoderPinnedExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec EncodePolyDecoderPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg32 .x0 = x.tag ∧
@@ -445,93 +446,5 @@ theorem polyDecoder_unpinned_of_pinned {resStack : Nat} {M : AllocCostModel}
   · exact (not_satisfies_false_sepConj hq).elim
   · exact (not_satisfies_false_sepConj hq).elim
   · exact (not_satisfies_false_sepConj hq).elim
-
-theorem polyDecoder_unpinned_of_pinned_x {resStack : Nat} {M : AllocCostModel}
-    {img : Obj.Image} {prog : Program} {entry : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hpinned : subroutine_ok prog entry ((encodePolyDecoderPinnedSpecOf resStack A lim).inImage img)) :
-    subroutine_ok prog entry ((encodePolyDecoderSpecOf resStack A lim).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨hinv0, hpre⟩ := hpre
-  dsimp only [encodePolyDecoderSpecOf] at hpre
-  rw [protoPolynomialDecoderAt_eq_exists_pinned] at hpre
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpre
-  rcases hpre with ⟨g, hpre⟩
-  have hpre' : s0.mem ⊨ ((encodePolyDecoderPinnedSpecOf resStack A lim).inImage img).pre
-      (⟨x.tag, x.decA, g, x.dec, x.v, x.cap, x.ptr, x.bs⟩, st) s0 ∗ R := by
-    rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hinv0, hpre⟩
-  refine hpinned.mono_outcome (⟨x.tag, x.decA, g, x.dec, x.v, x.cap, x.ptr, x.bs⟩, st)
-      R s0 hpc hrun hpre' hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    exact polyDecoder_post_unpinned_of_pinned_env
-      (PreP := fun y Env => Env = EncodePolyDecoderPinnedEnv y)
-      (PreU := fun y Env => Env = EncodePolyDecoderEnv y)
-      (fun _ h => h)
-      (by
-        dsimp only [Spec.inImage, encodePolyDecoderPinnedSpecOf] at hq
-        dsimp only [encodePolyDecoderPinnedSpecOfEnv]
-        exact hq)
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-def EncodePolyDecoder1PinnedOkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodePolyDecoder1Name)
-    (encodePolyDecoderPinnedSpec A lim)
-
-def EncodePolyDecoder1OkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodePolyDecoder1Name)
-    (encodePolyDecoderSpec A lim)
-
-def EncodePolyDecoder1PinnedOkX {M : AllocCostModel} (img : Obj.Image)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encodePolyDecoder1Name)
-    ((encodePolyDecoderPinnedSpecX A lim).inImage img)
-
-def EncodePolyDecoder1OkX {M : AllocCostModel} (img : Obj.Image)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encodePolyDecoder1Name)
-    ((encodePolyDecoderSpecX A lim).inImage img)
-
-def EncodePolyDecoder2PinnedOkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodePolyDecoder2Name)
-    (encodePolyDecoderPinnedSpec A lim)
-
-def EncodePolyDecoder2OkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodePolyDecoder2Name)
-    (encodePolyDecoderSpec A lim)
-
-def EncodePolyDecoder2PinnedOkX {M : AllocCostModel} (img : Obj.Image)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encodePolyDecoder2Name)
-    ((encodePolyDecoderPinnedSpecX A lim).inImage img)
-
-def EncodePolyDecoder2OkX {M : AllocCostModel} (img : Obj.Image)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encodePolyDecoder2Name)
-    ((encodePolyDecoderSpecX A lim).inImage img)
 
 end LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBaseBudget

@@ -101,16 +101,6 @@ theorem safeMemo_toSafeMemo2 {S : OpaqueSymbolSemantics} {g : Ghost} {pts : List
     rw [← hd, List.take_append_drop]
   · exact Or.inr (Or.inr hdag)
 
-theorem safeMemo2_mono_pts {S : OpaqueSymbolSemantics} {g : Ghost} {pts₁ pts₂ : List Bytes} {b : Bytes}
-    (hsub : ∀ p ∈ pts₁, p ∈ pts₂)
-    (h : SafeMemo2 S g pts₁ b) :
-    SafeMemo2 S g pts₂ b := by
-  intro x hx
-  rcases h x hx with ⟨hm, hl⟩ | hsp | hdag
-  · exact Or.inl ⟨hsub _ hm, hl⟩
-  · exact Or.inr (Or.inl hsp)
-  · exact Or.inr (Or.inr hdag)
-
 def endsWith0100 (bs : HwBytes) : Bool :=
   decide (2 ≤ bs.length) && (bs.drop (bs.length - 2) == [0x01#8, 0x00#8])
 

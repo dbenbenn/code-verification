@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced1
 import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2
 import ProofLib.SepLogic.WPp
@@ -25,7 +25,7 @@ Relocatable per-block verification of the first monomorphization
 `do_reserve_and_handle [local#2]` in Block 157, and `memcpy`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +67,7 @@ local macro "cs_step " hcs:term:max hinv:term:max : term =>
   `(UnchunkedEncodeCalleeSavedPlaced.step $hcs (by simp only [arm64_norm]) (by simp only [arm64_norm])
     (by simp only [arm64_norm]) (by simp only [arm64_norm]) (by simp only [arm64_norm]) $hinv)
 
-def IsEkEnc1PlacedProg (prog : Program) (fnBase encLen_pc varint_pc auth_pc reserve_pc memcpy_pc : BitVec 64) : Prop :=
+@[expose] def IsEkEnc1PlacedProg (prog : Program) (fnBase encLen_pc varint_pc auth_pc reserve_pc memcpy_pc : BitVec 64) : Prop :=
   ∃ (_ : LibsignalPlacement) (H : String → Option (State → State)),
     prog = lsProg_155 H ∧ fnBase = (blkPl_155).base ∧ encLen_pc = (blkPl_192).base ∧
     varint_pc = (blkPl_148).base ∧ auth_pc = lsmpl.base 151 ∧

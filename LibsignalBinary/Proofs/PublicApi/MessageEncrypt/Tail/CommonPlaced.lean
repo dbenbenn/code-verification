@@ -10,12 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PlacedDefs
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Relocatable (`[LibsignalPlacement]`) Tail Common Definitions & `SegExitPlaced` Bridges
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,7 +32,7 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt
 
 /-- Relocatable tail entry state on Block `198` (`lsProg_198 H`) under `[LibsignalPlacement]`. -/
-def EncTailVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def EncTailVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (C : Crypto) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel)

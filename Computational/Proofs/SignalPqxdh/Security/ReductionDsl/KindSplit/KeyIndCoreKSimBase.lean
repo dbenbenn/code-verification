@@ -16,8 +16,8 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore 
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemBounds -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyShcr -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableDefs -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableSpec -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableDefs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableSpec
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoCacheRefine -- proof-setup: allow-public-import
 public import Computational.Proofs.ReductionDsl.StepSim -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreK -- proof-setup: allow-public-import
@@ -146,38 +146,6 @@ private theorem isQueryBoundP_of_imp {ι₀ : Type} {spec : OracleSpec ι₀} {�
     · by_cases hp : p t
       · simp only [hp, himp t hp, ite_true]; omega
       · simp only [hp, ite_false]; split <;> omega
-
-/-- Bridges `BoundedAdv` to the three-predicate `IsQueryBoundP` family for `StepSim`. -/
-theorem boundedAdv_imp_keyIndSimPred {S : Setup} {b : QueryBudget}
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    ∀ (j : Fin 3),
-      A.1.run.IsQueryBoundP (isGamePred (G := keyIndSpec S) (keyIndSimPred S j))
-        (keyIndSimBounds b j) := by
-  rcases A with ⟨adv, hRo, _, _, hTot, hOn⟩
-  intro j
-  fin_cases j
-  · have hEq : isGamePred (G := keyIndSpec S) (keyIndSimPred S 0) = isKeyIndOnlineQuery := by
-      funext q; cases q <;> simp [isGamePred, keyIndSimPred, isKeyIndOnlineQuery]
-    have hTotOn : adv.run.IsQueryBoundP isKeyIndOnlineQuery b.q_total :=
-      isQueryBoundP_of_imp (fun q hq => by cases q <;> simp_all [isKeyIndOnlineQuery, isGameQuery]) hTot
-    simpa only [Fin.zero_eta, keyIndSimBounds, hEq] using isQueryBoundP_min hOn hTotOn
-  · have hEq : isGamePred (G := keyIndSpec S) (keyIndSimPred S 1) = isKeyIndRoQuery := by
-      funext q; cases q <;> simp [isGamePred, keyIndSimPred, isKeyIndRoQuery]
-    have hTotRo : adv.run.IsQueryBoundP isKeyIndRoQuery b.q_total :=
-      isQueryBoundP_of_imp (fun q hq => by cases q <;> simp_all [isKeyIndRoQuery, isGameQuery]) hTot
-    simpa only [Fin.mk_one, keyIndSimBounds, hEq] using isQueryBoundP_min hRo hTotRo
-  · have hEq : isGamePred (G := keyIndSpec S) (keyIndSimPred S 2) =
-        (fun q => isGameQuery q = true) := by
-      funext q; cases q <;> simp [isGamePred, keyIndSimPred, isGameQuery]
-    simpa only [Fin.reduceFinMk, keyIndSimBounds, hEq] using hTot
-
-theorem boundedAdv_unit_imp_keyIndSimPred {S : Setup} {b : QueryBudget}
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    ∀ (a : Unit) (j : Fin 3),
-      ((fun _ : Unit => A.1.run) a).IsQueryBoundP
-        (isGamePred (G := keyIndSpec S) (keyIndSimPred S j))
-        (keyIndSimBounds b j) :=
-  fun _ j => boundedAdv_imp_keyIndSimPred A j
 
 /-- Maps `keyIndSentinel S b` back to the legacy sentinel `b.q_total + 1`, fixing smaller ordinals. -/
 @[expose] def fixSent (S : Setup) (b : QueryBudget) (n : ℕ) : ℕ :=
@@ -939,14 +907,6 @@ theorem initPrin1KeyB_min_eq (st : Var Γ₁ keyIndStateTy) (u : Var Γ₂ .nat)
   simp only [initPrin1KeyB, Comp.eval]
   rw [eAny_eq_of_le _ _ _ (by simpa [stPrin, stPrinList, Expr.eval] using hLen) hLe]
 
-theorem initPrinB_min_eq (st : Var Γ₁ keyIndStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ]
-    (env : Env Δ)
-    (hLen : (stPrinList ((_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.v st).eval env)).length ≤ K₁)
-    (hLe : K₁ ≤ K₂) :
-    (initPrinB K₁ st u).eval env = (initPrinB K₂ st u).eval env := by
-  simp only [initPrinB, Comp.eval]
-  rw [eAny_eq_of_le _ _ _ (by simpa [stPrin, stPrinList, Expr.eval] using hLen) hLe]
-
 theorem corruptB_min_eq (st : Var Γ₁ keyIndStateTy) (u : Var Γ₂ .nat) [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (env : Env Δ)
     (hLen : (stPrinList ((_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.v st).eval env)).length ≤ K₁)
@@ -1087,28 +1047,6 @@ theorem revealSpkB_min_eq (st : Var Γ₁ keyIndStateTy) (x : Var Γ₂ (.prod .
       _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.stUpd, eMap, stSpks, Expr.eval]
     rw [List.take_of_length_le (by simpa [stSpksList, Expr.eval] using hLen),
       List.take_of_length_le (Nat.le_trans (by simpa [stSpksList, Expr.eval] using hLen) hLe)]
-
-theorem shcrGenSpkB_min_eq (s : Var Γ₁ shcrStTy) (x : Var Γ₂ (.prod .nat .nat))
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] (env : Env Δ) {c : Fin 3 → ℕ}
-    (hInv : BaseOnlineLenInv c ((_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.v s).eval env).1)
-    (hc : c 0 ≤ K₁) (hLe : K₁ ≤ K₂) :
-    (shcrGenSpkB S K₁ s x).eval env = (shcrGenSpkB S K₂ s x).eval env := by
-  have hSpks := Nat.le_trans hInv.spks_le hc
-  have hPrin := Nat.le_trans hInv.prin_le hc
-  simp only [shcrGenSpkB, caseOptV, Comp.eval]
-  cases (scTB (_root_.SignalPqxdh.Security.ReductionDsl.KeyInd.v s)).eval env with
-  | none =>
-    simp only [onBase, letV, bindV, Comp.eval, pure_bind]
-    rw [genSpkB_min_eq .zero x _ (by simpa [scBase, Expr.eval] using hInv) hc hLe]
-  | some bIdx =>
-    dsimp only
-    have hGen : (onBase s fun g => genSpkB K₁ g x).eval (.cons bIdx env) =
-        (onBase s fun g => genSpkB K₂ g x).eval (.cons bIdx env) := by
-      simp only [onBase, letV, bindV, Comp.eval, pure_bind]
-      rw [genSpkB_min_eq .zero x _ (by simpa [scBase, Expr.eval] using hInv) hc hLe]
-    rw [hGen,
-      eAny_eq_of_le _ _ _ (by simpa [stSpks, stSpksList, scBase, Expr.eval] using hSpks) hLe,
-      eFind_eq_of_le _ _ _ (by simpa [stPrin, stPrinList, scBase, Expr.eval] using hPrin) hLe]
 
 theorem shcrActiveGenSpkLeg_min_eq (env : Env [shcrStTy, .prod .nat .nat]) {c : Fin 3 → ℕ}
     (hInv : BaseOnlineLenInv c (env.get .zero).1)

@@ -9,17 +9,32 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShimsPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib.SepLogic.WP -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE -- proof-setup: allow-public-import
+public import ProofLib.Disproof.Basic
+public import ProofLib.Placed.OpcodeExclusion
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Placed Budgeted `KyberPreKeyFiles` Store Kit
@@ -29,7 +44,7 @@ bridge on Block `578`, shim and `futDrop` contracts on Blocks `611`, `613`, and 
 `KyberPreKeyStoreKitPlacedOk` assembly for `cliKpkStoreSpecPlaced`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlacedBudget
@@ -178,7 +193,7 @@ theorem cliKpkMarkOut_entails (A : RustAlloc) (out : BitVec 64) (a : KpkMarkAns)
 
 /-! ## Budget envelope and mark-poll bridge -/
 
-def cliKpkStoreBudgetEnvPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def cliKpkStoreBudgetEnvPlaced [LibsignalPlacement] {A : RustAlloc}
     {rd : ReadRule} {F0 : FsFiles}
     {pathOk : List (BitVec 8) → Prop} {kid ksid : BitVec 32} {kbk : PublicKey}
     {G : CliKpkGetSide} {s1 s2 s3 s4 : Nat}
@@ -336,110 +351,7 @@ theorem cliKpkStoreSpecPlaced_markPoll [LibsignalPlacement] {M : AllocCostModel}
     (cliKpkStoreBudgetEnvPlaced GetEnv (MarkEnv0 F0))
     (fun _ _ _ _ _ _ hm => hm) hhop
 
-theorem cliKpkStoreSpecPlaced_markPoll_rocl [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H]
-    {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {kid ksid : BitVec 32} {kbk : PublicKey}
-    (G : CliKpkGetSide) {s1 s2 s3 s4 : Nat}
-    (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
-    (hMarkBox : ∀ box self baseKeyA id signedId st,
-      kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32)
-    (MarkEnv : FsFiles → KpkMarkPollGhost → List AllocEvent → Prop)
-    (kitEnv : KyberPreKeyStoreBudgetEnv
-      (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox))
-    (hEnv : ∀ fut out self baseKeyA st0 evs,
-      MarkEnv F0 ⟨fut, out, self, baseKeyA, kid, ksid, kbk, st0⟩ evs →
-        kitEnv.markPollEnv st0 kid ksid kbk evs)
-    (hhop : subroutine_ok (lsProg_578 H) (lsmpl.base 578)
-      (kpkMarkPollSpecPlaced rd pathOk A lim MarkEnv s4))
-    (hblk : callerBlk < 619 := by decide) :
-    let kit :=
-      cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox
-    subroutine_ok callerProg (0#64 + kit.markPollOff)
-      (withLsRoCl lsmpl (kitKpkMarkPollSpecE M A lim kit kitEnv)) := by
-  intro kit
-  have hcallee :=
-    cliKpkStoreSpecPlaced_markPoll_of_env G hGetBox hMarkBox MarkEnv kitEnv hEnv hhop
-  have hrocl :=
-    ls_subroutine_ok_rocl_of_block (callerProg := callerProg) (j := 578)
-      hcallee hblk (by decide) (by decide)
-  simpa only [kit, cliKpkStoreSpecPlaced, BitVec.zero_add] using hrocl
-
 /-! ## Shims, `futDrop`, and `KyberPreKeyStoreKitPlacedOk` assembly -/
-
-theorem cliKpkGetShim_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {kid ksid : BitVec 32} {kbk : PublicKey}
-    (G : CliKpkGetSide) {s1 s2 s3 s4 : Nat}
-    (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
-    (hMarkBox : ∀ box self baseKeyA id signedId st,
-      kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32)
-    (hC : AllocContractsXCliPlaced A lim H)
-    (hs1 : 32 + extHookStack ≤ s1) :
-    subroutine_ok (lsProg_611 H) (lsmpl.base 611)
-      (withLsCodeRoLoaded lsmpl
-        (kitKpkGetShimSpec M A lim
-          (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4
-            hGetBox hMarkBox))) := by
-  let kit :=
-    cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox
-  have hshim := kpkGetShim_placed_ok_of_deps (stk := s1) hC hs1
-  refine subroutine_ok.of_codeLoaded fun ⟨⟨self, id⟩, st⟩ R s0 hpc hrun hpre hsp _ => ?_
-  obtain ⟨hcrl, hpre1⟩ := extract_withLsCodeRoLoaded hpre
-  change s0.mem ⊨
-    (⌜(0#64 &&& 4095#64) = 0#64 ∧ s0.readReg64 .x0 = self ∧ s0.readReg32 .x1 = id ∧
-        FitsEnv M lim st (BoxAllocEnv 16)⌝ ∗
-      A.pool lim st s0 ∗ stackAt s0.sp s1) ∗ R at hpre1
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre1
-  obtain ⟨⟨_, hx0, hx1, hfit⟩, hpool⟩ := hpre1
-  have hpre_shim :
-      s0.mem ⊨ (pkShimSpecPlaced kpkGetFutVtSym A lim s1).pre (⟨self, id⟩, st) s0 ∗ R := by
-    dsimp only [pkShimSpecPlaced, withLsCodeRoLoaded]
-    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hcrl, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hfit⟩, by simpa only [sepConj_assoc] using hpool⟩
-  refine subroutine_ok.mono_outcome hshim (⟨self, id⟩, st) R s0 hpc hrun hpre_shim hsp
-    fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | hpan | hex | hoom
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [withLsCodeRoLoaded, kitKpkGetShimSpec, kit, cliKpkStoreSpecPlaced, cliKpkStoreSpec]
-    dsimp only [pkShimSpecPlaced, withLsCodeRoLoaded] at hpost
-    simpa only [BitVec.zero_add] using hpost
-  · exact Or.inr (Or.inl hpan)
-  · exact Or.inr (Or.inr (Or.inl hex))
-  · exact Or.inr (Or.inr (Or.inr hoom))
-
-theorem cliKpkGetShim_rocl_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H]
-    {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {kid ksid : BitVec 32} {kbk : PublicKey}
-    (G : CliKpkGetSide) {s1 s2 s3 s4 : Nat}
-    (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
-    (hMarkBox : ∀ box self baseKeyA id signedId st,
-      kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32)
-    (hC : AllocContractsXCliPlaced A lim H)
-    (hs1 : 32 + extHookStack ≤ s1)
-    (hblk : callerBlk < 619 := by decide) :
-    let kit :=
-      cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox
-    subroutine_ok callerProg (0#64 + kit.getShimOff)
-      (withLsRoCl lsmpl (kitKpkGetShimSpec M A lim kit)) := by
-  intro kit
-  have hrocl :=
-    ls_subroutine_ok_rocl_of_block (callerProg := callerProg) (j := 611)
-      (cliKpkGetShim_placed_ok (rd := rd) (F0 := F0) (pathOk := pathOk)
-        (kid := kid) (ksid := ksid) (kbk := kbk) G
-        (s1 := s1) (s2 := s2) (s3 := s3) (s4 := s4) hGetBox hMarkBox hC hs1)
-      hblk (by decide) (by decide)
-  have hoff : 0#64 + kit.getShimOff = lsmpl.base 611 := by
-    dsimp only [kit, cliKpkStoreSpecPlaced]
-    exact BitVec.zero_add _
-  rw [hoff]
-  exact hrocl
 
 theorem cliKpkMarkShim_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
@@ -488,35 +400,6 @@ theorem cliKpkMarkShim_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   · exact Or.inr (Or.inr (Or.inl hex))
   · exact Or.inr (Or.inr (Or.inr hoom))
 
-theorem cliKpkMarkShim_rocl_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H]
-    {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {kid ksid : BitVec 32} {kbk : PublicKey}
-    (G : CliKpkGetSide) {s1 s2 s3 s4 : Nat}
-    (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
-    (hMarkBox : ∀ box self baseKeyA id signedId st,
-      kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32)
-    (hC : AllocContractsXCliPlaced A lim H)
-    (hs3 : 48 + extHookStack ≤ s3)
-    (hblk : callerBlk < 619 := by decide) :
-    let kit :=
-      cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox
-    subroutine_ok callerProg (0#64 + kit.markShimOff)
-      (withLsRoCl lsmpl (kitKpkMarkShimSpec M A lim kit)) := by
-  intro kit
-  have hrocl :=
-    ls_subroutine_ok_rocl_of_block (callerProg := callerProg) (j := 613)
-      (cliKpkMarkShim_placed_ok (rd := rd) (F0 := F0) (pathOk := pathOk)
-        (kid := kid) (ksid := ksid) (kbk := kbk) G
-        (s1 := s1) (s2 := s2) (s3 := s3) (s4 := s4) hGetBox hMarkBox hC hs3)
-      hblk (by decide) (by decide)
-  have hoff : 0#64 + kit.markShimOff = lsmpl.base 613 := by
-    dsimp only [kit, cliKpkStoreSpecPlaced]
-    exact BitVec.zero_add _
-  rw [hoff]
-  exact hrocl
-
 section FutDrop
 
 attribute [local irreducible] Program.fetch Program.externAt?
@@ -530,80 +413,5 @@ theorem cliKpkFutDrop_block_placed_ok [LibsignalPlacement] (H : LibsignalHooks) 
   wp_done
 
 end FutDrop
-
-theorem cliKpkFutDrop_rocl_placed_ok [LibsignalPlacement] {callerProg : Program} {i : Nat}
-    {H : LibsignalHooks} [IsLsBlockProg callerProg i H] (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 547) (withLsRoCl lsmpl futDropBudgetSpec) :=
-  ls_futDrop_ok_of_block (callerProg := callerProg) (cliKpkFutDrop_block_placed_ok H)
-    hi (by decide) (by decide)
-
-/-- Assemble `KyberPreKeyStoreKitPlacedOk` for `cliKpkStoreSpecPlaced` from
-`AllocContractsXCliPlaced` and the Block `576`/`578` poll contracts. -/
-theorem cliKpkStorePlacedOk_of_polls [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {kid ksid : BitVec 32} {kbk : PublicKey}
-    (G : CliKpkGetSide) {s1 s2 s3 s4 : Nat}
-    (hGetBox : ∀ box self id st, pkBoxAt box self id st ⊢ memRegion box 16)
-    (hMarkBox : ∀ box self baseKeyA id signedId st,
-      kpkMarkBoxAt box self baseKeyA id signedId st ⊢ memRegion box 32)
-    (MarkEnv : FsFiles → KpkMarkPollGhost → List AllocEvent → Prop)
-    (kitEnv : KyberPreKeyStoreBudgetEnv
-      (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox))
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hC : AllocContractsXCliPlaced A lim H)
-    (hs1 : 32 + extHookStack ≤ s1)
-    (hs3 : 48 + extHookStack ≤ s3)
-    (hGetPoll : subroutine_ok (lsProg_576 H) (lsmpl.base 576)
-      (withLsCodeRoLoaded lsmpl
-        (kitKpkGetPollSpecE M A lim
-          (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4
-            hGetBox hMarkBox)
-          kitEnv)))
-    (hEnv : ∀ fut out self baseKeyA st0 evs,
-      MarkEnv F0 ⟨fut, out, self, baseKeyA, kid, ksid, kbk, st0⟩ evs →
-        kitEnv.markPollEnv st0 kid ksid kbk evs)
-    (hMarkPoll : subroutine_ok (lsProg_578 H) (lsmpl.base 578)
-      (kpkMarkPollSpecPlaced rd pathOk A lim MarkEnv s4)) :
-    KyberPreKeyStoreKitPlacedOk A lim
-      (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4 hGetBox hMarkBox)
-      kitEnv H where
-  getShim hblk := cliKpkGetShim_rocl_placed_ok G hGetBox hMarkBox hC hs1 hblk
-  getPoll {callerProg} {callerBlk} _ hblk := by
-    have hoff :
-        0#64 +
-          (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4
-            hGetBox hMarkBox).getPollOff =
-          lsmpl.base 576 := by
-      dsimp only [cliKpkStoreSpecPlaced]
-      exact BitVec.zero_add _
-    rw [hoff]
-    exact ls_subroutine_ok_rocl_of_block (callerProg := callerProg) (j := 576)
-      hGetPoll hblk (by decide) (by decide)
-  getFutDrop {callerProg} {callerBlk} _ hblk := by
-    have hoff :
-        0#64 +
-          (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4
-            hGetBox hMarkBox).getFutDropOff =
-          lsmpl.base 547 := by
-      dsimp only [cliKpkStoreSpecPlaced]
-      rw [BitVec.zero_add]
-      exact lsDropOffPlaced_eq hDropNz
-    rw [hoff]
-    exact cliKpkFutDrop_rocl_placed_ok (callerProg := callerProg) (i := callerBlk) (H := H) hblk
-  markShim hblk := cliKpkMarkShim_rocl_placed_ok G hGetBox hMarkBox hC hs3 hblk
-  markPoll hblk :=
-    cliKpkStoreSpecPlaced_markPoll_rocl G hGetBox hMarkBox MarkEnv kitEnv hEnv hMarkPoll hblk
-  markFutDrop {callerProg} {callerBlk} _ hblk := by
-    have hoff :
-        0#64 +
-          (cliKpkStoreSpecPlaced A.repAlloc rd F0 pathOk kid ksid kbk G s1 s2 s3 s4
-            hGetBox hMarkBox).markFutDropOff =
-          lsmpl.base 547 := by
-      dsimp only [cliKpkStoreSpecPlaced]
-      rw [BitVec.zero_add]
-      exact lsDropOffPlaced_eq hDropNz
-    rw [hoff]
-    exact cliKpkFutDrop_rocl_placed_ok (callerProg := callerProg) (i := callerBlk) (H := H) hblk
 
 end LibsignalBinary.Proofs.SignalSession.Cli.KitInst.KyberMarkFitPlacedBudget

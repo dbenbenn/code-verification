@@ -61,7 +61,7 @@ def AeadIndCpaAdv.Bounded (A : AeadIndCpaAdv) : Prop :=
 
 /-- One-time left-or-right IND-CPA experiment under uniform 80-byte `MessageKeys`; returns a
     uniform coin if `m0.length ≠ m1.length`. -/
-noncomputable def aeadIndCpaExp (P : Primitives) (A : AeadIndCpaAdv) : ProbComp Bool := do
+def aeadIndCpaExp (P : Primitives) (A : AeadIndCpaAdv) : ProbComp Bool := do
   let b ← $ᵗ Bool
   let mk ← sampleMessageKeys80
   let (ad, m0, m1, st) ← simulateQ (primBaseImpl P) A.choose
@@ -97,7 +97,7 @@ def PrfHmacAdv.Bounded (A : PrfHmacAdv) : Prop :=
 
 /-- Real-or-random PRF experiment for `hmacSha256Ref P k ·` under a uniform 32-byte key `k` versus
     a lazy random function with 32-byte outputs. -/
-noncomputable def prfHmacExp (P : Primitives) (A : PrfHmacAdv) : ProbComp Bool := do
+def prfHmacExp (P : Primitives) (A : PrfHmacAdv) : ProbComp Bool := do
   let b ← $ᵗ Bool
   let k ← sampleBytes32
   let impl : QueryImpl prfHmacSpec (StateT (List (Bytes × Bytes)) ProbComp) :=
@@ -135,7 +135,7 @@ def PrfCkAdv.Bounded (A : PrfCkAdv) : Prop :=
 
 /-- Real-or-random PRF experiment for `ck ↦ (chainKdfSeed ck, chainKdfNext ck)` under a uniform
     32-byte chain key `ck`. -/
-noncomputable def prfCkExp (P : Primitives) (A : PrfCkAdv) : ProbComp Bool := do
+def prfCkExp (P : Primitives) (A : PrfCkAdv) : ProbComp Bool := do
   let b ← $ᵗ Bool
   let ck ← sampleBytes32
   let (mkSeed, ckNext) ←
@@ -182,7 +182,7 @@ def PrfMsgKeysAdv.Bounded (A : PrfMsgKeysAdv) : Prop :=
 
 /-- Real-or-random PRF experiment for `deriveMsgKeys mkSeed (some ·)` under a uniform 32-byte
     `mkSeed` versus a lazy random function into uniform 80-byte `MessageKeys`. -/
-noncomputable def prfMsgKeysExp (P : Primitives) (A : PrfMsgKeysAdv) : ProbComp Bool := do
+def prfMsgKeysExp (P : Primitives) (A : PrfMsgKeysAdv) : ProbComp Bool := do
   let b ← $ᵗ Bool
   let mkSeed ← sampleBytes32
   let impl : QueryImpl prfMsgKeysSpec
@@ -801,7 +801,7 @@ def pqxdhAuthImpl (useRo checkAuth : Bool) (S : Setup) (P : Primitives) :
 /-- Core two-key `Auth` experiment (DEV-PQ13): wins outright if `checkAuth ∧ finalSt.hasWonAuth`,
     returns a uniform coin if any challenged session fails `authInitCorruptionClause`, and
     otherwise checks `b' == secb`. -/
-noncomputable def pqxdhAuthExpCore (useRo checkAuth : Bool) (S : Setup)
+def pqxdhAuthExpCore (useRo checkAuth : Bool) (S : Setup)
     (P : Primitives) (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthState.empty S secb
@@ -819,7 +819,7 @@ noncomputable def pqxdhAuthExpCore (useRo checkAuth : Bool) (S : Setup)
     return (b' == secb)
 
 /-- Two-key `Auth` experiment (`useRo = true`, `checkAuth = true`). -/
-noncomputable def pqxdhAuthExp (S : Setup) (P : Primitives) (A : AuthAdversary S) :
+def pqxdhAuthExp (S : Setup) (P : Primitives) (A : AuthAdversary S) :
     ProbComp Bool :=
   pqxdhAuthExpCore true true S P A
 
@@ -926,7 +926,7 @@ noncomputable def pqxdhAuthBound
 
 /-- Runs the `Auth` experiment of `pqxdhAuthExpCore` against an arbitrary `authSpec S`
     implementation `impl`. -/
-noncomputable def pqxdhAuthExpCoreWith (useRo checkAuth : Bool) (S : Setup) (P : Primitives)
+def pqxdhAuthExpCoreWith (useRo checkAuth : Bool) (S : Setup) (P : Primitives)
     (impl : QueryImpl (authSpec S) (StateT (AuthState S) ProbComp)) (A : AuthAdversary S) :
     ProbComp Bool := do
   let secb ← $ᵗ Bool
@@ -974,7 +974,7 @@ def pqxdhAuthImpl1Key (S : Setup) (P : Primitives) :
   | q => pqxdhAuthImpl true true S P q
 
 /-- One-key `Auth` experiment (`pqxdhAuthExpCoreWith true true` on `pqxdhAuthImpl1Key`). -/
-noncomputable def pqxdhAuth1KeyExp (S : Setup) (P : Primitives) (A : AuthAdversary S) :
+def pqxdhAuth1KeyExp (S : Setup) (P : Primitives) (A : AuthAdversary S) :
     ProbComp Bool :=
   pqxdhAuthExpCoreWith true true S P (pqxdhAuthImpl1Key S P) A
 

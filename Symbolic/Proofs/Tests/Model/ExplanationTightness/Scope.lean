@@ -13,7 +13,7 @@ public import Symbolic.Specifications.Security.Model
 import Symbolic.Proofs.Tests.Shared.ExplanationTightness.HandshakeTraces
 import Symbolic.Proofs.Tests.Shared.ExplanationTightness.ScopeTraces
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

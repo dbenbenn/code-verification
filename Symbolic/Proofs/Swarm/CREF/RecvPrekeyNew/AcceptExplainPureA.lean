@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecordsBridgePure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.BobStartRun
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecordsBridgePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.BobStartRun -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -23,7 +23,7 @@ import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 public meta import Mathlib.Tactic.ToAdditive
-public import Symbolic.Proofs.Swarm.CREF.RelPure
+import Symbolic.Proofs.Swarm.CREF.RelPure
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.ModelMono
@@ -51,7 +51,7 @@ wire, and computes the random draws, completion event index, received plaintext,
 entries of `Move.bobStart`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

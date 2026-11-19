@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.LateAcceptTrace
+public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon -- proof-setup: allow-public-import
+import Symbolic.Proofs.Tests.Shared.ExplanationTightness.LateAcceptTrace
 import Init.Data.String.Defs
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -37,7 +37,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -963,27 +963,27 @@ private theorem trIKB_done_at :
   aliceTr_done_at trIKB_pre "alice" "bob" advIkA (dhPk advIkB) (dhPk advSpkSk) (kemPk advPqSk)
     (by rw [trIKB_pre_len])
 
-def isNonCksExposure : TREvent → Bool
+@[expose] def isNonCksExposure : TREvent → Bool
   | .ExposedRK .. | .ExposedDHs .. | .ExposedCKr .. | .ExposedMK .. => true
   | _ => false
 
-def isNonCkrExposure : TREvent → Bool
+@[expose] def isNonCkrExposure : TREvent → Bool
   | .ExposedRK .. | .ExposedDHs .. | .ExposedCKs .. | .ExposedMK .. => true
   | _ => false
 
-def isNonMkExposure : TREvent → Bool
+@[expose] def isNonMkExposure : TREvent → Bool
   | .ExposedRK .. | .ExposedDHs .. | .ExposedCKs .. | .ExposedCKr .. => true
   | _ => false
 
-def isNonRkExposure : TREvent → Bool
+@[expose] def isNonRkExposure : TREvent → Bool
   | .ExposedDHs .. | .ExposedCKs .. | .ExposedCKr .. | .ExposedMK .. => true
   | _ => false
 
-def isAnyAliceDone : PQXDHEvent → Bool
+@[expose] def isAnyAliceDone : PQXDHEvent → Bool
   | .AliceDone .. => true
   | _ => false
 
-def isAnyBobDone : PQXDHEvent → Bool
+@[expose] def isAnyBobDone : PQXDHEvent → Bool
   | .BobDone .. => true
   | _ => false
 
@@ -993,9 +993,9 @@ def isAnyHonestDHEv : TREvent → Bool
 
 /-! ## Witness Trace `trCK` -/
 
-def trCK1 : ExecTrace := exposeCksTr t5 "alice" stA0
-def pqCK0 : Bytes := (Spqr.spqrSend stA0.spqr (rnd 34 32)).2.1
-def trCK : ExecTrace := encTr trCK1 "alice" 30 stA0 pqCK0
+@[expose] def trCK1 : ExecTrace := exposeCksTr t5 "alice" stA0
+@[expose] def pqCK0 : Bytes := (Spqr.spqrSend stA0.spqr (rnd 34 32)).2.1
+@[expose] def trCK : ExecTrace := encTr trCK1 "alice" 30 stA0 pqCK0
 abbrev mkA0 : Bytes := (kdfCk stA0.cks).2
 
 theorem trCK_reach : trCK.Reachable reachability := by
@@ -1058,7 +1058,7 @@ theorem msgFakeCk_knows {tr : ExecTrace} {ikBPk ikAPk spkSk ck : Bytes}
 
 /-- Trace after the attacker sends `msgFakeCk` and Alice decrypts it (without ratcheting) on her
 initial state `aliceSt "bob" o dhs` at `stH`. -/
-def recvInitialCkTr (tr : ExecTrace) (o : AliceHandshakeOut) (dhs : Bytes) (stH : Nat)
+@[expose] def recvInitialCkTr (tr : ExecTrace) (o : AliceHandshakeOut) (dhs : Bytes) (stH : Nat)
     (spkSk : Bytes) : ExecTrace :=
   let st := aliceSt "bob" o dhs
   let msg := msgFakeCk o.ikB o.ikA spkSk o.keys.ck
@@ -1135,8 +1135,8 @@ theorem Runs.recvInitialCk {tr : ExecTrace} {o : AliceHandshakeOut} {dhs : Bytes
 
 /-! ### Witness Trace `trCKr` -/
 
-def trCKr0 : ExecTrace := exposeCkrTr t5 "alice" stA0 cA0
-def trCKr : ExecTrace := recvInitialCkTr trCKr0 o1 dhsA 30 spkB
+@[expose] def trCKr0 : ExecTrace := exposeCkrTr t5 "alice" stA0 cA0
+@[expose] def trCKr : ExecTrace := recvInitialCkTr trCKr0 o1 dhsA 30 spkB
 abbrev mkCKr : Bytes := (kdfCk keys1.ck).2
 
 theorem trCKr_reach : trCKr.Reachable reachability := by
@@ -1190,19 +1190,19 @@ theorem trCKr_nonCkr_indices : trEvIdx trCKr isNonCkrExposure = [] := by
 
 def mhMK : PreKeyMsgHandles := { ek := 25, ct := 26, msg := 44 }
 def stB00_mk : TRState := bobSt0 "alice" ikB spkB (dhPk ikA) keys1 (encSig stA1 coins1 key1 m1)
-def stB0'_mk : TRState := (ratchetState stB00_mk (dhPk dhsA) dhsB1).1
-def cB_mk : RecvChain := (ratchetState stB00_mk (dhPk dhsA) dhsB1).2
+@[expose] def stB0'_mk : TRState := (ratchetState stB00_mk (dhPk dhsA) dhsB1).1
+@[expose] def cB_mk : RecvChain := (ratchetState stB00_mk (dhPk dhsA) dhsB1).2
 def cB'_mk : RecvChain :=
   { cB_mk with chainKey := (kdfCk (chainKeyAt cB_mk.chainKey 1)).1, index := 2 }
-def keyB_mk : Bytes := Spqr.spqrChainKey keys1.pqr spqrA2B (Spqr.encodeSpqrIndexTerm 2)
-def stB1_mk : TRState :=
+@[expose] def keyB_mk : Bytes := Spqr.spqrChainKey keys1.pqr spqrA2B (Spqr.encodeSpqrIndexTerm 2)
+@[expose] def stB1_mk : TRState :=
   { stB0'_mk with recv := [cB'_mk], spqr := recvSt (Spqr.spqrInit keys1.pqr spqrB2A) pqm1 }
 
 theorem recv_tMK8 : Spqr.spqrRecv stB0'_mk.spqr pqm1 2 =
     some (recvSt (Spqr.spqrInit keys1.pqr spqrB2A) pqm1, keyB_mk) :=
   spqrRecv_init_pos keys1.pqr pqm1 .b2a 2 (by decide) (bytesToLiteral_spqrSendMsg stA1.spqr coins1)
 
-def tMK8 : ExecTrace :=
+@[expose] def tMK8 : ExecTrace :=
   let tr1 := (t7.append (RndE 32)).append (NetE keyB_mk)
   let tr5 := (((tr1.append (EvP (.BobDone "bob" "alice" (dhPk ikB) (dhPk ikA) (dhPk spkB)
       (kemPk pqskB) none o1.ek o1.ct keys1))).append
@@ -1284,7 +1284,7 @@ theorem tMK8_runs : Runs (Composed.bobStart "bob" "alice" kh1 1 mhMK 40 2) t7 54
   rw [htrS] at hrun
   exact hrun
 
-def isReceiverMsgKeyZero : TREvent → Bool
+@[expose] def isReceiverMsgKeyZero : TREvent → Bool
   | .MessageKey _ .receiver _ _ n _ _ => n == 0
   | _ => false
 
@@ -1310,7 +1310,7 @@ theorem receiverKeyUsedB_false_of_no_messageKey {tr : ExecTrace} {s : SessionInf
       | sender => simp
     | _ => simp
 
-def trMK : ExecTrace := exposeSkippedTr tMK8 (stB0'_mk.sessionInfo "bob") seedB0 0 2
+@[expose] def trMK : ExecTrace := exposeSkippedTr tMK8 (stB0'_mk.sessionInfo "bob") seedB0 0 2
 
 private theorem tMK8_eq :
     tMK8 =
@@ -1395,8 +1395,8 @@ theorem trMK_nonMk_indices : trEvIdx trMK isNonMkExposure = [] := by
 
 /-! ## Witness Trace `trRK` -/
 
-def trRK1 : ExecTrace := exposeRkTr t10 "alice" stA0
-def trRK : ExecTrace := exposeDhsTr trRK1 "alice" stA0
+@[expose] def trRK1 : ExecTrace := exposeRkTr t10 "alice" stA0
+@[expose] def trRK : ExecTrace := exposeDhsTr trRK1 "alice" stA0
 abbrev mkB0 : Bytes := (kdfCk stB2.cks).2
 
 theorem trRK_reach : trRK.Reachable reachability := by
@@ -1490,9 +1490,9 @@ theorem handshakeKeysAt_of_aliceSingleton {tr : ExecTrace} {idx : Nat}
 /-! ### Witness Trace `trHrcRk` -/
 
 abbrev dhsA_ikb : Bytes := rnd 30 32
-def stA_ikb : TRState := aliceSt "bob" trIKB_out dhsA_ikb
-def pqHrcRk : Bytes := (Spqr.spqrSend stA_ikb.spqr (rnd 38 32)).2.1
-def trHrcRk : ExecTrace := encTr trIKB "alice" 36 stA_ikb pqHrcRk
+@[expose] def stA_ikb : TRState := aliceSt "bob" trIKB_out dhsA_ikb
+@[expose] def pqHrcRk : Bytes := (Spqr.spqrSend stA_ikb.spqr (rnd 38 32)).2.1
+@[expose] def trHrcRk : ExecTrace := encTr trIKB "alice" 36 stA_ikb pqHrcRk
 abbrev mkHrcRk : Bytes := (kdfCk stA_ikb.cks).2
 
 theorem trHrcRk_reach : trHrcRk.Reachable reachability :=
@@ -1704,14 +1704,14 @@ def stFakeBDH : TRState :=
     spqr := Spqr.spqrInit advPlain spqrB2A }
 
 def msgBDH : Bytes := encMsg stFakeBDH advCoins (dhPk ikA) advPlain
-def sigBDH : TRSignalMsg := encSig stFakeBDH advCoins (dhPk ikA) advPlain
-def trBDH5 : ExecTrace := trBDH4.append (NetE msgBDH)
+@[expose] def sigBDH : TRSignalMsg := encSig stFakeBDH advCoins (dhPk ikA) advPlain
+@[expose] def trBDH5 : ExecTrace := trBDH4.append (NetE msgBDH)
 
 abbrev dhsBDH : Bytes := rnd 44 32
-def stBDH' : TRState := (ratchetState stA1 (dhPk dhsA) dhsBDH).1
-def cBDH : RecvChain := (ratchetState stA1 (dhPk dhsA) dhsBDH).2
-def cBDH' : RecvChain := { cBDH with chainKey := (kdfCk cBDH.chainKey).1, index := 1 }
-def stBDH_out : TRState :=
+@[expose] def stBDH' : TRState := (ratchetState stA1 (dhPk dhsA) dhsBDH).1
+@[expose] def cBDH : RecvChain := (ratchetState stA1 (dhPk dhsA) dhsBDH).2
+@[expose] def cBDH' : RecvChain := { cBDH with chainKey := (kdfCk cBDH.chainKey).1, index := 1 }
+@[expose] def stBDH_out : TRState :=
   { stBDH' with recv := [cA0, cBDH'], spqr := recvSt stA1.spqr sigBDH.pqRatchet }
 abbrev mkBDH : Bytes := (kdfCk cBDH.chainKey).2
 
@@ -1720,7 +1720,7 @@ theorem recvBDH : Spqr.spqrRecv stBDH'.spqr sigBDH.pqRatchet 1 =
   spqrRecv_not_init _ _ _ (notInit_send stA0.spqr coins0)
     (bytesToLiteral_spqrSendMsg stFakeBDH.spqr advCoins)
 
-def trBDH : ExecTrace :=
+@[expose] def trBDH : ExecTrace :=
   let tr1 := (((trBDH5.append (RndE 32)).append
     (NetE (recvKey stA1.spqr sigBDH.pqRatchet))).append
     (EvT (.DHRatchet "alice" "bob" (dhPk dhsA) (dhPk dhsBDH)))).append

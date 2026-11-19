@@ -11,10 +11,13 @@ module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegs
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Poll Closure Stage Re-Exports and Stack Bounds
@@ -24,7 +27,7 @@ Re-exports `GenP3.stageP3Gen_vregs_ok`, `Kits.stageP4_v1_vregs_kits_ok`, and
 `stageP4CallStack_le_subStack` under `dpClosSubStack B`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

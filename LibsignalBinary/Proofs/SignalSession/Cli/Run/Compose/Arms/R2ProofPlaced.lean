@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2StepsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2StepsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2Placed -- proof-setup: allow-public-import
 public meta import Lean
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
@@ -19,12 +19,18 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonCalleesExt
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.Disproof.Basic
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `signal_session::run` Placed Send Arm (`run_hop_send_placed_ok`)
@@ -33,7 +39,7 @@ Relocatable (`[LibsignalPlacement]`) proof of `run_hop_send_placed_ok` (`RunHopS
 Block `579` (`runProgPlaced H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -766,7 +772,7 @@ theorem r2p_pk_arm [LibsignalPlacement] {A : RustAlloc} {H : LibsignalHooks}
           (r2p_histOk_of_trace_files hhist_s3 (by r2p_eq) (by r2p_eq))
           hans_s3 hwr hjoin)
 
-def r2p_encInnerSpec [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) : Spec EncGhost where
+@[expose] def r2p_encInnerSpec [LibsignalPlacement] (A : RustAlloc) (S : RunSem) (stk : Nat) : Spec EncGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ptA ∧ (s.readReg64 .x1).toNat = x.ptext.length ∧
       x.ptext.length < 2 ^ 32 ∧ s.readReg64 .x2 = x.peerA ∧ s.readReg64 .x3 = x.meA ∧

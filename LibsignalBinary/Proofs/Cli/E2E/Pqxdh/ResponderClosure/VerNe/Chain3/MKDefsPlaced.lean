@@ -10,9 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.MKDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.CodePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DefsPlaced -- proof-setup: allow-public-import
 
 /-!
 # Placed `message::merge<Chain> [local#4]`: MessageKeys Shared Definitions
@@ -22,7 +24,7 @@ import Arm64.Trusted.Spec.SepLogic
 `VerNe.Chain3.MKDefs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,7 +45,7 @@ open CryptoVerification.CliHandshake.Placed
 
 /-! ## 1. Step 4d + 4e: the push (`+0x244 → +0x0a8`) -/
 
-def Chain3MkPushPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3MkPushPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (a bufRef slot ptr_rest sp0 : BitVec 64) (keys : List MessageKeyGenerator)
     (mk : MessageKeyGenerator) (rest : List (BitVec 8))
@@ -84,7 +86,7 @@ def Chain3MkPushPlacedStmt [LibsignalPlacement] (ext : String → Option (State 
 
 /-! ## 2. Step 4b: the counter field (`+0x244 → +0x244`) -/
 
-def Chain3MkCntPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3MkCntPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (bufRef slot ptr sp0 : BitVec 64) (i : BitVec 32) (rest_mk rest : List (BitVec 8))
     (x : ChainMergeGenGhost) (R : SepProp) (s0 s : State) (F : SepProp) (ret : BitVec 64)
@@ -122,7 +124,7 @@ def Chain3MkCntPlacedStmt [LibsignalPlacement] (ext : String → Option (State �
 
 /-! ## 3. Step 4c: the seed field (`+0x244 → +0x244`) -/
 
-def Chain3MkSeedPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3MkSeedPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (bufRef slot ptr sp0 : BitVec 64) (seed rest : List (BitVec 8))
     (x : ChainMergeGenGhost) (R : SepProp) (s0 s : State) (F : SepProp) (ret : BitVec 64)
@@ -161,7 +163,7 @@ def Chain3MkSeedPlacedStmt [LibsignalPlacement] (ext : String → Option (State 
 
 /-! ## 4. Step 4a: key, default scratch, length (`+0x0a8 → +0x244`) -/
 
-def Chain3MkHeadPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
+@[expose] def Chain3MkHeadPlacedStmt [LibsignalPlacement] (ext : String → Option (State → State)) : Prop :=
   Chain3CalleesPlacedW ext →
   ∀ (bufRef slot ptr sp0 : BitVec 64) (body rest tail : List (BitVec 8))
     (x : ChainMergeGenGhost) (R : SepProp) (s0 s : State) (F : SepProp) (ret : BitVec 64)

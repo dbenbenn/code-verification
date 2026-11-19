@@ -8,16 +8,14 @@
 //! Export pipeline and CLI dispatch for `rust-obj2lean` (`[OUTSIDE TCB]`).
 //!
 //! # Purpose & Trust Role
-//! - **Trust Role:** `[OUTSIDE TCB]`. This module only *sequences* the pipeline and writes files
-//!   to disk; it decides nothing about the bytes of the trusted outputs. Placed outputs are
-//!   produced by [`crate::untrusted_placed`], while legacy `<ObjName>Obj.lean` outputs (opt-in via
-//!   `--legacy-linked-image` / `legacy_linked_image = true`) are produced by
-//!   [`crate::untrusted_legacy_linker::emit_obj_lean_module`].
+//! - **Trust Role:** `[OUTSIDE TCB]`. This module sequences the export pipeline and writes files
+//!   to disk; placed-library outputs (`Obj.PlacedLib` / `Obj.MultiPlacedLib`) are produced by
+//!   [`crate::untrusted_placed`] and optional `Obj.ExtractedObj` outputs are produced by
+//!   [`crate::trusted_extractor::emit_extracted_obj_lean_module`].
 //! - **Purpose:**
 //!   1. [`generate_config`] / [`generate_config_with`]: run `untrusted_driver::extract` →
-//!      `untrusted_placed::generate` (default `placed_only = true`) or, under `--legacy-linked-image`,
-//!      `untrusted_legacy_linker::link` → `emit_obj_lean_module`, the untrusted `Code` module,
-//!      per-target lemma modules, `*Index.json`, and DWARF hints.
+//!      [`emit_placed_and_extracted_files`] (`untrusted_placed::generate` plus optional
+//!      `Obj.ExtractedObj`).
 //!   2. [`write_or_check`]: write a generated file or (`--check`) diff it against the on-disk
 //!      copy.
 //!   3. [`cli_main`]: `clap` dispatch for `export`, `fetch-decode-lemmas`, `symexec`,
@@ -41,7 +39,7 @@ use crate::untrusted_driver::{
     native_cflags_string, resolve_cli_existing_or_repo_path, resolve_cli_output_path,
     select_configs,
 };
-use crate::{trusted_extractor, untrusted_legacy_linker, untrusted_lemmas};
+use crate::{trusted_extractor, untrusted_lemmas};
 
 /// One generated file: its path and contents.
 pub struct GeneratedFile {
@@ -51,29 +49,10 @@ pub struct GeneratedFile {
     pub text: bool,
 }
 
-/// Build all files generated for `cfg`: placed-library files (default `placed_only = true`) or,
-/// when `legacy_linked_image` is set, the legacy `Obj` module defining the linked image with its
-/// `.code.bin`/`.data.bin` byte files, the `Code` module, and the lemma module of each target.
+/// Build all files generated for `cfg` (`Obj.PlacedLib` / `Obj.MultiPlacedLib` files plus
+/// optional `Obj.ExtractedObj` module and binary sidecar).
 pub fn generate_config(cfg: &ExportConfig, tc: &mut Toolchain) -> Result<Vec<GeneratedFile>> {
     generate_config_with(cfg, tc, true)
-}
-
-std::thread_local! {
-    /// Per-thread count of [`untrusted_legacy_linker::link_with_layout`] invocations (used by
-    /// parallel unit tests and `RUST_OBJ2LEAN_TRACE_PIPELINE=1` runs to verify `placed_only`
-    /// never invokes the legacy static linker).
-    static LEGACY_LINKER_CALLS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
-}
-
-/// Number of [`untrusted_legacy_linker::link_with_layout`] calls on this thread since startup or
-/// [`reset_legacy_linker_calls`].
-pub fn legacy_linker_calls() -> usize {
-    LEGACY_LINKER_CALLS.with(std::cell::Cell::get)
-}
-
-/// Reset the current thread's [`legacy_linker_calls`] counter to `0`.
-pub fn reset_legacy_linker_calls() {
-    LEGACY_LINKER_CALLS.with(|c| c.set(0));
 }
 
 fn push_extracted_obj(
@@ -113,191 +92,30 @@ fn emit_placed_and_extracted_files(
     Ok(())
 }
 
-/// [`generate_config`], with the untrusted DWARF hints of `*Index.json` on or off (`with_dwarf`);
-/// every other generated file is independent of `with_dwarf`.
+/// [`generate_config`], accepting a `with_dwarf` flag for caller compatibility.
 pub fn generate_config_with(
     cfg: &ExportConfig,
     tc: &mut Toolchain,
-    with_dwarf: bool,
+    _with_dwarf: bool,
 ) -> Result<Vec<GeneratedFile>> {
-    let placed_only = cfg.placed.as_ref().is_some_and(|p| p.placed_only);
-    if !placed_only && !cfg.legacy_linked_image {
+    if cfg.placed.is_none() {
         bail!(
-            "`{}` does not set `[placed] placed_only = true`, and legacy `Obj.LinkedImage` \
-             emission is disabled by default; set `[placed] placed_only = true`, or pass \
-             `--legacy-linked-image` (`legacy_linked_image = true` in TOML) to emit deprecated \
-             `Arm64.Legacy` linked-image outputs",
+            "`{}` has no `[placed]` section; configure `[placed]` for `Obj.PlacedLib` / `Obj.MultiPlacedLib`",
             cfg.config_rel
         );
     }
     let ex = untrusted_driver::extract(cfg, tc)?;
     let trace = std::env::var("RUST_OBJ2LEAN_TRACE_PIPELINE").as_deref() == Ok("1");
     let emit_raw = cfg.placed.as_ref().is_some_and(|p| p.emit_extracted_obj);
-    if placed_only {
-        let mut files = Vec::new();
-        emit_placed_and_extracted_files(&mut files, cfg, &ex)?;
-        if trace {
-            eprintln!(
-                "[pipeline] config={} objects={} placed_only=true emit_extracted_obj={} linker_calls={}",
-                cfg.config_rel,
-                ex.objects.len(),
-                emit_raw,
-                legacy_linker_calls()
-            );
-        }
-        return Ok(files);
-    }
-    let layout = if cfg.page_separate_data {
-        untrusted_legacy_linker::DataLayout::PageSeparated
-    } else {
-        untrusted_legacy_linker::DataLayout::Interleaved
-    };
-    LEGACY_LINKER_CALLS.with(|c| c.set(c.get() + 1));
-    let mut li = untrusted_legacy_linker::link_with_layout(
-        &ex.objects,
-        &ex.externs,
-        cfg.perturb_layout_bytes,
-        layout,
-    )
-    .context("cannot link the objects")?;
-    if !cfg.layout_generic_relocs {
-        for o in &mut li.objects {
-            o.reloc_fns.clear();
-            o.data_syms.clear();
-        }
-    }
-    // Legacy `[OUTSIDE TCB]`: the `Obj` module and its byte sidecars.
-    let ((obj_path, obj_src), (code_path, code_bytes), (data_path, data_bytes)) =
-        untrusted_legacy_linker::emit_obj_lean_module(&cfg.obj_meta(), &ex, &li);
-    let mut files = vec![
-        GeneratedFile {
-            path: obj_path,
-            contents: obj_src.into_bytes(),
-            text: true,
-        },
-        GeneratedFile {
-            path: code_path,
-            contents: code_bytes,
-            text: false,
-        },
-        GeneratedFile {
-            path: data_path,
-            contents: data_bytes,
-            text: false,
-        },
-    ];
-    // Untrusted: the canonical program and lemmas (checked by the kernel).
-    let funcs = untrusted_lemmas::code::func_ranges(&ex.objects, &li);
-    let ft_entries = untrusted_lemmas::index::build_func_table(cfg, &ex.objects, &li);
-    let emit_hook_at_off = untrusted_lemmas::code::stub_offsets_unique(&li);
-    let (fn_off_lemmas, stub_entries) = untrusted_lemmas::index::compute_symbol_lemma_names(
-        &cfg.code_def_name(),
-        &ex.objects,
-        &li,
-        emit_hook_at_off,
-    );
-    let mut registrations = Vec::new();
-    for target in &cfg.targets {
-        registrations.extend(untrusted_lemmas::code::register_fn_entry_lines(
-            cfg,
-            target,
-            &li,
-            &funcs,
-            &ft_entries,
-            &fn_off_lemmas,
-        )?);
-    }
-    for (path, contents) in
-        untrusted_lemmas::code::render_code_modules(cfg, &ex.objects, &li, &registrations)
-    {
-        files.push(GeneratedFile {
-            path,
-            contents: contents.into_bytes(),
-            text: true,
-        });
-    }
-    // Untrusted DWARF hints (from a `-g` companion compile; never affects the image).
-    let dwarf = if with_dwarf {
-        untrusted_lemmas::dwarf::companion::image_dwarf(cfg, &ex.objects)
-    } else {
-        Default::default()
-    };
-    for w in &dwarf.warnings {
-        eprintln!("warning: DWARF ({}): {w}", cfg.config_rel);
-    }
-    let mut emitted_code_offs = std::collections::BTreeSet::new();
-    let mut emitted_index_paths = std::collections::BTreeSet::new();
-    for target in &cfg.targets {
-        for (path, contents) in untrusted_lemmas::code::render_target_module(
-            cfg,
-            target,
-            &li,
-            &funcs,
-            &ft_entries,
-            &fn_off_lemmas,
-            &mut emitted_code_offs,
-        )? {
-            files.push(GeneratedFile {
-                path,
-                contents: contents.into_bytes(),
-                text: true,
-            });
-        }
-        let idx_path = untrusted_lemmas::index::target_index_file(target);
-        if emitted_index_paths.insert(idx_path.clone()) {
-            let mut idx = untrusted_lemmas::index::build_target_index(
-                cfg,
-                target,
-                &ex.objects,
-                &li,
-                &funcs,
-                &ft_entries,
-                &fn_off_lemmas,
-                &stub_entries,
-            )?;
-            untrusted_lemmas::dwarf::companion::attach_to_index(&dwarf, &mut idx);
-            let mut json = serde_json::to_string_pretty(&idx)?;
-            json.push('\n');
-            files.push(GeneratedFile {
-                path: idx_path,
-                contents: json.into_bytes(),
-                text: true,
-            });
-        }
-    }
-    let code_idx_path = untrusted_lemmas::index::code_index_file(cfg);
-    if emitted_index_paths.insert(code_idx_path.clone()) {
-        let mut idx = untrusted_lemmas::index::build_combined_code_index(
-            cfg,
-            &ex.objects,
-            &li,
-            &funcs,
-            &ft_entries,
-            &fn_off_lemmas,
-            &stub_entries,
-        )?;
-        untrusted_lemmas::dwarf::companion::attach_to_index(&dwarf, &mut idx);
-        let mut json = serde_json::to_string_pretty(&idx)?;
-        json.push('\n');
-        files.push(GeneratedFile {
-            path: code_idx_path,
-            contents: json.into_bytes(),
-            text: true,
-        });
-    }
-    // Untrusted: the layout-generic placed library, optional ExtractedObj, and placement witness.
+    let mut files = Vec::new();
     emit_placed_and_extracted_files(&mut files, cfg, &ex)?;
-    if let Some(reg_path) = &cfg.registry_facts_file {
-        files.push(GeneratedFile {
-            path: reg_path.clone(),
-            contents: untrusted_lemmas::registry_facts::render_registry_facts_module(
-                cfg,
-                &ex.objects,
-                &li,
-            )
-            .into_bytes(),
-            text: true,
-        });
+    if trace {
+        eprintln!(
+            "[pipeline] config={} objects={} emit_extracted_obj={}",
+            cfg.config_rel,
+            ex.objects.len(),
+            emit_raw
+        );
     }
     Ok(files)
 }
@@ -427,11 +245,6 @@ fn run(cli: &Cli, check: bool, only: &[String]) -> Result<bool> {
     if cli.emit_symbol_unique_lemmas {
         for cfg in &mut configs {
             cfg.emit_symbol_unique_lemmas = true;
-        }
-    }
-    if cli.legacy_linked_image {
-        for cfg in &mut configs {
-            cfg.legacy_linked_image = true;
         }
     }
     if cli.multi_placed {

@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneBaseBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneEpilogue
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneEpilogue
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-threaded epilogue and specification lifts for `<Chain as Clone>::clone`
@@ -23,7 +24,7 @@ Relocatable `[LibsignalPlacement]` epilogue (`+736..ret`) and lifts from `protoC
 `chainCloneSpec` and `senderChainCloneSpec` on block `82`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -64,9 +65,7 @@ open LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget (
   senderChainAsProtoGhost senderChainCloneSpec
 )
 open LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneBaseBudget (
-  ChainCloneLocal1Ok ChainCloneLocal1Ok_trap
-  ProtoChainCloneLocal1Ok ProtoChainCloneLocal1Ok_trap
-  SenderChainCloneLocal1Ok SenderChainCloneLocal1Ok_trap
+  ChainCloneLocal1Ok_trap ProtoChainCloneLocal1Ok_trap SenderChainCloneLocal1Ok_trap
   protoChainCloneSpec
 )
 
@@ -171,14 +170,6 @@ theorem chainClone_of_protoChainClone_trap
     {abs : String → Option (State → State)}
     (hclone : ProtoChainCloneLocal1Ok_trap M b C A lim abs) :
     ChainCloneLocal1Ok_trap M b C A lim abs :=
-  chainClone_of_protoChainClone_local1_gen hclone
-
-theorem chainClone_of_protoChainClone
-    {M : AllocCostModel} {b : BitVec 64} {C : Crypto}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hclone : ProtoChainCloneLocal1Ok M b C A lim ctl abs) :
-    ChainCloneLocal1Ok M b C A lim ctl abs :=
   chainClone_of_protoChainClone_local1_gen hclone
 
 theorem senderChainClone_of_chainClone_local1_gen
@@ -295,16 +286,6 @@ theorem senderChainClone_of_chainClone_trap
     (hclone : ProtoChainCloneLocal1Ok_trap M b C A lim abs) :
     SenderChainCloneLocal1Ok_trap M b C A lim abs :=
   senderChainClone_of_chainClone_local1_gen hclone
-
-theorem senderChainClone_of_chainClone
-    {M : AllocCostModel} {b : BitVec 64} {C : Crypto}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hclone : ProtoChainCloneLocal1Ok M b C A lim ctl abs) :
-    SenderChainCloneLocal1Ok M b C A lim ctl abs :=
-  senderChainClone_of_chainClone_local1_gen hclone
-
-/-! ## Relocatable `[LibsignalPlacement]` epilogue (block `82`) -/
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero

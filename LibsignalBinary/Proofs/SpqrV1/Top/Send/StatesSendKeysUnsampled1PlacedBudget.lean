@@ -11,18 +11,18 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 public meta import Lean -- shake: keep
 public meta import ProofLib.SepLogic.WP -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1PlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
@@ -33,6 +33,17 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled1
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+public meta import Lean.Elab.Tactic
+public meta import ProofLib
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable Inlined `.keysUnsampled` Sub-Steps (`+372..+684`, Block 124)
@@ -42,7 +53,7 @@ under `RustCliAllocBudget M` with exact 3-allocation envelope `KeysUnsampledAllo
 (`64`B `hdr`, `1152`B `ek`, `2400`B `dk`) and zero OOM branches under `FitsEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -57,7 +68,7 @@ open Arm64 ProofLib ProofLib.ProgramReflection
 open scoped CryptoVerification
 open scoped CryptoVerification.CodeLayout
 open scoped CryptoVerification.SpqrV1.Top.Send.Placed
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsmpl lsρ)
+open CryptoVerification (LibsignalPlacement lsmpl lsρ)
 open CryptoVerification.LibsignalSpqrV1
   (Authenticator MlKem mlkemEncaps1Spec mlkemFromSeedSpec mlkemPk1Spec mlkemPk2Spec)
 open CryptoVerification.LibsignalTripleRatchet
@@ -97,7 +108,7 @@ export CryptoVerification.SpqrV1.Top.Send
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.sub_add_cancel BitVec.toNat_zero
 
 theorem tpidrEl0_setMem_pre (s : State) (m : Memory) :
@@ -324,11 +335,11 @@ macro "stepp_vm_pool " mid:term:max " => " rest:tacticSeq : tactic => `(tactic|
 
 /-- Exact allocator event sequence of `.keysUnsampled` sub-step `512..684`:
     `64`-byte `hdr`, `1152`-byte `ek`, and `2400`-byte `dk` heap allocations at alignment `1`. -/
-def keysUnsampledAllocEvents : List AllocEvent :=
+@[expose] def keysUnsampledAllocEvents : List AllocEvent :=
   rustAllocEvents 64 1 ++ rustAllocEvents 1152 1 ++ rustAllocEvents 2400 1
 
 /-- Exact allocator event envelope for `.keysUnsampled` sub-step `512..684`. -/
-def KeysUnsampledAllocEnv (evs : List AllocEvent) : Prop :=
+@[expose] def KeysUnsampledAllocEnv (evs : List AllocEvent) : Prop :=
   evs = keysUnsampledAllocEvents
 
 theorem fitsEnv_keysUnsampledAlloc_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :

@@ -44,6 +44,8 @@ import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.ALaCarte.Basic
+public import Symbolic.Proofs.SpecLemmas.ProofHubsPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
 
 /-!
 # Alice `init` Slot Invariant Preservation
@@ -53,7 +55,7 @@ Proves `slot_init_ua : UASlotInitSpec`, advancing `PqTurnSim1A` and `UAInv` acro
 `.aliceStart` explanation and universal `AliceRecordPendingInSession` alignment.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

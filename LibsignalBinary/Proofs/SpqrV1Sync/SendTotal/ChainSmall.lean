@@ -25,7 +25,7 @@ Proves that `chainFromVersionNegotiation`, `Chain.addEpoch`, and `Chain.sendKey`
 `RecvSmall`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

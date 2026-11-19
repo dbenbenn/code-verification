@@ -9,11 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadShimPollPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegLoadDispatch
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadShimPollPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegLoadDispatch
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable CLI `SegLoad` Dispatch: `.error ()` & `.ok none` Branches
@@ -23,7 +29,7 @@ Proves `segLoad_dispatch_err_placed` (`ans = .error ()` → `+0x5b4`) and
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -339,7 +345,7 @@ theorem loadOutResPlaced_none_eq (Scope : SessionRecord (List (BitVec 8)) → Pr
     LoadOutResPlaced Scope A (.ok none) w0 w1 w2 w3 w4 w5 w6 tail =
       ⌜w0 = 0xFFFFFFFFFFFFFFFF#64⌝ := rfl
 
-def dispatchFrameNo108848Placed [LibsignalPlacement] {A : RustAlloc}
+@[expose] def dispatchFrameNo108848Placed [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64)
     (st0 : kit.StoreState) (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (ctl : BitVec 64)

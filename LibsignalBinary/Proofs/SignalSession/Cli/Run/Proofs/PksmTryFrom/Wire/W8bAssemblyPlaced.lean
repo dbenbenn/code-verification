@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssembly
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.LoopStepWPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailWPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssembly
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.LoopStepWPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailWPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCleanup
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ParseLemmas
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.OkBridge
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `[LibsignalPlacement]` Top-Level Assembly (`pksmTryFromPlaced_ok_of_postLoop`)
@@ -26,7 +28,7 @@ Defines `PreKeyPostLoopOkWPlaced` and proves `pksmTryFromPlaced_ok_of_postLoop` 
 `preKeyPlacedProg H` against `pksmTryFromSpecPlaced A`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -105,7 +107,7 @@ theorem w8b_errPost_noHeap_placed [LibsignalPlacement] {A : RustAlloc}
 /-- Post-loop `Ok` continuation `+0x460 → ret` (`1120 → ret`) under `[LibsignalPlacement]`:
 from the loop exit with `x24 = 0` and decoded `m` of `b1 :: bs1` (version byte `vb` in the
 accepted window), `preKeyPlacedProg H` returns with `(pksmTryFromSpecPlaced A).post`. -/
-def PreKeyPostLoopOkWPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PreKeyPostLoopOkWPlaced [LibsignalPlacement] (A : RustAlloc)
     (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 s : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage),

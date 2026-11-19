@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Soundness
 
 /-!
@@ -22,7 +22,7 @@ over `pqxdhOps` and `pqSigAndDdhIface` corresponding to `sigReductionKeyInd1Key`
 `gdhHandle2` via context renaming and interface lifting.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,12 +30,12 @@ namespace ReductionDsl
 
 open OracleSpec
 
-def Var.liftRename {S : Sig} {Γ Δ : List (Ty S)} {u t : Ty S}
+@[expose] def Var.liftRename {S : Sig} {Γ Δ : List (Ty S)} {u t : Ty S}
     (ρ : ∀ {τ}, Var Γ τ → Var Δ τ) : Var (u :: Γ) t → Var (u :: Δ) t
   | .zero => .zero
   | .succ v => .succ (ρ v)
 
-def Expr.rename {S : Sig} {O : Ops S} : {Γ Δ : List (Ty S)} → {t : Ty S} →
+@[expose] def Expr.rename {S : Sig} {O : Ops S} : {Γ Δ : List (Ty S)} → {t : Ty S} →
     (∀ {τ}, Var Γ τ → Var Δ τ) → Expr O Γ t → Expr O Δ t
   | _, _, _, ρ, .var v => .var (ρ v)
   | _, _, _, _, .unit => .unit
@@ -77,7 +77,7 @@ def Expr.rename {S : Sig} {O : Ops S} : {Γ Δ : List (Ty S)} → {t : Ty S} →
   | _, _, _, ρ, .tget m i => .tget (m.rename ρ) (i.rename ρ)
   | _, _, _, ρ, .tset m i a => .tset (m.rename ρ) (i.rename ρ) (a.rename ρ)
 
-def Comp.rename {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T} :
+@[expose] def Comp.rename {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T} :
     {Γ Δ : List (Ty S)} → {t : Ty S} →
     (∀ {τ}, Var Γ τ → Var Δ τ) → Comp O I Γ t → Comp O I Δ t
   | _, _, _, ρ, .ret e => .ret (e.rename ρ)
@@ -97,7 +97,7 @@ def Comp.rename {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface
   | _, _, _, ρ, .foldM K l z f =>
     .foldM K (l.rename ρ) (z.rename ρ) (f.rename (Var.liftRename (Var.liftRename ρ)))
 
-def Env.ofRename {S : Sig} : {Γ Δ : List (Ty S)} → (∀ {τ}, Var Γ τ → Var Δ τ) → Env Δ → Env Γ
+@[expose] def Env.ofRename {S : Sig} : {Γ Δ : List (Ty S)} → (∀ {τ}, Var Γ τ → Var Δ τ) → Env Δ → Env Γ
   | [], _, _, _ => .nil
   | _ :: _, _, ρ, env => .cons (env.get (ρ .zero)) (Env.ofRename (fun v => ρ (.succ v)) env)
 
@@ -120,12 +120,12 @@ abbrev s1Prim {Γ : List PT} {τ : PT} (c : Comp pqxdhOps pqPrimIface Γ τ) :
     Comp pqxdhOps pqSigAndDdhIface Γ τ :=
   liftBase (C := sigAndDdhOracle) c
 
-def qSigDdhSign (m : ℕ+) {Γ : List PT} (msg : Expr pqxdhOps Γ (B m)) :
+@[expose] def qSigDdhSign (m : ℕ+) {Γ : List PT} (msg : Expr pqxdhOps Γ (B m)) :
     Comp pqxdhOps pqSigAndDdhIface Γ (B 64) :=
   Comp.query (I := pqSigAndDdhIface) (.inr (.inl m)) msg
 
 /-- Lift a `pqGapDhIface` computation into `pqSigAndDdhIface`, making zero signing queries. -/
-def liftGdhToSigDdh : {Γ : List PT} → {t : PT} →
+@[expose] def liftGdhToSigDdh : {Γ : List PT} → {t : PT} →
     Comp pqxdhOps pqGapDhIface Γ t → Comp pqxdhOps pqSigAndDdhIface Γ t
   | _, _, .ret e => .ret e
   | _, _, .bind c k => .bind (liftGdhToSigDdh c) (liftGdhToSigDdh k)
@@ -142,7 +142,7 @@ def liftGdhToSigDdh : {Γ : List PT} → {t : PT} →
   | _, _, .consumeFirstM K l p mk => .consumeFirstM K l (liftGdhToSigDdh p) mk
   | _, _, .foldM K l z f => .foldM K l z (liftGdhToSigDdh f)
 
-def renamePair {Δ : List PT} {τ₁ τ₂ : PT} (v1 : Var Δ τ₁) (v2 : Var Δ τ₂) :
+@[expose] def renamePair {Δ : List PT} {τ₁ τ₂ : PT} (v1 : Var Δ τ₁) (v2 : Var Δ τ₂) :
     ∀ {τ}, Var [τ₁, τ₂] τ → Var Δ τ
   | _, .zero => v1
   | _, .succ .zero => v2
@@ -153,28 +153,28 @@ def renamePair {Δ : List PT} {τ₁ τ₂ : PT} (v1 : Var Δ τ₁) (v2 : Var �
 abbrev sig1KeyStTy : PT :=
   .prod simTy (.prod .nat (.prod (B 32) (.prod .nat (.opt (.prod (B 1569) (B 64))))))
 
-@[reducible] def s1Fg {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) : Expr pqxdhOps Γ simTy :=
+@[expose, reducible] def s1Fg {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) : Expr pqxdhOps Γ simTy :=
   .fst e
-@[reducible] def s1Target {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) : Expr pqxdhOps Γ .nat :=
+@[expose, reducible] def s1Target {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) : Expr pqxdhOps Γ .nat :=
   .fst (.snd e)
-@[reducible] def s1Pk {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose, reducible] def s1Pk {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd e))
-@[reducible] def s1Budget {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) : Expr pqxdhOps Γ .nat :=
+@[expose, reducible] def s1Budget {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) : Expr pqxdhOps Γ .nat :=
   .fst (.snd (.snd (.snd e)))
-@[reducible] def s1Forgery {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) :
+@[expose, reducible] def s1Forgery {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) :
     Expr pqxdhOps Γ (.opt (.prod (B 1569) (B 64))) :=
   .snd (.snd (.snd (.snd e)))
-@[reducible] def s1Base {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) :
+@[expose, reducible] def s1Base {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy) :
     Expr pqxdhOps Γ keyIndStateTy :=
   smBase (s1Fg e)
 
-@[reducible] def s1Mk {Γ : List PT} (fg : Expr pqxdhOps Γ simTy)
+@[expose, reducible] def s1Mk {Γ : List PT} (fg : Expr pqxdhOps Γ simTy)
     (target : Expr pqxdhOps Γ .nat) (pk : Expr pqxdhOps Γ (B 32))
     (budget : Expr pqxdhOps Γ .nat)
     (forgery : Expr pqxdhOps Γ (.opt (.prod (B 1569) (B 64)))) : Expr pqxdhOps Γ sig1KeyStTy :=
   .pair fg (.pair target (.pair pk (.pair budget forgery)))
 
-@[reducible] def s1Upd {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy)
+@[expose, reducible] def s1Upd {Γ : List PT} (e : Expr pqxdhOps Γ sig1KeyStTy)
     (fg : Expr pqxdhOps Γ simTy := s1Fg e)
     (budget : Expr pqxdhOps Γ .nat := s1Budget e)
     (forgery : Expr pqxdhOps Γ (.opt (.prod (B 1569) (B 64))) := s1Forgery e) :
@@ -183,16 +183,16 @@ abbrev sig1KeyStTy : PT :=
 
 abbrev S1RS : PT := .prod keyIndRespTy sig1KeyStTy
 
-def sig1KeyStToVal {S : Setup} (st : Sig1KeySimState S) : sig1KeyStTy.denote :=
+@[expose] def sig1KeyStToVal {S : Setup} (st : Sig1KeySimState S) : sig1KeyStTy.denote :=
   (simStateToVal st.fg, (st.targetParty, (st.targetPk, (st.signBudget, st.forgery))))
 
-def encSig1KeyRS {S : Setup} (p : KeyIndResponse × Sig1KeySimState S) : S1RS.denote :=
+@[expose] def encSig1KeyRS {S : Setup} (p : KeyIndResponse × Sig1KeySimState S) : S1RS.denote :=
   (keyIndRespToVal p.1, sig1KeyStToVal p.2)
 
 /-! ## Handler branches and pre-dispatch -/
 
 /-- Forgery extraction on an initiator bundle (`extractBundleForgeryPrim`). -/
-def extract1KeyC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def extract1KeyC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (s : Var Γ₁ sig1KeyStTy) (bu : Var Γ₂ preKeyBundleTy) :
     Comp pqxdhOps pqSigAndDdhIface Δ (.opt (.prod (B 1569) (B 64))) :=
   bindV (s1Prim (letV (s1Base (v s)) fun g => honestPeerC S K g (buIkB (v bu)))) fun peer =>
@@ -215,7 +215,7 @@ def extract1KeyC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ]
     fun fg => .some (v fg))
 
 /-- `.initPrin u` branch of `sig1KeyStep`, planting `(targetPk, targetPk)` when `u == targetParty`. -/
-def sig1KeyInitPrinB (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def sig1KeyInitPrinB (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (s : Var Γ₁ sig1KeyStTy) (u : Var Γ₂ .nat) :
     Comp pqxdhOps pqSigAndDdhIface Δ S1RS :=
   .ite (eAny K (stPrin (s1Base (v s))) fun e => natEq (.fst (v e)) (v u))
@@ -232,7 +232,7 @@ def sig1KeyInitPrinB (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ
           (stPrin (s1Base (v s))))))))
 
 /-- Target `.genSPK u j` branch of `sig1KeyStep`, signing SPK and PQSPK via `qSigDdhSign`. -/
-def sig1KeyTargetGenSpkB (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def sig1KeyTargetGenSpkB (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (s : Var Γ₁ sig1KeyStTy) (x : Var Γ₂ (.prod .nat .nat)) :
     Comp pqxdhOps pqSigAndDdhIface Δ S1RS :=
   .ite (eAny K (stSpks (s1Base (v s))) fun e => nat2Eq (.fst (v e)) (v x))
@@ -255,7 +255,7 @@ def sig1KeyTargetGenSpkB (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ex
       (budget := .sub (s1Budget (v s)) (.nat 1))))
 
 /-- `.initiateOPK` / `.initiateNoOPK` forgery check before delegating to `delegateFgC`. -/
-def sig1KeyInitiateCheckC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def sig1KeyInitiateCheckC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (s : Var Γ₁ sig1KeyStTy) (x : Var Γ₂ initQTy) :
     Comp pqxdhOps pqSigAndDdhIface Δ (.sum S1RS .unit) :=
   letV (.snd (.snd (v x))) fun bu =>
@@ -266,7 +266,7 @@ def sig1KeyInitiateCheckC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext 
 
 /-- Pre-dispatch for `sig1KeyHandleC`, handling frozen states, `.initPrin`, target `.genSPK`, and
     extracted `.initiate*` forgeries directly. -/
-def sig1KeyPreDispatchC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def sig1KeyPreDispatchC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
     Comp pqxdhOps pqSigAndDdhIface Δ (.sum S1RS .unit) :=
   .ite (isSomeE (s1Forgery (v s))) (.ret (.inl (.pair rNone (v s)))) <|
@@ -281,21 +281,21 @@ def sig1KeyPreDispatchC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ
   caseSumV (v q) (fun x => sig1KeyInitiateCheckC S K s x) fun _ =>
   .ret (.inr .unit)
 
-def pa2Zero {Γ : List PT} (pk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ params2Ty :=
+@[expose] def pa2Zero {Γ : List PT} (pk : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ params2Ty :=
   pa2Mk (litB 32 []) pk (litB 32 []) .none (.bool false) .none .none (.bool false) .none (.nat 1)
 
-def pa2ZeroVal (pk : Bytes) : params2Ty.denote :=
+@[expose] def pa2ZeroVal (pk : Bytes) : params2Ty.denote :=
   ([], (pk, ([], (none, (false, (none, (none, (false, (none, 1)))))))))
 
 /-- Delegate `q` to `gdhHandle2 S K` lifted into `pqSigAndDdhIface`. -/
-def delegateFgC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def delegateFgC (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
     Comp pqxdhOps pqSigAndDdhIface Δ S1RS :=
   letV (.pair (pa2Zero (s1Pk (v s))) (s1Fg (v s))) fun gdhSt =>
   bindV (liftGdhToSigDdh ((gdhHandle2 S K).rename (renamePair gdhSt (.succ (Ext.wk q))))) fun r =>
   .ret (.pair (.fst (v r)) (s1Upd (v s) (fg := .snd (.snd (v r)))))
 
-def sig1KeyHandleC (S : Setup) (K : Nat) :
+@[expose] def sig1KeyHandleC (S : Setup) (K : Nat) :
     Comp pqxdhOps pqSigAndDdhIface [sig1KeyStTy, keyIndQueryTy] S1RS :=
   let s : Var [sig1KeyStTy, keyIndQueryTy] sig1KeyStTy := .zero
   let q : Var [sig1KeyStTy, keyIndQueryTy] keyIndQueryTy := .succ .zero
@@ -306,7 +306,7 @@ def sig1KeyHandleC (S : Setup) (K : Nat) :
 /-! ## `CostedReduction` program -/
 
 /-- `CostedReduction` program for `sigReductionKeyInd1Key S b` with loop bound `K`. -/
-def sigKeyInd1KeyProg (S : Setup) (K : Nat) :
+@[expose] def sigKeyInd1KeyProg (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqSigAndDdhIface (keyIndSpec S) (keyIndCodec S)
       (B 32) .unit .bool (.prod (B 1569) (B 64)) where
   σ := sig1KeyStTy

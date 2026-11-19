@@ -9,15 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStalenessPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyStale
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStalenessPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyStale
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegLoadCommonPlaced
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegLoadDispatch
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `segPreKey` Stale Session Error Path (`+0x6fc..+0x7cc`)
@@ -26,7 +34,7 @@ Proves `segPreKey_stale_placed_ok` on Block `464` (`lsProg_464 Hk`) under `RustC
 and `[LibsignalPlacement]`, threading the `StringCloneEnv` budget into `env.tailWriteErr`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -152,7 +160,7 @@ theorem segPreKey_stale_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     apply segExitBudget_of_sepWPp_lscro hcrl
       (target := (blkPl_464).base + 1132#64)
       (dur_mem_group hmem)
-    dsimp only [encSpillsAt, encSpillsAtV, encCommonPlaced, protocolAddressAt, lsLogOff_eq]
+    dsimp only [encSpillsAtV, encCommonPlaced, protocolAddressAt, lsLogOff_eq]
     rw [show vecAt (A.atState lim st s) = vecAt A.repAlloc from rfl,
         show sessionStateReprAt (A.atState lim st s) = sessionStateReprAt A.repAlloc from rfl,
         show otrAt (A.atState lim st s) = otrAt A.repAlloc from rfl,
@@ -242,7 +250,7 @@ theorem segPreKey_stale_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     · rw [preKey_encTail_mem_retag_eq (A' := A.atState lim (M.stepEvents evs_clone st) _)
         kit st0 ikit ist0 C ctl S x (preKeyErrAnswers r) _ R s0]
       dsimp only [encEntryPlaced, encStoreExtraPlaced,
-        tailRegs, dropRecordSlots, otrSlotAt, encSpillsAt, encSpillsAtV, encCommonPlaced,
+        tailRegs, dropRecordSlots, otrSlotAt, encSpillsAtV, encCommonPlaced,
         protocolAddressAt, lsLogOff_eq, AddrGhost.val, sp]
         at hmf ⊢
       rw [hdraws, hfinal, hidfinal,

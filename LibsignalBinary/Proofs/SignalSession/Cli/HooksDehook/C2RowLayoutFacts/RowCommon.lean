@@ -10,8 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Shared Cutover-2 (`C2`) Premise Dischargers (`C2RowLayoutFacts.RowCommon`)
@@ -33,8 +39,9 @@ public section
 namespace LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib.ProgramReflection
-open CryptoVerification (libsignalSessionExterns)
-open CryptoVerification.SignalSession (CliHooks cliElfBytes cliExternsPlaced libsignalSessionLib)
+open CryptoVerification (libsignalHookedExterns libsignalSessionExterns)
+open CryptoVerification.SignalSession
+  (CliHooks cliElfBytes cliExternsPlaced libsignalSessionLib lsSpqrOnceCallSym)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced (cliProgExtPlacedAt)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice
@@ -48,6 +55,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
   (ExtraGhostTable cliExtraGhostSyms cliGhostExternsWithExtra cliGhostExternsWithExtra_extra_some)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
   (C2ExternTableFacts f3RxSeg_ghostProg617_externAt_entry f3RxSeg_realProg617_externAt_none
+   isLinkedPanicAddr isLinkedPanicAddr_false_of_band isLinkedPanicAddr_false_of_lt
    keepLib2Text keepLib2Text_sub_rxProg keepTextBPre keepTextBPre_sub_rxProg)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie (f3TrialRxProg)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
@@ -98,6 +106,12 @@ theorem f3CodeInv_memOnly_keepsFrozen
 
 /-! ## 3. `hGhostAt` Discharger on `cliGhostExternsWithExtra` -/
 
+set_option maxRecDepth 200000 in
+private theorem cliExtraGhostSyms_sub_hooked_or_once :
+    (cliExtraGhostSyms.all fun s =>
+      s == lsSpqrOnceCallSym || libsignalHookedExterns.contains s) = true := by
+  rfl_kernel
+
 /-- Discharge `hGhostAt` on `EG := fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W')`
     from `C2ExternTableFacts mpl` and `extra.lookup sym = some f`. -/
 theorem c2_ghostAt_of_extraLookup
@@ -107,28 +121,61 @@ theorem c2_ghostAt_of_extraLookup
     {sym : String} {f : State → State}
     (hSymRx : sym ∈ c2RxDehookedSyms)
     (hSymDom : cliExtraGhostSyms.contains sym = true)
-    (hLook : extra.lookup sym = some f) :
+    (hLook : extra.lookup sym = some f)
+    (hNe : (sym != lsSpqrOnceCallSym) = true := by decide) :
     ∀ W : CliHooks,
       (cliProgExtPlacedAt mpl
         (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W')) 617 W).externAt?
           (libsignalSessionLib.resolve mpl sym) = some f := by
+  have hOr := List.all_eq_true.mp cliExtraGhostSyms_sub_hooked_or_once sym
+    (List.contains_iff_mem.mp hSymDom)
+  have hFalse : (sym == lsSpqrOnceCallSym) = false := by
+    simpa [bne] using hNe
+  rw [hFalse, Bool.false_or] at hOr
+  have hHooked : sym ∈ libsignalHookedExterns := List.contains_iff_mem.mp hOr
   intro W
-  rw [f3RxSeg_ghostProg617_externAt_entry hExt _ W hSymRx]
+  rw [f3RxSeg_ghostProg617_externAt_entry hExt _ W hSymRx hHooked]
   exact cliGhostExternsWithExtra_extra_some g extra (cliExternsPlaced mmpl W) hLook hSymDom
 
 /-! ## 4. `hRealHullNoExt` Dischargers -/
 
-/-- Discharge `hRealHullNoExt` for any `.text.lib2` hull `keepR ⊆ keepLib2Text`. -/
+theorem isLinkedPanicAddr_false_of_keepTextBPre {pc : BitVec 64}
+    (h : keepTextBPre pc = true) :
+    isLinkedPanicAddr pc = false := by
+  unfold keepTextBPre at h
+  rw [decide_eq_true_eq] at h
+  have hub : c2TextBPreHi.toNat ≤ 0x479798 := by decide
+  exact isLinkedPanicAddr_false_of_lt (by omega)
+
+theorem c2_noPanic_of_band_sub_lt {base pc : BitVec 64} {len : Nat}
+    (hsub : (pc - base).toNat < len)
+    (hband :
+      base.toNat + len ≤ 0x479798 ∨
+      (0x4797d0 ≤ base.toNat ∧ base.toNat + len ≤ 0x47a20c) ∨
+      (0x47a3d8 ≤ base.toNat ∧ base.toNat + len ≤ 0x47a9c4) ∨
+      (0x47aa78 ≤ base.toNat ∧ base.toNat + len ≤ 0x47aba0) ∨
+      (0x47ac2c ≤ base.toNat ∧ base.toNat + len ≤ 0x4cb070) ∨
+      0x4cb0e4 ≤ base.toNat)
+    (htop : base.toNat + len < 2 ^ 64) :
+    isLinkedPanicAddr pc = false := by
+  generalize hd : pc - base = d at hsub
+  have hpc_eq : pc = base + d := by subst hd; bv_omega
+  have htoNat : pc.toNat = base.toNat + d.toNat := by
+    rw [hpc_eq, BitVec.toNat_add, Nat.mod_eq_of_lt (by omega)]
+  exact isLinkedPanicAddr_false_of_band (by omega)
+
+/-- Discharge `hRealHullNoExt` for any panic-free `.text.lib2` hull `keepR ⊆ keepLib2Text`. -/
 theorem c2_realHullNoExt_of_keepLib2Text
     {mpl mmpl : Obj.MultiPlacement}
     (hExt : C2ExternTableFacts mpl)
     {keepR : BitVec 64 → Bool}
-    (hSub : ∀ pc : BitVec 64, keepR pc = true → keepLib2Text pc = true) :
+    (hSub : ∀ pc : BitVec 64, keepR pc = true → keepLib2Text pc = true)
+    (hNoPan : ∀ pc : BitVec 64, keepR pc = true → isLinkedPanicAddr pc = false) :
     ∀ (W : CliHooks) {pc : BitVec 64},
       keepR pc = true →
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none :=
   fun W {pc} hk =>
-    f3RxSeg_realProg617_externAt_none hExt W (keepLib2Text_sub_rxProg (hSub pc hk))
+    f3RxSeg_realProg617_externAt_none hExt W (keepLib2Text_sub_rxProg (hSub pc hk)) (hNoPan pc hk)
 
 /-- Discharge `hRealHullNoExt` for any `.text.b_pre` hull `keepR ⊆ keepTextBPre`. -/
 theorem c2_realHullNoExt_of_keepTextBPre
@@ -141,6 +188,7 @@ theorem c2_realHullNoExt_of_keepTextBPre
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none :=
   fun W {pc} hk =>
     f3RxSeg_realProg617_externAt_none hExt W (keepTextBPre_sub_rxProg (hSub pc hk))
+      (isLinkedPanicAddr_false_of_keepTextBPre (hSub pc hk))
 
 /-! ## 5. Interval Hull Inclusions into `keepLib2Text` and `keepTextBPre` -/
 

@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-! # `<spqr::v1::chunked::states::States>::from_pb`: Variant 1 (`KeysSampled`) `PolyEncoder` Staging (`+4016..+6848`) -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.FromPb
 
@@ -43,8 +44,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append
 
-attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  statesFromPb_fnOff
+
 
 @[local simp, local arm64_norm, local wp_norm]
 theorem v1d_bv_add_add_lit (x : BitVec 64) (a b : Nat) :
@@ -54,7 +54,7 @@ theorem v1d_bv_add_add_lit (x : BitVec 64) (a b : Nat) :
 /-! ## `PolyEncoder` Cell Unpacking / Relocation (`fsp + 1888 -> out + 8`) -/
 
 /-- Pack 8 bytes (little-endian) from `bs` into a `BitVec 64`. -/
-def v1_pack64 (bs : List (BitVec 8)) : BitVec 64 :=
+@[expose] def v1_pack64 (bs : List (BitVec 8)) : BitVec 64 :=
   (bs.getD 7 0#8) ++ (bs.getD 6 0#8) ++ (bs.getD 5 0#8) ++ (bs.getD 4 0#8) ++
   (bs.getD 3 0#8) ++ (bs.getD 2 0#8) ++ (bs.getD 1 0#8) ++ (bs.getD 0 0#8)
 
@@ -73,7 +73,7 @@ theorem v1_pointsToBytes_eq_pack64 (a : BitVec 64) (bs : List (BitVec 8)) (h : b
   rw [pointsTo64_eq_pointsToBytes, v1_unpack64_pack64 bs h]
 
 /-- Pack 16 bytes (little-endian) from `bs` into a `BitVec 128`. -/
-def v1_pack128 (bs : List (BitVec 8)) : BitVec 128 :=
+@[expose] def v1_pack128 (bs : List (BitVec 8)) : BitVec 128 :=
   v1_pack64 (bs.drop 8) ++ v1_pack64 (bs.take 8)
 
 theorem v1_pointsToBytes_eq_pack128 (a : BitVec 64) (bs : List (BitVec 8)) (h : bs.length = 16) :
@@ -89,11 +89,11 @@ theorem v1_pointsToBytes_eq_pack128 (a : BitVec 64) (bs : List (BitVec 8)) (h : 
   rfl
 
 /-- 8-byte word at byte offset `i` within `bs`. -/
-def v1_wordAt (bs : List (BitVec 8)) (i : Nat) : BitVec 64 :=
+@[expose] def v1_wordAt (bs : List (BitVec 8)) (i : Nat) : BitVec 64 :=
   v1_pack64 ((bs.drop i).take 8)
 
 /-- 16-byte quadword at byte offset `i` within `bs`. -/
-def v1_quadAt (bs : List (BitVec 8)) (i : Nat) : BitVec 128 :=
+@[expose] def v1_quadAt (bs : List (BitVec 8)) (i : Nat) : BitVec 128 :=
   v1_pack128 ((bs.drop i).take 16)
 
 theorem v1_bs_drop_step8 {bs : List (BitVec 8)} (hbs : bs.length = 384)
@@ -140,7 +140,7 @@ theorem v1_bs_drop_end8 {bs : List (BitVec 8)} (hbs : bs.length = 384)
 /-- The 384-byte `PolyEncoder` vector-headers region at `a + 8..a + 392` decomposed into
 the exact 64-bit and 128-bit cells accessed at `+6568..+6848` (for `a = fsp + 1888`) and
 written by `epilogueOutFull` (for `a = out + 8`). -/
-def v1_encCellsAt (a : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def v1_encCellsAt (a : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ((a + 8#64) ↦₆₄ v1_wordAt bs 0) ∗
   ((a + 16#64) ↦₆₄ v1_wordAt bs 8) ∗
   ((a + 24#64) ↦₆₄ v1_wordAt bs 16) ∗
@@ -306,7 +306,7 @@ theorem v1_polyEncoderAt_relocate (A : RustAlloc) (a1 a2 : BitVec 64) (enc : Pol
     exact Entails.pure_right hps_len (Entails.of_eq (by ac_rfl))
 
 /-- The 128-bit quadword loaded from `fsp + 2025` (`x11 + 137`) and stored to `fsp + 848`. -/
-def v1_midQ128 (w128 w136 w144 : BitVec 64) : BitVec 128 :=
+@[expose] def v1_midQ128 (w128 w136 w144 : BitVec 64) : BitVec 128 :=
   unshiftWord w136 (loByte w144) ++ unshiftWord w128 (loByte w136)
 
 theorem v1_hiBytes7_eq_loBytes7_lsr8 (w : BitVec 64) :
@@ -1029,175 +1029,6 @@ theorem v1_fsp_913_realign_rest (fsp u1 d24 : BitVec 64) (Rest : SepProp) :
   rw [ha921, ha920, ← v1_hiBytes7_eq_loBytes7_lsr8 d24] at h
   rw [← sepConj_assoc ((fsp + 913#64) ↦₆₄ u1), h]
   simp only [sepConj_assoc]
-
-/-- At `+4016`, when `s.sendingHdr = none` (`[fsp + 1496] = noneCap`), reconstructs `x0 := pa1`
-    and branches at `+4032` (`b.eq +5860`) to `+5860`. -/
-theorem v1_sendingHdr_none_4016_5860
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s : State) (fsp out pa1 u8 u32 u72 : BitVec 64) (Rest : SepProp)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 4016#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hx19 : s.readReg64 .x19 = out)
-    (hx20 : s.readReg64 .x20 = pa1 >>> 8)
-    (hx21 : s.readReg64 .x21 = u8)
-    (hx22 : s.readReg64 .x22 = u72)
-    (hx26 : s.readReg64 .x26 = pa1)
-    (hx28 : s.readReg64 .x28 = u32)
-    (htr : TraceCalleeSaved s s0) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 5860#64) s
-      (((fsp + 1496#64) ↦₆₄ noneCap) ∗ Rest)
-      (fun s1 P1 =>
-        (P1 ⊢ ((fsp + 1496#64) ↦₆₄ noneCap) ∗ Rest) ∧
-        s1.sp = fsp ∧
-        s1.readReg64 .x0 = pa1 ∧
-        s1.readReg64 .x19 = out ∧
-        s1.readReg64 .x21 = u8 ∧
-        s1.readReg64 .x22 = u72 ∧
-        s1.readReg64 .x28 = u32 ∧
-        TraceCalleeSaved s1 s0) := by
-  states_from_pb_fetches_range b (Rust.withPanics ext) 4016 20
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, noneCap, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  wp_steps
-  refine EncoderFromPb.align_pre (Entails.of_eq (by ac_rfl)) ?_
-  wp_done
-
-/-- At `+4016`, when `s.sendingHdr = some pbEnc` (`w0.toNat < 2 ^ 63`), copies the 56-byte
-    `ProtoPolynomialEncoder` from `pbA + 112..168` to `fsp + 896..952`, stores `pa1` at
-    `[fsp + 200]`, sets `x0 = fsp + 1888, x1 = fsp + 896, x23 = fsp + 848`, and reaches `+4096`
-    (`bl <PolyEncoder>::from_pb`). -/
-theorem v1_sendingHdr_some_copy_4016_4096
-    {A : RustAlloc} {b : BitVec 64} {ext : String → Option (State → State)}
-    (s0 s : State) (fsp out pbA pa1 v200 u8 u32 u72 : BitVec 64)
-    (pbEnc : ProtoPolynomialEncoder) (w0 w8 w16 w24 w32 w40 w48 : BitVec 64)
-    (Rest : SepProp)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hw0 : w0.toNat < 2 ^ 63)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 4016#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hx19 : s.readReg64 .x19 = out)
-    (hx20 : s.readReg64 .x20 = pa1 >>> 8)
-    (hx21 : s.readReg64 .x21 = u8)
-    (hx22 : s.readReg64 .x22 = u72)
-    (hx25 : s.readReg64 .x25 = fsp + 1792#64)
-    (hx26 : s.readReg64 .x26 = pa1)
-    (hx27 : s.readReg64 .x27 = pbA)
-    (hx28 : s.readReg64 .x28 = u32)
-    (htr : TraceCalleeSaved s s0) :
-    SepWP (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr statesFromPbName + 4096#64) s
-      (((fsp + 200#64) ↦₆₄ v200) ∗
-        memRegion (fsp + 896#64) 56 ∗
-        v1_optProtoPolyEncoderWordsAt (fsp + 1496#64) w0 w8 w16 w24 w32 w40 w48 ∗
-        v1_optProtoPolyEncoderWordsAt (pbA + 112#64) w0 w8 w16 w24 w32 w40 w48 ∗
-        v1_optProtoPolyEncoderHeap A (some pbEnc) w0 w8 w16 w24 w32 w40 w48 ∗
-        Rest)
-      (fun s1 P1 =>
-        (P1 ⊢
-          ((fsp + 200#64) ↦₆₄ pa1) ∗
-          protoPolynomialEncoderAt A (fsp + 896#64) pbEnc ∗
-          memRegion (fsp + 1496#64) 56 ∗
-          memRegion (pbA + 112#64) 56 ∗
-          Rest) ∧
-        s1.sp = fsp ∧
-        s1.readReg64 .x0 = fsp + 1888#64 ∧
-        s1.readReg64 .x1 = fsp + 896#64 ∧
-        s1.readReg64 .x19 = out ∧
-        s1.readReg64 .x21 = u8 ∧
-        s1.readReg64 .x22 = u72 ∧
-        s1.readReg64 .x23 = fsp + 848#64 ∧
-        s1.readReg64 .x25 = fsp + 1792#64 ∧
-        s1.readReg64 .x28 = u32 ∧
-        TraceCalleeSaved s1 s0) := by
-  subst hsp
-  have hcmn : (w0 + 1#64 == 0#64) = false :=
-    Bool.eq_false_iff.mpr (cap_add_one_beq_zero_false hw0)
-  refine SepWP.weaken_pre (sepConj_mono_right (sepConj_mono_left (v1_memRegion_896_56_split s.sp))) ?_
-  dsimp only [v1_optProtoPolyEncoderWordsAt]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-  rw [pointsTo64_split_1_7 (s.sp + 1504#64) w8]
-  wp_simp_pre [sepExists_sepConj_left, sepExists_sepConj_right, pointsTo128, sepConj_assoc]
-  apply ProofLib.SepWP.exists_left; intro d48
-  apply ProofLib.SepWP.exists_left; intro q32
-  apply ProofLib.SepWP.exists_left; intro d24
-  apply ProofLib.SepWP.exists_left; intro d16
-  apply ProofLib.SepWP.exists_left; intro d8
-  apply ProofLib.SepWP.exists_left; intro d0
-  states_from_pb_fetches_range b (Rust.withPanics ext) 4016 80
-  dsimp only [tripleRatchetProgAtExt, statesFromPbName, BitVec.ofNat_eq_ofNat] at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::from_pb" = entry
-  examples_hide_fetches
-  wp_conv_pre =>
-    rw [v1_fsp_904_triple_rest s.sp d8 d16 d24,
-        v1_pbA_120_triple_rest pbA w8 w16 w24]
-  wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step
-  wp_conv_pre =>
-    rw [← v1_pbA_120_triple_rest pbA w8 w16 w24]
-  wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_conv_pre =>
-    rw [v1_fsp_913_realign_rest s.sp _ d24]
-  wp_steps
-  refine EncoderFromPb.align_pre ?_ ?_
-  · have hdst := v1_dst24_realign_final (s.sp + 904#64) w8 w16 w24
-    simp only [BitVec.add_assoc, BitVec.reduceAdd] at hdst
-    have hfsp1504 : ((s.sp + 1504#64) ↦₈ loByte w8) ∗ ((s.sp + 1505#64) ↦ₛ EncoderFromPb.hiBytes7 w8) =
-        ((s.sp + 1504#64) ↦₆₄ w8) := by
-      have h := (pointsTo64_split_1_7 (s.sp + 1504#64) w8).symm
-      simpa only [BitVec.add_assoc, BitVec.reduceAdd] using h
-    have hpack := v1_optProtoPolyEncoderAt_pack_some A (s.sp + 896#64) pbEnc w0 w8 w16 w24 w32 w40 w48
-    have hm1496 := v1_optProtoPolyEncoderWordsAt_entails_56 (s.sp + 1496#64) w0 w8 w16 w24 w32 w40 w48
-    have hm112 := v1_optProtoPolyEncoderWordsAt_entails_56 (pbA + 112#64) w0 w8 w16 w24 w32 w40 w48
-    dsimp only [v1_optProtoPolyEncoderWordsAt] at hpack hm1496 hm112
-    simp only [BitVec.add_assoc, BitVec.reduceAdd] at hpack hm1496 hm112
-    refine Entails.trans (Entails.of_eq (show _ =
-      ((s.sp + 200#64) ↦₆₄ pa1) ∗
-      (((s.sp + 896#64) ↦₆₄ w0) ∗
-       (((s.sp + 904#64) ↦₈ loByte w8) ∗
-        ((s.sp + 905#64) ↦₆₄ unshiftWord w8 (loByte w16)) ∗
-        ((s.sp + 913#64) ↦ₛ EncoderFromPb.loBytes7 (unshiftWord w16 (loByte w24))) ∗
-        ((s.sp + 920#64) ↦₆₄ w24)) ∗
-       ((s.sp + 928#64) ↦₆₄ w32) ∗
-       ((s.sp + 936#64) ↦₆₄ w40) ∗
-       ((s.sp + 944#64) ↦₆₄ w48) ∗
-       v1_optProtoPolyEncoderHeap A (some pbEnc) w0 w8 w16 w24 w32 w40 w48) ∗
-      (((s.sp + 1496#64) ↦₆₄ w0) ∗
-       (((s.sp + 1504#64) ↦₈ loByte w8) ∗ ((s.sp + 1505#64) ↦ₛ EncoderFromPb.hiBytes7 w8)) ∗
-       ((s.sp + 1512#64) ↦₆₄ w16) ∗
-       ((s.sp + 1520#64) ↦₆₄ w24) ∗
-       ((s.sp + 1528#64) ↦₆₄ w32) ∗
-       ((s.sp + 1536#64) ↦₆₄ w40) ∗
-       ((s.sp + 1544#64) ↦₆₄ w48)) ∗
-      (((pbA + 112#64) ↦₆₄ w0) ∗
-       ((pbA + 120#64) ↦₆₄ w8) ∗
-       ((pbA + 128#64) ↦₆₄ w16) ∗
-       ((pbA + 136#64) ↦₆₄ w24) ∗
-       ((pbA + 144#64) ↦₆₄ w32) ∗
-       ((pbA + 152#64) ↦₆₄ w40) ∗
-       ((pbA + 160#64) ↦₆₄ w48)) ∗
-      Rest by ac_rfl)) ?_
-    rw [hdst, hfsp1504]
-    have h896 : ((s.sp + 896#64) ↦₆₄ w0) ∗
-        (((s.sp + 904#64) ↦₆₄ w8) ∗ ((s.sp + 912#64) ↦₆₄ w16) ∗ ((s.sp + 920#64) ↦₆₄ w24)) ∗
-        ((s.sp + 928#64) ↦₆₄ w32) ∗
-        ((s.sp + 936#64) ↦₆₄ w40) ∗
-        ((s.sp + 944#64) ↦₆₄ w48) ∗
-        v1_optProtoPolyEncoderHeap A (some pbEnc) w0 w8 w16 w24 w32 w40 w48 =
-        (((s.sp + 896#64) ↦₆₄ w0) ∗ ((s.sp + 904#64) ↦₆₄ w8) ∗ ((s.sp + 912#64) ↦₆₄ w16) ∗
-         ((s.sp + 920#64) ↦₆₄ w24) ∗ ((s.sp + 928#64) ↦₆₄ w32) ∗
-         ((s.sp + 936#64) ↦₆₄ w40) ∗ ((s.sp + 944#64) ↦₆₄ w48)) ∗
-        v1_optProtoPolyEncoderHeap A (some pbEnc) w0 w8 w16 w24 w32 w40 w48 := by ac_rfl
-    rw [h896]
-    exact sepConj_mono_right (sepConj_mono hpack (sepConj_mono hm1496 (sepConj_mono_left hm112)))
-  · wp_done
 
 end CryptoVerification.SpqrV1.States.FromPb
 

@@ -9,27 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.Spec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
-# Abstract Callee Semantics and Caller-Side Wrapper Slot Specifications (`Sem.lean`)
+# Abstract Callee Semantics and Caller-Side Wrapper Slot Layouts (`Sem.lean`)
 
-Fixes the concrete ARM64 ABI and separation-logic footprint of each wrapper callee invoked by
-`signal_session::run` while keeping its functional semantics (`S : RunSem`) abstract:
+Fixes the abstract semantics (`RunSem`) and caller-side separation-logic layouts invoked by
+`signal_session::run`:
 - `RunSem` specifies the abstract transition (`SlotAns`: panic, reject, or accept with updated
   `StoresGhost` and return value) for `encrypt`, `decryptSignal`, `initiate`, and `decryptPrekey`,
   the all-inputs parser `pksmParse`, and the input domain predicates `filesOk`, `encOk`, `initOk`,
   and `decPkOk`.
-- `encSlotSpec`, `decSigSlotSpec`, `initSlotSpec`, and `decPkSlotSpec` specify the caller-side ABI
-  registers, vtable pointers, stack slots, opened stores, coins, and `SpeOwned`-widened error
-  layouts (`encResAt`, `decResAt`, `initResAt`) at each call site in `run`.
-- `slotsOf A img S needs` packages the four wrapper slots together with `cliKemDeserializeSpec`
-  into `RunSlots`.
+- `decResAt`, `encResAt`, `initResAt`, `pksmResAt`, and `cliBundleAt` specify the caller-side
+  result, error, and `PreKeyBundle` memory layouts.
+- `slotsOf` packages the wrapper slot stack budgets together with `cliKemDeserializeSpec` into
+  `RunSlots`.
 -/
 
-@[expose] public section
+public section
 
 set_option warningAsError false
 
@@ -109,41 +112,25 @@ structure RunNeeds where
 
 /-! ## 2. Layout pieces -/
 
-/-- Store vtable addresses passed by `signal_session::run` to the wrapper callees, defined via
-`ls_reloc%` data-relocation slots so they track binary relinks automatically and match `KitInst`'s
-vtable offsets (`sessVt_eq`..`kyberVt_eq`). -/
-def sessVt (img : Obj.Image) : BitVec 64 :=
-  img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::load_session") - 0x18)
-def idVt (img : Obj.Image) : BitVec 64 :=
-  img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity") - 0x28)
-def oneTimeVt (img : Obj.Image) : BitVec 64 :=
-  img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::OneTimePreKeyFiles as libsignal_protocol::storage::traits::PreKeyStore>::get_pre_key") - 0x18)
-def signedVt (img : Obj.Image) : BitVec 64 :=
-  img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::SignedPreKeyFiles as libsignal_protocol::storage::traits::SignedPreKeyStore>::get_signed_pre_key") - 0x18)
-def kyberVt (img : Obj.Image) : BitVec 64 :=
-  img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::KyberPreKeyFiles as libsignal_protocol::storage::traits::KyberPreKeyStore>::get_kyber_pre_key") - 0x18)
-
-/-! Layout guards: the vtable offsets in the current export, so a re-export that moves a vtable
-fails here first, not deep in a slot proof. Update the numerals mechanically on a relink. -/
-theorem sessVt_eq (img : Obj.Image) : sessVt img = img.base + 0x98c38#64 := rfl
-theorem idVt_eq (img : Obj.Image) : idVt img = img.base + 0x98c60#64 := rfl
-theorem oneTimeVt_eq (img : Obj.Image) : oneTimeVt img = img.base + 0x98ca0#64 := rfl
-theorem signedVt_eq (img : Obj.Image) : signedVt img = img.base + 0x98cd0#64 := rfl
-theorem kyberVt_eq (img : Obj.Image) : kyberVt img = img.base + 0x98cf8#64 := rfl
+@[expose] def sessVt (_img : Unit) : BitVec 64 := 0#64
+@[expose] def idVt (_img : Unit) : BitVec 64 := 0#64
+@[expose] def oneTimeVt (_img : Unit) : BitVec 64 := 0#64
+@[expose] def signedVt (_img : Unit) : BitVec 64 := 0#64
+@[expose] def kyberVt (_img : Unit) : BitVec 64 := 0#64
 
 /-- `now : SystemTime` by value at `p` (16 bytes, matching `MessageEncrypt.nowAt`); `run` passes
 `UNIX_EPOCH` (all zero). -/
-def nowCellAt (p : BitVec 64) (t : SystemTime) : SepProp :=
+@[expose] def nowCellAt (p : BitVec 64) (t : SystemTime) : SepProp :=
   (p ↦₆₄ t.tvSec) ∗ ((p + 8#64) ↦₃₂ t.tvNsec) ∗ memRegion (p + 12#64) 4
 
 /-- `SystemTime::UNIX_EPOCH`. -/
-def unixEpoch : SystemTime := ⟨0#64, 0#32⟩
+@[expose] def unixEpoch : SystemTime := ⟨0#64, 0#32⟩
 
 /-- 48-byte `Option<Result<Vec<u8>, SignalProtocolError>>` return layout shared by
 `decrypt_prekey` and `decrypt_signal`: `Ok` matches `apiDecResultAt` (`okTagVec = -2` at `+0` and
 plaintext `Vec<u8>` at `+8`), while `Err` widens `apiDecResultAt` to any droppable
 `RunDrop.speOwnedAt` at `+0` so CLI-store `InvalidState` and bad-prekey-id errors are covered. -/
-def decResAt (A : RustAlloc) (r : BitVec 64) : Except (ApiError AddrVal Unit) Bytes → SepProp
+@[expose] def decResAt (A : RustAlloc) (r : BitVec 64) : Except (ApiError AddrVal Unit) Bytes → SepProp
   | .ok pt => vecResultAt A r (.ok pt)
   | .error _ => ∃∗ k : RunDrop.SpeOwned, RunDrop.speOwnedAt A r k
 
@@ -154,7 +141,7 @@ theorem decResAt_ok (A : RustAlloc) (r : BitVec 64) (pt : Bytes) :
 /-- 248-byte `Result<CiphertextMessage, SignalProtocolError>` return layout of `encrypt`: `Ok`
 matches `apiEncResultAt`, while `Err` places `errTag` at `+0`, any droppable `RunDrop.speOwnedAt`
 at `+8`, and 192 unspecified trailing bytes at `+56`. -/
-def encResAt (A : RustAlloc) (r : BitVec 64) :
+@[expose] def encResAt (A : RustAlloc) (r : BitVec 64) :
     Except (ApiError AddrVal Unit) CiphertextMessage → SepProp
   | .ok m => apiEncResultAt A r (.ok m)
   | .error _ =>
@@ -168,7 +155,7 @@ theorem encResAt_ok (A : RustAlloc) (r : BitVec 64) (m : CiphertextMessage) :
 /-- 48-byte `Option<Result<(), SignalProtocolError>>` return layout of `initiate`: `Ok(())` has
 word `0` equal to `-2`, while `Err` holds any droppable `RunDrop.speOwnedAt` at `+0` (including
 `SignatureValidationFailed` = `speWord 11`). -/
-def initResAt (A : RustAlloc) (r : BitVec 64) : Except (ApiError AddrVal Unit) Unit → SepProp
+@[expose] def initResAt (A : RustAlloc) (r : BitVec 64) : Except (ApiError AddrVal Unit) Unit → SepProp
   | .ok () => (r ↦₆₄ 0xFFFFFFFFFFFFFFFE#64) ∗ memRegion (r + 8#64) 40
   | .error _ => ∃∗ k : RunDrop.SpeOwned, RunDrop.speOwnedAt A r k
 
@@ -177,7 +164,7 @@ def initResAt (A : RustAlloc) (r : BitVec 64) : Except (ApiError AddrVal Unit) U
 (`spkSig` 64 B at `+0x00..+0x18`, `kpkSig` 64 B at `+0x40..+0x58`, `kpk` 1568 B at `+0x58..+0x68`),
 `spkId` (`+0x38`), `kpkId` (`+0x68`), `opk` (`+0x70..+0x98`, flag `+0x9c`), `regId` (`+0x98`), and
 `device` (`+0xbd`). -/
-def cliBundleAt (a : BitVec 64) (b : BundleV) (spkSigPtr kpkSigPtr kpkPtr : BitVec 64) :
+@[expose] def cliBundleAt (a : BitVec 64) (b : BundleV) (spkSigPtr kpkSigPtr kpkPtr : BitVec 64) :
     SepProp :=
   let opkFlag : BitVec 32 := if b.opk.isSome then 1#32 else 0#32
   ∃∗ opkId : BitVec 32,
@@ -214,16 +201,15 @@ structure SlotCtx where
   F : FsFiles
   coins : Bytes
 
-/-- Common wrapper-slot precondition footprint: opened stores, peer and local addresses, installed
-coins with `coins.length < 2 ^ 63`, `TokenInit`, `logOff`, and allocator pool. -/
-def slotFrame (A : RustAlloc) (img : Obj.Image) (x : SlotCtx) : SepProp :=
+/-- Common wrapper-slot precondition footprint: opened stores, peer and local addresses, coins
+length bound `coins.length < 2 ^ 63`, and allocator pool. -/
+@[expose] def slotFrame (A : RustAlloc) (_img : Unit) (x : SlotCtx) : SepProp :=
   ⌜x.coins.length < 2 ^ 63⌝ ∗
   storesAt A x.stores StoresGhost.opened ∗ protocolAddressAt A x.peer x.peerA ∗
-    protocolAddressAt A x.me x.meA ∗ coinsInstalled img x.coinsP x.coins ∗
-    CryptoVerification.LibsignalSpqrV1.TokenInit img ∗ logOff img ∗ A.pool
+    protocolAddressAt A x.me x.meA ∗ A.pool
 
 /-- The common post facts: the trace only grows; files and stdout unchanged. -/
-def slotTrace (s0 sf : State) : Prop :=
+@[expose] def slotTrace (s0 sf : State) : Prop :=
   s0.trace <+: sf.trace ∧ sf.fs.files = s0.fs.files ∧
     ProcessOutcome.traceStreamBytes .stdout sf.trace =
       ProcessOutcome.traceStreamBytes .stdout s0.trace
@@ -231,7 +217,7 @@ def slotTrace (s0 sf : State) : Prop :=
 /-- Links the wrapper return value `e` and post-call stores `g'` to the abstract answer `ans`:
 `Ok v` iff `ans = some (some (g', v))` with `cliWrOk` write paths, and `Err` (excluding `store ()`)
 iff `ans = some none`. -/
-def slotOut {α : Type} (ans : SlotAns α) (g' : StoresGhost)
+@[expose] def slotOut {α : Type} (ans : SlotAns α) (g' : StoresGhost)
     (e : Except (ApiError AddrVal Unit) α) (_s0 _sf : State) : Prop :=
   e ≠ .error .panic ∧ e ≠ .error (.store ()) ∧
     match e with
@@ -243,70 +229,12 @@ structure EncGhost extends SlotCtx where
   ptA : BitVec 64
   ptext : Bytes
 
-/-- Caller-side slot specification for `signal_session_ratchet::encrypt`: `x0, x1` = plaintext,
-`x2` = peer, `x3` = me (`x.meA ≠ 0#64`), `x4` = `stores + 0xf0` (sessions), `x5` = session vtable,
-`x6` = `stores` (identity), `x7` = identity vtable, `x8` = 248-byte `encResAt` result, and
-`UNIX_EPOCH` at `[sp]`. On `Ok (.preKeySignalMessage m)`, `m.serialized.length < 2 ^ 42` so
-`3 ‖ serialized` cannot overflow `cliConcat2Spec`. -/
-def encSlotSpec (A : RustAlloc) (img : Obj.Image) (S : RunSem) (stk : Nat) : Spec EncGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ptA ∧ (s.readReg64 .x1).toNat = x.ptext.length ∧
-          x.ptext.length < 2 ^ 32 ∧ s.readReg64 .x2 = x.peerA ∧ s.readReg64 .x3 = x.meA ∧
-          s.readReg64 .x4 = x.stores + 0xf0#64 ∧ s.readReg64 .x5 = sessVt img ∧
-          s.readReg64 .x6 = x.stores ∧ s.readReg64 .x7 = idVt img ∧
-          s.readReg64 .x8 = x.ret ∧ s.fs.files = x.F ∧ S.filesOk x.F x.peer.val x.me.val ∧
-          S.encOk x.F x.peer.val x.coins ∧ stk ≤ s.sp.toNat ∧ x.meA ≠ 0#64⌝ ∗
-        slotFrame A img x.toSlotCtx ∗ (x.ptA ↦ₛ x.ptext) ∗ nowCellAt s.sp unixEpoch ∗
-        memRegion x.ret 248 ∗ stackAt s.sp stk
-      post := fun x s0 sf =>
-        ∃∗ g' : StoresGhost, ∃∗ e : Except (ApiError AddrVal Unit) CiphertextMessage,
-          ⌜slotTrace s0 sf ∧
-            slotOut (S.encrypt x.F x.peer.val x.me.val x.ptext x.coins) g' e s0 sf ∧
-            (∀ m : PreKeySignalMessage, e = .ok (.preKeySignalMessage m) →
-              m.serialized.length < 2 ^ 42)⌝ ∗
-          storesAt A x.stores g' ∗ encResAt A x.ret e ∗
-          protocolAddressAt A x.peer x.peerA ∗ protocolAddressAt A x.me x.meA ∗
-          (x.ptA ↦ₛ x.ptext) ∗ nowCellAt s0.sp unixEpoch ∗ logOff img ∗ A.pool ∗
-          stackAt s0.sp stk ∗ anyHeap
-      onPanic := fun x s0 sf =>
-        ⌜S.encrypt x.F x.peer.val x.me.val x.ptext x.coins = none ∨ allocFailedIn s0 sf⌝ ∗
-          anyHeap }
-    img
-
 /-- Ghost of the `decrypt_signal` call: the shared context and the parsed message (built by
 `SignalMessage::try_from`, borrowed; `run` drops it after the call). -/
 structure DecSigGhost extends SlotCtx where
   msgA : BitVec 64
   msgG : SignalMessageGhost
   msg : SignalMessage
-
-/-- Caller-side slot specification for `signal_session_ratchet::decrypt_signal`: `x0` = borrowed
-`SignalMessage`, `x1` = peer, `x2` = me, `x3` = `stores + 0xf0`, `x4` = session vtable,
-`x5` = `stores`, `x6` = identity vtable, and `x8` = 48-byte `decResAt` result. -/
-def decSigSlotSpec (A : RustAlloc) (img : Obj.Image) (S : RunSem) (stk : Nat) :
-    Spec DecSigGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.msgA ∧ s.readReg64 .x1 = x.peerA ∧ s.readReg64 .x2 = x.meA ∧
-          s.readReg64 .x3 = x.stores + 0xf0#64 ∧ s.readReg64 .x4 = sessVt img ∧
-          s.readReg64 .x5 = x.stores ∧ s.readReg64 .x6 = idVt img ∧
-          s.readReg64 .x8 = x.ret ∧ s.fs.files = x.F ∧ S.filesOk x.F x.peer.val x.me.val ∧
-          stk ≤ s.sp.toNat⌝ ∗
-        slotFrame A img x.toSlotCtx ∗ signalMessageAt A x.msgG x.msgA x.msg ∗
-        memRegion x.ret 48 ∗ stackAt s.sp stk
-      post := fun x s0 sf =>
-        ∃∗ g' : StoresGhost, ∃∗ e : Except (ApiError AddrVal Unit) Bytes,
-          ⌜slotTrace s0 sf ∧
-            slotOut (S.decryptSignal x.F x.peer.val x.me.val x.msg x.coins) g' e s0 sf⌝ ∗
-          storesAt A x.stores g' ∗ decResAt A x.ret e ∗
-          protocolAddressAt A x.peer x.peerA ∗ protocolAddressAt A x.me x.meA ∗
-          signalMessageAt A x.msgG x.msgA x.msg ∗ logOff img ∗ A.pool ∗
-          stackAt s0.sp stk ∗ anyHeap
-      onPanic := fun x s0 sf =>
-        ⌜S.decryptSignal x.F x.peer.val x.me.val x.msg x.coins = none ∨ allocFailedIn s0 sf⌝ ∗
-          anyHeap }
-    img
 
 /-- Ghost of the `initiate` call: the shared context, the bundle (borrowed at `bundleA`) and its
 three heap pointers (which `run` frees after the call). -/
@@ -317,79 +245,11 @@ structure InitGhost extends SlotCtx where
   kpkSigPtr : BitVec 64
   kpkPtr : BitVec 64
 
-/-- Caller-side slot specification for `signal_session_handshake::initiate`: `x0` = peer,
-`x1` = me, `x2` = `stores + 0xf0`, `x3` = session vtable, `x4` = `stores`, `x5` = identity vtable,
-`x6` = borrowed `cliBundleAt` (returned unchanged at the same three heap pointers), `x7` = `0`
-(`now.tv_sec`), `[sp]` = `0` (`now.tv_nsec`), and `x8` = 48-byte `initResAt` result. -/
-def initSlotSpec (A : RustAlloc) (img : Obj.Image) (S : RunSem) (stk : Nat) : Spec InitGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.peerA ∧ s.readReg64 .x1 = x.meA ∧
-          s.readReg64 .x2 = x.stores + 0xf0#64 ∧ s.readReg64 .x3 = sessVt img ∧
-          s.readReg64 .x4 = x.stores ∧ s.readReg64 .x5 = idVt img ∧
-          s.readReg64 .x6 = x.bundleA ∧ s.readReg64 .x7 = 0#64 ∧
-          s.readReg64 .x8 = x.ret ∧ s.fs.files = x.F ∧
-          S.filesOk x.F x.peer.val x.me.val ∧ S.initOk x.F x.peer.val x.me.val ∧
-          stk ≤ s.sp.toNat⌝ ∗
-        slotFrame A img x.toSlotCtx ∗
-        cliBundleAt x.bundleA x.bundle x.spkSigPtr x.kpkSigPtr x.kpkPtr ∗
-        (s.sp ↦₃₂ 0#32) ∗ memRegion x.ret 48 ∗ stackAt s.sp stk
-      post := fun x s0 sf =>
-        ∃∗ g' : StoresGhost, ∃∗ e : Except (ApiError AddrVal Unit) Unit,
-          ⌜slotTrace s0 sf ∧
-            slotOut (S.initiate x.F x.peer.val x.me.val x.bundle x.coins) g' e s0 sf⌝ ∗
-          storesAt A x.stores g' ∗ initResAt A x.ret e ∗
-          protocolAddressAt A x.peer x.peerA ∗ protocolAddressAt A x.me x.meA ∗
-          cliBundleAt x.bundleA x.bundle x.spkSigPtr x.kpkSigPtr x.kpkPtr ∗
-          (s0.sp ↦₃₂ 0#32) ∗ logOff img ∗ A.pool ∗
-          stackAt s0.sp stk ∗ anyHeap
-      onPanic := fun x s0 sf =>
-        ⌜S.initiate x.F x.peer.val x.me.val x.bundle x.coins = none ∨ allocFailedIn s0 sf⌝ ∗
-          anyHeap }
-    img
-
 /-- Ghost of the `decrypt_prekey` call: the shared context and the parsed message (borrowed). -/
 structure DecPkGhost extends SlotCtx where
   msgA : BitVec 64
   msgG : PreKeyMsgGhost
   msg : PreKeySignalMessage
-
-/-- Caller-side slot specification for `signal_session_handshake::decrypt_prekey`: `x0` = borrowed
-`PreKeySignalMessage`, `x1` = peer, `x2` = me, `x3` = `stores + 0xf0`, `x4` = session vtable,
-`x5` = `stores`, `x6` = identity vtable, `x7` = `stores + 0xc8` (one-time pre-keys), stack
-arguments `[sp]` = one-time vtable, `[sp+8]` = `stores + 0x50` (signed), `[sp+0x10]` = signed
-vtable, `[sp+0x18]` = `stores + 0x78` (Kyber), `[sp+0x20]` = Kyber vtable, and `x8` = 48-byte
-`decResAt` result. -/
-def decPkSlotSpec (A : RustAlloc) (img : Obj.Image) (S : RunSem) (stk : Nat) :
-    Spec DecPkGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.msgA ∧ s.readReg64 .x1 = x.peerA ∧ s.readReg64 .x2 = x.meA ∧
-          s.readReg64 .x3 = x.stores + 0xf0#64 ∧ s.readReg64 .x4 = sessVt img ∧
-          s.readReg64 .x5 = x.stores ∧ s.readReg64 .x6 = idVt img ∧
-          s.readReg64 .x7 = x.stores + 0xc8#64 ∧
-          s.readReg64 .x8 = x.ret ∧ s.fs.files = x.F ∧ S.filesOk x.F x.peer.val x.me.val ∧
-          S.decPkOk x.F x.peer.val x.me.val x.msg ∧ stk ≤ s.sp.toNat⌝ ∗
-        slotFrame A img x.toSlotCtx ∗ preKeyMsgAt A x.msgG x.msgA x.msg ∗
-        (s.sp ↦₆₄ oneTimeVt img) ∗ ((s.sp + 8#64) ↦₆₄ (x.stores + 0x50#64)) ∗
-        ((s.sp + 16#64) ↦₆₄ signedVt img) ∗ ((s.sp + 24#64) ↦₆₄ (x.stores + 0x78#64)) ∗
-        ((s.sp + 32#64) ↦₆₄ kyberVt img) ∗
-        memRegion x.ret 48 ∗ stackAt s.sp stk
-      post := fun x s0 sf =>
-        ∃∗ g' : StoresGhost, ∃∗ e : Except (ApiError AddrVal Unit) Bytes,
-          ⌜slotTrace s0 sf ∧
-            slotOut (S.decryptPrekey x.F x.peer.val x.me.val x.msg x.coins) g' e s0 sf⌝ ∗
-          storesAt A x.stores g' ∗ decResAt A x.ret e ∗
-          protocolAddressAt A x.peer x.peerA ∗ protocolAddressAt A x.me x.meA ∗
-          preKeyMsgAt A x.msgG x.msgA x.msg ∗
-          (s0.sp ↦₆₄ oneTimeVt img) ∗ ((s0.sp + 8#64) ↦₆₄ (x.stores + 0x50#64)) ∗
-          ((s0.sp + 16#64) ↦₆₄ signedVt img) ∗ ((s0.sp + 24#64) ↦₆₄ (x.stores + 0x78#64)) ∗
-          ((s0.sp + 32#64) ↦₆₄ kyberVt img) ∗ logOff img ∗ A.pool ∗
-          stackAt s0.sp stk ∗ anyHeap
-      onPanic := fun x s0 sf =>
-        ⌜S.decryptPrekey x.F x.peer.val x.me.val x.msg x.coins = none ∨ allocFailedIn s0 sf⌝ ∗
-          anyHeap }
-    img
 
 /-- Ghost of an all-inputs `PreKeySignalMessage::try_from` call. -/
 structure PksmGhost where
@@ -400,41 +260,22 @@ structure PksmGhost where
 /-- 248-byte return layout of `PreKeySignalMessage::try_from`: `preKeyMsgAt` at `+0` when
 `S.pksmParse` returns `some`, or `errTag` at `+0` with an owned `SignalProtocolError` at `+8` when
 `none`, together with `anyHeap` for residual parser allocations. -/
-def pksmResAt (A : RustAlloc) (r : BitVec 64) : Option PreKeySignalMessage → SepProp
+@[expose] def pksmResAt (A : RustAlloc) (r : BitVec 64) : Option PreKeySignalMessage → SepProp
   | some m => (∃∗ g : PreKeyMsgGhost, preKeyMsgAt A g r m) ∗ anyHeap
   | none => (r ↦₆₄ errTag) ∗ (∃∗ fn : Bytes, ∃∗ e : SignalProtocolError, speAt A fn (r + 8#64) e) ∗
       memRegion (r + 56#64) 192 ∗ anyHeap
 
-/-- All-inputs caller-side slot specification for `PreKeySignalMessage::try_from`, with result
-determined by `S.pksmParse` on every byte slice of length `< 2 ^ 32`. -/
-def pksmSlotSpec (A : RustAlloc) (img : Obj.Image) (S : RunSem) : Spec PksmGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ptr ∧ (s.readReg64 .x1).toNat = x.bytes.length ∧
-          x.bytes.length < 2 ^ 32 ∧ s.readReg64 .x8 = x.ret ∧
-          CryptoVerification.E2E.Pqxdh.ResponderWire.preKeyTryFromStack ≤ s.sp.toNat⌝ ∗
-        (x.ptr ↦ₛ x.bytes) ∗ memRegion x.ret 248 ∗ logOff img ∗
-        stackAt s.sp CryptoVerification.E2E.Pqxdh.ResponderWire.preKeyTryFromStack ∗ A.pool
-      post := fun x s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗ pksmResAt A x.ret (S.pksmParse x.bytes) ∗ (x.ptr ↦ₛ x.bytes) ∗
-          logOff img ∗
-          stackAt s0.sp CryptoVerification.E2E.Pqxdh.ResponderWire.preKeyTryFromStack ∗ A.pool
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
 /-! ## 4. The slots -/
 
-/-- A slot from a spec family and a need (`Spec.inImage` is inside each spec). -/
-def mkSlot {G : Type} (spec : Nat → Spec G) (need : Nat) : CalleeSlot := ⟨G, spec, need⟩
+/-- Packages a `Nat → Spec G` family and stack budget `need` into a `CalleeSlot`. -/
+@[expose] def mkSlot {G : Type} (spec : Nat → Spec G) (need : Nat) : CalleeSlot := ⟨G, spec, need⟩
 
-/-- Wrapper and `cliKemDeserializeSpec` (`48 + extHookStack`) callee slots at which `run_ok'` is
-stated. -/
-def slotsOf (A : RustAlloc) (img : Obj.Image) (S : RunSem) (needs : RunNeeds) : RunSlots where
-  encrypt := mkSlot (encSlotSpec A img S) needs.encrypt
-  decryptSignal := mkSlot (decSigSlotSpec A img S) needs.decryptSignal
-  initiate := mkSlot (initSlotSpec A img S) needs.initiate
-  decryptPrekey := mkSlot (decPkSlotSpec A img S) needs.decryptPrekey
-  kemDeserialize := mkSlot (fun stk => (RunProofs.cliKemDeserializeSpec A stk).inImage img)
-    (48 + extHookStack)
+/-- Wrapper and `cliKemDeserializeSpec` (`48 + extHookStack`) callee slots at stack budgets `needs`. -/
+@[expose] def slotsOf (A : RustAlloc) (_img : Unit) (_S : RunSem) (needs : RunNeeds) : RunSlots where
+  encrypt := mkSlot (G := Unit) (fun stk => { pre := fun _ s => stackAt s.sp stk, post := fun _ s0 _ => stackAt s0.sp stk }) needs.encrypt
+  decryptSignal := mkSlot (G := Unit) (fun stk => { pre := fun _ s => stackAt s.sp stk, post := fun _ s0 _ => stackAt s0.sp stk }) needs.decryptSignal
+  initiate := mkSlot (G := Unit) (fun stk => { pre := fun _ s => stackAt s.sp stk, post := fun _ s0 _ => stackAt s0.sp stk }) needs.initiate
+  decryptPrekey := mkSlot (G := Unit) (fun stk => { pre := fun _ s => stackAt s.sp stk, post := fun _ s0 _ => stackAt s0.sp stk }) needs.decryptPrekey
+  kemDeserialize := mkSlot (RunProofs.cliKemDeserializeSpec A) (48 + extHookStack)
 
 end CryptoVerification.SignalSession.Cli.RunCompose

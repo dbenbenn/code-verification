@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433Placed
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433PlacedBudgetAux
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433PlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudgetCore -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable S3 Commit Sub-Segment on Block `433`
@@ -23,7 +30,7 @@ Defines pinned and unpinned budget-threaded S3 commit seams (`+0x8ac → +0x3e4`
 `RustCliAllocBudget M` and proves both no-OOM and conditional-OOM seam theorems for block `433`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -99,7 +106,7 @@ set_option maxHeartbeats 400000
 
 /-- Budget-threaded CLI relocatable `[LibsignalPlacement]` S3 commit checkpoint state at
 `entry + 2220#64` (`+0x8ac`). -/
-def CliDhCommitStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliDhCommitStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -112,7 +119,7 @@ def CliDhCommitStatePlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Pinned tight-panic CLI S3 commit seam (`+0x8ac → +0x3e4` or `tryDecryptOnPanicTight`),
 recording `trGhostCaps trG' = s3AfterCaps (trGhostCaps trG) tr.ratchet.receiverChains.length`. -/
-def CliS3CommitSeamPinnedTightPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliS3CommitSeamPinnedTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -149,7 +156,7 @@ def CliS3CommitSeamPinnedTightPlaced [LibsignalPlacement] {M : AllocCostModel}
        (s'.status = .Panicked ∧ (s'.mem ⊨ tryDecryptOnPanicTight C S parse x s0 s' ∗ R)))
 
 /-- Unpinned tight-panic CLI S3 commit seam (`+0x8ac → +0x3e4` or `tryDecryptOnPanicTight`). -/
-def CliS3CommitSeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliS3CommitSeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -185,7 +192,7 @@ def CliS3CommitSeamTightPlaced [LibsignalPlacement] {M : AllocCostModel}
        (s'.status = .Panicked ∧ (s'.mem ⊨ tryDecryptOnPanicTight C S parse x s0 s' ∗ R)))
 
 /-- Pinned loose-panic CLI S3 commit seam (`+0x8ac → +0x3e4` or `tryDecryptOnPanic`). -/
-def CliS3CommitSeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliS3CommitSeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -222,7 +229,7 @@ def CliS3CommitSeamPinnedPlaced [LibsignalPlacement] {M : AllocCostModel}
        (s'.status = .Panicked ∧ (s'.mem ⊨ tryDecryptOnPanic C parse S x s0 s' ∗ R)))
 
 /-- Unpinned loose-panic budget-threaded CLI S3 commit seam (`+0x8ac → +0x3e4` or `tryDecryptOnPanic`). -/
-def CliS3CommitSeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliS3CommitSeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -258,7 +265,7 @@ def CliS3CommitSeamPlaced [LibsignalPlacement] {M : AllocCostModel}
        (s'.status = .Panicked ∧ (s'.mem ⊨ tryDecryptOnPanic C parse S x s0 s' ∗ R)))
 
 /-- Pinned `Stage2ContractsX` (`X`) budget-threaded CLI S3 commit seam. -/
-def CliS3CommitSeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliS3CommitSeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -297,7 +304,7 @@ def CliS3CommitSeamPinnedXPlaced [LibsignalPlacement] {M : AllocCostModel}
        (s'.status = .Panicked ∧ (s'.mem ⊨ tryDecryptFnOnPanic C decFn parse S x s0 s' ∗ R)))
 
 /-- Unpinned `Stage2ContractsX` (`X`) budget-threaded CLI S3 commit seam. -/
-def CliS3CommitSeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliS3CommitSeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -529,67 +536,6 @@ theorem dhCommit_cli_pinned_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   refine Satisfies.mono (Entails.of_eq ?_) hmf
   sep_ac_rfl
 
-/-- Unpinned total-correctness CLI S3 Commit (`+0x8ac → +0x3e4`, zero panic branch)
-at `allocHookStack`. -/
-theorem dhCommit_cli_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {prog : Program} {entry dropChainEntry : BitVec 64}
-    (hwp : DhCommitBlockVmWp prog entry dropChainEntry)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (ctl : BitVec 64)
-    (hPkSer : subroutine_ok prog (lsmpl.base 205) (publicKeySerializeSpec M A lim))
-    (hToPb : subroutine_ok prog (lsmpl.base 22) (chainKeyToPbSpec M A lim))
-    (hGrowOne : subroutine_ok prog (lsmpl.base 43) (growOneSpec M A lim))
-    (hDropChain : subroutine_ok prog dropChainEntry (dropChainSpec M A lim))
-    (hShim : subroutine_ok prog (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok prog (lsmpl.ρ lsRustAllocSym) (rustCliAllocNoOomSpec M A lim false))
-    (hDealloc : subroutine_ok prog (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok prog (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok prog (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStack))
-    (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
-    (st1 : SessionState (List (BitVec 8))) (sc : SenderChain)
-    (receiverChainKey : ChainKey) (newSenderKey : KeyPair)
-    (finalRootKey : RootKey) (senderChainKey : ChainKey)
-    (R : SepProp) (s0 s : State)
-    (hsc : tr.ratchet.senderChain = some sc)
-    (hrc_len : tr.ratchet.receiverChains.length < 2 ^ 32)
-    (hclamp : clampScalar newSenderKey.privateKey.bytes = newSenderKey.privateKey.bytes)
-    (hfits : FitsEnv M lim st (s3CommitDefaultEnv x trG tr))
-    (hS3 : CliDhCommitStatePlaced entry A lim st ctl x trG tr st1 receiverChainKey newSenderKey
-      finalRootKey senderChainKey R s0 s)
-    (hL : prog.CodeLoaded s.mem)
-    (hlr_alloc : LsRetAddr624 (entry + 0xa00#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *])
-    (hlr_dealloc : LsRetAddr624 (entry + 0xaf0#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *])
-    (hlr_ls : LsRetAddr624 (entry + 0xb8c#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *]) :
-    let newChain : ReceiverChain :=
-      { senderRatchetKey := x.msg.senderRatchetKey
-        chainKey := some receiverChainKey
-        messageKeys := [] }
-    let r1 : RatchetState :=
-      { tr.ratchet with
-        senderChain := some ⟨newSenderKey, senderChainKey⟩
-        rootKey := finalRootKey
-        previousCounter := BitVec.ofNat 32 (sc.chainKey.index.toNat - 1)
-        receiverChains :=
-          RatchetState.evictReceiverChains (tr.ratchet.receiverChains ++ [newChain]) }
-    ∃ s' evs trG',
-      Steps prog s s' ∧ s3CommitDefaultEnv x trG tr evs ∧
-      ConsumeMsgKeyStatePlaced entry A lim (M.stepEvents evs st) ctl
-        x trG' { tr with ratchet := r1 } st1 receiverChainKey (min 32 x.rest.length) R s0 s' := by
-  obtain ⟨s', evs, trG', hsteps, henv, _, hpost⟩ :=
-    dhCommit_cli_pinned_placed_ok hwp A lim st ctl hPkSer hToPb hGrowOne hDropChain
-      hShim hAlloc hDealloc hMemcpy hMemmove
-      x trG tr st1 sc receiverChainKey newSenderKey finalRootKey senderChainKey
-      R s0 s hsc hrc_len hclamp hfits hS3 hL
-  exact ⟨s', evs, trG', hsteps, henv, hpost⟩
-
 /-- Pinned-capacity total-correctness CLI S3 Commit (`+0x8ac → +0x3e4`, zero panic branch)
 at `extHookStack` (`X`). -/
 theorem dhCommit_cli_pinned_x_placed_ok [LibsignalPlacement] {M : AllocCostModel}
@@ -699,67 +645,6 @@ theorem dhCommit_cli_pinned_x_placed_ok [LibsignalPlacement] {M : AllocCostModel
   refine Satisfies.mono (Entails.of_eq ?_) hmf
   sep_ac_rfl
 
-/-- Unpinned total-correctness CLI S3 Commit (`+0x8ac → +0x3e4`, zero panic branch)
-at `extHookStack` (`X`). -/
-theorem dhCommit_cli_x_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {prog : Program} {entry dropChainEntry : BitVec 64}
-    (hwp : DhCommitBlockVmWp prog entry dropChainEntry)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (ctl : BitVec 64)
-    (hPkSer : subroutine_ok prog (lsmpl.base 205) (publicKeySerializeSpecX M A lim))
-    (hToPb : subroutine_ok prog (lsmpl.base 22) (chainKeyToPbSpecX M A lim))
-    (hGrowOne : subroutine_ok prog (lsmpl.base 43) (growOneChainSpecX M A lim))
-    (hDropChain : subroutine_ok prog dropChainEntry (dropChainSpecX M A lim))
-    (hShim : subroutine_ok prog (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok prog (lsmpl.ρ lsRustAllocSym) (rustCliAllocNoOomSpec M A lim false))
-    (hDealloc : subroutine_ok prog (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok prog (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok prog (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStackX))
-    (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
-    (st1 : SessionState (List (BitVec 8))) (sc : SenderChain)
-    (receiverChainKey : ChainKey) (newSenderKey : KeyPair)
-    (finalRootKey : RootKey) (senderChainKey : ChainKey)
-    (R : SepProp) (s0 s : State)
-    (hsc : tr.ratchet.senderChain = some sc)
-    (hrc_len : tr.ratchet.receiverChains.length < 2 ^ 32)
-    (hclamp : clampScalar newSenderKey.privateKey.bytes = newSenderKey.privateKey.bytes)
-    (hfits : FitsEnv M lim st (s3CommitDefaultEnv x trG tr))
-    (hS3 : CliDhCommitStatePlaced entry A lim st ctl x trG tr st1 receiverChainKey newSenderKey
-      finalRootKey senderChainKey R s0 s)
-    (hL : prog.CodeLoaded s.mem)
-    (hlr_alloc : LsRetAddr624 (entry + 0xa00#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *])
-    (hlr_dealloc : LsRetAddr624 (entry + 0xaf0#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *])
-    (hlr_ls : LsRetAddr624 (entry + 0xb8c#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *]) :
-    let newChain : ReceiverChain :=
-      { senderRatchetKey := x.msg.senderRatchetKey
-        chainKey := some receiverChainKey
-        messageKeys := [] }
-    let r1 : RatchetState :=
-      { tr.ratchet with
-        senderChain := some ⟨newSenderKey, senderChainKey⟩
-        rootKey := finalRootKey
-        previousCounter := BitVec.ofNat 32 (sc.chainKey.index.toNat - 1)
-        receiverChains :=
-          RatchetState.evictReceiverChains (tr.ratchet.receiverChains ++ [newChain]) }
-    ∃ s' evs trG',
-      Steps prog s s' ∧ s3CommitDefaultEnv x trG tr evs ∧
-      ConsumeMsgKeyStatePlaced entry A lim (M.stepEvents evs st) ctl
-        x trG' { tr with ratchet := r1 } st1 receiverChainKey (min 32 x.rest.length) R s0 s' := by
-  obtain ⟨s', evs, trG', hsteps, henv, _, hpost⟩ :=
-    dhCommit_cli_pinned_x_placed_ok hwp A lim st ctl hPkSer hToPb hGrowOne hDropChain
-      hShim hAlloc hDealloc hMemcpy hMemmove
-      x trG tr st1 sc receiverChainKey newSenderKey finalRootKey senderChainKey
-      R s0 s hsc hrc_len hclamp hfits hS3 hL
-  exact ⟨s', evs, trG', hsteps, henv, hpost⟩
-
 /-! ## Generic Placed and Block `433` Seam Theorems -/
 
 theorem s3_commit_pinned_tight_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
@@ -797,36 +682,6 @@ theorem s3_commit_pinned_tight_placed_ok_cli [LibsignalPlacement] {M : AllocCost
       x trG tr st1 sc receiverChainKey newSenderKey finalRootKey senderChainKey
       R s0 s hsc hrc_len hclamp hfits hS3 hL
   exact ⟨s', hsteps, Or.inl ⟨evs, trG', henv, hcaps, hpost⟩⟩
-
-theorem s3_commit_tight_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
-    {prog : Program} {entry dropChainEntry : BitVec 64}
-    (hwp : DhCommitBlockVmWp prog entry dropChainEntry)
-    (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (hPkSer : subroutine_ok prog (lsmpl.base 205) (publicKeySerializeSpec M A lim))
-    (hToPb : subroutine_ok prog (lsmpl.base 22) (chainKeyToPbSpec M A lim))
-    (hGrowOne : subroutine_ok prog (lsmpl.base 43) (growOneSpec M A lim))
-    (hDropChain : subroutine_ok prog dropChainEntry (dropChainSpec M A lim))
-    (hShim : subroutine_ok prog (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok prog (lsmpl.ρ lsRustAllocSym) (rustCliAllocNoOomSpec M A lim false))
-    (hDealloc : subroutine_ok prog (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok prog (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok prog (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStack))
-    (hlr_alloc : LsRetAddr624 (entry + 0xa00#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *])
-    (hlr_dealloc : LsRetAddr624 (entry + 0xaf0#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *])
-    (hlr_ls : LsRetAddr624 (entry + 0xb8c#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *]) :
-    CliS3CommitSeamTightPlaced prog entry C A lim ctl parse S s3CommitDefaultEnv :=
-  (s3_commit_pinned_tight_placed_ok_cli hwp C A lim ctl parse S
-    hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove).toUnpinned
 
 theorem s3_commit_pinned_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
     {prog : Program} {entry dropChainEntry : BitVec 64}
@@ -926,38 +781,6 @@ theorem s3_commit_pinned_x_placed_ok_cli [LibsignalPlacement] {M : AllocCostMode
       R s0 s hsc hrc_len hclamp hfits hS3 hL
   exact ⟨s', hsteps, Or.inl ⟨evs, trG', henv, hcaps, hpost⟩⟩
 
-theorem s3_commit_x_placed_ok_cli [LibsignalPlacement] {M : AllocCostModel}
-    {prog : Program} {entry dropChainEntry : BitVec 64}
-    (hwp : DhCommitBlockVmWp prog entry dropChainEntry)
-    (C : Crypto)
-    (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel)
-    (hPkSer : subroutine_ok prog (lsmpl.base 205) (publicKeySerializeSpecX M A lim))
-    (hToPb : subroutine_ok prog (lsmpl.base 22) (chainKeyToPbSpecX M A lim))
-    (hGrowOne : subroutine_ok prog (lsmpl.base 43) (growOneChainSpecX M A lim))
-    (hDropChain : subroutine_ok prog dropChainEntry (dropChainSpecX M A lim))
-    (hShim : subroutine_ok prog (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok prog (lsmpl.ρ lsRustAllocSym) (rustCliAllocNoOomSpec M A lim false))
-    (hDealloc : subroutine_ok prog (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok prog (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok prog (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStackX))
-    (hlr_alloc : LsRetAddr624 (entry + 0xa00#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *])
-    (hlr_dealloc : LsRetAddr624 (entry + 0xaf0#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *])
-    (hlr_ls : LsRetAddr624 (entry + 0xb8c#64) := by
-      first
-      | assumption
-      | simp (config := { decide := true }) [wp_norm, arm64_norm, lsLen, *]) :
-    CliS3CommitSeamXPlaced prog entry C decFn A lim ctl parse S s3CommitDefaultEnv :=
-  (s3_commit_pinned_x_placed_ok_cli hwp C decFn A lim ctl parse S
-    hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove).toUnpinned
-
 theorem s3_commit_433_pinned_tight_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State))
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
@@ -983,85 +806,6 @@ theorem s3_commit_433_pinned_tight_placed_ok [LibsignalPlacement] {M : AllocCost
       C A lim ctl uuidTryParse S s3CommitDefaultEnv :=
   s3_commit_pinned_tight_placed_ok_cli (dhCommitBlockVmWp_549 H) C A lim ctl uuidTryParse S
     hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove
-
-theorem s3_commit_433_pinned_tight_budget_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    (H : String → Option (State → State))
-    (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
-    (hPkSer : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 205)
-      (publicKeySerializeSpec M A lim))
-    (hToPb : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 22)
-      (chainKeyToPbSpec M A lim))
-    (hGrowOne : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 43)
-      (growOneSpec M A lim))
-    (hDropChain : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 445)
-      (dropChainSpec M A lim))
-    (hShim : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
-    (hDealloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStack)) :
-    CliS3CommitSeamPinnedTightPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434)
-      C A lim ctl uuidTryParse S s3CommitDefaultEnv :=
-  s3_commit_433_pinned_tight_placed_ok H C A lim ctl S
-    hPkSer hToPb hGrowOne hDropChain hShim (subroutine_ok_allocNoOom_of_budget hAlloc)
-    hDealloc hMemcpy hMemmove
-
-theorem s3_commit_433_tight_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    (H : String → Option (State → State))
-    (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
-    (hPkSer : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 205)
-      (publicKeySerializeSpec M A lim))
-    (hToPb : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 22)
-      (chainKeyToPbSpec M A lim))
-    (hGrowOne : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 43)
-      (growOneSpec M A lim))
-    (hDropChain : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 445)
-      (dropChainSpec M A lim))
-    (hShim : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustAllocSym) (rustCliAllocNoOomSpec M A lim false))
-    (hDealloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStack)) :
-    CliS3CommitSeamTightPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434)
-      C A lim ctl uuidTryParse S s3CommitDefaultEnv :=
-  (s3_commit_433_pinned_tight_placed_ok H C A lim ctl S
-    hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove).toUnpinned
-
-theorem s3_commit_433_tight_budget_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    (H : String → Option (State → State))
-    (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
-    (hPkSer : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 205)
-      (publicKeySerializeSpec M A lim))
-    (hToPb : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 22)
-      (chainKeyToPbSpec M A lim))
-    (hGrowOne : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 43)
-      (growOneSpec M A lim))
-    (hDropChain : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 445)
-      (dropChainSpec M A lim))
-    (hShim : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
-    (hDealloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStack)) :
-    CliS3CommitSeamTightPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434)
-      C A lim ctl uuidTryParse S s3CommitDefaultEnv :=
-  (s3_commit_433_pinned_tight_budget_placed_ok H C A lim ctl S
-    hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove).toUnpinned
 
 theorem s3_commit_433_pinned_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State))
@@ -1089,32 +833,6 @@ theorem s3_commit_433_pinned_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   CliS3CommitSeamPinnedPlaced.ofTight (s3_commit_433_pinned_tight_placed_ok H C A lim ctl S
     hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove)
 
-theorem s3_commit_433_pinned_budget_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    (H : String → Option (State → State))
-    (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
-    (hPkSer : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 205)
-      (publicKeySerializeSpec M A lim))
-    (hToPb : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 22)
-      (chainKeyToPbSpec M A lim))
-    (hGrowOne : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 43)
-      (growOneSpec M A lim))
-    (hDropChain : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 445)
-      (dropChainSpec M A lim))
-    (hShim : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
-    (hDealloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStack)) :
-    CliS3CommitSeamPinnedPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434)
-      C A lim ctl uuidTryParse S s3CommitDefaultEnv :=
-  CliS3CommitSeamPinnedPlaced.ofTight (s3_commit_433_pinned_tight_budget_placed_ok H C A lim ctl S
-    hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove)
-
 theorem s3_commit_433_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State))
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
@@ -1139,32 +857,6 @@ theorem s3_commit_433_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     CliS3CommitSeamPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434)
       C A lim ctl uuidTryParse S s3CommitDefaultEnv :=
   (s3_commit_433_pinned_placed_ok H C A lim ctl S
-    hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove).toUnpinned
-
-theorem s3_commit_433_budget_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    (H : String → Option (State → State))
-    (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
-    (hPkSer : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 205)
-      (publicKeySerializeSpec M A lim))
-    (hToPb : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 22)
-      (chainKeyToPbSpec M A lim))
-    (hGrowOne : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 43)
-      (growOneSpec M A lim))
-    (hDropChain : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 445)
-      (dropChainSpec M A lim))
-    (hShim : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
-    (hDealloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStack)) :
-    CliS3CommitSeamPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434)
-      C A lim ctl uuidTryParse S s3CommitDefaultEnv :=
-  (s3_commit_433_pinned_budget_placed_ok H C A lim ctl S
     hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove).toUnpinned
 
 theorem s3_commit_433_pinned_x_placed_ok [LibsignalPlacement] {M : AllocCostModel}
@@ -1223,61 +915,5 @@ theorem s3_commit_433_pinned_x_budget_placed_ok [LibsignalPlacement] {M : AllocC
   s3_commit_433_pinned_x_placed_ok H C decFn A lim ctl S
     hPkSer hToPb hGrowOne hDropChain hShim (subroutine_ok_allocNoOom_of_budget hAlloc)
     hDealloc hMemcpy hMemmove
-
-theorem s3_commit_433_x_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    (H : String → Option (State → State))
-    (C : Crypto)
-    (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
-    (hPkSer : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 205)
-      (publicKeySerializeSpecX M A lim))
-    (hToPb : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 22)
-      (chainKeyToPbSpecX M A lim))
-    (hGrowOne : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 43)
-      (growOneChainSpecX M A lim))
-    (hDropChain : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 445)
-      (dropChainSpecX M A lim))
-    (hShim : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustAllocSym) (rustCliAllocNoOomSpec M A lim false))
-    (hDealloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStackX)) :
-    CliS3CommitSeamXPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434)
-      C decFn A lim ctl uuidTryParse S s3CommitDefaultEnv :=
-  (s3_commit_433_pinned_x_placed_ok H C decFn A lim ctl S
-    hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove).toUnpinned
-
-theorem s3_commit_433_x_budget_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    (H : String → Option (State → State))
-    (C : Crypto)
-    (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
-    (hPkSer : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 205)
-      (publicKeySerializeSpecX M A lim))
-    (hToPb : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 22)
-      (chainKeyToPbSpecX M A lim))
-    (hGrowOne : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 43)
-      (growOneChainSpecX M A lim))
-    (hDropChain : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 445)
-      (dropChainSpecX M A lim))
-    (hShim : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustNoAllocShimSym) noAllocShimBudgetSpec)
-    (hAlloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustAllocSym) (rustCliAllocBudgetSpec M A lim false))
-    (hDealloc : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
-    (hMemcpy : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memcpy") framelessMemcpyBudgetSpec)
-    (hMemmove : subroutine_ok ((blkPC_434).rebase (blkPl_434).base H)
-      (lsmpl.ρ "memmove") (sessionMemmoveBoundedBudgetSpec dropChainStackX)) :
-    CliS3CommitSeamXPlaced ((blkPC_434).rebase (blkPl_434).base H) (lsmpl.base 434)
-      C decFn A lim ctl uuidTryParse S s3CommitDefaultEnv :=
-  (s3_commit_433_pinned_x_budget_placed_ok H C decFn A lim ctl S
-    hPkSer hToPb hGrowOne hDropChain hShim hAlloc hDealloc hMemcpy hMemmove).toUnpinned
 
 end LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433PlacedBudget

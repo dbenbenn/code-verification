@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Specifications for `SignalMessage` MAC Computation and Verification
@@ -23,7 +25,7 @@ Separation-logic contracts, result layouts, and stack budgets for:
   `SignalMessage.verifyMacWithAddresses`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -58,17 +60,7 @@ abbrev verifyMacWithAddressesStack : Nat := computeMacStack + 288
 
 /-! ## `PublicKey::serialize` callee predicates -/
 
-def PublicKeySerializeOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr publicKeySerializeName)
-    (publicKeySerializeSpec A)
-
-def PublicKeySerializeOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr publicKeySerializeName)
-    (publicKeySerializeSpec A)
-
-def PublicKeySerializeOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def PublicKeySerializeOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr publicKeySerializeName)
     (publicKeySerializeSpec A)
@@ -78,7 +70,7 @@ def PublicKeySerializeOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
 /-- 24-byte `Option<Vec<u8>>` result of `SignalMessage::serialize_addresses` at `r`:
 - `none`: `noneCap` (`-1`) at `r` and `memRegion (r + 8) 16`;
 - `some bs`: a 36-byte `Vec<u8>` (`vecU8At A r 36#64 ptr bs`) at `r`. -/
-def optSerializeAddressesAt (A : RustAlloc) (r : BitVec 64) : Option (List (BitVec 8)) → SepProp
+@[expose] def optSerializeAddressesAt (A : RustAlloc) (r : BitVec 64) : Option (List (BitVec 8)) → SepProp
   | none => (r ↦₆₄ noneCap) ∗ memRegion (r + 8#64) 16
   | some bs => ∃∗ ptr : BitVec 64, vecU8At A r 36#64 ptr bs
 
@@ -98,7 +90,7 @@ structure SerializeAddressesGhost where
 /-- Contract for `<SignalMessage>::serialize_addresses(x0 = ret, x1 = senderA, x2 = recipientA)`:
 parses both service IDs via `ServiceId::parse_from_service_id_string` and writes
 `optSerializeAddressesAt A x.ret (serializeAddresses (serviceIdParse parse) x.sender x.recipient)`. -/
-def serializeAddressesSpec (A : RustAlloc) (parse : UuidParser) :
+@[expose] def serializeAddressesSpec (A : RustAlloc) (parse : UuidParser) :
     Spec SerializeAddressesGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.senderA ∧ s.readReg64 .x2 = x.recipientA⌝ ∗
@@ -138,7 +130,7 @@ structure ComputeMacGhost where
 x4 = 32, x5 = msgA, x6 = message.length)`: computes the 8-byte truncated HMAC-SHA256 over
 `0x05 ‖ sender ‖ 0x05 ‖ receiver ‖ message` under `macKey`, writing `okTagVec` at `ret` and
 `computeMac F x.sender x.receiver x.macKey x.message` at `ret + 8`. -/
-def computeMacSpec (F : ShaCompress) (A : RustAlloc) : Spec ComputeMacGhost where
+@[expose] def computeMacSpec (F : ShaCompress) (A : RustAlloc) : Spec ComputeMacGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.senderA ∧ s.readReg64 .x2 = x.receiverA ∧
       s.readReg64 .x3 = x.keyA ∧ s.readReg64 .x4 = 32#64 ∧ s.readReg64 .x5 = x.msgA ∧
@@ -164,7 +156,7 @@ def computeMacSpec (F : ShaCompress) (A : RustAlloc) : Spec ComputeMacGhost wher
 
 /-- `Result<bool, SignalProtocolError>::Ok(ok)` layout at `r`: `okTagVec` (`-2`) at `r` and
 `1#8` / `0#8` at `r + 8`. -/
-def verifyMacResultAt (r : BitVec 64) (ok : Bool) : SepProp :=
+@[expose] def verifyMacResultAt (r : BitVec 64) (ok : Bool) : SepProp :=
   (r ↦₆₄ okTagVec) ∗ ((r + 8#64) ↦₈ (if ok then 1#8 else 0#8))
 
 /-- Ghost arguments of `SignalMessage::verify_mac_with_addresses` (`0x1d5a0`). -/
@@ -194,43 +186,6 @@ structure VerifyMacWithAddressesGhost where
   /-- Sret (`x8`, `Result<bool, SPE>`; `+0x020: mov x19, x8`). -/
   ret : BitVec 64
 
-/-- Contract for `<SignalMessage>::verify_mac_with_addresses`: computes the 8-byte MAC via
-`compute_mac`, compares it in constant time against the trailing 8 bytes of `msg.serialized`,
-optionally checks `msg.addresses` against `serialize_addresses`, and writes
-`verifyMacResultAt x.ret` (`Ok(true)` or `Ok(false)`). -/
-def verifyMacWithAddressesSpec (img : Obj.Image) (F : ShaCompress) (A : RustAlloc)
-    (parse : UuidParser) : Spec VerifyMacWithAddressesGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.msgA ∧ s.readReg64 .x1 = x.senderAddrA ∧
-      s.readReg64 .x2 = x.receiverAddrA ∧ s.readReg64 .x3 = x.senderIkA ∧
-      s.readReg64 .x4 = x.receiverIkA ∧ s.readReg64 .x5 = x.keyA ∧
-      s.readReg64 .x6 = 32#64 ∧ s.readReg64 .x8 = x.ret⌝ ∗
-      signalMessageAt A x.msgG x.msgA x.msg ∗
-      protocolAddressAt A x.senderAddr x.senderAddrA ∗
-      protocolAddressAt A x.receiverAddr x.receiverAddrA ∗
-      (x.senderIkA ↦ₛ x.senderIk.publicKey.bytes.toList) ∗
-      (x.receiverIkA ↦ₛ x.receiverIk.publicKey.bytes.toList) ∗
-      (x.keyA ↦ₛ keyToBytes32 x.macKey) ∗
-      memRegion x.ret 9 ∗
-      logOff img ∗
-      A.pool ∗ stackAt s.sp verifyMacWithAddressesStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      signalMessageAt A x.msgG x.msgA x.msg ∗
-      protocolAddressAt A x.senderAddr x.senderAddrA ∗
-      protocolAddressAt A x.receiverAddr x.receiverAddrA ∗
-      (x.senderIkA ↦ₛ x.senderIk.publicKey.bytes.toList) ∗
-      (x.receiverIkA ↦ₛ x.receiverIk.publicKey.bytes.toList) ∗
-      (x.keyA ↦ₛ keyToBytes32 x.macKey) ∗
-      verifyMacResultAt x.ret
-        (x.msg.verifyMacWithAddresses F (serializeAddresses (serviceIdParse parse) x.senderAddr x.receiverAddr)
-          x.senderIk x.receiverIk x.macKey) ∗
-      logOff img ∗
-      A.pool ∗ stackAt s0.sp verifyMacWithAddressesStack
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-! ## `extHookStack` stack budgets, specs, and `OkX` predicates -/
-
 /-- `SignalMessage::serialize_addresses` frame (128 B) + `parseSidStack` (80 B) + `extHookStack`. -/
 abbrev serializeAddressesStackX : Nat := parseSidStack + extHookStack + 128
 
@@ -240,13 +195,8 @@ abbrev computeMacStackX : Nat := publicKeySerializeStackX + 496
 /-- `SignalMessage::verify_mac_with_addresses` frame (288 B) + `computeMacStackX`. -/
 abbrev verifyMacWithAddressesStackX : Nat := computeMacStackX + 288
 
-def PublicKeySerializeOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr publicKeySerializeName)
-    ((publicKeySerializeSpecX A).inImage img)
-
 /-- `serializeAddressesSpec A parse` at `serializeAddressesStackX`. -/
-def serializeAddressesSpecX (A : RustAlloc) (parse : UuidParser) :
+@[expose] def serializeAddressesSpecX (A : RustAlloc) (parse : UuidParser) :
     Spec SerializeAddressesGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.senderA ∧ s.readReg64 .x2 = x.recipientA⌝ ∗
@@ -259,13 +209,8 @@ def serializeAddressesSpecX (A : RustAlloc) (parse : UuidParser) :
       A.pool ∗ stackAt s0.sp serializeAddressesStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def SerializeAddressesOkX (img : Obj.Image) (A : RustAlloc) (parse : UuidParser)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr serializeAddressesName)
-    ((serializeAddressesSpecX A parse).inImage img)
-
 /-- `computeMacSpec F A` at `computeMacStackX`. -/
-def computeMacSpecX (F : ShaCompress) (A : RustAlloc) : Spec ComputeMacGhost where
+@[expose] def computeMacSpecX (F : ShaCompress) (A : RustAlloc) : Spec ComputeMacGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.senderA ∧ s.readReg64 .x2 = x.receiverA ∧
       s.readReg64 .x3 = x.keyA ∧ s.readReg64 .x4 = 32#64 ∧ s.readReg64 .x5 = x.msgA ∧
@@ -286,45 +231,6 @@ def computeMacSpecX (F : ShaCompress) (A : RustAlloc) : Spec ComputeMacGhost whe
       (x.msgA ↦ₛ x.message) ∗
       A.pool ∗ stackAt s0.sp computeMacStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def ComputeMacOkX (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr computeMacName)
-    ((computeMacSpecX C.F A).inImage img)
-
-/-- `verifyMacWithAddressesSpec img F A parse` at `verifyMacWithAddressesStackX`. -/
-def verifyMacWithAddressesSpecX (img : Obj.Image) (F : ShaCompress) (A : RustAlloc)
-    (parse : UuidParser) : Spec VerifyMacWithAddressesGhost where
-  pre := fun x s =>
-    ⌜s.readReg64 .x0 = x.msgA ∧ s.readReg64 .x1 = x.senderAddrA ∧
-      s.readReg64 .x2 = x.receiverAddrA ∧ s.readReg64 .x3 = x.senderIkA ∧
-      s.readReg64 .x4 = x.receiverIkA ∧ s.readReg64 .x5 = x.keyA ∧
-      s.readReg64 .x6 = 32#64 ∧ s.readReg64 .x8 = x.ret⌝ ∗
-      signalMessageAt A x.msgG x.msgA x.msg ∗
-      protocolAddressAt A x.senderAddr x.senderAddrA ∗
-      protocolAddressAt A x.receiverAddr x.receiverAddrA ∗
-      (x.senderIkA ↦ₛ x.senderIk.publicKey.bytes.toList) ∗
-      (x.receiverIkA ↦ₛ x.receiverIk.publicKey.bytes.toList) ∗
-      (x.keyA ↦ₛ keyToBytes32 x.macKey) ∗
-      memRegion x.ret 9 ∗
-      logOff img ∗
-      A.pool ∗ stackAt s.sp verifyMacWithAddressesStackX
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      signalMessageAt A x.msgG x.msgA x.msg ∗
-      protocolAddressAt A x.senderAddr x.senderAddrA ∗
-      protocolAddressAt A x.receiverAddr x.receiverAddrA ∗
-      (x.senderIkA ↦ₛ x.senderIk.publicKey.bytes.toList) ∗
-      (x.receiverIkA ↦ₛ x.receiverIk.publicKey.bytes.toList) ∗
-      (x.keyA ↦ₛ keyToBytes32 x.macKey) ∗
-      verifyMacResultAt x.ret
-        (x.msg.verifyMacWithAddresses F (serializeAddresses (serviceIdParse parse) x.senderAddr x.receiverAddr)
-          x.senderIk x.receiverIk x.macKey) ∗
-      logOff img ∗
-      A.pool ∗ stackAt s0.sp verifyMacWithAddressesStackX
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-! ## Relocatable `[LibsignalPlacement]` Specifications and Helpers -/
 
 abbrev lsMacRustAllocSym : String :=
   "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc"
@@ -349,16 +255,16 @@ abbrev lsMacCompress256Sym : String :=
 
 theorem mac_ls_externAt?_of_mem [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide)
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
-  exact ls_externAt?_of_blockProg (k := k) (by rw [List.getElem?_eq_getElem hlt, hk]) hi hunmut
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_externAt?_of_blockProg (k := k) (by rw [List.getElem?_eq_getElem hlt, hk]) hi hunmut (hhooked := hmem)
 
 theorem mac_ls_hook_ok_of_mem [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide)
+    (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
   obtain ⟨f, hf, hok⟩ := hsat
@@ -373,12 +279,12 @@ theorem sepWPp_seq_lscl {prog : Program} {ret mid : BitVec 64} {s : State} {P : 
   SepWPp.seq_frozen (fun _ _ h hkf => h.of_keepsFrozen hkf) hcl h
 
 /-- Relocatable `MAX_LOG_LEVEL_FILTER == 0` assertion at `lsLogFilterAddr`. -/
-def macLsLogOff [LibsignalPlacement] : SepProp :=
+@[expose] def macLsLogOff [LibsignalPlacement] : SepProp :=
   lsLogFilterAddr ↦₆₄ 0#64
 
 /-- Stack-parameterized relocatable specification of `SignalMessage::verify_mac_with_addresses`
 (Block `62`). -/
-def verifyMacWithAddressesPlacedSpecWithStack [LibsignalPlacement] (F : ShaCompress) (A : RustAlloc)
+@[expose] def verifyMacWithAddressesPlacedSpecWithStack [LibsignalPlacement] (F : ShaCompress) (A : RustAlloc)
     (parse : UuidParser) (totalStack : Nat) : Spec VerifyMacWithAddressesGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.msgA ∧ s.readReg64 .x1 = x.senderAddrA ∧

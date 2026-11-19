@@ -11,15 +11,20 @@ module
 
 public import Arm64.Trusted.Spec.Hoare
 public import Arm64.Trusted.Spec.SepLogic
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.AssemblyPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.AssemblyPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd -- proof-setup: allow-public-import
 
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.AssemblyPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # File-Descriptor-Guarded Tight Budget Contract for `initiate`
@@ -29,15 +34,13 @@ and caller blocks `i < 619` to `withPreFdsGe3Closed` via `AllocWithFds.withFds A
 `lim.enforced = true`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 set_option linter.dupNamespace false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlacedBudgetFd
-
-noncomputable section
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib ProofLib.SepLogic SepProp
 open CryptoVerification (IsLsBlockProg LibsignalPlacement lsmpl)
@@ -139,102 +142,5 @@ theorem subroutine_ok_semInitSlot_preFd_of_withFds [LibsignalPlacement] {M : All
   · exact Or.inr (Or.inl ⟨hp, hpan⟩)
   · exact Or.inr (Or.inr (Or.inl ⟨c, hc, hexc⟩))
   · exact Or.inr (Or.inr (Or.inr ⟨ho, hoom⟩))
-
-/-- Block `521` `FdsGe3Closed`-guarded tight `initSlotSpecPlaced` theorem via `withFds A`. -/
-theorem cliInitiate_tight_placed_ok_preFd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} (henf : lim.enforced = true)
-    {eEnvs : ExistingStoreCalleesEnvs}
-    {InitStateEnv : Params → List AllocEvent → Prop}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {Stage3Fit : InitGhost → PreKeyBundleFields → IdentityKeyPair →
-      List (BitVec 8) → List (BitVec 8) → BitVec 64 → BitVec 32 → State → M.σ → M.σ → Prop}
-    {Stage3Out : InitGhost → PreKeyBundleFields → IdentityKeyPair →
-      SignalPqxdh.DRKey → SignalPqxdh.HandshakeHdr → List AllocEvent → Prop}
-    (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
-    (hh : RunHooksPlaced W (withFds A) lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hExist : ExistingStoreCalleesPlaced (withFds A) lim eEnvs
-      (cliGhostExterns gh (cliExternsPlaced mmpl W)) B)
-    (ha4 : SubsetA4InitCalleesPlaced (withFds A) lim InitStateEnv mmpl gh W)
-    (hStage3 : Stage3PlacedOk (withFds A) lim InitStateEnv InitEnv Stage3Fit Stage3Out
-      mmpl gh W X B S)
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hok : ∀ F peer me, S.filesOk F peer me → S.initOk F peer me → InitOk₀ ⟨W.C, W.Q⟩ F peer me)
-    (stk : Nat) (hstk : cliInitiateNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63)
-    (hFits : ∀ (x : InitGhost) (st0 : M.σ) (s0 : State),
-      AtInitEntryPlaced x s0 →
-      S.filesOk x.F x.peer.val x.me.val →
-      S.initOk x.F x.peer.val x.me.val →
-      InitOk₀ ⟨W.C, W.Q⟩ x.F x.peer.val x.me.val →
-      x.coins.length < 2 ^ 63 →
-      stk ≤ s0.sp.toNat →
-      FitsEnv M lim st0 (InitEnv x) →
-      CliInitiateBudgetFits M lim eEnvs InitStateEnv InitEnv Stage3Fit Stage3Out W X x s0 st0)
-    (hNoAllocFail : ∀ (x : InitGhost) (st0 : M.σ) (R : SepProp) (s0 sf : State),
-      s0.pc = lsmpl.base 521 →
-      s0.status = .Running →
-      (s0.mem ⊨ (initSlotSpecPlaced (withFds A) lim InitEnv S stk).pre (x, st0) s0 ∗ R) →
-      s0.spAligned = true →
-      (initProgPlaced mmpl gh W).CodeLoaded s0.mem →
-      Steps (initProgPlaced mmpl gh W) s0 sf →
-      sf.status = .Panicked →
-      allocFailedIn s0 sf →
-      S.initiate x.F x.peer.val x.me.val x.bundle x.coins = none) :
-    subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 521)
-      (withPreFdsGe3Closed (initSlotSpecPlaced A lim InitEnv S stk)) :=
-  subroutine_ok_semInitSlot_preFd_of_withFds henf
-    (cliInitiate_tight_placed_ok mmpl gh W X B S hh hExist ha4 hStage3
-      hS hok stk hstk hstk64 hFits hNoAllocFail)
-
-/-- Transfers `cliInitiate_tight_placed_ok_preFd` to any caller block `i < 619`. -/
-theorem cliInitiate_caller_tight_placed_ok_preFd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} (henf : lim.enforced = true)
-    {eEnvs : ExistingStoreCalleesEnvs}
-    {InitStateEnv : Params → List AllocEvent → Prop}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {Stage3Fit : InitGhost → PreKeyBundleFields → IdentityKeyPair →
-      List (BitVec 8) → List (BitVec 8) → BitVec 64 → BitVec 32 → State → M.σ → M.σ → Prop}
-    {Stage3Out : InitGhost → PreKeyBundleFields → IdentityKeyPair →
-      SignalPqxdh.DRKey → SignalPqxdh.HandshakeHdr → List AllocEvent → Prop}
-    {callerProg : Program} {i : Nat}
-    (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    [IsLsBlockProg callerProg i (cliGhostExterns gh (cliExternsPlaced mmpl W))]
-    (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
-    (hh : RunHooksPlaced W (withFds A) lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hExist : ExistingStoreCalleesPlaced (withFds A) lim eEnvs
-      (cliGhostExterns gh (cliExternsPlaced mmpl W)) B)
-    (ha4 : SubsetA4InitCalleesPlaced (withFds A) lim InitStateEnv mmpl gh W)
-    (hStage3 : Stage3PlacedOk (withFds A) lim InitStateEnv InitEnv Stage3Fit Stage3Out
-      mmpl gh W X B S)
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hok : ∀ F peer me, S.filesOk F peer me → S.initOk F peer me → InitOk₀ ⟨W.C, W.Q⟩ F peer me)
-    (stk : Nat) (hstk : cliInitiateNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63)
-    (hFits : ∀ (x : InitGhost) (st0 : M.σ) (s0 : State),
-      AtInitEntryPlaced x s0 →
-      S.filesOk x.F x.peer.val x.me.val →
-      S.initOk x.F x.peer.val x.me.val →
-      InitOk₀ ⟨W.C, W.Q⟩ x.F x.peer.val x.me.val →
-      x.coins.length < 2 ^ 63 →
-      stk ≤ s0.sp.toNat →
-      FitsEnv M lim st0 (InitEnv x) →
-      CliInitiateBudgetFits M lim eEnvs InitStateEnv InitEnv Stage3Fit Stage3Out W X x s0 st0)
-    (hNoAllocFail : ∀ (x : InitGhost) (st0 : M.σ) (R : SepProp) (s0 sf : State),
-      s0.pc = lsmpl.base 521 →
-      s0.status = .Running →
-      (s0.mem ⊨ (initSlotSpecPlaced (withFds A) lim InitEnv S stk).pre (x, st0) s0 ∗ R) →
-      s0.spAligned = true →
-      callerProg.CodeLoaded s0.mem →
-      Steps callerProg s0 sf →
-      sf.status = .Panicked →
-      allocFailedIn s0 sf →
-      S.initiate x.F x.peer.val x.me.val x.bundle x.coins = none)
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 521)
-      (withPreFdsGe3Closed (initSlotSpecPlaced A lim InitEnv S stk)) :=
-  subroutine_ok_semInitSlot_preFd_of_withFds henf
-    (cliInitiate_caller_tight_placed_ok (callerProg := callerProg) (i := i)
-      mmpl gh W X B S hh hExist ha4 hStage3 hS hok stk hstk hstk64 hFits hNoAllocFail hi)
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlacedBudgetFd

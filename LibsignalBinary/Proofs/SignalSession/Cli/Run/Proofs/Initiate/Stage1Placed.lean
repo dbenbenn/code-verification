@@ -9,12 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.SegSigsLoadPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.SegSigsLoadPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.SegPrologueTrustPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.SegSigsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Stage 1 (`0x0000 → 0x0390`): Prologue, Trust Check, Bundle Signatures, and `load_session`
@@ -23,12 +32,10 @@ Composes the `[LibsignalPlacement]` Stage 1 segments on `initProgPlaced` from `i
 (`0x0000`) to `AtStage2Placed` (`0x0390`) and early `Err` returns (`0x0350 → ret`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate
 
@@ -45,7 +52,7 @@ open CryptoVerification.SignalSession.Cli.RunCompose
 open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-- Spatial entry footprint of `initSlotSpecPlaced` after extracting pure preconditions. -/
-def initEntryMemPlaced [LibsignalPlacement] (A : RustAlloc) (x : InitGhost) (stk : Nat)
+@[expose] def initEntryMemPlaced [LibsignalPlacement] (A : RustAlloc) (x : InitGhost) (stk : Nat)
     (s0 : State) : SepProp :=
   storesAt A x.stores StoresGhost.opened ∗
     protocolAddressAt A x.peer x.peerA ∗ protocolAddressAt A x.me x.meA ∗

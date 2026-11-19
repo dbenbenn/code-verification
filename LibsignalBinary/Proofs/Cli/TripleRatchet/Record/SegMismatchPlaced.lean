@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureFrozenPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureFrozenPlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Record.FetchDecrypt
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public meta import ProofLib
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
 
 /-!
 # Relocatable CLI `SegMismatch` (`segMismatch_placed_ok`)
@@ -25,7 +28,7 @@ Proves the `[LibsignalPlacement]` and `[LibsignalFullPlacement]` version-mismatc
 (`+0x7e4 → +0x850`) on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -76,10 +79,10 @@ elab "cli_segDecrypt_wpp_call_placed " hcall:term:max a:term:max hF:term:max hpa
   let ghostMVars ← etaExpandGoalProdMVarsWithNames
   evalTactic (← `(tactic| (
     wp_unfold_specs
-    try dsimp only [withLsCodeLoaded, logClosurePlacedSpec, logClosureSpec, growOneSpeSpec,
+    try dsimp only [withLsCodeLoaded, logClosurePlacedSpec, growOneSpeSpec,
       setSessionStateSpec, dropSessionStructureLocal2Spec, tryDecryptPlacedSpec,
-      tryDecryptSpecQF', tryDecryptSpec, mkTryDecryptGhost,
-      sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec, Spec.inImage]
+      mkTryDecryptGhost,
+      sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]
     try simp (config := { decide := true }) only [
       stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
       sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
@@ -96,21 +99,21 @@ elab "cli_segDecrypt_wpp_call_placed " hcall:term:max a:term:max hF:term:max hpa
   setGoals [gPanic]
   evalTactic (← `(tactic| (
     wp_unfold_specs
-    try dsimp only [withLsCodeLoaded, logClosurePlacedSpec, logClosureSpec, growOneSpeSpec,
+    try dsimp only [withLsCodeLoaded, logClosurePlacedSpec, growOneSpeSpec,
       setSessionStateSpec, dropSessionStructureLocal2Spec, tryDecryptPlacedSpec,
-      tryDecryptSpecQF', tryDecryptSpec, mkTryDecryptGhost,
+      mkTryDecryptGhost,
       sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec,
-      recordDecryptPlacedSpec, recordDecryptSpec, Spec.inImage]
+      recordDecryptPlacedSpec]
     intro _
     exact $hpan
   )))
   setGoals [gErr]
   evalTactic (← `(tactic| (
     wp_unfold_specs
-    try dsimp only [withLsCodeLoaded, logClosurePlacedSpec, logClosureSpec, growOneSpeSpec,
+    try dsimp only [withLsCodeLoaded, logClosurePlacedSpec, growOneSpeSpec,
       setSessionStateSpec, dropSessionStructureLocal2Spec, tryDecryptPlacedSpec,
-      tryDecryptSpecQF', tryDecryptSpec, mkTryDecryptGhost,
-      sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec, Spec.inImage]
+      mkTryDecryptGhost,
+      sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]
     exact ⟨fun _ _ => rfl, fun _ => rfl⟩
   )))
   setGoals (gCont :: rest)
@@ -118,10 +121,10 @@ elab "cli_segDecrypt_wpp_call_placed " hcall:term:max a:term:max hF:term:max hpa
     intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident $hFId:ident
   ))
   foldStructEtaTarget
-  evalTactic (← `(tactic| try dsimp only [withLsCodeLoaded, logClosurePlacedSpec, logClosureSpec,
+  evalTactic (← `(tactic| try dsimp only [withLsCodeLoaded, logClosurePlacedSpec,
     growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec, tryDecryptPlacedSpec,
-    tryDecryptSpecQF', tryDecryptSpec, mkTryDecryptGhost,
-    sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec, Spec.inImage]))
+    mkTryDecryptGhost,
+    sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]))
   let mut oldHspIds : Array Ident := #[]
   for decl in (← getLCtx) do
     if !decl.isImplementationDetail && decl.userName.toString.startsWith "hsp" then
@@ -137,7 +140,7 @@ elab "cli_segDecrypt_wpp_call_placed " hcall:term:max a:term:max hF:term:max hpa
     conv =>
       arg 4
       simp (config := { decide := true }) only [
-        withLsCodeLoaded, Spec.inImage,
+        withLsCodeLoaded,
         stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
         sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc,
         wp_norm, arm64_norm, $hspId:ident]))))
@@ -256,10 +259,10 @@ elab "cli_segDecrypt_wpp_call_lsfull " hcall:term:max a:term:max hF:term:max hpa
   let ghostMVars ← etaExpandGoalProdMVarsWithNames
   evalTactic (← `(tactic| (
     wp_unfold_specs
-    try dsimp only [withLsFrozen, withLsCodeLoaded, logClosurePlacedSpec, logClosureSpec,
+    try dsimp only [withLsFrozen, withLsCodeLoaded, logClosurePlacedSpec,
       growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec, tryDecryptPlacedSpec,
-      tryDecryptSpecQF', tryDecryptSpec, mkTryDecryptGhost,
-      sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec, Spec.inImage]
+      mkTryDecryptGhost,
+      sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]
     try simp (config := { decide := true }) only [
       stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
       sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
@@ -276,21 +279,21 @@ elab "cli_segDecrypt_wpp_call_lsfull " hcall:term:max a:term:max hF:term:max hpa
   setGoals [gPanic]
   evalTactic (← `(tactic| (
     wp_unfold_specs
-    try dsimp only [withLsFrozen, withLsCodeLoaded, logClosurePlacedSpec, logClosureSpec,
+    try dsimp only [withLsFrozen, withLsCodeLoaded, logClosurePlacedSpec,
       growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec, tryDecryptPlacedSpec,
-      tryDecryptSpecQF', tryDecryptSpec, mkTryDecryptGhost,
+      mkTryDecryptGhost,
       sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec,
-      recordDecryptPlacedSpec, recordDecryptSpec, Spec.inImage]
+      recordDecryptPlacedSpec]
     intro _
     exact $hpan
   )))
   setGoals [gErr]
   evalTactic (← `(tactic| (
     wp_unfold_specs
-    try dsimp only [withLsFrozen, withLsCodeLoaded, logClosurePlacedSpec, logClosureSpec,
+    try dsimp only [withLsFrozen, withLsCodeLoaded, logClosurePlacedSpec,
       growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec, tryDecryptPlacedSpec,
-      tryDecryptSpecQF', tryDecryptSpec, mkTryDecryptGhost,
-      sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec, Spec.inImage]
+      mkTryDecryptGhost,
+      sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]
     exact ⟨fun _ _ => rfl, fun _ => rfl⟩
   )))
   setGoals (gCont :: rest)
@@ -299,9 +302,9 @@ elab "cli_segDecrypt_wpp_call_lsfull " hcall:term:max a:term:max hF:term:max hpa
   ))
   foldStructEtaTarget
   evalTactic (← `(tactic| try dsimp only [withLsFrozen, withLsCodeLoaded, logClosurePlacedSpec,
-    logClosureSpec, growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec,
-    tryDecryptPlacedSpec, tryDecryptSpecQF', tryDecryptSpec, mkTryDecryptGhost,
-    sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec, Spec.inImage]))
+    growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec,
+    tryDecryptPlacedSpec, mkTryDecryptGhost,
+    sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]))
   let mut oldHspIds : Array Ident := #[]
   for decl in (← getLCtx) do
     if !decl.isImplementationDetail && decl.userName.toString.startsWith "hsp" then
@@ -317,7 +320,7 @@ elab "cli_segDecrypt_wpp_call_lsfull " hcall:term:max a:term:max hF:term:max hpa
     conv =>
       arg 4
       simp (config := { decide := true }) only [
-        withLsFrozen, withLsCodeLoaded, Spec.inImage,
+        withLsFrozen, withLsCodeLoaded,
         stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
         sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc,
         wp_norm, arm64_norm, $hspId:ident]))))

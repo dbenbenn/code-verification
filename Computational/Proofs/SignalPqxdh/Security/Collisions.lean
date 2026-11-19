@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsC
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsC -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 
 /-!
 # EC and KEM Public-Key Collision Bounds
@@ -30,13 +30,13 @@ namespace SignalPqxdh.Security
 
 open SignalPqxdh
 
-def ValidPrincipalsSk (P : Primitives) (principals : List (Nat × PrincipalEntry)) : Prop :=
+@[expose] def ValidPrincipalsSk (P : Primitives) (principals : List (Nat × PrincipalEntry)) : Prop :=
   ∀ e ∈ principals, e.2.secIKA0.length = 32 ∧ e.2.ikAPk = P.x25519Base e.2.secIKA0
 
-def ValidAdvKeysSk (P : Primitives) (advKeys : List (Bytes × Bytes)) : Prop :=
+@[expose] def ValidAdvKeysSk (P : Primitives) (advKeys : List (Bytes × Bytes)) : Prop :=
   ∀ kv ∈ advKeys, kv.1.length = 32 ∧ kv.2 = P.x25519Base kv.1
 
-def ValidKeyIndDh2 (S : Setup) (P : Primitives) (st : KeyIndState S) : Prop :=
+@[expose] def ValidKeyIndDh2 (S : Setup) (P : Primitives) (st : KeyIndState S) : Prop :=
   ValidKeyIndEc S st ∧
   ValidPrincipalsSk P st.principals ∧
   ValidAdvKeysSk P st.advKeys
@@ -410,7 +410,7 @@ theorem pqxdhKeyIndImpl_dh2_step (useRo : Bool) (S : Setup) (P : Primitives)
         ⟨hEcStep x hx, (h_from_proj x.2 (hp x hx)).1, (h_from_proj x.2 (hp x hx)).2.1⟩, ?_⟩
     exact probExpect_const_le_of_support _ _ _ (fun x hx => by rw [(h_from_proj x.2 (hp x hx)).2.2])
 
-def hasKeyIndEcPairCollAt (S : Setup) (P : Primitives) (st : KeyIndState S) (s1 s2 : Nat) : Bool :=
+@[expose] def hasKeyIndEcPairCollAt (S : Setup) (P : Primitives) (st : KeyIndState S) (s1 s2 : Nat) : Bool :=
   if s2 < s1 then
     hasTaggedPairCollAt (ecTaggedKeyInd S P st) s1 s2
   else if S.N_id + S.N_spk_tot + S.N_opk_tot ≤ s1 ∧ s1 < s2 then
@@ -418,7 +418,7 @@ def hasKeyIndEcPairCollAt (S : Setup) (P : Primitives) (st : KeyIndState S) (s1 
   else
     false
 
-noncomputable def ecKeyIndPairPotential (S : Setup) (P : Primitives)
+@[expose] noncomputable def ecKeyIndPairPotential (S : Setup) (P : Primitives)
     (st : KeyIndState S) (s1 s2 : Nat) : ℝ≥0∞ :=
   if s2 < s1 then
     ecPairPotential P (ecTaggedKeyInd S P st) s1 s2
@@ -649,13 +649,13 @@ theorem ecCollProbKeyInd_le_bound (useRo : Bool) (S : Setup) (P : Primitives)
 
 /-! ## `Auth` EC collision bound -/
 
-def sessPksAuth (S : Setup) (P : Primitives) (st : AuthState S) : List (SessionId S × Bytes) :=
+@[expose] def sessPksAuth (S : Setup) (P : Primitives) (st : AuthState S) : List (SessionId S × Bytes) :=
   st.sessions.map (fun s => (s.sid, P.x25519Base s.ekASk))
 
-def ecTaggedAuth (S : Setup) (P : Primitives) (st : AuthState S) : List (Nat × Bytes) :=
+@[expose] def ecTaggedAuth (S : Setup) (P : Primitives) (st : AuthState S) : List (Nat × Bytes) :=
   ecTaggedFromLists S P st.principals st.spkBundles st.opkEntries (sessPksAuth S P st)
 
-def ValidAuthEc (S : Setup) (P : Primitives) (st : AuthState S) : Prop :=
+@[expose] def ValidAuthEc (S : Setup) (P : Primitives) (st : AuthState S) : Prop :=
   ValidEcLists S st.principals st.spkBundles st.opkEntries ((sessPksAuth S P st).map Prod.fst) ∧
   st.usedSendSessions = (sessPksAuth S P st).map Prod.fst
 
@@ -1067,34 +1067,6 @@ theorem pqxdhAuthImpl_ec_step (useRo checkAuth : Bool) (S : Setup) (P : Primitiv
     exact probExpect_const_le_of_support _ _ _ (fun x hx => by rw [(h_from_proj x.2 (hp x hx)).2])
 
 /-! ## Closed-form birthday bounds -/
-
-theorem keyIndCore_hop_ecColl_le (useRo : Bool) (S : Setup) (P : Primitives)
-    (hCWF : CryptoWellFormedPrimitivesδ P) (A : KeyIndAdversary S) :
-    |(𝒟[pqxdhKeyIndExpCore useRo S P A].boolBias).toReal -
-     (𝒟[keyIndExpG0_1Core useRo S P A].boolBias).toReal| ≤
-      ((S.N_dh * (S.N_dh - 1) + S.N_send_tot * (S.N_send_tot - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 251 :=
-  (keyIndCore_hop_ecColl_le_prob useRo S P A).trans (ecCollProbKeyInd_le_bound useRo S P hCWF A)
-
-/-- Closed-form X25519 collision-elimination bound for `KeyInd` (`G0 → G0_1`). -/
-theorem keyInd_hop_G0_G0_1_le (S : Setup) (P : Primitives)
-    (hCWF : CryptoWellFormedPrimitivesδ P) (A : KeyIndAdversary S) :
-    |keyIndAdvG0 S P A - keyIndAdvG0_1 S P A| ≤
-      ((S.N_dh * (S.N_dh - 1) + S.N_send_tot * (S.N_send_tot - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 251 :=
-  keyIndCore_hop_ecColl_le true S P hCWF A
-
-theorem keyIndCore_hop_kemColl_le (useRo : Bool) (S : Setup) (P : Primitives)
-    (hCWF : CryptoWellFormedPrimitivesδ P) (A : KeyIndAdversary S) :
-    |(𝒟[keyIndExpG1Core useRo S P A].boolBias).toReal -
-     (𝒟[keyIndExpG2_1Core useRo S P A].boolBias).toReal| ≤
-      ((S.N_spk_tot * (S.N_spk_tot - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 256 :=
-  (keyIndCore_hop_kemColl_le_prob useRo S P A).trans (kemCollProbKeyInd_le_bound useRo S P hCWF A)
-
-/-- Closed-form KEM public-key collision-elimination bound for `KeyInd` (`G2 → G2_1`). -/
-theorem keyInd_hop_G2_G2_1_le (S : Setup) (P : Primitives)
-    (hCWF : CryptoWellFormedPrimitivesδ P) (A : KeyIndAdversary S) :
-    |keyIndAdvG2 S P A - keyIndAdvG2_1 S P A| ≤
-      ((S.N_spk_tot * (S.N_spk_tot - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 256 :=
-  keyIndCore_hop_kemColl_le true S P hCWF A
 
 end SignalPqxdh.Security
 

@@ -13,8 +13,8 @@ public import LibsignalBinary.Specifications.SignalSession.PqDir
 import all Init.Data.Repr
 import all Init.Data.String.Defs
 import all Init.Data.ToString.Basic
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top -- proof-setup: allow-public-import
 
 /-!
 # Argument Parsing on `CliSpec` Domain Inputs
@@ -24,7 +24,7 @@ Proves that every command line `Cmd.argv` targeting `partyAddress P` (`DomainArg
 excluding `keygen` = 0). Covers all inputs of `CliSpecE` and `CliSpecPqxdh`.
 -/
 
-@[expose] public section
+public section
 
 set_option warningAsError false
 
@@ -60,13 +60,13 @@ theorem addrParse_addrE (P : Party) :
 
 /-! ## Domain Commands -/
 
-def cmdPeer : Cmd → Address
+@[expose] def cmdPeer : Cmd → Address
   | .init peer _ => peer
   | .send peer => peer
   | .recv peer => peer
 
 /-- Tag decoded by `main` for a domain command (`CallV.tag`): `init` = 1, `send` = 2, `recv` = 3. -/
-def cmdTag : Cmd → Nat
+@[expose] def cmdTag : Cmd → Nat
   | .init .. => 1
   | .send _ => 2
   | .recv _ => 3
@@ -106,7 +106,7 @@ theorem parseArgs_cmd (cmd : Cmd) {P : Party} (hP : cmdPeer cmd = partyAddress P
 /-! ## Domain Inputs -/
 
 /-- Predicate asserting that `i.argv` is a domain command targeting some `partyAddress P`. -/
-def DomainArgv (i : Inputs) : Prop :=
+@[expose] def DomainArgv (i : Inputs) : Prop :=
   ∃ (P : Party) (cmd : Cmd), cmdPeer cmd = partyAddress P ∧ i.argv = cmd.argv
 
 /-- Every `DomainArgv` input parses under `uuidTryParse` to a call with nonzero tag. -/
@@ -150,32 +150,5 @@ theorem domainArgv_pqSend (W : PEParams) (st : PqParty) (m : List (BitVec 8))
 theorem domainArgv_pqRecv (W : PEParams) (st : PqParty) (c : List (BitVec 8)) (rc : BitVec 256) :
     DomainArgv (pqRecvInputs W st c rc) :=
   ⟨st.party.other, .recv (partyAddress st.party.other), rfl, rfl⟩
-
-theorem parseArgs_smSend (g : GhostState Bytes) (m : List (BitVec 8)) :
-    ∃ c, parseArgs uuidTryParse ((smSendInputs g m).argv.map bytesOfString) = some c ∧
-      c.tag ≠ 0 :=
-  parseArgs_domain (domainArgv_smSend g m)
-
-theorem parseArgs_smRecv (g : GhostState Bytes) (c : List (BitVec 8)) (rc : BitVec 256) :
-    ∃ v, parseArgs uuidTryParse ((smRecvInputs g c rc).argv.map bytesOfString) = some v ∧
-      v.tag ≠ 0 :=
-  parseArgs_domain (domainArgv_smRecv g c rc)
-
-theorem parseArgs_pqInit (W : PEParams) (st : PqParty) (b : PreKeyBundleFields)
-    (t : List.Vector (BitVec 8) initiateTapeLen) :
-    ∃ c, parseArgs uuidTryParse ((pqInitInputs W st b t).argv.map bytesOfString) = some c ∧
-      c.tag ≠ 0 :=
-  parseArgs_domain (domainArgv_pqInit W st b t)
-
-theorem parseArgs_pqSend (W : PEParams) (st : PqParty) (m : List (BitVec 8))
-    (r : List.Vector (BitVec 8) 64) :
-    ∃ c, parseArgs uuidTryParse ((pqSendInputs W st m r).argv.map bytesOfString) = some c ∧
-      c.tag ≠ 0 :=
-  parseArgs_domain (domainArgv_pqSend W st m r)
-
-theorem parseArgs_pqRecv (W : PEParams) (st : PqParty) (c : List (BitVec 8)) (rc : BitVec 256) :
-    ∃ v, parseArgs uuidTryParse ((pqRecvInputs W st c rc).argv.map bytesOfString) = some v ∧
-      v.tag ≠ 0 :=
-  parseArgs_domain (domainArgv_pqRecv W st c rc)
 
 end CryptoVerification.SignalSession.Cli.MainHops

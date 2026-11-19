@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3ErrPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3ErrPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Iface
@@ -19,6 +19,18 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import ProofLib.SepLogic.WPp
 import all Init.Data.String.Defs
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3ErrTailPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `read_stdin` and `read_file("coins")` Continuations for `main` Hop M3
@@ -27,7 +39,7 @@ Verifies `M+0x59c` (`read_stdin`) and `M+0x5b0 .. M+0x5d8` (`read_file("coins")`
 dispatch to `M+0x624`) on Block `617` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,13 +64,13 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
 /-- Input invariant: `x27 = (inputOf i c).length` with `ownedBytes A inCap inPtr inLen (inputOf i c)`. -/
-def inInv (A : RustAlloc) (i : Inputs) (c : CallV) (inCap inPtr x27 : BitVec 64) : SepProp :=
+@[expose] def inInv (A : RustAlloc) (i : Inputs) (c : CallV) (inCap inPtr x27 : BitVec 64) : SepProp :=
   ⌜x27 = BitVec.ofNat 64 (inputOf i c).length⌝ ∗
     ownedBytes A inCap inPtr (BitVec.ofNat 64 (inputOf i c).length) (inputOf i c)
 
 /-- Optional input invariant after `read_stdin` (`inOk = true` carries `(inputOf i c).length ≤ stdinCapBytes`
 and `inInv`; `inOk = false` carries `inCap = -1` and `1 < c.tag ∧ stdinCapBytes < i.stdin.length`). -/
-def inInvOpt (inOk : Bool) (A : RustAlloc) (i : Inputs) (c : CallV)
+@[expose] def inInvOpt (inOk : Bool) (A : RustAlloc) (i : Inputs) (c : CallV)
     (inCap inPtr x27 : BitVec 64) : SepProp :=
   match inOk with
   | true => ⌜(inputOf i c).length ≤ stdinCapBytes⌝ ∗ inInv A i c inCap inPtr x27

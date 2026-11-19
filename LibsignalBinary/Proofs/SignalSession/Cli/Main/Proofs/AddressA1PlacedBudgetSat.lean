@@ -9,8 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1PlacedBudget
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Pure -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `HookSat` Sibling of `AddressA1PlacedBudget` (`AddressA1PlacedBudgetSat`)
@@ -56,23 +68,6 @@ private theorem subroutine_ok_rocl_of_plain [LibsignalPlacement] {α : Type}
     subroutine_ok prog entry (withLsRoCl lsmpl spec) :=
   subroutine_ok_rocl_of_withLsCodeRoLoaded (subroutine_ok_withLsCodeRoLoaded_of_plain h)
 
-/-- Coercion from `H lsMemrchrSym = some memrchrHook` to
-    `HookSat H lsMemrchrSym (withVmPreserved (memrchrSpec extHookStack))`. -/
-theorem hookSat_memrchrVm_of_eq {H : LibsignalHooks}
-    (hext : H lsMemrchrSym = some memrchrHook) :
-    HookSat H lsMemrchrSym (withVmPreserved (memrchrSpec extHookStack)) :=
-  hookSat_withVmPreserved ⟨memrchrHook, hext, memrchrHook_ok extHookStack⟩
-    (fun _ hf s => by
-      cases hext.symm.trans hf
-      exact memrchrHook_vmPreserved s)
-
-/-- Coercion from `H lsMemrchrSym = some memrchrHook` to
-    `HookSat H lsMemrchrSym (withLsRet (withVmPreserved (memrchrSpec extHookStack)))`. -/
-theorem hookSat_memrchrVm_ls_of_eq [LibsignalPlacement] {H : LibsignalHooks}
-    (hext : H lsMemrchrSym = some memrchrHook) :
-    HookSat H lsMemrchrSym (withLsRet (withVmPreserved (memrchrSpec extHookStack))) :=
-  hookSat_withLsRet (hookSat_memrchrVm_of_eq hext)
-
 /-- `HookSat` sibling of `address_placed_ok_a1_of_hooks` (`AddressA1PlacedBudget.lean:93`). -/
 theorem address_placed_ok_a1_of_hooks_sat [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -83,23 +78,6 @@ theorem address_placed_ok_a1_of_hooks_sat [LibsignalPlacement]
     subroutine_ok (lsProg_617 H) (lsmpl.base 580)
       (withLsRoCl lsmpl (addressSpec A lim uuidTryParse resStack)) := by
   refine address_placed_ok_ls hFs ?_ hres hres64
-  have hplain : subroutine_ok (lsProg_580 H) (lsρ lsMemrchrSym)
-      (withLsRet (withVmPreserved (memrchrSpec extHookStack))) := by
-    dsimp only [lsProg_580]
-    exact ls_hook_ok_ultra_of_mem hext (by decide)
-  exact subroutine_ok_rocl_of_plain hplain
-
-/-- `HookSat` sibling of `address_placed_ok_a1_rocl_of_hooks` (`AddressA1PlacedBudget.lean:115`). -/
-theorem address_placed_ok_a1_rocl_of_hooks_sat [LibsignalPlacement] {prog : Program} {i : Nat}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H] {resStack : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hext : HookSat H lsMemrchrSym (withLsRet (withVmPreserved (memrchrSpec extHookStack))))
-    (hres : 0xB0 + extHookStack ≤ resStack) (hres64 : resStack ≤ 2 ^ 63)
-    (hi : i < 619 := by decide) :
-    subroutine_ok prog (lsmpl.base 580)
-      (withLsRoCl lsmpl (addressSpec A lim uuidTryParse resStack)) := by
-  refine address_placed_ok_rocl_ls (prog := prog) (i := i) hFs ?_ hres hres64 hi
   have hplain : subroutine_ok (lsProg_580 H) (lsρ lsMemrchrSym)
       (withLsRet (withVmPreserved (memrchrSpec extHookStack))) := by
     dsimp only [lsProg_580]

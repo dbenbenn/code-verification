@@ -10,29 +10,33 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateMergeTightDefs
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProofClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateMergeTightDefs
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProofClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
 import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergeCodeSym
-import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateMergeTightTags1To4PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateMergeTightTags5To8PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateMergeTightTags9To11PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
 
 /-!
 # Guarded-Tight `[LibsignalPlacement]` Verification for `V1State::merge` (Block `298`)
@@ -48,7 +52,7 @@ at most `80` non-free ops (`cumSmall ≤ 783,120` B, `maxReq ≤ 2,560` B), `hea
 at most `76` ops, and the remaining 9 arms use at most `45` ops.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -126,7 +130,7 @@ open LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget (skipField3Spec)
 /-! ## 1. Canonical Input Guard & `TopStateTight` Implication Bridge -/
 
 /-- Decoded `V1State` tight payload predicate implied by `TopStateTight`. -/
-def E2mTightV1Pb (pb : V1State) : Prop :=
+@[expose] def E2mTightV1Pb (pb : V1State) : Prop :=
   ValidV1PtsAt 640 pb ∧ rawV1State pb ≤ 46880
 
 /-- Guard implication lemma from `LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux.TopStateTight`

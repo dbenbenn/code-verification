@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local2
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Common
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExtBudget
+import ProofLib.Sep
+meta import Lean
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Contract for `drop_glue<SessionStructure> [local#2]` (Block `139`)
@@ -30,7 +33,7 @@ Verifies `core::ptr::drop_glue::<SessionStructure> [local#2]` against
 `dropSessionStructureLocal2Spec M A lim` under `[LibsignalPlacement]` over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,7 +50,7 @@ open CryptoVerification (
   subroutine_ok_withLsCodeLoaded_of_plain ls_subroutine_ok_of_block
 )
 open CryptoVerification.RustHeap (RustAlloc allocHookStack arrayAt vecAt vecBuf_expose_arrayAt vecHeader)
-open CryptoVerification.LibsignalSessionRepr (ChainGhost chainAt)
+open CryptoVerification.LibsignalSessionRepr (ChainGhost chainAt messageKeyAt optChainKeyAt vecGhostAt)
 open CryptoVerification.LibsignalTripleRatchetRepr (
   SenderChainGhost SessionGhost noneCap optSenderChainAt
 )
@@ -55,14 +58,14 @@ open CryptoVerification.LibsignalTripleRatchet.Getters (
   blkPC_142 blkPl_142 dropChainStack ls_hook_ok_rustDealloc
 )
 open CryptoVerification.LibsignalTripleRatchet.FromRecordCallees (
-  chainAt_of_exposed_sender_shared_lb chains_header24_weaken_shared_lb
+  chainAt_of_exposed_sender_shared_lb
   dropSessionStructureLocal2Stack optSenderChainAt_some_expose_shared_lb
-  post_loop_weaken_at_72_shared_lb pq_header24_weaken_shared_lb
-  sender_none_entails_memRegion_104_shared_lb session_memRegions_entails_344_shared_lb
+  post_loop_weaken_at_72_shared_lb
+  sender_none_entails_memRegion_104_shared_lb srkRest_shared_lb
   ssFirst3HeadersAt_shared_lb ssTail3HeadersAt_shared_lb
 )
 open CryptoVerification.LibsignalTripleRatchet.FromRecordCallees.DropsCommon (
-  SepWP.false_elim_left header_cells_entails_memRegion_24
+  SepWP.false_elim_left
   sessionStateAt_entails_dealloc sgnPinDealloc
   ssFirst3HeadersAt_entails_memRegions ssTail3HeadersAt_entails_memRegions
   stackAt_split_bottom' vecPinDealloc
@@ -84,9 +87,26 @@ open LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget (
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``RustAlloc.live, #[1]), (``stackAt, #[0]), (``vecPinDealloc, #[1]), (``sgnPinDealloc, #[1, 2]), (``vecAt, #[5]), (``arrayAt, #[3]), (``chainAt, #[2]), (``optSenderChainAt, #[1]), (``vecGhostAt, #[2]), (``optChainKeyAt, #[3]), (``srkRest_shared_lb, #[1]), (``RustCliAllocBudget.pool, #[1])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
+
 private def freeOnlyPool {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) : SepProp :=
   ∃∗ evs : List AllocEvent, ⌜FreeOnlyEvs evs⌝ ∗ A.pool lim (M.stepEvents evs st) s
+
+register_sep_key freeOnlyPool [1]
+
+private theorem weaken_pre_mid {prog : Program} {target : BitVec 64} {sf : State}
+    {P : SepProp} {P_mid : State → SepProp} {Q : State → Prop}
+    (hent : P ⊢ P_mid sf)
+    (h : SepWP prog target sf (P_mid sf) (fun sm Pm => (Pm ⊢ P_mid sm) ∧ Q sm)) :
+    SepWP prog target sf P (fun sm Pm => (Pm ⊢ P_mid sm) ∧ Q sm) :=
+  SepWP.weaken_pre hent h
 
 private theorem freeOnlyPool_intro {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) :
@@ -200,14 +220,6 @@ private theorem SepWP.sync_pool {M : AllocCostModel}
   rw [hf, ← A.pool_of_vmPreserved hvm]
   exact hk
 
-private theorem SepWP.mono_ac {prog : Program} {target : BitVec 64} {s : State}
-    {P P' : SepProp} {post post' : State → SepProp → Prop}
-    (h1 : SepWP prog target s P' post)
-    (h2 : ∀ sf Pf, sf.pc = target → sf.status = .Running → post sf Pf → post' sf Pf)
-    (heq : P = P') :
-    SepWP prog target s P post' :=
-  SepWP.weaken_pre (Entails.of_eq heq) (SepWP.mono h1 h2)
-
 @[reducible]
 private def Saved48Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.readReg64 .x23 = s0.readReg64 .x23 ∧
@@ -237,66 +249,10 @@ private theorem stack_96_eq_ss_local2 (sp : BitVec 64) :
   rw [← stackAt_split_bottom' sp allocHookStack 96 (by decide)]
   rfl
 
-private theorem cells6_sub48_entails_stack (sp fp lr x22 x21 x20 x19 : BitVec 64) :
-    stackAt (sp - 48#64) dropChainStack ∗
-      ((sp - 48#64) ↦₆₄ fp) ∗ ((sp - 40#64) ↦₆₄ lr) ∗
-      ((sp - 32#64) ↦₆₄ x22) ∗ ((sp - 24#64) ↦₆₄ x21) ∗
-      ((sp - 16#64) ↦₆₄ x20) ∗ ((sp - 8#64) ↦₆₄ x19) ⊢
-    stackAt sp dropSessionStructureLocal2Stack := by
-  rw [stackAt_ss_local2_split sp]
-  cells_unfold
-  refine Entails.sepExists_right fp (Entails.sepExists_right lr
-    (Entails.sepExists_right x22 (Entails.sepExists_right x21
-      (Entails.sepExists_right x20 (Entails.sepExists_right x19 (Entails.refl _))))))
-
-private theorem tail_dealloc_ss_local2_pre_weaken (ss cap ptr : BitVec 64)
-    (live rest pool : SepProp) (sp fp lr x22 x21 x20 x19 : BitVec 64) :
-    ((ss + 120#64) ↦₆₄ cap) ∗ ((ss + 128#64) ↦₆₄ ptr) ∗ memRegion (ss + 136#64) 8 ∗
-      live ∗ rest ∗ pool ∗
-      stackAt (sp - 48#64) dropChainStack ∗
-      ((sp - 48#64) ↦₆₄ fp) ∗ ((sp - 40#64) ↦₆₄ lr) ∗
-      ((sp - 32#64) ↦₆₄ x22) ∗ ((sp - 24#64) ↦₆₄ x21) ∗
-      ((sp - 16#64) ↦₆₄ x20) ∗ ((sp - 8#64) ↦₆₄ x19) ⊢
-    memRegion (ss + 120#64) 24 ∗ rest ∗ pool ∗
-      memRegion (sp - 4192#64) 96 ∗ stackAt sp allocHookStack ∗ live := by
-  have h1 : ((ss + 120#64) ↦₆₄ cap) ∗ ((ss + 128#64) ↦₆₄ ptr) ∗ memRegion (ss + 136#64) 8 ⊢
-      memRegion (ss + 120#64) 24 := by
-    have ha1 : (ss + 120#64) + 8#64 = ss + 128#64 := by bv_omega
-    have ha2 : (ss + 120#64) + 16#64 = ss + 136#64 := by bv_omega
-    rw [← ha1, ← ha2]
-    exact header_cells_entails_memRegion_24 (ss + 120#64) cap ptr
-  have h2 :
-      stackAt (sp - 48#64) dropChainStack ∗
-        ((sp - 48#64) ↦₆₄ fp) ∗ ((sp - 40#64) ↦₆₄ lr) ∗
-        ((sp - 32#64) ↦₆₄ x22) ∗ ((sp - 24#64) ↦₆₄ x21) ∗
-        ((sp - 16#64) ↦₆₄ x20) ∗ ((sp - 8#64) ↦₆₄ x19) ⊢
-      memRegion (sp - 4192#64) 96 ∗ stackAt sp allocHookStack := by
-    rw [stack_96_eq_ss_local2 sp]
-    exact cells6_sub48_entails_stack sp fp lr x22 x21 x20 x19
-  have hreord :
-      (((ss + 120#64) ↦₆₄ cap) ∗ ((ss + 128#64) ↦₆₄ ptr) ∗ memRegion (ss + 136#64) 8 ∗
-        live ∗ rest ∗ pool ∗
-        stackAt (sp - 48#64) dropChainStack ∗
-        ((sp - 48#64) ↦₆₄ fp) ∗ ((sp - 40#64) ↦₆₄ lr) ∗
-        ((sp - 32#64) ↦₆₄ x22) ∗ ((sp - 24#64) ↦₆₄ x21) ∗
-        ((sp - 16#64) ↦₆₄ x20) ∗ ((sp - 8#64) ↦₆₄ x19)) =
-      (((ss + 120#64) ↦₆₄ cap) ∗ ((ss + 128#64) ↦₆₄ ptr) ∗ memRegion (ss + 136#64) 8) ∗
-        (live ∗ rest ∗ pool ∗
-         (stackAt (sp - 48#64) dropChainStack ∗
-          ((sp - 48#64) ↦₆₄ fp) ∗ ((sp - 40#64) ↦₆₄ lr) ∗
-          ((sp - 32#64) ↦₆₄ x22) ∗ ((sp - 24#64) ↦₆₄ x21) ∗
-          ((sp - 16#64) ↦₆₄ x20) ∗ ((sp - 8#64) ↦₆₄ x19))) := by sep_ac_rfl
-  rw [hreord]
-  refine Entails.trans (sepConj_mono h1 (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right h2)))) ?_
-  exact Entails.of_eq (by sep_ac_rfl)
-
-private theorem ss_local2_regions_entails_344 (ss : BitVec 64) :
-    memRegion (ss + 120#64) 24 ∗
-      (memRegion ss 24 ∗ memRegion (ss + 24#64) 24 ∗ memRegion (ss + 48#64) 24 ∗
-        memRegion (ss + 72#64) 24 ∗ memRegion (ss + 96#64) 24 ∗ memRegion (ss + 144#64) 104 ∗
-        memRegion (ss + 248#64) 48 ∗ memRegion (ss + 296#64) 32 ∗ memRegion (ss + 328#64) 16) ⊢
-    memRegion ss 344 := by
-  refine Entails.trans (Entails.of_eq (by sep_ac_rfl)) (session_memRegions_entails_344_shared_lb ss)
+private theorem tail_stack_ss_local2_96_from_bottom (sp : BitVec 64) :
+    memRegion (sp - 4192#64) 96 ∗ stackAt sp allocHookStack =
+      stackAt (sp - 48#64) dropChainStack ∗ cells (sp - 48#64) 6 := by
+  rw [stack_96_eq_ss_local2 sp, stackAt_ss_local2_split sp]
 
 private theorem ss_local2_post_entails {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (ast : M.σ) {s0 sf : State} (htr : sf.trace = s0.trace)
@@ -307,16 +263,16 @@ private theorem ss_local2_post_entails {M : AllocCostModel} (A : RustCliAllocBud
           memRegion ss 344 ∗ A.pool lim (M.stepEvents evs ast) sf ∗
           stackAt sp dropSessionStructureLocal2Stack := by
   unfold freeOnlyPool
-  rw [sepExists_sepConj_left, sepExists_sepConj_right]
+  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
   apply Entails.sepExists_elim; intro evs
   refine Entails.sepExists_right evs ?_
   have hpure :
       memRegion ss 344 ∗ (⌜FreeOnlyEvs evs⌝ ∗ A.pool lim (M.stepEvents evs ast) sf) ∗
-        stackAt sp dropSessionStructureLocal2Stack =
+        stackAt sp dropSessionStructureLocal2Stack ⊢
       ⌜FreeOnlyEvs evs⌝ ∗
         (memRegion ss 344 ∗ A.pool lim (M.stepEvents evs ast) sf ∗
-          stackAt sp dropSessionStructureLocal2Stack) := by sep_ac_rfl
-  rw [hpure]
+          stackAt sp dropSessionStructureLocal2Stack) := by bi_entail
+  refine Entails.trans hpure ?_
   apply Entails.pure_left; intro hevs
   exact Entails.pure_right ⟨htr, hevs⟩ (Entails.refl _)
 
@@ -371,12 +327,6 @@ private theorem cons_len_mul {α : Type} (x : α) (xs : List α) (k : Nat) :
   simp only [List.length_cons, Nat.add_mul, Nat.one_mul]
   omega
 
-private theorem sep_pull_body (M0 Arr Pool Stk Frame : SepProp) :
-    (M0 ∗ Arr) ∗ Pool ∗ Stk ∗ Frame = M0 ∗ Pool ∗ Stk ∗ (Arr ∗ Frame) := by sep_ac_rfl
-
-private theorem sep_rejoin_loop (M1 M2 Pool Stk Frame : SepProp) :
-    M2 ∗ Pool ∗ Stk ∗ (M1 ∗ Frame) = (M1 ∗ M2) ∗ Pool ∗ Stk ∗ Frame := by sep_ac_rfl
-
 private theorem vecAt_expose_loop_at_72 {α : Type} (A : RustAlloc) (sz align : Nat)
     (elem : α → BitVec 64 → SepProp) (ss cap ptr : BitVec 64) (xs : List α) :
     vecAt A sz align elem (ss + 72#64) cap ptr xs ⊢
@@ -389,10 +339,10 @@ private theorem vecAt_expose_loop_at_72 {α : Type} (A : RustAlloc) (sz align : 
            memRegion (ptr + BitVec.ofNat 64 (xs.length * sz)) ((cap.toNat - xs.length) * sz))) := by
   unfold vecAt vecHeader
   refine Entails.trans (sepConj_mono_right (vecBuf_expose_arrayAt A sz align elem cap ptr xs)) ?_
-  have h1 : (ss + 72#64) + 8#64 = ss + 80#64 := by bv_omega
-  have h2 : (ss + 72#64) + 16#64 = ss + 88#64 := by bv_omega
-  rw [h1, h2]
-  exact Entails.of_eq (by sep_ac_rfl)
+  generalize (if cap = 0 then emp
+    else A.live ptr (cap.toNat * sz) align ∗
+      memRegion (ptr + BitVec.ofNat 64 (xs.length * sz)) ((cap.toNat - xs.length) * sz)) = D
+  bi_entail
 
 private theorem drop_ss_local2_placed_first3 [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {ast : M.σ}
@@ -442,7 +392,7 @@ private theorem drop_ss_local2_placed_first3 [LibsignalPlacement] {M : AllocCost
       wp_call hdealloc (G.localIk.ptr, G.localIk.cap.toNat, 1, M.stepEvents evs ast)
       have htr_d : sf.trace = s0.trace := (‹AllocCallPreserved _ sf›.2.1).trans htrace
       refine SepWP.fold_dealloc hevs G.localIk.cap.toNat 1 (hk := ?_)
-      refine SepWP.weaken_pre (Entails.of_eq (by rw [hsp]; try sep_ac_rfl)) ?_
+      refine weaken_pre_mid (by rw [hsp]; bi_entail) ?_
       wp_done
   · intro s1 hpc1 hrun1 ⟨⟨hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1⟩
     refine SepWP.seq_state (mid := (blkPl_139).base + 60#64) (P_mid := fun sm =>
@@ -463,7 +413,7 @@ private theorem drop_ss_local2_placed_first3 [LibsignalPlacement] {M : AllocCost
         wp_call hdealloc (G.remoteIk.ptr, G.remoteIk.cap.toNat, 1, M.stepEvents evs ast)
         have htr_d : sf.trace = s0.trace := (‹AllocCallPreserved _ sf›.2.1).trans htrace_1
         refine SepWP.fold_dealloc hevs G.remoteIk.cap.toNat 1 (hk := ?_)
-        refine SepWP.weaken_pre (Entails.of_eq (by rw [hsp_1]; try sep_ac_rfl)) ?_
+        refine weaken_pre_mid (by rw [hsp_1]; bi_entail) ?_
         wp_done
     · intro s2 hpc2 hrun2 ⟨⟨hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hsp_2, htrace_2, hvregs_2⟩, hx19_2⟩
       have hstep3 : SepWP ((blkPC_139).rebase (blkPl_139).base H) ((blkPl_139).base + 80#64) s2
@@ -487,7 +437,7 @@ private theorem drop_ss_local2_placed_first3 [LibsignalPlacement] {M : AllocCost
           wp_call hdealloc (G.root.ptr, G.root.cap.toNat, 1, M.stepEvents evs ast)
           have htr_d : sf.trace = s0.trace := (‹AllocCallPreserved _ sf›.2.1).trans htrace_2
           refine SepWP.fold_dealloc hevs G.root.cap.toNat 1 (hk := ?_)
-          refine SepWP.weaken_pre (Entails.of_eq (by rw [hsp_2]; try sep_ac_rfl)) ?_
+          refine weaken_pre_mid (by rw [hsp_2]; bi_entail) ?_
           wp_done
       exact SepWP.mono hstep3 (fun sm Pm _ _ h =>
         ⟨Entails.trans h.1 (sepConj_mono_left (ssFirst3HeadersAt_entails_memRegions ss G)), h.2⟩)
@@ -556,12 +506,12 @@ private theorem drop_ss_local2_placed_sender [LibsignalPlacement] {M : AllocCost
       refine SepWP.weaken_pre (P' :=
         A.pool lim (M.stepEvents evs ast) _ ∗
         ((ss + 144#64) ↦₆₄ sg.srk.cap ∗
-          CryptoVerification.LibsignalTripleRatchet.FromRecordCallees.srkRest_shared_lb A.repAlloc (ss + 144#64) sg.srk ∗
-          CryptoVerification.LibsignalSessionRepr.vecGhostAt A.repAlloc sg.priv (ss + 144#64 + 24#64) ∗
-          vecAt A.repAlloc 104 8 (CryptoVerification.LibsignalSessionRepr.messageKeyAt A.repAlloc) (ss + 144#64 + 48#64) sg.mkCap sg.mkPtr [] ∗
-          CryptoVerification.LibsignalSessionRepr.optChainKeyAt A.repAlloc sg.ck (some sc.chainKey) (ss + 144#64 + 72#64)) ∗
+          srkRest_shared_lb A.repAlloc (ss + 144#64) sg.srk ∗
+          vecGhostAt A.repAlloc sg.priv (ss + 144#64 + 24#64) ∗
+          vecAt A.repAlloc 104 8 (messageKeyAt A.repAlloc) (ss + 144#64 + 48#64) sg.mkCap sg.mkPtr [] ∗
+          optChainKeyAt A.repAlloc sg.ck (some sc.chainKey) (ss + 144#64 + 72#64)) ∗
         stackAt fsp dropChainStack ∗ Frame)
-        (Entails.of_eq (by sep_ac_rfl)) ?_
+        (by bi_entail) ?_
       refine SepWP.weaken_pre
         (sepConj_mono_right (sepConj_mono_left
           (chainAt_of_exposed_sender_shared_lb A.repAlloc (ss + 144#64) sg sc hpk hlen hcap_lt hptr_ne))) ?_
@@ -569,7 +519,7 @@ private theorem drop_ss_local2_placed_sender [LibsignalPlacement] {M : AllocCost
       wp_call hdrop_chain (⟨ss + 144#64, (⟨sg.srk, sg.priv, sg.mkCap, sg.mkPtr, [], sg.ck⟩, ⟨sc.ratchetKey.publicKey, some sc.chainKey, []⟩)⟩, M.stepEvents evs ast)
       have htr_c : sf.trace = s0.trace := (by assumption : sf.trace = _).trans htrace
       refine SepWP.fold_append hevs (hk := ?_)
-      refine SepWP.weaken_pre (Entails.of_eq (by rw [hsp]; try sep_ac_rfl)) ?_
+      refine weaken_pre_mid (by rw [hsp]; bi_entail) ?_
       wp_done
 
 private theorem drop_ss_local2_placed_receiver_loop [LibsignalPlacement] {M : AllocCostModel}
@@ -610,9 +560,11 @@ private theorem drop_ss_local2_placed_receiver_loop [LibsignalPlacement] {M : Al
     rcases hd with ⟨g, c⟩
     intro cur s Frame _ hlen hpc hrun hcl hpres hx19 hx20 hx21 hx22
     rcases hpres with ⟨hx23, hx24, hx25, hx26, hx27, hx28, hsp, htrace, hvregs⟩
-    rw [show arrayAt (chainAt A.repAlloc) 104 cur ((g, c) :: tl) =
-          chainAt A.repAlloc (g, c) cur ∗ arrayAt (chainAt A.repAlloc) 104 (cur + 104#64) tl from rfl,
-        sep_pull_body]
+    refine SepWP.weaken_pre (P' :=
+      chainAt A.repAlloc (g, c) cur ∗ freeOnlyPool A lim ast s ∗ stackAt fsp dropChainStack ∗
+        (arrayAt (chainAt A.repAlloc) 104 (cur + 104#64) tl ∗ Frame))
+      (by rw [show arrayAt (chainAt A.repAlloc) 104 cur ((g, c) :: tl) =
+            chainAt A.repAlloc (g, c) cur ∗ arrayAt (chainAt A.repAlloc) 104 (cur + 104#64) tl from rfl]; bi_entail) ?_
     refine seq_state_lscl hcl (mid := (blkPl_139).base + 120#64)
       (P_mid := fun sm => memRegion cur 104 ∗ freeOnlyPool A lim ast sm ∗ stackAt fsp dropChainStack ∗
         (arrayAt (chainAt A.repAlloc) 104 (cur + 104#64) tl ∗ Frame))
@@ -627,7 +579,7 @@ private theorem drop_ss_local2_placed_receiver_loop [LibsignalPlacement] {M : Al
       wp_call hdrop_chain (⟨cur, (g, c)⟩, M.stepEvents evs ast)
       have htr_c : sf.trace = s0.trace := (by assumption : sf.trace = _).trans htrace
       refine SepWP.fold_append hevs (hk := ?_)
-      refine SepWP.weaken_pre (Entails.of_eq (by rw [hsp]; try sep_ac_rfl)) ?_
+      refine weaken_pre_mid (by rw [hsp]; bi_entail) ?_
       wp_done
     · intro s1 hpc1 hrun1 hcl1 ⟨⟨hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1, hx20_1, hx21_1, hx22_1⟩
       cases tl with
@@ -649,19 +601,22 @@ private theorem drop_ss_local2_placed_receiver_loop [LibsignalPlacement] {M : Al
         have hpc_next : (BitVec.ofNat 64 (hd2 :: tl2).length + 1#64 != 1#64) = true := by
           rw [bne_iff_ne]; intro h; exact hne1 (beq_iff_eq.mpr h)
         refine SepWP.fold_keep hevs (hk := ?_)
-        apply SepWP.mono_ac
-        · exact ih (cur + 104#64) _ (memRegion cur 104 ∗ Frame)
+        refine SepWP.weaken_pre (P' :=
+          arrayAt (chainAt A.repAlloc) 104 (cur + 104#64) (hd2 :: tl2) ∗
+            freeOnlyPool A lim ast _ ∗ stackAt fsp dropChainStack ∗ (memRegion cur 104 ∗ Frame))
+          (by bi_entail) ?_
+        refine SepWP.mono
+          (ih (cur + 104#64) _ (memRegion cur 104 ∗ Frame)
             htl_ne htl_len (by simp only [State.setPC, hpc_next, ↓reduceIte]) (by assumption) hcl1
             ⟨hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩
-            hx19_1 hx20_1 rfl rfl
-        · intro sf Pf _ _ h
-          refine ⟨Entails.trans h.1 ?_, h.2⟩
-          have hsplit := cons_len_mul (g, c) (hd2 :: tl2) 104
-          have hbound : 104 + (hd2 :: tl2).length * 104 ≤ 2 ^ 64 := by
-            rw [← hsplit]; exact Nat.le_of_lt (Nat.lt_trans hlen (by decide))
-          rw [sep_rejoin_loop, hsplit, ProofLib.memRegion_split cur 104 ((hd2 :: tl2).length * 104) hbound]
-          exact Entails.refl _
-        · sep_ac_rfl
+            hx19_1 hx20_1 rfl rfl) ?_
+        intro sf Pf _ _ h
+        refine ⟨Entails.trans h.1 ?_, h.2⟩
+        have hsplit := cons_len_mul (g, c) (hd2 :: tl2) 104
+        have hbound : 104 + (hd2 :: tl2).length * 104 ≤ 2 ^ 64 := by
+          rw [← hsplit]; exact Nat.le_of_lt (Nat.lt_trans hlen (by decide))
+        rw [hsplit, ProofLib.memRegion_split cur 104 ((hd2 :: tl2).length * 104) hbound]
+        bi_entail
 
 private theorem drop_ss_local2_placed_tail3 [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {ast : M.σ}
@@ -711,7 +666,7 @@ private theorem drop_ss_local2_placed_tail3 [LibsignalPlacement] {M : AllocCostM
       wp_call hdealloc (pPtr, pCap.toNat, 1, M.stepEvents evs ast)
       have htr_d : sf.trace = s0.trace := (‹AllocCallPreserved _ sf›.2.1).trans htrace
       refine SepWP.fold_dealloc hevs pCap.toNat 1 (hk := ?_)
-      refine SepWP.weaken_pre (Entails.of_eq (by rw [hsp]; try sep_ac_rfl)) ?_
+      refine weaken_pre_mid (by rw [hsp]; bi_entail) ?_
       wp_done
   · intro s1 hpc1 hrun1 ⟨⟨hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1⟩
     refine SepWP.seq_state (mid := (blkPl_139).base + 208#64) (P_mid := fun sm =>
@@ -733,7 +688,7 @@ private theorem drop_ss_local2_placed_tail3 [LibsignalPlacement] {M : AllocCostM
         wp_call hdealloc (kPtr, kCap.toNat, 1, M.stepEvents evs ast)
         have htr_d : sf.trace = s0.trace := (‹AllocCallPreserved _ sf›.2.1).trans htrace_1
         refine SepWP.fold_dealloc hevs kCap.toNat 1 (hk := ?_)
-        refine SepWP.weaken_pre (Entails.of_eq (by rw [hsp_1]; try sep_ac_rfl)) ?_
+        refine weaken_pre_mid (by rw [hsp_1]; bi_entail) ?_
         wp_done
     · intro s2 hpc2 hrun2 ⟨⟨hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hsp_2, htrace_2, hvregs_2⟩, hx19_2⟩
       have hstep3 : SepWP ((blkPC_139).rebase (blkPl_139).base H) ((blkPl_139).base + 228#64) s2
@@ -758,7 +713,7 @@ private theorem drop_ss_local2_placed_tail3 [LibsignalPlacement] {M : AllocCostM
           wp_call hdealloc (G.alice.ptr, G.alice.cap.toNat, 1, M.stepEvents evs ast)
           have htr_d : sf.trace = s0.trace := (‹AllocCallPreserved _ sf›.2.1).trans htrace_2
           refine SepWP.fold_dealloc hevs G.alice.cap.toNat 1 (hk := ?_)
-          refine SepWP.weaken_pre (Entails.of_eq (by rw [hsp_2]; try sep_ac_rfl)) ?_
+          refine weaken_pre_mid (by rw [hsp_2]; bi_entail) ?_
           wp_done
       exact SepWP.mono hstep3 (fun sm Pm _ _ h =>
         ⟨Entails.trans h.1 (sepConj_mono_left (ssTail3HeadersAt_entails_memRegions ss pCap pPtr kCap kPtr G)), h.2⟩)
@@ -825,12 +780,10 @@ theorem drop_session_structure_local2_placed_ok_of_dealloc_and_chain [LibsignalP
     (Q := fun sm => Saved48Preserved s0 sm (s0.sp - 48#64) ∧ sm.readReg64 .x0 = s0.readReg64 (Reg.gpr 0#5))
     ?_ ?_
   · rw [stackAt_dropChain_split_alloc (s0.sp - 48#64)]
-    have hsp_sub : (s0.sp - 48#64) - 4144#64 = s0.sp - 4192#64 := by bv_omega
-    rw [hsp_sub]
     wp_steps_sync_pool ((blkPl_139).base + 16#64)
     simp only [State.setMem_setMem]
     apply SepWP.fold (freeOnlyPool_intro A lim ast _) (by sep_focus)
-    dsimp only [ssFirst3HeadersAt_shared_lb, ssTail3HeadersAt_shared_lb, Reg.x19, Reg.x20, Reg.x21, Reg.x22, Reg.lr, Reg.fp]
+    refine weaken_pre_mid (by dsimp only [ssFirst3HeadersAt_shared_lb, ssTail3HeadersAt_shared_lb, Reg.x19, Reg.x20, Reg.x21, Reg.x22, Reg.lr, Reg.fp]; sep_interval) ?_
     wp_done
   · intro s1 hpc1 hrun1 hcl1 ⟨hpres1, hx0_1⟩
     refine seq_state_lscl hcl1 (mid := (blkPl_139).base + 80#64)
@@ -860,9 +813,7 @@ theorem drop_session_structure_local2_placed_ok_of_dealloc_and_chain [LibsignalP
       intro sm Pm _ _ h
       refine ⟨Entails.trans h.1 ?_, h.2⟩
       rw [stackAt_dropChain_split_alloc (s0.sp - 48#64)]
-      have hsp_sub1 : (s0.sp - 48#64) - 4144#64 = s0.sp - 4192#64 := by bv_omega
-      rw [hsp_sub1]
-      exact Entails.of_eq (by sep_ac_rfl)
+      sep_interval
     · intro s2 hpc2 hrun2 hcl2 ⟨hpres2, hx19_2⟩
       refine seq_state_lscl hcl2 (mid := (blkPl_139).base + 100#64)
         (P_mid := fun sm =>
@@ -889,7 +840,7 @@ theorem drop_session_structure_local2_placed_ok_of_dealloc_and_chain [LibsignalP
           (hsender s0 (s0.sp - 48#64) (s0.readReg64 (Reg.gpr 0#5)) hfsp_align G.sender st.senderChain s2 _
             hpc2 hrun2 hcl2 hpres2 hx19_2) ?_
         intro sm Pm _ _ h
-        exact ⟨Entails.trans h.1 (Entails.of_eq (by sep_ac_rfl)), h.2⟩
+        exact ⟨Entails.trans h.1 (by bi_entail), h.2⟩
       · intro s3 hpc3 hrun3 hcl3 ⟨⟨hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hsp_3, htrace_3, hvregs_3⟩, hx19_3⟩
         refine SepWP.weaken_pre
           (sepConj_mono_left (vecAt_expose_loop_at_72 A.repAlloc 104 8 (chainAt A.repAlloc)
@@ -931,7 +882,7 @@ theorem drop_session_structure_local2_placed_ok_of_dealloc_and_chain [LibsignalP
             refine SepWP.unpack_freeOnlyPool (by sep_focus) fun evs hevs => ?_
             wp_steps
             refine SepWP.fold_keep hevs (hk := ?_)
-            refine SepWP.weaken_pre (Entails.of_eq (by dsimp only [ssTail3HeadersAt_shared_lb]; try sep_ac_rfl)) ?_
+            refine weaken_pre_mid (by dsimp only [ssTail3HeadersAt_shared_lb]; bi_entail) ?_
             wp_done
           | cons hd tl =>
             have hne0 := ofNat_beq_zero_false (n := (hd :: tl).length) (by simp) hlen_lt
@@ -943,9 +894,9 @@ theorem drop_session_structure_local2_placed_ok_of_dealloc_and_chain [LibsignalP
             · wp_norm_lhs
             · wp_norm_lhs
             intro hcl_loop
-            apply SepWP.mono_ac
-            · exact hloop s0 (s0.sp - 48#64) (s0.readReg64 (Reg.gpr 0#5)) G.chainsPtr hfsp_align
-                (hd :: tl) G.chainsPtr _
+            refine SepWP.weaken_pre (P' :=
+              arrayAt (chainAt A.repAlloc) 104 G.chainsPtr (hd :: tl) ∗
+                freeOnlyPool A lim ast _ ∗ stackAt (s0.sp - 48#64) dropChainStack ∗
                 (((s0.readReg64 (Reg.gpr 0#5) + 72#64) ↦₆₄ G.chainsCap) ∗
                   ((s0.readReg64 (Reg.gpr 0#5) + 80#64) ↦₆₄ G.chainsPtr) ∗
                   ((s0.readReg64 (Reg.gpr 0#5) + 88#64) ↦₆₄ BitVec.ofNat 64 (hd :: tl).length) ∗
@@ -965,13 +916,23 @@ theorem drop_session_structure_local2_placed_ok_of_dealloc_and_chain [LibsignalP
                   memRegion (s0.readReg64 (Reg.gpr 0#5) + 328#64) 16 ∗
                   ((s0.sp - 48#64) ↦₆₄ s0.readReg64 .fp) ∗ ((s0.sp - 40#64) ↦₆₄ s0.readReg64 .lr) ∗
                   ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
-                  ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19))
+                  ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19)))
+              (by generalize (if G.chainsCap = 0 then emp
+                    else A.repAlloc.live G.chainsPtr (G.chainsCap.toNat * 104) 8 ∗
+                      memRegion (G.chainsPtr + BitVec.ofNat 64 ((hd :: tl).length * 104)) ((G.chainsCap.toNat - (hd :: tl).length) * 104)) = D
+                  dsimp only [ssTail3HeadersAt_shared_lb]; bi_entail) ?_
+            refine SepWP.mono
+              (hloop s0 (s0.sp - 48#64) (s0.readReg64 (Reg.gpr 0#5)) G.chainsPtr hfsp_align
+                (hd :: tl) G.chainsPtr _ _
                 (List.cons_ne_nil _ _) hlen_lt rfl (by assumption) hcl_loop
                 ⟨hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hsp_3, htrace_3, hvregs_3⟩
-                hx19_3 rfl rfl rfl
-            · intro sm Pm _ _ h
-              exact ⟨Entails.trans h.1 (Entails.of_eq (by dsimp only [ssTail3HeadersAt_shared_lb]; sep_ac_rfl)), h.2⟩
-            · dsimp only [ssTail3HeadersAt_shared_lb]; sep_ac_rfl
+                hx19_3 rfl rfl rfl) ?_
+            intro sm Pm _ _ h
+            refine ⟨Entails.trans h.1 ?_, h.2⟩
+            generalize (if G.chainsCap = 0 then emp
+              else A.repAlloc.live G.chainsPtr (G.chainsCap.toNat * 104) 8 ∗
+                memRegion (G.chainsPtr + BitVec.ofNat 64 ((hd :: tl).length * 104)) ((G.chainsCap.toNat - (hd :: tl).length) * 104)) = D
+            dsimp only [ssTail3HeadersAt_shared_lb]; bi_entail
         · intro sm hpcm hrunm hclm ⟨⟨hx23_m, hx24_m, hx25_m, hx26_m, hx27_m, hx28_m, hsp_m, htrace_m, hvregs_m⟩, hx19_m, hx20_m⟩
           refine SepWP.weaken_pre
             (post_loop_weaken_at_72_shared_lb A.repAlloc (s0.readReg64 (Reg.gpr 0#5)) G.chainsCap G.chainsPtr
@@ -1010,17 +971,11 @@ theorem drop_session_structure_local2_placed_ok_of_dealloc_and_chain [LibsignalP
               wp_call hdealloc (G.chainsPtr, G.chainsCap.toNat * 104, 8, M.stepEvents evs ast)
               have htr_d : sf.trace = s0.trace := (‹AllocCallPreserved _ sf›.2.1).trans htrace_m
               refine SepWP.fold_dealloc hevs (G.chainsCap.toNat * 104) 8 (hk := ?_)
-              refine SepWP.weaken_pre
-                (sepConj_mono_right (sepConj_mono_right
-                  (chains_header24_weaken_shared_lb (s0.readReg64 (Reg.gpr 0#5)) G.chainsCap G.chainsPtr _))) ?_
-              rw [hsp_m]
-              refine SepWP.weaken_pre (Entails.of_eq (by dsimp only [ssTail3HeadersAt_shared_lb]; try sep_ac_rfl)) ?_
+              refine weaken_pre_mid (by rw [hsp_m]; dsimp only [ssTail3HeadersAt_shared_lb]; sep_interval) ?_
               wp_done
             · wp_steps
               refine SepWP.fold_keep hevs (hk := ?_)
-              refine SepWP.weaken_pre
-                (sepConj_mono_right (chains_header24_weaken_shared_lb (s0.readReg64 (Reg.gpr 0#5)) G.chainsCap G.chainsPtr _)) ?_
-              refine SepWP.weaken_pre (Entails.of_eq (by dsimp only [ssTail3HeadersAt_shared_lb]; try sep_ac_rfl)) ?_
+              refine weaken_pre_mid (by dsimp only [ssTail3HeadersAt_shared_lb]; sep_interval) ?_
               wp_done
           · intro s4 hpc4 hrun4 hcl4 ⟨hpres4, hx19_4⟩
             refine seq_state_lscl hcl4 (mid := (blkPl_139).base + 228#64)
@@ -1049,9 +1004,7 @@ theorem drop_session_structure_local2_placed_ok_of_dealloc_and_chain [LibsignalP
               intro sm Pm _ _ h
               refine ⟨Entails.trans h.1 ?_, h.2⟩
               rw [stackAt_dropChain_split_alloc (s0.sp - 48#64)]
-              have hsp_sub4 : (s0.sp - 48#64) - 4144#64 = s0.sp - 4192#64 := by bv_omega
-              rw [hsp_sub4]
-              exact Entails.of_eq (by sep_ac_rfl)
+              sep_interval
             · intro s5 hpc5 hrun5 _ ⟨⟨hx23_5, hx24_5, hx25_5, hx26_5, hx27_5, hx28_5, hsp_5, htrace_5, hvregs_5⟩, hx19_5⟩
               refine SepWP.unpack_freeOnlyPool (by sep_focus) fun evs hevs => ?_
               dsimp only [vecPinDealloc]
@@ -1059,36 +1012,32 @@ theorem drop_session_structure_local2_placed_ok_of_dealloc_and_chain [LibsignalP
                 simp only [Bool.false_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj, RustCliAllocBudget.repAlloc_live]
               · wp_steps
                 refine SepWP.sync_pool (hk := ?_)
-                refine SepWP.weaken_pre (Entails.trans (Entails.of_eq (by sep_ac_rfl))
-                  (tail_dealloc_ss_local2_pre_weaken (s0.readReg64 (Reg.gpr 0#5)) G.pq.cap G.pq.ptr
-                    (A.live G.pq.ptr G.pq.cap.toNat 1 ∗ memRegion G.pq.ptr G.pq.cap.toNat)
-                    _ (A.pool lim (M.stepEvents evs ast) _) s0.sp _ _ _ _ _ _)) ?_
+                refine SepWP.weaken_pre (P' :=
+                  memRegion (s0.readReg64 (Reg.gpr 0#5)) 344 ∗
+                  A.pool lim (M.stepEvents evs ast) _ ∗
+                  memRegion (s0.sp - 4192#64) 96 ∗ stackAt s0.sp allocHookStack ∗
+                  (A.live G.pq.ptr G.pq.cap.toNat 1 ∗ memRegion G.pq.ptr G.pq.cap.toNat))
+                  (by
+                    rw [show memRegion (s0.sp - 4192#64) 96 ∗ (stackAt s0.sp allocHookStack ∗
+                          (A.live G.pq.ptr G.pq.cap.toNat 1 ∗ memRegion G.pq.ptr G.pq.cap.toNat)) =
+                        (memRegion (s0.sp - 4192#64) 96 ∗ stackAt s0.sp allocHookStack) ∗
+                          (A.live G.pq.ptr G.pq.cap.toNat 1 ∗ memRegion G.pq.ptr G.pq.cap.toNat) from
+                        (sepConj_assoc _ _ _).symm,
+                      tail_stack_ss_local2_96_from_bottom s0.sp]
+                    sep_interval) ?_
                 wp_call hdealloc (G.pq.ptr, G.pq.cap.toNat, 1, M.stepEvents evs ast)
                 have htr_d : sf.trace = s0.trace := (‹AllocCallPreserved _ sf›.2.1).trans htrace_5
                 refine SepWP.fold_dealloc hevs G.pq.cap.toNat 1 (hk := ?_)
                 refine SepWP.finish_ss_local2 A lim ast (s0 := s0) (s0.readReg64 (Reg.gpr 0#5)) s0.sp ?_ htr_d fun evs_f ⟨htr_f, hevs_f⟩ => ?_
-                · have hss := ss_local2_regions_entails_344 (s0.readReg64 (Reg.gpr 0#5))
-                  have hstk : memRegion (s0.sp - 4192#64) 96 ∗ stackAt s0.sp allocHookStack ⊢
-                      stackAt s0.sp dropSessionStructureLocal2Stack :=
-                    Entails.of_eq (stack_96_eq_ss_local2 s0.sp)
-                  refine Entails.trans (Entails.of_eq ?_)
-                    (sepConj_mono hss (sepConj_mono_right (P := freeOnlyPool A lim ast _) hstk))
-                  sep_ac_rfl
+                · rw [← stack_96_eq_ss_local2 s0.sp]
+                  bi_entail
                 · wp_done
               · wp_steps
                 refine SepWP.fold_keep hevs (hk := ?_)
                 refine SepWP.finish_ss_local2 A lim ast (s0 := s0) (s0.readReg64 (Reg.gpr 0#5)) s0.sp ?_
                   (by simpa [wp_norm, arm64_norm] using htrace_5) fun evs_f ⟨htr_f, hevs_f⟩ => ?_
-                · have hstk := cells6_sub48_entails_stack s0.sp
-                    (s0.readReg64 .fp) (s0.readReg64 .lr) (s0.readReg64 .x22)
-                    (s0.readReg64 .x21) (s0.readReg64 .x20) (s0.readReg64 .x19)
-                  have hhdr := pq_header24_weaken_shared_lb (s0.readReg64 (Reg.gpr 0#5)) G.pq.cap G.pq.ptr emp
-                  simp only [sepConj_emp] at hhdr
-                  have hss := Entails.trans (sepConj_mono_left hhdr)
-                    (ss_local2_regions_entails_344 (s0.readReg64 (Reg.gpr 0#5)))
-                  refine Entails.trans (Entails.of_eq ?_)
-                    (sepConj_mono hss (sepConj_mono_right (P := freeOnlyPool A lim ast _) hstk))
-                  sep_ac_rfl
+                · rw [stackAt_ss_local2_split s0.sp]
+                  sep_interval
                 · wp_done
 
 /-- Block `139` (`core::ptr::drop_glue::<SessionStructure> [local#2]`) meets

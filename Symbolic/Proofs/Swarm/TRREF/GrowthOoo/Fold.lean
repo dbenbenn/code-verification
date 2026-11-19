@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.TRREF.GrowthOoo.State
 
 /-!
@@ -21,7 +21,7 @@ encoded byte length is `< 2^64` and `statePb` satisfies `PbOoo_fold`, and shows 
 `Chain` operations and `sendAfterStates` preserve those parameter bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

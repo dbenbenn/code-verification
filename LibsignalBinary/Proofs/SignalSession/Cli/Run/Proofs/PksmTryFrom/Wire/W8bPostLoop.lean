@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssembly
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aPresence
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssembly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aPresence -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCleanup
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
 
@@ -22,7 +22,7 @@ Proves `preKeyPostLoopOkW_of_5b4`, discharging `PreKeyPostLoopOkW` (`+0x460 → 
 are `some`, and `PreKeyPresenceErrW` when any required field is `none`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,7 +55,7 @@ private abbrev SepWPp.bind_frame_tryFrom := @Wire.SepWPp.bind_frame_tryFrom
 
 /-- The raw `(tag, val)` cells of a stack `Option<u32>` holding `o` (`none`: `tag = 0`, `val`
 arbitrary; `some v`: `tag = 1`, `val = v`). -/
-def w8bOptU32Cells : Option (BitVec 32) → BitVec 32 × BitVec 32 → Prop
+@[expose] def w8bOptU32Cells : Option (BitVec 32) → BitVec 32 × BitVec 32 → Prop
   | none, p => p.1 = 0#32
   | some v, p => p.1 = 1#32 ∧ p.2 = v
 
@@ -120,7 +120,7 @@ theorem w8b_wirePreKeyAt_some_eq (A : RustAlloc) (g : WirePreKeyGhost) (a : BitV
 /-! ## 3. Frames and the `+0x5b4` continuation -/
 
 /-- Presence check post-frame at `+0x5b4` (the `Pf` of `post_seg1_xok_to_5b4_wpW`). -/
-def w8bXokPost (A : RustAlloc) (sp' bkCap bkPtr kyberCap kyberPtr kyberLen ikCap ikPtr msgCap msgPtr :
+@[expose] def w8bXokPost (A : RustAlloc) (sp' bkCap bkPtr kyberCap kyberPtr kyberLen ikCap ikPtr msgCap msgPtr :
     BitVec 64) (regTag regVal opkTag opkVal spkId kpkTag kpkVal : BitVec 32)
     (kyberOpt : Option (List (BitVec 8))) (bk ik msg : List (BitVec 8)) : SepProp :=
   seg1SpillsAtW sp' bkCap bkPtr (BitVec.ofNat 64 bk.length) kyberLen
@@ -130,162 +130,5 @@ def w8bXokPost (A : RustAlloc) (sp' bkCap bkPtr kyberCap kyberPtr kyberLen ikCap
     optVecU8Buf A kyberCap kyberPtr kyberLen kyberOpt ∗ Wire.vecU8Buf A bkCap bkPtr bk ∗
     Wire.vecU8Buf A ikCap ikPtr ik ∗ Wire.vecU8Buf A msgCap msgPtr msg ∗
     A.pool ∗ stackAt sp' (Prost.skipFieldStackX 100)
-
-/-- The part of the `PreKeyPostLoopOkW` precondition untouched by `post_seg1_xok_to_5b4_wpW`. -/
-def w8bPostLoopFrame (img : Obj.Image) (s0 : State) (sp' sret ptr : BitVec 64)
-    (bytes : List (BitVec 8)) : SepProp :=
-  memRegion sp' 16 ∗ memRegion (sp' + 112#64) 184 ∗ memRegion (sp' + 296#64) 16 ∗
-    memRegion (sp' + 440#64) 8 ∗ memRegion (sp' + 448#64) 64 ∗
-    preKeyCalleeSavedAt sp' s0 ∗ memRegion sret 248 ∗ (ptr ↦ₛ bytes) ∗ logOff img ∗
-    memRegion (sp' - BitVec.ofNat 64 preKeyTryFromSubStack)
-      (preKeyTryFromSubStack - Prost.skipFieldStackX 100)
-
-/-- `+0x5b4` (`1460`) → `ret` when all four required fields are
-`some`. -/
-def PreKey5b4OkW (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) :
-    Prop :=
-  ∀ (x : RunCompose.PksmGhost) (s0 sf : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
-    (m : ProtoPreKeySignalMessage) (bk ik msg : List (BitVec 8)) (spkId : BitVec 32)
-    (bkCap bkPtr ikCap ikPtr msgCap msgPtr kyberCap kyberPtr kyberLen : BitVec 64)
-    (regTag regVal opkTag opkVal kpkTag kpkVal : BitVec 32),
-    x.bytes = vb :: b1 :: bs1 → ¬ (vb >>> 4) < 3#8 → ¬ 4#8 < (vb >>> 4) →
-    x.bytes.length < 2 ^ 32 →
-    Pksm.decodeProto (b1 :: bs1) = some m →
-    m.baseKey = some bk → m.identityKey = some ik → m.message = some msg →
-    m.signedPreKeyId = some spkId →
-    w8bOptU32Cells m.registrationId (regTag, regVal) →
-    w8bOptU32Cells m.preKeyId (opkTag, opkVal) →
-    w8bOptU32Cells m.kyberPreKeyId (kpkTag, kpkVal) →
-    PresenceOkState img s0 (s0.sp - 608#64) x.ret (BitVec.ofNat 64 x.bytes.length) x.ptr
-      kyberCap kyberPtr ikCap msgCap vb sf →
-    bkCap.toNat < 2 ^ 63 → ikCap.toNat < 2 ^ 63 → msgCap.toNat < 2 ^ 63 →
-    sf.pc = (contractProg img.base ext).fnAddr preKeyTryFromName + 1460#64 →
-    sf.status = .Running →
-    SepWPp (contractProg img.base ext) (s0.readReg64 .x30) sf
-      (w8bXokPost A (s0.sp - 608#64) bkCap bkPtr kyberCap kyberPtr kyberLen ikCap ikPtr msgCap
-          msgPtr regTag regVal opkTag opkVal spkId kpkTag kpkVal m.kyberCiphertext bk ik msg ∗
-        w8bPostLoopFrame img s0 (s0.sp - 608#64) x.ret x.ptr x.bytes)
-      (fun sf' Pf =>
-        sf'.sp = s0.sp ∧ (calleeSavedVRegs sf' = calleeSavedVRegs s0 → CalleeSavedPreserved s0 sf') ∧
-        (Pf ⊢ (pksmTryFromSpec A img).post x s0 sf'))
-      (tryFromQp s0)
-
-/-- `PreKeyPostLoopOkW` restricted to "some required field is `none`"
-(presence-failure `Err` edges `+0x5e0` / `+0x61c` / `+0x66c` / `+0x678` → ErrTailB → `+0x504`
-→ ret). -/
-def PreKeyPresenceErrW (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) :
-    Prop :=
-  ∀ (x : RunCompose.PksmGhost) (s0 s : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
-    (m : ProtoPreKeySignalMessage),
-    x.bytes = vb :: b1 :: bs1 → ¬ (vb >>> 4) < 3#8 → ¬ 4#8 < (vb >>> 4) →
-    x.bytes.length < 2 ^ 32 →
-    Pksm.decodeProto (b1 :: bs1) = some m →
-    (m.baseKey = none ∨ m.identityKey = none ∨ m.message = none ∨ m.signedPreKeyId = none) →
-    PreKeyLoopExitState img s0 (s0.sp - 608#64) x.ret
-      (BitVec.ofNat 64 x.bytes.length) x.ptr vb s →
-    s.pc = (contractProg img.base ext).fnAddr preKeyTryFromName + 1120#64 →
-    s.status = .Running →
-    s.readReg64 .x24 = 0#64 →
-    SepWPp (contractProg img.base ext) (s0.readReg64 .x30) s
-      (wirePreKeyOf A (s0.sp - 608#64 + 312#64) m ∗
-        memRegion (s0.sp - 608#64) 296 ∗
-        memRegion (s0.sp - 608#64 + 296#64) 16 ∗
-        memRegion (s0.sp - 608#64 + 440#64) 8 ∗
-        memRegion (s0.sp - 608#64 + 448#64) 64 ∗
-        preKeyCalleeSavedAt (s0.sp - 608#64) s0 ∗
-        memRegion x.ret 248 ∗ (x.ptr ↦ₛ x.bytes) ∗ logOff img ∗
-        A.pool ∗ stackAt (s0.sp - 608#64) preKeyTryFromSubStack)
-      (fun sf Pf =>
-        sf.sp = s0.sp ∧ (calleeSavedVRegs sf = calleeSavedVRegs s0 → CalleeSavedPreserved s0 sf) ∧
-        (Pf ⊢ (pksmTryFromSpec A img).post x s0 sf))
-      (tryFromQp s0)
-
-/-! ## 4. `PreKeyPostLoopOkW` -/
-
-/-- the post-loop `some m` path, from Presence check + the `+0x5b4` continuation + the
-presence-failure named hypothesis. -/
-theorem preKeyPostLoopOkW_of_5b4 {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hDropSpe : DropSpeOkX img A ext)
-    (hPresErr : PreKeyPresenceErrW img A ext)
-    (hOk : PreKey5b4OkW img A ext) :
-    PreKeyPostLoopOkW img A ext := by
-  intro x s0 s vb b1 bs1 m hcons hv3 hv4 hlen hdec hst hpc hrun hx24
-  rcases hbkO : m.baseKey with _ | bk
-  · exact hPresErr x s0 s vb b1 bs1 m hcons hv3 hv4 hlen hdec (Or.inl hbkO) hst hpc hrun hx24
-  rcases hikO : m.identityKey with _ | ik
-  · exact hPresErr x s0 s vb b1 bs1 m hcons hv3 hv4 hlen hdec (Or.inr (Or.inl hikO))
-      hst hpc hrun hx24
-  rcases hmsgO : m.message with _ | msg
-  · exact hPresErr x s0 s vb b1 bs1 m hcons hv3 hv4 hlen hdec (Or.inr (Or.inr (Or.inl hmsgO)))
-      hst hpc hrun hx24
-  rcases hspkO : m.signedPreKeyId with _ | spkId
-  · exact hPresErr x s0 s vb b1 bs1 m hcons hv3 hv4 hlen hdec (Or.inr (Or.inr (Or.inr hspkO)))
-      hst hpc hrun hx24
-  rw [w8b_memRegion296_split, stackAt_preKeyTryFromSubStack_skipField]
-  unfold wirePreKeyOf
-  rw [sepExists_sepConj_left]
-  refine SepWPp.exists_pre fun g => ?_
-  rw [w8b_wirePreKeyAt_some_eq A g _ m hbkO hikO hmsgO hspkO]
-  simp only [sepConj_assoc, BitVec.add_assoc, BitVec.reduceAdd]
-  refine SepWPp.mono_pre
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left
-          (w8b_optU32At_entails _ m.kyberPreKeyId))))))))))))) ?_
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  refine SepWPp.exists_pre fun pKpk => ?_
-  simp only [sepConj_assoc]
-  refine SepWPp.mono_pre
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_left (w8b_optU32At_entails _ m.preKeyId)))))))))) ?_
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  refine SepWPp.exists_pre fun pOpk => ?_
-  simp only [sepConj_assoc]
-  refine SepWPp.mono_pre
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_left (w8b_optU32At_entails _ m.registrationId))))))))) ?_
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  refine SepWPp.exists_pre fun pReg => ?_
-  simp only [sepConj_assoc]
-  refine SepWPp.mono_pre
-    (sepConj_mono_left (Wire.optVecU8At_entails_header_buf A g.kyberCt _ m.kyberCiphertext)) ?_
-  simp only [sepExists_sepConj_left, sepConj_assoc]
-  refine SepWPp.exists_pre fun kc => SepWPp.exists_pre fun kp => SepWPp.exists_pre fun kl => ?_
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-  refine SepWPp.mono_pre (P' :=
-      (memRegion (s0.sp - 608#64 + 16#64) 96 ∗
-        vecHeader (s0.sp - 608#64 + 312#64) kc kp kl ∗
-        optVecU8Buf A kc kp kl m.kyberCiphertext ∗
-        vecHeader (s0.sp - 608#64 + 336#64) g.baseKey.cap g.baseKey.ptr
-          (BitVec.ofNat 64 bk.length) ∗ Wire.vecU8Buf A g.baseKey.cap g.baseKey.ptr bk ∗
-        vecHeader (s0.sp - 608#64 + 360#64) g.identityKey.cap g.identityKey.ptr
-          (BitVec.ofNat 64 ik.length) ∗ Wire.vecU8Buf A g.identityKey.cap g.identityKey.ptr ik ∗
-        vecHeader (s0.sp - 608#64 + 384#64) g.message.cap g.message.ptr
-          (BitVec.ofNat 64 msg.length) ∗ Wire.vecU8Buf A g.message.cap g.message.ptr msg ∗
-        ((s0.sp - 608#64 + 408#64) ↦₃₂ pReg.1.1) ∗ ((s0.sp - 608#64 + 412#64) ↦₃₂ pReg.1.2) ∗
-        ((s0.sp - 608#64 + 416#64) ↦₃₂ pOpk.1.1) ∗ ((s0.sp - 608#64 + 420#64) ↦₃₂ pOpk.1.2) ∗
-        ((s0.sp - 608#64 + 424#64) ↦₃₂ 1#32) ∗ ((s0.sp - 608#64 + 428#64) ↦₃₂ spkId) ∗
-        ((s0.sp - 608#64 + 432#64) ↦₃₂ pKpk.1.1) ∗ ((s0.sp - 608#64 + 436#64) ↦₃₂ pKpk.1.2) ∗
-        A.pool ∗ stackAt (s0.sp - 608#64) (Prost.skipFieldStackX 100)) ∗
-      (memRegion (s0.sp - 608#64) 16 ∗ memRegion (s0.sp - 608#64 + 112#64) 184 ∗
-        memRegion (s0.sp - 608#64 + 296#64) 16 ∗
-        memRegion (s0.sp - 608#64 + 440#64) 8 ∗ memRegion (s0.sp - 608#64 + 448#64) 64 ∗
-        preKeyCalleeSavedAt (s0.sp - 608#64) s0 ∗ memRegion x.ret 248 ∗
-        (x.ptr ↦ₛ x.bytes) ∗ logOff img ∗
-        memRegion (s0.sp - 608#64 - BitVec.ofNat 64 preKeyTryFromSubStack)
-          (preKeyTryFromSubStack - Prost.skipFieldStackX 100)))
-    (by apply entails_of_eq; ac_rfl) ?_
-  refine SepWPp.bind_frame_tryFrom
-    (post_seg1_xok_to_5b4_wpW (kyberOpt := m.kyberCiphertext) (bk := bk) (ik := ik) (msg := msg)
-      hDropSpe hst hpc hrun hx24) ?_
-  rintro sm Pm hpcm hrunm ⟨hstm, hbkC, hikC, hmsgC, hPm⟩
-  exact SepWPp.mono_pre (sepConj_mono_left hPm)
-    (hOk x s0 sm vb b1 bs1 m bk ik msg spkId g.baseKey.cap g.baseKey.ptr g.identityKey.cap
-      g.identityKey.ptr g.message.cap g.message.ptr kc kp kl pReg.1.1 pReg.1.2 pOpk.1.1
-      pOpk.1.2 pKpk.1.1 pKpk.1.2 hcons hv3 hv4 hlen hdec hbkO hikO hmsgO hspkO pReg.2 pOpk.2
-      pKpk.2 hstm hbkC hikC hmsgC hpcm hrunm)
 
 end CryptoVerification.SignalSession.Cli.RunProofs.PksmWire

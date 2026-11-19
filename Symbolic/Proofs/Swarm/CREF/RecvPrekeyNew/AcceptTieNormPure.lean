@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieAuxPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptDHaPure
-public import Symbolic.Proofs.SR.SendSpecWPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieAuxPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptDHaPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.SendSpecWPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
-public import Symbolic.Proofs.Refinement.X25519Covered -- shake: keep
+import Symbolic.Proofs.Refinement.X25519Covered -- shake: keep
 
 /-!
 # Normalized Pre-Decrypt `StateRel` and `AcceptTieD`
@@ -24,7 +24,7 @@ Defines `AcceptTieD` for an accepting pre-key decryption at a fixed random draw,
 encoded record, and proves `rpkN_stateRel_norm` on the normalized pre-decrypt session state.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +47,7 @@ open Symbolic.Swarm.CREF.CliPure.RpkCli (pureCoinsOf)
 
 /-- Tie between the pre-decrypt session `st0`, post-decrypt session `st'`, random draw `d`,
 plaintext `pt`, and encoded record `sm` for an accepting pre-key call. -/
-def AcceptTieD (interpretation : ExternInterpretation) (r : ProtocolSetup) (p : PreKeyFields)
+@[expose] def AcceptTieD (interpretation : ExternInterpretation) (r : ProtocolSetup) (p : PreKeyFields)
     (d pt : HwBytes) (sm : StateAndMessage) : Prop :=
   ∃ (st0 st' : SessionState HwBytes) (expected : Option HwBytes),
     AcceptRecTie r p (p.baseKey.take 33) st' sm ∧
@@ -74,7 +74,7 @@ open Swarm.Phase0WholeFunctionBridge (sessionToRecordRec)
 
 /-- Bob's signed pre-key public key as a `PublicKey`, matching `dhPk (setupSecret r 2)` under
 `gamma`. -/
-def rpkSpkPub (interpretation : ExternInterpretation) (r : ProtocolSetup) :
+@[expose] def rpkSpkPub (interpretation : ExternInterpretation) (r : ProtocolSetup) :
     CryptoGames.LibsignalSession.PublicKey :=
   ⟨DY.Libsignal.TripleRatchet.Refinement.vec32
     ((interpretation DY.Libsignal.Refinement.x25519PublicKeySymbol

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519
+public import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519 -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
@@ -25,7 +25,7 @@ Establishes the bijection between byte lists and little-endian naturals (`leValu
 (`variantBytes_spec`), and defines the 2-bit non-canonical variation index `keyVariation`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -100,11 +100,11 @@ theorem variantBytes_spec (b : HwBytes) (hb : b.length = 32) (v : Fin 4) :
     · rw [Nat.add_mod_right, Nat.mod_eq_of_lt hu]
     · exact Nat.mod_eq_of_lt hu
 
-def keyValue (b : HwBytes) : Nat := leValue (b.map BitVec.toNat)
+@[expose] def keyValue (b : HwBytes) : Nat := leValue (b.map BitVec.toNat)
 
 /-- Non-canonical encoding bits of `b`: bit 0 records bit 255, and bit 1 records whether the low
 255 bits are at least `p25519`. -/
-def keyVariation (b : HwBytes) : Fin 4 :=
+@[expose] def keyVariation (b : HwBytes) : Fin 4 :=
   if 2 ^ 255 ≤ keyValue b then (if p25519 ≤ keyValue b % 2 ^ 255 then 3 else 1)
   else (if p25519 ≤ keyValue b % 2 ^ 255 then 2 else 0)
 

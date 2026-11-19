@@ -16,18 +16,9 @@ public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhHooksCommon
 public import LibsignalBinary.Specifications.SignalSession.CliRun
 public import LibsignalBinary.Proofs.E2E.HooksE.Common
 public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
 import LibsignalBinary.Proofs.Common.SharedHelpers
-import LibsignalBinary.Proofs.E2E.HooksE.WrapperHooksCommon
 import LibsignalBinary.Proofs.E2E.Pqxdh.SpqrHooksPCommon
-import LibsignalBinary.Proofs.SignalSession.Cli.CliExternsWitness
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHook
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHook
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat
-import LibsignalBinary.Proofs.TripleRatchet.Hooks
 
 /-!
 # Budget-Threaded Hook and `VmPreserved` Helpers
@@ -39,7 +30,7 @@ non-allocating, formatting, time, ML-KEM-768, PQXDH, libc, and CLI I/O hooks in
 
 set_option autoImplicit false
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -182,22 +173,7 @@ local macro "vm_close" : tactic => `(tactic| (
     refine VmPreserved.of_eq (by vm_field) (by vm_field) (by vm_field) (by vm_field)
       (by vm_perm) (by vm_fds)))
 
-/-- Lift pointwise `VmPreserved` over every entry of a hook association list `L` to `L.lookup`. -/
-theorem vmPreserved_of_lookup {L : List (String × (State → State))}
-    {P : String → Prop}
-    (hL : ∀ p ∈ L, P p.1 → ∀ s : State, VmPreserved s (p.2 s))
-    {n : String} {f : State → State}
-    (hlook : L.lookup n = some f) (hn : P n) (s : State) :
-    VmPreserved s (f s) :=
-  hL (n, f) (CryptoVerification.SignalSession.ExternsWitness.mem_of_lookup hlook) hn s
-
 /-! ## `VmPreserved` for Non-Allocating Hooks -/
-
-theorem panicked_vmPreserved (s : State) : VmPreserved s (Rust.panicked s) := by
-  vm_close
-
-theorem hookNoop_vmPreserved (s : State) : VmPreserved s (hookNoop s) := by
-  unfold hookNoop; vm_close
 
 theorem hookMemset_vmPreserved (s : State) : VmPreserved s (hookMemset s) := by
   unfold hookMemset; vm_close
@@ -215,30 +191,9 @@ theorem cliBcmpHook_vmPreserved (bcmp : List (BitVec 8) → List (BitVec 8) → 
 theorem strlenHook_vmPreserved (s : State) : VmPreserved s (strlenHook s) := by
   unfold strlenHook unmodelled; vm_close
 
-theorem writeFileHook_vmPreserved (s : State) : VmPreserved s (writeFileHook s) := by
-  unfold writeFileHook unitResult unmodelled; vm_close
-
-theorem writeStdoutHook_vmPreserved (s : State) : VmPreserved s (writeStdoutHook s) := by
-  unfold writeStdoutHook unitResult unmodelled; vm_close
-
-theorem memrchrHook_vmPreserved (s : State) : VmPreserved s (memrchrHook s) := by
-  unfold memrchrHook unmodelled; vm_close
-
 theorem fromUtf8Hook_vmPreserved (utf8Err : List (BitVec 8) → BitVec 64 × BitVec 16)
     (s : State) : VmPreserved s (fromUtf8Hook utf8Err s) := by
   unfold fromUtf8Hook unmodelled; vm_close
-
-theorem fmtWriteHook0_vmPreserved (s : State) :
-    VmPreserved s (CryptoVerification.E2E.fmtWriteHook0 s) := by
-  unfold CryptoVerification.E2E.fmtWriteHook0; vm_close
-
-theorem formatInnerHook0_vmPreserved (s : State) :
-    VmPreserved s (CryptoVerification.E2E.formatInnerHook0 s) := by
-  unfold CryptoVerification.E2E.formatInnerHook0; vm_close
-
-theorem durationSinceExactHook_vmPreserved (s : State) :
-    VmPreserved s (durationSinceExactHook s) := by
-  unfold durationSinceExactHook unmodelled; vm_close
 
 theorem timeAddHook_vmPreserved (s : State) :
     VmPreserved s (CryptoVerification.E2E.timeAddHook s) := by
@@ -248,73 +203,21 @@ theorem blackBoxHook_vmPreserved (s : State) :
     VmPreserved s (CryptoVerification.LibsignalSession.blackBoxHook s) := by
   unfold CryptoVerification.LibsignalSession.blackBoxHook; vm_close
 
-theorem compress256Hook_vmPreserved (C : Crypto) (s : State) :
-    VmPreserved s (CryptoVerification.LibsignalHmac.compress256Hook C.F s) := by
-  unfold CryptoVerification.LibsignalHmac.compress256Hook; vm_close
-
-theorem pubFromSecretHook_vmPreserved (C : Crypto) (s : State) :
-    VmPreserved s (CryptoVerification.LibsignalTripleRatchet.pubFromSecretHook C.pubKey s) := by
-  unfold CryptoVerification.LibsignalTripleRatchet.pubFromSecretHook; vm_close
-
-theorem diffieHellmanHook_vmPreserved (C : Crypto) (s : State) :
-    VmPreserved s (CryptoVerification.LibsignalTripleRatchet.diffieHellmanHook C.X s) := by
-  unfold CryptoVerification.LibsignalTripleRatchet.diffieHellmanHook; vm_close
-
 theorem zeroizeSecretHook_vmPreserved (s : State) :
     VmPreserved s (CryptoVerification.LibsignalTripleRatchet.zeroizeSecretHook s) := by
   unfold CryptoVerification.LibsignalTripleRatchet.zeroizeSecretHook; vm_close
-
-theorem compress512Hook_vmPreserved (Q : CryptoVerification.E2E.PqxdhPrims) (s : State) :
-    VmPreserved s (CryptoVerification.E2E.compress512Hook Q.F512 s) := by
-  unfold CryptoVerification.E2E.compress512Hook; vm_close
-
-theorem toEdwardsHook_vmPreserved (Q : CryptoVerification.E2E.PqxdhPrims) (s : State) :
-    VmPreserved s (CryptoVerification.E2E.toEdwardsHook Q.montToEd s) := by
-  unfold CryptoVerification.E2E.toEdwardsHook; vm_close
-
-theorem compressHook_vmPreserved (Q : CryptoVerification.E2E.PqxdhPrims) (s : State) :
-    VmPreserved s (CryptoVerification.E2E.compressHook Q.compress s) := by
-  unfold CryptoVerification.E2E.compressHook; vm_close
-
-theorem edNegHook_vmPreserved (Q : CryptoVerification.E2E.PqxdhPrims) (s : State) :
-    VmPreserved s (CryptoVerification.E2E.edNegHook Q.edNeg s) := by
-  unfold CryptoVerification.E2E.edNegHook; vm_close
-
-theorem torsionFreeHook_vmPreserved (Q : CryptoVerification.E2E.PqxdhPrims) (s : State) :
-    VmPreserved s (CryptoVerification.E2E.torsionFreeHook Q.isTorsionFree s) := by
-  unfold CryptoVerification.E2E.torsionFreeHook; vm_close
-
-theorem dsmbHook_vmPreserved (Q : CryptoVerification.E2E.PqxdhPrims) (s : State) :
-    VmPreserved s (CryptoVerification.E2E.dsmbHook Q.dsmb s) := by
-  unfold CryptoVerification.E2E.dsmbHook; vm_close
-
-theorem scalarModHook_vmPreserved (Q : CryptoVerification.E2E.PqxdhPrims) (s : State) :
-    VmPreserved s (CryptoVerification.E2E.scalarModHook Q.scalarMod s) := by
-  unfold CryptoVerification.E2E.scalarModHook; vm_close
-
-theorem scalarWideHook_vmPreserved (Q : CryptoVerification.E2E.PqxdhPrims) (s : State) :
-    VmPreserved s (CryptoVerification.E2E.scalarWideHook Q.scalarWide s) := by
-  unfold CryptoVerification.E2E.scalarWideHook; vm_close
-
-theorem kemEncapsHook_vmPreserved (Q : CryptoVerification.E2E.PqxdhPrims) (s : State) :
-    VmPreserved s (CryptoVerification.E2E.kemEncapsHook Q.encaps s) := by
-  unfold CryptoVerification.E2E.kemEncapsHook; vm_close
-
-theorem kemDecapsHook_vmPreserved (Q : CryptoVerification.E2E.PqxdhPrims) (s : State) :
-    VmPreserved s (CryptoVerification.E2E.kemDecapsHook Q.decaps s) := by
-  unfold CryptoVerification.E2E.kemDecapsHook; vm_close
 
 theorem mlkemFromSeedHook_vmPreserved (K : MlKem) (s : State) :
     VmPreserved s (CryptoVerification.E2E.mlkemFromSeedHook K s) := by
   unfold CryptoVerification.E2E.mlkemFromSeedHook; vm_close
 
 theorem mlkemPk1Hook_vmPreserved (s : State) :
-    VmPreserved s (CryptoVerification.E2E.mlkemPk1Hook s) := by
-  unfold CryptoVerification.E2E.mlkemPk1Hook; vm_close
+    VmPreserved s (LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.mlkemPk1Hook s) := by
+  unfold LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.mlkemPk1Hook; vm_close
 
 theorem mlkemPk2Hook_vmPreserved (s : State) :
-    VmPreserved s (CryptoVerification.E2E.mlkemPk2Hook s) := by
-  unfold CryptoVerification.E2E.mlkemPk2Hook; vm_close
+    VmPreserved s (LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.mlkemPk2Hook s) := by
+  unfold LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.mlkemPk2Hook; vm_close
 
 theorem mlkemEncaps1Hook_vmPreserved (K : MlKem) (s : State) :
     VmPreserved s (CryptoVerification.E2E.mlkemEncaps1Hook K s) := by
@@ -402,31 +305,6 @@ theorem fmtWriteHook0_budget_ok (M : AllocCostModel) (A : RustCliAllocBudget M)
       (Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem)
   exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem_ex
 
-/-- `timeAddHook` satisfies `timeAddBudgetSpec = withVmPreserved timeAddSpec`. -/
-theorem timeAddHook_budget_ok :
-    HookOk CryptoVerification.E2E.timeAddHook timeAddBudgetSpec :=
-  hookOk_withVmPreserved CryptoVerification.E2E.HooksE.timeAddHook_ok timeAddHook_vmPreserved
-
-/-- `hookNoop` satisfies `durationSinceSpec` (and hence `durationSinceBudgetSpec` via
-    `hookNoop_durationSinceBudget_ok`). -/
-theorem hookNoop_durationSince_ok : HookOk hookNoop durationSinceSpec := by
-  refine hookNoop_ok fun ⟨p, ret⟩ R s0 hpre => ?_
-  dsimp only [durationSinceSpec] at hpre ⊢
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-  refine ⟨rfl, hpre.2⟩
-
-/-- `hookNoop` satisfies `durationSinceBudgetSpec = withVmPreserved durationSinceSpec`. -/
-theorem hookNoop_durationSinceBudget_ok : HookOk hookNoop durationSinceBudgetSpec :=
-  hookOk_withVmPreserved hookNoop_durationSince_ok hookNoop_vmPreserved
-
-/-- `durationSinceExactHook` satisfies `durationSinceEpochBudgetSpec =
-    withVmPreserved CliExt.durationSinceEpochSpec`. -/
-theorem durationSinceExactHook_epoch_budget_ok :
-    HookOk durationSinceExactHook durationSinceEpochBudgetSpec :=
-  hookOk_withVmPreserved
-    CryptoVerification.SignalSession.Cli.Slots.durationSinceExactHook_epoch_ok
-    durationSinceExactHook_vmPreserved
-
 /-! ## ML-KEM-768 Incremental Budget `HookOk` Witnesses -/
 
 theorem mlkemFromSeedHook_budget_ok (K : MlKem) :
@@ -434,14 +312,6 @@ theorem mlkemFromSeedHook_budget_ok (K : MlKem) :
       (withVmPreserved (mlkemFromSeedSpec K)) :=
   hookOk_withVmPreserved (CryptoVerification.E2E.Pqxdh.mlkemFromSeedHook_ok K)
     (mlkemFromSeedHook_vmPreserved K)
-
-theorem mlkemPk1Hook_budget_ok :
-    HookOk CryptoVerification.E2E.mlkemPk1Hook (withVmPreserved mlkemPk1Spec) :=
-  hookOk_withVmPreserved CryptoVerification.E2E.Pqxdh.mlkemPk1Hook_ok mlkemPk1Hook_vmPreserved
-
-theorem mlkemPk2Hook_budget_ok :
-    HookOk CryptoVerification.E2E.mlkemPk2Hook (withVmPreserved mlkemPk2Spec) :=
-  hookOk_withVmPreserved CryptoVerification.E2E.Pqxdh.mlkemPk2Hook_ok mlkemPk2Hook_vmPreserved
 
 theorem mlkemEncaps1Hook_budget_ok (K : MlKem) :
     HookOk (CryptoVerification.E2E.mlkemEncaps1Hook K)
@@ -466,153 +336,5 @@ theorem mlkemValidatePkHook_budget_ok (K : MlKem) :
       (withVmPreserved (mlkemValidatePkSpec K)) :=
   hookOk_withVmPreserved (CryptoVerification.E2E.Pqxdh.mlkemValidatePkHook_ok K)
     (mlkemValidatePkHook_vmPreserved K)
-
-/-! ## Non-Allocating `CliExt` `HookOk` Witnesses -/
-
-section CliExtHookWitnesses
-
-open CryptoVerification.SignalSession.ExternsWitness (
-  blackBoxHook_ok compress512Hook_ok dsmbHook_ok hookOk_cliWithStack hookOk_map
-  kemDecapsHook_ok kemEncapsHook_ok leafHook_ok toEdwardsHook_ok torsionFreeHook_ok
-)
-
-theorem cliShim_hookOk : HookOk hookNoop shimSpec :=
-  CryptoVerification.LibsignalTripleRatchet.sessionShim_hookOk
-
-theorem cliMemset_hookOk : HookOk hookMemset memsetSpec :=
-  CryptoVerification.LibsignalTripleRatchet.hookMemset_trace_ok
-
-theorem cliMemmove_hookOk : HookOk hookMemmove memmoveSpec :=
-  CryptoVerification.LibsignalTripleRatchet.hookMemmove_trace_ok
-
-theorem cliMemcpy_hookOk : HookOk hookMemcpy memcpySpec :=
-  CryptoVerification.LibsignalTripleRatchet.hookMemcpy_trace_ok
-
-theorem cliMemcpyRO_hookOk : HookOk hookMemcpy memcpyROSpec :=
-  hookOk_cliWithStack CryptoVerification.SpqrV1.Alloc.hookMemcpy_region_ro_trace_ok
-    memHookStack (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl)
-
-theorem cliBcmp_hookOk (W : CliHooks) : HookOk (cliBcmpHook CryptoVerification.SignalSession.cliDefaultBcmp) bcmpSpec :=
-  hookOk_map (s₁ := CryptoVerification.SignalSession.Cli.cliBcmpSpec)
-    (fun x => ⟨x.a, x.aRo, x.bsA, x.b, x.bRo, x.bsB⟩)
-    (fun _ _ => True) (fun _ => trivial)
-    (CryptoVerification.SignalSession.Cli.RunGlue.cliBcmpHook_ok W)
-    (fun _ _ _ hp => hp) (fun _ _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-    (fun _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-
-theorem cliStrlen_hookOk : HookOk strlenHook strlenSpec :=
-  CryptoVerification.SignalSession.Cli.MainHops.strlenHook_ok extHookStack
-
-theorem cliWriteFile_hookOk (img : Obj.Image) :
-    HookOk writeFileHook (writeFileSpec img) :=
-  hookOk_map
-    (s₁ := CryptoVerification.SignalSession.Cli.MainHops.writeFileSpec
-      CryptoVerification.SignalSession.Cli.MainHops.cliIo img extHookStack)
-    (fun x => ⟨x.pathA, x.path, x.buf, x.bs⟩)
-    (fun _ _ => True) (fun _ => trivial)
-    (CryptoVerification.SignalSession.Cli.MainHops.writeFileHook_ok img extHookStack)
-    (fun _ _ _ hp => hp) (fun _ _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-    (fun _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-
-theorem cliWriteStdout_hookOk (img : Obj.Image) :
-    HookOk writeStdoutHook (writeStdoutSpec img) :=
-  hookOk_map
-    (s₁ := CryptoVerification.SignalSession.Cli.MainHops.writeStdoutSpec img extHookStack)
-    (fun x => ⟨x.buf, x.bs⟩)
-    (fun _ _ => True) (fun _ => trivial)
-    (CryptoVerification.SignalSession.Cli.MainHops.writeStdoutHook_ok img extHookStack)
-    (fun _ _ _ hp => hp) (fun _ _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-    (fun _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-
-theorem cliMemrchr_hookOk : HookOk memrchrHook memrchrSpec :=
-  hookOk_map
-    (s₁ := CryptoVerification.SignalSession.Cli.MainHops.memrchrSpec extHookStack)
-    (fun x => ⟨x.c, x.p, x.bs⟩)
-    (fun _ _ => True) (fun _ => trivial)
-    (CryptoVerification.SignalSession.Cli.MainHops.memrchrHook_ok extHookStack)
-    (fun _ _ _ hp => hp) (fun _ _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-    (fun _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-
-theorem cliFromUtf8_hookOk (_W : CliHooks) :
-    HookOk (fromUtf8Hook CryptoVerification.SignalSession.cliDefaultUtf8Err) fromUtf8Spec :=
-  CryptoVerification.SignalSession.Cli.MainHops.fromUtf8Hook_ok extHookStack CryptoVerification.SignalSession.cliDefaultUtf8Err
-
-theorem cliBlackBox_hookOk :
-    HookOk CryptoVerification.LibsignalSession.blackBoxHook blackBoxSpec :=
-  blackBoxHook_ok
-
-theorem cliCompress256_hookOk (C : Crypto) :
-    HookOk (CryptoVerification.LibsignalHmac.compress256Hook C.F)
-      (compress256Spec C) :=
-  hookOk_cliWithStack
-    (CryptoVerification.LibsignalTripleRatchet.compress256Hook_ok C.F) extHookStack
-    (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl)
-
-theorem cliPubFromSecret_hookOk (C : Crypto) :
-    HookOk (CryptoVerification.LibsignalTripleRatchet.pubFromSecretHook C.pubKey)
-      (pubFromSecretSpec C) :=
-  hookOk_cliWithStack
-    (CryptoVerification.LibsignalTripleRatchet.pubFromSecretHook_ok C.pubKey) extHookStack
-    (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl)
-
-theorem cliDh_hookOk (C : Crypto) :
-    HookOk (CryptoVerification.LibsignalTripleRatchet.diffieHellmanHook C.X)
-      (dhSpec C) :=
-  hookOk_cliWithStack
-    (CryptoVerification.LibsignalTripleRatchet.diffieHellmanHook_ok C.X) extHookStack
-    (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl)
-
-theorem cliZeroize_hookOk :
-    HookOk CryptoVerification.LibsignalTripleRatchet.zeroizeSecretHook zeroizeSpec :=
-  hookOk_cliWithStack
-    CryptoVerification.LibsignalTripleRatchet.zeroizeSecretHook_ok extHookStack
-    (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl)
-
-theorem cliCompress512_hookOk (Q : CryptoVerification.E2E.PqxdhPrims) :
-    HookOk (CryptoVerification.E2E.compress512Hook Q.F512) (compress512Spec Q) :=
-  compress512Hook_ok Q
-
-theorem cliToEdwards_hookOk (Q : CryptoVerification.E2E.PqxdhPrims) :
-    HookOk (CryptoVerification.E2E.toEdwardsHook Q.montToEd) (toEdwardsSpec Q) :=
-  toEdwardsHook_ok Q
-
-theorem cliCompress_hookOk (Q : CryptoVerification.E2E.PqxdhPrims) :
-    HookOk (CryptoVerification.E2E.compressHook Q.compress)
-      (pureByteFunctionSpec Q.compress false) :=
-  leafHook_ok (by decide) Q.compress false
-
-theorem cliEdNeg_hookOk (Q : CryptoVerification.E2E.PqxdhPrims) :
-    HookOk (CryptoVerification.E2E.edNegHook Q.edNeg)
-      (pureByteFunctionSpec Q.edNeg true) :=
-  leafHook_ok (by decide) Q.edNeg true
-
-theorem cliTorsionFree_hookOk (Q : CryptoVerification.E2E.PqxdhPrims) :
-    HookOk (CryptoVerification.E2E.torsionFreeHook Q.isTorsionFree)
-      (torsionFreeSpec Q) :=
-  torsionFreeHook_ok Q
-
-theorem cliDsmb_hookOk (Q : CryptoVerification.E2E.PqxdhPrims) :
-    HookOk (CryptoVerification.E2E.dsmbHook Q.dsmb) (dsmbSpec Q) :=
-  dsmbHook_ok Q
-
-theorem cliScalarMod_hookOk (Q : CryptoVerification.E2E.PqxdhPrims) :
-    HookOk (CryptoVerification.E2E.scalarModHook Q.scalarMod)
-      (pureByteFunctionSpec Q.scalarMod true) :=
-  leafHook_ok (by decide) Q.scalarMod true
-
-theorem cliScalarWide_hookOk (Q : CryptoVerification.E2E.PqxdhPrims) :
-    HookOk (CryptoVerification.E2E.scalarWideHook Q.scalarWide)
-      (pureByteFunctionSpec Q.scalarWide false) :=
-  leafHook_ok (by decide) Q.scalarWide false
-
-theorem cliKemEncaps_hookOk (Q : CryptoVerification.E2E.PqxdhPrims) :
-    HookOk (CryptoVerification.E2E.kemEncapsHook Q.encaps) (kemEncapsSpec Q) :=
-  kemEncapsHook_ok Q
-
-theorem cliKemDecaps_hookOk (Q : CryptoVerification.E2E.PqxdhPrims) :
-    HookOk (CryptoVerification.E2E.kemDecapsHook Q.decaps) (kemDecapsSpec Q) :=
-  kemDecapsHook_ok Q
-
-end CliExtHookWitnesses
 
 end LibsignalBinary.Heap.Fine

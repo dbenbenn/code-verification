@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofClPlaced
-public import LibsignalBinary.Proofs.RecordCodecs.Assembly
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofClPlaced
+import LibsignalBinary.Proofs.RecordCodecs.Assembly
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Code-Loaded Placed Varint, BytesMerge & DecodeError Instantiations
@@ -25,7 +29,7 @@ Code-loaded (`withLsCodeLoaded` / `withLsCodeRoLoaded` / `withLsCallInv`) placed
 `bytes::merge [local#3]` (Block 290), in own-block and caller-polymorphic forms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

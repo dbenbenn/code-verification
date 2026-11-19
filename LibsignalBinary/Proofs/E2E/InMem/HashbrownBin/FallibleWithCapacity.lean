@@ -10,12 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Specs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.Common.HookTrace
-import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Decodes
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<RawTableInner>::fallible_with_capacity::<Global>` (`0x01798`)
@@ -23,7 +22,7 @@ import ProofLib.SepLogic.WPp
 Proves `fallibleWithCapacity4_ok` against `fallibleWithCapacity4Spec A`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.HashbrownBin
 
@@ -96,7 +95,7 @@ theorem trace_setPC_pre (s : Arm64.State) (pc : BitVec 64) :
     (s.setPC pc).trace = s.trace := by cases s; rfl
 
 /-- No-op shim spec that records trace preservation. -/
-def hashbrownShimSpec : Spec Unit where
+@[expose] def hashbrownShimSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
@@ -107,7 +106,7 @@ theorem hashbrownShim_hookOk : HookOk hookNoop hashbrownShimSpec := by
   exact ⟨trivial, hpre⟩
 
 /-- `memset(ptr = x0, c = w1, len = x2)` region-only spec with trace preservation. -/
-def hashbrownMemsetRegionSpec : Spec (BitVec 64 × BitVec 8 × Nat) where
+@[expose] def hashbrownMemsetRegionSpec : Spec (BitVec 64 × BitVec 8 × Nat) where
   pre := memsetRegionSpec.pre
   post := fun (ptr, c, len) s0 sf =>
     ⌜sf.readReg64 .x0 = ptr ∧ sf.trace = s0.trace⌝ ∗ (ptr ↦ₛ List.replicate len c)
@@ -118,7 +117,7 @@ theorem hashbrownMemset_region_trace_ok : HookOk hookMemset hashbrownMemsetRegio
   exact ⟨⟨hpost.1, ht⟩, hpost.2⟩
 
 /-- `memcpy(dst = x0, src = x1, len = x2)` region-only spec with trace preservation. -/
-def hashbrownMemcpyRegionSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def hashbrownMemcpyRegionSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := memcpyRegionSpec.pre
   post := fun (dst, src, bs) s0 sf =>
     ⌜sf.readReg64 .x0 = dst ∧ sf.trace = s0.trace⌝ ∗ (dst ↦ₛ bs) ∗ (src ↦ₛ bs)
@@ -138,43 +137,6 @@ theorem panic_at_hook_raw {P : Program} {b : BitVec 64}
     (P.rebase b H).externAt?
       ((P.rebase b H).fnAddr name + BitVec.ofNat 64 k) = some Rust.panicked := by
   rw [Program.externAt?_fnAddr_add hfn hk hs, hstub, hp]
-
-theorem hashbrown_shim_ok_at {A : RustAlloc} {b : BitVec 64} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2")) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr name + BitVec.ofNat 64 k)
-      hashbrownShimSpec :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-    ⟨hookNoop, hHooks.shim, hashbrownShim_hookOk⟩
-
-theorem hashbrown_allocNW_ok_at {A : RustAlloc} {b : BitVec 64} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "__rustc::__rust_alloc")) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr name + BitVec.ofNat 64 k)
-      (rustAllocNWSpec A) :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "__rustc::__rust_alloc")
-    hHooks.allocNW
-
-theorem hashbrown_memset_region_ok_at {A : RustAlloc} {b : BitVec 64} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "memset")) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr name + BitVec.ofNat 64 k)
-      hashbrownMemsetRegionSpec :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "memset")
-    ⟨hookMemset, hHooks.memset, hashbrownMemset_region_trace_ok⟩
-
-theorem hashbrown_panic_at_fallibilityAllocErr {A : RustAlloc} {b : BitVec 64} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "<hashbrown::raw::Fallibility>::alloc_err#1")) :
-    (RebasedProg b ext).externAt?
-      ((RebasedProg b ext).fnAddr name + BitVec.ofNat 64 k) = some Rust.panicked :=
-  panic_at_hook_raw hfn hk (by decide) (ls_hook% "<hashbrown::raw::Fallibility>::alloc_err#1")
-    hHooks.fallibilityAllocErr
-
-/-! ## Stack and Memory Splitting Helpers for `fallible_with_capacity` -/
 
 theorem stackAt_fallibleWithCapacity (sp : BitVec 64) :
     stackAt sp fallibleWithCapacityStack =
@@ -380,87 +342,4 @@ open FallibleWithCapacity
 
 #arm64_check_no_rfl_state_lemmas
 
-theorem fallibleWithCapacity4_ok (b : BitVec 64) (ext : HookMap) (A : RustAlloc)
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr fallibleWithCapacityName)
-      (fallibleWithCapacity4Spec A) := by
-  simp only [fallibleWithCapacity4Spec, stackAt_fallibleWithCapacity, memRegion_32_cells]
-  have hfn : libsignalSessionCode.fnOff fallibleWithCapacityName = num% (ls_off% "<hashbrown::raw::RawTableInner>::fallible_with_capacity::<alloc::alloc::Global>") := fallibleWithCapacity_fnOff
-  have hshim := hashbrown_shim_ok_at (b := b) hHooks hfn (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<hashbrown::raw::RawTableInner>::fallible_with_capacity::<alloc::alloc::Global>")) (by decide)
-  have halloc := hashbrown_allocNW_ok_at (b := b) hHooks hfn (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<hashbrown::raw::RawTableInner>::fallible_with_capacity::<alloc::alloc::Global>")) (by decide)
-  have hmemset := hashbrown_memset_region_ok_at (b := b) hHooks hfn (k := num% (ls_off% "memset" - ls_off% "<hashbrown::raw::RawTableInner>::fallible_with_capacity::<alloc::alloc::Global>")) (by decide)
-  have hpanic := hashbrown_panic_at_fallibilityAllocErr (b := b) hHooks hfn (k := num% (ls_off% "<hashbrown::raw::Fallibility>::alloc_err#1" - ls_off% "<hashbrown::raw::RawTableInner>::fallible_with_capacity::<alloc::alloc::Global>")) (by decide)
-  code_fetches CryptoVerification.libsignalSessionCode libsignalSessionBin b ext hfn (num% (ls_off% "<hashbrown::raw::RawTableInner>::fallible_with_capacity::<alloc::alloc::Global>")) 412
-  dsimp only [RebasedProg] at hshim halloc hmemset hpanic ⊢
-  clear hfn hHooks
-  generalize_entry (libsignalSessionCode.rebase b ext).fnAddr fallibleWithCapacityName = entry
-  generalize_entry (libsignalSessionCode.rebase b ext) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨sret, stride, capacity⟩ := x
-  dsimp only at *
-  have hcap0 : (s0.readReg64 (Reg.gpr 2#5) == 0#64) = false := cap_beq_zero_eq_false (by omega)
-  have hcap15 : (15#64).ule (s0.readReg64 (Reg.gpr 2#5)) = false := cap_ule_15_eq_false (by omega)
-  have hcap4 : (s0.readReg64 (Reg.gpr 2#5)).ult 4#64 = true := cap_ult_4_eq_true (by omega)
-  have humulh : BitVec.truncate 64 ((BitVec.zeroExtend 128 (s0.readReg64 (Reg.gpr 1#5)) * 4#128) >>> 64) = 0#64 :=
-    umulh_4_eq_zero (by omega)
-  have hmul4 : (s0.readReg64 (Reg.gpr 1#5) * 4#64).toNat = 4 * stride := by
-    rw [mul_4_toNat (by omega), h_2]
-  have hhi8 : ConditionHolds CondCode.HI (addsPState64 (s0.readReg64 (Reg.gpr 1#5) * 4#64) 8#64) = false :=
-    conditionHolds_hi_addsPState64_eq_false
-      (by change (s0.readReg64 (Reg.gpr 1#5) * 4#64).toNat + 8 < 2 ^ 64; omega)
-  have halign8 : (s0.readReg64 (Reg.gpr 1#5) * 4#64 + 7#64) &&& bv% (2 ^ 64 - 8) =
-      s0.readReg64 (Reg.gpr 1#5) * 4#64 :=
-    align8_mul_4 (by omega) (by omega)
-  have hcs_sz : (12#64 + s0.readReg64 (Reg.gpr 1#5) * 4#64).ult 12#64 = false :=
-    alloc_size_cs_eq_false (by omega)
-  have hhi_sz : (9223372036854775800#64).ult (12#64 + s0.readReg64 (Reg.gpr 1#5) * 4#64) = false :=
-    alloc_size_hi_eq_false (by omega)
-  have hcbz_sz : (12#64 + s0.readReg64 (Reg.gpr 1#5) * 4#64 == 0#64) = false :=
-    alloc_size_beq_zero_eq_false (by omega)
-  have hsz_toNat : (12#64 + s0.readReg64 (Reg.gpr 1#5) * 4#64).toNat = 4 * stride + 12 := by
-    rw [BitVec.toNat_add, hmul4]
-    have h12 : (12#64 : BitVec 64).toNat = 12 := rfl
-    rw [h12, Nat.mod_eq_of_lt (by omega)]
-    omega
-  have hpow8 : ∃ k, 8 = 2 ^ k := ⟨3, rfl⟩
-  apply SepWPp.of_sepWP (mid := entry + bv% (240))
-  wp_steps
-  wp_apply
-  wp_steps
-  wp_apply
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0#64
-  · have hoom0 : sf_1.readReg64 (Reg.gpr 0#5) = 0 := hoom
-    have hoom_beq : (sf_1.readReg64 (Reg.gpr 0#5) == 0#64) = true := beq_iff_eq.mpr hoom
-    wp_simp_pre only [hoom0, ite_true, sepConj_assoc]
-    rw [sepConj_pure_left_comm, sepConj_pure_left_comm]
-    refine SepWPp.pure_elim fun htrace => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "<hashbrown::raw::Fallibility>::alloc_err#1" - ls_off% "<hashbrown::raw::RawTableInner>::fallible_with_capacity::<alloc::alloc::Global>"))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-  · have hoom0 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0 := hoom
-    have hoom_beq : (sf_1.readReg64 (Reg.gpr 0#5) == 0#64) = false := beq_eq_false_iff_ne.mpr hoom
-    wp_simp_pre only [hoom0, ite_false, sepConj_assoc]
-    rw [sepConj_pure_left_comm, sepConj_pure_left_comm]
-    refine SepWPp.pure_elim fun ⟨hptr_align, hptr_lt, htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    rw [memRegion_split (sf_1.readReg64 (Reg.gpr 0#5)) (4 * stride) 12 (by omega)]
-    wp_steps
-    have hmul4_bv : s0.readReg64 (Reg.gpr 1#5) * 4#64 = BitVec.ofNat 64 (4 * stride) := by
-      apply BitVec.eq_of_toNat_eq
-      rw [hmul4, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-    rw [hmul4_bv]
-    wp_apply
-    wp_steps
-    have hfold :=
-      fold_rawTableInner4EmptyAt A stride sret (sf_1.readReg64 (Reg.gpr 0#5)) h_7 h_8 h hptr_align hptr_lt
-    dsimp only at hfold
-    refine SepWP.fold hfold (by sep_focus) ?_
-    wp_done
 end CryptoVerification.E2E.InMem.HashbrownBin

@@ -19,7 +19,7 @@ Proves `ModelSecure S ℓ` by instantiating `CompositionCostedReductionFamily` w
 `ReductionDsl` reductions of `modelSecure_atomic`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

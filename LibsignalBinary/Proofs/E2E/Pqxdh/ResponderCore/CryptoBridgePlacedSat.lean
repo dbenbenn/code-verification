@@ -15,6 +15,7 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat`-backed `black_box` Bridge for `<PrivateKey>::calculate_agreement` (`CryptoBridgePlacedSat`)
@@ -52,33 +53,38 @@ open CryptoVerification.LibsignalTripleRatchet
    calculateAgreementStack diffieHellmanSpec extract_withLsCodeRoLoaded
    keys_ls_hook_ok_of_mem keys_ls_subroutine_ok_of_block_cro noAllocShimSpec
    rustAllocSpecWithStack rustAllocSpecWithStack_eq_rustAllocSpec
-   withLsCodeRoLoaded zeroizeSecretSpec)
+   withLsCodeRoLoaded withStack zeroizeSecretSpec)
 open CryptoVerification.LibsignalTripleRatchet.Keys
   (allocPlacedCallSpec calculateAgreement_placed_ok_of_hooks_gen
    ctEqPlacedCallSpec dhPlacedCallSpec lsDhSym lsHandleAllocErrorSym lsRustAllocSym
-   lsRustNoAllocShimSym lsSharedDropSym lsStaticDropSym shimPlacedCallSpec
-   subroutine_ok_calculateAgreementSpecX_of_calculateAgreementSpec zeroizePlacedCallSpec)
+   lsRustNoAllocShimSym lsSharedDropSym lsStaticDropSym shimPlacedCallSpec stackAt_split_subStack
+   subroutine_ok_calculateAgreementSpecX_of_calculateAgreementSpec withLsRet624
+   zeroizePlacedCallSpec)
 open CryptoVerification.RustHeap (RustAlloc allocHookStack rustAllocSpec)
 open LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat (blackBoxSpecSat)
 open LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.CtEqROSat
   (ctEqSliceROMemSpec16 ct_eq_ro_mem_placed_ok_16_withLsCodeLoaded_sat)
 
-private theorem dhPlacedCallAt_of_raw {pl : MultiPlacement} {X : X25519Fn} {subStack : Nat}
-    {prog : Program} {entry : BitVec 64}
-    (h : subroutine_ok prog entry (diffieHellmanSpec X)) :
+private theorem dhPlacedCallAt_of_raw [LibsignalPlacement] {pl : MultiPlacement} {X : X25519Fn}
+    {stk subStack : Nat} {prog : Program} {entry : BitVec 64}
+    (hlo : stk ≤ subStack) (hhi : subStack ≤ 2 ^ 64)
+    (h : subroutine_ok prog entry (withLsRet624 (withStack (diffieHellmanSpec X) stk))) :
     subroutine_ok prog entry (dhPlacedCallSpec pl X subStack) := by
   refine subroutine_ok_map h ?_
   rintro ⟨secA, sec, pubA, pub, ret, sp⟩ R s0 hpre
   dsimp only [dhPlacedCallSpec] at hpre
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨_, hx0, hx1, hx8, hsp⟩, hpre⟩
+  rcases hpre with ⟨⟨_, hx0, hx1, hx8, hsp, hlr⟩, hpre⟩
   subst hsp
-  refine ⟨(secA, sec, pubA, pub, ret), stackAt s0.sp subStack ∗ R, ?_, ?_⟩
-  · dsimp only [diffieHellmanSpec]
+  rw [stackAt_split_subStack s0.sp hlo hhi] at hpre
+  refine ⟨(secA, sec, pubA, pub, ret),
+    stackAt (s0.sp - BitVec.ofNat 64 stk) (subStack - stk) ∗ R, ?_, ?_⟩
+  · dsimp only [withLsRet624, withStack, diffieHellmanSpec]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx8⟩, by arm64_sep_close⟩
+    exact ⟨hlr, ⟨hx0, hx1, hx8⟩, by arm64_sep_close⟩
   · intro sf hpost
-    dsimp only [diffieHellmanSpec, dhPlacedCallSpec] at hpost ⊢
+    dsimp only [withLsRet624, withStack, diffieHellmanSpec, dhPlacedCallSpec] at hpost ⊢
+    rw [stackAt_split_subStack s0.sp hlo hhi]
     simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
     rcases hpost with ⟨htr, hpost⟩
     exact ⟨htr, by arm64_sep_close⟩
@@ -179,7 +185,7 @@ theorem ctEqPlacedCallAt_of_mem16_withLsCodeLoaded {pl : MultiPlacement}
 `HookSat H lsBlackBoxU8Sym blackBoxSpecSat`. -/
 theorem calculateAgreement_placed_ok_unconditional_sat [LibsignalPlacement]
     {X : X25519Fn} {A : RustAlloc} {H : String → Option (State → State)}
-    (h_dh : HookSat H lsDhSym (diffieHellmanSpec X))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withStack (diffieHellmanSpec X) 1808)))
     (h_shdrop : HookSat H lsSharedDropSym zeroizeSecretSpec)
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)
@@ -192,7 +198,7 @@ theorem calculateAgreement_placed_ok_unconditional_sat [LibsignalPlacement]
       (withLsCodeLoaded lsmpl ctEqSliceROMemSpec16) :=
     ls_subroutine_ok_of_block (ct_eq_ro_mem_placed_ok_16_withLsCodeLoaded_sat h_bb)
   exact calculateAgreement_placed_ok_of_hooks_gen (subStack := allocHookStack) (by decide)
-    (dhPlacedCallAt_of_raw (keys_ls_hook_ok_of_mem h_dh))
+    (dhPlacedCallAt_of_raw (by decide) (by decide) (keys_ls_hook_ok_of_mem h_dh))
     (zeroizePlacedCallAt_of_raw (keys_ls_hook_ok_of_mem h_shdrop))
     (ctEqPlacedCallAt_of_mem16_withLsCodeLoaded hct)
     (shimPlacedCallAt_of_raw (keys_ls_hook_ok_of_mem h_shim))
@@ -204,7 +210,7 @@ theorem calculateAgreement_placed_ok_unconditional_sat [LibsignalPlacement]
 `calculateAgreementStackX` under `HookSat H lsBlackBoxU8Sym blackBoxSpecSat`. -/
 theorem calculateAgreement_placed_ok_x_unconditional_sat [LibsignalPlacement]
     {X : X25519Fn} {A : RustAlloc} {H : String → Option (State → State)}
-    (h_dh : HookSat H lsDhSym (diffieHellmanSpec X))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withStack (diffieHellmanSpec X) 1808)))
     (h_shdrop : HookSat H lsSharedDropSym zeroizeSecretSpec)
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)
@@ -223,7 +229,7 @@ theorem pqxdhCalculateAgreement_placed_ok_sat [LibsignalPlacement]
     {P : Primitives} {C : Crypto} {A : RustAlloc}
     {H : LibsignalHooks}
     (hP : PrimitivesMatchCrypto P C)
-    (h_dh : HookSat H lsDhSym (diffieHellmanSpec C.X))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withStack (diffieHellmanSpec C.X) 1808)))
     (h_shdrop : HookSat H lsSharedDropSym zeroizeSecretSpec)
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)
@@ -289,7 +295,7 @@ theorem pqxdhCalculateAgreement_placed_ok_of_block_sat [LibsignalPlacement]
     {P : Primitives} {C : Crypto} {A : RustAlloc}
     {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
     (hP : PrimitivesMatchCrypto P C)
-    (h_dh : HookSat H lsDhSym (diffieHellmanSpec C.X))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withStack (diffieHellmanSpec C.X) 1808)))
     (h_shdrop : HookSat H lsSharedDropSym zeroizeSecretSpec)
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)
@@ -309,7 +315,7 @@ theorem pqxdhCalculateAgreement_placed_frozen_ok_of_block_sat [LibsignalPlacemen
     {P : Primitives} {C : Crypto} {A : RustAlloc}
     {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
     (hP : PrimitivesMatchCrypto P C)
-    (h_dh : HookSat H lsDhSym (diffieHellmanSpec C.X))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withStack (diffieHellmanSpec C.X) 1808)))
     (h_shdrop : HookSat H lsSharedDropSym zeroizeSecretSpec)
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimSpec)

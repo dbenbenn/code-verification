@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.CliTable
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDag
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.CliTable -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDag -- proof-setup: allow-public-import
 import all DY.Bytes.Basic
 import all DY.ALaCarte.Basic
 import all DY.ALaCarte.DecidableEq
@@ -50,8 +50,9 @@ import all Init.Data.Ord.Array
 import all Init.Data.Repr
 import all Init.Data.String.Bootstrap
 import all Init.Data.String.Defs
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.Nodes03 -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

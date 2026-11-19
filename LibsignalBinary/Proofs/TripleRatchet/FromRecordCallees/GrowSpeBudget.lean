@@ -9,17 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.GrowSpe
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.GrowSpe
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
 
 /-!
 # Budget-Threaded Relocatable Contracts for `RawVec::grow_one` (Blocks `42` & `43`)
@@ -29,7 +31,7 @@ Verifies `<RawVec<SignalProtocolError>>::grow_one` (block `42`, stride `48`) and
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -337,18 +339,6 @@ theorem grow_one_spe_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)) :=
   grow_one_spe_placed_ok_of_fg (finish_grow_placed_ok hshim halloc hrealloc)
 
-/-- `NoOom`-`HookSat` variant of `grow_one_spe_placed_ok`. -/
-theorem grow_one_spe_placed_ok_noOom [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocNoOomSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocNoOomSpec M A lim)) :
-    subroutine_ok ((blkPC_42).rebase (blkPl_42).base H)
-      (blkPl_42).base
-      (withLsCodeLoaded lsmpl (growOneSpeSpec M A lim)) :=
-  grow_one_spe_placed_ok_of_fg (finish_grow_placed_ok_noOom hshim halloc hrealloc)
-
 /-! ## 2. Block `43`: `RawVec<Chain>::grow_one` (`stride = 104`, `extHookStack`) -/
 
 /-- Deterministic `AllocEvent` list emitted by `RawVec<Chain>::grow_one` (`stride = 104, minCap = 4, align = 8`). -/
@@ -356,7 +346,7 @@ abbrev growOne104Events (cap : BitVec 64) : List AllocEvent :=
   rawVecGrowEvents 104 4 8 cap
 
 /-- Allocation envelope for `RawVec<Chain>::grow_one`. -/
-def GrowOne104Env (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def GrowOne104Env (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
   (cap = 0#64 ∧ evs = rustAllocEvents (4 * 104) 8) ∨
   (cap ≠ 0#64 ∧ evs = rustReallocEvents (cap.toNat * 104) (max (2 * cap.toNat) 4 * 104) 8)
 
@@ -368,7 +358,7 @@ theorem growOne104Env_events (cap : BitVec 64) :
   · exact Or.inr ⟨h, by simp only [h, ↓reduceIte]⟩
 
 /-- Budget-threaded total-correctness contract for `RawVec<Chain>::grow_one` (`464 + finishGrowStackX`). -/
-def growOne104SpecX (M : AllocCostModel)
+@[expose] def growOne104SpecX (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
@@ -457,17 +447,5 @@ theorem grow_one_104_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
       (blkPl_43).base
       (withLsCodeLoaded lsmpl (growOne104SpecX M A lim)) :=
   grow_one_104_placed_ok_of_fg_x (finish_grow_placed_ok_x hshim halloc hrealloc)
-
-/-- `NoOom`-`HookSat` variant of `grow_one_104_placed_ok_x`. -/
-theorem grow_one_104_placed_ok_x_noOom [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocNoOomSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocNoOomSpec M A lim)) :
-    subroutine_ok ((blkPC_43).rebase (blkPl_43).base H)
-      (blkPl_43).base
-      (withLsCodeLoaded lsmpl (growOne104SpecX M A lim)) :=
-  grow_one_104_placed_ok_of_fg_x (finish_grow_placed_ok_x_noOom hshim halloc hrealloc)
 
 end LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.GrowSpeBudget

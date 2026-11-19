@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS
-public import Computational.Proofs.ReductionDsl.SM.DeliverForge
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.DeliverForge -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
 import Computational.Proofs.ReductionDsl.Notation
 
@@ -19,12 +19,12 @@ import Computational.Proofs.ReductionDsl.Notation
 
 Deep-embedded `ReductionDsl` expressions and handlers `cTrivialB1E`, `injectECB1`, and
 `deliverForgeECB1` for `DeliverForge.trivB1`, `DeliverForge.injectEB1`, and
-`DeliverForge.deliverForgeEB1`, with evaluation and engine-invariant preservation lemmas.
--/
+`DeliverForge.deliverForgeEB1`, with evaluation and engine-invariant preservation lemmas.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 open ReductionDsl OracleSpec OracleComp
 open scoped Computational.Proofs.ReductionDsl.Notation
@@ -43,7 +43,7 @@ local notation "psTy" => ckaPsTy KC Γ CCoins T I KR RSt K SS RS M E
 local notation "rrTy" => ckaRrTy KC Γ CCoins T I KR RSt K SS RS M E
 
 /-- `DeliverForge.trivB1 tStar s pos` over `cGsTy vpT` with list-scan bound `L`. -/
-def cTrivialB1E
+@[expose] def cTrivialB1E
     {O' : Ops S} {vpT : Ty S} {Γ'} (L tStar : ℕ) (s : Expr O' Γ' (cGsTy vpT))
     (pos : Expr O' Γ' posTy) : Expr O' Γ' .bool :=
   rdslExpr =>
@@ -116,7 +116,7 @@ local notation "OO" =>
     fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE
 
 /-- Costed `DeliverForge.injectEB1` handler with list-scan bound `L`. -/
-def injectECB1
+@[expose] def injectECB1
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -161,7 +161,7 @@ def injectECB1
               return (some (.inl ()), esSetG es3' g3)
 
 /-- Costed `DeliverForge.deliverForgeEB1` handler with list-scan bound `L`. -/
-def deliverForgeECB1
+@[expose] def deliverForgeECB1
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)

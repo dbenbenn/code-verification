@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.RecordCodecs
-public import LibsignalBinary.Proofs.ProtoCodecRoundTrip
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.EffSalt
@@ -18,7 +18,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -30,7 +30,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.CreateChainDefs
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.RootKdfDefs
 public import LibsignalBinary.Specifications.HkdfSalt
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
 public import LibsignalBinary.Specifications.RecordCodecs.Proto
 
@@ -50,7 +50,7 @@ set_option autoImplicit false
   `InvalidProtobufEncoding`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.RecordCodecs
 
@@ -60,7 +60,7 @@ section Loop
 variable {M : Type} (mf : M → ℕ → WireType → List (BitVec 8) → Option (M × List (BitVec 8)))
 
 /-- `decodeFieldsLoop mf` reaches `r` from `m` on `bs` with any fuel that covers the input. -/
-def LoopsTo (m : M) (bs : List (BitVec 8)) (r : M) : Prop :=
+@[expose] def LoopsTo (m : M) (bs : List (BitVec 8)) (r : M) : Prop :=
   ∀ n, bs.length ≤ n → decodeFieldsLoop mf n m bs = some r
 
 theorem loopsTo_nil (m : M) : LoopsTo mf m [] m := by

@@ -12,20 +12,20 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirectionClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergeCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23BudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DefsClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirectionClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergeCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23BudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
 public import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -33,7 +33,6 @@ import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
 
 /-!
@@ -45,7 +44,7 @@ Defines the shrinking-slice allocator event envelopes (`EpochDirectionLoopEnv`,
 tag-1 arm lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -189,13 +188,13 @@ theorem EpochDirectionOkEnv.toLoop {rem consumed : Nat} {evs : List AllocEvent}
     exact .stepBytes wt valCap bs hbs hcap hbm ih
 
 /-- Precondition allocator event envelope of `EpochDirection::merge` (Block `299`). -/
-def EpochDirectionMergeEnv (x : EpochDirectionMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EpochDirectionMergeEnv (x : EpochDirectionMergeGhost) (evs : List AllocEvent) : Prop :=
   EpochDirectionLoopEnv x.bs.length evs
 
 /-- Postcondition allocator event envelope of `EpochDirection::merge` (Block `299`):
 `EpochDirectionOkEnv x.bs.length (x.bs.length - rest.length)` on `Ok`, and
 `EpochDirectionLoopEnv x.bs.length` on `Err`. -/
-def EpochDirectionMergePostEnv (x : EpochDirectionMergeGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def EpochDirectionMergePostEnv (x : EpochDirectionMergeGhost) (evs : List AllocEvent) : Prop :=
   match (mergeMessage CryptoVerification.LibsignalSpqrV1.EpochDirectionPB.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption with
   | some (_, rest) => EpochDirectionOkEnv x.bs.length (x.bs.length - rest.length) evs
   | none => EpochDirectionLoopEnv x.bs.length evs
@@ -318,7 +317,7 @@ theorem FitsEnv.epochDirection_bytesMerge3 {M : AllocCostModel} {lim : BudgetLim
 /-- Envelope-parameterized budget-threaded contract of
 `prost::encoding::message::merge::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, &mut &[u8]>`
 (Block `299`). -/
-def epochDirectionMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def epochDirectionMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : EpochDirectionMergeGhost → List AllocEvent → Prop) :
     Spec (EpochDirectionMergeGhost × M.σ) where
@@ -349,7 +348,7 @@ def epochDirectionMergeSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-- Budget-threaded contract of
 `prost::encoding::message::merge::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, &mut &[u8]>`
 (Block `299`, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def epochDirectionMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def epochDirectionMergeSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EpochDirectionMergeGhost × M.σ) :=
   epochDirectionMergeSpecOfEnv A lim EpochDirectionMergeEnv EpochDirectionMergePostEnv
 
@@ -421,7 +420,7 @@ theorem subroutine_ok_withLsCodeRoLoaded_epochDirectionMergeOfEnv {M : AllocCost
 /-! ## 2. Loop & Error-Exit Separation-Logic Bundles and Shared Exit/Arm Lemmas (Block `299`) -/
 
 /-- Budget-threaded loop-header separation-logic bundle at `+0x0a0` (`(blkPl_299).base + 160#64`). -/
-def epochDirectionLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def epochDirectionLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s0 s : State) (msgPtr bufRef slot ptr : BitVec 64)
     (m : EpochDirectionPB) (bs cur : List (BitVec 8)) : SepProp :=
   epochDirectionPBCapOkAt A.repAlloc msgPtr cur.length m ∗
@@ -436,7 +435,7 @@ def epochDirectionLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim :
 
 /-- Budget-threaded error-exit separation-logic bundle at `+0x068`, `+0x074`, `+0x204`, `+0x224`
 of Block `299`. -/
-def epochDirectionErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def epochDirectionErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s0 s : State) (msgPtr bufRef slot ptr : BitVec 64)
     (m : EpochDirectionPB) (bs : List (BitVec 8)) : SepProp :=
   ((s0.sp - 48#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗

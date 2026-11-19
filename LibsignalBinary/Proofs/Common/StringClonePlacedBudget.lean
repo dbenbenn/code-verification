@@ -21,11 +21,12 @@ public import LibsignalBinary.Heap.Iface
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Common.StringCloneFlat
-public import LibsignalBinary.Proofs.Common.StringClonePlaced
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.Common.StringCloneFlat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Common.StringClonePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 
 /-!
 # Placed Budget-Threaded `<String as Clone>::clone` Proofs
@@ -39,7 +40,7 @@ set_option autoImplicit false
 set_option maxRecDepth 2000000
 set_option linter.unusedSimpArgs false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.Common.StringClonePlacedBudget
 
@@ -49,10 +50,10 @@ open ProofLib.ProgramReflection
 open ProofLib.StdStartup (hasInstrs)
 open ProofLib.StdStartup.Stage1Internal (step_str64_perm)
 open CryptoVerification
-  (LibsignalHooks LibsignalPlacement LsBlockBound IsLsBlockProg lsmpl lsρ
-   libsignalSessionExterns withLsCodeLoaded withLsCl
-   subroutine_ok_withLsCodeLoaded_of_plain
-   ls_subroutine_ok_of_block ls_subroutine_ok_cl_of_plain ls_hook_ok)
+  (IsLsBlockProg LibsignalHooks LibsignalPlacement LsBlockBound
+   libsignalHookedExterns ls_hook_ok ls_subroutine_ok_cl_of_plain ls_subroutine_ok_of_block lsmpl
+   lsρ mem_libsignalSessionExterns_of_hooked subroutine_ok_withLsCodeLoaded_of_plain withLsCl
+   withLsCodeLoaded)
 open CryptoVerification.RustHeap
   (RustAlloc vecHeader vecU8 vecU8At allocHookStack LayoutOk)
 open CryptoVerification.LibsignalSessionRepr (VecGhost vecGhostAt)
@@ -1057,11 +1058,11 @@ theorem stringCloneBudget_hasInstrs_ok [LibsignalPlacement] {M : AllocCostModel}
     hShim hAlloc hMemcpy hlr_al
 
 private theorem ls_hook_ok_623 [LibsignalPlacement] {α : Type} {H : LibsignalHooks} {sym : String}
-    {spec : Spec α} (hmem : sym ∈ libsignalSessionExterns := by decide) (h : HookSat H sym spec) :
+    {spec : Spec α} (hmem : sym ∈ libsignalHookedExterns := by decide) (h : HookSat H sym spec) :
     subroutine_ok (lsProg_623 H) (lsρ sym) spec := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
   exact ls_hook_ok (prog := lsProg_623 H) (i := 623) (k := k)
-    (by rw [List.getElem?_eq_getElem hlt, hk]) h
+    (by rw [List.getElem?_eq_getElem hlt, hk]) h (hhooked := hmem)
 
 /-- Block-623 budget-threaded correctness of `<String as Clone>::clone`. -/
 theorem stringCloneBudget_blk623_ok [LibsignalPlacement]

@@ -10,25 +10,36 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1SpqrSendAuxR2
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptSegments
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak
-public import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
+import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliKitW1SpqrSendAuxR2
+public import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
+import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptSegments
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak
+import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInnerPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
 
 /-!
 # Decomposition of Guarded-Tight `W1` (`encrypt` `@109`) Exact Slot
@@ -41,7 +52,7 @@ unguarded credit core (`w1x_creditCore_Stmt`), and unguarded group core (`w1x_gr
 proves their parametric assembly.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -93,13 +104,13 @@ open LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
 
 /-- Exact `@109` `spqr::send::<Coins>` byte-slice envelope inside `ckx2_cliEncryptBinaryKitSlotEnvExact`
 (`rfl`-equal to the `let sendEnv` binding in `ckx2_cliEncryptBinaryKitSlotEnvExact`). -/
-def w1x_sendEnv109 (W : CliHooks) : SpqrSendBudgetEnv :=
+@[expose] def w1x_sendEnv109 (W : CliHooks) : SpqrSendBudgetEnv :=
   ckx2_SpqrSendCoinsOfDecodeFromPbBytesEnv W.C.F W.Q.K
     (fun _ => ckx2_DecodeStateTightEnv)
     (fun _ => StatesFromPbTightEnv)
 
 /-- Guard on `<SignalMessage>::new` ghost lengths under `ptext.length ≤ msgCapBytes` and `pqrMsg.length ≤ 64`. -/
-def w1x_SigGuard
+@[expose] def w1x_SigGuard
     (_r : SessionRecord (List (BitVec 8))) (_sess : Session (List (BitVec 8)))
     (_otr : OutgoingTripleRatchet (List (BitVec 8))) (_taken : SessionState (List (BitVec 8)))
     (g : SignalMessageNewGhost) : Prop :=
@@ -108,7 +119,7 @@ def w1x_SigGuard
     signalMessageNewSerLen uuidTryParse g ≤ w1SmSerCap
 
 /-- Guard on `<PreKeySignalMessage>::new` ghost lengths under `scopeKit` (`kyber ≤ 1569`) and `ptext ≤ msgCapBytes`. -/
-def w1x_PkCallGuard
+@[expose] def w1x_PkCallGuard
     (_r : SessionRecord (List (BitVec 8))) (_sess : Session (List (BitVec 8)))
     (_otr : OutgoingTripleRatchet (List (BitVec 8))) (_taken : SessionState (List (BitVec 8)))
     (call : PreKeyMsgNewCall) : Prop :=
@@ -117,7 +128,7 @@ def w1x_PkCallGuard
     call.model.serialized.length ≤ w1PkOutCap
 
 /-- Placed `WithStoresEncTightEnv` specialization on `(runFiles g.i, w1R.peer)` with `w1x_sendEnv109 W`. -/
-noncomputable def W1X_WithStoresEncTight [LibsignalPlacement]
+@[expose] def W1X_WithStoresEncTight [LibsignalPlacement]
     (W : CliHooks) (g : RunCall) (w1R : W1BinarySendParams) :
     List AllocEvent → Prop :=
   let F0 := runFiles g.i
@@ -143,29 +154,29 @@ noncomputable def W1X_WithStoresEncTight [LibsignalPlacement]
 
 /-- `CliPqxdhInputs`, `.send peerV` CLI parse, and `W1BinarySendDom` imply
 `PeerSpqrStateTight640 W.C.F W.Q.K w1R.x.F w1R.x.peer.val`. -/
-def w1x_guard_Stmt (W : CliHooks) : Prop :=
+@[expose] def w1x_guard_Stmt (W : CliHooks) : Prop :=
   ∀ (g : RunCall) (peerV : AddrV) (w1R : W1BinarySendParams),
     CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
     parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some (.send peerV) →
     W1BinarySendDom (.send peerV) g.i w1R →
     PeerSpqrStateTight640 W.C.F W.Q.K w1R.x.F w1R.x.peer.val
 
-def w1x_liftCredit_Stmt : Prop :=
+@[expose] def w1x_liftCredit_Stmt : Prop :=
   ∀ {M : AllocCostModel} [HasFineReallocCredit M] {G : Prop} {E : List AllocEvent → Prop}
     {c l p r : Nat},
     G → PhaseCreditSpec M E c l p r → PhaseCreditSpec M (fun evs => G → E evs) c l p r
 
-def w1x_liftGroup_Stmt : Prop :=
+@[expose] def w1x_liftGroup_Stmt : Prop :=
   ∀ {M : AllocCostModel} [HasFineGroupCredit M] {G : Prop} {E : List AllocEvent → Prop} {grpS : Nat},
     G → PhaseGroupSpec M E grpS → PhaseGroupSpec M (fun evs => G → E evs) grpS
 
 /-- Implication-guard lift for `PhaseCreditSpec` and `PhaseGroupSpec` over `fun evs => G → E evs`. -/
-def w1x_lift_Stmt : Prop :=
+@[expose] def w1x_lift_Stmt : Prop :=
   w1x_liftCredit_Stmt ∧ w1x_liftGroup_Stmt
 
 /-- Unguarded `CliEncryptSlotEnv` `@109` `PhaseCreditSpec` obligation under `CliPqxdhInputs`,
 `.send peerV` parse, `PeerSpqrStateTight640`, `w1R.repAlloc = A.repAlloc`, and `W1BinarySendDom`. -/
-def w1x_creditCore_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
+@[expose] def w1x_creditCore_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
   ∀ (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (w1R : W1BinarySendParams),
     CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
@@ -182,7 +193,7 @@ def w1x_creditCore_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
 
 /-- Unguarded `CliEncryptSlotEnv` `@109` `PhaseGroupSpec` obligation under `CliPqxdhInputs`,
 `.send peerV` parse, `PeerSpqrStateTight640`, `w1R.repAlloc = A.repAlloc`, and `W1BinarySendDom`. -/
-def w1x_groupCore_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
+@[expose] def w1x_groupCore_Stmt [LibsignalPlacement] (W : CliHooks) : Prop :=
   ∀ (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (w1R : W1BinarySendParams),
     CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →

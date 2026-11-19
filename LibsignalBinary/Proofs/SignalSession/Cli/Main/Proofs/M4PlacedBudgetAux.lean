@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3ErrTailPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4ErrPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4StepsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3ErrTailPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4ErrPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4StepsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -23,6 +23,15 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WP.Structural
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Entry, Over-Cap, and Post-`run` Helpers for `main_m4` (Block `617`)
@@ -32,7 +41,7 @@ import ProofLib.SepLogic.WPp
 (`M+0x5dc → lsmpl.base 579`), and post-`run` `Err` / `Ok` tails (`M+0x7a4`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false

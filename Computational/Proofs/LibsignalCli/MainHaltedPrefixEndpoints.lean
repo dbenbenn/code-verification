@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore
+public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.FSAEAD.CellForgery
 import Computational.Proofs.GameHop.GlobalHybrid
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.E2E.ComposedPrefixHelpers
 
 /-!
 # Session-Tracked Prefix Hybrid Endpoint Identities
@@ -22,7 +23,7 @@ import VCVio.EvalDist.Monad.Basic
 `bhE2EExpWithKiSessionTracked` with the `boolDist` between the two endpoints.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -110,7 +111,7 @@ theorem bhE2ELocalStartGenWithSessionTracked_const_eq {τ : Type} {S : SignalPqx
     | _ => cases kr2 <;> rfl
 
 /-- Every instance in `σ.insts` has challenge bit `b`. -/
-def BHAllInstsBit {S : SignalPqxdh.Setup} {ℓ : ℕ} (b : Bool) (σ : BHE2EDrvState S ℓ) : Prop :=
+@[expose] def BHAllInstsBit {S : SignalPqxdh.Setup} {ℓ : ℕ} (b : Bool) (σ : BHE2EDrvState S ℓ) : Prop :=
   ∀ d ∈ σ.insts, ∀ gs, d.gs = some gs → gs.b = b
 
 theorem bhAllInstsBit_empty {S : SignalPqxdh.Setup} {ℓ : ℕ} (b : Bool) :

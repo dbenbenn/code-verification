@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Basic-Block Step Lemmas for `encode<PolynomialEncoder> [local#3]` (Block `456`)
@@ -26,7 +27,7 @@ Defines budget-threaded placed contract propositions and proves `VmPreserved`-th
 steppers on CLI Block `456` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -70,25 +71,25 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. Budget-Threaded Placed Contract Propositions for Block `456` -/
 
-def EncodePolyEncoder1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyEncoder1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_456 H) (blkPl_456).base
     (withLsCodeLoaded lsmpl (encodePolyEncoderPinnedSpec A lim))
 
-def EncodePolyEncoder1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyEncoder1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_456 H) (blkPl_456).base
     (withLsCodeLoaded lsmpl (encodePolyEncoderSpec A lim))
 
-def EncodePolyEncoder1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyEncoder1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_456 H) (blkPl_456).base
     (withLsCodeLoaded lsmpl (encodePolyEncoderPinnedSpecX A lim))
 
-def EncodePolyEncoder1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyEncoder1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_456 H) (blkPl_456).base
@@ -96,22 +97,22 @@ def EncodePolyEncoder1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
 
 abbrev EncodePolyEncoder1PlacedPlacedOkX := @EncodePolyEncoder1PlacedOkX
 
-def EncodePolyEncoder1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyEncoder1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EncodePolyEncoder1PinnedPlacedOk A lim (Rust.withPanics ext)
 
-def EncodePolyEncoder1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyEncoder1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EncodePolyEncoder1PlacedOk A lim (Rust.withPanics ext)
 
-def EncodePolyEncoder1PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyEncoder1PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EncodePolyEncoder1PinnedPlacedOkX A lim (Rust.withPanics ext)
 
-def EncodePolyEncoder1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyEncoder1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   EncodePolyEncoder1PlacedOkX A lim (Rust.withPanics ext)

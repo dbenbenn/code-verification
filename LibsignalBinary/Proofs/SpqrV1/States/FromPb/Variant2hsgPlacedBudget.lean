@@ -9,19 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsaPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb0PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsbPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsgPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsaPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb0PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsbPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsgPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsa -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsg -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 2 (`HeaderSent`) — Part G
@@ -30,7 +40,7 @@ Relocatable Block-`333` `FreeOnlyEvs` error-branch exits (`+9152`, `+3348`) and 
 event envelopes for the `+9036 -> ret` continuation under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.longLine false
@@ -299,96 +309,6 @@ theorem v2hstop_branch_sendingEk_none_9152_of_sub_placed [LibsignalPlacement]
   exact SepWP.mono h9228 fun sf Pf _ _ ⟨hPf, _hvm, hspf, hcsf, htrf⟩ =>
     ⟨evs1 ++ evs2, hevs1.append hevs2,
      Entails.trans hPf (Entails.of_eq (by sep_ac_rfl)), hspf, hcsf, htrf⟩
-
-theorem v2hstop_branch_sendingEk_none_9152_of_dealloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hdealloc : HookSat (Rust.withPanics ext) spqrRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (st : M.σ) (s0 s : State) (out : BitVec 64)
-    (dk : List (BitVec 8)) (auth : ProtoAuthenticator)
-    (u8 u16 u24 u40 u48 u72 u80 pa1 pa2 : BitVec 64)
-    (w0 w8 w16 w24 w32 w40 w48 : BitVec 64)
-    (optDec : Option ProtoPolynomialDecoder) (d_w0 d_w8 d_w16 d_w24 d_w32 : BitVec 64)
-    (Rest : SepProp)
-    (hu48 : u48 = BitVec.ofNat 64 auth.rootKey.length)
-    (hu72 : u72 = BitVec.ofNat 64 auth.macKey.length)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = lsmpl.base 333 + 9152#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 2400#64)
-    (hx0 : s.readReg64 .x0 = pa2) (hx19 : s.readReg64 .x19 = out)
-    (hx22 : s.readReg64 .x22 = d_w0) (hx25 : s.readReg64 .x25 = u48)
-    (hx26 : s.readReg64 .x26 = u8) (htr : TraceCalleeSaved s s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        ((s0.sp - 2400#64 + 96#64) ↦₆₄ u24) ∗ ((s0.sp - 2400#64 + 152#64) ↦₆₄ u8) ∗
-        ((s0.sp - 2400#64 + 176#64) ↦₆₄ u16) ∗ ((s0.sp - 2400#64 + 184#64) ↦₆₄ pa2) ∗
-        ((s0.sp - 2400#64 + 200#64) ↦₆₄ u48) ∗ ((s0.sp - 2400#64 + 216#64) ↦₆₄ u40) ∗
-        ((s0.sp - 2400#64 + 224#64) ↦₆₄ u80) ∗ ((s0.sp - 2400#64 + 232#64) ↦₆₄ u72) ∗
-        memRegion (s0.sp - 2400#64 + 240#64) 736 ∗ v2hs_stack896ScratchRest (s0.sp - 2400#64) ∗
-        v4b_vecU8Heap A.repAlloc dk u8 u16 u24 ∗ vecU8Payload A.repAlloc u48 pa1 auth.rootKey ∗
-        vecU8Payload A.repAlloc u72 pa2 auth.macKey ∗
-        v1_optProtoPolyEncoderWordsAt (s0.sp - 2400#64 + 976#64) w0 w8 w16 w24 w32 w40 w48 ∗
-        v2hs_optProtoDecoderWordsAt (s0.sp - 2400#64 + 1032#64) d_w0 d_w8 d_w16 d_w24 d_w32 ∗
-        v2hs_optProtoDecoderHeap A.repAlloc optDec d_w0 d_w8 d_w16 d_w24 d_w32 ∗
-        memRegion (s0.sp - 2400#64 + 1072#64) 192 ∗
-        v2hs_ekSentWordsAt (s0.sp - 2400#64 + 1264#64) u48 pa1 u72 pa2 u8 u16 u24 u80 ∗
-        memRegion (s0.sp - 2400#64 + 1344#64) 960 ∗
-        statesFromPbSavedCells s0 ∗ memRegion out chunkedStatesSize ∗ A.pool lim st s ∗ Rest)
-      (fun sf Pf =>
-        ∃ evs, FreeOnlyEvs evs ∧
-          (Pf ⊢ resultChunkedStatesAt A.repAlloc (F := F) out (.error (.err .stateDecode)) ∗
-            A.pool lim (M.stepEvents evs st) sf ∗ Rest ∗ stackAt s0.sp statesFromPbStack) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace) :=
-  v2hstop_branch_sendingEk_none_9152_of_sub_placed
-    (v2hsc_sub_ok_dealloc_of_dealloc_placed hdealloc) st s0 s out dk auth
-    u8 u16 u24 u40 u48 u72 u80 pa1 pa2 w0 w8 w16 w24 w32 w40 w48
-    optDec d_w0 d_w8 d_w16 d_w24 d_w32 Rest
-    hu48 hu72 hsp0_align hpc hrun hsp hx0 hx19 hx22 hx25 hx26 htr
-
-theorem v2hstop_branch_sendingEk_none_9152_of_placedHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext)
-    (st : M.σ) (s0 s : State) (out : BitVec 64)
-    (dk : List (BitVec 8)) (auth : ProtoAuthenticator)
-    (u8 u16 u24 u40 u48 u72 u80 pa1 pa2 : BitVec 64)
-    (w0 w8 w16 w24 w32 w40 w48 : BitVec 64)
-    (optDec : Option ProtoPolynomialDecoder) (d_w0 d_w8 d_w16 d_w24 d_w32 : BitVec 64)
-    (Rest : SepProp)
-    (hu48 : u48 = BitVec.ofNat 64 auth.rootKey.length)
-    (hu72 : u72 = BitVec.ofNat 64 auth.macKey.length)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = lsmpl.base 333 + 9152#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 2400#64)
-    (hx0 : s.readReg64 .x0 = pa2) (hx19 : s.readReg64 .x19 = out)
-    (hx22 : s.readReg64 .x22 = d_w0) (hx25 : s.readReg64 .x25 = u48)
-    (hx26 : s.readReg64 .x26 = u8) (htr : TraceCalleeSaved s s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        ((s0.sp - 2400#64 + 96#64) ↦₆₄ u24) ∗ ((s0.sp - 2400#64 + 152#64) ↦₆₄ u8) ∗
-        ((s0.sp - 2400#64 + 176#64) ↦₆₄ u16) ∗ ((s0.sp - 2400#64 + 184#64) ↦₆₄ pa2) ∗
-        ((s0.sp - 2400#64 + 200#64) ↦₆₄ u48) ∗ ((s0.sp - 2400#64 + 216#64) ↦₆₄ u40) ∗
-        ((s0.sp - 2400#64 + 224#64) ↦₆₄ u80) ∗ ((s0.sp - 2400#64 + 232#64) ↦₆₄ u72) ∗
-        memRegion (s0.sp - 2400#64 + 240#64) 736 ∗ v2hs_stack896ScratchRest (s0.sp - 2400#64) ∗
-        v4b_vecU8Heap A.repAlloc dk u8 u16 u24 ∗ vecU8Payload A.repAlloc u48 pa1 auth.rootKey ∗
-        vecU8Payload A.repAlloc u72 pa2 auth.macKey ∗
-        v1_optProtoPolyEncoderWordsAt (s0.sp - 2400#64 + 976#64) w0 w8 w16 w24 w32 w40 w48 ∗
-        v2hs_optProtoDecoderWordsAt (s0.sp - 2400#64 + 1032#64) d_w0 d_w8 d_w16 d_w24 d_w32 ∗
-        v2hs_optProtoDecoderHeap A.repAlloc optDec d_w0 d_w8 d_w16 d_w24 d_w32 ∗
-        memRegion (s0.sp - 2400#64 + 1072#64) 192 ∗
-        v2hs_ekSentWordsAt (s0.sp - 2400#64 + 1264#64) u48 pa1 u72 pa2 u8 u16 u24 u80 ∗
-        memRegion (s0.sp - 2400#64 + 1344#64) 960 ∗
-        statesFromPbSavedCells s0 ∗ memRegion out chunkedStatesSize ∗ A.pool lim st s ∗ Rest)
-      (fun sf Pf =>
-        ∃ evs, FreeOnlyEvs evs ∧
-          (Pf ⊢ resultChunkedStatesAt A.repAlloc (F := F) out (.error (.err .stateDecode)) ∗
-            A.pool lim (M.stepEvents evs st) sf ∗ Rest ∗ stackAt s0.sp statesFromPbStack) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace) :=
-  v2hstop_branch_sendingEk_none_9152_of_sub_placed
-    (v2hsc_sub_ok_dealloc_of_placedHooks hA) st s0 s out dk auth
-    u8 u16 u24 u40 u48 u72 u80 pa1 pa2 w0 w8 w16 w24 w32 w40 w48
-    optDec d_w0 d_w8 d_w16 d_w24 d_w32 Rest
-    hu48 hu72 hsp0_align hpc hrun hsp hx0 hx19 hx22 hx25 hx26 htr
 
 theorem v2hstop_branch_sendingEk_none_9152_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -812,7 +732,7 @@ theorem fromPbDecEnv_append_freeOnly {pb : ProtoPolynomialDecoder}
     - when `<PolyEncoder>::from_pb` returns `.ok _` and `s.receivingCt1 = some pbDec`,
       either an early drop path (`EncoderFromPbEnv`) or `EncoderFromPbEnv` followed by
       `FromPbDecEnv (pbToProtoPolyDecoder pbDec)` (including trailing `FreeOnlyEvs` drops). -/
-def HeaderSentSomeEnc9036Env (s : V1State.Chunked.HeaderSent) (pbEnc : PolynomialEncoder)
+@[expose] def HeaderSentSomeEnc9036Env (s : V1State.Chunked.HeaderSent) (pbEnc : PolynomialEncoder)
     (evs : List AllocEvent) : Prop :=
   match fromPbResult (pbToProtoPolyEncoder pbEnc) with
   | .error _ => EncoderFromPbEnv (pbToProtoPolyEncoder pbEnc) evs
@@ -828,7 +748,7 @@ def HeaderSentSomeEnc9036Env (s : V1State.Chunked.HeaderSent) (pbEnc : Polynomia
 
 /-- Option-lifted `+9036 -> s0.x30` envelope indexed only by `s : V1State.Chunked.HeaderSent`
     (so callers before unpacking `s.sendingEk` can pass a single `List AllocEvent → Prop`). -/
-def HeaderSentSomeEncOptEnv (s : V1State.Chunked.HeaderSent) (evs : List AllocEvent) : Prop :=
+@[expose] def HeaderSentSomeEncOptEnv (s : V1State.Chunked.HeaderSent) (evs : List AllocEvent) : Prop :=
   match s.sendingEk with
   | none => evs = []
   | some pbEnc => HeaderSentSomeEnc9036Env s pbEnc evs
@@ -920,7 +840,7 @@ theorem fitsEnv_decoderAlloc_of_headerSentSomeEnc9036Env
 /-- Envelope-parametric pure-`SepWP` interface hypothesis for the `+9036 -> s0.x30`
     (`sendingEk = some pbEnc`) continuation of Variant 2 (`HeaderSent`) under
     `RustCliAllocBudget M`. -/
-def v2hstop_SomeEnc9036SepWPHypPlacedOfEnv [LibsignalPlacement]
+@[expose] def v2hstop_SomeEnc9036SepWPHypPlacedOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (ext : String → Option (State → State))
     (s : V1State.Chunked.HeaderSent) (Env : List AllocEvent → Prop) : Prop :=
@@ -983,7 +903,7 @@ abbrev v2hstop_SomeEnc9036SepWPHypPlaced [LibsignalPlacement]
 /-- Envelope-parametric `SepWPp` interface hypothesis for the `+9036 -> s0.x30`
     (`sendingEk = some pbEnc`) continuation of Variant 2 (`HeaderSent`) under
     `RustCliAllocBudget M`. -/
-def v2hstop_SomeEnc9036HypPlacedOfEnv [LibsignalPlacement]
+@[expose] def v2hstop_SomeEnc9036HypPlacedOfEnv [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (F : ShaCompress) (ext : String → Option (State → State))
     (s : V1State.Chunked.HeaderSent) (Env : List AllocEvent → Prop) : Prop :=
@@ -1059,24 +979,5 @@ theorem v2hstop_someEnc9036HypPlacedOfEnv_of_sepWP [LibsignalPlacement]
         w0 w8 w16 w24 w32 w40 w48 d_w0 d_w8 d_w16 d_w24 d_w32
         hcl hpts hdec hfits huc hdk hauth henc hu8 hu24 hu48 hu72 hu80 hrk
         hsp0 hpc hrun hsp hx0 hx8 hx9 hx10 hx19 hx21 hx22 hx23 hx25 hx26 hx27 hx28 htr)
-
-/-- Post-envelope weakening for `v2hstop_SomeEnc9036SepWPHypPlacedOfEnv`. -/
-theorem v2hstop_someEnc9036SepWPHypPlacedOfEnv_mono [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    {s : V1State.Chunked.HeaderSent} {Env₁ Env₂ : List AllocEvent → Prop}
-    (himp : ∀ evs, Env₁ evs → Env₂ evs)
-    (h : v2hstop_SomeEnc9036SepWPHypPlacedOfEnv M A lim F ext s Env₁) :
-    v2hstop_SomeEnc9036SepWPHypPlacedOfEnv M A lim F ext s Env₂ :=
-  fun st s0 sm out pbA u auth pbEnc u8 u16 u24 u40 u48 u72 u80 pa1 pa2
-      w0 w8 w16 w24 w32 w40 w48 d_w0 d_w8 d_w16 d_w24 d_w32
-      hcl hpts hdec hfits huc hdk hauth henc hu8 hu24 hu48 hu72 hu80 hrk
-      hsp0 hpc hrun hsp hx0 hx8 hx9 hx10 hx19 hx21 hx22 hx23 hx25 hx26 hx27 hx28 htr =>
-    SepWP.mono
-      (h st s0 sm out pbA u auth pbEnc u8 u16 u24 u40 u48 u72 u80 pa1 pa2
-        w0 w8 w16 w24 w32 w40 w48 d_w0 d_w8 d_w16 d_w24 d_w32
-        hcl hpts hdec hfits huc hdk hauth henc hu8 hu24 hu48 hu72 hu80 hrk
-        hsp0 hpc hrun hsp hx0 hx8 hx9 hx10 hx19 hx21 hx22 hx23 hx25 hx26 hx27 hx28 htr)
-      fun _sf _Pf _ _ ⟨⟨evs, henv, hPf⟩, hrest⟩ => ⟨⟨evs, himp evs henv, hPf⟩, hrest⟩
 
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsgPlacedBudget

@@ -9,8 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEnc
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEnc -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
 
 /-!
 # Evaluation of the Multi-Key Game Steps
@@ -19,7 +27,7 @@ Proves that `hmKeyC`, `hmEncPreC`, `encPostC`, and `hmForgeC` evaluate to `hmKey
 `HmEncCont.post`, and `hmForgeP`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -77,7 +85,7 @@ theorem foldr_ite_filter {α : Type} (p : α → Bool) (l : List α) :
 @[simp] theorem muStToValS_bad (S : Setup) (st : PrfHmacMuState) :
     (muStToValS S st).2.2.2 = st.bad := rfl
 
-def sidEqVal : sessionIdTy.denote → sessionIdTy.denote → Bool
+@[expose] def sidEqVal : sessionIdTy.denote → sessionIdTy.denote → Bool
   | .inl a, .inl b => (a.1 == b.1) && (a.2 == b.2)
   | .inr (.inl a), .inr (.inl b) => (a.1 == b.1) && (a.2 == b.2)
   | .inr (.inr (.inl a)), .inr (.inr (.inl b)) =>
@@ -86,7 +94,7 @@ def sidEqVal : sessionIdTy.denote → sessionIdTy.denote → Bool
       (a.1 == b.1) && ((a.2.1 == b.2.1) && (a.2.2 == b.2.2))
   | _, _ => false
 
-def muKeyIdEqVal : muKeyIdTy.denote → muKeyIdTy.denote → Bool
+@[expose] def muKeyIdEqVal : muKeyIdTy.denote → muKeyIdTy.denote → Bool
   | .inl x, .inl y => sidEqVal x y
   | .inr x, .inr y => x == y
   | _, _ => false

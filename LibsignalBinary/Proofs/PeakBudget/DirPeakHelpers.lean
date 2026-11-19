@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
 
 /-!
 # Auxiliary Bounds for CLI `Dir` Peak Live-Heap Proofs
@@ -22,7 +22,7 @@ Arithmetic, `HasFineReallocCredit`, and `PhaseCreditSpec` helpers for CLI `Dir` 
 - `Dir::put` / `Dir::put_str` `Vec<DirEntry>` (`48`-byte stride) growth and hit `.free` replacement.
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers
 
@@ -47,7 +47,7 @@ open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
 
 /-- The `j`-th `Vec<u8>` buffer capacity (`4096 * 2^j`) in `signal_session_io`'s doubling schedule
 (definitionally equal to `ReadLoopCommon.cliIoCap`). -/
-def cliIoCap (j : Nat) : Nat := 4096 * 2 ^ j
+@[expose] def cliIoCap (j : Nat) : Nat := 4096 * 2 ^ j
 
 theorem cliIoCap_zero : cliIoCap 0 = 4096 := rfl
 
@@ -87,7 +87,7 @@ theorem cliIoCap_le_fileCap {j : Nat} (hj : j ≤ 9) : cliIoCap j ≤ 2097152 :=
 
 /-- Index `j ∈ [0, K]` of the final doubling capacity `4096 * 2^j` reached on `r > 0` input bytes
 under cap `4096 * 2^K` (definitionally equal to `ReadLoopCommon.cliIoCapIdx`). -/
-def cliIoCapIdx : Nat → Nat → Nat
+@[expose] def cliIoCapIdx : Nat → Nat → Nat
   | 0, _ => 0
   | K + 1, r => if r ≤ cliIoCap K then cliIoCapIdx K r else K + 1
 
@@ -101,20 +101,20 @@ theorem cliIoCapIdx_le : ∀ (K r : Nat), cliIoCapIdx K r ≤ K
 
 /-- Ordered list of buffer capacities requested by `read_stdin` (`K = 8`) or `read_file` (`K = 9`)
 on an input of `r` bytes (definitionally equal to `ReadLoopCommon.cliIoReadCaps`). -/
-def cliIoReadCaps (K r : Nat) : List Nat :=
+@[expose] def cliIoReadCaps (K r : Nat) : List Nat :=
   if r = 0 then []
   else (List.range (cliIoCapIdx K r + 1)).map cliIoCap
 
 /-- Ordered `AllocEvent` tail emitted by `allocSeqPool.go` (`align = 1`) from previous capacity
 `prev` across remaining doubling capacities `cs`. -/
-def cliIoCapEventsGo : Nat → List Nat → List AllocEvent
+@[expose] def cliIoCapEventsGo : Nat → List Nat → List AllocEvent
   | _, [] => []
   | prev, c :: cs => rustReallocEvents prev c 1 ++ cliIoCapEventsGo c cs
 
 /-- Ordered `AllocEvent` list emitted by `signal_session_io::{read_stdin, read_file}` along
 `caps = cliIoReadCaps K r`: `[]` when `caps = []`, otherwise `rustAllocEvents c0 1` followed by
 `rustReallocEvents prev c 1` for each capacity doubling step. -/
-def cliIoCapEvents : List Nat → List AllocEvent
+@[expose] def cliIoCapEvents : List Nat → List AllocEvent
   | [] => []
   | c0 :: cs => rustAllocEvents c0 1 ++ cliIoCapEventsGo c0 cs
 
@@ -140,7 +140,7 @@ theorem rustReallocEvents_cliIoCap (i j : Nat) :
   simp [hge]
 
 /-- Sum of `2 * cliIoCap 0 + ... + 2 * cliIoCap j + (j + 1) * 9539`. -/
-def cliIoSmallCumBound : Nat → Nat
+@[expose] def cliIoSmallCumBound : Nat → Nat
   | 0 => 2 * cliIoCap 0 + 9539
   | j + 1 => cliIoSmallCumBound j + (2 * cliIoCap (j + 1) + 9539)
 
@@ -155,7 +155,7 @@ theorem cliIoSmallCumBound_mono {i j : Nat} (h : i ≤ j) :
 /-- Tight `cumSmall` bound for `read_file` / `read_stdin` when `131072 ≤ smallMaxReq M`:
 steps `0..5` (`4096 .. 131072`) use `2 * r + 9539`, and steps `≥ 6` (`≥ 262144`) charge only
 `largeMetaCost M ≤ 122`. -/
-def cliIoTightCumBound : Nat → Nat
+@[expose] def cliIoTightCumBound : Nat → Nat
   | 0 => 2 * cliIoCap 0 + 9539
   | j + 1 =>
     cliIoTightCumBound j +
@@ -179,7 +179,7 @@ theorem cliIoSmallCumBound_eight : cliIoSmallCumBound 8 = 4271963 := rfl
 
 /-- Forward-indexed doubling event sequence `[cliIoCap 0, ..., cliIoCap j]` matching
 `cliIoCapEvents ((List.range (j + 1)).map cliIoCap)`. -/
-def cliIoCapSeq : Nat → List AllocEvent
+@[expose] def cliIoCapSeq : Nat → List AllocEvent
   | 0 => rustAllocEvents (cliIoCap 0) 1
   | j + 1 => cliIoCapSeq j ++ rustReallocEvents (cliIoCap j) (cliIoCap (j + 1)) 1
 
@@ -224,12 +224,12 @@ theorem cliIoCapEvents_readCaps_pos {K r : Nat} (hr : 0 < r) :
   exact cliIoCapEvents_map_range (cliIoCapIdx K r)
 
 /-- Step-`j` `liveLarge` upper-bound increment along `cliIoCapSeq j`. -/
-def cliIoStepLiveBound (M : AllocCostModel) [HasFineReallocCredit M] (j : Nat) : Nat :=
+@[expose] def cliIoStepLiveBound (M : AllocCostModel) [HasFineReallocCredit M] (j : Nat) : Nat :=
   if cliIoCap j ≤ HasFineReallocCredit.smallMaxReq M then 0
   else HasFineReallocCredit.largeCost M (cliIoCap j)
 
 /-- Step-`j` `peakLarge` overlap bound along `cliIoCapSeq j`. -/
-def cliIoStepPeakBound : Nat → Nat
+@[expose] def cliIoStepPeakBound : Nat → Nat
   | 0 => cliIoCap 0 + 8195
   | j + 1 => (cliIoCap j + 8195) + (cliIoCap (j + 1) + 8195)
 
@@ -439,130 +439,6 @@ theorem stepEvents_cliIoReadStdin_uncond (M : AllocCostModel) [HasFineReallocCre
       exact cliIoStepPeakBound_mono hj
     exact ⟨by omega, by omega, by omega⟩
 
-/-- Every `read_file` doubling capacity (`j ≤ 9`) is bounded by `2 MiB` (`2,097,152` bytes). -/
-theorem cliIoFile_cap_le_twoMiB {j : Nat} (hj : j ≤ 9) :
-    cliIoCap j ≤ 2097152 :=
-  cliIoCap_le_fileCap hj
-
-/-- For `Dir.changed` with `cap ≤ 64`, `rawVecNewCap 4 cap ≤ 128`, so `newCap * 48 ≤ 6144`. -/
-theorem growOneDir_newBytes_le {cap : Nat} (hcap : cap ≤ 64) :
-    rawVecNewCap 4 cap * 48 ≤ 6144 := by
-  have hnew : rawVecNewCap 4 cap ≤ 128 := by
-    unfold rawVecNewCap
-    omega
-  omega
-
-/-- Single-step `HasFineReallocCredit` bound for `rustAllocEvents req al` (`al ≤ 16`, `0 < req`)
-when `req ≤ smallMaxReq M` and `smallAllocCost M req ≤ 2 * req + 9539`. -/
-theorem stepEvents_rustAlloc_small_aff (M : AllocCostModel) [HasFineReallocCredit M]
-    {req al : Nat} (st : M.σ)
-    (hal : al ≤ 16) (hpos : 0 < req) (hle : req ≤ HasFineReallocCredit.smallMaxReq M)
-    (haff : HasFineReallocCredit.smallAllocCost M req ≤ 2 * req + 9539) :
-    let st' := M.stepEvents (rustAllocEvents req al) st
-    HasFineReallocCredit.cumSmall st' ≤ HasFineReallocCredit.cumSmall st + (2 * req + 9539) ∧
-    HasFineReallocCredit.liveLarge st' ≤ HasFineReallocCredit.liveLarge st ∧
-    HasFineReallocCredit.peakLarge st' ≤ HasFineReallocCredit.peakLarge st := by
-  have h := stepEvents_rustAlloc_small M st hal hpos hle
-  dsimp only at h ⊢
-  exact ⟨Nat.le_trans h.1 (Nat.add_le_add_left haff _), h.2.1, h.2.2⟩
-
-/-- Single-step `HasFineReallocCredit` bound for `allocBytes1Events bs` when
-`bs.length ≤ smallMaxReq M` (`Δlive = 0, Δpeak = 0`). -/
-theorem stepEvents_allocBytes1_small_aff (M : AllocCostModel) [HasFineReallocCredit M]
-    (bs : List (BitVec 8)) (st : M.σ)
-    (hle : bs.length ≤ HasFineReallocCredit.smallMaxReq M)
-    (haff : ∀ r ≤ HasFineReallocCredit.smallMaxReq M,
-      HasFineReallocCredit.smallAllocCost M r ≤ 2 * r + 9539) :
-    let evs := if bs.length = 0 then ([] : List AllocEvent) else rustAllocEvents bs.length 1
-    let st' := M.stepEvents evs st
-    HasFineReallocCredit.cumSmall st' ≤
-      HasFineReallocCredit.cumSmall st + (2 * bs.length + 9539) ∧
-    HasFineReallocCredit.liveLarge st' ≤ HasFineReallocCredit.liveLarge st ∧
-    HasFineReallocCredit.peakLarge st' ≤ HasFineReallocCredit.peakLarge st := by
-  dsimp only
-  split
-  · rw [M.stepEvents_nil]
-    exact ⟨Nat.le_add_right _ _, Nat.le_refl _, Nat.le_refl _⟩
-  · rename_i hne
-    exact stepEvents_rustAlloc_small_aff M st (al := 1) (by decide) (by omega) hle (haff _ hle)
-
-/-- Single-step `HasFineReallocCredit` bound for `allocBytes1Events bs` for arbitrary
-`bs.length ≤ maxBytes` (covering both small `≤ smallMaxReq M` and large `> smallMaxReq M`). -/
-theorem stepEvents_allocBytes1_any_aff (M : AllocCostModel) [HasFineReallocCredit M]
-    (bs : List (BitVec 8)) {maxBytes : Nat} (st : M.σ)
-    (hmax : bs.length ≤ maxBytes)
-    (hSmallAff : ∀ r ≤ HasFineReallocCredit.smallMaxReq M,
-      HasFineReallocCredit.smallAllocCost M r ≤ 2 * r + 9539)
-    (hLargeAff : ∀ r, HasFineReallocCredit.smallMaxReq M < r →
-      HasFineReallocCredit.largeCost M r ≤ r + 8195)
-    (hMeta : HasFineReallocCredit.largeMetaCost M ≤ 122) :
-    let evs := if bs.length = 0 then ([] : List AllocEvent) else rustAllocEvents bs.length 1
-    let st' := M.stepEvents evs st
-    HasFineReallocCredit.cumSmall st' ≤
-      HasFineReallocCredit.cumSmall st + (2 * maxBytes + 9539) ∧
-    HasFineReallocCredit.liveLarge st' ≤
-      HasFineReallocCredit.liveLarge st + (maxBytes + 8195) ∧
-    HasFineReallocCredit.peakLarge st' ≤
-      max (HasFineReallocCredit.peakLarge st)
-        (HasFineReallocCredit.liveLarge st + (maxBytes + 8195)) := by
-  dsimp only
-  split
-  · rw [M.stepEvents_nil]
-    exact ⟨Nat.le_add_right _ _, Nat.le_add_right _ _, Nat.le_max_left _ _⟩
-  · rename_i hne
-    by_cases hsm : bs.length ≤ HasFineReallocCredit.smallMaxReq M
-    · have h := stepEvents_rustAlloc_small_aff M st (al := 1) (by decide) (by omega) hsm
-        (hSmallAff _ hsm)
-      dsimp only at h
-      refine ⟨by omega, by omega, ?_⟩
-      exact Nat.le_trans h.2.2 (Nat.le_max_left _ _)
-    · have hgt : HasFineReallocCredit.smallMaxReq M < bs.length := by omega
-      have h := stepEvents_rustAlloc_large M st (al := 1) (by decide) hgt
-      have hlc := hLargeAff bs.length hgt
-      dsimp only at h
-      refine ⟨by omega, by omega, ?_⟩
-      have hpk := h.2.2
-      omega
-
-/-- `GrowOneDir` (`rawVecGrowEvents 48 4 8 cap`) `HasFineReallocCredit` bound when `cap.toNat ≤ 64`
-and `6144 ≤ smallMaxReq M` (`Δlive = 0, Δpeak = 0`, `Δcum ≤ 21827`). -/
-theorem stepEvents_growOneDir_small (M : AllocCostModel) [HasFineReallocCredit M]
-    (cap : BitVec 64) (st : M.σ)
-    (hcap : cap.toNat ≤ 64)
-    (hsm6144 : 6144 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hSmallAff : ∀ r ≤ HasFineReallocCredit.smallMaxReq M,
-      HasFineReallocCredit.smallAllocCost M r ≤ 2 * r + 9539 ∧
-      HasFineReallocCredit.smallReallocCost M r ≤ 2 * r + 9539) :
-    let st' := M.stepEvents (rawVecGrowEvents 48 4 8 cap) st
-    HasFineReallocCredit.cumSmall st' ≤ HasFineReallocCredit.cumSmall st + 21827 ∧
-    HasFineReallocCredit.liveLarge st' ≤ HasFineReallocCredit.liveLarge st ∧
-    HasFineReallocCredit.peakLarge st' ≤ HasFineReallocCredit.peakLarge st := by
-  have hnew_le : rawVecNewCap 4 cap.toNat * 48 ≤ 6144 := growOneDir_newBytes_le hcap
-  have hnew_ge : 192 ≤ rawVecNewCap 4 cap.toNat * 48 := by
-    unfold rawVecNewCap
-    omega
-  unfold rawVecGrowEvents
-  dsimp only
-  split
-  · have h192_le : 4 * 48 ≤ HasFineReallocCredit.smallMaxReq M := by omega
-    have h := stepEvents_rustAlloc_small M st (req := 4 * 48) (al := 8)
-      (by decide) (by decide) h192_le
-    have haff := (hSmallAff (4 * 48) h192_le).1
-    dsimp only at h
-    exact ⟨by omega, h.2.1, h.2.2⟩
-  · rename_i hne0
-    have hpos_cap : 0 < cap.toNat := by
-      exact Nat.pos_of_ne_zero fun ht => hne0 (BitVec.eq_of_toNat_eq ht)
-    have hold_pos : 0 < cap.toNat * 48 := by omega
-    have hold_le : cap.toNat * 48 ≤ HasFineReallocCredit.smallMaxReq M := by omega
-    have hnew_sm : rawVecNewCap 4 cap.toNat * 48 ≤ HasFineReallocCredit.smallMaxReq M := by omega
-    have h := stepEvents_rustRealloc_small_small M st
-      (old := cap.toNat * 48) (new := rawVecNewCap 4 cap.toNat * 48) (al := 8)
-      (by decide) (by omega) hold_pos hold_le (by omega) hnew_sm
-    have haff := (hSmallAff (rawVecNewCap 4 cap.toNat * 48) hnew_sm).2
-    dsimp only at h
-    exact ⟨by omega, h.2.1, h.2.2⟩
-
 /-- Tight `HasFineReallocCredit` bound on `cliIoCapSeq j` (`Δcum ≤ cliIoTightCumBound j`) when
 `131072 ≤ smallMaxReq M < 262144` (matching `fineCostModel`, where `smallMaxReq = 134128`). -/
 theorem stepEvents_cliIoCapSeq_tight (M : AllocCostModel) [HasFineReallocCredit M]
@@ -750,44 +626,6 @@ theorem req_align_cliIoReadCaps (K r : Nat) :
     obtain ⟨hreq, hal⟩ := req_align_cliIoCapSeq (cliIoCapIdx K r) ev hev
     exact ⟨Nat.le_trans hreq (cliIoCap_mono (cliIoCapIdx_le K r)), hal⟩
 
-/-- Unconditional `PhaseCreditSpec` for `cliIoCapSeq j`. -/
-theorem phaseCreditSpec_cliIoCapSeq_uncond {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (j : Nat) :
-    PhaseCreditSpec M (· = cliIoCapSeq j)
-      (cliIoSmallCumBound j) (cliIoStepLiveBound M j) (cliIoStepPeakBound j) (cliIoCap j) where
-  req_align := by
-    rintro _ rfl
-    exact req_align_cliIoCapSeq j
-  credit_le := by
-    rintro st0 _ rfl
-    exact stepEvents_cliIoCapSeq_uncond M hM.hSmallAff hM.hLargeAff hM.hMeta st0 j
-
-/-- Over-cap error cancellation: `cliIoCapSeq j ++ rustDeallocEvents (cliIoCap j) 1` leaves
-`Δlive = 0` unconditionally across all `smallMaxReq M` regimes. -/
-theorem phaseCreditSpec_cliIoCapSeq_dealloc_cancel {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (j : Nat) :
-    PhaseCreditSpec M
-      (ConcatEnv (· = cliIoCapSeq j) (· = rustDeallocEvents (cliIoCap j) 1))
-      (cliIoSmallCumBound j) 0 (cliIoStepPeakBound j) (cliIoCap j) := by
-  by_cases hsm : cliIoCap j ≤ HasFineReallocCredit.smallMaxReq M
-  · have hw :
-        PhaseCreditSpec M (· = cliIoCapSeq j)
-          (cliIoSmallCumBound j) (0 + 0) (cliIoStepPeakBound j) (cliIoCap j) := by
-      have h0 := phaseCreditSpec_cliIoCapSeq_uncond hM j
-      unfold cliIoStepLiveBound at h0
-      simpa [hsm] using h0
-    exact hw.concat_dealloc_cancel (DeallocCreditSpec.free_small M (by decide) hsm)
-  · have hgt : HasFineReallocCredit.smallMaxReq M < cliIoCap j := by omega
-    have hw :
-        PhaseCreditSpec M (· = cliIoCapSeq j)
-          (cliIoSmallCumBound j)
-          (0 + HasFineReallocCredit.largeCost M (cliIoCap j))
-          (cliIoStepPeakBound j) (cliIoCap j) := by
-      have h0 := phaseCreditSpec_cliIoCapSeq_uncond hM j
-      unfold cliIoStepLiveBound at h0
-      simpa [hsm] using h0
-    exact hw.concat_dealloc_cancel (DeallocCreditSpec.free_large M (by decide) hgt)
-
 /-- Unconditional `PhaseCreditSpec` for `cliIoCapEvents (cliIoReadCaps 9 r)` (`read_file`, `≤ 2 MiB`). -/
 theorem phaseCreditSpec_cliIoReadFile_uncond {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (r : Nat) :
@@ -798,18 +636,6 @@ theorem phaseCreditSpec_cliIoReadFile_uncond {M : AllocCostModel} [HasFineReallo
     exact req_align_cliIoReadCaps 9 r
   credit_le := by
     rintro st0 _ rfl
-    exact stepEvents_cliIoReadFile_uncond M hM.hSmallAff hM.hLargeAff hM.hMeta r st0
-
-/-- Existential-`r` `PhaseCreditSpec` for `∃ r, evs = cliIoCapEvents (cliIoReadCaps 9 r)`. -/
-theorem phaseCreditSpec_cliIoReadFile_anyR_uncond {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) :
-    PhaseCreditSpec M (fun evs => ∃ r, evs = cliIoCapEvents (cliIoReadCaps 9 r))
-      8475806 2105347 3162118 2097152 where
-  req_align := by
-    rintro _ ⟨r, rfl⟩
-    exact req_align_cliIoReadCaps 9 r
-  credit_le := by
-    rintro st0 _ ⟨r, rfl⟩
     exact stepEvents_cliIoReadFile_uncond M hM.hSmallAff hM.hLargeAff hM.hMeta r st0
 
 /-- Tight `PhaseCreditSpec` (`Δcum = 573,818`) for `cliIoCapEvents (cliIoReadCaps 9 r)` when
@@ -877,29 +703,6 @@ private theorem step_small_or_free_aff {M : AllocCostModel} [HasFineReallocCredi
       have hsr := hM.smallRealloc_le hnew_le
       omega
 
-theorem stepEvents_bounded_small {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {maxReq : Nat} (hsm : maxReq ≤ HasFineReallocCredit.smallMaxReq M) :
-    ∀ {evs : List AllocEvent},
-      (∀ ev ∈ evs, eventStepReq ev ≤ maxReq ∧ eventStepAlign ev ≤ 16) →
-      ∀ (st0 : M.σ),
-        let st' := M.stepEvents evs st0
-        HasFineReallocCredit.cumSmall st' ≤
-          HasFineReallocCredit.cumSmall st0 + evs.length * (2 * maxReq + 9539) ∧
-        HasFineReallocCredit.liveLarge st' ≤ HasFineReallocCredit.liveLarge st0 ∧
-        HasFineReallocCredit.peakLarge st' ≤ HasFineReallocCredit.peakLarge st0
-  | [], _, st0 => by
-    simp [AllocCostModel.stepEvents_nil]
-  | ev :: evs, h, st0 => by
-    obtain ⟨hreq, hal⟩ := h ev List.mem_cons_self
-    have htail : ∀ e ∈ evs, eventStepReq e ≤ maxReq ∧ eventStepAlign e ≤ 16 :=
-      fun e he => h e (List.mem_cons_of_mem _ he)
-    obtain ⟨hc₁, hl₁, hp₁⟩ := step_small_or_free_aff hM st0 hsm hreq hal
-    obtain ⟨hc₂, hl₂, hp₂⟩ := stepEvents_bounded_small hM hsm htail (M.step ev st0)
-    dsimp only at hc₁ hl₁ hp₁ hc₂ hl₂ hp₂ ⊢
-    rw [AllocCostModel.stepEvents_cons, List.length_cons, Nat.add_one_mul]
-    set C := 2 * maxReq + 9539
-    exact ⟨by omega, Nat.le_trans hl₂ hl₁, Nat.le_trans hp₂ hp₁⟩
-
 theorem stepEvents_bounded_any {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) {maxReq : Nat} :
     ∀ {evs : List AllocEvent},
@@ -932,24 +735,6 @@ theorem stepEvents_bounded_any {M : AllocCostModel} [HasFineReallocCredit M]
     set KL := evs.length * L
     exact ⟨by omega, by omega, by omega⟩
 
-/-- Small-regime `PhaseCreditSpec` (`Δlive = 0, Δpeak = 0`) for any bounded-count, bounded-request
-envelope (`maxReq ≤ smallMaxReq M`), such as `Decimal`, `Path`, or `AddressText`. -/
-theorem phaseCreditSpec_of_bounded_small {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {Env : List AllocEvent → Prop} {maxCount maxReq : Nat}
-    (hsm : maxReq ≤ HasFineReallocCredit.smallMaxReq M)
-    (hb : ∀ evs, Env evs →
-      evs.length ≤ maxCount ∧ ∀ ev ∈ evs, eventStepReq ev ≤ maxReq ∧ eventStepAlign ev ≤ 16) :
-    PhaseCreditSpec M Env (maxCount * (2 * maxReq + 9539)) 0 0 maxReq where
-  req_align evs hE := (hb evs hE).2
-  credit_le st0 {evs} hE := by
-    obtain ⟨hlen, hra⟩ := hb evs hE
-    obtain ⟨hc, hl, hp⟩ := stepEvents_bounded_small hM hsm hra st0
-    have hmul : evs.length * (2 * maxReq + 9539) ≤ maxCount * (2 * maxReq + 9539) :=
-      Nat.mul_le_mul_right _ hlen
-    exact ⟨Nat.le_trans hc (Nat.add_le_add_left hmul _),
-      by simpa using hl,
-      Nat.le_trans hp (Nat.le_max_left _ _)⟩
-
 /-- Regime-uniform `PhaseCreditSpec` (zero threshold assumptions on `smallMaxReq M`) for any
 bounded-count, bounded-request envelope (`Decimal`, `Path`, `AddressText`, `BoundedRustEvs`). -/
 theorem phaseCreditSpec_of_bounded_any {M : AllocCostModel} [HasFineReallocCredit M]
@@ -972,109 +757,6 @@ theorem phaseCreditSpec_of_bounded_any {M : AllocCostModel} [HasFineReallocCredi
     refine ⟨Nat.le_trans hc (Nat.add_le_add_left hmul_c _),
       Nat.le_trans hl (Nat.add_le_add_left hmul_l _), ?_⟩
     exact Nat.le_trans hp (max_le_max (Nat.le_refl _) (Nat.add_le_add_left hmul_l _))
-
-/-- Mirror of `SpecBudget.allocBytes1Events` (`rfl`-equal). -/
-def allocBytes1Evs (bs : List (BitVec 8)) : List AllocEvent :=
-  if bs.length = 0 then [] else rustAllocEvents bs.length 1
-
-theorem req_align_allocBytes1Evs (bs : List (BitVec 8)) {maxBytes : Nat}
-    (hmax : bs.length ≤ maxBytes) :
-    ∀ ev ∈ allocBytes1Evs bs, eventStepReq ev ≤ maxBytes ∧ eventStepAlign ev ≤ 16 := by
-  unfold allocBytes1Evs
-  split
-  · intro ev hev; nomatch hev
-  · intro ev hev
-    unfold rustAllocEvents at hev
-    split at hev <;> rw [List.mem_singleton] at hev <;> subst hev <;>
-      simp only [eventStepReq, eventStepAlign] <;> omega
-
-/-- Small-regime `PhaseCreditSpec` for `allocBytes1Evs bs` (`bs.length ≤ maxBytes ≤ smallMaxReq M`). -/
-theorem phaseCreditSpec_allocBytes1_small {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (bs : List (BitVec 8)) {maxBytes : Nat}
-    (hmax : bs.length ≤ maxBytes) (hsm : maxBytes ≤ HasFineReallocCredit.smallMaxReq M) :
-    PhaseCreditSpec M (· = allocBytes1Evs bs) (2 * maxBytes + 9539) 0 0 maxBytes where
-  req_align := by
-    rintro _ rfl
-    exact req_align_allocBytes1Evs bs hmax
-  credit_le := by
-    rintro st0 _ rfl
-    unfold allocBytes1Evs
-    have hbs_sm : bs.length ≤ HasFineReallocCredit.smallMaxReq M := Nat.le_trans hmax hsm
-    have h := stepEvents_allocBytes1_small_aff M bs st0 hbs_sm (fun _ hr => hM.smallAlloc_le hr)
-    dsimp only at h
-    exact ⟨by omega, by omega, Nat.le_trans h.2.2 (Nat.le_max_left _ _)⟩
-
-/-- Regime-uniform `PhaseCreditSpec` for `allocBytes1Evs bs` (`bs.length ≤ maxBytes`, any `smallMaxReq M`). -/
-theorem phaseCreditSpec_allocBytes1_any {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (bs : List (BitVec 8)) {maxBytes : Nat}
-    (hmax : bs.length ≤ maxBytes) :
-    PhaseCreditSpec M (· = allocBytes1Evs bs)
-      (2 * maxBytes + 9539) (maxBytes + 8195) (maxBytes + 8195) maxBytes where
-  req_align := by
-    rintro _ rfl
-    exact req_align_allocBytes1Evs bs hmax
-  credit_le := by
-    rintro st0 _ rfl
-    unfold allocBytes1Evs
-    exact stepEvents_allocBytes1_any_aff M bs st0 hmax
-      (fun _ hr => hM.smallAlloc_le hr) hM.hLargeAff hM.hMeta
-
-theorem req_align_growOneDir (cap : BitVec 64) (hcap : cap.toNat ≤ 64) :
-    ∀ ev ∈ rawVecGrowEvents 48 4 8 cap, eventStepReq ev ≤ 6144 ∧ eventStepAlign ev ≤ 16 := by
-  have hnew_le : rawVecNewCap 4 cap.toNat * 48 ≤ 6144 := growOneDir_newBytes_le hcap
-  have hnew_ge : 192 ≤ rawVecNewCap 4 cap.toNat * 48 := by
-    unfold rawVecNewCap
-    omega
-  unfold rawVecGrowEvents
-  split
-  · intro ev hev
-    unfold rustAllocEvents at hev
-    split at hev <;> rw [List.mem_singleton] at hev <;> subst hev <;>
-      simp only [eventStepReq, eventStepAlign] <;> decide
-  · intro ev hev
-    unfold rustReallocEvents at hev
-    have h8_le : 8 ≤ rawVecNewCap 4 cap.toNat * 48 := by omega
-    have h8_16 : (8 : Nat) ≤ 16 := by decide
-    simp only [h8_16, h8_le, and_self, ↓reduceIte, List.mem_singleton] at hev
-    subst hev
-    simp only [eventStepReq, eventStepAlign]
-    exact ⟨hnew_le, by decide⟩
-
-/-- Small-regime `PhaseCreditSpec` for `GrowOneDir` (`rawVecGrowEvents 48 4 8 cap`, `cap ≤ 64`,
-`6144 ≤ smallMaxReq M` gives `Δcum = 21827`, `Δlive = 0`, `Δpeak = 0`). -/
-theorem phaseCreditSpec_growOneDir_small {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (cap : BitVec 64)
-    (hcap : cap.toNat ≤ 64) (hsm : 6144 ≤ HasFineReallocCredit.smallMaxReq M) :
-    PhaseCreditSpec M (· = rawVecGrowEvents 48 4 8 cap) 21827 0 0 6144 where
-  req_align := by
-    rintro _ rfl
-    exact req_align_growOneDir cap hcap
-  credit_le := by
-    rintro st0 _ rfl
-    obtain ⟨hc, hl, hp⟩ := stepEvents_growOneDir_small M cap st0 hcap hsm hM.hSmallAff
-    exact ⟨hc, by omega, Nat.le_trans hp (Nat.le_max_left _ _)⟩
-
-/-- Regime-uniform `PhaseCreditSpec` for `GrowOneDir` (`rawVecGrowEvents 48 4 8 cap`, `cap ≤ 64`,
-giving `Δcum = 21827`, `Δlive = 14339`, `Δpeak = 14339`). -/
-theorem phaseCreditSpec_growOneDir_any {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (cap : BitVec 64) (hcap : cap.toNat ≤ 64) :
-    PhaseCreditSpec M (· = rawVecGrowEvents 48 4 8 cap) 21827 14339 14339 6144 := by
-  have hb : ∀ evs, evs = rawVecGrowEvents 48 4 8 cap →
-      evs.length ≤ 1 ∧ ∀ ev ∈ evs, eventStepReq ev ≤ 6144 ∧ eventStepAlign ev ≤ 16 := by
-    rintro _ rfl
-    refine ⟨?_, req_align_growOneDir cap hcap⟩
-    have hnew_ge : 192 ≤ rawVecNewCap 4 cap.toNat * 48 := by unfold rawVecNewCap; omega
-    unfold rawVecGrowEvents
-    split
-    · unfold rustAllocEvents
-      split <;> simp
-    · unfold rustReallocEvents
-      have h8_le : 8 ≤ rawVecNewCap 4 cap.toNat * 48 := by omega
-      have h8_16 : (8 : Nat) ≤ 16 := by decide
-      simp only [h8_16, h8_le, and_self, ↓reduceIte, List.length_singleton]
-      exact Nat.le_refl 1
-  have h0 := phaseCreditSpec_of_bounded_any hM (maxCount := 1) (maxReq := 6144) hb
-  simpa using h0
 
 /-- Parametric `maxEntries` `eventStepReq` / `eventStepAlign` bound for `GrowOneDir`
 (`rawVecGrowEvents 48 4 8 cap`, `cap.toNat ≤ maxEntries`). -/
@@ -1133,7 +815,7 @@ theorem phaseCreditSpec_growOneDir_of_le {M : AllocCostModel} [HasFineReallocCre
   simpa using h0
 
 /-- Regime-aware `liveLarge` increment of a buffer of capacity `req` (`0` if small, `largeCost M req` if large). -/
-def optLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
+@[expose] def optLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
   if req ≤ HasFineReallocCredit.smallMaxReq M then 0 else HasFineReallocCredit.largeCost M req
 
 theorem optLargeLive_le {M : AllocCostModel} [HasFineReallocCredit M]

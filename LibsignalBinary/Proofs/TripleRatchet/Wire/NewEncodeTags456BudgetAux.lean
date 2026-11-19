@@ -11,15 +11,17 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags456
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123Budget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags456 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123BudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<SignalMessage>::new` Segment 2b Helpers & Tags 4, 6
@@ -29,7 +31,7 @@ sequencing (`seq_noPanic_state_placed`), and relocatable `[LibsignalPlacement]` 
 segment lemmas (`0` allocations) for encoding tag 4 (`+0x278 → +0x2e0`) and tag 6 (`+0x378 → +0x3dc`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

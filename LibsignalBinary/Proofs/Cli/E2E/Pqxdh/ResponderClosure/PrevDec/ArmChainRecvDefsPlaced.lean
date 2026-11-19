@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 
@@ -21,13 +21,13 @@ Defines `overDecRecvPostMergeHeapPlaced` and the `[LibsignalPlacement]` Segment 
 `OverDecRecvSegBPlacedStmt` (`+0x2310 → +0x2160`) on `lsProg_518 ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
-open Arm64 ProofLib ProofLib.ObjectLoad SepProp
+open Arm64 ProofLib SepProp
 open CryptoGames CryptoGames.LibsignalSession
 open CryptoVerification CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
@@ -40,7 +40,7 @@ open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3
 open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Placed post-`merge<Chain>` heap assertion at `+0x2310` in the tag-7 arm. -/
-def overDecRecvPostMergeHeapPlaced (g : OverDecG) (rest : List (BitVec 8)) (v : SSGQ) (c : ChainG) :
+@[expose] def overDecRecvPostMergeHeapPlaced (g : OverDecG) (rest : List (BitVec 8)) (v : SSGQ) (c : ChainG) :
     SepProp :=
   overPrevElemRest g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗
     ((g.q + 0xbe8#64) ↦₆₄ (g.q + 0x920#64)) ∗
@@ -54,7 +54,7 @@ def overDecRecvPostMergeHeapPlaced (g : OverDecG) (rest : List (BitVec 8)) (v : 
 
 /-- Placed Segment B contract (`(blkPl_518).base + 0x2310 → +0x2160`) for the tag-7
 (`receiver_chains`) decode arm on `lsProg_518 ext`. -/
-def OverDecRecvSegBPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverDecRecvSegBPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (g : OverDecG) (v : SSGQ) (c : ChainG) (rest : List (BitVec 8)),
     (GenFieldQ.base (.recv c)).Ok →

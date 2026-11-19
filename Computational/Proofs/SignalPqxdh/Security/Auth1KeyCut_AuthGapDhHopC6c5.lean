@@ -9,28 +9,44 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c3
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c4
-public import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c4
+import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC3b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c4
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB3
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c5 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2b
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC3b -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6b
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c3
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c4
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC4
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 
 /-!
 # One-Key `Auth` Post-Win Freezing and `G3 -> G3.5` Simulation Bound
@@ -39,7 +55,7 @@ Post-win freezing of `pqxdhAuthSendLatchedStageImpl1Key` and assembled `G3 -> G3
 bounds for one-key `Auth` adversaries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 open Classical SignalPqxdh SignalPqxdh.Security OracleSpec OracleComp MeasureTheory
@@ -144,7 +160,7 @@ theorem evalDist_simulateQ_sendLatchedStage_eq_of_hasWonAuth_both1Key
       hAbEq]
 
 /-- One-key `.g3` `AuthSendLatchedState` oracle frozen once `hasWonAuth` holds. -/
-def pqxdhAuthSendLatchedFrozenG3Impl1Key (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthSendLatchedFrozenG3Impl1Key (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthSendLatchedState S) ProbComp) :=
   freezeImpl (fun s : AuthSendLatchedState S => s.hyb.base.hasWonAuth)
     (fun _ => .noneResp) (pqxdhAuthSendLatchedStageImpl1Key .g3 S P)

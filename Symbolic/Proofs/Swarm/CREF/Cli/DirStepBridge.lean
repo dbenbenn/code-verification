@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
 
 /-!
@@ -19,7 +19,7 @@ Relates `InputsFor` on encoded party directories to `pqInputs`, `pqSendInputs`, 
 and proves `PqDirInv` preservation across `CliTurn.after` on reject and same-key-set accept steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

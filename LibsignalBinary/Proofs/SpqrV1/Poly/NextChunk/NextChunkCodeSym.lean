@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
-import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
 import ProofLib.GenPlacedFetches
-public import LibsignalBinary.Proofs.Placed.GenLsBlock -- shake: keep
+import LibsignalBinary.Proofs.Placed.GenLsBlock -- shake: keep
+meta import GeneratedLean.LibsignalSessionPlacedObjShard20
+meta import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
+import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
 
 /-!
 # Relocatable Per-Block Instruction Fetches for Block `416`

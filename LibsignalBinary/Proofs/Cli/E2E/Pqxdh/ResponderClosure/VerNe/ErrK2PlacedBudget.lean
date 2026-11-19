@@ -11,15 +11,27 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ErrK2Placed
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ErrK2Placed
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridge -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.StdStartup.MemOps
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Version-Mismatch Epilogue
@@ -29,7 +41,7 @@ Allocator-budget (`RustCliAllocBudget M`) proof of `overK2Seg_cli_placed`
 emitting `FreeOnlyEvs` from `rustCliDeallocBudgetSpec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -142,7 +154,7 @@ local macro "wp_steps_sync_518 " ext:term:max mid:term : tactic => `(tactic| (
 (`+13724 → retAddr`) on `lsProg_518 ext` for a 1-element `previous_sessions`
 (`prevVecAt A.repAlloc (coroPtr + 0xe0#64) prevCap prevPtr [enc]`), preserving `calleeSavedVRegs`
 and emitting `FreeOnlyEvs`. -/
-def OverK2SegCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverK2SegCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)),
     ∀ (st : M.σ) (s : State) (coroPtr outPtr errTag prevCap prevPtr

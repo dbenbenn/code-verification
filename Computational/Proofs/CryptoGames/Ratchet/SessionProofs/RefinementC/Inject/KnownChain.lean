@@ -24,7 +24,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Inj
 Proves `closeByStateC_inject_knownChain` for `closeByStateC_inject_step` when the injected wire's sender ratchet key matches an existing chain of `Q`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

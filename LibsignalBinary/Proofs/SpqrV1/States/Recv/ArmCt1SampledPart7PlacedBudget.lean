@@ -11,16 +11,16 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart4PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart7Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3PlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart4PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart7Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
@@ -29,6 +29,12 @@ import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart7
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart3Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart4Placed
 
 /-!
 # `<States>::recv` (Block `332`) — `.ct1Sampled` Arm, Part 7 (Budget-Threaded)
@@ -37,7 +43,7 @@ Budget-threaded `[LibsignalPlacement]` common `recv_ek_chunk` prefix (`+11404 ->
 Path 4a (`outMsg = none, ack = false`: `+11496 -> s0.x30`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

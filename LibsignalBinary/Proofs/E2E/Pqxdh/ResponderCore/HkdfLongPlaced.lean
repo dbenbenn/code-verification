@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfLongPlacedA
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfLongPlacedA -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfGenFinPlacedA
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandSegsExt
 import LibsignalBinary.Specifications.LibsignalE2E.State -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `expand_multi_info` (`okmLen = 96`, `info.length = 46`) — Loop Tail and Assembly
@@ -23,7 +24,7 @@ Proves the remaining loop body segments, epilogue, and full relocatable
 `expand_multi_info_96_46_placed_runsTo` for Block `53` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

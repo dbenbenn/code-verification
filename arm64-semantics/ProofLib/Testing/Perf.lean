@@ -14,6 +14,7 @@ public import ProofLib.Testing.Perf.DeepChain
 public import ProofLib.Testing.Perf.WpDoneDeepState
 public import ProofLib.Testing.Perf.FrameSplit
 public import ProofLib.Testing.Perf.RelocAndPlacedScale
+public import ProofLib.Testing.Perf.IncludeBytesScale
 
 /-!
 # ProofLib Performance Regression Suite

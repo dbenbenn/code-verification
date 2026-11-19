@@ -9,43 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Heap.IfaceBudgetBase
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux
-public meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveExtBudgetAux
-public meta import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveExtBudgetAux -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux
+public meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsReserveBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveExtBudgetAux
+public meta import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveExtBudgetAux -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux -- proof-setup: allow-public-import
 public meta import ProofLib.SepLogic.WP -- shake: keep
 public meta import Lean -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 meta import LibsignalBinary.Proofs.CodeLayout -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Base
-import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Decodes
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Issue1275
 meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Issue1275 -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 meta import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-
-/-!
-# Budget-Threaded `<Ct1SentEkReceived>::send_ct2`: Segment 2
-
-Re-exports `SendCt2StepsBudgetAux` and `SendCt2StepsReserveBudget`, and proves
-`[LibsignalPlacement]` and fixed-base `RustCliAllocBudget`-threaded Segment 2 (`+136 → +552`).
--/
-
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -54,17 +45,14 @@ set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget
 
+open CryptoVerification.LibsignalTripleRatchet (extHookStack)
+
+open CryptoVerification (LibsignalHooks LibsignalPlacement blkPC_347 blkPl_347 lsLogFilterAddr lsρ)
+
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
-open CryptoVerification (
-  LibsignalHooks LibsignalPlacement blkPC_347 blkPl_347 libsignalSessionCode
-  lsLogFilterAddr lsρ
-)
 open CryptoVerification.RustHeap (allocHookStack)
-open CryptoVerification.LibsignalTripleRatchet (
-  extHookStack sessionMemcpyRegionSpec sessionShimSpec tripleRatchetProgAtExt withStack
-)
 open CryptoVerification.LibsignalSpqrV1 (
   flipEndiannessOfEncapsulationStateBytes issue1275NeedsFlip
 )
@@ -87,72 +75,8 @@ open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.Placed.BudgetVmSteps (trapHooks)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux (framelessMemcpyAcpSpec)
-open LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget (AllocContracts4K)
-open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux (
-  UnchunkedSendCt2PreEnv allocNoOom_ok_at_sendCt2
-  fitsEvents_flipAlloc_of_preEnv memcpy_ok_at_sendCt2
-  scan_loop_false_placed_pool_ok scan_loop_true_placed_pool_ok sendCt2FlipAllocEvents
-  sepWPp_call_noPanic sepWPp_fold_eq sepWPp_intro_state sepWPp_pure_left_eq
-  sepWPp_rw_pre_eq sepWPp_weaken_pre shim_ok_at_sendCt2 swap_loop_placed_pool_ok
-)
 
-export LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux (
-  Ct1SentEkReceived
-  sendCt2FlipAllocEvents
-  sendCt2FlipDeallocEvents
-  sendCt2Seg23Events
-  sendCt2Reserve128Events
-  SendCt2Reserve128Env
-  sendCt2ConcatHmacEvents
-  UnchunkedSendCt2PreEnv
-  UnchunkedSendCt2PostEnv
-  UnchunkedSendCt2Env
-  unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv
-  unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfEnv
-  unchunkedCt1SentEkReceivedSendCt2PlacedSpec
-  UnchunkedCt1SentEkReceivedSendCt2PlacedOk
-  sendCt2PlacedPostQOfPostEnv
-  sendCt2PlacedPostQOfEnv
-  sendCt2PlacedPostQ
-  sendCt2PlacedPostQp
-  unchunkedCt1SentEkReceivedSendCt2SpecOfPrePostEnv
-  unchunkedCt1SentEkReceivedSendCt2SpecOfEnv
-  unchunkedCt1SentEkReceivedSendCt2Spec
-  sendCt2PostQOfPostEnv
-  sendCt2PostQOfEnv
-  sendCt2PostQ
-  sendCt2PostQp
-  libcruxHmacSafeBudgetSpec
-  subroutine_ok_libcruxHmacSafe_of_budget
-  libcrux_hmac_safe_placed_ok
-  mlkem_encaps2_vm_placed_ok
-  mlkem_encaps2_vm_ok_at_ext
-  libcrux_hmac_safe_budget_ok_at_ext
-  shim_ok_at_sendCt2
-  alloc_ok_at_sendCt2
-  allocNoOom_ok_at_sendCt2
-  dealloc_ok_at_sendCt2
-  memcpy_ok_at_sendCt2
-  doReserve7_ok_at_sendCt2
-  sliceConcat3_ok_at_sendCt2
-  swap_loop_placed_ok
-  swap_loop_placed_pool_ok
-  scan_loop_false_placed_ok
-  scan_loop_false_placed_pool_ok
-  scan_loop_true_placed_ok
-  scan_loop_true_placed_pool_ok
-  send_ct2_prologue_to_scan_placed
-  send_ct2_prologue_to_scan_placed_pool
-  send_ct2_prologue_to_scan_vm
-  send_ct2_prologue_to_scan_pool
-)
-
-export LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsReserveBudget (
-  send_ct2_reserve_ct1_placed_wpp
-  send_ct2_reserve_ct1_placed_preEnv_wpp
-  send_ct2_reserve_ct1_wpp
-  send_ct2_reserve_ct1_preEnv_wpp
-)
+open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux (UnchunkedSendCt2PreEnv fitsEvents_flipAlloc_of_preEnv scan_loop_false_placed_pool_ok scan_loop_true_placed_pool_ok sendCt2FlipAllocEvents sepWPp_call_noPanic sepWPp_fold_eq sepWPp_intro_state sepWPp_pure_left_eq sepWPp_rw_pre_eq sepWPp_weaken_pre swap_loop_placed_pool_ok)
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.sub_add_cancel BitVec.toNat_zero
@@ -447,242 +371,6 @@ theorem send_ct2_5d8_to_604_placed_wpp [LibsignalPlacement] {F : ShaCompress}
     simp only [wp_norm, arm64_norm] at hsp_sf_mc_norm
     wp_steps_sync_pool ((blkPl_347).base + 516#64)
     simp only [State.setMem_setMem]
-    refine sepWPp_rw_pre_eq (by sep_ac_rfl)
-      (hcont _ (sf1.readReg64 .x0) hne1
-        (by wp_norm_goal) (by wp_norm_goal)
-        (by simp only [State.sp, wp_norm, arm64_norm, *])
-        (by simp only [wp_norm, arm64_norm, *])
-        (by simp only [wp_norm, arm64_norm, hvregs_m, hvregs_1, hvregs_s, hvregs])
-        (by simp only [Reg.x8, wp_norm, arm64_norm, *])
-        (by simp only [Reg.x19, wp_norm, arm64_norm, *])
-        (by simp only [Reg.x20, wp_norm, arm64_norm, *])
-        (by simp only [Reg.x22, Reg.x0, wp_norm, arm64_norm, *])
-        (by simp only [Reg.x23, wp_norm, arm64_norm, *])
-        (by simp only [Reg.x24, wp_norm, arm64_norm, *])
-        (by simp only [Reg.x25, wp_norm, arm64_norm, *])
-        (by simp only [Reg.x26, wp_norm, arm64_norm, *])
-        (by simp only [Reg.x27, wp_norm, arm64_norm, *])
-        (by simp only [Reg.x28, wp_norm, arm64_norm, *])
-        (by simp only [Reg.x29, wp_norm, arm64_norm, *]))
-
-/-- Fixed-base budget-threaded 2080-byte workspace allocation and `memcpy` (`+472 → +516`) on
-    `tripleRatchetProgAtExt b ext` under `AllocContracts4K b A lim ext`. -/
-theorem send_ct2_5d8_to_604_wpp {b : BitVec 64} {F : ShaCompress}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : AllocContracts4K b A lim ext)
-    (x : UnchunkedSendCt2Ghost F) (stCost : M.σ) (esPtr : BitVec 64)
-    (s0 st : State) (F_frame : SepProp)
-    {Q Qp : State → SepProp → Prop}
-    (hFit : FitsEvents M lim stCost (rustAllocEvents 2080 1))
-    (hes_len : x.st.es.length = 2080)
-    (hpc : st.pc = (tripleRatchetProgAtExt b ext).fnAddr unchunkedCt1SentEkReceivedSendCt2Name + 472#64)
-    (hrun : st.status = .Running)
-    (hsp : st.sp = s0.sp - 336#64)
-    (hsp_s0 : (s0.sp &&& 15#64 == 0#64) = true)
-    (htr : st.trace = s0.trace)
-    (hvregs : calleeSavedVRegs st = calleeSavedVRegs s0)
-    (hx19 : st.readReg64 .x19 = esPtr)
-    (hcont : ∀ (st' : State) (esWorkPtr : BitVec 64),
-      esWorkPtr ≠ 0#64 →
-      st'.pc = (tripleRatchetProgAtExt b ext).fnAddr unchunkedCt1SentEkReceivedSendCt2Name + 516#64 →
-      st'.status = .Running →
-      st'.sp = s0.sp - 336#64 →
-      st'.trace = s0.trace →
-      calleeSavedVRegs st' = calleeSavedVRegs s0 →
-      st'.readReg64 .x8 = 0#64 →
-      st'.readReg64 .x19 = esPtr →
-      st'.readReg64 .x20 = st.readReg64 .x20 →
-      st'.readReg64 .x22 = esWorkPtr →
-      st'.readReg64 .x23 = st.readReg64 .x23 →
-      st'.readReg64 .x24 = st.readReg64 .x24 →
-      st'.readReg64 .x25 = st.readReg64 .x25 →
-      st'.readReg64 .x26 = st.readReg64 .x26 →
-      st'.readReg64 .x27 = st.readReg64 .x27 →
-      st'.readReg64 .x28 = 2080#64 →
-      st'.readReg64 .x29 = st.readReg64 .x29 →
-      SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) st'
-        ((esPtr ↦ₛ x.st.es) ∗
-          (esWorkPtr ↦ₛ x.st.es) ∗
-          A.live esWorkPtr 2080 1 ∗
-          A.pool lim (M.stepEvents (rustAllocEvents 2080 1) stCost) st' ∗
-          stackAt (s0.sp - 336#64) extHookStack ∗
-          F_frame)
-        Q Qp) :
-    SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 .x30) st
-      ((esPtr ↦ₛ x.st.es) ∗ A.pool lim stCost st ∗ stackAt (s0.sp - 336#64) extHookStack ∗ F_frame)
-      Q Qp := by
-  have hshim := shim_ok_at_sendCt2 hA
-  have hallocNoOom := allocNoOom_ok_at_sendCt2 hA
-  have hmemcpy := memcpy_ok_at_sendCt2 hA
-  have hfsp_align : ((s0.sp - 336#64) &&& 15#64 == 0#64) = true := by revert hsp_s0; bv_kernel
-  have hsp_norm : st.readReg64 .sp = s0.sp - 336#64 := hsp
-  simp only [wp_norm, arm64_norm] at hsp_norm hx19
-  clear hA
-  send_ct2_fetches_range b trapHooks 472 44
-  dsimp only [tripleRatchetProgAtExt, unchunkedCt1SentEkReceivedSendCt2Name,
-    BitVec.ofNat_eq_ofNat] at *
-  simp +singlePass only [Program.fnAddr_rebase,
-    SendCt2StepsBudgetAux.fetch_withSvc _ noSyscalls] at *
-  revert hpc
-  generalize_entry
-    (libsignalSessionCode.fnOff "<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2") =
-      fnOffVal reverting [Program.fetch, subroutine_ok, SepWPp]
-  generalize b + BitVec.ofNat 64 fnOffVal = fnBase at *
-  clear fnOffVal
-  intro hpc
-  generalize_entry libsignalSessionCode = codeProg
-    reverting [Program.fetch, subroutine_ok, SepWPp]
-  examples_hide_fetches
-  wp_steps_rebase_pool
-    (fnBase + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-      ls_off% "<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2"))
-  refine sepWPp_intro_state fun s_shim hs_shim => ?_
-  rw [← hs_shim]
-  have hsp_shim : s_shim.sp = s0.sp - 336#64 := by
-    simp only [hs_shim, State.sp, wp_norm, arm64_norm, *]
-  refine sepWPp_call_noPanic hshim ()
-    ((esPtr ↦ₛ x.st.es) ∗ A.pool lim stCost s_shim ∗
-      stackAt (s0.sp - 336#64) extHookStack ∗ F_frame)
-    (by rw [hs_shim]; wp_norm_goal)
-    (by simp only [hs_shim, wp_norm, arm64_norm, *])
-    (by rw [State.spAligned, hsp_shim]; exact hfsp_align)
-    (ret_pc := fnBase + 476#64)
-    (by simp only [hs_shim, Reg.lr, wp_norm, arm64_norm, *])
-    (fun R' hm => by
-      dsimp only [withVmPreserved, sessionShimSpec]
-      exact Eq.mp (congrArg (SepProp.Satisfies · _) (by simp only [emp_sepConj]; sep_ac_rfl)) hm)
-    (by intros; rfl) (by intros; rfl) (by intros; rfl)
-    (fun sf_shim hpc_shim hrun_shim hsp_shim_rel hcs_shim => ?_)
-  dsimp only [withVmPreserved, sessionShimSpec]
-  refine sepWPp_pure_left_eq (φ := VmPreserved s_shim sf_shim)
-    (⌜sf_shim.trace = s_shim.trace⌝ ∗
-      (esPtr ↦ₛ x.st.es) ∗ A.pool lim stCost s_shim ∗
-      stackAt (s0.sp - 336#64) extHookStack ∗ F_frame)
-    (by sep_ac_rfl) ?_
-  intro hvm_shim
-  refine sepWPp_pure_left_eq (φ := sf_shim.trace = s_shim.trace)
-    ((esPtr ↦ₛ x.st.es) ∗ A.pool lim stCost s_shim ∗
-      stackAt (s0.sp - 336#64) extHookStack ∗ F_frame)
-    (by sep_ac_rfl) ?_
-  intro htr_shim_raw
-  rw [← A.pool_of_vmPreserved hvm_shim]
-  rcases hcs_shim with ⟨hx19_s, hx20_s, hx21_s, hx22_s, hx23_s, hx24_s, hx25_s, hx26_s,
-    hx27_s, hx28_s, hfp_s, hvregs_s⟩
-  simp only [hs_shim, wp_norm, arm64_norm] at hx19_s hx20_s hx21_s hx22_s hx23_s hx24_s
-  simp only [hs_shim, wp_norm, arm64_norm] at hx25_s hx26_s hx27_s hx28_s hfp_s hvregs_s
-  have htr_shim : sf_shim.trace = s0.trace := by
-    simpa only [hs_shim, wp_norm, arm64_norm, htr] using htr_shim_raw
-  have hsp_sf_shim : sf_shim.sp = s0.sp - 336#64 := hsp_shim_rel.trans hsp_shim
-  have hsp_sf_shim_norm : sf_shim.readReg64 .sp = s0.sp - 336#64 := hsp_sf_shim
-  simp only [wp_norm, arm64_norm] at hsp_sf_shim_norm
-  wp_steps_rebase_pool
-    (fnBase + bv% (ls_off% "__rustc::__rust_alloc" -
-      ls_off% "<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2"))
-  refine sepWPp_intro_state fun s_alloc hs_alloc => ?_
-  rw [← hs_alloc]
-  have hstack_alloc :
-      stackAt (s0.sp - 336#64) extHookStack ⊢
-        memRegion (s0.sp - 16720#64) 12288 ∗ stackAt (s0.sp - 336#64) allocHookStack :=
-    Entails.of_eq (stackAt_extHook_eq_allocHook s0.sp)
-  refine sepWPp_fold_eq
-    ((esPtr ↦ₛ x.st.es) ∗ A.pool lim stCost s_alloc ∗ F_frame)
-    hstack_alloc (by sep_ac_rfl) ?_
-  have hlay_2080 : RustLayoutOk 2080 1 := ⟨⟨by decide, ⟨0, rfl⟩, by decide⟩, by decide⟩
-  refine call_rustAllocNoOom_cs_wppBase hallocNoOom 2080 1 stCost hlay_2080 hFit
-    (memRegion (s0.sp - 16720#64) 12288 ∗ (esPtr ↦ₛ x.st.es) ∗ F_frame)
-    (ret_pc := fnBase + 488#64) (sp_call := s0.sp - 336#64)
-    (by rw [hs_alloc]; wp_norm_goal)
-    (by simp only [hs_alloc, wp_norm, arm64_norm, *])
-    (by simp only [hs_alloc, State.sp, wp_norm, arm64_norm, *]) hfsp_align
-    (by simp only [hs_alloc, Reg.lr, wp_norm, arm64_norm, *])
-    (by simp only [hs_alloc, Reg.x0, wp_norm, arm64_norm, *])
-    (by simp only [hs_alloc, Reg.x1, wp_norm, arm64_norm, *])
-    (by sep_ac_rfl)
-    (fun sf1 hpc1 hrun1 hsp1 hcs1 hacp1 hne1 _ => ?_)
-  have htr1 : sf1.trace = s_alloc.trace := hacp1.2.1
-  rcases hcs1 with ⟨hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1,
-    hx27_1, hx28_1, hfp_1, hvregs_1⟩
-  simp only [hs_alloc, wp_norm, arm64_norm] at hx19_1 hx20_1 hx21_1 hx22_1 hx23_1 hx24_1
-  simp only [hs_alloc, wp_norm, arm64_norm] at hx25_1 hx26_1 hx27_1 hx28_1 hfp_1 hvregs_1 htr1
-  have htr1' : sf1.trace = s0.trace := htr1.trans htr_shim
-  have hoom_false : (sf1.readReg64 (Reg.gpr 0#5) == 0#64) = false := beq_false_of_ne hne1
-  have hsp1_norm : sf1.readReg64 .sp = s0.sp - 336#64 := hsp1
-  simp only [wp_norm, arm64_norm] at hsp1_norm
-  have hstack_back :
-      memRegion (s0.sp - 16720#64) 12288 ∗ stackAt (s0.sp - 336#64) allocHookStack ⊢
-        stackAt (s0.sp - 336#64) extHookStack :=
-    Entails.of_eq (stackAt_extHook_eq_allocHook s0.sp).symm
-  refine sepWPp_fold_eq
-    (A.live (sf1.readReg64 .x0) 2080 1 ∗
-      memRegion (sf1.readReg64 .x0) 2080 ∗
-      A.pool lim (M.stepEvents (rustAllocEvents 2080 1) stCost) sf1 ∗
-      (esPtr ↦ₛ x.st.es) ∗ F_frame)
-    hstack_back (by sep_ac_rfl) ?_
-  have hmr_es :
-      memRegion (sf1.readReg64 .x0) 2080 ⊢
-        memRegion (sf1.readReg64 .x0) x.st.es.length := by
-    rw [hes_len]; exact Entails.refl _
-  refine sepWPp_fold_eq
-    (stackAt (s0.sp - 336#64) extHookStack ∗
-      A.live (sf1.readReg64 .x0) 2080 1 ∗
-      A.pool lim (M.stepEvents (rustAllocEvents 2080 1) stCost) sf1 ∗
-      (esPtr ↦ₛ x.st.es) ∗ F_frame)
-    hmr_es (by sep_ac_rfl) ?_
-  wp_steps_rebase_pool
-    (fnBase + bv% (ls_off% "memcpy" -
-      ls_off% "<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2"))
-  refine sepWPp_intro_state fun s_mc hs_mc => ?_
-  rw [← hs_mc]
-  have hsp_mc : s_mc.sp = s0.sp - 336#64 := by
-    simp only [hs_mc, State.sp, wp_norm, arm64_norm, *]
-  refine sepWPp_call_noPanic hmemcpy
-    (sf1.readReg64 .x0, esPtr, x.st.es)
-    (A.live (sf1.readReg64 .x0) 2080 1 ∗
-      A.pool lim (M.stepEvents (rustAllocEvents 2080 1) stCost) s_mc ∗ F_frame)
-    (by rw [hs_mc]; wp_norm_goal)
-    (by simp only [hs_mc, wp_norm, arm64_norm, *])
-    (by rw [State.spAligned, hsp_mc]; exact hfsp_align)
-    (ret_pc := fnBase + 512#64)
-    (by simp only [hs_mc, Reg.lr, wp_norm, arm64_norm, *])
-    ?_ (by intros; rfl) (by intros; rfl) (by intros; rfl)
-    (fun sf_mc hpc_mc hrun_mc hsp_mc_rel hcs_mc => ?_)
-  · intro R' hm
-    dsimp only [withStack, withVmPreserved, sessionMemcpyRegionSpec, memcpyRegionSpec]
-    rw [hsp_mc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨?_, ?_, ?_⟩, ?_⟩
-    · simp only [hs_mc, Reg.x0, wp_norm, arm64_norm, *]
-    · simp only [hs_mc, Reg.x1, wp_norm, arm64_norm, *]
-    · simp only [hs_mc, Reg.x2, hes_len, wp_norm, arm64_norm, *]
-    · exact Eq.mp (congrArg (SepProp.Satisfies · _) (by sep_ac_rfl)) hm
-  · dsimp only [withStack, withVmPreserved, sessionMemcpyRegionSpec, memcpyRegionSpec]
-    rw [hsp_mc]
-    refine sepWPp_pure_left_eq (φ := VmPreserved s_mc sf_mc)
-      (⌜sf_mc.readReg64 .x0 = sf1.readReg64 .x0 ∧ sf_mc.trace = s_mc.trace⌝ ∗
-        ((sf1.readReg64 .x0) ↦ₛ x.st.es) ∗ (esPtr ↦ₛ x.st.es) ∗
-        stackAt (s0.sp - 336#64) extHookStack ∗
-        A.live (sf1.readReg64 .x0) 2080 1 ∗
-        A.pool lim (M.stepEvents (rustAllocEvents 2080 1) stCost) s_mc ∗ F_frame)
-      (by sep_ac_rfl) ?_
-    intro hvm_mc
-    refine sepWPp_pure_left_eq (φ := sf_mc.readReg64 .x0 = sf1.readReg64 .x0 ∧ sf_mc.trace = s_mc.trace)
-      (((sf1.readReg64 .x0) ↦ₛ x.st.es) ∗ (esPtr ↦ₛ x.st.es) ∗
-        stackAt (s0.sp - 336#64) extHookStack ∗
-        A.live (sf1.readReg64 .x0) 2080 1 ∗
-        A.pool lim (M.stepEvents (rustAllocEvents 2080 1) stCost) s_mc ∗ F_frame)
-      (by sep_ac_rfl) ?_
-    rintro ⟨_, htr_mc_raw⟩
-    rw [← A.pool_of_vmPreserved hvm_mc]
-    rcases hcs_mc with ⟨hx19_m, hx20_m, hx21_m, hx22_m, hx23_m, hx24_m, hx25_m, hx26_m,
-      hx27_m, hx28_m, hfp_m, hvregs_m⟩
-    simp only [hs_mc, wp_norm, arm64_norm] at hx19_m hx20_m hx21_m hx22_m hx23_m hx24_m
-    simp only [hs_mc, wp_norm, arm64_norm] at hx25_m hx26_m hx27_m hx28_m hfp_m hvregs_m
-    have htr_mc : sf_mc.trace = s0.trace := by
-      simpa only [hs_mc, wp_norm, arm64_norm, htr1'] using htr_mc_raw
-    have hsp_sf_mc : sf_mc.sp = s0.sp - 336#64 := hsp_mc_rel.trans hsp_mc
-    have hsp_sf_mc_norm : sf_mc.readReg64 .sp = s0.sp - 336#64 := hsp_sf_mc
-    simp only [wp_norm, arm64_norm] at hsp_sf_mc_norm
-    wp_steps_rebase_pool (fnBase + 516#64)
     refine sepWPp_rw_pre_eq (by sep_ac_rfl)
       (hcont _ (sf1.readReg64 .x0) hne1
         (by wp_norm_goal) (by wp_norm_goal)

@@ -12,16 +12,16 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Gen
@@ -35,6 +35,8 @@ import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.SetStateBudget
 import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Stage P3 over General `prevSessionsEmptyAt`
@@ -45,7 +47,7 @@ Budget-threaded `[LibsignalPlacement]` and `[LibsignalFullPlacement]` Stage P3 o
 under `StageP3M3Env`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -143,7 +145,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.add_assoc BitVec.toNat_zero
 /-! ## Stage P3 allocation event envelopes -/
 
 /-- `TryDecryptEnvArgs` at the Stage P3 `.preKey` call site for cloned session `G₁`. -/
-def stageP3M3TryDecryptEnvArgs (G₁ : SessionGhost) (st : SessionState (List (BitVec 8)))
+@[expose] def stageP3M3TryDecryptEnvArgs (G₁ : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
     (rest : List (BitVec 8)) : TryDecryptEnvArgs where
   G := G₁
@@ -157,7 +159,7 @@ def stageP3M3TryDecryptEnvArgs (G₁ : SessionGhost) (st : SessionState (List (B
 
 /-- Prefix event envelope emitted along Stage P3 up to `+0x34dc` (`Ok pt` continuation into `M4`):
 `SessionStructure::clone`, `try_decrypt_with_state`, and `set_session_state` (`FreeOnlyEvs`). -/
-def StageP3OkPrefixM3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
+@[expose] def StageP3OkPrefixM3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (recG G₁ : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
     (rest : List (BitVec 8)) : List AllocEvent → Prop :=
@@ -166,7 +168,7 @@ def StageP3OkPrefixM3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop
 
 /-- Full event envelope emitted along Stage P3 on `st.version = msgVer` and `Err e` (`e ≠ .panic`):
 `SessionStructure::clone`, `try_decrypt_with_state`, and `FromVPostTdEnv`. -/
-def StageP3ErrM3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
+@[expose] def StageP3ErrM3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (recG G₁ : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
     (rest : List (BitVec 8)) : List AllocEvent → Prop :=
@@ -175,12 +177,12 @@ def StageP3ErrM3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
 
 /-- Full event envelope emitted along Stage P3 on `st.version ≠ msgVer`:
 `SessionStructure::clone` followed by `FromMEnv`. -/
-def StageP3VerNeM3Env (recG : SessionGhost) (st : SessionState (List (BitVec 8))) :
+@[expose] def StageP3VerNeM3Env (recG : SessionGhost) (st : SessionState (List (BitVec 8))) :
     List AllocEvent → Prop :=
   SeqEnv (SegCloneEnv recG st) FromMEnv
 
 /-- Combined Stage P3 allocation event envelope for `M3PrevCapPlacedBudget`. -/
-def StageP3M3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
+@[expose] def StageP3M3Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
     (msgVer : BitVec 32) (rest : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
@@ -258,7 +260,7 @@ private theorem fitsEnv_fromM_of_stageP3M3Env {M : AllocCostModel} {lim : Budget
 
 /-! ## Budget-threaded component statements and callee specs -/
 
-def CloneGenVRegsPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def CloneGenVRegsPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext) (lsρ lsRustNoAllocShimSym) sessionShimBudgetSpec →
@@ -292,12 +294,12 @@ def CloneGenVRegsPlacedStmt [LibsignalPlacement] : Prop :=
 
 /-- Budget-threaded `[LibsignalPlacement]` CLI `tryDecryptPlacedSpec` weakened to `DistinctSid`
 (matching `Poll.pollTryDecryptPlacedSpecP`). -/
-def pollTryDecryptM3PlacedSpecP [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pollTryDecryptM3PlacedSpecP [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) : Spec (TryDecryptGhost × M.σ) where
   pre := fun (x, st_b) s =>
-    ⌜FitsEnv M lim st_b (tdEnv (tryDecryptEnvArgs x))⌝ ∗
+    ⌜FitsEnv M lim st_b (tdEnv (tryDecryptEnvArgs x)) ∧ x.rem.name.bytes.length ≤ 40⌝ ∗
       (CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.pollTryDecryptM3PlacedSpecP
         C (A.atState lim st_b s) ctl uuidParse S).pre x s
   post := (tryDecryptPlacedSpec C A lim ctl uuidParse S tdEnv).post
@@ -305,7 +307,7 @@ def pollTryDecryptM3PlacedSpecP [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded `[LibsignalPlacement]` `pollTryDecryptM3PlacedSpecTPTight`
 (dropping both `S.recvPanics` and `allocFailedIn`, retaining only model panics). -/
-def pollTryDecryptM3PlacedSpecTPTight [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pollTryDecryptM3PlacedSpecTPTight [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) : Spec (TryDecryptGhost × M.σ) :=
@@ -408,6 +410,7 @@ private theorem stageP3_call_tryDecrypt_placed_steps [LibsignalPlacement]
       DistinctSid uuidTryParse loc.name.bytes rem.name.bytes)
     (hseeds : SeedsLen32 st) (hrc_lt : st.receiverChains.length < 2 ^ 32)
     (hpq_lt : st.pqRatchetState.length < 2 ^ 32)
+    (hrem_le : rem.name.bytes.length ≤ 40)
     (hsp_align : (s.sp &&& 15#64 == 0#64) = true) (hsp_root : rootStack ≤ s.sp.toNat)
     (hcro1 : LibsignalCodeRoLoaded lsmpl s1.mem)
     (hpc1 : s1.pc = dpClosureEntryM3Placed + 0x1cd4#64) (hrun1 : s1.status = .Running)
@@ -475,11 +478,12 @@ private theorem stageP3_call_tryDecrypt_placed_steps [LibsignalPlacement]
         G := G₁, st := st, rem := rem, loc := loc, msgG := msgG, msg := msg,
         msgType := .preKey, ss := s.sp + 0xa90#64, remA := remAddrPtr, locA := locAddrPtr,
         msgA := whisperMsgPtr, ret := s.sp + 0x270#64, cur := cur, rest := rest })) := hfits_td
-    have hp_fits : FitsEnv M lim st_b (tdEnv (tryDecryptEnvArgs {
+    have hp_fits : (FitsEnv M lim st_b (tdEnv (tryDecryptEnvArgs {
         G := G₁, st := st, rem := rem, loc := loc, msgG := msgG, msg := msg,
         msgType := .preKey, ss := s.sp + 0xa90#64, remA := remAddrPtr, locA := locAddrPtr,
-        msgA := whisperMsgPtr, ret := s.sp + 0x270#64, cur := cur, rest := rest })) = True :=
-      propext ⟨fun _ => trivial, fun _ => hfits_x⟩
+        msgA := whisperMsgPtr, ret := s.sp + 0x270#64, cur := cur, rest := rest })) ∧
+        rem.name.bytes.length ≤ 40) = True :=
+      propext ⟨fun _ => trivial, fun _ => ⟨hfits_x, hrem_le⟩⟩
     have hp2 : (sc.readReg64 .x0 = s.sp + 0x270#64 ∧ sc.readReg64 .x1 = s.sp + 0xa90#64 ∧
         sc.readReg64 .x2 = remAddrPtr ∧ sc.readReg64 .x3 = locAddrPtr ∧
         sc.readReg64 .x4 = whisperMsgPtr ∧ (sc.readReg64 .x5).setWidth 8 = msgTypeByte .preKey ∧
@@ -658,7 +662,7 @@ private theorem stageP3_call_tryDecrypt_placed_steps [LibsignalPlacement]
 
 /-- Budget-threaded `[LibsignalPlacement]` Substage P3.5 error path
 (`dpClosureEntryM3Placed + 0x1cd8 → s0.readReg64 .x30`) for `Matched/M3PrevErrBPlacedBudget`. -/
-def StageP3Sub5ErrPrevEmptyPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP3Sub5ErrPrevEmptyPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext) (lsρ lsRustNoAllocShimSym) sessionShimBudgetSpec →
@@ -698,7 +702,7 @@ def StageP3Sub5ErrPrevEmptyPlacedStmt [LibsignalPlacement] : Prop :=
 
 /-- Budget-threaded `[LibsignalPlacement]` version-mismatch error path
 (`dpClosureEntryM3Placed + 0x1e04 → s0.readReg64 .x30`) for `Matched/M3PrevVerNePlacedBudget`. -/
-def StageP3VerNePrevEmptyPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP3VerNePrevEmptyPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext) (lsρ lsRustNoAllocShimSym) sessionShimBudgetSpec →
@@ -782,7 +786,7 @@ theorem grow_one_spe_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Main Stage P3 composition -/
 
-def StageP3PrevEmptyVRegsM3PlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP3PrevEmptyVRegsM3PlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (ext : String → Option (State → State))
     (C : Crypto) (ctl : BitVec 64) (K : MlKem)
@@ -815,6 +819,7 @@ def StageP3PrevEmptyVRegsM3PlacedStmt [LibsignalPlacement] : Prop :=
       (st.remoteIdentity ≠ some st.localIdentity ∨
         DistinctSid uuidTryParse loc.name.bytes rem.name.bytes) →
       SeedsLen32 st → st.receiverChains.length < 2 ^ 32 → st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       LibsignalCodeRoLoaded lsmpl s.mem →
       s.pc = dpClosureEntryM3Placed + 0x1778#64 → s.status = .Running →
       (s.sp &&& 15#64 == 0#64) = true → rootStack ≤ s.sp.toNat →
@@ -887,7 +892,7 @@ theorem stageP3Gen_prevEmpty_vregs_placed_ok_of_parts [LibsignalPlacement]
     st_b s0 s coroPtr ctxPtr outPtr initErrsPtr
     remAddrPtr locAddrPtr whisperMsgPtr cur msgVer b_2c0 rest
     g recG st rem loc msgG msg F_frame Q
-    hfits hinit_ne hnot_self hseeds hrc_lt hpq_lt
+    hfits hinit_ne hnot_self hseeds hrc_lt hpq_lt hrem_le
     hcro hpc hrun hsp_align hsp_root htr hvregs
     hOk hErr hVerNe
   have hfits_clone := fitsEnv_segClone_of_stageP3M3Env hfits
@@ -965,7 +970,7 @@ theorem stageP3Gen_prevEmpty_vregs_placed_ok_of_parts [LibsignalPlacement]
     refine stageP3_call_tryDecrypt_placed_steps ext C ctl K tdEnv hroot st_clone
       s0 s s1 coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
       G₁ st rem loc msgG msg (F_dec ∗ F_frame) Q
-      hver hfits_td hnot_self hseeds hrc_lt hpq_lt hsp_align hsp_root
+      hver hfits_td hnot_self hseeds hrc_lt hpq_lt hrem_le hsp_align hsp_root
       hcro1 hpc1 hrun1 hs1_sp htr1
       hx0_1 hx1_1 hx2_1 hx3_1 hx4_1 hx5_1 hx19_1 hx24_1 hx27_1
       fun s2 G' evs_td hsteps12 htd_evs hnpan hdec_rel hpc2 hrun2 hs2_sp htr2 hcro2
@@ -1152,7 +1157,7 @@ theorem stageP3Gen_prevEmpty_vregs_placed_ok_of_parts [LibsignalPlacement]
 /-- Budget-threaded `[LibsignalFullPlacement]` Substage P3.5 error path
 (`dpClosureEntryM3Placed + 0x1cd8 → s0.readReg64 .x30`), discharging Block `519` from
 `LibsignalFrozen lsmpl s.mem`. -/
-def StageP3Sub5ErrPrevEmptyFullPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
+@[expose] def StageP3Sub5ErrPrevEmptyFullPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext) (lsρ lsRustNoAllocShimSym) sessionShimBudgetSpec →
@@ -1191,7 +1196,7 @@ def StageP3Sub5ErrPrevEmptyFullPlacedStmt [CryptoVerification.LibsignalFullPlace
 /-- Budget-threaded `[LibsignalFullPlacement]` version-mismatch error path
 (`dpClosureEntryM3Placed + 0x1e04 → s0.readReg64 .x30`), discharging Block `519` from
 `LibsignalFrozen lsmpl s.mem`. -/
-def StageP3VerNePrevEmptyFullPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
+@[expose] def StageP3VerNePrevEmptyFullPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext) (lsρ lsRustNoAllocShimSym) sessionShimBudgetSpec →
@@ -1246,7 +1251,7 @@ def StageP3VerNePrevEmptyFullPlacedStmt [CryptoVerification.LibsignalFullPlaceme
 
 /-- Budget-threaded `[LibsignalFullPlacement]` Stage P3 statement on `lsProg_518 ext`,
 discharging Block `519` internally from `LibsignalFrozen lsmpl s.mem`. -/
-def StageP3PrevEmptyVRegsM3FullPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
+@[expose] def StageP3PrevEmptyVRegsM3FullPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (ext : String → Option (State → State))
     (C : Crypto) (ctl : BitVec 64) (K : MlKem)
@@ -1277,6 +1282,7 @@ def StageP3PrevEmptyVRegsM3FullPlacedStmt [CryptoVerification.LibsignalFullPlace
       (st.remoteIdentity ≠ some st.localIdentity ∨
         DistinctSid uuidTryParse loc.name.bytes rem.name.bytes) →
       SeedsLen32 st → st.receiverChains.length < 2 ^ 32 → st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       CryptoVerification.LibsignalFrozen lsmpl s.mem →
       s.pc = dpClosureEntryM3Placed + 0x1778#64 → s.status = .Running →
       (s.sp &&& 15#64 == 0#64) = true → rootStack ≤ s.sp.toNat →
@@ -1350,7 +1356,7 @@ theorem stageP3Gen_prevEmpty_vregs_full_placed_ok_of_parts [CryptoVerification.L
     st_b s0 s coroPtr ctxPtr outPtr initErrsPtr
     remAddrPtr locAddrPtr whisperMsgPtr cur msgVer b_2c0 rest
     g recG st rem loc msgG msg F_frame Q
-    hfits hinit_ne hnot_self hseeds hrc_lt hpq_lt
+    hfits hinit_ne hnot_self hseeds hrc_lt hpq_lt hrem_le
     hfr hpc hrun hsp_align hsp_root htr hvregs
     hOk hErr hVerNe
   have hcro : LibsignalCodeRoLoaded lsmpl s.mem := LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget.lscro_of_frozen hfr
@@ -1430,7 +1436,7 @@ theorem stageP3Gen_prevEmpty_vregs_full_placed_ok_of_parts [CryptoVerification.L
     refine stageP3_call_tryDecrypt_placed_steps ext C ctl K tdEnv hroot st_clone
       s0 s s1 coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
       G₁ st rem loc msgG msg (F_dec ∗ F_frame) Q
-      hver hfits_td hnot_self hseeds hrc_lt hpq_lt hsp_align hsp_root
+      hver hfits_td hnot_self hseeds hrc_lt hpq_lt hrem_le hsp_align hsp_root
       hcro1 hpc1 hrun1 hs1_sp htr1
       hx0_1 hx1_1 hx2_1 hx3_1 hx4_1 hx5_1 hx19_1 hx24_1 hx27_1
       fun s2 G' evs_td hsteps12 htd_evs hnpan hdec_rel hpc2 hrun2 hs2_sp htr2 hcro2

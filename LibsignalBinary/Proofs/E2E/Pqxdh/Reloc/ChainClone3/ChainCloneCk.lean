@@ -19,7 +19,7 @@ Proves the `chain_key = None` and `chain_key = Some ck` cloning branches for
 `<session_structure::Chain as Clone>::clone [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.ChainClone3
 
@@ -51,7 +51,7 @@ attribute [local wp_norm]
 
 /-! ## 7. `chain_key`, `priv`, and Full `Chain::clone` Proof (`0x766c8`) -/
 
-def chainMkLenFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainMkLenFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   vecGhostAt A gc.1.priv (a + 24#64) ∗
@@ -80,7 +80,7 @@ theorem chainAt_eq_mk_len (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
   · apply Entails.pure_right ⟨hsrk, hmax, hklen⟩
     exact Entails.of_eq (by ac_rfl)
 
-def chainCkSomeFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainCkSomeFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   vecGhostAt A gc.1.priv (a + 24#64) ∗
@@ -198,7 +198,7 @@ theorem cap_add_one_beq_zero_false {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
   simp only [BitVec.toNat_add, BitVec.toNat_ofNat] at h1
   omega
 
-def chainCkNoneCapFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainCkNoneCapFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   vecGhostAt A gc.1.priv (a + 24#64) ∗
@@ -224,7 +224,7 @@ theorem chainAt_eq_ck_none_cap (A : RustAlloc) (gc : ChainGhost × ReceiverChain
   · apply Entails.pure_right ⟨hsrk, hmax, hklen⟩
     exact Entails.of_eq (by ac_rfl)
 
-def chainCkSomeCapFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainCkSomeCapFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (ck : ChainKey) (a : BitVec 64) : SepProp :=
   ⌜32 ≤ gc.1.ck.cap.toNat ∧ gc.1.ck.ptr ≠ 0⌝ ∗
   ((a + 64#64) ↦₆₄ BitVec.ofNat 64 gc.2.messageKeys.length) ∗
@@ -319,7 +319,7 @@ theorem chainAt_eq_ck_some_cap (A : RustAlloc) (gc : ChainGhost × ReceiverChain
     apply Entails.pure_left; rintro ⟨hle, hptr⟩
     exact Entails.pure_right ⟨hle, hlt, hptr⟩ (Entails.refl _)
 
-def chainPrivLenFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainPrivLenFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   ((a + 24#64) ↦₆₄ gc.1.priv.cap) ∗
@@ -348,7 +348,7 @@ theorem chainAt_eq_priv_len (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
   · apply Entails.pure_right ⟨hsrk, hmax, hklen⟩
     exact Entails.of_eq (by ac_rfl)
 
-def chainPrivPosFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
+@[expose] def chainPrivPosFrame (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
     (a : BitVec 64) : SepProp :=
   vecGhostAt A gc.1.srk a ∗
   ((a + 24#64) ↦₆₄ gc.1.priv.cap) ∗

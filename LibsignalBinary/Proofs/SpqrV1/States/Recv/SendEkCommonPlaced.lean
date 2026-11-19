@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.SendEkCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch5Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
@@ -24,7 +24,7 @@ Relocatable `[LibsignalPlacement]` proofs of the shared direct epilogue (`+19324
 and `Ok(V1Recv)` writeback epilogue (`+18996 -> +19356`) for Block `332`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

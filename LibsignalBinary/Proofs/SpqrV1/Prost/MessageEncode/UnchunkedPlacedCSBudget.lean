@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBaseStagesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBaseStagesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Helpers for `unchunked` `message::encode`
@@ -24,7 +27,7 @@ Defines placed budget contract propositions (`Blocks 155, 318, 156, 319`), pinne
 bridges, and polymorphic 64-byte-frame call steppers for `EkSentCt1Received::encode` and `Ct1Sent::encode`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -85,82 +88,82 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 
 /-! ## 1. Placed Budget Contract Propositions (`Blocks 155, 318, 156, 319`) -/
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_155 H) (blkPl_155).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpecS A lim))
 
-def EkSentCt1ReceivedEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_155 H) (blkPl_155).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpecS A lim))
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_155 H) (blkPl_155).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpecXS A lim))
 
-def EkSentCt1ReceivedEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_155 H) (blkPl_155).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpecXS A lim))
 
-def EkSentCt1ReceivedEncode2PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode2PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_318 H) (blkPl_318).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpecS A lim))
 
-def EkSentCt1ReceivedEncode2PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode2PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_318 H) (blkPl_318).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpecS A lim))
 
-def EkSentCt1ReceivedEncode2PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode2PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_318 H) (blkPl_318).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpecXS A lim))
 
-def EkSentCt1ReceivedEncode2PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EkSentCt1ReceivedEncode2PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_318 H) (blkPl_318).base
     (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpecXS A lim))
 
-def Ct1SentEncode1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_156 H) (blkPl_156).base
     (withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpecS A lim))
 
-def Ct1SentEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_156 H) (blkPl_156).base
     (withLsCodeLoaded lsmpl (ct1SentEncodeSpecS A lim))
 
-def Ct1SentEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_156 H) (blkPl_156).base
     (withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpecXS A lim))
 
-def Ct1SentEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode1PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_156 H) (blkPl_156).base
     (withLsCodeLoaded lsmpl (ct1SentEncodeSpecXS A lim))
 
-def Ct1SentEncode2PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode2PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_319 H) (blkPl_319).base
     (withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpecS A lim))
 
-def Ct1SentEncode2PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode2PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_319 H) (blkPl_319).base
     (withLsCodeLoaded lsmpl (ct1SentEncodeSpecS A lim))
 
-def Ct1SentEncode2PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode2PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_319 H) (blkPl_319).base
     (withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpecXS A lim))
 
-def Ct1SentEncode2PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def Ct1SentEncode2PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_319 H) (blkPl_319).base
     (withLsCodeLoaded lsmpl (ct1SentEncodeSpecXS A lim))

@@ -13,6 +13,7 @@ public import Arm64
 public import VerifiedLibraries.Mallocng.Spec
 public import LibsignalBinary.Specifications.SignalSession.CliProcess
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed
 public import Symbolic.BugInjection.Proofs.CliExec.FastHooksRows
 public import Symbolic.BugInjection.Proofs.CliExec.PlacedExecCore
@@ -39,8 +40,9 @@ namespace Symbolic.BugInjection.Proofs.CliExec.ElfRunPlacedSound
 open Arm64 (Memory)
 open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
-open CryptoVerification.SignalSession (CliHooks Inputs cliExternsPlacedSig filesOf)
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open CryptoVerification.SignalSession (CliHooks Inputs filesOf)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliExternsPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed (compHooks0)
 open Symbolic.BugInjection.Proofs.CliExec.FastHooksRows (FastState)
 open Symbolic.BugInjection.Proofs.CliExec.PlacedExecCore (FastReachablePlaced
@@ -117,70 +119,5 @@ theorem cliRunPlacedSig_of_elfFinalChunk
     initFastStateFromBasePlaced_sound_of_valid (W := W) hv hW hinit
   exact cliRunPlacedSig_of_fastReachablePlaced
     hload hcl0 hfp hW hag0 (Memory.KeepsFrozen.refl _) htot hchk
-
-theorem cliRunPlacedSig_of_elfFinalChunk_exited
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks}
-    {fs : ElfFullSpecPlaced} {realInp fastInp : Inputs} {k : Nat} {src : MkCkpt}
-    {code : BitVec 64} {realStdout fastStdout : List (BitVec 8)}
-    {outFiles : List (String × List (BitVec 8))}
-    (hv : ElfFullValidPlaced mpl mmpl elf fs)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hinp : realInp = fastInp)
-    (hstd : realStdout = fastStdout)
-    (hreach : ElfCkptReachablePlaced fs fastInp src)
-    (hok : checkElfFinalChunkPlacedExited fs fastInp k src code fastStdout outFiles = true) :
-    cliRunPlacedSig mpl mmpl elf W realInp =
-      some (.exited (code.toNat % 256) realStdout (filesOf outFiles)) := by
-  subst hinp hstd
-  obtain ⟨fs0, fsf, _, hinit, htot, hchk⟩ := reach_of_elfFinalChunkPlaced_aux hv hreach hok
-  obtain ⟨s0, hload, hag0, hfp, hcl0⟩ :=
-    initFastStateFromBasePlaced_sound_of_valid (W := W) hv hW hinit
-  exact cliRunPlacedSig_of_fastReachablePlaced_exited
-    hload hcl0 hfp hW hag0 (Memory.KeepsFrozen.refl _) htot hchk
-
-theorem cliRunPlacedSig_of_elfFinalChunk_aborted
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks}
-    {fs : ElfFullSpecPlaced} {realInp fastInp : Inputs} {k : Nat} {src : MkCkpt}
-    (hv : ElfFullValidPlaced mpl mmpl elf fs)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hinp : realInp = fastInp)
-    (hreach : ElfCkptReachablePlaced fs fastInp src)
-    (hok : checkElfFinalChunkPlacedAborted fs fastInp k src = true) :
-    cliRunPlacedSig mpl mmpl elf W realInp = some .aborted := by
-  subst hinp
-  obtain ⟨fs0, fsf, _, hinit, htot, hchk⟩ := reach_of_elfFinalChunkPlaced_aux hv hreach hok
-  obtain ⟨s0, hload, hag0, hfp, hcl0⟩ :=
-    initFastStateFromBasePlaced_sound_of_valid (W := W) hv hW hinit
-  exact cliRunPlacedSig_of_fastReachablePlaced_aborted
-    hload hcl0 hfp hW hag0 (Memory.KeepsFrozen.refl _) htot hchk
-
-theorem forall_parse_of_ok_placed
-    {bytes : List (BitVec 8)} {elf₀ : ElfImage} {P : ElfImage → Prop}
-    (hparse₀ : ElfImage.parse bytes = .ok elf₀)
-    (hp : P elf₀) :
-    ∀ elf : ElfImage, ElfImage.parse bytes = .ok elf → P elf := by
-  intro elf hparse
-  cases hparse₀.symm.trans hparse
-  exact hp
-
-/-- Direct parse-to-execution bridge from `ElfImage.parse bytes = .ok elf₀` and
-`ElfFullValidPlaced mpl mmpl elf₀ fs` to `Placed.cliRunPlacedSig mpl mmpl elf W realInp`
-for any `elf` parsed from `bytes`. -/
-theorem cliRunPlacedSig_of_parse_and_elfFinalChunk
-    {mpl mmpl : MultiPlacement} {bytes : List (BitVec 8)} {elf₀ elf : ElfImage} {W : CliHooks}
-    {fs : ElfFullSpecPlaced} {realInp fastInp : Inputs} {k : Nat} {src : MkCkpt}
-    {realStdout fastStdout : List (BitVec 8)} {outFiles : List (String × List (BitVec 8))}
-    (hparse₀ : ElfImage.parse bytes = .ok elf₀)
-    (hv : ElfFullValidPlaced mpl mmpl elf₀ fs)
-    (hW : ∀ name, cliExternsPlacedSig mmpl compHooks0 name = cliExternsPlacedSig mmpl W name)
-    (hparse : ElfImage.parse bytes = .ok elf)
-    (hinp : realInp = fastInp)
-    (hstd : realStdout = fastStdout)
-    (hreach : ElfCkptReachablePlaced fs fastInp src)
-    (hok : checkElfFinalChunkPlacedExited0 fs fastInp k src fastStdout outFiles = true) :
-    cliRunPlacedSig mpl mmpl elf W realInp =
-      some (.exited 0 realStdout (filesOf outFiles)) := by
-  cases hparse₀.symm.trans hparse
-  exact cliRunPlacedSig_of_elfFinalChunk hv hW hinp hstd hreach hok
 
 end Symbolic.BugInjection.Proofs.CliExec.ElfRunPlacedSound

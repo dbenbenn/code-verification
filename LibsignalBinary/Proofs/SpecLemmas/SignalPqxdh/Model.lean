@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Specifications.SignalPqxdh.Model
 public import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.ModelProofDefs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

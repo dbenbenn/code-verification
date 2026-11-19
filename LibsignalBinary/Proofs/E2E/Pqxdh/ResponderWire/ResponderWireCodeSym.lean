@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard5
 
 /-!
 # Relocatable Per-Block Fetches for `ResponderWire`
@@ -22,7 +23,7 @@ Block `111` (`<PreKeySignalMessage as TryFrom<&[u8]>>::try_from`, `0x29b30`) and
 (`<IdentityKey as TryFrom<&[u8]>>::try_from`, `0x2c530`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

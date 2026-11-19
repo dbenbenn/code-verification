@@ -39,6 +39,11 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Xpl.Steps
+import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
 
 /-!
 # Forward Acceptance Bridge from Moves to Steps
@@ -48,7 +53,7 @@ Proves `acceptsViaCliMoves_to_acceptsViaCli`: on an accepted 32-byte-coins `recv
 `ModelAcceptsTermAfterAttackerSendsClassical` extension of `(g', ss')`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,19 +10,29 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsDecodeHex32Placed
-public import LibsignalBinary.Proofs.TripleRatchet.InImage.UuidTryParse.ParserTryParse
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceId
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsDecodeHex32Placed
+import LibsignalBinary.Proofs.TripleRatchet.InImage.UuidTryParse.ParserTryParse
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceId
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import ProofLib.Placed.OpcodeExclusion
-import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImage.UuidTryParse.ParserHyphenated -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Placed Read-Only `ServiceId` Parsing Chain
@@ -34,7 +44,7 @@ via `<uuid::Uuid>::try_parse` on Block `252`, `uuid::parser::try_parse` on Block
 buffer at `sp - 88` before calling `decode_hex32`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -106,7 +116,7 @@ private theorem fs_writeReg_placed (s : State) (w : Width) (r : Reg) (v : BitVec
 
 /-! ## Read-only input specifications -/
 
-def decodeHex32ROSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def decodeHex32ROSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (out, src, hex) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = src ∧ hex.length = 32⌝ ∗
       (src ↦ᵣ hex) ∗ memRegion out 17 ∗ stackAt s.sp 0x20
@@ -114,7 +124,7 @@ def decodeHex32ROSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
     ⌜sf.trace = s0.trace⌝ ∗
       (src ↦ᵣ hex) ∗ decodeHex32ResultAt out (decodeHex32 hex) ∗ stackAt s0.sp 0x20
 
-def parserTryParseROSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
+@[expose] def parserTryParseROSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p, bs, out17) s =>
     (⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ s.readReg64 .x8 = out17⌝ ∗
       (p ↦ᵣ bs) ∗ memRegion out17 17) ∗ stackAt s.sp 0x80
@@ -122,7 +132,7 @@ def parserTryParseROSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) wher
     (⌜sf.trace = s0.trace⌝ ∗
       (p ↦ᵣ bs) ∗ parserTryParseResultAt out17 (uuidTryParse bs)) ∗ stackAt s0.sp 0x80
 
-def uuidTryParseROSpec (parse : UuidParser) :
+@[expose] def uuidTryParseROSpec (parse : UuidParser) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p, bs, out) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ s.readReg64 .x8 = out⌝ ∗
@@ -130,7 +140,7 @@ def uuidTryParseROSpec (parse : UuidParser) :
   post := fun (p, bs, out) s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ (p ↦ᵣ bs) ∗ uuidResultAt out (parse bs)
 
-def uuidTryParseCodeROSpec (parse : UuidParser) :
+@[expose] def uuidTryParseCodeROSpec (parse : UuidParser) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun x s => (uuidTryParseROSpec parse).pre x s ∗ stackAt s.sp uuidTryParseStack
   post := fun x s0 sf => (uuidTryParseROSpec parse).post x s0 sf ∗ stackAt s0.sp uuidTryParseStack
@@ -140,7 +150,7 @@ def uuidTryParseStackROSpec (hookStack : Nat := 0) :
   pre := fun x s => (uuidTryParseROSpec uuidTryParse).pre x s ∗ stackAt s.sp hookStack
   post := fun x s0 sf => (uuidTryParseROSpec uuidTryParse).post x s0 sf ∗ stackAt s0.sp hookStack
 
-def parseSidROSpec (parse : ServiceIdParser) :
+@[expose] def parseSidROSpec (parse : ServiceIdParser) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p, bs, out) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ s.readReg64 .x8 = out⌝ ∗
@@ -149,7 +159,7 @@ def parseSidROSpec (parse : ServiceIdParser) :
     ⌜sf.trace = s0.trace⌝ ∗
       (p ↦ᵣ bs) ∗ parseSidResultAt out (parse bs)
 
-def parseSidCodeStackROSpec (hookStack : Nat := 0) :
+@[expose] def parseSidCodeStackROSpec (hookStack : Nat := 0) :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun x s =>
     (parseSidROSpec (serviceIdParse uuidTryParse)).pre x s ∗

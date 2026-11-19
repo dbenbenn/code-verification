@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddressesBudgetAux
-public meta import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddressesBudgetAux -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacCompare
+import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddresses
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `<SignalMessage>::verify_mac_with_addresses`
@@ -24,7 +28,7 @@ Proves `[LibsignalPlacement]` `RustCliAllocBudget` contracts
 `verifyMacWithAddressesPlacedSpecX`) for `<SignalMessage>::verify_mac_with_addresses`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,30 +51,7 @@ open CryptoVerification.LibsignalTripleRatchet (
   lsMacRustDeallocSym macLsLogOff mac_ls_hook_ok_of_mem optSerializeAddressesAt
   serializeAddressesStack serializeAddressesStackX verifyMacResultAt
 )
-open CryptoVerification.LibsignalTripleRatchet.Mac.VerifyMacWithAddresses (
-  VmaClState VmaCroState VmaInvClass VmaSymState
-  bne_zext32_ite boxU8At_expose_nonempty computeMac_length
-  cset_eq_byte cset_eq_byte_alt forall_some_eq_imp
-  ite_one_zero_and_32 ite_one_zero_and_64 ite_one_zero_and_8
-  ite_one_zero_and_one_64 ite_one_zero_and_one_8
-  keepVmaClState len_sub_8_bv len_sub_8_eq len_sub_8_ult len_ult_8_false
-  list_beq_comm list_beq_false_of_length_ne mac8_eq_bool
-  memRegion_16_of_sp_208 memRegion_24_of_16_8 memRegion_24_split_16_8
-  memRegion_36_of_pointsToBytes memRegion_9_split noneCap_add_one_eq_zero
-  okTagVec_add_two_eq_zero okTagVec_add_two_ne_zero
-  optBoxU8At_some_expose optSerializeAddressesAt_none_eq optSerializeAddressesAt_some_eq
-  pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3
-  pack64_byte4 pack64_byte5 pack64_byte6 pack64_byte7
-  pointsToBytes_serialized_split serializeAddresses_some_length
-  setWidth32_and_1095216660735 setWidth32_and_4294967297 setWidth32_ite_one_zero_64
-  setWidth8_and32 setWidth8_and64 setWidth8_ite_one_zero_64
-  setWidth8_setWidth32 setWidth8_zext64_32 signalMessageAt_expose signalMessageRest
-  stackAt_combine_ge stackAt_split_ge stackAt_verifyMacWithAddresses_gen
-  subroutine_ok_keepVmaClState verifyMacFrameRest verifyMacWithAddresses_fnOff
-  verifyMacWithAddresses_of_addrs_none verifyMacWithAddresses_of_exp_none
-  verifyMacWithAddresses_of_exp_some verifyMacWithAddresses_of_mac_false
-  withVmaClState zeroExtend32_ite_one_zero_8 zeroExtend64_ite_one_zero_32
-)
+open CryptoVerification.LibsignalTripleRatchet.Mac.VerifyMacWithAddresses (VmaClState VmaCroState VmaInvClass VmaSymState bne_zext32_ite boxU8At_expose_nonempty computeMac_length cset_eq_byte cset_eq_byte_alt forall_some_eq_imp ite_one_zero_and_32 ite_one_zero_and_64 ite_one_zero_and_8 ite_one_zero_and_one_64 ite_one_zero_and_one_8 keepVmaClState len_sub_8_bv len_sub_8_eq len_sub_8_ult len_ult_8_false list_beq_comm list_beq_false_of_length_ne mac8_eq_bool memRegion_16_of_sp_208 memRegion_24_of_16_8 memRegion_24_split_16_8 memRegion_36_of_pointsToBytes memRegion_9_split noneCap_add_one_eq_zero okTagVec_add_two_eq_zero okTagVec_add_two_ne_zero optBoxU8At_some_expose optSerializeAddressesAt_none_eq optSerializeAddressesAt_some_eq pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3 pack64_byte4 pack64_byte5 pack64_byte6 pack64_byte7 pointsToBytes_serialized_split serializeAddresses_some_length setWidth32_and_1095216660735 setWidth32_and_4294967297 setWidth32_ite_one_zero_64 setWidth8_and32 setWidth8_and64 setWidth8_ite_one_zero_64 setWidth8_setWidth32 setWidth8_zext64_32 signalMessageAt_expose signalMessageRest stackAt_combine_ge stackAt_split_ge stackAt_verifyMacWithAddresses_gen subroutine_ok_keepVmaClState verifyMacFrameRest verifyMacWithAddresses_of_addrs_none verifyMacWithAddresses_of_exp_none verifyMacWithAddresses_of_exp_some verifyMacWithAddresses_of_mac_false withVmaClState zeroExtend32_ite_one_zero_8 zeroExtend64_ite_one_zero_32)
 open LibsignalBinary.Heap (
   AllocCostModel BudgetLimits FitsEnv RustCliAllocBudget RustLayoutOk
   rustCliDeallocBudgetSpec rustDeallocEvents
@@ -103,21 +84,6 @@ attribute [local arm64_norm, local wp_norm]
   calleeSavedVRegs_setPState calleeSavedVRegs_writeReg64 calleeSavedVRegs_writeReg32
   calleeSavedVRegs_writeReg calleeSavedVRegs_writeVReg128_ite calleeSavedVRegs_writeVReg64_ite
   calleeSavedVRegs_writeVReg32_ite isCalleeSavedVReg updateCalleeSavedVRegs
-attribute [local simp, local arm64_norm]
-  verifyMacWithAddresses_fnOff
-  cset_eq_byte cset_eq_byte_alt bne_zext32_ite
-  okTagVec_add_two_ne_zero okTagVec_add_two_eq_zero noneCap_add_one_eq_zero
-  pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3
-  pack64_byte4 pack64_byte5 pack64_byte6 pack64_byte7
-  ite_one_zero_and_64 ite_one_zero_and_32 setWidth32_ite_one_zero_64
-  zeroExtend64_ite_one_zero_32 ite_one_zero_and_one_64 setWidth8_ite_one_zero_64
-  mac8_eq_bool
-  setWidth8_zext64_32 setWidth8_setWidth32 setWidth8_and64 setWidth8_and32
-  ite_one_zero_and_8 setWidth32_and_4294967297 setWidth32_and_1095216660735
-  ite_one_zero_and_one_8 zeroExtend32_ite_one_zero_8
-
-/-! ## `VmaInv` lift and sequencing helpers -/
-
 private theorem subroutine_ok_withVmaClState_of_lscl [LibsignalPlacement] {α : Type}
     {prog : Program} {addr : BitVec 64} {spec : Spec α}
     (h : subroutine_ok prog addr (withLsCodeLoaded lsmpl spec)) :

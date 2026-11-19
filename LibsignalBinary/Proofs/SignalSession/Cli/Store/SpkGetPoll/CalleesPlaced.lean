@@ -9,18 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymPost
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymPost -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
 public meta import ProofLib
-public meta import LibsignalBinary.Proofs.Common.InImageKit
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public meta import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
 public meta import Lean
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import ProofLib.FsTrace
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.SepLogic.WP.Apply
+public import VerifiedLibraries.Mallocng.Spec
+public import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Callee Wrappers, Cut Combinators, and Epilogue for `get_signed_pre_key::{closure#0}`
@@ -29,7 +37,7 @@ Placed callee cell wrappers, sret unpack/pack helpers, framed cut combinators, a
 (`+344 .. ret`) on Block `571` (`lsProg_571 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

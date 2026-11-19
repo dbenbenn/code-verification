@@ -20,7 +20,7 @@ import VCVio.EvalDist.Monad.Basic
 `badKemCorrProbGenericAt_le_kemCorr` with `shcrChoosePkAuthAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,52 +31,5 @@ open SignalPqxdh SignalPqxdh.Security
 open Proofs.SignalPqxdh.Security
 
 namespace Proofs.SignalPqxdh.Security.PqxdhDelta
-
-private theorem ac_badKemCorrProbAuthAt_le_kemCorrProb (S : Setup) (P : Primitives)
-    (idx : Nat) (A : AuthAdversary S) :
-    (𝒟[runAuthShCrSim S P A >>= fun x =>
-        pure (hasBadKemCorrRecordsAt S P idx x.2.2.initKemRecs x.2.2.recvKemRecs)]
-      {true}).toReal ≤
-      (𝒟[kemCorrExpProb P (fun pk sk =>
-          Prod.fst <$> shcrChoosePkAuthAt S P (idx / S.N_send_tot) (idx % S.N_send_tot) A pk sk)]
-        {true}).toReal := by
-  unfold shcrChoosePkAuthAt
-  have hEq :
-      (runAuthShCrSim S P A >>= fun x =>
-        pure (hasBadKemCorrRecordsAt S P idx x.2.2.initKemRecs x.2.2.recvKemRecs)) =
-      (($ᵗ Bool >>= fun secb => pure (AuthState.empty S secb)) >>= fun b0 =>
-        (simulateQ ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (AuthShCrState S) ProbComp) + pqxdhAuthShCrSimImpl false S P) A.run).run { base :=
-            b0 } >>= fun x =>
-        pure (hasBadKemCorrRecordsAt S P idx x.2.initKemRecs x.2.recvKemRecs)) := by
-    simp [runAuthShCrSim]
-  rw [hEq]
-  refine ENNReal.toReal_mono (MeasureTheory.measure_ne_top _ _) ?_
-  exact KICorrAt.badKemCorrProbGenericAt_le_kemCorr P
-    ($ᵗ Bool >>= fun secb => pure (AuthState.empty S secb))
-    AuthState.spkBundles
-    (pqxdhAuthShCrSimImpl false S P)
-    (pqxdhAuthShCrSimImpl true S P)
-    (tryPauseAuthQuery S P)
-    idx
-    (by
-      intro b0 hb0
-      simp only [MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hb0
-      rcases hb0 with ⟨secb, _, rfl⟩
-      rfl)
-    (pqxdhAuthShCrSimImpl_clearFalse S P)
-    (pqxdhAuthShCrSimImpl_afterGen S P (idx / S.N_send_tot))
-    (pqxdhAuthShCrSimImpl_beforeGen S P (idx / S.N_send_tot))
-    (pqxdhAuthShCrSimImpl_validStep S P (idx / S.N_send_tot))
-    (pqxdhAuthShCrSimImpl_sendStep S P)
-    (pqxdhAuthShCrSimImpl_pauseNone S P (idx % S.N_send_tot))
-    (pqxdhAuthShCrSimImpl_pauseSome S P (idx / S.N_send_tot) (idx % S.N_send_tot))
-    A.run
-
-theorem authCorrAt (S : Setup) : AuthCorrAtStmt S := by
-  intro P _hP A idx _hIdx
-  exact ⟨fun pk sk =>
-      Prod.fst <$> shcrChoosePkAuthAt S P (idx / S.N_send_tot) (idx % S.N_send_tot) A pk sk,
-    ac_badKemCorrProbAuthAt_le_kemCorrProb S P idx A⟩
 
 end Proofs.SignalPqxdh.Security.PqxdhDelta

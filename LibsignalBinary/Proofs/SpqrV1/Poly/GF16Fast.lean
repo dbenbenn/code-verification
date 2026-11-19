@@ -25,7 +25,7 @@ $\mathbb{F}_2$-bilinearity in both arguments together with a closed `decide +ker
 $16 \times 16 = 256$ basis pairs `(1#16 <<< i, 1#16 <<< j)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open CryptoVerification.LibsignalSpqrV1
 /-! ## 1. Fast `Nat`-Primitive `GF(2^16)` Evaluator -/
 
 /-- Unconditional 1-bit carryless multiply loop on `Nat` (for bilinearity proofs). -/
-def clmulNoShort : Nat → Nat → Nat → Nat → Nat
+@[expose] def clmulNoShort : Nat → Nat → Nat → Nat → Nat
   | 0, _, _, acc => acc
   | fuel + 1, a, b, acc =>
     let acc' :=
@@ -47,7 +47,7 @@ def clmulNoShort : Nat → Nat → Nat → Nat → Nat
 
 /-- Short-circuiting carryless multiply loop on `Nat` (terminates as soon as `Nat.beq b 0` is `true`,
     building zero `Decidable` proof terms in the kernel). -/
-def clmulLoopNat : Nat → Nat → Nat → Nat → Nat
+@[expose] def clmulLoopNat : Nat → Nat → Nat → Nat → Nat
   | 0, _, _, acc => acc
   | fuel + 1, a, b, acc =>
     match Nat.beq b 0 with
@@ -61,25 +61,25 @@ def clmulLoopNat : Nat → Nat → Nat → Nat → Nat
 
 /-- One degree-folding step modulo $x^{16} + x^{12} + x^3 + x + 1$ (`65536 + 4107 = 69643`),
     using only `Nat` C++ kernel primitives (`&&&`, `>>>`, `<<<`, `^^^`). -/
-def reduceStepNat (v : Nat) : Nat :=
+@[expose] def reduceStepNat (v : Nat) : Nat :=
   let lo := v &&& 65535
   let hi := v >>> 16
   lo ^^^ (hi <<< 12) ^^^ (hi <<< 3) ^^^ (hi <<< 1) ^^^ hi
 
 /-- Four-fold degree reduction from $\deg \le 31$ down to $\deg \le 15$. -/
-def reduceFastNat (v : Nat) : Nat :=
+@[expose] def reduceFastNat (v : Nat) : Nat :=
   reduceStepNat (reduceStepNat (reduceStepNat (reduceStepNat v)))
 
 /-- Fast `Nat` evaluator for $\mathrm{GF}(2^{16})$ multiplication on `u16` representatives. -/
-def mulFastNat (a b : Nat) : Nat :=
+@[expose] def mulFastNat (a b : Nat) : Nat :=
   reduceFastNat (clmulLoopNat 16 a b 0)
 
 /-- Fast `BitVec 16` evaluator for `unaccelerated.mul`. -/
-def mulFastBV (a b : BitVec 16) : BitVec 16 :=
+@[expose] def mulFastBV (a b : BitVec 16) : BitVec 16 :=
   BitVec.ofNat 16 (mulFastNat a.toNat b.toNat)
 
 /-- Fast `GF16` multiplication equivalent to `GF16.mul` and `GF16.constMul`. -/
-def mulFast (a b : GF16) : GF16 :=
+@[expose] def mulFast (a b : GF16) : GF16 :=
   ⟨mulFastBV a.value b.value⟩
 
 /-! ## 2. Bitwise XOR Linearity of `mulFastBV` -/
@@ -597,24 +597,20 @@ theorem unaccelerated_mul_eq_mulFastBV (a b : BitVec 16) :
     (fun i hi => basis_mul_eq hi hj)
     a
 
-theorem gf16_mul_eq_mulFast (a b : GF16) : GF16.mul a b = mulFast a b := by
-  unfold GF16.mul mulFast
-  rw [unaccelerated_mul_eq_mulFastBV]
-
 theorem gf16_constMul_eq_mulFast (a b : GF16) : GF16.constMul a b = mulFast a b := by
   unfold GF16.constMul mulFast
   rw [unaccelerated_mul_eq_mulFastBV]
 
 /-! ## 5. Fast `GF16.constDiv`, `PolyConst.lagrangeInterpolatePt`, and Complete-Points Basis -/
 
-def constDivLoopFast : Nat → GF16 → GF16 → GF16
+@[expose] def constDivLoopFast : Nat → GF16 → GF16 → GF16
   | 0, _, out => out
   | n + 1, square, out =>
     let square' := mulFast square square
     let out' := mulFast out square'
     constDivLoopFast n square' out'
 
-def constDivFast (self other : GF16) : GF16 :=
+@[expose] def constDivFast (self other : GF16) : GF16 :=
   constDivLoopFast 15 other self
 
 theorem constDivLoop_eq_fast :
@@ -629,7 +625,7 @@ theorem gf16_constDiv_eq_fast (self other : GF16) :
     GF16.constDiv self other = constDivFast self other :=
   constDivLoop_eq_fast 15 other self
 
-def polyConstMultFast {n : Nat} (self : PolyConst n) (m : GF16) : PolyConst n :=
+@[expose] def polyConstMultFast {n : Nat} (self : PolyConst n) (m : GF16) : PolyConst n :=
   { coefficients := self.coefficients.map (fun c => mulFast c m) }
 
 theorem polyConst_mult_eq_fast {n : Nat} (self : PolyConst n) (m : GF16) :
@@ -637,7 +633,7 @@ theorem polyConst_mult_eq_fast {n : Nat} (self : PolyConst n) (m : GF16) :
   unfold PolyConst.mult polyConstMultFast
   simp only [gf16_constMul_eq_mulFast]
 
-def polyConstMultXdiffFast {n : Nat} (self : PolyConst n) (difference : GF16) :
+@[expose] def polyConstMultXdiffFast {n : Nat} (self : PolyConst n) (difference : GF16) :
     Except PolyPanic (PolyConst n) := do
   if n == 0 then
     .error .subOverflow
@@ -659,7 +655,7 @@ theorem polyConst_multXdiff_eq_fast {n : Nat} (self : PolyConst n) (difference :
   rw [hfn]
   rfl
 
-def lagrangeInterpolatePtLoopFast (n : Nat) (pts : List Pt) (pix : GF16) :
+@[expose] def lagrangeInterpolatePtLoopFast (n : Nat) (pts : List Pt) (pix : GF16) :
     Nat → Nat → PolyConst n → GF16 → Except PolyPanic (PolyConst n × GF16)
   | _, 0, p, denominator => .ok (p, denominator)
   | j, rem + 1, p, denominator => do
@@ -690,7 +686,7 @@ theorem lagrangeInterpolatePtLoop_eq_fast (n : Nat) (pts : List Pt) (pix : GF16)
         | ok p' =>
           exact lagrangeInterpolatePtLoop_eq_fast n pts pix (j + 1) rem p' _
 
-def lagrangeInterpolatePtFast (n : Nat) (pts : List Pt) (i : Nat) :
+@[expose] def lagrangeInterpolatePtFast (n : Nat) (pts : List Pt) (i : Nat) :
     Except PolyPanic (PolyConst n) := do
   let some pi := pts[i]? | .error .boundsCheck
   if n == 0 then
@@ -717,7 +713,7 @@ theorem lagrangeInterpolatePt_eq_fast (n : Nat) (pts : List Pt) (i : Nat) :
         dsimp only [bind, Except.bind, pure, Except.pure]
         rw [polyConst_mult_eq_fast, gf16_constDiv_eq_fast]
 
-def lagrangePolysForCompletePointsFast (n : Nat) : Except PolyPanic (List (PolyConst n)) := do
+@[expose] def lagrangePolysForCompletePointsFast (n : Nat) : Except PolyPanic (List (PolyConst n)) := do
   let ones : List Pt :=
     (List.range n).map (fun i => { x := GF16.new (BitVec.ofNat 16 i), y := GF16.ONE })
   (List.range n).mapM (fun i => lagrangeInterpolatePtFast n ones i)

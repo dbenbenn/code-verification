@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DefsBudget
-public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommonBudget
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExtBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Minimal Stage-2 Contracts for `SessionRecord::deserialize`
@@ -25,7 +30,7 @@ Defines `Stage2ContractsMinPlaced M A lim H` (combining `AllocContractsPlaced M 
 and parametric-envelope `recordDeserializeOpenEnvSpec` wrappers on block `46`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -127,22 +132,12 @@ theorem serContractsXPlaced_of_stage2ContractsMinPlaced [LibsignalPlacement] {M 
     SerContractsXPlaced M A lim H :=
   ⟨hC.alloc, hC.memcpy⟩
 
-abbrev Stage2ContractsMinPlaced.toSerContractsXPlaced :=
-  @serContractsXPlaced_of_stage2ContractsMinPlaced
-
-/-- Construct `Stage2ContractsMinPlaced M A lim H` from `SerContractsXPlaced M A lim H`. -/
-theorem Stage2ContractsMinPlaced.of_serContractsXPlaced [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hC : SerContractsXPlaced M A lim H) :
-    Stage2ContractsMinPlaced M A lim H :=
-  ⟨hC.alloc, hC.memcpy⟩
-
 /-! ## 2. Parametric-Envelope `recordDeserializeOpenEnvSpec` & Block-`46` Bundle Projections -/
 
 /-- Parametric-envelope budget-threaded `recordDeserializeOpenSpec` (`onPanic = ⌜False⌝`,
 `onOom = ⌜False⌝`), matching `LibsignalBinary.Proofs.E2E.Bin.SpecsCommonBudget.recordDeserializeOpenSpec`
 at `Env := fun bs _ => RecordDeserializeEnv bs`. -/
-def recordDeserializeOpenEnvSpec
+@[expose] def recordDeserializeOpenEnvSpec
     (Env : List (BitVec 8) → Session (List (BitVec 8)) → List AllocEvent → Prop)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × List (BitVec 8) × BitVec 64 × Session (List (BitVec 8))) × M.σ) where
@@ -162,96 +157,5 @@ abbrev recordDeserializeOpenSpecX (M : AllocCostModel) (A : RustCliAllocBudget M
     (lim : BudgetLimits) :
     Spec ((BitVec 64 × List (BitVec 8) × BitVec 64 × Session (List (BitVec 8))) × M.σ) :=
   recordDeserializeOpenEnvSpec (fun bs _ => RecordDeserializeEnv bs) M A lim
-
-/-- `recordDeserializeOpenSpecX` is definitionally equal to
-`LibsignalBinary.Proofs.E2E.Bin.SpecsCommonBudget.recordDeserializeOpenSpec`. -/
-theorem recordDeserializeOpenSpecX_eq_specsCommon (M : AllocCostModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    recordDeserializeOpenSpecX M A lim =
-      LibsignalBinary.Proofs.E2E.Bin.SpecsCommonBudget.recordDeserializeOpenSpec M A lim :=
-  rfl
-
-/-- Unpack `Stage2ContractsMinPlaced M A lim H` into its `(alloc, memcpy)` premises for any
-callee contract. -/
-theorem lift_placed_ok_of_stage2Min [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks} {P : Prop}
-    (hStage2 : Stage2ContractsMinPlaced M A lim H)
-    (hCallee :
-      AllocContractsPlaced M A lim H →
-      (∀ {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H],
-        subroutine_ok callerProg (lsρ lsMemcpySym)
-          (withLsCl lsmpl (sessionMemcpyBudgetSpec extHookStack))) →
-      P) :
-    P :=
-  hCallee hStage2.alloc hStage2.memcpy
-
-/-- Block-`46` `recordDeserializeOpenEnvSpec` from `Stage2ContractsMinPlaced M A lim H` and its
-`(alloc, memcpy)` callee contract. -/
-theorem recordDeserializeEnv_placed_ok_of_stage2Min_of_alloc [LibsignalPlacement]
-    {Env : List (BitVec 8) → Session (List (BitVec 8)) → List AllocEvent → Prop}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hStage2 : Stage2ContractsMinPlaced M A lim H)
-    (hCallee :
-      AllocContractsPlaced M A lim H →
-      (∀ {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H],
-        subroutine_ok callerProg (lsρ lsMemcpySym)
-          (withLsCl lsmpl (sessionMemcpyBudgetSpec extHookStack))) →
-      subroutine_ok (lsProg_46 H) (blkPl_46).base
-        (withLsCodeRoLoaded lsmpl (recordDeserializeOpenEnvSpec Env M A lim))) :
-    subroutine_ok (lsProg_46 H) (blkPl_46).base
-      (withLsCodeRoLoaded lsmpl (recordDeserializeOpenEnvSpec Env M A lim)) :=
-  lift_placed_ok_of_stage2Min hStage2 hCallee
-
-/-- Block-`46` `SpecsCommonBudget.recordDeserializeOpenSpec` from
-`Stage2ContractsMinPlaced M A lim H` and its `(alloc, memcpy)` callee contract. -/
-theorem recordDeserialize_placed_ok_of_stage2Min_of_alloc [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hStage2 : Stage2ContractsMinPlaced M A lim H)
-    (hCallee :
-      AllocContractsPlaced M A lim H →
-      (∀ {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H],
-        subroutine_ok callerProg (lsρ lsMemcpySym)
-          (withLsCl lsmpl (sessionMemcpyBudgetSpec extHookStack))) →
-      subroutine_ok (lsProg_46 H) (blkPl_46).base
-        (withLsCodeRoLoaded lsmpl
-          (LibsignalBinary.Proofs.E2E.Bin.SpecsCommonBudget.recordDeserializeOpenSpec M A lim))) :
-    subroutine_ok (lsProg_46 H) (blkPl_46).base
-      (withLsCodeRoLoaded lsmpl
-        (LibsignalBinary.Proofs.E2E.Bin.SpecsCommonBudget.recordDeserializeOpenSpec M A lim)) :=
-  lift_placed_ok_of_stage2Min hStage2 hCallee
-
-/-- Block-`46` `recordDeserializeOpenEnvSpec_Q` from `Stage2ContractsMinPlaced M A lim H` and its
-`(alloc, memcpy)` callee contract. -/
-theorem recordDeserializeOpenEnvQ_placed_ok_of_stage2Min_of_alloc [LibsignalPlacement]
-    {Q : List (BitVec 8) → Prop}
-    {Env : List (BitVec 8) → Session (List (BitVec 8)) → List AllocEvent → Prop}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hStage2 : Stage2ContractsMinPlaced M A lim H)
-    (hCallee :
-      AllocContractsPlaced M A lim H →
-      (∀ {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H],
-        subroutine_ok callerProg (lsρ lsMemcpySym)
-          (withLsCl lsmpl (sessionMemcpyBudgetSpec extHookStack))) →
-      subroutine_ok (lsProg_46 H) (blkPl_46).base
-        (withLsCodeRoLoaded lsmpl (recordDeserializeOpenEnvSpec_Q Q Env M A lim))) :
-    subroutine_ok (lsProg_46 H) (blkPl_46).base
-      (withLsCodeRoLoaded lsmpl (recordDeserializeOpenEnvSpec_Q Q Env M A lim)) :=
-  lift_placed_ok_of_stage2Min hStage2 hCallee
-
-/-- Block-`46` `recordDeserializeOpenSpec_Q NonEmptyV1Q` from
-`Stage2ContractsMinPlaced M A lim H` and its `(alloc, memcpy)` callee contract. -/
-theorem recordDeserializeOpenQ_placed_ok_of_stage2Min_of_alloc [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hStage2 : Stage2ContractsMinPlaced M A lim H)
-    (hCallee :
-      AllocContractsPlaced M A lim H →
-      (∀ {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H],
-        subroutine_ok callerProg (lsρ lsMemcpySym)
-          (withLsCl lsmpl (sessionMemcpyBudgetSpec extHookStack))) →
-      subroutine_ok (lsProg_46 H) (blkPl_46).base
-        (withLsCodeRoLoaded lsmpl (recordDeserializeOpenSpec_Q NonEmptyV1Q M A lim))) :
-    subroutine_ok (lsProg_46 H) (blkPl_46).base
-      (withLsCodeRoLoaded lsmpl (recordDeserializeOpenSpec_Q NonEmptyV1Q M A lim)) :=
-  lift_placed_ok_of_stage2Min hStage2 hCallee
 
 end LibsignalBinary.Proofs.SessionRecordMin.DeserializeBudget

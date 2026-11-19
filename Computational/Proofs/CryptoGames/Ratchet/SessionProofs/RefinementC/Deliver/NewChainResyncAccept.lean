@@ -19,7 +19,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Honest
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.HelpersC
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Sync
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
 
 /-!
 # Deliver step of the C coupling: new epoch, resync accept
@@ -28,7 +28,7 @@ Proves `closeByStateC_deliver_newChain_resync_accept`, the accepting case of a n
 resync delivery where `predictReceiveWithSnapshots` and Fig. 8 both accept.
 -/
 
-@[expose] public section
+public section
 
 
 open OracleComp OracleSpec ENNReal MeasureTheory

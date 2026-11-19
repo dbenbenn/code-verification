@@ -10,12 +10,15 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OneSidedPeel
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OneSidedPeel -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonLocal
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkHist
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepMac
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepBase
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkSpine -- proof-setup: allow-public-import
 
 /-!
 # Spine Predicate `Good` and KDF Shape Algebra
@@ -25,7 +28,7 @@ lemmas for `hkdfBlock1`, `hkdfBlock2`, and `kdfCk`, and shows `spineDown_good : 
 on reachable traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +53,7 @@ attribute [local instance 2000]
 /-! ## Term-level KDF algebra -/
 
 /-- Chain-key output selector: the chain key itself (`false`) or its message seed (`true`). -/
-def ckOut : Bool → DY.Bytes → DY.Bytes
+@[expose] def ckOut : Bool → DY.Bytes → DY.Bytes
   | false, x => x
   | true, x => (kdfCk x).2
 
@@ -272,17 +275,17 @@ theorem doneKeys_pqxdh {T : ExecTrace} (hT : ReachableTrace T) {keys : Handshake
 /-! ## `Good` predicate -/
 
 /-- Honest root-key nodes: a stored root key, an intermediate root-key node, or a handshake `rk`. -/
-def GoodRk (T : ExecTrace) (x : DY.Bytes) : Prop :=
+@[expose] def GoodRk (T : ExecTrace) (x : DY.Bytes) : Prop :=
   (∃ (p : Participant) (st : TRState) (i₀ : Nat), TRStateStoredAt p st i₀ T ∧ x = st.rk) ∨
   (∃ pk, RkInter T pk x) ∨
   (∃ keys : HandshakeKeys, (AliceDoneKeys T keys ∨ BobDoneKeys T keys) ∧ x = keys.rk)
 
 /-- Chain keys and message seeds over an honest receive root. -/
-def GoodCk (T : ExecTrace) (x : DY.Bytes) : Prop :=
+@[expose] def GoodCk (T : ExecTrace) (x : DY.Bytes) : Prop :=
   ∃ (pk R : DY.Bytes) (j : Nat) (b : Bool), RecvRoot T pk R ∧ x = ckOut b (chainKeyAt R j)
 
 /-- Combined honest receive-chain and root-key spine predicate. -/
-def Good (T : ExecTrace) (x : DY.Bytes) : Prop := GoodCk T x ∨ GoodRk T x
+@[expose] def Good (T : ExecTrace) (x : DY.Bytes) : Prop := GoodCk T x ∨ GoodRk T x
 
 /-- Every stored root key is an `hkdfBlock1 _ "WhisperRatchet"` node. -/
 theorem stored_rk_form {T : ExecTrace} (hT : ReachableTrace T) {p : Participant} {st : TRState}

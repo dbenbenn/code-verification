@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Arm64
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.GenDecodes
 public import ProofLib.PrologueFrame
 public import ProofLib.GenPlacedFetches
@@ -29,33 +29,16 @@ namespace Testing.CExamplesFixture
 
 open Arm64 ProofLib ProofLib.ProgramReflection ProofLib.GenPlacedFetches
 
-def cExamplesObj : Obj.ObjectInfo :=
-  { name := "c_examples"
-    fns :=
-      [ ("c_arith_shift",
-         [0x08#8, 0x04#8, 0x00#8, 0x8b#8, 0x00#8, 0xf9#8, 0x01#8, 0x91#8, 0xc0#8, 0x03#8, 0x5f#8, 0xd6#8])
-      , ("c_max_u64",
-         [0x1f#8, 0x00#8, 0x01#8, 0xeb#8, 0x00#8, 0x80#8, 0x81#8, 0x9a#8, 0xc0#8, 0x03#8, 0x5f#8, 0xd6#8])
-      , ("c_swap_u64",
-         [0x28#8, 0x00#8, 0x40#8, 0xf9#8, 0x09#8, 0x00#8, 0x40#8, 0xf9#8, 0x08#8, 0x00#8, 0x00#8, 0xf9#8,
-          0x29#8, 0x00#8, 0x00#8, 0xf9#8, 0xc0#8, 0x03#8, 0x5f#8, 0xd6#8]) ] }
+abbrev cExamplesCodeTextEnd : Nat := 44
 
-def cExamplesImage : Obj.LinkedImage :=
+def cExamplesCode : Program :=
   { code :=
       [0x08#8, 0x04#8, 0x00#8, 0x8b#8, 0x00#8, 0xf9#8, 0x01#8, 0x91#8, 0xc0#8, 0x03#8, 0x5f#8, 0xd6#8,
        0x1f#8, 0x00#8, 0x01#8, 0xeb#8, 0x00#8, 0x80#8, 0x81#8, 0x9a#8, 0xc0#8, 0x03#8, 0x5f#8, 0xd6#8,
        0x28#8, 0x00#8, 0x40#8, 0xf9#8, 0x09#8, 0x00#8, 0x40#8, 0xf9#8, 0x08#8, 0x00#8, 0x00#8, 0xf9#8,
        0x29#8, 0x00#8, 0x00#8, 0xf9#8, 0xc0#8, 0x03#8, 0x5f#8, 0xd6#8]
-    dataOff := 0x1000
-    data := []
-    gotOff := 0x1000
     symbols := [("c_arith_shift", 0x0), ("c_max_u64", 0xc), ("c_swap_u64", 0x18)]
-    stubs := []
-    objects := [cExamplesObj] }
-
-abbrev cExamplesCodeTextEnd : Nat := 44
-
-def cExamplesCode : Program := cExamplesImage.toProgram
+    stubs := [] }
 
 def cExamplesCode_tree : WordTree := word_tree_of% cExamplesCode
 
@@ -108,20 +91,39 @@ theorem cExamplesCode_fetch_fnAddr_entry {b : BitVec 64} {H : String → Option 
 @[simp, arm64_norm] theorem cExamplesCode_fnOff_0xc : cExamplesCode.fnOff "c_max_u64" = 12 := rfl
 @[simp, arm64_norm] theorem cExamplesCode_fnOff_0x18 : cExamplesCode.fnOff "c_swap_u64" = 24 := rfl
 
+def progFuncTable (P : Program) : List (String × (Nat × Nat)) :=
+  let textEnd :=
+    match P.stubs with
+    | (_, o) :: rest => Obj.minStubOff o rest
+    | [] => P.code.length
+  let textSyms := Obj.tagWithIdx 0 (P.symbols.filter fun (_, off) => Nat.blt off textEnd)
+  let byOff := Obj.sortList (fun a b => Nat.ble a.2.2 b.2.2) textSyms
+  let withSpans := (Obj.assignSpans textEnd byOff).2.2
+  (Obj.sortList (fun a b => Nat.ble a.1 b.1) withSpans).map (·.2)
+
+def progFnSize (P : Program) (name : String) : Nat :=
+  match (progFuncTable P).find? (·.1 == name) with
+  | some (_, (off, span)) => trimTrailingZeroBytesLen ((P.code.drop off).take span)
+  | none => 0
+
+def progFnFrameBytes (P : Program) (name : String) : Nat :=
+  match (progFuncTable P).find? (·.1 == name) with
+  | some (_, (off, span)) => (inferPrologueFrameBytes? ((P.code.drop off).take span)).getD 0
+  | none => 0
+
+instance : HasFnFrameBytes Program where
+  frameBytes := progFnFrameBytes
+
 abbrev cExamplesCode_frame (name : String) (sp : BitVec 64) : SepProp :=
-  stackFrameFor cExamplesImage name sp
+  stackFrameFor cExamplesCode name sp
 
-@[simp, arm64_norm, wp_norm] theorem cExamplesCode_fnSize_0x0 : Obj.fnSize cExamplesImage "c_arith_shift" = 12 := rfl
-@[simp, arm64_norm, wp_norm] theorem cExamplesCode_fnSize_0xc : Obj.fnSize cExamplesImage "c_max_u64" = 12 := rfl
-@[simp, arm64_norm, wp_norm] theorem cExamplesCode_fnSize_0x18 : Obj.fnSize cExamplesImage "c_swap_u64" = 20 := rfl
+@[simp, arm64_norm, wp_norm] theorem cExamplesCode_fnSize_0x0 : progFnSize cExamplesCode "c_arith_shift" = 12 := rfl
+@[simp, arm64_norm, wp_norm] theorem cExamplesCode_fnSize_0xc : progFnSize cExamplesCode "c_max_u64" = 12 := rfl
+@[simp, arm64_norm, wp_norm] theorem cExamplesCode_fnSize_0x18 : progFnSize cExamplesCode "c_swap_u64" = 20 := rfl
 
-@[simp, arm64_norm, wp_norm] theorem cExamplesCode_frameBytes_0x0 : fnFrameBytes cExamplesImage "c_arith_shift" = 0 := rfl
-@[simp, arm64_norm, wp_norm] theorem cExamplesCode_frameBytes_0xc : fnFrameBytes cExamplesImage "c_max_u64" = 0 := rfl
-@[simp, arm64_norm, wp_norm] theorem cExamplesCode_frameBytes_0x18 : fnFrameBytes cExamplesImage "c_swap_u64" = 0 := rfl
-
-@[simp, arm64_norm, wp_norm] theorem cExamplesObj_frameBytes_0x0 : fnFrameBytes cExamplesObj "c_arith_shift" = 0 := rfl
-@[simp, arm64_norm, wp_norm] theorem cExamplesObj_frameBytes_0xc : fnFrameBytes cExamplesObj "c_max_u64" = 0 := rfl
-@[simp, arm64_norm, wp_norm] theorem cExamplesObj_frameBytes_0x18 : fnFrameBytes cExamplesObj "c_swap_u64" = 0 := rfl
+@[simp, arm64_norm, wp_norm] theorem cExamplesCode_frameBytes_0x0 : fnFrameBytes cExamplesCode "c_arith_shift" = 0 := rfl
+@[simp, arm64_norm, wp_norm] theorem cExamplesCode_frameBytes_0xc : fnFrameBytes cExamplesCode "c_max_u64" = 0 := rfl
+@[simp, arm64_norm, wp_norm] theorem cExamplesCode_frameBytes_0x18 : fnFrameBytes cExamplesCode "c_swap_u64" = 0 := rfl
 
 gen_fetches cExamplesCode cExamplesBin true [0x0 → 0x28]
 

@@ -34,7 +34,7 @@ import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.SymEnc
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Trunc
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.CREF.Prelude
-public import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519 -- shake: keep
+import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519 -- shake: keep
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
 import Symbolic.DYBridge.DY.ALaCarte.Basic
@@ -44,6 +44,8 @@ import Symbolic.DYBridge.DY.EquationalTheory.Concat
 import Symbolic.DYBridge.DY.EquationalTheory.DiffieHellman
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 import Symbolic.DYBridge.DY.EquationalTheory.Sign
+public import Symbolic.Specifications.Model.Composed
+public import Symbolic.Specifications.Model.Instance
 
 /-!
 # KDF Provenance Predicate
@@ -53,7 +55,7 @@ records stored-state provenance (`HonestKdfOut`) for `kdfExtract` terms at chain
 labels, and proves monotonicity and closure under composed attacker knowledge.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -155,12 +157,12 @@ end UnsealedInjectivity
 
 /-- `x` is the root key, the sending chain key, or a receiving chain key of a `TRState` stored at
 some index of `T`. -/
-def HonestKdfOut (T : ExecTrace) (x : DY.Bytes) : Prop :=
+@[expose] def HonestKdfOut (T : ExecTrace) (x : DY.Bytes) : Prop :=
   ∃ me st idx, TRStoredAt T me st idx ∧
     (x = st.rk ∨ x = st.cks ∨ ∃ c ∈ st.recv, x = c.chainKey)
 
 /-- `KdfInputValidTR` with provenance in the chain-key / root-key label cases. -/
-def KdfInputValidProv (T : ExecTrace) (s i : DY.Bytes) : Prop :=
+@[expose] def KdfInputValidProv (T : ExecTrace) (s i : DY.Bytes) : Prop :=
   (s.AttackerKnows T ∧ i.AttackerKnows T) ∨
   (i = litByte 0x01 ∧ ∃ j ses pk n rIdx src,
       T.EventLoggedAt (TREvent.SkippedKeyStored ses pk n (KdfExtract.kdfExtract s i) rIdx src) j) ∨

@@ -10,18 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ChainEpochPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.FinalPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ChainEpochPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.FinalPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPlaced
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopRegionsPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -30,6 +31,15 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Top
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.TopPhase3
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopRegionsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced
 
 /-!
 # Budget-Threaded Relocatable Top-Level Proof of `spqr::send::<signal_session_ratchet::Coins>` (Block `427`)
@@ -38,7 +48,7 @@ Composes budget-threaded Phase 1, Phase 2, and Phase 3–4 into end-to-end `subr
 contracts for Block `427` under `RustCliAllocBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -69,7 +79,10 @@ open LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget (dropChainEpochSliceSpe
 open LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget (dropChunkedStatesLocal1PlacedSpec)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget
-  (DecodeStatePlacedEnv StatesFromPbEnv spqrSendCoinsPlacedSpecTOfEnv)
+  (DecodeStatePlacedEnv StatesFromPbEnv spqrSendCoinsDispPlacedSpecTOfEnv
+   spqrSendCoinsPlacedSpecTOfEnv spqrSendCoinsPlacedSpecTOfEnv_cro_of_disp)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (spqrSendResultDispAt spqrSendResultDispAt_entails_spqrSendResultAt)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlacedBudget
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.FinalPlacedBudget
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudget
@@ -77,12 +90,15 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAu
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
   (AuthMacHdrPinnedPlacedOkX DoReserve2PlacedOkX)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase
+  (mlkemEncaps1AtSpec mlkemFromSeedAtSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget (SpqrBoundedEvs)
 
 /-- Honest phase-composed allocation envelope for `spqr::send::<signal_session_ratchet::Coins>`
     (`Block 427`), composing `DecodeStatePlacedEnv`, `StatesFromPbEnv`, `StatesSendEnv`, and
     `SendPhase3Env` with zero existential binders. -/
-def SpqrSendCoinsExactEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrSendCoinsExactEnv (F : ShaCompress) (K : MlKem)
     (x : SendCall) (evs : List AllocEvent) : Prop :=
   let decEnv : List AllocEvent → Prop :=
     DecodeStatePlacedEnv { st := x.st, outPtr := 0#64 }
@@ -137,13 +153,13 @@ structure SpqrSendExtraContractsPlaced [LibsignalPlacement]
   allocZeroed_hook : HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym
     (rustAllocZeroedBudgetSpec M A lim)
   mlkemFromSeed_hook : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
-    (withVmPreserved (mlkemFromSeedSpec K))
+    (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K)))
   mlkemPk1_hook : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym
     (withVmPreserved mlkemPk1Spec)
   mlkemPk2_hook : HookSat (Rust.withPanics ext) spqrMlkemPk2Sym
     (withVmPreserved mlkemPk2Spec)
   mlkemEncaps1_hook : HookSat (Rust.withPanics ext) spqrMlkemEncaps1Sym
-    (withVmPreserved (mlkemEncaps1Spec K))
+    (withLsRet (withVmPreserved (mlkemEncaps1AtSpec 36864 K)))
   fromSeed_pk1_slice : ∀ s : List.Vector (BitVec 8) 64,
     ((K.fromSeed s).2.2.toList.drop 2304).take 64 = (K.fromSeed s).1.toList
   fromSeed_pk2_slice : ∀ s : List.Vector (BitVec 8) 64,
@@ -176,7 +192,7 @@ theorem spqrSend_dropChunkedStates_ok_of_dealloc [LibsignalPlacement]
     (callerProg := spqrSendPlacedProg ext) hA.dealloc
 
 set_option maxHeartbeats 800000 in
-theorem spqrSendBudgetActiveContinuation_placed_ok_ofEnv [LibsignalPlacement]
+theorem spqrSendBudgetActiveContinuation_disp_placed_ok_ofEnv [LibsignalPlacement]
     {M : AllocCostModel} {H_inner : V1InnerHeapPred}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ctl : BitVec 64} {C : Crypto} {K : MlKem}
@@ -223,7 +239,7 @@ theorem spqrSendBudgetActiveContinuation_placed_ok_ofEnv [LibsignalPlacement]
            FreeOnlyEvs evs_tail
        | .error (.panic _) => False) →
       Env x (evs_dec ++ evs_fpb ++ evs_tail)) :
-    SpqrSendBudgetActiveContinuationPlaced M A lim ctl C.F K
+    SpqrSendBudgetActiveContinuationDispPlaced M A lim ctl C.F K
       EnvDecode EnvFromPb Env ext := by
   intro x s0 st0 R hlen hrest_len hfits0 hsp_align pq v1 st_states evs_dec evs_fpb
     hdec hinner hfrom hevs_dec hevs_fpb w0 w1 hw0 sf hcrlf hpcf hrunf hspf htrf
@@ -454,7 +470,7 @@ theorem spqrSendBudgetActiveContinuation_placed_ok_ofEnv [LibsignalPlacement]
           dsimp only [FrameArm, Rest314d8]; sep_ac_rfl
         _ = _ := by rw [hreg]; sep_ac_rfl
     rw [hP3196_eq]
-    refine step_send_from_314d8_placed (M.stepEvents evs_ss bSt) hA hEx.panic_hook hEx.panicSubOverflow_hook
+    refine step_send_from_314d8_disp_placed (M.stepEvents evs_ss bSt) hA hEx.panic_hook hEx.panicSubOverflow_hook
       hEx.dropChainEpochSlice_raw_ok hEx.dropChunkedStates_ok hC.chainFromPb_ok hC.chainFromVn_ok
       hC.chainAddEpoch_ok hC.chainSendKey_ok hC.chainIntoPb_ok hC.messageSerialize_ok
       hC.statesIntoPb_ok s0 sm sp x.ret (sm.readReg64 .x21) (sm.readReg64 .x27) (sm.readReg64 .x23)
@@ -501,7 +517,7 @@ theorem spqrSendBudgetActiveContinuation_placed_ok_ofEnv [LibsignalPlacement]
         rw [M.stepEvents_append, M.stepEvents_append]
       rw [hsend_eq, hdraws_eq, hstep_eq]
       refine Entails.pure_right ⟨Nat.sub_le _ _, htr_f, hnp⟩ (Entails.trans hPf' ?_)
-      dsimp only [Rest314d8, RestTail, spqrSendFullRoPlacedAt, spqrSendRoPlacedAt]
+      dsimp only [spqrSendResultDispAt, Rest314d8, RestTail, spqrSendFullRoPlacedAt, spqrSendRoPlacedAt]
       have hinto_eq :
           CryptoVerification.Cli.SpqrV1.Top.Send.statesIntoPbJumpTablePlacedAt =
             CryptoVerification.SpqrV1.States.IntoPb.statesIntoPbJumpTablePlacedAt := rfl
@@ -581,6 +597,124 @@ theorem spqrSendBudgetActiveContinuation_placed_ok_ofEnv [LibsignalPlacement]
         hA hEx.allocZeroed_hook hC.coinsFill_ok hEx.mlkemEncaps1_hook hEx.unwrapFailed_hook
         sp x.cur x.rest (by omega) st hencaps hfit_hr hpan hcrlf hpcf hrunf hspf hfsp_align
         htrf hx24 hx26 hx28 rfl)
+
+theorem spqrSendBudgetActiveContinuation_placed_ok_ofEnv [LibsignalPlacement]
+    {M : AllocCostModel} {H_inner : V1InnerHeapPred}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ctl : BitVec 64} {C : Crypto} {K : MlKem}
+    {EnvDecode : DecodeStateGhost → List AllocEvent → Prop}
+    {EnvFromPb : StatesFromPbGhost → List AllocEvent → Prop}
+    {Env : SendCall → List AllocEvent → Prop}
+    {ext : String → Option (State → State)}
+    (hA : AllocContractsPlaced M A lim ext)
+    (hC : SpqrSendPlacedContracts M H_inner A lim ctl C K ext)
+    (hEx : SpqrSendExtraContractsPlaced M A lim ctl C K ext)
+    (hfits_ss : ∀ (x : SendCall) (s0 : State) (st0 : M.σ)
+        (pq : PqRatchetState) (v1 : V1State)
+        (st_states : States spqrPolyApi (spqrAuthApi C.F))
+        (evs_dec evs_fpb : List AllocEvent),
+      x.st.bytes.length < 2 ^ 32 → 64 ≤ x.rest.length →
+      FitsEnv M lim st0 (Env x) →
+      spqrDecodeState x.st.bytes = .ok pq → pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi C.F) v1 = .ok st_states →
+      EnvDecode { st := x.st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      EnvFromPb { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                  pbA := (s0.sp - 0x1f80#64) + 0xb0#64, pb := v1 } evs_fpb →
+      FitsEnv M lim (M.stepEvents (evs_dec ++ evs_fpb) st0)
+        (SeqEnv (StatesSendEnv C.F K st_states x.rest)
+          (match st_states.send K x.rest with
+           | .ok (sOut, _) => SendPhase3Env pq sOut
+           | .error (.err _) => FreeOnlyEvs
+           | .error (.panic _) => LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget.HeaderReceived1aEnv)))
+    (henv_active : ∀ (x : SendCall) (s0 : State)
+        (pq : PqRatchetState) (v1 : V1State)
+        (st_states : States spqrPolyApi (spqrAuthApi C.F))
+        (evs_dec evs_fpb evs_tail : List AllocEvent),
+      x.st.bytes.length < 2 ^ 32 → 64 ≤ x.rest.length →
+      spqrDecodeState x.st.bytes = .ok pq → pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi C.F) v1 = .ok st_states →
+      EnvDecode { st := x.st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      EnvFromPb { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                  pbA := (s0.sp - 0x1f80#64) + 0xb0#64, pb := v1 } evs_fpb →
+      (match st_states.send K x.rest with
+       | .ok (sOut, _) =>
+         SeqEnv (StatesSendEnv C.F K st_states x.rest)
+           (SendPhase3Env pq sOut) evs_tail
+       | .error (.err _) =>
+         SeqEnv (StatesSendEnv C.F K st_states x.rest)
+           FreeOnlyEvs evs_tail
+       | .error (.panic _) => False) →
+      Env x (evs_dec ++ evs_fpb ++ evs_tail)) :
+    SpqrSendBudgetActiveContinuationPlaced M A lim ctl C.F K
+      EnvDecode EnvFromPb Env ext := by
+  intro x s0 st0 R hlen hrest_len hfits0 hsp_align pq v1 st_states evs_dec evs_fpb
+    hdec hinner hfrom hevs_dec hevs_fpb w0 w1 hw0 sf hcrlf hpcf hrunf hspf htrf
+    hx19 hx20 hx21 hx23 hx24 hx25 hx26 hx28 hvregsf R' hm' hL
+  rcases spqrSendBudgetActiveContinuation_disp_placed_ok_ofEnv hA hC hEx hfits_ss henv_active
+      x s0 st0 R hlen hrest_len hfits0 hsp_align pq v1 st_states evs_dec evs_fpb
+      hdec hinner hfrom hevs_dec hevs_fpb w0 w1 hw0 sf hcrlf hpcf hrunf hspf htrf
+      hx19 hx20 hx21 hx23 hx24 hx25 hx26 hx28 hvregsf R' hm' hL with
+    ⟨sf', hsteps, ⟨hpcf', hrunf', Pf, hmf, hq⟩ | hpan | hoom⟩
+  · exact ⟨sf', hsteps, Or.inl ⟨hpcf', hrunf', Pf, hmf, spqrSendBudgetDispPostGoal_entails hq⟩⟩
+  · exact ⟨sf', hsteps, Or.inr (Or.inl hpan)⟩
+  · exact ⟨sf', hsteps, Or.inr (Or.inr hoom)⟩
+
+theorem spqrSendBudgetActiveContinuation_disp_placed_ok [LibsignalPlacement]
+    {M : AllocCostModel} {H_inner : V1InnerHeapPred}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ctl : BitVec 64} {C : Crypto} {K : MlKem}
+    {ext : String → Option (State → State)}
+    (hA : AllocContractsPlaced M A lim ext)
+    (hC : SpqrSendPlacedContracts M H_inner A lim ctl C K ext)
+    (hEx : SpqrSendExtraContractsPlaced M A lim ctl C K ext) :
+    SpqrSendBudgetActiveContinuationDispPlaced M A lim ctl C.F K
+      DecodeStatePlacedEnv StatesFromPbEnv (SpqrSendCoinsExactEnv C.F K) ext := by
+  refine spqrSendBudgetActiveContinuation_disp_placed_ok_ofEnv hA hC hEx ?_ ?_
+  · intro x s0 st0 pq v1 st_states evs_dec evs_fpb _ _ hfits0 hdec hinner hfrom hevs_dec hevs_fpb evs_tail
+    have hevs_dec' : DecodeStatePlacedEnv { st := x.st, outPtr := 0#64 } evs_dec := hevs_dec
+    have hevs_fpb' : StatesFromPbEnv { out := 0#64, pbA := 0#64, pb := v1 } evs_fpb := hevs_fpb
+    cases h : st_states.send K x.rest with
+    | ok val =>
+      rcases val with ⟨sOut, rest'⟩
+      intro htail
+      refine ((fitsEvents_append M lim (evs_dec ++ evs_fpb) evs_tail st0).mp
+        (hfits0 ((evs_dec ++ evs_fpb) ++ evs_tail) ?_)).2
+      simp only [SpqrSendCoinsExactEnv, hdec, hinner, hfrom, h]
+      rw [List.append_assoc]
+      exact SeqEnv.append hevs_dec' (SeqEnv.append hevs_fpb' htail)
+    | error err =>
+      cases err with
+      | err e =>
+        intro htail
+        refine ((fitsEvents_append M lim (evs_dec ++ evs_fpb) evs_tail st0).mp
+          (hfits0 ((evs_dec ++ evs_fpb) ++ evs_tail) ?_)).2
+        simp only [SpqrSendCoinsExactEnv, hdec, hinner, hfrom, h]
+        rw [List.append_assoc]
+        exact SeqEnv.append hevs_dec' (SeqEnv.append hevs_fpb' htail)
+      | panic p =>
+        intro htail
+        refine ((fitsEvents_append M lim (evs_dec ++ evs_fpb) evs_tail st0).mp
+          (hfits0 ((evs_dec ++ evs_fpb) ++ evs_tail) ?_)).2
+        simp only [SpqrSendCoinsExactEnv, hdec, hinner, hfrom, h]
+        rw [List.append_assoc]
+        exact SeqEnv.append hevs_dec' (SeqEnv.append hevs_fpb' htail)
+  · intro x s0 pq v1 st_states evs_dec evs_fpb evs_tail _ _ hdec hinner hfrom hevs_dec hevs_fpb htail
+    simp only [SpqrSendCoinsExactEnv, hdec, hinner, hfrom]
+    rw [List.append_assoc]
+    refine SeqEnv.append hevs_dec (SeqEnv.append hevs_fpb ?_)
+    cases h : st_states.send K x.rest with
+    | ok val =>
+      rcases val with ⟨sOut, rest'⟩
+      rw [h] at htail
+      exact htail
+    | error err =>
+      cases err with
+      | err e =>
+        rw [h] at htail
+        exact htail
+      | panic p =>
+        rw [h] at htail
+        exact False.elim htail
 
 theorem spqrSendBudgetActiveContinuation_placed_ok [LibsignalPlacement]
     {M : AllocCostModel} {H_inner : V1InnerHeapPred}
@@ -686,7 +820,54 @@ theorem spqrSendCoins_placed_ok_of_contracts_ofEnv [LibsignalPlacement]
   spqrSendCoins_placed_ok_of_contracts_and_continuation_ofEnv hC
     hfits_decode hfits_from_pb henv_dec_err henv_none henv_err hcont
 
-theorem spqrSendCoins_placed_ok_of_contracts [LibsignalPlacement]
+theorem spqrSendCoins_disp_placed_ok_of_contracts_ofEnv [LibsignalPlacement]
+    {M : AllocCostModel} {H_inner : V1InnerHeapPred}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ctl : BitVec 64} {C : Crypto} {K : MlKem}
+    {Env : SendCall → List AllocEvent → Prop}
+    {ext : String → Option (State → State)}
+    (hA : AllocContractsPlaced M A lim ext)
+    (hC : SpqrSendPlacedContracts M H_inner A lim ctl C K ext)
+    (hEx : SpqrSendExtraContractsPlaced M A lim ctl C K ext)
+    (hfits_decode : ∀ (x : SendCall) (s0 : State) (st0 : M.σ),
+      x.st.bytes.length < 2 ^ 32 → 64 ≤ x.rest.length → FitsEnv M lim st0 (Env x) →
+      FitsEnv M lim st0
+        (DecodeStatePlacedEnv { st := x.st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 }))
+    (hfits_from_pb : ∀ (x : SendCall) (s0 : State) (st0 : M.σ)
+        (pq : PqRatchetState) (v1 : V1State) (evs_dec : List AllocEvent),
+      x.st.bytes.length < 2 ^ 32 → 64 ≤ x.rest.length → FitsEnv M lim st0 (Env x) →
+      spqrDecodeState x.st.bytes = .ok pq → pq.inner = some (.v1 v1) →
+      DecodeStatePlacedEnv { st := x.st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      FitsEnv M lim (M.stepEvents evs_dec st0)
+        (StatesFromPbEnv { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                           pbA := (s0.sp - 0x1f80#64) + 0xb0#64, pb := v1 }))
+    (henv_dec_err : ∀ (x : SendCall) (s0 : State) (e : Error) (evs_dec : List AllocEvent),
+      x.st.bytes.length < 2 ^ 32 → spqrDecodeState x.st.bytes = .error e →
+      DecodeStatePlacedEnv { st := x.st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      Env x evs_dec)
+    (henv_none : ∀ (x : SendCall) (s0 : State) (pq : PqRatchetState)
+        (evs_dec evs_drop : List AllocEvent),
+      x.st.bytes.length < 2 ^ 32 → spqrDecodeState x.st.bytes = .ok pq → pq.inner = none →
+      DecodeStatePlacedEnv { st := x.st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      FreeOnlyEvs evs_drop → Env x (evs_dec ++ evs_drop))
+    (henv_err : ∀ (x : SendCall) (s0 : State) (pq : PqRatchetState) (v1 : V1State) (err : Error)
+        (evs_dec evs_fpb evs_drop : List AllocEvent),
+      x.st.bytes.length < 2 ^ 32 →
+      spqrDecodeState x.st.bytes = .ok pq → pq.inner = some (.v1 v1) →
+      States.from_pb spqrPolyApi (spqrAuthApi C.F) v1 = .error (.err err) →
+      DecodeStatePlacedEnv { st := x.st, outPtr := (s0.sp - 0x1f80#64) + 0x1260#64 } evs_dec →
+      StatesFromPbEnv { out := (s0.sp - 0x1f80#64) + 0x1260#64,
+                        pbA := (s0.sp - 0x1f80#64) + 0xb0#64, pb := v1 } evs_fpb →
+      FreeOnlyEvs evs_drop → Env x ((evs_dec ++ evs_fpb) ++ evs_drop))
+    (hcont : SpqrSendBudgetActiveContinuationDispPlaced M A lim ctl C.F K
+      DecodeStatePlacedEnv StatesFromPbEnv Env ext) :
+    subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 427)
+      (withLsCodeRoLoaded lsmpl
+        (spqrSendCoinsDispPlacedSpecTOfEnv M A lim ctl (spqrV1 C.F K) Env)) :=
+  spqrSendCoins_disp_placed_ok_of_contracts_and_continuation_ofEnv hC
+    hfits_decode hfits_from_pb henv_dec_err henv_none henv_err hcont
+
+theorem spqrSendCoins_disp_placed_ok_of_contracts [LibsignalPlacement]
     {M : AllocCostModel} {H_inner : V1InnerHeapPred}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ctl : BitVec 64} {C : Crypto} {K : MlKem}
@@ -696,9 +877,9 @@ theorem spqrSendCoins_placed_ok_of_contracts [LibsignalPlacement]
     (hEx : SpqrSendExtraContractsPlaced M A lim ctl C K ext) :
     subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 427)
       (withLsCodeRoLoaded lsmpl
-        (spqrSendCoinsPlacedSpecTOfEnv M A lim ctl (spqrV1 C.F K) (SpqrSendCoinsExactEnv C.F K))) := by
-  refine spqrSendCoins_placed_ok_of_contracts_ofEnv hA hC hEx ?_ ?_ ?_ ?_ ?_
-    (spqrSendBudgetActiveContinuation_placed_ok hA hC hEx)
+        (spqrSendCoinsDispPlacedSpecTOfEnv M A lim ctl (spqrV1 C.F K) (SpqrSendCoinsExactEnv C.F K))) := by
+  refine spqrSendCoins_disp_placed_ok_of_contracts_ofEnv hA hC hEx ?_ ?_ ?_ ?_ ?_
+    (spqrSendBudgetActiveContinuation_disp_placed_ok hA hC hEx)
   · intro x s0 st0 _ _ hfits0 evs hevs
     apply hfits0 evs
     have hevs' : DecodeStatePlacedEnv { st := x.st, outPtr := 0#64 } evs := hevs
@@ -734,6 +915,88 @@ theorem spqrSendCoins_placed_ok_of_contracts [LibsignalPlacement]
     simp only [SpqrSendCoinsExactEnv, hdec, hinner, hfrom]
     rw [List.append_assoc]
     exact SeqEnv.append hevs_dec (SeqEnv.append hevs_fpb hevs_drop)
+
+theorem spqrSendCoins_placed_ok_of_contracts [LibsignalPlacement]
+    {M : AllocCostModel} {H_inner : V1InnerHeapPred}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ctl : BitVec 64} {C : Crypto} {K : MlKem}
+    {ext : String → Option (State → State)}
+    (hA : AllocContractsPlaced M A lim ext)
+    (hC : SpqrSendPlacedContracts M H_inner A lim ctl C K ext)
+    (hEx : SpqrSendExtraContractsPlaced M A lim ctl C K ext) :
+    subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 427)
+      (withLsCodeRoLoaded lsmpl
+        (spqrSendCoinsPlacedSpecTOfEnv M A lim ctl (spqrV1 C.F K) (SpqrSendCoinsExactEnv C.F K))) :=
+  spqrSendCoinsPlacedSpecTOfEnv_cro_of_disp (spqrSendCoins_disp_placed_ok_of_contracts hA hC hEx)
+
+theorem spqr_send_disp_placed_ok_blockProgram_of_contracts [LibsignalPlacement]
+    {M : AllocCostModel} {H_inner : V1InnerHeapPred}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ctl : BitVec 64} {C : Crypto} {K : MlKem}
+    {ext : String → Option (State → State)}
+    (hA : AllocContractsPlaced M A lim ext)
+    (hC : SpqrSendPlacedContracts M H_inner A lim ctl C K ext)
+    (hEx : SpqrSendExtraContractsPlaced M A lim ctl C K ext) :
+    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 427 (Rust.withPanics ext))
+      (lsmpl.base 427)
+      (withLsCodeRoLoaded lsmpl
+        (spqrSendCoinsDispPlacedSpecTOfEnv M A lim ctl (spqrV1 C.F K) (SpqrSendCoinsExactEnv C.F K))) := by
+  have hok := spqrSendCoins_disp_placed_ok_of_contracts hA hC hEx
+  rwa [← CryptoVerification.IsLsBlockProg.eq_blockProgram (prog := spqrSendPlacedProg ext)]
+
+theorem spqr_send_disp_placed_ok_blockProgram_ext_of_contracts [LibsignalPlacement]
+    {M : AllocCostModel} {H_inner : V1InnerHeapPred}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ctl : BitVec 64} {C : Crypto} {K : MlKem}
+    {ext : String → Option (State → State)}
+    (hp : ∀ sym, Rust.isPanicSymbol sym = true → ext sym = some Rust.panicked)
+    (hA : AllocContractsPlaced M A lim ext)
+    (hC : SpqrSendPlacedContracts M H_inner A lim ctl C K ext)
+    (hEx : SpqrSendExtraContractsPlaced M A lim ctl C K ext) :
+    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 427 ext)
+      (lsmpl.base 427)
+      (withLsCodeRoLoaded lsmpl
+        (spqrSendCoinsDispPlacedSpecTOfEnv M A lim ctl (spqrV1 C.F K) (SpqrSendCoinsExactEnv C.F K))) := by
+  have heq : Rust.withPanics ext = ext := by
+    funext sym; unfold Rust.withPanics; split
+    · next h => exact (hp sym h).symm
+    · rfl
+  simpa only [heq] using spqr_send_disp_placed_ok_blockProgram_of_contracts hA hC hEx
+
+theorem spqrSendCoins_disp_placed_ok_at_prog_of_contracts [LibsignalPlacement]
+    {M : AllocCostModel} {H_inner : V1InnerHeapPred}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ctl : BitVec 64} {C : Crypto} {K : MlKem}
+    {ext : String → Option (State → State)}
+    {callerProg : Program} {i : Nat}
+    [IsLsBlockProg callerProg i (Rust.withPanics ext)]
+    (hi : i < 619 := by decide)
+    (hA : AllocContractsPlaced M A lim ext)
+    (hC : SpqrSendPlacedContracts M H_inner A lim ctl C K ext)
+    (hEx : SpqrSendExtraContractsPlaced M A lim ctl C K ext) :
+    subroutine_ok callerProg (lsmpl.base 427)
+      (withLsCodeRoLoaded lsmpl
+        (spqrSendCoinsDispPlacedSpecTOfEnv M A lim ctl (spqrV1 C.F K) (SpqrSendCoinsExactEnv C.F K))) :=
+  ls_subroutine_ok_of_blockProgram_cro (callerProg := callerProg)
+    (spqr_send_disp_placed_ok_blockProgram_of_contracts hA hC hEx) hi
+
+theorem spqrSendCoins_disp_placed_ok_at_prog_ext_of_contracts [LibsignalPlacement]
+    {M : AllocCostModel} {H_inner : V1InnerHeapPred}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ctl : BitVec 64} {C : Crypto} {K : MlKem}
+    {ext : String → Option (State → State)}
+    {callerProg : Program} {i : Nat}
+    [IsLsBlockProg callerProg i ext]
+    (hi : i < 619 := by decide)
+    (hp : ∀ sym, Rust.isPanicSymbol sym = true → ext sym = some Rust.panicked)
+    (hA : AllocContractsPlaced M A lim ext)
+    (hC : SpqrSendPlacedContracts M H_inner A lim ctl C K ext)
+    (hEx : SpqrSendExtraContractsPlaced M A lim ctl C K ext) :
+    subroutine_ok callerProg (lsmpl.base 427)
+      (withLsCodeRoLoaded lsmpl
+        (spqrSendCoinsDispPlacedSpecTOfEnv M A lim ctl (spqrV1 C.F K) (SpqrSendCoinsExactEnv C.F K))) :=
+  ls_subroutine_ok_of_blockProgram_cro (callerProg := callerProg)
+    (spqr_send_disp_placed_ok_blockProgram_ext_of_contracts hp hA hC hEx) hi
 
 theorem spqr_send_placed_ok_blockProgram_of_contracts [LibsignalPlacement]
     {M : AllocCostModel} {H_inner : V1InnerHeapPred}

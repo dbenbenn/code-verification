@@ -20,6 +20,8 @@ import VerifiedLibraries.Mallocng.Proofs.Cost.Tight2Table
 import VerifiedLibraries.Mallocng.Proofs.Cost.Tight2
 import VerifiedLibraries.Mallocng.Proofs.Cost.Tight2Sound
 import VerifiedLibraries.Mallocng.Proofs.Cost.Tight2Entries
+import VerifiedLibraries.Mallocng.Proofs.Cost.FreeGroupMono
+import VerifiedLibraries.Mallocng.Proofs.Cost.Fine
 import VerifiedLibraries.Mallocng.Proofs.Top
 import VerifiedLibraries.Mallocng.Proofs.MemcpySym
 import VerifiedLibraries.Mallocng.Proofs.MemsetSym

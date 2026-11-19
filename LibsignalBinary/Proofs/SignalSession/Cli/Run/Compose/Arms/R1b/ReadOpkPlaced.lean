@@ -9,16 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpk -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.WorkFramePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupUpperPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpk
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable Stage 3 (`one-time-pre-key` Helpers, Error Exits, and Stack Copy) of Arm `R1b`
@@ -26,7 +33,7 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 Relocatable (`[LibsignalPlacement]`) counterparts of `R1b.ReadOpk` (`0x12dc → 0x24ec`) on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -56,7 +63,7 @@ attribute [local simp, local arm64_norm, local wp_norm] runPcPlaced_eq BitVec.of
 /-! ## Scratch Stack Partition -/
 
 /-- `r1b_invCore_placed` without the scratch stack regions `[0x1d0..0x260)` and `[0x2c0..0x4d0)`. -/
-def r1b_invCoreBase_placed [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (d : Init1Data)
+@[expose] def r1b_invCoreBase_placed [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (d : Init1Data)
     (s0 : State) : SepProp :=
   let fsp := runFsp s0
   memRegion g.res runResSize ∗ memRegion g.call 56 ∗

@@ -12,18 +12,21 @@ module
 public import VerifiedLibraries.Musl.Spec.Top
 public import VerifiedLibraries.Musl.Proofs.CryptoHooks
 public import ProofLib.SepLogic.WP.StepsProcess
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+public import LibsignalBinary.Specifications.LibsignalTripleRatchet
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Shared combinators and CLI spec mirrors for `libc` hook discharge
 
 Provides `ProcessFieldsPreserved` projections (`fs_eq`, `trace_eq`), lightweight CLI contract
 wrappers (`keepsFs`, `withStack`, `bytesAt`, `cStrAt`), and generic `subroutine_ok` framing
-combinators (`subroutine_ok_inImage`, `subroutine_ok_withStack`, `subroutine_ok_withStack_keepsFs`,
+combinators (`subroutine_ok_withStack`, `subroutine_ok_withStack_keepsFs`,
 `subroutine_ok_drop_keepsFs`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,41 +37,28 @@ open Arm64.Process (pureWordsProg pureWordsProg_hasWords)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
 
 /-- Adjoins `⌜sf.fs = s0.fs⌝` to `spec`'s normal-return postcondition. -/
-def keepsFs {α : Type} (spec : Spec α) : Spec α :=
+@[expose] def keepsFs {α : Type} (spec : Spec α) : Spec α :=
   { spec with post := fun x s0 sf => ⌜sf.fs = s0.fs⌝ ∗ spec.post x s0 sf }
 
 /-- Frames `stackAt s.sp hookStack` in `pre` and `stackAt s0.sp hookStack` in `post`. -/
-def withStack {α : Type} (spec : Spec α) (hookStack : Nat := extHookStack) : Spec α :=
+@[expose] def withStack {α : Type} (spec : Spec α) (hookStack : Nat := extHookStack) : Spec α :=
   { spec with
     pre := fun x s => spec.pre x s ∗ stackAt s.sp hookStack
     post := fun x s0 sf => spec.post x s0 sf ∗ stackAt s0.sp hookStack }
 
 /-- Read-only (`↦ᵣ`) byte slice when `ro = true`, read-write (`↦ₛ`) when `ro = false`. -/
-def bytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def bytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if ro then p ↦ᵣ bs else p ↦ₛ bs
 
 /-- NUL-terminated read-write byte slice `p ↦ₛ (s ++ [0#8])`. -/
-def cStrAt (p : BitVec 64) (s : List (BitVec 8)) : SepProp :=
+@[expose] def cStrAt (p : BitVec 64) (s : List (BitVec 8)) : SepProp :=
   p ↦ₛ (s ++ [0#8])
-
-theorem keepsFs_inImage {α : Type} (spec : Spec α) (img : Obj.Image) :
-    (keepsFs spec).inImage img = keepsFs (spec.inImage img) := rfl
 
 theorem ProcessFieldsPreserved.fs_eq {s0 sf : State} (h : ProcessFieldsPreserved s0 sf) :
     sf.fs = s0.fs := h.1
 
 theorem ProcessFieldsPreserved.trace_eq {s0 sf : State} (h : ProcessFieldsPreserved s0 sf) :
     sf.trace = s0.trace := h.2.1
-
-/-- Any `subroutine_ok prog entry spec` weakens to `(spec.inImage img)`. -/
-theorem subroutine_ok_inImage {α : Type} {prog : Program} {entry : BitVec 64}
-    {spec : Spec α} (img : Obj.Image) (h : subroutine_ok prog entry spec) :
-    subroutine_ok prog entry (spec.inImage img) := by
-  apply subroutine_ok.of_codeLoaded
-  intro x R s0 hpc hrun hpre hsp _hL
-  dsimp only [Spec.inImage] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact h.mono_outcome x R s0 hpc hrun hpre.2 hsp (fun _ hout => hout)
 
 /-- Any `subroutine_ok prog entry (keepsFs spec)` weakens to `subroutine_ok prog entry spec`. -/
 theorem subroutine_ok_drop_keepsFs {α : Type} {prog : Program} {entry : BitVec 64}

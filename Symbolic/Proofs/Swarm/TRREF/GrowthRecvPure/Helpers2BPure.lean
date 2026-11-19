@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers2APure
-public import Symbolic.Proofs.SpecLemmas.ProofHubsPure
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers2APure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.ProofHubsPure -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.SHARED.StateSizePure
 import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.Helpers1APure
 
@@ -24,7 +24,7 @@ lifts `SpqrOooBounded` to `StatePbOooBounded` across `decodeState`, and relates 
 encoder/decoder sizes to their decoded weights.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -208,7 +208,7 @@ theorem ckCt2Sampled_mergeField_le (d : Nat) (m : V1State.Chunked.Ct2Sampled) (t
     · rcases except_bind_eq_ok h with ⟨bs', hs, h⟩; rcases Prod.mk.inj (Except.ok.inj h) with ⟨rfl, rfl⟩
       have := skipField_length_le hs; omega
 
-def innerStateW : Option V1State.InnerState → Nat
+@[expose] def innerStateW : Option V1State.InnerState → Nat
   | none => 0
   | some (.keysUnsampled v) => ckKeysUnsampledW v
   | some (.keysSampled v) => ckKeysSampledW v
@@ -222,7 +222,7 @@ def innerStateW : Option V1State.InnerState → Nat
   | some (.ct1Acknowledged v) => ckCt1AcknowledgedW v
   | some (.ct2Sampled v) => ckCt2SampledW v
 
-def v1Weight (m : V1State) : Nat := innerStateW m.innerState
+@[expose] def v1Weight (m : V1State) : Nat := innerStateW m.innerState
 
 theorem ite_ok_cases {ε α : Type} {c : Prop} [Decidable c] {t e : Except ε α} {x : α}
     (h : (if c then t else e) = .ok x) : t = .ok x ∨ e = .ok x := by
@@ -291,11 +291,11 @@ theorem v1State_mergeField_le (d : Nat) (m : V1State) (tag : BitVec 32)
   · rcases except_bind_eq_ok h with ⟨bs', hs, h⟩; rcases Prod.mk.inj (Except.ok.inj h) with ⟨rfl, rfl⟩
     have := skipField_length_le hs; dsimp only [v1Weight]; omega
 
-def pqInnerW : Option PqRatchetState.Inner → Nat
+@[expose] def pqInnerW : Option PqRatchetState.Inner → Nat
   | none => 0
   | some (.v1 v) => v1Weight v
 
-def stateWeight (m : PqRatchetState) : Nat :=
+@[expose] def stateWeight (m : PqRatchetState) : Nat :=
   optVnWeight m.versionNegotiation + optChainWeight m.chain + pqInnerW m.inner
 
 theorem pqRatchetState_mergeField_le (d : Nat) (m : PqRatchetState) (tag : BitVec 32)
@@ -351,7 +351,7 @@ theorem decodeState_weight_le (F : ShaCompress) (K : MlKem) (mac : HmacFn)
 /-! ## `StatePbOooBounded` and Polynomial Codec Weight Bounds -/
 
 /-- `SpqrOooBounded` lifted to decoded `PqRatchetStatePB`. -/
-def StatePbOooBounded {V1StatePB : Type} (statePb : PqRatchetStatePB V1StatePB) : Prop :=
+@[expose] def StatePbOooBounded {V1StatePB : Type} (statePb : PqRatchetStatePB V1StatePB) : Prop :=
   (∀ c ∈ statePb.chain, ∀ p ∈ c.params, p.maxOooKeysOrDefault.toNat ≤ 2000) ∧
   (∀ v ∈ statePb.versionNegotiation, ∀ p ∈ v.chainParams, p.maxOooKeysOrDefault.toNat ≤ 2000)
 

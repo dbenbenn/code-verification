@@ -13,6 +13,7 @@ public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
 public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.FSAEAD.HybridOTReal
 import Computational.Proofs.CryptoGames.FSAEAD.Theorem5
+import Computational.Proofs.CryptoGames.FSAEAD.HybridOT
 
 /-!
 # ACD19 Theorem 5 Hops with General Output

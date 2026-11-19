@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10Budget
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.W4InnerHelpers
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafDefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DoReserve10Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4InnerHelpers
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Inner `PrevDec` (`SessionStructure::decode`) Peak Live-Heap Helpers
@@ -32,7 +34,7 @@ Parametric `(M : AllocCostModel) [HasFineReallocCredit M]` (`ModelHyps M`) seque
    field-list `IterSeqEnv` composition (`phaseCredit_prevDecFields`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -235,31 +237,6 @@ theorem phaseCredit_doReserveClear_aff {M : AllocCostModel} [HasFineReallocCredi
     · simp only [hc0, ↓reduceIte]
       exact phaseCredit_rustRealloc_aff hM cap (reserveCap cap 0 vLen) 1 (by decide)
 
-/-- Small-regime `PhaseCreditSpec` for `doReserveClearEvents cap vLen` when both `cap` and
-`reserveCap cap 0 vLen` are `≤ smallMaxReq M` (`Δlive = 0, Δpeak = 0`). -/
-theorem phaseCredit_doReserveClear_small {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (cap vLen : Nat)
-    (hold_sm : cap ≤ HasFineReallocCredit.smallMaxReq M)
-    (hnew_sm : reserveCap cap 0 vLen ≤ HasFineReallocCredit.smallMaxReq M) :
-    let newCap := reserveCap cap 0 vLen
-    PhaseCreditSpec M (· = doReserveClearEvents cap vLen)
-      (2 * newCap + 9539) 0 0 newCap := by
-  dsimp only
-  unfold doReserveClearEvents
-  by_cases hle : vLen ≤ cap
-  · simp only [hle, ↓reduceIte]
-    exact (PhaseCreditSpec.nil M).mono (Nat.zero_le _) (Nat.le_refl 0) (Nat.le_refl 0)
-      (Nat.zero_le _)
-  · simp only [hle, ↓reduceIte]
-    by_cases hc0 : cap = 0
-    · subst hc0
-      simp only [↓reduceIte]
-      exact (PhaseCreditSpec.rustAlloc_small_any hM (by decide : 1 ≤ 16) hnew_sm).mono
-        (hM.smallAlloc_le hnew_sm) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl _)
-    · simp only [hc0, ↓reduceIte]
-      exact phaseCredit_rustRealloc_small_any hM cap (reserveCap cap 0 vLen) 1 (by decide)
-        hold_sm hnew_sm
-
 /-- Exact-order `PhaseCreditSpec` for `bytesMergeEventsCore wt valCap bs` given `v.length ≤ vCap`
 whenever `mergeBytes wt bs = some (v, rest)` and `valCap.toNat ≤ capBound`:
 * On `Err`: `rustAllocEvents 72 8`;
@@ -311,83 +288,6 @@ theorem phaseCredit_bytesMergeCore_aff {M : AllocCostModel} [HasFineReallocCredi
       · by_cases hle : v.length ≤ valCap.toNat <;> simp only [hle, ↓reduceIte] <;> omega
       · by_cases hle : v.length ≤ valCap.toNat <;> simp only [hle, ↓reduceIte] <;> omega
       · by_cases hle : v.length ≤ valCap.toNat <;> simp only [hle, ↓reduceIte] <;> omega
-
-/-- Fresh-destination (`valCap = 0#64`) specialization of `phaseCredit_bytesMergeCore_aff`
-(used for single-occurrence `SessionStructure` `Bytes` fields `lik`, `rik`, `root`, `abk`, `pq`
-where `valCap = 0#64` and `v.length ≤ vCap`, so `newCap ≤ max vCap 8 ≤ vCap + 8`). -/
-theorem phaseCredit_bytesMergeCore_fresh {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (wt : WireType) (bs : List (BitVec 8)) {vCap : Nat}
-    (hv_le : ∀ v rest, mergeBytes wt bs = some (v, rest) → v.length ≤ vCap) :
-    PhaseCreditSpec M (· = bytesMergeEventsCore wt 0#64 bs)
-      (4 * vCap + 19094)
-      (vCap + 8267)
-      (2 * vCap + 16398)
-      (max 72 (vCap + 8)) := by
-  have h := phaseCredit_bytesMergeCore_aff hM wt 0#64 bs (capBound := 0) (vCap := vCap)
-    (by simp) hv_le
-  dsimp only at h
-  exact h.mono (by omega) (by omega) (by omega) (by omega)
-
-/-- Small-regime specialization of `bytesMergeEventsCore` (e.g., `Chain` 32/33-byte key fields
-and 16/32-byte `MessageKey` fields where `vCap ≤ 33`, `capBound ≤ 33`, and `72 ≤ smallMaxReq M`),
-yielding `Δlive = 0` and `Δpeak = 0`. -/
-theorem phaseCredit_bytesMergeCore_small {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (wt : WireType) (valCap : BitVec 64) (bs : List (BitVec 8))
-    {capBound vCap : Nat}
-    (hcap : valCap.toNat ≤ capBound)
-    (hv_le : ∀ v rest, mergeBytes wt bs = some (v, rest) → v.length ≤ vCap)
-    (hSmall72 : 72 ≤ HasFineReallocCredit.smallMaxReq M)
-    (hSmallNew : max (max vCap (2 * capBound)) 8 ≤ HasFineReallocCredit.smallMaxReq M) :
-    let newCapBound := max (max vCap (2 * capBound)) 8
-    PhaseCreditSpec M (· = bytesMergeEventsCore wt valCap bs)
-      (max 9683 (2 * vCap + 2 * newCapBound + 19078)) 0 0
-      (max 72 (max vCap newCapBound)) := by
-  intro newCapBound
-  unfold bytesMergeEventsCore
-  cases hm : mergeBytes wt bs with
-  | none =>
-    have h72 := (PhaseCreditSpec.rustAlloc_small_any hM (req := 72) (al := 8)
-      (by decide) hSmall72).mono
-      (hM.smallAlloc_le hSmall72) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 72)
-    exact h72.mono (by omega) (Nat.le_refl 0) (Nat.le_refl 0) (by omega)
-  | some vr =>
-    rcases vr with ⟨v, rest⟩
-    by_cases hv0 : v.length = 0
-    · simp only [hv0, ↓reduceIte]
-      exact (PhaseCreditSpec.nil M).mono (Nat.zero_le _) (Nat.le_refl 0) (Nat.le_refl 0)
-        (Nat.zero_le _)
-    · simp only [hv0, ↓reduceIte]
-      have hvCap : v.length ≤ vCap := hv_le v rest hm
-      have hv_sm : v.length ≤ HasFineReallocCredit.smallMaxReq M :=
-        Nat.le_trans hvCap (Nat.le_trans (Nat.le_max_left _ _)
-          (Nat.le_trans (Nat.le_max_left _ _) hSmallNew))
-      have hold_sm : valCap.toNat ≤ HasFineReallocCredit.smallMaxReq M := by
-        have h2 : valCap.toNat ≤ 2 * capBound := by omega
-        exact Nat.le_trans h2 (Nat.le_trans (Nat.le_max_right _ _)
-          (Nat.le_trans (Nat.le_max_left _ _) hSmallNew))
-      have hres_le : reserveCap valCap.toNat 0 v.length ≤ newCapBound := by
-        dsimp only [reserveCap, newCapBound]; omega
-      have hres_sm : reserveCap valCap.toNat 0 v.length ≤ HasFineReallocCredit.smallMaxReq M :=
-        Nat.le_trans hres_le hSmallNew
-      have ha := (PhaseCreditSpec.rustAlloc_small_any hM (req := v.length) (al := 1)
-        (by decide) hv_sm).mono
-        (hM.smallAlloc_le hv_sm) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl _)
-      have hdr := phaseCredit_doReserveClear_small hM valCap.toNat v.length hold_sm hres_sm
-      have hd := (DeallocCreditSpec.free_small M (req := v.length) (al := 1)
-        (by decide) hv_sm).toPhaseCreditSpec
-      have h123 := (ha.concat hdr).concat hd
-      have himp : ∀ evs,
-          evs = rustAllocEvents v.length 1 ++
-            doReserveClearEvents valCap.toNat v.length ++
-            rustDeallocEvents v.length 1 →
-          ConcatEnv
-            (ConcatEnv (· = rustAllocEvents v.length 1)
-              (· = doReserveClearEvents valCap.toNat v.length))
-            (· = rustDeallocEvents v.length 1) evs := by
-        rintro _ rfl
-        exact ⟨_, _, rfl, ⟨_, _, rfl, rfl, rfl⟩, rfl⟩
-      exact (h123.of_imp himp).mono (by dsimp only at *; omega) (Nat.le_refl 0) (Nat.le_refl 0)
-        (by dsimp only at *; omega)
 
 /-- Wrapper lifting `phaseCredit_bytesMergeCore_aff` to `BytesMergeEnv x`. -/
 theorem phaseCredit_bytesMerge_aff {M : AllocCostModel} [HasFineReallocCredit M]
@@ -476,18 +376,6 @@ theorem phaseCredit_skipField_small {M : AllocCostModel} [HasFineReallocCredit M
     have h72 := PhaseCreditSpec.rustAlloc_small_any hM (req := 72) (al := 8) (by decide) hSmall72
     have ha := hM.smallAlloc_le hSmall72
     exact h72.mono (by omega) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 72)
-
-/-- Regime-uniform `PhaseCreditSpec` for `SkipFieldEnv x` (without `72 ≤ smallMaxReq M`). -/
-theorem phaseCredit_skipField_aff {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (x : SkipFieldGhost) :
-    PhaseCreditSpec M (SkipFieldEnv x) 9683 8267 8267 72 := by
-  unfold SkipFieldEnv skipFieldEventsCore
-  cases skipField (2 * x.bs.length + 2) x.depth x.tag x.wt x.bs with
-  | some _ =>
-    exact (PhaseCreditSpec.nil M).mono (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-      (Nat.zero_le _)
-  | none =>
-    exact PhaseCreditSpec.rustAlloc_aff hM (req := 72) (al := 8) (by decide)
 
 /-! ## Field-List `IterSeqEnv` Composition Helper for `SessionStructure::decode` -/
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -47,6 +47,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2
 
 /-!
 # Byte-Equal Seed Decomposition for Whisper Receive
@@ -57,7 +59,7 @@ ratchet-key aliasing (`A2bSeedRkAliasRes`), and cross-seed MAC exclusion (`A2bCr
 discharging distinct-shape hits via `RecvCollision`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -197,7 +199,7 @@ theorem a2b_recvSeed_of_find {st : TRState} {msg : TRSignalMsg} {c c' : RecvChai
 
 /-- Term equality of a cached skipped seed `seed_s` and a chain seed `seed_c` when `c` is the
 term-keyed `findRecvChain` hit and both seeds have equal byte evaluations and equal shapes. -/
-def A2bSeedShapeEqRes (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def A2bSeedShapeEqRes (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (acc : List MachineEvent) : Prop :=
   ∀ (p : Participant) (stateIdx : Nat) (st : TRState) (c c' : RecvChain) (t : DY.Bytes)
     (msg : TRSignalMsg) (skIdx rIdx_s srcIdx : Nat) (seed_s seed_c pqSalt : DY.Bytes)
@@ -221,7 +223,7 @@ def A2bSeedShapeEqRes (interpretation : ExternInterpretation) (r₀ : ProtocolSe
 
 /-- Term equality of `seed_s` and `seed_c` when no receive chain is keyed by the term
 `msg.ratchetKey` yet `c ∈ st.recv` has a byte-equal ratchet key. -/
-def A2bSeedRkAliasRes (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def A2bSeedRkAliasRes (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (acc : List MachineEvent) : Prop :=
   ∀ (p : Participant) (stateIdx : Nat) (st : TRState) (c c' : RecvChain) (t : DY.Bytes)
     (msg : TRSignalMsg) (skIdx rIdx_s srcIdx : Nat) (seed_s seed_c pqSalt : DY.Bytes)
@@ -298,7 +300,7 @@ theorem a2b_seedEq_of_shapeRes
         (a2b_recvSeed_of_find hver hf hcons) hs_form hc_form hγ hsh)
 
 /-- Cached `SkippedKeyStored` seeds on `tr` matching `msg.ratchetKey` and `msg.counter`. -/
-def skippedSeedsFor (tr : ExecTrace) (msg : TRSignalMsg) : List DY.Bytes :=
+@[expose] def skippedSeedsFor (tr : ExecTrace) (msg : TRSignalMsg) : List DY.Bytes :=
   (List.range tr.length).filterMap fun i =>
     match tr.getEventAt TREvent i with
     | some (.SkippedKeyStored _ pk n seed _ _) =>
@@ -306,7 +308,7 @@ def skippedSeedsFor (tr : ExecTrace) (msg : TRSignalMsg) : List DY.Bytes :=
     | _ => none
 
 /-- Cross-seed MAC guess where the receive chain is found by ratchet-key bytes. -/
-def A2bCrossSeedMacGuess (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def A2bCrossSeedMacGuess (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (t : DY.Bytes) : Prop :=
   let tr := runTraceMoves r ms
   ∃ msg, parseTrSignalMsg t = some msg ∧ msg.version = messageVersion ∧
@@ -323,7 +325,7 @@ def A2bCrossSeedMacGuess (interpretation : ExternInterpretation) (r : ProtocolSe
         gamma interpretation S g msg.mac
 
 /-- Every cross-seed MAC guess triggers `RecvCollision`. -/
-def A2bCrossSeedExcl (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def A2bCrossSeedExcl (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (acc : List MachineEvent) : Prop :=
   ∀ t, A2bCrossSeedMacGuess interpretation r₀ S g ms t → RecvCollision interpretation r₀ S g ms t
 

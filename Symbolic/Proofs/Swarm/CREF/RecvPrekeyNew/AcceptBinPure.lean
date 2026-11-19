@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
-public import Symbolic.Proofs.SR.ModelW
+public import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.ModelW -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.LemmasPure
 import Symbolic.Proofs.RngG.R3ModelInv
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
 
 /-!
 # Returned Record and Message of Accepting Pre-Key Receive
@@ -25,7 +26,7 @@ Defines Bob's post-handshake session record `bobNewSession` and proves sender-ke
 preservation and record canonicality for an accepting `session_recv_prekey` call.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

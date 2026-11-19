@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 
 /-!
 # Run-Relation and Turn Transfer for `CompRefinesCliR`
@@ -20,7 +20,7 @@ Defines relational (`TraceSim`) and unary (`TraceInv`) turn-simulation structure
 (`samePath_oneTimePreKeyFile_sessionPathOf`, `opkUsed_eq_of_bob_agree`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

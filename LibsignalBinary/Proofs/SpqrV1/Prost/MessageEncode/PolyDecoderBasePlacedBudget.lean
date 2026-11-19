@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
@@ -27,7 +27,7 @@ Defines placed contract propositions and pinned-to-unpinned bridges for `Polynom
 and proves `VmPreserved`-threaded basic-block steppers for Blocks `152` and `315`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -200,12 +200,12 @@ theorem polyDecoder_unpinned_of_pinned_placed_x [LibsignalPlacement] {resStack :
   · exact Or.inr (Or.inr hrest_out)
 
 /-- Relocatable base program for `PolynomialDecoder::encode [local#1, 2]` (Blocks `152` & `315`). -/
-def IsPolyDecoderEncodePlacedBase (P_blk : Program) (pl : Placement) : Prop :=
+@[expose] def IsPolyDecoderEncodePlacedBase (P_blk : Program) (pl : Placement) : Prop :=
   (∃ (inst : LibsignalPlacement), P_blk = @blkPC_152 inst ∧ pl = @blkPl_152 inst) ∨
   (∃ (inst : LibsignalPlacement), P_blk = @blkPC_315 inst ∧ pl = @blkPl_315 inst)
 
 /-- Relocatable rebased program for `PolynomialDecoder::encode [local#1, 2]` (`lsProg_152 H` or `lsProg_315 H`). -/
-def IsPolyDecoderEncodePlacedProg (prog : Program) (pl : Placement) : Prop :=
+@[expose] def IsPolyDecoderEncodePlacedProg (prog : Program) (pl : Placement) : Prop :=
   ∃ P_blk H, prog = P_blk.rebase pl.base H ∧ IsPolyDecoderEncodePlacedBase P_blk pl
 
 theorem isPolyDecoderEncodePlacedProg_152 [LibsignalPlacement]
@@ -218,84 +218,84 @@ theorem isPolyDecoderEncodePlacedProg_315 [LibsignalPlacement]
     IsPolyDecoderEncodePlacedProg (lsProg_315 H) blkPl_315 :=
   ⟨blkPC_315, H, rfl, Or.inr ⟨‹_›, rfl, rfl⟩⟩
 
-def EncodePolyDecoder152PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder152PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_152 H) (blkPl_152).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedSpec A lim))
 
-def EncodePolyDecoder152PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder152PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_152 H) (blkPl_152).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderSpec A lim))
 
-def EncodePolyDecoder152PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder152PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_152 H) (blkPl_152).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedSpecX A lim))
 
-def EncodePolyDecoder152PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder152PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_152 H) (blkPl_152).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderSpecX A lim))
 
-def EncodePolyDecoder152PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder152PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodePolyDecoder152PinnedPlacedOk A lim (Rust.withPanics ext)
 
-def EncodePolyDecoder152PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder152PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodePolyDecoder152PlacedOk A lim (Rust.withPanics ext)
 
-def EncodePolyDecoder152PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder152PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodePolyDecoder152PinnedPlacedOkX A lim (Rust.withPanics ext)
 
-def EncodePolyDecoder152PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder152PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodePolyDecoder152PlacedOkX A lim (Rust.withPanics ext)
 
-def EncodePolyDecoder152PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
+@[expose] def EncodePolyDecoder152PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_152 H) (blkPl_152).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedExactVmSpecOf resStack A))
 
-def EncodePolyDecoder315PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder315PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_315 H) (blkPl_315).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedSpec A lim))
 
-def EncodePolyDecoder315PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder315PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_315 H) (blkPl_315).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderSpec A lim))
 
-def EncodePolyDecoder315PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder315PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_315 H) (blkPl_315).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedSpecX A lim))
 
-def EncodePolyDecoder315PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder315PlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_315 H) (blkPl_315).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderSpecX A lim))
 
-def EncodePolyDecoder315PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder315PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodePolyDecoder315PinnedPlacedOk A lim (Rust.withPanics ext)
 
-def EncodePolyDecoder315PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder315PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodePolyDecoder315PlacedOk A lim (Rust.withPanics ext)
 
-def EncodePolyDecoder315PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder315PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodePolyDecoder315PinnedPlacedOkX A lim (Rust.withPanics ext)
 
-def EncodePolyDecoder315PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder315PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
   EncodePolyDecoder315PlacedOkX A lim (Rust.withPanics ext)
 
-def EncodePolyDecoder315PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
+@[expose] def EncodePolyDecoder315PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_315 H) (blkPl_315).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedExactVmSpecOf resStack A))

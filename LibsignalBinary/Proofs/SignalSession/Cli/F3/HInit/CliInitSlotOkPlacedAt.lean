@@ -9,25 +9,51 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalE2E.HooksMallocng
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.ModelBridge
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetBbSat
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetSat
 import LibsignalBinary.Proofs.SpecLemmas.SyscallReadWritev
+import LibsignalBinary.Proofs.TripleRatchet.Keys.KeysSat
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.FsTrace
 import ProofLib.Hoare.MultiCodeROHook
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.AssemblyPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DeriveKeysPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetSat
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillVmPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSaveShimPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustShimPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadShimPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Budget-Threaded `initiate` Slot Producer (`CliInitSlotOkPlacedAt`)
@@ -40,15 +66,13 @@ Establishes the Block-579 / Block-521 `initiate` slot contract `CliInitSlotOkPla
 - `cliInitSlotOkPlacedAt_of_ghost` and `stage3OkEvents` specializations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 set_option linter.dupNamespace false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAt
-
-noncomputable section
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib SepProp
 open CryptoGames.CBC (AesKey Block)
@@ -60,11 +84,10 @@ open CryptoVerification
    ls_hook_ok_ultra_of_mem lsmpl lsρ)
 open CryptoVerification.E2E
   (PqxdhPrims PreKeyBundleFields UnreachedPqxdhPrimitives aesDecHookMallocng aesEncHookMallocng
-   compress512Hook compressHook dsmbHook edNegHook fmtWriteHook0 formatInnerHook0 initiateInput
-   kemDecapsHook kemEncapsHook libcruxHmacHookMallocng mlkemDecapsHook mlkemEncaps1Hook
-   mlkemEncaps2Hook mlkemFromSeedHook mlkemPk1Hook mlkemPk2Hook mlkemValidatePkHook modelPrims
-   restoreCallerRegs scalarModHook scalarWideHook stepRustAlloc1 stepRustDealloc1 timeAddHook
-   toEdwardsHook torsionFreeHook)
+   compress512Hook fmtWriteHook0 formatInnerHook0 initiateInput
+   kemDecapsHook kemEncapsHook mlkemDecapsHook mlkemEncaps1Hook
+   mlkemEncaps2Hook mlkemFromSeedHook mlkemValidatePkHook modelPrims
+   restoreCallerRegs stepRustAlloc1 stepRustDealloc1 timeAddHook)
 open CryptoVerification.E2E.Pqxdh.Initiator (structuralPrims_initiatorModelPrims)
 open CryptoVerification.E2E.Pqxdh.ResponderCore
   (ofSignalPqxdhPrimitives primitivesMatchCrypto_modelPrims)
@@ -73,7 +96,7 @@ open CryptoVerification.LibsignalHmac (compress256Hook)
 open CryptoVerification.LibsignalPublicApi.StoreKit
   (FsFiles extract_withLsCodeRoLoaded subroutine_ok_rocl_of_plain withLsCodeRoLoaded withLsRoCl)
 open CryptoVerification.LibsignalSession (blackBoxHook)
-open CryptoVerification.LibsignalSpqrV1 (Params)
+open CryptoVerification.LibsignalSpqrV1 (Params sha256Compress)
 open CryptoVerification.LibsignalTripleRatchet
   (HkdfPlacedHooks diffieHellmanHook extHookStack keys_ls_hook_ok_of_mem
    keys_ls_subroutine_ok_of_block_cro noAllocShimSpec pubFromSecretHook publicKeySerializeStackX
@@ -81,9 +104,10 @@ open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.RecordCodecs (IdentityKeyPair)
 open CryptoVerification.RustHeap (allocFailedEvent allocFailedIn)
 open CryptoVerification.SignalSession
-  (CliHooks cliBcmpHook cliExternsPlaced cliHookTablePlaced cliPqxdhHookTablePlaced
-   durationSinceExactHook fromUtf8Hook lsFormatInnerSym lsReadFileSym lsStringCloneSym memrchrHook
-   strlenHook unitResult writeFileHook writeStdoutHook)
+  (CliHooks cliBcmpHook cliExternsPlaced cliPqxdhHookTablePlaced durationSinceExactHook
+   fromUtf8Hook lsFmtWriteSym lsFormatInnerSym lsReadFileSym lsStringCloneSym memrchrHook strlenHook
+   unitResult writeFileHook writeStdoutHook)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliHookTablePlaced)
 open CryptoVerification.SignalSession.Cli.KitInst
   (rodata_cliIdentity_kpSlot_placed rodata_cliIdentity_regIdSlot_placed
    rodata_cliIdentity_saveSlot_placed rodata_cliIdentity_trustSlot_placed
@@ -107,7 +131,7 @@ open CryptoVerification.SignalSession.Coins.Placed (blkPC_618 blkPl_618)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv FitsEvents RustCliAllocBudget)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (stringCloneBudgetSpec)
-open LibsignalBinary.Heap.SpecBudget (formatInnerBudgetSpec withVmPreserved)
+open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget (handshakeKeysDerive_placed_ok)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudget
   (ct_eq_ro_placed_vm_ok_of_block expand_multi_info_placed_vm_ok_of_other_block)
@@ -128,6 +152,8 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudget (dirPutStr
 open LibsignalBinary.Proofs.SignalSession.Cli.Dir.PutStr.PlacedBudgetAux (DirPutStrEnv)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
   (hRead_withLsCodeRoLoaded_of_hookSat)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs
+  (fmtWriteProtoAddrCliLsSpec formatInnerCallCliLsSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
   (cliAddrText_placed_ok cliDirGet_placed_ok cliGrowOneDir_placed_ok)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetAux
@@ -147,8 +173,6 @@ open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat (HkdfPlacedHooksE
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat (HkdfPlacedHooksExactSat)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
   (InitExitPostPlaced InitPanicPostPlaced)
-open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-  (instHkdfPlacedHooks_cliGhost)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
   (InitLocalCalleesPlaced SubsetA4InitCalleesPlaced calculateAgreement_cli_placed_ok
    derivePubKeyBytes_cli_placed_ok dropSessionStructure_cli_placed_ok kemCtSerialize_cli_placed_ok
@@ -197,14 +221,16 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreShimPlacedBudget
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (noAllocShimBudgetSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Keys.AgreeBudget (calculateAgreement_placed_ok)
 open LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget
-  (createChain_placed_ok_of_contracts subroutine_ok_createChainSpecX_of_createChainSpec)
+  (subroutine_ok_createChainSpecX_of_createChainSpec)
+open LibsignalBinary.Proofs.TripleRatchet.Keys.KeysSat
+  (createChain_placed_ok_of_contracts_budget_sat)
 open LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget (createChainSpec)
 open VerifiedLibraries (mallocngLib)
 
 /-! ## 1. Target `CliInitSlotOkPlacedAt` Predicate -/
 
 /-- `initiate` slot contract at hook map `H` on Block 579 (`lsProg_579 H`) calling Block 521. -/
-def CliInitSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliInitSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (InitEnv : InitGhost → List AllocEvent → Prop)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) : Prop :=
@@ -221,16 +247,16 @@ def CliInitSlotOkPlacedAt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Append-delta trace invariant: `f s` only extends `s.trace` by a suffix `d` free of
 `allocFailedEvent` (independent of whether `s.trace` already contains `allocFailedEvent`). -/
-def TraceDeltaNoAllocFailed (s s' : State) : Prop :=
+@[expose] def TraceDeltaNoAllocFailed (s s' : State) : Prop :=
   ∃ d : List TraceEvent, s'.trace = s.trace ++ d ∧ allocFailedEvent ∉ d
 
 /-- A hook `f` satisfies `HookNoAllocFailed` when every input state `s` steps to an append-delta
 extension free of `allocFailedEvent`. -/
-def HookNoAllocFailed (f : State → State) : Prop :=
+@[expose] def HookNoAllocFailed (f : State → State) : Prop :=
   ∀ s : State, TraceDeltaNoAllocFailed s (f s)
 
 /-- Every hooked function in `ext` satisfies `HookNoAllocFailed`. -/
-def ExternNoAllocFailed (ext : String → Option (State → State)) : Prop :=
+@[expose] def ExternNoAllocFailed (ext : String → Option (State → State)) : Prop :=
   ∀ name f, ext name = some f → HookNoAllocFailed f
 
 theorem traceDeltaNoAllocFailed_refl (s : State) : TraceDeltaNoAllocFailed s s :=
@@ -289,6 +315,10 @@ private theorem tr_setSigAction (s : State) (sig : BitVec 32) (act : SigAction) 
     (s.setSigAction sig act).trace = s.trace := rfl
 private theorem tr_setSigAltStack (s : State) (sas : SigAltStack) :
     (s.setSigAltStack sas).trace = s.trace := rfl
+private theorem tr_setSigMask (s : State) (mask : BitVec 64) :
+    (s.setSigMask mask).trace = s.trace := rfl
+private theorem tr_setSigPending (s : State) (pending : BitVec 64) :
+    (s.setSigPending pending).trace = s.trace := rfl
 private theorem tr_appendTrace (s : State) (x : List TraceEvent) :
     (s.appendTrace x).trace = s.trace ++ x := rfl
 private theorem tr_nextOracle (s : State) : s.nextOracle.trace = s.trace := rfl
@@ -326,10 +356,13 @@ local macro "trace_delta_close" : tactic => `(tactic|
   (set_option linter.unusedSimpArgs false in
    repeat' split
    repeat' split
+   repeat' split
+   repeat' split
    all_goals
      try dsimp (config := { zeta := true, zetaHave := true }) only
      try simp only [tr_advancePC, tr_setPC, tr_setPState, tr_setMem, tr_setFpsr, tr_orFpsr,
        tr_setBrk, tr_setPhysMemAvail, tr_setFs, tr_setSigAction, tr_setSigAltStack,
+       tr_setSigMask, tr_setSigPending,
        tr_nextOracle, tr_stepExclOracle, tr_appendTrace, tr_writeReg64, tr_writeReg32,
        tr_writeReg, tr_writeVReg128, tr_writeVReg64, tr_writeVReg32, tr_setStatus,
        retHook_trace, returnToLinkRegister_trace, restoreCallerRegs_trace, rustPanicked_trace,
@@ -370,8 +403,11 @@ private theorem noAllocFailed_execPpoll : HookNoAllocFailed execPpoll := by
   trace_delta_close
 private theorem noAllocFailed_execSetTidAddress : HookNoAllocFailed execSetTidAddress :=
   fun _ => traceDeltaNoAllocFailed_of_eq rfl
+private theorem noAllocFailed_execFutex : HookNoAllocFailed execFutex := by
+  intro s; dsimp (config := { zetaHave := true }) only [execFutex]; trace_delta_close
 private theorem noAllocFailed_execSchedGetaffinity : HookNoAllocFailed execSchedGetaffinity := by
-  intro s; dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]; trace_delta_close
+  intro s; dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]
+  cases s.oracle.schedGetaffinity s.oracleIdx <;> (dsimp only; trace_delta_close)
 private theorem noAllocFailed_execClockGettime : HookNoAllocFailed execClockGettime := by
   intro s; dsimp (config := { zetaHave := true }) only [execClockGettime]; trace_delta_close
 private theorem noAllocFailed_execMmap : HookNoAllocFailed execMmap := by
@@ -380,8 +416,17 @@ private theorem noAllocFailed_execBrk : HookNoAllocFailed execBrk := by
   intro s; dsimp (config := { zetaHave := true }) only [execBrk]; trace_delta_close
 private theorem noAllocFailed_execMunmap : HookNoAllocFailed execMunmap := by
   intro s; dsimp (config := { zetaHave := true }) only [execMunmap]; trace_delta_close
+private theorem ite_traceDelta {c : Prop} [inst : Decidable c] {s a b : State}
+    (ha : TraceDeltaNoAllocFailed s a) (hb : TraceDeltaNoAllocFailed s b) :
+    TraceDeltaNoAllocFailed s (if c then a else b) := by
+  cases inst with
+  | isFalse _ => exact hb
+  | isTrue _ => exact ha
+
 private theorem noAllocFailed_execMremap : HookNoAllocFailed execMremap := by
-  intro s; dsimp (config := { zetaHave := true }) only [execMremap]; trace_delta_close
+  intro s; unfold execMremap; dsimp only
+  repeat' apply ite_traceDelta
+  all_goals trace_delta_close
 private theorem noAllocFailed_execMprotect : HookNoAllocFailed execMprotect := by
   intro s; dsimp (config := { zetaHave := true }) only [execMprotect]; trace_delta_close
 private theorem noAllocFailed_execMadvise : HookNoAllocFailed execMadvise := by
@@ -391,11 +436,22 @@ private theorem noAllocFailed_execGetrandom : HookNoAllocFailed execGetrandom :=
 private theorem noAllocFailed_execGetpid : HookNoAllocFailed execGetpid :=
   fun _ => traceDeltaNoAllocFailed_of_eq rfl
 private theorem noAllocFailed_execRtSigprocmask : HookNoAllocFailed execRtSigprocmask := by
-  intro s; dsimp (config := { zetaHave := true }) only [execRtSigprocmask]; trace_delta_close
+  intro s; apply traceDeltaNoAllocFailed_of_eq
+  have hite : ∀ {c : Prop} [inst : Decidable c] {a b : State},
+      a.trace = s.trace → b.trace = s.trace → (if c then a else b).trace = s.trace := by
+    intro c inst a b ha hb; cases inst <;> assumption
+  unfold execRtSigprocmask; dsimp only
+  repeat' apply hite
+  all_goals rfl
 private theorem noAllocFailed_execSigaltstack : HookNoAllocFailed execSigaltstack := by
   intro s; dsimp (config := { zetaHave := true }) only [execSigaltstack]; trace_delta_close
 private theorem noAllocFailed_execRtSigaction : HookNoAllocFailed execRtSigaction := by
-  intro s; dsimp (config := { zetaHave := true }) only [execRtSigaction]; trace_delta_close
+  intro s; unfold execRtSigaction
+  by_cases h1 : (s.readReg64 Reg.x1 == 0#64) = true <;>
+  by_cases h2 : (s.readReg32 Reg.x0 == LINUX_SIGABRT &&
+      s.mem.read64 (s.readReg64 Reg.x1) == SIG_IGN) = true <;>
+    (simp only [h1, h2, ↓reduceIte, Bool.false_eq_true]
+     trace_delta_close)
 private theorem noAllocFailed_execTkill : HookNoAllocFailed execTkill := by
   intro s; dsimp (config := { zetaHave := true }) only [execTkill]; trace_delta_close
 private theorem noAllocFailed_execTgkill : HookNoAllocFailed execTgkill := by
@@ -427,15 +483,8 @@ private theorem noAllocFailed_execOpenat : HookNoAllocFailed execOpenat := by
   | none =>
     cases readCString s.mem (s.readReg64 Reg.x1) with
     | trap _ => exact traceDeltaNoAllocFailed_of_eq rfl
-    | errno _ => exact traceDeltaNoAllocFailed_of_eq rfl
+    | errno _ => cases s.fs.allocFd <;> exact traceDeltaNoAllocFailed_of_eq rfl
     | ok rawPath => exact noAllocFailed_openatPure s _ rawPath _ _
-
-private theorem ite_traceDelta {c : Prop} [inst : Decidable c] {s a b : State}
-    (ha : TraceDeltaNoAllocFailed s a) (hb : TraceDeltaNoAllocFailed s b) :
-    TraceDeltaNoAllocFailed s (if c then a else b) := by
-  cases inst with
-  | isFalse _ => exact hb
-  | isTrue _ => exact ha
 
 private theorem noAllocFailed_execWrite : HookNoAllocFailed execWrite := by
   intro s
@@ -457,7 +506,7 @@ private theorem standardEntry_noAllocFailed :
     List.cons_append, List.nil_append, List.mem_cons, List.not_mem_nil, or_false]
   rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
             rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
+            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
   · exact noAllocFailed_execReadCommon false
   · exact noAllocFailed_execWrite
   · exact fun s =>
@@ -490,6 +539,7 @@ private theorem standardEntry_noAllocFailed :
   · exact noAllocFailed_execClockGettime
   · exact noAllocFailed_execGetrandom
   · exact noAllocFailed_execSetTidAddress
+  · exact noAllocFailed_execFutex
   · exact noAllocFailed_execSchedGetaffinity
   · exact noAllocFailed_execGetpid
   · exact noAllocFailed_execGetpid
@@ -733,25 +783,6 @@ theorem aesDecHookMallocng_noAllocFailed (mpl : Obj.MultiPlacement)
       · refine stepRustDealloc1_noAllocFailed mpl _ p (fun _ => ?_) s1
         exact traceDeltaNoAllocFailed_of_eq (by rw [retHook_trace, tr_setMem])
 
-theorem libcruxHmacHookMallocng_noAllocFailed (mpl : Obj.MultiPlacement)
-    (F : ShaState → List (BitVec 8) → ShaState) :
-    HookNoAllocFailed (libcruxHmacHookMallocng mpl F) := by
-  intro s0
-  unfold libcruxHmacHookMallocng
-  split
-  · exact traceDeltaNoAllocFailed_of_eq rfl
-  · dsimp only
-    split
-    · exact traceDeltaNoAllocFailed_of_eq rfl
-    · refine stepRustAlloc1_noAllocFailed mpl true _ 64 (fun s1 pKey => ?_) s0
-      refine stepRustAlloc1_noAllocFailed mpl false _ 64 (fun s2 pIpad => ?_) s1
-      refine stepRustAlloc1_noAllocFailed mpl false _ 64 (fun s3 pOpad => ?_) s2
-      refine stepRustDealloc1_noAllocFailed mpl _ pOpad (fun s4 => ?_) s3
-      refine stepRustDealloc1_noAllocFailed mpl _ pIpad (fun s5 => ?_) s4
-      refine stepRustDealloc1_noAllocFailed mpl _ pKey (fun s6 => ?_) s5
-      refine stepRustAlloc1_noAllocFailed mpl false _ 32 (fun _ _ => ?_) s6
-      exact traceDeltaNoAllocFailed_of_eq (by rw [retHook_trace, tr_setMem])
-
 private theorem noAllocFailed_hookMemset : HookNoAllocFailed hookMemset := by
   intro s; unfold hookMemset; rw [TraceDeltaNoAllocFailed]
   refine ⟨[], ?_, by simp⟩
@@ -801,16 +832,6 @@ private theorem noAllocFailed_timeAddHook : HookNoAllocFailed timeAddHook := by
 private theorem noAllocFailed_blackBoxHook : HookNoAllocFailed blackBoxHook := by
   intro s; unfold blackBoxHook; trace_delta_close
 
-private theorem noAllocFailed_torsionFreeHook (Q : PqxdhPrims) :
-    HookNoAllocFailed (torsionFreeHook Q.isTorsionFree) := by
-  intro s; unfold torsionFreeHook; trace_delta_close
-
-private theorem noAllocFailed_mlkemPk1Hook : HookNoAllocFailed mlkemPk1Hook := by
-  intro s; unfold mlkemPk1Hook; trace_delta_close
-
-private theorem noAllocFailed_mlkemPk2Hook : HookNoAllocFailed mlkemPk2Hook := by
-  intro s; unfold mlkemPk2Hook; trace_delta_close
-
 private theorem noAllocFailed_mlkemValidatePkHook (Q : PqxdhPrims) :
     HookNoAllocFailed (mlkemValidatePkHook Q.K) := by
   intro s; unfold mlkemValidatePkHook; trace_delta_close
@@ -835,51 +856,16 @@ theorem externNoAllocFailed_of_table {tbl : List (String × (State → State))}
       rw [hbeq] at hlook
       exact ih (fun p hp => htbl p (List.Mem.tail _ hp)) hlook
 
-private theorem tableNoAllocFailed_cliPqxdhPlaced (mmpl : Obj.MultiPlacement)
-    (C : Crypto) (Q : PqxdhPrims) :
-    ∀ p ∈ cliPqxdhHookTablePlaced mmpl C Q, HookNoAllocFailed p.2 := by
-  simp only [cliPqxdhHookTablePlaced, List.mem_cons, List.not_mem_nil, or_false]
-  rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact noAllocFailed_torsionFreeHook Q
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact noAllocFailed_mlkemPk1Hook
-  · exact noAllocFailed_mlkemPk2Hook
-  · exact fun s => traceDeltaNoAllocFailed_of_eq
-      (by dsimp only [mlkemEncaps1Hook]; rw [retHook_trace]; split <;> rfl)
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-  · exact noAllocFailed_mlkemValidatePkHook Q
-  · exact libcruxHmacHookMallocng_noAllocFailed mmpl C.F
+private theorem tableNoAllocFailed_cliPqxdhPlaced (_Q : PqxdhPrims) :
+    ∀ p ∈ cliPqxdhHookTablePlaced _Q, HookNoAllocFailed p.2 := by
+  intro _ hp
+  nomatch hp
 
 /-- Every row of `cliHookTablePlaced mmpl W` satisfies `HookNoAllocFailed`. -/
 theorem tableNoAllocFailed_cliHookTablePlaced (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     ∀ p ∈ cliHookTablePlaced mmpl W, HookNoAllocFailed p.2 := by
   intro p hp
-  unfold cliHookTablePlaced at hp
-  rw [List.mem_append] at hp
-  rcases hp with hpq | hcli
-  · exact tableNoAllocFailed_cliPqxdhPlaced mmpl W.C W.Q p hpq
-  · simp only [List.mem_cons, List.not_mem_nil, or_false] at hcli
-    rcases hcli with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-    · exact noAllocFailed_writeFileHook
-    · exact noAllocFailed_writeStdoutHook
-    · exact noAllocFailed_fmtWriteHook0
-    · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-    · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-    · exact aesEncHookMallocng_noAllocFailed mmpl W.C.E
-    · exact aesDecHookMallocng_noAllocFailed mmpl W.C.D
-    · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
-    · exact fun _ => traceDeltaNoAllocFailed_of_eq rfl
+  nomatch hp
 
 /-- Every hook in `cliExternsPlaced mmpl W` satisfies `HookNoAllocFailed`. -/
 theorem externNoAllocFailed_cliExternsPlaced (mmpl : Obj.MultiPlacement) (W : CliHooks) :
@@ -975,10 +961,16 @@ structure W3GhostHooks [LibsignalPlacement] {M : AllocCostModel}
   strClone_fsT : ∀ f, gh'.stringClone = some f → HookFsTraced IsFsC f
   stringClone : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsStringCloneSym
     (stringCloneBudgetSpec M A lim)
-  formatInner : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsFormatInnerSym
-    (formatInnerBudgetSpec M A lim)
+  formatInnerCall : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsFormatInnerSym
+    (formatInnerCallCliLsSpec M A lim)
+  fmtWrite : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsFmtWriteSym
+    (fmtWriteProtoAddrCliLsSpec M A lim)
   readFile : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsReadFileSym
     (readFileSpecPlaced cliIo.rd cliWrOk A lim cliRunBudgets.readFile ReadEnv)
+  f_eq : W.C.F = sha256Compress := by rfl
+  x_eq : W.C.X = CryptoGames.RFC7748.x25519Ref := by rfl
+  pub_eq : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef := by rfl
+  enc_eq : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec := by rfl
 
 /-- Lift `CliSlotCalleesInstPlacedBudgetSeams.CliSlotAllocHooks` to `W3GhostHooks` given the
 single-`stk` `HookSat` on `lsReadFileSym`. -/
@@ -989,13 +981,21 @@ theorem W3GhostHooks.of_slotAllocHooks [LibsignalPlacement] {M : AllocCostModel}
     (hSlot : LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CliSlotCalleesInstPlacedBudgetSeams.CliSlotAllocHooks
       mmpl gh' W A lim ReadEnv)
     (hRead : HookSat (cliGhostExterns gh' (cliExternsPlaced mmpl W)) lsReadFileSym
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim cliRunBudgets.readFile ReadEnv)) :
+      (readFileSpecPlaced cliIo.rd cliWrOk A lim cliRunBudgets.readFile ReadEnv))
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref := by rfl)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef := by rfl)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec := by rfl) :
     W3GhostHooks mmpl gh' W A lim ReadEnv :=
   { alloc := hSlot.alloc
     strClone_fsT := hSlot.strClone_fsT
     stringClone := hSlot.stringClone
-    formatInner := hSlot.formatInner
-    readFile := hRead }
+    formatInnerCall := hSlot.formatInnerCall
+    fmtWrite := hSlot.fmtWrite
+    readFile := hRead
+    f_eq := hSlot.f_eq
+    x_eq := hX
+    pub_eq := hPub
+    enc_eq := hEnc }
 
 theorem skeletonHooks_of_w3GhostHooks [LibsignalPlacement] {M : AllocCostModel}
     {mmpl : Obj.MultiPlacement} {gh' : CliGhostHooks} {W : CliHooks}
@@ -1005,7 +1005,7 @@ theorem skeletonHooks_of_w3GhostHooks [LibsignalPlacement] {M : AllocCostModel}
     LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget.RunHooksPlaced
       A lim (cliGhostExterns gh' (cliExternsPlaced mmpl W)) :=
   LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget.RunHooksPlaced.of_hooks
-    mmpl gh' W hH.alloc hH.strClone_fsT hH.stringClone hH.formatInner
+    mmpl gh' W hH.alloc hH.strClone_fsT hH.stringClone hH.formatInnerCall hH.fmtWrite
 
 theorem initRunHooks_of_w3GhostHooks [LibsignalPlacement] {M : AllocCostModel}
     {mmpl : Obj.MultiPlacement} {gh' : CliGhostHooks} {W : CliHooks}
@@ -1015,7 +1015,8 @@ theorem initRunHooks_of_w3GhostHooks [LibsignalPlacement] {M : AllocCostModel}
     LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget.RunHooksPlaced
       W A lim (cliGhostExterns gh' (cliExternsPlaced mmpl W)) :=
   LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget.RunHooksPlaced.of_hooks
-    mmpl gh' W hH.alloc hH.strClone_fsT hH.stringClone hH.formatInner
+    mmpl gh' W hH.alloc hH.strClone_fsT hH.stringClone hH.formatInnerCall
+    hH.f_eq hH.x_eq hH.pub_eq hH.enc_eq
 
 private theorem sessDeserialize_false_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {prog : Program} :
@@ -1199,7 +1200,7 @@ private theorem createChain40_cro_placed_ok [LibsignalPlacement]
   have hdealloc40 := keys_ls_hook_ok_of_mem
     (prog := (blkPC_40).rebase (blkPl_40).base (cliGhostExterns g (cliExternsPlaced mmpl W)))
     (i := 40) hh.rawDealloc
-  exact createChain_placed_ok_of_contracts (C := W.C) hag40 hext40 hexp40 hdealloc40
+  exact createChain_placed_ok_of_contracts_budget_sat (C := W.C) hag40 hext40 hexp40 hdealloc40
 
 /-- Discharges all 19 fields of `InitLocalCalleesPlaced` from `Initiate.HooksPlacedBudget.RunHooksPlaced`
 and the two W3-only seams (`spqrInitialState` on Block `327` and `verifySignature` on Block `203`). -/
@@ -1288,7 +1289,7 @@ structure Stage3OkEventsFit {M : AllocCostModel} (lim : BudgetLimits)
     ∃ evs, InitEnv x evs ∧ M.stepEvents stage3Dh4UnwindEvents st = M.stepEvents evs st0
 
 /-- Canonical Stage-3 continuation event predicate (`evsS3 = stage3OkEvents ...`). -/
-def Stage3OkEventsOut (W : CliHooks) (X : UnreachedPqxdhPrimitives)
+@[expose] def Stage3OkEventsOut (W : CliHooks) (X : UnreachedPqxdhPrimitives)
     (x : InitGhost) (be : PreKeyBundleFields) (kp : IdentityKeyPair)
     (_dk : SignalPqxdh.DRKey) (_hdr : SignalPqxdh.HandshakeHdr)
     (evsS3 : List AllocEvent) : Prop :=
@@ -1759,7 +1760,5 @@ theorem cliInitSlotOkPlacedAt_of_spqrSeams [LibsignalPlacement] {M : AllocCostMo
       A lim InitEnv X W :=
   cliInitSlotOkPlacedAt_of_okEvents mmpl gh' W X
     hHooks hSpqr.spqrInitialState_initProg hSpqr.verifySignature hghNoAlloc hFits
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAt

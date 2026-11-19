@@ -20,7 +20,7 @@ codec models `encodeVarint` and `(encode m).length`, together with the 112-byte 
 predicate `wireSignalMessageAt` for `libsignal_protocol::proto::wire::SignalMessage`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Prost
 
@@ -55,21 +55,21 @@ abbrev encodedLenStack : Nat := 0x10
 
 /-- Byte length (`1..10`) of the LEB128 varint encoding of `v : BitVec 64`, computed as
 `(((clz (v ||| 1) ^^^ 0x3f) * 9 + 73) / 64)`. -/
-def varintLen (v : BitVec 64) : Nat :=
+@[expose] def varintLen (v : BitVec 64) : Nat :=
   (((v ||| 1#64).clz ^^^ 0x3f#64).toNat * 9 + 73) / 64
 
 /-! ## `libsignal_protocol::proto::wire::SignalMessage` layout (`wireSignalMessageAt`, 112 bytes) -/
 
 /-- 24-byte `Option<Vec<u8>>` at `a` with pinned `(cap, ptr)`: niche `cap = noneCap` (`usize::MAX`)
 when `none`, and `vecU8At A a pin.cap pin.ptr bs` when `some bs`. -/
-def optVecU8At (A : RustAlloc) (pin : VecPin) (a : BitVec 64) :
+@[expose] def optVecU8At (A : RustAlloc) (pin : VecPin) (a : BitVec 64) :
     Option (List (BitVec 8)) → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 16
   | some bs => vecU8At A a pin.cap pin.ptr bs
 
 /-- 8-byte `Option<u32>` at `a`: tag `0#32` with 4 uninitialized trailing bytes when `none`,
 or tag `1#32` followed by `v` at `a + 4` when `some v`. -/
-def optU32At (a : BitVec 64) : Option (BitVec 32) → SepProp
+@[expose] def optU32At (a : BitVec 64) : Option (BitVec 32) → SepProp
   | none => (a ↦₃₂ 0#32) ∗ memRegion (a + 4#64) 4
   | some v => (a ↦₃₂ 1#32) ∗ ((a + 4#64) ↦₃₂ v)
 
@@ -92,7 +92,7 @@ representing `m : ProtoSignalMessage` with `Vec` pins `g`:
 * `a + 0x48`: `addresses: Option<Vec<u8>>` (tag 6, 24 B);
 * `a + 0x60`: `counter: Option<u32>` (tag 2, 8 B);
 * `a + 0x68`: `previous_counter: Option<u32>` (tag 3, 8 B). -/
-def wireSignalMessageAt (A : RustAlloc) (g : WireSignalMessageGhost) (a : BitVec 64)
+@[expose] def wireSignalMessageAt (A : RustAlloc) (g : WireSignalMessageGhost) (a : BitVec 64)
     (m : ProtoSignalMessage) : SepProp :=
   optVecU8At A g.rk a m.ratchetKey ∗
     optVecU8At A g.ct (a + 0x18#64) m.ciphertext ∗
@@ -102,12 +102,12 @@ def wireSignalMessageAt (A : RustAlloc) (g : WireSignalMessageGhost) (a : BitVec
     optU32At (a + 0x68#64) m.previousCounter
 
 /-- Unpinned 112-byte `wire::SignalMessage` at `a`, existentially quantifying over `WireSignalMessageGhost`. -/
-def wireSignalMessageOf (A : RustAlloc) (a : BitVec 64) (m : ProtoSignalMessage) : SepProp :=
+@[expose] def wireSignalMessageOf (A : RustAlloc) (a : BitVec 64) (m : ProtoSignalMessage) : SepProp :=
   ∃∗ g : WireSignalMessageGhost, wireSignalMessageAt A g a m
 
 /-- Size bound `(encode m).length < 2 ^ 64` ensuring no intermediate field-length partial sum in
 `encoded_len` overflows `u64`, making `panic_const_add_overflow` unreachable. -/
-def WireLengthsFit (m : ProtoSignalMessage) : Prop :=
+@[expose] def WireLengthsFit (m : ProtoSignalMessage) : Prop :=
   (encode m).length < 2 ^ 64
 
 /-! ## `prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]` -/
@@ -129,7 +129,7 @@ structure EncodeVarintGhost where
 Under `x.bs.length + 10 < 2 ^ 62`, appends `encodeVarint x.val` (1..10 LEB128 bytes) to the `Vec<u8>`
 at `x.v` with non-shrinking capacity (preserving `(x.cap, x.ptr)` whenever spare capacity suffices);
 panics only on allocator failure in `do_reserve_and_handle`. -/
-def encodeVarintSpec (A : RustAlloc) : Spec EncodeVarintGhost where
+@[expose] def encodeVarintSpec (A : RustAlloc) : Spec EncodeVarintGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧
       (x.bs.length + 10 ≤ x.cap.toNat ∨ x.bs.length + 10 < 2 ^ 62)⌝ ∗
@@ -145,7 +145,7 @@ def encodeVarintSpec (A : RustAlloc) : Spec EncodeVarintGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Variant of `encodeVarintSpec` with stack budget `encodeVarintStackX`. -/
-def encodeVarintSpecX (A : RustAlloc) : Spec EncodeVarintGhost where
+@[expose] def encodeVarintSpecX (A : RustAlloc) : Spec EncodeVarintGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧
       (x.bs.length + 10 ≤ x.cap.toNat ∨ x.bs.length + 10 < 2 ^ 62)⌝ ∗
@@ -174,7 +174,7 @@ structure EncodedLenGhost where
 /-- Specification of `<libsignal_protocol::proto::wire::SignalMessage as prost::message::Message>::encoded_len` (`0x28f50`).
 Under `WireLengthsFit x.m`, returns `(encode x.m).length` in `x0` without panicking while preserving
 `wireSignalMessageAt A x.g x.a x.m` and the execution trace. -/
-def encodedLenSpec (A : RustAlloc) : Spec EncodedLenGhost where
+@[expose] def encodedLenSpec (A : RustAlloc) : Spec EncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ WireLengthsFit x.m⌝ ∗
       wireSignalMessageAt A x.g x.a x.m ∗ stackAt s.sp encodedLenStack
@@ -184,58 +184,18 @@ def encodedLenSpec (A : RustAlloc) : Spec EncodedLenGhost where
 
 /-! ## Target `subroutine_ok` propositions -/
 
-/-- Synonym for `tripleRatchetProgAtExt b abs` parameterized uniformly over `(C, ctl, parse)`. -/
-noncomputable abbrev tripleRatchetProgAtP (b : BitVec 64) (_C : Crypto) (_ctl : BitVec 64)
-    (_parse : UuidParser) (abs : String → Option (State → State)) : Program :=
-  tripleRatchetProgAtExt b abs
-
-/-- `prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]` meets
-`encodeVarintSpec` on `tripleRatchetProgAtExt`. -/
-def EncodeVarintOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr encodeVarintName)
-    (encodeVarintSpec A)
-
-/-- `prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]` meets
-`(encodeVarintSpecX A).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-def EncodeVarintOkExtX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) ((tripleRatchetProgAtExt img.base ext).fnAddr encodeVarintName)
-    ((encodeVarintSpecX A).inImage img)
-
 /-- `prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]` meets
 `encodeVarintSpec` on `trTrapProgAt`. -/
-def EncodeVarintOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def EncodeVarintOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr encodeVarintName)
     (encodeVarintSpec A)
 
-/-- `prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]` meets
-`encodeVarintSpec` on `tripleRatchetProgAt`. -/
-def EncodeVarintOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr encodeVarintName)
-    (encodeVarintSpec A)
-
-/-- `<libsignal_protocol::proto::wire::SignalMessage as prost::message::Message>::encoded_len`
-meets `encodedLenSpec` on `tripleRatchetProgAtExt`. -/
-def EncodedLenOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr encodedLenName)
-    (encodedLenSpec A)
-
 /-- `<libsignal_protocol::proto::wire::SignalMessage as prost::message::Message>::encoded_len`
 meets `encodedLenSpec` on `trTrapProgAt`. -/
-def EncodedLenOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def EncodedLenOk_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr encodedLenName)
-    (encodedLenSpec A)
-
-/-- `<libsignal_protocol::proto::wire::SignalMessage as prost::message::Message>::encoded_len`
-meets `encodedLenSpec` on `tripleRatchetProgAt`. -/
-def EncodedLenOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr encodedLenName)
     (encodedLenSpec A)
 
 end CryptoVerification.LibsignalTripleRatchet.Prost

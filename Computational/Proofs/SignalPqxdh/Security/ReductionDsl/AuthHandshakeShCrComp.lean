@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCr -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import VCVio.EvalDist.Monad.Basic
 
@@ -21,7 +21,7 @@ Value encodings for the `Auth` `KemShCr` reduction state and pause payload, toge
 evaluation lemmas for shared components of the `KemShCr` handler branches.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,34 +31,34 @@ open _root_.ReductionDsl hiding B PTag U32 bundleOfV bundleT bundleV dhSecretsT 
 open SignalPqxdh SignalPqxdh.LegacyCosted SignalPqxdh.Security SignalPqxdh.Security.ReductionDsl
 open OracleSpec OracleComp RoKem
 
-def initRecToVal {S : Setup} (r : RoKem.InitKemRecord S) : initRecTy.denote :=
+@[expose] def initRecToVal {S : Setup} (r : RoKem.InitKemRecord S) : initRecTy.denote :=
   (r.sendIdx, (sessionIdToVal r.sid, (r.pqspkPk, (r.kemCt, r.kemSs))))
 
-def recvRecToVal (r : RoKem.RecvKemRecord) : recvRecTy.denote :=
+@[expose] def recvRecToVal (r : RoKem.RecvKemRecord) : recvRecTy.denote :=
   (r.k, (r.j, (r.pqspkPk, (r.pqspkSk, (r.kemCt, r.kemSs)))))
 
 /-- Encoding of `AuthShCrState` extended with pause index `sIdx` and chosen public key `chosen`. -/
-def shcrStToVal {S : Setup} (sIdx : Nat) (chosen : Bytes) (h : AuthShCrState S) :
+@[expose] def shcrStToVal {S : Setup} (sIdx : Nat) (chosen : Bytes) (h : AuthShCrState S) :
     shcrStTy.denote :=
   (authStateToVal h.base, (h.targetBIdx?.map (fun bIdx => (bIdx / S.N_recv, bIdx % S.N_recv)),
     (h.targetPk, (h.targetSk, (h.sendCount,
     (h.initKemRecs.map initRecToVal, (h.recvKemRecs.map recvRecToVal, (sIdx, chosen))))))))
 
-def encSCS {S : Setup} (sIdx : Nat) (chosen : Bytes) (p : AuthResponse × AuthShCrState S) :
+@[expose] def encSCS {S : Setup} (sIdx : Nat) (chosen : Bytes) (p : AuthResponse × AuthShCrState S) :
     SCS.denote :=
   (authRespToVal p.1, shcrStToVal sIdx chosen p.2)
 
 abbrev UInfo := PrincipalEntry × Option (Nat × PrincipalEntry) × Bytes
 
-def uInfoToVal (u : UInfo) : uInfoTy.denote :=
+@[expose] def uInfoToVal (u : UInfo) : uInfoTy.denote :=
   (principalEntryToVal u.1, (u.2.1.map (Prod.map id principalEntryToVal), u.2.2))
 
 abbrev PauseMid (S : Setup) := SessionId S × PreKeyBundleInput × Bytes × Bytes × UInfo
 
-def pauseToVal {S : Setup} (p : PauseMid S) : pauseTy.denote :=
+@[expose] def pauseToVal {S : Setup} (p : PauseMid S) : pauseTy.denote :=
   (sessionIdToVal p.1, (preKeyBundleToVal p.2.1, ((p.2.2.1, p.2.2.2.1), uInfoToVal p.2.2.2.2)))
 
-def encFinA {S : Setup} (p : AuthResponse × Option (AuthState S)) : FinTy.denote :=
+@[expose] def encFinA {S : Setup} (p : AuthResponse × Option (AuthState S)) : FinTy.denote :=
   (authRespToVal p.1, p.2.map authStateToVal)
 
 theorem sidEq_eval {S : Setup} {Γ : List (Ty pqSig)} (a b : Expr pqxdhOps Γ sessionIdTy) (env : Env Γ)

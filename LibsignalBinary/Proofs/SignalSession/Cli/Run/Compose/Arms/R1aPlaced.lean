@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable Arm `R1a` Specification for `signal_session::run`
@@ -20,7 +23,7 @@ Defines `RunHopInit1PlacedOf` and `RunHopInit1Placed` (`R+0x214 → R+0x74c`) on
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +39,7 @@ open CryptoVerification.SignalSession.Cli.MainHops
 open CryptoVerification.SignalSession.Cli.RunSkeleton
 
 /-- Slot-parametric relocatable Arm `R1a` contract (`R+0x214 → R+0x74c` or `RejectKPlaced` / `PanicK`) for `g.c = .init peerV dir`. -/
-def RunHopInit1PlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopInit1PlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (slots : RunSlots) (resStack : Nat) : Prop :=
   ∀ {g : RunCall} {s0 s : State} {me : MeAtDispatch} {peerV : AddrV} {dir : List (BitVec 8)}
     {Q Qp : State → SepProp → Prop},
@@ -57,7 +60,7 @@ def RunHopInit1PlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : Rus
     SepWPp (runProgPlaced H) (s0.readReg64 .lr) s (dispatchMemPlaced A g me s0 resStack) Q Qp
       (runOom s0)
 
-def RunHopInit1Placed [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopInit1Placed [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) : Prop :=
   RunHopInit1PlacedOf CodeOk A H B S (slotsOfPlaced A S needs) resStack
 

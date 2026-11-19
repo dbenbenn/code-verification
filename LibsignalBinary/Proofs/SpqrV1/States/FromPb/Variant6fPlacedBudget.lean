@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6cPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6ePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6ePlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6a
@@ -22,6 +22,18 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6d
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6e
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6f
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6cPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6dPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant6fPlaced
 
 /-!
 # Budget-Threaded Placed Variant 6 (`HeaderReceived`, `+1464`, Block `333`) — Part F
@@ -31,7 +43,7 @@ tails (`+9936 -> ret`) under `RustCliAllocBudget M`, re-exporting error exits an
 steps from `Variant6fPlacedBudgetAux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -294,58 +306,6 @@ theorem v6hr_step_3760_to_9936_placed_sepWP [LibsignalPlacement]
     out c0 p0 c1 p1 c2 p2 epoch w88 w96 w104 w120 d112 d116
     v80 v128 v136 v144 d184 v192 d200 v208 v216 v224 rootKey macKey Rest
     hfits hsp0_align hc0 hc1 hpc1 hrun1 hregs1
-
-theorem v6hr_step_3760_to_9936_of_placedHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)} {Qp : State → SepProp → Prop}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext) (st : M.σ) (s0 s1 : State)
-    (out c0 p0 c1 p1 c2 p2 epoch w88 w96 w104 w120 : BitVec 64)
-    (d112 d116 : BitVec 32)
-    (v80 v128 v136 v144 : BitVec 64) (d184 : BitVec 32)
-    (v192 : BitVec 64) (d200 : BitVec 32)
-    (v208 v216 v224 : BitVec 64)
-    (rootKey macKey : List (BitVec 8)) (Rest : SepProp)
-    (hfits : FitsEvents M lim st (authKeyCloneEvents rootKey ++ authKeyCloneEvents macKey))
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hc0 : c0.toNat < 2 ^ 63) (hc1 : c1.toNat < 2 ^ 63)
-    (hpc1 : s1.pc = lsmpl.base 333 + 3760#64) (hrun1 : s1.status = .Running)
-    (hregs1 : v6hr_Regs1508 s0 s1 out c0 p0 64#64 c1 p1
-      (BitVec.ofNat 64 rootKey.length) c2 p2 (BitVec.ofNat 64 macKey.length)
-      epoch w88 w104 d112 d116 w120) :
-    SepWPp (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 9936#64) s1
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        v6hr_lowStackAt s0.sp v80 v128 v136 v144 d184 v192 d200 v208 v216 v224 w96 ∗
-        vecU8Payload A.repAlloc c1 p1 rootKey ∗
-        vecU8Payload A.repAlloc c2 p2 macKey ∗
-        A.pool lim st s1 ∗ Rest)
-      (fun sm Pm =>
-        ∃ (evs : List AllocEvent) (p1_new p2_new : BitVec 64) (d184' : BitVec 32),
-          V6hrAuthCloneEnv rootKey macKey evs ∧
-          (Pm ⊢
-            stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-            v6hr_lowStackAt s0.sp 64#64 epoch p2_new p0 d184' p1_new d116 p2
-              (BitVec.ofNat 64 macKey.length) w120 w96 ∗
-            vecU8Payload A.repAlloc (BitVec.ofNat 64 rootKey.length) p1_new rootKey ∗
-            vecU8Payload A.repAlloc (BitVec.ofNat 64 macKey.length) p2_new macKey ∗
-            A.pool lim (M.stepEvents evs st) sm ∗ Rest) ∧
-          sm.sp = s0.sp - 2400#64 ∧
-          sm.readReg64 .x11 = d112.zeroExtend 64 ∧
-          sm.readReg64 .x12 = d116.zeroExtend 64 ∧
-          sm.readReg64 .x19 = out ∧
-          sm.readReg64 .x23 = w104 ∧
-          sm.readReg64 .x24 = p1_new >>> 8 ∧
-          sm.readReg64 .x25 = p1_new ∧
-          sm.readReg64 .x26 = BitVec.ofNat 64 rootKey.length ∧
-          sm.readReg64 .x27 = c0 ∧
-          sm.readReg64 .x28 = w88 ∧
-          TraceCalleeSaved sm s0)
-      Qp :=
-  SepWPp.of_sepWP_ret
-    (v6hr_step_3760_to_9936_of_placedHooks_sepWP hA st s0 s1
-      out c0 p0 c1 p1 c2 p2 epoch w88 w96 w104 w120 d112 d116
-      v80 v128 v136 v144 d184 v192 d200 v208 v216 v224 rootKey macKey Rest
-      hfits hsp0_align hc0 hc1 hpc1 hrun1 hregs1)
 
 theorem v6hr_step_3760_to_9936_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -851,68 +811,6 @@ theorem v6hr_step_9936_dec_some_to_exit_placed_sepWP [LibsignalPlacement]
     out c0 p0 p1_new p2_new ep p2 ptsCap ptsPtr w120 d184 authPb hdrBytes decPb Rest
     hfits hsp0_align hhdr heq_pts h1 h2 h3 hw120 hpc1 hrun1 hsp1
     hx11_1 hx12_1 hx19_1 hx23_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 htr1
-
-theorem v6hr_step_9936_dec_some_to_exit_of_placedHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)} {Qp : State → SepProp → Prop}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext)
-    (hdec : DefsBudget.DecoderFromPbPlacedOkExt M A lim ext)
-    (st : M.σ) (s0 s1 : State) (hcl1 : LibsignalCodeLoaded lsmpl s1.mem)
-    (out c0 p0 p1_new p2_new ep p2 ptsCap ptsPtr w120 : BitVec 64)
-    (d184 : BitVec 32)
-    (authPb : ProtoAuthenticator) (hdrBytes : List (BitVec 8))
-    (decPb : PolynomialDecoder) (Rest : SepProp)
-    (hfits : FitsEnv M lim st (FromPbDecAllocEnv (pbToProtoPolyDecoder decPb)))
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true) (hhdr : hdrBytes.length = 64)
-    (heq_pts : decPb.ptsNeeded = 576#32)
-    (h1 : (pbToProtoPolyDecoder decPb).pts.length ≤ ptsCap.toNat)
-    (h2 : ptsCap.toNat * 24 < 2 ^ 63) (h3 : ptsPtr ≠ 0#64)
-    (hw120 : loByte w120 = boolByte (pbToProtoPolyDecoder decPb).isComplete)
-    (hpc1 : s1.pc = lsmpl.base 333 + 9936#64) (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx11_1 : s1.readReg64 .x11 = (pbToProtoPolyDecoder decPb).ptsNeeded.zeroExtend 64)
-    (hx12_1 : s1.readReg64 .x12 = (pbToProtoPolyDecoder decPb).polys.zeroExtend 64)
-    (hx19_1 : s1.readReg64 .x19 = out)
-    (hx23_1 : s1.readReg64 .x23 = BitVec.ofNat 64 (pbToProtoPolyDecoder decPb).pts.length)
-    (hx24_1 : s1.readReg64 .x24 = p1_new >>> 8) (hx25_1 : s1.readReg64 .x25 = p1_new)
-    (hx26_1 : s1.readReg64 .x26 = BitVec.ofNat 64 authPb.rootKey.length)
-    (hx27_1 : s1.readReg64 .x27 = c0) (hx28_1 : s1.readReg64 .x28 = ptsCap)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWPp (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s1
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        v6hr_lowStackAt s0.sp 64#64 ep p2_new p0 d184 p1_new
-          (pbToProtoPolyDecoder decPb).polys p2
-          (BitVec.ofNat 64 authPb.macKey.length) w120 ptsPtr ∗
-        memRegion (s0.sp - 2160#64) 2064 ∗
-        statesFromPbSavedCells s0 ∗
-        memRegion out chunkedStatesSize ∗
-        vecU8Payload A.repAlloc (BitVec.ofNat 64 authPb.rootKey.length) p1_new authPb.rootKey ∗
-        vecU8Payload A.repAlloc (BitVec.ofNat 64 authPb.macKey.length) p2_new authPb.macKey ∗
-        vecU8Payload A.repAlloc c0 p0 hdrBytes ∗
-        (if ptsCap = 0#64 then emp
-         else A.repAlloc.live ptsPtr (ptsCap.toNat * 24) 8 ∗
-           arrayAt (fun bs addr => vecU8 A.repAlloc addr bs) 24 ptsPtr (pbToProtoPolyDecoder decPb).pts ∗
-           memRegion (ptsPtr + BitVec.ofNat 64 ((pbToProtoPolyDecoder decPb).pts.length * 24))
-             ((ptsCap.toNat - (pbToProtoPolyDecoder decPb).pts.length) * 24)) ∗
-        A.pool lim st s1 ∗ Rest)
-      (fun sf Pf =>
-        ∃ evs : List AllocEvent,
-          FromPbDecEnv (pbToProtoPolyDecoder decPb) evs ∧
-          (Pf ⊢
-            resultChunkedStatesAt A.repAlloc (F := F) out
-              (States.from_pb spqrPolyApi (spqrAuthApi F)
-                { innerState := some (.headerReceived
-                    { uc := some { hdr := hdrBytes, auth := some authPb, epoch := ep },
-                      receivingEk := some decPb }) }) ∗
-            (A.pool lim (M.stepEvents evs st) sf ∗ Rest) ∗
-            stackAt s0.sp statesFromPbStack) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace)
-      Qp :=
-  SepWPp.of_sepWP_ret
-    (v6hr_step_9936_dec_some_to_exit_of_placedHooks_sepWP (F := F) hA hdec st s0 s1 hcl1
-      out c0 p0 p1_new p2_new ep p2 ptsCap ptsPtr w120 d184 authPb hdrBytes decPb Rest
-      hfits hsp0_align hhdr heq_pts h1 h2 h3 hw120 hpc1 hrun1 hsp1
-      hx11_1 hx12_1 hx19_1 hx23_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 htr1)
 
 theorem v6hr_step_9936_dec_some_to_exit_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

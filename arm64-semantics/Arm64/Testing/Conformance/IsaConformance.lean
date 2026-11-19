@@ -174,7 +174,7 @@ private theorem brkTestMem0_canMap_grow :
   rfl
 
 private abbrev brkTestMem1 : Memory :=
-  ((brkTestMem0.mapZero 0x40000#64 0x1000).write8 0x40000#64 0xab#8).unmapWritable 0x41000#64 0
+  (brkTestMem0.mapZero 0x40000#64 0x1000).write8 0x40000#64 0xab#8
 
 private theorem brkTestMem1_canMap_overlap :
     brkTestMem1.canMap (BitVec.ofNat 64 0x41000) (0x42000 - 0x41000 + BRK_GUARD_GAP) = false :=
@@ -195,8 +195,10 @@ private theorem execBrk_grow_ok_eq (s : State) (m : Memory) (addr : BitVec 64) (
     execBrk s =
       ((((s.setBrk addr).setMem (m.mapZero (BitVec.ofNat 64 oldPage) (newPage - oldPage))).setPhysMemAvail
         (s.physMemAvail - (newPage - oldPage))).writeReg64 Reg.x0 addr).advancePC := by
+  have hne : (newPage == oldPage) = false := by simp; omega
+  have hnlt : ¬(newPage < oldPage) := by omega
   unfold execBrk
-  simp only [hm, hx0, h1, Bool.false_eq_true, ↓reduceIte, hold, hnew, hlt, hlim, hcan,
+  simp only [hm, hx0, h1, Bool.false_eq_true, ↓reduceIte, hold, hnew, hne, hnlt, hlim, hcan,
     hphys, Bool.not_true, Bool.or_self]
 
 private theorem execBrk_grow_oom_eq (s : State) (m : Memory) (addr : BitVec 64) (oldPage newPage : Nat)
@@ -210,22 +212,20 @@ private theorem execBrk_grow_oom_eq (s : State) (m : Memory) (addr : BitVec 64) 
     (hcan : m.canMap (BitVec.ofNat 64 oldPage) (newPage - oldPage + BRK_GUARD_GAP) = true)
     (hphys : decide (newPage - oldPage ≤ s.physMemAvail) = false) :
     execBrk s = s.setStatus .OutOfMemory := by
+  have hne : (newPage == oldPage) = false := by simp; omega
+  have hnlt : ¬(newPage < oldPage) := by omega
   unfold execBrk
-  simp only [hm, hx0, h1, Bool.false_eq_true, ↓reduceIte, hold, hnew, hlt, hlim, hcan,
+  simp only [hm, hx0, h1, Bool.false_eq_true, ↓reduceIte, hold, hnew, hne, hnlt, hlim, hcan,
     hphys, Bool.not_true, Bool.not_false, Bool.or_self]
 
-private theorem execBrk_same_page_eq (s : State) (m : Memory) (addr : BitVec 64) (page : Nat)
-    (hm : s.mem = m)
+private theorem execBrk_same_page_eq (s : State) (addr : BitVec 64) (page : Nat)
     (hx0 : s.readReg64 Reg.x0 = addr)
     (h1 : (addr == 0#64 || addr.ult s.brkStart) = false)
     (hold : pageAlignUp s.brk.toNat = page)
     (hnew : pageAlignUp addr.toNat = page) :
-    execBrk s =
-      ((((s.setBrk addr).setMem (m.unmapWritable (BitVec.ofNat 64 page) 0)).setPhysMemAvail
-        s.physMemAvail).writeReg64 Reg.x0 addr).advancePC := by
+    execBrk s = ((s.setBrk addr).writeReg64 Reg.x0 addr).advancePC := by
   unfold execBrk
-  simp only [hm, hx0, h1, Bool.false_eq_true, ↓reduceIte, hold, hnew, Nat.le_refl, Nat.sub_self,
-    Memory.allPerm, Bool.not_true, Memory.countRw, Memory.countPerm, Nat.add_zero]
+  simp only [hx0, h1, Bool.false_eq_true, ↓reduceIte, hold, hnew, beq_self_eq_true]
 
 private theorem execBrk_refuse_of_not_canMap (s : State) (m : Memory) (addr : BitVec 64) (oldPage newPage : Nat)
     (hm : s.mem = m)
@@ -236,8 +236,10 @@ private theorem execBrk_refuse_of_not_canMap (s : State) (m : Memory) (addr : Bi
     (hlt : ¬(newPage ≤ oldPage))
     (hcan : m.canMap (BitVec.ofNat 64 oldPage) (newPage - oldPage + BRK_GUARD_GAP) = false) :
     execBrk s = (s.writeReg64 Reg.x0 s.brk).advancePC := by
+  have hne : (newPage == oldPage) = false := by simp; omega
+  have hnlt : ¬(newPage < oldPage) := by omega
   unfold execBrk
-  simp only [hm, hx0, h1, Bool.false_eq_true, ↓reduceIte, hold, hnew, hlt, hcan,
+  simp only [hm, hx0, h1, Bool.false_eq_true, ↓reduceIte, hold, hnew, hne, hnlt, hcan,
     Bool.not_false, Bool.or_true]
 
 private theorem prop_congr8 {α : Type} (P : α → α → α → α → α → α → α → α → Prop)
@@ -306,9 +308,7 @@ theorem brk_fail_closed_conformance :
       (sGrowIn.physMemAvail - (0x41000 - 0x40000))).writeReg64 Reg.x0 0x40004#64).advancePC
   let sSeedVal : State := sGrowVal.setMem (sGrowVal.mem.write8 0x40000#64 0xab#8)
   let sSubIn : State := sSeedVal.writeReg64 .x0 0x40100#64
-  let sSubVal : State :=
-    ((((sSubIn.setBrk 0x40100#64).setMem brkTestMem1).setPhysMemAvail sSubIn.physMemAvail).writeReg64
-      Reg.x0 0x40100#64).advancePC
+  let sSubVal : State := ((sSubIn.setBrk 0x40100#64).writeReg64 Reg.x0 0x40100#64).advancePC
   let sOverlapIn : State := sSubVal.writeReg64 .x0 0x41008#64
   let sOverlapVal : State := (sOverlapIn.writeReg64 Reg.x0 sOverlapIn.brk).advancePC
   let sBelowVal : State := execBrk (sSubVal.writeReg64 .x0 0x3ffff#64)
@@ -316,32 +316,33 @@ theorem brk_fail_closed_conformance :
   let sShrinkVal : State := execBrk (sSubVal.writeReg64 .x0 0x40000#64)
   let sOomVal : State := ({ s0 with physMemAvail := 0 }.writeReg64 .x0 0x40004#64).setStatus .OutOfMemory
   have hQuery : sQuery = sQueryVal := rfl
-  have hGrow : sGrow = sGrowVal :=
-    (congrArg (fun s => execBrk (s.writeReg64 .x0 0x40004#64)) hQuery).trans
-      (execBrk_grow_ok_eq sGrowIn brkTestMem0 0x40004#64 0x40000 0x41000
-        rfl rfl (by decide +kernel) (by decide +kernel) (by decide +kernel)
-        (by decide +kernel) (by decide +kernel) brkTestMem0_canMap_grow (by decide +kernel))
-  have hSeed : sSeed = sSeedVal :=
-    congrArg (fun s => s.setMem (s.mem.write8 0x40000#64 0xab#8)) hGrow
-  have hSub : sSub = sSubVal :=
-    (congrArg (fun s => execBrk (s.writeReg64 .x0 0x40100#64)) hSeed).trans
-      (execBrk_same_page_eq sSubIn ((brkTestMem0.mapZero 0x40000#64 0x1000).write8 0x40000#64 0xab#8)
-        0x40100#64 0x41000 rfl rfl (by decide +kernel) (by decide +kernel) (by decide +kernel))
-  have hOverlap : sOverlap = sOverlapVal :=
-    (congrArg (fun s => execBrk (s.writeReg64 .x0 0x41008#64)) hSub).trans
-      (execBrk_refuse_of_not_canMap sOverlapIn brkTestMem1 0x41008#64 0x41000 0x42000
-        rfl rfl (by decide +kernel) (by decide +kernel) (by decide +kernel)
-        (by decide +kernel) brkTestMem1_canMap_overlap)
-  have hBelow : sBelow = sBelowVal :=
-    congrArg (fun s => execBrk (s.writeReg64 .x0 0x3ffff#64)) hSub
-  have hAbove : sAbove = sAboveVal :=
-    congrArg (fun s => execBrk (s.writeReg64 .x0 0x0001000000000001#64)) hSub
-  have hShrink : sShrink = sShrinkVal :=
-    congrArg (fun s => execBrk (s.writeReg64 .x0 0x40000#64)) hSub
-  have hOom : sOom = sOomVal :=
+  have hGrow1 := congrArg (fun s => execBrk (s.writeReg64 .x0 0x40004#64)) hQuery
+  have hGrow2 := execBrk_grow_ok_eq sGrowIn brkTestMem0 0x40004#64 0x40000 0x41000
+    rfl rfl (by decide +kernel) (by decide +kernel) (by decide +kernel)
+    (by decide +kernel) (by decide +kernel) brkTestMem0_canMap_grow (by decide +kernel)
+  have hGrow : sGrow = sGrowVal := Eq.trans (b := execBrk sGrowIn) hGrow1 hGrow2
+  have hSeed1 := congrArg (fun s => s.setMem (s.mem.write8 0x40000#64 0xab#8)) hGrow
+  have hSeed : sSeed = sSeedVal := hSeed1
+  have hSub1 := congrArg (fun s => execBrk (s.writeReg64 .x0 0x40100#64)) hSeed
+  have hSub2 := execBrk_same_page_eq sSubIn 0x40100#64 0x41000
+    rfl (by decide +kernel) (by decide +kernel) (by decide +kernel)
+  have hSub : sSub = sSubVal := Eq.trans (b := execBrk sSubIn) hSub1 hSub2
+  have hOverlap1 := congrArg (fun s => execBrk (s.writeReg64 .x0 0x41008#64)) hSub
+  have hOverlap2 := execBrk_refuse_of_not_canMap sOverlapIn brkTestMem1 0x41008#64 0x41000 0x42000
+    rfl rfl (by decide +kernel) (by decide +kernel) (by decide +kernel)
+    (by decide +kernel) brkTestMem1_canMap_overlap
+  have hOverlap : sOverlap = sOverlapVal := Eq.trans (b := execBrk sOverlapIn) hOverlap1 hOverlap2
+  have hBelow1 := congrArg (fun s => execBrk (s.writeReg64 .x0 0x3ffff#64)) hSub
+  have hBelow : sBelow = sBelowVal := hBelow1
+  have hAbove1 := congrArg (fun s => execBrk (s.writeReg64 .x0 0x0001000000000001#64)) hSub
+  have hAbove : sAbove = sAboveVal := hAbove1
+  have hShrink1 := congrArg (fun s => execBrk (s.writeReg64 .x0 0x40000#64)) hSub
+  have hShrink : sShrink = sShrinkVal := hShrink1
+  have hOom1 :=
     execBrk_grow_oom_eq ({ s0 with physMemAvail := 0 }.writeReg64 .x0 0x40004#64) brkTestMem0 0x40004#64 0x40000 0x41000
       rfl rfl (by decide +kernel) (by decide +kernel) (by decide +kernel)
       (by decide +kernel) (by decide +kernel) brkTestMem0_canMap_grow (by decide +kernel)
+  have hOom : sOom = sOomVal := hOom1
   exact prop_congr8
     (fun sQuery sGrow sSub sOverlap sBelow sAbove sShrink sOom =>
       sQuery.readReg64 .x0 = 0x40000#64 ∧
@@ -539,10 +540,14 @@ theorem clock_gettime_conformance :
     - valid `W2` flag masks (`0`, `GRND_NONBLOCK`, `GRND_RANDOM`, `GRND_INSECURE`, and allowed
       combinations, ignoring upper 32 bits of `X2`) with `count ≤ MAX_RW_COUNT` fill `count`
       bytes from `s.oracle.getrandom s.oracleIdx`, advance `oracleIdx`, and return `count`;
-    - unknown flag bits, `GRND_RANDOM | GRND_INSECURE`, or `count > MAX_RW_COUNT` return
-      `-EINVAL` (`-22`) without modifying memory or advancing `oracleIdx`;
-    - unwritable buffers return `-EFAULT` (`-14`) without modifying memory or advancing
-      `oracleIdx`. -/
+    - unknown flag bits or `GRND_RANDOM | GRND_INSECURE` return `-EINVAL` (`-22`) without
+      modifying memory or advancing `oracleIdx`;
+    - `count > MAX_RW_COUNT` fails closed with `.Exception` (Linux clamps to a short read) without
+      modifying memory or advancing `oracleIdx`;
+    - buffers whose first byte is unwritable return `-EFAULT` (`-14`) without modifying memory
+      or advancing `oracleIdx`;
+    - buffers writable for a nonempty prefix only fail closed with `.Exception` (Linux returns the
+      short copied count). -/
 theorem getrandom_conformance :
     let mem0 := Memory.empty.mapZero 0x2000#64 16
     let oracle0 : Oracle := { getrandom := fun n i => BitVec.ofNat 8 (16 * n + i + 0x10) }
@@ -555,6 +560,7 @@ theorem getrandom_conformance :
     let sMutExcl7 := call sOk0 0x2000#64 2#64 0x7#64
     let sTooBig := call sOk0 0x2000#64 0x7ffff001#64 0#64
     let sEfault := call sOk0 0x3000#64 2#64 0#64
+    let sPartial := call sOk0 0x200e#64 4#64 0#64
     sOk0.status = .Running ∧
     sOk0.readReg64 .x0 = 2#64 ∧
     sOk0.oracleIdx = 1 ∧
@@ -566,11 +572,13 @@ theorem getrandom_conformance :
     sMutExcl6.oracleIdx = 1 ∧
     sMutExcl7.readReg64 .x0 = -22#64 ∧
     sMutExcl7.oracleIdx = 1 ∧
-    sTooBig.readReg64 .x0 = -22#64 ∧
+    sTooBig.status = .Exception "unmodeled getrandom count > MAX_RW_COUNT (short read)" ∧
     sTooBig.oracleIdx = 1 ∧
     sTooBig.mem.readBytes 0x2000#64 2 = [0x10#8, 0x11#8] ∧
     sEfault.readReg64 .x0 = -14#64 ∧
-    sEfault.oracleIdx = 1 := by
+    sEfault.oracleIdx = 1 ∧
+    sPartial.status = .Exception "unmodeled getrandom partial-fault short read" ∧
+    sPartial.oracleIdx = 1 := by
   decide +kernel
 
 /-- Conformance tests for ASL boundary cases:

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomG5aReach
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomG5aReach
 import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactAsm
 import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2
 import LibsignalBinary.Proofs.PeakBudget.CliKitW2RecvExactAuxR2Race
@@ -38,6 +38,32 @@ import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsTightCliInst
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.LayoutBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
+public import LibsignalBinary.Heap.Fine.CreditInst
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Untyped D3 `MainEntryBudgetFitsCapOf` Closure
@@ -48,14 +74,13 @@ Proves `hole_g5a_untyped_fitsCap_closed`, establishing `MainEntryBudgetFitsCapOf
 `binaryKitRunSlotEnvsExact` and `DecPkD3UntypedEnvOf` under `pqD3ScopedRun`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfTopJoinG5A
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames (Party)
 open CryptoGames.LibsignalSession (Crypto IdentityKey Mut SessionState ShaCompress SignalMessage TripleRatchet)
@@ -1098,8 +1123,8 @@ private theorem tjg5a_d3Prekey_fitsCap [LibsignalPlacement]
   let S := cliRunSemD3 W
   let X := defaultExtrasF3
   let decPkEnv := tjg5a_untypedDecPkCallEnv A.repAlloc W
-  let E := mkD3BinaryKitCalleeEnvsWithDecPk (default : Image) S X W decPkEnv
-  have hMain := realCliMainD3RecvWithDecPk_fitsEnv_cliBudgetLimits (default : Image) S X W decPkEnv
+  let E := mkD3BinaryKitCalleeEnvsWithDecPk (default : Unit) S X W decPkEnv
+  have hMain := realCliMainD3RecvWithDecPk_fitsEnv_cliBudgetLimits (default : Unit) S X W decPkEnv
     (fun g hi hs hp => (tjg5a_untypedDecPkCallEnv_slotSpecWithCaps A.repAlloc W g hi hs hp).1)
     (fun g hi hs hp => (tjg5a_untypedDecPkCallEnv_slotSpecWithCaps A.repAlloc W g hi hs hp).2)
   exact mainEntryBudgetFitsCapOf_domScopedRun_cliBudgetLimits_of_kitEnvFits

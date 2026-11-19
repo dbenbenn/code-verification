@@ -14,18 +14,23 @@ import all Init.Data.String.Defs
 import all Init.Data.String.Basic
 import all Init.Data.Repr
 import all Init.Data.ToString.Basic
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreePaths
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreePaths -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.PqBundleInst
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCommit
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeKeys
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeStore
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Lemmas.Agree
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -1099,116 +1104,6 @@ open CryptoVerification.SignalSession.Cli.MainHops
 open CryptoVerification.SignalSession.Cli.RunSkeleton
 open CryptoVerification.SignalSession.Cli.RunProofs
 
-/-- `signal_session::run` meets `runSpec` at `cliRunSem` with `decPkDefD2c` and `DecPkOkD2c`,
-given `DecPkD2cSlotOk img`. -/
-theorem hrun_cli_d2c {img : Obj.Image} (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hslot : DecPkD2cSlotOk img) :
-    subroutine_ok (mProg img (cliExterns W)) ((mProg img (cliExterns W)).fnAddr runName)
-      ((runSpec E2E.HooksE.A0 img uuidTryParse
-        (runRel (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ Slots.scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ Slots.scopeIn) Pksm.pksmParse))
-        cliWrOk cliResStack).inImage img) :=
-  hrun_cli X W
-    (decPkDefD2c X ⟨W.C, W.Q⟩ Slots.scopeIn)
-    (DecPkOkD2c ⟨W.C, W.Q⟩ Slots.scopeIn)
-    Pksm.pksmParse
-    (cliDecryptPrekeyNeed cliRunBudgets)
-    himg
-    cliDecryptPrekeyNeed_le
-    (hslot X W _ (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)) rfl rfl rfl rfl)
-    (cliPksmTryFrom_ok himg (RunHooks.cli W img).alloc (fun _ => rfl))
-
-/-- `signal_session::run` meets `runSpecTight` at `cliRunSem` with `decPkDefD2c` and
-`DecPkOkD2c`, given `DecPkD2cSlotOk img`. -/
-theorem hrun_cli_d2c_tight {img : Obj.Image} (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hslot : DecPkD2cSlotOk img) :
-    subroutine_ok (mProg img (cliExterns W)) ((mProg img (cliExterns W)).fnAddr runName)
-      ((runSpecTight E2E.HooksE.A0 img uuidTryParse
-        (runRel (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ Slots.scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ Slots.scopeIn) Pksm.pksmParse))
-        cliWrOk cliResStack).inImage img) :=
-  hrun_cli X W
-    (decPkDefD2c X ⟨W.C, W.Q⟩ Slots.scopeIn)
-    (DecPkOkD2c ⟨W.C, W.Q⟩ Slots.scopeIn)
-    Pksm.pksmParse
-    (cliDecryptPrekeyNeed cliRunBudgets)
-    himg
-    cliDecryptPrekeyNeed_le
-    (hslot X W _ (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)) rfl rfl rfl rfl)
-    (cliPksmTryFrom_ok himg (RunHooks.cli W img).alloc (fun _ => rfl))
-
 open CryptoVerification.RustHeap
-
-/-- Parameterized `hrun_cli_d2c` on `mProg img (cliExternsWith ext)` for arbitrary `(P, A, ext)`. -/
-theorem hrun_cli_d2c_mProg_of_callees {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (X : UnreachedPqxdhPrimitives) (P : PEParams)
-    (himg : Obj.Loads libsignalSessionImage img) (hh : RunHooks img A (cliExternsWith ext))
-    (hc : RunCallees img A (cliExternsWith ext) cliRunBudgets
-      (slotsOf A img (cliRunSemD2cP X P) (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)))) :
-    subroutine_ok (mProg img (cliExternsWith ext)) ((mProg img (cliExternsWith ext)).fnAddr runName)
-      ((runSpec A img uuidTryParse (runRel (cliRunSemD2cP X P)) cliWrOk cliResStack).inImage img) :=
-  run_ok' himg hh hc (cliPksmTryFrom_ok himg hh.alloc (fun _ => rfl))
-    (runNeed_cli_le_resStack_ext (A := A) (img := img) (S := cliRunSemD2cP X P) cliDecryptPrekeyNeed_le)
-    cliResStack_le_63
-
-/-- Parameterized `hrun_cli_d2c_tight` on `mProg img (cliExternsWith ext)`. -/
-theorem hrun_cli_d2c_tight_mProg_of_callees {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (X : UnreachedPqxdhPrimitives) (P : PEParams)
-    (himg : Obj.Loads libsignalSessionImage img) (hh : RunHooks img A (cliExternsWith ext))
-    (hc : RunCallees img A (cliExternsWith ext) cliRunBudgets
-      (slotsOf A img (cliRunSemD2cP X P) (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)))) :
-    subroutine_ok (mProg img (cliExternsWith ext)) ((mProg img (cliExternsWith ext)).fnAddr runName)
-      ((runSpecTight A img uuidTryParse (runRel (cliRunSemD2cP X P)) cliWrOk cliResStack).inImage img) :=
-  hrun_cli_d2c_mProg_of_callees X P himg hh hc
-
-/-- Parameterized `hrun_cli_d2c` on `Cli.cliProg img (cliExternsWith ext)` at `entryOf img runName`. -/
-theorem hrun_cli_d2c_of_callees {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (X : UnreachedPqxdhPrimitives) (P : PEParams)
-    (himg : Obj.Loads libsignalSessionImage img) (hh : RunHooks img A (cliExternsWith ext))
-    (hc : RunCallees img A (cliExternsWith ext) cliRunBudgets
-      (slotsOf A img (cliRunSemD2cP X P) (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)))) :
-    subroutine_ok (Cli.cliProg img (cliExternsWith ext)) (entryOf img runName)
-      ((runSpec A img uuidTryParse (runRel (cliRunSemD2cP X P)) cliWrOk cliResStack).inImage img) :=
-  root_of_tripleRatchetProgAtExt himg (hrun_cli_d2c_mProg_of_callees X P himg hh hc)
-
-/-- Parameterized `hrun_cli_d2c_tight` on `Cli.cliProg img (cliExternsWith ext)` at `entryOf img runName`. -/
-theorem hrun_cli_d2c_tight_of_callees {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (X : UnreachedPqxdhPrimitives) (P : PEParams)
-    (himg : Obj.Loads libsignalSessionImage img) (hh : RunHooks img A (cliExternsWith ext))
-    (hc : RunCallees img A (cliExternsWith ext) cliRunBudgets
-      (slotsOf A img (cliRunSemD2cP X P) (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)))) :
-    subroutine_ok (Cli.cliProg img (cliExternsWith ext)) (entryOf img runName)
-      ((runSpecTight A img uuidTryParse (runRel (cliRunSemD2cP X P)) cliWrOk cliResStack).inImage img) :=
-  root_of_tripleRatchetProgAtExt himg (hrun_cli_d2c_tight_mProg_of_callees X P himg hh hc)
-
-/-- `RunHooks`-agnostic D2(c) `runSpecTight` bridge on `mProg img (cliExternsWith ext)`. -/
-theorem hrun_cli_d2c_tight_mProg_of_runOk {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (X : UnreachedPqxdhPrimitives) (P : PEParams)
-    (himg : Obj.Loads libsignalSessionImage img)
-    (halloc : AllocContractsX img A (cliExternsWith ext))
-    (hbase : RunBaseCalleesAt img A (cliExternsWith ext) (cliRunSemD2cP X P)
-      (cliDecryptPrekeyNeed cliRunBudgets))
-    (hslot : DecPkD2cSlotAt img P A (cliExternsWith ext))
-    (hcompose :
-      RunCallees img A (cliExternsWith ext) cliRunBudgets
-        (slotsOf A img (cliRunSemD2cP X P) (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))) →
-      subroutine_ok (tripleRatchetProgAtExt img.base (cliExternsWith ext))
-        ((tripleRatchetProgAtExt img.base (cliExternsWith ext)).fnAddr
-          CryptoVerification.E2E.Pqxdh.ResponderWire.preKeyTryFromName)
-        (pksmSlotSpec A img (cliRunSemD2cP X P)) →
-      runNeed cliRunBudgets
-        (slotsOf A img (cliRunSemD2cP X P)
-          (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))) ≤ cliResStack →
-      cliResStack ≤ 2 ^ 63 →
-      subroutine_ok (mProg img (cliExternsWith ext)) ((mProg img (cliExternsWith ext)).fnAddr runName)
-        ((runSpec A img uuidTryParse (runRel (cliRunSemD2cP X P)) cliWrOk cliResStack).inImage img)) :
-    subroutine_ok (mProg img (cliExternsWith ext)) ((mProg img (cliExternsWith ext)).fnAddr runName)
-      ((runSpecTight A img uuidTryParse (runRel (cliRunSemD2cP X P)) cliWrOk cliResStack).inImage img) :=
-  hcompose (runCallees_d2c_of_slotAt X P hbase hslot)
-    (cliPksmTryFrom_ok himg halloc (fun _ => rfl))
-    (runNeed_cli_le_resStack_ext (A := A) (img := img) (S := cliRunSemD2cP X P) cliDecryptPrekeyNeed_le)
-    cliResStack_le_63
 
 end CryptoVerification.SignalSession.Cli.RunCompose

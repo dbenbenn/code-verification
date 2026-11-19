@@ -11,14 +11,18 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budgeted `read_file` Adapter and Descriptor Invariant
@@ -30,7 +34,7 @@ Establishes the closed-descriptor invariant `FdsGe3Closed` (`fd ∈ [3, 2^31)` c
 hooks `readFileEntryGhostHook` and `readFileGhostHook`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -66,7 +70,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 /-- Closed-descriptor invariant on `[3, 2^31)`: every non-stdio user file descriptor slot is `none`.
     The `< 2 ^ 31` upper bound is harmless because `FsState.allocFd` (`Arm64/Trusted/ISA/State.lean`)
     only scans `< FsState.maxOpenFds` (`1024`). -/
-def FdsGe3Closed (fs : FsState) : Prop :=
+@[expose] def FdsGe3Closed (fs : FsState) : Prop :=
   ∀ fd : Nat, 3 ≤ fd → fd < 2 ^ 31 → fs.fds (BitVec.ofNat 64 fd) = none
 
 /-- `fs.fds 3#64 = none` pins `fs.allocFd = some 3#64`. -/
@@ -165,20 +169,8 @@ theorem fdsGe3Closed_initFsState (inputs : ProcessInputs) :
       (some { path := "", accMode := .wronly, append := true, offset := 0, kind := .stdio }) h1
   exact fdsGe3Closed_of_fds_eq rfl h2
 
-private theorem fs_retHook_eq (f : State → State) (s : State) :
-    (retHook f s).fs = (f s).fs := rfl
-
-private theorem fs_unitResult_eq (ok : Bool) (s : State) :
-    (unitResult ok s).fs = s.fs := rfl
-
-private theorem fs_unmodelled_eq (msg : String) (s : State) :
-    (unmodelled msg s).fs = s.fs := rfl
-
 private theorem fs_vecErr_eq (s : State) :
     (vecErr s).fs = s.fs := rfl
-
-private theorem fs_vecEmptyOk_eq (s : State) :
-    (vecEmptyOk s).fs = s.fs := rfl
 
 private theorem fs_vecOk_eq (bs : List (BitVec 8)) (s : State) :
     (vecOk bs s).fs = s.fs := by
@@ -285,17 +277,17 @@ theorem cliRd_ok_le_fileCap {F : FsFiles} {path bs : List (BitVec 8)}
       exact Nat.zero_le _
 
 /-- Regular file at `path` (with no blocking ancestor) whose byte length exceeds `2 MiB` (`2097152`). -/
-def OverCapFile (F : FsFiles) (path : List (BitVec 8)) : Prop :=
+@[expose] def OverCapFile (F : FsFiles) (path : List (BitVec 8)) : Prop :=
   blockingAncestorF F (pathStr path) = none ∧
     ∃ fbs : List (BitVec 8), F (pathStr path) = some (.file fbs) ∧ 2097152 < fbs.length
 
 /-- Allocator event list emitted by compiled `signal_session_io::read_file` when an over-cap regular
     file (`> 2 MiB`) grows through all 10 capacities up to `2 MiB` and is freed on error return. -/
-def readFileOverCapEvents : List AllocEvent :=
+@[expose] def readFileOverCapEvents : List AllocEvent :=
   cliIoCapsEvents 0 (cliIoReadScheduleCaps 9 2097152) ++ rustDeallocEvents 2097152 1
 
 /-- Deterministic allocator event list of compiled `signal_session_io::read_file` on a `cliWrOk` path. -/
-def readFileBudgetEvents (F : FsFiles) (path : List (BitVec 8)) : List AllocEvent :=
+@[expose] def readFileBudgetEvents (F : FsFiles) (path : List (BitVec 8)) : List AllocEvent :=
   match cliIo.rd F path with
   | .ok bs => cliIoCapsEvents 0 (cliIoReadScheduleCaps 9 bs.length)
   | .error () =>
@@ -305,7 +297,7 @@ def readFileBudgetEvents (F : FsFiles) (path : List (BitVec 8)) : List AllocEven
 
 /-- Widened `ReadRule` envelope adding the over-cap `.error ()` deallocation arm for rules like
     `cliIo.rd` that already fold the `2 MiB` cap into `rd`. -/
-def ReadFileRuleEnvFixed (rd : ReadRule) (files : FsFiles) (path : List (BitVec 8))
+@[expose] def ReadFileRuleEnvFixed (rd : ReadRule) (files : FsFiles) (path : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   ReadFileRuleEnv rd files path evs ∨
     (rd files path = .error () ∧ OverCapFile files path ∧ evs = readFileOverCapEvents)
@@ -337,26 +329,6 @@ theorem readFileRuleEnvFixed_events (F : FsFiles) (path : List (BitVec 8)) :
               simp [hgt]]
             exact Or.inl rfl
 
-/-- When `cliIo.rd F path = .error ()` and `¬ OverCapFile F path`, `readFileBudgetEvents F path = []`. -/
-theorem readFileBudgetEvents_eq_nil_of_err_not_overCap {F : FsFiles} {path : List (BitVec 8)}
-    (herr : cliIo.rd F path = .error ()) (hno : ¬ OverCapFile F path) :
-    readFileBudgetEvents F path = [] := by
-  unfold readFileBudgetEvents
-  rw [herr]
-  cases hb : blockingAncestorF F (pathStr path) with
-  | some _ => rfl
-  | none =>
-    cases hf : F (pathStr path) with
-    | none => rfl
-    | some entry =>
-      cases entry with
-      | dir => rfl
-      | file fbs =>
-        dsimp only []
-        by_cases hgt : 2097152 < fbs.length
-        · exact absurd ⟨hb, fbs, hf, hgt⟩ hno
-        · simp [hgt]
-
 /-- Whenever `¬ OverCapFile F path` (e.g. under `InputsLoadable` / `BundleReadWithinCap` / `PkSizeOk`),
     `readFileBudgetEvents F path` directly inhabits the unchanged `ReadFileRuleEnv cliIo.rd F path`. -/
 theorem readFileRuleEnv_events_of_not_overCap {F : FsFiles} {path : List (BitVec 8)}
@@ -381,11 +353,11 @@ theorem fitsEvents_readFile_of_fitsEnv_not_overCap {M : AllocCostModel} {lim : B
 /-! ## Conditional-OOM to `readFileSpecPlaced` Lift -/
 
 /-- Out-of-memory frame preservation for `signal_session_io::read_file`. -/
-def CliIoFilesOomPreserved (s0 sf : State) : Prop :=
+@[expose] def CliIoFilesOomPreserved (s0 sf : State) : Prop :=
   sf.fs.files = s0.fs.files ∧ sf.trace = s0.trace ∧ sf.sigActions = s0.sigActions
 
 /-- Any capacity growth step in `evs` (`align = 1`, `0 < sz ≤ 2 MiB`) permitted a null return. -/
-def AllocCapNullInEvents (evs : List AllocEvent) : Prop :=
+@[expose] def AllocCapNullInEvents (evs : List AllocEvent) : Prop :=
   ∃ sz : Nat, 0 < sz ∧ sz ≤ 2097152 ∧ NullAllowed sz 1 ∧
     (AllocEvent.alloc sz ∈ evs ∨ ∃ old : Nat, AllocEvent.realloc 1 old sz ∈ evs)
 
@@ -416,7 +388,7 @@ theorem not_allocCapNullInEvents_of_fitsEvents {M : AllocCostModel} {lim : Budge
 
 /-- Conditional-OOM budget-threaded contract for compiled `signal_session_io::read_file` under
 `s.fs.allocFd ≠ none` and `cliWrOk x.path`. -/
-def readFileBudgetCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def readFileBudgetCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (ReadFileGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
@@ -438,7 +410,7 @@ def readFileBudgetCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-- Deterministic-event `NoOom` specialization of `readFileBudgetCondSpec` under
     `FitsEvents M lim st (readFileBudgetEvents s.fs.files x.path)` (`onPanic = ⌜False⌝`,
     `onOom = ⌜False⌝`). -/
-def readFileBudgetNoOomSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def readFileBudgetNoOomSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (ReadFileGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
@@ -480,55 +452,6 @@ theorem subroutine_ok_readFileNoOom_of_cond {M : AllocCostModel}
     dsimp only [readFileBudgetCondSpec] at hoom
     rw [satisfies_pure_sepConj] at hoom
     exact hoom.1.1 hFit
-
-/-- Lift `readFileBudgetNoOomSpec` to `withEnvPre (readFileSpecPlaced … (ReadFileRuleEnvFixed cliIo.rd))`
-    under `s.fs.allocFd ≠ none` alone (covering over-cap regular files as well). -/
-theorem subroutine_ok_readFileSpecPlaced_fixed_of_noOom {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {P : Program} {entry : BitVec 64}
-    (h : subroutine_ok P entry (readFileBudgetNoOomSpec A lim stk)) :
-    subroutine_ok P entry
-      (withEnvPre (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnvFixed cliIo.rd))
-        (fun s => s.fs.allocFd ≠ none)) := by
-  apply subroutine_ok.of_codeLoaded
-  rintro ⟨x, st⟩ R s0 hpc hrun hpre0 hsp _
-  obtain ⟨hallocFd, hpre⟩ := withEnvPre_pre_elim hpre0
-  dsimp only [readFileSpecPlaced] at hpre
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx8, hlt32, hwr, hEnv⟩, hrest⟩
-  have hFit : FitsEvents M lim st (readFileBudgetEvents s0.fs.files x.path) :=
-    fitsEvents_readFile_of_fitsEnv_fixed hEnv
-  have hpreN : s0.mem ⊨ (readFileBudgetNoOomSpec A lim stk).pre (x, st) s0 ∗ R := by
-    dsimp only [readFileBudgetNoOomSpec]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx8, hlt32, hwr, hallocFd, hFit⟩, hrest⟩
-  refine subroutine_ok.mono_outcome h (x, st) R s0 hpc hrun hpreN hsp ?_
-  rintro sf (⟨hret, hcc, hpost⟩ | ⟨hp, hpan⟩ | ⟨c, hc, hex⟩ | ⟨ho, hoom⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [readFileBudgetNoOomSpec] at hpost
-    dsimp only [withEnvPre, readFileSpecPlaced]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨⟨hpres, _⟩, hmem⟩
-    rw [sepExists_sepConj_left, satisfies_sepExists]
-    refine ⟨readFileBudgetEvents s0.fs.files x.path, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨readFileRuleEnvFixed_events s0.fs.files x.path, ?_⟩
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepExists_sepConj_left, satisfies_sepExists]
-    refine ⟨cliIo.rd s0.fs.files x.path, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨rfl, hpres.2.1⟩, by simpa only [sepConj_assoc] using hmem⟩
-  · exact Or.inr (Or.inl ⟨hp, hpan⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨c, hc, hex⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨ho, hoom⟩))
-
-theorem subroutine_ok_readFileSpecPlaced_fixed_of_cond {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {P : Program} {entry : BitVec 64}
-    (h : subroutine_ok P entry (readFileBudgetCondSpec A lim stk)) :
-    subroutine_ok P entry
-      (withEnvPre (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnvFixed cliIo.rd))
-        (fun s => s.fs.allocFd ≠ none)) :=
-  subroutine_ok_readFileSpecPlaced_fixed_of_noOom (subroutine_ok_readFileNoOom_of_cond h)
 
 /-- Lift `readFileBudgetNoOomSpec` to `readFileSpecPlaced` guarded by
 `s.fs.allocFd ≠ none ∧ ∀ p, cliWrOk p → ¬ OverCapFile s.fs.files p`. -/
@@ -584,7 +507,7 @@ theorem subroutine_ok_readFileSpecPlaced_of_cond {M : AllocCostModel}
 
 /-- `ext`-parametric `lsReadFileSym` hook overlay leaving every symbol `s ≠ lsReadFileSym`
 equal to `ext s`. -/
-def withReadFileHook (rfh : State → State) (ext : LibsignalHooks) : LibsignalHooks :=
+@[expose] def withReadFileHook (rfh : State → State) (ext : LibsignalHooks) : LibsignalHooks :=
   fun s => if s == lsReadFileSym then some rfh else ext s
 
 @[simp]
@@ -632,17 +555,6 @@ theorem hookSat_withPanics_readFile_of_hookOk {α : Type} {ext : LibsignalHooks}
     HookSat (Rust.withPanics ext) lsReadFileSym spec :=
   ⟨rfh, (withPanics_lsReadFileSym ext).trans hlookup, hok⟩
 
-theorem hookSat_withPanics_of_hookSat {α : Type} {ext : LibsignalHooks} {spec : Spec α}
-    (hsat : HookSat ext lsReadFileSym spec) :
-    HookSat (Rust.withPanics ext) lsReadFileSym spec := by
-  obtain ⟨rfh, hlookup, hok⟩ := hsat
-  exact hookSat_withPanics_readFile_of_hookOk hlookup hok
-
-theorem hookSat_withPanics_withReadFileHook {α : Type} (ext : LibsignalHooks)
-    {rfh : State → State} {spec : Spec α} (hok : HookOk rfh spec) :
-    HookSat (Rust.withPanics (withReadFileHook rfh ext)) lsReadFileSym spec :=
-  ⟨rfh, by simp [withReadFileHook], hok⟩
-
 /-- For any `ext : LibsignalHooks` satisfying `HookSat ext lsReadFileSym (readFileSpecPlaced …)`
 and any unmutated caller block `callerProg`, produces
 `subroutine_ok callerProg (lsρ lsReadFileSym) (readFileSpecPlaced …)` at stack budget `stk`. -/
@@ -658,18 +570,6 @@ theorem hRead_of_hookSat [LibsignalPlacement] {M : AllocCostModel}
     subroutine_ok callerProg (lsρ lsReadFileSym)
       (readFileSpecPlaced cliIo.rd cliWrOk A lim stk ReadEnv) :=
   ls_hook_ok_ultra_of_mem (prog := callerProg) (i := i) hsat (by decide) hi hunmut
-
-theorem hRead_concrete_of_hookSat [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {ext : LibsignalHooks} {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i ext] [LsBlockBound bi]
-    (hsat : HookSat ext lsReadFileSym
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  hRead_of_hookSat hsat hi hunmut
 
 theorem hRead_withLsCodeRoLoaded_of_hookSat [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
@@ -702,7 +602,7 @@ theorem hRead_rocl_of_hookSat [LibsignalPlacement] {M : AllocCostModel}
 /-! ## Call-Contract `FdsGe3Closed` Preservation (`withFdsGe3Closed`) -/
 
 /-- Thread `FdsGe3Closed` across Hoare and hook call boundaries in `pre` and `post`. -/
-def withFdsGe3Closed {α : Type} (spec : Spec α) : Spec α :=
+@[expose] def withFdsGe3Closed {α : Type} (spec : Spec α) : Spec α :=
   { spec with
     pre := fun x s0 => ⌜FdsGe3Closed s0.fs⌝ ∗ spec.pre x s0
     post := fun x s0 sf => ⌜FdsGe3Closed sf.fs⌝ ∗ spec.post x s0 sf }
@@ -712,30 +612,6 @@ theorem extract_withFdsGe3Closed {α : Type} {spec : Spec α} {x : α} {s0 : Sta
     FdsGe3Closed s0.fs ∧ (s0.mem ⊨ spec.pre x s0 ∗ R) := by
   dsimp only [withFdsGe3Closed] at hpre
   rwa [sepConj_assoc, satisfies_pure_sepConj] at hpre
-
-/-- Compiled `read_file` (`readFileBudgetCondSpec.post`) restores `sf.fs = s0.fs` after `close(fd)`,
-    preserving `FdsGe3Closed` from `pre` to `post`. -/
-theorem fdsGe3Closed_of_readFileBudgetCondSpec_post {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {x : ReadFileGhost} {st : M.σ} {R : SepProp} {s0 sf : State}
-    (h0 : FdsGe3Closed s0.fs)
-    (hpost : sf.mem ⊨ (readFileBudgetCondSpec A lim stk).post (x, st) s0 sf ∗ R) :
-    FdsGe3Closed sf.fs := by
-  dsimp only [readFileBudgetCondSpec] at hpost
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpost
-  rw [hpost.1.2]
-  exact h0
-
-theorem fdsGe3Closed_of_readFileBudgetNoOomSpec_post {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {x : ReadFileGhost} {st : M.σ} {R : SepProp} {s0 sf : State}
-    (h0 : FdsGe3Closed s0.fs)
-    (hpost : sf.mem ⊨ (readFileBudgetNoOomSpec A lim stk).post (x, st) s0 sf ∗ R) :
-    FdsGe3Closed sf.fs := by
-  dsimp only [readFileBudgetNoOomSpec] at hpost
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpost
-  rw [hpost.1.2]
-  exact h0
 
 theorem hookOk_withFdsGe3Closed {α : Type} {f : State → State} {spec : Spec α}
     (hpres : ∀ s : State, FdsGe3Closed s.fs → FdsGe3Closed (f s).fs)
@@ -789,163 +665,7 @@ theorem subroutine_ok_withFdsGe3Closed {α : Type} {P : Program} {entry : BitVec
     exact ⟨hpost_fds x R s0 sf hClosed0 hpost, hpost⟩
   · exact Or.inr hrest
 
-/-- Call-contract `FdsGe3Closed` lift for compiled `read_file` at `ReadFileRuleEnvFixed cliIo.rd`:
-    `FdsGe3Closed s0.fs` in `pre` discharges `s0.fs.allocFd ≠ none` on entry and `sf.fs = s0.fs`
-    restores `FdsGe3Closed sf.fs` in `post`. -/
-theorem subroutine_ok_readFileSpecPlaced_withFdsGe3Closed_fixed_of_cond {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {P : Program} {entry : BitVec 64}
-    (h : subroutine_ok P entry (readFileBudgetCondSpec A lim stk)) :
-    subroutine_ok P entry
-      (withFdsGe3Closed
-        (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnvFixed cliIo.rd))) := by
-  have hNoOom := subroutine_ok_readFileNoOom_of_cond h
-  apply subroutine_ok.of_codeLoaded
-  rintro ⟨x, st⟩ R s0 hpc hrun hpre0 hsp _
-  obtain ⟨hClosed0, hpre⟩ := extract_withFdsGe3Closed hpre0
-  have hallocFd : s0.fs.allocFd ≠ none := allocFd_ne_none_of_fdsGe3Closed hClosed0
-  dsimp only [readFileSpecPlaced] at hpre
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx8, hlt32, hwr, hEnv⟩, hrest⟩
-  have hFit : FitsEvents M lim st (readFileBudgetEvents s0.fs.files x.path) :=
-    fitsEvents_readFile_of_fitsEnv_fixed hEnv
-  have hpreN : s0.mem ⊨ (readFileBudgetNoOomSpec A lim stk).pre (x, st) s0 ∗ R := by
-    dsimp only [readFileBudgetNoOomSpec]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx8, hlt32, hwr, hallocFd, hFit⟩, hrest⟩
-  refine subroutine_ok.mono_outcome hNoOom (x, st) R s0 hpc hrun hpreN hsp ?_
-  rintro sf (⟨hret, hcc, hpost⟩ | ⟨hp, hpan⟩ | ⟨c, hc, hex⟩ | ⟨ho, hoom⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    have hClosedF : FdsGe3Closed sf.fs :=
-      fdsGe3Closed_of_readFileBudgetNoOomSpec_post hClosed0 hpost
-    dsimp only [readFileBudgetNoOomSpec] at hpost
-    dsimp only [withFdsGe3Closed, readFileSpecPlaced]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨⟨hpres, _⟩, hmem⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hClosedF, ?_⟩
-    rw [sepExists_sepConj_left, satisfies_sepExists]
-    refine ⟨readFileBudgetEvents s0.fs.files x.path, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨readFileRuleEnvFixed_events s0.fs.files x.path, ?_⟩
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepExists_sepConj_left, satisfies_sepExists]
-    refine ⟨cliIo.rd s0.fs.files x.path, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨rfl, hpres.2.1⟩, by simpa only [sepConj_assoc] using hmem⟩
-  · exact Or.inr (Or.inl ⟨hp, hpan⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨c, hc, hex⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨ho, hoom⟩))
-
-/-- Call-contract `FdsGe3Closed` lift for compiled `read_file` at the concrete
-    `ReadFileRuleEnv cliIo.rd` under `∀ p, cliWrOk p → ¬ OverCapFile s.fs.files p`. -/
-theorem subroutine_ok_readFileSpecPlaced_withFdsGe3Closed_of_cond {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {P : Program} {entry : BitVec 64}
-    (h : subroutine_ok P entry (readFileBudgetCondSpec A lim stk)) :
-    subroutine_ok P entry
-      (withEnvPre
-        (withFdsGe3Closed
-          (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)))
-        (fun s => ∀ p, cliWrOk p → ¬ OverCapFile s.fs.files p)) := by
-  have hNoOom := subroutine_ok_readFileNoOom_of_cond h
-  apply subroutine_ok.of_codeLoaded
-  rintro ⟨x, st⟩ R s0 hpc hrun hpre0 hsp _
-  obtain ⟨hnoOverAll, hpreFds⟩ := withEnvPre_pre_elim hpre0
-  obtain ⟨hClosed0, hpre⟩ := extract_withFdsGe3Closed hpreFds
-  have hallocFd : s0.fs.allocFd ≠ none := allocFd_ne_none_of_fdsGe3Closed hClosed0
-  dsimp only [readFileSpecPlaced] at hpre
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx8, hlt32, hwr, hEnv⟩, hrest⟩
-  have hnoOver : ¬ OverCapFile s0.fs.files x.path := hnoOverAll x.path hwr
-  have hFit : FitsEvents M lim st (readFileBudgetEvents s0.fs.files x.path) :=
-    fitsEvents_readFile_of_fitsEnv_not_overCap hnoOver hEnv
-  have hpreN : s0.mem ⊨ (readFileBudgetNoOomSpec A lim stk).pre (x, st) s0 ∗ R := by
-    dsimp only [readFileBudgetNoOomSpec]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx8, hlt32, hwr, hallocFd, hFit⟩, hrest⟩
-  refine subroutine_ok.mono_outcome hNoOom (x, st) R s0 hpc hrun hpreN hsp ?_
-  rintro sf (⟨hret, hcc, hpost⟩ | ⟨hp, hpan⟩ | ⟨c, hc, hex⟩ | ⟨ho, hoom⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    have hClosedF : FdsGe3Closed sf.fs :=
-      fdsGe3Closed_of_readFileBudgetNoOomSpec_post hClosed0 hpost
-    dsimp only [readFileBudgetNoOomSpec] at hpost
-    dsimp only [withEnvPre, withFdsGe3Closed, readFileSpecPlaced]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨⟨hpres, _⟩, hmem⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hClosedF, ?_⟩
-    rw [sepExists_sepConj_left, satisfies_sepExists]
-    refine ⟨readFileBudgetEvents s0.fs.files x.path, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨readFileRuleEnv_events_of_not_overCap hnoOver, ?_⟩
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepExists_sepConj_left, satisfies_sepExists]
-    refine ⟨cliIo.rd s0.fs.files x.path, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨rfl, hpres.2.1⟩, by simpa only [sepConj_assoc] using hmem⟩
-  · exact Or.inr (Or.inl ⟨hp, hpan⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨c, hc, hex⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨ho, hoom⟩))
-
 /-! ## `ext`-Parametric `hRead` Lookup Adapters -/
-
-/-- Given `ext lsReadFileSym = some rfh` and `HookOk rfh (readFileSpecPlaced …)`, produces
-`subroutine_ok callerProg (lsρ lsReadFileSym) (readFileSpecPlaced …)` on any unmutated caller
-block `callerProg`. -/
-theorem hRead_of_lookup [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {ext : LibsignalHooks} {rfh : State → State}
-    {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i ext] [LsBlockBound bi]
-    (hlookup : ext lsReadFileSym = some rfh)
-    (hReadHook : HookOk rfh (readFileSpecPlaced cliIo.rd cliWrOk A lim stk ReadEnv))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk ReadEnv) :=
-  hRead_of_hookSat (hookSat_readFile_of_hookOk hlookup hReadHook) hi hunmut
-
-theorem hRead_concrete_of_lookup [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {ext : LibsignalHooks} {rfh : State → State}
-    {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i ext] [LsBlockBound bi]
-    (hlookup : ext lsReadFileSym = some rfh)
-    (hReadHook : HookOk rfh
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  hRead_of_lookup hlookup hReadHook hi hunmut
-
-theorem hRead_withPanics_of_lookup [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {ext : LibsignalHooks} {rfh : State → State}
-    {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i (Rust.withPanics ext)] [LsBlockBound bi]
-    (hlookup : ext lsReadFileSym = some rfh)
-    (hReadHook : HookOk rfh (readFileSpecPlaced cliIo.rd cliWrOk A lim stk ReadEnv))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk ReadEnv) :=
-  hRead_of_hookSat (hookSat_withPanics_readFile_of_hookOk hlookup hReadHook) hi hunmut
-
-theorem hRead_withPanics_concrete_of_lookup [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {ext : LibsignalHooks} {rfh : State → State}
-    {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i (Rust.withPanics ext)] [LsBlockBound bi]
-    (hlookup : ext lsReadFileSym = some rfh)
-    (hReadHook : HookOk rfh
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  hRead_withPanics_of_lookup hlookup hReadHook hi hunmut
 
 private theorem stackAt_le_two_pow_64_of_sep {m : Memory} {p sp : BitVec 64} {n stk : Nat}
     {R : SepProp} (hn : 0 < n) (hstk : 0 < stk)
@@ -964,108 +684,11 @@ private theorem bytesAt_false_eq (a : BitVec 64) (bs : List (BitVec 8)) :
     CryptoVerification.SignalSession.CliExt.bytesAt false a bs = (a ↦ₛ bs) := by
   simp [CryptoVerification.SignalSession.CliExt.bytesAt]
 
-/-- Lift `HookOk f (readFileBudgetCoreSpec M A lim)` to `HookOk f (readFileSpecPlaced …)` at any
-stack budget `stk ≥ extHookStack`. -/
-theorem hookOk_readFileSpecPlaced_of_budgetCore {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {f : State → State} (hstk : extHookStack ≤ stk)
-    (hf : HookOk f (readFileBudgetCoreSpec M A lim)) :
-    HookOk f (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)) := by
-  rintro ⟨x, st⟩ R s0 hrun hpre hsp
-  dsimp only [readFileSpecPlaced] at hpre
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx8, hlen, hpok, hEnv⟩, hmem⟩
-  have hmem_disj : s0.mem ⊨ memRegion x.ret 24 ∗
-      (stackAt s0.sp stk ∗ ((x.pathA ↦ₛ x.path) ∗ A.pool lim st s0 ∗ R)) := by
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem
-  have hpos_ext : 0 < extHookStack := by unfold extHookStack; omega
-  have hstk64 : stk ≤ 2 ^ 64 :=
-    stackAt_le_two_pow_64_of_sep (by omega) (Nat.lt_of_lt_of_le hpos_ext hstk) hmem_disj
-  have hsplit : stackAt s0.sp stk =
-      memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - extHookStack) ∗ stackAt s0.sp extHookStack := by
-    have hs := stackAt_split_bottom s0.sp extHookStack (stk - extHookStack) (by omega)
-    rwa [Nat.add_sub_of_le hstk] at hs
-  let F : SepProp := memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - extHookStack)
-  let y : ReadFileCall × M.σ := (⟨x.pathA, false, x.path, x.ret⟩, st)
-  have hpreCore : s0.mem ⊨ (readFileBudgetCoreSpec M A lim).pre y s0 ∗ (F ∗ R) := by
-    dsimp only [readFileBudgetCoreSpec, y, F]
-    rw [bytesAt_false_eq]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx8, hlen, hpok.1, hEnv⟩, ?_⟩
-    rw [hsplit] at hmem
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem
-  obtain ⟨hkf, hsym, hout⟩ := hf y (F ∗ R) s0 hrun hpreCore hsp
-  refine ⟨hkf, hsym, ?_⟩
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [readFileBudgetCoreSpec, y, F] at hq
-    rw [bytesAt_false_eq] at hq
-    dsimp only [readFileSpecPlaced]
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    obtain ⟨evs, hq⟩ := hq
-    refine ⟨evs, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    obtain ⟨hevs, hq⟩ := hq
-    refine ⟨hevs, ?_⟩
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepExists_sepConj_left,
-      satisfies_sepExists] at hq ⊢
-    obtain ⟨r, hq⟩ := hq
-    refine ⟨r, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    obtain ⟨⟨_, hr, htr⟩, hqmem⟩ := hq
-    rw [ioVecAt_eq_cli] at hqmem
-    refine ⟨⟨hr, htr⟩, ?_⟩
-    rw [hsplit]
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hqmem
-  · dsimp only [readFileBudgetCoreSpec] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-  · dsimp only [readFileBudgetCoreSpec] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-  · dsimp only [readFileBudgetCoreSpec] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-
-theorem hookSat_readFileSpecPlaced_of_budgetCore {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {ext : LibsignalHooks} (hstk : extHookStack ≤ stk := by omega)
-    (hsat : HookSat ext lsReadFileSym (readFileBudgetCoreSpec M A lim)) :
-    HookSat ext lsReadFileSym
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)) := by
-  obtain ⟨f, hf, hok⟩ := hsat
-  exact ⟨f, hf, hookOk_readFileSpecPlaced_of_budgetCore hstk hok⟩
-
-theorem hRead_of_readFileBudgetCore [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {ext : LibsignalHooks} {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i ext] [LsBlockBound bi]
-    (hstk : extHookStack ≤ stk := by omega)
-    (hsat : HookSat ext lsReadFileSym (readFileBudgetCoreSpec M A lim))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  hRead_of_hookSat (hookSat_readFileSpecPlaced_of_budgetCore hstk hsat) hi hunmut
-
-theorem hRead_withPanics_of_readFileBudgetCore [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {ext : LibsignalHooks} {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i (Rust.withPanics ext)] [LsBlockBound bi]
-    (hstk : extHookStack ≤ stk := by omega)
-    (hsat : HookSat ext lsReadFileSym (readFileBudgetCoreSpec M A lim))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  hRead_of_hookSat
-    (hookSat_withPanics_of_hookSat (hookSat_readFileSpecPlaced_of_budgetCore hstk hsat)) hi hunmut
-
 /-! ## `withReadFileHook` Ghost Hooks and Call-Entry `P_io` Replay -/
 
 /-- Entry file-system and over-cap guard at compiled `read_file` call boundaries:
 `FdsGe3Closed s.fs` and no over-cap regular file at any `cliWrOk` path. -/
-def ReadFileCallGuard (s : State) : Prop :=
+@[expose] def ReadFileCallGuard (s : State) : Prop :=
   FdsGe3Closed s.fs ∧ ∀ p, cliWrOk p → ¬ OverCapFile s.fs.files p
 
 theorem subroutine_ok_readFileSpecPlaced_of_guard_cond {M : AllocCostModel}
@@ -1091,7 +714,7 @@ theorem subroutine_ok_readFileSpecPlaced_of_guard_cond {M : AllocCostModel}
 /-- Caller return address `s0.readReg64 .lr` lies outside `P_io`'s executable code and extern stubs
     (as when `s0` called `lsReadFileSym` from `libsignalSessionLib` and `P_io` is compiled
     `signalSessionIoMultiLib` / `stripS`). -/
-def CallerLrUnmapped (P_io : Program) (s0 : State) : Prop :=
+@[expose] def CallerLrUnmapped (P_io : Program) (s0 : State) : Prop :=
   ∀ m : Memory, s0.mem.KeepsFrozen m →
     P_io.fetchMem m (s0.readReg64 .lr) = none ∧ P_io.externAt? (s0.readReg64 .lr) = none
 
@@ -1181,7 +804,7 @@ private theorem firstStop_eq_of_callerLrUnmapped {P_io : Program} {entry_io : Bi
 
 /-- Precondition witness at `lsReadFileSym` call entry (`s0` satisfies `readFileSpecPlaced.pre`
     for some ghost pair `(x, st)` and frame `R`). -/
-def ActiveReadFilePre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def ActiveReadFilePre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) (s0 : State) : Prop :=
   s0.status = .Running ∧ s0.spAligned = true ∧
     ∃ (g : ReadFileGhost × M.σ) (R : SepProp),
@@ -1189,7 +812,7 @@ def ActiveReadFilePre {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Deterministic first-stop execution witness of compiled `P_io` from `s0.setPC entry_io` under
     `P_io.CodeLoaded s0.mem ∧ ReadFileCallGuard s0 ∧ CallerLrUnmapped P_io s0`. -/
-def ActiveReadFileRun (P_io : Program) (entry_io : BitVec 64) (s0 : State) : Prop :=
+@[expose] def ActiveReadFileRun (P_io : Program) (entry_io : BitVec 64) (s0 : State) : Prop :=
   P_io.CodeLoaded s0.mem ∧ ReadFileCallGuard s0 ∧ CallerLrUnmapped P_io s0 ∧
     ∃ sf : State,
       StepsUntil P_io (SubroutineStop s0) (s0.setPC entry_io) sf ∧
@@ -1277,7 +900,7 @@ open Classical in
 /-- Fallback-free call-entry ghost hook: executes compiled `P_io` from `s0.setPC entry_io` on
 states satisfying `P_io.CodeLoaded s0.mem ∧ ReadFileCallGuard s0 ∧ CallerLrUnmapped P_io s0`, and
 transitions to `.Exception` otherwise. -/
-noncomputable def readFileEntryGhostHook {M : AllocCostModel}
+@[expose] noncomputable def readFileEntryGhostHook {M : AllocCostModel}
     (P_io : Program) (entry_io : BitVec 64)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) (s0 : State) : State :=
   if _ : ActiveReadFilePre A lim stk s0 then
@@ -1301,132 +924,11 @@ theorem readFileEntryGhostHook_fs {M : AllocCostModel}
     · rfl
   · rfl
 
-theorem fdsGe3Closed_readFileEntryGhostHook {M : AllocCostModel}
-    (P_io : Program) (entry_io : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) {s0 : State}
-    (h : FdsGe3Closed s0.fs) :
-    FdsGe3Closed (readFileEntryGhostHook P_io entry_io A lim stk s0).fs := by
-  rw [readFileEntryGhostHook_fs]
-  exact h
-
-/-- Guarded `HookOk` for `readFileEntryGhostHook`: preserves `FdsGe3Closed` across the call
-boundary and establishes `readFileSpecPlaced` under `P_io.CodeLoaded`, `CallerLrUnmapped`, and
-`¬ OverCapFile`. -/
-theorem readFileEntryGhostHook_guarded_hookOk {M : AllocCostModel}
-    {P_io : Program} {entry_io : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    (hCond : subroutine_ok P_io entry_io (readFileBudgetCondSpec A lim stk)) :
-    HookOk (readFileEntryGhostHook P_io entry_io A lim stk)
-      (withEnvPre
-        (withFdsGe3Closed
-          (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)))
-        (fun s => P_io.CodeLoaded s.mem ∧ CallerLrUnmapped P_io s ∧
-          ∀ p, cliWrOk p → ¬ OverCapFile s.fs.files p)) := by
-  classical
-  rintro ⟨x, st⟩ R s0 hrun hpre0 hsp
-  obtain ⟨⟨hCode, hLr, hnoOver⟩, hpreFds⟩ := withEnvPre_pre_elim hpre0
-  obtain ⟨hClosed0, hpre⟩ := extract_withFdsGe3Closed hpreFds
-  have hGuard : ReadFileCallGuard s0 := ⟨hClosed0, hnoOver⟩
-  have hActPre : ActiveReadFilePre A lim stk s0 := ⟨hrun, hsp, (x, st), R, hpre⟩
-  obtain ⟨sf, huntil, hstop, hkf, hsym, hfs_eq, hout⟩ :=
-    compiled_readFile_run_of_cond hCond hrun hsp hpre hCode hGuard hLr
-  have hActRun : ActiveReadFileRun P_io entry_io s0 :=
-    ⟨hCode, hGuard, hLr, sf, huntil, hstop, hfs_eq⟩
-  unfold readFileEntryGhostHook
-  simp only [hActPre, hActRun, ↓reduceDIte]
-  have hchoose := Classical.choose_spec hActRun.2.2.2
-  have hdet : Classical.choose hActRun.2.2.2 = sf :=
-    StepsUntil.deterministic hchoose.1 hchoose.2.1 huntil hstop
-  rw [hdet]
-  refine ⟨hkf, hsym, ?_⟩
-  rcases hout with ⟨hret, hcc, hpost⟩ | hrest
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [withEnvPre, withFdsGe3Closed]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hfs_eq ▸ hClosed0, hpost⟩
-  · exact Or.inr hrest
-
-/-- Guarded `hRead` on `withReadFileHook rfh ext` for any unmutated caller block `callerProg`. -/
-theorem hRead_withReadFileHook_guarded_of_cond [LibsignalPlacement] {M : AllocCostModel}
-    {P_io : Program} {entry_io : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    (ext : LibsignalHooks) {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i
-      (withReadFileHook (readFileEntryGhostHook P_io entry_io A lim stk) ext)]
-    [LsBlockBound bi]
-    (hCond : subroutine_ok P_io entry_io (readFileBudgetCondSpec A lim stk))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (withEnvPre
-        (withFdsGe3Closed
-          (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)))
-        (fun s => P_io.CodeLoaded s.mem ∧ CallerLrUnmapped P_io s ∧
-          ∀ p, cliWrOk p → ¬ OverCapFile s.fs.files p)) :=
-  ls_hook_ok_ultra_of_mem (prog := callerProg) (i := i)
-    (hookSat_withReadFileHook ext (readFileEntryGhostHook_guarded_hookOk hCond))
-    (by decide) hi hunmut
-
-theorem hRead_withPanics_withReadFileHook_guarded_of_cond [LibsignalPlacement] {M : AllocCostModel}
-    {P_io : Program} {entry_io : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    (ext : LibsignalHooks) {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i
-      (Rust.withPanics (withReadFileHook (readFileEntryGhostHook P_io entry_io A lim stk) ext))]
-    [LsBlockBound bi]
-    (hCond : subroutine_ok P_io entry_io (readFileBudgetCondSpec A lim stk))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (withEnvPre
-        (withFdsGe3Closed
-          (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)))
-        (fun s => P_io.CodeLoaded s.mem ∧ CallerLrUnmapped P_io s ∧
-          ∀ p, cliWrOk p → ¬ OverCapFile s.fs.files p)) :=
-  ls_hook_ok_ultra_of_mem (prog := callerProg) (i := i)
-    (hookSat_withPanics_withReadFileHook ext (readFileEntryGhostHook_guarded_hookOk hCond))
-    (by decide) hi hunmut
-
-/-- Any non-`.Exception` step of `readFileEntryGhostHook` at call entry replays as `StepsUntil` /
-`Steps` of compiled `P_io` from `s0.setPC entry_io` and preserves `FdsGe3Closed`. -/
-theorem readFileEntryGhostHook_steps_of_noException {M : AllocCostModel}
-    {P_io : Program} {entry_io : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat} {s0 : State}
-    (hnoex : ∀ msg, (readFileEntryGhostHook P_io entry_io A lim stk s0).status ≠ .Exception msg) :
-    ReadFileCallGuard s0 ∧
-      Steps P_io (s0.setPC entry_io) (readFileEntryGhostHook P_io entry_io A lim stk s0) ∧
-      SubroutineStop s0 (readFileEntryGhostHook P_io entry_io A lim stk s0) ∧
-      (readFileEntryGhostHook P_io entry_io A lim stk s0).fs = s0.fs ∧
-      FdsGe3Closed (readFileEntryGhostHook P_io entry_io A lim stk s0).fs := by
-  classical
-  have hActPre : ActiveReadFilePre A lim stk s0 := by
-    by_contra hnPre
-    have hex : (readFileEntryGhostHook P_io entry_io A lim stk s0).status =
-        .Exception "read_file ghost-hook precondition violated" := by
-      unfold readFileEntryGhostHook
-      simp [hnPre]
-    exact hnoex _ hex
-  have hActRun : ActiveReadFileRun P_io entry_io s0 := by
-    by_contra hnRun
-    have hex : (readFileEntryGhostHook P_io entry_io A lim stk s0).status =
-        .Exception "read_file ghost-hook guard violated" := by
-      unfold readFileEntryGhostHook
-      simp [hActPre, hnRun]
-    exact hnoex _ hex
-  have hchoose := Classical.choose_spec hActRun.2.2.2
-  have heq : readFileEntryGhostHook P_io entry_io A lim stk s0 = Classical.choose hActRun.2.2.2 := by
-    unfold readFileEntryGhostHook
-    simp [hActPre, hActRun]
-  rw [heq]
-  refine ⟨hActRun.2.1, hchoose.1.toSteps, hchoose.2.1, hchoose.2.2, ?_⟩
-  rw [hchoose.2.2]
-  exact hActRun.2.1.1
-
 open Classical in
 /-- Fallback-completed ghost hook: executes compiled `P_io` at call entries satisfying
 `ActiveReadFileRun`, delegates to `fallback` outside `ActiveReadFileRun`, and sets `.Exception`
 outside `ActiveReadFilePre`. -/
-noncomputable def readFileGhostHook {M : AllocCostModel}
+@[expose] noncomputable def readFileGhostHook {M : AllocCostModel}
     (P_io : Program) (entry_io : BitVec 64)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat)
     (fallback : State → State) (s0 : State) : State :=
@@ -1465,83 +967,5 @@ theorem readFileGhostHook_ok {M : AllocCostModel}
     exact ⟨hkf, hsym, hout⟩
   · simp only [hActRun, ↓reduceDIte]
     exact hFallback (x, st) R s0 hrun hpre hsp
-
-/-- Unguarded `subroutine_ok callerProg (lsρ lsReadFileSym) (readFileSpecPlaced …)` on
-`withReadFileHook (readFileGhostHook …) ext`. -/
-theorem hRead_withReadFileHook_of_cond [LibsignalPlacement] {M : AllocCostModel}
-    {P_io : Program} {entry_io : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {fallback : State → State}
-    (ext : LibsignalHooks) {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i
-      (withReadFileHook (readFileGhostHook P_io entry_io A lim stk fallback) ext)]
-    [LsBlockBound bi]
-    (hCond : subroutine_ok P_io entry_io (readFileBudgetCondSpec A lim stk))
-    (hFallback : HookOk fallback
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  hRead_of_hookSat
-    (hookSat_withReadFileHook ext (readFileGhostHook_ok hCond hFallback)) hi hunmut
-
-theorem hRead_withPanics_withReadFileHook_of_cond [LibsignalPlacement] {M : AllocCostModel}
-    {P_io : Program} {entry_io : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {fallback : State → State}
-    (ext : LibsignalHooks) {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i
-      (Rust.withPanics (withReadFileHook (readFileGhostHook P_io entry_io A lim stk fallback) ext))]
-    [LsBlockBound bi]
-    (hCond : subroutine_ok P_io entry_io (readFileBudgetCondSpec A lim stk))
-    (hFallback : HookOk fallback
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)))
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk A lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  hRead_of_hookSat
-    (hookSat_withPanics_withReadFileHook ext (readFileGhostHook_ok hCond hFallback)) hi hunmut
-
-/-- At any call entry `s0` under `P_io.CodeLoaded s0.mem`, `ReadFileCallGuard s0`, and
-`CallerLrUnmapped P_io s0` where `readFileGhostHook` does not fault to `.Exception`,
-`readFileGhostHook` executes `Steps P_io (s0.setPC entry_io) (rfh s0)` and preserves `State.fs`. -/
-theorem readFileGhostHook_steps_of_callEntry {M : AllocCostModel}
-    {P_io : Program} {entry_io : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    {fallback : State → State} {s0 : State}
-    (hCond : subroutine_ok P_io entry_io (readFileBudgetCondSpec A lim stk))
-    (hnoex : ∀ msg,
-      (readFileGhostHook P_io entry_io A lim stk fallback s0).status ≠ .Exception msg)
-    (hCode : P_io.CodeLoaded s0.mem)
-    (hGuard : ReadFileCallGuard s0)
-    (hLr : CallerLrUnmapped P_io s0) :
-    Steps P_io (s0.setPC entry_io) (readFileGhostHook P_io entry_io A lim stk fallback s0) ∧
-      SubroutineStop s0 (readFileGhostHook P_io entry_io A lim stk fallback s0) ∧
-      (readFileGhostHook P_io entry_io A lim stk fallback s0).fs = s0.fs ∧
-      FdsGe3Closed (readFileGhostHook P_io entry_io A lim stk fallback s0).fs := by
-  classical
-  have hActPre : ActiveReadFilePre A lim stk s0 := by
-    by_contra hnPre
-    have hex : (readFileGhostHook P_io entry_io A lim stk fallback s0).status =
-        .Exception "read_file ghost-hook precondition violated" := by
-      unfold readFileGhostHook
-      simp [hnPre]
-    exact hnoex _ hex
-  have ⟨hrun, hsp, ⟨x, st⟩, R, hpre⟩ := hActPre
-  obtain ⟨sf, huntil, hstop, _, _, hfs_eq, _⟩ :=
-    compiled_readFile_run_of_cond hCond hrun hsp hpre hCode hGuard hLr
-  have hActRun : ActiveReadFileRun P_io entry_io s0 :=
-    ⟨hCode, hGuard, hLr, sf, huntil, hstop, hfs_eq⟩
-  have hchoose := Classical.choose_spec hActRun.2.2.2
-  have heq : readFileGhostHook P_io entry_io A lim stk fallback s0 =
-      Classical.choose hActRun.2.2.2 := by
-    unfold readFileGhostHook
-    simp [hActPre, hActRun]
-  rw [heq]
-  refine ⟨hchoose.1.toSteps, hchoose.2.1, hchoose.2.2, ?_⟩
-  rw [hchoose.2.2]
-  exact hGuard.1
 
 end LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced

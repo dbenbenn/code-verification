@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.Base
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Proof
 import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize
@@ -24,7 +24,7 @@ Proves `messageDeserialize_placed_ok_x` and `messageDeserialize_placed_ok_blockP
 `<spqr::v1::chunked::states::Message>::deserialize` (Block `351`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

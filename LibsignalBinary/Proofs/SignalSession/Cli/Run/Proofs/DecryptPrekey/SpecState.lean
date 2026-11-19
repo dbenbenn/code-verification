@@ -13,6 +13,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.
 public import Mathlib.Tactic.ToDual
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
 
 /-!
 # State-Coupled Poll and Wrapper Contracts for `decrypt_prekey`
@@ -21,7 +22,7 @@ Generalizes `DpPollK`, `dpPollSpec`, and `cliDecryptPrekeySpec` to `DpPollKState
 observes `(fs, trace)` at entry and `res` relates `(fs0, tr0, fs1, tr1, ws)` at exit.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,7 +50,7 @@ structure DpPollGhostState (K : DpPollKState) where
   g : K.Ghost
 
 /-- State-coupled contract for one poll of an unresumed `message_decrypt_prekey` future. -/
-def dpPollSpecState (K : DpPollKState) (stk : Nat) : Spec (DpPollGhostState K) where
+@[expose] def dpPollSpecState (K : DpPollKState) (stk : Nat) : Spec (DpPollGhostState K) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.fut ∧ s.readReg64 .x2 = x.cx ∧
       (K.args x.g).length = 13 ∧ stk ≤ s.sp.toNat⌝ ∗
@@ -69,7 +70,7 @@ structure DecryptPrekeyGhostState (K : DpPollKState) where
   g : K.Ghost
 
 /-- State-coupled contract for `signal_session_handshake::decrypt_prekey` under `K`. -/
-def cliDecryptPrekeySpecState (K : DpPollKState) (stk : Nat) : Spec (DecryptPrekeyGhostState K) where
+@[expose] def cliDecryptPrekeySpecState (K : DpPollKState) (stk : Nat) : Spec (DecryptPrekeyGhostState K) where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.ret ∧ (K.args x.g).length = 13 ∧
       (K.args x.g).take 8 =

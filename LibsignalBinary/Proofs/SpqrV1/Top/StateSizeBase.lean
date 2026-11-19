@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
 public import LibsignalBinary.Specifications.AsmConstants
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
@@ -18,7 +18,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -32,7 +32,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.RootKdfDefs
 public import LibsignalBinary.Specifications.HkdfSalt
 public import LibsignalBinary.Specifications.LibsignalAesCbc
 public import LibsignalBinary.Specifications.LibsignalHmac
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
@@ -54,7 +54,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.States
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Top
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import LibsignalBinary.Specifications.RustHeap.Vec
@@ -72,7 +72,7 @@ Defines linear payload size measures (`rawEpochDir`, `rawChainEpoch`, `rawChain`
 for `Proto.decodeState` and `Proto.spqrDecodeState`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.StateSize
 
@@ -104,82 +104,82 @@ theorem encodeKey_length_le (tag : BitVec 32) (wt : Proto.WireType) :
   encodeVarint_length_le _
 
 /-- Lift a `Nat`-valued size measure to `Option α` (`0` on `none`). -/
-def optRaw {α : Type} (f : α → Nat) : Option α → Nat
+@[expose] def optRaw {α : Type} (f : α → Nat) : Option α → Nat
   | none => 0
   | some x => f x
 
 @[simp] theorem optRaw_some {α : Type} (f : α → Nat) (x : α) : optRaw f (some x) = f x := rfl
 
-def rawEpochDir (ed : EpochDirectionPB) : Nat := ed.next.length + ed.prev.length
+@[expose] def rawEpochDir (ed : EpochDirectionPB) : Nat := ed.next.length + ed.prev.length
 
-def rawChainEpoch (ep : ChainEpochPB) : Nat := optRaw rawEpochDir ep.send + optRaw rawEpochDir ep.recv
+@[expose] def rawChainEpoch (ep : ChainEpochPB) : Nat := optRaw rawEpochDir ep.send + optRaw rawEpochDir ep.recv
 
-def rawChain (ch : ChainPB) : Nat :=
+@[expose] def rawChain (ch : ChainPB) : Nat :=
   (ch.links.map (fun ep => rawChainEpoch ep + 200)).sum + ch.nextRoot.length
 
-def rawAuth (a : ProtoAuthenticator) : Nat := a.rootKey.length + a.macKey.length
+@[expose] def rawAuth (a : ProtoAuthenticator) : Nat := a.rootKey.length + a.macKey.length
 
-def rawPolyEnc (pe : PolynomialEncoder) : Nat :=
+@[expose] def rawPolyEnc (pe : PolynomialEncoder) : Nat :=
   (pe.pts.map (fun b => b.length + 22)).sum + (pe.polys.map (fun b => b.length + 22)).sum
 
-def rawPolyDec (pd : PolynomialDecoder) : Nat := (pd.pts.map (fun b => b.length + 22)).sum
+@[expose] def rawPolyDec (pd : PolynomialDecoder) : Nat := (pd.pts.map (fun b => b.length + 22)).sum
 
-def rawUcKeysUnsampled (m : V1State.Unchunked.KeysUnsampled) : Nat := optRaw rawAuth m.auth
+@[expose] def rawUcKeysUnsampled (m : V1State.Unchunked.KeysUnsampled) : Nat := optRaw rawAuth m.auth
 
-def rawUcHeaderSent (m : V1State.Unchunked.HeaderSent) : Nat :=
+@[expose] def rawUcHeaderSent (m : V1State.Unchunked.HeaderSent) : Nat :=
   optRaw rawAuth m.auth + m.ek.length + m.dk.length
 
-def rawUcEkSent (m : V1State.Unchunked.EkSent) : Nat := optRaw rawAuth m.auth + m.dk.length
+@[expose] def rawUcEkSent (m : V1State.Unchunked.EkSent) : Nat := optRaw rawAuth m.auth + m.dk.length
 
-def rawUcEkSentCt1Received (m : V1State.Unchunked.EkSentCt1Received) : Nat :=
+@[expose] def rawUcEkSentCt1Received (m : V1State.Unchunked.EkSentCt1Received) : Nat :=
   optRaw rawAuth m.auth + m.dk.length + m.ct1.length
 
-def rawUcNoHeaderReceived (m : V1State.Unchunked.NoHeaderReceived) : Nat := optRaw rawAuth m.auth
+@[expose] def rawUcNoHeaderReceived (m : V1State.Unchunked.NoHeaderReceived) : Nat := optRaw rawAuth m.auth
 
-def rawUcHeaderReceived (m : V1State.Unchunked.HeaderReceived) : Nat :=
+@[expose] def rawUcHeaderReceived (m : V1State.Unchunked.HeaderReceived) : Nat :=
   optRaw rawAuth m.auth + m.hdr.length
 
-def rawUcCt1Sent (m : V1State.Unchunked.Ct1Sent) : Nat :=
+@[expose] def rawUcCt1Sent (m : V1State.Unchunked.Ct1Sent) : Nat :=
   optRaw rawAuth m.auth + m.hdr.length + m.es.length + m.ct1.length
 
-def rawUcCt1SentEkReceived (m : V1State.Unchunked.Ct1SentEkReceived) : Nat :=
+@[expose] def rawUcCt1SentEkReceived (m : V1State.Unchunked.Ct1SentEkReceived) : Nat :=
   optRaw rawAuth m.auth + m.es.length + m.ek.length + m.ct1.length
 
-def rawUcCt2Sent (m : V1State.Unchunked.Ct2Sent) : Nat := optRaw rawAuth m.auth
+@[expose] def rawUcCt2Sent (m : V1State.Unchunked.Ct2Sent) : Nat := optRaw rawAuth m.auth
 
-def rawChKeysUnsampled (m : V1State.Chunked.KeysUnsampled) : Nat := optRaw rawUcKeysUnsampled m.uc
+@[expose] def rawChKeysUnsampled (m : V1State.Chunked.KeysUnsampled) : Nat := optRaw rawUcKeysUnsampled m.uc
 
-def rawChKeysSampled (m : V1State.Chunked.KeysSampled) : Nat :=
+@[expose] def rawChKeysSampled (m : V1State.Chunked.KeysSampled) : Nat :=
   optRaw rawUcHeaderSent m.uc + optRaw rawPolyEnc m.sendingHdr
 
-def rawChHeaderSent (m : V1State.Chunked.HeaderSent) : Nat :=
+@[expose] def rawChHeaderSent (m : V1State.Chunked.HeaderSent) : Nat :=
   optRaw rawUcEkSent m.uc + optRaw rawPolyEnc m.sendingEk + optRaw rawPolyDec m.receivingCt1
 
-def rawChCt1Received (m : V1State.Chunked.Ct1Received) : Nat :=
+@[expose] def rawChCt1Received (m : V1State.Chunked.Ct1Received) : Nat :=
   optRaw rawUcEkSentCt1Received m.uc + optRaw rawPolyEnc m.sendingEk
 
-def rawChEkSentCt1Received (m : V1State.Chunked.EkSentCt1Received) : Nat :=
+@[expose] def rawChEkSentCt1Received (m : V1State.Chunked.EkSentCt1Received) : Nat :=
   optRaw rawUcEkSentCt1Received m.uc + optRaw rawPolyDec m.receivingCt2
 
-def rawChNoHeaderReceived (m : V1State.Chunked.NoHeaderReceived) : Nat :=
+@[expose] def rawChNoHeaderReceived (m : V1State.Chunked.NoHeaderReceived) : Nat :=
   optRaw rawUcNoHeaderReceived m.uc + optRaw rawPolyDec m.receivingHdr
 
-def rawChHeaderReceived (m : V1State.Chunked.HeaderReceived) : Nat :=
+@[expose] def rawChHeaderReceived (m : V1State.Chunked.HeaderReceived) : Nat :=
   optRaw rawUcHeaderReceived m.uc + optRaw rawPolyDec m.receivingEk
 
-def rawChCt1Sampled (m : V1State.Chunked.Ct1Sampled) : Nat :=
+@[expose] def rawChCt1Sampled (m : V1State.Chunked.Ct1Sampled) : Nat :=
   optRaw rawUcCt1Sent m.uc + optRaw rawPolyEnc m.sendingCt1 + optRaw rawPolyDec m.receivingEk
 
-def rawChEkReceivedCt1Sampled (m : V1State.Chunked.EkReceivedCt1Sampled) : Nat :=
+@[expose] def rawChEkReceivedCt1Sampled (m : V1State.Chunked.EkReceivedCt1Sampled) : Nat :=
   optRaw rawUcCt1SentEkReceived m.uc + optRaw rawPolyEnc m.sendingCt1
 
-def rawChCt1Acknowledged (m : V1State.Chunked.Ct1Acknowledged) : Nat :=
+@[expose] def rawChCt1Acknowledged (m : V1State.Chunked.Ct1Acknowledged) : Nat :=
   optRaw rawUcCt1Sent m.uc + optRaw rawPolyDec m.receivingEk
 
-def rawChCt2Sampled (m : V1State.Chunked.Ct2Sampled) : Nat :=
+@[expose] def rawChCt2Sampled (m : V1State.Chunked.Ct2Sampled) : Nat :=
   optRaw rawUcCt2Sent m.uc + optRaw rawPolyEnc m.sendingCt2
 
-def rawInnerState : V1State.InnerState → Nat
+@[expose] def rawInnerState : V1State.InnerState → Nat
   | .keysUnsampled v        => rawChKeysUnsampled v
   | .keysSampled v          => rawChKeysSampled v
   | .headerSent v           => rawChHeaderSent v
@@ -192,21 +192,15 @@ def rawInnerState : V1State.InnerState → Nat
   | .ct1Acknowledged v      => rawChCt1Acknowledged v
   | .ct2Sampled v           => rawChCt2Sampled v
 
-def rawV1State (m : V1State) : Nat := optRaw rawInnerState m.innerState
+@[expose] def rawV1State (m : V1State) : Nat := optRaw rawInnerState m.innerState
 
-def rawVN (m : VersionNegotiationPB) : Nat := m.authKey.length
+@[expose] def rawVN (m : VersionNegotiationPB) : Nat := m.authKey.length
 
 
 /-! ## Payload Size Measures and `MergeFieldBound` -/
 
 section MoveCompat
 open CryptoVerification.SpqrV1.ProtoRepr
-
-private theorem encodedLenVarint_le (v : BitVec 64) : Proto.encodedLenVarint v ≤ 11 :=
-  encodeVarint_length_le v
-
-private theorem keyLen_le (tag : BitVec 32) : Proto.keyLen tag ≤ 11 :=
-  encodedLenVarint_le _
 
 private theorem encodeUint32Field_length_le (tag : BitVec 32) (v : BitVec 32) :
     (Proto.encodeUint32Field tag v).length ≤ 22 := by
@@ -315,12 +309,9 @@ private theorem encodeRepeatedMessage_length_le {M : Type} (encodeRaw : M → By
         (rest.map (fun m => f m + C)).sum := ih
     omega
 
-private def rawUcEkReceived (m : V1State.Unchunked.EkReceived) : Nat :=
-  optRaw rawAuth m.auth + m.hdr.length + m.ek.length
+@[expose] def rawPqInner : PqRatchetState.Inner → Nat | .v1 v => rawV1State v
 
-def rawPqInner : PqRatchetState.Inner → Nat | .v1 v => rawV1State v
-
-def rawPqState (m : PqRatchetState) : Nat :=
+@[expose] def rawPqState (m : PqRatchetState) : Nat :=
   optRaw rawVN m.versionNegotiation + optRaw rawChain m.chain + optRaw rawPqInner m.inner
 
 private theorem chainParamsPB_encodeRaw_length_le (m : ChainParamsPB) :
@@ -363,10 +354,6 @@ private theorem chainPB_encodeRaw_length_le (m : ChainPB) :
   have h4 := encodeBytesField_length_le 4#32 m.nextRoot
   have h5 := encodeUint64Field_length_le 5#32 m.sendEpoch
   have h6 := encodeOptChainParams_length_le 6#32 m.params; omega
-
-theorem chainPBEncodedLen_le_rawChain (m : ChainPB) :
-    chainPBEncodedLen m ≤ rawChain m + 154 := by
-  rw [← chainPBEncodedLen_eq_proto]; exact chainPB_encodeRaw_length_le m
 
 private theorem versionNegotiationPB_encodeRaw_length_le (m : VersionNegotiationPB) :
     (VersionNegotiationPB.encodeRaw m).length ≤ rawVN m + 132 := by
@@ -604,11 +591,7 @@ theorem encodeState_length_le_rawPqState (m : PqRatchetState) :
   | none => simp only [optRaw_none, List.length_nil]; omega
   | some i => simp only [optRaw_some]; have h3 := pqInner_encode_length_le i; omega
 
-private theorem pqRatchetState_encodedLen_le_rawPqState (m : PqRatchetState) :
-    PqRatchetState.encodedLen m ≤ rawPqState m + 752 :=
-  encodeState_length_le_rawPqState m
-
-def MergeFieldBound {M : Type}
+@[expose] def MergeFieldBound {M : Type}
     (mergeField : M → BitVec 32 → Proto.WireType → Bytes → Nat → Except Proto.DecodeErr (M × Bytes))
     (rawM : M → Nat) (K : Nat) : Prop :=
   ∀ (m : M) (tag : BitVec 32) (wt : Proto.WireType) (rest : Bytes) (depth : Nat)
@@ -1082,16 +1065,6 @@ private theorem mergeFieldBound_ucHeaderReceived :
     (fun h => branch_ite h (fun h => branch_optMessage h mergeFieldBound_auth rfl (by omega) (fun v => by simp [rawUcHeaderReceived]; omega))
     (fun h => branch_ite h (fun h => branch_bytes h (by omega) (fun v => by simp [rawUcHeaderReceived]))
       branch_skip))
-
-private theorem mergeFieldBound_ucEkReceived :
-    MergeFieldBound V1State.Unchunked.EkReceived.mergeField rawUcEkReceived 1 := by
-  intro s tag wt rest depth s' rest' h
-  unfold V1State.Unchunked.EkReceived.mergeField at h
-  exact branch_ite h (fun h => branch_uint64 h (fun _ => rfl))
-    (fun h => branch_ite h (fun h => branch_optMessage h mergeFieldBound_auth rfl (by omega) (fun v => by simp [rawUcEkReceived]; omega))
-    (fun h => branch_ite h (fun h => branch_bytes h (by omega) (fun v => by simp [rawUcEkReceived]; omega))
-    (fun h => branch_ite h (fun h => branch_bytes h (by omega) (fun v => by simp [rawUcEkReceived]))
-      branch_skip)))
 
 theorem mergeFieldBound_ucCt1Sent :
     MergeFieldBound V1State.Unchunked.Ct1Sent.mergeField rawUcCt1Sent 1 := by

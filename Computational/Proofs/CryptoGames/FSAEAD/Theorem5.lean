@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.HybridWith
-public import Computational.Proofs.CryptoGames.AEAD.PrimitivesProofDefs
+import Computational.Proofs.CryptoGames.AEAD.PrimitivesProofDefs
 public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
 import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
 import Computational.Proofs.CryptoGames.FSAEAD.HybridOTReal
@@ -28,7 +28,7 @@ correctness implicit, whereas the Theorem 5 formalization takes `ae.Correct` as 
 hypothesis.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory CryptoGames.Lazy
 

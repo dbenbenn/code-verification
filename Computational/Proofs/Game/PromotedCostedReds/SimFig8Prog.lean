@@ -9,38 +9,39 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Step
-public import Computational.Proofs.HeadlineV1.SendShortC
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Step -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.SendShortC -- proof-setup: allow-public-import
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8QepCap
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8QepCapQueries
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanSem
+import Computational.Proofs.SessionCostedBase
 
 /-!
 # Top-Level `simFig8` Costed Reduction Program
 
 Assembles `simFig8RedProg` from `SimFig8Step.simFig8RawStepSpec` and proves its `GRedBounded`,
-description-bit, and `GuardedSMShort` query invariants.
--/
+description-bit, and `GuardedSMShort` query invariants.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace Computational.Proofs.Game.PromotedCostedReds.SimFig8Prog
 
 open _root_.CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.Ratchet.LibsignalInst
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.Ratchet.LibsignalInst
   (LibsignalMsgPublicPart LibsignalCiphertextWithSalt32 lFig8 ratchetKeyAdmissible)
-open CryptoGames.LibsignalSession
+open _root_.CryptoGames.LibsignalSession
   (Crypto IdentityKey PublicKey GhostState signalWireCodec)
-open CryptoGames.LibsignalSM.Refine (libsignalToModularSchemeSim)
-open CryptoGames.LibsignalSM.Proofs.Refinement (simCNoneWinEvent)
-open CryptoGames.LibsignalSM.Proofs.SessionShort (SendMsgsOk GuardedSMShort)
-open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.LibsignalSession (ratchetCostBudget ratchetCostBudget_pos GRedBounded)
-open CryptoVerification.E2E (Bytes idsOf paramsV1)
+open _root_.CryptoGames.LibsignalSM.Refine (libsignalToModularSchemeSim)
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement (simCNoneWinEvent)
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort (SendMsgsOk GuardedSMShort)
+open _root_.CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.LibsignalSession (ratchetCostBudget ratchetCostBudget_pos GRedBounded)
+open _root_.CryptoVerification.E2E (Bytes idsOf paramsV1)
 open Computational.Proofs.ReductionDsl.Fig8Atomic (atomicShortPubB)
 open Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
   (ratchetDescBudget ratchetDescBudget_mono)
@@ -59,7 +60,7 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8QepCap
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8QepCapQueries
   (libsignalToModularSchemeSim_queries)
 
-noncomputable section
+section
 
 /-- Clamped epoch cap `min qep (q + 4)` keeping AST literal sizes bounded by `ratchetCostBudget`
 while preserving `q`-query game semantics. -/
@@ -90,18 +91,6 @@ theorem simFig8RedProg_gRedBounded {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampl
     omega
   exact simFig8ProgOfStep_gRedBounded_of_clamp_linear C K Dh encPt encT decT lam qep₀ qep q
     hqep₀ hClamp S.step S.hstep_q S.hstep_c S.hstep_d
-
-theorem simFig8RedProg_descBits_le {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (ℓ : ℕ) (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (lam : Pt) (qep q : ℕ) :
-    atomicFig8RedDescBits (simFig8RedProg ℓ C K idA idB Dh encPt encT decT lam qep q) ≤
-      ratchetDescBudget q (qep + 1) := by
-  let qep₀ := simFig8QepClamp qep q
-  let S := simFig8RawStepSpec (Pt := Pt) ℓ C K idA idB Dh encPt encT decT lam qep₀ q
-  have hqep₀ : qep₀ + 1 ≤ qep + 1 := Nat.add_le_add_right (Nat.min_le_left qep (q + 4)) 1
-  exact (simFig8ProgOfStep_descBits_le C K Dh encPt encT decT lam qep₀ q S.step S.hstep_d).trans
-    (ratchetDescBudget_mono le_rfl hqep₀)
 
 theorem simFig8RedProg_eval_san {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6) (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
@@ -254,17 +243,6 @@ theorem simFig8RedProg_equalPub {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampleab
       ((simFig8RedProg ℓ C K idA idB Dh encPt encT decT lam qep q).eval (fun _ => A) ()) :=
   (simFig8RedProg_evalOk ℓ C K idA idB Dh encPt encT decT lam qep q).equalPub hℓ A hq
 
-theorem simFig8RedProg_sendShort {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6) (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (lam : Pt) (qep q : ℕ)
-    (A : CryptoGames.SM.Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (hq : CryptoGames.SM.MakesAtMostQueries A q) :
-    SendMsgsOk (fun m : LibsignalMsgPublicPart × Plain ℓ => m.1.shortB)
-      ((simFig8RedProg ℓ C K idA idB Dh encPt encT decT lam qep q).eval (fun _ => A) ()) :=
-  (simFig8RedProg_evalOk ℓ C K idA idB Dh encPt encT decT lam qep q).sendShort hℓ A hq
-
 theorem simFig8RedProg_sm_game_eq {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6) (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
@@ -302,15 +280,15 @@ theorem simFig8RedProg_simCNoneWinEvent_eq {Pt : Type} [DecidableEq Pt] [Zero Pt
 section SendAtomicShort
 
 open OracleSpec OracleComp
-open CryptoGames.SM
+open _root_.CryptoGames.SM
   (partyEnc noBobSendInEpoch0 noAliceCorrWhileAliceBelowEpoch10)
-open CryptoGames.LibsignalSession (Params)
-open CryptoGames.Ratchet.LibsignalSim
+open _root_.CryptoGames.LibsignalSession (Params)
+open _root_.CryptoGames.Ratchet.LibsignalSim
   (Fig8Comp inReceiveOnlyEpoch semDrawSendCoins semSendHook mkPub simParseRecvC)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
-open CryptoGames.LibsignalSM.Proofs.QueryBounds (FSpec isQueryBoundP_simulateQ_run_zero)
-open CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM (badSendMsg)
-open CryptoVerification.LibsignalSession.HeadlineV1
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
+open _root_.CryptoGames.LibsignalSM.Proofs.QueryBounds (FSpec isQueryBoundP_simulateQ_run_zero)
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM (badSendMsg)
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1
   (AtomicLengthsOk atomicLengthsOk_paramsIdsWithSpqr_v1 QAtomicShort hQu_QAtomicShort
    atomicShortPubB_mkPub)
 open Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
@@ -585,16 +563,16 @@ theorem simFig8RedProg_sendAtomicShort {Pt : Type} [DecidableEq Pt] [Zero Pt] [S
 section GuardedSMShortSan
 
 open OracleSpec OracleComp
-open CryptoGames.GuardedSafe (GuardedSafePost)
-open CryptoGames.SM
+open _root_.CryptoGames.GuardedSafe (GuardedSafePost)
+open _root_.CryptoGames.SM
   (RecvResult partyEnc noBobSendInEpoch0 noAliceCorrWhileAliceBelowEpoch10)
-open CryptoGames.LibsignalSession (Params)
-open CryptoGames.Ratchet.LibsignalSim
+open _root_.CryptoGames.LibsignalSession (Params)
+open _root_.CryptoGames.Ratchet.LibsignalSim
   (Fig8St Fig8C Fig8Comp SimState inReceiveOnlyEpoch onAcceptPure onAnswerPure
    semDrawSendCoins semSendHook mkPub simParseRecvC)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
-open CryptoGames.LibsignalSM.Proofs.QueryBounds (FSpec)
-open CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
+open _root_.CryptoGames.LibsignalSM.Proofs.QueryBounds (FSpec)
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
   (smRespShort smRecvLong SimShortInv simShortInv_initSim simShortInv_record
    hQu_smRecvLong epMgmt_trans_eq mem_accept_trans inTransit_mem_and_ct)
 open Computational.Proofs.GameHop.CompDedup (afterCorrDedup)

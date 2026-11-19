@@ -11,6 +11,21 @@ module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.NarrowF3R1Witness -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMemcpy -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2StepsLiftR2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlacedBudget
 
 /-!
 # K-Route Narrow `memset` / `memcpy` R1 Witnesses & CLI-617 Replay (`ElfSlicesPqOomH2KNarrowR1`)
@@ -105,206 +120,24 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced (
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics (F3CodeInv)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks (h2k_ghFixedK)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMemcpy (
-  h2k_ghFixedK_blk20TrapHook h2k_keepSub_covers_blk20 h2k_memcpyGhostHookNarrow
-  h2k_memcpyGhostHookNarrow_blk20TrapHook h2k_memcpyGhostHookNarrow_stub_replayOn_of_trap_ret
+  h2k_ghFixedK_blk20TrapHook h2k_keepLoSub_covers_blk20 h2k_keepSub_covers_blk20
+  h2k_memcpyGhostHookNarrow h2k_memcpyGhostHookNarrow_blk20TrapHook
+  h2k_memcpyGhostHookNarrow_stub_replayOn_of_trap_ret
 )
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMemset (
-  h2k_extraStub_not_in_blk21 h2k_ghFixedK_blk21TrapHook h2k_keepSub_covers_blk21
-  h2k_memsetGhostHookNarrow h2k_shimStub_not_in_blk21
+  h2k_extraStub_not_in_blk21 h2k_ghFixedK_blk21TrapHook h2k_keepLoSub_covers_blk21
+  h2k_keepSub_covers_blk21 h2k_memsetGhostHookNarrow h2k_shimStub_not_in_blk21
 )
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2StepsLiftR2 (
-  h2sl_realW_noExtern_keepSub
+  h2sl_realW_noExtern_keepLoSub
 )
 open VerifiedLibraries (mallocngLib)
 
 /-! ## 1. Definitional (`rfl`) Twin Pins (`rev_c10_c3.md` R-6) -/
 
-theorem h2k_memsetGhostHookNarrow_eq_f3Empty (mmpl : MultiPlacement) :
-    h2k_memsetGhostHookNarrow mmpl = f3EmptyMemsetGhostHookNarrow mmpl := rfl
-
-theorem h2k_memcpyGhostHookNarrow_eq_f3Empty (mmpl : MultiPlacement) :
-    h2k_memcpyGhostHookNarrow mmpl = f3EmptyMemcpyGhostHookNarrow mmpl := rfl
-
-theorem h2k_memsetGhostHookNarrow_eq_narrow (mmpl : MultiPlacement) :
-    h2k_memsetGhostHookNarrow mmpl = narrowMemsetGhostHook mmpl :=
-  f3EmptyMemsetGhostHookNarrow_eq_narrow mmpl
-
-theorem h2k_memcpyGhostHookNarrow_eq_narrow (mmpl : MultiPlacement) :
-    h2k_memcpyGhostHookNarrow mmpl = narrowMemcpyGhostHook mmpl :=
-  f3EmptyMemcpyGhostHookNarrow_eq_narrow mmpl
-
 /-! ## 2. `h2k_memsetGhostHookNarrow` Unconditional R1 / C2 Suite -/
 
-theorem h2k_memsetGhostHookNarrow_vmPreserved (mmpl : MultiPlacement) (s : State) :
-    VmPreserved s (h2k_memsetGhostHookNarrow mmpl s) :=
-  f3EmptyMemsetGhostHookNarrow_vmPreserved mmpl s
-
-theorem h2k_memsetGhostHookNarrow_fs (mmpl : MultiPlacement) (s : State) :
-    (h2k_memsetGhostHookNarrow mmpl s).fs = s.fs :=
-  f3EmptyMemsetGhostHookNarrow_fs mmpl s
-
-theorem h2k_memsetGhostHookNarrow_fsT (mmpl : MultiPlacement) :
-    HookFsTraced IsFsC (h2k_memsetGhostHookNarrow mmpl) :=
-  f3EmptyMemsetGhostHookNarrow_fsT mmpl
-
-theorem h2k_memsetGhostHookNarrow_trace (mmpl : MultiPlacement) (s : State) :
-    (h2k_memsetGhostHookNarrow mmpl s).trace = s.trace :=
-  f3EmptyMemsetGhostHookNarrow_trace mmpl s
-
-theorem h2k_memsetGhostHookNarrow_noAllocFailed (mmpl : MultiPlacement) :
-    HookNoAllocFailed (h2k_memsetGhostHookNarrow mmpl) :=
-  f3EmptyMemsetGhostHookNarrow_noAllocFailed mmpl
-
-theorem h2k_memsetGhostHookNarrow_execFrozen (mmpl : MultiPlacement) (s : State)
-    (hfr : ExecFrozen s.mem) :
-    ExecFrozen (h2k_memsetGhostHookNarrow mmpl s).mem :=
-  f3EmptyMemsetGhostHookNarrow_execFrozen mmpl s hfr
-
-theorem h2k_memsetGhostHookNarrow_libcMemset_ok (mmpl : MultiPlacement) (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookNarrow mmpl) (libcMemsetSpec stk) :=
-  f3EmptyMemsetGhostHookNarrow_libcMemset_ok mmpl stk
-
-theorem h2k_memsetGhostHookNarrow_sessionMemset_ok (mmpl : MultiPlacement) (stk : Nat := 4096) :
-    HookOk (h2k_memsetGhostHookNarrow mmpl) (sessionMemsetSpec stk) :=
-  f3EmptyMemsetGhostHookNarrow_sessionMemset_ok mmpl stk
-
-theorem h2k_memsetGhostHookNarrow_memsetRegion_ok (mmpl : MultiPlacement) :
-    HookOk (h2k_memsetGhostHookNarrow mmpl) memsetRegionSpec :=
-  f3EmptyMemsetGhostHookNarrow_memsetRegion_ok mmpl
-
-/-- R1-routed alias for `ElfSlicesPqOomH2KMemset.h2k_memsetGhostHookNarrow_sessionMemsetRegion_ok`
-    (suffixed `_r1_ok` to avoid shadowing when opening both `ElfSlicesPqOomH2KMemset` and
-    `ElfSlicesPqOomH2KNarrowR1`). -/
-theorem h2k_memsetGhostHookNarrow_sessionMemsetRegion_r1_ok (mmpl : MultiPlacement) :
-    HookOk (h2k_memsetGhostHookNarrow mmpl) sessionMemsetRegionSpec :=
-  f3EmptyMemsetGhostHookNarrow_sessionMemsetRegion_ok mmpl
-
-theorem h2k_memsetGhostHookNarrow_r1_conj (mmpl : MultiPlacement) :
-    (∀ stk, 0 < stk → HookOk (h2k_memsetGhostHookNarrow mmpl) (libcMemsetSpec stk)) ∧
-    (∀ stk, 0 < stk → HookOk (h2k_memsetGhostHookNarrow mmpl) (sessionMemsetSpec stk)) ∧
-    HookOk (h2k_memsetGhostHookNarrow mmpl) memsetRegionSpec ∧
-    HookOk (h2k_memsetGhostHookNarrow mmpl) sessionMemsetRegionSpec ∧
-    (∀ s : State, VmPreserved s (h2k_memsetGhostHookNarrow mmpl s)) ∧
-    (∀ s : State, (h2k_memsetGhostHookNarrow mmpl s).fs = s.fs) ∧
-    HookFsTraced IsFsC (h2k_memsetGhostHookNarrow mmpl) :=
-  f3EmptyMemsetGhostHookNarrow_r1_conj mmpl
-
-theorem h2k_memsetGhostHookNarrow_r1_allocWitness (mmpl : MultiPlacement)
-    {slot : Option (State → State)}
-    (hslot : slot = some (h2k_memsetGhostHookNarrow mmpl) := by rfl) :
-    ∃ f, slot = some f ∧
-      (∀ stk, 0 < stk → HookOk f (libcMemsetSpec stk)) ∧
-      (∀ stk, 0 < stk → HookOk f (sessionMemsetSpec stk)) ∧
-      HookOk f memsetRegionSpec ∧
-      HookOk f sessionMemsetRegionSpec ∧
-      (∀ s : State, VmPreserved s (f s)) ∧
-      (∀ s : State, (f s).fs = s.fs) ∧
-      HookFsTraced IsFsC f :=
-  f3EmptyMemsetGhostHookNarrow_r1_allocWitness mmpl hslot
-
-theorem h2k_memsetGhostHookNarrow_r1_a0Witness (mmpl : MultiPlacement)
-    {slot : Option (State → State)}
-    (hslot : slot = some (h2k_memsetGhostHookNarrow mmpl) := by rfl) :
-    ∃ f, slot = some f ∧
-      (∀ stk, 0 < stk → HookOk f (libcMemsetSpec stk)) ∧
-      (∀ stk, 0 < stk → HookOk f (sessionMemsetSpec stk)) ∧
-      HookOk f memsetRegionSpec ∧
-      HookOk f sessionMemsetRegionSpec ∧
-      (∀ s : State, (f s).fs = s.fs) ∧
-      HookFsTraced IsFsC f :=
-  f3EmptyMemsetGhostHookNarrow_r1_a0Witness mmpl hslot
-
 /-! ## 3. `h2k_memcpyGhostHookNarrow` Unconditional R1 / C2 Suite -/
-
-theorem h2k_memcpyGhostHookNarrow_vmPreserved (mmpl : MultiPlacement) (s : State) :
-    VmPreserved s (h2k_memcpyGhostHookNarrow mmpl s) :=
-  f3EmptyMemcpyGhostHookNarrow_vmPreserved mmpl s
-
-theorem h2k_memcpyGhostHookNarrow_fs (mmpl : MultiPlacement) (s : State) :
-    (h2k_memcpyGhostHookNarrow mmpl s).fs = s.fs :=
-  f3EmptyMemcpyGhostHookNarrow_fs mmpl s
-
-theorem h2k_memcpyGhostHookNarrow_fsT (mmpl : MultiPlacement) :
-    HookFsTraced IsFsC (h2k_memcpyGhostHookNarrow mmpl) :=
-  f3EmptyMemcpyGhostHookNarrow_fsT mmpl
-
-theorem h2k_memcpyGhostHookNarrow_trace (mmpl : MultiPlacement) (s : State) :
-    (h2k_memcpyGhostHookNarrow mmpl s).trace = s.trace :=
-  f3EmptyMemcpyGhostHookNarrow_trace mmpl s
-
-theorem h2k_memcpyGhostHookNarrow_noAllocFailed (mmpl : MultiPlacement) :
-    HookNoAllocFailed (h2k_memcpyGhostHookNarrow mmpl) :=
-  f3EmptyMemcpyGhostHookNarrow_noAllocFailed mmpl
-
-theorem h2k_memcpyGhostHookNarrow_execFrozen (mmpl : MultiPlacement) (s : State)
-    (hfr : ExecFrozen s.mem) :
-    ExecFrozen (h2k_memcpyGhostHookNarrow mmpl s).mem :=
-  f3EmptyMemcpyGhostHookNarrow_execFrozen mmpl s hfr
-
-theorem h2k_memcpyGhostHookNarrow_libcMemcpy_ok (mmpl : MultiPlacement) (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookNarrow mmpl) (libcMemcpySpec stk) :=
-  f3EmptyMemcpyGhostHookNarrow_libcMemcpy_ok mmpl stk
-
-theorem h2k_memcpyGhostHookNarrow_sessionMemcpy_ok (mmpl : MultiPlacement) (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookNarrow mmpl) (sessionMemcpySpec stk) :=
-  f3EmptyMemcpyGhostHookNarrow_sessionMemcpy_ok mmpl stk
-
-theorem h2k_memcpyGhostHookNarrow_memcpyRegion_ok (mmpl : MultiPlacement) :
-    HookOk (h2k_memcpyGhostHookNarrow mmpl) memcpyRegionSpec :=
-  f3EmptyMemcpyGhostHookNarrow_memcpyRegion_ok mmpl
-
-theorem h2k_memcpyGhostHookNarrow_sessionMemcpyRegion_ok (mmpl : MultiPlacement) :
-    HookOk (h2k_memcpyGhostHookNarrow mmpl) sessionMemcpyRegionSpec :=
-  f3EmptyMemcpyGhostHookNarrow_sessionMemcpyRegion_ok mmpl
-
-theorem h2k_memcpyGhostHookNarrow_framelessMemcpy_ok (mmpl : MultiPlacement) :
-    HookOk (h2k_memcpyGhostHookNarrow mmpl) framelessMemcpySpec :=
-  f3EmptyMemcpyGhostHookNarrow_framelessMemcpy_ok mmpl
-
-theorem h2k_memcpyGhostHookNarrow_sessionMemcpyRegionRO_ok (mmpl : MultiPlacement) :
-    HookOk (h2k_memcpyGhostHookNarrow mmpl) sessionMemcpyRegionROSpec :=
-  f3EmptyMemcpyGhostHookNarrow_sessionMemcpyRegionRO_ok mmpl
-
-theorem h2k_memcpyGhostHookNarrow_r1_conj (mmpl : MultiPlacement) :
-    (∀ stk, HookOk (h2k_memcpyGhostHookNarrow mmpl) (libcMemcpySpec stk)) ∧
-    (∀ stk, HookOk (h2k_memcpyGhostHookNarrow mmpl) (sessionMemcpySpec stk)) ∧
-    HookOk (h2k_memcpyGhostHookNarrow mmpl) memcpyRegionSpec ∧
-    HookOk (h2k_memcpyGhostHookNarrow mmpl) sessionMemcpyRegionSpec ∧
-    HookOk (h2k_memcpyGhostHookNarrow mmpl) framelessMemcpySpec ∧
-    HookOk (h2k_memcpyGhostHookNarrow mmpl) sessionMemcpyRegionROSpec ∧
-    (∀ s : State, VmPreserved s (h2k_memcpyGhostHookNarrow mmpl s)) ∧
-    (∀ s : State, (h2k_memcpyGhostHookNarrow mmpl s).fs = s.fs) ∧
-    HookFsTraced IsFsC (h2k_memcpyGhostHookNarrow mmpl) :=
-  f3EmptyMemcpyGhostHookNarrow_r1_conj mmpl
-
-theorem h2k_memcpyGhostHookNarrow_r1_allocWitness (mmpl : MultiPlacement)
-    {slot : Option (State → State)}
-    (hslot : slot = some (h2k_memcpyGhostHookNarrow mmpl) := by rfl) :
-    ∃ f, slot = some f ∧
-      (∀ stk, HookOk f (libcMemcpySpec stk)) ∧
-      (∀ stk, HookOk f (sessionMemcpySpec stk)) ∧
-      HookOk f memcpyRegionSpec ∧
-      HookOk f sessionMemcpyRegionSpec ∧
-      HookOk f framelessMemcpySpec ∧
-      HookOk f sessionMemcpyRegionROSpec ∧
-      (∀ s : State, VmPreserved s (f s)) ∧
-      (∀ s : State, (f s).fs = s.fs) ∧
-      HookFsTraced IsFsC f :=
-  f3EmptyMemcpyGhostHookNarrow_r1_allocWitness mmpl hslot
-
-theorem h2k_memcpyGhostHookNarrow_r1_a0Witness (mmpl : MultiPlacement)
-    {slot : Option (State → State)}
-    (hslot : slot = some (h2k_memcpyGhostHookNarrow mmpl) := by rfl) :
-    ∃ f, slot = some f ∧
-      (∀ stk, HookOk f (libcMemcpySpec stk)) ∧
-      (∀ stk, HookOk f (sessionMemcpySpec stk)) ∧
-      HookOk f memcpyRegionSpec ∧
-      HookOk f sessionMemcpyRegionSpec ∧
-      HookOk f framelessMemcpySpec ∧
-      HookOk f sessionMemcpyRegionROSpec ∧
-      (∀ s : State, (f s).fs = s.fs) ∧
-      HookFsTraced IsFsC f :=
-  f3EmptyMemcpyGhostHookNarrow_r1_a0Witness mmpl hslot
 
 /-! ## 4. Closed CLI Block-`617` `hblk20_ext` & Behind-Stub Replays (`rev_c10_c3.md` §3 row 6) -/
 
@@ -404,28 +237,7 @@ theorem h2k_shimStub_not_in_blk20 {mpl mmpl : MultiPlacement}
   · rfl
   · rw [hb] at hpred; cases hpred.2
 
-private noncomputable def h2k_memsetDisjointBlk20B : Bool :=
-  lsSharedExterns.any fun idx =>
-    (lsInternedMultiLib.names.getD idx "" == "memset") &&
-    !(keepMemcpyBlk20 f3MallocngMpl (f3LsSymAddrs.getD idx 0#64))
-
 set_option maxRecDepth 4000000 in
-private theorem h2k_memsetDisjointBlk20_ok : h2k_memsetDisjointBlk20B = true := by rfl_kernel
-
-/-- The `"memset"` resolution address lies outside `keepMemcpyBlk20 mmpl` on 39-row `cliElfBytes`
-    (proof shape intended to carry over to 37-row stock-lld where `"memset"` resolves to
-    `mmpl.base 21 ∉ blk20`; re-proved at re-key). -/
-theorem h2k_memsetStub_not_in_blk20 {mpl mmpl : MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    keepMemcpyBlk20 mmpl (libsignalSessionLib.resolve mpl "memset") = false := by
-  obtain ⟨idx, hidx, hpred⟩ := List.any_eq_true.mp h2k_memsetDisjointBlk20_ok
-  simp only [Bool.and_eq_true, beq_iff_eq] at hpred
-  rw [keepMemcpyBlk20_eq_f3 hMm, ← hpred.1, resolve_idx_of_linkedAt hLs hidx]
-  cases hb : keepMemcpyBlk20 f3MallocngMpl (f3LsSymAddrs.getD idx 0#64)
-  · rfl
-  · rw [hb] at hpred; cases hpred.2
-
 private theorem mem_of_contains_true {l : List String} {s : String}
     (h : l.contains s = true) : s ∈ l := by
   induction l with
@@ -574,7 +386,7 @@ theorem h2k_ghFixedK_blk21_ext_trap [LibsignalPlacement]
       · exact h2k_ghFixedK_blk21TrapHook mpl hMm hgh hne
       · exfalso
         have hreal_none :=
-          h2sl_realW_noExtern_keepSub hLs mmpl W pc (h2k_keepSub_covers_blk21 hMm pc hpc)
+          h2sl_realW_noExtern_keepLoSub hLs mmpl W pc (h2k_keepLoSub_covers_blk21 hMm pc hpc)
         rw [externAt?_cliProgExtPlacedAt_any] at hreal_none
         have hcell := findSome?_eq_none_imp hreal_none hsym_mem
         rw [hres_eq, hbase] at hcell; cases hcell
@@ -620,108 +432,9 @@ theorem h2k_ghFixedK_blk20_ext_trap [LibsignalPlacement]
       · exact h2k_ghFixedK_blk20TrapHook mpl hMm hgh hne
       · exfalso
         have hreal_none :=
-          h2sl_realW_noExtern_keepSub hLs mmpl W pc (h2k_keepSub_covers_blk20 hMm pc hpc)
+          h2sl_realW_noExtern_keepLoSub hLs mmpl W pc (h2k_keepLoSub_covers_blk20 hMm pc hpc)
         rw [externAt?_cliProgExtPlacedAt_any] at hreal_none
         have hcell := findSome?_eq_none_imp hreal_none hsym_mem
         rw [hres_eq, hbase] at hcell; cases hcell
-
-/-- **Compositional ghost-side `hblk20_ext` on 39-row `cliElfBytes`:** combines
-    `h2k_ghFixedK_blk20TrapHook` (9 non-shim named ghosts), `h2k_memcpyGhostHookNarrow_blk20TrapHook`
-    (`"memcpy"`), `h2k_memsetStub_not_in_blk20` (`"memset"`), `h2k_shimStub_not_in_blk20` (`shim`),
-    `h2k_extraStub_not_in_blk20` (`cliExtraGhostSyms`),
-    and `h2sl_realW_noExtern_keepSub` on any base map `baseExt ⊆ cliExternsPlaced mmpl` (proof
-    shape intended to carry over to 37-row stock-lld where `resolve mpl "memcpy" = mmpl.base 20`;
-    re-proved at re-key). -/
-theorem h2k_cliGhostExterns_ghFixedK_blk20_ext [LibsignalPlacement]
-    {mpl mmpl : MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (baseExt : CliHooks → String → Option (State → State))
-    (hbase_sub : ∀ W sym, baseExt W sym = none ∨ baseExt W sym = cliExternsPlaced mmpl W sym)
-    (W : CliHooks) :
-    let P_ghost := cliProgExtPlacedAt mpl
-      (fun W' sym =>
-        if sym == "memcpy" then some (h2k_memcpyGhostHookNarrow mmpl)
-        else if sym == "memset" then some (h2k_memsetGhostHookNarrow mmpl)
-        else cliGhostExterns (h2k_ghFixedK mpl mmpl) (baseExt W') sym) 617 W
-    ∀ pc, keepMemcpyBlk20 mmpl pc = true →
-      P_ghost.externAt? pc = none ∨
-        ∃ f, P_ghost.externAt? pc = some f ∧
-          ∀ L : BitVec 64, keepMemcpyBlk20 mmpl L = true → Blk20TrapHook L f := by
-  intro P_ghost pc hpc
-  cases hg : P_ghost.externAt? pc with
-  | none => exact Or.inl rfl
-  | some f =>
-    refine Or.inr ⟨f, rfl, ?_⟩
-    rw [externAt?_cliProgExtPlacedAt_any] at hg
-    obtain ⟨sym, hsym_mem, hsym_ite⟩ := exists_of_findSome?_eq_some hg
-    cases hres_eq : libsignalSessionLib.resolve mpl sym == pc with
-    | false => rw [hres_eq] at hsym_ite; cases hsym_ite
-    | true =>
-      rw [hres_eq] at hsym_ite; simp only [↓reduceIte] at hsym_ite
-      have hres : libsignalSessionLib.resolve mpl sym = pc := beq_iff_eq.mp hres_eq
-      by_cases hmc : sym == "memcpy"
-      · simp only [hmc, ↓reduceIte, Option.some.injEq] at hsym_ite; subst hsym_ite
-        exact h2k_memcpyGhostHookNarrow_blk20TrapHook mmpl
-      · simp only [hmc, Bool.false_eq_true, ↓reduceIte] at hsym_ite
-        by_cases hms : sym == "memset"
-        · exfalso
-          have hsym_ms : sym = "memset" := beq_iff_eq.mp hms
-          subst hsym_ms
-          have hns := h2k_memsetStub_not_in_blk20 hLs hMm
-          rw [hres, hpc] at hns; exact Bool.noConfusion hns
-        · simp only [hms, Bool.false_eq_true, ↓reduceIte] at hsym_ite
-          rcases cliGhostExterns_some_cases (h2k_ghFixedK mpl mmpl) (baseExt W) hsym_ite with
-            ⟨hex, _⟩ | rfl | ⟨hne, hgh⟩ | hbase
-          · exfalso; have hns := h2k_extraStub_not_in_blk20 hLs hMm hex
-            rw [hres, hpc] at hns; exact Bool.noConfusion hns
-          · exfalso; have hns := h2k_shimStub_not_in_blk20 hLs hMm
-            rw [hres, hpc] at hns; exact Bool.noConfusion hns
-          · exact h2k_ghFixedK_blk20TrapHook mpl hMm hgh hne
-          · exfalso
-            rcases hbase_sub W sym with hnone | heq_real
-            · rw [hnone] at hbase; cases hbase
-            · rw [heq_real] at hbase
-              have hreal_none :=
-                h2sl_realW_noExtern_keepSub hLs mmpl W pc (h2k_keepSub_covers_blk20 hMm pc hpc)
-              rw [externAt?_cliProgExtPlacedAt_any] at hreal_none
-              have hcell := findSome?_eq_none_imp hreal_none hsym_mem
-              rw [hres_eq, hbase] at hcell; cases hcell
-
-/-- **Compositional behind-stub `On` replay for `h2k_memcpyGhostHookNarrow` on 39-row
-    `cliElfBytes`:** discharges `hblk20_ext` via `h2k_cliGhostExterns_ghFixedK_blk20_ext` (proof
-    shape intended to carry over to 37-row stock-lld where `resolve mpl "memcpy" = mmpl.base 20`;
-    re-proved at re-key). -/
-theorem h2k_memcpyGhostHookNarrow_stub_replayOn_ghFixedK [LibsignalPlacement]
-    {mpl mmpl : MultiPlacement} {stubPc : BitVec 64}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (baseExt : CliHooks → String → Option (State → State))
-    (hbase_sub : ∀ W sym, baseExt W sym = none ∨ baseExt W sym = cliExternsPlaced mmpl W sym)
-    (W : CliHooks)
-    (hreal_stub_none : (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc =
-      none)
-    (hStub : StubReachesTargetOn (F3CodeInv mpl mmpl)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc (mmpl.base 20))
-    {sf : State}
-    (hrun_sf' : sf.status = .Running → keepMemcpyBlk20 mmpl sf.pc = false)
-    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
-    (hnhalt_sf : sf.status ≠ .Halted) :
-    let f_mc := h2k_memcpyGhostHookNarrow mmpl
-    let extFn := fun W' sym =>
-      if sym == "memcpy" then some (h2k_memcpyGhostHookNarrow mmpl)
-      else if sym == "memset" then some (h2k_memsetGhostHookNarrow mmpl)
-      else cliGhostExterns (h2k_ghFixedK mpl mmpl) (baseExt W') sym
-    (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc = none ∧
-    ∀ u : State,
-      Steps (cliProgExtPlacedAt mpl extFn 617 W) (f_mc u) sf →
-      u.pc = stubPc → u.status = .Running →
-      (∀ msg, (f_mc u).status ≠ .Exception msg) →
-      u.mem.KeepsFrozen (f_mc u).mem → ExecFrozen u.mem → F3CodeInv mpl mmpl u.mem →
-      Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) u (f_mc u) ∧
-        ExecFrozen (f_mc u).mem ∧ F3CodeInv mpl mmpl (f_mc u).mem ∧ (f_mc u).fs = u.fs :=
-  h2k_memcpyGhostHookNarrow_stub_replayOn_of_trap_ret hLs hMm W
-    (h2k_cliGhostExterns_ghFixedK_blk20_ext hLs hMm baseExt hbase_sub W)
-    hreal_stub_none hStub hrun_sf' hnoex_sf hnhalt_sf
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KNarrowR1

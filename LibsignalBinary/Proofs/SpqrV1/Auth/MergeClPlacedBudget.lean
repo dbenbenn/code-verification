@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Code-Loaded Proof Re-Exports for `Authenticator::merge` (Block `295`)
@@ -19,7 +21,7 @@ loop invariant, and subroutine contracts for `Authenticator::merge` (Block `295`
 `withLsCodeRoLoaded lsmpl (authMergeSpec A lim)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

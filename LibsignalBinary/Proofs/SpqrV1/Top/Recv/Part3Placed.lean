@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -26,7 +26,7 @@ Relocatable version-dispatch cleanup exits, `Ordering::Equal` transition (`+792.
 and `withLsCodeRoLoaded` call wrapper (`SepWPpLS.call_lscro`) for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +48,7 @@ open CryptoVerification.SpqrV1.Top.Recv.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. Version Dispatch Exits (`+752`, `+892`, `+912`, `+936`, `+1028`, `+2540`) -/
@@ -544,7 +544,7 @@ theorem step_drop_pre_2540_placed {H_inner : V1InnerHeapPred} {F : ShaCompress} 
 /-! ## 2. Relocatable `Ordering::Equal` Transition (`+792 .. +820 -> +1532`) -/
 
 /-- Relocatable continuation contract at `+1532` for the V1 ratchet path (`Ordering::Equal`). -/
-def V1RatchetPlacedTail (A : RustAlloc)
+@[expose] def V1RatchetPlacedTail (A : RustAlloc)
     (ext : String → Option (State → State))
     (st msg : VecArg) (ret : BitVec 64)
     (s0 : State) (post : State → SepProp → Prop) : Prop :=

@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import ProofLib.Placed.CheckText
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 
 /-!
 # Placed Library Checkers

@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Run.RecvPure
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Lemmas.Agree
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Coin Round-Trip, Wire Inversion, and Session-Record Helpers for `decPkDef`
@@ -21,7 +24,7 @@ Proves helper lemmas for `pqDecryptPrekeyAgrees_decPkDef`, including the 32-byte
 `recvPrekeyState`, and matched-session record encoding.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,26 +43,26 @@ open CryptoVerification.SignalSession.Cli.RunCompose hiding Bytes
 
 /-! ## Mirrored `S₀` definitions -/
 
-def pmOfE (m : PreKeyMessageFields) (i : SignalMessage) : PreKeySignalMessage :=
+@[expose] def pmOfE (m : PreKeyMessageFields) (i : SignalMessage) : PreKeySignalMessage :=
   E2E.Pqxdh.ResponderWire.PreKeyTryFromArgs.toModel
     { ptr := 0, sret := 0, regId := m.regId, opkId := m.opkId, spkId := m.spkId, kpkId := m.kpkId,
       kyberCt := m.kyberCt, baseKey := m.baseKey, idPub := m.idPub, inner := m.inner } i
 
-def PksmTyped (S : RunSem) : Prop :=
+@[expose] def PksmTyped (S : RunSem) : Prop :=
   ∀ (m : PreKeyMessageFields) (pm : PreKeySignalMessage), m.inner.length + 2048 < 2 ^ 32 →
     S.pksmParse m.bytes = some pm →
     ∃ i : SignalMessage, SignalMessage.tryFrom protoSignalCodec m.inner = .ok i ∧ pm = pmOfE m i
 
-def pkVecTag? (tag : BitVec 8) (n : Nat) (l : List (BitVec 8)) :
+@[expose] def pkVecTag? (tag : BitVec 8) (n : Nat) (l : List (BitVec 8)) :
     Option (List.Vector (BitVec 8) n) :=
   match l with
   | t :: rest => if h : t = tag ∧ rest.length = n then some ⟨rest, h.2⟩ else none
   | [] => none
 
-def pkVec? (n : Nat) (l : List (BitVec 8)) : Option (List.Vector (BitVec 8) n) :=
+@[expose] def pkVec? (n : Nat) (l : List (BitVec 8)) : Option (List.Vector (BitVec 8) n) :=
   if h : l.length = n then some ⟨l, h⟩ else none
 
-def pkToE? (pm : PreKeySignalMessage) : Option PreKeyMessageFields :=
+@[expose] def pkToE? (pm : PreKeySignalMessage) : Option PreKeyMessageFields :=
   if pm.messageVersion ≠ 4 then none
   else
     match pm.kyberPayload with
@@ -72,7 +75,7 @@ def pkToE? (pm : PreKeySignalMessage) : Option PreKeyMessageFields :=
                kpkId := kp.preKeyId, kyberCt := ct, baseKey := pm.baseKey.bytes,
                idPub := pm.identityKey.publicKey.bytes, inner := pm.message.serialized }
 
-def SessMatchesPm (s : CryptoGames.LibsignalSessionApi.Session (List (BitVec 8)))
+@[expose] def SessMatchesPm (s : CryptoGames.LibsignalSessionApi.Session (List (BitVec 8)))
     (pm : PreKeySignalMessage) : Prop :=
   s.state.version = pm.messageVersion.zeroExtend 32 ∧ s.aliceBaseKey = pm.baseKey.serialize
 
@@ -80,7 +83,7 @@ instance (s : CryptoGames.LibsignalSessionApi.Session (List (BitVec 8)))
     (pm : PreKeySignalMessage) : Decidable (SessMatchesPm s pm) := by
   unfold SessMatchesPm; infer_instance
 
-def pkStoreKeys (F : FsFiles) (m : PreKeyMessageFields) : Option ResponderPreKeySecrets :=
+@[expose] def pkStoreKeys (F : FsFiles) (m : PreKeyMessageFields) : Option ResponderPreKeySecrets :=
   let g := StoresGhost.opened
   match getSignedPreKey cliIo.rd F g.signed m.spkId, g.kyber.get cliIo.rd F m.kpkId with
   | .ok sr, .ok kr =>
@@ -100,10 +103,10 @@ def pkStoreKeys (F : FsFiles) (m : PreKeyMessageFields) : Option ResponderPreKey
     | _, _, _ => none
   | _, _ => none
 
-def pkRecvCoins (c : List (BitVec 8)) : BitVec 256 :=
+@[expose] def pkRecvCoins (c : List (BitVec 8)) : BitVec 256 :=
   HKDF.bytesToKey32 (c.take 32 ++ List.replicate (32 - c.length) 0#8)
 
-noncomputable def decPkDef (X : UnreachedPqxdhPrimitives) (W : PEParams)
+@[expose] noncomputable def decPkDef (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles) (peer _me : AddrVal)
     (pm : PreKeySignalMessage) (coins : List (BitVec 8)) : SlotAns (List (BitVec 8)) :=
   let g := StoresGhost.opened
@@ -157,7 +160,7 @@ noncomputable def decPkDef (X : UnreachedPqxdhPrimitives) (W : PEParams)
                   pt))
           | _, _, _ => some none
 
-def ScopeCoversPq (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
+@[expose] def ScopeCoversPq (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
   ∀ (st : PqParty) x g, PqxdhPartyInSpecDomain W st → st.session = some (x, g) →
     Scope (E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g)
 

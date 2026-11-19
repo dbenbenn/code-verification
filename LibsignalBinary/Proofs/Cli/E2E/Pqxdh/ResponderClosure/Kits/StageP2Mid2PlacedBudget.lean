@@ -12,8 +12,8 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2MidPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2MidPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2Placed -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -23,6 +23,16 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3AuxPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Substages 1–3 Composition
@@ -32,7 +42,7 @@ Defines Substages P2.1–P2.3 allocator event lists and `SeqEnv` envelopes, and 
 Arms 1–2) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -182,13 +192,13 @@ local macro "sep_norm" : tactic =>
 /-- Allocator event list along Arm 1 (`+0x0868 -> s0.readReg64 .x30` on `spkKit.getPoll` `.error e`):
 Substage P2.1 (`p2Sub1Events spkBoxSize`), `evs_spk` from `spkKit.getPoll`, and Arm 1 teardown
 (`p2Arm1ErrEvents spkBoxSize 0#64`). -/
-def p2Sub1To3Arm1Events (spkBoxSize : Nat) (evs_spk : List AllocEvent) : List AllocEvent :=
+@[expose] def p2Sub1To3Arm1Events (spkBoxSize : Nat) (evs_spk : List AllocEvent) : List AllocEvent :=
   p2Sub1Events spkBoxSize ++ evs_spk ++ p2Arm1ErrEvents spkBoxSize 0#64
 
 /-- Allocator event list of Substages P2.1–P2.2 along `.ok spkRec` (`+0x0868 -> +0x1460`):
 Substage P2.1 (`p2Sub1Events spkBoxSize`), `evs_spk` from `spkKit.getPoll`, and Substage P2.2's
 `.ok`-tail (`p2Sub2TailEvents spkBoxSize spkPubCap spkPrivCap spkSigCap kpkBoxSize`). -/
-def p2Sub1To2OkEvents (spkBoxSize : Nat) (evs_spk : List AllocEvent)
+@[expose] def p2Sub1To2OkEvents (spkBoxSize : Nat) (evs_spk : List AllocEvent)
     (spkPubCap spkPrivCap spkSigCap kpkBoxSize : Nat) : List AllocEvent :=
   p2Sub1Events spkBoxSize ++ evs_spk ++
     p2Sub2TailEvents spkBoxSize spkPubCap spkPrivCap spkSigCap kpkBoxSize
@@ -196,7 +206,7 @@ def p2Sub1To2OkEvents (spkBoxSize : Nat) (evs_spk : List AllocEvent)
 /-- Allocator event list along Arm 2 (`+0x0868 -> s0.readReg64 .x30` on `kpkKit.getPoll` `.error e`):
 Substages P2.1–P2.2 `.ok spkRec` (`p2Sub1To2OkEvents`), `evs_kpk` from `kpkKit.getPoll`, and Arm 2
 teardown (`p2Arm2ErrEvents kpkBoxSize 0#64`). -/
-def p2Sub1To3Arm2Events (spkBoxSize : Nat) (evs_spk : List AllocEvent)
+@[expose] def p2Sub1To3Arm2Events (spkBoxSize : Nat) (evs_spk : List AllocEvent)
     (spkPubCap spkPrivCap spkSigCap kpkBoxSize : Nat) (evs_kpk : List AllocEvent) :
     List AllocEvent :=
   p2Sub1To2OkEvents spkBoxSize evs_spk spkPubCap spkPrivCap spkSigCap kpkBoxSize ++
@@ -206,7 +216,7 @@ def p2Sub1To3Arm2Events (spkBoxSize : Nat) (evs_spk : List AllocEvent)
 (`+0x0868 -> +0x0d5c`):
 Substages P2.1–P2.2 `.ok spkRec` (`p2Sub1To2OkEvents`), `evs_kpk` from `kpkKit.getPoll`, and
 Substage P2.3's post-poll `.ok` events (`p2Sub3OkPostPollEvents`). -/
-def p2Sub1To3OkEvents (spkBoxSize : Nat) (evs_spk : List AllocEvent)
+@[expose] def p2Sub1To3OkEvents (spkBoxSize : Nat) (evs_spk : List AllocEvent)
     (spkPubCap spkPrivCap spkSigCap kpkBoxSize : Nat) (evs_kpk : List AllocEvent)
     (kpkPubCap kpkPrivCap kpkSigCap : Nat) (evs_drop : List AllocEvent) : List AllocEvent :=
   p2Sub1To2OkEvents spkBoxSize evs_spk spkPubCap spkPrivCap spkSigCap kpkBoxSize ++
@@ -215,7 +225,7 @@ def p2Sub1To3OkEvents (spkBoxSize : Nat) (evs_spk : List AllocEvent)
 
 /-- Deterministic fixed-poll allocator event envelope for Substages P2.1–P2.3 `.ok`
 (`+0x0868 -> +0x0d5c`). -/
-def P2Sub1To3FixedPollEnv (spkBoxSize : Nat) (evs_spk : List AllocEvent)
+@[expose] def P2Sub1To3FixedPollEnv (spkBoxSize : Nat) (evs_spk : List AllocEvent)
     (spkPubCap spkPrivCap spkSigCap kpkBoxSize : Nat) (evs_kpk : List AllocEvent)
     (kpkPubCap kpkPrivCap kpkSigCap : Nat) (evs_drop : List AllocEvent)
     (evs : List AllocEvent) : Prop :=
@@ -261,7 +271,7 @@ and Arms 1–2):
 `P2Sub1Env spkBoxSize`, `spkEnv.getPollEnv`, `FreeOnlyEvs`, `BoxAllocEnv kpkBoxSize`,
 `kpkEnv.getPollEnv`, `FreeOnlyEvs`, `KemKeyPairFromPubPrivEnv`, `FreeOnlyEvs`, and
 `P2Sub3TailAllocEnv`. -/
-def P2Sub1To3SeqEnv {A : RustAlloc}
+@[expose] def P2Sub1To3SeqEnv {A : RustAlloc}
     (spkKit : SignedPreKeyStoreSpec A 0#64) (spkEnv : SignedPreKeyStoreBudgetEnv spkKit)
     (stSpk : spkKit.SpkState) (signedPreKeyId : BitVec 32)
     (kpkKit : KyberPreKeyStoreSpec A 0#64) (kpkEnv : KyberPreKeyStoreBudgetEnv kpkKit)
@@ -279,7 +289,7 @@ def P2Sub1To3SeqEnv {A : RustAlloc}
 /-- `SeqEnv` prefix of Substages P2.1–P2.3 chained with a post-`+0x0d5c` continuation envelope
 `TailEnv` (after `dropSpe2`'s `FreeOnlyEvs` drop), enabling single-hypothesis composition with
 Substage P2.4+. -/
-def P2Sub1To3ThenEnv {A : RustAlloc}
+@[expose] def P2Sub1To3ThenEnv {A : RustAlloc}
     (spkKit : SignedPreKeyStoreSpec A 0#64) (spkEnv : SignedPreKeyStoreBudgetEnv spkKit)
     (stSpk : spkKit.SpkState) (signedPreKeyId : BitVec 32)
     (kpkKit : KyberPreKeyStoreSpec A 0#64) (kpkEnv : KyberPreKeyStoreBudgetEnv kpkKit)

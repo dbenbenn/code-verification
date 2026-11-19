@@ -9,15 +9,24 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigBounds
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigSessionSplit
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigEval
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigSessionSplit
 public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsInit
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhProofsAccept
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhProofs
+public import Computational.Proofs.SignalPqxdh.CostedTablesCompat -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeySigProg -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEval
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigEval
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemProofs
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # One-Key `GapSigEufCma` Reduction Wiring
@@ -27,7 +36,7 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhPro
 bounds, and advantage equality with `sigReductionKeyInd1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +48,7 @@ open OracleSpec OracleComp
 
 /-- The `ReductionDsl` one-key `GapSigEufCma` reduction adversary matching
     `(KeyIndCostedReductionFamily.eval R).sig b A` when `R.sig = sigKeyInd1KeyDslProg S`. -/
-def sigKeyInd1KeyDslAdv (S : Setup) (b : QueryBudget)
+@[expose] def sigKeyInd1KeyDslAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : GapSigEufCmaAdv where
   run pk := (sigKeyInd1KeyDslProg S b).eval (fun _ => A.1.run) pk
   q_sig := 2 * min S.N_spk_tot S.N_recv
@@ -881,13 +890,6 @@ theorem GapSigEufCma_sigKeyInd1KeyDslAdv (P : Primitives)
   rw [sigKeyInd1KeyDslAdv_eq]
   rfl
 
-theorem GapSigEufCmaReal_sigKeyInd1KeyDslAdv (P : Primitives)
-    (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
-    (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
-    GapSigEufCmaReal P isValidDhTriple (sigKeyInd1KeyDslAdv S b A) =
-      GapSigEufCmaReal P isValidDhTriple (sigReductionKeyInd1Key S b A) :=
-  congrArg ENNReal.toReal (GapSigEufCma_sigKeyInd1KeyDslAdv P isValidDhTriple S b A)
-
 /-! ## Syntactic Program-Size Bounds (`.size`) and Run-Local Output Block-Size Bound -/
 
 section Sig1KeySizeAndWhen
@@ -985,182 +987,6 @@ private theorem comp_rename_size_aux {S : Sig} {O : Ops S} {ι : Type} {T : Orac
       smRaw, smLog, smPows, smMk, smUpd, rDrKey, rAccFresh, eqB_size,
       letV_size, bindV_size, findMV_size, eCaseOpt_size, gPrim_size, qPow8_size,
       v_size, Comp.size, Expr.size, ↓reduceIte, Bool.false_eq_true]; omega }
-
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 800000 in
-private theorem s1_gdhHandle2_size_le_min (S : Setup) (K : Nat) :
-    (gdhHandle2 S K).size ≤
-      55 * _root_.ReductionDsl.bits K + 30 * _root_.ReductionDsl.bits (min K S.N_dh) +
-        3 * _root_.ReductionDsl.bits (min K S.N_sess_tot) + 15000 := by
-  simp (config := { maxSteps := 500000 }) only [gdhHandle2, initPrinGdh2B, corruptB, genSpkGdh2B,
-    genOpkGdh2B, initiateGdh2B, s1_finishAcceptGdhC_size, acceptOpkGdh2B, acceptNoOpkGdhB,
-    testB, roParsedC, roRawFallbackC, revealB, registerGdhB, revealSpkB,
-    wrapBase2, wrapSim2, pa2U, pa2V, pa2Up, pa2PrinTarget, pa2DhFlag, pa2EphTarget, pa2SpkTarget,
-    pa2OpkMode, pa2OpkTarget, ephSidMatchesE, smBase, smFgL, smRaw, smLog, smPows, smMk, smUpd,
-    qKJO, qK, qJ, qO, qHdr, rs, slice32,
-    rNone, rInitPrin, rPk, rCorr, rBundle, rHdr, rInitUnfresh, rDrKey, rSpkSk,
-    initSidE, natEq, nat2Eq, nat3Eq, sidEq, kyberEq, kyberCheckE, freshE,
-    optU32Eq, isSomeE, optFst, optSnd, nonZero32, encEC_size, encKEM_size,
-    orE, eLet2, isAdvPowsE,
-    mkSecretPosC, mkPairPosC, computePosC, computeOptPosInitC, s1_fgPatchC_size,
-    findHonestC, isGameSpkC, isGameOpkC, koskSenderOkPowsC, koskBundleOkPowsC,
-    lookupSpkSkC, resolveSigPkC, honestPeerC, checkProvC, s1_chooseInitRandC_size,
-    letV_size, bindV_size, caseOptV_size, caseSumV_size, findMV_size, anyMV_size,
-    eLet_size, eCaseOpt_size, eCaseSum_size, eFind_size, eAny_size, eMap_size,
-    gPrim_size, litB_size, takeKB_size, dropB_size, lenB_size, eqB_size, u32OfNat_size, eqU32_size,
-    sBytes32_size, sRandom64_size, sDrKey96_size,
-    qX25519_size, qX25519Base_size, qIsCanonical_size, qPow8_size,
-    qSigPkGen_size, qSigSign_size, qSigVerify_size,
-    qKemKeyGen_size, qKemEncaps_size, qKemDecaps_size, v_size, Comp.size, Expr.size,
-    bits_0, bits_32, bits_64, bits_96, bits_128, bits_160, bits_192,
-    ↓reduceIte, Bool.false_eq_true]
-  have : K.min S.N_dh = min K S.N_dh := rfl
-  have : K.min S.N_sess_tot = min K S.N_sess_tot := rfl
-  omega
-
-private theorem sig1KeyPreDispatchC_size_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
-    (sig1KeyPreDispatchC S K (Δ := Δ) s q).size ≤
-      12 * _root_.ReductionDsl.bits K + 5 * _root_.ReductionDsl.bits (min K S.N_dh) + 3000 := by
-  simp only [sig1KeyPreDispatchC, sig1KeyInitPrinB, sig1KeyTargetGenSpkB,
-    sig1KeyInitiateCheckC, extract1KeyC, honestPeerC, findHonestC,
-    s1Fg, s1Target, s1Pk, s1Budget, s1Forgery, s1Base, s1Mk, s1Upd,
-    smBase, smFgL, smRaw, smLog, smPows, smMk, smUpd,
-    stPrin, stSpks, stOpks, stSess, stResps, stUsedO, stUsedN, stKyb, stRo, stAdv, stMk, stUpd,
-    peIkAPk, peMk, sbSpkPk, sbPqspkPk, sbMk,
-    buIkB, buSpkB, buSpkSig, buPqspkB, buPqspkSig, buMk,
-    rNone, rInitPrin, rBundle, isSomeE, natEq, nat2Eq,
-    encEC_size, encKEM_size, s1_widenEC_size,
-    letV_size, bindV_size, caseOptV_size, caseSumV_size, findMV_size,
-    s1Prim_size, s1_qSigDdhSign_size, qSigVerify_size, qPow8_size,
-    sBytes32_size, sRandom64_size, qX25519Base_size, qKemKeyGen_size,
-    eCaseOpt_size, eAny_size, eFind_size, eqB_size, litB_size, u32OfNat_size,
-    v_size, Comp.size, Expr.size, bits_0, bits_1]
-  have : K.min S.N_dh = min K S.N_dh := rfl
-  omega
-
-private theorem delegateFgC_size_le_min (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
-    (delegateFgC S K (Δ := Δ) s q).size ≤
-      55 * _root_.ReductionDsl.bits K + 30 * _root_.ReductionDsl.bits (min K S.N_dh) +
-        3 * _root_.ReductionDsl.bits (min K S.N_sess_tot) + 15100 := by
-  have hH := s1_gdhHandle2_size_le_min S K
-  simp only [delegateFgC, pa2Zero, pa2Mk, s1Fg, s1Target, s1Pk, s1Budget, s1Forgery,
-    s1Mk, s1Upd, letV_size, bindV_size, liftGdhToSigDdh_size, comp_rename_size,
-    litB_size, v_size, Comp.size, Expr.size, bits_1]
-  omega
-
-private theorem delegateFgC_size_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List PT}
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ sig1KeyStTy) (q : Var Γ₂ keyIndQueryTy) :
-    (delegateFgC S K (Δ := Δ) s q).size ≤
-      55 * _root_.ReductionDsl.bits K + 46 * _root_.ReductionDsl.bits S.N_dh +
-        3 * _root_.ReductionDsl.bits S.N_sess_tot + 15100 := by
-  have hM := delegateFgC_size_le_min S K (Δ := Δ) s q
-  have b1 := _root_.ReductionDsl.bits_mono (Nat.min_le_right K S.N_dh)
-  have b2 := _root_.ReductionDsl.bits_mono (Nat.min_le_right K S.N_sess_tot)
-  omega
-
-private theorem sigKeyInd1KeyProg_finish_size_le (S : Setup) (K : Nat) :
-    (sigKeyInd1KeyProg S K).finish.size ≤ 100 := by
-  dsimp only [sigKeyInd1KeyProg]
-  simp only [s1Forgery, eCaseOpt_size, litB_size, v_size, Comp.size, Expr.size]; omega
-
-theorem sigKeyInd1KeyProg_size_le (S : Setup) (K : Nat) :
-    (sigKeyInd1KeyProg S K).size ≤
-      67 * _root_.ReductionDsl.bits K + 55 * _root_.ReductionDsl.bits S.N_dh +
-        3 * _root_.ReductionDsl.bits S.N_sess_tot + 18500 := by
-  have hPre := sig1KeyPreDispatchC_size_le S K
-    (Γ₁ := [sig1KeyStTy, keyIndQueryTy]) (Γ₂ := [sig1KeyStTy, keyIndQueryTy])
-    (Δ := [sig1KeyStTy, keyIndQueryTy]) .zero (.succ .zero)
-  have bPre := _root_.ReductionDsl.bits_mono (Nat.min_le_right K S.N_dh)
-  have hDel := delegateFgC_size_le S K
-    (Γ₁ := [sig1KeyStTy, keyIndQueryTy]) (Γ₂ := [sig1KeyStTy, keyIndQueryTy])
-    (Δ := .unit :: (.sum S1RS .unit) :: [sig1KeyStTy, keyIndQueryTy]) .zero (.succ .zero)
-  have hH : (sig1KeyHandleC S K).size ≤
-      67 * _root_.ReductionDsl.bits K + 51 * _root_.ReductionDsl.bits S.N_dh +
-        3 * _root_.ReductionDsl.bits S.N_sess_tot + 18200 := by
-    simp only [sig1KeyHandleC, bindV_size, caseSumV_size, v_size, Comp.size]; omega
-  have hI : (sigKeyInd1KeyProg S K).init.size ≤ 4 * _root_.ReductionDsl.bits S.N_dh + 100 := by
-    have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
-    have bMin : _root_.ReductionDsl.bits (min K (min S.N_spk_tot S.N_recv)) ≤
-        _root_.ReductionDsl.bits S.N_dh :=
-      _root_.ReductionDsl.bits_mono
-        (le_trans (Nat.min_le_right _ _) (le_trans (Nat.min_le_left _ _) (by omega)))
-    dsimp only [sigKeyInd1KeyProg]
-    simp only [s1Mk, emptySimE, smMk, emptyStE, stMk,
-      bindV_size, s1Prim_size, sIndex_size, sBool_size, v_size, Comp.size, Expr.size]; omega
-  have hF := sigKeyInd1KeyProg_finish_size_le S K
-  change (sigKeyInd1KeyProg S K).init.size + (sig1KeyHandleC S K).size +
-    (sigKeyInd1KeyProg S K).finish.size ≤ _; omega
-
-private theorem sigKeyInd1KeyProg_size_le_K (S : Setup) (K : Nat) :
-    (sigKeyInd1KeyProg S K).size ≤ 106 * _root_.ReductionDsl.bits K + 18400 := by
-  have hPre := sig1KeyPreDispatchC_size_le S K
-    (Γ₁ := [sig1KeyStTy, keyIndQueryTy]) (Γ₂ := [sig1KeyStTy, keyIndQueryTy])
-    (Δ := [sig1KeyStTy, keyIndQueryTy]) .zero (.succ .zero)
-  have hDelM := delegateFgC_size_le_min S K
-    (Γ₁ := [sig1KeyStTy, keyIndQueryTy]) (Γ₂ := [sig1KeyStTy, keyIndQueryTy])
-    (Δ := .unit :: (.sum S1RS .unit) :: [sig1KeyStTy, keyIndQueryTy]) .zero (.succ .zero)
-  have b1 := _root_.ReductionDsl.bits_mono (Nat.min_le_left K S.N_dh)
-  have b2 := _root_.ReductionDsl.bits_mono (Nat.min_le_left K S.N_sess_tot)
-  have hH : (sig1KeyHandleC S K).size ≤ 105 * _root_.ReductionDsl.bits K + 18200 := by
-    simp only [sig1KeyHandleC, bindV_size, caseSumV_size, v_size, Comp.size]; omega
-  have hI : (sigKeyInd1KeyProg S K).init.size ≤ _root_.ReductionDsl.bits K + 100 := by
-    have bMin : _root_.ReductionDsl.bits (min K (min S.N_spk_tot S.N_recv)) ≤
-        _root_.ReductionDsl.bits K :=
-      _root_.ReductionDsl.bits_mono (Nat.min_le_left _ _)
-    dsimp only [sigKeyInd1KeyProg]
-    simp only [s1Mk, emptySimE, smMk, emptyStE, stMk,
-      bindV_size, s1Prim_size, sIndex_size, sBool_size, v_size, Comp.size, Expr.size]; omega
-  have hF := sigKeyInd1KeyProg_finish_size_le S K
-  change (sigKeyInd1KeyProg S K).init.size + (sig1KeyHandleC S K).size +
-    (sigKeyInd1KeyProg S K).finish.size ≤ _; omega
-
-theorem sigKeyInd1KeyDslProg_size_le_stepCostBudget (S : Setup) (b : QueryBudget) :
-    (sigKeyInd1KeyDslProg S b).size ≤
-      18500 + 125 * _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) := by
-  have hK := sigKeyInd1KeyProg_size_le_K S b.q_total
-  have hq : _root_.ReductionDsl.bits b.q_total ≤
-      _root_.ReductionDsl.bits (_root_.SignalPqxdh.Security.stepCostBudget S b) := by
-    apply _root_.ReductionDsl.bits_mono
-    unfold _root_.SignalPqxdh.Security.stepCostBudget
-    dsimp only
-    have hmul : 2 ^ 16 * (b.q_total + 1) ≤ 2 ^ 16 * (b.q_total + 1) * (b.q_total + 1) :=
-      Nat.le_mul_of_pos_right _ (Nat.succ_pos _)
-    omega
-  unfold sigKeyInd1KeyDslProg
-  omega
-
-/-- Run-local output block-size bound for `sigKeyInd1KeyDslProg` under `AllGameQueriesFit`. -/
-theorem sigKeyInd1KeyDslProg_blocks_when (S : Setup) (b : QueryBudget) (ℓ : Nat)
-    (A : Unit → OracleComp (unifSpec + keyIndSpec S) Bool)
-    (hA : ∀ u, (A u).IsQueryBoundP (fun q => SignalPqxdh.isGameQuery q = true) b.q_total)
-    (hfit : ∀ u, AllGameQueriesFit ℓ (keyIndCodec S) (A u))
-    (x : (B 32).denote)
-    (hx : ValFits ℓ (B 32) x)
-    (y : (Ty.prod (B 1569) (B 64)).denote)
-    (hy : y ∈ supportWhen (pqSigAndDdhIface.AnswerFits ℓ)
-      ((sigKeyInd1KeyDslProg S b).eval A x)) :
-    ValFits (SignalPqxdh.LegacyCosted.outputSizeBudget S b ℓ) (Ty.prod (B 1569) (B 64)) y := by
-  rw [valFits_iff_fits]
-  have hx' : (B 32).Fits ℓ x := (valFits_iff_fits ℓ _ _).1 hx
-  have hA' : ∀ u, (A u).IsQueryBoundP
-      (_root_.ReductionDsl.isGameQuery (G := keyIndSpec S)) b.q_total := by
-    intro u
-    convert hA u using 1
-    funext q; cases q <;> simp [_root_.ReductionDsl.isGameQuery, SignalPqxdh.isGameQuery]
-  have hEval := (sigKeyInd1KeyDslProg S b).fits_eval_when
-    pqO_sizeHonest pqSamplers_sizeHonest ℓ ℓ 0 (fun _ => trivial)
-    A b.q_total ℓ hA' hfit x hx' y hy
-  have hCost := sigKeyInd1KeyDslProg_totalCost_le_stepCostBudget S b
-  have hNq := le_trans
-    (gred_nq_le_totalCost one_le_pqChalIface_qCost one_le_pqSamplers_sCost
-      (sigKeyInd1KeyDslProg S b) b.q_total)
-    hCost
-  refine Ty.fits_mono ?_ (Ty.prod (B 1569) (B 64)) y hEval
-  unfold SignalPqxdh.LegacyCosted.outputSizeBudget
-  have hMul := Nat.mul_le_mul_right ℓ hNq
-  nlinarith
 
 end Sig1KeySizeAndWhen
 

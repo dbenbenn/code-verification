@@ -9,21 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionInitiateACommon
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-public import LibsignalBinary.Proofs.E2E.Bin.Record
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees
+public import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionInitiateACommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Bin.Record -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.CanonKey
 import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.PrologueVersionLocalIdentity
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 set_option linter.unusedSimpArgs false
 
 namespace CryptoVerification.E2E.Pqxdh.TopLevel
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection CryptoGames
+open Arm64 ProofLib ProofLib.ProgramReflection CryptoGames
 open CryptoGames.HMAC CryptoGames.HKDF
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
@@ -32,7 +32,7 @@ open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E CryptoVerification.E2E.Bin
 open CryptoVerification.E2E.Pqxdh.Initiator
 
-def durationSinceZeroTsAllocSpec : Spec (BitVec 64 × BitVec 64) where
+@[expose] def durationSinceZeroTsAllocSpec : Spec (BitVec 64 × BitVec 64) where
   pre := fun (p, ret) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret⌝ ∗
       memRegion p 16 ∗ memRegion ret 24 ∗ stackAt s.sp allocHookStack
@@ -43,73 +43,10 @@ def durationSinceZeroTsAllocSpec : Spec (BitVec 64 × BitVec 64) where
         (ret ↦₆₄ w0) ∗ ((ret + 8#64) ↦₆₄ 0#64) ∗ ((ret + 16#64) ↦₆₄ w2))) ∗
       stackAt s0.sp allocHookStack
 
-def setUnackPreKeyMsgExactStackSpec (A : RustAlloc) (img : Obj.Image) :
-    Spec SetUnackExactGhost where
-  pre := fun g s =>
-    ⌜s.readReg64 .x0 = g.statePtr ∧
-      (s.readReg64 .x1).setWidth 32 = g.optOpkTag ∧
-      (s.readReg64 .x2).setWidth 32 = g.optOpkVal ∧
-      (s.readReg64 .x3).setWidth 32 = g.spkId ∧
-      s.readReg64 .x4 = g.baseKeyPtr ∧
-      g.baseKeyBytes.length = 32⌝ ∗
-    (g.baseKeyPtr ↦ₛ bytesToBv8 g.baseKeyBytes) ∗
-    ((g.statePtr + 0xf8#64) ↦₆₄ 0xffffffffffffffff#64) ∗
-    memRegion (g.statePtr + 0x100#64) 40 ∗
-    stackAt (s.sp - 144#64) (allocHookStack + 32) ∗
-    cells (s.sp - 144#64) 18 ∗
-    A.pool
-  post := fun g s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-    (g.baseKeyPtr ↦ₛ bytesToBv8 g.baseKeyBytes) ∗
-    Initiator.vecU8 A (g.statePtr + 0xf8#64) (bytesToBv8 (encodeEC g.baseKeyBytes)) ∗
-    ((g.statePtr + 0x110#64) ↦₃₂ g.optOpkTag) ∗
-    ((g.statePtr + 0x114#64) ↦₃₂ g.optOpkVal) ∗
-    ((g.statePtr + 0x118#64) ↦₆₄ 0#64) ∗
-    ((g.statePtr + 0x120#64) ↦₃₂ g.spkId) ∗
-    memRegion (g.statePtr + 0x124#64) 4 ∗
-    stackAt (s0.sp - 144#64) (allocHookStack + 32) ∗
-    cells (s0.sp - 144#64) 18 ∗
-    A.pool
-  onPanic := rustPanicOnOom img
-
-/-- 16-KiB (`extHookStack + 32`) stack generalization of `setUnackPreKeyMsgExactStackSpec`
-for contract-backed `CliExt.durationSinceEpochSpec` (`extHookStack = 16384`). -/
-def setUnackPreKeyMsgExtStackSpec (A : RustAlloc) (img : Obj.Image) :
-    Spec SetUnackExactGhost where
-  pre := fun g s =>
-    ⌜s.readReg64 .x0 = g.statePtr ∧
-      (s.readReg64 .x1).setWidth 32 = g.optOpkTag ∧
-      (s.readReg64 .x2).setWidth 32 = g.optOpkVal ∧
-      (s.readReg64 .x3).setWidth 32 = g.spkId ∧
-      s.readReg64 .x4 = g.baseKeyPtr ∧
-      g.baseKeyBytes.length = 32⌝ ∗
-    (g.baseKeyPtr ↦ₛ bytesToBv8 g.baseKeyBytes) ∗
-    ((g.statePtr + 0xf8#64) ↦₆₄ 0xffffffffffffffff#64) ∗
-    memRegion (g.statePtr + 0x100#64) 40 ∗
-    stackAt (s.sp - 144#64) (extHookStack + 32) ∗
-    cells (s.sp - 144#64) 18 ∗
-    A.pool
-  post := fun g s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-    (g.baseKeyPtr ↦ₛ bytesToBv8 g.baseKeyBytes) ∗
-    Initiator.vecU8 A (g.statePtr + 0xf8#64) (bytesToBv8 (encodeEC g.baseKeyBytes)) ∗
-    ((g.statePtr + 0x110#64) ↦₃₂ g.optOpkTag) ∗
-    ((g.statePtr + 0x114#64) ↦₃₂ g.optOpkVal) ∗
-    ((g.statePtr + 0x118#64) ↦₆₄ 0#64) ∗
-    ((g.statePtr + 0x120#64) ↦₃₂ g.spkId) ∗
-    memRegion (g.statePtr + 0x124#64) 4 ∗
-    stackAt (s0.sp - 144#64) (extHookStack + 32) ∗
-    cells (s0.sp - 144#64) 18 ∗
-    A.pool
-  onPanic := rustPanicOnOom img
-
-
-/-! ## Initiated `SessionState`, `Session`, and `SessionGhost` -/
-
 /-- Abstract `SessionState` constructed by `initialize_alice_session` +
 `set_unacknowledged_pre_key_message`
 on the accept path of `session_initiate`. -/
-def aliceInitiatedState (ourIdentity theirIdentity : IdentityKey)
+@[expose] def aliceInitiatedState (ourIdentity theirIdentity : IdentityKey)
     (theirRatchetKey : PublicKey) (rk1 : RootKey) (ck0 : BitVec 256)
     (sendingKeyPair : KeyPair) (ck1 : ChainKey)
     (pq : List (BitVec 8)) : SessionState (List (BitVec 8)) :=
@@ -123,7 +60,7 @@ def aliceInitiatedState (ourIdentity theirIdentity : IdentityKey)
     pendingPreKey := true
     pqRatchetState := pq }
 
-def aliceInitiatedSession (ourIdentity theirIdentity : IdentityKey)
+@[expose] def aliceInitiatedSession (ourIdentity theirIdentity : IdentityKey)
     (theirRatchetKey baseKey : PublicKey) (rk1 : RootKey) (ck0 : BitVec 256)
     (sendingKeyPair : KeyPair) (ck1 : ChainKey) (opkId? : Option (BitVec 32))
     (spkId kyberPreKeyId remoteRegId localRegId : BitVec 32)
@@ -170,7 +107,6 @@ def aliceInitiatedGhost
     kyber := some ⟨⟨1569#64, kemCtSerPtr, kemCtSer⟩,
                    unpack32 kyberPreKeyId ++ unpack32 pad_144⟩
     regIds := unpack32 remoteRegId ++ unpack32 localRegId }
-
 
 private theorem encodeKey_length_le_10_init (tag : Nat) (wt : WireType) :
     (encodeKey tag wt).length ≤ 10 :=
@@ -369,7 +305,6 @@ theorem encodeRecord_aliceInitiated_length_lt
   change (Record.encSession s).length ≤ 3800 at hs
   omega
 
-
 theorem deserialize_serialize_pk_init (pk : PublicKey) :
     PublicKey.deserialize pk.serialize = .ok pk := by
   unfold PublicKey.serialize PublicKey.deserialize
@@ -377,8 +312,6 @@ theorem deserialize_serialize_pk_init (pk : PublicKey) :
   simp [hbs]
   congr 1
   exact Subtype.ext (List.take_of_length_le (Nat.le_of_eq hbs))
-
-
 
 theorem vecU8Buf_of_live_pointsToBytes (A : RustAlloc) (cap ptr : BitVec 64)
     (bs : List (BitVec 8)) (n : Nat)
@@ -563,6 +496,5 @@ theorem receiverChainsVecBuf_aliceInitiated (A : RustAlloc)
       memRegion (chainBufPtr + 0x68#64) 312 := by ac_rfl
   rw [hrearr2]
   exact sepConj_mono_right (sepConj_mono_left hchain)
-
 
 end CryptoVerification.E2E.Pqxdh.TopLevel

@@ -9,9 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunked
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunked -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -22,7 +20,7 @@ branches (`keysUnsampled`, `headerSent`, `ct1Sampled`), and jump-table prologue 
 `V1State::encoded_len [local#1, #2]` (`0x3902c`, `0x67df8`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 
@@ -31,8 +29,6 @@ open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalSpqrV1 EncodedLen
 
-local notation "tripleRatchetProgAtExt" => CryptoVerification.LibsignalTripleRatchet.contractProg
-
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedVariables false
@@ -40,19 +36,8 @@ set_option linter.unusedSimpArgs false
 
 /-! ## 1. Entry Membership and Instruction Fetch Macro -/
 
-/-- Entry-point membership for the two copies of `V1State::encoded_len` (`0x3902c`, `0x67df8`). -/
-def IsV1StateEntry (b : BitVec 64) (abs : String → Option (State → State))
-    (entry : BitVec 64) : Prop :=
-  (tripleRatchetProgAtExt b abs).fnAddr v1StateEncodedLenLocal1Name = entry ∨
-  (tripleRatchetProgAtExt b abs).fnAddr v1StateEncodedLenLocal2Name = entry
-
 open Lean Elab Tactic in
 elab "v1State_fetches_range " hfn:ident kStart:num kEnd:num : tactic => do
-  let offs := #[0x39110, 0x62a00]
-  let fnOffs := #[
-    mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x39110,
-    mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x62a00
-  ]
   let skip : Array Nat := #[
     56, 60,
     124, 188, 260, 324, 376, 408, 472, 520, 600, 664,
@@ -63,24 +48,15 @@ elab "v1State_fetches_range " hfn:ident kStart:num kEnd:num : tactic => do
   ]
   let kStart := kStart.getNat
   let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
   for i in [kStart / 4 : kEnd / 4] do
     let k := 4 * i
     if !skip.contains k then
-      let decs := offs.map fun off =>
-        mkIdent (`CryptoVerification.SpqrV1.ProtoRepr |>.str
-          s!"spqrV1StateBin_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-      let d0 := decs[0]!; let d1 := decs[1]!
-      let f0 := fnOffs[0]!; let f1 := fnOffs[1]!
       let kq := Syntax.mkNumLit (toString k)
       if k == 0 then
         let pf0 := mkIdent (`CryptoVerification.blkPC_177_rebase_fetch_base)
         let pf1 := mkIdent (`CryptoVerification.blkPC_405_rebase_fetch_base)
         evalTactic (← `(tactic|
           have := dualBlockP2_fetch_entry $hfn
-            (fun b H => $fetchEntry (b := b) (H := H) $f0 (by decide) $d0)
-            (fun b H => $fetchEntry (b := b) (H := H) $f1 (by decide) $d1)
             (fun [LibsignalPlacement] H => $pf0 _ H)
             (fun [LibsignalPlacement] H => $pf1 _ H)))
       else
@@ -89,8 +65,6 @@ elab "v1State_fetches_range " hfn:ident kStart:num kEnd:num : tactic => do
         let pf1 := mkIdent (`CryptoVerification |>.str s!"blkPC_405_rebase_fetch_0x{kHex}")
         evalTactic (← `(tactic|
           have := dualBlockP2_fetch_add $hfn (k := $kq)
-            (fun b H => $fetchAdd (b := b) (H := H) (k := $kq) $f0 (by decide) $d0)
-            (fun b H => $fetchAdd (b := b) (H := H) (k := $kq) $f1 (by decide) $d1)
             (fun [LibsignalPlacement] H => $pf0 _ H)
             (fun [LibsignalPlacement] H => $pf1 _ H)))
 
@@ -185,11 +159,11 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- First word (`[p]`) of `optKeysUnsampledPBPinnedAt` / `optNoHeaderReceivedPBPinnedAt` / `optCt2SentPBPinnedAt`:
     `noneCap2` when `none`, `optAuthCap g auth` when `some`. -/
-def optUnchunked2Cap (g : Unchunked2PBGhost) : Option (Option AuthenticatorPB) → BitVec 64
+@[expose] def optUnchunked2Cap (g : Unchunked2PBGhost) : Option (Option AuthenticatorPB) → BitVec 64
   | none => noneCap2
   | some auth => optAuthCap g auth
 
-def optUnchunked2Rest (A : RustAlloc) (g : Unchunked2PBGhost) (p : BitVec 64) :
+@[expose] def optUnchunked2Rest (A : RustAlloc) (g : Unchunked2PBGhost) (p : BitVec 64) :
     Option (BitVec 64 × Option AuthenticatorPB) → SepProp
   | none => memRegion (p + 8#64) 48
   | some (epoch, auth) =>
@@ -221,10 +195,10 @@ theorem optUnchunked2Rest_cap_bounds {A : RustAlloc} {g : Unchunked2PBGhost} {p 
       simp only [Option.map_some, Option.isSome_some, Bool.not_true, optUnchunked2Cap, optAuthCap]
       exact ⟨cap_add_two_beq_zero_false hcap, cap_add_two_bne_zero_true hcap⟩
 
-def optKeysUnsampledCap (g : Unchunked2PBGhost) (opt : Option V1State.Unchunked.KeysUnsampled) : BitVec 64 :=
+@[expose] def optKeysUnsampledCap (g : Unchunked2PBGhost) (opt : Option V1State.Unchunked.KeysUnsampled) : BitVec 64 :=
   optUnchunked2Cap g (opt.map fun u => u.auth)
 
-def optKeysUnsampledRest (A : RustAlloc) (g : Unchunked2PBGhost) (p : BitVec 64)
+@[expose] def optKeysUnsampledRest (A : RustAlloc) (g : Unchunked2PBGhost) (p : BitVec 64)
     (opt : Option V1State.Unchunked.KeysUnsampled) : SepProp :=
   optUnchunked2Rest A g p (opt.map fun u => (u.epoch, u.auth))
 
@@ -248,10 +222,10 @@ theorem optKeysUnsampledRest_cap_bounds {A : RustAlloc} {g : Unchunked2PBGhost} 
   have h := optUnchunked2Rest_cap_bounds hm
   cases opt <;> simpa [optKeysUnsampledCap] using h
 
-def optNoHeaderReceivedCap (g : Unchunked2PBGhost) (opt : Option V1State.Unchunked.NoHeaderReceived) : BitVec 64 :=
+@[expose] def optNoHeaderReceivedCap (g : Unchunked2PBGhost) (opt : Option V1State.Unchunked.NoHeaderReceived) : BitVec 64 :=
   optUnchunked2Cap g (opt.map fun u => u.auth)
 
-def optNoHeaderReceivedRest (A : RustAlloc) (g : Unchunked2PBGhost) (p : BitVec 64)
+@[expose] def optNoHeaderReceivedRest (A : RustAlloc) (g : Unchunked2PBGhost) (p : BitVec 64)
     (opt : Option V1State.Unchunked.NoHeaderReceived) : SepProp :=
   optUnchunked2Rest A g p (opt.map fun u => (u.epoch, u.auth))
 
@@ -275,10 +249,10 @@ theorem optNoHeaderReceivedRest_cap_bounds {A : RustAlloc} {g : Unchunked2PBGhos
   have h := optUnchunked2Rest_cap_bounds hm
   cases opt <;> simpa [optNoHeaderReceivedCap] using h
 
-def optCt2SentCap (g : Unchunked2PBGhost) (opt : Option V1State.Unchunked.Ct2Sent) : BitVec 64 :=
+@[expose] def optCt2SentCap (g : Unchunked2PBGhost) (opt : Option V1State.Unchunked.Ct2Sent) : BitVec 64 :=
   optUnchunked2Cap g (opt.map fun u => u.auth)
 
-def optCt2SentRest (A : RustAlloc) (g : Unchunked2PBGhost) (p : BitVec 64)
+@[expose] def optCt2SentRest (A : RustAlloc) (g : Unchunked2PBGhost) (p : BitVec 64)
     (opt : Option V1State.Unchunked.Ct2Sent) : SepProp :=
   optUnchunked2Rest A g p (opt.map fun u => (u.epoch, u.auth))
 
@@ -303,11 +277,11 @@ theorem optCt2SentRest_cap_bounds {A : RustAlloc} {g : Unchunked2PBGhost} {p : B
   cases opt <;> simpa [optCt2SentCap] using h
 
 /-- First word (`[p]`) of `optHeaderReceivedPBPinnedAt`: `noneCap` when `none`, `g.f3.cap` when `some`. -/
-def optHeaderReceivedCap (g : Unchunked3PBGhost) : Option V1State.Unchunked.HeaderReceived → BitVec 64
+@[expose] def optHeaderReceivedCap (g : Unchunked3PBGhost) : Option V1State.Unchunked.HeaderReceived → BitVec 64
   | none => noneCap
   | some _ => g.f3.cap
 
-def optHeaderReceivedRest (A : RustAlloc) (g : Unchunked3PBGhost) (p : BitVec 64) :
+@[expose] def optHeaderReceivedRest (A : RustAlloc) (g : Unchunked3PBGhost) (p : BitVec 64) :
     Option V1State.Unchunked.HeaderReceived → SepProp
   | none => memRegion (p + 8#64) 72
   | some u =>
@@ -344,11 +318,11 @@ theorem optHeaderReceivedRest_cap_bounds {A : RustAlloc} {g : Unchunked3PBGhost}
     exact ⟨cap_add_one_beq_zero_false hcap, cap_add_one_bne_zero_true hcap⟩
 
 /-- First word (`[p]`) of `optHeaderSentPBPinnedAt`: `noneCap` when `none`, `g.f3.cap` when `some`. -/
-def optHeaderSentCap (g : Unchunked4PBGhost) : Option V1State.Unchunked.HeaderSent → BitVec 64
+@[expose] def optHeaderSentCap (g : Unchunked4PBGhost) : Option V1State.Unchunked.HeaderSent → BitVec 64
   | none => noneCap
   | some _ => g.f3.cap
 
-def optHeaderSentRest (A : RustAlloc) (g : Unchunked4PBGhost) (p : BitVec 64) :
+@[expose] def optHeaderSentRest (A : RustAlloc) (g : Unchunked4PBGhost) (p : BitVec 64) :
     Option V1State.Unchunked.HeaderSent → SepProp
   | none => memRegion (p + 8#64) 96
   | some u =>
@@ -387,11 +361,11 @@ theorem optHeaderSentRest_cap_bounds {A : RustAlloc} {g : Unchunked4PBGhost} {p 
     exact ⟨cap_add_one_beq_zero_false hcap, cap_add_one_bne_zero_true hcap⟩
 
 /-- First word (`[p]`) of `optEkSentCt1ReceivedPBPinnedAt`: `noneCap` when `none`, `g.f3.cap` when `some`. -/
-def optEkSentCt1ReceivedCap (g : Unchunked4PBGhost) : Option V1State.Unchunked.EkSentCt1Received → BitVec 64
+@[expose] def optEkSentCt1ReceivedCap (g : Unchunked4PBGhost) : Option V1State.Unchunked.EkSentCt1Received → BitVec 64
   | none => noneCap
   | some _ => g.f3.cap
 
-def optEkSentCt1ReceivedRest (A : RustAlloc) (g : Unchunked4PBGhost) (p : BitVec 64) :
+@[expose] def optEkSentCt1ReceivedRest (A : RustAlloc) (g : Unchunked4PBGhost) (p : BitVec 64) :
     Option V1State.Unchunked.EkSentCt1Received → SepProp
   | none => memRegion (p + 8#64) 96
   | some u =>
@@ -430,11 +404,11 @@ theorem optEkSentCt1ReceivedRest_cap_bounds {A : RustAlloc} {g : Unchunked4PBGho
     exact ⟨cap_add_one_beq_zero_false hcap, cap_add_one_bne_zero_true hcap⟩
 
 /-- First word (`[p]`) of `optCt1SentEkReceivedPBPinnedAt`: `noneCap` when `none`, `g.f3.cap` when `some`. -/
-def optCt1SentEkReceivedCap (g : Unchunked5PBGhost) : Option V1State.Unchunked.Ct1SentEkReceived → BitVec 64
+@[expose] def optCt1SentEkReceivedCap (g : Unchunked5PBGhost) : Option V1State.Unchunked.Ct1SentEkReceived → BitVec 64
   | none => noneCap
   | some _ => g.f3.cap
 
-def optCt1SentEkReceivedRest (A : RustAlloc) (g : Unchunked5PBGhost) (p : BitVec 64) :
+@[expose] def optCt1SentEkReceivedRest (A : RustAlloc) (g : Unchunked5PBGhost) (p : BitVec 64) :
     Option V1State.Unchunked.Ct1SentEkReceived → SepProp
   | none => memRegion (p + 8#64) 120
   | some u =>
@@ -847,7 +821,7 @@ theorem step_v1State_ct1Sampled (Φ : Memory → Prop) [FrozenInv Φ] (prog : Pr
 
 /-! ## 6. Jump-Table Decomposition & Option-Cap Bounds -/
 
-def v1StateJumpTableBytesAt (roBase : BitVec 64) : SepProp :=
+@[expose] def v1StateJumpTableBytesAt (roBase : BitVec 64) : SepProp :=
   (roBase ↦₈ᵣ 0x00#8) ∗ ((roBase + 1#64) ↦₈ᵣ 0x7c#8) ∗
     ((roBase + 2#64) ↦₈ᵣ 0x49#8) ∗ ((roBase + 3#64) ↦₈ᵣ 0x4c#8) ∗
     ((roBase + 4#64) ↦₈ᵣ 0x05#8) ∗ ((roBase + 5#64) ↦₈ᵣ 0x9e#8) ∗

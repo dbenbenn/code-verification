@@ -12,7 +12,7 @@ module
 public import Computational.Specifications.Pqxdh.Security.Auth.Headline
 public import Computational.Specifications.Pqxdh.Security.CostedBudgets
 public import Computational.Proofs.ReductionDsl.KindedDispatch -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.KindedQueries -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.KindedQueries
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreK -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.KindedCost
 import Computational.Proofs.ReductionDsl.Size
@@ -239,16 +239,6 @@ theorem AuthArmDispatch.costAt_le_cost {ι : Type} {T : OracleSpec ι} {I : Ifac
   have := costAt_le_arm_cost_of_dispatchesTo hdisp hd
   omega
 
-theorem AuthArmDispatch.queriesAt_eq {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    {Γ : List (Ty pqAtomicSig)} {argTy out : Ty pqAtomicSig}
-    {c : Comp pqAtomicOps I Γ out} {ρ : Env Γ} {d : ℕ}
-    {arm : Comp pqAtomicOps I (argTy :: Γ) out} {x : argTy.denote}
-    (h : AuthArmDispatch c ρ d arm x) :
-    c.queriesAt w ws ρ = arm.queriesAt w ws (.cons x ρ) := by
-  obtain ⟨_, _, _, hdisp, _, _, _, hqa, _⟩ := h
-  rw [queriesAt_eq_of_dispatchesTo w ws hdisp, hqa]
-
 theorem AuthArmDispatch.queriesAt_le_queries {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
     (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
     {Γ : List (Ty pqAtomicSig)} {argTy out : Ty pqAtomicSig}
@@ -286,174 +276,6 @@ variable {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
   (armRoRoot    : Comp pqAtomicOps I (.prod (PB 32) (PB 32) :: Γ) out)
   (armRevealDh  : Comp pqAtomicOps I (.unit :: Γ) out)
   (armRegister  : Comp pqAtomicOps I (PB 32 :: Γ) out)
-
-private theorem mkAuthArmDispatch {ι : Type} {T : OracleSpec ι} {I : Iface pqAtomicSig T}
-    {Γ Δ : List (Ty pqAtomicSig)} {argTy out : Ty pqAtomicSig}
-    {c : Comp pqAtomicOps I Γ out} {ρ : Env Γ} {d d' : ℕ}
-    {arm : Comp pqAtomicOps I (argTy :: Γ) out} {x : argTy.denote}
-    {ξ : ∀ {a}, Var (argTy :: Γ) a → Var (argTy :: Δ) a} {ρ_mid : Env Δ}
-    (hdisp : DispatchesTo c ρ d (compRename ξ arm) (.cons x ρ_mid))
-    (hd : d = d')
-    (hξ0 : ξ .zero = .zero)
-    (hξs : ∀ {a} (v : Var Γ a), (Env.cons x ρ_mid).get (ξ (.succ v)) = ρ.get v) :
-    AuthArmDispatch c ρ d' arm x := by
-  have hget : ∀ {a} (v : Var (argTy :: Γ) a),
-      (Env.cons x ρ_mid).get (ξ v) = (Env.cons x ρ).get v := by
-    intro a v; cases v with
-    | zero => rw [hξ0]; rfl
-    | succ v => exact hξs v
-  exact ⟨argTy :: Δ, compRename ξ arm, .cons x ρ_mid, hd ▸ hdisp,
-    compRename_cost ξ arm,
-    compRename_costAt ξ arm (.cons x ρ) (.cons x ρ_mid) hget,
-    fun w ws => compRename_queries w ws ξ arm,
-    fun w ws => compRename_queriesAt w ws ξ arm (.cons x ρ) (.cons x ρ_mid) hget,
-    compRename_eval arm ξ (.cons x ρ) (.cons x ρ_mid) hget⟩
-
-theorem dispatchAuthQ_dispatchesTo_initPrin (ρ : Env Γ) (u : Fin S.N_id)
-    (hq : qE.eval ρ = (authCodec S).qenc (.initPrin u)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 1) armInitPrin u.val := by
-  refine ⟨.nat :: Γ, armInitPrin, .cons u.val ρ, ?_, rfl, rfl,
-    fun _ _ => rfl, fun _ _ => rfl, rfl⟩
-  have hd : 0 + qE.costAt ρ + 1 = qE.costAt ρ + 1 := by omega
-  exact hd ▸ DispatchesTo.caseSum_inl hq (DispatchesTo.refl _ _)
-
-theorem dispatchAuthQ_dispatchesTo_corruptIK (ρ : Env Γ) (u : Fin S.N_id)
-    (hq : qE.eval ρ = (authCodec S).qenc (.corruptIK u)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 3) armCorrupt u.val :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inl rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
-
-theorem dispatchAuthQ_dispatchesTo_genSPK (ρ : Env Γ) (u : Fin S.N_id) (j : Fin S.N_recv)
-    (hq : qE.eval ρ = (authCodec S).qenc (.genSPK u j)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 5) armGenSpk (u.val, j.val) :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inl rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
-
-theorem dispatchAuthQ_dispatchesTo_genOPK (ρ : Env Γ)
-    (u : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
-    (hq : qE.eval ρ = (authCodec S).qenc (.genOPK u j o)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 7) armGenOpk (u.val, (j.val, o.val)) :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inl rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
-
-theorem dispatchAuthQ_dispatchesTo_sendOPK (ρ : Env Γ)
-    (u : Fin S.N_id) (i : Fin S.N_send_opk) (bu : PreKeyBundleInput) (m0 m1 : Bytes)
-    (hq : qE.eval ρ = (authCodec S).qenc (.sendOPK u i bu m0 m1)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 9) armSendOpk
-      (u.val, (i.val, (bundleV (ℓ := 0) (Pt := Empty) bu, (m0, m1)))) :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inl rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
-
-theorem dispatchAuthQ_dispatchesTo_sendNoOPK (ρ : Env Γ)
-    (u : Fin S.N_id) (i : Fin S.N_send_no_opk) (bu : PreKeyBundleInput) (m0 m1 : Bytes)
-    (hq : qE.eval ρ = (authCodec S).qenc (.sendNoOPK u i bu m0 m1)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 11) armSendNoOpk
-      (u.val, (i.val, (bundleV (ℓ := 0) (Pt := Empty) bu, (m0, m1)))) :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inl rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
-
-theorem dispatchAuthQ_dispatchesTo_recvOPK (ρ : Env Γ)
-    (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg)
-    (hq : qE.eval ρ = (authCodec S).qenc (.recvOPK k j o msg)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 13) armRecvOpk (k.val, (j.val, (o.val, preKeyMsgV msg))) :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inl rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
-
-theorem dispatchAuthQ_dispatchesTo_recvNoOPK (ρ : Env Γ)
-    (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg)
-    (hq : qE.eval ρ = (authCodec S).qenc (.recvNoOPK k j l msg)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 15) armRecvNoOpk (k.val, (j.val, (l.val, preKeyMsgV msg))) :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inl rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
-
-theorem dispatchAuthQ_dispatchesTo_roQuery (ρ : Env Γ) (sec : Bytes)
-    (hq : qE.eval ρ = (authCodec S).qenc (.roQuery sec)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 17) armRo sec :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inl rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
-
-theorem dispatchAuthQ_dispatchesTo_roRootQuery (ρ : Env Γ) (rk dh : Bytes)
-    (hq : qE.eval ρ = (authCodec S).qenc (.roRootQuery rk dh)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 19) armRoRoot (rk, dh) :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inl rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
-
-theorem dispatchAuthQ_dispatchesTo_revealDhSecrets (ρ : Env Γ)
-    (hq : qE.eval ρ = (authCodec S).qenc .revealDhSecrets) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 21) armRevealDh () :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inl rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
-
-theorem dispatchAuthQ_dispatchesTo_registerKey (ρ : Env Γ) (sk : Bytes)
-    (hq : qE.eval ρ = (authCodec S).qenc (.registerKey sk)) :
-    AuthArmDispatch (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-      armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister)
-      ρ (qE.costAt ρ + 21) armRegister sk :=
-  mkAuthArmDispatch
-    (DispatchesTo.caseSum_inr hq <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
-      DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.refl _ _)
-    (by omega) rfl (fun _ => rfl)
 
 private def ArmDispPoly {argTy : Ty pqAtomicSig}
     (c : Comp pqAtomicOps I Γ out) (ρ : Env Γ) (d : ℕ)
@@ -612,57 +434,6 @@ private theorem dispPoly_registerKey (ρ : Env Γ) (sk : Bytes)
     DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.caseSum_var_inr rfl <|
     DispatchesTo.caseSum_var_inr rfl <| DispatchesTo.refl _ _) (by omega) rfl (fun _ => rfl)
 
-private theorem arm_disp_ex {c : Comp pqAtomicOps I Γ out} {ρ : Env Γ} {d B : ℕ}
-    {argTy : Ty pqAtomicSig} {arm : Comp pqAtomicOps I (argTy :: Γ) out} {x : argTy.denote}
-    (h : ArmDispPoly c ρ d arm x) (hd : d ≤ B) :
-    ∃ (Δ : List (Ty pqAtomicSig)) (arm' : Comp pqAtomicOps I Δ out) (ρ' : Env Δ) (d' : ℕ),
-      DispatchesTo c ρ d' arm' ρ' ∧ d' ≤ B := by
-  obtain ⟨Δ, arm', ρ', hdisp, _⟩ := h
-  exact ⟨Δ, arm', ρ', d, hdisp, hd⟩
-
-/-- Every encoded `AuthQuery` dispatches through `dispatchAuthQ` in at most `qE.costAt ρ + 21`
-    pure steps. -/
-theorem dispatchAuthQ_dispatchesTo (ρ : Env Γ) (q : AuthQuery S)
-    (hq : qE.eval ρ = (authCodec S).qenc q) :
-    ∃ (Δ : List (Ty pqAtomicSig)) (arm' : Comp pqAtomicOps I Δ out) (ρ' : Env Δ) (d : ℕ),
-      DispatchesTo (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk
-        armSendNoOpk armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister) ρ d arm' ρ' ∧
-      d ≤ qE.costAt ρ + 21 := by
-  cases q with
-  | initPrin u => apply arm_disp_ex; { apply dispPoly_initPrin; exact hq }; omega
-  | corruptIK u => apply arm_disp_ex; { apply dispPoly_corruptIK; exact hq }; omega
-  | genSPK u j => apply arm_disp_ex; { apply dispPoly_genSPK; exact hq }; omega
-  | genOPK u j o => apply arm_disp_ex; { apply dispPoly_genOPK; exact hq }; omega
-  | sendOPK u i bu m0 m1 => apply arm_disp_ex; { apply dispPoly_sendOPK; exact hq }; omega
-  | sendNoOPK u i bu m0 m1 => apply arm_disp_ex; { apply dispPoly_sendNoOPK; exact hq }; omega
-  | recvOPK k j o msg => apply arm_disp_ex; { apply dispPoly_recvOPK; exact hq }; omega
-  | recvNoOPK k j l msg => apply arm_disp_ex; { apply dispPoly_recvNoOPK; exact hq }; omega
-  | roQuery sec => apply arm_disp_ex; { apply dispPoly_roQuery; exact hq }; omega
-  | roRootQuery rk dh => apply arm_disp_ex; { apply dispPoly_roRootQuery; exact hq }; omega
-  | revealDhSecrets => apply arm_disp_ex; { apply dispPoly_revealDhSecrets; exact hq }; omega
-  | registerKey sk => apply arm_disp_ex; { apply dispPoly_registerKey; exact hq }; omega
-
-private theorem arm_disp_costAt_eq {c : Comp pqAtomicOps I Γ out} {ρ : Env Γ} {d : ℕ}
-    {argTy : Ty pqAtomicSig} {arm : Comp pqAtomicOps I (argTy :: Γ) out} {x : argTy.denote}
-    (h : ArmDispPoly c ρ d arm x) :
-    c.costAt ρ = arm.costAt (.cons x ρ) + d := by
-  obtain ⟨_, _, _, hdisp, _, hca, _, _⟩ := h
-  rw [costAt_eq_of_dispatchesTo hdisp, hca]
-
-theorem dispatchAuthQ_costAt_roQuery_eq (ρ : Env Γ) (sec : Bytes)
-    (hq : qE.eval ρ = (authCodec S).qenc (.roQuery sec)) :
-    (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk armSendNoOpk
-      armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister).costAt ρ =
-      armRo.costAt (.cons sec ρ) + (qE.costAt ρ + 17) := by
-  apply arm_disp_costAt_eq; apply dispPoly_roQuery; exact hq
-
-theorem dispatchAuthQ_costAt_roRootQuery_eq (ρ : Env Γ) (rk dh : Bytes)
-    (hq : qE.eval ρ = (authCodec S).qenc (.roRootQuery rk dh)) :
-    (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk armSendNoOpk
-      armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister).costAt ρ =
-      armRoRoot.costAt (.cons (rk, dh) ρ) + (qE.costAt ρ + 19) := by
-  apply arm_disp_costAt_eq; apply dispPoly_roRootQuery; exact hq
-
 private theorem arm_disp_cost_le {c : Comp pqAtomicOps I Γ out} {ρ : Env Γ} {d B cDisp : ℕ}
     {argTy : Ty pqAtomicSig} {arm : Comp pqAtomicOps I (argTy :: Γ) out} {x : argTy.denote}
     (h : ArmDispPoly c ρ d arm x) (harm : arm.cost ≤ B) (hd : d ≤ cDisp) :
@@ -757,62 +528,6 @@ theorem dispatchAuthQ_queries_le (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ) {
     Nat.max_le.mpr ⟨hOpk, Nat.max_le.mpr ⟨hSO, Nat.max_le.mpr ⟨hSN,
       Nat.max_le.mpr ⟨hRO, Nat.max_le.mpr ⟨hRN, Nat.max_le.mpr ⟨hRo,
         Nat.max_le.mpr ⟨hRoR, Nat.max_le.mpr ⟨hRev, hReg⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩
-
-private theorem arm_disp_q_le {c : Comp pqAtomicOps I Γ out} {X : Ty pqAtomicSig}
-    {arm : Comp pqAtomicOps I (X :: Γ) out} {ρ : Env Γ} {v : X.denote} {d Q : ℕ}
-    (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (hd : ArmDispPoly c ρ d arm v) (hQ : arm.queries w ws ≤ Q) :
-    c.queriesAt w ws ρ ≤ Q := by
-  obtain ⟨_, _, _, hdisp, _, _, hq, _⟩ := hd
-  have h1 := queriesAt_le_arm_queries_of_dispatchesTo w ws hdisp
-  have h2 := hq w ws
-  omega
-
-theorem dispatchAuthQ_queriesAt_kind1_le (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (ρ : Env Γ) (q : AuthQuery S) {Q₁ : ℕ}
-    (hk : authQueryKind q = 1) (hq : qE.eval ρ = (authCodec S).qenc q)
-    (hRo : armRo.queries w ws ≤ Q₁) (hRoRoot : armRoRoot.queries w ws ≤ Q₁) :
-    (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk armSendNoOpk
-      armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister).queriesAt w ws ρ ≤ Q₁ := by
-  cases q with
-  | roQuery sec =>
-    apply arm_disp_q_le w ws; { apply dispPoly_roQuery; exact hq }; exact hRo
-  | roRootQuery rk dh =>
-    apply arm_disp_q_le w ws; { apply dispPoly_roRootQuery; exact hq }; exact hRoRoot
-  | _ => simp [authQueryKind] at hk
-
-theorem dispatchAuthQ_queriesAt_kind0_le (w : I.Tag → ℕ) (ws : I.smp.Samp → ℕ)
-    (ρ : Env Γ) (q : AuthQuery S) {Q₀ : ℕ}
-    (hk : authQueryKind q = 0) (hq : qE.eval ρ = (authCodec S).qenc q)
-    (hInit : armInitPrin.queries w ws ≤ Q₀) (hCorr : armCorrupt.queries w ws ≤ Q₀)
-    (hSpk : armGenSpk.queries w ws ≤ Q₀) (hOpk : armGenOpk.queries w ws ≤ Q₀)
-    (hSO : armSendOpk.queries w ws ≤ Q₀) (hSN : armSendNoOpk.queries w ws ≤ Q₀)
-    (hRO : armRecvOpk.queries w ws ≤ Q₀) (hRN : armRecvNoOpk.queries w ws ≤ Q₀)
-    (hRev : armRevealDh.queries w ws ≤ Q₀) (hReg : armRegister.queries w ws ≤ Q₀) :
-    (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk armSendNoOpk
-      armRecvOpk armRecvNoOpk armRo armRoRoot armRevealDh armRegister).queriesAt w ws ρ ≤ Q₀ := by
-  cases q with
-  | initPrin u =>
-    apply arm_disp_q_le w ws; { apply dispPoly_initPrin; exact hq }; exact hInit
-  | corruptIK u =>
-    apply arm_disp_q_le w ws; { apply dispPoly_corruptIK; exact hq }; exact hCorr
-  | genSPK u j =>
-    apply arm_disp_q_le w ws; { apply dispPoly_genSPK; exact hq }; exact hSpk
-  | genOPK u j o =>
-    apply arm_disp_q_le w ws; { apply dispPoly_genOPK; exact hq }; exact hOpk
-  | sendOPK u i bu m0 m1 =>
-    apply arm_disp_q_le w ws; { apply dispPoly_sendOPK; exact hq }; exact hSO
-  | sendNoOPK u i bu m0 m1 =>
-    apply arm_disp_q_le w ws; { apply dispPoly_sendNoOPK; exact hq }; exact hSN
-  | recvOPK k j o msg =>
-    apply arm_disp_q_le w ws; { apply dispPoly_recvOPK; exact hq }; exact hRO
-  | recvNoOPK k j l msg =>
-    apply arm_disp_q_le w ws; { apply dispPoly_recvNoOPK; exact hq }; exact hRN
-  | roQuery _ | roRootQuery _ _ => simp [authQueryKind] at hk
-  | revealDhSecrets =>
-    apply arm_disp_q_le w ws; { apply dispPoly_revealDhSecrets; exact hq }; exact hRev
-  | registerKey sk =>
-    apply arm_disp_q_le w ws; { apply dispPoly_registerKey; exact hq }; exact hReg
 
 theorem dispatchAuthQ_size_le :
     (dispatchAuthQ qE armInitPrin armCorrupt armGenSpk armGenOpk armSendOpk armSendNoOpk

@@ -9,6 +9,8 @@ limitations under the License.
 
 module
 
+public import VerifiedLibraries.Common.Spec.Curve25519
+
 /-!
 # Pure Byte-Level Specification of the Signal PQXDH Handshake and First Message
 
@@ -102,19 +104,20 @@ structure Primitives where
   scalarFromBytesModOrder : Bytes → Bytes
   /-- Curve25519 wide scalar reduction mod ℓ (`Scalar::from_bytes_mod_order_wide`: 64B → 32B). -/
   scalarFromWide  : Bytes → Bytes
-  /-- Birational map from Montgomery u-coordinate (32B) and sign bit (`0` or `1`) to 160B `EdwardsPoint`
-      (`MontgomeryPoint::to_edwards`: `32B → UInt8 → Option Bytes`). -/
-  montToEd        : Bytes → UInt8 → Option Bytes
-  /-- Edwards point small-subgroup torsion check (`EdwardsPoint::is_torsion_free`: 160B → Bool). -/
-  isTorsionFree   : Bytes → Bool
-  /-- Edwards point negation (`<EdwardsPoint as Neg>::neg`: 160B → 160B). -/
-  edNeg           : Bytes → Bytes
+  /-- Birational map from Montgomery u-coordinate (32B) and sign bit (`0` or `1`) to `EdPoint`
+      (`MontgomeryPoint::to_edwards`: `32B → UInt8 → Option EdPoint`). -/
+  montToEd        : Bytes → UInt8 → Option VerifiedLibraries.Common.EdPoint
+  /-- Edwards point small-subgroup torsion check (`EdwardsPoint::is_torsion_free`: `EdPoint → Bool`). -/
+  isTorsionFree   : VerifiedLibraries.Common.EdPoint → Bool
+  /-- Edwards point negation (`<EdwardsPoint as Neg>::neg`: `EdPoint → EdPoint`). -/
+  edNeg           : VerifiedLibraries.Common.EdPoint → VerifiedLibraries.Common.EdPoint
   /-- Edwards double-scalar basepoint multiplication `[h](-A) + [s]B`
-      (`EdwardsPoint::vartime_double_scalar_mul_basepoint`: 32B × 160B × 32B → 160B). -/
-  doubleScalarMulBasepoint : Bytes → Bytes → Bytes → Bytes
+      (`EdwardsPoint::vartime_double_scalar_mul_basepoint`: `32B × EdPoint × 32B → EdPoint`). -/
+  doubleScalarMulBasepoint :
+    Bytes → VerifiedLibraries.Common.EdPoint → Bytes → VerifiedLibraries.Common.EdPoint
   /-- Edwards point compression to 32-byte `CompressedEdwardsY`
-      (`EdwardsPoint::compress`: 160B → 32B). -/
-  compress        : Bytes → Bytes
+      (`EdwardsPoint::compress`: `EdPoint → 32B`). -/
+  compress        : VerifiedLibraries.Common.EdPoint → Bytes
   /-- Kyber1024 key generation from 64-byte seed `kemKeyGen(seed64) = (pk1568, sk3168)`. -/
   kemKeyGen       : Bytes → (Bytes × Bytes)
   /-- Kyber1024 deterministic encapsulation `kemEncaps(pqPk1568, coins32) = some (ss32, ct1568)`. -/
@@ -394,6 +397,23 @@ def Model.accept (P : Primitives) (inp : AcceptInput) :
   let ad := firstMsgAD inp.msg.hdr.ikAPk inp.keysInp.ikBPk inp.msg.ephAPk inp.msg.pqRatchetMsg
   let pt ← P.aeadDec deriveMessageKeys ad inp.msg.aeadCt
   some (drKey, rk1, ck1_1, pt)
+
+/-- Birational lift from a 32-byte little-endian Montgomery `u`-coordinate (RFC 7748 §5 bit-255
+    masked, reduced mod `p = 2^255 - 19`) and low sign bit `sign &&& 1` to the affine twisted
+    Edwards curve (`y = (u - 1) / (u + 1) mod p`, rejecting `u = p - 1` where `u + 1 ≡ 0` and `u`
+    on the quadratic twist (`u³ + 486662 u² + u` non-square, detected by `recoverXEven`)). Reducing
+    `u ≥ p` mod `p` follows `libsignal` / `curve25519-dalek` (`MontgomeryPoint::to_edwards`), not
+    Perrin's XEdDSA §2.5 (`PublicKey::is_canonical` checks `scalarIsInRange` separately). -/
+def montLiftEd (uBytes : List (BitVec 8)) (sign : BitVec 8) :
+    Option VerifiedLibraries.Common.EdPoint :=
+  let u := (VerifiedLibraries.Common.leBytesToNat (uBytes.take 32) % (2 ^ 255)) %
+    VerifiedLibraries.Common.p25519
+  if u == VerifiedLibraries.Common.p25519 - 1 then none
+  else
+    let y := VerifiedLibraries.Common.fpMul (VerifiedLibraries.Common.fpSub u 1)
+      (VerifiedLibraries.Common.fpInv (VerifiedLibraries.Common.fpAdd u 1))
+    (VerifiedLibraries.Common.recoverXEven y).map fun xEven =>
+      ⟨if (sign &&& 1#8) == 1#8 then VerifiedLibraries.Common.fpNeg xEven else xEven, y⟩
 
 /-- Functional reference specification of Signal's XEdDSA signature verification
     (`curve25519::verify_signature_for_multipart_message`,
@@ -846,7 +866,7 @@ structure WellFormedDh (P : Primitives) : Prop where
   isCanonical_eq_isCanonicalRef : ∀ pk, P.isCanonical pk = isCanonicalRef P pk
 
 /-- XEdDSA signing/verification, single-key public-key identity (`sigPkGen = x25519Base`),
-    SHA-512 reference link, and Curve25519 scalar and Edwards-point byte lengths on `P : Primitives`. -/
+    SHA-512 reference link, and Curve25519 scalar and compressed-point byte lengths on `P : Primitives`. -/
 structure WellFormedSig (P : Primitives) : Prop where
   sha512Compress_len           : ∀ st blk, (P.sha512Compress st blk).length = 64
   sha512_eq_ref                : ∀ m, P.sha512 m = sha512Ref P m
@@ -856,9 +876,6 @@ structure WellFormedSig (P : Primitives) : Prop where
   scalarAdd_len                : ∀ a b, (P.scalarAdd a b).length = 32
   scalarFromBytesModOrder_len  : ∀ b, (P.scalarFromBytesModOrder b).length = 32
   scalarFromWide_len           : ∀ b, (P.scalarFromWide b).length = 32
-  montToEd_len                 : ∀ u s pt, P.montToEd u s = some pt → pt.length = 160
-  edNeg_len                    : ∀ pt, (P.edNeg pt).length = 160
-  doubleScalarMulBasepoint_len : ∀ h a s, (P.doubleScalarMulBasepoint h a s).length = 160
   compress_len                 : ∀ pt, (P.compress pt).length = 32
   sigVerify_eq_xeddsaVerifyRef : ∀ pk m sig, P.sigVerify pk m sig = xeddsaVerifyRef P pk m sig
   sig_corr                     : ∀ sk msg r, P.sigVerify (P.sigPkGen sk) msg (P.sigSign sk msg r) = true

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Deser.DeserAssemblyW
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Deser.DeserTransportX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Deser.DeserAssemblyW -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Deser.DeserTransportX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.DeserializeLeaves
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.ChainEntryGExt
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.ChainExitGExt
@@ -29,17 +29,18 @@ import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.MergeFieldGenPreviousCounte
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.MergeFieldGenReceiverChainsExt
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.MergeFieldGenSenderChainExt
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.MergeFieldGenSessionVersionExt
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 /-!
 # Root `SessionRecord::deserialize` Assembly
 
-Instantiates `DeserLeaves`, `ChainLeaves`, and `MergeFieldLeaves` from their leaf proofs and
-combines `DeserAssemblyW` with `DeserTransportX` to establish `recordDeserializeOpenSpec` on
-`contractProg img.base ext` and under `[LibsignalPlacement]` (Block `46`).
+Instantiates `DeserLeavesPlacedW`, `ChainLeavesPlacedW`, and `MergeFieldLeavesPlacedW` from their
+leaf proofs and combines `DeserAssemblyW` with `DeserTransportX` to establish
+`recordDeserializeOpenSpec` under `[LibsignalPlacement]` (Block `46`).
 -/
 
 namespace Proofs.libsignal.Hooks2
@@ -55,260 +56,6 @@ open CryptoVerification.E2E.Record.Serialization
 open CryptoVerification.E2E.Bin
 
 theorem L1_RecordDeserializeX : True := trivial
-
-/-- `(SP2Ext b ext).fnAddr recDeserializeName` equals `b + deserializeOff`. -/
-theorem recDeserialize_fnAddr_eqX (b : BitVec 64) (ext : String → Option (State → State)) :
-    (SP2Ext b ext).fnAddr recDeserializeName = b + deserializeOff := by
-  simp only [SP2Ext, contractProg, Program.fnAddr_rebase, deserialize_fnOff]
-
-/-- Instantiate `DeserLeavesW img ext` from the outer deserialization leaf proofs. -/
-theorem deserLeavesW_of_stage2 (img : Obj.Image) (ext : String → Option (State → State))
-    (hStage2 : Stage2ContractsA0 img ext)
-    (hCallees : DeserializeCalleesAtW img ext) :
-    DeserLeavesW img ext := by
-  exact
-    { entry := fun x R s0 hpc hrun hpre hal =>
-        DeserLoopEntryGExt.deserLoopEntryG_ok_atW img ext hCallees x R s0 hpc hrun hpre hal
-      iter := fun hMF x R s0 k s hr hlt hs =>
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.DeserLoopIterG.deserLoopIterG_ok_atW
-          img ext hMF x R s0 k s hr hlt hs
-      exit := fun x R s0 s hr hs =>
-        deserLoopExitG_ok_extW img ext hStage2 x R s0 s hr hs }
-
-/-- Instantiate `ChainLeavesW img ext` from the `Chain` leaf proofs. -/
-theorem chainLeavesW_of_callees (img : Obj.Image) (ext : String → Option (State → State))
-    (hCallees : DeserializeCalleesAtW img ext) :
-    ChainLeavesW img ext := by
-  exact
-    { entry := fun x R s0 hpc hrun hpre hal =>
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainEntryG.chainEntryG_ok_impl_atW
-          img hCallees x R s0 hpc hrun hpre hal
-      srk := fun x R s0 k s hk htag hs =>
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainSenderRatchetKeyG.chainSenderRatchetKeyG_ok_atW
-          img hCallees x R s0 k s hk htag hs
-      ck := fun x R s0 k s hk htag hs =>
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainKeyFieldG.chainKeyFieldG_ok_atW
-          img hCallees x R s0 k s hk htag hs
-      keys := fun x R s0 k s hk htag hs =>
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainMessageKeysG.chainMessageKeysG_ok_atW
-          img hCallees x R s0 k s hk htag hs
-      exit := fun x R s0 s hs =>
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainExitG.chainExitG_ok_atW
-          img x R s0 s hs }
-
-/-- Instantiate `MergeFieldLeavesW img ext` from basic/chain field leaves and an explicit `tag9` hypothesis. -/
-theorem mergeFieldLeavesW_of_tag9 (img : Obj.Image) (ext : String → Option (State → State))
-    (hLoads : Obj.Loads libsignalSessionImage img)
-    (hCallees : DeserializeCalleesAtW img ext)
-    (htag9 : MergeFieldGenOkAtW img ext (fun fl => fl.tag = 9)) :
-    MergeFieldLeavesW img ext := by
-  exact
-    { tag1 :=
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenSessionVersion.mergeFieldGenSessionVersion_ok_extW
-          img ext hLoads hCallees
-      tag234 :=
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenIdentityRootKeys.mergeFieldGenIdentityRootKeys_ok_extW
-          img ext hLoads hCallees
-      tag5 :=
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenPreviousCounter.mergeFieldGenPreviousCounter_ok_extW
-          img ext hLoads hCallees
-      tag6 := fun hCh =>
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenSenderChain.mergeFieldGenSenderChain_ok_extW
-          img ext hLoads hCallees hCh
-      tag7 := fun hCh =>
-        CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenReceiverChains.mergeFieldGenReceiverChains_ok_extW
-          img ext hLoads hCallees hCh
-      tag9 := htag9 }
-
-/-- Instantiate `MergeFieldLeavesW img ext` from all `SessionStructure::merge_field` leaf proofs. -/
-theorem mergeFieldLeavesW_of_callees (img : Obj.Image) (ext : String → Option (State → State))
-    (hLoads : Obj.Loads libsignalSessionImage img)
-    (hCallees : DeserializeCalleesAtW img ext) :
-    MergeFieldLeavesW img ext := by
-  exact mergeFieldLeavesW_of_tag9 img ext hLoads hCallees
-    (CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenPendingPreKey.mergeFieldGenPendingPreKey_ok_extW
-      img ext hLoads hCallees)
-
-/-- Exact `SessionRecord::deserialize` contract at `img.base + deserializeOff` from leaf bundles. -/
-theorem deserializeExactAtX_ok_of_leaves {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hChain : ChainLeavesW img ext)
-    (hMF : MergeFieldLeavesW img ext)
-    (hD : DeserLeavesW img ext) :
-    subroutine_ok (contractProg img.base ext) (img.base + deserializeOff)
-      (deserializeExactSpecAtX img) := by
-  rw [← recDeserialize_fnAddr_eqX img.base ext]
-  exact deserializeExactW_ok_of_leaves img ext hChain hMF hD
-
-/-- `recordDeserializeOpenSpec A0` at `img.base + deserializeOff` from leaf bundles. -/
-theorem recordDeserialize_ok_of_leaves {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hChain : ChainLeavesW img ext)
-    (hMF : MergeFieldLeavesW img ext)
-    (hD : DeserLeavesW img ext) :
-    subroutine_ok (contractProg img.base ext) (img.base + deserializeOff)
-      ((recordDeserializeOpenSpec A0).inImage img) := by
-  exact recordDeserializeOpen_of_exactX img (deserializeExactAtX_ok_of_leaves hChain hMF hD)
-
-/-- Exact `SessionRecord::deserialize` contract at `img.base + deserializeOff` from `Stage2ContractsA0`. -/
-theorem deserializeExactAtX_ok_of_stage2 {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hStage2 : Stage2ContractsA0 img ext) :
-    subroutine_ok (contractProg img.base ext) (img.base + deserializeOff)
-      (deserializeExactSpecAtX img) := by
-  have hCallees := deserializeCalleesAtW_of_stage2 hStage2
-  exact deserializeExactAtX_ok_of_leaves
-    (chainLeavesW_of_callees img ext hCallees)
-    (mergeFieldLeavesW_of_callees img ext hStage2.loads hCallees)
-    (deserLeavesW_of_stage2 img ext hStage2 hCallees)
-
-/-- `recordDeserializeOpenSpec A0` at `img.base + deserializeOff` from `Stage2ContractsA0`. -/
-theorem recordDeserialize_ok_of_stage2 {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (hStage2 : Stage2ContractsA0 img ext) :
-    subroutine_ok (contractProg img.base ext) (img.base + deserializeOff)
-      ((recordDeserializeOpenSpec A0).inImage img) := by
-  exact recordDeserializeOpen_of_exactX img (deserializeExactAtX_ok_of_stage2 hStage2)
-
-/-! ## Arbitrary-Allocator (`A : RustAlloc`) Assembly -/
-
-/-- Instantiate `DeserLeavesWA img A ext` from `DeserLoopEntryGExt`, `DeserLoopIterGExt`, `DeserLoopExitGExt`. -/
-theorem deserLeavesWA_of_stage2 (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hStage2 : Stage2ContractsA img A ext)
-    (hCallees : DeserializeCalleesAtWA img A ext) :
-    DeserLeavesWA img A ext :=
-  { entry := fun x R s0 hpc hrun hpre hal =>
-      DeserLoopEntryGExt.deserLoopEntryG_ok_atWA img A ext hCallees x R s0 hpc hrun hpre hal
-    iter := fun hMF x R s0 k s hr hlt hs =>
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.DeserLoopIterG.deserLoopIterG_ok_atWA
-        img A ext hMF x R s0 k s hr hlt hs
-    exit := fun x R s0 s hr hs =>
-      deserLoopExitG_ok_extWA img A ext hStage2 x R s0 s hr hs }
-
-/-- Instantiate `ChainLeavesWA img A ext` from `Chain{Entry,SenderRatchetKey,KeyField,MessageKeys,Exit}GExt`. -/
-theorem chainLeavesWA_of_callees (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hCallees : DeserializeCalleesAtWA img A ext) :
-    ChainLeavesWA img A ext :=
-  { entry := fun x R s0 hpc hrun hpre hal =>
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainEntryG.chainEntryG_ok_impl_atWA
-        img A hCallees x R s0 hpc hrun hpre hal
-    srk := fun x R s0 k s hk htag hs =>
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainSenderRatchetKeyG.chainSenderRatchetKeyG_ok_atWA
-        img A hCallees x R s0 k s hk htag hs
-    ck := fun x R s0 k s hk htag hs =>
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainKeyFieldG.chainKeyFieldG_ok_atWA
-        img A hCallees x R s0 k s hk htag hs
-    keys := fun x R s0 k s hk htag hs =>
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainMessageKeysG.chainMessageKeysG_ok_atWA
-        img A hCallees x R s0 k s hk htag hs
-    exit := fun x R s0 s hs =>
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ChainExitG.chainExitG_ok_atWA
-        img A x R s0 s hs }
-
-/-- Instantiate `MergeFieldLeavesWA img A ext` from `MergeFieldGen*Ext` and an explicit `tag9` hypothesis. -/
-theorem mergeFieldLeavesWA_of_tag9 (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hLoads : Obj.Loads libsignalSessionImage img)
-    (hCallees : DeserializeCalleesAtWA img A ext)
-    (htag9 : MergeFieldGenOkAtWA img A ext (fun fl => fl.tag = 9)) :
-    MergeFieldLeavesWA img A ext :=
-  { tag1 :=
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenSessionVersion.mergeFieldGenSessionVersion_ok_extWA
-        img A ext hLoads hCallees
-    tag234 :=
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenIdentityRootKeys.mergeFieldGenIdentityRootKeys_ok_extWA
-        img A ext hLoads hCallees
-    tag5 :=
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenPreviousCounter.mergeFieldGenPreviousCounter_ok_extWA
-        img A ext hLoads hCallees
-    tag6 := fun hCh =>
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenSenderChain.mergeFieldGenSenderChain_ok_extWA
-        img A ext hLoads hCallees hCh
-    tag7 := fun hCh =>
-      CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenReceiverChains.mergeFieldGenReceiverChains_ok_extWA
-        img A ext hLoads hCallees hCh
-    tag9 := htag9 }
-
-/-- Instantiate `MergeFieldLeavesWA img A ext` from all 6 `MergeFieldGen*Ext` leaves. -/
-theorem mergeFieldLeavesWA_of_callees (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hLoads : Obj.Loads libsignalSessionImage img)
-    (hCallees : DeserializeCalleesAtWA img A ext) :
-    MergeFieldLeavesWA img A ext :=
-  mergeFieldLeavesWA_of_tag9 img A ext hLoads hCallees
-    (CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenPendingPreKey.mergeFieldGenPendingPreKey_ok_extWA
-      img A ext hLoads hCallees)
-
-/-- Exact `SessionRecord::deserialize` contract (`deserializeExactSpecAtXA A img`) from `*WA` leaf bundles. -/
-theorem deserializeExactAtX_ok_of_leavesA {img : Obj.Image} (A : RustAlloc)
-    {ext : String → Option (State → State)}
-    (hChain : ChainLeavesWA img A ext)
-    (hMF : MergeFieldLeavesWA img A ext)
-    (hD : DeserLeavesWA img A ext) :
-    subroutine_ok (contractProg img.base ext) (img.base + deserializeOff)
-      (deserializeExactSpecAtXA A img) := by
-  rw [← recDeserialize_fnAddr_eqX img.base ext]
-  exact deserializeExactWA_ok_of_leaves img A ext hChain hMF hD
-
-/-- General `SessionRecord::deserialize` contract (`deserializeGenSpecAtA A img`) from `*WA` leaf bundles. -/
-theorem deserializeGenAtX_ok_of_leavesA {img : Obj.Image} (A : RustAlloc)
-    {ext : String → Option (State → State)}
-    (hChain : ChainLeavesWA img A ext)
-    (hMF : MergeFieldLeavesWA img A ext)
-    (hD : DeserLeavesWA img A ext) :
-    subroutine_ok (contractProg img.base ext) (img.base + deserializeOff)
-      (deserializeGenSpecAtA A img) := by
-  rw [← recDeserialize_fnAddr_eqX img.base ext]
-  exact deserializeBodyGWA_ok img A ext hD
-    (mergeFieldGenWA_ok img A ext hMF (chainMergeGenWA_ok img A ext hChain))
-    (deserReprGA_ok A)
-
-/-- `recordDeserializeOpenSpec A` at `img.base + deserializeOff` from `*WA` leaf bundles. -/
-theorem recordDeserialize_ok_of_leavesA {img : Obj.Image} (A : RustAlloc)
-    {ext : String → Option (State → State)}
-    (hChain : ChainLeavesWA img A ext)
-    (hMF : MergeFieldLeavesWA img A ext)
-    (hD : DeserLeavesWA img A ext) :
-    subroutine_ok (contractProg img.base ext) (img.base + deserializeOff)
-      ((recordDeserializeOpenSpec A).inImage img) :=
-  recordDeserializeOpen_of_exactXA A img (deserializeExactAtX_ok_of_leavesA A hChain hMF hD)
-
-/-- Exact `SessionRecord::deserialize` contract (`deserializeExactSpecAtXA A img`) from `Stage2ContractsA`. -/
-theorem deserializeExactAtX_ok_of_stage2A {img : Obj.Image} (A : RustAlloc)
-    {ext : String → Option (State → State)}
-    (hStage2 : Stage2ContractsA img A ext) :
-    subroutine_ok (contractProg img.base ext) (img.base + deserializeOff)
-      (deserializeExactSpecAtXA A img) := by
-  have hCallees := deserializeCalleesAtWA_of_stage2 hStage2
-  exact deserializeExactAtX_ok_of_leavesA A
-    (chainLeavesWA_of_callees img A ext hCallees)
-    (mergeFieldLeavesWA_of_callees img A ext hStage2.loads hCallees)
-    (deserLeavesWA_of_stage2 img A ext hStage2 hCallees)
-
-/-- General `SessionRecord::deserialize` contract (`deserializeGenSpecAtA A img`, matching
-`sessDeserializeExtSpec DeserializeScope A img`) from `Stage2ContractsA`. -/
-theorem deserializeGenAtX_ok_of_stage2A {img : Obj.Image} (A : RustAlloc)
-    {ext : String → Option (State → State)}
-    (hStage2 : Stage2ContractsA img A ext) :
-    subroutine_ok (contractProg img.base ext) (img.base + deserializeOff)
-      (deserializeGenSpecAtA A img) := by
-  have hCallees := deserializeCalleesAtWA_of_stage2 hStage2
-  exact deserializeGenAtX_ok_of_leavesA A
-    (chainLeavesWA_of_callees img A ext hCallees)
-    (mergeFieldLeavesWA_of_callees img A ext hStage2.loads hCallees)
-    (deserLeavesWA_of_stage2 img A ext hStage2 hCallees)
-
-/-- `recordDeserializeOpenSpec A` at `img.base + deserializeOff` from `Stage2ContractsA`. -/
-theorem recordDeserialize_ok_of_stage2A {img : Obj.Image} (A : RustAlloc)
-    {ext : String → Option (State → State)}
-    (hStage2 : Stage2ContractsA img A ext) :
-    subroutine_ok (contractProg img.base ext) (img.base + deserializeOff)
-      ((recordDeserializeOpenSpec A).inImage img) :=
-  recordDeserializeOpen_of_exactXA A img (deserializeExactAtX_ok_of_stage2A A hStage2)
-
-/-! ## Relocatable `[LibsignalPlacement]` `SessionRecord::deserialize` Assembly -/
 
 section Placed
 

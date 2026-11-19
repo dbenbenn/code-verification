@@ -46,9 +46,6 @@ def MlKem.kemFailFindGame (K : MlKem) (B : MlKem.KemFailFindAdversary) : ProbCom
   let (seed, m) ← B
   return K.honestExchangeFails seed m
 
-abbrev KemFailFind (K : MlKem) (B : MlKem.KemFailFindAdversary) : ProbComp Bool :=
-  K.kemFailFindGame B
-
 /-- Advantage in the `KemFailFind` game (`𝒟[K.kemFailFindGame B] {true}`). -/
 noncomputable def MlKem.kemFailFindAdvantage (K : MlKem) (B : MlKem.KemFailFindAdversary) :
     ℝ≥0∞ :=

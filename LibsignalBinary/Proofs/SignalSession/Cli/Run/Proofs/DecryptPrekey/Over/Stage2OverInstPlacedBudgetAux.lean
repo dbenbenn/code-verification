@@ -12,38 +12,36 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1PlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefsBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFoldsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFoldsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudgetSat
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMain
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
@@ -54,6 +52,25 @@ import LibsignalBinary.Proofs.TripleRatchet.InImage.UuidTryParse.ParserTryParse
 import ProofLib.Placed.OpcodeExclusion
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.ModelBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Msg -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCoins -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathAKeys
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Base
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Open
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenDeserId
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsDecodeHex32Placed
 
 /-!
 # Auxiliary Lemmas for Budget-Threaded CLI Poll Stage P2 Over-Path (`Path C`) Instantiation
@@ -63,7 +80,7 @@ Stage P2 callee bundles at `cliExternsPlaced mmpl W`, and discharges the CPS pro
 Stage P2 V1 (`+0x0868 -> +0x1778` and error arms) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -397,7 +414,7 @@ theorem cliStageP2PureCalleesPlaced4K [LibsignalPlacement] {M : AllocCostModel}
     h_accept_err
     hSpqr.initialStateMemInv_lsProg75
 
-def PromoteOverCanonSessEnvLocal (sess : Session (List (BitVec 8))) :
+@[expose] def PromoteOverCanonSessEnvLocal (sess : Session (List (BitVec 8))) :
     List AllocEvent → Prop :=
   let n := (encSession (clearPending sess)).length
   SeqEnv FreeOnlyEvs (SeqEnv (BoundedRustEvs (4 * n + 34) (2 * n + 96)) FreeOnlyEvs)
@@ -495,7 +512,7 @@ private theorem fitsEnv_step3 {M : AllocCostModel} {lim : BudgetLimits} {st : M.
 
 /-! ## 3. Path C Over Stage P2 V1 CPS Instantiation (`stageP2PathCOver_qpan_cli_placed_of_seams_aux`) -/
 
-def P2OverPathCErrEnvAux [LibsignalPlacement] {A : RustAlloc}
+@[expose] def P2OverPathCErrEnvAux [LibsignalPlacement] {A : RustAlloc}
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) (B : RunBudgets)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop)
@@ -546,7 +563,7 @@ def P2OverPathCErrEnvAux [LibsignalPlacement] {A : RustAlloc}
                   kpPoll (BobV1Env inp drKey) regBox regPoll evs)
        | _, _ => False)
 
-def P2OverPathCOkEnvAux [LibsignalPlacement] {A : RustAlloc}
+@[expose] def P2OverPathCOkEnvAux [LibsignalPlacement] {A : RustAlloc}
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) (B : RunBudgets)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (selfEnvOf : ∀ (F0 : FsFiles) (peer : AddrGhost), BitVec 32 → BitVec 32 → BitVec 32 →
@@ -1239,12 +1256,12 @@ theorem stageP2PathCOver_qpan_cli_placed_of_seams_aux [LibsignalPlacement] {M : 
 
 /-- Branch-independent (`prevCap = 0#64 ∨ prevCap ≠ 0#64`) `ArchiveCoreEnv` envelope for
 `promote_state` (`lsmpl.base 47`) on D2(c) empty-`previous_sessions` records. -/
-def PromoteOverArchiveEnvLocal (G : SessionGhost) (sess : Session (List (BitVec 8)))
+@[expose] def PromoteOverArchiveEnvLocal (G : SessionGhost) (sess : Session (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   ArchiveCoreEnv 0#64 G sess evs ∨ ArchiveCoreEnv 1#64 G sess evs
 
 /-- Canonical-session specialization of `PromoteOverArchiveEnvLocal` eliminating `SessionGhost`. -/
-def PromoteOverArchiveCanonSessEnvLocal (sess : Session (List (BitVec 8)))
+@[expose] def PromoteOverArchiveCanonSessEnvLocal (sess : Session (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   let n := (encSession (clearPending sess)).length
   SeqEnv FreeOnlyEvs
@@ -1275,7 +1292,7 @@ theorem promoteOverEnv_eq_canon_pub {recG : SessionGhost} {sess : Session (List 
   promoteOverEnv_eq_canon hcanon
 
 /-- `PromSessEnv`-parametric generalization of `P2OverPathCOkEnvAux`. -/
-def P2OverPathCOkEnvAuxOf [LibsignalPlacement] {A : RustAlloc}
+@[expose] def P2OverPathCOkEnvAuxOf [LibsignalPlacement] {A : RustAlloc}
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) (B : RunBudgets)
     (BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop)
     (PromSessEnv : Session (List (BitVec 8)) → List AllocEvent → Prop)
@@ -1325,7 +1342,7 @@ def P2OverPathCOkEnvAuxOf [LibsignalPlacement] {A : RustAlloc}
 
 /-- Pointwise per-`(X, mmpl, gh, W, B)` Stage P2 Path C (`Over`) CPS contract statement at
 `dpPollEntryPlaced + 0x0868#64` under `RustCliAllocBudget M` and memory invariant `Φ`. -/
-def StageP2PathCOverQpanCliMemInvPlacedAtStmt (Φ : Memory → Prop) [LibsignalPlacement]
+@[expose] def StageP2PathCOverQpanCliMemInvPlacedAtStmt (Φ : Memory → Prop) [LibsignalPlacement]
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PromEnv : SessionGhost → Session (List (BitVec 8)) → List AllocEvent → Prop)
     (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
@@ -1545,6 +1562,9 @@ theorem stageP2PathCOver_qpan_cli_full_placed_at_of_seams_aux [LibsignalFullPlac
           g r))
     (_hDropNz : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
     (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
     (hSelfKit : ∀ (F0 : FsFiles) (peer : AddrGhost)
       (spkId kpkId opkWord : BitVec 32) (kbk : PublicKey),
@@ -1687,7 +1707,7 @@ theorem stageP2PathCOver_qpan_cli_full_placed_at_of_seams_aux [LibsignalFullPlac
     · exact ⟨hkf, hsym, Or.inr hrest⟩
   have hRespContracts :=
     LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlacedBudgetBbSat.cliResponderPqxdhHookContractsPlaced_of_hookSat_bb_sat
-      X mmpl gh W hG
+      X mmpl gh W hG hF hX hDecaps
       (LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget.cliExternsPlaced_sessionMemsetRegion_budget_sat
         mmpl gh W hG)
       hh.blackBox hh.codecHooks.alloc hh.codecHooks.dealloc hShim
@@ -2193,6 +2213,9 @@ theorem stageP2PathCOver_qpan_cli_full_placed_of_seams_aux [LibsignalFullPlaceme
     (hPromMiss : PromoteMatchingMissGenPlacedProp A.repAlloc (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hPromOver : PromoteOverGenPlacedWithEnvProp M A lim PromEnv (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hh : RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
     (hfits : FitsEnv M lim st_b (StageP2OverEnv P2OverErrEnv P2OverOkEnv y.g r))
     (hcoins : y.g.coins.length < 2 ^ 63)
     (hdec0 : DecPkOk₀ ⟨W.C, W.Q⟩ (fun _ => False) y.g.F y.g.peer.val y.g.me.val y.g.msg)
@@ -2330,7 +2353,7 @@ theorem stageP2PathCOver_qpan_cli_full_placed_of_seams_aux [LibsignalFullPlaceme
        stackAt sp (dpClosSubStack B))
       Q Qpan :=
   stageP2PathCOver_qpan_cli_full_placed_at_of_seams_aux A lim hPromEq X mmpl gh W B
-    (hErrEnv X W B) (hOkEnv X W B) (hFitsSplit X W B) _hDropNz (hG gh) (hSpqr mmpl gh W)
+    (hErrEnv X W B) (hOkEnv X W B) (hFitsSplit X W B) _hDropNz (hG gh) hF hX hDecaps (hSpqr mmpl gh W)
     (hSelfKit mmpl gh W B) (hSpkKit mmpl gh W B) (hKpkKit mmpl gh W B) (hPkKit mmpl gh W B)
     S Scope y st_b g1 r sess s0 s1 sp rngPtr v_a8 v_b8 v_d0 Q Qpan
     hPromMiss hPromOver hh hfits hcoins hdec0 hScope hFok hcur hIn hnotMatch _htrust

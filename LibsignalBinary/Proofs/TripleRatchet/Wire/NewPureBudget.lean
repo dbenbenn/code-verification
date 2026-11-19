@@ -12,9 +12,12 @@ module
 public import LibsignalBinary.Heap.MallocngBridgeBudget
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPure
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPure
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 
 /-!
 # Budget-Threaded Placed Hook Helpers for `<SignalMessage>::new`
@@ -24,7 +27,7 @@ Re-exports `RustAlloc`-independent panic-stub helpers from `Wire.NewPure` and pr
 `__rust_dealloc`, `__rust_no_alloc_shim_is_unstable_v2`, and `memcpy`) for Block `63`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -110,15 +113,6 @@ theorem new_dealloc_placed_ok [LibsignalPlacement] {M : AllocCostModel} {prog : 
     subroutine_ok prog (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim) :=
   mac_ls_hook_ok_of_mem h_dealloc (by decide) hi hunmut
 
-theorem new_deallocNoOom_placed_ok [LibsignalPlacement] {M : AllocCostModel} {prog : Program}
-    {i : Nat} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H]
-    (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hi : i < 619 := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok prog (lsρ lsRustDeallocSym) (rustCliDeallocNoOomSpec M A lim) :=
-  mac_ls_hook_ok_of_mem h_dealloc (by decide) hi hunmut
-
 set_option maxRecDepth 200000 in
 theorem new_memcpy_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [IsLsBlockProg prog i H]
@@ -127,35 +121,5 @@ theorem new_memcpy_placed_ok [LibsignalPlacement] {prog : Program} {i : Nat}
     (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsρ lsMemcpySym) framelessMemcpyBudgetSpec :=
   mac_ls_hook_ok_of_mem h_mc (by decide) hi hunmut
-
-set_option maxRecDepth 200000 in
-theorem new_memcpy_placed_ok_of_allocMemcpyVm [LibsignalPlacement] {prog : Program} {i : Nat}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H]
-    (h_mc : HookSat H lsMemcpySym allocMemcpyVmSpec)
-    (hi : i < 619 := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok prog (lsρ lsMemcpySym) framelessMemcpyBudgetSpec := by
-  have h0 : subroutine_ok prog (lsρ lsMemcpySym) allocMemcpyVmSpec :=
-    mac_ls_hook_ok_of_mem h_mc (by decide) hi hunmut
-  refine subroutine_ok_mono h0 ?_ ?_
-  · rintro ⟨dst, src, bs⟩ R s0 hp
-    dsimp only [framelessMemcpyBudgetSpec, withVmPreserved, framelessMemcpySpec,
-      allocMemcpyVmSpec] at hp ⊢
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hp
-    rcases hp with ⟨⟨hx0, hx1, hx2⟩, hm⟩
-    have hlt : bs.length < 2 ^ 64 := hx2 ▸ (s0.readReg64 .x2).isLt
-    have hx2_bv : s0.readReg64 .x2 = BitVec.ofNat 64 bs.length := by
-      rw [← hx2, BitVec.ofNat_toNat, BitVec.setWidth_eq]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2_bv, hlt⟩, ?_⟩
-    rw [sepConj_assoc]
-    exact hm
-  · rintro ⟨dst, src, bs⟩ R s0 sf hq
-    dsimp only [allocMemcpyVmSpec, framelessMemcpyBudgetSpec, withVmPreserved,
-      framelessMemcpySpec] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-    rcases hq with ⟨⟨hx0, hacp, hvm⟩, hm⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hvm, ⟨hx0, hacp.2.1⟩, hm⟩
 
 end LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget

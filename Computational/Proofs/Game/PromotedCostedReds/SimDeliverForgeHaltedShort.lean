@@ -11,13 +11,13 @@ module
 
 public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedBase
 import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanCouplingBounds
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim -- proof-setup: allow-public-import
 
 /-!
 # Shortness and Guardedness for `SimDeliverForgeHalted`
 
 Proves `SendMsgsOkDF` (`atomicShortPubB`) and `GuardedSMDFShort` for the tracker-halted sanitized
-`DeliverForge` reduction `simDeliverForgeClampSanTrackHalted`.
--/
+`DeliverForge` reduction `simDeliverForgeClampSanTrackHalted`.-/
 
 public section
 
@@ -25,32 +25,30 @@ set_option autoImplicit false
 
 namespace Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedShort
 
-noncomputable section
-
 open OracleSpec OracleComp
 open _root_.CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.SM (partyEnc noBobSendInEpoch0)
-open CryptoGames.GuardedSafe (GuardedSafePost)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState Params)
-open CryptoGames.Ratchet.LibsignalInst
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.SM (partyEnc noBobSendInEpoch0)
+open _root_.CryptoGames.GuardedSafe (GuardedSafePost)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState Params)
+open _root_.CryptoGames.Ratchet.LibsignalInst
   (LibsignalMsgPublicPart LibsignalCiphertextWithSalt32 ratchetKeyAdmissible)
-open CryptoGames.Ratchet.LibsignalSim
+open _root_.CryptoGames.Ratchet.LibsignalSim
   (Fig8St Fig8C SimState inReceiveOnlyEpoch onAcceptPure onAnswerPure
    deliverForgeSemHook simParseRecvC mkPub scPostSendPure toWire)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
-open CryptoGames.SM.Construction.DeliverForge
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
+open _root_.CryptoGames.SM.Construction.DeliverForge
   (AdversaryCompDF transmitQueryDF challQueryDF deliverQueryDF injectQueryDF
    deliverForgeQuery corrQueryDF)
-open CryptoGames.LibsignalSM.Proofs.Refinement
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement
   (KemFailTrackState initKemFailTrack sameWireFig8 stepKemFailSend)
-open CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
   (SimShortInv simShortInv_initSim simShortInv_record epMgmt_trans_eq
    inTransit_mem_and_ct mem_accept_trans)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.E2E (Bytes paramsV1)
-open CryptoVerification.LibsignalSession.HeadlineV1
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1
   (DFSpec SendMsgsOkDF QAtomicShortDF AtomicLengthsOk atomicShortPubB_mkPub
    atomicLengthsOk_paramsIdsWithSpqr_v1 smDFRespShort smDFRecvLong GuardedSMDFShort
    hQu_smDFRecvLong badSendMsgDF)
@@ -818,7 +816,5 @@ theorem simDeliverForgeClampSanTrackHalted_guardedSMDFShort
       exact (dfSafePost_semCorrHookTGB_local P Dh encT Bsk sC ex hs Q).bind
         fun ⟨rr, s'⟩ ⟨_, hs'⟩ => GuardedSafePost.pure ⟨trivial, hs'⟩
   exact hsim.map (R := fun _ => True) Prod.fst fun _ _ => trivial
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedShort

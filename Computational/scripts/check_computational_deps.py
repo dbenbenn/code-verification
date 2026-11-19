@@ -50,10 +50,12 @@ to an external package. "The umbrella" is `Computational.lean` (module `Computat
    `ComputationalKat` as a library that is not one.
 7. No module imports `scripts.*`, so the scripts are in no import closure.
 8. No declaration outside the canonical CLI security definitions (`CliPqxdhSecurityFor` in
-   `Computational/Specifications/LibsignalCli/StatementPqElf.lean` and `SignalSessionSecureFor` in
-   `Symbolic/Specifications/Security/Binary.lean`) restates their body (detected via their
-   signature identifiers `(CliAdapterCostBounded, bhPrefixFullBoundMixV1With)` and
-   `AllSecurityQueriesHoldOnHwTrace` paired with `CollisionAfterExplainedPrefix` or
+   `Computational/Specifications/LibsignalCli/StatementPqElf.lean`, its KEM-generic counterpart
+   `CliPqxdhSecurityForAnyKem` in
+   `Computational/Specifications/LibsignalCli/StatementPqElfAnyKem.lean`, and
+   `SignalSessionSecureFor` in `Symbolic/Specifications/Security/Binary.lean`) restates their body
+   (detected via their signature identifiers `(CliAdapterCostBounded, bhPrefixFullBoundMixV1With)`
+   and `AllSecurityQueriesHoldOnHwTrace` paired with `CollisionAfterExplainedPrefix` or
    `NextEventCollides`).
 
 Every rule also reports imports of `Computational.*` modules that have no source file. Prints every
@@ -279,12 +281,20 @@ _LET_OR_HAVE = re.compile(r"(?:let|have)\b")
 _WHERE_KW = re.compile(r"where\b")
 _HEADLINE_SIGS = (
     (
+        (
+            ("Computational/Specifications/LibsignalCli/StatementPqElf.lean", "CliPqxdhSecurityFor"),
+            (
+                "Computational/Specifications/LibsignalCli/StatementPqElfAnyKem.lean",
+                "CliPqxdhSecurityForAnyKem",
+            ),
+        ),
         "Computational/Specifications/LibsignalCli/StatementPqElf.lean",
         "CliPqxdhSecurityFor",
         re.compile(r"\bCliAdapterCostBounded\b"),
         re.compile(r"\bbhPrefixFullBoundMixV1With\b"),
     ),
     (
+        (("Symbolic/Specifications/Security/Binary.lean", "SignalSessionSecureFor"),),
         "Symbolic/Specifications/Security/Binary.lean",
         "SignalSessionSecureFor",
         re.compile(r"\bAllSecurityQueriesHoldOnHwTrace\b"),
@@ -413,8 +423,8 @@ def headline_restatement_violations(f, code_lines):
         if kind in ("theorem", "lemma", "example"):
             text = theorem_type_prefix(text)
         short = name.rsplit(".", 1)[-1]
-        for canon_file, canon_name, sig_a, sig_b in _HEADLINE_SIGS:
-            if f == canon_file and short == canon_name and kind in ("def", "abbrev"):
+        for allowed_pairs, canon_file, canon_name, sig_a, sig_b in _HEADLINE_SIGS:
+            if (f, short) in allowed_pairs and kind in ("def", "abbrev"):
                 continue
             m_a = sig_a.search(text)
             m_b = sig_b.search(text)

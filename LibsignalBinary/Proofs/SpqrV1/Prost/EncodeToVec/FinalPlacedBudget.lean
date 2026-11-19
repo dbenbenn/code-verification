@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.ProofPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked3aPlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.ProofPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked3PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateChunked3aPlacedBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedHeaderSentBudget
@@ -21,6 +21,10 @@ import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesPolyBudget
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked59_71Budget
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93Budget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Final Composition for `PqRatchetState::encode_to_vec` (`Block 426`)
@@ -30,7 +34,7 @@ builds the 11-variant dispatcher `step_encodeToVec_inner_at_1880_all_placed`, an
 budget-threaded `[LibsignalPlacement]` `subroutine_ok` contracts for `PqRatchetState::encode_to_vec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -634,12 +638,12 @@ abbrev PqRatchetStateEncodeToVecPinnedPlacedOkExt :=
 abbrev PqRatchetStateEncodeToVecPlacedOkExt :=
   @DefsBudget.PqRatchetStateEncodeToVecPlacedOkExt
 
-def PqRatchetStateEncodeToVecPinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def PqRatchetStateEncodeToVecPinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   PqRatchetStateEncodeToVecPinnedPlacedOkExt A lim (tripleRatchetExterns C ctl abs)
 
-def PqRatchetStateEncodeToVecPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def PqRatchetStateEncodeToVecPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   PqRatchetStateEncodeToVecPlacedOkExt A lim (tripleRatchetExterns C ctl abs)

@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
 import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionRecvPrekeyClosureCommon
 import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionRecvPrekeyCommon
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Poll Closure Entry/Exit Layout and Outcome Helpers
@@ -25,15 +28,14 @@ Separation-logic entry unpacking and exit repacking lemmas for `cliDpPollName` (
 `SubroutineOutcome` post/panic packaging.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Poll
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad
-open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
+open Arm64 Arm64.Process ProofLib open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
@@ -145,21 +147,10 @@ theorem dpCxAt_entails_memRegion32 (cx : BitVec 64) :
     (sepConj_mono (ProofLib.pointsTo64_entails_memRegion _ _)
       (sepConj_mono (ProofLib.pointsTo64_entails_memRegion _ _) (Entails.refl _)))
 
-theorem dpWords13_coins_eq_coroInit (img : Obj.Image) (x : DecPkGhost) (fut coins : BitVec 64) :
-    dpWordsAt fut (dpSlotArgs img x) ∗ ((fut + 0x68#64) ↦₆₄ coins) =
-      decryptPrekeyCoroInitAt fut x.msgA x.peerA x.meA
-        (x.stores + 0xf0#64) (sessVt img)
-        x.stores (idVt img)
-        (x.stores + 0xc8#64) (oneTimeVt img)
-        (x.stores + 0x50#64) (signedVt img)
-        (x.stores + 0x78#64) (kyberVt img) coins := by
-  dsimp only [dpSlotArgs, dpWordsAt, decryptPrekeyCoroInitAt]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_emp, sepConj_assoc]
-
 /-- Untouched coroutine sub-regions outside both `stageP1_ok_kit` and `stageP1_untrusted_ok_kit`
 (`0x280..0x2c0` + `0x2c1..0x2c8` + `0x391..0x398` + `0x3a8..0x428` + `0x468..0x490` +
 `0x4b0..0x4f2` + `0x4f3..0x4f8` + `0x4f8..0x7d8`). -/
-def coroUnusedP1At (fut : BitVec 64) : SepProp :=
+@[expose] def coroUnusedP1At (fut : BitVec 64) : SepProp :=
   memRegion (fut + 0x280#64) 64 ∗
   memRegion (fut + 0x2c1#64) 7 ∗
   memRegion (fut + 0x391#64) 7 ∗
@@ -169,72 +160,8 @@ def coroUnusedP1At (fut : BitVec 64) : SepProp :=
   memRegion (fut + 0x4f3#64) 5 ∗
   memRegion (fut + 0x4f8#64) 736
 
-theorem dpFutStartAt_split_for_p1 (img : Obj.Image) (x : DecPkGhost) (fut : BitVec 64) :
-    dpFutStartAt fut (dpSlotArgs img x) =
-      (∃∗ b_4f2 : BitVec 8, ∃∗ u_3a0 : BitVec 64,
-       ∃∗ u_398 : BitVec 64, ∃∗ b_390 : BitVec 8, ∃∗ coins : BitVec 64,
-        decryptPrekeyCoroInitAt fut x.msgA x.peerA x.meA
-          (x.stores + 0xf0#64) (sessVt img)
-          x.stores (idVt img)
-          (x.stores + 0xc8#64) (oneTimeVt img)
-          (x.stores + 0x50#64) (signedVt img)
-          (x.stores + 0x78#64) (kyberVt img) coins ∗
-        cells (fut + 0x70#64) 14 ∗
-        cells (fut + 0xe0#64) 4 ∗
-        memRegion (fut + 0x100#64) 336 ∗
-        cells (fut + 0x250#64) 6 ∗
-        ((fut + 0x2c0#64) ↦₈ 0#8) ∗
-        cells (fut + 0x2c8#64) 25 ∗
-        ((fut + 0x390#64) ↦₈ b_390) ∗
-        ((fut + 0x398#64) ↦₆₄ u_398) ∗
-        ((fut + 0x3a0#64) ↦₆₄ u_3a0) ∗
-        cells (fut + 0x428#64) 8 ∗
-        cells (fut + 0x490#64) 4 ∗
-        ((fut + 0x4f2#64) ↦₈ b_4f2) ∗
-        coroUnusedP1At fut) := by
-  unfold dpFutStartAt coroUnusedP1At
-  change dpWordsAt fut (dpSlotArgs img x) ∗
-    (∃∗ coins : BitVec 64, (fut + 0x68#64) ↦₆₄ coins) ∗
-    memRegion (fut + 0x70#64) 592 ∗
-    ((fut + 0x2c0#64) ↦₈ 0#8) ∗
-    memRegion (fut + 0x2c1#64) 1303 = _
-  have h592 : memRegion (fut + 0x70#64) 592 =
-      cells (fut + 0x70#64) 14 ∗ cells (fut + 0xe0#64) 4 ∗
-      memRegion (fut + 0x100#64) 336 ∗ cells (fut + 0x250#64) 6 ∗
-      memRegion (fut + 0x280#64) 64 := by
-    rw [memRegion_split (fut + 0x70#64) 112 480 (by decide),
-        memRegion_split (fut + 0x70#64 + 112#64) 32 448 (by decide),
-        memRegion_split (fut + 0x70#64 + 112#64 + 32#64) 336 112 (by decide),
-        memRegion_split (fut + 0x70#64 + 112#64 + 32#64 + 336#64) 48 64 (by decide)]
-    simp only [BitVec.add_assoc, BitVec.reduceAdd]
-    rw [ProofLib.memRegion_cells (fut + 0x70#64) 14 (by decide),
-        ProofLib.memRegion_cells (fut + 0xe0#64) 4 (by decide),
-        ProofLib.memRegion_cells (fut + 0x250#64) 6 (by decide)]
-  have h1303 : memRegion (fut + 0x2c1#64) 1303 =
-      memRegion (fut + 0x2c1#64) 7 ∗
-      memRegion ((fut - 1112#64) + 1824#64) 560 ∗
-      memRegion (fut + 0x4f8#64) 736 := by
-    rw [memRegion_split (fut + 0x2c1#64) 7 1296 (by decide),
-        memRegion_split (fut + 0x2c1#64 + 7#64) 560 736 (by decide)]
-    simp only [BitVec.add_assoc, BitVec.reduceAdd]
-    have h2c8 : fut + 0x2c8#64 = (fut - 1112#64) + 1824#64 := by bv_omega
-    rw [h2c8]
-  have h560 := coro_1824_560_split_for_p1 (fut - 1112#64)
-  dsimp only at h560
-  have hbase : (fut - 1112#64) + 1112#64 = fut := by bv_omega
-  rw [hbase] at h560
-  rw [h592, h1303, h560]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, ← sepConj_assoc]
-  refine congrArg sepExists (funext fun b_4f2 => ?_)
-  refine congrArg sepExists (funext fun u_3a0 => ?_)
-  refine congrArg sepExists (funext fun u_398 => ?_)
-  refine congrArg sepExists (funext fun b_390 => ?_)
-  refine congrArg sepExists (funext fun coins => ?_)
-  rw [dpWords13_coins_eq_coroInit img x fut coins]
-  ac_rfl
-
 /-- Untouched stack sub-regions of `memRegion sp 3280` for `stageP1_untrusted_ok_kit`. -/
-def closStackUnusedUntrustedAt (sp : BitVec 64) : SepProp :=
+@[expose] def closStackUnusedUntrustedAt (sp : BitVec 64) : SepProp :=
   memRegion (sp + 0x8#64) 160 ∗
   memRegion (sp + 0x234#64) 316 ∗
   memRegion (sp + 0x394#64) 76 ∗
@@ -505,7 +432,7 @@ theorem coro_of_p1_untrusted_entails_dpFutDoneAt
   exact Entails.of_eq (by ac_rfl)
 
 /-- Expose `((a + 0xc8#64) ↦ₛ m.identityKey.publicKey.bytes.toList)` inside `preKeyMsgAt` for Stage P1. -/
-def preKeyMsgRemIdKeyAt (A : RustAlloc) (g : PreKeyMsgGhost) (a : BitVec 64)
+@[expose] def preKeyMsgRemIdKeyAt (A : RustAlloc) (g : PreKeyMsgGhost) (a : BitVec 64)
     (m : PreKeySignalMessage) : SepProp :=
   signalMessageAt A g.msg a m.message ∗ optU32At (a + 0x78#64) m.preKeyId ∗
     boxU8At A (a + 0x80#64) g.serPtr m.serialized ∗ optKyberAt A (a + 0x90#64) g.kyberPtr m.kyberPayload ∗

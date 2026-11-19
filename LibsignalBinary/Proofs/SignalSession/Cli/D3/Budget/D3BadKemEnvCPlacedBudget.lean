@@ -9,8 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvBPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvBPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
+public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
+import LibsignalBinary.Proofs.PeakBudget.W4OuterHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V3StepsPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
 
 /-!
 # `SingleSlotFineSpec` and Fine-Credit Cap Bounds for `DecPkD3UntypedEnv`
@@ -20,7 +42,7 @@ bounds (`decPkD3Untyped_caps_le`, `decPkD3Untyped_caps_le_1MiB`), and proves `Si
 and non-vacuity witnesses for untyped/bad-KEM `decrypt_prekey` rejection.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -152,27 +174,6 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Store.LoadPollRecordDeserAux (
 
 /-! ## 1. Stage-Exit Unfolding Characterization -/
 
-/-- `DecPkD3UntypedEnv` exits either on Stage P1 untrusted identity (`CliDpPollUntrustedEnv`) or
-after Stage P1 (`StageP1OkEnv`) into `StageP2UntypedRejectEnv` (`StageP2V3RejectEnv` ∨
-`StageP2BadKemRejectEnv`). -/
-theorem decPkD3UntypedEnv_exits_stage1_or_2 [LibsignalPlacement]
-    (A : RustAlloc) (W : CliHooks) (B : RunBudgets) (g : DecPkGhost) (evs : List AllocEvent) :
-    DecPkD3UntypedEnv A W B g evs ↔
-      CliDpPollUntrustedEnv (A := A) B (ReadFileRuleEnv cliIo.rd) SessDeserializeCancelEnv g evs ∨
-      ∃ opt : Option (SessionRecord (List (BitVec 8))),
-        SeqEnv
-          (StageP1OkEnv (cliPollSessKitPlaced A g.F scopeKit g.peer (cliKitStk B))
-            (cliPollSessBudgetEnv A g.F g.peer B (ReadFileRuleEnv cliIo.rd)
-              SessDeserializeCancelEnv)
-            StoresGhost.opened.sessions
-            (cliPollIdKitPlaced A g.F g.peer (cliKitStk B))
-            (cliPollIdBudgetEnv A g.F g.peer B (ReadFileRuleEnv cliIo.rd))
-            StoresGhost.opened.identity g.peer.val g.msg.identityKey)
-          (StageP2UntypedRejectEnv (A := A) B (ReadFileRuleEnv cliIo.rd)
-            PqxdhAcceptBadKemErrEnv g opt)
-          evs :=
-  Iff.rfl
-
 private theorem kpPoll_fine_specs {F0 : FsFiles} (hkf : DecPkKeyFilesBounded F0) :
     PhaseCreditSpec fineCostModel
       (cliPollSelfKpPollEnv (ReadFileRuleEnv cliIo.rd) F0 StoresGhost.opened.identity)
@@ -290,11 +291,11 @@ theorem pqxdhAcceptBadKemErr_fine_specs :
   · exact (PhaseGroupSpec.of_nonFreeBound fineCostModel (maxOps := 5) (by
       rintro evs (rfl | rfl | rfl | rfl | rfl | rfl) <;> decide)).mono (by decide)
 
-def stageP2UntypedFineCum : Nat :=
+@[expose] def stageP2UntypedFineCum : Nat :=
   19176 + spkPollFineCum + 488 + kpkPollFineCum + 28550 + 9581 +
     488 + pkPollFineCum + 488 + kpPollFineCum + 48335
 
-def stageP2UntypedFineGrpS : Nat :=
+@[expose] def stageP2UntypedFineGrpS : Nat :=
   (6 + 3 + 6 + 3 + 3 + 3 + 15) * FineScale +
     spkPollFineGrpS + kpkPollFineGrpS + pkPollFineGrpS + kpPollFineGrpS
 
@@ -564,36 +565,36 @@ theorem stageP2BadKemReject_fine_specs [LibsignalPlacement] {A : RustAlloc}
 
 /-! ## 2. Closed Cap Constants and `SingleSlotFineSpec` -/
 
-def trustPollFineCum : Nat := 21185 + max 738 (fineReadFileCum sessionCapBytes)
-def trustPollFineLive : Nat := fineReadFileLive sessionCapBytes
-def trustPollFinePeak : Nat := fineReadFilePeak sessionCapBytes
-def trustPollFineMaxReq : Nat := max 256 (fineReadFileMaxReq sessionCapBytes)
+@[expose] def trustPollFineCum : Nat := 21185 + max 738 (fineReadFileCum sessionCapBytes)
+@[expose] def trustPollFineLive : Nat := fineReadFileLive sessionCapBytes
+@[expose] def trustPollFinePeak : Nat := fineReadFilePeak sessionCapBytes
+@[expose] def trustPollFineMaxReq : Nat := max 256 (fineReadFileMaxReq sessionCapBytes)
 
-def stageP1UntypedFineCum : Nat :=
+@[expose] def stageP1UntypedFineCum : Nat :=
   defaultW4LoadCum sessionCapBytes deserCancelFineCum +
     w4BoxedStepCum 32 trustPollFineCum + (2 * 40 + 9539)
 
 /-- Closed `fineCostModel` cumulative small-allocation charge bound for `DecPkD3UntypedEnv`. -/
-def decPkD3UntypedCum : Nat := stageP1UntypedFineCum + stageP2UntypedFineCum
+@[expose] def decPkD3UntypedCum : Nat := stageP1UntypedFineCum + stageP2UntypedFineCum
 
 /-- Closed `fineCostModel` large-allocation live-byte delta bound for `DecPkD3UntypedEnv`. -/
-def decPkD3UntypedLive : Nat :=
+@[expose] def decPkD3UntypedLive : Nat :=
   defaultW4LoadLive sessionCapBytes deserCancelFineLive +
     w4BoxedStepLive 32 trustPollFineLive
 
 /-- Closed `fineCostModel` large-allocation peak-byte delta bound for `DecPkD3UntypedEnv`. -/
-def decPkD3UntypedPeak : Nat :=
+@[expose] def decPkD3UntypedPeak : Nat :=
   max (defaultW4LoadPeak sessionCapBytes deserCancelFinePeak)
     (defaultW4LoadLive sessionCapBytes deserCancelFineLive +
       max (w4BoxedStepPeak 32 trustPollFinePeak) (w4BoxedStepLive 32 trustPollFineLive))
 
 /-- Closed `fineCostModel` max-request byte bound for `DecPkD3UntypedEnv`. -/
-def decPkD3UntypedMaxReq : Nat :=
+@[expose] def decPkD3UntypedMaxReq : Nat :=
   max (max (defaultW4LoadMaxReq sessionCapBytes deserCancelFineMaxReq)
     (max (w4BoxedStepMaxReq 32 trustPollFineMaxReq) 40)) 9808
 
 /-- Closed `fineCostModel` scaled `meta_area` group bound for `DecPkD3UntypedEnv`. -/
-def decPkD3UntypedGrpS : Nat :=
+@[expose] def decPkD3UntypedGrpS : Nat :=
   93 * FineScale + deserCancelFineGrpS + stageP2UntypedFineGrpS
 
 /-- Closed inequalities bounding `DecPkD3UntypedEnv` within
@@ -874,7 +875,7 @@ theorem decPkD3UntypedEnv_fine_groupSpec [LibsignalPlacement]
 
 /-- `SingleSlotFineSpec` for `DecPkD3UntypedEnv A W B g` from `g.peer.name.bytes.length ≤ 40`
 and `DecPkKeyFilesBounded g.F`. -/
-def decPkD3UntypedEnv_singleSlotFineSpec [LibsignalPlacement]
+@[expose] def decPkD3UntypedEnv_singleSlotFineSpec [LibsignalPlacement]
     (A : RustAlloc) (W : CliHooks) (B : RunBudgets) (g : DecPkGhost)
     (hpeer : g.peer.name.bytes.length ≤ 40)
     (hkf : DecPkKeyFilesBounded g.F) :
@@ -890,7 +891,7 @@ def decPkD3UntypedEnv_singleSlotFineSpec [LibsignalPlacement]
 
 /-- Call-site `SingleSlotFineSpec` for `DecPkD3UntypedEnv` when `g.peer.name.bytes = peerV.name`
 and `g.F = runFiles i` under `CliPqxdhInputs P i` or `pqRecvInputs P st ct rc`. -/
-def decPkD3UntypedEnv_of_inputs_singleSlotFineSpec [LibsignalPlacement]
+@[expose] def decPkD3UntypedEnv_of_inputs_singleSlotFineSpec [LibsignalPlacement]
     (A : RustAlloc) (W : CliHooks) (B : RunBudgets)
     {P : PEParams} {i : Inputs} {peerV : AddrV} (g : DecPkGhost)
     (hi : CliPqxdhInputs P i ∨
@@ -906,7 +907,7 @@ def decPkD3UntypedEnv_of_inputs_singleSlotFineSpec [LibsignalPlacement]
 
 /-- `SingleSlotFineSpec` for `DecPkD3UntypedEnv` at `r3bDecPkGhost` under `CliPqxdhInputs P call.i`
 or `pqRecvInputs P st ct rc`. -/
-def decPkD3UntypedEnv_r3b_singleSlotFineSpec [LibsignalPlacement]
+@[expose] def decPkD3UntypedEnv_r3b_singleSlotFineSpec [LibsignalPlacement]
     (A : RustAlloc) (W : CliHooks) (B : RunBudgets)
     {P : PEParams} (call : RunCall) (meV peerV : AddrV) (pm : PreKeySignalMessage)
     (hi : CliPqxdhInputs P call.i ∨

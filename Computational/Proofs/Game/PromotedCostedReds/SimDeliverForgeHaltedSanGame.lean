@@ -10,7 +10,9 @@ limitations under the License.
 module
 
 public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedBase
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanSem -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanSem
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperDefs
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECell -- proof-setup: allow-public-import
 
 /-!
 # Sanitized-to-Dedup Cell-Game Coupling for `SimDeliverForgeHalted`
@@ -65,8 +67,6 @@ open Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanSem
   (simDeliverForgeOracleSan_inr_inl_eq simDeliverForgeOracleSan_inr_inr_eq_of_support)
 open Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedBase
   (semSendTrackHalted simDeliverForgeOracleSanTrackHalted simDeliverForgeClampSanTrackHalted)
-
-noncomputable section
 
 /-- Dedup-leak tracker-halted `DeliverForge` semantic oracle (intermediate between
 `simDeliverForgeOracleSanTrackHalted` and `simDeliverForgeOracleTrackHalted`). -/
@@ -1176,7 +1176,5 @@ theorem runBaseDFCellTPaper_challSimDF'Paper_simDeliverForgeClampSanTrackHalted_
       (fun R => if R == Party.A then P.idA else P.idB) 25000 lam) k false)
     hT hKc hBsk (dfSanInv_init P Dh encPt encT lam q k pqrKey false)
   dsimp only [runCellDF] at h1; rw [h1]
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedSanGame

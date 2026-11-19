@@ -11,14 +11,14 @@ module
 
 public import ProofLib.Process
 public import ProofLib.StdStartup.Layout
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.Fine.ElfInitFine
 public import LibsignalBinary.Heap.Fine.F3LayoutData
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliBinaryTokenPatchPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliBinaryTokenPatchPlaced -- proof-setup: allow-public-import
 public meta import ProofLib.ProgramReflection
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
-public meta import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSymChars -- proof-setup: allow-public-import
 
 /-!
 # Production `cliElfImage` Aliases and `CliElfMallocngLayout` Witnesses
@@ -30,7 +30,7 @@ re-exports parse, symbol-table, and static well-formedness facts, and proves
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Fixture
 
@@ -66,8 +66,6 @@ noncomputable abbrev f3TrialElf : ElfImage :=
 theorem f3TrialElf_parse : ElfImage.parse f3TrialElfBytes = .ok f3TrialElf :=
   cliElf_parse
 
-noncomputable abbrev f3TrialElfSyms : List (String × BitVec 64) := f3TrialElf.symbols
-
 noncomputable abbrev f3TrialElfSymChars : List (List Char × BitVec 64) :=
   cliElfSymChars
 
@@ -79,15 +77,6 @@ theorem f3TrialElfSyms_eq :
 
 theorem f3TrialElf_wellFormed : f3TrialElf.WellFormed = true :=
   cliElf_wellFormed
-
-theorem f3TrialElf_brkStart : f3TrialElf.brkStart = f3BrkStart :=
-  cliElf_brkStart
-
-theorem f3TrialElf_brkStart_le_stackBase : f3TrialElf.brkStart.toNat ≤ stackBase :=
-  cliElf_brkStart_le_stackBase
-
-theorem f3TrialElf_staticOk : ElfStaticOk f3TrialElf :=
-  cliElf_staticOk
 
 theorem f3TrialElf_seg_count : f3TrialElf.segments.length = f3SegCount :=
   cliElf_seg_count

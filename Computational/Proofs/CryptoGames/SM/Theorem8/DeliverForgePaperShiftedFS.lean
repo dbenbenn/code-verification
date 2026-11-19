@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.DeliverForgeShifted
+public import Computational.Proofs.HeadlineV1.DeliverForgeShifted -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperDefs
 import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperFS
 import ProofLib.SepLogic.WP.StateNorm
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeFS -- proof-setup: allow-public-import
 /-!
 # Shifted-Paper Definitions and Hop 3
 
@@ -20,7 +21,7 @@ Defines `trivB1`, the shifted-paper base games, engines, and reductions, and pro
 `lemma11_df_shifted_paper`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open scoped BigOperators ENNReal
 open MeasureTheory ProbabilityTheory OracleComp OracleSpec
@@ -28,7 +29,7 @@ namespace CryptoGames.SM.Construction.DeliverForge
 open CryptoGames.SM CryptoGames.SM.Engine CryptoGames.SM.Construction
 open CryptoGames.LibsignalSM.Proofs.Refinement
 /-- `Dir2` (`B1(tStar)`) triviality predicate. -/
-def trivB1 {St Msg C : Type} (tStar : ℕ) (s : SM.GameState St Msg C) (pos : SM.Pos) : Bool :=
+@[expose] def trivB1 {St Msg C : Type} (tStar : ℕ) (s : SM.GameState St Msg C) (pos : SM.Pos) : Bool :=
   s.trivial 2 pos ||
     (pos.epoch != tStar && decide (pos.epoch < min (s.epoch .A) (s.epoch .B)))
 @[simp] theorem trivB1_self_epoch {St Msg C : Type} (tStar : ℕ)
@@ -46,7 +47,7 @@ theorem trivB1_eq_trivial_of_new_epoch {St Msg C : Type} (tStar : ℕ)
 theorem trivB1_of_trivial {St Msg C : Type} {tStar : ℕ}
     {s : SM.GameState St Msg C} {pos : SM.Pos} (h : s.trivial 2 pos = true) :
     trivB1 tStar s pos = true := by simp [trivB1, h]
-def injectImplB1 {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def injectImplB1 {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     (sm : SMScheme Key St Msg Coins C) (qep tStar : ℕ) (cfg : SM.Config Msg) :
     QueryImpl ((Party × C) →ₒ Option (SM.RecvResult Msg))
       (StateT (SM.GameState St Msg C) ProbComp) := fun ⟨P, c⟩ => do
@@ -62,7 +63,7 @@ def injectImplB1 {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     else
       if cfg.injectFull t' then set { s with win := true }
       return some .rejected
-def deliverForgeBaseImplB1 {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def deliverForgeBaseImplB1 {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     (sm : SMScheme Key St Msg Coins C) (qep tStar : ℕ) (sameHdr : C → C → Bool)
     (cfg : SM.Config Msg) :
     QueryImpl ((Party × C × C) →ₒ Option (SM.RecvResult Msg))
@@ -83,29 +84,29 @@ def deliverForgeBaseImplB1 {Key St Msg Coins C : Type} [DecidableEq Msg] [Decida
       else
         if cfg.injectFull t' then set { s with win := true }
         return some .rejected
-def corrImplShiftedPaper {St Msg C : Type} (l : ℕ) :
+@[expose] def corrImplShiftedPaper {St Msg C : Type} (l : ℕ) :
     QueryImpl (Party →ₒ Option St) (StateT (SM.GameState St Msg C) ProbComp) := fun P => do
   let s ← get
   if s.win || !(s.corrAllowedPaper P) then return none
   set (DeliverForge.afterCorrShifted l s P)
   return some (s.st P)
-def oracleImplShiftedPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def oracleImplShiftedPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Coins] (sm : SMScheme Key St Msg Coins C) (Δ l qep : ℕ) (cfg : SM.Config Msg) :
     QueryImpl (SM.spec St Msg Coins C) (StateT (SM.GameState St Msg C) ProbComp) :=
   SM.transmitImpl sm Δ qep + SM.challImpl sm Δ qep cfg + SM.deliverImpl sm cfg +
     SM.injectImpl sm Δ qep cfg + corrImplShiftedPaper (St := St) (Msg := Msg) (C := C) l
-def oracleImplShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def oracleImplShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Coins] (sm : SMScheme Key St Msg Coins C) (l qep tStar : ℕ)
     (cfg : SM.Config Msg) :
     QueryImpl (SM.spec St Msg Coins C) (StateT (SM.GameState St Msg C) ProbComp) :=
   SM.transmitImpl sm 2 qep + SM.challImpl sm 2 qep cfg + SM.deliverImpl sm cfg +
     injectImplB1 sm qep tStar cfg + corrImplShiftedPaper (St := St) (Msg := Msg) (C := C) l
-def oracleImplBaseDFShiftedPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def oracleImplBaseDFShiftedPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Coins] (sm : SMScheme Key St Msg Coins C) (Δ l qep : ℕ)
     (sameHdr : C → C → Bool) (cfg : SM.Config Msg) :
     QueryImpl (DeliverForge.specDF St Msg Coins C) (StateT (SM.GameState St Msg C) ProbComp) :=
   oracleImplShiftedPaper sm Δ l qep cfg + DeliverForge.deliverForgeBaseImpl sm Δ qep sameHdr cfg
-def oracleImplBaseDFShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def oracleImplBaseDFShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Coins] (sm : SMScheme Key St Msg Coins C) (l qep tStar : ℕ)
     (sameHdr : C → C → Bool) (cfg : SM.Config Msg) :
     QueryImpl (DeliverForge.specDF St Msg Coins C) (StateT (SM.GameState St Msg C) ProbComp) :=
@@ -126,14 +127,14 @@ abbrev fullImplBaseDFShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq M
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget
     (StateT (SM.GameState St Msg C) ProbComp) +
     oracleImplBaseDFShiftedDir2Paper sm l qep tStar sameHdr cfg
-def runBaseDFShiftedPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def runBaseDFShiftedPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (Δ l qep : ℕ)
     (sameHdr : C → C → Bool) (cfg : SM.Config Msg) (b : Bool)
     (B : DeliverForge.AdversaryDF St Msg Coins C) : ProbComp (Bool × SM.GameState St Msg C) := do
   let k ← $ᵗ Key
   (simulateQ (fullImplBaseDFShiftedPaper sm Δ l qep sameHdr cfg) B).run (SM.initState sm k b)
-def runBaseDFShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def runBaseDFShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (l qep tStar : ℕ)
     (sameHdr : C → C → Bool) (cfg : SM.Config Msg) (b : Bool)
@@ -142,32 +143,32 @@ def runBaseDFShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [Dec
   (simulateQ (fullImplBaseDFShiftedDir2Paper sm l qep tStar sameHdr cfg) B).run
     (SM.initState sm k b)
 /-- `Δ = 2` shifted paper game at `l = tStar - 1`. -/
-def forgeGameGuessedShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def forgeGameGuessedShiftedDir2Paper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (sameHdr : C → C → Bool)
     (l tStar : ℕ) (B : DeliverForge.AdversaryDF St Msg Coins C) : ProbComp Bool := do
   let (_, s') ← runBaseDFShiftedDir2Paper sm l qep tStar sameHdr (SM.Config.auth tStar) false B
   return s'.win && authOKDir2 (some (l - 1)) tStar s'
-noncomputable def forgeGuessedAdvantageShiftedDir2Paper {Key St Msg Coins C : Type}
+@[expose] noncomputable def forgeGuessedAdvantageShiftedDir2Paper {Key St Msg Coins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (sameHdr : C → C → Bool)
     (l tStar : ℕ) (B : DeliverForge.AdversaryDF St Msg Coins C) : ℝ≥0∞ :=
   𝒟[forgeGameGuessedShiftedDir2Paper sm qep sameHdr l tStar B] {true}
 /-- `Δ`-parametric shifted paper game at `l = tStar - 2`. -/
-def forgeGameGuessedShiftedPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def forgeGameGuessedShiftedPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) (sameHdr : C → C → Bool)
     (l tStar : ℕ) (B : DeliverForge.AdversaryDF St Msg Coins C) : ProbComp Bool := do
   let (_, s') ← runBaseDFShiftedPaper sm Δ l qep sameHdr (SM.Config.auth tStar) false B
   return s'.win && SM.authLosingConditionsAvoided Δ (some (l - 1)) tStar s'
-noncomputable def forgeGuessedAdvantageShiftedPaper {Key St Msg Coins C : Type}
+@[expose] noncomputable def forgeGuessedAdvantageShiftedPaper {Key St Msg Coins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) (sameHdr : C → C → Bool)
     (l tStar : ℕ) (B : DeliverForge.AdversaryDF St Msg Coins C) : ℝ≥0∞ :=
   𝒟[forgeGameGuessedShiftedPaper sm Δ qep sameHdr l tStar B] {true}
 variable {ι : Type} {tspec : OracleSpec.{0, 0} ι}
   {HS KC Γ CCoins T I KR Sig K SS RS M E Γv Sv SSv RSv : Type}
-def injectEB1 [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def injectEB1 [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (qep tStar : ℕ) (cfg : SM.Config M) :
     QueryImpl ((Party × (Header T × E)) →ₒ Option (SM.RecvResult M))
@@ -187,7 +188,7 @@ def injectEB1 [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     else
       if cfg.injectFull t' then modify fun es => { es with g := { es.g with win := true } }
       return some .rejected
-def deliverForgeEB1 [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def deliverForgeEB1 [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (qep tStar : ℕ) (cfg : SM.Config M) :
     QueryImpl ((Party × (Header T × E) × (Header T × E)) →ₒ Option (SM.RecvResult M))
@@ -211,7 +212,7 @@ def deliverForgeEB1 [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E
       else
         if cfg.injectFull t' then modify fun es => { es with g := { es.g with win := true } }
         return some .rejected
-def corrEShiftedPaper (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
+@[expose] def corrEShiftedPaper (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (π : Policy) :
     QueryImpl (Party →ₒ Option (PartyState Γ T Sig SS RS))
       (EM tspec Γv T Sv SSv RSv M E HS) := fun P => do
@@ -224,7 +225,7 @@ def corrEShiftedPaper (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins �
     match stOpt with
     | none => abortE; return none
     | some st => modify fun es => { es with g := s₁ }; return some st
-def implEDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def implEDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : SM.Config M) (π : Policy) :
     QueryImpl (unifSpec + DeliverForge.specDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E))
@@ -237,7 +238,7 @@ def implEDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabit
   let i₂ : QueryImpl ((Party × (Header T × E) × (Header T × E)) →ₒ Option (SM.RecvResult M))
       (EM tspec Γv T Sv SSv RSv M E HS) := DeliverForge.deliverForgeE hk Δ qep cfg
   HAdd.hAdd i₀ (HAdd.hAdd i₁ i₂)
-def implEDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def implEDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (qep maxSkip tStar : ℕ) (cfg : SM.Config M) (π : Policy) :
     QueryImpl (unifSpec + DeliverForge.specDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E))
@@ -250,7 +251,7 @@ def implEDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inh
   let i₂ : QueryImpl ((Party × (Header T × E) × (Header T × E)) →ₒ Option (SM.RecvResult M))
       (EM tspec Γv T Sv SSv RSv M E HS) := deliverForgeEB1 hk qep tStar cfg
   HAdd.hAdd i₀ (HAdd.hAdd i₁ i₂)
-def engRunDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def engRunDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : SM.Config M) (π : Policy)
     (init : HM tspec HS (Option (VP Γv T Sv SSv RSv × VP Γv T Sv SSv RSv))) (h₀ : HS) (b : Bool)
@@ -266,7 +267,7 @@ def engRunDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabi
       { g := g₀, h := h₁, abort := false }
     let res ← (simulateQ (implEDFShiftedPaper l hk Δ qep maxSkip cfg π) A).run es₀
     return some res
-def engRunDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def engRunDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (qep maxSkip tStar : ℕ) (cfg : SM.Config M) (π : Policy)
     (init : HM tspec HS (Option (VP Γv T Sv SSv RSv × VP Γv T Sv SSv RSv))) (h₀ : HS) (b : Bool)
@@ -282,7 +283,7 @@ def engRunDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [In
       { g := g₀, h := h₁, abort := false }
     let res ← (simulateQ (implEDFShiftedDir2Paper l hk qep maxSkip tStar cfg π) A).run es₀
     return some res
-def authSimDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def authSimDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (l : ℕ) (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep : ℕ)
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (init : HM tspec HS (Option (VP Γv T Sv SSv RSv × VP Γv T Sv SSv RSv))) (h₀ : HS)
@@ -294,7 +295,7 @@ def authSimDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhab
   match r with
   | none => return false
   | some (_, es) => return authOut (2 + Δcka) π es
-def authSimDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def authSimDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (l : ℕ) (fs : FSAEADScheme K SS RS (Header T) M E) (qep : ℕ)
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (init : HM tspec HS (Option (VP Γv T Sv SSv RSv × VP Γv T Sv SSv RSv))) (h₀ : HS)
@@ -306,7 +307,7 @@ def authSimDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [I
   match r with
   | none => return false
   | some (_, es) => return authOut 2 π es
-def redCKAAuthDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def redCKAAuthDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     [SampleableType KR] [SampleableType KC] [SampleableType CCoins]
     (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep l tStar : ℕ)
@@ -316,7 +317,7 @@ def redCKAAuthDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [In
   authSimDFShiftedPaper l fs Δcka qep
     (DeliverForge.hooksCKAShifted cka prng fs l tStar)
     (DeliverForge.initCKAShifted cka prng fs lam l) {} (some (l - 1)) tStar A
-def redCKAAuthDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def redCKAAuthDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     [SampleableType KR] [SampleableType KC] [SampleableType CCoins]
     (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (qep l tStar : ℕ)
@@ -326,7 +327,7 @@ def redCKAAuthDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E]
   authSimDFShiftedDir2Paper l fs qep
     (DeliverForge.hooksCKAShifted cka prng fs l 0)
     (DeliverForge.initCKAShifted cka prng fs lam l) {} (some (l - 1)) tStar A
-def redPRNGAuthDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def redPRNGAuthDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
     (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep l tStar : ℕ)
@@ -336,7 +337,7 @@ def redPRNGAuthDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [I
   authSimDFShiftedPaper l fs Δcka qep
     (hooksPRNG cka prng fs ⟨true, some (l - 1), tStar⟩)
     (initPRNG cka prng fs lam ⟨true, some (l - 1), tStar⟩) {} (some (l - 1)) tStar A
-def redPRNGAuthDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def redPRNGAuthDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
     (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (qep l tStar : ℕ)
@@ -346,7 +347,7 @@ def redPRNGAuthDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E
   authSimDFShiftedDir2Paper l fs qep
     (hooksPRNG cka prng fs ⟨false, some (l - 1), tStar⟩)
     (initPRNG cka prng fs lam ⟨false, some (l - 1), tStar⟩) {} (some (l - 1)) tStar A
-def redFSAuthDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [DecidableEq I]
+@[expose] def redFSAuthDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [DecidableEq I]
     [Inhabited E] [SampleableType KR] [SampleableType KC] [SampleableType CCoins]
     [SampleableType I] [SampleableType K]
     (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
@@ -358,7 +359,7 @@ def redFSAuthDFShiftedPaper [DecidableEq T] [DecidableEq M] [DecidableEq E] [Dec
     (2 + Δcka) qep fs.maxSkip (SM.Config.auth tStar) ⟨true, some (l - 1), tStar⟩
     (initFS cka prng fs lam ⟨true, some (l - 1), tStar⟩ j) {} false A
   sampleT Bool
-def redFSAuthDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [DecidableEq I]
+@[expose] def redFSAuthDFShiftedDir2Paper [DecidableEq T] [DecidableEq M] [DecidableEq E] [DecidableEq I]
     [Inhabited E] [SampleableType KR] [SampleableType KC] [SampleableType CCoins]
     [SampleableType I] [SampleableType K]
     (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
@@ -393,7 +394,7 @@ theorem implEDFShiftedPaper_eq_implEDF_of_ne_corr {tspec : OracleSpec.{0, 0} ι}
   · rfl
   · exact False.elim (hq P rfl)
   · rfl
-def stepPDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def stepPDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) :
@@ -402,7 +403,7 @@ def stepPDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Si
   (simulateQ (pImpl prng)
     ((implEDFShiftedPaper l (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip
       mo.cfg mo.policy q).run esP)).run sp
-def stepLDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def stepLDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esL : EStateL Γ T Sig SS RS M E K I) :
@@ -418,7 +419,7 @@ def runPDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig
     ((simulateQ (implEDFShiftedPaper l (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip
       mo.cfg mo.policy) oa).run esP)).run sp
   pure (authOut (2 + Δcka) mo.policy r.1.2)
-def runLocDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def runLocDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode)
     (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
@@ -434,7 +435,7 @@ def runLocAtDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR
     ((simulateQ (implEDFShiftedPaper l (hooksLocal cka prng fs mo) (2 + Δcka) qep fs.maxSkip
       mo.cfg mo.policy) oa).run esL)
   pure (authOut (2 + Δcka) mo.policy r.2 && (r.2.h.lastIdx == some j))
-def localAuthDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def localAuthDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep l : ℕ) (tL : Option ℕ) (t : ℕ)
     (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) : ProbComp Bool := do
   let mo : Mode := ⟨true, tL, t⟩
@@ -456,7 +457,7 @@ def localAuthAtDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG
     let g : Ctx Γ T Sig (SS × Option ℕ) (RS × Option ℕ) M E :=
       { st := fun P => match P with | .A => vA | .B => vB, b := false }
     runLocAtDFShiftedPaper cka prng fs Δcka qep l mo j A { g, h }
-def stepLFixedDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def stepLFixedDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode) (j : ℕ) (k_fs : K)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esL : EStateL Γ T Sig SS RS M E K I) :
@@ -483,7 +484,7 @@ def localAuthAtFixedDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PR
     let g : Ctx Γ T Sig (SS × Option ℕ) (RS × Option ℕ) M E :=
       { st := fun P => match P with | .A => vA | .B => vB, b := false }
     runLocAtFixedDFShiftedPaper cka prng fs Δcka qep l mo j k_fs A { g, h }
-def stepFDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def stepFDFShiftedPaper (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep l : ℕ) (mo : Mode) (j : ℕ)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esF : EStateF Γ T Sig SS RS M E K I) (st : FSGameState SS RS T M E) :

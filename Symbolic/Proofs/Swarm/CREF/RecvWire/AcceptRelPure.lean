@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.SendsFitRun
+public import Symbolic.Proofs.Swarm.CREF.TR.SendsFitRun -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Concrete.ImageSymbols
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -22,7 +22,7 @@ Proves that appending an accepting whisper receive call block containing only `r
 `accept` events preserves `TR.SendsFit`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

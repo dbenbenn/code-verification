@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.CaseSplit
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.CaseSplit -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.EquationalTheory.KdfExtract
 import Symbolic.Specifications.Model.EquationalTheory.Trunc
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.G1RepMacTR
 import Symbolic.Proofs.Swarm.CREF.TR.G1.NotOpaqueMac
@@ -22,6 +22,8 @@ import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
 import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeAddr
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepMac
 import Symbolic.Proofs.Swarm.CREF.TROpen
+import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
 
 /-!
 # Skipped-Seed Case Split and HMAC KDF Inversion Helpers
@@ -31,7 +33,7 @@ Proves the skipped-seed case split `g1a_case_split_skippedSeed` (and its MAC sha
 `hmac_wire_attackerKnows_inv_memo_kdf` for seeds of the form `kdfExtract ck₁ (litByte 0x01)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

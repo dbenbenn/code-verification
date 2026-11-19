@@ -58,7 +58,7 @@ Defines `Pub L`, the set of terms built from public constants and random draws w
 lie outside `Pub L` whenever neither `EK_A` nor `IK_B` is in `L`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

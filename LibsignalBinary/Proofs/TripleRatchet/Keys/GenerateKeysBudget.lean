@@ -9,17 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.GenerateKeys
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Keys.GenerateKeys
 import LibsignalBinary.Heap.IfaceBudgetLemmas
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `<MessageKeyGenerator>::generate_keys`
@@ -28,7 +29,7 @@ Proves `[LibsignalPlacement]` `RustCliAllocBudget` contracts (`generateKeysSpec`
 `generateKeysSpecX`) for `<MessageKeyGenerator>::generate_keys`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -161,7 +162,7 @@ theorem fnFrame_split_generateKeysAt_post (sp : BitVec 64) {callStack : Nat}
       memRegion (sp - 96#64) 96 = cells (sp - 96#64) 12),
     hsub]
 
-def extractSomeBudgetPlacedStackSpecAt (F : ShaCompress) (pl : Obj.MultiPlacement)
+@[expose] def extractSomeBudgetPlacedStackSpecAt (F : ShaCompress) (pl : Obj.MultiPlacement)
     (callStack : Nat) :
     Spec (BitVec 64 × BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (ret, saltA, sv, ikmA, ikm, sp) s =>
@@ -199,7 +200,7 @@ theorem extractSomeBudgetPlacedExtStack_ok {prog : Program} {pl : Obj.MultiPlace
     rcases hpost with ⟨htr, hpost⟩
     exact ⟨htr, by arm64_sep_close⟩
 
-def extractNoneBudgetPlacedStackSpecAt (F : ShaCompress) (pl : Obj.MultiPlacement)
+@[expose] def extractNoneBudgetPlacedStackSpecAt (F : ShaCompress) (pl : Obj.MultiPlacement)
     (callStack : Nat) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (ret, ikmA, ikm, sp) s =>
@@ -264,7 +265,7 @@ theorem extractNoneBudgetPlacedExtStack_ok {prog : Program} {pl : Obj.MultiPlace
     rcases hpost with ⟨htr, hpost⟩
     exact ⟨htr, by arm64_sep_close⟩
 
-def extractEmptyBudgetPlacedStackSpecAt (F : ShaCompress) (pl : Obj.MultiPlacement)
+@[expose] def extractEmptyBudgetPlacedStackSpecAt (F : ShaCompress) (pl : Obj.MultiPlacement)
     (callStack : Nat) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (ret, ikmA, ikm, sp) s =>
@@ -353,7 +354,7 @@ theorem expandCellsBudgetPlacedExtStack_ok {prog : Program} {pl : Obj.MultiPlace
 
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
-def deallocGenBudgetPlacedStackSpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def deallocGenBudgetPlacedStackSpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (pl : Obj.MultiPlacement) (callStack : Nat) :
     Spec (BitVec 64 × Nat × Nat × BitVec 64 × M.σ) where
   pre := fun (p, size, align, sp, st) s =>
@@ -493,7 +494,7 @@ theorem generateKeys_placed_ok_of_hooks_gen [LibsignalPlacement]
     subroutine_ok ((blkPC_69).rebase (blkPl_69).base H) (blkPl_69).base
       (withLsCodeRoLoaded lsmpl (generateKeysSpecWithStack M A lim C.F (496 + callStack))) := by
   refine subroutine_ok_withLsCodeRoLoaded_rodata''
-    (roSym := "libsignal_protocol:.rodata..Lanon.168")
+    (roSym := "libsignal_protocol:.rodata..Lanon.175")
     (roBytes := whisperMessageKeys) (by decide) ?_
   wp_init xst s0
   have hexp' := hexp_raw
@@ -563,7 +564,7 @@ theorem generateKeys_placed_ok_of_hooks_gen [LibsignalPlacement]
       intro hF2
       apply SepWP.of_sepWP_lscro hF2
       wp_call hexp' (s0.sp - 416#64, hkdfExtract C.F none seed, s0.sp - 272#64,
-        lsmpl.ρ "libsignal_protocol:.rodata..Lanon.168", whisperMessageKeys,
+        lsmpl.ρ "libsignal_protocol:.rodata..Lanon.175", whisperMessageKeys,
         s0.sp - 496#64, s0.sp - 496#64)
       wp_extract_exists
       refine SepWP.transport_budgetPool ‹VmPreserved _ _› (hnext := ?_)
@@ -674,7 +675,7 @@ theorem generateKeys_placed_ok_of_hooks_gen [LibsignalPlacement]
       intro hF2
       apply SepWP.of_sepWP_lscro hF2
       wp_call hexp' (s0.sp - 416#64, hkdfExtract C.F none seed, s0.sp - 272#64,
-        lsmpl.ρ "libsignal_protocol:.rodata..Lanon.168", whisperMessageKeys,
+        lsmpl.ρ "libsignal_protocol:.rodata..Lanon.175", whisperMessageKeys,
         s0.sp - 496#64, s0.sp - 496#64)
       wp_extract_exists
       refine SepWP.transport_budgetPool ‹VmPreserved _ _› (hnext := ?_)
@@ -755,7 +756,7 @@ theorem generateKeys_placed_ok_of_hooks_gen [LibsignalPlacement]
     intro hF2
     apply SepWP.of_sepWP_lscro hF2
     wp_call hexp' (s0.sp - 416#64, hkdfExtract C.F (some sv) seed, s0.sp - 272#64,
-      lsmpl.ρ "libsignal_protocol:.rodata..Lanon.168", whisperMessageKeys,
+      lsmpl.ρ "libsignal_protocol:.rodata..Lanon.175", whisperMessageKeys,
       s0.sp - 496#64, s0.sp - 496#64)
     wp_extract_exists
     refine SepWP.transport_budgetPool ‹VmPreserved _ _› (hnext := ?_)

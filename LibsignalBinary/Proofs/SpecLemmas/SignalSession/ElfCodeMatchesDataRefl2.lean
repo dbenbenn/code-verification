@@ -10,17 +10,19 @@ limitations under the License.
 module
 
 public import Arm64
-public import GeneratedLean.LibsignalSessionPlacedObj
+import GeneratedLean.LibsignalSessionPlacedObj
 public import LibsignalBinary.Heap.Fine.F3LayoutData
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataGen
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl1
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataGen -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl1
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import ProofLib.Placed.Multi
 public import ProofLib.ProgramReflection
 public import VerifiedLibraries.Mallocng.Proofs.PlacedInterned
+import LibsignalBinary.Proofs.Placed.Bridge
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -36,12 +38,10 @@ namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
 
 open Arm64 Arm64.Obj Arm64.Obj.Interned
 
-noncomputable section ReflectionLemmas
-
 open ProofLib ProofLib.ProgramReflection
 open CryptoVerification.LibsignalSpqrV1 (tokenName tokenStorageName)
 open CryptoVerification.SignalSession
-  (cliDehookedSymsPlaced libsignalSessionLib lsRustNoAllocShimSymCli)
+  (cliNonPanicDehookedSyms libsignalSessionLib lsRustNoAllocShimSymCli)
 open LibsignalBinary.Heap.Fine
   (f3MallocngMpl f3StdLayout f3StubNoShimAddr)
 open VerifiedLibraries.Mallocng.Proofs
@@ -49,12 +49,12 @@ open VerifiedLibraries.Mallocng.Proofs
 
 
 /-- Interned `MultiLayout` for `lsInternedMultiLib` matching `f3TrialElf`. -/
-def f3LsLayout : Obj.Interned.MultiLayout where
+@[expose] noncomputable def f3LsLayout : Obj.Interned.MultiLayout where
   bases := f3LsBlockBases
   addrs := f3LsSymAddrs
 
 /-- Concrete `MultiPlacement` witness for `libsignalSessionLib` in `f3TrialElf`. -/
-noncomputable def f3LsMpl : Obj.MultiPlacement :=
+@[expose] noncomputable def f3LsMpl : Obj.MultiPlacement :=
   f3LsLayout.toMultiPlacement lsInternedMultiLib.names
 
 theorem ls_names_eq : lsInternedMultiLib.names = lsNameChars.map String.ofList := by
@@ -81,7 +81,5 @@ theorem f3Ls_metaCore_ok :
 theorem f3Ls_metaData_ok :
     Obj.Interned.checkMultiMetaDataFastB lsInternedMultiLib f3LsLayout = true := by
   rfl_kernel
-
-end ReflectionLemmas
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData

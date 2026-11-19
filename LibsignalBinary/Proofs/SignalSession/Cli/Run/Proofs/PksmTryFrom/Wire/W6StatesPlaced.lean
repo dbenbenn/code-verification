@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W6States
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
 
 /-!
 # Relocatable `[LibsignalPlacement]` Post-Kyber `Ok` Cut States (`+0x864`, `+0x8c0`, `+0x970`)
@@ -20,7 +22,7 @@ Defines `IdentOkStatePlaced` (`+0x864`), `SigMsgOkStatePlaced` (`+0x8c0`), and
 `PackOkStatePlaced` (`+0x970`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +38,7 @@ section W6StatesPlaced
 
 /-- Frozen cut at `+0x864` (`2148`) under `[LibsignalPlacement]`:
 `IdentityKey::try_from(identity_key)` returned `Ok` (fall-through of `+0x860 b.ne`). -/
-def IdentOkStatePlaced [LibsignalPlacement] (s0 : State)
+@[expose] def IdentOkStatePlaced [LibsignalPlacement] (s0 : State)
     (sp' sret len ptr0 kyberBoxPtr kyberBoxLen ikCap msgCap : BitVec 64) (vb : BitVec 8)
     (regId : BitVec 32) (bk : List (BitVec 8)) (pk : PublicKey)
     (ik : List (BitVec 8)) (ipk : PublicKey) (sf : State) : Prop :=
@@ -52,7 +54,7 @@ def IdentOkStatePlaced [LibsignalPlacement] (s0 : State)
 /-- Frozen cut at `+0x8c0` (`2240`) under `[LibsignalPlacement]`:
 `SignalMessage::try_from(message)` returned `Ok` (fall-through of `+0x894 b.eq`) and
 `try_clone_from_ref(ptr0, len)` returned `x0 = clonePtr ≠ 0` (fall-through of `+0x8bc cbz x0`). -/
-def SigMsgOkStatePlaced [LibsignalPlacement] (s0 : State)
+@[expose] def SigMsgOkStatePlaced [LibsignalPlacement] (s0 : State)
     (sp' sret len ptr0 kyberBoxPtr kyberBoxLen ikCap msgCap : BitVec 64) (vb : BitVec 8)
     (msgW0 clonePtr : BitVec 64) (bk : List (BitVec 8)) (pk : PublicKey)
     (ik : List (BitVec 8)) (ipk : PublicKey) (sf : State) : Prop :=
@@ -68,7 +70,7 @@ def SigMsgOkStatePlaced [LibsignalPlacement] (s0 : State)
 
 /-- Frozen cut at `+0x970` (`2416`) under `[LibsignalPlacement]`:
 the 248-byte `sret` is packed (`+0x8c0 .. +0x96c`). -/
-def PackOkStatePlaced [LibsignalPlacement] (s0 : State) (sp' sret ikCap msgCap : BitVec 64)
+@[expose] def PackOkStatePlaced [LibsignalPlacement] (s0 : State) (sp' sret ikCap msgCap : BitVec 64)
     (sf : State) : Prop :=
   PostEpilogueStatePlaced s0 sp' sf ∧
   sf.readReg64 .x19 = sret ∧ sf.readReg64 .x26 = msgCap ∧ sf.readReg64 .x23 = ikCap

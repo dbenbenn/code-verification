@@ -17,6 +17,7 @@ classical parts of FG24 (Thm 5.1) and BJKS24 (Thms 2, 5, 6) are used; their post
 |---|---|
 | this file | where things are, and an index of the other documents |
 | [`READING_THE_THEOREMS.md`](READING_THE_THEOREMS.md) | how to read the Lean security statements in concrete-security notation, worked through on Lemma 1 (`PqxdhKeyIndSecureδ`) |
+| [`TRUSTED_BASE.md`](TRUSTED_BASE.md) | the three tiers of the trusted base, with exact numbers and a reading list |
 | [`DEVIATIONS.md`](DEVIATIONS.md) | every place where the Lean differs from ACD19, one entry per ID |
 | [`docs/PAPER_MAP.md`](../../docs/PAPER_MAP.md) | the project paper, section by section, with the Lean names that formalize it |
 | [`GLOSSARY.md`](GLOSSARY.md) | paper notation, libsignal terms, Lean notation, and older project names |
@@ -27,9 +28,9 @@ Where things are:
 
 | Path | Contents |
 |---|---|
-| `Computational/Theorems/Lemmas.lean` | Lemmas 1–3 of the paper (PQXDH, single session, composition) |
+| `Computational/Theorems/Lemmas.lean` | Lemmas 1–3 of the paper (PQXDH, single session, composition) and `kyber1024_kem_delta_correct` (concrete Kyber-1024 decapsulation-failure bound) |
 | `Computational/Theorems/Main.lean` | Lemma 4 (the binary refines the model) and the Main Theorem (Theorem 2 of the paper), in lake library `CliElfLib` |
-| `Computational/Specifications/LibsignalCli/StatementPqElf.lean` | the statement of the Main Theorem (`CliPqxdhBinaryCorrectAndSecurePlaced`); Lemma 4's (`CliPqxdhBinaryCorrectPlaced`) is in `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` |
+| `Computational/Specifications/LibsignalCli/StatementPqElf.lean` | the statement of the Main Theorem (`CliPqxdhBinaryCorrectAndSecure`); Lemma 4's (`CliPqxdhBinaryCorrect`) is in `LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean` |
 | `Computational/Specifications/` | the game, assumptions, reductions, handshake and session specifications |
 | `Computational/Proofs/` | the proofs (checked by Lean; not part of the trusted base) |
 | `Computational/Tests/` | non-vacuity, sanity, consistency and known-answer tests |

@@ -13,6 +13,7 @@ public import GeneratedLean.BugInjectionMutant
 public meta import GeneratedLean.BugInjectionMutant
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.MutantLinkRefl1
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.MutantLinkRefl2
 public import Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.MutantLinkWalkA

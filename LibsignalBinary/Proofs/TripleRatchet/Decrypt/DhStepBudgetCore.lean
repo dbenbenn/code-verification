@@ -9,18 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetAux
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTightBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBlocks
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepRecvChain
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Model
 import ProofLib.RegChain
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetSteps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded `DhStep` Core Envelopes & `create_chain` Stepping
@@ -32,7 +36,7 @@ total-correctness stepping theorems across both `RootKey::create_chain` calls
 over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -113,11 +117,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetWp (
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetSteps (
   lsStaticDropSym rngFillAtBudgetSpec zeroizeSecretBudgetSpec
 )
-open LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetAux (
-  dhStep_after_cc1_to_cc2_call_vm_placed dhStep_cc1_err_branch_vm_placed
-  dhStep_cc1_ok_branch_vm_placed dhStep_cc2_err_branch_vm_placed
-  dhStep_cc2_ok_branch_vm_placed dhStep_missing_sender_chain_vm_placed
-)
+open LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetAux (dhStep_cc1_err_branch_vm_placed dhStep_cc1_ok_branch_vm_placed dhStep_cc2_err_branch_vm_placed dhStep_cc2_ok_branch_vm_placed dhStep_missing_sender_chain_vm_placed)
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -156,7 +156,7 @@ theorem stackAt_subStack_createChainX (sp : BitVec 64) :
     (by decide) (by rw [hadd]; bv_arith) (by decide)
 
 /-- Deterministic `AllocEvent` list emitted by one `RootKey::create_chain` call on `(their, our)`. -/
-def dhStepPairEvents (C : Crypto) (their : PublicKey) (our : PrivateKey) : List AllocEvent :=
+@[expose] def dhStepPairEvents (C : Crypto) (their : PublicKey) (our : PrivateKey) : List AllocEvent :=
   match calculateAgreement C.X their our with
   | some _ => rustAllocEvents 32 1 ++ rustDeallocEvents 32 1
   | none => []
@@ -166,7 +166,7 @@ theorem createChainEnv_eq_dhStepPairEvents (C : Crypto) (ccG : CreateChainGhost)
 
 /-- Allocator event envelope for `DhStep` (`+0x500 → +0x3e4 / +0x30c`), parameterized by the
 commit sub-segment envelope `s3CommitEnv`. -/
-def s3EnvOf (C : Crypto)
+@[expose] def s3EnvOf (C : Crypto)
     (s3CommitEnv : TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8))) :
     List AllocEvent → Prop :=
@@ -184,7 +184,7 @@ def s3EnvOf (C : Crypto)
       | .ok _ => SeqEnv (· = evs1) (SeqEnv (· = evs2) (s3CommitEnv x trG tr))
 
 /-- Default `s3Env` for `S3SeamPlaced` / `S3SeamTightPlaced` / `S3SeamXPlaced` / `S3SeamTightXPlaced`. -/
-def s3DefaultEnv (C : Crypto) :
+@[expose] def s3DefaultEnv (C : Crypto) :
     TryDecryptGhost → TrGhost → TripleRatchet (List (BitVec 8)) → List AllocEvent → Prop :=
   s3EnvOf C s3CommitDefaultEnv
 
@@ -580,284 +580,5 @@ theorem dhStep_recv_create_chain_withStack_placed [LibsignalPlacement] {M : Allo
   · exact (not_satisfies_false_sepConj hpost).elim
   · exact (not_satisfies_false_sepConj hpost).elim
   · exact (not_satisfies_false_sepConj hpost).elim
-
-/-- Total-correctness stepping from `DhStepAfterRecvChainStatePlaced` (`entry + 0x70c`) through
-    keygen and `RootKey::create_chain` #2 (`createChainSpecWithStack M A lim C ccStack`). -/
-theorem dhStep_keygen_and_send_create_chain_withStack_placed [LibsignalPlacement]
-    {M : AllocCostModel} {prog : Program} {entry rngFillEntry : BitVec 64} {C : Crypto}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) {ctl : BitVec 64}
-    (ccStack : Nat)
-    (hstack_split : ∀ sp : BitVec 64,
-      stackAt sp tryDecryptSubStack =
-        (stackAt (sp - BitVec.ofNat 64 ccStack) (tryDecryptSubStack - ccStack) ∗
-         stackAt sp ccStack))
-    (hwp : DhStepBlockVmWp prog entry rngFillEntry)
-    (hcc : subroutine_ok prog (lsmpl.base 40) (createChainSpecWithStack M A lim C ccStack))
-    (hdpk : subroutine_ok prog (lsmpl.base 200) (derivePublicKeyBytesBudgetSpec C.pubKey))
-    (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
-    (st1 : SessionState (List (BitVec 8))) (rk1 : RootKey) (rck : ChainKey)
-    (R : SepProp) (s0 s : State)
-    (hrng : subroutine_ok prog rngFillEntry (rngFillAtBudgetSpec ctl x.cur x.rest))
-    (hsd : subroutine_ok prog (lsmpl.ρ lsStaticDropSym) zeroizeSecretBudgetSpec)
-    (hrk2_ne : s0.sp - 1504#64 + 0x4a0#64 ≠ 0#64)
-    (hfits2 : FitsEnv M lim st
-      (· = dhStepPairEvents C x.msg.senderRatchetKey
-        (KeyPair.generate C (coinsOf x.rest)).privateKey))
-    (hafter : DhStepAfterRecvChainStatePlaced entry A lim st ctl x trG tr st1 rk1 rck R s0 s)
-    (hcode : prog.CodeLoaded s.mem) :
-    let newSenderKey := KeyPair.generate C (coinsOf x.rest)
-    let evs2 := dhStepPairEvents C x.msg.senderRatchetKey newSenderKey.privateKey
-    match rootCreateChain C rk1 x.msg.senderRatchetKey newSenderKey.privateKey with
-    | .ok (finalRootKey, senderChainKey) =>
-      ∃ s', Steps prog s s' ∧
-        DhCommitStatePlaced entry A lim (M.stepEvents evs2 st) ctl
-          x trG tr st1 rck newSenderKey finalRootKey senderChainKey R s0 s'
-    | .error e =>
-      ∃ s' trG' r1, Steps prog s s' ∧
-        ErrTailStatePlaced entry A lim (M.stepEvents evs2 st) ctl
-          x trG' { tr with ratchet := r1 } st1 e (min 32 x.rest.length) R s0 s' := by
-  set sp := s0.sp - 1504#64
-  set draws := min 32 x.rest.length
-  set newSenderKey := KeyPair.generate C (coinsOf x.rest)
-  obtain ⟨s5, hsteps5, hvm5, hpc5, hmeta5, hx0_5, hx1_5, hx2_5, hx8_5, hx19_5, hx20_5, hx21_5,
-    hx22_5, hx23_5, hx25_5, hx26_5, hx27_5, hx28_5, hx30_5, msgW, hmsgW, hmem5⟩ :=
-    dhStep_after_cc1_to_cc2_call_vm_placed hwp hdpk x trG tr st1 rk1 rck R s0 s
-      hrng hsd hafter hcode
-  obtain ⟨hrun5, hsp5, hsp0_al, hsp_al5, hx29_5, htrace5, hcl5, hvregs5⟩ := hmeta5
-  rw [A.atState_eq_of_vmPreserved lim st hvm5.symm] at hmem5
-  let ccG2 : CreateChainGhost :=
-    { rkA := sp + 0x4a0#64
-      rk := rk1
-      theirA := x.msgA + 56#64
-      their := x.msg.senderRatchetKey
-      ourA := sp + 0x420#64
-      our := newSenderKey.privateKey
-      ret := sp + 0x190#64 }
-  let Frame2 : SepProp :=
-    sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
-    trAt A.repAlloc (sp + 0x38#64) trG
-      { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-    memRegion x.ret 48 ∗ memRegion sp 0x10 ∗
-    ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗ memRegion (sp + 0x14#64) 8 ∗
-    ((sp + 0x1c#64) ↦₃₂ msgW) ∗ ((sp + 0x20#64) ↦₆₄ x.locA) ∗
-    ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗ memRegion (sp + 0x2c#64) 4 ∗
-    ((sp + 0x30#64) ↦₆₄ x.remA) ∗ memRegion (sp + 0x140#64) 0x50 ∗
-    memRegion (sp + 0x1d8#64) 0x1f8 ∗ ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗
-    memRegion (sp + 0x3f4#64) 12 ∗ ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗
-    memRegion (sp + 0x440#64) 0x60 ∗ ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-    ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0xa0 ∗
-    protocolAddressAt A.repAlloc x.rem x.remA ∗ protocolAddressAt A.repAlloc x.loc x.locA ∗
-    signalMessageRestAt A.repAlloc x.msgG x.msgA x.msg ∗
-    tapeAfter ctl x.cur x.rest draws ∗ logOff tryDecryptPlacedImg ∗
-    stackAt (sp - BitVec.ofNat 64 ccStack) (tryDecryptSubStack - ccStack) ∗
-    tryDecryptSavedRegs s0.sp s0
-  have hpre_cc2 :
-      s5.mem ⊨ (createChainSpecWithStack M A lim C ccStack).pre (ccG2, st) s5 ∗ (Frame2 ∗ R) := by
-    dsimp only [createChainSpecWithStack, ccG2, Frame2]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0_5, hx1_5, hx2_5, hx8_5, hrk2_ne, hfits2⟩, ?_⟩
-    rw [show s5.sp = sp from hsp5]
-    unfold tryDecryptCommonHeap at hmem5
-    rw [signalMessageAt_senderRatchetKey (A.atState lim st s5) x.msgG x.msgA x.msg,
-        show sessionStateAt (A.atState lim st s5) = sessionStateAt A.repAlloc from rfl,
-        show trAt (A.atState lim st s5) = trAt A.repAlloc from rfl,
-        show protocolAddressAt (A.atState lim st s5) = protocolAddressAt A.repAlloc from rfl,
-        show signalMessageRestAt (A.atState lim st s5) = signalMessageRestAt A.repAlloc from rfl,
-        show (A.atState lim st s5).pool = A.pool lim st s5 from rfl,
-        show s0.sp - 1504#64 = sp from rfl, hstack_split sp] at hmem5
-    exact Eq.mp (congrArg (s5.mem ⊨ ·) (by dsimp only [sp, draws, newSenderKey]; sep_ac_rfl)) hmem5
-  obtain ⟨sm, hsteps_cc2, hout_cc2, _⟩ :=
-    hcc.no_fault_before_outcome (ccG2, st) (Frame2 ∗ R) s5 hpc5 hrun5 hpre_cc2 hsp_al5
-      (hsteps5.codeLoaded hcode)
-  have hsteps5m : Steps prog s sm := Steps.trans hsteps5 hsteps_cc2
-  rcases hout_cc2 with ⟨hret_m, ⟨hspm, hcsm⟩, hpost⟩ | ⟨_, hpost⟩ | ⟨_, -, hpost⟩ | ⟨_, hpost⟩
-  · have hpcm : sm.pc = entry + 2008#64 := hret_m.1.trans hx30_5
-    have hrunm : sm.status = .Running := hret_m.2.2
-    dsimp only [createChainSpecWithStack, ccG2] at hpost
-    simp only [sepExists_sepConj_left, satisfies_sepExists, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨evs, ⟨htrace_m0, henv_m⟩, hpost⟩
-    have hevs_eq : evs = dhStepPairEvents C x.msg.senderRatchetKey newSenderKey.privateKey := henv_m
-    subst hevs_eq
-    set st' := M.stepEvents (dhStepPairEvents C x.msg.senderRatchetKey newSenderKey.privateKey) st
-    have hcl_m := hcl5.of_keepsFrozen hsteps_cc2.keepsFrozen
-    have hsp_al_m : sm.spAligned = true := by
-      unfold State.spAligned at hsp_al5 ⊢; rw [hspm]; exact hsp_al5
-    have hmeta_m : tryDecryptMidMetaPlaced s0 sm :=
-      ⟨hrunm, by reg_chain, hsp0_al, hsp_al_m, by reg_chain, by reg_chain, hcl_m, by reg_chain⟩
-    have hpost_grouped : sm.mem ⊨
-        createChainResultAt (sp + 0x190#64)
-          (rootCreateChain C rk1 x.msg.senderRatchetKey newSenderKey.privateKey) ∗
-        sessionStateAt (A.atState lim st' sm) x.ss x.G.afterTrFrom st1 ∗
-        trAt (A.atState lim st' sm) (sp + 0x38#64) trG
-          { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-        memRegion x.ret 48 ∗ memRegion sp 0x10 ∗
-        ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗ memRegion (sp + 0x14#64) 8 ∗
-        ((sp + 0x1c#64) ↦₃₂ msgW) ∗ ((sp + 0x20#64) ↦₆₄ x.locA) ∗
-        ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗ memRegion (sp + 0x2c#64) 4 ∗
-        ((sp + 0x30#64) ↦₆₄ x.remA) ∗ memRegion (sp + 0x140#64) 0x50 ∗
-        memRegion (sp + 0x1d8#64) 0x1f8 ∗ ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗
-        memRegion (sp + 0x3f4#64) 12 ∗ ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗
-        ((sp + 0x420#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-        memRegion (sp + 0x440#64) 0x60 ∗ ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗
-        ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-        ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0xa0 ∗
-        tryDecryptCommonHeap (A.atState lim st' sm) ctl tryDecryptPlacedImg x draws s0 ∗ R := by
-      dsimp only [Frame2] at hpost
-      rw [show s5.sp = sp from hsp5] at hpost
-      unfold tryDecryptCommonHeap
-      rw [signalMessageAt_senderRatchetKey (A.atState lim st' sm) x.msgG x.msgA x.msg,
-          show sessionStateAt (A.atState lim st' sm) = sessionStateAt A.repAlloc from rfl,
-          show trAt (A.atState lim st' sm) = trAt A.repAlloc from rfl,
-          show protocolAddressAt (A.atState lim st' sm) = protocolAddressAt A.repAlloc from rfl,
-          show signalMessageRestAt (A.atState lim st' sm) = signalMessageRestAt A.repAlloc from rfl,
-          show (A.atState lim st' sm).pool = A.pool lim st' sm from rfl,
-          show s0.sp - 1504#64 = sp from rfl, hstack_split sp]
-      exact Eq.mp (congrArg (sm.mem ⊨ ·) (by dsimp only [sp]; sep_ac_rfl)) hpost
-    dsimp only
-    unfold rootCreateChain at hpost_grouped ⊢
-    cases hcc2 : createChain C.F C.X rk1 x.msg.senderRatchetKey.bytes
-        newSenderKey.privateKey.bytes with
-    | none =>
-      rw [hcc2] at hpost_grouped
-      dsimp only at hpost_grouped ⊢
-      have hpost_err0 : sm.mem ⊨
-          (memRegion (sp + 0x1d8#64) 0x1f8 ∗ ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗
-           memRegion (sp + 0x3f4#64) 12 ∗ ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗
-           ((sp + 0x420#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-           memRegion (sp + 0x440#64) 0x60 ∗ ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1) ∗
-           ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-           ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0xa0) ∗
-          (((sp + 0x1c#64) ↦₃₂ msgW) ∗ memRegion (sp + 0x140#64) 0x50 ∗
-           createChainResultAt (sp + 0x190#64) (.error .invalidKeyAgreement) ∗
-           sessionStateAt (A.atState lim st' sm) x.ss x.G.afterTrFrom st1 ∗
-           trAt (A.atState lim st' sm) (sp + 0x38#64) trG
-             { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-           memRegion x.ret 48 ∗ memRegion sp 0x10 ∗
-           ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗ memRegion (sp + 0x14#64) 8 ∗
-           ((sp + 0x20#64) ↦₆₄ x.locA) ∗ ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗
-           memRegion (sp + 0x2c#64) 4 ∗ ((sp + 0x30#64) ↦₆₄ x.remA) ∗
-           tryDecryptCommonHeap (A.atState lim st' sm) ctl tryDecryptPlacedImg x draws s0 ∗ R) :=
-        Eq.mp (congrArg (sm.mem ⊨ ·) (by sep_ac_rfl)) hpost_grouped
-      have hpost_err1 := Satisfies.mono (sepConj_mono_left
-        (fold_1d8_after_cc2_err sp rck newSenderKey.publicKey.bytes.toList
-          newSenderKey.privateKey.bytes.toList rk1
-          newSenderKey.publicKey.bytes.2 newSenderKey.privateKey.bytes.2)) hpost_err0
-      let Rest_err : SepProp :=
-        sessionStateAt (A.atState lim st' sm) x.ss x.G.afterTrFrom st1 ∗
-        trAt (A.atState lim st' sm) (sp + 0x38#64) trG
-          { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-        memRegion x.ret 48 ∗ memRegion sp 0x10 ∗
-        ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗ memRegion (sp + 0x14#64) 8 ∗
-        ((sp + 0x20#64) ↦₆₄ x.locA) ∗ ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗
-        memRegion (sp + 0x2c#64) 4 ∗ ((sp + 0x30#64) ↦₆₄ x.remA) ∗
-        tryDecryptCommonHeap (A.atState lim st' sm) ctl tryDecryptPlacedImg x draws s0 ∗ R
-      have hmem_err : sm.mem ⊨
-          ((sp + 0x1c#64) ↦₃₂ msgW) ∗ memRegion (sp + 0x140#64) 0x50 ∗
-          createChainResultAt (sp + 0x190#64) (.error .invalidKeyAgreement) ∗
-          memRegion (sp + 0x1d8#64) 0x3a8 ∗ Rest_err :=
-        Eq.mp (congrArg (sm.mem ⊨ ·) (by dsimp only [Rest_err]; sep_ac_rfl)) hpost_err1
-      obtain ⟨s', hsteps2, hvm2, hpcs', hmetas', hx19s', hx20s', hx26s', hmems'⟩ :=
-        dhStep_cc2_err_branch_vm_placed (A := A.atState lim st' sm) hwp msgW Rest_err s0 sm
-          hpcm hmeta_m (by reg_chain) (by reg_chain) (by reg_chain) (by reg_chain)
-          hmem_err (hsteps5m.codeLoaded hcode)
-      refine ⟨s', trG, { tr.ratchet with rootKey := (0 : RootKey) },
-        Steps.trans hsteps5m hsteps2, ?_⟩
-      refine ⟨hpcs', hmetas', by reg_chain, hx20s', hx26s', ?_⟩
-      dsimp only [Rest_err] at hmems'
-      rw [A.atState_eq_of_vmPreserved lim st' hvm2.symm] at hmems'
-      have hmems0 : s'.mem ⊨
-          (memRegion sp 0x10 ∗ ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗
-           memRegion (sp + 0x14#64) 8 ∗ ((sp + 0x1c#64) ↦₃₂ msgW)) ∗
-          (((sp + 0x20#64) ↦₆₄ x.locA) ∗ ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗
-           memRegion (sp + 0x2c#64) 4 ∗ ((sp + 0x30#64) ↦₆₄ x.remA) ∗
-           sessionStateAt (A.atState lim st' s') x.ss x.G.afterTrFrom st1 ∗
-           trAt (A.atState lim st' s') (sp + 0x38#64) trG
-             { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-           memRegion x.ret 48 ∗ memRegion (sp + 0x140#64) 0x28 ∗
-           speBodyAt (A.atState lim st' s') (utf8 "decrypt") (sp + 0x168#64) .invalidKeyAgreement ∗
-           memRegion (sp + 0x190#64) 0x3f0 ∗
-           tryDecryptCommonHeap (A.atState lim st' s') ctl tryDecryptPlacedImg x draws s0 ∗ R) :=
-        Eq.mp (congrArg (s'.mem ⊨ ·) (by dsimp only [sp] at hmems' ⊢; sep_ac_rfl)) hmems'
-      have hmems0' := Satisfies.mono (sepConj_mono_left (fold_sp_20_after_cc2_err sp rck msgW)) hmems0
-      have hsp38_ent :
-          (memRegion sp 0x20 ∗ ((sp + 0x20#64) ↦₆₄ x.locA) ∗ ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗
-           memRegion (sp + 0x2c#64) 4 ∗ ((sp + 0x30#64) ↦₆₄ x.remA)) ⊢ memRegion sp 0x38 := by
-        rw [memRegion_split' (b := sp) (b' := sp + 0x20#64) (n := 0x20) (k := 0x18) rfl (by bv_arith) (by decide),
-            memRegion_split' (b := sp + 0x20#64) (b' := sp + 0x28#64) (n := 0x8) (k := 0x10) rfl (by bv_arith) (by decide),
-            memRegion_split' (b := sp + 0x28#64) (b' := sp + 0x2c#64) (n := 0x4) (k := 0xc) rfl (by bv_arith) (by decide),
-            memRegion_split' (b := sp + 0x2c#64) (b' := sp + 0x30#64) (n := 0x4) (k := 0x8) rfl (by bv_arith) (by decide)]
-        exact sepConj_mono_right (sepConj_mono (pointsTo64_entails_memRegion _ _)
-          (sepConj_mono (pointsTo32_entails_memRegion _ _)
-            (sepConj_mono_right (pointsTo64_entails_memRegion _ _))))
-      have hmems1 : s'.mem ⊨
-          (memRegion sp 0x20 ∗ ((sp + 0x20#64) ↦₆₄ x.locA) ∗ ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗
-           memRegion (sp + 0x2c#64) 4 ∗ ((sp + 0x30#64) ↦₆₄ x.remA)) ∗
-          (sessionStateAt (A.atState lim st' s') x.ss x.G.afterTrFrom st1 ∗
-           trAt (A.atState lim st' s') (sp + 0x38#64) trG
-             { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-           memRegion x.ret 48 ∗ memRegion (sp + 0x140#64) 0x28 ∗
-           speBodyAt (A.atState lim st' s') (utf8 "decrypt") (sp + 0x168#64) .invalidKeyAgreement ∗
-           memRegion (sp + 0x190#64) 0x3f0 ∗
-           tryDecryptCommonHeap (A.atState lim st' s') ctl tryDecryptPlacedImg x draws s0 ∗ R) :=
-        Eq.mp (congrArg (s'.mem ⊨ ·) (by sep_ac_rfl)) hmems0'
-      have hmems2 := Satisfies.mono (sepConj_mono_left hsp38_ent) hmems1
-      dsimp only [sp, draws] at hmems2 ⊢
-      exact Eq.mp (congrArg (s'.mem ⊨ ·) (by sep_ac_rfl)) hmems2
-    | some p2 =>
-      rcases p2 with ⟨finalRootKey, sckKey⟩
-      rw [hcc2] at hpost_grouped
-      dsimp only at hpost_grouped ⊢
-      have hpost_ok0 : sm.mem ⊨
-          (memRegion (sp + 0x1d8#64) 0x1f8 ∗ memRegion (sp + 0x440#64) 0x60 ∗
-           ((sp + 0x4a0#64) ↦ₛ keyToBytes32 rk1)) ∗
-          (createChainResultAt (sp + 0x190#64) (.ok (finalRootKey, ⟨sckKey, 0⟩)) ∗
-           sessionStateAt (A.atState lim st' sm) x.ss x.G.afterTrFrom st1 ∗
-           trAt (A.atState lim st' sm) (sp + 0x38#64) trG
-             { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-           memRegion x.ret 48 ∗ memRegion sp 0x10 ∗
-           ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗ memRegion (sp + 0x14#64) 8 ∗
-           ((sp + 0x1c#64) ↦₃₂ msgW) ∗ ((sp + 0x20#64) ↦₆₄ x.locA) ∗
-           ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗ memRegion (sp + 0x2c#64) 4 ∗
-           ((sp + 0x30#64) ↦₆₄ x.remA) ∗ memRegion (sp + 0x140#64) 0x50 ∗
-           ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗ memRegion (sp + 0x3f4#64) 12 ∗
-           ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗
-           ((sp + 0x420#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-           ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-           ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0xa0 ∗
-           tryDecryptCommonHeap (A.atState lim st' sm) ctl tryDecryptPlacedImg x draws s0 ∗ R) :=
-        Eq.mp (congrArg (sm.mem ⊨ ·) (by sep_ac_rfl)) hpost_grouped
-      have hpost_ok1 := Satisfies.mono (sepConj_mono_left (fold_after_cc2_ok sp rk1)) hpost_ok0
-      let Rest_ok : SepProp :=
-        sessionStateAt (A.atState lim st' sm) x.ss x.G.afterTrFrom st1 ∗
-        trAt (A.atState lim st' sm) (sp + 0x38#64) trG
-          { tr with ratchet := { tr.ratchet with rootKey := (0 : RootKey) } } ∗
-        memRegion x.ret 48 ∗ memRegion sp 0x10 ∗
-        ((sp + 0x10#64) ↦ₛ ((chainKeyBytes rck).drop 16).take 4) ∗ memRegion (sp + 0x14#64) 8 ∗
-        ((sp + 0x1c#64) ↦₃₂ msgW) ∗ ((sp + 0x20#64) ↦₆₄ x.locA) ∗
-        ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗ memRegion (sp + 0x2c#64) 4 ∗
-        ((sp + 0x30#64) ↦₆₄ x.remA) ∗ memRegion (sp + 0x140#64) 0x50 ∗
-        memRegion (sp + 0x1d8#64) 0xd8 ∗ memRegion (sp + 0x2b0#64) 0x10 ∗
-        memRegion (sp + 0x2c0#64) 0x110 ∗ ((sp + 0x3d0#64) ↦ₛ chainKeyBytes rck) ∗
-        memRegion (sp + 0x3f4#64) 12 ∗ ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗
-        ((sp + 0x420#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-        memRegion (sp + 0x440#64) 0x80 ∗ ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes rck).drop 20) ∗
-        ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes rck).take 16) ∗ memRegion (sp + 0x4e0#64) 0xa0 ∗
-        tryDecryptCommonHeap (A.atState lim st' sm) ctl tryDecryptPlacedImg x draws s0 ∗ R
-      have hmem_ok : sm.mem ⊨
-          createChainResultAt (sp + 0x190#64) (.ok (finalRootKey, ⟨sckKey, 0⟩)) ∗ Rest_ok :=
-        Eq.mp (congrArg (sm.mem ⊨ ·) (by dsimp only [Rest_ok]; sep_ac_rfl)) hpost_ok1
-      obtain ⟨s', hsteps2, hvm2, hpcs', hmetas', hcss', hmems'⟩ :=
-        dhStep_cc2_ok_branch_vm_placed hwp finalRootKey ⟨sckKey, 0⟩ Rest_ok s0 sm
-          hpcm hmeta_m (by reg_chain) hmem_ok (hsteps5m.codeLoaded hcode)
-      refine ⟨s', Steps.trans hsteps5m hsteps2, ?_⟩
-      refine ⟨hpcs', hmetas', by reg_chain, by reg_chain, by reg_chain, by reg_chain, by reg_chain,
-        by reg_chain, by reg_chain, by reg_chain, msgW, hmsgW, ?_⟩
-      dsimp only [Rest_ok, sp, draws, newSenderKey] at hmems' ⊢
-      rw [A.atState_eq_of_vmPreserved lim st' hvm2.symm] at hmems'
-      exact Eq.mp (congrArg (s'.mem ⊨ ·) (by sep_ac_rfl)) hmems'
-  · exact (not_satisfies_false_sepConj hpost).elim
-  · exact (not_satisfies_false_sepConj hpost).elim
-  · exact (not_satisfies_false_sepConj hpost).elim
-
 
 end LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetCore

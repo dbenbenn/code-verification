@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCallees
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
+public import LibsignalBinary.Proofs.ConsumeMessageKey.RunOfCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogue
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndex
 import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOne
@@ -25,24 +25,12 @@ out-of-line callees `find_receiver_chain_index`, `hmac_sha256`, and `RawVec<Mess
 to establish `ConsumeMessageKeyMeetsSpec` as well as placed `[LibsignalPlacement]` variants.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession
 
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
-
-/-- Compiled `RatchetState::consume_message_key` refines `RatchetState.consumeMessageKey`. -/
-theorem consume_message_key_run (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) :
-    ConsumeMessageKeyMeetsSpec F A alloc img := by
-  intro hA himg
-  exact consume_message_key_run_of F A alloc img
-    (find_receiver_chain_index_ok img F alloc A himg)
-    (hmac_sha256_ok img F alloc himg)
-    (grow_one_ok img F alloc himg A hA) hA himg
-
-example : ∀ F A alloc img, ConsumeMessageKeyMeetsSpec F A alloc img := consume_message_key_run
 
 theorem find_receiver_chain_index_placed_ok_at_cmk [LibsignalPlacement]
     {H : String → Option (State → State)} (A : RustAlloc)

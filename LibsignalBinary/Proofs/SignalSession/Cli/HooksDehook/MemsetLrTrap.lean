@@ -12,6 +12,10 @@ module
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostReplays -- proof-setup: allow-public-import
 import ProofLib.OpcodeExclusion
 import ProofLib.ProgramReflection.Variant.TrapTransfer
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Closed-Trap Discharge of `keepMemsetBlk21 mmpl (u.readReg64 .lr) = false` (`HooksDehook.MemsetLrTrap`)
@@ -80,7 +84,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostReplays (
     - `.ret rn` has `rn = .lr`,
     - sequential fallthrough (`advancePC`) has `off + 4 < 260`, and
     - PC-relative branch offsets `relOff` satisfy `(BitVec.ofNat 64 off + relOff).toNat < 260`. -/
-def isBlk21SafeInstr (off : Nat) (inst : Instr) : Bool :=
+@[expose] def isBlk21SafeInstr (off : Nat) (inst : Instr) : Bool :=
   match inst with
   | .ret rn => decide (rn = .lr)
   | .nop => decide (off + 4 < 260)
@@ -132,7 +136,7 @@ private theorem isBlk21SafeInstr_not_isSvc0 {off : Nat} {inst : Instr}
 /-- Single-instruction outcome for an instruction inside `blk21` on arbitrary state `s`:
     either faults with `.Exception msg`, or remains `.Running` with unchanged `lr` and `pc`
     equal to `s.readReg64 .lr` or `base + off'` (`off' < 260`). -/
-def Blk21StepOutcome (base : BitVec 64) (s s' : State) : Prop :=
+@[expose] def Blk21StepOutcome (base : BitVec 64) (s s' : State) : Prop :=
   (∃ msg, s'.status = .Exception msg) ∨
   (s'.status = .Running ∧
    s'.readReg64 .lr = s.readReg64 .lr ∧
@@ -657,13 +661,6 @@ theorem blk21_trap_impossible
 
 /-! ## 3. Global `hlr_calls` Theorems & Specialized `f3MemsetGhostHookNarrow` Corollaries -/
 
-theorem status_nonRunning_of_exited_or_panicked {sf : State}
-    (hterm : (∃ code, sf.status = .Exited code) ∨ sf.status = .Panicked) :
-    sf.status ≠ .Running ∧ (∀ msg, sf.status ≠ .Exception msg) ∧ sf.status ≠ .Halted := by
-  rcases hterm with ⟨code, hex⟩ | hpan
-  · rw [hex]; exact ⟨nofun, fun _ => nofun, nofun⟩
-  · rw [hpan]; exact ⟨by decide, fun _ => nofun, by decide⟩
-
 /-- Core per-call `lr ∉ blk21` contradiction over an opaque hook `f_ms` satisfying
     `Blk21TrapHook (u.readReg64 .lr) f_ms` whenever `keepMemsetBlk21 mmpl (u.readReg64 .lr) = true`. -/
 theorem blk21_lr_trap_at_call
@@ -756,217 +753,5 @@ theorem blk21_lr_trap_false_nonRunning
     (hmismatch_memset u.pc hmis)
     (hsteps_s0_u.codeLoaded hCode0)
     hsteps_u_sf hrun_u hrun_sf hnoex_sf hnhalt_sf
-
-/-- **Card C5 Headline Theorem (`blk21_lr_trap_false`, strict `(a)` shape matching `c5.md`):**
-    *Note: Superseded by `HooksDehook.MemsetLrTrapRet.blk21_lr_trap_false_ret` / `*_returned`
-    (which cover `Returned` outcomes and mixed ghost passes; do not use this `.Exited ∨ .Panicked`
-    single-hook form for the CLI Block-617 cutover).*
-    Discharges `keepMemsetBlk21 mmpl (u.readReg64 .lr) = false` globally along any `Steps P_ghost`
-    run reaching `.Exited _` or `.Panicked`, under generic hypotheses `(a)`, `(b)`, `(c)`. -/
-theorem blk21_lr_trap_false
-    {P_ghost P_real P_real' P_sub' : Program}
-    {mmpl : Obj.MultiPlacement} {entryTarget : BitVec 64}
-    (ha_no_ext_blk21 : ∀ pc, keepMemsetBlk21 mmpl pc = true → P_ghost.externAt? pc = none)
-    (hb_mismatch_memset : ∀ pc, P_ghost.externAt? pc ≠ P_real.externAt? pc →
-      P_ghost.externAt? pc =
-        some (memsetGhostHook (keepMemsetBlk21 mmpl) P_real' P_sub' entryTarget))
-    {s0 sf : State}
-    (hc_codeLoaded : (mallocngBlockProg mmpl 21 Syscall.standard).CodeLoaded s0.mem)
-    (hterm : (∃ code, sf.status = .Exited code) ∨ sf.status = .Panicked) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      P_ghost.externAt? u.pc ≠ P_real.externAt? u.pc →
-      keepMemsetBlk21 mmpl (u.readReg64 .lr) = false := by
-  obtain ⟨hrun_sf, hnoex_sf, hnhalt_sf⟩ := status_nonRunning_of_exited_or_panicked hterm
-  exact blk21_lr_trap_false_nonRunning
-    (fun _ h => h)
-    (fun pc hkp => Or.inl (ha_no_ext_blk21 pc hkp))
-    hb_mismatch_memset
-    hc_codeLoaded hrun_sf hnoex_sf hnhalt_sf
-
-/-- Generalized `(a')` variant of `blk21_lr_trap_false` allowing `memsetGhostHook` at offset `0` of
-    `blk21` (stock `ld.lld` direct-linked `mpl.ρ "memset" = mmpl.base 21` as well as `--branch-stubs`).
-    *Superseded by `HooksDehook.MemsetLrTrapRet.blk21_lr_trap_false_ret` / `*_returned` (do not use
-    for the CLI cutover).* -/
-theorem blk21_lr_trap_false_gen
-    {P_ghost P_real P_real' P_sub' : Program}
-    {mmpl : Obj.MultiPlacement} {entryTarget : BitVec 64}
-    (ha_blk21 : ∀ pc, keepMemsetBlk21 mmpl pc = true →
-      P_ghost.externAt? pc = none ∨
-        P_ghost.externAt? pc =
-          some (memsetGhostHook (keepMemsetBlk21 mmpl) P_real' P_sub' entryTarget))
-    (hb_mismatch_memset : ∀ pc, P_ghost.externAt? pc ≠ P_real.externAt? pc →
-      P_ghost.externAt? pc =
-        some (memsetGhostHook (keepMemsetBlk21 mmpl) P_real' P_sub' entryTarget))
-    {s0 sf : State}
-    (hc_codeLoaded : (mallocngBlockProg mmpl 21 Syscall.standard).CodeLoaded s0.mem)
-    (hterm : (∃ code, sf.status = .Exited code) ∨ sf.status = .Panicked) :
-    ∀ u : State,
-      Steps P_ghost s0 u →
-      Steps P_ghost u sf →
-      u.status = .Running →
-      P_ghost.externAt? u.pc ≠ P_real.externAt? u.pc →
-      keepMemsetBlk21 mmpl (u.readReg64 .lr) = false := by
-  obtain ⟨hrun_sf, hnoex_sf, hnhalt_sf⟩ := status_nonRunning_of_exited_or_panicked hterm
-  exact blk21_lr_trap_false_nonRunning
-    (fun _ h => h) ha_blk21 hb_mismatch_memset hc_codeLoaded hrun_sf hnoex_sf hnhalt_sf
-
-/-- **Card C5 Replay Corollary (`ghostExternReplays_f3MemsetGhostHookNarrow_of_trap`):**
-    *Superseded by `HooksDehook.MemsetGhostReplaysOn.ghostExternReplaysOn_f3MemsetGhostHookNarrow_of_trap_ret`
-    and `SpecLemmas.SignalSession.ElfSlicesPqOomH2KMemset.h2k_memsetGhostHookNarrow_stub_replayOn_cli617`
-    (this legacy corollary takes unguarded `StubReachesTarget`, `W`-dependent `f3RealProg617`, and
-    `.Exited ∨ .Panicked`; do not use for the cutover).*
-    Specializes `ghostExternReplays_f3MemsetGhostHookNarrow` (`MemsetGhostReplays.lean:522`) with
-    `keepMemsetBlk21 mmpl (u.readReg64 .lr) = false` **discharged globally** via `blk21_lr_trap_at_call`
-    on any `Steps P_ghost u sf` suffix reaching `.Exited _` or `.Panicked`. -/
-theorem ghostExternReplays_f3MemsetGhostHookNarrow_of_trap
-    {Inv : Memory → Prop}
-    {P_ghost : Program} {mpl mmpl : Obj.MultiPlacement} {W : CliHooks} {stubPc : BitVec 64}
-    (ha_no_ext_blk21 : ∀ pc, keepMemsetBlk21 mmpl pc = true → P_ghost.externAt? pc = none)
-    (hb_ghost_stub : P_ghost.externAt? stubPc = some (f3MemsetGhostHookNarrow mpl mmpl W))
-    (hreal_no : ∀ pc, keepMemsetBlk21 mmpl pc = true →
-      (f3RealProg617 mpl mmpl W).externAt? pc = none)
-    (hreal_stub_none : (f3RealProg617 mpl mmpl W).externAt? stubPc = none)
-    (hStub : StubReachesTarget (f3RealProg617 mpl mmpl W) stubPc (mmpl.base 21))
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → Inv m →
-      (mallocngBlockProg mmpl 21 Syscall.standard).CodeLoaded m) :
-    (f3RealProg617 mpl mmpl W).externAt? stubPc = none ∧
-    ∀ (u sf : State),
-      Steps P_ghost u sf →
-      ((∃ code, sf.status = .Exited code) ∨ sf.status = .Panicked) →
-      u.pc = stubPc →
-      u.status = .Running →
-      (∀ msg, (f3MemsetGhostHookNarrow mpl mmpl W u).status ≠ .Exception msg) →
-      ExecFrozen u.mem →
-      Inv u.mem →
-      Steps (f3RealProg617 mpl mmpl W) u (f3MemsetGhostHookNarrow mpl mmpl W u) ∧
-      ExecFrozen (f3MemsetGhostHookNarrow mpl mmpl W u).mem := by
-  have hReplays := ghostExternReplays_f3MemsetGhostHookNarrow
-    hreal_no hreal_stub_none hStub hInvLoaded
-  refine ⟨hReplays.1, fun u sf hsteps_u_sf hterm hpc hrun hnoex hfr hinv => ?_⟩
-  obtain ⟨hrun_sf, hnoex_sf, hnhalt_sf⟩ := status_nonRunning_of_exited_or_panicked hterm
-  have hlr_false : keepMemsetBlk21 mmpl (u.readReg64 .lr) = false :=
-    blk21_lr_trap_at_call
-      (fun hkeepL => blk21TrapHook_memsetGhostHook _ _ _ hkeepL)
-      (fun pc hkp => Or.inl (ha_no_ext_blk21 pc hkp))
-      (hpc ▸ hb_ghost_stub)
-      (hInvLoaded u.mem hfr hinv)
-      hsteps_u_sf hrun hrun_sf hnoex_sf hnhalt_sf
-  exact hReplays.2 u hpc hrun hnoex hfr hlr_false hinv
-
-/-- Generalized `(a')` variant of `ghostExternReplays_f3MemsetGhostHookNarrow_of_trap` (also covers
-    stock `ld.lld` direct-linked `stubPc = mmpl.base 21`).
-    *Superseded by `HooksDehook.MemsetGhostReplaysOn.ghostExternReplaysOn_f3MemsetGhostHookNarrow_of_trap_ret`
-    (takes unguarded `StubReachesTarget`; do not use for the cutover).* -/
-theorem ghostExternReplays_f3MemsetGhostHookNarrow_of_trap_gen
-    {Inv : Memory → Prop}
-    {P_ghost : Program} {mpl mmpl : Obj.MultiPlacement} {W : CliHooks} {stubPc : BitVec 64}
-    (ha_blk21 : ∀ pc, keepMemsetBlk21 mmpl pc = true →
-      P_ghost.externAt? pc = none ∨
-        P_ghost.externAt? pc = some (f3MemsetGhostHookNarrow mpl mmpl W))
-    (hb_ghost_stub : P_ghost.externAt? stubPc = some (f3MemsetGhostHookNarrow mpl mmpl W))
-    (hreal_no : ∀ pc, keepMemsetBlk21 mmpl pc = true →
-      (f3RealProg617 mpl mmpl W).externAt? pc = none)
-    (hreal_stub_none : (f3RealProg617 mpl mmpl W).externAt? stubPc = none)
-    (hStub : StubReachesTarget (f3RealProg617 mpl mmpl W) stubPc (mmpl.base 21))
-    (hInvLoaded : ∀ m : Memory, ExecFrozen m → Inv m →
-      (mallocngBlockProg mmpl 21 Syscall.standard).CodeLoaded m) :
-    (f3RealProg617 mpl mmpl W).externAt? stubPc = none ∧
-    ∀ (u sf : State),
-      Steps P_ghost u sf →
-      ((∃ code, sf.status = .Exited code) ∨ sf.status = .Panicked) →
-      u.pc = stubPc →
-      u.status = .Running →
-      (∀ msg, (f3MemsetGhostHookNarrow mpl mmpl W u).status ≠ .Exception msg) →
-      ExecFrozen u.mem →
-      Inv u.mem →
-      Steps (f3RealProg617 mpl mmpl W) u (f3MemsetGhostHookNarrow mpl mmpl W u) ∧
-      ExecFrozen (f3MemsetGhostHookNarrow mpl mmpl W u).mem := by
-  have hReplays := ghostExternReplays_f3MemsetGhostHookNarrow
-    hreal_no hreal_stub_none hStub hInvLoaded
-  refine ⟨hReplays.1, fun u sf hsteps_u_sf hterm hpc hrun hnoex hfr hinv => ?_⟩
-  obtain ⟨hrun_sf, hnoex_sf, hnhalt_sf⟩ := status_nonRunning_of_exited_or_panicked hterm
-  have hlr_false : keepMemsetBlk21 mmpl (u.readReg64 .lr) = false :=
-    blk21_lr_trap_at_call
-      (fun hkeepL => blk21TrapHook_memsetGhostHook _ _ _ hkeepL)
-      ha_blk21
-      (hpc ▸ hb_ghost_stub)
-      (hInvLoaded u.mem hfr hinv)
-      hsteps_u_sf hrun hrun_sf hnoex_sf hnhalt_sf
-  exact hReplays.2 u hpc hrun hnoex hfr hlr_false hinv
-
-/-- **End-to-End Pass-1 Trace Cutover (`steps_transfer_f3MemsetGhostHookNarrow`):**
-    *Superseded by `HooksDehook.MemsetGhostReplaysOn.steps_transfer_memsetGhostHookNarrow_On_ret` /
-    `_On_returned` (for single-stub `memset`-only passes) and
-    `SpecLemmas.SignalSession.ElfSlicesPqOomH2KMemset.h2k_memsetGhostHookNarrow_stub_replayOn_cli617`
-    (for the `W`-independent 8-row CLI K cutover); do not use this unguarded `StubReachesTarget`
-    corollary for the cutover.*
-    Combines `ghostExternReplays_f3MemsetGhostHookNarrow` + `blk21_lr_trap_false_gen` +
-    `steps_transfer_allocGhost` to replay `Steps P_ghost s0 sf` as
-    `Steps (f3RealProg617 mpl mmpl W) s0 sf` with **zero `lr` hypotheses** (covering both
-    `--branch-stubs` and stock `ld.lld` direct links). -/
-theorem steps_transfer_f3MemsetGhostHookNarrow
-    {P_ghost : Program} {mpl mmpl : Obj.MultiPlacement} {W : CliHooks} {stubPc : BitVec 64}
-    (hsvc_ghost : P_ghost.svc = Syscall.standard)
-    (ha_blk21 : ∀ pc, keepMemsetBlk21 mmpl pc = true →
-      P_ghost.externAt? pc = none ∨
-        P_ghost.externAt? pc = some (f3MemsetGhostHookNarrow mpl mmpl W))
-    (hb_ghost_stub : P_ghost.externAt? stubPc = some (f3MemsetGhostHookNarrow mpl mmpl W))
-    (hb_other : ∀ pc, pc ≠ stubPc →
-      P_ghost.externAt? pc = (f3RealProg617 mpl mmpl W).externAt? pc)
-    (hreal_fr : ∀ pc f, (f3RealProg617 mpl mmpl W).externAt? pc = some f →
-      ∀ u : State, u.status = .Running → ExecFrozen u.mem → ExecFrozen (f u).mem)
-    (hreal_no : ∀ pc, keepMemsetBlk21 mmpl pc = true →
-      (f3RealProg617 mpl mmpl W).externAt? pc = none)
-    (hreal_stub_none : (f3RealProg617 mpl mmpl W).externAt? stubPc = none)
-    (hStub : StubReachesTarget (f3RealProg617 mpl mmpl W) stubPc (mmpl.base 21))
-    {s0 sf : State}
-    (hsteps : Steps P_ghost s0 sf)
-    (hterm : (∃ code, sf.status = .Exited code) ∨ sf.status = .Panicked)
-    (hfr0 : ExecFrozen s0.mem)
-    (hCode0 : (mallocngBlockProg mmpl 21 Syscall.standard).CodeLoaded s0.mem) :
-    Steps (f3RealProg617 mpl mmpl W) s0 sf ∧ ExecFrozen sf.mem := by
-  let Inv : Memory → Prop := fun m => (mallocngBlockProg mmpl 21 Syscall.standard).CodeLoaded m
-  obtain ⟨hrun_sf, hnoex_sf, hnhalt_sf⟩ := status_nonRunning_of_exited_or_panicked hterm
-  have hno_new_hooks : ∀ pc, P_ghost.externAt? pc = none →
-      (f3RealProg617 mpl mmpl W).externAt? pc = none := by
-    intro pc hgn
-    by_cases hpc : pc = stubPc
-    · subst hpc; exact hreal_stub_none
-    · rw [← hb_other pc hpc]; exact hgn
-  have hRepStub := ghostExternReplays_f3MemsetGhostHookNarrow (Inv := Inv)
-    hreal_no hreal_stub_none hStub (fun _ _ h => h)
-  have hReplays : GhostExternReplays (keepMemsetBlk21 mmpl) Inv P_ghost
-      (f3RealProg617 mpl mmpl W) := by
-    intro pc f hg
-    by_cases hpc : pc = stubPc
-    · subst hpc
-      rw [hb_ghost_stub] at hg
-      injection hg with hfeq
-      subst hfeq
-      exact Or.inr hRepStub
-    · have hr : (f3RealProg617 mpl mmpl W).externAt? pc = some f := by
-        rw [← hb_other pc hpc]; exact hg
-      exact Or.inl ⟨hr, hreal_fr pc f hr⟩
-  have hmis : ∀ pc, P_ghost.externAt? pc ≠ (f3RealProg617 mpl mmpl W).externAt? pc →
-      P_ghost.externAt? pc = some (f3MemsetGhostHookNarrow mpl mmpl W) := by
-    intro pc hne
-    by_cases hpc : pc = stubPc
-    · subst hpc; exact hb_ghost_stub
-    · exact False.elim (hne (hb_other pc hpc))
-  exact steps_transfer_allocGhost
-    hsvc_ghost
-    (f3RealProg617_svc_eq mpl mmpl W)
-    hno_new_hooks
-    hReplays
-    (fun _ _ hL hk => hL.of_keepsFrozen hk)
-    hsteps
-    hnoex_sf
-    hnhalt_sf
-    hfr0
-    hCode0
-    (blk21_lr_trap_false_gen ha_blk21 hmis hCode0 hterm)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetLrTrap

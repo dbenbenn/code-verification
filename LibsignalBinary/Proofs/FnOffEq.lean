@@ -21,7 +21,7 @@ Closes concrete symbol-offset, entry-address, and extern-hook lookup goals via
 the elaborator or the kernel.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.FnOffEq
 

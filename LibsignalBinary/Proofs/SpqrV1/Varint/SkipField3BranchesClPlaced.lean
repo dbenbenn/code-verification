@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` Leaf Cases 1–6 for `skip_field [local#3]`
@@ -22,7 +23,7 @@ Proves `withLsCodeLoaded` leaf branches (`depth = 0`, `endGroup`, `sixtyFourBit`
 `thirtyTwoBit`, `varint`, `lengthDelimited`) for `prost::encoding::skip_field [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

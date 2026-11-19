@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Budget-Threaded Specifications for Identity Getters, `clear_unacknowledged_pre_key_message`, and Drop Glue
@@ -23,7 +24,7 @@ Defines budget-threaded specifications over `RustCliAllocBudget M`:
   emitting `FreeOnlyEvs` with `onPanic = onOom = ⌜False⌝`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,7 +56,7 @@ open CryptoVerification.LibsignalTripleRatchet.Getters (
 
 /-- Budget-threaded specification of `<SessionState>::clear_unacknowledged_pre_key_message`
 (`clearUpkStack = 32 + allocHookStack`). -/
-def clearUpkSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def clearUpkSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (ClearUpkGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
@@ -67,7 +68,7 @@ def clearUpkSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLi
       (∃∗ evs : List AllocEvent, ⌜FreeOnlyEvs evs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp clearUpkStack
 
-def clearUpkSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def clearUpkSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (ClearUpkGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
@@ -83,7 +84,7 @@ def clearUpkSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetL
 
 /-- Budget-threaded specification of `core::ptr::drop_glue::<session_structure::Chain>`
 (`dropChainStack = 48 + allocHookStack`). -/
-def dropChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (DropChainGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -95,7 +96,7 @@ def dropChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBud
       (∃∗ evs : List AllocEvent, ⌜FreeOnlyEvs evs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp dropChainStack
 
-def dropChainSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropChainSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (DropChainGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -109,7 +110,7 @@ def dropChainSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBu
 
 /-- Budget-threaded specification of `core::ptr::drop_glue::<session_structure::Chain>` on
 `protoChainAt` (`dropChainStack = 48 + allocHookStack`). -/
-def dropProtoChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropProtoChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (DropChainGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -121,7 +122,7 @@ def dropProtoChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAll
       (∃∗ evs : List AllocEvent, ⌜FreeOnlyEvs evs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp dropChainStack
 
-def dropProtoChainSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def dropProtoChainSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -136,7 +137,7 @@ def dropProtoChainSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : B
 
 /-- Budget-threaded specification of `core::ptr::drop_glue::<Vec<chain::MessageKey>>`
 (`dropVecMessageKeyStack = 48 + allocHookStack`). -/
-def dropVecMessageKeySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropVecMessageKeySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (DropVecMessageKeyGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -149,7 +150,7 @@ def dropVecMessageKeySpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCli
       (∃∗ evs : List AllocEvent, ⌜FreeOnlyEvs evs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp dropVecMessageKeyStack
 
-def dropVecMessageKeySpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropVecMessageKeySpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (DropVecMessageKeyGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -166,7 +167,7 @@ def dropVecMessageKeySpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCl
 
 /-- Budget-threaded specification of `core::ptr::drop_glue::<Vec<session_structure::Chain>>`
 (`dropVecChainStack = 48 + dropVecMessageKeyStack`). -/
-def dropVecChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropVecChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (DropVecChainGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -179,7 +180,7 @@ def dropVecChainSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAlloc
       (∃∗ evs : List AllocEvent, ⌜FreeOnlyEvs evs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp dropVecChainStack
 
-def dropVecChainSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropVecChainSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (DropVecChainGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -196,7 +197,7 @@ def dropVecChainSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllo
 
 /-- Budget-threaded specification of `core::ptr::drop_glue::<SignalProtocolError>`
 (`dropSpeStack = 32 + allocHookStack`). -/
-def dropSpeSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropSpeSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (DropSpeGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -208,7 +209,7 @@ def dropSpeSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudge
       (∃∗ evs : List AllocEvent, ⌜FreeOnlyEvs evs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp dropSpeStack
 
-def dropSpeSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropSpeSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (DropSpeGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -223,14 +224,14 @@ def dropSpeSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudg
 /-! ## 6. Relocatable `[LibsignalPlacement]` Specs for `local_identity_key` and `remote_identity_key` -/
 
 /-- Non-allocating `<SessionState>::local_identity_key` (Block `28`) preserving `VmPreserved`. -/
-def localIdentityKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def localIdentityKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec LocalIdentityKeyGhost :=
   let base := CryptoVerification.LibsignalTripleRatchet.Getters.localIdentityKeyPlacedSpec A
   { base with
     post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ base.post x s0 sf }
 
 /-- Non-allocating `<SessionState>::remote_identity_key` (Block `29`) preserving `VmPreserved`. -/
-def remoteIdentityKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def remoteIdentityKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec RemoteIdentityKeyGhost :=
   let base := CryptoVerification.LibsignalTripleRatchet.Getters.remoteIdentityKeyPlacedSpec A
   { base with
@@ -239,7 +240,7 @@ def remoteIdentityKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
 /-! ## 7. Un-narrowed `*Base` Specifications for Unplaced (`bare_b`) Producers -/
 
 /-- Un-narrowed (`bare_b`) specification of `core::ptr::drop_glue::<session_structure::Chain>`. -/
-def dropChainSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def dropChainSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -252,7 +253,7 @@ def dropChainSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bud
 
 /-- Un-narrowed (`bare_b`) specification of `core::ptr::drop_glue::<session_structure::Chain>` on
 `protoChainAt`. -/
-def dropProtoChainSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def dropProtoChainSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -264,7 +265,7 @@ def dropProtoChainSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim 
       stackAt s0.sp dropChainStack
 
 /-- Un-narrowed (`bare_b`) specification of `core::ptr::drop_glue::<Vec<chain::MessageKey>>`. -/
-def dropVecMessageKeySpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def dropVecMessageKeySpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropVecMessageKeyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v⌝ ∗
@@ -277,7 +278,7 @@ def dropVecMessageKeySpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (l
       stackAt s0.sp dropVecMessageKeyStack
 
 /-- Un-narrowed (`bare_b`) specification of `core::ptr::drop_glue::<Vec<session_structure::Chain>>`. -/
-def dropVecChainSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def dropVecChainSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropVecChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v⌝ ∗

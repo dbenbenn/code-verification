@@ -12,16 +12,16 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesAuxBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesAuxBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -29,6 +29,10 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA1Placed
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Substage P2.2
@@ -37,7 +41,7 @@ Defines `P2Sub2TailEnv` and proves `RustCliAllocBudget M` / `VmPreserved` placed
 (`+0x0f14 → +0x1460` on `Ok`, or `+0x0f38` Arm 1) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -159,7 +163,7 @@ theorem freeOnlyEvs_rustDeallocEvents (size align : Nat) :
 between `spkKit.getPoll` and `kpkKit.getShim`:
 `__rust_dealloc(spkBoxSize, 8)` on the SPK poll future box followed by freeing the cloned
 `publicKey`, `privateKey`, and (when `sigCap ≠ 0`) `signature` `Vec<u8>` buffers. -/
-def p2SpkRecFreeEvents (spkBoxSize pubCap privCap sigCap : Nat) : List AllocEvent :=
+@[expose] def p2SpkRecFreeEvents (spkBoxSize pubCap privCap sigCap : Nat) : List AllocEvent :=
   rustDeallocEvents spkBoxSize 8 ++
     (if sigCap = 0 then
        rustDeallocEvents pubCap 1 ++ rustDeallocEvents privCap 1
@@ -181,11 +185,11 @@ theorem p2SpkRecFreeEvents_freeOnly (spkBoxSize pubCap privCap sigCap : Nat) :
 
 /-- Exact deterministic post-`spkKit.getPoll` allocator event list along the `.ok r` branch of
 Substage P2.2 (`p2SpkRecFreeEvents` followed by `kpkKit.getShim`'s `boxAllocEvents kpkBoxSize`). -/
-def p2Sub2TailEvents (spkBoxSize pubCap privCap sigCap kpkBoxSize : Nat) : List AllocEvent :=
+@[expose] def p2Sub2TailEvents (spkBoxSize pubCap privCap sigCap kpkBoxSize : Nat) : List AllocEvent :=
   p2SpkRecFreeEvents spkBoxSize pubCap privCap sigCap ++ boxAllocEvents kpkBoxSize
 
 /-- Exact allocator event envelope for the post-`spkKit.getPoll` `.ok r` tail of Substage P2.2. -/
-def P2Sub2TailEnv (spkBoxSize pubCap privCap sigCap kpkBoxSize : Nat)
+@[expose] def P2Sub2TailEnv (spkBoxSize pubCap privCap sigCap kpkBoxSize : Nat)
     (evs : List AllocEvent) : Prop :=
   evs = p2Sub2TailEvents spkBoxSize pubCap privCap sigCap kpkBoxSize
 

@@ -17,7 +17,7 @@ public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
 Shows that `stepSimCNone` on a `deliver` or `inject` query at `k = none` reduces to the pure state transition `simRecvStepC`, and relates `simRecvStepC` to `simRecvStepCGen … false` and `simRecvStep` when no evicted salt mismatch occurs.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -87,16 +87,6 @@ theorem fig8ImplH1_deliver_run (Q : Party) (c : Fig8C Pt)
   exact h
 
 end Hooks
-
-/-- Absence of an evicted salt mismatch when `Q` receives wire `w`: any honest record of `w` from an evicted epoch carries effective salt `effectiveHkdfSalt32 salt`. -/
-def NoEvictMismatch (P : Params PQ PQC) (Q : Party) (w : List (BitVec 8)) (s : SimState PQ Pt ℓ) :
-    Prop :=
-  ∀ (h : SignalHeader) (body : List (BitVec 8)) (pq' : PQ) (salt : Salt) (c : Fig8C Pt),
-    (signalWireCodec P.codec).parse (w.take (w.length - 8)) = some (h, body) →
-    P.spqr.recv (s.pq Q) h.pqRatchet = .ok (pq', salt) →
-    (s.chains Q).findIdx? (fun g => g.key == some h.senderRatchetKey) = none →
-    (s.honest.find? fun wc => wc.1 == w && Party.senderOf wc.2.1.1 == Q.other).map (·.2) = some c →
-    c.1.1 ≠ s.mir.epoch Q + 1 → c.2.2.2 = effectiveHkdfSalt32 salt
 
 
 section Fwd
@@ -392,171 +382,6 @@ private theorem simRecvStepC_eq_gen_false' (Q : Party) (w : List (BitVec 8))
           split
           · exact hirrE _ _ _ _ (by split <;> exact h)
           · exact hirr _ _ _ _ _ _ (by split <;> exact h)
-
-theorem fwdCPure_false_spec (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ)
-    (T : PublicKey) (pq' : PQ) (honestC : Option (Fig8C Pt)) (c' : Fig8C Pt) (y : JointC PQ Pt ℓ) :
-    let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
-    let r := fwdCPure P ℓ Dh encPt encT idOf lam qep false Q w isDel ci? T pq' honestC c' y
-    let z := fwdPure fig 3 (qep + 1) SM.Config.h1 y.1.base Q c' y.2.1
-    let a := onAnswerPure qep Q w isDel ci? T pq' z.1 y.1.base
-    (r.1, r.2.sim) = (a.1, (a.2, z.2)) ∧ r.2.1.sent = y.1.sent ∧ r.2.2.2 = y.2.2 ∧
-    (∀ R, R ≠ Q → r.2.1.kept R = y.1.kept R) ∧
-    (r.2.1.kept Q = y.1.kept Q ∨
-      ∃ c'', r.2.1.kept Q =
-        Kept.recv (fig := fig) (fs := lFS P.C P.codec ℓ encT idOf 25000) c'' (y.1.kept Q)) := by
-  intro fig
-  have hplain : fwdCPure P ℓ Dh encPt encT idOf lam qep false Q w isDel ci? T pq' honestC c' y =
-      fwdCPure P ℓ Dh encPt encT idOf lam qep false Q w isDel ci? T pq' none c' y := by
-    unfold fwdCPure
-    cases honestC <;> simp only [Bool.false_and, Bool.false_eq_true, ↓reduceIte]
-  simp only [hplain]
-  unfold fwdCPure
-  dsimp only
-  generalize fwdPure fig 3 (qep + 1) SM.Config.h1 y.1.base Q c' y.2.1 = z
-  rcases z with ⟨res, g'⟩
-  cases res with
-  | none => exact ⟨rfl, rfl, rfl, fun _ _ => rfl, Or.inl rfl⟩
-  | some rr =>
-    cases rr with
-    | accepted t i pm =>
-      refine ⟨rfl, rfl, rfl, fun R hR => ?_, Or.inr ⟨c', ?_⟩⟩
-      · simp only [Function.update_of_ne hR]
-      · simp only [Function.update_self]; rfl
-    | rejected => exact ⟨rfl, rfl, rfl, fun _ _ => rfl, Or.inl rfl⟩
-
-/-- Relational specification comparing `simRecvStepCGen … false` against `simRecvStep … none`. -/
-def RecvSpecC (Q : Party) (r : Option (RecvResult (Plain ℓ)) × JointC PQ Pt ℓ)
-    (rs : Option (RecvResult (Plain ℓ)) ×
-      (SimState PQ Pt ℓ × SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)))
-    (x : JointC PQ Pt ℓ) : Prop :=
-  (r.1, r.2.sim) = rs ∧ r.2.1.sent = x.1.sent ∧ r.2.2.2 = x.2.2 ∧
-    (∀ R, R ≠ Q → r.2.1.kept R = x.1.kept R) ∧
-    (r.2.1.kept Q = x.1.kept Q ∨
-      ∃ c', r.2.1.kept Q =
-        Kept.recv (fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
-          (fs := lFS P.C P.codec ℓ encT idOf 25000) c' (x.1.kept Q))
-
-private theorem simRecvStepCGen_false_spec' (Q : Party) (w : List (BitVec 8))
-    (isDel : Bool) (x : JointC PQ Pt ℓ) (hnev : NoEvictMismatch P Q w x.1.base)
-    (hnp : recvPanicsW P Q w x.1.base = false) :
-    let r := simRecvStepCGen P ℓ Dh encPt encT decT idOf lam qep false Q w isDel x
-    (r.1, r.2.sim) = simRecvStep P ℓ Dh encPt encT decT idOf lam qep none Q w isDel 0 x.sim ∧
-    r.2.1.sent = x.1.sent ∧ r.2.2.2 = x.2.2 ∧ (∀ R, R ≠ Q → r.2.1.kept R = x.1.kept R) ∧
-    (r.2.1.kept Q = x.1.kept Q ∨
-      ∃ c', r.2.1.kept Q =
-        Kept.recv (fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
-          (fs := lFS P.C P.codec ℓ encT idOf 25000) c' (x.1.kept Q)) := by
-  intro r
-  show RecvSpecC P ℓ Dh encPt encT idOf lam Q r
-    (simRecvStep P ℓ Dh encPt encT decT idOf lam qep none Q w isDel 0 x.sim) x
-  subst r
-  rcases x with ⟨⟨s, kept, sent, snaps⟩, g, fl⟩
-  have hleaf := fwdCPure_false_spec P ℓ Dh encPt encT idOf lam qep Q w isDel
-  have hnone_beq : ((none : Option ℕ) == some s.amb) = false := rfl
-  have htriv : ∀ (a : Option (RecvResult (Plain ℓ))) (y : JointC PQ Pt ℓ), y.1.kept = kept →
-      y.1.sent = sent → y.2.2 = fl →
-      RecvSpecC P ℓ Dh encPt encT idOf lam Q (a, y) (a, y.sim)
-        (({ base := s, kept := kept, sent := sent, snaps := snaps }, g, fl) : JointC PQ Pt ℓ) := by
-    intro a y h1 h2 h3
-    exact ⟨rfl, h2, h3, fun R _ => congrFun h1 R, Or.inl (congrFun h1 Q)⟩
-  unfold simRecvStepCGen simRecvStep
-  dsimp only [JointC.sim]
-  by_cases hst : s.stopped = true
-  · simp only [hst, ↓reduceIte]
-    exact htriv _ _ rfl rfl rfl
-  simp only [hst, Bool.false_eq_true, ↓reduceIte]
-  by_cases hwin : s.mir.win = true
-  · simp only [hwin, ↓reduceIte]
-    exact htriv _ _ rfl rfl rfl
-  simp only [hwin, Bool.false_eq_true, ↓reduceIte]
-  by_cases hdel : (isDel && (s.mir.inTransit Q.other w).isNone) = true
-  · simp only [hdel, ↓reduceIte]
-    exact htriv _ _ rfl rfl rfl
-  simp only [hdel, Bool.false_eq_true, ↓reduceIte]
-  by_cases hinj : (!isDel && ((s.mir.inTransit Q.other w).isSome || !(s.mir.safeInj 3)
-      || !(ratchetKeyAdmissible P.codec decT encT w))) = true
-  · simp only [hinj, ↓reduceIte]
-    exact htriv _ _ rfl rfl rfl
-  simp only [hinj, Bool.false_eq_true, ↓reduceIte]
-  by_cases hlen : w.length < 9
-  · simp only [hlen, ↓reduceIte]
-    exact htriv _ _ rfl rfl rfl
-  simp only [hlen, ↓reduceIte]
-  cases hparse : (signalWireCodec P.codec).parse (w.take (w.length - 8)) with
-  | none => exact htriv _ _ rfl rfl rfl
-  | some hp =>
-    rcases hp with ⟨hd, _⟩
-    dsimp only
-    by_cases haddr : (!(addressCheckPasses hd.addresses (P.expectedAddrs Q))) = true
-    · simp only [haddr, ↓reduceIte]
-      exact htriv _ _ rfl rfl rfl
-    simp only [haddr, Bool.false_eq_true, ↓reduceIte]
-    have haddr' : addressCheckPasses hd.addresses (P.expectedAddrs Q) = true := by simpa using haddr
-    have hpan : P.spqr.recvPanics (s.pq Q) hd.pqRatchet = false := by
-      simpa [recvPanicsW, hlen, hparse, haddr'] using hnp
-    simp only [hpan, Bool.false_eq_true, ↓reduceIte]
-    cases hspqr : P.spqr.recv (s.pq Q) hd.pqRatchet with
-    | error _ => exact htriv _ _ rfl rfl rfl
-    | ok ps =>
-      rcases ps with ⟨pq', salt⟩
-      dsimp only
-      cases hci : (s.chains Q).findIdx? (fun g => g.key == some hd.senderRatchetKey) with
-      | some ci =>
-        dsimp only
-        by_cases hrej : ((s.chains Q).getD ci ⟨none, 0, 0, []⟩).rejects (hd.counter.toNat + 1) = true
-        · simp only [hrej, ↓reduceIte]
-          exact htriv _ _ rfl rfl rfl
-        simp only [hrej, Bool.false_eq_true, ↓reduceIte]
-        exact hleaf _ _ _ _ _
-          (({ base := s, kept := kept, sent := sent, snaps := snaps }, g, fl) : JointC PQ Pt ℓ)
-      | none =>
-        dsimp only
-        cases hev : (Option.map (fun c => decide (c.1.1 ≠ s.mir.epoch Q + 1))
-            (Option.map (fun x => x.2)
-              (List.find? (fun wc => wc.1 == w && Party.senderOf wc.2.1.1 == Q.other) s.honest)) ==
-            some true)
-        case true =>
-          have hsm : (Option.map (fun c => decide (c.2.2.2 = effectiveHkdfSalt32 salt))
-              (Option.map (fun x => x.2)
-                (List.find? (fun wc => wc.1 == w && Party.senderOf wc.2.1.1 == Q.other) s.honest)) ==
-              some true) = true := by
-            cases hfc : Option.map (fun x => x.2)
-                (List.find? (fun wc => wc.1 == w && Party.senderOf wc.2.1.1 == Q.other) s.honest) with
-            | none => rw [hfc] at hev; simp at hev
-            | some c =>
-              rw [hfc] at hev
-              have hne : c.1.1 ≠ s.mir.epoch Q + 1 := by simpa using hev
-              simp [hnev hd _ pq' salt c hparse hspqr hci hfc hne]
-          simp only [hsm, Bool.true_and, ↓reduceIte]
-          exact htriv _ _ rfl rfl rfl
-        simp only [Bool.false_and, Bool.false_eq_true, ↓reduceIte]
-        by_cases hz : (decT hd.senderRatchetKey == some 0) = true
-        · simp only [hz, ↓reduceIte]
-          exact htriv _ _ rfl rfl rfl
-        simp only [hz, Bool.false_eq_true, ↓reduceIte]
-        by_cases hamb : (inReceiveOnlyEpoch s.mir Q || Q == Party.A && (s.chains Q).any fun x => x.key.isNone) = true
-        · simp only [hamb, hnone_beq, Bool.and_false, Bool.false_eq_true, ↓reduceIte]
-          by_cases hcond : (inReceiveOnlyEpoch s.mir Q || decide (25000 < hd.counter.toNat + 1 - 1) ||
-              decide (2 ^ 32 ≤ hd.counter.toNat + 1)) = true
-          · simp only [hcond, ↓reduceIte]
-            exact htriv _ _ rfl rfl rfl
-          simp only [hcond, Bool.false_eq_true, ↓reduceIte]
-          cases hT : decT hd.senderRatchetKey with
-          | none => exact htriv _ _ rfl rfl rfl
-          | some T =>
-            dsimp only
-            exact hleaf _ _ _ _ _ (_, g, fl)
-        · simp only [hamb, hnone_beq, Bool.false_and, Bool.and_false, Bool.false_eq_true, ↓reduceIte]
-          by_cases hcond : (inReceiveOnlyEpoch s.mir Q || decide (25000 < hd.counter.toNat + 1 - 1) ||
-              decide (2 ^ 32 ≤ hd.counter.toNat + 1)) = true
-          · simp only [hcond, ↓reduceIte]
-            exact htriv _ _ rfl rfl rfl
-          simp only [hcond, Bool.false_eq_true, ↓reduceIte]
-          cases hT : decT hd.senderRatchetKey with
-          | none => exact htriv _ _ rfl rfl rfl
-          | some T =>
-            dsimp only
-            exact hleaf _ _ _ _ _ (_, g, fl)
 
 end Fwd
 

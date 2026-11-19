@@ -9,13 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitiatorCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitiatorCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
-import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesDecode
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
@@ -29,7 +28,7 @@ Proves `subroutine_ok` on `tripleRatchetProgAt` and `[LibsignalPlacement]` for `
 `<kem::Ciphertext>::serialize`, and `<kem::Key<Public>>::serialize`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -50,43 +49,12 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 abbrev spqrChainParamsName : String := "libsignal_protocol::ratchet::spqr_chain_params"
 
-theorem spqrChainParams_fnOff : libsignalSessionCode.fnOff spqrChainParamsName = 0x21c6c :=
-  libsignalSessionCode_fnOff_0x21c6c
-
-def spqrChainParamsSpec : Spec (BitVec 32) where
+@[expose] def spqrChainParamsSpec : Spec (BitVec 32) where
   pre := fun v s => ⌜s.readReg32 .x0 = v⌝
   post := fun v s0 sf =>
     ⌜sf.trace = s0.trace ∧
       sf.readReg64 .x0 = (if (v == 0#32) = true then 25000#64 else 4294967295#64) ∧
       sf.readReg64 .x1 = 2000#64⌝
-
-theorem spqrChainParams_ok_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr spqrChainParamsName)
-      spqrChainParamsSpec := by
-  unfold spqrChainParamsSpec
-  have hfn : libsignalSessionCode.fnOff spqrChainParamsName = 0x21c6c :=
-    spqrChainParams_fnOff
-  code_fetches CryptoVerification.libsignalSessionCode
-    CryptoVerification.E2E.Pqxdh.spqrChainParams b
-    (Rust.withPanics (trTrapExterns C abs)) hfn 0x21c6c 20
-  wp_init v s0
-  examples_generalize_entry
-  examples_hide_fetches
-  subst h
-  wp_steps
-  wp_done
-
-theorem spqrChainParams_ok {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr spqrChainParamsName)
-      spqrChainParamsSpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr spqrChainParamsName]
-  exact subroutine_ok_kit_of_trTrap spqrChainParams_ok_trap
-
-/-! ## 2. `finish_grow [local#6]` (`0x763f8`) & `do_reserve_and_handle [local#6]` (`0x71f94`) -/
 
 abbrev finishGrow6Name : String :=
   "<alloc::raw_vec::RawVecInner>::finish_grow [local#9]"
@@ -95,7 +63,7 @@ abbrev doReserve6Name : String :=
   "<alloc::raw_vec::RawVecInner<_>>::reserve::" ++
   "do_reserve_and_handle::<alloc::alloc::Global> [local#8]"
 
-def doReserve6Spec (A : RustAlloc) : Spec DoReserveCall where
+@[expose] def doReserve6Spec (A : RustAlloc) : Spec DoReserveCall where
   pre := fun x s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
     ⌜s.readReg64 .x0 = x.v ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
@@ -357,10 +325,6 @@ abbrev kemCiphertextSerializeName : String :=
 abbrev kemPubKeySerializeName : String :=
   "<libsignal_protocol::kem::Key<libsignal_protocol::kem::Public>>::serialize [local#1]"
 
-theorem kemCiphertextSerialize_fnOff :
-    libsignalSessionCode.fnOff kemCiphertextSerializeName = 0x1fa74 :=
-  libsignalSessionCode_fnOff_0x1fa74
-
 private theorem stackAt_kemSerialize48 (sp : BitVec 64) :
     stackAt sp tryCloneFromRefStack =
       stackAt (sp - 48#64) allocHookStack ∗ cells (sp - 48#64) 6 :=
@@ -379,7 +343,7 @@ private theorem sepWPp_pure_mid {prog : Program} {ret : BitVec 64} {s : State}
   rw [show A ∗ B ∗ ⌜φ⌝ ∗ C = ⌜φ⌝ ∗ A ∗ B ∗ C by ac_rfl]
   exact SepWPp.pure_elim h
 
-def kemCiphertextSerializeSpec (A : RustAlloc) :
+@[expose] def kemCiphertextSerializeSpec (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (hdrPtr, boxPtr, ctBytes) s =>
     ⌜s.readReg64 .x0 = hdrPtr ∧ ctBytes.length = 1568⌝ ∗
@@ -397,88 +361,7 @@ def kemCiphertextSerializeSpec (A : RustAlloc) :
       A.pool ∗ stackAt s0.sp tryCloneFromRefStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem kemCiphertextSerialize_ok_trap {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr kemCiphertextSerializeName)
-      (kemCiphertextSerializeSpec A) := by
-  unfold kemCiphertextSerializeSpec
-  simp only [stackAt_kemSerialize48]
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff kemCiphertextSerializeName = 0x1fa74 :=
-    kemCiphertextSerialize_fnOff
-  have hshim := noAllocShim_ok_at_trap (b := b) (C := C) (abs := abs)
-    (name := kemCiphertextSerializeName) (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x1fa74))
-    (by rw [hfn, (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")])
-  have halloc := alloc_ok_at_norm_trap (b := b) (C := C) hA
-    (name := kemCiphertextSerializeName) (k := num% (ls_off% "__rustc::__rust_alloc" - 0x1fa74))
-    (by rw [hfn, (ls_stub% "__rustc::__rust_alloc")])
-  have hmemcpy := framelessMemcpy_ok_at_trap (b := b) (C := C) (abs := abs)
-    (name := kemCiphertextSerializeName) (k := num% (ls_off% "memcpy" - 0x1fa74))
-    (by rw [hfn, (ls_stub% "memcpy")])
-  have hpanic := panic_at_handle_error_norm_trap (b := b) (C := C) (abs := abs)
-    (name := kemCiphertextSerializeName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x1fa74))
-    (by rw [hfn, (ls_stub% "alloc::raw_vec::handle_error")])
-  dsimp only [noAllocShimSpec] at hshim
-  dsimp only [framelessMemcpySpec] at hmemcpy
-  code_fetches CryptoVerification.libsignalSessionCode
-    CryptoVerification.E2E.Pqxdh.kemCiphertextSerialize b
-    (Rust.withPanics (trTrapExterns C abs)) hfn 0x1fa74 144
-  dsimp only [trTrapProgAt] at hshim halloc hmemcpy hpanic ⊢
-  clear hfn hA
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr kemCiphertextSerializeName = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init g s0
-  obtain ⟨hdrPtr, boxPtr, ctBytes⟩ := g
-  dsimp only at *
-  subst h_1
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlay : LayoutOk 1569 1 := ⟨by decide, hpow2, by decide⟩
-  apply SepWPp.of_sepWP (mid := entry + 72#64)
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  wp_call halloc (1569, 1)
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    simp only [hoom, ite_true, sepConj_assoc]
-    refine sepWPp_pure_mid fun htrace => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x1fa74))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked
-        (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, memRegion_1569_split, sepExists_sepConj_left,
-      sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun b0 => ?_
-    refine sepWPp_pure_mid fun ⟨hmod, htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    rw [← h]
-    wp_call hmemcpy (sf_1.readReg64 (Reg.gpr 0#5) + 1#64, boxPtr, ctBytes)
-    wp_steps
-    simp only [pointsToBytes_cons]
-    wp_done
-
-theorem kemCiphertextSerialize_ok {A : RustAlloc} {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr kemCiphertextSerializeName)
-      (kemCiphertextSerializeSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr kemCiphertextSerializeName]
-  exact subroutine_ok_kit_of_trTrap (kemCiphertextSerialize_ok_trap hA)
-
-def kemPubKeySerializeSpec (A : RustAlloc) :
+@[expose] def kemPubKeySerializeSpec (A : RustAlloc) :
     Spec (BitVec 64 × List (BitVec 8)) where
   pre := fun (boxPtr, pkBytes) s =>
     ⌜s.readReg64 .x0 = boxPtr ∧ s.readReg64 .x1 = 1568#64 ∧ pkBytes.length = 1568⌝ ∗

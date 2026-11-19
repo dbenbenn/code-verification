@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBase
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -26,7 +26,7 @@ Step lemmas, loop invariant (`auth_loop_ok_placed`), and subroutine contract for
 against `withLsCodeRoLoaded lsmpl (authMergeSpec A)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

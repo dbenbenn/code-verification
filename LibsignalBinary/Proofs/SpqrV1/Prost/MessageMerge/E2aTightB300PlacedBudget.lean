@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB300StepsPlacedBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledClPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB300StepsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -30,6 +29,10 @@ import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChunked
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Guarded-Tight Placed Budget Proof for `Chunked.Ct1Sampled::merge` (Block `300`)
@@ -40,7 +43,7 @@ Proves `tlb_ChunkedCt1SampledMergePlacedTightOkOf` on Block `300` within
 on canonical `tlb_ChunkedCt1SampledDom` inputs, falling back to `ChunkedCt1SampledMergeEnv` outside the domain.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -65,14 +68,7 @@ open CryptoVerification.LibsignalTripleRatchet.Prost.BytesMergeFacts
 open CryptoVerification.LibsignalSpqrV1 (PolynomialDecoder PolynomialEncoder V1State)
 open CryptoVerification.LibsignalSpqrV1.Proto (encodeOptMessage mergeMessage)
 open CryptoVerification.SpqrV1.Auth (WppPost)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedCt1SampledMergeGhost ChunkedLoopRegs SepWPpLscro
-   bv64_add_zero bv64_sub_zero bv_len_sub_limit
-   chunkedBelow_leaf chunkedBelow_leaf_entails
-   chunkedCt1SampledMerge_fnOff chunkedCt1SampledPBCapAt chunkedCt1SampledPBCapAt_mono
-   chunkedMergeStack chunkedSavedRegs codecWireTypeToProto
-   stackAt_chunkedMerge subroutine_ok_withLsCodeRoLoaded_of_withLscroProp
-   withLscroProp wt_beq_two_of_lengthDelimited)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedCt1SampledMergeGhost ChunkedLoopRegs SepWPpLscro bv64_add_zero bv64_sub_zero bv_len_sub_limit chunkedBelow_leaf chunkedBelow_leaf_entails chunkedCt1SampledPBCapAt chunkedCt1SampledPBCapAt_mono chunkedMergeStack chunkedSavedRegs codecWireTypeToProto stackAt_chunkedMerge subroutine_ok_withLsCodeRoLoaded_of_withLscroProp withLscroProp wt_beq_two_of_lengthDelimited)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_300 blkPl_300)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget VmPreserved)
@@ -127,7 +123,7 @@ private theorem e2ka_b300_calleeSavedVRegs_setMem_pre (s : State) (m : Memory) :
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero chunkedCt1SampledMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 attribute [local arm64_norm ↓, local wp_norm ↓]
   e2ka_b300_sp_setMem_pre e2ka_b300_pc_setMem_pre e2ka_b300_status_setMem_pre
   e2ka_b300_pstate_setMem_pre e2ka_b300_trace_setMem_pre e2ka_b300_readReg64_setMem_pre

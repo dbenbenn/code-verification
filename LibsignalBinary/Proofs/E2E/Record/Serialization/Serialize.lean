@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Support.Image
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
+public import Aesop.BuiltinRules
+public import Mathlib.Tactic.ToAdditive
+public import Mathlib.Tactic.ToDual
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.FromRecordCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.ChainLen
 import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeChain
@@ -40,70 +42,12 @@ canonical records via `encRecordMem_eq_of_canon` (`serializeCanon_ok`, `serializ
 provides the relocatable `[LibsignalPlacement]` counterparts on block `52`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization
 
 open Arm64 ProofLib CryptoGames CryptoGames.LibsignalSession CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
-
-/-- `SessionRecord::serialize` (`0x1857c`) satisfies `serializeSpec` given `AllocHooks A abs`. -/
-theorem serialize_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    OkAt b C ctl abs serializeName (serializeSpec A) := by
-  have hDR : OkAt b C ctl abs doReserveName (doReserveSpec A) := do_reserve_ok hA
-  have hEV : Prost.EncodeVarintOk b C A ctl abs :=
-    Prost.encodeVarint_ok b C A ctl abs hDR
-  have hmk := msgKeyLen_ok b C A ctl abs
-  have hchain := chainLen_ok b C A ctl abs hmk
-  exact serialize_ok_of_leaves b C A ctl abs hA
-    (sessionClone_ok b C A ctl abs hA)
-    (vecVecCloneEmpty_ok b C ctl abs)
-    (sessionLen_ok b C A ctl abs hchain)
-    hEV
-    (encodeRaw_ok b C A ctl abs hEV hDR
-      (encodeChain_ok b C A ctl abs hEV hDR hchain hmk))
-    hDR
-    (FromRecordCallees.drop_session_structure_local1_ok hA (Getters.drop_vec_message_key_ok hA)
-      (Getters.drop_vec_chain_ok hA))
-
-/-- Refines `serializeSpec` to `serializeCanonSpec` on canonical records via `encRecordMem_eq_of_canon`. -/
-theorem serializeCanon_of_serialize (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (h : OkAt b C ctl abs serializeName (serializeSpec A)) :
-    OkAt b C ctl abs serializeName (serializeCanonSpec A) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hp hsp_align => ?_
-  have hp' := hp
-  simp only [serializeCanonSpec] at hp'
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hp'
-  obtain ⟨⟨h0, h8, hcanon, hlen⟩, hrest⟩ := hp'
-  have henc := encRecordMem_eq_of_canon x.g x.r hcanon
-  have hpre : s0.mem ⊨ (serializeSpec A).pre x s0 ∗ R := by
-    simp only [serializeSpec]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨h0, h8, henc ▸ hlen⟩, hrest⟩
-  refine h.mono_outcome x R s0 hpc hrun hpre hsp_align fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simpa only [serializeSpec, serializeCanonSpec, henc] using hq
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
-/-- `SessionRecord::serialize` on a canonical record satisfies `serializeCanonSpec` on `tripleRatchetProgAt`. -/
-theorem serializeCanon_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    OkAt b C ctl abs serializeName (serializeCanonSpec A) :=
-  serializeCanon_of_serialize b C A ctl abs (serialize_ok b C A ctl abs hA)
-
-/-- `SessionRecord::serialize` on a canonical record satisfies `serializeCanonSpec` on `tripleRatchetProg sessionImg0`. -/
-theorem serializeCanon_root (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProg E2E.Record.sessionImg0 C ctl abs)
-      (entryOf E2E.Record.sessionImg0 serializeName) (serializeCanonSpec A) :=
-  root_of_tripleRatchetProgAt E2E.Record.loads_sessionImg0 (serializeCanon_ok _ C A ctl abs hA)
-
-/-! ## Relocatable `[LibsignalPlacement]` assembly (block `52`) -/
 
 section Placed
 

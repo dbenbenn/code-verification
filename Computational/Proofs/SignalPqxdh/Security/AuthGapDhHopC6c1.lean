@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
 
 /-!
 # `Auth` hybrid hop `G3 → G3.5`: non-receiver step couplings
@@ -20,8 +22,7 @@ Defines the coupled random-oracle cache invariant `AuthG3G3_5CoupledInv` and pro
 couplings for the seven non-`roCache` queries, `.roQuery`, `.sendOPK`, and `.sendNoOPK`.
 -/
 
-@[expose] public section
-noncomputable section
+public section
 set_option autoImplicit false
 open Classical
 open SignalPqxdh SignalPqxdh.Security
@@ -30,7 +31,7 @@ open scoped ENNReal BigOperators
 open Proofs.SignalPqxdh.Security.FgGapDh
 namespace Proofs.SignalPqxdh.Security
 /-! ## Coupled random-oracle cache invariant -/
-def ValidIdealSessionHonesty (S : Setup) (P : Primitives) (hst : AuthHybridState S)
+@[expose] def ValidIdealSessionHonesty (S : Setup) (P : Primitives) (hst : AuthHybridState S)
     (s : IdealAuthSession S) (sessEntry : AuthInitiatorEntry S) : Prop :=
   (sessEntry.fresh = true ∨ ((∃ k_s j_s b_s, ((k_s, j_s), b_s) ∈ hst.base.spkBundles ∧
       P.pow8 s.peerSpkPk = P.pow8 b_s.spkPk) ∧ sessEntry.pqspkHonest = true)) ∧
@@ -69,7 +70,7 @@ theorem validIdealSessionHonesty_imp_spk_and_pqspk_of_hasBadSigAuth_false
       hNoBadSig hsMem hFresh with ⟨hSpk, hPq⟩
     exact ⟨h2 hSpk, h3 hPq⟩
   · exact ⟨hSpkW, h3 hPq⟩
-def AuthRoCacheCoupled {S : Setup} (P : Primitives) (s35 s3 : AuthAdvLatchedState S) : Prop :=
+@[expose] def AuthRoCacheCoupled {S : Setup} (P : Primitives) (s35 s3 : AuthAdvLatchedState S) : Prop :=
   (∀ secrets p,
     s35.adv.hyb.base.roCache.find? (fun (s, _) => s == secrets) = some p →
     s3.adv.hyb.base.roCache.find? (fun (s, _) => s == secrets) = some p) ∧
@@ -101,7 +102,7 @@ def AuthRoCacheCoupled {S : Setup} (P : Primitives) (s35 s3 : AuthAdvLatchedStat
       ValidIdealSessionHonesty S P s3.hyb s sessEntry ∧
       secrets = idealSessionSecrets P uEntry sessEntry.ekASk ss_s s ∧
       p = (secrets, s.drKey))
-def AuthG3G3_5CoupledInv {S : Setup} (P : Primitives) (s35 s3 : AuthAdvLatchedState S) : Prop :=
+@[expose] def AuthG3G3_5CoupledInv {S : Setup} (P : Primitives) (s35 s3 : AuthAdvLatchedState S) : Prop :=
   AuthAdvLatchedAgreeOffRo s35 s3 ∧
   ValidAuthHybridRunInv S P s3.hyb ∧
   AuthRoCacheCoupled P s35 s3
@@ -587,10 +588,10 @@ theorem fgAuthStepCoupling_cutoff_latched_roQuery
       { s3.toFg with advRoLog := secrets :: s3.adv.advRoLog }
       hRun.1 hVi.1 hbMem hPowSess hTake hDh3
 /-! ## `.sendOPK` and `.sendNoOPK` step couplings -/
-def latchRespEkCollAtSend (P : Primitives)
+@[expose] def latchRespEkCollAtSend (P : Primitives)
     (respRecs : List AuthRespRecord) (ekASk : Bytes) : Bool :=
   respRecs.any (fun r => P.pow8 (P.x25519Base ekASk) == P.pow8 r.ekAPk)
-def latchRespEkCollSendStep {S : Setup} (P : Primitives)
+@[expose] def latchRespEkCollSendStep {S : Setup} (P : Primitives)
     (sPre sPost : AuthAdvLatchedState S) (prevLatched : Bool) : Bool :=
   prevLatched ||
   match sPost.hyb.base.sessions with
@@ -601,14 +602,14 @@ def latchRespEkCollSendStep {S : Setup} (P : Primitives)
   | [] => false
 structure AuthSendLatchedState (S : Setup) extends AuthAdvLatchedState S where
   respEkCollLatched : Bool := false
-def AuthSendLatchedState.empty (S : Setup) (secb : Bool) : AuthSendLatchedState S :=
+@[expose] def AuthSendLatchedState.empty (S : Setup) (secb : Bool) : AuthSendLatchedState S :=
   { toAuthAdvLatchedState := AuthAdvLatchedState.empty S secb, respEkCollLatched := false }
-def wrapSendLatched {S : Setup} (P : Primitives) (s : AuthSendLatchedState S)
+@[expose] def wrapSendLatched {S : Setup} (P : Primitives) (s : AuthSendLatchedState S)
     (p : AuthResponse × AuthAdvLatchedState S) : AuthResponse × AuthSendLatchedState S :=
   (p.1, { toAuthAdvLatchedState := p.2
           respEkCollLatched :=
             latchRespEkCollSendStep P s.toAuthAdvLatchedState p.2 s.respEkCollLatched })
-def pqxdhAuthSendLatchedStageImpl (stage : AuthHybridStage) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthSendLatchedStageImpl (stage : AuthHybridStage) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthSendLatchedState S) ProbComp)
   | .sendOPK u i bundle m0 m1 => StateT.mk (fun s =>
     ((pqxdhAuthAdvLatchedStageImpl stage S P (.sendOPK u i bundle m0 m1)).run
@@ -760,10 +761,10 @@ theorem relProbUpToBad_of_imp_support_right {α : Type}
           split_ifs with hSup
           · exact hle x y (hImp hSup)
           · exact zero_le))
-def withLatchedHyb {S : Setup} (s : AuthAdvLatchedState S) (h' : AuthHybridState S) :
+@[expose] def withLatchedHyb {S : Setup} (s : AuthAdvLatchedState S) (h' : AuthHybridState S) :
     AuthAdvLatchedState S :=
   { s with adv := { s.adv with hyb := h' } }
-def mkSendSessEntry {S : Setup} (P : Primitives) (st : AuthState S)
+@[expose] def mkSendSessEntry {S : Setup} (P : Primitives) (st : AuthState S)
     (sid : SessionId S) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (isFreshPeer : Bool) (ekASk ephASk : Bytes) : AuthInitiatorEntry S :=
   let (spkHon, opkHon, pqspkHon) :=
@@ -856,7 +857,7 @@ private theorem exists_pqspkBundle_of_checkBundleProvenanceExact_thd (P : Primit
     rcases List.any_eq_true.mp h with ⟨⟨⟨u, j⟩, b⟩, hbMem, hPred⟩
     rcases Bool.and_eq_true_iff.mp hPred with ⟨huk, hPq⟩; have huEq : u = k := beq_iff_eq.mp huk
     subst huEq; exact ⟨u, j, pEntry, b, hkMem, hbMem, hPowIk, (beq_iff_eq.mp hPq).symm⟩
-def evalAuthHybridSendDrKey (stage : AuthHybridStage) (useRo : Bool) (P : Primitives)
+@[expose] def evalAuthHybridSendDrKey (stage : AuthHybridStage) (useRo : Bool) (P : Primitives)
     (roCache : List (Bytes × DRKey)) (isIdealSend : Bool) (secrets : Bytes) :
     ProbComp (DRKey × List (Bytes × DRKey)) :=
   if isIdealSend && stage.idealDrKey then do
@@ -864,7 +865,7 @@ def evalAuthHybridSendDrKey (stage : AuthHybridStage) (useRo : Bool) (P : Primit
     pure (dk, roCache)
   else
     evalHkdfOrRo useRo P roCache secrets
-def buildSendIdealSession {S : Setup} (P : Primitives)
+@[expose] def buildSendIdealSession {S : Setup} (P : Primitives)
     (sid : SessionId S) (bundle : PreKeyBundleInput) (uEntry : PrincipalEntry)
     (ekASk ephASk kemCt msgPlain : Bytes) (drKey : DRKey) (rk1 ck1_0 ck1_1 : Bytes)
     (spqrSalt? : Option Bytes) (pqRatchetMsg : Bytes) : IdealAuthSession S :=
@@ -877,7 +878,7 @@ def buildSendIdealSession {S : Setup} (P : Primitives)
     kemCt := kemCt, ephAPk := ephAPk, spqrSalt? := spqrSalt?, pqRatchetMsg := pqRatchetMsg,
     ad := ad, aeadCt := aeadCt, msgPlain := msgPlain, drKey := drKey, rk1 := rk1,
     ck1_0 := ck1_0, mkSeed := mkSeed, ck1_1 := ck1_1, deriveMessageKeys := deriveMessageKeys }
-def finishAuthHybridSendPure {S : Setup} (P : Primitives)
+@[expose] def finishAuthHybridSendPure {S : Setup} (P : Primitives)
     (sid : SessionId S) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (uEntry : PrincipalEntry) (ekASk ephASk spqrCoins ss kemCt : Bytes)
     (hst : AuthHybridState S) (drKey : DRKey) (roCache' : List (Bytes × DRKey)) (rk1 ck1_0 : Bytes)
@@ -929,7 +930,7 @@ def finishAuthHybridSendPure {S : Setup} (P : Primitives)
         initKemRecs := initRec :: hst.initKemRecs, idealSessions := idealSessions' }
     (if peerPrincipal?.isSome then .sendFreshResp wireMsg
      else .sendUnfreshResp drKey rk1 ck1_1 wireMsg, hst')
-def finishAuthHybridSendPost {S : Setup} (useRo : Bool) (P : Primitives) (sid : SessionId S)
+@[expose] def finishAuthHybridSendPost {S : Setup} (useRo : Bool) (P : Primitives) (sid : SessionId S)
     (bundle : PreKeyBundleInput) (m0 m1 : Bytes) (uEntry : PrincipalEntry)
     (ekASk ephASk spqrCoins ss kemCt : Bytes) (s : AuthAdvLatchedState S) (drKey : DRKey)
     (roCache' : List (Bytes × DRKey)) : ProbComp (AuthResponse × AuthAdvLatchedState S) := do
@@ -938,7 +939,7 @@ def finishAuthHybridSendPost {S : Setup} (useRo : Bool) (P : Primitives) (sid : 
   let (resp, h') := finishAuthHybridSendPure P sid bundle m0 m1 uEntry
     ekASk ephASk spqrCoins ss kemCt s.hyb drKey roCache' rk1 ck1_0 rootRoCache'
   return (resp, withLatchedHyb s h')
-def runAuthHybridSendLatched (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] def runAuthHybridSendLatched (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (s : AuthAdvLatchedState S) : ProbComp (AuthResponse × AuthAdvLatchedState S) :=
   ((runAuthHybridSendKosk stage true S P sid u bundle m0 m1).run s.hyb) >>=

@@ -13,7 +13,7 @@ public import Computational.Specifications.Session.StatementComposed
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhSessionModel
 public import Computational.Specifications.Assumptions.KeyInd1KeyReal
 public import Computational.Specifications.Reductions.ReductionDsl.Samplers
-public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 
 /-!
 # Shared ReductionDsl tables, interfaces, and game codecs for E2E composition
@@ -22,7 +22,7 @@ public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 pure/curve-check/cryptographic operation tables, target oracle interfaces, and game codecs for the
 end-to-end composition reductions (`R_e2e`) and binary-harness wire/state adapter (`L_bh`).
 -/
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,7 +59,7 @@ inductive E2ESort where
   | binSt
   deriving DecidableEq
 
-@[reducible] def E2ESort.den (ℓ : ℕ) : E2ESort → Type
+@[expose, reducible] def E2ESort.den (ℓ : ℕ) : E2ESort → Type
   | .pbytes _ => SignalPqxdh.Bytes
   | .pu32 => UInt32
   | .bytes _ => Bytes
@@ -77,7 +77,7 @@ inductive E2ESort where
   | .binSt => BinState
 
 /-- Leaf-maximum 32-byte block count of a model `GhostState Bytes`. -/
-def ghostStBlocks (g : GhostState Bytes) : ℕ :=
+@[expose] def ghostStBlocks (g : GhostState Bytes) : ℕ :=
   let pqBlk := (g.session.pqRatchetState.length + 31) / 32
   let rcBlk := g.session.receiverChains.foldr
     (fun rc acc => max acc (rc.messageKeys.foldr
@@ -87,12 +87,12 @@ def ghostStBlocks (g : GhostState Bytes) : ℕ :=
   max 1 (max pqBlk (max rcBlk (max ceBlk (bits g.epoch))))
 
 /-- Leaf-maximum 32-byte block count of a binary `BinState`. -/
-def binStBlocks (bs : BinState) : ℕ :=
+@[expose] def binStBlocks (bs : BinState) : ℕ :=
   let bBlk := (bs.bytes.length + 31) / 32
   let chBlk := bs.epochs.chains.foldr (fun p acc => max acc (bits p.2)) bs.epochs.chains.length
   max 1 (max bBlk (max chBlk (bits bs.epochs.epoch)))
 
-def E2ESort.blocks (ℓ : ℕ) : (s : E2ESort) → s.den ℓ → ℕ
+@[expose] def E2ESort.blocks (ℓ : ℕ) : (s : E2ESort) → s.den ℓ → ℕ
   | .pbytes w, x => (x.length + w - 1) / w
   | .pu32, _ => 1
   | .bytes w, x => (x.length + w - 1) / w
@@ -104,7 +104,7 @@ def E2ESort.blocks (ℓ : ℕ) : (s : E2ESort) → s.den ℓ → ℕ
   | .binSt, bs => binStBlocks bs
 
 /-- Shared E2E `ReductionDsl` signature at plaintext byte length `ℓ`. -/
-@[reducible] def e2eSig (ℓ : ℕ) : Sig where
+@[expose, reducible] def e2eSig (ℓ : ℕ) : Sig where
   Base := E2ESort
   den := E2ESort.den ℓ
   sz := E2ESort.blocks ℓ
@@ -113,66 +113,66 @@ section TyAbbrevs
 
 variable {ℓ : ℕ}
 
-@[reducible] def PB (w : ℕ+) : Ty (e2eSig ℓ) := .base (.pbytes w)
-@[reducible] def PU32 : Ty (e2eSig ℓ) := .base .pu32
-@[reducible] def B (w : ℕ+) : Ty (e2eSig ℓ) := .base (.bytes w)
-@[reducible] def U8 : Ty (e2eSig ℓ) := .base .u8
-@[reducible] def U32 : Ty (e2eSig ℓ) := .base .u32
-@[reducible] def U64 : Ty (e2eSig ℓ) := .base .u64
-@[reducible] def BV128 : Ty (e2eSig ℓ) := .base .bv128
-@[reducible] def BV256 : Ty (e2eSig ℓ) := .base .bv256
-@[reducible] def BV512 : Ty (e2eSig ℓ) := .base .bv512
-@[reducible] def FinT (n : ℕ) : Ty (e2eSig ℓ) := .base (.fin n)
-@[reducible] def PK : Ty (e2eSig ℓ) := .base .pk
-@[reducible] def IdKey : Ty (e2eSig ℓ) := .base .idKey
-@[reducible] def PlainT : Ty (e2eSig ℓ) := .base .plain
-@[reducible] def GhostStT : Ty (e2eSig ℓ) := .base .ghostSt
-@[reducible] def BinStT : Ty (e2eSig ℓ) := .base .binSt
+@[expose, reducible] def PB (w : ℕ+) : Ty (e2eSig ℓ) := .base (.pbytes w)
+@[expose, reducible] def PU32 : Ty (e2eSig ℓ) := .base .pu32
+@[expose, reducible] def B (w : ℕ+) : Ty (e2eSig ℓ) := .base (.bytes w)
+@[expose, reducible] def U8 : Ty (e2eSig ℓ) := .base .u8
+@[expose, reducible] def U32 : Ty (e2eSig ℓ) := .base .u32
+@[expose, reducible] def U64 : Ty (e2eSig ℓ) := .base .u64
+@[expose, reducible] def BV128 : Ty (e2eSig ℓ) := .base .bv128
+@[expose, reducible] def BV256 : Ty (e2eSig ℓ) := .base .bv256
+@[expose, reducible] def BV512 : Ty (e2eSig ℓ) := .base .bv512
+@[expose, reducible] def FinT (n : ℕ) : Ty (e2eSig ℓ) := .base (.fin n)
+@[expose, reducible] def PK : Ty (e2eSig ℓ) := .base .pk
+@[expose, reducible] def IdKey : Ty (e2eSig ℓ) := .base .idKey
+@[expose, reducible] def PlainT : Ty (e2eSig ℓ) := .base .plain
+@[expose, reducible] def GhostStT : Ty (e2eSig ℓ) := .base .ghostSt
+@[expose, reducible] def BinStT : Ty (e2eSig ℓ) := .base .binSt
 
-@[reducible] def drKeyT : Ty (e2eSig ℓ) := .prod (PB 32) (.prod (PB 32) (PB 32))
+@[expose, reducible] def drKeyT : Ty (e2eSig ℓ) := .prod (PB 32) (.prod (PB 32) (PB 32))
 
-def drKeyV (k : SignalPqxdh.DRKey) : (drKeyT (ℓ := ℓ)).denote := (k.rootKey, (k.chainKey, k.pqrKey))
-def drKeyOfV (v : (drKeyT (ℓ := ℓ)).denote) : SignalPqxdh.DRKey := ⟨v.1, v.2.1, v.2.2⟩
+@[expose] def drKeyV (k : SignalPqxdh.DRKey) : (drKeyT (ℓ := ℓ)).denote := (k.rootKey, (k.chainKey, k.pqrKey))
+@[expose] def drKeyOfV (v : (drKeyT (ℓ := ℓ)).denote) : SignalPqxdh.DRKey := ⟨v.1, v.2.1, v.2.2⟩
 
-@[reducible] def bundleT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def bundleT : Ty (e2eSig ℓ) :=
   .prod (PB 32) (.prod PU32 (.prod (PB 32) (.prod (PB 64)
     (.prod (.opt (.prod PU32 (PB 32))) (.prod PU32 (.prod (PB 1568) (PB 64)))))))
 
-def bundleV (b : SignalPqxdh.PreKeyBundleInput) : (bundleT (ℓ := ℓ)).denote :=
+@[expose] def bundleV (b : SignalPqxdh.PreKeyBundleInput) : (bundleT (ℓ := ℓ)).denote :=
   (b.ikB, (b.spkId, (b.spkB, (b.spkSig, (b.opkB?, (b.pqspkId, (b.pqspkB, b.pqspkSig)))))))
-def bundleOfV (v : (bundleT (ℓ := ℓ)).denote) : SignalPqxdh.PreKeyBundleInput :=
+@[expose] def bundleOfV (v : (bundleT (ℓ := ℓ)).denote) : SignalPqxdh.PreKeyBundleInput :=
   ⟨v.1, v.2.1, v.2.2.1, v.2.2.2.1, v.2.2.2.2.1, v.2.2.2.2.2.1, v.2.2.2.2.2.2.1, v.2.2.2.2.2.2.2⟩
 
-@[reducible] def hdrT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def hdrT : Ty (e2eSig ℓ) :=
   .prod (PB 32) (.prod (PB 32) (.prod PU32 (.prod (.opt PU32) (.prod PU32 (PB 1568)))))
 
-def hdrV (h : SignalPqxdh.HandshakeHdr) : (hdrT (ℓ := ℓ)).denote :=
+@[expose] def hdrV (h : SignalPqxdh.HandshakeHdr) : (hdrT (ℓ := ℓ)).denote :=
   (h.ikAPk, (h.ekAPk, (h.spkId, (h.opkId?, (h.pqspkId, h.kemCt)))))
-def hdrOfV (v : (hdrT (ℓ := ℓ)).denote) : SignalPqxdh.HandshakeHdr :=
+@[expose] def hdrOfV (v : (hdrT (ℓ := ℓ)).denote) : SignalPqxdh.HandshakeHdr :=
   ⟨v.1, v.2.1, v.2.2.1, v.2.2.2.1, v.2.2.2.2.1, v.2.2.2.2.2⟩
 
-@[reducible] def sidT (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def sidT (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
   .sum (.prod (FinT S.N_id) (FinT S.N_send_opk))
     (.sum (.prod (FinT S.N_id) (FinT S.N_send_no_opk))
       (.sum (.prod (FinT S.N_id) (.prod (FinT S.N_recv) (FinT S.N_opk)))
             (.prod (FinT S.N_id) (.prod (FinT S.N_recv) (FinT S.N_no_opk)))))
 
-def sidV {S : SignalPqxdh.Setup} : SignalPqxdh.SessionId S → (sidT (ℓ := ℓ) S).denote
+@[expose] def sidV {S : SignalPqxdh.Setup} : SignalPqxdh.SessionId S → (sidT (ℓ := ℓ) S).denote
   | .sendOPK u i => .inl (u, i)
   | .sendNoOPK u i => .inr (.inl (u, i))
   | .recvOPK k j o => .inr (.inr (.inl (k, (j, o))))
   | .recvNoOPK k j l => .inr (.inr (.inr (k, (j, l))))
 
-def sidOfV {S : SignalPqxdh.Setup} : (sidT (ℓ := ℓ) S).denote → SignalPqxdh.SessionId S
+@[expose] def sidOfV {S : SignalPqxdh.Setup} : (sidT (ℓ := ℓ) S).denote → SignalPqxdh.SessionId S
   | .inl (u, i) => .sendOPK u i
   | .inr (.inl (u, i)) => .sendNoOPK u i
   | .inr (.inr (.inl (k, (j, o)))) => .recvOPK k j o
   | .inr (.inr (.inr (k, (j, l)))) => .recvNoOPK k j l
 
-@[reducible] def dhSecretsT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def dhSecretsT : Ty (e2eSig ℓ) :=
   .prod (.list (PB 32)) (.prod (.list (PB 32)) (.prod (.list (PB 32)) (.list (PB 32))))
 
-@[reducible] def keyIndQT (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def keyIndQT (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
   .sum (FinT S.N_id)
   (.sum (FinT S.N_id)
   (.sum (.prod (FinT S.N_id) (FinT S.N_recv))
@@ -188,7 +188,7 @@ def sidOfV {S : SignalPqxdh.Setup} : (sidT (ℓ := ℓ) S).denote → SignalPqxd
   (.sum (PB 32)
         (.prod (FinT S.N_id) (FinT S.N_recv))))))))))))))
 
-def keyIndQenc {S : SignalPqxdh.Setup} :
+@[expose] def keyIndQenc {S : SignalPqxdh.Setup} :
     SignalPqxdh.KeyIndQuery S → (keyIndQT (ℓ := ℓ) S).denote
   | .initPrin u => .inl u
   | .corruptIK u => .inr (.inl u)
@@ -212,7 +212,7 @@ def keyIndQenc {S : SignalPqxdh.Setup} :
   | .revealSpkSk u j =>
     .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (u, j)))))))))))))
 
-def keyIndQdec {S : SignalPqxdh.Setup} :
+@[expose] def keyIndQdec {S : SignalPqxdh.Setup} :
     (keyIndQT (ℓ := ℓ) S).denote → SignalPqxdh.KeyIndQuery S
   | .inl u => .initPrin u
   | .inr (.inl u) => .corruptIK u
@@ -236,12 +236,12 @@ def keyIndQdec {S : SignalPqxdh.Setup} :
       (.inr (.inr (.inr (.inr (.inr (.inr (.inr (u, j))))))))))))) =>
     .revealSpkSk u j
 
-@[reducible] def keyIndRT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def keyIndRT : Ty (e2eSig ℓ) :=
   .sum .unit (.sum (.prod (PB 32) (PB 32)) (.sum (PB 32) (.sum (.prod (PB 32) (PB 32))
   (.sum bundleT (.sum hdrT (.sum (.prod drKeyT hdrT)
   (.sum .unit (.sum drKeyT (.sum dhSecretsT (PB 32))))))))))
 
-def keyIndRenc : SignalPqxdh.KeyIndResponse → (keyIndRT (ℓ := ℓ)).denote
+@[expose] def keyIndRenc : SignalPqxdh.KeyIndResponse → (keyIndRT (ℓ := ℓ)).denote
   | .noneResp => .inl ()
   | .initPrinResp ik s => .inr (.inl (ik, s))
   | .pkResp pk => .inr (.inr (.inl pk))
@@ -255,7 +255,7 @@ def keyIndRenc : SignalPqxdh.KeyIndResponse → (keyIndRT (ℓ := ℓ)).denote
     .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inl (l1, (l2, (l3, l4))))))))))))
   | .spkSkResp sk => .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr sk)))))))))
 
-def keyIndRdec : (keyIndRT (ℓ := ℓ)).denote → SignalPqxdh.KeyIndResponse
+@[expose] def keyIndRdec : (keyIndRT (ℓ := ℓ)).denote → SignalPqxdh.KeyIndResponse
   | .inl () => .noneResp
   | .inr (.inl (ik, s)) => .initPrinResp ik s
   | .inr (.inr (.inl pk)) => .pkResp pk
@@ -270,61 +270,61 @@ def keyIndRdec : (keyIndRT (ℓ := ℓ)).denote → SignalPqxdh.KeyIndResponse
     .dhSecretsResp l1 l2 l3 l4
   | .inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr (.inr sk))))))))) => .spkSkResp sk
 
-@[reducible] def prefixCtxT : Ty (e2eSig ℓ) := .prod IdKey (.prod IdKey BV256)
+@[expose, reducible] def prefixCtxT : Ty (e2eSig ℓ) := .prod IdKey (.prod IdKey BV256)
 
-@[reducible] def spqrParamsT : Ty (e2eSig ℓ) := .prod U32 U32
-@[reducible] def spqrVnT : Ty (e2eSig ℓ) := .prod (B 32) (.prod U32 (.prod U32 (.opt spqrParamsT)))
-@[reducible] def spqrPrevEntryT : Ty (e2eSig ℓ) := .prod U32 BV256
+@[expose, reducible] def spqrParamsT : Ty (e2eSig ℓ) := .prod U32 U32
+@[expose, reducible] def spqrVnT : Ty (e2eSig ℓ) := .prod (B 32) (.prod U32 (.prod U32 (.opt spqrParamsT)))
+@[expose, reducible] def spqrPrevEntryT : Ty (e2eSig ℓ) := .prod U32 BV256
 /-- Value representation `(ctr, next, prevEntries, prevUnalignedTail)` of `LibsignalSpqrV1.EpochDirectionPB`. -/
-@[reducible] def spqrDirT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def spqrDirT : Ty (e2eSig ℓ) :=
   .prod U32 (.prod (B 32) (.prod (.list spqrPrevEntryT) (B 35)))
-@[reducible] def spqrEpochLinkT : Ty (e2eSig ℓ) := .prod (.opt spqrDirT) (.opt spqrDirT)
+@[expose, reducible] def spqrEpochLinkT : Ty (e2eSig ℓ) := .prod (.opt spqrDirT) (.opt spqrDirT)
 /-- Value representation `(direction, currentEpoch, links, nextRoot, sendEpoch, params)` of `LibsignalSpqrV1.ChainPB`. -/
-@[reducible] def spqrChainT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def spqrChainT : Ty (e2eSig ℓ) :=
   .prod U32 (.prod U64 (.prod (.list spqrEpochLinkT) (.prod (B 32) (.prod U64 (.opt spqrParamsT)))))
-@[reducible] def spqrStatePartsT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def spqrStatePartsT : Ty (e2eSig ℓ) :=
   .prod (.opt (B 32)) (.prod (.opt spqrVnT) (.opt spqrChainT))
 
-@[reducible] def drSenderChainT : Ty (e2eSig ℓ) := .prod (.prod PK BV256) (.prod BV256 U32)
-@[reducible] def drRecvChainT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def drSenderChainT : Ty (e2eSig ℓ) := .prod (.prod PK BV256) (.prod BV256 U32)
+@[expose, reducible] def drRecvChainT : Ty (e2eSig ℓ) :=
   .prod PK (.prod (.opt (.prod BV256 U32)) (.list (.prod BV256 U32)))
 /-- Decomposed `GhostState Bytes` tuple `(isBob, sessionVersion, localId, remoteId?, rootKey, prevCounter, pendingPreKey, epoch, chainEpochs, senderChain?, recvChains, pqRatchetState)`. -/
-@[reducible] def ghostPartsT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def ghostPartsT : Ty (e2eSig ℓ) :=
   .prod .bool (.prod U32 (.prod IdKey (.prod (.opt IdKey) (.prod BV256 (.prod U32
     (.prod .bool (.prod .nat (.prod (.list .nat)
       (.prod (.opt drSenderChainT) (.prod (.list drRecvChainT) (B 32)))))))))))
 
-@[reducible] def signalHdrT : Ty (e2eSig ℓ) := .prod U8 (.prod PK (.prod U32 U32))
-@[reducible] def signalParsedT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def signalHdrT : Ty (e2eSig ℓ) := .prod U8 (.prod PK (.prod U32 U32))
+@[expose, reducible] def signalParsedT : Ty (e2eSig ℓ) :=
   .prod signalHdrT (.prod (B 32) (.prod (B 32) (.opt (B 32))))
 
-@[reducible] def recvResultT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def recvResultT : Ty (e2eSig ℓ) :=
   .sum .unit (.prod .nat (.prod .nat (.opt PlainT)))
 
-def recvResultEnc : CryptoGames.SM.RecvResult (Plain ℓ) → (recvResultT (ℓ := ℓ)).denote
+@[expose] def recvResultEnc : CryptoGames.SM.RecvResult (Plain ℓ) → (recvResultT (ℓ := ℓ)).denote
   | .rejected => .inl ()
   | .accepted t i m => .inr (t, (i, m))
 
-def recvResultDec : (recvResultT (ℓ := ℓ)).denote → CryptoGames.SM.RecvResult (Plain ℓ)
+@[expose] def recvResultDec : (recvResultT (ℓ := ℓ)).denote → CryptoGames.SM.RecvResult (Plain ℓ)
   | .inl () => .rejected
   | .inr (t, (i, m)) => .accepted t i m
 
-def partyToBool : Party → Bool
+@[expose] def partyToBool : Party → Bool
   | .A => false
   | .B => true
 
-def boolToParty : Bool → Party
+@[expose] def boolToParty : Bool → Party
   | false => .A
   | true => .B
 
-@[reducible] def smQT : Ty (e2eSig ℓ) :=
+@[expose, reducible] def smQT : Ty (e2eSig ℓ) :=
   .sum (.prod .bool (.prod PlainT (.opt BV512)))
   (.sum (.prod .bool (.prod PlainT (.prod PlainT (.opt BV512))))
   (.sum (.prod .bool (B 32))
   (.sum (.prod .bool (B 32))
         .bool)))
 
-def smQenc {St : Type} :
+@[expose] def smQenc {St : Type} :
     (CryptoGames.SM.spec St (Plain ℓ) (BitVec 512) Bytes).Domain → (smQT (ℓ := ℓ)).denote
   | .inl (.inl (.inl (.inl (p, m, r)))) => .inl (partyToBool p, (m, r))
   | .inl (.inl (.inl (.inr (p, m0, m1, r)))) => .inr (.inl (partyToBool p, (m0, (m1, r))))
@@ -333,10 +333,10 @@ def smQenc {St : Type} :
   | .inr p => .inr (.inr (.inr (.inr (partyToBool p))))
 
 /-- Packed `SM.spec` response `(optWire, optRecvResult, optPartyState)`. -/
-@[reducible] def smRT (stT : Ty (e2eSig ℓ)) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def smRT (stT : Ty (e2eSig ℓ)) : Ty (e2eSig ℓ) :=
   .prod (.opt (B 32)) (.prod (.opt recvResultT) (.opt stT))
 
-def smRdec {St : Type} {stT : Ty (e2eSig ℓ)} (ofSt : stT.denote → St) :
+@[expose] def smRdec {St : Type} {stT : Ty (e2eSig ℓ)} (ofSt : stT.denote → St) :
     (q : (CryptoGames.SM.spec St (Plain ℓ) (BitVec 512) Bytes).Domain) →
     (smRT (ℓ := ℓ) stT).denote →
     (CryptoGames.SM.spec St (Plain ℓ) (BitVec 512) Bytes).Range q
@@ -355,11 +355,11 @@ inductive E2EUnifBase where
   | bv512
   deriving DecidableEq, Repr
 
-def E2EUnifBase.sort : E2EUnifBase → E2ESort
+@[expose] def E2EUnifBase.sort : E2EUnifBase → E2ESort
   | .bv256 => .bv256
   | .bv512 => .bv512
 
-def E2EUnifBase.cost : E2EUnifBase → ℕ
+@[expose] def E2EUnifBase.cost : E2EUnifBase → ℕ
   | .bv256 => 1
   | .bv512 => 2
 
@@ -367,50 +367,50 @@ instance (ℓ : ℕ) (b : E2EUnifBase) : SampleableType ((e2eSig ℓ).den b.sort
   cases b <;> dsimp [e2eSig, E2EUnifBase.sort] <;> exact inferInstance
 
 /-- Coin-only uniform sampler table (`BitVec 256` and `BitVec 512`) for E2E reductions and adapters. -/
-@[reducible] def e2eSamplers (ℓ : ℕ) : Samplers (e2eSig ℓ) :=
+@[expose, reducible] def e2eSamplers (ℓ : ℕ) : Samplers (e2eSig ℓ) :=
   ReductionDsl.unifSamplers (S := e2eSig ℓ) E2EUnifBase.sort E2EUnifBase.cost
 
 /-! ## Wire, SPQR state, and SessionRecord helpers -/
 
 section PureHelpers
 
-def e2eReadProstVarint : List (BitVec 8) → Option (ℕ × List (BitVec 8))
+@[expose] def e2eReadProstVarint : List (BitVec 8) → Option (ℕ × List (BitVec 8))
   | [] => none
   | b :: rest =>
     if b.toNat < 128 then some (b.toNat, rest)
     else (e2eReadProstVarint rest).map (fun (hi, rest') => (b.toNat - 128 + 128 * hi, rest'))
 
-def e2eParseOptPreKeyId : List (BitVec 8) → Option (Option UInt32 × List (BitVec 8))
+@[expose] def e2eParseOptPreKeyId : List (BitVec 8) → Option (Option UInt32 × List (BitVec 8))
   | [] => some (none, [])
   | b :: rest =>
     if b == 0x08#8 then (e2eReadProstVarint rest).map (fun (n, r) => (some (UInt32.ofNat n), r))
     else some (none, b :: rest)
 
-def e2eParseUint32Field (keyByte : BitVec 8) :
+@[expose] def e2eParseUint32Field (keyByte : BitVec 8) :
     List (BitVec 8) → Option (UInt32 × List (BitVec 8))
   | k :: rest =>
     if k == keyByte then (e2eReadProstVarint rest).map (fun (n, r) => (UInt32.ofNat n, r))
     else none
   | [] => none
 
-def e2eParseDjbKeyField (keyByte : BitVec 8) :
+@[expose] def e2eParseDjbKeyField (keyByte : BitVec 8) :
     List (BitVec 8) → Option (List (BitVec 8) × List (BitVec 8))
   | k :: 0x21#8 :: 0x05#8 :: rest =>
     if k == keyByte && decide (32 ≤ rest.length) then some (rest.take 32, rest.drop 32) else none
   | _ => none
 
-def e2eParseInnerMsgField : List (BitVec 8) → Option (List (BitVec 8) × List (BitVec 8))
+@[expose] def e2eParseInnerMsgField : List (BitVec 8) → Option (List (BitVec 8) × List (BitVec 8))
   | 0x22#8 :: rest =>
     (e2eReadProstVarint rest).bind (fun (len, afterLen) =>
       if decide (len ≤ afterLen.length) then some (afterLen.take len, afterLen.drop len) else none)
   | _ => none
 
-def e2eParseKyberCtField : List (BitVec 8) → Option (List (BitVec 8))
+@[expose] def e2eParseKyberCtField : List (BitVec 8) → Option (List (BitVec 8))
   | 0x42#8 :: 0xa1#8 :: 0x0c#8 :: 0x08#8 :: rest =>
     if decide (1568 ≤ rest.length) then some (rest.take 1568) else none
   | _ => none
 
-def e2eDecodePreKeyRaw : Bytes → Option PreKeyMessageFields
+@[expose] def e2eDecodePreKeyRaw : Bytes → Option PreKeyMessageFields
   | t :: v :: proto =>
     if t == wirePrekey && v == versionByte currentVersion then
       (e2eParseOptPreKeyId proto).bind fun (opkId?, after1) =>
@@ -432,16 +432,16 @@ def e2eDecodePreKeyRaw : Bytes → Option PreKeyMessageFields
   | _ => none
 
 /-- Parse a canonical tag-3 `PreKeySignalMessage` wire buffer (`c == wirePrekey :: m.bytes`). -/
-def e2eDecodePreKeyMsg (c : Bytes) : Option PreKeyMessageFields :=
+@[expose] def e2eDecodePreKeyMsg (c : Bytes) : Option PreKeyMessageFields :=
   match e2eDecodePreKeyRaw c with
   | some m => if c == wirePrekey :: m.bytes then some m else none
   | none => none
 
-def e2eHdrOfPreKeyMsg (m : PreKeyMessageFields) : SignalPqxdh.HandshakeHdr :=
+@[expose] def e2eHdrOfPreKeyMsg (m : PreKeyMessageFields) : SignalPqxdh.HandshakeHdr :=
   { ikAPk := vecU8 m.idPub, ekAPk := vecU8 m.baseKey, spkId := u32 m.spkId,
     opkId? := m.opkId.map u32, pqspkId := u32 m.kpkId, kemCt := vecU8 m.kyberCt }
 
-def e2eExpectedPreKeyMsg (regIdA : BitVec 32) (hdr : SignalPqxdh.HandshakeHdr)
+@[expose] def e2eExpectedPreKeyMsg (regIdA : BitVec 32) (hdr : SignalPqxdh.HandshakeHdr)
     (inner : Bytes) : PreKeyMessageFields :=
   { regId := regIdA, opkId := hdr.opkId?.map (fun id => BitVec.ofNat 32 id.toNat),
     spkId := BitVec.ofNat 32 hdr.spkId.toNat, kpkId := BitVec.ofNat 32 hdr.pqspkId.toNat,
@@ -449,7 +449,7 @@ def e2eExpectedPreKeyMsg (regIdA : BitVec 32) (hdr : SignalPqxdh.HandshakeHdr)
     idPub := u8Vec 32 hdr.ikAPk, inner := inner }
 
 /-- Extract the inner `SignalMessage` slice from a canonical tag-3 or tag-2 wire. -/
-def e2eWireInnerBytes (c : Bytes) : Option Bytes :=
+@[expose] def e2eWireInnerBytes (c : Bytes) : Option Bytes :=
   match e2eDecodePreKeyMsg c with
   | some m => some (m.inner.take c.length)
   | none =>
@@ -458,7 +458,7 @@ def e2eWireInnerBytes (c : Bytes) : Option Bytes :=
     | [] => none
 
 /-- Extract the inner `SignalMessage` slice from a Bob-partnered wire. -/
-def e2ePartneredInnerBytes (bobAccepted : Bool) (regIdA : BitVec 32)
+@[expose] def e2ePartneredInnerBytes (bobAccepted : Bool) (regIdA : BitVec 32)
     (sessionHdr : SignalPqxdh.HandshakeHdr) (c : Bytes) : Option Bytes :=
   if !bobAccepted then
     match e2eDecodePreKeyMsg c with
@@ -476,14 +476,14 @@ def e2ePartneredInnerBytes (bobAccepted : Bool) (regIdA : BitVec 32)
       | t :: body => if t == wireWhisper then some body else none
       | [] => none
 
-def e2eReadU32BE : Bytes → BitVec 32
+@[expose] def e2eReadU32BE : Bytes → BitVec 32
   | b0 :: b1 :: b2 :: b3 :: _ =>
     (b0.zeroExtend 32 <<< 24) ||| (b1.zeroExtend 32 <<< 16) |||
       (b2.zeroExtend 32 <<< 8) ||| b3.zeroExtend 32
   | _ => 0#32
 
 /-- Split up to `fuel` 36-byte `(index, key)` entries from SPQR `KeyHistory` bytes. -/
-def splitSpqrPrev : ℕ → Bytes → List (BitVec 32 × BitVec 256) × Bytes
+@[expose] def splitSpqrPrev : ℕ → Bytes → List (BitVec 32 × BitVec 256) × Bytes
   | 0, bs => ([], bs.take 35)
   | fuel + 1, bs =>
     if bs.length < 36 then ([], bs)
@@ -493,37 +493,37 @@ def splitSpqrPrev : ℕ → Bytes → List (BitVec 32 × BitVec 256) × Bytes
       let (rest, tail) := splitSpqrPrev fuel (bs.drop 36)
       ((idx, key) :: rest, tail)
 
-def joinSpqrPrev (entries : List (BitVec 32 × BitVec 256)) (tail : Bytes) : Bytes :=
+@[expose] def joinSpqrPrev (entries : List (BitVec 32 × BitVec 256)) (tail : Bytes) : Bytes :=
   (entries.flatMap fun (idx, key) => CryptoGames.HMAC.toBEBytes 4 idx ++ CryptoGames.HMAC.keyToBytes32 key) ++
     tail.take 35
 
-def spqrParamsToV {ℓ : ℕ} (p : CryptoVerification.LibsignalSpqrV1.ChainParamsPB) : (spqrParamsT (ℓ := ℓ)).denote :=
+@[expose] def spqrParamsToV {ℓ : ℕ} (p : CryptoVerification.LibsignalSpqrV1.ChainParamsPB) : (spqrParamsT (ℓ := ℓ)).denote :=
   (p.maxJump, p.maxOooKeys)
 
-def spqrParamsOfV {ℓ : ℕ} (v : (spqrParamsT (ℓ := ℓ)).denote) : CryptoVerification.LibsignalSpqrV1.ChainParamsPB :=
+@[expose] def spqrParamsOfV {ℓ : ℕ} (v : (spqrParamsT (ℓ := ℓ)).denote) : CryptoVerification.LibsignalSpqrV1.ChainParamsPB :=
   { maxJump := v.1, maxOooKeys := v.2 }
 
-def spqrVnToV {ℓ : ℕ} (vn : CryptoVerification.LibsignalSpqrV1.VersionNegotiationPB) : (spqrVnT (ℓ := ℓ)).denote :=
+@[expose] def spqrVnToV {ℓ : ℕ} (vn : CryptoVerification.LibsignalSpqrV1.VersionNegotiationPB) : (spqrVnT (ℓ := ℓ)).denote :=
   (vn.authKey.take 64, (vn.direction, (vn.minVersion, vn.chainParams.map spqrParamsToV)))
 
-def spqrVnOfV {ℓ : ℕ} (v : (spqrVnT (ℓ := ℓ)).denote) : CryptoVerification.LibsignalSpqrV1.VersionNegotiationPB :=
+@[expose] def spqrVnOfV {ℓ : ℕ} (v : (spqrVnT (ℓ := ℓ)).denote) : CryptoVerification.LibsignalSpqrV1.VersionNegotiationPB :=
   { authKey := v.1, direction := v.2.1, minVersion := v.2.2.1,
     chainParams := v.2.2.2.map spqrParamsOfV }
 
 /-- Decompose `EpochDirectionPB` into `spqrDirT`, splitting up to `2201` `KeyHistory` entries and clamping `next` to 64 bytes. -/
-def spqrDirToV {ℓ : ℕ} (d : CryptoVerification.LibsignalSpqrV1.EpochDirectionPB) : (spqrDirT (ℓ := ℓ)).denote :=
+@[expose] def spqrDirToV {ℓ : ℕ} (d : CryptoVerification.LibsignalSpqrV1.EpochDirectionPB) : (spqrDirT (ℓ := ℓ)).denote :=
   let (entries, tail) := splitSpqrPrev 2201 d.prev
   (d.ctr, (d.next.take 64, (entries, tail)))
 
-def spqrDirOfV {ℓ : ℕ} (v : (spqrDirT (ℓ := ℓ)).denote) : CryptoVerification.LibsignalSpqrV1.EpochDirectionPB :=
+@[expose] def spqrDirOfV {ℓ : ℕ} (v : (spqrDirT (ℓ := ℓ)).denote) : CryptoVerification.LibsignalSpqrV1.EpochDirectionPB :=
   { ctr := v.1, next := v.2.1, prev := joinSpqrPrev v.2.2.1 v.2.2.2 }
 
-def spqrChainToV {ℓ : ℕ} (c : CryptoVerification.LibsignalSpqrV1.ChainPB) : (spqrChainT (ℓ := ℓ)).denote :=
+@[expose] def spqrChainToV {ℓ : ℕ} (c : CryptoVerification.LibsignalSpqrV1.ChainPB) : (spqrChainT (ℓ := ℓ)).denote :=
   let links := (c.links.take 4).map fun lk => (lk.send.map spqrDirToV, lk.recv.map spqrDirToV)
   (c.direction, (c.currentEpoch, (links, (c.nextRoot.take 64, (c.sendEpoch,
     c.params.map spqrParamsToV)))))
 
-def spqrChainOfV {ℓ : ℕ} (v : (spqrChainT (ℓ := ℓ)).denote) : CryptoVerification.LibsignalSpqrV1.ChainPB :=
+@[expose] def spqrChainOfV {ℓ : ℕ} (v : (spqrChainT (ℓ := ℓ)).denote) : CryptoVerification.LibsignalSpqrV1.ChainPB :=
   let links := v.2.2.1.map fun (s?, r?) =>
     ({ send := s?.map spqrDirOfV, recv := r?.map spqrDirOfV } : CryptoVerification.LibsignalSpqrV1.ChainEpochPB)
   { direction := v.1, currentEpoch := v.2.1, links := links,
@@ -531,7 +531,7 @@ def spqrChainOfV {ℓ : ℕ} (v : (spqrChainT (ℓ := ℓ)).denote) : CryptoVeri
     params := v.2.2.2.2.2.map spqrParamsOfV }
 
 /-- Decode serialized `PqRatchetState` bytes into `(v1Raw?, vn?, chain?)` with `V1State` clamped to `64,000` bytes. -/
-def spqrSplitEval {ℓ : ℕ} (bs : Bytes) : Option (spqrStatePartsT (ℓ := ℓ)).denote :=
+@[expose] def spqrSplitEval {ℓ : ℕ} (bs : Bytes) : Option (spqrStatePartsT (ℓ := ℓ)).denote :=
   match CryptoVerification.LibsignalSpqrV1.Proto.spqrDecodeState bs with
   | .error _ => none
   | .ok st =>
@@ -539,7 +539,7 @@ def spqrSplitEval {ℓ : ℕ} (bs : Bytes) : Option (spqrStatePartsT (ℓ := ℓ
     some (v1?, (st.versionNegotiation.map spqrVnToV, st.chain.map spqrChainToV))
 
 /-- Re-encode `(v1Raw?, vn?, chain?)` into `PqRatchetState` bytes clamped to `352,000` bytes. -/
-def spqrJoinEval {ℓ : ℕ} (parts : (spqrStatePartsT (ℓ := ℓ)).denote) : Bytes :=
+@[expose] def spqrJoinEval {ℓ : ℕ} (parts : (spqrStatePartsT (ℓ := ℓ)).denote) : Bytes :=
   let (v1?, (vn?, ch?)) := parts
   let raw :=
     CryptoVerification.LibsignalSpqrV1.Proto.encodeOptMessage
@@ -551,7 +551,7 @@ def spqrJoinEval {ℓ : ℕ} (parts : (spqrStatePartsT (ℓ := ℓ)).denote) : B
     | some v1Raw => CryptoVerification.LibsignalSpqrV1.Proto.encodeMessage id 3#32 v1Raw
   raw.take (32 * 11000)
 
-def ghostSplitEval {ℓ : ℕ} (g : GhostState Bytes) : (ghostPartsT (ℓ := ℓ)).denote :=
+@[expose] def ghostSplitEval {ℓ : ℕ} (g : GhostState Bytes) : (ghostPartsT (ℓ := ℓ)).denote :=
   let st := g.session
   let sc? := st.senderChain.map fun sc =>
     ((sc.ratchetKey.publicKey, CryptoGames.HKDF.bytesToKey32 sc.ratchetKey.privateKey.bytes.toList),
@@ -571,7 +571,7 @@ def ghostSplitEval {ℓ : ℕ} (g : GhostState Bytes) : (ghostPartsT (ℓ := ℓ
           (g.chainEpochs,
            (sc?, (rcs, st.pqRatchetState)))))))))))
 
-def ghostJoinEval {ℓ : ℕ} (p : (ghostPartsT (ℓ := ℓ)).denote) : GhostState Bytes :=
+@[expose] def ghostJoinEval {ℓ : ℕ} (p : (ghostPartsT (ℓ := ℓ)).denote) : GhostState Bytes :=
   let (isB, (ver, (locId, (remId?, (rk, (prevCtr, (pend, (ep, (cEps, (sc?, (rcs, pqSt))))))))))) := p
   let sc := sc?.map fun ((pub, priv), (ck, idx)) =>
     ({ ratchetKey := { publicKey := pub, privateKey := ⟨CryptoGames.Ratchet.keyToBytesVec32 priv⟩ },
@@ -596,7 +596,7 @@ def ghostJoinEval {ℓ : ℕ} (p : (ghostPartsT (ℓ := ℓ)).denote) : GhostSta
     epoch := ep
     chainEpochs := cEps }
 
-def e2eRecordExtras (regIdA regIdB bobRemoteRegId : BitVec 32)
+@[expose] def e2eRecordExtras (regIdA regIdB bobRemoteRegId : BitVec 32)
     (hdr : SignalPqxdh.HandshakeHdr) : Party → RecordExtras
   | .A =>
     let base : PublicKey := ⟨u8Vec 32 hdr.ekAPk⟩
@@ -618,7 +618,7 @@ def e2eRecordExtras (regIdA regIdB bobRemoteRegId : BitVec 32)
       aliceBaseKey := base.serialize }
 
 /-- Serialize `(extrasMeta, g)` to `BinState` with `SessionRecord` bytes clamped to `768,000` bytes. -/
-def e2eEncodeSessionRecord {ℓ : ℕ}
+@[expose] def e2eEncodeSessionRecord {ℓ : ℕ}
     (inp : ((U32 (ℓ := ℓ)).denote × (U32 (ℓ := ℓ)).denote ×
       (U32 (ℓ := ℓ)).denote × (hdrT (ℓ := ℓ)).denote) × GhostState Bytes) : BinState :=
   let ((regIdA, (regIdB, (bobRemoteRegId, hdrV0))), g) := inp
@@ -718,7 +718,7 @@ inductive E2EPureOp where
   | ghostStateJoin
   | encodeSessionRecord
 
-@[reducible] def E2EPureOp.dom (ℓ : ℕ) : E2EPureOp → Ty (e2eSig ℓ)
+@[expose, reducible] def E2EPureOp.dom (ℓ : ℕ) : E2EPureOp → Ty (e2eSig ℓ)
   | .pbytesLit _ _ | .bytesLit _ _ | .pu32Lit _ | .u8Lit _ | .u32Lit _ | .u64Lit _
   | .bv256Lit _ | .bv512Lit _ | .plainDefault => .unit
   | .pbytesCat m n | .pbytesEq m n => .prod (PB m) (PB n)
@@ -763,7 +763,7 @@ inductive E2EPureOp where
   | .ghostStateJoin => ghostPartsT
   | .encodeSessionRecord => .prod (.prod U32 (.prod U32 (.prod U32 hdrT))) GhostStT
 
-@[reducible] def E2EPureOp.cod (ℓ : ℕ) : E2EPureOp → Ty (e2eSig ℓ)
+@[expose, reducible] def E2EPureOp.cod (ℓ : ℕ) : E2EPureOp → Ty (e2eSig ℓ)
   | .pbytesLit w _ | .pbytesTake w | .pbytesDrop w | .bytesToPbytes w => PB w
   | .pbytesCat m n => PB (m + n)
   | .pbytesCons _ w => PB (w + 1)
@@ -804,7 +804,7 @@ inductive E2EPureOp where
   | .ghostStateJoin => GhostStT
   | .encodeSessionRecord => BinStT
 
-def E2EPureOp.eval (ℓ : ℕ) : (o : E2EPureOp) → (o.dom ℓ).denote → (o.cod ℓ).denote
+@[expose] def E2EPureOp.eval (ℓ : ℕ) : (o : E2EPureOp) → (o.dom ℓ).denote → (o.cod ℓ).denote
   | .pbytesLit _ v, _ => v
   | .pbytesCat _ _, (x, y) => x ++ y
   | .pbytesCons b _, x => b :: x
@@ -913,7 +913,7 @@ def E2EPureOp.eval (ℓ : ℕ) : (o : E2EPureOp) → (o.dom ℓ).denote → (o.c
   | .ghostStateJoin, parts => ghostJoinEval parts
   | .encodeSessionRecord, inp => e2eEncodeSessionRecord inp
 
-def E2EPureOp.cost (ℓ : ℕ) : E2EPureOp → ℕ
+@[expose] def E2EPureOp.cost (ℓ : ℕ) : E2EPureOp → ℕ
   | .pbytesLit w v => w + v.length
   | .pbytesCat m n | .pbytesEq m n => m + n
   | .pbytesCons _ w | .pbytesTake w | .pbytesDrop w => w + 1
@@ -955,7 +955,7 @@ def E2EPureOp.cost (ℓ : ℕ) : E2EPureOp → ℕ
   | .ghostStateSplit | .ghostStateJoin => 16
   | .encodeSessionRecord => 24576
 
-@[reducible] def E2EPureOp.opSize : E2EPureOp → ℕ
+@[expose, reducible] def E2EPureOp.opSize : E2EPureOp → ℕ
   | .pbytesLit _ v | .bytesLit _ v => v.length
   | .u8Lit _ | .pbytesCons _ _ | .bytesCons _ _ => 1
   | .pu32Lit _ | .u32Lit _ => 4
@@ -965,7 +965,7 @@ def E2EPureOp.cost (ℓ : ℕ) : E2EPureOp → ℕ
   | _ => 0
 
 /-- Pure `ReductionDsl` operation table shared by `L_bh` and `R_e2e`. -/
-@[reducible] def e2ePureOps (ℓ : ℕ) : Ops (e2eSig ℓ) where
+@[expose, reducible] def e2ePureOps (ℓ : ℕ) : Ops (e2eSig ℓ) where
   Op := E2EPureOp
   dom := E2EPureOp.dom ℓ
   cod := E2EPureOp.cod ℓ
@@ -982,7 +982,7 @@ inductive E2ECurveCheckOp where
   deriving DecidableEq, Repr
 
 /-- Operation table for `decT`/`encT` curve checks, independent of `(P, C, K)`. -/
-@[reducible] def e2eCurveCheckOps (ℓ : ℕ) {Pt : Type}
+@[expose, reducible] def e2eCurveCheckOps (ℓ : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) : Ops (e2eSig ℓ) where
   Op := E2ECurveCheckOp
   dom := fun
@@ -1006,7 +1006,7 @@ inductive E2ECurveCheckOp where
 section CryptoHelpers
 
 /-- Serialized payload suffix (`typeByte ‖ chunkBytes`) of an SPQR V1 message, clamped to 64 bytes. -/
-def spqrMsgPayloadSuffix {P : CryptoVerification.LibsignalSpqrV1.PolyApi}
+@[expose] def spqrMsgPayloadSuffix {P : CryptoVerification.LibsignalSpqrV1.PolyApi}
     (m : CryptoVerification.LibsignalSpqrV1.Message P) : Bytes :=
   let tByte := [(CryptoVerification.LibsignalSpqrV1.MessageType.from_payload m.payload).toU8]
   let body :=
@@ -1016,7 +1016,7 @@ def spqrMsgPayloadSuffix {P : CryptoVerification.LibsignalSpqrV1.PolyApi}
   (tByte ++ body).take 64
 
 /-- Single SPQR V1 braid `States.send` transition on serialized `V1State` bytes without symmetric-chain steps. -/
-def spqrBraidSendEval {ℓ : ℕ} (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)
+@[expose] def spqrBraidSendEval {ℓ : ℕ} (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)
     (v1Raw : Bytes) (coins : BitVec 512) :
     Bool × Option ((B (ℓ := ℓ) 32).denote × BitVec 64 ×
       Option (BitVec 64 × BitVec 256) × (B (ℓ := ℓ) 64).denote) :=
@@ -1037,7 +1037,7 @@ def spqrBraidSendEval {ℓ : ℕ} (F : ShaCompress) (K : CryptoVerification.Libs
         (false, some (newV1, (sOut.msg.epoch, (epSec?, spqrMsgPayloadSuffix sOut.msg))))
 
 /-- Single SPQR V1 braid `States.recv` transition on serialized `V1State` bytes without symmetric-chain steps. -/
-def spqrBraidRecvEval {ℓ : ℕ} (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)
+@[expose] def spqrBraidRecvEval {ℓ : ℕ} (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)
     (v1Raw : Bytes) (msgEpoch : BitVec 64) (remaining : Bytes) :
     Bool × Bool × Option (Option (BitVec 64 × BitVec 256) × (B (ℓ := ℓ) 32).denote) :=
   match CryptoVerification.LibsignalSpqrV1.Message.deserialize CryptoVerification.LibsignalSpqrV1.spqrPolyApi msgEpoch remaining with
@@ -1060,7 +1060,7 @@ def spqrBraidRecvEval {ℓ : ℕ} (F : ShaCompress) (K : CryptoVerification.Libs
           (false, false, some (epSec?, newV1))
 
 /-- SPQR version-negotiation `initInner` transition with `V1State` clamped to `48,000` bytes. -/
-def spqrNegotiateInitEval {ℓ : ℕ} (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)
+@[expose] def spqrNegotiateInitEval {ℓ : ℕ} (F : ShaCompress) (K : CryptoVerification.LibsignalSpqrV1.MlKem)
     (verByte : BitVec 8) (dirI32 : BitVec 32) (authKey : Bytes) :
     Bool × Option (Option (B (ℓ := ℓ) 32).denote) :=
   match CryptoVerification.LibsignalSpqrV1.Version.fromU8? verByte with
@@ -1074,14 +1074,14 @@ def spqrNegotiateInitEval {ℓ : ℕ} (F : ShaCompress) (K : CryptoVerification.
       | .ok pb? =>
         (false, some (pb?.map fun pb => (CryptoVerification.LibsignalSpqrV1.V1State.encodeRaw pb).take 48000))
 
-def spqrChainFromVnEval {ℓ : ℕ} (F : ShaCompress)
+@[expose] def spqrChainFromVnEval {ℓ : ℕ} (F : ShaCompress)
     (vn : (spqrVnT (ℓ := ℓ)).denote) : Option (spqrChainT (ℓ := ℓ)).denote :=
   match CryptoVerification.LibsignalSpqrV1.chainFromVersionNegotiation
       (CryptoVerification.LibsignalSpqrV1.spqrHkdfWith F) (spqrVnOfV vn) with
   | .ok c => some (spqrChainToV c.intoPb)
   | .error _ => none
 
-def spqrChainAddEpochEval {ℓ : ℕ} (F : ShaCompress)
+@[expose] def spqrChainAddEpochEval {ℓ : ℕ} (F : ShaCompress)
     (ch : (spqrChainT (ℓ := ℓ)).denote) (ep : BitVec 64) (sec : BitVec 256) :
     Bool × Option (spqrChainT (ℓ := ℓ)).denote :=
   match CryptoVerification.LibsignalSpqrV1.Chain.fromPb (spqrChainOfV ch) with
@@ -1091,7 +1091,7 @@ def spqrChainAddEpochEval {ℓ : ℕ} (F : ShaCompress)
     | .error _ => (true, none)
     | .ok c1 => (false, some (spqrChainToV c1.intoPb))
 
-def spqrChainNextKeyEval {ℓ : ℕ} (F : ShaCompress) (next : Bytes) (ctr : BitVec 32) :
+@[expose] def spqrChainNextKeyEval {ℓ : ℕ} (F : ShaCompress) (next : Bytes) (ctr : BitVec 32) :
     Bool × Option ((B (ℓ := ℓ) 32).denote × BitVec 32 × BitVec 256) :=
   match CryptoVerification.LibsignalSpqrV1.ChainEpochDirection.nextKeyInternal
       (CryptoVerification.LibsignalSpqrV1.spqrHkdfWith F) next ctr with
@@ -1131,7 +1131,7 @@ inductive E2ECryptoOp where
   | spqrChainNextKey
   deriving DecidableEq, Repr
 
-@[reducible] def E2ECryptoOp.dom (ℓ : ℕ) : E2ECryptoOp → Ty (e2eSig ℓ)
+@[expose, reducible] def E2ECryptoOp.dom (ℓ : ℕ) : E2ECryptoOp → Ty (e2eSig ℓ)
   | .x25519 => .prod (PB 32) (PB 32)
   | .x25519Base | .pow8 | .isCanonical => PB 32
   | .sigSign | .sigVerify => .prod (PB 32) (.prod (PB 1569) (PB 64))
@@ -1158,7 +1158,7 @@ inductive E2ECryptoOp where
   | .spqrChainAddEpoch => .prod spqrChainT (.prod U64 BV256)
   | .spqrChainNextKey => .prod (B 32) U32
 
-@[reducible] def E2ECryptoOp.cod (ℓ : ℕ) : E2ECryptoOp → Ty (e2eSig ℓ)
+@[expose, reducible] def E2ECryptoOp.cod (ℓ : ℕ) : E2ECryptoOp → Ty (e2eSig ℓ)
   | .x25519 | .x25519Base | .pow8 => PB 32
   | .isCanonical | .sigVerify | .signalMsgVerifyMac => .bool
   | .sigSign => PB 64
@@ -1181,7 +1181,7 @@ inductive E2ECryptoOp where
   | .spqrChainAddEpoch => .prod .bool (.opt spqrChainT)
   | .spqrChainNextKey => .prod .bool (.opt (.prod (B 32) (.prod U32 BV256)))
 
-def E2ECryptoOp.eval (ℓ : ℕ) (P : SignalPqxdh.Primitives) (C : Crypto)
+@[expose] def E2ECryptoOp.eval (ℓ : ℕ) (P : SignalPqxdh.Primitives) (C : Crypto)
     (K : CryptoVerification.LibsignalSpqrV1.MlKem) : (o : E2ECryptoOp) → (o.dom ℓ).denote → (o.cod ℓ).denote
   | .x25519, (sk, pk) => (P.x25519 sk pk).take 32
   | .x25519Base, sk => (P.x25519Base sk).take 32
@@ -1238,7 +1238,7 @@ def E2ECryptoOp.eval (ℓ : ℕ) (P : SignalPqxdh.Primitives) (C : Crypto)
   | .spqrChainAddEpoch, (ch, (ep, sec)) => spqrChainAddEpochEval C.F ch ep sec
   | .spqrChainNextKey, (next, ctr) => spqrChainNextKeyEval C.F next ctr
 
-def E2ECryptoOp.cost (ℓ : ℕ) : E2ECryptoOp → ℕ
+@[expose] def E2ECryptoOp.cost (ℓ : ℕ) : E2ECryptoOp → ℕ
   | .x25519 | .x25519Base | .pow8 | .sessionKeyPairGen | .chainStep => 8
   | .isCanonical => 2
   | .sigSign | .sigVerify => 60
@@ -1255,7 +1255,7 @@ def E2ECryptoOp.cost (ℓ : ℕ) : E2ECryptoOp → ℕ
   | .spqrChainAddEpoch => 24
 
 /-- Cryptographic primitive operation table parameterized by `(P, C, K)`. -/
-@[reducible] def e2eCryptoOps (ℓ : ℕ) (P : SignalPqxdh.Primitives) (C : Crypto)
+@[expose, reducible] def e2eCryptoOps (ℓ : ℕ) (P : SignalPqxdh.Primitives) (C : Crypto)
     (K : CryptoVerification.LibsignalSpqrV1.MlKem) : Ops (e2eSig ℓ) where
   Op := E2ECryptoOp
   dom := E2ECryptoOp.dom ℓ
@@ -1263,18 +1263,18 @@ def E2ECryptoOp.cost (ℓ : ℕ) : E2ECryptoOp → ℕ
   eval := E2ECryptoOp.eval ℓ P C K
   cost := E2ECryptoOp.cost ℓ
 
-@[reducible] def e2ePrimOps (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives) (C : Crypto)
+@[expose, reducible] def e2ePrimOps (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives) (C : Crypto)
     (K : CryptoVerification.LibsignalSpqrV1.MlKem) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     Ops (e2eSig ℓ) :=
   ReductionDsl.Ops.sum (e2eCurveCheckOps ℓ decT encT) (e2eCryptoOps ℓ P C K)
 
 /-- Operation table for the binary-harness wire/state adapter `L_bh`, independent of `(P, C, K)`. -/
-@[reducible] def e2eAdapterOps (ℓ : ℕ) {Pt : Type}
+@[expose, reducible] def e2eAdapterOps (ℓ : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) : Ops (e2eSig ℓ) :=
   ReductionDsl.Ops.sum (e2ePureOps ℓ) (e2eCurveCheckOps ℓ decT encT)
 
 /-- Complete operation table for the E2E composition reductions `R_e2e`. -/
-@[reducible] def e2eOps (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives) (C : Crypto)
+@[expose, reducible] def e2eOps (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives) (C : Crypto)
     (K : CryptoVerification.LibsignalSpqrV1.MlKem) (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     Ops (e2eSig ℓ) :=
   ReductionDsl.Ops.sum (e2ePureOps ℓ) (e2ePrimOps ℓ P C K decT encT)
@@ -1286,7 +1286,7 @@ inductive E2EKeyIndTag where
   deriving DecidableEq, Repr
 
 /-- Target oracle interface for `R_e2e.kindRed` (`unifSpec + SignalPqxdh.keyIndSpec S`). -/
-@[reducible] def e2eKeyIndTargetIface (S : SignalPqxdh.Setup) (ℓ : ℕ) :
+@[expose, reducible] def e2eKeyIndTargetIface (S : SignalPqxdh.Setup) (ℓ : ℕ) :
     Iface (e2eSig ℓ) (unifSpec + SignalPqxdh.keyIndSpec S) where
   fwdU n := query (spec := unifSpec + SignalPqxdh.keyIndSpec S) (.inl n)
   uCost := 1
@@ -1303,7 +1303,7 @@ inductive E2ESessionTag where
   deriving DecidableEq, Repr
 
 /-- Target oracle interface for `R_e2e.prefixRed` over single-session `SM.spec (GhostState Bytes)`. -/
-@[reducible] def e2eSessionTargetIface (ℓ : ℕ) :
+@[expose, reducible] def e2eSessionTargetIface (ℓ : ℕ) :
     Iface (e2eSig ℓ) (unifSpec + CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) where
   fwdU n := query (spec := unifSpec + CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
     (.inl n)
@@ -1341,18 +1341,18 @@ inductive E2EAdapterTag where
   | ki | ctl | tr | ch | dl | ij | cr
   deriving DecidableEq, Repr
 
-@[reducible] def e2eCtlSpec (Ctl : Type) : OracleSpec Ctl :=
+@[expose, reducible] def e2eCtlSpec (Ctl : Type) : OracleSpec Ctl :=
   fun _ => Option ℕ
 
-@[reducible] def e2eDrSpec (St : Type) (ℓ : ℕ) :
+@[expose, reducible] def e2eDrSpec (St : Type) (ℓ : ℕ) :
     OracleSpec (ℕ × (CryptoGames.SM.spec St (Plain ℓ) (BitVec 512) Bytes).Domain) :=
   fun x => (CryptoGames.SM.spec St (Plain ℓ) (BitVec 512) Bytes).Range x.2
 
-@[reducible] def e2eComposedGameSpec (S : SignalPqxdh.Setup) (Ctl St : Type) (ℓ : ℕ) :=
+@[expose, reducible] def e2eComposedGameSpec (S : SignalPqxdh.Setup) (Ctl St : Type) (ℓ : ℕ) :=
   SignalPqxdh.keyIndSpec S + e2eCtlSpec Ctl + e2eDrSpec St ℓ
 
 /-- Target oracle interface for `L_bh` over the composed model game `e2eComposedGameSpec`. -/
-@[reducible] def e2eAdapterIface (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl : Type}
+@[expose, reducible] def e2eAdapterIface (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl : Type}
     (mkStart : SignalPqxdh.SessionId S → Ctl) :
     Iface (e2eSig ℓ) (unifSpec + e2eComposedGameSpec S Ctl (GhostState Bytes) ℓ) where
   fwdU n := query (spec := unifSpec + e2eComposedGameSpec S Ctl (GhostState Bytes) ℓ) (.inl n)
@@ -1399,7 +1399,7 @@ inductive E2EAdapterTag where
   smp := e2eSamplers ℓ
 
 /-- Source game codec for `R_e2e` over `GhostState Bytes`. -/
-@[reducible] def e2eGameCodec (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl : Type}
+@[expose, reducible] def e2eGameCodec (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl : Type}
     (unStart : Ctl → SignalPqxdh.SessionId S) :
     GameCodec (e2eSig ℓ) (e2eComposedGameSpec S Ctl (GhostState Bytes) ℓ) where
   Q := .sum (.sum (keyIndQT S) (sidT S)) (.prod .nat smQT)
@@ -1418,7 +1418,7 @@ inductive E2EAdapterTag where
   codecCost := 64
 
 /-- Source game codec for `L_bh` over `BinState`. -/
-@[reducible] def e2eAdapterCodec (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl : Type}
+@[expose, reducible] def e2eAdapterCodec (S : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl : Type}
     (unStart : Ctl → SignalPqxdh.SessionId S) :
     GameCodec (e2eSig ℓ) (e2eComposedGameSpec S Ctl BinState ℓ) where
   Q := .sum (.sum (keyIndQT S) (sidT S)) (.prod .nat smQT)

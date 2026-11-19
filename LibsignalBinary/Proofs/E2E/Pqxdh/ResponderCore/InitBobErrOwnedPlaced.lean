@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwned
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.ResponderCoreCodeSym
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwned -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.ResponderCoreCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `initialize_bob_session` (Block `75`): Owned-Error Rejecting Run
@@ -20,7 +21,7 @@ Proves the owned-error rejecting-branch contracts for unmutated Block `75`
 `lsmpl.base 79`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,7 +48,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 (`Model.acceptKeys P g.inp = none`), exposing `pqxdhAcceptErrOwnedAt A g.outPtr`.
 Stated under `[LibsignalPlacement]` so unmutated callers in Block `75` can take a `subroutine_ok`
 hypothesis at `lsmpl.base 79` without requiring `[LibsignalFullPlacement]`. -/
-def pqxdhAcceptErrOwnedInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def pqxdhAcceptErrOwnedInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec AcceptFieldsCallGhost where
   pre := fun (g : AcceptFieldsCallGhost) s =>
     ⌜s.readReg64 .x0 = g.argPtr ∧
@@ -71,13 +72,13 @@ def pqxdhAcceptErrOwnedInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A 
     A.pool
   onPanic := rustPanicOnOomPlaced
 
-def pqxdhAcceptErrOwnedPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def pqxdhAcceptErrOwnedPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec AcceptFieldsCallGhost :=
   withLsCodeRoLoaded lsmpl (pqxdhAcceptErrOwnedInnerPlacedSpec P A)
 
 /-- Relocatable inner contract for `initialize_bob_session` (Block `75`) on the rejecting branch
 (`Model.acceptKeys P g.inp = none`), exposing `initBobErrOwnedAt A g.outPtr`. -/
-def initializeBobSessionErrOwnedInnerPlacedSpec [LibsignalPlacement]
+@[expose] def initializeBobSessionErrOwnedInnerPlacedSpec [LibsignalPlacement]
     (P : Primitives) (A : RustAlloc) :
     Spec InitBobCallGhost where
   pre := fun (g : InitBobCallGhost) s =>
@@ -107,11 +108,11 @@ def initializeBobSessionErrOwnedInnerPlacedSpec [LibsignalPlacement]
     A.pool
   onPanic := rustPanicOnOomPlaced
 
-def initializeBobSessionErrOwnedPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def initializeBobSessionErrOwnedPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec InitBobCallGhost :=
   withLsCodeRoLoaded lsmpl (initializeBobSessionErrOwnedInnerPlacedSpec P A)
 
-def initializeBobSessionErrOwnedFrozenPlacedSpec [LibsignalPlacement]
+@[expose] def initializeBobSessionErrOwnedFrozenPlacedSpec [LibsignalPlacement]
     (P : Primitives) (A : RustAlloc) : Spec InitBobCallGhost :=
   withLsFrozen lsmpl (initializeBobSessionErrOwnedInnerPlacedSpec P A)
 

@@ -10,19 +10,23 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysStepsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysStepsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Ok
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Tail
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Stage P2 `Some ik` Check and Match Branch
@@ -33,7 +37,7 @@ Budget-threaded `[LibsignalPlacement]` counterpart of `Matched.M2OkPlaced` on Bl
 theorems.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,8 +45,6 @@ set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlacedBudget
-
-noncomputable section
 
 open Arm64 ProofLib SepProp
 open CryptoGames.LibsignalSession (IdentityKey SessionState)
@@ -99,7 +101,7 @@ export CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched (
   memRegion_34_split_32_2_placed memRegion_34_split_24_10_placed
   memRegion_920_6_split_placed memRegion_920_6_join_placed
   memRegion_a90_48_split_10_38_placed memRegion_a90_48_join_10_38_placed
-  stack_root_to_pkEq_placed stack_root_to_pkEq_mem_placed
+  stack_root_to_pkEq_mem_placed
   remoteIdentityOkAt_none_eq_placed remoteIdentityOkAt_some_eq_placed
 )
 
@@ -132,7 +134,7 @@ local macro "sep_norm" : tactic =>
 
 /-! ## Budget-threaded spatial bundles at `+0x10cc` and `+0x1778` -/
 
-def stageP2MatchedOk10ccPrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP2MatchedOk10ccPrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s : State)
     (sp coroPtr outPtr msgPtr remoteAddrPtr localAddrPtr v_330 v_388
       u_80 u_88 u_90 u_a8 u_b0 v_d0
@@ -159,7 +161,7 @@ def stageP2MatchedOk10ccPrePlaced [LibsignalPlacement] {M : AllocCostModel}
   A.pool lim st s ∗
   stackAt sp rootStack
 
-def stageP2MatchedOk1778PostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP2MatchedOk1778PostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (sf : State)
     (sp coroPtr outPtr msgPtr remoteAddrPtr localAddrPtr v_330 v_388 v_d0 : BitVec 64)
     (msgVerByte : BitVec 8)
@@ -919,7 +921,5 @@ theorem stageP2_matched_094c_match_placed [LibsignalPlacement]
     refine Entails.sepExists_elim fun kyberPacked => Entails.sepExists_right kyberPacked ?_
     exact Entails.of_eq (by sep_ac_rfl)
   · exact ⟨sf, hsteps, Or.inr hrest⟩
-
-end
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlacedBudget

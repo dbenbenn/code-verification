@@ -397,6 +397,8 @@ def symWPRewriteDecls : Array Name := #[
   ``Bool.bne_true,
   ``beq_self_eq_true,
   ``bne_self_eq_false,
+  ``Bool.false_eq_true,
+  ``Bool.true_eq_false,
   ``decide_true,
   ``decide_false,
   -- Scalar IEEE-754 floating-point opcode dispatch, sign, and comparison normalizations

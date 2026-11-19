@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.FSAEAD.SaltWireCosted
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.ReductionDsl.FSAEAD.SaltWireCosted -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.SimRel
 import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.ReductionDsl.Tables
@@ -23,7 +23,7 @@ Soundness (`eval`), query bounds, and size-honesty certificates for `lSaltRedPro
 `slotSaltRedProg`, and `slotWireRedProg`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.Ratchet.LibsignalInst.Costed
 
@@ -281,13 +281,13 @@ theorem run_lift_map_enc {ι : Type} {T : OracleSpec ι} {α σ₁ σ₂ : Type}
   simp only [StateT.run_lift, Prod.map, map_eq_bind_pure_comp, Function.comp_def,
     bind_assoc, pure_bind, id_eq]
 
-@[reducible] def slotQueryTy : SWT :=
+@[expose, reducible] def slotQueryTy : SWT :=
   .sum (.prod (slotAdTy Pt ℓ) (.base .plain)) (.prod (slotAdTy Pt ℓ) (lctTy Pt ℓ))
 
-@[reducible] def slotRdecEnc (r : (slotReplyTy (Pt := Pt) ℓ).denote) : Option LibsignalCiphertextWithSalt32 :=
+@[expose, reducible] def slotRdecEnc (r : (slotReplyTy (Pt := Pt) ℓ).denote) : Option LibsignalCiphertextWithSalt32 :=
   Sum.casesOn r id (fun _ => none)
 
-@[reducible] def slotRdecDec (r : (slotReplyTy (Pt := Pt) ℓ).denote) : Option (Plain ℓ) :=
+@[expose, reducible] def slotRdecDec (r : (slotReplyTy (Pt := Pt) ℓ).denote) : Option (Plain ℓ) :=
   Sum.casesOn r (fun _ => none) id
 
 theorem handlerImpl_slotOtcca_enc {ι : Type} {T : OracleSpec ι} {I : Iface SWSig T}
@@ -466,7 +466,7 @@ omit [DecidableEq Pt] in
 
 /-! ## `lSaltRedProg` -/
 
-def lSaltRedImpl (b : Bool) :
+@[expose] def lSaltRedImpl (b : Bool) :
     QueryImpl (unifSpec + AEADScheme.otccaSpec (ℕ × (Header Pt × LibsignalMsgPublicPart)) (Plain ℓ) LibsignalCiphertextWithSalt32)
       (StateT (Option ((ℕ × (Header Pt × LibsignalMsgPublicPart)) × LibsignalCiphertextWithSalt32))
         (OracleComp (unifSpec + MACScheme.prfSpec Salt32 DerivedMessageKeys)))
@@ -567,10 +567,10 @@ theorem lSaltRedProg_eval
 
 abbrev WRedSt := List Salt32 × List (Salt32 × DerivedMessageKeys) × Bool × Bool
 
-def encSalts : List Salt32 → List (Salt32 × ℕ) :=
+@[expose] def encSalts : List Salt32 → List (Salt32 × ℕ) :=
   List.foldl (fun acc s => (s, acc.length) :: acc) []
 
-@[simp] def encWireSt (st : WRedSt) : (wireStTy (Pt := Pt) ℓ).denote :=
+@[expose, simp] def encWireSt (st : WRedSt) : (wireStTy (Pt := Pt) ℓ).denote :=
   (encSalts st.1, (st.2.2.1, st.2.2.2))
 
 omit [DecidableEq Pt] in
@@ -619,7 +619,7 @@ theorem idxOf?_append_singleton_of_none :
         cases salt == x <;> rfl
 
 /-- Query-budget invariant on `WRedSt` after `n` game queries. -/
-def WireInv (n : ℕ) (st : WRedSt) : Prop :=
+@[expose] def WireInv (n : ℕ) (st : WRedSt) : Prop :=
   st.1.length ≤ n ∧
     ∀ x, (encSalts st.1).find? (fun e => e.1 == x) = (st.1.idxOf? x).map (x, ·)
 
@@ -661,13 +661,13 @@ theorem wireSlotE_eval (q : ℕ) (st : WRedSt) {n : ℕ} (hI : WireInv n st) (hq
     simp only [Option.map]
     rw [encSalts_length st.1, encSalts_append_singleton st.1 salt]
 
-def wSlot (salt : Salt32) : StateT WRedSt (OracleComp (LibsignalWireOracleSpec ℓ)) ℕ := do
+@[expose] def wSlot (salt : Salt32) : StateT WRedSt (OracleComp (LibsignalWireOracleSpec ℓ)) ℕ := do
   let st ← get
   match st.1.idxOf? salt with
   | some n => return n
   | none => set (st.1 ++ [salt], st.2.1, st.2.2.1, st.2.2.2); return st.1.length
 
-def wRedImpl (j : ℕ) :
+@[expose] def wRedImpl (j : ℕ) :
     QueryImpl (unifSpec + AEADScheme.otccaSpec (ℕ × (Header Pt × LibsignalMsgPublicPart)) (Plain ℓ) LibsignalCiphertextWithSalt32)
       (StateT WRedSt (OracleComp (LibsignalWireOracleSpec ℓ))) := fun q =>
   let _ := (C, codec)
@@ -889,14 +889,14 @@ theorem lWireRedProg_eval (j q : ℕ)
 
 /-! ## `slotSaltRedProg` and `slotWireRedProg` -/
 
-@[simp] def encOSt (s : FSAEAD.Thm5.IndexedOtccaState (BitVec 256) (Header Pt × LibsignalMsgPublicPart) LibsignalCiphertextWithSalt32) :
+@[expose, simp] def encOSt (s : FSAEAD.Thm5.IndexedOtccaState (BitVec 256) (Header Pt × LibsignalMsgPublicPart) LibsignalCiphertextWithSalt32) :
     (ostTy (Pt := Pt) ℓ).denote :=
   (s.key, (s.b, s.chal))
 
-@[simp] def encSaltSlotSt (st : SaltSlotSt Pt) : (saltSlotStTy (Pt := Pt) ℓ).denote :=
+@[expose, simp] def encSaltSlotSt (st : SaltSlotSt Pt) : (saltSlotStTy (Pt := Pt) ℓ).denote :=
   (st.chal, st.table)
 
-def encTbl {α β : Type} (enc : α → β) (f : ℕ → α) : ℕ → β :=
+@[expose] def encTbl {α β : Type} (enc : α → β) (f : ℕ → α) : ℕ → β :=
   fun i => enc (f i)
 
 omit [DecidableEq Pt] in
@@ -909,7 +909,7 @@ theorem encTbl_update {α β : Type} (enc : α → β) (f : ℕ → α) (i : ℕ
   funext j
   by_cases h : j = i <;> simp [Function.update, encTbl, h]
 
-def populateOStTbl : ℕ → (ℕ → (ostTy (Pt := Pt) ℓ).denote) → List (BitVec 256) →
+@[expose] def populateOStTbl : ℕ → (ℕ → (ostTy (Pt := Pt) ℓ).denote) → List (BitVec 256) →
     ℕ → (ostTy (Pt := Pt) ℓ).denote
   | _, tbl, [] => tbl
   | idx, tbl, K :: ks =>
@@ -1357,7 +1357,7 @@ theorem mem_support_liftM_probComp {κ : Type} {G : OracleSpec.{0, 0} κ} {α : 
       exact mem_support_query (spec := unifSpec + G) (Sum.inl t) u
 
 /-- Query-budget invariant for `slotSaltRed`: every right-hand slot table has length `≤ n`. -/
-def SlotSaltInv (n : ℕ)
+@[expose] def SlotSaltInv (n : ℕ)
     (s : (ℕ → FSAEAD.Thm5.IndexedOtccaState (BitVec 256) (Header Pt × LibsignalMsgPublicPart) LibsignalCiphertextWithSalt32) × (ℕ → SaltSlotSt Pt)) :
     Prop :=
   ∀ i, (s.2 i).table.length ≤ n
@@ -1485,7 +1485,7 @@ theorem slotSaltRedProg_eval (N k q : ℕ)
 
 /-- Query-budget invariant for `slotWireRed`: every left-hand and right-hand slot table has length
 `≤ n`. -/
-def SlotWireInv (n : ℕ) (s : (ℕ → SaltSlotSt Pt) × (ℕ → SaltSlotSt Pt)) : Prop :=
+@[expose] def SlotWireInv (n : ℕ) (s : (ℕ → SaltSlotSt Pt) × (ℕ → SaltSlotSt Pt)) : Prop :=
   (∀ i, (s.1 i).table.length ≤ n) ∧ (∀ i, (s.2 i).table.length ≤ n)
 
 theorem slotWireRed_preserve_inv (k : ℕ)

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.SpinePeelPureA
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.SpinePeelPureA -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -20,8 +20,8 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSep -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SlotsZ6FramePure
@@ -45,6 +45,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber
 
 /-!
 # `DoneOpkEkAk`, `IkmHolesKemK`, and `G1cAttackerBuiltSeedExcl'` for `RecvWire`
@@ -54,7 +56,7 @@ Proves `doneOpkEkAk_of_reachable`, `ikmHolesKemK_of_loggedIkmRk`, and
 `rcv_abs_of_xplBlock`) on reachable composed traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -111,7 +113,7 @@ theorem doneOpkEkAk_of_noDoneEv {α : Type} {f : Traceful α} (hf : NoDoneEv f)
     DY.Bytes.AttackerKnows_le _ _ _ (f.run tr).2.property
       (h.2 b a ikB ikA spk pqpk opk ek ct keys i (hf tr _ i rfl hev))⟩
 
-def PreservesBobEk (ek₀ : DY.Bytes) {α : Type} (f : Traceful α) : Prop :=
+@[expose] def PreservesBobEk (ek₀ : DY.Bytes) {α : Type} (f : Traceful α) : Prop :=
   ∀ tr, ek₀.AttackerKnows tr → DoneOpkEkAk tr → DoneOpkEkAk (f.run tr).2.val
 
 theorem PreservesBobEk.of_noDoneEv {ek₀ : DY.Bytes} {α : Type} {f : Traceful α}

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.Xpl.InvCommon
 import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
@@ -23,7 +23,7 @@ by one visible move of the caller `p` surrounded by `InvisibleNoEffect` moves, a
 accepts then that move satisfies `DecryptBy p`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +45,7 @@ structure RecvBlockShape (blk : List MachineEvent) : Prop where
 
 /-- Step conclusion for a whisper `recv_wire` block: a move acting for `p` (or nobody) that either
 satisfies `RecvKind` or has `NoSessionEffect`, and satisfies `DecryptBy p` when `blk` accepts. -/
-def RecvStep (p : Participant) (blk : List MachineEvent) (tr : ExecTrace) (m : Move) : Prop :=
+@[expose] def RecvStep (p : Participant) (blk : List MachineEvent) (tr : ExecTrace) (m : Move) : Prop :=
   ActorIn p m ∧ (RecvKind m ∨ NoSessionEffect tr m) ∧
     ((∃ e ∈ blk, eventKind e = .accept) → DecryptBy p m)
 

@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.PqDir
-public import Symbolic.Proofs.SpecLemmas.CliPureBytes
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Concrete.MachineEvents
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridgeAux
@@ -24,7 +24,7 @@ advances `ReachablePqxdhSession` across `send`, and proves `wire.length < 2 ^ 64
 and pending-prekey wire outputs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

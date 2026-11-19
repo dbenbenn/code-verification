@@ -9,23 +9,25 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanOracle
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanSem
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanGame
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperCKA
+public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanOracle -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanSem
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanGame
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperCKA -- proof-setup: allow-public-import
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple3
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanGame -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECell -- proof-setup: allow-public-import
 
 /-!
 # Sanitized-to-Unclamped Coupling for `SimDeliverForge`
 
 Couples `simDeliverForgeClampSanQ` (and `simDeliverForgeProgOfStep.eval`) at `B = 2 ^ 32` to
 `Refinement.simDeliverForge` inside `forgeGuessedAdvantageCellPaper` and
-`forgeBucketAdvantagePaper`.
--/
+`forgeBucketAdvantagePaper`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,15 +39,15 @@ open OracleSpec OracleComp
 open _root_.ReductionDsl (Comp handlerImpl atomicSessionOps e2eSessionCodec
   GhostStT fig8SmIfaceDF smQT smRT)
 open _root_.CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.Ratchet.LibsignalInst (lFig8)
-open CryptoGames.Ratchet.LibsignalSim (SimCStateBounded simDeliverForgeClamp)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState Params)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.E2E (Bytes idsOf paramsV1
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.Ratchet.LibsignalInst (lFig8)
+open _root_.CryptoGames.Ratchet.LibsignalSim (SimCStateBounded simDeliverForgeClamp)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState Params)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.E2E (Bytes idsOf paramsV1
   forgeGuessedAdvantageCellPaper_challSimDF'Paper_simDeliverForgeClamp_eq)
-open CryptoVerification.LibsignalSession.HeadlineV1
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1
   (runBaseDFCellTPaper forgeGuessedAdvantageCellPaperT_eq_runBaseDFCellTPaper)
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
   (SanSnapExtra sanSnapExtra_init)
@@ -63,50 +65,6 @@ theorem idsOf_eq_paramsV1_id (C : Crypto) (K : MlKem) (idA idB : IdentityKey) :
     idsOf idA idB =
       fun R => if R == CryptoGames.Party.A then (paramsV1 C K idA idB).idA else (paramsV1 C K idA idB).idB := by
   funext R; cases R <;> rfl
-
-theorem runBaseDFCellTPaper_challSimDF'Paper_simDeliverForgeClampSanQ_eq
-    {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType PQC] {ℓ : ℕ}
-    (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (lam : Pt) (qep q : ℕ) (tL : Option ℕ) (t : ℕ) (idOf : Party → IdentityKey)
-    (hid : idOf = fun R => if R == CryptoGames.Party.A then P.idA else P.idB)
-    (A : CryptoGames.SM.Adversary (GhostState PQ) (Plain ℓ) PQC Bytes)
-    (hq : CryptoGames.SM.MakesAtMostQueries A q) :
-    let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
-    runBaseDFCellTPaper fig (qep + 1) tL t
-        CryptoGames.SM.Construction.DeliverForge.sameHdrScheme (CryptoGames.SM.Config.auth t) false
-        (CryptoGames.SM.Construction.DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
-          (simDeliverForgeClampSanQ P ℓ Dh encPt encT decT lam qep q A)) =
-      runBaseDFCellTPaper fig (qep + 1) tL t
-        CryptoGames.SM.Construction.DeliverForge.sameHdrScheme (CryptoGames.SM.Config.auth t) false
-        (CryptoGames.SM.Construction.DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
-          (simDeliverForgeClamp P Dh encPt encT decT lam qep (2 ^ 32) A)) :=
-  runBaseDFCellTPaper_challSimDF'Paper_simDeliverForgeClampSan_eq
-    P Dh encPt encT decT lam qep (2 ^ 32) (50000 * q) (25001 * q + 25000) (25000 * q)
-    tL t idOf hid A q hq (by omega) le_rfl le_rfl
-
-theorem simDeliverForgeProgOfStep_eval_san_snap {ℓ : ℕ} {Pt : Type}
-    [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt)
-    (L qep B T Kc Bsk : ℕ) (hℓ : ℓ < 10 ^ 6)
-    (step : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)
-      [dfFullT ℓ Pt, smQT (ℓ := ℓ) (Pt := Pt)]
-      (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (dfFullT ℓ Pt)))
-    (hstep : ∀ t (s_raw : (dfFullT ℓ Pt).denote),
-      SimCStateBounded L (dfFullDec s_raw).1 → (dfFullDec s_raw).2.length ≤ L →
-      SanSnapExtra C K (dfFullDec s_raw).1 →
-      (Prod.map id (dfFullDec (ℓ := ℓ) (Pt := Pt)) <$>
-        ((handlerImpl (C := e2eSessionCodec ℓ Pt) step (.inr t)).run s_raw)) =
-      ((simDeliverForgeOracleSan (paramsV1 C K idA idB) Dh encPt encT decT lam qep B T Kc Bsk
-        (.inr t)).run (dfFullDec s_raw)))
-    (A : CryptoGames.SM.Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (q : ℕ) (hq : CryptoGames.SM.MakesAtMostQueries A q) (hqL : q ≤ L) :
-    (simDeliverForgeProgOfStep C K Dh encPt encT decT lam step).eval (fun _ => A) () =
-      simDeliverForgeClampSan (paramsV1 C K idA idB) ℓ Dh encPt encT decT lam qep B T Kc Bsk A :=
-  simDeliverForgeProgOfStep_eval_san C K idA idB Dh encPt encT decT lam L qep B T Kc Bsk hℓ
-    (SanSnapExtra C K) (sanSnapExtra_init C K idA idB)
-    (sanSnapExtra_step_df C K idA idB Dh encPt encT decT lam qep B T Kc Bsk) step hstep A q hq hqL
 
 theorem simDeliverForgeProgOfStep_eval_sanQ_snap {ℓ : ℕ} {Pt : Type}
     [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
@@ -182,43 +140,7 @@ theorem forgeGuessedAdvantageCellPaper_challSimDF'Paper_simDeliverForgeClampSanQ
     P Dh encPt encT decT lam qep (50000 * q) (25001 * q + 25000) (25000 * q)
     tL t idOf hid A q hq (by omega) le_rfl le_rfl hq32
 
-theorem forgeGuessedAdvantageCellPaper_challSimDF'Paper_simDeliverForgeProgOfStep_eq
-    {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (hℓ : ℓ < 10 ^ 6) (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (lam : Pt) (qep q : ℕ) (tL : Option ℕ) (t : ℕ)
-    (step : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)
-      [dfFullT ℓ Pt, smQT (ℓ := ℓ) (Pt := Pt)]
-      (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (dfFullT ℓ Pt)))
-    (hstep : ∀ t (s_raw : (dfFullT ℓ Pt).denote),
-      SimCStateBounded q (dfFullDec s_raw).1 → (dfFullDec s_raw).2.length ≤ q →
-      SanSnapExtra C K (dfFullDec s_raw).1 →
-      (Prod.map id (dfFullDec (ℓ := ℓ) (Pt := Pt)) <$>
-        ((handlerImpl (C := e2eSessionCodec ℓ Pt) step (.inr t)).run s_raw)) =
-      ((simDeliverForgeOracleSanQ (paramsV1 C K idA idB) Dh encPt encT decT lam qep q
-        (.inr t)).run (dfFullDec s_raw)))
-    (A : CryptoGames.SM.Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (hq : CryptoGames.SM.MakesAtMostQueries A q) (hq32 : 2 * (q + 1) + 25002 < 2 ^ 32) :
-    let P := paramsV1 C K idA idB
-    let fig := lFig8 Dh encPt P.C P.codec ℓ encT (idsOf idA idB) 25000 lam
-    CryptoGames.SM.Construction.DeliverForge.forgeGuessedAdvantageCellPaper fig (qep + 1)
-        CryptoGames.SM.Construction.DeliverForge.sameHdrScheme tL t
-        (CryptoGames.SM.Construction.DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
-          ((simDeliverForgeProgOfStep C K Dh encPt encT decT lam step).eval (fun _ => A) ())) =
-      CryptoGames.SM.Construction.DeliverForge.forgeGuessedAdvantageCellPaper fig (qep + 1)
-        CryptoGames.SM.Construction.DeliverForge.sameHdrScheme tL t
-        (CryptoGames.SM.Construction.DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
-          (CryptoGames.LibsignalSM.Proofs.Refinement.simDeliverForge
-            P ℓ Dh encPt encT decT (idsOf idA idB) lam qep A)) := by
-  dsimp only []
-  rw [simDeliverForgeProgOfStep_eval_sanQ_snap C K idA idB Dh encPt encT decT lam qep q hℓ step hstep A hq]
-  exact forgeGuessedAdvantageCellPaper_challSimDF'Paper_simDeliverForgeClampSanQ_eq
-    (paramsV1 C K idA idB) Dh encPt encT decT lam qep q tL t (idsOf idA idB)
-    (idsOf_eq_paramsV1_id C K idA idB) A hq hq32
-
 /-! ## Bucket advantage coupling -/
-
-noncomputable section BucketCoupling
 
 open _root_.ReductionDsl (isGameQuery)
 open _root_.CryptoGames (SMScheme)
@@ -240,7 +162,7 @@ open _root_.CryptoGames.SM.Construction.DeliverForge (sameHdrScheme challSimDF'P
   corrImplPaper deliverForgeBaseImpl oracleImplPaper oracleImplBaseDFPaper fullImplBaseDFPaper
   withWinEpDF bucketAuthCfg fullImplBaseDFPaperBucket forgeGameBucketPaper)
 open _root_.CryptoGames.LibsignalSM.Proofs.Refinement (sameWireFig8)
-open CryptoVerification.LibsignalSession.HeadlineV1 (cellShift fullImplBaseDFCellTPaper
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1 (cellShift fullImplBaseDFCellTPaper
   fullImplBaseDFCellTPaper_of_not_B1 fullImplBaseDFShiftedPaper_zero_eq_fullImplBaseDFPaper)
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8SanGame (KeptInv keptInv_unknown keptInv_ofSt
   keptInv_send keptInv_recv fig8PartyInv_receive lFig8_receive_vS_and_idx GameSanInv
@@ -261,7 +183,7 @@ variable {PQ PQC Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
   (encPt : Pt → Bytes) (encT : Pt → PublicKey) (lam : Pt)
   (qep : ℕ) (tL : Option ℕ) (par : Bool)
 
-def bucketImplDF : QueryImpl
+@[expose] def bucketImplDF : QueryImpl
     (unifSpec + specDF (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (SimFig8C Pt))
     (StateT (BucketState Pt ℓ) ProbComp) := fun q s => do
   let fig := lFig8 Dh encPt P.C P.codec ℓ encT (fun R => if R == Party.A then P.idA else P.idB) 25000 lam
@@ -282,7 +204,7 @@ theorem bucketImplDF_run
             ((simImplDF'Paper (2 + 1) (qep + 1) q).run mir)).run gsw
         return (a, (mir', gsw'))) := rfl
 
-def runBucketDF {α : Type}
+@[expose] def runBucketDF {α : Type}
     (oa : AdversaryCompDF (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (SimFig8C Pt) α)
     (ms₀ : BucketState Pt ℓ) : ProbComp (α × BucketState Pt ℓ) :=
   (simulateQ (bucketImplDF P Dh encPt encT lam qep tL par) oa).run ms₀
@@ -1182,7 +1104,5 @@ theorem forgeGameBucketPaper_challSimDF'Paper_simDeliverForgeClampSan_eq
     ({ st := fun _ => (), b := b }, (initState _ k false, none))
     hT hKc hBsk (dfBucketSanInv_init P Dh encPt encT lam q k pqrKey false b none)
   dsimp only [runBucketDF] at h1; rw [h1]
-
-end BucketCoupling
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanCoupling

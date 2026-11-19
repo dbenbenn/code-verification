@@ -10,22 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10BudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10ClPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10BudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1Budget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10ClPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag7
@@ -42,7 +42,7 @@ import ProofLib.SepLogic.WPp
 `v1State_tag10_step_cl_placed`) with `withLsCl`-wrapped cross-block drop callees (`286`, `267`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -143,25 +143,7 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1ClPlacedBudget 
   V1StateTagContClPlaced V1StateTagStepHypClPlaced
 )
 
-open LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10BudgetAux (
-  deallocFreeOnlySpec
-  err_pts_buf_2072_placed
-  sepWP_evs_dealloc
-  sepWP_evs_nil
-  seq_clean_evs
-  seq_vm_clean
-  subroutine_ok_deallocFreeOnly
-  v1Tag10_copy_err_900_placed
-  v1Tag10_copy_ok_900_placed
-  v1Tag10_err_956_placed
-  v1Tag10_err_dec_976_placed
-  v1Tag10_err_dec_body_1020_placed
-  v1Tag10_err_dec_loop_1020_placed
-  v1Tag10_err_uc_956_placed
-  v1Tag10_post_drop_2284_placed
-  v1Tag10_pre_drop_2232_placed
-  v1Tag10_setup_880_placed
-)
+open LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10BudgetAux (deallocFreeOnlySpec err_pts_buf_2072_placed sepWP_evs_dealloc sepWP_evs_nil seq_clean_evs seq_vm_clean subroutine_ok_deallocFreeOnly v1Tag10_copy_err_900_placed v1Tag10_copy_ok_900_placed v1Tag10_err_dec_976_placed v1Tag10_err_dec_body_1020_placed v1Tag10_err_dec_loop_1020_placed v1Tag10_err_uc_956_placed v1Tag10_post_drop_2284_placed v1Tag10_pre_drop_2232_placed v1Tag10_setup_880_placed)
 
 namespace LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag10ClPlacedBudget
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Steps
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Steps -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -40,7 +40,7 @@ Establishes session-effect and exposure properties of composed `Move` transition
 `exposures_nil_of_not_leakKind`, and `xpl_vis_head_kind`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -58,7 +58,7 @@ open PQXDH (PQXDHEvent)
 /-! ## Quiet steps: no session entry from an index on -/
 
 /-- No session entry (stored state, PQXDH / TR / composed event) at index `i` of `t`. -/
-def XNone (t : ExecTrace) (i : Nat) : Prop :=
+@[expose] def XNone (t : ExecTrace) (i : Nat) : Prop :=
   (t.at? i : Option (PersistentGlobalState.State.ExecEntryT
       (PersistentLocalState.LocalState TRState))) = none ∧
     (t.at? i : Option (ProtocolEvent.ExecEntryT PQXDHEvent)) = none ∧
@@ -66,10 +66,10 @@ def XNone (t : ExecTrace) (i : Nat) : Prop :=
     (t.at? i : Option (ProtocolEvent.ExecEntryT ComposedEvent)) = none
 
 /-- No session entry in `t` from index `n` on. -/
-def XQuietFrom (n : Nat) (t : ExecTrace) : Prop := ∀ i, n ≤ i → XNone t i
+@[expose] def XQuietFrom (n : Nat) (t : ExecTrace) : Prop := ∀ i, n ≤ i → XNone t i
 
 /-- `x` never adds a session entry. -/
-def XQuiet {α : Type} (x : Traceful α) : Prop :=
+@[expose] def XQuiet {α : Type} (x : Traceful α) : Prop :=
   ∀ tr, XQuietFrom tr.length (x.run tr).2.val
 
 theorem xat?_le_eq {E : Type} [ExecTraceTypes.Has E] {t t' : ExecTrace} (hle : t ≤ t')
@@ -200,10 +200,10 @@ theorem xquiet_verifyMacAndDecrypt (st : TRState) (msg : TripleRatchet.TRSignalM
 /-! ## Quiet until a success event -/
 
 /-- `x` adds no session entry, or reaches `Q`. -/
-def XMix {α : Type} (Q : Nat → ExecTrace → Prop) (x : Traceful α) : Prop :=
+@[expose] def XMix {α : Type} (Q : Nat → ExecTrace → Prop) (x : Traceful α) : Prop :=
   ∀ tr, XQuietFrom tr.length (x.run tr).2.val ∨ Q tr.length (x.run tr).2.val
 
-def QAnti (Q : Nat → ExecTrace → Prop) : Prop := ∀ n n' t, n ≤ n' → Q n' t → Q n t
+@[expose] def QAnti (Q : Nat → ExecTrace → Prop) : Prop := ∀ n n' t, n ≤ n' → Q n' t → Q n t
 def QMono (Q : Nat → ExecTrace → Prop) : Prop := ∀ n t t', t ≤ t' → Q n t → Q n t'
 
 theorem xmix_of_quiet {α : Type} {Q : Nat → ExecTrace → Prop} {x : Traceful α}
@@ -221,7 +221,7 @@ theorem xmix_bind_quiet {α β : Type} {Q : Nat → ExecTrace → Prop} (hQ : QA
   · exact Or.inl (hx tr)
 
 /-- `x` always reaches `Q`. -/
-def XEst {α : Type} (Q : Nat → ExecTrace → Prop) (x : Traceful α) : Prop :=
+@[expose] def XEst {α : Type} (Q : Nat → ExecTrace → Prop) (x : Traceful α) : Prop :=
   ∀ tr, Q tr.length (x.run tr).2.val
 
 theorem xmix_of_est {α : Type} {Q : Nat → ExecTrace → Prop} {x : Traceful α}
@@ -236,7 +236,7 @@ theorem xest_bind_left {α β : Type} {Q : Nat → ExecTrace → Prop} (hQ : QMo
   · exact hx tr
 
 /-- `x` never fails. -/
-def XTotal {α : Type} (x : Traceful α) : Prop := ∀ tr, ∃ a, (x.run tr).1 = some a
+@[expose] def XTotal {α : Type} (x : Traceful α) : Prop := ∀ tr, ∃ a, (x.run tr).1 = some a
 
 theorem xrun_bind_fst {α β : Type} (x : Traceful α) (f : α → Traceful β) (tr : ExecTrace) :
     ((x >>= f).run tr).1 =
@@ -391,12 +391,12 @@ theorem xmix_messageDecrypt (me : Participant) (stateIdx msgIdx pqIdx : Nat) (sp
 /-! ## Compromise and exposure absence -/
 
 /-- No compromise or exposure event at any index `≥ n` of `t`. -/
-def XNL (n : Nat) (t : ExecTrace) : Prop :=
+@[expose] def XNL (n : Nat) (t : ExecTrace) : Prop :=
   (∀ i ev, n ≤ i → t.getEventAt PQXDHEvent i = some ev → xplPqLeakEv ev = false) ∧
     (∀ i ev, n ≤ i → t.getEventAt TREvent i = some ev → xplTrLeakEv ev = false)
 
 /-- `x` never logs a compromise or exposure event. -/
-def XNoLeak {α : Type} (x : Traceful α) : Prop := ∀ tr, XNL tr.length (x.run tr).2.val
+@[expose] def XNoLeak {α : Type} (x : Traceful α) : Prop := ∀ tr, XNL tr.length (x.run tr).2.val
 
 theorem xnl_of_quietFrom {n : Nat} {t : ExecTrace} (h : XQuietFrom n t) : XNL n t := by
   refine ⟨fun i ev hi he => ?_, fun i ev hi he => ?_⟩

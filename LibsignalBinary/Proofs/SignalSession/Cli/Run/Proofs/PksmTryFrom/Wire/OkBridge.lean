@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aBaseKey
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDeser
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aBaseKey -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDeser -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ParseLemmas
 import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
 
@@ -23,7 +23,7 @@ field check `kyberStageOut`, X25519 key deserializations, and inner `SignalMessa
 to `Pksm.pksmParse (vb :: body) = some (pksmModelOf ...)` and `RunCompose.pksmResAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,10 +46,10 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 
 theorem L1_PksmWire_OkBridge : True := trivial
 
-/-! ## 0. Kyber Stage Output (`kyberStageOut`) and Frozen Ok State (`KyberOkState`) -/
+/-! ## 0. Kyber Stage Output (`kyberStageOut`) -/
 
 /-- Separation-logic postcondition of the Kyber 3-way dispatch (`+0x684 → +0x86c`). -/
-def kyberStageOut (A : RustAlloc) (kpkVal : BitVec 32) (vb : BitVec 8)
+@[expose] def kyberStageOut (A : RustAlloc) (kpkVal : BitVec 32) (vb : BitVec 8)
     (kpkOpt : Option (BitVec 32)) (kyberOpt : Option (List (BitVec 8)))
     (kyberBoxPtr kyberBoxLen : BitVec 64) : SepProp :=
   match kpkOpt, kyberOpt with
@@ -59,18 +59,6 @@ def kyberStageOut (A : RustAlloc) (kpkVal : BitVec 32) (vb : BitVec 8)
   | none, none =>
     ⌜kyberBoxPtr = 0#64 ∧ vb.toNat < 0x40⌝
   | _, _ => ⌜False⌝
-
-/-- Frozen Ok exit state at `+0x86c` (`2156`). -/
-def KyberOkState (img : Obj.Image) (s0 : State)
-    (sp' sret len ptr0 kyberBoxPtr kyberBoxLen ikCap msgCap : BitVec 64) (vb : BitVec 8)
-    (bk : List (BitVec 8)) (pk : PublicKey) (sf : State) : Prop :=
-  PostEpilogueState img s0 sp' sf ∧
-  ecKeyParses bk = true ∧ pkOf bk = pk ∧ (pkOf bk).bytes.toList = (bk.take 33).drop 1 ∧
-  sf.readReg64 .x29 = sp' + 512#64 ∧ sf.readReg64 .x28 = kyberBoxPtr ∧
-  sf.readReg64 .x27 = 0x8000000000000002#64 ∧ sf.readReg64 .x26 = msgCap ∧
-  sf.readReg64 .x25 = kyberBoxLen ∧ sf.readReg64 .x24 = sp' + 312#64 ∧
-  sf.readReg64 .x23 = ikCap ∧ sf.readReg64 .x22 = vb.zeroExtend 64 ∧
-  sf.readReg64 .x21 = ptr0 ∧ sf.readReg64 .x20 = len ∧ sf.readReg64 .x19 = sret
 
 /-! ## 1. Version-Window Lemmas (`0x30 ≤ vb.toNat ≤ 0x4f` ⇒ `3 ≤ (vb >>> 4).toNat ≤ 4`) -/
 
@@ -331,54 +319,12 @@ theorem deserialize_ok_pkOf_of_ecKeyParses {bs : List (BitVec 8)}
   rcases (ecKeyParses_iff_deserialize_ok bs).mp h with ⟨k, hk⟩
   rwa [pkOf_of_deserialize_ok hk]
 
-theorem BaseKeyOkState.ecKeyParses {img : Obj.Image} {s0 : State}
-    {sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap : BitVec 64} {vb : BitVec 8}
-    {bk : List (BitVec 8)} {pk : PublicKey} {sf : State}
-    (h : BaseKeyOkState img s0 sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap vb bk pk sf) :
-    ecKeyParses bk = true :=
-  h.2.1
-
-theorem BaseKeyOkState.pkOf_eq {img : Obj.Image} {s0 : State}
-    {sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap : BitVec 64} {vb : BitVec 8}
-    {bk : List (BitVec 8)} {pk : PublicKey} {sf : State}
-    (h : BaseKeyOkState img s0 sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap vb bk pk sf) :
-    pkOf bk = pk :=
-  h.2.2.1
-
-theorem BaseKeyOkState.pkOf_bytes {img : Obj.Image} {s0 : State}
-    {sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap : BitVec 64} {vb : BitVec 8}
-    {bk : List (BitVec 8)} {pk : PublicKey} {sf : State}
-    (h : BaseKeyOkState img s0 sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap vb bk pk sf) :
-    (pkOf bk).bytes.toList = (bk.take 33).drop 1 :=
-  h.2.2.2.1
-
-theorem KyberOkState.ecKeyParses {img : Obj.Image} {s0 : State}
-    {sp' sret len ptr0 kyberBoxPtr kyberBoxLen ikCap msgCap : BitVec 64} {vb : BitVec 8}
-    {bk : List (BitVec 8)} {pk : PublicKey} {sf : State}
-    (h : KyberOkState img s0 sp' sret len ptr0 kyberBoxPtr kyberBoxLen ikCap msgCap vb bk pk sf) :
-    ecKeyParses bk = true :=
-  h.2.1
-
-theorem KyberOkState.pkOf_eq {img : Obj.Image} {s0 : State}
-    {sp' sret len ptr0 kyberBoxPtr kyberBoxLen ikCap msgCap : BitVec 64} {vb : BitVec 8}
-    {bk : List (BitVec 8)} {pk : PublicKey} {sf : State}
-    (h : KyberOkState img s0 sp' sret len ptr0 kyberBoxPtr kyberBoxLen ikCap msgCap vb bk pk sf) :
-    pkOf bk = pk :=
-  h.2.2.1
-
-theorem KyberOkState.pkOf_bytes {img : Obj.Image} {s0 : State}
-    {sp' sret len ptr0 kyberBoxPtr kyberBoxLen ikCap msgCap : BitVec 64} {vb : BitVec 8}
-    {bk : List (BitVec 8)} {pk : PublicKey} {sf : State}
-    (h : KyberOkState img s0 sp' sret len ptr0 kyberBoxPtr kyberBoxLen ikCap msgCap vb bk pk sf) :
-    (pkOf bk).bytes.toList = (bk.take 33).drop 1 :=
-  h.2.2.2.1
-
 /-! ## 4. Main `Pksm.pksmParse` and `pksmModelOf` Ok-Path Bridge Theorems -/
 
 /-- Concrete `PreKeySignalMessage` model constructed on the Ok path of
 `PreKeySignalMessage::try_from` from decoded protobuf `m`, raw key byte slices `bk` / `ik`,
 `signedPreKeyId = sid`, and inner `SignalMessage` `inner`. -/
-def pksmModelOf (b : List (BitVec 8)) (vb : BitVec 8) (m : ProtoPreKeySignalMessage)
+@[expose] def pksmModelOf (b : List (BitVec 8)) (vb : BitVec 8) (m : ProtoPreKeySignalMessage)
     (bk ik : List (BitVec 8)) (sid : BitVec 32) (inner : SignalMessage) :
     PreKeySignalMessage :=
   { messageVersion := vb >>> 4

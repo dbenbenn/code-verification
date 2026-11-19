@@ -11,68 +11,73 @@ module
 
 public import Arm64.Trusted.Spec.Hoare
 public import LibsignalBinary.Heap.Fine.F3LayoutData
-public import LibsignalBinary.Proofs.Common.StringClonePlaced
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.F3ReadFileGhostHook
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadStdinBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2CodeLoadedInv
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopRealloc
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2StepsLiftR2
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
+public import LibsignalBinary.Proofs.Common.StringClonePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopRealloc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import ProofLib
 public import ProofLib.Placed.Multi
 public import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedExtPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.F3ReadFileGhostHook
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadStdinBudgetPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.T4Witness
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DalekHooksDehook
 import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfMultiHelpers
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSampleNttStuckDivergeNamedAvoid
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2CodeLoadedInv
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopAlloc
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopDealloc
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopReads
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2StepsLiftR2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
 
 /-!
 # Stub Target Resolution and Per-Hook Branch-2 Replay (`ElfSlicesPqOomH2Branch2`)
 
 **Checked by Lean.**
 
-Provides the 0-new-invariant `Ghost617Transfer.StubReachesTargetOn (F3CodeInv mpl mmpl)` witnesses
-(`h2b2_stub_*`), raw ELF load bridge (`h2b2_unpatched_load`), stub-PC resolution identities
+Provides `Ghost617Transfer.StubReachesTargetOn (F3CodeInv mpl mmpl)` witnesses (`h2b2_stub_*`),
+the raw ELF load bridge (`h2b2_unpatched_load`), stub-PC resolution identities
 (`libsignalSessionLib.resolve mpl sym = mpl.ρ sym`), ELF `.symtab` target-VA identities
-(`Obj.lookupUnique sym cliElfImage.symbols = some (hole2_targets mpl).<hook>`), real `externAt? = none`
-on active ghost symbols, and full branch-2 replay for `lsRustNoAllocShimSymCli` (`h2b2_shim_branch2`):
+(`Obj.lookupUnique sym cliElfImage.symbols = some (hole2_targets mpl).<hook>`), real
+`externAt? = none` on active ghost symbols, and full branch-2 replay for `lsRustNoAllocShimSymCli`
+(`h2b2_shim_branch2`):
 
-1. **`h2b2_unpatched_load`**: public derivation of `∃ inputs sRaw, cliElfImage.loadState inputs = .ok sRaw ∧ sRaw.mem.KeepsFrozen m`
-   from `hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl` and `hInv : F3CodeInv mpl mmpl m` (`0` new `InvS` conjuncts).
-2. **Stub-PC Resolution (`SR3` check `(i)`)**: `libsignalSessionLib.resolve mpl sym = mpl.ρ sym` on all `7`
-   symbols in `cliDehookedSymsPlaced` (`lsRustNoAllocShimSymCli`, `lsRustAllocSymCli`, `lsRustDeallocSymCli`,
-   `lsRustReallocSymCli`, `lsRustAllocZeroedSymCli`, `lsReadFileSym`, `lsReadStdinSym`), plus
+1. **`h2b2_unpatched_load`**: derives `∃ inputs sRaw, cliElfImage.loadState inputs = .ok sRaw ∧ sRaw.mem.KeepsFrozen m`
+   from `hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl` and `hInv : F3CodeInv mpl mmpl m` (with no new `InvS` conjuncts).
+2. **Stub-PC resolution**: `libsignalSessionLib.resolve mpl sym = mpl.ρ sym` on `cliNonPanicDehookedSyms`
+   (including `lsRustNoAllocShimSymCli`, the 4 allocator symbols, `lsReadFileSym`, and `lsReadStdinSym`), plus
    `libsignalSessionLib.resolve mpl lsStringClonePlacedSym = (hole2_targets mpl).stringClone` (`mpl.base 623`)
    and `h2b2_strCloneSym_not_mem_ext617` (`lsStringCloneSym ∉ (libsignalSessionLib.blockLib 617).text.externs`).
-3. **Target-VA Equalities (`SR3` check `(ii)`)**: `Obj.lookupUnique sym cliElfImage.symbols = some ...`
-   for the `4` `rdl_shim.S` allocator thunks (`f3StubAddrs.{alloc,dealloc,realloc}`, `f3StubAzAddr`),
-   `(hole2_targets mpl).{readFile,readStdin}`, and `f3NoShimV2Addr` (`0x469640#64`) for `lsRustNoAllocShimSymCli`.
-4. **`StubReachesTargetOn (F3CodeInv mpl mmpl)` (`SR3` check `(iii)`)**: `h2b2_stub_alloc`, `h2b2_stub_dealloc`,
+3. **Target-VA equalities**: `Obj.lookupUnique sym cliElfImage.symbols = some ...` for the `4`
+   `rdl_shim.S` allocator thunks (`f3StubAddrs.{alloc,dealloc,realloc}`, `f3StubAzAddr`),
+   `(hole2_targets mpl).{readFile,readStdin}`, and `f3NoShimV2Addr` (`0x474640#64`) for `lsRustNoAllocShimSymCli`.
+4. **`StubReachesTargetOn (F3CodeInv mpl mmpl)`**: `h2b2_stub_alloc`, `h2b2_stub_dealloc`,
    `h2b2_stub_realloc`, `h2b2_stub_allocZeroed`, `h2b2_stub_readFile`, `h2b2_stub_readStdin`,
    `h2b2_stub_stringClone`, `h2b2_stub_stringClone_target`, and `h2b2_stub_shim`, plus `h2b2_shim_steps`
    / `h2b2_shim_branch2` and `cliGhostExterns` / `GhostSymActive` bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -83,10 +88,13 @@ open VerifiedLibraries (mallocngLib)
 open CryptoVerification (LibsignalPlacement)
 open CryptoVerification.SignalSession
   (CliHooks cliDehookedSymsPlaced cliElfBytes cliElfImage cliElf_staticOk cliExternsPlaced
-   libsignalSessionLib lsBlackBoxSym lsDurationSinceSym lsFromUtf8Sym lsMemrchrSym lsReadFileSym
-   lsReadStdinSym lsRustAllocSymCli lsRustAllocZeroedSymCli lsRustDeallocSymCli
-   lsRustNoAllocShimSymCli lsRustReallocSymCli lsSharedSecretDropSym lsStaticSecretDropSym
-   lsStringCloneSym lsTimeAddSym)
+   cliNonPanicDehookedSyms libsignalSessionLib lsAesDecSym lsAesEncSym lsBlackBoxSym
+   lsCompress256Sym lsCompressSym lsDiffieHellmanSym lsDsmbSym lsDurationSinceSym lsEdNegSym
+   lsFmtWriteSym lsFormatInnerSym lsFromUtf8Sym lsLibcruxHmacSym lsMemrchrSym lsMlkemPk1Sym
+   lsMlkemPk2Sym lsPubFromSecretSym lsReadFileSym lsReadStdinSym lsRustAllocSymCli
+   lsRustAllocZeroedSymCli lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli
+   lsScalarModSym lsScalarWideSym lsSharedSecretDropSym lsStaticSecretDropSym lsStringCloneSym
+   lsTimeAddSym lsToEdwardsSym lsTorsionFreeSym lsWriteFileSym lsWriteStdoutSym)
 open CryptoVerification.SignalSession.Cli.MainHops (cliIo)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks IsFsC cliGhostExterns)
 open CryptoVerification.SignalSession.Placed (DirectOrBranchStub)
@@ -111,8 +119,12 @@ open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
   (cliProgExtPlacedAt loadState_patchElfTokensPlacedAt)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer
   (GhostSymActive StubReachesTargetOn stubReachesTargetOn_of_directOrBranchStub)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.AesCbc
+  (c2AesDecAddr c2AesEncAddr)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.T4Witness
   (c2ExternTableFacts_of_linkedAt)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DalekHooksDehook
+  (c2DalekMpl c2EdNegAddr c2MlkemPk1Addr c2MlkemPk2Addr)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay
   (cliGhostExternsWithExtra_eq_some_of_active cliGhostExternsWithExtra_nil_of_named)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
@@ -120,10 +132,13 @@ open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
   (cliExtraGhostSyms cliGhostExternsWithExtra)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
-  (cliDehookedSymsPlaced_eq_entries f3DehookedEntries lsInternedMultiLib lsSharedExterns
+  (cliNonPanicDehookedSyms_eq_entries f3DehookedEntries lsInternedMultiLib lsSharedExterns
    ls_block617_externs_eq ls_idsOk ls_names_nodup ls_sharedExterns_lt ls_toMultiPlacedLib_eq)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
   (f3TrialElfSymChars f3TrialElfSyms_eq)
+open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSampleNttStuckDivergeNamedAvoid
+  (pRxSub_alloc_allProg_lo pRxSub_allocZeroed_allProg_lo pRxSub_dealloc_allProg_lo
+   pRxSub_readFile_allProg_lo pRxSub_readStdin_allProg_lo pRxSub_realloc_allProg_lo)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
   (keepLib2Text_sub_rxProg keepTextBPre_sub_rxProg)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics
@@ -148,14 +163,15 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks
    h2k_readFileFixedGhostHookFineSubK h2k_readStdinGhostHookFineK
    h2k_readStdinGhostHookFineSubK h2k_readStdinSpecK h2k_withKeepLrAndFds h2k_withKeepLrFalse)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2StepsLiftR2
-  (h2sl_emptyProg_externAt h2sl_emptyProg_svc h2sl_realW_dehooked_witness
-   h2sl_realW_noExtern_keepSub h2sl_stepsUntil_emptyProg_to_realW_of_allProg)
+  (h2sl_emptyProg_externAt h2sl_emptyProg_svc h2sl_keepLoSub h2sl_realW_dehooked_witness
+   h2sl_realW_noExtern_keepLoSub h2sl_stepsUntil_emptyProg_to_realW_of_allProg_lo)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
   (hole2_emptyProg hole2_hookStack hole2_keep hole2_keepSub hole2_targets)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
-  (c2BatchLDehookedSyms c2BcmpAddr c2BlackBoxAddr c2DurationSinceAddr c2FromUtf8Addr
-   c2Lib2DehookedSyms c2MemmoveAddr c2MemrchrAddr c2SharedSecretDropAddr c2StaticSecretDropAddr
-   c2StrlenAddr c2TimeAddAddr wp4MemcpyRealAddr wp4MemsetRealAddr)
+  (c2BatchLDehookedSyms c2BcmpAddr c2BlackBoxAddr c2Compress256Addr c2DurationSinceAddr
+   c2FromUtf8Addr c2Lib2DehookedSyms c2Lib2TextLo c2LibcruxHmacAddr c2MemmoveAddr c2MemrchrAddr
+   c2SharedSecretDropAddr c2StaticSecretDropAddr c2StrlenAddr c2TimeAddAddr hole2_keepSubHi
+   hole2_keepSubLo wp4MemcpyRealAddr wp4MemsetRealAddr wp4WriteFileAddr wp4WriteStdoutAddr)
 
 /-! ## Unpatched Raw ELF Load Bridge -/
 
@@ -183,24 +199,22 @@ theorem h2b2_unpatched_load {mpl mmpl : MultiPlacement} {m : Memory}
       exact keepsFrozen_cliTokenPatchPlacedAt cliElf_staticOk htok hraw
     exact ⟨inputs, sRaw, hraw, hkf0.trans hkfLoad⟩
 
-/-! ## Dehooked Symbol Resolution and `.symtab` Target-VA Table -/
+/-! ## Linked Symbol Resolution and `.symtab` Target-VA Table -/
 
-/-- Expected `(symbol, targetVa)` pairs for the `19` symbols in `cliDehookedSymsPlaced`:
-    `shim` (`f3NoShimV2Addr = 0x469640#64`), the `4` `rdl_shim.S` allocator thunk entries
-    (`f3StubAddrs.{alloc,dealloc,realloc}`, `f3StubAzAddr`), the `2` IO entries
-    (`readFile` at `0x4691b4#64`, `readStdin` at `0x469000#64`),
-    `memcpy` (`wp4MemcpyRealAddr`), `memset` (`wp4MemsetRealAddr`), and the `10` Cutover-2
-    (`C2`) de-hooked entries (`memmove`, `bcmp`, `strlen`, `memrchr`, `from_utf8`,
-    `duration_since`, `SystemTime::add`, `black_box`, `StaticSecret::drop`,
-    `SharedSecret::drop`). -/
+/-- Expected `(symbol, targetVa)` pairs for the 55 directly linked symbols in the CLI ELF:
+    `shim` (`f3NoShimV2Addr = 0x474640#64`), the 4 `rdl_shim.S` allocator thunks
+    (`f3StubAddrs.{alloc,dealloc,realloc}`, `f3StubAzAddr`), `read_file` (`0x4741b4#64`),
+    `read_stdin` (`0x474000#64`), `memcpy` (`wp4MemcpyRealAddr`), `memset` (`wp4MemsetRealAddr`),
+    libc/std/time/crypto/ML-KEM/I/O/formatter entries (including 7 `core::fmt` exports),
+    `std::sys::sync::once::futex::Once::call`, and `cpufeatures::aarch64::getauxval_hwcap`. -/
 def h2b2_dehookedTargetPairs : List (String × BitVec 64) :=
   [ (lsRustNoAllocShimSymCli, f3NoShimV2Addr),
     (lsRustAllocSymCli, f3StubAddrs.alloc),
     (lsRustDeallocSymCli, f3StubAddrs.dealloc),
     (lsRustReallocSymCli, f3StubAddrs.realloc),
     (lsRustAllocZeroedSymCli, f3StubAzAddr),
-    (lsReadFileSym, 0x4691b4#64),
-    (lsReadStdinSym, 0x469000#64),
+    (lsReadFileSym, 0x4741b4#64),
+    (lsReadStdinSym, 0x474000#64),
     ("memcpy", wp4MemcpyRealAddr),
     ("memset", wp4MemsetRealAddr),
     ("memmove", c2MemmoveAddr),
@@ -212,7 +226,43 @@ def h2b2_dehookedTargetPairs : List (String × BitVec 64) :=
     (lsTimeAddSym, c2TimeAddAddr),
     (lsBlackBoxSym, c2BlackBoxAddr),
     (lsStaticSecretDropSym, c2StaticSecretDropAddr),
-    (lsSharedSecretDropSym, c2SharedSecretDropAddr) ]
+    (lsSharedSecretDropSym, c2SharedSecretDropAddr),
+    (lsToEdwardsSym, c2DalekMpl.base 8),
+    (lsCompressSym, c2DalekMpl.base 14),
+    (lsEdNegSym, c2EdNegAddr),
+    (lsTorsionFreeSym, c2DalekMpl.base 19),
+    (lsDsmbSym, c2DalekMpl.base 17),
+    (lsScalarModSym, c2DalekMpl.base 1),
+    (lsScalarWideSym, c2DalekMpl.base 2),
+    (lsMlkemPk1Sym, c2MlkemPk1Addr),
+    (lsMlkemPk2Sym, c2MlkemPk2Addr),
+    (lsCompress256Sym, c2Compress256Addr),
+    (lsLibcruxHmacSym, c2LibcruxHmacAddr),
+    (lsAesEncSym, c2AesEncAddr),
+    (lsAesDecSym, c2AesDecAddr),
+    ("_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512", c2Compress256Addr + 7636#64),
+    ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11encapsulate", c2Compress256Addr - 892#64),
+    ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate", c2Compress256Addr - 908#64),
+    ("_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes9from_seed", c2Compress256Addr - 17168#64),
+    ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate1", c2Compress256Addr - 14236#64),
+    ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate2", c2Compress256Addr - 14124#64),
+    ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental26decapsulate_compressed_key", c2Compress256Addr - 928#64),
+    ("_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes", c2Compress256Addr - 3048#64),
+    (lsWriteFileSym, wp4WriteFileAddr),
+    (lsWriteStdoutSym, wp4WriteStdoutAddr),
+    (lsFmtWriteSym, c2MemrchrAddr - 2592#64),
+    (lsFormatInnerSym, c2TimeAddAddr - 1512#64),
+    (lsPubFromSecretSym, c2SharedSecretDropAddr + 4#64),
+    (lsDiffieHellmanSym, c2SharedSecretDropAddr - 52#64),
+    ("_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter9write_str", c2Lib2TextLo + 1800#64),
+    ("_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter3pad", c2Lib2TextLo + 1012#64),
+    ("_RNvXsi_NtCskxtBwYRO61I_4core3fmteNtB5_7Display3fmt", c2FromUtf8Addr - 48#64),
+    ("_RNvXNtNtNtCskxtBwYRO61I_4core3fmt3num3imphNtB6_7Display3fmt", c2MemrchrAddr + 572#64),
+    ("_RNvXs8_NtNtNtCskxtBwYRO61I_4core3fmt3num3impmNtB9_7Display3fmt", c2FromUtf8Addr - 700#64),
+    ("_RNvXsd_NtNtNtCskxtBwYRO61I_4core3fmt3num3impyNtB9_7Display3fmt", c2FromUtf8Addr - 144#64),
+    ("_RNvXsi_NtNtNtCskxtBwYRO61I_4core3fmt3num3impjNtB9_7Display3fmt", c2FromUtf8Addr - 144#64),
+    ("_RNvMs0_NtNtNtNtCsfr5T3GFabw_3std3sys4sync4once5futexNtB5_4Once4call", c2TimeAddAddr - 604#64),
+    ("_RNvNtCslWItzXo2NmA_11cpufeatures7aarch6415getauxval_hwcap", c2TimeAddAddr - 612#64) ]
 
 private theorem h2b2_f3DehookedEntries_pairs_eq :
     (f3DehookedEntries.map fun e => (String.ofList e.2.1, e.2.2.2)) = h2b2_dehookedTargetPairs := by
@@ -225,7 +275,7 @@ private noncomputable def h2b2_checkDehookedMetaB : Bool :=
       (lsInternedMultiLib.names.getD idx "" == String.ofList cs) &&
       (Obj.Interned.lookupBlockSymId idx lsInternedMultiLib.blocks == none) &&
       (Obj.Interned.withEncodeCharKey cs fun key =>
-        ProofLib.ObjectLoad.lookupUniqueEnc key enc == some targetVa)
+        lookupUniqueEnc key enc == some targetVa)
 
 set_option maxRecDepth 4000000 in
 private theorem h2b2_checkDehookedMeta_ok : h2b2_checkDehookedMetaB = true := by
@@ -242,7 +292,7 @@ private theorem h2b2_lookupBlockSym_none_of_idx {idx : Nat} {s : String}
 
 private theorem h2b2_dehooked_pair_facts {mpl : MultiPlacement} {sym : String} {tgt : BitVec 64}
     (hmem : (sym, tgt) ∈ h2b2_dehookedTargetPairs) :
-    sym ∈ cliDehookedSymsPlaced ∧
+    sym ∈ cliNonPanicDehookedSyms ∧
     libsignalSessionLib.resolve mpl sym = mpl.ρ sym ∧
     Obj.lookupUnique sym cliElfImage.symbols = some tgt := by
   rw [← h2b2_f3DehookedEntries_pairs_eq, List.mem_map] at hmem
@@ -256,8 +306,8 @@ private theorem h2b2_dehooked_pair_facts {mpl : MultiPlacement} {sym : String} {
   have he := List.all_eq_true.mp hchk (idx, cs, stubVa, targetVa) hmem_e
   simp only [Obj.Interned.withEncodeCharKey_eq, Bool.and_eq_true, Nat.blt_eq, beq_iff_eq] at he
   obtain ⟨⟨⟨hlt, hname⟩, hid⟩, hlu_enc⟩ := he
-  have hmem_dehook : String.ofList cs ∈ cliDehookedSymsPlaced := by
-    rw [cliDehookedSymsPlaced_eq_entries, List.mem_map]
+  have hmem_dehook : String.ofList cs ∈ cliNonPanicDehookedSyms := by
+    rw [cliNonPanicDehookedSyms_eq_entries, List.mem_map]
     exact ⟨(idx, cs, stubVa, targetVa), hmem_e, rfl⟩
   have hnone := h2b2_lookupBlockSym_none_of_idx hlt hname hid
   have hres : libsignalSessionLib.resolve mpl (String.ofList cs) = mpl.ρ (String.ofList cs) := by
@@ -267,16 +317,16 @@ private theorem h2b2_dehooked_pair_facts {mpl : MultiPlacement} {sym : String} {
     change Obj.lookupUnique (String.ofList cs)
       LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced.f3TrialElf.symbols =
       some targetVa
-    rw [ProofLib.ObjectLoad.lookupUnique_eq_lookupUniqueEnc f3TrialElfSyms_eq rfl rfl]
+    rw [lookupUnique_eq_lookupUniqueEnc f3TrialElfSyms_eq rfl rfl]
     exact hlu_enc
   exact ⟨hmem_dehook, hres, hlu⟩
 
-/-- Every `sym ∈ cliDehookedSymsPlaced` is an external symbol (`lookupBlockSym = none`), so
+/-- Every `sym ∈ cliNonPanicDehookedSyms` is an external symbol (`lookupBlockSym = none`), so
     `libsignalSessionLib.resolve mpl sym = mpl.ρ sym`. -/
 theorem h2b2_resolve_dehooked {mpl : MultiPlacement} {sym : String}
-    (hsym : sym ∈ cliDehookedSymsPlaced) :
+    (hsym : sym ∈ cliNonPanicDehookedSyms) :
     libsignalSessionLib.resolve mpl sym = mpl.ρ sym := by
-  rw [cliDehookedSymsPlaced_eq_entries, List.mem_map] at hsym
+  rw [cliNonPanicDehookedSyms_eq_entries, List.mem_map] at hsym
   obtain ⟨⟨idx, cs, stubVa, targetVa⟩, hmem_e, rfl⟩ := hsym
   have hmem_pair : (String.ofList cs, targetVa) ∈ h2b2_dehookedTargetPairs := by
     rw [← h2b2_f3DehookedEntries_pairs_eq, List.mem_map]
@@ -305,11 +355,11 @@ theorem h2b2_resolve_allocZeroed (mpl : MultiPlacement) :
 
 theorem h2b2_resolve_readFile (mpl : MultiPlacement) :
     libsignalSessionLib.resolve mpl lsReadFileSym = mpl.ρ lsReadFileSym :=
-  (h2b2_dehooked_pair_facts (tgt := 0x4691b4#64) (by simp [h2b2_dehookedTargetPairs])).2.1
+  (h2b2_dehooked_pair_facts (tgt := 0x4741b4#64) (by simp [h2b2_dehookedTargetPairs])).2.1
 
 theorem h2b2_resolve_readStdin (mpl : MultiPlacement) :
     libsignalSessionLib.resolve mpl lsReadStdinSym = mpl.ρ lsReadStdinSym :=
-  (h2b2_dehooked_pair_facts (tgt := 0x469000#64) (by simp [h2b2_dehookedTargetPairs])).2.1
+  (h2b2_dehooked_pair_facts (tgt := 0x474000#64) (by simp [h2b2_dehookedTargetPairs])).2.1
 
 /-- Demangled `<alloc::string::String as core::clone::Clone>::clone` resolves to Block `623`
     (`= (hole2_targets mpl).stringClone`). -/
@@ -369,12 +419,12 @@ theorem h2b2_lookupUnique_allocZeroed (mpl : MultiPlacement) :
 
 theorem h2b2_lookupUnique_readFile (mpl : MultiPlacement) :
     Obj.lookupUnique lsReadFileSym cliElfImage.symbols = some (hole2_targets mpl).readFile :=
-  (h2b2_dehooked_pair_facts (mpl := mpl) (tgt := 0x4691b4#64)
+  (h2b2_dehooked_pair_facts (mpl := mpl) (tgt := 0x4741b4#64)
     (by simp [h2b2_dehookedTargetPairs])).2.2
 
 theorem h2b2_lookupUnique_readStdin (mpl : MultiPlacement) :
     Obj.lookupUnique lsReadStdinSym cliElfImage.symbols = some (hole2_targets mpl).readStdin :=
-  (h2b2_dehooked_pair_facts (mpl := mpl) (tgt := 0x469000#64)
+  (h2b2_dehooked_pair_facts (mpl := mpl) (tgt := 0x474000#64)
     (by simp [h2b2_dehookedTargetPairs])).2.2
 
 /-! ## `StubReachesTargetOn (F3CodeInv mpl mmpl)` Witnesses -/
@@ -416,7 +466,7 @@ private theorem h2b2_thunk_reachesTarget_of_hasInstrs {mpl mmpl : MultiPlacement
     (h0 : StubReachesTargetOn (F3CodeInv mpl mmpl)
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc stubVa)
     (hInstr : ProofLib.StdStartup.hasInstrs f3TrialRxProg stubVa [ .b (rdlVa - stubVa) ])
-    (hks : hole2_keepSub stubVa = true) :
+    (hks : h2sl_keepLoSub stubVa = true) :
     StubReachesTargetOn (F3CodeInv mpl mmpl)
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc rdlVa := by
   intro u hpc hrun hfr hInv
@@ -427,7 +477,7 @@ private theorem h2b2_thunk_reachesTarget_of_hasInstrs {mpl mmpl : MultiPlacement
     Program.fetchMem_of_fetch hInv.rxCode hfetch_rx
   have hno_real :
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubVa = none :=
-    h2sl_realW_noExtern_keepSub hLs mmpl W stubVa hks
+    h2sl_realW_noExtern_keepLoSub hLs mmpl W stubVa hks
   have hno_rx : f3TrialRxProg.externAt? stubVa = none :=
     LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie.f3TrialRxProg_no_ext stubVa
   have hfm :
@@ -507,7 +557,7 @@ theorem h2b2_stub_readFile {mpl mmpl : MultiPlacement}
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
       (libsignalSessionLib.resolve mpl lsReadFileSym)
       (hole2_targets mpl).readFile :=
-  (h2b2_dehooked_stubReachesTargetOn hLs (tgt := 0x4691b4#64)
+  (h2b2_dehooked_stubReachesTargetOn hLs (tgt := 0x4741b4#64)
     (by simp [h2b2_dehookedTargetPairs]) W).2.2
 
 theorem h2b2_stub_readStdin {mpl mmpl : MultiPlacement}
@@ -516,7 +566,7 @@ theorem h2b2_stub_readStdin {mpl mmpl : MultiPlacement}
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
       (libsignalSessionLib.resolve mpl lsReadStdinSym)
       (hole2_targets mpl).readStdin :=
-  (h2b2_dehooked_stubReachesTargetOn hLs (tgt := 0x469000#64)
+  (h2b2_dehooked_stubReachesTargetOn hLs (tgt := 0x474000#64)
     (by simp [h2b2_dehookedTargetPairs]) W).2.2
 
 theorem h2b2_stub_stringClone_target (mpl mmpl : MultiPlacement) (W : CliHooks) :
@@ -537,7 +587,7 @@ theorem h2b2_stub_stringClone (mpl mmpl : MultiPlacement) (W : CliHooks) :
 /-! ## `lsRustNoAllocShimSymCli` Replay and `cliGhostExterns` Bridges -/
 
 /-- Under `F3CodeInv mpl mmpl m`, `P_real_W.fetchMem m f3NoShimV2Addr` decodes `.ret .lr`
-    (`0xd65f03c0` at `0x469640#64` in `seg[2]`). -/
+    (`0xd65f03c0` at `0x474640#64` in `seg[2]`). -/
 theorem h2b2_shim_fetchMem_ret {mpl mmpl : MultiPlacement} {m : Memory}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (W : CliHooks) (hInv : F3CodeInv mpl mmpl m) :
@@ -547,10 +597,10 @@ theorem h2b2_shim_fetchMem_ret {mpl mmpl : MultiPlacement} {m : Memory}
     ProofLib.StdStartup.hasInstrs.fetch_at_zero f3Trial_seg5ShimBundle.noAllocShimV2
   have hfm_rx : f3TrialRxProg.fetchMem m f3NoShimV2Addr = some (.ret .lr) :=
     Program.fetchMem_of_fetch hInv.rxCode hfetch_rx
-  have hks : hole2_keepSub f3NoShimV2Addr = true := by decide
+  have hks : h2sl_keepLoSub f3NoShimV2Addr = true := by decide
   have hno_real :
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? f3NoShimV2Addr = none :=
-    h2sl_realW_noExtern_keepSub hLs mmpl W f3NoShimV2Addr hks
+    h2sl_realW_noExtern_keepLoSub hLs mmpl W f3NoShimV2Addr hks
   have hno_rx : f3TrialRxProg.externAt? f3NoShimV2Addr = none :=
     LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie.f3TrialRxProg_no_ext f3NoShimV2Addr
   unfold Program.fetchMem at hfm_rx ⊢
@@ -559,7 +609,7 @@ theorem h2b2_shim_fetchMem_ret {mpl mmpl : MultiPlacement} {m : Memory}
   exact hfm_rx
 
 /-- Complete branch-2 replay for `lsRustNoAllocShimSymCli` (`hookNoop`): no `lr` guard required,
-    stepping directly at `0x469640` (`ret`) = `hookNoop u`. -/
+    stepping directly at `0x474640` (`ret`) = `hookNoop u`. -/
 theorem h2b2_shim_branch2 {mpl mmpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (W : CliHooks) (u : State)
@@ -632,33 +682,21 @@ theorem h2b2_realW_externAt_none_of_ghostSymActive
   · exact (h2b2_dehooked_stubReachesTargetOn hLs (tgt := f3NoShimV2Addr)
       (by simp [h2b2_dehookedTargetPairs]) W).1
   · exact False.elim (h2b2_strCloneSym_not_mem_ext617 hsym_ext)
-  · exact (h2b2_dehooked_stubReachesTargetOn hLs (tgt := 0x4691b4#64)
+  · exact (h2b2_dehooked_stubReachesTargetOn hLs (tgt := 0x4741b4#64)
       (by simp [h2b2_dehookedTargetPairs]) W).1
-  · exact (h2b2_dehooked_stubReachesTargetOn hLs (tgt := 0x469000#64)
+  · exact (h2b2_dehooked_stubReachesTargetOn hLs (tgt := 0x474000#64)
       (by simp [h2b2_dehookedTargetPairs]) W).1
   · exact (h2b2_dehooked_stubReachesTargetOn hLs (tgt := wp4MemsetRealAddr)
       (by simp [h2b2_dehookedTargetPairs]) W).1
   · exact (h2b2_dehooked_stubReachesTargetOn hLs (tgt := wp4MemcpyRealAddr)
       (by simp [h2b2_dehookedTargetPairs]) W).1
-  · have hExt := c2ExternTableFacts_of_linkedAt hLs
-    have hSplit : ∀ s ∈ cliExtraGhostSyms,
-        s ∈ c2BatchLDehookedSyms ∨ s ∈ c2Lib2DehookedSyms := by
-      intro s hs
-      simp only [cliExtraGhostSyms, List.mem_cons, List.not_mem_nil, or_false] at hs
-      rcases hs with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
-      · exact Or.inl (.head _)
-      · exact Or.inl (.tail _ (.head _))
-      · exact Or.inl (.tail _ (.tail _ (.head _)))
-      · exact Or.inr (.head _)
-      · exact Or.inr (.tail _ (.head _))
-      · exact Or.inr (.tail _ (.tail _ (.head _)))
-      · exact Or.inr (.tail _ (.tail _ (.tail _ (.tail _ (.tail _ (.tail _ (.head _)))))))
-      · exact Or.inr (.tail _ (.tail _ (.tail _ (.head _))))
-      · exact Or.inr (.tail _ (.tail _ (.tail _ (.tail _ (.tail _ (.head _))))))
-      · exact Or.inr (.tail _ (.tail _ (.tail _ (.tail _ (.head _)))))
-    rcases hSplit sym (List.contains_iff_mem.mp hDom) with hBL | hL2
-    · exact hExt.realRxNoExtern mmpl W (keepTextBPre_sub_rxProg (hExt.batchLInKeep hBL))
-    · exact hExt.realRxNoExtern mmpl W (keepLib2Text_sub_rxProg (hExt.lib2InKeep hL2))
+  · have hSub :
+        (cliExtraGhostSyms.all fun s => cliNonPanicDehookedSyms.contains s) = true := by
+      decide +kernel
+    have hMem : sym ∈ cliNonPanicDehookedSyms :=
+      List.contains_iff_mem.mp (List.all_eq_true.mp hSub sym (List.contains_iff_mem.mp hDom))
+    rw [h2b2_resolve_dehooked hMem]
+    exact (h2sl_realW_dehooked_witness (mmpl := mmpl) hLs hMem).1 W
 
 /-! ## Non-`.Exception` Guard Extraction and First-Stop Bundle -/
 
@@ -689,7 +727,7 @@ theorem h2b2_keepSub_false_of_keep_false {a : BitVec 64}
   cases hks : hole2_keepSub a with
   | false => rfl
   | true =>
-    have hbounds : 0x469000 ≤ a.toNat ∧ a.toNat < 0x46f000 := of_decide_eq_true hks
+    have hbounds : hole2_keepSubLo ≤ a.toNat ∧ a.toNat < hole2_keepSubHi := of_decide_eq_true hks
     have hk : hole2_keep a = true := decide_eq_true (Or.inr hbounds)
     rw [hk] at h
     cases h
@@ -742,7 +780,7 @@ theorem h2b2_fds_of_noException [LibsignalPlacement]
   h2k_fds_of_noException mpl mmpl hext hnoex
 
 /-- `ActiveRealRun` statement for `alloc` on `hole2_keepSub`. -/
-def h2b2_R_Alloc [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
+@[expose] def h2b2_R_Alloc [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
   ∀ {s0 : State},
     ActiveF3CallPre
       (fun γ tp => rustCliAllocBudgetSpec fineCostModel
@@ -754,7 +792,7 @@ def h2b2_R_Alloc [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
     ActiveRealRun hole2_keepSub hole2_emptyProg f3TrialRxProg f3RdlAddrs.alloc s0
 
 /-- `ActiveRealRun` statement for `allocZeroed` on `hole2_keepSub`. -/
-def h2b2_R_AllocZeroed [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
+@[expose] def h2b2_R_AllocZeroed [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
   ∀ {s0 : State},
     ActiveF3CallPre
       (fun γ tp => rustCliAllocBudgetSpec fineCostModel
@@ -766,7 +804,7 @@ def h2b2_R_AllocZeroed [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
     ActiveRealRun hole2_keepSub hole2_emptyProg f3TrialRxProg f3RdlAzAddr s0
 
 /-- `ActiveRealRun` statement for `dealloc` on `hole2_keepSub`. -/
-def h2b2_R_Dealloc [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
+@[expose] def h2b2_R_Dealloc [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
   ∀ {s0 : State},
     ActiveF3CallPre
       (fun γ tp => rustCliDeallocBudgetSpec fineCostModel
@@ -778,7 +816,7 @@ def h2b2_R_Dealloc [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
     ActiveRealRun hole2_keepSub hole2_emptyProg f3TrialRxProg f3RdlAddrs.dealloc s0
 
 /-- `ActiveRealRun` statement for `realloc` on `hole2_keepSub`. -/
-def h2b2_R_Realloc [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
+@[expose] def h2b2_R_Realloc [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
   ∀ {s0 : State},
     ActiveF3CallPre (h2fsrealloc_spec mmpl) s0 →
     ExecFrozen s0.mem →
@@ -792,7 +830,7 @@ theorem h2b2_r_realloc_proven [LibsignalPlacement] (mmpl : MultiPlacement)
   fun hPre hFr hLr hCode => h2fsrealloc_activeRealRun mmpl hMm hPre hFr hLr hCode
 
 /-- `ActiveF3ReadFileRun` statement for `readFile` on `hole2_keepSub`. -/
-def h2b2_R_ReadFile (mmpl : MultiPlacement) : Prop :=
+@[expose] def h2b2_R_ReadFile (mmpl : MultiPlacement) : Prop :=
   ∀ {s0 : State},
     ActiveF3CallPre
       (fun γ tp => readFileAnySpecPlaced
@@ -803,10 +841,10 @@ def h2b2_R_ReadFile (mmpl : MultiPlacement) : Prop :=
     f3TrialRxProg.CodeLoaded (stripExecOutside hole2_keepSub s0.mem) →
     FdsGe3Closed s0.fs →
     ActiveF3ReadFileRun hole2_keepSub hole2_emptyProg f3TrialRxProg
-      0x4691b4#64 F3ReadFileFixedCallGuard s0
+      0x4741b4#64 F3ReadFileFixedCallGuard s0
 
 /-- `ActiveReadStdinLinkedRun` statement for `readStdin` on `hole2_keepSub`. -/
-def h2b2_R_ReadStdin [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
+@[expose] def h2b2_R_ReadStdin [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
   ∀ {s0 : State},
     ActiveF3CallPre
       (fun γ tp => readStdinSpecOfPlaced cliIo
@@ -815,7 +853,7 @@ def h2b2_R_ReadStdin [LibsignalPlacement] (mmpl : MultiPlacement) : Prop :=
     ExecFrozen s0.mem →
     hole2_keepSub (s0.readReg64 .lr) = false →
     f3TrialRxProg.CodeLoaded (stripExecOutside hole2_keepSub s0.mem) →
-    ActiveReadStdinLinkedRun hole2_keepSub hole2_emptyProg f3TrialRxProg 0x469000#64 s0
+    ActiveReadStdinLinkedRun hole2_keepSub hole2_emptyProg f3TrialRxProg 0x474000#64 s0
 
 /-- 6-field bundle of Block-`617` first-stop witnesses (`alloc`, `allocZeroed`, `dealloc`,
 `realloc`, `readFile`, `readStdin`). -/
@@ -840,7 +878,7 @@ theorem h2b2_AllFirstStopHyps.of_five [LibsignalPlacement] {mpl mmpl : MultiPlac
 /-! ## Stock-Clean Per-Address Branch-2 Replay Lemmas on `h2k_ghFixedK` (`*_perPc`, Zero `[0, 0, 0, 0]` Stub Check) -/
 
 /-- Stock-clean per-address replacement for `h2b2_branch2_f3LinkedCallHook` via
-    `h2sl_stepsUntil_emptyProg_to_realW_of_allProg` (zero `h2sl_checkCompactZeroRxB` dependency). -/
+    `h2sl_stepsUntil_emptyProg_to_realW_of_allProg_lo` (zero `h2sl_checkCompactZeroRxB` dependency). -/
 theorem h2b2_branch2_f3LinkedCallHook_perPc {α β : Type}
     {mpl mmpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
@@ -865,6 +903,16 @@ theorem h2b2_branch2_f3LinkedCallHook_perPc {α β : Type}
           sf.fs = s0.fs ∧
           FsTraced IsFsC s0 sf ∧
           ExecFrozen sf.mem)
+    (hR_allProgLo : ∀ {s0 : State},
+      ActiveF3CallPre specOf s0 →
+      ExecFrozen s0.mem →
+      hole2_keepSub (s0.readReg64 .lr) = false →
+      F3CodeInv mpl mmpl s0.mem →
+      ∀ (Q : Program), Q.svc = Syscall.standard →
+        (∀ pc : BitVec 64, h2sl_keepLoSub pc = true → Q.externAt? pc = none) →
+        ∃ sf : State,
+          StepsUntil Q (SubroutineStop s0) (s0.setPC entryTarget) sf ∧
+          SubroutineStop s0 sf)
     {u : State}
     (hpc : u.pc = stubPc)
     (hrun : u.status = .Running)
@@ -897,10 +945,8 @@ theorem h2b2_branch2_f3LinkedCallHook_perPc {α β : Type}
   have hBody :
       Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
         (u.setPC entryTarget) (Classical.choose hReal.2.2.2) :=
-    h2sl_stepsUntil_emptyProg_to_realW_of_allProg hLs W
-      (fun Q hsvc hno =>
-        let ⟨sf, huQ, hsQ, _⟩ := hAll Q hsvc hno
-        ⟨sf, huQ, hsQ⟩)
+    h2sl_stepsUntil_emptyProg_to_realW_of_allProg_lo hLs W
+      (hR_allProgLo (hPreImp u hActPre') hFr hlr hInv)
       hchoose.1
   have hkf : u.mem.KeepsFrozen (Classical.choose hReal.2.2.2).mem := by
     simpa only [State.setPC] using hchoose.1.toSteps.keepsFrozen
@@ -929,6 +975,8 @@ theorem h2b2_branch2_alloc_explicitLr_perPc [LibsignalPlacement] {mpl mmpl : Mul
     (fun _ h => (h2b2_activeF3CallPre_withKeepLrFalse h).1)
     (fun hPre hFr' hLr' hCode' _P hsvc hno =>
       h2fsalloc_alloc_firstStop_keepSub mmpl hMm hsvc hno hPre hLr' hFr' hCode')
+    (fun hPre hFr' hLr' hInv' Q hsvc hno =>
+      pRxSub_alloc_allProg_lo hMm hPre hFr' hLr' hInv' Q hsvc hno)
     hpc hrun hnoex hFr hlr hInv
 
 /-- Stock-clean K-hook `alloc` branch-2 replay on `(h2k_ghFixedK mpl mmpl).alloc`. -/
@@ -973,6 +1021,8 @@ theorem h2b2_branch2_allocZeroed_explicitLr_perPc [LibsignalPlacement] {mpl mmpl
     (fun _ h => (h2b2_activeF3CallPre_withKeepLrFalse h).1)
     (fun hPre hFr' hLr' hCode' _P hsvc hno =>
       h2fsalloc_allocZeroed_firstStop_keepSub mmpl hMm hsvc hno hPre hLr' hFr' hCode')
+    (fun hPre hFr' hLr' hInv' Q hsvc hno =>
+      pRxSub_allocZeroed_allProg_lo hMm hPre hFr' hLr' hInv' Q hsvc hno)
     hpc hrun hnoex hFr hlr hInv
 
 /-- Stock-clean K-hook `allocZeroed` branch-2 replay on `(h2k_ghFixedK mpl mmpl).allocZeroed`. -/
@@ -1017,6 +1067,8 @@ theorem h2b2_branch2_dealloc_explicitLr_perPc [LibsignalPlacement] {mpl mmpl : M
     (fun _ h => (h2b2_activeF3CallPre_withKeepLrFalse h).1)
     (fun hPre hFr' hLr' hCode' _P hsvc hno =>
       h2fsdealloc_firstStop_keepSub mmpl hMm hsvc hno hPre hLr' hFr' hCode')
+    (fun hPre hFr' hLr' hInv' Q hsvc hno =>
+      pRxSub_dealloc_allProg_lo hMm hPre hFr' hLr' hInv' Q hsvc hno)
     hpc hrun hnoex hFr hlr hInv
 
 /-- Stock-clean K-hook `dealloc` branch-2 replay on `(h2k_ghFixedK mpl mmpl).dealloc`. -/
@@ -1062,6 +1114,8 @@ theorem h2b2_branch2_realloc_explicitLr_perPc [LibsignalPlacement] {mpl mmpl : M
     (fun hPre hFr' hLr' hCode' _P hsvc hno =>
       h2fsrealloc_firstStop_of_keep mmpl hMm (h2fsrealloc_keepSub_mallocng mmpl hMm)
         hsvc hno hPre hFr' hLr' hCode')
+    (fun hPre hFr' hLr' hInv' Q hsvc hno =>
+      pRxSub_realloc_allProg_lo hMm hPre hFr' hLr' hInv' Q hsvc hno)
     hpc hrun hnoex hFr hlr hInv
 
 /-- Stock-clean K-hook `realloc` branch-2 replay on `(h2k_ghFixedK mpl mmpl).realloc`. -/
@@ -1136,11 +1190,8 @@ theorem h2b2_branch2_readFile_explicitLr_perPc {mpl mmpl : MultiPlacement}
   have hBody :
       Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
         (u.setPC (hole2_targets mpl).readFile) (Classical.choose hReal.2.2.2.2) :=
-    h2sl_stepsUntil_emptyProg_to_realW_of_allProg hLs W
-      (fun Q hsvc hno =>
-        let ⟨sf, huQ, hsQ, _⟩ :=
-          h2fsreads_readFile_firstStop_keepSub (P := Q) hMm hsvc hno hActPre hlr hFr hCodeRx hFds
-        ⟨sf, huQ, hsQ⟩)
+    h2sl_stepsUntil_emptyProg_to_realW_of_allProg_lo hLs W
+      (pRxSub_readFile_allProg_lo hMm hActPre hFr hlr hFds hInv)
       hchoose.1
   have hkf : u.mem.KeepsFrozen (Classical.choose hReal.2.2.2.2).mem := by
     simpa only [State.setPC] using hchoose.1.toSteps.keepsFrozen
@@ -1240,11 +1291,8 @@ theorem h2b2_branch2_readStdin_explicitLr_perPc [LibsignalPlacement] {mpl mmpl :
   have hBody :
       Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
         (u.setPC (hole2_targets mpl).readStdin) (Classical.choose hReal.2.2.2) :=
-    h2sl_stepsUntil_emptyProg_to_realW_of_allProg hLs W
-      (fun Q hsvc hno =>
-        let ⟨sf, huQ, hsQ, _⟩ :=
-          h2fsreads_readStdin_firstStop_keepSub (P := Q) hMm hsvc hno hActPre hlr hFr hCodeRx
-        ⟨sf, huQ, hsQ⟩)
+    h2sl_stepsUntil_emptyProg_to_realW_of_allProg_lo hLs W
+      (pRxSub_readStdin_allProg_lo hMm hActPre hFr hlr hInv)
       hchoose.1
   have hkf : u.mem.KeepsFrozen (Classical.choose hReal.2.2.2).mem := by
     simpa only [State.setPC] using hchoose.1.toSteps.keepsFrozen

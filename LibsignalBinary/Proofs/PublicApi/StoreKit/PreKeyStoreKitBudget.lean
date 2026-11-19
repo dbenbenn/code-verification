@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `PreKeyStore` Contract
@@ -20,7 +20,7 @@ envelopes (`BoxAllocEnv`, `BoxDeallocEnv`), `futDropBudgetSpec`, `PreKeyStoreBud
 non-panicking/non-OOM shim and poll specifications for `get_pre_key` and `remove_pre_key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,13 +40,13 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 
 /-- Concrete allocation envelope for boxed store future shims
     (`boxSize = 0` or `rustAllocEvents boxSize 8`). -/
-def BoxAllocEnv (boxSize : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BoxAllocEnv (boxSize : Nat) (evs : List AllocEvent) : Prop :=
   (boxSize = 0 ∧ evs = []) ∨
   (0 < boxSize ∧ evs = rustAllocEvents boxSize 8)
 
 /-- Concrete deallocation envelope for boxed store futures
     (`boxSize = 0` or `rustDeallocEvents boxSize 8`). -/
-def BoxDeallocEnv (boxSize : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BoxDeallocEnv (boxSize : Nat) (evs : List AllocEvent) : Prop :=
   (boxSize = 0 ∧ evs = []) ∨
   (0 < boxSize ∧ evs = rustDeallocEvents boxSize 8)
 
@@ -58,7 +58,7 @@ theorem BoxDeallocEnv.freeOnly {boxSize : Nat} {evs : List AllocEvent}
 
 /-- Budget-threaded no-op future drop (`0` allocations, preserves `VmPreserved`; when `fds = true`,
     also preserves `fdsOk` from `s0.fs` to `sf.fs`). -/
-def futDropBudgetSpec (fdsOk : FsState → Prop := fun _ => True)
+@[expose] def futDropBudgetSpec (fdsOk : FsState → Prop := fun _ => True)
     (fds : Bool := false) : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf =>
@@ -68,7 +68,7 @@ def futDropBudgetSpec (fdsOk : FsState → Prop := fun _ => True)
 
 /-- Stronger `futDropBudgetSpec` carrying `sf.fs = s0.fs` (upgrades to `futDropBudgetSpec fdsOk fds`
     for every `fdsOk` and `fds`). -/
-def futDropBudgetSpecFs : Spec Unit where
+@[expose] def futDropBudgetSpecFs : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf ∧ sf.fs = s0.fs⌝
 
@@ -85,18 +85,6 @@ theorem subroutine_ok_futDropBudgetSpec_of_fs {prog : Program} {entry : BitVec 6
   · exact ⟨⟨htr, hvm⟩, hR⟩
   · exact ⟨⟨htr, hvm, fun hf0 => hfs ▸ hf0⟩, hR⟩
 
-theorem subroutine_ok_futDropBudgetSpec_true_of_false {prog : Program} {entry : BitVec 64}
-    {fdsOk : FsState → Prop}
-    (h : subroutine_ok prog entry (futDropBudgetSpec fdsOk false))
-    (htriv : ∀ fs, fdsOk fs := by intro _; trivial) :
-    subroutine_ok prog entry (futDropBudgetSpec fdsOk true) := by
-  refine subroutine_ok_mono h (fun _ _ _ hp => hp) (fun _ _ s0 sf hq => ?_)
-    (fun _ _ _ _ hq => hq) (fun _ _ _ _ _ hq => hq) (fun _ _ _ _ hq => hq)
-  dsimp only [futDropBudgetSpec] at hq ⊢
-  rw [satisfies_pure_sepConj] at hq ⊢
-  obtain ⟨⟨htr, hvm⟩, hR⟩ := hq
-  exact ⟨⟨htr, hvm, fun _ => htriv sf.fs⟩, hR⟩
-
 /-! ## `PreKeyStore` Retag, Poll Envelopes, and Budget-Threaded Contracts -/
 
 /-- Retag phantom `RustAlloc` parameter on `PreKeyStoreSpec` (`rfl` on all projections). -/
@@ -112,7 +100,7 @@ structure PreKeyStoreBudgetEnv {A : RustAlloc} {b : BitVec 64}
 
 /-- Budget-threaded `get_pre_key` shim contract parameterized by
     `kit : PreKeyStoreSpec A.repAlloc b`. -/
-def kitPreKeyGetShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitPreKeyGetShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : PreKeyStoreSpec A.repAlloc b) (fds : Bool := false) :
     Spec (PreKeyShimCall × M.σ) where
   pre := fun (x, st) s =>
@@ -141,7 +129,7 @@ def kitPreKeyGetShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : 
 
 /-- Budget-threaded `remove_pre_key` shim contract parameterized by
     `kit : PreKeyStoreSpec A.repAlloc b`. -/
-def kitPreKeyRemoveShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitPreKeyRemoveShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : PreKeyStoreSpec A.repAlloc b) (fds : Bool := false) :
     Spec (PreKeyShimCall × M.σ) where
   pre := fun (x, st) s =>
@@ -170,7 +158,7 @@ def kitPreKeyRemoveShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim
 
 /-- Budget-threaded `get_pre_key` poll contract parameterized by
     `kit : PreKeyStoreSpec A.repAlloc b` and `kitEnv : PreKeyStoreBudgetEnv kit`. -/
-def kitPreKeyGetPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitPreKeyGetPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : PreKeyStoreSpec A.repAlloc b)
     (kitEnv : PreKeyStoreBudgetEnv kit) (fds : Bool := false) :
     Spec (PreKeyPollCall × kit.PkState × M.σ) where
@@ -196,7 +184,7 @@ def kitPreKeyGetPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : 
 
 /-- Budget-threaded `remove_pre_key` poll contract parameterized by
     `kit : PreKeyStoreSpec A.repAlloc b` and `kitEnv : PreKeyStoreBudgetEnv kit`. -/
-def kitPreKeyRemovePollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitPreKeyRemovePollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} (kit : PreKeyStoreSpec A.repAlloc b)
     (kitEnv : PreKeyStoreBudgetEnv kit) (fds : Bool := false) :
     Spec (PreKeyPollCall × kit.PkState × M.σ) where

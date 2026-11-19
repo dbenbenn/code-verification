@@ -10,11 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SelfSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpecPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpecPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed CLI Self-Identity Store Specification
@@ -22,7 +25,7 @@ import Arm64.Trusted.Spec.SepLogic
 Relocatable `[LibsignalPlacement]` instantiation of `cliIdentitySelfSpec` at base `0#64`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace CryptoVerification.SignalSession.Cli.KitInst
@@ -44,47 +47,6 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 open CryptoVerification.SignalSession.Cli.RunCompose
 open CryptoVerification.SignalSession.Cli.RunProofs.Initiate
 open CryptoVerification.SignalSession.Cli.KitInst.SelfRel
-
-/-- Relocatable `IdentitySelfStoreSpec` at base `0#64` over any `ikit : IdentityStoreSpec A 0#64`
-with `ikit.IdState = IdGhost`. -/
-def cliIdentitySelfSpecOfPlaced [LibsignalPlacement] {A : RustAlloc}
-    (ikit : IdentityStoreSpec A 0#64) (hSt : ikit.IdState = IdGhost)
-    (rd : ReadRule) (F0 : FsFiles)
-    (kpShimStk kpPollStk regIdShimStk regIdPollStk : Nat) :
-    IdentitySelfStoreSpec ikit where
-  fdsOk := fun fs => FdsGe3Closed fs
-  KpErr := CliSelfSpeErr
-  RegIdErr := CliSelfSpeErr
-  kpErr := cliSelfSpeErrSpec A
-  regIdErr := cliSelfSpeErrSpec A
-  kpRel := hSt ▸ cliKpRel rd F0
-  regIdRel := hSt ▸ cliRegIdRel rd F0
-  kpEvs := fun _ => []
-  regIdEvs := fun _ => []
-  kpShimOff := lsmpl.base 602
-  kpFutVtOff := lsρ idKeyPairFutVtSym
-  kpPollOff := lsmpl.base 567
-  kpFutDropOff := lsDropOffPlaced
-  regIdShimOff := lsmpl.base 603
-  regIdFutVtOff := lsρ idRegIdFutVtSym
-  regIdPollOff := lsmpl.base 568
-  regIdFutDropOff := lsDropOffPlaced
-  kpBoxSize := 16
-  regIdBoxSize := 16
-  kpShimStack := kpShimStk
-  kpPollStack := kpPollStk
-  regIdShimStack := regIdShimStk
-  regIdPollStack := regIdPollStk
-  kpBoxAt := idOwnFutBoxAt
-  regIdBoxAt := idOwnFutBoxAt
-  kpBoxAt_memRegion := idOwnFutBoxAt_memRegion
-  regIdBoxAt_memRegion := idOwnFutBoxAt_memRegion
-  kpBoxSize_ne_zero := by decide
-  regIdBoxSize_ne_zero := by decide
-  kpBoxSize_lt := by decide
-  regIdBoxSize_lt := by decide
-  kpFutDrop_ne_zero := fun _ => lsDropOffPlaced_ne_zero
-  regIdFutDrop_ne_zero := fun _ => lsDropOffPlaced_ne_zero
 
 /-- Relocatable `IdentitySelfStoreSpec` over `cliIdentityStoreSpecPlaced`. -/
 abbrev cliIdentitySelfSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : ReadRule) (F0 : FsFiles)
@@ -133,42 +95,6 @@ abbrev cliIdentitySelfSpecPlaced [LibsignalPlacement] (A : RustAlloc) (rd : Read
   regIdBoxSize_lt := by decide
   kpFutDrop_ne_zero := fun _ => lsDropOffPlaced_ne_zero
   regIdFutDrop_ne_zero := fun _ => lsDropOffPlaced_ne_zero
-
-theorem cliIdentitySelfSpecPlaced_quiet [LibsignalPlacement] {A : RustAlloc}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} :
-    (cliIdentitySelfSpecPlaced A rd F0 pathOk peer
-      (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).Quiet :=
-  ⟨fun _ => by simp [cliIdentitySelfSpec, NoFsEv],
-    fun _ => by simp [cliIdentitySelfSpec, NoFsEv]⟩
-
-theorem cliIdentitySelf_kpRel_total_placed [LibsignalPlacement] {A : RustAlloc} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (F0 : FsFiles) (g : IdGhost) :
-    ∃ ans,
-      (cliIdentitySelfSpecPlaced A cliIo.rd F0 cliWrOk peer
-        (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).kpRel g ans :=
-  cliKpRel_total cliSelfSpeErrWitness cliIo.rd F0 g
-
-theorem cliIdentitySelf_regIdRel_total_placed [LibsignalPlacement] {A : RustAlloc} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (F0 : FsFiles) (g : IdGhost) :
-    ∃ ans,
-      (cliIdentitySelfSpecPlaced A cliIo.rd F0 cliWrOk peer
-        (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).regIdRel g ans :=
-  cliRegIdRel_total cliSelfSpeErrWitness cliIo.rd F0 g
-
-theorem cliIdentitySelf_kpRel_eq_placed [LibsignalPlacement] {A : RustAlloc} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (F0 : FsFiles) :
-    (cliIdentitySelfSpecPlaced A cliIo.rd F0 cliWrOk peer
-      (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).kpRel =
-      cliKpRel cliIo.rd F0 :=
-  rfl
-
-theorem cliIdentitySelf_regIdRel_eq_placed [LibsignalPlacement] {A : RustAlloc} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (F0 : FsFiles) :
-    (cliIdentitySelfSpecPlaced A cliIo.rd F0 cliWrOk peer
-      (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).regIdRel =
-      cliRegIdRel cliIo.rd F0 :=
-  rfl
 
 theorem cliIdentitySelf_kpErr_layout_placed [LibsignalPlacement] (A : RustAlloc) (F0 : FsFiles)
     {peer : AddrGhost} {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} (out : BitVec 64) :

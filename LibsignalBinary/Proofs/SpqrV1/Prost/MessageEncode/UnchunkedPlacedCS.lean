@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
 
@@ -22,7 +22,7 @@ Defines placed contract propositions, `UnchunkedEncodeCalleeSavedPlaced`, and 64
 `Program` call wrappers for `EkSentCt1Received::encode` and `Ct1Sent::encode`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -45,41 +45,25 @@ set_option maxHeartbeats 400000
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-def EkSentCt1ReceivedEncode1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def EkSentCt1ReceivedEncode1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_155 (Rust.withPanics ext)) (blkPl_155).base (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpec A))
-def EkSentCt1ReceivedEncode1PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def EkSentCt1ReceivedEncode1PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_155 (Rust.withPanics ext)) (blkPl_155).base (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpec A))
-def EkSentCt1ReceivedEncode1PinnedPlacedOkX [LibsignalPlacement] (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (lsProg_155 (Rust.withPanics ext)) (blkPl_155).base ((withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpecX A)).inImage img)
-def EkSentCt1ReceivedEncode1PlacedOkX [LibsignalPlacement] (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (lsProg_155 (Rust.withPanics ext)) (blkPl_155).base ((withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpecX A)).inImage img)
-def EkSentCt1ReceivedEncode2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def EkSentCt1ReceivedEncode2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_318 (Rust.withPanics ext)) (blkPl_318).base (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpec A))
-def EkSentCt1ReceivedEncode2PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def EkSentCt1ReceivedEncode2PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_318 (Rust.withPanics ext)) (blkPl_318).base (withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpec A))
-def EkSentCt1ReceivedEncode2PinnedPlacedOkX [LibsignalPlacement] (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (lsProg_318 (Rust.withPanics ext)) (blkPl_318).base ((withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodePinnedSpecX A)).inImage img)
-def EkSentCt1ReceivedEncode2PlacedOkX [LibsignalPlacement] (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (lsProg_318 (Rust.withPanics ext)) (blkPl_318).base ((withLsCodeLoaded lsmpl (ekSentCt1ReceivedEncodeSpecX A)).inImage img)
 
-def Ct1SentEncode1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def Ct1SentEncode1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_156 (Rust.withPanics ext)) (blkPl_156).base (withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpec A))
-def Ct1SentEncode1PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def Ct1SentEncode1PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_156 (Rust.withPanics ext)) (blkPl_156).base (withLsCodeLoaded lsmpl (ct1SentEncodeSpec A))
-def Ct1SentEncode1PinnedPlacedOkX [LibsignalPlacement] (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (lsProg_156 (Rust.withPanics ext)) (blkPl_156).base ((withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpecX A)).inImage img)
-def Ct1SentEncode1PlacedOkX [LibsignalPlacement] (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (lsProg_156 (Rust.withPanics ext)) (blkPl_156).base ((withLsCodeLoaded lsmpl (ct1SentEncodeSpecX A)).inImage img)
-def Ct1SentEncode2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def Ct1SentEncode2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_319 (Rust.withPanics ext)) (blkPl_319).base (withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpec A))
-def Ct1SentEncode2PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def Ct1SentEncode2PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_319 (Rust.withPanics ext)) (blkPl_319).base (withLsCodeLoaded lsmpl (ct1SentEncodeSpec A))
-def Ct1SentEncode2PinnedPlacedOkX [LibsignalPlacement] (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (lsProg_319 (Rust.withPanics ext)) (blkPl_319).base ((withLsCodeLoaded lsmpl (ct1SentEncodePinnedSpecX A)).inImage img)
-def Ct1SentEncode2PlacedOkX [LibsignalPlacement] (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (lsProg_319 (Rust.withPanics ext)) (blkPl_319).base ((withLsCodeLoaded lsmpl (ct1SentEncodeSpecX A)).inImage img)
 
-def UnchunkedEncodeCalleeSavedPlaced (s0 s : State) : Prop :=
+@[expose] def UnchunkedEncodeCalleeSavedPlaced (s0 s : State) : Prop :=
   s.readReg64 (Reg.gpr 24#5) = s0.readReg64 (Reg.gpr 24#5) ∧
   s.readReg64 (Reg.gpr 25#5) = s0.readReg64 (Reg.gpr 25#5) ∧
   s.readReg64 (Reg.gpr 26#5) = s0.readReg64 (Reg.gpr 26#5) ∧
@@ -117,7 +101,7 @@ theorem UnchunkedEncodeCalleeSavedPlaced.step {s0 s1 s2 : State}
     UnchunkedEncodeCalleeSavedPlaced s0 s2 :=
   h01.trans ⟨hx24, hx25, hx26, hx27, hx28, hvregs, hinv⟩
 
-def withUnchunkedEncodeCSPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α where
+@[expose] def withUnchunkedEncodeCSPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α where
   pre := fun x s => ⌜UnchunkedEncodeCalleeSavedPlaced s0 s⌝ ∗ spec.pre x s
   post := spec.post
   onPanic := spec.onPanic
@@ -139,17 +123,6 @@ theorem subroutine_ok_withUnchunkedEncodeCSPlaced {α : Type} {prog : Program} {
   refine subroutine_ok_outcome_intro fun x R s hpc hrun hpre hsp => ?_
   rw [withUnchunkedEncodeCSPlaced, sepConj_assoc, satisfies_pure_sepConj] at hpre
   exact h.mono_outcome x R s hpc hrun hpre.2 hsp fun _ hout => hout
-
-theorem subroutine_ok_withUnchunkedEncodeCSPlaced_x {α : Type} {prog : Program} {entry : BitVec 64} {spec : Spec α}
-    (img : Obj.Image) (s0 : State) (hinv0 : ImgCallInv img s0)
-    (h : subroutine_ok prog entry (spec.inImage img)) :
-    subroutine_ok prog entry (withUnchunkedEncodeCSPlaced s0 spec) := by
-  refine subroutine_ok_outcome_intro fun x R s hpc hrun hpre hsp => ?_
-  rw [withUnchunkedEncodeCSPlaced, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  have hpre' : s.mem ⊨ (spec.inImage img).pre x s ∗ R := by
-    rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpre.1.2.2.2.2.2.2.1 img hinv0, hpre.2⟩
-  exact h.mono_outcome x R s hpc hrun hpre' hsp fun _ hout => hout
 
 theorem subroutine_ok_withUnchunkedEncodeCSPlaced_placed [LibsignalPlacement] {α : Type} {prog : Program}
     {entry : BitVec 64} {spec : Spec α} (s0 : State) (hcl0 : LibsignalCodeLoaded lsmpl s0.mem)

@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
 public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Store-Answer Determinism and Scope Lifting for `encrypt`
@@ -22,7 +24,7 @@ Establishes `Scope ⊆ Slots.scopeIn ⊆ Slots.scopeKit` invariance for `Slots.l
 `cliEncrypt_store_det` along `encryptFlat`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -136,6 +138,7 @@ theorem filesOkPeer_mono {S₁ S₂ : SessionRecord (List (BitVec 8)) → Prop}
   idPathLt := hok.idPathLt
   sessGet := let ⟨bs, hbs, hwf⟩ := hok.sessGet; ⟨bs, hbs, sessFileWf_mono h hwf⟩
   idGet := hok.idGet
+  nameLe40 := hok.nameLe40
 
 /-- Scope invariance of `Slots.loadRec` between `Scope` and `Slots.scopeKit` under `FilesOkPeer Scope` and `EncodeInjOn Slots.scopeKit`. -/
 theorem loadRec_scopeKit_eq {Scope : SessionRecord (List (BitVec 8)) → Prop} {F : FsFiles}
@@ -238,7 +241,7 @@ theorem cliTraceOfWith_eq_nil {A : RustAlloc} {b : BitVec 64} {F : FsFiles}
   intro c _
   cases c <;> rfl
 
-def mkCliStores (sess : DirGhost) (idg : IdGhost) : StoresGhost :=
+@[expose] def mkCliStores (sess : DirGhost) (idg : IdGhost) : StoresGhost :=
   { StoresGhost.opened with sessions := sess, identity := idg }
 
 private theorem writes_save_store (F : FsFiles) (peer : AddrVal) (k : IdentityKey)

@@ -23,8 +23,8 @@ import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 import DY.EquationalTheory.DiffieHellman
 import Symbolic.Specifications.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Swarm.CREF.MacInv
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+public import Symbolic.Proofs.Swarm.CREF.MacInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptExplainG1bAux
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptExplainLeafA
@@ -61,7 +61,7 @@ Constructs a canonical pre-key representation `x` (`rpk_seed_ak_exactRep`) when 
 has a `DhPk` view or peels down the PQXDH key-derivation spine.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -818,7 +818,7 @@ theorem rpk_seed_ak_exactRep
     (hek_len : (gamma interpretation S g x'.ek).length = 32)
     (hek_canon : DY.X25519.leValue ((gamma interpretation S g x'.ek).map BitVec.toNat) < DY.X25519.p25519)
     (hek_notlow : DY.X25519.isLowOrderKey ((gamma interpretation S g x'.ek).map BitVec.toNat) = false ∧
-      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interpretation (gamma interpretation S g x'.ek))
+      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree (gamma interpretation S g x'.ek))
     (hlow' : TripleRatchet.x25519LowOrder msg'.ratchetKey = false)
     (hctr'_le : msg'.counter.toNat ≤ TripleRatchet.maxForwardJumps)
     (hmac_T_gamma : gamma interpretation S g

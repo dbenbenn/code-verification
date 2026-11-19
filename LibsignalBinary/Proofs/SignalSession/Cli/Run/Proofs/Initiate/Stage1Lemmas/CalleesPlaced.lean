@@ -9,16 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.Callees
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayoutPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerialize
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.Common.StringClonePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayoutPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LscroKitPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerialize
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.Common.StringClonePlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayout
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Stage 1 Direct `BL` Wrappers and Shared Error Epilogue
@@ -29,12 +35,10 @@ Provides `[LibsignalPlacement]` Stage 1 direct `BL` callee wrappers at residual 
 (`0x0350 → ret`) on `initProgPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage1Lemmas
 
@@ -234,25 +238,25 @@ theorem init_verifySig_placed_ok_at [LibsignalPlacement] {A : RustAlloc} {mmpl :
       (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
         (verifySigAtStkSpec (modelPrims X ⟨W.C, W.Q⟩) (stk - cliInitiateFrame))) := by
   have hbase := hLocal.verifySignature X
-  have hle : Pqxdh.Shared.pqxdhHookStack + 1280 ≤ stk - cliInitiateFrame := by
+  have hle : verifySigHookStack + 1280 ≤ stk - cliInitiateFrame := by
     have h1 := stk_sub_ge_base hstk
-    have hp : Pqxdh.Shared.pqxdhHookStack + 1280 ≤ 516880 := by decide
+    have hp : verifySigHookStack + 1280 ≤ 516880 := by decide
     omega
   have hhi : stk - cliInitiateFrame ≤ 2 ^ 64 := by omega
   have hspecEq : verifySignatureInnerSpec (modelPrims X ⟨W.C, W.Q⟩) =
       verifySigAtStkSpec (modelPrims X ⟨W.C, W.Q⟩)
-        (Pqxdh.Shared.pqxdhHookStack + 1280) := rfl
+        (verifySigHookStack + 1280) := rfl
   rw [hspecEq] at hbase
   intro gx R s0 hpc hrun hpre hsp hcl
   obtain ⟨hinv, hpre⟩ := LibsignalPublicApi.StoreKit.extract_withLsCodeRoLoaded hpre
   dsimp only [verifySigAtStkSpec] at hpre
   rw [stackAt_sub_split_local s0.sp hle hhi] at hpre
   let stkRem := memRegion (s0.sp - BitVec.ofNat 64 (stk - cliInitiateFrame))
-    ((stk - cliInitiateFrame) - (Pqxdh.Shared.pqxdhHookStack + 1280))
+    ((stk - cliInitiateFrame) - (verifySigHookStack + 1280))
   have hpre0 : s0.mem ⊨
       (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
         (verifySigAtStkSpec (modelPrims X ⟨W.C, W.Q⟩)
-          (Pqxdh.Shared.pqxdhHookStack + 1280))).pre gx s0 ∗ (stkRem ∗ R) := by
+          (verifySigHookStack + 1280))).pre gx s0 ∗ (stkRem ∗ R) := by
     refine satisfies_withLsCodeRoLoaded_pre hinv ?_
     dsimp only [verifySigAtStkSpec, stkRem]
     convert hpre using 1; ac_rfl

@@ -10,12 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetAuxASat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandBlock1 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyExactCore
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandBlock1
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandLoop -- proof-setup: allow-public-import
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.ConsumeMessageKey.AssemblyBudgetAuxSat
+import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlock
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `memset`-Free Block `53` Segments for `CryptoBridgePlacedBudgetAuxSat` (`CryptoBridgePlacedBudgetAuxBSat`)

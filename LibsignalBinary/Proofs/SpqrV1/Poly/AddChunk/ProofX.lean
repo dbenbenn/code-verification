@@ -12,6 +12,7 @@ module
 public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Defs
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Proof
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.ProofPlaced
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::add_chunk`: Extended-Stack Wrapper
@@ -22,7 +23,7 @@ Frames the unused bottom stack region (`addChunkSpecX_of_addChunkSpec`) to deriv
 and `add_chunk_placed_ok_x`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.AddChunk
 
@@ -73,12 +74,6 @@ theorem addChunkSpecX_of_addChunkSpec {P : Program} {addr : BitVec 64} {A : Rust
     rw [satisfies_pure_sepConj] at hex
     exact False.elim hex.1
   · exact (not_satisfies_false_sepConj hoom).elim
-
-theorem add_chunk_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts img.base A ext) :
-    AddChunkOkX img A ext :=
-  subroutine_ok_inImage_of_subroutine_ok img
-    (addChunkSpecX_of_addChunkSpec (add_chunk_ok_ext hA))
 
 theorem add_chunk_placed_ok_x [LibsignalPlacement] {A : RustAlloc}
     {ext : String → Option (State → State)}

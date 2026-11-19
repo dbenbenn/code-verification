@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionEval
-public import Symbolic.Proofs.Tests.CliNonvacuity.Table.MkTerm
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionEval -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.Table.MkTerm -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Actions.Random
@@ -39,7 +39,7 @@ Defines `BinTree`, `NodeSkel`, `CertNode`, and `CertTable` for dense `id`-indexe
 collection.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -81,7 +81,7 @@ inductive BinTree (α : Type) where
   | leaf : α → BinTree α
   | branch : BinTree α → BinTree α → BinTree α
 
-def btGet {α : Type} (d : Nat) (tr : BinTree α) (k : Nat) : Option α :=
+@[expose] def btGet {α : Type} (d : Nat) (tr : BinTree α) (k : Nat) : Option α :=
   match tr with
   | .empty => none
   | .leaf v => some v
@@ -91,7 +91,7 @@ def btGet {α : Type} (d : Nat) (tr : BinTree α) (k : Nat) : Option α :=
     | d' + 1 =>
       if Nat.beq (k % 2) 0 then btGet d' lo (k / 2) else btGet d' hi (k / 2)
 
-def btToList {α : Type} : BinTree α → List α
+@[expose] def btToList {α : Type} : BinTree α → List α
   | .empty => []
   | .leaf v => [v]
   | .branch lo hi => btToList lo ++ btToList hi
@@ -136,7 +136,7 @@ inductive NodeSkel where
   | trW (ver : UInt8) (rk : Nat) (cnt pcnt : UInt32) (ct pq : Nat)
       (ev : DY.TrWire.EncodingVariation)
 
-def skelChildren : NodeSkel → List Nat
+@[expose] def skelChildren : NodeSkel → List Nat
   | .rnd _ _ | .lit _ => []
   | .cat l r => [l, r]
   | .dhPk s => [s]
@@ -159,7 +159,7 @@ def skelChildren : NodeSkel → List Nat
   | .sChain a p idx => [a, p, idx]
   | .trW _ rk _ _ ct pq _ => [rk, ct, pq]
 
-def skelTerm (tOf : Nat → DY.Bytes) : NodeSkel → DY.Bytes
+@[expose] def skelTerm (tOf : Nat → DY.Bytes) : NodeSkel → DY.Bytes
   | .rnd ts sz => tRnd ts sz
   | .lit bs => tLit bs
   | .cat l r => tCat (tOf l) (tOf r)
@@ -183,7 +183,7 @@ def skelTerm (tOf : Nat → DY.Bytes) : NodeSkel → DY.Bytes
   | .sChain a p idx => tSChain (tOf a) (tOf p) (tOf idx)
   | .trW ver rk cnt pcnt ct pq ev => tTrW ver (tOf rk) cnt pcnt (tOf ct) (tOf pq) ev
 
-def skelEval (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def skelEval (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
     (selfTerm : DY.Bytes) (bOf : Nat → HwBytes) : NodeSkel → HwBytes × Bool
   | .rnd ts sz => if sz = 0 then ([], false) else (g.σ ts sz, true)
   | .lit bs => (bs, true)
@@ -289,22 +289,22 @@ structure CertNode where
   bytes : HwBytes
   hasMemo : Bool
 
-def lookupTerm (d : Nat) (full : BinTree CertNode) (k : Nat) : DY.Bytes :=
+@[expose] def lookupTerm (d : Nat) (full : BinTree CertNode) (k : Nat) : DY.Bytes :=
   match btGet d full k with
   | some n => n.term
   | none => tRnd 0 0
 
-def lookupBytes (d : Nat) (full : BinTree CertNode) (k : Nat) : HwBytes :=
+@[expose] def lookupBytes (d : Nat) (full : BinTree CertNode) (k : Nat) : HwBytes :=
   match btGet d full k with
   | some n => n.bytes
   | none => []
 
-def btMapTerm : BinTree CertNode → BinTree DY.Bytes
+@[expose] def btMapTerm : BinTree CertNode → BinTree DY.Bytes
   | .empty => .empty
   | .leaf n => .leaf n.term
   | .branch lo hi => .branch (btMapTerm lo) (btMapTerm hi)
 
-def btMapSkelTerm (d : Nat) (full : BinTree CertNode) : BinTree CertNode → BinTree DY.Bytes
+@[expose] def btMapSkelTerm (d : Nat) (full : BinTree CertNode) : BinTree CertNode → BinTree DY.Bytes
   | .empty => .empty
   | .leaf n => .leaf (skelTerm (lookupTerm d full) n.skel)
   | .branch lo hi => .branch (btMapSkelTerm d full lo) (btMapSkelTerm d full hi)
@@ -329,7 +329,7 @@ theorem btMapTerm_eq_imp (d : Nat) (full : BinTree CertNode) :
     · exact btMapTerm_eq_imp d full lo hlo n h1
     · exact btMapTerm_eq_imp d full hi hhi n h2
 
-def checkNodeBytes (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def checkNodeBytes (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
     (d : Nat) (full : BinTree CertNode) (n : CertNode) : Bool :=
   (skelChildren n.skel).all (fun c =>
     match btGet d full c with
@@ -338,7 +338,7 @@ def checkNodeBytes (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : G
   let r := skelEval i S g n.term (lookupBytes d full) n.skel
   (n.bytes == r.1) && (n.hasMemo == r.2)
 
-def checkSubBytes (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def checkSubBytes (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
     (d : Nat) (full : BinTree CertNode) : BinTree CertNode → Bool
   | .empty => true
   | .leaf n => checkNodeBytes i S g d full n
@@ -363,7 +363,7 @@ theorem checkSubBytes_all (i : ExternInterpretation) (S : OpaqueSymbolSemantics)
     · exact checkSubBytes_all i S g d full lo h.1 n h1
     · exact checkSubBytes_all i S g d full hi h.2 n h2
 
-def IdTreeSound (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def IdTreeSound (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
     (d : Nat) (full : BinTree CertNode) : Prop :=
   ∀ n ∈ btToList full,
     (∀ c ∈ skelChildren n.skel, ∃ nc, btGet d full c = some nc ∧ nc.rank < n.rank) ∧
@@ -430,7 +430,7 @@ structure CertTable where
   idTree : BinTree CertNode
   hashTrie : Trie Nat
 
-def hashBucketLookup (d : Nat) (idTree : BinTree CertNode) (b : DY.Bytes) :
+@[expose] def hashBucketLookup (d : Nat) (idTree : BinTree CertNode) (b : DY.Bytes) :
     List Nat → Option (Nat × CertNode)
   | [] => none
   | id :: rest =>
@@ -440,7 +440,7 @@ def hashBucketLookup (d : Nat) (idTree : BinTree CertNode) (b : DY.Bytes) :
       else hashBucketLookup d idTree b rest
     | none => hashBucketLookup d idTree b rest
 
-def tableLookup (ct : CertTable) (b : DY.Bytes) : Option (Nat × CertNode) :=
+@[expose] def tableLookup (ct : CertTable) (b : DY.Bytes) : Option (Nat × CertNode) :=
   hashBucketLookup ct.depth ct.idTree b (trieBucket ct.hashTrie (hashTermNat 4 b))
 
 theorem tableLookup_spec {ct : CertTable} {b : DY.Bytes} {id : Nat} {n : CertNode}
@@ -465,7 +465,7 @@ theorem tableLookup_spec {ct : CertTable} {b : DY.Bytes} {id : Nat} {n : CertNod
         exact ⟨hg, Subtype.ext (beqBareOptFast_true 256 b.val n0.term.val (beq_iff_eq.mp hcond))⟩
       · exact ih h
 
-def tableGamma (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def tableGamma (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ct : CertTable) (b : DY.Bytes) : HwBytes :=
   match tableLookup ct b with
   | some (_, n) => n.bytes
@@ -487,7 +487,7 @@ structure MemoRec where
   term : DY.Bytes
   bytes : HwBytes
 
-def collectFromId (d : Nat) (full : BinTree CertNode) :
+@[expose] def collectFromId (d : Nat) (full : BinTree CertNode) :
     Nat → Trie Nat × List MemoRec → Nat → Trie Nat × List MemoRec
   | 0, st, _ => st
   | fuel + 1, (seen, acc), id =>
@@ -503,7 +503,7 @@ def collectFromId (d : Nat) (full : BinTree CertNode) :
             (seen', acc')
         else st1
 
-def SeenSound (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def SeenSound (i : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost)
     (d : Nat) (full : BinTree CertNode) (seen : Trie Nat) (acc : List MemoRec) : Prop :=
   (∀ r ∈ acc,
     lookupTerm d full r.id = r.term ∧
@@ -608,7 +608,7 @@ theorem collectFromId_sound {i : ExternInterpretation} {S : OpaqueSymbolSemantic
               exact ⟨r, hrm_acc' r hr, hrm⟩
         · exact ⟨hs1, hkm1, hrm1⟩
 
-def resolveAndCollect (ct : CertTable) :
+@[expose] def resolveAndCollect (ct : CertTable) :
     List DY.Bytes → Trie Nat × List MemoRec → Option (Trie Nat × List MemoRec)
   | [], st => some st
   | b :: bs, st =>

@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BinPure
-public import Symbolic.Proofs.RngG.R3ModelInv
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BinPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepNoRatchetWAtHelpersPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 
 /-!
 # Decrypt Branch Selectors and Adapters on Session Promotion
@@ -23,7 +24,7 @@ Defines the three decrypt branch selectors (`PromDecSelSkipped`, `PromDecSelNoRa
 their trichotomy (`prom_decSel_cases_out`).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -48,7 +49,7 @@ abbrev PromDecSel : Type :=
 
 /-- Cached skipped-key branch: existing receiver chain for `msg.senderRatchetKey` with
 `msg.counter < ck.index`. -/
-def PromDecSelSkipped : PromDecSel := fun sess msg mid coins =>
+@[expose] def PromDecSelSkipped : PromDecSel := fun sess msg mid coins =>
   ∃ (ci : Nat) (rc : ReceiverChain) (ck : ChainKey),
     mid = [] ∧ coins = 0#256 ∧
     sess.state.receiverChains[ci]? = some rc ∧
@@ -56,7 +57,7 @@ def PromDecSelSkipped : PromDecSel := fun sess msg mid coins =>
     rc.chainKey = some ck ∧ msg.counter < ck.index
 
 /-- Existing-chain branch without DH ratchet: `ck.index <= msg.counter`. -/
-def PromDecSelNoRatchet : PromDecSel := fun sess msg mid coins =>
+@[expose] def PromDecSelNoRatchet : PromDecSel := fun sess msg mid coins =>
   ∃ (ci : Nat) (rc : ReceiverChain) (ck : ChainKey),
     mid = [] ∧ coins = 0#256 ∧
     sess.state.receiverChains[ci]? = some rc ∧
@@ -64,7 +65,7 @@ def PromDecSelNoRatchet : PromDecSel := fun sess msg mid coins =>
     rc.chainKey = some ck ∧ ck.index ≤ msg.counter
 
 /-- New-chain DH-ratchet branch: one 32-byte `rng` draw and no matching receiver chain. -/
-def PromDecSelRatchetDH : PromDecSel := fun sess msg mid coins =>
+@[expose] def PromDecSelRatchetDH : PromDecSel := fun sess msg mid coins =>
   ∃ rngBytes : HwBytes,
     mid = [.rng rngBytes] ∧ rngBytes.length = 32 ∧
     coins = Symbolic.Swarm.CREF.CliPure.RpkCli.pinCoins (some rngBytes) ∧

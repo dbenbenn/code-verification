@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPathsProofs.Fetch
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPathsProofs.Fetch
 import ProofLib.SepLogic.WPp
 
 /-!
 # Budget-Threaded Call Combinators for `consume_message_key` Panic Paths
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

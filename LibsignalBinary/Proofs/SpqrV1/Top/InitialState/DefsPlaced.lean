@@ -10,9 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::initial_state` (`Block 327`): Relocatable `[LibsignalPlacement]` Definitions and Specifications
@@ -22,7 +23,7 @@ Defines the relocatable `[LibsignalPlacement]` specifications `initialStatePlace
 `InitialStatePlacedOkX` on `Block 327`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,7 +67,7 @@ theorem lsro_optProtoInnerStateJumpTablePlacedAt [LibsignalPlacement] {s : State
 
 /-- Relocatable specification of `spqr::initial_state` (`Block 327`) with `.rodata` jump tables
     (`statesIntoPbJumpTablePlacedAt` and `optProtoInnerStateJumpTablePlacedAt`) carried explicitly. -/
-def initialStatePlacedRoSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def initialStatePlacedRoSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec InitialStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.pA ∧
@@ -93,7 +94,7 @@ def initialStatePlacedRoSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompre
 
 /-- Core relocatable specification of `spqr::initial_state` (`Block 327`) where `.rodata`
     jump tables are discharged from `LibsignalRoLoaded lsmpl s.mem`. -/
-def initialStatePlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def initialStatePlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec InitialStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.pA ∧
@@ -120,21 +121,21 @@ abbrev initialStatePlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaComp
 
 /-- `spqr::initial_state` (`Block 327`) meets `withLsCodeLoaded lsmpl (initialStatePlacedRoSpec A F)`
     on `initialStatePlacedProg ext`. -/
-def InitialStatePlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitialStatePlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (initialStatePlacedProg ext) initialStatePlacedEntry
     (withLsCodeLoaded lsmpl (initialStatePlacedRoSpec A F))
 
 /-- `spqr::initial_state` (`Block 327`) meets `initialStatePlacedSpecX A F`
     on `initialStatePlacedProg ext`. -/
-def InitialStatePlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitialStatePlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (initialStatePlacedProg ext) initialStatePlacedEntry
     (initialStatePlacedSpecX A F)
 
 /-- `spqr::initial_state` (`Block 327`) meets `initialStatePlacedSpecX A F` on
     `libsignalSessionLib.blockProgram lsmpl 327 (Rust.withPanics ext)` at `lsmpl.base 327`. -/
-def InitialStatePlacedOkBlockProgram [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitialStatePlacedOkBlockProgram [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 327 (Rust.withPanics ext))
     (lsmpl.base 327)

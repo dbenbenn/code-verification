@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DeriveSeed
+public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DeriveSeed
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
@@ -26,7 +26,7 @@ Proves `DeriveSeedPlacedSpec` and `DeriveSeedPlacedRoSpec` under `RustCliAllocBu
 `SeamBudget`, ruling out `.OutOfMemory` and `x0 = 0#64` at `__rust_alloc(32, 1)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1StatePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesBridge2Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1StatePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SeamSpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesBridge2Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesBridge2
@@ -26,6 +26,14 @@ import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlacedBu
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Pure
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainStep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
 
 /-!
 # Budget-Threaded `spqr::send` Phase 3d–3e Bridge (`+4000 -> +6216`)
@@ -35,7 +43,7 @@ composition (`<Message>::serialize`, `States` relocation, `<States>::into_pb`, `
 assembly, and `PqRatchetState::encode_to_vec`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,7 +57,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesBridge2PlacedBud
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement LibsignalRoLoaded libsignalSessionCode lsmpl lsρ)
+  (LibsignalCodeLoaded LibsignalPlacement LibsignalRoLoaded lsmpl lsρ)
 open CryptoVerification.RustHeap (RustAlloc vecU8 vecU8At)
 open CryptoVerification.LibsignalTripleRatchet
   (LibsignalCodeRoLoaded sessionMemcpyRegionSpec withLsCodeRoLoaded)
@@ -320,7 +328,7 @@ theorem step_copy_and_assemble_pq_state_3185c_placed {A : RustAlloc} {F : ShaCom
     dsimp only [pq']
     exact Entails.of_eq (by sep_ac_rfl)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 
 /-! ## 3. Outcome-Polymorphic `SepWPp` Combinators & `+4020 -> lsmpl.base 334` Step -/
 
@@ -485,7 +493,7 @@ theorem step_post_message_serialize_to_into_pb_31810_placed
 /-- Envelope-parametric allocation envelope across Phase 3d–3e Bridge 2 (`+4000 -> +6216`):
     `<Message>::serialize`, `<States>::into_pb`, and `PqRatchetState::encode_to_vec`'s single
     `rustAllocEvents (pqRatchetStatePBEncodedLen pq') 1` buffer allocation. -/
-def SendBridge2EnvOfEnv {F : ShaCompress}
+@[expose] def SendBridge2EnvOfEnv {F : ShaCompress}
     (MsgSerEnv : MessageSerializeGhost spqrPolyApi → List AllocEvent → Prop)
     (IntoPbEnv : StatesIntoPbGhost F → List AllocEvent → Prop)
     (sp : BitVec 64) (idx : BitVec 32)
@@ -502,7 +510,7 @@ def SendBridge2EnvOfEnv {F : ShaCompress}
 
 /-- Default allocation envelope across Phase 3d–3e Bridge 2 (`+4000 -> +6216`),
     instantiating `MessageSerializeEnv (P := spqrPolyApi)` and `StatesIntoPbEnv`. -/
-def SendBridge2Env {F : ShaCompress}
+@[expose] def SendBridge2Env {F : ShaCompress}
     (idx : BitVec 32) (vn : Option VersionNegotiationPB) (ch : Option ChainPB)
     (st1 : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
     List AllocEvent → Prop :=

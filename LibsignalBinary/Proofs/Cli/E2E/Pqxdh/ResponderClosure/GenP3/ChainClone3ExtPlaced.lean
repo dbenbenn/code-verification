@@ -9,9 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.ChainClone4Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Defs
 
 /-!
 # Relocatable `[LibsignalPlacement]` `ChainClone3OkPlaced` Wrappers (Block `524`)
@@ -20,7 +24,7 @@ Defines `ChainClone3OkPlaced` and `SenderChainClone3OkPlaced` on Block `524` (`b
 `blkPl_524`, `lsmpl.base 524`) and discharges them from `HookSat` hypotheses.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,13 +41,13 @@ open CryptoVerification.Cli.LibsignalE2E.Pqxdh.Reloc.ChainClone4
 
 /-- `[LibsignalPlacement]` counterpart of `ChainClone3OkExt` at Block `524`
 (`<SessionStructure_Chain as Clone>::clone [local#5]`). -/
-def ChainClone3OkPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainClone3OkPlaced [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_524).rebase (blkPl_524).base H) (lsmpl.base 524) (chainCloneSpec A)
 
 /-- `[LibsignalPlacement]` counterpart of `SenderChainClone3OkExt` at Block `524`
 (`<SessionStructure_Chain as Clone>::clone [local#5]`). -/
-def SenderChainClone3OkPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SenderChainClone3OkPlaced [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_524).rebase (blkPl_524).base H) (lsmpl.base 524) (senderChainCloneSpec A)
 

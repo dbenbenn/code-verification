@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKey
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKey -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 
@@ -21,7 +21,7 @@ Proves monotonicity of `sessionBaseKeys` and `isCurrentSnapshot` along trace ext
 with the abstract transport lemmas `bobBaseKeyOn_ext` and `bobBaseKeyOn_start` for `BobBaseKeyOn`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -77,7 +77,7 @@ theorem bks_stored_of_getLocalState {p : Participant} {st : TRState} {i : Nat} {
     · cases h
 
 /-- Base keys collected by `sessionBaseKeys` for a given `SessionInfo`. -/
-def sbkOf (tr : ExecTrace) (s : SessionInfo) : List DY.Bytes :=
+@[expose] def sbkOf (tr : ExecTrace) (s : SessionInfo) : List DY.Bytes :=
   (List.range tr.length).filterMap fun i =>
     match tr.getEventAt ComposedEvent i with
     | some (.HandshakeSession s' d) =>
@@ -185,7 +185,7 @@ theorem isCurrentSnapshot_false_of_later {tr : ExecTrace} {i j : Nat} {p : Parti
 
 /-- Every Bob snapshot stored at index `≥ tr.length` in `tr'` shares `sessionInfo` with some
 current Bob snapshot in `tr`. -/
-def NewBobSinfo (bob : Participant) (tr tr' : ExecTrace) : Prop :=
+@[expose] def NewBobSinfo (bob : Participant) (tr tr' : ExecTrace) : Prop :=
   ∀ (j : Nat) (st : TRState), tr.length ≤ j →
     (tr'.at? j : Option TRStEntry) = some ⟨⟨bob, st⟩⟩ →
     ∃ (k₀ : Nat) (st₀ : TRState), (tr.at? k₀ : Option TRStEntry) = some ⟨⟨bob, st₀⟩⟩ ∧

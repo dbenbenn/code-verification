@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # `signal_session::run` Arm `R1c`: `Init` Sub-Hop 3 Contract (`R+0x28f0` → Join/Reject)
@@ -20,7 +23,7 @@ Relocatable (`[LibsignalPlacement]`) hop contracts `RunHopInit3Placed` and `RunH
 for Arm `R1c` on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +41,7 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 /-- Parametric-slot relocatable (`[LibsignalPlacement]`) Arm R1c hop contract (`run_hop_init3_ok`):
 from `AtInit2Placed` (`R+0x28f0`), calls `wrap_initiate` and drops the bundle to reach
 `JoinKPlaced` or `RejectKPlaced`. -/
-def RunHopInit3PlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopInit3PlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (slots : RunSlots) (resStack : Nat) : Prop :=
   ∀ {g : RunCall} {s0 s2 : State} {d2 : Init2Data} {Q Qp : State → SepProp → Prop},
     RunHooksPlaced A H →
@@ -58,7 +61,7 @@ def RunHopInit3PlacedOf [LibsignalPlacement] (CodeOk : Memory → Prop) (A : Rus
 /-- Relocatable (`[LibsignalPlacement]`) Arm R1c hop contract (`run_hop_init3_ok`):
 from `AtInit2Placed` (`R+0x28f0`), calls `wrap_initiate` and drops the bundle to reach
 `JoinKPlaced` or `RejectKPlaced`. -/
-def RunHopInit3Placed [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def RunHopInit3Placed [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) : Prop :=
   RunHopInit3PlacedOf CodeOk A H B S (slotsOfPlaced A S needs) resStack
 

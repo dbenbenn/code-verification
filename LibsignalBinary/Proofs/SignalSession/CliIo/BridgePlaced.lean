@@ -13,8 +13,14 @@ public import VerifiedLibraries.Mallocng.Spec
 public import VerifiedLibraries.RustStd.Proofs.MallocngInst
 public import LibsignalBinary.Heap.Iface
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadHookAlign
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadHookAlign -- proof-setup: allow-public-import
+public import GeneratedLean.SignalSessionIoPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslOpenDeterministic -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslReadStdin -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinProof -- proof-setup: allow-public-import
 
 /-!
 # Placed `mallocng` Bridge for `signal_session_io::{read_stdin, read_file}`
@@ -25,7 +31,7 @@ inside the heap invariant and aligning postconditions to `ioVecAt (cliIoMallocng
 with `CliIoFilesOomPreserved` on out-of-memory exits.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -82,20 +88,20 @@ open LibsignalBinary.Proofs.SignalSession.CliIo.ReadHookAlign (
 
 /-- `module`-compatible definition of `mallocngPoolAt` (definitionally equal to
     `LibsignalBinary.Heap.MallocngBridge.mallocngPoolAt`). -/
-def cliIoMallocngPoolAt (J : MallocngIface) (γ : GhostName) (A : MallocngAddrs)
+@[expose] def cliIoMallocngPoolAt (J : MallocngIface) (γ : GhostName) (A : MallocngAddrs)
     (tp brkStart : BitVec 64) (s : State) : SepProp :=
   ∃∗ b : MallocngBudget, ∃∗ ivs : List (BitVec 64 × Nat),
     MallocngEnv J γ A tp brkStart b ivs s
 
 /-- `module`-compatible definition of `mallocngLive` (definitionally equal to
     `LibsignalBinary.Heap.MallocngBridge.mallocngLive`). -/
-def cliIoMallocngLive (J : MallocngIface) (γ : GhostName) (p : BitVec 64)
+@[expose] def cliIoMallocngLive (J : MallocngIface) (γ : GhostName) (p : BitVec 64)
     (n align : Nat) : SepProp :=
   J.Block γ p n ∗ ⌜p ≠ 0#64 ∧ align ∣ p.toNat ∧ 16 ∣ p.toNat ∧ p.toNat + n < 2 ^ 64⌝
 
 /-- `module`-compatible `RustCliAlloc` backed by `VerifiedLibraries.Mallocng` (`rfl`-equal to
     `LibsignalBinary.Heap.mallocngRustCliAllocAt`). -/
-def cliIoMallocngAllocAt (J : MallocngIface) (γ : GhostName) (A : MallocngAddrs)
+@[expose] def cliIoMallocngAllocAt (J : MallocngIface) (γ : GhostName) (A : MallocngAddrs)
     (tp brkStart : BitVec 64) : RustCliAlloc where
   pool := cliIoMallocngPoolAt J γ A tp brkStart
   live := fun p n al => cliIoMallocngLive J γ p n al ∗ ⌜RustLayoutOk n al⌝
@@ -186,12 +192,12 @@ theorem pool_reabsorb_errno {J : MallocngIface} (hIf : MallocngIfaceFacts J)
 
 /-- Out-of-memory invariant preserved across `read_stdin` and `read_file`: `files`, `trace`, and
     `sigActions` are all unchanged (`fd 0` offset or temporary local `fd` may have advanced). -/
-def CliIoFilesOomPreserved (s0 sf : State) : Prop :=
+@[expose] def CliIoFilesOomPreserved (s0 sf : State) : Prop :=
   sf.fs.files = s0.fs.files ∧ sf.trace = s0.trace ∧ sf.sigActions = s0.sigActions
 
 /-- Placed `mallocng`-backed Hoare contract for `signal_session_io::read_stdin` (no separate
     `StdErrnoCell` required; `ioVecAt` output; exact `2^20` cap semantics). -/
-def cliIoMallocngReadStdinSpec {J : MallocngIface} (γ : GhostName) (A : MallocngAddrs)
+@[expose] def cliIoMallocngReadStdinSpec {J : MallocngIface} (γ : GhostName) (A : MallocngAddrs)
     (tp brkStart : BitVec 64) (stackBytes : Nat) :
     Spec (BitVec 64 × List (BitVec 8)) where
   pre := fun (sret, bs) s0 =>
@@ -348,7 +354,7 @@ theorem memcpySrc_eq_bytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) 
 /-- Placed `mallocng`-backed Hoare contract for `signal_session_io::read_file(path: &str)`
     (`ro = false` for `↦ₛ`, `ro = true` for `↦ᵣ`; no separate `StdErrnoCell` required;
     `ioVecAt` output; exact `4096`-B path and `2^21`-B file cap semantics). -/
-def cliIoMallocngReadFileGenSpec (ro : Bool) {J : MallocngIface} (γ : GhostName)
+@[expose] def cliIoMallocngReadFileGenSpec (ro : Bool) {J : MallocngIface} (γ : GhostName)
     (A : MallocngAddrs) (tp brkStart : BitVec 64) (stackBytes : Nat) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (sret, pathPtr, pathBytes) s0 =>
@@ -374,212 +380,6 @@ def cliIoMallocngReadFileGenSpec (ro : Bool) {J : MallocngIface} (γ : GhostName
 abbrev cliIoMallocngReadFileSpec {J : MallocngIface} (γ : GhostName) (A : MallocngAddrs)
     (tp brkStart : BitVec 64) (stackBytes : Nat) :=
   cliIoMallocngReadFileGenSpec false (J := J) γ A tp brkStart stackBytes
-
-abbrev cliIoMallocngReadFileRoSpec {J : MallocngIface} (γ : GhostName) (A : MallocngAddrs)
-    (tp brkStart : BitVec 64) (stackBytes : Nat) :=
-  cliIoMallocngReadFileGenSpec true (J := J) γ A tp brkStart stackBytes
-
-theorem cliIoMallocngReadFileGen_ok (ro : Bool) {J : MallocngIface} (hIf : MallocngIfaceFacts J)
-    (γ : GhostName) (A : MallocngAddrs) (tp brkStart : BitVec 64)
-    {mpl : MultiPlacement} (hpl : signalSessionIoMultiLib.Placeable mpl)
-    {P : Program} {stackBytes : Nat}
-    (hsvc : P.svc = Syscall.standard)
-    (hext_os : ExternPreservesOracleSymtab P)
-    (hext3 : CliIoBlockNoExtern mpl P 3)
-    (hext4 : CliIoBlockNoExtern mpl P 4)
-    (hopen : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoOpenSym)
-      muslOpenRdonlyDetSpec)
-    (herrno : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoErrnoLocationSym)
-      muslErrnoLocationSpec)
-    (hread_dir : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadSym)
-      muslReadDir32Spec)
-    (hread_file : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadSym)
-      muslReadFileOrStdio32Spec)
-    (hclose : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoCloseSym)
-      muslClose48LocalSpec)
-    (hmemcpy : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoMemcpySym)
-      stdMemcpySpec)
-    (hshim : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustNoAllocShimSym)
-      allocAllocShimSpec)
-    (hAlloc : RustStdAllocEntries (mallocngRustCliAllocOf J hIf γ A) P
-      { alloc   := signalSessionIoMultiLib.resolve mpl cliIoRustAllocSym
-        dealloc := signalSessionIoMultiLib.resolve mpl cliIoRustDeallocSym
-        realloc := signalSessionIoMultiLib.resolve mpl cliIoRustReallocSym }) :
-    subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadFileSym)
-      (signalSessionIoMultiLib.withCodeLoaded mpl
-        (cliIoMallocngReadFileGenSpec ro (J := J) γ A tp brkStart stackBytes)) := by
-  have hraw := cliIoReadFileGen_ok ro (mallocngRustCliAllocOf J hIf γ A) hpl
-    (stackBytes := stackBytes) hsvc hext_os hext3 hext4 hopen herrno hread_dir hread_file
-    hclose hmemcpy hshim hAlloc.alloc hAlloc.realloc hAlloc.dealloc
-  apply subroutine_ok_outcome_intro
-  rintro ⟨sret, pathPtr, pathBytes⟩ R s0 hpc hrun hpre hsp
-  dsimp only [MultiPlacedLib.withCodeLoaded, cliIoMallocngReadFileGenSpec] at hpre
-  rw [sepConj_comm _ ⌜signalSessionIoMultiLib.CodeLoaded mpl s0.mem⌝, sepConj_assoc,
-    satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hcl, hpre⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hlo, hhi, hsp_lo, hsp_va, hx0, hx1, hx8, hallocFd, hpathOk⟩, hmem⟩
-  rw [← memcpySrc_eq_bytesAt ro pathPtr pathBytes] at hmem
-  have hmem1 := Satisfies.mono (sepConj_mono_left (sepConj_mono_right
-    (sepConj_mono_right (sepConj_mono_right (pool_split_errno hIf γ A tp brkStart s0))))) hmem
-  have hEqPre :
-      (stackAt s0.sp stackBytes ∗ memcpySrc ro pathPtr pathBytes ∗ memRegion sret 24 ∗
-        (⌜s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart⌝ ∗
-          (StdErrnoCell s0.tpidrEl0 ∗ (mallocngRustCliAllocOf J hIf γ A).pool 0 0 s0))) ∗ R =
-      ⌜s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart⌝ ∗
-        ((stackAt s0.sp stackBytes ∗ memcpySrc ro pathPtr pathBytes ∗ memRegion sret 24 ∗
-          StdErrnoCell s0.tpidrEl0 ∗ (mallocngRustCliAllocOf J hIf γ A).pool 0 0 s0) ∗ R) := by
-    sep_ac_rfl
-  rw [hEqPre, satisfies_pure_sepConj] at hmem1
-  rcases hmem1 with ⟨⟨htp0, hbs0⟩, hmem2⟩
-  have hfits : ∀ fd bs, pathBytes.length < 4096 → 0#8 ∉ pathBytes →
-      classifyOpenRdonly s0.fs (cPathOf pathBytes) = .ok fd .localFile →
-      s0.fs.files (cPathOf pathBytes) = some (.file bs) →
-      AllocSeqFits (mallocngRustCliAllocOf J hIf γ A) 1 0 0 (ReadLoopCommon.cliIoReadCaps 9 bs.length) :=
-    fun _ bs _ _ _ _ => allocSeqFits_mallocngRustCliAllocOf hIf γ A 1 0 0
-      (ReadLoopCommon.cliIoReadCaps 9 bs.length)
-  have hpre_raw : s0.mem ⊨
-      (signalSessionIoMultiLib.withCodeLoaded mpl
-        (cliIoReadFileGenSpec ro (mallocngRustCliAllocOf J hIf γ A) stackBytes)).pre
-          (sret, pathPtr, pathBytes, 0, 0) s0 ∗ R := by
-    dsimp only [MultiPlacedLib.withCodeLoaded, cliIoReadFileGenSpec]
-    rw [sepConj_comm _ ⌜signalSessionIoMultiLib.CodeLoaded mpl s0.mem⌝, sepConj_assoc,
-      satisfies_pure_sepConj]
-    refine ⟨hcl, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hlo, hhi, hsp_lo, hsp_va, hx0, hx1, hx8, hpathOk, hfits⟩, hmem2⟩
-  apply hraw.mono_outcome (sret, pathPtr, pathBytes, 0, 0) R s0 hpc hrun hpre_raw hsp
-  intro sf hout
-  rcases hout with ⟨hret, hcs, hpost⟩ | ⟨hpan, hp⟩ | ⟨code, hex, he⟩ | ⟨hoom_st, hoom⟩
-  · refine Or.inl ⟨hret, hcs, ?_⟩
-    dsimp only [MultiPlacedLib.withCodeLoaded, cliIoMallocngReadFileGenSpec]
-    dsimp only [MultiPlacedLib.withCodeLoaded, cliIoReadFileGenSpec] at hpost
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨hpres, hpost⟩
-    rw [memcpySrc_eq_bytesAt ro pathPtr pathBytes] at hpost
-    have hlive := stdLive_entails_repLive hIf γ A tp brkStart
-    have hpost1 := Satisfies.mono (sepConj_mono_left (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_left (cliIoReadFileResult_entails_ioVecAt
-        (mallocngRustCliAllocOf J hIf γ A) (cliIoMallocngAllocAt J γ A tp brkStart).repAlloc
-        hlive sret pathBytes 0 0 s0 sf hallocFd))))) hpost
-    cases hr : cliIoReadFileExpected s0.fs.files pathBytes with
-    | ok bs =>
-      simp only [hr] at hpost1
-      let pp := VerifiedLibraries.RustStd.allocSeqPool (mallocngRustCliAllocOf J hIf γ A) 1 0 0
-        (ReadLoopCommon.cliIoReadCaps 9 bs.length)
-      have hEq1 :
-          (stackAt s0.sp stackBytes ∗ bytesAt ro pathPtr pathBytes ∗
-            (⌜sf.fs = s0.fs⌝ ∗
-              ioVecAt (cliIoMallocngAllocAt J γ A tp brkStart).repAlloc sret (.ok bs) ∗
-              (mallocngRustCliAllocOf J hIf γ A).pool pp.1 pp.2 sf) ∗
-            StdErrnoCell s0.tpidrEl0) ∗ R =
-          ⌜sf.fs = s0.fs⌝ ∗
-            ((stackAt s0.sp stackBytes ∗ bytesAt ro pathPtr pathBytes ∗
-              ioVecAt (cliIoMallocngAllocAt J γ A tp brkStart).repAlloc sret (.ok bs) ∗
-              ((mallocngRustCliAllocOf J hIf γ A).pool pp.1 pp.2 sf ∗ StdErrnoCell s0.tpidrEl0)) ∗ R) := by
-        sep_ac_rfl
-      rw [hEq1, satisfies_pure_sepConj] at hpost1
-      rcases hpost1 with ⟨hfs_eq, hpost2⟩
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨⟨hpres, hfs_eq⟩, Satisfies.mono (sepConj_mono_left (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_right
-          (pool_reabsorb_errno hIf γ A tp brkStart pp.1 pp.2 htp0 hbs0 hpres))))) hpost2⟩
-    | error u =>
-      cases u
-      simp only [hr] at hpost1
-      have hEq1 :
-          (stackAt s0.sp stackBytes ∗ bytesAt ro pathPtr pathBytes ∗
-            (⌜sf.fs = s0.fs⌝ ∗
-              ioVecAt (cliIoMallocngAllocAt J γ A tp brkStart).repAlloc sret (.error ()) ∗
-              (mallocngRustCliAllocOf J hIf γ A).pool 0 0 sf) ∗
-            StdErrnoCell s0.tpidrEl0) ∗ R =
-          ⌜sf.fs = s0.fs⌝ ∗
-            ((stackAt s0.sp stackBytes ∗ bytesAt ro pathPtr pathBytes ∗
-              ioVecAt (cliIoMallocngAllocAt J γ A tp brkStart).repAlloc sret (.error ()) ∗
-              ((mallocngRustCliAllocOf J hIf γ A).pool 0 0 sf ∗ StdErrnoCell s0.tpidrEl0)) ∗ R) := by
-        sep_ac_rfl
-      rw [hEq1, satisfies_pure_sepConj] at hpost1
-      rcases hpost1 with ⟨hfs_eq, hpost2⟩
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨⟨hpres, hfs_eq⟩, Satisfies.mono (sepConj_mono_left (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_right
-          (pool_reabsorb_errno hIf γ A tp brkStart 0 0 htp0 hbs0 hpres))))) hpost2⟩
-  · dsimp only [MultiPlacedLib.withCodeLoaded, cliIoReadFileGenSpec] at hp
-    rw [satisfies_pure_sepConj] at hp; exact False.elim hp.1
-  · dsimp only [MultiPlacedLib.withCodeLoaded, cliIoReadFileGenSpec] at he
-    rw [satisfies_pure_sepConj] at he; exact False.elim he.1
-  · refine Or.inr (Or.inr (Or.inr ⟨hoom_st, ?_⟩))
-    dsimp only [MultiPlacedLib.withCodeLoaded, cliIoMallocngReadFileGenSpec]
-    dsimp only [MultiPlacedLib.withCodeLoaded, cliIoReadFileGenSpec,
-      ReadFileProof.cliIoReadFileOom] at hoom
-    rw [satisfies_pure_sepConj] at hoom ⊢
-    rcases hoom with ⟨⟨_, _, fd, _, k, sm, _, ⟨htr_m, hsig_m⟩, hfs_m, ⟨hfs_f, htr_f, hsig_f⟩⟩, hR⟩
-    refine ⟨⟨?_, htr_f.trans htr_m, hsig_f.trans hsig_m⟩, hR⟩
-    rw [hfs_f, hfs_m]; rfl
-
-theorem cliIoMallocngReadFile_ok {J : MallocngIface} (hIf : MallocngIfaceFacts J)
-    (γ : GhostName) (A : MallocngAddrs) (tp brkStart : BitVec 64)
-    {mpl : MultiPlacement} (hpl : signalSessionIoMultiLib.Placeable mpl)
-    {P : Program} {stackBytes : Nat}
-    (hsvc : P.svc = Syscall.standard)
-    (hext_os : ExternPreservesOracleSymtab P)
-    (hext3 : CliIoBlockNoExtern mpl P 3)
-    (hext4 : CliIoBlockNoExtern mpl P 4)
-    (hopen : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoOpenSym)
-      muslOpenRdonlyDetSpec)
-    (herrno : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoErrnoLocationSym)
-      muslErrnoLocationSpec)
-    (hread_dir : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadSym)
-      muslReadDir32Spec)
-    (hread_file : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadSym)
-      muslReadFileOrStdio32Spec)
-    (hclose : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoCloseSym)
-      muslClose48LocalSpec)
-    (hmemcpy : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoMemcpySym)
-      stdMemcpySpec)
-    (hshim : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustNoAllocShimSym)
-      allocAllocShimSpec)
-    (hAlloc : RustStdAllocEntries (mallocngRustCliAllocOf J hIf γ A) P
-      { alloc   := signalSessionIoMultiLib.resolve mpl cliIoRustAllocSym
-        dealloc := signalSessionIoMultiLib.resolve mpl cliIoRustDeallocSym
-        realloc := signalSessionIoMultiLib.resolve mpl cliIoRustReallocSym }) :
-    subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadFileSym)
-      (signalSessionIoMultiLib.withCodeLoaded mpl
-        (cliIoMallocngReadFileSpec (J := J) γ A tp brkStart stackBytes)) :=
-  cliIoMallocngReadFileGen_ok false hIf γ A tp brkStart hpl hsvc hext_os hext3 hext4
-    hopen herrno hread_dir hread_file hclose hmemcpy hshim hAlloc
-
-theorem cliIoMallocngReadFileRo_ok {J : MallocngIface} (hIf : MallocngIfaceFacts J)
-    (γ : GhostName) (A : MallocngAddrs) (tp brkStart : BitVec 64)
-    {mpl : MultiPlacement} (hpl : signalSessionIoMultiLib.Placeable mpl)
-    {P : Program} {stackBytes : Nat}
-    (hsvc : P.svc = Syscall.standard)
-    (hext_os : ExternPreservesOracleSymtab P)
-    (hext3 : CliIoBlockNoExtern mpl P 3)
-    (hext4 : CliIoBlockNoExtern mpl P 4)
-    (hopen : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoOpenSym)
-      muslOpenRdonlyDetSpec)
-    (herrno : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoErrnoLocationSym)
-      muslErrnoLocationSpec)
-    (hread_dir : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadSym)
-      muslReadDir32Spec)
-    (hread_file : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadSym)
-      muslReadFileOrStdio32Spec)
-    (hclose : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoCloseSym)
-      muslClose48LocalSpec)
-    (hmemcpy : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoMemcpySym)
-      stdMemcpySpec)
-    (hshim : subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoRustNoAllocShimSym)
-      allocAllocShimSpec)
-    (hAlloc : RustStdAllocEntries (mallocngRustCliAllocOf J hIf γ A) P
-      { alloc   := signalSessionIoMultiLib.resolve mpl cliIoRustAllocSym
-        dealloc := signalSessionIoMultiLib.resolve mpl cliIoRustDeallocSym
-        realloc := signalSessionIoMultiLib.resolve mpl cliIoRustReallocSym }) :
-    subroutine_ok P (signalSessionIoMultiLib.resolve mpl cliIoReadFileSym)
-      (signalSessionIoMultiLib.withCodeLoaded mpl
-        (cliIoMallocngReadFileRoSpec (J := J) γ A tp brkStart stackBytes)) :=
-  cliIoMallocngReadFileGen_ok true hIf γ A tp brkStart hpl hsvc hext_os hext3 hext4
-    hopen herrno hread_dir hread_file hclose hmemcpy hshim hAlloc
 
 /-! ## 4. Schedule Identity with `SpecBudget.cliIoReadScheduleCaps` -/
 

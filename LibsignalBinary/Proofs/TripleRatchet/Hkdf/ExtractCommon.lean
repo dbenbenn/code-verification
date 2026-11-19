@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Common
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Common -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import ProofLib.Hoare.SubroutineHook
 import ProofLib.SepLogic.HeapIntro
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Definitions and Cut Predicates for `extract`
@@ -23,7 +23,7 @@ Defines `RunsToE`, `S2Frame`, 32-byte `new_from_slice` bridges, and cut-point in
 `ENfs1`–`EPost` for `GenericHkdf<Hmac<Sha256>>::extract`.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
@@ -64,7 +64,7 @@ theorem extractLsb'_64_64_zero128 : BitVec.extractLsb' 64 64 0#128 = 0#64 := rfl
 
 /-- Like `RunsTo`, but without `VCalleeSaved` (since `SubroutineOk` / `CallingConventionPreserved`
 only preserves `sp` and `x19..x29`). -/
-def RunsToE (prog : Program) (s₀ : State) (P : State → Prop) : Prop :=
+@[expose] def RunsToE (prog : Program) (s₀ : State) (P : State → Prop) : Prop :=
   prog.CodeLoaded s₀.mem →
     ∃ sf, Steps prog s₀ sf ∧ TraceEq s₀ sf ∧ P sf ∧ prog.CodeLoaded sf.mem
 
@@ -201,7 +201,7 @@ theorem isBlock_three_mapped_false {P1 P2 P3 : SepProp} {b1 b2 b3 : BitVec 64} {
 
 /-- Frame condition preserving all readable bytes outside `regs`, as well as `Perm.rw` and
 readability (`(perm a).r = true`) everywhere. -/
-def S2Frame (m₁ m₂ : Memory) (regs : List (BitVec 64 × ℕ)) : Prop :=
+@[expose] def S2Frame (m₁ m₂ : Memory) (regs : List (BitVec 64 × ℕ)) : Prop :=
   (∀ a, (m₁.perm a).r = true → m₁.isLazyFree a = false →
     (∀ r ∈ regs, OutsideRegion r.1 r.2 a) → m₂.read8 a = m₁.read8 a) ∧
   (((∀ a, m₁.permNoLazy a = some Perm.rw → m₂.permNoLazy a = some Perm.rw) ∧
@@ -370,7 +370,7 @@ theorem update_two_blocks {P1 P1' P2 P2' R : SepProp}
 end S2Frame
 
 /-- Full complement heap capturing `.rw`, `.ro` (readable), and `.protNone` bytes outside `h`. -/
-def fullComplementHeap (h : Heap) (m : Memory) : Heap :=
+@[expose] def fullComplementHeap (h : Heap) (m : Memory) : Heap :=
   { phys := fun a =>
       match h.phys a with
       | some _ => none
@@ -583,113 +583,6 @@ theorem isBlock_three_s2frame {P1 P1' P2 P3 R1 R2 R3 : SepProp}
             obtain ⟨-, hr', hlf'⟩ := hmc a _ hca
             exact ⟨hr', hlf'⟩
 
-/-- Turns `NewFromSliceOk` into a `RunsToE` transition on a 32-byte key slice at `keyA`. -/
-theorem nfs32_runsTo {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hNfs : NewFromSliceOk img C ctl abs)
-    {s : State} {ret keyA : BitVec 64} {key : List (BitVec 8)}
-    (hfrz : img.FrozenLoaded s)
-    (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = img.base + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]"))
-    (hstat : s.status = .Running)
-    (hx0 : s.readReg64 .x0 = ret)
-    (hx1 : s.readReg64 .x1 = keyA)
-    (hx2 : s.readReg64 .x2 = 32#64)
-    (hkey_len : key.length = 32)
-    (hkey_mem : s.mem.readBytes keyA 32 = key)
-    (hrw_ret : RW s.mem ret 0x98)
-    (hrw_key : RW s.mem keyA 32)
-    (hrw_stk : RW s.mem (s.sp - 544#64) 544)
-    (hd_ret_key : DisjointRegions ret 0x98 keyA 32)
-    (hd_ret_stk : DisjointRegions ret 0x98 (s.sp - 544#64) 544)
-    (hd_key_stk : DisjointRegions keyA 32 (s.sp - 544#64) 544)
-    (hsp_al : (s.sp &&& 15#64) = 0#64) :
-    RunsToE (tripleRatchetProgAt img.base C ctl abs) s (fun s' =>
-      s'.pc = s.readReg64 .lr ∧
-      s'.status = .Running ∧
-      CallingConventionPreserved s s' ∧
-      s'.mem.read64 ret = 0#64 ∧
-      HmacSt s'.mem (ret + 8#64) C.F key [] ∧
-      S2Frame s.mem s'.mem [(ret, 0x98), (s.sp - 544#64, 544)]) := by
-  intro hL
-  have hfn : (tripleRatchetProgAt img.base C ctl abs).fnAddr newFromSliceName = img.base + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]") := by
-    unfold tripleRatchetProgAt newFromSliceName
-    rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]")]
-  let xg : NewFromSliceGhost := { ret := ret, keyA := keyA, key := key }
-  let P1 : SepProp := memRegion ret 0x98
-  let P2 : SepProp := (keyA ↦ₛ key)
-  let P3 : SepProp := stackAt s.sp newFromSliceStack
-  let P : SepProp := P1 ∗ P2 ∗ P3
-  have hb1 : IsBlock P1 ret 0x98 (fun _ => True) := IsBlock.memRegion ret 0x98
-  have hb2 : IsBlock P2 keyA 32 (fun m => key.length ≤ 2 ^ 64 ∧ m.readBytes keyA key.length = key) :=
-    IsBlock.pointsToBytes_len hkey_len
-  have hb3 : IsBlock P3 (s.sp - 544#64) 544 (fun _ => True) := IsBlock.memRegion (s.sp - 544#64) 544
-  have hkey_le64 : key.length ≤ 64 := by omega
-  have hkey_le264 : key.length ≤ 2 ^ 64 := by omega
-  have hsatP : s.mem ⊨ P :=
-    satisfies_three_blocks hb1 hb2 hb3 trivial ⟨hkey_le264, by rwa [hkey_len]⟩ trivial
-      hrw_ret hrw_key hrw_stk hd_ret_key hd_ret_stk hd_key_stk (by decide) (by decide)
-  obtain ⟨hP, hpP, hmP⟩ := Satisfies.elim hsatP
-  let hc : Heap := fullComplementHeap hP s.mem
-  let R : SepProp := ⟨fun h => h = hc⟩
-  have hsatPR : s.mem ⊨ P ∗ R :=
-    Satisfies.sepConj_intro (disjoint_fullComplementHeap hP s.mem) hpP rfl
-      (Heap.Matches.union hmP (matches_fullComplementHeap hP s.mem))
-  have hx2_nat : (s.readReg64 .x2).toNat = key.length := by
-    rw [hx2, hkey_len]; rfl
-  have hpre_sat : s.mem ⊨ ((newFromSliceSpec C.F).inImage img).pre xg s ∗ R := by
-    rw [Spec.inImage, newFromSliceSpec]
-    dsimp only [xg]
-    rw [sepConj_assoc, satisfies_pure_sepConj, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hfrz, hsym⟩, ⟨hx0, hx1, hx2_nat, hkey_le64⟩, ?_⟩
-    simpa [P, P1, P2, P3, sepConj_assoc] using hsatPR
-  have hsp_aligned : s.spAligned = true := by
-    simpa [State.spAligned] using hsp_al
-  have hcall := subroutine_ok_apply_full hNfs xg R (hpc.trans hfn.symm) hstat hpre_sat hsp_aligned
-    (by intro _ _ hp; dsimp only [Spec.inImage, newFromSliceSpec] at hp; rw [satisfies_pure_sepConj] at hp; exact hp.1)
-    (by intro _ _ _ he; dsimp only [Spec.inImage, newFromSliceSpec] at he; rw [satisfies_pure_sepConj] at he; exact he.1)
-    (by intro _ _ hoom; dsimp only [Spec.inImage, newFromSliceSpec] at hoom; rw [satisfies_pure_sepConj] at hoom; exact hoom.1) hL
-  obtain ⟨s', hsteps, ⟨hpc', hstat', hpost_sat, hcc⟩ | ⟨_, hfalse⟩⟩ := hcall
-  · rw [Spec.inImage, newFromSliceSpec] at hpost_sat
-    dsimp only [xg] at hpost_sat
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost_sat
-    rcases hpost_sat with ⟨htr, hpost_sep⟩
-    let P1' : SepProp := (ret ↦₆₄ 0#64) ∗ hmacCoreAt C.F (ret + 8#64) key []
-    have hb1_tag : IsBlock (ret ↦₆₄ 0#64) ret 8 (fun m => m.read64 ret = 0#64) :=
-      IsBlock.pointsTo64 ret 0#64
-    have hb1_hm : IsBlock (hmacCoreAt C.F (ret + 8#64) key []) (ret + 8#64) 0x90
-        (fun m => HmacSt m (ret + 8#64) C.F key []) :=
-      isBlock_hmacCoreAt C.F (ret + 8#64) key [] (by decide)
-    have hb1' : IsBlock P1' ret 0x98
-        (fun m => m.read64 ret = 0#64 ∧ HmacSt m (ret + 8#64) C.F key []) :=
-      hb1_tag.sepConj hb1_hm rfl (by decide)
-    change s'.mem ⊨ ((ret ↦₆₄ 0#64) ∗ hmacCoreAt C.F (ret + 8#64) key [] ∗ P2 ∗ P3) ∗ R at hpost_sep
-    have hpost_1 : s'.mem ⊨ P1' ∗ (P2 ∗ (P3 ∗ R)) := by
-      dsimp only [P1']; ac_nf at hpost_sep ⊢
-    have hpost_2 : s'.mem ⊨ P2 ∗ (P1' ∗ (P3 ∗ R)) := by
-      ac_nf at hpost_1 ⊢
-    have hpost_3 : s'.mem ⊨ P3 ∗ (P1' ∗ (P2 ∗ R)) := by
-      ac_nf at hpost_1 ⊢
-    have hpost_R : s'.mem ⊨ R ∗ (P1' ∗ (P2 ∗ P3)) := by
-      ac_nf at hpost_1 ⊢
-    obtain ⟨hok, hhm⟩ := hb1'.read hpost_1
-    have hkey_s' : s'.mem.readBytes keyA 32 = key := by
-      have h := (hb2.read hpost_2).2
-      rwa [hkey_len] at h
-    have hmc : hc.Matches s'.mem := by
-      obtain ⟨hc', _, _, hR_hc', _, hmatch⟩ := Satisfies.sepConj_elim hpost_R
-      cases hR_hc'
-      exact Heap.Matches.of_union_left hmatch
-    unfold Heap.Matches at hmc
-    have hmc_map := hmc.2.2
-    replace hmc := hmc.1
-    have hframe : S2Frame s.mem s'.mem [(ret, 0x98), (s.sp - 544#64, 544)] :=
-      isBlock_three_s2frame hb1 hb1' hb2 hb3 hpP hmP hpost_1 hpost_2 hpost_3
-        (by decide) (hkey_s'.trans hkey_mem.symm) hmc hmc_map
-    exact ⟨s', hsteps, ⟨htr, CallingConventionPreserved.vregs hcc⟩, ⟨hpc', hstat', hcc, hok, hhm, hframe⟩,
-      hsteps.codeLoaded hL⟩
-  · exact hfalse.elim
-
 /-! ## Alignment, Sub-Region, and Disjointness Helpers -/
 
 theorem sp0_aligned {sp sp0 : BitVec 64} (hsp0 : sp = sp0 + 432#64)
@@ -747,15 +640,15 @@ theorem disj_stk_sub_right {a : BitVec 64} {n : ℕ} {sp0 : BitVec 64}
 
 /-! ## Frame, Saved Registers, and Common State Invariant -/
 
-def saltPtrOf (sp0 : BitVec 64) (x : ExtractGhost) : BitVec 64 :=
+@[expose] def saltPtrOf (sp0 : BitVec 64) (x : ExtractGhost) : BitVec 64 :=
   match x.salt with
   | none => sp0 + 144#64
   | some _ => x.saltA
 
-def saltRegOf (sp0 : BitVec 64) (x : ExtractGhost) : BitVec 64 :=
+@[expose] def saltRegOf (sp0 : BitVec 64) (x : ExtractGhost) : BitVec 64 :=
   if x.saltA = 0#64 then sp0 + 144#64 else x.saltA
 
-def saltSliceOf (x : ExtractGhost) : List (BitVec 8) :=
+@[expose] def saltSliceOf (x : ExtractGhost) : List (BitVec 8) :=
   match x.salt with
   | none => if x.saltA = 0#64 then List.replicate 32 0#8 else []
   | some s => s.toList
@@ -1020,10 +913,10 @@ abbrev ExtCommon (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtSaved s0 sp0 s.mem ∧
   ExtFrame s0 sp0 s.mem
 
-def ENfs1 (b : BitVec 64) (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
+@[expose] def ENfs1 (b : BitVec 64) (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
-  s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]") ∧
-  s.readReg64 .lr = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 80) ∧
+  s.pc = b + bv% offNewFromSlice1 ∧
+  s.readReg64 .lr = b + bv% (offExtract + 80) ∧
   s.readReg64 .x0 = sp0 + 176#64 ∧
   s.readReg64 .x1 = saltRegOf sp0 x ∧
   s.readReg64 .x2 = BitVec.ofNat 64 (saltSliceOf x).length ∧
@@ -1032,20 +925,20 @@ def ENfs1 (b : BitVec 64) (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s :
   (∀ sv, x.salt = some sv → x.saltA ≠ 0#64) ∧
   s.mem.readBytes (saltPtrOf sp0 x) (saltSliceOf x).length = saltSliceOf x
 
-def ERet1 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def ERet1 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
-  s.pc = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 80) ∧
+  s.pc = b + bv% (offExtract + 80) ∧
   s.readReg64 .x20 = x.ikmA ∧
   s.readReg64 .x21 = 32#64 ∧
   s.mem.read64 (sp0 + 176#64) = 0#64 ∧
   HmacSt s.mem (sp0 + 184#64) F (effectiveSalt x.salt) []
 
-def EMemcpy (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def EMemcpy (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
-  s.pc = b + bv% (ls_off% "memcpy") ∧
-  s.readReg64 .lr = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 192) ∧
+  s.pc = b + bv% offMemcpy ∧
+  s.readReg64 .lr = b + bv% (offExtract + 192) ∧
   s.readReg64 .x0 = sp0 ∧
   s.readReg64 .x1 = x.ikmA ∧
   s.readReg64 .x2 = 32#64 ∧
@@ -1054,51 +947,51 @@ def EMemcpy (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
   s.readReg64 .x25 = 0#64 ∧
   HmacSt s.mem sp0 F (effectiveSalt x.salt) []
 
-def EC88 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def EC88 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
-  s.pc = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 328) ∧
+  s.pc = b + bv% (offExtract + 328) ∧
   s.readReg64 .x22 = sp0 + 176#64 ∧
   HmacSt s.mem sp0 F (effectiveSalt x.salt) x.ikm
 
-def EFin (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def EFin (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
-  s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]") ∧
-  s.readReg64 .lr = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 380) ∧
+  s.pc = b + bv% offFinalizeFixed1 ∧
+  s.readReg64 .lr = b + bv% (offExtract + 380) ∧
   s.readReg64 .x0 = sp0 + 144#64 ∧
   s.readReg64 .x1 = sp0 + 176#64 ∧
   s.readReg64 .x22 = sp0 + 176#64 ∧
   HmacSt s.mem (sp0 + 176#64) F (effectiveSalt x.salt) x.ikm
 
-def ERetFin (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def ERetFin (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
-  s.pc = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 380) ∧
+  s.pc = b + bv% (offExtract + 380) ∧
   s.readReg64 .x22 = sp0 + 176#64 ∧
   s.mem.readBytes (sp0 + 144#64) 32 = x.prk F
 
-def ENfs2 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def ENfs2 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
-  s.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as crypto_common::KeyInit>::new_from_slice [local#1]") ∧
-  s.readReg64 .lr = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 396) ∧
+  s.pc = b + bv% offNewFromSlice1 ∧
+  s.readReg64 .lr = b + bv% (offExtract + 396) ∧
   s.readReg64 .x0 = sp0 + 176#64 ∧
   s.readReg64 .x1 = sp0 + 144#64 ∧
   s.readReg64 .x2 = 32#64 ∧
   s.readReg64 .x22 = sp0 + 176#64 ∧
   s.mem.readBytes (sp0 + 144#64) 32 = x.prk F
 
-def ERet2 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def ERet2 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
-  s.pc = b + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 396) ∧
+  s.pc = b + bv% (offExtract + 396) ∧
   s.readReg64 .x22 = sp0 + 176#64 ∧
   s.mem.read64 (sp0 + 176#64) = 0#64 ∧
   s.mem.readBytes (sp0 + 144#64) 32 = x.prk F ∧
   HmacSt s.mem (sp0 + 184#64) F (x.prk F) []
 
-def EPost (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def EPost (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s' : State) : Prop :=
   s'.pc = s0.readReg64 .lr ∧ s'.status = .Running ∧ CalleeSaved s0 s' ∧
   s'.mem.readBytes (s0.readReg64 .x0) 32 = x.prk F ∧
@@ -1136,7 +1029,7 @@ theorem read64_sp0_write64_out_zero (m : Memory) {sp0 rOff out v : BitVec 64}
 
 /-! ## Relocatable `[LibsignalPlacement]` Cut Predicates -/
 
-def ENfs1Placed [LibsignalPlacement] (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
+@[expose] def ENfs1Placed [LibsignalPlacement] (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
   s.pc = lsmpl.base 114 ∧
   s.readReg64 .lr = (blkPl_54).base + 80#64 ∧
@@ -1148,7 +1041,7 @@ def ENfs1Placed [LibsignalPlacement] (x : ExtractGhost) (s0 : State) (sp0 : BitV
   (∀ sv, x.salt = some sv → x.saltA ≠ 0#64) ∧
   s.mem.readBytes (saltPtrOf sp0 x) (saltSliceOf x).length = saltSliceOf x
 
-def EMemcpyPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def EMemcpyPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
   s.pc = lsρ lsMemcpySym ∧
@@ -1161,7 +1054,7 @@ def EMemcpyPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → Sha
   s.readReg64 .x25 = 0#64 ∧
   HmacSt s.mem sp0 F (effectiveSalt x.salt) []
 
-def EFinPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def EFinPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
   s.pc = (blkPl_123).base ∧
@@ -1171,7 +1064,7 @@ def EFinPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaSta
   s.readReg64 .x22 = sp0 + 176#64 ∧
   HmacSt s.mem (sp0 + 176#64) F (effectiveSalt x.salt) x.ikm
 
-def ENfs2Placed [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def ENfs2Placed [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   ExtCommon s0 sp0 s ∧
   s.pc = lsmpl.base 114 ∧

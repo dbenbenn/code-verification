@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Actions.ProtocolEvent
 import Mathlib.Data.List.Basic
@@ -24,7 +24,7 @@ unfolding and trace-append lemmas for `Move.vis`, `newIndices`, `newRandoms`, `r
 and `exposures`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,13 +38,13 @@ open DY.Libsignal.PQXDH (PQXDHEvent)
 /-! ## Triple-Ratchet-Shaped Entries -/
 
 /-- Byte layout of a single-term Triple Ratchet visible entry of kind `k`. -/
-def trLayout : VisEventKind → VisByteLayout
+@[expose] def trLayout : VisEventKind → VisByteLayout
   | .send | .recv => .whisper
   | .leak => .leakRecord
   | _ => .single
 
 /-- Composed `VisEntry` for a single-term Triple Ratchet entry `(k, t)` with no anchor. -/
-def trEntry (k : VisEventKind) (t : DY.Bytes) : VisEntry := ⟨k, [t], trLayout k, none⟩
+@[expose] def trEntry (k : VisEventKind) (t : DY.Bytes) : VisEntry := ⟨k, [t], trLayout k, none⟩
 
 @[simp] theorem trLayout_send : trLayout .send = .whisper := rfl
 @[simp] theorem trLayout_recv : trLayout .recv = .whisper := rfl
@@ -197,7 +197,7 @@ theorem newRandoms_append_of_proj {tr0 tr : ExecTrace} (h : tr0.length ≤ tr.le
   simp
 
 /-- The plaintext of a `Received` event at index `i` of `tr`, if any. -/
-def receivedAt (tr : ExecTrace) (i : Nat) : Option DY.Bytes :=
+@[expose] def receivedAt (tr : ExecTrace) (i : Nat) : Option DY.Bytes :=
   match tr.getEventAt TREvent i with
   | some (.Received _ _ _ _ m) => some m
   | _ => none

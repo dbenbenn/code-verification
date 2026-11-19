@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.Core
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.Core -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.Model
@@ -27,7 +27,7 @@ Proves `TooFarPathPlacedSpec` under `RustCliAllocBudget M` and `SeamBudget`, rul
 `__rust_alloc(36, 1)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

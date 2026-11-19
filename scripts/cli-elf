@@ -597,6 +597,27 @@ def accept_snapshot_link_exit(
     return expect_alias_present
 
 
+def read_placed_lean_with_shards(lean_path: pathlib.Path) -> str:
+    """Read a `*PlacedObj.lean` module together with any sibling `*PlacedObjShard<k>.lean` modules
+    it imports (in import order), so both unsharded and `placed_shards` outputs parse identically."""
+    root_txt = lean_path.read_text(encoding="utf-8")
+    shard_mods = re.findall(
+        rf"^(?:public\s+)?import\s+\S*\.({re.escape(lean_path.stem)}Shard\d+)\s*$",
+        root_txt,
+        flags=re.MULTILINE,
+    )
+    if not shard_mods:
+        return root_txt
+    parts: list[str] = []
+    for mod in shard_mods:
+        shard_path = lean_path.parent / f"{mod}.lean"
+        if not shard_path.is_file():
+            raise RuntimeError(f"missing placed shard module {shard_path} imported by {lean_path}")
+        parts.append(shard_path.read_text(encoding="utf-8"))
+    parts.append(root_txt)
+    return "\n".join(parts)
+
+
 def verify_std_symtab_and_block621_alias(
     elf_bytes: bytes,
     elf_code: bytes,
@@ -797,7 +818,7 @@ def verify_std_symtab_and_block621_alias(
     if not (placed_lean.is_file() and placed_bin.is_file()):
         raise RuntimeError("Block-621 alias proof failed (A3): missing LibsignalSessionPlacedObj.{lean,bin}")
 
-    placed_lean_txt = placed_lean.read_text(encoding="utf-8")
+    placed_lean_txt = read_placed_lean_with_shards(placed_lean)
     if unpinned:
         dyn_re = re.compile(
             rf'/--\s*The code bytes of block `\d+` \(`std:\.text\.unlikely\.{re.escape(PINNED_STD_MERGEFUNC_PRIMARY)}`\)\.\s*-/\s*'
@@ -818,17 +839,35 @@ def verify_std_symtab_and_block621_alias(
         placed_ident = "libsignalSessionPlacedCode621"
         bin_off, bin_len = int(m.group(1)), int(m.group(2))
     blocks_hdr = "def libsignalSessionBlocks : List Obj.CodeBlock := ["
-    if blocks_hdr not in placed_lean_txt:
+    sharded_hdr = "def libsignalSessionBlocks : List Obj.CodeBlock :="
+    if blocks_hdr in placed_lean_txt:
+        after_blocks = placed_lean_txt.split(blocks_hdr, 1)[1]
+        if "\n]\n" not in after_blocks:
+            raise RuntimeError(
+                "Block-621 alias proof failed (A3/N3): unterminated `def libsignalSessionBlocks` list"
+            )
+        blocks_bodies = [after_blocks.split("\n]\n", 1)[0]]
+    elif sharded_hdr in placed_lean_txt:
+        after_hdr = placed_lean_txt.split(sharded_hdr, 1)[1].split("\n\n", 1)[0]
+        shard_defs = re.findall(r"\blibsignalSessionBlocksShard\d+\b", after_hdr)
+        if not shard_defs:
+            raise RuntimeError(
+                "Block-621 alias proof failed (A3/N3): empty `def libsignalSessionBlocks` shard list"
+            )
+        blocks_bodies = []
+        for sdef in shard_defs:
+            shdr = f"def {sdef} : List Obj.CodeBlock := ["
+            if shdr not in placed_lean_txt:
+                raise RuntimeError(f"Block-621 alias proof failed (A3/N3): missing `{shdr}`")
+            s_after = placed_lean_txt.split(shdr, 1)[1]
+            if "\n]\n" not in s_after:
+                raise RuntimeError(f"Block-621 alias proof failed (A3/N3): unterminated `def {sdef}` list")
+            blocks_bodies.append(s_after.split("\n]\n", 1)[0])
+    else:
         raise RuntimeError(
             "Block-621 alias proof failed (A3/N3): missing `def libsignalSessionBlocks` in LibsignalSessionPlacedObj.lean"
         )
-    after_blocks = placed_lean_txt.split(blocks_hdr, 1)[1]
-    if "\n]\n" not in after_blocks:
-        raise RuntimeError(
-            "Block-621 alias proof failed (A3/N3): unterminated `def libsignalSessionBlocks` list"
-        )
-    blocks_body = after_blocks.split("\n]\n", 1)[0]
-    if f"{{ code := {placed_ident}\n" not in blocks_body:
+    if not any(f"{{ code := {placed_ident}\n" in body for body in blocks_bodies):
         raise RuntimeError(
             f"Block-621 alias proof failed (A3/N3): {placed_ident} not registered inside "
             "libsignalSessionBlocks list body (CliElfCodeMatchesPlaced)"
@@ -1253,7 +1292,7 @@ def parse_io_placed_lean(lean_path: pathlib.Path) -> dict[str, Any]:
 
 def parse_placed_obj_externs(lean_path: pathlib.Path) -> set[str]:
     """Extract the union of generated mangled `externs` across all blocks of a `*PlacedObj.lean` file."""
-    text = lean_path.read_text(encoding="utf-8")
+    text = read_placed_lean_with_shards(lean_path)
     anchor = "externs := ["
     idx = 0
     found = False
@@ -1440,7 +1479,7 @@ def collect_proved_block_symbols(repo_root: pathlib.Path, lock: dict[str, Any]) 
     """Dynamically collect proved export/block symbol names from generated/proved Lean modules + `rdl_shim`."""
     proved: set[str] = set()
     scan_files: list[pathlib.Path] = (
-        sorted((repo_root / ".GeneratedLean" / "GeneratedLean").glob("*PlacedObj.lean"))
+        sorted((repo_root / ".GeneratedLean" / "GeneratedLean").glob("*PlacedObj*.lean"))
         + sorted((repo_root / "arm64-semantics" / "VerifiedLibraries").rglob("Generated/*.lean"))
         + sorted(
             (repo_root / "LibsignalBinary" / "Proofs" / "SignalSession" / "Cli").glob("*Relink/TieSpec.lean")
@@ -2364,6 +2403,9 @@ def prepare_unpinned_repo(
         src_p = image_dir / nm
         if src_p.is_file():
             shutil.copy2(src_p, eff_gen / nm)
+    for shard_p in sorted(image_dir.glob("LibsignalSessionPlacedObjShard*.lean")):
+        if shard_p.is_file():
+            shutil.copy2(shard_p, eff_gen / shard_p.name)
 
     return eff_repo, cfg_rel
 

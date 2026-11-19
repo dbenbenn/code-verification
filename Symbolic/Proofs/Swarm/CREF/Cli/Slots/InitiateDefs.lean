@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPure
+public import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPure -- proof-setup: allow-public-import
 import all Init.Data.Repr
 import all Init.Data.String.Defs
-public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import Symbolic.Proofs.Swarm.CREF.Cli.World.XplTransferPure
 
@@ -24,7 +24,7 @@ tapes, relates `BundleTyped` `PublicBundle` values to `PreKeyBundleFields`, and
 characterizes Alice's `PqParty` directory state and peer-identity trust check.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -208,7 +208,7 @@ structure AlicePqParty (interp : ExternInterpretation) (r : ProtocolSetup) (st :
   kyberLastResort_nil : st.kyberLastResort = []
 
 /-- Initial `PqParty` state of Alice before any session exists (`initDirs`). -/
-def aliceInitPqParty (interp : ExternInterpretation) (r : ProtocolSetup) : PqParty where
+@[expose] def aliceInitPqParty (interp : ExternInterpretation) (r : ProtocolSetup) : PqParty where
   party := .A
   me := ⟨vec32 (secretBytes r 0), r.regIdA⟩
   peerId := some ⟨⟨vec32 (pubBytes interp (secretBytes r 1))⟩⟩

@@ -23,7 +23,7 @@ Bounds single and union spurious DH-ratchet step probabilities (`spuriousStepTer
 `rootKdfAsPrg`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -53,7 +53,7 @@ theorem prgReal_true_le {Seed Out : Type} [SampleableType Seed] [SampleableType 
         gcongr
         exact le_self_add
 
-noncomputable def spurUnit (F : ShaState → List (BitVec 8) → ShaState) (encPt : Pt → List (BitVec 8))
+@[expose] noncomputable def spurUnit (F : ShaState → List (BitVec 8) → ShaState) (encPt : Pt → List (BitVec 8))
     (Dh : DHFun (BitVec 256) Pt) : ℝ≥0∞ :=
   ⨆ (rk : Ratchet.RootKey) (curCkaMsg : Pt) (y : BitVec 256) (c : ℕ) (_ : c < 2 ^ 32) (salt : Salt)
     (ids : SerializedIdentityKeys) (ser : List (BitVec 8)) (_ : ser.length < 2 ^ 32) (tag : BitVec 64),
@@ -82,15 +82,7 @@ theorem spurBound_eq_mul_spurUnit (F : ShaState → List (BitVec 8) → ShaState
     spuriousStepTerm F encPt Dh q qep = (q * qep : ℕ) * spurUnit F encPt Dh :=
   rfl
 
-theorem spuriousStepTerm_le_old (F : ShaState → List (BitVec 8) → ShaState)
-    (encPt : Pt → List (BitVec 8)) (Dh : DHFun (BitVec 256) Pt) (q qep : ℕ) :
-    spuriousStepTerm F encPt Dh q qep ≤
-      (q * (qep + 1) : ℕ) * spurUnit F encPt Dh := by
-  rw [spurBound_eq_mul_spurUnit]
-  gcongr
-  exact Nat.le_succ qep
-
-noncomputable def spurUnitPt (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] noncomputable def spurUnitPt (F : ShaState → List (BitVec 8) → ShaState)
     (encPt : Pt → List (BitVec 8)) (Dh : DHFun (BitVec 256) Pt) : ℝ≥0∞ :=
   ⨆ (rk : Ratchet.RootKey) (curCkaMsg : {P : Pt // P ≠ 0}) (T : {P : Pt // P ≠ 0})
     (c : ℕ) (_ : c < 2 ^ 32) (salt : Salt) (ids : SerializedIdentityKeys) (ser : List (BitVec 8))
@@ -108,14 +100,6 @@ theorem spurBoundPt_eq_mul_spurUnitPt (F : ShaState → List (BitVec 8) → ShaS
     forgedEpochStartSpuriousStepTerm F encPt Dh q = (q : ℝ≥0∞) * spurUnitPt F encPt Dh :=
   rfl
 
-theorem forgedEpochStartSpuriousStepTerm_le_old (F : ShaState → List (BitVec 8) → ShaState)
-    (encPt : Pt → List (BitVec 8)) (Dh : DHFun (BitVec 256) Pt) (q qep : ℕ) :
-    forgedEpochStartSpuriousStepTerm F encPt Dh q ≤
-      (q * (qep + 1) : ℕ) * spurUnitPt F encPt Dh := by
-  rw [spurBoundPt_eq_mul_spurUnitPt]
-  refine mul_le_mul_of_nonneg_right ?_ (by positivity)
-  exact_mod_cast Nat.le_mul_of_pos_right q (Nat.succ_pos qep)
-
 theorem spurSinglePt_le_spurUnitPt (F : ShaState → List (BitVec 8) → ShaState)
     (encPt : Pt → List (BitVec 8)) (Dh : DHFun (BitVec 256) Pt)
     (rk : Ratchet.RootKey) (curCkaMsg : Pt) (hTcur : curCkaMsg ≠ 0) (T : Pt) (hT : T ≠ 0)
@@ -128,7 +112,7 @@ theorem spurSinglePt_le_spurUnitPt (F : ShaState → List (BitVec 8) → ShaStat
   exact le_iSup_of_le rk (le_iSup_of_le ⟨curCkaMsg, hTcur⟩ (le_iSup_of_le ⟨T, hT⟩ (le_iSup₂_of_le c hc
     (le_iSup_of_le salt (le_iSup_of_le ids (le_iSup₂_of_le ser hser (le_iSup_of_le tag le_rfl)))))))
 
-noncomputable def eps0IdealUnit (F : ShaState → List (BitVec 8) → ShaState) : ℝ≥0∞ :=
+@[expose] noncomputable def eps0IdealUnit (F : ShaState → List (BitVec 8) → ShaState) : ℝ≥0∞ :=
   ⨆ (c : ℕ) (_ : c < 2 ^ 32) (salt : Salt) (ids : SerializedIdentityKeys) (ser : List (BitVec 8))
     (_ : ser.length < 2 ^ 32) (tag : BitVec 64),
     𝒟[PRGScheme.prgIdealExperiment (wireMacVerifiesTest F c salt ids ser tag)] {true}
@@ -144,7 +128,7 @@ theorem spurDist_ideal_le_unit (F : ShaState → List (BitVec 8) → ShaState)
 
 /-- Bad event in `libsignalSessionScheme` where Alice accepts or forges in epoch 0 without Bob
 being corrupted in epoch 0. -/
-def eps0Event (P : Params PQ PQC) (ℓ : ℕ) (encPt : Pt → List (BitVec 8)) (lam : Pt)
+@[expose] def eps0Event (P : Params PQ PQC) (ℓ : ℕ) (encPt : Pt → List (BitVec 8)) (lam : Pt)
     (onImage : List (BitVec 8) → Bool) (qep : ℕ) (A : LibAdv PQ PQC ℓ) : ProbComp Bool := do
   let b ← $ᵗ Bool
   let (_, s) ← SM.runR (libsignalSessionScheme P ℓ encPt lam) 3 qep (configEpoch0Distinguisher onImage) b A

@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanOracle
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim
-public import Computational.Proofs.HeadlineV1.SendShortC
+import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
+public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanOracle -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.SendShortC
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -24,24 +24,24 @@ open OracleSpec OracleComp
 open _root_.ReductionDsl (Ty Comp CostedReduction handlerImpl atomicSessionOps e2eSessionCodec
   GhostStT fig8SmIfaceDF smQT smRT isGameQuery)
 open _root_.CryptoGames (Party SMScheme)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.GuardedSafe (GuardedSafePost)
-open CryptoGames.SM.Construction (Header)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart LibsignalCiphertextWithSalt32
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.GuardedSafe (GuardedSafePost)
+open _root_.CryptoGames.SM.Construction (Header)
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart LibsignalCiphertextWithSalt32
   ratchetKeyAdmissible)
-open CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C SimCStateBounded SimCStateInv
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C SimCStateBounded SimCStateInv
   deliverForgeSemHook inReceiveOnlyEpoch onAcceptPure onAnswerPure simParseRecvC)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState Params
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey GhostState Params
   signalWireCodec)
-open CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
   (SimShortInv simShortInv_initSim smRespShort smRecvLong SimSafeS guardedSafeS_simSend
    inTransit_mem_and_ct mem_accept_trans)
-open CryptoGames.SM.Construction.DeliverForge (AdversaryDF AdversaryCompDF specDF MakesAtMostQueriesDF)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.E2E (Bytes paramsV1)
-open CryptoVerification.LibsignalSession.HeadlineV1
+open _root_.CryptoGames.SM.Construction.DeliverForge (AdversaryDF AdversaryCompDF specDF MakesAtMostQueriesDF)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1
   (DFSpec SendMsgsOkDF QAtomicShortDF hQ_QAtomicShortDF df_QBC df_qbc_guardC
    df_qbc_simSendC_atomicShort atomicLengthsOk_paramsIdsWithSpqr_v1
    smDFRespShort smDFRecvLong GuardedSMDFShort hQu_smDFRecvLong toDFDom)
@@ -449,13 +449,13 @@ theorem simDeliverForgeClampSan_sendAtomicShortDF {Pt : Type} [DecidableEq Pt] [
 
 section GuardedShortHelpers
 
-open CryptoGames.SM (partyEnc)
-open CryptoGames.SM.Construction.DeliverForge
+open _root_.CryptoGames.SM (partyEnc)
+open _root_.CryptoGames.SM.Construction.DeliverForge
   (transmitQueryDF challQueryDF deliverQueryDF injectQueryDF deliverForgeQuery corrQueryDF)
-open CryptoGames.Ratchet.LibsignalSim (Fig8Comp runDFM SimState)
-open CryptoGames.Ratchet.LibsignalSimC (guardC runOnBaseState simSendC)
-open CryptoGames.LibsignalSM.Proofs.QueryBounds (FSpec)
-open CryptoGames.LibsignalSM.Proofs.Refinement
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8Comp runDFM SimState)
+open _root_.CryptoGames.Ratchet.LibsignalSimC (guardC runOnBaseState simSendC)
+open _root_.CryptoGames.LibsignalSM.Proofs.QueryBounds (FSpec)
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement
   (fig8ToDFImpl DeliverForgeM deliverForgeHook sameWireFig8)
 
 private abbrev dfResp (Pt : Type) (ℓ : ℕ) :=
@@ -1011,137 +1011,6 @@ theorem simDeliverForgeClampSan_guardedSMDFShort {PQ PQC Pt : Type}
     · exact dfSafePost_semRecvHookS P Dh encPt encT decT lam T Kc qep B sC ex hs Q w false
     · exact dfSafePost_semCorrHookTGB P Dh encT Bsk sC ex hs Q
   exact hsim.map (R := fun _ => True) Prod.fst fun _ _ => trivial
-
-theorem simDeliverForgeEval_bounds {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6) (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (lam : Pt) (L qep T Kc Bsk q : ℕ) (hqL : q ≤ L)
-    (prog : CostedReduction (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
-      (fig8SmIfaceDF ℓ Pt)
-      (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-      (e2eSessionCodec ℓ Pt) .unit .unit .bool .bool)
-    (dec : prog.σ.denote → LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt))
-    (Extra : LibsignalToModularSchemeSimState Bytes Pt ℓ → Prop)
-    (hExtra_init : ∀ pqrKey : BitVec 256,
-      Extra (initSimC ((paramsV1 C K idA idB).spqr.init .a2b pqrKey)
-        ((paramsV1 C K idA idB).spqr.init .b2a pqrKey)))
-    (hExtra_step : ∀ t (sC : LibsignalToModularSchemeSimState Bytes Pt ℓ) (ex : List (Fig8C Pt)),
-      Extra sC →
-      ∀ x ∈ support ((simDeliverForgeOracleSan (paramsV1 C K idA idB) Dh encPt encT decT lam
-          qep (2 ^ 32) T Kc Bsk (.inr t)).run (sC, ex)), Extra x.2.1)
-    (hinit : (Prod.map id dec <$> prog.init.eval (.cons () .nil)) =
-      (do
-        let pqrKey ← (liftM ($ᵗ (BitVec 256) : ProbComp (BitVec 256)) :
-          AdversaryCompDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt)
-            (BitVec 256))
-        return ((), (initSimC ((paramsV1 C K idA idB).spqr.init .a2b pqrKey)
-          ((paramsV1 C K idA idB).spqr.init .b2a pqrKey), []))))
-    (hfin : ∀ s b, prog.finish.eval (.cons s (.cons b .nil)) = pure b)
-    (hstep : ∀ t (s_raw : prog.σ.denote),
-      let s := dec s_raw
-      SimCStateBounded L s.1 →
-      s.2.length ≤ L →
-      Extra s.1 →
-      (Prod.map id dec <$>
-        ((handlerImpl (C := e2eSessionCodec ℓ Pt) prog.handle (.inr t)).run s_raw)) =
-      ((simDeliverForgeOracleSan (paramsV1 C K idA idB) Dh encPt encT decT lam
-        qep (2 ^ 32) T Kc Bsk (.inr t)).run s))
-    (A : CryptoGames.SM.Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (hq : CryptoGames.SM.MakesAtMostQueries A q) :
-    prog.eval (fun _ => A) () =
-        simDeliverForgeClampSan (paramsV1 C K idA idB) ℓ Dh encPt encT decT lam
-          qep (2 ^ 32) T Kc Bsk A ∧
-      MakesAtMostQueriesDF (prog.eval (fun _ => A) ()) q ∧
-      SendMsgsOkDF (fun m : LibsignalMsgPublicPart × Plain ℓ => atomicShortPubB m.1)
-        (prog.eval (fun _ => A) ()) ∧
-      GuardedSMDFShort (prog.eval (fun _ => A) ()) := by
-  have hq' := (CryptoGames.Ratchet.LibsignalSim.makesAtMostQueries_iff_isGameQuery A q).mp hq
-  let P := paramsV1 C K idA idB
-  have hinit_inv : ∀ r ∈ support (prog.init.eval (.cons () .nil)),
-      DFStateInv L q (dec r.2) ∧ Extra (dec r.2).1 := by
-    rintro ⟨u₀, s_raw⟩ hr
-    have hmem : (u₀, dec s_raw) ∈ support (Prod.map id dec <$> prog.init.eval (.cons () .nil)) := by
-      rw [support_map, Set.mem_image]
-      exact ⟨(u₀, s_raw), hr, rfl⟩
-    rw [hinit, mem_support_bind_iff] at hmem
-    obtain ⟨pqrKey, -, hmem⟩ := hmem
-    rw [support_pure, Set.mem_singleton_iff, Prod.mk.injEq] at hmem
-    rcases hmem with ⟨_, hEq⟩
-    rw [hEq]
-    exact ⟨dfStateInv_initSimC hqL _ _, hExtra_init pqrKey⟩
-  have habs := prog.eval_eq_simulateQ_of_abs dec
-    (fun m s_raw => DFStateInv L m (dec s_raw) ∧ Extra (dec s_raw).1)
-    (fun _ => do
-      let pqrKey ← (liftM ($ᵗ (BitVec 256) : ProbComp (BitVec 256)) :
-        AdversaryCompDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt)
-          (BitVec 256))
-      return ((), (initSimC (P.spqr.init .a2b pqrKey) (P.spqr.init .b2a pqrKey), [])))
-    (simDeliverForgeOracleSan P Dh encPt encT decT lam qep (2 ^ 32) T Kc Bsk)
-    (fun _ b => pure b) q () hinit hinit_inv (fun _ _ => rfl)
-    (fun m t s_raw hInv => by
-      have hbnd := hInv.1.toBounded
-      have heq := hstep t s_raw hbnd.1 hbnd.2 hInv.2
-      refine ⟨heq, ?_⟩
-      rintro ⟨rr, s_raw'⟩ hmem
-      have hmem' : (rr, dec s_raw') ∈
-          support ((simDeliverForgeOracleSan P Dh encPt encT decT lam
-            qep (2 ^ 32) T Kc Bsk (.inr t)).run (dec s_raw)) := by
-        rw [← heq, support_map, Set.mem_image]
-        exact ⟨(rr, s_raw'), hmem, rfl⟩
-      exact ⟨simDeliverForgeOracleSan_preserves_dfStateInv P Dh encPt encT decT lam
-          L m qep (2 ^ 32) T Kc Bsk t (dec s_raw) hInv.1 (rr, dec s_raw') hmem',
-        hExtra_step t (dec s_raw).1 (dec s_raw).2 hInv.2 (rr, dec s_raw') hmem'⟩)
-    (fun s b _ => hfin s b) (fun _ hle hInv => ⟨hInv.1.mono hle, hInv.2⟩)
-    (fun _ => A) (fun _ => hq')
-  have heval : prog.eval (fun _ => A) () =
-      simDeliverForgeClampSan P ℓ Dh encPt encT decT lam qep (2 ^ 32) T Kc Bsk A := by
-    rw [habs]
-    dsimp only [simDeliverForgeClampSan, P]
-    simp only [bind_assoc, pure_bind]
-    refine bind_congr fun pqrKey => ?_
-    rw [StateT.run'_eq, map_eq_bind_pure_comp, Function.comp_def]
-  refine ⟨heval, ?_, ?_, ?_⟩ <;> rw [heval]
-  · exact simDeliverForgeClampSan_makesAtMostQueriesDF P Dh encPt encT decT lam
-      qep (2 ^ 32) T Kc Bsk q A hq
-  · exact simDeliverForgeClampSan_sendAtomicShortDF hℓ C K idA idB Dh encPt encT decT lam
-      qep (2 ^ 32) T Kc Bsk A
-  · exact simDeliverForgeClampSan_guardedSMDFShort P Dh encPt encT decT lam
-      qep (2 ^ 32) T Kc Bsk A
-
-theorem simDeliverForgeProgOfStep_sendAtomicShortDF_and_guarded {Pt : Type} [DecidableEq Pt]
-    [Zero Pt] [SampleableType Pt] {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6)
-    (C : Crypto) (K : MlKem) (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (lam : Pt) (qep q : ℕ)
-    (Extra : LibsignalToModularSchemeSimState Bytes Pt ℓ → Prop)
-    (hExtra_init : ∀ pqrKey : BitVec 256,
-      Extra (initSimC ((paramsV1 C K idA idB).spqr.init .a2b pqrKey)
-        ((paramsV1 C K idA idB).spqr.init .b2a pqrKey)))
-    (hExtra_step : ∀ t (s : LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt)),
-      Extra s.1 →
-      ∀ x ∈ support ((simDeliverForgeOracleSanQ (paramsV1 C K idA idB) Dh encPt encT decT lam
-          qep q (.inr t)).run s), Extra x.2.1)
-    (step : Comp (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) (fig8SmIfaceDF ℓ Pt)
-      [dfFullT ℓ Pt, smQT (ℓ := ℓ) (Pt := Pt)]
-      (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (dfFullT ℓ Pt)))
-    (hstep : ∀ t (s_raw : (dfFullT ℓ Pt).denote),
-      SimCStateBounded q (dfFullDec s_raw).1 → (dfFullDec s_raw).2.length ≤ q →
-      Extra (dfFullDec s_raw).1 →
-      (Prod.map id (dfFullDec (ℓ := ℓ) (Pt := Pt)) <$>
-        ((handlerImpl (C := e2eSessionCodec ℓ Pt) step (.inr t)).run s_raw)) =
-      ((simDeliverForgeOracleSanQ (paramsV1 C K idA idB) Dh encPt encT decT lam qep q
-        (.inr t)).run (dfFullDec s_raw)))
-    (A : CryptoGames.SM.Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (hq : CryptoGames.SM.MakesAtMostQueries A q) :
-    SendMsgsOkDF (fun m : LibsignalMsgPublicPart × Plain ℓ => atomicShortPubB m.1)
-        ((simDeliverForgeProgOfStep C K Dh encPt encT decT lam step).eval (fun _ => A) ()) ∧
-      GuardedSMDFShort
-        ((simDeliverForgeProgOfStep C K Dh encPt encT decT lam step).eval (fun _ => A) ()) := by
-  rw [simDeliverForgeProgOfStep_eval_sanQ C K idA idB Dh encPt encT decT lam qep q hℓ
-        Extra hExtra_init hExtra_step step hstep A hq]
-  exact ⟨simDeliverForgeClampSan_sendAtomicShortDF hℓ C K idA idB Dh encPt encT decT lam _ _ _ _ _ A,
-    simDeliverForgeClampSan_guardedSMDFShort _ Dh encPt encT decT lam _ _ _ _ _ A⟩
 
 theorem simDeliverForgeProgOfStep_makesAtMostQueriesDF {Pt : Type} [DecidableEq Pt] [Zero Pt]
     [SampleableType Pt] {ℓ : ℕ} (C : Crypto) (K : MlKem) (idA idB : IdentityKey)

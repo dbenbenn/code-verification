@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Defs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.HookTrace
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitChain
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommit -- shake: keep
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
 
 /-!
 # Shared Definitions, RNG Contracts, and Model Lemmas for `DhStep`
@@ -26,7 +26,7 @@ byte-slice decompositions, pure `dhRatchetStep` / `decryptDraws` lemmas, and the
 checkpoint `DhCommitState`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Decrypt.DhStep
 
@@ -100,32 +100,6 @@ elab "code_fetches_from " codeId:ident decPrefix:ident b:term:max H:term:max hfn
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
 
-/-- Fetch hypotheses for `try_decrypt_with_state::<HookRng>` (`hfn : fnOff tryDecryptName = 0x3439c`),
-    from fn-relative offset `k0`, `len` bytes. -/
-macro "td_fetches " b:term:max H:term:max hfn:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode
-    CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin $b $H $hfn (num% (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) $k0 $len)
-
-/-- Add instruction-fetch hypotheses for a function in `libsignalSessionCode` on `tripleRatchetProgAt`. -/
-elab "tripleRatchetProgAt_fetches " b:term:max H:term:max hfn:term:max off:term:max len:term:max : tactic => open Lean Meta Elab Tactic in do
-  let offLit := Syntax.mkNumLit (toString (← CryptoVerification.CodeLayout.evalNat off "tripleRatchetProgAt_fetches "))
-  let k0Lit := Syntax.mkNumLit "0"
-  let lenLit := Syntax.mkNumLit (toString (← CryptoVerification.CodeLayout.evalNat len "tripleRatchetProgAt_fetches "))
-  let hfnId : Ident ← if hfn.raw.isIdent then pure ⟨hfn.raw⟩ else do
-    let g ← getMainGoal
-    let c? ← g.withContext do
-      tryCatchRuntimeEx (do
-        let e := (← instantiateMVars (← Term.elabTermAndSynthesize hfn none)).consumeMData
-        return if e.isConst then some e.constName! else none) (fun _ => pure none)
-    match c? with
-    | some c => pure (mkCIdentFrom hfn c)
-    | none =>
-      let id := mkIdent `_hfn_layout
-      evalTactic (← `(tactic| have $id := $hfn))
-      pure id
-  evalTactic (← `(tactic| code_fetches_range CryptoVerification.libsignalSessionCode CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin $b $H $hfnId:ident $offLit:num $k0Lit:num $lenLit:num))
-
-
 /-- `tapeAfter ctl cur rest 0` is `(ctl ↦₆₄ cur) ∗ ((ctl + 8#64) ↦₆₄ BitVec.ofNat 64 rest.length) ∗ (cur ↦ₛ rest)`. -/
 theorem tapeAfter_zero_eq (ctl cur : BitVec 64) (rest : List (BitVec 8)) :
     tapeAfter ctl cur rest 0 =
@@ -150,7 +124,7 @@ theorem rngFillBytes_eq (rest : List (BitVec 8)) (len : Nat) :
 pre owns `dst` for `len` bytes;
 post produces some `bs : List (BitVec 8)` of length `len` at `dst`,
 with trace unchanged and no dependency on an in-memory tape. -/
-def rngAnySpec : Spec (BitVec 64 × Nat) where
+@[expose] def rngAnySpec : Spec (BitVec 64 × Nat) where
   pre := fun (dst, len) s =>
     ⌜s.readReg64 .x0 = dst ∧ (s.readReg64 .x1).toNat = len⌝ ∗
       memRegion dst len
@@ -190,7 +164,7 @@ theorem rngAnyHook_ok : HookOk rngAnyHook rngAnySpec := by
 /-- Specification of `libsignal_session_rng_fill` (`0x480d8`) starting directly from
 `tapeAfter ctl cur rest 0` (without requiring `rest.length < 2^63`, since disjointness of
 `ctl ↦₆₄ cur` and `cur ↦ₛ rest` already implies `rest.length < 2^64`). -/
-def rngFillAfter0Spec (ctl : BitVec 64) :
+@[expose] def rngFillAfter0Spec (ctl : BitVec 64) :
     Spec (BitVec 64 × Nat × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, len, cur, rest) s =>
     ⌜s.readReg64 .x0 = dst ∧ (s.readReg64 .x1).toNat = len⌝ ∗
@@ -310,52 +284,11 @@ theorem hookRngFillAfter0_ok (ctl : BitVec 64) :
       sepConj_assoc, satisfies_pure_sepConj, true_and]
     exact hm3
 
-/-- `libsignal_session_rng_fill` (`0x480d8` = `295128`) meets `rngFillAfter0Spec ctl` on `tripleRatchetProgAt`. -/
-theorem rngFill_ok_at_tripleRatchet {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff rngFillName := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rngFillAfter0Spec ctl) :=
-  hook_ok_at (hname := rngFillName) rfl hk (by fnoff_eq)
-    (by fnoff_eq) (by dsimp [rngFillName]; simp [Rust.isPanicSymbol])
-    ⟨rngFillHook ctl, rfl, hookRngFillAfter0_ok ctl⟩
-
 /-- The triple-ratchet externs with `rngFillName` bound to `rngAnyHook` (independent of any memory tape). -/
 def tripleRatchetExternsAny (C : Crypto)
     (abs : String → Option (State → State)) : String → Option (State → State) := fun sym =>
   if sym = rngFillName then some rngAnyHook
   else tripleRatchetExterns C 0#64 abs sym
-
-noncomputable abbrev tripleRatchetProgAny (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State)) : Program :=
-  libsignalSessionCode.rebase b (Rust.withPanics (tripleRatchetExternsAny C abs))
-
-/-- `libsignal_session_rng_fill` meets `rngAnySpec` on any program with `HookSat ext rngFillName rngAnySpec`. -/
-theorem rngAny_ok_at_prog {b : BitVec 64} {ext : String → Option (State → State)}
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff rngFillName := by fnoff_eq)
-    (hsat : HookSat ext rngFillName rngAnySpec) :
-    subroutine_ok (libsignalSessionCode.rebase b (Rust.withPanics ext))
-      ((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr name + BitVec.ofNat 64 k)
-      rngAnySpec :=
-  hook_ok_at (hname := rngFillName) rfl hk (by fnoff_eq)
-    (by fnoff_eq) (by dsimp [rngFillName]; simp [Rust.isPanicSymbol])
-    hsat
-
-/-- `libsignal_session_rng_fill` meets `rngAnySpec` on `tripleRatchetProgAny`. -/
-theorem rngAny_ok_at_tripleRatchetAny {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff rngFillName := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAny b C abs)
-      ((tripleRatchetProgAny b C abs).fnAddr name + BitVec.ofNat 64 k)
-      rngAnySpec :=
-  hook_ok_at (hname := rngFillName) rfl hk (by fnoff_eq)
-    (by fnoff_eq) (by dsimp [rngFillName]; simp [Rust.isPanicSymbol])
-    ⟨rngAnyHook, rfl, rngAnyHook_ok⟩
 
 /-- `zeroizeSecretHook` meets `zeroizeSecretSpec`. -/
 theorem zeroize32_hookOk : HookOk zeroizeSecretHook zeroizeSecretSpec := by
@@ -373,46 +306,19 @@ theorem zeroize32_hookOk : HookOk zeroizeSecretHook zeroizeSecretSpec := by
       sepConj_assoc, satisfies_pure_sepConj, true_and]
     exact satisfies_writeBytes (List.replicate 32 0#8) hle hmem'
 
-/-- `<StaticSecret as Drop>::drop` (`0x47ff0` = `294896`) meets `zeroizeSecretSpec` on `tripleRatchetProgAt`. -/
-theorem staticDrop_ok_at_tripleRatchet {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff staticDropName := by fnoff_eq) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      zeroizeSecretSpec :=
-  hook_ok_at (hname := staticDropName) rfl hk (by fnoff_eq)
-    (by fnoff_eq) (by dsimp [staticDropName]; simp [Rust.isPanicSymbol])
-    ⟨zeroizeSecretHook, rfl, zeroize32_hookOk⟩
-
 theorem hookSessionMemmove_ok (hookStack : Nat := 4096) :
     HookOk hookMemmove (sessionMemmoveSpec hookStack) := by
   refine HookOk.of_trace (hookMemmove_ok hookStack) fun _ _ _ ht hpost => ?_
   simp only [libcMemmoveSpec, sessionMemmoveSpec, sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
   exact ⟨⟨hpost.1, ht⟩, hpost.2⟩
 
-/-- `memmove` (`0x47f38` = `294712`) meets `sessionMemmoveSpec` on `tripleRatchetProgAt`. -/
-theorem memmove_ok_at_tripleRatchet {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "memmove" := by fnoff_eq)
-    (stackSize : Nat := 4096) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (sessionMemmoveSpec stackSize) :=
-  hook_ok_at (hname := "memmove") rfl hk (by fnoff_eq)
-    (by fnoff_eq) (by simp [Rust.isPanicSymbol])
-    ⟨hookMemmove, rfl, hookSessionMemmove_ok (hookStack := stackSize)⟩
-
-/-! ## 2. `chainAt` ↔ 104-Byte Block + Detached Inner Heap Buffers -/
-
 /-- Padding byte count in `Option<chain::ChainKey>` (24 bytes when `none`, 4 bytes when `some`). -/
-def optChainKeyPadLen : Option ChainKey → Nat
+@[expose] def optChainKeyPadLen : Option ChainKey → Nat
   | none => 24
   | some _ => 4
 
 /-- The 32-byte in-struct representation of `Option<chain::ChainKey>` with padding `pad`. -/
-def optChainKeyTailBytes (pin : VecPin) (o : Option ChainKey) (pad : List (BitVec 8)) :
+@[expose] def optChainKeyTailBytes (pin : VecPin) (o : Option ChainKey) (pad : List (BitVec 8)) :
     List (BitVec 8) :=
   match o with
   | none => unpack64 optChainKeyNone ++ pad
@@ -430,7 +336,7 @@ theorem optChainKeyTailBytes_length (pin : VecPin) (o : Option ChainKey) {pad : 
     omega
 
 /-- Detached heap buffer of `Option<chain::ChainKey>`. -/
-def optChainKeyHeap (A : RustAlloc) (pin : VecPin) : Option ChainKey → SepProp
+@[expose] def optChainKeyHeap (A : RustAlloc) (pin : VecPin) : Option ChainKey → SepProp
   | none => emp
   | some ck => vecU8Buf A pin.cap pin.ptr (keyToBytes32 ck.key)
 
@@ -486,7 +392,7 @@ theorem optChainKeyAt_eq_exists_bytes (A : RustAlloc) (pin : VecPin) (o : Option
 
 /-- The 72-byte prefix of a `session_structure::Chain` (three 24-byte `Vec` headers: `srk`, `priv`,
 `message_keys`). -/
-def chainHeaderBytes (gc : ChainGhost × ReceiverChain) : List (BitVec 8) :=
+@[expose] def chainHeaderBytes (gc : ChainGhost × ReceiverChain) : List (BitVec 8) :=
   vecHeaderBytes gc.1.srk.cap gc.1.srk.ptr (BitVec.ofNat 64 gc.1.srk.bytes.length) ++
     (vecHeaderBytes gc.1.priv.cap gc.1.priv.ptr (BitVec.ofNat 64 gc.1.priv.bytes.length) ++
       vecHeaderBytes gc.1.mkCap gc.1.mkPtr
@@ -498,7 +404,7 @@ theorem chainHeaderBytes_length (gc : ChainGhost × ReceiverChain) :
   simp [chainHeaderBytes]
 
 /-- The 104-byte in-buffer representation of a `session_structure::Chain` with padding `pad`. -/
-def chainBytes (gc : ChainGhost × ReceiverChain) (pad : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def chainBytes (gc : ChainGhost × ReceiverChain) (pad : List (BitVec 8)) : List (BitVec 8) :=
   chainHeaderBytes gc ++ optChainKeyTailBytes gc.1.ck gc.2.chainKey pad
 
 theorem chainBytes_length (gc : ChainGhost × ReceiverChain) {pad : List (BitVec 8)}
@@ -521,7 +427,7 @@ theorem pointsToBytes_chainHeaderBytes (gc : ChainGhost × ReceiverChain) (a : B
   rw [h48, h24]
 
 /-- Detached heap buffers owned by a `session_structure::Chain`, independent of its 104-byte slot. -/
-def chainHeap (A : RustAlloc) (gc : ChainGhost × ReceiverChain) : SepProp :=
+@[expose] def chainHeap (A : RustAlloc) (gc : ChainGhost × ReceiverChain) : SepProp :=
   ⌜PublicKey.deserialize gc.1.srk.bytes = .ok gc.2.senderRatchetKey ∧
     gc.2.messageKeys.length ≤ maxMessageKeys ∧ gc.1.keys.length = gc.2.messageKeys.length ∧
     gc.1.srk.bytes.length = 33 ∧ gc.1.priv.bytes = []⌝ ∗
@@ -586,7 +492,7 @@ theorem chainAt_of_bytes (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a :
   exact Entails.sepExists_right pad (Entails.pure_right hpad (Entails.refl _))
 
 /-- Detached heap buffers of a list of `Chain`s, in order. -/
-def chainHeaps (A : RustAlloc) : List (ChainGhost × ReceiverChain) → SepProp
+@[expose] def chainHeaps (A : RustAlloc) : List (ChainGhost × ReceiverChain) → SepProp
   | [] => emp
   | gc :: gcs => chainHeap A gc ∗ chainHeaps A gcs
 
@@ -1102,110 +1008,7 @@ theorem evictReceiverChains_of_le_five (cs : List ReceiverChain) (h : cs.length 
 
 /-! ## 4. Mid-Segment Checkpoint (`+0x8ac` = `0x34c48`) for Commit + Push + Evict -/
 
-/-- S3 commit checkpoint PC (`+0x8ac` = `0x34c48`), reached when the sending
-`RootKey::create_chain` call at `+0x7d4` returns `Ok((finalRootKey, senderChainKey))` (`w8 = 0`). -/
-abbrev segDhCommitPC (img : Obj.Image) : BitVec 64 := tryDecryptEntry img + 0x8ac#64
-
-/-- S3 commit checkpoint state at `segDhCommitPC img` (`+0x8ac`) after both `RootKey::create_chain`
-calls and `KeyPair::generate` succeed:
-* `tr.ratchet.senderChain = some sc`, `tr.ratchet.rootKey` at `sp + 0xb8..0xd8` is zeroed, and
-  `draws = min 32 x.rest.length`;
-* `sp + 0x190..0x1d8` holds `createChainResultAt (sp + 0x190) (.ok (finalRootKey, senderChainKey))`;
-* `sp + 0x3d0..0x3f4` holds `chainKeyBytes receiverChainKey` (`36` B), with staging copies at
-  `sp + 0x4c0..0x4d0`, `sp + 0x4d0..0x4e0`, and `sp + 0x10..0x14`;
-* `sp + 0x400..0x440` holds `newSenderKey`, and `[sp + 0x1c]` holds `msgW`
-  (`msgW.setWidth 8 = msgTypeByte x.msgType`). -/
-def DhCommitState (A : RustAlloc) (ctl : BitVec 64) (img : Obj.Image)
-    (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
-    (st1 : SessionState (List (BitVec 8)))
-    (receiverChainKey : ChainKey) (newSenderKey : KeyPair)
-    (finalRootKey : RootKey) (senderChainKey : ChainKey)
-    (R : SepProp) (s0 s : State) : Prop :=
-  let sp := s0.sp - 1504#64
-  let draws := min 32 x.rest.length
-  s.pc = segDhCommitPC img ∧
-  tryDecryptMidMeta img s0 s ∧
-  s.readReg64 .x19 = x.ret ∧
-  s.readReg64 .x20 = sp + 0x140#64 ∧
-  s.readReg64 .x21 = x.ss ∧
-  s.readReg64 .x22 = x.msgA ∧
-  s.readReg64 .x23 = sp + 0x500#64 ∧
-  s.readReg64 .x25 = sp + 0x190#64 ∧
-  s.readReg64 .x27 = sp + 0x38#64 ∧
-  s.readReg64 .x28 = sp + 0x3d0#64 ∧
-  ∃ (msgW : BitVec 32),
-    msgW.setWidth 8 = msgTypeByte x.msgType ∧
-    (s.mem ⊨
-      sessionStateAt A x.ss x.G.afterTrFrom st1 ∗
-      trAt A (sp + 0x38#64) trG { tr with ratchet := { tr.ratchet with rootKey := 0 } } ∗
-      memRegion x.ret 48 ∗
-      memRegion sp 0x10 ∗
-      ((sp + 0x10#64) ↦ₛ ((chainKeyBytes receiverChainKey).drop 16).take 4) ∗
-      memRegion (sp + 0x14#64) 8 ∗
-      ((sp + 0x1c#64) ↦₃₂ msgW) ∗
-      ((sp + 0x20#64) ↦₆₄ x.locA) ∗
-      ((sp + 0x28#64) ↦₃₂ x.msg.counter) ∗
-      memRegion (sp + 0x2c#64) 4 ∗
-      ((sp + 0x30#64) ↦₆₄ x.remA) ∗
-      memRegion (sp + 0x140#64) 0x50 ∗
-      ((sp + 0x190#64) ↦₃₂ 0#32) ∗
-      ((sp + 0x194#64) ↦ₛ keyToBytes32 finalRootKey) ∗
-      ((sp + 0x1b4#64) ↦ₛ chainKeyBytes senderChainKey) ∗
-      memRegion (sp + 0x1d8#64) 0xd8 ∗
-      memRegion (sp + 0x2b0#64) 0x10 ∗
-      memRegion (sp + 0x2c0#64) 0x110 ∗
-      ((sp + 0x3d0#64) ↦ₛ chainKeyBytes receiverChainKey) ∗
-      memRegion (sp + 0x3f4#64) 12 ∗
-      ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗
-      ((sp + 0x420#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-      memRegion (sp + 0x440#64) 0x80 ∗
-      ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes receiverChainKey).drop 20) ∗
-      ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes receiverChainKey).take 16) ∗
-      memRegion (sp + 0x4e0#64) 0xa0 ∗
-      tryDecryptCommonHeap A ctl img x draws s0 ∗ R)
-
-
-/-- S3 commit sub-segment contract (`+0x8ac → +0x3e4` or panic): updates `previous_counter` and
-`root_key`, serializes `x.msg.senderRatchetKey`, converts `receiverChainKey` via `ChainKey::to_pb`,
-pushes the new `ReceiverChain` (growing if `len = cap`), frees the serialized-key box, evicts oldest
-chains until `len ≤ 5`, commits `sender_chain`, and branches to `segConsumeMsgKeyPC img` (`+0x3e4`). -/
-def DhCommitSpec (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel) (abs : String → Option (State → State)) : Prop :=
-  Obj.Loads libsignalSessionImage img →
-  TripleRatchetHooks C A S abs →
-  PublicKeySerializeOk img.base C A ctl abs →
-  ChainKeyToPbOk img.base C A ctl abs →
-  GrowOneChainOk img C A ctl abs →
-  DropChainOk img.base C A ctl abs →
-    ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
-      (st1 : SessionState (List (BitVec 8))) (sc : SenderChain)
-      (receiverChainKey : ChainKey) (newSenderKey : KeyPair)
-      (finalRootKey : RootKey) (senderChainKey : ChainKey)
-      (R : SepProp) (s0 s : State),
-      tr.ratchet.senderChain = some sc →
-      tr.ratchet.receiverChains.length < 2 ^ 32 →
-      Ratchet.clampScalar newSenderKey.privateKey.bytes = newSenderKey.privateKey.bytes →
-      DhCommitState A ctl img x trG tr st1 receiverChainKey newSenderKey
-        finalRootKey senderChainKey R s0 s →
-      (tripleRatchetProgAt img.base C ctl abs).CodeLoaded s.mem →
-      let newChain : ReceiverChain :=
-        { senderRatchetKey := x.msg.senderRatchetKey
-          chainKey := some receiverChainKey
-          messageKeys := [] }
-      let r1 : RatchetState :=
-        { tr.ratchet with
-          senderChain := some ⟨newSenderKey, senderChainKey⟩
-          rootKey := finalRootKey
-          previousCounter := BitVec.ofNat 32 (sc.chainKey.index.toNat - 1)
-          receiverChains :=
-            RatchetState.evictReceiverChains (tr.ratchet.receiverChains ++ [newChain]) }
-      ∃ s', Steps (tripleRatchetProgAt img.base C ctl abs) s s' ∧
-        ((∃ trG', ConsumeMsgKeyState A ctl img x trG' { tr with ratchet := r1 } st1
-            receiverChainKey (min 32 x.rest.length) R s0 s') ∨
-         (s'.status = .Panicked ∧
-           (s'.mem ⊨ (tryDecryptSpec C A ctl parse S img).onPanic x s0 s' ∗ R)))
-
-def rngFillAtSpec (ctl : BitVec 64) (cur : BitVec 64) (rest : List (BitVec 8)) :
+@[expose] def rngFillAtSpec (ctl : BitVec 64) (cur : BitVec 64) (rest : List (BitVec 8)) :
     Spec (BitVec 64 × Nat) where
   pre := fun (dst, len) s =>
     ⌜s.readReg64 .x0 = dst ∧ (s.readReg64 .x1).toNat = len⌝ ∗
@@ -1235,76 +1038,6 @@ theorem rngFillAt_of_rngFill {P : Program} {addr ctl cur : BitVec 64} {rest : Li
   exact h.mono_outcome (dst, len, cur, rest) R s0 hpc hrun hpre' hsp (fun _ hout => hout)
 
 namespace DhStepCallees
-
-theorem rngFill_ok_at2_td {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr tryDecryptName + bv% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-      (rngFillAfter0Spec ctl) :=
-  hook_ok_at (hname := rngFillName) (off := num% (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) (stub := num% (ls_off% "libsignal_session_rng_fill")) (k := num% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-    (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>") rfl (by decide)
-    (ls_hook% "libsignal_session_rng_fill")
-    (by dsimp [rngFillName]; simp [Rust.isPanicSymbol])
-    ⟨rngFillHook ctl, rfl, hookRngFillAfter0_ok ctl⟩
-
-theorem rngFillAt_ok_at2_td {b : BitVec 64} {C : Crypto} {ctl cur : BitVec 64}
-    {rest : List (BitVec 8)} {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr tryDecryptName + bv% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-      (rngFillAtSpec ctl cur rest) :=
-  rngFillAt_of_after0 rngFill_ok_at2_td
-
-theorem rngFillAt_ok_at2_td_ext {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl cur : BitVec 64} {rest : List (BitVec 8)}
-    {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts b C A ctl uuidTryParse S ext) (hrest : rest.length < 2 ^ 63) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + bv% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-      (rngFillAtSpec ctl cur rest) :=
-  rngFillAt_of_rngFill (hC.rng_fill_ok_at tryDecryptName (num% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))) hrest
-
-theorem staticDrop_ok_at2_td {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr tryDecryptName + bv% (ls_off% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-      zeroizeSecretSpec :=
-  hook_ok_at (hname := staticDropName) (off := num% (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) (stub := num% (ls_off% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop")) (k := num% (ls_off% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-    (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>") rfl (by decide)
-    (ls_hook% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop")
-    (by dsimp [staticDropName]; simp [Rust.isPanicSymbol])
-    ⟨zeroizeSecretHook, rfl, zeroize32_hookOk⟩
-
-theorem staticDrop_ok_at2_td_ext {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts b C A ctl uuidTryParse S ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + bv% (ls_off% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-      zeroizeSecretSpec :=
-  hC.static_drop_ok_at tryDecryptName (num% (ls_off% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-
-theorem rngFill_ok_at2_td_any {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAny b C abs)
-      ((tripleRatchetProgAny b C abs).fnAddr tryDecryptName + bv% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-      rngAnySpec :=
-  hook_ok_at (hname := rngFillName) (off := num% (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) (stub := num% (ls_off% "libsignal_session_rng_fill"))
-    (k := num% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-    (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>") rfl (by decide)
-    (ls_hook% "libsignal_session_rng_fill")
-    (by dsimp [rngFillName]; simp [Rust.isPanicSymbol])
-    ⟨rngAnyHook, rfl, rngAnyHook_ok⟩
-
-theorem rngFill_ok_at2_td_prog {b : BitVec 64} {ext : String → Option (State → State)}
-    (hsat : HookSat ext rngFillName rngAnySpec) :
-    subroutine_ok (libsignalSessionCode.rebase b (Rust.withPanics ext))
-      ((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr tryDecryptName + bv% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-      rngAnySpec :=
-  hook_ok_at (hname := rngFillName) (off := num% (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) (stub := num% (ls_off% "libsignal_session_rng_fill"))
-    (k := num% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-    (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>") rfl (by decide)
-    (ls_hook% "libsignal_session_rng_fill")
-    (by dsimp [rngFillName]; simp [Rust.isPanicSymbol])
-    hsat
 
 end DhStepCallees
 
@@ -1381,7 +1114,7 @@ It specifies that calling the RNG hook from `sc` (with arguments `x0 = dst`, `x1
 preserves `sp`, `CalleeSavedPreserved`, writes 32 bytes into `memRegion dst 32`,
 transitions the RNG resource `T` to `T'`, and produces `coins` such that `(Ratchet.keyToBytesVec32 coins).toList`
 matches the bytes written. -/
-def DhStepRngDraw (prog : Program) (addr : BitVec 64) (T T' : SepProp) (coins : BitVec 256) : Prop :=
+@[expose] def DhStepRngDraw (prog : Program) (addr : BitVec 64) (T T' : SepProp) (coins : BitVec 256) : Prop :=
   ∀ (sp : BitVec 64) (Rest : SepProp) (sc : State),
     sc.pc = addr →
     sc.status = .Running →
@@ -1398,97 +1131,6 @@ def DhStepRngDraw (prog : Program) (addr : BitVec 64) (T T' : SepProp) (coins : 
       CalleeSavedPreserved sc s' ∧
       s'.trace = sc.trace ∧
       s'.mem ⊨ ((sp + 0x190#64) ↦ₛ (Ratchet.keyToBytesVec32 coins).toList) ∗ T' ∗ Rest
-
-/-- Concrete tape instance of `DhStepRngDraw`: calling `libsignal_session_rng_fill` with
-`T := tapeAfter ctl cur rest 0` advances the tape to `min 32 rest.length` and produces `coinsOf rest`. -/
-theorem dhStepRngDraw_tape {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (cur : BitVec 64) (rest : List (BitVec 8)) :
-    DhStepRngDraw (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr tryDecryptName + bv% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-      (tapeAfter ctl cur rest 0)
-      (tapeAfter ctl cur rest (min 32 rest.length))
-      (coinsOf rest) := by
-  intro sp Rest sc hpc hrun hsp_al hx0 hx1 hmem hcode
-  have hpre : sc.mem ⊨ (rngFillAfter0Spec ctl).pre (sp + 0x190#64, 32, cur, rest) sc ∗ Rest := by
-    dsimp only [rngFillAfter0Spec]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, by rw [hx1]; rfl⟩, Eq.mp (congrArg (sc.mem ⊨ ·) (by ac_rfl)) hmem⟩
-  have hok_rng := DhStepCallees.rngFill_ok_at2_td (b := b) (C := C) (ctl := ctl) (abs := abs)
-  obtain ⟨s', hsteps, ⟨hret, hpres, hpost⟩ | ⟨_, hpost⟩ | ⟨_, -, hpost⟩ | ⟨_, hpost⟩, -⟩ :=
-    hok_rng.no_fault_before_outcome (sp + 0x190#64, 32, cur, rest) Rest sc hpc hrun hpre hsp_al hcode
-  · dsimp only [rngFillAfter0Spec] at hpost
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨htrace, hpost⟩
-    rw [← keyVec_coinsOf_toList rest] at hpost
-    have hsp' : s'.sp = sc.sp := hpres.1
-    have hsp_al' : s'.spAligned = true := by
-      unfold State.spAligned at hsp_al ⊢
-      rw [hpres.1]
-      exact hsp_al
-    exact ⟨s', hsteps, hret.1, hret.2.2, hsp', hsp_al', hpres.2, htrace,
-      Eq.mp (congrArg (s'.mem ⊨ ·) (by ac_rfl)) hpost⟩
-  · dsimp only [rngFillAfter0Spec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
-  · dsimp only [rngFillAfter0Spec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
-  · dsimp only [rngFillAfter0Spec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
-
-/-- Tape-free draw instance for the refinement path: under `hsat : HookSat ext rngFillName rngAnySpec`,
-calling `libsignal_session_rng_fill` produces 32 ghost bytes `bs` such that for `coins := coinsOf bs`,
-the draw completes with `(Ratchet.keyToBytesVec32 coins).toList = bs` and zero tape dependency. -/
-theorem dhStepRngDraw_rngAny {b : BitVec 64} {ext : String → Option (State → State)}
-    (hsat : HookSat ext rngFillName rngAnySpec)
-    (sp : BitVec 64) (Rest : SepProp) (sc : State)
-    (hpc : sc.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr tryDecryptName + bv% (ls_off% "libsignal_session_rng_fill" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-    (hrun : sc.status = .Running)
-    (hsp_al : sc.spAligned = true)
-    (hx0 : sc.readReg64 .x0 = sp + 0x190#64)
-    (hx1 : sc.readReg64 .x1 = 32#64)
-    (hmem : sc.mem ⊨ memRegion (sp + 0x190#64) 32 ∗ Rest)
-    (hcode : (libsignalSessionCode.rebase b (Rust.withPanics ext)).CodeLoaded sc.mem) :
-    ∃ (s' : State) (bs : List (BitVec 8)),
-      bs.length = 32 ∧
-      Steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) sc s' ∧
-      s'.pc = sc.readReg64 .x30 ∧
-      s'.status = .Running ∧
-      s'.sp = sc.sp ∧
-      s'.spAligned = true ∧
-      CalleeSavedPreserved sc s' ∧
-      s'.trace = sc.trace ∧
-      s'.mem ⊨ ((sp + 0x190#64) ↦ₛ (Ratchet.keyToBytesVec32 (coinsOf bs)).toList) ∗ Rest := by
-  have hpre : sc.mem ⊨ rngAnySpec.pre (sp + 0x190#64, 32) sc ∗ Rest := by
-    dsimp only [rngAnySpec]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, by rw [hx1]; rfl⟩, hmem⟩
-  have hok_rng := DhStepCallees.rngFill_ok_at2_td_prog (b := b) hsat
-  obtain ⟨s', hsteps, ⟨hret, hpres, hpost⟩ | ⟨_, hpost⟩ | ⟨_, -, hpost⟩ | ⟨_, hpost⟩, -⟩ :=
-    hok_rng.no_fault_before_outcome (sp + 0x190#64, 32) Rest sc hpc hrun hpre hsp_al hcode
-  · dsimp only [rngAnySpec] at hpost
-    simp only [sepConj_assoc, satisfies_pure_sepConj, sepExists_sepConj_left, satisfies_sepExists] at hpost
-    rcases hpost with ⟨htrace, bs, hpost⟩
-    rcases hpost with ⟨hbs_len, hpost⟩
-    have hsp' : s'.sp = sc.sp := hpres.1
-    have hsp_al' : s'.spAligned = true := by
-      unfold State.spAligned at hsp_al ⊢
-      rw [hpres.1]
-      exact hsp_al
-    have hmem_coins : s'.mem ⊨ ((sp + 0x190#64) ↦ₛ (Ratchet.keyToBytesVec32 (coinsOf bs)).toList) ∗ Rest := by
-      rw [keyVec_coinsOf_toList_of_length_32 hbs_len]
-      exact hpost
-    exact ⟨s', bs, hbs_len, hsteps, hret.1, hret.2.2, hsp', hsp_al', hpres.2, htrace, hmem_coins⟩
-  · dsimp only [rngAnySpec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
-  · dsimp only [rngAnySpec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
-  · dsimp only [rngAnySpec] at hpost
-    rw [satisfies_pure_sepConj] at hpost
-    exact False.elim hpost.1
 
 end CryptoVerification.LibsignalTripleRatchet.Decrypt.DhStep
 

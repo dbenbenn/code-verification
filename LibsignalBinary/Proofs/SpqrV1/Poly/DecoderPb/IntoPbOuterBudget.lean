@@ -11,17 +11,21 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbLoopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbOuter
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbLoopBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbOuter
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbLoop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Outer Loop for `<PolyDecoder>::into_pb`
@@ -30,7 +34,7 @@ Threads `RustCliAllocBudget M`, `VmPreserved`, and `AllocCallPreserved` through 
 loop (`+148..+328`) on Block `377`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -564,132 +568,5 @@ theorem pts_outer_loop_placed [LibsignalPlacement]
       rw [hstep_cat]
       simp only [List.map_cons, arrayAt_24_off_cons]
       exact Entails.of_eq (by sep_ac_rfl)
-
-theorem pts_outer_alloc_and_copy_placed_of_hookSat [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hshim_sat : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc_sat : HookSat (Rust.withPanics ext) spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    {Q Qp : State → SepProp → Prop}
-    (s0 : State) (fsp : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (j : Nat) (pts : List Pt)
-    (st : M.σ) (hfit : FitsEvents M lim st (decoderIntoPbSlotEvents pts))
-    (v40 v48 v56 : BitVec 64)
-    (s : State) (Frame : SepProp)
-    (hpc : s.pc = (blkPl_377).base + 148#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hx29 : s.readReg64 .x29 = fsp + 64#64)
-    (hx19 : s.readReg64 .x19 = s0.readReg64 .x19)
-    (hx20 : s.readReg64 .x20 = s0.readReg64 .x20)
-    (hx22 : s.readReg64 .x22 = BitVec.ofNat 64 j)
-    (hx23 : s.readReg64 .x23 = 24#64)
-    (hx24 : s.readReg64 .x24 = 1#64)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (htrace : s.trace = s0.trace)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hnext : ∀ (sm : State) (cap_c ptr_c : BitVec 64),
-      sm.pc = (blkPl_377).base + 300#64 →
-      sm.status = .Running →
-      AllocCallPreserved s sm →
-      sm.sp = fsp →
-      sm.readReg64 .x29 = fsp + 64#64 →
-      sm.readReg64 .x19 = s0.readReg64 .x19 →
-      sm.readReg64 .x20 = s0.readReg64 .x20 →
-      sm.readReg64 .x22 = BitVec.ofNat 64 j →
-      sm.readReg64 .x23 = 24#64 →
-      sm.readReg64 .x24 = 1#64 →
-      sm.readReg64 .x28 = s0.readReg64 .x28 →
-      sm.trace = s0.trace →
-      calleeSavedVRegs sm = calleeSavedVRegs s0 →
-      SepWPp ((blkPC_377).rebase (blkPl_377).base (Rust.withPanics ext))
-        (s0.readReg64 (Reg.gpr 30#5)) sm
-        (((fsp + 40#64) ↦₆₄ cap_c) ∗
-          ((fsp + 48#64) ↦₆₄ ptr_c) ∗
-          ((fsp + 56#64) ↦₆₄ BitVec.ofNat 64 (serializePtList pts).length) ∗
-          vecU8Buf A.repAlloc cap_c ptr_c (serializePtList pts) ∗
-          vecPtOf A.repAlloc (s0.readReg64 .x19 + BitVec.ofNat 64 (24 * j)) pts ∗
-          A.pool lim (M.stepEvents (decoderIntoPbSlotEvents pts) st) sm ∗
-          stackAt fsp allocHookStack ∗ Frame)
-        Q Qp) :
-    SepWPp ((blkPC_377).rebase (blkPl_377).base (Rust.withPanics ext))
-      (s0.readReg64 (Reg.gpr 30#5)) s
-      (vecPtOf A.repAlloc (s0.readReg64 .x19 + BitVec.ofNat 64 (24 * j)) pts ∗
-        ((fsp + 40#64) ↦₆₄ v40) ∗
-        ((fsp + 48#64) ↦₆₄ v48) ∗
-        ((fsp + 56#64) ↦₆₄ v56) ∗
-        A.pool lim st s ∗ stackAt fsp allocHookStack ∗ Frame)
-      Q Qp :=
-  pts_outer_alloc_and_copy_placed
-    (spqr_hook_ok_of_mem hshim_sat) (spqr_hook_ok_of_mem halloc_sat)
-    s0 fsp hfsp_align j pts st hfit v40 v48 v56 s Frame
-    hpc hrun hsp hx29 hx19 hx20 hx22 hx23 hx24 hx28 htrace hvregs hnext
-
-theorem pts_outer_loop_placed_of_hookSat [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hshim_sat : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc_sat : HookSat (Rust.withPanics ext) spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    {Q Qp : State → SepProp → Prop}
-    (s0 : State) (fsp ptr_pts : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (rem : List (List Pt)) (hne : rem ≠ [])
-    (j : Nat) (htot : j + rem.length = 16)
-    (st : M.σ) (hfit : FitsEvents M lim st (rem.flatMap decoderIntoPbSlotEvents))
-    (v40 v48 v56 : BitVec 64)
-    (s : State) (Frame : SepProp)
-    (hpc : s.pc = (blkPl_377).base + 148#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = fsp)
-    (hx29 : s.readReg64 .x29 = fsp + 64#64)
-    (hx19 : s.readReg64 .x19 = s0.readReg64 .x19)
-    (hx20 : s.readReg64 .x20 = s0.readReg64 .x20)
-    (hx22 : s.readReg64 .x22 = BitVec.ofNat 64 j)
-    (hx23 : s.readReg64 .x23 = 24#64)
-    (hx24 : s.readReg64 .x24 = 1#64)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (htrace : s.trace = s0.trace)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hnext : ∀ (sm : State) (w40 w48 w56 : BitVec 64),
-      sm.pc = (blkPl_377).base + 328#64 →
-      sm.status = .Running →
-      AllocCallPreserved s sm →
-      sm.sp = fsp →
-      sm.readReg64 .x29 = fsp + 64#64 →
-      sm.readReg64 .x19 = s0.readReg64 .x19 →
-      sm.readReg64 .x20 = s0.readReg64 .x20 →
-      sm.readReg64 .x28 = s0.readReg64 .x28 →
-      sm.trace = s0.trace →
-      calleeSavedVRegs sm = calleeSavedVRegs s0 →
-      SepWPp ((blkPC_377).rebase (blkPl_377).base (Rust.withPanics ext))
-        (s0.readReg64 (Reg.gpr 30#5)) sm
-        ((fsp ↦₆₄ 16#64) ∗
-          ((fsp + 8#64) ↦₆₄ ptr_pts) ∗
-          ((fsp + 16#64) ↦₆₄ 16#64) ∗
-          ((fsp + 40#64) ↦₆₄ w40) ∗
-          ((fsp + 48#64) ↦₆₄ w48) ∗
-          ((fsp + 56#64) ↦₆₄ w56) ∗
-          arrayAt (fun pts addr => vecPtOf A.repAlloc addr pts) 24 (s0.readReg64 .x19 + BitVec.ofNat 64 (24 * j)) rem ∗
-          arrayAt (fun bs addr => vecU8 A.repAlloc addr bs) 24 (ptr_pts + BitVec.ofNat 64 (24 * j)) (rem.map serializePtList) ∗
-          A.pool lim (M.stepEvents (rem.flatMap decoderIntoPbSlotEvents) st) sm ∗
-          stackAt fsp allocHookStack ∗ Frame)
-        Q Qp) :
-    SepWPp ((blkPC_377).rebase (blkPl_377).base (Rust.withPanics ext))
-      (s0.readReg64 (Reg.gpr 30#5)) s
-      ((fsp ↦₆₄ 16#64) ∗
-        ((fsp + 8#64) ↦₆₄ ptr_pts) ∗
-        ((fsp + 16#64) ↦₆₄ BitVec.ofNat 64 j) ∗
-        ((fsp + 40#64) ↦₆₄ v40) ∗
-        ((fsp + 48#64) ↦₆₄ v48) ∗
-        ((fsp + 56#64) ↦₆₄ v56) ∗
-        arrayAt (fun pts addr => vecPtOf A.repAlloc addr pts) 24 (s0.readReg64 .x19 + BitVec.ofNat 64 (24 * j)) rem ∗
-        memRegion (ptr_pts + BitVec.ofNat 64 (24 * j)) (24 * rem.length) ∗
-        A.pool lim st s ∗ stackAt fsp allocHookStack ∗ Frame)
-      Q Qp :=
-  pts_outer_loop_placed
-    (spqr_hook_ok_of_mem hshim_sat) (spqr_hook_ok_of_mem halloc_sat)
-    s0 fsp ptr_pts hfsp_align rem hne j htot st hfit v40 v48 v56 s Frame
-    hpc hrun hsp hx29 hx19 hx20 hx22 hx23 hx24 hx28 htrace hvregs hnext
 
 end LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbOuterBudget

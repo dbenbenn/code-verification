@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Layout and Address Helpers for `drop_glue::<SessionStructure> [local#5]`
@@ -22,7 +22,7 @@ Provides separation-logic heap decompositions and stack/address arithmetic for
 `core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#5]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -45,10 +45,6 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 abbrev dropSs5Name : String :=
   "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]"
 
-gen_decodes libsignalSessionCode_tree dropSs5BinCli
-  [(ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]" + 0) →
-   (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]" + 272)]
-
 theorem stackAt_split_bottom' (sp : BitVec 64) (n d : Nat) (h : n + d ≤ 2 ^ 64) :
     stackAt sp (n + d) = memRegion (sp - BitVec.ofNat 64 (n + d)) d ∗ stackAt sp n := by
   simp only [stackAt]
@@ -67,17 +63,6 @@ theorem dealloc_hookSat_trTrapExterns {A : RustAlloc} (C : Crypto)
     staticDropName, sharedDropName, rngFillName, uuidTryParseName,
     varintSlowName, noHookNames] using hA.dealloc
 
-theorem dealloc_ok_at_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_dealloc")) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustDeallocSpec A) :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "__rustc::__rust_dealloc")
-    (dealloc_hookSat_trTrapExterns C hA)
-
 theorem SepWP.seq_clean {prog : Program} {mid target : BitVec 64} {s : State}
     {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop}
     (h1 : SepWP prog mid s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm))
@@ -87,11 +72,11 @@ theorem SepWP.seq_clean {prog : Program} {mid target : BitVec 64} {s : State}
   SepWP.seq h1 fun sm _ hpc hrun ⟨hent, hQ⟩ =>
     SepWP.weaken_pre hent (h2 sm hpc hrun hQ)
 
-def vecPinDealloc (A : RustAlloc) (pin : VecPin) : SepProp :=
+@[expose] def vecPinDealloc (A : RustAlloc) (pin : VecPin) : SepProp :=
   if (pin.cap == 0#64) = true then emp
   else A.live pin.ptr pin.cap.toNat 1 ∗ memRegion pin.ptr pin.cap.toNat
 
-def sgnPinDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
+@[expose] def sgnPinDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
   if cap.slt 1#64 = true then emp
   else A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat
 
@@ -223,7 +208,7 @@ theorem sender_none_entails_memRegion_104 (a : BitVec 64) :
   rw [ProofLib.memRegion_split' (b := a) (n := 8) (k := 96) (b' := a + 8#64) rfl rfl (by decide)]
   exact sepConj_mono_left (pointsTo64_entails_memRegion _ _)
 
-def srkRest (A : RustAlloc) (a : BitVec 64) (g : VecGhost) : SepProp :=
+@[expose] def srkRest (A : RustAlloc) (a : BitVec 64) (g : VecGhost) : SepProp :=
   ((a + 8#64) ↦₆₄ g.ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.bytes.length) ∗
     (if g.cap = 0 then emp
      else A.live g.ptr g.cap.toNat 1 ∗ (g.ptr ↦ₛ g.bytes) ∗
@@ -310,7 +295,7 @@ theorem session_memRegions_entails_344 (ss : BitVec 64) :
       ProofLib.memRegion_split' (b := ss + 296#64) (n := 32) (k := 16) (b' := ss + 328#64) rfl
         (by bv_omega) (by decide)]
   exact Entails.refl _
-@[reducible]
+@[expose, reducible]
 def ssFirst3HeadersAt (ss : BitVec 64) (G : SessionGhost) : SepProp :=
   (ss ↦₆₄ G.localIk.cap) ∗ ((ss + 8#64) ↦₆₄ G.localIk.ptr) ∗ memRegion (ss + 16#64) 8 ∗
   ((ss + 24#64) ↦₆₄ G.remoteIk.cap) ∗ ((ss + 32#64) ↦₆₄ G.remoteIk.ptr) ∗ memRegion (ss + 40#64) 8 ∗
@@ -364,7 +349,7 @@ theorem ssFirst3HeadersAt_entails_memRegions (ss : BitVec 64) (G : SessionGhost)
   rw [hgroup]
   exact sepConj_mono h1 (sepConj_mono h2 h3)
 
-@[reducible]
+@[expose, reducible]
 def ssTail3HeadersAt (ss : BitVec 64) (pCap pPtr kCap kPtr : BitVec 64)
     (G : SessionGhost) : SepProp :=
   ((ss + 248#64) ↦₆₄ pCap) ∗ ((ss + 256#64) ↦₆₄ pPtr) ∗ memRegion (ss + 264#64) 32 ∗
@@ -555,7 +540,7 @@ theorem drop6_strengthen_post {prog : Program} {target_pc : BitVec 64} {s : Stat
   apply Entails.sepExists_elim; intro x_5; refine Entails.sepExists_right x_5 ?_
   exact sepConj_mono_right (sepConj_mono_left himp)
 
-@[reducible]
+@[expose, reducible]
 def Saved48Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.readReg64 .x23 = s0.readReg64 .x23 ∧
   s.readReg64 .x24 = s0.readReg64 .x24 ∧
@@ -629,17 +614,6 @@ theorem tail_dealloc_ss2_pre_weaken (ss cap ptr : BitVec 64)
   refine Entails.trans (sepConj_mono h1 (sepConj_mono_right (sepConj_mono_right
     (sepConj_mono_right h2)))) ?_
   exact Entails.of_eq (by ac_rfl)
-
-theorem fnAddr_dropChain_eq_ss5_add (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State)) :
-    (trTrapProgAt b C abs).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.Getters.dropChain2Name =
-      (trTrapProgAt b C abs).fnAddr dropSs5Name +
-        bv% ((2^64 + ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::session_structure::Chain> [local#3]" - ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]") % 2^64) := by
-  unfold trTrapProgAt dropSs5Name
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::proto::storage::session_structure::Chain> [local#3]"),
-      (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]")]
-  bv_omega
 
 theorem ofNat_succ_eq_add_one (n : Nat) :
     BitVec.ofNat 64 (n + 1) = BitVec.ofNat 64 n + 1#64 :=

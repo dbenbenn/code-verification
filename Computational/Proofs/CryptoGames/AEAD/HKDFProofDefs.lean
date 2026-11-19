@@ -15,7 +15,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.EffSalt
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.ChainDefs
-public import Computational.Proofs.CryptoGames.AEAD.EffSaltProofDefs
+import Computational.Proofs.CryptoGames.AEAD.EffSaltProofDefs
 
 /-!
 # HKDF and Ratchet Chain PRG Definitions
@@ -24,7 +24,7 @@ Proof-side PRG wrappers (`kdfPRG`, `chainPRG`) and effective-salt lemma for HKDF
 derivation.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames
 namespace HKDF

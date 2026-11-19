@@ -10,20 +10,20 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetBase
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveExtBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.ProofBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2Encoder
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveExtBudget
+import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.ProofBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2Encoder
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
@@ -32,6 +32,9 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveExtBudgetAux
 
 /-!
 # `send_ct2_encoder`: Allocator Event Trace & Framed Call Helpers
@@ -41,7 +44,7 @@ Exact allocator-event trace (`sendCt2EncoderEvents`), envelope inclusion into `S
 `spqr::v1::chunked::send_ct::send_ct2_encoder`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,11 +53,9 @@ set_option linter.unusedSimpArgs false
 
 namespace LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux
 
+open CryptoVerification (LibsignalCodeLoaded LibsignalPlacement lsmpl withLsCodeLoaded)
+
 open Arm64 ProofLib ProofLib.ProgramReflection
-open CryptoVerification (
-  LibsignalCodeLoaded LibsignalPlacement blkLib_eq_382 blkPC_382 blkPl_382
-  libsignalSessionCode lsProg_382 lsmpl lsρ sepWP_seq_lscl withLsCodeLoaded
-)
 open CryptoVerification.LibsignalSpqrV1 (Bytes PolyEncoder spqrPolyApi)
 open CryptoVerification.LibsignalTripleRatchet (
   DoReserveCall doReserveStack reserveCap
@@ -124,15 +125,15 @@ attribute [local arm64_norm, local wp_norm]
 /-! ## 1. Exact Allocator Event Sequence & Inclusion into `SendCt2EncoderEnv` -/
 
 /-- Initial `Vec::from(ct2)` allocation events (`[]` when `ct2 = []`). -/
-def sendCt2InitEvs (ct2 : Bytes) : List AllocEvent :=
+@[expose] def sendCt2InitEvs (ct2 : Bytes) : List AllocEvent :=
   if ct2 = [] then [] else rustAllocEvents ct2.length 1
 
 /-- Capacity after `Vec::from(ct2)`. -/
-def sendCt2Cap1 (ct2 : Bytes) : Nat :=
+@[expose] def sendCt2Cap1 (ct2 : Bytes) : Nat :=
   if ct2 = [] then 0 else ct2.length
 
 /-- `extend_from_slice(mac)` (`do_reserve_and_handle`) events (`[]` when `mac = []`). -/
-def sendCt2MacEvs (ct2 mac : Bytes) : List AllocEvent :=
+@[expose] def sendCt2MacEvs (ct2 mac : Bytes) : List AllocEvent :=
   if mac = [] then []
   else
     let newCap := reserveCap (sendCt2Cap1 ct2) ct2.length mac.length
@@ -140,22 +141,22 @@ def sendCt2MacEvs (ct2 mac : Bytes) : List AllocEvent :=
     else rustReallocEvents ct2.length newCap 1
 
 /-- Capacity before `encode_bytes` and `Vec::drop`. -/
-def sendCt2Cap2 (ct2 mac : Bytes) : Nat :=
+@[expose] def sendCt2Cap2 (ct2 mac : Bytes) : Nat :=
   if mac = [] then sendCt2Cap1 ct2
   else reserveCap (sendCt2Cap1 ct2) ct2.length mac.length
 
 /-- Trailing `Vec::drop` deallocation events (`[]` when `cap = 0`). -/
-def sendCt2FreeEvs (cap : Nat) : List AllocEvent :=
+@[expose] def sendCt2FreeEvs (cap : Nat) : List AllocEvent :=
   if cap = 0 then [] else rustDeallocEvents cap 1
 
 /-- Exact allocator event list emitted by `spqr::v1::chunked::send_ct::send_ct2_encoder`. -/
-def sendCt2EncoderEvents (ct2 mac : Bytes) : List AllocEvent :=
+@[expose] def sendCt2EncoderEvents (ct2 mac : Bytes) : List AllocEvent :=
   (sendCt2InitEvs ct2 ++ sendCt2MacEvs ct2 mac) ++
     (encodeBytesAllocEvents (ct2.length + mac.length) ++
       sendCt2FreeEvs (sendCt2Cap2 ct2 mac))
 
 /-- Exact singleton event envelope for `spqr::v1::chunked::send_ct::send_ct2_encoder`. -/
-def SendCt2EncoderExactEnv (x : SendCt2EncoderGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def SendCt2EncoderExactEnv (x : SendCt2EncoderGhost) (evs : List AllocEvent) : Prop :=
   evs = sendCt2EncoderEvents x.ct2 x.mac
 
 theorem sendCt2EncoderExactEnv_nonempty (x : SendCt2EncoderGhost) :

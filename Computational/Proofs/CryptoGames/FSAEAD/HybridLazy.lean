@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.HybridWith
-public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Lazy
+public import Computational.Proofs.CryptoGames.FSAEAD.Lazy
 public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
+public import Computational.Proofs.CryptoGames.FSAEAD.HybridProofDefs
 
 /-!
 # Lazy Sampling of the Hybrid Slot
@@ -23,7 +24,7 @@ Defines the slot-filling kernels `matFill` (resolving an unknown slot to a PRG c
 that all hybrid game oracles commute with them.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec CryptoGames.Lazy
 
@@ -39,13 +40,13 @@ local notation "HS" => HState CK MK AD M C
 local notation "SP" => StateT (HSt CK MK AD M C) ProbComp
 
 /-- Resolves an `.unknown` slot to a PRG challenge at `max pos h.keys.length`. -/
-def matFill (pos : ℕ) (D : ℕ → ProbComp (CK × MK)) (h : HState CK MK AD M C) :
+@[expose] def matFill (pos : ℕ) (D : ℕ → ProbComp (CK × MK)) (h : HState CK MK AD M C) :
     Slot CK MK → ProbComp (Slot CK MK)
   | .unknown => Slot.mat (max pos h.keys.length) <$> D (max pos h.keys.length)
   | sl => pure sl
 
 /-- Resolves an `.unknown` slot to a uniform chain key once `j ≤ h.keys.length`. -/
-def seedFill [SampleableType CK] (j : ℕ) (h : HState CK MK AD M C) : Slot CK MK → ProbComp (Slot CK MK)
+@[expose] def seedFill [SampleableType CK] (j : ℕ) (h : HState CK MK AD M C) : Slot CK MK → ProbComp (Slot CK MK)
   | .unknown => if j ≤ h.keys.length then Slot.seed <$> ($ᵗ CK) else pure .unknown
   | sl => pure sl
 

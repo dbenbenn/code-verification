@@ -10,9 +10,21 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.MainEntryBudgetFitsCapReal
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInstSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInstSat
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # `cliGhostExterns` `cliBudgetLimits` `MainOkCliExt{Pq,Over}B2NeedLocksPadPlacedAt` Assemblers
@@ -36,7 +48,7 @@ namespace LibsignalBinary.Proofs.PeakBudget.CliNoOomOfFitsEnvGhostSat
 open Arm64 (GhostName Memory subroutine_ok)
 open Arm64.Obj (MultiPlacement)
 open Arm64.Process (bytesOfString)
-open CryptoVerification (libsignalMutatedBlocks libsignalSessionExterns)
+open CryptoVerification (ExternsDistinctOnHooked libsignalMutatedBlocks)
 open CryptoVerification.E2E (UnreachedPqxdhPrimitives)
 open CryptoVerification.LibsignalPublicApi.StoreKit (FsFiles)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
@@ -79,7 +91,7 @@ theorem mainOkCliExtPqB2NeedLocksPadPlacedAt_cliGhostExterns_cliBudgetLimits_of_
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     (ghOf : CliHooks → CliGhostHooks)
@@ -142,7 +154,7 @@ theorem mainOkCliExtOverB2NeedLocksPadPlacedAt_cliGhostExterns_cliBudgetLimits_o
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     {CodeOk : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk)
     (ghOf : CliHooks → CliGhostHooks)

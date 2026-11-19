@@ -14,8 +14,8 @@ import all Init.Data.String.Basic
 import all Init.Data.Repr
 import all Init.Data.ToString.Basic
 import all Init.Data.List.SplitOn.Basic
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
-public import LibsignalBinary.Proofs.SpecLemmas.FsFold
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.FsFold -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Lemmas.InitPaths
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
@@ -28,7 +28,7 @@ Establishes injectivity and ASCII character bounds for decimal key identifiers, 
 store directories in `pqRecvInputs` and `encodeDir` for lookup and commit-overwrite proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -294,7 +294,7 @@ theorem blockingAncestorF_dir_sfx {F : FsFiles} {dir sfx : String}
 
 /-! ## Path bucket partition (`recvBucket`) -/
 
-def recvBucket (s : String) : Nat :=
+@[expose] def recvBucket (s : String) : Nat :=
   let cs := s.toList
   if cs == "address".toList then 1
   else if cs == "identity-key-pair".toList then 2
@@ -434,38 +434,38 @@ theorem recvBucket_partyDirs {d : String} (hd : d ∈ partyDirs) : recvBucket d 
 
 /-! ## Block decomposition of `encodeDir` and bucket lookup lemmas -/
 
-def blockDir1 (st : PqParty) : List (String × List (BitVec 8)) :=
+@[expose] def blockDir1 (st : PqParty) : List (String × List (BitVec 8)) :=
   [(addressFile, textBytes (partyAddress st.party).text)]
 
-def blockDir2 (W : PEParams) (st : PqParty) : List (String × List (BitVec 8)) :=
+@[expose] def blockDir2 (W : PEParams) (st : PqParty) : List (String × List (BitVec 8)) :=
   [(identityKeyPairFile, IdentityKeyPairStructure.encode
       ⟨djbKey (keyPairOf W.C st.me.idPriv).publicKey.bytes, st.me.idPriv.toList⟩)]
 
-def blockDir3 (st : PqParty) : List (String × List (BitVec 8)) :=
+@[expose] def blockDir3 (st : PqParty) : List (String × List (BitVec 8)) :=
   [(registrationIdFile, SignalSession.le32 st.me.regId)]
 
-def blockDir4 (st : PqParty) : List (String × List (BitVec 8)) :=
+@[expose] def blockDir4 (st : PqParty) : List (String × List (BitVec 8)) :=
   match st.peerId with
   | some k => [(identityFile (partyAddressName st.party.other), k.serialize)]
   | none => []
 
-def blockDir5 (st : PqParty) : List (String × List (BitVec 8)) :=
+@[expose] def blockDir5 (st : PqParty) : List (String × List (BitVec 8)) :=
   match st.session with
   | some (x, g) => [(sessionFile (partyAddress st.party.other), encodeRecordUnderExtras (fun _ => x) g)]
   | none => []
 
-def blockDir6 (W : PEParams) (st : PqParty) : List (String × List (BitVec 8)) :=
+@[expose] def blockDir6 (W : PEParams) (st : PqParty) : List (String × List (BitVec 8)) :=
   st.signed.map fun (i, k) => (signedPreKeyFile i, signedRecordBytes W.C i k)
 
-def blockDir7 (W : PEParams) (st : PqParty) : List (String × List (BitVec 8)) :=
+@[expose] def blockDir7 (W : PEParams) (st : PqParty) : List (String × List (BitVec 8)) :=
   st.oneTime.map fun (i, k) =>
     (oneTimePreKeyFile i, match k with | some sk => oneTimeRecordBytes W.C i sk | none => [])
 
-def blockDir8 (st : PqParty) : List (String × List (BitVec 8)) :=
+@[expose] def blockDir8 (st : PqParty) : List (String × List (BitVec 8)) :=
   st.kyberOneTime.map fun (i, k) =>
     (oneTimeKyberPreKeyFile i, match k with | some k => kyberRecordBytes i k | none => [])
 
-def blockDir9 (st : PqParty) : List (String × List (BitVec 8)) :=
+@[expose] def blockDir9 (st : PqParty) : List (String × List (BitVec 8)) :=
   (st.kyberLastResort.map fun (i, k, seen) =>
     [(lastResortKyberPreKeyFile i, kyberRecordBytes i k), (baseKeysFile i, baseKeysBytes seen)]).flatten
 
@@ -685,14 +685,14 @@ theorem normalizePath_dir_sfx {d sfx : String}
     String.ofList_toList, String.ofList_toList]
   simp only [List.filter, seg_filter_ok hd_ne hd_nd, seg_filter_ok hs_ne hs_nd]
 
-def recvRootFiles : List String :=
+@[expose] def recvRootFiles : List String :=
   [addressFile, identityKeyPairFile, registrationIdFile, coinsFile]
 
-def recvParentDirs : List String :=
+@[expose] def recvParentDirs : List String :=
   ["identities", "sessions", "signed-pre-keys", "one-time-pre-keys",
    "one-time-kyber-pre-keys", "last-resort-kyber-pre-keys"]
 
-def IsRecvFile (p : String) : Prop :=
+@[expose] def IsRecvFile (p : String) : Prop :=
   p ∈ recvRootFiles ∨
     ∃ d sfx, d ∈ recvParentDirs ∧ '/' ∉ sfx.toList ∧ sfx.toList ≠ [] ∧ sfx ≠ "." ∧
       p = d ++ "/" ++ sfx

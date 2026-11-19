@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
 
 /-!
@@ -19,7 +19,7 @@ SIMD lane normalization, 128-byte stack frame splitting (`sub sp, sp, #128`), an
 `Err` result buffer packing lemmas for `signal_session::stores::decode_kyber_pre_key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -243,7 +243,7 @@ theorem kpkDecodeStack_drop_split (sp' : BitVec 64) :
 
 /-! ## 4. 88-byte `Ok` & `Err` memory packing/unpacking helpers -/
 
-def words88Sp (sp' w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 : BitVec 64) : SepProp :=
+@[expose] def words88Sp (sp' w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 : BitVec 64) : SepProp :=
   ((sp' + 8#64) ↦₆₄ w0) ∗ ((sp' + 16#64) ↦₆₄ w1) ∗
   ((sp' + 24#64) ↦₆₄ w2) ∗ ((sp' + 32#64) ↦₆₄ w3) ∗
   ((sp' + 40#64) ↦₆₄ w4) ∗ ((sp' + 48#64) ↦₆₄ w5) ∗
@@ -251,7 +251,7 @@ def words88Sp (sp' w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 : BitVec 64) : SepProp :=
   ((sp' + 72#64) ↦₆₄ w8) ∗ ((sp' + 80#64) ↦₆₄ w9) ∗
   ((sp' + 88#64) ↦₆₄ w10)
 
-def words88Ret (ret w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 : BitVec 64) : SepProp :=
+@[expose] def words88Ret (ret w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 : BitVec 64) : SepProp :=
   (ret ↦₆₄ w0) ∗ ((ret + 8#64) ↦₆₄ w1) ∗
   ((ret + 16#64) ↦₆₄ w2) ∗ ((ret + 24#64) ↦₆₄ w3) ∗
   ((ret + 32#64) ↦₆₄ w4) ∗ ((ret + 40#64) ↦₆₄ w5) ∗
@@ -259,7 +259,7 @@ def words88Ret (ret w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 : BitVec 64) : SepProp :=
   ((ret + 64#64) ↦₆₄ w8) ∗ ((ret + 72#64) ↦₆₄ w9) ∗
   ((ret + 80#64) ↦₆₄ w10)
 
-def signedPreKeyBufs (A : RustAlloc) (pubCap pubPtr privCap privPtr sigCap sigPtr : BitVec 64)
+@[expose] def signedPreKeyBufs (A : RustAlloc) (pubCap pubPtr privCap privPtr sigCap sigPtr : BitVec 64)
     (m : SignedPreKeyRecordStructure) : SepProp :=
   vecU8Buf A pubCap pubPtr m.publicKey ∗
   vecU8Buf A privCap privPtr m.privateKey ∗

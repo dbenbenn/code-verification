@@ -27,7 +27,7 @@ Injectivity, destructor characterization, and KDF domain-separation lemmas on
 `bobAgreement`/`aliceAgreement` key-equality bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Chains
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Chains -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC -- proof-setup: allow-public-import
 
 /-!
 # Receiver-chain seed extraction (`k1Seed`)
@@ -18,7 +18,7 @@ public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
 **Checked by Lean.** Defines `k1Seed` for branch K1 of `LibsignalSimC.snapshotMessageKeySeed` (DEV-LS37) and proves forward chain-stepping agreement with `chainKeyValAt` and `msgSeedAt`.
 -/
 
-@[expose] public section
+public section
 
 open CryptoGames.Ratchet CryptoGames.LibsignalSession CryptoGames.Ratchet.LibsignalInst
 open CryptoGames.Ratchet.LibsignalSim
@@ -49,7 +49,7 @@ theorem chainSeedAt_chainKeyValAt (F : ShaCompress) (ck0 : BitVec 256) {m : ℕ}
   rfl
 
 /-- Per-chain seed extracted by branch K1 of `snapshotMessageKeySeed` at counter `n`. -/
-def k1Seed (F : ShaCompress) (rc : ReceiverChain) (n : BitVec 32) : Option (List (BitVec 8)) :=
+@[expose] def k1Seed (F : ShaCompress) (rc : ReceiverChain) (n : BitVec 32) : Option (List (BitVec 8)) :=
   match rc.messageKeys.find? (·.counter == n) with
   | some mk => some mk.seed
   | none => rc.chainKey.bind fun ck => chainSeedAt F ck n

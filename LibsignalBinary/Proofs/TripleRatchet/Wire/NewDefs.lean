@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Mac.Defs
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Specification of `<libsignal_protocol::protocol::SignalMessage>::new`
@@ -21,7 +23,7 @@ Machine-level specification (`signalMessageNewSpec`) and `subroutine_ok` predica
 `SignalMessage::compute_mac`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -42,54 +44,6 @@ callee stack budget `computeMacStack` (which dominates `encodeVarintStack`,
 abbrev signalMessageNewStack : Nat := computeMacStack + 0x1a0
 
 /-! ## MAC callee `subroutine_ok` hypotheses -/
-
-/-- Callee hypothesis on `tripleRatchetProgAtExt b ext`: `SignalMessage::serialize_addresses` (`0x1d4b0`)
-meets `serializeAddressesSpec A parse`. -/
-def SerializeAddressesOkExt (b : BitVec 64) (A : RustAlloc)
-    (parse : UuidParser) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr serializeAddressesName)
-    (serializeAddressesSpec A parse)
-
-/-- Callee hypothesis on `tripleRatchetProgAt`: `SignalMessage::serialize_addresses` (`0x1d4b0`)
-meets `serializeAddressesSpec A parse`. -/
-def SerializeAddressesOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr serializeAddressesName)
-    (serializeAddressesSpec A parse)
-
-/-- Callee hypothesis on `tripleRatchetProgAtExt img.base ext`: `SignalMessage::compute_mac` (`0x1cfc0`)
-meets `(computeMacSpec C.F A).inImage img`. -/
-def ComputeMacOkExt (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr computeMacName)
-    ((computeMacSpec C.F A).inImage img)
-
-/-- Callee hypothesis on `tripleRatchetProgAt`: `SignalMessage::compute_mac` (`0x1cfc0`)
-meets `(computeMacSpec C.F A).inImage img`. -/
-def ComputeMacOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    ((tripleRatchetProgAt img.base C ctl abs).fnAddr computeMacName)
-    ((computeMacSpec C.F A).inImage img)
-
-/-- Image-independent variant of `ComputeMacOkExt` on any base `b`. -/
-def ComputeMacRawOkExt (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr computeMacName)
-    (computeMacSpec C.F A)
-
-/-- Image-independent variant of `ComputeMacOk` on any base `b`. -/
-def ComputeMacRawOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr computeMacName)
-    (computeMacSpec C.F A)
-
-/-! ## Ghost state and pure model helpers for `SignalMessage::new` (`0x1d918`) -/
 
 /-- Ghost arguments of `<libsignal_protocol::protocol::SignalMessage>::new` (`0x1d918`). -/
 structure SignalMessageNewGhost where
@@ -135,12 +89,12 @@ structure SignalMessageNewGhost where
   ret : BitVec 64
 
 /-- Optional 36-byte serialized address pair `x.loc.bind (serializeAddresses parse · x.rem)`. -/
-def SignalMessageNewGhost.addresses (parse : UuidParser) (x : SignalMessageNewGhost) :
+@[expose] def SignalMessageNewGhost.addresses (parse : UuidParser) (x : SignalMessageNewGhost) :
     Option (List (BitVec 8)) :=
   x.loc.bind fun l => serializeAddresses (serviceIdParse parse) l x.rem
 
 /-- Temporary `ProtoSignalMessage` assembled on the stack (`sp + 0x80..+0xf0`) before encoding. -/
-def SignalMessageNewGhost.protoMsg (parse : UuidParser) (x : SignalMessageNewGhost) :
+@[expose] def SignalMessageNewGhost.protoMsg (parse : UuidParser) (x : SignalMessageNewGhost) :
     ProtoSignalMessage :=
   { ratchetKey := some x.senderRatchetKey.serialize
     counter := some x.counter
@@ -150,7 +104,7 @@ def SignalMessageNewGhost.protoMsg (parse : UuidParser) (x : SignalMessageNewGho
     addresses := x.addresses parse }
 
 /-- Pure `SignalMessage` model value produced by `SignalMessage.new F protoSignalCodec`. -/
-def SignalMessageNewGhost.model (F : ShaCompress) (parse : UuidParser)
+@[expose] def SignalMessageNewGhost.model (F : ShaCompress) (parse : UuidParser)
     (x : SignalMessageNewGhost) : SignalMessage :=
   SignalMessage.new F protoSignalCodec x.messageVersion x.macKey (x.addresses parse)
     x.senderRatchetKey x.counter x.previousCounter x.ciphertext
@@ -159,7 +113,7 @@ def SignalMessageNewGhost.model (F : ShaCompress) (parse : UuidParser)
 /-- Caller-owned stack argument words `[sp + 0x00 .. sp + 0x30)` (`ciphertext` slice,
 `sender_identity_key`, `receiver_identity_key`, `pq_ratchet` slice) and borrowed input buffers,
 all preserved unchanged from precondition to postcondition. -/
-def SignalMessageNewGhost.inputsAt (A : RustAlloc) (x : SignalMessageNewGhost) (sp : BitVec 64) :
+@[expose] def SignalMessageNewGhost.inputsAt (A : RustAlloc) (x : SignalMessageNewGhost) (sp : BitVec 64) :
     SepProp :=
   (sp ↦₆₄ x.ciphertextA) ∗
     ((sp + 0x08#64) ↦₆₄ BitVec.ofNat 64 x.ciphertext.length) ∗
@@ -185,7 +139,7 @@ Given register arguments `(w0..w7, x8)` and caller stack/heap inputs `x.inputsAt
 and appends the 8-byte truncated HMAC from `compute_mac`, writes the 120-byte `Ok`
 `signalMessageAt A g x.ret (x.model F parse)`, and frees temporary `wire::SignalMessage` buffers;
 panics only on allocator failure (`allocFailedIn`). -/
-def signalMessageNewSpec (F : ShaCompress) (A : RustAlloc) (parse : UuidParser) :
+@[expose] def signalMessageNewSpec (F : ShaCompress) (A : RustAlloc) (parse : UuidParser) :
     Spec SignalMessageNewGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = x.messageVersion ∧
@@ -208,47 +162,12 @@ def signalMessageNewSpec (F : ShaCompress) (A : RustAlloc) (parse : UuidParser) 
 
 /-! ## Target `subroutine_ok` propositions -/
 
-/-- `<libsignal_protocol::protocol::SignalMessage>::new` (`0x1d918`) meets
-`(signalMessageNewSpec C.F A parse).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-def SignalMessageNewOkExt (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (parse : UuidParser) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr signalMessageNewName)
-    ((signalMessageNewSpec C.F A parse).inImage img)
-
-/-- `<libsignal_protocol::protocol::SignalMessage>::new` (`0x1d918`) meets
-`(signalMessageNewSpec C.F A parse).inImage img` on `tripleRatchetProgAt img.base …`
-under `ComputeMacOk img C A ctl parse abs`. -/
-def SignalMessageNewOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    ((tripleRatchetProgAt img.base C ctl abs).fnAddr signalMessageNewName)
-    ((signalMessageNewSpec C.F A parse).inImage img)
-
-/-- Image-independent variant: `<libsignal_protocol::protocol::SignalMessage>::new` (`0x1d918`)
-meets `signalMessageNewSpec C.F A parse` on `tripleRatchetProgAtExt b ext`. -/
-def SignalMessageNewRawOkExt (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (parse : UuidParser) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr signalMessageNewName)
-    (signalMessageNewSpec C.F A parse)
-
-/-- Image-independent variant: `<libsignal_protocol::protocol::SignalMessage>::new` (`0x1d918`)
-meets `signalMessageNewSpec C.F A parse` on `tripleRatchetProgAt b …` (under `ComputeMacRawOk b C A ctl parse abs`). -/
-def SignalMessageNewRawOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr signalMessageNewName)
-    (signalMessageNewSpec C.F A parse)
-
-/-! ## Extended-hook (`extHookStack`) stack budget, spec, and `OkExtX` predicate -/
-
 /-- Stack budget for `SignalMessage::new` (`0x1d918`) over `extHookStack`:
 `computeMacStackX + 0x1a0 = 16912 + 416 = 17328` bytes. -/
 abbrev signalMessageNewStackX : Nat := computeMacStackX + 0x1a0
 
 /-- `signalMessageNewSpec F A parse` at `signalMessageNewStackX`. -/
-def signalMessageNewSpecX (F : ShaCompress) (A : RustAlloc) (parse : UuidParser) :
+@[expose] def signalMessageNewSpecX (F : ShaCompress) (A : RustAlloc) (parse : UuidParser) :
     Spec SignalMessageNewGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = x.messageVersion ∧
@@ -268,14 +187,6 @@ def signalMessageNewSpecX (F : ShaCompress) (A : RustAlloc) (parse : UuidParser)
       (∃∗ g : SignalMessageGhost, signalMessageAt A g x.ret (x.model F parse)) ∗
       A.pool ∗ stackAt s0.sp signalMessageNewStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- `<libsignal_protocol::protocol::SignalMessage>::new` (`0x1d918`) meets
-`(signalMessageNewSpecX C.F A parse).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-def SignalMessageNewOkExtX (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (parse : UuidParser) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr signalMessageNewName)
-    ((signalMessageNewSpecX C.F A parse).inImage img)
 
 end CryptoVerification.LibsignalTripleRatchet
 

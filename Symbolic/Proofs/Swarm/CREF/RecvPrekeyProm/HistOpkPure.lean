@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.Tie.BlockReadPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.Tie.BlockReadPure -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -20,8 +20,8 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.ByteFreshInstallTRPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecRecvRkOkRatchetDHPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SkippedKeyRunInvPure
@@ -50,7 +50,7 @@ Proves `prom_recRecvRkOk_of_acceptOut`, `prom_skippedInstallByteFresh_step₂`, 
 and `prom_histOK` across accepting session-promotion calls.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

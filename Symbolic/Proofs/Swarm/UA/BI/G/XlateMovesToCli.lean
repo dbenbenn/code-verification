@@ -39,6 +39,10 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Xpl.Steps
+import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
 
 /-!
 # Lifting Move-Level Acceptance Witnesses to Step Explanations
@@ -48,7 +52,7 @@ move-level `ModelAcceptsTermAfterAttackerSendsMoves` extension of `(τ₁', g', 
 step-level `ModelAcceptsTermAfterAttackerSends` extension of a step explanation `(g', ss')` of `evs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

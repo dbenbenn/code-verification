@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong
+import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -41,6 +41,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 
 /-!
 # Honest PQ Ratchet Wire Extraction
@@ -50,7 +51,7 @@ attacker-known `Spqr.SendMsg` symbolic term matching `parsed.pqRatchet` whenever
 holds on a `MatchedPrefix`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -574,7 +575,7 @@ theorem preKeySend_sentBody_strip_srhv
 /-! ## Honest Send Provenance -/
 
 /-- Every `.send m` event in `acc` has wire length `< 2 ^ 64`. -/
-def SendsFit (acc : List MachineEvent) : Prop :=
+@[expose] def SendsFit (acc : List MachineEvent) : Prop :=
   ∀ m : HwBytes, .send m ∈ acc → m.length < 2 ^ 64
 
 open Symbolic.Swarm.CREF.TR.FreshSigma (StEntry TREntry run_bind_fst run_bind_snd

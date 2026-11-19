@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1State
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
-public import LibsignalBinary.Proofs.TripleRatchet.Prog
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1State -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prog -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym -- shake: keep -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard19
+meta import GeneratedLean.LibsignalSessionPlacedObjShard20
+meta import GeneratedLean.LibsignalSessionPlacedObjShard8
 
 /-!
 # Code-Symbol Fetch and `BL` Call Bridges for `EncodedLen`
@@ -26,7 +29,7 @@ Provides `[LibsignalPlacement]` dual-block instruction fetch helpers, `FrozenInv
 jump-table `ADRP + ADD` step (`+56..+64`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -52,17 +55,12 @@ open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalSpqrV1
 open EncodedLen
 
-local notation "tripleRatchetProgAtExt" => CryptoVerification.LibsignalTripleRatchet.contractProg
-
-/-- Entry-point membership covering both `libsignalSessionCode.rebase b (Rust.withPanics abs)` at
-    `fn1` / `fn2` and `[LibsignalPlacement]` block programs `pc1.rebase b1 H` / `pc2.rebase b2 H`. -/
-def IsDualBlockEntryP2 (fn1 fn2 : String)
+/-- Entry-point membership for `[LibsignalPlacement]` block programs `pc1.rebase b1 H` / `pc2.rebase b2 H`. -/
+@[expose] def IsDualBlockEntryP2 (_fn1 _fn2 : String)
     (pc1 pc2 : [LibsignalPlacement] → Program)
     (b1 b2 : [LibsignalPlacement] → BitVec 64)
     (prog : Program) (entry : BitVec 64) : Prop :=
-  (∃ b abs, prog = tripleRatchetProgAtExt b abs ∧
-    ((tripleRatchetProgAtExt b abs).fnAddr fn1 = entry ∨
-     (tripleRatchetProgAtExt b abs).fnAddr fn2 = entry)) ∨
+  False ∨
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
     (prog = (@pc1 inst).rebase (@b1 inst) H ∧ entry = @b1 inst) ∨
     (prog = (@pc2 inst).rebase (@b2 inst) H ∧ entry = @b2 inst))
@@ -71,16 +69,11 @@ theorem dualBlockP2_fetch_entry {fn1 fn2 : String}
     {pc1 pc2 : [LibsignalPlacement] → Program}
     {b1 b2 : [LibsignalPlacement] → BitVec 64} {prog : Program} {entry : BitVec 64}
     (hfn : IsDualBlockEntryP2 fn1 fn2 pc1 pc2 b1 b2 prog entry) {ins : Instr}
-    (h1 : ∀ b H, (libsignalSessionCode.rebase b H).fetch
-      ((libsignalSessionCode.rebase b H).fnAddr fn1) = some ins)
-    (h2 : ∀ b H, (libsignalSessionCode.rebase b H).fetch
-      ((libsignalSessionCode.rebase b H).fnAddr fn2) = some ins)
     (h3 : ∀ [LibsignalPlacement] H, (pc1.rebase b1 H).fetch b1 = some ins)
     (h4 : ∀ [LibsignalPlacement] H, (pc2.rebase b2 H).fetch b2 = some ins) :
     prog.fetch entry = some ins := by
-  rcases hfn with ⟨b, abs, rfl, rfl | rfl⟩ | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
-  · exact h1 b _
-  · exact h2 b _
+  rcases hfn with hfalse | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
+  · exact hfalse.elim
   · exact @h3 inst H
   · exact @h4 inst H
 
@@ -88,16 +81,11 @@ theorem dualBlockP2_fetch_add {fn1 fn2 : String}
     {pc1 pc2 : [LibsignalPlacement] → Program}
     {b1 b2 : [LibsignalPlacement] → BitVec 64} {prog : Program} {entry : BitVec 64}
     (hfn : IsDualBlockEntryP2 fn1 fn2 pc1 pc2 b1 b2 prog entry) {k : Nat} {ins : Instr}
-    (h1 : ∀ b H, (libsignalSessionCode.rebase b H).fetch
-      ((libsignalSessionCode.rebase b H).fnAddr fn1 + BitVec.ofNat 64 k) = some ins)
-    (h2 : ∀ b H, (libsignalSessionCode.rebase b H).fetch
-      ((libsignalSessionCode.rebase b H).fnAddr fn2 + BitVec.ofNat 64 k) = some ins)
     (h3 : ∀ [LibsignalPlacement] H, (pc1.rebase b1 H).fetch (b1 + BitVec.ofNat 64 k) = some ins)
     (h4 : ∀ [LibsignalPlacement] H, (pc2.rebase b2 H).fetch (b2 + BitVec.ofNat 64 k) = some ins) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some ins := by
-  rcases hfn with ⟨b, abs, rfl, rfl | rfl⟩ | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
-  · exact h1 b _
-  · exact h2 b _
+  rcases hfn with hfalse | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
+  · exact hfalse.elim
   · exact @h3 inst H
   · exact @h4 inst H
 
@@ -133,7 +121,7 @@ instance instFrozenInvTrue : FrozenInv (fun _ => True) where
 instance instFrozenInvLsCl (pl : MultiPlacement) : FrozenInv (LibsignalCodeLoaded pl) where
   keeps h hkf := h.of_keepsFrozen hkf
 
-def SepWPpF (Φ : Memory → Prop) (prog : Program) (ret : BitVec 64) (s : State) (P : SepProp)
+@[expose] def SepWPpF (Φ : Memory → Prop) (prog : Program) (ret : BitVec 64) (s : State) (P : SepProp)
     (Q Qp : State → SepProp → Prop) (oom : State → SepProp := fun _ => ⌜False⌝) : Prop :=
   Φ s.mem → SepWPp prog ret s P (fun sf Pf => Φ sf.mem ∧ Q sf Pf) Qp oom
 
@@ -208,7 +196,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 
 /-- Abstracted `BL` call at offset `k` from `entry` to a pinned `encoded_len` callee with
     representation `repr`, pure model `encLen`, stack requirement `stackSz`, and `FrozenInv Φ`. -/
-def CallPinnedEncLenAtF (Φ : Memory → Prop) (prog : Program) (entry : BitVec 64) (k : Nat)
+@[expose] def CallPinnedEncLenAtF (Φ : Memory → Prop) (prog : Program) (entry : BitVec 64) (k : Nat)
     {Ghost Model : Type} (repr : Ghost → BitVec 64 → Model → SepProp)
     (encLen : Model → Nat) (stackSz : Nat) : Prop :=
   ∀ (ret : BitVec 64) (g : Ghost) (a sp : BitVec 64) (m : Model) (s : State) (F : SepProp)
@@ -405,9 +393,8 @@ theorem v1StateJumpTableBytes_lsro_local2_intro {pl : MultiPlacement} {m : Memor
   lsro_slice_intro hro (sym := v1StateJtSymLocal2) (off := 0) (by simp) (by decide +kernel) hP
 
 /-- Bundles the two-instruction step at `+56..+64` (`ADRP X9, jt; ADD X9, X9, #loOff`) loading
-    `roBase` into `X9`, covering both `tripleRatchetProgAtExt b abs` and `[LibsignalPlacement]`
-    relaxable `pairStep_0x38`. -/
-def HasJumpTableStepP2 (prog : Program) (entry roBase : BitVec 64) : Prop :=
+    `roBase` into `X9` via `[LibsignalPlacement]` relaxable `pairStep_0x38`. -/
+@[expose] def HasJumpTableStepP2 (prog : Program) (entry roBase : BitVec 64) : Prop :=
   ∀ (s : State) (P : SepProp) (post : State → SepProp → Prop) (oom : State → SepProp),
     s.pc = entry + 56#64 →
     s.status = .Running →
@@ -425,25 +412,6 @@ theorem hasJumpTableStepP2_placed_local2 [LibsignalPlacement] (H : LibsignalHook
       (lsρ v1StateJtSymLocal2) := by
   intro s P post oom hpc hrun hnext
   exact blkPC_405_pairStep_0x38 (blkPl_405).base H rfl hpc hrun hnext
-
-/-- Bundles the `ADRP X9` (`+56`) and `ADD X9, X9, #loOff` (`+60`) instructions and their
-    resolved `.rodata` jump-table base address `roBase`. -/
-def HasJumpTableAddr (b : BitVec 64) (abs : String → Option (State → State))
-    (entry roBase : BitVec 64) : Prop :=
-  ∃ (pageOff : BitVec 64) (loOff : BitVec 12),
-    (tripleRatchetProgAtExt b abs).fetch (entry + 56#64) =
-      some (.adr true .x9 pageOff) ∧
-    (tripleRatchetProgAtExt b abs).fetch (entry + 60#64) =
-      some (.addSubImm .W64 .ADD .x9 .x9 loOff false) ∧
-    ((entry + 56#64) &&& 0xfffffffffffff000#64) + pageOff + loOff.zeroExtend 64 = roBase
-
-theorem hasJumpTableStepP2_of_addr {b : BitVec 64} {abs : String → Option (State → State)}
-    {entry roBase : BitVec 64} (hjt : HasJumpTableAddr b abs entry roBase) :
-    HasJumpTableStepP2 (tripleRatchetProgAtExt b abs) entry roBase := by
-  rcases hjt with ⟨pageOff, loOff, hf56, hf60, hro⟩
-  intro s P post oom hpc hrun hnext
-  wp_steps
-  exact hnext
 
 theorem subroutine_ok_unpin_lscl {Model Ghost : Type} {prog : Program} {entry : BitVec 64}
     {pl : MultiPlacement}

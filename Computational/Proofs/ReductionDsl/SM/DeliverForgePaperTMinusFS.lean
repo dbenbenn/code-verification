@@ -9,9 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperTMinusSim
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperTMinusSim -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.SM.DeliverForgeShifted
 import ProofLib.BV.WidthNorm
+public import Computational.Proofs.CryptoGames.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.ReductionsQueries -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperShiftedFS -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedFS -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.DeliverForge -- proof-setup: allow-public-import
 
 /-!
 # Receiver-Table, FS-Hook, and Unified Handler Lemmas for `B1(tStar)`
@@ -21,7 +28,7 @@ Proves `SMVRInv`, `FSEngineInv`, `fsClamp`, and query-bound lemmas for `injectEB
 `deliverForgeEGen`, `injectECGen`, and `deliverForgeECGen`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -291,7 +298,7 @@ theorem deliverForgeEB1_b_eq [DecidableEq T] [DecidableEq M] [DecidableEq E] [In
 
 /-- Unified `b1 : Bool` shallow `inject` handler (`b1 = true` uses `trivB1 tStar` with `Δ = 2`,
 `b1 = false` uses `s.trivial Δ pos`). -/
-def injectEGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
+@[expose] def injectEGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     {Γ T Sig SS RS M CCoins E HS Γv Sv SSv RSv : Type}
     [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (b1 : Bool) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
@@ -300,7 +307,7 @@ def injectEGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
       (EM tspec Γv T Sv SSv RSv M E HS) :=
   if b1 then DeliverForge.injectEB1 hk qep tStar cfg else injectE hk Δ qep cfg
 
-def deliverForgeEGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
+@[expose] def deliverForgeEGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     {Γ T Sig SS RS M CCoins E HS Γv Sv SSv RSv : Type}
     [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (b1 : Bool) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
@@ -324,7 +331,7 @@ local notation "OO" =>
   ckaOps ckaInitA ckaInitB ckaSend ckaReceive prngInit prngUp
     fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE
 
-def injectECGen
+@[expose] def injectECGen
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (b1 : Bool) (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -337,7 +344,7 @@ def injectECGen
         (esTy (@vpTblTy KC Γ CCoins T I KR RSt K SS RS M E γvT svT ssvT rsvT) hsT)) :=
   if b1 then injectECB1 hk L qep tStar cfg es arg else injectEC hk L Δ qep cfg es arg
 
-def deliverForgeECGen
+@[expose] def deliverForgeECGen
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (b1 : Bool) (hk : HooksC OO I' γvT svT ssvT rsvT hsT)

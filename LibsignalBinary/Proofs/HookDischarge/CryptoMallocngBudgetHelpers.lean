@@ -29,7 +29,7 @@ Provides placed `malloc`, `calloc`, and `free` `HookOk` bridges (`malloc_budget_
 (`stepRustAlloc1_budget_cps`, `stepRustDealloc1_budget_cps`), and `vecU8` / `Err` result writers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +56,7 @@ open LibsignalBinary.Heap (
   rustAllocEvents rustDeallocEvents
 )
 open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase (
-  allocCallPreserved_of_mallocngProcPreserved allocCallPreserved_trans
+  aesStorageCell allocCallPreserved_of_mallocngProcPreserved allocCallPreserved_trans
   callocHookBridgeSpec freeHookBridgeSpec hook_oom_false
   mallocHookBridgeSpec mallocngHook mallocngHookBudgetPool mallocngHookBudgetPool_transport
   mallocngHookRustCliAllocBudget oomCond_to_oomPreserved_hookExit
@@ -88,7 +88,7 @@ theorem malloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M}
   rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
   obtain ⟨⟨hx0, hsp⟩, hpre⟩ := hpre
   obtain ⟨staticIvs, ivs0, hrx0, hInv0, hIvsLen, hIvsSum, hpreEnv⟩ := unpackHookBudgetPool hS hpre
-  refine ⟨(req, sp, tp, brkStart, st, ivs0), R, ?_, ?_, ?_⟩
+  refine ⟨(req, sp, tp, brkStart, st, ivs0), aesStorageCell brkStart ∗ R, ?_, ?_, ?_⟩
   · dsimp only [mallocngModelMallocSpec, ToBaseSpec.toSpec]
     have hx0' : s0'.readReg64 .x0 = req := by
       simpa [s0', multiCodeROHookEntry_readReg64 _ _ _ _ _ .x0] using hx0
@@ -108,19 +108,19 @@ theorem malloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M}
     obtain ⟨hOomCond, hCodeRest⟩ := hoomSat
     have hR_exit :
         (multiCodeROHookExit VerifiedLibraries.mallocngLib mpl i s0 sf').mem ⊨ R := by
-      have hs0_codeR : s0.mem ⊨ VerifiedLibraries.mallocngLib.codeRO mpl ∗ R := by
+      have hs0_codeR : s0.mem ⊨ VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R) := by
         have h1 : s0.mem ⊨
             MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0 ∗
               stackFrameAt sp mallocngStackBytes ∗
-              (VerifiedLibraries.mallocngLib.codeRO mpl ∗ R) :=
+              (VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R)) :=
           Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpreEnv
         exact Satisfies.of_sep_right (Satisfies.of_sep_right h1)
       have hsf_codeR :
           (multiCodeROHookExit VerifiedLibraries.mallocngLib mpl i s0 sf').mem ⊨
-            VerifiedLibraries.mallocngLib.codeRO mpl ∗ R := by
+            VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R) := by
         simpa only [multiCodeROHookExit_mem] using
           satisfies_restoreMultiCodeMem hPl hkf' hs0_codeR hCodeRest
-      exact Satisfies.of_sep_right hsf_codeR
+      exact Satisfies.of_sep_right (Satisfies.of_sep_right hsf_codeR)
     have hOomPres := oomCond_to_oomPreserved_hookExit hOomCond
     have hNotFit : ¬ FitsEvent M lim st (.alloc req.toNat) := by
       rintro ⟨hMax, hFitStep⟩
@@ -149,7 +149,8 @@ theorem malloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M}
       have hpostReord : sf.mem ⊨
           (VerifiedLibraries.mallocngLib.codeRO mpl ∗
             MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart
-              (M.step (.alloc req.toNat) st) ivs0 s0' sf') ∗
+              (M.step (.alloc req.toNat) st) ivs0 s0' sf' ∗
+            aesStorageCell brkStart) ∗
             (I.BlockM γ (sf.readReg64 .x0) req.toNat 16 ∗
               memRegion (sf.readReg64 .x0) req.toNat ∗
               stackFrameAt sp mallocngStackBytes ∗ R) :=
@@ -190,7 +191,8 @@ theorem malloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M}
         allocCallPreserved_of_mallocngProcPreserved (procPreserved_hookExit hacc.1)
       have hpostReord : sf.mem ⊨
           (VerifiedLibraries.mallocngLib.codeRO mpl ∗
-            MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0' sf') ∗
+            MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0' sf' ∗
+            aesStorageCell brkStart) ∗
             (stackFrameAt sp mallocngStackBytes ∗ R) :=
         Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
       have hpost1 := Satisfies.mono (sepConj_mono_left hPack) hpostReord
@@ -225,7 +227,7 @@ theorem calloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M}
   rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
   obtain ⟨⟨hx0, hx1, hsp⟩, hpre⟩ := hpre
   obtain ⟨staticIvs, ivs0, hrx0, hInv0, hIvsLen, hIvsSum, hpreEnv⟩ := unpackHookBudgetPool hS hpre
-  refine ⟨(nmemb, size, sp, tp, brkStart, st, ivs0), R, ?_, ?_, ?_⟩
+  refine ⟨(nmemb, size, sp, tp, brkStart, st, ivs0), aesStorageCell brkStart ∗ R, ?_, ?_, ?_⟩
   · dsimp only [mallocngModelCallocSpec, ToBaseSpec.toSpec]
     have hx0' : s0'.readReg64 .x0 = nmemb := by
       simpa [s0', multiCodeROHookEntry_readReg64 _ _ _ _ _ .x0] using hx0
@@ -247,19 +249,19 @@ theorem calloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M}
     obtain ⟨hOomCond, hCodeRest⟩ := hoomSat
     have hR_exit :
         (multiCodeROHookExit VerifiedLibraries.mallocngLib mpl i s0 sf').mem ⊨ R := by
-      have hs0_codeR : s0.mem ⊨ VerifiedLibraries.mallocngLib.codeRO mpl ∗ R := by
+      have hs0_codeR : s0.mem ⊨ VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R) := by
         have h1 : s0.mem ⊨
             MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0 ∗
               stackFrameAt sp mallocngStackBytes ∗
-              (VerifiedLibraries.mallocngLib.codeRO mpl ∗ R) :=
+              (VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R)) :=
           Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpreEnv
         exact Satisfies.of_sep_right (Satisfies.of_sep_right h1)
       have hsf_codeR :
           (multiCodeROHookExit VerifiedLibraries.mallocngLib mpl i s0 sf').mem ⊨
-            VerifiedLibraries.mallocngLib.codeRO mpl ∗ R := by
+            VerifiedLibraries.mallocngLib.codeRO mpl ∗ (aesStorageCell brkStart ∗ R) := by
         simpa only [multiCodeROHookExit_mem] using
           satisfies_restoreMultiCodeMem hPl hkf' hs0_codeR hCodeRest
-      exact Satisfies.of_sep_right hsf_codeR
+      exact Satisfies.of_sep_right (Satisfies.of_sep_right hsf_codeR)
     have hOomPres := oomCond_to_oomPreserved_hookExit hOomCond
     have hNotFit : ¬ FitsEvent M lim st (.alloc (nmemb.toNat * size.toNat)) := by
       rintro ⟨hMax, hFitStep⟩
@@ -290,7 +292,8 @@ theorem calloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M}
       have hpostReord : sf.mem ⊨
           (VerifiedLibraries.mallocngLib.codeRO mpl ∗
             MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart
-              (M.step (.alloc total) st) ivs0 s0' sf') ∗
+              (M.step (.alloc total) st) ivs0 s0' sf' ∗
+            aesStorageCell brkStart) ∗
             (I.BlockM γ (sf.readReg64 .x0) total 16 ∗
               (sf.readReg64 .x0 ↦ₛ List.replicate total 0#8) ∗
               stackFrameAt sp mallocngStackBytes ∗ R) :=
@@ -331,7 +334,8 @@ theorem calloc_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M}
         allocCallPreserved_of_mallocngProcPreserved (procPreserved_hookExit hacc.1)
       have hpostReord : sf.mem ⊨
           (VerifiedLibraries.mallocngLib.codeRO mpl ∗
-            MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0' sf') ∗
+            MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0' sf' ∗
+            aesStorageCell brkStart) ∗
             (stackFrameAt sp mallocngStackBytes ∗ R) :=
         Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
       have hpost1 := Satisfies.mono (sepConj_mono_left hPack) hpostReord
@@ -377,7 +381,7 @@ theorem free_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M}
   rw [hpreEq, satisfies_pure_sepConj] at hpre
   obtain ⟨⟨hx0, hsp, hpWf⟩, hpre⟩ := hpre
   obtain ⟨staticIvs, ivs0, hrx0, hInv0, _hIvsLen, _hIvsSum, hpreEnv⟩ := unpackHookBudgetPool hS hpre
-  refine ⟨(p, sp, n, align, tp, brkStart, st, ivs0), R, ?_,
+  refine ⟨(p, sp, n, align, tp, brkStart, st, ivs0), aesStorageCell brkStart ∗ R, ?_,
     (fun _ _ _ _ _ ho => False.elim (not_satisfies_false_sepConj ho)), ?_⟩
   · dsimp only [mallocngModelFreeSpec, ToBaseSpec.toSpec, MallocngModelFreeableBlock]
     have hx0' : s0'.readReg64 .x0 = p := by
@@ -405,7 +409,8 @@ theorem free_budget_hookOk {M : AllocCostModel} {I : MallocngCostModelIface M}
       allocCallPreserved_of_mallocngProcPreserved (procPreserved_hookExit hacc.1)
     have hpostReord : sf.mem ⊨
         (VerifiedLibraries.mallocngLib.codeRO mpl ∗
-          MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st' ivs0 s0' sf') ∗
+          MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st' ivs0 s0' sf' ∗
+          aesStorageCell brkStart) ∗
           (stackFrameAt sp mallocngStackBytes ∗ R) :=
       Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
     have hpost1 := Satisfies.mono (sepConj_mono_left hPack) hpostReord

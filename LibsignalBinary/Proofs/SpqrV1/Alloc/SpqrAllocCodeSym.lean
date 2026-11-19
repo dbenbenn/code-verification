@@ -9,10 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard10
+meta import GeneratedLean.LibsignalSessionPlacedObjShard11
+meta import GeneratedLean.LibsignalSessionPlacedObjShard13
+meta import GeneratedLean.LibsignalSessionPlacedObjShard17
+meta import GeneratedLean.LibsignalSessionPlacedObjShard18
+meta import GeneratedLean.LibsignalSessionPlacedObjShard19
+meta import GeneratedLean.LibsignalSessionPlacedObjShard8
 
 /-!
 # Relocatable Per-Block Fetches for `SpqrV1/Alloc`
@@ -21,7 +28,7 @@ Generates per-block code symbols (`gen_ls_blk`) for SPQR V1 allocator blocks
 157, 160, 218, 221, 258..260, 320, 353, 356..361, and 386.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -72,7 +79,7 @@ abbrev spqrPanicConstAddOverflowSym : String :=
 
 theorem spqr_externAt?_of_mem [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide)
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     prog.externAt? (lsρ sym) = H sym :=
   ls_externAt?_of_mem hmem hi hunmut
@@ -80,11 +87,11 @@ theorem spqr_externAt?_of_mem [LibsignalPlacement] {prog : Program} {i : Nat}
 theorem spqr_hook_ok_of_mem [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide)
+    (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
-  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem hmem
-  exact ls_hook_ok (k := k) (by simp [hk, hget]) hsat hi hunmut
+  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_hook_ok (k := k) (by simp [hk, hget]) hsat hi hunmut (hhooked := hmem)
 
 end SpqrV1.Alloc
 

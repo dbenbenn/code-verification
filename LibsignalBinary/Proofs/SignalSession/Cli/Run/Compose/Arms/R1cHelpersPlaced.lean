@@ -9,12 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ModelBridge
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ModelBridge
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.States -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `signal_session::run` Arm `R1c` Placed Helpers
@@ -23,7 +36,7 @@ Relocatable (`[LibsignalPlacement]`) framing, call, deallocation, and layout hel
 `run_hop_init3_placed_ok` on Block `579` (`runProgPlaced H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -349,7 +362,7 @@ structure r1c_W6 where
   w4 : BitVec 64
   w5 : BitVec 64
 
-def r1c_slot6 (a : BitVec 64) (e : r1c_W6) : SepProp :=
+@[expose] def r1c_slot6 (a : BitVec 64) (e : r1c_W6) : SepProp :=
   (a ↦₆₄ e.w0) ∗ ((a + 8#64) ↦₆₄ e.w1) ∗ ((a + 16#64) ↦₆₄ e.w2) ∗
     ((a + 24#64) ↦₆₄ e.w3) ∗ ((a + 32#64) ↦₆₄ e.w4) ∗ ((a + 40#64) ↦₆₄ e.w5)
 
@@ -512,11 +525,11 @@ theorem r1c_cliBundleAt_unpack (a : BitVec 64) (b : BundleV)
       (by ac_rfl))
     (by ac_rfl)
 
-def r1c_lowGaps (fsp : BitVec 64) : SepProp :=
+@[expose] def r1c_lowGaps (fsp : BitVec 64) : SepProp :=
   memRegion fsp 0x110 ∗ memRegion (fsp + 0x118#64) 8 ∗ memRegion (fsp + 0x128#64) 16 ∗
     memRegion (fsp + 0x148#64) 16 ∗ memRegion (fsp + 0x160#64) 24 ∗ memRegion (fsp + 0x180#64) 56
 
-def r1c_lowCells (fsp : BitVec 64) (d : Init2Data) : SepProp :=
+@[expose] def r1c_lowCells (fsp : BitVec 64) (d : Init2Data) : SepProp :=
   ((fsp + 0x110#64) ↦₆₄ d.spkSigPtr) ∗ ((fsp + 0x120#64) ↦₆₄ 64#64) ∗
     ((fsp + 0x138#64) ↦₆₄ d.kpkSigPtr) ∗ ((fsp + 0x140#64) ↦₆₄ 1568#64) ∗
     ((fsp + 0x158#64) ↦₆₄ 64#64) ∗ ((fsp + 0x178#64) ↦₆₄ d.kpkPtr) ∗
@@ -559,21 +572,21 @@ theorem r1c_lowCells_to_mem1d0 (fsp : BitVec 64) (d : Init2Data) :
       (pointsTo64_entails_memRegion _ _)))))))))))))))
     (by ac_rfl)
 
-def r1c_okCore (A : RustAlloc) (g : RunCall) (g' : StoresGhost) (s0 : State) : SepProp :=
+@[expose] def r1c_okCore (A : RustAlloc) (g : RunCall) (g' : StoresGhost) (s0 : State) : SepProp :=
   memRegion g.res runResSize ∗ memRegion g.call 56 ∗
     storesAt A g.stores g' ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗ runSaved s0 ∗ anyHeap
 
-def r1c_errCore (A : RustAlloc) (g : RunCall) (g' : StoresGhost) (s0 : State) : SepProp :=
+@[expose] def r1c_errCore (A : RustAlloc) (g : RunCall) (g' : StoresGhost) (s0 : State) : SepProp :=
   runResAt A cliWrOk g.res (some none) ∗ memRegion g.call 56 ∗
     storesAt A g.stores g' ∗ (g.inp ↦ₛ inputOf g.i g.c) ∗ runSaved s0 ∗ anyHeap
 
-def r1c_lowNoDir (fsp : BitVec 64) (d : Init2Data) : SepProp :=
+@[expose] def r1c_lowNoDir (fsp : BitVec 64) (d : Init2Data) : SepProp :=
   ((fsp + 0x110#64) ↦₆₄ d.spkSigPtr) ∗ ((fsp + 0x120#64) ↦₆₄ 64#64) ∗
     ((fsp + 0x138#64) ↦₆₄ d.kpkSigPtr) ∗ ((fsp + 0x140#64) ↦₆₄ 1568#64) ∗
     ((fsp + 0x158#64) ↦₆₄ 64#64) ∗ ((fsp + 0x178#64) ↦₆₄ d.kpkPtr) ∗
     ((fsp + 0x1b8#64) ↦₆₄ d.meG.name.ptr) ∗ r1c_lowGaps fsp
 
-def r1c_lowNoMePtr (fsp : BitVec 64) (d : Init2Data) : SepProp :=
+@[expose] def r1c_lowNoMePtr (fsp : BitVec 64) (d : Init2Data) : SepProp :=
   ((fsp + 0x110#64) ↦₆₄ d.spkSigPtr) ∗ ((fsp + 0x120#64) ↦₆₄ 64#64) ∗
     ((fsp + 0x138#64) ↦₆₄ d.kpkSigPtr) ∗ ((fsp + 0x140#64) ↦₆₄ 1568#64) ∗
     ((fsp + 0x158#64) ↦₆₄ 64#64) ∗ ((fsp + 0x178#64) ↦₆₄ d.kpkPtr) ∗

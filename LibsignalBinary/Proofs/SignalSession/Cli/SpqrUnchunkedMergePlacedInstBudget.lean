@@ -9,15 +9,33 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrAuthMergePlacedInstBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrUnchunkedMergePlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DecodeErrorPushMergePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedClPlacedBudget
-import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrAuthMergePlacedInstBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrUnchunkedMergePlacedInst
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DecodeErrorPushMergePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedClPlacedBudget
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.AuthEncodeMergeCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.BytesMergeCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.ContractsPlaced
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBase
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedBudget
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 
 /-!
 # Budget-Threaded Placed `unchunked::{Ct1Sent,EkSentCt1Received}::merge`
@@ -28,7 +46,7 @@ Code-and-rodata-loaded placed budget contracts for `<DecodeError>::push` (Block 
 leaf-discharged forms under `CliGhostAllocHooks M A lim gh`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -179,21 +197,6 @@ theorem cliDecodeErrorPushMerge_cl [LibsignalPlacement]
     (hookSat_of_hExt hExt (by decide) (cliExternsPlaced_alloc_budget_sat mmpl gh W hA))
     (hookSat_of_hExt hExt (by decide) (cliExternsPlaced_realloc_budget_sat mmpl gh W hA))
 
-/-- Block `257` (`decodeErrorPushMergeBudgetSpec`) with `withLsCodeRoLoaded lsmpl`. -/
-theorem cliDecodeErrorPushMerge_cro [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {H : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    subroutine_ok
-      ((blkPC_257).rebase (blkPl_257).base H)
-      (lsmpl.base 257)
-      (withLsCodeRoLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
-  subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-    (cliDecodeErrorPushMerge_cl mmpl gh W hA hExt)
-
 /-- Own-block `blockProgram` form of Block `257` (`decodeErrorPushMergeBudgetSpec`) under
 `Rust.withPanics ext` (`withLsCodeLoaded`). -/
 theorem cliDecodeErrorPushMerge_blockProgram_cl [LibsignalPlacement]
@@ -210,52 +213,6 @@ theorem cliDecodeErrorPushMerge_blockProgram_cl [LibsignalPlacement]
   rw [← IsLsBlockProg.eq_blockProgram
     (prog := (blkPC_257).rebase (blkPl_257).base (Rust.withPanics ext))]
   exact cliDecodeErrorPushMerge_cl mmpl gh W hA (hExt_withPanics mmpl gh W hExt)
-
-/-- Own-block `blockProgram` form of Block `257` (`decodeErrorPushMergeBudgetSpec`) under
-`Rust.withPanics ext` (`withLsCodeRoLoaded`). -/
-theorem cliDecodeErrorPushMerge_blockProgram_cro [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    subroutine_ok
-      (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257)
-      (withLsCodeRoLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
-  subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-    (cliDecodeErrorPushMerge_blockProgram_cl mmpl gh W hA hExt)
-
-/-- Block `257` (`decodeErrorPushMergeBudgetSpec`) lifted to any caller block `i`
-(`withLsCodeLoaded`). -/
-theorem cliDecodeErrorPushMerge_at_block_cl [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {callerProg : Program} {i : Nat} {H : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    [hcaller : IsLsBlockProg callerProg i H]
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 257)
-      (withLsCodeLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
-  ls_subroutine_ok_of_block (i := i) (j := 257) (cliDecodeErrorPushMerge_cl mmpl gh W hA hExt) hi
-
-/-- Block `257` (`decodeErrorPushMergeBudgetSpec`) lifted to any caller block `i`
-(`withLsCodeRoLoaded`). -/
-theorem cliDecodeErrorPushMerge_at_block_cro [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {callerProg : Program} {i : Nat} {H : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      H sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    [hcaller : IsLsBlockProg callerProg i H]
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 257)
-      (withLsCodeRoLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)) :=
-  ls_subroutine_ok_cro_of_cl (i := i) (j := 257) (cliDecodeErrorPushMerge_cl mmpl gh W hA hExt) hi
 
 /-! ### 2. Hook-Generic Own-Block & Caller-Transferred Theorems (`312` and `311`) -/
 

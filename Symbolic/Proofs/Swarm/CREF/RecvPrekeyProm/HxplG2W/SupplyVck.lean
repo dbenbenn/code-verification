@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.StoredRk
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.CaseSplit
+import Symbolic.Proofs.Swarm.CREF.TR.StoredRk
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonRep -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.TR.G1.CaseSplit
 import Batteries.Data.UInt
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -49,7 +49,7 @@ import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

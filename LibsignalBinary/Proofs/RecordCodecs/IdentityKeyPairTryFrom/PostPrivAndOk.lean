@@ -10,8 +10,6 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Decode
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanup
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSome
@@ -24,7 +22,7 @@ import ProofLib.SepLogic.WPp
 (`BadKeyLength(Djb, len)`), and `Ok` output packing (`+396 .. +568` → `+812`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -122,12 +120,12 @@ end PostPrivStateSimp
 
 /-! ## 32-byte cell decompositions for `PublicKey` (7 cells) and `PrivateKey` / `clampScalar` (9 cells) -/
 
-def pkCells (w0 : BitVec 64) (b8 : BitVec 8) (w9 : BitVec 32) (h13 : BitVec 16)
+@[expose] def pkCells (w0 : BitVec 64) (b8 : BitVec 8) (w9 : BitVec 32) (h13 : BitVec 16)
     (w15 w23 : BitVec 64) (b31 : BitVec 8) (a : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₈ b8) ∗ ((a + 9#64) ↦₃₂ w9) ∗ ((a + 13#64) ↦₁₆ h13) ∗
   ((a + 15#64) ↦₆₄ w15) ∗ ((a + 23#64) ↦₆₄ w23) ∗ ((a + 31#64) ↦₈ b31)
 
-def skCells (b0 : BitVec 8) (w1 : BitVec 32) (h5 h7 : BitVec 16) (w9 : BitVec 32)
+@[expose] def skCells (b0 : BitVec 8) (w1 : BitVec 32) (h5 h7 : BitVec 16) (w9 : BitVec 32)
     (h13 : BitVec 16) (w15 w23 : BitVec 64) (b31 : BitVec 8) (a : BitVec 64) : SepProp :=
   (a ↦₈ b0) ∗ ((a + 1#64) ↦₃₂ w1) ∗ ((a + 5#64) ↦₁₆ h5) ∗ ((a + 7#64) ↦₁₆ h7) ∗
   ((a + 9#64) ↦₃₂ w9) ∗ ((a + 13#64) ↦₁₆ h13) ∗ ((a + 15#64) ↦₆₄ w15) ∗
@@ -267,7 +265,7 @@ theorem vector32_exists_skCells (sk : List.Vector (BitVec 8) 32) :
 
 /-! ## Stack scratch `[sp' .. sp' + 32)` & output `Ok` buffer splitting/folding helpers -/
 
-def ikpScratch32 (sw8 : BitVec 64) (sb16 : BitVec 8) (sw24 : BitVec 32) (sh28 : BitVec 16)
+@[expose] def ikpScratch32 (sw8 : BitVec 64) (sb16 : BitVec 8) (sw24 : BitVec 32) (sh28 : BitVec 16)
     (sp' : BitVec 64) : SepProp :=
   memRegion sp' 8 ∗ ((sp' + 8#64) ↦₆₄ sw8) ∗ ((sp' + 16#64) ↦₈ sb16) ∗
   memRegion (sp' + 17#64) 7 ∗ ((sp' + 24#64) ↦₃₂ sw24) ∗ ((sp' + 28#64) ↦₁₆ sh28) ∗
@@ -382,76 +380,6 @@ theorem memRegion72_split_ok (r : BitVec 64) :
 
 /-! ## Error tail `+760 .. +772 -> +812` and post-PK `Ok(pk)` path `+396 .. +568 -> +812` -/
 
-theorem err_store_760_wp {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext)
-    {x : DecodeGhost} {s0 s : State}
-    {sp' pkCap pkPtr skCap skPtr w24 w25 : BitVec 64}
-    {pkBs skBs : List (BitVec 8)}
-    (hst : IkpBaseState img s0 sp' s)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr identityKeyPairTryFromName + 760#64)
-    (hrun : s.status = .Running)
-    (hx19 : s.readReg64 .x19 = x.ret)
-    (hx24 : s.readReg64 .x24 = w24) (hx25 : s.readReg64 .x25 = w25)
-    (hx22 : s.readReg64 .x22 = pkCap) (hx20 : s.readReg64 .x20 = pkPtr)
-    (hx21 : s.readReg64 .x21 = skCap) (hx23 : s.readReg64 .x23 = skPtr)
-    (herr : (x.ret ↦₈ 1#8) ∗ memRegion (x.ret + 1#64) 7 ∗
-      ((x.ret + 8#64) ↦₆₄ w24) ∗ ((x.ret + 16#64) ↦₆₄ w25) ∗
-      memRegion (x.ret + 24#64) 48 ⊢
-      identityKeyPairResultAt A x.ret (IdentityKeyPair.tryFrom x.bytes)) :
-    Wire.SepWPp (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr identityKeyPairTryFromName + 812#64) s
-      (memRegion x.ret 72 ∗ vecU8Buf A pkCap pkPtr pkBs ∗ vecU8Buf A skCap skPtr skBs ∗
-        A.pool ∗ stackAt sp' (skipFieldStackX 100))
-      (fun sf Pf => IkpBaseState img s0 sp' sf ∧
-        (Pf ⊢ identityKeyPairResultAt A x.ret (IdentityKeyPair.tryFrom x.bytes) ∗
-          A.pool ∗ stackAt sp' (skipFieldStackX 100)))
-      (tryFromQp s0) := by
-  refine Wire.SepWPp.mono_pre (sepConj_mono_left (memRegion72_split_err x.ret)) ?_
-  simp only [sepExists_sepConj_left, sepConj_assoc]
-  refine Wire.SepWPp.exists_pre fun w2 => Wire.SepWPp.exists_pre fun w1 =>
-    Wire.SepWPp.exists_pre fun b0 => ?_
-  let H := Rust.withPanics ext
-  have hcleanup := @cleanup_pk_sk_772_wp img C A encFn decFn ext hC s0
-  code_fetches_from CryptoVerification.libsignalSessionCode
-    ikpTryFromBin img.base H
-    (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from")
-    (num% (ls_off% "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from"))
-    760 12
-  generalize_entry (libsignalSessionCode.rebase img.base H).fnAddr identityKeyPairTryFromName = entry
-  examples_hide_fetches
-  try dsimp only [Reg.x0, Reg.x1, Reg.x2, Reg.x3, Reg.x4, Reg.x8, Reg.x9, Reg.x10, Reg.x19, Reg.x20, Reg.x21, Reg.x22, Reg.x23, Reg.x24, Reg.x25, Reg.x26, Reg.x27, Reg.x28, Reg.x29, Reg.x30] at *
-  have hsp_eq := hst.sp
-  refine Wire.SepWPp.of_sepWP_frozen hst.frozen hst.symtab (mid := entry + bv% (772)) ?_
-  wp_steps
-  refine Wire.SepWP.done (by simp [*, arm64_norm]) (by simp [*, arm64_norm]) ?_
-  intro hF1 hsym1
-  refine Wire.SepWPp.mono_pre
-    (P' := (vecU8Buf A pkCap pkPtr pkBs ∗ vecU8Buf A skCap skPtr skBs ∗
-      A.pool ∗ stackAt sp' (skipFieldStackX 100)) ∗
-      identityKeyPairResultAt A x.ret (IdentityKeyPair.tryFrom x.bytes))
-    (by
-      try rw [hx19]
-      try rw [hx24]
-      try rw [hx25]
-      simp only [arm64_norm]
-      refine Entails.trans ?_
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right herr))))
-      apply entails_of_eq; ac_rfl) ?_
-  refine Wire.SepWPp.frame_tryFrom
-    (hcleanup
-      (hst.of_steps hF1 hsym1 (by tryFromPost_sp [hsp_eq])
-        (by simp [*, hst.trace, arm64_norm]) (by simp [*, hst.x26, arm64_norm])
-        (by simp [*, hst.x27, arm64_norm]) (by simp [*, hst.x28, arm64_norm]))
-      (by simp [*, arm64_norm]) (by simp [*, arm64_norm])
-      (by simp [*, arm64_norm]) (by simp [*, arm64_norm])
-      (by simp [*, arm64_norm]) (by simp [*, arm64_norm]))
-    fun sf Pf ⟨hstf, hentf⟩ => ⟨hstf, ?_⟩
-  refine Entails.trans (sepConj_mono_left hentf) ?_
-  apply entails_of_eq; ac_rfl
-
 private theorem clamp_b0_post (b : BitVec 8) :
     BitVec.zeroExtend 8 (BitVec.zeroExtend 64 b &&& 1065151889656#64) = b &&& 248#8 := by
   revert b; decide
@@ -460,324 +388,6 @@ private theorem clamp_b31_post (b : BitVec 8) :
     BitVec.zeroExtend 8 (64#64 ||| BitVec.zeroExtend 64 b >>> 0 &&& 63#64) =
       (b &&& 127#8) ||| 64#8 := by
   revert b; decide
-
-theorem post_pk_ok_396_wp {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {encFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → List (BitVec 8)}
-    {decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8))}
-    {ext : String → Option (State → State)}
-    (hC : Stage2ContractsX img C A encFn decFn ext)
-    {x : DecodeGhost} {s0 s : State}
-    {sp' pkCap pkPtr skCap skPtr : BitVec 64}
-    {m : IdentityKeyPairStructure} {pk : PublicKey}
-    (hdec : IdentityKeyPairStructure.decode x.bytes = some m)
-    (hpk : PublicKey.deserialize m.publicKey = .ok pk)
-    (hsk_lt : m.privateKey.length < 2 ^ 64)
-    (hst : IkpBaseState img s0 sp' s)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr identityKeyPairTryFromName + 396#64)
-    (hrun : s.status = .Running)
-    (hx19 : s.readReg64 .x19 = x.ret)
-    (hx29 : s.readReg64 .x29 = sp' + 144#64)
-    (hx24 : s.readReg64 .x24 = speWord 9)
-    (hx25 : s.readReg64 .x25 = BitVec.ofNat 64 m.privateKey.length)
-    (hx22 : s.readReg64 .x22 = pkCap) (hx20 : s.readReg64 .x20 = pkPtr)
-    (hx21 : s.readReg64 .x21 = skCap) (hx23 : s.readReg64 .x23 = skPtr)
-    {w0 : BitVec 64} {b8 : BitVec 8} {w9 : BitVec 32} {h13 : BitVec 16}
-    {w15 w23 : BitVec 64} {b31 : BitVec 8}
-    (hpk_cells : ∀ a : BitVec 64, (a ↦ₛ pk.bytes.toList) = pkCells w0 b8 w9 h13 w15 w23 b31 a)
-    (hx8 : s.readReg64 .x8 = b8.zeroExtend 64) :
-    Wire.SepWPp (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr identityKeyPairTryFromName + 812#64) s
-      (memRegion sp' 32 ∗
-        ((sp' + 96#64) ↦₈ 0#8) ∗ pkCells w0 b8 w9 h13 w15 w23 b31 (sp' + 97#64) ∗
-        memRegion (sp' + 129#64) 15 ∗
-        memRegion x.ret 72 ∗
-        vecU8Buf A pkCap pkPtr m.publicKey ∗ vecU8Buf A skCap skPtr m.privateKey ∗
-        A.pool ∗ stackAt sp' (skipFieldStackX 100))
-      (fun sf Pf => IkpBaseState img s0 sp' sf ∧
-        (Pf ⊢ memRegion sp' 32 ∗ memRegion (sp' + 96#64) 48 ∗
-          identityKeyPairResultAt A x.ret (IdentityKeyPair.tryFrom x.bytes) ∗
-          A.pool ∗ stackAt sp' (skipFieldStackX 100)))
-      (tryFromQp s0) := by
-  have hfold96 : ((sp' + 96#64) ↦₈ 0#8) ∗ pkCells w0 b8 w9 h13 w15 w23 b31 (sp' + 97#64) ∗
-      memRegion (sp' + 129#64) 15 ⊢ memRegion (sp' + 96#64) 48 := by
-    rw [← hpk_cells (sp' + 97#64)]
-    have hm1 : ((sp' + 96#64) ↦₈ 0#8) ⊢ memRegion (sp' + 96#64) 1 := by
-      rw [memRegion_one]; exact sepExists_intro _ 0#8
-    have hm32 : ((sp' + 97#64) ↦ₛ pk.bytes.toList) ⊢ memRegion (sp' + 97#64) 32 := by
-      simpa [pk.bytes.2] using pointsToBytes_entails_memRegion (sp' + 97#64) pk.bytes.toList
-    rw [show (48 : Nat) = 1 + (32 + 15) by decide,
-      Prost.memRegion_split (sp' + 96#64) 1 47 (by decide),
-      Prost.memRegion_split (sp' + 96#64 + 1#64) 32 15 (by decide)]
-    simp only [BitVec.add_assoc, BitVec.reduceAdd]
-    exact sepConj_mono hm1 (sepConj_mono_left hm32)
-  refine Wire.SepWPp.mono_pre (sepConj_mono_left (memRegion32_split_scratch sp')) ?_
-  simp only [sepExists_sepConj_left, ikpScratch32, pkCells, sepConj_assoc]
-  refine Wire.SepWPp.exists_pre fun sh28 => Wire.SepWPp.exists_pre fun sw24 =>
-    Wire.SepWPp.exists_pre fun sb16 => Wire.SepWPp.exists_pre fun sw8 => ?_
-  let H := Rust.withPanics ext
-  by_cases hlen32 : m.privateKey.length = 32
-  · have htry_ok : IdentityKeyPair.tryFrom x.bytes =
-        .ok ⟨⟨pk⟩, ⟨Ratchet.clampScalar ⟨m.privateKey, hlen32⟩⟩⟩ := by
-      unfold IdentityKeyPair.tryFrom decodeIdentityKey deserializePrivateKey
-      simp [hdec, hpk, hlen32, Bind.bind, Except.bind, Pure.pure, Except.pure, Except.map]
-    obtain ⟨b0_s, w1_s, h5_s, h7_s, w9_s, h13_s, w15_s, w23_s, b31_s, hsk_src, hsk_dst⟩ :=
-      vector32_exists_skCells ⟨m.privateKey, hlen32⟩
-    have hpre_unpack :
-        memRegion sp' 8 ∗ ((sp' + 8#64) ↦₆₄ sw8) ∗ ((sp' + 16#64) ↦₈ sb16) ∗
-        memRegion (sp' + 17#64) 7 ∗ ((sp' + 24#64) ↦₃₂ sw24) ∗ ((sp' + 28#64) ↦₁₆ sh28) ∗
-        memRegion (sp' + 30#64) 2 ∗ ((sp' + 96#64) ↦₈ 0#8) ∗
-        ((sp' + 97#64) ↦₆₄ w0) ∗ ((sp' + 97#64 + 8#64) ↦₈ b8) ∗
-        ((sp' + 97#64 + 9#64) ↦₃₂ w9) ∗ ((sp' + 97#64 + 13#64) ↦₁₆ h13) ∗
-        ((sp' + 97#64 + 15#64) ↦₆₄ w15) ∗ ((sp' + 97#64 + 23#64) ↦₆₄ w23) ∗
-        ((sp' + 97#64 + 31#64) ↦₈ b31) ∗ memRegion (sp' + 129#64) 15 ∗
-        memRegion x.ret 72 ∗ vecU8Buf A pkCap pkPtr m.publicKey ∗
-        vecU8Buf A skCap skPtr m.privateKey ∗ A.pool ∗ stackAt sp' (skipFieldStackX 100) ⊢
-        ∃∗ sb0 : BitVec 8, ∃∗ sw1 : BitVec 32, ∃∗ sh5 : BitVec 16, ∃∗ sh7 : BitVec 16,
-        ∃∗ sw9 : BitVec 32, ∃∗ sh13 : BitVec 16, ∃∗ sw15 : BitVec 64, ∃∗ sw23 : BitVec 64,
-        ∃∗ sb31 : BitVec 8,
-        ∃∗ dw0 : BitVec 64, ∃∗ db8 : BitVec 8, ∃∗ dw9 : BitVec 32, ∃∗ dh13 : BitVec 16,
-        ∃∗ dw15 : BitVec 64, ∃∗ dw23 : BitVec 64, ∃∗ db31 : BitVec 8,
-        ∃∗ b_tag : BitVec 8,
-          memRegion sp' 8 ∗ ((sp' + 8#64) ↦₆₄ sw8) ∗ ((sp' + 16#64) ↦₈ sb16) ∗
-          memRegion (sp' + 17#64) 7 ∗ ((sp' + 24#64) ↦₃₂ sw24) ∗ ((sp' + 28#64) ↦₁₆ sh28) ∗
-          memRegion (sp' + 30#64) 2 ∗ ((sp' + 96#64) ↦₈ 0#8) ∗
-          ((sp' + 97#64) ↦₆₄ w0) ∗ ((sp' + 97#64 + 8#64) ↦₈ b8) ∗
-          ((sp' + 97#64 + 9#64) ↦₃₂ w9) ∗ ((sp' + 97#64 + 13#64) ↦₁₆ h13) ∗
-          ((sp' + 97#64 + 15#64) ↦₆₄ w15) ∗ ((sp' + 97#64 + 23#64) ↦₆₄ w23) ∗
-          ((sp' + 97#64 + 31#64) ↦₈ b31) ∗ memRegion (sp' + 129#64) 15 ∗
-          (x.ret ↦₈ b_tag) ∗
-          pkCells dw0 db8 dw9 dh13 dw15 dw23 db31 (x.ret + 1#64) ∗
-          skCells sb0 sw1 sh5 sh7 sw9 sh13 sw15 sw23 sb31 (x.ret + 0x21#64) ∗
-          memRegion (x.ret + 0x41#64) 7 ∗
-          vecU8Buf A pkCap pkPtr m.publicKey ∗
-          skCells b0_s w1_s h5_s h7_s w9_s h13_s w15_s w23_s b31_s skPtr ∗
-          vecU8BufRest A skCap skPtr m.privateKey ∗
-          A.pool ∗ stackAt sp' (skipFieldStackX 100) := by
-      have hsk_ent : vecU8Buf A skCap skPtr m.privateKey ⊢
-          skCells b0_s w1_s h5_s h7_s w9_s h13_s w15_s w23_s b31_s skPtr ∗
-            vecU8BufRest A skCap skPtr m.privateKey := by
-        refine Entails.trans (vecU8Buf_entails_slice_rest A skCap skPtr m.privateKey) ?_
-        refine Entails.pure_left fun _ => ?_
-        rw [hsk_src skPtr]
-        exact Entails.refl _
-      refine Entails.trans
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-            (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-              (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-                (sepConj_mono (memRegion72_split_ok x.ret)
-                  (sepConj_mono_right (sepConj_mono_left hsk_ent))))))))))))))))))) ?_
-      simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-      exact Entails.refl _
-    refine Wire.SepWPp.mono_pre hpre_unpack ?_
-    clear hpre_unpack
-    refine Wire.SepWPp.exists_pre fun sb0 => Wire.SepWPp.exists_pre fun sw1 =>
-      Wire.SepWPp.exists_pre fun sh5 => Wire.SepWPp.exists_pre fun sh7 =>
-      Wire.SepWPp.exists_pre fun sw9 => Wire.SepWPp.exists_pre fun sh13 =>
-      Wire.SepWPp.exists_pre fun sw15 => Wire.SepWPp.exists_pre fun sw23 =>
-      Wire.SepWPp.exists_pre fun sb31 =>
-      Wire.SepWPp.exists_pre fun dw0 => Wire.SepWPp.exists_pre fun db8 =>
-      Wire.SepWPp.exists_pre fun dw9 => Wire.SepWPp.exists_pre fun dh13 =>
-      Wire.SepWPp.exists_pre fun dw15 => Wire.SepWPp.exists_pre fun dw23 =>
-      Wire.SepWPp.exists_pre fun db31 =>
-      Wire.SepWPp.exists_pre fun b_tag => ?_
-    simp only [pkCells, skCells, BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-    have hcleanup792 := @cleanup_sk_792_wp img C A encFn decFn ext hC s0
-    have hcall := ikp_dealloc_ok hC
-    code_fetches_from CryptoVerification.libsignalSessionCode
-      ikpTryFromBin img.base H
-      (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from")
-      (num% (ls_off% "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from"))
-      396 176
-    code_fetches_from CryptoVerification.libsignalSessionCode
-      ikpTryFromBin img.base H
-      (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from")
-      (num% (ls_off% "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from"))
-      776 16
-    generalize_entry (libsignalSessionCode.rebase img.base H).fnAddr identityKeyPairTryFromName = entry
-    examples_hide_fetches
-    try dsimp only [Reg.x0, Reg.x1, Reg.x2, Reg.x3, Reg.x4, Reg.x8, Reg.x9, Reg.x10, Reg.x19, Reg.x20, Reg.x21, Reg.x22, Reg.x23, Reg.x24, Reg.x25, Reg.x26, Reg.x27, Reg.x28, Reg.x29, Reg.x30] at *
-    have hsp_subst := hst.sp
-    subst hsp_subst
-    have _hsp_align := hst.spAligned
-    have hsp_eq : s.sp = s.sp := rfl
-    refine Wire.SepWPp.of_sepWP_frozen hst.frozen hst.symtab (mid := entry + bv% (564)) ?_
-    wp_steps
-    refine Wire.SepWP.done (by simp [*, arm64_norm]) (by simp [*, arm64_norm]) ?_
-    intro hF1 hsym1
-    refine Wire.SepWPp.mono_pre
-      (P' := (vecU8Buf A pkCap pkPtr m.publicKey ∗ vecU8Buf A skCap skPtr m.privateKey ∗
-        A.pool ∗ stackAt s.sp (skipFieldStackX 100)) ∗
-        (memRegion s.sp 32 ∗ memRegion (s.sp + 96#64) 48 ∗
-          identityKeyPairResultAt A x.ret (IdentityKeyPair.tryFrom x.bytes)))
-      (by
-        have hok_res :
-            (x.ret ↦₈ 0#8) ∗ pkCells w0 b8 w9 h13 w15 w23 b31 (x.ret + 1#64) ∗
-              skCells (b0_s &&& 0xf8#8) w1_s h5_s h7_s w9_s h13_s w15_s w23_s
-                ((b31_s &&& 0x7f#8) ||| 0x40#8) (x.ret + 0x21#64) ∗
-              memRegion (x.ret + 0x41#64) 7 ⊢
-            identityKeyPairResultAt A x.ret (IdentityKeyPair.tryFrom x.bytes) := by
-          rw [htry_ok, ← hpk_cells (x.ret + 1#64), ← hsk_dst (x.ret + 0x21#64)]
-          dsimp only [identityKeyPairResultAt]
-          apply entails_of_eq; ac_rfl
-        have hsk_fold :
-            skCells b0_s w1_s h5_s h7_s w9_s h13_s w15_s w23_s b31_s skPtr ∗
-              vecU8BufRest A skCap skPtr m.privateKey ⊢
-            vecU8Buf A skCap skPtr m.privateKey := by
-          rw [← hsk_src skPtr]
-          exact slice_rest_entails_vecU8Buf A skCap skPtr m.privateKey
-        have hscr_fold := ikpScratch32_entails_memRegion32 w23 b31 w9 h13 s.sp
-        dsimp only [pkCells, skCells, ikpScratch32] at hok_res hsk_fold hscr_fold hfold96
-        simp only [BitVec.add_assoc, BitVec.reduceAdd] at hok_res hsk_fold hscr_fold hfold96
-        refine Entails.trans ?_
-          (sepConj_mono
-            (sepConj_mono_right (sepConj_mono_left hsk_fold))
-            (sepConj_mono hscr_fold (sepConj_mono hfold96 hok_res)))
-        apply entails_of_eq
-        simp only [arm64_norm]
-        rw [clamp_b0_post, clamp_b31_post]
-        ac_rfl) ?_
-    refine Wire.SepWPp.frame_tryFrom
-      (Q' := fun sf Pf => IkpBaseState img s0 s.sp sf ∧
-        (Pf ⊢ A.pool ∗ stackAt s.sp (skipFieldStackX 100)))
-      ?_ fun sf Pf ⟨hstf, hentf⟩ => ⟨hstf, ?_⟩
-    · by_cases hcap : pkCap = 0#64
-      · subst hcap
-        rw [vecU8Buf_zero]
-        refine Wire.SepWPp.pure_pre fun _ => ?_
-        refine Wire.SepWPp.of_sepWP_frozen hF1 hsym1 (mid := entry + bv% (792)) ?_
-        wp_steps
-        refine Wire.SepWP.done (by simp [*, arm64_norm]) (by simp [*, arm64_norm]) ?_
-        intro hF2 hsym2
-        exact hcleanup792
-          (hst.of_steps hF2 hsym2 (by tryFromPost_sp [hsp_eq])
-            (by simp [*, hst.trace, arm64_norm])
-            (by simp [*, hst.x26, arm64_norm])
-            (by simp [*, hst.x27, arm64_norm])
-            (by simp [*, hst.x28, arm64_norm]))
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-      · refine Wire.SepWPp.mono_pre (sepConj_mono_left (vecU8Buf_dealloc A pkCap pkPtr m.publicKey hcap)) ?_
-        simp only [sepConj_assoc]
-        refine Wire.SepWPp.pure_pre fun ⟨hpos, hlt, _⟩ => ?_
-        have hstack := stackAt_sub_split s.sp extHookStack (skipFieldStackX 100)
-        have _hne1 : (pkCap == 0#64) = false := beq_false_of_ne hcap
-        have _hne2 : (pkCap != 0#64) = true := bne_iff_ne.mpr hcap
-        refine Wire.SepWPp.of_sepWP_frozen hF1 hsym1
-          (mid := entry + bv% ((ls_off% "__rustc::__rust_dealloc") -
-            (ls_off% "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from"))) ?_
-        wp_steps
-        refine Wire.SepWP.done (by simp [*, arm64_norm]) (by simp [*, arm64_norm]) ?_
-        intro hF2 hsym2
-        refine Wire.SepWPp.call_noPanic_tryFrom (pkPtr, pkCap.toNat, 1) hcall
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (by tryFromPost_sp_align hst.spAligned) hF2 hsym2
-          (ret_pc := entry + bv% (792))
-          (by simp [*, arm64_norm])
-          (T := A.pool ∗ A.live pkPtr pkCap.toNat 1 ∗ memRegion pkPtr pkCap.toNat ∗ stackAt s.sp extHookStack)
-          (φ := pkPtr = pkPtr ∧ pkCap.toNat = pkCap.toNat ∧ (1#64 : BitVec 64).toNat = 1 ∧ LayoutOk pkCap.toNat 1)
-          (by simp [*, rustDeallocExternSpecWithStack, arm64_norm])
-          ⟨rfl, rfl, rfl, layoutOk_align1 hpos hlt⟩
-          (by rw [hstack]; sep_focus)
-          ?_
-        clear hcall
-        intro s3 hpc3 hrun3 hsp3 hsp3_align hF3 hsym3 hcs3
-        dsimp only [rustDeallocExternSpecWithStack]
-        rw [sepConj_assoc]
-        refine Wire.SepWPp.pure_pre fun htr3 => ?_
-        have hst1 : IkpBaseState img s0 s.sp _ :=
-          hst.of_steps hF2 hsym2 (by tryFromPost_sp [hsp_eq])
-            (by simp [*, hst.trace, arm64_norm])
-            (by simp [*, hst.x26, arm64_norm])
-            (by simp [*, hst.x27, arm64_norm])
-            (by simp [*, hst.x28, arm64_norm])
-        have hst3 : IkpBaseState img s0 s.sp s3 :=
-          hst1.of_calleeSaved hsp3 hsp3_align hF3 hsym3
-            (htr3.trans hst1.trace) hcs3
-        have hx21_3 : s3.readReg64 .x21 = skCap :=
-          hcs3.2.2.1.trans (by simp [*, arm64_norm])
-        have hx23_3 : s3.readReg64 .x23 = skPtr :=
-          hcs3.2.2.2.2.1.trans (by simp [*, arm64_norm])
-        refine Wire.SepWPp.mono_pre
-          (P' := vecU8Buf A skCap skPtr m.privateKey ∗ A.pool ∗ stackAt s.sp (skipFieldStackX 100))
-          (by
-            apply entails_of_eq
-            try simp only [arm64_norm]
-            try rw [hsp_eq]
-            rw [hstack]
-            ac_rfl) ?_
-        exact hcleanup792 hst3 hpc3 hrun3 hx21_3 hx23_3
-    · refine Entails.trans (sepConj_mono_left hentf) ?_
-      apply entails_of_eq; ac_rfl
-  · have hbv_ne : BitVec.ofNat 64 m.privateKey.length ≠ 32#64 := by
-      intro heq
-      have hnat := congrArg BitVec.toNat heq
-      rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hsk_lt] at hnat
-      exact hlen32 hnat
-    have htry_err : IdentityKeyPair.tryFrom x.bytes = .error (.badKeyLength m.privateKey.length) := by
-      unfold IdentityKeyPair.tryFrom decodeIdentityKey deserializePrivateKey
-      simp [hdec, hpk, hlen32, Bind.bind, Except.bind, Except.map]
-    have herr := @err_store_760_wp img C A encFn decFn ext hC x s0
-    code_fetches_from CryptoVerification.libsignalSessionCode
-      ikpTryFromBin img.base H
-      (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from")
-      (num% (ls_off% "<libsignal_protocol::identity_key::IdentityKeyPair as core::convert::TryFrom<&[u8]>>::try_from"))
-      396 44
-    generalize_entry (libsignalSessionCode.rebase img.base H).fnAddr identityKeyPairTryFromName = entry
-    examples_hide_fetches
-    try dsimp only [Reg.x0, Reg.x1, Reg.x2, Reg.x3, Reg.x4, Reg.x8, Reg.x9, Reg.x10, Reg.x19, Reg.x20, Reg.x21, Reg.x22, Reg.x23, Reg.x24, Reg.x25, Reg.x26, Reg.x27, Reg.x28, Reg.x29, Reg.x30] at *
-    have hsp_subst := hst.sp
-    subst hsp_subst
-    have _hsp_align := hst.spAligned
-    have hsp_eq : s.sp = s.sp := rfl
-    refine Wire.SepWPp.of_sepWP_frozen hst.frozen hst.symtab (mid := entry + bv% (760)) ?_
-    wp_steps
-    wp_if hne
-    · refine Wire.SepWP.done (by simp [*, arm64_norm]) (by simp [*, arm64_norm]) ?_
-      intro hF1 hsym1
-      refine Wire.SepWPp.mono_pre
-        (P' := (memRegion x.ret 72 ∗ vecU8Buf A pkCap pkPtr m.publicKey ∗
-          vecU8Buf A skCap skPtr m.privateKey ∗ A.pool ∗ stackAt s.sp (skipFieldStackX 100)) ∗
-          (memRegion s.sp 32 ∗ memRegion (s.sp + 96#64) 48))
-        (by
-          have hscr_fold := ikpScratch32_entails_memRegion32 w23 b31 w9 h13 s.sp
-          dsimp only [pkCells, ikpScratch32] at hscr_fold hfold96
-          simp only [BitVec.add_assoc, BitVec.reduceAdd] at hscr_fold hfold96
-          refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono hscr_fold hfold96))
-          apply entails_of_eq
-          simp only [arm64_norm]
-          ac_rfl) ?_
-      refine Wire.SepWPp.frame_tryFrom
-        (Q' := fun sf Pf => IkpBaseState img s0 s.sp sf ∧
-          (Pf ⊢ identityKeyPairResultAt A x.ret (IdentityKeyPair.tryFrom x.bytes) ∗
-            A.pool ∗ stackAt s.sp (skipFieldStackX 100)))
-        (herr
-          (hst.of_steps hF1 hsym1 rfl
-            (by simp [*, hst.trace, arm64_norm])
-            (by simp [*, hst.x26, arm64_norm])
-            (by simp [*, hst.x27, arm64_norm])
-            (by simp [*, hst.x28, arm64_norm]))
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (by simp [*, arm64_norm])
-          (ikpResult_err_spe9 A x.ret m.privateKey.length htry_err))
-        fun sf Pf ⟨hstf, hentf⟩ => ⟨hstf, ?_⟩
-      refine Entails.trans (sepConj_mono_left hentf) ?_
-      apply entails_of_eq; ac_rfl
-    · exfalso
-      apply hbv_ne
-      revert hne
-      try simp only [hx25, arm64_norm]
-      exact id
 
 section Placed
 

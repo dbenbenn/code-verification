@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedStepClPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedStepClPlaced
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Auth.Merge
@@ -18,6 +17,12 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefs
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedStep -- proof-setup: allow-public-import
 
 /-!
 # Code-Loaded Placed Verification of `Unchunked.EkSentCt1Received::merge` (Block `311`)
@@ -27,7 +32,7 @@ Proves tag-4, loop-induction, and top-level contracts
 `withLsCodeRoLoaded lsmpl (unchunkedEkSentCt1ReceivedMergeSpec A)` on Block `311`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedClPlaced
@@ -58,7 +63,7 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero_u bv64_add_zero_u unchunkedEkSentCt1ReceivedMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero_u bv64_add_zero_u
 
 theorem ekSent_tag4_step_cl_placed [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

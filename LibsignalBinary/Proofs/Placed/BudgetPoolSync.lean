@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
 public import ProofLib.SepLogic.WPp
 public meta import ProofLib.SepLogic.WP -- shake: keep
@@ -27,7 +27,7 @@ CPU instruction, enabling `sepWP_seg_ls_vm`, `sepWPp_seg_ls_vm`, and `wp_steps_s
 transport `A.pool lim st` across basic blocks without unfolding `libsignalSessionLib`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -42,7 +42,7 @@ open VerifiedLibraries.RustStd (checkBlockNoSvc0 blockProgram_rebase_allInstrs_n
 /-- Map every active hook in `H` to an immediate `.Exception`, preserving `(externAt? pc).isSome`,
     `fetch`, `fetchMem`, and `CodeLoaded` while guaranteeing that any `.Running` reachability step
     executes a non-`svc #0` CPU instruction. -/
-def hooksException (H : LibsignalHooks) : LibsignalHooks :=
+@[expose] def hooksException (H : LibsignalHooks) : LibsignalHooks :=
   fun n => (H n).map (fun _ s => s.setStatus (.Exception "ext"))
 
 private theorem option_or_isSome {α : Type} (o₁ o₂ : Option α) :

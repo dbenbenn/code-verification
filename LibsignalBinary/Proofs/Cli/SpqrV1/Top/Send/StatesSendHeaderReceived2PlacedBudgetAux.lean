@@ -10,14 +10,14 @@ limitations under the License.
 module
 
 meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived2Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1PlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived2Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled2PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendLeaves1PlacedBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
@@ -26,6 +26,13 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendHeaderReceived2
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2Encoder
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 /-!
 # Budget-Threaded Relocatable `.headerReceived` Sub-Step 3 (`+1680..+1896`, Block `427`)
@@ -34,7 +41,7 @@ Threads `RustCliAllocBudget` through 960-byte `ct1` allocation, `info` / `ss` de
 `PolyEncoder::encode_bytes`, and `PolyEncoder::next_chunk` (`+1680..+1896`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -125,12 +132,12 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.sub_add_cancel
     before `<PolyEncoder as Encoder>::next_chunk`:
     `__rust_alloc(960, 1)` (`ct1_ptr`), `__rust_dealloc(41, 1)` (`info`),
     `__rust_dealloc(32, 1)` (`ss`), and `PolyEncoder::encode_bytes` on 960-byte `ct1`. -/
-def headerReceived2aPreEvents : List AllocEvent :=
+@[expose] def headerReceived2aPreEvents : List AllocEvent :=
   rustAllocEvents 960 1 ++
     (rustDeallocEvents 41 1 ++ (rustDeallocEvents 32 1 ++ encodeBytesAllocEvents 960))
 
 /-- Exact deterministic envelope for the pre-`next_chunk` prefix of Sub-step 3 (`+1680 -> +1872`). -/
-def HeaderReceived2aPreEnv (evs : List AllocEvent) : Prop :=
+@[expose] def HeaderReceived2aPreEnv (evs : List AllocEvent) : Prop :=
   evs = headerReceived2aPreEvents
 
 theorem headerReceived2aPreEnv_nonempty : ∃ evs, HeaderReceived2aPreEnv evs :=
@@ -142,7 +149,7 @@ theorem fitsEnv_headerReceived2aPre_iff {M : AllocCostModel} {lim : BudgetLimits
   FitsEnv.eq_iff
 
 /-- Address-independent projection of `PolyNextChunkEnv` depending only on `(enc, chunk)`. -/
-def PolyNextChunkEncEnv (enc : PolyEncoder) (chunk : Chunk) (evs : List AllocEvent) : Prop :=
+@[expose] def PolyNextChunkEncEnv (enc : PolyEncoder) (chunk : Chunk) (evs : List AllocEvent) : Prop :=
   PolyNextChunkEnv { outA := 0#64, encA := 0#64, enc := enc, enc' := enc, chunk := chunk } evs
 
 theorem polyNextChunkEnv_eq_enc (x : PolyNextChunkGhost) :
@@ -154,7 +161,7 @@ theorem polyNextChunkEncEnv_nonempty (enc : PolyEncoder) (chunk : Chunk) :
   polyNextChunkEnv_nonempty { outA := 0#64, encA := 0#64, enc := enc, enc' := enc, chunk := chunk }
 
 /-- Exact allocator event envelope for `.headerReceived` Sub-step 3 (`+1680 -> +1896`). -/
-def HeaderReceived2aEnv (sending_ct1 : PolyEncoder) (chunk : Chunk) : List AllocEvent → Prop :=
+@[expose] def HeaderReceived2aEnv (sending_ct1 : PolyEncoder) (chunk : Chunk) : List AllocEvent → Prop :=
   SeqEnv HeaderReceived2aPreEnv (PolyNextChunkEncEnv sending_ct1 chunk)
 
 theorem headerReceived2aEnv_nonempty (sending_ct1 : PolyEncoder) (chunk : Chunk) :

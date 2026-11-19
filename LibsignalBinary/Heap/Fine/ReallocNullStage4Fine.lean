@@ -22,7 +22,7 @@ placed `__libc_realloc` (`blk14`) over `FineBudget`.
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -548,7 +548,7 @@ theorem realloc_stage4_oop_fine_ok [MallocngMultiPlacement]
          MallocImplFineRawRel maddrs.base brkStart bgt ivs0 alignMap0 st0 st' g' idx newSz q⌝ ∗
         ((MallocngRoTablesA maddrs ∗
           ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-          MallocngCoreStA (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ∗
+          MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ∗
           MallocngRuntime maddrs tp ∗
           (q ↦ₛ bsNew) ∗
           MallocngBlockToken (fineBaseGam γ) q newSz) ∗
@@ -575,7 +575,7 @@ theorem realloc_stage4_oop_fine_ok [MallocngMultiPlacement]
           ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl s2.mem⌝ ∗
           ((MallocngRoTablesA maddrs ∗
             ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-            MallocngCoreStA (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ∗
+            MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s2.brk bCoarse.liveCost bCoarse.peakCost st' ∗
             MallocngRuntime maddrs tp ∗ (q ↦ₛ bsNew) ∗
             MallocngBlockToken (fineBaseGam γ) q newSz) ∗
            ((stackFrame s1 704 ∗ stackFrameAt (sp1 - 704#64) 16) ∗
@@ -586,7 +586,7 @@ theorem realloc_stage4_oop_fine_ok [MallocngMultiPlacement]
           dsimp only [keptBs]
           generalize (MallocngRoTablesA maddrs) = PRo
           generalize (ghostMapAuth (fineAlignGam γ) alignMap0) = PGh
-          generalize (MallocngCoreStA (fineBaseGam γ) maddrs brkStart s2.brk
+          generalize (MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart s2.brk
             bCoarse.liveCost bCoarse.peakCost st') = PSt
           generalize (MallocngRuntime maddrs tp) = PRt
           generalize (FineBlock γ p oldSz (max align 16)) = PBlkP

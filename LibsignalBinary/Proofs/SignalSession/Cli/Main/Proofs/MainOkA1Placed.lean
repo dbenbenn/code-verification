@@ -9,23 +9,41 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Domains
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.TryAllocateIn3Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkProofPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainOkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Domains -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsA1Placed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StackBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.TryAllocateIn3Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.MainOkProofPlaced
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1PlacedSat
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1PlacedSat
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+public import ProofLib.Disproof.Basic
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Relocatable `main` Instantiation at `A0` (`[LibsignalPlacement]`, Block `617`)
@@ -34,7 +52,7 @@ Instantiates `MainCalleesBlk617`, `MainIoPlaced`, `mainSpecTightPlaced`, and `ma
 Block `617` at `E2E.HooksE.A0` and `cliGhostExterns g (cliExternsPlaced mmpl W)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -83,7 +101,7 @@ private theorem strlen_ok_placed_of_hookSat [LibsignalPlacement] {H : LibsignalH
     ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617) hext (by decide)
 
 /-- Legacy `A0` bump-allocator ghost-hook assignment on `CliGhostHooks`. -/
-def CliGhostHooksA0 (g : CliGhostHooks) : Prop :=
+@[expose] def CliGhostHooksA0 (g : CliGhostHooks) : Prop :=
   g.shim = hookNoop ∧
   g.alloc = E2E.allocHook0 ∧
   g.dealloc = E2E.deallocHook ∧
@@ -103,38 +121,34 @@ theorem allocContractsX_cliGhost_placed [LibsignalPlacement] (mmpl : Obj.MultiPl
     AllocContractsXCliPlaced E2E.HooksE.A0 (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
   (allocContractsFs_cliGhost_placed mmpl g W hG).toAllocContractsX
 
-/-- `MainIoPlaced` on `cliGhostExterns g (cliExternsPlaced mmpl W)` from `readStdin` and `readFile`
-`subroutine_ok` hypotheses, discharging `writeFile` and `writeStdout` unconditionally from rows `5`
-and `6` of the 39-row `cliHookTablePlaced mmpl W`. -/
+/-- `MainIoPlaced` on `cliGhostExterns g (cliExternsPlaced mmpl W)` from `readStdin`, `readFile`,
+`writeFile`, and `writeStdout` `subroutine_ok` hypotheses. -/
 theorem mainIo_of_cliGhostExterns_placed [LibsignalPlacement] {A : RustAlloc}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (stk : Nat)
     (hReadStdin : subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsρ lsReadStdinSym) (withLsRoCl lsmpl (readStdinSpecPlaced cliIo A stk)))
     (hReadFile : subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (lsρ lsReadFileSym) (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A stk))) :
-    MainIoPlaced A (cliGhostExterns g (cliExternsPlaced mmpl W)) cliIo stk where
-  readStdin := hReadStdin
-  readFile := hReadFile
-  writeFile := writeFile_rocl_ok_of_lookup stk
-    ((cliGhostExterns_other_decide g (cliExternsPlaced mmpl W)).trans
-      (cliExternsPlaced_writeFile mmpl W))
-  writeStdout := writeStdout_rocl_ok_of_lookup stk
-    ((cliGhostExterns_other_decide g (cliExternsPlaced mmpl W)).trans
-      (cliExternsPlaced_writeStdout mmpl W))
+      (lsρ lsReadFileSym) (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo A stk)))
+    (hWriteFile : subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W)))
+      (lsρ lsWriteFileSym) (withLsRoCl lsmpl (writeFileSpecPlaced cliIo stk)))
+    (hWriteStdout : subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W)))
+      (lsρ lsWriteStdoutSym) (withLsRoCl lsmpl (writeStdoutSpecPlaced stk))) :
+    MainIoPlaced A (cliGhostExterns g (cliExternsPlaced mmpl W)) cliIo stk :=
+  mainIo_of_subroutine_ok_placed stk hReadStdin hReadFile hWriteFile hWriteStdout
 
-/-- `MainIoPlaced` on `cliGhostExterns g (cliExternsPlaced mmpl W)` from `HookSat` read hypotheses. -/
-theorem mainIo_of_hookSat_placed [LibsignalPlacement] {A : RustAlloc}
+/-- `MainIoPlaced` on `cliGhostExterns g (cliExternsPlaced mmpl W)` from `HookSat` I/O hypotheses. -/
+theorem mainIo_of_cliGhostExterns_hookSat_placed [LibsignalPlacement] {A : RustAlloc}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (stk : Nat)
     (hReadStdin : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsReadStdinSym
       (readStdinSpecPlaced cliIo A stk))
     (hReadFile : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsReadFileSym
-      (readFileLitSpecPlaced cliIo A stk)) :
+      (readFileLitSpecPlaced cliIo A stk))
+    (hWriteFile : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsWriteFileSym
+      (writeFileSpecPlaced cliIo stk))
+    (hWriteStdout : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsWriteStdoutSym
+      (writeStdoutSpecPlaced stk)) :
     MainIoPlaced A (cliGhostExterns g (cliExternsPlaced mmpl W)) cliIo stk :=
-  mainIo_of_lookup_placed stk hReadStdin hReadFile
-    ((cliGhostExterns_other_decide g (cliExternsPlaced mmpl W)).trans
-      (cliExternsPlaced_writeFile mmpl W))
-    ((cliGhostExterns_other_decide g (cliExternsPlaced mmpl W)).trans
-      (cliExternsPlaced_writeStdout mmpl W))
+  mainIo_of_hookSat_placed stk hReadStdin hReadFile hWriteFile hWriteStdout
 
 /-- `MainCalleesBlk617` at `A0 / cliGhostExterns g (cliExternsPlaced mmpl W) / cliResStack` from
 `hAllocFs : AllocContractsFsPlaced E2E.HooksE.A0 (cliGhostExterns g (cliExternsPlaced mmpl W))`,
@@ -213,6 +227,10 @@ theorem main_ok_a1_tight_placed [LibsignalPlacement] {CodeOk : Memory → Prop} 
       (lsρ lsReadStdinSym) (withLsRoCl lsmpl (readStdinSpecPlaced cliIo E2E.HooksE.A0 cliHookStack)))
     (hReadFile : subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsρ lsReadFileSym) (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo E2E.HooksE.A0 cliHookStack)))
+    (hWriteFile : subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W)))
+      (lsρ lsWriteFileSym) (withLsRoCl lsmpl (writeFileSpecPlaced cliIo cliHookStack)))
+    (hWriteStdout : subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W)))
+      (lsρ lsWriteStdoutSym) (withLsRoCl lsmpl (writeStdoutSpecPlaced cliHookStack)))
     (hrun : subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsmpl.base 579)
       (runSpecTightPlaced CodeOk E2E.HooksE.A0 uuidTryParse Run
@@ -221,7 +239,7 @@ theorem main_ok_a1_tight_placed [LibsignalPlacement] {CodeOk : Memory → Prop} 
     subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 617)
       (mainSpecTightPlaced CodeOk E2E.HooksE.A0 cliMainStk cliStaticsPlaced Run) :=
   main_ok_tight_placed_proof (mainA1_callees_placed mmpl g W cliHookStack hAllocFs hExtra hStrlen)
-    (mainIo_of_cliGhostExterns_placed mmpl g W cliHookStack hReadStdin hReadFile)
+    (mainIo_of_cliGhostExterns_placed mmpl g W cliHookStack hReadStdin hReadFile hWriteFile hWriteStdout)
     ⟨cliIo_stdin, cliIo_coinsPath, cliIo_coins, cliIo_commit⟩
     hrun (hparse_of_domains hdom) cli_hstk cli_hstk64
 
@@ -237,6 +255,10 @@ theorem main_ok_a1_tight_placed_of_hookSat [LibsignalPlacement] {CodeOk : Memory
       (readStdinSpecPlaced cliIo E2E.HooksE.A0 cliHookStack))
     (hReadFile : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsReadFileSym
       (readFileLitSpecPlaced cliIo E2E.HooksE.A0 cliHookStack))
+    (hWriteFile : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsWriteFileSym
+      (writeFileSpecPlaced cliIo cliHookStack))
+    (hWriteStdout : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsWriteStdoutSym
+      (writeStdoutSpecPlaced cliHookStack))
     (hrun : subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsmpl.base 579)
       (runSpecTightPlaced CodeOk E2E.HooksE.A0 uuidTryParse Run
@@ -247,6 +269,8 @@ theorem main_ok_a1_tight_placed_of_hookSat [LibsignalPlacement] {CodeOk : Memory
   main_ok_a1_tight_placed mmpl g W hAllocFs hExtra hStrlen
     (readStdin_rocl_ok_of_hookSat hReadStdin)
     (readFile_rocl_ok_of_hookSat hReadFile)
+    (writeFile_rocl_ok_of_hookSat hWriteFile)
+    (writeStdout_rocl_ok_of_hookSat hWriteStdout)
     hrun hdom
 
 /-- `main`'s contract (`mainSpecPlaced`) at
@@ -263,6 +287,10 @@ theorem main_ok_a1_placed [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCod
       (lsρ lsReadStdinSym) (withLsRoCl lsmpl (readStdinSpecPlaced cliIo E2E.HooksE.A0 cliHookStack)))
     (hReadFile : subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsρ lsReadFileSym) (withLsRoCl lsmpl (readFileLitSpecPlaced cliIo E2E.HooksE.A0 cliHookStack)))
+    (hWriteFile : subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W)))
+      (lsρ lsWriteFileSym) (withLsRoCl lsmpl (writeFileSpecPlaced cliIo cliHookStack)))
+    (hWriteStdout : subroutine_ok (lsProg_617 (cliGhostExterns g (cliExternsPlaced mmpl W)))
+      (lsρ lsWriteStdoutSym) (withLsRoCl lsmpl (writeStdoutSpecPlaced cliHookStack)))
     (hrun : subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsmpl.base 579)
       (runSpecPlaced CodeOk E2E.HooksE.A0 uuidTryParse Run
@@ -271,7 +299,7 @@ theorem main_ok_a1_placed [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCod
     subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 617)
       (mainSpecPlaced CodeOk E2E.HooksE.A0 cliMainStk cliStaticsPlaced Run) :=
   main_ok_placed_proof (mainA1_callees_placed mmpl g W cliHookStack hAllocFs hExtra hStrlen)
-    (mainIo_of_cliGhostExterns_placed mmpl g W cliHookStack hReadStdin hReadFile)
+    (mainIo_of_cliGhostExterns_placed mmpl g W cliHookStack hReadStdin hReadFile hWriteFile hWriteStdout)
     ⟨cliIo_stdin, cliIo_coinsPath, cliIo_coins, cliIo_commit⟩
     hrun (hparse_of_domains hdom) cli_hstk cli_hstk64
 
@@ -287,6 +315,10 @@ theorem main_ok_a1_placed_of_hookSat [LibsignalPlacement] {CodeOk : Memory → P
       (readStdinSpecPlaced cliIo E2E.HooksE.A0 cliHookStack))
     (hReadFile : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsReadFileSym
       (readFileLitSpecPlaced cliIo E2E.HooksE.A0 cliHookStack))
+    (hWriteFile : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsWriteFileSym
+      (writeFileSpecPlaced cliIo cliHookStack))
+    (hWriteStdout : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsWriteStdoutSym
+      (writeStdoutSpecPlaced cliHookStack))
     (hrun : subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsmpl.base 579)
       (runSpecPlaced CodeOk E2E.HooksE.A0 uuidTryParse Run
@@ -297,6 +329,8 @@ theorem main_ok_a1_placed_of_hookSat [LibsignalPlacement] {CodeOk : Memory → P
   main_ok_a1_placed mmpl g W hAllocFs hExtra hStrlen
     (readStdin_rocl_ok_of_hookSat hReadStdin)
     (readFile_rocl_ok_of_hookSat hReadFile)
+    (writeFile_rocl_ok_of_hookSat hWriteFile)
+    (writeStdout_rocl_ok_of_hookSat hWriteStdout)
     hrun hdom
 
 theorem mProgPlaced_eq_cliProgPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)

@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptRecordStorePeak
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptRecordStorePeak
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
 import LibsignalBinary.Specifications.AsmConstants
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Ghost-Free `SessionClone`, `SessionRecord::serialize`, and `StorePoll` Bounds
@@ -25,7 +29,7 @@ Extracts pure canonical and length invariants (`GhostCloneValid`, `CanonSession`
 `RecordDecryptEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -145,7 +149,7 @@ structure GhostCloneValid (G : SessionGhost) (ses : Session (List (BitVec 8))) :
   canon : CanonSession G ses
 
 /-- Record-level ghost validity (`none/none` or `some G / some ses` satisfying `SessionGhostValid`). -/
-def RecordGhostValid (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def RecordGhostValid (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) : Prop :=
   match g.cur, r.currentSession with
   | none, none => True
   | some G, some ses => SessionGhostValid G ses
@@ -384,21 +388,6 @@ theorem recordGhostValid_of_sessionRecordAt {A : RustAlloc} {rA : BitVec 64}
       simpa using hss
     rw [RecordGhostValid, hg, hr]
     exact ⟨hp, A, rA + 0x18#64, m, emp, hss_frame⟩
-
-theorem canonRecord_of_recordGhostValid {g : RecordGhost} {r : SessionRecord (List (BitVec 8))}
-    (h : RecordGhostValid g r) : CanonRecord g r := by
-  unfold RecordGhostValid at h
-  unfold CanonRecord
-  rcases hg : g.cur with _ | G <;> rcases hr : r.currentSession with _ | ses
-  · trivial
-  · simp [hg, hr] at h
-  · simp [hg, hr] at h
-  · simp only [hg, hr] at h
-    exact canonSession_of_sessionGhostValid h
-
-theorem encRecordMem_eq_of_recordGhostValid {g : RecordGhost} {r : SessionRecord (List (BitVec 8))}
-    (h : RecordGhostValid g r) : encRecordMem g r = encodeRecord r :=
-  encRecordMem_eq_of_canon g r (canonRecord_of_recordGhostValid h)
 
 /-! ## 4. Arithmetic Bounds on `segClone*` and `recordSerialize*` -/
 
@@ -1123,22 +1112,6 @@ theorem segCloneLarge_fine_le_of_dom {pqCap : Nat}
     simp only [Nat.zero_add, Nat.add_zero]
     exact Nat.add_le_add hrc hpq
 
-theorem sessionClone_keys_dom_phaseCredit_tight {pqCap maxTotalKeys : Nat}
-    {G : SessionGhost} {ses : Session (List (BitVec 8))}
-    (hgv : SessionGhostValid G ses) (hdom : SessionCloneDom pqCap ses)
-    (hkeys : ((G.chains.zip ses.state.receiverChains).map
-      (fun gc => gc.2.messageKeys.length)).sum ≤ maxTotalKeys) :
-    PhaseCreditSpec fineCostModel (SegCloneEnv G ses.state)
-      (897456 + 738 * maxTotalKeys)
-      (1080975 + optLargeCost fineCostModel pqCap)
-      (1080975 + optLargeCost fineCostModel pqCap)
-      (max 208000 pqCap) :=
-  (sessionClone_phaseCredit_tight fineCostModel_modelHyps G ses.state).mono
-    (segCloneTightCum_fine_keys_le_of_dom hgv hdom hkeys)
-    (segCloneLarge_fine_le_of_dom hgv hdom)
-    (segCloneLarge_fine_le_of_dom hgv hdom)
-    (segCloneMaxReq_le_of_dom hgv hdom)
-
 theorem sessionClone_dom_phaseCredit_tight {pqCap : Nat}
     {G : SessionGhost} {ses : Session (List (BitVec 8))}
     (hgv : SessionGhostValid G ses) (hdom : SessionCloneDom pqCap ses) :
@@ -1167,28 +1140,6 @@ theorem sessionClone_drop_cancel_dom_phaseCredit_tight {pqCap : Nat}
       (max (max 208000 pqCap) r_b) :=
   (sessionClone_drop_cancel_phaseCredit_tight fineCostModel_modelHyps G ses.state hBody).mono
     (Nat.add_le_add_right (segCloneTightCum_fine_le_of_dom hgv hdom) c_b)
-    (Nat.le_refl l_b)
-    (Nat.add_le_add_right (segCloneLarge_fine_le_of_dom hgv hdom) p_b)
-    (Nat.max_le.mpr
-      ⟨Nat.le_trans (segCloneMaxReq_le_of_dom hgv hdom) (Nat.le_max_left _ _),
-       Nat.le_max_right _ _⟩)
-
-theorem sessionClone_keys_drop_cancel_dom_phaseCredit_tight {pqCap maxTotalKeys : Nat}
-    {G : SessionGhost} {ses : Session (List (BitVec 8))}
-    {Body : List AllocEvent → Prop} {c_b l_b p_b r_b : Nat}
-    (hgv : SessionGhostValid G ses) (hdom : SessionCloneDom pqCap ses)
-    (hkeys : ((G.chains.zip ses.state.receiverChains).map
-      (fun gc => gc.2.messageKeys.length)).sum ≤ maxTotalKeys)
-    (hBody : PhaseCreditSpec fineCostModel Body c_b l_b p_b r_b) :
-    PhaseCreditSpec fineCostModel
-      (ConcatEnv (ConcatEnv (SegCloneEnv G ses.state) Body)
-        (· = dropClonedSessionEvents G ses.state))
-      (897456 + 738 * maxTotalKeys + c_b)
-      l_b
-      (1080975 + optLargeCost fineCostModel pqCap + p_b)
-      (max (max 208000 pqCap) r_b) :=
-  (sessionClone_drop_cancel_phaseCredit_tight fineCostModel_modelHyps G ses.state hBody).mono
-    (Nat.add_le_add_right (segCloneTightCum_fine_keys_le_of_dom hgv hdom hkeys) c_b)
     (Nat.le_refl l_b)
     (Nat.add_le_add_right (segCloneLarge_fine_le_of_dom hgv hdom) p_b)
     (Nat.max_le.mpr
@@ -1386,42 +1337,6 @@ theorem recordDecrypt_dom_phaseCredit_tight
   refine (phaseCreditSpec_recordDecryptEnv_fine_tight hClone hTd).mono ?_ (Nat.le_refl _) ?_ ?_
   · rw [Nat.add_assoc 8277456 c_td 8924, Nat.add_comm c_td 8924,
         ← Nat.add_assoc 8277456 8924 c_td, show 8277456 + 8924 = 8286380 by decide]
-  · exact Nat.max_le.mpr ⟨Nat.le_add_right _ _, Nat.le_refl _⟩
-  · exact Nat.le_of_eq (Nat.max_assoc (max 208000 pqCap) r_td 192)
-
-theorem recordDecrypt_keys_dom_phaseCredit_tight
-    {pqCap maxTotalKeys : Nat} {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
-    {x : RecordDecryptGhost} {ses : Session (List (BitVec 8))}
-    {c_td l_td p_td r_td : Nat}
-    (hst : x.st = ses.state)
-    (hgv : SessionGhostValid x.G ses)
-    (hdom : SessionCloneDom pqCap ses)
-    (hkeys : ((x.G.chains.zip ses.state.receiverChains).map
-      (fun gc => gc.2.messageKeys.length)).sum ≤ maxTotalKeys)
-    (hTd : ∀ G₁ : SessionGhost, CloneRel x.G G₁ →
-      PhaseCreditSpec fineCostModel (tdEnv (recordTryDecryptEnvArgs x G₁)) c_td l_td p_td r_td) :
-    PhaseCreditSpec fineCostModel (RecordDecryptEnv tdEnv x)
-      (906380 + 738 * maxTotalKeys + c_td)
-      (1080975 + optLargeCost fineCostModel pqCap + l_td)
-      (1080975 + optLargeCost fineCostModel pqCap + max p_td l_td)
-      (max (max 208000 pqCap) (max r_td 192)) := by
-  have hClone : PhaseCreditSpec fineCostModel (SegCloneEnv x.G x.st)
-      (897456 + 738 * maxTotalKeys)
-      (1080975 + optLargeCost fineCostModel pqCap)
-      (1080975 + optLargeCost fineCostModel pqCap) (max 208000 pqCap) := by
-    rw [hst]
-    exact sessionClone_keys_dom_phaseCredit_tight hgv hdom hkeys
-  refine (phaseCreditSpec_recordDecryptEnv_fine_tight hClone hTd).mono ?_ (Nat.le_refl _) ?_ ?_
-  · have hcomm : (897456 + 738 * maxTotalKeys) + c_td + 8924 =
-        (906380 + 738 * maxTotalKeys) + c_td := by
-      rw [Nat.add_assoc (897456 + 738 * maxTotalKeys) c_td 8924,
-          Nat.add_comm c_td 8924,
-          ← Nat.add_assoc (897456 + 738 * maxTotalKeys) 8924 c_td,
-          Nat.add_assoc 897456 (738 * maxTotalKeys) 8924,
-          Nat.add_comm (738 * maxTotalKeys) 8924,
-          ← Nat.add_assoc 897456 8924 (738 * maxTotalKeys),
-          show 897456 + 8924 = 906380 by decide]
-    exact Nat.le_of_eq hcomm
   · exact Nat.max_le.mpr ⟨Nat.le_add_right _ _, Nat.le_refl _⟩
   · exact Nat.le_of_eq (Nat.max_assoc (max 208000 pqCap) r_td 192)
 
@@ -1851,8 +1766,6 @@ structure FreshBobCloneDom (bobPqCap : Nat) (G : SessionGhost)
   gv : SessionGhostValid G ses
   dom : SessionCloneDom bobPqCap ses
 
-def segCloneFreshBob16KTightCum : Nat := 36295
-
 /-- Tight `segCloneTightCum` bound (`≤ 36,295` B) on `fineCostModel` under `FreshBobCloneDom` with `bobPqCap ≤ 16,384`.
 -/
 theorem segCloneTightCum_fine_freshBob16K_le {bobPqCap : Nat}
@@ -1979,12 +1892,6 @@ theorem phaseCreditSpec_fromFEnv_fine_488 :
 theorem phaseCreditSpec_fromMEnv_fine_8674 :
     PhaseCreditSpec fineCostModel FromMEnv 8674 0 0 192 :=
   (phaseCreditSpec_growOneSpe_zero_fine_tight.seq phaseCreditSpec_fromFEnv_fine_488).mono
-    (by decide) (by decide) (by decide) (by decide)
-
-theorem phaseCreditSpec_fromVPostTdEnv_fine_8674 :
-    PhaseCreditSpec fineCostModel FromVPostTdEnv 8674 0 0 192 :=
-  ((PhaseCreditSpec.freeOnly fineCostModel_freeNonInc).or
-    phaseCreditSpec_fromMEnv_fine_8674).mono
     (by decide) (by decide) (by decide) (by decide)
 
 end TightFineCloneBounds

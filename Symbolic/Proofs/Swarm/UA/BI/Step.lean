@@ -14,7 +14,6 @@ import DY.Trace.Monad
 import DY.Trace.Manipulation
 import DY.Actions.Network
 import DY.Actions.ProtocolEvent
-public import ProofLib.Lemmas
 public import Symbolic.Specifications.Refinement.TraceExplanation
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.Steps
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -35,7 +34,7 @@ environment event `.env ev` is explained by an invisible-step prefix followed by
 step `s`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

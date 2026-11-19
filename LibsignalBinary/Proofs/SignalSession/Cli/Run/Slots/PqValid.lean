@@ -11,10 +11,10 @@ module
 
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhSessionModel
 public import LibsignalBinary.Proofs.E2E.V1.BinDefs
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
-public import LibsignalBinary.Proofs.E2E.Reach.BundleCommon
-public import LibsignalBinary.Proofs.E2E.RecordX.ScopeP
-public import LibsignalBinary.Specifications.LibsignalE2E.ParamsEWith
+public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Reach.BundleCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.RecordX.ScopeP -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.V1.ParamsEWith -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.CanonKey
 import LibsignalBinary.Proofs.E2E.RecordX.Length
 import LibsignalBinary.Proofs.E2E.RecordX.LengthP
@@ -31,7 +31,7 @@ bounds, proving that every `ReachablePqxdhSession` satisfies `ReachPqInvV1` (`re
 a valid SPQR state (`reachPq_validState`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SignalSession.Cli.Slots.PqValid
 
@@ -51,12 +51,12 @@ open CryptoVerification.SpqrV1.Top.StateSize (ValidState validState_spqrV1Init
   spqrV1_send_validState_length_le spqrV1_recv_validState_length_le)
 /-- Session-model `Params` with SPQR V1 enabled (`spqrV1SessionUniformCoins C.F K` with 512-bit
 coins in place of `spqrOffB`). -/
-def paramsPV1 (C : Crypto) (K : MlKem) : Params Bytes (BitVec 512) :=
+@[expose] def paramsPV1 (C : Crypto) (K : MlKem) : Params Bytes (BitVec 512) :=
   ⟨C, protoSignalCodec, spqrV1SessionUniformCoins C.F K, partyIdentityKey .A, partyIdentityKey .B, serializedPartyAddresses uuidTryParse .A .B,
     serializedPartyAddresses uuidTryParse .B .A⟩
 
 /-- Initiator state after `session_initiate` with SPQR V1 enabled (`spqrV1Init W.C.F K .a2b`). -/
-def initiateStateV1 (X : UnreachedPqxdhPrimitives) (W : PEParams) (K : MlKem) (P : Party) (me : LocalIdentity)
+@[expose] def initiateStateV1 (X : UnreachedPqxdhPrimitives) (W : PEParams) (K : MlKem) (P : Party) (me : LocalIdentity)
     (b : PreKeyBundleFields) (t : List.Vector (BitVec 8) initiateTapeLen) :
     Option (RecordExtras × GhostState Bytes) :=
   match SignalPqxdh.Model.initiateKeys (modelPrims X W) (initiateInput W me b t) with
@@ -72,7 +72,7 @@ def initiateStateV1 (X : UnreachedPqxdhPrimitives) (W : PEParams) (K : MlKem) (P
         ⟨P, st.setUnacknowledgedPreKeyMessage, 0, [0]⟩)
 
 /-- Responder state after `session_recv_prekey` with SPQR V1 enabled (`spqrV1Init W.C.F K .b2a` followed by `spqr::recv`). -/
-def recvPrekeyStateV1 (X : UnreachedPqxdhPrimitives) (W : PEParams) (K : MlKem) (P : Party) (me : LocalIdentity)
+@[expose] def recvPrekeyStateV1 (X : UnreachedPqxdhPrimitives) (W : PEParams) (K : MlKem) (P : Party) (me : LocalIdentity)
     (k : ResponderPreKeySecrets) (m : PreKeyMessageFields) (rc : BitVec 256) :
     Option (Option (RecordExtras × GhostState Bytes × Bytes)) :=
   match SignalMessage.tryFrom protoSignalCodec m.inner with
@@ -118,7 +118,7 @@ theorem recordPqBound_of_encodeRecordX_length (E : Party → RecordExtras) (g : 
   omega
 
 /-- Session invariant `ReachPqInv` with the empty-PQ-state conjunct (`pqRatchetState = []`) omitted. -/
-def ReachPqInvV1 (W : PEParams) (me : LocalIdentity) (x : RecordExtras) (g : GhostState Bytes) : Prop :=
+@[expose] def ReachPqInvV1 (W : PEParams) (me : LocalIdentity) (x : RecordExtras) (g : GhostState Bytes) : Prop :=
   SeedsLen32 g.session ∧
     g.session.receiverChains.length ≤ maxReceiverChains ∧
     g.session.localIdentity = ⟨(keyPairOf W.C me.idPriv).publicKey⟩ ∧
@@ -279,16 +279,12 @@ structure PqStep (S : SpqrModel) (PqIn PqOut : List (BitVec 8) → Prop) : Prop 
   recv : ∀ st msg st' salt, PqIn st → S.recv st msg = .ok (st', salt) → PqOut st'
   msg : SendMsgBoundOn S PqIn
 
-theorem PqStep.in_bound {S : SpqrModel} {PqIn PqOut : List (BitVec 8) → Prop}
-    (h : PqStep S PqIn PqOut) (st : List (BitVec 8)) (hst : PqIn st) : st.length < 2 ^ 32 :=
-  h.out_bound st (h.in_out st hst)
-
 /-- Pre-states of SPQR V1 wire entries: `ValidState st ∧ st.length < 2^31`. -/
-def PqInV1 (st : List (BitVec 8)) : Prop :=
+@[expose] def PqInV1 (st : List (BitVec 8)) : Prop :=
   ValidState st ∧ st.length < 2 ^ 31
 
 /-- Post-states of SPQR V1 wire entries: `st.length < 2^31 + 2^21`. -/
-def PqOutV1 (st : List (BitVec 8)) : Prop :=
+@[expose] def PqOutV1 (st : List (BitVec 8)) : Prop :=
   st.length < 2 ^ 31 + 2 ^ 21
 
 /-- `spqrV1 F K` satisfies `PqStep (spqrV1 F K) PqInV1 PqOutV1`. -/
@@ -331,7 +327,7 @@ theorem pqRatchetState_length_le_encodeRecordX (E : Party → RecordExtras) (g :
   omega
 
 /-- Clears `s.state.pqRatchetState` to `[]` to reduce non-PQ record length bounds to `RecordX`. -/
-def stripPq (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
+@[expose] def stripPq (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
   { s with state := { s.state with pqRatchetState := [] } }
 
 private theorem encSession_stripPq_length (s : Session (List (BitVec 8))) :
@@ -395,23 +391,6 @@ private theorem spqrV1Init_length_lt (F : ShaCompress) (K : MlKem) (dir : SpqrDi
         hk]
       omega
   · simp
-
-/-- `Params.send` at `paramsPV1` preserves `ValidState` of `pqRatchetState`. -/
-theorem validState_paramsPV1_send (W : PEParams) (K : MlKem) {me : LocalIdentity} {x : RecordExtras}
-    {g : GhostState Bytes} (m : Bytes) (r : BitVec 512) (hinv : ReachPqInvV1 W me x g)
-    (hval : ValidState g.session.pqRatchetState) (hpq : g.session.pqRatchetState.length < 2 ^ 64) :
-    ValidState ((paramsPV1 W.C K).send g m r).1.session.pqRatchetState := by
-  rw [Record.send_eq_afterSend]
-  rcases hm : SessionState.messageEncrypt (paramsPV1 W.C K).C (paramsPV1 W.C K).codec
-      (paramsPV1 W.C K).spqr ((paramsPV1 W.C K).sendAddrs g.party) m r g.session with
-    ⟨_ | msg, s⟩
-  · exact hval
-  · obtain ⟨hseeds, hlen, -⟩ := hinv
-    obtain ⟨-, -, -, -, key, pm, hsend, -⟩ :=
-      messageEncrypt_ok_props_gen (paramsPV1 W.C K).C (paramsPV1 W.C K).codec
-        (paramsPV1 W.C K).spqr ((paramsPV1 W.C K).sendAddrs g.party) m r g.session s msg
-        hseeds hlen hm
-    exact validState_spqrV1_send W.C.F K _ _ _ key pm hval hpq hsend
 
 /-- `Params.receive` at `paramsPV1` preserves `ValidState` of `pqRatchetState`. -/
 theorem validState_paramsPV1_recv (W : PEParams) (K : MlKem) {me : LocalIdentity} {x : RecordExtras}

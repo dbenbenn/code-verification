@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberb
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberb
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5bKyberPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -23,7 +23,7 @@ Proves `kyber_a74_panic_placed_wp` and re-exports `kyber_a80_panic_placed_wp`,
 `pksmParse_eq_none_of_kyber_half`, and `sepConj_rot3_kyber` on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -80,49 +80,5 @@ theorem raw_vec_panic_at_prekey_placed [LibsignalPlacement] {H : LibsignalHooks}
     (preKeyPlacedProg H).externAt? ((blkPl_111).ρ lsRawVecHandleErrorSym) =
       some Rust.panicked :=
   (ls_externAt?_of_mem).trans h_panic
-
-/-- Panic tail at `+0xa74` (`2676`) under `[LibsignalPlacement]`:
-`mov w0, #1; mov w1, #68; bl handle_error`. -/
-theorem kyber_a74_panic_placed_wp [LibsignalPlacement] {H : LibsignalHooks}
-    (h_panic : H lsRawVecHandleErrorSym = some Rust.panicked)
-    {s0 s : State} {sp' target_pc : BitVec 64} {P : SepProp} {Q : State → SepProp → Prop}
-    (hst : KyberExitA74StatePlaced s0 sp' s)
-    (hpc : s.pc = (blkPl_111).base + 2676#64)
-    (hrun : s.status = .Running) :
-    SepWPp (preKeyPlacedProg H) target_pc s P Q (tryFromQp s0) := by
-  rcases hst with ⟨_hsp_eq, _hsp, hcl, hallocF, htr⟩
-  have hpan := raw_vec_panic_at_prekey_placed h_panic
-  refine CryptoVerification.E2E.Pqxdh.ResponderWire.SepWPp.of_sepWP_pk
-    keepsFrozenInv_codeRoLoaded hcl
-    (mid := (blkPl_111).ρ lsRawVecHandleErrorSym) ?_
-  wp_steps
-  refine SepWP.done (by simp [arm64_norm]) (by simp [hrun, arm64_norm]) fun _ => ?_
-  refine SepWPp.panic (by simp [hrun, arm64_norm])
-    (by simpa [arm64_norm] using hpan)
-    fun _ hm => ?_
-  have hφ : allocFailedIn s0
-        (Rust.panicked
-          ((((s.writeReg64 (Reg.gpr 0#5) 1#64).writeReg64 (Reg.gpr 1#5) 68#64).writeReg64 (Reg.gpr 30#5)
-                ((blkPl_111).base + 2688#64)).setPC
-            ((blkPl_111).ρ lsRawVecHandleErrorSym))) ∧
-      s0.trace <+:
-        (Rust.panicked
-            ((((s.writeReg64 (Reg.gpr 0#5) 1#64).writeReg64 (Reg.gpr 1#5) 68#64).writeReg64 (Reg.gpr 30#5)
-                  ((blkPl_111).base + 2688#64)).setPC
-              ((blkPl_111).ρ lsRawVecHandleErrorSym))).trace :=
-    ⟨by simpa [allocFailedIn, Rust.panicked, arm64_norm] using hallocF,
-     by simpa [Rust.panicked, arm64_norm] using htr⟩
-  have hent : P ⊢ ⌜allocFailedIn s0
-        (Rust.panicked
-          ((((s.writeReg64 (Reg.gpr 0#5) 1#64).writeReg64 (Reg.gpr 1#5) 68#64).writeReg64 (Reg.gpr 30#5)
-                ((blkPl_111).base + 2688#64)).setPC
-            ((blkPl_111).ρ lsRawVecHandleErrorSym))) ∧
-      s0.trace <+:
-        (Rust.panicked
-            ((((s.writeReg64 (Reg.gpr 0#5) 1#64).writeReg64 (Reg.gpr 1#5) 68#64).writeReg64 (Reg.gpr 30#5)
-                  ((blkPl_111).base + 2688#64)).setPC
-              ((blkPl_111).ρ lsRawVecHandleErrorSym))).trace⌝ ∗ anyHeap := by
-    rw [pure_true_emp hφ, emp_sepConj]; exact entails_anyHeap P
-  exact Satisfies.mono (sepConj_mono_left hent) hm
 
 end CryptoVerification.SignalSession.Cli.RunProofs.PksmWire

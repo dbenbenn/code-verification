@@ -9,27 +9,66 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECoupleT
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperCKA -- proof-setup: allow-public-import
+
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECoupleT -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
+import Computational.Proofs.HeadlineV1.HiddenSaltV1Defs
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.List.Dedup
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Attr.Register
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Bool
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Basic
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Cell-Family Runner Unification and Bit Independence
 
 Rewrites `forgeGuessedAdvantageCellPaper` in terms of the unified runner `runBaseDFCellPaper`,
 proves `GameState.b` independence under `simImplDF'Paper`, and defines `cellSimRun` with its
-win-monotonicity bounds.
--/
+win-monotonicity bounds.-/
 
-@[expose] public section
+namespace CryptoVerification.LibsignalSession.HeadlineV1
+public section
 
 set_option autoImplicit false
-
-noncomputable section
+set_option linter.unusedSectionVars false
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
 
-namespace CryptoVerification.LibsignalSession.HeadlineV1
 
 open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
 open CryptoVerification.SpqrV1Sync.SendTotal (Encaps1Total TopState)
@@ -42,36 +81,6 @@ open CryptoGames.Ratchet.LibsignalSim CryptoGames.Ratchet.LibsignalSimC
 open CryptoGames.LibsignalSM.Proofs CryptoGames.LibsignalSM.Proofs.Refinement
 open CryptoVerification.LibsignalSession
 open HMAC HKDF CBC LibsignalAead AEADScheme MACScheme WireAEAD FSAEAD
-
-theorem evalDist_bind_le_double_sum {β ι₁ ι₂ : Type}
-    (S₁ : Finset ι₁) (S₂ : ι₁ → Finset ι₂)
-    (p : ProbComp β) (lhs : β → ProbComp Bool) (rhs : ι₁ → ι₂ → β → ProbComp Bool)
-    (h : ∀ b, 𝒟[lhs b] {true} ≤ ∑ t ∈ S₁, ∑ tL ∈ S₂ t, 𝒟[rhs t tL b] {true}) :
-    𝒟[p >>= lhs] {true} ≤
-      ∑ t ∈ S₁, ∑ tL ∈ S₂ t, 𝒟[p >>= rhs t tL] {true} := by
-  induction p using OracleComp.inductionOn with
-  | pure b =>
-    simp only [pure_bind]
-    exact h b
-  | query_bind n k ih =>
-    simp only [bind_assoc]
-    rw [evalDist_bind_of_discrete,
-      Measure.bind_apply MeasurableSet.of_discrete Measurable.of_discrete.aemeasurable]
-    have hrhs :
-        (∑ t ∈ S₁, ∑ tL ∈ S₂ t,
-          𝒟[(liftM (OracleSpec.query (spec := unifSpec) n) : ProbComp _) >>=
-            fun u => k u >>= rhs t tL] {true}) =
-        ∫⁻ u, (∑ t ∈ S₁, ∑ tL ∈ S₂ t, 𝒟[k u >>= rhs t tL] {true})
-          ∂(𝒟[(liftM (OracleSpec.query (spec := unifSpec) n) : ProbComp _)]) := by
-      rw [MeasureTheory.lintegral_finsetSum _ (fun _ _ =>
-        Finset.measurable_sum _ (fun _ _ => Measurable.of_discrete))]
-      refine Finset.sum_congr rfl fun t _ => ?_
-      rw [MeasureTheory.lintegral_finsetSum _ (fun _ _ => Measurable.of_discrete)]
-      refine Finset.sum_congr rfl fun tL _ => ?_
-      rw [evalDist_bind_of_discrete,
-        Measure.bind_apply MeasurableSet.of_discrete Measurable.of_discrete.aemeasurable]
-    rw [hrhs]
-    exact lintegral_mono ih
 
 theorem pprimePaperRel_init_b {Key St Msg Coins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
@@ -269,48 +278,65 @@ theorem runBaseDFCellPaper_challSimDF'Paper_simDeliverForge_eq
 
 /-! ## Challenge-bit independence -/
 
-def withB {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
+@[expose] def withB {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     SM.GameState St Msg C :=
   { s with b := b }
 
 @[simp] theorem withB_st {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).st = s.st := rfl
+
 @[simp] theorem withB_epoch {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).epoch = s.epoch := rfl
+
 @[simp] theorem withB_idx {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).idx = s.idx := rfl
+
 @[simp] theorem withB_tL {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).tL = s.tL := rfl
+
 @[simp] theorem withB_trans {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).trans = s.trans := rfl
+
 @[simp] theorem withB_chall {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).chall = s.chall := rfl
+
 @[simp] theorem withB_comp {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).comp = s.comp := rfl
+
 @[simp] theorem withB_maxAcc {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).maxAcc = s.maxAcc := rfl
+
 @[simp] theorem withB_win {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).win = s.win := rfl
+
 @[simp] theorem withB_leaks {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).leaks = s.leaks := rfl
+
 @[simp] theorem withB_corrs {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).corrs = s.corrs := rfl
+
 @[simp] theorem withB_b {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).b = b := rfl
+
 @[simp] theorem withB_set_win {St Msg C : Type} (b : Bool) (s : SM.GameState St Msg C) (w : Bool) :
     { withB b s with win := w } = withB b { s with win := w } := rfl
+
 @[simp] theorem mustBeCorrect_withB {St Msg C : Type} (maxSkip : ℕ) (Q : Party)
     (r : SM.Record Msg C) (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).mustBeCorrect maxSkip Q r = s.mustBeCorrect maxSkip Q r := rfl
+
 @[simp] theorem inTransit_withB {St Msg C : Type} [DecidableEq C]
     (P : Party) (c : C) (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).inTransit P c = s.inTransit P c := rfl
+
 @[simp] theorem safeInj_withB {St Msg C : Type}
     (Δ : ℕ) (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).safeInj Δ = s.safeInj Δ := rfl
+
 @[simp] theorem trivial_withB {St Msg C : Type}
     (Δ : ℕ) (pos : SM.Pos) (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).trivial Δ pos = s.trivial Δ pos := rfl
+
 @[simp] theorem corrAllowedPaper_withB {St Msg C : Type}
     (P : Party) (b : Bool) (s : SM.GameState St Msg C) :
     (withB b s).corrAllowedPaper P = s.corrAllowedPaper P := rfl
@@ -723,33 +749,6 @@ theorem evalDist_simulateQ_fullImplBaseDFCellPaper_cellWinPred_eq_one
   rw [hcongr, OracleComp.evalDist_bind_const]
   simp
 
-theorem firstNECellFamilyInv_inl_one_le_sum_cell
-    {α Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C] [SampleableType Coins]
-    (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (sameHdr : C → C → Bool)
-    (oa : ℕ → Option ℕ → OracleComp (unifSpec + DeliverForge.specDF St Msg Coins C) α)
-    (s_cell : ℕ → Option ℕ → SM.GameState St Msg C)
-    (hwin : ∃ t ∈ Finset.range ((qep + 1) + 2), ∃ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      cellWinPred tL t (s_cell t tL) = true) :
-    (1 : ℝ≥0∞) ≤
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-        𝒟[(simulateQ (fullImplBaseDFCellPaper sm (qep + 1) sameHdr tL t
-            (SM.Config.auth t)) (oa t tL)).run (s_cell t tL) >>=
-          fun z => pure (cellWinPred tL t z.2)] {true} := by
-  rcases hwin with ⟨t₀, ht₀, tL₀, htL₀, hwin₀⟩
-  rw [← evalDist_simulateQ_fullImplBaseDFCellPaper_cellWinPred_eq_one sm qep sameHdr
-    tL₀ t₀ (oa t₀ tL₀) (s_cell t₀ tL₀) hwin₀]
-  exact le_trans
-    (Finset.single_le_sum (f := fun tL =>
-      𝒟[(simulateQ (fullImplBaseDFCellPaper sm (qep + 1) sameHdr tL t₀
-          (SM.Config.auth t₀)) (oa t₀ tL)).run (s_cell t₀ tL) >>=
-        fun z => pure (cellWinPred tL t₀ z.2)] {true})
-      (fun _ _ => (zero_le : (0 : ℝ≥0∞) ≤ _)) htL₀)
-    (Finset.single_le_sum (f := fun t => ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      𝒟[(simulateQ (fullImplBaseDFCellPaper sm (qep + 1) sameHdr tL t
-          (SM.Config.auth t)) (oa t tL)).run (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true})
-      (fun _ _ => (zero_le : (0 : ℝ≥0∞) ≤ _)) ht₀)
-
 theorem cellSimRun_inl_query_bind {α : Type}
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {PQ : Type} [Inhabited PQ]
@@ -785,6 +784,350 @@ theorem cellSimRun_inl_query_bind {α : Type}
     simulateQ_simImplDF'Paper_liftM_probComp,
     simulateQ_fullImplBaseDFCellPaper_liftM_probComp]
 
-end CryptoVerification.LibsignalSession.HeadlineV1
+/-! ## 6. Stage-2 `(tL, par)` Bucket Pure-Game Coupling Helpers (`[B7-b]`) -/
+
+/-- Winning predicate of `DeliverForge.forgeGameBucketPaper` at `Δcka = 1` (`Δ = 2 + 1`). -/
+@[expose] def bucketWinPred {St Msg C : Type} (tL : Option ℕ) (sw : SM.GameState St Msg C × Option ℕ) :
+    Bool :=
+  match sw.2 with
+  | none => false
+  | some tWin => sw.1.win && SM.authLosingConditionsAvoided (2 + 1) tL tWin sw.1
+
+abbrev bucketSimRun {α : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep : ℕ) (tL : Option ℕ) (par : Bool)
+    (oa : OracleComp (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) α)
+    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (sw : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) × Option ℕ) :
+    ProbComp ((((α × LibsignalToModularSchemeSimState PQ Pt ℓ) × List (Fig8C Pt)) ×
+      Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) ×
+      (SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) × Option ℕ)) :=
+  let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
+  let fs := lFS P.C P.codec ℓ encT idOf 25000
+  (simulateQ (DeliverForge.fullImplBaseDFPaperBucket fig 1 (qep + 1) DeliverForge.sameHdrScheme
+      tL par)
+    ((simulateQ (DeliverForge.simImplDF'Paper (2 + 1) (qep + 1))
+      (((simulateQ (LibsignalSimC.simImplC P encT decT qep fig fs
+          (deliverForgeHook Pt ℓ) Dh) oa).run sC).run sent)).run m')).run sw
+
+theorem fullImplBaseDFPaper_state_eq_of_win_true
+    {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C] [SampleableType Coins]
+    (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) (sameHdr : C → C → Bool)
+    (cfg : SM.Config Msg)
+    (q_df : (unifSpec + DeliverForge.specDF St Msg Coins C).Domain)
+    {s : SM.GameState St Msg C} (hwin : s.win = true)
+    {z : (unifSpec + DeliverForge.specDF St Msg Coins C).Range q_df × SM.GameState St Msg C}
+    (hz : z ∈ support ((DeliverForge.fullImplBaseDFPaper sm Δ qep sameHdr cfg q_df).run s)) :
+    z.2 = s := by
+  rcases q_df with q_u | q_rest
+  · simp only [DeliverForge.fullImplBaseDFPaper, QueryImpl.add_apply_inl,
+      QueryImpl.liftTarget_apply, QueryImpl.ofLift_apply, StateT.run_liftM, support_bind,
+      Set.mem_iUnion, support_pure, Set.mem_singleton_iff] at hz
+    rcases hz with ⟨x, _, hzx⟩; rw [hzx]
+  · rcases q_rest with q_sm | ⟨Q, c, c'⟩
+    · rcases q_sm with (((⟨P, m_msg, r_c⟩ | ⟨P, m₀, m₁, r_c⟩) | ⟨Q, c⟩) | ⟨Q, c⟩) | P
+      · simp [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+          DeliverForge.oracleImplPaper, SM.transmitImpl, hwin] at hz; exact congrArg Prod.snd hz
+      · simp [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+          DeliverForge.oracleImplPaper, SM.challImpl, hwin] at hz; exact congrArg Prod.snd hz
+      · simp [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+          DeliverForge.oracleImplPaper, SM.deliverImpl, hwin] at hz; exact congrArg Prod.snd hz
+      · simp [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+          DeliverForge.oracleImplPaper, SM.injectImpl, hwin] at hz; exact congrArg Prod.snd hz
+      · simp [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+          DeliverForge.oracleImplPaper, DeliverForge.corrImplPaper, hwin] at hz
+        exact congrArg Prod.snd hz
+    · simp [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+        DeliverForge.deliverForgeBaseImpl, hwin] at hz; exact congrArg Prod.snd hz
+
+theorem simulateQ_fullImplBaseDFPaper_win_of_true
+    {α Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C] [SampleableType Coins]
+    (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ) (sameHdr : C → C → Bool)
+    (cfg : SM.Config Msg)
+    (oa : OracleComp (unifSpec + DeliverForge.specDF St Msg Coins C) α) :
+    ∀ (s : SM.GameState St Msg C) (z : α × SM.GameState St Msg C),
+      z ∈ support ((simulateQ (DeliverForge.fullImplBaseDFPaper sm Δ qep sameHdr cfg) oa).run s) →
+      s.win = true →
+      z.2 = s := by
+  induction oa using OracleComp.inductionOn with
+  | pure a =>
+    intro s z hz _
+    simp only [simulateQ_pure, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hz
+    rw [hz]
+  | query_bind q_df u ih =>
+    intro s z hz hwin
+    rw [simulateQ_query_bind, StateT.run_bind, MonadAttach.mem_support_bind] at hz
+    rcases hz with ⟨⟨u₁, s₁⟩, h₁, h₂⟩
+    have hs₁ : s₁ = s := fullImplBaseDFPaper_state_eq_of_win_true sm Δ qep sameHdr cfg q_df hwin h₁
+    rw [hs₁] at h₂
+    exact ih u₁ s z h₂ hwin
+
+theorem fullImplBaseDFPaperBucket_state_eq_of_win_true
+    {Key St Msg Coins T E : Type} [DecidableEq Msg] [DecidableEq T] [DecidableEq E]
+    [SampleableType Coins]
+    (sm : SMScheme Key St Msg Coins (Header T × E)) (Δcka qep : ℕ)
+    (sameHdr : (Header T × E) → (Header T × E) → Bool)
+    (tL : Option ℕ) (par : Bool)
+    (q_df : (unifSpec + DeliverForge.specDF St Msg Coins (Header T × E)).Domain)
+    {sw : SM.GameState St Msg (Header T × E) × Option ℕ} (hwin : sw.1.win = true)
+    {z : (unifSpec + DeliverForge.specDF St Msg Coins (Header T × E)).Range q_df ×
+      (SM.GameState St Msg (Header T × E) × Option ℕ)}
+    (hz : z ∈ support
+      ((DeliverForge.fullImplBaseDFPaperBucket sm Δcka qep sameHdr tL par q_df).run sw)) :
+    z.2 = sw := by
+  rcases sw with ⟨s, winEp⟩
+  dsimp only at hwin
+  simp only [DeliverForge.fullImplBaseDFPaperBucket, DeliverForge.withWinEpDF, StateT.run_mk,
+    MonadAttach.mem_support_bind] at hz
+  rcases hz with ⟨⟨r, s'⟩, h₁, h₂⟩
+  have hs' : s' = s :=
+    fullImplBaseDFPaper_state_eq_of_win_true sm (2 + Δcka) qep sameHdr
+      (DeliverForge.bucketAuthCfg Δcka tL par) q_df hwin h₁
+  subst hs'
+  simp [hwin] at h₂
+  rw [h₂]
+
+theorem evalDist_simulateQ_fullImplBaseDFPaperBucket_bucketWinPred_eq_one
+    {α Key St Msg Coins T E : Type} [DecidableEq Msg] [DecidableEq T] [DecidableEq E]
+    [SampleableType Coins]
+    (sm : SMScheme Key St Msg Coins (Header T × E)) (qep : ℕ)
+    (sameHdr : (Header T × E) → (Header T × E) → Bool)
+    (tL : Option ℕ) (par : Bool)
+    (oa : OracleComp (unifSpec + DeliverForge.specDF St Msg Coins (Header T × E)) α)
+    (sw : SM.GameState St Msg (Header T × E) × Option ℕ)
+    (hwin : bucketWinPred tL sw = true) :
+    𝒟[(simulateQ (DeliverForge.fullImplBaseDFPaperBucket sm 1 (qep + 1) sameHdr tL par) oa).run sw >>=
+      fun z => pure (bucketWinPred tL z.2)] {true} = 1 := by
+  have hswin : sw.1.win = true := by
+    rcases sw with ⟨s, _ | tWin⟩
+    · simp [bucketWinPred] at hwin
+    · simp [bucketWinPred] at hwin; exact hwin.1
+  have hstay : ∀ {α' : Type}
+      (oa' : OracleComp (unifSpec + DeliverForge.specDF St Msg Coins (Header T × E)) α')
+      (sw' : SM.GameState St Msg (Header T × E) × Option ℕ)
+      (z : α' × (SM.GameState St Msg (Header T × E) × Option ℕ)),
+      z ∈ support ((simulateQ (DeliverForge.fullImplBaseDFPaperBucket sm 1 (qep + 1) sameHdr tL par)
+        oa').run sw') →
+      sw'.1.win = true → z.2 = sw' := by
+    intro α' oa'
+    induction oa' using OracleComp.inductionOn with
+    | pure a =>
+      intro sw' z hz _
+      simp only [simulateQ_pure, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hz
+      rw [hz]
+    | query_bind q_df u ih =>
+      intro sw' z hz hw'
+      rw [simulateQ_query_bind, StateT.run_bind, MonadAttach.mem_support_bind] at hz
+      rcases hz with ⟨⟨u₁, sw₁⟩, h₁, h₂⟩
+      have hsw₁ := fullImplBaseDFPaperBucket_state_eq_of_win_true sm 1 (qep + 1) sameHdr tL par
+        q_df hw' h₁
+      rw [hsw₁] at h₂
+      exact ih u₁ sw' z h₂ hw'
+  have hcongr :
+      ((simulateQ (DeliverForge.fullImplBaseDFPaperBucket sm 1 (qep + 1) sameHdr tL par) oa).run sw >>=
+        fun z => pure (bucketWinPred tL z.2)) =
+      ((simulateQ (DeliverForge.fullImplBaseDFPaperBucket sm 1 (qep + 1) sameHdr tL par) oa).run sw >>=
+        fun _ => (pure true : ProbComp Bool)) := by
+    refine OracleComp.bind_congr_of_forall_mem_support _ fun z hz => ?_
+    rw [hstay oa sw z hz hswin, hwin]
+  rw [hcongr, OracleComp.evalDist_bind_const]
+  simp
+
+theorem fullImplBaseDFPaper_step_eq_and_bucket_of_no_win
+    {Key St Msg Coins T E : Type} [DecidableEq Msg] [DecidableEq T] [DecidableEq E]
+    [SampleableType Coins]
+    (sm : SMScheme Key St Msg Coins (Header T × E)) (qep : ℕ)
+    (sameHdr : (Header T × E) → (Header T × E) → Bool)
+    (tL : Option ℕ) (par : Bool)
+    (q_df : (unifSpec + DeliverForge.specDF St Msg Coins (Header T × E)).Domain)
+    {s₀ : SM.GameState St Msg (Header T × E)} (hwin₀ : s₀.win = false)
+    (hno_win : ∀ t ∈ Finset.range ((qep + 1) + 2),
+      ∀ z ∈ support ((DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr
+        (SM.Config.auth t) q_df).run s₀), z.2.win = false) :
+    (∀ t ∈ Finset.range ((qep + 1) + 2),
+      (DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr (SM.Config.auth t) q_df).run s₀ =
+        (DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr (SM.Config.auth 0) q_df).run s₀) ∧
+    (DeliverForge.fullImplBaseDFPaperBucket sm 1 (qep + 1) sameHdr tL par q_df).run (s₀, none) =
+      ((DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr (SM.Config.auth 0) q_df).run s₀ >>=
+        fun z => pure (z.1, (z.2, none))) := by
+  have hwin0_out : ∀ z ∈ support ((DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr
+      (SM.Config.auth 0) q_df).run s₀), z.2.win = false :=
+    hno_win 0 (Finset.mem_range.mpr (by omega))
+  have hcfg_eq : ∀ (cfg : SM.Config Msg),
+      cfg.deliverWin = false →
+      cfg.challAllowedIn = (fun _ => false) →
+      cfg.challMsg = (fun _ => none) →
+      (DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr cfg q_df).run s₀ =
+        (DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr (SM.Config.auth 0) q_df).run s₀ := by
+    intro cfg hdw hca hcm
+    rcases q_df with q_u | ((((⟨P, m_msg, r_c⟩ | ⟨P, m₀, m₁, r_c⟩) | ⟨Q, c⟩) | ⟨Q, c⟩) | P) | ⟨Q, c, c'⟩
+    · rfl
+    · rfl
+    · simp [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+        DeliverForge.oracleImplPaper, SM.challImpl, SM.Config.auth, hca]
+    · simp [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+        DeliverForge.oracleImplPaper, SM.deliverImpl, SM.Config.auth, hdw]
+    · simp only [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+        DeliverForge.oracleImplPaper, QueryImpl.add_apply_inr, QueryImpl.add_apply_inl]
+      unfold SM.injectImpl
+      simp only [StateT.run_bind, StateT.run_get, pure_bind, hwin₀, Bool.false_or]
+      by_cases hg1 : ((s₀.inTransit Q.other c).isSome || !s₀.safeInj (2 + 1)) = true
+      · simp only [hg1, ↓reduceIte]
+      · simp only [hg1, Bool.false_eq_true, ↓reduceIte]
+        cases hrcv : sm.receive (s₀.st Q) c with
+        | none => rfl
+        | some v =>
+          rcases v with ⟨st', t', i', m'⟩
+          dsimp only
+          by_cases hq : (qep + 1) + 1 < t'
+          · simp only [hq, ↓reduceIte]
+          · simp only [hq, ↓reduceIte]
+            by_cases htriv : s₀.trivial (2 + 1) ⟨Q.other, t', i'⟩ = true
+            · simp only [htriv, ↓reduceIte]
+            · exfalso
+              have ht'_mem : t' ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (by omega)
+              have hz := hno_win t' ht'_mem (some .rejected, { s₀ with win := true }) ?_
+              · simp at hz
+              · simp only [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+                  DeliverForge.oracleImplPaper, QueryImpl.add_apply_inr, QueryImpl.add_apply_inl]
+                unfold SM.injectImpl
+                simp only [StateT.run_bind, StateT.run_get, pure_bind, hwin₀, Bool.false_or,
+                  hg1, Bool.false_eq_true, ↓reduceIte, hrcv, hq, htriv, SM.Config.auth,
+                  beq_self_eq_true]
+                simp [StateT.run_set]
+    · rfl
+    · simp only [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+        QueryImpl.add_apply_inr]
+      unfold DeliverForge.deliverForgeBaseImpl
+      simp only [StateT.run_bind, StateT.run_get, pure_bind, hwin₀, Bool.false_eq_true, ↓reduceIte]
+      cases hin : s₀.inTransit Q.other c with
+      | none => rfl
+      | some r =>
+        dsimp only
+        by_cases hg1 : ((s₀.inTransit Q.other c').isSome || s₀.comp.contains r.pos || !sameHdr c c') = true
+        · simp only [hg1, ↓reduceIte]
+        · simp only [hg1, Bool.false_eq_true, ↓reduceIte]
+          cases hrcv : sm.receive (s₀.st Q) c' with
+          | none => rfl
+          | some v =>
+            rcases v with ⟨st', t', i', m'⟩
+            dsimp only
+            by_cases hq : (decide ((qep + 1) + 1 < t') || (t' != r.pos.epoch)) = true
+            · simp only [hq, ↓reduceIte]
+            · simp only [hq, Bool.false_eq_true, ↓reduceIte]
+              by_cases htriv : s₀.trivial (2 + 1) ⟨Q.other, t', i'⟩ = true
+              · simp only [htriv, ↓reduceIte]
+              · exfalso
+                have ht'_le : t' ≤ (qep + 1) + 1 := by
+                  simp only [Bool.or_eq_true, decide_eq_true_eq, not_or, not_lt] at hq
+                  exact hq.1
+                have ht'_mem : t' ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (by omega)
+                have hz := hno_win t' ht'_mem (some .rejected, { s₀ with win := true }) ?_
+                · simp at hz
+                · simp only [DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+                    QueryImpl.add_apply_inr]
+                  unfold DeliverForge.deliverForgeBaseImpl
+                  simp only [StateT.run_bind, StateT.run_get, pure_bind, hwin₀, hin, hg1,
+                    Bool.false_eq_true, ↓reduceIte, hrcv, hq, htriv, SM.Config.auth,
+                    beq_self_eq_true]
+                  simp [StateT.run_set]
+  refine ⟨fun t _ => hcfg_eq (SM.Config.auth t) rfl rfl rfl, ?_⟩
+  simp only [DeliverForge.fullImplBaseDFPaperBucket, DeliverForge.withWinEpDF, StateT.run_mk]
+  rw [hcfg_eq (DeliverForge.bucketAuthCfg 1 tL par) rfl rfl rfl]
+  refine OracleComp.bind_congr_of_forall_mem_support _ fun z hz => ?_
+  simp [hwin₀, hwin0_out z hz]
+
+theorem simulateQ_bucket_eq_map_auth0_of_no_win
+    {α Key St Msg Coins T E : Type} [DecidableEq Msg] [DecidableEq T] [DecidableEq E]
+    [SampleableType Coins]
+    (sm : SMScheme Key St Msg Coins (Header T × E)) (qep : ℕ)
+    (sameHdr : (Header T × E) → (Header T × E) → Bool)
+    (tL : Option ℕ) (par : Bool)
+    (oa : OracleComp (unifSpec + DeliverForge.specDF St Msg Coins (Header T × E)) α) :
+    ∀ {s₀ : SM.GameState St Msg (Header T × E)},
+      s₀.win = false →
+      (∀ t ∈ Finset.range ((qep + 1) + 2),
+        ∀ z ∈ support ((simulateQ (DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr
+          (SM.Config.auth t)) oa).run s₀), z.2.win = false) →
+      (simulateQ (DeliverForge.fullImplBaseDFPaperBucket sm 1 (qep + 1) sameHdr tL par) oa).run
+        (s₀, none) =
+      ((simulateQ (DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr
+          (SM.Config.auth 0)) oa).run s₀ >>=
+        fun z => pure (z.1, (z.2, none))) := by
+  induction oa using OracleComp.inductionOn with
+  | pure a =>
+    intro s₀ _ _
+    simp [simulateQ_pure, StateT.run_pure]
+  | query_bind q_df u ih =>
+    intro s₀ hwin₀ hno_win
+    have hstep_no_win : ∀ t ∈ Finset.range ((qep + 1) + 2),
+        ∀ z₁ ∈ support ((DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr
+          (SM.Config.auth t) q_df).run s₀), z₁.2.win = false := by
+      intro t ht z₁ hz₁
+      by_contra hw₁
+      simp only [Bool.not_eq_false] at hw₁
+      obtain ⟨z₂, hz₂⟩ := support_nonempty
+        ((simulateQ (DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr
+          (SM.Config.auth t)) (u z₁.1)).run z₁.2)
+      have hz_tot : z₂ ∈ support ((simulateQ (DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1)
+          sameHdr (SM.Config.auth t)) (OracleSpec.query q_df >>= u)).run s₀) := by
+        rw [simulateQ_query_bind, StateT.run_bind, MonadAttach.mem_support_bind]
+        exact ⟨z₁, hz₁, hz₂⟩
+      have heq₂ := simulateQ_fullImplBaseDFPaper_win_of_true sm (2 + 1) (qep + 1) sameHdr
+        (SM.Config.auth t) (u z₁.1) z₁.2 z₂ hz₂ hw₁
+      have hf := hno_win t ht z₂ hz_tot
+      rw [heq₂, hw₁] at hf
+      exact Bool.false_ne_true hf.symm
+    obtain ⟨hstep_eq, hstep_buck⟩ := fullImplBaseDFPaper_step_eq_and_bucket_of_no_win
+      sm qep sameHdr tL par q_df hwin₀ hstep_no_win
+    have hrun_q : ∀ {ι : Type} {spec : OracleSpec.{0, 0} ι} {σ β : Type}
+        (impl : QueryImpl spec (StateT σ ProbComp)) (q : spec.Domain)
+        (k : spec.Range q → OracleComp spec β) (st : σ),
+        (simulateQ impl (OracleSpec.query q >>= k)).run st =
+          ((impl q).run st >>= fun z => (simulateQ impl (k z.1)).run z.2) := by
+      intro ι spec σ β impl q k st
+      rw [simulateQ_bind, simulateQ_query, StateT.run_bind]
+      simp only [OracleQuery.cont_query, OracleQuery.input_query, id_map]
+    rw [hrun_q, hrun_q]
+    rw [hstep_buck, bind_assoc]
+    conv_rhs => rw [bind_assoc]
+    refine OracleComp.bind_congr_of_forall_mem_support _ fun z₁ hz₁ => ?_
+    rw [pure_bind]
+    have hw₁ : z₁.2.win = false :=
+      hstep_no_win 0 (Finset.mem_range.mpr (by omega)) z₁ hz₁
+    refine ih z₁.1 hw₁ fun t ht z₂ hz₂ => ?_
+    have hz₁_t : z₁ ∈ support ((DeliverForge.fullImplBaseDFPaper sm (2 + 1) (qep + 1) sameHdr
+        (SM.Config.auth t) q_df).run s₀) := by
+      rwa [hstep_eq t ht]
+    refine hno_win t ht z₂ ?_
+    rw [hrun_q, MonadAttach.mem_support_bind]
+    exact ⟨z₁, hz₁_t, hz₂⟩
+
+theorem not_B1_not_B2_imp_inStage2Bucket
+    {qep t₀ : ℕ} {tL₀ : Option ℕ}
+    (ht₀ : t₀ ∈ Finset.range ((qep + 1) + 2))
+    (htL₀ : tL₀ ∈ SM.admissibleLastLeakGuesses 2 t₀)
+    (hnotB1 : ¬(2 ≤ t₀ ∧ tL₀ = some (t₀ - 2)))
+    (hnotB2 : ¬(3 ≤ t₀ ∧ tL₀ = some (t₀ - 3))) :
+    tL₀ ∈ SM.admissibleLastLeakGuesses 4 ((qep + 1) + 1) ∧
+    DeliverForge.inStage2Bucket 1 tL₀ (DeliverForge.partyPar (Party.senderOf t₀)) t₀ = true := by
+  have ht₀_lt := Finset.mem_range.mp ht₀
+  rcases tL₀ with _ | m
+  · simp [SM.admissibleLastLeakGuesses, DeliverForge.inStage2Bucket, SM.lastLeakGuessAdmissible]
+  · simp only [SM.admissibleLastLeakGuesses, Finset.mem_insert, reduceCtorEq, Finset.mem_image,
+      Option.some.injEq, exists_eq_right, Finset.mem_range, false_or] at htL₀ ⊢
+    simp only [Option.some.injEq] at hnotB1 hnotB2
+    have hm4 : m + 4 ≤ t₀ := by omega
+    refine ⟨by omega, ?_⟩
+    simp [DeliverForge.inStage2Bucket, SM.lastLeakGuessAdmissible]
+    omega
 
 end
+
+end CryptoVerification.LibsignalSession.HeadlineV1

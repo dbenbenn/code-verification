@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserDefsX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Fields
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -97,29 +97,6 @@ private theorem bitVec_toFin_mk_64 (n : Nat) (h : n < 18446744073709551616 := by
   apply BitVec.eq_of_toNat_eq
   exact (Nat.mod_eq_of_lt h).symm
 
-run_meta do
-  let optInstr := Lean.mkApp (Lean.mkConst ``Option [0]) (Lean.mkConst ``Arm64.Instr)
-  let tree := Lean.mkConst ``CryptoVerification.libsignalSessionCode_tree
-  let fnOff := num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")
-  let ranges : List (Nat × Nat) :=
-    [(0, 144), (208, 176), (512, 8), (532, 64)]
-  for (k0, len) in ranges do
-    for i in [0 : len / 4] do
-      let addr := fnOff + k0 + 4 * i
-      let hex := String.ofList (Nat.toDigits 16 addr)
-      let thmName := Lean.Name.str `Proofs.libsignal.Hooks2.DeserLoopEntryGExt s!"d0_decode_0x{hex}"
-      let lhs := Lean.mkApp2 (Lean.mkConst ``ProofLib.ProgramReflection.WordTree.fetchDecodeAt)
-        tree (Lean.mkNatLit addr)
-      let rhs ← Lean.Meta.reduce lhs
-      let eqTy := Lean.mkApp3 (Lean.mkConst ``Eq [1]) optInstr lhs rhs
-      let eqPrf := Lean.mkApp2 (Lean.mkConst ``Eq.refl [1]) optInstr lhs
-      Lean.addDecl (.thmDecl {
-        name := thmName
-        levelParams := []
-        type := eqTy
-        value := eqPrf
-      })
-
 local elab "d0_fetch_range " codeId:ident b:term:max H:term:max hfn:term:max
     off:term:max k0:num len:num : tactic => do
   let off ← CryptoVerification.CodeLayout.evalNat off "d0_fetch_range"
@@ -138,49 +115,6 @@ local elab "d0_fetch_range " codeId:ident b:term:max H:term:max hfn:term:max
     else
       Lean.Elab.Tactic.evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-local macro "d0_fetches_1a " b:term:max H:term:max : tactic =>
-  `(tactic| (
-    d0_fetch_range CryptoVerification.libsignalSessionCode $b $H (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize") (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) 0 144
-    d0_fetch_range CryptoVerification.libsignalSessionCode $b $H (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize") (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) 208 52
-  ))
-
-local macro "d0_fetches_1b " b:term:max H:term:max : tactic =>
-  `(tactic| d0_fetch_range CryptoVerification.libsignalSessionCode $b $H (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize") (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) 260 88)
-
-local macro "d0_fetches_2a " b:term:max H:term:max : tactic =>
-  `(tactic| (
-    d0_fetch_range CryptoVerification.libsignalSessionCode $b $H (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize") (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) 348 36
-    d0_fetch_range CryptoVerification.libsignalSessionCode $b $H (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize") (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) 576 20
-  ))
-
-local macro "d0_fetches_2b_pre " b:term:max H:term:max : tactic =>
-  `(tactic| (
-    d0_fetch_range CryptoVerification.libsignalSessionCode $b $H (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize") (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) 348 24
-    d0_fetch_range CryptoVerification.libsignalSessionCode $b $H (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize") (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) 512 8
-    d0_fetch_range CryptoVerification.libsignalSessionCode $b $H (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize") (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) 532 8
-  ))
-
-local macro "d0_fetches_2b_post " b:term:max H:term:max : tactic =>
-  `(tactic| d0_fetch_range CryptoVerification.libsignalSessionCode $b $H (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize") (num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) 540 56)
-
-theorem recDeser_fnAddr_sp2ext (b : BitVec 64) (ext : String → Option (State → State)) :
-    (SP2Ext b ext).fnAddr recDeserializeName = b + bv% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize") := by
-  dsimp only [SP2Ext, contractProg]
-  rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::deserialize")]
-
-theorem decodeVarintSlice_fnAddr_sp2ext (b : BitVec 64) (ext : String → Option (State → State)) :
-    (SP2Ext b ext).fnAddr Prost.decodeVarintSliceName = b + bv% (ls_off% "prost::encoding::varint::decode_varint_slice") := by
-  dsimp only [SP2Ext, contractProg]
-  rw [Program.fnAddr_rebase, (ls_lemma% fnOff "prost::encoding::varint::decode_varint_slice")]
-
-theorem decodeVarintSlice_fnAddr_eq_deser_at_ext (b : BitVec 64) (ext : String → Option (State → State)) :
-    (SP2Ext b ext).fnAddr recDeserializeName + bv% (ls_off% "prost::encoding::varint::decode_varint_slice" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize") =
-      (SP2Ext b ext).fnAddr Prost.decodeVarintSliceName := by
-  rw [recDeser_fnAddr_sp2ext, decodeVarintSlice_fnAddr_sp2ext]
-  bv_omega
-
-/-! ## Pure codec and varint helpers -/
 
 private theorem encodeKey_1_ld_loopEntryG : encodeKey 1 .lengthDelimited = [0x0a#8] := rfl
 
@@ -348,42 +282,6 @@ private def ssUninitCells_loopEntryG (L : BitVec 64)
   ((L + 1304#64) ↦₆₄ c19) ∗ ((L + 1352#64) ↦₆₄ c20) ∗
   ((L + 1384#64) ↦₆₄ c21) ∗ ((L + 1392#64) ↦₆₄ c22)
 
-private theorem step_1b_loopEntryG (img : Obj.Image) (ext : String → Option (State → State))
-    (L : BitVec 64)
-    (c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14 c15 c16 c17 c18 c19 c20 c21 c22 : BitVec 64)
-    {s : State} {post : State → SepProp → Prop}
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 260#64) (hrun : s.status = .Running)
-    (hsp : s.sp = L) (halign : L &&& 15#64 = 0#64)
-    (hx0 : s.readReg64 .x0 = 2#64) (hx21 : s.readReg64 .x21 = noneCap)
-    (hx23 : s.readReg64 .x23 = L + 1032#64) (hx24 : s.readReg64 .x24 = 1#64)
-    (hx26 : s.readReg64 .x26 = 8#64)
-    (hnext : ∀ s' : State, s'.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 348#64 → s'.status = .Running →
-      s'.sp = L → (s'.trace = s.trace ∧ calleeSavedVRegs s' = calleeSavedVRegs s) → s'.readReg64 .x19 = s.readReg64 .x19 →
-      s'.readReg64 .x23 = L + 1032#64 → s'.readReg64 .x29 = s.readReg64 .x29 →
-      post s' (ssRawCells_loopEntryG L)) :
-    SepWP (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + 348#64) s
-      (ssUninitCells_loopEntryG L c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14 c15 c16 c17 c18 c19 c20 c21 c22)
-      post := by
-  let H := Rust.withPanics ext
-  d0_fetches_1b img.base H
-  dsimp only [SP2Ext, contractProg] at hpc hnext ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base H).fnAddr recDeserializeName = entry
-  examples_hide_fetches; unfold ssUninitCells_loopEntryG
-  have hnone : noneCap = bv% (2 ^ 64 - 1) := rfl
-  rw [hnone] at hx21 ⊢
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step
-  apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-  refine Eq.ndrec (motive := fun P => post _ P)
-    (hnext _ (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm])) ?_
-  unfold ssRawCells_loopEntryG; rw [hnone]; ac_rfl
-
-/-! ## Prologue and outer key `0x0a` fast path (`+0x000` → `+0x104`) -/
-
 private def step1aPre_loopEntryG (L p : BitVec 64)
     (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 u0 u1 u2 u3 u4 u5 u6 u7 : BitVec 64) : SepProp :=
   ((L + 1808#64) ↦₆₄ w0) ∗ ((L + 1816#64) ↦₆₄ w1) ∗
@@ -404,60 +302,6 @@ private def step1aPost_loopEntryG (L p : BitVec 64) (len1 : Nat) (s0 : State) : 
   ((L + 1048#64) ↦₆₄ 0#64) ∗ ((L + 1056#64) ↦₆₄ noneCap) ∗
   ((L + 1768#64) ↦₆₄ (L + 1016#64)) ∗ (p ↦₈ 10#8)
 
-private theorem step_1a_loopEntryG (img : Obj.Image) (ext : String → Option (State → State))
-    (L p out : BitVec 64) (len1 : Nat)
-    (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 u0 u1 u2 u3 u4 u5 u6 u7 : BitVec 64)
-    {s0 : State} {post : State → SepProp → Prop}
-    (hpc : s0.pc = (SP2Ext img.base ext).fnAddr recDeserializeName) (hrun : s0.status = .Running)
-    (hsp : s0.sp = L + 1904#64) (halignL : L &&& 15#64 = 0#64)
-    (halign1808 : (L + 1808#64) &&& 15#64 = 0#64)
-    (hx0 : s0.readReg64 .x0 = p) (hx1 : s0.readReg64 .x1 = BitVec.ofNat 64 (1 + len1))
-    (hx8 : s0.readReg64 .x8 = out) (hlen1_pos : 0 < len1) (hlen1_lt : len1 < 2 ^ 20)
-    (hnext : ∀ s1 : State, s1.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 260#64 → s1.status = .Running →
-      s1.sp = L → (s1.trace = s0.trace ∧ calleeSavedVRegs s1 = calleeSavedVRegs s0) → s1.readReg64 .x0 = 2#64 →
-      s1.readReg64 .x19 = out → s1.readReg64 .x21 = noneCap →
-      s1.readReg64 .x23 = L + 1032#64 → s1.readReg64 .x24 = 1#64 →
-      s1.readReg64 .x26 = 8#64 → s1.readReg64 .x29 = L + 1808#64 →
-      post s1 (step1aPost_loopEntryG L p len1 s0)) :
-    SepWP (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + 260#64) s0
-      (step1aPre_loopEntryG L p w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 u0 u1 u2 u3 u4 u5 u6 u7)
-      post := by
-  let H := Rust.withPanics ext
-  d0_fetches_1a img.base H
-  dsimp only [SP2Ext, contractProg] at hpc hnext ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base H).fnAddr recDeserializeName = entry
-  examples_hide_fetches; unfold step1aPre_loopEntryG
-  change len1 < 1048576 at hlen1_lt
-  have hcbz : (BitVec.ofNat 64 (1 + len1) == 0#64) = false := by
-    simp only [beq_eq_false_iff_ne]; intro h
-    have hnat := congrArg BitVec.toNat h
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)] at hnat
-    change 1 + len1 = 0 at hnat; omega
-  have hsub1 : BitVec.ofNat 64 (1 + len1) + bv% (2 ^ 64 - 1) = BitVec.ofNat 64 len1 := by
-    rw [Nat.add_comm 1 len1, BitVec.ofNat_add]; bv_omega
-  have hsub1' : BitVec.ofNat 64 (1 + len1) - 1#64 = BitVec.ofNat 64 len1 := by
-    rw [Nat.add_comm 1 len1, BitVec.ofNat_add]; bv_omega
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-  have hnone : noneCap = bv% (2 ^ 64 - 1) := rfl
-  refine Eq.ndrec (motive := fun P => post _ P)
-    (hnext _ (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by rw [hnone]; simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm])) ?_
-  unfold step1aPost_loopEntryG deserSavedAt_loopEntryG; rw [hnone]
-  simp only [Reg.x29, Reg.x30, Reg.x28, Reg.x27, Reg.x26, Reg.x25, Reg.x24, Reg.x23,
-    Reg.x22, Reg.x21, Reg.x20, Reg.x19]
-  ac_rfl
-
-/-! ## Single-byte length varint fast path (`+0x15c` → `+0x254`, `N < 128`) -/
-
 private def step2aPre_loopEntryG (L p : BitVec 64) (N : Nat) : SepProp :=
   ((L + 1768#64) ↦₆₄ (L + 1016#64)) ∗ ((L + 1016#64) ↦₆₄ (p + 1#64)) ∗
   ((L + 1024#64) ↦₆₄ BitVec.ofNat 64 (1 + N)) ∗ ((p + 1#64) ↦₈ BitVec.ofNat 8 N)
@@ -466,93 +310,9 @@ private def step2aPost_loopEntryG (L p : BitVec 64) (N : Nat) : SepProp :=
   ((L + 1768#64) ↦₆₄ (L + 1016#64)) ∗ ((L + 1016#64) ↦₆₄ (p + 2#64)) ∗
   ((L + 1024#64) ↦₆₄ BitVec.ofNat 64 N) ∗ ((p + 1#64) ↦₈ BitVec.ofNat 8 N)
 
-private theorem step_2a_loopEntryG (img : Obj.Image) (ext : String → Option (State → State))
-    (L p out : BitVec 64) (N : Nat) {s : State} {post : State → SepProp → Prop}
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 348#64) (hrun : s.status = .Running) (hsp : s.sp = L)
-    (hx19 : s.readReg64 .x19 = out) (hx23 : s.readReg64 .x23 = L + 1032#64)
-    (hx29 : s.readReg64 .x29 = L + 1808#64) (hN_lt : N < 128)
-    (hnext : ∀ s' : State, s'.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 596#64 → s'.status = .Running →
-      s'.sp = L → (s'.trace = s.trace ∧ calleeSavedVRegs s' = calleeSavedVRegs s) → s'.readReg64 .x19 = out → s'.readReg64 .x20 = 0#64 →
-      s'.readReg64 .x23 = L + 1032#64 → s'.readReg64 .x29 = L + 1808#64 →
-      post s' (step2aPost_loopEntryG L p N)) :
-    SepWP (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + 596#64) s (step2aPre_loopEntryG L p N) post := by
-  let H := Rust.withPanics ext
-  d0_fetches_2a img.base H
-  dsimp only [SP2Ext, contractProg] at hpc hnext ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base H).fnAddr recDeserializeName = entry
-  examples_hide_fetches; unfold step2aPre_loopEntryG
-  have hcbz : (BitVec.ofNat 64 (1 + N) == 0#64) = false := by
-    simp only [beq_eq_false_iff_ne]; intro h
-    have hnat := congrArg BitVec.toNat h
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)] at hnat
-    change 1 + N = 0 at hnat; omega
-  have hse := signExtend64_ofNat8_lt_128_loopEntryG hN_lt
-  have hbit63 : (((BitVec.ofNat 8 N).signExtend 64).getLsbD 63 == true) = false :=
-    (signExtend64_bit63_eq_false_iff_loopEntryG (BitVec.ofNat 8 N)).mpr (by rw [BitVec.toNat_ofNat]; omega)
-  have hsub1 : BitVec.ofNat 64 (1 + N) + bv% (2 ^ 64 - 1) = BitVec.ofNat 64 N := by
-    rw [Nat.add_comm 1 N, BitVec.ofNat_add]; bv_omega
-  have hsub1' : BitVec.ofNat 64 (1 + N) - 1#64 = BitVec.ofNat 64 N := by
-    rw [Nat.add_comm 1 N, BitVec.ofNat_add]; bv_omega
-  have hult_self : (BitVec.ofNat 64 N).ult (BitVec.ofNat 64 N) = false := by simp [BitVec.ult]
-  have hsub_self : BitVec.ofNat 64 N - BitVec.ofNat 64 N = 0#64 := by bv_omega
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step
-  apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-  refine Eq.ndrec (motive := fun P => post _ P)
-    (hnext _ (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])) ?_
-  unfold step2aPost_loopEntryG; ac_rfl
-
-/-! ## Multi-byte length varint via `decode_varint_slice` (`+0x15c` → `+0x254`, `128 ≤ N < 2 ^ 20`) -/
-
 private def step2bPre_loopEntryG (L p : BitVec 64) (vlen N : Nat) : SepProp :=
   ((L + 1768#64) ↦₆₄ (L + 1016#64)) ∗ ((L + 1016#64) ↦₆₄ (p + 1#64)) ∗
   ((L + 1024#64) ↦₆₄ BitVec.ofNat 64 (vlen + N)) ∗ ((p + 1#64) ↦₈ BitVec.ofNat 8 (N % 128 + 128))
-
-private theorem step_2b_pre_loopEntryG (img : Obj.Image) (ext : String → Option (State → State))
-    (L p out : BitVec 64) (vlen N : Nat) {s : State} {post : State → SepProp → Prop}
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 348#64) (hrun : s.status = .Running) (hsp : s.sp = L)
-    (hx19 : s.readReg64 .x19 = out) (hx23 : s.readReg64 .x23 = L + 1032#64)
-    (hx29 : s.readReg64 .x29 = L + 1808#64) (hN_ge : 128 ≤ N) (hVN_lt : vlen + N < 2 ^ 20)
-    (hnext : ∀ s' : State, s'.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + bv% (ls_off% "prost::encoding::varint::decode_varint_slice" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize") → s'.status = .Running →
-      s'.sp = L → (s'.trace = s.trace ∧ calleeSavedVRegs s' = calleeSavedVRegs s) → s'.readReg64 .lr = (SP2Ext img.base ext).fnAddr recDeserializeName + 540#64 →
-      s'.readReg64 .x0 = L + 1400#64 → s'.readReg64 .x1 = p + 1#64 →
-      s'.readReg64 .x2 = BitVec.ofNat 64 (vlen + N) → s'.readReg64 .x19 = out →
-      s'.readReg64 .x20 = L + 1016#64 → s'.readReg64 .x23 = L + 1032#64 →
-      s'.readReg64 .x29 = L + 1808#64 → post s' (step2bPre_loopEntryG L p vlen N)) :
-    SepWP (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + bv% (ls_off% "prost::encoding::varint::decode_varint_slice" - ls_off% "<libsignal_protocol::state::session::SessionRecord>::deserialize")) s (step2bPre_loopEntryG L p vlen N) post := by
-  let H := Rust.withPanics ext
-  d0_fetches_2b_pre img.base H
-  dsimp only [SP2Ext, contractProg] at hpc hnext ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base H).fnAddr recDeserializeName = entry
-  examples_hide_fetches; unfold step2bPre_loopEntryG
-  have hcbz : (BitVec.ofNat 64 (vlen + N) == 0#64) = false := by
-    simp only [beq_eq_false_iff_ne]; intro h
-    have hnat := congrArg BitVec.toNat h
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)] at hnat
-    change vlen + N = 0 at hnat; omega
-  have hbit63 :
-      (((BitVec.ofNat 8 (N % 128 + 128)).signExtend 64).getLsbD 63 == true) = true :=
-    (signExtend64_bit63_eq_true_iff_loopEntryG (BitVec.ofNat 8 (N % 128 + 128))).mpr
-      (by rw [BitVec.toNat_ofNat]; omega)
-  have hhi10 : (10#64).ult (BitVec.ofNat 64 (vlen + N)) = true := by
-    simp only [BitVec.ult, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (show vlen + N < 2 ^ 64 by omega),
-      decide_eq_true_eq]; omega
-  have hule10 : (BitVec.ofNat 64 (vlen + N)).ule 10#64 = false := by
-    simp only [BitVec.ule, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (show vlen + N < 2 ^ 64 by omega),
-      decide_eq_false_iff_not]; omega
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-  refine Eq.ndrec (motive := fun P => post _ P)
-    (hnext _ (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm])) ?_
-  unfold step2bPre_loopEntryG; ac_rfl
 
 private def step2bPostPre_loopEntryG (L p : BitVec 64) (vlen N : Nat) : SepProp :=
   ((L + 1400#64) ↦₃₂ 0#32) ∗ ((L + 1404#64) ↦₃₂ 0#32) ∗
@@ -565,44 +325,6 @@ private def step2bPostPost_loopEntryG (L p : BitVec 64) (vlen N : Nat) : SepProp
   ((L + 1408#64) ↦₆₄ BitVec.ofNat 64 N) ∗ ((L + 1416#64) ↦₆₄ BitVec.ofNat 64 vlen) ∗
   ((L + 1768#64) ↦₆₄ (L + 1016#64)) ∗ ((L + 1016#64) ↦₆₄ (p + 1#64 + BitVec.ofNat 64 vlen)) ∗
   ((L + 1024#64) ↦₆₄ BitVec.ofNat 64 N)
-
-private theorem step_2b_post_loopEntryG (img : Obj.Image) (ext : String → Option (State → State))
-    (L p out : BitVec 64) (vlen N : Nat) {s : State} {post : State → SepProp → Prop}
-    (hpc : s.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 540#64) (hrun : s.status = .Running)
-    (hsp : s.sp = L) (halignL : L &&& 15#64 = 0#64)
-    (hx19 : s.readReg64 .x19 = out) (hx20 : s.readReg64 .x20 = L + 1016#64)
-    (hx23 : s.readReg64 .x23 = L + 1032#64) (hx29 : s.readReg64 .x29 = L + 1808#64)
-    (hVN_lt : vlen + N < 2 ^ 20)
-    (hnext : ∀ s' : State, s'.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 596#64 → s'.status = .Running →
-      s'.sp = L → (s'.trace = s.trace ∧ calleeSavedVRegs s' = calleeSavedVRegs s) → s'.readReg64 .x19 = out → s'.readReg64 .x20 = 0#64 →
-      s'.readReg64 .x23 = L + 1032#64 → s'.readReg64 .x29 = L + 1808#64 →
-      post s' (step2bPostPost_loopEntryG L p vlen N)) :
-    SepWP (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr recDeserializeName + 596#64) s (step2bPostPre_loopEntryG L p vlen N) post := by
-  let H := Rust.withPanics ext
-  d0_fetches_2b_post img.base H
-  dsimp only [SP2Ext, contractProg] at hpc hnext ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base H).fnAddr recDeserializeName = entry
-  examples_hide_fetches; unfold step2bPostPre_loopEntryG
-  have hsub2 : BitVec.ofNat 64 (vlen + N) - BitVec.ofNat 64 vlen = BitVec.ofNat 64 N := by
-    rw [BitVec.ofNat_add]; bv_omega
-  have hult2 : (BitVec.ofNat 64 (vlen + N)).ult (BitVec.ofNat 64 vlen) = false := by
-    simp only [BitVec.ult, BitVec.toNat_ofNat,
-      Nat.mod_eq_of_lt (show vlen + N < 2 ^ 64 by omega),
-      Nat.mod_eq_of_lt (show vlen < 2 ^ 64 by omega),
-      decide_eq_false_iff_not]; omega
-  have hult_self : (BitVec.ofNat 64 N).ult (BitVec.ofNat 64 N) = false := by simp [BitVec.ult]
-  have hsub_self : BitVec.ofNat 64 N - BitVec.ofNat 64 N = 0#64 := by bv_omega
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  wp_step; wp_step; wp_step; wp_step
-  apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-  refine Eq.ndrec (motive := fun P => post _ P)
-    (hnext _ (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])) ?_
-  unfold step2bPostPost_loopEntryG; ac_rfl
-
-/-! ## Memory splitting and folding helpers -/
 
 private theorem memRegion_succ8_loopEntryG (a : BitVec 64) (n : Nat) (hn : n < 2000) :
     memRegion a (n + 8) =
@@ -806,288 +528,6 @@ private theorem allowPanic_frame_trace_loopEntryG {s0 sm sf : State} {F R : SepP
     (h : sf.mem ⊨ ((⌜allocFailedIn sm sf ∧ sm.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) ∗ R) :
     sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R :=
   allowPanic_frame (allocFailedIn_of_trace_eq_loopEntryG htr) h
-
-private theorem step_1_combined_loopEntryG (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State))
-    (x : DeserializeGenGhost) (R : SepProp) (s0 : State)
-    (hpc : s0.pc = (SP2Ext img.base ext).fnAddr recDeserializeName) (hrun : s0.status = .Running)
-    (hx0 : s0.readReg64 .x0 = x.p) (hx1 : s0.readReg64 .x1 = BitVec.ofNat 64 (encodeRecord x.r).length)
-    (hx8 : s0.readReg64 .x8 = x.out)
-    (heq : encodeRecord x.r = encodeKey 1 .lengthDelimited ++
-      encodeVarint (BitVec.ofNat 64 ((recFields x.r).flatMap GenField.enc).length) ++
-      (recFields x.r).flatMap GenField.enc)
-    (hrec_lt : (encodeRecord x.r).length < 2 ^ 20) (hal : s0.spAligned = true)
-    (hm0 : s0.mem ⊨ (x.p ↦ₛ encodeRecord x.r) ∗ memRegion x.out 368 ∗ stackAt s0.sp recDeserializeStack ∗ R)
-    (hL : (SP2Ext img.base ext).CodeLoaded s0.mem) :
-    let L := deserSpL s0.sp; let body := (recFields x.r).flatMap GenField.enc
-    let rest1 := encodeVarint (BitVec.ofNat 64 body.length) ++ body
-    ∃ s2, Steps (SP2Ext img.base ext) s0 s2 ∧ s2.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 348#64 ∧
-      s2.status = .Running ∧ s2.sp = L ∧ (s2.trace = s0.trace ∧ calleeSavedVRegs s2 = calleeSavedVRegs s0) ∧
-      s2.readReg64 .x19 = x.out ∧ s2.readReg64 .x23 = L + 1032#64 ∧ s2.readReg64 .x29 = L + 1808#64 ∧
-      (s2.mem ⊨ (((L + 1768#64) ↦₆₄ (L + 1016#64)) ∗ ((L + 1016#64) ↦₆₄ (x.p + 1#64)) ∗
-          ((L + 1024#64) ↦₆₄ BitVec.ofNat 64 rest1.length) ∗ (x.p ↦₈ 0x0a#8) ∗
-          memRegion (L + 1400#64) 368 ∗ deserFixedLocalsG_loopEntryG A L ∗ deserSaved s0) ∗
-        (((x.p + 1#64) ↦ₛ rest1) ∗ memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ R)) := by
-  intro L body rest1
-  have hsp0 : s0.sp = L + 1904#64 := by change s0.sp = s0.sp - 0x770#64 + 1904#64; bv_omega
-  obtain ⟨halignL, halign1808⟩ := sp_sub_1904_aligned_loopEntryG (decide_eq_true_iff.mp hal)
-  have hbs_cons : encodeRecord x.r = 0x0a#8 :: rest1 := by rw [heq, encodeKey_1_ld_loopEntryG]; rfl
-  have hv_pos := encodeVarint_length_pos_loopEntryG (BitVec.ofNat 64 body.length)
-  have hlen1_pos : 0 < rest1.length := by simp only [rest1, List.length_append]; omega
-  have hlen1_lt : rest1.length < 2 ^ 20 := by rw [hbs_cons, List.length_cons] at hrec_lt; omega
-  have hx1' : s0.readReg64 .x1 = BitVec.ofNat 64 (1 + rest1.length) := by rw [hx1, hbs_cons, List.length_cons, Nat.add_comm]
-  have hm0a : s0.mem ⊨ (memRegion L 1904 ∗ (x.p ↦₈ 0x0a#8)) ∗
-      (((x.p + 1#64) ↦ₛ rest1) ∗ memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ R) := by
-    rw [hbs_cons, pointsToBytes_cons, stackAt_recDeserialize_split_loopEntryG s0.sp] at hm0
-    dsimp only [L]; convert hm0 using 1; ac_rfl
-  rw [memRegion_1904_split_loopEntryG L x.p] at hm0a; simp only [sepExists_sepConj_left, satisfies_sepExists] at hm0a
-  rcases hm0a with ⟨w11, w10, w9, w8, w7, w6, w5, w4, w3, w2, w1, w0, u7, u6, u5, u4, u3, u2, u1, u0, hm0b⟩
-  have hm0c : s0.mem ⊨ step1aPre_loopEntryG L x.p w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 u0 u1 u2 u3 u4 u5 u6 u7 ∗
-      (memRegion (L + 8#64) 1008 ∗ memRegion (L + 1064#64) 336 ∗ memRegion (L + 1400#64) 368 ∗ memRegion (L + 1776#64) 32 ∗
-        (((x.p + 1#64) ↦ₛ rest1) ∗ memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ R)) := by convert hm0b using 1; ac_rfl
-  obtain ⟨s1, hst1, ⟨hpc1, hrun1, P1, hm1, rfl, hsp1, htr1, hx0_1, hx19_1, hx21_1, hx23_1, hx24_1, hx26_1, hx29_1⟩ | ⟨_, _hoom⟩⟩ :=
-    (step_1a_loopEntryG img ext L x.p x.out rest1.length w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 u0 u1 u2 u3 u4 u5 u6 u7
-      (post := fun s' P => P = step1aPost_loopEntryG L x.p rest1.length s0 ∧ s'.sp = L ∧
-        (s'.trace = s0.trace ∧ calleeSavedVRegs s' = calleeSavedVRegs s0) ∧ s'.readReg64 .x0 = 2#64 ∧
-        s'.readReg64 .x19 = x.out ∧ s'.readReg64 .x21 = noneCap ∧ s'.readReg64 .x23 = L + 1032#64 ∧
-        s'.readReg64 .x24 = 1#64 ∧ s'.readReg64 .x26 = 8#64 ∧ s'.readReg64 .x29 = L + 1808#64)
-      hpc hrun hsp0 halignL halign1808 hx0 hx1' hx8 hlen1_pos hlen1_lt
-      (fun s' _ _ hsp' htr' hx0' hx19' hx21' hx23' hx24' hx26' hx29' =>
-        ⟨rfl, hsp', htr', hx0', hx19', hx21', hx23', hx24', hx26', hx29'⟩)).elim hm0c hL
-  rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-  have hm1a : s1.mem ⊨ (((L + 1056#64) ↦₆₄ noneCap) ∗ memRegion (L + 1064#64) 336) ∗
-      (deserSavedAt_loopEntryG L s0 ∗ (L ↦₆₄ 0#64) ∗ ((L + 1016#64) ↦₆₄ (x.p + 1#64)) ∗
-        ((L + 1024#64) ↦₆₄ BitVec.ofNat 64 rest1.length) ∗ ((L + 1032#64) ↦₆₄ 0#64) ∗
-        ((L + 1040#64) ↦₆₄ 8#64) ∗ ((L + 1048#64) ↦₆₄ 0#64) ∗ ((L + 1768#64) ↦₆₄ (L + 1016#64)) ∗
-        (x.p ↦₈ 0x0a#8) ∗ memRegion (L + 8#64) 1008 ∗ memRegion (L + 1400#64) 368 ∗ memRegion (L + 1776#64) 32 ∗
-        (((x.p + 1#64) ↦ₛ rest1) ∗ memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ R)) := by
-    unfold step1aPost_loopEntryG at hm1; convert hm1 using 1; ac_rfl
-  rw [memRegion_1064_336_cells_loopEntryG L] at hm1a; simp only [sepExists_sepConj_left, satisfies_sepExists] at hm1a
-  rcases hm1a with ⟨c22, c21, c20, c19, c18, c17, c16, c15, c14, c13, c12, c11, c10, c9, c8, c7, c6, c5, c4, c3, c2, c1, hm1b⟩
-  have hm1c : s1.mem ⊨ ssUninitCells_loopEntryG L c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14 c15 c16 c17 c18 c19 c20 c21 c22 ∗
-      ((memRegion (L + 1208#64) 96 ∗ memRegion (L + 1312#64) 40 ∗ memRegion (L + 1360#64) 24 ∗
-        deserSavedAt_loopEntryG L s0 ∗ (L ↦₆₄ 0#64) ∗ ((L + 1016#64) ↦₆₄ (x.p + 1#64)) ∗
-        ((L + 1024#64) ↦₆₄ BitVec.ofNat 64 rest1.length) ∗ ((L + 1032#64) ↦₆₄ 0#64) ∗
-        ((L + 1040#64) ↦₆₄ 8#64) ∗ ((L + 1048#64) ↦₆₄ 0#64) ∗ ((L + 1768#64) ↦₆₄ (L + 1016#64)) ∗
-        (x.p ↦₈ 0x0a#8) ∗ memRegion (L + 8#64) 1008 ∗ memRegion (L + 1400#64) 368 ∗ memRegion (L + 1776#64) 32) ∗
-        (((x.p + 1#64) ↦ₛ rest1) ∗ memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ R)) := by
-    unfold ssUninitCells_loopEntryG at hm1b ⊢; convert hm1b using 1; ac_rfl
-  obtain ⟨s2, hst2, ⟨hpc2, hrun2, P2, hm2, rfl, hsp2, htr2, hx19_2, hx23_2, hx29_2⟩ | ⟨_, _hoom⟩⟩ :=
-    (step_1b_loopEntryG img ext L c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 c12 c13 c14 c15 c16 c17 c18 c19 c20 c21 c22
-      (post := fun s' P => P = ssRawCells_loopEntryG L ∧ s'.sp = L ∧
-        (s'.trace = s1.trace ∧ calleeSavedVRegs s' = calleeSavedVRegs s1) ∧ s'.readReg64 .x19 = s1.readReg64 .x19 ∧
-        s'.readReg64 .x23 = L + 1032#64 ∧ s'.readReg64 .x29 = s1.readReg64 .x29)
-      hpc1 hrun1 hsp1 halignL hx0_1 hx21_1 hx23_1 hx24_1 hx26_1
-      (fun s' _ _ hsp' htr' hx19' hx23' hx29' => ⟨rfl, hsp', htr', hx19', hx23', hx29'⟩)).elim hm1c (hst1.codeLoaded hL)
-  rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-  refine ⟨s2, hst1.trans hst2, hpc2, hrun2, hsp2, ⟨htr2.1.trans htr1.1, htr2.2.trans htr1.2⟩,
-    hx19_2.trans hx19_1, hx23_2, hx29_2.trans hx29_1, ?_⟩
-  rw [← sepConj_assoc] at hm2
-  exact Satisfies.mono (sepConj_mono_left (step1b_post_entails_loopEntryG A L x.p rest1.length s0 rfl)) hm2
-
-private theorem deserializeGenSpecAtA_A0_entry (img : Obj.Image) :
-    deserializeGenSpecAtA A0 img = deserializeGenSpecAt img := by
-  have hp : A0.pool = emp := rfl
-  unfold deserializeGenSpecAtA deserializeGenSpecAt; simp only [hp, emp_sepConj]
-
-private theorem DeserLoopGAtWA_A0_entry (img : Obj.Image) (ext : String → Option (State → State)) :
-    DeserLoopGAtWA img A0 ext = DeserLoopGAtW img ext := by
-  funext x R s0 k s; have hp : A0.pool = emp := rfl
-  unfold DeserLoopGAtWA DeserLoopGAtW DeserLoopGAtX; simp only [deserLocalsGA_A0, hp, emp_sepConj]
-
-/-! ### Loop entry from field layout -/
-set_option maxHeartbeats 1600000 in
-theorem deserLoopEntryG_ok_of_fieldsA (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hC : DeserializeCalleesAtWA img A ext) (x : DeserializeGenGhost) (R : SepProp) (s0 : State)
-    (hpc : s0.pc = (SP2Ext img.base ext).fnAddr recDeserializeName)
-    (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨ (deserializeGenSpecAtA A img).pre x s0 ∗ R) (hal : s0.spAligned = true)
-    (heq : DeserializeScope x.r → encodeRecord x.r = encodeKey 1 .lengthDelimited ++
-      encodeVarint (BitVec.ofNat 64 ((recFields x.r).flatMap GenField.enc).length) ++
-      (recFields x.r).flatMap GenField.enc)
-    (hlt : DeserializeScope x.r → (encodeRecord x.r).length < 2 ^ 20) :
-    DeserStepGAtWA img A ext x R s0 s0 (DeserLoopGAtWA img A ext x R s0 0) := by
-  intro hL0; dsimp only [deserializeGenSpecAtA] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx8, hr, hF0, hsym0⟩, hm0⟩
-  have hm0' : s0.mem ⊨ (x.p ↦ₛ encodeRecord x.r) ∗ memRegion x.out 368 ∗ stackAt s0.sp recDeserializeStack ∗ (A.pool ∗ R) := by
-    convert hm0 using 1; ac_rfl
-  have heq' := heq hr; have hrec_lt := hlt hr
-  obtain ⟨halignL, _halign1808⟩ := sp_sub_1904_aligned_loopEntryG (decide_eq_true_iff.mp hal)
-  obtain ⟨s2, hst2, hpc2, hrun2, hsp2, htr2, hx19_2, hx23_2, hx29_2, hm2⟩ :=
-    step_1_combined_loopEntryG img A ext x (A.pool ∗ R) s0 hpc hrun hx0 hx1 hx8 heq' hrec_lt hal hm0' hL0
-  set L := deserSpL s0.sp; set body := (recFields x.r).flatMap GenField.enc
-  set N := body.length; set rest1 := encodeVarint (BitVec.ofNat 64 N) ++ body
-  have hbs_cons : encodeRecord x.r = 0x0a#8 :: rest1 := by rw [heq', encodeKey_1_ld_loopEntryG]; rfl
-  have hrest1_lt : rest1.length < 2 ^ 20 := by rw [hbs_cons, List.length_cons] at hrec_lt; omega
-  by_cases hN : N < 128
-  · have hr1 : rest1 = BitVec.ofNat 8 N :: body := by
-      simp only [rest1, encodeVarint_of_lt_128_loopEntryG hN, List.singleton_append]
-    have hlen1 : rest1.length = 1 + N := by rw [hr1, List.length_cons, Nat.add_comm]
-    have hm2a : s2.mem ⊨ step2aPre_loopEntryG L x.p N ∗
-        (((x.p + 1#64 + 1#64) ↦ₛ body) ∗ (x.p ↦₈ 0x0a#8) ∗ memRegion (L + 1400#64) 368 ∗
-          deserFixedLocalsG_loopEntryG A L ∗ deserSaved s0 ∗ memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ (A.pool ∗ R)) := by
-      rw [hlen1, hr1, pointsToBytes_cons] at hm2; unfold step2aPre_loopEntryG; convert hm2 using 1; ac_rfl
-    obtain ⟨s3, hst3, ⟨hpc3, hrun3, P3, hm3, rfl, hsp3, htr3, hx19_3, hx20_3, hx23_3, hx29_3⟩ | ⟨_, _hoom⟩⟩ :=
-      (step_2a_loopEntryG img ext L x.p x.out N
-        (post := fun s' P => P = step2aPost_loopEntryG L x.p N ∧ s'.sp = L ∧
-          (s'.trace = s2.trace ∧ calleeSavedVRegs s' = calleeSavedVRegs s2) ∧ s'.readReg64 .x19 = x.out ∧
-          s'.readReg64 .x20 = 0#64 ∧ s'.readReg64 .x23 = L + 1032#64 ∧ s'.readReg64 .x29 = L + 1808#64)
-        hpc2 hrun2 hsp2 hx19_2 hx23_2 hx29_2 hN
-        (fun s' _ _ hsp' htr' hx19' hx20' hx23' hx29' => ⟨rfl, hsp', htr', hx19', hx20', hx23', hx29'⟩)).elim hm2a (hst2.codeLoaded hL0)
-    rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-    refine ⟨s3, hst2.trans hst3, Or.inl ⟨by unfold deserPCAtX; rw [hpc3], hrun3,
-      ⟨htr3.1.trans htr2.1, htr3.2.trans htr2.2⟩, by rw [(hst2.trans hst3).symtab_eq, hsym0],
-      (hst2.trans hst3).frozenLoaded hF0, hsp3, by rw [State.spAligned, hsp3]; exact decide_eq_true halignL,
-      hx29_3, hx19_3, hx20_3, hx23_3, ?_⟩⟩
-    have hloc := deserLocalsG_of_2a_loopEntryG A L x.p x.r heq' hN
-    have hdrop : (((recFields x.r).drop 0).flatMap GenField.enc) = body := by rw [List.drop_zero]
-    have hss0 : ssgAfter x.r 0 = SSG.empty := rfl
-    change s3.mem ⊨ deserLocalsGA A L x.p (encodeRecord x.r) (((recFields x.r).drop 0).flatMap GenField.enc) (ssgAfter x.r 0) ∗
-      memRegion x.out 368 ∗ A.pool ∗ stackAt L deserCalleeStack ∗ deserSaved s0 ∗ R
-    rw [hdrop, hss0, ← hloc]; convert hm3 using 1; ac_rfl
-  · have hN_ge : 128 ≤ N := by omega
-    set vlen := (encodeVarint (BitVec.ofNat 64 N)).length
-    set vtail := encodeVarintAux 9 (BitVec.ofNat 64 N >>> 7)
-    have hlen1 : rest1.length = vlen + N := List.length_append
-    have hVN_lt : vlen + N < 2 ^ 20 := by rw [← hlen1]; exact hrest1_lt
-    have hN_lt : N < 2 ^ 20 := by omega
-    have hr1 : rest1 = BitVec.ofNat 8 (N % 128 + 128) :: (vtail ++ body) := by
-      simp only [rest1, vtail, encodeVarint_cons_of_ge_128_loopEntryG hN_ge hN_lt, List.cons_append]
-    have hm2_bytes : ((x.p + 1#64) ↦ₛ rest1) =
-        ((x.p + 1#64) ↦₈ BitVec.ofNat 8 (N % 128 + 128)) ∗ ((x.p + 1#64 + 1#64) ↦ₛ (vtail ++ body)) := by
-      rw [hr1, pointsToBytes_cons]
-    have hm2c : s2.mem ⊨ step2bPre_loopEntryG L x.p vlen N ∗
-        (((x.p + 1#64 + 1#64) ↦ₛ (vtail ++ body)) ∗ (x.p ↦₈ 0x0a#8) ∗ memRegion (L + 1400#64) 368 ∗
-          deserFixedLocalsG_loopEntryG A L ∗ deserSaved s0 ∗ memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ (A.pool ∗ R)) := by
-      rw [hlen1, hm2_bytes] at hm2; unfold step2bPre_loopEntryG; convert hm2 using 1; ac_rfl
-    obtain ⟨s3, hst3, ⟨hpc3, hrun3, P3, hm3, rfl, hsp3, htr3, hlr_3, hx0_3, hx1_3, hx2_3, hx19_3, hx20_3, hx23_3, hx29_3⟩ | ⟨_, _hoom⟩⟩ :=
-      (step_2b_pre_loopEntryG img ext L x.p x.out vlen N
-        (post := fun s' P => P = step2bPre_loopEntryG L x.p vlen N ∧ s'.sp = L ∧
-          (s'.trace = s2.trace ∧ calleeSavedVRegs s' = calleeSavedVRegs s2) ∧
-          s'.readReg64 .lr = (SP2Ext img.base ext).fnAddr recDeserializeName + 540#64 ∧
-          s'.readReg64 .x0 = L + 1400#64 ∧ s'.readReg64 .x1 = x.p + 1#64 ∧
-          s'.readReg64 .x2 = BitVec.ofNat 64 (vlen + N) ∧ s'.readReg64 .x19 = x.out ∧
-          s'.readReg64 .x20 = L + 1016#64 ∧ s'.readReg64 .x23 = L + 1032#64 ∧ s'.readReg64 .x29 = L + 1808#64)
-        hpc2 hrun2 hsp2 hx19_2 hx23_2 hx29_2 hN_ge hVN_lt
-        (fun s' _ _ hsp' htr' hlr' hx0' hx1' hx2' hx19' hx20' hx23' hx29' =>
-          ⟨rfl, hsp', htr', hlr', hx0', hx1', hx2', hx19', hx20', hx23', hx29'⟩)).elim hm2c (hst2.codeLoaded hL0)
-    rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-    have hpc3' : s3.pc = (SP2Ext img.base ext).fnAddr Prost.decodeVarintSliceName := by
-      rw [hpc3, decodeVarintSlice_fnAddr_eq_deser_at_ext]
-    have hal3 : s3.spAligned = true := by rw [State.spAligned, hsp3]; exact decide_eq_true halignL
-    have hx2_3_nat : (s3.readReg64 .x2).toNat = rest1.length := by
-      rw [hx2_3, hlen1, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-    have hpre_slice : Prost.VarintSlicePre rest1 := Or.inl (by omega)
-    let gvar : Prost.DecodeVarintSliceGhost := ⟨L + 1400#64, x.p + 1#64, rest1⟩
-    let F_call : SepProp := ((L + 1768#64) ↦₆₄ (L + 1016#64)) ∗ ((L + 1016#64) ↦₆₄ (x.p + 1#64)) ∗
-      ((L + 1024#64) ↦₆₄ BitVec.ofNat 64 (vlen + N)) ∗ memRegion (L - 63632#64) 38976 ∗
-      memRegion (L + 1424#64) 344 ∗ (x.p ↦₈ 0x0a#8) ∗ deserFixedLocalsG_loopEntryG A L ∗ deserSaved s0 ∗ memRegion x.out 368
-    have hm3_call : s3.mem ⊨ ((Prost.X.decodeVarintSliceSpecW A).inImage img).pre gvar s3 ∗ (F_call ∗ R) := by
-      unfold Spec.inImage Prost.X.decodeVarintSliceSpecW; dsimp only [gvar]
-      simp only [sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨⟨(hst2.trans hst3).frozenLoaded hF0, (hst2.trans hst3).symtab_eq.trans hsym0⟩,
-        ⟨hx0_3, hx1_3, hx2_3_nat, by omega, hpre_slice⟩, ?_⟩
-      unfold step2bPre_loopEntryG at hm3
-      rw [memRegion_split (L + 1400#64) 24 344 (by decide), stackAt_deserCallee_split_varint_loopEntryG L,
-        show L + 1400#64 + 24#64 = L + 1424#64 by bv_omega] at hm3
-      dsimp only [F_call]; rw [hsp3, hm2_bytes]; convert hm3 using 1; ac_rfl
-    obtain ⟨s4, hst4, hpost4, _⟩ :=
-      hC.1.no_fault_before_outcome gvar (F_call ∗ R) s3 hpc3' hrun3 hm3_call hal3 ((hst2.trans hst3).codeLoaded hL0)
-    rcases hpost4 with ⟨⟨hpc4, _, hrun4⟩, ⟨hsp4, hcs4⟩, hm4⟩ | ⟨hpan4, hm4_pan⟩ | ⟨code, _, hm4_ex⟩ | ⟨_, hm4_oom⟩
-    · have hpc4' : s4.pc = (SP2Ext img.base ext).fnAddr recDeserializeName + 540#64 := by rw [hpc4, hlr_3]
-      have hsp4' : s4.sp = L := by rw [hsp4, hsp3]
-      have hx19_4 : s4.readReg64 .x19 = x.out := by rw [hcs4.1, hx19_3]
-      have hx20_4 : s4.readReg64 .x20 = L + 1016#64 := by rw [hcs4.2.1, hx20_3]
-      have hx23_4 : s4.readReg64 .x23 = L + 1032#64 := by rw [hcs4.2.2.2.2.1, hx23_3]
-      have hx29_4 : s4.readReg64 .x29 = L + 1808#64 := by rw [hcs4.2.2.2.2.2.2.2.2.2.2.1, hx29_3]
-      have hv4 : calleeSavedVRegs s4 = calleeSavedVRegs s0 := hcs4.2.2.2.2.2.2.2.2.2.2.2.trans (htr3.2.trans htr2.2)
-      have hdec : decodeVarint rest1 = some (BitVec.ofNat 64 N, body) := decodeVarint_encodeVarint (BitVec.ofNat 64 N) body
-      have hsub1 : rest1.length - body.length = vlen := by rw [hlen1]; change (vlen + N) - N = vlen; omega
-      unfold Spec.inImage Prost.X.decodeVarintSliceSpecW at hm4; dsimp only [gvar] at hm4
-      rw [hdec] at hm4; dsimp only [Prost.varintSliceResultAt] at hm4
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hm4; rcases hm4 with ⟨htr4, hm4⟩
-      have hm4a : s4.mem ⊨ step2bPostPre_loopEntryG L x.p vlen N ∗
-          (memRegion (L + 1424#64) 344 ∗ ((x.p + 1#64) ↦ₛ rest1) ∗ (x.p ↦₈ 0x0a#8) ∗
-            deserFixedLocalsG_loopEntryG A L ∗ deserSaved s0 ∗ memRegion x.out 368 ∗ stackAt L deserCalleeStack ∗ (A.pool ∗ R)) := by
-        dsimp only [F_call] at hm4; unfold step2bPostPre_loopEntryG
-        rw [hsp3, pointsTo64_zero_split32_loopEntryG (L + 1400#64), hsub1] at hm4
-        rw [stackAt_deserCallee_split_varint_loopEntryG L]
-        rw [show L + 1400#64 + 4#64 = L + 1404#64 by bv_omega,
-          show L + 1400#64 + 8#64 = L + 1408#64 by bv_omega,
-          show L + 1400#64 + 16#64 = L + 1416#64 by bv_omega] at hm4
-        convert hm4 using 1; ac_rfl
-      obtain ⟨s5, hst5, ⟨hpc5, hrun5, P5, hm5, rfl, hsp5, htr5, hx19_5, hx20_5, hx23_5, hx29_5⟩ | ⟨_, _hoom⟩⟩ :=
-        (step_2b_post_loopEntryG img ext L x.p x.out vlen N
-          (post := fun s' P => P = step2bPostPost_loopEntryG L x.p vlen N ∧ s'.sp = L ∧
-            (s'.trace = s4.trace ∧ calleeSavedVRegs s' = calleeSavedVRegs s4) ∧ s'.readReg64 .x19 = x.out ∧
-            s'.readReg64 .x20 = 0#64 ∧ s'.readReg64 .x23 = L + 1032#64 ∧ s'.readReg64 .x29 = L + 1808#64)
-          hpc4' hrun4 hsp4' halignL hx19_4 hx20_4 hx23_4 hx29_4 hVN_lt
-          (fun s' _ _ hsp' htr' hx19' hx20' hx23' hx29' =>
-            ⟨rfl, hsp', htr', hx19', hx20', hx23', hx29'⟩)).elim hm4a ((hst2.trans (hst3.trans hst4)).codeLoaded hL0)
-      rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-      refine ⟨s5, (hst2.trans (hst3.trans hst4)).trans hst5, Or.inl ⟨by unfold deserPCAtX; rw [hpc5], hrun5,
-        ⟨(htr5.1.trans htr4).trans (htr3.1.trans htr2.1), htr5.2.trans hv4⟩,
-        by rw [((hst2.trans (hst3.trans hst4)).trans hst5).symtab_eq, hsym0],
-        ((hst2.trans (hst3.trans hst4)).trans hst5).frozenLoaded hF0,
-        hsp5, by rw [State.spAligned, hsp5]; exact decide_eq_true halignL, hx29_5, hx19_5, hx20_5, hx23_5, ?_⟩⟩
-      have hloc := deserLocalsG_of_2b_loopEntryG A L x.p x.r heq'
-      have hdrop : (((recFields x.r).drop 0).flatMap GenField.enc) = body := by rw [List.drop_zero]
-      have hss0 : ssgAfter x.r 0 = SSG.empty := rfl
-      change s5.mem ⊨ deserLocalsGA A L x.p (encodeRecord x.r) (((recFields x.r).drop 0).flatMap GenField.enc) (ssgAfter x.r 0) ∗
-        memRegion x.out 368 ∗ A.pool ∗ stackAt L deserCalleeStack ∗ deserSaved s0 ∗ R
-      rw [hdrop, hss0]
-      have hm5a : s5.mem ⊨
-          ((step2bPostPost_loopEntryG L x.p vlen N ∗ memRegion (L + 1424#64) 344) ∗
-            ((x.p + 1#64) ↦ₛ rest1) ∗ (x.p ↦₈ 0x0a#8) ∗ deserFixedLocalsG_loopEntryG A L) ∗
-          (memRegion x.out 368 ∗ A.pool ∗ stackAt L deserCalleeStack ∗ deserSaved s0 ∗ R) := by
-        convert hm5 using 1; ac_rfl
-      exact Satisfies.mono (sepConj_mono_left hloc) hm5a
-    · refine ⟨s4, (hst2.trans hst3).trans hst4, Or.inr ⟨hpan4, ?_⟩⟩
-      dsimp only [deserializeGenSpecAtA, Serialization.allocPanic]
-      unfold Spec.inImage Prost.X.decodeVarintSliceSpecW at hm4_pan; dsimp only at hm4_pan
-      have hm4_pan' : s4.mem ⊨ ((⌜allocFailedIn s3 s4 ∧ s3.trace <+: s4.trace⌝ ∗ anyHeap) ∗ F_call) ∗ R := by
-        convert hm4_pan using 1; ac_rfl
-      exact allowPanic_frame_trace_loopEntryG (htr3.1.trans htr2.1) hm4_pan'
-    · exact False.elim (not_satisfies_false_sepConj hm4_ex)
-    · exact False.elim (not_satisfies_false_sepConj hm4_oom)
-
-theorem deserLoopEntryG_ok_of_fields (img : Obj.Image)
-    (ext : String → Option (State → State))
-    (hC : DeserializeCalleesAtW img ext) (x : DeserializeGenGhost) (R : SepProp) (s0 : State)
-    (hpc : s0.pc = (SP2Ext img.base ext).fnAddr recDeserializeName)
-    (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨ (deserializeGenSpecAt img).pre x s0 ∗ R) (hal : s0.spAligned = true)
-    (heq : DeserializeScope x.r → encodeRecord x.r = encodeKey 1 .lengthDelimited ++
-      encodeVarint (BitVec.ofNat 64 ((recFields x.r).flatMap GenField.enc).length) ++
-      (recFields x.r).flatMap GenField.enc)
-    (hlt : DeserializeScope x.r → (encodeRecord x.r).length < 2 ^ 20) :
-    DeserStepGAtW img ext x R s0 s0 (DeserLoopGAtW img ext x R s0 0) := by
-  unfold DeserStepGAtW
-  rw [← deserializeGenSpecAtA_A0_entry, ← DeserLoopGAtWA_A0_entry]
-  exact deserLoopEntryG_ok_of_fieldsA img A0 ext hC x R s0 hpc hrun (by rwa [deserializeGenSpecAtA_A0_entry]) hal heq hlt
-
-theorem deserLoopEntryG_ok_atWA (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State))
-    (hC : DeserializeCalleesAtWA img A ext) (x : DeserializeGenGhost) (R : SepProp) (s0 : State)
-    (hpc : s0.pc = (SP2Ext img.base ext).fnAddr recDeserializeName)
-    (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨ (deserializeGenSpecAtA A img).pre x s0 ∗ R) (hal : s0.spAligned = true) :
-    DeserStepGAtWA img A ext x R s0 s0 (DeserLoopGAtWA img A ext x R s0 0) :=
-  deserLoopEntryG_ok_of_fieldsA img A ext hC x R s0 hpc hrun hpre hal
-    (encodeRecord_eq_recFields x.r) encodeRecord_length_lt
-
-theorem deserLoopEntryG_ok_atW (img : Obj.Image)
-    (ext : String → Option (State → State))
-    (hC : DeserializeCalleesAtW img ext) (x : DeserializeGenGhost) (R : SepProp) (s0 : State)
-    (hpc : s0.pc = (SP2Ext img.base ext).fnAddr recDeserializeName)
-    (hrun : s0.status = .Running)
-    (hpre : s0.mem ⊨ (deserializeGenSpecAt img).pre x s0 ∗ R) (hal : s0.spAligned = true) :
-    DeserStepGAtW img ext x R s0 s0 (DeserLoopGAtW img ext x R s0 0) :=
-  deserLoopEntryG_ok_of_fields img ext hC x R s0 hpc hrun hpre hal
-    (encodeRecord_eq_recFields x.r) encodeRecord_length_lt
-
-/-! ## Relocatable `[LibsignalPlacement]` loop entry -/
 
 section Placed
 

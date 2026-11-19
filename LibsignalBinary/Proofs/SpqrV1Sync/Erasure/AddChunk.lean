@@ -11,7 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.SpqrV1Sync.ErasureDefs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,7 +43,7 @@ theorem nat_compare_gt {a b : Nat} (h : b < a) : Ord.compare a b = .gt := by
 
 theorem pt_cmp_eq (a b : Pt) : Pt.cmp a b = Ord.compare (key a) (key b) := rfl
 
-def insKey (k : Nat) : List Nat → List Nat
+@[expose] def insKey (k : Nat) : List Nat → List Nat
   | [] => [k]
   | x :: xs =>
     match Ord.compare x k with
@@ -51,7 +51,7 @@ def insKey (k : Nat) : List Nat → List Nat
     | .eq => k :: xs
     | .gt => k :: x :: xs
 
-def insPt (target : Pt) : List Pt → List Pt
+@[expose] def insPt (target : Pt) : List Pt → List Pt
   | [] => [target]
   | pt :: rest =>
     match Pt.cmp pt target with

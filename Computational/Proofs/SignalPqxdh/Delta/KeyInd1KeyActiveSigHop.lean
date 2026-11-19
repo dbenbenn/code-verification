@@ -9,12 +9,35 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveShallow -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.SigHop1Key -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.ProbComp
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.SigHop1KeyA
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.SignalPqxdh.Security.SigHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHopC
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.MeasurableSpace.Defs
+import PolyFun.Control.Monad.Support
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.OracleComp.OracleComp
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.QueryImpl.Basic
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
 
 /-!
 # Creation-Order Active One-Key `KeyInd` `GapSigEufCma` Hop (`G0 -> G1` and `G0 -> G2`)
@@ -564,17 +587,39 @@ theorem evalDist_safe_active1Key_eq_zero {S : Setup} {α : Type} (P : Primitives
 
 /-! ## Two-phase creation-order coupling (`Sig1KeyActiveRel`) -/
 
-private noncomputable def withSupp {α : Type} (m : ProbComp α) (k : α → ProbComp Bool) (x : α) :
-    ProbComp Bool := @ite _ (x ∈ support m) (Classical.propDecidable _) (k x) (pure false)
+private instance {S : Setup} : DecidableEq (FgKeyIndSimState S) := fun a b =>
+  decidable_of_iff
+    (a.base = b.base ∧ a.fgL = b.fgL ∧ a.rawRoCache = b.rawRoCache ∧
+      a.advRoLog = b.advRoLog ∧ a.advKeyPows = b.advKeyPows)
+    ⟨fun ⟨h1, h2, h3, h4, h5⟩ => by cases a; cases b; dsimp only at *; subst_vars; rfl,
+     fun h => by subst h; exact ⟨rfl, rfl, rfl, rfl, rfl⟩⟩
 
-private theorem evalDist_bind_withSupp_eq {α : Type} (m : ProbComp α) (k : α → ProbComp Bool) :
+private instance {S : Setup} : DecidableEq (Sig1KeySimState S) := fun a b =>
+  decidable_of_iff
+    (a.fg = b.fg ∧ a.targetParty = b.targetParty ∧ a.targetPk = b.targetPk ∧
+      a.signBudget = b.signBudget ∧ a.forgery = b.forgery)
+    ⟨fun ⟨h1, h2, h3, h4, h5⟩ => by cases a; cases b; dsimp only at *; subst_vars; rfl,
+     fun h => by subst h; exact ⟨rfl, rfl, rfl, rfl, rfl⟩⟩
+
+private def withSupp {α : Type} [DecidableEq α] (m : ProbComp α) (k : α → ProbComp Bool) (x : α) :
+    ProbComp Bool :=
+  @ite _ (x ∈ support m)
+    (decidable_of_iff (x ∈ finSupport m) (mem_finSupport_iff_mem_support m x))
+    (k x) (pure false)
+
+private theorem evalDist_bind_withSupp_eq {α : Type} [DecidableEq α]
+    (m : ProbComp α) (k : α → ProbComp Bool) :
     𝒟[m >>= k] = 𝒟[m >>= withSupp m k] :=
   OracleComp.evalDist_bind_congr_of_support m k (withSupp m k) fun x hx => by unfold withSupp; simp [hx]
 
-private noncomputable def withSuppR {α : Type} (m : ProbComp α) (k : α → ProbComp Bool) (x : α) :
-    ProbComp Bool := @ite _ (x ∈ support m) (Classical.propDecidable _) (k x) (pure true)
+private def withSuppR {α : Type} [DecidableEq α] (m : ProbComp α) (k : α → ProbComp Bool) (x : α) :
+    ProbComp Bool :=
+  @ite _ (x ∈ support m)
+    (decidable_of_iff (x ∈ finSupport m) (mem_finSupport_iff_mem_support m x))
+    (k x) (pure true)
 
-private theorem evalDist_bind_withSuppR_eq {α : Type} (m : ProbComp α) (k : α → ProbComp Bool) :
+private theorem evalDist_bind_withSuppR_eq {α : Type} [DecidableEq α]
+    (m : ProbComp α) (k : α → ProbComp Bool) :
     𝒟[m >>= k] = 𝒟[m >>= withSuppR m k] :=
   OracleComp.evalDist_bind_congr_of_support m k (withSuppR m k) fun x hx => by unfold withSuppR; simp [hx]
 
@@ -1307,27 +1352,6 @@ theorem keyInd1Key_hop_G0_1_G2_active_le (S : Setup) (P : Primitives)
     |keyInd1KeyAdvG0_1 S P A.1 - keyInd1KeyAdvG2 S P A.1| ≤ (activeIdCount S b.q_on : ℝ) *
       GapSigEufCmaReal P P.isValidDhTriple (sigReductionKeyInd1KeyActive S b A) := by
   rw [← keyInd1KeyAdvG1_eq_G2 S P A.1]; exact keyInd1Key_hop_G0_1_G1_active_le S P hP b A
-
-theorem keyInd1Key_hop_G0_G1_active_of_ecColl (S : Setup) (P : Primitives)
-    (hP : CryptoWellFormedPrimitivesδ P) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
-    {ecCollBound : ℝ} (hColl : |keyInd1KeyAdvG0 S P A.1 - keyInd1KeyAdvG0_1 S P A.1| ≤ ecCollBound) :
-    |KeyInd1KeyRoAdvantageReal S P A.1 - keyInd1KeyAdvG1 S P A.1| ≤
-      (activeIdCount S b.q_on : ℝ) *
-        GapSigEufCmaReal P P.isValidDhTriple (sigReductionKeyInd1KeyActive S b A) + ecCollBound := by
-  rw [← keyInd1KeyAdvG0_eq S P A.1]
-  have h01_1 := keyInd1Key_hop_G0_1_G1_active_le S P hP b A
-  have hTri := abs_sub_le (keyInd1KeyAdvG0 S P A.1) (keyInd1KeyAdvG0_1 S P A.1) (keyInd1KeyAdvG1 S P A.1)
-  linarith
-
-/-- Activity-bounded one-key Hop `G0 -> G2` bound combining `sigReductionKeyInd1KeyActive` with an
-    EC public-key collision bound. -/
-theorem keyInd1Key_hop_G0_G2_active_of_ecColl (S : Setup) (P : Primitives)
-    (hP : CryptoWellFormedPrimitivesδ P) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
-    {ecCollBound : ℝ} (hColl : |keyInd1KeyAdvG0 S P A.1 - keyInd1KeyAdvG0_1 S P A.1| ≤ ecCollBound) :
-    |KeyInd1KeyRoAdvantageReal S P A.1 - keyInd1KeyAdvG2 S P A.1| ≤
-      (activeIdCount S b.q_on : ℝ) *
-        GapSigEufCmaReal P P.isValidDhTriple (sigReductionKeyInd1KeyActive S b A) + ecCollBound := by
-  rw [← keyInd1KeyAdvG1_eq_G2 S P A.1]; exact keyInd1Key_hop_G0_G1_active_of_ecColl S P hP b A hColl
 
 end
 

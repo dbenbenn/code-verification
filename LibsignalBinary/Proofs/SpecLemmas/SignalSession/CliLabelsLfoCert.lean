@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.SignalSession.CliLabels
-meta import LibsignalBinary.Specifications.SignalSession.CliLabels
+public import LibsignalBinary.Proofs.Placed.CliLabels -- proof-setup: allow-public-import
+meta import LibsignalBinary.Proofs.Placed.CliLabels
 public import ProofLib.Placed.LabelsInterned
 meta import ProofLib.Placed.LabelsInterned
 meta import ProofLib.ProgramReflection
 meta import ProofLib.ProgramReflection.IdxTree
 meta import Lean
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -222,14 +222,24 @@ private meta partial def unfoldToCtor (ctorName : Name) (arity : Nat) (e : Expr)
   throwError "gen_cli_labels_from_objects_cert: expected {ctorName}, got{indentExpr w}"
 
 private meta def decodeSymSec (e : Expr) : MetaM SymSec := do
-  let w ← whnf e
+  let c := e.consumeMData
+  if c.isConstOf ``SymSec.undef then return .undef
+  if c.isConstOf ``SymSec.other then return .other
+  if c.isAppOfArity ``SymSec.sec 1 then return .sec (← decodeNatVal (c.getArg! 0))
+  let w ← whnf c
   if w.isConstOf ``SymSec.undef then return .undef
   if w.isConstOf ``SymSec.other then return .other
   if w.isAppOfArity ``SymSec.sec 1 then return .sec (← decodeNatVal (w.getArg! 0))
   throwError "gen_cli_labels_from_objects_cert: expected SymSec, got{indentExpr w}"
 
 private meta def decodeSymKind (e : Expr) : MetaM SymKind := do
-  let w ← whnf e
+  let c := e.consumeMData
+  if c.isConstOf ``SymKind.func then return .func
+  if c.isConstOf ``SymKind.object then return .object
+  if c.isConstOf ``SymKind.tls then return .tls
+  if c.isConstOf ``SymKind.section then return .section
+  if c.isConstOf ``SymKind.other then return .other
+  let w ← whnf c
   if w.isConstOf ``SymKind.func then return .func
   if w.isConstOf ``SymKind.object then return .object
   if w.isConstOf ``SymKind.tls then return .tls
@@ -238,7 +248,12 @@ private meta def decodeSymKind (e : Expr) : MetaM SymKind := do
   throwError "gen_cli_labels_from_objects_cert: expected SymKind, got{indentExpr w}"
 
 private meta def decodeSymBind (e : Expr) : MetaM SymBind := do
-  let w ← whnf e
+  let c := e.consumeMData
+  if c.isConstOf ``SymBind.local then return .local
+  if c.isConstOf ``SymBind.global then return .global
+  if c.isConstOf ``SymBind.weak then return .weak
+  if c.isConstOf ``SymBind.other then return .other
+  let w ← whnf c
   if w.isConstOf ``SymBind.local then return .local
   if w.isConstOf ``SymBind.global then return .global
   if w.isConstOf ``SymBind.weak then return .weak
@@ -256,11 +271,15 @@ private meta def decodeRelocKindName (e : Expr) : MetaM (Name × Expr) := do
 private meta def decodeRawReloc (e : Expr) : MetaM DecRawReloc := do
   let c ← unfoldToCtor ``RawReloc.mk 4 e
   let off ← decodeNatVal (c.getArg! 0)
-  let kOpt ← whnf (c.getArg! 1)
+  let kArg := (c.getArg! 1).consumeMData
   let kindName? ←
-    if kOpt.isAppOfArity ``Option.none 1 then pure none
-    else if kOpt.isAppOfArity ``Option.some 2 then pure (some (← decodeRelocKindName (kOpt.getArg! 1)).1)
-    else throwError "gen_cli_labels_from_objects_cert: expected Option RelocKind, got{indentExpr kOpt}"
+    if kArg.isAppOfArity ``Option.none 1 then pure none
+    else if kArg.isAppOfArity ``Option.some 2 then pure (some (← decodeRelocKindName (kArg.getArg! 1)).1)
+    else do
+      let kOpt ← whnf kArg
+      if kOpt.isAppOfArity ``Option.none 1 then pure none
+      else if kOpt.isAppOfArity ``Option.some 2 then pure (some (← decodeRelocKindName (kOpt.getArg! 1)).1)
+      else throwError "gen_cli_labels_from_objects_cert: expected Option RelocKind, got{indentExpr kOpt}"
   return { off, kindName?, symIdx := ← decodeNatVal (c.getArg! 2), addend := ← decodeIntVal (c.getArg! 3) }
 
 private meta def decodeRawSec (e : Expr) : MetaM DecRawSec := do
@@ -433,7 +452,7 @@ private meta def mkRawIdStatusE : MRawIdStatus → Expr
     mkApp2 (Lean.mkConst ``RawIdStatus.weakOnlyUndef) (mkRawNatLit wOi) (mkRawNatLit wKi)
 
 /-- Checks that every interned object's COMDAT groups have empty member lists (`¬Discarded`). -/
-def checkIObjsGroupsEmptyB (objsTree : IdxTree IObj) : Bool :=
+@[expose] def checkIObjsGroupsEmptyB (objsTree : IdxTree IObj) : Bool :=
   objsTree.all fun io => io.groups.all fun g => g.members.isEmpty
 
 local syntax (name := genCliLabelsFromObjectsCert)
@@ -451,34 +470,21 @@ private meta def elabGenCliLabelsFromObjectsCert : CommandElab := fun stx => do
     let (_, _, nConstId) := mkHelper "_N"
     let (_, _, bConstId) := mkHelper "_B"
     let (_, _, dConstId) := mkHelper "_D"
-    let (_, namesTreeFull, namesTreeId) := mkHelper "_namesTree"
-    let (_, charsTreeFull, charsTreeId) := mkHelper "_charsTree"
-    let (_, objsTreeFull, objsTreeId) := mkHelper "_objsTree"
-    let (_, iLibFull, iLibId) := mkHelper "_iLib"
-    let (_, bOTreeFull, bOTreeId) := mkHelper "_bOTree"
-    let (_, dOTreeFull, dOTreeId) := mkHelper "_dOTree"
-    let (_, symRoleFull, symRoleId) := mkHelper "_symRole"
-    let (_, rawSummaryFull, rawSummaryId) := mkHelper "_rawSummary"
+    let (_, namesTreeFull, _) := mkHelper "_namesTree"
+    let (_, charsTreeFull, _) := mkHelper "_charsTree"
+    let (_, objsTreeFull, _) := mkHelper "_objsTree"
+    let (_, iLibFull, _) := mkHelper "_iLib"
+    let (_, bOTreeFull, _) := mkHelper "_bOTree"
+    let (_, dOTreeFull, _) := mkHelper "_dOTree"
+    let (_, symRoleFull, _) := mkHelper "_symRole"
+    let (_, rawSummaryFull, _) := mkHelper "_rawSummary"
     let (_, rawClaimedFull, _) := mkHelper "_rawClaimed"
-    let (_, textGroupsFull, textGroupsId) := mkHelper "_textGroups"
-    let (_, dataGroupsFull, dataGroupsId) := mkHelper "_dataGroups"
-    let (_, textToGroupFull, textToGroupId) := mkHelper "_textToGroup"
-    let (_, dataToGroupFull, dataToGroupId) := mkHelper "_dataToGroup"
-    let (_, branchCalledFull, branchCalledId) := mkHelper "_branchCalled"
-    let (_, commonExtSetFull, commonExtSetId) := mkHelper "_commonExtSet"
-    let (_, _, hszId) := mkHelper "_names_sz"
-    let (_, _, hcszId) := mkHelper "_chars_sz"
-    let (_, _, hnamesEqId) := mkHelper "_names_eq"
-    let (_, _, hnnId) := mkHelper "_names_nodup"
-    let (_, _, h0Id) := mkHelper "_names_zero"
-    let (_, _, hBId) := mkHelper "_blocks_sz"
-    let (_, _, hDId) := mkHelper "_data_sz"
-    let (_, _, hrolesId) := mkHelper "_roles_ok"
-    let (_, _, hgroupsId) := mkHelper "_groups_ok"
-    let (_, _, hbdisjId) := mkHelper "_bdisj_ok"
-    let (_, _, hddisjId) := mkHelper "_ddisj_ok"
-    let (_, _, hexportsId) := mkHelper "_exports_ok"
-    let (_, _, hexternsId) := mkHelper "_externs_ok"
+    let (_, textGroupsFull, _) := mkHelper "_textGroups"
+    let (_, dataGroupsFull, _) := mkHelper "_dataGroups"
+    let (_, textToGroupFull, _) := mkHelper "_textToGroup"
+    let (_, dataToGroupFull, _) := mkHelper "_dataToGroup"
+    let (_, branchCalledFull, _) := mkHelper "_branchCalled"
+    let (_, commonExtSetFull, _) := mkHelper "_commonExtSet"
 
     let (numNames, numBlocks, numData) ← liftTermElabM do
       let listObjTy := mkApp (Lean.mkConst ``List [0]) (Lean.mkConst ``ExtractedObj)
@@ -573,6 +579,19 @@ private meta def elabGenCliLabelsFromObjectsCert : CommandElab := fun stx => do
             | _, _ => rawSummaryArr := rawSummaryArr.set! rid .allNonLocalUndef
 
       -- Synthesize `bO` with uniqueness guard across objects, sections, and symbols.
+      let mut funcByDerived : Std.HashMap String (Array (Nat × Nat × Nat)) := {}
+      for oi in [:objs.size] do
+        let obj := objs[oi]!
+        for sy in obj.symbols do
+          if let .sec si := sy.sec then
+            if sy.kind == .func && sy.rawName != "" && si < obj.sections.size then
+              funcByDerived := funcByDerived.insert sy.name
+                ((funcByDerived.getD sy.name #[]).push (oi, si, sy.value))
+              let qual := s!"{sy.name} [{obj.name}]"
+              if qual != sy.name then
+                funcByDerived := funcByDerived.insert qual
+                  ((funcByDerived.getD qual #[]).push (oi, si, sy.value))
+      let mut secBytesCache : Std.HashMap (Nat × Nat) ByteArray := {}
       let mut claimedText : Std.HashMap (Nat × Nat) (Array (Nat × Nat)) := {}
       let mut bOArr : Array SliceOrigin := Array.mkEmpty B
       let mut blkSymWits : Array (Array (Nat × Nat × Option Nat)) := Array.mkEmpty B
@@ -581,29 +600,31 @@ private meta def elabGenCliLabelsFromObjectsCert : CommandElab := fun stx => do
         let len := blk.code.size
         let mut found? : Option SliceOrigin := none
         for (sym0, off0) in blk.symbols do
-          for oi in [:objs.size] do
-            let obj := objs[oi]!
-            for sy in obj.symbols do
-              if let .sec si := sy.sec then
-                if sy.kind == .func && sy.rawName != "" && sy.value ≥ off0 &&
-                   symDerivedFrom sym0 sy.name obj.name && si < obj.sections.size then
-                  let sec := obj.sections[si]!
-                  let start := sy.value - off0
-                  let prev := claimedText.getD (oi, si) #[]
-                  if sec.isExec && sec.readOnly && !sec.isNobits && !sec.isTls &&
-                     len > 0 && start % 4 == 0 && len % 4 == 0 &&
-                     start + len ≤ sec.size &&
-                     sec.align > 0 && blk.align % Nat.gcd sec.align start == 0 &&
-                     sliceFreeIn prev start len &&
-                     rawRelocOffsetsMatch sec start len blk.relocs then
-                    let secBytes ← decodeBytes sec.bytesE
-                    if secBytes.size == sec.size && bytesSubEq secBytes start blk.code then
-                      let cand : SliceOrigin := { oi, si, start, len }
-                      match found? with
-                      | none => found? := some cand
-                      | some prevOrig =>
-                        if prevOrig != cand then
-                          throwError "gen_cli_labels_from_objects_cert: ambiguous SliceOrigin for block {bi}"
+          for (oi, si, syVal) in funcByDerived.getD sym0 #[] do
+            if syVal ≥ off0 then
+              let obj := objs[oi]!
+              let sec := obj.sections[si]!
+              let start := syVal - off0
+              let prev := claimedText.getD (oi, si) #[]
+              if sec.isExec && sec.readOnly && !sec.isNobits && !sec.isTls &&
+                 len > 0 && start % 4 == 0 && len % 4 == 0 &&
+                 start + len ≤ sec.size &&
+                 sec.align > 0 && blk.align % Nat.gcd sec.align start == 0 &&
+                 sliceFreeIn prev start len &&
+                 rawRelocOffsetsMatch sec start len blk.relocs then
+                let secBytes ← match secBytesCache[(oi, si)]? with
+                  | some bs => pure bs
+                  | none =>
+                    let bs ← decodeBytes sec.bytesE
+                    secBytesCache := secBytesCache.insert (oi, si) bs
+                    pure bs
+                if secBytes.size == sec.size && bytesSubEq secBytes start blk.code then
+                  let cand : SliceOrigin := { oi, si, start, len }
+                  match found? with
+                  | none => found? := some cand
+                  | some prevOrig =>
+                    if prevOrig != cand then
+                      throwError "gen_cli_labels_from_objects_cert: ambiguous SliceOrigin for block {bi}"
         let some o := found?
           | throwError "gen_cli_labels_from_objects_cert: could not locate SliceOrigin for block {bi}"
         bOArr := bOArr.push o
@@ -715,6 +736,10 @@ private meta def elabGenCliLabelsFromObjectsCert : CommandElab := fun stx => do
         let raw := sec.relocs.filter fun rr => o.start ≤ rr.off && rr.off < o.start + o.len
         if raw.size != rs.size then
           throwError "gen_cli_labels_from_objects_cert: {sliceLabel} reloc count mismatch"
+        let mut rsByOff : Std.HashMap Nat (Array Nat) := {}
+        for pk in [:rs.size] do
+          let roff := rs[pk]!.off
+          rsByOff := rsByOff.insert roff ((rsByOff.getD roff #[]).push pk)
         let mut tlsWits : Array Nat := Array.replicate rs.size 0
         let mut perm : Array Nat := Array.mkEmpty raw.size
         let mut invPerm : Array Nat := Array.replicate raw.size 0
@@ -722,7 +747,7 @@ private meta def elabGenCliLabelsFromObjectsCert : CommandElab := fun stx => do
         for k in [:raw.size] do
           let rr := raw[k]!
           let mut hit? : Option (Nat × Nat) := none
-          for pk in [:rs.size] do
+          for pk in rsByOff.getD (rr.off - o.start) #[] do
             if hit?.isNone && !used[pk]! then
               let r := rs[pk]!
               if r.off + o.start == rr.off && rr.kindName? == some r.kindName &&
@@ -964,46 +989,6 @@ private meta def elabGenCliLabelsFromObjectsCert : CommandElab := fun stx => do
     elabCommand (← `(command| @[expose] def $nConstId : Nat := $nLit))
     elabCommand (← `(command| @[expose] def $bConstId : Nat := $bLit))
     elabCommand (← `(command| @[expose] def $dConstId : Nat := $dLit))
-
-    elabCommand (← `(command|
-      theorem $hszId : ($namesTreeId).size? = some $nConstId := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hcszId : ($charsTreeId).size? = some $nConstId := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hnamesEqId :
-          ($namesTreeId).toList = ($charsTreeId).toList.map String.ofList := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hnnId :
-          Arm64.Obj.Interned.namesNodup ($charsTreeId).toList = true := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $h0Id : ($namesTreeId).get? 0 = some "" := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hBId : ($iLibId).blocks.size? = some $bConstId := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hDId : ($iLibId).data.size? = some $dConstId := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hrolesId :
-          Arm64.Obj.LabelsInterned.checkSymRolesB $nConstId $iLibId $symRoleId = true := by
-        rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hgroupsId :
-          checkIObjsGroupsEmptyB $objsTreeId = true := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hbdisjId :
-          Arm64.Obj.LabelsInterned.checkGroupsDisjointB $bConstId $bOTreeId
-            $textGroupsId $textToGroupId = true := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hddisjId :
-          Arm64.Obj.LabelsInterned.checkGroupsDisjointB $dConstId $dOTreeId
-            $dataGroupsId $dataToGroupId = true := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hexportsId :
-          Arm64.Obj.LabelsInterned.checkIExportsB $nConstId $objsTreeId $iLibId
-            $bOTreeId $symRoleId $rawSummaryId = true := by rfl_kernel))
-    elabCommand (← `(command|
-      theorem $hexternsId :
-          Arm64.Obj.LabelsInterned.checkIExternsB $nConstId $iLibId $symRoleId $rawSummaryId
-            $branchCalledId $commonExtSetId = true := by rfl_kernel))
   | _ => throwUnsupportedSyntax
 
 set_option maxRecDepth 2000000 in

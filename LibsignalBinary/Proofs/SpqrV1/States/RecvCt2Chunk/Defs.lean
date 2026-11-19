@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr
-public import LibsignalBinary.Proofs.SpqrV1.Auth.Update
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.Update -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Statements
 public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.ChainBridge
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk -- shake: keep
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk`: Definitions & Specifications
@@ -26,7 +27,7 @@ public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk -- shake: keep
 for `<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk` (`0x5ec2c`, `514` instructions).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.RecvCt2Chunk
 
@@ -39,6 +40,7 @@ open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1.Auth
+open CryptoVerification.SpqrV1.ChainProofs (hkdfToSliceStackExt)
 open CryptoVerification.SpqrV1.Poly
 open CryptoVerification.SpqrV1.Poly.AddChunk
 open CryptoVerification.SpqrV1.Kdf
@@ -59,12 +61,6 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 abbrev recvCt2ChunkName : String :=
   "<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk"
 
-@[simp, arm64_norm] theorem recvCt2Chunk_fnOff :
-    libsignalSessionCode.fnOff recvCt2ChunkName = 0x59834 :=
-  libsignalSessionCode_fnOff_0x59834
-
-gen_decodes libsignalSessionCode_tree recvCt2ChunkBin [0x59834 → 0x5a03c]
-
 /-- Own stack frame of `recv_ct2_chunk`: `0x60 + 0x960 = 0x9c0 = 2496` bytes. -/
 abbrev recvCt2ChunkFrameBytes : Nat := 2496
 
@@ -79,7 +75,7 @@ abbrev recvCt2ChunkStackX : Nat := recvCt2ChunkFrameBytes + polyDecodedMessageSt
     - `+48..+72`: `dk: Vec<u8>`
     - `+72..+96`: `ct1: Vec<u8>`
     - `+96..+104`: `epoch: u64` -/
-def ekSentCt1ReceivedUcAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def ekSentCt1ReceivedUcAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendEk.EkSentCt1Received (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     vecU8 A (a + 48#64) st.dk ∗
@@ -89,7 +85,7 @@ def ekSentCt1ReceivedUcAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
 /-- Representation of `Chunked.SendEk.EkSentCt1Received` at `a` (`504` bytes = `0x1f8`, align `8`):
     - `+0..+104`: `uc: Unchunked.SendEk.EkSentCt1Received`
     - `+104..+504`: `receiving_ct2: PolyDecoder` -/
-def ekSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def ekSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendEk.EkSentCt1Received spqrPolyApi (spqrAuthApi F)) : SepProp :=
   ekSentCt1ReceivedUcAt A a st.uc ∗
     polyDecoderAt A (a + 104#64) st.receiving_ct2
@@ -97,7 +93,7 @@ def ekSentCt1ReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
 /-- Representation of `EpochSecret` at `a` (`32` bytes = `0x20`, align `8`):
     - `+0..+24`: `secret: Vec<u8>`
     - `+24..+32`: `epoch: u64` -/
-def epochSecretAt (A : RustAlloc) (a : BitVec 64) (sec : EpochSecret) : SepProp :=
+@[expose] def epochSecretAt (A : RustAlloc) (a : BitVec 64) (sec : EpochSecret) : SepProp :=
   vecU8 A a sec.secret ∗
     ((a + 24#64) ↦₆₄ sec.epoch)
 
@@ -107,7 +103,7 @@ def epochSecretAt (A : RustAlloc) (a : BitVec 64) (sec : EpochSecret) : SepProp 
     - `.done (nhr, sec)`: discriminant `noneCap` (`-1`) at `+0`, `chunkedNoHeaderReceivedAt A (a + 8) nhr`
       (`456`B at `+8..+464`), `epochSecretAt A (a + 464) sec` (`32`B at `+464..+496`), and `8`B trailing
       padding at `+496..+504`. -/
-def ekSentCt1ReceivedRecvChunkAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def ekSentCt1ReceivedRecvChunkAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     Chunked.SendEk.EkSentCt1ReceivedRecvChunk spqrPolyApi (spqrAuthApi F) → SepProp
   | .stillReceiving s =>
       ⌜PolyDecoderStrictSorted s.receiving_ct2⌝ ∗
@@ -120,7 +116,7 @@ def ekSentCt1ReceivedRecvChunkAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 6
         memRegion (a + 496#64) 8
 
 /-- Discriminant byte of `spqr::Error` (`src/lib.rs:96–130`). -/
-def spqrErrorByte : Error → BitVec 8
+@[expose] def spqrErrorByte : Error → BitVec 8
   | .stateDecode => 0#8
   | .notImplemented => 1#8
   | .msgDecode => 2#8
@@ -143,7 +139,7 @@ def spqrErrorByte : Error → BitVec 8
     - `.error (.err e)`: discriminant `none2Cap` (`-2`) at `+0`, `spqrErrorByte e` at `+8`, and `495`B trailing
       padding at `+9..+504`.
     - `.error (.panic _)`: unreachable in normal return `post` (`False`). -/
-def ekSentCt1ReceivedRecvChunkResultAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def ekSentCt1ReceivedRecvChunkResultAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     StatesResult (Chunked.SendEk.EkSentCt1ReceivedRecvChunk spqrPolyApi (spqrAuthApi F)) → SepProp
   | .ok res =>
       ekSentCt1ReceivedRecvChunkAt A a res
@@ -162,47 +158,9 @@ structure PolyDecodedMessageCall where
   decA : BitVec 64
   dec : PolyDecoder
 
-/-- Callee specification of `<PolyDecoder as Decoder>::decoded_message` (`0x6bb80`, 516 instructions):
-    given `PolyDecoderStrictSorted x.dec`, `x.dec.decodedMessage` succeeds with `.ok opt` and writes
-    `optKeyBytesAt A x.outA opt` to `x.outA`, or panics on OOM (`allocFailedIn`). -/
-def polyDecodedMessageSpec (A : RustAlloc) (b : BitVec 64) : Spec PolyDecodedMessageCall where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x8 = x.outA ∧
-      s.readReg64 .x0 = x.decA ∧
-      PolyDecoderStrictSorted x.dec⌝ ∗
-      memRegion x.outA vecHeaderBytes ∗
-      polyDecoderAt A x.decA x.dec ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗
-      stackAt s.sp polyDecodedMessageStackX
-  post := fun x s0 sf =>
-    (∃∗ opt : Option Bytes,
-      ⌜x.dec.decodedMessage = .ok opt ∧ sf.trace = s0.trace⌝ ∗
-        optKeyBytesAt A x.outA opt) ∗
-      polyDecoderAt A x.decA x.dec ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗
-      stackAt s0.sp polyDecodedMessageStackX
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
 /-- Symbol name of `<PolyDecoder as Decoder>::decoded_message` (`0x6bb80`). -/
 abbrev polyDecodedMessageName : String :=
   "<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message"
-
-@[simp, arm64_norm] theorem polyDecodedMessage_fnOff :
-    libsignalSessionCode.fnOff polyDecodedMessageName = 0x66788 :=
-  libsignalSessionCode_fnOff_0x66788
-
-/-- `<PolyDecoder as Decoder>::decoded_message` (`0x6bb80`) meets
-    `(polyDecodedMessageSpec A img.base).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-def PolyDecodedMessageOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr polyDecodedMessageName)
-    ((polyDecodedMessageSpec A img.base).inImage img)
 
 /-- Ghost arguments of `<EkSentCt1Received>::recv_ct2_chunk` (`0x5ec2c`). -/
 structure RecvCt2ChunkGhost (F : ShaCompress) where
@@ -217,97 +175,9 @@ structure RecvCt2ChunkGhost (F : ShaCompress) where
   chunkA : BitVec 64
   chunk : Chunk
 
-/-- Specification of `<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk`
-    (`src/v1/chunked/send_ek.rs:195–227`, image offset `0x5ec2c`, 514 instructions):
-    - Consumes `chunkedEkSentCt1ReceivedAt A x.selfA x.self` (leaving `memRegion x.selfA 504`)
-      and preserves `chunkAt x.chunkA x.chunk`.
-    - When `x.self.recv_ct2_chunk K x.epoch x.chunk` returns `.ok res` or `.error (.err e)`,
-      writes `ekSentCt1ReceivedRecvChunkResultAt A x.outA (x.self.recv_ct2_chunk K x.epoch x.chunk)`.
-    - When `x.self.recv_ct2_chunk K x.epoch x.chunk` returns `.error (.panic _)` (or on OOM),
-      panics via `onPanic`. -/
-def recvCt2ChunkSpec (K : MlKem) (F : ShaCompress) (A : RustAlloc) (b : BitVec 64) :
-    Spec (RecvCt2ChunkGhost F) where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x0 = x.outA ∧
-      s.readReg64 .x1 = x.selfA ∧
-      s.readReg64 .x2 = x.epoch ∧
-      s.readReg64 .x3 = x.chunkA ∧
-      PolyDecoderStrictSorted x.self.receiving_ct2 ∧
-      x.self.uc.auth.rootKey.length + 32 < 2 ^ 63⌝ ∗
-      memRegion x.outA chunkedEkSentCt1ReceivedSize ∗
-      ekSentCt1ReceivedAt A x.selfA x.self ∗
-      chunkAt x.chunkA x.chunk ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗
-      stackAt s.sp recvCt2ChunkStackX
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      ekSentCt1ReceivedRecvChunkResultAt A x.outA (x.self.recv_ct2_chunk K x.epoch x.chunk) ∗
-      memRegion x.selfA chunkedEkSentCt1ReceivedSize ∗
-      chunkAt x.chunkA x.chunk ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗
-      stackAt s0.sp recvCt2ChunkStackX
-  onPanic := fun x s0 sf =>
-    ⌜((x.self.recv_ct2_chunk K x.epoch x.chunk).isPanic = true ∨
-        allocFailedIn s0 sf) ∧
-      s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- `<EkSentCt1Received>::recv_ct2_chunk` (`0x5ec2c`) meets
-    `(recvCt2ChunkSpec K F A img.base).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-def RecvCt2ChunkOkX (img : Obj.Image) (K : MlKem) (F : ShaCompress) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName)
-    ((recvCt2ChunkSpec K F A img.base).inImage img)
-
 /-- Total stack budget of `recv_ct2_chunk` under contract-backed KDF/Auth specs:
     `recvCt2ChunkFrameBytes + authUpdateStackExt = 2496 + 17776 = 20272` bytes. -/
 abbrev recvCt2ChunkStackExt : Nat := recvCt2ChunkFrameBytes + authUpdateStackExt
-
-/-- Contract-backed specification of `<spqr::v1::chunked::send_ek::EkSentCt1Received>::recv_ct2_chunk`
-    (`0x5ec2c`), identical to `recvCt2ChunkSpec` with stack budget `recvCt2ChunkStackExt` (`20272`B). -/
-def recvCt2ChunkSpecExt (K : MlKem) (F : ShaCompress) (A : RustAlloc) (b : BitVec 64) :
-    Spec (RecvCt2ChunkGhost F) where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x0 = x.outA ∧
-      s.readReg64 .x1 = x.selfA ∧
-      s.readReg64 .x2 = x.epoch ∧
-      s.readReg64 .x3 = x.chunkA ∧
-      PolyDecoderStrictSorted x.self.receiving_ct2 ∧
-      x.self.uc.auth.rootKey.length + 32 < 2 ^ 63⌝ ∗
-      memRegion x.outA chunkedEkSentCt1ReceivedSize ∗
-      ekSentCt1ReceivedAt A x.selfA x.self ∗
-      chunkAt x.chunkA x.chunk ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗
-      stackAt s.sp recvCt2ChunkStackExt
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      ekSentCt1ReceivedRecvChunkResultAt A x.outA (x.self.recv_ct2_chunk K x.epoch x.chunk) ∗
-      memRegion x.selfA chunkedEkSentCt1ReceivedSize ∗
-      chunkAt x.chunkA x.chunk ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗
-      stackAt s0.sp recvCt2ChunkStackExt
-  onPanic := fun x s0 sf =>
-    ⌜((x.self.recv_ct2_chunk K x.epoch x.chunk).isPanic = true ∨
-        allocFailedIn s0 sf) ∧
-      s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- `<EkSentCt1Received>::recv_ct2_chunk` (`0x5ec2c`) meets
-    `(recvCt2ChunkSpecExt K F A img.base).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-def RecvCt2ChunkOkExt (img : Obj.Image) (K : MlKem) (F : ShaCompress) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr recvCt2ChunkName)
-    ((recvCt2ChunkSpecExt K F A img.base).inImage img)
 
 theorem stackAt_recvCt2ChunkExt_eq_X (sp : BitVec 64) :
     stackAt sp recvCt2ChunkStackExt =
@@ -329,51 +199,22 @@ theorem stackAt_authUpdateExt_eq_extHook (fsp : BitVec 64) :
       memRegion (fsp - 17776#64) 1392 ∗ stackAt fsp extHookStack :=
   stackAt_split_bottom fsp extHookStack 1392 (by decide)
 
-/-- `.rodata` slice at `0x83850` (`33` bytes): `sckaKeyInfoPrefix`
-    (`"Signal_PQCKA_V1_MLKEM768:SCKA Key"`). -/
-theorem rodata_sckaKeyInfoPrefix {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_xref% 0x59a38 0x59a3c)) ↦ᵣ sckaKeyInfoPrefix) ∗ P := by
-  have hhb := loads_rodata_holdsBytes himg hF
-    (off := num% (ls_xref% 0x59a38 0x59a3c)) (n := 33) (bs := sckaKeyInfoPrefix)
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel)
-    (by rfl_kernel) (by decide) (by rfl_kernel)
-  have ⟨h1, h2⟩ := holdsBytes_ro hhb
-  exact Satisfies.rodata_intro h1 h2 (by decide) hP
-
-/-- `.rodata` slice at `0x83748` (`35` bytes): `Authenticator.ctLabel`
-    (`"Signal_PQCKA_V1_MLKEM768:ciphertext"`). -/
-theorem rodata_ctLabel {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_str% "Signal_PQCKA_V1_MLKEM768:ciphertext")) ↦ᵣ Authenticator.ctLabel) ∗ P := by
-  have hhb := loads_rodata_holdsBytes himg hF
-    (off := num% (ls_str% "Signal_PQCKA_V1_MLKEM768:ciphertext")) (n := 35) (bs := Authenticator.ctLabel)
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel)
-    (by rfl_kernel) (by decide) (by rfl_kernel)
-  have ⟨h1, h2⟩ := holdsBytes_ro hhb
-  exact Satisfies.rodata_intro h1 h2 (by decide) hP
-
-@[simp, arm64_norm] theorem mlkemDecaps_fnOff :
-    libsignalSessionCode.fnOff mlkemDecapsName =
-      ls_off% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key" :=
-  ls_stub% "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key"
-
 /-- Concrete value of `PolyDecoder.new 96` (`64 + 32 = 96`). -/
-def polyDecoderNew96 : PolyDecoder :=
+@[expose] def polyDecoderNew96 : PolyDecoder :=
   { pts := List.replicate NUM_POLYS SortedSetPt.new
     ptsNeeded := 48
     isComplete := false }
 
 @[simp]
 theorem polyDecoder_new_96 :
-    PolyDecoder.new 96 = .ok (.ok polyDecoderNew96) := by
-  decide
+    PolyDecoder.new 96 = .ok (.ok polyDecoderNew96) :=
+  rfl
 
 @[simp]
 theorem expectDecoderNew_96 :
     expectDecoderNew spqrPolyApi "v1/chunked/send_ek.rs:218" 96 =
-      .ok polyDecoderNew96 := by
-  decide
+      .ok polyDecoderNew96 :=
+  rfl
 
 theorem polyDecoderStrictSorted_new96 : PolyDecoderStrictSorted polyDecoderNew96 := by
   intro s hs
@@ -392,7 +233,7 @@ theorem extractLsb'_64_64_append (hi lo : BitVec 64) :
   bv_kernel
 
 /-- Saved callee-saved registers at `[s0.sp - 96 .. s0.sp)`. -/
-def savedRegsAt (s0 : State) : SepProp :=
+@[expose] def savedRegsAt (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 .x28) ∗
@@ -408,7 +249,7 @@ def savedRegsAt (s0 : State) : SepProp :=
 
 /-- Unused stack padding regions inside `[fsp .. fsp + 0x960)`:
     `[0x478..0x480)` (`8`B), `[0x4d8..0x4e0)` (`8`B), `[0x920..0x928)` (`8`B), `[0x948..0x960)` (`24`B). -/
-def unusedFrameAt (fsp : BitVec 64) : SepProp :=
+@[expose] def unusedFrameAt (fsp : BitVec 64) : SepProp :=
   memRegion (fsp + 0x478#64) 8 ∗
     memRegion (fsp + 0x4d8#64) 8 ∗
     memRegion (fsp + 0x920#64) 8 ∗
@@ -447,7 +288,7 @@ theorem stackAt_polyDecodedMessage_eq_dropStack32 (fsp : BitVec 64) :
 /-! ## Stack Frame & Representation Helpers -/
 
 /-- Portion of the stack frame only touched in the `Some(ct2Full)` branch. -/
-def someBranchFrameAt (fsp : BitVec 64) : SepProp :=
+@[expose] def someBranchFrameAt (fsp : BitVec 64) : SepProp :=
   memRegion (fsp + 0x1f0#64) 144 ∗
     memRegion (fsp + 0x480#64) 16 ∗
     memRegion (fsp + 0x490#64) 48 ∗
@@ -458,7 +299,7 @@ def someBranchFrameAt (fsp : BitVec 64) : SepProp :=
     unusedFrameAt fsp
 
 /-- Active stack frame of `recv_ct2_chunk` at `fsp = sp - 2496#64` (`[fsp .. fsp + 0x960)` = `2400` bytes). -/
-def activeFrameRegionsAt (fsp : BitVec 64) : SepProp :=
+@[expose] def activeFrameRegionsAt (fsp : BitVec 64) : SepProp :=
   cells fsp 9 ∗
     memRegion (fsp + 0x48#64) 400 ∗
     memRegion (fsp + 0x1d8#64) 24 ∗
@@ -564,13 +405,13 @@ structure SplitBytes (n : Nat) (P : BitVec 64 → SepProp) where
 
 namespace SplitBytes
 
-def congr {n : Nat} {P Q : BitVec 64 → SepProp} (h : ∀ a, P a = Q a) (S : SplitBytes n P) :
+@[expose] def congr {n : Nat} {P Q : BitVec 64 → SepProp} (h : ∀ a, P a = Q a) (S : SplitBytes n P) :
     SplitBytes n Q where
   heap := S.heap
   to_bytes a := h a ▸ S.to_bytes a
   of_bytes a bs hlen := h a ▸ S.of_bytes a bs hlen
 
-def pointsToBytesFixed (bs0 : List (BitVec 8)) : SplitBytes bs0.length (fun a => a ↦ₛ bs0) where
+@[expose] def pointsToBytesFixed (bs0 : List (BitVec 8)) : SplitBytes bs0.length (fun a => a ↦ₛ bs0) where
   heap bs := ⌜bs = bs0⌝ ∗ emp
   to_bytes a :=
     Entails.sepExists_right bs0
@@ -583,21 +424,21 @@ def pointsToBytesFixed (bs0 : List (BitVec 8)) : SplitBytes bs0.length (fun a =>
     rw [sepConj_emp]
     exact Entails.refl _
 
-def pointsTo64 (v : BitVec 64) : SplitBytes 8 (fun a => a ↦₆₄ v) :=
+@[expose] def pointsTo64 (v : BitVec 64) : SplitBytes 8 (fun a => a ↦₆₄ v) :=
   let S := pointsToBytesFixed (unpack64 v)
   have hlen : (unpack64 v).length = 8 := unpack64_length v
   congr (fun a => (pointsTo64_eq_pointsToBytes a v).symm) (hlen ▸ S)
 
-def pointsTo8 (b : BitVec 8) : SplitBytes 1 (fun a => a ↦₈ b) :=
+@[expose] def pointsTo8 (b : BitVec 8) : SplitBytes 1 (fun a => a ↦₈ b) :=
   have h1 : ∀ a, (a ↦ₛ [b]) = (a ↦₈ b) := fun a => by
     rw [pointsToBytes_cons, pointsToBytes_nil, sepConj_emp]
   congr h1 (show SplitBytes 1 (fun a => a ↦ₛ [b]) from pointsToBytesFixed [b])
 
-def empSplit : SplitBytes 0 (fun _ => emp) :=
+@[expose] def empSplit : SplitBytes 0 (fun _ => emp) :=
   have h0 : ∀ a, (a ↦ₛ []) = emp := pointsToBytes_nil
   congr h0 (show SplitBytes 0 (fun a => a ↦ₛ []) from pointsToBytesFixed [])
 
-def region (n : Nat) (hn : n ≤ 2 ^ 64) : SplitBytes n (fun a => memRegion a n) where
+@[expose] def region (n : Nat) (hn : n ≤ 2 ^ 64) : SplitBytes n (fun a => memRegion a n) where
   heap _ := emp
   to_bytes a := by
     rw [memRegion_eq_exists_bytes a n hn]
@@ -626,7 +467,7 @@ def pureConj (P : Prop) {n : Nat} {Q : BitVec 64 → SepProp} (S : SplitBytes n 
     exact Entails.pure_right hP (S.of_bytes a bs hlen)
 
 open Classical in
-noncomputable def pureConjImp {P : Prop} {n : Nat} {Q : BitVec 64 → SepProp}
+@[expose] noncomputable def pureConjImp {P : Prop} {n : Nat} {Q : BitVec 64 → SepProp}
     (S : P → SplitBytes n Q) :
     SplitBytes n (fun a => ⌜P⌝ ∗ Q a) where
   heap bs := if h : P then (S h).heap bs else ⌜False⌝
@@ -646,7 +487,7 @@ noncomputable def pureConjImp {P : Prop} {n : Nat} {Q : BitVec 64 → SepProp}
       rw [sepConj_comm]
       apply Entails.pure_left; exact False.elim
 
-def frameRight (R : SepProp) {n : Nat} {P : BitVec 64 → SepProp} (S : SplitBytes n P) :
+@[expose] def frameRight (R : SepProp) {n : Nat} {P : BitVec 64 → SepProp} (S : SplitBytes n P) :
     SplitBytes n (fun a => P a ∗ R) where
   heap bs := S.heap bs ∗ R
   to_bytes a := by
@@ -659,7 +500,7 @@ def frameRight (R : SepProp) {n : Nat} {P : BitVec 64 → SepProp} (S : SplitByt
     rw [← sepConj_assoc]
     exact sepConj_mono_left (S.of_bytes a bs hlen)
 
-def existsOf {α : Type} {n : Nat} {P : α → BitVec 64 → SepProp}
+@[expose] def existsOf {α : Type} {n : Nat} {P : α → BitVec 64 → SepProp}
     (S : ∀ x : α, SplitBytes n (P x)) :
     SplitBytes n (fun a => ∃∗ x : α, P x a) where
   heap bs := ∃∗ x : α, (S x).heap bs
@@ -674,7 +515,7 @@ def existsOf {α : Type} {n : Nat} {P : α → BitVec 64 → SepProp}
     apply Entails.sepExists_elim; intro x
     exact Entails.sepExists_right x ((S x).of_bytes a bs hlen)
 
-def seq {n m : Nat} {P Q : BitVec 64 → SepProp}
+@[expose] def seq {n m : Nat} {P Q : BitVec 64 → SepProp}
     (Sn : SplitBytes n P) (Sm : SplitBytes m Q) (hnm : n + m ≤ 2 ^ 64) :
     SplitBytes (n + m) (fun a => P a ∗ Q (a + BitVec.ofNat 64 n)) where
   heap bs := Sn.heap (bs.take n) ∗ Sm.heap (bs.drop n)
@@ -710,7 +551,7 @@ def seq {n m : Nat} {P Q : BitVec 64 → SepProp}
     rw [harrange]
     exact sepConj_mono (Sn.of_bytes a (bs.take n) h1) (Sm.of_bytes (a + BitVec.ofNat 64 n) (bs.drop n) h2)
 
-def vecHdr (cap ptr len : BitVec 64) : SplitBytes 24 (fun a => vecHeader a cap ptr len) :=
+@[expose] def vecHdr (cap ptr len : BitVec 64) : SplitBytes 24 (fun a => vecHeader a cap ptr len) :=
   have h : ∀ a, (a ↦₆₄ cap) ∗ ((a + BitVec.ofNat 64 8) ↦₆₄ ptr) ∗
       (((a + BitVec.ofNat 64 8) + BitVec.ofNat 64 8) ↦₆₄ len) = vecHeader a cap ptr len := by
     intro a; unfold vecHeader
@@ -718,21 +559,21 @@ def vecHdr (cap ptr len : BitVec 64) : SplitBytes 24 (fun a => vecHeader a cap p
     simp only [BitVec.ofNat_eq_ofNat, h16, sepConj_assoc]
   congr h ((pointsTo64 cap).seq ((pointsTo64 ptr).seq (pointsTo64 len) (by decide)) (by decide))
 
-def vecAtSplit (A : RustAlloc) (sz align : Nat) {α : Type} (elemAt : α → BitVec 64 → SepProp)
+@[expose] def vecAtSplit (A : RustAlloc) (sz align : Nat) {α : Type} (elemAt : α → BitVec 64 → SepProp)
     (cap ptr : BitVec 64) (xs : List α) :
     SplitBytes 24 (fun a => vecAt A sz align elemAt a cap ptr xs) :=
   (vecHdr cap ptr (BitVec.ofNat 64 xs.length)).frameRight _
 
-def vecOfSplit (A : RustAlloc) (sz align : Nat) {α : Type} (elemAt : α → BitVec 64 → SepProp)
+@[expose] def vecOfSplit (A : RustAlloc) (sz align : Nat) {α : Type} (elemAt : α → BitVec 64 → SepProp)
     (xs : List α) :
     SplitBytes 24 (fun a => vecOf A sz align elemAt a xs) :=
   existsOf fun cap => existsOf fun ptr => vecAtSplit A sz align elemAt cap ptr xs
 
-def vecU8Split (A : RustAlloc) (bs : List (BitVec 8)) :
+@[expose] def vecU8Split (A : RustAlloc) (bs : List (BitVec 8)) :
     SplitBytes 24 (fun a => vecU8 A a bs) :=
   existsOf fun cap => existsOf fun ptr => (vecHdr cap ptr (BitVec.ofNat 64 bs.length)).frameRight _
 
-def arrayAtSplit {α : Type} {stride : Nat} {elemAt : α → BitVec 64 → SepProp}
+@[expose] def arrayAtSplit {α : Type} {stride : Nat} {elemAt : α → BitVec 64 → SepProp}
     (S : ∀ x : α, SplitBytes stride (elemAt x)) :
     (xs : List α) → (h : xs.length * stride ≤ 2 ^ 64) →
     SplitBytes (xs.length * stride) (fun a => arrayAt elemAt stride a xs)
@@ -746,11 +587,11 @@ def arrayAtSplit {α : Type} {stride : Nat} {elemAt : α → BitVec 64 → SepPr
       simp only [List.length_cons, Nat.succ_mul, Nat.add_comm]
     h_add ▸ (S x).seq (arrayAtSplit S xs h_tail) (by omega)
 
-def sortedSetPtSplit (A : RustAlloc) (s : SortedSetPt) :
+@[expose] def sortedSetPtSplit (A : RustAlloc) (s : SortedSetPt) :
     SplitBytes 24 (fun a => sortedSetPtOf A a s) :=
   vecOfSplit A ptStride ptAlign ptAt s.vec
 
-noncomputable def polyDecoderSplit (A : RustAlloc) (dec : PolyDecoder) :
+@[expose] noncomputable def polyDecoderSplit (A : RustAlloc) (dec : PolyDecoder) :
     SplitBytes 400 (fun a => polyDecoderAt A a dec) :=
   have h : ∀ a, (⌜dec.pts.length = NUM_POLYS ∧ dec.ptsNeeded < 2 ^ 64⌝ ∗
       (sortedSetPtListOf A a dec.pts ∗
@@ -776,11 +617,11 @@ noncomputable def polyDecoderSplit (A : RustAlloc) (dec : PolyDecoder) :
         (by decide))
       (by decide)
 
-def authenticatorSplit (A : RustAlloc) (auth : Authenticator) :
+@[expose] def authenticatorSplit (A : RustAlloc) (auth : Authenticator) :
     SplitBytes 48 (fun a => authenticatorAt A a auth) :=
   (vecU8Split A auth.rootKey).seq (vecU8Split A auth.macKey) (by decide)
 
-def ekSentCt1ReceivedUcSplit (A : RustAlloc) {F : ShaCompress}
+@[expose] def ekSentCt1ReceivedUcSplit (A : RustAlloc) {F : ShaCompress}
     (uc : Unchunked.SendEk.EkSentCt1Received (spqrAuthApi F)) :
     SplitBytes 104 (fun a => ekSentCt1ReceivedUcAt A a uc) :=
   have h : ∀ a, authenticatorAt A a uc.auth ∗
@@ -796,13 +637,13 @@ def ekSentCt1ReceivedUcSplit (A : RustAlloc) {F : ShaCompress}
     ((vecU8Split A uc.dk).seq ((vecU8Split A uc.ct1).seq (pointsTo64 uc.epoch) (by decide)) (by decide))
     (by decide))
 
-noncomputable def ekSentCt1ReceivedSplit (A : RustAlloc) {F : ShaCompress}
+@[expose] noncomputable def ekSentCt1ReceivedSplit (A : RustAlloc) {F : ShaCompress}
     (st : Chunked.SendEk.EkSentCt1Received spqrPolyApi (spqrAuthApi F)) :
     SplitBytes 504 (fun a => ekSentCt1ReceivedAt A a st) :=
   (ekSentCt1ReceivedUcSplit A st.uc).seq (polyDecoderSplit A st.receiving_ct2) (by decide)
 
 /-- Relocating `P src` to `P dst ∗ memRegion src n` via `memcpy(dst, src, n)`. -/
-def memcpySpec {n : Nat} {P : BitVec 64 → SepProp} (_ : SplitBytes n P) :
+@[expose] def memcpySpec {n : Nat} {P : BitVec 64 → SepProp} (_ : SplitBytes n P) :
     Spec (BitVec 64 × BitVec 64) where
   pre := fun (dst, src) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ s0.readReg64 .x2 = BitVec.ofNat 64 n⌝ ∗

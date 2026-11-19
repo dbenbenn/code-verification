@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssembly
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssembly -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTail
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aPresence
 
@@ -20,7 +20,7 @@ Proves `w8b_errTail_close` (`+0x504 → ret` via `epilogue_504_err_wpE` and `w8b
 and stack-frame reassembly helpers shared across the post-loop error continuations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,56 +47,6 @@ theorem w8bErrW_exists_pre_frame {α : Type} {prog : Program} {ret : BitVec 64}
     Wire.SepWPp prog ret s ((∃∗ a, P a) ∗ F) Q Qp := by
   rw [sepExists_sepConj_left]
   exact Wire.SepWPp.exists_pre h
-
-/-- Shared `+0x504` (`1284`) error-epilogue closing: absorbs any residual heap
-garbage `R` into `anyHeap`, steps `epilogue_504_err_wpE`, and closes `(pksmTryFromSpec A img).post`
-via `w8b_errPost`. -/
-theorem w8b_errTail_close {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {x : RunCompose.PksmGhost}
-    {s0 s : State} {R : SepProp} {fn : List (BitVec 8)} {e : SignalProtocolError}
-    (hparse : Pksm.pksmParse x.bytes = none)
-    (hst : PostEpilogueState img s0 (s0.sp - 608#64) s)
-    (hpc : s.pc = (contractProg img.base ext).fnAddr preKeyTryFromName + 1284#64)
-    (hrun : s.status = .Running) :
-    Wire.SepWPp (contractProg img.base ext) (s0.readReg64 .x30) s
-      (pksmErrE A fn x.ret e ∗ R ∗
-        stackAt (s0.sp - 608#64) preKeyTryFromSubStack ∗
-        memRegion (s0.sp - 608#64) 296 ∗
-        memRegion (s0.sp - 608#64 + 296#64) 152 ∗
-        memRegion (s0.sp - 608#64 + 448#64) 64 ∗
-        preKeyCalleeSavedAt (s0.sp - 608#64) s0 ∗
-        (x.ptr ↦ₛ x.bytes) ∗ logOff img ∗ A.pool)
-      (fun sf Pf =>
-        sf.sp = s0.sp ∧
-        (calleeSavedVRegs sf = calleeSavedVRegs s0 → CalleeSavedPreserved s0 sf) ∧
-        (Pf ⊢ (pksmTryFromSpec A img).post x s0 sf))
-      (tryFromQp s0) := by
-  refine SepWPp.mono_post
-    (Wire.SepWPp.mono_pre
-      (P' := stackAt (s0.sp - 608#64) preKeyTryFromSubStack ∗
-        memRegion (s0.sp - 608#64) 296 ∗
-        memRegion (s0.sp - 608#64 + 296#64) 152 ∗
-        memRegion (s0.sp - 608#64 + 448#64) 64 ∗
-        preKeyCalleeSavedAt (s0.sp - 608#64) s0 ∗
-        (pksmErrE A fn x.ret e ∗ anyHeap) ∗
-        (x.ptr ↦ₛ x.bytes) ∗ logOff img ∗ A.pool)
-      (by
-        refine Entails.trans
-          (Q := stackAt (s0.sp - 608#64) preKeyTryFromSubStack ∗
-            memRegion (s0.sp - 608#64) 296 ∗
-            memRegion (s0.sp - 608#64 + 296#64) 152 ∗
-            memRegion (s0.sp - 608#64 + 448#64) 64 ∗
-            preKeyCalleeSavedAt (s0.sp - 608#64) s0 ∗
-            (pksmErrE A fn x.ret e ∗ R) ∗
-            (x.ptr ↦ₛ x.bytes) ∗ logOff img ∗ A.pool)
-          (by apply entails_of_eq; ac_rfl) ?_
-        exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-          (sepConj_mono_right (sepConj_mono_left (sepConj_mono_right (entails_anyHeap R))))))))
-      (epilogue_504_err_wpE (x := x) fn e hst hpc hrun)) ?_
-  intro sf Pf _ _ hq
-  exact w8b_errPost hparse hq
-
-/-! ### Stack-Frame Re-Assembly Helpers -/
 
 theorem w8bSeg1Cells_entails_memRegion96 (sp' bkCap bkPtr bkLen kyberLen ikPtr ikLen msgPtr msgLen :
     BitVec 64) (regTag regVal opkTag opkVal spkVal kpkTag kpkVal : BitVec 32) :

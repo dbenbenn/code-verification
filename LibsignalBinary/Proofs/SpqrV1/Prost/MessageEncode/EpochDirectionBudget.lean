@@ -9,18 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirection
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirection1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionStepsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionAuxBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirection
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirection1Budget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionStepsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionAuxBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Budget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
 
 /-!
 # Budget-Threaded Verification of `EpochDirection::encode [local#2]` (`Block 317`)
@@ -30,7 +37,7 @@ Re-exports Steps 1–3 from `EpochDirectionStepsBudget`, proves Step 4 (`prev: V
 `EpochDirection::encode [local#2]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -769,10 +776,5 @@ theorem encode_epochDirection_2_placed_ok_x [LibsignalPlacement] {M : AllocCostM
     EncodeEpochDirection317PlacedOkX A lim H :=
   epochDirection_unpinned_of_pinned_placed_x
     (encode_epochDirection_2_pinned_placed_ok_x h_panic hshim halloc hrealloc hmc)
-
-abbrev encode_epochDirection_2_pinned_placed_ok_ext := @encode_epochDirection_2_pinned_placed_ok
-abbrev encode_epochDirection_2_placed_ok_ext := @encode_epochDirection_2_placed_ok
-abbrev encode_epochDirection_2_pinned_placed_ok_ext_x := @encode_epochDirection_2_pinned_placed_ok_x
-abbrev encode_epochDirection_2_placed_ok_ext_x := @encode_epochDirection_2_placed_ok_x
 
 end LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBudget

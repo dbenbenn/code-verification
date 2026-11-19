@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA3
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Defs
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.StageP2a
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -22,6 +24,7 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable Stage P2 Basic Blocks — Substage P2.3d2 Allocation and P2.4
@@ -30,7 +33,7 @@ Relocatable `[LibsignalPlacement]` basic-block lemmas for Substage P2.3d2 alloca
 +0x0d08`) and Substage P2.4 (`+0x0d5c → +0x36a8`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -101,90 +104,6 @@ theorem p2_seg3d2_oom_branch_ext_placed_wp [LibsignalPlacement] (ext : String �
   wp_steps
   refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ⟨Entails.refl _, rfl⟩
 
-set_option maxHeartbeats 800000 in
-theorem p2_seg3d2_alloc_hooks_placed_ok [LibsignalPlacement] {A : RustAlloc} (img : Obj.Image)
-    (ext : String → Option (State → State))
-    (hH : StageP2ClosureHooksPlaced A ext) (s0 s : State)
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = stageP1EntryPlaced + 0xd04#64)
-    (hrun : s.status = .Running)
-    (hsp_align : (s.sp &&& 15#64 == 0#64) = true)
-    (htr : s0.trace <+: s.trace)
-    (hx0 : s.readReg64 .x0 = 21#64)
-    (hx1 : s.readReg64 .x1 = 1#64) :
-    SepWPp (stageP1ProgPlaced ext)
-      (stageP1EntryPlaced + 0xd08#64) s
-      (A.pool ∗ stackAt s.sp allocHookStack)
-      (fun s1 P_f =>
-        (P_f ⊢
-          A.live (s1.readReg64 .x0) 21 1 ∗
-          memRegion (s1.readReg64 .x0) 21 ∗
-          A.pool ∗
-          stackAt s.sp allocHookStack) ∧
-        s1.sp = s.sp ∧
-        s1.trace = s.trace ∧
-        s1.readReg64 .x0 ≠ 0#64 ∧
-        s1.readReg64 .x19 = s.readReg64 .x19 ∧
-        s1.readReg64 .x21 = s.readReg64 .x21 ∧
-        s1.readReg64 .x22 = s.readReg64 .x22 ∧
-        s1.readReg64 .x23 = s.readReg64 .x23 ∧
-        s1.readReg64 .x25 = s.readReg64 .x25 ∧
-        s1.readReg64 .x26 = s.readReg64 .x26 ∧
-        s1.readReg64 .x27 = s.readReg64 .x27 ∧
-        s1.readReg64 .x28 = s.readReg64 .x28 ∧
-        s1.readReg64 .x29 = s.readReg64 .x29 ∧
-        calleeSavedVRegs s1 = calleeSavedVRegs s ∧
-        img.FrozenLoaded s1 ∧
-        s1.symtab = img.symtab)
-      (PanicOomProp s0) := by
-  have hbl := p2_seg3d2_bl_alloc_ext_placed_wp ext s hpc hrun
-  refine SepWPp.bind_sepWP_frame hF hsym hbl (by sep_focus)
-    fun s1 hpc1 hrun1 hF1 hsym1 ⟨hsp1, htr1, hx0_1, hx1_1, hx19_1, hx21_1, hx22_1, hx23_1, hx25_1,
-      hx26_1, hx27_1, hx28_1, hx29_1, hx30_1, hvregs1⟩ => ?_
-  have hsp1_al : s1.spAligned = true := by simpa [State.spAligned, hsp1] using hsp_align
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlay : LayoutOk 21 1 := ⟨by decide, hpow2, by decide⟩
-  have halloc := hH.alloc
-  refine SepWPp.call_frame_frozen_nopanic hF1 hsym1 halloc hpc1 hrun1 hsp1_al hx30_1
-    (x := (21, 1)) (T := A.pool ∗ stackAt s1.sp allocHookStack) (F := emp)
-    rfl ⟨by rw [hx0_1, hx0]; decide, by rw [hx1_1, hx1]; decide, hlay⟩ (by rw [hsp1]; sep_focus)
-    (by intro _; rfl) (by intro _ _; rfl)
-    fun s2 hpc2 hrun2 hsp2 _ hcs2 hF2 hsym2 => ?_
-  dsimp only [rustAllocSpec]
-  rcases hcs2 with ⟨hcs19, _, hcs21, hcs22, hcs23, _, hcs25, hcs26, hcs27, hcs28, hcs29, hcsv⟩
-  by_cases hoom : s2.readReg64 .x0 = 0
-  · have hoom64 : s2.readReg64 .x0 = 0#64 := hoom
-    simp only [hoom, ↓reduceIte, sepConj_emp]
-    refine SepWPp.pure_left_frame
-      (φ := s2.trace = s1.trace ++ [allocFailedEvent])
-      (P_rest := A.pool ∗ stackAt s1.sp allocHookStack)
-      (by ac_rfl) fun htr2 => ?_
-    have hoom_step := p2_seg3d2_oom_branch_ext_placed_wp ext s2 hpc2 hrun2 hoom64
-    refine SepWPp.bind_sepWP_frame hF2 hsym2 hoom_step (by sep_focus)
-      fun s3 hpc3 hrun3 _ _ htr3 => ?_
-    have hpanic := hH.handleError
-    refine SepWPp.panic hrun3 (by simpa only [hpc3] using hpanic) fun R hm => ?_
-    have htr_s : (Rust.panicked s3).trace = s.trace ++ [allocFailedEvent] := by
-      simp [Rust.panicked, htr3, htr2, htr1]
-    have ⟨ha_s, hp_s⟩ := allocFailedIn_of_eq htr_s
-    exact allowPanic_panicked ⟨p2_allocFailedIn_of_trace_prefix htr ha_s, htr.trans hp_s⟩ hm
-  · have hoom64 : s2.readReg64 .x0 ≠ 0#64 := hoom
-    simp only [hoom, ↓reduceIte, sepConj_emp]
-    refine SepWPp.pure_left_frame
-      (φ := (s2.readReg64 .x0).toNat % 1 = 0 ∧ s2.trace = s1.trace)
-      (P_rest := A.live (s2.readReg64 .x0) 21 1 ∗ memRegion (s2.readReg64 .x0) 21 ∗
-        A.pool ∗ stackAt s1.sp allocHookStack)
-      (by ac_rfl) fun ⟨_, htr2⟩ => ?_
-    refine SepWPp.done hpc2 hrun2 ⟨?_, hsp2.trans hsp1, htr2.trans htr1, hoom64,
-      hcs19.trans hx19_1, hcs21.trans hx21_1, hcs22.trans hx22_1,
-      hcs23.trans hx23_1, hcs25.trans hx25_1,
-      hcs26.trans hx26_1, hcs27.trans hx27_1,
-      hcs28.trans hx28_1, hcs29.trans hx29_1,
-      hcsv.trans hvregs1, hF2, hsym2⟩
-    rw [hsp1]
-    exact Entails.of_eq (by ac_rfl)
-
-abbrev p2_seg3d2_alloc_ext_placed_ok := @p2_seg3d2_alloc_hooks_placed_ok
 
 /-! ## 2. Substage P2.4 Basic Blocks (`+0xd5c -> getIdKpShimAddr` at `+0x36a8`) -/
 

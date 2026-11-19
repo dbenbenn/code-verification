@@ -10,23 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.MlKem
+public import LibsignalBinary.Specifications.LibsignalSpqrV1.TokenNames
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
 
 /-!
-# SPQR V1: extern-stub contracts (`SpqrHooks`) and `TOKEN` precondition (`TokenInit`)
+# SPQR V1: extern-stub contracts (`SpqrHooks`) and `TOKEN` cell symbols
 
-**Trusted in part.** Only the `CliElfLib` theorems of `{Computational,Symbolic}/Theorems/` use this
-file (`headlineδ` does not; see `Computational/docs/TRUSTED_BASE.md`); they unfold only these 10:
-`libcruxHmacName`, `mlkemDecapsName`, `mlkemEncaps1Name`, `mlkemEncaps2Name`,
-`mlkemFromSeedName`, `mlkemPk1Name`, `mlkemPk2Name`, `mlkemValidatePkName`,
-`tokenName`, `tokenStorageName`.
-
-Defines the symbol names, image offsets, and `Spec` contracts (`mlkemFromSeedSpec`, `mlkemPk1Spec`,
-`mlkemPk2Spec`, `mlkemEncaps1Spec`, `mlkemEncaps2Spec`, `mlkemDecapsSpec`, `mlkemValidatePkSpec`,
-`libcruxHmacSpec`, plus `onceCallName`) bundled as `SpqrHooks`, together with `TokenInit`
-(`tokenStorageOff`, `tokenOnceOff`), which fixes the CPU feature-detection cells so that `spqr`
-takes the unaccelerated software $\mathrm{GF}(2^{16})$ path (DEV-SPQR1). `Guards.lean` verifies all
-symbol and stub offsets against the linked image.
+**Checked by Lean.** Proof-side definitions for SPQR V1 extern-stub symbol names and `Spec`
+contracts (`mlkemFromSeedSpec`, `mlkemPk1Spec`, `mlkemPk2Spec`, `mlkemEncaps1Spec`,
+`mlkemEncaps2Spec`, `mlkemDecapsSpec`, `mlkemValidatePkSpec`, `libcruxHmacSpec`, plus
+`onceCallName`) bundled as `SpqrHooks`. The two statement-used CPU feature-detection cell symbol
+names `tokenStorageName` and `tokenName` (DEV-SPQR1) live in `TokenNames.lean` and are re-exported
+here.
 -/
 
 @[expose] public section
@@ -37,83 +32,48 @@ open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchet
 
-/-! ## 1. Extern Stub Symbols & Image Offsets -/
+/-! ## 1. Extern Stub Symbols -/
 
-/-- `<libcrux_ml_kem::mlkem768::incremental::KeyPairCompressedBytes>::from_seed` (`0x8869c`). -/
+/-- `<libcrux_ml_kem::mlkem768::incremental::KeyPairCompressedBytes>::from_seed`. -/
 abbrev mlkemFromSeedName : String :=
   "<libcrux_ml_kem::mlkem768::incremental::KeyPairCompressedBytes>::from_seed"
-abbrev mlkemFromSeedOff : BitVec 64 := 0x8869c#64
 
-/-- `<libcrux_ml_kem::mlkem768::incremental::KeyPairCompressedBytes>::pk1` (`0x886a0`). -/
+/-- `<libcrux_ml_kem::mlkem768::incremental::KeyPairCompressedBytes>::pk1`. -/
 abbrev mlkemPk1Name : String :=
   "<libcrux_ml_kem::mlkem768::incremental::KeyPairCompressedBytes>::pk1"
-abbrev mlkemPk1Off : BitVec 64 := 0x886a0#64
 
-/-- `<libcrux_ml_kem::mlkem768::incremental::KeyPairCompressedBytes>::pk2` (`0x886a4`). -/
+/-- `<libcrux_ml_kem::mlkem768::incremental::KeyPairCompressedBytes>::pk2`. -/
 abbrev mlkemPk2Name : String :=
   "<libcrux_ml_kem::mlkem768::incremental::KeyPairCompressedBytes>::pk2"
-abbrev mlkemPk2Off : BitVec 64 := 0x886a4#64
 
-/-- `libcrux_ml_kem::mlkem768::incremental::encapsulate1` (`0x886ac`). -/
+/-- `libcrux_ml_kem::mlkem768::incremental::encapsulate1`. -/
 abbrev mlkemEncaps1Name : String :=
   "libcrux_ml_kem::mlkem768::incremental::encapsulate1"
-abbrev mlkemEncaps1Off : BitVec 64 := 0x886ac#64
 
-/-- `libcrux_ml_kem::mlkem768::incremental::validate_pk_bytes` (`0x8870c`). -/
+/-- `libcrux_ml_kem::mlkem768::incremental::validate_pk_bytes`. -/
 abbrev mlkemValidatePkName : String :=
   "libcrux_ml_kem::mlkem768::incremental::validate_pk_bytes"
-abbrev mlkemValidatePkOff : BitVec 64 := 0x8870c#64
 
-/-- `libcrux_hmac::hmac` (`0x88710`). -/
+/-- `libcrux_hmac::hmac`. -/
 abbrev libcruxHmacName : String :=
   "libcrux_hmac::hmac"
-abbrev libcruxHmacOff : BitVec 64 := 0x88710#64
 
-/-- `libcrux_ml_kem::mlkem768::incremental::encapsulate2` (`0x88714`). -/
+/-- `libcrux_ml_kem::mlkem768::incremental::encapsulate2`. -/
 abbrev mlkemEncaps2Name : String :=
   "libcrux_ml_kem::mlkem768::incremental::encapsulate2"
-abbrev mlkemEncaps2Off : BitVec 64 := 0x88714#64
 
-/-- `libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key` (`0x8871c`). -/
+/-- `libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key`. -/
 abbrev mlkemDecapsName : String :=
   "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key"
-abbrev mlkemDecapsOff : BitVec 64 := 0x8871c#64
 
-/-- `<std::sys::sync::once::futex::Once>::call` (`0x885fc`).
-Unreachable when `TokenInit img` holds (`(tokenOnceAddr img) ↦₃₂ 0#32`). -/
+/-- `<std::sys::sync::once::futex::Once>::call`.
+Unreachable when the `TOKEN` `Once` state word holds `0#32` (`futex::Once::COMPLETE`). -/
 abbrev onceCallName : String :=
   "<std::sys::sync::once::futex::Once>::call"
-abbrev onceCallOff : BitVec 64 := 0x885fc#64
 
-/-! ## 2. `TOKEN` & `STORAGE.0` (`TokenInit`) -/
+/-! ## 2. `TOKEN` & `STORAGE.0` Symbols -/
 
-/-- `spqr::encoding::gf::check_accelerated::use_accelerated::STORAGE.0` (`0x9a038`),
-a 1-byte `AtomicU8` storing whether PMULL-accelerated GF(2¹⁶) multiplication is enabled
-(`0#8` = `false`, `1#8` = `true`, `0xff#8` = uninitialized). -/
-abbrev tokenStorageName : String :=
-  "spqr::encoding::gf::check_accelerated::use_accelerated::STORAGE.0"
-abbrev tokenStorageOff : BitVec 64 := 0x9a038#64
-abbrev tokenStorageAddr (img : Obj.Image) : BitVec 64 := img.base + tokenStorageOff
-
-/-- `spqr::encoding::gf::check_accelerated::TOKEN` (`0x9a040`),
-a 16-byte `std::sync::LazyLock<InitToken>` whose `std::sys::sync::once::futex::Once`
-`AtomicU32` state word resides at offset `+8` (`0x9a048`, `0#32` = `COMPLETE`). -/
-abbrev tokenName : String :=
-  "spqr::encoding::gf::check_accelerated::TOKEN"
-abbrev tokenOff : BitVec 64 := 0x9a040#64
-abbrev tokenOnceOff : BitVec 64 := 0x9a048#64
-abbrev tokenOnceAddr (img : Obj.Image) : BitVec 64 := img.base + tokenOnceOff
-
-/-- Concrete separation-logic invariant for `TokenInit img`:
-* `tokenOnceAddr img` (`img.base + 0x9a048#64`) holds `0#32` (`futex::Once::COMPLETE`), so the
-  acquire load `ldar w8, [x8]; cbnz w8, ...` at the 14 `TOKEN` sites never calls `Once::call` (the
-  15th `.img.text` `Once::call` site, `SenderCertificate::signer`'s `CERT_MAP`, is outside this
-  contract);
-* `tokenStorageAddr img` (`img.base + 0x9a038#64`) holds `0#8` (`false`), so `ldrb w8, [x8, #0x38];
-  cmp w8, #0x1; b.ne ...` always selects the unaccelerated table-lookup GF(2¹⁶) path (`gf::unaccelerated::mul`)
-  and never executes `PMULL`. -/
-def TokenInit (img : Obj.Image) : SepProp :=
-  (tokenStorageAddr img ↦₈ 0#8) ∗ (tokenOnceAddr img ↦₃₂ 0#32)
+-- `tokenStorageName` and `tokenName` are defined in `TokenNames.lean` (`public import`ed above).
 
 /-! ## 3. ML-KEM-768 Incremental Hook Specifications
 
@@ -127,7 +87,7 @@ structure MlkemFromSeedCall where
   kpA : BitVec 64
   seed : List.Vector (BitVec 8) 64
 
-/-- Spec for `<KeyPairCompressedBytes>::from_seed` (`0x8869c`).
+/-- Spec for `<KeyPairCompressedBytes>::from_seed`.
 * `x0 = seedA`: pointer to 64-byte seed (`[u8; 64]` passed by value via indirect pointer).
 * `x8 = kpA`: sret pointer to 2400-byte `KeyPairCompressedBytes` buffer (`dk`). -/
 def mlkemFromSeedSpec (K : MlKem) : Spec MlkemFromSeedCall where
@@ -145,7 +105,7 @@ structure MlkemKpRefCall where
   kpA : BitVec 64
   kp : List.Vector (BitVec 8) 2400
 
-/-- Spec for `<KeyPairCompressedBytes>::pk1` (`0x886a0`).
+/-- Spec for `<KeyPairCompressedBytes>::pk1`.
 * `x0 = kpA`: `&KeyPairCompressedBytes` (2400 bytes).
 * Returns `x0 = kpA + pk1Off` (`&[u8; 64]` pointing to bytes `2304..2368` of `kp`). -/
 def mlkemPk1Spec : Spec MlkemKpRefCall where
@@ -155,7 +115,7 @@ def mlkemPk1Spec : Spec MlkemKpRefCall where
     ⌜sf.readReg64 .x0 = x.kpA + BitVec.ofNat 64 pk1Off ∧ sf.trace = s0.trace⌝ ∗
       (x.kpA ↦ₛ x.kp.toList) ∗ stackAt s0.sp extHookStack
 
-/-- Spec for `<KeyPairCompressedBytes>::pk2` (`0x886a4`).
+/-- Spec for `<KeyPairCompressedBytes>::pk2`.
 * `x0 = kpA`: `&KeyPairCompressedBytes` (2400 bytes).
 * Returns `x0 = kpA + pk2Off` (`&[u8; 1152]` pointing to bytes `1152..2304` of `kp`). -/
 def mlkemPk2Spec : Spec MlkemKpRefCall where
@@ -175,7 +135,7 @@ structure MlkemEncaps1Call where
   esA : BitVec 64
   ssA : BitVec 64
 
-/-- Spec for `libcrux_ml_kem::mlkem768::incremental::encapsulate1` (`0x886ac`).
+/-- Spec for `libcrux_ml_kem::mlkem768::incremental::encapsulate1`.
 * `x8 = ret`: sret pointer to `Result<[u8; 960], Error>` (961 bytes, align 1:
   discriminant `0#8 = Ok`, `1#8 = Err` at `ret`; 960-byte `ct1` at `ret + 1#64` on `Ok`,
   or 1-byte `Error` at `ret + 1#64` plus 959 bytes padding on `Err`).
@@ -213,7 +173,7 @@ structure MlkemEncaps2Call where
   ekA : BitVec 64
   ek : List.Vector (BitVec 8) 1152
 
-/-- Spec for `libcrux_ml_kem::mlkem768::incremental::encapsulate2` (`0x88714`).
+/-- Spec for `libcrux_ml_kem::mlkem768::incremental::encapsulate2`.
 * `x8 = ret`: sret pointer to `[u8; 128]` (128 bytes, align 1).
 * `x0 = esA`: `state: &[u8; 2080]`.
 * `x1 = ekA`: `public_key_part: &[u8; 1152]`. -/
@@ -238,7 +198,7 @@ structure MlkemDecapsCall where
   ct2A : BitVec 64
   ct2 : List.Vector (BitVec 8) 128
 
-/-- Spec for `libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key` (`0x8871c`).
+/-- Spec for `libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key`.
 * `x8 = ret`: sret pointer to `[u8; 32]` (32 bytes, align 1).
 * `x0 = dkA`: `private_key: &[u8; 2400]`.
 * `x1 = ct1A`: `ciphertext1: &[u8; 960]`.
@@ -262,12 +222,11 @@ structure MlkemValidatePkCall where
   ekA : BitVec 64
   ek : List (BitVec 8)
 
-/-- Spec for `libcrux_ml_kem::mlkem768::incremental::validate_pk_bytes` (`0x8870c`).
+/-- Spec for `libcrux_ml_kem::mlkem768::incremental::validate_pk_bytes`.
 * `x0 = hdrA`, `x1 = hdr.length`: `pk1: &[u8]`.
 * `x2 = ekA`, `x3 = ek.length`: `pk2: &[u8]`.
 * Returns `Result<(), Error>` in low byte of `w0`: `0xff#8` (255, niche for `Ok(())`) iff
-  `K.validPkBytes hdr ek = true` (length check, then `K.validPk`; tested by caller at `0x58714..0x5871c` via
-  `mov w8, #0xff; bics wzr, w8, w0; b.eq 0x587a4`). -/
+  `K.validPkBytes hdr ek = true` (length check, then `K.validPk`). -/
 def mlkemValidatePkSpec (K : MlKem) : Spec MlkemValidatePkCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.hdrA ∧ (s.readReg64 .x1).toNat = x.hdr.length ∧
@@ -288,7 +247,7 @@ structure LibcruxHmacCall where
   dataA : BitVec 64
   data : List (BitVec 8)
 
-/-- Spec for `libcrux_hmac::hmac` (`0x88710`).
+/-- Spec for `libcrux_hmac::hmac`.
 * `x8 = ret`: sret pointer to 24-byte `Vec<u8>`.
 * `w0 = 0#32`: `Algorithm::Sha256`.
 * `x1 = keyA`, `x2 = key.length`: `key: &[u8]`.
@@ -323,21 +282,21 @@ The compressed-keypair slice equations connecting `pk1` (`kp[2304..2368]`) and `
 not fields. -/
 structure SpqrHooks (C : Crypto) (A : RustAlloc) (K : MlKem)
     (abs : String → Option (State → State)) : Prop where
-  /-- `<KeyPairCompressedBytes>::from_seed` (`0x8869c`). -/
+  /-- `<KeyPairCompressedBytes>::from_seed`. -/
   fromSeed : HookSat abs mlkemFromSeedName (mlkemFromSeedSpec K)
-  /-- `<KeyPairCompressedBytes>::pk1` (`0x886a0`). -/
+  /-- `<KeyPairCompressedBytes>::pk1`. -/
   pk1 : HookSat abs mlkemPk1Name mlkemPk1Spec
-  /-- `<KeyPairCompressedBytes>::pk2` (`0x886a4`). -/
+  /-- `<KeyPairCompressedBytes>::pk2`. -/
   pk2 : HookSat abs mlkemPk2Name mlkemPk2Spec
-  /-- `libcrux_ml_kem::mlkem768::incremental::encapsulate1` (`0x886ac`). -/
+  /-- `libcrux_ml_kem::mlkem768::incremental::encapsulate1`. -/
   encaps1 : HookSat abs mlkemEncaps1Name (mlkemEncaps1Spec K)
-  /-- `libcrux_ml_kem::mlkem768::incremental::encapsulate2` (`0x88714`). -/
+  /-- `libcrux_ml_kem::mlkem768::incremental::encapsulate2`. -/
   encaps2 : HookSat abs mlkemEncaps2Name (mlkemEncaps2Spec K)
-  /-- `libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key` (`0x8871c`). -/
+  /-- `libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key`. -/
   decaps : HookSat abs mlkemDecapsName (mlkemDecapsSpec K)
-  /-- `libcrux_ml_kem::mlkem768::incremental::validate_pk_bytes` (`0x8870c`). -/
+  /-- `libcrux_ml_kem::mlkem768::incremental::validate_pk_bytes`. -/
   validatePk : HookSat abs mlkemValidatePkName (mlkemValidatePkSpec K)
-  /-- `libcrux_hmac::hmac` (`0x88710`), with OOM and length (≥ 2^32) panic allowance. -/
+  /-- `libcrux_hmac::hmac`, with OOM and length (≥ 2^32) panic allowance. -/
   hmac : HookSat abs libcruxHmacName (libcruxHmacSpec C.F A)
 
 /-- Slice agreement for `KeyPairCompressedBytes::pk1`: bytes `2304..2368` (`pk1Off`) of the

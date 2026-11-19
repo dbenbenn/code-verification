@@ -12,15 +12,9 @@ module
 public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Defs
 import LibsignalBinary.Proofs.FnOffEq
 import ProofLib.SepLogic.WPp
-
-/-!
-# Shared Framing, Relocation, and Epilogue Helpers for `SegFront`
-
-Instruction-fetch macros, stack recombination and return-epilogue lemmas (`+0x394 .. +0x3b0`),
-`RelocBytes` byte/word relocation combinators, and `ErrTailSpec` framing helpers.
--/
-
-@[expose] public section
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegA
 
@@ -63,21 +57,6 @@ elab "code_fetches_from " codeId:ident decPrefix:ident b:term:max H:term:max hfn
     else
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-/-- Fetch hypotheses for `try_decrypt_with_state::<HookRng>` (`0x6eff8`), from fn-relative offset
-`k0`, `len` bytes. -/
-macro "dec_fetches " b:term:max H:term:max hfn:ident k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode
-    CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin
-      $b (Rust.withPanics $H) $hfn 0x6eff8 $k0 $len)
-
-theorem tryDecryptEntry_eq_fnAddr {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    tryDecryptEntry img = (tripleRatchetProgAt img.base C ctl abs).fnAddr tryDecryptName :=
-  entryOf_eq_tripleRatchetProgAt himg tryDecryptName
-
-/-! ## Shared Stack Recombination and Return Epilogue (`+0x394 .. +0x3b0`) -/
 
 /-- Recombine `stackAt (sp0 - 1504#64) tryDecryptSubStack ∗ memRegion (sp0 - 1504#64) 1408 ∗
 tryDecryptSavedRegs sp0 s0` into `stackAt sp0 rootStack` (`303104` bytes). -/
@@ -165,7 +144,7 @@ theorem decRel_afterTrFrom (G : SessionGhost) : G.AfterTryDecrypt false G.afterT
 /-- A separation-logic predicate `P : BitVec 64 → SepProp` is relocatable of byte width `n` if
 any `m ⊨ P p ∗ R` decomposes into an `n`-byte slice `p ↦ₛ bs` and a `p`-independent resource `H`
 such that `(q ↦ₛ bs) ∗ H ⊢ P q` at any target address `q`. -/
-def RelocBytes (n : Nat) (P : BitVec 64 → SepProp) : Prop :=
+@[expose] def RelocBytes (n : Nat) (P : BitVec 64 → SepProp) : Prop :=
   ∀ (p : BitVec 64) (R : SepProp) (m : Memory),
     (m ⊨ P p ∗ R) →
     ∃ (bs : List (BitVec 8)) (H : SepProp),
@@ -343,7 +322,7 @@ theorem relocBytes_speBodyAt (A : RustAlloc) (fnName : List (BitVec 8))
 
 /-! ## `speAt` and `speBodyAt` 5-Word Relocation -/
 
-def words5At (a w0 w1 w2 w3 w4 : BitVec 64) : SepProp :=
+@[expose] def words5At (a w0 w1 w2 w3 w4 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗
   ((a + 24#64) ↦₆₄ w3) ∗ ((a + 32#64) ↦₆₄ w4)
 
@@ -434,43 +413,13 @@ theorem exists_words3_of_memRegion_24 {a : BitVec 64} {R : SepProp} {m : Memory}
 
 /-- The state invariant carried inside `SepWP` proofs (`tryDecryptMidMeta` without `img.CallInv`,
 which `reaches_pc_callInv` preserves automatically at the `reaches_pc` level). -/
-def tryDecryptWPInv (s0 s : State) : Prop :=
+@[expose] def tryDecryptWPInv (s0 s : State) : Prop :=
   s.status = .Running ∧
   s.sp = s0.sp - 1504#64 ∧
   s0.spAligned = true ∧
   s.spAligned = true ∧
   s.readReg64 .x29 = s0.sp - 96#64 ∧
   (s.trace = s0.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s0)
-
-theorem tryDecryptMidMeta.to_wpInv {img : Obj.Image} {s0 s : State}
-    (h : tryDecryptMidMeta img s0 s) : tryDecryptWPInv s0 s := by
-  rcases h with ⟨h1, h2, h3, h4, h5, h6, _, _, h9⟩
-  exact ⟨h1, h2, h3, h4, h5, ⟨h6, h9⟩⟩
-
-theorem reaches_pc_callInv {prog : Program} {img : Obj.Image} {t : BitVec 64} {s : State}
-    {Q oom : State → Prop} (hinv : img.FrozenLoaded s ∧ s.symtab = img.symtab)
-    (h : reaches_pc prog t s Q oom) :
-    reaches_pc prog t s (fun sf => Q sf ∧ img.FrozenLoaded sf ∧ sf.symtab = img.symtab) oom := by
-  intro hL
-  obtain ⟨sf, hst, ⟨hpc, hrun, hq⟩ | hoom⟩ := h hL
-  · exact ⟨sf, hst, Or.inl ⟨hpc, hrun, hq, hinv.1.of_keepsFrozen hst.keepsFrozen, hst.symtab_eq.trans hinv.2⟩⟩
-  · exact ⟨sf, hst, Or.inr hoom⟩
-
-theorem sepWP_to_reaches_pc_midMeta {prog : Program} {img : Obj.Image} {target_pc : BitVec 64}
-    {s0 s : State} {P R : SepProp} {post : State → SepProp → Prop}
-    (hmeta : tryDecryptMidMeta img s0 s)
-    (hwp : SepWP prog target_pc s P (fun sf P_f => post sf P_f ∧ tryDecryptWPInv s0 sf))
-    (hm : s.mem ⊨ P ∗ R) :
-    reaches_pc prog target_pc s
-      (fun sf => ∃ P_f, sf.mem ⊨ P_f ∗ R ∧ post sf P_f ∧ tryDecryptMidMeta img s0 sf) := by
-  have hinv : img.FrozenLoaded s ∧ s.symtab = img.symtab :=
-    ⟨hmeta.2.2.2.2.2.2.1, hmeta.2.2.2.2.2.2.2.1⟩
-  refine reaches_pc_mono
-    (reaches_pc_callInv hinv (sepWP_to_reaches_pc hwp hm)) ?_
-  intro sf _ _ ⟨⟨P_f, hm_f, hpost_f, ⟨h1, h2, h3, h4, h5, ⟨h6, h9⟩⟩⟩, h7, h8⟩
-  exact ⟨P_f, hm_f, hpost_f, ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩⟩
-
-/-! ## `SepWP` Framing and Composition Combinators -/
 
 macro "wp_finish" : tactic =>
   `(tactic| refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_)
@@ -530,14 +479,6 @@ elab "sep_ac_rfl" : tactic =>
       withReducible do
         evalTactic (← `(tactic| ac_rfl))
 
-theorem fnAddr_tryDecrypt_add_eq {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff tryDecryptName + k =
-      libsignalSessionCode.fnOff name := by fnoff_eq) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr tryDecryptName + BitVec.ofNat 64 k =
-      (tripleRatchetProgAt b C ctl abs).fnAddr name := by
-  simp only [Program.fnAddr_rebase, BitVec.add_assoc, ← BitVec.ofNat_add, hk]
-
 theorem stackAt_sub (sp : BitVec 64) (k n : Nat) (hkn : k ≤ n) (hn : n ≤ 2 ^ 64) :
     stackAt sp n = stackAt sp k ∗ memRegion (sp - BitVec.ofNat 64 n) (n - k) := by
   unfold stackAt
@@ -584,49 +525,6 @@ theorem exists_words16_of_length_16 {bs : List (BitVec 8)} (h : bs.length = 16) 
   obtain ⟨w0, w1, _, hp⟩ := exists_unpack64_of_length_16 h
   exact ⟨w0, w1, hp⟩
 
-theorem reaches_pc_seq_callInv {prog : Program} {img : Obj.Image} {mid t : BitVec 64}
-    {s : State} {Q post : State → Prop} (hinv : img.FrozenLoaded s ∧ s.symtab = img.symtab)
-    (h1 : reaches_pc prog mid s Q)
-    (h2 : ∀ sm, sm.pc = mid → sm.status = .Running → Q sm →
-      (img.FrozenLoaded sm ∧ sm.symtab = img.symtab) → reaches_pc prog t sm post) :
-    reaches_pc prog t s post :=
-  reaches_pc_seq (reaches_pc_callInv hinv h1) fun sm hpc hrun ⟨hq, h1, h2'⟩ =>
-    h2 sm hpc hrun hq ⟨h1, h2'⟩
-
-theorem reaches_pc_call_inImage {α : Type} {prog : Program} {img : Obj.Image}
-    {callee ret_pc exit_pc : BitVec 64} {spec : Spec α}
-    (h_callee : subroutine_ok prog callee (spec.inImage img)) (x : α) (R : SepProp)
-    {s_call : State} {post : State → Prop}
-    (h_pc : s_call.pc = callee) (h_run : s_call.status = .Running)
-    (h_lr : s_call.readReg64 Reg.lr = ret_pc)
-    (h_inv : img.FrozenLoaded s_call ∧ s_call.symtab = img.symtab)
-    (h_pre : s_call.mem ⊨ spec.pre x s_call ∗ R)
-    (h_cont : ∀ s_ret : State,
-      s_ret.pc = ret_pc → s_ret.status = .Running → s_ret.sp = s_call.sp →
-      CalleeSavedPreserved s_call s_ret →
-      (img.FrozenLoaded s_ret ∧ s_ret.symtab = img.symtab) →
-      (s_ret.mem ⊨ spec.post x s_call s_ret ∗ R) →
-      reaches_pc prog exit_pc s_ret post)
-    (h_sp_align : s_call.spAligned = true)
-    (h_no_panic : ∀ sf, sf.status = .Panicked → ¬(sf.mem ⊨ spec.onPanic x s_call sf ∗ R) := by
-      intro _ _ hp; exact not_satisfies_false_sepConj hp)
-    (h_no_exit : ∀ code sf, sf.status = .Exited code →
-      ¬(sf.mem ⊨ spec.onExit x code s_call sf ∗ R) := by
-      intro _ _ _ he; exact not_satisfies_false_sepConj he)
-    (h_no_oom : ∀ sf, sf.status = .OutOfMemory →
-      ¬(sf.mem ⊨ spec.onOom x s_call sf ∗ R) := by
-      intro _ _ ho; exact not_satisfies_false_sepConj ho) :
-    reaches_pc prog exit_pc s_call post := by
-  have h_pre_in : s_call.mem ⊨ (spec.inImage img).pre x s_call ∗ R := by
-    simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨h_inv, h_pre⟩
-  have h_reach := subroutine_ok_apply_full h_callee x R h_pc h_run h_pre_in
-    h_sp_align h_no_panic h_no_exit h_no_oom
-  rw [h_lr] at h_reach
-  refine reaches_pc_seq (reaches_pc_callInv h_inv h_reach) fun s_ret h_ret_pc h_ret_run hq => ?_
-  obtain ⟨⟨h_post, h_sp, h_cs⟩, h1, h2⟩ := hq
-  exact h_cont s_ret h_ret_pc h_ret_run h_sp h_cs ⟨h1, h2⟩ h_post
-
 theorem exists_word32_of_memRegion_4 {a : BitVec 64} {R : SepProp} {m : Memory}
     (hm : m ⊨ memRegion a 4 ∗ R) :
     ∃ w : BitVec 32, m ⊨ (a ↦₃₂ w) ∗ R := by
@@ -647,40 +545,17 @@ theorem exists_word64_of_memRegion_8 {a : BitVec 64} {R : SepProp} {m : Memory}
   obtain ⟨w, hw⟩ := exists_unpack64_of_length_8 hlen
   exact ⟨w, by rwa [pointsTo64_eq_pointsToBytes, ← hw]⟩
 
-theorem tryDecryptWPInv.to_midMeta {img : Obj.Image} {s0 sf : State}
-    (hwp : tryDecryptWPInv s0 sf)
-    (hinv : img.FrozenLoaded sf ∧ sf.symtab = img.symtab) :
-    tryDecryptMidMeta img s0 sf :=
-  ⟨hwp.1, hwp.2.1, hwp.2.2.1, hwp.2.2.2.1, hwp.2.2.2.2.1, hwp.2.2.2.2.2.1, hinv.1, hinv.2, hwp.2.2.2.2.2.2⟩
-
-theorem sepWP_to_reaches_pc_with_midMeta {prog : Program} {img : Obj.Image}
-    {target : BitVec 64} {s0 s : State} {P R : SepProp}
-    {post : State → SepProp → Prop} {Q : State → Prop}
-    (hmeta : tryDecryptMidMeta img s0 s)
-    (hwp : SepWP prog target s P post)
-    (hm : s.mem ⊨ P ∗ R)
-    (hcont : ∀ sf P_f, sf.pc = target → post sf P_f →
-      (img.FrozenLoaded sf ∧ sf.symtab = img.symtab) →
-      (sf.mem ⊨ P_f ∗ R) → Q sf) :
-    reaches_pc prog target s Q := by
-  have hinv : img.FrozenLoaded s ∧ s.symtab = img.symtab :=
-    ⟨hmeta.2.2.2.2.2.2.1, hmeta.2.2.2.2.2.2.2.1⟩
-  refine reaches_pc_mono
-    (reaches_pc_callInv hinv (sepWP_to_reaches_pc hwp hm)) ?_
-  intro sf hpc _ ⟨⟨P_f, hm_f, hpost_f⟩, h7, h8⟩
-  exact hcont sf P_f hpc hpost_f ⟨h7, h8⟩ hm_f
-
-def words4At (a w0 w1 w2 w3 : BitVec 64) : SepProp :=
+@[expose] def words4At (a w0 w1 w2 w3 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗ ((a + 24#64) ↦₆₄ w3)
 
-def words8At (a w0 w1 w2 w3 w4 w5 w6 w7 : BitVec 64) : SepProp :=
+@[expose] def words8At (a w0 w1 w2 w3 w4 w5 w6 w7 : BitVec 64) : SepProp :=
   words4At a w0 w1 w2 w3 ∗ words4At (a + 32#64) w4 w5 w6 w7
 
-def words16At (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 : BitVec 64) : SepProp :=
+@[expose] def words16At (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 : BitVec 64) : SepProp :=
   words8At a w0 w1 w2 w3 w4 w5 w6 w7 ∗
   words8At (a + 64#64) w8 w9 w10 w11 w12 w13 w14 w15
 
-def words32At (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15
+@[expose] def words32At (a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15
     w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31 : BitVec 64) : SepProp :=
   words16At a w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 ∗
   words16At (a + 128#64) w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 w31

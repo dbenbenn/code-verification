@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
-public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SanOracleCore -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Fig8Atomic -- proof-setup: allow-public-import
 
 /-!
 # Atomic Figure 8 Party Operations and `Kept` Invariants
@@ -21,7 +24,7 @@ Defines the party invariants (`Fig8CkaInv`, `SkippedLenLe`, `Fig8PartyInv`, `Kep
 `sentEval` helpers, with evaluation, cost, and description-bit bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -101,11 +104,11 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
 section PartyInvariants
 
 /-- Ping-pong CKA state invariant on `Fig8St Pt` (`.pub` before sending epochs, `.exp` before receiving epochs). -/
-def Fig8CkaInv {Pt : Type} (st : Fig8St Pt) : Prop :=
+@[expose] def Fig8CkaInv {Pt : Type} (st : Fig8St Pt) : Prop :=
   if st.id.sendsIn (st.tcur + 1) then ∃ h, st.γ = .pub h else ∃ x, st.γ = .exp x
 
 /-- Bounds `v.skippedKeys.length` by `B0` so `fsAtomicB` agrees with `lFS`. -/
-def SkippedLenLe (B0 : ℕ) (v : RatchetReceiverState (BitVec 256) (BitVec 256)) : Prop :=
+@[expose] def SkippedLenLe (B0 : ℕ) (v : RatchetReceiverState (BitVec 256) (BitVec 256)) : Prop :=
   v.skippedKeys.length ≤ B0
 
 theorem SkippedLenLe.mono {B0 B0' : ℕ} {v : RatchetReceiverState (BitVec 256) (BitVec 256)}
@@ -113,7 +116,7 @@ theorem SkippedLenLe.mono {B0 B0' : ℕ} {v : RatchetReceiverState (BitVec 256) 
   Nat.le_trans hv hle
 
 /-- Combined `Fig8CkaInv` and `SkippedLenLe B0` invariant on `Fig8St Pt`. -/
-def Fig8PartyInv {Pt : Type} (B0 : ℕ) (st : Fig8St Pt) : Prop :=
+@[expose] def Fig8PartyInv {Pt : Type} (B0 : ℕ) (st : Fig8St Pt) : Prop :=
   Fig8CkaInv st ∧ ∀ t v, st.vR t = some v → SkippedLenLe B0 v
 
 theorem Fig8PartyInv.mono {Pt : Type} {B0 B0' : ℕ} {st : Fig8St Pt}
@@ -121,7 +124,7 @@ theorem Fig8PartyInv.mono {Pt : Type} {B0 B0' : ℕ} {st : Fig8St Pt}
   ⟨hst.1, fun t v hv => (hst.2 t v hv).mono hle⟩
 
 /-- Combined `Fig8PartyInv B0` and `SkippedLenLe B0` invariant on `Kept Pt`. -/
-def KeptInv {Pt : Type} (B0 : ℕ) (k : Kept Pt) : Prop :=
+@[expose] def KeptInv {Pt : Type} (B0 : ℕ) (k : Kept Pt) : Prop :=
   (∀ st, k.full = some st → Fig8PartyInv B0 st) ∧
   (∀ t v, k.rs t = some v → SkippedLenLe B0 v)
 
@@ -378,13 +381,13 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-def opPure {Γ : List (Ty ASig)} (o : AtomicPureOp) (a : Expr AOps Γ (o.dom ℓ Pt)) :
+@[expose] def opPure {Γ : List (Ty ASig)} (o : AtomicPureOp) (a : Expr AOps Γ (o.dom ℓ Pt)) :
     Expr AOps Γ (o.cod ℓ Pt) := sOpPure o a
 
-def opSym {Γ : List (Ty ASig)} (o : AtomicSymOp) (a : Expr AOps Γ (o.dom ℓ Pt)) :
+@[expose] def opSym {Γ : List (Ty ASig)} (o : AtomicSymOp) (a : Expr AOps Γ (o.dom ℓ Pt)) :
     Expr AOps Γ (o.cod ℓ Pt) := sOpSym o a
 
-def opGroup {Γ : List (Ty ASig)} (o : AtomicGroupOp) (a : Expr AOps Γ (o.dom ℓ Pt)) :
+@[expose] def opGroup {Γ : List (Ty ASig)} (o : AtomicGroupOp) (a : Expr AOps Γ (o.dom ℓ Pt)) :
     Expr AOps Γ (o.cod ℓ Pt) := sOpGrp o a
 
 @[simp] theorem eval_opPure {Γ : List (Ty ASig)} (o : AtomicPureOp)
@@ -438,26 +441,26 @@ def opGroup {Γ : List (Ty ASig)} (o : AtomicGroupOp) (a : Expr AOps Γ (o.dom �
         (decT := decT) (lam := lam) o a) =
       11 + atomicExprDescBits atomicSessionOpDescBits a + 6 := rfl
 
-def f8Id {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) : Expr O' Γ .bool :=
+@[expose] def f8Id {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) : Expr O' Γ .bool :=
   .fst st
-def f8Root {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) : Expr O' Γ BV256 :=
+@[expose] def f8Root {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) : Expr O' Γ BV256 :=
   .fst (.snd st)
-def f8VS {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
+@[expose] def f8VS {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr O' Γ (.opt (fsSendStT (ℓ := ℓ) (Pt := Pt))) :=
   .fst (.snd (.snd st))
-def f8VR {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
+@[expose] def f8VR {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr O' Γ (.tbl (.opt (fsRecvStT (ℓ := ℓ) (Pt := Pt)))) :=
   .fst (.snd (.snd (.snd st)))
-def f8Gamma {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
+@[expose] def f8Gamma {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr O' Γ (ckaStT (ℓ := ℓ) (Pt := Pt)) :=
   .fst (.snd (.snd (.snd (.snd st))))
-def f8Cur {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
+@[expose] def f8Cur {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr O' Γ (.opt PtT) :=
   .fst (.snd (.snd (.snd (.snd (.snd st)))))
-def f8Tcur {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) : Expr O' Γ .nat :=
+@[expose] def f8Tcur {O' : Ops ASig} {Γ} (st : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) : Expr O' Γ .nat :=
   .snd (.snd (.snd (.snd (.snd (.snd st)))))
 
-def f8Mk {O' : Ops ASig} {Γ}
+@[expose] def f8Mk {O' : Ops ASig} {Γ}
     (idE : Expr O' Γ .bool) (rootE : Expr O' Γ BV256)
     (vsE : Expr O' Γ (.opt (fsSendStT (ℓ := ℓ) (Pt := Pt))))
     (vrE : Expr O' Γ (.tbl (.opt (fsRecvStT (ℓ := ℓ) (Pt := Pt)))))
@@ -469,7 +472,7 @@ def f8Mk {O' : Ops ASig} {Γ}
 private theorem partyToBool_eq_partyEnc (p : Party) : partyToBool p = partyEnc p := by
   cases p <;> rfl
 
-def optPtEqAtomicE {Γ : List (Ty ASig)} (a b : Expr AOps Γ (.opt PtT)) : Expr AOps Γ .bool :=
+@[expose] def optPtEqAtomicE {Γ : List (Ty ASig)} (a b : Expr AOps Γ (.opt PtT)) : Expr AOps Γ .bool :=
   eLet (.pair a b)
     (.caseOpt (.fst .v0)
       (.caseOpt (.snd .v0) (.bool true) (.bool false))
@@ -477,7 +480,7 @@ def optPtEqAtomicE {Γ : List (Ty ASig)} (a b : Expr AOps Γ (.opt PtT)) : Expr 
         (opGroup (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
           (decT := decT) (lam := lam) .ptEq (.pair .v1 .v0))))
 
-def sameWireFig8AtomicE {Γ : List (Ty ASig)}
+@[expose] def sameWireFig8AtomicE {Γ : List (Ty ASig)}
     (c1 c2 : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) : Expr AOps Γ .bool :=
   eLet (.pair c1 c2)
     (let x : Expr AOps _ (fig8CtT (ℓ := ℓ) (Pt := Pt)) := .fst .v0
@@ -493,7 +496,7 @@ def sameWireFig8AtomicE {Γ : List (Ty ASig)}
                (decT := decT) (lam := lam) .u64Eq
                (.pair (.snd (.fst (.snd (.snd x)))) (.snd (.fst (.snd (.snd y))))))))))
 
-def eqFig8CAtomicE {Γ : List (Ty ASig)}
+@[expose] def eqFig8CAtomicE {Γ : List (Ty ASig)}
     (c1 c2 : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) : Expr AOps Γ .bool :=
   eLet (.pair c1 c2)
     (let x : Expr AOps _ (fig8CtT (ℓ := ℓ) (Pt := Pt)) := .fst .v0
@@ -503,12 +506,12 @@ def eqFig8CAtomicE {Γ : List (Ty ASig)}
          (decT := decT) (lam := lam) .bv256Eq
          (.pair (.snd (.snd (.snd x))) (.snd (.snd (.snd y))))))
 
-def senderToFreshVrAtomicE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def senderToFreshVrAtomicE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (vE : Expr O' Γ (fsSendStT (ℓ := ℓ) (Pt := Pt))) :
     Expr O' Γ (fsRecvStT (ℓ := ℓ) (Pt := Pt)) :=
   eLet vE (.pair (.fst .v0) (.pair (.snd .v0) .nil))
 
-def defaultMcAtomicE {Γ : List (Ty ASig)} :
+@[expose] def defaultMcAtomicE {Γ : List (Ty ASig)} :
     Expr AOps Γ (.prod (.prod (lpubT (ℓ := ℓ) (Pt := Pt)) PlainT) BV256) :=
   .pair
     (.pair
@@ -518,7 +521,7 @@ def defaultMcAtomicE {Γ : List (Ty ASig)} :
       (opPure .plainDefault .unit))
     (opPure (.bv256Lit 0#256) .unit)
 
-def fig8InitAtomicE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
+@[expose] def fig8InitAtomicE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
     (k12E : Expr AOps Γ (.prod BV256 BV256)) :
     Expr AOps Γ (.prod (fig8StT (ℓ := ℓ) (Pt := Pt)) (fig8StT (ℓ := ℓ) (Pt := Pt))) :=
   eLet k12E
@@ -534,7 +537,7 @@ def fig8InitAtomicE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
          (.some (.pair (.snd out) (.nat 0))) (.tconst .none) (.inr kc) .none (.nat 0)
        .pair stA stB))
 
-def fig8SendStepAtomicE (idA idB : IdentityKey) (B : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fig8SendStepAtomicE (idA idB : IdentityKey) (B : ℕ) {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt)))
     (mcOptE : Expr AOps Γ (.opt (.prod (.prod (lpubT (ℓ := ℓ) (Pt := Pt)) PlainT) BV256))) :
     Expr AOps Γ
@@ -580,7 +583,7 @@ def fig8SendStepAtomicE (idA idB : IdentityKey) (B : ℕ) {Γ : List (Ty ASig)}
                  (.pair (.pair (.ite (.lt tc (.nat B)) tc (.nat B)) (f8Cur s1Inner))
                    (.snd out)))))))
 
-def fsReceiveAtomicE (idA idB : IdentityKey) (B0 B : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fsReceiveAtomicE (idA idB : IdentityKey) (B0 B : ℕ) {Γ : List (Ty ASig)}
     (vE : Expr AOps Γ (fsRecvStT (ℓ := ℓ) (Pt := Pt)))
     (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ
@@ -588,7 +591,7 @@ def fsReceiveAtomicE (idA idB : IdentityKey) (B0 B : ℕ) {Γ : List (Ty ASig)}
         (.prod .nat (.prod (lpubT (ℓ := ℓ) (Pt := Pt)) PlainT)))) :=
   runFig8WithIds idA idB (fsRecvExpr ℓ Pt C Dh encPt encT lam B0 B) (.pair vE cE)
 
-def fig8ReceiveAtomicE (idA idB : IdentityKey) (B0 B : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fig8ReceiveAtomicE (idA idB : IdentityKey) (B0 B : ℕ) {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt)))
     (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ
@@ -1336,7 +1339,7 @@ theorem fig8ReceiveAtomicE_cost (idA idB : IdentityKey) (B0 B : ℕ) {Γ : List 
 
 /-! ## Sanitizers and `Kept` operations -/
 
-def sanRSAtomicE (T : ℕ) {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def sanRSAtomicE (T : ℕ) {O' : Ops ASig} {Γ : List (Ty ASig)}
     (vE : Expr O' Γ (fsRecvStT (ℓ := ℓ) (Pt := Pt))) :
     Expr O' Γ (fsRecvStT (ℓ := ℓ) (Pt := Pt)) :=
   eLet vE (.pair (.fst .v0) (.pair (.fst (.snd .v0)) (.take (.nat T) (.snd (.snd .v0)))))
@@ -1362,7 +1365,7 @@ theorem skippedLenLe_sanRS (T : ℕ) (v : RatchetReceiverState (BitVec 256) (Bit
     SkippedLenLe T (sanRS T v) := by
   simp [SkippedLenLe, sanRS]
 
-def sanGammaAtomicE {Γ : List (Ty ASig)}
+@[expose] def sanGammaAtomicE {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ (ckaStT (ℓ := ℓ) (Pt := Pt)) :=
   eLet stE
@@ -1405,7 +1408,7 @@ theorem sanGammaAtomicE_cost {Γ : List (Ty ASig)}
     cost_opGroup, cost_opPure, AtomicGroupOp.cost, AtomicPureOp.cost, Expr.v0, hb0, hb1]
   omega
 
-def sanAtAtomicE (T : ℕ) {Γ : List (Ty ASig)}
+@[expose] def sanAtAtomicE (T : ℕ) {Γ : List (Ty ASig)}
     (tE : Expr AOps Γ .nat) (stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt)) :=
   eLet (.pair tE stE)
@@ -1474,7 +1477,7 @@ theorem skippedLenLe_sanAt (T : ℕ) (t : ℕ) (st : Fig8St Pt) :
   subst hv
   exact skippedLenLe_sanRS T v0
 
-def keptOfStAtomicE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def keptOfStAtomicE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (stE : Expr O' Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr O' Γ (keptT ℓ Pt) :=
   eLet stE (.pair (.some .v0) (f8VR .v0))
@@ -1493,7 +1496,7 @@ theorem keptOfStAtomicE_cost {O' : Ops ASig} {Γ : List (Ty ASig)}
   simp only [keptOfStAtomicE, f8VR, cost_eLet, Expr.cost, Expr.v0]
   omega
 
-def keptSendAtomicE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
+@[expose] def keptSendAtomicE (idA idB : IdentityKey) {Γ : List (Ty ASig)}
     (kE : Expr AOps Γ (keptT ℓ Pt)) : Expr AOps Γ (keptT ℓ Pt) :=
   eLet kE
     (.caseOpt (.fst .v0)
@@ -1562,7 +1565,7 @@ theorem keptSendAtomicE_cost (idA idB : IdentityKey) {Γ : List (Ty ASig)}
   simp only [hb0, hb1] at hstep ⊢
   omega
 
-def keptRecvAtomicE (idA idB : IdentityKey) (T : ℕ) {Γ : List (Ty ASig)}
+@[expose] def keptRecvAtomicE (idA idB : IdentityKey) (T : ℕ) {Γ : List (Ty ASig)}
     (kE : Expr AOps Γ (keptT ℓ Pt))
     (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ (keptT ℓ Pt) :=
@@ -1687,7 +1690,7 @@ theorem keptRecvAtomicE_cost (idA idB : IdentityKey) (T : ℕ) {Γ : List (Ty AS
   simp only [hb0] at hrs hfs hat hf8 ⊢
   omega
 
-def keptEvalAtomicE (idA idB : IdentityKey) (T B : ℕ) {Γ : List (Ty ASig)}
+@[expose] def keptEvalAtomicE (idA idB : IdentityKey) (T B : ℕ) {Γ : List (Ty ASig)}
     (kE : Expr AOps Γ (keptT ℓ Pt))
     (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ
@@ -1809,7 +1812,7 @@ private theorem list_find?_map {α β : Type} (f : α → β) (p : β → Bool) 
     simp only [List.map_cons, List.find?_cons]
     cases p (f x) <;> simp [list_find?_map]
 
-def sentEvalAtomicE (idA idB : IdentityKey) (L B : ℕ) {Γ : List (Ty ASig)}
+@[expose] def sentEvalAtomicE (idA idB : IdentityKey) (L B : ℕ) {Γ : List (Ty ASig)}
     (sentE : Expr AOps Γ (.list (sentEntryT ℓ Pt)))
     (cE c'E : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ

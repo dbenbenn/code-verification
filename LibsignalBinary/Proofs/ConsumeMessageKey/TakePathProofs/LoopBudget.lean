@@ -9,24 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CommonBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Loop
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CommonBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Loop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.ConsumeMessageKey.Model
 import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.DuplicatedMessageReturnBudget
-import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Fetch
 import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.RemoveBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.RegChain
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.DuplicatedMessageReturn
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Remove
 
 /-!
 # Budget-Threaded Position Search Loop and `remove(p)` Outcome (Block 24)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

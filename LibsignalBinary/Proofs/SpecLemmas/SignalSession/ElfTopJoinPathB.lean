@@ -10,20 +10,20 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAt
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Heap.AesDecErrRoBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomProofF3G -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrExactEnvDefs
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Heap.IfaceBudgetLemmas
@@ -32,10 +32,9 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPla
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2BridgePlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TopPlacedBudget
-import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 import LibsignalBinary.Proofs.PeakBudget.CliDpPollTrustedWideBridge
 import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactAsm
 import LibsignalBinary.Proofs.PeakBudget.CliKitW1W2ExactSlotSpecR2
@@ -46,16 +45,25 @@ import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
 import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
 import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
 import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0
+import LibsignalBinary.Proofs.PeakBudget.WireFieldDomainCaps
 import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
 import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOfEnvGlue
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3MatchingPathBAuxPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H9PathBAssemblyG2
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H9PathBAssemblyHonestR2
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2G
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathB
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMainPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBTopPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStmts
@@ -70,11 +78,18 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.St
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SlotPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudgetInst
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole2FitsEnvParts
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkWireStep2
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget
 import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 import ProofLib.SepLogic.WPp
+meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 
 /-!
 # Unbundled `MainOkPathBD3F3` Assembly on `cliElfBytes`
@@ -84,7 +99,7 @@ Proves `hole_m24slot_pathB_assembly_closed`, establishing `MainOkPathBD3F3` on
 block-520 `decryptPrekey` contract and `Dom0` single-slot budget witness.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.haveILetI false
@@ -93,21 +108,24 @@ set_option maxRecDepth 200000
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfTopJoinPathB
 
 open Arm64 ProofLib SepProp
-open Arm64.Obj (Image MultiPlacement)
+open Arm64.Obj (MultiPlacement)
 open Arm64.Process (bytesOfString)
 open VerifiedLibraries (mallocngLib)
 open VerifiedLibraries.Mallocng (mallocngAddrsOfPlacement)
+open CryptoGames.AES256 (aes256Dec aes256Enc)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
 open CryptoVerification
-  (LibsignalFrozen LibsignalFullPlacement LibsignalPlacement libsignalMutatedBlocks
-   libsignalSessionExterns)
+  (ExternsDistinctOnHooked LibsignalFrozen LibsignalFullPlacement
+   LibsignalPlacement libsignalMutatedBlocks)
 open CryptoVerification.E2E (UnreachedPqxdhPrimitives)
+open CryptoVerification.LibsignalSpqrV1 (sha256Compress)
+open CryptoVerification.SpqrV1.Unchunked (spqrLibcruxHmacSym)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
 open CryptoVerification.RustHeap (RustAlloc)
 open CryptoVerification.SignalSession
-  (CliHooks cliElfBytes cliElfImage cliExternsPlaced libsignalSessionLib lsReadFileSym
-   stdinCapBytes)
+  (CliHooks cliElfBytes cliElfImage cliExternsPlaced libsignalSessionLib lsAesDecSym lsAesEncSym
+   lsReadFileSym stdinCapBytes)
 open CryptoVerification.SignalSession.Cli.MainHops
   (AddrV RunCall cliIo cliMainStk cliResStack cliRunBudgets cliRunBudgets_placed cliRunNeeds
    cliWrOk inputOf mainFrameSize parseArgs)
@@ -125,8 +143,9 @@ open CryptoVerification.SignalSession.Cli.Slots
   (FilesOkPeer encodeInjOn_deserializeScopeP_Q loadRec scopeIn scopeKit)
 open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget SeqEnv)
 open LibsignalBinary.Heap.Fine (fineCostModel fineHookRustCliAllocBudget)
+open LibsignalBinary.Heap.AesDecErrRoBudget (cliAesDecBudgetSpecErrRo)
+open LibsignalBinary.Heap.SpecBudget (aesEncBudgetSpec)
 open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget (CmkLoopAdvanceEvs)
-open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget (fineAesDec_budget_hookOk)
 open LibsignalBinary.Proofs.PeakBudget.CliDomainCaps (pksmParse_lengths_le)
 open LibsignalBinary.Proofs.PeakBudget.CliDpPollTrustedWideBridge (not_fitsEnv_top)
 open LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith (cliBudgetLimits)
@@ -165,16 +184,22 @@ open LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOfEnvGlue
   (cli_tryDecrypt_of_tdEnv_at_518)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
   (peerSpqrStateTight640_of_cliPqOrD3Recv)
-open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3
-  (MainOkPathBD3F3 cliRunSemPathB)
+open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomProofF3G (MainOkPathBD3F3G)
+open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3 (cliRunSemPathB)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 (CliPqOrD3RecvInputs)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H9PathBAssemblyG2
-  (h9g_poll_readFile_and_sessDeser_of_hooks)
+  (h9g_cliPubCallees_f3_frozen_placed h9g_decSigFrozenSlotOk_d2c_to_pathB
+   h9g_encSlotOk_d2c_to_pathB h9g_initSlotOk_pathB_of_cliInitSlotOkPlaced
+   h9g_mainSubroutinePathBD3F3_of_sEnvs_frozen h9g_poll_readFile_and_sessDeser_of_hooks)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H9PathBAssemblyHonestR2
-  (h9r2_honestD3FineSlotEnvs h9r2_pathB_assembly_honest_d2cSlots_of_dom0_singleSlot)
+  (h9r2_hfitCap_pathB_of_dom0_singleSlot h9r2_honestD3FineSlotEnvs h9r2_initEnv_r1c_congr)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAt (ExternNoAllocFailed)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced (ReadFileRuleEnvFixed)
+open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2G (F3SampleNttEntryGuard)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer (Block617TransferFixedHyp)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.Block617TransferG
+  (subroutine_ok_withEntryGuard_of_plain)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget (libsignalPlacementOf)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced
   (MainIoOfPlaced ReadStdinBoundedEnv)
@@ -200,11 +225,11 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole2FitsEnvP
    fits2_w2DecSigExact_groupSpec fits2_w2DecSigExact_phaseCredit)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
   (cliDecryptSignalBinaryKitSlotEnvExact cliEncryptBinaryKitSlotEnvExact
-   hole3_decSigEnv_r3a_congr hole3_encEnv_r2_congr hole3_w1_inner hole3_w2_inner hole3_w3_init
-   libsignalFullPlacementOf)
+   hole3_decSigEnv_r3a_congr hole3_encEnv_r2_congr hole3_w1_inner_of_hmac hole3_w2_inner_of_hmac
+   hole3_w3_init libsignalFullPlacementOf)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkWireStep2
   (w4s2_TryDecryptTopStateGuardedEnv w4s2_spqrRecvTopStateGuardedBytesEnv_nonempty
-   w4s2_spqrSeams_topStateGuarded w4s2_tryDecryptTopStateGuardedEnv_eq_linked_of_top)
+   w4s2_spqrSeams_topStateGuarded_of_hmac w4s2_tryDecryptTopStateGuardedEnv_eq_linked_of_top)
 open LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget (InitialStateEnv)
 
 /-! ## `TopStateTight`-Guarded `tryDecrypt` Envelope Reduction -/
@@ -799,6 +824,33 @@ private theorem h8pb_cliDropSessionStructure4_budget_placed_ok_at [LibsignalPlac
         (LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget.dropSessionStructureLocal2Spec M A lim)) :=
   drop_session_structure4_placed_ok_at (i := 518) hh.codecHooks.dealloc (by decide)
 
+private theorem etjpb_byteArray_loop_len (bs : ByteArray) (i : Nat) (acc : List UInt8)
+    (hi : i ≤ bs.size) :
+    (ByteArray.toList.loop bs i acc).length = acc.length + (bs.size - i) := by
+  unfold ByteArray.toList.loop
+  split
+  · rw [etjpb_byteArray_loop_len bs (i + 1) _ (by omega)]; simp; omega
+  · simp; omega
+termination_by bs.size - i
+decreasing_by
+  have : i < bs.size := ‹_›; omega
+
+private theorem etjpb_peer_name_len_le_40 {W : CryptoVerification.E2E.PEParams}
+    {Scope : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)) → Prop}
+    {F : CryptoVerification.LibsignalPublicApi.StoreKit.FsFiles}
+    {peer me : CryptoVerification.LibsignalTripleRatchetRepr.AddrGhost} {pm}
+    (hd : LibsignalBinary.Proofs.SignalSession.Cli.D3.DecPkOkPathB W Scope F peer.val me.val pm) :
+    peer.name.bytes.length ≤ 40 := by
+  obtain ⟨P, hp, _⟩ := hd.party
+  change peer.val.name.length ≤ 40
+  rw [congrArg CryptoVerification.LibsignalPublicApiRepr.AddrVal.name hp]
+  dsimp only [CryptoVerification.SignalSession.Cli.RunRefine.addrValE]
+  unfold CryptoVerification.SignalSession.Cli.utf8 ByteArray.toList
+  rw [List.length_map, etjpb_byteArray_loop_len _ 0 [] (Nat.zero_le _),
+    String.toUTF8_eq_toByteArray]
+  simp only [List.length_nil, Nat.zero_add, Nat.sub_zero, String.size_toByteArray]
+  cases P <;> decide
+
 set_option maxHeartbeats 800000 in
 private theorem h8pb_decPk_matchingPathB_main_gv_frozen_placedBudget [LibsignalFullPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1227,6 +1279,7 @@ private theorem h8pb_decPk_matchingPathB_main_gv_frozen_placedBudget [LibsignalF
       g recG sess.state y.g.peer y.g.me y.g.msgG.msg y.g.msg.message F_p3 _
       (hfits_p3 hrem_eq evs_p2 recG hevs_p2 hex hgv)
       (by decide) (Or.inr (distinctSid_of_decPkOkPathB hdecOk)) hSeeds hRC hPqLt
+      (etjpb_peer_name_len_le_40 hdecOk)
       hfr2 hpc2 hrun2 hsp_align2 (hs2_sp ▸ hroot) htr20 hvregs2 ?_ ?_ ?_
     · intro G₁ G' evs_p3 pt ptCap ptPtr s' P_s' hver hcl hdec_rel hevs_p3 hok hpt_le hpt_lt hpt_ne
         hsteps2' hpc' hrun' hs'_sp htr' hvregs' hx19' hx24' hx25' hx26' hx27' hx28'
@@ -2105,7 +2158,7 @@ private theorem h8pb_decPk_matchingPathB_poll_gv_frozen_placedBudget [LibsignalF
     have hh_st := runHooks_to_stages hh
     have hne_false :
         StoresGhost.opened.identity.trusted cliIo.rd y.g.F y.g.peer.val y.g.msg.identityKey ≠ .ok false := by
-      rw [htrusted]; decide
+      rw [htrusted]; nofun
     have hfits_seq : FitsEnv M lim y.st
         (SeqEnv
           (StageP1OkEnv
@@ -2155,7 +2208,7 @@ private theorem h8pb_toSkeletonRunHooks [LibsignalPlacement] {M : AllocCostModel
   { alloc := hh.alloc, allocFs := hh.allocFs, panics := hh.panics, memcpyRO := hh.memcpyRO,
     bcmp := hh.bcmp, fs := hh.fs, utf8 := hh.utf8, memrchr := hh.memrchr,
     codecHooks := hh.codecHooks, allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-    formatInner := hh.formatInner, blackBox := hh.blackBox }
+    fmtWrite := hh.fmtWrite, formatInner := hh.formatInner, blackBox := hh.blackBox }
 
 private theorem h8pb_withPanics_cliGhostExterns_eq (mmpl : Obj.MultiPlacement)
     (gh : CliGhostHooks) (W : CliHooks) :
@@ -2390,9 +2443,9 @@ private def h8pb_decPkDom0_singleSlot [LibsignalPlacement]
     live_le_peak := w4CmkDom0_live_le_peak
     groups := PhaseGroupSpec.of_imp (w4CmkDom0GrpSOf_109_eq ▸ S4.groups) hSub }
 
-/-! ## Top-Level `MainOkPathBD3F3` Assembly -/
+/-! ## Top-Level `MainOkPathBD3F3G` Assembly -/
 
-/-- Establishes `MainOkPathBD3F3` on `cliElfBytes` from unbundled ghost-witness field hypotheses. -/
+/-- Establishes `MainOkPathBD3F3G` on `cliElfBytes` from unbundled ghost-witness field hypotheses. -/
 theorem hole_m24slot_pathB_assembly_closed
     {mpl mmpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
@@ -2400,7 +2453,7 @@ theorem hole_m24slot_pathB_assembly_closed
     (hookStack : Nat)
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (hPl_mng : mallocngLib.Placeable mmpl)
     (hMainStk : mainFrameSize + max (max extHookStack hookStack) cliResStack ≤ cliMainStk)
     (hTrFrozen : Block617TransferFixedHyp mpl mmpl ghFixed
@@ -2411,6 +2464,13 @@ theorem hole_m24slot_pathB_assembly_closed
       ∀ (γ : GhostName) (tp : BitVec 64),
         CliGhostSpqrAllocHooks fineCostModel
           (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits ghFixed)
+    (hHmacSat :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+      ∀ (W : CliHooks), W.C.F = sha256Compress → ∀ (γ : GhostName) (tp : BitVec 64),
+        HookSat (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) spqrLibcruxHmacSym
+          (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+            (LibsignalBinary.Heap.SpecBudget.libcruxHmacBudgetSpec W.C.F fineCostModel
+              (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits)))
     (hFs : CliGhostHooksFs ghFixed)
     (hReadSat : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
       HookSat (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) lsReadFileSym
@@ -2427,16 +2487,31 @@ theorem hole_m24slot_pathB_assembly_closed
       @CliRunHooksBundle (libsignalPlacementOf mpl hblk hext_nodup) mmpl ghFixed W fineCostModel
         (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
         (ReadFileRuleEnvFixed cliIo.rd))
-    (hSpqr : ∀ (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
+    (hSpqr : ∀ (W : CliHooks), W.C.F = sha256Compress →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ (γ : GhostName) (tp : BitVec 64),
       @SpqrV1PlacedSeamsOfEnv (libsignalPlacementOf mpl hblk hext_nodup)
         fineCostModel (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
         mmpl ghFixed W
         (InitialStateEnv W.C.F)
         (CliSpqrRecvTightLinkedEnv W)
-        (SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K)) :
-    MainOkPathBD3F3 mpl mmpl (F3CodeOk mpl mmpl)
+        (SpqrSendCoinsTightLinkedEnv W.C.F W.Q.K))
+    (hAesEncSat :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+      ∀ (W : CliHooks), W.C.E = aes256Enc → ∀ (γ : GhostName) (tp : BitVec 64),
+        HookSat (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) lsAesEncSym
+          (withLsRet (aesEncBudgetSpec W.C.E fineCostModel
+            (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits)))
+    (hAesDecSat :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+      ∀ (W : CliHooks), W.C.D = aes256Dec → ∀ (γ : GhostName) (tp : BitVec 64),
+        HookSat (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) lsAesDecSym
+          (withLsRet (cliAesDecBudgetSpecErrRo W.C.D fineCostModel
+            (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits))) :
+    MainOkPathBD3F3G mpl mmpl (F3CodeOk mpl mmpl)
       (mallocngAddrsOfPlacement mmpl).libc cliElfImage.brkStart cliMainStk := by
   have _ := hSpqr
+  have ⟨_, _, hFullPl, _⟩ := hLs
   let DecPkSlotEnv : UnreachedPqxdhPrimitives → CliHooks → GhostName → BitVec 64 →
       DecPkGhost → List AllocEvent → Prop :=
     fun X W _γ _tp =>
@@ -2448,91 +2523,112 @@ theorem hole_m24slot_pathB_assembly_closed
         cliBudgetLimits ghFixed := by
     letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
     exact fun γ tp => (hGSpqr γ tp).toCliGhostAllocHooks
-  refine h9r2_pathB_assembly_honest_d2cSlots_of_dom0_singleSlot
-    hLs hblk hext_nodup ghFixed (default : Image)
-    (fun [LibsignalPlacement] {_M'} W A' B' => cliEncryptBinaryKitSlotEnvExact W A' B')
-    (fun [LibsignalPlacement] {_M'} W A' B' => cliDecryptSignalBinaryKitSlotEnvExact W A' B')
-    cliRunBudgets DecPkSlotEnv
+  have hFitCap :=
+    h9r2_hfitCap_pathB_of_dom0_singleSlot
+      (mmpl := mmpl) (brkStart := cliElfImage.brkStart)
+      hblk hext_nodup (default : Unit)
+      (fun [LibsignalPlacement] {_M'} W A' B' => cliEncryptBinaryKitSlotEnvExact W A' B')
+      (fun [LibsignalPlacement] {_M'} W A' B' => cliDecryptSignalBinaryKitSlotEnvExact W A' B')
+      cliRunBudgets DecPkSlotEnv
+      w4CmkDom0Cum w4CmkDom0Live w4CmkDom0Peak w4CmkDom0MaxReq w4CmkDom0GrpS109
+      (fun _h547 W g peerV M' A' w1R hi hp hc hrep hdom => by
+        letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+        have heq : cliEncryptBinaryKitSlotEnvExact W A' w1R.B =
+            ckx2_cliEncryptBinaryKitSlotEnvExact W A' w1R.B :=
+          congrArg
+            (fun (f : {M' : AllocCostModel} → RustCliAllocBudget M' → RunBudgets → _) => f A' w1R.B)
+            (fits2_cliEncryptBinaryKitSlotEnvExact_eq_ckx2 W)
+        rw [heq]
+        exact ckx2_w1EncExact_phaseCredit W g peerV M' A' w1R hi hp hc hrep hdom)
+      (fun _h547 W g peerV M' A' w1R hi hp hc hrep hdom => by
+        letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+        have heq : cliEncryptBinaryKitSlotEnvExact W A' w1R.B =
+            ckx2_cliEncryptBinaryKitSlotEnvExact W A' w1R.B :=
+          congrArg
+            (fun (f : {M' : AllocCostModel} → RustCliAllocBudget M' → RunBudgets → _) => f A' w1R.B)
+            (fits2_cliEncryptBinaryKitSlotEnvExact_eq_ckx2 W)
+        rw [heq]
+        exact ckx2_w1EncExact_groupSpec W g peerV M' A' w1R hi hp hc hrep hdom)
+      (fun _h547 W g peerV M' A' w2R hi hp hc hrep hdom => by
+        letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+        have heq : cliDecryptSignalBinaryKitSlotEnvExact W A' w2R.B =
+            ckx2_cliDecryptSignalBinaryKitSlotEnvExact W A' w2R.B :=
+          congrArg
+            (fun (f : {M' : AllocCostModel} → RustCliAllocBudget M' → RunBudgets → _) => f A' w2R.B)
+            (fits2_cliDecryptSignalBinaryKitSlotEnvExact_eq_ckx2 W)
+        rw [heq]
+        exact fits2_w2DecSigExact_phaseCredit W g peerV M' A' w2R hi hp hc hrep hdom)
+      (fun _h547 W g peerV M' A' w2R hi hp hc hrep hdom => by
+        letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+        have heq : cliDecryptSignalBinaryKitSlotEnvExact W A' w2R.B =
+            ckx2_cliDecryptSignalBinaryKitSlotEnvExact W A' w2R.B :=
+          congrArg
+            (fun (f : {M' : AllocCostModel} → RustCliAllocBudget M' → RunBudgets → _) => f A' w2R.B)
+            (fits2_cliDecryptSignalBinaryKitSlotEnvExact_eq_ckx2 W)
+        rw [heq]
+        exact fits2_w2DecSigExact_groupSpec W g peerV M' A' w2R hi hp hc hrep hdom)
+      (fun _h547 X W _γ _tp g meV peerV rest pm hi_g hp hin hc hst hpk => by
+        letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+        exact h8pb_decPkDom0_singleSlot X W g meV peerV rest pm hi_g hp hin hc hst hpk)
+      (fun _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ =>
+        ⟨Nat.le_refl _, Nat.le_refl _, Nat.le_refl _, Nat.le_refl _, Nat.le_refl _⟩)
+      w4CmkDom0_live_le_peak
+      (by unfold d3SlotMainFitsOneGiBOf; decide)
+  intro h547 X W hF hE hD hX hPub hF512 hEnc _hDec hK γ tp
+  let sEnvsOf : GhostName → BitVec 64 → RunSlotEnvs :=
+    h9r2_honestD3FineSlotEnvs hblk hext_nodup
+      (fun [LibsignalPlacement] {_M'} W A' B' => cliEncryptBinaryKitSlotEnvExact W A' B')
+      (fun [LibsignalPlacement] {_M'} W A' B' => cliDecryptSignalBinaryKitSlotEnvExact W A' B')
+      mmpl cliElfImage.brkStart cliRunBudgets DecPkSlotEnv X W
+  refine subroutine_ok_withEntryGuard_of_plain (F3SampleNttEntryGuard mpl mmpl) ?_
+  refine h9g_mainSubroutinePathBD3F3_of_sEnvs_frozen
+    hblk hext_nodup hFullPl ghFixed
+    (CliPqOrD3RecvInputs ⟨W.C, W.Q⟩) X W sEnvsOf
     (decPkNeed := cliDecryptPrekeyNeed cliRunBudgets)
-    w4CmkDom0Cum w4CmkDom0Live w4CmkDom0Peak w4CmkDom0MaxReq w4CmkDom0GrpS109
-    rfl hTrFrozen hG hioOf hMainStk (fun _ => hHooksBundle)
-    (fun W γ tp g peerV peerG meG fsp hp => by
+    rfl hTrFrozen hG (hioOf W) hMainStk (hHooksBundle W)
+    (fun γ' tp' => by
       letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
-      exact hole3_encEnv_r2_congr W
-        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) g peerV peerG meG fsp hp)
-    (fun W γ tp g fsp w peerV meG msgG m => by
-      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
-      exact hole3_decSigEnv_r3a_congr W
-        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) g fsp w peerV meG msgG m)
-    (fun X W _γ _tp x y hp hm hs hcp hf hc hmsg => by
-      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
-      exact realCliDecPkBinaryWideSlotEnvCmkDom0GuardedFixed_ghost_congr
-        w4c_repairedStatesRecvEnvFam X W x y hp hm hs hcp hf hc hmsg)
-    (fun h547 X W γ tp =>
-      hole3_w1_inner hLs hblk hext_nodup ghFixed hPl_mng X W γ tp
-        (hGSpqr γ tp) hFs (hReadSat W γ tp) (hHooksBundle W γ tp) h547)
-    (fun h547 X W γ tp =>
-      hole3_w2_inner hLs hblk hext_nodup ghFixed hPl_mng X W γ tp
-        (hGSpqr γ tp) hFs (hReadSat W γ tp) (hHooksBundle W γ tp) h547)
-    (fun h547 X W γ tp =>
-      hole3_w3_init hLs hblk hext_nodup ghFixed hPl_mng X W γ tp
-        (hGSpqr γ tp) hFs (hReadSat W γ tp) hghNoAlloc (hHooksBundle W γ tp) h547)
+      exact h9g_cliPubCallees_f3_frozen_placed mmpl ghFixed W (hHooksBundle W γ' tp')
+        (fun g d2 fsp => h9r2_initEnv_r1c_congr W g d2 fsp)
+        (fun g peerV peerG meG fsp hp =>
+          hole3_encEnv_r2_congr W
+            (fineHookRustCliAllocBudget γ' mmpl tp' cliElfImage.brkStart) g peerV peerG meG fsp hp)
+        (fun g fsp w peerV meG msgG m =>
+          hole3_decSigEnv_r3a_congr W
+            (fineHookRustCliAllocBudget γ' mmpl tp' cliElfImage.brkStart) g fsp w peerV meG msgG m)
+        (fun x y hp hm hs hcp hf hc hmsg =>
+          realCliDecPkBinaryWideSlotEnvCmkDom0GuardedFixed_ghost_congr
+            w4c_repairedStatesRecvEnvFam X W x y hp hm hs hcp hf hc hmsg))
+    (fun γ' tp' => by
+      letI : LibsignalFullPlacement := libsignalFullPlacementOf mpl hLs hblk hext_nodup
+      exact h9g_encSlotOk_d2c_to_pathB X W
+        (hole3_w1_inner_of_hmac hLs hblk hext_nodup ghFixed hPl_mng X W hF hK γ' tp'
+          (hGSpqr γ' tp') (hHmacSat W hF γ' tp') hFs (hReadSat W γ' tp') (hHooksBundle W γ' tp')
+          (hAesEncSat W hE γ' tp') h547))
+    (fun γ' tp' => by
+      letI : LibsignalFullPlacement := libsignalFullPlacementOf mpl hLs hblk hext_nodup
+      exact h9g_decSigFrozenSlotOk_d2c_to_pathB X W
+        (hole3_w2_inner_of_hmac hLs hblk hext_nodup ghFixed hPl_mng X W hF hX hPub hK γ' tp'
+          (hGSpqr γ' tp') (hHmacSat W hF γ' tp') hFs (hReadSat W γ' tp') (hHooksBundle W γ' tp')
+          (hAesDecSat W hD γ' tp') h547))
+    (fun γ' tp' => by
+      letI : LibsignalFullPlacement := libsignalFullPlacementOf mpl hLs hblk hext_nodup
+      exact h9g_initSlotOk_pathB_of_cliInitSlotOkPlaced mmpl ghFixed X W
+        (hole3_w3_init hLs hblk hext_nodup ghFixed hPl_mng X W hF hX hPub hF512 hEnc γ' tp'
+          (hGSpqr γ' tp') hFs (hReadSat W γ' tp') hghNoAlloc (hHooksBundle W γ' tp') h547)
+        rfl)
     (by decide)
-    (fun h547 X W γ tp => ?_)
-    (fun _h547 W g peerV M' A' w1R hi hp hc hrep hdom => by
-      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
-      have heq : cliEncryptBinaryKitSlotEnvExact W A' w1R.B =
-          ckx2_cliEncryptBinaryKitSlotEnvExact W A' w1R.B :=
-        congrArg
-          (fun (f : {M' : AllocCostModel} → RustCliAllocBudget M' → RunBudgets → _) => f A' w1R.B)
-          (fits2_cliEncryptBinaryKitSlotEnvExact_eq_ckx2 W)
-      rw [heq]
-      exact ckx2_w1EncExact_phaseCredit W g peerV M' A' w1R hi hp hc hrep hdom)
-    (fun _h547 W g peerV M' A' w1R hi hp hc hrep hdom => by
-      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
-      have heq : cliEncryptBinaryKitSlotEnvExact W A' w1R.B =
-          ckx2_cliEncryptBinaryKitSlotEnvExact W A' w1R.B :=
-        congrArg
-          (fun (f : {M' : AllocCostModel} → RustCliAllocBudget M' → RunBudgets → _) => f A' w1R.B)
-          (fits2_cliEncryptBinaryKitSlotEnvExact_eq_ckx2 W)
-      rw [heq]
-      exact ckx2_w1EncExact_groupSpec W g peerV M' A' w1R hi hp hc hrep hdom)
-    (fun _h547 W g peerV M' A' w2R hi hp hc hrep hdom => by
-      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
-      have heq : cliDecryptSignalBinaryKitSlotEnvExact W A' w2R.B =
-          ckx2_cliDecryptSignalBinaryKitSlotEnvExact W A' w2R.B :=
-        congrArg
-          (fun (f : {M' : AllocCostModel} → RustCliAllocBudget M' → RunBudgets → _) => f A' w2R.B)
-          (fits2_cliDecryptSignalBinaryKitSlotEnvExact_eq_ckx2 W)
-      rw [heq]
-      exact fits2_w2DecSigExact_phaseCredit W g peerV M' A' w2R hi hp hc hrep hdom)
-    (fun _h547 W g peerV M' A' w2R hi hp hc hrep hdom => by
-      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
-      have heq : cliDecryptSignalBinaryKitSlotEnvExact W A' w2R.B =
-          ckx2_cliDecryptSignalBinaryKitSlotEnvExact W A' w2R.B :=
-        congrArg
-          (fun (f : {M' : AllocCostModel} → RustCliAllocBudget M' → RunBudgets → _) => f A' w2R.B)
-          (fits2_cliDecryptSignalBinaryKitSlotEnvExact_eq_ckx2 W)
-      rw [heq]
-      exact fits2_w2DecSigExact_groupSpec W g peerV M' A' w2R hi hp hc hrep hdom)
-    (fun _h547 X W _γ _tp g meV peerV rest pm hi_g hp hin hc hst hpk => by
-      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
-      exact h8pb_decPkDom0_singleSlot X W g meV peerV rest pm hi_g hp hin hc hst hpk)
-    (fun _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ =>
-      ⟨Nat.le_refl _, Nat.le_refl _, Nat.le_refl _, Nat.le_refl _, Nat.le_refl _⟩)
-    w4CmkDom0_live_le_peak
-    (by unfold d3SlotMainFitsOneGiBOf; decide)
+    (fun γ' tp' => ?_)
+    (hFitCap h547 X W)
+    γ tp
   letI : LibsignalFullPlacement := libsignalFullPlacementOf mpl hLs hblk hext_nodup
-  let A := fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart
-  let sEnvs := h9r2_honestD3FineSlotEnvs hblk hext_nodup
-    (fun [LibsignalPlacement] {_M'} W A' B' => cliEncryptBinaryKitSlotEnvExact W A' B')
-    (fun [LibsignalPlacement] {_M'} W A' B' => cliDecryptSignalBinaryKitSlotEnvExact W A' B')
-    mmpl cliElfImage.brkStart cliRunBudgets DecPkSlotEnv X W γ tp
+  let A := fineHookRustCliAllocBudget γ' mmpl tp' cliElfImage.brkStart
+  let sEnvs := sEnvsOf γ' tp'
   let DecPkEnv₀ := DecPkD3MatchingPathBGvSeqFreeOfReadEnv A.repAlloc W cliRunBudgets_placed
     (ReadFileRuleEnvFixed cliIo.rd) (w4s2_TryDecryptTopStateGuardedEnv W)
   obtain ⟨hReadPoll, hDeserPoll⟩ :=
-    h9g_poll_readFile_and_sessDeser_of_hooks mmpl ghFixed W (hG γ tp) (hReadSat W γ tp)
-  have hHooksP := (hHooksBundle W γ tp).runHooks
+    h9g_poll_readFile_and_sessDeser_of_hooks mmpl ghFixed W (hG γ' tp') (hReadSat W γ' tp')
+  have hHooksP := (hHooksBundle W γ' tp').runHooks
   have hhClosure :
       LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget.RunHooksPlaced
         A cliBudgetLimits (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) :=
@@ -2540,21 +2636,23 @@ theorem hole_m24slot_pathB_assembly_closed
       memcpyRO := hHooksP.memcpyRO, bcmp := hHooksP.bcmp, fs := hHooksP.fs,
       utf8 := hHooksP.utf8, memrchr := hHooksP.memrchr, codecHooks := hHooksP.codecHooks,
       allocZeroed := hHooksP.allocZeroed, stringClone := hHooksP.stringClone,
-      formatInner := hHooksP.formatInner, blackBox := hHooksP.blackBox }
-  have hAesDec :=
-    fineAesDec_budget_hookOk γ tp cliElfImage.brkStart cliBudgetLimits hPl_mng W.C.D
+      fmtWrite := hHooksP.fmtWrite, formatInner := hHooksP.formatInner,
+      blackBox := hHooksP.blackBox }
+  have hAesDec := hAesDecSat W hD γ' tp'
   have hSpqrTop :=
-    w4s2_spqrSeams_topStateGuarded mmpl ghFixed hPl_mng W γ tp cliElfImage.brkStart (hGSpqr γ tp)
+    w4s2_spqrSeams_topStateGuarded_of_hmac mmpl ghFixed W hF hK γ' tp' cliElfImage.brkStart
+      (hGSpqr γ' tp') (hHmacSat W hF γ' tp') hHooksP.formatInner
   have hTryDec :=
     cli_tryDecrypt_of_tdEnv_at_518 (tdEnv := w4s2_TryDecryptTopStateGuardedEnv)
-      mmpl ghFixed W 0#64 (hG γ tp) hAesDec hSpqrTop
+      mmpl ghFixed W 0#64 (hG γ' tp') hF hX hPub hAesDec hSpqrTop
+      hHooksP.fmtWrite hHooksP.formatInner
       (w4s2_spqrRecvTopStateGuardedBytesEnv_nonempty W.C.F W.Q.K)
       (fun _ _ h => h)
   have hSlot0 :
       (slotsOfSigPkFrozenPlaced A cliBudgetLimits { sEnvs with decryptPrekey := DecPkEnv₀ }
         (cliRunSemPathB X W) (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).decryptPrekey.OkPlaced
         (lsProg_579 (cliGhostExterns ghFixed (cliExternsPlaced mmpl W))) (mpl.base 520) :=
-    h8pb_decPkPathBSlotOk_gvSeqFree_frozen_placedBudget X mmpl ghFixed W (hG γ tp)
+    h8pb_decPkPathBSlotOk_gvSeqFree_frozen_placedBudget X mmpl ghFixed W (hG γ' tp')
       h547 hhClosure hReadPoll hDeserPoll hTryDec
       (cliRunSemPathB X W) { sEnvs with decryptPrekey := DecPkEnv₀ }
       (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))

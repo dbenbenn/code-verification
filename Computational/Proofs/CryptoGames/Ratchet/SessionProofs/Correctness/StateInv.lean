@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Chains
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RoundTrip
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Chains
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RoundTrip
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.Crypto
 import Computational.Proofs.CryptoGames.SM.Theorem7Proof
 import Std.Tactic.BVDecide.Normalize.BitVec
 import Std.Tactic.BVDecide.Normalize.Prop
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
-public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
+import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
+public import LibsignalBinary.Specifications.CryptoGames.CKA.LibsignalCKA
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.ChainDefs
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSMInstance
 
 /-!
 # Epoch trace for session correctness
@@ -27,7 +30,7 @@ Defines `EpochTrace`, tracking root keys, chain keys, and distinct ratchet publi
 Double Ratchet epochs for `libsignal_corr`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Correctness
 
@@ -70,7 +73,7 @@ namespace EpochTrace
 variable {Pt : Type} {F : ShaCompress} {Dh : DHFun (BitVec 256) Pt}
   {encPt : Pt → List (BitVec 8)}
 
-def T (tr : EpochTrace F Dh encPt) (e : ℕ) : Pt :=
+@[expose] def T (tr : EpochTrace F Dh encPt) (e : ℕ) : Pt :=
   Dh.dh (tr.x e) Dh.base
 
 theorem T_ne_zero [Zero Pt] {C : Crypto} {encT : Pt → PublicKey}

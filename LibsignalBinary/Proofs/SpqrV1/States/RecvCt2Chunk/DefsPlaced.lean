@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymB
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymB -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`): Relocatable Specifications
@@ -20,7 +21,7 @@ Relocatable `[LibsignalPlacement]` `.rodata` bundle `recvCt2ChunkRoPlacedAt` and
 contracts (`RecvCt2ChunkPlacedOkExt`, `RecvCt2ChunkPlacedOkX`) for Block `350`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -55,7 +56,7 @@ abbrev ctLabelSym : String := "spqr:.rodata..Lanon.137"
 abbrev zeros32Sym : String := "spqr:.rodata.cst32+0x0"
 
 /-- Relocatable callee specification of `<PolyDecoder as Decoder>::decoded_message` (Block `418`). -/
-def polyDecodedMessagePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec PolyDecodedMessageCall where
+@[expose] def polyDecodedMessagePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec PolyDecodedMessageCall where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.outA ∧
       s.readReg64 .x0 = x.decA ∧
@@ -79,14 +80,14 @@ def polyDecodedMessagePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec Pol
 
 /-- Relocatable contract for `<PolyDecoder as Decoder>::decoded_message` (Block `418`)
     wrapped with `withLsCodeRoLoaded lsmpl`. -/
-def PolyDecodedMessagePlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def PolyDecodedMessagePlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))
     (blkPl_418).base
     (withLsCodeRoLoaded lsmpl (polyDecodedMessagePlacedSpec A))
 
 /-- Relocatable specification of `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`). -/
-def recvCt2ChunkPlacedSpec [LibsignalPlacement]
+@[expose] def recvCt2ChunkPlacedSpec [LibsignalPlacement]
     (K : MlKem) (F : ShaCompress) (A : RustAlloc) :
     Spec (RecvCt2ChunkGhost F) where
   pre := fun x s =>
@@ -119,7 +120,7 @@ def recvCt2ChunkPlacedSpec [LibsignalPlacement]
 
 /-- Relocatable contract for `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`)
     wrapped with `withLsCodeRoLoaded lsmpl`. -/
-def RecvCt2ChunkPlacedOkX [LibsignalPlacement] (K : MlKem) (F : ShaCompress) (A : RustAlloc)
+@[expose] def RecvCt2ChunkPlacedOkX [LibsignalPlacement] (K : MlKem) (F : ShaCompress) (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_350 (Rust.withPanics ext))
     (blkPl_350).base

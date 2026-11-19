@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
-public import Symbolic.Proofs.Swarm.CREF.Cli.MoveBrkLemmas
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.MoveBrkLemmas -- proof-setup: allow-public-import
 
 /-!
 # Faithful Trace Explanations and Call-Block Predicates
@@ -20,7 +20,7 @@ invariance (`NoSessionEffect`, `InvisibleNoEffect`), split call-block matching (
 classification predicates, and single-visible-move block decompositions (`OneMove`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +35,7 @@ open DY.Libsignal.PQXDH (PQXDHEvent)
 open CryptoProofLib.Refinement (ExternInterpretation)
 
 /-- The participant a move acts for, if any. -/
-def moveActor : Move → Option Participant
+@[expose] def moveActor : Move → Option Participant
   | .setup .. => none
   | .aliceStart a .. => some a
   | .bobStart b .. => some b
@@ -57,7 +57,7 @@ def moveActor : Move → Option Participant
   | .brkKEM => none
 
 /-- The actor associated with each visible entry of `runMoves ms tr`, in trace order. -/
-def visActorsFrom : List Move → ExecTrace → List (Option Participant)
+@[expose] def visActorsFrom : List Move → ExecTrace → List (Option Participant)
   | [], _ => []
   | m :: ms, tr => List.replicate (m.vis tr).length (moveActor m) ++ visActorsFrom ms (m.next tr)
 
@@ -70,10 +70,10 @@ theorem visActorsFrom_append :
       List.append_assoc]
 
 /-- Two optional actor tags agree when equal or when at least one is `none`. -/
-def ActorAgrees (a l : Option Participant) : Prop := a = none ∨ l = none ∨ a = l
+@[expose] def ActorAgrees (a l : Option Participant) : Prop := a = none ∨ l = none ∨ a = l
 
 /-- `P` holds at every move of `δ` from the trace at which that move executes. -/
-def MovesFrom (P : ExecTrace → Move → Prop) : ExecTrace → List Move → Prop
+@[expose] def MovesFrom (P : ExecTrace → Move → Prop) : ExecTrace → List Move → Prop
   | _, [] => True
   | tr, m :: δ => P tr m ∧ MovesFrom P (m.next tr) δ
 
@@ -92,7 +92,7 @@ theorem movesFrom_mono {P Q : ExecTrace → Move → Prop} (hPQ : ∀ tr m, P tr
 
 /-- Every new trace index produced by `m` from `tr` holds no stored `TRState`, no session-related
 `PQXDHEvent` (`NonSessionPQAt`), no `TREvent`, and no `ComposedEvent`. -/
-def NoSessionEffect (tr : ExecTrace) (m : Move) : Prop :=
+@[expose] def NoSessionEffect (tr : ExecTrace) (m : Move) : Prop :=
   ∀ i ∈ newIndices tr (m.next tr),
     ((m.next tr).at? i : Option (PersistentGlobalState.State.ExecEntryT
         (PersistentLocalState.LocalState TRState))) = none ∧
@@ -101,10 +101,10 @@ def NoSessionEffect (tr : ExecTrace) (m : Move) : Prop :=
       ((m.next tr).at? i : Option (ProtocolEvent.ExecEntryT ComposedEvent)) = none
 
 /-- `m` acts for `p` or has no actor. -/
-def ActorIn (p : Participant) (m : Move) : Prop := moveActor m = none ∨ moveActor m = some p
+@[expose] def ActorIn (p : Participant) (m : Move) : Prop := moveActor m = none ∨ moveActor m = some p
 
 /-- `m` emits no visible entries and satisfies `NoSessionEffect tr m`. -/
-def InvisibleNoEffect (tr : ExecTrace) (m : Move) : Prop := m.vis tr = [] ∧ NoSessionEffect tr m
+@[expose] def InvisibleNoEffect (tr : ExecTrace) (m : Move) : Prop := m.vis tr = [] ∧ NoSessionEffect tr m
 
 /-! ## Call-Block Hypotheses -/
 
@@ -116,7 +116,7 @@ structure XplBlock (interpretation : ExternInterpretation) (r : ProtocolSetup) (
   matched : List.Forall₂ (EventMatchesEntry interpretation r S g) blk (runMoves δ (runTraceMoves r ms₀)).2
 
 /-- Every visible entry produced by `δ` from `tr` comes from a move acting for `p` or for nobody. -/
-def DeltaFaithful (p : Participant) (tr : ExecTrace) (δ : List Move) : Prop :=
+@[expose] def DeltaFaithful (p : Participant) (tr : ExecTrace) (δ : List Move) : Prop :=
   ∀ a ∈ visActorsFrom δ tr, ActorAgrees a (some p)
 
 theorem xpl_forall₂_append_split {α β : Type} {R : α → β → Prop} :
@@ -132,43 +132,43 @@ theorem xpl_forall₂_append_split {α β : Type} {R : α → β → Prop} :
 /-! ## Move Kinds and Inversion Conclusions -/
 
 /-- Moves that can explain a whisper `recv_wire` call. -/
-def RecvKind : Move → Prop
+@[expose] def RecvKind : Move → Prop
   | .decrypt .. | .decryptSkipped .. | .reject _ => True
   | _ => False
 
 /-- Moves that can explain a `recv_prekey` call. -/
-def RpkKind : Move → Prop
+@[expose] def RpkKind : Move → Prop
   | .bobStart .. | .decrypt .. | .decryptSkipped .. | .reject _ => True
   | _ => False
 
 /-- Encrypt-family moves (`encrypt`, `encryptAbort`, `encryptFail`). -/
-def SendKind : Move → Prop
+@[expose] def SendKind : Move → Prop
   | .encrypt .. | .encryptAbort .. | .encryptFail .. => True
   | _ => False
 
 /-- Moves that can explain a `session_initiate` call. -/
-def IniKind : Move → Prop
+@[expose] def IniKind : Move → Prop
   | .aliceStart .. | .reject _ | .attackerSend _ => True
   | _ => False
 
 /-- Compromise and key-exposure moves. -/
-def LeakKind : Move → Prop
+@[expose] def LeakKind : Move → Prop
   | .compromiseIK .. | .compromiseSPK .. | .compromisePQSPK .. | .compromiseOPK ..
   | .exposeKey .. | .exposeSpqr .. | .exposeSkipped _ => True
   | _ => False
 
 /-- Decrypt or skipped-key decrypt move acting for `p`. -/
-def DecryptBy (p : Participant) : Move → Prop
+@[expose] def DecryptBy (p : Participant) : Move → Prop
   | .decrypt me .. | .decryptSkipped me .. => me = p
   | _ => False
 
 /-- `Move.bobStart` acting for `p`. -/
-def BobStartBy (p : Participant) : Move → Prop
+@[expose] def BobStartBy (p : Participant) : Move → Prop
   | .bobStart b .. => b = p
   | _ => False
 
 /-- Decomposition of `δ` into one move `m` satisfying `Q` surrounded by `InvisibleNoEffect` moves. -/
-def OneMove (Q : ExecTrace → Move → Prop) (tr : ExecTrace) (δ : List Move) : Prop :=
+@[expose] def OneMove (Q : ExecTrace → Move → Prop) (tr : ExecTrace) (δ : List Move) : Prop :=
   ∃ pre m post, δ = pre ++ m :: post ∧
     MovesFrom InvisibleNoEffect tr pre ∧ Q (runMoves pre tr).1 m ∧
     MovesFrom InvisibleNoEffect (m.next (runMoves pre tr).1) post

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateFetch
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateFetch -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefs
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommon
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -23,7 +23,7 @@ capacity-bounded `Option<V1State.InnerState>` separation-logic representation, p
 `InnerStatePolyBound` preservation lemmas, and Hoare specifications for `V1State::merge`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 
@@ -50,33 +50,20 @@ set_option linter.unusedSimpArgs false
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-macro "v1StateMerge_fetches " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode
-    CryptoVerification.SpqrV1.Prost.MessageMerge.v1StateMergeBin $b $H
-    CryptoVerification.SpqrV1.Prost.MessageMerge.v1StateMerge_fnOff 0x493f0 $k0 $len)
+@[expose] def v1StateMergeJumpTableExpanded (b : BitVec 64) : SepProp :=
+  ((b + bv% 660492) ↦₈ᵣ 0#8) ∗
+    ((b + bv% (660492 + 1)) ↦₈ᵣ 66#8) ∗
+    ((b + bv% (660492 + 2)) ↦₈ᵣ 32#8) ∗
+    ((b + bv% (660492 + 3)) ↦₈ᵣ 44#8) ∗
+    ((b + bv% (660492 + 4)) ↦₈ᵣ 9#8) ∗
+    ((b + bv% (660492 + 5)) ↦₈ᵣ 76#8) ∗
+    ((b + bv% (660492 + 6)) ↦₈ᵣ 88#8) ∗
+    ((b + bv% (660492 + 7)) ↦₈ᵣ 54#8) ∗
+    ((b + bv% (660492 + 8)) ↦₈ᵣ 112#8) ∗
+    ((b + bv% (660492 + 9)) ↦₈ᵣ 20#8) ∗
+    ((b + bv% (660492 + 10)) ↦₈ᵣ 100#8)
 
-/-! ## 1. `.rodata` Jump Table for `V1State::merge` (`0x4e7e8`) at `0x8240c` -/
-
-def v1StateMergeJumpTableExpanded (b : BitVec 64) : SepProp :=
-  ((b + bv% (ls_bytes% "0042202c094c5836701464")) ↦₈ᵣ 0#8) ∗
-    ((b + bv% (ls_bytes% "0042202c094c5836701464" + 1)) ↦₈ᵣ 66#8) ∗
-    ((b + bv% (ls_bytes% "0042202c094c5836701464" + 2)) ↦₈ᵣ 32#8) ∗
-    ((b + bv% (ls_bytes% "0042202c094c5836701464" + 3)) ↦₈ᵣ 44#8) ∗
-    ((b + bv% (ls_bytes% "0042202c094c5836701464" + 4)) ↦₈ᵣ 9#8) ∗
-    ((b + bv% (ls_bytes% "0042202c094c5836701464" + 5)) ↦₈ᵣ 76#8) ∗
-    ((b + bv% (ls_bytes% "0042202c094c5836701464" + 6)) ↦₈ᵣ 88#8) ∗
-    ((b + bv% (ls_bytes% "0042202c094c5836701464" + 7)) ↦₈ᵣ 54#8) ∗
-    ((b + bv% (ls_bytes% "0042202c094c5836701464" + 8)) ↦₈ᵣ 112#8) ∗
-    ((b + bv% (ls_bytes% "0042202c094c5836701464" + 9)) ↦₈ᵣ 20#8) ∗
-    ((b + bv% (ls_bytes% "0042202c094c5836701464" + 10)) ↦₈ᵣ 100#8)
-
-theorem v1StateMergeJumpTableAt_eq_expanded (b : BitVec 64) :
-    v1StateMergeJumpTableAt b = v1StateMergeJumpTableExpanded b := by
-  unfold v1StateMergeJumpTableAt v1StateMergeJumpTableBytes v1StateMergeJumpTableExpanded
-  simp only [pointsToBytesRO_cons, pointsToBytesRO_nil, sepConj_emp,
-    BitVec.add_assoc, BitVec.reduceAdd]
-
-def v1StateMergeJumpTablePlacedExpanded [LibsignalPlacement] : SepProp :=
+@[expose] def v1StateMergeJumpTablePlacedExpanded [LibsignalPlacement] : SepProp :=
   ((lsmpl.ρ v1StateMergeJumpTableSym) ↦₈ᵣ 0#8) ∗
     ((lsmpl.ρ v1StateMergeJumpTableSym + 1#64) ↦₈ᵣ 66#8) ∗
     ((lsmpl.ρ v1StateMergeJumpTableSym + 2#64) ↦₈ᵣ 32#8) ∗
@@ -106,32 +93,12 @@ theorem rodata_v1StateMergeJumpTablePlacedExpanded [LibsignalPlacement]
   rw [← v1StateMergeJumpTablePlacedAt_eq_expanded]
   exact rodata_v1StateMergeJumpTablePlaced hro hP
 
-/-- `.rodata` slice at `0x8240c` (`11` bytes): `v1StateMergeJumpTableBytes`. -/
-theorem rodata_v1StateMergeJumpTable {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ v1StateMergeJumpTableAt img.base ∗ P := by
-  have hhb := loads_rodata_holdsBytes himg hF
-    (off := num% (ls_bytes% "0042202c094c5836701464")) (n := 11) (bs := v1StateMergeJumpTableBytes)
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel)
-    (by rfl_kernel) (by decide) (by rfl_kernel)
-  have ⟨h1, h2⟩ := holdsBytes_ro hhb
-  exact Satisfies.rodata_intro h1 h2 (by decide) hP
-
-theorem rodata_v1StateMergeJumpTableExpanded {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ v1StateMergeJumpTableExpanded img.base ∗ P := by
-  rw [← v1StateMergeJumpTableAt_eq_expanded]
-  exact rodata_v1StateMergeJumpTable himg hF hP
-
-/-! ## 2. Stack Frame Sizes (`v1StateMergeStack = 816 + chunkedInlStack`) -/
-
 /-- Own stack frame of `V1State::merge` (`0x4e7e8`): `816` bytes (`0x330`),
     plus `chunkedInlStack` (`13,824` bytes) for callees (`14,640` bytes total). -/
 abbrev v1StateMergeStack : Nat := 816 + chunkedInlStack
 
 /-- Saved callee-saved registers at `[s0.sp - 96, s0.sp)` (`x29 = s0.sp - 96 = sp + 720`). -/
-def v1StateSavedRegsAt (sp : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def v1StateSavedRegsAt (sp : BitVec 64) (s0 : State) : SepProp :=
   ((sp - 96#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp - 80#64) ↦₆₄ s0.readReg64 .x28) ∗
@@ -338,7 +305,7 @@ theorem v1StateBelow_allocHook_entails (sp : BitVec 64) :
 /-! ## 4. Capacity-Bounded `V1State` Representation (`protoInnerStateCapAt` & `optProtoInnerStateCapAt`) -/
 
 /-- Pure `OptPolyEncoderBound` / `OptPolyDecoderBound` invariant for `V1State.InnerState` at remaining input length `bsLen`. -/
-def InnerStatePolyBound (bsLen : Nat) : V1State.InnerState → Prop
+@[expose] def InnerStatePolyBound (bsLen : Nat) : V1State.InnerState → Prop
   | .keysUnsampled _ => bsLen < 2 ^ 56
   | .keysSampled s => OptPolyEncoderBound s.sendingHdr bsLen
   | .headerSent s => OptPolyEncoderBound s.sendingEk bsLen ∧ OptPolyDecoderBound s.receivingCt1 bsLen
@@ -351,7 +318,7 @@ def InnerStatePolyBound (bsLen : Nat) : V1State.InnerState → Prop
   | .ct1Acknowledged s => OptPolyDecoderBound s.receivingEk bsLen
   | .ct2Sampled s => OptPolyEncoderBound s.sendingCt2 bsLen
 
-def OptInnerStatePolyBound (bsLen : Nat) : Option V1State.InnerState → Prop
+@[expose] def OptInnerStatePolyBound (bsLen : Nat) : Option V1State.InnerState → Prop
   | none => bsLen < 2 ^ 56
   | some st => InnerStatePolyBound bsLen st
 
@@ -385,7 +352,7 @@ theorem optInnerStatePolyBound_mono {opt : Option V1State.InnerState} {m n : Nat
   | some st => exact innerStatePolyBound_mono h hle
 
 /-- Capacity-bounded representation predicate for `spqr::proto::pq_ratchet::v1_state::InnerState` (`224`B). -/
-def protoInnerStateCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) : V1State.InnerState → SepProp
+@[expose] def protoInnerStateCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) : V1State.InnerState → SepProp
   | .keysUnsampled s =>
       (a ↦₆₄ 0x8000000000000000#64) ∗
       chunkedKeysUnsampledPBCapAt A (a + 8#64) bsLen s ∗
@@ -430,7 +397,7 @@ def protoInnerStateCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) : V1State
       memRegion (a + 120#64) 104
 
 /-- Capacity-bounded representation predicate for `Option<V1State.InnerState>` (`224`B). -/
-def optProtoInnerStateCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
+@[expose] def optProtoInnerStateCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
     Option V1State.InnerState → SepProp
   | none => (a ↦₆₄ none2Cap) ∗ memRegion (a + 8#64) 216
   | some st => protoInnerStateCapAt A a bsLen st
@@ -1150,7 +1117,7 @@ theorem ct2Sampled_polyBound_extract {n : Nat} {is : Option V1State.InnerState}
 
 /-! ## 7. Hoare Specification `v1StateMergeSpec` and Loop Invariant Bundles -/
 
-def v1StateJumpTablesAt (b : BitVec 64) : SepProp :=
+@[expose] def v1StateJumpTablesAt (b : BitVec 64) : SepProp :=
   v1StateMergeJumpTableExpanded b ∗ optProtoInnerStateJumpTableAt b
 
 theorem decodeErrorWith_zero_entails_le4 (A : RustAlloc) (e : BitVec 64) :
@@ -1167,7 +1134,7 @@ structure V1StateMergeGhost where
   (wt : WireType) (msgPtr : BitVec 64) (msg : V1State)
   (bufRef slot ptr : BitVec 64) (bs : List (BitVec 8))
 
-def v1StateMergeSpec (A : RustAlloc) (b : BitVec 64) : Spec V1StateMergeGhost where
+@[expose] def v1StateMergeSpec (A : RustAlloc) (b : BitVec 64) : Spec V1StateMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧ s.readReg64 .x2 = x.bufRef ∧
@@ -1189,34 +1156,34 @@ def v1StateMergeSpec (A : RustAlloc) (b : BitVec 64) : Spec V1StateMergeGhost wh
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def v1StateErrFrame (A : RustAlloc) (b : BitVec 64) (s0 : State)
+@[expose] def v1StateErrFrame (A : RustAlloc) (b : BitVec 64) (s0 : State)
     (msgPtr bufRef slot ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   (∃∗ is' : Option V1State.InnerState, optProtoInnerStateAt A msgPtr is') ∗
     v1StateJumpTablesAt b ∗ (bufRef ↦₆₄ slot) ∗ memRegion slot 16 ∗ (ptr ↦ₛ bs) ∗
     A.pool ∗ v1StateSavedRegsAt s0.sp s0
 
-def v1StateLoopPre (A : RustAlloc) (b : BitVec 64) (s0 : State)
+@[expose] def v1StateLoopPre (A : RustAlloc) (b : BitVec 64) (s0 : State)
     (msgPtr bufRef slot ptr : BitVec 64) (m : V1State) (bs cur : List (BitVec 8)) : SepProp :=
   optProtoInnerStateCapAt A msgPtr cur.length m.innerState ∗
     v1StateJumpTablesAt b ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur ∗ A.pool ∗
     stackAt (s0.sp - 816#64) chunkedInlStack ∗ memRegion (s0.sp - 816#64) 720 ∗ v1StateSavedRegsAt s0.sp s0
 
-def V1StateLoopRegs (b : BitVec 64) (s0 : State) (x : V1StateMergeGhost) (limit : Nat) (s : State) : Prop :=
+@[expose] def V1StateLoopRegs (b : BitVec 64) (s0 : State) (x : V1StateMergeGhost) (limit : Nat) (s : State) : Prop :=
   s.readReg64 (Reg.gpr 19#5) = x.bufRef ∧
     s.readReg64 (Reg.gpr 20#5) = x.msgPtr ∧
     s.readReg64 (Reg.gpr 22#5) = 0x8000000000000000#64 ∧
     s.readReg64 (Reg.gpr 23#5) = 0xffffffffffffffff#64 ∧
-    s.readReg64 (Reg.gpr 24#5) = b + bv% (ls_bytes% "0042202c094c5836701464") ∧
+    s.readReg64 (Reg.gpr 24#5) = b + bv% 660492 ∧
     s.readReg64 (Reg.gpr 25#5) = s0.sp - 576#64 ∧
     s.readReg64 (Reg.gpr 26#5) = x.slot ∧
     s.readReg64 (Reg.gpr 27#5) = 0xfffffffffffffffe#64 ∧
     s.readReg64 (Reg.gpr 28#5) = BitVec.ofNat 64 limit ∧
     s.readReg64 (Reg.gpr 29#5) = s0.sp - 96#64
 
-def v1StateJumpTablesPlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def v1StateJumpTablesPlacedAt [LibsignalPlacement] : SepProp :=
   v1StateMergeJumpTablePlacedExpanded ∗ optProtoInnerStateJumpTablePlacedAt
 
-def v1StateMergePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec V1StateMergeGhost where
+@[expose] def v1StateMergePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec V1StateMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧ s.readReg64 .x2 = x.bufRef ∧
@@ -1238,19 +1205,19 @@ def v1StateMergePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec V1StateMe
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def v1StateErrFramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def v1StateErrFramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (msgPtr bufRef slot ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   (∃∗ is' : Option V1State.InnerState, optProtoInnerStateAt A msgPtr is') ∗
     v1StateJumpTablesPlacedAt ∗ (bufRef ↦₆₄ slot) ∗ memRegion slot 16 ∗ (ptr ↦ₛ bs) ∗
     A.pool ∗ v1StateSavedRegsAt s0.sp s0
 
-def v1StateLoopPrePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def v1StateLoopPrePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (msgPtr bufRef slot ptr : BitVec 64) (m : V1State) (bs cur : List (BitVec 8)) : SepProp :=
   optProtoInnerStateCapAt A msgPtr cur.length m.innerState ∗
     v1StateJumpTablesPlacedAt ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur ∗ A.pool ∗
     stackAt (s0.sp - 816#64) chunkedInlStack ∗ memRegion (s0.sp - 816#64) 720 ∗ v1StateSavedRegsAt s0.sp s0
 
-def V1StateLoopRegsPlaced [LibsignalPlacement] (s0 : State) (x : V1StateMergeGhost) (limit : Nat) (s : State) : Prop :=
+@[expose] def V1StateLoopRegsPlaced [LibsignalPlacement] (s0 : State) (x : V1StateMergeGhost) (limit : Nat) (s : State) : Prop :=
   s.readReg64 (Reg.gpr 19#5) = x.bufRef ∧
     s.readReg64 (Reg.gpr 20#5) = x.msgPtr ∧
     s.readReg64 (Reg.gpr 22#5) = 0x8000000000000000#64 ∧

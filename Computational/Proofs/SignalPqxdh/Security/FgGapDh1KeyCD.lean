@@ -9,8 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhD -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhE -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhF
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkCoupling
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-Key `GapDhWithSign` Coupling for Cases C and D
@@ -20,7 +26,7 @@ and D (`DH4 = CDH(ek_U*, opk_V*)`), sampling all identity scalars locally with z
 and delegating non-identity steps to the two-key coupling lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,13 +51,11 @@ theorem spkTargetRevealed_eq_of_spkBundles_eq {S : Setup} (bIdx : ℕ)
     unfold hasFiredSpk
     rw [hSpk]
   have hDecEq :
-      @decide (hasFiredSpk S bIdx hst2) (Classical.propDecidable _) =
-      @decide (hasFiredSpk S bIdx hst1) (Classical.propDecidable _) := by
+      decide (hasFiredSpk S bIdx hst2) =
+      decide (hasFiredSpk S bIdx hst1) := by
     by_cases h1 : hasFiredSpk S bIdx hst1
-    · rw [@decide_eq_true _ (Classical.propDecidable _) (hFiredIff.mpr h1),
-        @decide_eq_true _ (Classical.propDecidable _) h1]
-    · rw [@decide_eq_false _ (Classical.propDecidable _) (fun h2 => h1 (hFiredIff.mp h2)),
-        @decide_eq_false _ (Classical.propDecidable _) h1]
+    · rw [decide_eq_true (hFiredIff.mpr h1), decide_eq_true h1]
+    · rw [decide_eq_false (fun h2 => h1 (hFiredIff.mp h2)), decide_eq_false h1]
   rw [hDecEq, hSpk]
 
 theorem deadDh3Full_eq_of_spk_sess {S : Setup} (P : Primitives) (sIdx bIdx : ℕ) (V : Bytes)
@@ -97,7 +101,7 @@ theorem pqxdhKeyIndFgPreImpl1Key_preserves_deadDh3Full {S : Setup} (P : Primitiv
   all_goals
     exact pqxdhKeyIndFgPreImpl_preserves_deadDh3Full P sIdx bIdx hsIdx uSk vSk _ hst hDead
 
-def FgSimInvDh3_1Key (S : Setup) (b : QueryBudget) (P : Primitives)
+@[expose] def FgSimInvDh3_1Key (S : Setup) (b : QueryBudget) (P : Primitives)
     (hP : CryptoWellFormedPrimitivesδ P) (sIdx bIdx : ℕ)
     (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32)
     (rem : ℕ) (hst : KeyIndFgCutoffState S) (st : FgKeyInd1KeySimState S) : Prop :=
@@ -296,7 +300,7 @@ theorem pqxdhKeyIndFgPreImpl1KeyOpk_preserves_deadDh4 {S : Setup} (P : Primitive
   all_goals
     exact pqxdhKeyIndFgPreImplOpk_preserves_deadDh4 P sIdx oIdx hsIdx uSk vSk _ hst hDead
 
-def FgSimInvDh4_1Key (S : Setup) (b : QueryBudget) (P : Primitives)
+@[expose] def FgSimInvDh4_1Key (S : Setup) (b : QueryBudget) (P : Primitives)
     (hP : CryptoWellFormedPrimitivesδ P) (sIdx oIdx : ℕ)
     (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32)
     (rem : ℕ) (hst : KeyIndFgCutoffState S) (st : FgKeyInd1KeySimState S) : Prop :=

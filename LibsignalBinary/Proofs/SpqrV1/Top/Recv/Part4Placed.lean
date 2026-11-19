@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3
@@ -26,7 +26,7 @@ Relocatable `SepWPpLS` entry bridge (`+0..+312`) and post-`spqr::decode_state` e
 dispatch (`+328..+408`) for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -63,7 +63,7 @@ open CryptoVerification.SpqrV1.Top.Recv.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. Prologue + `msg_preamble` Entry Bridge to `SepWPpLS` (`+0 .. +312`) -/

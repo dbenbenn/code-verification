@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Auth.SpqrAuthCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.SpqrAuthCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard13
+meta import GeneratedLean.LibsignalSessionPlacedObjShard17
 
 /-!
 # Relocatable Per-Block Fetches for `SpqrV1/Unchunked`
@@ -26,7 +29,7 @@ Provides relocatable instruction fetches for `EkSentCt1Received::merge`, `Ct1Sen
 `Ct1Sent::from_pb`, `Ct1SentEkReceived::send_ct2`, and `EkSentCt1Received::from_pb`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

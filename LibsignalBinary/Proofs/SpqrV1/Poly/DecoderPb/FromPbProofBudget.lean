@@ -9,16 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbCopyPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExitPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbProof
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbCopyPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExitPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbProof
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbInnerPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable Top-Level Proof for `<PolyDecoder>::from_pb`
@@ -27,7 +31,7 @@ Proves `fromPbDec_placed_ok_ext`, `decoder_from_pb_placed_ok_ext`, `fromPbDec_pl
 `decoder_from_pb_placed_ok_x` on Block `376` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -102,7 +106,7 @@ attribute [local simp] bv_add_lit_add_lit
 /-- Stack-parameterized budget specification of `<PolyDecoder>::from_pb`
     (`fromPbDecSpec M A lim = fromPbDecSpecWithStack M A lim fromPbDecStack` and
     `fromPbDecSpecX M A lim = fromPbDecSpecWithStack M A lim fromPbDecStackX` definitionally). -/
-def fromPbDecSpecWithStack [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def fromPbDecSpecWithStack [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (FromPbDecGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA ∧

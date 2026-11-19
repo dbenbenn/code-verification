@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` Callee Contracts for `spqr::decode_state` (Block `325`)
@@ -19,7 +19,7 @@ Bundles code-loaded callee contracts (`DecodeStateCalleeContractsClPlaced` and
 `DecodeStateCalleeContractsClPlacedX`) for Block `325`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -39,7 +39,7 @@ open CryptoVerification.SpqrV1.Prost.BytesMerge
 open CryptoVerification.SpqrV1.Prost.MessageMerge
 open CryptoVerification.SpqrV1.Top.DecodeState.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 
 /-- Code-loaded bundle of relocatable callee contracts used by `spqr::decode_state` (Block `325`).
 Every cross-block callee carries `withLsCodeLoaded lsmpl` or `withLsCl lsmpl`. -/

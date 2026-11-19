@@ -9,22 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Model
 import ProofLib.SepLogic.WPp
 
 /-!
 # Shared Definitions and Sub-Segment Contracts for the `consume_message_key` Store Loop
 
-Defines instruction-fetch automation, extern/callee relocation lemmas, internal store-loop
-checkpoint PCs (`+0x394`, `+0x3fc`, `+0x474`), intermediate states, and the four sub-segment
-contracts `DeriveSeedSpec`, `InsertKeySpec`, `EvictOldestKeySpec`, and `AdvanceChainKeySpec` along
-with their composition `storeLoop_iter_of_parts`.
+Defines extern stub hooks, internal store-loop checkpoint PCs (`+0x394`, `+0x3fc`, `+0x474`),
+intermediate states, and the placed sub-segment contracts along with their composition.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession.StoreLoop
 
@@ -32,69 +29,16 @@ open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.HKDF CryptoGames.Ra
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.SessionModel
 open CryptoVerification.LibsignalSession
-open ProofLib.ProgramReflection
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 1600000
 
-/-! ## Rebased Program and Symbol Addresses -/
-
-noncomputable abbrev SP (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
-    (alloc : String → Option (State → State)) : Program :=
-  libsignalSessionCode.rebase b (Rust.withPanics (sessionExterns F alloc))
-
-theorem sessionProg_eq_SP {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img)
-    (F : ShaState → List (BitVec 8) → ShaState) (alloc : String → Option (State → State)) :
-    sessionProg img F alloc = SP img.base F alloc :=
-  libsignalSessionCode_ofImage h
-
 abbrev cmkSym : String :=
   "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key"
 
-theorem cmkEntry_eq_fnAddr {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img)
-    (F : ShaState → List (BitVec 8) → ShaState) (alloc : String → Option (State → State)) :
-    cmkEntry img = (SP img.base F alloc).fnAddr cmkSym := by
-  rw [cmkEntry_eq h, Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key")]
-
-theorem cmkLoopPC_eq_fnAddr {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img)
-    (F : ShaState → List (BitVec 8) → ShaState) (alloc : String → Option (State → State)) :
-    cmkLoopPC img = (SP img.base F alloc).fnAddr cmkSym + 820#64 := by
-  simp only [cmkLoopPC, cmkEntry_eq_fnAddr h F alloc]
-
-theorem cmkEpiloguePC_eq_fnAddr {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img)
-    (F : ShaState → List (BitVec 8) → ShaState) (alloc : String → Option (State → State)) :
-    cmkEpiloguePC img = (SP img.base F alloc).fnAddr cmkSym + 1244#64 := by
-  simp only [cmkEpiloguePC, cmkEntry_eq_fnAddr h F alloc]
-
-/-! ## Instruction-Fetch Automation -/
-
-private meta def hex4Str (n : Nat) : String :=
-  let d (k : Nat) : Char :=
-    let v := (n >>> (4 * k)) &&& 0xf
-    if v < 10 then Char.ofNat ('0'.toNat + v) else Char.ofNat ('a'.toNat + v - 10)
-  String.ofList [d 3, d 2, d 1, d 0]
-
-/-- Introduce `hfetch_<off>` for `k ∈ [kStart, kEnd)` (instruction index `k`, byte offset `4 * k`)
-    of `consume_message_key` (`0xded8`). -/
-elab "cmk_fetches_range " b:term:max H:term:max hfn:term:max kStart:num kEnd:num : tactic =>
-  Lean.Elab.Tactic.withMainContext do
-    let k0 := kStart.getNat
-    let k1 := kEnd.getNat
-    for k in [k0:k1] do
-      let byteOff := 4 * k
-      let absOff := num% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key") + byteOff
-      let decName := Lean.Name.mkStr4 "CryptoVerification" "LibsignalSession" "StoreLoop"
-        s!"libsignalSessionBin_decode_0x{hex4Str absOff}"
-      let decId := Lean.mkIdent decName
-      let hName := Lean.mkIdent (.mkSimple s!"hfetch_{byteOff}")
-      let byteOffLit := Lean.Syntax.mkNumLit (toString byteOff)
-      Lean.Elab.Tactic.evalTactic (← `(tactic|
-        have $hName := libsignalSessionCode_fetch_fnAddr (b := $b) (H := $H)
-          $hfn (k := $byteOffLit) (by decide) $decId))
-
 /-! ## Extern Stub Hooks -/
 
-def sessionShimSpec : Spec Unit where
+@[expose] def sessionShimSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
@@ -103,93 +47,6 @@ theorem sessionShim_hookOk : HookOk hookNoop sessionShimSpec := by
   simp only [sessionShimSpec, hookNoop, retHook, id_eq, State.trace_setPC,
     satisfies_pure_sepConj, true_and, emp_sepConj] at hpre ⊢
   exact hpre
-
-/-- `alloc::raw_vec::handle_error` (`0x47f6c`) transitions to panic. -/
-theorem panic_at_handle_error {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "alloc::raw_vec::handle_error")) :
-    (SP b F alloc).externAt? ((SP b F alloc).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  panic_at_panicSymbol hfn hk (by decide) (ls_hook% "alloc::raw_vec::handle_error")
-    (by simp [Rust.isPanicSymbol])
-
-theorem shim_ok_at {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2")) :
-    subroutine_ok (SP b F alloc) ((SP b F alloc).fnAddr name + BitVec.ofNat 64 k)
-      sessionShimSpec :=
-  hook_ok_at hfn hk (by decide) (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-    (by simp [Rust.isPanicSymbol])
-    ⟨hookNoop, rfl, sessionShim_hookOk⟩
-
-theorem alloc_ok_at {A : RustAlloc} {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} (hA : AllocHooks A alloc)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_alloc")) :
-    subroutine_ok (SP b F alloc) ((SP b F alloc).fnAddr name + BitVec.ofNat 64 k)
-      (rustAllocSpec A) :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "__rustc::__rust_alloc")
-    (allocHooks_sessionExterns F A alloc hA).alloc
-
-theorem dealloc_ok_at {A : RustAlloc} {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} (hA : AllocHooks A alloc)
-    {name : String} {off k : Nat} (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_dealloc")) :
-    subroutine_ok (SP b F alloc) ((SP b F alloc).fnAddr name + BitVec.ofNat 64 k)
-      (rustDeallocSpec A) :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "__rustc::__rust_dealloc")
-    (allocHooks_sessionExterns F A alloc hA).dealloc
-
-theorem memmove_ok_at {b : BitVec 64} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "memmove"))
-    (stackSize : Nat := 4096) :
-    subroutine_ok (SP b F alloc) ((SP b F alloc).fnAddr name + BitVec.ofNat 64 k)
-      (libcMemmoveSpec stackSize) :=
-  hook_ok_at hfn hk (by decide) (ls_hook% "memmove")
-    (by simp [Rust.isPanicSymbol])
-    ⟨hookMemmove, rfl, hookMemmove_ok (hookStack := stackSize)⟩
-
-/-! ## Callee Contract Relocation -/
-
-theorem hmac_ok_at_cmk {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) (hHmac : HmacOk img F alloc) :
-    subroutine_ok (SP img.base F alloc)
-      ((SP img.base F alloc).fnAddr cmkSym + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key"))
-      ((hmacSpec F).inImage img) := by
-  have h1 : sessionProg img F alloc = SP img.base F alloc := libsignalSessionCode_ofImage himg
-  have h2 : (SP img.base F alloc).fnAddr cmkSym + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key") = img.base + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256") := by
-    rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key"), BitVec.add_assoc]
-    rfl
-  rw [h2, ← h1]
-  exact hHmac
-
-theorem find_index_ok_at_cmk {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {A : RustAlloc}
-    (himg : Obj.Loads libsignalSessionImage img) (hFind : FindIndexOk img F alloc A) :
-    subroutine_ok (SP img.base F alloc)
-      ((SP img.base F alloc).fnAddr cmkSym + bv% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_index" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key"))
-      ((findIndexSpec img A).inImage img) := by
-  have h1 : sessionProg img F alloc = SP img.base F alloc := libsignalSessionCode_ofImage himg
-  have h2 : (SP img.base F alloc).fnAddr cmkSym + bv% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_index" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key") = img.base + bv% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_index") := by
-    rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key"), BitVec.add_assoc]
-    rfl
-  rw [h2, ← h1]
-  exact hFind
-
-theorem grow_one_ok_at_cmk {img : Obj.Image} {F : ShaState → List (BitVec 8) → ShaState}
-    {alloc : String → Option (State → State)} {A : RustAlloc}
-    (himg : Obj.Loads libsignalSessionImage img) (hGrow : GrowOneOk img F alloc A) :
-    subroutine_ok (SP img.base F alloc)
-      ((SP img.base F alloc).fnAddr cmkSym + bv% (ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key"))
-      ((growOneSpec A).inImage img) := by
-  have h1 : sessionProg img F alloc = SP img.base F alloc := libsignalSessionCode_ofImage himg
-  have h2 : (SP img.base F alloc).fnAddr cmkSym + bv% (ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key") = img.base + bv% (ls_off% "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one") := by
-    rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key"), BitVec.add_assoc]
-    rfl
-  rw [h2, ← h1]
-  exact hGrow
 
 /-! ## Cryptographic and Byte-Representation Helpers -/
 
@@ -248,49 +105,25 @@ theorem index_ne_allOnes_of_lt {idx ctr : BitVec 32} (h : idx < ctr) :
 
 /-! ## Store-Loop Sub-Segment Checkpoints and States -/
 
-/-- `InsertKey` entry (`+0x394`) after `find_receiver_chain_index` returns `Some(ci)`. -/
-abbrev cmkInsertKeyPC (img : Obj.Image) : BitVec 64 := cmkEntry img + 0x394#64
-
-/-- `EvictOldestKey` entry (`+0x3fc`) when inserting at index 0 produces 2001 stored keys. -/
-abbrev cmkEvictOldestKeyPC (img : Obj.Image) : BitVec 64 := cmkEntry img + 0x3fc#64
-
-/-- `AdvanceChainKey` entry (`+0x474`) for `next_chain_key` computation and loop back-edge. -/
-abbrev cmkAdvanceChainKeyPC (img : Obj.Image) : BitVec 64 := cmkEntry img + 0x474#64
-
-theorem cmkInsertKeyPC_eq_fnAddr {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img)
-    (F : ShaState → List (BitVec 8) → ShaState) (alloc : String → Option (State → State)) :
-    cmkInsertKeyPC img = (SP img.base F alloc).fnAddr cmkSym + 916#64 := by
-  simp only [cmkInsertKeyPC, cmkEntry_eq_fnAddr h F alloc]
-
-theorem cmkEvictOldestKeyPC_eq_fnAddr {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img)
-    (F : ShaState → List (BitVec 8) → ShaState) (alloc : String → Option (State → State)) :
-    cmkEvictOldestKeyPC img = (SP img.base F alloc).fnAddr cmkSym + 1020#64 := by
-  simp only [cmkEvictOldestKeyPC, cmkEntry_eq_fnAddr h F alloc]
-
-theorem cmkAdvanceChainKeyPC_eq_fnAddr {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img)
-    (F : ShaState → List (BitVec 8) → ShaState) (alloc : String → Option (State → State)) :
-    cmkAdvanceChainKeyPC img = (SP img.base F alloc).fnAddr cmkSym + 1140#64 := by
-  simp only [cmkAdvanceChainKeyPC, cmkEntry_eq_fnAddr h F alloc]
-
 /-- The ghost of a newly created skipped `MessageKey` with 32-byte `seed` at `seedPtr`
 and empty `cipher`, `mac`, `iv` buffers (`cap = 0, ptr = 1`). -/
-def newMsgKeyGhost (seedPtr : BitVec 64) : MessageKeyGhost :=
+@[expose] def newMsgKeyGhost (seedPtr : BitVec 64) : MessageKeyGhost :=
   { cipher := ⟨0#64, 1#64⟩
     mac    := ⟨0#64, 1#64⟩
     iv     := ⟨0#64, 1#64⟩
     seed   := ⟨32#64, seedPtr⟩ }
 
 /-- Updated `ReceiverChain` after inserting `ckc.messageKeys F` at the front and truncating to `2000`. -/
-def updatedReceiverChain (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def updatedReceiverChain (F : ShaState → List (BitVec 8) → ShaState)
     (chc : ReceiverChain) (ckc : CryptoGames.LibsignalSession.ChainKey) : ReceiverChain :=
   { chc with messageKeys := (ckc.messageKeys F :: chc.messageKeys).take maxMessageKeys }
 
-def updatedRatchetState (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def updatedRatchetState (F : ShaState → List (BitVec 8) → ShaState)
     (stc : RatchetState) (ci : Nat) (chc : ReceiverChain)
     (ckc : CryptoGames.LibsignalSession.ChainKey) : RatchetState :=
   { stc with receiverChains := stc.receiverChains.set ci (updatedReceiverChain F chc ckc) }
 
-def InsertKeyRegs (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (ckc : CryptoGames.LibsignalSession.ChainKey)
+@[expose] def InsertKeyRegs (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (ckc : CryptoGames.LibsignalSession.ChainKey)
     (ci : Nat) (seedPtr : BitVec 64) (s0 s : State) : Prop :=
   s.readReg64 .x1 = BitVec.ofNat 64 ci ∧
   s.readReg64 .x19 = 1#64 ∧
@@ -302,20 +135,7 @@ def InsertKeyRegs (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (ckc : Crypto
   s.readReg64 .x27 = s0.sp - 224#64 ∧
   s.readReg64 .x28 = ckc.index.zeroExtend 64
 
-/-- Seam state at `cmkInsertKeyPC` (`+0x394`) after seed derivation, allocation, and chain lookup. -/
-def InsertKeyState (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) (img : Obj.Image)
-    (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
-    (ckc : CryptoGames.LibsignalSession.ChainKey) (ci : Nat) (seedPtr : BitVec 64)
-    (R : SepProp) (s0 s : State) : Prop :=
-  s.pc = cmkInsertKeyPC img ∧
-  cmkMidMeta img s0 s ∧
-  InsertKeyRegs x Gc ckc ci seedPtr s0 s ∧
-  seedPtr ≠ 0#64 ∧
-  (s.mem ⊨
-    (cmkLoopHeap A img x Gc stc ckc s0 ∗
-     vecU8Buf A 32#64 seedPtr (ckc.messageKeys F).seed) ∗ R)
-
-def EvictOldestKeyRegs (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (ckc : CryptoGames.LibsignalSession.ChainKey)
+@[expose] def EvictOldestKeyRegs (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (ckc : CryptoGames.LibsignalSession.ChainKey)
     (ci : Nat) (_mkPtr1 : BitVec 64) (s : State) : Prop :=
   s.readReg64 .x19 = 1#64 ∧
   s.readReg64 .x21 = x.ckA ∧
@@ -326,7 +146,7 @@ def EvictOldestKeyRegs (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (ckc : C
   s.readReg64 .x28 = ckc.index.zeroExtend 64
 
 /-- The rest of `ratchetAt A self G st` when receiver chain `i` is split out. -/
-def ratchetContextAt (A : RustAlloc) (self : BitVec 64) (G : RatchetGhost)
+@[expose] def ratchetContextAt (A : RustAlloc) (self : BitVec 64) (G : RatchetGhost)
     (st : RatchetState) (i : Nat) : SepProp :=
   ⌜G.chains.length = st.receiverChains.length ∧ G.senderPad.length = 100 ∧
     st.maxForwardJumps < 2 ^ 64 ∧
@@ -345,7 +165,7 @@ def ratchetContextAt (A : RustAlloc) (self : BitVec 64) (G : RatchetGhost)
   ((self + 168#64) ↦₃₂ st.previousCounter) ∗ memRegion (self + 172#64) 4
 
 /-- Heap layout at `cmkEvictOldestKeyPC` (`+0x3fc`) with 2001 elements prior to popping index 2000. -/
-def evictOldestKeyHeap (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) (img : Obj.Image)
+@[expose] def evictOldestKeyHeap [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) (img : Unit)
     (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
     (ckc : CryptoGames.LibsignalSession.ChainKey) (ci : Nat) (chc : ReceiverChain)
     (cg : ChainGhost) (mkCap1 mkPtr1 seedPtr : BitVec 64) (s0 : State) : SepProp :=
@@ -367,7 +187,7 @@ def evictOldestKeyHeap (F : ShaState → List (BitVec 8) → ShaState) (A : Rust
   cmkSavedRegs s0.sp s0 ∗
   A.pool
 
-def evictOldestKeyHeapAt (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) (logAddr : BitVec 64)
+@[expose] def evictOldestKeyHeapAt (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) (logAddr : BitVec 64)
     (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
     (ckc : CryptoGames.LibsignalSession.ChainKey) (ci : Nat) (chc : ReceiverChain)
     (cg : ChainGhost) (mkCap1 mkPtr1 seedPtr : BitVec 64) (s0 : State) : SepProp :=
@@ -389,132 +209,12 @@ def evictOldestKeyHeapAt (F : ShaState → List (BitVec 8) → ShaState) (A : Ru
   cmkSavedRegs s0.sp s0 ∗
   A.pool
 
-/-- Seam state at `cmkEvictOldestKeyPC` (`+0x3fc`) when `chc.messageKeys.length = 2000`. -/
-def EvictOldestKeyState (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc) (img : Obj.Image)
-    (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
-    (ckc : CryptoGames.LibsignalSession.ChainKey) (ci : Nat) (chc : ReceiverChain)
-    (cg : ChainGhost) (mkCap1 mkPtr1 seedPtr : BitVec 64)
-    (R : SepProp) (s0 s : State) : Prop :=
-  s.pc = cmkEvictOldestKeyPC img ∧
-  cmkMidMeta img s0 s ∧
-  EvictOldestKeyRegs x Gc ckc ci mkPtr1 s ∧
-  (∃ hci : ci < Gc.chains.length, cg = Gc.chains[ci]) ∧
-  PublicKey.deserialize cg.srk.bytes = .ok chc.senderRatchetKey ∧
-  chc.messageKeys.length = 2000 ∧
-  cg.keys.length = 2000 ∧
-  2001 ≤ mkCap1.toNat ∧
-  mkCap1.toNat * 104 < 2 ^ 63 ∧
-  mkPtr1 ≠ 0#64 ∧
-  (s.mem ⊨ evictOldestKeyHeap F A img x Gc stc ckc ci chc cg mkCap1 mkPtr1 seedPtr s0 ∗ R)
-
-def AdvanceChainKeyRegs (x : ConsumeMessageKeyGhost) (s0 s : State) : Prop :=
+@[expose] def AdvanceChainKeyRegs (x : ConsumeMessageKeyGhost) (s0 s : State) : Prop :=
   s.readReg64 .x19 = 1#64 ∧
   s.readReg64 .x21 = x.ckA ∧
   s.readReg64 .x22 = x.theirA ∧
   s.readReg64 .x23 = x.self ∧
   s.readReg64 .x27 = s0.sp - 224#64
-
-/-- Seam state at `cmkAdvanceChainKeyPC` (`+0x474`) with `ratchetAt` reassembled. -/
-def AdvanceChainKeyState (A : RustAlloc) (img : Obj.Image) (x : ConsumeMessageKeyGhost)
-    (G' : RatchetGhost) (st' : RatchetState) (ckc : CryptoGames.LibsignalSession.ChainKey)
-    (R : SepProp) (s0 s : State) : Prop :=
-  s.pc = cmkAdvanceChainKeyPC img ∧
-  cmkMidMeta img s0 s ∧
-  AdvanceChainKeyRegs x s0 s ∧
-  (s.mem ⊨ cmkLoopHeap A img x G' st' ckc s0 ∗ R)
-
-/-! ## Sub-Segment Contracts and Loop-Iteration Composition -/
-
-/-- `DeriveSeed` contract (`+0x334 → +0x394` or OOM panic at `+0x9b4`). -/
-def DeriveSeedSpec (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) : Prop :=
-  AllocHooks A alloc → Obj.Loads libsignalSessionImage img →
-    FindIndexOk img F alloc A → HmacOk img F alloc →
-    ∀ (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
-      (ckc : CryptoGames.LibsignalSession.ChainKey) (ci : Nat) (chc : ReceiverChain)
-      (R : SepProp) (s0 s : State),
-      ckc.index < x.counter →
-      stc.findReceiverChainIndex x.their = some ci →
-      stc.receiverChains[ci]? = some chc →
-      CmkLoopState A img x Gc stc ckc R (cmkLoopPC img) s0 s →
-      (sessionProg img F alloc).CodeLoaded s.mem →
-      ∃ sA, Steps (sessionProg img F alloc) s sA ∧
-        ((∃ seedPtr, InsertKeyState F A img x Gc stc ckc ci seedPtr R s0 sA) ∨
-         (sA.status = .Panicked ∧ (sA.mem ⊨ (consumeMessageKeySpec F A img).onPanic x s0 sA ∗ R)))
-
-/-- `InsertKey` contract (`+0x394 → +0x474` or `+0x3fc`, with `+0x4c8` `grow_one` path). -/
-def InsertKeySpec (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) : Prop :=
-  Obj.Loads libsignalSessionImage img → GrowOneOk img F alloc A →
-    ∀ (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
-      (ckc : CryptoGames.LibsignalSession.ChainKey) (ci : Nat) (chc : ReceiverChain)
-      (seedPtr : BitVec 64) (R : SepProp) (s0 sA : State),
-      stc.receiverChains[ci]? = some chc →
-      InsertKeyState F A img x Gc stc ckc ci seedPtr R s0 sA →
-      (sessionProg img F alloc).CodeLoaded sA.mem →
-      ∃ sB, Steps (sessionProg img F alloc) sA sB ∧
-        ((∃ G', Gc.AgreeExcept G' (some ci) ∧
-            AdvanceChainKeyState A img x G' (updatedRatchetState F stc ci chc ckc) ckc R s0 sB) ∨
-         (∃ cg mkCap1 mkPtr1,
-            EvictOldestKeyState F A img x Gc stc ckc ci chc cg mkCap1 mkPtr1 seedPtr R s0 sB) ∨
-         (sB.status = .Panicked ∧ (sB.mem ⊨ (consumeMessageKeySpec F A img).onPanic x s0 sB ∗ R)))
-
-/-- `EvictOldestKey` contract (`+0x3fc → +0x474`), popping and deallocating index 2000. -/
-def EvictOldestKeySpec (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) : Prop :=
-  AllocHooks A alloc → Obj.Loads libsignalSessionImage img →
-    ∀ (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
-      (ckc : CryptoGames.LibsignalSession.ChainKey) (ci : Nat) (chc : ReceiverChain)
-      (cg : ChainGhost) (mkCap1 mkPtr1 seedPtr : BitVec 64)
-      (R : SepProp) (s0 sB : State),
-      stc.receiverChains[ci]? = some chc →
-      EvictOldestKeyState F A img x Gc stc ckc ci chc cg mkCap1 mkPtr1 seedPtr R s0 sB →
-      (sessionProg img F alloc).CodeLoaded sB.mem →
-      ∃ sC, Steps (sessionProg img F alloc) sB sC ∧
-        ∃ G', Gc.AgreeExcept G' (some ci) ∧
-          AdvanceChainKeyState A img x G' (updatedRatchetState F stc ci chc ckc) ckc R s0 sC
-
-/-- `AdvanceChainKey` contract (`+0x474 → +0x334 / +0x4dc`). -/
-def AdvanceChainKeySpec (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) : Prop :=
-  Obj.Loads libsignalSessionImage img → HmacOk img F alloc →
-    ∀ (x : ConsumeMessageKeyGhost) (G' : RatchetGhost) (st' : RatchetState)
-      (ckc : CryptoGames.LibsignalSession.ChainKey) (R : SepProp) (s0 sD : State),
-      ckc.index < x.counter →
-      AdvanceChainKeyState A img x G' st' ckc R s0 sD →
-      (sessionProg img F alloc).CodeLoaded sD.mem →
-      let ck' := chainStepN F 1 ckc
-      let nextPC := if ck'.index < x.counter then cmkLoopPC img else cmkEpiloguePC img
-      ∃ s', Steps (sessionProg img F alloc) sD s' ∧
-        CmkLoopState A img x G' st' ck' R nextPC s0 s'
-
-/-- Compose `DeriveSeed`, `InsertKey`, `EvictOldestKey`, `AdvanceChainKey` into `StoreLoopIterSpec`. -/
-theorem storeLoop_iter_of_parts {F : ShaState → List (BitVec 8) → ShaState} {A : RustAlloc}
-    {alloc : String → Option (State → State)} {img : Obj.Image}
-    (hA_part : DeriveSeedSpec F A alloc img)
-    (hB_part : InsertKeySpec F A alloc img)
-    (hC_part : EvictOldestKeySpec F A alloc img)
-    (hD_part : AdvanceChainKeySpec F A alloc img) :
-    StoreLoopIterSpec F A alloc img := by
-  intro hA himg hfind hhmac hgrow x Gc stc ckc ci chc R s0 s hlt hci hchc hstate hL
-  obtain ⟨sA, hstepsA, ⟨seedPtr, hsA⟩ | hpanA⟩ :=
-    hA_part hA himg hfind hhmac x Gc stc ckc ci chc R s0 s hlt hci hchc hstate hL
-  · have hLA := hstepsA.codeLoaded hL
-    obtain ⟨sB, hstepsB, ⟨G', hG', hsD⟩ | ⟨cg, mkCap1, mkPtr1, hsC⟩ | hpanB⟩ :=
-      hB_part himg hgrow x Gc stc ckc ci chc seedPtr R s0 sA hchc hsA hLA
-    · have hLB := hstepsB.codeLoaded hLA
-      obtain ⟨s', hstepsD, hs'⟩ :=
-        hD_part himg hhmac x G' (updatedRatchetState F stc ci chc ckc) ckc R s0 sB hlt hsD hLB
-      exact ⟨s', (hstepsA.trans hstepsB).trans hstepsD, Or.inl ⟨G', hG', hs'⟩⟩
-    · have hLB := hstepsB.codeLoaded hLA
-      obtain ⟨sC, hstepsC, G', hG', hsD⟩ :=
-        hC_part hA himg x Gc stc ckc ci chc cg mkCap1 mkPtr1 seedPtr R s0 sB hchc hsC hLB
-      have hLC := hstepsC.codeLoaded hLB
-      obtain ⟨s', hstepsD, hs'⟩ :=
-        hD_part himg hhmac x G' (updatedRatchetState F stc ci chc ckc) ckc R s0 sC hlt hsD hLC
-      exact ⟨s', ((hstepsA.trans hstepsB).trans hstepsC).trans hstepsD, Or.inl ⟨G', hG', hs'⟩⟩
-    · exact ⟨sB, hstepsA.trans hstepsB, Or.inr hpanB⟩
-  · exact ⟨sA, hstepsA, Or.inr hpanA⟩
 
 end CryptoVerification.LibsignalSession.StoreLoop
 
@@ -524,11 +224,11 @@ open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.HKDF CryptoGames.Li
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.SessionModel
 
-def GrowOnePlacedOk [LibsignalPlacement] (H : String → Option (State → State)) (A : RustAlloc) : Prop :=
+@[expose] def GrowOnePlacedOk [LibsignalPlacement] (H : String → Option (State → State)) (A : RustAlloc) : Prop :=
   subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (lsmpl.base 43)
     (withLsCodeLoaded lsmpl (growOneSpec A))
 
-def StoreLoopIterPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def StoreLoopIterPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H →
     H "memmove" = some hookMemmove →
@@ -551,7 +251,7 @@ def StoreLoopIterPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 
             CmkLoopState_placed A x G' st' ck' R nextPC s0 s') ∨
          (s'.status = .Panicked ∧ (s'.mem ⊨ (cmkPlacedSpec F A).onPanic x s0 s' ∗ R)))
 
-def StoreLoopPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def StoreLoopPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H →
     H "memmove" = some hookMemmove →
@@ -709,7 +409,7 @@ theorem storeLoop_placed_of_iter [LibsignalPlacement] {F : ShaState → List (Bi
   exact storeLoop_placed_loop_ind F A H hiter hA hmm hfind hhmac hgrow x ci R s0
     k Gc stc ckc chc s hlt hk hci hchc hstate hL
 
-def StoreLoopIterPlacedRoSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def StoreLoopIterPlacedRoSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H →
     H "memmove" = some hookMemmove →
@@ -733,7 +433,7 @@ def StoreLoopIterPlacedRoSpec [LibsignalPlacement] (F : ShaState → List (BitVe
             CmkLoopState_placed A x G' st' ck' R nextPC s0 s') ∨
          (s'.status = .Panicked ∧ (s'.mem ⊨ (cmkPlacedSpec F A).onPanic x s0 s' ∗ R)))
 
-def StoreLoopPlacedRoSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def StoreLoopPlacedRoSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H →
     H "memmove" = some hookMemmove →
@@ -964,7 +664,7 @@ theorem findIndex_placed_ok_at_state [LibsignalPlacement] {A : RustAlloc}
   rw [sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨hrest, hspatial⟩
 
-def InsertKeyState_placed [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def InsertKeyState_placed [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
     (ckc : CryptoGames.LibsignalSession.ChainKey) (ci : Nat) (seedPtr : BitVec 64)
     (R : SepProp) (s0 s : State) : Prop :=
@@ -976,13 +676,13 @@ def InsertKeyState_placed [LibsignalPlacement] (F : ShaState → List (BitVec 8)
     (cmkLoopHeap_placed A x Gc stc ckc s0 ∗
      vecU8Buf A 32#64 seedPtr (ckc.messageKeys F).seed) ∗ R)
 
-def evictOldestKeyHeap_placed [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def evictOldestKeyHeap_placed [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
     (ckc : CryptoGames.LibsignalSession.ChainKey) (ci : Nat) (chc : ReceiverChain)
     (cg : ChainGhost) (mkCap1 mkPtr1 seedPtr : BitVec 64) (s0 : State) : SepProp :=
   evictOldestKeyHeapAt F A lsLogFilterAddr x Gc stc ckc ci chc cg mkCap1 mkPtr1 seedPtr s0
 
-def EvictOldestKeyState_placed [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def EvictOldestKeyState_placed [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
     (ckc : CryptoGames.LibsignalSession.ChainKey) (ci : Nat) (chc : ReceiverChain)
     (cg : ChainGhost) (mkCap1 mkPtr1 seedPtr : BitVec 64)
@@ -999,7 +699,7 @@ def EvictOldestKeyState_placed [LibsignalPlacement] (F : ShaState → List (BitV
   mkPtr1 ≠ 0#64 ∧
   (s.mem ⊨ evictOldestKeyHeap_placed F A x Gc stc ckc ci chc cg mkCap1 mkPtr1 seedPtr s0 ∗ R)
 
-def AdvanceChainKeyState_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost)
+@[expose] def AdvanceChainKeyState_placed [LibsignalPlacement] (A : RustAlloc) (x : ConsumeMessageKeyGhost)
     (G' : RatchetGhost) (st' : RatchetState) (ckc : CryptoGames.LibsignalSession.ChainKey)
     (R : SepProp) (s0 s : State) : Prop :=
   s.pc = cmkAdvanceChainKeyPC_placed ∧
@@ -1007,7 +707,7 @@ def AdvanceChainKeyState_placed [LibsignalPlacement] (A : RustAlloc) (x : Consum
   AdvanceChainKeyRegs x s0 s ∧
   (s.mem ⊨ cmkLoopHeap_placed A x G' st' ckc s0 ∗ R)
 
-def DeriveSeedPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def DeriveSeedPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H →
     FindIndexPlacedOk H A → HmacPlacedOk H F →
@@ -1023,7 +723,7 @@ def DeriveSeedPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) 
         ((∃ seedPtr, InsertKeyState_placed F A x Gc stc ckc ci seedPtr R s0 sA) ∨
          (sA.status = .Panicked ∧ (sA.mem ⊨ (cmkPlacedSpec F A).onPanic x s0 sA ∗ R)))
 
-def InsertKeyPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def InsertKeyPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   H "memmove" = some hookMemmove → GrowOnePlacedOk H A →
     ∀ (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
@@ -1039,7 +739,7 @@ def InsertKeyPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) �
             EvictOldestKeyState_placed F A x Gc stc ckc ci chc cg mkCap1 mkPtr1 seedPtr R s0 sB) ∨
          (sB.status = .Panicked ∧ (sB.mem ⊨ (cmkPlacedSpec F A).onPanic x s0 sB ∗ R)))
 
-def EvictOldestKeyPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def EvictOldestKeyPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H →
     ∀ (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
@@ -1053,7 +753,7 @@ def EvictOldestKeyPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec
         ∃ G', Gc.AgreeExcept G' (some ci) ∧
           AdvanceChainKeyState_placed A x G' (updatedRatchetState F stc ci chc ckc) ckc R s0 sC
 
-def AdvanceChainKeyPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def AdvanceChainKeyPlacedSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   HmacPlacedOk H F →
     ∀ (x : ConsumeMessageKeyGhost) (G' : RatchetGhost) (st' : RatchetState)
@@ -1094,7 +794,7 @@ theorem storeLoop_iter_placed_of_parts [LibsignalPlacement]
     · exact ⟨sB, hstepsA.trans hstepsB, Or.inr hpanB⟩
   · exact ⟨sA, hstepsA, Or.inr hpanA⟩
 
-def hmacAtStateSpec (F : ShaState → List (BitVec 8) → ShaState) (s : State) :
+@[expose] def hmacAtStateSpec (F : ShaState → List (BitVec 8) → ShaState) (s : State) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8)) where
   pre := fun (out, ka, key, ia, inp) s' =>
     ⌜s'.mem = s.mem ∧
@@ -1124,7 +824,7 @@ theorem hmac_placed_ro_ok_at_state [LibsignalPlacement] {F : ShaState → List (
   rw [sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨hrest, hspatial⟩
 
-def DeriveSeedPlacedRoSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def DeriveSeedPlacedRoSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   CmkAllocHooks A H →
     FindIndexPlacedOk H A → HmacPlacedRoOk H F →
@@ -1141,7 +841,7 @@ def DeriveSeedPlacedRoSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8
         ((∃ seedPtr, InsertKeyState_placed F A x Gc stc ckc ci seedPtr R s0 sA) ∨
          (sA.status = .Panicked ∧ (sA.mem ⊨ (cmkPlacedSpec F A).onPanic x s0 sA ∗ R)))
 
-def AdvanceChainKeyPlacedRoSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+@[expose] def AdvanceChainKeyPlacedRoSpec [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   HmacPlacedRoOk H F →
     ∀ (x : ConsumeMessageKeyGhost) (G' : RatchetGhost) (st' : RatchetState)

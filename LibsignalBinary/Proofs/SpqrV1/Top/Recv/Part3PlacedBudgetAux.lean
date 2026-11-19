@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3Placed
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
@@ -22,6 +22,47 @@ import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Budget-Threaded Relocatable Version Dispatch Exits for `spqr::recv`
@@ -30,7 +71,7 @@ Envelope-parametric and default `SpqrRecvEnv` cleanup/error exits (`+752`, `+892
 for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,7 +87,7 @@ open CryptoVerification
   (LibsignalCodeLoaded LibsignalPlacement lsmpl lsρ withMemEq)
 open CryptoVerification.LibsignalSpqrV1
   (MsgPreamble PqRatchetState SpqrRecvModel V1State VersionNegotiationPB msgPreamble
-   recvResultExactKeyAt spqrDecodeState)
+   spqrDecodeState)
 open CryptoVerification.LibsignalTripleRatchet (VecArg)
 open CryptoVerification.LibsignalTripleRatchetRepr (noneCap)
 open CryptoVerification.RustHeap (allocHookStack)
@@ -60,7 +101,7 @@ open CryptoVerification.SpqrV1.Top.DecodeState
 open CryptoVerification.SpqrV1.Top.Recv
   (InnerWordInv MsgRemValid SepWPpLS cap_ne_zero_one_sle_true optProtoPqRatchetInnerAt_eq_drop
    optProtoPqRatchetInnerAt_expose_word ownFrame_join_352_4544 pinnedPqRatchetStateAt
-   recv_err_byte_foldX recv_ok_empty_foldX relocPinnedPqRatchetStateAt ret_48_split
+   recv_ok_empty_foldX relocPinnedPqRatchetStateAt ret_48_split
    ret_48_split_byte8 sp_sub_4992_aligned spqrRecvCalleeStackX spqrRecvPlacedEntry
    spqrRecvPlacedProg spqrRecvRoPlacedAt spqrRecvSavedRegs stackAt_spqrRecvCallee_split
    subroutine_ok_withMemEq_of_lscl vnHeader_sub4992_entails_memRegion_48 vnTail_some_entails_dealloc)
@@ -69,9 +110,10 @@ open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FreeOnlyEvs RustCliAllocBudget VmPreserved
    rustCliDeallocBudgetSpec rustDeallocEvents)
 open LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget (dropOptProtoInnerStatePlacedSpec)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (recvResultExactKeyDispAt)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1PlacedBudget
-  (SpqrRecvEnv spqrRecvBudgetPanicPost spqrRecvPlacedPost0 spqrRecvPlacedPost0OfEnv
-   step_epilogue_placed_ofEnv)
+  (SpqrRecvEnv recv_err_byte_disp_foldX spqrRecvBudgetPanicPost spqrRecvPlacedPost0
+   spqrRecvPlacedPost0OfEnv step_epilogue_placed_ofEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2PlacedBudget
   (SpqrRecvDropContractsBudget SpqrRecvEnv.append_freeOnly close_free_step deallocFreeOnlySpec
    freeOnlyWitness seq_free seq_free_lscl seq_vm_clean seq_vm_lscl step_drop_pre_952_placed_ofEnv
@@ -119,7 +161,7 @@ theorem step_drop_vn_936_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       ((s0.sp - 4992#64) ↦₆₄ w0) ∗
@@ -148,7 +190,7 @@ theorem step_drop_vn_936_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs_vn st0) sm ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 48 ∗
@@ -206,7 +248,7 @@ theorem step_drop_vn_936_placed {MC : AllocCostModel} {F : ShaCompress}
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       ((s0.sp - 4992#64) ↦₆₄ w0) ∗
@@ -268,7 +310,7 @@ theorem step_err_versionMismatch_892_placed_ofEnv {MC : AllocCostModel} {F : Sha
       spqrRecvRoPlacedAt ∗
       st.at A.repAlloc ∗
       msg.at A.repAlloc ∗
-      recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+      recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
       A.pool lim (MC.stepEvents evs0 st_cost) s ∗
       stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
       memRegion (s0.sp - 4992#64) 48 ∗
@@ -282,7 +324,7 @@ theorem step_err_versionMismatch_892_placed_ofEnv {MC : AllocCostModel} {F : Sha
       refine SepWP.focus_weaken (ret_48_split_byte8 ret) (by sep_focus) ?_
       wp_pull_exists; rename_i r0 b8 r2 r3
       wp_steps 5
-      have hfold := recv_err_byte_foldX A.repAlloc ret r2 r3 7#8 false (by decide)
+      have hfold := recv_err_byte_disp_foldX A.repAlloc ret r2 r3 7#8 false (by decide) (by decide)
       rw [← herr] at hfold
       refine SepWP.fold hfold (by sep_focus) ?_
       refine align_pre_wp (by sep_ac_rfl) ?_
@@ -374,7 +416,7 @@ theorem step_err_minVersion_752_placed_ofEnv {MC : AllocCostModel} {F : ShaCompr
   dsimp only [spqrRecvPlacedProg, spqrRecvPlacedEntry] at hpc ⊢
   refine SepWP.focus_weaken (ret_48_split_byte8 ret) (by sep_focus) ?_
   wp_pull_exists; rename_i r0 b8 r2 r3
-  have hfold := recv_err_byte_foldX A.repAlloc ret r2 r3 8#8 false (by decide)
+  have hfold := recv_err_byte_disp_foldX A.repAlloc ret r2 r3 8#8 false (by decide) (by decide)
   rw [← herr] at hfold
   cases hvn : pre_pb.versionNegotiation with
   | none =>
@@ -387,7 +429,7 @@ theorem step_err_minVersion_752_placed_ofEnv {MC : AllocCostModel} {F : ShaCompr
         spqrRecvRoPlacedAt ∗
         st.at A.repAlloc ∗
         msg.at A.repAlloc ∗
-        recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+        recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
         A.pool lim (MC.stepEvents evs0 st_cost) s ∗
         stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
         memRegion (s0.sp - 4992#64) 48 ∗
@@ -431,7 +473,7 @@ theorem step_err_minVersion_752_placed_ofEnv {MC : AllocCostModel} {F : ShaCompr
           spqrRecvRoPlacedAt ∗
           st.at A.repAlloc ∗
           msg.at A.repAlloc ∗
-          recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+          recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
           A.pool lim (MC.stepEvents evs0 st_cost) s ∗
           stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
           memRegion (s0.sp - 4992#64) 48 ∗
@@ -460,7 +502,7 @@ theorem step_err_minVersion_752_placed_ofEnv {MC : AllocCostModel} {F : ShaCompr
           spqrRecvRoPlacedAt ∗
           st.at A.repAlloc ∗
           msg.at A.repAlloc ∗
-          recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+          recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
           A.pool lim (MC.stepEvents evs0 st_cost) s ∗
           stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
           ((s0.sp - 4992#64) ↦₆₄ w0) ∗
@@ -573,7 +615,8 @@ theorem step_ok_none_912_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
   dsimp only [spqrRecvPlacedProg, spqrRecvPlacedEntry] at hpc ⊢
   rw [ret_48_split ret]
   wp_pull_exists; rename_i r3 r2 r1 r0
-  have hfold := recv_ok_empty_foldX A.repAlloc ret
+  have hfold : _ ⊢ recvResultExactKeyDispAt A.repAlloc ret (.ok ([], none)) :=
+    recv_ok_empty_foldX A.repAlloc ret
   rw [← hok] at hfold
   cases hvn : pre_pb.versionNegotiation with
   | none =>
@@ -586,7 +629,7 @@ theorem step_ok_none_912_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
         spqrRecvRoPlacedAt ∗
         st.at A.repAlloc ∗
         msg.at A.repAlloc ∗
-        recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+        recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
         A.pool lim (MC.stepEvents evs0 st_cost) s ∗
         stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
         memRegion (s0.sp - 4992#64) 48 ∗
@@ -630,7 +673,7 @@ theorem step_ok_none_912_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
           spqrRecvRoPlacedAt ∗
           st.at A.repAlloc ∗
           msg.at A.repAlloc ∗
-          recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+          recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
           A.pool lim (MC.stepEvents evs0 st_cost) s ∗
           stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
           memRegion (s0.sp - 4992#64) 48 ∗
@@ -658,7 +701,7 @@ theorem step_ok_none_912_placed_ofEnv {MC : AllocCostModel} {F : ShaCompress}
           spqrRecvRoPlacedAt ∗
           st.at A.repAlloc ∗
           msg.at A.repAlloc ∗
-          recvResultExactKeyAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
+          recvResultExactKeyDispAt A.repAlloc ret (M.recv st.bytes msg.bytes) ∗
           A.pool lim (MC.stepEvents evs0 st_cost) s ∗
           stackAt (s0.sp - 4992#64) spqrRecvCalleeStackX ∗
           ((s0.sp - 4992#64) ↦₆₄ w0) ∗

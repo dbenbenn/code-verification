@@ -9,13 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailDefsPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailEncrypt
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyTailEncrypt -- proof-setup: allow-public-import
 public import ProofLib.RegChain
-public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyStale
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailSymPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable `segPreKey` `OTR::encrypt` Call and Error Branch (`+0x8b4..+0x8ec`)
@@ -25,7 +34,7 @@ Proves `segPreKey_encrypt_call_placed_ok` (`+0x8b4..+0x8c8`) and `segPreKey_encr
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -346,7 +355,7 @@ private theorem memRegion_24_exists_words64At_placed (a : BitVec 64) {m : Memory
   · exact ⟨v0, v1, v2, hws⟩
   · nomatch hlen
 
-def preKeyEncryptErrRestFramePlaced [LibsignalPlacement] (ss_vt id_vt : BitVec 64)
+@[expose] def preKeyEncryptErrRestFramePlaced [LibsignalPlacement] (ss_vt id_vt : BitVec 64)
     (A : RustAlloc) (ctl : BitVec 64)
     (x : WithStoresEncGhost) (prevCap prevPtr : BitVec 64) (G : SessionGhost)
     (sess : Session (List (BitVec 8))) (taken : SessionState (List (BitVec 8)))

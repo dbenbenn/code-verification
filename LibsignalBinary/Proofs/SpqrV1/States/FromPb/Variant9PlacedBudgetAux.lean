@@ -10,22 +10,31 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.UnchunkedFromPbClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9cPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.UnchunkedFromPbClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9bPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBaseBudget -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9b -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant9aPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget Envelopes and Step Liftings for `Variant9PlacedBudget`
@@ -35,7 +44,7 @@ and lifts `<Ct1Sent>::from_pb` call combinators and Variant 9 pure steps (`+444`
 to `VmPreserved` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -725,7 +734,7 @@ theorem v9_step_2864_ok_none_to_6904_placed_budget [LibsignalPlacement]
       followed by `<PolyDecoder>::from_pb` events followed by `FreeOnlyEvs` cleanup (empty on `.ok`);
     - otherwise, `<Ct1Sent>::from_pb` events followed by `FreeOnlyEvs` cleanup of any remaining
       fields. -/
-def Ct1AcknowledgedUcSomeEnv (F : ShaCompress) (u : V1State.Unchunked.Ct1Sent)
+@[expose] def Ct1AcknowledgedUcSomeEnv (F : ShaCompress) (u : V1State.Unchunked.Ct1Sent)
     (optDec : Option PolynomialDecoder) (evs : List AllocEvent) : Prop :=
   match ct1SentFromPb (spqrAuthApi F) u, optDec with
   | .ok _, some d =>
@@ -742,7 +751,7 @@ def Ct1AcknowledgedUcSomeEnv (F : ShaCompress) (u : V1State.Unchunked.Ct1Sent)
 
 /-- Exact binary allocator event envelope for Variant 9 (`Ct1Acknowledged`, `+444`, Block `333`) of
     `<spqr::v1::chunked::states::States>::from_pb`. -/
-def Ct1AcknowledgedFromPbEnv (F : ShaCompress)
+@[expose] def Ct1AcknowledgedFromPbEnv (F : ShaCompress)
     (st : V1State.Chunked.Ct1Acknowledged) (evs : List AllocEvent) : Prop :=
   match st.receivingEk, st.uc with
   | some d, some u =>

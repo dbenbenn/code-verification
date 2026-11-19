@@ -9,11 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms2
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3Ext
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BridgePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsCPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Defs
 
 /-!
 # Relocatable Stage P2 Arm 6 and Normal-Exit Bridges
@@ -22,7 +28,7 @@ Defines `p2Sub6FramePlaced` and `p2OkPostAtPlaced`, and proves placed Arm 6 erro
 `p2_v1_arm6_ok_hooks_placed` and normal-exit entailment `p2_v1_ok_entails_placed` on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,7 +65,7 @@ private theorem lsLogOff_eq_pl2 [LibsignalPlacement] :
     FromRecordCallees.lsLogOff = (lsLogFilterAddr ↦₆₄ 0#64) := rfl
 
 /-- Frame held constant across `stageP2_sub6_v1_kits_placed` (`+0x125c -> +0x1778` and Arm 6). -/
-def p2Sub6FramePlaced (A : RustAlloc) {b : BitVec 64}
+@[expose] def p2Sub6FramePlaced (A : RustAlloc) {b : BitVec 64}
     (spkKit : SignedPreKeyStoreSpec A b)
     (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b)
@@ -334,7 +340,7 @@ abbrev p2_v1_arm6_ok_4k_placed := @p2_v1_arm6_ok_hooks_placed
 abbrev p2_v1_arm6_ok_placed := @p2_v1_arm6_ok_hooks_placed
 
 /-- Placed spatial postcondition at `+0x1778` (Normal exit into Stage P3 `StageP3GenVRegs`). -/
-def p2OkPostAtPlaced (A : RustAlloc) [LibsignalPlacement]
+@[expose] def p2OkPostAtPlaced (A : RustAlloc) [LibsignalPlacement]
     (spkKit : SignedPreKeyStoreSpec A 0#64)
     (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (pkKit : PreKeyStoreSpec A 0#64)

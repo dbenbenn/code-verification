@@ -18,7 +18,7 @@ Defines the `CanX25519Variant` typeclass and its `DY.Bytes` instance for encodin
 X25519 public-key variations.
 -/
 
-@[expose] public section
+public section
 
 namespace DY.X25519
 

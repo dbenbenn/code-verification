@@ -9,20 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC3b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2b
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC3b -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6b
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC6c
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
 
 /-!
 # One-Key `Auth` `G3 -> G3.5` Coupled Invariant and Send Couplings
@@ -31,8 +32,7 @@ Support projections and `.roQuery`, `.sendOPK`, and `.sendNoOPK` step couplings 
 `pqxdhAuthAdvLatchedStageImpl1Key`.
 -/
 
-@[expose] public section
-noncomputable section
+public section
 set_option autoImplicit false
 open Classical
 open SignalPqxdh SignalPqxdh.Security
@@ -387,7 +387,7 @@ theorem fgAuthStepCoupling_cutoff_latched_roQuery1Key
       { s3.toFg with advRoLog := secrets :: s3.adv.advRoLog }
       hRun.1 hVi.1 hbMem hPowSess hTake hDh3
 
-def pqxdhAuthSendLatchedStageImpl1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthSendLatchedStageImpl1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthSendLatchedState S) ProbComp)
   | .sendOPK u i bundle m0 m1 => StateT.mk (fun s =>
     ((pqxdhAuthAdvLatchedStageImpl1Key stage S P (.sendOPK u i bundle m0 m1)).run

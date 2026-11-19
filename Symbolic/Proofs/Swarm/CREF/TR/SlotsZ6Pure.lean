@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2
+public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2 -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
@@ -22,7 +22,7 @@ Defines `TRStateStoredAt`, `RecvRkLensAll`, `SkippedInstallByteFresh`, `RecvRkNo
 `RecvRkNotLowAll` on composed protocol runs.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -49,7 +49,7 @@ theorem mem_availableStates_of_trStateStoredAt (r₀ : ProtocolSetup) (ms : List
     st ∈ availableStates r₀ (runTraceMoves r₀ ms) :=
   RecvHistStep2.mem_availableStates_of_at? r₀ ms h
 
-def RecvRkLensAll (interpretation : ExternInterpretation) (S : SpqrSem) (g : Ghost)
+@[expose] def RecvRkLensAll (interpretation : ExternInterpretation) (S : SpqrSem) (g : Ghost)
     (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
   ∀ st ∈ availableStates r₀ (runTraceMoves r₀ ms), ∀ c ∈ st.recv,
     (gamma interpretation S g c.ratchetKey).length = 32
@@ -57,7 +57,7 @@ def RecvRkLensAll (interpretation : ExternInterpretation) (S : SpqrSem) (g : Gho
 /-- At the source state `st₀` of any `SkippedKeyStored` event taking the fresh-chain branch
 (`recvChainFor st₀.toDRState pk = some (c₀, true)`), no existing chain `c ∈ st₀.recv` has the same
 concretized ratchet-key bytes as `pk`. -/
-def SkippedInstallByteFresh (interpretation : ExternInterpretation) (S : SpqrSem) (g : Ghost)
+@[expose] def SkippedInstallByteFresh (interpretation : ExternInterpretation) (S : SpqrSem) (g : Ghost)
     (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
   ∀ (s : SessionInfo) (pk : DY.Bytes) (n : UInt32) (seed : DY.Bytes) (rIdx src i : Nat)
     (p₀ : Participant) (st₀ : TRState) (c₀ : RecvChain),
@@ -67,7 +67,7 @@ def SkippedInstallByteFresh (interpretation : ExternInterpretation) (S : SpqrSem
     ∀ c ∈ st₀.recv, gamma interpretation S g c.ratchetKey ≠ gamma interpretation S g pk
 
 /-- Every receiver chain of `st` has a non-low-order concretized ratchet key. -/
-def RecvRkNotLowP (interpretation : ExternInterpretation) (S : SpqrSem) (g : Ghost)
+@[expose] def RecvRkNotLowP (interpretation : ExternInterpretation) (S : SpqrSem) (g : Ghost)
     (st : TRState) : Prop :=
   ∀ c ∈ st.recv,
     DY.X25519.isLowOrderKey ((gamma interpretation S g c.ratchetKey).map BitVec.toNat) = false
@@ -79,7 +79,7 @@ theorem recvDetermined_recvRkNotLowP (interpretation : ExternInterpretation) (S 
   exact h c hc
 
 /-- Every receiver chain of every available `TRState` has a non-low-order concretized ratchet key. -/
-def RecvRkNotLowAll (interpretation : ExternInterpretation) (S : SpqrSem) (g : Ghost)
+@[expose] def RecvRkNotLowAll (interpretation : ExternInterpretation) (S : SpqrSem) (g : Ghost)
     (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
   ∀ st ∈ availableStates r₀ (runTraceMoves r₀ ms), ∀ c ∈ st.recv,
     DY.X25519.isLowOrderKey ((gamma interpretation S g c.ratchetKey).map BitVec.toNat) = false

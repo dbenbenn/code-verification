@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Peak Live-Heap Interface for `SessionRecord::serialize`, `SessionClone`, and CLI `StoreKits`
@@ -33,7 +35,7 @@ Combines:
    and their `PhaseCreditSpec` bounds under `DirDomainCaps`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -237,7 +239,7 @@ theorem serializePrev1_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 /-! ## 3. CLI `StoreKits` Poll Envelopes & `PhaseCreditSpec M` Bounds -/
 
 /-- Parametric session-load poll envelope (`AddrText → Dir::get → DeserEnv → FreeOnlyEvs`). -/
-def CliSessLoadPollEnv (rd : ReadRule)
+@[expose] def CliSessLoadPollEnv (rd : ReadRule)
     (DeserEnv : List (BitVec 8) → List AllocEvent → Prop)
     (files : FsFiles) (dir : DirGhost) (peer : AddrGhost)
     (evs : List AllocEvent) : Prop :=
@@ -249,7 +251,7 @@ def CliSessLoadPollEnv (rd : ReadRule)
     evs
 
 /-- `0`-prev session-store poll envelope (`AddrText → RecordSerializeCancelEnv → Dir::put`). -/
-def CliSessStorePollEnv (dir : DirGhost) (peer : AddrGhost)
+@[expose] def CliSessStorePollEnv (dir : DirGhost) (peer : AddrGhost)
     (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (CliAddrTextEnv peer)
@@ -258,7 +260,7 @@ def CliSessStorePollEnv (dir : DirGhost) (peer : AddrGhost)
     evs
 
 /-- `prev1` session-store poll envelope (`AddrText → SerializePrev1CancelEnv → Dir::put`). -/
-def CliSessStorePollPrev1Env (dir : DirGhost) (peer : AddrGhost)
+@[expose] def CliSessStorePollPrev1Env (dir : DirGhost) (peer : AddrGhost)
     (G : SessionGhost) (sess : Session (List (BitVec 8))) (enc : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   SeqEnv (CliAddrTextEnv peer)
@@ -267,7 +269,7 @@ def CliSessStorePollPrev1Env (dir : DirGhost) (peer : AddrGhost)
     evs
 
 /-- Generic small-record (`≤ 8192` B) key/identity poll envelope (`Dir::get` + small decode + drops). -/
-def CliSmallStorePollEnv (rd : ReadRule) (files : FsFiles) (dir : DirGhost)
+@[expose] def CliSmallStorePollEnv (rd : ReadRule) (files : FsFiles) (dir : DirGhost)
     (name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   SeqEnv (CliDecimalEnv 0#32)
     (SeqEnv (CliDirGetEnv (ReadFileRuleEnv rd) files dir name)
@@ -275,16 +277,16 @@ def CliSmallStorePollEnv (rd : ReadRule) (files : FsFiles) (dir : DirGhost)
         (SeqEnv (CliDirPutStrEnv dir name []) FreeOnlyEvs)))
     evs
 
-def sessLoadPollDeltaCum (fileCap deserCum : Nat) : Nat :=
+@[expose] def sessLoadPollDeltaCum (fileCap deserCum : Nat) : Nat :=
   max (65536 + 2 * fileCap) 8516362 + deserCum
 
-def sessLoadPollDeltaLive (fileCap deserLive : Nat) : Nat :=
+@[expose] def sessLoadPollDeltaLive (fileCap deserLive : Nat) : Nat :=
   max (32768 + fileCap) 2122265 + deserLive
 
-def sessLoadPollDeltaPeak (fileCap deserPeak : Nat) : Nat :=
+@[expose] def sessLoadPollDeltaPeak (fileCap deserPeak : Nat) : Nat :=
   max (max (33980 + fileCap) 3187903) (max (25113 + fileCap) 2122265 + deserPeak)
 
-def sessLoadPollMaxReq (fileCap deserMaxReq : Nat) : Nat :=
+@[expose] def sessLoadPollMaxReq (fileCap deserMaxReq : Nat) : Nat :=
   max (max 2097152 fileCap) deserMaxReq
 
 private theorem addressText_peer_len_le (peer : AddrGhost)
@@ -360,16 +362,16 @@ theorem sessLoadPoll_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
   unfold sessLoadPollDeltaCum sessLoadPollDeltaLive sessLoadPollDeltaPeak sessLoadPollMaxReq
   exact h123.mono (by omega) (by omega) (by omega) (by omega)
 
-def sessStorePollDeltaCum (serCum maxEntries : Nat) : Nat :=
+@[expose] def sessStorePollDeltaCum (serCum maxEntries : Nat) : Nat :=
   32768 + serCum + 192 * max 4 (2 * maxEntries)
 
-def sessStorePollDeltaLive (serLive maxEntries : Nat) : Nat :=
+@[expose] def sessStorePollDeltaLive (serLive maxEntries : Nat) : Nat :=
   32768 + serLive + 96 * max 4 (2 * maxEntries)
 
-def sessStorePollDeltaPeak (serPeak maxEntries : Nat) : Nat :=
+@[expose] def sessStorePollDeltaPeak (serPeak maxEntries : Nat) : Nat :=
   32768 + serPeak + 96 * max 4 (2 * maxEntries)
 
-def sessStorePollMaxReq (serMaxReq maxEntries : Nat) : Nat :=
+@[expose] def sessStorePollMaxReq (serMaxReq maxEntries : Nat) : Nat :=
   max serMaxReq (96 * max 4 (2 * maxEntries))
 
 theorem sessStorePoll_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -429,16 +431,16 @@ theorem cliStorePollPrev1_phaseCredit {M : AllocCostModel} [HasFineReallocCredit
   rw [hmax2] at h123
   exact PhaseCreditSpec.mono (by omega) (by omega) (by omega) (by omega) h123
 
-def smallStorePollDeltaCum (fileCap maxEntries : Nat) : Nat :=
+@[expose] def smallStorePollDeltaCum (fileCap maxEntries : Nat) : Nat :=
   max (1048576 + 2 * fileCap) 9364784 + 192 * max 4 (2 * maxEntries)
 
-def smallStorePollDeltaLive (fileCap maxEntries : Nat) : Nat :=
+@[expose] def smallStorePollDeltaLive (fileCap maxEntries : Nat) : Nat :=
   max (589824 + fileCap) 2662943 + 96 * max 4 (2 * maxEntries)
 
-def smallStorePollDeltaPeak (fileCap maxEntries : Nat) : Nat :=
+@[expose] def smallStorePollDeltaPeak (fileCap maxEntries : Nat) : Nat :=
   max 3187743 (max (589824 + fileCap) 2662943 + 96 * max 4 (2 * maxEntries))
 
-def smallStorePollMaxReq (fileCap maxEntries : Nat) : Nat :=
+@[expose] def smallStorePollMaxReq (fileCap maxEntries : Nat) : Nat :=
   max (max 2097152 fileCap) (96 * max 4 (2 * maxEntries))
 
 theorem smallStorePoll_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
@@ -531,12 +533,6 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit (
 )
 open LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PureBudget (GrowOneDirEnv)
 
-/-- Definitional bridge (`rfl`) between `SessionCloneCredit.optLargeCost` and
-`DirPeakHelpers.optLargeLive`. -/
-theorem optLargeCost_eq_optLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) :
-    optLargeCost M req = optLargeLive M req :=
-  rfl
-
 theorem optLargeCost_fine_of_le {req : Nat} (hle : req ≤ 135167) :
     optLargeCost fineCostModel req = 0 := by
   unfold optLargeCost
@@ -625,7 +621,7 @@ theorem boxAlloc_phaseCredit_tight {M : AllocCostModel} [HasFineReallocCredit M]
 /-- Tight per-bucket `cumSmall` ceiling for `allocBytes1Events bs` (`bs.length ≤ fc`) on `fineCostModel`:
 `0` (`fc = 0`), `1,607` (`fc ≤ 64`), `9,789` (`fc ≤ 2,048`), `12,410` (`fc ≤ 8,192`), and
 `143,484` (`fc > 8,192`, including `2 MiB`). -/
-def fineAllocCapCum (fc : Nat) : Nat :=
+@[expose] def fineAllocCapCum (fc : Nat) : Nat :=
   if fc = 0 then 0
   else if fc ≤ 64 then 1607
   else if fc ≤ 2048 then 9789
@@ -696,26 +692,26 @@ theorem allocBytes1_fine_phaseCredit_tight {bs : List (BitVec 8)} {fc : Nat}
 /-- Tight `cumSmall` ceiling for `ReadFileRuleEnv` (`bs.length ≤ fc`) on `fineCostModel`:
 `0` (`fc = 0`), `12,410` (`0 < fc ≤ 4,096`), and `573,818` (`fc > 4,096`, covering `cliIoReadCaps 9`
 up to `2 MiB`). -/
-def fineReadFileCum (fc : Nat) : Nat :=
+@[expose] def fineReadFileCum (fc : Nat) : Nat :=
   if fc = 0 then 0
   else if fc ≤ 4096 then 12410
   else 573818
 
 /-- Tight `liveLarge` ceiling for `ReadFileRuleEnv` (`bs.length ≤ fc`) on `fineCostModel`:
 `0` for `fc ≤ 4,096`, else `max (optLargeCost fineCostModel fc) 2,105,347`. -/
-def fineReadFileLive (fc : Nat) : Nat :=
+@[expose] def fineReadFileLive (fc : Nat) : Nat :=
   if fc ≤ 4096 then 0
   else max (optLargeCost fineCostModel fc) 2105347
 
 /-- Tight `peakLarge` ceiling for `ReadFileRuleEnv` (`bs.length ≤ fc`) on `fineCostModel`:
 `0` for `fc ≤ 4,096`, else `max (optLargeCost fineCostModel fc) 3,162,118`. -/
-def fineReadFilePeak (fc : Nat) : Nat :=
+@[expose] def fineReadFilePeak (fc : Nat) : Nat :=
   if fc ≤ 4096 then 0
   else max (optLargeCost fineCostModel fc) 3162118
 
 /-- Tight `maxReq` ceiling for `ReadFileRuleEnv` (`bs.length ≤ fc`) on `fineCostModel`:
 `0` (`fc = 0`), `4,096` (`0 < fc ≤ 4,096`), else `max fc 2,097,152`. -/
-def fineReadFileMaxReq (fc : Nat) : Nat :=
+@[expose] def fineReadFileMaxReq (fc : Nat) : Nat :=
   if fc = 0 then 0
   else if fc ≤ 4096 then 4096
   else max fc 2097152
@@ -1109,7 +1105,7 @@ private theorem rustRealloc_large_large_any (M : AllocCostModel) [HasFineRealloc
 
 /-- Tight `cumSmall` bound for `GrowOneDirEnv x` (`x.cap.toNat ≤ maxCap`) on `fineCostModel`:
 `9,085` when `maxCap ≤ 8` (`new ≤ 768`, covering `maxEntries ≤ 4`), else `143,484`. -/
-def fineGrowOneDirCum (maxCap : Nat) : Nat :=
+@[expose] def fineGrowOneDirCum (maxCap : Nat) : Nat :=
   if maxCap ≤ 8 then 9085 else 143484
 
 theorem growOneDir_fine_phaseCredit_tight {x : GrowOneDirGhost} {maxCap : Nat}
@@ -1210,10 +1206,10 @@ theorem growOneDir_fine_phaseCredit_tight {x : GrowOneDirGhost} {maxCap : Nat}
         exact optLargeCost_fine_mono hnew_le_top
       exact hll.mono hc hl hl hnew_le_top
 
-def fineDirPutCum (maxEntries : Nat) : Nat :=
+@[expose] def fineDirPutCum (maxEntries : Nat) : Nat :=
   fineGrowOneDirCum (max 4 (2 * maxEntries))
 
-def fineDirPutLive (maxEntries : Nat) : Nat :=
+@[expose] def fineDirPutLive (maxEntries : Nat) : Nat :=
   optLargeCost fineCostModel (96 * max 4 (2 * maxEntries))
 
 theorem dirPut_fine_phaseCredit_tight
@@ -1382,16 +1378,16 @@ theorem boundedRustEvs_fine_phaseCredit_tight {maxCount maxReq : Nat}
 /-- Tight `CliSessLoadPollEnv` `Δcum`: `9,789` (`AddrText`) `+ 21,185` (`Path`) `+ fineReadFileCum fc + deserCum`
 (`= 604,792 + deserCum` at `fc = 2 MiB`, yielding `3,886,069` B = `3.89M` with `deserCum = 3,281,277`,
 and `Δpeak = max 3,162,118 (2,105,347 + deserPeak) = 3,162,118` B = `3.16M` at `deserPeak = 815,826`). -/
-def sessLoadPollTightDeltaCum (fileCap deserCum : Nat) : Nat :=
+@[expose] def sessLoadPollTightDeltaCum (fileCap deserCum : Nat) : Nat :=
   30974 + fineReadFileCum fileCap + deserCum
 
-def sessLoadPollTightDeltaLive (fileCap deserLive : Nat) : Nat :=
+@[expose] def sessLoadPollTightDeltaLive (fileCap deserLive : Nat) : Nat :=
   fineReadFileLive fileCap + deserLive
 
-def sessLoadPollTightDeltaPeak (fileCap deserPeak : Nat) : Nat :=
+@[expose] def sessLoadPollTightDeltaPeak (fileCap deserPeak : Nat) : Nat :=
   max (fineReadFilePeak fileCap) (fineReadFileLive fileCap + deserPeak)
 
-def sessLoadPollTightMaxReq (fileCap deserMaxReq : Nat) : Nat :=
+@[expose] def sessLoadPollTightMaxReq (fileCap deserMaxReq : Nat) : Nat :=
   max (max 256 (fineReadFileMaxReq fileCap)) deserMaxReq
 
 theorem sessLoadPoll_phaseCredit_tight
@@ -1449,13 +1445,13 @@ theorem sessLoadPoll_phaseCredit_tight
 
 /-- Tight `CliSessStorePollEnv` / `CliSessStorePollPrev1Env` `Δcum`:
 `9,789` (`AddrText`) `+ serCum + fineDirPutCum maxEntries` (`= 18,874 + serCum` when `maxEntries ≤ 4`). -/
-def sessStorePollTightDeltaCum (serCum maxEntries : Nat) : Nat :=
+@[expose] def sessStorePollTightDeltaCum (serCum maxEntries : Nat) : Nat :=
   9789 + serCum + fineDirPutCum maxEntries
 
-def sessStorePollTightDeltaLive (serLive maxEntries : Nat) : Nat :=
+@[expose] def sessStorePollTightDeltaLive (serLive maxEntries : Nat) : Nat :=
   serLive + fineDirPutLive maxEntries
 
-def sessStorePollTightDeltaPeak (serPeak maxEntries : Nat) : Nat :=
+@[expose] def sessStorePollTightDeltaPeak (serPeak maxEntries : Nat) : Nat :=
   serPeak + fineDirPutLive maxEntries
 
 theorem sessStorePoll_phaseCredit_tight
@@ -1556,16 +1552,16 @@ theorem cliStorePollPrev1_phaseCredit_tight
 `+ 1,607` (`name` clone) `+ fineDirPutCum maxEntries`
 (`= 551,818 + fineReadFileCum fileCap + fineDirPutCum maxEntries`:
 `= 573,313` B with `Δlive = 0, Δpeak = 0, maxReq = 8,192` at `0 < fileCap ≤ 4,096, maxEntries ≤ 4`). -/
-def smallStorePollTightDeltaCum (fileCap maxEntries : Nat) : Nat :=
+@[expose] def smallStorePollTightDeltaCum (fileCap maxEntries : Nat) : Nat :=
   551818 + fineReadFileCum fileCap + fineDirPutCum maxEntries
 
-def smallStorePollTightDeltaLive (fileCap maxEntries : Nat) : Nat :=
+@[expose] def smallStorePollTightDeltaLive (fileCap maxEntries : Nat) : Nat :=
   fineReadFileLive fileCap + fineDirPutLive maxEntries
 
-def smallStorePollTightDeltaPeak (fileCap maxEntries : Nat) : Nat :=
+@[expose] def smallStorePollTightDeltaPeak (fileCap maxEntries : Nat) : Nat :=
   max (fineReadFilePeak fileCap) (fineReadFileLive fileCap + fineDirPutLive maxEntries)
 
-def smallStorePollTightMaxReq (fileCap maxEntries : Nat) : Nat :=
+@[expose] def smallStorePollTightMaxReq (fileCap maxEntries : Nat) : Nat :=
   max (max 8192 (fineReadFileMaxReq fileCap)) (96 * max 4 (2 * maxEntries))
 
 theorem smallStorePoll_phaseCredit_tight
@@ -1640,7 +1636,7 @@ theorem smallStorePoll_phaseCredit_tight
 `(decCum, 0, 0, decMaxReq)` (`decMaxReq ≤ 8,192`), yielding
 `Δcum = 23,530 + fineReadFileCum fileCap + decCum + fineDirPutCum maxEntries`
 (`= 45,025 + decCum` with `Δlive = 0, Δpeak = 0, maxReq = 8,192` at `0 < fileCap ≤ 4,096, maxEntries ≤ 4`). -/
-def CliSmallStorePollOfEnv (DecEnv : List AllocEvent → Prop)
+@[expose] def CliSmallStorePollOfEnv (DecEnv : List AllocEvent → Prop)
     (rd : ReadRule) (files : FsFiles) (dir : DirGhost)
     (name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   SeqEnv (CliDecimalEnv 0#32)
@@ -1651,73 +1647,6 @@ def CliSmallStorePollOfEnv (DecEnv : List AllocEvent → Prop)
 
 def smallStorePollOfDecodeTightDeltaCum (fileCap decCum maxEntries : Nat) : Nat :=
   23530 + fineReadFileCum fileCap + decCum + fineDirPutCum maxEntries
-
-theorem smallStorePollOfDecode_phaseCredit_tight
-    {DecEnv : List AllocEvent → Prop}
-    {rd : ReadRule} {files : FsFiles} {dir : DirGhost}
-    {name : List (BitVec 8)} {maxDir maxEntries maxVal fileCap decCum decMaxReq : Nat}
-    (hdc : DirDomainCaps maxDir maxEntries maxVal dir)
-    (hdir : maxDir ≤ 64)
-    (hname : name.length ≤ 64)
-    (hcap : ∀ bs, rd files (pathOf dir.path name) = .ok bs → bs.length ≤ fileCap)
-    (hdec : PhaseCreditSpec fineCostModel DecEnv decCum 0 0 decMaxReq)
-    (hdecReq : decMaxReq ≤ 8192) :
-    PhaseCreditSpec fineCostModel (CliSmallStorePollOfEnv DecEnv rd files dir name)
-      (smallStorePollOfDecodeTightDeltaCum (max maxVal fileCap) decCum maxEntries)
-      (smallStorePollTightDeltaLive (max maxVal fileCap) maxEntries)
-      (smallStorePollTightDeltaPeak (max maxVal fileCap) maxEntries)
-      (smallStorePollTightMaxReq (max maxVal fileCap) maxEntries) := by
-  unfold CliSmallStorePollOfEnv
-  set fc := max maxVal fileCap
-  have hcap' : ∀ bs, rd files (pathOf dir.path name) = .ok bs → bs.length ≤ fc :=
-    fun bs h => Nat.le_trans (hcap bs h) (Nat.le_max_right maxVal fileCap)
-  have hdc64 : DirDomainCaps 64 maxEntries fc dir :=
-    hdc.mono hdir (Nat.le_refl _) (Nat.le_max_left _ _)
-  have h1 := decimal_fine_phaseCredit_tight 0#32
-  have h2 := dirGet_rule_fine_phaseCredit_tight rd files dir name hdc64 hname hcap'
-  rw [Nat.max_self fc] at h2
-  have h3 : PhaseCreditSpec fineCostModel DecEnv decCum 0 0 8192 :=
-    hdec.mono (Nat.le_refl _) (Nat.le_refl 0) (Nat.le_refl 0) hdecReq
-  have h4 := seq_freeOnly fineCostModel_freeNonInc
-    (dirPutStr_fine_phaseCredit_tight dir name [] hdc64 hname)
-  have h34 : PhaseCreditSpec fineCostModel
-      (SeqEnv DecEnv (SeqEnv (CliDirPutStrEnv dir name []) FreeOnlyEvs))
-      (1607 + decCum + fineDirPutCum maxEntries)
-      (fineDirPutLive maxEntries)
-      (fineDirPutLive maxEntries)
-      (max 8192 (96 * max 4 (2 * maxEntries))) := by
-    refine (h3.seq h4).mono ?_ (Nat.le_of_eq (Nat.zero_add _))
-      (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_of_eq (Nat.zero_add _)⟩) (Nat.le_refl _)
-    rw [← Nat.add_assoc decCum 1607, Nat.add_comm decCum 1607]
-  have h234 : PhaseCreditSpec fineCostModel
-      (SeqEnv (CliDirGetEnv (ReadFileRuleEnv rd) files dir name)
-        (SeqEnv DecEnv (SeqEnv (CliDirPutStrEnv dir name []) FreeOnlyEvs)))
-      (22792 + fineReadFileCum fc + decCum + fineDirPutCum maxEntries)
-      (fineReadFileLive fc + fineDirPutLive maxEntries)
-      (max (fineReadFilePeak fc) (fineReadFileLive fc + fineDirPutLive maxEntries))
-      (smallStorePollTightMaxReq fc maxEntries) := by
-    refine (h2.seq h34).mono ?_ (Nat.le_refl _) (Nat.le_refl _) ?_
-    · omega
-    · unfold smallStorePollTightMaxReq
-      have h256 : 256 ≤ max 8192 (fineReadFileMaxReq fc) :=
-        Nat.le_trans (by decide : 256 ≤ 8192) (Nat.le_max_left 8192 _)
-      exact Nat.max_le.mpr
-        ⟨Nat.max_le.mpr
-           ⟨Nat.le_trans h256 (Nat.le_max_left _ _),
-            Nat.le_trans (Nat.le_max_right 8192 _) (Nat.le_max_left _ _)⟩,
-         Nat.max_le.mpr
-           ⟨Nat.le_trans (Nat.le_max_left 8192 _) (Nat.le_max_left _ _),
-            Nat.le_max_right _ _⟩⟩
-  have h1234 := h1.seq h234
-  unfold smallStorePollOfDecodeTightDeltaCum smallStorePollTightDeltaLive smallStorePollTightDeltaPeak
-  refine h1234.mono ?_ (Nat.le_of_eq (Nat.zero_add _))
-    (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_of_eq (Nat.zero_add _)⟩) ?_
-  · omega
-  · unfold smallStorePollTightMaxReq
-    have h32 : 32 ≤ max (max 8192 (fineReadFileMaxReq fc)) (96 * max 4 (2 * maxEntries)) :=
-      Nat.le_trans (by decide : 32 ≤ 8192)
-        (Nat.le_trans (Nat.le_max_left 8192 _) (Nat.le_max_left _ _))
-    exact Nat.max_le.mpr ⟨h32, Nat.le_refl _⟩
 
 end TightStorePeakSpec
 

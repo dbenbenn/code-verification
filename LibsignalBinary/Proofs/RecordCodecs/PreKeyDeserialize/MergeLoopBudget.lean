@@ -9,14 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeFieldsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.PostBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.VarintKey
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeFieldsBudget
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.PostBudget
+public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.VarintKey -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.Defs
 import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.MergeFields
@@ -34,7 +33,7 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 `PreKeyRecord::deserialize` (Block `65`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

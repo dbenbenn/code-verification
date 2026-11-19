@@ -31,9 +31,9 @@ open Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.BaseData (baseHooks)
 set_option maxRecDepth 4000000 in
 set_option maxHeartbeats 1600000 in
 theorem base_scalars : extractElfScalarsAndOkPlaced mutantMpl mutantMmpl mutantCliElfImage = some (
-    0x46a000#64, 0x400040#64, 7, 0x471000#64, -- layout-bypass: concrete-mutant-trace-checkpoint
-    0x46f000#64, 0x46f008#64, 0x46bbfc#64, 0x46bbfd#64, -- layout-bypass: concrete-mutant-trace-checkpoint
-    0x46bce0#64, 0x46bce1#64, 0x46bcdc#64, 0x46bcdd#64) := by rfl_kernel -- layout-bypass: concrete-mutant-trace-checkpoint
+    0x46c000#64, 0x400040#64, 7, 0x479000#64, -- layout-bypass: concrete-mutant-trace-checkpoint
+    0x477000#64, 0x477008#64, 0x46dbfc#64, 0x46dbfd#64, -- layout-bypass: concrete-mutant-trace-checkpoint
+    0x46dce0#64, 0x46dce1#64, 0x46dcdc#64, 0x46dcdd#64) := by rfl_kernel -- layout-bypass: concrete-mutant-trace-checkpoint
 
 set_option maxRecDepth 4000000 in
 set_option maxHeartbeats 1600000 in

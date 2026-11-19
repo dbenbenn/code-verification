@@ -10,12 +10,14 @@ limitations under the License.
 module
 
 public import Aesop.BuiltinRules
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
+meta import GeneratedLean.LibsignalSessionPlacedObjShard25
+meta import GeneratedLean.LibsignalSessionPlacedObjShard26
 
 /-!
 # Relocatable Per-Block Decode Tables for Unchunked `encoded_len` Leaves
@@ -24,7 +26,7 @@ Generates relocatable per-block fetch/decode lemmas for CLI Blocks `469`, `470`,
 `487`, `492`, `496`, `499`, and `500`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

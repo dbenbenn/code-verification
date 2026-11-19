@@ -23,7 +23,7 @@ and `withLsCl`, together with `RustCliAllocBudget`-threaded `[LibsignalPlacement
 bundles (`AllocContractsXPlaced` and `AllocNoOomContractsXPlaced`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -146,69 +146,7 @@ theorem subroutine_ok_withLsCl_map_panic_oom' {α β : Type} {prog : Program} {e
       exact hq.2)
   exact subroutine_ok_withLsCodeLoaded_map_panic_oom' h0 hmap h_no_exit
 
-/-- OOM-preserving stack-slack framing for `Spec.withHookStackOom` under `withLsCodeLoaded pl`. -/
-theorem subroutine_ok_withLsCodeLoaded_withHookStackOom_mono {α : Type} {prog : Program}
-    {entry : BitVec 64} {pl : Obj.MultiPlacement} {spec : Spec α} {s1 s2 : Nat}
-    (hle : s1 ≤ s2) (hbound : s2 ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry (withLsCodeLoaded pl (spec.withHookStackOom s1)))
-    (h_no_panic : ∀ x R' s0 sf, sf.status = .Panicked → ¬(sf.mem ⊨ spec.onPanic x s0 sf ∗ R') := by
-      intro _ _ _ _ _ he; exact not_satisfies_false_sepConj he)
-    (h_no_exit : ∀ x code R' s0 sf, sf.status = .Exited code →
-        ¬(sf.mem ⊨ spec.onExit x code s0 sf ∗ R') := by
-      intro _ _ _ _ _ _ he; exact not_satisfies_false_sepConj he) :
-    subroutine_ok prog entry (withLsCodeLoaded pl (spec.withHookStackOom s2)) := by
-  refine subroutine_ok_withLsCodeLoaded_map_oom' h (fun x R s0 hpre => ?_) h_no_panic h_no_exit
-  have hsplit : s2 = s1 + (s2 - s1) := by omega
-  have hstack_pre : stackAt s0.sp s2 =
-      memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1) ∗ stackAt s0.sp s1 := by
-    have h0 := ProofLib.stackAt_split_bottom s0.sp s1 (s2 - s1) (by omega)
-    rwa [← hsplit] at h0
-  refine ⟨x, memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1) ∗ R, ?_, ?_, ?_⟩
-  · change s0.mem ⊨ (spec.pre x s0 ∗ stackAt s0.sp s2) ∗ R at hpre
-    rw [hstack_pre] at hpre
-    change s0.mem ⊨ (spec.pre x s0 ∗ stackAt s0.sp s1) ∗
-      (memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1) ∗ R)
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre
-  · intro sf hpost
-    change sf.mem ⊨ (spec.post x s0 sf ∗ stackAt s0.sp s1) ∗
-      (memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1) ∗ R) at hpost
-    change sf.mem ⊨ (spec.post x s0 sf ∗ stackAt s0.sp s2) ∗ R
-    rw [hstack_pre]
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
-  · intro sf hoom
-    exact satisfies_drop_mid_entails (Entails.refl _) hoom
 
-/-- OOM-preserving stack-slack framing for `Spec.withHookStackOom` under `withLsCl pl`. -/
-theorem subroutine_ok_withLsCl_withHookStackOom_mono {α : Type} {prog : Program}
-    {entry : BitVec 64} {pl : Obj.MultiPlacement} {spec : Spec α} {s1 s2 : Nat}
-    (hle : s1 ≤ s2) (hbound : s2 ≤ 2 ^ 64)
-    (h : subroutine_ok prog entry (withLsCl pl (spec.withHookStackOom s1)))
-    (h_no_panic : ∀ x R' s0 sf, sf.status = .Panicked → ¬(sf.mem ⊨ spec.onPanic x s0 sf ∗ R') := by
-      intro _ _ _ _ _ he; exact not_satisfies_false_sepConj he)
-    (h_no_exit : ∀ x code R' s0 sf, sf.status = .Exited code →
-        ¬(sf.mem ⊨ spec.onExit x code s0 sf ∗ R') := by
-      intro _ _ _ _ _ _ he; exact not_satisfies_false_sepConj he) :
-    subroutine_ok prog entry (withLsCl pl (spec.withHookStackOom s2)) := by
-  refine subroutine_ok_withLsCl_map_oom' h (fun x R s0 hpre => ?_) h_no_panic h_no_exit
-  have hsplit : s2 = s1 + (s2 - s1) := by omega
-  have hstack_pre : stackAt s0.sp s2 =
-      memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1) ∗ stackAt s0.sp s1 := by
-    have h0 := ProofLib.stackAt_split_bottom s0.sp s1 (s2 - s1) (by omega)
-    rwa [← hsplit] at h0
-  refine ⟨x, memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1) ∗ R, ?_, ?_, ?_⟩
-  · change s0.mem ⊨ (spec.pre x s0 ∗ stackAt s0.sp s2) ∗ R at hpre
-    rw [hstack_pre] at hpre
-    change s0.mem ⊨ (spec.pre x s0 ∗ stackAt s0.sp s1) ∗
-      (memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1) ∗ R)
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre
-  · intro sf hpost
-    change sf.mem ⊨ (spec.post x s0 sf ∗ stackAt s0.sp s1) ∗
-      (memRegion (s0.sp - BitVec.ofNat 64 s2) (s2 - s1) ∗ R) at hpost
-    change sf.mem ⊨ (spec.post x s0 sf ∗ stackAt s0.sp s2) ∗ R
-    rw [hstack_pre]
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
-  · intro sf hoom
-    exact satisfies_drop_mid_entails (Entails.refl _) hoom
 
 /-! ## 2. Budget-Threaded `[LibsignalPlacement]` Allocator Contract Bundles -/
 

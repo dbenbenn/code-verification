@@ -9,11 +9,28 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhGrow
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigEval -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhGrow
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
 import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSigStep
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # End-to-End Evaluation of the One-Key `Auth` `GapSigEufCma` DSL Program
@@ -22,7 +39,7 @@ import VCVio.EvalDist.Monad.Basic
 reduction `sigReductionAuth1Key`, preserving the list-length invariant `AgInv` across steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,33 +65,6 @@ theorem sigAuth1KeyDelegate_agInv (S : Setup) (K k : Nat) (q : AuthQuery S)
   rcases hx with ⟨⟨out, fg'⟩, hmem, rfl⟩
   exact fgAuth1KeyStepHalt_agInv true st.targetParty S.N_spk_tot K k st.targetPk st.targetPk q
     st.fg h (out, fg') hmem
-
-theorem sigAuth1KeySend_agInv (S : Setup) (K k : Nat) (q : AuthQuery S) (bu : PreKeyBundleInput)
-    (st : SigAuth1KeySimState S) (h : AgInv K (k + 1) st.fg.sim) :
-    ∀ x ∈ support (sigAuth1KeySend S K q bu st), AgInv K k x.2.fg.sim := by
-  intro x hx
-  unfold sigAuth1KeySend at hx
-  simp only [support_bind, Set.mem_iUnion] at hx
-  rcases hx with ⟨fg', _, hx⟩
-  split at hx
-  · simp only [support_pure, Set.mem_singleton_iff] at hx
-    subst hx
-    exact AgInv.mono K k st.fg.sim h
-  · exact sigAuth1KeyDelegate_agInv S K k q st h x hx
-
-theorem sigAuth1KeyStep_agInv (S : Setup) (K k : Nat) (q : AuthQuery S)
-    (st : SigAuth1KeySimState S) (h : AgInv K (k + 1) st.fg.sim) :
-    ∀ x ∈ support (sigAuth1KeyStep S K q st), AgInv K k x.2.fg.sim := by
-  unfold sigAuth1KeyStep
-  split
-  · intro x hx
-    simp only [support_pure, Set.mem_singleton_iff] at hx
-    subst hx
-    exact AgInv.mono K k st.fg.sim h
-  · split
-    · exact sigAuth1KeySend_agInv S K k _ _ st h
-    · exact sigAuth1KeySend_agInv S K k _ _ st h
-    · exact sigAuth1KeyDelegate_agInv S K k _ st h
 
 private theorem sigAuth1KeyDelegate_agInv2 (S : Setup) (K k : Nat) (q : AuthQuery S)
     (st : SigAuth1KeySimState S) (h : AgInv2 K (k + 1) st.fg) :
@@ -113,17 +103,6 @@ private theorem sigAuth1KeyStep_agInv2 (S : Setup) (K k : Nat) (q : AuthQuery S)
     · exact sigAuth1KeySend_agInv2 S K k _ _ st h
     · exact sigAuth1KeyDelegate_agInv2 S K k _ st h
 
-theorem a1sInitDsl_eval (S : Setup) (pk : Bytes) :
-    (a1sInitDsl S).eval (.cons pk .nil) =
-      (unifGdhSign (RoKem.sampleIndexRange S.N_id) >>= fun k =>
-        unifGdhSign ($ᵗ Bool) >>= fun secb =>
-          pure ((), a1sStToVal (SigAuth1KeySimState.empty S secb k pk))) := by
-  simp only [a1sInitDsl, bindV, letV, v, a1sMk, emptySimE, emptyAuthStE, fsMk, stMk,
-    Comp.eval_letC, eval_sampleIndexC, eval_sampleBoolC, Comp.eval, Expr.eval,
-    Ext.step_wk, Ext.refl_wk, Env.get_vs, Env.get_vz, a1g_embedPrim_unif]
-  refine bind_congr fun k => bind_congr fun secb => ?_
-  rfl
-
 private theorem a1sInit2Dsl_eval (S : Setup) (K : Nat) (pk : Bytes) :
     (a1sInit2Dsl S K).eval (.cons pk .nil) =
       (unifGdhSign (RoKem.sampleIndexRange S.N_id) >>= fun k =>
@@ -138,13 +117,6 @@ private theorem a1sInit2Dsl_eval (S : Setup) (K : Nat) (pk : Bytes) :
     unfold a1gClampedSigB FgAuth1KeySimState.empty; dsimp only; omega
   dsimp only [a1sSt2ToVal, SigAuth1KeySimState.empty]
   rw [hSub]; rfl
-
-theorem a1sFinishDsl_eval {S : Setup} (st : SigAuth1KeySimState S) (a : Bool) :
-    a1sFinishDsl.eval (.cons (a1sStToVal st) (.cons a .nil)) =
-      (pure (st.forgery.getD ([], [])) : OracleComp GdhSignSimSpec (Bytes × Bytes)) := by
-  rcases hfg : st.forgery with _ | fgVal <;>
-    simp [a1sFinishDsl, eCaseOpt, a1sFg, a1sStToVal, hfg, Comp.eval, Expr.eval, v,
-      Env.get_vz]
 
 private theorem a1sFinishDsl_eval2 {S : Setup} (K : Nat) (st : SigAuth1KeySimState S) (a : Bool) :
     a1sFinishDsl.eval (.cons (a1sSt2ToVal K st) (.cons a .nil)) =

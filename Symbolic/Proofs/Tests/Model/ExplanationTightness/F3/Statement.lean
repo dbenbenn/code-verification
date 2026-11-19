@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
+public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Security.Model
 
 /-!
@@ -22,7 +22,7 @@ existential baseline `HandshakeRootCompromised_old`). Both propositions are disc
 `F3/Main.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +38,7 @@ open DY.Libsignal.PQXDH (HandshakeKeys HandshakeKeysAt HandshakeWasCompromisedAt
 
 /-- The excuse that `FSQueryP P` grants for the message-key seed `mk` (the conclusion of
 `FSQuery`). -/
-def FSExcuse (P : TestTracePredicates) (mk : Bytes) : Prop :=
+@[expose] def FSExcuse (P : TestTracePredicates) (mk : Bytes) : Prop :=
   P.Compromised mk ∨
     (∃ ck, DerivesMsgKey ck mk ∧ P.Compromised ck) ∨
     (∃ rk ck, DerivesChain rk ck ∧ DerivesMsgKey ck mk ∧ P.Compromised rk)
@@ -51,7 +51,7 @@ theorem fsQuery_iff (P : TestTracePredicates) :
 session at `j₂` that `FSExcuse (mkTestTracePredicates tr)` nevertheless excuses via
 `HandshakeRootCompromised tr keys.rk` because an excused handshake at `j₁ ≠ j₂` derived the same
 `keys`. -/
-def HandshakeRootOverExcuse : Prop :=
+@[expose] def HandshakeRootOverExcuse : Prop :=
   ∃ tr : ExecTrace, tr.Reachable reachability ∧
     ∃ (mk : Bytes) (keys : HandshakeKeys) (j₁ j₂ : Nat) (s : SessionInfo) (ck : Bytes),
       tr.EventLogged (ComposedEvent.HandshakeSession s j₂) ∧
@@ -69,12 +69,12 @@ def HandshakeRootOverExcuse : Prop :=
 
 /-- Existential baseline predicate that excuses `k` whenever at least one handshake deriving `k` as
 its initial root or chain key is excused. -/
-def HandshakeRootCompromised_old (tr : ExecTrace) (k : Bytes) : Prop :=
+@[expose] def HandshakeRootCompromised_old (tr : ExecTrace) (k : Bytes) : Prop :=
   ∃ keys j, HandshakeKeysAt tr j keys ∧ HandshakeWasCompromisedAt tr j ∧ (k = keys.rk ∨ k = keys.ck)
 
 /-- `mkTestTracePredicates tr` with `HandshakeRootCompromised_old` in place of
 `HandshakeRootCompromised`. -/
-def tracePredicatesOld (tr : ExecTrace) : TestTracePredicates :=
+@[expose] def tracePredicatesOld (tr : ExecTrace) : TestTracePredicates :=
   let P := mkTestTracePredicates tr
   { P with
     Compromised := fun k =>
@@ -88,7 +88,7 @@ def tracePredicatesOld (tr : ExecTrace) : TestTracePredicates :=
 
 /-- Existence of a reachable trace and an attacker-unknown message-key seed `mk` excused by
 `tracePredicatesOld` and unexcused by `mkTestTracePredicates`. -/
-def OldOverExcusesReplayWitness : Prop :=
+@[expose] def OldOverExcusesReplayWitness : Prop :=
   ∃ tr : ExecTrace, tr.Reachable reachability ∧
     ∃ mk : Bytes,
       (mkTestTracePredicates tr).MessageKey mk ∧

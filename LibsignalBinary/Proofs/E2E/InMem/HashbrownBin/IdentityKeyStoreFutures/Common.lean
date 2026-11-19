@@ -9,19 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Instances
+public import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.Instances -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Transport
 import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.RoundLemmas
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.Decodes -- shake: keep
 import LibsignalBinary.Proofs.Common.StringCloneFlat
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Helpers for the `InMemIdentityKeyStore` Future-Closure Leaves
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures
 
@@ -36,61 +35,6 @@ open CryptoVerification.E2E.InMem.SipHashBin
 open CryptoVerification.E2E.InMem.HashbrownBin
 
 /-! ## Call-Site Specializations (`bcmp`, `String::clone`, `PublicKey::eq`) -/
-
-theorem bcmp_ok_at_getIdentity (b : BitVec 64) {A : RustAlloc} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr getIdentityClosureName + bv% (ls_off% "bcmp" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity::{closure#0}")) e2eBcmpSpec :=
-  hook_ok_at_raw getIdentityClosure_fnOff (by decide : num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity::{closure#0}") + num% (ls_off% "bcmp" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity::{closure#0}") = num% (ls_off% "bcmp"))
-    (by decide) (ls_hook% "bcmp") hHooks.bcmp
-
-theorem bcmp_ok_at_isTrustedIdentity (b : BitVec 64) {A : RustAlloc} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr isTrustedIdentityClosureName + bv% (ls_off% "bcmp" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}")) e2eBcmpSpec :=
-  hook_ok_at_raw isTrustedIdentityClosure_fnOff (by decide : num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}") + num% (ls_off% "bcmp" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}") = num% (ls_off% "bcmp"))
-    (by decide) (ls_hook% "bcmp") hHooks.bcmp
-
-theorem bcmp_ok_at_saveIdentity (b : BitVec 64) {A : RustAlloc} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr saveIdentityClosureName + bv% (ls_off% "bcmp" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}")) e2eBcmpSpec :=
-  hook_ok_at_raw saveIdentityClosure_fnOff (by decide : num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}") + num% (ls_off% "bcmp" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}") = num% (ls_off% "bcmp"))
-    (by decide) (ls_hook% "bcmp") hHooks.bcmp
-
-theorem stringClone_ok_at_saveIdentity (b : BitVec 64) {A : RustAlloc} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr saveIdentityClosureName + bv% (ls_off% "<alloc::string::String as core::clone::Clone>::clone" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}")) (stringCloneSpec A) := by
-  refine inImage_ok_at (callee := stringCloneHookName) ?_
-    (LibsignalBinary.Proofs.Common.StringCloneFlat.stringClone_rebase_hooks_ok b A ext
-      hHooks.shim hHooks.alloc_sat hHooks.memcpy hHooks.rawVecHandleError)
-  rw [HashbrownBin.saveIdentityClosure_fnOff,
-    LibsignalBinary.Proofs.Common.StringCloneFlat.stringCloneName_fnOff]
-
-theorem publicKeyEq_fnOff :
-    libsignalSessionCode.fnOff ConsumeMessageKeyTransfer.publicKeyEqName = num% (ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq") :=
-  (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq")
-
-theorem publicKeyEq_ok_at_isTrustedIdentity (b : BitVec 64) {A : RustAlloc} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr isTrustedIdentityClosureName + bv% (ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}"))
-      CryptoVerification.LibsignalSession.FindReceiverChainIndex.publicKeyEqSpec := by
-  refine inImage_ok_at (callee := ConsumeMessageKeyTransfer.publicKeyEqName) ?_
-    (CryptoVerification.LibsignalSession.FindReceiverChainIndex.publicKey_eq_ok b hHooks.blackBox)
-  rw [HashbrownBin.isTrustedIdentityClosure_fnOff, publicKeyEq_fnOff]
-
-theorem publicKeyEq_ok_at_saveIdentity (b : BitVec 64) {A : RustAlloc} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr saveIdentityClosureName + bv% (ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"))
-      CryptoVerification.LibsignalSession.FindReceiverChainIndex.publicKeyEqSpec := by
-  refine inImage_ok_at (callee := ConsumeMessageKeyTransfer.publicKeyEqName) ?_
-    (CryptoVerification.LibsignalSession.FindReceiverChainIndex.publicKey_eq_ok b hHooks.blackBox)
-  rw [HashbrownBin.saveIdentityClosure_fnOff, publicKeyEq_fnOff]
-
-/-! ## Unaligned 8-Byte Control-Group Load and `table4SingleAt` Bucket Splitting -/
 
 theorem probePos_3_eq_ofNat (hash : BitVec 64) :
     hash &&& 3#64 = BitVec.ofNat 64 (probePos hash 3#64).toNat := by
@@ -148,7 +92,7 @@ theorem add_not_shl6_eq_bucketAddr (ctrl : BitVec 64) (k : Nat) (hk : k < 4) :
   unfold bucketAddr
   rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;> bv_omega
 
-def singleBucketRestAt (stride : Nat) (ctrl : BitVec 64) (k : Nat) : SepProp :=
+@[expose] def singleBucketRestAt (stride : Nat) (ctrl : BitVec 64) (k : Nat) : SepProp :=
   arrayAt
     (fun i a => if i = k then emp else memRegion a stride) stride
     (ctrl - BitVec.ofNat 64 (4 * stride)) [3, 2, 1, 0]

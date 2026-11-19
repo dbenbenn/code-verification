@@ -9,9 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W6Exits
+import LibsignalBinary.Specifications.RustHeap.Alloc
+import Arm64.Trusted.Surface.IncludeBytes
+import ProofLib
+import ProofLib.Placed.Multi
+import ProofLib.ProgramReflection.SortedFresh
+import ProofLib.ProgramReflection.Variant.TrapTransfer
+import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
+public import ProofLib.GenPlacedFetches
 
 /-!
 # Relocatable `[LibsignalPlacement]` Error and Allocation-Failure Cut States
@@ -20,7 +30,7 @@ Defines `KyberBoxErrStatePlaced`, `IdentErrStatePlaced` (`+0x978`),
 `SigMsgErrStatePlaced` (`+0x9f0`), and `CloneAllocFailPlaced` (`+0xa68`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +48,7 @@ section W6ExitsPlaced
 `+0x9f0` (`2544`) under `[LibsignalPlacement]`: `x28 = kyberBoxPtr`, `x25 = kyberBoxLen`
 (Kyber `Box<[u8]>`, or `0` when absent), `x26 = msgCap`, `x23 = ikCap`, `x19 = sret`,
 frame pointer `x29 = sp' + 512`. -/
-def KyberBoxErrStatePlaced [LibsignalPlacement] (s0 : State)
+@[expose] def KyberBoxErrStatePlaced [LibsignalPlacement] (s0 : State)
     (sp' sret kyberBoxPtr kyberBoxLen ikCap msgCap : BitVec 64) (sf : State) : Prop :=
   PostEpilogueStatePlaced s0 sp' sf ∧
   sf.readReg64 .x29 = sp' + 512#64 ∧ sf.readReg64 .x28 = kyberBoxPtr ∧
@@ -59,7 +69,7 @@ abbrev SigMsgErrStatePlaced [LibsignalPlacement] (s0 : State)
 
 /-- Frozen Allocation-failure panic entry at `+0xa68` (`2664`) under `[LibsignalPlacement]`:
 reached from `+0x8bc cbz x0` when `__rust_alloc` returns `x0 = 0#64` (`allocFailedIn s0 sf`). -/
-def CloneAllocFailPlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 64) (sf : State) : Prop :=
+@[expose] def CloneAllocFailPlaced [LibsignalPlacement] (s0 : State) (sp' : BitVec 64) (sf : State) : Prop :=
   sf.sp = sp' ∧ sf.spAligned = true ∧ LibsignalCodeRoLoaded lsmpl sf.mem ∧
   allocFailedIn s0 sf ∧ s0.trace <+: sf.trace
 

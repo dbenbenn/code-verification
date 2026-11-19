@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreHol
 import VCVio.EvalDist.Monad.Basic
 
@@ -21,7 +21,7 @@ Proves that each helper and query branch in `KeyIndGapDh` evaluates to its shall
 counterpart whenever all state lists have length `≤ K`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -392,11 +392,11 @@ structure FgSimListsBounded {S : Setup} (st : FgKeyIndSimState S) (n : Nat) : Pr
   rawRoCache_le : st.rawRoCache.length ≤ n
   advKeyPows_le : st.advKeyPows.length ≤ n
 
-def encSimRS {S : Setup} (p : KeyIndResponse × FgKeyIndSimState S) :
+@[expose] def encSimRS {S : Setup} (p : KeyIndResponse × FgKeyIndSimState S) :
     (Ty.prod keyIndRespTy simTy).denote :=
   (keyIndRespToVal p.1, simStateToVal p.2)
 
-def encGdhRS {S : Setup} (pa : paramsTy.denote) (p : KeyIndResponse × FgKeyIndSimState S) :
+@[expose] def encGdhRS {S : Setup} (pa : paramsTy.denote) (p : KeyIndResponse × FgKeyIndSimState S) :
     (Ty.prod keyIndRespTy gdhStateTy).denote :=
   (keyIndRespToVal p.1, (pa, simStateToVal p.2))
 

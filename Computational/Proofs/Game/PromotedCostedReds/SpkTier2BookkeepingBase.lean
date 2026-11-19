@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingProofs -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingProofs
+import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
+public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingPure -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Base Types and Metadata Operations for Tier-2 SPK Bookkeeping

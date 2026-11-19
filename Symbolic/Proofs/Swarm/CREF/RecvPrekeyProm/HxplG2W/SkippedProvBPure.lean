@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.SkippedNotJunkFixPure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.SkippedNotJunkFixPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -21,9 +21,9 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineRkKDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.SkippedProvBPureA
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkBobGuard
@@ -46,6 +46,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
 
 /-!
 # Skipped-Key Ratchet-Index Invariant and Fresh-Alias Exclusion
@@ -54,7 +55,7 @@ Proves reachability of `spb_ProvRIdx2Inv`, spine membership and skeleton uniquen
 `SkippedKeyStored` seeds, and `skippedFreshAliasExclB_of_reach`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHmac
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHmac -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
 
 /-!
 # One-key shallow `Auth` reduction simulators
@@ -20,7 +21,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake
 simulators so `.initPrin` samples a single Curve25519 scalar shared by X25519 and XEdDSA.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +36,7 @@ open FgGapDh
 
 namespace AuthSubHops1to3
 
-def stepAuthOtherPrim1Key (S : Setup) (q : AuthQuery S)
+@[expose] def stepAuthOtherPrim1Key (S : Setup) (q : AuthQuery S)
     (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec (AuthResponse × AuthHybridStateFixed S) := do
   let st := hst.toAuthHybridState.base
@@ -143,7 +144,7 @@ def stepAuthOtherPrim1Key (S : Setup) (q : AuthQuery S)
   | .recvNoOPK _ _ _ _ =>
     return (.noneResp, hst)
 
-def authCkStepWithPrim1Key (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
+@[expose] def authCkStepWithPrim1Key (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec ((authSpec S).Range q × AuthHybridStateFixed S) :=
   match q with
@@ -162,7 +163,7 @@ def authCkStepWithPrim1Key (S : Setup) (sampAt : Nat → OracleComp PrimBaseSpec
   | qOther =>
     stepAuthOtherPrim1Key S qOther hst
 
-def authCkPreSampleRunPrim1Key (S : Setup) (idx : Nat)
+@[expose] def authCkPreSampleRunPrim1Key (S : Setup) (idx : Nat)
     (p : Bytes × Bytes) (A : AuthAdversary S) : OracleComp PrimBaseSpec Bool := do
   let secb ← embedUnif ($ᵗ Bool)
   let initSt := AuthHybridStateFixed.empty S secb
@@ -171,7 +172,7 @@ def authCkPreSampleRunPrim1Key (S : Setup) (idx : Nat)
   finalizeAuthFixedPrim S secb b' finalSt.toAuthHybridState
 
 /-- Black-box `PrfChainKey` reduction for one-key `Auth` (`G3.6 → G3.7`). -/
-def prfCkReductionAuthFixed1Key (S : Setup) (b : QueryBudget)
+@[expose] def prfCkReductionAuthFixed1Key (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : PrfCkAdv where
   dist mkSeedChal ck1_1Chal := do
     let idx ← embedUnif (RoKem.sampleIndexRange (min b.q_total S.N_sess_tot))
@@ -179,7 +180,7 @@ def prfCkReductionAuthFixed1Key (S : Setup) (b : QueryBudget)
   q_prf := 1
   q_prim := b.q_total * (S.N_dh * 26 + 21) + S.N_dh * 5
 
-def authMkStepReduction1Key (S : Setup) (idx : Nat)
+@[expose] def authMkStepReduction1Key (S : Setup) (idx : Nat)
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) (sentChal : Bool) :
     OracleComp PrfMkSimSpec (((authSpec S).Range q × AuthHybridStateFixed S) × Bool) :=
   match q with
@@ -201,7 +202,7 @@ def authMkStepReduction1Key (S : Setup) (idx : Nat)
     let res ← embedPrimMk (stepAuthOtherPrim1Key S qOther hst)
     return (res, sentChal)
 
-def authMkReductionRun1Key (S : Setup) (idx : Nat) (A : AuthAdversary S) :
+@[expose] def authMkReductionRun1Key (S : Setup) (idx : Nat) (A : AuthAdversary S) :
     OracleComp PrfMkSimSpec Bool := do
   let secb ← embedUnifMk ($ᵗ Bool)
   let initSt := AuthHybridStateFixed.empty S secb
@@ -210,7 +211,7 @@ def authMkReductionRun1Key (S : Setup) (idx : Nat) (A : AuthAdversary S) :
   embedPrimMk (finalizeAuthFixedPrim S secb b' finalSt.toAuthHybridState)
 
 /-- Black-box `PrfMsgKeys` reduction for one-key `Auth` (`G3.7 → G3.8`). -/
-def prfMsgKeysReductionAuthFixed1Key (S : Setup) (b : QueryBudget)
+@[expose] def prfMsgKeysReductionAuthFixed1Key (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : PrfMsgKeysAdv where
   run := do
     let idx ← embedUnifMk (RoKem.sampleIndexRange (min b.q_total S.N_sess_tot))
@@ -222,7 +223,7 @@ end AuthSubHops1to3
 
 /-! ## AEAD reductions (`G3.8 → G5`) -/
 
-def stepAuthOtherPrim1Key (useRo : Bool) (S : Setup) (q : AuthQuery S)
+@[expose] def stepAuthOtherPrim1Key (useRo : Bool) (S : Setup) (q : AuthQuery S)
     (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec (AuthResponse × AuthHybridStateFixed S) := do
   let st := hst.toAuthHybridState.base
@@ -327,7 +328,7 @@ def stepAuthOtherPrim1Key (useRo : Bool) (S : Setup) (q : AuthQuery S)
   | .sendOPK _ _ _ _ _ | .sendNoOPK _ _ _ _ _ | .recvOPK _ _ _ _ | .recvNoOPK _ _ _ _ =>
     return (.noneResp, hst)
 
-def stepAuthCpaNonSendPrim1Key (S : Setup)
+@[expose] def stepAuthCpaNonSendPrim1Key (S : Setup)
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec ((authSpec S).Range q × AuthHybridStateFixed S) :=
   let st := hst.toAuthHybridState.base
@@ -459,7 +460,7 @@ def stepAuthCpaNonSendPrim1Key (S : Setup)
   | q_other =>
     stepAuthOtherPrim1Key true S q_other hst
 
-def stepAuthCpaCutoffPrim1Key (cut : Nat) (S : Setup)
+@[expose] def stepAuthCpaCutoffPrim1Key (cut : Nat) (S : Setup)
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec ((authSpec S).Range q × AuthHybridStateFixed S) :=
   match q with
@@ -476,7 +477,7 @@ def stepAuthCpaCutoffPrim1Key (cut : Nat) (S : Setup)
   | q_other =>
     stepAuthCpaNonSendPrim1Key S q_other hst
 
-def stepUntilAuthCpaChallengeFixedPrim1Key (idx : Nat) (S : Setup) {α : Type}
+@[expose] def stepUntilAuthCpaChallengeFixedPrim1Key (idx : Nat) (S : Setup) {α : Type}
     (defaultVal : α)
     (mx : OracleComp (unifSpec + authSpec S) α) (fuel : Nat) (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec (AuthCpaPauseResult S α) :=
@@ -517,7 +518,7 @@ def stepUntilAuthCpaChallengeFixedPrim1Key (idx : Nat) (S : Setup) {α : Type}
             r resp f' s')
     mx fuel hst
 
-def resumeAuthCpaAfterChallengeFixedPrim1Key (idx : Nat) (S : Setup) (fuel : Nat) :
+@[expose] def resumeAuthCpaAfterChallengeFixedPrim1Key (idx : Nat) (S : Setup) (fuel : Nat) :
     AuthCpaPauseResult S Bool → Option Bytes → OracleComp PrimBaseSpec Bool
   | .done b' hst, _ =>
     finalizeAeadCpaGameNoAuthPrim S b' hst.toAuthHybridState
@@ -541,18 +542,7 @@ def aeadCpaReductionAuthFixedAtChoose1Key (idx : Nat) (S : Setup) (fuel : Nat) (
   | .done _ _ =>
     return ([], [0], [0], res)
 
-def aeadCpaReductionAuthFixedChoose1Key (S : Setup) (fuel : Nat) (A : AuthAdversary S) :
-    OracleComp PrimBaseSpec (Bytes × Bytes × Bytes × (Nat × AuthCpaPauseResult S Bool)) := do
-  let idx ← embedUnif (RoKem.sampleIndexRange S.N_send_tot)
-  let (ad, m0, m1, res) ← aeadCpaReductionAuthFixedAtChoose1Key idx S fuel A
-  return (ad, m0, m1, (idx, res))
-
-def aeadCpaReductionAuthFixedDist1Key (S : Setup) (fuel : Nat)
-    (st : Nat × AuthCpaPauseResult S Bool) (chalCt? : Option Bytes) :
-    OracleComp PrimBaseSpec Bool :=
-  resumeAuthCpaAfterChallengeFixedPrim1Key st.1 S fuel st.2 chalCt?
-
-def stepAuthCpaCutoffSlotPrim1Key (cut : Nat) (S : Setup)
+@[expose] def stepAuthCpaCutoffSlotPrim1Key (cut : Nat) (S : Setup)
     (q : AuthQuery S) (shst : AuthCpaSlotState S) :
     OracleComp PrimBaseSpec ((authSpec S).Range q × AuthCpaSlotState S) :=
   match q with
@@ -570,7 +560,7 @@ def stepAuthCpaCutoffSlotPrim1Key (cut : Nat) (S : Setup)
     let (resp, hst') ← stepAuthCpaNonSendPrim1Key S q_other shst.2
     return (resp, (shst.1, hst'))
 
-def stepUntilAuthCpaChallengeSlotPrim1Key (idx : Nat) (S : Setup) {α : Type}
+@[expose] def stepUntilAuthCpaChallengeSlotPrim1Key (idx : Nat) (S : Setup) {α : Type}
     (defaultVal : α)
     (mx : OracleComp (unifSpec + authSpec S) α) (fuel : Nat) (shst : AuthCpaSlotState S) :
     OracleComp PrimBaseSpec (AuthCpaSlotPauseResult S α) :=
@@ -611,7 +601,7 @@ def stepUntilAuthCpaChallengeSlotPrim1Key (idx : Nat) (S : Setup) {α : Type}
             r resp f' (s.1, hst'))
     mx fuel shst
 
-def resumeAuthCpaAfterChallengeSlotPrim1Key (idx : Nat) (S : Setup) (fuel : Nat) :
+@[expose] def resumeAuthCpaAfterChallengeSlotPrim1Key (idx : Nat) (S : Setup) (fuel : Nat) :
     AuthCpaSlotPauseResult S Bool → Option Bytes → OracleComp PrimBaseSpec Bool
   | .done b' (_, hst), _ =>
     finalizeAeadCpaGameNoAuthPrim S b' hst.toAuthHybridState
@@ -622,7 +612,7 @@ def resumeAuthCpaAfterChallengeSlotPrim1Key (idx : Nat) (S : Setup) (fuel : Nat)
       runWithPrimStepFuel false (stepAuthCpaCutoffSlotPrim1Key idx S) (cont resp) fuel (idx + 1, hst')
     finalizeAeadCpaGameNoAuthPrim S b' finalSt.toAuthHybridState
 
-def aeadCpaReductionAuthSlotAtChoose1Key (idx : Nat) (S : Setup) (fuel : Nat) (A : AuthAdversary S) :
+@[expose] def aeadCpaReductionAuthSlotAtChoose1Key (idx : Nat) (S : Setup) (fuel : Nat) (A : AuthAdversary S) :
     OracleComp PrimBaseSpec (Bytes × Bytes × Bytes × AuthCpaSlotPauseResult S Bool) := do
   let initSt : AuthCpaSlotState S := (0, AuthHybridStateFixed.empty S true)
   let res ← stepUntilAuthCpaChallengeSlotPrim1Key idx S false A.run fuel initSt
@@ -635,26 +625,26 @@ def aeadCpaReductionAuthSlotAtChoose1Key (idx : Nat) (S : Setup) (fuel : Nat) (A
   | .done _ _ =>
     return ([], [0], [0], res)
 
-def aeadCpaReductionAuthSlotChoose1Key (S : Setup) (fuel : Nat) (A : AuthAdversary S) :
+@[expose] def aeadCpaReductionAuthSlotChoose1Key (S : Setup) (fuel : Nat) (A : AuthAdversary S) :
     OracleComp PrimBaseSpec (Bytes × Bytes × Bytes × (Nat × AuthCpaSlotPauseResult S Bool)) := do
   let idx ← embedUnif (RoKem.sampleIndexRange (min fuel S.N_send_tot))
   let (ad, m0, m1, res) ← aeadCpaReductionAuthSlotAtChoose1Key idx S fuel A
   return (ad, m0, m1, (idx, res))
 
-def aeadCpaReductionAuthSlotDist1Key (S : Setup) (fuel : Nat)
+@[expose] def aeadCpaReductionAuthSlotDist1Key (S : Setup) (fuel : Nat)
     (st : Nat × AuthCpaSlotPauseResult S Bool) (chalCt? : Option Bytes) :
     OracleComp PrimBaseSpec Bool :=
   resumeAuthCpaAfterChallengeSlotPrim1Key st.1 S fuel st.2 chalCt?
 
 /-- Black-box `AeadIndCpa` reduction for one-key `Auth` (`G3.8 → G5`). -/
-def aeadCpaReductionAuthFixed1Key (S : Setup) (b : QueryBudget)
+@[expose] def aeadCpaReductionAuthFixed1Key (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : AeadIndCpaAdv where
   State  := Nat × AuthCpaSlotPauseResult S Bool
   choose := aeadCpaReductionAuthSlotChoose1Key S b.q_total A.1
   dist   := aeadCpaReductionAuthSlotDist1Key S b.q_total
   q_prim := b.q_total * perQueryAuthPrimBudget S + S.N_dh * 5
 
-def stepAuthMuPrim1Key (S : Setup)
+@[expose] def stepAuthMuPrim1Key (S : Setup)
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     OracleComp AeadMuIntSimSpec (AuthResponse × AuthHybridStateFixed S) := do
   match q with
@@ -684,14 +674,14 @@ def stepAuthMuPrim1Key (S : Setup)
       toAuthHybridState := hst', recvCount := hst.recvCount + 1, mkSaltCache := mkSaltCache' })
   | qOther => embedPrimMu (stepAuthOtherPrim1Key true S qOther hst)
 
-def aeadMuIntReductionAuthRun1Key (S : Setup) (A : AuthAdversary S) :
+@[expose] def aeadMuIntReductionAuthRun1Key (S : Setup) (A : AuthAdversary S) :
     OracleComp AeadMuIntSimSpec Unit := do
   let secb ← unifMu ($ᵗ Bool)
   let _ ← runWithMuStep (stepAuthMuPrim1Key S) A.run (AuthHybridStateFixed.empty S secb)
   return ()
 
 /-- Black-box multi-key `AeadMuIntCtxt` reduction for one-key `Auth` (`G3.8 → G5`). -/
-def aeadMuIntReductionAuth1Key (S : Setup) (b : QueryBudget)
+@[expose] def aeadMuIntReductionAuth1Key (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : AeadMuIntCtxtAdv where
   run    := aeadMuIntReductionAuthRun1Key S A.1
   q_enc  := S.N_send_tot
@@ -700,7 +690,7 @@ def aeadMuIntReductionAuth1Key (S : Setup) (b : QueryBudget)
 
 /-! ## `KemShCr` reduction (`G2 → G3`) -/
 
-def pqxdhAuthSimImplPrim1Key (S : Setup) :
+@[expose] def pqxdhAuthSimImplPrim1Key (S : Setup) :
     QueryImpl (authSpec S) (StateT (AuthState S) (OracleComp PrimBaseSpec)) := fun q =>
   match q with
   | .initPrin u => do
@@ -799,13 +789,13 @@ def pqxdhAuthSimImplPrim1Key (S : Setup) :
     set { st with advKeys := (p8, pk) :: st.advKeys }
     return .pkResp pk
 
-def runAuthShCrAcceptPrim1Key (S : Setup)
+@[expose] def runAuthShCrAcceptPrim1Key (S : Setup)
     (k : Fin S.N_id) (j : Fin S.N_recv) (hdr : HandshakeHdr) (gq : AuthQuery S) :
     StateT (AuthShCrState S) (OracleComp PrimBaseSpec) AuthResponse := do
   let out ← liftShCrBasePrim (pqxdhAuthSimImplPrim1Key S gq)
   recordAcceptKemGenericPrim AuthState.spkBundles isNoneAuthShCrResp k j hdr out
 
-def runAuthShCrGenSPKPrim1Key (embedTarget : Bool) (S : Setup)
+@[expose] def runAuthShCrGenSPKPrim1Key (embedTarget : Bool) (S : Setup)
     (u : Fin S.N_id) (j : Fin S.N_recv) :
     StateT (AuthShCrState S) (OracleComp PrimBaseSpec) AuthResponse := fun hst =>
   if !embedTarget then
@@ -819,7 +809,7 @@ def runAuthShCrGenSPKPrim1Key (embedTarget : Bool) (S : Setup)
       else
         (liftShCrBasePrim (pqxdhAuthSimImplPrim1Key S (.genSPK u j))).run hst
 
-def pqxdhAuthShCrPrimImpl1Key (embedTarget : Bool) (S : Setup) :
+@[expose] def pqxdhAuthShCrPrimImpl1Key (embedTarget : Bool) (S : Setup) :
     QueryImpl (authSpec S) (StateT (AuthShCrState S) (OracleComp PrimBaseSpec))
   | .genSPK u j => runAuthShCrGenSPKPrim1Key embedTarget S u j
   | .sendOPK u i bundle m0 m1 =>
@@ -834,7 +824,7 @@ def pqxdhAuthShCrPrimImpl1Key (embedTarget : Bool) (S : Setup) :
     runAuthShCrAcceptPrim1Key S k j msg.hdr (.recvNoOPK k j l msg)
   | q_other => liftShCrBasePrim (pqxdhAuthSimImplPrim1Key S q_other)
 
-def runWithFuelAuthShCrPrim1Key (S : Setup)
+@[expose] def runWithFuelAuthShCrPrim1Key (S : Setup)
     (oa : OracleComp (unifSpec + authSpec S) Bool)
     (hst : AuthShCrState S) (fuel : ℕ) :
     OracleComp PrimBaseSpec (Bool × AuthShCrState S) :=
@@ -854,7 +844,7 @@ def runWithFuelAuthShCrPrim1Key (S : Setup)
           r out hst' f)
     oa hst fuel
 
-def stepUntilShCrFuelAuthPrim1Key (S : Setup) (sIdx : ℕ)
+@[expose] def stepUntilShCrFuelAuthPrim1Key (S : Setup) (sIdx : ℕ)
     (oa : OracleComp (unifSpec + authSpec S) Bool)
     (hst : AuthShCrState S) (fuel : ℕ) :
     OracleComp PrimBaseSpec (Sum (Bool × AuthShCrState S) (PausedShCrAuthData S)) :=
@@ -878,12 +868,12 @@ def stepUntilShCrFuelAuthPrim1Key (S : Setup) (sIdx : ℕ)
             r out hst' f)
     oa hst fuel
 
-def resumePausedAuthPrim1Key (S : Setup) (fuel : ℕ) (d : PausedShCrAuthData S)
+@[expose] def resumePausedAuthPrim1Key (S : Setup) (fuel : ℕ) (d : PausedShCrAuthData S)
     (ss kemCt : Bytes) : OracleComp PrimBaseSpec (Bool × AuthShCrState S) := do
   let (resp, hst') ← postKemAuthPrim S d.sid d.bundle d.m0 d.m1 d.uInfo d.hst ss kemCt
   runWithFuelAuthShCrPrim1Key S (d.cont resp) hst' fuel
 
-def choosePkAuthPrimAt1Key (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
+@[expose] def choosePkAuthPrimAt1Key (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
     (A : AuthAdversary S) (pk sk : Bytes) :
     OracleComp PrimBaseSpec (Bytes × AuthShCrFinishState S) := do
   let secb ← embedUnif ($ᵗ Bool)
@@ -899,7 +889,7 @@ def choosePkAuthPrimAt1Key (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
     | Sum.inr d => d.bundle.pqspkB
   return (chosenPk, (pk, sk, chosenPk, res))
 
-def findCollisionAuthPrim1Key (S : Setup) (b : QueryBudget)
+@[expose] def findCollisionAuthPrim1Key (S : Setup) (b : QueryBudget)
     (st : AuthShCrFinishState S) (ss ct : Bytes) : OracleComp PrimBaseSpec Bytes := do
   let (pk, sk, chosenPk, res) := st
   let (_, finalHst) ← match res with
@@ -907,7 +897,7 @@ def findCollisionAuthPrim1Key (S : Setup) (b : QueryBudget)
     | Sum.inr d    => resumePausedAuthPrim1Key S b.q_total d ss ct
   extractCollidingKemCtPrim b.q_total pk sk chosenPk ct ss finalHst.recvKemRecs
 
-def shcrReductionAuthCore1Key (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCrAdv where
+@[expose] def shcrReductionAuthCore1Key (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCrAdv where
   State := AuthShCrFinishState S
   choosePk := fun pk sk => do
     let idx ← embedUnif (FgGapDh.sampleIndexRange (S.N_spk_tot * S.N_send_tot))
@@ -916,14 +906,14 @@ def shcrReductionAuthCore1Key (S : Setup) (b : QueryBudget) (A : AuthAdversary S
   q_prim := primQueryBudget S b
 
 /-- Black-box `KemShCr` reduction for one-key `Auth` (`G2 → G3`). -/
-def shcrReductionAuth1Key (S : Setup) (b : QueryBudget)
+@[expose] def shcrReductionAuth1Key (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : KemShCrAdv :=
   shcrReductionAuthCore1Key S b A.val
 
 /-! ## HMAC reduction (`G3.8 → G5`) -/
 
 /-- Black-box `PrfHmac` reduction for one-key `Auth` (`G3.8 → G5`). -/
-def prfHmacReductionAuth1Key (S : Setup) (b : QueryBudget)
+@[expose] def prfHmacReductionAuth1Key (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : PrfHmacAdv :=
   prfHmacOfMu (aeadMuIntReductionAuth1Key S b A)
 

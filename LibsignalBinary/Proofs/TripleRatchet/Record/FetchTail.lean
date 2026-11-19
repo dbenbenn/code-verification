@@ -9,17 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
 public meta import Aesop.BuiltinRules
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 public meta import Mathlib.Tactic.Basic
 public meta import Mathlib.Tactic.Simps
 public meta import Mathlib.Tactic.ToAdditive
 public meta import Mathlib.Tactic.ToDual
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Record
 
@@ -47,16 +45,5 @@ elab "segTail_code_fetches_from " codeId:ident decPrefix:ident b:term:max H:term
     else
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-/-- Fetch hypotheses for `session_message_decrypt_signal` (`hfn : fnOff msgDecryptName = 238760`),
-    from fn-relative offset `k0`, `len` bytes. -/
-macro "segTail_fetches " b:term:max H:term:max hfn:term:max k0:num len:num : tactic =>
-  `(tactic| segTail_code_fetches_from CryptoVerification.libsignalSessionCode segTailBin $b $H
-    $hfn (num% (ls_off% "session_message_decrypt_signal")) $k0 $len)
-
-gen_decodes libsignalSessionCode_tree segTailBin [(ls_off% "session_message_decrypt_signal" + 2128), raw (ls_off% "session_message_decrypt_signal" + 2132), (ls_off% "session_message_decrypt_signal" + 2136) → (ls_off% "session_message_decrypt_signal" + 2152),
-    (ls_off% "session_message_decrypt_signal" + 5860) → (ls_off% "session_message_decrypt_signal" + 5872), (ls_off% "session_message_decrypt_signal" + 6836) → (ls_off% "session_message_decrypt_signal" + 6864), (ls_off% "session_message_decrypt_signal" + 7408) → (ls_off% "session_message_decrypt_signal" + 7412), (ls_off% "session_message_decrypt_signal" + 7636) → (ls_off% "session_message_decrypt_signal" + 7720), (ls_off% "session_message_decrypt_signal" + 7820) → (ls_off% "session_message_decrypt_signal" + 7868),
-    raw (ls_off% "session_message_decrypt_signal" + 7872), (ls_off% "session_message_decrypt_signal" + 7876) → (ls_off% "session_message_decrypt_signal" + 7888), raw (ls_off% "session_message_decrypt_signal" + 7892), raw (ls_off% "session_message_decrypt_signal" + 7896), (ls_off% "session_message_decrypt_signal" + 7900) → (ls_off% "session_message_decrypt_signal" + 7908), raw (ls_off% "session_message_decrypt_signal" + 7912),
-    raw (ls_off% "session_message_decrypt_signal" + 7916), (ls_off% "session_message_decrypt_signal" + 7920), raw (ls_off% "session_message_decrypt_signal" + 7924), (ls_off% "session_message_decrypt_signal" + 7988) → (ls_off% "session_message_decrypt_signal" + 8012), (ls_off% "session_message_decrypt_signal" + 9792) → (ls_off% "session_message_decrypt_signal" + 9800)]
 
 end CryptoVerification.LibsignalTripleRatchet.Record

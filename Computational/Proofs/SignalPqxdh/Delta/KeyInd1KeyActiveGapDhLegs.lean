@@ -11,8 +11,10 @@ module
 
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveShallow -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveGapDhPre -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key
 import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyB
 
 /-!
 # Active Creation-Order `GapDhWithSign` Pure Runners and Per-Ordinal `DH2` Bound
@@ -96,7 +98,7 @@ namespace Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveGapDhLegs
 public section
 /-! ## Pure step counterparts -/
 
-@[expose] noncomputable def fgInitPrin1KeyActivePure {S : Setup} (P : Primitives) (prinFlag : Bool)
+@[expose] def fgInitPrin1KeyActivePure {S : Setup} (P : Primitives) (prinFlag : Bool)
     (prinIdx : Nat) (Up : Bytes) (u : Fin S.N_id) (stA : FgKeyInd1KeyActiveSimState S) :
     ProbComp (KeyIndResponse × FgKeyInd1KeyActiveSimState S) := do
   if stA.st1.sim.base.principals.any (fun (idx, _) => idx == u.val) then return (.noneResp, stA)
@@ -110,7 +112,7 @@ public section
   return (.initPrinResp ikPk ikPk,
     { stA with st1 := { stA.st1 with sim := { stA.st1.sim with base := base' } }, resolvedPrin? := tp' })
 
-@[expose] noncomputable def fgGenSpkActivePure {S : Setup} (P : Primitives) (spkIdx : Nat) (V : Bytes)
+@[expose] def fgGenSpkActivePure {S : Setup} (P : Primitives) (spkIdx : Nat) (V : Bytes)
     (u : Fin S.N_id) (j : Fin S.N_recv) (st : FgKeyIndSimState S) :
     ProbComp (KeyIndResponse × FgKeyIndSimState S) := do
   if st.base.spkBundles.any (fun (k, _) => k == (u.val, j.val)) then return (.noneResp, st)
@@ -130,7 +132,7 @@ public section
       opkB? := none, pqspkId := UInt32.ofNat j.val, pqspkB := pqspkPk, pqspkSig := pqspkSig }
   return (.bundleResp bundleOut, { st with base := base' })
 
-@[expose] noncomputable def fgGenSPK1KeyActivePure {S : Setup} (P : Primitives) (uSk : Bytes) (spkIdx : Nat)
+@[expose] def fgGenSPK1KeyActivePure {S : Setup} (P : Primitives) (uSk : Bytes) (spkIdx : Nat)
     (V : Bytes) (u : Fin S.N_id) (j : Fin S.N_recv) (stA : FgKeyInd1KeyActiveSimState S) :
     ProbComp (KeyIndResponse × FgKeyInd1KeyActiveSimState S) := do
   if optNatMatches stA.resolvedPrin? u.val then
@@ -157,7 +159,7 @@ public section
     let (resp, sim') ← fgGenSpkActivePure P spkIdx V u j stA.st1.sim
     return (resp, { stA with st1 := { stA.st1 with sim := sim' } })
 
-@[expose] noncomputable def fgGenOPKActivePure {S : Setup} (P : Primitives) (opkMode : Bool) (opkIdx : Nat)
+@[expose] def fgGenOPKActivePure {S : Setup} (P : Primitives) (opkMode : Bool) (opkIdx : Nat)
     (V : Bytes) (u : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
     (stA : FgKeyInd1KeyActiveSimState S) :
     ProbComp (KeyIndResponse × FgKeyInd1KeyActiveSimState S) := do
@@ -169,7 +171,7 @@ public section
   let base' := { stA.st1.sim.base with opkEntries := ((u.val, j.val, o.val), oEntry) :: stA.st1.sim.base.opkEntries }
   return (.pkResp oEntry.opkPk, { stA with st1 := { stA.st1 with sim := { stA.st1.sim with base := base' } } })
 
-@[expose] noncomputable def fgRunInitiateActivePure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgRunInitiateActivePure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (dhFlag opkMode : Bool) (ephIdx : Nat) (S : Setup) (maxLen : Nat) (U : Bytes) (hasOpk : Bool)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput)
     (st : FgKeyIndSimState S) (sendOpkCnt : Nat) :
@@ -218,7 +220,7 @@ public section
   | some _ => return (.hdrResp hdr, (st', cnt'))
   | none   => return (.initUnfreshResp drKeyReal hdr, (st', cnt'))
 
-@[expose] noncomputable def fgInitiateActivePure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgInitiateActivePure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (dhFlag opkMode : Bool) (ephIdx : Nat) (S : Setup) (maxLen : Nat) (U : Bytes) (hasOpk : Bool)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput)
     (stA : FgKeyInd1KeyActiveSimState S) :
@@ -227,7 +229,7 @@ public section
     sid u bundle stA.st1.sim stA.sendOpkCnt
   return (resp, { stA with st1 := { stA.st1 with sim := sim' }, sendOpkCnt := cnt' })
 
-@[expose] noncomputable def fgKeyInd1KeyActiveStepPure (pa : FgActiveParams)
+@[expose] def fgKeyInd1KeyActiveStepPure (pa : FgActiveParams)
     (P : Primitives) (uSk : Bytes) (ddh : Bytes → Bytes → Bytes → Bool)
     (S : Setup) (maxLen : Nat) (q : KeyIndQuery S) (stA : FgKeyInd1KeyActiveSimState S) :
     ProbComp (KeyIndResponse × FgKeyInd1KeyActiveSimState S) :=
@@ -248,7 +250,7 @@ public section
     let (resp, sim') ← fgKeyIndStepPure P ddh pa.dhFlag pa.ephIdx pa.spkIdx S maxLen pa.U pa.V q_other stA.st1.sim
     return (resp, { stA with st1 := { stA.st1 with sim := sim' } })
 
-@[expose] noncomputable def fgKeyInd1KeyActiveSimImpl (pa : FgActiveParams) (P : Primitives) (uSk : Bytes)
+@[expose] def fgKeyInd1KeyActiveSimImpl (pa : FgActiveParams) (P : Primitives) (uSk : Bytes)
     (ddh : Bytes → Bytes → Bytes → Bool) (S : Setup) (maxLen : Nat) :
     QueryImpl (keyIndSpec S) (StateT (FgKeyInd1KeyActiveSimState S) ProbComp) :=
   fun q => StateT.mk (fgKeyInd1KeyActiveStepPure pa P uSk ddh S maxLen q)

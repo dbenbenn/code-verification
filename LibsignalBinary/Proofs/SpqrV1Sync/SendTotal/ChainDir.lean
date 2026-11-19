@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
-public import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync
+public import LibsignalBinary.Proofs.SpqrV1Sync.ChainSync -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.GF16
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
@@ -27,7 +27,7 @@ a fresh positive message index, returns `keyAt seed (idx - 1)`, and preserves `R
 (`st_recvDir`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

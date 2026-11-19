@@ -17,5 +17,4 @@ set_option autoImplicit false
 namespace Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443
 open DY.Libsignal.Composed DY.Libsignal.Composed.Refinement Symbolic.BugInjection Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitComp Symbolic.BugInjection.Proofs.Common443
 theorem noBsc38HB : NoBsc38HB := noBsc38HB_of_census Census443Close.noBsc38HB
-theorem not_collisionAt_hb {r : Records} {S : Sem} (hfits : compFitsPinned setup compI0 r) (hnb : ∀ ms, Common443.CompSetupSecrecy.NoBrk r ms) : ¬ CollisionAt compI0 r S who ok trace := not_collisionAt_of ptDeadHB noBobDone38HB noBsc38HB hfits hnb
 end Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443

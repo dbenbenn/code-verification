@@ -9,23 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Fs
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
+public import LibsignalBinary.Proofs.SignalSession.Cli.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-public import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.CodeLayout
 public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 public import LibsignalBinary.Proofs.SignalSession.Cli.Specs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-
-/-!
-# Pure, Layout, `.rodata`, and Non-I/O Callee Helpers for `<signal_session::stores::Dir>::get`
--/
-
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -80,21 +74,6 @@ theorem files_eq_of_fsInv_trace_eq {F0 : FsFiles} {T0 : List TraceEvent} {s : St
     (hinv : FsInv F0 T0 s) (ht : s.trace = T0) : s.fs.files = F0 :=
   hinv.files_eq (evs := []) (by simp [ht]) NoFsEv.nil
 
-/-- Commute `withFsInv` inside `Spec.inImage` for any trace-sound program `P`. -/
-theorem subroutine_ok_inImage_withFsInv {α : Type} {P : Program} {e : BitVec 64}
-    {spec : Spec α} {img : Obj.Image}
-    (hP : TraceFsSound P) (h : subroutine_ok P e (spec.inImage img))
-    (F0 : FsFiles) (T0 : List TraceEvent) :
-    subroutine_ok P e ((withFsInv spec F0 T0).inImage img) := by
-  have hfs := subroutine_ok_withFsInv hP h F0 T0
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  have hpre' : s0.mem ⊨ (withFsInv (spec.inImage img) F0 T0).pre x s0 ∗ R := by
-    simp only [Spec.inImage, withFsInv, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    exact ⟨hpre.2.1, hpre.1, hpre.2.2⟩
-  exact hfs.mono_outcome x R s0 hpc hrun hpre' hal fun _ hout => hout
-
-/-! ## 2. BitVec, String, & Arithmetic Lemmas -/
-
 theorem utf8_read : utf8 "read" = [0x72#8, 0x65#8, 0x61#8, 0x64#8] := by
   decide +kernel
 
@@ -136,7 +115,7 @@ abbrev dirGetCalleeStk (pathStk callBgt : Nat) : Nat :=
   max (max pathStk callBgt) extHookStack
 
 /-- The 8 saved 64-bit register slots at `[sp + 48 .. sp + 112)` in `Dir::get`'s frame. -/
-def savedRegsAt (sp : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def savedRegsAt (sp : BitVec 64) (s0 : State) : SepProp :=
   ((sp + 48#64) ↦₆₄ s0.readReg64 .x29) ∗ ((sp + 56#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp + 64#64) ↦₆₄ s0.readReg64 .x24) ∗ ((sp + 72#64) ↦₆₄ s0.readReg64 .x23) ∗
   ((sp + 80#64) ↦₆₄ s0.readReg64 .x22) ∗ ((sp + 88#64) ↦₆₄ s0.readReg64 .x21) ∗
@@ -386,107 +365,7 @@ theorem getResultAt_err_of_ro (A : RustAlloc) (r buf pRead : BitVec 64)
     (sepConj_mono_right (sepConj_mono hv hstr))
   ac_rfl
 
-/-! ## 5. Layout-Independent `.rodata` Bundle & `Obj.Loads` Witness -/
-
-/-- Address of the 22-byte `"file could not be read"` `.rodata` slice relative to `b`. -/
-abbrev unreadableStrAddr (b : BitVec 64) : BitVec 64 :=
-  b + bv% (ls_xref%
-    (ls_off% "<libsignal_cli::stores::Dir>::get" + 400)
-    (ls_off% "<libsignal_cli::stores::Dir>::get" + 404))
-
-/-- Address of the 4-byte `"read"` `.rodata` slice relative to `b`. -/
-abbrev readOpStrAddr (b : BitVec 64) : BitVec 64 :=
-  b + bv% (ls_xref%
-    (ls_off% "<libsignal_cli::stores::Dir>::get" + 444)
-    (ls_off% "<libsignal_cli::stores::Dir>::get" + 448))
-
-/-- Read-only spatial bundle carried across `Dir::get`. -/
-def dirGetRoBundle (b : BitVec 64) (w0 w1 wTail : BitVec 64) : SepProp :=
-  ((unreadableStrAddr b) ↦₆₄ᵣ w0) ∗
-  ((unreadableStrAddr b + 8#64) ↦₆₄ᵣ w1) ∗
-  ((unreadableStrAddr b + 14#64) ↦₆₄ᵣ wTail) ∗
-  ((readOpStrAddr b) ↦ᵣ utf8 "read")
-
-/-- Minimal `.rodata` assumption needed by `<signal_session::stores::Dir>::get`:
-    any `img.FrozenLoaded` state holds the three 64-bit read-only words read at `+412/+416`
-    and the 4-byte `"read"` literal referenced at `+444/+448`. -/
-def DirGetRoData (img : Obj.Image) : Prop :=
-  ∀ {s : State} {P : SepProp},
-    img.FrozenLoaded s → (s.mem ⊨ P) →
-    ∃ w0 w1 wTail : BitVec 64,
-      s.mem ⊨ dirGetRoBundle img.base w0 w1 wTail ∗ P
-
-/-! ## 6. Layout-Independent `ADRP + ADD` Resolution for `+400` and `+444` -/
-
-theorem adrp_add_unreadable_eq {b fnStart : BitVec 64}
-    (hb : (b &&& 0xfff#64) = 0#64)
-    (he : fnStart = b + bv% (ls_off% "<libsignal_cli::stores::Dir>::get")) :
-    (((fnStart + 400#64) &&& 0xfffffffffffff000#64) +
-      bv% (page% (ls_xref%
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 400)
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 404)) -
-           page% (ls_off% "<libsignal_cli::stores::Dir>::get" + 400))) +
-      bv% (ls_xref%
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 400)
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 404) % 4096) =
-    unreadableStrAddr b := by
-  subst he
-  have hpage :
-      ((bv% (ls_off% "<libsignal_cli::stores::Dir>::get") + 400#64 : BitVec 64) &&&
-        0xfffffffffffff000#64) =
-      bv% (page% (ls_off% "<libsignal_cli::stores::Dir>::get" + 400)) := by decide
-  have hsum :
-      bv% (page% (ls_off% "<libsignal_cli::stores::Dir>::get" + 400)) +
-      bv% (page% (ls_xref%
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 400)
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 404)) -
-           page% (ls_off% "<libsignal_cli::stores::Dir>::get" + 400)) +
-      bv% (ls_xref%
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 400)
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 404) % 4096) =
-      bv% (ls_xref%
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 400)
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 404)) := by decide
-  rw [BitVec.add_assoc b, ProofLib.ObjectLoad.adrp_page_of_aligned hb, hpage]
-  unfold unreadableStrAddr
-  rw [← hsum]
-  bv_omega
-
-theorem adrp_add_readOp_eq {b fnStart : BitVec 64}
-    (hb : (b &&& 0xfff#64) = 0#64)
-    (he : fnStart = b + bv% (ls_off% "<libsignal_cli::stores::Dir>::get")) :
-    (((fnStart + 444#64) &&& 0xfffffffffffff000#64) +
-      bv% (page% (ls_xref%
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 444)
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 448)) -
-           page% (ls_off% "<libsignal_cli::stores::Dir>::get" + 444))) +
-      bv% (ls_xref%
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 444)
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 448) % 4096) =
-    readOpStrAddr b := by
-  subst he
-  have hpage :
-      ((bv% (ls_off% "<libsignal_cli::stores::Dir>::get") + 444#64 : BitVec 64) &&&
-        0xfffffffffffff000#64) =
-      bv% (page% (ls_off% "<libsignal_cli::stores::Dir>::get" + 444)) := by decide
-  have hsum :
-      bv% (page% (ls_off% "<libsignal_cli::stores::Dir>::get" + 444)) +
-      bv% (page% (ls_xref%
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 444)
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 448)) -
-           page% (ls_off% "<libsignal_cli::stores::Dir>::get" + 444)) +
-      bv% (ls_xref%
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 444)
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 448) % 4096) =
-      bv% (ls_xref%
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 444)
-            (ls_off% "<libsignal_cli::stores::Dir>::get" + 448)) := by decide
-  rw [BitVec.add_assoc b, ProofLib.ObjectLoad.adrp_page_of_aligned hb, hpage]
-  unfold readOpStrAddr
-  rw [← hsum]
-  bv_omega
-
-/-! ## 7. Writable 22-Byte Overlap Decomposition (`[0..16)` + `[14..22)`) -/
+/-! ## 5. Layout-Independent `.rodata` Overlap Lemmas -/
 
 theorem write_22_overlap_mid (buf w1 : BitVec 64) :
     ((buf + 8#64) ↦₆₄ w1) ∗ memRegion (buf + 16#64) 6 ⊢
@@ -533,218 +412,6 @@ theorem arrayAt_dirEntry_append (A : RustAlloc) (ptr : BitVec 64)
       congr 2
       omega
     rw [hmul]
-
-theorem fnAddr_add_rel {b : BitVec 64} {ext : String → Option (State → State)}
-    (n1 n2 : String) {k : Nat}
-    (hk : libsignalSessionCode.fnOff n1 + k = libsignalSessionCode.fnOff n2) :
-    (tripleRatchetProgAtExt b ext).fnAddr n1 + BitVec.ofNat 64 k =
-      (tripleRatchetProgAtExt b ext).fnAddr n2 := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase]
-  rw [BitVec.add_assoc, ← BitVec.ofNat_add, hk]
-
-ls_attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
-
-theorem bcmp_ok_at {b : BitVec 64} {ext : String → Option (State → State)}
-    (hBcmp : HookSat ext cliBcmpName cliBcmpSpec) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr dirGetName +
-        bv% (ls_rel% "<libsignal_cli::stores::Dir>::get" "bcmp"))
-      cliBcmpSpec :=
-  hook_ok_at (hname := cliBcmpName) rfl
-    (k := ls_rel% "<libsignal_cli::stores::Dir>::get" "bcmp")
-    (by rw [dirGet_fnOff, ls_lemma% stubOff "bcmp"])
-    (by rw [ls_lemma% stubOff "bcmp"]; decide)
-    (fun H => Eq.trans (congrArg (libsignalSessionCode.rebase 0 H).hookAtOff?
-        (ls_lemma% stubOff "bcmp"))
-      (ls_lemma% hookAtOff "bcmp" H))
-    (by decide +kernel) hBcmp
-
-theorem path_ok_at {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    {pathStk : Nat}
-    (hPath : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr pathName)
-      (pathSpec A img pathStk)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirGetName +
-        bv% (ls_rel% "<libsignal_cli::stores::Dir>::get" "libsignal_cli::stores::path"))
-      (pathSpec A img pathStk) := by
-  rw [fnAddr_add_rel dirGetName pathName (by rw [dirGet_fnOff, path_fnOff])]
-  exact hPath
-
-theorem sessionMemcpyBytesAtInImage_ok_at {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : AllocContractsX img A ext)
-    (hRO : HookSat ext memcpyName sessionMemcpyRegionROSpec)
-    (ro : Bool) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirGetName +
-        bv% (ls_rel% "<libsignal_cli::stores::Dir>::get" "memcpy"))
-      ((withStack (sessionMemcpyBytesAtSpec ro) extHookStack).inImage img) := by
-  cases ro
-  · have hmc := hC.session_memcpy_region_ok_at dirGetName
-      (ls_rel% "<libsignal_cli::stores::Dir>::get" "memcpy")
-      (hk := by rw [dirGet_fnOff]; simp only [arm64_norm])
-    refine subroutine_ok_outcome_intro fun ⟨dst, src, bs⟩ R s0 hpc hrun hpre hsp => ?_
-    have hpre' : s0.mem ⊨ ((withStack sessionMemcpyRegionSpec extHookStack).inImage img).pre
-        (dst, src, bs) s0 ∗ R := by
-      simp only [Spec.inImage, withStack, sessionMemcpyBytesAtSpec,
-        SpqrV1.ChainProofs.bytesAt_false, sessionMemcpyRegionSpec, memcpyRegionSpec,
-        sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-      exact ⟨hpre.1, ⟨hpre.2.1.1, hpre.2.1.2.1, hpre.2.1.2.2.1⟩, hpre.2.2⟩
-    exact hmc.mono_outcome (dst, src, bs) R s0 hpc hrun hpre' hsp fun _ hout => hout
-  · have hmc_ro := session_memcpy_region_ro_ok_at (b := img.base) hRO dirGetName
-      (ls_rel% "<libsignal_cli::stores::Dir>::get" "memcpy")
-      (hk := by rw [dirGet_fnOff]; simp only [arm64_norm])
-    exact subroutine_ok_inImage_of_subroutine_ok img
-      (subroutine_ok_withStack_of_subroutine_ok hmc_ro extHookStack)
-
-theorem sessionMemcpyBytesAtInImage_ok_at_false {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirGetName +
-        bv% (ls_rel% "<libsignal_cli::stores::Dir>::get" "memcpy"))
-      ((withStack (sessionMemcpyBytesAtSpec false) extHookStack).inImage img) := by
-  have hmc := hC.session_memcpy_region_ok_at dirGetName
-    (ls_rel% "<libsignal_cli::stores::Dir>::get" "memcpy")
-    (hk := by rw [dirGet_fnOff]; simp only [arm64_norm])
-  refine subroutine_ok_outcome_intro fun ⟨dst, src, bs⟩ R s0 hpc hrun hpre hsp => ?_
-  have hpre' : s0.mem ⊨ ((withStack sessionMemcpyRegionSpec extHookStack).inImage img).pre
-      (dst, src, bs) s0 ∗ R := by
-    simp only [Spec.inImage, withStack, sessionMemcpyBytesAtSpec,
-      SpqrV1.ChainProofs.bytesAt_false, sessionMemcpyRegionSpec, memcpyRegionSpec,
-      sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    exact ⟨hpre.1, ⟨hpre.2.1.1, hpre.2.1.2.1, hpre.2.1.2.2.1⟩, hpre.2.2⟩
-  exact hmc.mono_outcome (dst, src, bs) R s0 hpc hrun hpre' hsp fun _ hout => hout
-
-theorem memcpyROOkExtX_of_withStack {img : Obj.Image}
-    {ext : String → Option (State → State)} {roStk : Nat}
-    (hro : roStk ≤ extHookStack)
-    (hRO : HookSat ext memcpyName (sessionMemcpyRegionROSpecWithStack roStk)) :
-    MemcpyROOkExtX img ext := by
-  have hfn : libsignalSessionCode.fnOff memcpyName = num% (ls_off% "memcpy") :=
-    Eq.trans (congrArg libsignalSessionCode.fnOff rfl) (ls_stub% "memcpy")
-  have h0 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr memcpyName)
-      (sessionMemcpyRegionROSpecWithStack roStk) := by
-    have h := ProofLib.hook_ok_at (P := libsignalSessionCode) (b := img.base) (hooks := ext)
-      (name := memcpyName) (hname := memcpyName) (k := 0)
-      hfn (Nat.add_zero _) (by decide) (ls_hook% "memcpy")
-      (by simp [Rust.isPanicSymbol, memcpyName]) hRO
-    simpa only [tripleRatchetProgAtExt, BitVec.ofNat_eq_ofNat, BitVec.add_zero] using h
-  have hlt : extHookStack ≤ 2 ^ 64 := by decide
-  let btm := fun sp => memRegion (sp - BitVec.ofNat 64 extHookStack) (extHookStack - roStk)
-  apply SpqrV1.Alloc.subroutine_ok_inImage img
-  refine subroutine_ok_outcome_intro fun ⟨dst, src, bs⟩ R s0 hpc hrun hpre hsp => ?_
-  have hpre' : s0.mem ⊨ (sessionMemcpyRegionROSpecWithStack roStk).pre (dst, src, bs) s0 ∗
-      (btm s0.sp ∗ R) := by
-    dsimp only [sessionMemcpyRegionROSpecX, sessionMemcpyRegionROSpecWithStack, btm] at hpre ⊢
-    rw [stackAt_sub_split s0.sp hro hlt] at hpre
-    simp only [sepConj_assoc] at hpre ⊢
-    rwa [← sepConj_assoc (memRegion _ _) (stackAt s0.sp roStk) R,
-      sepConj_comm (memRegion _ _) (stackAt s0.sp roStk), sepConj_assoc] at hpre
-  refine h0.mono_outcome (dst, src, bs) (btm s0.sp ∗ R) s0 hpc hrun hpre' hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hmem⟩ | ⟨code, _, hmem⟩ | ⟨_, hmem⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [sessionMemcpyRegionROSpecX, sessionMemcpyRegionROSpecWithStack, btm] at hpost ⊢
-    rw [stackAt_sub_split s0.sp hro hlt]
-    simp only [sepConj_assoc] at hpost ⊢
-    rwa [← sepConj_assoc (stackAt s0.sp roStk) (memRegion _ _) R,
-      sepConj_comm (stackAt s0.sp roStk) (memRegion _ _), sepConj_assoc] at hpost
-  · rw [show (sessionMemcpyRegionROSpecWithStack roStk).onPanic (dst, src, bs) s0 sf = ⌜False⌝ from rfl,
-      satisfies_pure_sepConj] at hmem
-    exact False.elim hmem.1
-  · rw [show (sessionMemcpyRegionROSpecWithStack roStk).onExit (dst, src, bs) code s0 sf = ⌜False⌝ from rfl,
-      satisfies_pure_sepConj] at hmem
-    exact False.elim hmem.1
-  · rw [show (sessionMemcpyRegionROSpecWithStack roStk).onOom (dst, src, bs) s0 sf = ⌜False⌝ from rfl,
-      satisfies_pure_sepConj] at hmem
-    exact False.elim hmem.1
-
-theorem sessionMemcpyBytesAtInImage_ok_at_roX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hC : AllocContractsX img A ext)
-    (hRO : MemcpyROOkExtX img ext)
-    (ro : Bool) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirGetName +
-        bv% (ls_rel% "<libsignal_cli::stores::Dir>::get" "memcpy"))
-      ((withStack (sessionMemcpyBytesAtSpec ro) extHookStack).inImage img) := by
-  cases ro
-  · exact sessionMemcpyBytesAtInImage_ok_at_false hC
-  · have hmc_ro := session_memcpy_region_ro_ok_at_x_of_roX hRO dirGetName
-      (ls_rel% "<libsignal_cli::stores::Dir>::get" "memcpy")
-      (hk := by rw [dirGet_fnOff]; simp only [arm64_norm])
-    refine subroutine_ok_outcome_intro fun ⟨dst, src, bs⟩ R s0 hpc hrun hpre hsp => ?_
-    have hpre' : s0.mem ⊨ (sessionMemcpyRegionROSpecX.inImage img).pre (dst, src, bs) s0 ∗ R := by
-      simpa only [Spec.inImage, withStack, sessionMemcpyBytesAtSpec,
-        sessionMemcpyRegionROSpecX, SpqrV1.ChainProofs.bytesAt_true, sepConj_assoc] using hpre
-    refine hmc_ro.mono_outcome (dst, src, bs) R s0 hpc hrun hpre' hsp fun sf hout => ?_
-    rcases hout with ⟨hret, hcc, hpost⟩ | hpan | hex
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      simpa only [Spec.inImage, withStack, sessionMemcpyBytesAtSpec,
-        sessionMemcpyRegionROSpecX, SpqrV1.ChainProofs.bytesAt_true, sepConj_assoc] using hpost
-    · exact Or.inr (Or.inl hpan)
-    · exact Or.inr (Or.inr hex)
-
-theorem sessionMemcpyBytesAtInImage_ok_at_withStack {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {roStk : Nat}
-    (hC : AllocContractsX img A ext)
-    (hRO : HookSat ext memcpyName (sessionMemcpyRegionROSpecWithStack roStk))
-    (ro : Bool)
-    (hro : roStk ≤ extHookStack := by decide) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dirGetName +
-        bv% (ls_rel% "<libsignal_cli::stores::Dir>::get" "memcpy"))
-      ((withStack (sessionMemcpyBytesAtSpec ro) extHookStack).inImage img) :=
-  sessionMemcpyBytesAtInImage_ok_at_roX hC (memcpyROOkExtX_of_withStack hro hRO) ro
-
-theorem panic_at_handle_error_dirGet (b : BitVec 64) (ext : String → Option (State → State)) :
-    (libsignalSessionCode.rebase b (Rust.withPanics ext)).externAt?
-      ((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dirGetName +
-        bv% (ls_rel% "<libsignal_cli::stores::Dir>::get" "alloc::raw_vec::handle_error")) =
-      some Rust.panicked :=
-  panic_at_handle_error_ext b ext dirGetName
-    (ls_rel% "<libsignal_cli::stores::Dir>::get" "alloc::raw_vec::handle_error")
-    (by rw [dirGet_fnOff]; simp only [arm64_norm])
-
-/-- Abstract post-call contract for the `+0x14c` → `+0x150` `read_file` call site. -/
-def PathIoContract (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State))
-    (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (ioStk : Nat) : Prop :=
-  ∀ (s0 s : State) (pathPtr : BitVec 64) (pth : List (BitVec 8)) (F : SepProp)
-    (Q : State → SepProp → Prop) (Qp : State → SepProp → Prop),
-    let prog := libsignalSessionCode.rebase img.base (Rust.withPanics ext)
-    let fnStart := prog.fnAddr dirGetName
-    img.FrozenLoaded s →
-    s.symtab = img.symtab →
-    s.pc = fnStart + 332#64 →
-    s.status = .Running →
-    s.spAligned = true →
-    FsInv s0.fs.files s0.trace s →
-    s.trace = s0.trace →
-    s.readReg64 .x0 = pathPtr →
-    (s.readReg64 .x1).toNat = pth.length →
-    s.readReg64 .x8 = s.sp →
-    pth.length < 2 ^ 32 →
-    pathOk pth →
-    (∀ (sc sf : State) (F' : SepProp), sc.trace = s0.trace →
-      Qp sf ((⌜allocFailedIn sc sf ∧ sc.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F')) →
-    (∀ sf : State,
-      sf.pc = fnStart + 336#64 →
-      sf.status = .Running →
-      sf.sp = s.sp →
-      CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf →
-      sf.symtab = img.symtab →
-      SepWPp prog (s0.readReg64 .x30) sf
-        (((∃∗ r : Except Unit (List (BitVec 8)),
-            ⌜r = rd s0.fs.files pth ∧ sf.trace = s0.trace⌝ ∗
-            ioVecAt A s.sp r) ∗
-          (pathPtr ↦ₛ pth) ∗ stackAt s.sp ioStk ∗ A.pool) ∗ F)
-        Q Qp (fun _ => ⌜False⌝)) →
-    SepWPp prog (s0.readReg64 .x30) s
-      (((pathPtr ↦ₛ pth) ∗ memRegion s.sp 24 ∗ stackAt s.sp ioStk ∗ A.pool) ∗ F)
-      Q Qp (fun _ => ⌜False⌝)
 
 end CryptoVerification.SignalSession.Cli.Get.Helpers
 

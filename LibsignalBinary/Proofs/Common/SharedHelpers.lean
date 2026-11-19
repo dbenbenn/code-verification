@@ -13,7 +13,6 @@ public import Lean
 public import ProofLib
 public import ProofLib.SepLogic.WPp
 public import LibsignalBinary.Specifications.RustHeap.Alloc
-public import LibsignalBinary.Proofs.Common.CallInv
 public meta import Lean
 public meta import ProofLib
 
@@ -25,11 +24,11 @@ Provides `CryptoGames`-free separation-logic and state-invariant helpers shared 
 - `sep_ac_rfl`: $O(n \log n)$ separation-logic AC reflexivity via `ProofLib.SepSolver.synReifyPermTbl?`
   with polymorphic atom abstraction, falling back to `ac_rfl` / `sep_frame`.
 - `ProofLib.SepWP.weaken_pre_sat`: semantic `SatEntails` precondition weakening for `SepWP`.
-- Shared `FrozenLoaded`, `symtab`, `LayoutOk`, `seq_clean_inImage*`, `sepWPp_pure_mid`, and
-  `allocFailedIn` lemmas (no global `@[simp]` or `@[wp_norm]` attributes).
+- Shared `symtab`, `LayoutOk`, `sepWPp_pure_mid`, and `allocFailedIn` lemmas (no global `@[simp]`
+  or `@[wp_norm]` attributes).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -100,52 +99,16 @@ namespace LibsignalBinary.Proofs.Common.SharedHelpers
 open Arm64 ProofLib
 open CryptoVerification.RustHeap (LayoutOk allocFailedEvent allocFailedIn)
 
-/-! ## `FrozenLoaded`, `symtab`, and `SepWP` Helpers -/
-
-theorem frozenLoaded_setPC (img : Obj.Image) (s : State) (pc : BitVec 64) :
-    img.FrozenLoaded (s.setPC pc) ↔ img.FrozenLoaded s :=
-  ⟨CryptoVerification.frozenLoaded_of_mem_eq (by simp),
-   CryptoVerification.frozenLoaded_of_mem_eq (by simp)⟩
+/-! ## `symtab` and `SepWP` Helpers -/
 
 theorem symtab_setPC (s : State) (pc : BitVec 64) :
     (s.setPC pc).symtab = s.symtab := by simp
 
-theorem frozenLoaded_writeReg64 (img : Obj.Image) (s : State) (r : Reg) (v : BitVec 64) :
-    img.FrozenLoaded (s.writeReg64 r v) ↔ img.FrozenLoaded s :=
-  ⟨CryptoVerification.frozenLoaded_of_mem_eq (by simp),
-   CryptoVerification.frozenLoaded_of_mem_eq (by simp)⟩
-
 theorem symtab_writeReg64 (s : State) (r : Reg) (v : BitVec 64) :
     (s.writeReg64 r v).symtab = s.symtab := by simp
 
-theorem frozenLoaded_setPState (img : Obj.Image) (s : State) (ps : PState) :
-    img.FrozenLoaded (s.setPState ps) ↔ img.FrozenLoaded s :=
-  ⟨CryptoVerification.frozenLoaded_of_mem_eq (by simp),
-   CryptoVerification.frozenLoaded_of_mem_eq (by simp)⟩
-
 theorem symtab_setPState (s : State) (ps : PState) :
     (s.setPState ps).symtab = s.symtab := by simp
-
-theorem frozenLoaded_setPC_setMem (img : Obj.Image) (s : State) (pc : BitVec 64) (m : Memory) :
-    img.FrozenLoaded ((s.setPC pc).setMem m) ↔ img.FrozenLoaded (s.setMem m) :=
-  ⟨CryptoVerification.frozenLoaded_of_mem_eq (by simp),
-   CryptoVerification.frozenLoaded_of_mem_eq (by simp)⟩
-
-theorem frozenLoaded_setPState_setMem (img : Obj.Image) (s : State) (ps : PState) (m : Memory) :
-    img.FrozenLoaded ((s.setPState ps).setMem m) ↔ img.FrozenLoaded (s.setMem m) :=
-  ⟨CryptoVerification.frozenLoaded_of_mem_eq (by simp),
-   CryptoVerification.frozenLoaded_of_mem_eq (by simp)⟩
-
-theorem frozenLoaded_writeReg64_setMem (img : Obj.Image) (s : State) (r : Reg) (v : BitVec 64)
-    (m : Memory) :
-    img.FrozenLoaded ((s.writeReg64 r v).setMem m) ↔ img.FrozenLoaded (s.setMem m) :=
-  ⟨CryptoVerification.frozenLoaded_of_mem_eq (by simp),
-   CryptoVerification.frozenLoaded_of_mem_eq (by simp)⟩
-
-theorem frozenLoaded_writeVReg128 (img : Obj.Image) (s : State) (idx : BitVec 5) (v : BitVec 128) :
-    img.FrozenLoaded (s.writeVReg128 idx v) ↔ img.FrozenLoaded s :=
-  ⟨CryptoVerification.frozenLoaded_of_mem_eq (by simp),
-   CryptoVerification.frozenLoaded_of_mem_eq (by simp)⟩
 
 theorem symtab_writeVReg128 (s : State) (idx : BitVec 5) (v : BitVec 128) :
     (s.writeVReg128 idx v).symtab = s.symtab := by simp
@@ -177,44 +140,8 @@ theorem layoutOk_of_beq_zero_false {cap : BitVec 64}
     hne (BitVec.eq_of_toNat_eq (by simpa using h0))
   exact ⟨hpos, ⟨0, rfl⟩, by omega⟩
 
-def SatEntails (P Q : SepProp) : Prop :=
+@[expose] def SatEntails (P Q : SepProp) : Prop :=
   ∀ (m : Memory) (R : SepProp), (m ⊨ P ∗ R) → (m ⊨ Q ∗ R)
-
-theorem seq_clean_inImage {prog : Program} {img : Obj.Image} {mid target_pc : BitVec 64}
-    {s : State} {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop}
-    {oom : State → SepProp}
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h1 : SepWP prog mid s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm) oom)
-    (h2 : ∀ sm, sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Q sm →
-      SepWP prog target_pc sm P_mid post oom) :
-    SepWP prog target_pc s P post oom :=
-  ProofLib.SepWP.of_sepWP_frozen hfrozen hsym <|
-    SepWP.mono h1 fun sm _ hpc hrun ⟨hent, hQ⟩ hfz hsym_m =>
-      SepWP.weaken_pre hent (h2 sm hpc hrun hfz hsym_m hQ)
-
-theorem seq_clean_inImage_fl_first {prog : Program} {mid target_pc : BitVec 64} {s : State}
-    {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop} {oom : State → SepProp}
-    {img : Obj.Image} (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h1 : SepWP prog mid s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm) oom)
-    (h2 : ∀ sm, img.FrozenLoaded sm → sm.symtab = img.symtab →
-      sm.pc = mid → sm.status = .Running → Q sm →
-      SepWP prog target_pc sm P_mid post oom) :
-    SepWP prog target_pc s P post oom :=
-  seq_clean_inImage hfl hsym h1 fun sm hpc hrun hfz hsym_m hQ =>
-    h2 sm hfz hsym_m hpc hrun hQ
-
-theorem seq_clean_inImage_inv {prog : Program} {img : Obj.Image} {mid target_pc : BitVec 64}
-    {s : State} {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop}
-    {oom : State → SepProp}
-    (hinv : img.FrozenLoaded s ∧ s.symtab = img.symtab)
-    (h1 : SepWP prog mid s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm) oom)
-    (h2 : ∀ sm, sm.pc = mid → sm.status = .Running →
-      (img.FrozenLoaded sm ∧ sm.symtab = img.symtab) → Q sm →
-      SepWP prog target_pc sm P_mid post oom) :
-    SepWP prog target_pc s P post oom :=
-  seq_clean_inImage hinv.1 hinv.2 h1 fun sm hpc hrun hfz hsym_m hQ =>
-    h2 sm hpc hrun ⟨hfz, hsym_m⟩ hQ
 
 theorem sepWPp_pure_mid {prog : Program} {ret : BitVec 64} {s : State}
     {A B C : SepProp} {φ : Prop} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}

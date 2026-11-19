@@ -10,10 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
 import ProofLib.SepLogic.WPp
 
@@ -24,7 +23,7 @@ Provides relocatable `[LibsignalPlacement]` basic-block steppers shared between
 `PolynomialDecoder::encode [local#1]` (`Block 152`) and `[local#2]` (`Block 315`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -152,60 +151,42 @@ theorem polyDecoder_unpinned_of_pinned_placed_x [LibsignalPlacement] {resStack :
   · exact Or.inr (Or.inr hrest)
 
 
-def IsPolyDecoderEncodeEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
-  (∃ b ext, prog = tripleRatchetProgAtExt b ext ∧ IsPolyDecoderEncodeEntry b ext entry) ∨
+@[expose] def IsPolyDecoderEncodeEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
+  False ∨
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
     (prog = @lsProg_152 inst H ∧ entry = (@blkPl_152 inst).base) ∨
     (prog = @lsProg_315 inst H ∧ entry = (@blkPl_315 inst).base))
 
 theorem polyDecoderEncode_fetch_entry_prog {prog : Program} {entry : BitVec 64}
     (hfn : IsPolyDecoderEncodeEntryProg prog entry) {ins : Instr}
-    (h1 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodePolyDecoder1Name) = some ins)
-    (h2 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodePolyDecoder2Name) = some ins)
     (hp1 : ∀ [LibsignalPlacement] (H : String → Option (State → State)),
       (lsProg_152 H).fetch ((blkPl_152).base + 0#64) = some ins)
     (hp2 : ∀ [LibsignalPlacement] (H : String → Option (State → State)),
       (lsProg_315 H).fetch ((blkPl_315).base + 0#64) = some ins) :
     prog.fetch entry = some ins := by
-  rcases hfn with ⟨b, ext, rfl, hfn⟩ | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
-  · exact polyDecoderEncode_fetch_entry hfn (h1 b ext) (h2 b ext)
+  rcases hfn with h | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
+  · nomatch h
   · simpa using @hp1 inst H
   · simpa using @hp2 inst H
 
 theorem polyDecoderEncode_fetch_add_prog {prog : Program} {entry : BitVec 64}
     (hfn : IsPolyDecoderEncodeEntryProg prog entry) {k : Nat} {ins : Instr}
-    (h1 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodePolyDecoder1Name + BitVec.ofNat 64 k) = some ins)
-    (h2 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodePolyDecoder2Name + BitVec.ofNat 64 k) = some ins)
     (hp1 : ∀ [LibsignalPlacement] (H : String → Option (State → State)),
       (lsProg_152 H).fetch ((blkPl_152).base + BitVec.ofNat 64 k) = some ins)
     (hp2 : ∀ [LibsignalPlacement] (H : String → Option (State → State)),
       (lsProg_315 H).fetch ((blkPl_315).base + BitVec.ofNat 64 k) = some ins) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some ins := by
-  rcases hfn with ⟨b, ext, rfl, hfn⟩ | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
-  · exact polyDecoderEncode_fetch_add hfn (h1 b ext) (h2 b ext)
+  rcases hfn with h | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
+  · nomatch h
   · exact @hp1 inst H
   · exact @hp2 inst H
 
 open Lean Elab Tactic in
 scoped elab "pd_fetches_prog" hfn:ident lo:num hi:num : tactic => do
-  let off1 := 0x37604
-  let off2 := 0x4d14c
   let loN := lo.getNat
   let hiN := hi.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let fnOff1 := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x37604
-  let fnOff2 := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x4d14c
   for i in [loN / 4 : hiN / 4] do
     let k := 4 * i
-    let dec1 := mkIdent (`CryptoVerification.SpqrV1.Prost.MessageEncode |>.str
-      s!"libsignalSessionBin_decode_0x{String.ofList (Nat.toDigits 16 (off1 + k))}")
-    let dec2 := mkIdent (`CryptoVerification.SpqrV1.Prost.MessageEncode |>.str
-      s!"libsignalSessionBin_decode_0x{String.ofList (Nat.toDigits 16 (off2 + k))}")
     let kHex := String.ofList (Nat.toDigits 16 k)
     let p1 := mkIdent (`CryptoVerification |>.str s!"blkPC_152_rebase_fetch_0x{kHex}")
     let p2 := mkIdent (`CryptoVerification |>.str s!"blkPC_315_rebase_fetch_0x{kHex}")
@@ -213,15 +194,11 @@ scoped elab "pd_fetches_prog" hfn:ident lo:num hi:num : tactic => do
     if k == 0 then
       evalTactic (← `(tactic|
         have := polyDecoderEncode_fetch_entry_prog $hfn
-          (fun b ext => $fetchEntry (b := b) (H := Rust.withPanics ext) $fnOff1 (by decide) $dec1)
-          (fun b ext => $fetchEntry (b := b) (H := Rust.withPanics ext) $fnOff2 (by decide) $dec2)
           (fun [LibsignalPlacement] H => $p1 _ H)
           (fun [LibsignalPlacement] H => $p2 _ H)))
     else
       evalTactic (← `(tactic|
         have := polyDecoderEncode_fetch_add_prog $hfn (k := $kq)
-          (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff1 (by decide) $dec1)
-          (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff2 (by decide) $dec2)
           (fun [LibsignalPlacement] H => $p1 _ H)
           (fun [LibsignalPlacement] H => $p2 _ H)))
 
@@ -688,27 +665,5 @@ theorem step_polyDecoder_push_isComplete_val_epilogue_placed {resStack : Nat} (h
              by simp only [arm64_norm, *], by simp only [arm64_norm, *],
              by simp only [arm64_norm, *], by simp only [arm64_norm, *],
              by simp only [arm64_norm, *], by simp only [arm64_norm, *], hinv0.trans hinvf⟩
-
-theorem pd1_fetch_add_mono {b : BitVec 64} {ext : String → Option (State → State)}
-    {entry : BitVec 64} (hfn : (tripleRatchetProgAtExt b ext).fnAddr encodePolyDecoder1Name = entry)
-    {k : Nat} {ins : Instr}
-    (h1 : (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodePolyDecoder1Name + BitVec.ofNat 64 k) = some ins) :
-    (tripleRatchetProgAtExt b ext).fetch (entry + BitVec.ofNat 64 k) = some ins := by
-  subst hfn; exact h1
-
-open Lean Elab Tactic in
-elab "pd1_fetches " b:term:max H:term:max hfn:ident kStart:num kEnd:num : tactic => do
-  let off := 0x37604
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let fnOff := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x37604
-  let helper := mkIdent ``CryptoVerification.SpqrV1.Prost.MessageEncode.pd1_fetch_add_mono
-  for i in [kStart.getNat / 4 : kEnd.getNat / 4] do
-    let k := 4 * i
-    let dec := mkIdent (`CryptoVerification.SpqrV1.Prost.MessageEncode |>.str
-      s!"libsignalSessionBin_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-    let kq := Syntax.mkNumLit (toString k)
-    evalTactic (← `(tactic|
-      have := $helper $hfn (k := $kq) ($fetchAdd (b := $b) (H := $H) (k := $kq) $fnOff (by decide) $dec)))
 
 end CryptoVerification.SpqrV1.Prost.MessageEncode

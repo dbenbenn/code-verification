@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 import all Init.Data.Repr
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateDir
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateDir -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateDirAux
 import Symbolic.Proofs.Swarm.CREF.Cli.World.TurnPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -23,7 +23,7 @@ Defines `AliceInitPartyInv` and proves that when `t.records r r.alice = none`,
 it implies `st.session = none` and `AliceDirState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

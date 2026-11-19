@@ -10,29 +10,35 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdrBudget
-public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdrBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.UpdateBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChainBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.ProofPlaced -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
 
 /-!
 # Budget-Threaded Relocatable Definitions and Callee Contracts for `spqr::send::<HookRng>` (Block 124)
@@ -42,7 +48,7 @@ Defines envelope-parametric and default `RustCliAllocBudget` callee contract bun
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -123,7 +129,7 @@ export LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
 
 /-- Envelope-parametric budget-threaded specification of `<spqr::v1::chunked::states::Message>::serialize`
     (Block `352`, `110` insns) at `messageSerializeStackX`. -/
-def messageSerializeSpecXOfEnv (P_api : PolyApi) {M : AllocCostModel}
+@[expose] def messageSerializeSpecXOfEnv (P_api : PolyApi) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : MessageSerializeGhost P_api → List AllocEvent → Prop) :
     Spec (MessageSerializeGhost P_api × M.σ) where
@@ -141,15 +147,10 @@ def messageSerializeSpecXOfEnv (P_api : PolyApi) {M : AllocCostModel}
       stackAt s0.sp messageSerializeStackX
 
 omit [LibsignalPlacement] in
-theorem messageSerializeSpecXOfEnv_eq (P_api : PolyApi) {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    messageSerializeSpecXOfEnv P_api A lim (MessageSerializeEnv P_api) =
-      messageSerializeSpecX P_api A lim := rfl
-
 /-- Envelope-parametric Block `416` contract on `spqrSendPlacedProg ext`:
     `<PolyEncoder as Encoder>::next_chunk` meets
     `withLsCodeRoLoaded lsmpl (polyNextChunkPlacedSpecOfEnv Env M A lim)`. -/
-def PolyNextChunkPlacedOkXOfEnv
+@[expose] def PolyNextChunkPlacedOkXOfEnv
     (Env : PolyNextChunkGhost → List AllocEvent → Prop)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
@@ -164,7 +165,7 @@ abbrev PolyNextChunkPlacedOkX
 /-- Envelope-parametric Block `417` contract on `spqrSendPlacedProg ext`:
     `<PolyEncoder>::encode_bytes` meets
     `withLsCodeRoLoaded lsmpl (encodeBytesSpecXOfEnv A lim PreEnv PostEnv)`. -/
-def EncodeBytesPlacedOkXOfEnv {M : AllocCostModel}
+@[expose] def EncodeBytesPlacedOkXOfEnv {M : AllocCostModel}
     (PreEnv PostEnv : EncodeBytesGhost → List AllocEvent → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
@@ -179,7 +180,7 @@ abbrev EncodeBytesPlacedOkX {M : AllocCostModel}
     (fun x => EncodeBytesEnv x.msg.length)
     A lim ext
 
-def HeaderSentSendEkChunkPlacedOkXOfEnv
+@[expose] def HeaderSentSendEkChunkPlacedOkXOfEnv
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : HeaderSentSendEkChunkGhost F → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -191,7 +192,7 @@ abbrev HeaderSentSendEkChunkPlacedOkX
     (ext : String → Option (State → State)) : Prop :=
   HeaderSentSendEkChunkPlacedOkXOfEnv M A lim F HeaderSentSendEkChunkEnv ext
 
-def Ct1ReceivedSendEkChunkPlacedOkXOfEnv
+@[expose] def Ct1ReceivedSendEkChunkPlacedOkXOfEnv
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct1ReceivedSendEkChunkGhost F → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -203,7 +204,7 @@ abbrev Ct1ReceivedSendEkChunkPlacedOkX
     (ext : String → Option (State → State)) : Prop :=
   Ct1ReceivedSendEkChunkPlacedOkXOfEnv M A lim F Ct1ReceivedSendEkChunkEnv ext
 
-def Ct1SampledSendCt1ChunkPlacedOkXOfEnv
+@[expose] def Ct1SampledSendCt1ChunkPlacedOkXOfEnv
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct1SampledSendCt1ChunkGhost F → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -215,7 +216,7 @@ abbrev Ct1SampledSendCt1ChunkPlacedOkX
     (ext : String → Option (State → State)) : Prop :=
   Ct1SampledSendCt1ChunkPlacedOkXOfEnv M A lim F Ct1SampledSendCt1ChunkEnv ext
 
-def EkReceivedCt1SampledSendCt1ChunkPlacedOkXOfEnv
+@[expose] def EkReceivedCt1SampledSendCt1ChunkPlacedOkXOfEnv
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : EkReceivedCt1SampledSendCt1ChunkGhost F → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -227,7 +228,7 @@ abbrev EkReceivedCt1SampledSendCt1ChunkPlacedOkX
     (ext : String → Option (State → State)) : Prop :=
   EkReceivedCt1SampledSendCt1ChunkPlacedOkXOfEnv M A lim F EkReceivedCt1SampledSendCt1ChunkEnv ext
 
-def Ct2SampledSendCt2ChunkPlacedOkXOfEnv
+@[expose] def Ct2SampledSendCt2ChunkPlacedOkXOfEnv
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : Ct2SampledSendCt2ChunkGhost F → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=

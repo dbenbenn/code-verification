@@ -33,12 +33,12 @@ open Symbolic.BugInjection
 
 attribute [local irreducible] Symbolic.BugInjection.hexBytes
 
-abbrev cliCompFitsPinned := Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.cliCompFitsPinned
+abbrev CliSetupMatchesPinned := Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.CliSetupMatchesPinned
 
-theorem cliCompFitsPinned_imp_cliCompFits (w : PQXDHSpqrSetup)
+theorem cliSetupMatchesPinned_imp_cliSetupMatches (w : PQXDHSpqrSetup)
     (iw : ExternInterpretation × CryptoVerification.SignalSession.CliHooks)
     (r : Records)
-    (h : cliCompFitsPinned w iw r) : cliCompFits w iw r :=
+    (h : CliSetupMatchesPinned w iw r) : CliSetupMatches w iw r :=
   ⟨h.1.1, h.2.1, h.2.2⟩
 
 theorem coinSplit_nonRng_cons {e : MachineEvent} {σ τ : List MachineEvent}

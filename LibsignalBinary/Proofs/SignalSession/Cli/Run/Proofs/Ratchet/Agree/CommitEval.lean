@@ -10,14 +10,58 @@ limitations under the License.
 module
 
 import all Init.Data.Repr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
-public import LibsignalBinary.Proofs.SpecLemmas.FsFold
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout -- shake: keep
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Spec -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
+import LibsignalBinary.Proofs.SpecLemmas.FsFold
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Spec -- shake: keep
 import LibsignalBinary.Specifications.CryptoGames.Party -- shake: keep
 import LibsignalBinary.Specifications.LibsignalE2E.SchemeModel -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -274,11 +318,11 @@ theorem norm_basekeys_nat (d : String) (n : Nat)
 
 /-! ## Pointwise `filesOf` evaluation on game paths -/
 
-def storeParentDirs : List String :=
+@[expose] def storeParentDirs : List String :=
   ["identities", "sessions", "signed-pre-keys", "one-time-pre-keys",
    "one-time-kyber-pre-keys", "last-resort-kyber-pre-keys"]
 
-def GameFilePath (p : String) : Prop :=
+@[expose] def GameFilePath (p : String) : Prop :=
   (normalizePath p).isEmpty = false ∧
   (∀ d ∈ storeParentDirs, normalizePath p ≠ [d]) ∧
   ∀ pref ∈ (FsPath.nonEmptyPrefixes (normalizePath p)).dropLast,
@@ -314,11 +358,11 @@ private theorem foldl_anc_keep {a : FsState} {prefs : List FsPath}
     obtain ⟨h1, h2⟩ := ih ha' (fun p hp' => hp p (List.mem_cons_of_mem _ hp'))
     exact ⟨h1, fun q => (h2 q).trans (hs' q)⟩
 
-def stepAt (q : FsPath) (v : Option (List (BitVec 8))) (x : String × List (BitVec 8)) :
+@[expose] def stepAt (q : FsPath) (v : Option (List (BitVec 8))) (x : String × List (BitVec 8)) :
     Option (List (BitVec 8)) :=
   if q = normalizePath x.1 then some x.2 else v
 
-def evalAt (q : FsPath) (v : Option (List (BitVec 8)))
+@[expose] def evalAt (q : FsPath) (v : Option (List (BitVec 8)))
     (l : List (String × List (BitVec 8))) : Option (List (BitVec 8)) :=
   l.foldl (stepAt q) v
 

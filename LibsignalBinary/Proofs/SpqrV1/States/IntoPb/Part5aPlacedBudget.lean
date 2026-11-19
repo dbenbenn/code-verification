@@ -9,18 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 5a Placed: Arm 8 (`States.ekReceivedCt1Sampled`)
@@ -30,7 +35,7 @@ and verifies Arm 8 (`States.ekReceivedCt1Sampled`, tag `10`, jump table index `8
 on Block `334` under `RustCliAllocBudget M` in plain and `withLsCodeLoaded` forms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

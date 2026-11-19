@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ExactPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ExactPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -27,6 +27,9 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `prost::encoding::bytes::merge [local#3]` (Block `290`): Exact-Capacity Budget Verification
@@ -36,7 +39,7 @@ Relocatable `[LibsignalPlacement]` verification of `prost::encoding::bytes::merg
 `cap'.toNat = bmNextCap x.valCap.toNat v.length`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -536,16 +539,6 @@ private theorem hookSat_sessionShimBudget_of_withVmPreserved
   rcases hout with ⟨hret, hcc, hpost⟩ | hrest
   · exact Or.inl ⟨hret, hcc, hpost⟩
   · exact Or.inr hrest
-
-private theorem hookSat_noAllocShim_of_withVmPreserved
-    {H : String → Option (State → State)} {sym : String}
-    (h : HookSat H sym (withVmPreserved noAllocShimSpec)) :
-    HookSat H sym noAllocShimSpec :=
-  HookSat.mono h fun x R s0 hp =>
-    ⟨x, R, hp, fun sf hq => by
-      dsimp only [withVmPreserved] at hq
-      rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-      exact hq.2⟩
 
 /-- Relocatable `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#3]`
 (Block `290`) meets `withLsCodeRoLoaded lsmpl (bytesMerge3RawBudgetSpec M A lim)` under

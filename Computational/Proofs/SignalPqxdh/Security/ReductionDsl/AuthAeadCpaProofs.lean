@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfCost -- proof-setup: allow-public-import
 
 /-!
 # Cost and Primitive-Query Bounds for `aeadCpaRedProg`
@@ -19,7 +19,7 @@ Proves linear component bounds and overall `totalCost` and `totalQueries` bounds
 `aeadCpaRedProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,7 +30,7 @@ open SignalPqxdh SignalPqxdh.LegacyCosted SignalPqxdh.Security SignalPqxdh.Secur
 open OracleSpec OracleComp
 
 /-- Concrete polynomial step-cost budget granted to every black-box reduction in the DSL. -/
-def stepCostBudget (S : Setup) (b : QueryBudget) : Nat :=
+@[expose] def stepCostBudget (S : Setup) (b : QueryBudget) : Nat :=
   2 ^ 16 * (b.q_total + 1) * (b.q_total + S.N_dh + S.N_sess_tot + 1) +
     2 ^ 11 * S.N_dh ^ 2 + 2 ^ 8 * S.N_dh * S.N_sess_tot
 
@@ -253,16 +253,6 @@ private theorem cpaStepC_cost_le_clamped (S : Setup) (K : Nat) (allowPause : Boo
      cpaInlWrapSlot_cost_le _ _ _ (registerFixedB_cost_le _ _))
     (by omega)
 
-private theorem cpaStepC_cost_le (S : Setup) (K : Nat) (allowPause : Bool) :
-    (cpaStepC S K allowPause).cost ≤
-      11800 + slotIdxCost S + K * 5000 + S.N_dh * 1550 + S.N_sess_tot * 7500 := by
-  have h := cpaStepC_cost_le_clamped S K allowPause
-  have hd : min K S.N_dh ≤ S.N_dh := Nat.min_le_right _ _
-  have hs : min K S.N_sess_tot ≤ S.N_sess_tot := Nat.min_le_right _ _
-  have hd' := Nat.mul_le_mul_right 1550 hd
-  have hs' := Nat.mul_le_mul_right 7500 hs
-  omega
-
 private theorem cpa_handlePre_cost_le_clamped (S : Setup) (K : Nat) :
     (aeadCpaRedProg S K).handlePre.cost ≤
       12000 + K * 5000 + min K S.N_dh * 1550 + min K S.N_sess_tot * 7500 := by
@@ -274,20 +264,6 @@ private theorem cpa_handlePost_cost_le_clamped (S : Setup) (K : Nat) :
     (aeadCpaRedProg S K).handlePost.cost ≤
       12000 + K * 5000 + min K S.N_dh * 1550 + min K S.N_sess_tot * 7500 := by
   have h := cpaStepC_cost_le_clamped S K false
-  simp only [aeadCpaRedProg, authCodec, cpaPostC, bindV, caseSumV, aNone, v, Comp.cost, Expr.cost]
-  omega
-
-theorem cpa_handlePre_cost_le (S : Setup) (K : Nat) :
-    (aeadCpaRedProg S K).handlePre.cost ≤
-      12000 + slotIdxCost S + K * 5000 + S.N_dh * 1550 + S.N_sess_tot * 7500 := by
-  have h := cpaStepC_cost_le S K true
-  simp only [aeadCpaRedProg, authCodec, cpaPreC]
-  omega
-
-theorem cpa_handlePost_cost_le (S : Setup) (K : Nat) :
-    (aeadCpaRedProg S K).handlePost.cost ≤
-      12000 + slotIdxCost S + K * 5000 + S.N_dh * 1550 + S.N_sess_tot * 7500 := by
-  have h := cpaStepC_cost_le S K false
   simp only [aeadCpaRedProg, authCodec, cpaPostC, bindV, caseSumV, aNone, v, Comp.cost, Expr.cost]
   omega
 
@@ -387,63 +363,6 @@ theorem aeadCpaRedProg_totalCost_poly_le_clamped (S : Setup) (K q : Nat) :
       12032 + K * 5000 + min K S.N_dh * 1550 + min K S.N_sess_tot * 7500 := by omega
   have hMul := Nat.mul_le_mul_left q hMax
   omega
-
-theorem aeadCpaRedProg_totalCost_poly_le (S : Setup) (K q : Nat) :
-    (aeadCpaRedProg S K).totalCost q ≤
-      66 + bits S.N_send_tot +
-      q * (12032 + slotIdxCost S + K * 5000 + S.N_dh * 1550 + S.N_sess_tot * 7500) +
-      874 + (112 + S.N_dh * 413 + S.N_dh ^ 2 * 1088 + K * 97 + K ^ 2 * 9511) := by
-  unfold TwoStageCostedReduction.totalCost
-  have hU : pqPrimIface.uCost = 1 := rfl
-  have hC : (authCodec S).codecCost = 32 := rfl
-  rw [hU, hC, cpa_init_cost, cpa_chDone_cost, cpa_resume_cost, cpa_finish_cost]
-  have hb : bits (min K S.N_send_tot) ≤ bits S.N_send_tot := by
-    simp only [bits]
-    exact Nat.add_le_add_right (Nat.log_mono_right (Nat.min_le_right _ _)) 1
-  have hd : min K S.N_dh ≤ S.N_dh := Nat.min_le_right _ _
-  have hd2 : (min K S.N_dh) ^ 2 ≤ S.N_dh ^ 2 := Nat.pow_le_pow_left hd 2
-  have hPre := cpa_handlePre_cost_le S K
-  have hPost := cpa_handlePost_cost_le S K
-  have hMax : max 1 (max (aeadCpaRedProg S K).handlePre.cost (aeadCpaRedProg S K).handlePost.cost + 32) ≤
-      12032 + slotIdxCost S + K * 5000 + S.N_dh * 1550 + S.N_sess_tot * 7500 := by omega
-  have hMul := Nat.mul_le_mul_left q hMax
-  have := Nat.mul_le_mul_right 413 hd
-  have := Nat.mul_le_mul_right 1088 hd2
-  omega
-
-theorem aeadCpaRedProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (aeadCpaRedProg S b.q_total).totalCost b.q_total ≤ stepCostBudget S b := by
-  refine le_trans (aeadCpaRedProg_totalCost_poly_le S b.q_total b.q_total) ?_
-  have hSlot := slotIdxCost_le S
-  have hbSend : bits S.N_send_tot ≤ S.N_sess_tot + 1 := by
-    have := bits_le_succ S.N_send_tot
-    unfold Setup.N_sess_tot; omega
-  unfold stepCostBudget
-  generalize b.q_total = q at *
-  have h1 : q * (12032 + slotIdxCost S + q * 5000 + S.N_dh * 1550 + S.N_sess_tot * 7500) ≤
-      q * (12042 + q * 5000 + S.N_dh * 1550 + S.N_sess_tot * 7501) :=
-    Nat.mul_le_mul_left q (by omega)
-  nlinarith [Nat.zero_le (q * S.N_dh), Nat.zero_le (q * S.N_sess_tot),
-    Nat.zero_le (S.N_dh * S.N_sess_tot)]
-
-theorem aeadCpaRedProg_totalCost_le_security (S : Setup) (b : QueryBudget) :
-    (aeadCpaRedProg S b.q_total).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  refine le_trans (aeadCpaRedProg_totalCost_poly_le_clamped S b.q_total b.q_total) ?_
-  have hSendLe : min b.q_total S.N_send_tot ≤ min b.q_total S.N_sess_tot := by
-    unfold Setup.N_sess_tot; omega
-  have hbSend : bits (min b.q_total S.N_send_tot) ≤ min b.q_total S.N_sess_tot + 1 := by
-    have h1 : bits (min b.q_total S.N_send_tot) ≤ min b.q_total S.N_send_tot + 1 :=
-      bits_le_succ _
-    omega
-  unfold _root_.SignalPqxdh.Security.stepCostBudget
-  dsimp only
-  generalize b.q_total = q at *
-  set md := min q S.N_dh
-  set ms := min q S.N_sess_tot
-  set lg := Nat.log 2 S.N_dh + Nat.log 2 S.N_sess_tot
-  nlinarith [Nat.zero_le (q * md), Nat.zero_le (q * ms), Nat.zero_le (md * ms),
-    Nat.zero_le lg, Nat.zero_le (q * lg)]
 
 theorem aeadCpaRedProg_totalQueries_poly_le (S : Setup) (K q : Nat) :
     (aeadCpaRedProg S K).totalQueries primW primWS q ≤

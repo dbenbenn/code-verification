@@ -10,15 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Base Specifications and Callees for `PreKeySignalMessage::try_from`
@@ -29,7 +30,7 @@ and `116` (`IdentityKey::try_from`), together with allocator event envelopes and
 (Block `111`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -133,7 +134,7 @@ private theorem memRegion_33_eq (sret : BitVec 64) :
 
 /-! ## `pkTryFromOk40PlacedSpec` (Block `211`) -/
 
-def pkTryFromOk40PlacedSpec [LibsignalPlacement] :
+@[expose] def pkTryFromOk40PlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) :=
   withVmPreserved CryptoVerification.E2E.Pqxdh.ResponderWire.pkTryFromOk40PlacedSpec
 
@@ -171,7 +172,7 @@ theorem pkTryFromOk40_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
 
 /-! ## `deserializeOk33PlacedSpec` (Block `201`) -/
 
-def deserializePlacedBudgetSpec [LibsignalPlacement] : Spec DeserGhost :=
+@[expose] def deserializePlacedBudgetSpec [LibsignalPlacement] : Spec DeserGhost :=
   withVmPreserved CryptoVerification.LibsignalSession.FindReceiverChainIndex.deserializePlacedSpec
 
 set_option maxHeartbeats 800000 in
@@ -219,7 +220,7 @@ theorem deserializePlacedBudget_ok [LibsignalPlacement] (H : LibsignalHooks) :
       simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
       wp_done
 
-def deserializeOk33PlacedSpec [LibsignalPlacement] :
+@[expose] def deserializeOk33PlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) :=
   withVmPreserved CryptoVerification.E2E.Pqxdh.ResponderWire.deserializeOk33PlacedSpec
 
@@ -257,7 +258,7 @@ theorem deserialize_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
 
 /-! ## `identityKeyTryFromSliceOkPlacedSpec` (Block `116`) -/
 
-def identityKeyTryFromSliceOkPlacedSpec [LibsignalPlacement] :
+@[expose] def identityKeyTryFromSliceOkPlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) :=
   withVmPreserved CryptoVerification.E2E.Pqxdh.ResponderWire.identityKeyTryFromSliceOkPlacedSpec
 
@@ -332,7 +333,7 @@ theorem identityKeyTryFromSlice_placed_ok [LibsignalPlacement] (H : LibsignalHoo
 
 /-- Exact allocator event list of the 4 `bytes::merge` field decodes (`bk`, `ik`, `inner`,
 `kyber`) in `PreKeySignalMessage::try_from`'s protobuf decode loop on `x : PreKeyTryFromArgs`. -/
-def preKeyLoopEvents (x : PreKeyTryFromArgs) : List AllocEvent :=
+@[expose] def preKeyLoopEvents (x : PreKeyTryFromArgs) : List AllocEvent :=
   bytesMergeEventsCore .lengthDelimited 0#64 (encodeVarint 33#64 ++ x.bkBytes ++ psmRem2 x) ++
     bytesMergeEventsCore .lengthDelimited 0#64 (encodeVarint 33#64 ++ x.ikBytes ++ psmRem3 x) ++
     bytesMergeEventsCore .lengthDelimited 0#64
@@ -340,46 +341,46 @@ def preKeyLoopEvents (x : PreKeyTryFromArgs) : List AllocEvent :=
     bytesMergeEventsCore .lengthDelimited 0#64
       (encodeVarint 1569#64 ++ x.kyberBytes ++ psmRem8 x)
 
-def PreKeyLoopEnv (x : PreKeyTryFromArgs) (evs : List AllocEvent) : Prop :=
+@[expose] def PreKeyLoopEnv (x : PreKeyTryFromArgs) (evs : List AllocEvent) : Prop :=
   evs = preKeyLoopEvents x
 
 /-- Allocator event envelope of Segment 2 (`<Vec<u8>>::into_boxed_slice` on `kyberBytes` with
 some `1569 ≤ cap.toNat < 2 ^ 63`). -/
-def PreKeySeg2Env (x : PreKeyTryFromArgs) (evs : List AllocEvent) : Prop :=
+@[expose] def PreKeySeg2Env (x : PreKeyTryFromArgs) (evs : List AllocEvent) : Prop :=
   ∃ cap : BitVec 64, 1569 ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧
     evs = intoBoxedSliceEvents ⟨0#64, cap, 0#64, x.kyberBytes⟩
 
 /-- Allocator event envelope of Segment 4's `.ok` branch (`try_clone_from_ref_in` on `x.bytes`
 followed by cleanup deallocations). -/
-def PreKeySeg4OkEnv (x : PreKeyTryFromArgs) : List AllocEvent → Prop :=
+@[expose] def PreKeySeg4OkEnv (x : PreKeyTryFromArgs) : List AllocEvent → Prop :=
   SeqEnv (TryCloneFromRefEnv ⟨x.ptr, x.bytes⟩) FreeOnlyEvs
 
 /-- Allocator event envelope of Segment 4 (`.error` cleanup `FreeOnlyEvs`, or `.ok` clone +
 cleanup `PreKeySeg4OkEnv x`). -/
-def PreKeySeg4Env (x : PreKeyTryFromArgs) (evs : List AllocEvent) : Prop :=
+@[expose] def PreKeySeg4Env (x : PreKeyTryFromArgs) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨ PreKeySeg4OkEnv x evs
 
-def FromSeg3Env (sigEnv : List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def FromSeg3Env (sigEnv : List (BitVec 8) → List AllocEvent → Prop)
     (x : PreKeyTryFromArgs) : List AllocEvent → Prop :=
   SeqEnv (sigEnv x.inner) (PreKeySeg4Env x)
 
-def FromSeg2Env (sigEnv : List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def FromSeg2Env (sigEnv : List (BitVec 8) → List AllocEvent → Prop)
     (x : PreKeyTryFromArgs) : List AllocEvent → Prop :=
   SeqEnv (PreKeySeg2Env x) (FromSeg3Env sigEnv x)
 
-def PreKeyPostEnv (sigEnv : List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def PreKeyPostEnv (sigEnv : List (BitVec 8) → List AllocEvent → Prop)
     (x : PreKeyTryFromArgs) : List AllocEvent → Prop :=
   SeqEnv FreeOnlyEvs (FromSeg2Env sigEnv x)
 
 /-- Full allocator event envelope of `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from`,
 parameterized by the inner `SignalMessage::try_from` callee envelope `sigEnv`. -/
-def PreKeyTryFromEnv (sigEnv : List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def PreKeyTryFromEnv (sigEnv : List (BitVec 8) → List AllocEvent → Prop)
     (x : PreKeyTryFromArgs) : List AllocEvent → Prop :=
   SeqEnv (PreKeyLoopEnv x) (PreKeyPostEnv sigEnv x)
 
 /-- Parametric-envelope raw budget contract of `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from`
 (Block `111`, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def preKeyTryFromPlacedRawEnvSpec [LibsignalPlacement]
+@[expose] def preKeyTryFromPlacedRawEnvSpec [LibsignalPlacement]
     (Env : PreKeyTryFromArgs → List AllocEvent → Prop)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (PreKeyTryFromArgs × M.σ) where
@@ -403,7 +404,7 @@ def preKeyTryFromPlacedRawEnvSpec [LibsignalPlacement]
       stackAt s0.sp preKeyTryFromStack ∗
       A.pool lim (M.stepEvents evs st) sf
 
-def preKeyTryFromPlacedEnvSpec [LibsignalPlacement]
+@[expose] def preKeyTryFromPlacedEnvSpec [LibsignalPlacement]
     (Env : PreKeyTryFromArgs → List AllocEvent → Prop)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (PreKeyTryFromArgs × M.σ) :=

@@ -12,23 +12,23 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneChainsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysTailPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrTopPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.FetchDecrypt
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneChainsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysTailPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePackPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrTopPlacedBudgetAux
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Prev1ErrPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b2
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.FetchDecrypt
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudgetAux
@@ -43,6 +43,10 @@ import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed Stage P3 Clone Assembly, Envelopes, and Zero-Cap Tail Helpers
@@ -52,7 +56,7 @@ Segments 1–5, defines the Stage P3 Over-path spatial dispatch bundles and allo
 (`StageP3VerNePrev1Env`, `StageP3Prev1Env`), and proves zero-capacity error-tail helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -306,7 +310,7 @@ theorem cloneGen_vregs_placed_ok [LibsignalPlacement] : CloneGenVRegsPlacedStmt 
 /-! ## Spatial Dispatch Bundles and Allocation Envelopes (`previous_sessions = [enc]`) -/
 
 /-- Budget-threaded placed dispatch precondition at `+0x1cd8` over a 1-element `prevVecAt [enc]`. -/
-def stageP3DispatchPrePrev1Placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3DispatchPrePrev1Placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s_pool : State)
     (coroPtr outPtr initErrsPtr prevCap prevPtr : BitVec 64) (enc : List (BitVec 8))
     (res : Except SignalProtocolError (List (BitVec 8))) (b_2c0 : BitVec 8)
@@ -316,7 +320,7 @@ def stageP3DispatchPrePrev1Placed [LibsignalPlacement] {M : AllocCostModel}
     G₂ recG st₂ recSt
 
 /-- Budget-threaded placed dispatch `Ok(pt)` postcondition at `+0x34dc` over a 1-element `prevVecAt [enc]`. -/
-def stageP3DispatchOkMidPrev1Placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3DispatchOkMidPrev1Placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s' : State)
     (coroPtr outPtr initErrsPtr prevCap prevPtr ptCap ptPtr : BitVec 64)
     (enc pt : List (BitVec 8)) (b_2c0 : BitVec 8)
@@ -366,14 +370,14 @@ theorem postTryDecrypt_entails_s5DispatchPrev1_placed [LibsignalPlacement] {M : 
 
 /-- Allocation event envelope along Stage P3 (`previous_sessions = [enc]`) when `st.version ≠ msgVer`:
 `SessionStructure::clone` followed by `verNeEnv enc`. -/
-def StageP3VerNePrev1Env (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def StageP3VerNePrev1Env (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (enc : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv (SegCloneEnv recG st) (verNeEnv enc)
 
 /-- Combined Stage P3 allocation event envelope over `previous_sessions = [enc]`, covering both
 `st.version = msgVer` (`StageP3ErrM3Env`) and `st.version ≠ msgVer` (`StageP3VerNePrev1Env`). -/
-def StageP3Prev1Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
+@[expose] def StageP3Prev1Env (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop)
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
@@ -484,9 +488,6 @@ theorem bind_sepWP_lscro_frame_zero_placed [LibsignalPlacement] {prog : Program}
       SepWPp prog ret sm (P_step_post sm ∗ F) Q Qp) :
     SepWPp prog ret s P Q Qp :=
   bind_sepWP_lscro_steps_prev1_placed hcro hstep hP fun sm _ => hnext sm
-
-abbrev intro_lsro_decryptionFailed_zero_placed_budget :=
-  @intro_lsro_decryptionFailed_zero_placed
 
 section StageP3ZeroCapTail
 

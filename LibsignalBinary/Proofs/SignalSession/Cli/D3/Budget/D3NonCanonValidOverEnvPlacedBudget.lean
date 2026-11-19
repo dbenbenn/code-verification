@@ -10,16 +10,30 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftWf
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3StageP3Prev1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftWf
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyRealSlot1MiB
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3StageP3Prev1PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Slot Envelopes, `SingleSlotFineSpec`, and `W4RecvPrekeyRealEnv` Inclusion for `validOver`
@@ -30,7 +44,7 @@ Defines the `DecPkOkOverV4` (`validOver`) slot allocation envelopes (`DecPkD3Val
 `W4RecvPrekeyRealEnv` along with whole-`main` `FitsEnv` at `cliBudgetLimits`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -38,7 +52,6 @@ set_option linter.dupNamespace false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSession (PublicKey)
 open CryptoGames.LibsignalSessionApi (Session SessionRecord)
@@ -61,17 +74,13 @@ open LibsignalBinary.Heap.Fine (FineScale fineCostModel)
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudget (TryDecryptCliEnv)
 open LibsignalBinary.Proofs.PeakBudget.CliDomainCaps (parseArgs_peer_name_length_le)
 open LibsignalBinary.Proofs.PeakBudget.CliGroupBounds (phaseGroupSpec_exists_guarded)
-open LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-  (cliIo_rd_ok_length_le_sessionCapBytes mkExistentialRealCalleeEnvs)
+open LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs (cliIo_rd_ok_length_le_sessionCapBytes)
 open LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge (RealCliMainBinaryEnvOf)
 open LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec (SingleSlotFineSpec)
 open LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith (cliBudgetLimits)
 open LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
   (CliPqOrD3RecvDom d3RecvW4ExtCum d3RecvW4ExtGrpS d3RecvW4ExtLive d3RecvW4ExtMaxReq
-   d3RecvW4ExtPeak mainSt0Dom mainSt0Dom_init_cliBudgetLimits_pqRecv_d3_of_callSpecs_1GiB
-   mainSt0Dom_init_cliBudgetLimits_pqRecv_d3_of_mem_w4 mkD3RecvCalleeEnvs
-   realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_pqRecv_d3_of_callSpecs_1GiB
-   realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_pqRecv_d3_of_mem_w4)
+   d3RecvW4ExtPeak)
 open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit (PhaseCreditSpec)
 open LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux (msgCapBytes sessionCapBytes)
 open LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
@@ -102,7 +111,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 /-- Parametric D3 `validOver` (`DecPkOkOverV4`) `decrypt_prekey` slot allocation envelope
 (`cliDecryptPrekey` Block `520` prologue/epilogue is stack-only, so the slot envelope equals
 `DecPkD3ValidOverPollEnv`). -/
-def DecPkD3ValidOverEnv [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecPkD3ValidOverEnv [LibsignalPlacement] (A : RustAlloc)
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -119,7 +128,7 @@ def DecPkD3ValidOverEnv [LibsignalPlacement] (A : RustAlloc)
 /-- Concrete CLI specialization of `DecPkD3ValidOverEnv` wired to `ReadFileRuleEnv cliIo.rd`,
 `SessDeserializeCancelEnv`, `TryDecryptCliEnv W.C (spqrV1 W.C.F W.Q.K)`, and
 `cliPollStageP4Prev1Envs`. -/
-def DecPkD3ValidOverCliEnv [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecPkD3ValidOverCliEnv [LibsignalPlacement] (A : RustAlloc)
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (P2OverErrEnv P2OverOkEnv :
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -143,7 +152,7 @@ theorem phaseCredit_exists_guarded_u {α : Sort _} {M : AllocCostModel}
   credit_le st0 := fun ⟨x, hx, he⟩ => (h x hx).credit_le st0 he
 
 /-- Existential Variant (i) W4 real-slot envelope (`(sessionCapBytes, msgCapBytes)`). -/
-def ValidOverRealSlotEnv (evs : List AllocEvent) : Prop :=
+@[expose] def ValidOverRealSlotEnv (evs : List AllocEvent) : Prop :=
   ∃ w4R : W4RecvPrekeyRealParams,
     W4RecvPrekeyRealDomOf sessionCapBytes msgCapBytes w4R ∧ W4RecvPrekeyRealEnv w4R evs
 
@@ -283,7 +292,7 @@ theorem validOverRealSlotEnv_nonvacuous_alloc
 /-! ## 3. `W4RecvPrekeyRealEnv` Inclusion & Whole-`main` `FitsEnv` -/
 
 /-- Witness-fact bundle for the Stage-P3/P2 `W4RecvPrekeyRealEnv` structural bridge. -/
-def ValidOverStageP3WitnessFacts (i : Inputs) (peerAddr : AddrV)
+@[expose] def ValidOverStageP3WitnessFacts (i : Inputs) (peerAddr : AddrV)
     (R : W4RecvPrekeyRealParams) (evs : List AllocEvent) : Prop :=
   R.rd = cliIo.rd ∧
   R.files = runFiles i ∧
@@ -370,93 +379,5 @@ theorem decPkD3ValidOverEnv_mem_w4RecvPrekeyRealEnv [LibsignalPlacement]
   dsimp only at hc
   subst hc
   exact hmem
-
-/-- Explicit `(mkExistentialRealCalleeEnvs img S ⟨W.C, W.Q⟩ g).decPkEnv` spelling of
-`decPkD3ValidOverEnv_mem_w4RecvPrekeyRealEnv`. -/
-theorem decPkD3ValidOverEnv_mem_existentialRealCalleeEnvs [LibsignalPlacement]
-    (img : Image) (S : RunSem)
-    (A : RustAlloc) (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
-    {P2OverErrEnv P2OverOkEnv :
-      DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    {g : RunCall} {peerAddr : AddrV} {x : DecPkGhost}
-    (hc : g.c = .recv peerAddr)
-    (hi : CliPqOrD3RecvDom ⟨W.C, W.Q⟩ g.i)
-    (hstdin : g.i.stdin.length ≤ msgCapBytes)
-    (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some (.recv peerAddr))
-    (hfiles : x.F = runFiles g.i)
-    (hpeer : x.peer.val = addrValOf peerAddr)
-    (hStageP3Bridge :
-      PeerSpqrStateTight640 W.C.F W.Q.K (runFiles g.i) (addrValOf peerAddr) →
-      g.i.stdin.length ≤ msgCapBytes →
-      ∀ evs, DecPkD3ValidOverCliEnv A W X B P2OverErrEnv P2OverOkEnv x evs →
-        ∃ R : W4RecvPrekeyRealParams, ValidOverStageP3WitnessFacts g.i peerAddr R evs) :
-    ∀ evs, DecPkD3ValidOverCliEnv A W X B P2OverErrEnv P2OverOkEnv x evs →
-      (mkExistentialRealCalleeEnvs img S ⟨W.C, W.Q⟩ g).decPkEnv evs :=
-  decPkD3ValidOverEnv_mem_w4RecvPrekeyRealEnv A W X B hc hi hstdin hparse hfiles hpeer
-    hStageP3Bridge
-
-/-- Whole-`main` `RealCliMainBinaryEnvOf` `FitsEnv` at `cliBudgetLimits` (`1 GiB`) for any
-call-level `DecPkEnv` included in `(mkExistentialRealCalleeEnvs img S P g).decPkEnv`. -/
-theorem realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_validOver_d3 [LibsignalPlacement]
-    (img : Image) (S : RunSem) (P : PEParams)
-    {DecPkEnv : RunCall → List AllocEvent → Prop}
-    (hMem : ∀ (g : RunCall), CliPqOrD3RecvDom P g.i → g.i.stdin.length ≤ msgCapBytes →
-      parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c →
-      ∀ evs, DecPkEnv g evs → (mkExistentialRealCalleeEnvs img S P g).decPkEnv evs) :
-    ∀ i : Inputs, CliPqOrD3RecvDom P i →
-      FitsEnv fineCostModel cliBudgetLimits fineCostModel.init
-        (RealCliMainBinaryEnvOf (mkD3RecvCalleeEnvs img S P DecPkEnv) i) :=
-  realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_pqRecv_d3_of_mem_w4 img S P hMem
-
-/-- Initial `mainSt0Dom` invariant at `cliBudgetLimits` (`1 GiB`) for `validOver`. -/
-theorem mainSt0Dom_init_cliBudgetLimits_validOver_d3 [LibsignalPlacement]
-    (img : Image) (S : RunSem) (P : PEParams)
-    {DecPkEnv : RunCall → List AllocEvent → Prop}
-    (hMem : ∀ (g : RunCall), CliPqOrD3RecvDom P g.i → g.i.stdin.length ≤ msgCapBytes →
-      parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c →
-      ∀ evs, DecPkEnv g evs → (mkExistentialRealCalleeEnvs img S P g).decPkEnv evs)
-    (i : Inputs) (hok : CliInputsOk i) :
-    mainSt0Dom (CliPqOrD3RecvDom P) (mkD3RecvCalleeEnvs img S P DecPkEnv) cliBudgetLimits i
-      fineCostModel.init :=
-  mainSt0Dom_init_cliBudgetLimits_pqRecv_d3_of_mem_w4 img S P hMem i hok
-
-/-- Extended-ceiling (`d3RecvW4Ext*`) whole-`main` `RealCliMainBinaryEnvOf` `FitsEnv` at
-`cliBudgetLimits` (`1 GiB`) accommodating Stage-P3 `SegCloneEnv` headroom. -/
-theorem realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_validOver_d3_1GiB [LibsignalPlacement]
-    (img : Image) (S : RunSem) (P : PEParams)
-    {DecPkEnv : RunCall → List AllocEvent → Prop}
-    (S_pk : ∀ (g : RunCall), CliPqOrD3RecvDom P g.i → g.i.stdin.length ≤ msgCapBytes →
-      parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c →
-      SingleSlotFineSpec (DecPkEnv g))
-    (hCaps : ∀ (g : RunCall) (hi_g : CliPqOrD3RecvDom P g.i) (hstdin : g.i.stdin.length ≤ msgCapBytes)
-      (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c),
-      (S_pk g hi_g hstdin hparse).cum ≤ d3RecvW4ExtCum ∧
-      (S_pk g hi_g hstdin hparse).live ≤ d3RecvW4ExtLive ∧
-      (S_pk g hi_g hstdin hparse).peak ≤ d3RecvW4ExtPeak ∧
-      (S_pk g hi_g hstdin hparse).maxReq ≤ d3RecvW4ExtMaxReq ∧
-      (S_pk g hi_g hstdin hparse).grpS ≤ d3RecvW4ExtGrpS) :
-    ∀ i : Inputs, CliPqOrD3RecvDom P i →
-      FitsEnv fineCostModel cliBudgetLimits fineCostModel.init
-        (RealCliMainBinaryEnvOf (mkD3RecvCalleeEnvs img S P DecPkEnv) i) :=
-  realCliMainBinaryEnvOf_fitsEnv_cliBudgetLimits_pqRecv_d3_of_callSpecs_1GiB img S P S_pk hCaps
-
-/-- Extended-ceiling (`d3RecvW4Ext*`) initial `mainSt0Dom` invariant at `cliBudgetLimits` (`1 GiB`). -/
-theorem mainSt0Dom_init_cliBudgetLimits_validOver_d3_1GiB [LibsignalPlacement]
-    (img : Image) (S : RunSem) (P : PEParams)
-    {DecPkEnv : RunCall → List AllocEvent → Prop}
-    (S_pk : ∀ (g : RunCall), CliPqOrD3RecvDom P g.i → g.i.stdin.length ≤ msgCapBytes →
-      parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c →
-      SingleSlotFineSpec (DecPkEnv g))
-    (hCaps : ∀ (g : RunCall) (hi_g : CliPqOrD3RecvDom P g.i) (hstdin : g.i.stdin.length ≤ msgCapBytes)
-      (hparse : parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c),
-      (S_pk g hi_g hstdin hparse).cum ≤ d3RecvW4ExtCum ∧
-      (S_pk g hi_g hstdin hparse).live ≤ d3RecvW4ExtLive ∧
-      (S_pk g hi_g hstdin hparse).peak ≤ d3RecvW4ExtPeak ∧
-      (S_pk g hi_g hstdin hparse).maxReq ≤ d3RecvW4ExtMaxReq ∧
-      (S_pk g hi_g hstdin hparse).grpS ≤ d3RecvW4ExtGrpS)
-    (i : Inputs) (hok : CliInputsOk i) :
-    mainSt0Dom (CliPqOrD3RecvDom P) (mkD3RecvCalleeEnvs img S P DecPkEnv) cliBudgetLimits i
-      fineCostModel.init :=
-  mainSt0Dom_init_cliBudgetLimits_pqRecv_d3_of_callSpecs_1GiB img S P S_pk hCaps i hok
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget

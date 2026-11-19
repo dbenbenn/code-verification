@@ -9,32 +9,44 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1DefsPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptCloneBounds
+import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
 public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0EnvSub
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0Leaves16
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0EnvSub
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H7OverD3SlotDom0Leaves16
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudgetAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # `Out1Dom`-Parametric `OverD3` Witness and Per-Arm Envelope Assembly
@@ -44,7 +56,7 @@ envelope `H7wOverSlotEnvAllFixedOf`, its embedding into 4-arm outer `AllFixed` s
 witness theorems for all seven `OverD3` execution arms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -187,38 +199,19 @@ structure H7wCallSiteDomOut1
   tdAC_dom : R.isPathAC = true → W4TryDecryptPathACDomCmkOf R.C.F R.K maxCt R.td_AC
   archivedTrials_nil : R.archivedTrials = []
 
-theorem H7wCallSiteDomOut1.mono_out1
-    {Out1Dom₁ Out1Dom₂ : SessionGhost → Session (List (BitVec 8)) → List (BitVec 8) → Prop}
-    {C : Crypto} {K : MlKem} {maxCt : Nat} {peerVal : AddrVal} {files : FsFiles}
-    {R : W4RecvPrekeyRealParamsCmk}
-    (hSub : ∀ G s e, Out1Dom₁ G s e → Out1Dom₂ G s e)
-    (h : H7wCallSiteDomOut1 Out1Dom₁ C K maxCt peerVal files R) :
-    H7wCallSiteDomOut1 Out1Dom₂ C K maxCt peerVal files R :=
-  { h with out1_dom := hSub R.G_out1 R.sess_out1 R.enc_prev1 h.out1_dom }
-
-theorem H7wCallSiteDomOut1.toCallSiteDomCmk0
-    {C : Crypto} {K : MlKem} {maxCt : Nat} {peerVal : AddrVal} {files : FsFiles}
-    {R : W4RecvPrekeyRealParamsCmk}
-    (h : H7wCallSiteDomOut1 (FreshBobPrev1Dom 16384 2097152 2457152) C K maxCt peerVal files R) :
-    W4BinaryCallSiteDomCmk C K maxCt peerVal files R ∧ R.archivedTrials = [] :=
-  ⟨⟨h.eq_C, h.eq_K, h.eq_rd, h.eq_files, h.eq_peerVal, h.kpk_dir, h.ownKey_len, h.ownReg_len,
-    h.kpkMark_len, h.res_old, h.res_new, h.spqr_key, h.cur_dom, h.arch_valid, h.arch_enc,
-    h.out0_valid, h.out0_enc, h.out1_dom, h.trials_len4, h.cur_fail_dom, h.trials_dom,
-    h.tdB_dom, h.tdAC_dom⟩, h.archivedTrials_nil⟩
-
-def H7wCurTrialFailEnvOf
+@[expose] def H7wCurTrialFailEnvOf
     (FailTargetEnv : Crypto → MlKem → W4FailedTryDecryptCallCmk → List AllocEvent → Prop)
     (R : W4RecvPrekeyRealParamsCmk) : List AllocEvent → Prop :=
   if R.hasCurSession then FailTargetEnv R.C R.K R.fc_cur else fun _ => False
 
-def H7wTryDecACEnvOf
+@[expose] def H7wTryDecACEnvOf
     (TdTargetEnv : Crypto → MlKem → TryDecryptEnvArgs → List AllocEvent → Prop)
     (R : W4RecvPrekeyRealParamsCmk) (evs : List AllocEvent) : Prop :=
   if R.isPathAC then TdTargetEnv R.C R.K R.td_AC.a evs else False
 
 /-- `OverD3`-reachable `AllFixed` W4 slot envelope (`Untrusted ∨ Path C` with `VerNeTightTopEnv`),
 parametric in `(FailTargetEnv, TrialTargetEnv, TdTargetEnv)`. -/
-def H7wOverSlotEnvAllFixedOf
+@[expose] def H7wOverSlotEnvAllFixedOf
     (FailTargetEnv : Crypto → MlKem → W4FailedTryDecryptCallCmk → List AllocEvent → Prop)
     (TrialTargetEnv : Crypto → MlKem → W4ArchivedTrialCmk → List AllocEvent → Prop)
     (TdTargetEnv : Crypto → MlKem → TryDecryptEnvArgs → List AllocEvent → Prop)
@@ -279,20 +272,6 @@ theorem h7w_overSlotEnv_to_fourArmAllFixed
   · exact Or.inr (Or.inl (Or.inl hunt))
   · exact Or.inr (Or.inl (Or.inr (Or.inr (Or.inr hpc))))
 
-theorem h7w_overSlotEnv_sub_wideSlotWithP3CAllFixed
-    (LoopAdvEnv : W4LoopAdvEnv) (maxOps : Nat)
-    {w : W4BinaryRecvPrekeyParamsCmk} {evs : List AllocEvent}
-    (h : H7wOverSlotEnvAllFixedOf
-      (W4FailedTdCancelCmkEnvOf LoopAdvEnv maxOps)
-      (W4TrialRunWideCmkEnvOf LoopAdvEnv maxOps)
-      (w4c_TryDecryptCliLinkedEnvOf LoopAdvEnv maxOps) w evs) :
-    W4BinaryRecvPrekeyWideSlotEnvCmkWithP3CAllFixedOf LoopAdvEnv maxOps
-      (fun w' => OptStageEnv
-        (W4StageP3Prev1WideEnv W4CloneACDomEnv
-          (W4RecvPrekeyTryDecACCmkEnvOf LoopAdvEnv maxOps w'.base) w'.base.enc_prev1))
-      w evs :=
-  h7w_overSlotEnv_to_fourArmAllFixed _ _ h
-
 /-! ## 2. Concrete `OverD3` Stage Envelopes & Witness Builders -/
 
 abbrev H7wP1OkEnv [LibsignalPlacement] (A : RustAlloc) (x : DecPkGhost) :
@@ -323,60 +302,6 @@ abbrev H7wP2OverOkEnv [LibsignalPlacement]
 
 private theorem e2ar_optStageEnv_nil (E : List AllocEvent → Prop) : OptStageEnv E [] :=
   Or.inl (fun _ h => nomatch h)
-
-private theorem e2ar_chain4_of_p12
-    {P1 P2 P3 P4 : List AllocEvent → Prop} {evs : List AllocEvent}
-    (h1Sub : ∀ e, P1 e → P1 e)
-    (h : SeqEnv P1 P2 evs) :
-    SeqEnv P1 (SeqEnv (OptStageEnv P2) (SeqEnv (OptStageEnv P3) (OptStageEnv P4))) evs := by
-  rcases h with h1 | ⟨e1, e2, rfl, h1, h2⟩
-  · exact Or.inl (h1Sub _ h1)
-  · exact Or.inr ⟨e1, e2, rfl, h1Sub _ h1, Or.inl (Or.inr h2)⟩
-
-private theorem e2ar_chain4_of_p123
-    {P1 P1' P2 P2' P3 P3' P4' : List AllocEvent → Prop} {evs : List AllocEvent}
-    (h1Sub : ∀ e, P1 e → P1' e)
-    (h2Sub : ∀ e, P2 e → P2' e)
-    (h3Sub : ∀ e, P3 e → P3' e)
-    (h : SeqEnv (SeqEnv P1 P2) P3 evs) :
-    SeqEnv P1' (SeqEnv (OptStageEnv P2') (SeqEnv (OptStageEnv P3') (OptStageEnv P4'))) evs := by
-  rcases h with h12 | ⟨e12, e3, rfl, h12, h3⟩
-  · rcases h12 with h1 | ⟨e1, e2, rfl, h1, h2⟩
-    · exact Or.inl (h1Sub _ h1)
-    · exact Or.inr ⟨e1, e2, rfl, h1Sub _ h1, Or.inl (Or.inr (h2Sub _ h2))⟩
-  · rcases h12 with h1 | ⟨e1, e2, rfl, h1, h2⟩
-    · exact Or.inr ⟨e12, e3, rfl, h1Sub _ h1,
-        Or.inr ⟨[], e3, rfl, e2ar_optStageEnv_nil P2', Or.inl (Or.inr (h3Sub _ h3))⟩⟩
-    · exact Or.inr ⟨e1, e2 ++ e3, List.append_assoc e1 e2 e3, h1Sub _ h1,
-        Or.inr ⟨e2, e3, rfl, Or.inr (h2Sub _ h2), Or.inl (Or.inr (h3Sub _ h3))⟩⟩
-
-private theorem e2ar_chain4_of_p1234
-    {P1 P1' P2 P2' P3 P3' P4 P4' : List AllocEvent → Prop} {evs : List AllocEvent}
-    (h1Sub : ∀ e, P1 e → P1' e)
-    (h2Sub : ∀ e, P2 e → P2' e)
-    (h3Sub : ∀ e, P3 e → P3' e)
-    (h4Sub : ∀ e, P4 e → P4' e)
-    (h : SeqEnv (SeqEnv (SeqEnv P1 P2) P3) P4 evs) :
-    SeqEnv P1' (SeqEnv (OptStageEnv P2') (SeqEnv (OptStageEnv P3') (OptStageEnv P4'))) evs := by
-  rcases h with h123 | ⟨e123, e4, rfl, h123, h4⟩
-  · exact e2ar_chain4_of_p123 h1Sub h2Sub h3Sub h123
-  · rcases h123 with h12 | ⟨e12, e3, rfl, h12, h3⟩
-    · rcases h12 with h1 | ⟨e1, e2, rfl, h1, h2⟩
-      · exact Or.inr ⟨e123, e4, rfl, h1Sub _ h1,
-          Or.inr ⟨[], e4, rfl, e2ar_optStageEnv_nil P2',
-            Or.inr ⟨[], e4, rfl, e2ar_optStageEnv_nil P3', Or.inr (h4Sub _ h4)⟩⟩⟩
-      · exact Or.inr ⟨e1, e2 ++ e4, List.append_assoc e1 e2 e4, h1Sub _ h1,
-          Or.inr ⟨e2, e4, rfl, Or.inr (h2Sub _ h2),
-            Or.inr ⟨[], e4, rfl, e2ar_optStageEnv_nil P3', Or.inr (h4Sub _ h4)⟩⟩⟩
-    · rcases h12 with h1 | ⟨e1, e2, rfl, h1, h2⟩
-      · exact Or.inr ⟨e12, e3 ++ e4, List.append_assoc e12 e3 e4, h1Sub _ h1,
-          Or.inr ⟨[], e3 ++ e4, rfl, e2ar_optStageEnv_nil P2',
-            Or.inr ⟨e3, e4, rfl, Or.inr (h3Sub _ h3), Or.inr (h4Sub _ h4)⟩⟩⟩
-      · have hassoc : ((e1 ++ e2) ++ e3) ++ e4 = e1 ++ (e2 ++ (e3 ++ e4)) := by
-          simp only [List.append_assoc]
-        exact Or.inr ⟨e1, e2 ++ (e3 ++ e4), hassoc, h1Sub _ h1,
-          Or.inr ⟨e2, e3 ++ e4, rfl, Or.inr (h2Sub _ h2),
-            Or.inr ⟨e3, e4, rfl, Or.inr (h3Sub _ h3), Or.inr (h4Sub _ h4)⟩⟩⟩
 
 private def e2ar_dummyReserve : DoReserveCall :=
   ⟨0#64, 0#64, 0#64, [], 0⟩

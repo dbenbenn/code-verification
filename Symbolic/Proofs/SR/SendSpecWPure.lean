@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SR.ModelW
+public import Symbolic.Proofs.SR.ModelW -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Concrete.ExternInterpretation
 
 /-!
@@ -19,7 +19,7 @@ Constructs the `AesW` instance `interpW` backed by `aesCbcEncryptSymbol` and `ae
 of an `ExternInterpretation`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,7 +29,7 @@ open CryptoVerification
 open CryptoVerification.LibsignalProtoCodec
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 
-def interpW (interpretation : CryptoProofLib.Refinement.ExternInterpretation) : AesW where
+@[expose] def interpW (interpretation : CryptoProofLib.Refinement.ExternInterpretation) : AesW where
   enc := fun k iv pt =>
     (interpretation DY.Libsignal.Refinement.aesCbcEncryptSymbol
       [pt, HMAC.keyToBytes32 k, CBC.blockToBytesLE iv]).getD []

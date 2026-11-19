@@ -9,11 +9,29 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhStepEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhGrow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhStepEval -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhGrow
 import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Evaluation Equivalence for the One-Key `Auth` Gap-DH Program
@@ -23,7 +41,7 @@ import VCVio.OracleComp.EvalDist.Measure
 (`fgAuth1KeyGapDhProg_eval_eq`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,57 +53,6 @@ open SignalPqxdh.Security.FgGapDh1Key Proofs.SignalPqxdh.Security
 open SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh
 open OracleSpec OracleComp
 open scoped ENNReal
-
-theorem a1gHandleDsl_eval (S : Setup) (K : Nat) (st : FgAuth1KeySimState S) (U V : Bytes)
-    (useDh1 : Bool) (t sIdx : Nat) (hB : AgBnd K st.sim) (qv : AuthQuery S) :
-    (a1gHandleDsl S K).eval (.cons (a1gStToVal (paVal U V useDh1 t sIdx) st)
-        (.cons (authQueryToVal qv) .nil)) =
-      (fun r => (authRespToVal r.1, a1gStToVal (paVal U V useDh1 t sIdx) r.2)) <$>
-        fgAuth1KeyStepHalt useDh1 t sIdx S K U V qv st :=
-  a1gStepC_eval S K _ st U V useDh1 t sIdx _ _ qv rfl rfl hB
-
-theorem a1gInitDsl_eval (S : Setup) (U V : Bytes) :
-    (a1gInitDsl S).eval (.cons (U, V) .nil) =
-      (unifGdhSign (sampleIndexRange2 (S.N_id + S.N_send_tot) S.N_spk_tot) >>= fun p =>
-        unifGdhSign ($ᵗ Bool) >>= fun secb =>
-          pure ((), a1gStToVal (paVal U V (decide (p.1 < S.N_id))
-            (if p.1 < S.N_id then p.1 else p.1 - S.N_id) p.2)
-            (FgAuth1KeySimState.empty S secb))) := by
-  simp only [a1gInitDsl, bindV, v, Comp.eval, liftGdhComp_eval, Expr.eval,
-    Ext.refl_wk, Env.get_vz]
-  rw [fgInitDsl_eval]
-  simp only [unifGdhSign, liftGdhToSign_bind, liftGdhToSign_pure, bind_assoc, pure_bind,
-    a1gStToVal, FgAuth1KeySimState.empty]
-
-theorem a1gFinishDsl_eval (S : Setup) (K : Nat) (st : FgAuth1KeySimState S) (U V : Bytes)
-    (useDh1 : Bool) (t sIdx : Nat) (hB : AgBnd K st.sim) (a : Bool) :
-    (a1gFinishDsl S K).eval (.cons (a1gStToVal (paVal U V useDh1 t sIdx) st) (.cons a .nil)) =
-      liftGdhToSign (extractCdhFromAuthSimState S useDh1 K U V st.sim) := by
-  simp only [a1gFinishDsl, letV, Comp.eval_letC, renameComp_eval, pullEnv_twoVarRen,
-    liftGdhComp_eval, Expr.eval, Env.get_vz, Env.get_vs, a1gStToVal]
-  rw [← fgFinishDsl_eval S K st.sim U V useDh1 t sIdx hB a]
-
-theorem a1gRun_eq (S : Setup) (K : Nat) (U V : Bytes) (useDh1 : Bool) (t sIdx : Nat)
-    (A : OracleComp (unifSpec + authSpec S) Bool)
-    (hA : IsQueryBoundP A (fun q : ℕ ⊕ AuthQuery S => q.isRight = true) K) (secb : Bool) :
-    ((simulateQ (handlerImpl (C := authCodec S) (a1gHandleDsl S K)) A).run
-        (a1gStToVal (paVal U V useDh1 t sIdx) (FgAuth1KeySimState.empty S secb)) >>=
-        fun p => (a1gFinishDsl S K).eval (.cons p.2 (.cons p.1 .nil))) =
-      (runWithGdhSignStep (fgAuth1KeyStepHalt useDh1 t sIdx S K U V) A
-          (FgAuth1KeySimState.empty S secb) >>= fun p =>
-        liftGdhToSign (extractCdhFromAuthSimState S useDh1 K U V p.2.sim)) := by
-  refine simulateQ_handlerImpl_bind_eq_runWithGdhSignStep_bind
-    (C := authCodec S) (σ := a1gStTy) (a1gHandleDsl S K) (fgAuth1KeyStepHalt useDh1 t sIdx S K U V)
-    (a1gStToVal (paVal U V useDh1 t sIdx)) (fun k st => AgInv K k st.sim)
-    (fun k st h => AgInv.mono K k st.sim h)
-    (fun k q st h => ?_)
-    (fun k q st h x hx => fgAuth1KeyStepHalt_agInv useDh1 t sIdx K k U V q st h x hx)
-    _ _ (fun a st h => ?_) A K hA _ (AgInv.empty S K secb)
-  · dsimp only [authCodec]
-    rw [a1gHandleDsl_eval S K st U V useDh1 t sIdx (AgInv.bnd K (k + 1) st.sim h) q]
-    simp only [map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind,
-      agValToAuthResp_authRespToVal]
-  · exact a1gFinishDsl_eval S K st U V useDh1 t sIdx (AgInv.bnd K 0 st.sim h) a
 
 theorem a1g2HandleDsl_eval (S : Setup) (K : Nat) {k : Nat} (st : FgAuth1KeySimState S)
     (U V : Bytes) (useDh1 : Bool) (t sIdx : Nat) (hI : AgInv2 K (k + 1) st) (qv : AuthQuery S) :
@@ -135,7 +102,7 @@ theorem a1g2Run_eq (S : Setup) (K : Nat) (U V : Bytes) (useDh1 : Bool) (t sIdx :
       agValToAuthResp_authRespToVal]
   · exact a1g2FinishDsl_eval S K st U V useDh1 t sIdx h a
 
-noncomputable def bernoulliRatioProb (A B : Nat) : ProbComp Bool :=
+@[expose] def bernoulliRatioProb (A B : Nat) : ProbComp Bool :=
   if A = 0 then pure false
   else if B = 0 then pure true
   else if A ≤ B then do
@@ -149,14 +116,14 @@ noncomputable def bernoulliRatioProb (A B : Nat) : ProbComp Bool :=
     let y2 ← sampleIndexRange B
     pure (!decide (x < y1 + y2 + 1))
 
-noncomputable def sampleSpkPair2Prob (S : Setup) : ProbComp (Option (Nat × Nat)) :=
+@[expose] def sampleSpkPair2Prob (S : Setup) : ProbComp (Option (Nat × Nat)) :=
   if S.N_spk_tot = 0 then pure none
   else do
     let uS ← sampleIndexRange S.N_id
     let jS ← sampleIndexRange S.N_recv
     pure (some (uS, jS))
 
-noncomputable def sampleRole2Prob (S : Setup) : ProbComp a1gRole2Ty.denote :=
+@[expose] def sampleRole2Prob (S : Setup) : ProbComp a1gRole2Ty.denote :=
   if S.N_id = 0 then
     pure (.inr (.inl (0, 0)))
   else do

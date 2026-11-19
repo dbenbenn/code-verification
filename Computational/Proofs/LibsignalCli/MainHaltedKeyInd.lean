@@ -11,8 +11,8 @@ module
 
 public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import Computational.Specifications.Game.ModelIface
-public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers
-public import Computational.Proofs.E2E.TagSync1KeyReal
+public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.TagSync1KeyReal
 import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 import VCVio.EvalDist.Monad.Basic
 
@@ -24,7 +24,7 @@ Defines the per-session tracked and coin-log-halted E2E driver states (`BHE2EDrv
 `bhKindRedWithHalted`), and their `KeyInd` coupling and advantage bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -61,7 +61,7 @@ session instance. -/
 abbrev BHE2EDrvStateHalted (S : SignalPqxdh.Setup) (ℓ : ℕ) : Type :=
   BHE2EDrvStateTracked (List (BitVec 512)) S ℓ
 
-def bhE2ELocalStartTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhE2ELocalStartTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (initTrack : SampledSessionKey → τ)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (bMode? : Option Bool)
@@ -154,7 +154,7 @@ def oracleImplRHalted {Key St Msg Coins RCoins C : Type}
 
 /-- Per-session tracked counterpart of `bhE2EStepLocalSm` parameterized over an arbitrary
 per-instance stateful SM oracle handler `smImpl`. -/
-def bhE2EStepLocalSmTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhE2EStepLocalSmTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (initTrack : SampledSessionKey → τ)
     (smImpl : BHModelInst S ℓ →
       QueryImpl (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -247,7 +247,7 @@ abbrev bhE2EStepLocalSmHalted {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
   bhE2EStepLocalSmTracked (fun _ => []) (bhHaltedSmImpl badLog C K qep decT encT) σH i q
 
 /-- Per-session tracked counterpart of `bhE2EDrvImplWith`. -/
-def bhE2EDrvImplWithTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhE2EDrvImplWithTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (initTrack : SampledSessionKey → τ)
     (smImpl : BHModelInst S ℓ →
       QueryImpl (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -316,7 +316,7 @@ def bhE2EDrvImplWithHalted {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
 
 /-- Per-session tracked model E2E experiment parameterized by `(τ, initTrack, smImpl)`, `secb`,
 and `ki`. -/
-def bhE2EExpWithKiTracked {τ : Type} (initTrack : SampledSessionKey → τ)
+@[expose] def bhE2EExpWithKiTracked {τ : Type} (initTrack : SampledSessionKey → τ)
     {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (smImpl : BHModelInst S ℓ →
       QueryImpl (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -487,71 +487,9 @@ theorem bhE2EStepLocalSmTracked_preserves_b (σH : BHE2EDrvStateTracked τ S ℓ
 
 end StepSmLemmas
 
-theorem bhE2ELocalStartHalted_eq_tracked {S : SignalPqxdh.Setup} {ℓ : ℕ}
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (C : Crypto) (K : MlKem) (bMode? : Option Bool)
-    (σH : BHE2EDrvStateHalted S ℓ) (sid : SignalPqxdh.SessionId S) :
-    bhE2ELocalStartHalted ki C K bMode? σH sid =
-      bhE2ELocalStartTracked (fun _ => []) ki C K bMode? σH sid := by
-  rcases σH with ⟨σ, logs⟩
-  unfold bhE2ELocalStartHalted compositionLocalStart bhE2ELocalStartTracked
-  dsimp only
-  cases hG : bhE2EGuard σ sid with
-  | none =>
-    simp only [pure_bind]
-    rfl
-  | some val =>
-    rcases val with ⟨hdr, bnd, ⟨u, j⟩⟩
-    simp only [bind_assoc, pure_bind]
-    refine bind_congr fun ⟨kr1, st1⟩ => bind_congr fun ⟨kr2, st2⟩ => bind_congr fun ac => ?_
-    unfold bhE2EFinishStartSpk
-    have hG2 : bhE2EGuard { σ with st := st2 } sid = some (hdr, bnd, (u, j)) := hG
-    rw [hG2]
-    cases kr1 with
-    | drKeyResp dk =>
-      cases kr2 with
-      | spkSkResp spkSk =>
-        dsimp only
-        by_cases hLen :
-          (dk.rootKey.length == 32 && dk.chainKey.length == 32 &&
-            dk.pqrKey.length == 32 && spkSk.length == 32) = true <;>
-          simp [hLen]
-      | _ => rfl
-    | _ => rfl
-
-theorem bhE2EDrvImplWithHalted_eq_tracked {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
-    (badLog : List (BitVec 512) → Bool)
-    (P : SignalPqxdh.Primitives)
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (C : Crypto) (K : MlKem) (qep : ℕ)
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
-    bhE2EDrvImplWithHalted (ℓ := ℓ) badLog P ki C K qep decT encT =
-      bhE2EDrvImplWithTracked (ℓ := ℓ) (fun _ => []) (bhHaltedSmImpl badLog C K qep decT encT)
-        P ki C K := by
-  funext q
-  rcases q with n | ((kq | ⟨sid⟩) | ⟨i, sq⟩)
-  · rfl
-  · rfl
-  · ext σH
-    dsimp [bhE2EDrvImplWithHalted, bhE2EDrvImplWithTracked]
-    simp only [bhE2ELocalStartHalted_eq_tracked]
-  · rfl
-
-theorem bhE2EExpWithKiHalted_eq_tracked (badLog : List (BitVec 512) → Bool) (secb : Bool)
-    (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (C : Crypto) (K : MlKem) (ℓ qep : ℕ) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (B : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool) :
-    bhE2EExpWithKiHalted badLog secb S P ki C K ℓ qep decT encT B =
-      bhE2EExpWithKiTracked (fun _ => []) (bhHaltedSmImpl badLog C K qep decT encT)
-        secb P ki C K B := by
-  unfold bhE2EExpWithKiHalted bhE2EExpWithKiTracked
-  rw [bhE2EDrvImplWithHalted_eq_tracked]
-
 /-! ## Tracked and halted `bhKindRedWith` coupling and advantage bounds -/
 
-def bhE2EFinishStartSpkTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhE2EFinishStartSpkTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (initTrack : SampledSessionKey → τ)
     (C : Crypto) (K : MlKem) (bMode? : Option Bool)
     (σH : BHE2EDrvStateTracked τ S ℓ) (sid : SignalPqxdh.SessionId S)
@@ -563,7 +501,7 @@ def bhE2EFinishStartSpkTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     | _, _ => σH.2
   (idx?, (σ', tracks'))
 
-def bhKindHandleWithTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhKindHandleWithTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (initTrack : SampledSessionKey → τ)
     (smImpl : BHModelInst S ℓ →
       QueryImpl (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -600,7 +538,7 @@ def bhKindHandleWithTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     return (.inr res.1, res.2)
 
 /-- Tracked shallow 1-stage `KeyInd` reference reduction. -/
-def bhKindRedWithTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhKindRedWithTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (initTrack : SampledSessionKey → τ)
     (smImpl : BHModelInst S ℓ →
       QueryImpl (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -1108,38 +1046,5 @@ theorem boolBias_bhE2EExpWithKiTracked_1KeyReal_true_le
     (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P) C K B
 
 end AdvantageBounds
-
-/-- Halted `bhKindRedWithHalted` advantage bound for any `KeyInd` handler `ki`. -/
-theorem boolBias_bhE2EExpWithKiHalted_true_le (badLog : List (BitVec 512) → Bool)
-    (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (C : Crypto) (K : MlKem) (ℓ qep : ℕ) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (B : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool) :
-    𝒟[bhE2EExpWithKiHalted badLog true S P ki C K ℓ qep decT encT B].boolBias ≤
-      2 * KeyIndAdvantageForHandshake S P ki
-            ⟨(bhKindRedWithHalted (S := S) (ℓ := ℓ) badLog P ki C K qep decT encT).eval
-              (fun _ => B) ()⟩ +
-        𝒟[bhE2EExpWithKiHalted badLog false S P ki C K ℓ qep decT encT B].boolBias := by
-  rw [bhE2EExpWithKiHalted_eq_tracked, bhE2EExpWithKiHalted_eq_tracked]
-  exact boolBias_bhE2EExpWithKiTracked_true_le (fun _ => [])
-    (bhHaltedSmImpl badLog C K qep decT encT) P ki C K B
-
-/-- Specialization of `boolBias_bhE2EExpWithKiHalted_true_le` to `SignalPqxdh.pqxdhKeyIndImpl1KeyReal`. -/
-theorem boolBias_bhE2EExpWithKiHalted_1KeyReal_true_le (badLog : List (BitVec 512) → Bool)
-    (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
-    (C : Crypto) (K : MlKem) (ℓ qep : ℕ) {Pt : Type}
-    (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
-    (B : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool) :
-    𝒟[bhE2EExpWithKiHalted badLog true S P (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P)
-        C K ℓ qep decT encT B].boolBias ≤
-      2 * SignalPqxdh.KeyInd1KeyRealAdvantage S P
-            ⟨(bhKindRedWithHalted (S := S) (ℓ := ℓ) badLog P
-              (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P) C K qep decT encT).eval (fun _ => B) ()⟩ +
-        𝒟[bhE2EExpWithKiHalted badLog false S P (SignalPqxdh.pqxdhKeyIndImpl1KeyReal S P)
-            C K ℓ qep decT encT B].boolBias := by
-  rw [bhE2EExpWithKiHalted_eq_tracked, bhE2EExpWithKiHalted_eq_tracked]
-  exact boolBias_bhE2EExpWithKiTracked_1KeyReal_true_le (fun _ => [])
-    (bhHaltedSmImpl badLog C K qep decT encT) P C K B
 
 end Computational.Proofs.LibsignalCli.MainHaltedKeyInd

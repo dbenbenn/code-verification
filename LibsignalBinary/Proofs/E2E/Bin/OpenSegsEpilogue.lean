@@ -12,6 +12,7 @@ module
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.Bin.OpenSegsKeysAddresses
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Epilogue Segment Proof for `libsignal_e2e::open` (`0x43ca0..0x43d08`)
@@ -19,7 +20,7 @@ import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 Proves segment 8 (`open_seg_epilogue'`, `+0x268..+0x2d0`) of `libsignal_e2e::open`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Bin
 
@@ -27,15 +28,13 @@ set_option warningAsError false
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames
+open Arm64 ProofLib CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalPublicApi
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.E2E.InMem
-
-variable {C : Crypto} {A : RustAlloc} {S : SpqrModel}
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -179,137 +178,6 @@ private theorem exists_keyPairBytes_words8 (role : Role) :
       h1 (a + 48#64), h2 (a + 48#64 + 32#64)]
   simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
 
-private def table4SingleHeapAt (A : RustAlloc) (stride : Nat) (ctrl k0 k1 : BitVec 64)
-    (k : Nat) (peerName : List (BitVec 8)) (peerDev : BitVec 8)
-    (entryAt : BitVec 64 → SepProp) : SepProp :=
-  let cbs := InMem.HashbrownModel.singleCtrl4 k (InMem.HashbrownModel.h2Tag (InMem.SipHashModel.hashAddrBv k0 k1 peerName peerDev))
-  ⌜k < 4 ∧ (ctrl ≠ 0#64 ∧ ctrl.toNat % 8 = 0 ∧ 4 * stride ≤ ctrl.toNat ∧ ctrl.toNat + 12 < 2 ^ 64 ∧
-    (([k] : List Nat).length = 4 → 2#64 = 0#64) ∧
-    InMem.HashbrownModel.CtrlMirrorInv 3#64 cbs ∧ InMem.HashbrownModel.FullBucketsInv 3#64 cbs [k])⌝ ∗
-  A.live (ctrl - BitVec.ofNat 64 (4 * stride)) (InMem.HashbrownBin.tableAllocSize 4 stride) (asm% hashbrownTableAlign) ∗
-  (ctrl ↦ₛ cbs) ∗
-  arrayAt (fun i a => if i ∈ [k] then entryAt a else memRegion a stride) stride
-    (ctrl - BitVec.ofNat 64 (4 * stride)) (List.range 4).reverse
-
-private theorem table4SingleAt_eq_words6 (A : RustAlloc) (stride : Nat) (mp k0 k1 : BitVec 64)
-    (k : Nat) (peerName : List (BitVec 8)) (peerDev : BitVec 8) (entryAt : BitVec 64 → SepProp) :
-    InMem.HashbrownBin.table4SingleAt A stride mp k0 k1 k peerName peerDev entryAt =
-      ∃∗ ctrl : BitVec 64,
-        ((mp ↦₆₄ ctrl) ∗ ((mp + 8#64) ↦₆₄ 3#64) ∗ ((mp + 16#64) ↦₆₄ 2#64) ∗
-         ((mp + 24#64) ↦₆₄ 1#64) ∗ ((mp + 32#64) ↦₆₄ k0) ∗ ((mp + 40#64) ↦₆₄ k1)) ∗
-        table4SingleHeapAt A stride ctrl k0 k1 k peerName peerDev entryAt := by
-  unfold InMem.HashbrownBin.table4SingleAt InMem.HashbrownBin.table4At table4SingleHeapAt
-  rw [sepExists_sepConj_right]; apply RawByteMove.sepExists_congr; intro ctrl
-  rw [← sepConj_assoc, ← RawByteMove.pure_and_eq_sepConj]
-  simp only [List.length_singleton, BitVec.add_assoc, BitVec.reduceAdd]; ac_rfl
-
-private theorem protocolAddressAt_eq_words4 (A : RustAlloc) (g : AddrGhost) (a : BitVec 64) :
-    protocolAddressAt A g a =
-      ∃∗ pad : List (BitVec 8), ∃∗ w : BitVec 64,
-        ((a ↦₆₄ g.name.cap) ∗ ((a + 8#64) ↦₆₄ g.name.ptr) ∗
-         ((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.name.bytes.length) ∗ ((a + 24#64) ↦₆₄ w)) ∗
-        (⌜pad.length = 7 ∧ g.device :: pad = unpack64 w⌝ ∗ RawByteMove.vecGhostHeap A g.name) := by
-  unfold protocolAddressAt vecGhostAt RawByteMove.vecGhostHeap
-  rw [vecU8At_eq_header_sep_buf, pointsTo8_memRegion7_eq_words1]; dsimp only [vecHeader]
-  simp only [sepExists_sepConj_right]
-  apply RawByteMove.sepExists_congr; intro pad; apply RawByteMove.sepExists_congr; intro w; ac_rfl
-
-private theorem protocolAddressAt_reloc4 (A : RustAlloc) (g : AddrGhost) (a : BitVec 64)
-    {m : Memory} {R : SepProp} (hm : m ⊨ protocolAddressAt A g a ∗ R) :
-    ∃ (w0 w1 w2 w3 : BitVec 64) (H : SepProp),
-      (m ⊨ ((a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗ ((a + 24#64) ↦₆₄ w3)) ∗ H ∗ R) ∧
-      (∀ dst : BitVec 64,
-        (((dst ↦₆₄ w0) ∗ ((dst + 8#64) ↦₆₄ w1) ∗ ((dst + 16#64) ↦₆₄ w2) ∗ ((dst + 24#64) ↦₆₄ w3)) ∗ H) ⊢
-          protocolAddressAt A g dst) := by
-  rw [protocolAddressAt_eq_words4 A g a, sepExists_sepConj_left, satisfies_sepExists] at hm
-  rcases hm with ⟨pad, hm⟩; rw [sepExists_sepConj_left, satisfies_sepExists] at hm; rcases hm with ⟨w, hm⟩
-  refine ⟨g.name.cap, g.name.ptr, BitVec.ofNat 64 g.name.bytes.length, w,
-    ⌜pad.length = 7 ∧ g.device :: pad = unpack64 w⌝ ∗ RawByteMove.vecGhostHeap A g.name,
-    by ac_sat hm, fun dst => ?_⟩
-  rw [protocolAddressAt_eq_words4 A g dst]
-  exact Entails.sepExists_right pad (Entails.sepExists_right w (Entails.refl _))
-
-private theorem inMemSessionStoreAt_reloc6 (A : RustAlloc) (img : Obj.Image)
-    (a : BitVec 64) (peer : Role) (sess : Session (List (BitVec 8)))
-    {m : Memory} {R : SepProp} (hm : m ⊨ inMemSessionStoreAt A img a peer (some sess) ∗ R) :
-    ∃ (w8 w9 w10 w11 w12 w13 : BitVec 64) (H : SepProp),
-      (m ⊨ ((a ↦₆₄ w8) ∗ ((a + 8#64) ↦₆₄ w9) ∗ ((a + 16#64) ↦₆₄ w10) ∗
-            ((a + 24#64) ↦₆₄ w11) ∗ ((a + 32#64) ↦₆₄ w12) ∗ ((a + 40#64) ↦₆₄ w13)) ∗ H ∗ R) ∧
-      (∀ dst : BitVec 64,
-        (((dst ↦₆₄ w8) ∗ ((dst + 8#64) ↦₆₄ w9) ∗ ((dst + 16#64) ↦₆₄ w10) ∗
-          ((dst + 24#64) ↦₆₄ w11) ∗ ((dst + 32#64) ↦₆₄ w12) ∗ ((dst + 40#64) ↦₆₄ w13)) ∗ H) ⊢
-          inMemSessionStoreAt A img dst peer (some sess)) := by
-  dsimp only [inMemSessionStoreAt] at hm
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm; rcases hm with ⟨k0, hm⟩
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm; rcases hm with ⟨k1, hm⟩
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm; rcases hm with ⟨idx, hm⟩
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm; rcases hm with ⟨gAddr, hm⟩
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm; rcases hm with ⟨G, hm⟩
-  rw [table4SingleAt_eq_words6, sepExists_sepConj_right, sepExists_sepConj_left, satisfies_sepExists] at hm
-  rcases hm with ⟨ctrl, hm⟩
-  refine ⟨ctrl, 3#64, 2#64, 1#64, k0, k1,
-    ⌜gAddr.val = peer.addrVal ∧ BinCanonSession G sess⌝ ∗
-      table4SingleHeapAt A InMem.HashbrownBin.sessionBucketStride ctrl k0 k1 idx peer.nameBytes 1#8
-        (fun b => protocolAddressAt A gAddr b ∗
-          sessionRecordAt A (b + asm64% InMem.HashbrownBin.sessionBucketValueOff) ⟨0#64, 8#64, some G⟩ ⟨some sess⟩),
-    by ac_sat hm, fun dst => ?_⟩
-  unfold inMemSessionStoreAt
-  refine Entails.sepExists_right k0 (Entails.sepExists_right k1 (Entails.sepExists_right idx
-    (Entails.sepExists_right gAddr (Entails.sepExists_right G ?_))))
-  rw [table4SingleAt_eq_words6, sepExists_sepConj_right]
-  exact Entails.sepExists_right ctrl (Entails.of_eq (by ac_rfl))
-
-private theorem inMemIdentityStoreAt_reloc15 (A : RustAlloc) (img : Obj.Image)
-    (a : BitVec 64) (role : Role) (ik : IdentityKey)
-    {m : Memory} {R : SepProp} (hm : m ⊨ inMemIdentityStoreAt A img a role (some ik) ∗ R) :
-    ∃ (w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 : BitVec 64) (H : SepProp),
-      (m ⊨ (((a ↦₆₄ w14) ∗ ((a + 8#64) ↦₆₄ w15) ∗ ((a + 16#64) ↦₆₄ w16) ∗
-             ((a + 24#64) ↦₆₄ w17) ∗ ((a + 32#64) ↦₆₄ w18) ∗ ((a + 40#64) ↦₆₄ w19)) ∗
-            (((a + 48#64) ↦₆₄ w20) ∗ ((a + 56#64) ↦₆₄ w21) ∗ ((a + 64#64) ↦₆₄ w22) ∗ ((a + 72#64) ↦₆₄ w23) ∗
-             ((a + 80#64) ↦₆₄ w24) ∗ ((a + 88#64) ↦₆₄ w25) ∗ ((a + 96#64) ↦₆₄ w26) ∗ ((a + 104#64) ↦₆₄ w27)) ∗
-            ((a + 112#64) ↦₆₄ w28)) ∗ H ∗ R) ∧
-      (∀ dst : BitVec 64,
-        ((((dst ↦₆₄ w14) ∗ ((dst + 8#64) ↦₆₄ w15) ∗ ((dst + 16#64) ↦₆₄ w16) ∗
-           ((dst + 24#64) ↦₆₄ w17) ∗ ((dst + 32#64) ↦₆₄ w18) ∗ ((dst + 40#64) ↦₆₄ w19)) ∗
-          (((dst + 48#64) ↦₆₄ w20) ∗ ((dst + 56#64) ↦₆₄ w21) ∗ ((dst + 64#64) ↦₆₄ w22) ∗ ((dst + 72#64) ↦₆₄ w23) ∗
-           ((dst + 80#64) ↦₆₄ w24) ∗ ((dst + 88#64) ↦₆₄ w25) ∗ ((dst + 96#64) ↦₆₄ w26) ∗ ((dst + 104#64) ↦₆₄ w27)) ∗
-          ((dst + 112#64) ↦₆₄ w28)) ∗ H) ⊢
-          inMemIdentityStoreAt A img dst role (some ik)) := by
-  obtain ⟨w20, w21, w22, w23, w24, w25, w26, w27, hkp⟩ := exists_keyPairBytes_words8 role
-  dsimp only [inMemIdentityStoreAt] at hm
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm; rcases hm with ⟨k0, hm⟩
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm; rcases hm with ⟨k1, hm⟩
-  have hm1 : m ⊨ (((a + 112#64) ↦₃₂ 0#32) ∗ memRegion (a + 116#64) 4) ∗
-      (((a + 48#64) ↦ₛ role.keyPairBytes) ∗
-       (∃∗ idx : Nat, ∃∗ gAddr : AddrGhost, ⌜gAddr.val = role.peer.addrVal⌝ ∗
-         InMem.HashbrownBin.table4SingleAt A InMem.HashbrownBin.identityBucketStride a k0 k1 idx role.peer.nameBytes 1#8
-           (InMem.HashbrownBin.identityBucketEntryAt A gAddr ik.publicKey.bytes.toList)) ∗ R) := by ac_sat hm
-  rw [pointsTo32_memRegion4_eq_words1 a 0#32, sepExists_sepConj_left, satisfies_sepExists] at hm1
-  rcases hm1 with ⟨pad, hm1⟩; rw [sepExists_sepConj_left, satisfies_sepExists] at hm1; rcases hm1 with ⟨w28, hm1⟩
-  have hm2 : m ⊨ (∃∗ idx : Nat, ∃∗ gAddr : AddrGhost, ⌜gAddr.val = role.peer.addrVal⌝ ∗
-      InMem.HashbrownBin.table4SingleAt A InMem.HashbrownBin.identityBucketStride a k0 k1 idx role.peer.nameBytes 1#8
-        (InMem.HashbrownBin.identityBucketEntryAt A gAddr ik.publicKey.bytes.toList)) ∗
-      ((⌜pad.length = 4 ∧ unpack32 0#32 ++ pad = unpack64 w28⌝ ∗ ((a + 112#64) ↦₆₄ w28)) ∗
-       ((a + 48#64) ↦ₛ role.keyPairBytes) ∗ R) := by ac_sat hm1
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm2; rcases hm2 with ⟨idx, hm2⟩
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm2; rcases hm2 with ⟨gAddr, hm2⟩
-  rw [table4SingleAt_eq_words6, sepExists_sepConj_right, sepExists_sepConj_left, satisfies_sepExists] at hm2
-  rcases hm2 with ⟨ctrl, hm2⟩; rw [hkp a] at hm2
-  refine ⟨ctrl, 3#64, 2#64, 1#64, k0, k1, w20, w21, w22, w23, w24, w25, w26, w27, w28,
-    ⌜pad.length = 4 ∧ unpack32 0#32 ++ pad = unpack64 w28⌝ ∗ ⌜gAddr.val = role.peer.addrVal⌝ ∗
-      table4SingleHeapAt A InMem.HashbrownBin.identityBucketStride ctrl k0 k1 idx role.peer.nameBytes 1#8
-        (InMem.HashbrownBin.identityBucketEntryAt A gAddr ik.publicKey.bytes.toList),
-    by ac_sat hm2, fun dst => ?_⟩
-  unfold inMemIdentityStoreAt
-  refine Entails.sepExists_right k0 (Entails.sepExists_right k1 ?_)
-  rw [← sepConj_assoc ((dst + 112#64) ↦₃₂ 0#32), pointsTo32_memRegion4_eq_words1 dst 0#32, hkp dst]
-  rw [sepExists_sepConj_left, sepExists_sepConj_right]; refine Entails.sepExists_right pad ?_
-  rw [sepExists_sepConj_left, sepExists_sepConj_right]; refine Entails.sepExists_right w28 ?_
-  rw [sepExists_sepConj_right, sepExists_sepConj_right]; refine Entails.sepExists_right idx ?_
-  rw [sepExists_sepConj_right, sepExists_sepConj_right]; refine Entails.sepExists_right gAddr ?_
-  rw [table4SingleAt_eq_words6, sepExists_sepConj_right, sepExists_sepConj_right, sepExists_sepConj_right]
-  exact Entails.sepExists_right ctrl (Entails.of_eq (by ac_rfl))
-
 private theorem callWords29_eq (ptr : BitVec 64)
     (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14
      w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 : BitVec 64) :
@@ -330,61 +198,6 @@ private theorem callWords29_eq (ptr : BitVec 64)
     words29At ptr w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14
       w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 := by
   unfold words29At; simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-
-private theorem openSeam268_decomp_words29 (A : RustAlloc) (img : Obj.Image) (ptr : BitVec 64)
-    (role : Role) (sess : Session (List (BitVec 8))) {m : Memory} {R : SepProp}
-    (hm : m ⊨ ((∃∗ gMe : AddrGhost, ∃∗ gPeer : AddrGhost,
-        ⌜gMe.val = role.addrVal ∧ gPeer.val = role.peer.addrVal⌝ ∗
-          protocolAddressAt A gMe ptr ∗ protocolAddressAt A gPeer (ptr + 0x20#64)) ∗
-      inMemSessionStoreAt A img (ptr + 0x40#64) role.peer (some sess) ∗
-      inMemIdentityStoreAt A img (ptr + 0x70#64) role (some role.peer.idKey)) ∗ R) :
-    ∃ (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14
-       w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 : BitVec 64) (H : SepProp),
-      (m ⊨ words29At ptr w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14
-             w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 ∗ H ∗ R) ∧
-      (∀ dst : BitVec 64,
-        (words29At dst w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14
-           w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 ∗ H) ⊢
-          callAt A img dst role sess) := by
-  rw [sepExists_sepConj_left, sepExists_sepConj_left, satisfies_sepExists] at hm; rcases hm with ⟨gMe, hm⟩
-  rw [sepExists_sepConj_left, sepExists_sepConj_left, satisfies_sepExists] at hm; rcases hm with ⟨gPeer, hm⟩
-  simp only [sepConj_assoc, satisfies_pure_sepConj] at hm; rcases hm with ⟨⟨hMe, hPeer⟩, hm⟩
-  have hMeLen : gMe.name.bytes.length = 36 := by injection hMe with h1 _; rw [h1]; exact role_nameBytes_length role
-  have hPeerLen : gPeer.name.bytes.length = 36 := by injection hPeer with h1 _; rw [h1]; exact role_nameBytes_length role.peer
-  obtain ⟨w0, w1, w2, w3, H1, hm, hF1⟩ := protocolAddressAt_reloc4 A gMe ptr hm
-  have hm_p2 : m ⊨ protocolAddressAt A gPeer (ptr + 0x20#64) ∗
-      (((ptr ↦₆₄ w0) ∗ ((ptr + 8#64) ↦₆₄ w1) ∗ ((ptr + 16#64) ↦₆₄ w2) ∗ ((ptr + 24#64) ↦₆₄ w3)) ∗
-       H1 ∗ inMemSessionStoreAt A img (ptr + 0x40#64) role.peer (some sess) ∗
-       inMemIdentityStoreAt A img (ptr + 0x70#64) role (some role.peer.idKey) ∗ R) := by ac_sat hm
-  obtain ⟨w4, w5, w6, w7, H2, hm, hF2⟩ := protocolAddressAt_reloc4 A gPeer (ptr + 0x20#64) hm_p2
-  have hm_s : m ⊨ inMemSessionStoreAt A img (ptr + 0x40#64) role.peer (some sess) ∗
-      (((ptr ↦₆₄ w0) ∗ ((ptr + 8#64) ↦₆₄ w1) ∗ ((ptr + 16#64) ↦₆₄ w2) ∗ ((ptr + 24#64) ↦₆₄ w3)) ∗
-       (((ptr + 0x20#64) ↦₆₄ w4) ∗ ((ptr + 0x20#64 + 8#64) ↦₆₄ w5) ∗
-        ((ptr + 0x20#64 + 16#64) ↦₆₄ w6) ∗ ((ptr + 0x20#64 + 24#64) ↦₆₄ w7)) ∗
-       H1 ∗ H2 ∗ inMemIdentityStoreAt A img (ptr + 0x70#64) role (some role.peer.idKey) ∗ R) := by ac_sat hm
-  obtain ⟨w8, w9, w10, w11, w12, w13, H3, hm, hF3⟩ :=
-    inMemSessionStoreAt_reloc6 A img (ptr + 0x40#64) role.peer sess hm_s
-  have hm_i : m ⊨ inMemIdentityStoreAt A img (ptr + 0x70#64) role (some role.peer.idKey) ∗
-      (((ptr ↦₆₄ w0) ∗ ((ptr + 8#64) ↦₆₄ w1) ∗ ((ptr + 16#64) ↦₆₄ w2) ∗ ((ptr + 24#64) ↦₆₄ w3)) ∗
-       (((ptr + 0x20#64) ↦₆₄ w4) ∗ ((ptr + 0x20#64 + 8#64) ↦₆₄ w5) ∗
-        ((ptr + 0x20#64 + 16#64) ↦₆₄ w6) ∗ ((ptr + 0x20#64 + 24#64) ↦₆₄ w7)) ∗
-       (((ptr + 0x40#64) ↦₆₄ w8) ∗ ((ptr + 0x40#64 + 8#64) ↦₆₄ w9) ∗
-        ((ptr + 0x40#64 + 16#64) ↦₆₄ w10) ∗ ((ptr + 0x40#64 + 24#64) ↦₆₄ w11) ∗
-        ((ptr + 0x40#64 + 32#64) ↦₆₄ w12) ∗ ((ptr + 0x40#64 + 40#64) ↦₆₄ w13)) ∗
-       H1 ∗ H2 ∗ H3 ∗ R) := by ac_sat hm
-  obtain ⟨w14, w15, w16, w17, w18, w19, w20, w21, w22, w23, w24, w25, w26, w27, w28, H4, hm, hF4⟩ :=
-    inMemIdentityStoreAt_reloc15 A img (ptr + 0x70#64) role role.peer.idKey hm_i
-  refine ⟨w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14,
-    w15, w16, w17, w18, w19, w20, w21, w22, w23, w24, w25, w26, w27, w28,
-    H1 ∗ H2 ∗ H3 ∗ H4, ?_, fun dst => ?_⟩
-  · rw [← callWords29_eq]; ac_sat hm
-  · unfold callAt
-    refine Entails.sepExists_right gMe (Entails.sepExists_right gPeer ?_)
-    apply Entails.pure_right ⟨hMe, hPeer, hMeLen, hPeerLen⟩
-    rw [← callWords29_eq]
-    refine Entails.trans ?_ (sepConj_mono (hF1 dst) (sepConj_mono (hF2 (dst + 0x20#64))
-      (sepConj_mono (hF3 (dst + 0x40#64)) (hF4 (dst + 0x70#64)))))
-    exact Entails.of_eq (by ac_rfl)
 
 private theorem words29At_entails_memRegion (a : BitVec 64)
     (w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14
@@ -423,8 +236,5 @@ private theorem memRegion_open_0x390_join (sp : BitVec 64) :
         (N := 0x220) (n := 232) (k := 0x138) (by decide) (by bv_lin) (by decide),
       ← memRegion_split' (b := sp) (b' := sp + 0x170#64)
         (N := 0x390) (n := 0x170) (k := 0x220) (by decide) (by bv_lin) (by decide)]
-
-variable (C : Crypto) (A : RustAlloc) (S : SpqrModel) (img : Obj.Image) (ctl : BitVec 64)
-  (abs : String → Option (State → State))
 
 end CryptoVerification.E2E.Bin

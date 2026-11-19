@@ -26,7 +26,7 @@ and `HasFineReallocCredit fineCostModel` (`smallMaxReq = 135,167`, `largeMetaCos
 
 set_option autoImplicit false
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 

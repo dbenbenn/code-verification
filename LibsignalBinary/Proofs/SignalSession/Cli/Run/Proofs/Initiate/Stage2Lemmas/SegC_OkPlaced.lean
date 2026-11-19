@@ -9,11 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegC_Ok
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.LayoutPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.SegC_Ok -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.LayoutPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Common
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Layout
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Stage 2 Segment C Step C1 (`0x0584 → 0x0650`)
@@ -22,12 +32,10 @@ Provides `stage2MemPlaced_eq_sp`, `segC_step1_unpack_placed`, and `withLsCodeRoL
 combinators (`sepWPp_call_fs_lscro`, `sepWPp_call_cli_lscro`) on `initProgPlaced`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.unusedTactic false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage2Lemmas
 
@@ -433,31 +441,6 @@ theorem segC_step1_unpack_placed [LibsignalPlacement] {mmpl : MultiPlacement} {g
     (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
     (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
 
-theorem sepWPp_call_fs_lscro [LibsignalPlacement] {α : Type} {prog : Program}
-    {entry ret_pc target_pc : BitVec 64} {spec : Spec α}
-    (hFs : TraceFsSound prog)
-    (hcall : subroutine_ok prog entry (withLsCodeRoLoaded lsmpl spec))
-    {x : α} {s : State} {P F : SepProp}
-    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hpc : s.pc = entry)
-    (hrun : s.status = .Running)
-    (hsp_align : s.spAligned = true)
-    (hinv : LibsignalPublicApi.StoreKit.LibsignalCodeRoLoaded lsmpl s.mem)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hpre : P ⊢ spec.pre x s ∗ F)
-    (hpan : ∀ sf, Qp sf (spec.onPanic x s sf ∗ F))
-    (hexit : ∀ code sf, spec.onExit x code s sf = ⌜False⌝)
-    (hoom : ∀ sf, spec.onOom x s sf ∗ F ⊢ oom sf)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf → s.mem.KeepsFrozen sf.mem →
-      (sf.trace = s.trace → sf.fs.files = s.fs.files) →
-      SepWPp prog target_pc sf (spec.post x s sf ∗ F) Q Qp oom) :
-    SepWPp prog target_pc s P Q Qp oom :=
-  sepWPp_call_fs hFs hcall hpc hrun hsp_align hlr
-    (Entails.trans hpre (sepConj_mono_left
-      (Entails.trans (Entails.pure_right hinv (Entails.refl _)) (Entails.of_eq (sepConj_comm _ _)))))
-    hpan hexit hoom hnext
-
 theorem sepWPp_call_cli_lscro [LibsignalPlacement] {α : Type} {prog : Program}
     {entry ret_pc target_pc : BitVec 64} {spec : Spec α}
     (hFs : TraceFsSound prog)
@@ -484,17 +467,4 @@ theorem sepWPp_call_cli_lscro [LibsignalPlacement] {α : Type} {prog : Program}
       (Entails.trans (Entails.pure_right hinv (Entails.refl _)) (Entails.of_eq (sepConj_comm _ _)))))
     hpan hexit hoom hnext
 
-theorem inInitiatePlaced_of_call [LibsignalPlacement] {s0 s sf : State} {k0 k1 : Nat}
-    (hctrl : InInitiatePlaced s0 s k0)
-    (hpc : sf.pc = initPcPlaced k1)
-    (hrun : sf.status = .Running)
-    (hsp : sf.sp = s.sp)
-    (hcs : CalleeSavedPreserved s sf)
-    (hkf : s.mem.KeepsFrozen sf.mem)
-    (hfiles : sf.fs.files = s.fs.files) :
-    InInitiatePlaced s0 sf k1 := by
-  rcases hcs with ⟨hx19, _, _, _, _, _, _, _, _, _, hfp, hvregs⟩
-  exact inInitiatePlaced_of_step hctrl hpc hrun hsp hfp hx19 hvregs hkf hfiles
-
 end CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage2Lemmas
-end

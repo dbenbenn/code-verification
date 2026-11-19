@@ -9,9 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.ProofPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProofPlacedBBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.ProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProofPlacedBBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.TopPlacedBudgetAux
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.ProofPlaced
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Unconditional Budget-Threaded Placed Contracts
@@ -21,7 +26,7 @@ and `ProofPlacedBudget` to establish unconditional `[LibsignalPlacement]` budget
 Block `416` over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,6 +35,7 @@ namespace LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.TopPlacedBudget
 open Arm64 ProofLib
 open CryptoVerification
   (IsLsBlockProg LibsignalPlacement blkPC_373 blkPl_373 lsmpl withLsCodeLoaded)
+open CryptoVerification.SpqrV1.GF.Mul2U16 (OnceCallHookOk)
 open CryptoVerification.SpqrV1.Poly.LagrangeComplete (lagrangeCompletePlacedSpec)
 open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
@@ -47,19 +53,11 @@ open LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget (PolyNextCh
 /-- Relocatable `<spqr::encoding::polynomial::Poly>::lagrange_interpolate_complete` (Block `373`)
     satisfies `withLsCodeLoaded lsmpl (withVmPreserved lagrangeCompletePlacedSpec)` under
     `[LibsignalPlacement]`. -/
-theorem lagrangeComplete_vm_placed_ok [LibsignalPlacement] (ext : String → Option (State → State)) :
+theorem lagrangeComplete_vm_placed_ok [LibsignalPlacement] (ext : String → Option (State → State))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     subroutine_ok ((blkPC_373).rebase (blkPl_373).base (Rust.withPanics ext))
       (blkPl_373).base (withLsCodeLoaded lsmpl (withVmPreserved lagrangeCompletePlacedSpec)) :=
-  TopPlacedBudgetAux.lagrangeComplete_vm_placed_ok ext
-
-/-- Discharges `PointsToPolysLoopPlacedBudgetProp M A lim ext` under `[LibsignalPlacement]`. -/
-theorem pointsToPolysLoop_placed_budget_prop [LibsignalPlacement]
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State))
-    (hA : AllocContractsPlaced M A lim ext) :
-    PointsToPolysLoopPlacedBudgetProp M A lim ext :=
-  PointsToPolysProofPlacedBBudget.pointsToPolysLoop_placed_prop
-    M A lim ext hA (lagrangeComplete_vm_placed_ok ext)
+  TopPlacedBudgetAux.lagrangeComplete_vm_placed_ok ext hOnce
 
 /-- Discharges `ProofPlacedBudget.PointsToPolysLoopPlacedProp M A lim ext` under
     `[LibsignalPlacement]` via `pointsToPolysLoop_polyList_placed_sepWPp` and
@@ -72,7 +70,7 @@ theorem pointsToPolysLoop_placed_prop [LibsignalPlacement]
   fun s0 s hcl fsp ptsBase hfsp_align pts hlen hbounds
       u16 u24 u32 u40 u64 u72 u80 u96 u640 u648 u1040 u1048 u1056
       Frame R hpc hrun hsp htrace hx19 hx20 hx28 hx29 hfit hcont =>
-    pointsToPolysLoop_polyList_placed_sepWPp hA (lagrangeComplete_vm_placed_ok ext)
+    pointsToPolysLoop_polyList_placed_sepWPp hA (lagrangeComplete_vm_placed_ok ext hA.once_ok)
       s0 s hcl fsp ptsBase hfsp_align pts hlen hbounds
       u16 u24 u32 u40 u64 u72 u80 u96 u640 u648 u1040 u1048 u1056
       Frame R hpc hrun hsp htrace hx19 hx20 hx28 hx29 hfit
@@ -98,26 +96,6 @@ theorem poly_next_chunk_rodata_placed_ok_ext [LibsignalPlacement]
     (hA : AllocContractsPlaced M A lim ext) :
     PolyNextChunkRodataPlacedOkExt M A lim ext :=
   poly_next_chunk_rodata_placed_ok M A lim ext hA
-
-/-- `<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk` (Block `416`)
-    satisfies `DefsBudget.PolyNextChunkRodataPlacedOkExt M A lim ext` (`withLsCodeRoLoaded`)
-    under `[LibsignalPlacement]`. -/
-theorem poly_next_chunk_rodata_ro_placed_ok [LibsignalPlacement]
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State))
-    (hA : AllocContractsPlaced M A lim ext) :
-    LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget.PolyNextChunkRodataPlacedOkExt
-      M A lim ext :=
-  poly_next_chunk_rodata_ro_placed_ok_of_p2p M A lim ext hA
-    (pointsToPolysLoop_placed_prop M A lim ext hA)
-
-theorem poly_next_chunk_rodata_ro_placed_ok_ext [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsPlaced M A lim ext) :
-    LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget.PolyNextChunkRodataPlacedOkExt
-      M A lim ext :=
-  poly_next_chunk_rodata_ro_placed_ok M A lim ext hA
 
 /-- `<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk` (Block `416`)
     satisfies `PolyNextChunkPlacedOkExt M A lim ext` (`withLsCodeRoLoaded lsmpl

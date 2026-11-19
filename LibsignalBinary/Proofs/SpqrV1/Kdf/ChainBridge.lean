@@ -19,7 +19,7 @@ Shows that for all output lengths `L ≤ 8160` (`255 * 32`), `hkdfToSlice` and `
 and return `spqrHkdfWith F salt ikm info L`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Kdf
 
@@ -37,15 +37,5 @@ theorem hkdfToVecUnchecked_eq_spqrHkdfWith
     (F : ShaState → Bytes → ShaState) (salt ikm info : Bytes) (L : Nat) :
     hkdfToVecUnchecked F salt ikm info L = spqrHkdfWith F salt ikm info L :=
   rfl
-
-theorem hkdfToSlice_eq_spqrHkdfWith
-    (F : ShaState → Bytes → ShaState) (salt ikm info : Bytes) (L : Nat) (hL : L ≤ 8160) :
-    hkdfToSlice F salt ikm info L = .ok (spqrHkdfWith F salt ikm info L) :=
-  hkdfToSlice_of_le F salt ikm info hL
-
-theorem hkdfToVec_eq_spqrHkdfWith
-    (F : ShaState → Bytes → ShaState) (salt ikm info : Bytes) (L : Nat) (hL : L ≤ 8160) :
-    hkdfToVec F salt ikm info L = .ok (spqrHkdfWith F salt ikm info L) :=
-  hkdfToVec_of_le F salt ikm info hL
 
 end CryptoVerification.SpqrV1.Kdf

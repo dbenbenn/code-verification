@@ -90,64 +90,64 @@ private theorem b04_tail_to_b09 [MallocngMultiPlacement] {spec : Spec Unit}
 
 /-! ## Internal `DefaultMallocPlacedStmt` contracts -/
 
-theorem placed_defaultMalloc24_of_impl (hImpl24 : LibcMallocImplPlaced24B2Stmt) :
+theorem placed_defaultMalloc24_of_impl {ro : Bool} (hImpl24 : LibcMallocImplPlaced24B2Stmt ro) :
     ∀ [MallocngMultiPlacement]
       (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
       (ivs0 : List (BitVec 64 × Nat)) (req : Nat),
       subroutine_ok (mallocngBlockProg mmpl 4 msvc) (mbase 4)
-        (libcMallocImplPlacedSpec24B2 γ tp brkStart b ivs0 req) := by
+        (libcMallocImplPlacedSpec24B2 γ tp brkStart b ivs0 req ro) := by
   intro _ γ tp brkStart b ivs0 req
   exact b04_tail_to_b09 (hImpl24 γ tp brkStart b ivs0 req)
     (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl)
     (fun _ _ => rfl) (fun _ _ _ => rfl)
 
-theorem placed_defaultMalloc24_ok
-    (hMeta : AllocMetaPlacedFullStmt) (hSlot : AllocSlotPlacedFullStmt)
+theorem placed_defaultMalloc24_ok {ro : Bool}
+    (hMeta : AllocMetaPlacedFullStmt ro) (hSlot : AllocSlotPlacedFullStmt ro)
     (hMetaInv : MallocngMetaCountInv) :
     ∀ [MallocngMultiPlacement]
       (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
       (ivs0 : List (BitVec 64 × Nat)) (req : Nat),
       subroutine_ok (mallocngBlockProg mmpl 4 msvc) (mbase 4)
-        (libcMallocImplPlacedSpec24B2 γ tp brkStart b ivs0 req) :=
+        (libcMallocImplPlacedSpec24B2 γ tp brkStart b ivs0 req ro) :=
   placed_defaultMalloc24_of_impl (placed_libcMallocImpl24B2_ok hMeta hSlot hMetaInv)
 
-theorem placed_defaultMalloc_tight_of_impl (hImpl : LibcMallocImplPlacedTightStmt) :
-    DefaultMallocPlacedTightStmt := by
+theorem placed_defaultMalloc_tight_of_impl {ro : Bool} (hImpl : LibcMallocImplPlacedTightStmt ro) :
+    DefaultMallocPlacedTightStmt ro := by
   intro _ γ tp brkStart b ivs0 req
   exact b04_tail_to_b09 (hImpl γ tp brkStart b ivs0 req)
     (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl)
     (fun _ _ => rfl) (fun _ _ _ => rfl)
 
-theorem placed_defaultMalloc_tok_of_impl {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
-    (hImpl : LibcMallocImplPlacedTokStmt B) : DefaultMallocPlacedTokStmt B := by
+theorem placed_defaultMalloc_tok_of_impl {ro : Bool} {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
+    (hImpl : LibcMallocImplPlacedTokStmt B ro) : DefaultMallocPlacedTokStmt B ro := by
   intro _ γ tp brkStart b ivs0 req
   exact b04_tail_to_b09 (hImpl γ tp brkStart b ivs0 req)
     (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl)
     (fun _ _ => rfl) (fun _ _ _ => rfl)
 
-theorem placed_defaultMalloc_of_impl (hImpl : LibcMallocImplPlacedStmt) :
-    DefaultMallocPlacedStmt := by
+theorem placed_defaultMalloc_of_impl {ro : Bool} (hImpl : LibcMallocImplPlacedStmt ro) :
+    DefaultMallocPlacedStmt ro := by
   intro _ γ tp brkStart b ivs0 req
   exact b04_tail_to_b09 (hImpl γ tp brkStart b ivs0 req)
     (fun _ _ => rfl) (fun _ _ _ => rfl) (fun _ _ _ => rfl)
     (fun _ _ => rfl) (fun _ _ _ => rfl)
 
-theorem placed_defaultMalloc_ok
-    (hMeta : AllocMetaPlacedFullStmt) (hSlot : AllocSlotPlacedFullStmt)
-    (hMetaInv : MallocngMetaCountInv) : DefaultMallocPlacedStmt :=
+theorem placed_defaultMalloc_ok {ro : Bool}
+    (hMeta : AllocMetaPlacedFullStmt ro) (hSlot : AllocSlotPlacedFullStmt ro)
+    (hMetaInv : MallocngMetaCountInv) : DefaultMallocPlacedStmt ro :=
   placed_defaultMalloc_of_impl (placed_libcMallocImpl_ok hMeta hSlot hMetaInv)
 
-theorem placed_defaultMalloc24_uncond_ok
-    (hMeta : AllocMetaPlacedFullStmt) (hSlot : AllocSlotPlacedFullStmt) :
+theorem placed_defaultMalloc24_uncond_ok {ro : Bool}
+    (hMeta : AllocMetaPlacedFullStmt ro) (hSlot : AllocSlotPlacedFullStmt ro) :
     ∀ [MallocngMultiPlacement]
       (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
       (ivs0 : List (BitVec 64 × Nat)) (req : Nat),
       subroutine_ok (mallocngBlockProg mmpl 4 msvc) (mbase 4)
-        (libcMallocImplPlacedSpec24B2 γ tp brkStart b ivs0 req) :=
+        (libcMallocImplPlacedSpec24B2 γ tp brkStart b ivs0 req ro) :=
   placed_defaultMalloc24_of_impl (placed_libcMallocImpl24B2_uncond_ok hMeta hSlot)
 
-theorem placed_defaultMalloc_uncond_ok
-    (hMeta : AllocMetaPlacedFullStmt) (hSlot : AllocSlotPlacedFullStmt) : DefaultMallocPlacedStmt :=
+theorem placed_defaultMalloc_uncond_ok {ro : Bool}
+    (hMeta : AllocMetaPlacedFullStmt ro) (hSlot : AllocSlotPlacedFullStmt ro) : DefaultMallocPlacedStmt ro :=
   placed_defaultMalloc_of_impl (placed_libcMallocImpl_uncond_ok hMeta hSlot)
 
 /-! ## Bridge to public `mallocngMallocSpec` -/
@@ -158,7 +158,7 @@ private theorem stackFrameAt_1024_split (s0 : State) :
   change stackFrameAt s0.sp (704 + 320) = _
   rw [stackFrameAt_split s0.sp 704 320, stackFrameAt_eq_memRegion s0.sp 704]
 
-private theorem mallocPlaced_success_post_entails [MallocngMultiPlacement]
+private theorem mallocPlaced_success_post_entails [MallocngMultiPlacement] {ro : Bool}
     {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : BitVec 64) (s0 sf : State)
@@ -179,7 +179,7 @@ private theorem mallocPlaced_success_post_entails [MallocngMultiPlacement]
           p.toNat - (g'.slotStart idx).toNat ≤ 255 * 16 ∧
           (g'.isMmapped = true → bs = List.replicate req.toNat 0#8)⌝ ∗
        MallocngRoTablesA maddrs ∗
-       MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+       MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
        MallocngRuntime maddrs tp ∗
        (p ↦ₛ bs) ∗
        B γ p req.toNat 16) ⊢
@@ -187,7 +187,7 @@ private theorem mallocPlaced_success_post_entails [MallocngMultiPlacement]
         (if ok then some (req.toNat, 16) else none)⌝ ∗
       (OptOwn (MallocngTokBlock (B γ))).interp (sf.readReg64 .x0)
         (if ok then some (req.toNat, 16) else none) ∗
-      MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf := by
+      MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf := by
   intro ok bf
   have hOkTrue : ok = true := decide_eq_true hReq
   apply Entails.sepExists_elim; intro p
@@ -205,43 +205,42 @@ private theorem mallocPlaced_success_post_entails [MallocngMultiPlacement]
     exact pointsToBytes_entails_memRegion p bs
   have hPostEnv :
       MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+        MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
         MallocngRuntime maddrs tp ⊢
-        MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf := by
+        MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf := by
     unfold MallocngPostEnv MallocngEnv
     refine Entails.trans ?_ (Entails.sepExists_intro (dynamicRootRegions st'))
     refine Entails.pure_right hNoOrph (Entails.pure_right ⟨htp_f, hbrkS_f⟩ ?_)
-    change _ ⊢ MallocngHeapImpl γ maddrs tp brkStart sf.brk bf (dynamicRootRegions st')
-    rw [MallocngHeapImpl_eq, MallocngCoreImpl_eq]
+    rw [mallocngModeIface_heap_eq, mallocngModeIface_core_eq]
     have hCoreBody :
-        MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ⊢
+        MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ⊢
           ∃∗ st : MallocngSt,
             ⌜MallocngCountIvsWF bf (dynamicRootRegions st') st⌝ ∗
-            MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st :=
+            MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st :=
       Entails.trans (Entails.pure_right hCnt (Entails.refl _))
         (Entails.sepExists_intro
           (P := fun st =>
             ⌜MallocngCountIvsWF bf (dynamicRootRegions st') st⌝ ∗
-            MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st) st')
+            MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st) st')
     refine Entails.trans (sepConj_mono_right (sepConj_mono_left hCoreBody)) ?_
     generalize MallocngRoTablesA maddrs = pRo,
       (∃∗ st : MallocngSt,
         ⌜MallocngCountIvsWF bf (dynamicRootRegions st') st⌝ ∗
-        MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st) = pEx,
+        MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st) = pEx,
       MallocngRuntime maddrs tp = pRt
     exact Entails.of_eq (by ac_rfl)
   have hRearr :
       MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+        MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
         MallocngRuntime maddrs tp ∗
         (p ↦ₛ bs) ∗
         B γ p req.toNat 16 =
       (B γ p req.toNat 16 ∗ (p ↦ₛ bs)) ∗
         (MallocngRoTablesA maddrs ∗
-         MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+         MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
          MallocngRuntime maddrs tp) := by
     generalize MallocngRoTablesA maddrs = pRo,
-      MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' = pCr,
+      MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' = pCr,
       MallocngRuntime maddrs tp = pRt,
       (p ↦ₛ bs) = pBs,
       B γ p req.toNat 16 = pBlk
@@ -249,23 +248,23 @@ private theorem mallocPlaced_success_post_entails [MallocngMultiPlacement]
   rw [hRearr]
   exact sepConj_mono (sepConj_mono_right hBsReg) hPostEnv
 
-private theorem mallocPlaced_withCL_tok_of_defaultMalloc [MallocngMultiPlacement]
-    {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hDef : DefaultMallocPlacedTokStmt B) (γ : GhostName) :
+private theorem mallocPlaced_withCL_tok_of_defaultMalloc [MallocngMultiPlacement] {ro : Bool}
+    {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hDef : DefaultMallocPlacedTokStmt B ro) (γ : GhostName) :
     subroutine_ok (mallocngBlockProg mmpl 4 msvc) (mbase 4)
-      (withCL mmpl (mallocngMallocTokSpec B msvc γ maddrs (mbase 4))) := by
+      (withCL mmpl (mallocngMallocTokModeSpec ro B msvc γ maddrs (mbase 4))) := by
   apply subroutine_ok_of_sepWP_init
   intro x R s0 hpc hrun hpre hspAl0
   rcases x with ⟨req, sp, tp, brkStart, b, ivs0⟩
   have hPurePre : s0.readReg64 .x0 = req ∧ s0.sp = sp := by
     have hp := hpre
-    dsimp only [withCL, mallocngMallocTokSpec] at hp
+    dsimp only [withCL, mallocngMallocTokModeSpec] at hp
     rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hp
     have hp1 := hp.1
     simp only [ctype_simp, and_true] at hp1
     exact hp1
   rcases hPurePre with ⟨hx0, hsp⟩
   subst hsp
-  refine ⟨(withCL mmpl (mallocngMallocTokSpec B msvc γ maddrs (mbase 4))).pre
+  refine ⟨(withCL mmpl (mallocngMallocTokModeSpec ro B msvc γ maddrs (mbase 4))).pre
     (req, s0.sp, tp, brkStart, b, ivs0) s0, hpre, ?_⟩
   refine SepWP.call_subroutine_frame
     (F := stackFrameAt (s0.sp - 704#64) 320)
@@ -283,14 +282,14 @@ private theorem mallocPlaced_withCL_tok_of_defaultMalloc [MallocngMultiPlacement
     (fun R' sf _ ho => ?_)
   · rw [← sepConj_assoc]
     refine Satisfies.mono (sepConj_mono_left ?_) hm
-    dsimp only [withCL, mallocngMallocTokSpec, libcMallocImplPlacedTokSpec]
+    dsimp only [withCL, mallocngMallocTokModeSpec, libcMallocImplPlacedTokSpec]
     simp only [ctype_simp]
     rw [stackFrameAt_1024_split s0, sepConj_assoc]
     apply Entails.pure_left; intro _
     have hx0_nat : (s0.readReg64 .x0).toNat = req.toNat := by rw [hx0]
     refine Entails.trans (Entails.pure_right hx0_nat (Entails.refl _)) ?_
     generalize ⌜(s0.readReg64 .x0).toNat = req.toNat⌝ = pReq,
-      MallocngEnv mallocngIface γ maddrs tp brkStart b ivs0 s0 = pEnv,
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart b ivs0 s0 = pEnv,
       stackFrame s0 704 = pSf1,
       stackFrameAt (s0.sp - 704#64) 320 = pSf2,
       ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl s0.mem⌝ = pCl
@@ -298,7 +297,7 @@ private theorem mallocPlaced_withCL_tok_of_defaultMalloc [MallocngMultiPlacement
   · refine SepWP.done hpc_f hrun_f ⟨?_, hsp_f, hcs_f⟩
     intro hm
     refine Satisfies.mono (sepConj_mono_left ?_) hm
-    dsimp only [withCL, mallocngMallocTokSpec, libcMallocImplPlacedTokSpec, MallocngCallAccounting]
+    dsimp only [withCL, mallocngMallocTokModeSpec, libcMallocImplPlacedTokSpec, MallocngCallAccounting]
     have hPostRearr : ∀ (pAcc pSf1 br pCl pSf2 : SepProp),
         ((pAcc ∗ pSf1 ∗ br) ∗ pCl) ∗ pSf2 = (pAcc ∗ (br ∗ (pSf1 ∗ pSf2))) ∗ pCl := by
       intros; ac_rfl
@@ -324,7 +323,7 @@ private theorem mallocPlaced_withCL_tok_of_defaultMalloc [MallocngMultiPlacement
                p.toNat - (g'.slotStart idx).toNat ≤ 255 * 16 ∧
                (g'.isMmapped = true → bs = List.replicate req.toNat 0#8)⌝ ∗
             MallocngRoTablesA maddrs ∗
-            MallocngCoreStA γ maddrs brkStart sf.brk
+            MallocngCoreStModeA ro γ maddrs brkStart sf.brk
               (mallocngAllocBudget (decide (req.toNat ≤ MallocngMaxAllocSize)) req.toNat b).liveCost
               (mallocngAllocBudget (decide (req.toNat ≤ MallocngMaxAllocSize)) req.toNat b).peakCost st' ∗
             MallocngRuntime maddrs tp ∗
@@ -332,18 +331,18 @@ private theorem mallocPlaced_withCL_tok_of_defaultMalloc [MallocngMultiPlacement
             B γ p req.toNat 16
         else
           ⌜sf.readReg64 .x0 = 0#64⌝ ∗
-          MallocngPostEnv mallocngIface γ maddrs tp brkStart
+          MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart
             (mallocngAllocBudget (decide (req.toNat ≤ MallocngMaxAllocSize)) req.toNat b)
             ivs0 s0 sf) ⊢
         ⌜(OptOwn (MallocngTokBlock (B γ))).pureWf (sf.readReg64 .x0)
           (if decide (req.toNat ≤ MallocngMaxAllocSize) then some (req.toNat, 16) else none)⌝ ∗
         (OptOwn (MallocngTokBlock (B γ))).interp (sf.readReg64 .x0)
           (if decide (req.toNat ≤ MallocngMaxAllocSize) then some (req.toNat, 16) else none) ∗
-        MallocngPostEnv mallocngIface γ maddrs tp brkStart
+        MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart
           (mallocngAllocBudget (decide (req.toNat ≤ MallocngMaxAllocSize)) req.toNat b)
           ivs0 s0 sf := by
       by_cases hReq : req.toNat ≤ MallocngMaxAllocSize
-      · have hM := mallocPlaced_success_post_entails (B := B) γ tp brkStart b ivs0 req s0 sf hReq
+      · have hM := mallocPlaced_success_post_entails (ro := ro) (B := B) γ tp brkStart b ivs0 req s0 sf hReq
         dsimp only at hM
         simp only [hReq, ↓reduceIte] at hM ⊢
         exact hM
@@ -356,21 +355,39 @@ private theorem mallocPlaced_withCL_tok_of_defaultMalloc [MallocngMultiPlacement
     refine Entails.pure_right ⟨hPureWf, hAcc⟩ ?_
     rw [sepConj_assoc]
     exact Entails.refl _
-  · dsimp only [withCL, mallocngMallocTokSpec, libcMallocImplPlacedTokSpec] at ho ⊢
+  · dsimp only [withCL, mallocngMallocTokModeSpec, libcMallocImplPlacedTokSpec] at ho ⊢
     rw [← sepConj_assoc, sepConj_comm _ (stackFrameAt (s0.sp - 704#64) 320), sepConj_assoc] at ho
     exact Satisfies.drop_left ho
 
 /-! ## Public `mallocngMultiEntryOk` contracts -/
 
-theorem mallocPlaced_entry_tok_mmpl_ok {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
-    (hDef : DefaultMallocPlacedTokStmt B) :
+theorem mallocPlaced_entry_tok_mode_mmpl_ok {ro : Bool} {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
+    (hDef : DefaultMallocPlacedTokStmt B ro) :
     ∀ [MallocngMultiPlacement] (γ : GhostName),
       mallocngMultiEntryOk mmpl msvc "malloc"
-        (mallocngMallocTokSpec B msvc γ (mallocngAddrsOfPlacement mmpl)) := by
+        (mallocngMallocTokModeSpec ro B msvc γ (mallocngAddrsOfPlacement mmpl)) := by
   intro _ γ
   refine ⟨by decide, 4, 0, rfl, ?_⟩
   rw [fnAddr_malloc mmpl]
   exact withCL_to_withCodeLoaded (mallocPlaced_withCL_tok_of_defaultMalloc hDef γ)
+
+theorem mallocPlaced_entry_tok_mmpl_ok {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
+    (hDef : DefaultMallocPlacedTokStmt B) :
+    ∀ [MallocngMultiPlacement] (γ : GhostName),
+      mallocngMultiEntryOk mmpl msvc "malloc"
+        (mallocngMallocTokSpec B msvc γ (mallocngAddrsOfPlacement mmpl)) :=
+  mallocPlaced_entry_tok_mode_mmpl_ok (ro := false) hDef
+
+/-- `malloc` entry contract parameterized over block token `B` and `ro` mode. -/
+theorem mallocPlaced_entry_tok_mode_ok {ro : Bool} {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
+    (hDef : DefaultMallocPlacedTokStmt B ro)
+    (mpl : Obj.MultiPlacement) (svc : State → State)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
+    (γ : GhostName) :
+    mallocngMultiEntryOk mpl svc "malloc"
+      (mallocngMallocTokModeSpec ro B svc γ (mallocngAddrsOfPlacement mpl)) := by
+  letI : MallocngMultiPlacement := ⟨mpl, svc, hPl, hSvc⟩
+  exact mallocPlaced_entry_tok_mode_mmpl_ok hDef γ
 
 /-- `malloc` entry contract parameterized over block token `B` for any valid `mpl` and `svc`. -/
 theorem mallocPlaced_entry_tok_ok {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
@@ -379,44 +396,46 @@ theorem mallocPlaced_entry_tok_ok {B : GhostName → BitVec 64 → Nat → Nat �
     (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "malloc"
-      (mallocngMallocTokSpec B svc γ (mallocngAddrsOfPlacement mpl)) := by
-  letI : MallocngMultiPlacement := ⟨mpl, svc, hPl, hSvc⟩
-  exact mallocPlaced_entry_tok_mmpl_ok hDef γ
+      (mallocngMallocTokSpec B svc γ (mallocngAddrsOfPlacement mpl)) :=
+  mallocPlaced_entry_tok_mode_ok (ro := false) hDef mpl svc hPl hSvc γ
 
-theorem mallocPlaced_entry_tight_mmpl_ok_of_impl (hImpl : LibcMallocImplPlacedTightStmt) :
+theorem mallocPlaced_entry_tight_mmpl_ok_of_impl {ro : Bool} (hImpl : LibcMallocImplPlacedTightStmt ro) :
     ∀ [MallocngMultiPlacement] (γ : GhostName),
       mallocngMultiEntryOk mmpl msvc "malloc"
-        (mallocngMallocTightSpec mallocngIface msvc γ (mallocngAddrsOfPlacement mmpl)) :=
-  mallocPlaced_entry_tok_mmpl_ok (DefaultMallocPlacedTightStmt.toTok (placed_defaultMalloc_tight_of_impl hImpl))
+        (mallocngMallocTightSpec (mallocngModeIface ro) msvc γ (mallocngAddrsOfPlacement mmpl)) := by
+  intro _ γ
+  have h := mallocPlaced_entry_tok_mode_mmpl_ok
+    (DefaultMallocPlacedTightStmt.toTok (placed_defaultMalloc_tight_of_impl hImpl)) γ
+  rwa [mallocngMallocTokModeSpec_oldTok] at h
 
-theorem mallocPlaced_entry_tight_ok_of_impl (hImpl : LibcMallocImplPlacedTightStmt)
+theorem mallocPlaced_entry_tight_ok_of_impl {ro : Bool} (hImpl : LibcMallocImplPlacedTightStmt ro)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "malloc"
-      (mallocngMallocTightSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) := by
+      (mallocngMallocTightSpec (mallocngModeIface ro) svc γ (mallocngAddrsOfPlacement mpl)) := by
   letI : MallocngMultiPlacement := ⟨mpl, svc, hPl, hSvc⟩
   exact mallocPlaced_entry_tight_mmpl_ok_of_impl hImpl γ
 
 /-- Tight `malloc` entry contract (`mallocngMallocTightSpec`) for any valid `mpl` and `svc`. -/
-theorem mallocPlaced_entry_tight_uncond_ok
-    (hMeta : AllocMetaPlacedFullStmt) (hSlot : AllocSlotPlacedFullStmt)
+theorem mallocPlaced_entry_tight_uncond_ok {ro : Bool}
+    (hMeta : AllocMetaPlacedFullStmt ro) (hSlot : AllocSlotPlacedFullStmt ro)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "malloc"
-      (mallocngMallocTightSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) :=
+      (mallocngMallocTightSpec (mallocngModeIface ro) svc γ (mallocngAddrsOfPlacement mpl)) :=
   mallocPlaced_entry_tight_ok_of_impl (placed_libcMallocImpl_tight_uncond_ok hMeta hSlot)
     mpl svc hPl hSvc γ
 
 /-- Public `malloc` entry contract (`mallocngMallocSpec`) for any valid `mpl` and `svc`. -/
-theorem mallocPlaced_entry_uncond_ok
-    (hMeta : AllocMetaPlacedFullStmt) (hSlot : AllocSlotPlacedFullStmt)
+theorem mallocPlaced_entry_uncond_ok {ro : Bool}
+    (hMeta : AllocMetaPlacedFullStmt ro) (hSlot : AllocSlotPlacedFullStmt ro)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "malloc"
-      (mallocngMallocSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) := by
+      (mallocngMallocSpec (mallocngModeIface ro) svc γ (mallocngAddrsOfPlacement mpl)) := by
   obtain ⟨hexp, i, off, hlk, hsub⟩ :=
     mallocPlaced_entry_tight_uncond_ok hMeta hSlot mpl svc hPl hSvc γ
   refine ⟨hexp, i, off, hlk, subroutine_ok_mono hsub (fun _ _ _ hp => hp) (fun _ _ _ _ hq => ?_)

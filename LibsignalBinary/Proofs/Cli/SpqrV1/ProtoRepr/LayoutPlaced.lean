@@ -16,7 +16,7 @@ Defines CLI block index constants `478` (`Epoch::encoded_len [local#3]`) and `48
 (`Chain::encoded_len [local#3]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

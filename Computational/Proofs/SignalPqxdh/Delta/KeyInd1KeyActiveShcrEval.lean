@@ -19,6 +19,9 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeySigKem
 import Computational.Proofs.SignalPqxdh.Security.SigHopA
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreHol
+import Computational.Proofs.ReductionDsl.AtomicSizeHonest
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 
 /-!
 # Two-Stage `ReductionDsl` Advantage Equivalence for Active One-Key `KemShCr`
@@ -1173,12 +1176,6 @@ theorem kemShCrReal_shcrKeyInd1KeyActiveAtomicProg_eq (S : Setup) (P : Primitive
     KemShCrReal P ((pqxdhKeyInd1KeyActiveCostedSims S).eval.shcr b A) =
       KemShCrReal P (shcrReductionKeyInd1KeyActive S b A) :=
   congrArg ENNReal.toReal (KemShCr_shcrKeyInd1KeyActiveAtomicProg_eq S P b A)
-
-theorem KemShCrReal_shcrKeyInd1KeyActiveAtomicProg_eq (S : Setup) (P : Primitives)
-    (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
-    KemShCrReal P ((pqxdhKeyInd1KeyActiveCostedSims S).eval.shcr b A) =
-      KemShCrReal P (shcrReductionKeyInd1KeyActive S b A) :=
-  kemShCrReal_shcrKeyInd1KeyActiveAtomicProg_eq S P b A
 
 end
 

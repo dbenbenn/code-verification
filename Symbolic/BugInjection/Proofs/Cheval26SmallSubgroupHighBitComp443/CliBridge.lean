@@ -220,7 +220,7 @@ theorem spec_half_pinned_443_of_gen
           m₀.next tr₁ = aliceStartTrOfOut tr₁ r.alice r.bob o ∧
           ∃ x ∈ preKeyRepresentations compI0 r S g ms' msg38,
             ¬ BobStartCollision compI0 r S g ms' p x) :
-    cliCompShape.SpecHalf (cliCompFitsPinned setup₀) (cliEvents msg38) := by
+    cliCompShape.SpecHalf (CliSetupMatchesPinned setup₀) (cliEvents msg38) := by
   intro (iw : cliCompShape.Interp) (r : Records) hfits
   have hwf : ProtocolSetupWF r := hfits.1.1.1
   have hiw : iw.1 = compI0 := hfits.1.2.1
@@ -327,7 +327,7 @@ theorem spec_half_pinned_443_of_gen
 
 theorem spec_half_pinned :
     cliCompShape.SpecHalf
-      (cliCompFitsPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
+      (CliSetupMatchesPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
       Witnesses.Cheval26SmallSubgroupHighBitCli.trace := by
   rw [← cliSetup_eq, ← cliEvents_eq]
   refine spec_half_pinned_443_of_gen setup recvMsg38
@@ -340,8 +340,8 @@ theorem spec_half_pinned :
     noBsc38HB_cli_swap hcs₁ r' S' g' ms' p hfits' hnb' hex' hp
   exact ⟨pre, mid, post, hb_eq, shown, cl, e, c', hms_eq, hpre, hmid, hpost, hm₀, x, hx, hnbsc⟩
 
-theorem cliCompFitsPinned_satisfiable :
-    ∃ iw r, cliCompFitsPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup iw r :=
-  Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.cliCompFitsPinned_satisfiable_hb
+theorem cliSetupMatchesPinned_satisfiable :
+    ∃ iw r, CliSetupMatchesPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup iw r :=
+  Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.cliSetupMatchesPinned_satisfiable_hb
 
 end Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.CliBridge

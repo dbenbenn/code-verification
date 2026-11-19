@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.StepBranchOKPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.StepBranchOKPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.CBadReady
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptCollisionPickPure
@@ -21,6 +21,8 @@ import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.Fail
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplRep
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.TRView
+import Symbolic.Proofs.Swarm.CREF.OpkRelC
+import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
 
 /-!
 # Promote `Clean` Explanation Step Assembly
@@ -30,7 +32,7 @@ Assembles `PromExplainOK` (`prom_explainOK_of_rawKnBranches`) from `PromNoDrawOK
 `RatchetDH`).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -164,7 +166,7 @@ theorem prom_decSel_cases_of_noDraw
 
 /-- Raw-decrypt and attacker-known-salt witness tuple consumed by `cBadG2_of_rawWitness` and
 `explains_append_decrypt_step`. -/
-def PromXplRawKnWitness (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromXplRawKnWitness (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (acc mid : List MachineEvent)
     (p : Participant) (tag : BitVec 8) (body b pt : HwBytes) : Prop :=
   ∃ (g₁ : Ghost) (stateIdx : Nat) (spqrMsgIdx : UInt32) (pqSalt t_m : DY.Bytes) (m : Move),

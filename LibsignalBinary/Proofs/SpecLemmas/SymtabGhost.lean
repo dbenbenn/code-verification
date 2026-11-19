@@ -12,7 +12,7 @@ module
 public import ProofLib.Hoare.LibcHooks
 import LibsignalBinary.Proofs.SpecLemmas.SyscallReadWritev
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -33,7 +33,7 @@ namespace Arm64
 
 /-- Replace the symbol table. Named so `simp`/`dsimp` rewrite it without touching every structure
 update in the goal. -/
-def State.withSymtab (s : State) (t : String → String → Option (BitVec 64)) : State :=
+@[expose] def State.withSymtab (s : State) (t : String → String → Option (BitVec 64)) : State :=
   { s with symtab := t }
 
 /-- `f` neither reads nor writes `State.symtab`: it commutes with replacing it. -/
@@ -42,15 +42,15 @@ abbrev SymtabFree (f : State → State) : Prop :=
     f (s.withSymtab t) = (f s).withSymtab t
 
 /-- Every hook of the table `X` is `SymtabFree`. -/
-def SymtabFreeHooks (X : String → Option (State → State)) : Prop :=
+@[expose] def SymtabFreeHooks (X : String → Option (State → State)) : Prop :=
   ∀ n f, X n = some f → SymtabFree f
 
 /-- Every extern hook, override hook, and supervisor-call handler of `P` is `SymtabFree`. -/
-def Program.HooksSymtabFree (P : Program) : Prop :=
+@[expose] def Program.HooksSymtabFree (P : Program) : Prop :=
   SymtabFreeHooks P.externs ∧ SymtabFreeHooks P.overrides ∧ SymtabFree P.svc
 
 /-- Replacing `symtab` in both start and end states preserves `Steps P`. -/
-def SymtabGhost (P : Program) : Prop :=
+@[expose] def SymtabGhost (P : Program) : Prop :=
   ∀ (t : String → String → Option (BitVec 64)) {s s' : State},
     Steps P s s' → Steps P { s with symtab := t } { s' with symtab := t }
 
@@ -81,6 +81,8 @@ theorem withSymtab_trace : (s.withSymtab t).trace = s.trace := rfl
 theorem withSymtab_status : (s.withSymtab t).status = s.status := rfl
 theorem withSymtab_sigActions : (s.withSymtab t).sigActions = s.sigActions := rfl
 theorem withSymtab_sigAltStack : (s.withSymtab t).sigAltStack = s.sigAltStack := rfl
+theorem withSymtab_sigMask : (s.withSymtab t).sigMask = s.sigMask := rfl
+theorem withSymtab_sigPending : (s.withSymtab t).sigPending = s.sigPending := rfl
 theorem withSymtab_physMemAvail : (s.withSymtab t).physMemAvail = s.physMemAvail := rfl
 theorem withSymtab_getSigAction (sig : BitVec 32) :
     (s.withSymtab t).getSigAction sig = s.getSigAction sig := rfl
@@ -125,6 +127,10 @@ theorem withSymtab_setSigAction (sig : BitVec 32) (act : SigAction) :
     (s.withSymtab t).setSigAction sig act = (s.setSigAction sig act).withSymtab t := rfl
 theorem withSymtab_setSigAltStack (sas : SigAltStack) :
     (s.withSymtab t).setSigAltStack sas = (s.setSigAltStack sas).withSymtab t := rfl
+theorem withSymtab_setSigMask (mask : BitVec 64) :
+    (s.withSymtab t).setSigMask mask = (s.setSigMask mask).withSymtab t := rfl
+theorem withSymtab_setSigPending (pending : BitVec 64) :
+    (s.withSymtab t).setSigPending pending = (s.setSigPending pending).withSymtab t := rfl
 theorem withSymtab_appendTrace (x : List TraceEvent) :
     (s.withSymtab t).appendTrace x = (s.appendTrace x).withSymtab t := rfl
 theorem withSymtab_writeReg64 (r : Reg) (v : BitVec 64) :
@@ -187,6 +193,7 @@ macro "symtab_free_norm" : tactic => `(tactic|
      State.withSymtab_tpidrEl0, State.withSymtab_fpsr, State.withSymtab_brkStart,
      State.withSymtab_brk, State.withSymtab_fs, State.withSymtab_trace,
      State.withSymtab_status, State.withSymtab_sigActions, State.withSymtab_sigAltStack,
+     State.withSymtab_sigMask, State.withSymtab_sigPending,
      State.withSymtab_physMemAvail,
      State.withSymtab_getSigAction,
      State.withSymtab_readReg64,
@@ -198,6 +205,7 @@ macro "symtab_free_norm" : tactic => `(tactic|
      State.withSymtab_setPState, State.withSymtab_setFpsr, State.withSymtab_orFpsr,
      State.withSymtab_setBrk, State.withSymtab_setPhysMemAvail, State.withSymtab_setFs,
      State.withSymtab_setSigAction, State.withSymtab_setSigAltStack,
+     State.withSymtab_setSigMask, State.withSymtab_setSigPending,
      State.withSymtab_appendTrace,
      State.withSymtab_writeReg64, State.withSymtab_writeReg32, State.withSymtab_writeReg,
      State.withSymtab_writeVReg128, State.withSymtab_writeVReg64, State.withSymtab_writeVReg32,
@@ -344,6 +352,7 @@ theorem execOpenat_withSymtab : execOpenat (s.withSymtab t) = (execOpenat s).wit
     State.withSymtab_mem, State.withSymtab_fs]
   rcases checkOpenFlags (s.readReg32 Reg.x2) with _ | v
   · rcases readCString s.mem (s.readReg64 Reg.x1) with rawPath | _ | _ <;>
+      rcases s.fs.allocFd with _ | _ <;>
       simp only [applyOpenVerdict_withSymtab, State.withSymtab_setStatus,
         State.withSymtab_writeReg64, State.withSymtab_advancePC]
   · exact applyOpenVerdict_withSymtab t s v
@@ -382,6 +391,9 @@ theorem execPpoll_withSymtab : execPpoll (s.withSymtab t) = (execPpoll s).withSy
     symtab_free_close
 theorem execSetTidAddress_withSymtab :
     execSetTidAddress (s.withSymtab t) = (execSetTidAddress s).withSymtab t := rfl
+theorem execFutex_withSymtab :
+    execFutex (s.withSymtab t) = (execFutex s).withSymtab t := by
+  dsimp (config := { zetaHave := true }) only [execFutex]; symtab_free_close
 theorem execGetpid_withSymtab :
     execGetpid (s.withSymtab t) = (execGetpid s).withSymtab t := rfl
 theorem execSchedGetaffinity_withSymtab :
@@ -389,16 +401,28 @@ theorem execSchedGetaffinity_withSymtab :
   dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]; symtab_free_close
 theorem execRtSigprocmask_withSymtab :
     execRtSigprocmask (s.withSymtab t) = (execRtSigprocmask s).withSymtab t := by
-  dsimp (config := { zetaHave := true }) only [execRtSigprocmask]; symtab_free_close
+  unfold execRtSigprocmask
+  by_cases hset : s.readReg64 Reg.x1 == 0#64 <;>
+  by_cases hold : s.readReg64 Reg.x2 == 0#64 <;>
+    (simp (config := { instances := true }) only [State.withSymtab_readReg32,
+       State.withSymtab_readReg64, State.withSymtab_mem, State.withSymtab_sigMask,
+       State.withSymtab_sigPending, State.withSymtab_getSigAction,
+       State.withSymtab_setSigMask, State.withSymtab_setSigPending,
+       State.withSymtab_setMem, State.withSymtab_writeReg64,
+       State.withSymtab_advancePC, State.withSymtab_setStatus, State.ite_withSymtab,
+       hset, hold, ↓reduceIte, Bool.false_eq_true]
+     rfl)
 theorem execRtSigaction_withSymtab :
     execRtSigaction (s.withSymtab t) = (execRtSigaction s).withSymtab t := by
   unfold execRtSigaction
   by_cases hact : s.readReg64 Reg.x1 == 0#64 <;>
+  by_cases hign : (s.readReg32 Reg.x0 == LINUX_SIGABRT && s.mem.read64 (s.readReg64 Reg.x1) == SIG_IGN) <;>
     (simp (config := { instances := true }) only [State.withSymtab_readReg32,
        State.withSymtab_readReg64, State.withSymtab_mem, State.withSymtab_getSigAction,
-       State.withSymtab_setSigAction, State.withSymtab_setMem, State.withSymtab_writeReg64,
+       State.withSymtab_setSigAction, State.withSymtab_sigPending, State.withSymtab_setSigPending,
+       State.withSymtab_setMem, State.withSymtab_writeReg64,
        State.withSymtab_advancePC, State.withSymtab_setStatus, State.ite_withSymtab,
-       hact, ↓reduceIte, Bool.false_eq_true]
+       hact, hign, ↓reduceIte, Bool.false_eq_true]
      rfl)
 theorem execTkill_withSymtab :
     execTkill (s.withSymtab t) = (execTkill s).withSymtab t := by
@@ -426,10 +450,13 @@ theorem execGetrandom_withSymtab :
 theorem execMremap_withSymtab : execMremap (s.withSymtab t) = (execMremap s).withSymtab t := by
   dsimp (config := { zetaHave := true }) only [execMremap]
   symtab_free_norm
-  rcases sanitizeMmapAddr
-      (s.mem.unmapNonFrozen (s.readReg64 Reg.x0) (pageAlignUp (s.readReg64 Reg.x1).toNat))
-      (s.oracle.mmap s.oracleIdx) (pageAlignUp (s.readReg64 Reg.x2).toNat) with _ | newBase <;>
-    symtab_free_close
+  by_cases hf0 : (s.readReg64 Reg.x3 == 0#64) = true
+  · simp only [hf0, ↓reduceIte]; symtab_free_close
+  · simp only [Bool.eq_false_iff.mpr hf0, Bool.false_eq_true, ↓reduceIte]
+    rcases sanitizeMmapAddr
+        (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+        (s.oracle.mmap s.oracleIdx) (pageAlignUp (s.readReg64 Reg.x2).toNat) with _ | newBase <;>
+      symtab_free_close
 theorem execMmap_withSymtab : execMmap (s.withSymtab t) = (execMmap s).withSymtab t := by
   dsimp (config := { zetaHave := true }) only [execMmap]; symtab_free_close
 theorem execBrk_withSymtab : execBrk (s.withSymtab t) = (execBrk s).withSymtab t := by
@@ -460,7 +487,7 @@ private theorem standardEntry_withSymtab :
     List.mem_cons, List.not_mem_nil, or_false]
   rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
             rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
+            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
   · exact execRead_withSymtab t s
   · exact execWrite_withSymtab t s
   · exact LibsignalBinary.Proofs.SpecLemmas.SyscallReadWritev.execReadv_symtab_comm t
@@ -491,6 +518,7 @@ private theorem standardEntry_withSymtab :
   · exact execClockGettime_withSymtab t s
   · exact execGetrandom_withSymtab t s
   · exact execSetTidAddress_withSymtab t s
+  · exact execFutex_withSymtab t s
   · exact execSchedGetaffinity_withSymtab t s
   · exact execGetpid_withSymtab t s
   · exact execGetpid_withSymtab t s
@@ -510,7 +538,7 @@ theorem evalSvc_withSymtab {svc : State → State} (hsvc : SymtabFree svc)
   simp only [evalSvc, hsvc t s]
   rfl
 
-set_option maxHeartbeats 1000000 in
+set_option maxHeartbeats 2000000 in
 theorem execInstWithSvc_withSymtab {svc : State → State} (hsvc : SymtabFree svc)
     (inst : Instr) (t : String → String → Option (BitVec 64)) (s : State) :
     execInstWithSvc svc inst (s.withSymtab t) = (execInstWithSvc svc inst s).withSymtab t := by
@@ -659,11 +687,6 @@ theorem Program.HooksSymtabFree.of {P : Program} (hX : SymtabFreeHooks P.externs
     (hO : SymtabFreeHooks P.overrides) (hS : SymtabFree P.svc := by exact execSyscall_symtabFree) :
     P.HooksSymtabFree :=
   ⟨hX, hO, hS⟩
-
-theorem Program.hooksSymtabFree_ofImage {img : Obj.Image} {X O : String → Option (State → State)}
-    (hX : SymtabFreeHooks X) (hO : SymtabFreeHooks O) :
-    (Program.ofImage img X O).HooksSymtabFree :=
-  ⟨hX, hO, execSyscall_symtabFree⟩
 
 theorem Program.hooksSymtabFree_rebase {P : Program} {b : BitVec 64}
     {X O : String → Option (State → State)} (hX : SymtabFreeHooks X) (hO : SymtabFreeHooks O)

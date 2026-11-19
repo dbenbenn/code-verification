@@ -9,9 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `SessionStructure::clone` Symbolic Fine-Credit and `sc = 63` Free Cancellation
@@ -27,7 +34,7 @@ Proves symbolic `(M : AllocCostModel) [HasFineReallocCredit M]` `PhaseCreditSpec
    cancelling every `sc = 63` clone buffer back to `Δlive = 0`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -62,7 +69,7 @@ open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit (
 /-- Exact `sc = 63` `liveLarge` contribution of a `req`-byte Rust allocation:
 `0` when `req ≤ smallMaxReq M` (including `req = 0`), and `largeCost M req` when
 `smallMaxReq M < req`. -/
-def optLargeCost (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
+@[expose] def optLargeCost (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
   if req ≤ HasFineReallocCredit.smallMaxReq M then 0
   else HasFineReallocCredit.largeCost M req
 
@@ -79,15 +86,6 @@ theorem optLargeCost_of_gt (M : AllocCostModel) [HasFineReallocCredit M] {req : 
     (hgt : HasFineReallocCredit.smallMaxReq M < req) :
     optLargeCost M req = HasFineReallocCredit.largeCost M req := by
   simp [optLargeCost, Nat.not_le.mpr hgt]
-
-theorem optLargeCost_le_aff {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (req : Nat) :
-    optLargeCost M req ≤ if req ≤ HasFineReallocCredit.smallMaxReq M then 0 else req + 8195 := by
-  unfold optLargeCost
-  split
-  · exact Nat.le_refl 0
-  · rename_i hnot
-    exact hM.largeCost_le (Nat.lt_of_not_ge hnot)
 
 theorem optLargeCost_le_add {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (req : Nat) :
@@ -213,10 +211,10 @@ theorem DeallocCreditSpec.flatMap_eq {α : Type} {M : AllocCostModel} [HasFineRe
 
 /-! ## 2. Leaf & Chain Clone Bounds (`vecCloneEvents`, `optTailCloneEvents`, `chainCloneEvents`) -/
 
-def vecCloneCum (len : Nat) : Nat :=
+@[expose] def vecCloneCum (len : Nat) : Nat :=
   if len = 0 then 0 else 2 * len + 9539
 
-def vecCloneLarge (M : AllocCostModel) [HasFineReallocCredit M] (len : Nat) : Nat :=
+@[expose] def vecCloneLarge (M : AllocCostModel) [HasFineReallocCredit M] (len : Nat) : Nat :=
   if len = 0 then 0 else optLargeCost M len
 
 theorem vecCloneLarge_of_le (M : AllocCostModel) [HasFineReallocCredit M] {len : Nat}
@@ -239,7 +237,7 @@ theorem PhaseCreditSpec.vecClone {M : AllocCostModel} [HasFineReallocCredit M]
     (req := v.bytes.length) (al := 1) (by decide)).mono
     (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) (by split <;> omega)
 
-def optTailCloneLen : Option TailVecGhost → Nat
+@[expose] def optTailCloneLen : Option TailVecGhost → Nat
   | none => 0
   | some g => g.vec.bytes.length
 
@@ -258,7 +256,7 @@ theorem PhaseCreditSpec.optTailClone {M : AllocCostModel} [HasFineReallocCredit 
     simpa [optTailCloneEvents, optTailCloneLen] using PhaseCreditSpec.vecClone hM g.vec
 
 /-- Cumulative small/metadata bound for `chainCloneEvents gc`. -/
-def chainCloneCum (gc : ChainGhost × ReceiverChain) : Nat :=
+@[expose] def chainCloneCum (gc : ChainGhost × ReceiverChain) : Nat :=
   vecCloneCum gc.1.srk.bytes.length +
   vecCloneCum gc.1.priv.bytes.length +
   (match gc.2.chainKey with | none => 0 | some _ => 2 * 32 + 9539) +
@@ -267,7 +265,7 @@ def chainCloneCum (gc : ChainGhost × ReceiverChain) : Nat :=
      (gc.2.messageKeys.map fun mkg => 2 * mkg.seed.length + 9539).sum)
 
 /-- Exact `sc = 63` `liveLarge` contribution of `chainCloneEvents gc`. -/
-def chainCloneLarge (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def chainCloneLarge (M : AllocCostModel) [HasFineReallocCredit M]
     (gc : ChainGhost × ReceiverChain) : Nat :=
   vecCloneLarge M gc.1.srk.bytes.length +
   vecCloneLarge M gc.1.priv.bytes.length +
@@ -277,7 +275,7 @@ def chainCloneLarge (M : AllocCostModel) [HasFineReallocCredit M]
      (gc.2.messageKeys.map fun mkg => optLargeCost M mkg.seed.length).sum)
 
 /-- Per-event `maxReq` bound for `chainCloneEvents gc`. -/
-def chainCloneMaxReq (gc : ChainGhost × ReceiverChain) : Nat :=
+@[expose] def chainCloneMaxReq (gc : ChainGhost × ReceiverChain) : Nat :=
   max (max (max gc.1.srk.bytes.length gc.1.priv.bytes.length) 32)
     (max (104 * gc.2.messageKeys.length)
       ((gc.2.messageKeys.map fun mkg => mkg.seed.length).foldr max 0))
@@ -340,7 +338,7 @@ theorem PhaseCreditSpec.senderChainClone {M : AllocCostModel} [HasFineReallocCre
 
 /-! ## 3. Full `SessionStructure::clone` (`SegCloneEnv G st`) Symbolic Credit Bound -/
 
-def segCloneCum (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Nat :=
+@[expose] def segCloneCum (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Nat :=
   vecCloneCum G.localIk.bytes.length +
   vecCloneCum G.remoteIk.bytes.length +
   (2 * 32 + 9539) +
@@ -355,7 +353,7 @@ def segCloneCum (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Nat :
   vecCloneCum G.alice.bytes.length +
   vecCloneCum st.pqRatchetState.length
 
-def segCloneLarge (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def segCloneLarge (M : AllocCostModel) [HasFineReallocCredit M]
     (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Nat :=
   vecCloneLarge M G.localIk.bytes.length +
   vecCloneLarge M G.remoteIk.bytes.length +
@@ -371,7 +369,7 @@ def segCloneLarge (M : AllocCostModel) [HasFineReallocCredit M]
   vecCloneLarge M G.alice.bytes.length +
   vecCloneLarge M st.pqRatchetState.length
 
-def segCloneMaxReq (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Nat :=
+@[expose] def segCloneMaxReq (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Nat :=
   let r1 := max (max G.localIk.bytes.length G.remoteIk.bytes.length) 32
   let r2 := match G.sender, st.senderChain with
     | some gs, some sc => chainCloneMaxReq (senderChainAsProtoGhost gs sc)
@@ -486,7 +484,7 @@ theorem PhaseCreditSpec.segClone {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-- Exact deallocation events of `drop_glue<Vec<MessageKey>>` on a freshly cloned `messageKeys`
 list (`cap = mks.length`): per-element `seed` drops followed by the `104 * mks.length` buffer. -/
-def dropClonedMessageKeysEvents (mks : List MessageKeyGenerator) : List AllocEvent :=
+@[expose] def dropClonedMessageKeysEvents (mks : List MessageKeyGenerator) : List AllocEvent :=
   if mks = [] then []
   else
     mks.flatMap (fun mkg => if mkg.seed.length = 0 then [] else rustDeallocEvents mkg.seed.length 1) ++
@@ -494,7 +492,7 @@ def dropClonedMessageKeysEvents (mks : List MessageKeyGenerator) : List AllocEve
 
 /-- Exact deallocation events of `drop_glue<Chain>` on a freshly cloned `(gc, rc)` in Block-`2`/`3`
 drop order (`srk`, `priv`, `chainKey`, `messageKeys`). -/
-def dropClonedChainEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def dropClonedChainEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   (if gc.1.srk.bytes.length = 0 then [] else rustDeallocEvents gc.1.srk.bytes.length 1) ++
   (if gc.1.priv.bytes.length = 0 then [] else rustDeallocEvents gc.1.priv.bytes.length 1) ++
   (match gc.2.chainKey with | none => [] | some _ => rustDeallocEvents 32 1) ++
@@ -506,7 +504,7 @@ Block-`6` (`DropSsLocal1`) drop order:
 2. `receiverChains` (`drop_glue<Vec<Chain>>`: each `Chain`, then `104 * rc.length` outer buffer);
 3. `alice`, `pqRatchetState` (`pqPart`);
 4. `senderChain`, `pending`, `kyber` (`ssTail3HeadersAt`). -/
-def dropClonedSessionEvents (G : SessionGhost) (st : SessionState (List (BitVec 8))) :
+@[expose] def dropClonedSessionEvents (G : SessionGhost) (st : SessionState (List (BitVec 8))) :
     List AllocEvent :=
   (if G.localIk.bytes.length = 0 then [] else rustDeallocEvents G.localIk.bytes.length 1) ++
   (if G.remoteIk.bytes.length = 0 then [] else rustDeallocEvents G.remoteIk.bytes.length 1) ++
@@ -698,13 +696,13 @@ open LibsignalBinary.Heap.Fine.ClientIntegration (smallAllocCost_le_3506_of_kybe
 
 /-- Exact regime-aware `cumSmall` charge of `rustAllocEvents req al` (`al ≤ 16`):
 `smallAllocCost M req` when `req ≤ smallMaxReq M`, and `largeMetaCost M` when `smallMaxReq M < req`. -/
-def rustAllocTightCum (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
+@[expose] def rustAllocTightCum (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
   if req ≤ HasFineReallocCredit.smallMaxReq M then HasFineReallocCredit.smallAllocCost M req
   else HasFineReallocCredit.largeMetaCost M
 
 /-- Exact regime-aware `cumSmall` charge of a conditional non-empty slice clone (`0` when `len = 0`,
 `rustAllocTightCum M len` otherwise; matches `tryCloneSmallDelta` on `fineCostModel`). -/
-def tryCloneSmallDelta (M : AllocCostModel) [HasFineReallocCredit M] (len : Nat) : Nat :=
+@[expose] def tryCloneSmallDelta (M : AllocCostModel) [HasFineReallocCredit M] (len : Nat) : Nat :=
   if len = 0 then 0 else rustAllocTightCum M len
 
 /-- Tight counterpart of `vecCloneCum`. -/
@@ -762,7 +760,7 @@ theorem PhaseCreditSpec.optTailClone_tight {M : AllocCostModel} [HasFineReallocC
     simpa [optTailCloneEvents, optTailCloneLen] using PhaseCreditSpec.vecClone_tight hM g.vec
 
 /-- Tight cumulative small/metadata bound for `chainCloneEvents gc`. -/
-def chainCloneTightCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def chainCloneTightCum (M : AllocCostModel) [HasFineReallocCredit M]
     (gc : ChainGhost × ReceiverChain) : Nat :=
   tryCloneSmallDelta M gc.1.srk.bytes.length +
   tryCloneSmallDelta M gc.1.priv.bytes.length +
@@ -828,7 +826,7 @@ theorem PhaseCreditSpec.senderChainClone_tight {M : AllocCostModel} [HasFineReal
   PhaseCreditSpec.chainClone_tight hM (senderChainAsProtoGhost g sc)
 
 /-- Tight cumulative small/metadata bound for `SegCloneEnv G st`. -/
-def segCloneTightCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def segCloneTightCum (M : AllocCostModel) [HasFineReallocCredit M]
     (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Nat :=
   tryCloneSmallDelta M G.localIk.bytes.length +
   tryCloneSmallDelta M G.remoteIk.bytes.length +
@@ -952,7 +950,7 @@ theorem PhaseCreditSpec.segClone_body_drop_cancel_tight
 
 /-! ### Concrete `fineCostModel` Size-Class Cap & Point Lemmas -/
 
-def fineAllocClassWt (sc : Nat) : Nat :=
+@[expose] def fineAllocClassWt (sc : Nat) : Nat :=
   coarseSlotWt sc + (122 * coarseGrpWtS sc + FineScale - 1) / FineScale
 
 def fineReallocClassMax (sc cap : Nat) : Nat :=
@@ -1001,16 +999,7 @@ theorem fineSmallAllocCost_24 : HasFineReallocCredit.smallAllocCost fineCostMode
 theorem fineSmallAllocCost_32 : HasFineReallocCredit.smallAllocCost fineCostModel 32 = 738 :=
   extractFineAllocPoint (by decide)
 
-theorem fineSmallAllocCost_33 : HasFineReallocCredit.smallAllocCost fineCostModel 33 = 738 :=
-  extractFineAllocPoint (by decide)
-
 theorem fineSmallAllocCost_192 : HasFineReallocCredit.smallAllocCost fineCostModel 192 = 8186 :=
-  extractFineAllocPoint (by decide)
-
-theorem fineSmallAllocCost_520 : HasFineReallocCredit.smallAllocCost fineCostModel 520 = 4436 :=
-  extractFineAllocPoint (by decide)
-
-theorem fineSmallAllocCost_1569 : HasFineReallocCredit.smallAllocCost fineCostModel 1569 = 2792 :=
   extractFineAllocPoint (by decide)
 
 theorem classBounds_of_le_mmap {req : Nat} (hreq : req ≤ MmapThresholdReq) :
@@ -1201,23 +1190,6 @@ theorem rustAllocTightCum_fine_32 : rustAllocTightCum fineCostModel 32 = 738 := 
   rw [fineCostModel_smallMaxReq_eq]
   simp [fineSmallAllocCost_32]
 
-theorem rustAllocTightCum_fine_520 : rustAllocTightCum fineCostModel 520 = 4436 := by
-  unfold rustAllocTightCum
-  rw [fineCostModel_smallMaxReq_eq]
-  simp [fineSmallAllocCost_520]
-
-theorem rustAllocTightCum_fine_1569 : rustAllocTightCum fineCostModel 1569 = 2792 := by
-  unfold rustAllocTightCum
-  rw [fineCostModel_smallMaxReq_eq]
-  simp [fineSmallAllocCost_1569]
-
-theorem rustAllocTightCum_fine_of_gt {req : Nat} (hgt : 135167 < req) :
-    rustAllocTightCum fineCostModel req = 122 := by
-  unfold rustAllocTightCum
-  rw [fineCostModel_smallMaxReq_eq, fineCostModel_largeMetaCost_eq]
-  have hnot : ¬ (req ≤ 135167) := Nat.not_le.mpr hgt
-  simp [hnot]
-
 theorem tryCloneSmallDelta_fine_le_738 {len : Nat} (hlen : len ≤ 44) :
     tryCloneSmallDelta fineCostModel len ≤ 738 := by
   unfold tryCloneSmallDelta rustAllocTightCum
@@ -1229,13 +1201,6 @@ theorem tryCloneSmallDelta_fine_le_738 {len : Nat} (hlen : len ≤ 44) :
     simp only [hsm, ↓reduceIte]
     exact smallAllocCost_le_738_of_le_44 hlen
 
-theorem tryCloneSmallDelta_fine_le_2792 {len : Nat} (h : len = 0 ∨ len = 1569) :
-    tryCloneSmallDelta fineCostModel len ≤ 2792 := by
-  rcases h with rfl | rfl
-  · simp [tryCloneSmallDelta]
-  · unfold tryCloneSmallDelta
-    simp [rustAllocTightCum_fine_1569]
-
 theorem rustAllocTightCum_fine_le_738 {req : Nat} (hreq : req ≤ 44) :
     rustAllocTightCum fineCostModel req ≤ 738 := by
   unfold rustAllocTightCum
@@ -1244,30 +1209,6 @@ theorem rustAllocTightCum_fine_le_738 {req : Nat} (hreq : req ≤ 44) :
     exact Nat.le_trans hreq (by decide)
   simp only [hsm, ↓reduceIte]
   exact smallAllocCost_le_738_of_le_44 hreq
-
-theorem tryCloneSmallDelta_fine_kyber_range_le_3506 {len : Nat}
-    (h : len = 0 ∨ (1024 ≤ len ∧ len ≤ 1600)) :
-    tryCloneSmallDelta fineCostModel len ≤ 3506 := by
-  rcases h with rfl | ⟨hlo, hhi⟩
-  · simp [tryCloneSmallDelta]
-  · unfold tryCloneSmallDelta rustAllocTightCum
-    have hnz : len ≠ 0 := by omega
-    have hsm : len ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-      rw [fineCostModel_smallMaxReq_eq]
-      exact Nat.le_trans hhi (by decide)
-    simp only [hnz, hsm, ↓reduceIte]
-    exact smallAllocCost_le_3506_of_kyber_range
-      (Nat.le_trans (by decide) hlo) (Nat.le_trans hhi (by decide))
-
-theorem tryCloneSmallDelta_fine_pq_le_122 {len : Nat}
-    (hpq : len = 0 ∨ 135167 < len) :
-    tryCloneSmallDelta fineCostModel len ≤ 122 := by
-  rcases hpq with rfl | hgt
-  · simp [tryCloneSmallDelta]
-  · unfold tryCloneSmallDelta
-    have hnz : len ≠ 0 := by omega
-    simp only [hnz, ↓reduceIte, rustAllocTightCum_fine_of_gt hgt]
-    exact Nat.le_refl 122
 
 private theorem list_map_sum_le_mul {α : Type} (f : α → Nat) (c : Nat) :
     ∀ (xs : List α), (∀ x ∈ xs, f x ≤ c) → (xs.map f).sum ≤ c * xs.length
@@ -1320,43 +1261,6 @@ theorem senderChainCloneTightCum_fine_le {gs : SenderChainGhost} {sc : SenderCha
     chainCloneTightCum fineCostModel (senderChainAsProtoGhost gs sc) ≤ 2214 :=
   chainCloneTightCum_fine_empty_le hsrk hpriv rfl
 
-/-- Heavy-`messageKeys` (`1300 ≤ len ≤ maxKeys`) `ChainClone` tight bound on `fineCostModel`:
-`104 * len > 135,167` puts the `Vec<MessageKey>` buffer in `sc = 63` (`122` B meta), yielding
-`chainCloneTightCum ≤ 2,336 + 738 * maxKeys` (`= 1,478,336` B at `maxKeys = 2,000`). -/
-theorem chainCloneTightCum_fine_large_le {gc : ChainGhost × ReceiverChain} {maxKeys : Nat}
-    (hsrk : gc.1.srk.bytes.length ≤ 44)
-    (hpriv : gc.1.priv.bytes.length ≤ 44)
-    (hlo : 1300 ≤ gc.2.messageKeys.length)
-    (hhi : gc.2.messageKeys.length ≤ maxKeys)
-    (hseeds : ∀ mkg ∈ gc.2.messageKeys, mkg.seed.length ≤ 44) :
-    chainCloneTightCum fineCostModel gc ≤ 2336 + 738 * maxKeys := by
-  unfold chainCloneTightCum
-  have h1 := tryCloneSmallDelta_fine_le_738 hsrk
-  have h2 := tryCloneSmallDelta_fine_le_738 hpriv
-  have h3 : (match gc.2.chainKey with | none => 0 | some _ => rustAllocTightCum fineCostModel 32) ≤ 738 := by
-    cases gc.2.chainKey with
-    | none => exact Nat.zero_le 738
-    | some _ => rw [rustAllocTightCum_fine_32]
-  have hne : gc.2.messageKeys ≠ [] := by
-    intro heq
-    rw [heq] at hlo
-    exact absurd hlo (by decide)
-  have hgt : 135167 < 104 * gc.2.messageKeys.length := by omega
-  have hbuf : rustAllocTightCum fineCostModel (104 * gc.2.messageKeys.length) = 122 :=
-    rustAllocTightCum_fine_of_gt hgt
-  have hsd : (gc.2.messageKeys.map fun mkg => rustAllocTightCum fineCostModel mkg.seed.length).sum ≤
-      738 * maxKeys := by
-    refine Nat.le_trans
-      (list_map_sum_le_mul (fun mkg => rustAllocTightCum fineCostModel mkg.seed.length) 738
-        gc.2.messageKeys (fun mkg hm => rustAllocTightCum_fine_le_738 (hseeds mkg hm)))
-      (Nat.mul_le_mul_left 738 hhi)
-  simp only [hne, ↓reduceIte, hbuf]
-  have h123 := Nat.add_le_add (Nat.add_le_add h1 h2) h3
-  have hpre : (738 + 738 + 738) + (122 + 738 * maxKeys) = 2336 + 738 * maxKeys := by
-    rw [← Nat.add_assoc ((738 + 738 + 738)), show (738 + 738 + 738) + 122 = 2336 by decide]
-  rw [← hpre]
-  exact Nat.add_le_add h123 (Nat.add_le_add (Nat.le_refl 122) hsd)
-
 /-- General `ChainClone` tight bound on `fineCostModel` for arbitrary `messageKeys.length`:
 `chainCloneTightCum ≤ 145,698 + 738 * messageKeys.length` (`2,214 + 143,484 = 145,698`). -/
 theorem chainCloneTightCum_fine_le {gc : ChainGhost × ReceiverChain}
@@ -1388,144 +1292,6 @@ theorem chainCloneTightCum_fine_le {gc : ChainGhost × ReceiverChain}
     rw [← Nat.add_assoc ((738 + 738 + 738)), show (738 + 738 + 738) + 143484 = 145698 by decide]
   rw [hrhs] at hcomb
   exact hcomb
-
-/-- Five-chain session `segCloneTightCum` bound (`≤ 1,500,446` B): at `st.receiverChains.length = 5`
-with receiver-chain sum `≤ 1,487,192` B, `≤ 44`-B DJB keys, `0 ∨ 1569`-B Kyber ciphertext, and
-`pq = 0 ∨ pq > 135,167`, `segCloneTightCum fineCostModel G st ≤ 1,500,446`. -/
-theorem segCloneTightCum_fine_benchmark_le {G : SessionGhost} {st : SessionState (List (BitVec 8))}
-    (hloc : G.localIk.bytes.length ≤ 44)
-    (hrem : G.remoteIk.bytes.length ≤ 44)
-    (hsnd : ∀ gs sc, G.sender = some gs → st.senderChain = some sc →
-      gs.srk.bytes.length ≤ 44 ∧ gs.priv.bytes.length ≤ 44)
-    (hrc_len : st.receiverChains.length = 5)
-    (hrc_sum : ((G.chains.zip st.receiverChains).map (chainCloneTightCum fineCostModel)).sum ≤ 1487192)
-    (hpend : optTailCloneLen G.pending ≤ 44)
-    (hkyb : optTailCloneLen G.kyber = 0 ∨ optTailCloneLen G.kyber = 1569)
-    (halice : G.alice.bytes.length ≤ 44)
-    (hpq : st.pqRatchetState.length = 0 ∨ 135167 < st.pqRatchetState.length) :
-    segCloneTightCum fineCostModel G st ≤ 1500446 := by
-  unfold segCloneTightCum
-  have b1 := tryCloneSmallDelta_fine_le_738 hloc
-  have b2 := tryCloneSmallDelta_fine_le_738 hrem
-  have b3 : rustAllocTightCum fineCostModel 32 ≤ 738 := by
-    rw [rustAllocTightCum_fine_32]
-  have b4 : (match G.sender, st.senderChain with
-      | some gs, some sc => chainCloneTightCum fineCostModel (senderChainAsProtoGhost gs sc)
-      | _, _ => 0) ≤ 2214 := by
-    cases hs1 : G.sender <;> cases hs2 : st.senderChain
-    · exact Nat.zero_le 2214
-    · exact Nat.zero_le 2214
-    · exact Nat.zero_le 2214
-    · rename_i gs sc
-      obtain ⟨hgs1, hgs2⟩ := hsnd gs sc hs1 hs2
-      exact senderChainCloneTightCum_fine_le hgs1 hgs2
-  have b5 : (if st.receiverChains = [] then 0
-      else rustAllocTightCum fineCostModel (104 * st.receiverChains.length) +
-        ((G.chains.zip st.receiverChains).map (chainCloneTightCum fineCostModel)).sum) ≤ 1491628 := by
-    have hne : st.receiverChains ≠ [] := by
-      intro heq; rw [heq] at hrc_len; exact absurd hrc_len (by decide)
-    simp only [hne, ↓reduceIte, hrc_len]
-    have h520 : rustAllocTightCum fineCostModel (104 * 5) ≤ 4436 := by
-      rw [show 104 * 5 = 520 by decide, rustAllocTightCum_fine_520]
-    exact Nat.le_trans (Nat.add_le_add h520 hrc_sum) (by decide)
-  have b6 := tryCloneSmallDelta_fine_le_738 hpend
-  have b7 := tryCloneSmallDelta_fine_le_2792 hkyb
-  have b8 := tryCloneSmallDelta_fine_le_738 halice
-  have b9 := tryCloneSmallDelta_fine_pq_le_122 hpq
-  exact Nat.le_trans
-    (Nat.add_le_add
-      (Nat.add_le_add
-        (Nat.add_le_add
-          (Nat.add_le_add
-            (Nat.add_le_add
-              (Nat.add_le_add
-                (Nat.add_le_add (Nat.add_le_add b1 b2) b3) b4) b5) b6) b7) b8) b9)
-    (by decide)
-
-private theorem add_nine_mid_aff_le
-    {x1 x2 x3 x4 y x6 x7 x8 x9 b1 b2 b3 b4 bm b6 b7 b8 b9 total k : Nat}
-    (h1 : x1 ≤ b1) (h2 : x2 ≤ b2) (h3 : x3 ≤ b3) (h4 : x4 ≤ b4)
-    (hy : y ≤ bm + k)
-    (h6 : x6 ≤ b6) (h7 : x7 ≤ b7) (h8 : x8 ≤ b8) (h9 : x9 ≤ b9)
-    (hsum : b1 + b2 + b3 + b4 + bm + b6 + b7 + b8 + b9 ≤ total) :
-    x1 + x2 + x3 + x4 + y + x6 + x7 + x8 + x9 ≤ total + k := by
-  omega
-
-/-- Domain-capped `segCloneTightCum` bound: for any session state with `≤ 5` receiver chains, total
-skipped receiver keys `≤ maxKeys`, `≤ 44`-B DJB keys, `≤ 1,600`-B Kyber ciphertext, and arbitrary
-`st.pqRatchetState.length`, `segCloneTightCum fineCostModel G st ≤ 891,173 + 738 * maxKeys`. -/
-theorem segCloneTightCum_fine_univ_le {G : SessionGhost} {st : SessionState (List (BitVec 8))}
-    {maxKeys : Nat}
-    (hloc : G.localIk.bytes.length ≤ 44)
-    (hrem : G.remoteIk.bytes.length ≤ 44)
-    (hsnd : ∀ gs sc, G.sender = some gs → st.senderChain = some sc →
-      gs.srk.bytes.length ≤ 44 ∧ gs.priv.bytes.length ≤ 44)
-    (hrc_len : st.receiverChains.length ≤ 5)
-    (hrc_chains : ∀ gc ∈ G.chains.zip st.receiverChains,
-      gc.1.srk.bytes.length ≤ 44 ∧ gc.1.priv.bytes.length ≤ 44 ∧
-      (∀ mkg ∈ gc.2.messageKeys, mkg.seed.length ≤ 44))
-    (hrc_keys : ((G.chains.zip st.receiverChains).map (fun gc => gc.2.messageKeys.length)).sum ≤ maxKeys)
-    (hpend : optTailCloneLen G.pending ≤ 44)
-    (hkyb : optTailCloneLen G.kyber = 0 ∨
-      (1024 ≤ optTailCloneLen G.kyber ∧ optTailCloneLen G.kyber ≤ 1600))
-    (halice : G.alice.bytes.length ≤ 44) :
-    segCloneTightCum fineCostModel G st ≤ 891173 + 738 * maxKeys := by
-  unfold segCloneTightCum
-  have b1 := tryCloneSmallDelta_fine_le_738 hloc
-  have b2 := tryCloneSmallDelta_fine_le_738 hrem
-  have b3 : rustAllocTightCum fineCostModel 32 ≤ 738 := by
-    rw [rustAllocTightCum_fine_32]
-  have b4 : (match G.sender, st.senderChain with
-      | some gs, some sc => chainCloneTightCum fineCostModel (senderChainAsProtoGhost gs sc)
-      | _, _ => 0) ≤ 2214 := by
-    cases hs1 : G.sender <;> cases hs2 : st.senderChain
-    · exact Nat.zero_le 2214
-    · exact Nat.zero_le 2214
-    · exact Nat.zero_le 2214
-    · rename_i gs sc
-      obtain ⟨hgs1, hgs2⟩ := hsnd gs sc hs1 hs2
-      exact senderChainCloneTightCum_fine_le hgs1 hgs2
-  have b5 : (if st.receiverChains = [] then 0
-      else rustAllocTightCum fineCostModel (104 * st.receiverChains.length) +
-        ((G.chains.zip st.receiverChains).map (chainCloneTightCum fineCostModel)).sum) ≤
-      738279 + 738 * maxKeys := by
-    split
-    · exact Nat.zero_le _
-    · have hout : rustAllocTightCum fineCostModel (104 * st.receiverChains.length) ≤ 9789 := by
-        unfold rustAllocTightCum
-        have h520 : 104 * st.receiverChains.length ≤ 520 := by omega
-        have hsm : 104 * st.receiverChains.length ≤ HasFineReallocCredit.smallMaxReq fineCostModel := by
-          rw [fineCostModel_smallMaxReq_eq]
-          exact Nat.le_trans h520 (by decide)
-        simp only [hsm, ↓reduceIte]
-        exact fineSmallAllocCost_le_9789_of_le_520 h520
-      have hzip_len : (G.chains.zip st.receiverChains).length ≤ 5 := by
-        rw [List.length_zip]
-        exact Nat.le_trans (Nat.min_le_right _ _) hrc_len
-      have haff := list_map_sum_aff_le
-        (chainCloneTightCum fineCostModel) (fun gc => gc.2.messageKeys.length) 145698 738
-        (G.chains.zip st.receiverChains)
-        (fun gc hmem => by
-          obtain ⟨hs, hp, hsd⟩ := hrc_chains gc hmem
-          exact chainCloneTightCum_fine_le hs hp hsd)
-      have h5mul : (G.chains.zip st.receiverChains).length * 145698 ≤ 728490 :=
-        Nat.le_trans (Nat.mul_le_mul_right 145698 hzip_len) (by decide)
-      have hk_mul : 738 * ((G.chains.zip st.receiverChains).map (fun gc => gc.2.messageKeys.length)).sum ≤
-          738 * maxKeys :=
-        Nat.mul_le_mul_left 738 hrc_keys
-      have hsum_le : ((G.chains.zip st.receiverChains).map (chainCloneTightCum fineCostModel)).sum ≤
-          728490 + 738 * maxKeys :=
-        Nat.le_trans haff (Nat.add_le_add h5mul hk_mul)
-      have htot := Nat.add_le_add hout hsum_le
-      have hrhs : 9789 + (728490 + 738 * maxKeys) = 738279 + 738 * maxKeys := by
-        rw [← Nat.add_assoc 9789, show 9789 + 728490 = 738279 by decide]
-      rw [hrhs] at htot
-      exact htot
-  have b6 := tryCloneSmallDelta_fine_le_738 hpend
-  have b7 := tryCloneSmallDelta_fine_kyber_range_le_3506 hkyb
-  have b8 := tryCloneSmallDelta_fine_le_738 halice
-  have b9 := tryCloneSmallDelta_fine_le_143484 st.pqRatchetState.length
-  exact add_nine_mid_aff_le b1 b2 b3 b4 b5 b6 b7 b8 b9 (by decide)
 
 end TightCloneCredit
 

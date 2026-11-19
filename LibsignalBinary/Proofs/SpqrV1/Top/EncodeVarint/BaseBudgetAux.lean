@@ -10,14 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.BasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.BasePlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.Base
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Prologue, Tail & `grow_one` Helper for `spqr::encode_varint` (`Block 326`)
@@ -27,7 +29,7 @@ Defines `SpqrVecPushBudgetInv` and proves the `<RawVec<u8>>::grow_one` call help
 for `spqr::encode_varint` (`Block 326`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -12,7 +12,6 @@ module
 public import Symbolic.BugInjection.Proofs.SyntheticZeroBaseKeyPqxdh.Memo
 public import Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable
 public import Symbolic.BugInjection.Proofs.Common.CoinsFresh
-public import Symbolic.Proofs.SpecLemmas.SecurityBinaryFixed
 
 @[expose] public section
 
@@ -170,7 +169,7 @@ private theorem no_coinSplit_matchedPrefix_zbk
 
 theorem spec_half_pinned :
     cliCompShape.SpecHalf
-      (cliCompFitsPinned Witnesses.ZeroBaseKeyPqxdhCli.setup)
+      (CliSetupMatchesPinned Witnesses.ZeroBaseKeyPqxdhCli.setup)
       Witnesses.ZeroBaseKeyPqxdhCli.trace := by
   rw [← cliEventsZbk_eq]
   intro (iw : cliCompShape.Interp) (r : Records) hfits
@@ -283,19 +282,23 @@ theorem spec_half_pinned :
           rwa [← hmsg]
         exact ⟨ms', x, htr', hsalts', hpre', hpt', hx', hnbsc⟩
 
-theorem cliCompFitsPinned_satisfiable :
-    ∃ iw r, cliCompFitsPinned Witnesses.ZeroBaseKeyPqxdhCli.setup iw r :=
-  Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.cliCompFitsPinned_satisfiable_of_plausible
+theorem cliSetupMatchesPinned_satisfiable :
+    ∃ iw r, CliSetupMatchesPinned Witnesses.ZeroBaseKeyPqxdhCli.setup iw r :=
+  Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.cliSetupMatchesPinned_satisfiable_of_plausible
     Witnesses.ZeroBaseKeyPqxdhCli.setup
     (by decide +kernel)
     (fun _ h => nomatch h)
 
-theorem not_signalSessionSecure_of_implHalf {bytes : List (BitVec 8)}
+theorem not_signalSessionSecurePlaced_of_implHalf {bytes : List (BitVec 8)}
+    {mpl mmpl : Arm64.Obj.MultiPlacement}
+    (hls : CryptoVerification.SignalSession.libsignalSessionLib.LinkedAt bytes mpl)
+    (hmg : VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl)
     (hi : ∀ elf : Arm64.Process.ElfImage, Arm64.Process.ElfImage.parse bytes = .ok elf →
-      cliCompShape.ImplHalf (cliCompFitsPinned Witnesses.ZeroBaseKeyPqxdhCli.setup) elf
+      (cliCompShapePlaced mpl mmpl).ImplHalf
+        (CliSetupMatchesPinned Witnesses.ZeroBaseKeyPqxdhCli.setup) elf
         Witnesses.ZeroBaseKeyPqxdhCli.trace) :
-    ¬ DY.Libsignal.Composed.Security.SignalSessionSecure bytes :=
-  not_signalSessionSecure_of_witness spec_half_pinned hi
+    ¬ DY.Libsignal.Composed.Security.SignalSessionSecurePlaced bytes :=
+  not_signalSessionSecurePlaced_of_witness hls hmg spec_half_pinned hi
     Symbolic.BugInjection.Proofs.Common.CoinsFresh.coinsFresh_zeroBaseKeyPqxdhCli
 
 end Symbolic.BugInjection.Proofs.SyntheticZeroBaseKeyPqxdh.Top

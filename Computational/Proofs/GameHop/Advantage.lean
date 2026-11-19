@@ -9,9 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.GameHop.Rnd
+import Computational.Proofs.GameHop.Rnd
 public import VCVio.EvalDist.Monad.Bool
 public import VCVio.EvalDist.MeasureTVDist.Event
+public import VCVio.OracleComp.Constructions.SampleableType.Basic
+public import VCVio.OracleComp.EvalDist.AnswerMeasure
+public import VCVio.OracleComp.OracleSpec
+public import VCVio.OracleComp.ProbComp.Basic
+public import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Boolean Game Advantage and Coin-Abort Reductions
@@ -22,7 +27,7 @@ and `probExpect` / monotonic bind combinators for game-hopping proofs.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.Advantage
 
@@ -66,16 +71,6 @@ theorem boolDist_le_of_both_true_le (μ ν : Measure Bool) {ε : ℝ≥0∞}
     (h₁ : μ {true} ≤ ν {true} + ε) (h₂ : ν {true} ≤ μ {true} + ε) :
     μ.boolDist ν ≤ ε :=
   ENNReal.absDiff_le_iff.mpr ⟨h₁, h₂⟩
-
-theorem boolDist_le_measureETVDist {ι : Type} {spec : OracleSpec.{0, 0} ι}
-    [OracleSpec.AnswerMeasure spec] (oa ob : OracleComp spec Bool) :
-    𝒟[oa].boolDist 𝒟[ob] ≤ measureETVDist oa ob := by
-  refine boolDist_le_of_both_true_le 𝒟[oa] 𝒟[ob] ?_ ?_
-  · simpa only [prEvent_eq_evalDist_of_discrete, Set.ofPred_eq_eq_singleton] using
-      prEvent_le_prEvent_add_measureETVDist oa ob (· = true) Measurable.of_discrete
-  · rw [measureETVDist_comm]
-    simpa only [prEvent_eq_evalDist_of_discrete, Set.ofPred_eq_eq_singleton] using
-      prEvent_le_prEvent_add_measureETVDist ob oa (· = true) Measurable.of_discrete
 
 /-- Decomposes `boolDist` when fair-coin mixtures with `$ᵗ Bool` split into `y` and `z`. -/
 theorem boolDist_le_of_select_eq (x₀ x₁ y₀ y₁ z₀ z₁ : ProbComp Bool)
@@ -195,17 +190,6 @@ theorem probExpect_mono_of_support {α : Type} (mx : ProbComp α) {u v : α → 
     (h : ∀ a ∈ support mx, u a ≤ v a) :
     probExpect mx u ≤ probExpect mx v :=
   wp_mono_of_support mx h
-
-theorem probExpect_le_const_of_support {α : Type} (mx : ProbComp α) {v : α → ℝ≥0∞} {c : ℝ≥0∞}
-    (h : ∀ a ∈ support mx, v a ≤ c) :
-    probExpect mx v ≤ c :=
-  wp_le_const_of_support mx h
-
-theorem probExpect_add_const {α : Type} (mx : ProbComp α) (v : α → ℝ≥0∞) (c : ℝ≥0∞) :
-    probExpect mx (fun a => v a + c) = probExpect mx v + c := by
-  unfold probExpect
-  rw [wp_add]
-  simp
 
 theorem evalDist_bool_true_eq_wp (oa : ProbComp Bool) :
     𝒟[oa] {true} = wp oa (fun b => if b = true then 1 else 0) := by

@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsParserHyphenatedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsParserTryParse
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsParserHyphenatedPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsParserTryParse
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.InImage.UuidTryParse.ParserTryParse
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsParserHyphenated -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Relocatable `.keepsFs` Contracts for `uuid::parser::try_parse` and `<uuid::Uuid>::try_parse`
@@ -24,7 +30,7 @@ Relocatable (`[LibsignalPlacement]`, Blocks `252` and `255`) `.keepsFs` contract
 `uuid::parser::try_parse` and `<uuid::Uuid>::try_parse`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

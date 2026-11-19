@@ -10,10 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.VarintBridge
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
 
 /-!
 # Relocatable Handshake `bytes::merge [local#5]` W-Mode Definitions
@@ -22,7 +26,7 @@ Relocatable (`[LibsignalPlacement]`) W-mode specification (`bytesMerge3PlacedSpe
 proposition (`BytesMerge6PlacedOkExtW`, `x.bs.length < 2 ^ 62`) on `lsProg_518 ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +52,7 @@ abbrev bytesMerge3PlacedSpecW [LibsignalPlacement] (A : RustAlloc) : Spec BytesM
 /-- Relocatable `[LibsignalPlacement]` contract for
 `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#5]`
 (Block `508`, `(blkPl_507).base = lsmpl.base 507`) against `bytesMerge3PlacedSpecW A`. -/
-def BytesMerge6PlacedOkExtW [LibsignalPlacement] (A : RustAlloc)
+@[expose] def BytesMerge6PlacedOkExtW [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 507)
     (bytesMerge3PlacedSpecW A)

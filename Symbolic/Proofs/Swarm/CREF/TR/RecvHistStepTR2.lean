@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.ALaCarte.Basic
@@ -43,7 +43,7 @@ with `TraceStatesP (RecvNodupP ...)` over `runTraceMoves`, and proves preservati
 `Move.encrypt`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -77,11 +77,11 @@ abbrev StEntry := PersistentGlobalState.State.ExecEntryT (PersistentLocalState.L
 /-! ## `TraceStatesP` and `TracefulP` -/
 
 /-- A trace entry whose stored `TRState` (if it is a `StEntry`) satisfies `P`. -/
-def EntryStatesP (P : TRState → Prop) (ent : ExecTrace.Entry) : Prop :=
+@[expose] def EntryStatesP (P : TRState → Prop) (ent : ExecTrace.Entry) : Prop :=
   ∀ e : StEntry, TraceEntryHas.proj ent = some e → P e.st.state
 
 /-- Every stored `TRState` entry on `tr` satisfies `P`. -/
-def TraceStatesP (P : TRState → Prop) (tr : ExecTrace) : Prop :=
+@[expose] def TraceStatesP (P : TRState → Prop) (tr : ExecTrace) : Prop :=
   ∀ j (hj : j < tr.length), EntryStatesP P (tr.at j hj)
 
 theorem traceStatesP_append {P : TRState → Prop} {E : Type} [ExecTraceTypes.Has E]
@@ -117,7 +117,7 @@ theorem traceStatesP_of_at? {P : TRState → Prop} {tr : ExecTrace}
 
 /-- Monad combinator: running `x` from a `TraceStatesP P` trace preserves `TraceStatesP P` and
 establishes `Q` on any returned value. -/
-def TracefulP (P : TRState → Prop) {α : Type} (Q : α → Prop) (x : Traceful α) : Prop :=
+@[expose] def TracefulP (P : TRState → Prop) {α : Type} (Q : α → Prop) (x : Traceful α) : Prop :=
   ∀ tr : ExecTrace, TraceStatesP P tr →
     TraceStatesP P (x.run tr).2.val ∧ ∀ a, (x.run tr).1 = some a → Q a
 
@@ -285,7 +285,7 @@ theorem tracefulP_logMessageKeyAndStore {P : TRState → Prop} (me : Participant
     TracefulP.storeLocalState me hst
 
 /-- `P` depends only on the receiver chains `recv`. -/
-def RecvDetermined (P : TRState → Prop) : Prop :=
+@[expose] def RecvDetermined (P : TRState → Prop) : Prop :=
   ∀ st st' : TRState, st'.recv = st.recv → P st → P st'
 
 theorem tracefulP_messageEncrypt {P : TRState → Prop} (hP : RecvDetermined P)
@@ -314,7 +314,7 @@ theorem tracefulP_messageEncryptAbort {P : TRState → Prop} (me : Participant) 
 /-! ## Equivalence Between `RecvHistInvTR` and `TraceStatesP` -/
 
 /-- The receiver chains of `st` have pairwise distinct concretized ratchet keys at ghost `g`. -/
-def RecvNodupP (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (st : TRState) :
+@[expose] def RecvNodupP (interpretation : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (st : TRState) :
     Prop :=
   (st.recv.map fun c => gamma interpretation S g c.ratchetKey).Nodup
 

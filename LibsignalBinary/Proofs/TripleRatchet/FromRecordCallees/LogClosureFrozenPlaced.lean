@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosure
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosure -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 import ProofLib.Placed.Multi
 import Arm64.Trusted.Spec.Hoare
@@ -24,7 +24,7 @@ for the mutated `try_decrypt_from_record` failure-log closures:
 - Block `462` (`try_decrypt_from_record::<Coins>::{closure#0}`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,7 +59,7 @@ theorem ls_subroutine_ok_withLsFrozen_of_block_frc [LibsignalFullPlacement] {α 
   have hQL : calleeProg.CodeLoaded s0.mem := by
     rw [hcallee_prog.eq_blockProgram]
     have h := hfr0.2 j hlt_blocks
-    rwa [Program.codeLoaded_iff] at h ⊢
+    rw [Program.codeLoaded_iff] at h ⊢; exact h
   obtain ⟨sf, hstepsQ, hout, _⟩ := hcallee.no_fault_before_outcome x R s0 hpc hrun hpre hsp hQL
   have hext : ∀ pc, calleeProg.externAt? pc = callerProg.externAt? pc := fun pc => by
     rw [hcallee_prog.eq_blockProgram, hcaller.eq_blockProgram,
@@ -69,28 +69,12 @@ theorem ls_subroutine_ok_withLsFrozen_of_block_frc [LibsignalFullPlacement] {α 
     rw [hcallee_prog.eq_blockProgram, hcaller.eq_blockProgram]; rfl
   exact reaches_outcome_steps (Steps.of_sameHooks hext hsvc hstepsQ) (reaches_outcome.of_outcome hout)
 
-/-- Block `159` own-program `withLsFrozen` contract under `[LibsignalFullPlacement]`. -/
-theorem log_closure_frozen_placed_ok [LibsignalFullPlacement]
-    (H : LibsignalHooks) :
-    subroutine_ok ((blkPC_159).rebase (blkPl_159).base H) (lsmpl.base 159)
-      (withLsFrozen lsmpl logClosurePlacedSpec) :=
-  subroutine_ok_withLsFrozen_of_plain (log_closure_placed_ok H)
-
 /-- Block `462` own-program `withLsFrozen` contract under `[LibsignalFullPlacement]`. -/
 theorem log_closure_coins_frozen_placed_ok [LibsignalFullPlacement]
     (H : LibsignalHooks) :
     subroutine_ok ((blkPC_462).rebase (blkPl_462).base H) (lsmpl.base 462)
       (withLsFrozen lsmpl logClosurePlacedSpec) :=
   subroutine_ok_withLsFrozen_of_plain (log_closure_coins_placed_ok H)
-
-/-- Lift Block `159` (`try_decrypt_from_record::<HookRng>::{closure#0}`) to any `callerProg`
-under `[LibsignalFullPlacement]`. -/
-theorem log_closure_frozen_placed_ok_of_block [LibsignalFullPlacement]
-    {callerProg : Program} {i : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H] :
-    subroutine_ok callerProg (lsmpl.base 159)
-      (withLsFrozen lsmpl logClosurePlacedSpec) :=
-  ls_subroutine_ok_withLsFrozen_of_block_frc (log_closure_frozen_placed_ok H)
 
 /-- Lift Block `462` (`try_decrypt_from_record::<Coins>::{closure#0}`) to any `callerProg`
 under `[LibsignalFullPlacement]`. -/

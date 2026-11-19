@@ -22,7 +22,7 @@ Proves `closeByState_deliver_step`, preserving `CloseByState` across `deliver` q
 `SimInv`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

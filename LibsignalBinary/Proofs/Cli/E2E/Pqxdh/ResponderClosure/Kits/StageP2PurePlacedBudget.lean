@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1PlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2PlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2PlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -31,6 +31,8 @@ meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Pure and Internal Callee Instantiation
@@ -40,7 +42,7 @@ Lifts `RustCliAllocBudget M` / `VmPreserved` internal callees, drop glue, and Bl
 and constructing `StageP2PureCalleesPlaced*` and `StageP2BaseCalleesPlaced4K`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -121,7 +123,7 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudge
   isSameAccountEqDistinct_placed_ok_at
 )
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (
-  pqxdhAcceptOptFieldsFrozenPlacedSpec pqxdhAcceptOptFieldsPlacedSpec
+  pqxdhAcceptOptFieldsFrozenPlacedSpec pqxdhAcceptOptFieldsPlacedSpec pqxdhAcceptPlacedStack
 )
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget (
   PqxdhPlacedHookContracts
@@ -248,7 +250,7 @@ theorem stageP2PureCalleesPlaced4K_of_trapsOnly [LibsignalPlacement] {M : AllocC
 /-- Sequential allocator event envelope for SPQR V1 `initialize_bob_session` (`Block 75`) paired
 with Block `79`'s full `AcceptOptFieldsEnv P inp` (`acceptOptFieldsEvents P inp`),
 `BobSpqrInitialStateEnv F drKey.pqrKey`, and `InitBobSessionBuildEnv`. -/
-def InitializeBobV1OptFieldsEnv (P : Primitives) (F : ShaCompress)
+@[expose] def InitializeBobV1OptFieldsEnv (P : Primitives) (F : ShaCompress)
     (inp : AcceptKeysInput) (drKey : DRKey) : List AllocEvent → Prop :=
   SeqEnv (AcceptOptFieldsEnv P inp)
     (SeqEnv (BobSpqrInitialStateEnv F drKey.pqrKey) InitBobSessionBuildEnv)
@@ -866,30 +868,47 @@ theorem initializeBobSession_err_of_err_owned_placed [LibsignalPlacement]
     subroutine_ok prog entry (initializeBobSessionErrPlacedSpec P A lim AcceptErrEnv) := by
   refine subroutine_ok_map h ?_
   rintro ⟨g, st⟩ R s0 hpre
+  let F_stk : SepProp :=
+    memRegion (s0.sp - BitVec.ofNat 64 (768 + pqxdhAcceptPlacedStack))
+      ((768 + pqxdhAcceptPlacedStack) - (768 + pqxdhEntryStack))
   dsimp only [initializeBobSessionErrPlacedSpec, initializeBobSessionErrInnerPlacedSpec,
     withLsCodeRoLoaded] at hpre
   rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨hro, hpre⟩
+  rw [p2_stackAt_split_of_le s0.sp (768 + pqxdhAcceptPlacedStack)
+    (768 + pqxdhEntryStack) (by decide) (by decide)] at hpre
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  have hnone : acceptKeys P g.inp = none := hpre.1.2.2.2.2.2.2.2.2.2.1
-  refine ⟨(g, st), R, ?_, fun sf hpost => ?_⟩
+  rcases hpre with ⟨hpure, hmem⟩
+  have hnone : acceptKeys P g.inp = none := hpure.2.2.2.2.2.2.2.2.2.1
+  refine ⟨(g, st), F_stk ∗ R, ?_, fun sf hpost => ?_⟩
   · dsimp only [initializeBobSessionErrOwnedPlacedSpec,
-      initializeBobSessionErrOwnedInnerPlacedSpec, withLsCodeRoLoaded]
+      initializeBobSessionErrOwnedInnerPlacedSpec, withLsCodeRoLoaded, F_stk]
     rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
     refine ⟨hro, ?_⟩
     simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact hpre
+    exact ⟨hpure, Satisfies.of_eq hmem (by ac_rfl)⟩
   · dsimp only [initializeBobSessionErrOwnedPlacedSpec,
       initializeBobSessionErrOwnedInnerPlacedSpec,
       initializeBobSessionErrPlacedSpec, initializeBobSessionErrInnerPlacedSpec,
-      initializeBobSessionInnerPlacedSpec, withLsCodeRoLoaded] at hpost ⊢
+      initializeBobSessionInnerPlacedSpec, withLsCodeRoLoaded, F_stk] at hpost ⊢
     rw [sepExists_sepConj_left] at hpost ⊢
     rw [satisfies_sepExists] at hpost ⊢
     obtain ⟨evs, hpost⟩ := hpost
     refine ⟨evs, ?_⟩
     rw [hnone]
     dsimp only
-    refine Satisfies.mono ?_ hpost
+    rw [p2_stackAt_split_of_le s0.sp (768 + pqxdhAcceptPlacedStack)
+      (768 + pqxdhEntryStack) (by decide) (by decide)]
+    have hpost' : sf.mem ⊨
+        (⌜sf.trace = s0.trace ∧ AcceptErrEnv g.inp evs⌝ ∗
+          (bobParamsFieldsAt g.argPtr g.pqskPtr g.ctSlicePtr g.ctBufPtr g.ratchetKeyPairPtr
+              g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
+            ((initBobErrOwnedAt A.repAlloc g.outPtr ∗ anyHeap) ∗
+              ((lsLogFilterAddr ↦₆₄ 0#64) ∗
+                ((F_stk ∗ stackAt s0.sp (768 + pqxdhEntryStack)) ∗
+                  A.pool lim (M.stepEvents evs st) sf))))) ∗ R :=
+      Satisfies.of_eq hpost (by dsimp only [F_stk]; ac_rfl)
+    refine Satisfies.mono ?_ hpost'
     refine sepConj_mono_left (sepConj_mono_right (sepConj_mono_right ?_))
     exact sepConj_mono_left (p2_initBobErrOwnedAt_to_initBobErrAt_placed A.repAlloc g.outPtr)
 
@@ -1334,41 +1353,15 @@ theorem stageP2BaseCalleesPlaced4K_of_trapsOnly [LibsignalPlacement] {M : AllocC
   dropProcessPrekeyImplState1 := subroutine_ok.of_trapsOnly hT h.dropProcessPrekeyImplState1
   dropSessionStructure3 := subroutine_ok.of_trapsOnly hT h.dropSessionStructure3
 
-/-- Stack-frame widening from `InitializeBobV1MemInvOkPlacedOfEnv`
-(`stageP2bStack + 0x700`) to `InitializeBobV1MemInvOkPlaced4KOfEnv` (`768 + pqxdhEntryStackExt`). -/
+/-- Stack-frame identity on `InitializeBobV1MemInvOkPlacedOfEnv` /
+`InitializeBobV1MemInvOkPlaced4KOfEnv` (`768 + pqxdhAcceptPlacedStack`). -/
 theorem p2_initBobV1MemInvPlacedOfEnv_to_4K [LibsignalPlacement] {M : AllocCostModel}
     {Φ : Memory → Prop} {P : Primitives} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {F : ShaCompress} {BobV1Env : AcceptKeysInput → DRKey → List AllocEvent → Prop}
     {ext : String → Option (State → State)}
     (h : InitializeBobV1MemInvOkPlacedOfEnv Φ P A lim F BobV1Env ext) :
-    InitializeBobV1MemInvOkPlaced4KOfEnv Φ P A lim F BobV1Env ext := by
-  intro st Qp s0 inp ikBPk spkBPk argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr
-    drKey Frame hΦ hrun hpc hsp hpqr hx0 hx1 hx8 htr hrep hopk hwell hik hspk hacc hfits
-  let F_stk : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 (768 + pqxdhEntryStackExt))
-      ((768 + pqxdhEntryStackExt) - (stageP2bStack + 0x700))
-  have hsplit := p2_stackAt_split_of_le s0.sp (768 + pqxdhEntryStackExt)
-    (stageP2bStack + 0x700) (by decide) (by decide)
-  have hcall := h (st := st) (Qp := Qp) s0 inp ikBPk spkBPk argPtr pqskPtr ctSlicePtr ctBufPtr
-    ratchetKeyPairPtr outPtr drKey (F_stk ∗ Frame)
-    hΦ hrun hpc hsp hpqr hx0 hx1 hx8 htr hrep hopk hwell hik hspk hacc hfits
-  intro R hm hL
-  have hm' : s0.mem ⊨
-      (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
-        memRegion outPtr 344 ∗ lsLogFilterAddr ↦₆₄ 0#64 ∗
-        stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ (F_stk ∗ Frame)) ∗ R := by
-    refine Satisfies.of_eq hm ?_; dsimp only [F_stk]; rw [hsplit]; ac_rfl
-  obtain ⟨sf, hst, ⟨hpc', hrun', Pf, hmf, evs, hevs, localIkBoxPtr, remoteIkBoxPtr, rootKeyBoxPtr,
-    baseKeyBoxPtr, ratchetPubBoxPtr, ratchetPrivBoxPtr, chainKeyBoxPtr, spqrCap, spqrBufPtr,
-    pad_f4, c0, c1, c2, c3, c4, d0, d1, d2, hn1, hn2, hn3, hn4, hn5, hn6, hn7,
-    hPf, hst'⟩ | hpan⟩ := hcall R hm' hL
-  · refine ⟨sf, hst, Or.inl ⟨hpc', hrun', Pf, hmf, evs, hevs, localIkBoxPtr,
-      remoteIkBoxPtr, rootKeyBoxPtr, baseKeyBoxPtr, ratchetPubBoxPtr, ratchetPrivBoxPtr,
-      chainKeyBoxPtr, spqrCap, spqrBufPtr, pad_f4, c0, c1, c2, c3, c4, d0, d1, d2,
-      hn1, hn2, hn3, hn4, hn5, hn6, hn7,
-      Entails.trans hPf (Entails.of_eq ?_), hst'⟩⟩
-    dsimp only [F_stk]; rw [hsplit]; ac_rfl
-  · exact ⟨sf, hst, Or.inr hpan⟩
+    InitializeBobV1MemInvOkPlaced4KOfEnv Φ P A lim F BobV1Env ext :=
+  h
 
 theorem p2_initBobV1MemInvPlaced_to_4K [LibsignalPlacement] {M : AllocCostModel}
     {Φ : Memory → Prop} {P : Primitives} {A : RustCliAllocBudget M} {lim : BudgetLimits}

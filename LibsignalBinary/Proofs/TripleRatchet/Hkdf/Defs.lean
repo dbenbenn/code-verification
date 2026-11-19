@@ -19,7 +19,7 @@ Separation-logic contracts relating the compiled `Hmac<Sha256>::finalize_fixed`,
 subroutines to `hmacWith`, `hkdfExtract`, and `hkdfExpand`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -72,7 +72,7 @@ structure FinalizeFixedGhost where
 for keys `|key| ≤ 64` and short messages `|msg| < 56`: pads and compresses the inner and
 outer SHA-256 blocks, zeroizes the 144-byte `Hmac<Sha256>` buffer at `hm`, and writes
 `hmacWith F key msg` to `[out, out + 32)`. -/
-def finalizeFixedSpec (F : ShaCompress) : Spec FinalizeFixedGhost where
+@[expose] def finalizeFixedSpec (F : ShaCompress) : Spec FinalizeFixedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.hm ∧
       x.key.length ≤ 64 ∧ x.msg.length < 56⌝ ∗
@@ -83,12 +83,7 @@ def finalizeFixedSpec (F : ShaCompress) : Spec FinalizeFixedGhost where
       (x.out ↦ₛ hmacWith F x.key x.msg) ∗ memRegion x.hm 0x90 ∗
       stackAt s0.sp finalizeFixedStack
 
-def FinalizeFixedOk (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr finalizeFixedName)
-    (finalizeFixedSpec C.F)
-
-def FinalizeFixedOk_trap (b : BitVec 64) (C : Crypto)
+@[expose] def FinalizeFixedOk_trap (b : BitVec 64) (C : Crypto)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr finalizeFixedName)
     (finalizeFixedSpec C.F)
@@ -101,7 +96,7 @@ cmp x1, #0; csel x1, x8, x1, eq; csel x2, x9, x2, eq`):
   `sp + 0x90`) or `s.readReg64 .x2 = 0#64` (`Some(&[])`, `new_from_slice` zero-pads the 0-byte key
   to 64 zero bytes, identical to 32 zero bytes);
 * `some s`: `saltA ≠ 0#64` and `(saltA ↦ₛ s.toList)`. -/
-def optSaltAt (saltA : BitVec 64) : Salt → SepProp
+@[expose] def optSaltAt (saltA : BitVec 64) : Salt → SepProp
   | none => emp
   | some s => ⌜saltA ≠ 0#64⌝ ∗ (saltA ↦ₛ s.toList)
 
@@ -126,7 +121,7 @@ abbrev ExtractGhost.prk (F : ShaCompress) (x : ExtractGhost) : List (BitVec 8) :
 /-- Contract for `<GenericHkdf<Hmac<Sha256>>>::extract` (`x0 = ret`, optional 32-byte salt
 `(x1, x2)`, 32-byte IKM `(x3, x4)`): computes `prk = hkdfExtract F x.salt x.ikm`, writes `prk`
 at `ret..ret + 0x20`, and initializes `hmacCoreAt F (ret + 0x20) prk []` at `ret + 0x20..ret + 0xb0`. -/
-def extractSpec (F : ShaCompress) : Spec ExtractGhost where
+@[expose] def extractSpec (F : ShaCompress) : Spec ExtractGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.saltA ∧
       (x.salt.isSome → s.readReg64 .x2 = 32#64) ∧
@@ -140,20 +135,6 @@ def extractSpec (F : ShaCompress) : Spec ExtractGhost where
       (x.ret ↦ₛ x.prk F) ∗ hmacCoreAt F (x.ret + 0x20#64) (x.prk F) [] ∗
       optSaltAt x.saltA x.salt ∗ (x.ikmA ↦ₛ x.ikm) ∗
       stackAt s0.sp extractStack
-
-def ExtractOk (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    ((tripleRatchetProgAt img.base C ctl abs).fnAddr extractName)
-    ((extractSpec C.F).inImage img)
-
-def ExtractOk_trap (img : Obj.Image) (C : Crypto)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (trTrapProgAt img.base C abs)
-    ((trTrapProgAt img.base C abs).fnAddr extractName)
-    ((extractSpec C.F).inImage img)
-
-/-! ## `GenericHkdf<Hmac<Sha256>>::expand_multi_info` -/
 
 /-- Ghost arguments of `GenericHkdf<Hmac<Sha256>>::expand_multi_info` (`0x1a874`). -/
 structure ExpandMultiInfoGhost where
@@ -177,7 +158,7 @@ structure ExpandMultiInfoGhost where
 slice header `x1 = infoHdrA` with `|info| < 23`, output buffer `(x2, x3) = (okmA, okmLen)`
 with `okmLen ∈ {64, 80}`): preserves `hmacCoreAt F hkdfA prk []` and the read-only `info`
 slice, and writes `hkdfExpand F prk info okmLen` to `[okmA, okmA + okmLen)`. -/
-def expandMultiInfoSpec (F : ShaCompress) : Spec ExpandMultiInfoGhost where
+@[expose] def expandMultiInfoSpec (F : ShaCompress) : Spec ExpandMultiInfoGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.hkdfA ∧ s.readReg64 .x1 = x.infoHdrA ∧
       s.readReg64 .x2 = x.okmA ∧ s.readReg64 .x3 = BitVec.ofNat 64 x.okmLen ∧
@@ -193,12 +174,7 @@ def expandMultiInfoSpec (F : ShaCompress) : Spec ExpandMultiInfoGhost where
       (x.infoA ↦ᵣ x.info) ∗ (x.okmA ↦ₛ hkdfExpand F x.prk x.info x.okmLen) ∗
       stackAt s0.sp expandMultiInfoStack
 
-def ExpandMultiInfoOk (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr expandMultiInfoName)
-    (expandMultiInfoSpec C.F)
-
-def ExpandMultiInfoOk_trap (b : BitVec 64) (C : Crypto)
+@[expose] def ExpandMultiInfoOk_trap (b : BitVec 64) (C : Crypto)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr expandMultiInfoName)
     (expandMultiInfoSpec C.F)

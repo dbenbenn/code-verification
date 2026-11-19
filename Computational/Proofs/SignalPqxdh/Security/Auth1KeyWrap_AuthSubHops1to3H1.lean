@@ -9,24 +9,24 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3F
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3B
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3F
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3B -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3D
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H1 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3D
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key `PrfMsgKeys` `SlotM` Bridge and `G3.7` Endpoint
@@ -35,7 +35,7 @@ Defines the single-identity-key `PrfMsgKeys` cutoff experiments over `pqxdhAuthI
 the `SlotM` pre-sampling bridge, and matches cutoff `0` with stage `.g3_7`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxHeartbeats 400000
 open scoped ENNReal BigOperators
@@ -45,7 +45,7 @@ open _root_.Proofs.SignalPqxdh.Security
 open _root_.Proofs.SignalPqxdh.Security.FgGapDh
 namespace SignalPqxdh.Security.AuthSubHops1to3
 
-def authMkStepWith1Key (S : Setup) (P : Primitives)
+@[expose] def authMkStepWith1Key (S : Setup) (P : Primitives)
     (sampMkAt : Nat → ProbComp Bytes) (useIdealMkAt : Nat → Bool)
     (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     ProbComp ((authSpec S).Range q × AuthHybridStateFixed S) :=
@@ -245,15 +245,15 @@ theorem authMkStepWith_after1Key (S : Setup) (P : Primitives) (idx : Nat) (useId
     apply authMkRecvWith_congr_slot
     simp only [hEqF, Bool.false_eq_true, ↓reduceIte]
   all_goals rfl
-def authMkCutoffImpl1Key (S : Setup) (P : Primitives) (cutoff : Nat) :
+@[expose] def authMkCutoffImpl1Key (S : Setup) (P : Primitives) (cutoff : Nat) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) :=
   fun q => StateT.mk (authMkStepWith1Key S P (fun _ => sampleBytes32) (fun s => decide (s < cutoff)) q)
-def prfMkAuthImpl1Key (S : Setup) (P : Primitives) (idx : Nat) (mkSeedStar : Bytes) :
+@[expose] def prfMkAuthImpl1Key (S : Setup) (P : Primitives) (idx : Nat) (mkSeedStar : Bytes) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) :=
   fun q => StateT.mk (authMkStepWith1Key S P (fun s => if s == idx then pure mkSeedStar else
     sampleBytes32)
     (fun s => decide (s < idx)) q)
-noncomputable def authMkPreSampleRun1Key (S : Setup) (P : Primitives)
+@[expose] def authMkPreSampleRun1Key (S : Setup) (P : Primitives)
     (idx : Nat) (mkSeedStar : Bytes) (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -261,7 +261,7 @@ noncomputable def authMkPreSampleRun1Key (S : Setup) (P : Primitives)
     (StateT (AuthHybridStateFixed S) ProbComp) + prfMkAuthImpl1Key S P idx mkSeedStar
   let (b', finalSt) ← (simulateQ fullImpl A.run).run initSt
   finalizeAuthFixed P secb b' finalSt.toAuthHybridState
-noncomputable def authMkCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat)
+@[expose] def authMkCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb

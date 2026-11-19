@@ -18,19 +18,17 @@ public import ProofLib.Hoare.LibcHooks
 
 **Checked by Lean.** No theorem of `Computational/Theorems/` unfolds a definition of this file, and
 Lean's kernel checks every proof in it: you do not need to read it to trust those theorems.
-`blackBoxHook` was a row of `cliHookTablePlaced` until the second stock `ld.lld` cutover (C2)
-de-hooked `subtle::black_box`, whose compiled code now runs; `sessionExterns` and `logFilterAddr`
-belong to the non-ELF session-image harness. See `Computational/docs/TRUSTED_BASE.md`.
+`blackBoxHook` and `sessionExterns` belong only to the non-ELF session-image harness; in the linked
+CLI ELF, `subtle::black_box::<u8>` runs its compiled code directly. See
+`Computational/docs/TRUSTED_BASE.md`.
 
-Extern hook table for the loaded session image:
+Extern hook table for the session harness:
 * `blackBoxHook` models `subtle::black_box::<u8>` as the identity on the low byte of `x0`.
 * `sessionExterns` maps `sha2::sha256::compress256` to `LibsignalHmac.compress256Hook F`,
   `memcpy` / `memmove` / `memset` to `ProofLib`'s libc hooks,
   `__rust_no_alloc_shim_is_unstable_v2` to `hookNoop`, `subtle::black_box::<u8>` to `blackBoxHook`,
   `<alloc::vec::Vec<_, _>>::remove::assert_failed` to `Rust.panicked`, and the three Rust
   allocator entry points to `alloc`.
-* `logFilterAddr` is the extern-data address of `log::MAX_LOG_LEVEL_FILTER` (pinned by
-  `LibsignalSessionGuards.lean`); holding `0` disables `log::Log::log`.
 -/
 
 @[expose] public section
@@ -58,8 +56,5 @@ def sessionExterns (F : ShaState → List (BitVec 8) → ShaState)
   else if sym = "__rustc::__rust_alloc" ∨ sym = "__rustc::__rust_dealloc" ∨
       sym = "__rustc::__rust_realloc" then alloc sym
   else none
-
-/-- Address of `log::MAX_LOG_LEVEL_FILTER` in the loaded session image (`img.base + 0x9a160`). -/
-abbrev logFilterAddr (img : Obj.Image) : BitVec 64 := img.base + 0x9a160#64
 
 end CryptoVerification.LibsignalSession

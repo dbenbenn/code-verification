@@ -9,17 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound
-public import Computational.Proofs.E2E.HeadlineComposed
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECell
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEReds
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.HeadlineComposed -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECell
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEReds -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.CKA.DHProof
 import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperDir2
 import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperSim
 import Computational.Proofs.E2E.ComposedPrefixHelpers
 import Computational.Proofs.E2E.HeadlineSpkSession
+import Computational.Proofs.E2E.RefuseCorrB0Core
 import Computational.Proofs.E2E.SpkCostedAndHeadlineSlice
 import Computational.Proofs.Game.PromotedCostedReds.Epoch0DistinguisherProg
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeProg
 import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedCouple
@@ -33,10 +35,10 @@ import Computational.Proofs.SignalPqxdh.Delta.Statements
 
 Lifts per-session `SessionCostedReductions` families to `SessionCostedReductionFamily`, bounds the
 `sessionSchemeU` and `sessionSchemeFixedSpk` mixture biases, and establishes the session and
-composed `hiddenSaltBoundV1` bridges.
--/
+composed `hiddenSaltBoundV1` bridges.-/
 
-@[expose] public section
+namespace CryptoVerification.E2E
+public section
 
 set_option autoImplicit false
 
@@ -54,7 +56,6 @@ open CryptoVerification.E2E.Signed
 open CryptoGames.SM.Construction.AuthL11
 open HMAC HKDF CBC LibsignalAead AEADScheme MACScheme WireAEAD FSAEAD
 
-namespace CryptoVerification.E2E
 
 attribute [local irreducible] CryptoVerification.E2E.HeadlineSpk.mkSpkCostedReds
 attribute [local irreducible] Computational.Proofs.E2E.SpkCostedAndHeadlineSlice.spkCostedRedsInst
@@ -73,23 +74,6 @@ def spkSlotRedsWithSpqrOfV1SessionReds
     SessionCostedReductionFamily Pt ℓ :=
   fun C K idA idB Dh encPt encT decT lam qep q =>
     v1Reds C K idA idB Dh encPt encT decT lam qep q
-
-theorem spkSlotRedsWithSpqrOfV1SessionReds_bounds
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {ℓ : ℕ}
-    (v1Reds :
-      (C : Crypto) → (K : MlKem) → (idA idB : IdentityKey) →
-      (Dh : DHFun (BitVec 256) Pt) → (encPt : Pt → Bytes) →
-      (encT : Pt → PublicKey) → (decT : PublicKey → Option Pt) →
-      (lam : Pt) → (qep q : ℕ) →
-      SessionCostedReductions Pt ℓ C K idA idB Dh encPt encT decT lam)
-    (hv1_bounds :
-      ∀ (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
-        (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-        (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) (qep q : ℕ),
-        sessionCostedReductionsBounded ℓ C K idA idB Dh encPt encT decT lam qep q
-          (v1Reds C K idA idB Dh encPt encT decT lam qep q)) :
-    SessionCostedReductionFamilyBounded ℓ (spkSlotRedsWithSpqrOfV1SessionReds v1Reds) :=
-  hv1_bounds
 
 /-! ## Uniform-start mixture bias -/
 
@@ -409,80 +393,49 @@ theorem hiddenSaltBoundV1HoldsEx_of_v1SessionReds
 
 open CryptoVerification.E2E.RefuseCorrB0 CryptoVerification.E2E.HeadlineU
 
-theorem forgeGuessedAdvantagePaper_le_hiddenSaltCellTermPaperDF
-    {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] [SampleableType PQC]
-    (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
-    (idOf : Party → IdentityKey) (lam : Pt) (qep q : ℕ)
-    {t : ℕ} (_ht : t ∈ Finset.range ((qep + 1) + 2))
-    {tL : Option ℕ} (_htL : tL ∈ admissibleLastLeakGuesses 2 t)
-    (dfAdv : DeliverForge.AdversaryDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
-    (hc : (dhScheme Dh).Correct)
-    (hq : DeliverForge.MakesAtMostQueriesDF
-      (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv) q) :
-    DeliverForge.forgeGuessedAdvantageCellPaper
-        (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
-        (qep + 1) DeliverForge.sameHdrScheme tL t
-        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv) ≤
-      Proofs.Refinement.hiddenSaltCellTermPaperDF P ℓ Dh encPt encT idOf lam qep q tL t dfAdv := by
-  by_cases h2 : 2 ≤ t ∧ tL = some (t - 2)
-  · rcases h2 with ⟨ht2, rfl⟩
-    unfold DeliverForge.forgeGuessedAdvantageCellPaper
-      Proofs.Refinement.hiddenSaltCellTermPaperDF
-      Proofs.Refinement.redCKAHiddenSaltPaperDF
-      Proofs.Refinement.redPRNGHiddenSaltPaperDF
-      Proofs.Refinement.redFSHiddenSaltPaperDF
-    simp only [ht2, and_self, ↓reduceIte]
-    exact DeliverForge.forgeGuessedAdvantageShiftedDir2Paper_le_reds
-      (dhScheme Dh) (Ratchet.rootPRNG P.C.F encPt) (lFS P.C P.codec ℓ encT idOf 25000) lam
-      (qep + 1) t q hc ht2
-      (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv)
-      (DeliverForge.noBadCoinsDF_challSimDF'Paper (2 + 1) (qep + 1) _) hq
-  · by_cases h3 : 3 ≤ t ∧ tL = some (t - 3)
-    · rcases h3 with ⟨ht3, rfl⟩
-      have hne : t - 3 ≠ t - 2 := by omega
-      unfold DeliverForge.forgeGuessedAdvantageCellPaper
-        Proofs.Refinement.hiddenSaltCellTermPaperDF
-        Proofs.Refinement.redCKAHiddenSaltPaperDF
-        Proofs.Refinement.redPRNGHiddenSaltPaperDF
-        Proofs.Refinement.redFSHiddenSaltPaperDF
-      simp only [Option.some.injEq, hne, and_false, ht3, and_self, ↓reduceIte]
-      exact DeliverForge.forgeGuessedAdvantageShiftedPaper_le_reds
-        (dhScheme Dh) (Ratchet.rootPRNG P.C.F encPt) (lFS P.C P.codec ℓ encT idOf 25000) lam
-        (qep + 1) t q hc ht3
-        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv)
-        (DeliverForge.noBadCoinsDF_challSimDF'Paper (2 + 1) (qep + 1) _) hq
-    · unfold DeliverForge.forgeGuessedAdvantageCellPaper
-        Proofs.Refinement.hiddenSaltCellTermPaperDF
-        Proofs.Refinement.redCKAHiddenSaltPaperDF
-        Proofs.Refinement.redPRNGHiddenSaltPaperDF
-        Proofs.Refinement.redFSHiddenSaltPaperDF
-      simp only [h2, h3, ↓reduceIte]
-      exact DeliverForge.theorem8_df_paper (dhScheme Dh) (Ratchet.rootPRNG P.C.F encPt)
-        (lFS P.C P.codec ℓ encT idOf 25000) lam 1 (qep + 1) hc tL t q
-        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv) hq
-
-theorem sum_forgeGuessedAdvantageCellPaper_le_sum_hiddenSaltCellTermPaperDF
-    {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] [SampleableType PQC]
-    (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
-    (idOf : Party → IdentityKey) (lam : Pt) (qep q : ℕ)
-    (dfAdv : DeliverForge.AdversaryDF (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
-    (hc : (dhScheme Dh).Correct)
-    (hq : DeliverForge.MakesAtMostQueriesDF dfAdv q) :
-    (∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-      DeliverForge.forgeGuessedAdvantageCellPaper
-        (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
-        (qep + 1) DeliverForge.sameHdrScheme tL t
-        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv)) ≤
-    (∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-      Proofs.Refinement.hiddenSaltCellTermPaperDF P ℓ Dh encPt encT idOf lam qep q tL t dfAdv) := by
-  have hqDF : DeliverForge.MakesAtMostQueriesDF
-      (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv) q :=
-    HeadlineV1.challSimDF'Paper_queries (2 + 1) (qep + 1) dfAdv hq
-  exact Finset.sum_le_sum (fun t ht => Finset.sum_le_sum (fun tL htL =>
-    forgeGuessedAdvantagePaper_le_hiddenSaltCellTermPaperDF
-      P ℓ Dh encPt encT idOf lam qep q ht htL dfAdv hc hqDF))
+private theorem forgeStage2CellBucketSumPaper_v1SessionRedsPaper_eq
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6)
+    (C : Crypto) (K : LibsignalSpqrV1.MlKem) (idA idB : IdentityKey)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
+    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (lam : Pt) (qep q : ℕ) (hq32 : 2 * (q + 1) + 25002 < 2 ^ 32)
+    (B_sm : SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) (BitVec 512) Bytes)
+    (hqB : SM.MakesAtMostQueries B_sm q) :
+    forgeStage2CellBucketSumPaper
+        (lFig8 Dh encPt (paramsV1 C K idA idB).C (paramsV1 C K idA idB).codec ℓ encT
+          (idsOf idA idB) 25000 lam)
+        qep DeliverForge.sameHdrScheme
+        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (Proofs.Refinement.simDeliverForge (paramsV1 C K idA idB) ℓ Dh encPt encT decT
+            (idsOf idA idB) lam qep B_sm)) =
+      forgeStage2CellBucketSumPaper
+        (lFig8 Dh encPt (paramsV1 C K idA idB).C (paramsV1 C K idA idB).codec ℓ encT
+          (idsOf idA idB) 25000 lam)
+        qep DeliverForge.sameHdrScheme
+        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          ((v1SessionRedsPaper ℓ C K idA idB Dh encPt encT decT lam qep q).simDeliverForge.eval
+            (fun _ => B_sm) ())) := by
+  rw [v1SessionRedsPaper_simDeliverForge, v1SessionReds_simDeliverForge]
+  unfold forgeStage2CellBucketSumPaper
+  refine congrArg₂ (· + ·) (congrArg₂ (· + ·) ?_ ?_) ?_
+  · refine Finset.sum_congr rfl fun t ht => ?_
+    have ht2 : 2 ≤ t := (Finset.mem_Ico.mp ht).1
+    have hc :=
+      (Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeProg.forgeGuessedAdvantageCellPaper_challSimDF'Paper_simDeliverForgeRedProg_eq
+        hℓ C K idA idB Dh encPt encT decT lam qep q (some (t - 2)) t B_sm hqB hq32).symm
+    simpa only [DeliverForge.forgeGuessedAdvantageCellPaper, ht2, and_self, ↓reduceIte] using hc
+  · refine Finset.sum_congr rfl fun t ht => ?_
+    have ht3 : 3 ≤ t := (Finset.mem_Ico.mp ht).1
+    have hne : ¬(2 ≤ t ∧ (some (t - 3) : Option ℕ) = some (t - 2)) := by simp; omega
+    have hc :=
+      (Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeProg.forgeGuessedAdvantageCellPaper_challSimDF'Paper_simDeliverForgeRedProg_eq
+        hℓ C K idA idB Dh encPt encT decT lam qep q (some (t - 3)) t B_sm hqB hq32).symm
+    simpa only [DeliverForge.forgeGuessedAdvantageCellPaper, hne, ht3, and_self, ↓reduceIte] using hc
+  · refine Finset.sum_congr rfl fun tL _ => Finset.sum_congr rfl fun par _ => ?_
+    exact
+      (Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeProg.forgeBucketAdvantagePaper_challSimDF'Paper_simDeliverForgeRedProg_eq
+        hℓ C K idA idB Dh encPt encT decT lam qep q tL par B_sm hqB hq32).symm
 
 /-- Bounds `hiddenSaltTerm` on `RefuseB0.refuseCorrB0 A` by `hiddenSaltBoundV1` plus
 `K.kemFailFindAdvantage`. -/
@@ -512,45 +465,26 @@ theorem hiddenSaltTerm_le_hiddenSaltBoundV1
         (Proofs.Refinement.redKemFailHiddenSalt P K ℓ Dh encPt encT decT (idsOf idA idB) lam qep
           (RefuseB0.refuseCorrB0 A)) := by
   intro P
-  let idOf := idsOf idA idB
-  let R := v1SessionRedsPaper ℓ C K idA idB Dh encPt encT decT lam qep q
-  let dfAdv := R.simDeliverForge.eval (fun _ => A.refuseCorrB0) ()
   have hqR : SM.MakesAtMostQueries A.refuseCorrB0 q :=
     RefuseCorrB0.refuseCorrB0_queries A q hq
-  have hq_df : DeliverForge.MakesAtMostQueriesDF dfAdv q :=
-    Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeProg.simDeliverForgeRedProg_makesAtMostQueriesDF
-      ℓ C K idA idB Dh encPt encT decT lam qep q A.refuseCorrB0 hqR
-  have hclamp :
-      (∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-        DeliverForge.forgeGuessedAdvantageCellPaper
-          (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
-          (qep + 1) DeliverForge.sameHdrScheme tL t
-          (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
-            (Proofs.Refinement.simDeliverForge P ℓ Dh encPt encT decT idOf lam qep
-              A.refuseCorrB0))) =
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-        DeliverForge.forgeGuessedAdvantageCellPaper
-          (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
-          (qep + 1) DeliverForge.sameHdrScheme tL t
-          (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv) := by
-    refine Finset.sum_congr rfl fun t _ => Finset.sum_congr rfl fun tL _ => ?_
-    exact
-      (Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeProg.forgeGuessedAdvantageCellPaper_challSimDF'Paper_simDeliverForgeRedProg_eq
-        hℓ C K idA idB Dh encPt encT decT lam qep q tL t A.refuseCorrB0 hqR hq32).symm
-  have hsum := sum_forgeGuessedAdvantageCellPaper_le_sum_hiddenSaltCellTermPaperDF
-    P ℓ Dh encPt encT idOf lam qep q dfAdv (dhScheme_correct Dh hDh) hq_df
+  have hclamp := forgeStage2CellBucketSumPaper_v1SessionRedsPaper_eq
+    hℓ C K idA idB Dh encPt encT decT lam qep q hq32 A.refuseCorrB0 hqR
   have hlazy := hiddenSaltTerm_le_add_spuriousStepTerm_v1_refuseCorrB0_lazy'
     C K hK_tot idA idB Dh encPt encT decT lam qep q hℓ hDh hX hdec hinj hdum hz hD hq32
-    (∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-      Proofs.Refinement.hiddenSaltCellTermPaperDF P ℓ Dh encPt encT idOf lam qep q tL t dfAdv)
+    (forgeStage2CellBucketSumPaper
+      (lFig8 Dh encPt P.C P.codec ℓ encT (idsOf idA idB) 25000 lam) qep DeliverForge.sameHdrScheme
+      (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+        ((v1SessionRedsPaper ℓ C K idA idB Dh encPt encT decT lam qep q).simDeliverForge.eval
+          (fun _ => A.refuseCorrB0) ())))
     δ hδ A hq (fun InvPQ _ hInv_top =>
-      (evalDist_simulateQ_firstNESimImpl'_le_sum_cells P K rfl InvPQ hInv_top ℓ Dh hDh encPt encT
-        decT idOf ⟨rfl, rfl⟩ hX hinj hdec lam qep q A.refuseCorrB0).trans
-        (hclamp.le.trans hsum))
-  have hreds := sum_hiddenSaltCellTermPaperDF_le_hiddenSaltBoundV1_paper
-    C K hD hℓ Dh encPt encT decT hinj hdum idA idB lam qep q hq32 δ A.refuseCorrB0 hqR
+      (CryptoVerification.LibsignalSession.HeadlineV1.evalDist_simulateQ_firstNESimImpl'_le_sum_cells
+        P K rfl InvPQ hInv_top ℓ Dh hDh encPt encT decT (idsOf idA idB) ⟨rfl, rfl⟩ hX hinj hdec
+        lam qep q A.refuseCorrB0).trans hclamp.le)
+  have hpaper := sum_hiddenSaltCellTermPaperDF_le_hiddenSaltBoundV1_paper
+    C K hD hℓ Dh hDh encPt encT decT hinj hdum idA idB lam qep q hq32 δ
+    A.refuseCorrB0 hqR
   rw [refuseCorrB0_eq]
-  exact hlazy.trans (add_le_add hreds le_rfl)
+  exact hlazy.trans (add_le_add hpaper le_rfl)
 
 /-- Establishes `HiddenSaltBoundV1HoldsEx` under zero `kemFailFindAdvantage`. -/
 theorem hiddenSaltBoundV1HoldsEx
@@ -578,10 +512,140 @@ open Computational.Proofs.ReductionDsl.Fig8Atomic (atomicShortPubB)
 open Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedEvict
 open Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedCouple
 
+private theorem hiddenSaltBoundV1_rhs_eq
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    (Z : Crypto) (K : LibsignalSpqrV1.MlKem) {ℓ : ℕ} (Dh : DHFun (BitVec 256) Pt)
+    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
+    (idA idB : IdentityKey) (lam : Pt) (qep q : ℕ) (δ : ℝ≥0∞)
+    (R R₀ : SessionCostedReductions Pt ℓ Z K idA idB Dh encPt encT decT lam)
+    (A : SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) (BitVec 512) Bytes)
+    (hchall : R.challSimDF.eval (fun _ => R.simDeliverForge.eval (fun _ => A) ()) () =
+      DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+        (R.simDeliverForge.eval (fun _ => A) ()))
+    (hfs : R.fs = R₀.fs)
+    (hcka : ∀ t ∈ Finset.range ((qep + 1) + 2), ∀ tL ∈ admissibleLastLeakGuesses 2 t,
+      (R.B_cka tL t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () =
+      (R₀.B_cka tL t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) ())
+    (hprng : ∀ t ∈ Finset.range ((qep + 1) + 2), ∀ tL ∈ admissibleLastLeakGuesses 2 t,
+      (R.B_prng tL t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () =
+      (R₀.B_prng tL t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) ())
+    (hbfs : ∀ stage la : Bool, ∀ j ∈ Finset.range q, ∀ t ∈ Finset.range ((qep + 1) + 2),
+      ∀ tL ∈ admissibleLastLeakGuesses 2 t,
+      (R.B_fs stage la j tL t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () =
+      (R₀.B_fs stage la j tL t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) ())
+    (hcka_u : ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      (R.B_cka_u tL par).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () =
+      (R₀.B_cka_u tL par).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) ())
+    (hprng_u : ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      ∀ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+      (R.B_prng_u tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () =
+      (R₀.B_prng_u tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) ())
+    (hbfs_u : ∀ stage la : Bool, ∀ j ∈ Finset.range q,
+      ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      ∀ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+      (R.B_fs_u stage la j tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () =
+      (R₀.B_fs_u stage la j tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) ()) :
+    let qR := min (2 * q) (q + 2)
+    let challAdvDF := DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+      (R.simDeliverForge.eval (fun _ => A) ())
+    ((∑ t ∈ Finset.Ico 2 ((qep + 1) + 2),
+      let tL : Option ℕ := some (t - 2)
+      (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+          ((R₀.B_cka tL t).eval (fun _ => challAdvDF) ()) +
+        PRFPRNG.advantage (rootPRNG Z.F encPt)
+          ((R₀.B_prng tL t).eval (fun _ => challAdvDF) ()) +
+        (∑ j ∈ Finset.range q,
+          CryptoVerification.E2E.fsAeadAuthSlotSumBound Z qR R₀.fs
+            (fun stage la => (R₀.B_fs stage la j tL t).eval (fun _ => challAdvDF) ())) +
+        4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) +
+      (∑ t ∈ Finset.Ico 3 ((qep + 1) + 2),
+        let tL : Option ℕ := some (t - 3)
+        (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+            ((R₀.B_cka tL t).eval (fun _ => challAdvDF) ()) +
+          PRFPRNG.advantage (rootPRNG Z.F encPt)
+            ((R₀.B_prng tL t).eval (fun _ => challAdvDF) ()) +
+          (∑ j ∈ Finset.range q,
+            CryptoVerification.E2E.fsAeadAuthSlotSumBound Z qR R₀.fs
+              (fun stage la => (R₀.B_fs stage la j tL t).eval (fun _ => challAdvDF) ())) +
+          4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) +
+      (∑ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∑ par ∈ ({false, true} : Finset Bool),
+        (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+            ((R₀.B_cka_u tL par).eval (fun _ => challAdvDF) ()) +
+          (∑ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+            (PRFPRNG.advantage (rootPRNG Z.F encPt)
+                ((R₀.B_prng_u tL par t).eval (fun _ => challAdvDF) ()) +
+              (∑ j ∈ Finset.range q,
+                CryptoVerification.E2E.fsAeadAuthSlotSumBound Z qR R₀.fs
+                  (fun stage la => (R₀.B_fs_u stage la j tL par t).eval (fun _ => challAdvDF) ())))) +
+          4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q))) +
+      spuriousStepTerm Z.F encPt Dh q qep + (qep + 1) * (qep + 2) * δ =
+    hiddenSaltBoundV1 Z K ℓ Dh encPt encT decT idA idB lam qep q δ R A := by
+  unfold hiddenSaltBoundV1; dsimp only
+  rw [hchall, hfs]
+  refine congrArg (· + _) (congrArg (· + _)
+    (congrArg₂ (· + ·) (congrArg₂ (· + ·) ?_ ?_) ?_))
+  · refine Finset.sum_congr rfl fun t ht => ?_
+    have ht' : t ∈ Finset.range ((qep + 1) + 2) :=
+      Finset.mem_range.mpr (Finset.mem_Ico.mp ht).2
+    have htL' : some (t - 2) ∈ admissibleLastLeakGuesses 2 t := by
+      have ht2 := (Finset.mem_Ico.mp ht).1
+      simp only [admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image, Finset.mem_range]
+      exact Or.inr ⟨t - 2, by omega, rfl⟩
+    rw [hcka t ht' _ htL', hprng t ht' _ htL']
+    refine congrArg (· + _) (congrArg (_ + ·) (Finset.sum_congr rfl fun j hj => ?_))
+    exact congrArg (CryptoVerification.E2E.fsAeadAuthSlotSumBound Z _ R₀.fs)
+      (funext fun stage => funext fun la => (hbfs stage la j hj t ht' _ htL').symm)
+  · refine Finset.sum_congr rfl fun t ht => ?_
+    have ht' : t ∈ Finset.range ((qep + 1) + 2) :=
+      Finset.mem_range.mpr (Finset.mem_Ico.mp ht).2
+    have htL' : some (t - 3) ∈ admissibleLastLeakGuesses 2 t := by
+      have ht3 := (Finset.mem_Ico.mp ht).1
+      simp only [admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image, Finset.mem_range]
+      exact Or.inr ⟨t - 3, by omega, rfl⟩
+    rw [hcka t ht' _ htL', hprng t ht' _ htL']
+    refine congrArg (· + _) (congrArg (_ + ·) (Finset.sum_congr rfl fun j hj => ?_))
+    exact congrArg (CryptoVerification.E2E.fsAeadAuthSlotSumBound Z _ R₀.fs)
+      (funext fun stage => funext fun la => (hbfs stage la j hj t ht' _ htL').symm)
+  · refine Finset.sum_congr rfl fun tL htL => Finset.sum_congr rfl fun par _ => ?_
+    rw [hcka_u tL htL par]
+    refine congrArg (· + _) (congrArg (_ + ·) (Finset.sum_congr rfl fun t ht => ?_))
+    rw [hprng_u tL htL par t ht]
+    refine congrArg (_ + ·) (Finset.sum_congr rfl fun j hj => ?_)
+    exact congrArg (CryptoVerification.E2E.fsAeadAuthSlotSumBound Z _ R₀.fs)
+      (funext fun stage => funext fun la => (hbfs_u stage la j hj tL htL par t ht).symm)
+
+/-- Generic cell-sum-to-`hiddenSaltBoundV1` bridge for any `SessionCostedReductions` bundle `R`
+whose `challSimDF`, `fs`, `B_cka`, `B_prng`, `B_fs`, `B_cka_u`, `B_prng_u`, and `B_fs_u` agree on
+evaluations with `v1SessionRedsPaper` and whose `dfAdv := R.simDeliverForge.eval (fun _ => A) ()`
+satisfies `MakesAtMostQueriesDF`, `SendMsgsOkDF`, and `GuardedSMDFShort`. -/
 theorem sum_hiddenSaltCellTermPaperDF_le_hiddenSaltBoundV1_of_dfReds
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (Z : Crypto) (K : LibsignalSpqrV1.MlKem) (hD : ∀ k x, Z.D k (Z.E k x) = x)
-    {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6) (Dh : DHFun (BitVec 256) Pt)
+    {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6) (Dh : DHFun (BitVec 256) Pt) (hDh : Dh.Commutes)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (hinj : Function.Injective encT) (hdum : ∀ T, encT T ≠ dummyKey)
     (idA idB : IdentityKey) (lam : Pt) (qep q : ℕ) (hq32 : 2 * (q + 1) + 25002 < 2 ^ 32)
@@ -611,39 +675,52 @@ theorem sum_hiddenSaltCellTermPaperDF_le_hiddenSaltBoundV1_of_dfReds
       ((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_prng tL t).eval
         (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
           (R.simDeliverForge.eval (fun _ => A) ())) ())
-    (hbfs : ∀ j ∈ Finset.range q, ∀ t ∈ Finset.range ((qep + 1) + 2),
+    (hbfs : ∀ stage la : Bool, ∀ j ∈ Finset.range q, ∀ t ∈ Finset.range ((qep + 1) + 2),
       ∀ tL ∈ admissibleLastLeakGuesses 2 t,
-      (R.B_fs j tL t).eval
+      (R.B_fs stage la j tL t).eval
         (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
           (R.simDeliverForge.eval (fun _ => A) ())) () =
-      ((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_fs j tL t).eval
+      ((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_fs stage la j tL t).eval
         (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
-          (R.simDeliverForge.eval (fun _ => A) ())) ()) :
-    let P := paramsV1 Z K idA idB
+          (R.simDeliverForge.eval (fun _ => A) ())) ())
+    (hcka_u : ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      (R.B_cka_u tL par).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () =
+      ((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_cka_u tL par).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () := by intros; rfl)
+    (hprng_u : ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      ∀ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+      (R.B_prng_u tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () =
+      ((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_prng_u tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () := by intros; rfl)
+    (hbfs_u : ∀ stage la : Bool, ∀ j ∈ Finset.range q,
+      ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      ∀ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+      (R.B_fs_u stage la j tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () =
+      ((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_fs_u stage la j tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => A) ())) () := by intros; rfl) :
     let dfAdv := R.simDeliverForge.eval (fun _ => A) ()
-    (∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-      Proofs.Refinement.hiddenSaltCellTermPaperDF P ℓ Dh encPt encT (idsOf idA idB) lam qep q
-        tL t dfAdv) +
+    forgeStage2CellBucketSumPaper
+        (lFig8 Dh encPt Z protoSignalCodec ℓ encT (idsOf idA idB) 25000 lam)
+        qep DeliverForge.sameHdrScheme
+        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv) +
       spuriousStepTerm Z.F encPt Dh q qep + (qep + 1) * (qep + 2) * δ ≤
     hiddenSaltBoundV1 Z K ℓ Dh encPt encT decT idA idB lam qep q δ R A := by
-  intro P dfAdv
-  unfold hiddenSaltBoundV1; dsimp only
-  rw [hchall, hfs]
-  gcongr with t ht tL htL
-  have hcell := hiddenSaltCellTermPaperDF_le_v1SessionRedsPaper Z K hD hℓ Dh encPt encT decT
-    hinj hdum idA idB lam qep q hq32 tL t dfAdv hq_df hsh_df hg_df
-  have hsum_fs :
-      (∑ j ∈ Finset.range q, fsAeadSlotSumBound Z (min (2 * q) (q + 2))
-        (v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).fs
-        ((R.B_fs j tL t).eval (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv)
-          ())) =
-      ∑ j ∈ Finset.range q, fsAeadSlotSumBound Z (min (2 * q) (q + 2))
-        (v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).fs
-        (((v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q).B_fs j tL t).eval
-          (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv) ()) :=
-    Finset.sum_congr rfl fun j hj => by rw [hbfs j hj t ht tL htL]
-  refine hcell.trans (le_of_eq ?_)
-  rw [← hcka t ht tL htL, ← hprng t ht tL htL, ← hsum_fs]
+  intro dfAdv
+  have hmain := forgeStage2CellBucketSumPaper_le_v1SessionRedsPaper_dfAdv
+    Z K hD hℓ Dh hDh encPt encT decT hinj hdum idA idB lam qep q hq32 dfAdv hq_df hsh_df hg_df
+  exact (add_le_add (add_le_add hmain le_rfl) le_rfl).trans_eq
+    (hiddenSaltBoundV1_rhs_eq Z K Dh encPt encT decT idA idB lam qep q δ R
+      (v1SessionRedsPaper ℓ Z K idA idB Dh encPt encT decT lam qep q) A
+      hchall hfs hcka hprng hbfs hcka_u hprng_u hbfs_u)
 
 /-- Bounds `hiddenSaltTermTrackHalted` on `RefuseB0.refuseCorrB0 A` by `hiddenSaltBoundV1` with no
 `kemFailFindAdvantage` error term. -/
@@ -681,6 +758,18 @@ theorem hiddenSaltTermTrackHalted_le_hiddenSaltBoundV1_of_dfReds
         (qep + 1) DeliverForge.sameHdrScheme tL t
         (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
           (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())))
+    (hbucket_le : ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      DeliverForge.forgeBucketAdvantagePaper
+        (lFig8 Dh encPt C protoSignalCodec ℓ encT (idsOf idA idB) 25000 lam)
+        1 (qep + 1) DeliverForge.sameHdrScheme tL par
+        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (Proofs.Refinement.simDeliverForgeTrackHalted (paramsV1 C K idA idB) K ℓ Dh encPt encT
+            decT (idsOf idA idB) lam qep (RefuseB0.refuseCorrB0 A))) ≤
+      DeliverForge.forgeBucketAdvantagePaper
+        (lFig8 Dh encPt C protoSignalCodec ℓ encT (idsOf idA idB) 25000 lam)
+        1 (qep + 1) DeliverForge.sameHdrScheme tL par
+        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())))
     (hchall : R.challSimDF.eval
         (fun _ => R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ()) () =
       DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
@@ -700,14 +789,38 @@ theorem hiddenSaltTermTrackHalted_le_hiddenSaltBoundV1_of_dfReds
       ((v1SessionRedsPaper ℓ C K idA idB Dh encPt encT decT lam qep q).B_prng tL t).eval
         (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
           (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())) ())
-    (hbfs : ∀ j ∈ Finset.range q, ∀ t ∈ Finset.range ((qep + 1) + 2),
+    (hbfs : ∀ stage la : Bool, ∀ j ∈ Finset.range q, ∀ t ∈ Finset.range ((qep + 1) + 2),
       ∀ tL ∈ admissibleLastLeakGuesses 2 t,
-      (R.B_fs j tL t).eval
+      (R.B_fs stage la j tL t).eval
         (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
           (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())) () =
-      ((v1SessionRedsPaper ℓ C K idA idB Dh encPt encT decT lam qep q).B_fs j tL t).eval
+      ((v1SessionRedsPaper ℓ C K idA idB Dh encPt encT decT lam qep q).B_fs stage la j tL t).eval
         (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
-          (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())) ()) :
+          (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())) ())
+    (hcka_u : ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      (R.B_cka_u tL par).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())) () =
+      ((v1SessionRedsPaper ℓ C K idA idB Dh encPt encT decT lam qep q).B_cka_u tL par).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())) () := by intros; rfl)
+    (hprng_u : ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      ∀ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+      (R.B_prng_u tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())) () =
+      ((v1SessionRedsPaper ℓ C K idA idB Dh encPt encT decT lam qep q).B_prng_u tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())) () := by intros; rfl)
+    (hbfs_u : ∀ stage la : Bool, ∀ j ∈ Finset.range q,
+      ∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+      ∀ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+      (R.B_fs_u stage la j tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())) () =
+      ((v1SessionRedsPaper ℓ C K idA idB Dh encPt encT decT lam qep q).B_fs_u stage la j tL par t).eval
+        (fun _ => DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ())) () := by intros; rfl) :
     let P := paramsV1 C K idA idB
     Proofs.Refinement.hiddenSaltTermTrackHalted P K ℓ Dh encPt encT decT (idsOf idA idB) lam qep
         (RefuseB0.refuseCorrB0 A) ≤
@@ -716,36 +829,58 @@ theorem hiddenSaltTermTrackHalted_le_hiddenSaltBoundV1_of_dfReds
   intro P
   let idOf := idsOf idA idB
   let dfAdv := R.simDeliverForge.eval (fun _ => RefuseB0.refuseCorrB0 A) ()
-  have hsum_cell :
-      (∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-        DeliverForge.forgeGuessedAdvantageCellPaper
-          (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
-          (qep + 1) DeliverForge.sameHdrScheme tL t
-          (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
-            (Proofs.Refinement.simDeliverForgeTrackHalted P K ℓ Dh encPt encT decT idOf lam qep
-              A.refuseCorrB0))) ≤
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-        DeliverForge.forgeGuessedAdvantageCellPaper
-          (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
-          (qep + 1) DeliverForge.sameHdrScheme tL t
-          (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv) := by
-    refine Finset.sum_le_sum fun t ht => Finset.sum_le_sum fun tL htL => ?_
-    rw [← refuseCorrB0_eq]
-    exact hcell_le t ht tL htL
-  have hsum := sum_forgeGuessedAdvantageCellPaper_le_sum_hiddenSaltCellTermPaperDF
-    P ℓ Dh encPt encT idOf lam qep q dfAdv (dhScheme_correct Dh hDh) hq_df
+  have hsum_stage2 :
+      forgeStage2CellBucketSumPaper
+        (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
+        qep DeliverForge.sameHdrScheme
+        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1)
+          (Proofs.Refinement.simDeliverForgeTrackHalted P K ℓ Dh encPt encT decT idOf lam qep
+            A.refuseCorrB0)) ≤
+      forgeStage2CellBucketSumPaper
+        (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
+        qep DeliverForge.sameHdrScheme
+        (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv) := by
+    unfold forgeStage2CellBucketSumPaper
+    refine add_le_add (add_le_add ?_ ?_) ?_
+    · refine Finset.sum_le_sum fun t ht => ?_
+      have ht2 := (Finset.mem_Ico.mp ht).1
+      have ht' : t ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (Finset.mem_Ico.mp ht).2
+      have htL : some (t - 2) ∈ admissibleLastLeakGuesses 2 t := by
+        simp only [admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image, Finset.mem_range]
+        exact Or.inr ⟨t - 2, by omega, rfl⟩
+      have hc := hcell_le t ht' (some (t - 2)) htL
+      simp only [DeliverForge.forgeGuessedAdvantageCellPaper, ht2, and_self, ↓reduceIte] at hc
+      rw [← refuseCorrB0_eq]
+      exact hc
+    · refine Finset.sum_le_sum fun t ht => ?_
+      have ht3 := (Finset.mem_Ico.mp ht).1
+      have ht' : t ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (Finset.mem_Ico.mp ht).2
+      have htL : some (t - 3) ∈ admissibleLastLeakGuesses 2 t := by
+        simp only [admissibleLastLeakGuesses, Finset.mem_insert, Finset.mem_image, Finset.mem_range]
+        exact Or.inr ⟨t - 3, by omega, rfl⟩
+      have hne : ¬(2 ≤ t ∧ (some (t - 3) : Option ℕ) = some (t - 2)) := by simp; omega
+      have hc := hcell_le t ht' (some (t - 3)) htL
+      simp only [DeliverForge.forgeGuessedAdvantageCellPaper, hne, ht3, and_self, ↓reduceIte] at hc
+      rw [← refuseCorrB0_eq]
+      exact hc
+    · refine Finset.sum_le_sum fun tL htL => Finset.sum_le_sum fun par _ => ?_
+      rw [← refuseCorrB0_eq]
+      exact hbucket_le tL htL par
   have hlazy := hiddenSaltTermTrackHalted_le_add_spuriousStepTerm_v1_refuseCorrB0_lazy'
     C K hK_tot idA idB Dh encPt encT decT lam qep q hℓ hDh hX hdec hinj hdum hz hD hq32
-    (∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-      Proofs.Refinement.hiddenSaltCellTermPaperDF P ℓ Dh encPt encT idOf lam qep q tL t dfAdv)
+    (forgeStage2CellBucketSumPaper
+      (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
+      qep DeliverForge.sameHdrScheme
+      (DeliverForge.challSimDF'Paper (2 + 1) (qep + 1) dfAdv))
     δ hδ A hq (fun InvPQ _ hInv_top =>
       (evalDist_simulateQ_firstNEHalted'_le_sum_cells P K rfl InvPQ hInv_top ℓ Dh hDh encPt encT
-        decT idOf ⟨rfl, rfl⟩ hX hinj hdec lam qep q A.refuseCorrB0).trans
-        (hsum_cell.trans hsum))
+        decT idOf ⟨rfl, rfl⟩ hX hinj hdec lam qep q A.refuseCorrB0).trans hsum_stage2)
   have hreds := sum_hiddenSaltCellTermPaperDF_le_hiddenSaltBoundV1_of_dfReds
-    C K hD hℓ Dh encPt encT decT hinj hdum idA idB lam qep q hq32 δ R (RefuseB0.refuseCorrB0 A)
-    hq_df hsh_df hg_df hchall hfs hcka hprng hbfs
+    C K hD hℓ Dh hDh encPt encT decT hinj hdum idA idB lam qep q hq32 δ R (RefuseB0.refuseCorrB0 A)
+    hq_df hsh_df hg_df hchall hfs hcka hprng hbfs hcka_u hprng_u hbfs_u
   rw [← refuseCorrB0_eq] at hlazy
   exact hlazy.trans hreds
+
+end
 
 end CryptoVerification.E2E

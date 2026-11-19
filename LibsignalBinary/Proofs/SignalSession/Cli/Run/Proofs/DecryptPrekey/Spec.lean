@@ -15,7 +15,10 @@ public import Mathlib.Tactic.Attr.Core
 import LibsignalBinary.Proofs.CodeLayout
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
-public import LibsignalBinary.Proofs.SignalSession.Cli.PublicSpecs -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.PublicSpecs -- shake: keep
+public import ProofLib
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Wrapper and Poll Contracts for `signal_session_handshake::decrypt_prekey`
@@ -31,7 +34,7 @@ Specifies the stack-frame layout and separation-logic contracts reducing
   `1`, copying the 48-byte `Result` to `[x8]` and bypassing suspended-future drop paths (`3..8`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +55,7 @@ abbrev cliDpPollName : String :=
   "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}"
 
 /-- Consecutive 64-bit words in memory starting at `a`. -/
-def dpWordsAt : BitVec 64 → List (BitVec 64) → SepProp
+@[expose] def dpWordsAt : BitVec 64 → List (BitVec 64) → SepProp
   | _, [] => emp
   | a, w :: ws => (a ↦₆₄ w) ∗ dpWordsAt (a + 8#64) ws
 
@@ -85,7 +88,7 @@ structure DpPollGhost (K : DpPollK) where
   g : K.Ghost
 
 /-- Unresumed future at `fut` initialized with `args`, `&mut Coins`, and state byte `0`. -/
-def dpFutStartAt (fut : BitVec 64) (args : List (BitVec 64)) : SepProp :=
+@[expose] def dpFutStartAt (fut : BitVec 64) (args : List (BitVec 64)) : SepProp :=
   dpWordsAt fut args ∗
     (∃∗ coins : BitVec 64, (fut + BitVec.ofNat 64 dpFutCoinsOff) ↦₆₄ coins) ∗
     memRegion (fut + BitVec.ofNat 64 (dpFutCoinsOff + 8)) (dpFutStateOff - (dpFutCoinsOff + 8)) ∗
@@ -93,19 +96,19 @@ def dpFutStartAt (fut : BitVec 64) (args : List (BitVec 64)) : SepProp :=
     memRegion (fut + BitVec.ofNat 64 (dpFutStateOff + 1)) (dpFutSize - (dpFutStateOff + 1))
 
 /-- Completed future at `fut` with state byte `1`. -/
-def dpFutDoneAt (fut : BitVec 64) : SepProp :=
+@[expose] def dpFutDoneAt (fut : BitVec 64) : SepProp :=
   memRegion fut dpFutStateOff ∗ ((fut + BitVec.ofNat 64 dpFutStateOff) ↦₈ 1#8) ∗
     memRegion (fut + BitVec.ofNat 64 (dpFutStateOff + 1)) (dpFutSize - (dpFutStateOff + 1))
 
 /-- No-op `core::task::Context` (`Context::from_waker(Waker::noop())`) at `cx`. -/
-def dpCxAt (cx : BitVec 64) : SepProp :=
+@[expose] def dpCxAt (cx : BitVec 64) : SepProp :=
   ∃∗ wk : BitVec 64, (cx ↦₆₄ wk) ∗ ((cx + 8#64) ↦₆₄ wk) ∗ ((cx + 16#64) ↦₆₄ 0#64) ∗
     memRegion (cx + 24#64) 8
 
 /-! ## Poll and wrapper specifications -/
 
 /-- Contract for one poll of an unresumed `message_decrypt_prekey` future returning `Ready` (word 0 `≠ -3`) in state `1`. -/
-def dpPollSpec (K : DpPollK) (stk : Nat) : Spec (DpPollGhost K) where
+@[expose] def dpPollSpec (K : DpPollK) (stk : Nat) : Spec (DpPollGhost K) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.fut ∧ s.readReg64 .x2 = x.cx ∧
       (K.args x.g).length = 13⌝ ∗
@@ -126,7 +129,7 @@ structure DecryptPrekeyGhost (K : DpPollK) where
   g : K.Ghost
 
 /-- Contract for `signal_session_handshake::decrypt_prekey` parameterized by poll contract `K`. -/
-def cliDecryptPrekeySpec (K : DpPollK) (stk : Nat) : Spec (DecryptPrekeyGhost K) where
+@[expose] def cliDecryptPrekeySpec (K : DpPollK) (stk : Nat) : Spec (DecryptPrekeyGhost K) where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.ret ∧ (K.args x.g).length = 13 ∧
       (K.args x.g).take 8 =
@@ -142,13 +145,5 @@ def cliDecryptPrekeySpec (K : DpPollK) (stk : Nat) : Spec (DecryptPrekeyGhost K)
       dpWordsAt s0.sp ((K.args x.g).drop 8) ∗ stackAt s0.sp stk
   onPanic := fun x s0 sf =>
     ⌜s0.trace <+: sf.trace ∧ (allocFailedIn s0 sf ∨ K.panics x.g)⌝ ∗ anyHeap
-
-example : libsignalSessionCode.fnOff cliDecryptPrekeyName =
-    num% (ls_off% "libsignal_cli_handshake::decrypt_prekey") :=
-  ls_lemma% fnOff "libsignal_cli_handshake::decrypt_prekey"
-
-example : libsignalSessionCode.fnOff cliDpPollName =
-    num% (ls_off% "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}") :=
-  ls_lemma% fnOff "libsignal_protocol::session_management::message_decrypt_prekey::<libsignal_cli_handshake::Coins>::{closure#0}"
 
 end CryptoVerification.SignalSession.Cli.RunProofs

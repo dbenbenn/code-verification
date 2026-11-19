@@ -11,7 +11,7 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlaced -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Version-Mismatch Closure Definitions
@@ -21,7 +21,7 @@ Allocator-budget (`RustCliAllocBudget M`) relocatable error-exit postcondition
 statements (`OverVerNe1e04CliPlacedStmtGen`) on Block `518` (`lsProg_518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +46,7 @@ open LibsignalBinary.Heap (
 
 /-- Budget-threaded relocatable error-exit postcondition at `s0.readReg64 .x30`, pairing
 `recordResultAt A.repAlloc` and `pqLogLevelCellPlaced` with `A.pool lim st sf`. -/
-def stageP3ErrPostPrevEmptyPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3ErrPostPrevEmptyPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (s0 s sf : State) (coroPtr outPtr : BitVec 64)
     (e : SignalProtocolError) : SepProp :=
@@ -73,7 +73,7 @@ theorem stageP3ErrPostPrevEmptyPlaced_eq_atState [LibsignalPlacement] {M : Alloc
 
 /-- Envelope-parameterized budget-threaded `+0x1e04 → s0.readReg64 .x30` CLI version-mismatch
 statement over a 1-element `previous_sessions` on `lsProg_518 ext`. -/
-def OverVerNe1e04CliPlacedStmtGen [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OverVerNe1e04CliPlacedStmtGen [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : List (BitVec 8) → List AllocEvent → Prop)
     (Qp : M.σ → State → State → SepProp → Prop)
@@ -154,11 +154,5 @@ abbrev OverVerNe1e04CliPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (Env : List (BitVec 8) → List AllocEvent → Prop)
     (Qp : M.σ → State → State → SepProp → Prop) : Prop :=
   OverVerNe1e04CliPlacedStmtGen A lim Env Qp true
-
-abbrev OverVerNe1e04CliGPRPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (Env : List (BitVec 8) → List AllocEvent → Prop)
-    (Qp : M.σ → State → State → SepProp → Prop) : Prop :=
-  OverVerNe1e04CliPlacedStmtGen A lim Env Qp false
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlacedBudget

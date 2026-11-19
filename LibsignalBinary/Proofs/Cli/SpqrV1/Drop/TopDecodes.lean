@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Instruction Decodes for CLI SPQR V1 Chunked `States` Drop Glue (`[local#3]`)
@@ -20,7 +20,7 @@ theorems for `core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#3
 `libsignalSessionCode_tree`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Drop
 
@@ -33,12 +33,5 @@ open CryptoVerification.SpqrV1.Layout.L1
 /-- `core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#3]` (181 insns = 724B). -/
 abbrev _root_.CryptoVerification.Cli.SpqrV1.Drop.dropChunkedStatesLocal1Name : String :=
   "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#3]"
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Drop.dropChunkedStatesLocal1_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Drop.dropChunkedStatesLocal1Name =
-      num% (ls_off% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#3]") :=
-  ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#3]"
-
-gen_fn_decodes libsignalSessionCode_tree spqrDropTopBinCli ["core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#3]"]
 
 end CryptoVerification.SpqrV1.Drop

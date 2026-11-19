@@ -22,7 +22,7 @@ Auxiliary receiver-chain lookup helper `recvChainFor`, `Traceful` monad laws, an
 characterization lemmas for `TripleRatchet` and `Composed` state-machine transitions.
 -/
 
-@[expose] public section
+public section
 
 namespace DY.Libsignal.TripleRatchet
 
@@ -33,7 +33,7 @@ variable [HasExecBytes]
 /-- Looks up or derives the receiver chain for `theirPk`: returns `some (c, false)` if `theirPk` is
 already in `st.recv`, `some (c, true)` for a freshly derived chain, or `none` if `theirPk` is
 low-order. -/
-def recvChainFor (st : DRState) (theirPk : Bytes) : Option (RecvChain × Bool) :=
+@[expose] def recvChainFor (st : DRState) (theirPk : Bytes) : Option (RecvChain × Bool) :=
   match findRecvChain st.recv theirPk with
   | some c => some (c, false)
   | none =>

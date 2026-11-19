@@ -16,16 +16,18 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
 /-!
 # Little-endian byte encodings and the return helper (`toLEBytes`, `returnToLinkRegister`)
 
-**Trusted: definitions used by the statement.** The theorems of the default library
-(`Computational/Theorems/` outside `CliElfLib`) use `toLEBytes`, `blockToBytes`, `bytesToKey` from
-this file; the theorems of `Computational/Theorems/Main.lean` (`CliElfLib`) also use
-`returnToLinkRegister`. Read them. The theorems here are checked by Lean. See
+**Trusted in part.** The headline theorems use `toLEBytes`, `blockToBytes`, and `bytesToKey` from
+this file (`toLEBytes` in the default library `Computational/Theorems/Lemmas.lean`, and
+`blockToBytes` and `bytesToKey` in the placed ELF headlines of `Computational/Theorems/Main.lean`
+and `Symbolic/Theorems/{Refinement,Security}.lean`); `returnToLinkRegister` is in no headline's
+closure under the panic-only `cliExternsPlacedSig` (`0` external hooks). Read `toLEBytes`,
+`blockToBytes`, and `bytesToKey`. The theorems here are checked by Lean. See
 `Computational/docs/TRUSTED_BASE.md`.
 
 This file defines the little-endian conversions between `BitVec`s (AES blocks and keys from
 `LibsignalBinary/Specifications/CryptoGames/AEAD/CBCDefs.lean`) and byte lists, as AArch64 loads
-and stores them, together with `returnToLinkRegister`, the return to the caller that the binary
-specifications' extern hooks end with. `keyToBytes` and the `memcpy` / `memset` hooks, used only by
+and stores them, together with `returnToLinkRegister`, the return to the caller that legacy
+fixed-image extern hooks end with. `keyToBytes` and the `memcpy` / `memset` hooks, used only by
 proofs, are in `LibsignalBinary/Proofs/AesCbc/LibsignalAesCbcProofDefs.lean`.
 
 Glossary: AAPCS64 = the Arm 64-bit calling convention (arguments in `x0`–`x7`, result in `x0`,
@@ -34,8 +36,9 @@ return address in `lr`); LE = little-endian.
 `returnToLinkRegister` returns to `lr` and leaves every other register unchanged (the caller keeps
 nothing live in caller-saved registers across hook calls).
 
-Despite the file and namespace name, nothing here specifies AES-CBC itself: the cryptographic
-primitives' machine code is hooked, not verified (DEV-E8).
+Despite the file and namespace name, nothing here specifies AES-CBC itself: the FIPS 197 AES-256
+block cipher is in `LibsignalBinary/Specifications/CryptoGames/AEAD/Aes256.lean`, against which
+the AES-256-CBC machine code is verified in `LibsignalBinary/Proofs/HookDischarge/CryptoAes/` (DEV-E8).
 
 ## Main definitions
 

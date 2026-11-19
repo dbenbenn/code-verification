@@ -9,19 +9,62 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple -- proof-setup: allow-public-import
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple2
 import ProofLib.SepLogic.WP.StateNorm
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.E2E.RefuseCorrB0Core
+import Computational.Proofs.E2E.Relabel.GameEq
+import Computational.Proofs.E2E.SpkHop1A
+import Computational.Proofs.HeadlineV1.CouplingV1
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.Fig8Atomic
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.Engine
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SessionCostedFig8.Bundles
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import Mathlib.Data.FinEnum
+import Mathlib.Data.Fintype.BigOperators
+import Mathlib.Data.List.Dedup
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # K4-Doomed Cell Disjunct and `T⁻` Cell Triviality Coupling
 
 **Checked by Lean.** Defines the K4-doomed frozen-cell predicate `CellK4Doomed`, the `T⁻`
 triviality predicate `cellTrivialT`, the compromised-set relation `CellCompRel`, and the
-cell-family invariant `FirstNECellFamilyInvT` with its step preservation lemmas.
--/
+cell-family invariant `FirstNECellFamilyInvT` with its step preservation lemmas.-/
 
-@[expose] public section
+namespace CryptoVerification.LibsignalSession.HeadlineV1
+public section
 
 open OracleComp OracleSpec ENNReal
 open CryptoGames CryptoGames.SM.Engine
@@ -30,13 +73,10 @@ open CryptoGames.SM.Thm1L17
 open CryptoGames.SM.Construction
 open CryptoGames.LibsignalSM.Proofs.Refinement
 
-noncomputable section
-
-namespace CryptoVerification.LibsignalSession.HeadlineV1
 
 /-- Predicate for a `B1(t)` cell (`2 ≤ t ∧ tL = some (t - 2)`) whose target sender is corrupted at
 `t` and which has already set `s.win = true`. -/
-def CellK4Doomed {St Msg C : Type} (tL : Option ℕ) (t : ℕ)
+@[expose] def CellK4Doomed {St Msg C : Type} (tL : Option ℕ) (t : ℕ)
     (g s : SM.GameState St Msg C) : Prop :=
   2 ≤ t ∧ tL = some (t - 2) ∧
     ((Party.senderOf t, t) ∈ g.corrs ∧ (Party.senderOf t, t) ∈ s.corrs) ∧ s.win = true
@@ -63,7 +103,7 @@ theorem CellK4Doomed.of_corrs_sub {St Msg C : Type} {tL : Option ℕ} {t : ℕ}
 
 /-- Cell triviality predicate treating off-target positions below `min (s.epoch .A) (s.epoch .B)` as
 trivial in `B1(t)` and using `s.trivial 3` elsewhere. -/
-def cellTrivialT {St Msg C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def cellTrivialT {St Msg C : Type} [DecidableEq Msg] [DecidableEq C]
     (tL : Option ℕ) (t : ℕ) (s : SM.GameState St Msg C) (pos : SM.Pos) : Bool :=
   if 2 ≤ t ∧ tL = some (t - 2) then
     s.trivial 2 pos ||
@@ -95,7 +135,7 @@ theorem cellTrivialT_eq_trivB1 {St Msg C : Type} [DecidableEq Msg] [DecidableEq 
     cellTrivialT (some (t - 2)) t s = trivB1 t s := by
   funext pos; unfold cellTrivialT trivB1; simp [ht2]
 
-def injectImplCell {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def injectImplCell {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (tL : Option ℕ) (t : ℕ) (cfg : SM.Config Msg) :
     QueryImpl ((Party × C) →ₒ Option (SM.RecvResult Msg))
       (StateT (SM.GameState St Msg C) ProbComp) := fun ⟨P, c⟩ => do
@@ -112,7 +152,7 @@ def injectImplCell {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
       if cfg.injectFull t' then set { s with win := true }
       return some .rejected
 
-def deliverForgeBaseImplCell {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def deliverForgeBaseImplCell {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (tL : Option ℕ) (t : ℕ) (sameHdr : C → C → Bool)
     (cfg : SM.Config Msg) :
     QueryImpl ((Party × C × C) →ₒ Option (SM.RecvResult Msg))
@@ -134,7 +174,7 @@ def deliverForgeBaseImplCell {Key St Msg Coins C : Type} [DecidableEq Msg] [Deci
         if cfg.injectFull t' then set { s with win := true }
         return some .rejected
 
-def oracleImplCellPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def oracleImplCellPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Coins] (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (tL : Option ℕ) (t : ℕ)
     (cfg : SM.Config Msg) :
     QueryImpl (SM.spec St Msg Coins C) (StateT (SM.GameState St Msg C) ProbComp) :=
@@ -142,7 +182,7 @@ def oracleImplCellPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [Decidable
     SM.deliverImpl sm cfg + injectImplCell sm qep tL t cfg +
     corrImplShiftedPaper (St := St) (Msg := Msg) (C := C) (cellShift tL t)
 
-def oracleImplBaseDFCellPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def oracleImplBaseDFCellPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Coins] (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (sameHdr : C → C → Bool)
     (tL : Option ℕ) (t : ℕ) (cfg : SM.Config Msg) :
     QueryImpl (DeliverForge.specDF St Msg Coins C) (StateT (SM.GameState St Msg C) ProbComp) :=
@@ -158,7 +198,7 @@ abbrev fullImplBaseDFCellPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [De
     oracleImplBaseDFCellPaper sm qep sameHdr tL t cfg
 
 /-- Per-cell paper `DeliverForge` runner using `cellDelta`, `cellTrivialT`, and `cellShift`. -/
-def runBaseDFCellPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def runBaseDFCellPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (sameHdr : C → C → Bool)
     (tL : Option ℕ) (t : ℕ) (cfg : SM.Config Msg) (b : Bool)
@@ -303,11 +343,13 @@ structure CellCompRel {St Msg C : Type} (tL : Option ℕ) (t : ℕ)
   comp_diff_canon_eq :
     ∀ r ∈ s_unsh.trans, r.pos.epoch = t → r.pos ∈ s_unsh.comp → r.pos ∉ s_sh.comp →
       SM.canon t s_sh = tL
+  eq_of_not_B1_not_B2 : ¬(2 ≤ t ∧ tL = some (t - 2)) → ¬(3 ≤ t ∧ tL = some (t - 3)) →
+    s_sh = s_unsh
 
 theorem cellCompRel_init {Key St Msg Coins C : Type}
     (sm : SMScheme Key St Msg Coins C) (tL : Option ℕ) (t : ℕ) (k : Key) (b : Bool) :
     CellCompRel tL t (SM.initState sm k b) (SM.initState sm k b) := by
-  refine ⟨fun _ hp => ?_, fun _ hp => hp, fun _ _ hr => ?_, fun _ hr => ?_⟩
+  refine ⟨fun _ hp => ?_, fun _ hp => hp, fun _ _ hr => ?_, fun _ hr => ?_, fun _ _ => rfl⟩
   · simp [SM.initState] at hp
   · simp [SM.initState] at hr
   · simp [SM.initState] at hr
@@ -316,7 +358,7 @@ theorem CellCompRel.accept_step {St Msg C : Type} {tL : Option ℕ} {t : ℕ}
     {s_unsh s_sh : SM.GameState St Msg C} (hrel : CellCompRel tL t s_unsh s_sh)
     (Q : Party) (st' : St) (pos : SM.Pos) :
     CellCompRel tL t (s_unsh.accept Q st' pos) (s_sh.accept Q st' pos) := by
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, fun h1 h2 => by rw [hrel.eq_of_not_B1_not_B2 h1 h2]⟩
   · intro p hp
     unfold SM.GameState.accept SM.GameState.delete at hp ⊢
     dsimp only at hp ⊢
@@ -355,7 +397,10 @@ theorem CellCompRel.corr_step {St Msg C : Type} [DecidableEq Msg] [DecidableEq C
   have hshift_lt : cellShift tL t = 0 ∨ cellShift tL t < t := by
     unfold cellShift
     split_ifs <;> omega
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, fun h1 h2 => ?_⟩
+  rotate_left 4
+  · have hs : cellShift tL t = 0 := by unfold cellShift; simp [h1, h2]
+    rw [hs, hrel.eq_of_not_B1_not_B2 h1 h2, afterCorrShifted_zero_eq_afterCorr]
   · intro p hp
     unfold SM.GameState.afterCorr SM.GameState.leak at hp ⊢
     dsimp only at hp ⊢
@@ -525,7 +570,10 @@ theorem CellCompRel.record_step {St Msg C : Type} {tL : Option ℕ} {t : ℕ}
     intro p hp
     unfold SM.GameState.record; dsimp only
     split_ifs <;> [exact hp; exact List.mem_cons_of_mem _ hp]
-  refine ⟨?_, ?_, ?_, ?_⟩
+  refine ⟨?_, ?_, ?_, ?_, fun h1 h2 => ?_⟩
+  rotate_left 4
+  · have hd : cellDelta tL t = 2 + 1 := by unfold cellDelta; simp [h1]
+    rw [hd, hrel.eq_of_not_B1_not_B2 h1 h2]
   · intro p hp
     unfold SM.GameState.record at hp ⊢; dsimp only at hp ⊢
     split_ifs at hp with hsafe
@@ -611,7 +659,8 @@ theorem CellCompRel.transmit_step {St Msg C : Type} {tL : Option ℕ} {t qep : �
     simp only [Bool.false_and, Bool.false_eq_true, ↓reduceIte] at hep_unsh hep_sh
     split_ifs at hep_unsh hep_sh with h1 h2
     · injection hep_unsh with hu; injection hep_sh with hs; subst hu hs
-      exact ⟨⟨hrel.1, hrel.2, hrel.3, hrel.4⟩,
+      exact ⟨⟨hrel.1, hrel.2, hrel.3, hrel.4, fun hb1 hb2 => by
+          have heq := hrel.eq_of_not_B1_not_B2 hb1 hb2; subst heq; rfl⟩,
         ⟨hleak.1, hleak.2, by simp [hleak.3], by simp [hleak.4], hleak.5, hleak.6, hleak.7,
           hleak.8, hleak.9, hleak.10, hleak.11, hleak.12, hleak.13, hleak.14⟩⟩
     · injection hep_unsh with hu; injection hep_sh with hs; subst hu hs
@@ -620,7 +669,7 @@ theorem CellCompRel.transmit_step {St Msg C : Type} {tL : Option ℕ} {t qep : �
 
 /-! ## Cell-family invariant -/
 
-def FirstNECellFamilyInvT {St Msg C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def FirstNECellFamilyInvT {St Msg C : Type} [DecidableEq Msg] [DecidableEq C]
     (qep : ℕ) (fl : Bool) (g : SM.GameState St Msg C) (m' : Mirror Msg C)
     (s_cell : ℕ → Option ℕ → SM.GameState St Msg C) : Prop :=
   (∃ t ∈ Finset.range ((qep + 1) + 2), ∃ tL ∈ SM.admissibleLastLeakGuesses 2 t,
@@ -1141,6 +1190,7 @@ theorem firstNECellFamilyInvT_inject_step {Key St Msg Coins C : Type}
               exact Or.inl ⟨hk4_cond.1, hk4_cond.2.1,
                 ⟨hk4_cond.2.2, hrel_sh.corrs_eq.symm ▸ hk4_cond.2.2⟩, rfl⟩
 
-end CryptoVerification.LibsignalSession.HeadlineV1
 
 end
+
+end CryptoVerification.LibsignalSession.HeadlineV1

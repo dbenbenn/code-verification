@@ -9,18 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.BranchesPlaced
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.BranchesPlaced
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable Branch Helpers for `save_identity::{closure#0}`
@@ -29,7 +37,7 @@ Defines the composite allocation envelope `CliIdSavePollEnv` and proves budget-t
 epilogue, and branch lemmas on Block `565` (`lsProg_565 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -67,8 +75,7 @@ open CryptoVerification.SignalSession.Cli.Store.IdSavePoll.Helpers
    protocolAddressAt_borrow putStk_le_saveSubMax restore_savePollStack
    s48_byte7_entails_memRegion16 s48_split_byte7 saveMinStk saveSubMax savedCalleeSlots
    sepWP_conseq sepWPp_conseq sepWPp_of_sepWP_final serStk_le_saveSubMax slot90_split_vec24
-   speAt_read_invalidState_unpack sret48_epilogue_split stackAt_64_eq_publicKeyEq_frames
-   stackAt_sub_split)
+   speAt_read_invalidState_unpack sret48_epilogue_split stackAt_sub_split)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv FitsEvents FreeOnlyEvs RustCliAllocBudget
    RustLayoutOk SeqEnv rustAllocEvents rustCliAllocNoOomExternSpecWithStack
@@ -102,7 +109,7 @@ attribute [local arm64_norm, local wp_norm] calleeSavedVRegs_writeVReg128_0
 - on `.error ()`: zero events (`[]`);
 - on `.ok _`: optional `Vec<u8>` buffer deallocation (`FreeOnlyEvs`), optionally followed by
   `PublicKey::serialize` (`PublicKeySerializeEnv`) and `Dir::put` (`PutStrEnv`). -/
-def CliIdSaveTailEnv
+@[expose] def CliIdSaveTailEnv
     (PutStrEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (x : IdPollGhost) (gr : Except Unit (List (BitVec 8))) : List AllocEvent → Prop :=
   match gr with
@@ -113,7 +120,7 @@ def CliIdSaveTailEnv
         (PutStrEnv x.peers x.call.call.addr.name.bytes x.call.call.key.serialize))
 
 /-- Full allocator event envelope of `save_identity::{closure#0}`. -/
-def CliIdSavePollEnv (rd : ReadRule)
+@[expose] def CliIdSavePollEnv (rd : ReadRule)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (PutStrEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (F0 : FsFiles) (x : IdPollGhost) : List AllocEvent → Prop :=
@@ -394,48 +401,6 @@ theorem ispoll_call_decode_placed [LibsignalPlacement] {prog : Program} {M : All
     rw [← hlog, ← A.pool_transport lim st s sm hvm]
     exact sepWPp_conseq (Entails.of_eq (by sep_ac_rfl))
       (hnext sm hpcm hrunm hspm hcsm hinvm htrm)
-
-theorem ispoll_call_publicKeyEq_placed [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callee ret_pc ret : BitVec 64}
-    (hcall : subroutine_ok prog callee
-      (withLsCodeRoLoaded lsmpl (withVmPreserved publicKeyEqSpec)))
-    (p1 : BitVec 64) (pk1 : PublicKey) (p2 : BitVec 64) (pk2 : PublicKey)
-    (st : M.σ) (F : SepProp)
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hinv : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hx0 : s.readReg64 .x0 = p1) (hx1 : s.readReg64 .x1 = p2)
-    (hpre : P ⊢ ((p1 ↦ₛ pk1.bytes.toList) ∗ (p2 ↦ₛ pk2.bytes.toList) ∗
-      A.pool lim st s ∗ stackAt s.sp 64) ∗ F)
-    (hnext : ∀ sm : State,
-      sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → LibsignalCodeRoLoaded lsmpl sm.mem →
-      sm.readReg64 .x0 = (if pk1 == pk2 then 1#64 else 0#64) → sm.trace = s.trace →
-      SepWPp prog ret sm
-        (((p1 ↦ₛ pk1.bytes.toList) ∗ (p2 ↦ₛ pk2.bytes.toList) ∗
-          A.pool lim st sm ∗ stackAt s.sp 64) ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine ispoll_call_total_raw_placed hcall (p1, pk1, p2, pk2, s.sp) (A.pool lim st s ∗ F)
-    hpc hrun hsp_align hlr hinv ?_ ?_ ?_ ?_ ?_
-  · refine Entails.trans hpre ?_
-    simp only [withVmPreserved, publicKeyEqSpec, ← stackAt_64_eq_publicKeyEq_frames s.sp,
-      sepConj_assoc]
-    exact Entails.pure_right ⟨hx0, hx1, trivial⟩ (Entails.of_eq (by sep_ac_rfl))
-  · intro sm R' hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro code sm R' hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm hcsm hinvm
-    simp only [withVmPreserved, publicKeyEqSpec, ← stackAt_64_eq_publicKeyEq_frames s.sp,
-      sepConj_assoc]
-    refine SepWPp.pure_elim fun hvm => SepWPp.pure_elim fun ⟨hx0m, htrm⟩ => ?_
-    rw [← A.pool_transport lim st s sm hvm]
-    exact sepWPp_conseq (Entails.of_eq (by sep_ac_rfl))
-      (hnext sm hpcm hrunm hspm hcsm hinvm hx0m htrm)
 
 theorem ispoll_call_publicKeyEq16_placed [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}

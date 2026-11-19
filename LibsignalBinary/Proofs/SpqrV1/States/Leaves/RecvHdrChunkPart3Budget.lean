@@ -10,10 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart3
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart3
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.New -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<NoHeaderReceived>::recv_hdr_chunk` (Block `369`) — Budget-Threaded HMAC Call Helpers
@@ -22,7 +27,7 @@ Call-site budget specification (`libcruxHmacHdrSpec`), `LibcruxHmacEnv` sufficie
 `subroutine_ok` lifts, and Block `369` `[LibsignalPlacement]` hook discharge for `libcrux_hmac::hmac`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -78,7 +83,7 @@ theorem fitsEnv_libcruxHmacEnv_of_fitsEvents {M : AllocCostModel} {lim : BudgetL
     - eliminates the `2 ^ 32 ≤ x.data.length` panic branch via `x.data.length < 2 ^ 32` in `pre`,
       and maps `2 ^ 32 ≤ x.key.length` to `P` (`isPanic = true`);
     - pins the normal-return allocator state directly to `M.stepEvents libcruxHmacSha256Events st`. -/
-def libcruxHmacHdrSpec (P : Prop) (F : ShaCompress)
+@[expose] def libcruxHmacHdrSpec (P : Prop) (F : ShaCompress)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (LibcruxHmacCall × M.σ) where
   pre := fun (x, st) s =>
@@ -130,45 +135,6 @@ theorem subroutine_ok_libcruxHmacHdr_of_budget {P : Prop} {F : ShaCompress}
     exact ⟨⟨hk_lt, htr_eq⟩, hmem'⟩
   · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
     dsimp only [libcruxHmacBudgetSpec, libcruxHmacHdrSpec] at hpost ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨⟨hk_ge | hd_ge, hpref⟩, hmem'⟩
-    · exact ⟨⟨hk_imp hk_ge, hpref⟩, hmem'⟩
-    · omega
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hpost⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hpost⟩))
-
-theorem subroutine_ok_inImage_libcruxHmacHdr_of_budget {P : Prop} {img : Obj.Image}
-    {F : ShaCompress} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {prog : Program} {entry : BitVec 64}
-    (hraw : subroutine_ok prog entry ((libcruxHmacBudgetSpec F M A lim).inImage img)) :
-    subroutine_ok prog entry ((libcruxHmacHdrSpec P F M A lim).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
-  dsimp only [Spec.inImage, libcruxHmacHdrSpec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6, hk_imp, hd_lt, hfits⟩, hmem⟩
-  have hpre' : s0.mem ⊨ ((libcruxHmacBudgetSpec F M A lim).inImage img).pre (x, st) s0 ∗ R := by
-    dsimp only [Spec.inImage, libcruxHmacBudgetSpec]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hinv, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6, hfits⟩, hmem⟩
-  refine (hraw.to_outcome (x, st) R s0 hpc hrun hpre' hsp).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, libcruxHmacBudgetSpec, libcruxHmacHdrSpec] at hpost ⊢
-    simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost
-    rcases hpost with ⟨evs, hpost⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨⟨hk_lt, hd_lt', htr_eq, hevs⟩, hmem'⟩
-    have hevs_eq : evs = libcruxHmacSha256Events := by
-      dsimp only [LibcruxHmacEnv] at hevs
-      simpa only [hk_lt, hd_lt', and_self, ↓reduceIte] using hevs
-    subst hevs_eq
-    exact ⟨⟨hk_lt, htr_eq⟩, hmem'⟩
-  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-    dsimp only [Spec.inImage, libcruxHmacBudgetSpec, libcruxHmacHdrSpec] at hpost ⊢
     rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
     rcases hpost with ⟨⟨hk_ge | hd_ge, hpref⟩, hmem'⟩
     · exact ⟨⟨hk_imp hk_ge, hpref⟩, hmem'⟩

@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhCorrectModel
 import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhModelLink
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Bridge Between `Initiator` Protocol Model and `SignalPqxdh` Specifications
@@ -26,7 +27,7 @@ under `ResponderCore.ofSignalPqxdhPrimitives` with `SignalPqxdh.*`:
   `acceptInput`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -125,10 +126,10 @@ open CryptoVerification.E2E.Pqxdh.ResponderCore
 
 /-! ## 2. Structure Conversions (`Initiator.* ↔ SignalPqxdh.*`) -/
 
-def ofSignalPqxdhDRKey (dk : SignalPqxdh.DRKey) : DRKey :=
+@[expose] def ofSignalPqxdhDRKey (dk : SignalPqxdh.DRKey) : DRKey :=
   ⟨dk.rootKey, dk.chainKey, dk.pqrKey⟩
 
-def toSignalPqxdhDRKey (dk : DRKey) : SignalPqxdh.DRKey :=
+@[expose] def toSignalPqxdhDRKey (dk : DRKey) : SignalPqxdh.DRKey :=
   ⟨dk.rootKey, dk.chainKey, dk.pqrKey⟩
 
 @[simp] theorem toSignalPqxdhDRKey_ofSignalPqxdhDRKey (dk : SignalPqxdh.DRKey) :
@@ -142,10 +143,10 @@ def toSignalPqxdhDRKey (dk : DRKey) : SignalPqxdh.DRKey :=
 @[simp] theorem ofSignalPqxdhDRKey_toBytes96 (dk : SignalPqxdh.DRKey) :
     DRKey.toBytes96 (ofSignalPqxdhDRKey dk) = dk.toBytes96 := rfl
 
-def ofSignalPqxdhMessageKeys (mk : SignalPqxdh.MessageKeys) : MessageKeys :=
+@[expose] def ofSignalPqxdhMessageKeys (mk : SignalPqxdh.MessageKeys) : MessageKeys :=
   ⟨mk.cipherKey, mk.macKey, mk.iv⟩
 
-def toSignalPqxdhMessageKeys (mk : MessageKeys) : SignalPqxdh.MessageKeys :=
+@[expose] def toSignalPqxdhMessageKeys (mk : MessageKeys) : SignalPqxdh.MessageKeys :=
   ⟨mk.cipherKey, mk.macKey, mk.iv⟩
 
 @[simp] theorem toSignalPqxdhMessageKeys_ofSignalPqxdhMessageKeys (mk : SignalPqxdh.MessageKeys) :
@@ -156,7 +157,7 @@ def toSignalPqxdhMessageKeys (mk : MessageKeys) : SignalPqxdh.MessageKeys :=
     ofSignalPqxdhMessageKeys (toSignalPqxdhMessageKeys mk) = mk := by
   cases mk; rfl
 
-def ofSignalPqxdhBundle (b : SignalPqxdh.PreKeyBundleInput) : PreKeyBundleInput where
+@[expose] def ofSignalPqxdhBundle (b : SignalPqxdh.PreKeyBundleInput) : PreKeyBundleInput where
   ikB      := b.ikB
   spkId    := b.spkId
   spkB     := b.spkB
@@ -184,7 +185,7 @@ def toSignalPqxdhBundle (b : PreKeyBundleInput) : SignalPqxdh.PreKeyBundleInput 
     ofSignalPqxdhBundle (toSignalPqxdhBundle b) = b := by
   cases b; rfl
 
-def ofSignalPqxdhHdr (h : SignalPqxdh.HandshakeHdr) : HandshakeHdr where
+@[expose] def ofSignalPqxdhHdr (h : SignalPqxdh.HandshakeHdr) : HandshakeHdr where
   ikAPk   := h.ikAPk
   ekAPk   := h.ekAPk
   spkId   := h.spkId
@@ -228,7 +229,7 @@ def toSignalPqxdhPreKeyMsg (m : PreKeyMsg) : SignalPqxdh.PreKeyMsg where
     ofSignalPqxdhPreKeyMsg (toSignalPqxdhPreKeyMsg m) = m := by
   cases m; simp [toSignalPqxdhPreKeyMsg, ofSignalPqxdhPreKeyMsg]
 
-def ofSignalPqxdhInitiateKeysInput (inp : SignalPqxdh.InitiateKeysInput) : InitiateKeysInput where
+@[expose] def ofSignalPqxdhInitiateKeysInput (inp : SignalPqxdh.InitiateKeysInput) : InitiateKeysInput where
   ikASk       := inp.ikASk
   ikAPk       := inp.ikAPk
   ekASk       := inp.ekASk
@@ -276,7 +277,7 @@ def toSignalPqxdhInitiateInput (inp : InitiateInput) : SignalPqxdh.InitiateInput
     ofSignalPqxdhInitiateInput (toSignalPqxdhInitiateInput inp) = inp := by
   cases inp; simp [toSignalPqxdhInitiateInput, ofSignalPqxdhInitiateInput]
 
-def ofSignalPqxdhAcceptKeysInput (inp : SignalPqxdh.AcceptKeysInput) : AcceptKeysInput where
+@[expose] def ofSignalPqxdhAcceptKeysInput (inp : SignalPqxdh.AcceptKeysInput) : AcceptKeysInput where
   ikBSk       := inp.ikBSk
   ikBPk       := inp.ikBPk
   spkBSk      := inp.spkBSk
@@ -447,15 +448,62 @@ def toSignalPqxdhAcceptInput (inp : AcceptInput) : SignalPqxdh.AcceptInput where
     (ofSignalPqxdhPrimitives P).aeadDec mk ad ct =
       P.aeadDec (toSignalPqxdhMessageKeys mk) ad ct := rfl
 
-@[simp] theorem xeddsaVerifyRef_ofSignalPqxdhPrimitives (P : SignalPqxdh.Primitives)
-    (pk m sig : Bytes) :
+theorem xeddsaVerifyRef_ofSignalPqxdhPrimitives (P : SignalPqxdh.Primitives)
+    (hWF : Shared.StructuralPrims P) (pk m sig : Bytes) :
     xeddsaVerifyRef (ofSignalPqxdhPrimitives P) pk m sig =
-      SignalPqxdh.xeddsaVerifyRef P pk m sig := rfl
+      SignalPqxdh.xeddsaVerifyRef P pk m sig := by
+  unfold xeddsaVerifyRef SignalPqxdh.xeddsaVerifyRef ofSignalPqxdhPrimitives
+  dsimp only [_root_.SignalPqxdh.Primitives.montToEdBytes,
+    _root_.SignalPqxdh.Primitives.compressBytes,
+    _root_.SignalPqxdh.Primitives.edNegBytes,
+    _root_.SignalPqxdh.Primitives.doubleScalarMulBasepointBytes]
+  split
+  · rcases hm : P.montToEd pk ((sig.getD 63 0 &&& 0x80) >>> 7) with _ | edPk
+    · rfl
+    · have hlt := hWF.montToEd_lt pk ((sig.getD 63 0 &&& 0x80) >>> 7) edPk hm
+      have hneg := hWF.edNeg_lt edPk
+      dsimp only [Option.map]
+      rw [LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.unpackEdBytes_packEdBytes
+          hlt.1 hlt.2]
+      have hdsmb := hWF.doubleScalarMulBasepoint_lt
+        (P.scalarFromWide (P.sha512 (sig.take 32 ++ P.compress edPk ++ m)))
+        (P.edNeg edPk)
+        (P.scalarFromBytesModOrder ((sig.drop 32).take 31 ++ [(sig.drop 32).getD 31 0 &&& 0x7F]))
+      rw [LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.unpackEdBytes_packEdBytes
+          hneg.1 hneg.2,
+        LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.unpackEdBytes_packEdBytes
+          hdsmb.1 hdsmb.2]
+  · rfl
 
-@[simp] theorem isCanonicalRef_ofSignalPqxdhPrimitives (P : SignalPqxdh.Primitives)
-    (pk : Bytes) :
+theorem isCanonicalRef_ofSignalPqxdhPrimitives (P : SignalPqxdh.Primitives)
+    (hWF : Shared.StructuralPrims P) (pk : Bytes) :
     isCanonicalRef (ofSignalPqxdhPrimitives P) pk =
-      SignalPqxdh.isCanonicalRef P pk := rfl
+      SignalPqxdh.isCanonicalRef P pk := by
+  unfold isCanonicalRef SignalPqxdh.isCanonicalRef ofSignalPqxdhPrimitives
+  dsimp only [_root_.SignalPqxdh.Primitives.montToEdBytes,
+    _root_.SignalPqxdh.Primitives.isTorsionFreeBytes]
+  rw [scalarIsInRange_eq]
+  split
+  · rcases hm : P.montToEd pk 0 with _ | edPt
+    · rfl
+    · have hlt := hWF.montToEd_lt pk 0 edPt hm
+      dsimp only [Option.map]
+      rw [LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.unpackEdBytes_packEdBytes
+          hlt.1 hlt.2]
+  · rfl
+
+@[simp] theorem xeddsaVerifyRef_ofSignalPqxdhPrimitives_modelPrims
+    (X : UnreachedPqxdhPrimitives) (W : PEParams) (pk m sig : Bytes) :
+    xeddsaVerifyRef (ofSignalPqxdhPrimitives (modelPrims X W)) pk m sig =
+      SignalPqxdh.xeddsaVerifyRef (modelPrims X W) pk m sig :=
+  xeddsaVerifyRef_ofSignalPqxdhPrimitives (modelPrims X W) (Shared.structuralPrims_modelPrims X W)
+    pk m sig
+
+@[simp] theorem isCanonicalRef_ofSignalPqxdhPrimitives_modelPrims
+    (X : UnreachedPqxdhPrimitives) (W : PEParams) (pk : Bytes) :
+    isCanonicalRef (ofSignalPqxdhPrimitives (modelPrims X W)) pk =
+      SignalPqxdh.isCanonicalRef (modelPrims X W) pk :=
+  isCanonicalRef_ofSignalPqxdhPrimitives (modelPrims X W) (Shared.structuralPrims_modelPrims X W) pk
 
 /-! ## 4. Protocol Model Function Bridges (`Model.initiateKeys`, `Model.acceptKeys`,
   `Model.initiate`, `Model.accept`) -/
@@ -481,14 +529,6 @@ theorem Model.initiateKeys_ofSignalPqxdhPrimitives (P : SignalPqxdh.Primitives)
   rcases hkem : P.kemEncaps inp.bundle.pqspkB inp.kemCoins with _ | ⟨ss, kemCt⟩ <;>
     (simp [hkem, «guard», _root_.guard, bind, Function.comp_def, ofSignalPqxdhDRKey,
       ofSignalPqxdhHdr]; try rfl)
-
-theorem Model.initiateKeys_toSignalPqxdhInitiateKeysInput (P : SignalPqxdh.Primitives)
-    (inp : InitiateKeysInput) :
-    Model.initiateKeys (ofSignalPqxdhPrimitives P) inp =
-      (SignalPqxdh.Model.initiateKeys P (toSignalPqxdhInitiateKeysInput inp)).map
-        (fun (dk, hdr) => (ofSignalPqxdhDRKey dk, ofSignalPqxdhHdr hdr)) := by
-  have h := Model.initiateKeys_ofSignalPqxdhPrimitives P (toSignalPqxdhInitiateKeysInput inp)
-  rwa [ofSignalPqxdhInitiateKeysInput_toSignalPqxdhInitiateKeysInput] at h
 
 /-- Typeclass witnessing that `P.kemDecaps` returns `none` outside `kyberCtLen` or `inp.hdr.kemCt`
     already has length `kyberCtLen` (satisfied automatically at `modelPrims X W` and at
@@ -543,170 +583,56 @@ theorem Model.acceptKeys_ofSignalPqxdhPrimitives (P : SignalPqxdh.Primitives)
       (SignalPqxdh.Model.acceptKeys P inp).map ofSignalPqxdhDRKey :=
   Model.acceptKeys_ofSignalPqxdhPrimitives_of_guard P inp hG.guard_ok
 
-theorem Model.acceptKeys_toSignalPqxdhAcceptKeysInput (P : SignalPqxdh.Primitives)
-    (inp : AcceptKeysInput) [AcceptKeysGuard P (toSignalPqxdhAcceptKeysInput inp)] :
-    Model.acceptKeys (ofSignalPqxdhPrimitives P) inp =
-      (SignalPqxdh.Model.acceptKeys P (toSignalPqxdhAcceptKeysInput inp)).map
-        ofSignalPqxdhDRKey := by
-  have h := Model.acceptKeys_ofSignalPqxdhPrimitives P (toSignalPqxdhAcceptKeysInput inp)
-  rwa [ofSignalPqxdhAcceptKeysInput_toSignalPqxdhAcceptKeysInput] at h
-
-theorem Model.initiate_ofSignalPqxdhPrimitives (P : SignalPqxdh.Primitives)
-    (inp : SignalPqxdh.InitiateInput) :
-    Model.initiate (ofSignalPqxdhPrimitives P) (ofSignalPqxdhInitiateInput inp) =
-      (SignalPqxdh.Model.initiate P inp).map
-        (fun (dk, rk1, ck1_1, msg) =>
-          (ofSignalPqxdhDRKey dk, rk1, ck1_1, ofSignalPqxdhPreKeyMsg msg)) := by
-  unfold Model.initiate SignalPqxdh.Model.initiate
-  dsimp only [ofSignalPqxdhInitiateInput]
-  rw [Model.initiateKeys_ofSignalPqxdhPrimitives]
-  rcases SignalPqxdh.Model.initiateKeys P inp.toInitiateKeysInput with _ | ⟨⟨rk, ck, pqr⟩, hdr⟩ <;>
-    simp [bind, ofSignalPqxdhPrimitives, ofSignalPqxdhInitiateKeysInput, ofSignalPqxdhBundle,
-      ofSignalPqxdhDRKey, ofSignalPqxdhPreKeyMsg, ofSignalPqxdhMessageKeys,
-      toSignalPqxdhMessageKeys,
-      firstMsgAD_eq]
-
-theorem Model.accept_ofSignalPqxdhPrimitives (P : SignalPqxdh.Primitives)
-    (inp : SignalPqxdh.AcceptInput) [AcceptKeysGuard P inp.keysInp] :
-    Model.accept (ofSignalPqxdhPrimitives P) (ofSignalPqxdhAcceptInput inp) =
-      (SignalPqxdh.Model.accept P inp).map
-        (fun (dk, rk1, ck1_1, pt) => (ofSignalPqxdhDRKey dk, rk1, ck1_1, pt)) := by
-  unfold Model.accept SignalPqxdh.Model.accept
-  have hhdr : (ofSignalPqxdhHdr inp.keysInp.hdr == ofSignalPqxdhHdr inp.msg.hdr) =
-      (inp.keysInp.hdr == inp.msg.hdr) := by
-    by_cases h : inp.keysInp.hdr = inp.msg.hdr
-    · rw [h]; simp
-    · have hne : ofSignalPqxdhHdr inp.keysInp.hdr ≠ ofSignalPqxdhHdr inp.msg.hdr := by
-        intro heq
-        apply h
-        have := congrArg toSignalPqxdhHdr heq
-        simpa using this
-      simp [h, hne]
-  by_cases h1 : (inp.keysInp.hdr == inp.msg.hdr) = true <;>
-    simp [ofSignalPqxdhAcceptInput, ofSignalPqxdhAcceptKeysInput, ofSignalPqxdhPreKeyMsg,
-      hhdr, h1, «guard», _root_.guard]
-  rw [← show ofSignalPqxdhAcceptKeysInput inp.keysInp =
-      { ikBSk := inp.keysInp.ikBSk, ikBPk := inp.keysInp.ikBPk,
-        spkBSk := inp.keysInp.spkBSk, spkBPk := inp.keysInp.spkBPk,
-        opkBSk? := inp.keysInp.opkBSk?, pqspkBSk := inp.keysInp.pqspkBSk,
-        pqspkBPk := inp.keysInp.pqspkBPk, trustedPeer := inp.keysInp.trustedPeer,
-        replayOk := inp.keysInp.replayOk, hdr := ofSignalPqxdhHdr inp.keysInp.hdr } from rfl,
-    Model.acceptKeys_ofSignalPqxdhPrimitives]
-  rcases SignalPqxdh.Model.acceptKeys P inp.keysInp with _ | ⟨rk, ck, pqr⟩ <;>
-    simp [bind, Option.bind, ofSignalPqxdhPrimitives, ofSignalPqxdhHdr, ofSignalPqxdhDRKey,
-      ofSignalPqxdhMessageKeys, toSignalPqxdhMessageKeys, firstMsgAD_eq]
-  rcases P.spqrInitRecv pqr inp.msg.pqRatchetMsg with _ | ⟨pqrStB, spqrSalt?⟩ <;>
-    simp <;> rfl
-
 /-! ## 5. `StructuralPrims` Bridge and Unconditional `initiatorModelPrims` Properties -/
 
-/-- Lift `SignalPqxdh.WellFormedPrimitives P` across `ofSignalPqxdhPrimitives P`. -/
-theorem structuralPrims_ofSignalPqxdhPrimitives (P : SignalPqxdh.Primitives)
-    (hWF : SignalPqxdh.WellFormedPrimitives P) :
-    StructuralPrims (ofSignalPqxdhPrimitives P) :=
-  Shared.structuralPrims_of_wellFormedPrimitives hWF
+/-- Lift `Shared.StructuralPrims P` across `ofSignalPqxdhPrimitives P`. -/
+theorem structuralPrims_of_shared (P : SignalPqxdh.Primitives)
+    (hWF : Shared.StructuralPrims P) :
+    StructuralPrims (ofSignalPqxdhPrimitives P) where
+  sha256Compress_len := hWF.sha256Compress_len
+  sha512Compress_len := hWF.sha512Compress_len
+  aesEncBlock_len := hWF.aesEncBlock_len
+  aesDecBlock_len := hWF.aesDecBlock_len
+  sha512_eq_ref := hWF.sha512_eq_ref
+  hkdfDerive96_eq_ref s := by simp [hWF.hkdfDerive96_eq_ref s]
+  rootCreateChain_eq_ref := hWF.rootCreateChain_eq_ref
+  chainKdfSeed_eq_ref := hWF.chainKdfSeed_eq_ref
+  chainKdfNext_eq_ref := hWF.chainKdfNext_eq_ref
+  deriveMsgKeys_eq_ref s salt := by simp [hWF.deriveMsgKeys_eq_ref s salt]
+  aeadEnc_eq_ref mk ad pt := by simp [hWF.aeadEnc_eq_ref]
+  aeadDec_eq_ref mk ad ct := by simp [hWF.aeadDec_eq_ref]
+  sigVerify_eq_xeddsaVerifyRef pk m sig :=
+    (hWF.sigVerify_eq_xeddsaVerifyRef pk m sig).trans
+      (xeddsaVerifyRef_ofSignalPqxdhPrimitives P hWF pk m sig).symm
+  isCanonical_eq_isCanonicalRef pk :=
+    (hWF.isCanonical_eq_isCanonicalRef pk).trans
+      (isCanonicalRef_ofSignalPqxdhPrimitives P hWF pk).symm
+  x25519_len := hWF.x25519_len
+  x25519Base_len := hWF.x25519Base_len
+  sha512_len := hWF.sha512_len
+  scalarFromBytesModOrder_len := hWF.scalarFromBytesModOrder_len
+  scalarFromWide_len := hWF.scalarFromWide_len
+  montToEd_len := P.montToEdBytes_len
+  edNeg_len := P.edNegBytes_len
+  doubleScalarMulBasepoint_len := P.doubleScalarMulBasepointBytes_len
+  compress_len := P.compressBytes_len hWF.compress_len
+  kemEncaps_isSome := hWF.kemEncaps_isSome
+  kemEncaps_len := hWF.kemEncaps_len
+  kemDecaps_isSome := hWF.kemDecaps_isSome
+  kemDecaps_len := hWF.kemDecaps_len
+  spqrInitSend_some := hWF.spqrInitSend_some
 
 /-- `initiatorModelPrims X W = ofSignalPqxdhPrimitives (modelPrims X W)` unconditionally satisfies
     all 28 structural/reference properties of `StructuralPrims` for all `X` and `W`. -/
-private theorem flatMap_toBEBytes_length {w : Nat} (n : Nat) :
-    ∀ l : List (BitVec w), (l.flatMap (HMAC.toBEBytes n)).length = n * l.length
-  | [] => by simp
-  | x :: xs => by
-    have hx : (HMAC.toBEBytes n x).length = n := by simp [HMAC.toBEBytes]
-    simp only [List.flatMap_cons, List.length_append, hx, flatMap_toBEBytes_length n xs,
-      List.length_cons, Nat.mul_succ]; omega
-
 theorem structuralPrims_initiatorModelPrims (X : UnreachedPqxdhPrimitives) (W : PEParams) :
-    StructuralPrims (initiatorModelPrims X W) where
-  sha256Compress_len st blk := by
-    change (CryptoVerification.E2E.toU8 _).length = 32
-    rw [CryptoVerification.E2E.toU8, List.length_map, flatMap_toBEBytes_length 4,
-      List.Vector.toList_length]
-  sha512Compress_len st blk := by
-    change (CryptoVerification.E2E.toU8 _).length = 64
-    rw [CryptoVerification.E2E.toU8, List.length_map, flatMap_toBEBytes_length 8,
-      List.Vector.toList_length]
-  aesEncBlock_len k blk := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      CryptoVerification.E2E.toU8,
-      CryptoVerification.LibsignalAesCbc.blockToBytes, CryptoVerification.LibsignalAesCbc.toLEBytes]
-  aesDecBlock_len k blk := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      CryptoVerification.E2E.toU8,
-      CryptoVerification.LibsignalAesCbc.blockToBytes, CryptoVerification.LibsignalAesCbc.toLEBytes]
-  sha512_eq_ref := modelPrims_sha512_eq_ref X W
-  hkdfDerive96_eq_ref := fun s => by
-    have h := modelPrims_hkdfDerive96_eq_ref X W s
-    change (initiatorModelPrims X W).hkdfDerive96 s = _
-    dsimp only [initiatorModelPrims, ofSignalPqxdhPrimitives]
-    rw [h]
-  rootCreateChain_eq_ref := modelPrims_rootCreateChain_eq_ref X W
-  chainKdfSeed_eq_ref := modelPrims_chainKdfSeed_eq_ref X W
-  chainKdfNext_eq_ref := modelPrims_chainKdfNext_eq_ref X W
-  deriveMsgKeys_eq_ref := fun s salt => by
-    have h := modelPrims_deriveMsgKeys_eq_ref X W s salt
-    change (initiatorModelPrims X W).deriveMsgKeys s salt = _
-    dsimp only [initiatorModelPrims, ofSignalPqxdhPrimitives]
-    rw [h]
-  aeadEnc_eq_ref := fun mk ad pt =>
-    modelPrims_aeadEnc_eq_ref X W ⟨mk.cipherKey, mk.macKey, mk.iv⟩ ad pt
-  aeadDec_eq_ref := fun mk ad ct =>
-    modelPrims_aeadDec_eq_ref X W ⟨mk.cipherKey, mk.macKey, mk.iv⟩ ad ct
-  sigVerify_eq_xeddsaVerifyRef := modelPrims_sigVerify_eq_ref X W
-  isCanonical_eq_isCanonicalRef := modelPrims_isCanonical_eq_ref X W
-  x25519_len k p := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      CryptoVerification.E2E.vecU8, CryptoVerification.E2E.toU8]
-  x25519Base_len k := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      CryptoVerification.E2E.vecU8, CryptoVerification.E2E.toU8]
-  sha512_len m := sha512Ref_length (initiatorModelPrims X W) m
-  scalarFromBytesModOrder_len b := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      CryptoVerification.E2E.vecU8, CryptoVerification.E2E.toU8]
-  scalarFromWide_len b := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      CryptoVerification.E2E.vecU8, CryptoVerification.E2E.toU8]
-  montToEd_len u s pt h := by
-    change (modelPrims X W).montToEd u s = some pt at h
-    dsimp only [modelPrims, blockLevelPrims] at h
-    rcases h1 : W.Q.montToEd (CryptoVerification.E2E.u8Vec 32 u) s.toBitVec with _ | v <;>
-      simp [h1] at h
-    subst h; simp [CryptoVerification.E2E.vecU8, CryptoVerification.E2E.toU8]
-  edNeg_len pt := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      CryptoVerification.E2E.vecU8, CryptoVerification.E2E.toU8]
-  doubleScalarMulBasepoint_len h a s := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      CryptoVerification.E2E.vecU8, CryptoVerification.E2E.toU8]
-  compress_len pt := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      CryptoVerification.E2E.vecU8, CryptoVerification.E2E.toU8]
-  kemEncaps_isSome pk r hpk _ := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      SignalPqxdh.kyberPkLen, hpk]
-  kemEncaps_len pk r ss ct h := by
-    change (modelPrims X W).kemEncaps pk r = some (ss, ct) at h
-    dsimp only [modelPrims, blockLevelPrims] at h
-    split at h <;> [skip; simp at h]
-    injection h with hpair; injection hpair with hss hct; subst hss hct
-    simp [CryptoVerification.E2E.vecU8, CryptoVerification.E2E.toU8]
-  kemDecaps_isSome sk ct _ hct := by
-    simp [initiatorModelPrims, ofSignalPqxdhPrimitives, modelPrims, blockLevelPrims,
-      SignalPqxdh.kyberCtLen, hct]
-  kemDecaps_len sk ct ss h := by
-    change (modelPrims X W).kemDecaps sk ct = some ss at h
-    dsimp only [modelPrims, blockLevelPrims] at h
-    split at h <;> [skip; simp at h]
-    injection h with hss; subst hss
-    simp [CryptoVerification.E2E.vecU8, CryptoVerification.E2E.toU8]
-  spqrInitSend_some k r := rfl
+    StructuralPrims (initiatorModelPrims X W) :=
+  structuralPrims_of_shared (modelPrims X W) (Shared.structuralPrims_modelPrims X W)
 
 /-! ## 6. `WellSized*` Bridges and Unconditional Proofs for `initiateInput` / `acceptInput` -/
 
 /-- Well-sizedness predicate for `InitiateKeysInput` (the handshake-only subset of
 `WellSizedInitiateInput`). -/
-def WellSizedInitiateKeysInput (inp : InitiateKeysInput) : Prop :=
+@[expose] def WellSizedInitiateKeysInput (inp : InitiateKeysInput) : Prop :=
   inp.ikASk.length = 32 ∧
   inp.ikAPk.length = 32 ∧
   inp.ekASk.length = 32 ∧
@@ -727,59 +653,5 @@ def InitiateKeysInput.withEphASk (inp : InitiateKeysInput) (ephASk : Bytes)
   ephASk              := ephASk
   spqrCoins           := spqrCoins
   plaintext           := plaintext
-
-theorem wellSizedInitiateInput_withEphASk {inp : InitiateKeysInput} {ephASk : Bytes}
-    (h : WellSizedInitiateKeysInput inp) (heph : ephASk.length = 32) :
-    WellSizedInitiateInput (inp.withEphASk ephASk) := by
-  rcases h with ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9, h10⟩
-  exact ⟨h1, h2, h3, h4, heph, by simp [InitiateKeysInput.withEphASk], h5, h6, h7, h8, h9, h10⟩
-
-/-- `ofSignalPqxdhInitiateKeysInput (CryptoVerification.E2E.initiateInput W me b t)` is
-    unconditionally `WellSizedInitiateKeysInput` for every `W`, `me`, `b`, `t`. -/
-theorem wellSizedInitiateKeysInput_initiateInput (W : PEParams) (me : LocalIdentity) (b : PreKeyBundleFields)
-    (t : List.Vector (BitVec 8) initiateTapeLen) :
-    WellSizedInitiateKeysInput
-      (ofSignalPqxdhInitiateKeysInput (CryptoVerification.E2E.initiateInput W me b t)) := by
-  refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
-  · exact e2e_vecU8_length _
-  · exact e2e_vecU8_length _
-  · simp [ofSignalPqxdhInitiateKeysInput, CryptoVerification.E2E.initiateInput,
-      e2e_toU8_length, List.length_take, t.toList_length, initiateTapeLen]
-  · exact e2e_vecU8_length _
-  · exact e2e_vecU8_length _
-  · exact e2e_vecU8_length _
-  · exact e2e_vecU8_length _
-  · intro id pk hopk
-    dsimp only [ofSignalPqxdhInitiateKeysInput, ofSignalPqxdhBundle,
-      CryptoVerification.E2E.initiateInput] at hopk
-    rcases hb : b.opk with _ | ⟨i, k⟩
-    · simp [hb] at hopk
-    · simp only [hb, Option.map_some, Option.some.injEq, Prod.mk.injEq] at hopk
-      rcases hopk with ⟨_, rfl⟩
-      exact e2e_vecU8_length k
-  · exact e2e_vecU8_length _
-  · exact e2e_vecU8_length _
-
-/-- `ofSignalPqxdhAcceptKeysInput (CryptoVerification.E2E.acceptInput W me k m)` is
-    unconditionally `WellSizedAcceptKeysInput` for every `W`, `me`, `k`, `m`. -/
-theorem wellSizedAcceptKeysInput_acceptInput (W : PEParams) (me : LocalIdentity) (k : ResponderPreKeySecrets)
-    (m : PreKeyMessageFields) :
-    WellSizedAcceptKeysInput
-      (ofSignalPqxdhAcceptKeysInput (CryptoVerification.E2E.acceptInput W me k m)) := by
-  refine ⟨e2e_vecU8_length _, e2e_vecU8_length _, e2e_vecU8_length _, e2e_vecU8_length _, ?_,
-    e2e_vecU8_length _, e2e_vecU8_length _, e2e_vecU8_length _, e2e_vecU8_length _,
-    e2e_vecU8_length _⟩
-  intro sk hsk
-  dsimp only [ofSignalPqxdhAcceptKeysInput, CryptoVerification.E2E.acceptInput] at hsk
-  rcases h1 : k.opk with _ | ⟨i, opkSk⟩ <;> rcases h2 : m.opkId with _ | j
-  · simp [h1, h2] at hsk
-  · simp [h1, h2] at hsk
-  · simp [h1, h2] at hsk
-  · simp only [h1, h2] at hsk
-    by_cases hij : i = j
-    · simp only [hij, ↓reduceIte, Option.some.injEq] at hsk
-      subst hsk
-      exact e2e_vecU8_length _
-    · simp [hij] at hsk
 
 end CryptoVerification.E2E.Pqxdh.Initiator

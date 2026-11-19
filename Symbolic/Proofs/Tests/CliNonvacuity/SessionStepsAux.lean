@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionTraces
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionTraces -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -39,6 +39,11 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import LibsignalBinary.Specifications.CryptoGames.Party
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhCorrectModel
+public import LibsignalBinary.Specifications.SignalSession.Run
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionDefs
 
 /-!
 # Auxiliary Cuts, Concrete Trace Tables, and `ModelRunWF`/`GhostWF`
@@ -48,7 +53,7 @@ pre-computed trace, visible-entry, and honest-salt tables (`trAt`, `visAt`, `sal
 `runTrace` and `honestSaltsOf`, and `ModelRunWF`/`GhostWF` proofs across all session prefixes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -96,30 +101,30 @@ unseal DY.Bytes
 
 /-! ## Prefix `Step` and `CliEvent` Sequences -/
 
-def initPieces : List HwBytes :=
+@[expose] def initPieces : List HwBytes :=
   [freshBytes 22 32] ++ List.replicate 32 (List.replicate 4 24#8) ++ [freshBytes 24 32]
 
-def msPre3 : List Step := [move0_init, move1_enc0, move2_enc1]
-def msPre4 : List Step := [move0_init, move1_enc0, move2_enc1, move3_bobStart]
-def msPre5 : List Step := [move0_init, move1_enc0, move2_enc1, move3_bobStart, move4_dec1]
-def msPre6 : List Step :=
+@[expose] def msPre3 : List Step := [move0_init, move1_enc0, move2_enc1]
+@[expose] def msPre4 : List Step := [move0_init, move1_enc0, move2_enc1, move3_bobStart]
+@[expose] def msPre5 : List Step := [move0_init, move1_enc0, move2_enc1, move3_bobStart, move4_dec1]
+@[expose] def msPre6 : List Step :=
   [move0_init, move1_enc0, move2_enc1, move3_bobStart, move4_dec1, move5_encReply0]
-def msPre8 : List Step := msHonest ++ msLeaks ++ [move9_enc2]
+@[expose] def msPre8 : List Step := msHonest ++ msLeaks ++ [move9_enc2]
 
-def evsPre3 : List CliEvent := [.run runEv0, .run runEv1, .run runEv2]
-def evsPre4 : List CliEvent := [.run runEv0, .run runEv1, .run runEv2, .run runEv3]
-def evsPre5 : List CliEvent := [.run runEv0, .run runEv1, .run runEv2, .run runEv3, .run runEv4]
-def evsPre6 : List CliEvent :=
+@[expose] def evsPre3 : List CliEvent := [.run runEv0, .run runEv1, .run runEv2]
+@[expose] def evsPre4 : List CliEvent := [.run runEv0, .run runEv1, .run runEv2, .run runEv3]
+@[expose] def evsPre5 : List CliEvent := [.run runEv0, .run runEv1, .run runEv2, .run runEv3, .run runEv4]
+@[expose] def evsPre6 : List CliEvent :=
   [.run runEv0, .run runEv1, .run runEv2, .run runEv3, .run runEv4, .run runEv5]
-def evsPre8 : List CliEvent := evsHonest ++ [.env leakEvCkr, .env leakEvCks, .run runEv7]
+@[expose] def evsPre8 : List CliEvent := evsHonest ++ [.env leakEvCkr, .env leakEvCks, .run runEv7]
 
 /-! ## Concrete Trace, Vis, and Salt Tables -/
 
-def trAt : Nat → ExecTrace
+@[expose] def trAt : Nat → ExecTrace
   | 0 => t4 | 1 => t5 | 2 => t6 | 3 => t7 | 4 => t8 | 5 => t9
   | 6 => t10 | 7 => t11 | 8 => t12 | 9 => t13 | 10 => t14 | _ => t15
 
-def encSendBetween (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) : List VisEntry :=
+@[expose] def encSendBetween (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) : List VisEntry :=
   match lastSent tr tr' with
   | some w =>
     match wrap with
@@ -130,7 +135,7 @@ def encSendBetween (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) : List VisE
     | none => [⟨.send, [w], .whisper, none⟩]
   | none => []
 
-def visBetween (s : Step) (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) (wrappedDec : Bool) :
+@[expose] def visBetween (s : Step) (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) (wrappedDec : Bool) :
     List VisEntry :=
   (match s with
     | .aliceStart _ _ _ _ h => aliceVis tr tr' h
@@ -141,7 +146,7 @@ def visBetween (s : Step) (tr tr' : ExecTrace) (wrap : Option (Nat × Nat)) (wra
     | _ => []) ++
   exposures tr tr'
 
-def visSteps : List (List VisEntry) :=
+@[expose] def visSteps : List (List VisEntry) :=
   [visBetween move0_init t4 t5 none false,
    visBetween move1_enc0 t5 t6 (some (25, 26)) false,
    visBetween move2_enc1 t6 t7 (some (25, 26)) false,
@@ -154,21 +159,21 @@ def visSteps : List (List VisEntry) :=
    visBetween move9_enc2 t13 t14 none false,
    visBetween move10_dec2 t14 t15 none false]
 
-def visAt (k : Nat) : List VisEntry := (visSteps.take k).flatten
+@[expose] def visAt (k : Nat) : List VisEntry := (visSteps.take k).flatten
 
-def saltStep (s : Step) (tr tr' : ExecTrace) : List DY.Bytes :=
+@[expose] def saltStep (s : Step) (tr tr' : ExecTrace) : List DY.Bytes :=
   match s with
   | .messageEncrypt _ _ _ pqIdx =>
     if pqIdx = tr.length + 3 then [] else (tr'.getMessageSentAt (tr.length + 2)).toList
   | _ => []
 
-def saltSteps : List (List DY.Bytes) :=
+@[expose] def saltSteps : List (List DY.Bytes) :=
   [saltStep move0_init t4 t5, saltStep move1_enc0 t5 t6, saltStep move2_enc1 t6 t7,
    saltStep move3_bobStart t7 t8, saltStep move4_dec1 t8 t9, saltStep move5_encReply0 t9 t10,
    saltStep move6_decReply0 t10 t11, saltStep move7_leakCkr t11 t12,
    saltStep move8_leakCks t12 t13, saltStep move9_enc2 t13 t14, saltStep move10_dec2 t14 t15]
 
-def saltsAt (k : Nat) : List DY.Bytes := DY.Spqr.zeroKey :: (saltSteps.take k).flatten
+@[expose] def saltsAt (k : Nat) : List DY.Bytes := DY.Spqr.zeroKey :: (saltSteps.take k).flatten
 
 private theorem runSteps_cons_eq {s : Step} {ss : List Step} {tr tr' trOut : ExecTrace}
     (hnext : s.next tr = tr') (hrest : runSteps ss tr' = trOut) :
@@ -511,7 +516,7 @@ theorem stepsWF_msExposed : StepsWF msExposed (setupTrace r0) := by
     (stepsWF_cons hcur13_71 ⟨Or.inr (Or.inl rfl), Or.inl (by unfold DY.Libsignal.Composed.Refinement.encryptOwnSpqrKeyIdx; rw [t13_length])⟩ move9_next
     (stepsWF_cons hcur14_63 trivial move10_next trivial))))))))))
 
-def stateFaithfulNoDupBool (ss : List Step) : Bool :=
+@[expose] def stateFaithfulNoDupBool (ss : List Step) : Bool :=
   (List.range ss.length).all fun i =>
     (List.range ss.length).all fun j =>
       !(decide (i < j)) ||
@@ -545,7 +550,7 @@ theorem modelRunWF_take (k : Nat) : ModelRunWF r0 (msExposed.take k) := by
     (List.take_append_drop k msExposed).symm
   exact modelRunWF_of_append (heq ▸ modelRunWF_msExposed)
 
-def ghostWFBool (g : Ghost) (vis : List VisEntry) : Bool :=
+@[expose] def ghostWFBool (g : Ghost) (vis : List VisEntry) : Bool :=
   vis.all fun v =>
     if v.kind == .rng then
       v.terms.all fun t =>

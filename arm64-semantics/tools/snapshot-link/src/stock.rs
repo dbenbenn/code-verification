@@ -12,8 +12,8 @@
 //! - **Trust Role:** `[OUTSIDE TCB]`. Produces an ordinary static executable for a layout-generic
 //!   proof to be checked against; nothing about its layout is assumed.
 //! - **Purpose:** for each `--config`, write the exact relocatable objects `rust-obj2lean`
-//!   extracts (the `.o` bytes the proofs are about, not the pinned/renamed copies the default
-//!   recipe links), compile `main` (`--main-c`, or a `--main-rust` staticlib), and link them with
+//!   extracts (the exact `.o` bytes the proofs are about), compile `main` (`--main-c`, or a
+//!   `--main-rust` staticlib), and link them with
 //!   the musl C runtime `zig cc` would use by calling `ld.lld` directly with the flags in
 //!   [`LLD_FLAGS`]: no linker script, linker relaxation on (no `--no-relax`), no pinned addresses,
 //!   lld's default page size and section order. Then check that the result is accepted by the
@@ -143,7 +143,6 @@ pub struct StockImage {
     pub config: PathBuf,
     pub objects: Vec<ObjObject>,
     pub externs: Vec<ExternDecl>,
-    pub page_separate_data: bool,
     pub paths: Vec<PathBuf>,
     /// Per object: `Some` for a trimmed `[[sysroot_objects]]` entry, whose file in `paths` is the
     /// emitted trim (its `elf_bytes` are still the whole rlib member).
@@ -159,17 +158,6 @@ pub fn run(cli: &Cli) -> Result<()> {
     ensure!(
         !cli.config.is_empty(),
         "--stock needs at least one --config"
-    );
-    ensure!(
-        cli.base.is_empty()
-            && cli.expect_code.is_empty()
-            && cli.expect_data.is_empty()
-            && cli.native_objects.is_none()
-            && !cli.musl_string
-            && cli.branch_stubs.is_empty()
-            && !cli.page_separate_data,
-        "--stock does not pin a layout: --base, --expect-code, --expect-data, --native-objects, \
-         --musl-string, --branch-stubs and --page-separate-data do not apply"
     );
     let repo_root = std::fs::canonicalize(&cli.repo_root)?;
     std::fs::create_dir_all(&cli.out_dir)?;
@@ -226,7 +214,6 @@ pub fn run(cli: &Cli) -> Result<()> {
             config: config.clone(),
             objects: ex.objects,
             externs: ex.externs,
-            page_separate_data: cfg.page_separate_data,
             paths,
             trimmed: trims,
         });

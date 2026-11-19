@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.QuietTransferPure
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.QuietTransferPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import DY.Actions.Network
 import DY.Actions.PersistentGlobalState
 import DY.Actions.PersistentLocalState
@@ -31,6 +31,7 @@ import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Trace.Monad
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
 
 /-!
 # Promoted Prekey Receive Trace Frame
@@ -40,7 +41,7 @@ and proves `RoleSnapshots` preservation (`prom_roleSnapshots_of_oneMove_recv`) a
 frame establishment (`prom_rcv_next_move`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
@@ -65,7 +66,7 @@ theorem prom_roleSnapshots_of_oneMove_recv {r : ProtocolSetup} {p : Participant}
     RoleSnapshots r (runMoves δ tr).1 :=
   roleSnapshots_of_oneMove (fun _ _ hm h => roleSnapshots_of_recvMove hm.2.1 h) hone h0
 
-def promRcvEv (p : Participant) (tr₀ : ExecTrace) : TREvent → Prop
+@[expose] def promRcvEv (p : Participant) (tr₀ : ExecTrace) : TREvent → Prop
   | .SkippedKeyUsed s k =>
     s.me = p ∧ ∃ pk n seed rIdx srcIdx,
       (tr₀.at? k : Option CompTrace.TREntry) =
@@ -74,7 +75,7 @@ def promRcvEv (p : Participant) (tr₀ : ExecTrace) : TREvent → Prop
   | .SkippedKeyStored s _ _ _ _ _ => s.me = p
   | _ => True
 
-def promRcvFrame (p : Participant) (tr₀ tr : ExecTrace) : Prop :=
+@[expose] def promRcvFrame (p : Participant) (tr₀ tr : ExecTrace) : Prop :=
   tr₀ ≤ tr ∧ ∀ i, tr₀.length ≤ i →
     (∀ e : CompTrace.TRStEntry, (tr.at? i : Option CompTrace.TRStEntry) = some e →
       e.st.participant = p) ∧

@@ -13,10 +13,11 @@ public import Arm64.Trusted.Syscalls.Common
 public import Arm64.Trusted.Syscalls.Kernel.Sys
 
 /-!
-# Thread Identity and Affinity Syscalls
+# Thread Identity, Futex Wake, and Affinity Syscalls
 
 Trusted syscall dispatch bundle (`Syscall.miscTable`, `Syscall.misc`) re-exporting `Kernel.Sys` for
-single-thread `set_tid_address`, `sched_getaffinity`, `getpid`, and `gettid`.
+single-thread `set_tid_address`, `futex` (`FUTEX_WAKE` / `FUTEX_WAKE_PRIVATE`),
+`sched_getaffinity`, `getpid`, and `gettid`.
 -/
 
 @[expose] public section
@@ -25,10 +26,11 @@ namespace Arm64
 
 namespace Syscall
 
-/-- Dispatch table for single-thread identity and CPU-affinity syscalls (`set_tid_address`,
-    `sched_getaffinity`, `getpid`, `gettid`). -/
+/-- Dispatch table for single-thread identity, futex-wake, and CPU-affinity syscalls
+    (`set_tid_address`, `futex`, `sched_getaffinity`, `getpid`, `gettid`). -/
 def miscTable : List (BitVec 64 × (State → State)) :=
   [(SYS_SET_TID_ADDRESS, execSetTidAddress),
+   (SYS_FUTEX, execFutex),
    (SYS_SCHED_GETAFFINITY, execSchedGetaffinity),
    (SYS_GETPID, execGetpid),
    (SYS_GETTID, execGetpid)]

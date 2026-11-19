@@ -12,13 +12,13 @@ module
 public import Computational.Specifications.Pqxdh.Bound
 public import Computational.Specifications.Pqxdh.Security.Headline
 public import Computational.Specifications.Pqxdh.Security.CostedBudgets
-public import Computational.Proofs.ReductionDsl.StepSim -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.StepSim
 public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreKSimBase -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhK -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhK
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhKSimBase -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem
@@ -421,18 +421,6 @@ private theorem gdhActive_init_unsupported (S : Setup) (b : QueryBudget) :
     KeyIndGapDhKSimBase.liftGdhComp_unsupported_keyInd, h1]
   rfl
 
-/-- Forgetful simulation for `initParams1KeyKindC` vs `initParams1KeyActiveC` under `fixParamsSent`. -/
-theorem initParams1KeyKindC_sim (S : Setup) (b : QueryBudget) {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
-    (uv : Var Γ₁ (.prod (B 32) (B 32))) (env : Env Δ) :
-    fixParamsSent S b <$>
-      (mapComp tlGapDhKeyInd (initParams1KeyKindC S b uv)).eval (embedEnv env) =
-    (mapComp tlGapDhKeyInd (initParams1KeyActiveC S b uv)).eval (embedEnv env) := by
-  rw [mapComp_eval tlGapDhKeyInd (initParams1KeyKindC S b uv) (initParams1KeyKindC_unsupported S b uv),
-      mapComp_eval tlGapDhKeyInd (initParams1KeyActiveC S b uv)
-        (initParams1KeyActiveC_unsupported S b uv),
-      ← initParams1KeyKindC_legacy_sim S b uv env]
-  simp [Functor.map_map, embedVal_fixParamsSentLeg]
-
 /-- `StepSim.ForgetSim.hInit` for `fgKeyInd1KeyGapDhKindAtomicProg` vs
     `fgKeyInd1KeyGapDhActiveAtomicProg`. -/
 theorem fgKeyInd1KeyGapDhKindAtomicProg_hInit (S : Setup) (b : QueryBudget)
@@ -552,24 +540,6 @@ private theorem logFindC_eq_of_le (K₁ K₂ off : ℕ) {Γ₁ Γ₂ Δ : List P
   simp only [bindV, findMV, Comp.eval, hMap, List.take_of_length_le hCandLen,
     List.take_of_length_le (Nat.le_trans hCandLen hLe)]
 
-private theorem logFind2C_eq_of_le (K₁ K₂ off : ℕ) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
-    (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (ρ : Env Δ)
-    (hLog : ((smLog (v sm)).eval ρ).length ≤ K₁) (hLe : K₁ ≤ K₂) :
-    (logFind2C K₁ off pa sm).eval ρ = (logFind2C K₂ off pa sm).eval ρ := by
-  have hMap :
-      (eMap K₁ (smLog (v sm)) fun sec => _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.slice32 off (v sec)).eval ρ =
-      (eMap K₂ (smLog (v sm)) fun sec => _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.slice32 off (v sec)).eval ρ := by
-    simp only [eMap, Expr.eval, List.take_of_length_le hLog,
-      List.take_of_length_le (Nat.le_trans hLog hLe)]
-  have hCandLen :
-      ((eMap K₂ (smLog (v sm)) fun sec =>
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.slice32 off (v sec)).eval ρ).length ≤ K₁ := by
-    simp only [eMap, Expr.eval, List.length_map, List.length_take]
-    omega
-  unfold logFind2C
-  simp only [bindV, findMV, Comp.eval, hMap, List.take_of_length_le hCandLen,
-    List.take_of_length_le (Nat.le_trans hCandLen hLe)]
-
 private theorem extractMode0KC_eq (S : Setup) (f : KeyIndKFuels) (K : ℕ)
     {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (pa : Var Γ₁ paramsTy) (sm : Var Γ₂ simTy) (ρ : Env Δ)
@@ -678,96 +648,6 @@ private theorem extractMode0KC_eq (S : Setup) (f : KeyIndKFuels) (K : ℕ)
           _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', v, smBase, Comp.eval, Expr.eval]
         rw [hSpksTake]
 
-private theorem extractMode0_2KC_eq (S : Setup) (f : KeyIndKFuels) (K : ℕ)
-    {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
-    (pa : Var Γ₁ params2Ty) (sm : Var Γ₂ simTy) (ρ : Env Δ)
-    (hOnLe : f.kOn ≤ K) (hOffLe : f.kOff ≤ K)
-    (hLog : ((smLog (v sm)).eval ρ).length ≤ f.kOff)
-    (hPows : ((smPows (v sm)).eval ρ).length ≤ f.kOn)
-    (hSpks : ((stSpks (smBase (v sm))).eval ρ).length ≤ f.kOn)
-    (hSess : ((stSess (smBase (v sm))).eval ρ).length ≤ f.kOn)
-    (hResps : ((stResps (smBase (v sm))).eval ρ).length ≤ f.kOn) :
-    (extractMode0_2KC S f pa sm).eval ρ = (extractMode0_2C S K pa sm).eval ρ := by
-  unfold extractMode0_2KC extractMode0_2C
-  have hMap : (eMap f.kOff (smLog (v sm)) fun sec => slice32 32 (v sec)).eval ρ =
-      (eMap K (smLog (v sm)) fun sec => slice32 32 (v sec)).eval ρ := by
-    simp only [eMap, Expr.eval, List.take_of_length_le hLog, List.take_of_length_le (Nat.le_trans hLog hOffLe)]
-  have hCandLen : ((eMap K (smLog (v sm)) fun sec => slice32 32 (v sec)).eval ρ).length ≤ f.kOff := by
-    simp only [eMap, Expr.eval, List.length_map, List.length_take]; omega
-  simp only [bindV, caseOptV, letV, Comp.eval]
-  have hFind :
-      (findMV f.kOff (eMap f.kOff (smLog (v sm)) fun sec => slice32 32 (v sec))
-          fun z => ddhQ (pa2U (v pa)) (pa2V (v pa)) (v z)).eval ρ =
-      (findMV K (eMap K (smLog (v sm)) fun sec => slice32 32 (v sec))
-          fun z => ddhQ (pa2U (v pa)) (pa2V (v pa)) (v z)).eval ρ := by
-    simp only [findMV, Comp.eval, hMap, List.take_of_length_le hCandLen,
-      List.take_of_length_le (Nat.le_trans hCandLen hOffLe)]
-  rw [hFind]
-  refine bind_congr_support _ _ _ fun f1 _ => ?_
-  cases f1 with
-  | some z => rfl
-  | none =>
-    let noneOpt : (Ty.opt (B 32)).denote := none
-    have hSpks' : ((stSpks (smBase (v sm))).eval (.cons noneOpt ρ)).length ≤ f.kOn := by
-      simpa [smBase, stSpks, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk', Expr.eval, Env.get] using hSpks
-    have hSpkPows : (spkPowsC S f.kOn (stSpks (smBase (v sm)))).eval (.cons noneOpt ρ) =
-        (spkPowsC S K (stSpks (smBase (v sm)))).eval (.cons noneOpt ρ) := by
-      simp only [spkPowsC, mapMV, Comp.eval]; rw [take_min_eq_of_length_le _ hSpks' hOnLe]
-    rw [hSpkPows]
-    refine bind_congr_support _ _ _ fun spkPows hMemSpk => ?_
-    have hSpkPowsLen : spkPows.length ≤ f.kOn := by
-      rw [mapMV_length_eq (min K S.N_dh) _ _ (.cons noneOpt ρ) hMemSpk, List.length_take]
-      exact Nat.le_trans (Nat.min_le_right _ _) hSpks'
-    simp only [Expr.eval, pure_bind]
-    have hFold1 :
-        (foldMV (min f.kOn S.N_dh) (stSess (smBase (v sm))) .none fun s acc => findMapStep2C pa acc
-            (initDh1CandC S f.kOn (.zero : Var (.list (.prod (B 32) (B 32)) :: .opt (B 32) :: Δ) _)
-              (.zero : Var (.list (.prod (B 32) (B 32)) :: .list (.prod (B 32) (B 32)) :: .opt (B 32) :: Δ) _) s)).eval
-          (.cons ((smPows (v sm)).eval (.cons spkPows (.cons noneOpt ρ))) (.cons spkPows (.cons noneOpt ρ))) =
-        (foldMV (min K S.N_dh) (stSess (smBase (v sm))) .none fun s acc => findMapStep2C pa acc
-            (initDh1CandC S K (.zero : Var (.list (.prod (B 32) (B 32)) :: .opt (B 32) :: Δ) _)
-              (.zero : Var (.list (.prod (B 32) (B 32)) :: .list (.prod (B 32) (B 32)) :: .opt (B 32) :: Δ) _) s)).eval
-          (.cons ((smPows (v sm)).eval (.cons spkPows (.cons noneOpt ρ))) (.cons spkPows (.cons noneOpt ρ))) := by
-      simp only [foldMV, Comp.eval, Expr.eval]
-      rw [take_min_eq_of_length_le _ (by simpa [smBase, stSess, v,
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk', Expr.eval, Env.get] using hSess) hOnLe]
-      refine congrArg (fun f => _root_.ReductionDsl.foldML f _ _) (funext fun s => funext fun acc => ?_)
-      cases acc with
-      | some _ => rfl
-      | none =>
-        simp only [findMapStep2C, caseOptV, bindV, initDh1CandC, lookupFromPowsE, eFind, Comp.eval, bind_assoc]
-        refine bind_congr_support _ _ _ fun wSpk _ => ?_
-        have h1 := take_min_eq_of_length_le (N := S.N_dh) _ hSpkPowsLen hOnLe
-        have h2 := List.take_of_length_le hPows
-        have h3 := List.take_of_length_le (Nat.le_trans hPows hOnLe)
-        simp only [smPows, v, Expr.eval] at h2 h3
-        simp only [gPrim, liftBase, qX25519, eCaseOpt, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_zero',
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', v, smPows, Comp.eval, Expr.eval]
-        rw [h1, h2, h3]
-    rw [hFold1]
-    refine bind_congr_support _ _ _ fun f2 _ => ?_
-    cases f2 with
-    | some z => rfl
-    | none =>
-      simp only [foldMV, Comp.eval, Expr.eval]
-      rw [take_min_eq_of_length_le _ (by simpa [smBase, stResps, v,
-        _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk', Expr.eval, Env.get] using hResps) hOnLe]
-      refine congrArg (fun m : OracleComp _ _ => m >>= _)
-        (congrArg (fun f => _root_.ReductionDsl.foldML f _ _) (funext fun r => funext fun acc => ?_))
-      cases acc with
-      | some _ => rfl
-      | none =>
-        simp only [findMapStep2C, caseOptV, bindV, respDh1CandC, eFind, Comp.eval]
-        have hSpksTake := take_min_eq_of_length_le (N := S.N_dh) _ hSpks hOnLe
-        simp only [smBase, v, Expr.eval] at hSpksTake
-        simp only [gPrim, liftBase, qX25519, eCaseOpt, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk',
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_zero',
-          _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Env.get_succ', v, smBase, Comp.eval, Expr.eval]
-        rw [hSpksTake]
-
 private theorem gdhFinishK_unsupported (S : Setup) (f : KeyIndKFuels) :
     (gdhFinishK S f).queries tlGapDhKeyInd.unsupportedW (fun _ => 0) = 0 := by
   simp [-sup_of_le_left, -sup_of_le_right, gdhFinishK, extractMode0KC, logFindC, spkPowsC, findMapStepC,
@@ -777,12 +657,6 @@ private theorem gdhFinishK_unsupported (S : Setup) (f : KeyIndKFuels) :
 private theorem gdhFinish_unsupported (S : Setup) (K : ℕ) :
     (gdhFinish S K).queries tlGapDhKeyInd.unsupportedW (fun _ => 0) = 0 := by
   simp [-sup_of_le_left, -sup_of_le_right, gdhFinish, extractMode0C, logFindC, spkPowsC, findMapStepC,
-    initDh1CandC, respDh1CandC, letV, bindV, caseOptV, findMV, mapMV, foldMV, ddhQ, gPrim, liftBase, qPow8,
-    qX25519, Comp.queries, tlGapDhKeyInd, AtomicLift.keyIndUnsupportedPrimW]
-
-private theorem gdhFinish2K_unsupported (S : Setup) (f : KeyIndKFuels) :
-    (gdhFinish2K S f).queries tlGapDhKeyInd.unsupportedW (fun _ => 0) = 0 := by
-  simp [-sup_of_le_left, -sup_of_le_right, gdhFinish2K, extractMode0_2KC, logFind2C, spkPowsC, findMapStep2C,
     initDh1CandC, respDh1CandC, letV, bindV, caseOptV, findMV, mapMV, foldMV, ddhQ, gPrim, liftBase, qPow8,
     qX25519, Comp.queries, tlGapDhKeyInd, AtomicLift.keyIndUnsupportedPrimW]
 
@@ -845,61 +719,6 @@ private theorem gdhFinishK_eq (S : Setup) (b : QueryBudget) (c : Fin 3 → ℕ)
       .zero .zero _ hLogE hOffLe
   · exact logFindC_eq_of_le f.kOff b.q_total 128
       (Γ₁ := [paramsTy, gdhStateTy, .bool]) (Γ₂ := [simTy, paramsTy, gdhStateTy, .bool])
-      .zero .zero _ hLogE hOffLe
-
-private theorem gdhFinish2K_eq (S : Setup) (b : QueryBudget) (c : Fin 3 → ℕ)
-    (pa : params2Ty.denote) (sm : simTy.denote) (sh : fgShadowAtomicTy.denote) (aOut : Bool)
-    (hB : ∀ j, c j ≤ keyIndSimBounds b j)
-    (hInv : GdhSimInv S b c (embedVal simTy sm, sh)) :
-    (gdhFinish2K S (keyIndKFuelsOfBudget S b)).eval (.cons (pa, sm) (.cons aOut .nil)) =
-      (gdhFinish2 S b.q_total).eval (.cons (pa, sm) (.cons aOut .nil)) := by
-  set f := keyIndKFuelsOfBudget S b
-  have hOnLe : f.kOn ≤ b.q_total := Nat.min_le_right _ _
-  have hOffLe : f.kOff ≤ b.q_total := Nat.min_le_right _ _
-  have hBase : BaseOnlineLenInv c sm.1 := by
-    have h := hInv.online_len
-    have hEq : (embedVal simTy sm).1 = embedVal keyIndStateTy sm.1 := rfl
-    rw [hEq, AtomicLift.projVal_embedVal] at h
-    exact h
-  have h0 : c 0 ≤ f.kOn := hB 0
-  have hLog : sm.2.2.2.1.length ≤ f.kOff := by
-    have h := hInv.smLog_length_le_kOff hB
-    have hEq : (embedVal simTy sm).2.2.2.1 = sm.2.2.2.1.map (embedVal (B 192)) := rfl
-    rw [hEq, List.length_map] at h; exact h
-  have hPows : sm.2.2.2.2.length ≤ f.kOn := by
-    have h := hInv.smPows_length_le_kOn hB
-    have hEq : (embedVal simTy sm).2.2.2.2 = sm.2.2.2.2.map (embedVal (.prod (B 32) (B 32))) := rfl
-    rw [hEq, List.length_map] at h; exact h
-  have hSpks : sm.1.2.2.1.length ≤ f.kOn := Nat.le_trans hBase.spks_le h0
-  have hSess : sm.1.2.2.2.2.1.length ≤ f.kOn := Nat.le_trans hBase.sess_le h0
-  have hResps : sm.1.2.2.2.2.2.1.length ≤ f.kOn := Nat.le_trans hBase.resps_le h0
-  let aOutT : (Ty.bool : PT).denote := aOut
-  let st2T : gdhState2Ty.denote := (pa, sm)
-  have hLogE :
-      ((smLog (v (.zero : Var [simTy, params2Ty, gdhState2Ty, .bool] simTy))).eval
-        (.cons sm (.cons pa (.cons st2T (.cons aOutT .nil))))).length ≤ f.kOff := by
-    simpa [smLog, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk', Expr.eval, Env.get] using hLog
-  unfold gdhFinish2K gdhFinish2
-  simp only [letV, Comp.eval, Expr.eval, Env.get, pure_bind,
-    _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.natEq, pa2Mode, v,
-    _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.step_wk',
-    _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk']
-  split_ifs
-  · exact extractMode0_2KC_eq S f b.q_total
-      (Γ₁ := [params2Ty, gdhState2Ty, .bool]) (Γ₂ := [simTy, params2Ty, gdhState2Ty, .bool])
-      .zero .zero _ hOnLe hOffLe hLogE
-      (by simpa [smPows, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk', Expr.eval, Env.get] using hPows)
-      (by simpa [smBase, stSpks, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk', Expr.eval, Env.get] using hSpks)
-      (by simpa [smBase, stSess, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk', Expr.eval, Env.get] using hSess)
-      (by simpa [smBase, stResps, v, _root_.SignalPqxdh.Security.ReductionDsl.KeyInd.Ext.refl_wk', Expr.eval, Env.get] using hResps)
-  · exact logFind2C_eq_of_le f.kOff b.q_total 96
-      (Γ₁ := [params2Ty, gdhState2Ty, .bool]) (Γ₂ := [simTy, params2Ty, gdhState2Ty, .bool])
-      .zero .zero _ hLogE hOffLe
-  · exact logFind2C_eq_of_le f.kOff b.q_total 64
-      (Γ₁ := [params2Ty, gdhState2Ty, .bool]) (Γ₂ := [simTy, params2Ty, gdhState2Ty, .bool])
-      .zero .zero _ hLogE hOffLe
-  · exact logFind2C_eq_of_le f.kOff b.q_total 128
-      (Γ₁ := [params2Ty, gdhState2Ty, .bool]) (Γ₂ := [simTy, params2Ty, gdhState2Ty, .bool])
       .zero .zero _ hLogE hOffLe
 
 private theorem logFindC_congr_uv (K off : ℕ)
@@ -1090,32 +909,6 @@ private theorem gdhFinish_fixParamsSentLeg_eq (S : Setup) (b : QueryBudget) (K :
   · exact logFindC_congr_uv K 96 u vPk r1 r2 sm aOut
   · exact logFindC_congr_uv K 64 u vPk r1 r2 sm aOut
   · exact logFindC_congr_uv K 128 u vPk r1 r2 sm aOut
-
-/-- `finish` fuel-identity simulation for tuple-keyed `gdhShadowFinish2Atomic` vs `gdhFinish2`. -/
-theorem gdhShadowFinish2Atomic_sim {ι : Type} {T : OracleSpec ι} {A : AtomicIface T}
-    {gl : GdhAtomicLift A}
-    {evalGdh : ∀ {α : Type}, OracleComp _root_.SignalPqxdh.Security.FgGapDh.GdhSimSpec α → OracleComp T α}
-    (hgl : GdhAtomicLiftValid gl evalGdh)
-    (S : Setup) (b : QueryBudget) (c : Fin 3 → ℕ)
-    (s' : gdhShadowState2AtomicTy.denote) (aOut : Bool)
-    (hB : ∀ j, c j ≤ keyIndSimBounds b j) (hInv : Gdh2SimInv S b c s') :
-    (gdhShadowFinish2Atomic gl S (keyIndKFuelsOfBudget S b)).eval (.cons s' (.cons aOut .nil)) =
-      (runAt2 .v0 .v1 (liftGdhAtomic gl (gdhFinish2 S b.q_total))).eval
-        (.cons (forgetGdhShadow2 s') (.cons aOut .nil)) := by
-  simp only [gdhShadowFinish2Atomic, forgetGdhShadow2, runAt2_eval,
-    Expr.eval, _root_.ReductionDsl.Expr.v0, _root_.ReductionDsl.Expr.v1, Env.get]
-  have hEnv :
-      (Env.cons s'.1 (.cons aOut .nil) : Env [embedTy gdhState2Ty, .bool]) =
-        embedEnv (.cons (projVal gdhState2Ty s'.1) (.cons aOut .nil) :
-          Env [gdhState2Ty, .bool]) := by
-    simp only [embedEnv, AtomicLift.embedVal_projVal]; rfl
-  rw [hEnv,
-      hgl.liftGdhAtomic_eval _ (gdhFinish2K_unsupported S _) _,
-      hgl.liftGdhAtomic_eval _ (gdhFinish2_unsupported S b.q_total) _]
-  have hInv' : GdhSimInv S b c (embedVal simTy (projVal gdhState2Ty s'.1).2, s'.2) := by
-    rw [show (projVal gdhState2Ty s'.1).2 = projVal simTy s'.1.2 from rfl, AtomicLift.embedVal_projVal]
-    exact hInv
-  rw [gdhFinish2K_eq S b c (projVal gdhState2Ty s'.1).1 (projVal gdhState2Ty s'.1).2 s'.2 aOut hB hInv']
 
 /-- `StepSim.ForgetSim.hFinish` for `fgKeyInd1KeyGapDhKindAtomicProg` vs
     `fgKeyInd1KeyGapDhActiveAtomicProg`. -/

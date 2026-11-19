@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # CLI Self-Identity Answer Relations
@@ -19,7 +21,7 @@ relating `<IdentityFiles as IdentityKeyStore>::get_identity_key_pair` and
 `get_local_registration_id` results to `IdGhost.keyPair` and `IdGhost.regId`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +53,7 @@ end IdGhost
 
 /-- Answer relation for `get_identity_key_pair`, matching `Ok`/`Err` status against
 `IdGhost.keyPair`. -/
-def cliKpRel {E : Type} (rd : ReadRule) (F0 : FsFiles) (g : IdGhost)
+@[expose] def cliKpRel {E : Type} (rd : ReadRule) (F0 : FsFiles) (g : IdGhost)
     (ans : Except E IdentityKeyPair) : Prop :=
   match ans, g.keyPair rd F0 with
   | .ok kp, .ok kp' => kp = kp'
@@ -60,7 +62,7 @@ def cliKpRel {E : Type} (rd : ReadRule) (F0 : FsFiles) (g : IdGhost)
 
 /-- Answer relation for `get_local_registration_id`, matching `Ok`/`Err` status against
 `IdGhost.regId`. -/
-def cliRegIdRel {E : Type} (rd : ReadRule) (F0 : FsFiles) (g : IdGhost)
+@[expose] def cliRegIdRel {E : Type} (rd : ReadRule) (F0 : FsFiles) (g : IdGhost)
     (ans : Except E (BitVec 32)) : Prop :=
   match ans, g.regId rd F0 with
   | .ok reg, .ok reg' => reg = reg'

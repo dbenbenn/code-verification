@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefs
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.Common
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.Common
 public meta import Lean
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
@@ -23,7 +23,7 @@ Relocatable `[LibsignalPlacement]` statement `SerializePrev1PlacedOkStmt` for
 `<SessionRecord>::serialize` (Block `52`) on a record with one archived previous session.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalPublicA
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.E2E.Record.Placed
 
-def SerializePrev1PlacedOkStmt [LibsignalPlacement] (prog : Program) (A : RustAlloc) : Prop :=
+@[expose] def SerializePrev1PlacedOkStmt [LibsignalPlacement] (prog : Program) (A : RustAlloc) : Prop :=
   subroutine_ok prog (lsmpl.base 52) (withLsCl lsmpl (serializePrev1Spec A))
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over

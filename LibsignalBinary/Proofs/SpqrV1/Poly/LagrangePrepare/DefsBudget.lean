@@ -20,7 +20,7 @@ Allocator-budget specification (`lagrangePreparePlacedSpec`) and allocation enve
 `<spqr::encoding::polynomial::Poly>::lagrange_interpolate_prepare` (Block `372`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,12 +38,12 @@ open LibsignalBinary.Heap
 
 /-- Exact allocator event envelope of `<spqr::encoding::polynomial::Poly>::lagrange_interpolate_prepare`
 (Block `372`): one `2 * (a.pts.length + 1)`-byte allocation at alignment `2`. -/
-def LagrangePrepareEnv (a : LagrangePrepareArgs) (evs : List AllocEvent) : Prop :=
+@[expose] def LagrangePrepareEnv (a : LagrangePrepareArgs) (evs : List AllocEvent) : Prop :=
   evs = rustAllocEvents (2 * (a.pts.length + 1)) 2
 
 /-- Budget-threaded relocatable (`[LibsignalPlacement]`) subroutine specification for
 `<spqr::encoding::polynomial::Poly>::lagrange_interpolate_prepare` (Block `372`). -/
-def lagrangePreparePlacedSpec [LibsignalPlacement]
+@[expose] def lagrangePreparePlacedSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (LagrangePrepareArgs × M.σ) where
   pre := fun (a, st) s =>

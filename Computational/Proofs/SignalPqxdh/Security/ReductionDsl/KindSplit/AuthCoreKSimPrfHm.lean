@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.StepSim -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.StepSim
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKArms -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimBase -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimPrfBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimArms
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimArmsFixed
@@ -117,12 +117,12 @@ theorem lift1_eval {ι : Type} {T : OracleSpec ι}
     (fun | .zero => rfl | .succ v => nomatch v)]
   exact mapComp_eval_of_zero tl hZero c (.cons (e.eval ρ) .nil)
 
-def ren2 {Δ : List PT} {A B : PT} (vA : Var Δ A) (vB : Var Δ B) :
+@[expose] def ren2 {Δ : List PT} {A B : PT} (vA : Var Δ A) (vB : Var Δ B) :
     ∀ {t}, Var [A, B] t → Var Δ t
   | _, .zero => vA
   | _, .succ .zero => vB
 
-def ren4 {Δ : List PT} {A B C D : PT}
+@[expose] def ren4 {Δ : List PT} {A B C D : PT}
     (vA : Var Δ A) (vB : Var Δ B) (vC : Var Δ C) (vD : Var Δ D) :
     ∀ {t}, Var [A, B, C, D] t → Var Δ t
   | _, .zero => vA
@@ -138,18 +138,6 @@ theorem eval_ren2 {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
   rw [← hEq]
   exact compRename_eval c0 (ren2 vA vB) _ env
     (fun | .zero => rfl | .succ .zero => rfl | .succ (.succ v) => nomatch v)
-
-theorem eval_ren4 {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
-    {A B C D R : PT} {Δ : List PT}
-    (vA : Var Δ A) (vB : Var Δ B) (vC : Var Δ C) (vD : Var Δ D)
-    (c0 : Comp pqxdhOps I [A, B, C, D] R) (c : Comp pqxdhOps I Δ R) (env : Env Δ)
-    (hEq : compRename (ren4 vA vB vC vD) c0 = c) :
-    c.eval env =
-      c0.eval (.cons (env.get vA) (.cons (env.get vB) (.cons (env.get vC) (.cons (env.get vD) .nil)))) := by
-  rw [← hEq]
-  exact compRename_eval c0 (ren4 vA vB vC vD) _ env
-    (fun | .zero => rfl | .succ .zero => rfl | .succ (.succ .zero) => rfl
-         | .succ (.succ (.succ .zero)) => rfl | .succ (.succ (.succ (.succ v))) => nomatch v)
 
 private abbrev env_get_succ := @_root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.Env.get_succ
 private abbrev env_get_zero := @_root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.Env.get_zero
@@ -427,42 +415,6 @@ private theorem fixed_toHybrid {n : ℕ} {fhst : authHybridStateFixedTy.denote}
     (hb : AuthFixedValOnlineBounded n fhst) : AuthHybridValOnlineBounded n fhst.1 :=
   ⟨hb.base_le, hb.initKemRecs_le, hb.recvKemRecs_le, hb.idealSessions_le⟩
 
-private theorem finishAuthSendMkC_fuel_eq (S : Setup) {K₁ K₂ n : ℕ} {Γ₁ Δ : List PT}
-    (fhst : Var Γ₁ authHybridStateFixedTy) [h₁_ext : Ext Γ₁ Δ]
-    (sid : Expr pqxdhOps Δ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.sessionIdTy)
-    (uE : Expr pqxdhOps Δ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.principalEntryTy)
-    (pp : Expr pqxdhOps Δ (.opt (.prod .nat _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.principalEntryTy)))
-    (isFresh : Expr pqxdhOps Δ .bool) (bu : Expr pqxdhOps Δ preKeyBundleTy)
-    (m01 : Expr pqxdhOps Δ (.prod (B 32) (B 32)))
-    (keys6 : Expr pqxdhOps Δ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.keys6Ty)
-    (drKey : Expr pqxdhOps Δ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.drKeyTy)
-    (rk1 mkSeed ck1_1 : Expr pqxdhOps Δ (B 32)) (spqrSalt? : Expr pqxdhOps Δ (.opt (B 32)))
-    (pqMsg msgPlain : Expr pqxdhOps Δ (B 32))
-    (mks : Expr pqxdhOps Δ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.msgKeysTy)
-    (env : Env Δ) (hb : AuthFixedValOnlineBounded n (env.get (h₁_ext.wk fhst)))
-    (h₁ : n ≤ K₁) (h₂ : n ≤ K₂) :
-    (finishAuthSendMkC S K₁ fhst sid uE pp isFresh bu m01 keys6 drKey rk1 mkSeed ck1_1
-        spqrSalt? pqMsg msgPlain mks).eval env =
-      (finishAuthSendMkC S K₂ fhst sid uE pp isFresh bu m01 keys6 drKey rk1 mkSeed ck1_1
-        spqrSalt? pqMsg msgPlain mks).eval env := by
-  unfold finishAuthSendMkC
-  refine letV_congr rfl fun _ => ?_
-  refine letV_congr_eq rfl fun hst hhst => ?_
-  have hbHst : AuthHybridValOnlineBounded n hst := by
-    have : hst = (env.get (h₁_ext.wk fhst)).1 := by
-      simpa [_root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.ahsfHybrid, v, Expr.eval,
-        Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hhst
-    rw [this]; exact fixed_toHybrid hb
-  iterate 18 refine letV_congr rfl fun _ => ?_
-  refine bindV_congr rfl fun _ => ?_
-  apply bindV_congr
-  · apply finishAuthHybridSendC_fuel_eq (n := n)
-    · rfl
-    · simpa [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hbHst
-    · exact h₁
-    · exact h₂
-  · intro _; rfl
-
 private theorem finishAuthSendMkC_leaves (S : Setup) (K : ℕ) {n : ℕ} {Γ₁ Δ : List PT}
     (fhst : Var Γ₁ authHybridStateFixedTy) [h₁_ext : Ext Γ₁ Δ]
     (sid : Expr pqxdhOps Δ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.sessionIdTy)
@@ -514,40 +466,6 @@ private theorem finishAuthSendMkC_leaves (S : Setup) (K : ℕ) {n : ℕ} {Γ₁ 
       v, Expr.eval, Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero, fhst0]
     exact ⟨⟨hOutB.base_le, hOutB.initKemRecs_le, hOutB.recvKemRecs_le, hOutB.idealSessions_le,
       Nat.le_trans hb.mkSaltCache_le (Nat.le_succ n)⟩, hOutRo', hOutRoot'⟩
-
-private theorem finishAuthRecvMkC_fuel_eq (S : Setup) {K₁ K₂ n : ℕ}
-    {ro0 : List (List UInt8 × _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.drKeyTy.denote)}
-    {root0 : List ((List UInt8 × List UInt8) × (List UInt8 × List UInt8))}
-    {Γ₁ Γ₂ Δ : List PT}
-    (msg : Var Γ₁ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.preKeyMsgTy)
-    (prep : Var Γ₂ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.preparedAuthRecvTy)
-    [Ext Γ₁ Δ] [h₂_ext : Ext Γ₂ Δ]
-    (drKey : Expr pqxdhOps Δ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.drKeyTy)
-    (rk1 ck1_1 : Expr pqxdhOps Δ (B 32)) (rc' : Expr pqxdhOps Δ .nat)
-    (cache' : Expr pqxdhOps Δ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.authMkSaltCacheTy)
-    (mks : Expr pqxdhOps Δ _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.msgKeysTy)
-    (env : Env Δ) (hPrep : PreparedRecvValBounded n ro0 root0 (env.get (h₂_ext.wk prep)))
-    (h₁ : n ≤ K₁) (h₂ : n ≤ K₂) :
-    (finishAuthRecvMkC S K₁ msg prep drKey rk1 ck1_1 rc' cache' mks).eval env =
-      (finishAuthRecvMkC S K₂ msg prep drKey rk1 ck1_1 rc' cache' mks).eval env := by
-  unfold finishAuthRecvMkC
-  iterate 8 refine letV_congr rfl fun _ => ?_
-  refine letV_congr_eq rfl fun fTag hfTag => ?_
-  have hbTag : RecvTagValBounded n ro0 root0 fTag := by
-    have : fTag = (env.get (h₂_ext.wk prep)).2.2.2.2.2.2.2.2.2 := by
-      simpa [_root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.parFinishTag, v, Expr.eval,
-        Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hfTag
-    rw [this]; exact hPrep.tag_bounded
-  refine letV_congr rfl fun _ => ?_
-  refine bindV_congr rfl fun _ => ?_
-  refine letV_congr rfl fun _ => ?_
-  apply bindV_congr
-  · apply recvFinishTagRunC_fuel_eq (n := n) (ro0 := ro0) (root0 := root0)
-    · rfl
-    · simpa [Ext.step_wk, Ext.refl_wk, env_get_succ, env_get_zero] using hbTag
-    · exact h₁
-    · exact h₂
-  · intro _; rfl
 
 private theorem finishAuthRecvMkC_leaves (S : Setup) (K : ℕ) {n : ℕ}
     {ro0 : List (List UInt8 × _root_.SignalPqxdh.Security.ReductionDsl.AuthPrf.drKeyTy.denote)}

@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsg
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsg -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsg.Helpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
 
 /-!
 # Relocatable Drop Glue Proof for `PreKeySignalMessage`
@@ -23,7 +28,7 @@ Proves `dropPreKeyMsgSpecPlaced` for `core::ptr::drop_glue::<PreKeySignalMessage
 `[LibsignalPlacement]` and transfers it to caller blocks `i < 619`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -44,7 +49,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs.DropPreKeyMsgHelpers
    pkmHeadersAt_entails_memRegion_248 subroutine_ok_map_frame_weaken)
 
 /-- Relocatable `[LibsignalPlacement]` specification for `drop_glue::<PreKeySignalMessage>`. -/
-def dropPreKeyMsgSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def dropPreKeyMsgSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec DropPreKeyMsgGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (dropPreKeyMsgSpec A stk)
 
@@ -173,7 +178,7 @@ private theorem align_to_post_placed {prog : Program} {mid : BitVec 64} {s : Sta
     SepWP prog mid s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm) :=
   heq ▸ hwp
 
-def dropPreKeyMsgExactSpecPlaced [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def dropPreKeyMsgExactSpecPlaced [LibsignalPlacement] (A : RustAlloc) :
     Spec (BitVec 64 × PreKeyMsgGhost × PreKeySignalMessage) :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     (DropPreKeyMsgHelpers.dropPreKeyMsgExactSpec A)

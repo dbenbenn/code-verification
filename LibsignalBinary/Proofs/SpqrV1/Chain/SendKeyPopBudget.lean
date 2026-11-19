@@ -9,19 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyPop
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
+public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyPop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Front-Pop Loop of `<spqr::chain::Chain>::send_key` (Block `367`)
@@ -31,7 +32,7 @@ Proves the relocatable `[LibsignalPlacement]` front-epoch pop loop (`sendKey_pop
 `RustCliAllocBudget M` with `chainEpochPopEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -118,7 +119,7 @@ theorem SepWP.join_plain_acp {prog : Program}
   · exact ⟨sm, hsteps1, Or.inr ⟨hoom, hfalse⟩⟩
 
 /-- Budget-threaded heap footprint of the front-epoch pop loop in `Chain::send_key`. -/
-def popLoopPre (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def popLoopPre (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (s : State) (selfPtr cap ptr head l2 : BitVec 64)
     (epochs : List ChainEpochGhost) (links : List ChainEpoch) : SepProp :=
   ((s.sp + 8#64) ↦₆₄ ptr) ∗ ((s.sp + 16#64) ↦₆₄ cap) ∗ ((s.sp + 24#64) ↦₆₄ l2) ∗

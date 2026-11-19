@@ -27,7 +27,7 @@ Proves `closeByStateC_deliver_evictedMismatch_probe`, closing an evicted-epoch `
 salt mismatch outside `inReceiveOnlyEpoch` when `safeInj 3` is false.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

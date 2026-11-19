@@ -20,7 +20,7 @@ Deterministic `AllocEvent` envelopes and `RustCliAllocBudget`-threaded specifica
 `<ChainEpochDirection>::next_key_internal`, and `<spqr::chain::Chain>::new`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,14 +44,14 @@ open LibsignalBinary.Heap (
 /-! ## `Concat<u8>::concat [local#2]` -/
 
 /-- Deterministic `AllocEvent` list emitted by `Concat<u8>::concat [local#2]` on total length `n`. -/
-def sliceConcat2Events (n : Nat) : List AllocEvent :=
+@[expose] def sliceConcat2Events (n : Nat) : List AllocEvent :=
   if n = 0 then [] else rustAllocEvents n 1
 
-def SliceConcat2Env (x : SliceConcat2Ghost) (evs : List AllocEvent) : Prop :=
+@[expose] def SliceConcat2Env (x : SliceConcat2Ghost) (evs : List AllocEvent) : Prop :=
   evs = sliceConcat2Events (x.bs0.length + x.bs1.length)
 
 /-- Budget-threaded spec of `<[&[u8]] as alloc::slice::Concat<u8>>::concat [local#2]` for `len = 2`. -/
-def sliceConcat2Spec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def sliceConcat2Spec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (SliceConcat2Ghost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.outVec ∧ s.readReg64 .x1 = x.slicesA ∧ s.readReg64 .x2 = 2#64 ∧
@@ -76,18 +76,18 @@ def sliceConcat2Spec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Budg
 /-! ## `<VecDeque<ChainEpoch>>::grow` -/
 
 /-- Deterministic `AllocEvent` list emitted by `<VecDeque<ChainEpoch>>::grow` from capacity `cap`. -/
-def vecDequeGrowEvents (cap : BitVec 64) : List AllocEvent :=
+@[expose] def vecDequeGrowEvents (cap : BitVec 64) : List AllocEvent :=
   if cap = 0#64 then
     rustAllocEvents (4 * chainEpochSize) chainEpochAlign
   else
     rustReallocEvents (cap.toNat * chainEpochSize)
       (max (2 * cap.toNat) 4 * chainEpochSize) chainEpochAlign
 
-def VecDequeGrowEnv (x : VecDequeGrowGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def VecDequeGrowEnv (x : VecDequeGrowGhost) (evs : List AllocEvent) : Prop :=
   evs = vecDequeGrowEvents x.cap
 
 /-- Budget-threaded spec of `<alloc::collections::vec_deque::VecDeque<spqr::chain::ChainEpoch>>::grow`. -/
-def vecDequeGrowSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def vecDequeGrowSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (VecDequeGrowGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ x.xs.length = x.cap.toNat ∧
@@ -108,16 +108,16 @@ def vecDequeGrowSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Budg
 /-! ## `<spqr::chain::ChainEpochDirection>::next_key_internal` -/
 
 /-- Deterministic `AllocEvent` list emitted by `<ChainEpochDirection>::next_key_internal`. -/
-def nextKeyInternalEvents : List AllocEvent :=
+@[expose] def nextKeyInternalEvents : List AllocEvent :=
   rustAllocEvents (4 + chainNextInfo.length) 1 ++
     rustDeallocEvents (4 + chainNextInfo.length) 1
 
-def NextKeyInternalEnv (evs : List AllocEvent) : Prop :=
+@[expose] def NextKeyInternalEnv (evs : List AllocEvent) : Prop :=
   evs = nextKeyInternalEvents
 
 /-- Budget-threaded spec of `<spqr::chain::ChainEpochDirection>::next_key_internal` at
 `nextKeyInternalStackX`. -/
-def nextKeyInternalSpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def nextKeyInternalSpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (NextKeyInternalGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.nextA ∧
@@ -136,7 +136,7 @@ def nextKeyInternalSpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocB
 
 /-- Contract-backed budget-threaded spec of `<spqr::chain::ChainEpochDirection>::next_key_internal`
 at `nextKeyInternalStackExt`. -/
-def nextKeyInternalSpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def nextKeyInternalSpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (NextKeyInternalGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.nextA ∧
@@ -156,17 +156,17 @@ def nextKeyInternalSpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllo
 /-! ## `<spqr::chain::Chain>::new` -/
 
 /-- Deterministic `AllocEvent` list emitted by `<spqr::chain::Chain>::new`. -/
-def chainNewEvents : List AllocEvent :=
+@[expose] def chainNewEvents : List AllocEvent :=
   rustAllocEvents 72 1 ++ rustAllocEvents 32 1 ++
     rustAllocEvents 72 1 ++ rustAllocEvents 32 1 ++
     rustAllocEvents (4 * chainEpochSize) chainEpochAlign ++
     rustAllocEvents 32 1
 
-def ChainNewEnv (evs : List AllocEvent) : Prop :=
+@[expose] def ChainNewEnv (evs : List AllocEvent) : Prop :=
   evs = chainNewEvents
 
 /-- Budget-threaded spec of `<spqr::chain::Chain>::new` at `chainNewStackX`. -/
-def chainNewSpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainNewSpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainNewGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.ikmA ∧
@@ -188,7 +188,7 @@ def chainNewSpecX (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp chainNewStackX
 
 /-- Contract-backed budget-threaded spec of `<spqr::chain::Chain>::new` at `chainNewStackExt`. -/
-def chainNewSpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def chainNewSpecExt (hkdf : HkdfFn) (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainNewGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.ikmA ∧

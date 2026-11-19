@@ -9,11 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `main` Hop M5 (`M+0x7b0 → M+0xf70`, Block `617`)
@@ -22,7 +29,7 @@ Composes `m5_moves_placed`, `m5_loop_placed`, and `m5_drop_for_m5_placed` into `
 (`M+0x7b0 → M+0xf70`) on Block `617` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

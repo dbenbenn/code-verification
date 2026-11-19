@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.SignalSession.CliLabels
+public import LibsignalBinary.Proofs.Placed.CliLabels -- proof-setup: allow-public-import
 public import ProofLib.Placed.LabelsCoverage
 public import ProofLib.Placed.LabelsInterned
 public import ProofLib.ProgramReflection
@@ -18,11 +18,11 @@ public meta import Arm64
 public meta import ProofLib.ProgramReflection
 public meta import ProofLib.Placed.LabelsCoverage
 public meta import ProofLib.Placed.LabelsInterned
-public meta import GeneratedLean.LibsignalSessionExtractedObj
-public meta import GeneratedLean.LibsignalSessionPlacedObj
-public meta import LibsignalBinary.Specifications.SignalSession.CliLabels
+public meta import GeneratedLean.LibsignalSessionExtractedObj -- proof-setup: allow-public-import
+public meta import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.CliLabels -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,9 +30,10 @@ set_option autoImplicit false
 # Panic Label Soundness and Completeness (`CliPanicLabelsSound`)
 
 **Checked by Lean.** Proves `cliPanicLabelsSound : CliPanicLabelsSound` and
-`cliPanicLabelsComplete` via `Obj.checkGateALabelsB` and `Obj.gateALabels_of_check`, and certifies
-that `Vec::remove::assert_failed` (`cliPanicExtraRawSym`) is the unique extern in
-`cliPanicSymbolsPlaced` outside `Rust.isPanicSymbol`.
+`cliPanicLabelsComplete` directly over interned `IdxTree` symbol and character tables without
+kernel `String.toList` scans, and certifies that `Vec::remove::assert_failed`
+(`cliPanicExtraRawSym`) is the unique extern in `cliCratePanicSyms` outside
+`Rust.isPanicSymbol`.
 -/
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliPanicLabels
@@ -43,19 +44,30 @@ open CryptoVerification.SignalSession (
   CliPanicLabelsSound
   cliLinkObjs
   cliPanicExtraDemangled
-  cliPanicSymbolsPlaced
+  cliCratePanicSyms
   isCliPanicSymbolPlaced
   libsignalSessionLib
 )
+
+/-- Mangled `.strtab` name of the unique extern in `cliCratePanicSyms` outside
+`Rust.isPanicSymbol`. -/
+def cliPanicExtraRawSym : String :=
+  "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed"
+
+/-- Demangled `.o` symbol name corresponding to `cliPanicExtraRawSym`. -/
+def cliPanicExtraDemangledSym : String :=
+  "<alloc::vec::Vec<_, _>>::remove::assert_failed"
 
 section MetaGenP2b
 
 open Lean Elab Command Meta
 
 private meta def p2bWhnfCtor (ctor : Name) (arity : Nat) (e : Expr) : MetaM Expr := do
-  let e' ← whnf e
+  let c := e.consumeMData
+  if c.isAppOfArity ctor arity then return c
+  let e' ← whnf c
   if e'.isAppOfArity ctor arity then return e'
-  let eAll ← withTransparency .all (whnf e)
+  let eAll ← withTransparency .all (whnf c)
   if eAll.isAppOfArity ctor arity then return eAll
   throwError "p2bWhnfCtor: expected {ctor}/{arity}, got {eAll}"
 
@@ -63,24 +75,31 @@ private meta partial def p2bListElems (e : Expr) : MetaM (Array Expr) := do
   let mut cur := e
   let mut out : Array Expr := #[]
   while true do
-    let c ← whnf cur
-    if c.isAppOfArity ``List.nil 1 then return out
-    if c.isAppOfArity ``List.cons 3 then
-      out := out.push (c.getArg! 1)
-      cur := c.getArg! 2
+    let raw := cur.consumeMData
+    if raw.isAppOfArity ``List.nil 1 then return out
+    if raw.isAppOfArity ``List.cons 3 then
+      out := out.push (raw.getArg! 1)
+      cur := raw.getArg! 2
     else
-      let cAll ← withTransparency .all (whnf cur)
-      if cAll.isAppOfArity ``List.nil 1 then return out
-      if cAll.isAppOfArity ``List.cons 3 then
-        out := out.push (cAll.getArg! 1)
-        cur := cAll.getArg! 2
+      let c ← whnf raw
+      if c.isAppOfArity ``List.nil 1 then return out
+      if c.isAppOfArity ``List.cons 3 then
+        out := out.push (c.getArg! 1)
+        cur := c.getArg! 2
       else
-        throwError "p2bListElems: expected List, got {cAll}"
+        let cAll ← withTransparency .all (whnf raw)
+        if cAll.isAppOfArity ``List.nil 1 then return out
+        if cAll.isAppOfArity ``List.cons 3 then
+          out := out.push (cAll.getArg! 1)
+          cur := cAll.getArg! 2
+        else
+          throwError "p2bListElems: expected List, got {cAll}"
   return out
 
 private meta def p2bStrVal (e : Expr) : MetaM String := do
-  if let .lit (.strVal s) := e then return s
-  let e' ← withTransparency .all (whnf e)
+  let c := e.consumeMData
+  if let .lit (.strVal s) := c then return s
+  let e' ← withTransparency .all (whnf c)
   if let .lit (.strVal s) := e' then return s
   throwError "p2bStrVal: expected string literal, got {e'}"
 
@@ -98,14 +117,24 @@ private meta def p2bMkList (ty : Expr) (xs : Array Expr) : Expr :=
     (mkApp (Lean.mkConst ``List.nil [Level.zero]) ty)
 
 private meta def p2bDecodeSymBindKey (e : Expr) : MetaM String := do
-  let c ← withTransparency .all (whnf e)
+  let raw := e.consumeMData
+  if raw.isConstOf ``Obj.SymBind.local then return "local"
+  if raw.isConstOf ``Obj.SymBind.global then return "global"
+  if raw.isConstOf ``Obj.SymBind.weak then return "weak"
+  if raw.isConstOf ``Obj.SymBind.other then return "other"
+  let c ← withTransparency .all (whnf raw)
   if c.isConstOf ``Obj.SymBind.local then return "local"
   if c.isConstOf ``Obj.SymBind.global then return "global"
   if c.isConstOf ``Obj.SymBind.weak then return "weak"
   return "other"
 
 private meta def p2bDecodeSymSecKey (e : Expr) : MetaM String := do
-  let c ← withTransparency .all (whnf e)
+  let raw := e.consumeMData
+  if raw.isConstOf ``Obj.SymSec.undef then return "undef"
+  if raw.isConstOf ``Obj.SymSec.other then return "other"
+  if raw.isAppOfArity ``Obj.SymSec.sec 1 then
+    if let some n := (raw.getArg! 0).rawNatLit? then return s!"sec:{n}"
+  let c ← withTransparency .all (whnf raw)
   if c.isConstOf ``Obj.SymSec.undef then return "undef"
   if c.isAppOfArity ``Obj.SymSec.sec 1 then
     let n ← withTransparency .all (whnf (c.getArg! 0))
@@ -122,11 +151,14 @@ elab "gen_p2b_interned" : command => do
     let b0C ← p2bWhnfCtor ``Obj.CodeBlock.mk 6 blkEs[0]!
     let extEs ← p2bListElems (b0C.getArg! 4)
     let extStrs ← (extEs.mapM p2bStrVal : MetaM (Array String))
-    let panicEs ← p2bListElems (Lean.mkConst ``CryptoVerification.SignalSession.cliPanicSymbolsPlaced)
+    let panicEs ← p2bListElems (Lean.mkConst ``CryptoVerification.SignalSession.cliCratePanicSyms)
     let panicStrs ← (panicEs.mapM p2bStrVal : MetaM (Array String))
 
     let exactPanicEs ← p2bListElems (Lean.mkConst ``Obj.rustPanicExactNames)
     let exactPanicStrs ← (exactPanicEs.mapM p2bStrVal : MetaM (Array String))
+
+    let extraRawStr := "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed"
+    let extraDemStr := "<alloc::vec::Vec<_, _>>::remove::assert_failed"
 
     let mut panicRawSet : Std.HashSet String := Std.HashSet.emptyWithCapacity 64
     for s in panicStrs do panicRawSet := panicRawSet.insert s
@@ -136,7 +168,7 @@ elab "gen_p2b_interned" : command => do
     for s in panicStrs do targetRawSet := targetRawSet.insert s
 
     let mut nameSet : Std.HashSet String := Std.HashSet.emptyWithCapacity 8192
-    nameSet := nameSet.insert ""
+    nameSet := ((nameSet.insert "").insert extraRawStr).insert extraDemStr
     for s in extStrs do nameSet := nameSet.insert s
     for s in panicStrs do nameSet := nameSet.insert s
 
@@ -173,9 +205,6 @@ elab "gen_p2b_interned" : command => do
     let trueE := Lean.mkConst ``Bool.true
     let falseE := Lean.mkConst ``Bool.false
     let iSymTy := Lean.mkConst ``Obj.LabelsInterned.ISym
-    let rawSymTy := Lean.mkConst ``Obj.RawSym
-    let rawRelocTy := Lean.mkConst ``Obj.RawReloc
-    let rawSecTy := Lean.mkConst ``Obj.RawSec
     let mkTreeTy (t : Expr) := mkApp (Lean.mkConst ``IdxTree [Level.zero]) t
     let iSymTreeTy := mkTreeTy iSymTy
     let natPairTy := mkApp2 (Lean.mkConst ``Prod [Level.zero, Level.zero]) natTy natTy
@@ -194,8 +223,8 @@ elab "gen_p2b_interned" : command => do
     let zeroLit := mkRawNatLit 0
     let mut objSymTrees : Array Expr := Array.mkEmpty rawObjSymEs.size
     let mut seenSummary : Std.HashSet String := Std.HashSet.emptyWithCapacity 256
-    let mut panicItems : Array (String × Nat × String × Expr × Expr × Nat × Nat) := #[]
-    let mut otherItems : Array (String × Nat × String × Expr × Expr × Nat × Nat) := #[]
+    let mut panicItems : Array (String × Nat × String × Expr × Nat × Nat) := #[]
+    let mut otherItems : Array (String × Nat × String × Expr × Nat × Nat) := #[]
 
     for oi in [:rawObjSymEs.size] do
       let syms := rawObjSymEs[oi]!
@@ -223,29 +252,25 @@ elab "gen_p2b_interned" : command => do
             if !seenSummary.contains key then
               seenSummary := seenSummary.insert key
               if panicRawSet.contains rn then
-                panicItems := panicItems.push (rn, rid, sk, isyE, syC, oi, si)
+                panicItems := panicItems.push (rn, rid, sk, isyE, oi, si)
               else
-                otherItems := otherItems.push (rn, rid, sk, isyE, syC, oi, si)
+                otherItems := otherItems.push (rn, rid, sk, isyE, oi, si)
       objSymTrees := objSymTrees.push
         (ProofLib.ProgramReflection.mkIdxTreeExpr Level.zero iSymTy isyms)
 
     let allItems := panicItems ++ otherItems
     let numPanicSummary := panicItems.size
     let mut summaryISyms : Array Expr := Array.mkEmpty allItems.size
-    let mut summaryRawSyms : Array Expr := Array.mkEmpty allItems.size
     let mut panicSummaryISyms : Array Expr := Array.mkEmpty numPanicSummary
     let mut panicSummaryWits : Array Expr := Array.mkEmpty numPanicSummary
-    let mut panicSummaryRawSyms : Array Expr := Array.mkEmpty numPanicSummary
     let mut bucketsByRaw : Std.HashMap Nat (Array Nat) := Std.HashMap.emptyWithCapacity 256
     let mut undefIdxByRaw : Std.HashMap String Nat := Std.HashMap.emptyWithCapacity 256
 
     for sIdx in [:allItems.size] do
-      let (rn, rid, sk, isyE, syC, oi, si) := allItems[sIdx]!
+      let (rn, rid, sk, isyE, oi, si) := allItems[sIdx]!
       summaryISyms := summaryISyms.push isyE
-      summaryRawSyms := summaryRawSyms.push syC
       if sIdx < numPanicSummary then
         panicSummaryISyms := panicSummaryISyms.push isyE
-        panicSummaryRawSyms := panicSummaryRawSyms.push syC
         let pair2 := mkApp4 (Lean.mkConst ``Prod.mk [Level.zero, Level.zero])
           natTy natTy (mkRawNatLit oi) (mkRawNatLit si)
         let witE := mkApp4 (Lean.mkConst ``Prod.mk [Level.zero, Level.zero])
@@ -255,6 +280,11 @@ elab "gen_p2b_interned" : command => do
       bucketsByRaw := bucketsByRaw.insert rid (prev.push sIdx)
       if sk == "undef" && !undefIdxByRaw.contains rn then
         undefIdxByRaw := undefIdxByRaw.insert rn sIdx
+
+    let some extraUndefWitIdx := undefIdxByRaw[extraRawStr]?
+      | throwError "gen_p2b_interned: missing .undef symbol for {extraRawStr}"
+    if extraUndefWitIdx >= numPanicSummary then
+      throwError "gen_p2b_interned: extra panic .undef index {extraUndefWitIdx} >= {numPanicSummary}"
 
     let objSymsTreeVal :=
       ProofLib.ProgramReflection.mkIdxTreeExpr Level.zero iSymTreeTy objSymTrees
@@ -272,41 +302,6 @@ elab "gen_p2b_interned" : command => do
     let targetBucketTreeVal :=
       ProofLib.ProgramReflection.mkIdxTreeExpr Level.zero natListTy bucketArr
 
-    let someCall26 := mkApp2 (Lean.mkConst ``Option.some [Level.zero])
-      (Lean.mkConst ``Obj.RelocKind) (Lean.mkConst ``Obj.RelocKind.call26)
-    let zeroInt := mkIntLit 0
-    let mut summaryRelocs : Array Expr := Array.mkEmpty panicStrs.size
-    for ps in panicStrs do
-      let some symIdx := undefIdxByRaw[ps]?
-        | throwError "gen_p2b_interned: missing .undef symbol for panic {ps}"
-      if symIdx >= numPanicSummary then
-        throwError "gen_p2b_interned: panic .undef index {symIdx} >= {numPanicSummary}"
-      let rrE := mkAppN (Lean.mkConst ``Obj.RawReloc.mk) #[
-        zeroLit, someCall26, mkRawNatLit symIdx, zeroInt
-      ]
-      summaryRelocs := summaryRelocs.push rrE
-
-    let bv8Ty := mkApp (Lean.mkConst ``BitVec) (mkRawNatLit 8)
-    let emptyBytes := mkApp (Lean.mkConst ``List.nil [Level.zero]) bv8Ty
-    let secE := mkAppN (Lean.mkConst ``Obj.RawSec.mk) #[
-      mkStrLit ".text",
-      emptyBytes,
-      zeroLit,
-      mkRawNatLit 4,
-      trueE,
-      trueE,
-      falseE,
-      falseE,
-      p2bMkList rawRelocTy summaryRelocs
-    ]
-    let emptyGroups := mkApp (Lean.mkConst ``List.nil [Level.zero]) (Lean.mkConst ``Obj.RawGroup)
-    let panicSummaryObjVal := mkAppN (Lean.mkConst ``Obj.ExtractedObj.mk) #[
-      mkStrLit "panic_summary.o",
-      p2bMkList rawSecTy #[secE],
-      p2bMkList rawSymTy panicSummaryRawSyms,
-      emptyGroups
-    ]
-
     let addD (nm : Name) (ty val : Expr) : MetaM Unit := do
       let env ← getEnv
       addDecl (.defnDecl {
@@ -321,33 +316,25 @@ elab "gen_p2b_interned" : command => do
 
     addD `p2bNumNames natTy (mkRawNatLit N)
     addD `p2bNumBlocks natTy (mkRawNatLit blkEs.size)
+    addD `p2bExtraRawId natTy (mkRawNatLit (idOf extraRawStr))
+    addD `p2bExtraDemangledId natTy (mkRawNatLit (idOf extraDemStr))
+    addD `p2bExtraUndefWitIdx natTy (mkRawNatLit extraUndefWitIdx)
     addD `p2bNamesTree (mkTreeTy strTy) namesTreeVal
     addD `p2bCharsTree (mkTreeTy charListTy) charsTreeVal
     addD `p2bIsTargetTree (mkTreeTy boolTy) isTargetTreeVal
     addD `p2bTargetBucketTree (mkTreeTy natListTy) targetBucketTreeVal
     addD `p2bObjSymsTree (mkTreeTy iSymTreeTy) objSymsTreeVal
     addD `p2bSummaryTree iSymTreeTy summaryTreeVal
-    addD `p2bAllSummarySyms (mkApp (Lean.mkConst ``List [Level.zero]) rawSymTy)
-      (p2bMkList rawSymTy summaryRawSyms)
     addD `p2bPanicSummaryTree iSymTreeTy panicSummaryTreeVal
     addD `p2bPanicSummaryWits (mkApp (Lean.mkConst ``List [Level.zero]) summaryWitTy)
       (p2bMkList summaryWitTy panicSummaryWits)
-    addD `p2bPanicSummaryObj (Lean.mkConst ``Obj.ExtractedObj) panicSummaryObjVal
     addD `p2bExternIds natListTy
       (p2bMkList natTy (extStrs.map (mkRawNatLit ∘ idOf)))
     addD `p2bPanicIds natListTy
       (p2bMkList natTy (panicStrs.map (mkRawNatLit ∘ idOf)))
     let charListListTy := mkApp (Lean.mkConst ``List [Level.zero]) charListTy
-    addD `p2bPanicChars charListListTy
-      (p2bMkList charListTy (panicStrs.map ProofLib.ProgramReflection.mkStrCharsExpr))
     addD `p2bRustExactPanicChars charListListTy
       (p2bMkList charListTy (exactPanicStrs.map ProofLib.ProgramReflection.mkStrCharsExpr))
-    addD `p2bExtraRawChars charListTy
-      (ProofLib.ProgramReflection.mkStrCharsExpr
-        "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed")
-    addD `p2bExtraDemangledChars charListTy
-      (ProofLib.ProgramReflection.mkStrCharsExpr
-        "<alloc::vec::Vec<_, _>>::remove::assert_failed")
     addD `cliAllExterns (mkApp (Lean.mkConst ``List [Level.zero]) strTy)
       (p2bMkList strTy (extStrs.map mkStrLit))
     return ()
@@ -357,6 +344,9 @@ gen_p2b_interned
 end MetaGenP2b
 
 private theorem p2b_names_sz : p2bNamesTree.size? = some p2bNumNames := by
+  open ProofLib.ProgramReflection in rfl_kernel
+
+private theorem p2b_chars_sz : p2bCharsTree.size? = some p2bNumNames := by
   open ProofLib.ProgramReflection in rfl_kernel
 
 private theorem p2b_names_eq :
@@ -373,16 +363,6 @@ private theorem p2b_objs_syms_eq :
         (fun t => t.toList.map (Obj.LabelsInterned.ISym.toRawSym p2bNamesTree)) := by
   open ProofLib.ProgramReflection in rfl_kernel
 
-private theorem p2b_summary_syms_eq :
-    p2bAllSummarySyms =
-      p2bSummaryTree.toList.map (Obj.LabelsInterned.ISym.toRawSym p2bNamesTree) := by
-  open ProofLib.ProgramReflection in rfl_kernel
-
-private theorem p2b_panic_summary_syms_eq :
-    p2bPanicSummaryObj.symbols =
-      p2bPanicSummaryTree.toList.map (Obj.LabelsInterned.ISym.toRawSym p2bNamesTree) := by
-  open ProofLib.ProgramReflection in rfl_kernel
-
 private theorem p2b_panic_summary_wits_eq :
     p2bPanicSummaryTree.toList = p2bPanicSummaryWits.map Prod.fst := by
   open ProofLib.ProgramReflection in rfl_kernel
@@ -392,12 +372,24 @@ private theorem p2b_externs_eq :
   open ProofLib.ProgramReflection in rfl_kernel
 
 private theorem p2b_panics_eq :
-    cliPanicSymbolsPlaced = p2bPanicIds.map (Obj.LabelsInterned.symAt p2bNamesTree) := by
+    cliCratePanicSyms = p2bPanicIds.map (Obj.LabelsInterned.symAt p2bNamesTree) := by
   open ProofLib.ProgramReflection in rfl_kernel
 
 private theorem p2b_blocks_externs_eq :
     libsignalSessionLib.blocks.map Obj.CodeBlock.externs =
       List.replicate p2bNumBlocks cliAllExterns := by
+  open ProofLib.ProgramReflection in rfl_kernel
+
+private theorem p2b_exact_panic_toList_eq :
+    Obj.rustPanicExactNames.map String.toList = p2bRustExactPanicChars := by
+  open ProofLib.ProgramReflection in rfl_kernel
+
+private theorem p2b_extra_raw_eq :
+    Obj.LabelsInterned.symAt p2bNamesTree p2bExtraRawId = cliPanicExtraRawSym := by
+  open ProofLib.ProgramReflection in rfl_kernel
+
+private theorem p2b_extra_demangled_eq :
+    Obj.LabelsInterned.symAt p2bNamesTree p2bExtraDemangledId = cliPanicExtraDemangledSym := by
   open ProofLib.ProgramReflection in rfl_kernel
 
 private theorem cliBlock_externs_eq {b : Obj.CodeBlock} (hb : b ∈ libsignalSessionLib.blocks) :
@@ -460,6 +452,61 @@ private noncomputable def p2bSubsumesB : Bool :=
 private theorem p2bSubsumesB_ok : p2bSubsumesB = true := by
   open ProofLib.ProgramReflection in rfl_kernel
 
+private noncomputable def isRustPanicChars (cs : List Char) : Bool :=
+  List.isPrefixOf
+    ['c', 'o', 'r', 'e', ':', ':', 'p', 'a', 'n', 'i', 'c', 'k', 'i', 'n', 'g', ':', ':'] cs ||
+    p2bRustExactPanicChars.any (fun p => cs == p)
+
+private theorem rust_isPanicSymbol_eq_chars (s : String) :
+    Rust.isPanicSymbol s = isRustPanicChars s.toList := by
+  rw [Obj.rust_isPanicSymbol_eq_fast]
+  unfold Obj.isPanicSymbolFast Obj.isPanicSymbolChars isRustPanicChars
+  rw [p2b_exact_panic_toList_eq]
+
+private theorem rust_isPanicSymbol_symAt {id : Nat} (hid : id < p2bNumNames) :
+    Rust.isPanicSymbol (Obj.LabelsInterned.symAt p2bNamesTree id) =
+      isRustPanicChars (Obj.LabelsInterned.charsAt p2bCharsTree id) := by
+  rw [Obj.LabelsInterned.symAt_eq_ofList_charsAt p2b_names_sz p2b_chars_sz p2b_names_eq hid,
+    rust_isPanicSymbol_eq_chars, String.toList_ofList]
+
+private noncomputable def p2bPanicSummaryISymOk (isy : Obj.LabelsInterned.ISym) : Bool :=
+  Nat.blt isy.rawId p2bNumNames && Nat.blt isy.nameId p2bNumNames &&
+  (!(isy.bind != .local) ||
+    ((isRustPanicChars (Obj.LabelsInterned.charsAt p2bCharsTree isy.nameId) ||
+      Nat.beq isy.nameId p2bExtraDemangledId) &&
+     (Nat.beq isy.rawId p2bExtraRawId ||
+      isRustPanicChars (Obj.LabelsInterned.charsAt p2bCharsTree isy.nameId)) &&
+     (!(Nat.beq isy.rawId p2bExtraRawId) ||
+      ((isy.sec == .undef) && Nat.beq isy.nameId p2bExtraDemangledId))))
+
+private noncomputable def p2bSummaryISymCompleteOk (isy : Obj.LabelsInterned.ISym) : Bool :=
+  Nat.blt isy.rawId p2bNumNames && Nat.blt isy.nameId p2bNumNames &&
+  (!(isy.sec == .undef) ||
+    !(isRustPanicChars (Obj.LabelsInterned.charsAt p2bCharsTree isy.nameId) ||
+      Nat.beq isy.nameId p2bExtraDemangledId) ||
+    p2bPanicIds.any (Nat.beq isy.rawId))
+
+private noncomputable def p2bExtraChecksOk : Bool :=
+  Nat.blt p2bExtraRawId p2bNumNames &&
+  Nat.blt p2bExtraDemangledId p2bNumNames &&
+  !isRustPanicChars (Obj.LabelsInterned.charsAt p2bCharsTree p2bExtraDemangledId) &&
+  p2bPanicIds.any (Nat.beq p2bExtraRawId) &&
+  match p2bPanicSummaryTree.get? p2bExtraUndefWitIdx with
+  | none => false
+  | some isy =>
+    Nat.beq isy.rawId p2bExtraRawId && (isy.bind != .local) &&
+    (isy.sec == .undef) && Nat.beq isy.nameId p2bExtraDemangledId
+
+private noncomputable def p2bFastChecksB : Bool :=
+  (p2bExternIds.all fun id =>
+    Nat.blt id p2bNumNames && !isRustPanicChars (Obj.LabelsInterned.charsAt p2bCharsTree id)) &&
+  p2bPanicSummaryTree.all p2bPanicSummaryISymOk &&
+  p2bSummaryTree.all p2bSummaryISymCompleteOk &&
+  p2bExtraChecksOk
+
+private theorem p2bFastChecks_ok : p2bFastChecksB = true := by
+  open ProofLib.ProgramReflection in rfl_kernel
+
 private theorem isymMatches_props {a b : Obj.LabelsInterned.ISym} (h : isymMatches a b = true) :
     a.rawId = b.rawId ∧ a.nameId = b.nameId ∧ a.sec = b.sec ∧ a.bind = b.bind := by
   unfold isymMatches at h
@@ -469,14 +516,15 @@ private theorem isymMatches_props {a b : Obj.LabelsInterned.ISym} (h : isymMatch
   exact ⟨Nat.eq_of_beq_eq_true hr, Nat.eq_of_beq_eq_true hn,
     beq_iff_eq.mp hsec, beq_iff_eq.mp hbd⟩
 
-private theorem summary_has_matching_sym {x : String}
-    (hx : x ∈ cliAllExterns ∨ x ∈ cliPanicSymbolsPlaced)
+private theorem summary_has_matching_isym {x : String}
+    (hx : x ∈ cliAllExterns ∨ x ∈ cliCratePanicSyms)
     {o : Obj.ExtractedObj} (ho : o ∈ cliLinkObjs)
     {sy : Obj.RawSym} (hsy : sy ∈ o.symbols)
     (hraw : sy.rawName = x) (hbind : sy.bind ≠ .local) :
-    ∃ sy' ∈ p2bAllSummarySyms,
-      sy'.rawName = sy.rawName ∧ sy'.name = sy.name ∧
-      sy'.sec = sy.sec ∧ sy'.bind = sy.bind := by
+    ∃ s ∈ p2bSummaryTree.toList,
+      Obj.LabelsInterned.symAt p2bNamesTree s.rawId = sy.rawName ∧
+      Obj.LabelsInterned.symAt p2bNamesTree s.nameId = sy.name ∧
+      s.sec = sy.sec ∧ s.bind = sy.bind := by
   have hnd : p2bNamesTree.toList.Nodup :=
     Obj.Interned.nodup_of_namesNodup p2b_names_eq p2b_names_nodup
   rcases Eq.mp (Bool.and_eq_true _ _) p2bSubsumesB_ok with ⟨h123, htree_b⟩
@@ -536,20 +584,19 @@ private theorem summary_has_matching_sym {x : String}
       rw [hget_s] at hk_ok
       dsimp only at hk_ok
       obtain ⟨hr, hn, hsec, hbd⟩ := isymMatches_props hk_ok
-      refine ⟨s.toRawSym p2bNamesTree, ?_, ?_⟩
-      · rw [p2b_summary_syms_eq]
-        exact List.mem_map_of_mem (IdxTree.mem_toList_of_get? hget_s)
-      · dsimp only [Obj.LabelsInterned.ISym.toRawSym]
-        exact ⟨congrArg _ hr.symm, congrArg _ hn.symm, hsec.symm, hbd.symm⟩
+      refine ⟨s, IdxTree.mem_toList_of_get? hget_s, ?_⟩
+      dsimp only [Obj.LabelsInterned.ISym.toRawSym]
+      exact ⟨congrArg _ hr.symm, congrArg _ hn.symm, hsec.symm, hbd.symm⟩
 
-private theorem panic_summary_has_matching_sym {x : String}
-    (hx : x ∈ cliPanicSymbolsPlaced)
+private theorem panic_summary_has_matching_isym {x : String}
+    (hx : x ∈ cliCratePanicSyms)
     {o : Obj.ExtractedObj} (ho : o ∈ cliLinkObjs)
     {sy : Obj.RawSym} (hsy : sy ∈ o.symbols)
     (hraw : sy.rawName = x) (hbind : sy.bind ≠ .local) :
-    ∃ sy' ∈ p2bPanicSummaryObj.symbols,
-      sy'.rawName = sy.rawName ∧ sy'.name = sy.name ∧
-      sy'.sec = sy.sec ∧ sy'.bind = sy.bind := by
+    ∃ s2 ∈ p2bPanicSummaryTree.toList,
+      Obj.LabelsInterned.symAt p2bNamesTree s2.rawId = sy.rawName ∧
+      Obj.LabelsInterned.symAt p2bNamesTree s2.nameId = sy.name ∧
+      s2.sec = sy.sec ∧ s2.bind = sy.bind := by
   have hnd : p2bNamesTree.toList.Nodup :=
     Obj.Interned.nodup_of_namesNodup p2b_names_eq p2b_names_nodup
   rcases Eq.mp (Bool.and_eq_true _ _) p2bSubsumesB_ok with ⟨h123, htree_b⟩
@@ -611,24 +658,23 @@ private theorem panic_summary_has_matching_sym {x : String}
         dsimp only at hk_ent
         obtain ⟨hr1, hn1, hsec1, hbd1⟩ := isymMatches_props hk_ok
         obtain ⟨hr2, hn2, hsec2, hbd2⟩ := isymMatches_props hk_ent
-        refine ⟨s2.toRawSym p2bNamesTree, ?_, ?_⟩
-        · rw [p2b_panic_summary_syms_eq]
-          exact List.mem_map_of_mem (IdxTree.mem_toList_of_get? hget_p)
-        · dsimp only [Obj.LabelsInterned.ISym.toRawSym]
-          exact ⟨congrArg _ (hr1.trans hr2).symm, congrArg _ (hn1.trans hn2).symm,
-            (hsec1.trans hsec2).symm, (hbd1.trans hbd2).symm⟩
+        refine ⟨s2, IdxTree.mem_toList_of_get? hget_p, ?_⟩
+        dsimp only [Obj.LabelsInterned.ISym.toRawSym]
+        exact ⟨congrArg _ (hr1.trans hr2).symm, congrArg _ (hn1.trans hn2).symm,
+          (hsec1.trans hsec2).symm, (hbd1.trans hbd2).symm⟩
 
-private theorem panic_objs_has_matching_sym {sy' : Obj.RawSym}
-    (hsy' : sy' ∈ p2bPanicSummaryObj.symbols) :
+private theorem panic_objs_has_matching_isym {s2 : Obj.LabelsInterned.ISym}
+    (hs2 : s2 ∈ p2bPanicSummaryTree.toList) :
     ∃ o ∈ cliLinkObjs, ∃ sy ∈ o.symbols,
-      sy.rawName = sy'.rawName ∧ sy.name = sy'.name ∧
-      sy.sec = sy'.sec ∧ sy.bind = sy'.bind := by
+      sy.rawName = Obj.LabelsInterned.symAt p2bNamesTree s2.rawId ∧
+      sy.name = Obj.LabelsInterned.symAt p2bNamesTree s2.nameId ∧
+      sy.sec = s2.sec ∧ sy.bind = s2.bind := by
   rcases Eq.mp (Bool.and_eq_true _ _) p2bSubsumesB_ok with ⟨h123, _⟩
   rcases Eq.mp (Bool.and_eq_true _ _) h123 with ⟨h12, _⟩
   rcases Eq.mp (Bool.and_eq_true _ _) h12 with ⟨_, hwits_b⟩
   have hwits : ∀ w ∈ p2bPanicSummaryWits, p2bSummaryWitOk w = true := List.all_eq_true.mp hwits_b
-  rw [p2b_panic_summary_syms_eq, p2b_panic_summary_wits_eq, List.map_map] at hsy'
-  obtain ⟨w, hw_mem, rfl⟩ := List.mem_map.mp hsy'
+  rw [p2b_panic_summary_wits_eq] at hs2
+  obtain ⟨w, hw_mem, rfl⟩ := List.mem_map.mp hs2
   have hw_ok := hwits w hw_mem
   unfold p2bSummaryWitOk at hw_ok
   cases hget_o : p2bObjSymsTree.get? w.2.1 with
@@ -653,146 +699,53 @@ private theorem panic_objs_has_matching_sym {sy' : Obj.RawSym}
       refine ⟨o, ho, isy.toRawSym p2bNamesTree, ?_, ?_⟩
       · rw [ho_syms]
         exact List.mem_map_of_mem hisy_mem
-      · dsimp only [Function.comp_apply, Obj.LabelsInterned.ISym.toRawSym]
+      · dsimp only [Obj.LabelsInterned.ISym.toRawSym]
         exact ⟨congrArg _ hr, congrArg _ hn, hsec, hbd⟩
-
-private theorem list_contains_eq_any_toList (xs : List String) (s : String) :
-    xs.contains s = (xs.map String.toList).any (fun p => s.toList == p) := by
-  induction xs with
-  | nil => rfl
-  | cons x rest ih =>
-    simp only [List.contains_cons, List.map_cons, List.any_cons, ih]
-    congr 1
-    apply Bool.eq_iff_iff.2
-    simp only [beq_iff_eq, String.ext_iff]
-
-private theorem p2b_panic_toList_eq :
-    cliPanicSymbolsPlaced.map String.toList = p2bPanicChars := by
-  open ProofLib.ProgramReflection in rfl_kernel
-
-private theorem p2b_exact_panic_toList_eq :
-    Obj.rustPanicExactNames.map String.toList = p2bRustExactPanicChars := by
-  open ProofLib.ProgramReflection in rfl_kernel
-
-private noncomputable def isRustPanicSymbolUltraFast (name : String) : Bool :=
-  let cs := name.toList
-  List.isPrefixOf
-    ['c', 'o', 'r', 'e', ':', ':', 'p', 'a', 'n', 'i', 'c', 'k', 'i', 'n', 'g', ':', ':'] cs ||
-    p2bRustExactPanicChars.any (fun p => cs == p)
-
-private theorem rust_isPanicSymbol_eq_ultraFast (s : String) :
-    Rust.isPanicSymbol s = isRustPanicSymbolUltraFast s := by
-  rw [Obj.rust_isPanicSymbol_eq_fast]
-  unfold Obj.isPanicSymbolFast Obj.isPanicSymbolChars isRustPanicSymbolUltraFast
-  rw [p2b_exact_panic_toList_eq]
-
-private noncomputable def isCliPanicSymbolPlacedFast (name : String) : Bool :=
-  let cs := name.toList
-  p2bPanicChars.any (fun p => cs == p) ||
-    (List.isPrefixOf
-      ['c', 'o', 'r', 'e', ':', ':', 'p', 'a', 'n', 'i', 'c', 'k', 'i', 'n', 'g', ':', ':'] cs ||
-      p2bRustExactPanicChars.any (fun p => cs == p))
-
-private theorem isCliPanicSymbolPlaced_eq_fast (s : String) :
-    isCliPanicSymbolPlaced s = isCliPanicSymbolPlacedFast s := by
-  unfold isCliPanicSymbolPlaced isCliPanicSymbolPlacedFast
-  rw [list_contains_eq_any_toList, p2b_panic_toList_eq, rust_isPanicSymbol_eq_ultraFast]
-  rfl
-
-private def cliEmptyBlocksLib : Obj.MultiPlacedLib :=
-  { name := "", blocks := [] }
-
-private theorem cliGateAPanicCheck_ok :
-    Obj.checkGateALabelsB
-      [p2bPanicSummaryObj]
-      cliEmptyBlocksLib
-      (fun _ => default)
-      cliPanicSymbolsPlaced
-      []
-      []
-      []
-      cliPanicSymbolsPlaced
-      cliPanicExtraDemangled
-      isCliPanicSymbolPlacedFast
-      0
-      [] = true := by
-  open ProofLib.ProgramReflection in rfl_kernel
-
-private theorem cliGateAPanicAnchored :
-    Obj.GateALabelsAnchored
-      [p2bPanicSummaryObj]
-      cliEmptyBlocksLib
-      (fun _ => default)
-      cliPanicSymbolsPlaced
-      []
-      []
-      []
-      cliPanicSymbolsPlaced
-      cliPanicExtraDemangled
-      isCliPanicSymbolPlacedFast
-      0
-      [] :=
-  Obj.gateALabels_of_check cliGateAPanicCheck_ok
-
-private theorem cliAllExterns_not_std_panic :
-    (cliAllExterns.all fun x => !isRustPanicSymbolUltraFast x) = true := by
-  open ProofLib.ProgramReflection in rfl_kernel
 
 /-- Every non-local `.o` symbol matching an extern in `libsignalSessionLib` with
 `isCliPanicSymbolPlaced x = true` demangles to a Rust panic entry point (`Rust.isPanicSymbol` or
 `cliPanicExtraDemangled`). -/
 theorem cliPanicLabelsSound : CliPanicLabelsSound := by
-  have hG := cliGateAPanicAnchored
+  rcases Eq.mp (Bool.and_eq_true _ _) p2bFastChecks_ok with ⟨h123, _⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h123 with ⟨h12, _⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h12 with ⟨hext_b, hpans_b⟩
+  have hext_ok := List.all_eq_true.mp hext_b
+  rw [IdxTree.all_eq_toList_all] at hpans_b
+  have hpans_ok := List.all_eq_true.mp hpans_b
   intro b hb x hx hpanic o ho sy hsy hraw hbind
   rw [cliBlock_externs_eq hb] at hx
-  rw [isCliPanicSymbolPlaced_eq_fast] at hpanic
-  have hx_mem : x ∈ cliPanicSymbolsPlaced := by
+  unfold isCliPanicSymbolPlaced at hpanic
+  have hx_mem : x ∈ cliCratePanicSyms := by
     rcases Eq.mp (Bool.or_eq_true _ _) hpanic with hin | hstd
-    · have hcont : cliPanicSymbolsPlaced.contains x = true := by
-        rw [list_contains_eq_any_toList, p2b_panic_toList_eq]
-        exact hin
-      exact List.contains_iff_mem.1 hcont
-    · have hnot : (!isRustPanicSymbolUltraFast x) = true :=
-        List.all_eq_true.mp cliAllExterns_not_std_panic x hx
-      change isRustPanicSymbolUltraFast x = true at hstd
+    · exact List.contains_iff_mem.mp hin
+    · rw [p2b_externs_eq, List.mem_map] at hx
+      obtain ⟨extId, hid, rfl⟩ := hx
+      rcases Eq.mp (Bool.and_eq_true _ _) (hext_ok extId hid) with ⟨hid_lt_b, hnot⟩
+      have hid_lt : extId < p2bNumNames := Obj.Interned.blt_iff.mp hid_lt_b
+      rw [rust_isPanicSymbol_symAt hid_lt] at hstd
       rw [hstd] at hnot
       cases hnot
-  obtain ⟨sy', hsy', hraw', hname', _, hbind'⟩ :=
-    panic_summary_has_matching_sym hx_mem ho hsy hraw hbind
-  have hplus : Obj.isRustPanicPlus cliPanicExtraDemangled sy'.name = true :=
-    ((hG.panics_demangled x hx_mem).2 p2bPanicSummaryObj (List.mem_singleton.2 rfl)
-      sy' hsy' (hraw'.trans hraw) (hbind' ▸ hbind)).2
-  rw [hname'] at hplus
-  unfold Obj.isRustPanicPlus at hplus
-  rcases Eq.mp (Bool.or_eq_true _ _) hplus with hstd | hextra
-  · exact Or.inl hstd
-  · exact Or.inr (List.contains_iff_mem.1 hextra)
-
-/-- Mangled `.strtab` name of the unique extern in `cliPanicSymbolsPlaced` outside
-`Rust.isPanicSymbol`. -/
-def cliPanicExtraRawSym : String :=
-  "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed"
-
-/-- Demangled `.o` symbol name corresponding to `cliPanicExtraRawSym`. -/
-def cliPanicExtraDemangledSym : String :=
-  "<alloc::vec::Vec<_, _>>::remove::assert_failed"
-
-private theorem p2b_extra_raw_toList_eq :
-    cliPanicExtraRawSym.toList = p2bExtraRawChars := by
-  open ProofLib.ProgramReflection in rfl_kernel
-
-private theorem p2b_extra_demangled_toList_eq :
-    cliPanicExtraDemangledSym.toList = p2bExtraDemangledChars := by
-  open ProofLib.ProgramReflection in rfl_kernel
-
-private noncomputable def p2bSummarySymCompleteOk (sy' : Obj.RawSym) : Bool :=
-  !(sy'.sec == .undef) ||
-  !(isRustPanicSymbolUltraFast sy'.name || (sy'.name.toList == p2bExtraDemangledChars)) ||
-  p2bPanicChars.any (fun pc => sy'.rawName.toList == pc)
-
-private theorem p2bAllSummaryComplete_ok :
-    p2bAllSummarySyms.all p2bSummarySymCompleteOk = true := by
-  open ProofLib.ProgramReflection in rfl_kernel
+  obtain ⟨s2, hs2_mem, _, hname', _, hbind'⟩ :=
+    panic_summary_has_matching_isym hx_mem ho hsy hraw hbind
+  have hs2_ok : p2bPanicSummaryISymOk s2 = true := hpans_ok s2 hs2_mem
+  unfold p2bPanicSummaryISymOk at hs2_ok
+  rcases Eq.mp (Bool.and_eq_true _ _) hs2_ok with ⟨hbounds, hbody⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) hbounds with ⟨_, hname_lt_b⟩
+  have hname_lt : s2.nameId < p2bNumNames := Obj.Interned.blt_iff.mp hname_lt_b
+  have hbn : (s2.bind != .local) = true := bne_iff_ne.mpr (hbind' ▸ hbind)
+  rw [hbn] at hbody
+  simp only [Bool.not_true, Bool.false_or] at hbody
+  rcases Eq.mp (Bool.and_eq_true _ _) hbody with ⟨h12_s2, _⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h12_s2 with ⟨hdem_ok, _⟩
+  rcases Eq.mp (Bool.or_eq_true _ _) hdem_ok with hstd | hextra
+  · left
+    rw [← hname', rust_isPanicSymbol_symAt hname_lt]
+    exact hstd
+  · right
+    have hnid : s2.nameId = p2bExtraDemangledId := Nat.eq_of_beq_eq_true hextra
+    have hextra_list : cliPanicExtraDemangled = [cliPanicExtraDemangledSym] := rfl
+    rw [← hname', hnid, p2b_extra_demangled_eq, hextra_list]
+    exact List.mem_singleton.mpr rfl
 
 /-- Completeness converse of `cliPanicLabelsSound`: every extern of `libsignalSessionLib` whose
 non-local `.undef` symbol in `cliLinkObjs` demangles to `Rust.isPanicSymbol` or
@@ -803,106 +756,152 @@ theorem cliPanicLabelsComplete :
         sy.rawName = x → sy.bind ≠ .local → sy.sec = .undef →
         (Rust.isPanicSymbol sy.name = true ∨ sy.name ∈ cliPanicExtraDemangled) →
         isCliPanicSymbolPlaced x = true := by
+  have hnd : p2bNamesTree.toList.Nodup :=
+    Obj.Interned.nodup_of_namesNodup p2b_names_eq p2b_names_nodup
+  rcases Eq.mp (Bool.and_eq_true _ _) p2bFastChecks_ok with ⟨h123, hextra_ok⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h123 with ⟨_, hcomp_b⟩
+  rw [IdxTree.all_eq_toList_all] at hcomp_b
+  have hcomp_ok := List.all_eq_true.mp hcomp_b
+  unfold p2bExtraChecksOk at hextra_ok
+  rcases Eq.mp (Bool.and_eq_true _ _) hextra_ok with ⟨h1234_ex, _⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h1234_ex with ⟨h123_ex, _⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h123_ex with ⟨h12_ex, _⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h12_ex with ⟨_, hextra_dem_lt_b⟩
+  have hextra_dem_lt : p2bExtraDemangledId < p2bNumNames :=
+    Obj.Interned.blt_iff.mp hextra_dem_lt_b
   intro b hb x hx o ho sy hsy hraw hbind hsec hdem
   rw [cliBlock_externs_eq hb] at hx
-  obtain ⟨sy', hsy', hraw', hname', hsec', _⟩ :=
-    summary_has_matching_sym (Or.inl hx) ho hsy hraw hbind
-  have hok : p2bSummarySymCompleteOk sy' = true :=
-    List.all_eq_true.mp p2bAllSummaryComplete_ok sy' hsy'
-  unfold p2bSummarySymCompleteOk at hok
-  rcases Eq.mp (Bool.or_eq_true _ _) hok with h12 | hany
+  obtain ⟨s, hs_mem, hraw', hname', hsec', _⟩ :=
+    summary_has_matching_isym (Or.inl hx) ho hsy hraw hbind
+  have hok : p2bSummaryISymCompleteOk s = true := hcomp_ok s hs_mem
+  unfold p2bSummaryISymCompleteOk at hok
+  rcases Eq.mp (Bool.and_eq_true _ _) hok with ⟨hbounds, hbody⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) hbounds with ⟨_, hname_lt_b⟩
+  have hname_lt : s.nameId < p2bNumNames := Obj.Interned.blt_iff.mp hname_lt_b
+  rcases Eq.mp (Bool.or_eq_true _ _) hbody with h12 | hany
   · rcases Eq.mp (Bool.or_eq_true _ _) h12 with hnot_sec | hnot_dem
-    · have hsec_b : (sy'.sec == .undef) = true := beq_iff_eq.2 (hsec'.trans hsec)
+    · have hsec_b : (s.sec == .undef) = true := beq_iff_eq.mpr (hsec'.trans hsec)
       rw [hsec_b] at hnot_sec
       cases hnot_sec
-    · have hdem_b : (isRustPanicSymbolUltraFast sy'.name ||
-          (sy'.name.toList == p2bExtraDemangledChars)) = true := by
-        rw [hname']
+    · have hdem_b : (isRustPanicChars (Obj.LabelsInterned.charsAt p2bCharsTree s.nameId) ||
+          Nat.beq s.nameId p2bExtraDemangledId) = true := by
         apply Eq.mpr (Bool.or_eq_true _ _)
         rcases hdem with hstd | hextra
-        · rw [← rust_isPanicSymbol_eq_ultraFast]
+        · rw [← hname', rust_isPanicSymbol_symAt hname_lt] at hstd
           exact Or.inl hstd
         · have hextra_eq : cliPanicExtraDemangled = [cliPanicExtraDemangledSym] := rfl
           rw [hextra_eq, List.mem_singleton] at hextra
-          rw [hextra, p2b_extra_demangled_toList_eq]
-          exact Or.inr (beq_self_eq_true _)
+          have hsym_eq : Obj.LabelsInterned.symAt p2bNamesTree s.nameId =
+              Obj.LabelsInterned.symAt p2bNamesTree p2bExtraDemangledId := by
+            rw [hname', hextra, p2b_extra_demangled_eq]
+          have hnid := Obj.LabelsInterned.symAt_inj p2b_names_sz hnd hname_lt hextra_dem_lt hsym_eq
+          exact Or.inr (Nat.beq_eq.mpr hnid)
       rw [hdem_b] at hnot_dem
       cases hnot_dem
-  · rw [hraw', hraw] at hany
-    rw [isCliPanicSymbolPlaced_eq_fast]
-    exact Eq.mpr (Bool.or_eq_true _ _) (Or.inl hany)
+  · obtain ⟨pid, hpid_mem, hpid_eq_b⟩ := List.any_eq_true.mp hany
+    have hpid_eq : s.rawId = pid := Nat.eq_of_beq_eq_true hpid_eq_b
+    have hx_mem : x ∈ cliCratePanicSyms := by
+      rw [← hraw, ← hraw', hpid_eq, p2b_panics_eq]
+      exact List.mem_map_of_mem hpid_mem
+    unfold isCliPanicSymbolPlaced
+    exact Eq.mpr (Bool.or_eq_true _ _) (Or.inl (List.contains_iff_mem.mpr hx_mem))
 
-private theorem cliPanicExtraDemangled_summary_check :
-    Obj.checkExternDataDemangledB [p2bPanicSummaryObj]
-      [(cliPanicExtraRawSym, cliPanicExtraDemangledSym)] = true := by
-  open ProofLib.ProgramReflection in rfl_kernel
-
-private noncomputable def p2bOtherPanicSymStdOk (sy' : Obj.RawSym) : Bool :=
-  !(sy'.bind != .local) ||
-  (sy'.rawName.toList == p2bExtraRawChars) ||
-  isRustPanicSymbolUltraFast sy'.name
-
-private theorem p2bOtherPanicsStd_ok :
-    p2bPanicSummaryObj.symbols.all p2bOtherPanicSymStdOk = true := by
-  open ProofLib.ProgramReflection in rfl_kernel
-
-private theorem cliPanicExtraRawSym_contains_fast :
-    p2bPanicChars.any (fun p => cliPanicExtraRawSym.toList == p) = true := by
-  open ProofLib.ProgramReflection in rfl_kernel
-
-/-- Pinning certificate for `cliPanicExtraRawSym`: it belongs to `cliPanicSymbolsPlaced`, occurs as
+/-- Pinning certificate for `cliPanicExtraRawSym`: it belongs to `cliCratePanicSyms`, occurs as
 a non-local `.undef` symbol in `cliLinkObjs` with demangled name `cliPanicExtraDemangledSym` outside
-`Rust.isPanicSymbol`, while every other symbol in `cliPanicSymbolsPlaced` satisfies
+`Rust.isPanicSymbol`, while every other symbol in `cliCratePanicSyms` satisfies
 `Rust.isPanicSymbol`. -/
 theorem cliPanicExtraSym_is_extraDemangled :
     [cliPanicExtraDemangledSym] = cliPanicExtraDemangled ∧
     Rust.isPanicSymbol cliPanicExtraDemangledSym = false ∧
-    cliPanicExtraRawSym ∈ cliPanicSymbolsPlaced ∧
+    cliPanicExtraRawSym ∈ cliCratePanicSyms ∧
     Obj.NonVacuousUndefSymDemangled cliLinkObjs cliPanicExtraRawSym cliPanicExtraDemangledSym ∧
-    (∀ p ∈ cliPanicSymbolsPlaced, p ≠ cliPanicExtraRawSym →
+    (∀ p ∈ cliCratePanicSyms, p ≠ cliPanicExtraRawSym →
       ∀ o ∈ cliLinkObjs, ∀ sy ∈ o.symbols,
         sy.rawName = p → sy.bind ≠ .local → Rust.isPanicSymbol sy.name = true) := by
-  have hpan_contains : cliPanicSymbolsPlaced.contains cliPanicExtraRawSym = true := by
-    rw [list_contains_eq_any_toList, p2b_panic_toList_eq]
-    exact cliPanicExtraRawSym_contains_fast
-  have hpan_mem : cliPanicExtraRawSym ∈ cliPanicSymbolsPlaced :=
-    List.contains_iff_mem.1 hpan_contains
+  have hnd : p2bNamesTree.toList.Nodup :=
+    Obj.Interned.nodup_of_namesNodup p2b_names_eq p2b_names_nodup
+  rcases Eq.mp (Bool.and_eq_true _ _) p2bFastChecks_ok with ⟨h123, hextra_ok⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h123 with ⟨h12, _⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h12 with ⟨_, hpans_b⟩
+  rw [IdxTree.all_eq_toList_all] at hpans_b
+  have hpans_ok := List.all_eq_true.mp hpans_b
+  unfold p2bExtraChecksOk at hextra_ok
+  rcases Eq.mp (Bool.and_eq_true _ _) hextra_ok with ⟨h1234, hwit_ok⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h1234 with ⟨h123_ex, hpan_any⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h123_ex with ⟨h12_ex, hnot_std⟩
+  rcases Eq.mp (Bool.and_eq_true _ _) h12_ex with ⟨hextra_raw_lt_b, hextra_dem_lt_b⟩
+  have hextra_raw_lt : p2bExtraRawId < p2bNumNames :=
+    Obj.Interned.blt_iff.mp hextra_raw_lt_b
+  have hextra_dem_lt : p2bExtraDemangledId < p2bNumNames :=
+    Obj.Interned.blt_iff.mp hextra_dem_lt_b
+  obtain ⟨pid, hpid_mem, hpid_eq_b⟩ := List.any_eq_true.mp hpan_any
+  have hpid_eq : p2bExtraRawId = pid := Nat.eq_of_beq_eq_true hpid_eq_b
+  have hpan_mem : cliPanicExtraRawSym ∈ cliCratePanicSyms := by
+    rw [← p2b_extra_raw_eq, hpid_eq, p2b_panics_eq]
+    exact List.mem_map_of_mem hpid_mem
   refine ⟨rfl, ?_, hpan_mem, ?_, ?_⟩
-  · rw [rust_isPanicSymbol_eq_ultraFast]
-    open ProofLib.ProgramReflection in rfl_kernel
-  · have hsum := Obj.externDataDemangled_of_check cliPanicExtraDemangled_summary_check
-      (cliPanicExtraRawSym, cliPanicExtraDemangledSym) (List.mem_singleton.2 rfl)
-    obtain ⟨⟨so, hso, ssy, hssy, hsraw, hsbind, hssec, hsdem⟩, hsall⟩ := hsum
-    rw [List.mem_singleton] at hso
-    subst hso
-    obtain ⟨o0, ho0, sy0, hsy0, hr0, hn0, hsc0, hbd0⟩ := panic_objs_has_matching_sym hssy
-    refine ⟨⟨o0, ho0, sy0, hsy0, hr0.trans hsraw, hbd0.symm ▸ hsbind, hsc0.trans hssec,
-      hn0.trans hsdem⟩, ?_⟩
-    intro o ho sy hsy hraw hbind
-    obtain ⟨sy', hsy', hr', hn', hsc', hbd'⟩ :=
-      panic_summary_has_matching_sym hpan_mem ho hsy hraw hbind
-    have h1 := hsall p2bPanicSummaryObj (List.mem_singleton.2 rfl) sy' hsy'
-      (hr'.trans hraw) (hbd' ▸ hbind)
-    exact ⟨hsc'.symm.trans h1.1, hn'.symm.trans h1.2⟩
+  · rw [← p2b_extra_demangled_eq, rust_isPanicSymbol_symAt hextra_dem_lt]
+    exact Bool.eq_false_iff.mpr fun h => by rw [h] at hnot_std; cases hnot_std
+  · cases hget_w : p2bPanicSummaryTree.get? p2bExtraUndefWitIdx with
+    | none => rw [hget_w] at hwit_ok; cases hwit_ok
+    | some isy0 =>
+      rw [hget_w] at hwit_ok
+      dsimp only at hwit_ok
+      rcases Eq.mp (Bool.and_eq_true _ _) hwit_ok with ⟨hw123, hwnid_b⟩
+      rcases Eq.mp (Bool.and_eq_true _ _) hw123 with ⟨hw12, hwsec_b⟩
+      rcases Eq.mp (Bool.and_eq_true _ _) hw12 with ⟨hwrid_b, hwbind_b⟩
+      have hwrid : isy0.rawId = p2bExtraRawId := Nat.eq_of_beq_eq_true hwrid_b
+      have hwnid : isy0.nameId = p2bExtraDemangledId := Nat.eq_of_beq_eq_true hwnid_b
+      have hwbind : isy0.bind ≠ .local := bne_iff_ne.mp hwbind_b
+      have hwsec : isy0.sec = .undef := beq_iff_eq.mp hwsec_b
+      obtain ⟨o0, ho0, sy0, hsy0, hr0, hn0, hsc0, hbd0⟩ :=
+        panic_objs_has_matching_isym (IdxTree.mem_toList_of_get? hget_w)
+      refine ⟨⟨o0, ho0, sy0, hsy0,
+        by rw [hr0, hwrid, p2b_extra_raw_eq],
+        hbd0.symm ▸ hwbind,
+        hsc0.trans hwsec,
+        by rw [hn0, hwnid, p2b_extra_demangled_eq]⟩, ?_⟩
+      intro o ho sy hsy hraw hbind
+      obtain ⟨s2, hs2_mem, hr', hn', hsc', hbd'⟩ :=
+        panic_summary_has_matching_isym hpan_mem ho hsy hraw hbind
+      have hs2_ok : p2bPanicSummaryISymOk s2 = true := hpans_ok s2 hs2_mem
+      unfold p2bPanicSummaryISymOk at hs2_ok
+      rcases Eq.mp (Bool.and_eq_true _ _) hs2_ok with ⟨hbounds, hbody⟩
+      rcases Eq.mp (Bool.and_eq_true _ _) hbounds with ⟨hraw_lt_b, _⟩
+      have hraw_lt : s2.rawId < p2bNumNames := Obj.Interned.blt_iff.mp hraw_lt_b
+      have hbn : (s2.bind != .local) = true := bne_iff_ne.mpr (hbd' ▸ hbind)
+      rw [hbn] at hbody
+      simp only [Bool.not_true, Bool.false_or] at hbody
+      rcases Eq.mp (Bool.and_eq_true _ _) hbody with ⟨_, himp⟩
+      have hs2_raw_eq : s2.rawId = p2bExtraRawId := by
+        apply Obj.LabelsInterned.symAt_inj p2b_names_sz hnd hraw_lt hextra_raw_lt
+        rw [hr', hraw, p2b_extra_raw_eq]
+      have hbeq_true : Nat.beq s2.rawId p2bExtraRawId = true := Nat.beq_eq.mpr hs2_raw_eq
+      rw [hbeq_true] at himp
+      simp only [Bool.not_true, Bool.false_or] at himp
+      rcases Eq.mp (Bool.and_eq_true _ _) himp with ⟨hs2_sec_b, hs2_nid_b⟩
+      have hs2_sec : s2.sec = .undef := beq_iff_eq.mp hs2_sec_b
+      have hs2_nid : s2.nameId = p2bExtraDemangledId := Nat.eq_of_beq_eq_true hs2_nid_b
+      exact ⟨hsc'.symm.trans hs2_sec, by rw [← hn', hs2_nid, p2b_extra_demangled_eq]⟩
   · intro p hp hp_ne o ho sy hsy hraw hbind
-    obtain ⟨sy', hsy', hr', hn', _, hbd'⟩ :=
-      panic_summary_has_matching_sym hp ho hsy hraw hbind
-    have hok : p2bOtherPanicSymStdOk sy' = true :=
-      List.all_eq_true.mp p2bOtherPanicsStd_ok sy' hsy'
-    unfold p2bOtherPanicSymStdOk at hok
-    rcases Eq.mp (Bool.or_eq_true _ _) hok with h12 | hstd
-    · rcases Eq.mp (Bool.or_eq_true _ _) h12 with hloc | hextra
-      · have hbn : (sy'.bind != .local) = true := bne_iff_ne.2 (hbd' ▸ hbind)
-        rw [hbn] at hloc
-        cases hloc
-      · have hrc_eq : sy'.rawName.toList = cliPanicExtraRawSym.toList := by
-          rw [p2b_extra_raw_toList_eq]
-          exact beq_iff_eq.1 hextra
-        have hp_eq : p = cliPanicExtraRawSym := by
-          rw [← hraw, ← hr']
-          exact String.ext_iff.2 hrc_eq
-        exact absurd hp_eq hp_ne
-    · rw [← hn', rust_isPanicSymbol_eq_ultraFast]
+    obtain ⟨s2, hs2_mem, hr', hn', _, hbd'⟩ :=
+      panic_summary_has_matching_isym hp ho hsy hraw hbind
+    have hs2_ok : p2bPanicSummaryISymOk s2 = true := hpans_ok s2 hs2_mem
+    unfold p2bPanicSummaryISymOk at hs2_ok
+    rcases Eq.mp (Bool.and_eq_true _ _) hs2_ok with ⟨hbounds, hbody⟩
+    rcases Eq.mp (Bool.and_eq_true _ _) hbounds with ⟨_, hname_lt_b⟩
+    have hname_lt : s2.nameId < p2bNumNames := Obj.Interned.blt_iff.mp hname_lt_b
+    have hbn : (s2.bind != .local) = true := bne_iff_ne.mpr (hbd' ▸ hbind)
+    rw [hbn] at hbody
+    simp only [Bool.not_true, Bool.false_or] at hbody
+    rcases Eq.mp (Bool.and_eq_true _ _) hbody with ⟨h12_s2, _⟩
+    rcases Eq.mp (Bool.and_eq_true _ _) h12_s2 with ⟨_, hother⟩
+    rcases Eq.mp (Bool.or_eq_true _ _) hother with hextra | hstd
+    · have hs2_raw : s2.rawId = p2bExtraRawId := Nat.eq_of_beq_eq_true hextra
+      have hp_eq : p = cliPanicExtraRawSym := by
+        rw [← hraw, ← hr', hs2_raw, p2b_extra_raw_eq]
+      exact absurd hp_eq hp_ne
+    · rw [← hn', rust_isPanicSymbol_symAt hname_lt]
       exact hstd
 
 /-- `cliPanicExtraRawSym` occurs as a non-local `.undef` symbol in `cliLinkObjs`, and every

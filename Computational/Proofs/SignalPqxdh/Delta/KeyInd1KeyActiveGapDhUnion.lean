@@ -10,16 +10,17 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyGapDh -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyGapDh
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveShallow -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveGapDhPre -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveGapDhEval -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveGapDhEval
 public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 import VCVio.CryptoFoundations.SecExp.Measure
+public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyDefs
 
 /-!
 # Active Creation-Order `GapDhWithSign` Averaging and Union Bound

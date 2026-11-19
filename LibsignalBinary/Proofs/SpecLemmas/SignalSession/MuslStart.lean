@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslExit
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslHop2
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslHop2 -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,17 +34,8 @@ namespace CryptoVerification.SignalSession.MuslStart
 
 open Arm64 ProofLib CryptoVerification.SignalSession.MuslExit
 
-/-- The code length of an image that `Obj.Loads li` produces is `4 * n` when `li.code` is the
-bytes of a `WordTree` of checked size `n`. -/
-theorem code_length_of_tree {li : Obj.LinkedImage} {img : Obj.Image} (himg : Obj.Loads li img)
-    {t : ProgramReflection.WordTree} {n : Nat} (hcode : li.code = t.toBytes)
-    (hsize : t.checkSize? = some n) : img.code.length = 4 * n := by
-  obtain ⟨hc, -, -⟩ := ObjectLoad.Loads.canonical himg
-  rw [hc, hcode]
-  exact ProgramReflection.WordTree.length_toBytes_of_checkSize? hsize
-
 /-- Hop 1 (26 instructions): `_start`, `_start_c`, and `__libc_start_main` up to `bl __init_libc`. -/
-def MuslHop1Fetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslHop1Fetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch B = some (Arm64.Instr.moveWide (Arm64.RegWidth.W64) (Arm64.MoveWideOp.MOVZ) (Arm64.Reg.gpr 0x1d#5) 0x0000#16 0) ∧
   Q.fetch (B + 0x4#64) = some (Arm64.Instr.moveWide (Arm64.RegWidth.W64) (Arm64.MoveWideOp.MOVZ) (Arm64.Reg.gpr 0x1e#5) 0x0000#16 0) ∧
   Q.fetch (B + 0x8#64) = some (Arm64.Instr.addSubImm (Arm64.RegWidth.W64) (Arm64.AddSubOp.ADD) (Arm64.Reg.gpr 0x00#5) (Arm64.Reg.sp) 0x000#12 false) ∧
@@ -72,7 +63,7 @@ def MuslHop1Fetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x7fc#64) = some (Arm64.Instr.addSubImm (Arm64.RegWidth.W64) (Arm64.AddSubOp.ADD) (Arm64.Reg.gpr 0x00#5) (Arm64.Reg.gpr 0x08#5) 0x008#12 false) ∧
   Q.fetch (B + 0x800#64) = some (Arm64.Instr.bl 0xfffffffffffffdf4#64)
 
-def Hop1Regs (B sp0 envp p : BitVec 64) (a32 : BitVec 32)
+@[expose] def Hop1Regs (B sp0 envp p : BitVec 64) (a32 : BitVec 32)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   s.sp = sp0 - 32#64 ∧ s.readReg64 .x0 = envp ∧ s.readReg64 .x1 = p ∧
   s.readReg64 .x19 = sp0 + 8#64 ∧ s.readReg64 .x20 = a32.zeroExtend 64 ∧
@@ -104,7 +95,7 @@ theorem musl_start_hop1 (Q : Program) (B : BitVec 64) (hf : MuslHop1Fetch Q B)
   wp_done
 
 /-- Hop 3a (117 instructions): `__environ`, environment scan, `libc.auxv`, and `aux[tag]` population loop. -/
-def MuslHop3aFetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslHop3aFetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x618#64) = some (Arm64.Instr.adr true (Arm64.Reg.gpr 0x08#5) 0x0000000000002000#64) ∧
   Q.fetch (B + 0x61c#64) = some (Arm64.Instr.str (Arm64.MemWidth.X64) (Arm64.Reg.gpr 0x14#5) (Arm64.AddrMode.Offset (Arm64.Reg.gpr 0x08#5) 0x0000000000000040#64)) ∧
   Q.fetch (B + 0x620#64) = some (Arm64.Instr.ldr (Arm64.RegWidth.W64) (Arm64.MemWidth.X64) false (Arm64.Reg.gpr 0x08#5) (Arm64.AddrMode.PostIndex (Arm64.Reg.gpr 0x14#5) 0x0000000000000008#64)) ∧
@@ -121,7 +112,7 @@ def MuslHop3aFetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x64c#64) = some (Arm64.Instr.ldr (Arm64.RegWidth.W64) (Arm64.MemWidth.X64) false (Arm64.Reg.gpr 0x08#5) (Arm64.AddrMode.PostIndex (Arm64.Reg.gpr 0x14#5) 0x0000000000000010#64)) ∧
   Q.fetch (B + 0x650#64) = some (Arm64.Instr.cbz (Arm64.RegWidth.W64) true (Arm64.Reg.gpr 0x08#5) 0xffffffffffffffec#64)
 
-def Hop3aRegs (sp0 p m : BitVec 64)
+@[expose] def Hop3aRegs (sp0 p m : BitVec 64)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   s.sp = sp0 - 416#64 ∧ s.readReg64 .x19 = p ∧ s.readReg64 .x21 = m ∧
   s.fs = fs0 ∧ s.trace = tr0
@@ -257,7 +248,7 @@ theorem musl_start_hop3a (Q : Program) (B : BitVec 64) (hf : MuslHop3aFetch Q B)
   wp_done
 
 /-- Hop 3b (91 instructions): `__hwcap`, `libc.page_size`, and `__progname` setup from `argv[0]` (`"libsignal-cli"`) up to `bl static_init_tls`. -/
-def MuslHop3bFetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslHop3bFetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x654#64) = some (Arm64.Instr.ldr (Arm64.RegWidth.W64) (Arm64.MemWidth.X64) false (Arm64.Reg.gpr 0x09#5) (Arm64.AddrMode.Offset (Arm64.Reg.sp) 0x00000000000000b0#64)) ∧
   Q.fetch (B + 0x658#64) = some (Arm64.Instr.ldr (Arm64.RegWidth.W64) (Arm64.MemWidth.X64) false (Arm64.Reg.gpr 0x08#5) (Arm64.AddrMode.Offset (Arm64.Reg.sp) 0x0000000000000130#64)) ∧
   Q.fetch (B + 0x65c#64) = some (Arm64.Instr.adr true (Arm64.Reg.gpr 0x0a#5) 0x0000000000002000#64) ∧
@@ -285,7 +276,7 @@ def MuslHop3bFetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x6c8#64) = some (Arm64.Instr.addSubImm (Arm64.RegWidth.W64) (Arm64.AddSubOp.ADD) (Arm64.Reg.gpr 0x00#5) (Arm64.Reg.sp) 0x030#12 false) ∧
   Q.fetch (B + 0x6cc#64) = some (Arm64.Instr.bl 0x00000000000002a0#64)
 
-def Hop3bRegs (B sp0 p m : BitVec 64)
+@[expose] def Hop3bRegs (B sp0 p m : BitVec 64)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   s.sp = sp0 - 416#64 ∧ s.readReg64 .x19 = p ∧ s.readReg64 .x0 = sp0 - 368#64 ∧
   s.readReg64 .lr = B + 0x6d0#64 ∧ s.readReg64 .x21 = m ∧
@@ -362,7 +353,7 @@ theorem musl_start_hop3b (Q : Program) (B : BitVec 64) (hf : MuslHop3bFetch Q B)
   wp_done
 
 /-- Hop 4: `static_init_tls` program-header scan (`AT_PHDR`) up to `bl __copy_tls`. -/
-def MuslHop4Fetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslHop4Fetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x96c#64) = some (Arm64.Instr.str (Arm64.MemWidth.X64) (Arm64.Reg.gpr 0x1e#5) (Arm64.AddrMode.PreIndex (Arm64.Reg.sp) 0xfffffffffffffff0#64)) ∧
   Q.fetch (B + 0x970#64) = some (Arm64.Instr.ldr (Arm64.RegWidth.W64) (Arm64.MemWidth.X64) false (Arm64.Reg.gpr 0x0a#5) (Arm64.AddrMode.Offset (Arm64.Reg.gpr 0x00#5) 0x0000000000000028#64)) ∧
   Q.fetch (B + 0x974#64) = some (Arm64.Instr.cbz (Arm64.RegWidth.W64) false (Arm64.Reg.gpr 0x0a#5) 0x00000000000000d0#64) ∧
@@ -439,7 +430,7 @@ def MuslHop4Fetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0xae0#64) = some (Arm64.Instr.addSubImm (Arm64.RegWidth.W64) (Arm64.AddSubOp.ADD) (Arm64.Reg.gpr 0x00#5) (Arm64.Reg.gpr 0x00#5) 0x080#12 false) ∧
   Q.fetch (B + 0xae4#64) = some (Arm64.Instr.bl 0xfffffffffffffdf0#64)
 
-def Hop4Regs (B sp0 m : BitVec 64)
+@[expose] def Hop4Regs (B sp0 m : BitVec 64)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   s.sp = sp0 - 432#64 ∧ s.readReg64 .x0 = B + 0x2080#64 ∧ s.readReg64 .lr = B + 0xae8#64 ∧
   s.readReg64 .x21 = m ∧
@@ -538,7 +529,7 @@ theorem musl_start_hop4 (Q : Program) (B : BitVec 64) (hf : MuslHop4Fetch Q B)
   wp_done
 
 /-- Hop 5: `__copy_tls` into `builtin_tls` (`B + 0x2080`) with empty TLS image up to `bl __init_tp`. -/
-def MuslHop5Fetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslHop5Fetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x50#64) = some (Arm64.Instr.addSubShift (Arm64.RegWidth.W64) (Arm64.AddSubOp.ADD) (Arm64.Reg.gpr 0x04#5) (Arm64.Reg.gpr 0x01#5) (Arm64.Reg.gpr 0x02#5) (Arm64.ShiftType.LSL) 0) ∧
   Q.fetch (B + 0x54#64) = some (Arm64.Instr.addSubShift (Arm64.RegWidth.W64) (Arm64.AddSubOp.ADD) (Arm64.Reg.gpr 0x05#5) (Arm64.Reg.gpr 0x00#5) (Arm64.Reg.gpr 0x02#5) (Arm64.ShiftType.LSL) 0) ∧
   Q.fetch (B + 0x58#64) = some (Arm64.Instr.addSubImm (Arm64.RegWidth.W64) (Arm64.AddSubOp.SUBS) (Arm64.Reg.xzr) (Arm64.Reg.gpr 0x02#5) 0x080#12 false) ∧
@@ -618,7 +609,7 @@ theorem and7_sub_add (B c k : BitVec 64) (hB : B &&& 0xfff#64 = 0#64)
   have := B.isLt; have := c.isLt; have := k.isLt
   omega
 
-def Hop5Regs (B sp0 r21 : BitVec 64)
+@[expose] def Hop5Regs (B sp0 r21 : BitVec 64)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   s.sp = sp0 - 432#64 ∧ s.readReg64 .x0 = B + 0x2080#64 ∧ s.readReg64 .lr = B + 0xaec#64 ∧
   s.readReg64 .x21 = r21 ∧
@@ -689,7 +680,7 @@ theorem musl_start_hop5 (Q : Program) (B : BitVec 64) (hf : MuslHop5Fetch Q B)
   wp_done
 
 /-- Hop 6 (33 instructions): `__init_tp` (`msr TPIDR_EL0` and `set_tid_address` syscall) returning to `B + 0xaec`. -/
-def MuslHop6Fetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslHop6Fetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x858#64) = some (Arm64.Instr.stp (Arm64.RegWidth.W64) (Arm64.Reg.gpr 0x1e#5) (Arm64.Reg.gpr 0x13#5) (Arm64.AddrMode.PreIndex (Arm64.Reg.sp) 0xfffffffffffffff0#64)) ∧
   Q.fetch (B + 0x85c#64) = some (Arm64.Instr.logicalShift (Arm64.RegWidth.W64) (Arm64.LogicalOp.ORR) (Arm64.Reg.gpr 0x13#5) (Arm64.Reg.xzr) (Arm64.Reg.gpr 0x00#5) (Arm64.ShiftType.LSL) 0) ∧
   Q.fetch (B + 0x860#64) = some (Arm64.Instr.str (Arm64.MemWidth.X64) (Arm64.Reg.gpr 0x13#5) (Arm64.AddrMode.PostIndex (Arm64.Reg.gpr 0x00#5) 0x00000000000000c8#64)) ∧
@@ -757,7 +748,7 @@ theorem hop6_gen_state9 {prog : Program} {tgt : BitVec 64} {s : State} {P : SepP
     SepWP prog tgt s P post oom :=
   h s hpc hrun hsp h0 h9 h19 h21 h30 hfs htr
 
-def Hop6Regs (B sp0 r19 m : BitVec 64)
+@[expose] def Hop6Regs (B sp0 r19 m : BitVec 64)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   s.sp = sp0 - 432#64 ∧ s.readReg64 .x0 = 0#64 ∧ s.readReg64 .x19 = r19 ∧
   s.readReg64 .lr = B + 0xaec#64 ∧ s.readReg64 .x21 = m ∧
@@ -868,7 +859,7 @@ theorem musl_start_hop6 (Q : Program) (B : BitVec 64) (hf : MuslHop6Fetch Q B)
   wp_done
 
 /-- Hop 7: tail of `static_init_tls`, `__init_libc`, `libc_start_main_stage2`, and `libc_start_init` up to `blr x21`. -/
-def MuslHop7Fetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslHop7Fetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x5ec#64) = some (Arm64.Instr.ret (Arm64.Reg.gpr 0x1e#5)) ∧
   Q.fetch (B + 0x5f0#64) = some (Arm64.Instr.ret (Arm64.Reg.gpr 0x1e#5)) ∧
   Q.fetch (B + 0x6d0#64) = some (Arm64.Instr.ldr (Arm64.RegWidth.W64) (Arm64.MemWidth.X64) false (Arm64.Reg.gpr 0x00#5) (Arm64.AddrMode.Offset (Arm64.Reg.sp) 0x00000000000000f8#64)) ∧
@@ -921,7 +912,7 @@ def MuslHop7Fetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0xaf8#64) = some (Arm64.Instr.ldr (Arm64.RegWidth.W64) (Arm64.MemWidth.X64) false (Arm64.Reg.gpr 0x1e#5) (Arm64.AddrMode.PostIndex (Arm64.Reg.sp) 0x0000000000000010#64)) ∧
   Q.fetch (B + 0xafc#64) = some (Arm64.Instr.ret (Arm64.Reg.gpr 0x1e#5))
 
-def Hop7Regs (B sp0 x19v x20v : BitVec 64)
+@[expose] def Hop7Regs (B sp0 x19v x20v : BitVec 64)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   s.sp = sp0 - 48#64 ∧ s.readReg64 .x0 = (x20v.truncate 32).zeroExtend 64 ∧
   s.readReg64 .x1 = x19v ∧
@@ -994,7 +985,7 @@ theorem musl_start_hop7 (Q : Program) (B : BitVec 64) (hf : MuslHop7Fetch Q B)
   wp_done
 
 /-- Conjunction of instruction-fetch predicates for hops 1–7 (`_start` to `main`). -/
-def MuslStartFetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslStartFetch (Q : Program) (B : BitVec 64) : Prop :=
   MuslHop1Fetch Q B ∧ MuslHop2Fetch Q B ∧ MuslHop3aFetch Q B ∧ MuslHop3bFetch Q B ∧
   MuslHop4Fetch Q B ∧ MuslHop5Fetch Q B ∧ MuslHop6Fetch Q B ∧ MuslHop7Fetch Q B
 
@@ -1367,34 +1358,5 @@ theorem spAligned_sub48 (sp0 : BitVec 64) (hal : (sp0 &&& 15#64 == 0#64) = true)
   simp only [BitVec.toNat_sub, BitVec.toNat_ofNat] at h' ⊢
   have hlt := sp0.isLt
   omega
-
-/-- Lifts a `MuslStartFetch`-parametric `SepWP` triple to a `Steps` run of `Program.ofImage img E`. -/
-theorem musl_start_ofImage {li : Obj.LinkedImage} {img : Obj.Image} (himg : Obj.Loads li img)
-    (E : String → Option (State → State)) {B : BitVec 64} {code : List (BitVec 8)}
-    (hend : img.base.toNat + img.code.length ≤ B.toNat) (hnw : B.toNat + 0xb90 ≤ 2 ^ 64)
-    (hf : MuslStartFetch ({ code } : Program) 0#64)
-    {s : State} (hL : ({ base := B, code } : Program).CodeLoaded s.mem)
-    {tgt : BitVec 64} {Pre Post R : SepProp} {Inv : State → Prop}
-    (hwp : ∀ Q, MuslStartFetch Q B → Q.svc = Syscall.standard → SepWP Q tgt s Pre (sepPost Inv Post))
-    (hm : s.mem ⊨ Pre ∗ R) :
-    ∃ sm, Steps (Program.ofImage img E) s sm ∧ sm.pc = tgt ∧ sm.status = .Running ∧ Inv sm ∧
-      (sm.mem ⊨ Post ∗ R) := by
-  have hst : ∀ x ∈ (Program.ofImage img E).stubs, x.2 < 2 ^ 64 := by
-    rintro ⟨n, o⟩ hmem
-    have h1 := stub_lt_code himg hmem
-    have h2 := B.isLt
-    simp only at h1 ⊢
-    omega
-  have hPQ : ∀ pc, (muslProg (Program.ofImage img E) B code).externAt? pc =
-      (Program.ofImage img E).externAt? pc :=
-    muslProg_externAt? _ B code hst (fun _ => rfl)
-  have hfQ : MuslStartFetch (muslProg (Program.ofImage img E) B code) B := by
-    refine muslStartFetch_muslProg _ B code (fun k hk => ?_) hf
-    rw [hPQ]
-    apply externAt?_ofImage_eq_none_of_ge himg E
-    have : (B + k).toNat = B.toNat + k.toNat := by
-      rw [BitVec.toNat_add]; exact Nat.mod_eq_of_lt (by omega)
-    omega
-  exact steps_of_sepWP hPQ rfl (hwp _ hfQ rfl) (hL.of_base_code rfl rfl) hm
 
 end CryptoVerification.SignalSession.MuslStart

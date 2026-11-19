@@ -23,7 +23,6 @@ open DY
 open DY.Libsignal (HwBytes)
 open DY.Libsignal.Composed DY.Libsignal.Composed.Refinement Symbolic.BugInjection.Disproofs.Hyp.FrozenSSC.Interp0 Symbolic.BugInjection.Proofs.Common443.Census443Defs
 open Symbolic.Proofs.Tests.CliNonvacuity.HandshakeCollisionsFalse
-theorem view_initState_sendState_pack (st c : DY.Bytes) : (({ st := st, coins := c } : DY.Spqr.SendState.SubF DY.Bytes).pack).view? DY.Spqr.InitState.SubF = none := view_pack_none (F₁ := DY.Spqr.SendState.SubF) (F₂ := DY.Spqr.InitState.SubF) ({ st := st, coins := c } : DY.Spqr.SendState.SubF DY.Bytes) (by decide)
 theorem gamma_lit (i : ExternInterpretation) (S : Sem) (g : Ghost) (b : ByteArray) : gamma i S g (({ lit := b } : DY.Literal.Literal.SubF DY.Bytes).pack) = ofByteArray b := by unfold gamma gamma'; rw [DY.Bytes.rec_eq gLit0 (gAll i S g)]; rfl
 section O2
 open DY.Libsignal.TripleRatchet (TRState spqrA2B)

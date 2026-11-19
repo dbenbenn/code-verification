@@ -10,11 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.Defs
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
 
 /-!
 # `VmPreserved` Specifications and Lifting Bridges for `ProtoRepr`
@@ -25,7 +26,7 @@ Defines `withVmPreserved`, block-subset code-loading combinators (`LsBlocksCodeL
 zero-allocation budget transport.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +49,7 @@ open CryptoVerification.SpqrV1.ProtoRepr
 
 /-- Strengthen `spec : Spec α` with `⌜VmPreserved s0 sf⌝` in `post` while preserving `pre`,
 `onPanic`, `onExit`, and `onOom` verbatim (definitionally equal to `SpecBudget.withVmPreserved`). -/
-def withVmPreserved {α : Type} (spec : Spec α) : Spec α :=
+@[expose] def withVmPreserved {α : Type} (spec : Spec α) : Spec α :=
   { spec with post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ spec.post x s0 sf }
 
 /-- Forget `⌜VmPreserved s0 sf⌝` on a `subroutine_ok` witness. -/
@@ -66,7 +67,7 @@ abbrev withLsRoLoaded {α : Type} (pl : Obj.MultiPlacement) (spec : Spec α) : S
   { spec with pre := fun x s0 => spec.pre x s0 ∗ ⌜LibsignalRoLoaded pl s0.mem⌝ }
 
 /-- Code-loaded predicate restricted to a finite list `blks` of `libsignalSessionLib` block indices. -/
-def LsBlocksCodeLoaded (blks : List Nat) (pl : Obj.MultiPlacement) (m : Memory) : Prop :=
+@[expose] def LsBlocksCodeLoaded (blks : List Nat) (pl : Obj.MultiPlacement) (m : Memory) : Prop :=
   ∀ j ∈ blks, ∀ (X O : String → Option (State → State)) (svc : State → State),
     (libsignalSessionLib.blockProgram pl j X O svc).CodeLoaded m
 
@@ -112,7 +113,7 @@ theorem ls_subroutine_ok_of_block_in {α : Type} [LibsignalPlacement]
     rw [hcallee_prog.eq_blockProgram, hcaller.eq_blockProgram]; rfl
   exact reaches_outcome_steps (Steps.of_sameHooks hext hsvc hstepsQ) (reaches_outcome.of_outcome hout)
 
-def checkBytesNoMsr (blk : Obj.CodeBlock) : Nat → List (BitVec 8) → Bool
+@[expose] def checkBytesNoMsr (blk : Obj.CodeBlock) : Nat → List (BitVec 8) → Bool
   | _, [] => true
   | off, b0 :: b1 :: b2 :: b3 :: rest =>
     let w := Obj.wordOfBytesLE [b0, b1, b2, b3] 0
@@ -122,10 +123,10 @@ def checkBytesNoMsr (blk : Obj.CodeBlock) : Nat → List (BitVec 8) → Bool
     checkBytesNoMsr blk (off + 4) rest
   | _, _ => false
 
-def checkBlockNoSvcNoMsr (blk : Obj.CodeBlock) : Bool :=
+@[expose] def checkBlockNoSvcNoMsr (blk : Obj.CodeBlock) : Bool :=
   VerifiedLibraries.RustStd.checkBlockNoSvc0 blk && checkBytesNoMsr blk 0 blk.code
 
-noncomputable def checkTreeBlocksNoSvcNoMsr (blks : List Nat) : Bool :=
+@[expose] noncomputable def checkTreeBlocksNoSvcNoMsr (blks : List Nat) : Bool :=
   blks.all fun j =>
     match lsBlocksTree.getFast? j with
     | some blk => checkBlockNoSvcNoMsr blk
@@ -224,6 +225,57 @@ private theorem adrpWord_b26_false {w : BitVec 32} (hw26 : w &&& 0x0400_0000#32 
     simpa [BitVec.getLsbD_eq_getElem (by decide : 26 < 32)] using this
   simp [Obj.adrpWord, Obj.adrpWordOff, BitVec.getLsbD_eq_getElem, hb26]
 
+private theorem nopWord_not_isMsr :
+    Arm64.isMsrTpidrEl0Word Obj.nopWord = false := rfl
+
+private theorem patchGotOrTlsIeRelaxed_not_isMsr (w : BitVec 32) (place target : BitVec 64)
+    {k : Obj.RelocKind} (hisgot : k.isGotOrTlsIe = true) :
+    Arm64.isMsrTpidrEl0Word (Obj.CodeBlock.patchGotOrTlsIeRelaxed w place target k) = false := by
+  cases hk : k
+  all_goals rw [hk] at hisgot; try contradiction
+  · exact nopWord_not_isMsr
+  · dsimp only [Obj.CodeBlock.patchGotOrTlsIeRelaxed]
+    exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact ldrToAddWord_top6_ne _)
+  · dsimp only [Obj.CodeBlock.patchGotOrTlsIeRelaxed]
+    exact not_isMsrTpidrEl0Word_of_b26_false
+      (by simp [Obj.tlsieMovzWord, BitVec.getLsbD_eq_getElem])
+  · dsimp only [Obj.CodeBlock.patchGotOrTlsIeRelaxed]
+    exact not_isMsrTpidrEl0Word_of_b29_true
+      (by simp [Obj.tlsieMovkWord, BitVec.getLsbD_eq_getElem])
+
+private theorem patchRelocWord_not_isMsr {w : BitVec 32} {r : Obj.RelocEntry}
+    (hksafe : VerifiedLibraries.RustStd.relocKindSafeNoSvc0 r.kind = true)
+    (hw_off : VerifiedLibraries.RustStd.checkRelocWordNoSvc0 w r = true)
+    (place target : BitVec 64) :
+    Arm64.isMsrTpidrEl0Word (Obj.patchRelocWord r.kind w place target) = false := by
+  unfold VerifiedLibraries.RustStd.checkRelocWordNoSvc0 at hw_off
+  cases hk : r.kind
+  all_goals rw [hk] at hksafe; try contradiction
+  all_goals rw [hk] at hw_off; simp only [VerifiedLibraries.RustStd.isTlsdescKind,
+    VerifiedLibraries.RustStd.isAdrpRelocKind, Bool.false_or, Bool.true_or,
+    Bool.not_true, Bool.not_false, Bool.and_true, Bool.and_eq_true,
+    bne_iff_ne, beq_iff_eq] at hw_off
+  all_goals dsimp only [Obj.patchRelocWord]
+  · exact not_isMsrTpidrEl0Word_of_top6 (by rw [branchWord_top6_eq]; exact hw_off)
+  · exact not_isMsrTpidrEl0Word_of_top6 (by rw [branchWord_top6_eq]; exact hw_off)
+  · exact not_isMsrTpidrEl0Word_of_b26_false (adrpWord_b26_false hw_off.2 _ _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
+  · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
+  · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
+  · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
+  · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
+  · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
+  · exact not_isMsrTpidrEl0Word_of_b26_false (adrpWord_b26_false hw_off.2 _ _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
+  · exact not_isMsrTpidrEl0Word_of_b26_false (adrpWord_b26_false hw_off.2 _ _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
+  · exact not_isMsrTpidrEl0Word_of_b26_false
+      (by simp [Obj.tlsdescAdrPage21Word, BitVec.getLsbD_eq_getElem])
+  · exact not_isMsrTpidrEl0Word_of_b29_true
+      (by simp [Obj.tlsdescLd64Lo12Word, BitVec.getLsbD_eq_getElem])
+  · exact nopWord_not_isMsr
+  · exact nopWord_not_isMsr
+
 private theorem patchedWord_not_isMsrTpidrEl0 {blk : Obj.CodeBlock} (pl : Obj.Placement)
     (hchk : checkBlockNoSvcNoMsr blk = true) {off : Nat}
     (hal : off % 4 = 0) (hlen : off + 4 ≤ blk.code.length) :
@@ -238,6 +290,9 @@ private theorem patchedWord_not_isMsrTpidrEl0 {blk : Obj.CodeBlock} (pl : Obj.Pl
     | none => (blk.wordAt off &&& 0xffff_ffe0#32) != 0xd51b_d040#32
     | some r => VerifiedLibraries.RustStd.checkRelocWordNoSvc0 (blk.wordAt off) r) = true at hw_off
   unfold Obj.CodeBlock.patchedWord
+  dsimp only
+  obtain ⟨w, hw_eq⟩ : ∃ w, blk.wordAt off = w := ⟨_, rfl⟩
+  rw [hw_eq] at hw_off ⊢
   cases hr : blk.relocAt? off with
   | none =>
     rw [hr] at hw_off
@@ -245,10 +300,9 @@ private theorem patchedWord_not_isMsrTpidrEl0 {blk : Obj.CodeBlock} (pl : Obj.Pl
     exact beq_false_of_ne (bne_iff_ne.mp hw_off)
   | some r =>
     dsimp only; rw [hr] at hw_off; dsimp only at hw_off
-    have hrmem : r ∈ blk.relocs := List.mem_of_find?_eq_some hr
-    have hksafe := hrelocs r hrmem
+    have hksafe := hrelocs r (List.mem_of_find?_eq_some hr)
     split
-    · decide
+    · exact nopWord_not_isMsr
     · split
       · exact not_isMsrTpidrEl0Word_of_b26_false
           (by simp [Obj.adrWord, Obj.adrWordOff, Obj.adrTemplate, BitVec.getLsbD_eq_getElem])
@@ -258,45 +312,8 @@ private theorem patchedWord_not_isMsrTpidrEl0 {blk : Obj.CodeBlock} (pl : Obj.Pl
         · split
           · rename_i _ _ _ hgot
             simp only [Bool.and_eq_true] at hgot
-            have hisgot : r.kind.isGotOrTlsIe = true := hgot.1.1
-            cases hk : r.kind
-            all_goals rw [hk] at hisgot; try contradiction
-            · simp [Obj.CodeBlock.patchGotOrTlsIeRelaxed, Obj.nopWord, Arm64.isMsrTpidrEl0Word]
-            · dsimp only [Obj.CodeBlock.patchGotOrTlsIeRelaxed]
-              exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact ldrToAddWord_top6_ne _)
-            · dsimp only [Obj.CodeBlock.patchGotOrTlsIeRelaxed]
-              exact not_isMsrTpidrEl0Word_of_b26_false
-                (by simp [Obj.tlsieMovzWord, BitVec.getLsbD_eq_getElem])
-            · dsimp only [Obj.CodeBlock.patchGotOrTlsIeRelaxed]
-              exact not_isMsrTpidrEl0Word_of_b29_true
-                (by simp [Obj.tlsieMovkWord, BitVec.getLsbD_eq_getElem])
-          · unfold VerifiedLibraries.RustStd.checkRelocWordNoSvc0 at hw_off
-            cases hk : r.kind
-            all_goals rw [hk] at hksafe; try contradiction
-            all_goals rw [hk] at hw_off; simp only [VerifiedLibraries.RustStd.isTlsdescKind,
-              VerifiedLibraries.RustStd.isAdrpRelocKind, Bool.false_or, Bool.true_or,
-              Bool.not_true, Bool.not_false, Bool.and_true, Bool.and_eq_true,
-              bne_iff_ne, beq_iff_eq] at hw_off
-            all_goals dsimp only [Obj.patchRelocWord]
-            · exact not_isMsrTpidrEl0Word_of_top6 (by rw [branchWord_top6_eq]; exact hw_off)
-            · exact not_isMsrTpidrEl0Word_of_top6 (by rw [branchWord_top6_eq]; exact hw_off)
-            · exact not_isMsrTpidrEl0Word_of_b26_false (adrpWord_b26_false hw_off.2 _ _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
-            · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
-            · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
-            · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
-            · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
-            · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
-            · exact not_isMsrTpidrEl0Word_of_b26_false (adrpWord_b26_false hw_off.2 _ _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
-            · exact not_isMsrTpidrEl0Word_of_b26_false (adrpWord_b26_false hw_off.2 _ _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (by rw [lo12Word_top6_eq]; exact hw_off)
-            · exact not_isMsrTpidrEl0Word_of_b26_false
-                (by simp [Obj.tlsdescAdrPage21Word, BitVec.getLsbD_eq_getElem])
-            · exact not_isMsrTpidrEl0Word_of_b29_true
-                (by simp [Obj.tlsdescLd64Lo12Word, BitVec.getLsbD_eq_getElem])
-            · simp [Obj.nopWord, Arm64.isMsrTpidrEl0Word]
-            · simp [Obj.nopWord, Arm64.isMsrTpidrEl0Word]
+            exact patchGotOrTlsIeRelaxed_not_isMsr _ _ _ hgot.1.1
+          · exact patchRelocWord_not_isMsr hksafe hw_off _ _
 
 private theorem checkBytesNoMsr_mod4 (blk : Obj.CodeBlock) :
     ∀ (off : Nat) (bs : List (BitVec 8)), checkBytesNoMsr blk off bs = true → bs.length % 4 = 0
@@ -746,19 +763,19 @@ theorem ls_subroutine_ok_plain_vmPreserved {α : Type} [LibsignalPlacement]
 /-! ## 2. `VmPreserved`-Augmented `Epoch::encoded_len` and `Chain::encoded_len` Hoare Specs -/
 
 /-- `VmPreserved`-strengthened contract of `<Epoch as Message>::encoded_len` (pinned). -/
-def epochEncodedLenPinnedSpec (A : RustAlloc) : Spec EpochEncodedLenPinnedGhost :=
+@[expose] def epochEncodedLenPinnedSpec (A : RustAlloc) : Spec EpochEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.epochEncodedLenPinnedSpec A)
 
 /-- `VmPreserved`-strengthened contract of `<Epoch as Message>::encoded_len` (unpinned). -/
-def epochEncodedLenSpec (A : RustAlloc) : Spec EpochEncodedLenGhost :=
+@[expose] def epochEncodedLenSpec (A : RustAlloc) : Spec EpochEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.epochEncodedLenSpec A)
 
 /-- `VmPreserved`-strengthened contract of `<Chain as Message>::encoded_len` (pinned). -/
-def chainEncodedLenPinnedSpec (A : RustAlloc) : Spec ChainEncodedLenPinnedGhost :=
+@[expose] def chainEncodedLenPinnedSpec (A : RustAlloc) : Spec ChainEncodedLenPinnedGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.chainEncodedLenPinnedSpec A)
 
 /-- `VmPreserved`-strengthened contract of `<Chain as Message>::encoded_len` (unpinned). -/
-def chainEncodedLenSpec (A : RustAlloc) : Spec ChainEncodedLenGhost :=
+@[expose] def chainEncodedLenSpec (A : RustAlloc) : Spec ChainEncodedLenGhost :=
   withVmPreserved (CryptoVerification.SpqrV1.ProtoRepr.chainEncodedLenSpec A)
 
 end LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget

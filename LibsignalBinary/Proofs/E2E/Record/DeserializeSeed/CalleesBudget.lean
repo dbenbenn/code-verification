@@ -9,17 +9,33 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneBudget
-public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.Callees
-public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeedTopBudget
-public import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Bytes.DropsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Bytes.FromBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
+import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneBudget
+import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.Callees
+public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeedTopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
+import LibsignalBinary.Proofs.TripleRatchet.Bytes.DropsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Bytes.FromBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1Budget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Callee Bundle for `SessionRecord::deserialize`
@@ -30,7 +46,7 @@ Defines and discharges the budget-threaded relocatable callee bundles `Deseriali
 `RawVec<Chain>::grow_one` (block `43`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -100,7 +116,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget (
 /-- Relocatable budget-threaded callee bundle for `SessionRecord::deserialize` at `(M, A, lim)`
 with base `decodeErrorHookStack` profile (`decode_varint_slice`, `int32::merge`, `bytes::merge`,
 and `RawVec<Chain>::grow_one`). -/
-def DeserializeCalleesPlaced [LibsignalPlacement]
+@[expose] def DeserializeCalleesPlaced [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   DecodeVarintSlicePlacedOk A lim H ∧
@@ -110,7 +126,7 @@ def DeserializeCalleesPlaced [LibsignalPlacement]
       (withLsCodeLoaded lsmpl (growOneSpec M A lim))
 
 /-- Extended-stack (`decodeErrorHookStackX`) counterpart of `DeserializeCalleesPlaced`. -/
-def DeserializeCalleesPlacedX [LibsignalPlacement]
+@[expose] def DeserializeCalleesPlacedX [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   DecodeVarintSlicePlacedOkX A lim H ∧
@@ -210,19 +226,6 @@ theorem bytes_merge_placed_ok_of_allocMemcpyVm [LibsignalPlacement] {M : AllocCo
     (hookSat_withVmPreserved_noAllocShim_of_noop hshim) halloc hrealloc hdealloc
     (hookSat_framelessMemcpy_of_allocMemcpyVm hmc)
 
-theorem bytes_merge_placed_ok_x_of_allocMemcpyVm [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks}
-    (hshim : H lsRustNoAllocShimSym = some hookNoop)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    BytesMergePlacedOkX A lim H :=
-  bytes_merge_placed_ok_x
-    (hookSat_withVmPreserved_noAllocShim_of_noop hshim) halloc hrealloc hdealloc
-    (hookSat_framelessMemcpy_of_allocMemcpyVm hmc)
-
 /-- Discharges `DeserializeCalleesPlaced M A lim H` from explicit `allocMemcpyVmSpec` hook
 hypotheses. -/
 theorem deserializeCallees_placed_ok [LibsignalPlacement] {M : AllocCostModel}
@@ -240,22 +243,6 @@ theorem deserializeCallees_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     bytes_merge_placed_ok_of_allocMemcpyVm hshim halloc hrealloc hdealloc hmc,
     grow_one_placed_ok_of_noop hshim halloc hrealloc⟩
 
-theorem deserializeCallees_placed_ok_of_frameless [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : H lsRustNoAllocShimSym = some hookNoop)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym (withVmPreserved framelessMemcpySpec)) :
-    DeserializeCalleesPlaced M A lim H :=
-  have hshim_s := hookSat_sessionShimBudget_of_noop hshim
-  ⟨decode_varint_slice_placed_ok hshim_s halloc,
-    int32_merge_placed_ok hshim_s halloc,
-    bytes_merge_placed_ok (hookSat_withVmPreserved_noAllocShim_of_noop hshim)
-      halloc hrealloc hdealloc hmc,
-    grow_one_placed_ok_of_noop hshim halloc hrealloc⟩
-
 /-- Discharges `DeserializeCalleesPlaced M A lim H` from `PlacedDeserializeHooks M A H`. -/
 theorem deserializeCallees_placed_ok_of_hooks [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} (lim : BudgetLimits)
@@ -263,27 +250,5 @@ theorem deserializeCallees_placed_ok_of_hooks [LibsignalPlacement] {M : AllocCos
     (hH : PlacedDeserializeHooks M A H) :
     DeserializeCalleesPlaced M A lim H :=
   deserializeCallees_placed_ok hH.shim (hH.alloc lim) (hH.realloc lim) (hH.dealloc lim) hH.memcpy
-
-theorem deserializeCallees_placed_x_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : H lsRustNoAllocShimSym = some hookNoop)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    DeserializeCalleesPlacedX M A lim H :=
-  have hshim_s := hookSat_sessionShimBudget_of_noop hshim
-  ⟨decode_varint_slice_placed_ok_x hshim_s halloc,
-    int32_merge_placed_ok_x hshim_s halloc,
-    bytes_merge_placed_ok_x_of_allocMemcpyVm hshim halloc hrealloc hdealloc hmc,
-    grow_one_placed_ok_of_noop hshim halloc hrealloc⟩
-
-theorem deserializeCallees_placed_x_ok_of_hooks [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} (lim : BudgetLimits)
-    {H : String → Option (State → State)}
-    (hH : PlacedDeserializeHooks M A H) :
-    DeserializeCalleesPlacedX M A lim H :=
-  deserializeCallees_placed_x_ok hH.shim (hH.alloc lim) (hH.realloc lim) (hH.dealloc lim) hH.memcpy
 
 end LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.CalleesBudget

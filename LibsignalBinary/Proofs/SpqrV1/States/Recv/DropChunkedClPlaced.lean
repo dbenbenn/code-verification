@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Chunked
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPoly
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Chunked -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPoly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyDecoder
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Code-Loaded Drop Glue for `SpqrV1/States/Recv`
@@ -26,7 +26,7 @@ Code-loaded `[LibsignalPlacement]` `subroutine_ok` proofs for `drop_glue::<[Sort
 `Ct2Sampled` (Block `274`), `HeaderSent` (Block `276`), and `EkSentCt1Received` (Block `278`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

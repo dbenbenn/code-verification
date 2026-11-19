@@ -62,7 +62,7 @@ theorem sepWP_nf_retire_nested_fine [MallocngMultiPlacement]
     SepWP (blkPC_b05.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       ((maddrs.ctx ↦ₛ { st.ctx with active := active1, usageByClass := usage1 }.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) bvDeq ∗
-       NfAllFreeFrame (fuel' + 1) γ st s0)
+       NfAllFreeFrame (fuel' + 1) γ st s0 true)
       (NfFuelFinePost k (fuel' + 1) γ brkStart liveCost peakCost st s0) (fun _ => ⌜False⌝) := by
   have _ := hb
   let gZero : GroupDesc := { g with prev := 0#64, next := 0#64 }
@@ -405,7 +405,7 @@ theorem sepWP_nf_retire_nested_fine [MallocngMultiPlacement]
                           ((maddrs.ctx ↦ₛ cDeq.toBytes) ∗
                            ((g.metaPtr ↦ₛ gZero.metaBytes) ∗ ByteMap st.masterDom keepAfterMeta bvDeq) ∗
                            (stackFrameAt (s0.sp - 32#64) (32 * (fuel' + 1)) ∗ nfStackSaved s0.sp s0 ∗
-                            MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st ∗
+                            MallocngRoTablesA maddrs ∗ NfStaticRest γ maddrs st true ∗
                             ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
                             MappedSet st.masterDom (OwnedMappedByte st)))
                           (NfFuelFinePost k (fuel' + 1) γ brkStart liveCost peakCost st s0) (fun _ => ⌜False⌝) := by
@@ -466,7 +466,7 @@ theorem sepWP_nf_retire_nested_fine [MallocngMultiPlacement]
                               st2.metaAreas = st1.metaAreas ∧ SameLiveUserSub st2 st1 ∧
                               totalLiveCount st2 ≤ totalLiveCount st1 ∧
                               (dynamicRootRegions st2).length ≤ (dynamicRootRegions st1).length⌝ ∗
-                            (MallocngCoreStInflightA (k + 1) γ maddrs brkStart s0.brk liveCost peakCost st2 ∗
+                            (MallocngCoreStInflightModeA true (k + 1) γ maddrs brkStart s0.brk liveCost peakCost st2 ∗
                              stackFrameAt (s0.sp - 32#64) (32 * (fuel' + 1)) ∗ MallocngRoTablesA maddrs ∗
                              NfRetSep st1 st2 (sfR.readReg64 .x0) (sfR.readReg64 .x1) ∗
                              (g.metaPtr ↦ₛ gZero.metaBytes) ∗ nfStackSaved s0.sp s0 ∗ R_sat) := by

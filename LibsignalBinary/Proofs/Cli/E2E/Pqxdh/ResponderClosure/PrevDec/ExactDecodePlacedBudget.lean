@@ -11,12 +11,12 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.ClosureOver
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.ClosureOver
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.TopPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -26,6 +26,23 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ExactDecode
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ExactDecodePlacedBudgetAuxB
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ExactDecodePlacedBudgetAuxC
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ExactDecodePlacedBudgetAuxD
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefs
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.BytesMerge6PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.ArmChain
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.ArmChainHeap
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeWPlaced
 
 /-!
 # Exact-Trace Budget Verification of Inlined `SessionStructure::decode` on Block `518`
@@ -36,7 +53,7 @@ exact allocation trace `evs = sessDeserEvents ⟨some sess⟩` (`SessDeserialize
 parameterized by the exact-trace `message::merge<Chain>` contract on Block `516`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -162,7 +179,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 /-- Exact-trace raw contract of `prost::encoding::message::merge::<Chain, &mut &[u8]>`
 (Block `516`, `lsmpl.base 516`) at `chainMerge3StackX`, tightening
 `TopPlacedBudgetAux.chainMerge3RawSpecW` from `ChainMergeGenEnv x` to `evs = chainMergeEvents x.c`. -/
-def b518x_chainMerge3ExactSpecW {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def b518x_chainMerge3ExactSpecW {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainMergeGenGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.bufRef ∧
@@ -178,7 +195,7 @@ def b518x_chainMerge3ExactSpecW {M : AllocCostModel} (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents (chainMergeEvents x.c) st) sf ∗ stackAt s0.sp chainMerge3StackX
 
 /-- Relocatable `[LibsignalPlacement]` exact-trace Block-`516` (`lsmpl.base 516`) contract parameter on `lsProg_518 ext` under `withLsCodeRoLoaded lsmpl`. -/
-def b518x_ChainMerge5ExactCroPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def b518x_ChainMerge5ExactCroPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 516)
@@ -188,7 +205,7 @@ def b518x_ChainMerge5ExactCroPlacedOkExt [LibsignalPlacement] {M : AllocCostMode
 
 /-- The `message_keys` (pinned at capacity `capMk`) and `chain_key` fields of `prostChainGAt A a c`
 (definitionally identical to `Chain3ExactPlacedBudget.c3x_chainGRestCap`). -/
-def b518x_chainGRestCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG) : SepProp :=
+@[expose] def b518x_chainGRestCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG) : SepProp :=
   (∃∗ ptrMk : BitVec 64,
     vecAt A 104 8 (fun mk b => prostMsgKeyAt A mk b)
       (a + 0x30#64) (BitVec.ofNat 64 capMk) ptrMk c.keys) ∗
@@ -200,7 +217,7 @@ def b518x_chainGRestCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : Chain
 /-- Capacity-pinned `chain3GAt`: `srk` and `priv` as `chain3VecAt` (`cap = 0#64` when `[]`) and
 `keys` pinned at capacity `BitVec.ofNat 64 capMk` (`0` at both Block-`518` call sites `+0x9c0` and
 `+0xbf0`; definitionally identical to `Chain3ExactPlacedBudget.c3x_chain3GAtCap`). -/
-def b518x_chain3GAtCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG) : SepProp :=
+@[expose] def b518x_chain3GAtCap (A : RustAlloc) (a : BitVec 64) (capMk : Nat) (c : ChainG) : SepProp :=
   chain3VecAt A a c.srk ∗ chain3VecAt A (a + 0x18#64) c.priv ∗ b518x_chainGRestCap A a capMk c
 
 theorem b518x_chainGRestCap_entails_chainGRest (A : RustAlloc) (a : BitVec 64)
@@ -218,11 +235,6 @@ theorem b518x_chain3GAtCap_entails_chain3GAt (A : RustAlloc) (a : BitVec 64)
   unfold b518x_chain3GAtCap chain3GAt
   exact sepConj_mono_right (sepConj_mono_right (b518x_chainGRestCap_entails_chainGRest A a capMk c))
 
-theorem b518x_chain3GAtCap_entails_prostChainGAt (A : RustAlloc) (a : BitVec 64)
-    (capMk : Nat) (c : ChainG) :
-    b518x_chain3GAtCap A a capMk c ⊢ prostChainGAt A a c :=
-  Entails.trans (b518x_chain3GAtCap_entails_chain3GAt A a capMk c)
-    (chain3GAt_entails_prostChainGAt A a c)
 
 theorem b518x_default_cells_entail_c3KeysCap (A : RustAlloc) (v : BitVec 64) :
     (v ↦₆₄ 0#64) ∗ ((v + 8#64) ↦₆₄ 8#64) ∗ ((v + 16#64) ↦₆₄ 0#64) ⊢
@@ -282,7 +294,7 @@ theorem b518x_default_cells_bf0_entail_chain3GAtCap_ext (A : RustAlloc) (q : Bit
   exact h
 
 /-- Capacity-pinned exact-trace raw contract of `prost::encoding::message::merge::<Chain, &mut &[u8]>` (Block `516`, `lsmpl.base 516`) at `chainMerge3StackX` (`capMk = 0` on entry). -/
-def b518x_chainMerge3ExactSpecW' {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def b518x_chainMerge3ExactSpecW' {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (ChainMergeGenGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = 2#8 ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.bufRef ∧
@@ -298,7 +310,7 @@ def b518x_chainMerge3ExactSpecW' {M : AllocCostModel} (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents (chainMergeEvents x.c) st) sf ∗ stackAt s0.sp chainMerge3StackX
 
 /-- Capacity-pinned relocatable `[LibsignalPlacement]` exact-trace Block-`516` (`lsmpl.base 516`) contract on `lsProg_518 ext` under `withLsCodeRoLoaded lsmpl`. -/
-def b518x_ChainMerge5ExactCroPlacedOkExt' [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def b518x_ChainMerge5ExactCroPlacedOkExt' [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 516)
@@ -321,7 +333,7 @@ theorem b518x_chainMerge5Exact_pinned_of_unpinned [LibsignalPlacement] {M : Allo
 
 /-- Capacity-0-when-empty `Vec<u8>` at `p` for `SessionStructure` byte fields (`lik`, `rik`, `root`,
 `abk`, `pq`): pins `cap = 0#64` while `bs = []`, and collapses to `vecU8 A p bs` once `bs ≠ []`. -/
-def b518x_vecU8Fresh0 (A : RustAlloc) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def b518x_vecU8Fresh0 (A : RustAlloc) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if bs = [] then ∃∗ ptr : BitVec 64, vecU8At A p 0#64 ptr []
   else vecU8 A p bs
 
@@ -338,7 +350,7 @@ theorem b518x_vecU8Fresh0_entails_vecU8 (A : RustAlloc) (p : BitVec 64) (bs : Li
 /-- Capacity-explicit `prostSSGQAt` loop invariant for Block `518`:
 - basic `Vec<u8>` fields (`lik`, `rik`, `root`, `abk`, `pq`) as `b518x_vecU8Fresh0` (`cap = 0` when `[]`);
 - `receiver_chains` pinned at deterministic doubling capacity `BitVec.ofNat 64 (vecCap4Of v.base.recv.length)`. -/
-def b518x_prostSSGQAtCap (A : RustAlloc) (ss : BitVec 64) (v : SSGQ) : SepProp :=
+@[expose] def b518x_prostSSGQAtCap (A : RustAlloc) (ss : BitVec 64) (v : SSGQ) : SepProp :=
   b518x_vecU8Fresh0 A ss v.base.lik ∗
     b518x_vecU8Fresh0 A (ss + 0x18#64) v.base.rik ∗
     b518x_vecU8Fresh0 A (ss + 0x30#64) v.base.root ∗
@@ -374,7 +386,7 @@ theorem b518x_prostSSGQAtCap_entails_prostSSGQAt (A : RustAlloc) (ss : BitVec 64
 
 /-- Capacity-explicit Block-`518` decode-loop spatial invariant (`overDecHeapBudget` with
 `prostSSGQAt` strengthened to `b518x_prostSSGQAtCap`). -/
-def b518x_overDecHeapCap {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def b518x_overDecHeapCap {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) (g : OverDecG) (rest : List (BitVec 8))
     (v : SSGQ) : SepProp :=
   overPrevElemRestBudget A g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗
@@ -396,28 +408,26 @@ theorem b518x_overDecHeapCap_entails_budget {M : AllocCostModel} (A : RustCliAll
 /-! ## `VerNeSessionCancelEnv` Envelopes and Scope Bridges -/
 
 /-- Allocation envelope for `SessionStructure` bytes `enc = encSession s` paired with `SessDeserializeCancelEnv ⟨some s⟩`. -/
-def b518x_VerNeSessionCancelRawEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def b518x_VerNeSessionCancelRawEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ s : Session (List (BitVec 8)),
     enc = encSession s ∧
     SessDeserializeCancelEnv ⟨some s⟩ evs
 
 /-- `b518x_VerNeSessionCancelRawEnv` augmented with the `2 MiB` record-byte bound `(encodeRecord ⟨some s⟩).length ≤ deserCancelFineMaxReq`. -/
-def b518x_VerNeSessionCancelEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def b518x_VerNeSessionCancelEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ s : Session (List (BitVec 8)),
     enc = encSession s ∧
     (encodeRecord ⟨some s⟩).length ≤ deserCancelFineMaxReq ∧
     SessDeserializeCancelEnv ⟨some s⟩ evs
 
 /-- Composite version-mismatch path allocation envelope parameterized by session-decode envelope `DecEnv`. -/
-def b518x_VerNeTightTopEnvOf (DecEnv : List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def b518x_VerNeTightTopEnvOf (DecEnv : List (BitVec 8) → List AllocEvent → Prop)
     (enc : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv VerNeS1Env (SeqEnv (SeqEnv (DecEnv enc) FreeOnlyEvs) VerNeTailEnv)
 
 abbrev b518x_VerNeTightTopRawEnv : List (BitVec 8) → List AllocEvent → Prop :=
   b518x_VerNeTightTopEnvOf b518x_VerNeSessionCancelRawEnv
 
-abbrev b518x_VerNeTightTopEnv : List (BitVec 8) → List AllocEvent → Prop :=
-  b518x_VerNeTightTopEnvOf b518x_VerNeSessionCancelEnv
 
 /-- Definitional telescope: `fieldsEventsAux 0 0 (genFieldsQ s)` is definitionally equal to
 `sessDeserEvents ⟨some s⟩` (`recFieldsQ ⟨some s⟩ = genFieldsQ s`). -/
@@ -426,28 +436,7 @@ theorem b518x_fieldsEventsAux_genFieldsQ_eq_sessDeserEvents
     fieldsEventsAux 0 0 (genFieldsQ s) = sessDeserEvents ⟨some s⟩ :=
   rfl
 
-/-- Any `s_old` with `Cli.Slots.scopeIn ⟨some s_old⟩` and `s_old.state.sessionVersion = 4#32` satisfies `OverPrevEncOKAt (encSession (clearPending s_old)) (clearPending s_old)`. -/
-theorem b518x_overPrevEncOKAt_clearPending_of_scopeIn
-    {s_old : Session (List (BitVec 8))}
-    (h : CryptoVerification.SignalSession.Cli.Slots.scopeIn ⟨some s_old⟩)
-    (hver : s_old.state.sessionVersion = 4#32) :
-    OverPrevEncOKAt (encSession (clearPending s_old)) (clearPending s_old) :=
-  ⟨rfl, CryptoVerification.SignalSession.Cli.Slots.scopeKit_of_scopeIn (scopeIn_clearPending h),
-    hver, rfl, rfl⟩
 
-/-- Satisfiability of `SessDeserializeCancelEnv` and `b518x_VerNeSessionCancelRawEnv` on `encSession (clearPending s_old)`. -/
-theorem b518x_sessDeserializeCancelEnv_of_scopeIn
-    {s_old : Session (List (BitVec 8))}
-    (h : CryptoVerification.SignalSession.Cli.Slots.scopeIn ⟨some s_old⟩)
-    (hver : s_old.state.sessionVersion = 4#32) :
-    SessDeserializeCancelEnv ⟨some (clearPending s_old)⟩
-      (sessDeserEvents ⟨some (clearPending s_old)⟩) ∧
-    b518x_VerNeSessionCancelRawEnv (encSession (clearPending s_old))
-      (sessDeserEvents ⟨some (clearPending s_old)⟩) := by
-  have hok := b518x_overPrevEncOKAt_clearPending_of_scopeIn h hver
-  have hdes : SessDeserializeCancelEnv ⟨some (clearPending s_old)⟩
-      (sessDeserEvents ⟨some (clearPending s_old)⟩) := ⟨hok.2.1, rfl⟩
-  exact ⟨hdes, ⟨clearPending s_old, rfl, hdes⟩⟩
 
 theorem b518x_verNeSessionCancelRawEnv_of_exact
     {enc : List (BitVec 8)} {sess : Session (List (BitVec 8))} {evs : List AllocEvent}
@@ -456,13 +445,6 @@ theorem b518x_verNeSessionCancelRawEnv_of_exact
     b518x_VerNeSessionCancelRawEnv enc evs :=
   ⟨sess, hok.1, hdes⟩
 
-theorem b518x_verNeSessionCancelEnv_of_exact
-    {enc : List (BitVec 8)} {sess : Session (List (BitVec 8))} {evs : List AllocEvent}
-    (hok : OverPrevEncOKAt enc sess)
-    (hrec_le : (encodeRecord ⟨some sess⟩).length ≤ deserCancelFineMaxReq)
-    (hdes : SessDeserializeCancelEnv ⟨some sess⟩ evs) :
-    b518x_VerNeSessionCancelEnv enc evs :=
-  ⟨sess, hok.1, hrec_le, hdes⟩
 
 theorem b518x_fitsExact_of_fitsRaw {M : AllocCostModel} {lim : BudgetLimits} {st0 : M.σ}
     {enc : List (BitVec 8)} {sess : Session (List (BitVec 8))}
@@ -471,24 +453,7 @@ theorem b518x_fitsExact_of_fitsRaw {M : AllocCostModel} {lim : BudgetLimits} {st
     FitsEnv M lim st0 (SessDeserializeCancelEnv ⟨some sess⟩) :=
   fun evs hdes => hfit evs (b518x_verNeSessionCancelRawEnv_of_exact hok hdes)
 
-theorem b518x_fitsExact_of_fitsCapped {M : AllocCostModel} {lim : BudgetLimits} {st0 : M.σ}
-    {enc : List (BitVec 8)} {sess : Session (List (BitVec 8))}
-    (hok : OverPrevEncOKAt enc sess)
-    (hrec_le : (encodeRecord ⟨some sess⟩).length ≤ deserCancelFineMaxReq)
-    (hfit : FitsEnv M lim st0 (b518x_VerNeSessionCancelEnv enc)) :
-    FitsEnv M lim st0 (SessDeserializeCancelEnv ⟨some sess⟩) :=
-  fun evs hdes => hfit evs (b518x_verNeSessionCancelEnv_of_exact hok hrec_le hdes)
 
-theorem b518x_verNeTightTopEnvOf_of_parts
-    {DecEnv : List (BitVec 8) → List AllocEvent → Prop} {enc : List (BitVec 8)}
-    {evs1 evs_dec evs_free evs3 : List AllocEvent}
-    (h1 : VerNeS1Env evs1) (hd : DecEnv enc evs_dec)
-    (hf : FreeOnlyEvs evs_free) (h3 : VerNeTailEnv evs3) :
-    b518x_VerNeTightTopEnvOf DecEnv enc (evs1 ++ (evs_dec ++ evs_free) ++ evs3) := by
-  rw [List.append_assoc]
-  exact Or.inr ⟨evs1, (evs_dec ++ evs_free) ++ evs3, rfl, h1,
-    Or.inr ⟨evs_dec ++ evs_free, evs3, rfl,
-      Or.inr ⟨evs_dec, evs_free, rfl, hd, hf⟩, h3⟩⟩
 
 /-! ## Top-Level Block-`518` (`+0x1ee8 → +0x2620`) Exact Decode Contract -/
 
@@ -497,7 +462,7 @@ theorem b518x_verNeTightTopEnvOf_of_parts
 `s.sp`) on `lsProg_518 ext` under `LibsignalCodeRoLoaded lsmpl`, tightening
 `LoopDefsBudget.OverPrevDecodeCroPlacedAt` from `OverPrevDecodeEnv enc` to
 `SessDeserializeCancelEnv ⟨some sess⟩`. -/
-def b518x_OverPrevDecodeExactCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def b518x_OverPrevDecodeExactCroPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   ∀ (st0 : M.σ) (s0 s : State) (prevCap prevPtr encCap encPtr : BitVec 64)
@@ -638,10 +603,6 @@ private theorem b518r3_vecCap4_toNat {n : Nat} (h : n < maxReceiverChains) :
     (BitVec.ofNat 64 (vecCap4Of n)).toNat = vecCap4Of n := by
   rcases b518r3_lt5_cases h with rfl | rfl | rfl | rfl | rfl <;> rfl
 
-private theorem b518r3_vecCap4_bounds {n : Nat} (h : n < maxReceiverChains) :
-    n ≤ (BitVec.ofNat 64 (vecCap4Of n)).toNat ∧
-      (BitVec.ofNat 64 (vecCap4Of n)).toNat * 104 < 2 ^ 63 := by
-  rcases b518r3_lt5_cases h with rfl | rfl | rfl | rfl | rfl <;> decide
 
 private theorem b518r3_vecCap4_full_next {n : Nat} (h : n < maxReceiverChains)
     (hfull : n = vecCap4Of n) :
@@ -2029,35 +1990,7 @@ theorem b518x_overPrevDecode_exact_cro_placed_of_hooks_chain5'
       hshim halloc hrealloc hdealloc hmc hpanic_raw)
     hChain5
 
-theorem b518x_overPrevDecode_exact_cro_placed_of_alloc_bm6w_chain5
-    [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hAlloc : AllocContractsPlaced M A lim ext)
-    (hBM6W : BytesMerge6Placed514OkExtW A lim ext)
-    (hChain5 : b518x_ChainMerge5ExactCroPlacedOkExt A lim ext) :
-    b518x_OverPrevDecodeExactCroPlacedAt A lim ext :=
-  b518x_overPrevDecode_exact_cro_placed_of_alloc_bm6w_chain5' hAlloc hBM6W
-    (b518x_chainMerge5Exact_pinned_of_unpinned hChain5)
 
-/-- Hook-discharged Block-`518` (`+0x1ee8..+0x2620`) exact-trace decode theorem parameterized by unpinned `b518x_ChainMerge5ExactCroPlacedOkExt`. -/
-theorem b518x_overPrevDecode_exact_cro_placed_of_hooks_chain5
-    [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {ext : LibsignalHooks}
-    (hshim : HookSat ext lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat ext lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat ext lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hdealloc : HookSat ext lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmc : HookSat ext lsMemcpySym framelessMemcpyBudgetSpec)
-    (hpanic_raw : ext lsHandleErrorSym = some Rust.panicked)
-    (hChain5 : b518x_ChainMerge5ExactCroPlacedOkExt A lim ext) :
-    b518x_OverPrevDecodeExactCroPlacedAt A lim ext :=
-  b518x_overPrevDecode_exact_cro_placed_of_alloc_bm6w_chain5
-    (AllocContractsPlaced.of_hooks halloc hdealloc hrealloc
-      (b518x_sessionShim_of_noAllocShim hshim))
-    (bytes_merge_6_placed_ok_w_cro (callerProg := lsProg_518 ext)
-      hshim halloc hrealloc hdealloc hmc hpanic_raw)
-    hChain5
 
 /-- Lift `b518x_OverPrevDecodeExactCroPlacedAt` to the `b518x_VerNeSessionCancelRawEnv enc` envelope. -/
 theorem b518x_overPrevDecode_rawEnv_cro_placed_of_exact

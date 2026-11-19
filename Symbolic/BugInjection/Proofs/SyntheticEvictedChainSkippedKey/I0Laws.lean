@@ -31,7 +31,7 @@ open DY.Libsignal.Refinement
   (x25519PublicKeySymbol x25519AgreementSymbol x25519TorsionSymbol torsionShift
    aesCbcEncryptSymbol aesCbcDecryptSymbol sha256CompressSymbol ExternCryptoLawsHold)
 open DY.Libsignal.PQXDH.Refinement
-  (kyberEncapsSymbol kyberDecapsSymbol toEdwardsSymbol torsionFreeSymbol
+  (kyberEncapsSymbol kyberDecapsSymbol
    mlkem768Encaps1Symbol libcruxHmacSymbol X25519TorsionShiftsRejected)
 open DY.Libsignal.Composed.Refinement
   (ProtocolSetup ProtocolSetupWF gamma gamma' randTerm setupRandomsAt setupPublic secretBytes
@@ -68,20 +68,12 @@ theorem evictedI0_publicKey (sk : HwBytes) :
     evictedI0 x25519PublicKeySymbol [sk] = some (evictedLookupPub sk) := rfl
 theorem evictedI0_agreement (sk pk : HwBytes) :
     evictedI0 x25519AgreementSymbol [sk, pk] = some (evictedLookupDh sk pk) := rfl
-theorem evictedI0_torsion (pt : HwBytes) (b : BitVec 8) :
-    evictedI0 x25519TorsionSymbol [pt, [b]] = none := rfl
 theorem evictedI0_aesEncrypt (text k iv : HwBytes) :
     evictedI0 aesCbcEncryptSymbol [text, k, iv] = some (evictedAesPerm k iv text) := rfl
 theorem evictedI0_aesDecrypt (ct k iv : HwBytes) :
     evictedI0 aesCbcDecryptSymbol [ct, k, iv] = evictedAesDec k iv ct := rfl
 theorem evictedI0_kyberEncaps (pk rand : HwBytes) :
     evictedI0 kyberEncapsSymbol [pk, rand] = some (compKyberEncaps rand) := rfl
-theorem evictedI0_kyberDecaps (sk ct : HwBytes) :
-    evictedI0 kyberDecapsSymbol [sk, ct] = some (compKyberDecaps ct) := rfl
-theorem evictedI0_toEdwards (u : HwBytes) (sign : BitVec 8) :
-    evictedI0 toEdwardsSymbol [u, [sign]] = some (compToEdwards u sign) := rfl
-theorem evictedI0_torsionFree (pt : HwBytes) :
-    evictedI0 torsionFreeSymbol [pt] = some (compTorsionFree pt) := rfl
 theorem evictedI0_hmac (k d : HwBytes) :
     evictedI0 libcruxHmacSymbol [k, d] = some (compHmac k d) := rfl
 theorem evictedI0_sha256Compress (st blk : HwBytes) :
@@ -404,7 +396,7 @@ theorem evictedI0_externContractsHoldCli : ExternContractsHoldCli evictedI0 :=
   ⟨evictedI0_cryptoEquationsHold, evictedI0_pubCanonical, evictedI0_torsionShiftsRejected⟩
 
 theorem evictedI0_hooksAgree : HooksMatchInterpretation evictedI0 evictedHooks0 := by
-  refine ⟨rfl, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨rfl, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · intro p k iv _ _; rfl
   · intro c k iv _ _; rfl
   · intro a b; rfl
@@ -413,9 +405,6 @@ theorem evictedI0_hooksAgree : HooksMatchInterpretation evictedI0 evictedHooks0 
     rw [evictedI0_kyberEncaps]
     exact congrArg some (List.take_append_drop 1568 (compKyberEncaps rand.toList)).symm
   · intro sk ct; rfl
-  · intro u sign; rfl
-  · intro pt
-    rw [evictedI0_torsionFree]; dsimp only [evictedHooks0]; simp [Option.some.injEq]
 
 theorem evictedI0_kyberCorrectOn (r : ProtocolSetup) (cts : List HwBytes) :
     ∀ ct ∈ cts, ∀ e ss, e.length = 32 → kyberEncapsBytes evictedI0 r e = some (ct, ss) →
@@ -462,7 +451,8 @@ theorem evictedCompFitsPinned_satisfiable :
     ∃ iw r, evictedCompFitsPinned iw r := by
   let w := Symbolic.BugInjection.Synthetic.Witnesses.EvictedChainSkippedKeyCli.setup
   have hpl : w.Plausible := by decide +kernel
-  obtain ⟨ha, hb, hs, hss, hk, hks, hsec, hslice, hnd, _⟩ := hpl
+  have hw : w.withOpk = false := rfl
+  obtain ⟨ha, hb, hs, hss, hk, hks, hsec, hslice, hnd, _, _⟩ := hpl
   have h5 := Symbolic.Swarm.CREF.b1_setupPublic_5 (evictedRecordsI0 w) (evictedRecordsI0_ne w)
   have h6 := Symbolic.Swarm.CREF.b1_setupPublic_6 (evictedRecordsI0 w) (evictedRecordsI0_ne w)
   have h7 := Symbolic.Swarm.CREF.b1_setupPublic_7 (evictedRecordsI0 w) (evictedRecordsI0_ne w)
@@ -487,7 +477,7 @@ theorem evictedCompFitsPinned_satisfiable :
       simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
       rcases hp with rfl | rfl | rfl | rfl | rfl | rfl <;>
         simp [evictedRecordsI0, PQXDHSpqrSetup.fresh, fillFresh, ha, hb, hs]
-    · rw [hR]; simpa [evictedRecordsI0, PQXDHSpqrSetup.fresh] using hnd
+    · rw [hR]; simpa [hw, evictedRecordsI0, PQXDHSpqrSetup.fresh] using hnd
     · exact (congrArg List.length o5).trans hss
     · exact (congrArg List.length o6).trans hk
     · exact (congrArg List.length o7).trans hks

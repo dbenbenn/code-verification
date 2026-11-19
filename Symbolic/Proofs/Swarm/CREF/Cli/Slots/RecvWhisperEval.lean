@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvWhisperDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepPure
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.RngG.R3Canon
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvWhisperCodec
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -24,7 +24,7 @@ Connects an accepting `pqRecvWhisperModel` step under `WhisperSlotPre` to `pqRec
 and `TRRecordCanon` (`pqRecvWhisper_accept_eval`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -126,7 +126,7 @@ abbrev recvWireMissFactPure :=
 
 /-- Hardware RNG event list emitted inside an accepting whisper `recv` call (`[.rng coins]` when
 `pureDrawsCoins` holds, and `[]` otherwise). -/
-noncomputable def pqRecvWhisperMid (interp : ExternInterpretation) (st : PqParty)
+@[expose] def pqRecvWhisperMid (interp : ExternInterpretation) (st : PqParty)
     (body coins : HwBytes) : List MachineEvent :=
   match st.session, SignalMessage.tryFrom protoSignalCodec body with
   | some (x, g_sess), .ok msg =>

@@ -9,14 +9,22 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHChain
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHPack
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHWp
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHEvict
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHStep3
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHStep12
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHStep5
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHMain
+import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHChain
+import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHPack
+import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHWp
+import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHEvict
+import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHStep3
+import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHStep12
+import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHStep5
+import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHMain
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # DH Step Commit Sub-Segment (`S3CommitSpec`)
@@ -26,4 +34,4 @@ Re-exports `SegDhHChain`, `SegDhHPack`, `SegDhHWp`, `SegDhHEvict`, `SegDhHStep3`
 of `try_decrypt_with_state::<HookRng>`.
 -/
 
-@[expose] public section
+public section

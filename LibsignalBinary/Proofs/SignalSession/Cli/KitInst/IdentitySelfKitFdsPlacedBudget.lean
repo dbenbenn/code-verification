@@ -9,19 +9,40 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.FsFds
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitFdsPilotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SelfSpecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.FsFds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitFdsPilotPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SelfSpecPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOkPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkShims.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Shims
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import ProofLib.Placed.OpcodeExclusion
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Placed Budgeted `IdentitySelfStoreSpec` with Closed-FD Invariant
@@ -32,7 +53,7 @@ shim `Spec.keepsFs` contracts on Blocks `602` (`get_identity_key_pair`) and `603
 `cliIdStoreSpecFullPlaced`, and `writeFileHook` preservation of `FdsGe3Closed`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
@@ -351,21 +372,6 @@ theorem cliIdSelfKpShim_fds_rocl_placed_ok [LibsignalPlacement] {M : AllocCostMo
   exact ls_subroutine_ok_rocl_of_block (callerProg := callerProg) (j := 602)
     h602_kit hblk (by decide) (by decide)
 
-theorem cliIdentitySelfKpShim_fds_rocl_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat}
-    {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H]
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hk1 : 32 + extHookStack ≤ k1) (hblk : callerBlk < 619 := by decide) :
-    let skit := cliIdentitySelfSpecPlaced A.repAlloc rd F0 pathOk peer
-      (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4
-    subroutine_ok callerProg (0#64 + skit.kpShimOff)
-      (withLsRoCl lsmpl (kitKpShimSpec M A lim skit true)) :=
-  cliIdSelfKpShim_fds_rocl_placed_ok (rd := rd) (F0 := F0) (pathOk := pathOk) (peer := peer)
-    (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) (k1 := k1) (k2 := k2) (k3 := k3) (k4 := k4)
-    hFs hk1 hblk
-
 theorem cliIdSelfRegIdShim_fds_rocl_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
     {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
@@ -419,21 +425,6 @@ theorem cliIdSelfRegIdShim_fds_rocl_placed_ok [LibsignalPlacement] {M : AllocCos
   rw [BitVec.zero_add]
   exact ls_subroutine_ok_rocl_of_block (callerProg := callerProg) (j := 603)
     h603_kit hblk (by decide) (by decide)
-
-theorem cliIdentitySelfRegIdShim_fds_rocl_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat}
-    {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H]
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hk3 : 32 + extHookStack ≤ k3) (hblk : callerBlk < 619 := by decide) :
-    let skit := cliIdentitySelfSpecPlaced A.repAlloc rd F0 pathOk peer
-      (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4
-    subroutine_ok callerProg (0#64 + skit.regIdShimOff)
-      (withLsRoCl lsmpl (kitRegIdShimSpec M A lim skit true)) :=
-  cliIdSelfRegIdShim_fds_rocl_placed_ok (rd := rd) (F0 := F0) (pathOk := pathOk) (peer := peer)
-    (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) (k1 := k1) (k2 := k2) (k3 := k3) (k4 := k4)
-    hFs hk3 hblk
 
 /-! ## Poll lifting and `IdentitySelfStoreKitPlacedOkIFds` assembly -/
 
@@ -836,7 +827,7 @@ theorem cliIdSelfKitPlacedOkIFds_full_of_polls [LibsignalPlacement] {M : AllocCo
 
 /-! ## Full-invariant `IdentityStoreKitPlacedOkIFds` lift -/
 
-def fullIdKitBudgetEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def fullIdKitBudgetEnv [LibsignalPlacement] {A : RustAlloc}
     {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop}
     {peer : AddrGhost} {t1 t2 t3 t4 : Nat}
     (baseEnv : IdentityStoreBudgetEnv
@@ -934,31 +925,5 @@ theorem cliIdKitPlacedOkIFds_full [LibsignalPlacement] {M : AllocCostModel}
       exact (not_satisfies_false_sepConj hoom).elim
 
 /-! ## `FsAtFds` and `writeFileHook` preservation -/
-
-theorem fsAt_cliIdFullKit_of_fdsGe3Closed [LibsignalPlacement] {A : RustAlloc}
-    {envOk : FsFiles → Prop} {rd : ReadRule} {F0 : FsFiles}
-    {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
-    {t1 t2 t3 t4 : Nat} {P : Program} {s : State}
-    (hP : TraceFsSound P) (henv : envOk F0) (hfiles : s.fs.files = F0) (hfds : FdsGe3Closed s.fs) :
-    FsAtFds envOk
-      (cliIdStoreSpecFullPlaced A rd F0 pathOk peer t1 t2 t3 t4).fdsOk
-      (cliIdStoreSpecFullPlaced A rd F0 pathOk peer t1 t2 t3 t4).Quiet P s :=
-  .inr ⟨cliIdStoreSpecFullPlaced_quiet (A := A) (rd := rd) (F0 := F0) (pathOk := pathOk)
-    (peer := peer) (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4),
-    hP, hfiles.symm ▸ henv, hfds⟩
-
-theorem cliIdSelfSpecFullPlaced_writeFileHook [LibsignalPlacement] {A : RustAlloc}
-    {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop} {peer : AddrGhost}
-    {t1 t2 t3 t4 k1 k2 k3 k4 : Nat} {s : State}
-    (hfds : (cliIdSelfSpecFullPlaced A rd F0 pathOk peer
-      (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).fdsOk s.fs) :
-    (cliIdSelfSpecFullPlaced A rd F0 pathOk peer
-      (t1 := t1) (t2 := t2) (t3 := t3) (t4 := t4) k1 k2 k3 k4).fdsOk (writeFileHook s).fs :=
-  fdsGe3Closed_writeFileHook hfds
-
-theorem hookOk_writeFileHook_withFdsGe3Closed_self {α : Type} {S : Spec α}
-    (h : HookOk writeFileHook S) :
-    HookOk writeFileHook (withFdsGe3Closed S) :=
-  hookOk_withFdsGe3Closed_writeFileHook h
 
 end LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySelfKitFdsPlacedBudget

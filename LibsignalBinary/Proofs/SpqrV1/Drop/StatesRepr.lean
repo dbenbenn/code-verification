@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Chunked
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Chunked -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Representation Predicates and Helpers for `chunked::states::States`
@@ -22,7 +23,7 @@ Defines the 928-byte representation predicate `chunkedStatesAt` for
 `States [local#1]` (`0x35a6c`) and `States [local#2]` (`0x4c5d8`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Drop
 
@@ -48,7 +49,7 @@ abbrev chunkedStatesSize : Nat := 928
 /-- `spqr::v1::unchunked::send_ek::KeysUnsampled` at `a` (`56` bytes = `0x38`):
     - `+0..+48`: `auth: Authenticator`
     - `+48..+56`: `epoch: u64` -/
-def unchunkedKeysUnsampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def unchunkedKeysUnsampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendEk.KeysUnsampled (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     ((a + 48#64) ↦₆₄ st.epoch)
@@ -56,7 +57,7 @@ def unchunkedKeysUnsampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
 /-- `spqr::v1::unchunked::send_ct::NoHeaderReceived` at `a` (`56` bytes = `0x38`):
     - `+0..+48`: `auth: Authenticator`
     - `+48..+56`: `epoch: u64` -/
-def unchunkedNoHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def unchunkedNoHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendCt.NoHeaderReceived (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     ((a + 48#64) ↦₆₄ st.epoch)
@@ -65,7 +66,7 @@ def unchunkedNoHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64
     - `+0..+48`: `auth: Authenticator`
     - `+48..+72`: `hdr: Vec<u8>`
     - `+72..+80`: `epoch: u64` -/
-def unchunkedHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def unchunkedHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendCt.HeaderReceived (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     vecU8 A (a + 48#64) st.hdr ∗
@@ -76,7 +77,7 @@ def unchunkedHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     - `+48..+72`: `ek: Vec<u8>`
     - `+72..+96`: `dk: Vec<u8>`
     - `+96..+104`: `epoch: u64` -/
-def unchunkedHeaderSentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def unchunkedHeaderSentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Unchunked.SendEk.HeaderSent (spqrAuthApi F)) : SepProp :=
   authenticatorAt A a st.auth ∗
     vecU8 A (a + 48#64) st.ek ∗
@@ -84,14 +85,14 @@ def unchunkedHeaderSentAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     ((a + 96#64) ↦₆₄ st.epoch)
 
 /-- `spqr::v1::chunked::send_ek::KeysUnsampled` at `a` (`56` bytes = `0x38`). -/
-def chunkedKeysUnsampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedKeysUnsampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendEk.KeysUnsampled (spqrAuthApi F)) : SepProp :=
   unchunkedKeysUnsampledAt A a st.uc
 
 /-- `spqr::v1::chunked::send_ek::KeysSampled` at `a` (`504` bytes = `0x1f8`):
     - `+0..+400`: `sending_hdr: PolyEncoder`
     - `+400..+504`: `uc: Unchunked.SendEk.HeaderSent` -/
-def chunkedKeysSampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedKeysSampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendEk.KeysSampled spqrPolyApi (spqrAuthApi F)) : SepProp :=
   polyEncoderAt A a st.sending_hdr ∗
     unchunkedHeaderSentAt A (a + 400#64) st.uc
@@ -99,7 +100,7 @@ def chunkedKeysSampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
 /-- `spqr::v1::chunked::send_ct::NoHeaderReceived` at `a` (`456` bytes = `0x1c8`):
     - `+0..+56`: `uc: Unchunked.SendCt.NoHeaderReceived`
     - `+56..+456`: `receiving_hdr: PolyDecoder` -/
-def chunkedNoHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedNoHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendCt.NoHeaderReceived spqrPolyApi (spqrAuthApi F)) : SepProp :=
   unchunkedNoHeaderReceivedAt A a st.uc ∗
     polyDecoderAt A (a + 56#64) st.receiving_hdr
@@ -107,7 +108,7 @@ def chunkedNoHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
 /-- `spqr::v1::chunked::send_ct::HeaderReceived` at `a` (`480` bytes = `0x1e0`):
     - `+0..+80`: `uc: Unchunked.SendCt.HeaderReceived`
     - `+80..+480`: `receiving_ek: PolyDecoder` -/
-def chunkedHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendCt.HeaderReceived spqrPolyApi (spqrAuthApi F)) : SepProp :=
   unchunkedHeaderReceivedAt A a st.uc ∗
     polyDecoderAt A (a + 80#64) st.receiving_ek
@@ -116,7 +117,7 @@ def chunkedHeaderReceivedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     - `+0..+400`: `sending_ct1: PolyEncoder` (`EncoderState` tag `0` or `1` at `a + 0`)
     - `+400..+528`: `uc: Unchunked.SendCt.Ct1Sent` (`128`B)
     - `+528..+928`: `receiving_ek: PolyDecoder` (`400`B) -/
-def chunkedCt1SampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedCt1SampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendCt.Ct1Sampled spqrPolyApi (spqrAuthApi F)) : SepProp :=
   polyEncoderAt A a st.sending_ct1 ∗
     unchunkedCt1SentAt A (a + 400#64) st.uc ∗
@@ -125,13 +126,13 @@ def chunkedCt1SampledAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
 /-- `spqr::v1::chunked::send_ct::Ct1Acknowledged` at `a` (`528` bytes = `0x210`):
     - `+0..+128`: `uc: Unchunked.SendCt.Ct1Sent`
     - `+128..+528`: `receiving_ek: PolyDecoder` -/
-def chunkedCt1AcknowledgedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
+@[expose] def chunkedCt1AcknowledgedAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64)
     (st : Chunked.SendCt.Ct1Acknowledged spqrPolyApi (spqrAuthApi F)) : SepProp :=
   unchunkedCt1SentAt A a st.uc ∗
     polyDecoderAt A (a + 128#64) st.receiving_ek
 
 /-- Representation predicate for `spqr::v1::chunked::states::States` (`928` bytes = `0x3a0`, align `8`). -/
-def chunkedStatesAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def chunkedStatesAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     States spqrPolyApi (spqrAuthApi F) → SepProp
   | .keysUnsampled s =>
       (a ↦₆₄ 2#64) ∗ chunkedKeysUnsampledAt A (a + 8#64) s ∗ memRegion (a + 64#64) 864
@@ -168,12 +169,12 @@ theorem stackAt_dropStack32_split_sub32 (sp : BitVec 64) :
   have h : (sp - 32#64) - 4128#64 = sp - 4160#64 := by bv_omega
   rw [stackAt_dropStack32_split_bottom (sp - 32#64), h]
 
-def unchunkedHeaderSentToEkSentCt1Received {F : ShaCompress}
+@[expose] def unchunkedHeaderSentToEkSentCt1Received {F : ShaCompress}
     (u : Unchunked.SendEk.HeaderSent (spqrAuthApi F)) :
     Unchunked.SendEk.EkSentCt1Received (spqrAuthApi F) :=
   { epoch := u.epoch, auth := u.auth, dk := u.ek, ct1 := u.dk }
 
-def chunkedKeysSampledToCt1Received {F : ShaCompress}
+@[expose] def chunkedKeysSampledToCt1Received {F : ShaCompress}
     (s : Chunked.SendEk.KeysSampled spqrPolyApi (spqrAuthApi F)) :
     Chunked.SendEk.Ct1Received spqrPolyApi (spqrAuthApi F) :=
   { uc := unchunkedHeaderSentToEkSentCt1Received s.uc, sending_ek := s.sending_hdr }
@@ -201,7 +202,7 @@ theorem unchunkedHeaderReceivedAt_eq_ekSentAt (A : RustAlloc) {F : ShaCompress} 
 /-! ## Flat-Offset Deallocation Helpers (`+8` and `+408`) -/
 
 /-- Flat-offset 2-Vec headers at `a + 8#64` (`56` bytes). -/
-def twoVec8HeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
+@[expose] def twoVec8HeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
   ((a + 8#64) ↦₆₄ g.v1.cap) ∗ ((a + 16#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 24#64) 8 ∗
   ((a + 32#64) ↦₆₄ g.v2.cap) ∗ ((a + 40#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 48#64) 16
 
@@ -232,7 +233,7 @@ theorem twoVec8HeadersAt_entails_memRegion_56 (a : BitVec 64) (g : TwoVecGhost) 
   exact twoVec56HeadersAt_entails_memRegion_56 (a + 8#64) g
 
 /-- Flat-offset 2-Vec headers at `a + 408#64` (`56` bytes). -/
-def twoVec408HeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
+@[expose] def twoVec408HeadersAt (a : BitVec 64) (g : TwoVecGhost) : SepProp :=
   ((a + 408#64) ↦₆₄ g.v1.cap) ∗ ((a + 416#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 424#64) 8 ∗
   ((a + 432#64) ↦₆₄ g.v2.cap) ∗ ((a + 440#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 448#64) 16
 
@@ -263,7 +264,7 @@ theorem twoVec408HeadersAt_entails_memRegion_56 (a : BitVec 64) (g : TwoVecGhost
   exact twoVec56HeadersAt_entails_memRegion_56 (a + 408#64) g
 
 /-- Flat-offset 3-Vec headers at `a + 8#64` (`80` bytes). -/
-def threeVec8HeadersAt (a : BitVec 64) (g : ThreeVecGhost) : SepProp :=
+@[expose] def threeVec8HeadersAt (a : BitVec 64) (g : ThreeVecGhost) : SepProp :=
   ((a + 8#64) ↦₆₄ g.v1.cap) ∗ ((a + 16#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 24#64) 8 ∗
   ((a + 32#64) ↦₆₄ g.v2.cap) ∗ ((a + 40#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 48#64) 8 ∗
   ((a + 56#64) ↦₆₄ g.v3.cap) ∗ ((a + 64#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 72#64) 16
@@ -297,7 +298,7 @@ theorem threeVec8HeadersAt_entails_memRegion_80 (a : BitVec 64) (g : ThreeVecGho
   exact threeVec80HeadersAt_entails_memRegion_80 (a + 8#64) g
 
 /-- Flat-offset 3-Vec headers at `a + 408#64` (`80` bytes). -/
-def threeVec408HeadersAt (a : BitVec 64) (g : ThreeVecGhost) : SepProp :=
+@[expose] def threeVec408HeadersAt (a : BitVec 64) (g : ThreeVecGhost) : SepProp :=
   ((a + 408#64) ↦₆₄ g.v1.cap) ∗ ((a + 416#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 424#64) 8 ∗
   ((a + 432#64) ↦₆₄ g.v2.cap) ∗ ((a + 440#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 448#64) 8 ∗
   ((a + 456#64) ↦₆₄ g.v3.cap) ∗ ((a + 464#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 472#64) 16
@@ -331,7 +332,7 @@ theorem threeVec408HeadersAt_entails_memRegion_80 (a : BitVec 64) (g : ThreeVecG
   exact threeVec80HeadersAt_entails_memRegion_80 (a + 408#64) g
 
 /-- Flat-offset 4-Vec headers at `a + 8#64` (`104` bytes). -/
-def fourVec8HeadersAt (a : BitVec 64) (g : FourVecGhost) : SepProp :=
+@[expose] def fourVec8HeadersAt (a : BitVec 64) (g : FourVecGhost) : SepProp :=
   ((a + 8#64) ↦₆₄ g.v1.cap) ∗ ((a + 16#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 24#64) 8 ∗
   ((a + 32#64) ↦₆₄ g.v2.cap) ∗ ((a + 40#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 48#64) 8 ∗
   ((a + 56#64) ↦₆₄ g.v3.cap) ∗ ((a + 64#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 72#64) 8 ∗
@@ -369,7 +370,7 @@ theorem fourVec8HeadersAt_entails_memRegion_104 (a : BitVec 64) (g : FourVecGhos
   exact fourVec104HeadersAt_entails_memRegion_104 (a + 8#64) g
 
 /-- Flat-offset 4-Vec headers at `a + 408#64` (`104` bytes). -/
-def fourVec408HeadersAt (a : BitVec 64) (g : FourVecGhost) : SepProp :=
+@[expose] def fourVec408HeadersAt (a : BitVec 64) (g : FourVecGhost) : SepProp :=
   ((a + 408#64) ↦₆₄ g.v1.cap) ∗ ((a + 416#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 424#64) 8 ∗
   ((a + 432#64) ↦₆₄ g.v2.cap) ∗ ((a + 440#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 448#64) 8 ∗
   ((a + 456#64) ↦₆₄ g.v3.cap) ∗ ((a + 464#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 472#64) 8 ∗
@@ -407,7 +408,7 @@ theorem fourVec408HeadersAt_entails_memRegion_104 (a : BitVec 64) (g : FourVecGh
   exact fourVec104HeadersAt_entails_memRegion_104 (a + 408#64) g
 
 /-- Flat-offset 5-Vec headers at `a + 408#64` (`128` bytes). -/
-def fiveVec408HeadersAt (a : BitVec 64) (g : FiveVecGhost) : SepProp :=
+@[expose] def fiveVec408HeadersAt (a : BitVec 64) (g : FiveVecGhost) : SepProp :=
   ((a + 408#64) ↦₆₄ g.v1.cap) ∗ ((a + 416#64) ↦₆₄ g.v1.ptr) ∗ memRegion (a + 424#64) 8 ∗
   ((a + 432#64) ↦₆₄ g.v2.cap) ∗ ((a + 440#64) ↦₆₄ g.v2.ptr) ∗ memRegion (a + 448#64) 8 ∗
   ((a + 456#64) ↦₆₄ g.v3.cap) ∗ ((a + 464#64) ↦₆₄ g.v3.ptr) ∗ memRegion (a + 472#64) 8 ∗
@@ -522,7 +523,7 @@ theorem polyEncoder_local2_8_post_join (a tag : BitVec 64) :
 
 /-- Expose the tag (`0#64` or `1#64`) of `polyEncoderAt A a enc` while keeping `polyEncoderAt`
     reconstructible for either `0#64` or `1#64`. -/
-def polyEncoderTaggedRest (A : RustAlloc) (a w : BitVec 64) (enc : PolyEncoder) : SepProp :=
+@[expose] def polyEncoderTaggedRest (A : RustAlloc) (a w : BitVec 64) (enc : PolyEncoder) : SepProp :=
   ∃∗ P : SepProp, ⌜(a ↦₆₄ w) ∗ P ⊢ polyEncoderAt A a enc⌝ ∗ P
 
 theorem polyEncoderAt_expose_tag (A : RustAlloc) (a : BitVec 64) (enc : PolyEncoder) :

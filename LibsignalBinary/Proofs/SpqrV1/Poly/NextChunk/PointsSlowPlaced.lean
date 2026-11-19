@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Pure
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Pure -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsSlow
@@ -18,6 +18,7 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInitPlacedB
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoopPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed Slow-Path Building Blocks
@@ -26,7 +27,7 @@ Relocatable `[LibsignalPlacement]` verification of the slow-path trigger (`+288 
 (`+4424 -> +296`), fast-path prefix (`0..i0`), and `blockA_lscl_placed_sepWPp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

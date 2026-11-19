@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.Repr
-public import LibsignalBinary.Proofs.SpqrV1.GF.DivImpl
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Poly.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.DivImpl -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<Poly>::lagrange_interpolate_complete`: Definitions and Specifications
@@ -22,7 +22,7 @@ focus/update lemmas for `gf16SliceAt` and `ptSliceAt`, and subroutine contracts
 `<spqr::encoding::polynomial::Poly>::lagrange_interpolate_complete` (`0x61ec4`, Block `373`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.LagrangeComplete
 
@@ -39,9 +39,6 @@ open CryptoVerification.SpqrV1.Poly
 abbrev lagrangeCompleteName : String :=
   "<spqr::encoding::polynomial::Poly>::lagrange_interpolate_complete"
 
-theorem lagrangeComplete_fnOff : libsignalSessionCode.fnOff lagrangeCompleteName = 0x5cacc :=
-  ls_lemma% fnOff "<spqr::encoding::polynomial::Poly>::lagrange_interpolate_complete"
-
 /-- Own stack frame of `lagrange_interpolate_complete` (`sub sp, sp, #0x80` = 128 B) plus
 `divImplStack` (`0x70` = 112 B) for the `<GF16>::div_impl` call at `0x61fdc`. -/
 abbrev lagrangeCompleteStack : Nat := 0x80 + divImplStack
@@ -49,7 +46,7 @@ abbrev lagrangeCompleteStack : Nat := 0x80 + divImplStack
 /-! ## Pure model characterizations (`Poly.lagrangeDenominator`, `Poly.lagrangeCompleteDivLoop`) -/
 
 /-- Step function of `Poly.lagrangeDenominator` (`src/encoding/polynomial.rs:206–212`). -/
-def denomStep (pix : GF16) (denominator : GF16) (pj : Pt) : GF16 :=
+@[expose] def denomStep (pix : GF16) (denominator : GF16) (pj : Pt) : GF16 :=
   if pix == pj.x then
     denominator
   else
@@ -60,7 +57,7 @@ theorem lagrangeDenominator_eq_foldl (pix : GF16) (pts : List Pt) :
 
 /-- Total pure version of `Poly.lagrangeCompleteDivLoop` (`src/encoding/polynomial.rs:219–225`),
 stepping `idx` down from `rem` to `1`. -/
-def divLoopPure (pix scale : GF16) : Nat → List GF16 → List GF16
+@[expose] def divLoopPure (pix scale : GF16) : Nat → List GF16 → List GF16
   | 0, coeffs => coeffs
   | idx + 1, coeffs =>
     let cIdx := coeffs[idx + 1]?.getD GF16.ZERO
@@ -104,7 +101,7 @@ theorem lagrangeCompleteDivLoop_eq_ok (pix scale : GF16) (len j rem : Nat) (coef
     · simp [List.length_set, hlen]
 
 /-- Total pure result of `Poly.lagrangeInterpolateComplete self pts i` when `i < pts.length`. -/
-def lagrangeCompletePure (self : Poly) (pts : List Pt) (i : Nat) : Poly :=
+@[expose] def lagrangeCompletePure (self : Poly) (pts : List Pt) (i : Nat) : Poly :=
   match pts[i]? with
   | none => self
   | some pi =>
@@ -143,7 +140,7 @@ theorem lagrangeInterpolateComplete_eq_ok {self : Poly} {pts : List Pt} {i : Nat
 /-! ## Separation-logic slice focus and update lemmas (`gf16SliceAt`, `ptSliceAt`) -/
 
 /-- Context of `gf16SliceAt ptr cs` with the `k`-th element removed. -/
-def gf16SliceRest (ptr : BitVec 64) : List GF16 → Nat → SepProp
+@[expose] def gf16SliceRest (ptr : BitVec 64) : List GF16 → Nat → SepProp
   | [], _ => emp
   | _ :: cs, 0 => gf16SliceAt (ptr + 2#64) cs
   | c :: cs, k + 1 => gf16At c ptr ∗ gf16SliceRest (ptr + 2#64) cs k
@@ -194,7 +191,7 @@ theorem gf16SliceAt_update {cs : List GF16} {k : Nat} (hk : k < cs.length) (ptr 
   simp [List.getElem_set_self]
 
 /-- Context of `ptSliceAt ptr pts` with the `k`-th `Pt.x` field removed. -/
-def ptSliceRestX (ptr : BitVec 64) : List Pt → Nat → SepProp
+@[expose] def ptSliceRestX (ptr : BitVec 64) : List Pt → Nat → SepProp
   | [], _ => emp
   | pt :: pts, 0 => ((ptr + 2#64) ↦₁₆ pt.y.value) ∗ ptSliceAt (ptr + 4#64) pts
   | pt :: pts, k + 1 => ptAt pt ptr ∗ ptSliceRestX (ptr + 4#64) pts k
@@ -226,7 +223,7 @@ theorem ptSliceAt_focus_x {pts : List Pt} {k : Nat} (hk : k < pts.length) (ptr :
       ac_rfl
 
 /-- Context of `ptSliceAt ptr pts` with the `k`-th `Pt.y` field removed. -/
-def ptSliceRestY (ptr : BitVec 64) : List Pt → Nat → SepProp
+@[expose] def ptSliceRestY (ptr : BitVec 64) : List Pt → Nat → SepProp
   | [], _ => emp
   | pt :: pts, 0 => (ptr ↦₁₆ pt.x.value) ∗ ptSliceAt (ptr + 4#64) pts
   | pt :: pts, k + 1 => ptAt pt ptr ∗ ptSliceRestY (ptr + 4#64) pts k
@@ -273,39 +270,9 @@ structure LagrangeCompleteArgs where
   /-- Point index `i` (`x4 = i`, with `i < pts.length`). -/
   i : Nat
 
-/-- Specification of `<spqr::encoding::polynomial::Poly>::lagrange_interpolate_complete` (`0x61ec4`)
-under `tokenInitAt b`.
-Given `self.coefficients` at `(x0 = coeffsPtr, x1 = self.coefficients.length)`, `pts` at
-`(x2 = ptsPtr, x3 = pts.length)`, and `x4 = i` with `i < pts.length`, mutates `self.coefficients`
-in-place to `(lagrangeCompletePure self pts i).coefficients` (which equals the `.ok` result of
-`Poly.lagrangeInterpolateComplete self pts i` by `lagrangeInterpolateComplete_eq_ok`). -/
-def lagrangeCompleteSpec (b : BitVec 64) : Spec LagrangeCompleteArgs where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x0 = x.coeffsPtr ∧
-      s.readReg64 .x1 = BitVec.ofNat 64 x.self.coefficients.length ∧
-      s.readReg64 .x2 = x.ptsPtr ∧
-      s.readReg64 .x3 = BitVec.ofNat 64 x.pts.length ∧
-      s.readReg64 .x4 = BitVec.ofNat 64 x.i ∧
-      x.i < x.pts.length ∧
-      2 * x.self.coefficients.length < 2 ^ 64 ∧
-      4 * x.pts.length < 2 ^ 64⌝ ∗
-      gf16SliceAt x.coeffsPtr x.self.coefficients ∗
-      ptSliceAt x.ptsPtr x.pts ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      stackAt s.sp lagrangeCompleteStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      gf16SliceAt x.coeffsPtr (lagrangeCompletePure x.self x.pts x.i).coefficients ∗
-      ptSliceAt x.ptsPtr x.pts ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      stackAt s0.sp lagrangeCompleteStack
-
 /-- Relocatable (`[LibsignalPlacement]`) specification of
 `<spqr::encoding::polynomial::Poly>::lagrange_interpolate_complete` (Block `373`). -/
-def lagrangeCompletePlacedSpec [LibsignalPlacement] : Spec LagrangeCompleteArgs where
+@[expose] def lagrangeCompletePlacedSpec [LibsignalPlacement] : Spec LagrangeCompleteArgs where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.coeffsPtr ∧
       s.readReg64 .x1 = BitVec.ofNat 64 x.self.coefficients.length ∧
@@ -329,11 +296,6 @@ def lagrangeCompletePlacedSpec [LibsignalPlacement] : Spec LagrangeCompleteArgs 
       stackAt s0.sp lagrangeCompleteStack
 
 /-! ## Pure arithmetic, bitvector, and stack helpers -/
-
-theorem aligned_86bd8 (b : BitVec 64) (hb : b &&& 0xfff#64 = 0#64) :
-    MemWidth.isAligned .W32 (b + bv% (ls_xref% 0x5e628 0x5e62c)) = true := by
-  simp only [MemWidth.isAligned, beq_iff_eq]
-  revert hb; bv_bits
 
 theorem ptr_add_four_mul_ne (ptr : BitVec 64) {j n : Nat} (hjn : j < n) (hn : n < 2 ^ 62) :
     ptr + BitVec.ofNat 64 (4 * j) ≠ ptr + BitVec.ofNat 64 (4 * n) := by

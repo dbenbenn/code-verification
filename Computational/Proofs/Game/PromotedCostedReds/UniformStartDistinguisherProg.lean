@@ -9,10 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
-public import Computational.Proofs.E2E.Dsl.DrSessionSim
+public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 import Computational.Proofs.E2E.ComposedPrefixHelpers
+public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.SpqrSimRecv -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.SpqrSimSend -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.UniformStart -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.SpqrSimChain
+import Computational.Proofs.E2E.Dsl.SpqrSimHist
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.Bridge
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Promoted `CostedReduction` Witness for `uniformStartDistinguisher`
@@ -21,7 +32,7 @@ Constructs the `CostedReduction` witness `uniformStartRed` for `uniformStartDist
 proves its `GRedBounded` cost bounds and `.eval` equivalence.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -1080,7 +1091,7 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 local notation "ESig" => e2eSig ℓ
 local notation "EOps" => e2eOps ℓ zeroPqxdhPrims C K decT encT
 
-def noAliceBelow10E {Γ : List (Ty ESig)}
+@[expose] def noAliceBelow10E {Γ : List (Ty ESig)}
     (gsE : Expr EOps Γ (e2eGsTy ℓ)) (pE : Expr EOps Γ .bool) : Expr EOps Γ .bool :=
   .not (.and (.not pE) (.lt (.fst (e2eGsEpoch gsE)) (.nat 10)))
 
@@ -1110,7 +1121,7 @@ theorem size_noAliceBelow10E_le {Γ : List (Ty ESig)}
   simp only [noAliceBelow10E, e2eGsEpoch, Expr.size, hb10]
   omega
 
-def r1CrArmC {ι : Type} {T : OracleSpec ι} {I : Iface ESig T}
+@[expose] def r1CrArmC {ι : Type} {T : OracleSpec ι} {I : Iface ESig T}
     (q : ℕ) {Γ : List (Ty ESig)}
     (gsE : Expr EOps Γ (e2eGsTy ℓ)) (crArg : Expr EOps Γ .bool) :
     Comp EOps I Γ (.prod (smRT GhostStT) (e2eGsTy ℓ)) :=
@@ -1222,7 +1233,7 @@ theorem r1CrArmC_eval {ι : Type} {T : OracleSpec ι} {I : Iface ESig T}
       ρ₁ st.st party rfl rfl
     simp only [eval_smRCorrE, some_eval, hpGet, hAfter]
 
-def r1OracleStepE2EC (q Δ qep : ℕ) {Γ : List (Ty ESig)}
+@[expose] def r1OracleStepE2EC (q Δ qep : ℕ) {Γ : List (Ty ESig)}
     (gsE : Expr EOps Γ (e2eGsTy ℓ)) (qryE : Expr EOps Γ smQT) :
     Comp EOps (coinE2EIface (coinOnlyIface ℓ Pt)) Γ (.prod (smRT GhostStT) (e2eGsTy ℓ)) :=
   let hooks := spqrDslHooks ℓ zeroPqxdhPrims C K decT encT
@@ -1353,7 +1364,7 @@ variable (C : Crypto) (K : MlKem) {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sample
   (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
   (idA idB : IdentityKey) (lam : Pt) (ℓ q qep : ℕ)
 
-def uniformStartRedReal :
+@[expose] def uniformStartRedReal :
     CostedReduction (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
       (coinOnlyIface ℓ Pt)
       (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
@@ -1371,7 +1382,7 @@ def uniformStartRedReal :
       (boolEq (e2eGsB .v0) .v1) (e2eGsWin .v0)))
 
 /-- Promoted `CostedReduction` for `uniformStartDistinguisher`, guarded by `if ℓ < 10 ^ 6`. -/
-def uniformStartRed :
+@[expose] def uniformStartRed :
     CostedReduction (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam)
       (coinOnlyIface ℓ Pt)
       (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)

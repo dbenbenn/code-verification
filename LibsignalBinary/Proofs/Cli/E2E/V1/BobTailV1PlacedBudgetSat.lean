@@ -12,6 +12,9 @@ module
 public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1PlacedBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetSat -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudgetSat
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # `HookSat` Sibling of `BobTailV1PlacedBudget` (`BobTailV1PlacedBudgetSat`)
@@ -37,7 +40,6 @@ open CryptoVerification.E2E.Pqxdh.Initiator
 open CryptoVerification.E2E.Pqxdh.Initiator.Model (acceptKeys)
 open CryptoVerification.E2E.Pqxdh.ResponderCore
   (PrimitivesMatchCrypto bobParamsFieldsAt)
-open CryptoVerification.E2E.Pqxdh.ResponderClosure (stageP2bStack)
 open CryptoVerification.SpqrV1.Top.InitialState (InitialStateGhost)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget)
@@ -51,7 +53,7 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollariesBudgetSat
 open LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget (InitialStateEnv)
 open LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1PlacedBudget
   (BobSessionV1Post InitBobV1Env InitBobV1EnvOfEnv
-   InitialStateMemInvPlacedOk InitialStateMemInvPlacedOkOfEnv
+   InitialStateMemInvPlacedOk InitialStateMemInvPlacedOkOfEnv bobTailV1PlacedStack
    hookSat_framelessMemcpy_of_sessionMemcpyRegionBudget
    hookSat_sessionShimBudget_of_noAllocShimBudget
    initializeBobSession_ok_v1_frozen_placed_of_accept_of_session)
@@ -102,7 +104,7 @@ public theorem initializeBobSession_ok_v1_full_placed_of_env_of_session_sat [Lib
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F (AcceptOptFieldsEnv P) InitEnv s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_frozen_placed_of_accept_of_session hWF
@@ -136,7 +138,7 @@ public theorem initializeBobSession_ok_v1_full_placed_of_session_sat [LibsignalF
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F (AcceptOptFieldsEnv P) (InitialStateEnv F) s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_full_placed_of_env_of_session_sat hWF hP hH hmemcpy hinit
@@ -168,7 +170,7 @@ public theorem initializeBobSession_ok_v1_full_placed_of_env_std_sat [LibsignalF
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F (AcceptOptFieldsEnv P) InitEnv s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_full_placed_of_env_of_session_sat hWF hP hH
@@ -199,7 +201,7 @@ public theorem initializeBobSession_ok_v1_full_placed_std_sat [LibsignalFullPlac
     SepWPp (lsProg_75 H) (s0.readReg64 (.gpr 30#5)) s0
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (stageP2bStack + 0x700) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp bobTailV1PlacedStack ∗ A.pool lim st s0 ∗ Frame)
       (BobSessionV1Post A lim F (AcceptOptFieldsEnv P) (InitialStateEnv F) s0 st inp ikBPk spkBPk
         argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr outPtr drKey Frame) Qp :=
   initializeBobSession_ok_v1_full_placed_of_env_std_sat hWF hP hH hmemcpy hinit

@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatements
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatements
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
 import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort
 import Computational.Proofs.CryptoGames.SM.Theorem1
 import Computational.Proofs.SignalWireRoundTrip
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.IndexRestrictions
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.PubToAD
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.IndexRestrictions
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.PubToAD
+public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
+public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
+public import Computational.Proofs.CryptoGames.SM.ReductionsQueries -- proof-setup: allow-public-import
 
 /-!
 # FS-AEAD instance bound and wire length lemmas at prost's codec
@@ -26,7 +29,7 @@ bound at `protoSignalCodec` via `signalRoundTripShort_proto` and `signalEncodeFi
 relates `macForgeryProb` and `ratchetKeyAdmissible` to their length-unguarded forms.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 

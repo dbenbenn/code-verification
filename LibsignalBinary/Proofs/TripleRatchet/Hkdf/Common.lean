@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.HkdfCodeSym
-public import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.HkdfCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 public import LibsignalBinary.Proofs.TripleRatchet.Hmac.Defs
 public import LibsignalBinary.Proofs.AesCbc.LibsignalAesCbcProofDefs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import ProofLib.SepLogic.WPFrozen
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
 
 /-!
 # Shared HKDF Symbolic-Execution and Framing Infrastructure
@@ -24,7 +26,7 @@ Defines `RunsTo`, `Frame`, `HmacSt`, `IsBlock`, and the `FinPre`/`FinPost`
 cut invariants shared across the `finalize_fixed`, `extract`, and `expand_multi_info` proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
@@ -48,7 +50,7 @@ set_option maxHeartbeats 400000
 /-! ## `CalleeSaved`, `VCalleeSaved`, `TraceEq`, and `RunsTo` -/
 
 /-- The callee-saved GPRs `x19`–`x30` and `sp` are preserved between `s` and `s'`. -/
-def CalleeSaved (s s' : State) : Prop :=
+@[expose] def CalleeSaved (s s' : State) : Prop :=
   s'.sp = s.sp ∧
     ∀ r ∈ [Reg.x19, .x20, .x21, .x22, .x23, .x24, .x25, .x26, .x27, .x28, .x29, .lr],
       s'.readReg64 r = s.readReg64 r
@@ -67,7 +69,7 @@ theorem CalleeSaved.x28 {s s' : State} (h : CalleeSaved s s') : s'.readReg64 .x2
 theorem CalleeSaved.x29 {s s' : State} (h : CalleeSaved s s') : s'.readReg64 .x29 = s.readReg64 .x29 := h.2 .x29 (by simp)
 theorem CalleeSaved.lr  {s s' : State} (h : CalleeSaved s s') : s'.readReg64 .lr  = s.readReg64 .lr  := h.2 .lr  (by simp)
 
-def TraceEq (s₀ s : State) : Prop :=
+@[expose] def TraceEq (s₀ s : State) : Prop :=
   s.trace = s₀.trace ∧ calleeSavedVRegs s = calleeSavedVRegs s₀
 
 theorem TraceEq.refl (s : State) : TraceEq s s := ⟨rfl, rfl⟩
@@ -108,7 +110,7 @@ theorem CallingConventionPreserved_of_calleeSaved {s₀ sf : State} (h : CalleeS
 
 /-- Symbolic execution from `s` in `prog` reaches some `s'` via `Steps`, preserving `trace`
 relative to `s₀`, preserving `CodeLoaded`, and establishing `P s'`. -/
-def RunsToFrom (prog : Program) (s₀ s : State) (P : State → Prop) : Prop :=
+@[expose] def RunsToFrom (prog : Program) (s₀ s : State) (P : State → Prop) : Prop :=
   prog.CodeLoaded s.mem →
     ∃ s', Steps prog s s' ∧ TraceEq s₀ s' ∧ P s' ∧ prog.CodeLoaded s'.mem
 
@@ -202,17 +204,26 @@ end RunsTo
 
 /-! ## Extern Hook Lookups and Step Lemmas -/
 
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAt_fetch (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (addr : BitVec 64) :
-    (tripleRatchetProgAt b C ctl abs).fetch addr =
-      (libsignalSessionCode.rebase b (Rust.withPanics (tripleRatchetExterns C ctl abs))).fetch addr := rfl
+/-- Synthetic cut-point base offset for `expand_multi_info` (`108660`). -/
+macro:max "offExpandMultiInfo" : term => `(108660)
 
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAt_fetch_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State)) (addr : BitVec 64) :
-    (trTrapProgAt b C abs).fetch addr =
-      (libsignalSessionCode.rebase b (Rust.withPanics (trTrapExterns C abs))).fetch addr := rfl
+/-- Synthetic cut-point base offset for `extract` (`109880`). -/
+macro:max "offExtract" : term => `(109880)
+
+/-- Synthetic cut-point base offset for `new_from_slice` (`177300`). -/
+macro:max "offNewFromSlice1" : term => `(177300)
+
+/-- Synthetic cut-point base offset for `finalize_fixed` (`198500`). -/
+macro:max "offFinalizeFixed1" : term => `(198500)
+
+/-- Synthetic cut-point base offset for `memset` (`558372`). -/
+macro:max "offMemset" : term => `(558372)
+
+/-- Synthetic cut-point base offset for `memcpy` (`558412`). -/
+macro:max "offMemcpy" : term => `(558412)
+
+/-- Synthetic cut-point base offset for `compress256` (`558584`). -/
+macro:max "offCompress256" : term => `(558584)
 
 theorem hookMemcpy_eq_memcpyHook :
     ProofLib.hookMemcpy = memcpyHook := rfl
@@ -227,62 +238,7 @@ theorem hookMemset_eq_memsetHook :
     State.setMem, State.setPC, State.readReg32, State.readReg64]
   simp only [truncate8_truncate32]
 
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAt_externAt_272972_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State)) :
-    (trTrapProgAt b C abs).externAt? (b + bv% (ls_off% "memset")) = some memsetHook := by
-  rw [show (bv% (ls_off% "memset") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "memset")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "memset")), (ls_hook% "memset"),
-    withPanics_trTrap_ne C abs (by decide)]
-  simp [Rust.withPanics, Rust.isPanicSymbol, tripleRatchetExterns, LibsignalSession.sessionExterns,
-    hookMemset_eq_memsetHook]
-
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAt_externAt_272972 (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    (tripleRatchetProgAt b C ctl abs).externAt? (b + bv% (ls_off% "memset")) = some memsetHook := by
-  rw [show (bv% (ls_off% "memset") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "memset")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "memset")), (ls_hook% "memset")]
-  simp [Rust.withPanics, Rust.isPanicSymbol, tripleRatchetExterns, LibsignalSession.sessionExterns,
-    hookMemset_eq_memsetHook]
-
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAt_externAt_273012_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State)) :
-    (trTrapProgAt b C abs).externAt? (b + bv% (ls_off% "memcpy")) = some memcpyHook := by
-  rw [show (bv% (ls_off% "memcpy") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "memcpy")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "memcpy")), (ls_hook% "memcpy"),
-    withPanics_trTrap_ne C abs (by decide)]
-  simp [Rust.withPanics, Rust.isPanicSymbol, tripleRatchetExterns, LibsignalSession.sessionExterns,
-    hookMemcpy_eq_memcpyHook]
-
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAt_externAt_273012 (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    (tripleRatchetProgAt b C ctl abs).externAt? (b + bv% (ls_off% "memcpy")) = some memcpyHook := by
-  rw [show (bv% (ls_off% "memcpy") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "memcpy")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "memcpy")), (ls_hook% "memcpy")]
-  simp [Rust.withPanics, Rust.isPanicSymbol, tripleRatchetExterns, LibsignalSession.sessionExterns,
-    hookMemcpy_eq_memcpyHook]
-
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAt_externAt_273212_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State)) :
-    (trTrapProgAt b C abs).externAt? (b + bv% (ls_off% "sha2::sha256::compress256")) = some (compress256Hook C.F) := by
-  rw [show (bv% (ls_off% "sha2::sha256::compress256") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "sha2::sha256::compress256")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "sha2::sha256::compress256")), (ls_hook% "sha2::sha256::compress256"),
-    withPanics_trTrap_ne C abs (by decide)]
-  simp [Rust.withPanics, Rust.isPanicSymbol, tripleRatchetExterns, LibsignalSession.sessionExterns]
-
-@[scoped simp, arm64_norm]
-theorem tripleRatchetProgAt_externAt_273212 (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    (tripleRatchetProgAt b C ctl abs).externAt? (b + bv% (ls_off% "sha2::sha256::compress256")) = some (compress256Hook C.F) := by
-  rw [show (bv% (ls_off% "sha2::sha256::compress256") : BitVec 64) = BitVec.ofNat 64 (num% (ls_off% "sha2::sha256::compress256")) from rfl,
-    Program.externAt?_rebase_add (num% (ls_off% "sha2::sha256::compress256")), (ls_hook% "sha2::sha256::compress256")]
-  simp [Rust.withPanics, Rust.isPanicSymbol, tripleRatchetExterns, LibsignalSession.sessionExterns]
-
-/-- Take one ordinary instruction step of `RunsToFrom` on `tripleRatchetProgAt` and normalize the resulting state. -/
+/-- Take one ordinary instruction step of `RunsToFrom` and normalize the resulting state. -/
 macro "s2_step" : tactic =>
   `(tactic| (
     refine RunsTo.step (inst := ?inst) ?hrun ?hfetch ?_
@@ -378,7 +334,7 @@ theorem shaStateBytes_eq_append (st : ShaState) :
   simp [List.flatMap_cons, List.flatMap_nil, List.append_assoc]
 
 /-- The digest bytes of a state: each word big-endian (`sha256With`'s output). -/
-def digestBytes (h : ShaState) : List (BitVec 8) :=
+@[expose] def digestBytes (h : ShaState) : List (BitVec 8) :=
   h.toList.flatMap (toBEBytes 4)
 
 theorem digestBytes_eq_append (st : ShaState) :
@@ -502,180 +458,10 @@ theorem memcpyHook_eq {s : State} {dst src lr : BitVec 64} {len : ℕ} {bs : Lis
     simpa [arm64_norm] using hlr
   rw [hlr', hx0, hx1, hx2, hread]
 
-theorem s2_compress256_step_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State))
-    {s₀ s : State} {Q : State → Prop}
-    {stPtr blkPtr lr : BitVec 64} {st : ShaState} {blk : List (BitVec 8)}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "sha2::sha256::compress256"))
-    (hx0 : s.readReg64 .x0 = stPtr)
-    (hx1 : s.readReg64 .x1 = blkPtr)
-    (hx2 : s.readReg64 .x2 = 1#64)
-    (hlr : s.readReg64 .lr = lr)
-    (hst : s.mem.readBytes stPtr 32 = shaStateBytes st)
-    (hblk : s.mem.readBytes blkPtr 64 = blk)
-    (hlen : blk.length = 64)
-    (hrw : s.mem.RW stPtr 32)
-    (h : RunsToFrom (trTrapProgAt b C abs) s₀
-      ((s.setMem (s.mem.writeBytes stPtr (shaStateBytes (C.F st blk)))).setPC lr) Q) :
-    RunsToFrom (trTrapProgAt b C abs) s₀ s Q := by
-  have hcan : s.mem.canWrite stPtr (shaStateBytes (C.F st blk)).length = true := by
-    rw [shaStateBytes_length]
-    exact hrw.canWrite_sub (by simp) (by decide)
-  have hhook : (trTrapProgAt b C abs).externAt? s.pc = some (compress256Hook C.F) := by
-    rw [hpc]; exact tripleRatchetProgAt_externAt_273212_trap b C abs
-  have hstate := compress256Hook_eq C.F hx0 hx1 hx2 hlr hst hblk hlen
-  have hkeep : s.mem.KeepsFrozen (compress256Hook C.F s).mem := by
-    rw [hstate]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (compress256Hook C.F s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-theorem s2_compress256_step (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    {s₀ s : State} {Q : State → Prop}
-    {stPtr blkPtr lr : BitVec 64} {st : ShaState} {blk : List (BitVec 8)}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "sha2::sha256::compress256"))
-    (hx0 : s.readReg64 .x0 = stPtr)
-    (hx1 : s.readReg64 .x1 = blkPtr)
-    (hx2 : s.readReg64 .x2 = 1#64)
-    (hlr : s.readReg64 .lr = lr)
-    (hst : s.mem.readBytes stPtr 32 = shaStateBytes st)
-    (hblk : s.mem.readBytes blkPtr 64 = blk)
-    (hlen : blk.length = 64)
-    (hrw : s.mem.RW stPtr 32)
-    (h : RunsToFrom (tripleRatchetProgAt b C ctl abs) s₀
-      ((s.setMem (s.mem.writeBytes stPtr (shaStateBytes (C.F st blk)))).setPC lr) Q) :
-    RunsToFrom (tripleRatchetProgAt b C ctl abs) s₀ s Q := by
-  have hcan : s.mem.canWrite stPtr (shaStateBytes (C.F st blk)).length = true := by
-    rw [shaStateBytes_length]
-    exact hrw.canWrite_sub (by simp) (by decide)
-  have hhook : (tripleRatchetProgAt b C ctl abs).externAt? s.pc = some (compress256Hook C.F) := by
-    rw [hpc]; exact tripleRatchetProgAt_externAt_273212 b C ctl abs
-  have hstate := compress256Hook_eq C.F hx0 hx1 hx2 hlr hst hblk hlen
-  have hkeep : s.mem.KeepsFrozen (compress256Hook C.F s).mem := by
-    rw [hstate]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (compress256Hook C.F s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-theorem s2_memset_step_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State))
-    {s₀ s : State} {Q : State → Prop}
-    {dst lr : BitVec 64} {len : ℕ}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "memset"))
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : (s.readReg64 .x1).truncate 8 = 0#8)
-    (hx2 : (s.readReg64 .x2).toNat = len)
-    (hlr : s.readReg64 .lr = lr)
-    (hrw : s.mem.RW dst len)
-    (h : RunsToFrom (trTrapProgAt b C abs) s₀
-      ((s.setMem (s.mem.writeBytes dst (List.replicate len 0#8))).setPC lr) Q) :
-    RunsToFrom (trTrapProgAt b C abs) s₀ s Q := by
-  have hlen_le : len ≤ 2 ^ 64 := by rw [← hx2]; have := (s.readReg64 .x2).isLt; omega
-  have hcan : s.mem.canWrite dst (List.replicate len 0#8).length = true := by
-    rw [List.length_replicate]
-    exact hrw.canWrite_sub (by simp) hlen_le
-  have hhook : (trTrapProgAt b C abs).externAt? s.pc = some memsetHook := by
-    rw [hpc]; exact tripleRatchetProgAt_externAt_272972_trap b C abs
-  have hstate := memsetHook_eq hx0 hx1 hx2 hlr
-  have hkeep : s.mem.KeepsFrozen (memsetHook s).mem := by
-    rw [hstate]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (memsetHook s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-theorem s2_memset_step (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    {s₀ s : State} {Q : State → Prop}
-    {dst lr : BitVec 64} {len : ℕ}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "memset"))
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : (s.readReg64 .x1).truncate 8 = 0#8)
-    (hx2 : (s.readReg64 .x2).toNat = len)
-    (hlr : s.readReg64 .lr = lr)
-    (hrw : s.mem.RW dst len)
-    (h : RunsToFrom (tripleRatchetProgAt b C ctl abs) s₀
-      ((s.setMem (s.mem.writeBytes dst (List.replicate len 0#8))).setPC lr) Q) :
-    RunsToFrom (tripleRatchetProgAt b C ctl abs) s₀ s Q := by
-  have hlen_le : len ≤ 2 ^ 64 := by rw [← hx2]; have := (s.readReg64 .x2).isLt; omega
-  have hcan : s.mem.canWrite dst (List.replicate len 0#8).length = true := by
-    rw [List.length_replicate]
-    exact hrw.canWrite_sub (by simp) hlen_le
-  have hhook : (tripleRatchetProgAt b C ctl abs).externAt? s.pc = some memsetHook := by
-    rw [hpc]; exact tripleRatchetProgAt_externAt_272972 b C ctl abs
-  have hstate := memsetHook_eq hx0 hx1 hx2 hlr
-  have hkeep : s.mem.KeepsFrozen (memsetHook s).mem := by
-    rw [hstate]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (memsetHook s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-theorem s2_memcpy_step_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State))
-    {s₀ s : State} {Q : State → Prop}
-    {dst src lr : BitVec 64} {len : ℕ} {bs : List (BitVec 8)}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "memcpy"))
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : s.readReg64 .x1 = src)
-    (hx2 : (s.readReg64 .x2).toNat = len)
-    (hlr : s.readReg64 .lr = lr)
-    (hread : s.mem.readBytes src len = bs)
-    (hrw : s.mem.RW dst len)
-    (h : RunsToFrom (trTrapProgAt b C abs) s₀
-      ((s.setMem (s.mem.writeBytes dst bs)).setPC lr) Q) :
-    RunsToFrom (trTrapProgAt b C abs) s₀ s Q := by
-  have hlen_bs : bs.length = len := by rw [← hread, Memory.readBytes_length]
-  have hlen_le : len ≤ 2 ^ 64 := by rw [← hx2]; have := (s.readReg64 .x2).isLt; omega
-  have hcan : s.mem.canWrite dst bs.length = true := by
-    rw [hlen_bs]
-    exact hrw.canWrite_sub (by simp) hlen_le
-  have hhook : (trTrapProgAt b C abs).externAt? s.pc = some memcpyHook := by
-    rw [hpc]; exact tripleRatchetProgAt_externAt_273012_trap b C abs
-  have hstate := memcpyHook_eq hx0 hx1 hx2 hlr hread
-  have hkeep : s.mem.KeepsFrozen (memcpyHook s).mem := by
-    rw [hstate]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (memcpyHook s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
-theorem s2_memcpy_step (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    {s₀ s : State} {Q : State → Prop}
-    {dst src lr : BitVec 64} {len : ℕ} {bs : List (BitVec 8)}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b + bv% (ls_off% "memcpy"))
-    (hx0 : s.readReg64 .x0 = dst)
-    (hx1 : s.readReg64 .x1 = src)
-    (hx2 : (s.readReg64 .x2).toNat = len)
-    (hlr : s.readReg64 .lr = lr)
-    (hread : s.mem.readBytes src len = bs)
-    (hrw : s.mem.RW dst len)
-    (h : RunsToFrom (tripleRatchetProgAt b C ctl abs) s₀
-      ((s.setMem (s.mem.writeBytes dst bs)).setPC lr) Q) :
-    RunsToFrom (tripleRatchetProgAt b C ctl abs) s₀ s Q := by
-  have hlen_bs : bs.length = len := by rw [← hread, Memory.readBytes_length]
-  have hlen_le : len ≤ 2 ^ 64 := by rw [← hx2]; have := (s.readReg64 .x2).isLt; omega
-  have hcan : s.mem.canWrite dst bs.length = true := by
-    rw [hlen_bs]
-    exact hrw.canWrite_sub (by simp) hlen_le
-  have hhook : (tripleRatchetProgAt b C ctl abs).externAt? s.pc = some memcpyHook := by
-    rw [hpc]; exact tripleRatchetProgAt_externAt_273012 b C ctl abs
-  have hstate := memcpyHook_eq hx0 hx1 hx2 hlr hread
-  have hkeep : s.mem.KeepsFrozen (memcpyHook s).mem := by
-    rw [hstate]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (memcpyHook s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
-
 /-! ## `Frame`, `HmacSt`, and `hmacWith_short` -/
 
 /-- `m'` agrees with `m` (bytes and permissions) outside the regions `rs`. -/
-def Frame (m m' : Memory) (rs : List (BitVec 64 × ℕ)) : Prop :=
+@[expose] def Frame (m m' : Memory) (rs : List (BitVec 64 × ℕ)) : Prop :=
   (∀ a : BitVec 64, (∀ r ∈ rs, OutsideRegion r.1 r.2 a) → m'.read8 a = m.read8 a) ∧
     m'.perm = m.perm ∧
     (∀ a : BitVec 64, (∀ r ∈ rs, OutsideRegion r.1 r.2 a) → m'.isLazyFree a = m.isLazyFree a) ∧
@@ -686,7 +472,7 @@ abbrev RW (m : Memory) (a : BitVec 64) (n : ℕ) : Prop := Memory.RW m a n
 
 /-- **`HmacSt m a F key msg`**: the `Hmac<Sha256>` (0x90 bytes) at `a` is the MAC state of key
 `key` after absorbing `msg`, with `|msg| < 64`. -/
-def HmacSt (m : Memory) (a : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def HmacSt (m : Memory) (a : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) : Prop :=
   msg.length < 64 ∧
   m.readBytes a msg.length = msg ∧
@@ -698,12 +484,12 @@ def HmacSt (m : Memory) (a : BitVec 64) (F : ShaState → List (BitVec 8) → Sh
 
 /-- The last (only) message block of the inner hash for `|msg| < 56` after the key block:
 `msg ‖ 0x80 ‖ 0… ‖ BE64(8·(64 + |msg|))`, 64 bytes. -/
-def innerLastBlock (msg : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def innerLastBlock (msg : List (BitVec 8)) : List (BitVec 8) :=
   msg ++ [0x80] ++ List.replicate (55 - msg.length) 0 ++
     toBEBytes 8 (BitVec.ofNat 64 (8 * (64 + msg.length)))
 
 /-- The outer block for a 32-byte inner digest `d`: `d ‖ 0x80 ‖ 0×23 ‖ BE64(768)`. -/
-def outerBlock (d : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def outerBlock (d : List (BitVec 8)) : List (BitVec 8) :=
   d ++ [0x80] ++ List.replicate 23 0 ++ toBEBytes 8 (BitVec.ofNat 64 768)
 
 @[scoped simp] private theorem chunks64_length (bs : List (BitVec 8)) :
@@ -902,7 +688,7 @@ theorem Frame.trans_agreesOutside_sub {m₁ m₂ m₃ : Memory} {rs : List (BitV
     Frame m₁ m₃ rs :=
   Frame.trans_agreesOutside hf hmem (AgreesOutside.mono_sub hag hsub)
 
-def Memory.splice (m0 mf : Memory) (b : BitVec 64) (n : Nat) : Memory :=
+@[expose] def Memory.splice (m0 mf : Memory) (b : BitVec 64) (n : Nat) : Memory :=
   ⟨fun a => if InRegion b n a then mf.cells a else m0.cells a⟩
 
 @[simp] theorem Memory.cells_splice (m0 mf : Memory) (b : BitVec 64) (n : Nat) (a : BitVec 64) :
@@ -997,7 +783,7 @@ theorem Frame.splice_frame_three {m0 mf : Memory} {b1 b2 b3 : BitVec 64} {n1 n2 
     · exact hf.2.2.2.2 a
 
 /-- Saved callee-saved registers in the upper 80 bytes `[fsp + 0x40, fsp + 0x90)` of the frame. -/
-def FinSaved (s0 : State) (fsp : BitVec 64) (m : Memory) : Prop :=
+@[expose] def FinSaved (s0 : State) (fsp : BitVec 64) (m : Memory) : Prop :=
   m.read64 (fsp + 0x40#64) = s0.readReg64 .x29 ∧
   m.read64 (fsp + 0x48#64) = s0.readReg64 .lr ∧
   m.read64 (fsp + 0x50#64) = s0.readReg64 .x25 ∧
@@ -1214,17 +1000,17 @@ theorem HmacSt.of_copy_19 {m₀ m : Memory} {src dst : BitVec 64}
   · rw [show (0x88#64 : BitVec 64) = 136#64 from rfl, h136, ← hcnt2]
 
 /-- The 32-byte HMAC key used by `hkdfExtract`: `s.toList` if `salt = some s`, or 32 zero bytes. -/
-def effectiveSalt (salt : Salt) : List (BitVec 8) :=
+@[expose] def effectiveSalt (salt : Salt) : List (BitVec 8) :=
   (salt.map List.Vector.toList).getD (List.replicate 32 0#8)
 
 /-! ## `finalize_fixed` Cut Invariants -/
 
 namespace FinalizeFixedProof
 
-/-- Bundled preconditions of `finalize_fixed` at entry state `s0` (`0x30680`). -/
+/-- Bundled preconditions of `finalize_fixed` at entry state `s0`. -/
 structure FinPre (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) (s0 : State) : Prop where
-  pc_eq        : s0.pc = b + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]")
+  pc_eq        : s0.pc = b + bv% offFinalizeFixed1
   status       : s0.status = .Running
   key_le       : key.length ≤ 64
   msg_lt       : msg.length < 56
@@ -1237,7 +1023,7 @@ structure FinPre (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
   disj_hm_fsp  : DisjointRegions (s0.readReg64 .x1) 0x90 (s0.sp - 144#64) 144
   sp_aligned   : (s0.sp &&& 0b1111#64) = 0#64
 
-/-- Common invariant after the prologue (`0x3069c .. 0x30824`). -/
+/-- Common invariant after the prologue. -/
 structure FinCommon (s0 s : State) : Prop where
   status : s.status = .Running
   sp_eq  : s.sp = s0.sp - 144#64
@@ -1250,7 +1036,7 @@ structure FinCommon (s0 s : State) : Prop where
     [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 144#64, 144)]
 
 /-- Postcondition of `finalize_fixed` at return (`s'.pc = s0.readReg64 .lr`). -/
-def FinPost (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def FinPost (F : ShaState → List (BitVec 8) → ShaState)
     (key msg : List (BitVec 8)) (s0 s' : State) : Prop :=
   s'.pc = s0.readReg64 .lr ∧
   s'.status = .Running ∧
@@ -1258,13 +1044,6 @@ def FinPost (F : ShaState → List (BitVec 8) → ShaState)
   s'.mem.readBytes (s0.readReg64 .x0) 32 = hmacWith F key msg ∧
   Frame s0.mem s'.mem
     [(s0.readReg64 .x0, 32), (s0.readReg64 .x1, 0x90), (s0.sp - 144#64, 144)]
-
-/-- Packaged `RunsTo` contract for `Hmac<Sha256>::finalize_fixed` on `tripleRatchetProgAt`. -/
-def FinalizeFixedRunsTo (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  ∀ {key msg : List (BitVec 8)} {s0 : State},
-    FinPre b C.F key msg s0 →
-    RunsTo (tripleRatchetProgAt b C ctl abs) s0 (FinPost C.F key msg s0)
 
 end FinalizeFixedProof
 
@@ -1385,11 +1164,11 @@ class HkdfPlacedHooks (F : ShaCompress) (H : LibsignalHooks) : Prop where
 
 theorem ls_externAt?_of_mem [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide)
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
-  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem hmem
-  exact ls_externAt?_of_blockProg (k := k) (by simp [hk, hget]) hi hunmut
+  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_externAt?_of_blockProg (k := k) (by simp [hk, hget]) hi hunmut (hhooked := hmem)
 
 theorem s2_compress256_step_placed [LibsignalPlacement] {prog : Program} {i : Nat}
     (C : Crypto) (H : LibsignalHooks) [hprog : IsLsBlockProg prog i H] [hH : HkdfPlacedHooks C.F H]
@@ -1519,182 +1298,182 @@ end RunsTo
 /-- Synthetic base `b` for Block `123` (`finalize_fixed`) so `FinPre finPlacedFakeB` and
 all cut predicates `StateF0p`..`StateF5` align with `(blkPl_123).base + k#64`. -/
 abbrev finPlacedFakeB [LibsignalPlacement] : BitVec 64 :=
-  (blkPl_123).base - bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]")
+  (blkPl_123).base - bv% offFinalizeFixed1
 
 /-- Synthetic base `b` for Block `54` (`extract`) so cut predicates align with `(blkPl_54).base + k#64`. -/
 abbrev extPlacedFakeB [LibsignalPlacement] : BitVec 64 :=
-  (blkPl_54).base - bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract")
+  (blkPl_54).base - bv% offExtract
 
 /-- Synthetic base `b` for Block `53` (`expand_multi_info`) so cut predicates align with `(blkPl_53).base + k#64`. -/
 abbrev expPlacedFakeB [LibsignalPlacement] : BitVec 64 :=
-  (blkPl_53).base - bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info")
+  (blkPl_53).base - bv% offExpandMultiInfo
 
 @[simp, arm64_norm]
 theorem finPlacedFakeB_off_0 [LibsignalPlacement] :
-    finPlacedFakeB + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]") =
+    finPlacedFakeB + bv% offFinalizeFixed1 =
       (blkPl_123).base :=
   BitVec.sub_add_cancel _ _
 
 @[simp, arm64_norm]
 theorem finPlacedFakeB_off_28 [LibsignalPlacement] :
-    finPlacedFakeB + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 28) =
+    finPlacedFakeB + bv% (offFinalizeFixed1 + 28) =
       (blkPl_123).base + 28#64 := by
   dsimp only [finPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem finPlacedFakeB_off_76 [LibsignalPlacement] :
-    finPlacedFakeB + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 76) =
+    finPlacedFakeB + bv% (offFinalizeFixed1 + 76) =
       (blkPl_123).base + 76#64 := by
   dsimp only [finPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem finPlacedFakeB_off_176 [LibsignalPlacement] :
-    finPlacedFakeB + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 176) =
+    finPlacedFakeB + bv% (offFinalizeFixed1 + 176) =
       (blkPl_123).base + 176#64 := by
   dsimp only [finPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem finPlacedFakeB_off_180 [LibsignalPlacement] :
-    finPlacedFakeB + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 180) =
+    finPlacedFakeB + bv% (offFinalizeFixed1 + 180) =
       (blkPl_123).base + 180#64 := by
   dsimp only [finPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem finPlacedFakeB_off_304 [LibsignalPlacement] :
-    finPlacedFakeB + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 304) =
+    finPlacedFakeB + bv% (offFinalizeFixed1 + 304) =
       (blkPl_123).base + 304#64 := by
   dsimp only [finPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem finPlacedFakeB_off_308 [LibsignalPlacement] :
-    finPlacedFakeB + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 308) =
+    finPlacedFakeB + bv% (offFinalizeFixed1 + 308) =
       (blkPl_123).base + 308#64 := by
   dsimp only [finPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem finPlacedFakeB_off_420 [LibsignalPlacement] :
-    finPlacedFakeB + bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#1]" + 420) =
+    finPlacedFakeB + bv% (offFinalizeFixed1 + 420) =
       (blkPl_123).base + 420#64 := by
   dsimp only [finPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem extPlacedFakeB_off_0 [LibsignalPlacement] :
-    extPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract") =
+    extPlacedFakeB + bv% offExtract =
       (blkPl_54).base :=
   BitVec.sub_add_cancel _ _
 
 @[simp, arm64_norm]
 theorem extPlacedFakeB_off_80 [LibsignalPlacement] :
-    extPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 80) =
+    extPlacedFakeB + bv% (offExtract + 80) =
       (blkPl_54).base + 80#64 := by
   dsimp only [extPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem extPlacedFakeB_off_192 [LibsignalPlacement] :
-    extPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 192) =
+    extPlacedFakeB + bv% (offExtract + 192) =
       (blkPl_54).base + 192#64 := by
   dsimp only [extPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem extPlacedFakeB_off_328 [LibsignalPlacement] :
-    extPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 328) =
+    extPlacedFakeB + bv% (offExtract + 328) =
       (blkPl_54).base + 328#64 := by
   dsimp only [extPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem extPlacedFakeB_off_380 [LibsignalPlacement] :
-    extPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 380) =
+    extPlacedFakeB + bv% (offExtract + 380) =
       (blkPl_54).base + 380#64 := by
   dsimp only [extPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem extPlacedFakeB_off_396 [LibsignalPlacement] :
-    extPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 396) =
+    extPlacedFakeB + bv% (offExtract + 396) =
       (blkPl_54).base + 396#64 := by
   dsimp only [extPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_0 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info") =
+    expPlacedFakeB + bv% offExpandMultiInfo =
       (blkPl_53).base :=
   BitVec.sub_add_cancel _ _
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_32 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 32) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 32) =
       (blkPl_53).base + 32#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_192 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 192) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 192) =
       (blkPl_53).base + 192#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_448 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 448) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 448) =
       (blkPl_53).base + 448#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_500 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 500) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 500) =
       (blkPl_53).base + 500#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_516 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 516) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 516) =
       (blkPl_53).base + 516#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_604 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 604) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 604) =
       (blkPl_53).base + 604#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_672 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 672) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 672) =
       (blkPl_53).base + 672#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_688 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 688) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 688) =
       (blkPl_53).base + 688#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_712 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 712) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 712) =
       (blkPl_53).base + 712#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_816 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 816) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 816) =
       (blkPl_53).base + 816#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_1124 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 1124) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 1124) =
       (blkPl_53).base + 1124#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 @[simp, arm64_norm]
 theorem expPlacedFakeB_off_1176 [LibsignalPlacement] :
-    expPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::expand_multi_info" + 1176) =
+    expPlacedFakeB + bv% (offExpandMultiInfo + 1176) =
       (blkPl_53).base + 1176#64 := by
   dsimp only [expPlacedFakeB]; bv_lin
 
 namespace FinalizeFixedProof
 
 /-- Packaged relocatable `RunsTo` contract of `finalize_fixed` on a placed program `prog`. -/
-def FinalizeFixedPlacedRunsTo [LibsignalPlacement] (prog : Program) (C : Crypto) : Prop :=
+@[expose] def FinalizeFixedPlacedRunsTo [LibsignalPlacement] (prog : Program) (C : Crypto) : Prop :=
   ∀ {key msg : List (BitVec 8)} {s0 : State},
     FinPre finPlacedFakeB C.F key msg s0 →
     RunsTo prog s0 (FinPost C.F key msg s0)

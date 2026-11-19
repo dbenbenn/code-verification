@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Specifications for `spqr::initial_state` (`Block 327`)
@@ -20,7 +21,7 @@ budget specifications (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`) for `spqr
 (`Block 327`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +47,7 @@ set_option maxHeartbeats 400000
 /-- Default allocation envelope of `spqr::initial_state` (`Block 327`): `evs = []` on `.v0`, and
     linearly bounded in `x.p.authKey.length` on `.v1` (`SpqrBoundedEvs` absorbs trailing
     `FreeOnlyEvs` drops at zero allocation count). -/
-def InitialStateEnv (_F : ShaCompress) (x : InitialStateGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def InitialStateEnv (_F : ShaCompress) (x : InitialStateGhost) (evs : List AllocEvent) : Prop :=
   match x.p.version with
   | .v0 => evs = []
   | .v1 => SpqrBoundedEvs 128 (4 * x.p.authKey.length + 4096) evs
@@ -54,7 +55,7 @@ def InitialStateEnv (_F : ShaCompress) (x : InitialStateGhost) (evs : List Alloc
 /-- Envelope-parametric relocatable specification of `spqr::initial_state` (`Block 327`) with
     `.rodata` jump tables (`statesIntoPbJumpTablePlacedAt` and `optProtoInnerStateJumpTablePlacedAt`)
     carried explicitly. -/
-def initialStatePlacedRoSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def initialStatePlacedRoSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : InitialStateGhost → List AllocEvent → Prop) :
     Spec (InitialStateGhost × M.σ) where
@@ -89,7 +90,7 @@ abbrev initialStatePlacedRoSpec [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Envelope-parametric core relocatable specification of `spqr::initial_state` (`Block 327`)
     where `.rodata` jump tables are discharged from `LibsignalRoLoaded lsmpl s.mem`. -/
-def initialStatePlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def initialStatePlacedSpecOfEnv [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (Env : InitialStateGhost → List AllocEvent → Prop) :
     Spec (InitialStateGhost × M.σ) where
@@ -131,7 +132,7 @@ abbrev initialStatePlacedSpecX [LibsignalPlacement] (M : AllocCostModel)
 
 /-- `spqr::initial_state` (`Block 327`) meets `withLsCodeLoaded lsmpl (initialStatePlacedRoSpec M A lim F)`
     on `initialStatePlacedProg ext`. -/
-def InitialStatePlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def InitialStatePlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (initialStatePlacedProg ext) initialStatePlacedEntry
@@ -139,7 +140,7 @@ def InitialStatePlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
 
 /-- `spqr::initial_state` (`Block 327`) meets `initialStatePlacedSpecX M A lim F`
     on `initialStatePlacedProg ext`. -/
-def InitialStatePlacedOkX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def InitialStatePlacedOkX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (initialStatePlacedProg ext) initialStatePlacedEntry
@@ -147,7 +148,7 @@ def InitialStatePlacedOkX [LibsignalPlacement] (M : AllocCostModel)
 
 /-- `spqr::initial_state` (`Block 327`) meets `initialStatePlacedSpecX M A lim F` on
     `libsignalSessionLib.blockProgram lsmpl 327 (Rust.withPanics ext)` at `lsmpl.base 327`. -/
-def InitialStatePlacedOkBlockProgram [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def InitialStatePlacedOkBlockProgram [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 327 (Rust.withPanics ext))

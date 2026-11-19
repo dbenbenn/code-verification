@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Proof
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Verification of `spqr::chain_from_version_negotiation` (Block `328`)
@@ -26,7 +27,7 @@ Proves `RustCliAllocBudget` `ChainFromVersionNegotiationPlacedOkX` for Block `32
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,7 +48,7 @@ open LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsBudget
   (chainFromVersionNegotiationSpecX)
 open LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsPlacedBudget
   (ChainFromVersionNegotiationPlacedOkX)
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsmpl)
+open CryptoVerification (LibsignalPlacement lsmpl)
 open CryptoVerification.LibsignalSpqrV1
   (HkdfFn chainFromVersionNegotiation)
 open CryptoVerification.SpqrV1.ChainProofs
@@ -67,7 +68,7 @@ open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation.ChainFromVNNorm
 open CryptoVerification.SpqrV1.Top.Placed
   (blkPC_328 blkPl_328)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   RustCliAllocBudget.pool_setPC RustCliAllocBudget.pool_advancePC
   RustCliAllocBudget.pool_setPState RustCliAllocBudget.pool_writeReg64

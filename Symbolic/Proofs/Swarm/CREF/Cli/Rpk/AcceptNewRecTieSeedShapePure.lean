@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -22,7 +22,7 @@ import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 import DY.EquationalTheory.KdfExtract
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPureB
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -58,7 +58,7 @@ receive-chain seed `seed_c` with equal concretized bytes must be term-equal unde
 Distinct `gamma'` shapes trigger `RecvCollision` via `a2b_recvCollision_of_seed_shape_ne`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -195,7 +195,7 @@ theorem a2b_recvSeed_of_find {st : TRState} {msg : TRSignalMsg} {c c' : RecvChai
 
 /-- Hypothesis asserting `seed_s = seed_c` when `findRecvChain st.recv msg.ratchetKey = some c`
 and `seed_c`, `seed_s` agree in both concretized bytes and `gamma'` shape. -/
-def A2bSeedShapeEqRes (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def A2bSeedShapeEqRes (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (acc : List MachineEvent) : Prop :=
   ∀ (p : Participant) (stateIdx : Nat) (st : TRState) (c c' : RecvChain) (t : DY.Bytes)
     (msg : TRSignalMsg) (skIdx rIdx_s srcIdx : Nat) (seed_s seed_c pqSalt : DY.Bytes)
@@ -219,7 +219,7 @@ def A2bSeedShapeEqRes (interpretation : ExternInterpretation) (r₀ : ProtocolSe
 
 /-- Hypothesis asserting `seed_s = seed_c` when `findRecvChain st.recv msg.ratchetKey = none`
 yet `c ∈ st.recv` has a byte-equal ratchet key and byte-equal consumed seed. -/
-def A2bSeedRkAliasRes (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def A2bSeedRkAliasRes (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (acc : List MachineEvent) : Prop :=
   ∀ (p : Participant) (stateIdx : Nat) (st : TRState) (c c' : RecvChain) (t : DY.Bytes)
     (msg : TRSignalMsg) (skIdx rIdx_s srcIdx : Nat) (seed_s seed_c pqSalt : DY.Bytes)

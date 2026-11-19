@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureA
+public import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureA -- proof-setup: allow-public-import
 import DY.Actions.ProtocolEvent
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyTR
 import Symbolic.Proofs.Swarm.CREF.CBad
@@ -23,6 +23,7 @@ import Symbolic.Proofs.Swarm.CREF.Stage1Wire
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigmaReach
 import Symbolic.Proofs.Swarm.CREF.Xpl.PrefixReach
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
 
 /-!
 # Returning Whisper `SendWire` Refinement Step
@@ -32,7 +33,7 @@ the per-explanation `PureCRelAt` step (`snd_ret_step_at`), and the returning Whi
 step (`snd_ret_pure_step`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -413,7 +414,7 @@ theorem snd_ret_step_at (interpretation : ExternInterpretation)
     have hns_post := XplQuiet.quiet_trNsBound hq2 hns_enc
     rw [hbody_eq, hms_eq]; exact hns_post
 
-def SndRetStepByPure (interpretation : ExternInterpretation)
+@[expose] def SndRetStepByPure (interpretation : ExternInterpretation)
     (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (who : List Participant)
     (records : Participant → Option HwBytes) (sent accepted : List HwBytes)
     (records' : Participant → Option HwBytes) (sent' accepted' : List HwBytes)

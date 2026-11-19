@@ -26,7 +26,7 @@ reductions.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.Fel
 
@@ -87,52 +87,6 @@ theorem wp_simulateQ_pot_le {ι σ α : Type} {spec : OracleSpec.{0, 0} ι}
             rw [wp_add]; simp
         _ ≤ V x + (n : ℝ≥0∞) * δ := by gcongr; exact hstep.2
 
-/-- Failure-event lemma: if `bad` is monotone, starts false, and enters `bad` with probability at
-most `δ` on charged queries and `0` on free queries, at most `q` charged queries trigger `bad`
-with probability at most `q * δ`. -/
-theorem prEvent_bad_simulateQ_le_q_mul {ι σ α : Type} {spec : OracleSpec.{0, 0} ι}
-    (impl : QueryImpl spec (StateT σ ProbComp)) (charged : ι → Prop) [DecidablePred charged]
-    (bad : σ → Prop) [DecidablePred bad] (I : ℕ → σ → Prop) (δ : ℝ≥0∞)
-    (hmono : ∀ t s, bad s → ∀ z ∈ support ((impl t).run s), bad z.2)
-    (hcharged : ∀ t m s, charged t → ¬ bad s → I (m + 1) s →
-      (∀ z ∈ support ((impl t).run s), ¬ bad z.2 → I m z.2) ∧
-        Pr{let z ← (impl t).run s}[bad z.2] ≤ δ)
-    (hfree : ∀ t n s, ¬ charged t → ¬ bad s → I n s →
-      (∀ z ∈ support ((impl t).run s), ¬ bad z.2 → I n z.2) ∧
-        Pr{let z ← (impl t).run s}[bad z.2] = 0)
-    (oa : OracleComp spec α) (q : ℕ) (hqb : oa.IsQueryBoundP charged q)
-    (s₀ : σ) (hnb₀ : ¬ bad s₀) (hI₀ : I q s₀) :
-    Pr{let z ← (simulateQ impl oa).run s₀}[bad z.2] ≤ q * δ := by
-  let I' : ℕ → σ → Prop := fun n s => bad s ∨ I n s
-  let V : σ → ℝ≥0∞ := fun s => if bad s then 1 else 0
-  have hpot := wp_simulateQ_pot_le impl charged I' V δ
-    (fun t m s ht hI' => by
-      by_cases hbs : bad s
-      · refine ⟨fun z hz => Or.inl (hmono t s hbs z hz), ?_⟩
-        simp only [V, hbs, ↓reduceIte]
-        exact (wp_le_const_of_support _ fun z _ => by split_ifs <;> simp).trans le_self_add
-      · obtain ⟨hpres, hpr⟩ := hcharged t m s ht hbs (hI'.resolve_left hbs)
-        refine ⟨fun z hz => by
-          by_cases hbz : bad z.2
-          · exact Or.inl hbz
-          · exact Or.inr (hpres z hz hbz), ?_⟩
-        simp only [V, hbs, ↓reduceIte, zero_add, ← prEvent_eq_wp_indicator]
-        exact hpr)
-    (fun t n s ht hI' => by
-      by_cases hbs : bad s
-      · refine ⟨fun z hz => Or.inl (hmono t s hbs z hz), ?_⟩
-        simp only [V, hbs, ↓reduceIte]
-        exact wp_le_const_of_support _ fun z _ => by split_ifs <;> simp
-      · obtain ⟨hpres, hpr⟩ := hfree t n s ht hbs (hI'.resolve_left hbs)
-        refine ⟨fun z hz => by
-          by_cases hbz : bad z.2
-          · exact Or.inl hbz
-          · exact Or.inr (hpres z hz hbz), ?_⟩
-        simp only [V, hbs, ↓reduceIte, ← prEvent_eq_wp_indicator, hpr, le_rfl])
-    oa q hqb s₀ (Or.inr hI₀)
-  rw [prEvent_eq_wp_indicator]
-  simpa [V, hnb₀] using hpot
-
 end PotentialSupermartingale
 
 section UnionBoundsAndGuessing
@@ -158,40 +112,6 @@ theorem prEvent_any_list_le_sum {α β : Type} (mx : ProbComp α) (xs : List β)
     simp only [List.any_cons, Bool.or_eq_true, List.map_cons, List.sum_cons]
     exact (prEvent_or_le mx (fun a => p a x = true) (fun a => xs.any (p a) = true)).trans
       (add_le_add le_rfl ih)
-
-/-- Uniform index-guessing bound losing a factor of `K` when sampling an independent guess in
-`Fin K`. -/
-theorem prEvent_exists_fin_le_card_mul_uniform_guess {α : Type} (K : ℕ) [NeZero K]
-    (mx : ProbComp α) (hit : α → Fin K → Prop) :
-    Pr{let a ← mx}[∃ i : Fin K, hit a i] ≤
-      (K : ℝ≥0∞) * Pr{let z ← (do let a ← mx; let g ← ($ᵗ Fin K : ProbComp (Fin K)); pure (a, g))}[
-        hit z.1 z.2] := by
-  classical
-  rw [prEvent_eq_wp_indicator, prEvent_eq_wp_indicator, wp_bind]
-  have hmul :
-      (K : ℝ≥0∞) *
-        wp mx (fun a => wp (($ᵗ Fin K : ProbComp (Fin K)) >>= fun g => pure (a, g))
-          (fun z => if hit z.1 z.2 then 1 else 0)) =
-      wp mx (fun a => (K : ℝ≥0∞) * wp ($ᵗ Fin K : ProbComp (Fin K))
-          (fun g => if hit a g then 1 else 0)) := by
-    rw [← OracleComp.ProgramLogic.wp_mul_const]
-    congr 1; funext a; congr 1
-    simp
-  rw [hmul]
-  refine wp_mono_of_support mx fun a _ => ?_
-  by_cases hex : ∃ i : Fin K, hit a i
-  · simp only [hex, ↓reduceIte]
-    obtain ⟨i₀, hi₀⟩ := hex
-    rw [← prEvent_eq_wp_indicator ($ᵗ Fin K : ProbComp (Fin K)) (fun g => hit a g),
-      SampleableType.prEvent_uniformSample]
-    have hcard : 1 ≤ (Finset.univ.filter (fun g : Fin K => hit a g)).card :=
-      Finset.card_pos.mpr ⟨i₀, Finset.mem_filter.mpr ⟨Finset.mem_univ i₀, hi₀⟩⟩
-    have hKpos : (K : ℝ≥0∞) ≠ 0 := Nat.cast_ne_zero.mpr (NeZero.ne K)
-    have hKtop : (K : ℝ≥0∞) ≠ ⊤ := ENNReal.natCast_ne_top K
-    rw [Fintype.card_fin, div_eq_mul_inv, ← mul_assoc, mul_comm (K : ℝ≥0∞), mul_assoc,
-      ENNReal.mul_inv_cancel hKpos hKtop, mul_one]
-    exact_mod_cast hcard
-  · simp [hex]
 
 end UnionBoundsAndGuessing
 

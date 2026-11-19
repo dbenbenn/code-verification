@@ -9,16 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedABudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedB
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedABudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedB
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOk
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxes
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanup
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from` (Block `111`): Post-Loop Part B
@@ -27,7 +33,7 @@ Proves panic-free `RustCliAllocBudget M` specifications for post-loop Segments 2
 4-ok packing (`+1668 .. +2648` → `+1284`) of Block `111` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -138,7 +144,7 @@ attribute [local arm64_norm, local wp_norm]
 
 /-- Pointer-independent allocator event envelope of `<SignalMessage as TryFrom<&[u8]>>::try_from`
 on input slice `bs`, parameterized by the inner post-loop envelope `postEnv`. -/
-def SigTryFromEnv (postEnv : List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def SigTryFromEnv (postEnv : List (BitVec 8) → List AllocEvent → Prop)
     (bs : List (BitVec 8)) : List AllocEvent → Prop :=
   TryFromEnvGen (fun g => postEnv g.bytes) ⟨0#64, bs, 0#64⟩
 
@@ -160,13 +166,13 @@ theorem tryFromEnvGen_eq_sigTryFromEnv
   · exact .loopOnly ‹_›
   · exact .loopPost ‹_› ‹_›
 
-def PreKeyIntoBoxOk [LibsignalPlacement] (Inv : Memory → Prop)
+@[expose] def PreKeyIntoBoxOk [LibsignalPlacement] (Inv : Memory → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : LibsignalHooks) : Prop :=
   subroutine_ok (preKeyPlacedProg H) (lsmpl.base 56)
     (withPreKeyInv Inv (intoBoxedSliceSpec M A lim))
 
-def PreKeySigTryFromOkGen [LibsignalPlacement] (Inv : Memory → Prop)
+@[expose] def PreKeySigTryFromOkGen [LibsignalPlacement] (Inv : Memory → Prop)
     (postEnv : List (BitVec 8) → List AllocEvent → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : LibsignalHooks) : Prop :=

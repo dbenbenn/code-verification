@@ -10,12 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.PrevEncOKPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.PrevEncOKPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Inlined `SessionStructure::decode` Loop Definitions
@@ -25,13 +26,13 @@ Relocatable (`[LibsignalPlacement]`) loop and per-step contracts (`OverPrevDecod
 `OverDecKeyPlacedStmt`, `OverDecArmPlacedStmt`) on Block `518` (`lsProg_518 ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
-open Arm64 ProofLib ProofLib.ObjectLoad SepProp
+open Arm64 ProofLib SepProp
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr
@@ -44,7 +45,7 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Relocatable `[LibsignalPlacement]` inlined `SessionStructure::decode` of `enc`
 (`(blkPl_518).base + 0x1ee8 → (blkPl_518).base + 0x2620`, closure frame `s.sp`) on `lsProg_518 ext`. -/
-def OverPrevDecodePlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverPrevDecodePlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (prevCap prevPtr encCap encPtr : BitVec 64) (enc : List (BitVec 8))
       (sess : Session (List (BitVec 8))),
@@ -79,7 +80,7 @@ def OverPrevDecodePlacedStmt [LibsignalPlacement] : Prop :=
 
 /-- Register and machine-state invariant at `(blkPl_518).base + off` inside the decode loop
 under `[LibsignalPlacement]`. -/
-def OverDecRegsPlaced [LibsignalPlacement] (ext : String → Option (State → State)) (s0 : State)
+@[expose] def OverDecRegsPlaced [LibsignalPlacement] (ext : String → Option (State → State)) (s0 : State)
     (g : OverDecG) (off : BitVec 64) (s : State) : Prop :=
   s.pc = (blkPl_518).base + off ∧
   s.status = .Running ∧ s.sp = g.q ∧ (s.sp &&& 15#64 == 0#64) = true ∧ s.trace = s0.trace ∧
@@ -92,7 +93,7 @@ def OverDecRegsPlaced [LibsignalPlacement] (ext : String → Option (State → S
 
 /-- Relocatable `[LibsignalPlacement]` Entry (`+0x1ee8 → +0x216c`): from `OverPrevDecodePlacedStmt`'s
 pre with `enc ≠ []` to the field body with `rest = enc` and `SSGQ.empty`. -/
-def OverDecEntryPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverDecEntryPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (g : OverDecG),
     g.enc ≠ [] → g.enc.length < 2 ^ 62 →
@@ -114,7 +115,7 @@ def OverDecEntryPlacedStmt [LibsignalPlacement] : Prop :=
       (PanicOomProp s0)
 
 /-- Relocatable `[LibsignalPlacement]` one field (`+0x216c → +0x2160`) restricted by `P`. -/
-def OverDecFieldPlacedStmt [LibsignalPlacement] (P : GenFieldQ → Prop) : Prop :=
+@[expose] def OverDecFieldPlacedStmt [LibsignalPlacement] (P : GenFieldQ → Prop) : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (g : OverDecG) (v : SSGQ) (fl : GenFieldQ) (rest : List (BitVec 8)),
     P fl → fl.Ok → fl.Fresh v →
@@ -127,7 +128,7 @@ def OverDecFieldPlacedStmt [LibsignalPlacement] (P : GenFieldQ → Prop) : Prop 
       (PanicOomProp s0)
 
 /-- Relocatable `[LibsignalPlacement]` loop head (`+0x2160 → +0x216c`) when `rest ≠ []`. -/
-def OverDecHeadConsPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverDecHeadConsPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (g : OverDecG) (v : SSGQ) (rest : List (BitVec 8)),
     rest ≠ [] → rest <:+ g.enc → g.enc.length < 2 ^ 62 →
@@ -138,7 +139,7 @@ def OverDecHeadConsPlacedStmt [LibsignalPlacement] : Prop :=
       (PanicOomProp s0)
 
 /-- Relocatable `[LibsignalPlacement]` loop head (`+0x2160 → +0x2620`) when `rest = []`. -/
-def OverDecHeadNilPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverDecHeadNilPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (g : OverDecG) (v : SSGQ),
     g.enc.length < 2 ^ 62 →
@@ -149,7 +150,7 @@ def OverDecHeadNilPlacedStmt [LibsignalPlacement] : Prop :=
       (PanicOomProp s0)
 
 /-- Relocatable `[LibsignalPlacement]` Key (`+0x216c → overDecArmOff fl`). -/
-def OverDecKeyPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverDecKeyPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (g : OverDecG) (v : SSGQ) (fl : GenFieldQ) (rest : List (BitVec 8)),
     OverDecAnyField fl → fl.Ok →
@@ -164,7 +165,7 @@ def OverDecKeyPlacedStmt [LibsignalPlacement] : Prop :=
       (PanicOomProp s0)
 
 /-- Relocatable `[LibsignalPlacement]` Arm contract (`overDecArmOff fl → +0x2160`). -/
-def OverDecArmPlacedStmt [LibsignalPlacement] (P : GenFieldQ → Prop) : Prop :=
+@[expose] def OverDecArmPlacedStmt [LibsignalPlacement] (P : GenFieldQ → Prop) : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (g : OverDecG) (v : SSGQ) (fl : GenFieldQ) (rest : List (BitVec 8)),
     P fl → fl.Ok → fl.Fresh v →

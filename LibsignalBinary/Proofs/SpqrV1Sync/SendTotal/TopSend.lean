@@ -18,7 +18,7 @@ Proves `TopSendClosedStmt`: `(spqrV1 F K).send` advances `TopAdv F K n` to `TopA
 whenever `n + 1 < 2 ^ 32`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

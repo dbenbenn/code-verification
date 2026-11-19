@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.QuietTransferPure
-public import Symbolic.Proofs.Swarm.CREF.CBad
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
-import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.QuietTransferPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplPure
@@ -20,6 +20,7 @@ import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
 import Symbolic.Proofs.Swarm.CREF.TR.MessageKeyCurrentInv
 import Symbolic.Proofs.Swarm.CREF.TR.RecvHistDecAvail
 import Symbolic.Proofs.Swarm.CREF.TROpen
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
 
 /-!
 # Promoted Prekey Receive Block Inversion, Snapshot Uniqueness, and Clean-Read Extraction
@@ -29,7 +30,7 @@ snapshot uniqueness, `CHist` step combinators across `DecryptBy p m`, and `PromC
 `¬ RecvCollision` extraction from a `Clean` explanation of `promAccBlk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -328,7 +329,7 @@ theorem prom_not_recvCollision_of_clean {interpretation : ExternInterpretation}
     (prom_hmid_filter_head hmid) (prom_recvBody_of_parsePreKeyWire hpf) ht
 
 /-- Current-snapshot and `recvRepresentations` premise for a decrypt move `m` at `ms`. -/
-def PromCurrentRead (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PromCurrentRead (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (ms : List Move) (msgBytes : HwBytes) (m : Move) : Prop :=
   match m with
   | .decrypt _ stateIdx .. =>

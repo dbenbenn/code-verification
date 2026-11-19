@@ -105,35 +105,35 @@ theorem mallocngMappedDelta_of_perm_eq {k b : Nat} {m0 mf : Memory}
   change (m0.perm a).mapped = true
   rwa [← h]
 
-theorem mallocngEnv_focus_errno (γ : GhostName) (A : MallocngAddrs)
+theorem mallocngEnv_focus_errno {ro : Bool} (γ : GhostName) (A : MallocngAddrs)
     (tp brkStart : BitVec 64) (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) (s : State) :
-    MallocngEnv mallocngIface γ A tp brkStart b ivs s ⊢
+    MallocngEnv (mallocngModeIface ro) γ A tp brkStart b ivs s ⊢
       ⌜s.tpidrEl0 = tp ∧ s.brkStart = brkStart⌝ ∗
       ∃∗ errnoVal : BitVec 32,
         ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗
-        (mallocngIface.MallocngCore γ A brkStart s.brk b ivs ∗
+        ((mallocngModeIface ro).MallocngCore γ A brkStart s.brk b ivs ∗
          ((A.libc + 3#64) ↦₈ 0#8) ∗ ((A.libc + 48#64) ↦₆₄ 4096#64)) := by
   unfold MallocngEnv
-  rw [mallocngHeap_split_runtime]
+  rw [mallocngModeIface_heap_eq]
   unfold MallocngRuntime
   refine sepConj_mono_right ?_
   simp only [sepExists_sepConj_left, sepExists_sepConj_right]
   refine Entails.sepExists_mono fun _ => Entails.of_eq (by ac_rfl)
 
-theorem mallocngEnv_unfocus_errno (γ : GhostName) (A : MallocngAddrs)
+theorem mallocngEnv_unfocus_errno {ro : Bool} (γ : GhostName) (A : MallocngAddrs)
     (tp brkStart : BitVec 64) (b : MallocngBudget) (ivs : List (BitVec 64 × Nat))
     {s0 sf : State} (errnoVal' : BitVec 32)
     (hPerm : sf.mem.perm = s0.mem.perm) (hBrk : sf.brk = s0.brk)
     (hTp : sf.tpidrEl0 = tp) (hBrkS : sf.brkStart = brkStart) :
     ((tp - 0xa4#64) ↦₃₂ errnoVal') ∗
-    (mallocngIface.MallocngCore γ A brkStart s0.brk b ivs ∗
+    ((mallocngModeIface ro).MallocngCore γ A brkStart s0.brk b ivs ∗
      ((A.libc + 3#64) ↦₈ 0#8) ∗ ((A.libc + 48#64) ↦₆₄ 4096#64)) ⊢
-      MallocngPostEnv mallocngIface γ A tp brkStart b ivs s0 sf := by
+      MallocngPostEnv (mallocngModeIface ro) γ A tp brkStart b ivs s0 sf := by
   refine Entails.trans ?_
     (Entails.sepExists_intro
       (P := fun ivsf =>
         ⌜MallocngNoOrphanMappings ivs ivsf s0.mem sf.mem⌝ ∗
-        MallocngEnv mallocngIface γ A tp brkStart b ivsf sf) ivs)
+        MallocngEnv (mallocngModeIface ro) γ A tp brkStart b ivsf sf) ivs)
   have hNoOrph : MallocngNoOrphanMappings ivs ivs s0.mem sf.mem := by
     intro a hm hor
     rcases hor with hnot | hin
@@ -142,7 +142,7 @@ theorem mallocngEnv_unfocus_errno (γ : GhostName) (A : MallocngAddrs)
   refine Entails.pure_right hNoOrph ?_
   unfold MallocngEnv
   refine Entails.pure_right ⟨hTp, hBrkS⟩ ?_
-  rw [hBrk, mallocngHeap_split_runtime]
+  rw [hBrk, mallocngModeIface_heap_eq]
   unfold MallocngRuntime
   refine Entails.trans (sepConj_mono_left
     (Entails.sepExists_intro (P := fun ev => (tp - 0xa4#64) ↦₃₂ ev) errnoVal')) ?_
@@ -157,35 +157,36 @@ theorem le_sum_of_mem {x : Nat} {xs : List Nat} (h : x ∈ xs) : x ≤ xs.sum :=
     · omega
     · have := ih hmem; omega
 
-theorem liveCost_ge_of_env_block (γ : GhostName) (A : MallocngAddrs)
+theorem liveCost_ge_of_env_block {ro : Bool} (γ : GhostName) (A : MallocngAddrs)
     (tp brkStart : BitVec 64) (b : MallocngBudget) (ivs : List (BitVec 64 × Nat))
     (s : State) (p : BitVec 64) (oldSz : Nat) (R : SepProp)
-    (hsat : s.mem ⊨ MallocngEnv mallocngIface γ A tp brkStart b ivs s ∗
-      mallocngIface.Block γ p oldSz ∗ R) :
+    (hsat : s.mem ⊨ MallocngEnv (mallocngModeIface ro) γ A tp brkStart b ivs s ∗
+      (mallocngModeIface ro).Block γ p oldSz ∗ R) :
     max oldSz MallocngMinBlockCost ≤ b.liveCost := by
   rw [← sepConj_assoc] at hsat
   have h1 : s.mem ⊨
-      (mallocngIface.MallocngHeap γ A tp brkStart s.brk b ivs ∗ MallocngBlockToken γ p oldSz) ∗ R := by
+      ((mallocngModeIface ro).MallocngHeap γ A tp brkStart s.brk b ivs ∗ MallocngBlockToken γ p oldSz) ∗ R := by
     apply (fun e => Satisfies.mono e hsat)
     refine sepConj_mono_left ?_
     unfold MallocngEnv
+    rw [mallocngModeIface_block_eq]
     exact sepConj_mono_left (Entails.pure_left fun _ => Entails.refl _)
   have h2 := Satisfies.mono (sepConj_mono_left
-    (mallocngHeap_read_liveUser_unpack γ A tp brkStart s.brk b ivs p oldSz)) h1
+    (mallocngHeapMode_read_liveUser_unpack (ro := ro) γ A tp brkStart s.brk b ivs p oldSz)) h1
   simp only [sepExists_sepConj_left, satisfies_sepExists] at h2
   obtain ⟨st, g, idx, effCost, h2⟩ := h2
   rw [sepConj_assoc, satisfies_pure_sepConj] at h2
   obtain ⟨⟨hg, ⟨hIdx, hSlot⟩, hFacts⟩, h2⟩ := h2
-  have hRest : s.mem ⊨ MallocngReadRest γ A tp brkStart s.brk b ivs st ∗
+  have hRest : s.mem ⊨ MallocngReadRestMode ro γ A tp brkStart s.brk b ivs st ∗
       (MallocngRoTablesAt A ∗ (A.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
        MallocngBlockToken γ p oldSz ∗ R) := by
     apply (fun e => Satisfies.mono e h2)
     exact Entails.of_eq (by
       generalize (MallocngRoTablesAt A) = P1
-      generalize (MallocngReadRest γ A tp brkStart s.brk b ivs st) = P2
+      generalize (MallocngReadRestMode ro γ A tp brkStart s.brk b ivs st) = P2
       ac_rfl)
-  unfold MallocngReadRest at hRest
+  unfold MallocngReadRestMode at hRest
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hRest
   obtain ⟨⟨_, hWf⟩, _⟩ := hRest
   have hMaxLeEff : max oldSz MallocngMinBlockCost ≤ effCost := hFacts.effCost_bounds.1

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ProtoCodecRoundTrip
+public import LibsignalBinary.Proofs.ProtoCodecRoundTrip -- proof-setup: allow-public-import
 public import Symbolic.Specifications.Refinement.WireFormat
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.EvalDist.ProbabilityNotation
@@ -22,7 +22,7 @@ Defines `HonestWF` on `(EncodingVariation, WireFields)` and proves `tryFrom_enco
 `mac.length = macLength` and `HonestWF v f` holds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -136,7 +136,7 @@ theorem decodeVarint_paddedVarint (n pad : ℕ) (rest : HwBytes) (hn : n < 2 ^ 6
 
 /-! ## Single-field encoding and well-formedness -/
 
-def _root_.DY.TrWire.PbValue.wireType : PbValue → WireType
+@[expose] def _root_.DY.TrWire.PbValue.wireType : PbValue → WireType
   | .varint _ => .varint
   | .bytes _ => .lengthDelimited
   | .unknown wt _ => (WireType.ofNat? wt).getD .endGroup
@@ -146,12 +146,12 @@ def _root_.DY.TrWire.PbValue.wireNat : PbValue → ℕ
   | .bytes _ => 2
   | .unknown wt _ => wt
 
-def _root_.DY.TrWire.PbValue.body (valuePad : ℕ) : PbValue → HwBytes
+@[expose] def _root_.DY.TrWire.PbValue.body (valuePad : ℕ) : PbValue → HwBytes
   | .varint n => paddedVarint n valuePad
   | .bytes b => paddedVarint b.length valuePad ++ b
   | .unknown _ p => p
 
-def _root_.DY.TrWire.PbValue.head : PbValue → ℕ
+@[expose] def _root_.DY.TrWire.PbValue.head : PbValue → ℕ
   | .varint n => n
   | .bytes b => b.length
   | .unknown _ _ => 0
@@ -161,7 +161,7 @@ theorem encodeField_eq (tag kp vp : ℕ) (x : PbValue) :
   cases x <;> simp [encodeField, PbValue.wireNat, PbValue.body]
 
 /-- Field update performed by `mergeField` for field `tag` and value `x`. -/
-def setField (m : ProtoSignalMessage) : ℕ → PbValue → ProtoSignalMessage
+@[expose] def setField (m : ProtoSignalMessage) : ℕ → PbValue → ProtoSignalMessage
   | 1, .bytes b => { m with ratchetKey := some b }
   | 2, .varint n => { m with counter := some (BitVec.ofNat 32 n) }
   | 3, .varint n => { m with previousCounter := some (BitVec.ofNat 32 n) }
@@ -172,7 +172,7 @@ def setField (m : ProtoSignalMessage) : ℕ → PbValue → ProtoSignalMessage
 
 /-- Wire-type compatibility for field `tag`: matching `signal.proto` wire types on tags `1..6`,
 and a valid wire type with a skipped payload on tags above `6`. -/
-def WireTypeOk (tag : ℕ) : PbValue → Prop
+@[expose] def WireTypeOk (tag : ℕ) : PbValue → Prop
   | .varint _ => tag = 2 ∨ tag = 3 ∨ 6 < tag
   | .bytes _ => tag = 1 ∨ tag = 4 ∨ tag = 5 ∨ tag = 6 ∨ 6 < tag
   | .unknown wt p => 6 < tag ∧ ∃ w, WireType.ofNat? wt = some w ∧
@@ -500,17 +500,17 @@ theorem loopsTo_encodeField (m r : ProtoSignalMessage) (tag kp vp : ℕ) (x : Pb
 
 /-! ## Variation item lists -/
 
-def _root_.DY.TrWire.FieldItem.tag : FieldItem → ℕ
+@[expose] def _root_.DY.TrWire.FieldItem.tag : FieldItem → ℕ
   | .known t .. => t
   | .extra t .. => t
 
 /-- Well-formedness of a `FieldItem`: `.known` items resolve via `knownValue? v f` (tags `1..4`),
 and every item satisfies `FieldWF`. -/
-def ItemWF (v : EncodingVariation) (f : WireFields) : FieldItem → Prop
+@[expose] def ItemWF (v : EncodingVariation) (f : WireFields) : FieldItem → Prop
   | .known t kp vp => ∃ x, knownValue? v f t = some x ∧ FieldWF t kp vp x
   | .extra t x kp vp => FieldWF t kp vp x
 
-def stepItem (v : EncodingVariation) (f : WireFields) (m : ProtoSignalMessage) :
+@[expose] def stepItem (v : EncodingVariation) (f : WireFields) (m : ProtoSignalMessage) :
     FieldItem → ProtoSignalMessage
   | .known t _ _ => ((knownValue? v f t).map (setField m t)).getD m
   | .extra t x _ _ => setField m t x
@@ -537,7 +537,7 @@ theorem loopsTo_items (v : EncodingVariation) (f : WireFields) :
 /-! ## Last occurrence of a tag -/
 
 /-- Last item in `items` with tag `t`. -/
-def lastWithTag (t : ℕ) (items : List FieldItem) : Option FieldItem :=
+@[expose] def lastWithTag (t : ℕ) (items : List FieldItem) : Option FieldItem :=
   (items.filter (·.tag == t)).getLast?
 
 theorem proj_foldl_stepItem {β : Type} (v : EncodingVariation) (f : WireFields)

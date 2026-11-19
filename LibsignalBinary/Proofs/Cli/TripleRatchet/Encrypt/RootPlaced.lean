@@ -9,10 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Encrypt.CorePlaced
-public import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Encrypt.CorePlaced
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Relocatable Root Theorems for `OutgoingTripleRatchet::encrypt::<Coins>` (Block `428`)
@@ -21,7 +28,7 @@ Instantiates the relocatable `OutgoingTripleRatchet::encrypt::<Coins>` body proo
 empty-PQ-state, and SPQR v1 preconditions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

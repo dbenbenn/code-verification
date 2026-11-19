@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.InImageKit
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 public meta import ProofLib
-public meta import LibsignalBinary.Proofs.Common.InImageKit
+public meta import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
 public meta import Lean
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `wp_call_lscro`: Separation-Logic Call Combinators for `withLsCodeRoLoaded`
@@ -25,7 +26,7 @@ Provides `SepWP` and `SepWPp` call lemmas and the `wp_call_lscro` tactic for `wi
 `LibsignalCodeRoLoaded` opaque to `simp` and threading `hcrl_sf` to the continuation.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false

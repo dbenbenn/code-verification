@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Notation
 
 /-!
@@ -20,7 +20,7 @@ Costed `ReductionDsl` witness program `pubRedProg` for the FS-AEAD public-part-m
 `pubRed`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.FSAEAD.Costed
 
@@ -47,7 +47,7 @@ variable (pubOf : C → Option Pub) (k : ℕ)
 local notation "OO" => fsOps SS RS AD Pub M C pubOf k
 local notation "CC" => Comp OO PI
 
-def withPubE {Γ : List PT} (pv : Var Γ (bt .pub)) :
+@[expose] def withPubE {Γ : List PT} (pv : Var Γ (bt .pub)) :
     Expr OO (rrTy (bt .msg) :: Γ) (rrTy (.prod (bt .pub) (bt .msg))) :=
   rdslExpr [r] =>
     match r with
@@ -57,7 +57,7 @@ def withPubE {Γ : List PT} (pv : Var Γ (bt .pub)) :
         | none => none
         | some m => some (extVar pv, m))
 
-def pubHandle : CC [.bool, pubQ] (.prod pubR .bool) :=
+@[expose] def pubHandle : CC [.bool, pubQ] (.prod pubR .bool) :=
   rdsl [ended, q] do
     match q with
     | .transmit (a, (p, m)) =>
@@ -91,7 +91,7 @@ def pubHandle : CC [.bool, pubQ] (.prod pubR .bool) :=
         return (.inr (.inr (.inr r')), ended)
 
 /-- Costed `ReductionDsl` program for the public-part-moving reduction `pubRed`. -/
-def pubRedProg : CostedReduction OO PI (spec SS RS AD (Pub × M) C) pubCodec .unit .unit .bool .bool where
+@[expose] def pubRedProg : CostedReduction OO PI (spec SS RS AD (Pub × M) C) pubCodec .unit .unit .bool .bool where
   σ := .bool
   init := rdsl [_] do return ((), false)
   handle := pubHandle pubOf k

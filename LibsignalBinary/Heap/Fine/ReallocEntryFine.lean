@@ -22,7 +22,7 @@ null path and `oldBlk = some _` to the non-null path, and lifts the result acros
 set_option autoImplicit false
 set_option maxRecDepth 20000
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 

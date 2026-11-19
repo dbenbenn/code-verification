@@ -9,11 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.KpkMark
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.KpkMark -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Specifications.AsmConstants
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -163,7 +170,7 @@ theorem memRegion_four_32 (a : BitVec 64) :
 /-- Exact 4-atom decomposition of an 8-byte word matching `ldrb [a]`, `ldur w [a+1]`,
 `ldurh [a+5]`, `ldrb [a+7]` and the epilogue stores `strb [a]`, `stur w [a+1]`,
 `sturh [a+5]`, `strb [a+7]`. -/
-def word1421At (a : BitVec 64) (b0 : BitVec 8) (b14 : BitVec 32)
+@[expose] def word1421At (a : BitVec 64) (b0 : BitVec 8) (b14 : BitVec 32)
     (b56 : BitVec 16) (b7 : BitVec 8) : SepProp :=
   (a ↦₈ b0) ∗ ((a + 1#64) ↦₃₂ b14) ∗ ((a + 5#64) ↦₁₆ b56) ∗ ((a + 7#64) ↦₈ b7)
 
@@ -248,7 +255,7 @@ theorem memRegion_8_eq_word1421At (a : BitVec 64) :
 /-! ## `0xf0` Stack Frame & `48`-Byte `sret` Decomposition -/
 
 /-- Exact 240-byte (`0xf0`) stack-frame decomposition of `mark_kyber_pre_key_used::{closure#0}`. -/
-def kpkFrameSlots (sp : BitVec 64) (f0 f1 f2 f3 : BitVec 64) (tmp32 : BitVec 32)
+@[expose] def kpkFrameSlots (sp : BitVec 64) (f0 f1 f2 f3 : BitVec 64) (tmp32 : BitVec 32)
     (c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 : BitVec 64) : SepProp :=
   memRegion (sp - 0xf0#64) 8 ∗
   ((sp - 0xe8#64) ↦₆₄ f0) ∗ ((sp - 0xe0#64) ↦₆₄ f1) ∗
@@ -337,7 +344,7 @@ theorem stackAt_kpkMark_of_parts (sp : BitVec 64) {sub : Nat} (hsub : 0xf0 + sub
     (Entails.sepExists_right c9 (Entails.sepExists_right c10 (Entails.sepExists_right c11
       (Entails.refl _)))))))))))))))))
 
-def savedCalleeSlots (s0 : State) : SepProp :=
+@[expose] def savedCalleeSlots (s0 : State) : SepProp :=
   ((s0.sp - 0x60#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((s0.sp - 0x58#64) ↦₆₄ s0.readReg64 .lr) ∗
   ((s0.sp - 0x50#64) ↦₆₄ s0.readReg64 .x28) ∗
@@ -408,12 +415,12 @@ theorem sret48_kpk_split (out : BitVec 64) :
       ProofLib.memRegion_eight]
   kpk_sep_norm
 
-def epiloguePre (s0 : State) (x : KpkMarkPollGhost) : SepProp :=
+@[expose] def epiloguePre (s0 : State) (x : KpkMarkPollGhost) : SepProp :=
   memRegion x.out 48 ∗
   kpkMarkBoxAt x.fut x.self x.baseKeyA x.id x.signedId 0#8 ∗
   savedCalleeSlots s0
 
-def epilogueOut (s0 : State) (x : KpkMarkPollGhost)
+@[expose] def epilogueOut (s0 : State) (x : KpkMarkPollGhost)
     (v21 v27 v25 v22 v28 v23 v26 : BitVec 64) : SepProp :=
   (x.out ↦₆₄ v21) ∗ ((x.out + 8#64) ↦₆₄ v27) ∗
   ((x.out + 0x10#64) ↦₆₄ v25) ∗ ((x.out + 0x18#64) ↦₆₄ v22) ∗
@@ -425,7 +432,7 @@ def epilogueOut (s0 : State) (x : KpkMarkPollGhost)
 
 /-! ## `Vec<u8>` Borrow/Drop & All 4 `kpkMarkOutAt` Reassemblers -/
 
-def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if cap = 0#64 then emp
   else A.live ptr cap.toNat 1 ∗ memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
 
@@ -561,7 +568,7 @@ theorem speWord_one_add_two_ne_zero : (speWord 1 + 2#64 == 0#64) = false := by
 theorem okTagVec_add_two_eq_zero : (okTagVec + 2#64 == 0#64) = true := by
   decide +kernel
 
-def speReadHeap (A : RustAlloc) (bs : List (BitVec 8)) (cap ptr fnPtr : BitVec 64) : SepProp :=
+@[expose] def speReadHeap (A : RustAlloc) (bs : List (BitVec 8)) (cap ptr fnPtr : BitVec 64) : SepProp :=
   (⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0#64⌝ ∗
     if cap = 0#64 then emp
     else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗

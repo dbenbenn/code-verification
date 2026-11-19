@@ -19,7 +19,7 @@ public import ProofLib.SepLogic.Frame
 public import ProofLib.Abi.Aapcs
 public import ProofLib.SepLogic
 public import ProofLib.SepLogic.Bytes
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Hoare.Safety
 public import ProofLib.VCGen
 public import ProofLib.LitNorm
@@ -28,7 +28,6 @@ public import ProofLib.SepLogic.WP.Defs
 public import ProofLib.SepLogic.CondClassify
 public import ProofLib.BV.Arith
 public import ProofLib.Invariant
-public import ProofLib.Library.CallInv
 
 /-!
 # State-Spine Canonicalization and Offset Normalization
@@ -933,170 +932,6 @@ attribute [wp_norm]
   Returned_setPhysMemAvail Returned_setPhysMemAvail_left
   State.calleeSavedVRegs_setPhysMemAvail State.tpidrEl0_setPhysMemAvail State.exclFails_setPhysMemAvail
   State.fs_setPhysMemAvail State.trace_setPhysMemAvail
-
-theorem _root_.Arm64.Obj.Image.FrozenLoaded.of_mem_eq {img : Obj.Image} {s s' : State}
-    (h : img.FrozenLoaded s) (hmem : s'.mem = s.mem) : img.FrozenLoaded s' :=
-  h.of_keepsFrozen (hmem ▸ Memory.KeepsFrozen.refl s.mem)
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_writeReg64 (img : Obj.Image) (s : State) (r : Reg) (v : BitVec 64) :
-    img.FrozenLoaded (s.writeReg64 r v) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_writeReg32 (img : Obj.Image) (s : State) (r : Reg) (v : BitVec 32) :
-    img.FrozenLoaded (s.writeReg32 r v) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_writeReg (img : Obj.Image) (w : RegWidth) (s : State) (r : Reg) (v : BitVec 64) :
-    img.FrozenLoaded (s.writeReg w r v) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_writeVReg128 (img : Obj.Image) (s : State) (idx : BitVec 5) (v : BitVec 128) :
-    img.FrozenLoaded (s.writeVReg128 idx v) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_writeVReg64 (img : Obj.Image) (s : State) (idx : BitVec 5) (v : BitVec 64) :
-    img.FrozenLoaded (s.writeVReg64 idx v) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_writeVReg32 (img : Obj.Image) (s : State) (idx : BitVec 5) (v : BitVec 32) :
-    img.FrozenLoaded (s.writeVReg32 idx v) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_setPC (img : Obj.Image) (s : State) (pc : BitVec 64) :
-    img.FrozenLoaded (s.setPC pc) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_advancePC (img : Obj.Image) (s : State) :
-    img.FrozenLoaded s.advancePC = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_setPState (img : Obj.Image) (s : State) (ps : PState) :
-    img.FrozenLoaded (s.setPState ps) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_setStatus (img : Obj.Image) (s : State) (st : ExecStatus) :
-    img.FrozenLoaded (s.setStatus st) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_applyWriteback (img : Obj.Image) (s : State) (wb : Option (Reg × BitVec 64)) :
-    img.FrozenLoaded (applyWriteback s wb) = img.FrozenLoaded s := by
-  cases wb <;> simp [applyWriteback]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_setTpidrEl0 (img : Obj.Image) (s : State) (v : BitVec 64) :
-    img.FrozenLoaded (setTpidrEl0 s v) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_setFpsr (img : Obj.Image) (s : State) (f : BitVec 32) :
-    img.FrozenLoaded (s.setFpsr f) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_orFpsr (img : Obj.Image) (s : State) (f : BitVec 32) :
-    img.FrozenLoaded (s.orFpsr f) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_setPhysMemAvail (img : Obj.Image) (s : State) (n : Nat) :
-    img.FrozenLoaded (s.setPhysMemAvail n) = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.FrozenLoaded_nextOracle (img : Obj.Image) (s : State) :
-    img.FrozenLoaded s.nextOracle = img.FrozenLoaded s :=
-  propext ⟨fun h => h.of_mem_eq (by simp), fun h => h.of_mem_eq (by simp)⟩
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_writeReg64 (img : Obj.Image) (s : State) (r : Reg) (v : BitVec 64) :
-    img.CallInv (s.writeReg64 r v) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_writeReg32 (img : Obj.Image) (s : State) (r : Reg) (v : BitVec 32) :
-    img.CallInv (s.writeReg32 r v) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_writeReg (img : Obj.Image) (w : RegWidth) (s : State) (r : Reg) (v : BitVec 64) :
-    img.CallInv (s.writeReg w r v) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_writeVReg128 (img : Obj.Image) (s : State) (idx : BitVec 5) (v : BitVec 128) :
-    img.CallInv (s.writeVReg128 idx v) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_writeVReg64 (img : Obj.Image) (s : State) (idx : BitVec 5) (v : BitVec 64) :
-    img.CallInv (s.writeVReg64 idx v) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_writeVReg32 (img : Obj.Image) (s : State) (idx : BitVec 5) (v : BitVec 32) :
-    img.CallInv (s.writeVReg32 idx v) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_setPC (img : Obj.Image) (s : State) (pc : BitVec 64) :
-    img.CallInv (s.setPC pc) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_advancePC (img : Obj.Image) (s : State) :
-    img.CallInv s.advancePC = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_setPState (img : Obj.Image) (s : State) (ps : PState) :
-    img.CallInv (s.setPState ps) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_setStatus (img : Obj.Image) (s : State) (st : ExecStatus) :
-    img.CallInv (s.setStatus st) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_applyWriteback (img : Obj.Image) (s : State) (wb : Option (Reg × BitVec 64)) :
-    img.CallInv (applyWriteback s wb) = img.CallInv s := by
-  cases wb <;> simp [applyWriteback]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_setTpidrEl0 (img : Obj.Image) (s : State) (v : BitVec 64) :
-    img.CallInv (setTpidrEl0 s v) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_setFpsr (img : Obj.Image) (s : State) (f : BitVec 32) :
-    img.CallInv (s.setFpsr f) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_orFpsr (img : Obj.Image) (s : State) (f : BitVec 32) :
-    img.CallInv (s.orFpsr f) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_setPhysMemAvail (img : Obj.Image) (s : State) (n : Nat) :
-    img.CallInv (s.setPhysMemAvail n) = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
-
-@[simp, arm64_norm, wp_norm]
-theorem Obj.Image.CallInv_nextOracle (img : Obj.Image) (s : State) :
-    img.CallInv s.nextOracle = img.CallInv s := by
-  ext; simp [Obj.Image.CallInv]
 
 end
 

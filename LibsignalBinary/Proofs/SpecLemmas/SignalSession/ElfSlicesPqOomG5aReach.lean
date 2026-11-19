@@ -9,22 +9,37 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact
-public import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTieLemmas
-public import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
-public import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
-public import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomMainFitsReduce
+public import LibsignalBinary.Proofs.PeakBudget.CliKitEnvFitsExact -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliSlotEnvelopeBridge
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemExact
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendTieLemmas
+import LibsignalBinary.Proofs.PeakBudget.W1SendRealSlot
+import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
+import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
+import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomMainFitsReduce
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
 
 /-!
 # Parametric Non-Prekey `RunEnv` and `pqD3ScopedRun` Reach Bridges
@@ -42,14 +57,13 @@ non-prekey `main` budget obligation (`hole_g5a_untyped_fitsCap`):
    `decryptSignal` phase-credit and phase-group bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomG5aReach
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoVerification (LibsignalPlacement)
 open CryptoVerification.E2E (PEParams UnreachedPqxdhPrimitives)
@@ -486,23 +500,23 @@ theorem g5ar_cliRunBinaryEnv_nonPrekey_eq
 
 /-- Non-prekey `CliRunCalleeEnvs` bundle agreeing with `mkBinaryKitRealCalleeEnvsSlotOf` on
 `initEnv`, `encEnv`, `decSigEnv`, and `pksmEnv`, with `decPkEnv := fun _ => False`. -/
-noncomputable def g5ar_mkNonPrekeyCalleeEnvsSlotOf [LibsignalPlacement]
+def g5ar_mkNonPrekeyCalleeEnvsSlotOf [LibsignalPlacement]
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) : CliRunCalleeEnvs :=
   { mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g with
     decPkEnv := fun _ => False }
 
 /-- Whole-`main` non-prekey allocator trace predicate over `g5ar_mkNonPrekeyCalleeEnvsSlotOf`. -/
-noncomputable abbrev g5ar_realCliMainNonPrekeyEnvOfSlot [LibsignalPlacement]
+abbrev g5ar_realCliMainNonPrekeyEnvOfSlot [LibsignalPlacement]
     (EncSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) : List AllocEvent → Prop :=
   RealCliMainBinaryEnvOf (g5ar_mkNonPrekeyCalleeEnvsSlotOf EncSlot DecSigSlot img S X W) i
 
@@ -513,7 +527,7 @@ theorem g5ar_d3_nonPrekey_runEnvSlot_sub_binaryKit [LibsignalPlacement] {M : All
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S₂ : RunSem) (X : UnreachedPqxdhPrimitives)
+    (img : Unit) (S₂ : RunSem) (X : UnreachedPqxdhPrimitives)
     (W : CliHooks) (A : RustCliAllocBudget M)
     {DecPkEnv₁ : DecPkGhost → List AllocEvent → Prop}
     (hS_enc : S₂.encrypt = encDef ⟨W.C, W.Q⟩ scopeIn := by rfl)
@@ -558,7 +572,7 @@ theorem g5ar_d3_nonPrekey_runEnvSlot_sub_binaryKit [LibsignalPlacement] {M : All
 /-- Specialization of `g5ar_d3_nonPrekey_runEnvSlot_sub_binaryKit` to
 `binaryKitRunSlotEnvsExact`. -/
 theorem g5ar_d3_nonPrekey_runEnvExact_sub_binaryKit [LibsignalPlacement] {M : AllocCostModel}
-    (img : Image) (S₂ : RunSem) (X : UnreachedPqxdhPrimitives)
+    (img : Unit) (S₂ : RunSem) (X : UnreachedPqxdhPrimitives)
     (W : CliHooks) (A : RustCliAllocBudget M)
     {DecPkEnv₁ : DecPkGhost → List AllocEvent → Prop}
     (hS_enc : S₂.encrypt = encDef ⟨W.C, W.Q⟩ scopeIn := by rfl)
@@ -591,7 +605,7 @@ theorem g5ar_d3_nonPrekey_runEnvSlot_sub_nonPrekeyKit [LibsignalPlacement] {M : 
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S₂ : RunSem) (X : UnreachedPqxdhPrimitives)
+    (img : Unit) (S₂ : RunSem) (X : UnreachedPqxdhPrimitives)
     (W : CliHooks) (A : RustCliAllocBudget M)
     {DecPkEnv₁ : DecPkGhost → List AllocEvent → Prop}
     (hS_enc : S₂.encrypt = encDef ⟨W.C, W.Q⟩ scopeIn := by rfl)
@@ -626,7 +640,7 @@ theorem g5ar_d3_nonPrekey_runEnvSlot_sub_nonPrekeyKit [LibsignalPlacement] {M : 
 /-- Specialization of `g5ar_d3_nonPrekey_runEnvSlot_sub_nonPrekeyKit` to
 `binaryKitRunSlotEnvsExact`. -/
 theorem g5ar_d3_nonPrekey_runEnvExact_sub_nonPrekeyKit [LibsignalPlacement] {M : AllocCostModel}
-    (img : Image) (S₂ : RunSem) (X : UnreachedPqxdhPrimitives)
+    (img : Unit) (S₂ : RunSem) (X : UnreachedPqxdhPrimitives)
     (W : CliHooks) (A : RustCliAllocBudget M)
     {DecPkEnv₁ : DecPkGhost → List AllocEvent → Prop}
     (hS_enc : S₂.encrypt = encDef ⟨W.C, W.Q⟩ scopeIn := by rfl)
@@ -675,7 +689,7 @@ private def g5ar_nonPrekeyCalleeFineSpecs [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall}
     (Senc : SingleSlotFineSpec
       ((mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g).encEnv))
@@ -730,7 +744,7 @@ private theorem g5ar_nonPrekeyCalleeFineSpecs_bounds [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall}
     (Senc : SingleSlotFineSpec
       ((mkBinaryKitRealCalleeEnvsSlotOf EncSlot DecSigSlot img S X W g).encEnv))
@@ -830,7 +844,7 @@ theorem g5ar_nonPrekeyMain_fitsEnv_cliBudgetLimits_of_slotSpecs [LibsignalPlacem
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (S_enc : ∀ (g : RunCall),
       CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
       parseArgs uuidTryParse (g.i.argv.map bytesOfString) = some g.c →
@@ -1033,7 +1047,7 @@ theorem g5ar_nonPrekeyMain_fitsEnv_cliBudgetLimits_of_curried [LibsignalPlacemen
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (hEncCredit : ∀ (g : RunCall) (peerV : AddrV) (M : AllocCostModel)
       (A : RustCliAllocBudget M) (w1R : W1BinarySendParams),
       CliPqxdhInputs ⟨W.C, W.Q⟩ g.i →
@@ -1160,7 +1174,7 @@ theorem g5ar_d3_nonPrekey_runEnv_of_slots_sub_nonPrekeyKit [LibsignalPlacement] 
       RustCliAllocBudget M' → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M' : AllocCostModel},
       RustCliAllocBudget M' → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S₂ : RunSem) (X : UnreachedPqxdhPrimitives)
+    (img : Unit) (S₂ : RunSem) (X : UnreachedPqxdhPrimitives)
     (W : CliHooks) (A : RustCliAllocBudget M)
     (sEnvs : RunSlotEnvs)
     (hs_init : sEnvs.initiate = realCliInitBinarySlotEnvFixed W := by rfl)
@@ -1204,7 +1218,7 @@ private theorem g5ar_nonPrekeyCalleeFineSpecs_bounds_of_caps [LibsignalPlacement
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {g : RunCall}
     {encCum encLive encPeak encMaxReq encGrpS
      decSigCum decSigLive decSigPeak decSigMaxReq decSigGrpS : Nat}
@@ -1295,7 +1309,7 @@ theorem g5ar_nonPrekeyMain_fitsEnv_of_caps [LibsignalPlacement]
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {encCum encLive encPeak encMaxReq encGrpS
      decSigCum decSigLive decSigPeak decSigMaxReq decSigGrpS : Nat}
     (S_enc : ∀ (g : RunCall),
@@ -1497,7 +1511,7 @@ theorem g5ar_nonPrekeyMain_fitsEnv_cliBudgetLimits_of_curried_caps [LibsignalPla
       RustCliAllocBudget M → RunBudgets → EncGhost → List AllocEvent → Prop)
     (DecSigSlot : ∀ {M : AllocCostModel},
       RustCliAllocBudget M → RunBudgets → DecSigGhost → List AllocEvent → Prop)
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     {encCum encLive encPeak encMaxReq encGrpS
      decSigCum decSigLive decSigPeak decSigMaxReq decSigGrpS : Nat}
     (hEncLp : encLive ≤ encPeak)
@@ -1663,7 +1677,7 @@ theorem g5ar_nonPrekeyMain_fitsEnv_cliBudgetLimits_of_curried_caps [LibsignalPla
     hinit_grp hram_lim hva_lim
 
 /-- 9-op Bob session-build allocation envelope (`SeqEnv (W4BoundedEvs 9 68) FreeOnlyEvs`). -/
-def g5ar_W4BobSessionBuild9Env : List AllocEvent → Prop :=
+@[expose] def g5ar_W4BobSessionBuild9Env : List AllocEvent → Prop :=
   SeqEnv (W4BoundedEvs 9 68) FreeOnlyEvs
 
 /-- Fine `PhaseCreditSpec` for `g5ar_W4BobSessionBuild9Env` (`cum = 87,075 B`, `live = 0`,
@@ -1771,7 +1785,7 @@ abbrev g5ar_PrekeyJoinReducer [LibsignalPlacement] (W : CliHooks) (sEnvs : RunSl
 theorem g5ar_hole_g5a_of_exactKitFits
     [LibsignalPlacement]
     (W : CliHooks) (A : RustCliAllocBudget fineCostModel)
-    {img : Image} {S₂ : RunSem} {X : UnreachedPqxdhPrimitives}
+    {img : Unit} {S₂ : RunSem} {X : UnreachedPqxdhPrimitives}
     (hJoin : g5ar_PrekeyJoinReducer W
       (binaryKitRunSlotEnvsExact W A cliRunBudgets_placed
         (realCliInitBinarySlotEnvFixed W)
@@ -1871,14 +1885,14 @@ theorem g5ar_hole_g5a_of_enc_decSig
     (g5ar_mkNonPrekeyCalleeEnvsSlotOf
       (fun {_M'} A' B' => cliEncryptBinaryKitSlotEnvExact W A' B')
       (fun {_M'} A' B' => cliDecryptSignalBinaryKitSlotEnvExact W A' B')
-      (default : Image) (cliRunSemD3 W) defaultExtrasF3 W)
+      (default : Unit) (cliRunSemD3 W) defaultExtrasF3 W)
     (g5ar_nonPrekeyMain_fitsEnv_cliBudgetLimits_of_curried
       (fun {_M'} A' B' => cliEncryptBinaryKitSlotEnvExact W A' B')
       (fun {_M'} A' B' => cliDecryptSignalBinaryKitSlotEnvExact W A' B')
-      (default : Image) (cliRunSemD3 W) defaultExtrasF3 W
+      (default : Unit) (cliRunSemD3 W) defaultExtrasF3 W
       hEncCredit hEncGrp hDecSigCredit hDecSigGrp)
     (g5ar_d3_nonPrekey_runEnvExact_sub_nonPrekeyKit
-      (default : Image) (cliRunSemD3 W) defaultExtrasF3 W A)
+      (default : Unit) (cliRunSemD3 W) defaultExtrasF3 W A)
 
 /-- Slot- and cap-parametric `MainEntryBudgetFitsCapOf` reducer over arbitrary `sEnvs`,
 `EncSlot`, `DecSigSlot`, and `(enc*, decSig*)` caps. -/
@@ -1964,12 +1978,12 @@ theorem g5ar_hole_g5a_of_slots_caps
       (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemD3 W))) :=
   hJoin
     (g5ar_mkNonPrekeyCalleeEnvsSlotOf
-      EncSlot DecSigSlot (default : Image) (cliRunSemD3 W) defaultExtrasF3 W)
+      EncSlot DecSigSlot (default : Unit) (cliRunSemD3 W) defaultExtrasF3 W)
     (g5ar_nonPrekeyMain_fitsEnv_cliBudgetLimits_of_curried_caps
-      EncSlot DecSigSlot (default : Image) (cliRunSemD3 W) defaultExtrasF3 W
+      EncSlot DecSigSlot (default : Unit) (cliRunSemD3 W) defaultExtrasF3 W
       hEncLp hDecSigLp hEncCredit hEncGrp hDecSigCredit hDecSigGrp hinit_grp hram hva)
     (g5ar_d3_nonPrekey_runEnv_of_slots_sub_nonPrekeyKit
-      EncSlot DecSigSlot (default : Image) (cliRunSemD3 W) defaultExtrasF3 W A sEnvs
+      EncSlot DecSigSlot (default : Unit) (cliRunSemD3 W) defaultExtrasF3 W A sEnvs
       hs_init hs_enc hs_ds)
 
 /-- Specialization of `g5ar_hole_g5a_of_slots_caps` to `w1EncExact*` and `w2DecSigExact*`. -/
@@ -2031,12 +2045,12 @@ theorem g5ar_hole_g5a_of_slots
       (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemD3 W))) :=
   hJoin
     (g5ar_mkNonPrekeyCalleeEnvsSlotOf
-      EncSlot DecSigSlot (default : Image) (cliRunSemD3 W) defaultExtrasF3 W)
+      EncSlot DecSigSlot (default : Unit) (cliRunSemD3 W) defaultExtrasF3 W)
     (g5ar_nonPrekeyMain_fitsEnv_cliBudgetLimits_of_curried
-      EncSlot DecSigSlot (default : Image) (cliRunSemD3 W) defaultExtrasF3 W
+      EncSlot DecSigSlot (default : Unit) (cliRunSemD3 W) defaultExtrasF3 W
       hEncCredit hEncGrp hDecSigCredit hDecSigGrp)
     (g5ar_d3_nonPrekey_runEnv_of_slots_sub_nonPrekeyKit
-      EncSlot DecSigSlot (default : Image) (cliRunSemD3 W) defaultExtrasF3 W A sEnvs
+      EncSlot DecSigSlot (default : Unit) (cliRunSemD3 W) defaultExtrasF3 W A sEnvs
       hs_init hs_enc hs_ds)
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomG5aReach

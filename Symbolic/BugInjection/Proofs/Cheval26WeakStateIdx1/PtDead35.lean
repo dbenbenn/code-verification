@@ -39,14 +39,6 @@ theorem rngAt34_length : (rngAt 34).length = 32 := by rw [show rngAt 34 = hexByt
 def pt35Chars : List Char := chars_of_hex (ptAt 35)
 theorem ptAt35_eq_hex : ptAt 35 = hexBytes (str_of_hex (ptAt 35)) := rfl
 theorem pt35Str_eq : (str_of_hex (ptAt 35)) = String.ofList pt35Chars := rfl
-theorem ptDeadAt35_of (hinv : ∀ (r : Records) (S : Sem) (g : Ghost) (ms : List Move), compFitsPinned setup compI0 r → Common443.CompSetupSecrecy.NoBrk r ms → ExplainsMoves compI0 r S who ok g ms (.recv bundle0 :: call0Rng) → IniPrefixStateSecretsInv r S g ms bundle0 call0Rng) : PtDeadAt 35 := by
-  intro r S g ms hfits hnb hexp hem hcol; rw [show (Witnesses.Cheval26WeakStateIdx1.trace).take 35 = .recv bundle0 :: call0Rng from rfl] at hexp hcol
-  refine not_pt_prefixGhosts_collision_of_ne_bytes hexp.1 (fun t ht x hx hinj hval_eq => ?_) ⟨hem, hcol⟩
-  have hgt : 5 < x.2.2.length := memoInjGt_prefixTerms_of_matchedPrefix_ini_of hfits.1.1 hexp.1 (hinv r S g ms hfits hnb hexp) (by decide) call0Rng_kind
-    (by intro e he; rw [call0Rng_take_1_eq, List.mem_singleton] at he; subst he; show 5 < (rngAt 1).length; rw [rngAt1_length]; decide)
-    (by intro e he; rw [call0Rng_drop_33_eq, List.mem_singleton] at he; subst he; show 5 < (rngAt 34).length; rw [rngAt34_length]; decide) t ht x hx hinj
-  have hlen : (ptAt 35).length = 5 := by rw [show ptAt 35 = hexBytes.go hexDigit pt35Chars by rw [ptAt35_eq_hex, pt35Str_eq, hexBytes_ofList]]; rfl
-  rw [hval_eq, hlen] at hgt; exact Nat.lt_irrefl 5 hgt
 theorem ptDeadAt35_self_of (hinv : ∀ (r : Records) (S : Sem) (g : Ghost) (ms : List Move), compFitsPinned setup compI0 r → Common443.CompSetupSecrecy.NoBrk r ms → ExplainsMoves compI0 r S who ok g ms (.recv bundle0 :: call0Rng) → IniPrefixStateSecretsInv r S g ms bundle0 call0Rng)
     (r : Records) (S : Sem) (g : Ghost) (ms : List Move) (hfits : compFitsPinned setup compI0 r)
     (hnb : Common443.CompSetupSecrecy.NoBrk r ms)

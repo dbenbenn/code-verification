@@ -10,10 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhostReplays -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Dalek -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropGhostReplays -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Dalek
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StaticSecretDropGhostReplays -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Cutover-2 (`C2`) Dalek `.text.lib2` Per-Row `GhostRowOk` Glue (`C2RowLayoutFacts.DalekRows`)
@@ -31,8 +36,7 @@ namespace LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.
 open Arm64 Arm64.Obj ProofLib.ProgramReflection
 open CryptoVerification (LibsignalPlacement)
 open CryptoVerification.SignalSession
-  (CliHooks cliElfBytes cliExternsPlaced libsignalSessionLib lsBlackBoxSym
-   lsSharedSecretDropSym lsStaticSecretDropSym)
+  (CliHooks cliElfBytes cliExternsPlaced libsignalSessionLib lsBlackBoxSym lsStaticSecretDropSym)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced (cliProgExtPlacedAt)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhostReplays
@@ -40,22 +44,17 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxGhostReplays
    ghostRowReplayOn_of_guard_imp keepR_blackBox)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BlackBoxLrTrap (keepBlackBox)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.Dalek
-  (keepR_blackBox_sub_keepLib2Text keepR_sharedSecretDrop_sub_keepLib2Text
+  (keepR_blackBox_noPanic keepR_blackBox_sub_keepLib2Text keepR_staticSecretDrop_noPanic
    keepR_staticSecretDrop_sub_keepLib2Text)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.RowCommon
   (c2_ghostAt_of_extraLookup c2_realHullNoExt_of_keepLib2Text checkProgCodeSubslice
    f3CodeInv_and_fs_keepsFrozen f3CodeInv_codeLoaded_of_checkProgCodeSubslice
    resolve_c2RxSym_eq_cliElf_rho)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay (GhostRowOk)
-open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.SharedSecretDropGhostReplays
-  (keepR_sharedSecretDrop sharedSecretDropEntryGuard sharedSecretDropGhost
-   sharedSecretDropGhost_rowOk sharedSecretDropHullBase sharedSecretDropSubProg)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.StaticSecretDropGhostReplays
   (keepR_staticSecretDrop staticSecretDropEntryGuard staticSecretDropGhost
    staticSecretDropGhost_rowOk staticSecretDropSubProg)
-open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeGhost (sharedSecretDropEntryOff)
-open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeLrTrap
-  (keepSharedSecretDropHull keepStaticSecretDrop)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeLrTrap (keepStaticSecretDrop)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
   (ExtraGhostTable cliGhostExternsWithExtra)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced (cliElfMultiPlacement)
@@ -64,7 +63,7 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics (F3CodeInv)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie (f3TrialRxProg)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen
-  (c2BlackBoxAddr c2RxDehookedSyms c2SharedSecretDropAddr c2StaticSecretDropAddr)
+  (c2BlackBoxAddr c2RxDehookedSyms c2StaticSecretDropAddr)
 
 /-! ## 1. `black_box` (`lsBlackBoxSym`) -/
 
@@ -121,7 +120,8 @@ theorem c2_blackBoxGhost_rowOk [LibsignalPlacement]
     (f3CodeInv_codeLoaded_of_checkProgCodeSubslice hRxBlackBox)
     (f3CodeInv_and_fs_keepsFrozen mpl mmpl PredFs)
     (c2_ghostAt_of_extraLookup hExt g extra lsBlackBoxSym_mem_c2RxDehookedSyms (by decide) hLook)
-    (c2_realHullNoExt_of_keepLib2Text hExt (keepR_blackBox_sub_keepLib2Text hResBlackBox))
+    (c2_realHullNoExt_of_keepLib2Text hExt (keepR_blackBox_sub_keepLib2Text hResBlackBox)
+      (keepR_blackBox_noPanic hResBlackBox))
     (c2_blackBox_hGhostNoExtNe hExt hResBlackBox hLs _)
 
 /-- `guardOf`-adapted `GhostRowOk` for `lsBlackBoxSym`. -/
@@ -145,91 +145,7 @@ theorem c2_blackBoxGhost_rowOk_guardOf [LibsignalPlacement]
   have hRow := c2_blackBoxGhost_rowOk mpl mmpl PredFs g extra hLook hExt hRxBlackBox hResBlackBox hLs
   exact ⟨hRow.1, ghostRowReplayOn_of_guard_imp hRow.2 hGuard⟩
 
-/-! ## 2. `SharedSecret::drop` (`lsSharedSecretDropSym`) -/
-
-private theorem lsSharedSecretDropSym_mem_c2RxDehookedSyms :
-    lsSharedSecretDropSym ∈ c2RxDehookedSyms :=
-  decide_eq_true_eq.mp (by rfl_kernel)
-
-private theorem c2RxOther_outside_sharedSecretDrop :
-    ((c2RxDehookedSyms.filter (· != lsSharedSecretDropSym)).all
-      (fun s => !(keepSharedSecretDropHull (c2SharedSecretDropAddr - sharedSecretDropEntryOff)
-        (cliElfMultiPlacement.ρ s)))) = true := by
-  rfl_kernel
-
-theorem c2_sharedSecretDrop_hGhostNoExtNe
-    {mpl : Obj.MultiPlacement}
-    (hExt : C2ExternTableFacts mpl)
-    (hResSharedDrop : libsignalSessionLib.resolve mpl lsSharedSecretDropSym = c2SharedSecretDropAddr)
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (EG : CliHooks → String → Option (State → State)) :
-    ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_sharedSecretDrop mpl pc = true →
-      pc ≠ libsignalSessionLib.resolve mpl lsSharedSecretDropSym →
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none := by
-  intro W pc hkeep hne
-  refine f3Row_ghostProg617_externAt_none_of_ne_entry hExt EG W
-    (fun q hq => keepLib2Text_sub_rxProg (keepR_sharedSecretDrop_sub_keepLib2Text hResSharedDrop q hq))
-    (fun s hs hs_ne => Or.inl ?_) hkeep hne
-  have hfilt : s ∈ c2RxDehookedSyms.filter (· != lsSharedSecretDropSym) :=
-    List.mem_filter.mpr ⟨hs, bne_iff_ne.mpr hs_ne⟩
-  have hout := List.all_eq_true.mp c2RxOther_outside_sharedSecretDrop s hfilt
-  simp only [Bool.not_eq_true'] at hout
-  dsimp only [keepR_sharedSecretDrop, sharedSecretDropHullBase]
-  rw [hResSharedDrop, resolve_c2RxSym_eq_cliElf_rho hLs hs]
-  exact hout
-
-/-- Cutover-2 `GhostRowOk` discharge for `lsSharedSecretDropSym`
-    (`SharedSecretDropGhostReplays.sharedSecretDropGhost_rowOk`). -/
-theorem c2_sharedSecretDropGhost_rowOk [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement)
-    (PredFs : FsState → Prop)
-    (g : CliGhostHooks) (extra : ExtraGhostTable)
-    (hLook : extra.lookup lsSharedSecretDropSym = some (sharedSecretDropGhost mpl mmpl))
-    (hExt : C2ExternTableFacts mpl)
-    (hRxSharedDrop : checkProgCodeSubslice f3TrialRxProg (sharedSecretDropSubProg mpl) = true)
-    (hResSharedDrop : libsignalSessionLib.resolve mpl lsSharedSecretDropSym = c2SharedSecretDropAddr)
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
-    GhostRowOk mpl mmpl
-      (fun u => F3CodeInv mpl mmpl u.mem ∧ PredFs u.fs)
-      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
-      lsSharedSecretDropSym
-      (sharedSecretDropEntryGuard mpl)
-      (sharedSecretDropGhost mpl mmpl) :=
-  sharedSecretDropGhost_rowOk mpl mmpl
-    (fun u => F3CodeInv mpl mmpl u.mem ∧ PredFs u.fs)
-    (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
-    (f3CodeInv_codeLoaded_of_checkProgCodeSubslice hRxSharedDrop)
-    (f3CodeInv_and_fs_keepsFrozen mpl mmpl PredFs)
-    (c2_ghostAt_of_extraLookup hExt g extra lsSharedSecretDropSym_mem_c2RxDehookedSyms
-      (by decide) hLook)
-    (c2_realHullNoExt_of_keepLib2Text hExt
-      (keepR_sharedSecretDrop_sub_keepLib2Text hResSharedDrop))
-    (c2_sharedSecretDrop_hGhostNoExtNe hExt hResSharedDrop hLs _)
-
-/-- `guardOf`-adapted `GhostRowOk` for `lsSharedSecretDropSym`. -/
-theorem c2_sharedSecretDropGhost_rowOk_guardOf [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement)
-    (PredFs : FsState → Prop)
-    (guardOf : String → State → Prop)
-    (g : CliGhostHooks) (extra : ExtraGhostTable)
-    (hLook : extra.lookup lsSharedSecretDropSym = some (sharedSecretDropGhost mpl mmpl))
-    (hGuard : ∀ s0 : State, guardOf lsSharedSecretDropSym s0 → sharedSecretDropEntryGuard mpl s0)
-    (hExt : C2ExternTableFacts mpl)
-    (hRxSharedDrop : checkProgCodeSubslice f3TrialRxProg (sharedSecretDropSubProg mpl) = true)
-    (hResSharedDrop : libsignalSessionLib.resolve mpl lsSharedSecretDropSym = c2SharedSecretDropAddr)
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
-    GhostRowOk mpl mmpl
-      (fun u => F3CodeInv mpl mmpl u.mem ∧ PredFs u.fs)
-      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
-      lsSharedSecretDropSym
-      (guardOf lsSharedSecretDropSym)
-      (sharedSecretDropGhost mpl mmpl) := by
-  have hRow := c2_sharedSecretDropGhost_rowOk mpl mmpl PredFs g extra hLook hExt
-    hRxSharedDrop hResSharedDrop hLs
-  exact ⟨hRow.1, ghostRowReplayOn_of_guard_imp hRow.2 hGuard⟩
-
-/-! ## 3. `StaticSecret::drop` (`lsStaticSecretDropSym`) -/
+/-! ## 2. `StaticSecret::drop` (`lsStaticSecretDropSym`) -/
 
 private theorem lsStaticSecretDropSym_mem_c2RxDehookedSyms :
     lsStaticSecretDropSym ∈ c2RxDehookedSyms :=
@@ -288,7 +204,8 @@ theorem c2_staticSecretDropGhost_rowOk [LibsignalPlacement]
     (c2_ghostAt_of_extraLookup hExt g extra lsStaticSecretDropSym_mem_c2RxDehookedSyms
       (by decide) hLook)
     (c2_realHullNoExt_of_keepLib2Text hExt
-      (keepR_staticSecretDrop_sub_keepLib2Text hResStaticDrop))
+      (keepR_staticSecretDrop_sub_keepLib2Text hResStaticDrop)
+      (keepR_staticSecretDrop_noPanic hResStaticDrop))
     (c2_staticSecretDrop_hGhostNoExtNe hExt hResStaticDrop hLs _)
 
 /-- `guardOf`-adapted `GhostRowOk` for `lsStaticSecretDropSym`. -/

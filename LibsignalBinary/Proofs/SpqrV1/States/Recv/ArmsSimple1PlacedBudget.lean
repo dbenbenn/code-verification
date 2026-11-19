@@ -10,21 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceivedStepsPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
-import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
@@ -32,6 +32,11 @@ import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WP.FrameAuto
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DispatchPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget
 
 /-!
 # `<States>::recv` (Block `332`): Budget-Threaded `KeysUnsampled` Arm & Shared Epilogue
@@ -40,7 +45,7 @@ Relocatable `[LibsignalPlacement]` `RustCliAllocBudget` proofs of the shared `+1
 exit with `VmPreserved`, per-variant `subroutine_ok` bridges, and `States.keysUnsampled` (`+96`).
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1PlacedBudget
 
@@ -171,7 +176,7 @@ theorem FreeOnlyEvs_to_statesRecvEnv {F : ShaCompress}
 /-- binary post-envelope of `<States>::recv` on `States.keysUnsampled st` (`tag = 2#64`):
     deallocates at most the two `Authenticator` vectors on `msg.epoch > st.uc.epoch`, and performs
     zero allocator calls (`evs = []`) on `¬ (msg.epoch > st.uc.epoch)`. -/
-def KeysUnsampledRecvPostEnv {F : ShaCompress}
+@[expose] def KeysUnsampledRecvPostEnv {F : ShaCompress}
     (st : KeysUnsampled (spqrAuthApi F)) (msg : Message spqrPolyApi)
     (evs : List AllocEvent) : Prop :=
   if msg.epoch > st.uc.epoch then FreeOnlyEvs evs else evs = []

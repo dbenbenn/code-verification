@@ -11,14 +11,16 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewEncodeTags123 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<SignalMessage>::new` Segment 2a Helpers (`+0x100 .. +0x1b8`)
@@ -29,7 +31,7 @@ budget-threaded segment lemmas for storing `wire::SignalMessage` (`+0x100 → +0
 allocating `serialized` (`+0x13c → +0x1b8`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -109,7 +111,7 @@ theorem call_noPanic_extern {α : Type} {prog : Program}
 
 /-- Remaining allocator events of `<SignalMessage>::new` after `new_alloc_ser_wpp_placed`
 (`+0x1b8 .. return`; tags 1–6 emit `[]` because `serialized` has exact capacity). -/
-def newAfterSerAllocEvents (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newAfterSerAllocEvents (x : SignalMessageNewGhost) : List AllocEvent :=
   computeMacEvents ++
     (if x.ciphertext.isEmpty then [] else rustAllocEvents x.ciphertext.length 1) ++
     (if x.pqRatchet.isEmpty then [] else rustAllocEvents x.pqRatchet.length 1) ++
@@ -421,7 +423,7 @@ theorem encodedLenBudgetSpec_pre_eq (A : RustAlloc) (x : EncodedLenGhost) (s : S
 
 /-- Stack-parameterized budget contract of `encode_varint::<Vec<u8>> [local#1]`, unifying
 `encodeVarintSpec` (`encodeVarintStack`) and `encodeVarintSpecX` (`encodeVarintStackX`). -/
-def encodeVarintSpecWithStack {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def encodeVarintSpecWithStack {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (varStack : Nat) : Spec (EncodeVarintGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧

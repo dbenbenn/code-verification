@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.VersionPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.SupplyPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.VersionPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.SupplyPure -- proof-setup: allow-public-import
 import Batteries.Data.UInt
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -22,8 +22,8 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.StepBranchOKPure
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2W.StepBranchOKPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepSkippedG1LeavesPure
@@ -55,6 +55,10 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.CREF.OpkRelC
+import Symbolic.Proofs.SpecLemmas.Model.PQXDH.StateMachine
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol
+import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
 
 /-!
 # Context Supply and Skipped-Key Raw Explanation Branch on Session Promotion
@@ -64,7 +68,7 @@ the skipped-key raw explanation branch (`PromRawKnBranchOK ... PromDecSelSkipped
 promote call.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

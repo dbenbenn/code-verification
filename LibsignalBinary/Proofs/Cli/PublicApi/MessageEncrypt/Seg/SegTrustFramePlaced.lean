@@ -9,17 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustFrame
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegTrustFrame -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
+public import ProofLib.RegChain
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CmDropPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrSignalEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrStoreHookPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable Poll Buffer and Seam Frame Bundles for `segTrust`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,12 +56,12 @@ open CryptoVerification.LibsignalPublicApi.MessageEncrypt CryptoVerification.Lib
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-def cliEncCommonRest [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64) (x : WithStoresEncGhost)
+@[expose] def cliEncCommonRest [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64) (x : WithStoresEncGhost)
     (draws : Nat) (s0 : State) : SepProp :=
   (x.ptA ↦ₛ x.ptext) ∗ protocolAddressAt A x.loc x.locA ∗
     nowAt s0.sp x.now ∗ cliTapeAfter ctl x.cur x.rest draws ∗ encSavedRegs s0.sp s0
 
-def cliTrustPassive [LibsignalPlacement] (ss_vt id_vt : BitVec 64) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def cliTrustPassive [LibsignalPlacement] (ss_vt id_vt : BitVec 64) (A : RustAlloc) (ctl : BitVec 64)
     (x : WithStoresEncGhost) (sess : Session (List (BitVec 8)))
     (taken : SessionState (List (BitVec 8))) (otr' : OutgoingTripleRatchet (List (BitVec 8)))
     (pqCap' pqPtr' : BitVec 64) (m : CiphertextMessage) (draws : Nat) (s0 : State) : SepProp :=
@@ -69,7 +82,7 @@ theorem encCommonPlaced_eq [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64
       cliEncCommonRest A ctl x draws s0 := by
   unfold encCommonPlaced cliEncCommonRest; ac_rfl
 
-def trustBaseActivePlaced [LibsignalPlacement] (id_vt : BitVec 64) (A : RustAlloc)
+@[expose] def trustBaseActivePlaced [LibsignalPlacement] (id_vt : BitVec 64) (A : RustAlloc)
     (sp : BitVec 64) (x : WithStoresEncGhost) (k : IdentityKey) : SepProp :=
   ((sp + 0x40#64) ↦₆₄ (sp + 0x350#64)) ∗
   ((sp + 0xc0#64) ↦₆₄ x.remA) ∗
@@ -166,7 +179,7 @@ theorem seam_mem_to_tail_placed [LibsignalPlacement] (ss_vt id_vt : BitVec 64)
   rw [hreord2]
   exact sepConj_mono_left hslots
 
-def trustActivePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def trustActivePlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64) (ist : ikit.IdState) (sp : BitVec 64) (subStack : Nat)
     (x : WithStoresEncGhost) (k : IdentityKey) : SepProp :=
   ((sp + 0x40#64) ↦₆₄ (sp + 0x350#64)) ∗

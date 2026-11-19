@@ -9,18 +9,26 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.HaltedSpkDefs
-public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.HaltedSpkDefs
+import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackTier2 -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.HaltedSpkLeakTier2Defs -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Lift -- proof-setup: allow-public-import
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.SmReachInvParty -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Lift
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
+import Computational.Proofs.E2E.Dsl.SmReachInvParty
 import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
 import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg
 import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingProofs
 import Computational.Proofs.ReductionDsl.SpkLeakRed
 import Computational.Proofs.E2E.Dsl.SpqrSim
+public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.Bridge
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
+import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
+import Computational.Specifications.Reductions.ReductionDsl.Core
+import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
 
 /-!
 # Relational Init, Transmit, and Challenge Proofs for `HaltedSpkLeakTier2`

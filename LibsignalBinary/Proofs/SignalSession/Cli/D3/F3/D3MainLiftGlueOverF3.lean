@@ -9,15 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3NonCanonF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.M24L4BEquiv
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst
+import LibsignalBinary.Proofs.PeakBudget.RealMainBinaryEnvAdapterD3
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3NonCanonF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.M24L4BEquiv
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Two-Placement `579 → 617` Lift & `MainOkOverD3F3` Glue
@@ -27,7 +39,7 @@ two-placement `(mpl, mmpl)` Block-`579 → 617` harness lifts to `MainOkOverD3F3
 `MainOkCliF3OverB2NeedLocksPlacedAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -59,15 +71,6 @@ open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
   (cliProgExtPlacedAt cliStaticsPlacedAt)
 
 /-! ## 1. Pure `pqD3ScopedRun` & `cliRunSemOverV4` Clauses -/
-
-theorem pqD3ScopedRun_dom {WP : PEParams} {S : RunSem} {i : Inputs} {a : RunAnswer}
-    (hr : pqD3ScopedRun WP (runRel S) i a) : DomainArgv i :=
-  runRel_dom hr.2
-
-theorem pqD3ScopedRun_parse_isSome {WP : PEParams} {S : RunSem}
-    (i : Inputs) (a : RunAnswer) (hr : pqD3ScopedRun WP (runRel S) i a) :
-    (parseArgs uuidTryParse (i.argv.map bytesOfString)).isSome :=
-  hparse_of_domains (fun _ _ h => pqD3ScopedRun_dom h) i a hr
 
 /-- Canonical-`m.bytes` non-matching clause (`MainOkCanonNoMatchD3F3`) at
 `RunOf X W := pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W))`. -/
@@ -115,18 +118,5 @@ theorem mainOkOverD3F3_of_mainSubroutine
   mainOkOverD3F3_of_clauses
     (mainOkValidOverBodyD3F3_of_mainSubroutine hmain)
     (mainOkCanonNoMatchD3F3_overV4 mpl)
-
-theorem mainOkCliF3Over_of_mainSubroutine
-    {mpl mmpl : MultiPlacement} {CodeOk : Memory → Prop}
-    {libcAddr brkStart : BitVec 64} {stk : Nat}
-    (hmain : mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        subroutine_ok (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) (mpl.base 617)
-          (b2MainSpecTightNeedLocksFineAt libcAddr CodeOk
-            (fineHookRustCliAllocBudget γ mmpl tp brkStart)
-            cliBudgetLimits fineCostModel.init stk (cliStaticsPlacedAt mpl)
-            (pqD3ScopedRun ⟨W.C, W.Q⟩ (runRel (cliRunSemOverV4 X W))) cliProcessInputs)) :
-    MainOkCliF3OverB2NeedLocksPlacedAt mpl mmpl CodeOk libcAddr brkStart stk :=
-  mainOkCliF3Over_of_mainOkOverD3F3 (mainOkOverD3F3_of_mainSubroutine hmain)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MainLiftGlueOverF3

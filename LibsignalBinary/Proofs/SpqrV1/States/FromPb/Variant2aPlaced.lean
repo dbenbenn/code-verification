@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EpiloguePlaced
@@ -18,6 +18,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 1 (`KeysSampled`, `+1104`) — Part A
@@ -25,7 +26,7 @@ import ProofLib.SepLogic.WPp
 Relocatable Block-`333` callee helpers and `uc` / `sendingHdr` error-cleanup paths (`+3872`, `+3936`, `+4332`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -67,7 +68,7 @@ attribute [local simp, local arm64_norm, local wp_norm]
 /-! ## `withLsCodeLoaded` Sequencing Helpers and Callee Relocation Lemmas for `States::from_pb` (Block `333`) -/
 
 /-- Relocatable `PolyEncoder::from_pb` (Block `374`) contract lifted to `lsProg_333`. -/
-def EncoderFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncoderFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_333 (Rust.withPanics ext)) (lsmpl.base 374)
     (withLsCodeLoaded lsmpl (encoderFromPbSpec A))

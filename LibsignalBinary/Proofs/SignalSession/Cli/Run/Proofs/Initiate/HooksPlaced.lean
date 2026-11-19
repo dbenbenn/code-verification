@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHook
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
-public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat
-public import LibsignalBinary.Proofs.RecordCodecs.Assembly
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerX
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Extract
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHook
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.CryptoMlKemRowSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.Libc.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.Assembly
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.HSerX
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Extract
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import Init.Data.String.Defs
@@ -29,6 +32,19 @@ import Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHook
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.ReadFileHookPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Hook Bundle and `TraceFsSound` for `initiate`
@@ -38,12 +54,10 @@ provides the `sepWPp_of_sepWP_lscro` segment combinator, and defines the relocat
 `RunHooksPlaced W A H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate
 
@@ -61,7 +75,9 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 open CryptoVerification.SignalSession.Cli.RunCompose
 open CryptoVerification.SignalSession.Cli.RunProofs
 open CryptoVerification.SignalSession.Cli.Slots (durationSinceEpochAllocSpec)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (kemEncapsPreservedAtSpec)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
+open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.CryptoMlKemRowSpecs (kemEncapsTightStack)
 
 /-! ## `SepWPp` / `SepWP` `LibsignalCodeRoLoaded` combinator -/
 
@@ -78,7 +94,7 @@ theorem sepWPp_of_sepWP_lscro {prog : Program} {ret mid : BitVec 64} {s : State}
 /-! ## `TraceFsSound` for `cliExternsPlaced` and `cliGhostExterns` -/
 
 theorem cliHookTablePlaced_fsT (mmpl : MultiPlacement) (W : CliHooks) :
-    ∀ p ∈ cliHookTablePlaced mmpl W, HookFsTraced IsFsC p.2 :=
+    ∀ p ∈ LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliHookTablePlaced mmpl W, HookFsTraced IsFsC p.2 :=
   RunGlue.cliHookTablePlaced_fsT mmpl W
 
 theorem fsTHooks_cliExternsPlaced (mmpl : MultiPlacement) (W : CliHooks) :
@@ -135,19 +151,22 @@ structure RunHooksPlaced [LibsignalPlacement] (W : CliHooks) (A : RustAlloc)
   allocZeroed : HookSat H lsRustAllocZeroedSymCli (rustAllocZeroedSpec A)
   stringClone : HookSat H lsStringCloneSym (LibsignalPublicApi.stringCloneSpec A)
   formatInner : HookSat H lsFormatInnerSym (LibsignalTripleRatchet.formatInnerSpec A)
-  pubFromSecret : HookSat H lsPubFromSecretSym (derivePublicKeyBytesSpec W.C.pubKey)
-  dh : HookSat H lsDiffieHellmanSym (diffieHellmanSpec W.C.X)
+  pubFromSecret : HookSat H lsPubFromSecretSym
+    (withLsRet (derivePublicKeyBytesStackSpec W.C.pubKey 1904))
+  dh : HookSat H lsDiffieHellmanSym
+    (withLsRet (LibsignalBinary.Proofs.HookDischarge.Libc.Common.withStack
+      (diffieHellmanSpec W.C.X) 1808))
   sharedDrop : HookSat H lsSharedSecretDropSym zeroizeSecretSpec
   staticDrop : HookSat H lsStaticSecretDropSym zeroizeSecretSpec
   blackBox :
     HookSat H lsBlackBoxSym
       LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat.blackBoxSpecSat
   hkdf : HkdfPlacedHooks W.C.F H
-  kemEncaps : H lsKemEncapsSym = some (E2E.kemEncapsHook W.Q.encaps)
+  kemEncaps : HookSat H lsKemEncapsSym (withLsRet (kemEncapsPreservedAtSpec kemEncapsTightStack W.Q))
   durationSince : HookSat H lsDurationSinceSym (withLsRet durationSinceEpochAllocSpec)
   panic_alloc : H "_RNvNtCs69KKACWg7bl_5alloc5alloc18handle_alloc_error" = some Rust.panicked
   panic_raw : H "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error" = some Rust.panicked
-  panic_sym : ∀ s, s ∈ cliPanicSymbolsPlaced → H s = some Rust.panicked
+  panic_sym : ∀ s, s ∈ cliCratePanicSyms → H s = some Rust.panicked
   fs : ∀ {prog : Program} {i : Nat} [IsLsBlockProg prog i H], TraceFsSound prog
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Initiate

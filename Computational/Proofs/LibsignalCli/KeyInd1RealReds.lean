@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.KeyInd1RealRedsCosted
-public import Computational.Proofs.E2E.BhKindCouplingV1
+import Computational.Proofs.LibsignalCli.KeyInd1RealRedsCosted
+public import Computational.Proofs.E2E.BhKindCouplingV1 -- proof-setup: allow-public-import
 public import Computational.Specifications.Assumptions.KeyInd1KeyReal
 import Computational.Proofs.ReductionDsl.SM.GameCosted
 import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1 -- proof-setup: allow-public-import
+public import Computational.Specifications.Game.ModelIface
 
 /-!
 # Polymorphic `KeyInd` E2E query bounds and `bhKindRedWith` coupling
@@ -24,7 +26,7 @@ and the `bhKindRedWith` coupling and advantage bound (`boolBias_bhE2EExpWithKi_t
 arbitrary `KeyInd` oracle handler `ki`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -69,221 +71,13 @@ private theorem isQueryBoundP_bhLiftP_sm {α : Type} (p : ProbComp α) :
     rw [simulateQ_query_bind]
     exact (isQueryBoundP_bind (isQueryBoundP_bhFwdU_sm n) (fun u _ => ih u)).mono (by omega)
 
-theorem isQueryBoundP_bhPrefixHandlePostWith_eval (k : ℕ)
-    (s : BHE2EDrvState S ℓ) (t : (bhTargetGameSpec S ℓ (BitVec 512)).Domain) :
-    (Prefix1Key.bhPrefixHandlePostWith S ℓ P ki C K qep decT encT k s (bhTargetQenc t)).IsQueryBoundP
-      (isSmTargetQuery ℓ)
-      (if bhClassifyTargetOnly (fun _ => false) (fun _ => false) (fun i => i == k) t then 1 else 0) := by
-  rcases t with (kq | ⟨sid⟩) | ⟨i, sq⟩
-  · simp only [bhClassifyTargetOnly, Bool.false_eq_true, ↓reduceIte, bhTargetQenc,
-      Prefix1Key.bhPrefixHandlePostWith]
-    exact isQueryBoundP_bhLiftP_sm _
-  · simp only [bhClassifyTargetOnly, Bool.false_eq_true, ↓reduceIte, bhTargetQenc,
-      Prefix1Key.bhPrefixHandlePostWith]
-    exact isQueryBoundP_bhLiftP_sm _
-  · simp only [bhClassifyTargetOnly, bhTargetQenc, Prefix1Key.bhPrefixHandlePostWith]
-    by_cases hp : (i == k) = true
-    · simp only [hp, ↓reduceIte]
-      cases bhShallowCheckExtSm k s i sq with
-      | inl _ => exact (isQueryBoundP_bhLiftP_sm _).mono (Nat.zero_le 1)
-      | inr sq' =>
-        dsimp only
-        have hq1 :
-            (liftM ((unifSpec + SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).query
-              (.inr sq')) :
-              OracleComp (unifSpec + SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) _).IsQueryBoundP
-            (isSmTargetQuery ℓ) 1 :=
-          (isQueryBoundP_query_iff (isSmTargetQuery ℓ) (Sum.inr sq') 1).2 (fun _ => Nat.zero_lt_one)
-        simpa only [Nat.add_zero] using
-          isQueryBoundP_bind hq1 (fun _ _ => isQueryBoundP_pure (isSmTargetQuery ℓ) _ 0)
-    · simp only [hp, Bool.false_eq_true, ↓reduceIte]
-      have hne : (i != k) = true := by
-        rw [bne_iff_ne]
-        exact beq_eq_false_iff_ne.mp (Bool.eq_false_iff.mpr hp)
-      have hcheck : bhShallowCheckExtSm k s i sq = .inl (.inr (none, none, none)) := by
-        simp [bhShallowCheckExtSm, hne]
-      rw [hcheck]
-      exact isQueryBoundP_bhLiftP_sm _
-
-/-- Target-level Stage-2 SM query bound for `Prefix1Key.bhPrefixRedWith S ℓ P ki ... k` on an
-arbitrary `B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool`. -/
-theorem bhPrefixRedWith_makesAtMostQueries_of_B
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (k q_k : ℕ)
-    (hB : B_A.IsQueryBoundP
-      (fun q => bhClassifyTarget (fun _ => false) (fun _ => false) (fun i => i == k) q = true)
-      q_k)
-    (qTot : ℕ)
-    (o : BHPrefixCtx × Mid (bhTargetGameSpec S ℓ (BitVec 512)) Bool (Option ℕ)
-      (BHE2EDrvState S ℓ) BHPrefixCtx)
-    (ho : o ∈ support (stageOneAsProbComp
-      ((Prefix1Key.bhPrefixRedWith S ℓ P ki C K qep decT encT k).eval1 (fun _ => B_A) () qTot false)))
-    (flip : Bool) :
-    SM.MakesAtMostQueries
-      ((Prefix1Key.bhPrefixRedWith S ℓ P ki C K qep decT encT k).eval2 o.2 flip qTot false)
-      q_k := by
-  have hfin : ∀ (s_out : BHE2EDrvState S ℓ) (b_out : Bool),
-      ((Prefix1Key.bhPrefixRedWith S ℓ P ki C K qep decT encT k).finish s_out b_out flip).IsQueryBoundP
-        (isSmTargetQuery ℓ) 0 := by
-    intro s_out b_out
-    dsimp only [Prefix1Key.bhPrefixRedWith]
-    exact isQueryBoundP_bhLiftP_sm _
-  unfold SM.MakesAtMostQueries
-  refine isQueryBoundP_congr_pred_with
-    (p := isSmTargetQuery ℓ) (by rintro (_ | _) <;> rfl) ?_
-  rcases o with ⟨c0, m⟩
-  dsimp only
-  cases m with
-  | done b_out s_out =>
-    simp only [BhShallowTwoStageRed.eval2, pure_bind]
-    exact (hfin s_out b_out).mono (Nat.zero_le _)
-  | paused t c p s_p cont =>
-    have hcont : ∀ v,
-        (cont v).IsQueryBoundP
-          (fun q => bhClassifyTarget (fun _ => false) (fun _ => false) (fun i => i == k) q = true)
-          q_k :=
-      isQueryBoundP_paused_of_mem_support_simulateQ_shallow_eval1
-        (Prefix1Key.bhPrefixRedWith S ℓ P ki C K qep decT encT k)
-        _ (fun _ => B_A) () qTot false q_k (fun _ => hB)
-        c0 t c p s_p cont ho
-    have hres :
-        ((Prefix1Key.bhPrefixRedWith S ℓ P ki C K qep decT encT k).resume s_p p flip).IsQueryBoundP
-          (isSmTargetQuery ℓ) 0 := by
-      dsimp only [Prefix1Key.bhPrefixRedWith]
-      exact isQueryBoundP_pure (isSmTargetQuery ℓ) _ 0
-    simp only [BhShallowTwoStageRed.eval2]
-    exact (isQueryBoundP_bind hres
-      (fun ⟨v, s₁⟩ _ =>
-        isQueryBoundP_bind
-          (bhShallowRunFuel_queryBound_of_step_le
-            bhTargetQenc bhTargetRdec
-            (Prefix1Key.bhPrefixHandlePostWith S ℓ P ki C K qep decT encT k)
-            isQueryBoundP_bhFwdU_sm
-            (fun t' s' => isQueryBoundP_bhPrefixHandlePostWith_eval P ki C K qep decT encT k s' t')
-            false
-            (q := q_k)
-            (isQueryBoundP_congr_pred_with (by rintro (_ | _) <;> rfl)
-              (hcont (bhTargetRdec t v)))
-            qTot s₁)
-          (fun ⟨b_out, s_out⟩ _ => hfin s_out b_out))).mono (by omega)
-
-/-- Combined `KeyInd` and Stage-2 `SM` query bounds for `bhKindRedWith` and
-`Prefix1Key.bhPrefixRedWith` on a bounded target-game adversary `B_A`. -/
-theorem bhCostedRedsWith_queryBounds_of_B
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ)
-    (hRo : B_A.IsQueryBoundP
-      (fun q => bhClassifyTarget (fun kq => kq matches .roQuery _) (fun _ => false) (fun _ => false) q = true)
-      b.q_ro)
-    (hSend : B_A.IsQueryBoundP
-      (fun q => bhClassifyTarget
-        (fun kq => kq matches .initiateOPK .. || kq matches .initiateNoOPK ..)
-        (fun _ => false) (fun _ => false) q = true)
-      S.N_send_tot)
-    (hRecv : B_A.IsQueryBoundP
-      (fun q => bhClassifyTarget
-        (fun kq => kq matches .acceptOPK .. || kq matches .acceptNoOPK ..)
-        (fun _ => false) (fun _ => false) q = true)
-      S.N_recv_tot)
-    (hTot : B_A.IsQueryBoundP
-      (fun q => bhClassifyTarget (fun _ => true) (fun _ => false) (fun _ => false) q = true)
-      b.q_total)
-    (hOn : B_A.IsQueryBoundP
-      (fun q => bhClassifyTarget
-        (fun kq => !(kq matches .roQuery _)) (fun _ => false) (fun _ => false) q = true)
-      b.q_on)
-    (hCtl : B_A.IsQueryBoundP
-      (fun q => bhClassifyTarget (fun _ => false) (fun _ => true) (fun _ => false) q = true)
-      S.N_send_tot)
-    (hCtlStart : B_A.IsQueryBoundP
-      (fun q => bhClassifyTarget (fun _ => false) (fun _ => true) (fun _ => false) q = true)
-      qStart)
-    (hInst : ∀ k < qStart, B_A.IsQueryBoundP
-      (fun q => bhClassifyTarget (fun _ => false) (fun _ => false) (fun i => i == k) q = true)
-      (qs k)) :
-    let qDR := ∑ k ∈ Finset.range qStart, qs k
-    let qTot := b.q_total + qStart + qDR
-    let kindRed := bhKindRedWith (S := S) (ℓ := ℓ) P ki C K qep decT encT
-    let prefRed := Prefix1Key.bhPrefixRedWith S ℓ P ki C K qep decT encT
-    let b_ki := keyIndReductionBudget S qStart b
-    let advK : SignalPqxdh.KeyIndAdversary S := ⟨kindRed.eval (fun _ => B_A) ()⟩
-    SignalPqxdh.QueryBounded advK b_ki ∧
-    (∀ k < qStart,
-      ∀ o ∈ support (stageOneAsProbComp ((prefRed k).eval1 (fun _ => B_A) () qTot false)),
-      ∀ flip,
-      SM.MakesAtMostQueries ((prefRed k).eval2 o.2 flip qTot false) (qs k)) := by
-  intro qDR qTot kindRed prefRed b_ki advK
-  exact ⟨bhKindRedWith_queryBounded_of_B P ki C K qep decT encT B_A b qStart
-      hRo hSend hRecv hTot hOn hCtl hCtlStart,
-    fun k hk o ho flip =>
-      bhPrefixRedWith_makesAtMostQueries_of_B P ki C K qep decT encT B_A k (qs k) (hInst k hk)
-        qTot o ho flip⟩
-
-/-- Combined query bounds for `L_bh`, `bhKindRedWith`, and `Prefix1Key.bhPrefixRedWith` under
-`CliGameAdversaryPerInstanceBounded`. -/
-theorem bhCostedRedsWith_queryBounds
-    (A : CliGameAdversary S ℓ (BitVec 512))
-    (b : SignalPqxdh.QueryBudget) (qStart : ℕ) (qs : ℕ → ℕ)
-    (hA : CliGameAdversaryPerInstanceBounded A b qStart qs) :
-    let qDR := ∑ k ∈ Finset.range qStart, qs k
-    let qTot := b.q_total + qStart + qDR
-    let B_A := (L_bh (S := S) (ℓ := ℓ) (PQC := BitVec 512) decT encT).eval (fun _ => cliGameAdversaryReassoc A) ()
-    let kindRed := bhKindRedWith (S := S) (ℓ := ℓ) P ki C K qep decT encT
-    let prefRed := Prefix1Key.bhPrefixRedWith S ℓ P ki C K qep decT encT
-    let b_ki := keyIndReductionBudget S qStart b
-    let advK : SignalPqxdh.KeyIndAdversary S := ⟨kindRed.eval (fun _ => B_A) ()⟩
-    SignalPqxdh.QueryBounded advK b_ki ∧
-    (∀ k < qStart,
-      ∀ o ∈ support (stageOneAsProbComp ((prefRed k).eval1 (fun _ => B_A) () qTot false)),
-      ∀ flip,
-      SM.MakesAtMostQueries ((prefRed k).eval2 o.2 flip qTot false) (qs k)) := by
-  rcases hA with ⟨⟨hRo, hSend, hRecv, hTot, hOn, hCtl, _⟩, hStart, hInst⟩
-  exact bhCostedRedsWith_queryBounds_of_B P ki C K qep decT encT
-    ((L_bh (S := S) (ℓ := ℓ) (PQC := BitVec 512) decT encT).eval (fun _ => cliGameAdversaryReassoc A) ())
-    b qStart qs
-    (isQueryBoundP_L_bh_eval decT encT
-      (fun kq => kq matches .roQuery _) (fun _ => false) (fun _ => false) A b.q_ro
-      (isQueryBoundP_congr_pred_with
-        (by rintro (((m | kq) | cq) | ⟨i, sq⟩) <;> [rfl; (cases kq <;> rfl); rfl; rfl]) hRo))
-    (isQueryBoundP_L_bh_eval decT encT
-      (fun kq => kq matches .initiateOPK .. || kq matches .initiateNoOPK ..)
-      (fun _ => false) (fun _ => false) A S.N_send_tot
-      (isQueryBoundP_congr_pred_with
-        (by rintro (((m | kq) | cq) | ⟨i, sq⟩) <;> [rfl; (cases kq <;> rfl); rfl; rfl]) hSend))
-    (isQueryBoundP_L_bh_eval decT encT
-      (fun kq => kq matches .acceptOPK .. || kq matches .acceptNoOPK ..)
-      (fun _ => false) (fun _ => false) A S.N_recv_tot
-      (isQueryBoundP_congr_pred_with
-        (by rintro (((m | kq) | cq) | ⟨i, sq⟩) <;> [rfl; (cases kq <;> rfl); rfl; rfl]) hRecv))
-    (isQueryBoundP_L_bh_eval decT encT
-      (fun _ => true) (fun _ => false) (fun _ => false) A b.q_total
-      (isQueryBoundP_congr_pred_with
-        (by rintro (((m | kq) | cq) | ⟨i, sq⟩) <;> rfl) hTot))
-    (isQueryBoundP_L_bh_eval decT encT
-      (fun kq => !(kq matches .roQuery _)) (fun _ => false) (fun _ => false) A b.q_on
-      (isQueryBoundP_congr_pred_with
-        (by rintro (((m | kq) | cq) | ⟨i, sq⟩) <;> [rfl; (cases kq <;> rfl); rfl; rfl]) hOn))
-    (isQueryBoundP_L_bh_eval decT encT
-      (fun _ => false) (fun _ => true) (fun _ => false) A S.N_send_tot
-      (isQueryBoundP_congr_pred_with
-        (by rintro (((m | kq) | cq) | ⟨i, sq⟩) <;> rfl) hCtl))
-    (isQueryBoundP_L_bh_eval decT encT
-      (fun _ => false) (fun _ => true) (fun _ => false) A qStart
-      (isQueryBoundP_congr_pred_with
-        (by rintro (((m | kq) | cq) | ⟨i, sq⟩) <;> rfl) hStart))
-    (fun k hk =>
-      isQueryBoundP_L_bh_eval decT encT
-        (fun _ => false) (fun _ => false) (fun i => i == k) A (qs k)
-        (isQueryBoundP_congr_pred_with
-          (by rintro (((m | kq) | cq) | ⟨i, sq⟩) <;> rfl) (hInst k hk)))
-
 end PrefixAndCombinedQueryBoundsWith
 
 /-! ## Polymorphic `bhKindRedWith` coupling and advantage bound -/
 
 /-- Polymorphic model-state E2E experiment parameterized over `ki` and the `KeyInd` challenge bit
 `secb : Bool` (`true` = real `DRKey`s, `false` = uniform `DRKey`s). -/
-def bhE2EExpWithKi (secb : Bool) (S : SignalPqxdh.Setup)
+@[expose] def bhE2EExpWithKi (secb : Bool) (S : SignalPqxdh.Setup)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (ℓ qep : ℕ) {Pt : Type}

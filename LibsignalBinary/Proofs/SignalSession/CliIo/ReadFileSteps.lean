@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon
-public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinSteps
-public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose
-public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslReadStdin
+public import LibsignalBinary.Proofs.SignalSession.CliIo.ReadLoopCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.CliIo.ReadStdinSteps
+public import LibsignalBinary.Proofs.SignalSession.CliIo.MuslDirReadClose -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.CliIo.MuslReadStdin
 public import VerifiedLibraries.Musl.Proofs.SyscallProof
 public meta import ProofLib.ProgramReflection
+public import GeneratedLean.SignalSessionIoPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.CliIo.Sym -- proof-setup: allow-public-import
 
 /-!
 # Bounded `read_file` Epilogues and Step Lemmas
@@ -24,7 +26,7 @@ epilogues (`+0x1c8`, `+0x1d4` for `cap = 0` and `0 < cap`) for `signalSessionIoM
 (`signal_session_io::read_file`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

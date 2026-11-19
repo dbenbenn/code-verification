@@ -22,7 +22,7 @@ public import ProofLib
 Proves that `States.recv` preserves `BOk` on all five EK-side braid variants (`st_bRecvEk`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

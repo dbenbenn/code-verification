@@ -9,24 +9,76 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux
-public meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux -- shake: keep
-public meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Mid
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Mid
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget -- proof-setup: allow-public-import
 public meta import ProofLib.SepLogic.WP -- shake: keep
 public meta import Lean -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Base
-import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Decodes
 import ProofLib.SepLogic.WP.Apply
-import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WPp
+public import Arm64.Trusted.Object.Labels
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2Defs
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.Multi
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
 
 /-!
 # Budget-Threaded `<Ct1SentEkReceived>::send_ct2`: Relocatable Segment 5a
@@ -35,7 +87,7 @@ Proves `[LibsignalPlacement]` `RustCliAllocBudget`-threaded Segment 5a (`+676 �
 append, `slice_concat_3`, `libcrux_hmac::hmac`, and temporary MAC buffer deallocation).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -45,6 +97,12 @@ set_option linter.unusedSimpArgs false
 namespace LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidPlacedBudget
 
 open Arm64 ProofLib ProofLib.ProgramReflection
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (
+  LsRetAddr624 lsLen lsRetAddr624_blockPlacement_base_add
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (
+  intro_withLsRet withLsRet
+)
 open CryptoGames.HMAC (hmacWith toBEBytes)
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification (
@@ -108,6 +166,11 @@ local macro "sep_elim_exists" : tactic =>
 
 /-! ## Relocatable Segment 5a (`+676 → +836`) -/
 
+private theorem lsRetAddr624_blkPl_347 [LibsignalPlacement] (off : BitVec 64)
+    (ho : off.toNat < lsLen 347 := by decide) :
+    LsRetAddr624 ((blkPl_347).base + off) :=
+  lsRetAddr624_blockPlacement_base_add 347 off (by decide) ho
+
 set_option maxHeartbeats 1600000 in
 /-- Relocatable `[LibsignalPlacement]` budget-threaded Segment 5a (`+676 → +836`):
     copies `ct2` to `ptr_ct1' + x.st.ct1.length`, calls `slice_concat_3` (Block `386`),
@@ -120,7 +183,7 @@ theorem send_ct2_append_hmac_placed_wpp [LibsignalPlacement] {F : ShaCompress}
     (h_concat3 : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsmpl.base 386) (sliceConcat3Spec M A lim))
     (h_hmac : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacSafeBudgetSpec F M A lim))
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacSafeBudgetSpec F M A lim)))
     (h_dealloc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
     (x : UnchunkedSendCt2Ghost F) (stCost : M.σ)
@@ -374,6 +437,9 @@ theorem send_ct2_append_hmac_placed_wpp [LibsignalPlacement] {F : ShaCompress}
       ?_ (by intros; rfl) (by intros; rfl) (by intros; rfl)
       (fun sf_hm hpc_hm hrun_hm hsp_hm_rel hcs_hm => ?_)
     · intro R' hm
+      refine intro_withLsRet (by
+        simp only [hs_hm, Reg.lr, wp_norm, arm64_norm]
+        exact lsRetAddr624_blkPl_347 _) ?_
       dsimp only [libcruxHmacSafeBudgetSpec]
       rw [hsp_hm, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
       refine ⟨⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, hmk_lt32, hdata_lt32, hFit_hm⟩, ?_⟩
@@ -389,7 +455,7 @@ theorem send_ct2_append_hmac_placed_wpp [LibsignalPlacement] {F : ShaCompress}
       · simp only [hs_hm, Reg.x6, wp_norm, arm64_norm, *]
       · exact Eq.mp (congrArg (SepProp.Satisfies · _) (by sep_ac_rfl)) hm
     · simp only [hs_hm, Reg.lr, wp_norm, arm64_norm] at hpc_hm
-      dsimp only [libcruxHmacSafeBudgetSpec]
+      dsimp only [withLsRet, libcruxHmacSafeBudgetSpec]
       rw [hsp_hm]
       rcases hcs_hm with ⟨hx19_h, hx20_h, hx21_h, hx22_h, hx23_h, hx24_h, hx25_h, hx26_h,
         hx27_h, hx28_h, hfp_h, hvregs_h⟩
@@ -497,7 +563,7 @@ theorem send_ct2_append_hmac_placed_preEnv_wpp [LibsignalPlacement] {F : ShaComp
     (h_concat3 : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsmpl.base 386) (sliceConcat3Spec M A lim))
     (h_hmac : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacSafeBudgetSpec F M A lim))
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacSafeBudgetSpec F M A lim)))
     (h_dealloc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
     (x : UnchunkedSendCt2Ghost F) (st0 : M.σ) (evsRes : List AllocEvent)

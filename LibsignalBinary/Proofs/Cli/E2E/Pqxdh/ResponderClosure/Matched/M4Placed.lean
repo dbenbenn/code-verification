@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StorePlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StorePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4None
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveId
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4Store
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Relocatable Matched-Session Stage P4 Composition (`+0x34dc → exit`)
@@ -27,7 +30,7 @@ Composes `stageP4_matched_saveIdentity_vregs_placed` (`Matched.M4SaveIdPlaced`) 
 `stageP4_matched_placed_ok : StageP4MatchedPlacedStmt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -56,7 +59,7 @@ open CryptoVerification.SignalSession
 
 /-- Relocatable `[LibsignalPlacement]` matched-session Stage P4
 (`(blkPl_518).base + 0x34dc → s0.readReg64 .x30`, `opkIdIsSome = 2#32`). -/
-def StageP4MatchedPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP4MatchedPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {A : RustAlloc} (ext : String → Option (State → State))
     {Scope : SessionRecord (List (BitVec 8)) → Prop}
     {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}

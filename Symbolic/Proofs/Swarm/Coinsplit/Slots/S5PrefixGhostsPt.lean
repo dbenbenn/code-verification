@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -30,6 +30,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Mathlib.Data.List.Basic
 
 /-!
 # Coin-Cut Uniqueness for `PrefixExplainingGhostsMoves`
@@ -39,7 +40,7 @@ uniquely determines the explained coin cut `τ₁' = τ₁`, so `PrefixExplainin
 subset of `PrefixGhosts`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,7 +54,7 @@ open _root_.DY.Libsignal.Composed.Refinement
 open _root_.DY.Libsignal.Composed.Refinement.Cli
 
 /-- No two consecutive events in `σ` are `.rng` events. -/
-def NoAdjRngS5 : List MachineEvent → Prop
+@[expose] def NoAdjRngS5 : List MachineEvent → Prop
   | [] => True
   | [_] => True
   | e₁ :: e₂ :: es => (eventKind e₁ ≠ .rng ∨ eventKind e₂ ≠ .rng) ∧ NoAdjRngS5 (e₂ :: es)

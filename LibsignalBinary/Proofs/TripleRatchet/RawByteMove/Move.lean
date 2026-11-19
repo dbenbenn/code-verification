@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import ProofLib.Sep
 import ProofLib.VCGen
 
 /-!
@@ -20,7 +22,7 @@ raw-byte move corollaries for `chainAt`, `optSenderChainAt`, and `sessionStateAt
 `RawByteMove/Defs.lean`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.RawByteMove
 
@@ -34,21 +36,13 @@ open CryptoVerification.LibsignalTripleRatchetRepr
 theorem sepProp_eq_of_entails {P Q : SepProp} (hPQ : P ⊢ Q) (hQP : Q ⊢ P) : P = Q :=
   Entails.antisymm hPQ hQP
 
+universe u
+
 theorem sepExists_congr {α : Sort u} {P Q : α → SepProp} (h : ∀ x, P x = Q x) :
     (∃∗ x, P x) = (∃∗ x, Q x) := by
   congr 1
   funext x
   exact h x
-
-theorem sepExists_comm {α : Sort u} {β : Sort v} (P : α → β → SepProp) :
-    (∃∗ x, ∃∗ y, P x y) = (∃∗ y, ∃∗ x, P x y) := by
-  apply sepProp_eq_of_entails
-  · apply Entails.sepExists_elim; intro x
-    apply Entails.sepExists_elim; intro y
-    exact Entails.sepExists_right y (Entails.sepExists_right x (Entails.refl _))
-  · apply Entails.sepExists_elim; intro y
-    apply Entails.sepExists_elim; intro x
-    exact Entails.sepExists_right x (Entails.sepExists_right y (Entails.refl _))
 
 theorem pure_and_eq_sepConj (φ ψ : Prop) : (⌜φ ∧ ψ⌝ : SepProp) = (⌜φ⌝ ∗ ⌜ψ⌝) :=
   (pure_sepConj_pure φ ψ).symm
@@ -93,17 +87,7 @@ theorem exists_unpack128_of_length_16 {bs : List (BitVec 8)} (h : bs.length = 16
 /-- A 16-byte `memRegion` is an existential 128-bit cell `∃∗ q, a ↦₁₂₈ q`. -/
 theorem memRegion_16_eq_exists_pointsTo128 (a : BitVec 64) :
     memRegion a 16 = ∃∗ q : BitVec 128, a ↦₁₂₈ q := by
-  rw [memRegion_eq_exists_bytes a 16 (by decide)]
-  apply sepProp_eq_of_entails
-  · apply Entails.sepExists_elim; intro bs
-    apply Entails.pure_left; intro h16
-    obtain ⟨q, _, hq⟩ := exists_unpack128_of_length_16 h16
-    rw [hq a]
-    exact Entails.sepExists_right q (Entails.refl _)
-  · apply Entails.sepExists_elim; intro q
-    rw [pointsTo128_eq_pointsToBytes]
-    exact Entails.sepExists_right (unpack128 q)
-      (Entails.pure_right (unpack128_length q) (Entails.refl _))
+  sep_interval_eq
 
 @[scoped simp]
 theorem bytes104OfW6Q_length (w0 : BitVec 64) (q0 q1 q2 q3 q4 q5 : BitVec 128) :
@@ -133,13 +117,7 @@ theorem chunks104W6QAt_eq_word_sep_chunks96 (a : BitVec 64) (w0 : BitVec 64)
     (q0 q1 q2 q3 q4 q5 : BitVec 128) :
     chunks104W6QAt a w0 q0 q1 q2 q3 q4 q5 =
       (a ↦₆₄ w0) ∗ chunks96_6QAt (a + 0x8#64) q0 q1 q2 q3 q4 q5 := by
-  unfold chunks104W6QAt chunks96_6QAt
-  have h18 : a + 0x8#64 + 0x10#64 = a + 0x18#64 := by bv_arith
-  have h28 : a + 0x8#64 + 0x20#64 = a + 0x28#64 := by bv_arith
-  have h38 : a + 0x8#64 + 0x30#64 = a + 0x38#64 := by bv_arith
-  have h48 : a + 0x8#64 + 0x40#64 = a + 0x48#64 := by bv_arith
-  have h58 : a + 0x8#64 + 0x50#64 = a + 0x58#64 := by bv_arith
-  rw [h18, h28, h38, h48, h58]
+  unfold chunks104W6QAt chunks96_6QAt; sep_interval_eq
 
 /-- `chunks104W6QAt a w0 q0..q5` equals `a ↦ₛ bytes104OfW6Q w0 q0..q5`. -/
 theorem chunks104W6QAt_eq_pointsToBytes (a : BitVec 64) (w0 : BitVec 64)
@@ -190,11 +168,6 @@ theorem exists_chunks96_of_length_96 {bs : List (BitVec 8)} (h : bs.length = 96)
   refine ⟨q0, q1, q2, q3, q4, q5, hbs, fun base => ?_⟩
   rw [chunks96_6QAt_eq_pointsToBytes, ← hbs]
 
-theorem split96_6Q (bs : List (BitVec 8)) : Split96_6QStmt bs := by
-  intro h
-  obtain ⟨q0, q1, q2, q3, q4, q5, hbs, _⟩ := exists_chunks96_of_length_96 h
-  exact ⟨q0, q1, q2, q3, q4, q5, hbs⟩
-
 /-- Any 104-byte list `bs` decomposes as `bytes104OfW6Q w0 q0 q1 q2 q3 q4 q5`. -/
 theorem exists_bytes104OfW6Q {bs : List (BitVec 8)} (h : bs.length = 104) :
     ∃ (w0 : BitVec 64) (q0 q1 q2 q3 q4 q5 : BitVec 128),
@@ -212,35 +185,13 @@ theorem exists_bytes104OfW6Q {bs : List (BitVec 8)} (h : bs.length = 104) :
   refine ⟨w0, q0, q1, q2, q3, q4, q5, hbs, fun a => ?_⟩
   rw [chunks104W6QAt_eq_pointsToBytes, ← hbs]
 
-theorem split104W6Q (bs : List (BitVec 8)) : Split104W6QStmt bs := by
-  intro h
-  obtain ⟨w0, q0, q1, q2, q3, q4, q5, hbs, _⟩ := exists_bytes104OfW6Q h
-  exact ⟨w0, q0, q1, q2, q3, q4, q5, hbs⟩
-
 /-- A 96-byte `memRegion` is an existential `chunks96_6QAt`. -/
 theorem memRegion_96_eq_exists_chunks96_6QAt (base : BitVec 64) :
     memRegion base 96 =
       ∃∗ q0 : BitVec 128, ∃∗ q1 : BitVec 128, ∃∗ q2 : BitVec 128,
       ∃∗ q3 : BitVec 128, ∃∗ q4 : BitVec 128, ∃∗ q5 : BitVec 128,
         chunks96_6QAt base q0 q1 q2 q3 q4 q5 := by
-  rw [memRegion_eq_exists_bytes base 96 (by decide)]
-  apply sepProp_eq_of_entails
-  · apply Entails.sepExists_elim; intro bs
-    apply Entails.pure_left; intro h96
-    obtain ⟨q0, q1, q2, q3, q4, q5, _, hchunks⟩ := exists_chunks96_of_length_96 h96
-    rw [hchunks base]
-    exact Entails.sepExists_right q0 (Entails.sepExists_right q1
-      (Entails.sepExists_right q2 (Entails.sepExists_right q3
-        (Entails.sepExists_right q4 (Entails.sepExists_right q5 (Entails.refl _))))))
-  · apply Entails.sepExists_elim; intro q0
-    apply Entails.sepExists_elim; intro q1
-    apply Entails.sepExists_elim; intro q2
-    apply Entails.sepExists_elim; intro q3
-    apply Entails.sepExists_elim; intro q4
-    apply Entails.sepExists_elim; intro q5
-    rw [chunks96_6QAt_eq_pointsToBytes]
-    exact Entails.sepExists_right _
-      (Entails.pure_right (bytes96Of6Q_length q0 q1 q2 q3 q4 q5) (Entails.refl _))
+  unfold chunks96_6QAt; sep_interval_eq
 
 @[scoped simp]
 theorem bytes104Of6QW_length (q0 q1 q2 q3 q4 q5 : BitVec 128) (w6 : BitVec 64) :
@@ -277,11 +228,6 @@ theorem exists_bytes104Of6QW {bs : List (BitVec 8)} (h : bs.length = 104) :
     rw [← hq_eq, ← hw6_eq, List.take_append_drop]
   refine ⟨q0, q1, q2, q3, q4, q5, w6, hbs, fun a => ?_⟩
   rw [chunks104_6QWAt_eq_pointsToBytes, ← hbs]
-
-theorem split104_6QW (bs : List (BitVec 8)) : Split104_6QWStmt bs := by
-  intro h
-  obtain ⟨q0, q1, q2, q3, q4, q5, w6, hbs, _⟩ := exists_bytes104Of6QW h
-  exact ⟨q0, q1, q2, q3, q4, q5, w6, hbs⟩
 
 /-! ## `vecGhostAt`, `vecAt`, `optChainKeyAt`, and `optTailVecAt` decompositions -/
 
@@ -348,36 +294,20 @@ theorem optChainKeyAt_eq_inline_sep_heap (A : RustAlloc) (pin : VecPin) (o : Opt
       dsimp only [optChainKeyAt, optChainKeyHeap]
       rw [vecU8At_eq_bytes_sep_buf, pointsTo32_eq_pointsToBytes,
           memRegion_eq_exists_bytes (a + 28#64) 4 (by decide)]
-      have hlen32 : BitVec.ofNat 64 (keyToBytes32 ck.key).length = 32#64 := by
-        simp [keyToBytes32]
+      have hlen32 : BitVec.ofNat 64 (keyToBytes32 ck.key).length = 32#64 := by simp [keyToBytes32]
+      have hhdr_len : (vecHeaderBytes pin.cap pin.ptr 32#64).length = 24 := by simp [vecHeaderBytes]
+      have hhdr_idx_len : (vecHeaderBytes pin.cap pin.ptr 32#64 ++ unpack32 ck.index).length = 28 := by
+        simp [vecHeaderBytes]
       rw [hlen32]
-      have hpull :
-          (((a ↦ₛ vecHeaderBytes pin.cap pin.ptr 32#64) ∗
-              vecU8Buf A pin.cap pin.ptr (keyToBytes32 ck.key)) ∗
-            ((a + 24#64) ↦ₛ unpack32 ck.index) ∗
-            (∃∗ bs, ⌜bs.length = 4⌝ ∗ ((a + 28#64) ↦ₛ bs))) =
-          ((∃∗ bs, ⌜bs.length = 4⌝ ∗
-              ((a ↦ₛ vecHeaderBytes pin.cap pin.ptr 32#64) ∗
-                ((a + 24#64) ↦ₛ unpack32 ck.index) ∗
-                ((a + 28#64) ↦ₛ bs))) ∗
-            vecU8Buf A pin.cap pin.ptr (keyToBytes32 ck.key)) := by
-        simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-        apply sepExists_congr; intro pad
-        ac_rfl
-      rw [hpull, sepExists_sepConj_left]
+      simp only [sepExists_sepConj_right, sepConj_assoc, sepConj_pure_left_comm]
       apply Entails.sepExists_elim; intro pad
-      rw [sepConj_assoc]
       apply Entails.pure_left; intro hpad
-      have h24 : a + 24#64 = a + BitVec.ofNat 64 (vecHeaderBytes pin.cap pin.ptr 32#64).length := by
-        simp [vecHeaderBytes]
-      have h28 : a + 28#64 =
-          a + BitVec.ofNat 64 (vecHeaderBytes pin.cap pin.ptr 32#64 ++ unpack32 ck.index).length := by
-        simp [vecHeaderBytes]
-      rw [← sepConj_assoc (a ↦ₛ _), h24, ← pointsToBytes_append, h28, ← pointsToBytes_append]
       set bs := vecHeaderBytes pin.cap pin.ptr 32#64 ++ unpack32 ck.index ++ pad
       have hinl : OptChainKeyInline pin (some ck) bs := ⟨pad, hpad, rfl⟩
-      refine Entails.sepExists_right bs ?_
-      exact Entails.pure_right ⟨hinl.length_eq, hinl⟩ (Entails.refl _)
+      refine Entails.sepExists_right bs (Entails.pure_right ⟨hinl.length_eq, hinl⟩ ?_)
+      dsimp only [bs]
+      rw [pointsToBytes_append, pointsToBytes_append, hhdr_len, hhdr_idx_len]
+      bi_entail
   · apply Entails.sepExists_elim; intro bs
     apply Entails.pure_left; rintro ⟨_, hinl⟩
     cases o with
@@ -392,38 +322,13 @@ theorem optChainKeyAt_eq_inline_sep_heap (A : RustAlloc) (pin : VecPin) (o : Opt
       rcases hinl with ⟨pad, hpad, rfl⟩
       dsimp only [optChainKeyAt, optChainKeyHeap]
       rw [pointsToBytes_append, pointsToBytes_append]
-      have hhdr_len : (vecHeaderBytes pin.cap pin.ptr 32#64).length = 24 := by
+      have hhdr_len : (vecHeaderBytes pin.cap pin.ptr 32#64).length = 24 := by simp [vecHeaderBytes]
+      have hhdr_idx_len : (vecHeaderBytes pin.cap pin.ptr 32#64 ++ unpack32 ck.index).length = 28 := by
         simp [vecHeaderBytes]
-      have hhdr_idx_len :
-          (vecHeaderBytes pin.cap pin.ptr 32#64 ++ unpack32 ck.index).length = 28 := by
-        simp [vecHeaderBytes]
-      rw [hhdr_len, hhdr_idx_len, ← pointsTo32_eq_pointsToBytes, vecU8At_eq_bytes_sep_buf]
-      have hlen32 : BitVec.ofNat 64 (keyToBytes32 ck.key).length = 32#64 := by
-        simp [keyToBytes32]
-      rw [hlen32]
-      have hpull :
-          ((((a ↦ₛ vecHeaderBytes pin.cap pin.ptr 32#64) ∗
-              ((a + 24#64) ↦₃₂ ck.index)) ∗
-              ((a + 28#64) ↦ₛ pad)) ∗
-            vecU8Buf A pin.cap pin.ptr (keyToBytes32 ck.key)) =
-          (((a ↦ₛ vecHeaderBytes pin.cap pin.ptr 32#64) ∗
-              vecU8Buf A pin.cap pin.ptr (keyToBytes32 ck.key)) ∗
-            ((a + 24#64) ↦₃₂ ck.index) ∗
-            ((a + 28#64) ↦ₛ pad)) := by
-        ac_rfl
-      rw [hpull]
-      apply sepConj_mono_right
-      apply sepConj_mono_right
-      have h := pointsToBytes_entails_memRegion (a + 28#64) pad
-      rwa [hpad] at h
-
-/-- Reassemble `optChainKeyAt` from its 32 inline bytes and detached heap. -/
-theorem optChainKeyAt_of_bytes (A : RustAlloc) (pin : VecPin) (o : Option ChainKey)
-    (a : BitVec 64) {bs : List (BitVec 8)} (h : OptChainKeyInline pin o bs) :
-    ((a ↦ₛ bs) ∗ optChainKeyHeap A pin o) ⊢ optChainKeyAt A pin o a := by
-  rw [optChainKeyAt_eq_inline_sep_heap]
-  refine Entails.sepExists_right bs ?_
-  exact Entails.pure_right ⟨h.length_eq, h⟩ (Entails.refl _)
+      have hlen32 : BitVec.ofNat 64 (keyToBytes32 ck.key).length = 32#64 := by simp [keyToBytes32]
+      rw [hhdr_len, hhdr_idx_len, ← pointsTo32_eq_pointsToBytes, vecU8At_eq_bytes_sep_buf,
+          hlen32, memRegion_eq_exists_bytes (a + 28#64) 4 (by decide)]
+      bi_entail
 
 theorem OptTailVecInline.length_eq {size : Nat} (hsize : 24 ≤ size)
     {o : Option TailVecGhost} {bs : List (BitVec 8)}
@@ -465,18 +370,12 @@ theorem optTailVecAt_eq_inline_sep_heap (A : RustAlloc) {size : Nat}
       dsimp only [optTailVecAt, optTailVecHeap]
       apply Entails.pure_left; intro htail
       rw [vecGhostAt_eq_bytes_sep_heap]
-      have hpull :
-          (((a ↦ₛ vecGhostHeaderBytes g.vec) ∗ vecGhostHeap A g.vec) ∗ ((a + 24#64) ↦ₛ g.tail)) =
-          (((a ↦ₛ vecGhostHeaderBytes g.vec) ∗ ((a + 24#64) ↦ₛ g.tail)) ∗ vecGhostHeap A g.vec) := by
-        ac_rfl
-      rw [hpull]
-      have h24 : a + 24#64 = a + BitVec.ofNat 64 (vecGhostHeaderBytes g.vec).length := by
-        simp [vecGhostHeaderBytes_length]
-      rw [h24, ← pointsToBytes_append]
       set bs := vecGhostHeaderBytes g.vec ++ g.tail
       have hinl : OptTailVecInline size (some g) bs := ⟨htail, rfl⟩
-      refine Entails.sepExists_right bs ?_
-      exact Entails.pure_right ⟨hinl.length_eq hsize, hinl⟩ (Entails.refl _)
+      refine Entails.sepExists_right bs (Entails.pure_right ⟨hinl.length_eq hsize, hinl⟩ ?_)
+      dsimp only [bs]
+      rw [pointsToBytes_append, vecGhostHeaderBytes_length]
+      bi_entail
   · apply Entails.sepExists_elim; intro bs
     apply Entails.pure_left; rintro ⟨_, hinl⟩
     cases o with
@@ -492,7 +391,7 @@ theorem optTailVecAt_eq_inline_sep_heap (A : RustAlloc) {size : Nat}
       dsimp only [optTailVecAt, optTailVecHeap]
       apply Entails.pure_right htail
       rw [pointsToBytes_append, vecGhostHeaderBytes_length, vecGhostAt_eq_bytes_sep_heap]
-      exact Entails.of_eq (by ac_rfl)
+      bi_entail
 
 /-! ## `chainAt` (104 bytes): decomposition and move corollaries -/
 
@@ -532,79 +431,26 @@ theorem protoChainAt_eq_inline_sep_heap (A : RustAlloc) (gc : ChainGhost × Rece
       vecAt_eq_bytes_sep_buf A 104 8 (messageKeyAt A) (a + 48#64),
       optChainKeyAt_eq_inline_sep_heap A gc.1.ck gc.2.chainKey (a + 72#64)]
   apply sepProp_eq_of_entails
-  · have hpull :
-        (⌜ProtoChainPure gc⌝ ∗
-          ((a ↦ₛ vecGhostHeaderBytes gc.1.srk) ∗ vecGhostHeap A gc.1.srk) ∗
-          (((a + 24#64) ↦ₛ vecGhostHeaderBytes gc.1.priv) ∗ vecGhostHeap A gc.1.priv) ∗
-          (((a + 48#64) ↦ₛ
-              vecHeaderBytes gc.1.mkCap gc.1.mkPtr
-                (BitVec.ofNat 64 (gc.1.keys.zip gc.2.messageKeys).length)) ∗
-            vecBuf A 104 8 (messageKeyAt A) gc.1.mkCap gc.1.mkPtr
-              (gc.1.keys.zip gc.2.messageKeys)) ∗
-          (∃∗ bs, ⌜bs.length = 32 ∧ OptChainKeyInline gc.1.ck gc.2.chainKey bs⌝ ∗
-            ((a + 72#64) ↦ₛ bs) ∗ optChainKeyHeap A gc.1.ck gc.2.chainKey)) =
-        ((∃∗ bs, ⌜bs.length = 32 ∧ OptChainKeyInline gc.1.ck gc.2.chainKey bs⌝ ∗
-            (((a ↦ₛ vecGhostHeaderBytes gc.1.srk) ∗
-              ((a + 24#64) ↦ₛ vecGhostHeaderBytes gc.1.priv) ∗
-              ((a + 48#64) ↦ₛ
-                vecHeaderBytes gc.1.mkCap gc.1.mkPtr
-                  (BitVec.ofNat 64 (gc.1.keys.zip gc.2.messageKeys).length))) ∗
-             ((a + 72#64) ↦ₛ bs))) ∗
-          (⌜ProtoChainPure gc⌝ ∗
-            vecGhostHeap A gc.1.srk ∗
-            vecGhostHeap A gc.1.priv ∗
-            vecBuf A 104 8 (messageKeyAt A) gc.1.mkCap gc.1.mkPtr
-              (gc.1.keys.zip gc.2.messageKeys) ∗
-            optChainKeyHeap A gc.1.ck gc.2.chainKey)) := by
-      simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-      apply sepExists_congr; intro ckBs
-      ac_rfl
-    rw [hpull, sepExists_sepConj_left]
+  · apply Entails.pure_left; intro hpure
+    conv => lhs; simp only [sepExists_sepConj_right, sepConj_assoc, sepConj_pure_left_comm]
     apply Entails.sepExists_elim; intro ckBs
-    rw [← pointsToBytes_chainPrefixBytes gc a, sepConj_assoc]
     apply Entails.pure_left; rintro ⟨hck_len, hck_inl⟩
-    have h72 : a + 72#64 = a + BitVec.ofNat 64 (chainPrefixBytes gc).length := by
-      rw [chainPrefixBytes_length]
-    rw [h72, ← pointsToBytes_append]
     set bs := chainPrefixBytes gc ++ ckBs
     have hinl : ChainInline gc bs := ⟨ckBs, hck_len, hck_inl, rfl⟩
-    refine Entails.sepExists_right bs ?_
-    exact Entails.pure_right ⟨hinl.length_eq, hinl⟩ (Entails.refl _)
+    refine Entails.sepExists_right bs (Entails.pure_right ⟨hinl.length_eq, hinl⟩ ?_)
+    rw [sepConj_pure_left_comm]
+    apply Entails.pure_right hpure
+    dsimp only [bs]
+    rw [pointsToBytes_append, chainPrefixBytes_length, pointsToBytes_chainPrefixBytes]
+    bi_entail
   · apply Entails.sepExists_elim; intro bs
     apply Entails.pure_left; rintro ⟨_, ckBs, hck_len, hck_inl, rfl⟩
+    rw [sepConj_pure_left_comm]
+    apply Entails.pure_left; intro hpure
+    apply Entails.pure_right hpure
+    have hck : ckBs.length = 32 ∧ OptChainKeyInline gc.1.ck gc.2.chainKey ckBs := ⟨hck_len, hck_inl⟩
     rw [pointsToBytes_append, chainPrefixBytes_length, pointsToBytes_chainPrefixBytes]
-    have h72 : a + BitVec.ofNat 64 72 = a + 72#64 := rfl
-    rw [h72]
-    have hpull :
-        ((((a ↦ₛ vecGhostHeaderBytes gc.1.srk) ∗
-            ((a + 24#64) ↦ₛ vecGhostHeaderBytes gc.1.priv) ∗
-            ((a + 48#64) ↦ₛ
-              vecHeaderBytes gc.1.mkCap gc.1.mkPtr
-                (BitVec.ofNat 64 (gc.1.keys.zip gc.2.messageKeys).length))) ∗
-           ((a + 72#64) ↦ₛ ckBs)) ∗
-          (⌜ProtoChainPure gc⌝ ∗
-            vecGhostHeap A gc.1.srk ∗
-            vecGhostHeap A gc.1.priv ∗
-            vecBuf A 104 8 (messageKeyAt A) gc.1.mkCap gc.1.mkPtr
-              (gc.1.keys.zip gc.2.messageKeys) ∗
-            optChainKeyHeap A gc.1.ck gc.2.chainKey)) =
-        (⌜ProtoChainPure gc⌝ ∗
-          ((a ↦ₛ vecGhostHeaderBytes gc.1.srk) ∗ vecGhostHeap A gc.1.srk) ∗
-          (((a + 24#64) ↦ₛ vecGhostHeaderBytes gc.1.priv) ∗ vecGhostHeap A gc.1.priv) ∗
-          (((a + 48#64) ↦ₛ
-              vecHeaderBytes gc.1.mkCap gc.1.mkPtr
-                (BitVec.ofNat 64 (gc.1.keys.zip gc.2.messageKeys).length)) ∗
-            vecBuf A 104 8 (messageKeyAt A) gc.1.mkCap gc.1.mkPtr
-              (gc.1.keys.zip gc.2.messageKeys)) ∗
-          (((a + 72#64) ↦ₛ ckBs) ∗ optChainKeyHeap A gc.1.ck gc.2.chainKey)) := by
-      ac_rfl
-    rw [hpull]
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    refine Entails.sepExists_right ckBs ?_
-    exact Entails.pure_right ⟨hck_len, hck_inl⟩ (Entails.refl _)
+    bi_entail
 
 /-- Decomposes `chainAt A gc a` into 104 inline bytes (`ChainInline gc bs`) and `chainHeap A gc`. -/
 theorem chainAt_eq_inline_sep_heap (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
@@ -617,86 +463,26 @@ theorem chainAt_eq_inline_sep_heap (A : RustAlloc) (gc : ChainGhost × ReceiverC
       optChainKeyAt_eq_inline_sep_heap A gc.1.ck gc.2.chainKey (a + 72#64)]
   change (⌜ChainPure gc⌝ ∗ _) = _
   apply sepProp_eq_of_entails
-  · have hpull :
-        (⌜ChainPure gc⌝ ∗
-          ((a ↦ₛ vecGhostHeaderBytes gc.1.srk) ∗ vecGhostHeap A gc.1.srk) ∗
-          (((a + 24#64) ↦ₛ vecGhostHeaderBytes gc.1.priv) ∗ vecGhostHeap A gc.1.priv) ∗
-          (((a + 48#64) ↦ₛ
-              vecHeaderBytes gc.1.mkCap gc.1.mkPtr
-                (BitVec.ofNat 64 (gc.1.keys.zip gc.2.messageKeys).length)) ∗
-            vecBuf A 104 8 (messageKeyAt A) gc.1.mkCap gc.1.mkPtr
-              (gc.1.keys.zip gc.2.messageKeys)) ∗
-          (∃∗ bs, ⌜bs.length = 32 ∧ OptChainKeyInline gc.1.ck gc.2.chainKey bs⌝ ∗
-            ((a + 72#64) ↦ₛ bs) ∗ optChainKeyHeap A gc.1.ck gc.2.chainKey)) =
-        ((∃∗ bs, ⌜bs.length = 32 ∧ OptChainKeyInline gc.1.ck gc.2.chainKey bs⌝ ∗
-            (((a ↦ₛ vecGhostHeaderBytes gc.1.srk) ∗
-              ((a + 24#64) ↦ₛ vecGhostHeaderBytes gc.1.priv) ∗
-              ((a + 48#64) ↦ₛ
-                vecHeaderBytes gc.1.mkCap gc.1.mkPtr
-                  (BitVec.ofNat 64 (gc.1.keys.zip gc.2.messageKeys).length))) ∗
-             ((a + 72#64) ↦ₛ bs))) ∗
-          (⌜ChainPure gc⌝ ∗
-            vecGhostHeap A gc.1.srk ∗
-            vecGhostHeap A gc.1.priv ∗
-            vecBuf A 104 8 (messageKeyAt A) gc.1.mkCap gc.1.mkPtr
-              (gc.1.keys.zip gc.2.messageKeys) ∗
-            optChainKeyHeap A gc.1.ck gc.2.chainKey)) := by
-      simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-      apply sepExists_congr; intro ckBs
-      ac_rfl
-    rw [hpull, sepExists_sepConj_left]
+  · apply Entails.pure_left; intro hpure
+    conv => lhs; simp only [sepExists_sepConj_right, sepConj_assoc, sepConj_pure_left_comm]
     apply Entails.sepExists_elim; intro ckBs
-    rw [← pointsToBytes_chainPrefixBytes gc a, sepConj_assoc]
     apply Entails.pure_left; rintro ⟨hck_len, hck_inl⟩
-    have h72 : a + 72#64 = a + BitVec.ofNat 64 (chainPrefixBytes gc).length := by
-      rw [chainPrefixBytes_length]
-    rw [h72, ← pointsToBytes_append]
     set bs := chainPrefixBytes gc ++ ckBs
     have hinl : ChainInline gc bs := ⟨ckBs, hck_len, hck_inl, rfl⟩
-    refine Entails.sepExists_right bs ?_
-    exact Entails.pure_right ⟨hinl.length_eq, hinl⟩ (Entails.refl _)
+    refine Entails.sepExists_right bs (Entails.pure_right ⟨hinl.length_eq, hinl⟩ ?_)
+    rw [sepConj_pure_left_comm]
+    apply Entails.pure_right hpure
+    dsimp only [bs]
+    rw [pointsToBytes_append, chainPrefixBytes_length, pointsToBytes_chainPrefixBytes]
+    bi_entail
   · apply Entails.sepExists_elim; intro bs
     apply Entails.pure_left; rintro ⟨_, ckBs, hck_len, hck_inl, rfl⟩
+    rw [sepConj_pure_left_comm]
+    apply Entails.pure_left; intro hpure
+    apply Entails.pure_right hpure
+    have hck : ckBs.length = 32 ∧ OptChainKeyInline gc.1.ck gc.2.chainKey ckBs := ⟨hck_len, hck_inl⟩
     rw [pointsToBytes_append, chainPrefixBytes_length, pointsToBytes_chainPrefixBytes]
-    have h72 : a + BitVec.ofNat 64 72 = a + 72#64 := rfl
-    rw [h72]
-    have hpull :
-        ((((a ↦ₛ vecGhostHeaderBytes gc.1.srk) ∗
-            ((a + 24#64) ↦ₛ vecGhostHeaderBytes gc.1.priv) ∗
-            ((a + 48#64) ↦ₛ
-              vecHeaderBytes gc.1.mkCap gc.1.mkPtr
-                (BitVec.ofNat 64 (gc.1.keys.zip gc.2.messageKeys).length))) ∗
-           ((a + 72#64) ↦ₛ ckBs)) ∗
-          (⌜ChainPure gc⌝ ∗
-            vecGhostHeap A gc.1.srk ∗
-            vecGhostHeap A gc.1.priv ∗
-            vecBuf A 104 8 (messageKeyAt A) gc.1.mkCap gc.1.mkPtr
-              (gc.1.keys.zip gc.2.messageKeys) ∗
-            optChainKeyHeap A gc.1.ck gc.2.chainKey)) =
-        (⌜ChainPure gc⌝ ∗
-          ((a ↦ₛ vecGhostHeaderBytes gc.1.srk) ∗ vecGhostHeap A gc.1.srk) ∗
-          (((a + 24#64) ↦ₛ vecGhostHeaderBytes gc.1.priv) ∗ vecGhostHeap A gc.1.priv) ∗
-          (((a + 48#64) ↦ₛ
-              vecHeaderBytes gc.1.mkCap gc.1.mkPtr
-                (BitVec.ofNat 64 (gc.1.keys.zip gc.2.messageKeys).length)) ∗
-            vecBuf A 104 8 (messageKeyAt A) gc.1.mkCap gc.1.mkPtr
-              (gc.1.keys.zip gc.2.messageKeys)) ∗
-          (((a + 72#64) ↦ₛ ckBs) ∗ optChainKeyHeap A gc.1.ck gc.2.chainKey)) := by
-      ac_rfl
-    rw [hpull]
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    refine Entails.sepExists_right ckBs ?_
-    exact Entails.pure_right ⟨hck_len, hck_inl⟩ (Entails.refl _)
-
-theorem chainAt_entails_inline_sep_heap (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
-    (a : BitVec 64) :
-    chainAt A gc a ⊢
-      ∃∗ bs : List (BitVec 8),
-        ⌜bs.length = 104 ∧ ChainInline gc bs⌝ ∗ (a ↦ₛ bs) ∗ chainHeap A gc :=
-  Entails.of_eq (chainAt_eq_inline_sep_heap A gc a)
+    bi_entail
 
 /-- Reassemble `chainAt A gc dst` from `(dst ↦ₛ bs) ∗ chainHeap A gc` given `ChainInline gc bs`. -/
 theorem chainAt_of_bytes (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (dst : BitVec 64)
@@ -705,41 +491,6 @@ theorem chainAt_of_bytes (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (dst
   rw [chainAt_eq_inline_sep_heap A gc dst]
   refine Entails.sepExists_right bs ?_
   exact Entails.pure_right ⟨h.length_eq, h⟩ (Entails.refl _)
-
-/-- Forgetting the 104 inline bytes of `chainAt` yields `memRegion a 104 ∗ chainHeap A gc`. -/
-theorem chainAt_entails_memRegion_sep_heap (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
-    (a : BitVec 64) :
-    chainAt A gc a ⊢ memRegion a 104 ∗ chainHeap A gc := by
-  rw [chainAt_eq_inline_sep_heap A gc a]
-  apply Entails.sepExists_elim; intro bs
-  apply Entails.pure_left; rintro ⟨hlen, _⟩
-  apply sepConj_mono_left
-  have h := pointsToBytes_entails_memRegion a bs
-  rwa [hlen] at h
-
-/-- Move `chainAt` from `src` to `dst` after copying the 104 inline bytes `bs` to `dst`,
-leaving `src ↦ₛ bs`. -/
-theorem chainAt_move_bytes (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
-    (src dst : BitVec 64) {bs : List (BitVec 8)} (h : ChainInline gc bs) :
-    ((dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ chainHeap A gc) ⊢
-      chainAt A gc dst ∗ (src ↦ₛ bs) := by
-  have hpull :
-      ((dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ chainHeap A gc) =
-      (((dst ↦ₛ bs) ∗ chainHeap A gc) ∗ (src ↦ₛ bs)) := by
-    ac_rfl
-  rw [hpull]
-  exact sepConj_mono_left (chainAt_of_bytes A gc dst h)
-
-/-- Move `chainAt` from `src` to `dst` after copying `bs`, collapsing `src ↦ₛ bs` to
-`memRegion src 104`. -/
-theorem chainAt_move_to_memRegion (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
-    (src dst : BitVec 64) {bs : List (BitVec 8)} (h : ChainInline gc bs) :
-    ((dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ chainHeap A gc) ⊢
-      chainAt A gc dst ∗ memRegion src 104 := by
-  refine Entails.trans (chainAt_move_bytes A gc src dst h) ?_
-  apply sepConj_mono_right
-  have hregion := pointsToBytes_entails_memRegion src bs
-  rwa [h.length_eq] at hregion
 
 /-- Exposes `chainAt A gc a` as six 128-bit quadwords at `+0x00..+0x60` and one 64-bit word at `+0x60`. -/
 theorem chainAt_entails_chunks104_6QW (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
@@ -852,14 +603,7 @@ theorem optSenderChainAt_eq_inline_sep_heap (A : RustAlloc) (a : BitVec 64)
           sepExists_sepConj_right]
       apply sepExists_congr; intro bs
       dsimp only [OptSenderChainInline, optSenderChainHeap]
-      ac_rfl
-
-theorem optSenderChainAt_entails_inline_sep_heap (A : RustAlloc) (a : BitVec 64)
-    (g : Option SenderChainGhost) (sc : Option SenderChain) :
-    optSenderChainAt A a g sc ⊢
-      ∃∗ bs : List (BitVec 8),
-        ⌜bs.length = 104 ∧ OptSenderChainInline g sc bs⌝ ∗ (a ↦ₛ bs) ∗ optSenderChainHeap A g sc :=
-  Entails.of_eq (optSenderChainAt_eq_inline_sep_heap A a g sc)
+      sep_ac_rfl
 
 /-- Reassemble `optSenderChainAt A dst g sc` from `(dst ↦ₛ bs) ∗ optSenderChainHeap A g sc`
 given `OptSenderChainInline g sc bs`. -/
@@ -870,44 +614,6 @@ theorem optSenderChainAt_of_bytes (A : RustAlloc) (dst : BitVec 64)
   rw [optSenderChainAt_eq_inline_sep_heap A dst g sc]
   refine Entails.sepExists_right bs ?_
   exact Entails.pure_right ⟨h.length_eq, h⟩ (Entails.refl _)
-
-/-- Forgetting the 104 inline bytes of `optSenderChainAt` yields
-`memRegion a 104 ∗ optSenderChainHeap A g sc`. -/
-theorem optSenderChainAt_entails_memRegion_sep_heap (A : RustAlloc) (a : BitVec 64)
-    (g : Option SenderChainGhost) (sc : Option SenderChain) :
-    optSenderChainAt A a g sc ⊢ memRegion a 104 ∗ optSenderChainHeap A g sc := by
-  rw [optSenderChainAt_eq_inline_sep_heap A a g sc]
-  apply Entails.sepExists_elim; intro bs
-  apply Entails.pure_left; rintro ⟨hlen, _⟩
-  apply sepConj_mono_left
-  have h := pointsToBytes_entails_memRegion a bs
-  rwa [hlen] at h
-
-/-- Move `optSenderChainAt` from `src` to `dst` after copying the 104 inline bytes `bs` to `dst`,
-leaving `src ↦ₛ bs`. -/
-theorem optSenderChainAt_move_bytes (A : RustAlloc) (src dst : BitVec 64)
-    (g : Option SenderChainGhost) (sc : Option SenderChain)
-    {bs : List (BitVec 8)} (h : OptSenderChainInline g sc bs) :
-    ((dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ optSenderChainHeap A g sc) ⊢
-      optSenderChainAt A dst g sc ∗ (src ↦ₛ bs) := by
-  have hpull :
-      ((dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ optSenderChainHeap A g sc) =
-      (((dst ↦ₛ bs) ∗ optSenderChainHeap A g sc) ∗ (src ↦ₛ bs)) := by
-    ac_rfl
-  rw [hpull]
-  exact sepConj_mono_left (optSenderChainAt_of_bytes A dst g sc h)
-
-/-- Move `optSenderChainAt` from `src` to `dst` after copying `bs`, collapsing `src ↦ₛ bs` to
-`memRegion src 104`. -/
-theorem optSenderChainAt_move_to_memRegion (A : RustAlloc) (src dst : BitVec 64)
-    (g : Option SenderChainGhost) (sc : Option SenderChain)
-    {bs : List (BitVec 8)} (h : OptSenderChainInline g sc bs) :
-    ((dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ optSenderChainHeap A g sc) ⊢
-      optSenderChainAt A dst g sc ∗ memRegion src 104 := by
-  refine Entails.trans (optSenderChainAt_move_bytes A src dst g sc h) ?_
-  apply sepConj_mono_right
-  have hregion := pointsToBytes_entails_memRegion src bs
-  rwa [h.length_eq] at hregion
 
 /-- Exposes `optSenderChainAt A a g sc` as a 64-bit word at `+0x00` and six 128-bit quadwords at `+0x08..+0x68`. -/
 theorem optSenderChainAt_entails_chunks104W6Q (A : RustAlloc) (a : BitVec 64)
@@ -939,16 +645,6 @@ theorem optSenderChainAt_of_chunks104W6Q (A : RustAlloc) (dst : BitVec 64)
       optSenderChainAt A dst g sc := by
   rw [chunks104W6QAt_eq_pointsToBytes]
   exact optSenderChainAt_of_bytes A dst g sc h
-
-/-- In the `None` sender-chain case, writing `noneCap` at `dst` and any 6 quadwords `q0..q5` at
-`dst + 0x8..dst + 0x68` directly entails `optSenderChainAt A dst none none`. -/
-theorem optSenderChainAt_none_of_chunks104W6Q (A : RustAlloc) (dst : BitVec 64)
-    (q0 q1 q2 q3 q4 q5 : BitVec 128) :
-    chunks104W6QAt dst noneCap q0 q1 q2 q3 q4 q5 ⊢
-      optSenderChainAt A dst none none := by
-  have h := optSenderChainAt_of_chunks104W6Q A dst none none
-    (OptSenderChainInline.none_of_chunks96 q0 q1 q2 q3 q4 q5)
-  simpa [optSenderChainHeap] using h
 
 /-! ## `sessionStateAt` (344 bytes): decomposition and move corollaries -/
 
@@ -1039,9 +735,6 @@ theorem sessionStateAt_eq_inline_sep_heap (A : RustAlloc) (ss : BitVec 64) (G : 
       vecAt_eq_bytes_sep_buf A 104 8 (chainAt A) (ss + 0x48#64),
       vecGhostAt_eq_bytes_sep_heap A G.alice (ss + 0x60#64),
       vecU8At_eq_bytes_sep_buf A (ss + 0x78#64) G.pq.cap G.pq.ptr st.pqRatchetState,
-      optSenderChainAt_eq_inline_sep_heap A (ss + 0x90#64) G.sender st.senderChain,
-      optTailVecAt_eq_inline_sep_heap A (by decide) (by decide) (ss + 0xf8#64) G.pending,
-      optTailVecAt_eq_inline_sep_heap A (by decide) (by decide) (ss + 0x128#64) G.kyber,
       ← pointsToBytes_sessionSuffixBytes G st ss]
   have hroot_len : BitVec.ofNat 64 (keyToBytes32 st.rootKey).length = 32#64 := by
     simp [keyToBytes32]
@@ -1050,141 +743,43 @@ theorem sessionStateAt_eq_inline_sep_heap (A : RustAlloc) (ss : BitVec 64) (G : 
   apply sepProp_eq_of_entails
   · apply Entails.pure_left; intro hpure
     have hreg : G.regIds.length = 8 := hpure.2.2.2.2.1
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-    apply Entails.sepExists_elim; intro kybBs
-    apply Entails.sepExists_elim; intro pendBs
+    rw [optSenderChainAt_eq_inline_sep_heap A (ss + 0x90#64) G.sender st.senderChain]
+    conv => lhs; simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc, sepConj_pure_left_comm]
     apply Entails.sepExists_elim; intro scBs
-    have hpull :
-        (((ss ↦ₛ vecGhostHeaderBytes G.localIk) ∗ vecGhostHeap A G.localIk) ∗
-          (((ss + 0x18#64) ↦ₛ vecGhostHeaderBytes G.remoteIk) ∗ vecGhostHeap A G.remoteIk) ∗
-          (((ss + 0x30#64) ↦ₛ vecHeaderBytes G.root.cap G.root.ptr 32#64) ∗
-            vecU8Buf A G.root.cap G.root.ptr (keyToBytes32 st.rootKey)) ∗
-          (((ss + 0x48#64) ↦ₛ
-              vecHeaderBytes G.chainsCap G.chainsPtr
-                (BitVec.ofNat 64 (G.chains.zip st.receiverChains).length)) ∗
-            vecBuf A 104 8 (chainAt A) G.chainsCap G.chainsPtr
-              (G.chains.zip st.receiverChains)) ∗
-          (((ss + 0x60#64) ↦ₛ vecGhostHeaderBytes G.alice) ∗ vecGhostHeap A G.alice) ∗
-          (((ss + 0x78#64) ↦ₛ
-              vecHeaderBytes G.pq.cap G.pq.ptr (BitVec.ofNat 64 st.pqRatchetState.length)) ∗
-            vecU8Buf A G.pq.cap G.pq.ptr st.pqRatchetState) ∗
-          (⌜scBs.length = 104 ∧ OptSenderChainInline G.sender st.senderChain scBs⌝ ∗
-            ((ss + 0x90#64) ↦ₛ scBs) ∗ optSenderChainHeap A G.sender st.senderChain) ∗
-          (⌜pendBs.length = 48 ∧ OptTailVecInline 48 G.pending pendBs⌝ ∗
-            ((ss + 0xf8#64) ↦ₛ pendBs) ∗ optTailVecHeap A G.pending) ∗
-          (⌜kybBs.length = 32 ∧ OptTailVecInline 32 G.kyber kybBs⌝ ∗
-            ((ss + 0x128#64) ↦ₛ kybBs) ∗ optTailVecHeap A G.kyber) ∗
-          ((ss + 0x148#64) ↦ₛ sessionSuffixBytes G st)) =
-        (⌜scBs.length = 104 ∧ OptSenderChainInline G.sender st.senderChain scBs⌝ ∗
-          ⌜pendBs.length = 48 ∧ OptTailVecInline 48 G.pending pendBs⌝ ∗
-          ⌜kybBs.length = 32 ∧ OptTailVecInline 32 G.kyber kybBs⌝ ∗
-          (((ss ↦ₛ vecGhostHeaderBytes G.localIk) ∗
-            ((ss + 0x18#64) ↦ₛ vecGhostHeaderBytes G.remoteIk) ∗
-            ((ss + 0x30#64) ↦ₛ vecHeaderBytes G.root.cap G.root.ptr 32#64) ∗
-            ((ss + 0x48#64) ↦ₛ
-              vecHeaderBytes G.chainsCap G.chainsPtr
-                (BitVec.ofNat 64 (G.chains.zip st.receiverChains).length)) ∗
-            ((ss + 0x60#64) ↦ₛ vecGhostHeaderBytes G.alice) ∗
-            ((ss + 0x78#64) ↦ₛ
-              vecHeaderBytes G.pq.cap G.pq.ptr (BitVec.ofNat 64 st.pqRatchetState.length))) ∗
-           ((ss + 0x90#64) ↦ₛ scBs) ∗
-           ((ss + 0xf8#64) ↦ₛ pendBs) ∗
-           ((ss + 0x128#64) ↦ₛ kybBs) ∗
-           ((ss + 0x148#64) ↦ₛ sessionSuffixBytes G st)) ∗
-          (vecGhostHeap A G.localIk ∗
-            vecGhostHeap A G.remoteIk ∗
-            vecU8Buf A G.root.cap G.root.ptr (keyToBytes32 st.rootKey) ∗
-            vecBuf A 104 8 (chainAt A) G.chainsCap G.chainsPtr
-              (G.chains.zip st.receiverChains) ∗
-            vecGhostHeap A G.alice ∗
-            vecU8Buf A G.pq.cap G.pq.ptr st.pqRatchetState ∗
-            optSenderChainHeap A G.sender st.senderChain ∗
-            optTailVecHeap A G.pending ∗
-            optTailVecHeap A G.kyber)) := by
-      ac_rfl
-    rw [hpull, ← pointsToBytes_sessionPrefixBytes G st ss]
     apply Entails.pure_left; rintro ⟨hsc_len, hsc_inl⟩
+    rw [optTailVecAt_eq_inline_sep_heap A (by decide) (by decide) (ss + 0xf8#64) G.pending]
+    conv => lhs; simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc, sepConj_pure_left_comm]
+    apply Entails.sepExists_elim; intro pendBs
     apply Entails.pure_left; rintro ⟨hpend_len, hpend_inl⟩
+    rw [optTailVecAt_eq_inline_sep_heap A (by decide) (by decide) (ss + 0x128#64) G.kyber]
+    conv => lhs; simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc, sepConj_pure_left_comm]
+    apply Entails.sepExists_elim; intro kybBs
     apply Entails.pure_left; rintro ⟨hkyb_len, hkyb_inl⟩
-    rw [← pointsToBytes_sessionInline_segments G st ss hsc_len hpend_len hkyb_len]
     set bs := sessionPrefixBytes G st ++ scBs ++ pendBs ++ kybBs ++ sessionSuffixBytes G st
     have hinl : SessionInline G st bs :=
       ⟨hreg, scBs, pendBs, kybBs, hsc_len, hsc_inl, hpend_len, hpend_inl, hkyb_len, hkyb_inl, rfl⟩
-    refine Entails.sepExists_right bs ?_
-    apply Entails.pure_right ⟨hinl.length_eq, hinl⟩
-    apply sepConj_mono_right
-    exact Entails.pure_right hpure (Entails.refl _)
+    refine Entails.sepExists_right bs (Entails.pure_right ⟨hinl.length_eq, hinl⟩ ?_)
+    rw [sepConj_pure_left_comm]
+    apply Entails.pure_right hpure
+    dsimp only [bs]
+    rw [pointsToBytes_sessionInline_segments G st ss hsc_len hpend_len hkyb_len,
+        pointsToBytes_sessionPrefixBytes G st ss]
+    bi_entail
   · apply Entails.sepExists_elim; intro bs
     apply Entails.pure_left
     rintro ⟨_, _, scBs, pendBs, kybBs, hsc_len, hsc_inl, hpend_len, hpend_inl, hkyb_len, hkyb_inl, rfl⟩
-    rw [pointsToBytes_sessionInline_segments G st ss hsc_len hpend_len hkyb_len,
+    rw [sepConj_pure_left_comm]
+    apply Entails.pure_left; intro hpure
+    apply Entails.pure_right hpure
+    have hsc : scBs.length = 104 ∧ OptSenderChainInline G.sender st.senderChain scBs := ⟨hsc_len, hsc_inl⟩
+    have hpend : pendBs.length = 48 ∧ OptTailVecInline 48 G.pending pendBs := ⟨hpend_len, hpend_inl⟩
+    have hkyb : kybBs.length = 32 ∧ OptTailVecInline 32 G.kyber kybBs := ⟨hkyb_len, hkyb_inl⟩
+    rw [optSenderChainAt_eq_inline_sep_heap A (ss + 0x90#64) G.sender st.senderChain,
+        optTailVecAt_eq_inline_sep_heap A (by decide) (by decide) (ss + 0xf8#64) G.pending,
+        optTailVecAt_eq_inline_sep_heap A (by decide) (by decide) (ss + 0x128#64) G.kyber,
+        pointsToBytes_sessionInline_segments G st ss hsc_len hpend_len hkyb_len,
         pointsToBytes_sessionPrefixBytes G st ss]
-    have hpull :
-        ((((ss ↦ₛ vecGhostHeaderBytes G.localIk) ∗
-            ((ss + 0x18#64) ↦ₛ vecGhostHeaderBytes G.remoteIk) ∗
-            ((ss + 0x30#64) ↦ₛ vecHeaderBytes G.root.cap G.root.ptr 32#64) ∗
-            ((ss + 0x48#64) ↦ₛ
-              vecHeaderBytes G.chainsCap G.chainsPtr
-                (BitVec.ofNat 64 (G.chains.zip st.receiverChains).length)) ∗
-            ((ss + 0x60#64) ↦ₛ vecGhostHeaderBytes G.alice) ∗
-            ((ss + 0x78#64) ↦ₛ
-              vecHeaderBytes G.pq.cap G.pq.ptr (BitVec.ofNat 64 st.pqRatchetState.length))) ∗
-          ((ss + 0x90#64) ↦ₛ scBs) ∗
-          ((ss + 0xf8#64) ↦ₛ pendBs) ∗
-          ((ss + 0x128#64) ↦ₛ kybBs) ∗
-          ((ss + 0x148#64) ↦ₛ sessionSuffixBytes G st)) ∗
-         (⌜SessionPure G st⌝ ∗
-           vecGhostHeap A G.localIk ∗
-           vecGhostHeap A G.remoteIk ∗
-           vecU8Buf A G.root.cap G.root.ptr (keyToBytes32 st.rootKey) ∗
-           vecBuf A 104 8 (chainAt A) G.chainsCap G.chainsPtr
-             (G.chains.zip st.receiverChains) ∗
-           vecGhostHeap A G.alice ∗
-           vecU8Buf A G.pq.cap G.pq.ptr st.pqRatchetState ∗
-           optSenderChainHeap A G.sender st.senderChain ∗
-           optTailVecHeap A G.pending ∗
-           optTailVecHeap A G.kyber)) =
-        (⌜SessionPure G st⌝ ∗
-          ((ss ↦ₛ vecGhostHeaderBytes G.localIk) ∗ vecGhostHeap A G.localIk) ∗
-          (((ss + 0x18#64) ↦ₛ vecGhostHeaderBytes G.remoteIk) ∗ vecGhostHeap A G.remoteIk) ∗
-          (((ss + 0x30#64) ↦ₛ vecHeaderBytes G.root.cap G.root.ptr 32#64) ∗
-            vecU8Buf A G.root.cap G.root.ptr (keyToBytes32 st.rootKey)) ∗
-          (((ss + 0x48#64) ↦ₛ
-              vecHeaderBytes G.chainsCap G.chainsPtr
-                (BitVec.ofNat 64 (G.chains.zip st.receiverChains).length)) ∗
-            vecBuf A 104 8 (chainAt A) G.chainsCap G.chainsPtr
-              (G.chains.zip st.receiverChains)) ∗
-          (((ss + 0x60#64) ↦ₛ vecGhostHeaderBytes G.alice) ∗ vecGhostHeap A G.alice) ∗
-          (((ss + 0x78#64) ↦ₛ
-              vecHeaderBytes G.pq.cap G.pq.ptr (BitVec.ofNat 64 st.pqRatchetState.length)) ∗
-            vecU8Buf A G.pq.cap G.pq.ptr st.pqRatchetState) ∗
-          (((ss + 0x90#64) ↦ₛ scBs) ∗ optSenderChainHeap A G.sender st.senderChain) ∗
-          (((ss + 0xf8#64) ↦ₛ pendBs) ∗ optTailVecHeap A G.pending) ∗
-          (((ss + 0x128#64) ↦ₛ kybBs) ∗ optTailVecHeap A G.kyber) ∗
-          ((ss + 0x148#64) ↦ₛ sessionSuffixBytes G st)) := by
-      ac_rfl
-    rw [hpull]
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    apply sepConj_mono_right
-    refine sepConj_mono ?_ (sepConj_mono ?_ (sepConj_mono ?_ (Entails.refl _)))
-    · refine Entails.sepExists_right scBs ?_
-      exact Entails.pure_right ⟨hsc_len, hsc_inl⟩ (Entails.refl _)
-    · refine Entails.sepExists_right pendBs ?_
-      exact Entails.pure_right ⟨hpend_len, hpend_inl⟩ (Entails.refl _)
-    · refine Entails.sepExists_right kybBs ?_
-      exact Entails.pure_right ⟨hkyb_len, hkyb_inl⟩ (Entails.refl _)
-
-theorem sessionStateAt_entails_inline_sep_heap (A : RustAlloc) (ss : BitVec 64)
-    (G : SessionGhost) (st : SessionState (List (BitVec 8))) :
-    sessionStateAt A ss G st ⊢
-      ∃∗ bs : List (BitVec 8),
-        ⌜bs.length = 344 ∧ SessionInline G st bs⌝ ∗ (ss ↦ₛ bs) ∗ sessionHeap A G st :=
-  Entails.of_eq (sessionStateAt_eq_inline_sep_heap A ss G st)
+    bi_entail
 
 /-- Reassemble `sessionStateAt A dst G st` from `(dst ↦ₛ bs) ∗ sessionHeap A G st`
 given `SessionInline G st bs`. -/
@@ -1196,30 +791,14 @@ theorem sessionStateAt_of_bytes (A : RustAlloc) (dst : BitVec 64)
   refine Entails.sepExists_right bs ?_
   exact Entails.pure_right ⟨h.length_eq, h⟩ (Entails.refl _)
 
-/-- Forgetting the 344 inline bytes of `sessionStateAt` yields
-`memRegion ss 344 ∗ sessionHeap A G st`. -/
-theorem sessionStateAt_entails_memRegion_sep_heap (A : RustAlloc) (ss : BitVec 64)
-    (G : SessionGhost) (st : SessionState (List (BitVec 8))) :
-    sessionStateAt A ss G st ⊢ memRegion ss 344 ∗ sessionHeap A G st := by
-  rw [sessionStateAt_eq_inline_sep_heap A ss G st]
-  apply Entails.sepExists_elim; intro bs
-  apply Entails.pure_left; rintro ⟨hlen, _⟩
-  apply sepConj_mono_left
-  have h := pointsToBytes_entails_memRegion ss bs
-  rwa [hlen] at h
-
 /-- Transfers `sessionStateAt A src G st` to `dst` given a copy `dst ↦ₛ bs` of its 344 inline bytes. -/
 theorem sessionStateAt_move_bytes (A : RustAlloc) (src dst : BitVec 64)
     (G : SessionGhost) (st : SessionState (List (BitVec 8)))
     (bs : List (BitVec 8)) :
     SessionStateMoveStmt A src dst G st bs := by
   intro h
-  have hpull :
-      ((dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ sessionHeap A G st) =
-      (((dst ↦ₛ bs) ∗ sessionHeap A G st) ∗ (src ↦ₛ bs)) := by
-    ac_rfl
-  rw [hpull]
-  exact sepConj_mono_left (sessionStateAt_of_bytes A dst G st h)
+  refine Entails.trans ?_ (sepConj_mono_left (sessionStateAt_of_bytes A dst G st h))
+  bi_entail
 
 /-- Move `sessionStateAt` from `src` to `dst` after copying `bs`, collapsing `src ↦ₛ bs` to
 `memRegion src 344`. -/
@@ -1239,40 +818,9 @@ theorem sessionStateAt_move_bytes_twice (A : RustAlloc) (src mid dst : BitVec 64
     {bs : List (BitVec 8)} (h : SessionInline G st bs) :
     ((dst ↦ₛ bs) ∗ (mid ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ sessionHeap A G st) ⊢
       sessionStateAt A dst G st ∗ memRegion mid 344 ∗ memRegion src 344 := by
-  have hpull :
-      ((dst ↦ₛ bs) ∗ (mid ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ sessionHeap A G st) =
-      (((dst ↦ₛ bs) ∗ (mid ↦ₛ bs) ∗ sessionHeap A G st) ∗ (src ↦ₛ bs)) := by
-    ac_rfl
-  rw [hpull]
-  refine Entails.trans (sepConj_mono (sessionStateAt_move_to_memRegion A mid dst G st h) ?_)
-    (Entails.of_eq (sepConj_assoc _ _ _))
-  have hsrc := pointsToBytes_entails_memRegion src bs
-  rwa [h.length_eq] at hsrc
-
-/-- Splits a 344-byte list into two leading 128-bit quadwords and a 312-byte remainder. -/
-theorem exists_split_344_as_2Q_312 {bs : List (BitVec 8)} (h : bs.length = 344) :
-    ∃ (q0 q1 : BitVec 128) (rest : List (BitVec 8)),
-      rest.length = 312 ∧
-      bs = unpack128 q0 ++ unpack128 q1 ++ rest ∧
-      ∀ a : BitVec 64,
-        (a ↦ₛ bs) = (a ↦₁₂₈ q0) ∗ ((a + 0x10#64) ↦₁₂₈ q1) ∗ ((a + 0x20#64) ↦ₛ rest) := by
-  have h0 : (bs.take 16).length = 16 := by simp [h]
-  have h1 : ((bs.drop 16).take 16).length = 16 := by simp [h]
-  have hrest : (bs.drop 32).length = 312 := by simp [h]
-  obtain ⟨q0, hq0, _⟩ := exists_unpack128_of_length_16 h0
-  obtain ⟨q1, hq1, _⟩ := exists_unpack128_of_length_16 h1
-  have hbs : bs = unpack128 q0 ++ unpack128 q1 ++ bs.drop 32 := by
-    rw [← hq0, ← hq1, List.append_assoc]
-    have s1 : (bs.drop 16).take 16 ++ bs.drop 32 = bs.drop 16 := by
-      have := List.take_append_drop 16 (bs.drop 16)
-      rwa [List.drop_drop] at this
-    rw [s1, List.take_append_drop]
-  refine ⟨q0, q1, bs.drop 32, hrest, hbs, fun a => ?_⟩
-  conv => lhs; rw [hbs]
-  simp only [List.append_assoc, pointsToBytes_append, unpack128_length,
-    ← pointsTo128_eq_pointsToBytes]
-  have h10 : a + BitVec.ofNat 64 16 = a + 0x10#64 := rfl
-  have h20 : a + 0x10#64 + BitVec.ofNat 64 16 = a + 0x20#64 := by bv_arith
-  rw [h10, h20]
+  have hsrc : (src ↦ₛ bs) ⊢ memRegion src 344 := h.length_eq ▸ pointsToBytes_entails_memRegion src bs
+  conv => rhs; rw [← sepConj_assoc]
+  refine Entails.trans ?_ (sepConj_mono (sessionStateAt_move_to_memRegion A mid dst G st h) hsrc)
+  bi_entail
 
 end CryptoVerification.LibsignalTripleRatchet.RawByteMove

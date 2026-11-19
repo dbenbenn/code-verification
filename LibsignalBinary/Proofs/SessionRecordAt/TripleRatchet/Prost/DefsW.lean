@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 
 /-!
@@ -22,7 +22,7 @@ leaves (`drop_glue::<DecodeError>`, `decode_varint_slice`, `int32::merge`, `skip
 `externStack = 16384` and slice-length bounds weakened to `< 2 ^ 63` (`< 2 ^ 62` for `bytes::merge`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,7 +72,7 @@ theorem dropDecodeErrorStackX_eq : dropDecodeErrorStackW = dropDecodeErrorStack 
 /-! ## `DecodeError::from` and `DecodeError::push` hooks -/
 
 /-- `decodeErrorFromSpec` (frozen) at `decodeErrorHookStackW`. -/
-def decodeErrorFromSpecX (A : RustAlloc) : Spec (BitVec 64 × BitVec 64) where
+@[expose] def decodeErrorFromSpecX (A : RustAlloc) : Spec (BitVec 64 × BitVec 64) where
   pre := fun (k, w) s =>
     ⌜s.readReg64 .x0 = k ∧ KindNoHeap w⌝ ∗ (k ↦₆₄ w) ∗ memRegion (k + 8#64) 40 ∗
       A.pool ∗ stackAt s.sp decodeErrorHookStackW
@@ -82,7 +82,7 @@ def decodeErrorFromSpecX (A : RustAlloc) : Spec (BitVec 64 × BitVec 64) where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- `decodeErrorPushSpec` (frozen) at `decodeErrorHookStackW`. -/
-def decodeErrorPushSpecX (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × Nat) where
+@[expose] def decodeErrorPushSpecX (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × Nat) where
   pre := fun (d, e, n) s =>
     ⌜s.readReg64 .x0 = d ∧ n < 2 ^ 32⌝ ∗ (d ↦₆₄ e) ∗ decodeErrorAtStackLen A e n ∗
       A.pool ∗ stackAt s.sp decodeErrorHookStackW
@@ -94,7 +94,7 @@ def decodeErrorPushSpecX (A : RustAlloc) : Spec (BitVec 64 × BitVec 64 × Nat) 
 /-! ## `drop_glue::<DecodeError>` (`0x242c`) -/
 
 /-- `dropDecodeErrorSpec` at `dropDecodeErrorStackW` (no length bound involved). -/
-def dropDecodeErrorSpecW (A : RustAlloc) : Spec (BitVec 64) where
+@[expose] def dropDecodeErrorSpecW (A : RustAlloc) : Spec (BitVec 64) where
   pre := fun e s =>
     ⌜s.readReg64 .x0 = e⌝ ∗ decodeErrorAt A e ∗ A.pool ∗ stackAt s.sp dropDecodeErrorStackW
   post := fun _ s0 sf =>
@@ -103,7 +103,7 @@ def dropDecodeErrorSpecW (A : RustAlloc) : Spec (BitVec 64) where
 /-! ## `decode_varint_slice` (`0x23008`) -/
 
 /-- `decodeVarintSliceSpec` with `x.bs.length < 2 ^ 63` at `decodeVarintSliceStackW`. -/
-def decodeVarintSliceSpecW (A : RustAlloc) : Spec DecodeVarintSliceGhost where
+@[expose] def decodeVarintSliceSpecW (A : RustAlloc) : Spec DecodeVarintSliceGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ptr ∧
       (s.readReg64 .x2).toNat = x.bs.length ∧ x.bs.length < 2 ^ 63 ∧ VarintSlicePre x.bs⌝ ∗
@@ -116,7 +116,7 @@ def decodeVarintSliceSpecW (A : RustAlloc) : Spec DecodeVarintSliceGhost where
 /-! ## `int32::merge::<&mut &[u8]>` (`0x2bc4`) -/
 
 /-- `int32MergeSpec` with `x.bs.length < 2 ^ 63` at `int32MergeStackW`. -/
-def int32MergeSpecW (A : RustAlloc) : Spec Int32MergeGhost where
+@[expose] def int32MergeSpecW (A : RustAlloc) : Spec Int32MergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63⌝ ∗
@@ -137,7 +137,7 @@ def int32MergeSpecW (A : RustAlloc) : Spec Int32MergeGhost where
 
 /-- `skipFieldSpec` with `x.bs.length < 2 ^ 63` at `skipFieldStackW x.depth`; the tag / depth
 `< 2 ^ 32` value hypotheses are unchanged. -/
-def skipFieldSpecW (A : RustAlloc) : Spec SkipFieldGhost where
+@[expose] def skipFieldSpecW (A : RustAlloc) : Spec SkipFieldGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.tag ∧ x.tag < 2 ^ 32 ∧
@@ -164,7 +164,7 @@ def skipFieldSpecW (A : RustAlloc) : Spec SkipFieldGhost where
 The bound is `2 ^ 62` (not `2 ^ 63`): `bytes::merge` does `Vec::clear` + `reserve(len)`, and the
 amortized growth `max (len, 2 * cap, 8)` of `do_reserve_and_handle` only stays `< 2 ^ 63` (no
 capacity-overflow panic) when `cap < len < 2 ^ 62`. -/
-def bytesMergeRawSpecW (A : RustAlloc) : Spec BytesMergeGhost where
+@[expose] def bytesMergeRawSpecW (A : RustAlloc) : Spec BytesMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 62⌝ ∗
@@ -184,75 +184,36 @@ def bytesMergeRawSpecW (A : RustAlloc) : Spec BytesMergeGhost where
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-/-- `bytesMergeRawSpecW A` in a loaded image `img`. -/
-def bytesMergeSpecW (A : RustAlloc) (img : Obj.Image) : Spec BytesMergeGhost :=
-  (bytesMergeRawSpecW A).inImage img
-
-/-! ## `subroutine_ok` obligations on `contractProg img.base ext` -/
-
-/-- `drop_glue::<DecodeError>` meets `dropDecodeErrorSpecW` on `contractProg img.base ext`. -/
-def DropDecodeErrorOkW (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (contractProg img.base ext)
-    ((contractProg img.base ext).fnAddr dropDecodeErrorName) ((dropDecodeErrorSpecW A).inImage img)
-
-/-- `decode_varint_slice` meets `decodeVarintSliceSpecW` on `contractProg img.base ext`. -/
-def DecodeVarintSliceOkW (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (contractProg img.base ext)
-    ((contractProg img.base ext).fnAddr decodeVarintSliceName)
-    ((decodeVarintSliceSpecW A).inImage img)
-
-/-- `int32::merge` meets `int32MergeSpecW` on `contractProg img.base ext`. -/
-def Int32MergeOkW (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (contractProg img.base ext)
-    ((contractProg img.base ext).fnAddr int32MergeName) ((int32MergeSpecW A).inImage img)
-
-/-- `skip_field` meets `skipFieldSpecW` on `contractProg img.base ext`. -/
-def SkipFieldOkW (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (contractProg img.base ext)
-    ((contractProg img.base ext).fnAddr skipFieldName) ((skipFieldSpecW A).inImage img)
-
-/-- `bytes::merge` meets `bytesMergeSpecW A img` on `contractProg img.base ext`. -/
-def BytesMergeOkW (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (contractProg img.base ext)
-    ((contractProg img.base ext).fnAddr bytesMergeName) (bytesMergeSpecW A img)
-
-/-! ## Relocatable `[LibsignalPlacement]` specifications -/
-
 section Placed
 
 open CryptoVerification
 
 /-- `bytesMergeRawSpecW A` under `LibsignalCodeRoLoaded lsmpl`. -/
-def bytesMergePlacedSpecW [LibsignalPlacement] (A : RustAlloc) : Spec BytesMergeGhost :=
+@[expose] def bytesMergePlacedSpecW [LibsignalPlacement] (A : RustAlloc) : Spec BytesMergeGhost :=
   CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (bytesMergeRawSpecW A)
 
 /-- `drop_glue::<DecodeError>` (Block `5`) meets `dropDecodeErrorSpecW` under `[LibsignalPlacement]`. -/
-def DropDecodeErrorPlacedOkW [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def DropDecodeErrorPlacedOkW [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_4).rebase (blkPl_4).base H)
     (blkPl_4).base (withLsCodeLoaded lsmpl (dropDecodeErrorSpecW A))
 
 /-- `decode_varint_slice` (Block `76`) meets `decodeVarintSliceSpecW` under `[LibsignalPlacement]`. -/
-def DecodeVarintSlicePlacedOkW [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def DecodeVarintSlicePlacedOkW [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_76).rebase (blkPl_76).base H)
     (blkPl_76).base (withLsCodeLoaded lsmpl (decodeVarintSliceSpecW A))
 
 /-- `int32::merge` (Block `8`) meets `int32MergeSpecW` under `[LibsignalPlacement]`. -/
-def Int32MergePlacedOkW [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def Int32MergePlacedOkW [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_8).rebase (blkPl_8).base H)
     (blkPl_8).base (withLsCodeLoaded lsmpl (int32MergeSpecW A))
 
 /-- `skip_field` (Block `1`) meets `skipFieldSpecW` under `[LibsignalPlacement]`. -/
-def SkipFieldPlacedOkW [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def SkipFieldPlacedOkW [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_1).rebase (blkPl_1).base H)
     (blkPl_1).base (withLsCodeLoaded lsmpl (skipFieldSpecW A))
 
 /-- `bytes::merge` (Block `7`) meets `bytesMergePlacedSpecW` under `[LibsignalPlacement]`. -/
-def BytesMergePlacedOkW [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def BytesMergePlacedOkW [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_7).rebase (blkPl_7).base H)
     (blkPl_7).base (bytesMergePlacedSpecW A)
 

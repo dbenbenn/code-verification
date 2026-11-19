@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodedLenPhasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.ProofPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1ChainPhasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.VersionNegPhasePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhasePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodedLenPhasePlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.ProofPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1ChainPhasePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.VersionNegPhasePlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon
@@ -26,6 +26,13 @@ import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93Bu
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1State
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExactBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.ProofPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Master Composition for `PqRatchetState::encode_to_vec` (`Block 426`)
@@ -35,7 +42,7 @@ specifications for `PqRatchetState::encode_to_vec` (`Block 426`), proves the end
 composition `pqRatchetStateEncodeToVec_gen_placed_ok`, and provides top-level `subroutine_ok` wrappers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -166,7 +173,7 @@ abbrev step_encodeToVec_phase2d_placed :=
 /-! ## 2. `.rodata`-Explicit Budget Specifications (`Block 426`) -/
 
 /-- `.rodata`-explicit deterministic (`NoOom`) pinned `Spec` of `PqRatchetState::encode_to_vec` (`Block 426`). -/
-def pqRatchetStateEncodeToVecRoPinnedNoOomPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
+@[expose] def pqRatchetStateEncodeToVecRoPinnedNoOomPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (PqRatchetStateEncodeToVecPinnedGhost × M.σ) where
   pre := fun ⟨x, st_a⟩ s0 =>
@@ -190,7 +197,7 @@ def pqRatchetStateEncodeToVecRoPinnedNoOomPlacedSpecOf [LibsignalPlacement] (res
       stackAt s0.sp (encodeToVecStackOf resStack)
 
 /-- `.rodata`-explicit deterministic (`NoOom`) unpinned `Spec` of `PqRatchetState::encode_to_vec` (`Block 426`). -/
-def pqRatchetStateEncodeToVecRoNoOomPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
+@[expose] def pqRatchetStateEncodeToVecRoNoOomPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (PqRatchetStateEncodeToVecGhost × M.σ) where
   pre := fun ⟨x, st_a⟩ s0 =>
@@ -214,7 +221,7 @@ def pqRatchetStateEncodeToVecRoNoOomPlacedSpecOf [LibsignalPlacement] (resStack 
       stackAt s0.sp (encodeToVecStackOf resStack)
 
 /-- `.rodata`-explicit envelope-based pinned `Spec` of `PqRatchetState::encode_to_vec` (`Block 426`). -/
-def pqRatchetStateEncodeToVecRoPinnedPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
+@[expose] def pqRatchetStateEncodeToVecRoPinnedPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (PqRatchetStateEncodeToVecPinnedGhost × M.σ) where
   pre := fun ⟨x, st_a⟩ s0 =>
@@ -239,7 +246,7 @@ def pqRatchetStateEncodeToVecRoPinnedPlacedSpecOf [LibsignalPlacement] (resStack
         stackAt s0.sp (encodeToVecStackOf resStack)
 
 /-- `.rodata`-explicit envelope-based unpinned `Spec` of `PqRatchetState::encode_to_vec` (`Block 426`). -/
-def pqRatchetStateEncodeToVecRoPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
+@[expose] def pqRatchetStateEncodeToVecRoPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (PqRatchetStateEncodeToVecGhost × M.σ) where
   pre := fun ⟨x, st_a⟩ s0 =>

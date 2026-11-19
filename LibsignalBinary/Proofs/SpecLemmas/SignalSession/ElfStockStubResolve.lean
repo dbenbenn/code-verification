@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import VerifiedLibraries.Mallocng.Spec
 import LibsignalBinary.Heap.Fine.F3LayoutData
@@ -18,6 +19,8 @@ import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
 import ProofLib.Placed.Multi
 import ProofLib.ProgramReflection
 meta import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Stock `ld.lld` Direct-Resolve Lemmas for `"memset"` and `"memcpy"` (`ElfStockStubResolve`)

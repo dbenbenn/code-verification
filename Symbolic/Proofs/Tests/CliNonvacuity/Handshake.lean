@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeCliTraces
-public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeEval
+public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeCliTraces -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeEval -- proof-setup: allow-public-import
 import all DY.ALaCarte.Basic
 import all DY.ALaCarte.DecidableEq
 import all DY.ALaCarte.Ordering
@@ -62,7 +62,7 @@ collision-excuses dischargers (`PtNoCollision`, `RecvNoCollision`, `HandshakeCol
 handshake traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -330,7 +330,7 @@ private def kbs3 (withOpk : Bool) : List (VisEventKind × HwBytes) :=
 private def kbsAll (withOpk : Bool) : List (VisEventKind × HwBytes) :=
   (kbs1 withOpk ++ kbs2 withOpk) ++ kbs3 withOpk
 
-private noncomputable def allBytesMatchBool (withOpk : Bool) : Bool :=
+private def allBytesMatchBool (withOpk : Bool) : Bool :=
   forall₂BytesMatchAtBool myInterp (mkRecordsComp withOpk) (hsGamma withOpk)
     (kbsAll withOpk) (visOfComp withOpk)
 

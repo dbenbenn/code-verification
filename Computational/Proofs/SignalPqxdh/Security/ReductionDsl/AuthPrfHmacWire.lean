@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacDsl
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacDsl -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacProofs
 
 /-!
@@ -18,7 +18,7 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacProofs
 Instantiates the cost and query bounds for `prfHmacRedProg` at `K = b.q_total`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,10 +30,5 @@ open SignalPqxdh.Security.ReductionDsl SignalPqxdh.Security.ReductionDsl.AuthPrf
 
 abbrev prfHmacDslProg (S : Setup) (b : QueryBudget) :=
   prfHmacRedProg S b.q_total
-
-/-- Step-cost bound for `prfHmacDslProg`. -/
-theorem prfHmacDslProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (prfHmacDslProg S b).totalCost b.q_total ≤ stepCostBudget S b :=
-  prfHmacRedProg_totalCost_security_le S b
 
 end SignalPqxdh.Security.ReductionDsl.AuthPrfHmac

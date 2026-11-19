@@ -19,7 +19,7 @@ Instantiates `SendMsgBoundOn (spqrV1 F K) Pq` (`sendMsgBoundOn_spqrV1`) from the
 `spqrV1Send_msg_len_le` in `SpqrV1FactsPure.lean`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.V1
 

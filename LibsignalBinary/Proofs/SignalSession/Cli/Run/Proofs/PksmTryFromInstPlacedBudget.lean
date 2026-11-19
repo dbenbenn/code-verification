@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTopPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTopPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded CLI Instantiation of `PreKeySignalMessage::try_from` (Placed)
@@ -24,7 +28,7 @@ Defines `CliPksmSlotExistsPlacedAt` on Block `579` (`lsProg_579 H`) and instanti
 `PksmTryFromEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -52,7 +56,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
 
 /-- Extern-parametric existential witness for the all-inputs `PreKeySignalMessage::try_from` slot on
 Block `579` (`lsProg_579 H`) under budget pool `A`. -/
-def CliPksmSlotExistsPlacedAt [LibsignalPlacement] (H : LibsignalHooks)
+@[expose] def CliPksmSlotExistsPlacedAt [LibsignalPlacement] (H : LibsignalHooks)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : PksmGhost → List AllocEvent → Prop) : Prop :=
   ∃ pksmParse : List (BitVec 8) → Option PreKeySignalMessage,
@@ -65,11 +69,6 @@ abbrev CliPksmSlotExistsPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (Env : PksmGhost → List AllocEvent → Prop) : Prop :=
   CliPksmSlotExistsPlacedAt (cliGhostExterns g (cliExternsPlaced mmpl W)) A lim Env
-
-abbrev CliPksmSlotExistsPlacedLinked [LibsignalPlacement] (mmpl : Obj.MultiPlacement) (W : CliHooks)
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (Env : PksmGhost → List AllocEvent → Prop) : Prop :=
-  CliPksmSlotExistsPlacedAt (cliExternsPlaced mmpl W) A lim Env
 
 theorem cliPksmSlotExistsPlacedAt_of_codecHooks [LibsignalPlacement] {H : LibsignalHooks}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}

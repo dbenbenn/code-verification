@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhModelLink
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.InitiateDefs
 
 /-!
@@ -21,7 +21,7 @@ at `modelPrims X P` and the corresponding `CryptoGames.HMAC` and `pqxdhKdfBytes`
 operations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

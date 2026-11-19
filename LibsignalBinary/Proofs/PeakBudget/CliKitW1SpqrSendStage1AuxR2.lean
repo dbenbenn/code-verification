@@ -9,13 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendRodataCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendDispatchPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendHeaderReceived1PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.TopPhase3PlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendRodataCaps
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerializeBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.Encoder
+public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightBuckets -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightHelpers -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
 
 /-!
 # Tight Leaf Inclusions for `spqr::send::<Coins>`
@@ -27,7 +36,7 @@ Proves `FineSmallEvs` inclusions for `<States>::send` (`StatesSendTightEnv → S
 `<Chain>::add_epoch` (`ChainAddEpochEnv → ChainAddEpochTight4Env`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,8 +48,8 @@ open CryptoVerification.LibsignalSpqrV1
    spqrPolyApi)
 open CryptoVerification.SpqrV1.ChainProofs (ChainAddEpochGhost)
 open CryptoVerification.SpqrV1.Drop (chunkedKeysSampledToCt1Received)
-open CryptoVerification.SpqrV1.Poly (PolyNextChunkGhost)
 open CryptoVerification.SpqrV1.Poly.EncodeBytes (encodeBytesResult encodeBytes_eq_ok)
+open CryptoVerification.SpqrV1.Poly.NextChunk (PolyNextChunkGhost)
 open CryptoVerification.SpqrV1.Top.MessageSerialize (MessageSerializeGhost)
 open CryptoVerification.SpqrV1Sync.Erasure (msgPoints needed)
 open CryptoVerification.SpqrV1Sync.Erasure.EncodeBytes (encodeBytes_spec_aux)

@@ -221,7 +221,6 @@ theorem at?_trSt_tr4_of_chain {r : Records} {pre₀ mid₁ mid₂ mid₃ mid₄ 
       else if j = tr₁.length + 8 then some (TRStE r.alice stA₁) else none := by
     rw [htr_bob, at?_trSt_of_movesFrom_invisibleNoEffect hmid₃, hE₂, at?_trSt_encNextTr', htr₃, at?_trSt_of_movesFrom_invisibleNoEffect hmid₂, hE₁, at?_trSt_encNextTr', htr₂, at?_trSt_of_movesFrom_invisibleNoEffect hmid₁, hm₀, h0]
   rw [htr₄, at?_trSt_of_movesFrom_invisibleNoEffect hmid₄, hnext_bob, at?_trSt_bobStartTr w_bob, hat_tr_bob]
-theorem sendMatches_of_eventMatchesEntry_send {i : ExternInterpretation} {r : Records} {S : Sem} {g : Ghost} {w : HwBytes} {L : List DY.Bytes} (h : EventMatchesEntry i r S g (.send w) ⟨.send, L, .preKeySend, none⟩) : CompRPreKeyWire.SendMatchesMoves i r S g w L := h.2
 theorem coinSplit_send_no_leak {pt c w : HwBytes} {b : List MachineEvent}
     (hc : DY.Libsignal.Composed.Refinement.Cli.CoinSplit [.pt pt, .rng c, .send w] b) :
     ∀ e ∈ b, eventKind e ≠ .leak := by

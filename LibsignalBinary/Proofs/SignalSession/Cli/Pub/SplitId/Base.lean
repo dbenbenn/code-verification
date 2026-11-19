@@ -10,12 +10,13 @@ limitations under the License.
 module
 
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.CodeLayout
 public import LibsignalBinary.Proofs.SignalSession.Cli.PublicSpecs
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Specifications.AsmConstants
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # Base Layout and Separation-Logic Helpers for `signal_session::public::split_id`
@@ -25,7 +26,7 @@ overlapping 14-byte copy realignment, 4-byte little-endian `ofLe32` splitting, a
 combinators.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SignalSession.Cli.SplitId.Helpers
 
@@ -36,52 +37,14 @@ open CryptoVerification.SignalSession.Cli
 
 /-! ## Byte Packing and `.rodata` String Layouts -/
 
-def pack8 (b0 b1 b2 b3 b4 b5 b6 b7 : BitVec 8) : BitVec 64 :=
+@[expose] def pack8 (b0 b1 b2 b3 b4 b5 b6 b7 : BitVec 8) : BitVec 64 :=
   b7 ++ b6 ++ b5 ++ b4 ++ b3 ++ b2 ++ b1 ++ b0
 
 abbrev malfHead6 : List (BitVec 8) := utf8 "malfor"
 abbrev malfTail6 : List (BitVec 8) := utf8 "d file"
 def malfMid2 : BitVec 16 := 101#8 ++ 109#8
-def malfLo : BitVec 64 := pack8 109#8 97#8 108#8 102#8 111#8 114#8 109#8 101#8
-def malfHi : BitVec 64 := pack8 109#8 101#8 100#8 32#8 102#8 105#8 108#8 101#8
-
-theorem rodata_malformed_eq :
-    (libsignalSessionImage.data.drop
-      (num% (ls_str% "malformed file") - libsignalSessionImage.dataOff)).take 14 =
-      utf8 "malformed file" := by
-  decide +kernel
-
-theorem rodata_bundle_eq :
-    (libsignalSessionImage.data.drop
-      (num% (ls_str% "bundle") - libsignalSessionImage.dataOff)).take 6 =
-      utf8 "bundle" := by
-  decide +kernel
-
-theorem rodata_malformed_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + bv% (ls_str% "malformed file")) ↦ᵣ utf8 "malformed file") ∗ P := by
-  have h := ProofLib.Satisfies.of_rodata_loads himg
-    (dataOff := libsignalSessionImage.dataOff) rfl
-    (secOff := num% (ls_str% "malformed file")) (secLen := 14)
-    (List.mem_of_elem_eq_true (by decide +kernel))
-    (Nat.le_of_ble_eq_true (by decide +kernel))
-    (by decide +kernel)
-    (Nat.le_of_ble_eq_true (by decide +kernel))
-    (by decide +kernel) hro hP
-  rwa [rodata_malformed_eq] at h
-
-theorem rodata_bundle_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + bv% (ls_str% "bundle")) ↦ᵣ utf8 "bundle") ∗ P := by
-  have h := ProofLib.Satisfies.of_rodata_loads himg
-    (dataOff := libsignalSessionImage.dataOff) rfl
-    (secOff := num% (ls_str% "bundle")) (secLen := 6)
-    (List.mem_of_elem_eq_true (by decide +kernel))
-    (Nat.le_of_ble_eq_true (by decide +kernel))
-    (by decide +kernel)
-    (Nat.le_of_ble_eq_true (by decide +kernel))
-    (by decide +kernel) hro hP
-  rwa [rodata_bundle_eq] at h
+@[expose] def malfLo : BitVec 64 := pack8 109#8 97#8 108#8 102#8 111#8 114#8 109#8 101#8
+@[expose] def malfHi : BitVec 64 := pack8 109#8 101#8 100#8 32#8 102#8 105#8 108#8 101#8
 
 theorem pointsToBytesRO_malf_8_6 (p : BitVec 64) :
     (p ↦ᵣ utf8 "malformed file") =
@@ -98,52 +61,6 @@ theorem pointsToBytesRO_malf_6_8 (p : BitVec 64) :
   rw [heq, pointsToBytesRO_append, hlen, ← pointsTo64RO_eq_pointsToBytesRO]
 
 /-! ## PC-Relative `ADRP` and `ADD` Address Lemmas -/
-
-theorem adrp_malf_ok {b fnBase : BitVec 64}
-    (hb : (b &&& 4095#64) = 0#64)
-    (hfn : fnBase = b + bv% (ls_off% "libsignal_cli::public::split_id")) :
-    (((fnBase + 60#64) &&& bv% (2 ^ 64 - 4096)) +
-      bv% (page% (ls_str% "malformed file") -
-        page% (ls_off% "libsignal_cli::public::split_id" + 60))) +
-      bv% ((ls_str% "malformed file") % 4096) =
-      b + bv% (ls_str% "malformed file") := by
-  subst hfn
-  bv_arith
-
-theorem adrp_bundle_ok {b fnBase : BitVec 64}
-    (hb : (b &&& 4095#64) = 0#64)
-    (hfn : fnBase = b + bv% (ls_off% "libsignal_cli::public::split_id")) :
-    (((fnBase + 84#64) &&& bv% (2 ^ 64 - 4096)) +
-      bv% (page% (ls_str% "bundle") -
-        page% (ls_off% "libsignal_cli::public::split_id" + 84))) +
-      bv% ((ls_str% "bundle") % 4096) =
-      b + bv% (ls_str% "bundle") := by
-  subst hfn
-  bv_arith
-
-theorem adrp_malf_err {b fnBase : BitVec 64}
-    (hb : (b &&& 4095#64) = 0#64)
-    (hfn : fnBase = b + bv% (ls_off% "libsignal_cli::public::split_id")) :
-    (((fnBase + 192#64) &&& bv% (2 ^ 64 - 4096)) +
-      bv% (page% (ls_str% "malformed file") -
-        page% (ls_off% "libsignal_cli::public::split_id" + 192))) +
-      bv% ((ls_str% "malformed file") % 4096) =
-      b + bv% (ls_str% "malformed file") := by
-  subst hfn
-  bv_arith
-
-theorem adrp_bundle_err {b fnBase : BitVec 64}
-    (hb : (b &&& 4095#64) = 0#64)
-    (hfn : fnBase = b + bv% (ls_off% "libsignal_cli::public::split_id")) :
-    (((fnBase + 200#64) &&& bv% (2 ^ 64 - 4096)) +
-      bv% (page% (ls_str% "bundle") -
-        page% (ls_off% "libsignal_cli::public::split_id" + 200))) +
-      bv% ((ls_str% "bundle") % 4096) =
-      b + bv% (ls_str% "bundle") := by
-  subst hfn
-  bv_arith
-
-/-! ## 14-Byte Copy Realignment and `splitIdResultAt` Helpers -/
 
 theorem buf14_open_lo (buf : BitVec 64) :
     memRegion buf 14 =
@@ -179,66 +96,6 @@ theorem speWord1_eq : (9223372036854775809#64 : BitVec 64) = speWord 1 := by
 
 theorem splitOkTag_eq : (BitVec.ofNat 64 (2 ^ 64 - 2)) = splitOkTag := by
   decide
-
-theorem speAt_invalidState_intro (A : RustAlloc) (img : Obj.Image) (dst buf : BitVec 64)
-    (hbuf : buf ≠ 0#64) :
-    ((dst ↦₆₄ speWord 1) ∗
-      ((dst + 8#64) ↦₆₄ 14#64) ∗
-      ((dst + 16#64) ↦₆₄ buf) ∗
-      ((dst + 24#64) ↦₆₄ 14#64) ∗
-      A.live buf 14 1 ∗
-      (buf ↦ₛ utf8 "malformed file") ∗
-      ((dst + 32#64) ↦₆₄ (img.base + bv% (ls_str% "bundle"))) ∗
-      ((dst + 40#64) ↦₆₄ 6#64) ∗
-      ((img.base + bv% (ls_str% "bundle")) ↦ᵣ utf8 "bundle")) ⊢
-      speAt A (utf8 "bundle") dst .invalidState := by
-  have hlen_m : (utf8 "malformed file").length = 14 := by decide +kernel
-  have hlen_b : (utf8 "bundle").length = 6 := by decide +kernel
-  have hvec : (((dst + 8#64) ↦₆₄ 14#64) ∗ ((dst + 16#64) ↦₆₄ buf) ∗
-      ((dst + 24#64) ↦₆₄ 14#64) ∗ A.live buf 14 1 ∗ (buf ↦ₛ utf8 "malformed file")) ⊢
-      (∃∗ bs : List (BitVec 8), vecU8 A (dst + 8#64) bs) := by
-    refine Entails.sepExists_right (utf8 "malformed file") ?_
-    unfold vecU8
-    refine Entails.sepExists_right 14#64 (Entails.sepExists_right buf ?_)
-    have h16 : dst + 8#64 + 8#64 = dst + 16#64 := by bv_omega
-    have h24 : dst + 8#64 + 16#64 = dst + 24#64 := by bv_omega
-    have hne : ((14#64 : BitVec 64) = 0) = False := eq_false (by decide)
-    have h14 : (14#64 : BitVec 64).toNat = 14 := rfl
-    simp only [vecU8At, vecHeader, hlen_m, hne, ↓reduceIte, h14, Nat.sub_self,
-      memRegion_zero, sepConj_emp, h16, h24]
-    rw [show (14 ≤ 14 ∧ 14 < 2 ^ 63 ∧ buf ≠ 0) = True from
-      eq_true ⟨by decide, by decide, hbuf⟩, pure_true, emp_sepConj]
-    exact Entails.of_eq (by ac_rfl)
-  have hstr : (((dst + 32#64) ↦₆₄ (img.base + bv% (ls_str% "bundle"))) ∗
-      ((dst + 40#64) ↦₆₄ 6#64) ∗
-      ((img.base + bv% (ls_str% "bundle")) ↦ᵣ utf8 "bundle")) ⊢
-      strRefAt (dst + 32#64) (utf8 "bundle") := by
-    unfold strRefAt
-    refine Entails.sepExists_right (img.base + bv% (ls_str% "bundle")) ?_
-    have h40 : dst + 32#64 + 8#64 = dst + 40#64 := by bv_omega
-    rw [hlen_b, h40]
-    exact Entails.of_eq (by ac_rfl)
-  dsimp only [speAt]
-  have hoff8 : asm64% spePayloadOff = 8#64 := rfl
-  have hoff32 : asm64% speInvalidStateFnOff = 32#64 := rfl
-  rw [hoff8, hoff32]
-  have hgroup :
-      ((dst ↦₆₄ speWord 1) ∗ ((dst + 8#64) ↦₆₄ 14#64) ∗ ((dst + 16#64) ↦₆₄ buf) ∗
-        ((dst + 24#64) ↦₆₄ 14#64) ∗ A.live buf 14 1 ∗ (buf ↦ₛ utf8 "malformed file") ∗
-        ((dst + 32#64) ↦₆₄ (img.base + bv% (ls_str% "bundle"))) ∗
-        ((dst + 40#64) ↦₆₄ 6#64) ∗
-        ((img.base + bv% (ls_str% "bundle")) ↦ᵣ utf8 "bundle")) =
-      ((dst ↦₆₄ speWord 1) ∗
-        (((dst + 8#64) ↦₆₄ 14#64) ∗ ((dst + 16#64) ↦₆₄ buf) ∗
-          ((dst + 24#64) ↦₆₄ 14#64) ∗ A.live buf 14 1 ∗ (buf ↦ₛ utf8 "malformed file")) ∗
-        (((dst + 32#64) ↦₆₄ (img.base + bv% (ls_str% "bundle"))) ∗
-          ((dst + 40#64) ↦₆₄ 6#64) ∗
-          ((img.base + bv% (ls_str% "bundle")) ↦ᵣ utf8 "bundle"))) := by
-    ac_rfl
-  rw [hgroup]
-  exact sepConj_mono_right (sepConj_mono hvec hstr)
-
-/-! ## Return-Slot Layouts and 4-Byte Slice Splitting -/
 
 theorem ret48_open_ok (r : BitVec 64) :
     memRegion r 48 =
@@ -304,7 +161,7 @@ theorem stack_lt_addr_space {m : Memory} {ret sp : BitVec 64} {stk : Nat} {R : S
   have := (ret - (sp - BitVec.ofNat 64 stk)).isLt
   omega
 
-def sidSavedRegs (sp0 : BitVec 64) (s0 : State) (v24 : BitVec 64) : SepProp :=
+@[expose] def sidSavedRegs (sp0 : BitVec 64) (s0 : State) (v24 : BitVec 64) : SepProp :=
   ((sp0 - 48#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp0 - 40#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp0 - 32#64) ↦₆₄ s0.readReg64 .x21) ∗
@@ -371,7 +228,7 @@ theorem stackAt_hook_split (sp1 : BitVec 64) :
 
 /-! ## `SepWPp` Call Helpers -/
 
-def SidPanicAllow (s0 : State) : State → SepProp → Prop :=
+@[expose] def SidPanicAllow (s0 : State) : State → SepProp → Prop :=
   fun sf P_f => ∀ R, (sf.mem ⊨ P_f ∗ R) →
     sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R
 
@@ -379,123 +236,6 @@ theorem sidPanicAllow_of_eq {s0 sf : State} {P_f : SepProp}
     (h : allocFailedIn s0 sf ∧ s0.trace <+: sf.trace) :
     SidPanicAllow s0 sf P_f :=
   fun _ hm => allowPanic_panicked h hm
-
-theorem sid_call_inImage {prog : Program} {img : Obj.Image} {ret : BitVec 64}
-    {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    {α : Type} {callee_pc ret_pc : BitVec 64} {spec : Spec α} (x : α)
-    (hcall : subroutine_ok prog callee_pc (spec.inImage img))
-    (hinv : ImgCallInv img s)
-    (htr : s.trace = s0.trace)
-    (hpc : s.pc = callee_pc)
-    (hrun : s.status = .Running)
-    (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hP : P ⊢ spec.pre x s ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code →
-      (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False := by
-      intro _ _ _ _ he; exact not_satisfies_false_sepConj he)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ R') → False := by
-      intro _ _ _ ho; exact not_satisfies_false_sepConj ho)
-    (hpanic : ∀ sf R', sf.status = .Panicked →
-      (sf.mem ⊨ spec.onPanic x s sf ∗ R') →
-      allocFailedIn s sf ∧ s.trace <+: sf.trace := by
-      intro _ _ _ hp; exact (not_satisfies_false_sepConj hp).elim)
-    (hnext : ∀ sf : State,
-      ImgCallInv img sf →
-      sf.pc = ret_pc →
-      sf.status = .Running →
-      sf.sp = s.sp →
-      CalleeSavedPreserved s sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (SidPanicAllow s0)) :
-    SepWPp prog ret s P Q (SidPanicAllow s0) := by
-  exact ProofLib.SepWPp.call_wpp_frozen (x := x) (F := F)
-    hcall hinv.1 hinv.2 hpc hrun hsp hlr
-    (fun R hm => by
-      have hm_pre : s.mem ⊨ (spec.pre x s ∗ F) ∗ R :=
-        Satisfies.mono (sepConj_mono_left hP) hm
-      dsimp only [Spec.inImage]
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨hinv, by simpa only [sepConj_assoc] using hm_pre⟩)
-    hexit
-    (fun sm hpan ⟨R', hpost⟩ => by
-      dsimp only [Spec.inImage] at hpost ⊢
-      have halloc := hpanic sm R' hpan hpost
-      have halloc0 : allocFailedIn s0 sm ∧ s0.trace <+: sm.trace := by
-        simpa [allocFailedIn, htr] using halloc
-      exact sidPanicAllow_of_eq halloc0)
-    (fun sm hpcm hrunm hspm hcsm hfz hsym =>
-      hnext sm ⟨hfz, hsym⟩ hpcm hrunm hspm hcsm)
-    (fun sm R' hoom_s hpost => (hoom sm (F ∗ R') hoom_s hpost).elim)
-
-theorem sid_fnAddr_rel {b : BitVec 64} {ext : String → Option (State → State)}
-    {target : String} {off : BitVec 64}
-    (h : BitVec.ofNat 64 (libsignalSessionCode.fnOff splitIdName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff target)) :
-    (tripleRatchetProgAtExt b ext).fnAddr splitIdName + off =
-      (tripleRatchetProgAtExt b ext).fnAddr target := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, BitVec.add_assoc, h]
-
-theorem sid_drop_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hDrop : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr cliDropSpeName)
-      ((dropSpeSpecX A).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr splitIdName +
-        bv% ((2 ^ 64 + ls_off% cliDropSpeName - ls_off% splitIdName) % 2 ^ 64))
-      ((dropSpeSpecX A).inImage img) := by
-  rw [sid_fnAddr_rel (target := cliDropSpeName)
-    (by rw [splitId_fnOff, cliDropSpe_fnOff]; decide)]
-  exact hDrop
-
-theorem sid_shim_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr splitIdName +
-        bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% splitIdName))
-      (session2ShimSpecX.inImage img) :=
-  shim_ok_at2_ext_x hC (name := splitIdName)
-    (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% splitIdName))
-    (by rw [splitId_fnOff, ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2"])
-
-theorem sid_alloc_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr splitIdName +
-        bv% (ls_off% "__rustc::__rust_alloc" - ls_off% splitIdName))
-      ((rustAllocSpecWithStack A extHookStack).inImage img) := by
-  rw [sid_fnAddr_rel (target := "__rustc::__rust_alloc")
-    (by rw [splitId_fnOff, ls_stub% "__rustc::__rust_alloc"]; decide)]
-  exact hC.alloc
-
-theorem sid_panic_handle_error (img : Obj.Image) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt img.base ext).externAt?
-      ((tripleRatchetProgAtExt img.base ext).fnAddr splitIdName +
-        bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% splitIdName)) =
-      some Rust.panicked :=
-  panic_at_handle_error_norm_ext (b := img.base) (ext := ext) (name := splitIdName)
-    (k := num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% splitIdName))
-    (by rw [splitId_fnOff, ls_stub% "alloc::raw_vec::handle_error"])
-
-/-! ## `.rodata` Views, Alignment, and Callee-Saved State -/
-
-def sidMalfRO (img : Obj.Image) : SepProp :=
-  ((img.base + bv% (ls_str% "malformed file")) ↦₆₄ᵣ malfLo) ∗
-  ((img.base + bv% (ls_str% "malformed file") + 8#64) ↦ᵣ malfTail6) ∗
-  ((img.base + bv% (ls_str% "malformed file")) ↦ᵣ malfHead6) ∗
-  ((img.base + bv% (ls_str% "malformed file") + 6#64) ↦₆₄ᵣ malfHi)
-
-theorem sidMalfRO_bundle_intro {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ sidMalfRO img ∗ ((img.base + bv% (ls_str% "bundle")) ↦ᵣ utf8 "bundle") ∗ P := by
-  have h1 := rodata_bundle_intro himg hro hP
-  have h2 := rodata_malformed_intro himg hro h1
-  rw [pointsToBytesRO_malf_6_8] at h2
-  have h3 := rodata_malformed_intro himg hro h2
-  rw [pointsToBytesRO_malf_8_6] at h3
-  unfold sidMalfRO
-  exact Satisfies.mono (Entails.of_eq (by ac_rfl)) h3
 
 theorem ret48_open_err (a : BitVec 64) :
     memRegion a 48 =
@@ -520,7 +260,7 @@ theorem sp_sub_96_spAligned {s0 s : State} (hal0 : s0.spAligned = true)
   generalize s0.sp = p
   bv_bits
 
-def SidUpperSaved (s0 s : State) : Prop :=
+@[expose] def SidUpperSaved (s0 s : State) : Prop :=
   s.readReg64 .x22 = s0.readReg64 .x22 ∧
   s.readReg64 .x23 = s0.readReg64 .x23 ∧
   s.readReg64 .x24 = s0.readReg64 .x24 ∧

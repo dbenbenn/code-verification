@@ -11,9 +11,9 @@ module
 
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.EffSalt
-public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-key `Auth` game experiment
@@ -22,36 +22,13 @@ One-key (`pqxdhAuthImpl1KeyG`) counterparts `pqxdhAuthExpCore1Key` and `pqxdhAut
 Game 2 authentication experiment in `TwoKeyAndAuthStatements`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace SignalPqxdh
 
 open OracleComp OracleSpec ENNReal
-
-/-- Core one-key Game 2 (`Auth`/`FirstMsg`) experiment over `pqxdhAuthImpl1KeyG` (cf. DEV-PQ13). -/
-noncomputable def pqxdhAuthExpCore1Key (useRo checkAuth : Bool) (S : Setup)
-    (P : Primitives) (A : AuthAdversary S) : ProbComp Bool := do
-  let secb ← $ᵗ Bool
-  let initSt := AuthState.empty S secb
-  let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (AuthState S) ProbComp) +
-    pqxdhAuthImpl1KeyG useRo checkAuth S P
-  let (b', finalSt) ← (simulateQ impl A.run).run initSt
-  let allChallengedClean := finalSt.sessions.all (fun s =>
-    !s.challenged || authInitCorruptionClause P useRo finalSt.principals s)
-  if checkAuth && finalSt.hasWonAuth then
-    return true
-  else if !allChallengedClean then
-    let coin ← $ᵗ Bool
-    return coin
-  else
-    return (b' == secb)
-
-/-- One-key Game 2 experiment (`useRo = true`, `checkAuth = true`) for first-message privacy and authentication. -/
-noncomputable def pqxdhAuthExp1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) :
-    ProbComp Bool :=
-  pqxdhAuthExpCore1Key true true S P A
 
 end SignalPqxdh
 

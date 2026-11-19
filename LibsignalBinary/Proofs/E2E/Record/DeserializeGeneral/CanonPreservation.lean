@@ -10,6 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Canonicity Preservation Across Session Send and Receive
@@ -23,7 +24,7 @@ Establishes that `CanonRecord` and `CanonState` are preserved across session ope
   `sessionStateAt` entails `CanonState`, discharging `RecvKeepsCanon` from `RecordDecryptRunStmt`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeGeneral
 
@@ -41,7 +42,7 @@ open CryptoVerification.E2E.Record.Serialization (CanonRecord CanonCur CanonSess
 /-- The `SessionState` part of `CanonSession` (everything but the pending pre-key): identity keys
 and ratchet public keys stored as their serializations, the sender's private key exactly,
 receiver chains without private keys, matching shapes. -/
-def CanonState (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Prop :=
+@[expose] def CanonState (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Prop :=
   G.localIk.bytes = st.localIdentity.serialize ∧
   G.remoteIk.bytes = (st.remoteIdentity.map IdentityKey.serialize).getD [] ∧
   CanonSender G.sender st.senderChain ∧
@@ -57,7 +58,7 @@ theorem canonSession_iff (G : SessionGhost) (s : Session (List (BitVec 8))) :
 
 /-- What a successful session-model send keeps of the session state: the identities, the receiver chains, the
 pending flag, and the sender chain's ratchet key pair (only its chain key advances). -/
-def SendKeeps (st st' : SessionState (List (BitVec 8))) : Prop :=
+@[expose] def SendKeeps (st st' : SessionState (List (BitVec 8))) : Prop :=
   st'.localIdentity = st.localIdentity ∧ st'.remoteIdentity = st.remoteIdentity ∧
     st'.receiverChains = st.receiverChains ∧ st'.pendingPreKey = st.pendingPreKey ∧
     st'.senderChain.map SenderChain.ratchetKey = st.senderChain.map SenderChain.ratchetKey
@@ -197,61 +198,9 @@ theorem canonRecord_send {PQC : Type} (C : Crypto) (codec : SignalMessageProtoCo
 /-! ## Receive Canonicity Interface -/
 
 /-- `sessionStateAt` with a canonical ghost. -/
-def canonStateAt (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def canonStateAt (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) : SepProp :=
   ⌜CanonState G st⌝ ∗ sessionStateAt A ss G st
-
-/-- `recordDecryptSpec` specialized to canonical session ghosts (`canonStateAt` in precondition and
-postconditions). -/
-def recordDecryptCanonSpec (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (uuidParse : UuidParser) (S : SpqrModel) (img : Obj.Image) : Spec RecordDecryptGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.spAligned = true ∧ s.readReg64 .x27 = x.sret ∧ s.readReg64 .x19 = x.remA ∧
-          s.readReg64 .x23 = s.sp + 0x5f0#64 ∧ s.readReg64 .x24 = s.sp + 0xca0#64 ∧
-          x.st.remoteIdentity ≠ some x.st.localIdentity ∧ SeedsLen32 x.st ∧
-          x.st.receiverChains.length < 2 ^ 32 ∧ rootStack ≤ s.sp.toNat⌝ ∗
-        memRegion s.sp 0xa0 ∗
-        ((s.sp + 0xe0#64) ↦₆₄ x.msgA) ∗ ((s.sp + 0xf0#64) ↦₆₄ x.locA) ∗
-        ((s.sp + 0x128#64) ↦₆₄ x.prevPtr) ∗ ((s.sp + 0x130#64) ↦₆₄ 0#64) ∗
-        canonStateAt A (s.sp + 0x138#64) x.G x.st ∗
-        memRegion (s.sp + 0x4b0#64) 0x950 ∗
-        protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
-        signalMessageAt A x.msgG x.msgA x.msg ∗
-        tapeAt ctl x.cur x.rest ∗ logOff img ∗ stackAt s.sp rootStack ∗ A.pool
-      post := fun x s0 sf =>
-        ⌜(x.model C S uuidParse).1 ≠ .error .panic ∧ sf.trace = s0.trace ∧ sf.sp = s0.sp ∧
-          sf.readReg64 .x29 = s0.readReg64 .x29 ∧ sf.readReg64 .x27 = x.sret ∧
-          sf.readReg64 .x26 = s0.sp + 0xa0#64 ∧
-          sf.readReg64 .x28 = recordResultTag (x.model C S uuidParse).1⌝ ∗
-        memRegion s0.sp 0xa0 ∗
-        ((s0.sp + 0xe0#64) ↦₆₄ x.msgA) ∗ ((s0.sp + 0xf0#64) ↦₆₄ x.locA) ∗
-        ((s0.sp + 0x128#64) ↦₆₄ x.prevPtr) ∗ ((s0.sp + 0x130#64) ↦₆₄ 0#64) ∗
-        (match (x.model C S uuidParse).1 with
-         | .ok _ => ∃∗ G' : SessionGhost, ⌜x.G.AfterRecordDecrypt G'⌝ ∗
-             canonStateAt A (s0.sp + 0x138#64) G' (x.model C S uuidParse).2
-         | .error _ => canonStateAt A (s0.sp + 0x138#64) x.G x.st) ∗
-        recordResultAt A (s0.sp + 0x4b0#64) (x.model C S uuidParse).1 ∗
-        memRegion (s0.sp + 0x4e0#64) 0x920 ∗
-        protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
-        signalMessageAt A x.msgG x.msgA x.msg ∗
-        tapeAfter ctl x.cur x.rest (x.draws C) ∗ logOff img ∗ stackAt s0.sp rootStack ∗ A.pool
-      onPanic := fun x s0 sf =>
-        ⌜((x.model C S uuidParse).1 = .error .panic ∨
-            (x.st.version.toNat = x.msg.messageVersion.toNat ∧
-              S.recvPanics x.st.pqRatchetState x.msg.pqRatchet) ∨
-            allocFailedIn s0 sf) ∧ s0.trace <+: sf.trace⌝ ∗
-          anyHeap }
-    img
-
-/-- Canonicity-preserving contract for `try_decrypt_from_record` (`recordDecryptCanonSpec`). -/
-def RecvKeepsCanon (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser)
-    (S : SpqrModel) (abs : String → Option (State → State)) (img : Obj.Image) : Prop :=
-  TripleRatchetHooks C A S abs → SpqrRecvOk C A ctl S abs img → Obj.Loads libsignalSessionImage img →
-    region_ok (tripleRatchetProg img C ctl abs) (recordRegionEntry img) (recordRegionExit img)
-      (recordDecryptCanonSpec C A ctl uuidParse S img)
-
-/-! ## Entailment of `CanonState` and `CanonRecord` from Representation Predicates -/
 
 theorem pk_eq_serialize_of_deserialize_len33 {bs : List (BitVec 8)} {pk : PublicKey}
     (hd : PublicKey.deserialize bs = .ok pk) (hl : bs.length = 33) :
@@ -476,21 +425,5 @@ theorem canonStateAt_eq_sessionStateAt (A : RustAlloc) (ss : BitVec 64) (G : Ses
 theorem canonStateAt_eq : @canonStateAt = @sessionStateAt := by
   funext A ss G st
   exact canonStateAt_eq_sessionStateAt A ss G st
-
-theorem recordDecryptCanonSpec_eq (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (img : Obj.Image) :
-    recordDecryptCanonSpec C A ctl uuidTryParse S img =
-      recordDecryptSpec C A ctl uuidTryParse S img := by
-  unfold recordDecryptCanonSpec recordDecryptSpec
-  rw [canonStateAt_eq]
-  rfl
-
-/-- Discharges `RecvKeepsCanon` from `RecordDecryptRunStmt` via `sessionStateAt_canon`. -/
-theorem recvKeepsCanon_of_recordDecrypt (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (abs : String → Option (State → State))
-    (img : Obj.Image) (h : RecordDecryptRunStmt C A ctl S abs img) :
-    RecvKeepsCanon C A ctl uuidTryParse S abs img := by
-  unfold RecvKeepsCanon RecordDecryptRunStmt at *
-  rwa [recordDecryptCanonSpec_eq]
 
 end CryptoVerification.E2E.Record.DeserializeGeneral

@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
-public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
+public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneBase
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Destination Slot Assembly for `SegClone`
@@ -26,7 +29,7 @@ Relocatable `VmPreserved`-threading proofs for destination `SessionStructure` sl
 message-version dispatch (`+0x594 → +0x69c / +0x7e4`, block 197).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

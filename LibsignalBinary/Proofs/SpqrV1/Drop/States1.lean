@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States1a
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States1a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyDecoder
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Drop Glue for `spqr::v1::chunked::states::States [local#1]` (`0x35a6c`, Part 2)
@@ -27,7 +27,7 @@ Proves the remaining five variant theorems (`ct2Sampled`, `headerSent`, `ct1Rece
 `[LibsignalPlacement]` contract `drop_chunked_states_local1_placed_ok` (Block `140`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Drop
 
@@ -80,9 +80,9 @@ local macro "states1_ct2Sampled_steps " entry:term:max jtExp:term:max : tactic =
   · by_cases hc1 : (g.v1.cap == 0#64) = true <;>
       simp only [hc1, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
     · wp_steps
-      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
     · wp_steps; wp_apply
-      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
   · intro s1 hpc1 hrun1 ⟨⟨hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1⟩
     refine seq_clean (mid := $entry + 696#64)
       (P_mid := ((a ↦₆₄ 12#64) ∗
@@ -102,15 +102,15 @@ local macro "states1_ct2Sampled_steps " entry:term:max jtExp:term:max : tactic =
       · wp_steps
         refine SepWP.focus_weaken hhdr56 (by sep_focus) ?_
         refine SepWP.focus_weaken (Entails.of_eq hsplit32.symm) (by sep_focus) ?_
-        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
       · wp_steps; wp_apply
         refine SepWP.focus_weaken hhdr56 (by sep_focus) ?_
         have hsp_eq : stackAt s1.sp allocHookStack = stackAt (s0.sp - 32#64) allocHookStack := by rw [hsp_1]
         refine SepWP.focus_weaken (Entails.of_eq hsp_eq) (by sep_focus) ?_
         refine SepWP.focus_weaken (Entails.of_eq hsplit32.symm) (by sep_focus) ?_
-        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
     · intro s2 hpc2 hrun2 ⟨⟨hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hsp_2, htrace_2, hvregs_2⟩, hx19_2⟩
-      dsimp only [chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]
+      dsimp only [chunkedStatesLocal1JumpTablePlacedExpanded]
       wp_steps
       refine SepWP.focus_weaken
         (stack_restore_64_dropStack32 s0.sp (s0.readReg64 .fp) (s0.readReg64 .lr)
@@ -130,46 +130,6 @@ local macro "states1_ct2Sampled_steps " entry:term:max jtExp:term:max : tactic =
         (BitVec.add_assoc a 8#64 456#64).symm rfl
       refine SepWP.focus_weaken hjoin928 (by sep_focus) ?_
       wp_done))
-
-/-- Variant `ct2Sampled` (`tag = 12#64`, `b.hi` -> `+560` -> dealloc 2 Vecs -> `+696` tail-call `0x357b4`). -/
-theorem drop_chunked_states_local1_ct2Sampled {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext)
-    (st : Chunked.SendCt.Ct2Sampled spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name)
-      (dropChunkedStatesLocal1VariantSpec A b (.ct2Sampled st)) := by
-  simp only [dropChunkedStatesLocal1VariantSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      dropChunkedStatesLocal1_fnOff (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have henc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (2 ^ 64 - (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")))
-      (dropGluePolyEncoderSpec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name =
-        (dropProgAtExt b ext).fnAddr dropPolyEncoderLocal1Name +
-          BitVec.ofNat 64 (num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")) :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]"))
-        (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]") dropChunkedStatesLocal1_fnOff (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_poly_encoder_local1_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropTopBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" 724
-  dsimp only [dropProgAtExt, dropChunkedStatesLocal1Name, dropGluePolyEncoderSpec,
-    chunkedStatesAt, chunkedCt2SampledAt, chunkedStatesLocal1JumpTableAt,
-    chunkedStatesLocal1JumpTableBytes, chunkedStatesSize, polyEncoderSize, dropGluePoly16Stack,
-    spqrPolyApi, BitVec.ofNat_eq_ofNat] at hdealloc_raw henc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" = entry
-  examples_hide_fetches; wp_init a s0
-  states1_ct2Sampled_steps entry (chunkedStatesLocal1JumpTableExpanded b)
 
 local macro "states1_headerSent_steps " entry:term:max jtExp:term:max : tactic => `(tactic| (
   have hfsp_align : ((s0.sp - 32#64) &&& 15#64 == 0#64) = true :=
@@ -214,9 +174,9 @@ local macro "states1_headerSent_steps " entry:term:max jtExp:term:max : tactic =
   · by_cases hc1 : (g.v1.cap == 0#64) = true <;>
       simp only [hc1, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
     · wp_steps
-      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
     · wp_steps; wp_apply
-      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
   · intro s1 hpc1 hrun1 ⟨⟨hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1⟩
     refine seq_clean (mid := $entry + 352#64)
       (P_mid := ((a ↦₆₄ 4#64) ∗
@@ -237,9 +197,9 @@ local macro "states1_headerSent_steps " entry:term:max jtExp:term:max : tactic =
     · by_cases hc2 : (g.v2.cap == 0#64) = true <;>
         simp only [hc2, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
       · wp_steps
-        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
       · wp_steps; wp_apply
-        refine align_pre (by rw [hsp_1]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+        refine align_pre (by rw [hsp_1]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
     · intro s2 hpc2 hrun2 ⟨⟨hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hsp_2, htrace_2, hvregs_2⟩, hx19_2⟩
       refine seq_clean (mid := $entry + 372#64)
         (P_mid := ((a ↦₆₄ 4#64) ∗
@@ -260,15 +220,15 @@ local macro "states1_headerSent_steps " entry:term:max jtExp:term:max : tactic =
         · wp_steps
           refine SepWP.focus_weaken hhdr80 (by sep_focus) ?_
           refine SepWP.focus_weaken (Entails.of_eq hsplit32.symm) (by sep_focus) ?_
-          refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+          refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
         · wp_steps; wp_apply
           refine SepWP.focus_weaken hhdr80 (by sep_focus) ?_
           have hsp_eq : stackAt s2.sp allocHookStack = stackAt (s0.sp - 32#64) allocHookStack := by rw [hsp_2]
           refine SepWP.focus_weaken (Entails.of_eq hsp_eq) (by sep_focus) ?_
           refine SepWP.focus_weaken (Entails.of_eq hsplit32.symm) (by sep_focus) ?_
-          refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+          refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
       · intro s3 hpc3 hrun3 ⟨⟨hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hsp_3, htrace_3, hvregs_3⟩, hx19_3⟩
-        dsimp only [chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]
+        dsimp only [chunkedStatesLocal1JumpTablePlacedExpanded]
         wp_steps
         wp_call henc_raw ⟨a + 8#64, st.sending_ek⟩
         wp_steps
@@ -307,62 +267,6 @@ local macro "states1_headerSent_steps " entry:term:max jtExp:term:max : tactic =
         refine SepWP.focus_weaken hjoin928 (by sep_focus) ?_
         wp_done))
 
-/-- Variant `headerSent` (`tag = 4#64`, jump index `2` -> `+312`). -/
-theorem drop_chunked_states_local1_headerSent {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext)
-    (st : Chunked.SendEk.HeaderSent spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name)
-      (dropChunkedStatesLocal1VariantSpec A b (.headerSent st)) := by
-  simp only [dropChunkedStatesLocal1VariantSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      dropChunkedStatesLocal1_fnOff (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have henc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (2 ^ 64 - (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")))
-      (dropGluePolyEncoderSpec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name =
-        (dropProgAtExt b ext).fnAddr dropPolyEncoderLocal1Name +
-          BitVec.ofNat 64 (num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")) :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]"))
-        (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]") dropChunkedStatesLocal1_fnOff (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_poly_encoder_local1_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  have hdec_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (2 ^ 64 - (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyDecoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")))
-      (dropGlueSortedSetPt16Spec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name =
-        (dropProgAtExt b ext).fnAddr dropPolyDecoderName +
-          BitVec.ofNat 64 (num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyDecoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")) :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyDecoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]"))
-        (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyDecoder> [local#1]") dropChunkedStatesLocal1_fnOff (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_poly_decoder_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropChunkedStatesLocal1Name + 44#64) &&&
-        0xfffffffffffff000#64) = b + bv% (page% ((ls_off% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]") + 44)) := fnAddr_adrp_35a98
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropTopBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" 724
-  dsimp only [dropProgAtExt, dropChunkedStatesLocal1Name, dropGluePolyEncoderSpec,
-    dropGlueSortedSetPt16Spec, chunkedStatesAt, chunkedHeaderSentAt,
-    chunkedStatesLocal1JumpTableAt, chunkedStatesLocal1JumpTableBytes,
-    chunkedStatesSize, polyEncoderSize, polyArrayBytes, dropGluePoly16Stack,
-    spqrPolyApi, BitVec.ofNat_eq_ofNat] at hdealloc_raw henc_raw hdec_raw hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  states1_headerSent_steps entry (chunkedStatesLocal1JumpTableExpanded b)
-
 local macro "states1_ct1Received_steps " entry:term:max jtExp:term:max : tactic => `(tactic| (
   have hfsp_align : ((s0.sp - 32#64) &&& 15#64 == 0#64) = true :=
     spAligned_sub s0.sp 32#64 (by assumption) (by decide)
@@ -396,9 +300,9 @@ local macro "states1_ct1Received_steps " entry:term:max jtExp:term:max : tactic 
   · by_cases hc1 : (g.v1.cap == 0#64) = true <;>
       simp only [hc1, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
     · wp_steps
-      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
     · wp_steps; wp_apply
-      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
   · intro s1 hpc1 hrun1 ⟨⟨hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1⟩
     refine seq_clean (mid := $entry + 108#64)
       (P_mid := ((a ↦₆₄ 5#64) ∗
@@ -421,9 +325,9 @@ local macro "states1_ct1Received_steps " entry:term:max jtExp:term:max : tactic 
     · by_cases hc2 : (g.v2.cap == 0#64) = true <;>
         simp only [hc2, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
       · wp_steps
-        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
       · wp_steps; wp_apply
-        refine align_pre (by rw [hsp_1]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+        refine align_pre (by rw [hsp_1]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
     · intro s2 hpc2 hrun2 ⟨⟨hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hsp_2, htrace_2, hvregs_2⟩, hx19_2⟩
       refine seq_clean (mid := $entry + 128#64)
         (P_mid := ((a ↦₆₄ 5#64) ∗
@@ -444,9 +348,9 @@ local macro "states1_ct1Received_steps " entry:term:max jtExp:term:max : tactic 
       · by_cases hc3 : (g.v3.cap == 0#64) = true <;>
           simp only [hc3, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
         · wp_steps
-          refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+          refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
         · wp_steps; wp_apply
-          refine align_pre (by rw [hsp_2]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+          refine align_pre (by rw [hsp_2]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
       · intro s3 hpc3 hrun3 ⟨⟨hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hsp_3, htrace_3, hvregs_3⟩, hx19_3⟩
         refine seq_clean (mid := $entry + 696#64)
           (P_mid := ((a ↦₆₄ 5#64) ∗
@@ -466,15 +370,15 @@ local macro "states1_ct1Received_steps " entry:term:max jtExp:term:max : tactic 
           · wp_steps
             refine SepWP.focus_weaken hhdr104 (by sep_focus) ?_
             refine SepWP.focus_weaken (Entails.of_eq hsplit32.symm) (by sep_focus) ?_
-            refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+            refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
           · wp_steps; wp_apply
             refine SepWP.focus_weaken hhdr104 (by sep_focus) ?_
             have hsp_eq : stackAt s3.sp allocHookStack = stackAt (s0.sp - 32#64) allocHookStack := by rw [hsp_3]
             refine SepWP.focus_weaken (Entails.of_eq hsp_eq) (by sep_focus) ?_
             refine SepWP.focus_weaken (Entails.of_eq hsplit32.symm) (by sep_focus) ?_
-            refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+            refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
         · intro s4 hpc4 hrun4 ⟨⟨hx20_4, hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hx28_4, hsp_4, htrace_4, hvregs_4⟩, hx19_4⟩
-          dsimp only [chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]
+          dsimp only [chunkedStatesLocal1JumpTablePlacedExpanded]
           wp_steps
           refine SepWP.focus_weaken
             (stack_restore_64_dropStack32 s0.sp (s0.readReg64 .fp) (s0.readReg64 .lr)
@@ -494,49 +398,6 @@ local macro "states1_ct1Received_steps " entry:term:max jtExp:term:max : tactic 
             (BitVec.add_assoc a 8#64 504#64).symm rfl
           refine SepWP.focus_weaken hjoin928 (by sep_focus) ?_
           wp_done))
-
-/-- Variant `ct1Received` (`tag = 5#64`, jump index `3` -> `+68` -> dealloc 4 Vecs -> `+696` tail-call `0x357b4`). -/
-theorem drop_chunked_states_local1_ct1Received {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext)
-    (st : Chunked.SendEk.Ct1Received spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name)
-      (dropChunkedStatesLocal1VariantSpec A b (.ct1Received st)) := by
-  simp only [dropChunkedStatesLocal1VariantSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      dropChunkedStatesLocal1_fnOff (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have henc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (2 ^ 64 - (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")))
-      (dropGluePolyEncoderSpec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name =
-        (dropProgAtExt b ext).fnAddr dropPolyEncoderLocal1Name +
-          BitVec.ofNat 64 (num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")) :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]"))
-        (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]") dropChunkedStatesLocal1_fnOff (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_poly_encoder_local1_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropChunkedStatesLocal1Name + 44#64) &&&
-        0xfffffffffffff000#64) = b + bv% (page% ((ls_off% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]") + 44)) := fnAddr_adrp_35a98
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropTopBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" 724
-  dsimp only [dropProgAtExt, dropChunkedStatesLocal1Name, dropGluePolyEncoderSpec,
-    chunkedStatesAt, chunkedCt1ReceivedAt, chunkedStatesLocal1JumpTableAt,
-    chunkedStatesLocal1JumpTableBytes, chunkedStatesSize, polyEncoderSize, dropGluePoly16Stack,
-    spqrPolyApi, BitVec.ofNat_eq_ofNat] at hdealloc_raw henc_raw hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  states1_ct1Received_steps entry (chunkedStatesLocal1JumpTableExpanded b)
 
 local macro "states1_keysSampled_steps " entry:term:max jtExp:term:max : tactic => `(tactic| (
   have hfsp_align : ((s0.sp - 32#64) &&& 15#64 == 0#64) = true :=
@@ -579,9 +440,9 @@ local macro "states1_keysSampled_steps " entry:term:max jtExp:term:max : tactic 
   · by_cases hc1 : (g.v1.cap == 0#64) = true <;>
       simp only [hc1, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
     · wp_steps
-      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
     · wp_steps; wp_apply
-      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
   · intro s1 hpc1 hrun1 ⟨⟨hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1⟩
     refine seq_clean (mid := $entry + 108#64)
       (P_mid := ((a ↦₆₄ 3#64) ∗
@@ -604,9 +465,9 @@ local macro "states1_keysSampled_steps " entry:term:max jtExp:term:max : tactic 
     · by_cases hc2 : (g.v2.cap == 0#64) = true <;>
         simp only [hc2, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
       · wp_steps
-        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
       · wp_steps; wp_apply
-        refine align_pre (by rw [hsp_1]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+        refine align_pre (by rw [hsp_1]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
     · intro s2 hpc2 hrun2 ⟨⟨hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hsp_2, htrace_2, hvregs_2⟩, hx19_2⟩
       refine seq_clean (mid := $entry + 128#64)
         (P_mid := ((a ↦₆₄ 3#64) ∗
@@ -627,9 +488,9 @@ local macro "states1_keysSampled_steps " entry:term:max jtExp:term:max : tactic 
       · by_cases hc3 : (g.v3.cap == 0#64) = true <;>
           simp only [hc3, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
         · wp_steps
-          refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+          refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
         · wp_steps; wp_apply
-          refine align_pre (by rw [hsp_2]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+          refine align_pre (by rw [hsp_2]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
       · intro s3 hpc3 hrun3 ⟨⟨hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hsp_3, htrace_3, hvregs_3⟩, hx19_3⟩
         refine seq_clean (mid := $entry + 696#64)
           (P_mid := ((a ↦₆₄ 3#64) ∗
@@ -649,15 +510,15 @@ local macro "states1_keysSampled_steps " entry:term:max jtExp:term:max : tactic 
           · wp_steps
             refine SepWP.focus_weaken hhdr104 (by sep_focus) ?_
             refine SepWP.focus_weaken (Entails.of_eq hsplit32.symm) (by sep_focus) ?_
-            refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+            refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
           · wp_steps; wp_apply
             refine SepWP.focus_weaken hhdr104 (by sep_focus) ?_
             have hsp_eq : stackAt s3.sp allocHookStack = stackAt (s0.sp - 32#64) allocHookStack := by rw [hsp_3]
             refine SepWP.focus_weaken (Entails.of_eq hsp_eq) (by sep_focus) ?_
             refine SepWP.focus_weaken (Entails.of_eq hsplit32.symm) (by sep_focus) ?_
-            refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+            refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
         · intro s4 hpc4 hrun4 ⟨⟨hx20_4, hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hx28_4, hsp_4, htrace_4, hvregs_4⟩, hx19_4⟩
-          dsimp only [chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]
+          dsimp only [chunkedStatesLocal1JumpTablePlacedExpanded]
           wp_steps
           refine SepWP.focus_weaken
             (stack_restore_64_dropStack32 s0.sp (s0.readReg64 .fp) (s0.readReg64 .lr)
@@ -677,49 +538,6 @@ local macro "states1_keysSampled_steps " entry:term:max jtExp:term:max : tactic 
             (BitVec.add_assoc a 8#64 504#64).symm rfl
           refine SepWP.focus_weaken hjoin928 (by sep_focus) ?_
           wp_done))
-
-/-- Variant `keysSampled` (`tag = 3#64`, jump index `1` -> `+68` -> dealloc 4 Vecs -> `+696` tail-call `0x357b4`). -/
-theorem drop_chunked_states_local1_keysSampled {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext)
-    (st : Chunked.SendEk.KeysSampled spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name)
-      (dropChunkedStatesLocal1VariantSpec A b (.keysSampled st)) := by
-  simp only [dropChunkedStatesLocal1VariantSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      dropChunkedStatesLocal1_fnOff (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have henc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (2 ^ 64 - (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")))
-      (dropGluePolyEncoderSpec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name =
-        (dropProgAtExt b ext).fnAddr dropPolyEncoderLocal1Name +
-          BitVec.ofNat 64 (num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")) :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]"))
-        (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]") dropChunkedStatesLocal1_fnOff (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_poly_encoder_local1_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropChunkedStatesLocal1Name + 44#64) &&&
-        0xfffffffffffff000#64) = b + bv% (page% ((ls_off% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]") + 44)) := fnAddr_adrp_35a98
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropTopBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" 724
-  dsimp only [dropProgAtExt, dropChunkedStatesLocal1Name, dropGluePolyEncoderSpec,
-    chunkedStatesAt, chunkedKeysSampledAt, chunkedStatesLocal1JumpTableAt,
-    chunkedStatesLocal1JumpTableBytes, chunkedStatesSize, polyEncoderSize, dropGluePoly16Stack,
-    spqrPolyApi, BitVec.ofNat_eq_ofNat] at hdealloc_raw henc_raw hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  states1_keysSampled_steps entry (chunkedStatesLocal1JumpTableExpanded b)
 
 local macro "states1_ekReceivedCt1Sampled_steps " entry:term:max jtExp:term:max : tactic => `(tactic| (
   have hfsp_align : ((s0.sp - 32#64) &&& 15#64 == 0#64) = true :=
@@ -767,9 +585,9 @@ local macro "states1_ekReceivedCt1Sampled_steps " entry:term:max jtExp:term:max 
   · by_cases hc1 : (g.v1.cap == 0#64) = true <;>
       simp only [hc1, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
     · wp_steps
-      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
     · wp_steps; wp_apply
-      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+      refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
   · intro s1 hpc1 hrun1 ⟨⟨hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1⟩
     refine seq_clean (mid := $entry + 636#64)
       (P_mid := ((a ↦₆₄ 10#64) ∗
@@ -795,9 +613,9 @@ local macro "states1_ekReceivedCt1Sampled_steps " entry:term:max jtExp:term:max 
     · by_cases hc2 : (g.v2.cap == 0#64) = true <;>
         simp only [hc2, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
       · wp_steps
-        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+        refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
       · wp_steps; wp_apply
-        refine align_pre (by rw [hsp_1]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+        refine align_pre (by rw [hsp_1]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
     · intro s2 hpc2 hrun2 ⟨⟨hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hsp_2, htrace_2, hvregs_2⟩, hx19_2⟩
       refine seq_clean (mid := $entry + 656#64)
         (P_mid := ((a ↦₆₄ 10#64) ∗
@@ -821,9 +639,9 @@ local macro "states1_ekReceivedCt1Sampled_steps " entry:term:max jtExp:term:max 
       · by_cases hc3 : (g.v3.cap == 0#64) = true <;>
           simp only [hc3, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
         · wp_steps
-          refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+          refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
         · wp_steps; wp_apply
-          refine align_pre (by rw [hsp_2]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+          refine align_pre (by rw [hsp_2]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
       · intro s3 hpc3 hrun3 ⟨⟨hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hsp_3, htrace_3, hvregs_3⟩, hx19_3⟩
         refine seq_clean (mid := $entry + 676#64)
           (P_mid := ((a ↦₆₄ 10#64) ∗
@@ -845,9 +663,9 @@ local macro "states1_ekReceivedCt1Sampled_steps " entry:term:max jtExp:term:max 
         · by_cases hc4 : (g.v4.cap == 0#64) = true <;>
             simp only [hc4, Bool.false_eq_true, ↓reduceIte, emp_sepConj, sepConj_emp]
           · wp_steps
-            refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+            refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
           · wp_steps; wp_apply
-            refine align_pre (by rw [hsp_3]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+            refine align_pre (by rw [hsp_3]; simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
         · intro s4 hpc4 hrun4 ⟨⟨hx20_4, hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx26_4, hx27_4, hx28_4, hsp_4, htrace_4, hvregs_4⟩, hx19_4⟩
           refine seq_clean (mid := $entry + 696#64)
             (P_mid := ((a ↦₆₄ 10#64) ∗
@@ -867,15 +685,15 @@ local macro "states1_ekReceivedCt1Sampled_steps " entry:term:max jtExp:term:max 
             · wp_steps
               refine SepWP.focus_weaken hhdr128 (by sep_focus) ?_
               refine SepWP.focus_weaken (Entails.of_eq hsplit32.symm) (by sep_focus) ?_
-              refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+              refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
             · wp_steps; wp_apply
               refine SepWP.focus_weaken hhdr128 (by sep_focus) ?_
               have hsp_eq : stackAt s4.sp allocHookStack = stackAt (s0.sp - 32#64) allocHookStack := by rw [hsp_4]
               refine SepWP.focus_weaken (Entails.of_eq hsp_eq) (by sep_focus) ?_
               refine SepWP.focus_weaken (Entails.of_eq hsplit32.symm) (by sep_focus) ?_
-              refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
+              refine align_pre (by simp only [Reg.fp, Reg.lr, Reg.x19, chunkedStatesLocal1JumpTablePlacedExpanded]; try ac_rfl) ?_; wp_done
           · intro s5 hpc5 hrun5 ⟨⟨hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx26_5, hx27_5, hx28_5, hsp_5, htrace_5, hvregs_5⟩, hx19_5⟩
-            dsimp only [chunkedStatesLocal1JumpTableExpanded, chunkedStatesLocal1JumpTablePlacedExpanded]
+            dsimp only [chunkedStatesLocal1JumpTablePlacedExpanded]
             wp_steps
             refine SepWP.focus_weaken
               (stack_restore_64_dropStack32 s0.sp (s0.readReg64 .fp) (s0.readReg64 .lr)
@@ -895,94 +713,6 @@ local macro "states1_ekReceivedCt1Sampled_steps " entry:term:max jtExp:term:max 
               (BitVec.add_assoc a 8#64 528#64).symm rfl
             refine SepWP.focus_weaken hjoin928 (by sep_focus) ?_
             wp_done))
-
-/-- Variant `ekReceivedCt1Sampled` (`tag = 10#64`, jump index `8` -> `+596` -> dealloc 5 Vecs -> `+696` tail-call `0x357b4`). -/
-theorem drop_chunked_states_local1_ekReceivedCt1Sampled {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext)
-    (st : Chunked.SendCt.EkReceivedCt1Sampled spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name)
-      (dropChunkedStatesLocal1VariantSpec A b (.ekReceivedCt1Sampled st)) := by
-  simp only [dropChunkedStatesLocal1VariantSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      dropChunkedStatesLocal1_fnOff (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  have henc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name +
-        bv% (2 ^ 64 - (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")))
-      (dropGluePolyEncoderSpec A) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name =
-        (dropProgAtExt b ext).fnAddr dropPolyEncoderLocal1Name +
-          BitVec.ofNat 64 (num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]")) :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]" "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]"))
-        (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder> [local#1]") dropChunkedStatesLocal1_fnOff (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_glue_poly_encoder_local1_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropChunkedStatesLocal1Name + 44#64) &&&
-        0xfffffffffffff000#64) = b + bv% (page% ((ls_off% "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]") + 44)) := fnAddr_adrp_35a98
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropTopBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" 724
-  dsimp only [dropProgAtExt, dropChunkedStatesLocal1Name, dropGluePolyEncoderSpec,
-    chunkedStatesAt, chunkedEkReceivedCt1SampledAt, chunkedStatesLocal1JumpTableAt,
-    chunkedStatesLocal1JumpTableBytes, chunkedStatesSize, polyEncoderSize, dropGluePoly16Stack,
-    spqrPolyApi, BitVec.ofNat_eq_ofNat] at hdealloc_raw henc_raw hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#1]" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  states1_ekReceivedCt1Sampled_steps entry (chunkedStatesLocal1JumpTableExpanded b)
-
-/-! ## Top-Level Proof of `0x35a6c` (`drop_chunked_states_local1_ok_ext`) -/
-
-theorem drop_chunked_states_local1_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropChunkedStatesLocal1Name)
-      (dropChunkedStatesLocal1Spec A F b) := by
-  refine subroutine_ok_outcome_intro fun ⟨a, st⟩ R s0 hpc hrun hpre hsp => ?_
-  cases st with
-  | keysUnsampled s =>
-    exact (drop_chunked_states_local1_keysUnsampled hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | keysSampled s =>
-    exact (drop_chunked_states_local1_keysSampled hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | headerSent s =>
-    exact (drop_chunked_states_local1_headerSent hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | ct1Received s =>
-    exact (drop_chunked_states_local1_ct1Received hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | ekSentCt1Received s =>
-    exact (drop_chunked_states_local1_ekSentCt1Received hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | noHeaderReceived s =>
-    exact (drop_chunked_states_local1_noHeaderReceived hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | headerReceived s =>
-    exact (drop_chunked_states_local1_headerReceived hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | ct1Sampled s =>
-    exact (drop_chunked_states_local1_ct1Sampled hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | ekReceivedCt1Sampled s =>
-    exact (drop_chunked_states_local1_ekReceivedCt1Sampled hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | ct1Acknowledged s =>
-    exact (drop_chunked_states_local1_ct1Acknowledged hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | ct2Sampled s =>
-    exact (drop_chunked_states_local1_ct2Sampled hdealloc s).mono_outcome
-      a R s0 hpc hrun hpre hsp fun _ hout => hout
-
-/-! ## Relocatable `[LibsignalPlacement]` Proof of Block `140` -/
 
 section PlacedStates1
 variable [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress} {H : String → Option (State → State)}

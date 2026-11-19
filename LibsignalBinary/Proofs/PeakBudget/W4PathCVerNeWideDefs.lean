@@ -9,13 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # Path-C Stage-P3 Tight `VerNe-prev1` Binary-Kit Slot Envelopes
@@ -40,7 +50,7 @@ This module defines:
    `realCliDecPkBinaryWideVerNeSlotEnvGuardedFixed*`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -90,7 +100,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (SegCloneEnv)
 
 /-- Uncapped bare-`SessionStructure` (`enc = encSession s`) scratch-cancelling decode envelope
 pairing `enc` with `SessDeserializeCancelEnv ⟨some s⟩` (`recFieldsQ ⟨some s⟩ = genFieldsQ s`). -/
-def VerNeSessionCancelRawEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def VerNeSessionCancelRawEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ s : Session (List (BitVec 8)),
     enc = encSession s ∧
     SessDeserializeCancelEnv ⟨some s⟩ evs
@@ -98,7 +108,7 @@ def VerNeSessionCancelRawEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : P
 /-- `2 MiB`-record-capped bare-`SessionStructure` (`enc = encSession s`) scratch-cancelling decode
 envelope carrying `(encodeRecord ⟨some s⟩).length ≤ deserCancelFineMaxReq` (`2,097,152`), so
 `sessDeserializeCancelEnv_fine_phaseCreditSpec` applies directly when `enc.length ≤ 2,097,152`. -/
-def VerNeSessionCancelEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def VerNeSessionCancelEnv (enc : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ s : Session (List (BitVec 8)),
     enc = encSession s ∧
     (encodeRecord ⟨some s⟩).length ≤ deserCancelFineMaxReq ∧
@@ -138,7 +148,7 @@ theorem verNeSessionCancelEnv_fine_groupSpec (enc : List (BitVec 8)) :
 
 /-- Parametric `VerNe` post-clone top envelope (`VerNeS1Env` → `DecEnv enc` → `FreeOnlyEvs` →
 `VerNeTailEnv`, no `try_decrypt` because `enc_old.version = 4 ≠ msgVer`). -/
-def VerNeTightTopEnvOf (DecEnv : List (BitVec 8) → List AllocEvent → Prop)
+@[expose] def VerNeTightTopEnvOf (DecEnv : List (BitVec 8) → List AllocEvent → Prop)
     (enc : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv VerNeS1Env (SeqEnv (SeqEnv (DecEnv enc) FreeOnlyEvs) VerNeTailEnv)
 
@@ -150,19 +160,10 @@ abbrev VerNeTightTopRawEnv : List (BitVec 8) → List AllocEvent → Prop :=
 abbrev VerNeTightTopEnv : List (BitVec 8) → List AllocEvent → Prop :=
   VerNeTightTopEnvOf VerNeSessionCancelEnv
 
-/-- Definitional check: `StageP3VerNePrev1Env VerNeTightTopEnv` expands to the exact tight shape. -/
-theorem stageP3VerNePrev1Env_tight_eq
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8))) (enc : List (BitVec 8)) :
-    StageP3VerNePrev1Env VerNeTightTopEnv recG st enc =
-      SeqEnv (SegCloneEnv recG st)
-        (SeqEnv VerNeS1Env
-          (SeqEnv (SeqEnv (VerNeSessionCancelEnv enc) FreeOnlyEvs) VerNeTailEnv)) :=
-  rfl
-
 /-- Path-C Stage-P3 envelope parametric in `verNeEnv`: `W4StageP3WideEnv CloneEnv TryDecEnv` OR
 (`MAX`, not sequential) the `1`-previous-session version-mismatch arm
 `SeqEnv CloneEnv (verNeEnv enc_prev1)`. -/
-def W4StageP3Prev1WideEnvOf
+@[expose] def W4StageP3Prev1WideEnvOf
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (CloneEnv TryDecEnv : List AllocEvent → Prop)
     (enc_prev1 : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
@@ -209,7 +210,7 @@ theorem w4StageP3Prev1WideEnvOf_of_stageP3VerNePrev1Env
 
 /-- Binary-kit Path C (`Over` / `prev1`) Stages P1 → P2 → P3 → P4 envelope with `VerNe-prev1`
 Stage-P3 alternative `W4StageP3Prev1WideEnvOf verNeEnv`. -/
-def W4BinaryRecvPrekeyPathCWideVerNeEnvOf
+@[expose] def W4BinaryRecvPrekeyPathCWideVerNeEnvOf
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (w : W4BinaryRecvPrekeyParams) (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideSlotParams w.base
@@ -234,7 +235,7 @@ abbrev W4BinaryRecvPrekeyPathCWideVerNeEnv : W4BinaryRecvPrekeyParams → List A
 
 /-- Binary-kit Path C (`Over` / `prev1`) envelope at `W4BinaryStageP4PathCWideEnvFixed` with
 `VerNe-prev1` Stage-P3 alternative `W4StageP3Prev1WideEnvOf verNeEnv`. -/
-def W4BinaryRecvPrekeyPathCWideVerNeEnvFixedOf
+@[expose] def W4BinaryRecvPrekeyPathCWideVerNeEnvFixedOf
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (w : W4BinaryRecvPrekeyParams) (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideSlotParams w.base
@@ -259,7 +260,7 @@ abbrev W4BinaryRecvPrekeyPathCWideVerNeEnvFixed :
   W4BinaryRecvPrekeyPathCWideVerNeEnvFixedOf VerNeTightTopEnv
 
 /-- Complete 4-arm binary-kit W4 (`recv-prekey`) slot envelope with `VerNe-prev1` on Path C. -/
-def W4BinaryRecvPrekeyWideVerNeSlotEnvOf
+@[expose] def W4BinaryRecvPrekeyWideVerNeSlotEnvOf
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (w : W4BinaryRecvPrekeyParams) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -276,7 +277,7 @@ abbrev W4BinaryRecvPrekeyWideVerNeSlotEnv : W4BinaryRecvPrekeyParams → List Al
 
 /-- Complete 4-arm binary-kit W4 (`recv-prekey`) slot envelope at `W4BinaryKpkMarkStepEnvFixed` on
 Paths A and C, with `VerNe-prev1` on Path C. -/
-def W4BinaryRecvPrekeyWideVerNeSlotEnvFixedOf
+@[expose] def W4BinaryRecvPrekeyWideVerNeSlotEnvFixedOf
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (w : W4BinaryRecvPrekeyParams) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -294,7 +295,7 @@ abbrev W4BinaryRecvPrekeyWideVerNeSlotEnvFixed :
 
 /-- Complete 4-arm W4 (`recv-prekey`) slot envelope with `ReadFileRuleEnvFixed` on all store-kit
 `Dir::get` steps AND `W4StageP3Prev1WideEnvOf verNeEnv` on Path C Stage P3. -/
-def W4BinaryRecvPrekeyWideVerNeSlotEnvAllFixedOf
+@[expose] def W4BinaryRecvPrekeyWideVerNeSlotEnvAllFixedOf
     (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
     (w : W4BinaryRecvPrekeyParams) (evs : List AllocEvent) : Prop :=
   let P := mkW4RecvPrekeyWideSlotParams w.base
@@ -342,166 +343,6 @@ abbrev W4BinaryRecvPrekeyWideVerNeSlotEnvAllFixed :
     W4BinaryRecvPrekeyParams → List AllocEvent → Prop :=
   W4BinaryRecvPrekeyWideVerNeSlotEnvAllFixedOf VerNeTightTopEnv
 
-theorem w4BinaryRecvPrekeyWideSlotEnv_sub_verNeOf
-    {verNeEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {w : W4BinaryRecvPrekeyParams} {evs : List AllocEvent}
-    (h : W4BinaryRecvPrekeyWideSlotEnv w evs) :
-    W4BinaryRecvPrekeyWideVerNeSlotEnvOf verNeEnv w evs := by
-  rcases h with hf | hs
-  · exact Or.inl hf
-  · refine Or.inr (seqEnv_mono_local (fun _ he => ?_) (fun _ hf => hf) hs)
-    rcases he with hu | hb | ha | hc
-    · exact Or.inl hu
-    · exact Or.inr (Or.inl hb)
-    · exact Or.inr (Or.inr (Or.inl ha))
-    · refine Or.inr (Or.inr (Or.inr ?_))
-      unfold W4BinaryRecvPrekeyPathCWideEnv at hc
-      unfold W4BinaryRecvPrekeyPathCWideVerNeEnvOf
-      exact seqEnv_mono_local (fun _ h1 => h1)
-        (fun _ h2 => seqEnv_mono_local (fun _ hp2 => hp2)
-          (fun _ h3 => seqEnv_mono_local
-            (fun _ hp3 => optStageEnv_mono_local (fun _ hw => Or.inl hw) hp3)
-            (fun _ hp4 => hp4) h3) h2) hc
-
-theorem w4BinaryRecvPrekeyWideSlotEnvFixed_sub_verNeFixedOf
-    {verNeEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {w : W4BinaryRecvPrekeyParams} {evs : List AllocEvent}
-    (h : W4BinaryRecvPrekeyWideSlotEnvFixed w evs) :
-    W4BinaryRecvPrekeyWideVerNeSlotEnvFixedOf verNeEnv w evs := by
-  rcases h with hf | hs
-  · exact Or.inl hf
-  · refine Or.inr (seqEnv_mono_local (fun _ he => ?_) (fun _ hf => hf) hs)
-    rcases he with hu | hb | ha | hc
-    · exact Or.inl hu
-    · exact Or.inr (Or.inl hb)
-    · exact Or.inr (Or.inr (Or.inl ha))
-    · refine Or.inr (Or.inr (Or.inr ?_))
-      unfold W4BinaryRecvPrekeyPathCWideEnvFixed at hc
-      unfold W4BinaryRecvPrekeyPathCWideVerNeEnvFixedOf
-      exact seqEnv_mono_local (fun _ h1 => h1)
-        (fun _ h2 => seqEnv_mono_local (fun _ hp2 => hp2)
-          (fun _ h3 => seqEnv_mono_local
-            (fun _ hp3 => optStageEnv_mono_local (fun _ hw => Or.inl hw) hp3)
-            (fun _ hp4 => hp4) h3) h2) hc
-
-theorem w4BinaryRecvPrekeyWideSlotEnvAllFixed_sub_verNeAllFixedOf
-    {verNeEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {w : W4BinaryRecvPrekeyParams} {evs : List AllocEvent}
-    (h : W4BinaryRecvPrekeyWideSlotEnvAllFixed w evs) :
-    W4BinaryRecvPrekeyWideVerNeSlotEnvAllFixedOf verNeEnv w evs := by
-  rcases h with hf | hs
-  · exact Or.inl hf
-  · refine Or.inr (seqEnv_mono_local (fun _ he => ?_) (fun _ hf => hf) hs)
-    rcases he with hu | hb | ha | hc
-    · exact Or.inl hu
-    · exact Or.inr (Or.inl hb)
-    · exact Or.inr (Or.inr (Or.inl ha))
-    · refine Or.inr (Or.inr (Or.inr ?_))
-      exact seqEnv_mono_local (fun _ h1 => h1)
-        (fun _ h2 => seqEnv_mono_local (fun _ hp2 => hp2)
-          (fun _ h3 => seqEnv_mono_local
-            (fun _ hp3 => optStageEnv_mono_local (fun _ hw => Or.inl hw) hp3)
-            (fun _ hp4 => hp4) h3) h2) hc
-
 /-! ## `DecPkGhost`-Level Slot Envelopes, Guarded Variants, & `ghost_congr` -/
-
-/-- Widened binary-kit `W4` (`recv-prekey`) slot envelope (`DecPkGhost → List AllocEvent → Prop`)
-at `W4BinaryRecvPrekeyWideVerNeSlotEnvAllFixedOf verNeEnv`. -/
-abbrev realCliDecPkBinaryWideVerNeSlotEnvFixedOf [LibsignalPlacement]
-    (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (_X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x : DecPkGhost) (evs : List AllocEvent) : Prop :=
-  ∃ w4 : W4BinaryRecvPrekeyParams,
-    W4BinaryCallSiteDom W.C.F W.Q.K x.msg.message.ciphertext.length x.peer.val x.F w4.base ∧
-      w4.remoteIdKey = x.msg.identityKey ∧
-      w4.baseKey = x.msg.baseKey ∧
-      W4BinaryRecvPrekeyWideVerNeSlotEnvAllFixedOf verNeEnv w4 evs
-
-abbrev realCliDecPkBinaryWideVerNeSlotEnvFixed [LibsignalPlacement]
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x : DecPkGhost) (evs : List AllocEvent) : Prop :=
-  realCliDecPkBinaryWideVerNeSlotEnvFixedOf VerNeTightTopEnv X W x evs
-
-theorem realCliDecPkBinaryWideVerNeSlotEnvFixedOf_ghost_congr [LibsignalPlacement]
-    (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks) (x y : DecPkGhost)
-    (hp : x.peer.val = y.peer.val)
-    (_hm : x.me.val = y.me.val)
-    (_hs : x.stores = y.stores)
-    (_hcp : x.coinsP = y.coinsP)
-    (hf : x.F = y.F)
-    (_hc : x.coins = y.coins)
-    (hmsg : x.msg = y.msg) :
-    realCliDecPkBinaryWideVerNeSlotEnvFixedOf verNeEnv X W x =
-      realCliDecPkBinaryWideVerNeSlotEnvFixedOf verNeEnv X W y := by
-  funext evs
-  simp only [realCliDecPkBinaryWideVerNeSlotEnvFixedOf, hp, hf, hmsg]
-
-theorem realCliDecPkBinaryWideVerNeSlotEnvFixed_ghost_congr [LibsignalPlacement]
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks) (x y : DecPkGhost)
-    (hp : x.peer.val = y.peer.val)
-    (hm : x.me.val = y.me.val)
-    (hs : x.stores = y.stores)
-    (hcp : x.coinsP = y.coinsP)
-    (hf : x.F = y.F)
-    (hc : x.coins = y.coins)
-    (hmsg : x.msg = y.msg) :
-    realCliDecPkBinaryWideVerNeSlotEnvFixed X W x =
-      realCliDecPkBinaryWideVerNeSlotEnvFixed X W y :=
-  realCliDecPkBinaryWideVerNeSlotEnvFixedOf_ghost_congr VerNeTightTopEnv X W x y
-    hp hm hs hcp hf hc hmsg
-
-theorem realCliDecPkBinaryWideSlotEnvFixed_sub_verNeFixedOf [LibsignalPlacement]
-    {verNeEnv : List (BitVec 8) → List AllocEvent → Prop}
-    {X : UnreachedPqxdhPrimitives} {W : CliHooks}
-    {x : DecPkGhost} {evs : List AllocEvent}
-    (h : realCliDecPkBinaryWideSlotEnvFixed X W x evs) :
-    realCliDecPkBinaryWideVerNeSlotEnvFixedOf verNeEnv X W x evs := by
-  rcases h with ⟨w4, hdom, hid, hbk, hevs⟩
-  exact ⟨w4, hdom, hid, hbk, w4BinaryRecvPrekeyWideSlotEnvAllFixed_sub_verNeAllFixedOf hevs⟩
-
-/-- Input-reachability-guarded wide binary-kit `decrypt_prekey` slot envelope with `VerNe-prev1`:
-requires `realCliDecPkBinaryWideVerNeSlotEnvFixedOf verNeEnv X W x evs` whenever
-`PeerSpqrStateTight640 W.C.F W.Q.K x.F x.peer.val` holds.
-
-When the guard is false, the envelope reduces to `fun _ => True` (`⊤`), for which
-`FitsEnv M lim st (fun _ => True)` is unsatisfiable at finite `lim` (`IfaceBudgetLemmas.lean:378`);
-outer `MainOk` consumers discharge `PeerSpqrStateTight640` from `CliPqxdhInputs`. -/
-abbrev realCliDecPkBinaryWideVerNeSlotEnvGuardedFixedOf [LibsignalPlacement]
-    (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x : DecPkGhost) (evs : List AllocEvent) : Prop :=
-  PeerSpqrStateTight640 W.C.F W.Q.K x.F x.peer.val →
-    realCliDecPkBinaryWideVerNeSlotEnvFixedOf verNeEnv X W x evs
-
-abbrev realCliDecPkBinaryWideVerNeSlotEnvGuardedFixed [LibsignalPlacement]
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x : DecPkGhost) (evs : List AllocEvent) : Prop :=
-  realCliDecPkBinaryWideVerNeSlotEnvGuardedFixedOf VerNeTightTopEnv X W x evs
-
-theorem realCliDecPkBinaryWideVerNeSlotEnvGuardedFixedOf_ghost_congr [LibsignalPlacement]
-    (verNeEnv : List (BitVec 8) → List AllocEvent → Prop)
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x y : DecPkGhost)
-    (hp : x.peer.val = y.peer.val) (hm : x.me.val = y.me.val)
-    (hs : x.stores = y.stores) (hcp : x.coinsP = y.coinsP)
-    (hf : x.F = y.F) (hc : x.coins = y.coins) (hmsg : x.msg = y.msg) :
-    realCliDecPkBinaryWideVerNeSlotEnvGuardedFixedOf verNeEnv X W x =
-      realCliDecPkBinaryWideVerNeSlotEnvGuardedFixedOf verNeEnv X W y := by
-  funext evs
-  dsimp [realCliDecPkBinaryWideVerNeSlotEnvGuardedFixedOf]
-  rw [hf, hp,
-    realCliDecPkBinaryWideVerNeSlotEnvFixedOf_ghost_congr verNeEnv X W x y hp hm hs hcp hf hc hmsg]
-
-theorem realCliDecPkBinaryWideVerNeSlotEnvGuardedFixed_ghost_congr [LibsignalPlacement]
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (x y : DecPkGhost)
-    (hp : x.peer.val = y.peer.val) (hm : x.me.val = y.me.val)
-    (hs : x.stores = y.stores) (hcp : x.coinsP = y.coinsP)
-    (hf : x.F = y.F) (hc : x.coins = y.coins) (hmsg : x.msg = y.msg) :
-    realCliDecPkBinaryWideVerNeSlotEnvGuardedFixed X W x =
-      realCliDecPkBinaryWideVerNeSlotEnvGuardedFixed X W y :=
-  realCliDecPkBinaryWideVerNeSlotEnvGuardedFixedOf_ghost_congr VerNeTightTopEnv X W x y
-    hp hm hs hcp hf hc hmsg
 
 end LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs

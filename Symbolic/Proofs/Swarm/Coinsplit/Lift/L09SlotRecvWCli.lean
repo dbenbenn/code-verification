@@ -43,6 +43,10 @@ import Symbolic.Proofs.Swarm.Coinsplit.Probe.P2CrossRunRecv
 import Symbolic.Proofs.Swarm.Coinsplit.Probe.P3SuffixExcuses
 import Symbolic.Proofs.Swarm.TRREF.HooksOKXTRPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- shake: keep
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
+import Symbolic.Proofs.Swarm.CREF.Sanitize
 
 /-!
 # Cut-Polymorphic Whisper `recv` Slot Refinement
@@ -51,7 +55,7 @@ Proves `SlotRecvWCliSpec`, lifting `slot_recvW_d3_pqModelRel` from single-cut `C
 cut-polymorphic `CliLiveAtCli`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -794,7 +798,7 @@ private theorem whisper_cut_tau2_eq_mid
 
 /-- Cut-local non-collision hypothesis: on exit `0`, `SignalMsgAcceptedOnlyViaCollisionMoves`
 fails at the call's own cut for every clean explanation of `σ_pre`. -/
-def RecvWNC (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def RecvWNC (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (c : _root_.DY.Libsignal.Composed.Refinement.Cli.CliCall) (code : Nat) (out body : HwBytes)
     (σ_pre : List MachineEvent) (who : List Participant) (ok : Nat → Bool) : Prop :=
   code = 0 →

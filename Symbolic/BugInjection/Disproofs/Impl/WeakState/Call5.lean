@@ -20,23 +20,7 @@ public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C0
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C1
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C2
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C3
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q0
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q1
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q0
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q1
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q2
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q0
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q1
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q2
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q3q0
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q3q1L
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q3q1R
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q3q2
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q3q3
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q1
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q2
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q3
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q3
+public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C5
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C6
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C7
@@ -51,10 +35,7 @@ public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C15
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C16
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C17
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C18
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C19q0
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C19q1
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C19q2
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C19q3
+public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C19
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C20
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C21
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C22
@@ -73,10 +54,7 @@ public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C34
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C35
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C36
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C37
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C38q0
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C38q1
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C38q2
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C38q3
+public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C38
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C39
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C40
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C41
@@ -103,11 +81,11 @@ public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C61
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C62
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C63
 public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C64
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C65
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C66s0
-public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C66s1
+public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C65s0
+public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C65s1
+public import Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C65s2
 
-/-! Chained `90`-chunk `cliRunPlacedSig` proof (`wsRun5`) for `Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5`. -/
+/-! Chained `68`-chunk `cliRunPlacedSig` proof (`wsRun5`) for `Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5`. -/
 
 @[expose] public section
 
@@ -117,8 +95,8 @@ namespace Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5
 
 open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
-open CryptoVerification.SignalSession (cliExternsPlacedSig)
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliExternsPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (compHooks0)
 open Symbolic.BugInjection.Proofs.Common.CompHooks0PlacedEq (compHooks0_placed_eq)
 open Symbolic.BugInjection.Proofs.CliExec.ElfFullSpecPlacedCore (ElfCkptReachablePlaced)
@@ -131,23 +109,7 @@ open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C0 (c0)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C1 (c1)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C2 (c2)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C3 (c3)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q0 (c4q0)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q1 (c4q1)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q0 (c4q2q0)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q1 (c4q2q1)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q2 (c4q2q2)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q0 (c4q2q3q0q0)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q1 (c4q2q3q0q1)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q2 (c4q2q3q0q2)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q3q0 (c4q2q3q0q3q0)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q3q1L (c4q2q3q0q3q1L)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q3q1R (c4q2q3q0q3q1R)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q3q2 (c4q2q3q0q3q2)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q0q3q3 (c4q2q3q0q3q3)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q1 (c4q2q3q1)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q2 (c4q2q3q2)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q2q3q3 (c4q2q3q3)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4q3 (c4q3)
+open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C4 (c4)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C5 (c5)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C6 (c6)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C7 (c7)
@@ -162,10 +124,7 @@ open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C15 (c15)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C16 (c16)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C17 (c17)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C18 (c18)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C19q0 (c19q0)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C19q1 (c19q1)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C19q2 (c19q2)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C19q3 (c19q3)
+open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C19 (c19)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C20 (c20)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C21 (c21)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C22 (c22)
@@ -184,10 +143,7 @@ open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C34 (c34)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C35 (c35)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C36 (c36)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C37 (c37)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C38q0 (c38q0)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C38q1 (c38q1)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C38q2 (c38q2)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C38q3 (c38q3)
+open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C38 (c38)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C39 (c39)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C40 (c40)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C41 (c41)
@@ -214,9 +170,9 @@ open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C61 (c61)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C62 (c62)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C63 (c63)
 open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C64 (c64)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C65 (c65)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C66s0 (c66s0)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C66s1 (c66s1)
+open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C65s0 (c65s0)
+open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C65s1 (c65s1)
+open Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5.C65s2 (c65s2)
 
 theorem wsRun5 {mpl mmpl : MultiPlacement} {elf : ElfImage}
     (hv : ElfFullValidPlaced mpl mmpl elf wsSpec) :
@@ -225,6 +181,6 @@ theorem wsRun5 {mpl mmpl : MultiPlacement} {elf : ElfImage}
   cliRunPlacedSig_of_elfFinalChunk hv
     (fun name => congrArg (cliExternsPlacedSig mmpl · name) compHooks0_placed_eq)
     wsInp5_eq c5Out_eq
-    (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((ElfCkptReachablePlaced.init.step c0).step c1).step c2).step c3).step c4q0).step c4q1).step c4q2q0).step c4q2q1).step c4q2q2).step c4q2q3q0q0).step c4q2q3q0q1).step c4q2q3q0q2).step c4q2q3q0q3q0).step c4q2q3q0q3q1L).step c4q2q3q0q3q1R).step c4q2q3q0q3q2).step c4q2q3q0q3q3).step c4q2q3q1).step c4q2q3q2).step c4q2q3q3).step c4q3).step c5).step c6).step c7).step c8).step c9).step c10).step c11).step c12).step c13).step c14).step c15).step c16).step c17).step c18).step c19q0).step c19q1).step c19q2).step c19q3).step c20).step c21).step c22).step c23).step c24).step c25).step c26).step c27).step c28).step c29).step c30).step c31).step c32).step c33).step c34).step c35).step c36).step c37).step c38q0).step c38q1).step c38q2).step c38q3).step c39).step c40).step c41).step c42).step c43).step c44).step c45).step c46).step c47).step c48).step c49).step c50).step c51).step c52).step c53).step c54).step c55).step c56).step c57).step c58).step c59).step c60).step c61).step c62).step c63).step c64).step c65).step c66s0) c66s1
+    (((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((((ElfCkptReachablePlaced.init.step c0).step c1).step c2).step c3).step c4).step c5).step c6).step c7).step c8).step c9).step c10).step c11).step c12).step c13).step c14).step c15).step c16).step c17).step c18).step c19).step c20).step c21).step c22).step c23).step c24).step c25).step c26).step c27).step c28).step c29).step c30).step c31).step c32).step c33).step c34).step c35).step c36).step c37).step c38).step c39).step c40).step c41).step c42).step c43).step c44).step c45).step c46).step c47).step c48).step c49).step c50).step c51).step c52).step c53).step c54).step c55).step c56).step c57).step c58).step c59).step c60).step c61).step c62).step c63).step c64).step c65s0).step c65s1) c65s2
 
 end Symbolic.BugInjection.Disproofs.Impl.WeakState.Call5

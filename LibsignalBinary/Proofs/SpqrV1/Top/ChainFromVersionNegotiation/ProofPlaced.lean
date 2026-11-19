@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Proof
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsPlaced -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Verification of `spqr::chain_from_version_negotiation` (Block `328`)
@@ -22,7 +23,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsPlaced 
 Proves `ChainFromVersionNegotiationPlacedOkX` for Block `328` (18 instructions) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,10 +42,10 @@ open CryptoVerification.SpqrV1.ChainProofs.NextKeyInternalFacts
 open CryptoVerification.SpqrV1.Top.Placed
 open ChainFromVNNorm
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
+attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
   sp_setPC_pre sp_setMem_setPC_pre
   readReg64_setPC_pre readReg64_setMem_setPC_pre
   readReg32_setPC_pre readReg32_setMem_setPC_pre

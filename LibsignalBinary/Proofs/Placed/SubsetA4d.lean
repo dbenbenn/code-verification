@@ -9,66 +9,73 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.DoReservePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FinishGrowPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.Encode1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.EncodeBasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.ReprPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ChainEpochPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyDecoderPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyEncoderPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ProtoChainPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ProtoPolyPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.TopDecodesPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.UnchunkedPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.EncodeToVec.DecodesPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.EncodeToVec.FinalPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.BasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.ChainParams1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.ChainParamsBasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.Ct1Sent1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.Ct1SentPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EkSentCt1Received1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EkSentCt1ReceivedPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EpochDirection1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoder1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoderBasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncodedLenBasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncodedLenPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncoder1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.UnchunkedBasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenBasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1StatePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedHeaderSentPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesPolyPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked59_71Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateBranchesBPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateBranchesPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpersPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StatePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EpochEncodedLenPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.FetchPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.LayoutPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeated1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeatedCommonPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.DoReservePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FinishGrowPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.Encode1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.EncodeBasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Auth.ReprPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ChainEpochPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.DecodesPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyDecoderPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyEncoderPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ProtoChainPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ProtoPolyPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.TopDecodesPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.UnchunkedPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.EncodeToVec.DecodesPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.EncodeToVec.FinalPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.BasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.ChainParams1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.ChainParamsBasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.Ct1Sent1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.Ct1SentPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EkSentCt1Received1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EkSentCt1ReceivedPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EpochDirection1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoder1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoderBasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncodedLenBasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncodedLenPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncoder1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.UnchunkedBasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenBasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.DefsPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1StatePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedHeaderSentPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesPolyPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked59_71Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateBranchesBPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateBranchesPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpersPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.V1StatePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EpochEncodedLenPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.FetchPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.LayoutPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeated1Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeatedCommonPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Relocatable `Subset A4d` Proof Barrel
@@ -77,4 +84,4 @@ Umbrella module rooting the 60 `Cli/SpqrV1` CGU-local callee `*Placed` modules (
 `Drop`, `Prost`, `ProtoRepr`, `Varint`; blocks `435..500`) into `LibsignalBinary.Cli`.
 -/
 
-@[expose] public section
+public section

@@ -2216,14 +2216,9 @@ private def buildSmokeGoalType (progOrCodeStx : Syntax) (entryOptStx : Option Sy
           mkForallFVars ((keptParams.push progE).push hCode) subOk
       return (goal, true)
     else
-      let progE :=
-        if pocTy.isConstOf ``Arm64.Obj.LinkedImage then
-          mkApp (mkConst ``Arm64.Obj.LinkedImage.toProgram) progOrCode
-        else
-          progOrCode
-      let entryE ← resolveEntryForProg progE
-      let (specForProg, keptParams) ← bindBaseToProg progE
-      let subOk := mkApp4 (mkConst ``Arm64.subroutine_ok) alpha progE entryE specForProg
+      let entryE ← resolveEntryForProg progOrCode
+      let (specForProg, keptParams) ← bindBaseToProg progOrCode
+      let subOk := mkApp4 (mkConst ``Arm64.subroutine_ok) alpha progOrCode entryE specForProg
       let goal ← mkForallFVars keptParams subOk
       return (goal, false)
 
@@ -3027,13 +3022,6 @@ private def evalFnCodeExpr? (e : Expr) : MetaM (Option (String × Nat × Arm64.F
   let pin ← evalFnPinExpr (e.getArg! 2)
   return some (fnName, totalInsns, pin)
 
-private partial def collectListElems (e : Expr) (acc : Array Expr := #[]) : Array Expr :=
-  let e := e.consumeMData
-  if e.isAppOfArity ``List.cons 3 then
-    collectListElems (e.getArg! 2) (acc.push (e.getArg! 1))
-  else
-    acc
-
 private def findFnAddrSym? (e : Expr) : Option String := Id.run do
   if e.isAppOfArity ``Arm64.Program.fnAddr 2 then
     if let some s := exprStringLit? (e.getArg! 1) then
@@ -3054,8 +3042,8 @@ def specHeads : Array (Name × Name × Name) := #[
   (``ProofLib.SepWPp, `s, `Q)]
 
 /-- Non-spec companion conjuncts that appear alongside `subroutine_ok` inside standard statement
-    wrappers (`EntrySafe`'s `safe_until_pc` half, `library_ok`'s `addr? = some a` witness,
-    `NonVacuous` side-conditions, or nullable callback guards `fn ≠ 0`). -/
+    wrappers (`EntrySafe`'s `safe_until_pc` half, `NonVacuous` side-conditions, or nullable
+    callback guards `fn ≠ 0`). -/
 private partial def isValidSpecCompanion (ty : Expr) (fuel : Nat := 6) : MetaM Bool :=
   withReducible <| forallTelescopeReducing ty fun _ body => do
     let body ← whnfR body
@@ -3072,7 +3060,7 @@ private partial def isValidSpecCompanion (ty : Expr) (fuel : Nat := 6) : MetaM B
     | some body' => isValidSpecCompanion body' (fuel - 1)
     | none => return false
 
-/-- Peel statement wrappers (`Program.subroutineOk`, `EntrySafe`, `EntryListSafe`, `library_ok`,
+/-- Peel statement wrappers (`Program.subroutineOk`, `EntrySafe`, `EntryListSafe`,
     `*Stmt` definitions, multi-entry conjunctions) until each leaf conclusion is headed by one of
     `isHead`. Throws `"unrecognized spec shape"` if a conclusion mentions a spec predicate (`isHead`)
     in a shape that cannot be decomposed to `isHead`-headed leaves. -/
@@ -3116,8 +3104,8 @@ partial def collectSpecConclusions (ty : Expr) (isHead : Expr → Bool) (fuel : 
           headed by one{indentExpr body}"
       return #[]
 
-/-- Inspect the current Lean `Environment` for all `FnCode` / `Obj.ObjectInfo` / `Obj.LinkedImage`
-    definitions, `BitVec 64` address constants, `*Code_fnOff_*` theorems, `subroutine_ok` proof
+/-- Inspect the current Lean `Environment` for all `FnCode` definitions,
+    `BitVec 64` address constants, `*Code_fnOff_*` theorems, `subroutine_ok` proof
     theorems, and `Spec` precondition lint warnings, and emit a single
     `SPEC_AUDIT_ENV_JSON|<json>` line via `logInfo`. -/
 syntax (name := specAuditEnvCmd) "#spec_audit_env" : command
@@ -3167,98 +3155,6 @@ def elabSpecAuditEnv : Command.CommandElab
                 ("base_addr", match baseAddr? with | some a => Json.num a | none => Json.null),
                 ("code_offset", match codeOff? with | some o => Json.num o | none => Json.null)
               ])
-          else if dv.type.isConstOf ``Arm64.Obj.ObjectInfo then
-            let v := dv.value.consumeMData
-            if v.isAppOf ``Arm64.Obj.ObjectInfo.mk && v.getAppNumArgs ≥ 3 then
-              for item in collectListElems (v.getArg! 1) do
-                let item := item.consumeMData
-                if item.isAppOfArity ``Prod.mk 4 then
-                  if let some sym ← evalStringExpr? (item.getArg! 2) then
-                    let byteLen := countListCons (item.getArg! 3)
-                    if byteLen > 0 && byteLen % 4 == 0 && !seenFnNames.contains sym then
-                      seenFnNames := seenFnNames.insert sym
-                      let totalInsns : Nat := byteLen / 4
-                      fnCodesJson := fnCodesJson.push (Json.mkObj [
-                        ("const", Json.str dv.name.toString),
-                        ("name", Json.str sym),
-                        ("total_insns", Json.num totalInsns),
-                        ("base_addr", Json.null),
-                        ("code_offset", Json.null)
-                      ])
-              for item in collectListElems (v.getArg! 2) do
-                let item := item.consumeMData
-                if item.isAppOfArity ``Prod.mk 4 then
-                  if let some sym ← evalStringExpr? (item.getArg! 2) then
-                    let rhs := (item.getArg! 3).consumeMData
-                    if rhs.isAppOfArity ``Prod.mk 4 then
-                      let byteLen := countListCons (rhs.getArg! 2)
-                      if byteLen > 0 && byteLen % 4 == 0 && !seenFnNames.contains sym then
-                        seenFnNames := seenFnNames.insert sym
-                        let totalInsns : Nat := byteLen / 4
-                        fnCodesJson := fnCodesJson.push (Json.mkObj [
-                          ("const", Json.str dv.name.toString),
-                          ("name", Json.str sym),
-                          ("total_insns", Json.num totalInsns),
-                          ("base_addr", Json.null),
-                          ("code_offset", Json.null)
-                        ])
-              if v.getAppNumArgs ≥ 4 then
-                for item in collectListElems (v.getArg! 3) do
-                  let item := item.consumeMData
-                  if item.isAppOfArity ``Arm64.Obj.SymCodeInfo.mk 3 then
-                    if let some sym ← evalStringExpr? (item.getArg! 0) then
-                      let byteLen := countListCons (item.getArg! 1)
-                      if byteLen > 0 && byteLen % 4 == 0 && !seenFnNames.contains sym then
-                        seenFnNames := seenFnNames.insert sym
-                        let totalInsns : Nat := byteLen / 4
-                        fnCodesJson := fnCodesJson.push (Json.mkObj [
-                          ("const", Json.str dv.name.toString),
-                          ("name", Json.str sym),
-                          ("total_insns", Json.num totalInsns),
-                          ("base_addr", Json.null),
-                          ("code_offset", Json.null)
-                        ])
-          else if dv.type.isConstOf ``Arm64.Obj.LinkedImage then
-            let v := dv.value.consumeMData
-            if v.isAppOfArity ``Arm64.Obj.LinkedImage.mk 13 then
-              let codeLen := countListCons (v.getArg! 0)
-              let mut stubMin : Option Nat := none
-              for item in collectListElems (v.getArg! 11) do
-                let item := item.consumeMData
-                if item.isAppOfArity ``Prod.mk 4 then
-                  if let some off ← evalNatLit? (item.getArg! 3) then
-                    stubMin := match stubMin with
-                      | none => some off
-                      | some m => some (Nat.min m off)
-              let codeEnd := stubMin.getD codeLen
-              let mut codeSyms : Array (String × Nat) := #[]
-              for item in collectListElems (v.getArg! 9) do
-                let item := item.consumeMData
-                if item.isAppOfArity ``Prod.mk 4 then
-                  if let some sym ← evalStringExpr? (item.getArg! 2) then
-                    if let some off ← evalNatLit? (item.getArg! 3) then
-                      if off < codeEnd then
-                        codeSyms := codeSyms.push (sym, off)
-              let sortedSyms := codeSyms.qsort (fun a b => a.2 < b.2)
-              for h : i in [:sortedSyms.size] do
-                let (sym, off) := sortedSyms[i]
-                if !seenFnNames.contains sym then
-                  let mut nextOff := codeEnd
-                  for h2 : j in [i + 1 : sortedSyms.size] do
-                    let (_, o2) := sortedSyms[j]
-                    if o2 > off then
-                      nextOff := o2
-                      break
-                  let totalInsns := (nextOff - off) / 4
-                  if totalInsns > 0 then
-                    seenFnNames := seenFnNames.insert sym
-                    fnCodesJson := fnCodesJson.push (Json.mkObj [
-                      ("const", Json.str dv.name.toString),
-                      ("name", Json.str sym),
-                      ("total_insns", Json.num totalInsns),
-                      ("base_addr", Json.null),
-                      ("code_offset", Json.num off)
-                    ])
           else if dv.type.isAppOfArity ``BitVec 1 then
             if let some (64, v) ← evalBitVecLit? (mkConst dv.name) then
               if let .str _ shortName := dv.name then

@@ -31,7 +31,6 @@ theorem bundle0_byte4_ne_one : bundle0[4]? ≠ some 1#8 := by
   have h : bundle0 = hexBytes.go hexDigit bundle0Chars := by rw [bundle0_eq_hex, bundle0Str_eq, hexBytes_ofList]
   rw [h]; decide
 theorem call0Rng_length : call0Rng.length = 34 := by simpa using congrArg List.length call0Rng_map_kind
-theorem ptDeadAt35 : PtDeadAt 35 := ptDeadAt35_of fun _ _ _ _ hfits hnb hexp => iniPrefixStateSecretsInv_of_matchedPrefix_ini hfits.1.1 hnb hexp.1 call0Rng_length call0Rng_kind bundle0_byte4_ne_one
 theorem ptDeadAt35_self
     (r : Records) (S : Sem) (g : Ghost) (ms : List Move) (hfits : compFitsPinned setup compI0 r)
     (hnb : Common443.CompSetupSecrecy.NoBrk r ms)

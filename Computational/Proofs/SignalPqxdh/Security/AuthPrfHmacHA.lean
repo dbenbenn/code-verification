@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacD
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacD -- proof-setup: allow-public-import
 public import Computational.Specifications.Assumptions.KemCorrect
 import Computational.Proofs.SignalPqxdh.Security.SigHopA
 import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model
@@ -25,7 +25,7 @@ which `aeadMacInput` is injective, any winning forgery in `aeadMuIntCtxtExp` is 
 at least `24`, so the all-real hybrid `gStep (fun _ => False) unifTag` sets `bad`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,11 +38,11 @@ open SignalPqxdh
 open RoKem
 
 /-- `Good` ADs have an injective MAC-input encoding. -/
-def MacAdGood (Good : Bytes → Bool) : Prop :=
+@[expose] def MacAdGood (Good : Bytes → Bool) : Prop :=
   ∀ ad ad' body body', Good ad = true → Good ad' = true →
     aeadMacInput ad body = aeadMacInput ad' body' → ad = ad' ∧ body = body'
 
-def badAdQuery (Good : Bytes → Bool) : ((ℕ ⊕ PrimQuery) ⊕ AeadMuIntQuery) → Prop
+@[expose] def badAdQuery (Good : Bytes → Bool) : ((ℕ ⊕ PrimQuery) ⊕ AeadMuIntQuery) → Prop
   | .inr (.encOnce _ ad _) => Good ad = false
   | .inr (.tryForge _ ad _) => Good ad = false
   | _ => False
@@ -53,7 +53,7 @@ instance (Good : Bytes → Bool) : DecidablePred (badAdQuery Good) := fun q => b
   · cases q <;> simp only [badAdQuery] <;> infer_instance
 
 /-- `B` only ever uses `Good` ADs. -/
-def MacInputDisciplined (Good : Bytes → Bool) (B : AeadMuIntCtxtAdv) : Prop :=
+@[expose] def MacInputDisciplined (Good : Bytes → Bool) (B : AeadMuIntCtxtAdv) : Prop :=
   OracleComp.IsQueryBoundP B.run (badAdQuery Good) 0
 
 /-! ## Crypto facts -/
@@ -100,7 +100,7 @@ theorem ha_dec_eq_chal (P : Primitives) (hP : WellFormedPrimitivesδ P) (Good : 
 
 /-! ## The two games -/
 
-noncomputable def haMuImpl (P : Primitives) :
+@[expose] def haMuImpl (P : Primitives) :
     QueryImpl aeadMuIntSpec (StateT AeadMuIntState ProbComp) := fun q =>
   match q with
   | .encOnce i ad pt => do
@@ -126,7 +126,7 @@ noncomputable def haMuImpl (P : Primitives) :
       return true
     | none => return false
 
-noncomputable def haMuFull (P : Primitives) :
+@[expose] def haMuFull (P : Primitives) :
     QueryImpl AeadMuIntSimSpec (StateT AeadMuIntState ProbComp) :=
   (primBaseImpl P).liftTarget (StateT AeadMuIntState ProbComp) + haMuImpl P
 
@@ -249,7 +249,7 @@ theorem ha_lookup_map {β γ : Type} (f : β → γ) :
 /-! ## Agreement relation -/
 
 /-- Challenge invariant: every challenge has a `Good` AD and is `aeadEnc` under the key's key. -/
-def HaInv (P : Primitives) (Good : Bytes → Bool) (keys : List (ℕ × (ℕ × MessageKeys)))
+@[expose] def HaInv (P : Primitives) (Good : Bytes → Bool) (keys : List (ℕ × (ℕ × MessageKeys)))
     (chal : List (ℕ × (Bytes × Bytes))) : Prop :=
   ∀ i ad0 ct0, chal.lookup i = some (ad0, ct0) →
     Good ad0 = true ∧ ∃ e pt0, keys.lookup i = some e ∧ ct0 = P.aeadEnc e.2 ad0 pt0
@@ -294,7 +294,7 @@ section Step
 variable (P : Primitives) (Good : Bytes → Bool) {σ : Type}
   (ev : QueryImpl prfHmacSpec (StateT σ ProbComp))
 
-def HaCoupled (t : (ℕ ⊕ PrimQuery) ⊕ AeadMuIntQuery) (s₁ : AeadMuIntState)
+@[expose] def HaCoupled (t : (ℕ ⊕ PrimQuery) ⊕ AeadMuIntQuery) (s₁ : AeadMuIntState)
     (s₂ : PrfHmacMuState × σ) : Prop :=
   ∃ (β : Type) (X : ProbComp β) (g₁ : β → AeadMuIntSimSpec.Range t × AeadMuIntState)
     (g₂ : β → AeadMuIntSimSpec.Range t × (PrfHmacMuState × σ)),

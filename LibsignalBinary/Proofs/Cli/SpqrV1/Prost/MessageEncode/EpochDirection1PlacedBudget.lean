@@ -9,18 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EpochDirection1PlacedStepsBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EpochDirection1PlacedStepsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EpochDirection1PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlacedBudget
 
 /-!
 # Budget-Threaded Relocatable `encode<EpochDirection> [local#3]` Verification (Block `457`)
@@ -29,7 +35,7 @@ Proves Stage 4 (`prev`), top-level pinned/unpinned `subroutine_ok` contracts, an
 `EncodeToVec` bridges on CLI Block `457` under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -802,11 +808,6 @@ abbrev encodeEpochDirection1_pinned_placed_ok := @encode_epochDirection_1_pinned
 abbrev encodeEpochDirection1_placed_ok := @encode_epochDirection_1_placed_ok
 abbrev encodeEpochDirection1_pinned_placed_ok_x := @encode_epochDirection_1_pinned_placed_ok_x
 abbrev encodeEpochDirection1_placed_ok_x := @encode_epochDirection_1_placed_ok_x
-abbrev encodeEpochDirection1_pinned_placed_ok_ext := @encode_epochDirection_1_pinned_placed_ok_ext
-abbrev encodeEpochDirection1_placed_ok_ext := @encode_epochDirection_1_placed_ok_ext
-abbrev encodeEpochDirection1_pinned_placed_ok_ext_x := @encode_epochDirection_1_pinned_placed_ok_ext_x
-abbrev encodeEpochDirection1_placed_ok_ext_x := @encode_epochDirection_1_placed_ok_ext_x
-
 /-! ## 3. Exact-Capacity `EncodeToVec` Bridges on Block `457` -/
 
 section EncodeToVecBridge

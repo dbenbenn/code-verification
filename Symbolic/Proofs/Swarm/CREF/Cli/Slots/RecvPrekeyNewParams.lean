@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
 /-!
@@ -19,7 +19,7 @@ Specializes `ModelHookBridge` and `tryDecryptFromRecord_eq_tryDecryptFromRecordW
 for fresh pre-key session decryption.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

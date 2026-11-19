@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Defs
-public import LibsignalBinary.Proofs.E2E.HooksE.Common
-public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+public import LibsignalBinary.Proofs.E2E.HooksE.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SessionRecordAt.ExternStack -- shake: keep
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,118 +53,12 @@ theorem stackAt_externStack_split_allocHookStack' (sp : BitVec 64) :
 /-! ## 2. Allocator Adapters (`HooksE.A0`) -/
 
 /-- `rustDeallocSpec A` with the `LayoutOk size align` precondition required by `Externs.deallocSpec`. -/
-def rustDeallocLayoutSpec' (A : RustAlloc) : Spec (BitVec 64 × Nat × Nat) where
+@[expose] def rustDeallocLayoutSpec' (A : RustAlloc) : Spec (BitVec 64 × Nat × Nat) where
   pre := fun (p, size, align) s =>
     ⌜LayoutOk size align⌝ ∗ (rustDeallocSpec A).pre (p, size, align) s
   post := (rustDeallocSpec A).post
 
 /-! ## 3. `Stage2ContractsA0` Bundle & Caller-Relative `.ok_at` Methods -/
-
-/-- Allocator, memory, bcmp, randomKeys, format, and zeroize contract bundle on
-`SP2Ext img.base ext` (`contractProg img.base ext`) at `externStack = 16384`. -/
-structure Stage2ContractsA0 (img : Obj.Image) (ext : String → Option (State → State)) : Prop where
-  loads : Obj.Loads libsignalSessionImage img
-  alloc_A0 : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff allocName)
-    (((rustAllocSpec HooksE.A0).withExternStackFromAlloc').inImage img)
-  allocNW_A0 : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff allocName)
-    (((rustAllocNWSpec HooksE.A0).withExternStackFromAlloc').inImage img)
-  deallocLayout_A0 : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff deallocName)
-    (((rustDeallocLayoutSpec' HooksE.A0).withExternStackFromAlloc').inImage img)
-  realloc_A0 : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff reallocName)
-    (((rustReallocSpec HooksE.A0).withExternStackFromAlloc').inImage img)
-  shim : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff shimName)
-    ((sessionShimSpec.withHookStack CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-  memcpy : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff memcpyName)
-    ((sessionMemcpySpec CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-  memcpyROX : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff memcpyName)
-    (sessionMemcpyROXSpec.inImage img)
-  memmove : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff memmoveName)
-    ((sessionMemmoveSpec CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-  memset : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff memsetName)
-    ((sessionMemsetSpec CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-  bcmp : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff "bcmp")
-    (CryptoVerification.E2E.HooksE.e2eBcmpSpec.inImage img)
-  randomKeys : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff "std::sys::random::linux::hashmap_random_keys")
-    (CryptoVerification.E2E.HooksE.randomKeysSpec.inImage img)
-  formatInner_A0 : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff formatInnerName)
-    ((CryptoVerification.LibsignalTripleRatchet.formatInnerSpec HooksE.A0).inImage img)
-  fmtWrite_A0 : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff fmtWriteName)
-    ((CryptoVerification.LibsignalTripleRatchet.fmtWriteSpec HooksE.A0).inImage img)
-  staticDrop : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff staticDropName)
-    ((zeroizeSecretSpec.withHookStack CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-  sharedDrop : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff sharedDropName)
-    ((zeroizeSecretSpec.withHookStack CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-
-theorem Stage2ContractsA0.memcpy_ok_at {img : Obj.Image} {ext : String → Option (State → State)}
-    {name : String} {k : Nat}
-    (hC : Stage2ContractsA0 img ext)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memcpyName) :
-    subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((sessionMemcpySpec CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img) :=
-  sub_ok_at_caller hk hC.memcpy
-
-/-! ## 4. Arbitrary-Allocator `Stage2ContractsA` Bundle -/
-
-/-- Allocator, memory, bcmp, randomKeys, format, and zeroize contract bundle on
-`SP2Ext img.base ext` (`contractProg img.base ext`) parameterized by arbitrary `(A : RustAlloc)`
-at `externStack = 16384`. -/
-structure Stage2ContractsA (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  loads : Obj.Loads libsignalSessionImage img
-  alloc : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff allocName)
-    (((rustAllocSpec A).withExternStackFromAlloc').inImage img)
-  allocNW : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff allocName)
-    (((rustAllocNWSpec A).withExternStackFromAlloc').inImage img)
-  deallocLayout : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff deallocName)
-    (((rustDeallocLayoutSpec' A).withExternStackFromAlloc').inImage img)
-  realloc : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff reallocName)
-    (((rustReallocSpec A).withExternStackFromAlloc').inImage img)
-  shim : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff shimName)
-    ((sessionShimSpec.withHookStack CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-  memcpy : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff memcpyName)
-    ((sessionMemcpySpec CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-  memcpyROX : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff memcpyName)
-    (sessionMemcpyROXSpec.inImage img)
-  memmove : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff memmoveName)
-    ((sessionMemmoveSpec CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-  memset : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff memsetName)
-    ((sessionMemsetSpec CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-  bcmp : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff "bcmp")
-    (CryptoVerification.E2E.HooksE.e2eBcmpSpec.inImage img)
-  randomKeys : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff "std::sys::random::linux::hashmap_random_keys")
-    (CryptoVerification.E2E.HooksE.randomKeysSpec.inImage img)
-  formatInner : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff formatInnerName)
-    ((CryptoVerification.LibsignalTripleRatchet.formatInnerSpec A).inImage img)
-  fmtWrite : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff fmtWriteName)
-    ((CryptoVerification.LibsignalTripleRatchet.fmtWriteSpec A).inImage img)
-  staticDrop : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff staticDropName)
-    ((zeroizeSecretSpec.withHookStack CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-  sharedDrop : subroutine_ok (SP2Ext img.base ext) (img.base + stubOff sharedDropName)
-    ((zeroizeSecretSpec.withHookStack CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img)
-
-theorem Stage2ContractsA.memcpy_ok_at {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {name : String} {k : Nat}
-    (hC : Stage2ContractsA img A ext)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff memcpyName) :
-    subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((sessionMemcpySpec CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img) :=
-  sub_ok_at_caller hk hC.memcpy
-
-theorem Stage2ContractsA0.toStage2ContractsA {img : Obj.Image}
-    {ext : String → Option (State → State)} (hC : Stage2ContractsA0 img ext) :
-    Stage2ContractsA img HooksE.A0 ext :=
-  ⟨hC.loads, hC.alloc_A0, hC.allocNW_A0, hC.deallocLayout_A0, hC.realloc_A0,
-   hC.shim, hC.memcpy, hC.memcpyROX, hC.memmove, hC.memset, hC.bcmp, hC.randomKeys,
-   hC.formatInner_A0, hC.fmtWrite_A0, hC.staticDrop, hC.sharedDrop⟩
-
-theorem Stage2ContractsA.toA0 {img : Obj.Image} {ext : String → Option (State → State)}
-    (hC : Stage2ContractsA img HooksE.A0 ext) :
-    Stage2ContractsA0 img ext :=
-  ⟨hC.loads, hC.alloc, hC.allocNW, hC.deallocLayout, hC.realloc,
-   hC.shim, hC.memcpy, hC.memcpyROX, hC.memmove, hC.memset, hC.bcmp, hC.randomKeys,
-   hC.formatInner, hC.fmtWrite, hC.staticDrop, hC.sharedDrop⟩
-
-/-! ## 5. Relocatable `[LibsignalPlacement]` `Stage2ContractsA0Placed` Bundle -/
 
 section Placed
 

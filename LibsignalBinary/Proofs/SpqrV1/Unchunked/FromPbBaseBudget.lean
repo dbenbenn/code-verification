@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBase
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Specifications for `<Ct1Sent>::from_pb` and `<EkSentCt1Received>::from_pb`
@@ -21,7 +22,7 @@ Defines allocator event envelopes (`Ct1SentFromPbPreEnv`, `Ct1SentFromPbPostEnv`
 `[LibsignalPlacement]` specifications.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -58,14 +59,14 @@ abbrev ekSentCt1ReceivedFromPb :=
 /-- Exact allocation event sequence emitted by `<spqr::authenticator::Authenticator>::from_pb`
     when cloning `auth.rootKey` and `auth.macKey` (`Vec<u8>::clone` skips allocation on empty
     slices and emits `rustAllocEvents len 1` otherwise). -/
-def authFromPbAllocEvents (auth : ProtoAuthenticator) : List AllocEvent :=
+@[expose] def authFromPbAllocEvents (auth : ProtoAuthenticator) : List AllocEvent :=
   (if auth.rootKey = [] then [] else rustAllocEvents auth.rootKey.length 1) ++
   (if auth.macKey = [] then [] else rustAllocEvents auth.macKey.length 1)
 
 /-- Exact allocation event sequence emitted by `<Ct1Sent>::from_pb`:
     allocates via `<Authenticator>::from_pb` iff length validation succeeds and `pb.auth = some auth`,
     and emits `[]` on every `.error` branch (which only drops input `Vec<u8>` buffers). -/
-def ct1SentFromPbAllocEvents (F : ShaCompress) (pb : PbCt1Sent) :
+@[expose] def ct1SentFromPbAllocEvents (F : ShaCompress) (pb : PbCt1Sent) :
     List AllocEvent :=
   match ct1SentFromPb (spqrAuthApi F) pb, pb.auth with
   | .ok _, some auth => authFromPbAllocEvents auth
@@ -73,14 +74,14 @@ def ct1SentFromPbAllocEvents (F : ShaCompress) (pb : PbCt1Sent) :
 
 /-- Precondition allocation envelope for `<Ct1Sent>::from_pb` (`FitsEnv` checks only allocations;
     subsequent `Drop` calls emit `FreeOnlyEvs` requiring zero `FitsEvents` preconditions). -/
-def Ct1SentFromPbPreEnv (F : ShaCompress) (pb : PbCt1Sent)
+@[expose] def Ct1SentFromPbPreEnv (F : ShaCompress) (pb : PbCt1Sent)
     (evs : List AllocEvent) : Prop :=
   evs = ct1SentFromPbAllocEvents F pb
 
 /-- Postcondition event envelope for `<Ct1Sent>::from_pb`: the allocation prefix
     `ct1SentFromPbAllocEvents F pb` followed by `FreeOnlyEvs` from dropping consumed protobuf
     `Vec<u8>` buffers. -/
-def Ct1SentFromPbPostEnv (F : ShaCompress) (pb : PbCt1Sent)
+@[expose] def Ct1SentFromPbPostEnv (F : ShaCompress) (pb : PbCt1Sent)
     (evs : List AllocEvent) : Prop :=
   ∃ evsFree, FreeOnlyEvs evsFree ∧ evs = ct1SentFromPbAllocEvents F pb ++ evsFree
 
@@ -88,17 +89,17 @@ theorem ct1SentFromPbPostEnv_of_nil (F : ShaCompress) (pb : PbCt1Sent) :
     Ct1SentFromPbPostEnv F pb (ct1SentFromPbAllocEvents F pb) :=
   ⟨[], FreeOnlyEvs.nil, (List.append_nil _).symm⟩
 
-def ekSentCt1ReceivedFromPbAllocEvents (F : ShaCompress)
+@[expose] def ekSentCt1ReceivedFromPbAllocEvents (F : ShaCompress)
     (pb : PbEkSentCt1Received) : List AllocEvent :=
   match ekSentCt1ReceivedFromPb (spqrAuthApi F) pb, pb.auth with
   | .ok _, some auth => authFromPbAllocEvents auth
   | _, _ => []
 
-def EkSentCt1ReceivedFromPbPreEnv (F : ShaCompress)
+@[expose] def EkSentCt1ReceivedFromPbPreEnv (F : ShaCompress)
     (pb : PbEkSentCt1Received) (evs : List AllocEvent) : Prop :=
   evs = ekSentCt1ReceivedFromPbAllocEvents F pb
 
-def EkSentCt1ReceivedFromPbPostEnv (F : ShaCompress)
+@[expose] def EkSentCt1ReceivedFromPbPostEnv (F : ShaCompress)
     (pb : PbEkSentCt1Received) (evs : List AllocEvent) : Prop :=
   ∃ evsFree, FreeOnlyEvs evsFree ∧ evs = ekSentCt1ReceivedFromPbAllocEvents F pb ++ evsFree
 
@@ -111,7 +112,7 @@ theorem ekSentCt1ReceivedFromPbPostEnv_of_nil (F : ShaCompress)
 
 /-- Envelope-parameterized budget-threaded specification of
     `<spqr::v1::unchunked::send_ct::Ct1Sent>::from_pb` (Block `339`). -/
-def ct1SentFromPbSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def ct1SentFromPbSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress)
     (PreEnv PostEnv : PbCt1Sent → List AllocEvent → Prop) :
     Spec (Ct1SentFromPbGhost × M.σ) where
@@ -130,12 +131,12 @@ def ct1SentFromPbSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCl
         A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp ct1SentFromPbStack
 
-def ct1SentFromPbSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def ct1SentFromPbSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) :
     Spec (Ct1SentFromPbGhost × M.σ) :=
   ct1SentFromPbSpecOfEnv M A lim F (Ct1SentFromPbPreEnv F) (Ct1SentFromPbPostEnv F)
 
-def Ct1SentFromPbPlacedOk [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def Ct1SentFromPbPlacedOk [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_339).rebase (blkPl_339).base H) (blkPl_339).base
@@ -143,7 +144,7 @@ def Ct1SentFromPbPlacedOk [LibsignalPlacement] (M : AllocCostModel)
 
 /-- Envelope-parameterized budget-threaded specification of
     `<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb` (Block `348`). -/
-def ekSentCt1ReceivedFromPbSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def ekSentCt1ReceivedFromPbSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress)
     (PreEnv PostEnv : PbEkSentCt1Received → List AllocEvent → Prop) :
     Spec (EkSentCt1ReceivedFromPbGhost × M.σ) where
@@ -162,13 +163,13 @@ def ekSentCt1ReceivedFromPbSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (
         A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp ekSentCt1ReceivedFromPbStack
 
-def ekSentCt1ReceivedFromPbSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def ekSentCt1ReceivedFromPbSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) :
     Spec (EkSentCt1ReceivedFromPbGhost × M.σ) :=
   ekSentCt1ReceivedFromPbSpecOfEnv M A lim F
     (EkSentCt1ReceivedFromPbPreEnv F) (EkSentCt1ReceivedFromPbPostEnv F)
 
-def EkSentCt1ReceivedFromPbPlacedOk [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def EkSentCt1ReceivedFromPbPlacedOk [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_348).rebase (blkPl_348).base H) (blkPl_348).base

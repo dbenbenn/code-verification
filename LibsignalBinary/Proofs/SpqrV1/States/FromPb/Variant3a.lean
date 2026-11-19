@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1b
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Shared `PolyEncoder` Unpacking and Relocation
@@ -22,7 +23,7 @@ Separation-logic helpers for unpacking a 400-byte `PolyEncoder` at `fsp + 1888` 
 `epilogueStackSlots` and reassembling it at `out + 8` after `+8180`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.FromPb
 
@@ -48,7 +49,7 @@ set_option linter.unusedSimpArgs false
 /-! ## `Vec<GF16>` Single, Pair, and Triple Unpacking -/
 
 /-- Address-independent heap payload of a `Vec<GF16>` header `(w0, w1, w2)`. -/
-def v3a_vecGF16Heap (A : RustAlloc) (w0 w1 w2 : BitVec 64) (v : List GF16) : SepProp :=
+@[expose] def v3a_vecGF16Heap (A : RustAlloc) (w0 w1 w2 : BitVec 64) (v : List GF16) : SepProp :=
   ⌜w2 = BitVec.ofNat 64 v.length⌝ ∗ vecBuf A gf16Stride gf16Align gf16At w0 w1 v
 
 theorem v3a_vecGF16Of_open (A : RustAlloc) (a : BitVec 64) (v : List GF16) :
@@ -120,7 +121,7 @@ theorem v3a_vecGF16Of_close_128_64 (A : RustAlloc) (a : BitVec 64) (q0 : BitVec 
   exact Entails.trans (Entails.of_eq (by ac_rfl))
     (v3a_vecGF16Of_close A a (q0.extractLsb' 0 64) (q0.extractLsb' 64 64) w16 v)
 
-def v3a_pairVecGF16Heap (A : RustAlloc) (q0 q1 q2 : BitVec 128) (v0 v1 : List GF16) : SepProp :=
+@[expose] def v3a_pairVecGF16Heap (A : RustAlloc) (q0 q1 q2 : BitVec 128) (v0 v1 : List GF16) : SepProp :=
   v3a_vecGF16Heap A (q0.extractLsb' 0 64) (q0.extractLsb' 64 64) (q1.extractLsb' 0 64) v0 ∗
   v3a_vecGF16Heap A (q1.extractLsb' 64 64) (q2.extractLsb' 0 64) (q2.extractLsb' 64 64) v1
 
@@ -176,12 +177,12 @@ theorem v3a_pairVecGF16_close_128 (A : RustAlloc) (a : BitVec 64) (q0 q1 q2 : Bi
     (v3a_vecGF16Of_close A a (q0.extractLsb' 0 64) (q0.extractLsb' 64 64) (q1.extractLsb' 0 64) v0)
     (v3a_vecGF16Of_close A (a + 24#64) (q1.extractLsb' 64 64) (q2.extractLsb' 0 64) (q2.extractLsb' 64 64) v1)
 
-def v3a_tripleVecGF16WordsAt (a u0 u1 u2 u3 u4 u5 u6 u7 u8 : BitVec 64) : SepProp :=
+@[expose] def v3a_tripleVecGF16WordsAt (a u0 u1 u2 u3 u4 u5 u6 u7 u8 : BitVec 64) : SepProp :=
   (a ↦₆₄ u0) ∗ ((a + 8#64) ↦₆₄ u1) ∗ ((a + 16#64) ↦₆₄ u2) ∗
   ((a + 24#64) ↦₆₄ u3) ∗ ((a + 32#64) ↦₆₄ u4) ∗ ((a + 40#64) ↦₆₄ u5) ∗
   ((a + 48#64) ↦₆₄ u6) ∗ ((a + 56#64) ↦₆₄ u7) ∗ ((a + 64#64) ↦₆₄ u8)
 
-def v3a_tripleVecGF16Heap (A : RustAlloc) (u0 u1 u2 u3 u4 u5 u6 u7 u8 : BitVec 64)
+@[expose] def v3a_tripleVecGF16Heap (A : RustAlloc) (u0 u1 u2 u3 u4 u5 u6 u7 u8 : BitVec 64)
     (v0 v1 v2 : List GF16) : SepProp :=
   v3a_vecGF16Heap A u0 u1 u2 v0 ∗ v3a_vecGF16Heap A u3 u4 u5 v1 ∗ v3a_vecGF16Heap A u6 u7 u8 v2
 
@@ -237,17 +238,17 @@ theorem v3a_bv_add_add_lit (x : BitVec 64) (a b : Nat) :
     x + BitVec.ofNat 64 a + BitVec.ofNat 64 b = x + BitVec.ofNat 64 (a + b) := by
   bv_omega
 
-def v3cr_pairVecGF16WordsAt (a : BitVec 64) (q0 q1 q2 : BitVec 128) : SepProp :=
+@[expose] def v3cr_pairVecGF16WordsAt (a : BitVec 64) (q0 q1 q2 : BitVec 128) : SepProp :=
   (a ↦₁₂₈ q0) ∗ ((a + 16#64) ↦₁₂₈ q1) ∗ ((a + 32#64) ↦₁₂₈ q2)
 
-def v3cr_quadPairsWordsAt (a : BitVec 64)
+@[expose] def v3cr_quadPairsWordsAt (a : BitVec 64)
     (q0 q1 q2 q3 q4 q5 q6 q7 q8 q9 q10 q11 : BitVec 128) : SepProp :=
   v3cr_pairVecGF16WordsAt a q0 q1 q2 ∗
   v3cr_pairVecGF16WordsAt (a + 48#64) q3 q4 q5 ∗
   v3cr_pairVecGF16WordsAt (a + 96#64) q6 q7 q8 ∗
   v3cr_pairVecGF16WordsAt (a + 144#64) q9 q10 q11
 
-def v3cr_quadPairsHeap (A : RustAlloc)
+@[expose] def v3cr_quadPairsHeap (A : RustAlloc)
     (q0 q1 q2 q3 q4 q5 q6 q7 q8 q9 q10 q11 : BitVec 128)
     (v7 v8 v9 v10 v11 v12 v13 v14 : List GF16) : SepProp :=
   v3a_pairVecGF16Heap A q0 q1 q2 v7 v8 ∗
@@ -318,11 +319,11 @@ theorem v3cr_quadPairs_close (A : RustAlloc) (a : BitVec 64)
       (v3cr_pairVecGF16WordsAt (a + 144#64) q9 q10 q11 ∗ v3a_pairVecGF16Heap A q9 q10 q11 v13 v14) by ac_rfl)) ?_
   exact sepConj_mono hp1 (sepConj_mono hp2 (sepConj_mono hp3 hp4))
 
-def v3cr_encoderStateTag : EncoderState → BitVec 64
+@[expose] def v3cr_encoderStateTag : EncoderState → BitVec 64
   | .points _ => 0#64
   | .polys _ => 1#64
 
-def v3cr_encoderStateVecs : EncoderState → List (List GF16)
+@[expose] def v3cr_encoderStateVecs : EncoderState → List (List GF16)
   | .points pts => pts.map Point.value
   | .polys ps => ps.map LibsignalSpqrV1.Poly.coefficients
 
@@ -330,7 +331,7 @@ theorem v3cr_encoderStateTag_sub_two_beq_zero (st : EncoderState) :
     (v3cr_encoderStateTag st - 2#64 == 0#64) = false := by
   cases st <;> rfl
 
-def v3cr_encoderStateBound : EncoderState → Prop
+@[expose] def v3cr_encoderStateBound : EncoderState → Prop
   | .points pts => ∀ pt ∈ pts, pt.value.length ≤ 0x0555555555555555
   | .polys _ => True
 
@@ -372,7 +373,7 @@ theorem v3cr_vecGF16ListOf_16_eq (A : RustAlloc) (a : BitVec 64)
   simp only [v3a_bv_add_add_lit, BitVec.ofNat_eq_ofNat, sepConj_emp, sepConj_assoc]
 
 /-- Complete 400-byte word/qword layout of `PolyEncoder` at `a`. -/
-def v3cr_polyEncoderWordsAt (a : BitVec 64)
+@[expose] def v3cr_polyEncoderWordsAt (a : BitVec 64)
     (w_tag w8 w16 w24 w32 w40 w48 w56 w64 w72 w80 w88 w96 w104 w112 w120 w128 w136 w144 w152 : BitVec 64)
     (q160 q176 q192 q208 q224 q240 q256 q272 q288 q304 q320 q336 q352 q368 : BitVec 128)
     (w384 w392 : BitVec 64) : SepProp :=
@@ -384,7 +385,7 @@ def v3cr_polyEncoderWordsAt (a : BitVec 64)
   (((a + 368#64) ↦₁₂₈ q368) ∗ ((a + 384#64) ↦₆₄ w384)) ∗ ((a + 392#64) ↦₆₄ w392)
 
 /-- Address-independent heap payload of `PolyEncoder` associated with `v3cr_polyEncoderWordsAt`. -/
-def v3cr_polyEncoderHeap (A : RustAlloc) (enc : PolyEncoder)
+@[expose] def v3cr_polyEncoderHeap (A : RustAlloc) (enc : PolyEncoder)
     (w_tag w8 w16 w24 w32 w40 w48 w56 w64 w72 w80 w88 w96 w104 w112 w120 w128 w136 w144 w152 : BitVec 64)
     (q160 q176 q192 q208 q224 q240 q256 q272 q288 q304 q320 q336 q352 q368 : BitVec 128)
     (w384 w392 : BitVec 64) : SepProp :=
@@ -556,7 +557,7 @@ theorem v3cr_polyEncoderAt_close (A : RustAlloc) (a : BitVec 64) (enc : PolyEnco
 
 /-! ## Bitvector & Unaligned Realignment Helpers for `PolyEncoder` Relocation -/
 
-def v3a_pack88 (w : BitVec 64) : BitVec 64 :=
+@[expose] def v3a_pack88 (w : BitVec 64) : BitVec 64 :=
   (w.extractLsb' 8 32).zeroExtend 64 |||
     ((((w.extractLsb' 40 16).zeroExtend 32 |||
        ((w.extractLsb' 56 8).zeroExtend 32 <<< 16)).zeroExtend 64) <<< 32)
@@ -992,47 +993,6 @@ theorem v3cr_optProtoPolyEncoderAt_pack (A : RustAlloc) (a : BitVec 64)
       collapse_step (Drop.pointsTo64_entails_memRegion _ _) <| collapse_step (Drop.pointsTo64_entails_memRegion _ _) <|
       collapse_step (Drop.pointsTo64_entails_memRegion _ _) <| collapse_step (Drop.pointsTo64_entails_memRegion _ _) <|
       Drop.pointsTo64_entails_memRegion _ _)
-
-theorem v3cr_pb128_entails_112_and_enc
-    (pbA tag u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 w0 w8 w16 w24 w32 w40 w48 : BitVec 64) :
-    (pbA ↦₆₄ tag) ∗ v1_pb128At pbA u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 w0 w8 w16 w24 w32 w40 w48 ⊢
-      memRegion pbA 112 ∗ v1_optProtoPolyEncoderWordsAt (pbA + 112#64) w0 w8 w16 w24 w32 w40 w48 := by
-  rw [← v1_uc_and_enc_words_eq_pb128]
-  have h104 := v1_ucWordsAt_entails_104 (pbA + 8#64) u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104
-  have h112 : (pbA ↦₆₄ tag) ∗ memRegion (pbA + 8#64) 104 ⊢ memRegion pbA 112 :=
-    collapse_top <| collapse_step0 (Drop.pointsTo64_entails_memRegion _ _) <| Entails.refl _
-  refine Entails.trans (Entails.of_eq (show _ =
-    ((pbA ↦₆₄ tag) ∗ v1_ucWordsAt (pbA + 8#64) u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104) ∗
-    v1_optProtoPolyEncoderWordsAt (pbA + 112#64) w0 w8 w16 w24 w32 w40 w48 by ac_rfl)) ?_
-  exact sepConj_mono (Entails.trans (sepConj_mono_right h104) h112) (Entails.refl _)
-
-theorem v3cr_pb128_entails_full_224
-    (pbA tag u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 w0 w8 w16 w24 w32 w40 w48 : BitVec 64) :
-    (pbA ↦₆₄ tag) ∗ v1_pb128At pbA u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 w0 w8 w16 w24 w32 w40 w48 ∗
-      memRegion (pbA + 168#64) 56 ⊢ memRegion pbA optProtoInnerStateSize := by
-  have h1 := v3cr_pb128_entails_112_and_enc pbA tag u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 w0 w8 w16 w24 w32 w40 w48
-  have h56 := v1_optProtoPolyEncoderWordsAt_entails_56 (pbA + 112#64) w0 w8 w16 w24 w32 w40 w48
-  have h224 : memRegion pbA 112 ∗ memRegion (pbA + 112#64) 56 ∗ memRegion (pbA + 168#64) 56 ⊢
-      memRegion pbA optProtoInnerStateSize :=
-    collapse_top <| collapse_step0 (Entails.refl _) <| collapse_step (Entails.refl _) <| Entails.refl _
-  refine Entails.trans (Entails.of_eq (show _ =
-    ((pbA ↦₆₄ tag) ∗ v1_pb128At pbA u8 u16 u24 u32 u40 u48 u56 u64 u72 u80 u88 u96 u104 w0 w8 w16 w24 w32 w40 w48) ∗
-    memRegion (pbA + 168#64) 56 by ac_rfl)) (Entails.trans (sepConj_mono_left h1) ?_)
-  refine Entails.trans (Entails.of_eq (show _ =
-    memRegion pbA 112 ∗ v1_optProtoPolyEncoderWordsAt (pbA + 112#64) w0 w8 w16 w24 w32 w40 w48 ∗
-    memRegion (pbA + 168#64) 56 by ac_rfl)) (Entails.trans (sepConj_mono_right (sepConj_mono_left h56)) h224)
-
-theorem v3cr_stackAt_encoder_to_ekSent (fsp : BitVec 64) :
-    stackAt fsp encoderFromPbStack ⊢ stackAt fsp ekSentCt1ReceivedFromPbStack ∗ memRegion (fsp - 5152#64) 848 := by
-  have h := ProofLib.stackAt_split_bottom fsp ekSentCt1ReceivedFromPbStack 848 (by decide)
-  change stackAt fsp encoderFromPbStack = memRegion (fsp - 5152#64) 848 ∗ stackAt fsp ekSentCt1ReceivedFromPbStack at h
-  rw [h]; exact Entails.of_eq (by ac_rfl)
-
-theorem v3cr_stackAt_ekSent_to_encoder (fsp : BitVec 64) :
-    stackAt fsp ekSentCt1ReceivedFromPbStack ∗ memRegion (fsp - 5152#64) 848 ⊢ stackAt fsp encoderFromPbStack := by
-  have h := ProofLib.stackAt_split_bottom fsp ekSentCt1ReceivedFromPbStack 848 (by decide)
-  change stackAt fsp encoderFromPbStack = memRegion (fsp - 5152#64) 848 ∗ stackAt fsp ekSentCt1ReceivedFromPbStack at h
-  rw [h]; exact Entails.of_eq (by ac_rfl)
 
 theorem v3cr_optProtoAuth_unpack (A : RustAlloc) (a : BitVec 64) (optAuth : Option ProtoAuthenticator) :
     optProtoAuthenticatorAt A a optAuth ⊢

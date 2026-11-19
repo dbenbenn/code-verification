@@ -9,11 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainStepPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainStepPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiation
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubClPlaced
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` `ChainPB` Field Merge Handlers for `spqr::decode_state` (Block `325`)
@@ -22,7 +31,7 @@ Proves the per-field handlers (Tags 1, 2, 4, 5, 6, and `skip_field`) inside the 
 `ChainPB::merge` loop of `spqr::decode_state` under `LibsignalCodeLoaded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -14,14 +14,26 @@ public import Arm64.Trusted.Spec.Hoare
 public import ProofLib
 public import ProofLib.FsTrace
 public import ProofLib.ProgramReflection
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopAlloc
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3AllocStdinGhostHooks -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopAlloc
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Real-Run First-Stop Instances for `dealloc`
@@ -29,10 +41,10 @@ public import LibsignalBinary.Specifications.SignalSession.CliElf
 **Checked by Lean.**
 
 Proves real-run first-stop obligations and `ActiveRealRun` (`f3DeallocFallback` deadness) for
-`__rust_dealloc` (`f3RdlAddrs.dealloc` = `0x4694f0#64`) over `f3TrialRxProg` (`seg[2]`, `hole2_keepSub` guard).
+`__rust_dealloc` (`f3RdlAddrs.dealloc` = `0x4744f0#64`) over `f3TrialRxProg` (`seg[2]`, `hole2_keepSub` guard).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -62,13 +74,13 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
 
 /-- `(γ, tp)`-indexed fine-budget `rustCliDeallocBudgetSpec` guarding `f3DeallocGhostHookFine`
     in `hole2_ghFixed`. -/
-noncomputable def h2fsdealloc_spec [LibsignalPlacement] (mmpl : MultiPlacement)
+@[expose] noncomputable def h2fsdealloc_spec [LibsignalPlacement] (mmpl : MultiPlacement)
     (γ : GhostName) (tp : BitVec 64) : Spec (BitVec 64 × Nat × Nat × fineCostModel.σ) :=
   rustCliDeallocBudgetSpec fineCostModel
     (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart)
     cliBudgetLimits
 
-/-- `seg[5]` entry target for `__rust_dealloc` (`__rdl_dealloc`, `0x4694f0#64`). -/
+/-- `seg[5]` entry target for `__rust_dealloc` (`__rdl_dealloc`, `0x4744f0#64`). -/
 def h2fsdealloc_target : BitVec 64 :=
   f3RdlAddrs.dealloc
 

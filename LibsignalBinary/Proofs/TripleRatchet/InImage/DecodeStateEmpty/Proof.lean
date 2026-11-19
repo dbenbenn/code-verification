@@ -9,29 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.TrapRng
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.TrapRng -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import ProofLib.SepLogic.WPp
 public import LibsignalBinary.Proofs.SpecLemmas.LibsignalTripleRatchetProofDefs
-
-/-!
-# Verification of In-Image `spqr::decode_state` on an Empty State
-
-Proves `decodeStateEmpty_ok_F`: on an empty `Vec<u8>` (`st.bytes = []`), `spqr::decode_state`
-checks `len = 0`, writes the empty `PriorChainSpec` tags (`-1` at `+0`, `pqChainNone` at `+48`,
-`pqInnerNone` at `+128`), and returns without invoking any extern hook.
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.InImage.DecodeStateEmpty
 
 open Arm64 ProofLib ProofLib.ProgramReflection CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchet
-
-gen_decodes libsignalSessionCode_tree decodeStateBin
-  [(ls_off% "spqr::decode_state") → (ls_off% "spqr::decode_state" + 44), (ls_off% "spqr::decode_state" + 1604) → (ls_off% "spqr::decode_state" + 1624), (ls_off% "spqr::decode_state" + 2500) → (ls_off% "spqr::decode_state" + 2528)]
 
 theorem mr_cut' (sp : BitVec 64) (c c' n k N : Nat) (hN : n + k = N) (hc' : c - n = c')
     (hn : n ≤ c) (hc : c < 2 ^ 64) (h : N ≤ 2 ^ 64) :
@@ -106,7 +93,7 @@ theorem ret_352_split (r : BitVec 64) :
       memRegion_eight r, memRegion_eight (r + 48#64), memRegion_eight (r + 128#64)]
 
 /-- The buffer tail of `vecU8At`, kept intact during symbolic execution of `decode_state`. -/
-def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -118,45 +105,5 @@ theorem vecArg_at_nil (A : RustAlloc) (v cap ptr : BitVec 64) :
         vecU8Tail A cap ptr [] := by
   simp only [VecArg.at, vecU8At, vecHeader, vecU8Tail, List.length_nil, BitVec.ofNat_eq_ofNat,
     sepConj_assoc]
-
-/-- On an empty state (`st.bytes = []`), `spqr::decode_state` satisfies `decodeStateEmptySpec A`
-for any hook table `hooks`. -/
-theorem decodeStateEmpty_ok_F (b : BitVec 64) (hooks : String → Option (State → State))
-    (A : RustAlloc) :
-    subroutine_ok (libsignalSessionCode.rebase b hooks)
-      ((libsignalSessionCode.rebase b hooks).fnAddr decodeStateName)
-      (decodeStateEmptySpec A) := by
-  have hfn : libsignalSessionCode.fnOff decodeStateName = num% (ls_off% "spqr::decode_state") :=
-    (ls_lemma% fnOff "spqr::decode_state")
-  code_fetches_range CryptoVerification.libsignalSessionCode decodeStateBin
-    b hooks hfn (num% (ls_off% "spqr::decode_state")) 0 48
-  code_fetches_range CryptoVerification.libsignalSessionCode decodeStateBin
-    b hooks hfn (num% (ls_off% "spqr::decode_state")) 1604 24
-  code_fetches_range CryptoVerification.libsignalSessionCode decodeStateBin
-    b hooks hfn (num% (ls_off% "spqr::decode_state")) 2500 32
-  clear hfn
-  simp only [decodeStateEmptySpec, decodeStateEmptyAt, pqChainNone, pqInnerNone]
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨⟨v, cap, ptr, bs⟩, ret⟩ := x
-  dsimp only at *
-  subst bs
-  rw [vecArg_at_nil A v cap ptr, ret_352_split ret, stackAt_decodeState_split s0.sp]
-  wp_pull_exists
-  wp_steps
-  wp_done
-
-theorem decodeStateEmpty_ok_aux_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) :
-    subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr decodeStateName)
-      (decodeStateEmptySpec A) :=
-  decodeStateEmpty_ok_F b (Rust.withPanics (trTrapExterns C abs)) A
-
-theorem decodeStateEmpty_ok_aux (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr decodeStateName)
-      (decodeStateEmptySpec A) :=
-  subroutine_ok_kit_of_trTrap (decodeStateEmpty_ok_aux_trap b C A abs)
 
 end CryptoVerification.LibsignalTripleRatchet.InImage.DecodeStateEmpty

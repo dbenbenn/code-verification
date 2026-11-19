@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1Placed
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Encrypt.RootPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridgePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.V1.BobTailV1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Encrypt.RootPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridgePlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Statements
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SendCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 
 /-!
 # SPQR-V1 Placed Entry-Point Seam Bundle
@@ -27,7 +32,7 @@ Packages the three relocatable `[LibsignalPlacement]` SPQR-V1 entry-block contra
 - Block 427 (`spqr::send::<Coins>`): `spqrSendCoinsPlacedSpecT`
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
@@ -62,7 +67,7 @@ instance instIsLsBlockProg_blockProgram_329 [LibsignalPlacement] (H : LibsignalH
 
 /-- Image-free `[LibsignalPlacement]` inner `Spec` of `spqrRecvSpecExactKey` (Block `329`, `spqr::recv`)
 using `FromRecordCallees.lsLogOff` in place of `logOff img`. -/
-def spqrRecvPlacedInnerSpecX [LibsignalPlacement] (A : RustAlloc) (R : SpqrRecvModel) :
+@[expose] def spqrRecvPlacedInnerSpecX [LibsignalPlacement] (A : RustAlloc) (R : SpqrRecvModel) :
     Spec (VecArg × VecArg × BitVec 64) where
   pre := fun (st, msg, ret) s =>
     ⌜s.readReg64 .x0 = st.v ∧ s.readReg64 .x1 = msg.v ∧ s.readReg64 .x8 = ret⌝ ∗
@@ -79,7 +84,7 @@ def spqrRecvPlacedInnerSpecX [LibsignalPlacement] (A : RustAlloc) (R : SpqrRecvM
 /-- Image-free `[LibsignalPlacement]` inner `Spec` of `spqrRecvSpecExactKeyBounded` (Block `329`, `spqr::recv`)
 with `SpqrV1.GF.Mul2U16.tokenInitPlacedAt` framed and `st.bytes.length < 2 ^ 32`,
 `msg.bytes.length < 2 ^ 40`, and `spqrRecvStack ≤ s.sp.toNat`. -/
-def spqrRecvPlacedInnerSpecXT [LibsignalPlacement] (A : RustAlloc) (R : SpqrRecvModel) :
+@[expose] def spqrRecvPlacedInnerSpecXT [LibsignalPlacement] (A : RustAlloc) (R : SpqrRecvModel) :
     Spec (VecArg × VecArg × BitVec 64) :=
   { spqrRecvPlacedInnerSpecX A R with
     pre := fun x s =>
@@ -90,7 +95,7 @@ def spqrRecvPlacedInnerSpecXT [LibsignalPlacement] (A : RustAlloc) (R : SpqrRecv
 
 /-- Image-free `[LibsignalPlacement]` inner `Spec` of `spqrSendSpecT` for `<Coins>` (Block `427`)
 with `SpqrV1.GF.Mul2U16.tokenInitPlacedAt` framed and `st.bytes.length < 2 ^ 32`, `64 ≤ rest.length`. -/
-def spqrSendCoinsPlacedSpecT [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def spqrSendCoinsPlacedSpecT [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (S : SpqrModel) : Spec SendCall :=
   { CryptoVerification.Cli.LibsignalTripleRatchet.SpqrSendEmpty.spqrSendCoinsPlacedSpec A ctl S with
     pre := fun x s =>

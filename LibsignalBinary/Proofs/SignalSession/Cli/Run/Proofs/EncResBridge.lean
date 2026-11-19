@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Error-Arm Layout Bridge for `encResAt`
@@ -18,7 +20,7 @@ Proves that `encResAt A r (.error e)` for any non-store error `e` exposes `errTa
 48-byte `SignalProtocolError` at `r + 8`, and a 192-byte trailing region at `r + 56`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

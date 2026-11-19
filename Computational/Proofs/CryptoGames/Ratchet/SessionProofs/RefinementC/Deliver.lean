@@ -9,20 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.KnownReject
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.KnownSaltMatch
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.KnownSaltMismatchSafe
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.KnownResync
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.KnownProbe
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Evicted
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.NewChainJump
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.NewChainSaltMatch
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.NewChainSaltMismatchSafe
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.NewChainResync
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.NewChainProbe
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.KnownReject
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.KnownSaltMatch
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.KnownSaltMismatchSafe
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.KnownResync
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.KnownProbe
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Evicted
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.NewChainJump
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.NewChainSaltMatch
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.NewChainSaltMismatchSafe
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.NewChainResync
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.NewChainProbe
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Honest
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Honest
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
 
 /-!
 # Refinement without salt binding: the deliver step
@@ -32,7 +33,7 @@ not-in-transit, SPQR error/panic, known-chain, new-epoch, and evicted-epoch case
 salt-steered honest wires under case 3 and evicted salt mismatches (`DEV-LS36`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

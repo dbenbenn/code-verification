@@ -12,14 +12,23 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
+public import ProofLib.RegChain
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePendPlacedBudget
 
 /-!
 # Budget-Threaded Stage P2 Adapter for Non-Matching Overwrite (`Path C Over`)
@@ -30,7 +39,7 @@ Lifts `StageP2PathCOverQpanCliD3PlacedBudgetStmt` onto `decPkOverDef`
 `cliGhostExterns gh (cliExternsPlaced mmpl W)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -111,7 +120,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedB
 
 /-- Budget-threaded exit postcondition of the 6 Stage P2 store-error and PQXDH-rejection arms on
 Path C (`Over`) for arbitrary `pm.serialized` under `[LibsignalPlacement]`. -/
-def StageP2PathCOverErrD3In [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2PathCOverErrD3In [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ)
     {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
     (P2OverErrEnv : DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -140,7 +149,7 @@ def StageP2PathCOverErrD3In [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded Stage P2 Path-C (`Over`) CPS contract statement at
 `dpPollEntryPlaced + 0x0868#64` for non-canonical `PreKeySignalMessage`s (`DecPkOkD3`). -/
-def StageP2PathCOverQpanCliD3InStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2PathCOverQpanCliD3InStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PromEnv : SessionGhost → Session (List (BitVec 8)) → List AllocEvent → Prop)
     (P2OverErrEnv P2OverOkEnv :
@@ -306,7 +315,7 @@ inductive StageP2OverErrD3Placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded 2-placement general-`Qpan` CPS Stage P2 (`+0x0868 → +0x1778`) statement for
 `decPkOverDef` under `DecPkOkD3` and `[LibsignalPlacement]`. -/
-def StageP2OverQpanCliD3PlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2OverQpanCliD3PlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (P2OverErrEnv P2OverOkEnv :
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop) : Prop :=
@@ -482,14 +491,14 @@ theorem decPk_d3_validOver_stage2_placedBudget [LibsignalPlacement] {M : AllocCo
     (fun mmpl gh W hh =>
       cliPromoteOverGen_placed_ok mmpl gh W
         ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs, hh.utf8, hh.memrchr,
-          hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.blackBox⟩
+          hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.fmtWrite, hh.blackBox⟩
         (hGrow mmpl gh W) (hRaw mmpl gh W))
 
 /-! ## 4. `[LibsignalFullPlacement]` / `LibsignalFrozen` Twins -/
 
 /-- `LibsignalFrozen`-guarded Stage P2 Path-C (`Over`) CPS contract statement at
 `dpPollEntryPlaced + 0x0868#64` for non-canonical `PreKeySignalMessage`s (`DecPkOkD3`). -/
-def StageP2PathCOverQpanCliD3FrozenInStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2PathCOverQpanCliD3FrozenInStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PromEnv : SessionGhost → Session (List (BitVec 8)) → List AllocEvent → Prop)
     (P2OverErrEnv P2OverOkEnv :
@@ -622,7 +631,7 @@ abbrev StageP2PathCOverQpanCliD3FrozenPlacedBudgetStmt := @StageP2PathCOverQpanC
 
 /-- `LibsignalFrozen`-guarded general-`Qpan` CPS Stage P2 (`+0x0868 → +0x1778`) statement for
 `decPkOverDef` under `DecPkOkD3` and `[LibsignalPlacement]`. -/
-def StageP2OverQpanCliD3FrozenPlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2OverQpanCliD3FrozenPlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (P2OverErrEnv P2OverOkEnv :
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop) : Prop :=
@@ -794,14 +803,14 @@ theorem decPk_d3_validOver_stage2_full_placedBudget [LibsignalPlacement] {M : Al
     (fun mmpl gh W hh =>
       cliPromoteOverGen_placed_ok mmpl gh W
         ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs, hh.utf8, hh.memrchr,
-          hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.blackBox⟩
+          hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.fmtWrite, hh.blackBox⟩
         (hGrow mmpl gh W) (hRaw mmpl gh W))
 
 /-! ## 5. Pointwise `(X, mmpl, gh, W)` `LibsignalFrozen` Twins -/
 
 /-- Pointwise `(X, mmpl, gh, W)` `LibsignalFrozen`-guarded Stage P2 Path-C (`Over`) CPS contract
 statement at `dpPollEntryPlaced + 0x0868#64` for non-canonical `PreKeySignalMessage`s (`DecPkOkD3`). -/
-def StageP2PathCOverQpanCliD3FrozenAtInStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2PathCOverQpanCliD3FrozenAtInStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
     (W : CliHooks)
@@ -935,7 +944,7 @@ abbrev StageP2PathCOverQpanCliD3FrozenAtPlacedBudgetStmt := @StageP2PathCOverQpa
 
 /-- Pointwise `(X, mmpl, gh, W)` `LibsignalFrozen`-guarded general-`Qpan` CPS Stage P2
 (`+0x0868 → +0x1778`) statement for `decPkOverDef` under `DecPkOkD3` and `[LibsignalPlacement]`. -/
-def StageP2OverQpanCliD3FrozenAtPlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2OverQpanCliD3FrozenAtPlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
     (W : CliHooks)
@@ -1110,7 +1119,7 @@ theorem decPk_d3_validOver_stage2_at_full_placedBudget [LibsignalPlacement] {M :
     (fun hh =>
       cliPromoteOverGen_placed_ok mmpl gh W
         ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs, hh.utf8, hh.memrchr,
-          hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.blackBox⟩
+          hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.fmtWrite, hh.blackBox⟩
         hGrow hRaw)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage2PlacedBudget

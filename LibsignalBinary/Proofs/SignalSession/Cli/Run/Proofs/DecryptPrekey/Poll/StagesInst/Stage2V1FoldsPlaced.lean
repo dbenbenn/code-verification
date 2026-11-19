@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Folds
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedFoldPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedMatchFoldPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Folds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedFoldPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedMatchFoldPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` CLI Poll Stage P2 V1 Entry and Error-Exit Folds
@@ -24,7 +30,7 @@ Defines `pathAInnerFramePlaced`, `stageP2PreAtPlaced`, and `p2ErrFrameAtPlaced` 
 `stageP2_entry_unpack_pathA_placed` and `p2ErrFrame_fold_pathA_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -32,7 +38,7 @@ set_option linter.unusedSimpArgs false
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Poll
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSessionRepr
@@ -67,7 +73,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs.Initiate
 open CryptoVerification.SignalSession.Cli.KitInst
 
 /-- Placed spatial frame preserved untouched across `stageP2_v1_kits` on Path A. -/
-def pathAInnerFramePlaced {B : RunBudgets} {S : RunSem} [LibsignalPlacement]
+@[expose] def pathAInnerFramePlaced {B : RunBudgets} {S : RunSem} [LibsignalPlacement]
     (y : DpPollGhostState (dpSlotPollKStatePlaced E2E.HooksE.A0 B S))
     (m : PreKeyMessageFields) (i : SignalMessage) (rngPtr sp : BitVec 64) : SepProp :=
   (cliPollSessKitPlaced E2E.HooksE.A0 y.g.F Slots.scopeKit y.g.peer (cliKitStk B)).storeAt
@@ -101,7 +107,7 @@ def pathAInnerFramePlaced {B : RunBudgets} {S : RunSem} [LibsignalPlacement]
   SpqrV1.GF.Mul2U16.tokenInitPlacedAt
 
 /-- Placed spatial precondition at `+0x0868` for `stageP2_v1_kits` (Path A fresh Bob session). -/
-def stageP2PreAtPlaced (A : RustAlloc) [LibsignalPlacement]
+@[expose] def stageP2PreAtPlaced (A : RustAlloc) [LibsignalPlacement]
     (spkKit : SignedPreKeyStoreSpec A 0#64)
     (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (pkKit : PreKeyStoreSpec A 0#64)
@@ -282,7 +288,7 @@ theorem stageP2_entry_unpack_pathA_placed {W : CliHooks} {B : RunBudgets} {S : R
 
 /-- Placed common coroutine, stack, message, address, and allocator spatial frame delivered uniformly
 at `s0.readReg64.x30` on all 6 Stage-P2 error exits. -/
-def p2ErrFrameAtPlaced (A : RustAlloc) [LibsignalPlacement] (s0 : State)
+@[expose] def p2ErrFrameAtPlaced (A : RustAlloc) [LibsignalPlacement] (s0 : State)
     (sp fp coroPtr msgPtr ctBufPtr remoteAddrPtr localAddrPtr
      idStorePtr idVt preKeyStorePtr pkVt kyberStorePtr kpkVt v_330 v_388 : BitVec 64)
     (hdr : HandshakeHdr) (msgVerByte : BitVec 8)

@@ -1,0 +1,11 @@
+{
+  "comment": "try_decrypt_from_record trial-decrypts on a cloned current_state and omits record.set_session_state(current_state) on success, leaving the pre-decrypt session state on disk and accepting a replayed PreKeySignalMessage.",
+  "setup_seed": 7003,
+  "rng_seed": 70030,
+  "calls": [
+    {"entry": "init", "who": 0, "b": {"honest_bundle": true}},
+    {"entry": "send", "who": 0, "b": {"utf8": "replay-wire-transfer"}},
+    {"entry": "recv", "who": 1, "b": {"message_of": 1}},
+    {"entry": "recv", "who": 1, "b": {"message_of": 1}}
+  ]
+}

@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfGenFin
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfGenFin -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlock
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.NewFromSliceInvariants
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfGenFinPlacedA
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractSegs
 import LibsignalBinary.Specifications.LibsignalE2E.State -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Long-IKM `Hkdf::extract` (Block `54`)
@@ -25,7 +26,7 @@ Proves `extract_none_long_placed_runsToE_of_inv` and `extract_none_long_placed_r
 and `x.ikm.length ∈ {160, 192, 224}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -58,15 +59,10 @@ local macro "fin_reg_ext" : tactic =>
     try rw [State.status_setMem]
     simp (config := { decide := true }) only [arm64_norm, *]))
 
-@[simp, arm64_norm]
-theorem extPlacedFakeB_off_308 [LibsignalPlacement] :
-    extPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 308) =
-      (blkPl_54).base + 308#64 := by
-  dsimp only [extPlacedFakeB]; bv_lin
 
 /-! ## Placed Cut Predicates for Long-IKM `extract` -/
 
-def ENfs1LongPlaced [LibsignalPlacement] (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64)
+@[expose] def ENfs1LongPlaced [LibsignalPlacement] (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64)
     (s : State) : Prop :=
   Extract.ExtCommon s0 sp0 s ∧
   s.pc = lsmpl.base 114 ∧
@@ -78,7 +74,7 @@ def ENfs1LongPlaced [LibsignalPlacement] (x : ExtractGhost) (s0 : State) (sp0 : 
   s.readReg64 .x21 = BitVec.ofNat 64 x.ikm.length ∧
   s.mem.readBytes (Extract.saltPtrOf sp0 x) 32 = effectiveSalt x.salt
 
-def ECompLongPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def ECompLongPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   Extract.ExtCommon s0 sp0 s ∧
   s.pc = lsρ lsCompress256Sym ∧
@@ -95,7 +91,7 @@ def ECompLongPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → S
   s.mem.readBytes (sp0 + 0x68#64) 32 = shaStateBytes (hmacOuterInit F (effectiveSalt x.salt)) ∧
   s.mem.read64 (sp0 + 0x88#64) = 1#64
 
-def EMemcpyLongPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def EMemcpyLongPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   Extract.ExtCommon s0 sp0 s ∧
   s.pc = lsρ lsMemcpySym ∧
@@ -112,7 +108,7 @@ def EMemcpyLongPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) →
   s.mem.readBytes (sp0 + 0x68#64) 32 = shaStateBytes (hmacOuterInit F (effectiveSalt x.salt)) ∧
   s.mem.read64 (sp0 + 0x88#64) = 1#64
 
-def EFinLongPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def EFinLongPlaced [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
     (x : ExtractGhost) (s0 : State) (sp0 : BitVec 64) (s : State) : Prop :=
   Extract.ExtCommon s0 sp0 s ∧
   s.pc = (blkPl_123).base ∧
@@ -253,9 +249,7 @@ theorem nfs1_long_placed_runsTo {Inv : Memory → Prop}
     · exact Extract.disj_sp0_sub_off sp0 544#64 544 336#64 96 (by decide)
   have hframe' : Extract.ExtFrame s0 sp0 s'.mem :=
     hframe.trans_pair hfr' hsub_x0.2 hsub_544.2
-  have hlr' : s.readReg64 .lr =
-      extPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 80) := by
-    rw [hlr, extPlacedFakeB_off_80]
+  have hlr' := hlr.trans extPlacedFakeB_off_80.symm
   exact ⟨⟨hstat', (Extract.CallingConventionPreserved.sp_eq hcs).trans hsp,
     (Extract.CallingConventionPreserved.x19 hcs).trans hx19,
     (Extract.CallingConventionPreserved.x27 hcs).trans hx27,
@@ -537,9 +531,7 @@ theorem fin_long_placed_runsTo [HkdfPlacedHooks C.F H]
     · exact Extract.disj_sp0_sub_off sp0 144#64 144 336#64 96 (by decide)
   have hframe' : Extract.ExtFrame s0 sp0 s'.mem :=
     hframe.trans_triple hfr' hsub_144.2 hsub_176.2 hsub_m144.2
-  have hlr' : s.readReg64 .lr =
-      extPlacedFakeB + bv% (ls_off% "<hkdf::GenericHkdf<hmac::Hmac<sha2::Sha256>>>::extract" + 380) := by
-    rw [hlr, extPlacedFakeB_off_380]
+  have hlr' := hlr.trans extPlacedFakeB_off_380.symm
   exact ⟨⟨hstat', hcs.sp_eq.trans hsp, (CalleeSaved.x19 hcs).trans hx19,
     (CalleeSaved.x27 hcs).trans hx27,
     (CalleeSaved.x29 hcs).trans hx29, hsaved', hframe'⟩,

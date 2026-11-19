@@ -11,19 +11,10 @@ module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
-
-/-!
-# Verification of `spqr::chain_from_version_negotiation` (`0x545e4`, 18 Instructions)
-
-Proves `chainFromVersionNegotiation_ok_of_contracts_x` and `chainFromVersionNegotiation_ok_of_contracts_ext`
-from `ChainNewOkX` / `ChainNewOkExt`.
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
 
@@ -34,8 +25,6 @@ open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.SpqrV1.ChainProofs
 open CryptoVerification.CodeLayout
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [0x4f1ec → 0x4f230]
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -82,14 +71,6 @@ theorem readReg_setPC_pre (s : State) (pc : BitVec 64) (w : RegWidth) (r : Reg) 
 theorem readReg_setMem_setPC_pre (s : State) (pc : BitVec 64) (m : Memory) (w : RegWidth) (r : Reg) :
     ((s.setPC pc).setMem m).readReg w r = s.readReg w r := by
   cases w <;> cases r <;> rfl
-
-theorem chainFromVN_fnOff :
-    libsignalSessionCode.fnOff chainFromVersionNegotiationName = 0x4f1ec :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) libsignalSessionCode_fnOff_0x4f1ec
-
-theorem chainNew_fnOff :
-    libsignalSessionCode.fnOff chainNewName = 0x5aaac :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl) libsignalSessionCode_fnOff_0x5aaac
 
 theorem memRegion_88_err_split (out : BitVec 64) :
     memRegion out 88 =
@@ -179,7 +160,7 @@ theorem fold_chainErrorAt (out : BitVec 64) (err : Error) (tag : BitVec 8)
   rw [hassoc]
   exact Entails.trans h2 h3
 
-def vecU8BufRest (A : RustAlloc) (cap ptr : BitVec 64) (len : Nat) : SepProp :=
+@[expose] def vecU8BufRest (A : RustAlloc) (cap ptr : BitVec 64) (len : Nat) : SepProp :=
   ⌜len ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ memRegion (ptr + BitVec.ofNat 64 len) (cap.toNat - len))
@@ -322,51 +303,6 @@ theorem chainNew_post_entails_chainRepr (A : RustAlloc) (out : BitVec 64) (ch : 
   refine Entails.pure_left fun _ => ?_
   exact Entails.sepExists_right G (Entails.refl _)
 
-/-- Framed tail-call (`Operation.B`) rule for `SepWPp` with an `.inImage img` callee contract. -/
-theorem SepWPp.tail_call_frame_inImage {α : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc : BitVec 64} {spec : Spec α}
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (x : α) {s : State} {φ : Prop} {P T F R : SepProp} {Qpan : State → SepProp}
-    {post : State → SepProp → Prop}
-    (hF : ImgCallInv img s)
-    (hpc : s.pc = entry)
-    (hrun : s.status = .Running)
-    (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = ⌜φ⌝ ∗ T)
-    (hφ : φ)
-    (hP : P = T ∗ F)
-    (hpan : ∀ sf, spec.onPanic x s sf ∗ F ⊢ Qpan sf)
-    (hexit_eq : ∀ code sf, spec.onExit x code s sf = ⌜False⌝)
-    (hoom_eq : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      SepWP prog ret_pc sf (spec.post x s sf ∗ F) post) :
-    SepWPp prog ret_pc s P post
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ Qpan sf ∗ R)) := by
-  refine ProofLib.SepWPp.call_inImage_frame (x := x) (F := F) hcall hF.1 hF.2 hpc hrun hsp_align hlr
-    hspec hφ hP
-    (fun sf code R' _ hpost => by
-      rw [hexit_eq] at hpost
-      exact not_satisfies_false_sepConj hpost)
-    (fun sf _ hm' => Satisfies.mono (sepConj_mono_left (hpan sf)) hm')
-    (fun sm hpcm hrunm hspm hcsm _ _ => SepWPp.of_sepWP_ret (hnext sm hpcm hrunm hspm hcsm))
-    (fun sf R' _ hpost => by
-      rw [hoom_eq] at hpost
-      exact (not_satisfies_false_sepConj hpost).elim)
-
-theorem sub_ok_at_rebase {α : Type} {b : BitVec 64} {hooks : String → Option (State → State)}
-    {name callee : String} {k : Nat} {spec : Spec α}
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff callee)
-    (hok : subroutine_ok (libsignalSessionCode.rebase b hooks)
-      ((libsignalSessionCode.rebase b hooks).fnAddr callee) spec) :
-    subroutine_ok (libsignalSessionCode.rebase b hooks)
-      ((libsignalSessionCode.rebase b hooks).fnAddr name + BitVec.ofNat 64 k) spec := by
-  have haddr : (libsignalSessionCode.rebase b hooks).fnAddr name + BitVec.ofNat 64 k =
-      (libsignalSessionCode.rebase b hooks).fnAddr callee := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase, ← hk, BitVec.ofNat_add, ← BitVec.add_assoc]
-  exact haddr ▸ hok
-
 theorem SepWPp.rw_pre {prog : Program} {ret : BitVec 64} {s : State}
     {P P' : SepProp} {Q Qp : State → SepProp → Prop} (heq : P = P')
     (h : SepWPp prog ret s P' Q Qp) :
@@ -376,253 +312,5 @@ theorem SepWPp.rw_pre {prog : Program} {ret : BitVec 64} {s : State}
 end ChainFromVNNorm
 
 open ChainFromVNNorm
-
-ls_attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  sp_setPC_pre sp_setMem_setPC_pre
-  readReg64_setPC_pre readReg64_setMem_setPC_pre
-  readReg32_setPC_pre readReg32_setMem_setPC_pre
-  readReg_setPC_pre readReg_setMem_setPC_pre
-  ult_one_toI32
-  chainFromVN_fnOff chainNew_fnOff
-  libsignalSessionCode_fnOff_0x4f1ec
-  libsignalSessionCode_fnOff_0x5aaac
-
-set_option maxHeartbeats 800000 in
-/-- `spqr::chain_from_version_negotiation` (`0x545e4`, 18 instructions) meets
-`(chainFromVersionNegotiationSpecX hkdf A).inImage img` on `tripleRatchetProgAtExt img.base ext`
-assuming `ChainNewOkX img hkdf A ext`. -/
-theorem chainFromVersionNegotiation_ok_of_contracts_x {img : Obj.Image} {hkdf : HkdfFn}
-    {A : RustAlloc} {ext : String → Option (State → State)}
-    (hnew : ChainNewOkX img hkdf A ext) :
-    ChainFromVersionNegotiationOkX img hkdf A ext := by
-  unfold ChainFromVersionNegotiationOkX tripleRatchetProgAtExt
-  wpp_init x s0
-  have hfn : libsignalSessionCode.fnOff chainFromVersionNegotiationName = 0x4f1ec :=
-    chainFromVN_fnOff
-  code_fetches libsignalSessionCode libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn 0x4f1ec 72
-  have h_new := sub_ok_at_rebase (name := chainFromVersionNegotiationName) (callee := chainNewName)
-    (k := num% (0x5aaac - 0x4f1ec)) (by rw [chainFromVN_fnOff, chainNew_fnOff]) hnew
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-        chainFromVersionNegotiationName :=
-    hpc.trans (by rw [Program.fnAddr_rebase, hfn])
-  clear hnew hfn
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-      chainFromVersionNegotiationName = entry
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  rcases x with ⟨out, vPtr, pin, v⟩
-  dsimp only [versionNegotiationPBAt] at *
-  have hinv0 : ImgCallInv img s0 := ⟨h_2, h_1⟩
-  subst h_3 h
-  rcases direction_fromI32_or v.direction with
-    ⟨dir, hdir_val, hdir_opt, hcond_hi⟩ | ⟨hdir_opt, hcond_hi⟩
-  · cases hcp : v.chainParams with
-    | none =>
-      have hres : chainFromVersionNegotiation hkdf v = .error .chainNotAvailable := by
-        simp [chainFromVersionNegotiation, hdir_opt, hcp]; rfl
-      dsimp only [optChainParamsPBAt]
-      refine SepWPp.rw_pre (by
-        simp only [memRegion_88_err_split (s0.readReg64 (.gpr 8#5)),
-          sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-        rfl) ?_
-      apply SepWPp.exists_elim; intro w2
-      apply SepWPp.exists_elim; intro w1
-      apply SepWPp.exists_elim; intro bs7
-      apply SepWPp.exists_elim; intro b0
-      apply SepWPp.exists_elim; intro w0
-      refine SepWPp.pure_left_focus _ (by sep_focus) fun hbs7 => ?_
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      rw [hres]
-      dsimp only [chainResultAt]
-      refine SepWP.fold (fold_chainErrorAt (s0.readReg64 (.gpr 8#5)) .chainNotAvailable 15#8 rfl hbs7 w1 w2)
-        (by sep_focus) ?_
-      wp_done
-    | some cp =>
-      have hres : chainFromVersionNegotiation hkdf v =
-          .ok (chainNewVal hkdf v.authKey dir cp) := by
-        simp [chainFromVersionNegotiation, hdir_opt, hcp]; rfl
-      dsimp only [optChainParamsPBAt]
-      refine SepWPp.fold (vecU8At_entails_header_bytesAt_rest A
-        (s0.readReg64 (.gpr 0#5)) pin.cap pin.ptr v.authKey) (by sep_focus) ?_
-      refine SepWPp.pure_left_focus _ (by sep_focus) fun hlen64 => ?_
-      refine SepWPp.of_sepWP_inImage (mid := entry + bv% (0x5aaac - 0x4f1ec)) hinv0 ?_
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-      intro hinv1
-      apply (SepWPp.tail_call_frame_inImage h_new
-        (⟨s0.readReg64 (.gpr 8#5), false, pin.ptr, v.authKey, dir, cp⟩ : ChainNewGhost)
-        hinv1)
-      · wp_focus_close wp_norm_goal
-      · wp_focus_close wp_norm_lhs
-      · wp_focus_close wp_norm_lhs
-      · wp_focus_close wp_norm_lhs
-      · rfl
-      · refine ⟨by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, hlen64⟩
-      · rw [show (((((((((s0.writeReg64 (.gpr 3#5) (BitVec.zeroExtend 64 dir.toI32)).writeReg64
-            (.gpr 9#5) 1#64).writeReg64 (.gpr 1#5) pin.ptr).writeReg64
-            (.gpr 2#5) (BitVec.ofNat 64 v.authKey.length)).writeReg64
-            (.gpr 4#5) (BitVec.zeroExtend 64 cp.maxJump)).writeReg64
-            (.gpr 5#5) (BitVec.zeroExtend 64 cp.maxOooKeys)).writeReg64
-            (.gpr 0#5) (s0.readReg64 (.gpr 8#5))).setPState
-            (subsPState32 dir.toI32 1#32)).setPC (entry + 47296#64)).sp = s0.sp by wp_norm_lhs]
-        sep_focus
-      · intro sf
-        exact onPanic_entails_of_trace_eq (by wp_norm_lhs)
-      · intro _ _; rfl
-      · intro sf hpc_sf hrun_sf hsp_sf hcs_sf
-        dsimp only [chainNewSpecX]
-        refine SepWP.focus_pure (by sep_focus) fun htr_sf => ?_
-        rw [hres]
-        dsimp only [chainResultAt]
-        refine SepWP.fold (chainNew_post_entails_chainRepr A (s0.readReg64 (.gpr 8#5)) _)
-          (by sep_focus) ?_
-        refine SepWP.fold (header_bytesAt_rest_entails_vecU8At A
-          (s0.readReg64 (.gpr 0#5)) pin.cap pin.ptr v.authKey) (by sep_focus) ?_
-        wp_done
-  · have hres : chainFromVersionNegotiation hkdf v = .error .stateDecode := by
-      simp [chainFromVersionNegotiation, hdir_opt]; rfl
-    refine SepWPp.rw_pre (by
-      simp only [memRegion_88_err_split (s0.readReg64 (.gpr 8#5)),
-        sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-      rfl) ?_
-    apply SepWPp.exists_elim; intro w2
-    apply SepWPp.exists_elim; intro w1
-    apply SepWPp.exists_elim; intro bs7
-    apply SepWPp.exists_elim; intro b0
-    apply SepWPp.exists_elim; intro w0
-    refine SepWPp.pure_left_focus _ (by sep_focus) fun hbs7 => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    rw [hres]
-    dsimp only [chainResultAt]
-    refine SepWP.fold (fold_chainErrorAt (s0.readReg64 (.gpr 8#5)) .stateDecode 0#8 rfl hbs7 w1 w2)
-      (by sep_focus) ?_
-    wp_done
-
-set_option maxHeartbeats 800000 in
-/-- Contract-backed (`*Ext`) verification of `spqr::chain_from_version_negotiation` (`0x545e4`,
-18 instructions) at `chainFromVersionNegotiationStackExt` (`17840` B), assuming
-`ChainNewOkExt img hkdf A ext`. -/
-theorem chainFromVersionNegotiation_ok_of_contracts_ext {img : Obj.Image} {hkdf : HkdfFn}
-    {A : RustAlloc} {ext : String → Option (State → State)}
-    (hnew : ChainNewOkExt img hkdf A ext) :
-    ChainFromVersionNegotiationOkExt img hkdf A ext := by
-  unfold ChainFromVersionNegotiationOkExt tripleRatchetProgAtExt
-  wpp_init x s0
-  have hfn : libsignalSessionCode.fnOff chainFromVersionNegotiationName = 0x4f1ec :=
-    chainFromVN_fnOff
-  code_fetches libsignalSessionCode libsignalSessionBin img.base
-    (Rust.withPanics ext) hfn 0x4f1ec 72
-  have h_new := sub_ok_at_rebase (name := chainFromVersionNegotiationName) (callee := chainNewName)
-    (k := num% (0x5aaac - 0x4f1ec)) (by rw [chainFromVN_fnOff, chainNew_fnOff]) hnew
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-        chainFromVersionNegotiationName :=
-    hpc.trans (by rw [Program.fnAddr_rebase, hfn])
-  clear hnew hfn
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-      chainFromVersionNegotiationName = entry
-  generalize_entry
-    (libsignalSessionCode.rebase img.base (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  rcases x with ⟨out, vPtr, pin, v⟩
-  dsimp only [versionNegotiationPBAt] at *
-  have hinv0 : ImgCallInv img s0 := ⟨h_2, h_1⟩
-  subst h_3 h
-  rcases direction_fromI32_or v.direction with
-    ⟨dir, hdir_val, hdir_opt, hcond_hi⟩ | ⟨hdir_opt, hcond_hi⟩
-  · cases hcp : v.chainParams with
-    | none =>
-      have hres : chainFromVersionNegotiation hkdf v = .error .chainNotAvailable := by
-        simp [chainFromVersionNegotiation, hdir_opt, hcp]; rfl
-      dsimp only [optChainParamsPBAt]
-      refine SepWPp.rw_pre (by
-        simp only [memRegion_88_err_split (s0.readReg64 (.gpr 8#5)),
-          sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-        rfl) ?_
-      apply SepWPp.exists_elim; intro w2
-      apply SepWPp.exists_elim; intro w1
-      apply SepWPp.exists_elim; intro bs7
-      apply SepWPp.exists_elim; intro b0
-      apply SepWPp.exists_elim; intro w0
-      refine SepWPp.pure_left_focus _ (by sep_focus) fun hbs7 => ?_
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      rw [hres]
-      dsimp only [chainResultAt]
-      refine SepWP.fold (fold_chainErrorAt (s0.readReg64 (.gpr 8#5)) .chainNotAvailable 15#8 rfl hbs7 w1 w2)
-        (by sep_focus) ?_
-      wp_done
-    | some cp =>
-      have hres : chainFromVersionNegotiation hkdf v =
-          .ok (chainNewVal hkdf v.authKey dir cp) := by
-        simp [chainFromVersionNegotiation, hdir_opt, hcp]; rfl
-      dsimp only [optChainParamsPBAt]
-      refine SepWPp.fold (vecU8At_entails_header_bytesAt_rest A
-        (s0.readReg64 (.gpr 0#5)) pin.cap pin.ptr v.authKey) (by sep_focus) ?_
-      refine SepWPp.pure_left_focus _ (by sep_focus) fun hlen64 => ?_
-      refine SepWPp.of_sepWP_inImage (mid := entry + bv% (0x5aaac - 0x4f1ec)) hinv0 ?_
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-      intro hinv1
-      apply (SepWPp.tail_call_frame_inImage h_new
-        (⟨s0.readReg64 (.gpr 8#5), false, pin.ptr, v.authKey, dir, cp⟩ : ChainNewGhost)
-        hinv1)
-      · wp_focus_close wp_norm_goal
-      · wp_focus_close wp_norm_lhs
-      · wp_focus_close wp_norm_lhs
-      · wp_focus_close wp_norm_lhs
-      · rfl
-      · refine ⟨by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, by wp_norm_lhs, hlen64, Or.inl Bool.noConfusion⟩
-      · rw [show (((((((((s0.writeReg64 (.gpr 3#5) (BitVec.zeroExtend 64 dir.toI32)).writeReg64
-            (.gpr 9#5) 1#64).writeReg64 (.gpr 1#5) pin.ptr).writeReg64
-            (.gpr 2#5) (BitVec.ofNat 64 v.authKey.length)).writeReg64
-            (.gpr 4#5) (BitVec.zeroExtend 64 cp.maxJump)).writeReg64
-            (.gpr 5#5) (BitVec.zeroExtend 64 cp.maxOooKeys)).writeReg64
-            (.gpr 0#5) (s0.readReg64 (.gpr 8#5))).setPState
-            (subsPState32 dir.toI32 1#32)).setPC (entry + 47296#64)).sp = s0.sp by wp_norm_lhs]
-        sep_focus
-      · intro sf
-        exact onPanic_entails_of_trace_eq (by wp_norm_lhs)
-      · intro _ _; rfl
-      · intro sf hpc_sf hrun_sf hsp_sf hcs_sf
-        dsimp only [chainNewSpecExt]
-        refine SepWP.focus_pure (by sep_focus) fun htr_sf => ?_
-        rw [hres]
-        dsimp only [chainResultAt]
-        refine SepWP.fold (chainNew_post_entails_chainRepr A (s0.readReg64 (.gpr 8#5)) _)
-          (by sep_focus) ?_
-        refine SepWP.fold (header_bytesAt_rest_entails_vecU8At A
-          (s0.readReg64 (.gpr 0#5)) pin.cap pin.ptr v.authKey) (by sep_focus) ?_
-        wp_done
-  · have hres : chainFromVersionNegotiation hkdf v = .error .stateDecode := by
-      simp [chainFromVersionNegotiation, hdir_opt]; rfl
-    refine SepWPp.rw_pre (by
-      simp only [memRegion_88_err_split (s0.readReg64 (.gpr 8#5)),
-        sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-      rfl) ?_
-    apply SepWPp.exists_elim; intro w2
-    apply SepWPp.exists_elim; intro w1
-    apply SepWPp.exists_elim; intro bs7
-    apply SepWPp.exists_elim; intro b0
-    apply SepWPp.exists_elim; intro w0
-    refine SepWPp.pure_left_focus _ (by sep_focus) fun hbs7 => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    rw [hres]
-    dsimp only [chainResultAt]
-    refine SepWP.fold (fold_chainErrorAt (s0.readReg64 (.gpr 8#5)) .stateDecode 0#8 rfl hbs7 w1 w2)
-      (by sep_focus) ?_
-    wp_done
-
-abbrev chainFromVersionNegotiation_ok_ext := @chainFromVersionNegotiation_ok_of_contracts_ext
 
 end CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation

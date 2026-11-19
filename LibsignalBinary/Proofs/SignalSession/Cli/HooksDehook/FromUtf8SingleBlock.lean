@@ -14,8 +14,26 @@ public import VerifiedLibraries.RustStd.Proofs.Wave2.FromUtf8RO
 public import ProofLib.Placed.Multi
 public import ProofLib.Placed.OpcodeExclusion
 public import ProofLib.GenPlacedFetches
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetCode
 public meta import ProofLib.ProgramReflection
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Single-Block Placement-Generic Proofs & Trap-Safety for `core::str::converts::from_utf8` (`HooksDehook.FromUtf8SingleBlock`)
@@ -125,43 +143,11 @@ theorem pureWordsProg_fromUtf8_hasWords (pl : Placement) :
 
 theorem svcAnyPat_matches (w : BitVec 32) : svcAnyPat.matches w = isSvcWord w := rfl
 
-theorem fromUtf8Block_patchSafe_svc0 : fromUtf8Block.patchSafe svc0Pat = true := by
-  decide +kernel
-
 theorem fromUtf8Block_patchSafe_svcAny : fromUtf8Block.patchSafe svcAnyPat = true := by
   decide +kernel
 
 theorem fromUtf8Block_patchSafe_msrTpidrEl0 : fromUtf8Block.patchSafe msrTpidrEl0Pat = true := by
   decide +kernel
-
-theorem fromUtf8Block_patchSafe_br : fromUtf8Block.patchSafe brPat = true := by
-  decide +kernel
-
-theorem fromUtf8Block_patchSafe_blr : fromUtf8Block.patchSafe blrPat = true := by
-  decide +kernel
-
-theorem fromUtf8Block_patchSafe_bl : fromUtf8Block.patchSafe blPat = true := by
-  decide +kernel
-
-/-- Across every placement `pl`, none of the `156` patched words of `from_utf8` matches `SVC #imm16`,
-    `MSR TPIDR_EL0`, `BR Xn`, `BLR Xn`, or `BL #imm26` (S2 `lr`-trap safety input). -/
-theorem fromUtf8PatchedWords_no_svc_msr_br_blr_bl (pl : Placement) :
-    ∀ w ∈ fromUtf8PatchedWords pl,
-      svcAnyPat.matches w = false ∧
-      msrTpidrEl0Pat.matches w = false ∧
-      brPat.matches w = false ∧
-      blrPat.matches w = false ∧
-      blPat.matches w = false := by
-  intro w hw
-  rcases List.mem_map.mp hw with ⟨j, hj, rfl⟩
-  rw [List.mem_range] at hj
-  have hj' : 4 * j + 4 ≤ fromUtf8Block.code.length := by
-    rw [fromUtf8Block_code_length]; omega
-  exact ⟨CodeBlock.patchedWord_not_matches fromUtf8Block_patchSafe_svcAny pl hj',
-    CodeBlock.patchedWord_not_matches fromUtf8Block_patchSafe_msrTpidrEl0 pl hj',
-    CodeBlock.patchedWord_not_matches fromUtf8Block_patchSafe_br pl hj',
-    CodeBlock.patchedWord_not_matches fromUtf8Block_patchSafe_blr pl hj',
-    CodeBlock.patchedWord_not_matches fromUtf8Block_patchSafe_bl pl hj'⟩
 
 /-- For every placement `pl`, `pureWordsProg pl.base (fromUtf8PatchedWords pl)` contains no `SVC`
     instruction and no `MSR TPIDR_EL0` instruction (`allInstrs` witness for

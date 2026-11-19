@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonClPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonClPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Code-Loaded Placed Budget Exit & Skip Lemmas for `PolynomialDecoder::merge` (Block `296`)
@@ -19,7 +21,7 @@ Proves envelope-parameterized (`*_ofEnv`) and `polyDecoderMergeSpec`-specialized
 `[LibsignalPlacement]` exit and unknown-tag skip lemmas for `PolynomialDecoder::merge` on Block `296`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,130 +51,6 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
 open LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget (SkipField3Env skipField3Spec)
 
 /-! ## 1. Envelope-Parameterized Code-Loaded Exit & Skip Lemmas (`OfEnv`) -/
-
-/-- Envelope-parameterized placed shared exit from `+0x07c` (`(blkPl_296).base + 124#64`). -/
-theorem polyDecoder_err0_ret_exit_cl_placed_ofEnv [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {PreEnv PostEnv : PolyDecoderMergeGhost → List AllocEvent → Prop}
-    {x : PolyDecoderMergeGhost} {st0 st_cur : M.σ} {R : SepProp}
-    {s0 s : State} {m : PolynomialDecoder} {err : BitVec 64}
-    (hnone : (mergeMessage PolynomialDecoder.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption = none)
-    (hevs : ∃ evs, PostEnv x evs ∧ st_cur = M.stepEvents evs st0)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (blkPl_296).base + 124#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 160#64) (htr : s.trace = s0.trace)
-    (hx1 : s.readReg64 (Reg.gpr 1#5) = err) (herr : err ≠ 0#64) (hcs : PolyCalleeSaved s0 s) :
-    SepWPp ((blkPC_296).rebase (blkPl_296).base H) (s0.readReg64 Reg.lr) s
-      (decodeErrorAtStackLen A.repAlloc err 0 ∗ stackAt (s0.sp - 160#64) polyBelowStack ∗
-        memRegion (s0.sp - 160#64) 32 ∗ memRegion (s0.sp - 128#64) 48 ∗
-        polyDecoderErrFrame A lim st_cur s0 s x.msgPtr x.bufRef x.slot x.ptr m x.bs)
-      (WppPost (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv) (x, st0) R s0)
-      (WppBudgetPanic (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv) (x, st0) R s0) :=
-  polyDecoder_err0_ret_exit_placed hnone hevs hsp_align hpc hrun hsp htr hx1 herr hcs
-
-/-- Envelope-parameterized code-loaded shared exit from `+0x070` (`(blkPl_296).base + 112#64`)
-calling `DecodeError::from` (`261`). -/
-theorem polyDecoder_from_err_exit_cl_placed_ofEnv [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {PreEnv PostEnv : PolyDecoderMergeGhost → List AllocEvent → Prop}
-    (hFromCall : subroutine_ok ((blkPC_296).rebase (blkPl_296).base H) (lsmpl.base 261)
-      (withLsCodeRoLoaded lsmpl (decodeErrorFromBudgetSpec M A lim)))
-    {x : PolyDecoderMergeGhost} {st0 st_cur : M.σ} {R : SepProp}
-    {s0 s : State} {m : PolynomialDecoder} {w : BitVec 64}
-    (hnone : (mergeMessage PolynomialDecoder.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption = none)
-    (hw : KindNoHeap w)
-    (hfits_from : FitsEnv M lim st_cur DecodeErrorFromEnv)
-    (hevs_from : ∀ evs_f, DecodeErrorFromEnv evs_f →
-      ∃ evs, PostEnv x evs ∧ M.stepEvents evs_f st_cur = M.stepEvents evs st0)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (blkPl_296).base + 112#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 160#64)
-    (htr : s.trace = s0.trace) (hcs : PolyCalleeSaved s0 s) (hinv : LibsignalCodeRoLoaded lsmpl s.mem) :
-    SepWPp ((blkPC_296).rebase (blkPl_296).base H) (s0.readReg64 Reg.lr) s
-      (((s0.sp - 128#64) ↦₆₄ w) ∗ memRegion (s0.sp - 120#64) 40 ∗
-        stackAt (s0.sp - 160#64) polyBelowStack ∗ memRegion (s0.sp - 160#64) 32 ∗
-        polyDecoderErrFrame A lim st_cur s0 s x.msgPtr x.bufRef x.slot x.ptr m x.bs)
-      (WppPost (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv) (x, st0) R s0)
-      (WppBudgetPanic (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv) (x, st0) R s0) :=
-  polyDecoder_from_err_exit_placed hFromCall hnone hw hfits_from hevs_from hsp_align
-    hpc hrun hsp htr hcs hinv
-
-/-- Envelope-parameterized code-loaded shared exit from `+0x380` (`(blkPl_296).base + 896#64`)
-calling `DecodeError::push` (`257`). -/
-theorem polyDecoder_push_err_exit_cl_placed_ofEnv [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {PreEnv PostEnv : PolyDecoderMergeGhost → List AllocEvent → Prop}
-    (hPushCall : subroutine_ok ((blkPC_296).rebase (blkPl_296).base H) (lsmpl.base 257)
-      (withLsCodeRoLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)))
-    {x : PolyDecoderMergeGhost} {st0 st_cur : M.σ} {R : SepProp}
-    {s0 s : State} {m : PolynomialDecoder} {err : BitVec 64}
-    (hnone : (mergeMessage PolynomialDecoder.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption = none)
-    (herr : err ≠ 0#64)
-    (hfits_push : FitsEnv M lim st_cur (DecodeErrorPushMergeEnv 0))
-    (hevs_push : ∀ evs_p, DecodeErrorPushMergeEnv 0 evs_p →
-      ∃ evs, PostEnv x evs ∧ M.stepEvents evs_p st_cur = M.stepEvents evs st0)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (blkPl_296).base + 896#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 160#64)
-    (htr : s.trace = s0.trace) (hx0 : s.readReg64 (Reg.gpr 0#5) = s0.sp - 128#64)
-    (hcs : PolyCalleeSaved s0 s) (hinv : LibsignalCodeRoLoaded lsmpl s.mem) :
-    SepWPp ((blkPC_296).rebase (blkPl_296).base H) (s0.readReg64 Reg.lr) s
-      (((s0.sp - 128#64) ↦₆₄ err) ∗ decodeErrorAtStackLen A.repAlloc err 0 ∗
-        memRegion (s0.sp - 120#64) 40 ∗ stackAt (s0.sp - 160#64) polyBelowStack ∗
-        memRegion (s0.sp - 160#64) 32 ∗
-        polyDecoderErrFrame A lim st_cur s0 s x.msgPtr x.bufRef x.slot x.ptr m x.bs)
-      (WppPost (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv) (x, st0) R s0)
-      (WppBudgetPanic (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv) (x, st0) R s0) :=
-  polyDecoder_push_err_exit_placed hPushCall hnone herr hfits_push hevs_push hsp_align
-    hpc hrun hsp htr hx0 hcs hinv
-
-/-- Envelope-parameterized code-loaded step lemma for unknown field tags (`tag ∉ {1, 2, 3, 4}`) at
-`+0x140` (`(blkPl_296).base + 320#64`) calling `skip_field` (`263`). -/
-theorem polyDecoder_skip_step_cl_placed_ofEnv [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {PreEnv PostEnv : PolyDecoderMergeGhost → List AllocEvent → Prop}
-    (hSkipCall : subroutine_ok ((blkPC_296).rebase (blkPl_296).base H) (lsmpl.base 263)
-      (withLsCodeRoLoaded lsmpl (skipField3Spec A lim)))
-    {x : PolyDecoderMergeGhost} {st0 st_cur : M.σ} {R : SepProp}
-    {s0 s : State} {m : PolynomialDecoder} {rest : List (BitVec 8)} {iwt : WireType} {tag limit : Nat}
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true) (hrest_le : rest.length ≤ x.bs.length)
-    (hrest_lt : rest.length < 2 ^ 63) (hrest_suf : IsDropSuffix x.bs rest)
-    (htag_lt : tag < 2 ^ 32)
-    (hfits_sf : FitsEnv M lim st_cur
-      (SkipField3Env ⟨iwt, tag, 97, x.bufRef, x.slot, x.ptr + BitVec.ofNat 64 (x.bs.length - rest.length), rest⟩))
-    (hevs_sf_err : skipField (2 * rest.length + 2) 97 tag iwt rest = none →
-      ∀ evs_sf,
-        SkipField3Env ⟨iwt, tag, 97, x.bufRef, x.slot, x.ptr + BitVec.ofNat 64 (x.bs.length - rest.length), rest⟩ evs_sf →
-        ∃ evs, PostEnv x evs ∧ M.stepEvents evs_sf st_cur = M.stepEvents evs st0)
-    (hnone_of_sf : skipField (2 * rest.length + 2) 97 tag iwt rest = none →
-      (mergeMessage PolynomialDecoder.mergeField (codecWireTypeToProto x.wt) x.msg x.bs 98).toOption = none)
-    (hcont : ∀ (rest' : List (BitVec 8)) (s' : State),
-      skipField (2 * rest.length + 2) 97 tag iwt rest = some rest' →
-      s'.pc = (blkPl_296).base + 164#64 →
-      s'.status = .Running → s'.sp = s0.sp - 160#64 → s'.trace = s0.trace →
-      s'.readReg64 (Reg.gpr 19#5) = x.bufRef → s'.readReg64 (Reg.gpr 20#5) = x.msgPtr →
-      s'.readReg64 (Reg.gpr 21#5) = x.slot → s'.readReg64 (Reg.gpr 22#5) = BitVec.ofNat 64 limit →
-      s'.readReg64 (Reg.gpr 23#5) = 1#64 → s'.readReg64 (Reg.gpr 24#5) = 24#64 →
-      PolyCalleeSaved s0 s' → LibsignalCodeRoLoaded lsmpl s'.mem →
-      SepWPp ((blkPC_296).rebase (blkPl_296).base H) (s0.readReg64 Reg.lr) s'
-        (polyDecoderLoopPre A lim st_cur s0 s' x.msgPtr x.bufRef x.slot x.ptr m x.bs rest')
-        (WppPost (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv) (x, st0) R s0)
-        (WppBudgetPanic (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv) (x, st0) R s0))
-    (hpc : s.pc = (blkPl_296).base + 320#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 160#64) (htr : s.trace = s0.trace)
-    (hx0 : s.readReg64 (Reg.gpr 0#5) = BitVec.ofNat 64 iwt.toNat)
-    (hx1 : (s.readReg64 (Reg.gpr 1#5)).setWidth 32 = BitVec.ofNat 32 tag)
-    (hx19 : s.readReg64 (Reg.gpr 19#5) = x.bufRef) (hx20 : s.readReg64 (Reg.gpr 20#5) = x.msgPtr)
-    (hx21 : s.readReg64 (Reg.gpr 21#5) = x.slot) (hx22 : s.readReg64 (Reg.gpr 22#5) = BitVec.ofNat 64 limit)
-    (hx23 : s.readReg64 (Reg.gpr 23#5) = 1#64) (hx24 : s.readReg64 (Reg.gpr 24#5) = 24#64)
-    (hcs : PolyCalleeSaved s0 s) (hinv : LibsignalCodeRoLoaded lsmpl s.mem) :
-    SepWPp ((blkPC_296).rebase (blkPl_296).base H) (s0.readReg64 Reg.lr) s
-      (polyDecoderLoopPre A lim st_cur s0 s x.msgPtr x.bufRef x.slot x.ptr m x.bs rest)
-      (WppPost (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv) (x, st0) R s0)
-      (WppBudgetPanic (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv) (x, st0) R s0) :=
-  polyDecoder_skip_step_placed hSkipCall hsp_align hrest_le hrest_lt hrest_suf htag_lt
-    hfits_sf hevs_sf_err hnone_of_sf hcont hpc hrun hsp htr hx0 hx1 hx19 hx20 hx21 hx22 hx23 hx24
-    hcs hinv
 
 /-! ## 2. Concrete `polyDecoderMergeSpec` Code-Loaded Exit & Skip Lemmas -/
 

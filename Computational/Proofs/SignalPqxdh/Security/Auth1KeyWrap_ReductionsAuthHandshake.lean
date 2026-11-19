@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthHandshake -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+public import Computational.Specifications.Assumptions.Assumptions
+public import Computational.Specifications.Pqxdh.Security.Auth.Game
 
 /-!
 # One-key split-key hash collision reduction
@@ -22,7 +24,7 @@ One-key (`pqxdhAuthImpl1KeyG`) counterpart `shcrReductionAuthAt1Key` of `shcrRed
 from `ReductionsAuthHandshake`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,7 +34,7 @@ open SignalPqxdh
 open OracleSpec OracleComp
 open FgGapDh
 
-def shcrReductionAuthAt1Key (S : Setup) (b : QueryBudget) (idx : ℕ)
+@[expose] def shcrReductionAuthAt1Key (S : Setup) (b : QueryBudget) (idx : ℕ)
     (A : AuthAdversary S) : KemShCrAdv where
   State := AuthShCrFinishState S
   choosePk := choosePkAuthPrimAt1Key S b (idx / S.N_send_tot) (idx % S.N_send_tot) A

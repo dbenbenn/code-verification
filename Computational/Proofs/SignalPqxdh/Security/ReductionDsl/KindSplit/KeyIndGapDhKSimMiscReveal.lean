@@ -23,6 +23,7 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEva
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreK
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreKSimBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhK
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigEval
 
 /-!
 # Reveal, Corrupt, and Test Step Simulation for Shadow-Indexed `KeyInd` Gap-DH

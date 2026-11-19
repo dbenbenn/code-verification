@@ -9,14 +9,32 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CallHelpersPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CallHelpersPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
 import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.Layout
+public import LibsignalBinary.Heap.Iface
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVec -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanup
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.SliceHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.SliceHelpersPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Budget-Threaded Allocator and I/O Callee `SepWPp` Wrappers for Arm `R1b`
@@ -26,7 +44,7 @@ Budget-threaded `SepWPp` call wrappers on Block `579` for the allocator shim, `_
 `read_bundle::{closure#0}` (Block `563`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -272,128 +290,6 @@ theorem r1b_call_alloc_placed [LibsignalPlacement] {M : AllocCostModel}
       dsimp +zetaDelta only [subFrame]
       exact Entails.of_eq (by sep_ac_rfl)
 
-theorem r1b_call_alloc_cond_placed [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
-    {H : LibsignalHooks} {B : RunBudgets}
-    {g : RunCall} {s0 st_bl : State} {resStack retOff size align : Nat}
-    {F : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hh : RunHooksPlaced A lim H)
-    (hbnd : r1b_StackBounds B resStack)
-    (hinv : r1b_CodeOk st_bl.mem)
-    (hpc : st_bl.pc = lsρ lsRustAllocSymCli)
-    (hrun : st_bl.status = .Running)
-    (hsp : st_bl.sp = runFsp s0)
-    (hfp : st_bl.readReg64 .fp = s0.sp - 0x60#64)
-    (hvregs : calleeSavedVRegs st_bl = calleeSavedVRegs s0)
-    (hsp0 : s0.spAligned = true)
-    (hlr : st_bl.readReg64 .lr = runPcPlaced retOff)
-    (hx0 : (st_bl.readReg64 .x0).toNat = size)
-    (hx1 : (st_bl.readReg64 .x1).toNat = align)
-    (_hpos : 0 < size)
-    (hlay : LayoutOk size align)
-    (hal : align ≤ 2 ^ 31 := by decide)
-    (hpanicK : PanicK g s0 Qp)
-    (hoomK : ∀ sf R', sf.status = .OutOfMemory →
-      ¬ FitsEvents M lim st (rustAllocEvents size align) →
-      OomPreserved st_bl sf →
-      (sf.mem ⊨ memRegion (runFsp s0 - BitVec.ofNat 64 (resStack - runFrame))
-        (resStack - runFrame - extHookStack) ∗ F ∗ R') →
-      (sf.mem ⊨ oom sf ∗ R'))
-    (hnull : ∀ sf : State,
-      InRunPlaced r1b_CodeOk s0 sf retOff →
-      CalleeSavedPreserved st_bl sf →
-      NullAllowed size align →
-      sf.readReg64 .x0 = 0#64 →
-      sf.fs = st_bl.fs →
-      sf.trace = st_bl.trace →
-      SepWPp (runProgPlaced H) (s0.readReg64 .lr) sf
-        (stackAt (runFsp s0) (resStack - runFrame) ∗ A.pool lim st sf ∗ F) Q Qp oom)
-    (hok : ∀ (sf : State) (buf : BitVec 64),
-      InRunPlaced r1b_CodeOk s0 sf retOff →
-      CalleeSavedPreserved st_bl sf →
-      sf.readReg64 .x0 = buf →
-      buf ≠ 0#64 →
-      buf.toNat % align = 0 →
-      sf.fs = st_bl.fs →
-      sf.trace = st_bl.trace →
-      SepWPp (runProgPlaced H) (s0.readReg64 .lr) sf
-        (A.live buf size align ∗ memRegion buf size ∗
-          stackAt (runFsp s0) (resStack - runFrame) ∗
-          A.pool lim (M.stepEvents (rustAllocEvents size align) st) sf ∗ F) Q Qp oom)
-    (hlr_ls : LsRetAddr624 (runPcPlaced retOff) := by
-      first | assumption | simp (config := { decide := true })
-        [CryptoVerification.SignalSession.Cli.RunCompose.runPcPlaced, wp_norm, arm64_norm,
-         LibsignalBinary.Proofs.Placed.ElfLsRetAddr.lsLen, *]) :
-    SepWPp (runProgPlaced H) (s0.readReg64 .lr) st_bl
-      (stackAt (runFsp s0) (resStack - runFrame) ∗ A.pool lim st st_bl ∗ F) Q Qp oom := by
-  have hal_bl : st_bl.spAligned = true := r1b_spAligned_of_fsp hsp hsp0
-  have hsplit := stackAt_split_sub (runFsp s0)
-    (resStack - runFrame) extHookStack hbnd.hook hbnd.sub64
-  rw [hsplit]
-  set subFrame := memRegion (runFsp s0 - BitVec.ofNat 64 (resStack - runFrame))
-    (resStack - runFrame - extHookStack)
-  refine r1b_call_placed (size, align, st) (r1b_allocFs_placed_ok hh) hinv hpc hrun hal_bl hlr hpanicK
-    (F := subFrame ∗ F) ?_ (hoom := ?_) (hnext := ?_)
-  · dsimp only [Spec.keepsFs, rustAllocSpecWithStack, rustCliAllocBudgetSpecWithStack]
-    rw [hsp]
-    conv => rhs; rw [sepConj_assoc, sepConj_emp]
-    apply Entails.pure_right ⟨hx0, hx1, ⟨hlay, hal⟩, hlr ▸ hlr_ls⟩
-    dsimp +zetaDelta only [subFrame]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · intro sf R' hoom_s ho
-    dsimp only [Spec.keepsFs, rustAllocSpecWithStack, rustCliAllocBudgetSpecWithStack] at ho
-    rw [satisfies_pure_sepConj] at ho
-    exact hoomK sf R' hoom_s ho.1.1 ho.1.2 (by simpa only [sepConj_assoc, subFrame] using ho.2)
-  · intro sf _ hinv_f hpc_f hrun_f hsp_f hcs_f
-    dsimp +zetaDelta only [Spec.keepsFs, rustAllocSpecWithStack, rustCliAllocBudgetSpecWithStack]
-    simp only [sepConj_assoc]
-    refine SepWPp.pure_elim fun hfs_f => SepWPp.pure_elim fun hacp => ?_
-    have hin_f : InRunPlaced r1b_CodeOk s0 sf retOff := {
-      pc := hpc_f
-      run := hrun_f
-      sp := hsp_f.trans hsp
-      fp := hcs_f.2.2.2.2.2.2.2.2.2.2.1.trans hfp
-      inv := hinv_f
-      vregs := hcs_f.2.2.2.2.2.2.2.2.2.2.2.trans hvregs
-      spAligned := hsp0
-    }
-    by_cases h0 : sf.readReg64 .x0 = 0
-    · simp only [h0, ↓reduceIte]
-      have heq0 : sf.readReg64 .x0 = 0#64 := by simpa using h0
-      have hcomm :
-          (A.pool lim st sf ∗ stackAt st_bl.sp extHookStack ∗
-            ⌜NullAllowed size align⌝ ∗ subFrame ∗ F) =
-          (⌜NullAllowed size align⌝ ∗
-            (A.pool lim st sf ∗ stackAt st_bl.sp extHookStack ∗ subFrame ∗ F)) := by
-        sep_ac_rfl
-      rw [hcomm]
-      refine SepWPp.pure_elim fun hna => ?_
-      refine sepWPp_weaken_pre ?_ (hnull sf hin_f hcs_f hna heq0 hfs_f hacp.2.1)
-      rw [hsp, hsplit]
-      dsimp +zetaDelta only [subFrame]
-      exact Entails.of_eq (by sep_ac_rfl)
-    · simp only [h0, Bool.false_eq_true, ↓reduceIte, sepConj_assoc]
-      have hne0 : sf.readReg64 .x0 ≠ 0#64 := fun heq => h0 (by simpa using heq)
-      have hcomm :
-          (A.pool lim (M.stepEvents (rustAllocEvents size align) st) sf ∗
-            stackAt st_bl.sp extHookStack ∗
-            ⌜(sf.readReg64 .x0).toNat % align = 0⌝ ∗
-            A.live (sf.readReg64 .x0) size align ∗
-            memRegion (sf.readReg64 .x0) size ∗ subFrame ∗ F) =
-          (⌜(sf.readReg64 .x0).toNat % align = 0⌝ ∗
-            (A.pool lim (M.stepEvents (rustAllocEvents size align) st) sf ∗
-              stackAt st_bl.sp extHookStack ∗
-              A.live (sf.readReg64 .x0) size align ∗
-              memRegion (sf.readReg64 .x0) size ∗ subFrame ∗ F)) := by
-        sep_ac_rfl
-      rw [hcomm]
-      refine SepWPp.pure_elim fun hmod => ?_
-      refine sepWPp_weaken_pre ?_
-        (hok sf (sf.readReg64 .x0) hin_f hcs_f rfl hne0 hmod hfs_f hacp.2.1)
-      rw [hsp, hsplit]
-      dsimp +zetaDelta only [subFrame]
-      exact Entails.of_eq (by sep_ac_rfl)
-
 theorem r1b_call_memcpy_ro_placed [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {H : LibsignalHooks}
@@ -463,42 +359,6 @@ theorem r1b_call_memcpy_ro_placed [LibsignalPlacement] {M : AllocCostModel}
     refine sepWPp_weaken_pre (P' := (src ↦ᵣ bs) ∗ ((dst ↦ₛ bs) ∗ F))
       (Entails.of_eq (by sep_ac_rfl)) ?_
     exact r1b_sepWPp_drop_left (hnext sf hin_f hcs_f hvm_f hr0 hfiles_f htr_f)
-
-theorem r1b_call_memcpy_ro_pool_placed [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
-    {H : LibsignalHooks}
-    {g : RunCall} {s0 st_bl : State} {retOff : Nat}
-    {dst src : BitVec 64} {bs : List (BitVec 8)}
-    {F : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hh : RunHooksPlaced A lim H)
-    (hinv : r1b_CodeOk st_bl.mem)
-    (hro : ∀ {m : Memory} {R : SepProp}, r1b_CodeOk m → (m ⊨ R) → (m ⊨ (src ↦ᵣ bs) ∗ R))
-    (hpc : st_bl.pc = lsρ lsMemcpySym)
-    (hrun : st_bl.status = .Running)
-    (hsp : st_bl.sp = runFsp s0)
-    (hfp : st_bl.readReg64 .fp = s0.sp - 0x60#64)
-    (hvregs : calleeSavedVRegs st_bl = calleeSavedVRegs s0)
-    (hsp0 : s0.spAligned = true)
-    (hlr : st_bl.readReg64 .lr = runPcPlaced retOff)
-    (hx0 : st_bl.readReg64 .x0 = dst)
-    (hx1 : st_bl.readReg64 .x1 = src)
-    (hx2 : (st_bl.readReg64 .x2).toNat = bs.length)
-    (hlen : bs.length ≤ 2 ^ 64)
-    (hpanicK : PanicK g s0 Qp)
-    (hnext : ∀ sf : State,
-      InRunPlaced r1b_CodeOk s0 sf retOff →
-      CalleeSavedPreserved st_bl sf →
-      sf.readReg64 .x0 = dst →
-      sf.fs.files = st_bl.fs.files →
-      sf.trace = st_bl.trace →
-      SepWPp (runProgPlaced H) (s0.readReg64 .lr) sf
-        ((dst ↦ₛ bs) ∗ A.pool lim st sf ∗ F) Q Qp oom) :
-    SepWPp (runProgPlaced H) (s0.readReg64 .lr) st_bl
-      (memRegion dst bs.length ∗ A.pool lim st st_bl ∗ F) Q Qp oom :=
-  r1b_call_memcpy_ro_placed hh hinv hro hpc hrun hsp hfp hvregs hsp0 hlr
-    hx0 hx1 hx2 hlen hpanicK fun sf hin_f hcs_f hvm_f hr0 hfiles_f htr_f => by
-      rw [← A.pool_of_vmPreserved hvm_f]
-      exact hnext sf hin_f hcs_f hr0 hfiles_f htr_f
 
 theorem r1b_call_memcpy_region_placed [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}

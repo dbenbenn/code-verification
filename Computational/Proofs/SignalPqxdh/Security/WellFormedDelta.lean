@@ -20,7 +20,7 @@ import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.ModelProofDefs
 derives the arbitrary-length zero-output equivalence `WellFormedPrimitivesδ.x25519_zero_iff_any`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

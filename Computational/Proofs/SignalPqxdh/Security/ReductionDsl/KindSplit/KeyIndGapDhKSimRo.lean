@@ -16,7 +16,7 @@ public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhK -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhK
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhKSimBase -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableDefs
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableSpec
@@ -340,13 +340,6 @@ private theorem ddhEqC_eval_eq {Γ Δ : List PT} (p1 p2 : Expr pqxdhOps Γ fgPos
     (ddhEqC p1 p2).eval ρ₁ = (ddhEqC q1 q2).eval ρ₂ := by
   simp only [ddhEqC, letV, caseSumV, v, Comp.eval, Expr.eval, pure_bind, Env.get, Ext.refl_wk', Ext.step_wk', h1, h2]
   cases q1.eval ρ₂ <;> cases q2.eval ρ₂ <;> rfl
-
-private theorem ddhEqOptC_eval_eq {Γ Δ : List PT} (p1? p2? : Expr pqxdhOps Γ (.opt fgPosTy))
-    (q1? q2? : Expr pqxdhOps Δ (.opt fgPosTy)) (ρ₁ : Env Γ) (ρ₂ : Env Δ)
-    (h1 : p1?.eval ρ₁ = q1?.eval ρ₂) (h2 : p2?.eval ρ₁ = q2?.eval ρ₂) :
-    (ddhEqOptC p1? p2?).eval ρ₁ = (ddhEqOptC q1? q2?).eval ρ₂ := by
-  simp only [ddhEqOptC, letV, caseOptV, v, Comp.eval, Expr.eval, pure_bind, Env.get, Ext.refl_wk', Ext.step_wk', h1, h2]
-  cases q1?.eval ρ₂ <;> cases q2?.eval ρ₂ <;> [rfl; rfl; rfl; exact ddhEqC_eval_eq _ _ _ _ _ _ rfl rfl]
 
 private theorem entryMatchesC_eval_congr {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ]

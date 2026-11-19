@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat
-public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.OpkRelC
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.Composed.Cli.OldShape
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
 /-!
@@ -21,7 +21,7 @@ import Symbolic.Proofs.Swarm.CREF.Prelude
 Defines `CliLiveAt`, bundling `Clean`, `PureCRel`, and `COpkRelC` at a CLI turn `(t, accepted, acc_hw)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ open DY.Libsignal.Composed.Refinement.Cli (DirectorySnapshot CliCall CliTurn Val
   CliTracesMoves CoinSplit cliEntryEvents cliExitEvents)
 
 /-- Schedule-indexed symbolic live invariant at `(t, accepted, acc_hw)`. -/
-def CliLiveAt (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def CliLiveAt (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool)
     (t : CliTurn) (accepted : List HwBytes) (acc_hw : List MachineEvent) : Prop :=
   (∃ g ms, Clean interp r S who ok g ms acc_hw) ∧

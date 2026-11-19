@@ -22,7 +22,7 @@ Byte-level protobuf encoding equivalences and round-trip lemmas relating `Prost`
 `PreKeyProto.encode`, `decodePreKey`, and `parsePreKeyWire` on `PreKeyMessageFields`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

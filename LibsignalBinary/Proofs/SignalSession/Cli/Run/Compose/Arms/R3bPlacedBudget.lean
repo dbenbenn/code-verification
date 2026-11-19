@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `signal_session::run` Arm `R3b`: `Recv` PreKey and Malformed-Prefix Contracts
@@ -24,7 +29,7 @@ Budget-threaded (`RustCliAllocBudget M`) hop contracts `RunHopRecvBadPlaced`, `R
 and `RunHopRecvPPlacedOf` for Arm `R3b` on Block `579` (`signal_session::run`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +61,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
 from `AtDispatchPlaced` (`R+0x214`) on `g.c = .recv peerV` with empty `stdin` or leading byte
 `t ∉ {2, 3}`, branches to `RejectKPlacedEnv` with zero allocations (`FreeOnlyEvs`) and
 `Qo = ⌜False⌝`. -/
-def RunHopRecvBadPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopRecvBadPlaced [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (sEnvs : RunSlotEnvs)
     (H : LibsignalHooks) (B : RunBudgets) (S : RunSem) (needs : RunNeeds) (resStack : Nat) : Prop :=
@@ -82,7 +87,7 @@ from `AtDispatchPlaced` (`R+0x214`) on `g.c = .recv peerV` and `g.i.stdin = 3#8 
 cost-model state `st` under `FitsEnv M lim st (RecvPEnv g me peerV rest)`, calls
 `PreKeySignalMessage::try_from`, `wrap_decrypt_prekey`, and `PreKeySignalMessage::drop_in_place`
 to reach `JoinKPlacedEnv` or `RejectKPlacedEnv` with `Qo = ⌜False⌝`. -/
-def RunHopRecvPPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopRecvPPlaced [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs) (sEnvs : RunSlotEnvs)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop)
@@ -115,7 +120,7 @@ def RunHopRecvPPlaced [LibsignalPlacement] {M : AllocCostModel}
       (fun _ => ⌜False⌝)
 
 
-def RunHopRecvPPlacedOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def RunHopRecvPPlacedOf [LibsignalPlacement] {M : AllocCostModel}
     (CodeOk : Memory → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (cEnvs : RunCalleesEnvs)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop)

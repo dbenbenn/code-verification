@@ -21,7 +21,7 @@ import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 import Symbolic.Specifications.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRkCore -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.ModelMono
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -48,7 +48,7 @@ attacker knowledge of the peer public key at every PQXDH base DH hole (`IkmHoles
 `kdfRk` step (`DhHoleK`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

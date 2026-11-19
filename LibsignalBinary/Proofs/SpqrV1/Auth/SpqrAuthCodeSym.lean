@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard14
+meta import GeneratedLean.LibsignalSessionPlacedObjShard17
 
 /-!
 # Per-Block Instruction Decode Tables for `SpqrV1/Auth`
@@ -21,7 +23,7 @@ Relocatable instruction decode tables for Blocks `330` (`from_pb`), `340` (`new`
 `341` (`update`), and `342` (`mac_hdr`) of `spqr::authenticator::Authenticator`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

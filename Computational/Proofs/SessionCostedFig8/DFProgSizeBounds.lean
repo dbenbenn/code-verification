@@ -13,13 +13,25 @@ public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperSim -- proof
 public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds2 -- proof-setup: allow-public-import
 public import Computational.Proofs.SessionCostedFig8.ProgSizeBounds -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.E2E.RefuseCorrB0Core
+import Computational.Proofs.E2E.Relabel.GameEq
+import Computational.Proofs.E2E.SpkHop1A
+import Computational.Proofs.HeadlineV1.CouplingV1
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 
 /-!
 # Weighted AST Size Bounds for `DeliverForge` Reductions
 
 Proves compositional `exprSizeW` and `compSizeW` bounds for the paper-semantics and shifted
-`DeliverForge` engines, hooks, and reductions against `reductionSizeBudget`.
--/
+`DeliverForge` engines, hooks, and reductions against `reductionSizeBudget`.-/
 
 public section
 
@@ -29,8 +41,8 @@ set_option autoImplicit false
 
 open OracleSpec OracleComp
 open _root_.CryptoGames (Party)
-open CryptoGames.LibsignalSession (maxForwardJumps)
-open CryptoVerification.LibsignalSession (ratchetCostBudget)
+open _root_.CryptoGames.LibsignalSession (maxForwardJumps)
+open _root_.CryptoVerification.LibsignalSession (ratchetCostBudget)
 open _root_.ReductionDsl (Sig Ops Ty Expr Comp Iface bits reductionSizeBudget)
 open Computational.Proofs.ReductionDsl.SizeBudgetBridge (bits_mono bits_succ_le)
 open Computational.Proofs.SessionCostedFig8.Bundles

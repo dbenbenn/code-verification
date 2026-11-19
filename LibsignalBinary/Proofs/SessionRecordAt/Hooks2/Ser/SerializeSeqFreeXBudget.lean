@@ -9,17 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExtBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneSeqFreeXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExtBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyX
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneSeqFreeXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
@@ -33,6 +32,8 @@ import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropSsLocal1ExtBudget
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneX
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Exact-Envelope (`RecordSerializeSeqFreeEnv`) `SessionRecord::serialize` (Block `52`)
@@ -42,7 +43,7 @@ Verifies `SessionRecord::serialize` (Block `52`) under the exact allocation enve
 pre-reserved zero-allocation Block `14` contract `EncodeRawPreallocPlacedOkX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -146,7 +147,7 @@ attribute [local simp] bv64_ult_zeroX
 
 /-! ## `SessionCloneSeg` sub-spec and `SerializeSeqFree` specifications -/
 
-def sessionCloneSegSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def sessionCloneSegSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SessionCloneGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧
@@ -197,7 +198,7 @@ theorem sessionCloneSeg_placed_sub_clX [LibsignalPlacement]
 
 /-- Budget-threaded specification of `SessionRecord::serialize` on a record with a current session
     under `FitsEnv M lim st (SerializeSomeSeqFreeEnv x.G x.sess)`. -/
-def serializeSomeSeqFreeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeSomeSeqFreeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializeSomeGhostX × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧
@@ -216,7 +217,7 @@ def serializeSomeSeqFreeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Budget-threaded memory-level `serializeSpec` at `serializeStackX` using
 `RecordSerializeSeqFreeEnv`. -/
-def serializeSeqFreeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeSeqFreeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧
@@ -233,7 +234,7 @@ def serializeSeqFreeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Budget-threaded canonical `serializeCanonSpec` at `serializeStackX` using
 `RecordSerializeSeqFreeEnv`. -/
-def serializeCanonSeqFreeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeCanonSeqFreeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧ CanonRecord x.g x.r ∧

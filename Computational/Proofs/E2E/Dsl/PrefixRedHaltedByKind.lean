@@ -125,14 +125,6 @@ theorem roStep_mul_le_roTableTerm (M_on M_ro qStart qDR roStep : ℕ)
     _ = 2 ^ 13 * (M_ro + Q_on) * (bits (M_ro + 2 * Q_on + 1) + 4) := by
       rw [Nat.mul_left_comm, Nat.mul_assoc]
 
-theorem bhQueryKind_eq_one_iff {S : SignalPqxdh.Setup} {ι : Type}
-    (t : (SignalPqxdh.KeyIndQuery S ⊕ CryptoVerification.E2E.BHDRCtlQuery S) ⊕ ι) :
-    bhQueryKind t = 1 ↔ ∃ sec : SignalPqxdh.Bytes, t = .inl (.inl (.roQuery sec)) := by
-  rcases t with (kq | ctl) | sm
-  · cases kq <;> simp [bhQueryKind]
-  · simp [bhQueryKind]
-  · simp [bhQueryKind]
-
 theorem costBoundedByKind_bhQueryKind_of_online_and_ro
     {S0 : Sig} {O : Ops S0} {ι₀ ι : Type} {T : OracleSpec ι₀} {I : Iface S0 T}
     {S : SignalPqxdh.Setup}
@@ -503,78 +495,6 @@ theorem prefixHandlePostHalted_roQuery_costAt_le
   change 1 + (1 + (prefixKiStepHaltedC subs b .v2 .v0).costAt ρ_ki + 1) + 1 ≤ _
   dsimp only [Expr.v0, Expr.v2] at hStep ⊢
   omega
-
-theorem prefixRedHalted_costBoundedByKind
-    (subs : HaltedPrefixSubprograms S (Pt := Pt) ℓ P C K decT encT SessH)
-    (b : SignalPqxdh.QueryBudget) (qStart qDR qep roKiCost : ℕ)
-    (qKind : Fin 2 → ℕ) (costBudget : ℕ) {k : ℕ} (hk : k < qStart)
-    (hKiRo : ∀ {Γ : List (Ty (atomicSig ℓ Pt))}
-      (σE : Expr (atomicE2EOps ℓ P C K decT encT) Γ subs.drvTy)
-      (kqE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (keyIndQT (ℓ := ℓ) (Pt := Pt) S))
-      (ρ : Env Γ) (sec : SignalPqxdh.Bytes),
-      kqE.eval ρ = keyIndQenc (.roQuery sec) →
-      (subs.kiStepC b σE kqE).costAt ρ ≤ σE.costAt ρ + kqE.costAt ρ + roKiCost)
-    (hBudget :
-      haltedPrefixEndpointCost subs b qStart +
-        qKind 0 * haltedPrefixStepCost subs b qStart qDR qep +
-        qKind 1 * (roKiCost + 93) ≤ costBudget) :
-    (prefixRedHalted subs b qStart qDR qep k).CostBoundedByKind bhQueryKind qKind costBudget := by
-  let h₀ := max (prefixHandlePreHalted subs b qStart qDR qep k).cost
-    (prefixHandlePostHalted subs b qStart qDR qep k).cost
-  have hempty := subs.emptyDrvStateE_cost (Γ := [.unit]) (.bool false)
-  have hch := subs.defaultPrefixCtxE_cost (Γ := [drvHaltedTy subs, .bool])
-  have hres := subs.drvSetBitE_cost (Γ := [drvHaltedTy subs, .opt .nat, .bool]) (.fst .v0) .v2
-  have hfin := subs.finishPrefixC_cost b qStart
-    (Γ := [drvHaltedTy subs, .bool, .bool]) (.fst .v0) .v1 .v2
-  have hpre := prefixHandlePreHalted_cost_le subs b qStart qDR qep hk
-  have hpost := prefixHandlePostHalted_cost_le subs b qStart qDR qep hk
-  have hcc : (e2eTargetGameCodec S ℓ Pt).codecCost = 64 := rfl
-  have hu : (e2eSessionTargetIface ℓ Pt).uCost = 1 := rfl
-  refine twoStageCostBoundedByKind_bhQueryKind_of_online_and_ro
-    (prefixRedHalted subs b qStart qDR qep k) qKind h₀ (roKiCost + 29) costBudget
-    (Nat.le_max_left _ _) (Nat.le_max_right _ _)
-    (prefixHandlePreHalted_roQuery_costAt_le subs b qStart qDR qep k roKiCost hKiRo)
-    (prefixHandlePostHalted_roQuery_costAt_le subs b qStart qDR qep k roKiCost hKiRo)
-    ?_
-  rw [hu, hcc]
-  have hmul0 :
-      qKind 0 * max 1 (h₀ + 64) ≤
-        qKind 0 * haltedPrefixStepCost subs b qStart qDR qep := by
-    refine Nat.mul_le_mul_left (qKind 0) ?_
-    have hpos : 1 ≤ haltedPrefixStepCost subs b qStart qDR qep := by
-      unfold haltedPrefixStepCost; omega
-    dsimp only [h₀]
-    omega
-  have hmul1 :
-      qKind 1 * max 1 (roKiCost + 29 + 64) ≤
-        qKind 1 * (roKiCost + 93) := by
-    refine Nat.mul_le_mul_left (qKind 1) ?_
-    omega
-  dsimp only [prefixRedHalted, haltedPrefixEndpointCost, Comp.cost, Expr.cost,
-    Expr.v0, Expr.v1, Expr.v2] at hempty hch hres hfin hBudget ⊢
-  omega
-
-/-- Per-kind `GRed2CostByKind` certificate for `prefixRedHalted` at `k < qStart`. -/
-theorem prefixRedHalted_gRed2CostByKind
-    (subs : HaltedPrefixSubprograms S (Pt := Pt) ℓ P C K decT encT SessH)
-    (b : SignalPqxdh.QueryBudget) (qStart qDR qep roKiCost : ℕ)
-    (qKind : Fin 2 → ℕ) (costBudget : ℕ) {k : ℕ} (hk : k < qStart)
-    (hKiRo : ∀ {Γ : List (Ty (atomicSig ℓ Pt))}
-      (σE : Expr (atomicE2EOps ℓ P C K decT encT) Γ subs.drvTy)
-      (kqE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (keyIndQT (ℓ := ℓ) (Pt := Pt) S))
-      (ρ : Env Γ) (sec : SignalPqxdh.Bytes),
-      kqE.eval ρ = keyIndQenc (.roQuery sec) →
-      (subs.kiStepC b σE kqE).costAt ρ ≤ σE.costAt ρ + kqE.costAt ρ + roKiCost)
-    (hBudget :
-      haltedPrefixEndpointCost subs b qStart +
-        qKind 0 * haltedPrefixStepCost subs b qStart qDR qep +
-        qKind 1 * (roKiCost + 93) ≤ costBudget) :
-    GRed2CostByKind (prefixRedHalted subs b qStart qDR qep k)
-      (fun _ => 1) (fun _ => 0) bhQueryKind qKind (List.ofFn qKind).sum costBudget :=
-  ⟨prefixRedHalted_costBoundedByKind subs b qStart qDR qep roKiCost qKind costBudget hk
-      hKiRo hBudget,
-    prefixRedHalted_stage1Queries subs b qStart qDR qep k,
-    prefixRedHalted_totalQueries_le subs b qStart qDR qep k (List.ofFn qKind).sum⟩
 
 end HaltedByKind
 

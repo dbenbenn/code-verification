@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FinishGrowPlaced
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
@@ -23,7 +23,7 @@ Proves `do_reserve_2_raw32_placed_ok`, `do_reserve_2_raw1_placed_ok`,
 calling Block `465` (`finish_grow [local#8]`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

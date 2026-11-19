@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.SigHopA
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsC
+public import Computational.Proofs.SignalPqxdh.Security.SigHopA -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsC -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -25,21 +25,21 @@ open OracleSpec OracleComp
 open MeasureTheory
 open scoped ENNReal
 
-noncomputable def sigWinInd {St α : Type} (P : Primitives) (sk : Bytes) :
+@[expose] def sigWinInd {St α : Type} (P : Primitives) (sk : Bytes) :
     (α × SigReductionState St) × List Bytes → ℝ≥0∞ :=
   fun ((_, finalS), finalMsgs) =>
     let (mStar, sigStar) := finalS.forgery.getD ([], [])
     if P.sigVerify (P.sigPkGen sk) mStar sigStar && decide (mStar ∉ finalMsgs) then 1 else 0
 
 /-- Absorbing win state predicate: `s.forgery` holds a valid EUF-CMA forgery not in `signedMsgs`. -/
-def SigWon {St : Type} (P : Primitives) (sk : Bytes)
+@[expose] def SigWon {St : Type} (P : Primitives) (sk : Bytes)
     (s : SigReductionState St) (signedMsgs : List Bytes) : Prop :=
   ∃ mStar sigStar,
     s.forgery = some (mStar, sigStar) ∧
     P.sigVerify (P.sigPkGen sk) mStar sigStar = true ∧
     mStar ∉ signedMsgs
 
-noncomputable def evalStepPrim {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St : Type}
+@[expose] def evalStepPrim {ιI : Type} {GSpec : OracleSpec.{0, 0} ιI} {St : Type}
     (P : Primitives)
     (stepPrim : (q : ιI) → St → OracleComp PrimBaseSpec (SigStepResultPrim St (GSpec.Range q)))
     (q : ιI) (s : St) : ProbComp (SigStepResult St (GSpec.Range q)) :=
@@ -470,7 +470,7 @@ theorem validSpkBundles_length_lt (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv
   have hlen := length_lt_of_nodup_lt (spkSlotFlatIdx S (u.val, j.val)) hNodupSub hlt
   simpa [L] using hlen
 
-def eraseEntrySk (k idx : Nat) (e : PrincipalEntry) : PrincipalEntry :=
+@[expose] def eraseEntrySk (k idx : Nat) (e : PrincipalEntry) : PrincipalEntry :=
   if idx == k then { e with secIKAsign := [] } else e
 
 @[simp] theorem eraseEntrySk_ikAPk (k idx : Nat) (e : PrincipalEntry) :
@@ -497,7 +497,7 @@ theorem eraseEntrySk_of_ne (k idx : Nat) (e : PrincipalEntry) (hne : (idx == k) 
     eraseEntrySk k k e = { e with secIKAsign := [] } := by
   unfold eraseEntrySk; simp
 
-def erasePrinSk (k : Nat) (principals : List (Nat × PrincipalEntry)) :
+@[expose] def erasePrinSk (k : Nat) (principals : List (Nat × PrincipalEntry)) :
     List (Nat × PrincipalEntry) :=
   principals.map (fun (idx, e) => (idx, eraseEntrySk k idx e))
 
@@ -627,7 +627,7 @@ theorem encodeKEM_injective {pk1 pk2 : Bytes} (h : encodeKEM pk1 = encodeKEM pk2
   unfold encodeKEM at h
   exact List.tail_eq_of_cons_eq h
 
-def bundleSignedMessages (k : Nat) (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) :
+@[expose] def bundleSignedMessages (k : Nat) (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) :
     List Bytes :=
   (spkBundles.filter (fun ((u, _), _) => u == k)).flatMap
     (fun (_, b) => [encodeEC b.spkPk, encodeKEM b.pqspkPk])
@@ -787,7 +787,7 @@ theorem bundleSignedMessages_map_revealed (k : Nat) (target : Nat × Nat) :
         subst h_eq
         rw [bundleSignedMessages_cons_eq, bundleSignedMessages_cons_eq, ih]
 
-def SpksPreserved (S : Setup) (spks spks' : List ((Nat × Nat) × SpkBundleEntry)) : Prop :=
+@[expose] def SpksPreserved (S : Setup) (spks spks' : List ((Nat × Nat) × SpkBundleEntry)) : Prop :=
   (ValidSpkBundles S spks → ValidSpkBundles S spks') ∧
   (∀ k, (∀ e ∈ spks, e.1.1 ≠ k) → (∀ e ∈ spks', e.1.1 ≠ k)) ∧
   spks'.length = spks.length ∧
@@ -950,7 +950,7 @@ theorem extractBundleForgery_eq_none_of_not_mem (P : Primitives) (k : Nat) (targ
     have hne : (u == k) = false := beq_eq_false_iff_ne.mpr (h_not_mem (u, e) hmem)
     simp [hne]
 
-def peerPartyIdx (S : Setup) (P : Primitives)
+@[expose] def peerPartyIdx (S : Setup) (P : Primitives)
     (principals : List (Nat × PrincipalEntry)) (peerIkPk : Bytes) : Nat :=
   match findHonestPrincipal P principals peerIkPk with
   | some (k, _) => if k < S.N_id then k else 0
@@ -958,7 +958,7 @@ def peerPartyIdx (S : Setup) (P : Primitives)
 
 /-- Every peer `ikB ∈ peers` of a fresh session with `!spkHonest || !pqspkHonest` resolves to some
 honest principal `u ≠ k` (`u < S.N_id`) in `principals`. -/
-def CleanPeers (S : Setup) (P : Primitives) (k : Nat)
+@[expose] def CleanPeers (S : Setup) (P : Primitives) (k : Nat)
     (principals : List (Nat × PrincipalEntry)) (peers : List Bytes) : Prop :=
   ∀ ikB ∈ peers, ∃ u e,
     (u, e) ∈ principals ∧ u < S.N_id ∧ u ≠ k ∧ (P.pow8 ikB == P.pow8 e.ikAPk) = true
@@ -1189,7 +1189,7 @@ attribute [simp] SigGameLens.prins_putPrins SigGameLens.spks_putPrins
   SigGameLens.prins_putSpks SigGameLens.spks_putSpks
   SigGameLens.badPeers_putSpks SigGameLens.putPrins_putSpks
 
-def eraseSk (k : Nat) (st : St) : St :=
+@[expose] def eraseSk (k : Nat) (st : St) : St :=
   L.putPrins st (erasePrinSk k (L.prins st))
 
 @[simp]
@@ -1212,17 +1212,17 @@ theorem eraseSk_putSpks (k : Nat) (st : St) (s : List ((Nat × Nat) × SpkBundle
     L.eraseSk k (L.putSpks st s) = L.putSpks (L.eraseSk k st) s := by
   simp [eraseSk]
 
-def badAt (P : Primitives) (k : Nat) (st : St) : Bool :=
+@[expose] def badAt (P : Primitives) (k : Nat) (st : St) : Bool :=
   ((L.badPeers st).any (fun ikB => peerPartyIdx S P (L.prins st) ikB == k)) &&
     noPrinPkColl P (L.prins st)
 
-def Safe (P : Primitives) (k : Nat) (st : St) : Prop :=
+@[expose] def Safe (P : Primitives) (k : Nat) (st : St) : Prop :=
   ValidPrincipals S (L.prins st) ∧
   (∃ e, (k, e) ∈ L.prins st) ∧
   (∀ e, (k, e) ∈ L.prins st → e.corrupted = true) ∧
   CleanPeers S P k (L.prins st) (L.badPeers st)
 
-def ActiveBefore (P : Primitives) (k : Nat) (st : St) (budget : Nat) : Prop :=
+@[expose] def ActiveBefore (P : Primitives) (k : Nat) (st : St) (budget : Nat) : Prop :=
   budget = S.N_spk_tot ∧
   ValidPrincipals S (L.prins st) ∧
   (∀ p ∈ L.prins st, p.1 ≠ k) ∧
@@ -1230,7 +1230,7 @@ def ActiveBefore (P : Primitives) (k : Nat) (st : St) (budget : Nat) : Prop :=
   (∀ e ∈ L.spks st, e.1.1 ≠ k) ∧
   CleanPeers S P k (L.prins st) (L.badPeers st)
 
-def ActiveAfter (P : Primitives) (k : Nat) (sk : Bytes)
+@[expose] def ActiveAfter (P : Primitives) (k : Nat) (sk : Bytes)
     (st : St) (s : SigReductionState St) (budget : Nat) (signedMsgs : List Bytes) : Prop :=
   s = ⟨L.eraseSk k st, k, P.sigPkGen sk, none⟩ ∧
   ValidPrincipals S (L.prins st) ∧
@@ -1266,7 +1266,7 @@ theorem activeBefore_empty (P : Primitives) (k : Nat) (st : St)
 
 /-! ### Real and reduction step definitions -/
 
-def realInitPrin (P : Primitives) (u : Fin S.N_id) : StateT St ProbComp R := do
+@[expose] def realInitPrin (P : Primitives) (u : Fin S.N_id) : StateT St ProbComp R := do
   let st ← get
   if (L.prins st).any (fun (idx, _) => idx == u.val) then
     return L.noneResp
@@ -1284,7 +1284,7 @@ def realInitPrin (P : Primitives) (u : Fin S.N_id) : StateT St ProbComp R := do
   set (L.putPrins st ((u.val, entry) :: L.prins st))
   return L.initPrinResp ikAPk ikSignPk
 
-def realCorruptIK (u : Fin S.N_id) : StateT St ProbComp R := do
+@[expose] def realCorruptIK (u : Fin S.N_id) : StateT St ProbComp R := do
   let st ← get
   match (L.prins st).find? (fun (idx, _) => idx == u.val) with
   | none => return L.noneResp
@@ -1294,7 +1294,7 @@ def realCorruptIK (u : Fin S.N_id) : StateT St ProbComp R := do
     set (L.putPrins st principals')
     return L.corrResp entry.secIKA0 entry.secIKAsign
 
-def realGenSPK (P : Primitives) (u : Fin S.N_id) (j : Fin S.N_recv) : StateT St ProbComp R := do
+@[expose] def realGenSPK (P : Primitives) (u : Fin S.N_id) (j : Fin S.N_recv) : StateT St ProbComp R := do
   let st ← get
   if (L.spks st).any (fun (k, _) => k == (u.val, j.val)) then
     return L.noneResp
@@ -1328,7 +1328,7 @@ def realGenSPK (P : Primitives) (u : Fin S.N_id) (j : Fin S.N_recv) : StateT St 
   }
   return L.bundleResp bundleOut
 
-noncomputable def stepInitPrin (P : Primitives) (u : Fin S.N_id)
+@[expose] def stepInitPrin (P : Primitives) (u : Fin S.N_id)
     (s : SigReductionState St) : ProbComp (SigStepResult (SigReductionState St) R) := do
   if (L.prins s.gameState).any (fun (idx, _) => idx == u.val) then
     return .done L.noneResp s
@@ -1348,7 +1348,7 @@ noncomputable def stepInitPrin (P : Primitives) (u : Fin S.N_id)
     let (out, gs') ← (L.realInitPrin P u).run s.gameState
     return .done out { s with gameState := gs' }
 
-noncomputable def stepCorruptIK (u : Fin S.N_id)
+@[expose] def stepCorruptIK (u : Fin S.N_id)
     (s : SigReductionState St) : ProbComp (SigStepResult (SigReductionState St) R) := do
   if u.val == s.targetParty then
     match (L.prins s.gameState).find? (fun (idx, _) => idx == u.val) with
@@ -1361,7 +1361,7 @@ noncomputable def stepCorruptIK (u : Fin S.N_id)
     let (out, gs') ← (L.realCorruptIK u).run s.gameState
     return .done out { s with gameState := gs' }
 
-noncomputable def stepGenSPK (P : Primitives) (u : Fin S.N_id) (j : Fin S.N_recv)
+@[expose] def stepGenSPK (P : Primitives) (u : Fin S.N_id) (j : Fin S.N_recv)
     (s : SigReductionState St) : ProbComp (SigStepResult (SigReductionState St) R) := do
   if u.val == s.targetParty then
     if (L.spks s.gameState).any (fun (k, _) => k == (u.val, j.val)) then
@@ -1401,7 +1401,7 @@ noncomputable def stepGenSPK (P : Primitives) (u : Fin S.N_id) (j : Fin S.N_recv
     let (out, gs') ← (L.realGenSPK P u j).run s.gameState
     return .done out { s with gameState := gs' }
 
-noncomputable def stepInitiate (P : Primitives) (bundle : PreKeyBundleInput)
+@[expose] def stepInitiate (P : Primitives) (bundle : PreKeyBundleInput)
     (realInit : StateT St ProbComp R)
     (s : SigReductionState St) : ProbComp (SigStepResult (SigReductionState St) R) := do
   let forgery' := extractBundleForgery P s.targetParty s.targetPk
@@ -1409,7 +1409,7 @@ noncomputable def stepInitiate (P : Primitives) (bundle : PreKeyBundleInput)
   let (out, gs') ← realInit.run s.gameState
   return .done out { s with gameState := gs', forgery := forgery' }
 
-noncomputable def stepOther (realOther : StateT St ProbComp R)
+@[expose] def stepOther (realOther : StateT St ProbComp R)
     (s : SigReductionState St) : ProbComp (SigStepResult (SigReductionState St) R) := do
   let (out, gs') ← realOther.run s.gameState
   return .done out { s with gameState := gs' }

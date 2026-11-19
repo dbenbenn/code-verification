@@ -10,29 +10,46 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.SpecBudgetFine
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserClonePlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTailPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpkSpinePlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializeOkFsPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromInstPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserClonePlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.DeserCloneTailPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpkSpinePlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializeOkFsPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromInstPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferCoreFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTopPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CallHelpersPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudgetFd
+import ProofLib
 
 /-!
 # `CliPubCalleesPlacedFd` / `CliPubCalleesFrozenPlacedFd` and Pure-`fs` Callee Dischargers
@@ -45,7 +62,7 @@ the three `fs`-preserving callees on Block `579`:
   `pksmSlot_okFs_of_subsetA4_fine_cli_placed_at_579`, `pksmSlot_okFs_fine_cli_placed_at_579`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -78,7 +95,10 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudgetFd
   (path_placed_caller_ok_of_allocFs_fd)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
   (lsReadFile_withLsCodeRoLoaded_of_hookSat)
-open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced (withFdsGe3Closed)
+open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+  (FdsGe3Closed withFdsGe3Closed)
+open LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
+  (withFds withFds_pool_enforced withFds_repAlloc)
 open LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.PlacedBudgetFd
   (bundleRead_placed_caller_ok_of_deps_fd)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget
@@ -113,7 +133,9 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferC
   (MemcpyStripKeepsFrozen)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferPlacedBudgetFd
   (pksmSlot_okFs_of_subsetA4_mallocng_cli_placed_at_579_impl
-   tryFrom_okFs_mallocng_cli_placed_at_579_impl)
+   pksmSlot_pure_fs_of_subsetA4_mallocng_cli_placed_at_579_impl
+   tryFrom_okFs_mallocng_cli_placed_at_579_impl
+   tryFrom_pure_fs_mallocng_cli_placed_at_579_impl)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlacedBudget
   (PksmTryFromEnv)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTopPlacedBudget
@@ -121,11 +143,13 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bTop
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializeOkFsPlacedBudgetFd
   (kemDeserialize_slotWithFdsGe3Closed_cli_placed_impl)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
-  (SubsetA4PksmTryFromPlaced)
+  (SubsetA4PksmTryFromPlaced pksmSlotSpecPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd (slotWithFdsGe3Closed)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget (CliGhostAllocHooks)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
   (bundleReadSpecPlaced pathSpecPlaced)
+open LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudgetAux (tryFromPlacedSpecGen)
+open LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget (tryFromPlacedSpec)
 
 theorem bundleReadNeed_stack_le :
     0x50 + max (max pathNeed cliRunBudgets.readFile) extHookStack ≤
@@ -318,6 +342,142 @@ theorem pksmSlot_okFs_fine_cli_placed_at_579 [LibsignalPlacement]
       (pksmSlotSpecPlacedOkFs fineCostModel
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim PksmTryFromEnv S) :=
   pksmSlot_okFs_of_subsetA4_fine_cli_placed_at_579 γ mmpl tp brkStart lim g W hG hMcSkf
+    (fun hC => subsetA4PksmTryFromPlaced_of_codecHooks hC) hParse
+
+private theorem subroutine_ok_of_pre_post {α : Type} {P : Program} {entry : BitVec 64}
+    {spec1 spec2 : Spec α} {Q : α → State → Prop}
+    (hok : subroutine_ok P entry spec1)
+    (hpan : spec2.onPanic = spec1.onPanic)
+    (hexc : spec2.onExit = spec1.onExit)
+    (hoom : spec2.onOom = spec1.onOom)
+    (hpre : ∀ x R s0, (s0.mem ⊨ spec2.pre x s0 ∗ R) → Q x s0 ∧ (s0.mem ⊨ spec1.pre x s0 ∗ R))
+    (hpost : ∀ x R s0 sf, Q x s0 → (sf.mem ⊨ spec1.post x s0 sf ∗ R) →
+      (sf.mem ⊨ spec2.post x s0 sf ∗ R)) :
+    subroutine_ok P entry spec2 := by
+  apply subroutine_ok.of_codeLoaded
+  intro x R s0 hpc hrun hpre2 hsp _
+  obtain ⟨hq, hpre1⟩ := hpre x R s0 hpre2
+  refine subroutine_ok.mono_outcome hok x R s0 hpc hrun hpre1 hsp ?_
+  rintro sf (⟨hret, hcc, hp1⟩ | ⟨hp, hpan1⟩ | ⟨c, hc, hexc1⟩ | ⟨ho, hoom1⟩)
+  · exact Or.inl ⟨hret, hcc, hpost x R s0 sf hq hp1⟩
+  · exact Or.inr (Or.inl ⟨hp, hpan ▸ hpan1⟩)
+  · exact Or.inr (Or.inr (Or.inl ⟨c, hc, hexc ▸ hexc1⟩))
+  · exact Or.inr (Or.inr (Or.inr ⟨ho, hoom ▸ hoom1⟩))
+
+private theorem pull_pool_pure_6 {F : Prop} {P1 P2 P3 P4 P5 Pool PG R : SepProp} :
+    ((P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ (⌜F⌝ ∗ Pool)) ∗ PG) ∗ R =
+      ⌜F⌝ ∗ (((P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ Pool) ∗ PG) ∗ R) := by
+  sep_ac_rfl
+
+private theorem pool_to_withFds {M : AllocCostModel} (A0 : RustCliAllocBudget M)
+    {lim : BudgetLimits} (henf : lim.enforced = true) {st : M.σ} {sf : State}
+    (hClosed : FdsGe3Closed sf.fs) :
+    A0.pool lim st sf ⊢ (withFds A0).pool lim st sf := by
+  rw [withFds_pool_enforced A0 henf]
+  exact Entails.pure_right hClosed (Entails.refl _)
+
+/-- Discharges `tryFromPlacedSpecOkFs` (Block `85`) on `lsProg_579` at
+`withFds (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart)`. -/
+theorem tryFrom_okFs_withFds_mallocng_cli_placed_at_579 [LibsignalPlacement]
+    {M : AllocCostModel} (I : MallocngCostModelIface M) (hS : MallocngCostModelSound M I)
+    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
+    {lim : BudgetLimits} (henf : lim.enforced = true) (g : CliGhostHooks) (W : CliHooks)
+    (hG : CliGhostAllocHooks M (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim g)
+    (hMcSkf : ∀ f, g.memcpy = some f → MemcpyStripKeepsFrozen f) :
+    subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 85)
+      (withLsCodeRoLoaded lsmpl
+        (tryFromPlacedSpecOkFs
+          (withFds (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart)) lim)) := by
+  let A0 := mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart
+  refine subroutine_ok_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs)
+    (tryFrom_pure_fs_mallocng_cli_placed_at_579_impl I hS γ mmpl tp brkStart lim g W hG hMcSkf)
+    rfl rfl rfl ?_ ?_
+  · rintro ⟨x, st⟩ R s0 hpre
+    dsimp only [withLsCodeRoLoaded, tryFromPlacedSpecOkFs, tryFromPlacedSpec,
+      tryFromPlacedSpecGen] at hpre ⊢
+    rw [withFds_pool_enforced A0 henf st s0, pull_pool_pure_6, satisfies_pure_sepConj] at hpre
+    exact hpre
+  · rintro ⟨x, st⟩ R s0 sf hq hpost
+    dsimp only [withLsCodeRoLoaded, tryFromPlacedSpecOkFs, tryFromPlacedSpec,
+      tryFromPlacedSpecGen, withFds_repAlloc] at hpost ⊢
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+    obtain ⟨hfs, hpost⟩ := hpost
+    refine ⟨fun _ => hfs, Satisfies.mono (sepConj_mono_left (sepConj_mono_right
+      (ProofLib.Entails.sepExists_mono fun evs =>
+        sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
+          (sepConj_mono_right (pool_to_withFds A0 henf (hfs ▸ hq))))))))) hpost⟩
+
+theorem tryFrom_okFs_withFds_fine_cli_placed_at_579 [LibsignalPlacement]
+    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
+    {lim : BudgetLimits} (henf : lim.enforced = true) (g : CliGhostHooks) (W : CliHooks)
+    (hG : CliGhostAllocHooks fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim g)
+    (hMcSkf : ∀ f, g.memcpy = some f → MemcpyStripKeepsFrozen f) :
+    subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 85)
+      (withLsCodeRoLoaded lsmpl
+        (tryFromPlacedSpecOkFs (withFds (fineHookRustCliAllocBudget γ mmpl tp brkStart)) lim)) :=
+  tryFrom_okFs_withFds_mallocng_cli_placed_at_579 _ _ γ mmpl tp brkStart henf g W hG hMcSkf
+
+/-- Discharges `pksmSlotSpecPlacedOkFs` (Block `111`) on `lsProg_579` at
+`withFds (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart)`. -/
+theorem pksmSlot_okFs_of_subsetA4_withFds_mallocng_cli_placed_at_579 [LibsignalPlacement]
+    {M : AllocCostModel} (I : MallocngCostModelIface M) (hS : MallocngCostModelSound M I)
+    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
+    {lim : BudgetLimits} (henf : lim.enforced = true) (g : CliGhostHooks) (W : CliHooks)
+    {PksmEnv : PksmGhost → List AllocEvent → Prop} {S : RunSem}
+    (hG : CliGhostAllocHooks M (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim g)
+    (hMcSkf : ∀ f, g.memcpy = some f → MemcpyStripKeepsFrozen f)
+    (hSub : ∀ {A' : RustCliAllocBudget M} {H' : LibsignalHooks},
+      CodecHooksPlaced M A' lim H' → SubsetA4PksmTryFromPlaced M A' lim PksmEnv H')
+    (hParse : ∀ b, S.pksmParse b = pksmParse b) :
+    subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) blkPl_111.base
+      (pksmSlotSpecPlacedOkFs M
+        (withFds (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart)) lim PksmEnv S) := by
+  let A0 := mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart
+  refine subroutine_ok_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs)
+    (pksmSlot_pure_fs_of_subsetA4_mallocng_cli_placed_at_579_impl I hS γ mmpl tp brkStart lim g W
+      hG hMcSkf hSub hParse)
+    rfl rfl rfl ?_ ?_
+  · rintro ⟨x, st⟩ R s0 hpre
+    dsimp only [pksmSlotSpecPlacedOkFs, pksmSlotSpecPlaced, withLsCodeRoLoaded] at hpre ⊢
+    rw [withFds_pool_enforced A0 henf st s0, pull_pool_pure_6, satisfies_pure_sepConj] at hpre
+    exact hpre
+  · rintro ⟨x, st⟩ R s0 sf hq hpost
+    dsimp only [pksmSlotSpecPlacedOkFs, pksmSlotSpecPlaced, withLsCodeRoLoaded,
+      withFds_repAlloc] at hpost ⊢
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+    obtain ⟨hfs, hpost⟩ := hpost
+    refine ⟨fun _ => hfs, Satisfies.mono (sepConj_mono_left
+      (ProofLib.Entails.sepExists_mono fun evs =>
+        sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
+          (sepConj_mono_right (pool_to_withFds A0 henf (hfs ▸ hq)))))))) hpost⟩
+
+theorem pksmSlot_okFs_of_subsetA4_withFds_fine_cli_placed_at_579 [LibsignalPlacement]
+    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
+    {lim : BudgetLimits} (henf : lim.enforced = true) (g : CliGhostHooks) (W : CliHooks)
+    {PksmEnv : PksmGhost → List AllocEvent → Prop} {S : RunSem}
+    (hG : CliGhostAllocHooks fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim g)
+    (hMcSkf : ∀ f, g.memcpy = some f → MemcpyStripKeepsFrozen f)
+    (hSub : ∀ {A' : RustCliAllocBudget fineCostModel} {H' : LibsignalHooks},
+      CodecHooksPlaced fineCostModel A' lim H' →
+        SubsetA4PksmTryFromPlaced fineCostModel A' lim PksmEnv H')
+    (hParse : ∀ b, S.pksmParse b = pksmParse b) :
+    subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) blkPl_111.base
+      (pksmSlotSpecPlacedOkFs fineCostModel
+        (withFds (fineHookRustCliAllocBudget γ mmpl tp brkStart)) lim PksmEnv S) :=
+  pksmSlot_okFs_of_subsetA4_withFds_mallocng_cli_placed_at_579 _ _ γ mmpl tp brkStart henf g W
+    hG hMcSkf hSub hParse
+
+theorem pksmSlot_okFs_withFds_fine_cli_placed_at_579 [LibsignalPlacement]
+    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
+    {lim : BudgetLimits} (henf : lim.enforced = true) (g : CliGhostHooks) (W : CliHooks)
+    {S : RunSem}
+    (hG : CliGhostAllocHooks fineCostModel (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim g)
+    (hMcSkf : ∀ f, g.memcpy = some f → MemcpyStripKeepsFrozen f)
+    (hParse : ∀ b, S.pksmParse b = pksmParse b) :
+    subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) blkPl_111.base
+      (pksmSlotSpecPlacedOkFs fineCostModel
+        (withFds (fineHookRustCliAllocBudget γ mmpl tp brkStart)) lim PksmTryFromEnv S) :=
+  pksmSlot_okFs_of_subsetA4_withFds_fine_cli_placed_at_579 γ mmpl tp brkStart henf g W hG hMcSkf
     (fun hC => subsetA4PksmTryFromPlaced_of_codecHooks hC) hParse
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.CliPubCalleesInstPlacedBudgetFd

@@ -22,7 +22,7 @@ and 4-byte tail padding) from its four detached inner `Vec<u8>` heap buffers (`m
 supporting `grow_one`, `insert(0)`, `remove(p)`, `pop`, and receiver-chain updates.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.RustHeap
 
@@ -31,7 +31,7 @@ open Arm64 ProofLib
 /-! ## `vecHeader` Byte Representation -/
 
 /-- The 24 little-endian bytes of a `Vec` header `{cap, ptr, len}`. -/
-def vecHeaderBytes (cap ptr len : BitVec 64) : List (BitVec 8) :=
+@[expose] def vecHeaderBytes (cap ptr len : BitVec 64) : List (BitVec 8) :=
   unpack64 cap ++ unpack64 ptr ++ unpack64 len
 
 @[scoped simp]
@@ -94,17 +94,6 @@ theorem arrayAt_congr {α : Type} {elem₁ elem₂ : α → BitVec 64 → SepPro
     simp only [arrayAt_cons]
     rw [h x (List.Mem.head _) base,
         ih (base + BitVec.ofNat 64 stride) (fun y hy => h y (List.Mem.tail _ hy))]
-
-theorem arrayAt_mono {α : Type} {elem₁ elem₂ : α → BitVec 64 → SepProp} (stride : Nat)
-    (base : BitVec 64) {xs : List α}
-    (h : ∀ x ∈ xs, ∀ a, elem₁ x a ⊢ elem₂ x a) :
-    arrayAt elem₁ stride base xs ⊢ arrayAt elem₂ stride base xs := by
-  induction xs generalizing base with
-  | nil => exact Entails.refl _
-  | cons x xs ih =>
-    simp only [arrayAt_cons]
-    exact sepConj_mono (h x (List.Mem.head _) base)
-      (ih (base + BitVec.ofNat 64 stride) (fun y hy => h y (List.Mem.tail _ hy)))
 
 private theorem addr_stride_succ (base : BitVec 64) (n stride : Nat) :
     base + BitVec.ofNat 64 stride + BitVec.ofNat 64 (n * stride) =
@@ -194,24 +183,6 @@ theorem arrayAt_set {α : Type} (elem : α → BitVec 64 → SepProp) (stride : 
   rw [arrayAt_split_at elem stride base (xs.set i x') hi']
   simp [List.take_set_of_le, List.drop_set_of_lt]
 
-theorem arrayAt_set_ordered {α : Type} (elem : α → BitVec 64 → SepProp) (stride : Nat)
-    (base : BitVec 64) (xs : List α) {i : Nat} (hi : i < xs.length) (x' : α) :
-    (arrayAt elem stride base (xs.take i) ∗
-      elem x' (base + BitVec.ofNat 64 (i * stride)) ∗
-      arrayAt elem stride (base + BitVec.ofNat 64 ((i + 1) * stride)) (xs.drop (i + 1))) =
-      arrayAt elem stride base (xs.set i x') := by
-  rw [← arrayAt_set elem stride base xs hi x']
-  ac_rfl
-
-/-- `arrayAt` over `xs.eraseIdx p` (`p < xs.length`) splits into `xs.take p` at `base` and
-`xs.drop (p + 1)` at `base + BitVec.ofNat 64 (p * stride)`. -/
-theorem arrayAt_eraseIdx {α : Type} (elem : α → BitVec 64 → SepProp) (stride : Nat)
-    (base : BitVec 64) (xs : List α) {p : Nat} (hp : p < xs.length) :
-    arrayAt elem stride base (xs.eraseIdx p) =
-      arrayAt elem stride base (xs.take p) ∗
-        arrayAt elem stride (base + BitVec.ofNat 64 (p * stride)) (xs.drop (p + 1)) := by
-  rw [List.eraseIdx_eq_take_drop_succ, arrayAt_append, List.length_take_of_le (Nat.le_of_lt hp)]
-
 /-- Split `arrayAt` at the last element when `xs.length = n + 1` (for `Vec::pop`). -/
 theorem arrayAt_split_of_length_succ {α : Type} (elem : α → BitVec 64 → SepProp) (stride : Nat)
     (base : BitVec 64) (xs : List α) {n : Nat} (hlen : xs.length = n + 1) :
@@ -222,31 +193,6 @@ theorem arrayAt_split_of_length_succ {α : Type} (elem : α → BitVec 64 → Se
   rw [arrayAt_split_at_ordered elem stride base xs hn]
   have hdrop : xs.drop (n + 1) = [] := List.drop_eq_nil_of_le (by omega)
   rw [hdrop, arrayAt_nil, sepConj_emp]
-
-theorem arrayAt_split_last {α : Type} (elem : α → BitVec 64 → SepProp) (stride : Nat)
-    (base : BitVec 64) (xs : List α) (hne : xs ≠ []) :
-    arrayAt elem stride base xs =
-      arrayAt elem stride base (xs.take (xs.length - 1)) ∗
-        elem (xs[xs.length - 1]'(Nat.sub_one_lt (List.length_pos_of_ne_nil hne).ne'))
-          (base + BitVec.ofNat 64 ((xs.length - 1) * stride)) := by
-  have hpos : 0 < xs.length := List.length_pos_of_ne_nil hne
-  exact arrayAt_split_of_length_succ elem stride base xs (n := xs.length - 1) (by omega)
-
-theorem arrayAt_split_dropLast {α : Type} (elem : α → BitVec 64 → SepProp) (stride : Nat)
-    (base : BitVec 64) (xs : List α) (hne : xs ≠ []) :
-    arrayAt elem stride base xs =
-      arrayAt elem stride base xs.dropLast ∗
-        elem (xs.getLast hne) (base + BitVec.ofNat 64 (xs.dropLast.length * stride)) := by
-  conv => lhs; rw [← List.dropLast_append_getLast hne]
-  exact arrayAt_concat elem stride base xs.dropLast (xs.getLast hne)
-
-/-- `a ↦ₛ bs` agrees with `arrayAt` of 1-byte cells `fun b addr => addr ↦₈ b` with stride 1. -/
-theorem pointsToBytes_eq_arrayAt (a : BitVec 64) (bs : List (BitVec 8)) :
-    (a ↦ₛ bs) = arrayAt (fun b addr => addr ↦₈ b) 1 a bs := by
-  induction bs generalizing a with
-  | nil => rw [pointsToBytes_nil, arrayAt_nil]
-  | cons b bs ih =>
-    rw [pointsToBytes_cons, arrayAt_cons, ih]
 
 /-! ## `vecBuf`, `vecAt`, `vecU8Buf`, and `vecU8At` Lemmas -/
 
@@ -370,15 +316,9 @@ theorem vecBuf_set {α : Type} (A : RustAlloc) (stride align : Nat)
   rw [hpull]
   exact Entails.refl _
 
-theorem vecAt_entails_vecOf {α : Type} (A : RustAlloc) (stride align : Nat)
-    (elem : α → BitVec 64 → SepProp) (v cap ptr : BitVec 64) (xs : List α) :
-    vecAt A stride align elem v cap ptr xs ⊢ vecOf A stride align elem v xs := by
-  unfold vecOf
-  exact Entails.sepExists_right cap (Entails.sepExists_right ptr (Entails.refl _))
-
 /-- Heap buffer of a `Vec<u8>` detached from its 24-byte `vecHeader`, invariant under moving or
 copying the header. -/
-def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -389,12 +329,6 @@ theorem vecU8At_eq_header_sep_buf (A : RustAlloc) (v cap ptr : BitVec 64) (bs : 
     vecU8At A v cap ptr bs = vecHeader v cap ptr (BitVec.ofNat 64 bs.length) ∗ vecU8Buf A cap ptr bs := by
   unfold vecU8At vecU8Buf
   ac_rfl
-
-/-- `vecU8At` agrees with `vecAt` at `stride = 1` and `align = 1`. -/
-theorem vecU8At_eq_vecAt (A : RustAlloc) (v cap ptr : BitVec 64) (bs : List (BitVec 8)) :
-    vecU8At A v cap ptr bs = vecAt A 1 1 (fun b addr => addr ↦₈ b) v cap ptr bs := by
-  unfold vecU8At vecAt vecBuf
-  simp only [Nat.mul_one, ← pointsToBytes_eq_arrayAt]
 
 theorem vecU8At_entails_vecU8 (A : RustAlloc) (v cap ptr : BitVec 64) (bs : List (BitVec 8)) :
     vecU8At A v cap ptr bs ⊢ vecU8 A v bs := by
@@ -441,7 +375,7 @@ open CryptoVerification.RustHeap
 /-- The 100-byte struct header of a stored `chain::MessageKey` (before its 4-byte tail padding):
 four 24-byte `Vec<u8>` headers (`cipher`, `mac`, `iv` with length 0; `seed` with length
 `gk.2.seed.length`) followed by the 4-byte little-endian `counter`. -/
-def messageKeyHeaderBytes (gk : MessageKeyGhost × MessageKeyGenerator) : List (BitVec 8) :=
+@[expose] def messageKeyHeaderBytes (gk : MessageKeyGhost × MessageKeyGenerator) : List (BitVec 8) :=
   vecHeaderBytes gk.1.cipher.cap gk.1.cipher.ptr 0#64 ++
     (vecHeaderBytes gk.1.mac.cap gk.1.mac.ptr 0#64 ++
       (vecHeaderBytes gk.1.iv.cap gk.1.iv.ptr 0#64 ++
@@ -454,7 +388,7 @@ theorem messageKeyHeaderBytes_length (gk : MessageKeyGhost × MessageKeyGenerato
   simp [messageKeyHeaderBytes]
 
 /-- The full 104-byte in-buffer representation of a `chain::MessageKey` with 4-byte tail padding `pad`. -/
-def messageKeyBytes (gk : MessageKeyGhost × MessageKeyGenerator) (pad : List (BitVec 8)) :
+@[expose] def messageKeyBytes (gk : MessageKeyGhost × MessageKeyGenerator) (pad : List (BitVec 8)) :
     List (BitVec 8) :=
   messageKeyHeaderBytes gk ++ pad
 
@@ -465,7 +399,7 @@ theorem messageKeyBytes_length (gk : MessageKeyGhost × MessageKeyGenerator) {pa
 
 /-- Detached heap allocations owned by the four inner `Vec<u8>` fields of a `chain::MessageKey`
 together with `gk.2.seed ≠ []`, independent of the struct's buffer address. -/
-def messageKeyHeap (A : RustAlloc) (gk : MessageKeyGhost × MessageKeyGenerator) : SepProp :=
+@[expose] def messageKeyHeap (A : RustAlloc) (gk : MessageKeyGhost × MessageKeyGenerator) : SepProp :=
   ⌜gk.2.seed ≠ []⌝ ∗
     vecU8Buf A gk.1.cipher.cap gk.1.cipher.ptr [] ∗
     vecU8Buf A gk.1.mac.cap gk.1.mac.ptr [] ∗
@@ -556,29 +490,6 @@ theorem messageKeyAt_of_bytes (A : RustAlloc) (gk : MessageKeyGhost × MessageKe
   apply sepConj_mono_left
   exact Entails.sepExists_right pad (Entails.pure_right hpad (Entails.refl _))
 
-/-- Reassemble `messageKeyAt A gk a` from the 100-byte header `a ↦ₛ messageKeyHeaderBytes gk`,
-4-byte padding `memRegion (a + 100#64) 4`, and `messageKeyHeap A gk`. -/
-theorem messageKeyAt_of_header_bytes (A : RustAlloc) (gk : MessageKeyGhost × MessageKeyGenerator)
-    (a : BitVec 64) :
-    (((a ↦ₛ messageKeyHeaderBytes gk) ∗ memRegion (a + 100#64) 4) ∗ messageKeyHeap A gk) ⊢
-      messageKeyAt A gk a := by
-  rw [messageKeyAt_eq_exists_bytes, messageKeyHeader_pad_eq_exists_bytes]
-  exact Entails.refl _
-
-/-- Forgetting the 104-byte in-buffer contents of `messageKeyAt` leaves `memRegion a 104`
-and the detached inner `Vec<u8>` heap buffers `messageKeyHeap A gk`. -/
-theorem messageKeyAt_entails_memRegion_sep_heap (A : RustAlloc)
-    (gk : MessageKeyGhost × MessageKeyGenerator) (a : BitVec 64) :
-    messageKeyAt A gk a ⊢ memRegion a 104 ∗ messageKeyHeap A gk := by
-  rw [messageKeyAt_eq_exists_bytes]
-  apply sepConj_mono_left
-  apply Entails.sepExists_elim
-  intro pad
-  apply Entails.pure_left
-  intro hpad
-  have h := pointsToBytes_entails_memRegion a (messageKeyBytes gk pad)
-  rwa [messageKeyBytes_length gk hpad] at h
-
 /-- Collapse the four inner `Vec<u8>` heap buffers of `messageKeyHeap A gk` into their
 `__rust_dealloc` preconditions (`if cap = 0 then emp else A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat`). -/
 theorem messageKeyHeap_entails_dealloc (A : RustAlloc)
@@ -609,7 +520,7 @@ theorem messageKeyHeap_entails_dealloc (A : RustAlloc)
     (vecU8Buf_entails_dealloc A gk.1.seed.cap gk.1.seed.ptr gk.2.seed)
 
 /-- Detached heap buffers of a list of stored `MessageKey`s, in order. -/
-def messageKeyHeaps (A : RustAlloc) : List (MessageKeyGhost × MessageKeyGenerator) → SepProp
+@[expose] def messageKeyHeaps (A : RustAlloc) : List (MessageKeyGhost × MessageKeyGenerator) → SepProp
   | [] => emp
   | gk :: gks => messageKeyHeap A gk ∗ messageKeyHeaps A gks
 
@@ -643,15 +554,6 @@ theorem messageKeyHeaps_split_at (A : RustAlloc)
   rw [messageKeyHeaps_take_drop A gks i, List.drop_eq_getElem_cons hi, messageKeyHeaps_cons,
       List.eraseIdx_eq_take_drop_succ, messageKeyHeaps_append]
   ac_rfl
-
-theorem messageKeyHeaps_split_of_length_succ (A : RustAlloc)
-    (gks : List (MessageKeyGhost × MessageKeyGenerator)) {n : Nat} (hlen : gks.length = n + 1) :
-    messageKeyHeaps A gks =
-      messageKeyHeaps A (gks.take n) ∗ messageKeyHeap A (gks[n]'(by omega)) := by
-  have hn : n < gks.length := by omega
-  rw [messageKeyHeaps_take_drop A gks n, List.drop_eq_getElem_cons hn, messageKeyHeaps_cons]
-  have hdrop : gks.drop (n + 1) = [] := List.drop_eq_nil_of_le (by omega)
-  rw [hdrop, messageKeyHeaps_nil, sepConj_emp]
 
 /-- Relates stored `MessageKey`s `gks` to their concatenated 104-byte struct slices `bs`. -/
 inductive MessageKeyArrayBytes :
@@ -738,33 +640,6 @@ theorem eraseIdx {gks : List (MessageKeyGhost × MessageKeyGenerator)} {bs : Lis
     rw [this]
   rw [← hd_len, List.take_length]
   exact ht.append hd
-
-private theorem drop_append_mul_104 {α : Type} {l₁ l₂ : List α} (hlen : l₁.length = 104) (m : Nat) :
-    (l₁ ++ l₂).drop ((m + 1) * 104) = l₂.drop (m * 104) := by
-  rw [Nat.succ_mul, Nat.add_comm, ← hlen, ← List.drop_drop, List.drop_append_length]
-
-/-- Decompose `bs` at element index `p < gks.length` into the prefix `bs.take (p * 104)`,
-the 104-byte element `messageKeyBytes gks[p] pad`, and the suffix `bs.drop ((p + 1) * 104)`. -/
-theorem split_at {gks : List (MessageKeyGhost × MessageKeyGenerator)} {bs : List (BitVec 8)}
-    (h : MessageKeyArrayBytes gks bs) {p : Nat} (hp : p < gks.length) :
-    ∃ pad : List (BitVec 8),
-      pad.length = 4 ∧
-      bs.drop (p * 104) = messageKeyBytes gks[p] pad ++ bs.drop ((p + 1) * 104) := by
-  induction h generalizing p with
-  | nil => simp at hp
-  | @cons gk gks pad₀ bs₀ hpad₀ hrest ih =>
-    have hlen : (messageKeyBytes gk pad₀).length = 104 := messageKeyBytes_length gk hpad₀
-    cases p with
-    | zero =>
-      refine ⟨pad₀, hpad₀, ?_⟩
-      simp only [Nat.zero_mul, List.drop_zero, List.getElem_cons_zero]
-      rw [drop_append_mul_104 hlen 0, Nat.zero_mul, List.drop_zero]
-    | succ k =>
-      have hk : k < gks.length := Nat.lt_of_succ_lt_succ hp
-      obtain ⟨pad, hpad, ih_eq⟩ := ih hk
-      refine ⟨pad, hpad, ?_⟩
-      rw [drop_append_mul_104 hlen k, drop_append_mul_104 hlen (k + 1), List.getElem_cons_succ]
-      exact ih_eq
 
 end MessageKeyArrayBytes
 
@@ -1438,23 +1313,6 @@ theorem optChainKeyAt_some_entails_dealloc (A : RustAlloc) (pin : VecPin) (ck : 
   rw [hpull]
   exact Entails.refl _
 
-/-- Split `optChainKeyAt A pin none a` into a 24-byte `vecHeader` slot at `a`, a 4-byte `index`
-slot at `a + 24`, and 4 bytes of padding at `a + 28` (for overwriting `None` with `Some ck`). -/
-theorem optChainKeyAt_none_entails_slots (A : RustAlloc) (pin : VecPin) (a : BitVec 64) :
-    optChainKeyAt A pin none a ⊢
-      memRegion a 24 ∗ memRegion (a + 24#64) 4 ∗ memRegion (a + 28#64) 4 := by
-  rw [optChainKeyAt_none]
-  have h8 := pointsTo64_entails_memRegion a optChainKeyNone
-  refine Entails.trans (sepConj_mono_left h8) ?_
-  rw [← memRegion_split a 8 24 (by decide),
-      show (8 + 24 : Nat) = 24 + 8 from rfl,
-      memRegion_split a 24 8 (by decide),
-      show (8 : Nat) = 4 + 4 from rfl,
-      memRegion_split (a + 24#64) 4 4 (by decide)]
-  have h28 : a + 24#64 + 4#64 = a + 28#64 := by bv_arith
-  rw [h28]
-  exact Entails.refl _
-
 /-- Update `message_keys` (`mkCap`, `mkPtr`, `keys`, `messageKeys`) in `chainAt` while keeping
 `srk`, `priv`, and `ck`/`chainKey` unchanged. -/
 theorem chainAt_of_update_messageKeys (A : RustAlloc)
@@ -1496,32 +1354,10 @@ theorem chainAt_of_update_chainKey (A : RustAlloc)
   unfold chainAt
   exact Entails.pure_right ⟨hsrk, hmax, hklen, hsrk_len, hpriv⟩ (Entails.refl _)
 
-/-- Update both `message_keys` and `chain_key` in `chainAt` while keeping `srk` and `priv`
-unchanged. -/
-theorem chainAt_of_update_both (A : RustAlloc)
-    (g : ChainGhost) (c : ReceiverChain) (a : BitVec 64)
-    (mkCap' mkPtr' : BitVec 64)
-    (keys' : List MessageKeyGhost) (messageKeys' : List MessageKeyGenerator)
-    (ckPin' : VecPin) (chainKey' : Option ChainKey)
-    (hsrk : PublicKey.deserialize g.srk.bytes = .ok c.senderRatchetKey)
-    (hmax : messageKeys'.length ≤ maxMessageKeys)
-    (hklen : keys'.length = messageKeys'.length)
-    (hsrk_len : g.srk.bytes.length = 33)
-    (hpriv : g.priv.bytes = []) :
-    (vecGhostAt A g.srk a ∗
-      vecGhostAt A g.priv (a + 24#64) ∗
-      vecAt A 104 8 (messageKeyAt A) (a + 48#64) mkCap' mkPtr' (keys'.zip messageKeys') ∗
-      optChainKeyAt A ckPin' chainKey' (a + 72#64)) ⊢
-      chainAt A
-        ({ g with mkCap := mkCap', mkPtr := mkPtr', keys := keys', ck := ckPin' },
-         { c with messageKeys := messageKeys', chainKey := chainKey' }) a := by
-  unfold chainAt
-  exact Entails.pure_right ⟨hsrk, hmax, hklen, hsrk_len, hpriv⟩ (Entails.refl _)
-
-def RatchetGhost.setChain (G : RatchetGhost) (i : Nat) (g' : ChainGhost) : RatchetGhost :=
+@[expose] def RatchetGhost.setChain (G : RatchetGhost) (i : Nat) (g' : ChainGhost) : RatchetGhost :=
   { G with chains := G.chains.set i g' }
 
-def _root_.CryptoGames.LibsignalSession.RatchetState.setChain
+@[expose] def _root_.CryptoGames.LibsignalSession.RatchetState.setChain
     (st : RatchetState) (i : Nat) (c' : ReceiverChain) : RatchetState :=
   { st with receiverChains := st.receiverChains.set i c' }
 
@@ -1545,17 +1381,6 @@ theorem refl (G : RatchetGhost) (i : Option Nat) : G.AgreeExcept G i := by
 
 theorem refl_none (G : RatchetGhost) : G.AgreeExcept G none :=
   refl G none
-
-theorem of_none {G G' : RatchetGhost} (i : Option Nat) (h : G.AgreeExcept G' none) :
-    G.AgreeExcept G' i := by
-  obtain ⟨hcap, hptr, hpad, hlen, hj⟩ := h
-  refine ⟨hcap, hptr, hpad, hlen, fun j hj1 hj2 => ?_⟩
-  have heq : G'.chains[j] = G.chains[j] := by
-    have := hj j hj1 hj2
-    simpa using this
-  split
-  · exact ⟨congrArg ChainGhost.srk heq, congrArg ChainGhost.priv heq⟩
-  · exact heq
 
 theorem trans {G₁ G₂ G₃ : RatchetGhost} {i : Option Nat}
     (h₁₂ : G₁.AgreeExcept G₂ i) (h₂₃ : G₂.AgreeExcept G₃ i) :

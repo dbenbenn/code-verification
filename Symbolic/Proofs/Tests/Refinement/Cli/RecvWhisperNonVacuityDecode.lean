@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuitySteps12
+public import Symbolic.Proofs.Tests.Refinement.Cli.RecvWhisperNonVacuitySteps12 -- proof-setup: allow-public-import
 
 /-!
 # Concrete SPQR-ON Non-Vacuity Protobuf State Decode
@@ -18,7 +18,7 @@ Length-delimited protobuf skip lemmas for opaque 1152-byte `ek` and 2400-byte `d
 proving `decodeState` on Alice's SPQR V1 state `nvPqA1` without unfolding large key vectors.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -129,37 +129,37 @@ theorem mergeFieldsLoop_step_nil {M : Type}
     unfold CryptoVerification.LibsignalSpqrV1.Proto.mergeFieldsLoop
     rfl
 
-def nvPePb : CryptoVerification.LibsignalSpqrV1.PolynomialEncoder :=
+@[expose] def nvPePb : CryptoVerification.LibsignalSpqrV1.PolynomialEncoder :=
   CryptoVerification.LibsignalSpqrV1.protoPolyEncoderToPb nvPe1Chunk.1.intoPb
 
-def nvPeBody : HwBytes :=
+@[expose] def nvPeBody : HwBytes :=
   let raw := CryptoVerification.LibsignalSpqrV1.PolynomialEncoder.encodeRaw nvPePb
   CryptoVerification.LibsignalSpqrV1.Proto.encodeVarint (BitVec.ofNat 64 raw.length) ++ raw
 
-def nvPeRaw : HwBytes := 0x12#8 :: nvPeBody
+@[expose] def nvPeRaw : HwBytes := 0x12#8 :: nvPeBody
 
-def nvUcLen : Nat :=
+@[expose] def nvUcLen : Nat :=
   (CryptoVerification.LibsignalSpqrV1.Proto.encodeUint64Field 1#32 1#64).length +
   (CryptoVerification.LibsignalSpqrV1.Proto.encodeOptMessage
     CryptoVerification.LibsignalSpqrV1.ProtoAuthenticator.encodeRaw 2#32
     (some nvAuth0.intoPb)).length +
   (3 + 1152 + 3 + 2400)
 
-def nvKsLen : Nat :=
+@[expose] def nvKsLen : Nat :=
   1 + (CryptoVerification.LibsignalSpqrV1.Proto.encodeVarint (BitVec.ofNat 64 nvUcLen)).length +
     nvUcLen + (1 + nvPeBody.length)
 
-def nvV1Len : Nat :=
+@[expose] def nvV1Len : Nat :=
   1 + (CryptoVerification.LibsignalSpqrV1.Proto.encodeVarint (BitVec.ofNat 64 nvKsLen)).length +
     nvKsLen
 
-def nvUcPb : CryptoVerification.LibsignalSpqrV1.V1State.Unchunked.HeaderSent :=
+@[expose] def nvUcPb : CryptoVerification.LibsignalSpqrV1.V1State.Unchunked.HeaderSent :=
   { epoch := 1#64, auth := some nvAuth0.intoPb, ek := nvEk1152, dk := nvDk2400 }
 
-def nvKsPb : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.KeysSampled :=
+@[expose] def nvKsPb : CryptoVerification.LibsignalSpqrV1.V1State.Chunked.KeysSampled :=
   { uc := some nvUcPb, sendingHdr := some nvPePb }
 
-def nvV1Pb : CryptoVerification.LibsignalSpqrV1.V1State :=
+@[expose] def nvV1Pb : CryptoVerification.LibsignalSpqrV1.V1State :=
   { innerState := some (.keysSampled nvKsPb) }
 
 theorem nvUcRaw_eq :

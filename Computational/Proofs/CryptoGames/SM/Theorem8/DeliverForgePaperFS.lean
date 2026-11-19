@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperDefs
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeFS
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeFS -- proof-setup: allow-public-import
 
 /-!
 # Lemma 11 for `DeliverForgePaper` (Hop H2 → FS-AEAD)
@@ -19,7 +19,7 @@ public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeFS
 `corrAllowedPaper` by the sum of FS-AEAD advantages of `redFSAuthDFPaper j` over `j < q`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -62,28 +62,28 @@ def stepLDFPaper (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     ((implEDFPaper (hooksLocal cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run
       esL)
 
-def runPDFPaper (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runPDFPaper (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) : ProbComp Bool := do
   let r ← (simulateQ (pImpl prng)
     ((simulateQ (implEDFPaper (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy)
       oa).run esP)).run sp
   pure (authOut (2 + Δcka) mo.policy r.1.2)
 
-def runLocDFPaper (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runLocDFPaper (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
   let r ← simulateQ lImpl
     ((simulateQ (implEDFPaper (hooksLocal cka prng fs mo)
       (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy) oa).run esL)
   pure (authOut (2 + Δcka) mo.policy r.2)
 
-def runLocAtDFPaper (j : ℕ) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runLocAtDFPaper (j : ℕ) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
   let r ← simulateQ lImpl
     ((simulateQ (implEDFPaper (hooksLocal cka prng fs mo)
       (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy) oa).run esL)
   pure (authOut (2 + Δcka) mo.policy r.2 && (r.2.h.lastIdx == some j))
 
-def localAuthDFPaper (tL : Option ℕ) (t : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
+@[expose] def localAuthDFPaper (tL : Option ℕ) (t : ℕ) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     ProbComp Bool := do
   let mo : Mode := ⟨true, tL, t⟩
   let (vs, h) ← simulateQ lImpl ((initLocal cka prng fs lam mo).run {})
@@ -94,7 +94,7 @@ def localAuthDFPaper (tL : Option ℕ) (t : ℕ) (A : SchemeAdversaryDF Γ T Sig
       { st := fun P => match P with | .A => vA | .B => vB, b := false }
     runLocDFPaper cka prng fs Δcka qep mo A { g, h }
 
-def localAuthAtDFPaper (j : ℕ) (tL : Option ℕ) (t : ℕ)
+@[expose] def localAuthAtDFPaper (j : ℕ) (tL : Option ℕ) (t : ℕ)
     (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) : ProbComp Bool := do
   let mo : Mode := ⟨true, tL, t⟩
   let (vs, h) ← simulateQ lImpl ((initLocal cka prng fs lam mo).run {})
@@ -112,14 +112,14 @@ def stepLFixedDFPaper (j : ℕ) (k_fs : K) (q : (SMSpecDF Γ T Sig SS RS M CCoin
     ((implEDFPaper (hooksLocalFixed cka prng fs mo j k_fs)
       (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run esL)
 
-def runLocAtFixedDFPaper (j : ℕ) (k_fs : K) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runLocAtFixedDFPaper (j : ℕ) (k_fs : K) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esL : EStateL Γ T Sig SS RS M E K I) : ProbComp Bool := do
   let r ← simulateQ lImpl
     ((simulateQ (implEDFPaper (hooksLocalFixed cka prng fs mo j k_fs)
       (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy) oa).run esL)
   pure (authOut (2 + Δcka) mo.policy r.2 && (r.2.h.lastIdx == some j))
 
-def localAuthAtFixedDFPaper (j : ℕ) (k_fs : K) (tL : Option ℕ) (t : ℕ)
+@[expose] def localAuthAtFixedDFPaper (j : ℕ) (k_fs : K) (tL : Option ℕ) (t : ℕ)
     (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) : ProbComp Bool := do
   let mo : Mode := ⟨true, tL, t⟩
   let (vs, h) ← simulateQ lImpl ((initLocalFixed cka prng fs lam mo j k_fs).run {})
@@ -138,7 +138,7 @@ def stepFDFPaper (j : ℕ) (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     ((implEDFPaper (hooksFS cka prng fs Δcka mo j) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run
       esF)).run st
 
-def runFDFPaper (j : ℕ) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runFDFPaper (j : ℕ) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esF : EStateF Γ T Sig SS RS M E K I) (st : FSGameState SS RS T M E) : ProbComp Bool := do
   let r ← (simulateQ (implFS fs)
     ((simulateQ (implEDFPaper (hooksFS cka prng fs Δcka mo j)
@@ -968,7 +968,7 @@ theorem runLocAtFixedDFPaper_le_runFDFPaper (j : ℕ) (k_fs : K)
     · rw [heq_ans]
       exact ih rF.1.1 hs'
 
-def runFSDFPaper (j : ℕ) (b : Bool) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
+@[expose] def runFSDFPaper (j : ℕ) (b : Bool) (A : SchemeAdversaryDF Γ T Sig SS RS M CCoins E) :
     FSAEAD.AdversaryComp SS RS (Header T) M E
       (Option (Bool × EState (PartyState Γ T Sig (Option SS) (Option RS)) M (Header T × E)
         (FSState T Sig K I SS RS E))) :=

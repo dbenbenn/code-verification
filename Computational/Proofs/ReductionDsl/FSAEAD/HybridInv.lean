@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.HybridWith
-public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
+import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
 
 /-!
 # Reachable-state invariants of the FS-AEAD hybrid games
@@ -21,7 +21,7 @@ Length and index bounds (`HInv`) on `HState` after `n` Figure 5 queries of `impl
 `multiSlotOtccaReduction` programs.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.FSAEAD.Thm5
 

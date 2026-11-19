@@ -9,15 +9,41 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received2PlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmKeysSampled2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple2PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple3PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received2PlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Received2PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmKeysSampled2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple3PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1Acknowledged3PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart10PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkReceivedCt1SampledPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmHeaderSent2PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceived2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart10PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmHeaderSent2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Base
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Ct1AcknowledgedRecvEkChunkPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmCt1SampledPart10Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmEkSentCt1Received2Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmNoHeaderReceived2Placed
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux
 
 /-!
 # Exact Block-`332`-Aligned `<States>::recv` Protocol-Guarded Envelopes and Specs
@@ -30,7 +56,7 @@ outer epilogue `FreeOnlyEvs`), preserving the aggregate credit (`1,647,247 / 0 /
 slot-group (`3,732 * FineScale` and split `27,105,719`) bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -136,7 +162,9 @@ open LibsignalBinary.Proofs.SpqrV1.States.Recv.ArmsSimple3PlacedBudget
   (Ct2SampledRecvPostEnv states_recv_ct2Sampled_placed_ok_cro_ext_ofPrePostEnv)
 open LibsignalBinary.Proofs.SpqrV1.States.Recv.DefsPlacedBudget
   (StatesRecvPlacedContracts states_recv_placed_ok_ext_of_variants_ofEnv
-   states_recv_placed_ok_x_of_ext_ofEnv subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken)
+   states_recv_placed_ok_x_of_ext_ofEnv
+   subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+   subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken)
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsBudget
   (OptSecret32AllocEnv optSecret32AllocEnv_nil)
 open LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget (StatesRecvPlacedOkXOfEnv)
@@ -149,7 +177,7 @@ open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
 /-- Post-`decoded_message` envelope for `<EkSentCt1Received>::recv_ct2_chunk`, modeling the
 `ct1Len != 960 || dkLen != 2400` unwrap-panic split after `recvCt2AllocMacCt2Events` and the
 trailing `OptSecret32AllocEnv` allocation after `sendCt2ConcatHmacEvents`. -/
-def RecvCt2ChunkTailEnv' (rootKeyLen ct1Len dkLen : Nat) : Option Bytes → List AllocEvent → Prop
+@[expose] def RecvCt2ChunkTailEnv' (rootKeyLen ct1Len dkLen : Nat) : Option Bytes → List AllocEvent → Prop
   | none, evs => FreeOnlyEvs evs
   | some ct2Full, evs =>
     if ct2Full.length < 128 then
@@ -169,7 +197,7 @@ def RecvCt2ChunkTailEnv' (rootKeyLen ct1Len dkLen : Nat) : Option Bytes → List
         evs
 
 /-- Pre-state-pinned envelope for `<EkSentCt1Received>::recv_ct2_chunk`. -/
-def EkSentCt1ReceivedRecvCt2ChunkEnv' {F : ShaCompress}
+@[expose] def EkSentCt1ReceivedRecvCt2ChunkEnv' {F : ShaCompress}
     (s : EkSentCt1Received spqrPolyApi (spqrAuthApi F)) (epoch : Epoch) (chunk : Chunk)
     (evs : List AllocEvent) : Prop :=
   if epoch != s.uc.epoch then
@@ -186,7 +214,7 @@ def EkSentCt1ReceivedRecvCt2ChunkEnv' {F : ShaCompress}
 `<Ct1Acknowledged>::recv_ek_chunk`, matching on `uc.recv_ek K uc.epoch ekBytes` and `uc1.send_ct2 K`
 and sequencing leading `FreeOnlyEvs` before `UnchunkedSendCt2BySizesEnv` and `SendCt2EncoderEnv 128 32`.
 -/
-def RecvEkChunkSendCt2TailEnv' {F : ShaCompress} (K : MlKem) (sendCt2OnDone : Bool)
+@[expose] def RecvEkChunkSendCt2TailEnv' {F : ShaCompress} (K : MlKem) (sendCt2OnDone : Bool)
     (uc : CryptoVerification.LibsignalSpqrV1.Unchunked.SendCt.Ct1Sent (spqrAuthApi F)) :
     Option Bytes → List AllocEvent → Prop
   | none, evs => FreeOnlyEvs evs
@@ -207,7 +235,7 @@ def RecvEkChunkSendCt2TailEnv' {F : ShaCompress} (K : MlKem) (sendCt2OnDone : Bo
 
 /-- 11-constructor pre-state-pinned allocator trace envelope for `<spqr::v1::chunked::states::States>::recv` with outer epilogue `FreeOnlyEvs`.
 -/
-def StatesRecvEnv' {F : ShaCompress} (K : MlKem)
+@[expose] def StatesRecvEnv' {F : ShaCompress} (K : MlKem)
     (st : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
     List AllocEvent → Prop :=
   match st with
@@ -313,13 +341,13 @@ def StatesRecvEnv' {F : ShaCompress} (K : MlKem)
 
 /-- Protocol-sized wrapper around `StatesRecvEnv' K` (coinciding with `StatesRecvEnv' K` on every `States.from_pb` state).
 -/
-def StatesRecvProtoEnv' {F : ShaCompress} (K : MlKem)
+@[expose] def StatesRecvProtoEnv' {F : ShaCompress} (K : MlKem)
     (st : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
     List AllocEvent → Prop :=
   if isStatesProtoSized st then StatesRecvEnv' K st msg else FreeOnlyEvs
 
 /-- Exact 11-arm Block-`332` post-envelope (`StatesRecvExactTightEnv`). -/
-def StatesRecvExactTightEnv {F : ShaCompress} (K : MlKem)
+@[expose] def StatesRecvExactTightEnv {F : ShaCompress} (K : MlKem)
     (x : StatesRecvGhost F) (evs : List AllocEvent) : Prop :=
   match x.self with
   | .keysUnsampled st => KeysUnsampledRecvPostEnv st x.msg evs
@@ -1826,60 +1854,70 @@ theorem states_recv_placed_ok_x_exactTight [LibsignalPlacement]
   intro st msg
   cases st with
   | keysUnsampled s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (fun _ _ _ _ h => h) (fun _ _ _ _ h => h)
-      (states_recv_keysUnsampled_placed_ok_cro_ext_ofPrePostEnv M A lim F K
-        (StatesRecvExactTightEnv K) ext hC s msg)
+      (subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+        (states_recv_keysUnsampled_placed_ok_cro_ext_ofPrePostEnv M A lim F K
+          (StatesRecvExactTightEnv K) ext hC s msg))
   | keysSampled s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (PreEnv₁ := fun _ => KeysSampledArmPreEnv s msg)
       (PostEnv₁ := fun _ => KeysSampledArmPostEnv s msg)
       (fun _ _ _ _ hF => FitsEnv.mono (fun _ h => keysSampledArmPre_sub_post s msg h) hF)
       (fun _ _ _ _ h => h)
-      (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-        (states_recv_keysSampled_exact_placed_ok_ext M A lim F K ext hC s msg))
+      (subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+        (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
+          (states_recv_keysSampled_exact_placed_ok_ext M A lim F K ext hC s msg)))
   | headerSent s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (fun _ _ _ _ h => h) (fun _ _ _ _ h => h)
-      (states_recv_headerSent_env_placed_ok_ext M A lim F K ext hC s msg)
+      (subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+        (states_recv_headerSent_env_placed_ok_ext M A lim F K ext hC s msg))
   | ct1Received s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (PreEnv₁ := fun _ => Ct1ReceivedArmPreEnv s msg)
       (PostEnv₁ := fun _ => Ct1ReceivedArmPostEnv s msg)
       (fun _ _ _ _ hF => FitsEnv.mono (fun _ h => ct1ReceivedArmPre_sub_post s msg h) hF)
       (fun _ _ _ _ h => h)
-      (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-        (states_recv_ct1Received_exact_placed_ok_ext M A lim F K ext hC s msg))
+      (subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+        (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
+          (states_recv_ct1Received_exact_placed_ok_ext M A lim F K ext hC s msg)))
   | ekSentCt1Received s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (fun _ _ _ _ h => h) (fun _ _ _ _ h => h)
       (states_recv_ekSentCt1Received_placed_ok_ext M A lim F K ext hC s msg)
   | noHeaderReceived s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (fun _ _ _ _ h => h) (fun _ _ _ _ h => h)
-      (states_recv_noHeaderReceived_placed_ok_ext M A lim F K ext hC s msg)
+      (subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+        (states_recv_noHeaderReceived_placed_ok_ext M A lim F K ext hC s msg))
   | headerReceived s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (fun _ _ _ _ h => h) (fun _ _ _ _ h => h)
-      (states_recv_headerReceived_placed_ok_cro_ext_ofPrePostEnv M A lim F K
-        (StatesRecvExactTightEnv K) ext hC s msg)
+      (subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+        (states_recv_headerReceived_placed_ok_cro_ext_ofPrePostEnv M A lim F K
+          (StatesRecvExactTightEnv K) ext hC s msg))
   | ct1Sampled s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (fun _ _ _ _ h => h) (fun _ _ _ _ h => h)
-      (states_recv_ct1Sampled_placed_ok_ext M A lim F K ext hC s msg)
+      (subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+        (states_recv_ct1Sampled_placed_ok_ext M A lim F K ext hC s msg))
   | ekReceivedCt1Sampled s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (fun _ _ _ _ h => h) (fun _ _ _ _ h => h)
-      (states_recv_ekReceivedCt1Sampled_placed_ofEnv_cro_ok_ext A lim F K ext hC s msg)
+      (subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+        (states_recv_ekReceivedCt1Sampled_placed_ofEnv_cro_ok_ext A lim F K ext hC s msg))
   | ct1Acknowledged s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (fun _ _ _ _ h => h) (fun _ _ _ _ h => h)
-      (states_recv_ct1Acknowledged_placed_ofEnv_ok_ext A lim F K ext hC s msg)
+      (subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+        (states_recv_ct1Acknowledged_placed_ofEnv_ok_ext A lim F K ext hC s msg))
   | ct2Sampled s =>
-    exact subroutine_ok_statesRecvVariantPlacedSpecOfPrePostEnv_weaken
+    exact subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_weaken
       (fun _ _ _ _ h => h) (fun _ _ _ _ h => h)
-      (states_recv_ct2Sampled_placed_ok_cro_ext_ofPrePostEnv M A lim F K
-        (StatesRecvExactTightEnv K) ext hC s msg)
+      (subroutine_ok_statesRecvVariantPlacedSpecExtOfPrePostEnv_of_X
+        (states_recv_ct2Sampled_placed_ok_cro_ext_ofPrePostEnv M A lim F K
+          (StatesRecvExactTightEnv K) ext hC s msg))
 
 private theorem w2pb_seqEnv_mono {P P' Q Q' : List AllocEvent → Prop} {evs : List AllocEvent}
     (hP : ∀ e, P e → P' e) (hQ : ∀ e, Q e → Q' e) (h : SeqEnv P Q evs) :

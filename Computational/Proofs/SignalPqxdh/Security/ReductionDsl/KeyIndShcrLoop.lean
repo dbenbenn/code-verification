@@ -9,11 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrBranch
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.RedProg2Sim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrBranch -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.RedProg2Sim -- proof-setup: allow-public-import
 public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrEval
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndShcrComp -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreHol -- proof-setup: allow-public-import
 
 /-!
 # `shcrKeyIndProg` Loop Layer
@@ -22,7 +26,7 @@ The two runners of `shcrKeyIndProg` (`TwoStageCostedReduction.eval1` / `TwoStage
 shallow `KemShCr` reduction `shcrReductionKeyIndCore`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -161,10 +165,10 @@ theorem pqxdhKeyIndShCrPrimImpl_inv (S : Setup) (pk sk : Bytes) (n : ℕ) (q : K
 
 abbrev PauseMid (S : Setup) := SessionId S × PreKeyBundleInput × (ℕ × PrincipalEntry)
 
-def encPause {S : Setup} (d : PauseMid S) : pauseTy.denote :=
+@[expose] def encPause {S : Setup} (d : PauseMid S) : pauseTy.denote :=
   (sessionIdToVal d.1, (preKeyBundleToVal d.2.1, (d.2.2.1, principalEntryToVal d.2.2.2)))
 
-def tryPauseMidAux (S : Setup) (sIdx : ℕ) (sid : SessionId S) (u : ℕ) (bu : PreKeyBundleInput)
+@[expose] def tryPauseMidAux (S : Setup) (sIdx : ℕ) (sid : SessionId S) (u : ℕ) (bu : PreKeyBundleInput)
     (h : KeyIndShCrState S) : OracleComp PrimBaseSpec (Option (PauseMid S)) := do
   match ← preCheckFullPrim S sid u bu h.base with
   | none => pure none
@@ -172,7 +176,7 @@ def tryPauseMidAux (S : Setup) (sIdx : ℕ) (sid : SessionId S) (u : ℕ) (bu : 
     let ok ← checkBundleSigsPrim S h.base.principals bu
     pure (if !ok then none else if h.sendCount == sIdx then some (sid, bu, uE) else none)
 
-def tryPauseMid (S : Setup) (sIdx : ℕ) (q : KeyIndQuery S) (h : KeyIndShCrState S) :
+@[expose] def tryPauseMid (S : Setup) (sIdx : ℕ) (q : KeyIndQuery S) (h : KeyIndShCrState S) :
     OracleComp PrimBaseSpec (Option (PauseMid S)) :=
   match q with
   | .initiateOPK u i bu =>
@@ -181,7 +185,7 @@ def tryPauseMid (S : Setup) (sIdx : ℕ) (q : KeyIndQuery S) (h : KeyIndShCrStat
     if bu.opkB?.isSome then pure none else tryPauseMidAux S sIdx (.sendNoOPK u i) u.val bu h
   | _ => pure none
 
-def toPaused {S : Setup} (h : KeyIndShCrState S)
+@[expose] def toPaused {S : Setup} (h : KeyIndShCrState S)
     (cont : KeyIndResponse → OracleComp (unifSpec + keyIndSpec S) Bool) (d : PauseMid S) :
     PausedShCrData S :=
   { sid := d.1, bundle := d.2.1, uEntry := d.2.2.2, hst := h, cont := cont }
@@ -342,7 +346,7 @@ theorem shcrPreC_eval (S : Setup) (K n : ℕ) (q : KeyIndQuery S) (h : KeyIndShC
   · obtain ⟨sid, bu, k, e⟩ := d
     simp [Expr.eval, v, encPause, shcrStToVal, preKeyBundleToVal]
 
-def Gsh (S : Setup) :
+@[expose] def Gsh (S : Setup) :
     Option Bytes × RedProg2State (keyIndSpec S) Bool (PauseMid S) (KeyIndShCrState S) →
       (Bool × KeyIndShCrState S) ⊕ PausedShCrData S
   | (_, .done a h) => .inl (a, h)
@@ -449,7 +453,7 @@ theorem shcrFinish_eval (S : Setup) (Q K : ℕ) (a : Bool) (h : KeyIndShCrState 
       extractCollidingKemCtPrim Q h.targetPk h.targetSk chosen ct ss h.recvKemRecs :=
   shcrExtractC_eval S Q a h sIdx chosen ss ct
 
-def initSh (S : Setup) (secb : Bool) (bIdx : ℕ) (pk sk : Bytes) : KeyIndShCrState S where
+@[expose] def initSh (S : Setup) (secb : Bool) (bIdx : ℕ) (pk sk : Bytes) : KeyIndShCrState S where
   base := KeyIndState.empty S secb
   targetBIdx? := some bIdx
   targetPk := pk
@@ -521,7 +525,7 @@ theorem postKem_inv (S : Setup) (pk sk : Bytes) (n : ℕ) (d : PauseMid S) (h : 
   · exact ⟨hI.bnd.mono (Nat.le_succ n), hI.tpk, hI.tsk⟩
   · exact ⟨hp b' rfl, hI.tpk, hI.tsk⟩
 
-def chosenOf {S : Setup} (pk : Bytes) :
+@[expose] def chosenOf {S : Setup} (pk : Bytes) :
     RedProg2State (keyIndSpec S) Bool (PauseMid S) (KeyIndShCrState S) → Bytes
   | .done _ _ => pk
   | .paused _ d _ _ => d.2.1.pqspkB
@@ -543,7 +547,7 @@ def midRun (S : Setup) (b : QueryBudget) (A : KeyIndAdversary S) (pk sk : Bytes)
       (initSh S secb (uIdx * S.N_recv + jIdx) pk sk)
     pure (sIdx, r)
 
-def toShallow {S : Setup} (st : Bytes × Bytes × ℕ × (Option Bytes ×
+@[expose] def toShallow {S : Setup} (st : Bytes × Bytes × ℕ × (Option Bytes ×
     RedProg2State (keyIndSpec S) Bool (PauseMid S) (KeyIndShCrState S))) : ShCrFinishState S :=
   (st.1, st.2.1, chosenOf st.1 st.2.2.2.2, Gsh S st.2.2.2)
 
@@ -651,7 +655,7 @@ theorem stepRun_bounded (S : Setup) (Q K Ks sIdx : ℕ) (pk sk : Bytes) (A : Key
     (fun _ q st hn hI => stepPreD_eq S Q K _ sIdx pk sk q st hI (by omega))
     (fun n q st hI => stepMid_inv S sIdx pk sk n q st hI) A.run Ks hA Ks 0 h0 hI0 (by omega)
 
-def encMid {S : Setup} (pk : Bytes)
+@[expose] def encMid {S : Setup} (pk : Bytes)
     (x : ℕ × (Option Bytes × RedProg2State (keyIndSpec S) Bool (PauseMid S) (KeyIndShCrState S))) :
     Mid (keyIndSpec S) Bool pauseTy.denote shcrStTy.denote Bytes :=
   match x.2.2 with
@@ -711,7 +715,7 @@ theorem eval1_eq (S : Setup) (Q K : ℕ) (b : QueryBudget) (A : KeyIndAdversary 
   · refine bind_congr fun uIdx => bind_congr fun jIdx => bind_congr fun sIdx =>
       bind_congr fun secb => hBody (uIdx * S.N_recv + jIdx) sIdx secb
 
-def shcrKeyIndDslAdvK (S : Setup) (b : QueryBudget) (K : ℕ) (A : KeyIndAdversary S) :
+@[expose] def shcrKeyIndDslAdvK (S : Setup) (b : QueryBudget) (K : ℕ) (A : KeyIndAdversary S) :
     KemShCrAdv where
   State := Mid (keyIndSpec S) Bool pauseTy.denote shcrStTy.denote Bytes
   choosePk := fun pk sk =>
@@ -822,7 +826,7 @@ theorem kemShCrExp_shcrKeyIndDslAdvK_of_queryBound (P : Primitives) (S : Setup) 
   rw [hDslMid, ← kemShCrExp_mid_core]
 
 /-- `KemShCr` adversary built from `shcrKeyIndProg` at handler bound `keyIndLoopBound b`. -/
-def shcrKeyIndDslAdv (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
+@[expose] def shcrKeyIndDslAdv (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
     KemShCrAdv :=
   shcrKeyIndDslAdvK S b (2 * b.q_total + 1) A.1
 
@@ -833,21 +837,5 @@ theorem kemShCrExp_shcrKeyIndDslAdvK (P : Primitives) (S : Setup) (b : QueryBudg
     have h := A.2.2.2.2.1
     convert h using 1; funext q; cases q <;> rfl
   exact kemShCrExp_shcrKeyIndDslAdvK_of_queryBound P S b K A.1 hA hK
-
-theorem kemShCrExp_shcrKeyIndDslAdv (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    KemShCr P (shcrKeyIndDslAdv S b A) = KemShCr P (shcrReductionKeyInd S b A) :=
-  kemShCrExp_shcrKeyIndDslAdvK P S b _ A (by omega)
-
-/-- The DSL `KemShCr` reduction has exactly the advantage of the shallow one. -/
-theorem KemShCr_shcrKeyIndDslAdv (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    KemShCr P (shcrKeyIndDslAdv S b A) = KemShCr P (shcrReductionKeyInd S b A) :=
-  kemShCrExp_shcrKeyIndDslAdv P S b A
-
-theorem KemShCrReal_shcrKeyIndDslAdv (P : Primitives) (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (KeyIndAdversary S) b) :
-    KemShCrReal P (shcrKeyIndDslAdv S b A) = KemShCrReal P (shcrReductionKeyInd S b A) :=
-  congrArg ENNReal.toReal (KemShCr_shcrKeyIndDslAdv P S b A)
 
 end SignalPqxdh.Security.ReductionDsl.KeyInd

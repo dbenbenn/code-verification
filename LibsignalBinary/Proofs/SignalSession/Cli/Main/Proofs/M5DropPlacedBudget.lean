@@ -9,19 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropLoopCorePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropLoopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopDropPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlaced -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropStepsPlaced -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropLoopCorePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropLoopsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopDropPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropPanicsPlaced -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropStepsPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopAPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5DropStepsPlaced
 
 /-!
 # Budget-Threaded Write-Error Cleanup Path `m5_drop_placed` (Block `617`)
@@ -31,7 +37,7 @@ on Block `617`, advancing `A.pool` by `m5ErrEntryDropEvents errE ++ evsRest` wit
 `FreeOnlyEvs evsRest`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -99,7 +105,7 @@ local macro "m5_drop_fetch_vm" : term =>
 
 /-- Split allocator event envelope for `m5_drop_placed` / `m5_drop_for_m5_placed` starting from
 `errE : M5ErrEntryPlaced`. -/
-def M5DropFromErrEnv (errE : M5ErrEntryPlaced) (evsDrop : List AllocEvent) : Prop :=
+@[expose] def M5DropFromErrEnv (errE : M5ErrEntryPlaced) (evsDrop : List AllocEvent) : Prop :=
   ∃ evsRest, evsDrop = m5ErrEntryDropEvents errE ++ evsRest ∧ FreeOnlyEvs evsRest
 
 -- Non-vacuity witness: path allocation on `Dir` (`"a"`, `"b"`) followed by `0xbdc` write-error
@@ -132,7 +138,7 @@ example :
 
 /-- Budget-threaded separation-logic memory at `M5LoopErrPlaced` (`M+0xbcc` / `M+0xbdc` / `M+0xbf4`),
 pairing `MainHops.m5ErrMemPlaced A.repAlloc` (`A.repAlloc.pool = emp`) with `A.pool lim st s`. -/
-def m5ErrMem {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
+@[expose] def m5ErrMem {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (s0 s : State) (stk n : Nat)
     (outCap outPtr inCap inPtr buf curCap curPtr : BitVec 64)
     (out inp : List (BitVec 8))

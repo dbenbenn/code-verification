@@ -9,20 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureVmPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
-public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch -- shake: keep
+public import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlaced
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureVmPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
+public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.TripleRatchet.Record.FetchDecrypt
+public meta import ProofLib
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.SepLogic.WP
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
 
 /-!
 # Budget-Threaded Relocatable CLI `SegMismatch`
@@ -31,7 +39,7 @@ Threads `RustCliAllocBudget M` and `SeamBudget` across `segMismatch_placed_ok` a
 `segMismatch_full_placed_ok` (`+0x7e4 → +0x850`) on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +50,7 @@ open CryptoGames.LibsignalSession (Crypto)
 open CryptoVerification (LibsignalPlacement lsmpl withLsCodeLoaded)
 open CryptoVerification.LibsignalTripleRatchetRepr (SessionGhost uuidTryParse)
 open CryptoVerification.LibsignalTripleRatchet (SpqrModel RecordDecryptGhost sessionMemcpyRegionSpec)
-open CryptoVerification.LibsignalTripleRatchet.FromRecordCallees (logClosurePlacedSpec logClosureSpec)
+open CryptoVerification.LibsignalTripleRatchet.FromRecordCallees (logClosurePlacedSpec)
 open CryptoVerification.LibsignalTripleRatchet.Record (errsAt regionOutcome)
 open CryptoVerification.LibsignalTripleRatchet.Record.SegDecryptFacts (
   draws_of_version_ne model_of_version_ne mkTryDecryptGhost
@@ -161,8 +169,7 @@ elab "cli_segDecrypt_wpp_call_b " hcall:term:max a:term:max hF:term:max hpan:ter
       growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec,
       tryDecryptPlacedSpec, CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec,
       mkTryDecryptGhost,
-      sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec,
-      Spec.inImage]
+      sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]
     try simp (config := { decide := true }) only [
       sessionStateAt_atState, protocolAddressAt_atState, signalMessageAt_atState,
       vecResultAt_atState, RustCliAllocBudget.atState_pool,
@@ -188,7 +195,7 @@ elab "cli_segDecrypt_wpp_call_b " hcall:term:max a:term:max hF:term:max hpan:ter
       mkTryDecryptGhost,
       sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec,
       recordDecryptPlacedSpec,
-      CryptoVerification.Cli.LibsignalTripleRatchet.Record.recordDecryptPlacedSpec, Spec.inImage]
+      CryptoVerification.Cli.LibsignalTripleRatchet.Record.recordDecryptPlacedSpec]
     intro _
     exact $hpan
   )))
@@ -199,8 +206,7 @@ elab "cli_segDecrypt_wpp_call_b " hcall:term:max a:term:max hF:term:max hpan:ter
       growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec,
       tryDecryptPlacedSpec, CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec,
       mkTryDecryptGhost,
-      sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec,
-      Spec.inImage]
+      sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]
     exact ⟨fun _ _ => rfl, fun _ => rfl⟩
   )))
   setGoals (gCont :: rest)
@@ -213,8 +219,7 @@ elab "cli_segDecrypt_wpp_call_b " hcall:term:max a:term:max hF:term:max hpan:ter
     growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec,
     tryDecryptPlacedSpec, CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec,
     mkTryDecryptGhost,
-    sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec,
-    Spec.inImage]))
+    sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]))
   let mut oldHspTerms : Array Term := #[]
   for decl in (← getLCtx) do
     if !decl.isImplementationDetail &&
@@ -233,7 +238,7 @@ elab "cli_segDecrypt_wpp_call_b " hcall:term:max a:term:max hF:term:max hpan:ter
       simp (config := { decide := true }) only [
         sessionStateAt_atState, protocolAddressAt_atState, signalMessageAt_atState,
         vecResultAt_atState, RustCliAllocBudget.atState_pool,
-        withLsCodeLoaded, Spec.inImage,
+        withLsCodeLoaded,
         stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
         sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc,
         wp_norm, arm64_norm, $hspId:ident]))))
@@ -344,8 +349,6 @@ theorem segMismatch_placed_ok [LibsignalPlacement] {M : AllocCostModel}
                   hF3,
                   by simp only [wp_norm, arm64_norm, *]⟩
         · rw [hsp0, cliRecFramePlaced_atState, sessionStateAt_atState]
-          conv_rhs =>
-            simp only [sessionStateAt_atState, errsAt_atState]
           unfold recFramePlaced
           rw [RustCliAllocBudget.repAlloc_pool, sepConj_emp]
           exact Eq.mp (congrArg (SepProp.Satisfies · _) (by sep_ac_rfl)) hmf
@@ -390,8 +393,7 @@ elab "cli_segDecrypt_wpp_call_lsfull_b " hcall:term:max a:term:max hF:term:max h
       growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec,
       tryDecryptPlacedSpec, CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec,
       mkTryDecryptGhost,
-      sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec,
-      Spec.inImage]
+      sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]
     try simp (config := { decide := true }) only [
       sessionStateAt_atState, protocolAddressAt_atState, signalMessageAt_atState,
       vecResultAt_atState, RustCliAllocBudget.atState_pool,
@@ -418,7 +420,7 @@ elab "cli_segDecrypt_wpp_call_lsfull_b " hcall:term:max a:term:max hF:term:max h
       mkTryDecryptGhost,
       sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec,
       recordDecryptPlacedSpec,
-      CryptoVerification.Cli.LibsignalTripleRatchet.Record.recordDecryptPlacedSpec, Spec.inImage]
+      CryptoVerification.Cli.LibsignalTripleRatchet.Record.recordDecryptPlacedSpec]
     intro _
     exact $hpan
   )))
@@ -430,8 +432,7 @@ elab "cli_segDecrypt_wpp_call_lsfull_b " hcall:term:max a:term:max hF:term:max h
       growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec,
       tryDecryptPlacedSpec, CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec,
       mkTryDecryptGhost,
-      sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec,
-      Spec.inImage]
+      sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]
     exact ⟨fun _ _ => rfl, fun _ => rfl⟩
   )))
   setGoals (gCont :: rest)
@@ -445,8 +446,7 @@ elab "cli_segDecrypt_wpp_call_lsfull_b " hcall:term:max a:term:max hF:term:max h
     growOneSpeSpec, setSessionStateSpec, dropSessionStructureLocal2Spec,
     tryDecryptPlacedSpec, CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec,
     mkTryDecryptGhost,
-    sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec,
-    Spec.inImage]))
+    sessionMemcpyRegionBudgetSpec, sessionMemcpyRegionSpec, memcpyRegionSpec, memcpySpec]))
   let mut oldHspTerms : Array Term := #[]
   for decl in (← getLCtx) do
     if !decl.isImplementationDetail &&
@@ -466,7 +466,7 @@ elab "cli_segDecrypt_wpp_call_lsfull_b " hcall:term:max a:term:max hF:term:max h
         sessionStateAt_atState, protocolAddressAt_atState, signalMessageAt_atState,
         vecResultAt_atState, RustCliAllocBudget.atState_pool,
         CryptoVerification.LibsignalTripleRatchet.withLsFrozen,
-        withLsCodeLoaded, Spec.inImage,
+        withLsCodeLoaded,
         stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
         sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc,
         wp_norm, arm64_norm, $hspId:ident]))))
@@ -559,8 +559,6 @@ theorem segMismatch_full_placed_ok [CryptoVerification.LibsignalFullPlacement] {
                   CryptoVerification.Cli.LibsignalTripleRatchet.Record.LibsignalCodeRoLoaded.of_libsignalFrozen hF3,
                   by simp only [wp_norm, arm64_norm, *]⟩
         · rw [hsp0, cliRecFramePlaced_atState, sessionStateAt_atState]
-          conv_rhs =>
-            simp only [sessionStateAt_atState, errsAt_atState]
           unfold recFramePlaced
           rw [RustCliAllocBudget.repAlloc_pool, sepConj_emp]
           exact Eq.mp (congrArg (SepProp.Satisfies · _) (by sep_ac_rfl)) hmf

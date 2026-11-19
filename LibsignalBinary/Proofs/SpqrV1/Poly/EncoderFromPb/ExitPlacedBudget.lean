@@ -11,18 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Epilogue and Exit Blocks for `<PolyEncoder>::from_pb`
@@ -31,7 +33,7 @@ Threads `RustCliAllocBudget M`, `FreeOnlyEvs`, and `AllocCallPreserved` through 
 (`+1460`), error exits (`+1448`, `+1496`, `+1612`), and success header copy (`+1572`) on Block `374`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -121,18 +123,6 @@ private theorem allocCallPreserved_step_trans {s0 s1 s2 s3 : State}
     (hsym : s2.symtab = s1.symtab := by rfl) :
     AllocCallPreserved s0 s3 :=
   allocCallPreserved_trans (allocCallPreserved_step h1 hfs htr hsig htp hbs hor hsym) h23
-
-private theorem seq_evs_clean {prog : Program} {mid target_pc : BitVec 64} {s : State}
-    {P : SepProp} {P_mid : List AllocEvent → State → SepProp}
-    {Q_mid : State → Prop} {post : State → SepProp → Prop}
-    (h1 : SepWP prog mid s P (fun sm Pm =>
-      ∃ evs1, FreeOnlyEvs evs1 ∧ (Pm ⊢ P_mid evs1 sm) ∧ Q_mid sm))
-    (h2 : ∀ (sm : State) (evs1 : List AllocEvent),
-      sm.pc = mid → sm.status = .Running → FreeOnlyEvs evs1 → Q_mid sm →
-      SepWP prog target_pc sm (P_mid evs1 sm) post) :
-    SepWP prog target_pc s P post := by
-  refine SepWP.seq h1 fun sm Pm hpcm hrunm ⟨evs1, hfo1, hPm, hQm⟩ => ?_
-  exact SepWP.weaken_pre hPm (h2 sm evs1 hpcm hrunm hfo1 hQm)
 
 private theorem sepWP_weaken_mono {prog : Program} {target : BitVec 64} {s : State}
     {P P' : SepProp} {post' post : State → SepProp → Prop}

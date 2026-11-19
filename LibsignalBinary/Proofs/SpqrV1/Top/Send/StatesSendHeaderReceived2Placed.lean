@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendHeaderReceived1Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendHeaderReceived1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -23,6 +23,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled2Placed
 import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable Inlined `States::send` `.headerReceived` Arm (Part 2: `+1680..+3068`)
@@ -31,7 +32,7 @@ Verifies `+1680..+3068` and assembles `step_send_arm_headerReceived_placed` (`+1
 inside Block 124 (`spqr::send::<HookRng>`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

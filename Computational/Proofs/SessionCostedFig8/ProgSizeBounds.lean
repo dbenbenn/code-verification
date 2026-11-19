@@ -9,16 +9,21 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Fig8WeightedParts -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Fig8WeightedParts
 public import Computational.Proofs.ReductionDsl.SizeBudgetBridge -- proof-setup: allow-public-import
 public import Computational.Proofs.SessionCostedFig8.Bundles -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedCKA -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedFS -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.RedPRNG -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.Theorem1 -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core -- proof-setup: allow-public-import
 
 /-!
 # Weighted AST Size Bounds for Atomic Figure 8 Reductions
 
 Proves compositional `exprSizeW` and `compSizeW` bounds for the Figure 8 engines, hooks, and atomic
-reductions against `reductionSizeBudget`.
--/
+reductions against `reductionSizeBudget`.-/
 
 public section
 
@@ -28,7 +33,7 @@ namespace Computational.Proofs.SessionCostedFig8.ProgSizeBounds
 
 open OracleSpec OracleComp
 open _root_.ReductionDsl (Sig Ty Ops Iface Expr Comp CostedReduction bits reductionSizeBudget)
-open CryptoGames (Party)
+open _root_.CryptoGames (Party)
 open CryptoVerification.LibsignalSession (ratchetCostBudget)
 open Computational.Proofs.SessionCostedFig8.Bundles (exprSizeW compSizeW smOpS smSampS smQueryS
   ckaOpS ckaSampS ckaQueryS)

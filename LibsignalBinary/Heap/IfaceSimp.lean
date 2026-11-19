@@ -570,50 +570,6 @@ theorem sepWP_seq_frozen_oom {prog : Program} {mid target : BitVec 64} {s : Stat
     · exact ⟨sf, hst1.trans hst2, Or.inr ⟨hoom, hf⟩⟩
   · exact ⟨sm, hst1, Or.inr ⟨hoom, hf⟩⟩
 
-/-- `{oom}`-polymorphic `SepWP` segment composition threading `img.FrozenLoaded` and
-`s.symtab = img.symtab` to the midpoint `sm` (generalizing `CallInv.lean`'s `SepWP.of_sepWP_inv`). -/
-theorem sepWP_of_sepWP_inv_oom {prog : Program} {img : Obj.Image} {mid target_pc : BitVec 64}
-    {s : State} {P : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P
-      (fun sm Pm => img.FrozenLoaded sm → sm.symtab = img.symtab →
-        SepWP prog target_pc sm Pm post oom) oom) :
-    SepWP prog target_pc s P post oom := by
-  refine SepWP.of_reaches_pc fun R hm hL => ?_
-  rcases h.elim hm hL with ⟨sm, hsteps, ⟨-, -, Pm, hmm, hnext⟩ | ⟨hoom, hf⟩⟩
-  · rcases (hnext (hsteps.frozenLoaded hfl) (hsteps.symtab_eq.trans hsym)).elim hmm
-        (hsteps.codeLoaded hL) with ⟨sf, hsteps', ⟨hpc, hrun, Pf, hmf, hpost⟩ | ⟨hoom, hf⟩⟩
-    · exact ⟨sf, hsteps.trans hsteps', Or.inl ⟨hpc, hrun, Pf, hmf, hpost⟩⟩
-    · exact ⟨sf, hsteps.trans hsteps', Or.inr ⟨hoom, hf⟩⟩
-  · exact ⟨sm, hsteps, Or.inr ⟨hoom, hf⟩⟩
-
-/-- `{oom}`-polymorphic `SepWP` → `SepWPp` composition threading `img.FrozenLoaded` and
-`s.symtab = img.symtab` to the midpoint `sm` (generalizing `CallInv.lean`'s
-`SepWPp.of_sepWP_frozen`). -/
-theorem sepWPp_of_sepWP_frozen_oom {prog : Program} {img : Obj.Image} {ret mid : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P
-      (fun sm Pm => img.FrozenLoaded sm → sm.symtab = img.symtab →
-        SepWPp prog ret sm Pm Q Qp oom) oom) :
-    SepWPp prog ret s P Q Qp oom := by
-  intro R hm hL
-  rcases h.elim hm hL with ⟨sm, hsteps, ⟨-, -, Pm, hmm, hnext⟩ | ⟨hoom, hf⟩⟩
-  · obtain ⟨sf, hsteps', hout⟩ :=
-      hnext (hsteps.frozenLoaded hF) (hsteps.symtab_eq.trans hsym) R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact ⟨sm, hsteps, Or.inr (Or.inr ⟨hoom, hf⟩)⟩
-
-/-- Alias of `sepWPp_of_sepWP_frozen_oom` with `{mid ret}` argument order (`SepWPp.of_sepWP_inv`). -/
-theorem sepWPp_of_sepWP_inv_oom {prog : Program} {img : Obj.Image} {mid ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P
-      (fun sm Pm => img.FrozenLoaded sm → sm.symtab = img.symtab →
-        SepWPp prog ret sm Pm Q Qp oom) oom) :
-    SepWPp prog ret s P Q Qp oom :=
-  sepWPp_of_sepWP_frozen_oom hfl hsym h
-
 /-! ### Postcondition Entailment Strengthening -/
 
 /-- State-indexed, `{oom}`-polymorphic generalization of `SepWP.strengthen_entails`: strengthen

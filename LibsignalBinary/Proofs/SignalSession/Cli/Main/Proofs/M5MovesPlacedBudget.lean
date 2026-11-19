@@ -10,12 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesLayoutPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesLayoutPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5IfacePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5MovesLayout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FramePlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded M5 Payload Moves & Iterator Setup (`M+0x7b0 → M+0x8b8`, Block `617`)
@@ -25,7 +35,7 @@ Budget-threaded verification of `m5_moves_placed` (`M+0x7b0 → M+0x8b8`) on Blo
 `AtM5LoopPlaced … 0`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -685,10 +695,6 @@ theorem ownedBytes_atState_eq_repAlloc {M : AllocCostModel} (A : RustCliAllocBud
 theorem argsBuf_atState_eq_repAlloc {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) :
     argsBuf (A.atState lim st s) = argsBuf A.repAlloc := rfl
-
-theorem m5CellsPlaced_atState_eq_repAlloc {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (st : M.σ) (s : State) :
-    m5CellsPlaced (A.atState lim st s) = m5CellsPlaced A.repAlloc := rfl
 
 /-- Budget-threaded M5 payload moves (`M+0x7b0 → M+0x8b8`): moves `run`'s `Ok (Stores, Vec<u8>)`
 payload into loop slots, transports `A.pool lim st s` to `A.pool lim st s'` (`VmPreserved s s'`),

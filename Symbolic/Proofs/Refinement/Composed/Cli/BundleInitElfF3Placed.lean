@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomSpecF3
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
-public import Symbolic.Proofs.Refinement.Composed.Cli.ModelB2
-public import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomSpecF3 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ModelB2 -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
 public import Symbolic.Specifications.Refinement.Statement
 
 /-!
@@ -22,7 +23,7 @@ Proves that `parseBundleFiles` agrees with `parseBundleDir` on the bundle direct
 two-placement `CliPqBinaryV2OomF3Placed` flat-bundle `init` clauses across `InputsEquiv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,11 +39,13 @@ open DY.Libsignal.Composed.Refinement.Cli (
 open CryptoVerification.E2E (
   PreKeyBundleFields UnreachedPqxdhPrimitives initiateTapeLen
 )
+open CryptoVerification.LibsignalSpqrV1 (sha256Compress)
 open CryptoVerification.SignalSession (
-  CliHooks CliReachesOOMPlaced Inputs Outcome OutcomeOrExcusedAbort PqParty
+  CliHooks Inputs Outcome OutcomeOrExcusedAbort PqParty
   PqxdhPartyInSpecDomain bundleDir filesOf pqInitModel pqxdhExpectedOutcome publicBundleOf
 )
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliReachesOOMPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open CryptoVerification.SignalSession.Cli (ofLe32 splitId splitSigned)
 open CryptoVerification.SignalSession.Cli.RunCompose (readU32LE)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomSpecF3 (
@@ -131,10 +134,29 @@ theorem parseBundleFiles_eq_parseBundleDir (d : DirectorySnapshot) :
     · dsimp only
       cases normDjbKey spkRaw <;> cases normKyberKey kpkRaw <;> cases normDjbKey r <;> rfl
 
+private theorem or_none_outcomeUpTo_any_exc {exc₀ exc : Inputs → Prop}
+    {run : Inputs → Option Outcome} {i : Inputs} {P : Outcome → Prop}
+    (h : run i = none ∨ OutcomeOrExcusedAbort exc₀ run i P) :
+    run i = none ∨ OutcomeOrExcusedAbort exc run i P := by
+  rcases h with hnone | ⟨o, hr, hp⟩ | ⟨hnone, _⟩
+  · exact .inl hnone
+  · exact .inr (.inl ⟨o, hr, hp⟩)
+  · exact .inl hnone
+
 theorem outcomeUpTo_pqInitFiles_exact_or_none_of_f3_inputsEquiv
-    {mpl mmpl : MultiPlacement} {elf : ElfImage}
+    {mpl mmpl : MultiPlacement} {elf : ElfImage} {exc : Inputs → Prop}
     (hv2 : CliPqBinaryV2OomF3Placed mpl mmpl elf)
-    (W : CliHooks) (X : UnreachedPqxdhPrimitives)
+    (W : CliHooks)
+    (hF : W.C.F = sha256Compress)
+    (hE : W.C.E = CryptoGames.AES256.aes256Enc)
+    (hD : W.C.D = CryptoGames.AES256.aes256Dec)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec)
+    (hDec : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (X : UnreachedPqxdhPrimitives)
     {st : PqParty} {files : List (String × HwBytes)} {b : PreKeyBundleFields}
     {t : List.Vector (BitVec 8) initiateTapeLen} {i : Inputs}
     (heq : InputsEquiv i (pqInitInputsF ⟨W.C, W.Q⟩ st files t))
@@ -143,17 +165,27 @@ theorem outcomeUpTo_pqInitFiles_exact_or_none_of_f3_inputsEquiv
     (hcap : BundleReadWithinCapB2 (filesOf files) bundleDir)
     (hparse : parseBundleFiles (filesOf files) = some (publicBundleOf b)) :
     cliRunPlacedSig mpl mmpl elf W i = none ∨
-      OutcomeOrExcusedAbort (CliReachesOOMPlaced mpl mmpl elf W)
+      OutcomeOrExcusedAbort exc
         (cliRunPlacedSig mpl mmpl elf W) i
         (· = pqxdhExpectedOutcome ⟨W.C, W.Q⟩ (pqInitInputsF ⟨W.C, W.Q⟩ st files t)
           (pqInitModel X ⟨W.C, W.Q⟩ st b t)) :=
-  hv2.initFiles W X st files b t i heq hwf hs hb hcap
-    ((parseBundleFiles_eq_parseBundleDir (filesOf files)).symm.trans hparse)
+  or_none_outcomeUpTo_any_exc
+    (hv2.initFiles W hF hE hD hX hPub hF512 hEnc hDec hK X st files b t i heq hwf hs hb hcap
+      ((parseBundleFiles_eq_parseBundleDir (filesOf files)).symm.trans hparse))
 
 theorem outcomeUpTo_pqInitReject_or_none_of_f3_inputsEquiv
-    {mpl mmpl : MultiPlacement} {elf : ElfImage}
+    {mpl mmpl : MultiPlacement} {elf : ElfImage} {exc : Inputs → Prop}
     (hv2 : CliPqBinaryV2OomF3Placed mpl mmpl elf)
     (W : CliHooks)
+    (hF : W.C.F = sha256Compress)
+    (hE : W.C.E = CryptoGames.AES256.aes256Enc)
+    (hD : W.C.D = CryptoGames.AES256.aes256Dec)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec)
+    (hDec : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     {st : PqParty} {files : List (String × HwBytes)}
     {t : List.Vector (BitVec 8) initiateTapeLen} {i : Inputs}
     (heq : InputsEquiv i (pqInitInputsF ⟨W.C, W.Q⟩ st files t))
@@ -161,16 +193,26 @@ theorem outcomeUpTo_pqInitReject_or_none_of_f3_inputsEquiv
     (hs : st.session = none) (hb : BundleFilesFlat files)
     (hparse : parseBundleFiles (filesOf files) = none) :
     cliRunPlacedSig mpl mmpl elf W i = none ∨
-      OutcomeOrExcusedAbort (CliReachesOOMPlaced mpl mmpl elf W)
+      OutcomeOrExcusedAbort exc
         (cliRunPlacedSig mpl mmpl elf W) i
         (· = .exited 1 [] (filesOf (pqInitInputsF ⟨W.C, W.Q⟩ st files t).files)) :=
-  hv2.initReject W st files t i heq hwf hs hb
-    ((parseBundleFiles_eq_parseBundleDir (filesOf files)).symm.trans hparse)
+  or_none_outcomeUpTo_any_exc
+    (hv2.initReject W hF hE hD hX hPub hF512 hEnc hDec hK st files t i heq hwf hs hb
+      ((parseBundleFiles_eq_parseBundleDir (filesOf files)).symm.trans hparse))
 
 theorem outcomeUpTo_pqInitOverCap_or_none_of_f3_inputsEquiv
-    {mpl mmpl : MultiPlacement} {elf : ElfImage}
+    {mpl mmpl : MultiPlacement} {elf : ElfImage} {exc : Inputs → Prop}
     (hv2 : CliPqBinaryV2OomF3Placed mpl mmpl elf)
     (W : CliHooks)
+    (hF : W.C.F = sha256Compress)
+    (hE : W.C.E = CryptoGames.AES256.aes256Enc)
+    (hD : W.C.D = CryptoGames.AES256.aes256Dec)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec)
+    (hDec : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
     {st : PqParty} {files : List (String × HwBytes)}
     {t : List.Vector (BitVec 8) initiateTapeLen} {i : Inputs}
     (heq : InputsEquiv i (pqInitInputsF ⟨W.C, W.Q⟩ st files t))
@@ -178,9 +220,10 @@ theorem outcomeUpTo_pqInitOverCap_or_none_of_f3_inputsEquiv
     (hs : st.session = none) (hb : BundleFilesFlat files)
     (hover : ¬ BundleReadWithinCapB2 (filesOf files) bundleDir) :
     cliRunPlacedSig mpl mmpl elf W i = none ∨
-      OutcomeOrExcusedAbort (CliReachesOOMPlaced mpl mmpl elf W)
+      OutcomeOrExcusedAbort exc
         (cliRunPlacedSig mpl mmpl elf W) i
         (· = .exited 1 [] (filesOf (pqInitInputsF ⟨W.C, W.Q⟩ st files t).files)) :=
-  hv2.initOverFileCap W st files t i heq hwf hs hb hover
+  or_none_outcomeUpTo_any_exc
+    (hv2.initOverFileCap W hF hE hD hX hPub hF512 hEnc hDec hK st files t i heq hwf hs hb hover)
 
 end Symbolic.Proofs.Refinement.Composed.Cli.BundleInitElfF3Placed

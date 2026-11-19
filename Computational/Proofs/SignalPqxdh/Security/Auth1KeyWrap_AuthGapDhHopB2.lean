@@ -9,21 +9,22 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHop
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopA
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_ReductionsAuthHandshake
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopA
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthGapDhHopB1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_ReductionsAuthHandshake -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # One-Key KEM Shared-Ciphertext Collision Bound for `Auth`
@@ -33,7 +34,7 @@ Adapts the `PrimBaseSpec` simulation equivalences and `KemShCr` reduction bound
 oracle `pqxdhAuthImpl1KeyG`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -116,7 +117,7 @@ theorem simulateQ_pqxdhAuthShCrPrimImpl1Key (embedTarget : Bool) (S : Setup) (P 
     exact simulateQ_liftShCrBasePrim P _ _ hst
       (simulateQ_pqxdhAuthSimImplPrim1Key S P (.registerKey sk) hst.base hPrin hSpk hOpk hV.2.2.2)
 
-noncomputable def _root_.SignalPqxdh.Security.PausedShCrAuthData.toPaused1Key
+@[expose] def _root_.SignalPqxdh.Security.PausedShCrAuthData.toPaused1Key
     {S : Setup} (P : Primitives)
     (d : PausedShCrAuthData S) : PausedShCrKem S (AuthState S) where
   bundle := d.bundle
@@ -127,7 +128,7 @@ noncomputable def _root_.SignalPqxdh.Security.PausedShCrAuthData.toPaused1Key
         (StateT (AuthShCrState S) ProbComp) + pqxdhAuthShCrSimImpl1Key true S P)
         (d.cont y.1)).run y.2
 
-noncomputable abbrev PausedShCrAuthData.toPaused1Key {S : Setup} (P : Primitives)
+abbrev PausedShCrAuthData.toPaused1Key {S : Setup} (P : Primitives)
     (d : PausedShCrAuthData S) : PausedShCrKem S (AuthState S) :=
   _root_.SignalPqxdh.Security.PausedShCrAuthData.toPaused1Key P d
 

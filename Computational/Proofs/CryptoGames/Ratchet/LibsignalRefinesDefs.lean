@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow
+public import Computational.Proofs.CryptoGames.SM.Theorem1Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
 public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 
@@ -24,7 +24,7 @@ Defines `Refine.LibSim`, the advantage bound of the session-model refinement for
 reduction `Refine.sim`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -41,7 +41,7 @@ variable {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] [Inha
 by the H1 advantage of `sim A` against `lFig8`, the Fig. 8 authenticity sum and forged epoch-start
 term (DEV-LS12), the evicted-epoch term `spuriousStepTerm` (DEV-LS11), the signed-pre-key chain
 term `epoch0Term` (DEV-LS26), and the ratchet-key collision term `εcoll` (DEV-LS18). -/
-def LibSim (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def LibSim (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
     (qep q : ℕ) (εcoll : ℝ≥0∞) : Prop :=
   ∀ A : LibAdv PQ PQC ℓ, SM.MakesAtMostQueries A q →

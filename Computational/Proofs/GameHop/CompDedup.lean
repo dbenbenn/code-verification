@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.SM.LibsignalGame
-public import Computational.Proofs.CryptoGames.SM.GameProofDefs
-public import Computational.Proofs.GameHop.StateSim
+import Computational.Proofs.CryptoGames.SM.GameProofDefs
+import Computational.Proofs.GameHop.StateSim
 public import Mathlib.Data.List.Dedup
 
 /-!
@@ -24,7 +24,7 @@ budget.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.CompDedup
 
@@ -36,7 +36,7 @@ open Computational.Proofs.GameHop.StateSim (isQueryBoundP_false map_run_simulate
 section DedupPrepend
 
 /-- Right-to-left prepend of `xs` onto `acc`, skipping entries already in the accumulator. -/
-def dedupPrepend {α : Type} [BEq α] (xs acc : List α) : List α :=
+@[expose] def dedupPrepend {α : Type} [BEq α] (xs acc : List α) : List α :=
   xs.foldr (fun x a => if a.contains x then a else x :: a) acc
 
 theorem dedupPrepend_cons {α : Type} [BEq α] (x : α) (xs acc : List α) :
@@ -45,7 +45,7 @@ theorem dedupPrepend_cons {α : Type} [BEq α] (x : α) (xs acc : List α) :
       else x :: dedupPrepend xs acc := rfl
 
 /-- Multiplicity dominance `∀ y, l.count y ≤ U.count y`. -/
-def CountLe {α : Type} [BEq α] (l U : List α) : Prop :=
+@[expose] def CountLe {α : Type} [BEq α] (l U : List α) : Prop :=
   ∀ y : α, l.count y ≤ U.count y
 
 section DecidableEq
@@ -298,7 +298,7 @@ end DedupPrepend
 section GameStateDedup
 
 /-- `SM.GameState.afterCorr` with `comp` deduplicated on insertion via `dedupPrepend`. -/
-def afterCorrDedup {St Msg C : Type} (s : GameState St Msg C) (P : Party) :
+@[expose] def afterCorrDedup {St Msg C : Type} (s : GameState St Msg C) (P : Party) :
     GameState St Msg C :=
   let s₁ : GameState St Msg C :=
     { s with
@@ -309,7 +309,7 @@ def afterCorrDedup {St Msg C : Type} (s : GameState St Msg C) (P : Party) :
   { s₁.leak (max (s.epoch .A) (s.epoch .B)) with corrs := (P, s.epoch P) :: s.corrs }
 
 /-- Canonical `GameState` projection deduplicating `comp`. -/
-def canonComp {St Msg C : Type} (s : GameState St Msg C) : GameState St Msg C :=
+@[expose] def canonComp {St Msg C : Type} (s : GameState St Msg C) : GameState St Msg C :=
   { s with comp := s.comp.dedup }
 
 theorem canonComp_idem {St Msg C : Type} (s : GameState St Msg C) :
@@ -459,7 +459,7 @@ theorem run'_simulateQ_eq_of_idem_proj {ι κ : Type} {G : OracleSpec.{0, 0} κ}
   simpa [StateT.run'_eq, Functor.map_map, Function.comp_def] using hmap
 
 /-- `SM.corrR` using `afterCorrDedup` instead of `GameState.afterCorr`. -/
-def corrRDedup {St Msg C : Type} (cfg : ConfigR St Msg C) :
+@[expose] def corrRDedup {St Msg C : Type} (cfg : ConfigR St Msg C) :
     QueryImpl (Party →ₒ Option St) (StateT (GameState St Msg C) ProbComp) := fun P => do
   let s ← get
   if s.win || !(s.corrAllowed P) || (cfg.r1 && CryptoGames.SM.inWindow s P) || !(cfg.corrOK s P) then
@@ -471,7 +471,7 @@ def corrRDedup {St Msg C : Type} (cfg : ConfigR St Msg C) :
 
 /-- Invariant that every recorded or compromised position is lexicographically bounded by its
 sender's current `(epoch, idx)`. -/
-def PosFreshInv {St Msg C : Type} (s : GameState St Msg C) : Prop :=
+@[expose] def PosFreshInv {St Msg C : Type} (s : GameState St Msg C) : Prop :=
   (∀ r ∈ s.trans,
     r.pos.epoch < s.epoch r.pos.sender ∨
       (r.pos.epoch = s.epoch r.pos.sender ∧ r.pos.idx ≤ s.idx r.pos.sender)) ∧

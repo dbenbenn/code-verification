@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Panic-Aware Error Helpers for `spqr::decode_state`
@@ -25,7 +26,7 @@ Defines the budget-threaded `decodeStatePost` and `decodeStatePanicPost` postcon
 with panic-aware `SepWPp.call_decodeErrorPush` and `SepWPp.call_decodeErrorFrom` wrappers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,23 +47,6 @@ open LibsignalBinary.Heap.SpecBudget
   (DecodeErrorFromEnv DecodeErrorPushEnv decodeErrorFromBudgetSpec decodeErrorPushBudgetSpec)
 open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
   (decodeStateSpecX decodeStateSpecXOfEnv)
-
-abbrev decodeStatePostOfEnv {M : AllocCostModel} (H_inner : V1InnerHeapPred) (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (PreEnv PostEnv : DecodeStateGhost → List AllocEvent → Prop)
-    (x : DecodeStateGhost × M.σ) (s0 : State) (R : SepProp) : State → SepProp → Prop :=
-  fun sf P_f =>
-    ((sf.mem ⊨ P_f ∗ R) →
-      (sf.mem ⊨ (decodeStateSpecXOfEnv H_inner b A lim PreEnv PostEnv).post x s0 sf ∗ R)) ∧
-      sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
-
-abbrev decodeStatePanicPostOfEnv {M : AllocCostModel} (H_inner : V1InnerHeapPred) (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (PreEnv PostEnv : DecodeStateGhost → List AllocEvent → Prop)
-    (x : DecodeStateGhost × M.σ) (s0 : State) (R : SepProp) : State → SepProp → Prop :=
-  fun sf P_f =>
-    (sf.mem ⊨ P_f ∗ R) →
-      (sf.mem ⊨ (decodeStateSpecXOfEnv H_inner b A lim PreEnv PostEnv).onPanic x s0 sf ∗ R)
 
 abbrev decodeStatePost {M : AllocCostModel} (H_inner : V1InnerHeapPred) (b : BitVec 64)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)

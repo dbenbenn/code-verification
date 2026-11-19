@@ -19,7 +19,7 @@ Re-exports whole-protocol post-compromise security (`Security.PostCompromiseSecu
 `Symbolic.Theorems.Composed.ComposedPCS`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

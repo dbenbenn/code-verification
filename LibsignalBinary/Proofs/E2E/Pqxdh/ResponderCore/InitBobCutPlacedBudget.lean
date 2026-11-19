@@ -12,13 +12,14 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.MallocngBridgeBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `initialize_bob_session` (Block `75`): Rejecting Run and Cut
@@ -29,7 +30,7 @@ and `spqr::initial_state` (`lsmpl.base 327`) cuts of `initialize_bob_session` (B
 `Pqxdh::accept` (`lsmpl.base 79`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -72,6 +73,8 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (
   acceptSuccessEvents
   pqxdhAcceptOptFieldsInnerPlacedSpec
   pqxdhAcceptOptFieldsPlacedSpec
+  pqxdhAcceptPlacedStack
+  stackAt_pqxdhAcceptPlaced_split
 )
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobPlacedBudget (
   initializeBobSessionInnerPlacedSpec
@@ -105,7 +108,7 @@ private theorem calleeSavedVRegs_writeVReg128_0_cut_budget (s : State) (v : BitV
 
 /-- Deterministic allocator event envelope for the accepting (`acceptKeys P inp = some _`) path of
 `Pqxdh::accept` (Block `79`), matching `AcceptBudget.acceptSuccessEvents`. -/
-def AcceptSuccessEnv (inp : AcceptKeysInput) (evs : List AllocEvent) : Prop :=
+@[expose] def AcceptSuccessEnv (inp : AcceptKeysInput) (evs : List AllocEvent) : Prop :=
   evs = acceptSuccessEvents inp
 
 @[simp]
@@ -141,11 +144,46 @@ example (inp : AcceptKeysInput) :
       AllocCostModel.step, coarseCostModel, coarseStep, coarseStepReserve]
     decide
 
+/-! ## Placed Stack Split / Merge Helpers -/
+
+private theorem stackAt_initBob_acceptPlaced_entry (sp : BitVec 64) :
+    stackAt sp (768 + pqxdhAcceptPlacedStack) =
+      stackAt (sp - 768#64) pqxdhAcceptPlacedStack ∗
+      memRegion (sp - 768#64) 280 ∗
+      memRegion (sp - 488#64) 104 ∗
+      memRegion (sp - 384#64) 288 ∗
+      cells (sp - 96#64) 12 := by
+  have htop :
+      stackAt sp (768 + pqxdhAcceptPlacedStack) =
+        memRegion (sp - 42752#64) 25600 ∗ stackAt sp (768 + pqxdhEntryStack) := by
+    simp only [stackAt, pqxdhAcceptPlacedStack, pqxdhEntryStack]
+    have hb1 : sp - BitVec.ofNat 64 (768 + (16384 + 25600)) = sp - 42752#64 := rfl
+    have hb2 : sp - BitVec.ofNat 64 (768 + 16384) = sp - 17152#64 := rfl
+    rw [hb1, hb2]
+    exact ProofLib.memRegion_split' (b := sp - 42752#64) (n := 25600) (k := 17152)
+      (b' := sp - 17152#64) rfl (by bv_omega) (by decide)
+  have hsub :
+      memRegion (sp - 42752#64) 25600 ∗ stackAt (sp - 768#64) pqxdhEntryStack =
+        stackAt (sp - 768#64) pqxdhAcceptPlacedStack := by
+    have hs := stackAt_pqxdhAcceptPlaced_split (sp - 768#64)
+    have hb : sp - 768#64 - 41984#64 = sp - 42752#64 := by bv_omega
+    rw [hb] at hs
+    exact hs.symm
+  rw [htop, stackAt_initBob_entry sp, ← sepConj_assoc (memRegion (sp - 42752#64) 25600), hsub]
+
+private theorem stackAt_pqxdhAcceptPlaced_merge_sub768 (sp : BitVec 64) :
+    memRegion (sp - 42752#64) 25600 ∗ stackAt (sp - 768#64) pqxdhEntryStack =
+      stackAt (sp - 768#64) pqxdhAcceptPlacedStack := by
+  have hs := stackAt_pqxdhAcceptPlaced_split (sp - 768#64)
+  have hb : sp - 768#64 - 41984#64 = sp - 42752#64 := by bv_omega
+  rw [hb] at hs
+  exact hs.symm
+
 /-! ## Rejecting Run (`acceptKeys P g.inp = none`) -/
 
 /-- Budget-threaded `initializeBobSessionInnerPlacedSpec` restricted to `acceptKeys P g.inp = none`
 (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under `FitsEnv M lim st (AcceptErrEnv g.inp)`). -/
-def initializeBobSessionErrInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) where
@@ -165,17 +203,17 @@ def initializeBobSessionErrInnerPlacedSpec [LibsignalPlacement] {M : AllocCostMo
       g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
     memRegion g.outPtr 344 ∗
     (lsLogFilterAddr ↦₆₄ 0#64) ∗
-    stackAt s.sp (768 + pqxdhEntryStack) ∗
+    stackAt s.sp (768 + pqxdhAcceptPlacedStack) ∗
     A.pool lim st s
   post := (initializeBobSessionInnerPlacedSpec P A lim AcceptErrEnv).post
 
-def initializeBobSessionErrPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (initializeBobSessionErrInnerPlacedSpec P A lim AcceptErrEnv)
 
-def initializeBobSessionErrFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=
@@ -259,7 +297,7 @@ theorem initializeBobSession_err_memInv_placed_ok_of_accept [LibsignalPlacement]
   dsimp only at *
   have hΦ0 : Φ s0.mem := by assumption
   subst argPtr ratchetKeyPairPtr outPtr
-  rw (occs := .pos [1]) [stackAt_initBob_entry s0.sp]
+  rw (occs := .pos [1]) [stackAt_initBob_acceptPlaced_entry s0.sp]
   simp (config := { maxSteps := 1000000 }) only [
     cells, sepConj_emp, sepExists_sepConj_left, sepExists_sepConj_right,
     bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]
@@ -310,7 +348,7 @@ theorem initializeBobSession_err_memInv_placed_ok_of_accept [LibsignalPlacement]
   refine SepWP.fold (Entails.of_eq (memRegion_280_none_split s0.sp).symm) (by sep_focus) ?_
   refine SepWP.fold (sub488_none_104_merge s0.sp w1 _ _ _ _ _) (by sep_focus) ?_
   refine SepWP.fold (cells12_sub96_merge s0.sp _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-  refine SepWP.fold (Entails.of_eq (stackAt_initBob_entry s0.sp).symm) (by sep_focus) ?_
+  refine SepWP.fold (Entails.of_eq (stackAt_initBob_acceptPlaced_entry s0.sp).symm) (by sep_focus) ?_
   apply sepWP_instantiate_post_exists_outer evs
   simp only [sepConj_assoc, *]
   wp_done
@@ -379,7 +417,7 @@ theorem initBob_to_spqr_full_memInv_placed_of_accept [LibsignalPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (fun sf P_f =>
         (∃ evs : List AllocEvent, AcceptEnv inp evs ∧
           (P_f ⊢
@@ -391,7 +429,7 @@ theorem initBob_to_spqr_full_memInv_placed_of_accept [LibsignalPlacement]
             ((argPtr + 297#64) ↦₈ 0#8) ∗
             memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗
             (lsLogFilterAddr ↦₆₄ 0#64) ∗
-            stackAt (s0.sp - 768#64) pqxdhEntryStack ∗
+            stackAt (s0.sp - 768#64) pqxdhAcceptPlacedStack ∗
             A.pool lim (M.stepEvents evs st) sf ∗ Frame)) ∧
         Φ sf.mem ∧
         sf.status = ExecStatus.Running ∧ sf.sp = s0.sp - 768#64 ∧
@@ -408,7 +446,7 @@ theorem initBob_to_spqr_full_memInv_placed_of_accept [LibsignalPlacement]
   simp only [State.spAligned] at hsp_align
   unfold bobParamsFieldsAt
   subst h_3 h_4 h_5
-  rw (occs := .pos [1]) [stackAt_initBob_entry s0.sp]
+  rw (occs := .pos [1]) [stackAt_initBob_acceptPlaced_entry s0.sp]
   simp (config := { maxSteps := 1000000 }) only [
     cells, sepConj_emp, sepExists_sepConj_left, sepExists_sepConj_right,
     bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]
@@ -453,6 +491,7 @@ theorem initBob_to_spqr_full_memInv_placed_of_accept [LibsignalPlacement]
   have h104_unpack := handshakeKeysResultOk104_unpack (s0.sp - 488#64) drKey
     hrk_cells hpq_cells hck_cells hlen_rk hlen_pq hlen_ck
   rw [h104_unpack, memRegion_280_some_split s0.sp,
+      stackAt_pqxdhAcceptPlaced_split (s0.sp - 768#64),
       stackAt_entry_some_split (s0.sp - 768#64)]
   simp (config := { maxSteps := 1000000 }) only [
     cells, sepConj_emp, sepExists_sepConj_left, sepExists_sepConj_right,
@@ -501,6 +540,7 @@ theorem initBob_to_spqr_full_memInv_placed_of_accept [LibsignalPlacement]
     exact h)) (by sep_focus) ?_
   refine SepWP.fold (Entails.of_eq (memRegion_160_sub5024 s0.sp)) (by sep_focus) ?_
   refine SepWP.fold (Entails.of_eq (stackAt_entry_some_merge s0.sp)) (by sep_focus) ?_
+  refine SepWP.fold (Entails.of_eq (stackAt_pqxdhAcceptPlaced_merge_sub768 s0.sp)) (by sep_focus) ?_
   refine SepWP.done (by wp_norm_goal) (by wp_norm_lhs) fun _m_real _hnsp => ?_
   refine ProofLib.SepWP.transport_budgetPool
     (_hnsp.toVmPreserved (by wp_norm_lhs))
@@ -516,7 +556,6 @@ theorem initBob_to_spqr_full_memInv_placed_of_accept [LibsignalPlacement]
     by simp only [arm64_norm, *]⟩
   exact Entails.of_eq (by
     dsimp only [bobSpqrCutCells, bobFrameAtSpqr, initBobSavedRegs]
-    rw [stackAt_entry_some_split (s0.sp - 768#64)]
     sep_ac_rfl)
 
 theorem initBob_to_spqr_full_placed_of_accept [LibsignalPlacement]
@@ -546,7 +585,7 @@ theorem initBob_to_spqr_full_placed_of_accept [LibsignalPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (fun sf P_f =>
         (∃ evs : List AllocEvent, AcceptEnv inp evs ∧
           (P_f ⊢
@@ -558,7 +597,7 @@ theorem initBob_to_spqr_full_placed_of_accept [LibsignalPlacement]
             ((argPtr + 297#64) ↦₈ 0#8) ∗
             memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗
             (lsLogFilterAddr ↦₆₄ 0#64) ∗
-            stackAt (s0.sp - 768#64) pqxdhEntryStack ∗
+            stackAt (s0.sp - 768#64) pqxdhAcceptPlacedStack ∗
             A.pool lim (M.stepEvents evs st) sf ∗ Frame)) ∧
         LibsignalCodeRoLoaded lsmpl sf.mem ∧
         sf.status = ExecStatus.Running ∧ sf.sp = s0.sp - 768#64 ∧
@@ -604,7 +643,7 @@ theorem initBob_to_spqr_full_frozen_placed_of_accept [LibsignalPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk 0#8 ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (fun sf P_f =>
         (∃ evs : List AllocEvent, AcceptEnv inp evs ∧
           (P_f ⊢
@@ -616,7 +655,7 @@ theorem initBob_to_spqr_full_frozen_placed_of_accept [LibsignalPlacement]
             ((argPtr + 297#64) ↦₈ 0#8) ∗
             memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗
             (lsLogFilterAddr ↦₆₄ 0#64) ∗
-            stackAt (s0.sp - 768#64) pqxdhEntryStack ∗
+            stackAt (s0.sp - 768#64) pqxdhAcceptPlacedStack ∗
             A.pool lim (M.stepEvents evs st) sf ∗ Frame)) ∧
         LibsignalFrozen lsmpl sf.mem ∧
         sf.status = ExecStatus.Running ∧ sf.sp = s0.sp - 768#64 ∧
@@ -667,7 +706,7 @@ theorem initializeBobSession_cut_memInv_placed_of_accept [LibsignalPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk sameAccountByte ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (BobCutPost (blkPl_75).base s0 ratchetKeyPairPtr
         drKey.rootKey drKey.pqrKey drKey.chainKey spkBPk inp.spkBSk Frame)
       Qp := by
@@ -688,7 +727,7 @@ theorem initializeBobSession_cut_memInv_placed_of_accept [LibsignalPlacement]
       ((argPtr + 297#64) ↦₈ 0#8) ∗
       memRegion outPtr 344 ∗ initBobSavedRegs s0.sp s0 ∗
       (lsLogFilterAddr ↦₆₄ 0#64) ∗
-      stackAt (s0.sp - 768#64) pqxdhEntryStack ∗
+      stackAt (s0.sp - 768#64) pqxdhAcceptPlacedStack ∗
       A.pool lim (M.stepEvents evs st) sf)
     (Entails.trans hPf (Entails.of_eq ?_))
   sep_ac_rfl
@@ -721,7 +760,7 @@ theorem initializeBobSession_cut_placed_of_accept [LibsignalPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk sameAccountByte ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (BobCutPost (blkPl_75).base s0 ratchetKeyPairPtr
         drKey.rootKey drKey.pqrKey drKey.chainKey spkBPk inp.spkBSk Frame)
       Qp :=
@@ -759,7 +798,7 @@ theorem initializeBobSession_cut_frozen_placed_of_accept [LibsignalPlacement]
       (bobParamsFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr
         inp ikBPk spkBPk sameAccountByte ∗
        memRegion outPtr 344 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
-       stackAt s0.sp (768 + pqxdhEntryStack) ∗ A.pool lim st s0 ∗ Frame)
+       stackAt s0.sp (768 + pqxdhAcceptPlacedStack) ∗ A.pool lim st s0 ∗ Frame)
       (BobCutPost (blkPl_75).base s0 ratchetKeyPairPtr
         drKey.rootKey drKey.pqrKey drKey.chainKey spkBPk inp.spkBSk Frame)
       Qp :=

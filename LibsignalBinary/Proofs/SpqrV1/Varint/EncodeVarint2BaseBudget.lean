@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2Base
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Base Step Lemmas for `encode_varint::<Vec<u8>> [local#2]`
@@ -28,13 +28,15 @@ Proves `RustCliAllocBudget`-threaded `do_reserve_and_handle [local#2]` wrappers 
 `[LibsignalPlacement]` prologue, epilogue, and stage 1..3, 9 lemmas on `lsProg_148 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
 namespace LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint2BaseBudget
+
+open CryptoVerification.LibsignalTripleRatchet (DoReserveCall doReserveStack doReserveStackX extHookStack reserveCap)
 
 open Arm64 ProofLib SepProp
 open LibsignalBinary.Heap
@@ -47,9 +49,6 @@ open CryptoVerification
 open CryptoVerification.RustHeap
   (RustAlloc allocHookStack vecU8At vecHeader)
 open CryptoVerification.LibsignalProtoCodec (encodeVarint)
-open CryptoVerification.LibsignalTripleRatchet
-  (DoReserveCall reserveCap tripleRatchetProgAtExt tripleRatchetProgAt
-   doReserveStack doReserveStackX extHookStack)
 open CryptoVerification.LibsignalTripleRatchet.Prost
   (EncodeVarintGhost vecU8Buf vecU8At_eq_header_sep_buf vecU8Buf_eq_open_one vecU8Buf_snoc_eq
    cap_beq_len_false cap_eq_ofNat_len bv_len_add_one sepWPp_extract_vecU8Buf_le
@@ -79,20 +78,6 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Placed `do_reserve_and_handle [local#2]` Wrappers -/
-
-def EncodeVarint2FitOkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodeVarint2Name)
-    (encodeVarintFitSpec A lim)
-
-def EncodeVarint2FitOk {M : AllocCostModel} (b : BitVec 64) (C : Crypto)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr encodeVarint2Name)
-    (encodeVarintFitSpec A lim)
 
 abbrev EncodeVarint2FitPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=

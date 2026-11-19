@@ -11,16 +11,25 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DecInterfacePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Tag-7 (`receiver_chains`) Push Segment Helpers
@@ -30,7 +39,7 @@ framing combinators, and Block-`518` basic-block steppers for Segment B (`+0x231
 the tag-7 (`receiver_chains`) decode arm.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -98,7 +107,7 @@ local macro "wp_steps_sync_518 " ext:term:max mid:term : tactic => `(tactic| (
 /-! ## Exact Binary Allocation Envelope (`OverDecRecvSegBEnv`) -/
 
 /-- Exact allocation envelope for Tag-7 (`receiver_chains`) Segment B (`+0x2310 → +0x2160`): `[]` when `recvLen < cap.toNat`, or `growOne104Events (BitVec.ofNat 64 recvLen)` when `recvLen = cap.toNat`. -/
-def OverDecRecvSegBEnv (recvLen : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def OverDecRecvSegBEnv (recvLen : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨ evs = growOne104Events (BitVec.ofNat 64 recvLen)
 
 theorem overDecRecvSegBEnv_nil (recvLen : Nat) :
@@ -123,7 +132,7 @@ theorem fitsEnv_growOne_of_segB {M : AllocCostModel} {lim : BudgetLimits} {st : 
 /-! ## Budget-Threaded Decode Loop Heaps and `atState` Bridges -/
 
 /-- Budget-threaded heap at `+0x2310` immediately after `bl merge<Chain>` over `PrevDec.OverDecG`. -/
-def overDecRecvPostMergeHeapPlBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def overDecRecvPostMergeHeapPlBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) (g : OverDecG) (rest : List (BitVec 8))
     (v : SSGQ) (c : ChainG) : SepProp :=
   overPrevElemRestExt A.repAlloc g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗
@@ -136,7 +145,7 @@ def overDecRecvPostMergeHeapPlBudget {M : AllocCostModel} (A : RustCliAllocBudge
     stackAt g.q overDecStackX ∗ A.pool lim st s
 
 /-- Budget-threaded decode-loop invariant heap over `PrevDec.OverDecG`. -/
-def overDecHeapPlBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def overDecHeapPlBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) (g : OverDecG) (rest : List (BitVec 8))
     (v : SSGQ) : SepProp :=
   overPrevElemRestExt A.repAlloc g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗
@@ -156,7 +165,7 @@ theorem overDecHeapPlBudget_eq_atState {M : AllocCostModel} (A : RustCliAllocBud
 
 /-- Budget-threaded heap at `+0x2310` immediately after `bl merge<Chain>` over
 `VerNe.Chain3.OverDecG`. -/
-def overDecRecvPostMergeHeapBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def overDecRecvPostMergeHeapBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) (g : Chain3OverDecG)
     (rest : List (BitVec 8)) (v : SSGQ) (c : ChainG) : SepProp :=
   chain3OverPrevElemRestExt A.repAlloc g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗
@@ -176,7 +185,7 @@ theorem overDecRecvPostMergeHeapBudget_eq_atState {M : AllocCostModel} (A : Rust
   rfl
 
 /-- Budget-threaded decode-loop invariant heap over `VerNe.Chain3.OverDecG`. -/
-def overDecHeapBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def overDecHeapBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) (g : Chain3OverDecG)
     (rest : List (BitVec 8)) (v : SSGQ) : SepProp :=
   chain3OverPrevElemRestExt A.repAlloc g.prevCap g.prevPtr g.encCap g.encPtr g.enc ∗
@@ -641,7 +650,7 @@ theorem step_234c_to_2114_placed_budget [LibsignalPlacement] {M : AllocCostModel
 
 /-! ## Shared Tail (`+0x2114 → +0x2160`) -/
 
-def recv2114HeapPlacedBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def recv2114HeapPlacedBudget {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State)
     (g : OverDecG) (rest : List (BitVec 8)) (v : SSGQ)
     (cap' ptr' : BitVec 64) (q0 q1 q2 q3 q4 q5 : BitVec 128) (w6 : BitVec 64) (H_c : SepProp) :

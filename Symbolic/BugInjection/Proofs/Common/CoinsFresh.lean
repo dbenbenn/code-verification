@@ -15,14 +15,17 @@ public import Symbolic.BugInjection.Synthetic.Witnesses.EvictedChainSkippedKeyCl
 public import Symbolic.BugInjection.Synthetic.Witnesses.ImplicitRejectMacCli
 public import Symbolic.BugInjection.Synthetic.Witnesses.PromotedPrekeyHeadersCli
 public import Symbolic.BugInjection.Synthetic.Witnesses.ZeroBaseKeyPqxdhCli
-public import Symbolic.Proofs.SpecLemmas.SecurityBinaryFixed
+public import Symbolic.BugInjection.Synthetic.Witnesses.PrekeyStartV3AcceptCli
+public import Symbolic.BugInjection.Synthetic.Witnesses.SkippedKeyReplayCli
+public import Symbolic.BugInjection.Synthetic.Witnesses.Exit1EagerSessionCommitCli
+public import Symbolic.BugInjection.Witnesses.CliShapePlaced
 
 /-!
 # `CoinsFresh` Discharge Lemmas
 
-Reduces `CoinsFresh` under `compFits` to concrete duplicate-freedom of setup DH keys and trace
+Reduces `CoinsFresh` under `SetupMatches` to concrete duplicate-freedom of setup DH keys and trace
 random draws, and discharges `CoinsFresh` for the composed and synthetic CLI bug-injection
-witnesses under `cliCompFits` and `cliCompFitsPinned`.
+witnesses under `CliSetupMatches` and `CliSetupMatchesPinned`.
 -/
 
 @[expose] public section
@@ -31,142 +34,199 @@ set_option autoImplicit false
 
 namespace Symbolic.BugInjection.Proofs.Common.CoinsFresh
 
+open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
 open CryptoProofLib.Refinement (ExternInterpretation)
 open DY.Libsignal.HwEvents (CliEvent)
 open DY.Libsignal.Composed.Refinement (ProtocolSetup secretBytes clamp)
 open DY.Libsignal.Composed.Refinement.Cli (exitedZeroDraws setupDHSecrets CoinsFresh)
-open DY.Libsignal.Composed.Security (SignalSessionSecure)
+open DY.Libsignal.Composed.Security (SignalSessionSecurePlaced)
 open Symbolic.BugInjection
-  (PQXDHSpqrSetup compFits cliCompShape cliCompFits not_signalSessionSecure_of_witness)
-open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (cliCompFitsPinned)
+  (PQXDHSpqrSetup SetupMatches cliCompShape cliCompShapePlaced CliSetupMatches
+   not_signalSessionSecurePlaced_of_witness)
+open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (CliSetupMatchesPinned)
 
 theorem setupDHSecrets_of_compFits {w : PQXDHSpqrSetup} {i : ExternInterpretation}
-    {r : ProtocolSetup} (hf : compFits w i r) :
+    {r : ProtocolSetup} (hf : SetupMatches w i r) (hw : w.withOpk = false := by rfl) :
     setupDHSecrets r = [clamp w.aliceId, clamp w.bobId, clamp w.spk] := by
   rcases hf with ⟨_, hopk, _, _, _, _, h0, h1, h2, _⟩
+  rw [hw] at hopk
   simp [setupDHSecrets, hopk, h0, h1, h2]
 
-/-- Reduces `CoinsFresh r τ` under `compFits w i r` to duplicate-freedom on `(w, τ)`. -/
+/-- Reduces `CoinsFresh r τ` under `SetupMatches w i r` to duplicate-freedom on `(w, τ)`. -/
 theorem coinsFresh_of_compFits {w : PQXDHSpqrSetup} {i : ExternInterpretation}
-    {r : ProtocolSetup} {τ : List CliEvent} (hf : compFits w i r)
+    {r : ProtocolSetup} {τ : List CliEvent} (hf : SetupMatches w i r)
     (hnd : ([clamp w.aliceId, clamp w.bobId, clamp w.spk] ++
-      τ.flatMap fun | .run ev => exitedZeroDraws ev | .env _ => []).Nodup) :
+      τ.flatMap fun | .run ev => exitedZeroDraws ev | .env _ => []).Nodup)
+    (hw : w.withOpk = false := by rfl) :
     CoinsFresh r τ := by
   unfold CoinsFresh
-  rwa [setupDHSecrets_of_compFits hf]
+  rwa [setupDHSecrets_of_compFits hf hw]
+
+theorem setupDHSecrets_of_compFits_withOpk {w : PQXDHSpqrSetup} {i : ExternInterpretation}
+    {r : ProtocolSetup} (hf : SetupMatches w i r) (hw : w.withOpk = true := by rfl) :
+    setupDHSecrets r = [clamp w.aliceId, clamp w.bobId, clamp w.spk, clamp w.opk] := by
+  rcases hf with ⟨_, hopk, _, _, _, _, h0, h1, h2, _⟩
+  rw [hw] at hopk
+  rcases hopk with ⟨hopk_r, _, h6⟩
+  simp [setupDHSecrets, hopk_r, h0, h1, h2, h6]
+
+/-- Reduces `CoinsFresh r τ` under `SetupMatches w i r` (`w.withOpk = true`) to duplicate-freedom
+on `(w, τ)`. -/
+theorem coinsFresh_of_compFits_withOpk {w : PQXDHSpqrSetup} {i : ExternInterpretation}
+    {r : ProtocolSetup} {τ : List CliEvent} (hf : SetupMatches w i r)
+    (hnd : ([clamp w.aliceId, clamp w.bobId, clamp w.spk, clamp w.opk] ++
+      τ.flatMap fun | .run ev => exitedZeroDraws ev | .env _ => []).Nodup)
+    (hw : w.withOpk = true := by rfl) :
+    CoinsFresh r τ := by
+  unfold CoinsFresh
+  rwa [setupDHSecrets_of_compFits_withOpk hf hw]
 
 theorem coinsFresh_unpinned_cheval26SmallSubgroupHighBitCli :
-    ∀ iw r, cliCompFits Witnesses.Cheval26SmallSubgroupHighBitCli.setup iw r →
+    ∀ iw r, CliSetupMatches Witnesses.Cheval26SmallSubgroupHighBitCli.setup iw r →
       CoinsFresh r Witnesses.Cheval26SmallSubgroupHighBitCli.trace :=
   fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
 
 theorem coinsFresh_cheval26SmallSubgroupHighBitCli :
-    ∀ iw r, cliCompFitsPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup iw r →
+    ∀ iw r, CliSetupMatchesPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup iw r →
       CoinsFresh r Witnesses.Cheval26SmallSubgroupHighBitCli.trace :=
   fun iw r hf => coinsFresh_unpinned_cheval26SmallSubgroupHighBitCli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩
 
 theorem coinsFresh_unpinned_cheval26SmallSubgroupTorsionCli :
-    ∀ iw r, cliCompFits Witnesses.Cheval26SmallSubgroupTorsionCli.setup iw r →
+    ∀ iw r, CliSetupMatches Witnesses.Cheval26SmallSubgroupTorsionCli.setup iw r →
       CoinsFresh r Witnesses.Cheval26SmallSubgroupTorsionCli.trace :=
   fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
 
 theorem coinsFresh_cheval26SmallSubgroupTorsionCli :
-    ∀ iw r, cliCompFitsPinned Witnesses.Cheval26SmallSubgroupTorsionCli.setup iw r →
+    ∀ iw r, CliSetupMatchesPinned Witnesses.Cheval26SmallSubgroupTorsionCli.setup iw r →
       CoinsFresh r Witnesses.Cheval26SmallSubgroupTorsionCli.trace :=
   fun iw r hf => coinsFresh_unpinned_cheval26SmallSubgroupTorsionCli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩
 
 theorem coinsFresh_unpinned_cheval26WeakStateIdx1Cli :
-    ∀ iw r, cliCompFits Witnesses.Cheval26WeakStateIdx1Cli.setup iw r →
+    ∀ iw r, CliSetupMatches Witnesses.Cheval26WeakStateIdx1Cli.setup iw r →
       CoinsFresh r Witnesses.Cheval26WeakStateIdx1Cli.trace :=
   fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
 
 theorem coinsFresh_cheval26WeakStateIdx1Cli :
-    ∀ iw r, cliCompFitsPinned Witnesses.Cheval26WeakStateIdx1Cli.setup iw r →
+    ∀ iw r, CliSetupMatchesPinned Witnesses.Cheval26WeakStateIdx1Cli.setup iw r →
       CoinsFresh r Witnesses.Cheval26WeakStateIdx1Cli.trace :=
   fun iw r hf => coinsFresh_unpinned_cheval26WeakStateIdx1Cli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩
 
 theorem coinsFresh_unpinned_cheval26WeakStateCli :
-    ∀ iw r, cliCompFits Witnesses.Cheval26WeakStateCli.setup iw r →
+    ∀ iw r, CliSetupMatches Witnesses.Cheval26WeakStateCli.setup iw r →
       CoinsFresh r Witnesses.Cheval26WeakStateCli.trace :=
   fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
 
 theorem coinsFresh_cheval26WeakStateCli :
-    ∀ iw r, cliCompFitsPinned Witnesses.Cheval26WeakStateCli.setup iw r →
+    ∀ iw r, CliSetupMatchesPinned Witnesses.Cheval26WeakStateCli.setup iw r →
       CoinsFresh r Witnesses.Cheval26WeakStateCli.trace :=
   fun iw r hf => coinsFresh_unpinned_cheval26WeakStateCli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩
 
-/-- Image-free typecheck of `not_signalSessionSecure_of_witness` for
+/-- Image-free typecheck of `not_signalSessionSecurePlaced_of_witness` for
 `Cheval26SmallSubgroupHighBitCli`. -/
 theorem carrier_disproof_typecheck_cheval26SmallSubgroupHighBitCli
-    (bytes : List (BitVec 8))
+    (bytes : List (BitVec 8)) {mpl mmpl : MultiPlacement}
+    (hls : CryptoVerification.SignalSession.libsignalSessionLib.LinkedAt bytes mpl)
+    (hmg : VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl)
     (spec_half_pinned :
       cliCompShape.SpecHalf
-        (cliCompFitsPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
+        (CliSetupMatchesPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
         Witnesses.Cheval26SmallSubgroupHighBitCli.trace)
     (impl_half_bytes :
       ∀ elf : ElfImage, ElfImage.parse bytes = .ok elf →
-        cliCompShape.ImplHalf
-          (cliCompFitsPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
+        (cliCompShapePlaced mpl mmpl).ImplHalf
+          (CliSetupMatchesPinned Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
           elf Witnesses.Cheval26SmallSubgroupHighBitCli.trace) :
-    ¬ SignalSessionSecure bytes :=
-  not_signalSessionSecure_of_witness
+    ¬ SignalSessionSecurePlaced bytes :=
+  not_signalSessionSecurePlaced_of_witness hls hmg
     spec_half_pinned
     impl_half_bytes
     coinsFresh_cheval26SmallSubgroupHighBitCli
 
-/-- Image-free typecheck of `not_signalSessionSecure_of_witness` for
+/-- Image-free typecheck of `not_signalSessionSecurePlaced_of_witness` for
 `Cheval26WeakStateIdx1Cli`. -/
 theorem carrier_disproof_typecheck_cheval26WeakStateIdx1Cli
-    (bytes : List (BitVec 8))
+    (bytes : List (BitVec 8)) {mpl mmpl : MultiPlacement}
+    (hls : CryptoVerification.SignalSession.libsignalSessionLib.LinkedAt bytes mpl)
+    (hmg : VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl)
     (spec_half_pinned :
       cliCompShape.SpecHalf
-        (cliCompFitsPinned Witnesses.Cheval26WeakStateIdx1Cli.setup)
+        (CliSetupMatchesPinned Witnesses.Cheval26WeakStateIdx1Cli.setup)
         Witnesses.Cheval26WeakStateIdx1Cli.trace)
     (impl_half_bytes :
       ∀ elf : ElfImage, ElfImage.parse bytes = .ok elf →
-        cliCompShape.ImplHalf
-          (cliCompFitsPinned Witnesses.Cheval26WeakStateIdx1Cli.setup)
+        (cliCompShapePlaced mpl mmpl).ImplHalf
+          (CliSetupMatchesPinned Witnesses.Cheval26WeakStateIdx1Cli.setup)
           elf Witnesses.Cheval26WeakStateIdx1Cli.trace) :
-    ¬ SignalSessionSecure bytes :=
-  not_signalSessionSecure_of_witness
+    ¬ SignalSessionSecurePlaced bytes :=
+  not_signalSessionSecurePlaced_of_witness hls hmg
     spec_half_pinned
     impl_half_bytes
     coinsFresh_cheval26WeakStateIdx1Cli
 
 theorem coinsFresh_unpinned_evictedChainSkippedKeyCli :
-    ∀ iw r, cliCompFits Synthetic.Witnesses.EvictedChainSkippedKeyCli.setup iw r →
+    ∀ iw r, CliSetupMatches Synthetic.Witnesses.EvictedChainSkippedKeyCli.setup iw r →
       CoinsFresh r Synthetic.Witnesses.EvictedChainSkippedKeyCli.trace :=
   fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
 
 theorem coinsFresh_unpinned_implicitRejectMacCli :
-    ∀ iw r, cliCompFits Synthetic.Witnesses.ImplicitRejectMacCli.setup iw r →
+    ∀ iw r, CliSetupMatches Synthetic.Witnesses.ImplicitRejectMacCli.setup iw r →
       CoinsFresh r Synthetic.Witnesses.ImplicitRejectMacCli.trace :=
   fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
 
 theorem coinsFresh_implicitRejectMacCli :
-    ∀ iw r, cliCompFitsPinned Synthetic.Witnesses.ImplicitRejectMacCli.setup iw r →
+    ∀ iw r, CliSetupMatchesPinned Synthetic.Witnesses.ImplicitRejectMacCli.setup iw r →
       CoinsFresh r Synthetic.Witnesses.ImplicitRejectMacCli.trace :=
   fun iw r hf => coinsFresh_unpinned_implicitRejectMacCli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩
 
 theorem coinsFresh_unpinned_promotedPrekeyHeadersCli :
-    ∀ iw r, cliCompFits Synthetic.Witnesses.PromotedPrekeyHeadersCli.setup iw r →
+    ∀ iw r, CliSetupMatches Synthetic.Witnesses.PromotedPrekeyHeadersCli.setup iw r →
       CoinsFresh r Synthetic.Witnesses.PromotedPrekeyHeadersCli.trace :=
   fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
 
 theorem coinsFresh_promotedPrekeyHeadersCli :
-    ∀ iw r, cliCompFitsPinned Synthetic.Witnesses.PromotedPrekeyHeadersCli.setup iw r →
+    ∀ iw r, CliSetupMatchesPinned Synthetic.Witnesses.PromotedPrekeyHeadersCli.setup iw r →
       CoinsFresh r Synthetic.Witnesses.PromotedPrekeyHeadersCli.trace :=
   fun iw r hf => coinsFresh_unpinned_promotedPrekeyHeadersCli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩
 
 theorem coinsFresh_unpinned_zeroBaseKeyPqxdhCli :
-    ∀ iw r, cliCompFits Synthetic.Witnesses.ZeroBaseKeyPqxdhCli.setup iw r →
+    ∀ iw r, CliSetupMatches Synthetic.Witnesses.ZeroBaseKeyPqxdhCli.setup iw r →
       CoinsFresh r Synthetic.Witnesses.ZeroBaseKeyPqxdhCli.trace :=
   fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
 
 theorem coinsFresh_zeroBaseKeyPqxdhCli :
-    ∀ iw r, cliCompFitsPinned Synthetic.Witnesses.ZeroBaseKeyPqxdhCli.setup iw r →
+    ∀ iw r, CliSetupMatchesPinned Synthetic.Witnesses.ZeroBaseKeyPqxdhCli.setup iw r →
       CoinsFresh r Synthetic.Witnesses.ZeroBaseKeyPqxdhCli.trace :=
   fun iw r hf => coinsFresh_unpinned_zeroBaseKeyPqxdhCli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩
+
+theorem coinsFresh_unpinned_prekeyStartV3AcceptCli :
+    ∀ iw r, CliSetupMatches Synthetic.Witnesses.PrekeyStartV3AcceptCli.setup iw r →
+      CoinsFresh r Synthetic.Witnesses.PrekeyStartV3AcceptCli.trace :=
+  fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
+
+theorem coinsFresh_prekeyStartV3AcceptCli :
+    ∀ iw r, CliSetupMatchesPinned Synthetic.Witnesses.PrekeyStartV3AcceptCli.setup iw r →
+      CoinsFresh r Synthetic.Witnesses.PrekeyStartV3AcceptCli.trace :=
+  fun iw r hf => coinsFresh_unpinned_prekeyStartV3AcceptCli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩
+
+theorem coinsFresh_unpinned_skippedKeyReplayCli :
+    ∀ iw r, CliSetupMatches Synthetic.Witnesses.SkippedKeyReplayCli.setup iw r →
+      CoinsFresh r Synthetic.Witnesses.SkippedKeyReplayCli.trace :=
+  fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
+
+theorem coinsFresh_skippedKeyReplayCli :
+    ∀ iw r, CliSetupMatchesPinned Synthetic.Witnesses.SkippedKeyReplayCli.setup iw r →
+      CoinsFresh r Synthetic.Witnesses.SkippedKeyReplayCli.trace :=
+  fun iw r hf => coinsFresh_unpinned_skippedKeyReplayCli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩
+
+theorem coinsFresh_unpinned_exit1EagerSessionCommitCli :
+    ∀ iw r, CliSetupMatches Synthetic.Witnesses.Exit1EagerSessionCommitCli.setup iw r →
+      CoinsFresh r Synthetic.Witnesses.Exit1EagerSessionCommitCli.trace :=
+  fun _ _ hf => coinsFresh_of_compFits hf.1 (by decide +kernel)
+
+theorem coinsFresh_exit1EagerSessionCommitCli :
+    ∀ iw r, CliSetupMatchesPinned Synthetic.Witnesses.Exit1EagerSessionCommitCli.setup iw r →
+      CoinsFresh r Synthetic.Witnesses.Exit1EagerSessionCommitCli.trace :=
+  fun iw r hf => coinsFresh_unpinned_exit1EagerSessionCommitCli iw r ⟨hf.1.1, hf.2.1, hf.2.2⟩
 
 end Symbolic.BugInjection.Proofs.Common.CoinsFresh

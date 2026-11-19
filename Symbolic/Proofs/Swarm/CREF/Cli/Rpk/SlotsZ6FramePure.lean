@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
-public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Manipulation
 import DY.ALaCarte.Basic
@@ -32,7 +32,7 @@ Defines `SkippedKeySrcLt` and `NoNewSkSnoc`, and proves preservation of
 events and across existing-chain `decTailTr` decrypt tails.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -62,7 +62,7 @@ theorem le_runMoves_fst (ms : List Move) (tr : ExecTrace) :
   RecvHistStep2.le_runMoves_fst ms tr
 
 /-- Every logged `TREvent.SkippedKeyStored` event on `tr` has `src < tr.length`. -/
-def SkippedKeySrcLt (tr : ExecTrace) : Prop :=
+@[expose] def SkippedKeySrcLt (tr : ExecTrace) : Prop :=
   ∀ (s : SessionInfo) (pk : DY.Bytes) (n : UInt32) (seed : DY.Bytes) (rIdx src i : Nat),
     tr.EventLoggedAt (TREvent.SkippedKeyStored s pk n seed rIdx src) i → src < tr.length
 
@@ -99,7 +99,7 @@ theorem skippedInstallByteFresh_of_le_of_noNewSk
   exact h1 s pk n seed rIdx src i p₀ st₀ c₀ hlog1 hst1 hrc c hc
 
 /-- Appending `m` logs no new `TREvent.SkippedKeyStored` event on `runTraceMoves r₀ (ms ++ [m])`. -/
-def NoNewSkSnoc (r₀ : ProtocolSetup) (ms : List Move) (m : Move) : Prop :=
+@[expose] def NoNewSkSnoc (r₀ : ProtocolSetup) (ms : List Move) (m : Move) : Prop :=
   ∀ s pk n seed rIdx src i,
     (runTraceMoves r₀ (ms ++ [m])).EventLoggedAt (TREvent.SkippedKeyStored s pk n seed rIdx src) i →
     (runTraceMoves r₀ ms).EventLoggedAt (TREvent.SkippedKeyStored s pk n seed rIdx src) i

@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TightPTrapPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.CorePlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TightPTrapPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.CorePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433 -- proof-setup: allow-public-import
+public import ProofLib.BV
+public import ProofLib.StdStartup.MuslStage1Init
 
 /-!
 # Relocatable Checkpoint States and Seams for `try_decrypt_with_state::<Coins>`
@@ -21,7 +25,7 @@ Defines relocatable `[LibsignalPlacement]` checkpoint states, whole-function spe
 segment seams for `try_decrypt_with_state::<Coins>` (block `433`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,7 +48,7 @@ theorem blk433_base_eq [LibsignalPlacement] : (blkPl_434).base = lsmpl.base 434 
 
 /-- Relocatable `[LibsignalPlacement]` CLI common heap invariant across Block `433` checkpoints,
 using `cliTapeAfter ctl x.cur x.rest draws` and `FromRecordCallees.lsLogOff`. -/
-def cliTryDecryptCommonHeapPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def cliTryDecryptCommonHeapPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : TryDecryptGhost) (draws : Nat) (s0 : State) : SepProp :=
   protocolAddressAt A x.rem x.remA ∗
   protocolAddressAt A x.loc x.locA ∗
@@ -55,7 +59,7 @@ def cliTryDecryptCommonHeapPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : Bi
   tryDecryptSavedRegs s0.sp s0 ∗
   A.pool
 
-def ErrTailStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def ErrTailStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc) (ctl : BitVec 64)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (e : SignalProtocolError) (draws : Nat)
     (R : SepProp) (s0 s : State) : Prop :=
@@ -75,7 +79,7 @@ def ErrTailStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc) 
     memRegion (sp + 0x190#64) 0x3f0 ∗
     cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R)
 
-def LoadRatchetStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
+@[expose] def LoadRatchetStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     (ctl : BitVec 64) (x : TryDecryptGhost) (R : SepProp) (s0 s : State) : Prop :=
   let sp := s0.sp - 1504#64
   s.pc = segLoadRatchetPC_at entry ∧
@@ -96,7 +100,7 @@ def LoadRatchetStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAll
     memRegion (sp + 0x38#64) 0x548 ∗
     cliTryDecryptCommonHeapPlaced A ctl x 0 s0 ∗ R)
 
-def FindChainStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
+@[expose] def FindChainStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
     (R : SepProp) (s0 s : State) : Prop :=
@@ -127,7 +131,7 @@ def FindChainStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc
     memRegion (sp + 0x140#64) 0x440 ∗
     cliTryDecryptCommonHeapPlaced A ctl x 0 s0 ∗ R)
 
-def DhStepStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
+@[expose] def DhStepStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
     (R : SepProp) (s0 s : State) : Prop :=
@@ -156,7 +160,7 @@ def DhStepStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     memRegion (sp + 0x140#64) 0x440 ∗
     cliTryDecryptCommonHeapPlaced A ctl x 0 s0 ∗ R)
 
-def ConsumeMsgKeyStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
+@[expose] def ConsumeMsgKeyStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
     (ck : ChainKey) (draws : Nat) (R : SepProp) (s0 s : State) : Prop :=
@@ -186,7 +190,7 @@ def ConsumeMsgKeyStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustA
     memRegion (sp + 0x2d4#64) 0x2ac ∗
     cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R)
 
-def PqRecvStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
+@[expose] def PqRecvStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
     (mkg : MessageKeyGenerator) (draws : Nat) (R : SepProp) (s0 s : State) : Prop :=
@@ -223,7 +227,7 @@ def PqRecvStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
       memRegion (sp + 0x45c#64) 0x124 ∗
       cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R)
 
-def DeriveKeysStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
+@[expose] def DeriveKeysStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
     (mkg : MessageKeyGenerator) (newPqrState : List (BitVec 8)) (pqrKey : Salt) (draws : Nat)
@@ -267,7 +271,7 @@ def DeriveKeysStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAllo
       memRegion (sp + 0x530#64) 0x50 ∗
       cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R)
 
-def VerifyMacStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
+@[expose] def VerifyMacStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
     (mks : MessageKeys) (newPqrState : List (BitVec 8)) (draws : Nat)
@@ -306,7 +310,7 @@ def VerifyMacStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc
       memRegion (sp + 0x554#64) 0x2c ∗
       cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R)
 
-def AesDecryptStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
+@[expose] def AesDecryptStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
     (mks : MessageKeys) (newPqrState : List (BitVec 8)) (draws : Nat)
@@ -345,7 +349,7 @@ def AesDecryptStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAllo
       memRegion (sp + 0x554#64) 0x2c ∗
       cliTryDecryptCommonHeapPlaced A ctl x draws s0 ∗ R)
 
-def ApplyRatchetStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
+@[expose] def ApplyRatchetStatePlaced [LibsignalPlacement] (entry : BitVec 64) (A : RustAlloc)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
     (newPqrState pt : List (BitVec 8)) (draws : Nat)
@@ -385,26 +389,26 @@ abbrev tryDecryptRawSpecTPTightAt [LibsignalPlacement] (C : Crypto) (A : RustAll
   CryptoVerification.Cli.LibsignalTripleRatchet.DecryptPq.tryDecryptPlacedSpecQF_PTight
     (·.length < 2 ^ 32) SpqrV1.GF.Mul2U16.tokenInitPlacedAt C A ctl uuidParse S
 
-def tryDecryptSpecTPTightAt [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def tryDecryptSpecTPTightAt [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   withLsCodeRoLoaded lsmpl (tryDecryptRawSpecTPTightAt C A ctl uuidParse S)
 
-def cliTryDecryptSpecPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def cliTryDecryptSpecPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   withLsCodeRoLoaded lsmpl
     (CryptoVerification.Cli.LibsignalTripleRatchet.Record.tryDecryptPlacedSpec C A ctl uuidParse S)
 
-def cliTryDecryptTightSpecPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def cliTryDecryptTightSpecPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   withLsCodeRoLoaded lsmpl
     (CryptoVerification.LibsignalTripleRatchet.DecryptPq.tryDecryptPlacedTightSpec C A ctl uuidParse S)
 
-def cliTryDecryptSpecPPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def cliTryDecryptSpecPPlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost :=
   withLsCodeRoLoaded lsmpl
     (CryptoVerification.Cli.LibsignalTripleRatchet.tryDecryptPlacedSpecP C A ctl uuidParse S)
 
-def ErrTailTightSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def ErrTailTightSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (e : SignalProtocolError)
@@ -416,7 +420,7 @@ def ErrTailTightSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec
       (decryptDraws C x.st x.msg.senderRatchetKey x.rest) R s0 s →
     reaches_outcome prog (cliTryDecryptTightSpecPlaced C A ctl parse S) x R s0 s
 
-def S0PSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def S0PSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (R : SepProp) (s0 : State),
     s0.pc = entry → s0.status = .Running → s0.spAligned = true →
@@ -424,7 +428,7 @@ def S0PSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     reaches_pc prog (segLoadRatchetPC_at entry) s0
       (LoadRatchetStatePlaced entry A ctl x R s0)
 
-def S1TightSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def S1TightSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (R : SepProp) (s0 s : State),
     LoadRatchetStatePlaced entry A ctl x R s0 s →
@@ -436,7 +440,7 @@ def S1TightSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
       ∃ s', Steps prog s s' ∧
         ∃ trG, FindChainStatePlaced entry A ctl x trG tr st1 R s0 s'
 
-def S2SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def S2SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (A : RustAlloc) (ctl : BitVec 64) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (R : SepProp) (s0 s : State),
@@ -453,7 +457,7 @@ def S2SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
       reaches_pc prog (errTailPC_at entry) s
         (ErrTailStatePlaced entry A ctl x trG tr st1 e 0 R s0)
 
-def S3TightSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def S3TightSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (R : SepProp) (s0 s : State),
@@ -474,7 +478,7 @@ def S3TightSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
           ∃ trG' r1, ErrTailStatePlaced entry A ctl x trG' { tr with ratchet := r1 } st1 e draws R s0 s') ∨
        (s'.status = .Panicked ∧ s'.mem ⊨ tryDecryptOnPanicTight C S parse x s0 s' ∗ R))
 
-def S4SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def S4SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (ck : ChainKey) (draws : Nat)
@@ -496,7 +500,7 @@ def S4SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
            ((e = .panic ∨ allocFailedIn s0 s') ∧ s0.trace <+: s'.trace) ∧
            (s'.mem ⊨ anyHeap ∗ R)))
 
-def S5WTSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def S5WTSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (F0 : SepProp) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (mkg : MessageKeyGenerator) (draws : Nat)
@@ -522,7 +526,7 @@ def S5WTSeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
          (s'.status = .Panicked ∧
            (s'.mem ⊨ (cliTryDecryptSpecPlaced C A ctl parse S).onPanic x s0 s' ∗ R)))
 
-def S6SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def S6SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (mkg : MessageKeyGenerator)
@@ -533,7 +537,7 @@ def S6SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     reaches_pc prog (segVerifyMacPC_at entry) s
       (VerifyMacStatePlaced entry A ctl x trG tr st1 (mkg.generateKeys C.F pqrKey) newPqrState draws R s0)
 
-def S7SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def S7SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (mks : MessageKeys)
@@ -553,7 +557,7 @@ def S7SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
          (s'.status = .Panicked ∧
            (s'.mem ⊨ (cliTryDecryptSpecPlaced C A ctl parse S).onPanic x s0 s' ∗ R)))
 
-def S8SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def S8SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (mks : MessageKeys)
@@ -574,7 +578,7 @@ def S8SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
          (s'.status = .Panicked ∧
            (s'.mem ⊨ (cliTryDecryptSpecPlaced C A ctl parse S).onPanic x s0 s' ∗ R)))
 
-def S9SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
+@[expose] def S9SeamPlaced [LibsignalPlacement] (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) : Prop :=
   ∀ (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (st1 : SessionState (List (BitVec 8))) (newPqrState pt : List (BitVec 8))

@@ -9,12 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.Fetch
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import ProofLib.SepLogic.WPp
 
@@ -28,7 +27,7 @@ for `SessionRecord::archive_current_state_inner` (`0x17f84`), `promote_state` (`
 `try_decrypt_from_record::<PqxdhRng>::{closure#0}` (`0x757c8`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderStore
 
@@ -54,7 +53,7 @@ local macro "cells_unfold_fast" : tactic =>
 abbrev archiveCurrentStateInnerName : String :=
   "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"
 
-def archiveCurrentStateInnerEmptySpec : Spec (BitVec 64) where
+@[expose] def archiveCurrentStateInnerEmptySpec : Spec (BitVec 64) where
   pre := fun recPtr s =>
     ⌜s.readReg64 .x0 = recPtr⌝ ∗
     ((recPtr + 0x18#64) ↦₆₄ 0xffffffffffffffff#64) ∗
@@ -63,35 +62,6 @@ def archiveCurrentStateInnerEmptySpec : Spec (BitVec 64) where
     ⌜sf.trace = s0.trace ∧ sf.readReg64 .x0 = 0#64⌝ ∗
     ((recPtr + 0x18#64) ↦₆₄ 0xffffffffffffffff#64) ∗
     cells (s0.sp - 64#64) 8
-
-theorem archive_current_state_inner_empty_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr archiveCurrentStateInnerName)
-      archiveCurrentStateInnerEmptySpec := by
-  unfold archiveCurrentStateInnerEmptySpec
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff archiveCurrentStateInnerName = 0x17f84 :=
-    libsignalSessionCode_fnOff_0x17f84
-  responder_fetches_from b (Rust.withPanics (trTrapExterns C abs)) hfn 0x17f84 0 412
-  wp_init recPtr s0
-  examples_generalize_entry
-  examples_hide_fetches
-  subst h
-  wp_steps
-  wp_done
-
-theorem archive_current_state_inner_empty_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr archiveCurrentStateInnerName)
-      archiveCurrentStateInnerEmptySpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr archiveCurrentStateInnerName]
-  exact subroutine_ok_kit_of_trTrap archive_current_state_inner_empty_ok_trap
-
-/-! ## `SessionRecord::promote_state` (`0x17490`) -/
 
 abbrev promoteStateName : String :=
   "<libsignal_protocol::state::session::SessionRecord>::promote_state"
@@ -118,7 +88,7 @@ private theorem cells_sub32_4_merge (sp v0 v1 v2 v3 : BitVec 64) :
   exact Entails.sepExists_right v0 (Entails.sepExists_right v1
     (Entails.sepExists_right v2 (Entails.sepExists_right v3 (Entails.refl _))))
 
-def promoteStateEmptySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def promoteStateEmptySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (recPtr, srcPtr, bs) s =>
     ⌜s.readReg64 .x0 = recPtr ∧ s.readReg64 .x1 = srcPtr ∧ bs.length = 344⌝ ∗
     ((recPtr + 0x18#64) ↦₆₄ 0xffffffffffffffff#64) ∗
@@ -133,75 +103,12 @@ def promoteStateEmptySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) whe
     cells (s0.sp - 96#64) 8 ∗
     cells (s0.sp - 32#64) 4
 
-theorem promote_state_empty_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr promoteStateName)
-      promoteStateEmptySpec := by
-  unfold promoteStateEmptySpec
-  have hfn : libsignalSessionCode.fnOff promoteStateName = 0x17490 :=
-    libsignalSessionCode_fnOff_0x17490
-  have harch := archive_current_state_inner_empty_ok_trap (b := b) (C := C)
-    (abs := abs)
-  have hrel : (trTrapProgAt b C abs).fnAddr archiveCurrentStateInnerName =
-      (trTrapProgAt b C abs).fnAddr promoteStateName + 2804#64 := by
-    simp only [trTrapProgAt, Program.fnAddr_rebase, libsignalSessionCode_fnOff_0x17f84,
-      libsignalSessionCode_fnOff_0x17490, BitVec.add_assoc]
-    rfl
-  rw [hrel] at harch
-  clear hrel
-  have hmemcpy := framelessMemcpy_ok_at_trap (b := b) (C := C) (abs := abs)
-    (name := promoteStateName) (k := num% (ls_off% "memcpy" - 0x17490))
-  responder_fetches_from b (Rust.withPanics (trTrapExterns C abs)) hfn 0x17490 0 68
-  wp_init x s0
-  dsimp only [trTrapProgAt] at harch hmemcpy ⊢
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨recPtr, srcPtr, bs⟩ := x
-  dsimp only at *
-  subst h_1 h_2
-  have hc4 : cells (s0.sp - 32#64) 4 =
-      (∃∗ v0 : BitVec 64, ∃∗ v1 : BitVec 64, ∃∗ v2 : BitVec 64, ∃∗ v3 : BitVec 64,
-        ((s0.sp - 32#64) ↦₆₄ v0) ∗ ((s0.sp - 24#64) ↦₆₄ v1) ∗
-        ((s0.sp - 16#64) ↦₆₄ v2) ∗ ((s0.sp - 8#64) ↦₆₄ v3)) := by
-    cells_unfold
-  rw [hc4]
-  simp only [sepExists_sepConj_right]
-  wp_pull_exists
-  wp_steps
-  have hsp_sub : s0.sp - 32#64 - 64#64 = s0.sp - 96#64 := by bv_arith
-  wp_call harch (s0.readReg64 (.gpr 0#5))
-  wp_steps
-  apply SepWP.replace_pre (by sep_focus)
-    (pointsTo64_memRegion_336_entails_344 (s0.readReg64 (.gpr 0#5)) 0xffffffffffffffff#64)
-  apply SepWP.replace_pre (by sep_focus)
-    (cells_sub32_4_merge s0.sp _ _ _ _)
-  rw [← h]
-  wp_call hmemcpy (s0.readReg64 (.gpr 0#5) + 0x18#64, s0.readReg64 (.gpr 1#5), bs)
-  simp only [h] at *
-  wp_done
-
-theorem promote_state_empty_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr promoteStateName)
-      promoteStateEmptySpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr promoteStateName]
-  exact subroutine_ok_kit_of_trTrap promote_state_empty_ok_trap
-
-/-! ## `Map::next` (`0x251b0`) -/
-
 abbrev mapIterNextName : String :=
   "<core::iter::adapters::map::Map<core::slice::iter::Iter<alloc::vec::Vec<u8>>, " ++
   "<libsignal_protocol::state::session::SessionRecord>::" ++
   "previous_session_states::{closure#0}> as core::iter::traits::iterator::Iterator>::next"
 
-private theorem mapIterNextName_fnOff : libsignalSessionCode.fnOff mapIterNextName = 0x25264 :=
-  libsignalSessionCode_fnOff_0x25264
-
-def mapIterNextEmptySpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) where
+@[expose] def mapIterNextEmptySpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) where
   pre := fun (outPtr, iterPtr, slicePtr) s =>
     ⌜s.readReg64 .x0 = outPtr ∧ s.readReg64 .x1 = iterPtr⌝ ∗
     (iterPtr ↦₆₄ slicePtr) ∗ ((iterPtr + 8#64) ↦₆₄ slicePtr) ∗
@@ -213,48 +120,16 @@ def mapIterNextEmptySpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) where
     (outPtr ↦₆₄ 0xfffffffffffffffe#64) ∗
     cells (s0.sp - 64#64) 8
 
-theorem map_iter_next_empty_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr mapIterNextName)
-      mapIterNextEmptySpec := by
-  unfold mapIterNextEmptySpec
-  cells_unfold
-  have hfn : libsignalSessionCode.fnOff mapIterNextName = 0x25264 :=
-    libsignalSessionCode_fnOff_0x25264
-  responder_fetches_from b (Rust.withPanics (trTrapExterns C abs)) hfn 0x25264 0 568
-  wp_init x s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨outPtr, iterPtr, slicePtr⟩ := x
-  dsimp only at *
-  subst h h_1
-  wp_pull_exists
-  wp_steps
-  wp_done
-
-theorem map_iter_next_empty_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr mapIterNextName)
-      mapIterNextEmptySpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr mapIterNextName]
-  exact subroutine_ok_kit_of_trTrap map_iter_next_empty_ok_trap
-
-/-! ## `SessionRecord::promote_matching_session` (`0x17970`) -/
-
 abbrev promoteMatchingSessionName : String :=
   "<libsignal_protocol::state::session::SessionRecord>::promote_matching_session"
 
-def sessionRecordEmptyHeaderAt (recPtr : BitVec 64) : SepProp :=
+@[expose] def sessionRecordEmptyHeaderAt (recPtr : BitVec 64) : SepProp :=
   (recPtr ↦₆₄ 0#64) ∗
   ((recPtr + 8#64) ↦₆₄ 8#64) ∗
   ((recPtr + 16#64) ↦₆₄ 0#64) ∗
   ((recPtr + 24#64) ↦₆₄ 0xffffffffffffffff#64)
 
-def promoteMatchingSessionEmptySpec : Spec (BitVec 64 × BitVec 64) where
+@[expose] def promoteMatchingSessionEmptySpec : Spec (BitVec 64 × BitVec 64) where
   pre := fun (recPtr, outPtr) s =>
     ⌜s.readReg64 .x0 = recPtr ∧ s.readReg64 .x8 = outPtr⌝ ∗
     sessionRecordEmptyHeaderAt recPtr ∗
@@ -274,51 +149,6 @@ def promoteMatchingSessionEmptySpec : Spec (BitVec 64 × BitVec 64) where
     (∃∗ w2e0 : BitVec 64, (s0.sp - 448#64) ↦₆₄ w2e0) ∗
     cells (s0.sp - 96#64) 12
 
-theorem promote_matching_session_empty_ok_trap {b : BitVec 64}
-    {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr promoteMatchingSessionName)
-      promoteMatchingSessionEmptySpec := by
-  unfold promoteMatchingSessionEmptySpec sessionRecordEmptyHeaderAt
-  cells_unfold_fast
-  have hfn : libsignalSessionCode.fnOff promoteMatchingSessionName = 0x17970 :=
-    libsignalSessionCode_fnOff_0x17970
-  have hiter := map_iter_next_empty_ok_trap (b := b) (C := C) (abs := abs)
-  have hrel : (trTrapProgAt b C abs).fnAddr mapIterNextName =
-      (trTrapProgAt b C abs).fnAddr promoteMatchingSessionName + 55540#64 := by
-    simp only [trTrapProgAt, Program.fnAddr_rebase, mapIterNextName_fnOff,
-      libsignalSessionCode_fnOff_0x17970, BitVec.add_assoc]
-    rfl
-  rw [hrel] at hiter
-  clear hrel
-  simp only [mapIterNextEmptySpec, cells, sepExists_sepConj_right,
-    sepConj_emp] at hiter
-  responder_fetches_from b (Rust.withPanics (trTrapExterns C abs)) hfn 0x17970 0 804
-  wp_init x s0
-  dsimp only [trTrapProgAt] at hiter ⊢
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨recPtr, outPtr⟩ := x
-  dsimp only at *
-  subst h h_1
-  wp_pull_exists
-  wp_steps
-  wp_call hiter (s0.sp - 448#64, s0.sp - 1128#64, 8#64)
-  wp_steps
-  wp_done
-
-theorem promote_matching_session_empty_ok {b : BitVec 64}
-    {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr promoteMatchingSessionName)
-      promoteMatchingSessionEmptySpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr promoteMatchingSessionName]
-  exact subroutine_ok_kit_of_trTrap promote_matching_session_empty_ok_trap
-
-/-! ## `drop_glue::<process_prekey_impl::{closure#0}>` (`0x70ab0`) -/
-
 abbrev dropProcessPrekeyImplName : String :=
   "core::ptr::drop_glue::<libsignal_protocol::session::process_prekey_impl::{closure#0}> [local#1]"
 
@@ -337,7 +167,7 @@ private theorem cond_ne_subs_1_4_true :
     ConditionHolds CondCode.NE (subsPState32 1#32 4#32) = true := by
   simp only [ConditionHolds, subsPState32]; decide
 
-def dropProcessPrekeyImplState1Spec : Spec (BitVec 64) where
+@[expose] def dropProcessPrekeyImplState1Spec : Spec (BitVec 64) where
   pre := fun ptr s =>
     ⌜s.readReg64 .x0 = ptr⌝ ∗
     ((ptr + 0x15a#64) ↦₈ 1#8) ∗
@@ -390,32 +220,6 @@ private theorem stackAt_pqxdhClosure (sp : BitVec 64) :
         ((sp - 24#64) ↦₆₄ w9) ∗ ((sp - 16#64) ↦₆₄ w10) ∗ ((sp - 8#64) ↦₆₄ w11)) := by
     cells_unfold
   rw [h1, h2, hc4, hc12, sepConj_assoc]
-
-private theorem pqxdhLogClosure_adrp_addr_eq {base entry : BitVec 64}
-    (hb : base &&& 0xfff#64 = 0#64) (he : entry = base + 481224#64) :
-    (((entry + 36#64) &&& 18446744073709547520#64) + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) - 0x75000)) + bv% ((ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) % 4096) = base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) := by
-  subst he; bv_arith
-
-def pqxdhLogClosureSpec (img : Obj.Image) : Spec Unit where
-  pre := fun _ s =>
-    logOff img ∗ stackAt s.sp pqxdhClosureStack
-  post := fun _ s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      logOff img ∗ stackAt s0.sp pqxdhClosureStack
-
-def PqxdhLogClosureOk_trap (img : Obj.Image) (C : Crypto)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (trTrapProgAt img.base C abs)
-    ((trTrapProgAt img.base C abs).fnAddr pqxdhLogClosureName)
-    ((pqxdhLogClosureSpec img).inImage img)
-
-def PqxdhLogClosureOk (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    ((tripleRatchetProgAt img.base C ctl abs).fnAddr pqxdhLogClosureName)
-    ((pqxdhLogClosureSpec img).inImage img)
-
-/-! ## Relocatable `[LibsignalPlacement]` Contracts -/
 
 open ProofLib.GenPlacedFetches
 

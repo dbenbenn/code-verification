@@ -9,10 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.LayoutPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkGetPoll.Frame -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+public import ProofLib.FsTrace
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.SepLogic.WP.Apply
+public import VerifiedLibraries.Mallocng.Spec
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Relocatable Frame & Call Helpers for `get_kyber_pre_key::{closure#0}`
@@ -21,7 +28,7 @@ Provides relocatable stack-frame partitions and `SepWPp` call helpers for Block 
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,23 +10,26 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.ClientBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
-public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak
-public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.CliRunArmsPeak -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRunPeakHelpers
 public import LibsignalBinary.Proofs.PeakBudget.CliRunPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
 public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2Budget
+import LibsignalBinary.Proofs.PeakBudget.WireMsgPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromPeakSpec
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2Budget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Whole-`main` `< 1 GiB` and `VA ≤ 2 ^ 48` Peak Budget Specification
@@ -42,7 +45,7 @@ Top-level whole-`main` allocator budget specification for the `signal-session` C
    residual-headroom theorems.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -426,7 +429,7 @@ structure CliRunFineSlotSpecs (W : CliRunWrapperEnvs) where
   decPk_lp : decPkLive ≤ decPkPeak
   decPk_grp : PhaseGroupSpec fineCostModel W.decPkEnv decPkGrpS
 
-def CliRunFineSlotSpecs.toWrapperSlotSpecs {W : CliRunWrapperEnvs}
+@[expose] def CliRunFineSlotSpecs.toWrapperSlotSpecs {W : CliRunWrapperEnvs}
     (SW : CliRunFineSlotSpecs W) : CliRunWrapperSlotSpecs fineCostModel W where
   initCum := SW.initCum
   initLive := SW.initLive
@@ -496,36 +499,36 @@ theorem cliRunTight_1MiB_fine_phaseCredit
   rwa [hc, hl, hp, hr] at h
 
 /-- Closed-form whole-`main` `Δcum` at `1 MiB` / `cliMaxDirtyEntries = 4`, `maxDir = 64`, `maxName = 64`. -/
-def cliMainTightCumOf (runCumCap : Nat) : Nat :=
+@[expose] def cliMainTightCumOf (runCumCap : Nat) : Nat :=
   cliMainDeltaCum_tight runCumCap cliMaxDirtyEntries cliMaxDirPathBytes cliMaxAddrTextBytes
 
 /-- Closed-form whole-`main` `Δlive` at `(msgCapBytes, sessionCapBytes)`. -/
-def cliMainTightLiveOf (runLiveCap : Nat) : Nat :=
+@[expose] def cliMainTightLiveOf (runLiveCap : Nat) : Nat :=
   cliMainDeltaLive_tight msgCapBytes sessionCapBytes runLiveCap
 
 /-- Closed-form whole-`main` `Δpeak` at `(msgCapBytes, sessionCapBytes, 64, 64)`. -/
-def cliMainTightPeakOf (runLiveCap runPeakCap : Nat) : Nat :=
+@[expose] def cliMainTightPeakOf (runLiveCap runPeakCap : Nat) : Nat :=
   cliMainDeltaPeak_tight msgCapBytes sessionCapBytes runLiveCap runPeakCap
     cliMaxDirPathBytes cliMaxAddrTextBytes
 
 /-- Closed-form whole-`main` `maxReq` at `(msgCapBytes, sessionCapBytes, 64, 64)`. -/
-def cliMainTightReqOf (runReqCap : Nat) : Nat :=
+@[expose] def cliMainTightReqOf (runReqCap : Nat) : Nat :=
   cliMainMaxReq msgCapBytes sessionCapBytes runReqCap cliMaxDirPathBytes cliMaxAddrTextBytes
 
 /-- Closed-form whole-`main` scaled group count `grpS` at `cliMaxDirtyEntries = 4`. -/
-def cliMainTightGrpSOf (runGrpSCap : Nat) : Nat :=
+@[expose] def cliMainTightGrpSOf (runGrpSCap : Nat) : Nat :=
   cliMainSetupFineGrpS + runGrpSCap + cliMaxDirtyEntries * (12 * FineScale) + 3 * FineScale
 
 /-- Closed-form whole-`main` integer group ceiling `(grpS + FineScale - 1) / FineScale`. -/
-def cliMainTightGrpCountOf (runGrpSCap : Nat) : Nat :=
+@[expose] def cliMainTightGrpCountOf (runGrpSCap : Nat) : Nat :=
   (cliMainTightGrpSOf runGrpSCap + FineScale - 1) / FineScale
 
 /-- Closed-form whole-`main` `stepReserve` bound from `(runReqCap, runGrpSCap)`. -/
-def cliMainTightStepReserveOf (runReqCap runGrpSCap : Nat) : Nat :=
+@[expose] def cliMainTightStepReserveOf (runReqCap runGrpSCap : Nat) : Nat :=
   fineStepReserveOfGroups (cliMainTightReqOf runReqCap) 16 (cliMainTightGrpCountOf runGrpSCap)
 
 /-- Closed-form whole-`main` physical RAM need (`cliDecoupledRamNeed`). -/
-def cliMainTightRamNeedOf (runCumCap runLiveCap runPeakCap runReqCap runGrpSCap : Nat) : Nat :=
+@[expose] def cliMainTightRamNeedOf (runCumCap runLiveCap runPeakCap runReqCap runGrpSCap : Nat) : Nat :=
   cliDecoupledRamNeed cliDefaultStaticBytes
     (cliMainTightCumOf runCumCap)
     (cliMainTightPeakOf runLiveCap runPeakCap)
@@ -533,7 +536,7 @@ def cliMainTightRamNeedOf (runCumCap runLiveCap runPeakCap runReqCap runGrpSCap 
     (cliMainTightGrpCountOf runGrpSCap)
 
 /-- Closed-form whole-`main` 48-bit virtual address need (`cliDecoupledVaNeed`). -/
-def cliMainTightVaNeedOf (runCumCap runLiveCap runPeakCap runReqCap runGrpSCap : Nat) : Nat :=
+@[expose] def cliMainTightVaNeedOf (runCumCap runLiveCap runPeakCap runReqCap runGrpSCap : Nat) : Nat :=
   cliDecoupledVaNeed cliDefaultStaticBytes cliDefaultStaticCount
     (cliMainTightCumOf runCumCap)
     (cliMainTightPeakOf runLiveCap runPeakCap)
@@ -791,10 +794,10 @@ private theorem cliRunOfR0_singleArm_fine_phaseCredit
 
 /-! ### 3.0 Mode 0: `reject` (Early Exit `RunEnv = fun _ => FreeOnlyEvs`) -/
 
-def CliRejectRunEnv (_g : RunCall) (evs : List AllocEvent) : Prop :=
+@[expose] def CliRejectRunEnv (_g : RunCall) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs
 
-def cliRejectStepReserve : Nat := cliMainTightStepReserveOf 0 0
+@[expose] def cliRejectStepReserve : Nat := cliMainTightStepReserveOf 0 0
 
 theorem cliMain_reject_fitsTrace_fineCostModel
     {lim : BudgetLimits}
@@ -818,31 +821,10 @@ theorem cliMain_reject_fitsTrace_fineCostModel
     (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 0)
     (by decide) (by decide) hEnv
 
-theorem cliMain_reject_fitsEnv_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse CliRejectRunEnv g addrOpt needStdin dirs ok) :=
-  cliMain_fitsEnv_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs
-    (PhaseCreditSpec.freeOnly_of_hyps fineCostModel_modelHyps)
-    (PhaseGroupSpec.freeOnly fineCostModel)
-    (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 0)
-    (by decide) (by decide)
-
 /-! ### 3.1 Mode 1: `keygen` (`g.c = .keygen me n`, Zero Stateful Slot Assumptions) -/
 
-def cliKeygenRunGrpSCap : Nat := 15 * FineScale
-def cliKeygenStepReserve : Nat := cliMainTightStepReserveOf r0Opened1MiBMaxReq cliKeygenRunGrpSCap
+@[expose] def cliKeygenRunGrpSCap : Nat := 15 * FineScale
+@[expose] def cliKeygenStepReserve : Nat := cliMainTightStepReserveOf r0Opened1MiBMaxReq cliKeygenRunGrpSCap
 
 theorem cliRunTight_keygen_fine_specs
     {W : RunCall → CliRunWrapperEnvs} {g : RunCall} {me : AddrV} {n : Nat}
@@ -872,71 +854,26 @@ theorem cliRunTight_keygen_fine_specs
       (Nat.le_of_eq (Nat.add_zero _))
   exact ⟨hcr, hgr⟩
 
-theorem cliMain_keygen_fitsTrace_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {me : AddrV} {n : Nat}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hc : g.c = .keygen me n)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim cliKeygenStepReserve fullLog := by
-  obtain ⟨hcr, hgr⟩ := cliRunTight_keygen_fine_specs (W := W) hcaps hc
-  exact cliMain_fitsTrace_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
-    (by decide) (by decide) hEnv
-
-theorem cliMain_keygen_fitsEnv_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {me : AddrV} {n : Nat}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hc : g.c = .keygen me n)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok) := by
-  obtain ⟨hcr, hgr⟩ := cliRunTight_keygen_fine_specs (W := W) hcaps hc
-  exact cliMain_fitsEnv_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
-    (by decide) (by decide)
-
 /-! ### 3.2 Mode 2: `init` (`g.c = .init peer dir`, W3 `initiate`) -/
 
-def cliInitSlotCumCap : Nat := 29000000
-def cliInitSlotLiveCap : Nat := 16000000
-def cliInitSlotPeakCap : Nat := 17000000
-def cliInitSlotReqCap : Nat := 4194304
-def cliInitSlotGrpSCap : Nat := 7000 * FineScale
+@[expose] def cliInitSlotCumCap : Nat := 29000000
+@[expose] def cliInitSlotLiveCap : Nat := 16000000
+@[expose] def cliInitSlotPeakCap : Nat := 17000000
+@[expose] def cliInitSlotReqCap : Nat := 4194304
+@[expose] def cliInitSlotGrpSCap : Nat := 7000 * FineScale
 
-def cliInitRunCumCap : Nat :=
+@[expose] def cliInitRunCumCap : Nat :=
   r0Opened1MiBCum + initArmDeltaCum (pathDeltaCum 26 16) 1637 cliInitSlotCumCap
-def cliInitRunLiveCap : Nat :=
+@[expose] def cliInitRunLiveCap : Nat :=
   r0Opened1MiBLive + initArmDeltaLive (pathDeltaLive 26 16) cliInitSlotLiveCap
-def cliInitRunPeakCap : Nat :=
+@[expose] def cliInitRunPeakCap : Nat :=
   max r0Opened1MiBPeak
     (r0Opened1MiBLive +
       initArmDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637 cliInitSlotPeakCap)
-def cliInitRunReqCap : Nat :=
+@[expose] def cliInitRunReqCap : Nat :=
   max r0Opened1MiBMaxReq (initArmMaxReq (pathMaxReq 26 16) 1637 cliInitSlotReqCap)
-def cliInitRunGrpSCap : Nat := 99 * FineScale + cliInitSlotGrpSCap
-def cliInitStepReserve : Nat := cliMainTightStepReserveOf cliInitRunReqCap cliInitRunGrpSCap
+@[expose] def cliInitRunGrpSCap : Nat := 99 * FineScale + cliInitSlotGrpSCap
+@[expose] def cliInitStepReserve : Nat := cliMainTightStepReserveOf cliInitRunReqCap cliInitRunGrpSCap
 
 theorem cliRunTight_init_fine_specs
     {W : RunCall → CliRunWrapperEnvs} {g : RunCall} {peer : AddrV} {dir : List (BitVec 8)}
@@ -981,122 +918,13 @@ theorem cliRunTight_init_fine_specs
       (by generalize FineScale = fs; omega)
   exact ⟨cliRunOfR0_singleArm_fine_phaseCredit hcaps harm_cr hlp_arm, hgr⟩
 
-private theorem initRun_bounds_mono {c l p r g : Nat}
-    (hc : c ≤ cliInitSlotCumCap) (hl : l ≤ cliInitSlotLiveCap)
-    (hp : p ≤ cliInitSlotPeakCap) (hr : r ≤ cliInitSlotReqCap)
-    (hg : g ≤ cliInitSlotGrpSCap) :
-    r0Opened1MiBCum + initArmDeltaCum (pathDeltaCum 26 16) 1637 c ≤ cliInitRunCumCap ∧
-    r0Opened1MiBLive + initArmDeltaLive (pathDeltaLive 26 16) l ≤ cliInitRunLiveCap ∧
-    max r0Opened1MiBPeak
-      (r0Opened1MiBLive +
-        initArmDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637 p) ≤ cliInitRunPeakCap ∧
-    max r0Opened1MiBMaxReq (initArmMaxReq (pathMaxReq 26 16) 1637 r) ≤ cliInitRunReqCap ∧
-    99 * FineScale + g ≤ cliInitRunGrpSCap := by
-  refine ⟨?_, ?_, ?_, ?_, Nat.add_le_add_left hg _⟩
-  · unfold cliInitRunCumCap initArmDeltaCum; omega
-  · unfold cliInitRunLiveCap initArmDeltaLive; omega
-  · unfold cliInitRunPeakCap initArmDeltaPeak
-    have h1 :
-        max (CliRunArmsPeak.r1bDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637)
-          (CliRunArmsPeak.r1bDeltaLive (pathDeltaLive 26 16) + p) ≤
-        max (CliRunArmsPeak.r1bDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637)
-          (CliRunArmsPeak.r1bDeltaLive (pathDeltaLive 26 16) + cliInitSlotPeakCap) :=
-      Nat.max_le.mpr
-        ⟨Nat.le_max_left _ _,
-         Nat.le_trans (Nat.add_le_add_left hp _) (Nat.le_max_right _ _)⟩
-    have h2 :
-        max (CliRunArmsPeak.r1aDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637)
-          (CliRunArmsPeak.r1aDeltaLive (pathDeltaLive 26 16) +
-            max (CliRunArmsPeak.r1bDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637)
-              (CliRunArmsPeak.r1bDeltaLive (pathDeltaLive 26 16) + p)) ≤
-        max (CliRunArmsPeak.r1aDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637)
-          (CliRunArmsPeak.r1aDeltaLive (pathDeltaLive 26 16) +
-            max (CliRunArmsPeak.r1bDeltaPeak (pathDeltaLive 26 16) (pathDeltaPeak 26 16) 1637)
-              (CliRunArmsPeak.r1bDeltaLive (pathDeltaLive 26 16) + cliInitSlotPeakCap)) :=
-      Nat.max_le.mpr
-        ⟨Nat.le_max_left _ _,
-         Nat.le_trans (Nat.add_le_add_left h1 _) (Nat.le_max_right _ _)⟩
-    exact Nat.max_le.mpr
-      ⟨Nat.le_max_left _ _,
-       Nat.le_trans (Nat.add_le_add_left h2 _) (Nat.le_max_right _ _)⟩
-  · unfold cliInitRunReqCap initArmMaxReq
-    have h1 :
-        max (CliRunArmsPeak.r1bMaxReq (pathMaxReq 26 16) 1637) r ≤
-          max (CliRunArmsPeak.r1bMaxReq (pathMaxReq 26 16) 1637) cliInitSlotReqCap :=
-      Nat.max_le.mpr
-        ⟨Nat.le_max_left _ _, Nat.le_trans hr (Nat.le_max_right _ _)⟩
-    have h2 :
-        max (CliRunArmsPeak.r1aMaxReq (pathMaxReq 26 16) 1637)
-          (max (CliRunArmsPeak.r1bMaxReq (pathMaxReq 26 16) 1637) r) ≤
-        max (CliRunArmsPeak.r1aMaxReq (pathMaxReq 26 16) 1637)
-          (max (CliRunArmsPeak.r1bMaxReq (pathMaxReq 26 16) 1637) cliInitSlotReqCap) :=
-      Nat.max_le.mpr ⟨Nat.le_max_left _ _, Nat.le_trans h1 (Nat.le_max_right _ _)⟩
-    exact Nat.max_le.mpr ⟨Nat.le_max_left _ _, Nat.le_trans h2 (Nat.le_max_right _ _)⟩
-
-theorem cliMain_init_fitsTrace_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {peer : AddrV} {dir : List (BitVec 8)}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SInit : SingleSlotFineSpec (W g).initEnv)
-    (hSlot : SInit.cumB ≤ cliInitSlotCumCap ∧ SInit.liveB ≤ cliInitSlotLiveCap ∧
-      SInit.peakB ≤ cliInitSlotPeakCap ∧ SInit.maxReq ≤ cliInitSlotReqCap ∧
-      SInit.grpS ≤ cliInitSlotGrpSCap)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (hc : g.c = .init peer dir)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim cliInitStepReserve fullLog := by
-  obtain ⟨hcr, hgr⟩ := cliRunTight_init_fine_specs SInit hcaps hspqr hc
-  obtain ⟨h1, h2, h3, h4, h5⟩ :=
-    initRun_bounds_mono hSlot.1 hSlot.2.1 hSlot.2.2.1 hSlot.2.2.2.1 hSlot.2.2.2.2
-  exact cliMain_fitsTrace_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide) hEnv
-
-theorem cliMain_init_fitsEnv_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {peer : AddrV} {dir : List (BitVec 8)}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SInit : SingleSlotFineSpec (W g).initEnv)
-    (hSlot : SInit.cumB ≤ cliInitSlotCumCap ∧ SInit.liveB ≤ cliInitSlotLiveCap ∧
-      SInit.peakB ≤ cliInitSlotPeakCap ∧ SInit.maxReq ≤ cliInitSlotReqCap ∧
-      SInit.grpS ≤ cliInitSlotGrpSCap)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (hc : g.c = .init peer dir)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok) := by
-  obtain ⟨hcr, hgr⟩ := cliRunTight_init_fine_specs SInit hcaps hspqr hc
-  obtain ⟨h1, h2, h3, h4, h5⟩ :=
-    initRun_bounds_mono hSlot.1 hSlot.2.1 hSlot.2.2.1 hSlot.2.2.2.1 hSlot.2.2.2.2
-  exact cliMain_fitsEnv_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide)
-
 /-! ### 3.3 Mode 3: `send` (`g.c = .send peer`, W1 + `SpqrSendTightSpec`) -/
 
-def cliSendSlotCumCap : Nat := 72000000
-def cliSendSlotLiveCap : Nat := 18000000
-def cliSendSlotPeakCap : Nat := 22000000
-def cliSendSlotReqCap : Nat := 4194304
-def cliSendSlotGrpSCap : Nat := 13000 * FineScale
+@[expose] def cliSendSlotCumCap : Nat := 72000000
+@[expose] def cliSendSlotLiveCap : Nat := 18000000
+@[expose] def cliSendSlotPeakCap : Nat := 22000000
+@[expose] def cliSendSlotReqCap : Nat := 4194304
+@[expose] def cliSendSlotGrpSCap : Nat := 13000 * FineScale
 
 /-- Checks that `w1CliOpenedTightSend*` fits inside `cliSendSlot*Cap` at `1 MiB` `ptext` / `2 MiB` session. -/
 theorem w1CliOpenedTightSend_1MiB_deser0_le_caps :
@@ -1111,18 +939,18 @@ theorem w1CliOpenedTightSend_1MiB_deser0_le_caps :
     24 * FineScale + spqrSendTightGroupS + 1500 * FineScale ≤ cliSendSlotGrpSCap := by
   decide
 
-def cliSendRunCumCap : Nat :=
+@[expose] def cliSendRunCumCap : Nat :=
   r0Opened1MiBCum + r2TightDeltaCum cliSendSlotCumCap sessionCapBytes
-def cliSendRunLiveCap : Nat :=
+@[expose] def cliSendRunLiveCap : Nat :=
   r0Opened1MiBLive + r2DeltaLive fineCostModel cliSendSlotLiveCap sessionCapBytes
-def cliSendRunPeakCap : Nat :=
+@[expose] def cliSendRunPeakCap : Nat :=
   max r0Opened1MiBPeak
     (r0Opened1MiBLive +
       r2DeltaPeak fineCostModel cliSendSlotLiveCap cliSendSlotPeakCap sessionCapBytes)
-def cliSendRunReqCap : Nat :=
+@[expose] def cliSendRunReqCap : Nat :=
   max r0Opened1MiBMaxReq (r2MaxReq cliSendSlotReqCap sessionCapBytes)
-def cliSendRunGrpSCap : Nat := 18 * FineScale + cliSendSlotGrpSCap
-def cliSendStepReserve : Nat := cliMainTightStepReserveOf cliSendRunReqCap cliSendRunGrpSCap
+@[expose] def cliSendRunGrpSCap : Nat := 18 * FineScale + cliSendSlotGrpSCap
+@[expose] def cliSendStepReserve : Nat := cliMainTightStepReserveOf cliSendRunReqCap cliSendRunGrpSCap
 
 theorem cliRunTight_send_fine_specs
     {W : RunCall → CliRunWrapperEnvs} {g : RunCall} {peer : AddrV}
@@ -1160,111 +988,27 @@ theorem cliRunTight_send_fine_specs
       (by generalize FineScale = fs; omega)
   exact ⟨cliRunOfR0_singleArm_fine_phaseCredit hcaps harm_cr hlp_arm, hgr⟩
 
-private theorem sendRun_bounds_mono {c l p r g : Nat}
-    (hc : c ≤ cliSendSlotCumCap) (hl : l ≤ cliSendSlotLiveCap)
-    (hp : p ≤ cliSendSlotPeakCap) (hr : r ≤ cliSendSlotReqCap)
-    (hg : g ≤ cliSendSlotGrpSCap) :
-    r0Opened1MiBCum + r2TightDeltaCum c sessionCapBytes ≤ cliSendRunCumCap ∧
-    r0Opened1MiBLive + r2DeltaLive fineCostModel l sessionCapBytes ≤ cliSendRunLiveCap ∧
-    max r0Opened1MiBPeak
-      (r0Opened1MiBLive + r2DeltaPeak fineCostModel l p sessionCapBytes) ≤ cliSendRunPeakCap ∧
-    max r0Opened1MiBMaxReq (r2MaxReq r sessionCapBytes) ≤ cliSendRunReqCap ∧
-    18 * FineScale + g ≤ cliSendRunGrpSCap := by
-  refine ⟨?_, ?_, ?_, ?_, Nat.add_le_add_left hg _⟩
-  · unfold cliSendRunCumCap r2TightDeltaCum; omega
-  · unfold cliSendRunLiveCap r2DeltaLive; omega
-  · unfold cliSendRunPeakCap r2DeltaPeak
-    have h1 :
-        max p (l + CliRunArmsPeak.r2TailPeak fineCostModel sessionCapBytes) ≤
-          max cliSendSlotPeakCap
-            (cliSendSlotLiveCap + CliRunArmsPeak.r2TailPeak fineCostModel sessionCapBytes) :=
-      Nat.max_le.mpr
-        ⟨Nat.le_trans hp (Nat.le_max_left _ _),
-         Nat.le_trans (Nat.add_le_add_right hl _) (Nat.le_max_right _ _)⟩
-    exact Nat.max_le.mpr
-      ⟨Nat.le_max_left _ _,
-       Nat.le_trans (Nat.add_le_add_left h1 _) (Nat.le_max_right _ _)⟩
-  · unfold cliSendRunReqCap r2MaxReq
-    have h1 :
-        max r (CliRunArmsPeak.r2TailMaxReq sessionCapBytes) ≤
-          max cliSendSlotReqCap (CliRunArmsPeak.r2TailMaxReq sessionCapBytes) :=
-      Nat.max_le.mpr ⟨Nat.le_trans hr (Nat.le_max_left _ _), Nat.le_max_right _ _⟩
-    exact Nat.max_le.mpr ⟨Nat.le_max_left _ _, Nat.le_trans h1 (Nat.le_max_right _ _)⟩
-
-theorem cliMain_send_fitsTrace_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall} {peer : AddrV}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SEnc : SingleSlotFineSpec (W g).encEnv)
-    (hSlot : SEnc.cumB ≤ cliSendSlotCumCap ∧ SEnc.liveB ≤ cliSendSlotLiveCap ∧
-      SEnc.peakB ≤ cliSendSlotPeakCap ∧ SEnc.maxReq ≤ cliSendSlotReqCap ∧
-      SEnc.grpS ≤ cliSendSlotGrpSCap)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hc : g.c = .send peer)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim cliSendStepReserve fullLog := by
-  obtain ⟨hcr, hgr⟩ := cliRunTight_send_fine_specs SEnc hcaps hc
-  obtain ⟨h1, h2, h3, h4, h5⟩ :=
-    sendRun_bounds_mono hSlot.1 hSlot.2.1 hSlot.2.2.1 hSlot.2.2.2.1 hSlot.2.2.2.2
-  exact cliMain_fitsTrace_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide) hEnv
-
-theorem cliMain_send_fitsEnv_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall} {peer : AddrV}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SEnc : SingleSlotFineSpec (W g).encEnv)
-    (hSlot : SEnc.cumB ≤ cliSendSlotCumCap ∧ SEnc.liveB ≤ cliSendSlotLiveCap ∧
-      SEnc.peakB ≤ cliSendSlotPeakCap ∧ SEnc.maxReq ≤ cliSendSlotReqCap ∧
-      SEnc.grpS ≤ cliSendSlotGrpSCap)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hc : g.c = .send peer)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok) := by
-  obtain ⟨hcr, hgr⟩ := cliRunTight_send_fine_specs SEnc hcaps hc
-  obtain ⟨h1, h2, h3, h4, h5⟩ :=
-    sendRun_bounds_mono hSlot.1 hSlot.2.1 hSlot.2.2.1 hSlot.2.2.2.1 hSlot.2.2.2.2
-  exact cliMain_fitsEnv_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide)
-
 /-! ### 3.4 Mode 4: `recv_whisper` (`g.c = .recv peer`, `g.i.stdin = 2#8 :: rest`, W2) -/
 
-def cliRecvWhisperSlotCumCap : Nat := 66500000
-def cliRecvWhisperSlotLiveCap : Nat := 16500000
-def cliRecvWhisperSlotPeakCap : Nat := 20500000
-def cliRecvWhisperSlotReqCap : Nat := 5322344
-def cliRecvWhisperSlotGrpSCap : Nat := 20000 * FineScale
+@[expose] def cliRecvWhisperSlotCumCap : Nat := 66500000
+@[expose] def cliRecvWhisperSlotLiveCap : Nat := 16500000
+@[expose] def cliRecvWhisperSlotPeakCap : Nat := 20500000
+@[expose] def cliRecvWhisperSlotReqCap : Nat := 5322344
+@[expose] def cliRecvWhisperSlotGrpSCap : Nat := 20000 * FineScale
 
-def cliRecvWhisperRunCumCap : Nat :=
+@[expose] def cliRecvWhisperRunCumCap : Nat :=
   r0Opened1MiBCum + (sigSliceCum msgCapBytes + cliRecvWhisperSlotCumCap)
-def cliRecvWhisperRunLiveCap : Nat :=
+@[expose] def cliRecvWhisperRunLiveCap : Nat :=
   r0Opened1MiBLive + (sigSliceLive msgCapBytes + cliRecvWhisperSlotLiveCap)
-def cliRecvWhisperRunPeakCap : Nat :=
+@[expose] def cliRecvWhisperRunPeakCap : Nat :=
   max r0Opened1MiBPeak
     (r0Opened1MiBLive +
       max (sigSlicePeak msgCapBytes) (sigSliceLive msgCapBytes + cliRecvWhisperSlotPeakCap))
-def cliRecvWhisperRunReqCap : Nat :=
+@[expose] def cliRecvWhisperRunReqCap : Nat :=
   max r0Opened1MiBMaxReq (max (sigSliceMaxReq msgCapBytes) cliRecvWhisperSlotReqCap)
-def cliRecvWhisperRunGrpSCap : Nat :=
+@[expose] def cliRecvWhisperRunGrpSCap : Nat :=
   15 * FineScale + (sigTryFromCapDeltaGrpS msgCapBytes + cliRecvWhisperSlotGrpSCap)
-def cliRecvWhisperStepReserve : Nat :=
+@[expose] def cliRecvWhisperStepReserve : Nat :=
   cliMainTightStepReserveOf cliRecvWhisperRunReqCap cliRecvWhisperRunGrpSCap
 
 theorem cliRunTight_recvWhisper_fine_specs
@@ -1309,118 +1053,27 @@ theorem cliRunTight_recvWhisper_fine_specs
   exact ⟨cliRunOfR0_singleArm_fine_phaseCredit hcaps harm_cr hlp_arm,
     cliRunOfR0_fine_groupSpec (r0OpenedEnv_fine_groupSpec cliIo.rd (runFiles g.i)) harm_gr⟩
 
-private theorem recvWhisperRun_bounds_mono {c l p r g : Nat}
-    (hc : c ≤ cliRecvWhisperSlotCumCap) (hl : l ≤ cliRecvWhisperSlotLiveCap)
-    (hp : p ≤ cliRecvWhisperSlotPeakCap) (hr : r ≤ cliRecvWhisperSlotReqCap)
-    (hg : g ≤ cliRecvWhisperSlotGrpSCap) :
-    r0Opened1MiBCum + (sigSliceCum msgCapBytes + c) ≤ cliRecvWhisperRunCumCap ∧
-    r0Opened1MiBLive + (sigSliceLive msgCapBytes + l) ≤ cliRecvWhisperRunLiveCap ∧
-    max r0Opened1MiBPeak
-      (r0Opened1MiBLive + max (sigSlicePeak msgCapBytes) (sigSliceLive msgCapBytes + p)) ≤
-        cliRecvWhisperRunPeakCap ∧
-    max r0Opened1MiBMaxReq (max (sigSliceMaxReq msgCapBytes) r) ≤ cliRecvWhisperRunReqCap ∧
-    15 * FineScale + (sigTryFromCapDeltaGrpS msgCapBytes + g) ≤ cliRecvWhisperRunGrpSCap := by
-  refine ⟨?_, ?_, ?_, ?_, Nat.add_le_add_left (Nat.add_le_add_left hg _) _⟩
-  · unfold cliRecvWhisperRunCumCap; omega
-  · unfold cliRecvWhisperRunLiveCap; omega
-  · unfold cliRecvWhisperRunPeakCap
-    have h1 :
-        max (sigSlicePeak msgCapBytes) (sigSliceLive msgCapBytes + p) ≤
-          max (sigSlicePeak msgCapBytes) (sigSliceLive msgCapBytes + cliRecvWhisperSlotPeakCap) :=
-      Nat.max_le.mpr
-        ⟨Nat.le_max_left _ _,
-         Nat.le_trans (Nat.add_le_add_left hp _) (Nat.le_max_right _ _)⟩
-    exact Nat.max_le.mpr
-      ⟨Nat.le_max_left _ _, Nat.le_trans (Nat.add_le_add_left h1 _) (Nat.le_max_right _ _)⟩
-  · unfold cliRecvWhisperRunReqCap
-    have h1 :
-        max (sigSliceMaxReq msgCapBytes) r ≤
-          max (sigSliceMaxReq msgCapBytes) cliRecvWhisperSlotReqCap :=
-      Nat.max_le.mpr ⟨Nat.le_max_left _ _, Nat.le_trans hr (Nat.le_max_right _ _)⟩
-    exact Nat.max_le.mpr ⟨Nat.le_max_left _ _, Nat.le_trans h1 (Nat.le_max_right _ _)⟩
-
-theorem cliMain_recvWhisper_fitsTrace_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {peer : AddrV} {rest : List (BitVec 8)}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SDecSig : SingleSlotFineSpec (W g).decSigEnv)
-    (hSlot : SDecSig.cumB ≤ cliRecvWhisperSlotCumCap ∧
-      SDecSig.liveB ≤ cliRecvWhisperSlotLiveCap ∧
-      SDecSig.peakB ≤ cliRecvWhisperSlotPeakCap ∧
-      SDecSig.maxReq ≤ cliRecvWhisperSlotReqCap ∧
-      SDecSig.grpS ≤ cliRecvWhisperSlotGrpSCap)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hc : g.c = .recv peer)
-    (hst : g.i.stdin = 2#8 :: rest)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim cliRecvWhisperStepReserve fullLog := by
-  obtain ⟨hcr, hgr⟩ := cliRunTight_recvWhisper_fine_specs SDecSig hcaps hc hst
-  obtain ⟨h1, h2, h3, h4, h5⟩ :=
-    recvWhisperRun_bounds_mono hSlot.1 hSlot.2.1 hSlot.2.2.1 hSlot.2.2.2.1 hSlot.2.2.2.2
-  exact cliMain_fitsTrace_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide) hEnv
-
-theorem cliMain_recvWhisper_fitsEnv_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {peer : AddrV} {rest : List (BitVec 8)}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SDecSig : SingleSlotFineSpec (W g).decSigEnv)
-    (hSlot : SDecSig.cumB ≤ cliRecvWhisperSlotCumCap ∧
-      SDecSig.liveB ≤ cliRecvWhisperSlotLiveCap ∧
-      SDecSig.peakB ≤ cliRecvWhisperSlotPeakCap ∧
-      SDecSig.maxReq ≤ cliRecvWhisperSlotReqCap ∧
-      SDecSig.grpS ≤ cliRecvWhisperSlotGrpSCap)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hc : g.c = .recv peer)
-    (hst : g.i.stdin = 2#8 :: rest)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok) := by
-  obtain ⟨hcr, hgr⟩ := cliRunTight_recvWhisper_fine_specs SDecSig hcaps hc hst
-  obtain ⟨h1, h2, h3, h4, h5⟩ :=
-    recvWhisperRun_bounds_mono hSlot.1 hSlot.2.1 hSlot.2.2.1 hSlot.2.2.2.1 hSlot.2.2.2.2
-  exact cliMain_fitsEnv_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide)
-
 /-! ### 3.5 Mode 5: `recv_prekey` (`g.c = .recv peer`, `g.i.stdin = 3#8 :: rest`, W4) -/
 
-def cliRecvPrekeySlotCumCap : Nat := 303600000
-def cliRecvPrekeySlotLiveCap : Nat := 13500000
-def cliRecvPrekeySlotPeakCap : Nat := 16200000
-def cliRecvPrekeySlotReqCap : Nat := 4194304
-def cliRecvPrekeySlotGrpSCap : Nat := 91300 * FineScale
+@[expose] def cliRecvPrekeySlotCumCap : Nat := 303600000
+@[expose] def cliRecvPrekeySlotLiveCap : Nat := 13500000
+@[expose] def cliRecvPrekeySlotPeakCap : Nat := 16200000
+@[expose] def cliRecvPrekeySlotReqCap : Nat := 4194304
+@[expose] def cliRecvPrekeySlotGrpSCap : Nat := 91300 * FineScale
 
-def cliRecvPrekeyRunCumCap : Nat :=
+@[expose] def cliRecvPrekeyRunCumCap : Nat :=
   r0Opened1MiBCum + (pksmSliceCum msgCapBytes + cliRecvPrekeySlotCumCap)
-def cliRecvPrekeyRunLiveCap : Nat :=
+@[expose] def cliRecvPrekeyRunLiveCap : Nat :=
   r0Opened1MiBLive + (pksmSliceLive msgCapBytes + cliRecvPrekeySlotLiveCap)
-def cliRecvPrekeyRunPeakCap : Nat :=
+@[expose] def cliRecvPrekeyRunPeakCap : Nat :=
   max r0Opened1MiBPeak
     (r0Opened1MiBLive +
       max (pksmSlicePeak msgCapBytes) (pksmSliceLive msgCapBytes + cliRecvPrekeySlotPeakCap))
-def cliRecvPrekeyRunReqCap : Nat :=
+@[expose] def cliRecvPrekeyRunReqCap : Nat :=
   max r0Opened1MiBMaxReq (max (pksmSliceMaxReq msgCapBytes) cliRecvPrekeySlotReqCap)
-def cliRecvPrekeyRunGrpSCap : Nat :=
+@[expose] def cliRecvPrekeyRunGrpSCap : Nat :=
   15 * FineScale + (pksmTryFromCapDeltaGrpS msgCapBytes + cliRecvPrekeySlotGrpSCap)
-def cliRecvPrekeyStepReserve : Nat :=
+@[expose] def cliRecvPrekeyStepReserve : Nat :=
   cliMainTightStepReserveOf cliRecvPrekeyRunReqCap cliRecvPrekeyRunGrpSCap
 
 theorem cliRunTight_recvPrekey_fine_specs
@@ -1469,102 +1122,11 @@ theorem cliRunTight_recvPrekey_fine_specs
   exact ⟨cliRunOfR0_singleArm_fine_phaseCredit hcaps harm_cr hlp_arm,
     cliRunOfR0_fine_groupSpec (r0OpenedEnv_fine_groupSpec cliIo.rd (runFiles g.i)) harm_gr⟩
 
-private theorem recvPrekeyRun_bounds_mono {c l p r g : Nat}
-    (hc : c ≤ cliRecvPrekeySlotCumCap) (hl : l ≤ cliRecvPrekeySlotLiveCap)
-    (hp : p ≤ cliRecvPrekeySlotPeakCap) (hr : r ≤ cliRecvPrekeySlotReqCap)
-    (hg : g ≤ cliRecvPrekeySlotGrpSCap) :
-    r0Opened1MiBCum + (pksmSliceCum msgCapBytes + c) ≤ cliRecvPrekeyRunCumCap ∧
-    r0Opened1MiBLive + (pksmSliceLive msgCapBytes + l) ≤ cliRecvPrekeyRunLiveCap ∧
-    max r0Opened1MiBPeak
-      (r0Opened1MiBLive + max (pksmSlicePeak msgCapBytes) (pksmSliceLive msgCapBytes + p)) ≤
-        cliRecvPrekeyRunPeakCap ∧
-    max r0Opened1MiBMaxReq (max (pksmSliceMaxReq msgCapBytes) r) ≤ cliRecvPrekeyRunReqCap ∧
-    15 * FineScale + (pksmTryFromCapDeltaGrpS msgCapBytes + g) ≤ cliRecvPrekeyRunGrpSCap := by
-  refine ⟨?_, ?_, ?_, ?_, Nat.add_le_add_left (Nat.add_le_add_left hg _) _⟩
-  · unfold cliRecvPrekeyRunCumCap; omega
-  · unfold cliRecvPrekeyRunLiveCap; omega
-  · unfold cliRecvPrekeyRunPeakCap
-    have h1 :
-        max (pksmSlicePeak msgCapBytes) (pksmSliceLive msgCapBytes + p) ≤
-          max (pksmSlicePeak msgCapBytes) (pksmSliceLive msgCapBytes + cliRecvPrekeySlotPeakCap) :=
-      Nat.max_le.mpr
-        ⟨Nat.le_max_left _ _,
-         Nat.le_trans (Nat.add_le_add_left hp _) (Nat.le_max_right _ _)⟩
-    exact Nat.max_le.mpr
-      ⟨Nat.le_max_left _ _, Nat.le_trans (Nat.add_le_add_left h1 _) (Nat.le_max_right _ _)⟩
-  · unfold cliRecvPrekeyRunReqCap
-    have h1 :
-        max (pksmSliceMaxReq msgCapBytes) r ≤
-          max (pksmSliceMaxReq msgCapBytes) cliRecvPrekeySlotReqCap :=
-      Nat.max_le.mpr ⟨Nat.le_max_left _ _, Nat.le_trans hr (Nat.le_max_right _ _)⟩
-    exact Nat.max_le.mpr ⟨Nat.le_max_left _ _, Nat.le_trans h1 (Nat.le_max_right _ _)⟩
-
-theorem cliMain_recvPrekey_fitsTrace_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {peer : AddrV} {rest : List (BitVec 8)}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SDecPk : SingleSlotFineSpec (W g).decPkEnv)
-    (hSlot : SDecPk.cumB ≤ cliRecvPrekeySlotCumCap ∧
-      SDecPk.liveB ≤ cliRecvPrekeySlotLiveCap ∧
-      SDecPk.peakB ≤ cliRecvPrekeySlotPeakCap ∧
-      SDecPk.maxReq ≤ cliRecvPrekeySlotReqCap ∧
-      SDecPk.grpS ≤ cliRecvPrekeySlotGrpSCap)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hc : g.c = .recv peer)
-    (hst : g.i.stdin = 3#8 :: rest)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim cliRecvPrekeyStepReserve fullLog := by
-  obtain ⟨hcr, hgr⟩ := cliRunTight_recvPrekey_fine_specs SDecPk hcaps hc hst
-  obtain ⟨h1, h2, h3, h4, h5⟩ :=
-    recvPrekeyRun_bounds_mono hSlot.1 hSlot.2.1 hSlot.2.2.1 hSlot.2.2.2.1 hSlot.2.2.2.2
-  exact cliMain_fitsTrace_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide) hEnv
-
-theorem cliMain_recvPrekey_fitsEnv_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {peer : AddrV} {rest : List (BitVec 8)}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SDecPk : SingleSlotFineSpec (W g).decPkEnv)
-    (hSlot : SDecPk.cumB ≤ cliRecvPrekeySlotCumCap ∧
-      SDecPk.liveB ≤ cliRecvPrekeySlotLiveCap ∧
-      SDecPk.peakB ≤ cliRecvPrekeySlotPeakCap ∧
-      SDecPk.maxReq ≤ cliRecvPrekeySlotReqCap ∧
-      SDecPk.grpS ≤ cliRecvPrekeySlotGrpSCap)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hc : g.c = .recv peer)
-    (hst : g.i.stdin = 3#8 :: rest)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok) := by
-  obtain ⟨hcr, hgr⟩ := cliRunTight_recvPrekey_fine_specs SDecPk hcaps hc hst
-  obtain ⟨h1, h2, h3, h4, h5⟩ :=
-    recvPrekeyRun_bounds_mono hSlot.1 hSlot.2.1 hSlot.2.2.1 hSlot.2.2.2.1 hSlot.2.2.2.2
-  exact cliMain_fitsEnv_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide)
-
 /-! ## 4. Unified Whole-`main` `< 1 GiB` Theorems -/
 
 /-- Parametric-`DeserEnv` numerical cap predicate on `CliRunFineSlotSpecs W` with residual
 deserialization parameters `(deserCum, deserLive, deserPeak, deserMaxReq, deserGrpS)`. -/
-def CliRunDeserParamSlotCaps
+@[expose] def CliRunDeserParamSlotCaps
     (deserCum deserLive deserPeak deserMaxReq deserGrpS : Nat)
     {W : CliRunWrapperEnvs} (SW : CliRunFineSlotSpecs W) : Prop :=
   SW.initCum ≤ cliInitSlotCumCap + deserCum ∧
@@ -1592,21 +1154,21 @@ def CliRunDeserParamSlotCaps
 abbrev CliRunTightSlotCaps {W : CliRunWrapperEnvs} (SW : CliRunFineSlotSpecs W) : Prop :=
   CliRunDeserParamSlotCaps 0 0 0 0 0 SW
 
-def cliUnifiedDeserRunCumCap (dc : Nat) : Nat :=
+@[expose] def cliUnifiedDeserRunCumCap (dc : Nat) : Nat :=
   cliRun1MiBSlotCum
     (cliInitSlotCumCap + dc)
     (cliSendSlotCumCap + dc)
     (cliRecvWhisperSlotCumCap + dc)
     (cliRecvPrekeySlotCumCap + dc)
 
-def cliUnifiedDeserRunLiveCap (dl : Nat) : Nat :=
+@[expose] def cliUnifiedDeserRunLiveCap (dl : Nat) : Nat :=
   cliRun1MiBSlotLive
     (cliInitSlotLiveCap + dl)
     (cliSendSlotLiveCap + dl)
     (cliRecvWhisperSlotLiveCap + dl)
     (cliRecvPrekeySlotLiveCap + dl)
 
-def cliUnifiedDeserRunPeakCap (dl dp : Nat) : Nat :=
+@[expose] def cliUnifiedDeserRunPeakCap (dl dp : Nat) : Nat :=
   cliRun1MiBSlotPeak
     (cliInitSlotPeakCap + dp)
     (cliSendSlotLiveCap + dl)
@@ -1614,14 +1176,14 @@ def cliUnifiedDeserRunPeakCap (dl dp : Nat) : Nat :=
     (cliRecvWhisperSlotPeakCap + dp)
     (cliRecvPrekeySlotPeakCap + dp)
 
-def cliUnifiedDeserRunReqCap (dr : Nat) : Nat :=
+@[expose] def cliUnifiedDeserRunReqCap (dr : Nat) : Nat :=
   cliRun1MiBSlotMaxReq
     (max cliInitSlotReqCap dr)
     (max cliSendSlotReqCap dr)
     (max cliRecvWhisperSlotReqCap dr)
     (max cliRecvPrekeySlotReqCap dr)
 
-def cliUnifiedDeserRunGrpSCap (dg : Nat) : Nat :=
+@[expose] def cliUnifiedDeserRunGrpSCap (dg : Nat) : Nat :=
   cliRunOpenedFineGrpS msgCapBytes
     (cliInitSlotGrpSCap + dg)
     (cliSendSlotGrpSCap + dg)
@@ -1746,7 +1308,7 @@ private theorem cliUnifiedDeser_bounds_mono
         (Nat.add_le_add_left hpg _)) _
 
 /-- Canonical whole-`main` `stepReserve` bound at `deser = 0`. -/
-def cliMainStepReserve : Nat :=
+@[expose] def cliMainStepReserve : Nat :=
   cliMainTightStepReserveOf (cliUnifiedDeserRunReqCap 0) (cliUnifiedDeserRunGrpSCap 0)
 
 /-- Whole-`main` `FitsTrace fineCostModel`: under `1 GiB` (`physCap ≥ 2 ^ 30`) and reachable
@@ -1777,56 +1339,15 @@ theorem cliMain_fitsTrace_fineCostModel
   exact cliMain_fitsTrace_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
     h1 h2 h3 h4 h5 (by decide) (by decide) hEnv
 
-/-- Whole-`main` `FitsEnv fineCostModel` at `fineCostModel.init` under `1 GiB` (`physCap ≥ 2 ^ 30`) across all six CLI modes. -/
-theorem cliMain_fitsEnv_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hSlots : CliRunTightSlotCaps SW)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok) := by
-  have hcr := cliRunTight_1MiB_fine_phaseCredit SW hcaps hspqr
-  have hgr := cliRunTight_fine_groupSpec (wireOutCap := sessionCapBytes) SW hcaps.stdin_le
-  obtain ⟨h1, h2, h3, h4, h5⟩ := cliUnifiedDeser_bounds_mono hSlots
-  exact cliMain_fitsEnv_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide)
-
-theorem cliMain_fitsEnv_cliBudgetLimits
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hSlots : CliRunTightSlotCaps SW)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel cliBudgetLimits fineCostModel.init
-      (CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok) :=
-  cliMain_fitsEnv_fineCostModel rfl (Nat.le_refl _) (Nat.le_refl _) (Nat.le_refl _)
-    SW hSlots hcaps hspqr haddr hdirs
-
 /-! ## 5. Parametric-`DeserEnv` Residual-Headroom Whole-`main` `< 1 GiB` Theorems -/
 
-def cliDeserMaxCum : Nat := 2000000
-def cliDeserMaxLive : Nat := 1000000
-def cliDeserMaxPeak : Nat := 1500000
-def cliDeserMaxReq : Nat := sessionCapBytes
-def cliDeserMaxGrpS : Nat := 250 * FineScale
+@[expose] def cliDeserMaxCum : Nat := 2000000
+@[expose] def cliDeserMaxLive : Nat := 1000000
+@[expose] def cliDeserMaxPeak : Nat := 1500000
+@[expose] def cliDeserMaxReq : Nat := sessionCapBytes
+@[expose] def cliDeserMaxGrpS : Nat := 250 * FineScale
 
-def cliMainDeserParamStepReserve : Nat :=
+@[expose] def cliMainDeserParamStepReserve : Nat :=
   cliMainTightStepReserveOf
     (cliUnifiedDeserRunReqCap cliDeserMaxReq)
     (cliUnifiedDeserRunGrpSCap cliDeserMaxGrpS)
@@ -1862,93 +1383,6 @@ private theorem deserParamSlotCaps_mono
      Nat.le_trans h19 (Nat.max_le.mpr ⟨Nat.le_max_left _ _, Nat.le_trans hr (Nat.le_max_right _ _)⟩),
      Nat.le_trans h20 (Nat.add_le_add_left hg _)⟩
 
-/-- Whole-`main` `FitsTrace fineCostModel` under `1 GiB` physical RAM and `≤ 2 ^ 48` VA with
-residual deserialization headroom `(deserCum ≤ 2,000,000, deserLive ≤ 1,000,000,
-deserPeak ≤ 1,500,000, deserMaxReq ≤ 2 MiB, deserGrpS ≤ 250 * FineScale)`. -/
-theorem cliMain_deserParam_fitsTrace_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    {deserCum deserLive deserPeak deserMaxReq deserGrpS : Nat}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hSlots : CliRunDeserParamSlotCaps deserCum deserLive deserPeak deserMaxReq deserGrpS SW)
-    (hDeser : deserCum ≤ cliDeserMaxCum ∧ deserLive ≤ cliDeserMaxLive ∧
-      deserPeak ≤ cliDeserMaxPeak ∧ deserMaxReq ≤ cliDeserMaxReq ∧
-      deserGrpS ≤ cliDeserMaxGrpS)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes)
-    {fullLog : List AllocEvent}
-    (hEnv : CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok fullLog) :
-    FitsTrace fineCostModel lim cliMainDeserParamStepReserve fullLog := by
-  have hcr := cliRunTight_1MiB_fine_phaseCredit SW hcaps hspqr
-  have hgr := cliRunTight_fine_groupSpec (wireOutCap := sessionCapBytes) SW hcaps.stdin_le
-  have hSlotsMax := deserParamSlotCaps_mono hSlots
-    hDeser.1 hDeser.2.1 hDeser.2.2.1 hDeser.2.2.2.1 hDeser.2.2.2.2
-  obtain ⟨h1, h2, h3, h4, h5⟩ := cliUnifiedDeser_bounds_mono hSlotsMax
-  exact cliMain_fitsTrace_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide) hEnv
-
-/-- Whole-`main` `FitsEnv fineCostModel` at `fineCostModel.init` under `1 GiB` with residual deserialization headroom. -/
-theorem cliMain_deserParam_fitsEnv_fineCostModel
-    {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hsb : lim.staticBytes ≤ cliDefaultStaticBytes)
-    (hsc : lim.staticCount ≤ cliDefaultStaticCount)
-    (hcap : cliOneGiB ≤ lim.physCap)
-    {uuidParse : UuidParser} {W : RunCall → CliRunWrapperEnvs} {g : RunCall}
-    {addrOpt : Option AddressCall} {needStdin : Bool}
-    {dirs : List (List (BitVec 8) × List (List (BitVec 8)))} {ok : Bool}
-    {deserCum deserLive deserPeak deserMaxReq deserGrpS : Nat}
-    (SW : CliRunFineSlotSpecs (W g))
-    (hSlots : CliRunDeserParamSlotCaps deserCum deserLive deserPeak deserMaxReq deserGrpS SW)
-    (hDeser : deserCum ≤ cliDeserMaxCum ∧ deserLive ≤ cliDeserMaxLive ∧
-      deserPeak ≤ cliDeserMaxPeak ∧ deserMaxReq ≤ cliDeserMaxReq ∧
-      deserGrpS ≤ cliDeserMaxGrpS)
-    (hcaps : CliPqDomainCaps msgCapBytes sessionCapBytes g.i)
-    (hspqr : CliRunTightSpqrCaps g)
-    (haddr : match addrOpt with | none => True | some ag => ag.bs.length ≤ cliMaxAddrTextBytes)
-    (hdirs : ((dirs.map (fun dn => dn.2.length)).sum) ≤ cliMaxDirtyEntries ∧
-      ∀ dn ∈ dirs, dn.1.length ≤ cliMaxDirPathBytes ∧ ∀ nm ∈ dn.2, nm.length ≤ cliMaxAddrTextBytes) :
-    FitsEnv fineCostModel lim fineCostModel.init
-      (CliMainEnv uuidParse (CliRunTightEnv W) g addrOpt needStdin dirs ok) := by
-  have hcr := cliRunTight_1MiB_fine_phaseCredit SW hcaps hspqr
-  have hgr := cliRunTight_fine_groupSpec (wireOutCap := sessionCapBytes) SW hcaps.stdin_le
-  have hSlotsMax := deserParamSlotCaps_mono hSlots
-    hDeser.1 hDeser.2.1 hDeser.2.2.1 hDeser.2.2.2.1 hDeser.2.2.2.2
-  obtain ⟨h1, h2, h3, h4, h5⟩ := cliUnifiedDeser_bounds_mono hSlotsMax
-  exact cliMain_fitsEnv_of_runFineBounds henf hsb hsc hcap hcaps haddr hdirs hcr hgr
-    h1 h2 h3 h4 h5 (by decide) (by decide)
-
 /-! ## 6. Closed-Numeral `< 1 GiB` and `VA ≤ 2 ^ 48` Summary Check -/
-
-theorem cliAllModes_and_deserParam_fit_oneGiB :
-    cliMainTightRamNeedOf 0 0 0 0 0 ≤ cliOneGiB ∧
-    cliMainTightRamNeedOf r0Opened1MiBCum r0Opened1MiBLive r0Opened1MiBPeak
-      r0Opened1MiBMaxReq cliKeygenRunGrpSCap ≤ cliOneGiB ∧
-    cliMainTightRamNeedOf cliInitRunCumCap cliInitRunLiveCap cliInitRunPeakCap
-      cliInitRunReqCap cliInitRunGrpSCap ≤ cliOneGiB ∧
-    cliMainTightRamNeedOf cliSendRunCumCap cliSendRunLiveCap cliSendRunPeakCap
-      cliSendRunReqCap cliSendRunGrpSCap ≤ cliOneGiB ∧
-    cliMainTightRamNeedOf cliRecvWhisperRunCumCap cliRecvWhisperRunLiveCap
-      cliRecvWhisperRunPeakCap cliRecvWhisperRunReqCap cliRecvWhisperRunGrpSCap ≤ cliOneGiB ∧
-    cliMainTightRamNeedOf cliRecvPrekeyRunCumCap cliRecvPrekeyRunLiveCap
-      cliRecvPrekeyRunPeakCap cliRecvPrekeyRunReqCap cliRecvPrekeyRunGrpSCap ≤ cliOneGiB ∧
-    cliMainTightRamNeedOf (cliUnifiedDeserRunCumCap 0) (cliUnifiedDeserRunLiveCap 0)
-      (cliUnifiedDeserRunPeakCap 0 0) (cliUnifiedDeserRunReqCap 0)
-      (cliUnifiedDeserRunGrpSCap 0) ≤ cliOneGiB ∧
-    cliMainTightRamNeedOf (cliUnifiedDeserRunCumCap cliDeserMaxCum)
-      (cliUnifiedDeserRunLiveCap cliDeserMaxLive)
-      (cliUnifiedDeserRunPeakCap cliDeserMaxLive cliDeserMaxPeak)
-      (cliUnifiedDeserRunReqCap cliDeserMaxReq)
-      (cliUnifiedDeserRunGrpSCap cliDeserMaxGrpS) ≤ cliOneGiB := by
-  decide
 
 end LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec

@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard2
+meta import GeneratedLean.LibsignalSessionPlacedObjShard5
 
 /-!
 # Relocatable Per-Block Fetches for `TripleRatchet/Hkdf`
@@ -21,7 +23,7 @@ Provides relocatable instruction fetches for `Hmac<Sha256>::finalize_fixed`,
 `GenericHkdf<Hmac<Sha256>>::extract`, and `GenericHkdf<Hmac<Sha256>>::expand_multi_info`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3PollRejectAuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3V3PathAKitsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3PollRejectAuxPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3V3PathAKitsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.WrapperStatePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -25,6 +25,14 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.In
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Base
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Folds
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Fetch
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntry -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
 
 /-!
 # Version-3 Pre-Key Message (`"X3DH no longer supported"`) Slot Rejection
@@ -34,7 +42,7 @@ Defines `MsgCondV3` (`pm.messageVersion = 3` with no matching active session), p
 to `decPkSlotSpecPlaced` on Block `520` and any caller block.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -87,7 +95,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 
 /-- Version-3 pre-key rejection condition: outer `messageVersion = 3` and no loaded active
 peer session matches `pm`. -/
-def MsgCondV3 (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def MsgCondV3 (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer _me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   pm.messageVersion = 3#8 ∧
   ∀ r s, Slots.loadRec Scope F peer = .ok (some r) →
@@ -115,51 +123,9 @@ theorem msgCondPkToENone_of_v3
 
 /-! ## 2. Relocatable Poll-to-Wrapper & Slot Bridges for `v3` Reject (`[LibsignalPlacement]`) -/
 
-/-- Lifts a relocatable `v3` poll-closure contract on Block `518` (`lsProg_518`) to
-`decPkSlotSpecPlaced E2E.HooksE.A0 S stk` on Block `520` (`lsProg_520`). -/
-theorem cliDecryptPrekey_v3_reject_slot_placed_of_poll [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (B : RunBudgets) (S : RunSem)
-    (hpoll : ∀ stk', dpPollNeed B ≤ stk' → stk' ≤ 2 ^ 63 →
-      subroutine_ok (lsProg_518 (Rust.withPanics (cliGhostExterns g (cliExternsPlaced mmpl W))))
-        (lsmpl.base 518)
-        (StoreKit.withLsCodeRoLoaded lsmpl (dpPollSpecState (K₀_statePlaced B S) stk')))
-    (stk : Nat) (hstk : cliDecryptPrekeyNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63) :
-    subroutine_ok (lsProg_520 (Rust.withPanics (cliGhostExterns g (cliExternsPlaced mmpl W))))
-      (lsmpl.base 520)
-      (decPkSlotSpecPlaced E2E.HooksE.A0 S stk) :=
-  decPk_slot_ok_state_placed B S stk hstk hstk64
-    (cliDecryptPrekey_ok_state_placed
-      (ext := cliGhostExterns g (cliExternsPlaced mmpl W)) (K₀_statePlaced B S)
-      (fun stk' h1 h2 => hpoll stk' h1 h2)
-      stk (by simp only [dpWrapFrame, dpPollNeed, cliDecryptPrekeyNeed, K₀_statePlaced,
-        dpSlotPollKStatePlaced] at hstk ⊢; omega) hstk64)
-
-/-- Cross-block transfer of `cliDecryptPrekey_v3_reject_slot_placed_of_poll` onto any caller block
-`i < 619` (such as `lsProg_579` or `cliProgPlacedSig`). -/
-theorem cliDecryptPrekey_v3_reject_slot_placed_at_block_of_poll [LibsignalPlacement]
-    {callerProg : Program} {i : Nat}
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (B : RunBudgets) (S : RunSem)
-    [IsLsBlockProg callerProg i (Rust.withPanics (cliGhostExterns g (cliExternsPlaced mmpl W)))]
-    (hpoll : ∀ stk', dpPollNeed B ≤ stk' → stk' ≤ 2 ^ 63 →
-      subroutine_ok (lsProg_518 (Rust.withPanics (cliGhostExterns g (cliExternsPlaced mmpl W))))
-        (lsmpl.base 518)
-        (StoreKit.withLsCodeRoLoaded lsmpl (dpPollSpecState (K₀_statePlaced B S) stk')))
-    (stk : Nat) (hstk : cliDecryptPrekeyNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63)
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 520)
-      (decPkSlotSpecPlaced E2E.HooksE.A0 S stk) :=
-  decPk_slot_ok_state_placed B S stk hstk hstk64
-    (cliDecryptPrekey_ok_state_placed_at_block (callerProg := callerProg) (i := i)
-      (ext := cliGhostExterns g (cliExternsPlaced mmpl W)) (K₀_statePlaced B S)
-      (fun stk' h1 h2 => hpoll stk' h1 h2)
-      stk (by simp only [dpWrapFrame, dpPollNeed, cliDecryptPrekeyNeed, K₀_statePlaced,
-        dpSlotPollKStatePlaced] at hstk ⊢; omega) hstk64 hi)
-
 /-! ## 3. Spatial Split Between `closStackUnusedP1OkAt` and `v3` Stage P2 Kits -/
 
-def v3StackRemAt (sp : BitVec 64) : SepProp :=
+@[expose] def v3StackRemAt (sp : BitVec 64) : SepProp :=
   memRegion (sp + 8#64) 144 ∗
   memRegion (sp + 564#64) 316 ∗
   memRegion (sp + 916#64) 76 ∗

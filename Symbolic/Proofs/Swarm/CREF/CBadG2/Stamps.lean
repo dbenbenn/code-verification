@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame
+public import Symbolic.Proofs.Swarm.CREF.CBadG2.Frame -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -22,7 +22,7 @@ import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.CBadG2.StampsReach
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
-import Symbolic.Proofs.Swarm.CREF.ModelMono
+public import Symbolic.Proofs.Swarm.CREF.ModelMono -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
@@ -44,7 +44,7 @@ Establishes `CBadStamps` on every prefix run `ms.take i` (and on `ms` itself) of
 visible entries and setup terms.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false

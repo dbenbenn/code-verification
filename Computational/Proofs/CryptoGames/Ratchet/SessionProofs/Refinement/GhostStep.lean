@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimShallow -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
-public import Computational.Proofs.CryptoGames.AEAD.HKDFProofDefs
+import Computational.Proofs.CryptoGames.AEAD.HKDFProofDefs
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
 
 /-!
@@ -25,7 +25,7 @@ Proves deterministic single-step correspondence between `toGhost` on libsignal s
 (`initA`, `initB`, `send`, `receive`) and `lFig8` paired with `simSend` and `simRecv`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -249,7 +249,7 @@ theorem tryFrom_isError_of_parse_none (codec : SignalMessageProtoCodec) (w : Lis
 
 /-! ## Ghost-state and eager-sender helpers -/
 
-def idOfP (P : Params PQ PQC) (R : Party) : IdentityKey :=
+@[expose] def idOfP (P : Params PQ PQC) (R : Party) : IdentityKey :=
   if R == Party.A then P.idA else P.idB
 
 @[local simp]
@@ -284,7 +284,7 @@ theorem lIds_eq_macIds_of_not_sendsIn (P : Params PQ PQC) (idOf : Party → Iden
   unfold lIds
   rw [hsender, hother, idOf_eq_idOfP P idOf hid Q.other, idOf_eq_idOfP P idOf hid Q]
 
-def toRecvChain (st : Fig8St Pt) (g : GhostChain) : ReceiverChain :=
+@[expose] def toRecvChain (st : Fig8St Pt) (g : GhostChain) : ReceiverChain :=
   match st.vR g.epoch with
   | some v =>
     ⟨g.key.getD dummyKey, some ⟨v.chainKey, BitVec.ofNat 32 v.lastIndex⟩,
@@ -298,7 +298,7 @@ theorem toRecvChain_senderRatchetKey (st : Fig8St Pt) (g : GhostChain) :
   unfold toRecvChain
   cases st.vR g.epoch <;> rfl
 
-def withEager (g : GhostState PQ) (rk : LibsignalSession.RootKey)
+@[expose] def withEager (g : GhostState PQ) (rk : LibsignalSession.RootKey)
     (sc : Option SenderChain) (pn : BitVec 32) : GhostState PQ :=
   { g with session := { g.session with rootKey := rk, senderChain := sc, previousCounter := pn } }
 
@@ -322,7 +322,7 @@ theorem withEager_receiverChains (g : GhostState PQ) (rk : LibsignalSession.Root
     (sc : Option SenderChain) (pn : BitVec 32) :
     (withEager g rk sc pn).session.receiverChains = g.session.receiverChains := rfl
 
-def fig8StepS (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
+@[expose] def fig8StepS (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (C : Crypto) (st : Fig8St Pt) (rc : BitVec 256) : Fig8St Pt :=
   let c := (dhScheme Dh).send st.γ rc
   let p := (rootPRNG C.F encPt).up st.root c.2.2
@@ -662,7 +662,7 @@ theorem send_withEager_toGhost_eq (P : Params PQ PQC) (Dh : DHFun (BitVec 256) P
 
 /-! ## Receiver-chain synchronization -/
 
-def mkSkippedList (skipped : List ℕ) (dict : List (ℕ × BitVec 256)) : List MessageKeyGenerator :=
+@[expose] def mkSkippedList (skipped : List ℕ) (dict : List (ℕ × BitVec 256)) : List MessageKeyGenerator :=
   skipped.filterMap fun j =>
     (dict.lookup j).map fun mk => ⟨keyToBytes32 mk, BitVec.ofNat 32 (j - 1)⟩
 
@@ -943,7 +943,7 @@ theorem getElem?_of_findIdx_some (cs : List ReceiverChain) (their : PublicKey) (
         subst hk_eq
         simpa using ih k' hk'
 
-def updChain (s : RatchetState) (ci : ℕ) (their : PublicKey) (c₀ : Option LibsignalSession.ChainKey)
+@[expose] def updChain (s : RatchetState) (ci : ℕ) (their : PublicKey) (c₀ : Option LibsignalSession.ChainKey)
     (sk : List ℕ) (dict : List (ℕ × BitVec 256)) : RatchetState :=
   { s with receiverChains := s.receiverChains.set ci ⟨their, c₀, mkSkippedList sk dict⟩ }
 

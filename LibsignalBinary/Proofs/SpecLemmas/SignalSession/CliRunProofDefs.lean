@@ -13,29 +13,22 @@ public import LibsignalBinary.Specifications.SignalSession.CliRun
 public import LibsignalBinary.Specifications.SignalSession.Process
 public import LibsignalBinary.Specifications.SignalSession.Run
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhHooksCommon
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRunFixed
-public import GeneratedLean.LibsignalSessionObj
 
 /-!
-# Proof-Side CLI Program and Outcome Projection
+# Proof-Side CLI Outcome Projection
 
-Defines the non-aborting fixed-image CLI program `cliProg` and the `ProcessResult → Outcome`
-projection `toOutcome`.
+Defines the `ProcessResult → Outcome` projection `toOutcome`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace CryptoVerification.SignalSession
 open Arm64 Arm64.Process ProofLib
-/-- Fixed-image CLI `Program` rebasing `libsignalSessionImage.toProgram` at `cliBase` with externs
-`cliExterns W`. -/
-noncomputable def cliProg (W : CliHooks) : Program :=
-  libsignalSessionImage.toProgram.rebase cliBase (cliExterns W)
 
 /-- Projects an engine `ProcessResult` to a CLI `Outcome`, reducing the 64-bit `exit_group` status
 modulo 256 (matching Linux `WEXITSTATUS`) and restricting the file system via `fsView`. -/
-def toOutcome : ProcessResult → Outcome
+@[expose] def toOutcome : ProcessResult → Outcome
   | .exited code out fs => .exited (code.toNat % 256) out (fsView fs)
   | .aborted => .aborted
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperCKA
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperCKA -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Notation
 
 /-!
@@ -19,7 +19,7 @@ Deep-embedded `CostedReduction` formulation of `DeliverForge.redFSAuthDFPaper` w
 advantage, query, cost, size-honesty, and `fromAEADPRG` clamp theorems.
 -/
 
-@[expose] public section
+public section
 
 open ReductionDsl OracleSpec OracleComp
 open scoped Computational.Proofs.ReductionDsl.Notation
@@ -329,7 +329,7 @@ theorem simulateQ_implECDFPaper_fs_eq
         obtain ⟨hInv₂, hb₂⟩ := (ih u (hqm u) es₁ hInv₁).2 res hmem₂
         exact ⟨hInv₂, hb₂.trans hb₁⟩
 
-def runFSDFPaper [DecidableEq T] [DecidableEq I] [DecidableEq M] [DecidableEq E] [Inhabited E]
+@[expose] def runFSDFPaper [DecidableEq T] [DecidableEq I] [DecidableEq M] [DecidableEq E] [Inhabited E]
     [SampleableType KR] [SampleableType KC] [SampleableType CCoins]
     [SampleableType I] [SampleableType K]
     (cka : CKAScheme KC Γ CCoins T I)
@@ -365,7 +365,7 @@ theorem runFSDFPaper_eq_bind_initFSRaw
     bind_congr fun ⟨⟨_, _, _⟩, _⟩ => bind_congr fun ⟨_, _⟩ => rfl
 
 /-- Costed `DeliverForge.redFSAuthDFPaper` reduction over `SM.specDF`. -/
-def redFSAuthDFPaperProg (L B Δcka qep maxSkip : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redFSAuthDFPaperProg (L B Δcka qep maxSkip : ℕ) (j : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)

@@ -9,7 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced
+import LibsignalBinary.Proofs.Common.SharedHelpers
+meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.SepFocusAc
+meta import LibsignalBinary.Proofs.TripleRatchet.SepFocusAc -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochLoopPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochPlaced
@@ -24,7 +28,7 @@ Relocatable `[LibsignalPlacement]` proofs of the 112-byte Q-register copy (`+640
 `Vec<ChainEpochPB>::push` (`+624`), and `ChainPB` tag 3 (`+592`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -423,8 +427,8 @@ theorem decodeState_chain_push_copy_5371c_placed [LibsignalPlacement]
   subst hP
   dsimp only [decodeStatePlacedProg, decodeStatePlacedEntry] at hpc ⊢
   apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 508#64)
-  refine SepWP.fold (chainEpochPBAt_entails_quads14 A (s0.sp - 688#64) ep') (by sep_focus) ?_
-  refine SepWP.fold (memRegion_rem_split_112 ptr ch.links.length cap.toNat hlt hcap63) (by sep_focus) ?_
+  refine SepWP.fold (chainEpochPBAt_entails_quads14 A (s0.sp - 688#64) ep') (by sep_focus_ac) ?_
+  refine SepWP.fold (memRegion_rem_split_112 ptr ch.links.length cap.toNat hlt hcap63) (by sep_focus_ac) ?_
   wp_pull_exists
   rename_i q_src q_dst
   rcases q_src with ⟨⟨s0_0, s0_1, s0_2, s0_3, s0_4, s0_5, s0_6⟩, ⟨s1_0, s1_1, s1_2, s1_3, s1_4, s1_5, s1_6⟩⟩
@@ -438,13 +442,13 @@ theorem decodeState_chain_push_copy_5371c_placed [LibsignalPlacement]
   have ha976 : s0.sp - 992#64 + 16#64 = s0.sp - 976#64 := by bv_omega
   rw [ha984, ha976] at hfold_snoc
   dsimp only [quads14At, quads7At] at hfold_snoc
-  refine SepWP.fold hfold_snoc (by sep_focus) ?_
+  refine SepWP.fold hfold_snoc (by sep_focus_ac) ?_
   have hrestore := quads14At_sp_688_restore s0.sp
     ((s0_0, s0_1, s0_2, s0_3, s0_4, s0_5, s0_6), (s1_0, s1_1, s1_2, s1_3, s1_4, s1_5, s1_6))
   dsimp only [quads14At, quads7At, Quads14.head] at hrestore
-  refine SepWP.fold hrestore (by sep_focus) ?_
+  refine SepWP.fold hrestore (by sep_focus_ac) ?_
   refine SepWP.fold (fold_protoPqRatchetStateCapOkAt_snoc H_inner A s0.sp rest2.length
-    optVn ch ep' inner hlinks_next) (by sep_focus) ?_
+    optVn ch ep' inner hlinks_next) (by sep_focus_ac) ?_
   apply SepWP.done (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
   exact hloop s0_0 _ _
     (by dsimp only [decodeStatePlacedEntry]; simp only [arm64_norm])
@@ -486,210 +490,6 @@ private theorem bv_len_beq_cap_true {len : Nat} {cap : BitVec 64}
     rw [heq, BitVec.ofNat_toNat, BitVec.setWidth_eq]
   exact ⟨beq_iff_eq.mpr hbv, bne_eq_false_iff_eq.mpr hbv⟩
 
-/-- `Vec<ChainEpochPB>::push` at `+624`, handling both `len < cap` (direct copy at
-    `+640`) and `len == cap` (`RawVecInner::grow_one` at `+1200..+1208` followed by copy
-    at `+640`), branching to `+508`. -/
-theorem decodeState_chain_push_5370c_placed [LibsignalPlacement]
-    {H_inner : V1InnerHeapPred}
-    {A : RustAlloc} {ext : String → Option (State → State)}
-    (hc : DecodeStateCalleeContractsPlacedX H_inner A ext)
-    (x : DecodeStateGhost)
-    (optVn : Option VersionNegotiationPB) (ch : ChainPB) (inner : Option PqRatchetState.Inner)
-    (ep' : ChainEpochPB) (rest2 : List (BitVec 8)) (limit : Nat)
-    (hlinks_next : (ch.links ++ [ep']).length + rest2.length ≤ 2 ^ 54)
-    (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
-    (hs0A : s0.spAligned = true)
-    (hpc : s.pc = decodeStatePlacedEntry + 624#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 1392#64)
-    (htr : TraceVRegs s s0)
-    (hx19 : s.readReg64 .x19 = x.outPtr)
-    (hx20 : s.readReg64 .x20 = BitVec.ofNat 64 limit)
-    (hx21 : s.readReg64 .x21 = 0x8000000000000006#64)
-    (hx22 : s.readReg64 .x22 = s0.sp - 1040#64)
-    (hx23 : s.readReg64 .x23 = -1#64)
-    (hx24 : s.readReg64 .x24 = s0.sp - 912#64)
-    (hx25 : s.readReg64 .x25 = s0.sp - 688#64)
-    (hx26 : s.readReg64 .x26 = -2#64)
-    (hx28 : s.readReg64 .x28 = 1#64)
-    (hx29 : s.readReg64 .x29 = s0.sp - 96#64)
-    (hP : P = sliceCursorAfter (s0.sp - 1056#64) x.st.ptr x.st.bytes rest2 ∗
-      protoPqRatchetStateCapOkAt H_inner A (s0.sp - 1040#64) rest2.length ⟨optVn, some ch, inner⟩ ∗
-      chainEpochPBCapOkAt A (s0.sp - 688#64) rest2.length ep' ∗
-      memRegion (s0.sp - 576#64) 240 ∗
-      decodeStateLoopCommonPlaced A x s0)
-    (hloop : ∀ (w0' : BitVec 64) (sf : State) (P' : SepProp),
-      sf.pc = decodeStatePlacedEntry + 508#64 →
-      sf.status = .Running →
-      sf.sp = s0.sp - 1392#64 →
-      TraceVRegs sf s0 →
-      sf.readReg64 .x19 = x.outPtr →
-      sf.readReg64 .x20 = BitVec.ofNat 64 limit →
-      sf.readReg64 .x21 = 0x8000000000000006#64 →
-      sf.readReg64 .x22 = s0.sp - 1040#64 →
-      sf.readReg64 .x23 = -1#64 →
-      sf.readReg64 .x24 = s0.sp - 912#64 →
-      sf.readReg64 .x25 = s0.sp - 688#64 →
-      sf.readReg64 .x26 = -2#64 →
-      sf.readReg64 .x27 = 8#64 →
-      sf.readReg64 .x28 = 1#64 →
-      sf.readReg64 .x29 = s0.sp - 96#64 →
-      P' = ((s0.sp - 688#64) ↦₆₄ w0') ∗
-        sliceCursorAfter (s0.sp - 1056#64) x.st.ptr x.st.bytes rest2 ∗
-        protoPqRatchetStateCapOkAt H_inner A (s0.sp - 1040#64) rest2.length
-          ⟨optVn, some { ch with links := ch.links ++ [ep'] }, inner⟩ ∗
-        memRegion (s0.sp - 680#64) 40 ∗
-        memRegion (s0.sp - 640#64) 304 ∗
-        decodeStateLoopCommonPlaced A x s0 →
-      SepWPpIPlaced (decodeStatePlacedProg ext) (s0.readReg64 .x30) sf P' post
-        (decodeStatePanicPostPlaced H_inner A x s0 R)) :
-    SepWPpIPlaced (decodeStatePlacedProg ext) (s0.readReg64 .x30) s P post
-      (decodeStatePanicPostPlaced H_inner A x s0 R) := by
-  have hspA : s.spAligned = true := by rw [State.spAligned, hsp]; exact sp_sub_1392_aligned s0 hs0A
-  have hgrow_call := hc.growOneChainEpoch
-  subst hP
-  rw [protoPqRatchetStateCapOkAt_some_ch_eq_placed H_inner A s0.sp rest2.length optVn ch inner]
-  have hep_drop := chainEpochPBCapOkAt_entails_chainEpochPBAt A (s0.sp - 688#64) rest2.length ep'
-  have ha984 : s0.sp - 992#64 + 8#64 = s0.sp - 984#64 := by bv_omega
-  have ha976 : s0.sp - 992#64 + 16#64 = s0.sp - 976#64 := by bv_omega
-  have hvec_unfold :
-      chainLinksVecAt A (s0.sp - 992#64) ch.links =
-      ∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64,
-        ((s0.sp - 992#64) ↦₆₄ cap) ∗ ((s0.sp - 984#64) ↦₆₄ ptr) ∗
-        ((s0.sp - 976#64) ↦₆₄ BitVec.ofNat 64 ch.links.length) ∗
-        vecBuf A 112 8 (fun ep addr => chainEpochPBAt A addr ep) cap ptr ch.links := by
-    unfold chainLinksVecAt chainEpochPBSize vecOf vecAt vecHeader
-    simp only [ha984, ha976, sepConj_assoc]
-  rw [hvec_unfold]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply SepWPpIPlaced.exists_elim; intro cap
-  apply SepWPpIPlaced.exists_elim; intro ptr
-  have hreord :
-      sliceCursorAfter (s0.sp - 1056#64) x.st.ptr x.st.bytes rest2 ∗
-        (optVersionNegotiationPBCapOkAt A (s0.sp - 1040#64) rest2.length optVn ∗
-          (⌜ch.links.length + rest2.length ≤ 2 ^ 54⌝ ∗
-            (((s0.sp - 992#64) ↦₆₄ cap) ∗ ((s0.sp - 984#64) ↦₆₄ ptr) ∗
-              ((s0.sp - 976#64) ↦₆₄ BitVec.ofNat 64 ch.links.length) ∗
-              vecBuf A 112 8 (fun ep addr => chainEpochPBAt A addr ep) cap ptr ch.links) ∗
-            vecU8CapOkAt A (s0.sp - 968#64) rest2.length ch.nextRoot ∗
-            ((s0.sp - 944#64) ↦₆₄ ch.currentEpoch) ∗
-            ((s0.sp - 936#64) ↦₆₄ ch.sendEpoch) ∗
-            optChainParamsPBAt (s0.sp - 928#64) ch.params ∗
-            ((s0.sp - 916#64) ↦₃₂ ch.direction)) ∗
-          optProtoPqRatchetInnerCapOkAt H_inner A (s0.sp - 912#64) rest2.length inner) ∗
-        chainEpochPBCapOkAt A (s0.sp - 688#64) rest2.length ep' ∗
-        memRegion (s0.sp - 576#64) 240 ∗
-        decodeStateLoopCommonPlaced A x s0 =
-      ⌜ch.links.length + rest2.length ≤ 2 ^ 54⌝ ∗
-        (vecBuf A 112 8 (fun ep addr => chainEpochPBAt A addr ep) cap ptr ch.links ∗
-          (chainEpochPBCapOkAt A (s0.sp - 688#64) rest2.length ep' ∗
-            (sliceCursorAfter (s0.sp - 1056#64) x.st.ptr x.st.bytes rest2 ∗
-              optVersionNegotiationPBCapOkAt A (s0.sp - 1040#64) rest2.length optVn ∗
-              ((s0.sp - 992#64) ↦₆₄ cap) ∗ ((s0.sp - 984#64) ↦₆₄ ptr) ∗
-              ((s0.sp - 976#64) ↦₆₄ BitVec.ofNat 64 ch.links.length) ∗
-              vecU8CapOkAt A (s0.sp - 968#64) rest2.length ch.nextRoot ∗
-              ((s0.sp - 944#64) ↦₆₄ ch.currentEpoch) ∗
-              ((s0.sp - 936#64) ↦₆₄ ch.sendEpoch) ∗
-              optChainParamsPBAt (s0.sp - 928#64) ch.params ∗
-              ((s0.sp - 916#64) ↦₃₂ ch.direction) ∗
-              optProtoPqRatchetInnerCapOkAt H_inner A (s0.sp - 912#64) rest2.length inner ∗
-              memRegion (s0.sp - 576#64) 240 ∗
-              decodeStateLoopCommonPlaced A x s0))) := by ac_rfl
-  rw [hreord]
-  apply SepWPpIPlaced.pure_elim; intro _hlinks_cur
-  have hexp := vecBuf_chainEpochPB_expose_bounds A cap ptr ch.links
-  refine SepWPpIPlaced.mono_pre (sepConj_mono hexp (sepConj_mono_left hep_drop)) ?_
-  rw [sepConj_assoc]
-  apply SepWPpIPlaced.pure_elim; rintro ⟨hlen_le, hcap63, hptr⟩
-  by_cases hlt : ch.links.length < cap.toNat
-  · -- len < cap: direct copy at +640
-    have ⟨hbeq, hbne⟩ := bv_len_beq_cap_false hlt
-    refine SepWPpIPlaced.mono_pre
-      (sepConj_mono_left (vecBuf_chainEpochPB_of_lt A cap ptr ch.links hlt)) ?_
-    dsimp only [decodeStatePlacedProg, decodeStatePlacedEntry] at hpc ⊢
-    apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 640#64)
-    wp_steps 4
-    apply SepWP.done (by simp only [arm64_norm, hbeq, hbne]) (by simp only [arm64_norm, hrun])
-    exact decodeState_chain_push_copy_5371c_placed x optVn ch inner ep' cap ptr rest2 limit
-      hlt hcap63 hptr hlinks_next s0 _ _ R post hs0A
-      (by dsimp only [decodeStatePlacedEntry]; simp only [arm64_norm, hbeq, hbne])
-      (by simp only [arm64_norm, hrun]) (by simp only [arm64_norm, hsp])
-      (by simp only [arm64_norm, htr])
-      (by simp only [arm64_norm, hx19]) (by simp only [arm64_norm, hx20])
-      (by simp only [arm64_norm, hx21]) (by simp only [arm64_norm, hx22])
-      (by simp only [arm64_norm, hx23]) (by simp only [arm64_norm, hx24])
-      (by simp only [arm64_norm, hx25]) (by simp only [arm64_norm, hx26])
-      (by simp only [arm64_norm]) (by simp only [arm64_norm, hx28])
-      (by simp only [arm64_norm, hx29])
-      (by ac_rfl)
-      hloop
-  · -- len == cap: grow_one at +1200 -> +640
-    have heq_len : ch.links.length = cap.toNat := by omega
-    have hbv : BitVec.ofNat 64 ch.links.length = cap := by
-      rw [heq_len, BitVec.ofNat_toNat, BitVec.setWidth_eq]
-    have hbeq : (cap - cap == 0#64) = true := by simp
-    have hbne : (!decide ((cap - cap == 0#64) = true)) = false := by simp
-    have hcap_54 : cap.toNat ≤ 2 ^ 54 := by
-      have : (ch.links ++ [ep']).length = ch.links.length + 1 := by simp
-      omega
-    have ⟨hgrow_bound, hnew_cap63_nat, hnew_lt_nat, hnew_lt64⟩ := max_double_four_bound hcap_54
-    have hnew_toNat : (BitVec.ofNat 64 (max (2 * cap.toNat) 4)).toNat = max (2 * cap.toNat) 4 := by
-      rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hnew_lt64]
-    have hnew_lt : ch.links.length < (BitVec.ofNat 64 (max (2 * cap.toNat) 4)).toNat := by omega
-    have hnew_cap63 : (BitVec.ofNat 64 (max (2 * cap.toNat) 4)).toNat * 112 < 2 ^ 63 := by omega
-    refine SepWPpIPlaced.mono_pre
-      (sepConj_mono_left (vecBuf_chainEpochPB_to_growOne_pre A cap ptr ch.links heq_len)) ?_
-    rw [sepExists_sepConj_left]
-    apply SepWPpIPlaced.exists_elim; intro bs
-    rw [sepConj_assoc]
-    apply SepWPpIPlaced.pure_elim; rintro ⟨hbs_len, _⟩
-    rw [hbv]
-    dsimp only [decodeStatePlacedProg, decodeStatePlacedEntry, decodeStateLoopCommonPlaced] at hpc hgrow_call ⊢
-    apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 1200#64)
-    wp_steps 4
-    apply SepWP.done (by simp only [arm64_norm, hbeq, hbne]) (by simp only [arm64_norm, hrun])
-    apply SepWPpIPlaced.of_sepWP (mid := lsmpl.base 356)
-    wp_steps 2
-    apply SepWP.done (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun])
-    have hx22_30 : s0.sp - 1040#64 + 48#64 = s0.sp - 992#64 := by bv_omega
-    refine SepWPpIPlaced.call_growOneChainEpoch hgrow_call
-      (s0.sp - 992#64) cap ptr bs
-      (ret_pc := (blkPl_325).base + 1208#64)
-      (hpc := by simp only [arm64_norm])
-      (hrun := by simp only [arm64_norm, hrun])
-      (hsp := by simp only [arm64_norm, hsp]) (hs0A := hs0A)
-      (hlr := by simp only [arm64_norm]) (htr := by simp only [arm64_norm, htr])
-      (hx0 := by simp only [arm64_norm, hx22, hx22_30])
-      (hlen := hbs_len) (hptr := hptr) (hbound := hgrow_bound)
-      (hP := by rw [ha984]; sep_focus) ?_
-    intro s1 p' hptr' _ hpc1 hrun1 hsp1 htr1 hcs1
-    rcases hcs1 with ⟨hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hx29_1, hvregs_1⟩
-    simp only [arm64_norm, wp_norm] at hx19_1 hx20_1 hx21_1 hx22_1 hx23_1 hx24_1 hx25_1 hx26_1 hx27_1 hx28_1 hx29_1
-    rw [← hbv] at hx27_1
-    have hsp1A : s1.spAligned = true := by rw [State.spAligned, hsp1]; exact sp_sub_1392_aligned s0 hs0A
-    have hpost_grow := growOne_post_to_arrayAt_chainEpochPB A cap p' ch.links bs heq_len hbs_len hnew_toNat
-    have hrestore_len : ((s0.sp - 976#64) ↦₆₄ cap) ⊢ ((s0.sp - 976#64) ↦₆₄ BitVec.ofNat 64 ch.links.length) :=
-      Entails.of_eq (by rw [hbv])
-    rw [ha984]
-    apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 640#64)
-    refine SepWP.fold hpost_grow (by sep_focus) ?_
-    refine SepWP.fold hrestore_len (by sep_focus) ?_
-    wp_steps 1
-    apply SepWP.done (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun1])
-    exact decodeState_chain_push_copy_5371c_placed x optVn ch inner ep'
-      (BitVec.ofNat 64 (max (2 * cap.toNat) 4)) p' rest2 limit
-      hnew_lt hnew_cap63 hptr' hlinks_next s0 _ _ R post hs0A
-      (by dsimp only [decodeStatePlacedEntry]; simp only [arm64_norm])
-      (by simp only [arm64_norm, hrun1]) (by simp only [arm64_norm, hsp1])
-      (by simp only [arm64_norm, htr1])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-      (by simp only [arm64_norm, *])
-      (by dsimp only [decodeStateLoopCommonPlaced]; ac_rfl)
-      hloop
-
 /-! ## Tag 3 (`ChainPB::epoch` `Vec<ChainEpochPB>::push`, `+592..+724`) -/
 
 private theorem protoPqRatchetStateCapOkAt_expose_ch_links (H_inner : V1InnerHeapPred) (A : RustAlloc)
@@ -729,149 +529,5 @@ private theorem wt_ne_two_of_ne_lengthDelimited {iwt : WireType} (hwt : iwt ≠ 
   cases iwt <;> first | exact (hwt rfl).elim | decide
 
 attribute [local irreducible] Proto.mergeMessage mergeLoopBin Proto.spqrDecodeState
-
-/-- `ChainPB` tag 3 (`epoch`, `+592..+724`): checks `x0 == 2`
-    (`.lengthDelimited`), merges a `ChainEpochPB` (`decodeState_epoch_merge_536f4_placed`),
-    and pushes it onto `ch.links` (`decodeState_chain_push_5370c_placed`), continuing to `+508`. -/
-theorem decodeState_chain_tag3_536ec_placed [LibsignalPlacement]
-    {H_inner : V1InnerHeapPred}
-    {A : RustAlloc} {ext : String → Option (State → State)}
-    (hc : DecodeStateCalleeContractsPlacedX H_inner A ext)
-    (x : DecodeStateGhost) (w0 : BitVec 64)
-    (optVn : Option VersionNegotiationPB) (ch : ChainPB) (inner : Option PqRatchetState.Inner)
-    (iwt : WireType) (rest1 : List (BitVec 8)) (limit : Nat)
-    (hrest1_le : rest1.length ≤ x.st.bytes.length)
-    (hrest1_suf : IsDropSuffix x.st.bytes rest1)
-    (hlen_bound : x.st.bytes.length < 2 ^ 32)
-    (herr_of_none :
-      (ChainPB.mergeField ch 3#32 (codecWireTypeToProto iwt) rest1 99).toOption = none →
-      spqrDecodeState x.st.bytes = .error .stateDecode)
-    (s0 s : State) (P R : SepProp) (post : State → SepProp → Prop)
-    (hpost : post = decodeStatePostPlaced H_inner A x s0 R)
-    (hs0A : s0.spAligned = true)
-    (hpc : s.pc = decodeStatePlacedEntry + 592#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 1392#64)
-    (htr : TraceVRegs s s0)
-    (hx0 : s.readReg64 .x0 = BitVec.ofNat 64 iwt.toNat)
-    (hx19 : s.readReg64 .x19 = x.outPtr)
-    (hx20 : s.readReg64 .x20 = BitVec.ofNat 64 limit)
-    (hx21 : s.readReg64 .x21 = 0x8000000000000006#64)
-    (hx22 : s.readReg64 .x22 = s0.sp - 1040#64)
-    (hx23 : s.readReg64 .x23 = -1#64)
-    (hx24 : s.readReg64 .x24 = s0.sp - 912#64)
-    (hx25 : s.readReg64 .x25 = s0.sp - 688#64)
-    (hx26 : s.readReg64 .x26 = -2#64)
-    (hx28 : s.readReg64 .x28 = 1#64)
-    (hx29 : s.readReg64 .x29 = s0.sp - 96#64)
-    (hP : P = ((s0.sp - 688#64) ↦₆₄ w0) ∗
-      sliceCursorAfter (s0.sp - 1056#64) x.st.ptr x.st.bytes rest1 ∗
-      protoPqRatchetStateCapOkAt H_inner A (s0.sp - 1040#64) rest1.length ⟨optVn, some ch, inner⟩ ∗
-      memRegion (s0.sp - 680#64) 40 ∗
-      memRegion (s0.sp - 640#64) 304 ∗
-      decodeStateLoopCommonPlaced A x s0)
-    (hloop : ∀ (w0' : BitVec 64) (ch' : ChainPB) (rest2 : List (BitVec 8)) (sf : State) (P' : SepProp),
-      (ChainPB.mergeField ch 3#32 (codecWireTypeToProto iwt) rest1 99).toOption = some (ch', rest2) →
-      rest2.length ≤ rest1.length →
-      IsDropSuffix rest1 rest2 →
-      sf.pc = decodeStatePlacedEntry + 508#64 →
-      sf.status = .Running →
-      sf.sp = s0.sp - 1392#64 →
-      TraceVRegs sf s0 →
-      sf.readReg64 .x19 = x.outPtr →
-      sf.readReg64 .x20 = BitVec.ofNat 64 limit →
-      sf.readReg64 .x21 = 0x8000000000000006#64 →
-      sf.readReg64 .x22 = s0.sp - 1040#64 →
-      sf.readReg64 .x23 = -1#64 →
-      sf.readReg64 .x24 = s0.sp - 912#64 →
-      sf.readReg64 .x25 = s0.sp - 688#64 →
-      sf.readReg64 .x26 = -2#64 →
-      sf.readReg64 .x27 = 8#64 →
-      sf.readReg64 .x28 = 1#64 →
-      sf.readReg64 .x29 = s0.sp - 96#64 →
-      P' = ((s0.sp - 688#64) ↦₆₄ w0') ∗
-        sliceCursorAfter (s0.sp - 1056#64) x.st.ptr x.st.bytes rest2 ∗
-        protoPqRatchetStateCapOkAt H_inner A (s0.sp - 1040#64) rest2.length ⟨optVn, some ch', inner⟩ ∗
-        memRegion (s0.sp - 680#64) 40 ∗
-        memRegion (s0.sp - 640#64) 304 ∗
-        decodeStateLoopCommonPlaced A x s0 →
-      SepWPpIPlaced (decodeStatePlacedProg ext) (s0.readReg64 .x30) sf P' post
-        (decodeStatePanicPostPlaced H_inner A x s0 R)) :
-    SepWPpIPlaced (decodeStatePlacedProg ext) (s0.readReg64 .x30) s P post
-      (decodeStatePanicPostPlaced H_inner A x s0 R) := by
-  have hspA : s.spAligned = true := by rw [State.spAligned, hsp]; exact sp_sub_1392_aligned s0 hs0A
-  subst hP
-  have hreord_tag3 :
-      ((s0.sp - 688#64) ↦₆₄ w0) ∗
-        sliceCursorAfter (s0.sp - 1056#64) x.st.ptr x.st.bytes rest1 ∗
-        protoPqRatchetStateCapOkAt H_inner A (s0.sp - 1040#64) rest1.length ⟨optVn, some ch, inner⟩ ∗
-        memRegion (s0.sp - 680#64) 40 ∗
-        memRegion (s0.sp - 640#64) 304 ∗
-        decodeStateLoopCommonPlaced A x s0 =
-      protoPqRatchetStateCapOkAt H_inner A (s0.sp - 1040#64) rest1.length ⟨optVn, some ch, inner⟩ ∗
-        (((s0.sp - 688#64) ↦₆₄ w0) ∗
-          sliceCursorAfter (s0.sp - 1056#64) x.st.ptr x.st.bytes rest1 ∗
-          memRegion (s0.sp - 680#64) 40 ∗
-          memRegion (s0.sp - 640#64) 304 ∗
-          decodeStateLoopCommonPlaced A x s0) := by ac_rfl
-  rw [hreord_tag3]
-  refine SepWPpIPlaced.mono_pre
-    (sepConj_mono_left
-      (protoPqRatchetStateCapOkAt_expose_ch_links H_inner A s0.sp rest1.length optVn ch inner)) ?_
-  rw [sepConj_assoc]
-  apply SepWPpIPlaced.pure_elim; intro hlinks1
-  dsimp only [decodeStatePlacedProg, decodeStatePlacedEntry] at hpc ⊢
-  by_cases hwt : iwt = .lengthDelimited
-  · -- iwt == .lengthDelimited (x0 == 2) -> +600
-    have hx0_2 : s.readReg64 .x0 = 2#64 := by rw [hx0, hwt]; rfl
-    apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 600#64)
-    wp_steps 2
-    apply SepWP.done (by simp only [arm64_norm, hx0_2]) (by simp only [arm64_norm, hrun])
-    refine decodeState_epoch_merge_536f4_placed (v20 := BitVec.ofNat 64 limit) hc x w0
-      ⟨optVn, some ch, inner⟩ rest1 hrest1_le hrest1_suf hlen_bound
-      (fun hnone => herr_of_none (by rw [chainPB_mergeField_tag3, hwt, codecWireTypeToProto, hnone]; rfl))
-      s0 _ _ R post hpost hs0A
-      (by dsimp only [decodeStatePlacedEntry]; simp only [arm64_norm, hx0_2])
-      (by simp only [arm64_norm, hrun]) (by simp only [arm64_norm, hsp])
-      (by simp only [arm64_norm, htr])
-      (by simp only [arm64_norm, hx19]) (by simp only [arm64_norm, hx20])
-      (by simp only [arm64_norm, hx21]) (by simp only [arm64_norm, hx22])
-      (by simp only [arm64_norm, hx23]) (by simp only [arm64_norm, hx24])
-      (by simp only [arm64_norm, hx25]) (by simp only [arm64_norm, hx26])
-      (by simp only [arm64_norm, hx28]) (by simp only [arm64_norm, hx29])
-      (by ac_rfl) ?_
-    intro ep' rest2 sf1 P1 hok_mm hle2 hsuf2 hpc1 hrun1 hsp1 htr1
-      hx19_1 hx20_1 hx21_1 hx22_1 hx23_1 hx24_1 hx25_1 hx26_1 hx28_1 hx29_1 hP1
-    have hlt2 : rest2.length < rest1.length := proto_mergeMessage_length_lt hok_mm
-    have hlinks_next : (ch.links ++ [ep']).length + rest2.length ≤ 2 ^ 54 := by
-      have : (ch.links ++ [ep']).length = ch.links.length + 1 := by simp
-      omega
-    have hok_tag3 :
-        (ChainPB.mergeField ch 3#32 (codecWireTypeToProto iwt) rest1 99).toOption =
-          some ({ ch with links := ch.links ++ [ep'] }, rest2) := by
-      rw [chainPB_mergeField_tag3, hwt, codecWireTypeToProto, hok_mm]; rfl
-    exact decodeState_chain_push_5370c_placed hc x optVn ch inner ep' rest2 limit
-      hlinks_next s0 sf1 P1 R post hs0A
-      hpc1 hrun1 hsp1 htr1
-      hx19_1 hx20_1 hx21_1 hx22_1 hx23_1 hx24_1 hx25_1 hx26_1 hx28_1 hx29_1 hP1
-      (fun w0' sf2 P2 hpc2 =>
-        hloop w0' { ch with links := ch.links ++ [ep'] } rest2 sf2 P2 hok_tag3 hle2 hsuf2 hpc2)
-  · -- iwt != .lengthDelimited -> +2708
-    have ⟨hbeq, hbne⟩ := wt_ne_two_of_ne_lengthDelimited hwt
-    have herr : spqrDecodeState x.st.bytes = .error .stateDecode := by
-      apply herr_of_none
-      rw [chainPB_mergeField_tag3, mergeMessage_toOption_of_ne_lengthDelimited ChainEpochPB.mergeField hwt]
-      rfl
-    apply SepWPpIPlaced.of_sepWP (mid := (blkPl_325).base + 2708#64)
-    wp_steps 2
-    refine SepWP.fold (loopCommon_cursor_to_errFrame_placed H_inner A x rest1 rest1.length
-      ⟨optVn, some ch, inner⟩ s0) (by sep_focus) ?_
-    apply SepWP.done (by simp only [arm64_norm, hx0, hbeq, hbne]) (by simp only [arm64_norm, hrun])
-    exact SepWPpIPlaced.of_sepWPp (decodeState_err_chain_epoch_wt_53f30_placed hc.toDecodeStateCalleeContractsPlaced
-      x ⟨optVn, some ch, inner⟩ w0 s0 _ _ R post hpost herr
-      (by dsimp only [decodeStatePlacedEntry]; simp only [arm64_norm, hx0, hbeq, hbne])
-      (by simp only [arm64_norm, hrun]) (by simp only [arm64_norm, hsp]) hs0A
-      (by simp only [arm64_norm, htr]) (by simp only [arm64_norm, hx19])
-      (by simp only [arm64_norm, hx21]) (by simp only [arm64_norm, hx29])
-      (by ac_rfl))
 
 end CryptoVerification.SpqrV1.Top.DecodeState

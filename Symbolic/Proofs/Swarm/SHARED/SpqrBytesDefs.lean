@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.SHARED.HookAuthPure
+public import Symbolic.Proofs.Swarm.SHARED.HookAuthPure -- proof-setup: allow-public-import
 
 /-!
 # Byte-Level SPQR V1 Operations for Composed Semantics
@@ -19,7 +19,7 @@ Defines byte-level SPQR V1 initialization, send, receive, and epoch-0 chain-key 
 specializations to an `ExternInterpretation`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,7 +33,7 @@ open Symbolic.Swarm.SHARED.HookAuth
 
 /-- Run the SPQR V1 byte-model `send`, returning `some (st', keyBytes, msg)` (with `keyBytes = []`
 when `salt = none` and `v.toList` when `salt = some v`) or `none` on error. -/
-def spqrSendB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
+@[expose] def spqrSendB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
     (st coins : Bytes) : Option (Bytes × Bytes × Bytes) :=
   match (spqrV1WithMac F K mac).send st coins with
   | some (st', salt?, msg) =>
@@ -43,19 +43,19 @@ def spqrSendB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
       some (st', keyBytes, msg)
   | none => none
 
-def spqrSendStateB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
+@[expose] def spqrSendStateB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
     (st coins : Bytes) : Bytes :=
   match spqrSendB F K mac st coins with
   | some (st', _, _) => st'
   | none => []
 
-def spqrSendKeyB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
+@[expose] def spqrSendKeyB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
     (st coins : Bytes) : Bytes :=
   match spqrSendB F K mac st coins with
   | some (_, key, _) => key
   | none => []
 
-def spqrSendMsgB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
+@[expose] def spqrSendMsgB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
     (st coins : Bytes) : Bytes :=
   match spqrSendB F K mac st coins with
   | some (_, _, msg) => msg
@@ -63,33 +63,33 @@ def spqrSendMsgB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
 
 /-- Run the SPQR V1 byte-model `recv`, returning `some (st', key?)` on `.ok (st', key?)` or `none`
 on error. -/
-def spqrRecvB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
+@[expose] def spqrRecvB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
     (st msg : Bytes) : Option (Bytes × Option Bytes) :=
   match (spqrV1RecvWithMac F K mac).recv st msg with
   | .ok (st', key?) => some (st', key?)
   | .error _ => none
 
-def spqrRecvStateB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
+@[expose] def spqrRecvStateB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
     (st msg : Bytes) : Bytes :=
   match spqrRecvB F K mac st msg with
   | some (st', _) => st'
   | none => []
 
-def spqrRecvKeyB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
+@[expose] def spqrRecvKeyB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
     (st msg : Bytes) : Bytes :=
   match spqrRecvB F K mac st msg with
   | some (_, some k) => k
   | _ => []
 
 /-- Decode the 1-byte direction parameter (`[0#8]` for `.a2b`, `[1#8]` for `.b2a`). -/
-def spqrDirOfParams? (p : Bytes) : Option Direction :=
+@[expose] def spqrDirOfParams? (p : Bytes) : Option Direction :=
   if p = [0#8] then some .a2b
   else if p = [1#8] then some .b2a
   else none
 
 /-- Serialized initial SPQR V1 state (`initialState` with `version = .v1`, `minVersion = .v1`, and
 `DEFAULT_CHAIN_PARAMS`) for authentication key `k` and 1-byte direction parameter `p`. -/
-def spqrInitB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
+@[expose] def spqrInitB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
     (k p : Bytes) : Bytes :=
   match spqrDirOfParams? p with
   | some dir =>
@@ -104,14 +104,14 @@ def spqrInitB (F : ShaCompress) (K : MlKem) (mac : HmacFn)
   | none => []
 
 /-- Encode `idx : BitVec 32` as 4 little-endian bytes. -/
-def spqrLeBytes4 (idx : BitVec 32) : Bytes :=
+@[expose] def spqrLeBytes4 (idx : BitVec 32) : Bytes :=
   [BitVec.ofNat 8 idx.toNat,
    BitVec.ofNat 8 (idx.toNat >>> 8),
    BitVec.ofNat 8 (idx.toNat >>> 16),
    BitVec.ofNat 8 (idx.toNat >>> 24)]
 
 /-- Decode 4 little-endian bytes to `BitVec 32`. -/
-def spqrIdxOfBytes? (idxBytes : Bytes) : Option (BitVec 32) :=
+@[expose] def spqrIdxOfBytes? (idxBytes : Bytes) : Option (BitVec 32) :=
   match idxBytes with
   | [b0, b1, b2, b3] =>
       some (BitVec.ofNat 32
@@ -120,7 +120,7 @@ def spqrIdxOfBytes? (idxBytes : Bytes) : Option (BitVec 32) :=
 
 /-- Epoch-0 chain key at 4-byte little-endian index `idxBytes` on `dir.switch` for authentication
 key `k` and 1-byte direction parameter `p`. -/
-def spqrChainKeyB (F : ShaCompress) (k p idxBytes : Bytes) : Bytes :=
+@[expose] def spqrChainKeyB (F : ShaCompress) (k p idxBytes : Bytes) : Bytes :=
   match spqrDirOfParams? p, spqrIdxOfBytes? idxBytes with
   | some dir, some idx =>
       match Chain.new (spqrHkdfWith F) k dir.switch DEFAULT_CHAIN_PARAMS.intoPb with
@@ -131,25 +131,25 @@ def spqrChainKeyB (F : ShaCompress) (k p idxBytes : Bytes) : Bytes :=
       | .error _ => []
   | _, _ => []
 
-def spqrInitOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
+@[expose] def spqrInitOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
   spqrInitB (sha256CompressFunction i) (mlkemOf i) (hmacFnOf i)
 
-def spqrSendStateOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
+@[expose] def spqrSendStateOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
   spqrSendStateB (sha256CompressFunction i) (mlkemOf i) (hmacFnOf i)
 
-def spqrSendKeyOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
+@[expose] def spqrSendKeyOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
   spqrSendKeyB (sha256CompressFunction i) (mlkemOf i) (hmacFnOf i)
 
-def spqrSendMsgOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
+@[expose] def spqrSendMsgOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
   spqrSendMsgB (sha256CompressFunction i) (mlkemOf i) (hmacFnOf i)
 
-def spqrRecvStateOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
+@[expose] def spqrRecvStateOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
   spqrRecvStateB (sha256CompressFunction i) (mlkemOf i) (hmacFnOf i)
 
-def spqrRecvKeyOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
+@[expose] def spqrRecvKeyOf (i : ExternInterpretation) : Bytes → Bytes → Bytes :=
   spqrRecvKeyB (sha256CompressFunction i) (mlkemOf i) (hmacFnOf i)
 
-def spqrChainKeyOf (i : ExternInterpretation) : Bytes → Bytes → Bytes → Bytes :=
+@[expose] def spqrChainKeyOf (i : ExternInterpretation) : Bytes → Bytes → Bytes → Bytes :=
   spqrChainKeyB (sha256CompressFunction i)
 
 end Symbolic.Swarm.SHARED.SpqrBytes

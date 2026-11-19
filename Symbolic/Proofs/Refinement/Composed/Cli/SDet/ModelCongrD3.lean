@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
 
 /-!
 # Whisper and Pre-Key Wire Tag Disjointness
@@ -18,7 +18,7 @@ Proves `pqRecvWhisper_wirePrekey_false`, ruling out `InputsEquiv` between whispe
 `pqRecvInputs` calls.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ChainEpochPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ProtoChainPlaced
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1Placed
@@ -23,7 +23,7 @@ Provides `.rodata` extraction/restoration helpers and discharges `SpqrSendPlaced
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -71,7 +71,7 @@ open CryptoVerification.Cli.SpqrV1.Top.Send.CodePlaced
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. `.rodata` Bundle Introduction & Restoration Helpers (`spqrSendRoPlacedAt`) -/

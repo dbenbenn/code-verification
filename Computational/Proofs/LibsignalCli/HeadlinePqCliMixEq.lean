@@ -9,26 +9,29 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Soundness
-public import Computational.Proofs.LibsignalCli.KeyInd1RealReds
-public import Computational.Proofs.E2E.SignedSession
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+public import Computational.Proofs.LibsignalCli.KeyInd1RealReds -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SignedSession -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.StatementComposed
 public import Computational.Specifications.Reductions.Pqxdh.StatementPqReds
-public import Computational.Proofs.SignalPqxdh.KeyInd1KeyRoSplit
+import Computational.Proofs.SignalPqxdh.KeyInd1KeyRoSplit
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 public import Computational.Specifications.Game.StatementPq
+public import Computational.Proofs.E2E.SpkHop2Red -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.ComposedKeyIndHop
+import Computational.Proofs.LibsignalCli.KeyInd1RealRedsCosted
 
 /-!
 # Mixture bound equality and bridge propositions for CLI security
 
 Provides `IsQueryBoundP` monotonicity and disjunction combinators, rewrites the prefix-mixture
 session bound into the `Signed` mixture form (`prefixFullBoundMix_generic_eq`), and defines the
-adapter and prefix-hybrid bridge propositions `CliPqAdapterBoundProp` and `CliPqPrefixBoundProp`.
--/
+adapter and prefix-hybrid bridge propositions `CliPqAdapterBoundProp` and `CliPqPrefixBoundProp`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 open scoped ENNReal BigOperators
 open ReductionDsl OracleComp OracleSpec MeasureTheory
@@ -45,25 +48,6 @@ namespace CryptoVerification.E2E
 local instance instInhabitedOfZeroHeadlinePqCliMixEq {Pt : Type} [Zero Pt] : Inhabited Pt := ⟨0⟩
 
 /-! ## Query-bound helpers -/
-
-theorem isQueryBoundP_of_imp_pq {ι : Type} {spec : OracleSpec ι} {α : Type}
-    {p p' : ι → Prop} [DecidablePred p] [DecidablePred p']
-    (himp : ∀ t, p' t → p t) {oa : OracleComp spec α} {n : ℕ}
-    (h : oa.IsQueryBoundP p n) : oa.IsQueryBoundP p' n := by
-  induction oa using OracleComp.inductionOn generalizing n with
-  | pure _ => trivial
-  | query_bind t mx ih =>
-    rw [isQueryBoundP_query_bind_iff] at h ⊢
-    refine ⟨?_, fun u => ?_⟩
-    · by_cases hp' : p' t
-      · exact Or.inr (h.1.resolve_left (not_not.mpr (himp t hp')))
-      · exact Or.inl hp'
-    · have := ih u (h.2 u)
-      by_cases hp' : p' t
-      · simp only [hp', ite_true, himp t hp'] at this ⊢; exact this
-      · by_cases hp : p t
-        · simp only [hp', hp, ite_true, ite_false] at this ⊢; exact this.mono (Nat.sub_le _ _)
-        · simp only [hp', hp, ite_false] at this ⊢; exact this
 
 theorem isQueryBoundP_or_add_pq {ι : Type} {spec : OracleSpec ι} {α : Type}
     {p₁ p₂ p : ι → Prop} [DecidablePred p₁] [DecidablePred p₂] [DecidablePred p]
@@ -213,7 +197,7 @@ theorem prefixFullBoundMix_generic_eq
 
 /-- CLI adapter coupling bridge bounding `CliPqxdhAdvantage` by the bias of `bhE2EExpWithKi true`
 at `pqxdhKeyIndImpl1KeyReal` plus `kemDecapsFailureTerm`. -/
-def CliPqAdapterBoundProp {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def CliPqAdapterBoundProp {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (S : SignalPqxdh.Setup) (ℓ : ℕ) : Prop :=
   ∀ (run : CliRun) (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (_hCli : CliSpecPqxdh run X W) (_hK_tot : MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds W.Q.K)
@@ -238,7 +222,7 @@ def CliPqAdapterBoundProp {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType
 
 /-- Prefix-hybrid bridge bounding the bias of `bhE2EExpWithKi false` at `pqxdhKeyIndImpl1KeyReal`
 by the `qStart`-step mixture session bias sum of `Prefix1Key.bhPrefixRedWith`. -/
-def CliPqPrefixBoundProp {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def CliPqPrefixBoundProp {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (S : SignalPqxdh.Setup) (ℓ : ℕ) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (_hK_tot : MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds W.Q.K)

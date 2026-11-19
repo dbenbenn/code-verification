@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeTags4To7Budget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeTag8
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeTags4To7Budget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeTag8
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeVarintBase
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -18,6 +18,16 @@ import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodePure -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeTags1To4 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeTags1To4Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueFetchBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `PreKeySignalMessage::new` Tag 8 Encoding and Core Composition
@@ -27,7 +37,7 @@ Relocatable `[LibsignalPlacement]` encoding step for protobuf tag 8 (`kyber_ciph
 `RustCliAllocBudget M` with zero additional allocations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -391,54 +401,6 @@ theorem step_preKeyMsg_tag8_placed [LibsignalPlacement]
   step_preKeyMsg_tag8_placed_of_ok
     (encodeVarintNoGrow_placed_ok hshim halloc hrealloc)
     (ls_hook_ok_of_mem hmemcpy)
-    x g sp st tr hwf hcl hpc hrun hsp halign htr hfp hx19 hP hnext
-
-theorem step_preKeyMsg_tag8_placed_sessionHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym sessionShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec)
-    (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (sp : BitVec 64)
-    (st : M.σ) (tr : List TraceEvent) (hwf : PreKeyMsgGhostWf x g)
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcl : LibsignalCodeLoaded lsmpl s.mem)
-    (hpc : s.pc = (blkPl_41).base + 1104#64) (hrun : s.status = .Running)
-    (hsp : s.sp = sp) (halign : s.spAligned = true) (htr : s.trace = tr)
-    (hfp : s.readReg64 .fp = sp + 272#64)
-    (hx19 : s.readReg64 .x19 =
-      (match x.kp with
-       | none => noneCap
-       | some k => BitVec.ofNat 64 k.ciphertext.length))
-    (hP : P = (((sp + 48#64) ↦₆₄ g.kyberCopyPtr) ∗
-      ((sp + 56#64) ↦₆₄ x.bkA) ∗
-      ((sp + 224#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-      (((sp + 224#64) + 8#64) ↦₆₄ g.serPtr) ∗
-      (((sp + 224#64) + 16#64) ↦₆₄ BitVec.ofNat 64 (serPrefix7 x).length) ∗
-      vecU8Buf A.repAlloc (BitVec.ofNat 64 x.model.serialized.length) g.serPtr (serPrefix7 x) ∗
-      optKyberCopyBuf A.repAlloc g.kyberCopyPtr x.kp ∗
-      A.pool lim st s ∗ stackAt sp preKeyMsgSubStack) ∗ F)
-    (hnext : ∀ (sm : State) (lenW : BitVec 64),
-      sm.pc = (blkPl_41).base + 1220#64 → sm.status = .Running →
-      sm.sp = sp → sm.trace = tr → LibsignalCodeLoaded lsmpl sm.mem →
-      sm.readReg64 .x8 = x.bkA →
-      sm.readReg64 .x23 = BitVec.ofNat 64 (serPrefix8 x).length →
-      sm.readReg64 .x26 = BitVec.ofNat 64 x.model.serialized.length →
-      PreKeyMsgTagRegs s sm →
-      SepWPp (lsProg_41 H) ret sm
-        ((((sp + 48#64) ↦₆₄ g.kyberCopyPtr) ∗
-          ((sp + 56#64) ↦₆₄ x.bkA) ∗
-          ((sp + 224#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-          (((sp + 224#64) + 8#64) ↦₆₄ g.serPtr) ∗
-          (((sp + 224#64) + 16#64) ↦₆₄ lenW) ∗
-          vecU8Buf A.repAlloc (BitVec.ofNat 64 x.model.serialized.length) g.serPtr (serPrefix8 x) ∗
-          optKyberCopyBuf A.repAlloc g.kyberCopyPtr x.kp ∗
-          A.pool lim st sm ∗ stackAt sp preKeyMsgSubStack) ∗ F)
-        Q Qp) :
-    SepWPp (lsProg_41 H) ret s P Q Qp :=
-  step_preKeyMsg_tag8_placed_of_ok
-    (encodeVarintNoGrow_placed_ok_sessionShim hshim halloc hrealloc)
-    (subroutine_ok_framelessMemcpy_of_sessionMemcpyRegionBudget (preKeyMsg_memcpy_placed_ok hmemcpy))
     x g sp st tr hwf hcl hpc hrun hsp halign htr hfp hx19 hP hnext
 
 /-! ## Core Composition (`SeamA_placed → SeamB_placed`) -/

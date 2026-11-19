@@ -9,15 +9,56 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrB
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrBPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrB
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrBPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrPlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.HelpersBudget
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Budget-Threaded Relocatable Stage P3 Error Spatial Bundles
@@ -27,7 +68,7 @@ Stage P3 error spatial bundles `stageP3ErrPrePrevEmptyPlacedBudget` and
 `stageP3ErrPostPrevEmptyPlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -45,7 +86,7 @@ open CryptoVerification.E2E.Pqxdh.ResponderClosure (decryptPrekeySavedRegsAt)
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched (prevSessionsEmptyAt)
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget)
 
-def stageP3ErrPrePrevEmptyPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3ErrPrePrevEmptyPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (coroPtr outPtr initErrsPtr : BitVec 64) (g : RecordGhost)
     (e : SignalProtocolError) (b_2c0 : BitVec 8)
@@ -63,7 +104,7 @@ def stageP3ErrPrePrevEmptyPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
 
 abbrev stageP3ErrPrePrevEmptyPlaced := @stageP3ErrPrePrevEmptyPlacedBudget
 
-def stageP3ErrPostPrevEmptyPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3ErrPostPrevEmptyPlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (coroPtr outPtr : BitVec 64)
     (e : SignalProtocolError) : SepProp :=
@@ -81,24 +122,5 @@ def stageP3ErrPostPrevEmptyPlacedBudget [LibsignalPlacement] {M : AllocCostModel
   A.pool lim st s ∗ stackAt s.sp growOneSpeStack
 
 abbrev stageP3ErrPostPrevEmptyPlaced := @stageP3ErrPostPrevEmptyPlacedBudget
-
-theorem stageP3ErrPrePrevEmptyPlacedBudget_eq_atState [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s0 s : State)
-    (coroPtr outPtr initErrsPtr : BitVec 64) (g : RecordGhost)
-    (e : SignalProtocolError) (b_2c0 : BitVec 8)
-    (G₂ recG : SessionGhost) (st₂ recSt : SessionState (List (BitVec 8))) :
-    stageP3ErrPrePrevEmptyPlacedBudget A lim st s0 s coroPtr outPtr initErrsPtr g e b_2c0
-      G₂ recG st₂ recSt =
-      CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.stageP3ErrPrePrevEmptyPlaced
-        (A.atState lim st s) s0 s coroPtr outPtr initErrsPtr g e b_2c0 G₂ recG st₂ recSt :=
-  rfl
-
-theorem stageP3ErrPostPrevEmptyPlacedBudget_eq_atState [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s0 s : State)
-    (coroPtr outPtr : BitVec 64) (e : SignalProtocolError) :
-    stageP3ErrPostPrevEmptyPlacedBudget A lim st s0 s coroPtr outPtr e =
-      CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.stageP3ErrPostPrevEmptyPlaced
-        (A.atState lim st s) s0 s coroPtr outPtr e :=
-  rfl
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevErrBPlacedBudget

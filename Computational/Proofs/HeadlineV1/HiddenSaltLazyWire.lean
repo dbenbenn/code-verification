@@ -9,7 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltV1
+public import Computational.Proofs.HeadlineV1.HiddenSaltV1Defs -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.HiddenSaltV1
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv
 import ProofLib.SepLogic.WP.StateNorm
 
@@ -21,11 +22,9 @@ under `EvictedSpurHistSimInvLazy`, and proves probe-flag monotonicity and evict-
 bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal
 open OracleComp OracleSpec ENNReal MeasureTheory
@@ -50,7 +49,7 @@ open CryptoGames.SM.Construction.DeliverForge
 variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 
 /-- Reachable non-evicted wrong-salt `deliver` probe predicate under `EvictedSpurHistSimInvLazy`. -/
-def firstNEProbeAt {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def firstNEProbeAt {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
     (InvPQ : ℕ → List (BitVec 8) → Prop) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
@@ -66,7 +65,7 @@ def firstNEProbeAt {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 open Classical in
 /-- Simulator agreeing with `kemFailSimImpl` except that `deliver` sets the probe flag only when
 `firstNEProbeAt` holds at the pre-state. -/
-noncomputable def firstNESimImpl {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] noncomputable def firstNESimImpl {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
     (InvPQ : ℕ → List (BitVec 8) → Prop) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
@@ -516,4 +515,3 @@ variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 
 end CryptoVerification.E2E.Signed
 
-end

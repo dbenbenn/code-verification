@@ -11,20 +11,24 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerializeLenExtBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SessionLenExtBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerializeLenExtBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SessionLenExtBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `SessionRecord::serialize` Callee Sub-Specs at `serializeSubStackX`
@@ -34,7 +38,7 @@ callees (`vecVecClone`, `sessionLen`, `sessionClone`, `encode_varint`, `encode_r
 `__rust_alloc`, `shim`, and `memcpy`) to operate over `stackAt sp serializeSubStackX` in Block `52`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -115,7 +119,7 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget (
 
 /-! ## Lifted callee specifications at `serializeSubStackX` -/
 
-def vecVecCloneSubSpecX : Spec VecVecCloneGhost where
+@[expose] def vecVecCloneSubSpecX : Spec VecVecCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧ s.readReg64 .x2 = 0#64⌝ ∗
       memRegion x.dst 24 ∗ stackAt s.sp serializeSubStackX
@@ -123,7 +127,7 @@ def vecVecCloneSubSpecX : Spec VecVecCloneGhost where
     ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗
       vecHeader x.dst 0#64 8#64 0#64 ∗ stackAt s0.sp serializeSubStackX
 
-def sessionLenSubSpecX (A : RustAlloc) : Spec SessionLenGhost where
+@[expose] def sessionLenSubSpecX (A : RustAlloc) : Spec SessionLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (encSessionMem x.G x.s).length < 2 ^ 32⌝ ∗
       sessionStateReprAt A x.ss x.G x.s ∗ stackAt s.sp serializeSubStackX
@@ -132,7 +136,7 @@ def sessionLenSubSpecX (A : RustAlloc) : Spec SessionLenGhost where
       sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗
       sessionStateReprAt A x.ss x.G x.s ∗ stackAt s0.sp serializeSubStackX
 
-def sessionCloneSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def sessionCloneSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SessionCloneGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧
@@ -147,7 +151,7 @@ def sessionCloneSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
         sessionStateReprAt A.repAlloc x.dst G' x.s) ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp serializeSubStackX
 
-def encodeVarintSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def encodeVarintSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeVarintGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧ x.bs.length + 10 < 2 ^ 62 ∧
@@ -164,7 +168,7 @@ def encodeVarintSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
         A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp serializeSubStackX
 
-def encodeRawSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def encodeRawSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeRawGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss ∧ s.readReg64 .x1 = x.v ∧
@@ -181,7 +185,7 @@ def encodeRawSubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
         vecU8At A.repAlloc x.v cap' ptr' (x.bs ++ encSessionMem x.G x.s)) ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp serializeSubStackX
 
-def dropLocal1SubSpecXBase (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropLocal1SubSpecXBase (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropSessionStructureGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss⌝ ∗
@@ -191,7 +195,7 @@ def dropLocal1SubSpecXBase (M : AllocCostModel) (A : RustCliAllocBudget M)
       ⌜sf.trace = s0.trace ∧ FreeOnlyEvs evs⌝ ∗
       memRegion x.ss 344 ∗ A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp serializeSubStackX
 
-def dropLocal1SubSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropLocal1SubSpecX [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropSessionStructureGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ss ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗
@@ -209,11 +213,11 @@ abbrev rustAllocNoOomSubSpecX [LibsignalPlacement] (M : AllocCostModel) (A : Rus
     (lim : BudgetLimits) : Spec (Nat × Nat × M.σ) :=
   rustCliAllocNoOomSpecWithStack M A lim false serializeSubStackX
 
-def shimSubSpecX : Spec Unit where
+@[expose] def shimSubSpecX : Spec Unit where
   pre := fun _ s => stackAt s.sp serializeSubStackX
   post := fun _ s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗ stackAt s0.sp serializeSubStackX
 
-def memcpySubSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def memcpySubSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s =>
     ⌜s.readReg64 .x0 = dst ∧ s.readReg64 .x1 = src ∧ (s.readReg64 .x2).toNat = bs.length⌝ ∗
       memRegion dst bs.length ∗ (src ↦ₛ bs) ∗ stackAt s.sp serializeSubStackX

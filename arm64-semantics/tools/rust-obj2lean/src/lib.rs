@@ -14,17 +14,16 @@
 //!    `ObjSymbol`, `ObjReloc`, `ExternDecl`, `Extraction`, `ObjModuleMeta`) and SHA-256.
 //! 2. [`trusted_extractor`] (`[TCB]`): Pure ELF64 `.o` byte parser (`parse_object`, `parse_c_object`),
 //!    symbol/extern collision checks, and pre-link `Obj.ExtractedObj` emission.
-//! 3. [`untrusted_placed`] (`[OUTSIDE TCB]`): Layout-generic `PlacedLib` / `MultiPlacedLib` and
-//!    placement witness emission.
-//! 4. [`untrusted_legacy_linker`] (`[OUTSIDE TCB]`, deprecated): Legacy base-independent static
-//!    linker producing `Arm64.Obj.LinkedImage` (`Arm64.Legacy`), gated behind `--legacy-linked-image`.
-//! 5. [`untrusted_driver`] (`[OUTSIDE TCB]`): `translation.toml` / CLI config loader, `cargo rustc` /
+//! 3. [`untrusted_placed`] (`[OUTSIDE TCB]`): Layout-generic `Obj.PlacedLib` / `Obj.MultiPlacedLib`
+//!    and placement witness emission.
+//! 4. [`untrusted_driver`] (`[OUTSIDE TCB]`): `translation.toml` / CLI config loader, `cargo rustc` /
 //!    `zig cc` build orchestration, `.rlib` / `.a` archive unpacking, `root_section_closure`
 //!    dead-section reachability selector, and the export pipeline + CLI dispatch
 //!    ([`untrusted_driver::pipeline`]).
-//! 6. [`untrusted_lemmas`] (`[OUTSIDE TCB]`): A64 instruction decoder, `<ObjName>Code.lean`,
-//!    per-target fetch/decode lemmas, `*Index.json`, and `symexec` certificate/trace tooling.
-//! 7. `test_infra` (`[TEST ONLY]`, `cfg(test)`): Differential tests against `ld.lld` and Lean.
+//! 5. [`untrusted_lemmas`] (`[OUTSIDE TCB]`): Prologue frame-size inference, `*Index.json`
+//!    symbol-index schema/loader, DWARF layout inspection, `fetch-decode-lemmas`, and `symexec`
+//!    certificate/trace tooling.
+//! 6. `test_infra` (`[TEST ONLY]`, `cfg(test)`): Differential tests against `ld.lld` and Unicorn.
 //!
 //! This crate root is module glue only: it declares the modules above and contains no logic, so
 //! the `[TCB]` surface of the crate is strictly `trusted_common/` and `trusted_extractor/`
@@ -40,7 +39,6 @@ mod test_infra;
 pub mod trusted_common;
 pub mod trusted_extractor;
 pub mod untrusted_driver;
-pub mod untrusted_legacy_linker;
 pub mod untrusted_lemmas;
 pub mod untrusted_placed;
 

@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Reach.BundleCommon
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Functional Session-Record Loader (`loadRec`)
@@ -20,7 +23,7 @@ relation on `StoresGhost.opened.sessions`, proves uniqueness under `EncodeInjOn 
 `loadRec` on Signal-Message and PQXDH domain inputs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -40,7 +43,7 @@ open CryptoVerification.SignalSession.Cli.KitInst
 open Classical in
 /-- Functional witness for `SessLoadAns Scope` on `StoresGhost.opened.sessions`: returns `none` on
 an empty file and selects the decoded record in `Scope` via `Classical.choose` on non-empty bytes. -/
-noncomputable def loadRec (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles)
+@[expose] noncomputable def loadRec (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles)
     (peer : AddrVal) : Except Unit (Option (SessionRecord (List (BitVec 8)))) :=
   match StoresGhost.opened.sessions.get cliIo.rd F (Cli.addressText peer) with
   | .error _ => .error ()
@@ -156,16 +159,6 @@ theorem loadRec_sm {Scope : SessionRecord (List (BitVec 8)) → Prop} (hinj : En
   refine loadRec_of_get_some hinj ?_ hS
   rw [smSessGet g cmd coins stdin hcap, Reach.encodeRecord_eq_toRecord]
   rfl
-
-theorem loadRec_pqInit {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    (hinj : EncodeInjOn Scope) (W : PEParams) (st : PqParty) (b : PreKeyBundleFields)
-    (t : List.Vector (BitVec 8) initiateTapeLen)
-    (hS : ∀ x g, st.session = some (x, g) →
-      Scope (E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g))
-    (hcap : (pqSessBytes st).length ≤ fileCapBytes) :
-    loadRec Scope (runFiles (pqInitInputs W st b t)) (partyAddr st.party.other) =
-      .ok (st.session.map fun (x, g) => E2E.Record.toRecord (E2E.RecordX.extrasOf fun _ => x) g) :=
-  loadRec_of_pqSessBytes hinj (pqSessGet_init W st b t hcap) hS
 
 theorem loadRec_pqSend {Scope : SessionRecord (List (BitVec 8)) → Prop}
     (hinj : EncodeInjOn Scope) (W : PEParams) (st : PqParty) (m : List (BitVec 8))

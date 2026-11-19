@@ -10,9 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBase
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MessageEncodeCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
@@ -24,7 +23,7 @@ Provides relocatable `[LibsignalPlacement]` basic-block and 64-byte-frame call s
 between `EpochDirection::encode [local#1]` (`Block 154`) and `[local#2]` (`Block 317`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -55,7 +54,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.ule_zero_64 EncodedLen.ult_zero_64 EncodedLen.ule_self_64 EncodedLen.ult_self_64
   zext64_trunc32_orr_1 zext64_trunc32_orr_100000001 zext64_orr_1_32
 
-def AuthEncodeCalleeSavedPlaced (s0 s : State) : Prop :=
+@[expose] def AuthEncodeCalleeSavedPlaced (s0 s : State) : Prop :=
   s.readReg64 (Reg.gpr 25#5) = s0.readReg64 (Reg.gpr 25#5) ∧
   s.readReg64 (Reg.gpr 26#5) = s0.readReg64 (Reg.gpr 26#5) ∧
   s.readReg64 (Reg.gpr 27#5) = s0.readReg64 (Reg.gpr 27#5) ∧
@@ -89,7 +88,7 @@ theorem AuthEncodeCalleeSavedPlaced.step {s0 s1 s2 : State}
     AuthEncodeCalleeSavedPlaced s0 s2 :=
   h01.trans ⟨hx25, hx26, hx27, hx28, hvregs, hinv⟩
 
-def withAuthEncodeCSPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α where
+@[expose] def withAuthEncodeCSPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α where
   pre := fun x s => ⌜AuthEncodeCalleeSavedPlaced s0 s⌝ ∗ spec.pre x s
   post := spec.post
   onPanic := spec.onPanic
@@ -102,17 +101,6 @@ theorem subroutine_ok_withAuthEncodeCSPlaced {α : Type} {prog : Program} {entry
   refine subroutine_ok_outcome_intro fun x R s hpc hrun hpre hsp => ?_
   rw [withAuthEncodeCSPlaced, sepConj_assoc, satisfies_pure_sepConj] at hpre
   exact h.mono_outcome x R s hpc hrun hpre.2 hsp fun _ hout => hout
-
-theorem subroutine_ok_withAuthEncodeCSPlaced_x {α : Type} {prog : Program} {entry : BitVec 64} {spec : Spec α}
-    (img : Obj.Image) (s0 : State) (hinv0 : ImgCallInv img s0)
-    (h : subroutine_ok prog entry (spec.inImage img)) :
-    subroutine_ok prog entry (withAuthEncodeCSPlaced s0 spec) := by
-  refine subroutine_ok_outcome_intro fun x R s hpc hrun hpre hsp => ?_
-  rw [withAuthEncodeCSPlaced, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  have hpre' : s.mem ⊨ (spec.inImage img).pre x s ∗ R := by
-    rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpre.1.2.2.2.2.2.1 img hinv0, hpre.2⟩
-  exact h.mono_outcome x R s hpc hrun hpre' hsp fun _ hout => hout
 
 theorem subroutine_ok_withAuthEncodeCSPlaced_placed [LibsignalPlacement] {α : Type} {prog : Program}
     {entry : BitVec 64} {spec : Spec α} (s0 : State) (hcl0 : LibsignalCodeLoaded lsmpl s0.mem)
@@ -153,8 +141,8 @@ theorem epochDirection_unpinned_of_pinned_placed_x [LibsignalPlacement] {resStac
   · exact Or.inr (Or.inr hrest)
 
 
-def IsEpochDirectionEncodeEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
-  (∃ b ext, prog = tripleRatchetProgAtExt b ext ∧ IsEpochDirectionEncodeEntry b ext entry) ∨
+@[expose] def IsEpochDirectionEncodeEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
+  False ∨
   (∃ (_ : LibsignalPlacement) (H : String → Option (State → State)),
     prog = lsProg_154 H ∧ entry = (blkPl_154).base) ∨
   (∃ (_ : LibsignalPlacement) (H : String → Option (State → State)),
@@ -162,68 +150,44 @@ def IsEpochDirectionEncodeEntryProg (prog : Program) (entry : BitVec 64) : Prop 
 
 theorem epochDirectionEncode_fetch_entry_placed {prog : Program}
     {entry : BitVec 64} (hfn : IsEpochDirectionEncodeEntryProg prog entry) {ins : Instr}
-    (h1 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection1Name) = some ins)
-    (h2 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name) = some ins)
     (h183 : ∀ [LibsignalPlacement] H, ((blkPC_154).rebase (blkPl_154).base H).fetch ((blkPl_154).base + 0#64) = some ins)
     (h367 : ∀ [LibsignalPlacement] H, ((blkPC_317).rebase (blkPl_317).base H).fetch ((blkPl_317).base + 0#64) = some ins) :
     prog.fetch entry = some ins := by
-  rcases hfn with ⟨b, ext, rfl, rfl | rfl⟩ | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
-  · exact h1 b ext
-  · exact h2 b ext
+  rcases hfn with h | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
+  · nomatch h
   · simpa using @h183 inst H
   · simpa using @h367 inst H
 
 theorem epochDirectionEncode_fetch_add_placed {prog : Program}
     {entry : BitVec 64} (hfn : IsEpochDirectionEncodeEntryProg prog entry) {k : Nat} {ins : Instr}
-    (h1 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection1Name + BitVec.ofNat 64 k) = some ins)
-    (h2 : ∀ b ext, (tripleRatchetProgAtExt b ext).fetch
-      ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name + BitVec.ofNat 64 k) = some ins)
     (h183 : ∀ [LibsignalPlacement] H,
       ((blkPC_154).rebase (blkPl_154).base H).fetch ((blkPl_154).base + BitVec.ofNat 64 k) = some ins)
     (h367 : ∀ [LibsignalPlacement] H,
       ((blkPC_317).rebase (blkPl_317).base H).fetch ((blkPl_317).base + BitVec.ofNat 64 k) = some ins) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some ins := by
-  rcases hfn with ⟨b, ext, rfl, rfl | rfl⟩ | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
-  · exact h1 b ext
-  · exact h2 b ext
+  rcases hfn with h | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
+  · nomatch h
   · exact @h183 inst H
   · exact @h367 inst H
 
 open Lean Elab Tactic in
 scoped elab "ed_fetches_range_placed " hfn:ident kStart:num kEnd:num : tactic => do
-  let off1 := 0x37850
-  let off2 := 0x4d3c8
   let kStart := kStart.getNat
   let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let fnOff1 := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x37850
-  let fnOff2 := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x4d3c8
   for i in [kStart / 4 : kEnd / 4] do
     let k := 4 * i
     let hexK := String.ofList (Nat.toDigits 16 k)
-    let dec1 := mkIdent (`CryptoVerification.SpqrV1.Prost.MessageEncode |>.str
-      s!"libsignalSessionBin_decode_0x{String.ofList (Nat.toDigits 16 (off1 + k))}")
-    let dec2 := mkIdent (`CryptoVerification.SpqrV1.Prost.MessageEncode |>.str
-      s!"libsignalSessionBin_decode_0x{String.ofList (Nat.toDigits 16 (off2 + k))}")
     let p183 := mkIdent (`CryptoVerification |>.str s!"blkPC_154_rebase_fetch_0x{hexK}")
     let p367 := mkIdent (`CryptoVerification |>.str s!"blkPC_317_rebase_fetch_0x{hexK}")
     let kq := Syntax.mkNumLit (toString k)
     if k == 0 then
       evalTactic (← `(tactic|
         have := epochDirectionEncode_fetch_entry_placed $hfn
-          (fun b ext => $fetchEntry (b := b) (H := Rust.withPanics ext) $fnOff1 (by decide) $dec1)
-          (fun b ext => $fetchEntry (b := b) (H := Rust.withPanics ext) $fnOff2 (by decide) $dec2)
           (fun [LibsignalPlacement] H => $p183 _ H)
           (fun [LibsignalPlacement] H => $p367 _ H)))
     else
       evalTactic (← `(tactic|
         have := epochDirectionEncode_fetch_add_placed $hfn (k := $kq)
-          (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff1 (by decide) $dec1 (by decide))
-          (fun b ext => $fetchAdd (b := b) (H := Rust.withPanics ext) (k := $kq) $fnOff2 (by decide) $dec2 (by decide))
           (fun [LibsignalPlacement] H => $p183 _ H)
           (fun [LibsignalPlacement] H => $p367 _ H)))
 
@@ -552,7 +516,7 @@ theorem step_epochDir_epilogue_placed {resStack : Nat} (hres : resStack + 48 + 6
         (s0.readReg64 .x21) (s0.readReg64 .x20) (s0.readReg64 .x19)) ∗ F)
     (hnext : ∀ (sf : State),
       sf.pc = s0.readReg64 .lr → sf.status = .Running → sf.sp = sp → sf.trace = s0.trace →
-      CalleeSavedPreserved s0 sf → StepInv s0 sf →
+      CalleeSavedPreserved s0 sf → StepInvPlaced s0 sf →
       Q sf (stackAt sp (authEncodeStackOf resStack) ∗ F)) :
     SepWPp prog (s0.readReg64 .lr) s P Q
       (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ msgEncOnPanic s0 sf ∗ R)) := by
@@ -567,7 +531,7 @@ theorem step_epochDir_epilogue_placed {resStack : Nat} (hres : resStack + 48 + 6
     (SepWPp.done (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
       (hnext _ (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
         (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-        (by epochEncLen_cc_close) (hinv0.trans hinv1).1))
+        (by epochEncLen_cc_close) (hinv0.trans hinv1)))
   rw [stackAt_authEncode hres sp]
   refine sepConj_mono_left (sepConj_mono_right ?_)
   exact Entails.sepExists_right (s0.readReg64 .fp)

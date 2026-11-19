@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2StepsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bHelpersPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2StepsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bHelpersPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -26,12 +26,18 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonCalleesExt
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.Disproof.Basic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `signal_session::run` Arm `R2` Shared Steps and Free Tails
@@ -41,7 +47,7 @@ and budget-threaded call/dealloc combinators, and shared address-free cleanup ta
 Block `579` (`runProgPlaced H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -89,25 +95,25 @@ attribute [local arm64_norm, local wp_norm]
 
 /-! ## 1. Exact Deallocation Event Lists & `FreeOnlyEvs` Witnesses -/
 
-def r2pbFreeCapEvs (cap : BitVec 64) : List AllocEvent :=
+@[expose] def r2pbFreeCapEvs (cap : BitVec 64) : List AllocEvent :=
   if cap = 0#64 then [] else rustDeallocEvents cap.toNat 1
 
-def r2pbFreePeerEvs (peerG : AddrGhost) : List AllocEvent :=
+@[expose] def r2pbFreePeerEvs (peerG : AddrGhost) : List AllocEvent :=
   r2pbFreeCapEvs peerG.name.cap
 
-def r2pbFreeMePeerEvs (meG peerG : AddrGhost) : List AllocEvent :=
+@[expose] def r2pbFreeMePeerEvs (meG peerG : AddrGhost) : List AllocEvent :=
   r2pbFreeCapEvs meG.name.cap ++ r2pbFreeCapEvs peerG.name.cap
 
-def r2pbFreeSliceEvs (len : BitVec 64) : List AllocEvent :=
+@[expose] def r2pbFreeSliceEvs (len : BitVec 64) : List AllocEvent :=
   if len = 0#64 then [] else rustDeallocEvents len.toNat 1
 
-def r2pbFreeOptSliceEvs (ptr len : BitVec 64) : List AllocEvent :=
+@[expose] def r2pbFreeOptSliceEvs (ptr len : BitVec 64) : List AllocEvent :=
   if ptr = 0#64 then [] else r2pbFreeSliceEvs len
 
-def r2pbSigFree3Evs (ws : r2_SlotWords) : List AllocEvent :=
+@[expose] def r2pbSigFree3Evs (ws : r2_SlotWords) : List AllocEvent :=
   r2pbFreeSliceEvs ws.w5 ++ r2pbFreeSliceEvs ws.w1 ++ r2pbFreeOptSliceEvs ws.w12 ws.w13
 
-def r2pbSigFreeEvs (ws : r2_SlotWords) (serLen : BitVec 64) : List AllocEvent :=
+@[expose] def r2pbSigFreeEvs (ws : r2_SlotWords) (serLen : BitVec 64) : List AllocEvent :=
   r2pbSigFree3Evs ws ++ r2pbFreeSliceEvs serLen
 
 theorem r2pbFreeCapEvs_freeOnly (cap : BitVec 64) : FreeOnlyEvs (r2pbFreeCapEvs cap) := by
@@ -155,7 +161,7 @@ theorem r2pb_freeOnlyEvs_of_forall :
 
 /-! ## 2. VM-Preserving Sequencer, Peeling, and Budget Call Combinators -/
 
-def r2pb_stOf [LibsignalPlacement] {sm : State} (_ : r2p_CodeOk sm.mem) : State := sm
+@[expose] def r2pb_stOf [LibsignalPlacement] {sm : State} (_ : r2p_CodeOk sm.mem) : State := sm
 
 theorem r2pb_sepWP_with_vm_oom {P : Program} {b : BitVec 64}
     {Hk : String → Option (State → State)} {mid : BitVec 64} {s : State} {Pre : SepProp}

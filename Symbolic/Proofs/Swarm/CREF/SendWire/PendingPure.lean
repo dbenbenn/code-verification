@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.SendWire.PendingPureA
+public import Symbolic.Proofs.Swarm.CREF.SendWire.PendingPureA -- proof-setup: allow-public-import
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
 import DY.Trace.Basic
 import DY.Actions.Network
-public import Symbolic.Proofs.Swarm.CREF.SendWire.ModelSteps
+public import Symbolic.Proofs.Swarm.CREF.SendWire.ModelSteps -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.TripleRatchet.WireCovered
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
@@ -30,7 +30,7 @@ Defines `PendingWireRecCanon` and proves `recordCanonical_of_sendPending_step`,
 (`sndP_ret_cOooAll`) for returning pending-prekey sends.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -59,7 +59,7 @@ open Symbolic.Swarm.COMPOSED
 open DY.Libsignal.Refinement (encodeWith paddedVarint FieldWF WireTypeOk HonestWF lastWithTag
   knownValue? tryFrom_encodeWith)
 
-def PendingWireRecCanon (bs : HwBytes) : Prop :=
+@[expose] def PendingWireRecCanon (bs : HwBytes) : Prop :=
   ∃ sess : Session (List (BitVec 8)),
     TR.Pure.slots_RecordCanonical_Q TR.Pure.slots_NonEmptyV1Q bs sess ∧
     TR.Pure.slots_RecordInScopeP ⟨some sess⟩ ∧
@@ -324,10 +324,6 @@ theorem preKeySignalMessage_serialized_eq_preKeyWire
 
 section SentBodyAndOoo
 
-private theorem list_length_ite {α : Type} (c : Prop) [Decidable c] (a b : List α) :
-    (if c then a else b).length = if c then a.length else b.length := by
-  split <;> rfl
-
 theorem sentBody_pending_wire (F : ShaCompress) (regId : BitVec 32)
     (preKeyId : Option (BitVec 32)) (spkId kpkId : BitVec 32) (ct : HwBytes)
     (baseKey : PublicKey) (localId remote : IdentityKey) (macKey)
@@ -363,7 +359,7 @@ theorem sentBody_pending_wire (F : ShaCompress) (regId : BitVec 32)
     congrArg (· ++ mac) hcontent_eq
   have hmac_len : mac.length = macLength := by
     unfold mac CryptoGames.LibsignalSession.computeMac CryptoGames.HMAC.hmacSha256Trunc8 macLength
-    simp [CryptoGames.HMAC.hmacWith, list_length_ite]
+    simp [CryptoGames.HMAC.hmacWith]
   obtain ⟨m_in, htry, -⟩ := tryFrom_encodeWith (honestVar_sndP pqHarnessAddrBytes pqMsgBytes)
     ⟨4, rk.bytes.toList, counter.toNat, prevCounter.toNat, ctext⟩ _ hmac_len
     (honestWF_honestVar_sndP pqHarnessAddrBytes pqMsgBytes _ rfl rk.bytes.toList_length

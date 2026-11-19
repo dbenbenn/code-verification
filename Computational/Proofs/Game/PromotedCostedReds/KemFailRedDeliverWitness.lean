@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitnessSub
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
-public import Computational.Proofs.E2E.Dsl.SpqrSimChain
-public import Computational.Proofs.E2E.Dsl.ClampsLossless
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitnessSub -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.KemFailRedLoopAndCost
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
+import Computational.Proofs.E2E.Dsl.SpqrSimChain
+import Computational.Proofs.E2E.Dsl.ClampsLossless
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Msg
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
 
@@ -26,7 +26,7 @@ Proves `KemTrackDeliverInv` preservation and exact `.eval` lemmas for `kemTrackD
 `kemOnDeliverPostAtomicE`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

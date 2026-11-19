@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Pure, Spatial, and Call Helpers for `main` M2 Collect
@@ -19,7 +20,7 @@ Input bounds, modular arithmetic, stack-frame splitters, `argsBuf` / `argvAtP` /
 focusing and push bridges, and `SepWPp` call wrappers for `main`'s `Vec<&str>` collection loop.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -143,18 +144,6 @@ theorem vcap_beq_max_false {vcap : BitVec 64} (h : 16 * vcap.toNat < 2 ^ 63) :
 
 /-! ## 2. Stack Alignment, Locals Splitters, and Stack Budget Splitters -/
 
-theorem spAligned_sub_mainFrameSize (sp : BitVec 64) :
-    ((sp - BitVec.ofNat 64 mainFrameSize) &&& 15#64 == 0#64) = (sp &&& 15#64 == 0#64) := by
-  change ((sp - 0x4e0#64) &&& 15#64 == 0#64) = (sp &&& 15#64 == 0#64)
-  by_cases h : (sp &&& 15#64) = 0#64
-  · have h' : ((sp - 0x4e0#64) &&& 15#64) = 0#64 := by bv_bits
-    rw [beq_iff_eq.mpr h, beq_iff_eq.mpr h']
-  · have h' : ((sp - 0x4e0#64) &&& 15#64) ≠ 0#64 := by
-      intro hc
-      apply h
-      bv_bits
-    rw [beq_eq_false_iff_ne.mpr h, beq_eq_false_iff_ne.mpr h']
-
 theorem stackAt_split_ge' (sp : BitVec 64) {n m : Nat} (hle : n ≤ m) (hlt : m ≤ 2 ^ 64) :
     stackAt sp m = memRegion (sp - BitVec.ofNat 64 m) (m - n) ∗ stackAt sp n := by
   have h := ProofLib.stackAt_split_bottom sp n (m - n) (by omega)
@@ -198,7 +187,7 @@ theorem locals_nil_split_m2 (fsp : BitVec 64) :
 /-! ## 3. `argvAtP`, `argsBuf`, and `vec16At` Spatial Bridges -/
 
 /-- Remaining frame of `argvAtP a ps` with `ps[k].1 ↦ₛ ps[k].2` extracted for reading. -/
-def argvAtPRest : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → Nat → SepProp
+@[expose] def argvAtPRest : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → Nat → SepProp
   | a, [], _ => a ↦₆₄ 0#64
   | a, (p, s) :: rest, 0 =>
     (a ↦₆₄ p) ∗ ((p + BitVec.ofNat 64 s.length) ↦ₛ [0#8]) ∗ argvAtP (a + 8#64) rest
@@ -218,7 +207,7 @@ theorem argvAtP_focus (a : BitVec 64) :
     ac_rfl
 
 /-- Remaining frame of `arrayAt (sliceRefAt ...) 16 a ps` with slot `k` extracted for reading. -/
-def arrayAtSliceRest : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → Nat → SepProp
+@[expose] def arrayAtSliceRest : BitVec 64 → List (BitVec 64 × List (BitVec 8)) → Nat → SepProp
   | _, [], _ => emp
   | a, _ :: rest, 0 =>
     arrayAt (fun pb addr => sliceRefAt addr pb.1 pb.2.length) 16 (a + 16#64) rest
@@ -249,7 +238,7 @@ theorem arrayAt_slice_focus (a : BitVec 64) :
     ac_rfl
 
 /-- Remaining frame of `argsBuf A cap buf ps` with element `k` extracted for reading. -/
-def argsBufRest (A : RustAlloc) (cap buf : BitVec 64)
+@[expose] def argsBufRest (A : RustAlloc) (cap buf : BitVec 64)
     (ps : List (BitVec 64 × List (BitVec 8))) (k : Nat) : SepProp :=
   ⌜cap ≠ 0 ∧ ps.length ≤ cap.toNat ∧ cap.toNat * 16 < 2 ^ 63 ∧ buf ≠ 0⌝ ∗
     A.live buf (cap.toNat * 16) 8 ∗
@@ -288,11 +277,11 @@ theorem argsBuf_focus (A : RustAlloc) (cap buf : BitVec 64)
     ac_rfl
 
 /-- 16-byte raw representation of a `(ptr, len)` slice entry in memory. -/
-def sliceBytes (pb : BitVec 64 × List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def sliceBytes (pb : BitVec 64 × List (BitVec 8)) : List (BitVec 8) :=
   unpack64 pb.1 ++ unpack64 (BitVec.ofNat 64 pb.2.length)
 
 /-- Flat `16 * ps.length`-byte representation of `ps` for `vec16At` across `reserve16`. -/
-def flatSliceBytes (ps : List (BitVec 64 × List (BitVec 8))) : List (BitVec 8) :=
+@[expose] def flatSliceBytes (ps : List (BitVec 64 × List (BitVec 8))) : List (BitVec 8) :=
   ps.flatMap sliceBytes
 
 theorem sliceBytes_length (pb : BitVec 64 × List (BitVec 8)) :
@@ -485,22 +474,6 @@ theorem readReg64_setMem_setPC (s : State) (pc : BitVec 64) (m : Memory) (r : Re
     ((s.setPC pc).setMem m).readReg64 r = s.readReg64 r := by
   cases r <;> rfl
 
-theorem readReg32_setPC (s : State) (pc : BitVec 64) (r : Reg) :
-    (s.setPC pc).readReg32 r = s.readReg32 r := by
-  cases r <;> rfl
-
-theorem readReg32_setMem_setPC (s : State) (pc : BitVec 64) (m : Memory) (r : Reg) :
-    ((s.setPC pc).setMem m).readReg32 r = s.readReg32 r := by
-  cases r <;> rfl
-
-theorem readReg_setPC (s : State) (pc : BitVec 64) (w : RegWidth) (r : Reg) :
-    (s.setPC pc).readReg w r = s.readReg w r := by
-  cases w <;> cases r <;> rfl
-
-theorem readReg_setMem_setPC (s : State) (pc : BitVec 64) (m : Memory) (w : RegWidth) (r : Reg) :
-    ((s.setPC pc).setMem m).readReg w r = s.readReg w r := by
-  cases w <;> cases r <;> rfl
-
 theorem sepWPp_mono_pre {prog : Program} {ret : BitVec 64} {s : State}
     {P P' : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
     (hPP : P ⊢ P') (h : SepWPp prog ret s P' Q Qp oom) : SepWPp prog ret s P Q Qp oom :=
@@ -528,7 +501,7 @@ theorem sepWPp_exists_elim {α : Type} {prog : Program} {ret : BitVec 64} {s : S
   obtain ⟨x, hx⟩ := hm
   exact h x R hx hL
 
-def fspOf (s0 : State) : BitVec 64 := s0.sp - BitVec.ofNat 64 mainFrameSize
+@[expose] def fspOf (s0 : State) : BitVec 64 := s0.sp - BitVec.ofNat 64 mainFrameSize
 
 @[simp, arm64_norm ↓, wp_norm ↓]
 theorem fspOf_def (s0 : State) : fspOf s0 = s0.sp - BitVec.ofNat 64 mainFrameSize := rfl

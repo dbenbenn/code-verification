@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BinaryOomSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.CommitOk
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.RecordX.BridgeCommon
@@ -26,8 +26,12 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec
-import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
 import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Two-Placement Matching-Session Path-B `RunSem` & Whole-Process Proofs
@@ -37,7 +41,7 @@ two-placement `(mpl, mmpl)` whole-process evaluation theorems (`d3_matchingPathB
 `d3_matchingPathB_f3`) for matching-session Path-B pre-key `recv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,10 +61,10 @@ open CryptoVerification.E2E.RecordX (extrasOf toSessionExtras)
 open CryptoVerification.LibsignalPublicApi.StoreKit (FsFiles)
 open CryptoVerification.LibsignalPublicApiRepr (AddrVal)
 open CryptoVerification.SignalSession (
-  CliHooks CliReachesOOMPlaced Cmd Outcome OutcomeOrExcusedAbort PqParty
-  PqxdhPartyInSpecDomain cliExternsPlaced cliProcessInputs filesOf observe partyAddress
-  pqRecvInputs pqxdhExpectedOutcome stdinCapBytes
+  CliHooks Cmd Outcome OutcomeOrExcusedAbort PqParty PqxdhPartyInSpecDomain cliExternsPlaced
+  cliProcessInputs filesOf observe partyAddress pqRecvInputs pqxdhExpectedOutcome stdinCapBytes
 )
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliReachesOOMPlaced)
 open CryptoVerification.SignalSession.Cli (
   CommitOk IdGhost MainResult StoresGhost baseKeysName utf8
 )
@@ -84,7 +88,7 @@ open CryptoVerification.SignalSession.Cli.RunRefine (
   addrParse_textBytes addrValE ownAddr_pqRecv parseArgs_recv runAns_pqRecvPrekey_eq runBounds_pqRecv
 )
 open CryptoVerification.SignalSession.Cli.Slots (EncodeInjOn loadRec runEncOk_pqRecv scopeIn)
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open LibsignalBinary.Heap.Fine (fineCostModel fineHookRustCliAllocBudget)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3 (d3PqRecvMatchingModel d3PqSessionOf)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 (
@@ -245,7 +249,7 @@ theorem observe_runAns_pqRecv_matchingPathB (S : RunSem) (X : UnreachedPqxdhPrim
 /-! ## 2. `cliRunSemPathB`, `MainOkPathBD3F3`, and Two-Placement Whole-Process Lifts -/
 
 /-- `RunSem` instantiated with `decPkDef`, `DecPkOkPathB`, and `pksmParse`. -/
-noncomputable def cliRunSemPathB (X : UnreachedPqxdhPrimitives) (W : CliHooks) : RunSem :=
+@[expose] noncomputable def cliRunSemPathB (X : UnreachedPqxdhPrimitives) (W : CliHooks) : RunSem :=
   cliRunSemF3 X W (decPkDef X ⟨W.C, W.Q⟩ scopeIn)
     (DecPkOkPathB ⟨W.C, W.Q⟩ scopeIn) pksmParse
 
@@ -281,7 +285,7 @@ theorem runRel_pqRecv_matchingPathB (X : UnreachedPqxdhPrimitives) (W : CliHooks
 
 /-- `NeedLocks` + `cliBudgetLimits` `main`-level specification for matching-session Path-B
 pre-key `recv` scoped via `pqD3ScopedRun`. -/
-def MainOkPathBD3F3
+@[expose] def MainOkPathBD3F3
     (mpl mmpl : MultiPlacement) (CodeOk : Memory → Prop)
     (libcAddr brkStart : BitVec 64) (stk : Nat) : Prop :=
   mpl.base 547 ≠ 0#64 →

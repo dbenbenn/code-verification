@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwnedPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwnedPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedB
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlaced
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonicalPlaced
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `[LibsignalFullPlacement]` Corollaries for `Pqxdh::accept` and `initialize_bob_session`
@@ -24,7 +25,7 @@ Instantiates the `[LibsignalPlacement]` contracts for `Pqxdh::accept` (Block `79
 allocator/vector, and HKDF/agreement callee proofs under `[LibsignalFullPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -54,11 +55,36 @@ theorem ecPubKeyIsCanonical_placed_ok_cl [LibsignalFullPlacement]
   obtain ⟨fnM, hfnM, hokM⟩ := hmontHook
   obtain ⟨fnT, hfnT, hokT⟩ := htorsHook
   exact (isCanonical_placed_ok'_cl (P := toSignalPqxdhPrimitives P)
-    hWF.isCanonical_eq_isCanonicalRef hWF.montToEd_len
-    ⟨fnM, hfnM, fun gm Rm sm hrunm hprem hspm =>
-      hokM ⟨gm.inBytes, gm.signBit, gm.inPtr, gm.outPtr⟩ Rm sm hrunm hprem hspm⟩
-    ⟨fnT, hfnT, fun gt Rt st hrunt hpret hspt =>
-      hokT ⟨gt.inPtr, gt.inBytes⟩ Rt st hrunt hpret hspt⟩).mono_outcome
+    (fun k => (hWF.isCanonical_eq_isCanonicalRef k).trans
+      (toSignalPqxdhPrimitives_isCanonicalRef_eq P hWF.montToEd_len k).symm)
+    (toSignalPqxdhPrimitives_montToEd_lt P)
+    ⟨fnM, hfnM, fun gm Rm sm hrunm hprem hspm => by
+      rcases hokM ⟨gm.inBytes, gm.signBit, gm.inPtr, gm.outPtr⟩ Rm sm hrunm hprem hspm with
+        ⟨hkf, hsym, ⟨hret, hcc, hq⟩ | hrest⟩
+      · refine ⟨hkf, hsym, Or.inl ⟨hret, hcc, ?_⟩⟩
+        have hb_eq : bytesToBv8 gm.inBytes =
+            CryptoVerification.E2E.Pqxdh.Shared.bytesToBv8 gm.inBytes := rfl
+        have hs_eq : pqxdhHookStack = CryptoVerification.E2E.Pqxdh.Shared.pqxdhHookStack := rfl
+        simpa only [CryptoVerification.E2E.Pqxdh.Shared.dalekMontToEdStubSpec,
+          dalekMontToEdStubSpec, hb_eq, hs_eq,
+          toSignalPqxdhPrimitives_dalekMontToEdOutAt_eq P hWF.montToEd_len] using hq
+      · exact ⟨hkf, hsym, Or.inr hrest⟩⟩
+    ⟨fnT, hfnT, fun gt Rt st hrunt hpret hspt => by
+      have hlen : gt.inBytes.length = 160 := by
+        have hp := hpret
+        dsimp only [CryptoVerification.E2E.Pqxdh.Shared.cryptoBoolRegStubSpec] at hp
+        rw [sepConj_assoc, satisfies_pure_sepConj] at hp
+        exact hp.1.2
+      rcases hokT ⟨gt.inPtr, gt.inBytes⟩ Rt st hrunt hpret hspt with
+        ⟨hkf, hsym, ⟨hret, hcc, hq⟩ | hrest⟩
+      · refine ⟨hkf, hsym, Or.inl ⟨hret, hcc, ?_⟩⟩
+        have hb_eq : bytesToBv8 gt.inBytes =
+            CryptoVerification.E2E.Pqxdh.Shared.bytesToBv8 gt.inBytes := rfl
+        have hs_eq : pqxdhHookStack = CryptoVerification.E2E.Pqxdh.Shared.pqxdhHookStack := rfl
+        simpa only [CryptoVerification.E2E.Pqxdh.Shared.cryptoBoolRegStubSpec,
+          cryptoBoolRegStubSpec, hb_eq, hs_eq,
+          toSignalPqxdhPrimitives_isTorsionFreeBytes_eq P gt.inBytes hlen] using hq
+      · exact ⟨hkf, hsym, Or.inr hrest⟩⟩).mono_outcome
     ⟨g.keyPtr, g.keyBytes⟩ R s0 hpc hrun hpre hsp fun _ hout => hout
 
 /-- Closed `[LibsignalFullPlacement]` contract for `Pqxdh::accept` (Block `79`) lifted to any

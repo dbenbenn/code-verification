@@ -12,17 +12,19 @@ module
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.MallocngBridgeBudget
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.Apply
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.Apply -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Auxiliary Definitions and Tail Segments for Budget-Threaded `TripleRatchet::apply_to_session_state`
@@ -31,7 +33,7 @@ Bounded allocator-event envelopes (`trApplyAllocPrefix`, `TrApplyBoundedEnv`), `
 congruences, cross-block call wrappers, and tail drop segments for `apply_to_session_state`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -88,7 +90,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Exact deterministic allocation prefix of `<TripleRatchet>::apply_to_session_state` before
     trailing `FreeOnlyEvs` drops. -/
-def trApplyAllocPrefix (x : TrApplyGhost) : List AllocEvent :=
+@[expose] def trApplyAllocPrefix (x : TrApplyGhost) : List AllocEvent :=
   let base := rustAllocEvents 32 1 ++ rustDeallocEvents x.G.root.cap.toNat 1
   match x.tr.ratchet.senderChain with
   | none => base
@@ -98,12 +100,12 @@ def trApplyAllocPrefix (x : TrApplyGhost) : List AllocEvent :=
 
 /-- Precondition budget envelope of `<TripleRatchet>::apply_to_session_state`:
     exact equality with `trApplyAllocPrefix x`. -/
-def TrApplyPreEnv (x : TrApplyGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def TrApplyPreEnv (x : TrApplyGhost) (evs : List AllocEvent) : Prop :=
   evs = trApplyAllocPrefix x
 
 /-- Postcondition allocator event envelope of `<TripleRatchet>::apply_to_session_state`:
     `trApplyAllocPrefix x` followed by trailing `FreeOnlyEvs` deallocations. -/
-def TrApplyBoundedEnv (x : TrApplyGhost) : List AllocEvent → Prop :=
+@[expose] def TrApplyBoundedEnv (x : TrApplyGhost) : List AllocEvent → Prop :=
   SeqEnv (TrApplyPreEnv x) FreeOnlyEvs
 
 @[simp]
@@ -111,12 +113,6 @@ theorem fitsEnv_trApplyPre_iff {M : AllocCostModel} {lim : BudgetLimits}
     {st : M.σ} {x : TrApplyGhost} :
     FitsEnv M lim st (TrApplyPreEnv x) ↔ FitsEvents M lim st (trApplyAllocPrefix x) :=
   FitsEnv.eq_iff
-
-theorem fitsEnv_trApplyPre_of_bounded {M : AllocCostModel} {lim : BudgetLimits}
-    {st : M.σ} {x : TrApplyGhost}
-    (h : FitsEnv M lim st (TrApplyBoundedEnv x)) :
-    FitsEnv M lim st (TrApplyPreEnv x) :=
-  FitsEnv.seq_left h
 
 theorem trApplyEnv_of_prefix_append_free (x : TrApplyGhost) {evsFree : List AllocEvent}
     (hfree : FreeOnlyEvs evsFree) :
@@ -170,7 +166,7 @@ theorem fitsEnv_trApplyPre_of_trApplyEnv {M : AllocCostModel} {lim : BudgetLimit
   FitsEnv.mono (fun _ heq => heq ▸ trApplyEnv_trApplyAllocPrefix x) h
 
 /-- Stack-parameterized budget specification of `drop_glue<Vec<chain::MessageKey>>`. -/
-def dropVecMessageKeySpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropVecMessageKeySpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (mkStack : Nat) : Spec (DropVecMessageKeyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ LsRetAddr624 (s.readReg64 .x30)⌝ ∗
@@ -183,7 +179,7 @@ def dropVecMessageKeySpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustC
       stackAt s0.sp mkStack
 
 /-- Stack-parameterized budget specification of `drop_glue<Vec<session_structure::Chain>>`. -/
-def dropVecChainSpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropVecChainSpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (chStack : Nat) : Spec (DropVecChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ LsRetAddr624 (s.readReg64 .x30)⌝ ∗
@@ -197,7 +193,7 @@ def dropVecChainSpecAt [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAll
 
 /-- Stack-parameterized budget specification of `<TripleRatchet>::apply_to_session_state`
     (`224 + calleeStack` total stack, `onOom = ⌜False⌝`, `onPanic = ⌜False⌝`). -/
-def trApplyBoundedSpecAt (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def trApplyBoundedSpecAt (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStack : Nat) : Spec (TrApplyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜FitsEnv M lim st (TrApplyPreEnv x) ∧ s.readReg64 .x0 = x.t ∧ s.readReg64 .x1 = x.ss⌝ ∗

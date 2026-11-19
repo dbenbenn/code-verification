@@ -12,7 +12,7 @@ module
 public import LibsignalBinary.Proofs.SpqrV1Sync.ErasureDefs
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.Prepare
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

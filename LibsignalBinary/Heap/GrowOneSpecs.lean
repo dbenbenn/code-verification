@@ -12,12 +12,12 @@ module
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
 
 /-!
-# In-Image `RawVec::grow_one` Contracts
+# `RawVec::grow_one` Contracts
 
 **Checked by Lean.**
 
 Intermediate `RustAlloc` specifications for `<alloc::raw_vec::RawVec<u8>>::grow_one` and
-`<alloc::raw_vec::RawVec<alloc::vec::Vec<u8>>>::grow_one` linked into `libsignalSessionImage`.
+`<alloc::raw_vec::RawVec<alloc::vec::Vec<u8>>>::grow_one` linked into the libsignal session binary.
 -/
 
 @[expose] public section

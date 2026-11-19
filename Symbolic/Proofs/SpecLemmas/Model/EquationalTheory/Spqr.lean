@@ -18,7 +18,7 @@ Proves direction-parameter round-trip (`spqrParamsDir?_spqrParams`) and characte
 state of a successful `spqrRecv` transition (`spqrRecv_state`).
 -/
 
-@[expose] public section
+public section
 
 namespace DY.Spqr
 

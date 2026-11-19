@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPrivAndOk
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.DefsBudget
+public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.PostPrivAndOk -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFrom.Decode
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanup
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSome
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `IdentityKeyPair::try_from` Private-Key Validation and `Ok` Packing
@@ -27,7 +27,7 @@ import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 clamping, and `Ok` result packing (`+396 .. +568` → `+812`) on Block `84`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

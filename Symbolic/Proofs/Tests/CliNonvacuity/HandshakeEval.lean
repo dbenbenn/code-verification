@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.SessionEval
-public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeSteps
+public import Symbolic.Proofs.Tests.CliNonvacuity.SessionEval -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeSteps -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Bytes.Basic
 import Comparse.Basic
@@ -53,7 +53,7 @@ Provides shared computable setup and pre-key field helpers (`mkRecordsComp`, `p0
 (`zeroKey_ne_spqrSendKey`, `symDec_ne_salt`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -74,7 +74,7 @@ open Symbolic.Proofs.Tests.Shared.Composed.HonestSession
 open Symbolic.Proofs.Tests.Shared.Composed.Runs
   (NetE RndE encTr rnd encSig encMsg kemDecap_kemEncap)
 open Symbolic.Proofs.Tests.CliNonvacuity.Witness
-  (freshBytes myKyberPubBytes myKyberSecField mkRecords)
+  (mySigBytes freshBytes myKyberPubBytes myKyberSecField mkRecords)
 open Symbolic.Proofs.Tests.CliNonvacuity.SessionEval (decEqBytesFast)
 open Symbolic.Proofs.Tests.CliNonvacuity.HandshakeModel (wire0)
 open Symbolic.Proofs.Tests.CliNonvacuity.HandshakeSteps
@@ -97,13 +97,13 @@ attribute [local instance]
 
 /-! ## Computable Setup Wrapper and Pre-Key Fields -/
 
-noncomputable def mkRecordsComp (withOpk : Bool) : ProtocolSetup :=
+@[expose] def mkRecordsComp (withOpk : Bool) : ProtocolSetup :=
   { alice := "alice", bob := "bob", withOpk := withOpk, regIdA := 10#32, regIdB := 20#32,
     spkId := 1#32, kpkId := 2#32, opkId := 3#32, kyberSecB := myKyberSecField,
     fresh := freshBytes, opaqueBytes := fun t =>
       match decEqBytesFast t (kemPk (randTerm 16 64)) with
       | isTrue _ => myKyberPubBytes
-      | isFalse _ => List.replicate 64 0#8 }
+      | isFalse _ => mySigBytes }
 
 theorem mkRecords_eq_comp (withOpk : Bool) : mkRecords withOpk = mkRecordsComp withOpk := by
   unfold mkRecords mkRecordsComp; dsimp only; congr 1; funext t
@@ -112,14 +112,14 @@ theorem mkRecords_eq_comp (withOpk : Bool) : mkRecords withOpk = mkRecordsComp w
   | isTrue h => simp [h]
   | isFalse h => simp [h]
 
-def p0Fields (withOpk : Bool) : PreKeyFields :=
+@[expose] def p0Fields (withOpk : Bool) : PreKeyFields :=
   (parsePreKeyWire (wire0 withOpk)).get (by cases withOpk <;> decide +kernel)
 
 theorem parsePreKeyWire_wire0 (withOpk : Bool) :
     parsePreKeyWire (wire0 withOpk) = some (p0Fields withOpk) :=
   (Option.some_get _).symm
 
-def honestPreKeyRep (withOpk : Bool) : PreKeyRep :=
+@[expose] def honestPreKeyRep (withOpk : Bool) : PreKeyRep :=
   if withOpk then
     { ek := oOpk.ek, ct := oOpk.ct, msg := encMsg stA0Opk coins0Opk key0Opk m0Opk }
   else

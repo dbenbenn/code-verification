@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExact
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBaseBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExact
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBase
 
 /-!
 # Budget-Threaded Exact-Capacity Specifications for `PolynomialDecoder::encode` (`[local#2]`)
@@ -23,7 +24,7 @@ Defines `encodePolyDecoderExactSpecOf` under `RustCliAllocBudget M`, the pool-fr
 them to `A.pool lim st`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +52,7 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactBudget
 /-- Exact-capacity budget specification of `PolynomialDecoder::encode`:
     when `x.bs.length + (encodePolyDecoderMsg x.tag x.dec).length ≤ x.cap.toNat`, zero allocations
     occur and `A.pool lim st` is preserved unchanged (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def encodePolyDecoderExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodePolyDecoderExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodePolyDecoderPinnedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -73,7 +74,7 @@ def encodePolyDecoderExactSpecOf (resStack : Nat) {M : AllocCostModel}
 
 /-- Pool-free `0`-allocation (`VmPreserved`) contract for `encode_varint` under exact capacity
     (`x.bs.length + (encodeVarint x.val).length ≤ x.cap.toNat`). -/
-def encodeVarintExactVmSpecOf (resStack : Nat) (A : RustAlloc) : Spec EncodeVarintGhost where
+@[expose] def encodeVarintExactVmSpecOf (resStack : Nat) (A : RustAlloc) : Spec EncodeVarintGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.val ∧
       s.readReg64 .x1 = x.v ∧
@@ -86,7 +87,7 @@ def encodeVarintExactVmSpecOf (resStack : Nat) (A : RustAlloc) : Spec EncodeVari
 
 /-- Pool-free `0`-allocation (`VmPreserved`) contract for `encode_repeated` (`elems.length < 2 ^ 59`)
     under exact capacity (`x.bs.length + (encodeRepeatedBytes ...).length ≤ x.cap.toNat`). -/
-def encodeRepeated59ExactVmSpecOf (resStack : Nat) (A : RustAlloc) : Spec EncodeRepeatedGhost where
+@[expose] def encodeRepeated59ExactVmSpecOf (resStack : Nat) (A : RustAlloc) : Spec EncodeRepeatedGhost where
   pre := fun x s =>
     ⌜s.readReg32 .x0 = BitVec.ofNat 32 x.tag ∧
       s.readReg64 .x1 = x.base ∧
@@ -107,7 +108,7 @@ def encodeRepeated59ExactVmSpecOf (resStack : Nat) (A : RustAlloc) : Spec Encode
 
 /-- Pool-free `0`-allocation (`VmPreserved`) contract for `PolynomialDecoder::encode` under exact
     capacity (`x.bs.length + (encodePolyDecoderMsg x.tag x.dec).length ≤ x.cap.toNat`). -/
-def encodePolyDecoderExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def encodePolyDecoderExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec EncodePolyDecoderPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg32 .x0 = x.tag ∧
@@ -125,7 +126,7 @@ def encodePolyDecoderExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
 
 /-- Pool-free `0`-allocation (`VmPreserved`) contract for `PolynomialEncoder::encode` under exact
     capacity (`x.bs.length + (encodePolyEncoderMsg x.enc).length ≤ x.cap.toNat`). -/
-def encodePolyEncoderExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def encodePolyEncoderExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec EncodePolyEncoderPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.encA ∧
@@ -160,54 +161,6 @@ theorem subroutine_ok_encodePolyDecoderExact_of_vm {resStack : Nat} {prog : Prog
     rcases hq with ⟨⟨hvm, htr⟩, hq⟩
     rw [← A.pool_of_vmPreserved hvm] at hq
     dsimp only [encodePolyDecoderExactSpecOf]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨htr, by convert hq using 1; sep_ac_rfl⟩
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-theorem subroutine_ok_encodePolyEncoderExact_of_vm {resStack : Nat} {prog : Program}
-    {entry : BitVec 64} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (h : subroutine_ok prog entry (encodePolyEncoderExactVmSpecOf resStack A.repAlloc)) :
-    subroutine_ok prog entry (encodePolyEncoderExactSpecOf resStack A lim) := by
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
-  dsimp only [encodePolyEncoderExactSpecOf] at hpre
-  have hpre' : s0.mem ⊨
-      (encodePolyEncoderExactVmSpecOf resStack A.repAlloc).pre x s0 ∗ (A.pool lim st s0 ∗ R) := by
-    dsimp only [encodePolyEncoderExactVmSpecOf]
-    convert hpre using 1; sep_ac_rfl
-  refine (h.to_outcome x (A.pool lim st s0 ∗ R) s0 hpc hrun hpre' hsp).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [encodePolyEncoderExactVmSpecOf] at hq
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hq
-    rcases hq with ⟨⟨hvm, htr⟩, hq⟩
-    rw [← A.pool_of_vmPreserved hvm] at hq
-    dsimp only [encodePolyEncoderExactSpecOf]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨htr, by convert hq using 1; sep_ac_rfl⟩
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-theorem subroutine_ok_encodeRepeated59Exact_of_vm {resStack : Nat} {prog : Program}
-    {entry : BitVec 64} {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (h : subroutine_ok prog entry (encodeRepeated59ExactVmSpecOf resStack A.repAlloc)) :
-    subroutine_ok prog entry (encodeRepeated59ExactSpecOf resStack A lim) := by
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
-  dsimp only [encodeRepeated59ExactSpecOf] at hpre
-  have hpre' : s0.mem ⊨
-      (encodeRepeated59ExactVmSpecOf resStack A.repAlloc).pre x s0 ∗ (A.pool lim st s0 ∗ R) := by
-    dsimp only [encodeRepeated59ExactVmSpecOf]
-    convert hpre using 1; sep_ac_rfl
-  refine (h.to_outcome x (A.pool lim st s0 ∗ R) s0 hpc hrun hpre' hsp).mono_outcome ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [encodeRepeated59ExactVmSpecOf] at hq
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hq
-    rcases hq with ⟨⟨hvm, htr⟩, hq⟩
-    rw [← A.pool_of_vmPreserved hvm] at hq
-    dsimp only [encodeRepeated59ExactSpecOf]
     rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨htr, by convert hq using 1; sep_ac_rfl⟩
   · exact (not_satisfies_false_sepConj hq).elim

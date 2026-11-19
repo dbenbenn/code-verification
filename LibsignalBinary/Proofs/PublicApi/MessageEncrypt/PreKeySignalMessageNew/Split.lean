@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefs
-public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymA
-public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymB
+public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymB -- proof-setup: allow-public-import
 
 /-!
 # Seam Decomposition and `encoded_len` Specification for `PreKeySignalMessage::new`
@@ -23,7 +23,7 @@ and `SeamB` (`+0x4c4`, post-field-encoding) and segment-exit combinator `PreKeyM
 `PreKeySignalMessage::new` (`0x15130`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.Split
 
@@ -36,7 +36,7 @@ open CryptoVerification.LibsignalPublicApi CryptoVerification.LibsignalPublicApi
 
 /-! ## Pure Model Helpers -/
 
-def _root_.CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeyMsgNewCall.protoMsg
+@[expose] def _root_.CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeyMsgNewCall.protoMsg
     (x : PreKeyMsgNewCall) : ProtoPreKeySignalMessage :=
   { registrationId := some x.regId
     preKeyId := x.preKeyId
@@ -75,7 +75,7 @@ structure WirePreKeySignalMessageGhost where
 (`+0x00` `kyber_ciphertext`, `+0x18` `base_key`, `+0x30` `identity_key`, `+0x48` `message`,
 `+0x60` `registration_id`, `+0x68` `pre_key_id`, `+0x70` `signed_pre_key_id`,
 `+0x78` `kyber_pre_key_id`). -/
-def wirePreKeySignalMessageAt (A : RustAlloc) (g : WirePreKeySignalMessageGhost) (a : BitVec 64)
+@[expose] def wirePreKeySignalMessageAt (A : RustAlloc) (g : WirePreKeySignalMessageGhost) (a : BitVec 64)
     (m : ProtoPreKeySignalMessage) : SepProp :=
   optVecU8At A g.kyberCt a m.kyberCiphertext ∗
     optVecU8At A g.bk (a + 0x18#64) m.baseKey ∗
@@ -87,7 +87,7 @@ def wirePreKeySignalMessageAt (A : RustAlloc) (g : WirePreKeySignalMessageGhost)
     LibsignalPublicApiRepr.optU32At (a + 0x78#64) m.kyberPreKeyId
 
 /-- Encoded byte length fits in `u64`, ruling out `panic_const_add_overflow` inside `encoded_len`. -/
-def PreKeyMsgWireLengthsFit (m : ProtoPreKeySignalMessage) : Prop :=
+@[expose] def PreKeyMsgWireLengthsFit (m : ProtoPreKeySignalMessage) : Prop :=
   m.encode.length < 2 ^ 64
 
 /-- Ghost input bundle for `<wire::PreKeySignalMessage as Message>::encoded_len`. -/
@@ -99,7 +99,7 @@ structure PreKeyMsgEncodedLenGhost where
 /-- Specification of `<wire::PreKeySignalMessage as prost::message::Message>::encoded_len`
 (`0x2da84`): returns `x.m.encode.length` in `x0` while preserving `wirePreKeySignalMessageAt` and
 the trace under `PreKeyMsgWireLengthsFit x.m`. -/
-def preKeyMsgEncodedLenSpec (A : RustAlloc) : Spec PreKeyMsgEncodedLenGhost where
+@[expose] def preKeyMsgEncodedLenSpec (A : RustAlloc) : Spec PreKeyMsgEncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ PreKeyMsgWireLengthsFit x.m⌝ ∗
       wirePreKeySignalMessageAt A x.g x.a x.m ∗ stackAt s.sp preKeyMsgEncodedLenStack
@@ -107,34 +107,12 @@ def preKeyMsgEncodedLenSpec (A : RustAlloc) : Spec PreKeyMsgEncodedLenGhost wher
     ⌜sf.readReg64 .x0 = BitVec.ofNat 64 x.m.encode.length ∧ sf.trace = s0.trace⌝ ∗
       wirePreKeySignalMessageAt A x.g x.a x.m ∗ stackAt s0.sp preKeyMsgEncodedLenStack
 
-def PreKeyMsgEncodedLenOk (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs) (img.base + 0x2db68#64) (preKeyMsgEncodedLenSpec A)
-
-def PreKeyMsgEncodedLenOk_trap (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (trTrapProgAt img.base C abs) (img.base + 0x2db68#64) (preKeyMsgEncodedLenSpec A)
-
-def PreKeyMsgEncodedLenOk_ext (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext) (img.base + 0x2db68#64) (preKeyMsgEncodedLenSpec A)
-
-/-! ## Seam States for `PreKeySignalMessage::new` (`0x15130`) -/
-
-abbrev preKeyMsgNewEntry (img : Obj.Image) : BitVec 64 := img.base + 0x15130#64
-
-/-- Seam (a) PC (`+0x25c`): immediately before protobuf tag 1 encoding. -/
-abbrev preKeyMsgSeamAPC (img : Obj.Image) : BitVec 64 := preKeyMsgNewEntry img + 0x25c#64
-
-/-- Seam (b) PC (`+0x4c4`): immediately after protobuf tag 1–8 encoding, before `into_boxed_slice`. -/
-abbrev preKeyMsgSeamBPC (img : Obj.Image) : BitVec 64 := preKeyMsgNewEntry img + 0x4c4#64
-
 abbrev preKeyMsgFrameSize : Nat := 0x170
 
 abbrev preKeyMsgSubStack : Nat := preKeyMsgNewStack - preKeyMsgFrameSize
 
 /-- Callee-saved registers spilled at `[sp0 - 96 .. sp0)`. -/
-def preKeyMsgSavedRegs (sp0 : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def preKeyMsgSavedRegs (sp0 : BitVec 64) (s0 : State) : SepProp :=
   ((sp0 - 96#64) ↦₆₄ s0.readReg64 .x29) ∗ ((sp0 - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp0 - 80#64) ↦₆₄ s0.readReg64 .x28) ∗ ((sp0 - 72#64) ↦₆₄ s0.readReg64 .x27) ∗
   ((sp0 - 64#64) ↦₆₄ s0.readReg64 .x26) ∗ ((sp0 - 56#64) ↦₆₄ s0.readReg64 .x25) ∗
@@ -161,17 +139,17 @@ structure PreKeyMsgFrameGhost where
   /-- 32-bit value at `[sp + 0x2c]` (`kyberId32 = k.preKeyId` when `x.kp = some k`). -/
   kyberId32 : BitVec 32
 
-def optKyberCopyBuf (A : RustAlloc) (ptr : BitVec 64) : Option KyberPayload → SepProp
+@[expose] def optKyberCopyBuf (A : RustAlloc) (ptr : BitVec 64) : Option KyberPayload → SepProp
   | none => emp
   | some k => boxU8Buf A ptr k.ciphertext
 
-def PreKeyMsgGhostWf (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) : Prop :=
+@[expose] def PreKeyMsgGhostWf (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) : Prop :=
   x.model.serialized.length < 2 ^ 42 ∧
     g.ver32.setWidth 8 = x.ver ∧
     (∀ v, x.preKeyId = some v → g.preKeyVal32 = v) ∧
     (∀ k, x.kp = some k → g.kyberId32 = k.preKeyId)
 
-def preKeyMsgCommonRegs (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (s0 s : State) : Prop :=
+@[expose] def preKeyMsgCommonRegs (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (s0 s : State) : Prop :=
   s.status = .Running ∧
     s.sp = s0.sp - 0x170#64 ∧
     s0.spAligned = true ∧
@@ -193,7 +171,7 @@ def preKeyMsgCommonRegs (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (s0 s :
 
 /-- Stack frame `[sp .. sp + 0x170)` (`sp = s0.sp - 0x170#64`) with `serialized: Vec<u8>` at
 `sp + 0xe0` holding `serBytes` and matching length word `serBytes.length`. -/
-def preKeyMsgFrameSlotsAt (A : RustAlloc) (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (s0 : State)
+@[expose] def preKeyMsgFrameSlotsAt (A : RustAlloc) (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (s0 : State)
     (serBytes : List (BitVec 8)) : SepProp :=
   let sp := s0.sp - 0x170#64
   (sp ↦₆₄ g.msgCopyPtr) ∗
@@ -217,7 +195,7 @@ def preKeyMsgFrameSlotsAt (A : RustAlloc) (x : PreKeyMsgNewCall) (g : PreKeyMsgF
     preKeyMsgSavedRegs s0.sp s0
 
 /-- `vecU8At` with an explicit length word `lenW` at `v + 16` (not necessarily `bs.length`). -/
-def vecU8AtLen (A : RustAlloc) (v cap ptr lenW : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8AtLen (A : RustAlloc) (v cap ptr lenW : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   vecHeader v cap ptr lenW ∗
     ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
@@ -231,7 +209,7 @@ theorem vecU8AtLen_length (A : RustAlloc) (v cap ptr : BitVec 64) (bs : List (Bi
 /-- Seam stack-frame layout (`preKeyMsgFrameSlotsAt` generalized to an explicit `lenW` at
 `[sp + 0xf0]`): tag 8's nonempty Kyber ciphertext branch updates `x23` without storing the final
 length word back to `[x29 - 0x20]`, and nothing after `SeamB` reads `[sp + 0xf0]`. -/
-def preKeyMsgFrameSlotsAt' (A : RustAlloc) (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (s0 : State)
+@[expose] def preKeyMsgFrameSlotsAt' (A : RustAlloc) (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (s0 : State)
     (lenW : BitVec 64) (serBytes : List (BitVec 8)) : SepProp :=
   let sp := s0.sp - 0x170#64
   (sp ↦₆₄ g.msgCopyPtr) ∗
@@ -278,7 +256,7 @@ theorem exists_preKeyMsgFrameSlotsAt'_of_vec {A : RustAlloc} {x : PreKeyMsgNewCa
     ∃ lenW, m ⊨ preKeyMsgFrameSlotsAt' A x g s0 lenW serBytes ∗ F :=
   ⟨BitVec.ofNat 64 serBytes.length, h⟩
 
-def preKeyMsgHeapAt (A : RustAlloc) (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (s0 : State) : SepProp :=
+@[expose] def preKeyMsgHeapAt (A : RustAlloc) (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (s0 : State) : SepProp :=
   (s0.sp ↦₆₄ x.msgA) ∗
     optKyberAt A x.kyA x.kyPtr x.kp ∗
     (x.bkA ↦ₛ x.baseKey.bytes.toList) ∗
@@ -291,102 +269,6 @@ def preKeyMsgHeapAt (A : RustAlloc) (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGh
     boxU8Buf A g.msgCopyPtr x.msg.serialized ∗
     A.pool ∗
     stackAt (s0.sp - 0x170#64) preKeyMsgSubStack
-
-/-- Seam (a) state (`+0x25c`): prologue complete and `serialized` at `sp + 0xe0` initialized to
-`[versionByte x.ver]`. -/
-def SeamA (img : Obj.Image) (A : RustAlloc) (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost)
-    (R : SepProp) (s0 s : State) : Prop :=
-  s.pc = preKeyMsgSeamAPC img ∧
-    PreKeyMsgGhostWf x g ∧
-    preKeyMsgCommonRegs x g s0 s ∧
-    (s.mem ⊨ preKeyMsgFrameSlotsAt' A x g s0 1#64 [versionByte x.ver] ∗ preKeyMsgHeapAt A x g s0 ∗ R)
-
-/-- Seam (b) state (`+0x4c4`): tags 1–8 encoded into `serialized` (`x.model.serialized`), with
-length in `x23 = x26` and stale/existential length word `lenW` at `[sp + 0xf0]`. -/
-def SeamB (img : Obj.Image) (A : RustAlloc) (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost)
-    (R : SepProp) (s0 s : State) : Prop :=
-  s.pc = preKeyMsgSeamBPC img ∧
-    PreKeyMsgGhostWf x g ∧
-    preKeyMsgCommonRegs x g s0 s ∧
-    s.readReg64 .x8 = x.bkA ∧
-    s.readReg64 .x23 = BitVec.ofNat 64 x.model.serialized.length ∧
-    s.readReg64 .x26 = BitVec.ofNat 64 x.model.serialized.length ∧
-    ∃ lenW, (s.mem ⊨ preKeyMsgFrameSlotsAt' A x g s0 lenW x.model.serialized ∗ preKeyMsgHeapAt A x g s0 ∗ R)
-
-/-! ## Segment-Exit Combinator -/
-
-/-- Segment exit inside `PreKeySignalMessage::new`: from `s`, execution reaches either a state
-satisfying `next` or an OOM panic outcome of `preKeyMsgNewSpec A`. -/
-def PreKeyMsgSegExit (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (x : PreKeyMsgNewCall) (R : SepProp) (s0 s : State)
-    (next : State → Prop) : Prop :=
-  (tripleRatchetProgAt img.base C ctl abs).CodeLoaded s.mem →
-    ∃ sf, Steps (tripleRatchetProgAt img.base C ctl abs) s sf ∧
-      (next sf ∨ SubroutineOutcome (preKeyMsgNewSpec A) x R s0 sf)
-
-def PreKeyMsgSegExit_trap (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) (x : PreKeyMsgNewCall) (R : SepProp) (s0 s : State)
-    (next : State → Prop) : Prop :=
-  (trTrapProgAt img.base C abs).CodeLoaded s.mem →
-    ∃ sf, Steps (trTrapProgAt img.base C abs) s sf ∧
-      (next sf ∨ SubroutineOutcome (preKeyMsgNewSpec A) x R s0 sf)
-
-theorem preKeyMsgSegExit_chain {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {x : PreKeyMsgNewCall} {R : SepProp} {s0 s : State} {next : State → Prop}
-    (h1 : PreKeyMsgSegExit img C A ctl abs x R s0 s next)
-    (h2 : ∀ s', next s' →
-      reaches_outcome (tripleRatchetProgAt img.base C ctl abs) (preKeyMsgNewSpec A) x R s0 s') :
-    reaches_outcome (tripleRatchetProgAt img.base C ctl abs) (preKeyMsgNewSpec A) x R s0 s := by
-  refine reaches_outcome.of_codeLoaded fun hL => ?_
-  obtain ⟨sf, hst, hnext | hout⟩ := h1 hL
-  · exact reaches_outcome_steps hst (h2 sf hnext)
-  · exact reaches_outcome_steps hst (reaches_outcome.of_outcome hout)
-
-theorem preKeyMsgSegExit_chain_trap {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    {x : PreKeyMsgNewCall} {R : SepProp} {s0 s : State} {next : State → Prop}
-    (h1 : PreKeyMsgSegExit_trap img C A abs x R s0 s next)
-    (h2 : ∀ s', next s' →
-      reaches_outcome (trTrapProgAt img.base C abs) (preKeyMsgNewSpec A) x R s0 s') :
-    reaches_outcome (trTrapProgAt img.base C abs) (preKeyMsgNewSpec A) x R s0 s := by
-  refine reaches_outcome.of_codeLoaded fun hL => ?_
-  obtain ⟨sf, hst, hnext | hout⟩ := h1 hL
-  · exact reaches_outcome_steps hst (h2 sf hnext)
-  · exact reaches_outcome_steps hst (reaches_outcome.of_outcome hout)
-
-def PreKeyMsgSegExit_ext (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) (x : PreKeyMsgNewCall) (R : SepProp) (s0 s : State)
-    (next : State → Prop) : Prop :=
-  (tripleRatchetProgAtExt img.base ext).CodeLoaded s.mem →
-    ∃ sf, Steps (tripleRatchetProgAtExt img.base ext) s sf ∧
-      (next sf ∨ SubroutineOutcome (preKeyMsgNewSpec A) x R s0 sf)
-
-theorem preKeyMsgSegExit_chain_ext {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    {x : PreKeyMsgNewCall} {R : SepProp} {s0 s : State} {next : State → Prop}
-    (h1 : PreKeyMsgSegExit_ext img A ext x R s0 s next)
-    (h2 : ∀ s', next s' →
-      reaches_outcome (tripleRatchetProgAtExt img.base ext) (preKeyMsgNewSpec A) x R s0 s') :
-    reaches_outcome (tripleRatchetProgAtExt img.base ext) (preKeyMsgNewSpec A) x R s0 s := by
-  refine reaches_outcome.of_codeLoaded fun hL => ?_
-  obtain ⟨sf, hst, hnext | hout⟩ := h1 hL
-  · exact reaches_outcome_steps hst (h2 sf hnext)
-  · exact reaches_outcome_steps hst (reaches_outcome.of_outcome hout)
-
-theorem preKeyMsgSegExit_of_trap {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {x : PreKeyMsgNewCall} {R : SepProp} {s0 s : State} {next : State → Prop}
-    (hrun : ∀ sf, next sf → sf.status = .Running)
-    (h : PreKeyMsgSegExit_trap img C A abs x R s0 s next) :
-    PreKeyMsgSegExit img C A ctl abs x R s0 s next := by
-  intro hL
-  have hT := trapsOnly_trTrap_kit img.base C ctl abs
-  obtain ⟨sf, hst, hnext | hout⟩ := h (ProofLib.Variant.CodeLoaded_of_trapsOnly hT hL)
-  · exact ⟨sf, ProofLib.Variant.Steps.of_trapsOnly hT hst (.of_running (hrun sf hnext)), Or.inl hnext⟩
-  · exact ⟨sf, ProofLib.Variant.Steps.of_trapsOnly hT hst (ProofLib.Variant.SubroutineOutcome.outcomeStatus hout), Or.inr hout⟩
-
-/-! ## Relocatable Placement Proofs -/
 
 open CryptoVerification.LibsignalPublicApi.Placed
 
@@ -402,7 +284,7 @@ abbrev preKeyMsgSeamAPC_placed [LibsignalPlacement] : BitVec 64 :=
 abbrev preKeyMsgSeamBPC_placed [LibsignalPlacement] : BitVec 64 :=
   preKeyMsgNewEntry_placed + 1220#64
 
-def SeamA_placed [LibsignalPlacement] (A : RustAlloc) (x : PreKeyMsgNewCall)
+@[expose] def SeamA_placed [LibsignalPlacement] (A : RustAlloc) (x : PreKeyMsgNewCall)
     (g : PreKeyMsgFrameGhost) (R : SepProp) (s0 s : State) : Prop :=
   s.pc = preKeyMsgSeamAPC_placed ∧
     LibsignalCodeLoaded lsmpl s.mem ∧
@@ -410,7 +292,7 @@ def SeamA_placed [LibsignalPlacement] (A : RustAlloc) (x : PreKeyMsgNewCall)
     preKeyMsgCommonRegs x g s0 s ∧
     (s.mem ⊨ preKeyMsgFrameSlotsAt' A x g s0 1#64 [versionByte x.ver] ∗ preKeyMsgHeapAt A x g s0 ∗ R)
 
-def SeamB_placed [LibsignalPlacement] (A : RustAlloc) (x : PreKeyMsgNewCall)
+@[expose] def SeamB_placed [LibsignalPlacement] (A : RustAlloc) (x : PreKeyMsgNewCall)
     (g : PreKeyMsgFrameGhost) (R : SepProp) (s0 s : State) : Prop :=
   s.pc = preKeyMsgSeamBPC_placed ∧
     LibsignalCodeLoaded lsmpl s.mem ∧
@@ -421,7 +303,7 @@ def SeamB_placed [LibsignalPlacement] (A : RustAlloc) (x : PreKeyMsgNewCall)
     s.readReg64 .x26 = BitVec.ofNat 64 x.model.serialized.length ∧
     ∃ lenW, (s.mem ⊨ preKeyMsgFrameSlotsAt' A x g s0 lenW x.model.serialized ∗ preKeyMsgHeapAt A x g s0 ∗ R)
 
-def PreKeyMsgSegExit_placed [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks)
+@[expose] def PreKeyMsgSegExit_placed [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks)
     (x : PreKeyMsgNewCall) (R : SepProp) (s0 s : State) (next : State → Prop) : Prop :=
   (lsProg_41 H).CodeLoaded s.mem →
     ∃ sf, Steps (lsProg_41 H) s sf ∧

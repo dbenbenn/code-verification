@@ -12,10 +12,10 @@ module
 public import Computational.Specifications.Game.StatementPqOomGame
 public import Computational.Specifications.Session.StatementSession
 public import Computational.Specifications.Composition.StatementModel
-public import Computational.Proofs.LibsignalCli.StatementPqSecure
+import Computational.Proofs.LibsignalCli.StatementPqSecure
 public import Computational.Proofs.LibsignalCli.CliKemFailCouplingDefs
-public import Computational.Proofs.LibsignalCli.CliPqAdapterDefs
-public import Computational.Proofs.LibsignalCli.CliPqAdapterRemoteIdInv
+import Computational.Proofs.LibsignalCli.CliPqAdapterDefs
+public import Computational.Proofs.LibsignalCli.CliPqAdapterRemoteIdInv -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.Oom.Faithful
 
 /-!
@@ -25,7 +25,7 @@ Defines `forgetCoinS2`, `liftCoinS2`, and `cliComposedAdapterImplWithCoinLogged`
 empty-log reductions on non-send/challenge queries.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +67,7 @@ open Computational.Proofs.LibsignalCli.Oom.Faithful (instLawfulMonadWriterTList)
     (if c then t else e).run s = if c then t.run s else e.run s := by
   split_ifs <;> rfl
 
-def forgetCoinS2 {σ₁ σ₂ α : Type} (m : StateT σ₁ (StateT σ₂ CoinLogM) α) :
+@[expose] def forgetCoinS2 {σ₁ σ₂ α : Type} (m : StateT σ₁ (StateT σ₂ CoinLogM) α) :
     StateT σ₁ (StateT σ₂ ProbComp) α :=
   fun s₁ => forgetCoinS1 (m.run s₁)
 
@@ -218,7 +218,7 @@ theorem liftM_prob_bind {α β : Type} (c : ProbComp α) (k : α → ProbComp β
   dsimp [liftM, monadLift, MonadLiftT.monadLift, MonadLift.monadLift, WriterT.liftTell]
   simp [map_eq_bind_pure_comp, bind_assoc]
 
-def liftCoinS2 {σ₁ σ₂ α : Type} (m : StateT σ₁ (StateT σ₂ ProbComp) α) :
+@[expose] def liftCoinS2 {σ₁ σ₂ α : Type} (m : StateT σ₁ (StateT σ₂ ProbComp) α) :
     StateT σ₁ (StateT σ₂ CoinLogM) α :=
   fun s₁ s₂ => liftM ((m.run s₁).run s₂)
 
@@ -227,12 +227,12 @@ theorem writerT_run_liftCoinS2 {σ₁ σ₂ α : Type}
     WriterT.run (((liftCoinS2 m).run s₁).run s₂) =
       (fun x => (x, ([] : List (BitVec 512)))) <$> ((m.run s₁).run s₂) := rfl
 
-def isSendOrChallSM {St Msg Coins C : Type} :
+@[expose] def isSendOrChallSM {St Msg Coins C : Type} :
     (CryptoGames.SM.spec St Msg Coins C).Domain → Bool
   | .inl (.inl (.inl _)) => true
   | _ => false
 
-def isSendOrChallCli {S : SignalPqxdh.Setup} {ℓ : ℕ} :
+@[expose] def isSendOrChallCli {S : SignalPqxdh.Setup} {ℓ : ℕ} :
     (cliGameSpec S ℓ (BitVec 512)).Domain → Bool
   | .inr ⟨_, sq⟩ => isSendOrChallSM sq
   | _ => false
@@ -452,7 +452,7 @@ theorem cliDrvImplCoinLogged_nonSend_eq_liftCoinS2
 
 /-! ## Coin-logged composed adapter -/
 
-def cliAdapterStepImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def cliAdapterStepImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (qep : ℕ)
@@ -463,7 +463,7 @@ def cliAdapterStepImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : T
     simulateQ (cliE2EDrvImplWithCoinLogged P ki C K qep decT encT)
       ((bhShallowAdapterImpl S ℓ (BitVec 512) q).run σ_ad)
 
-def cliComposedAdapterImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def cliComposedAdapterImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (qep : ℕ)

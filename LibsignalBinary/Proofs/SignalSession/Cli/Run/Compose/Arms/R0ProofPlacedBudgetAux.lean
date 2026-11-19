@@ -9,22 +9,99 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget -- shake: keep -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.Bytes
 public import ProofLib.SepLogic.WP.Apply
-public import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import Init.Data.String.Defs
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import Lean.Elab.SyntheticMVars
+public meta import Lean.Elab.Tactic
+public meta import Lean.Meta.Reduce
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.GenPlacedFetches
+public meta import ProofLib.ProgramReflection
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.SepLogic.WP
+public meta import ProofLib.SepLogic.WP.ControlTactics
+public meta import ProofLib.VCGen
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.Disproof.Basic
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.Multi
+public import ProofLib.Placed.OpcodeExclusion
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.SepLogic.WPp
+public import ProofLib.StdStartup.MuslStage1Init
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.States -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlaced -- proof-setup: allow-public-import
 
 /-!
 # Segment and Framing Helpers for Budget-Threaded Arm `R0`
@@ -33,7 +110,7 @@ Internal layout, framing, and weakest-precondition segment lemmas on Block `579`
 `R0ProofPlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -348,12 +425,12 @@ theorem r0_sepProp_ext_rp {P Q : SepProp} (h1 : P ⊢ Q) (h2 : Q ⊢ P) : P = Q 
 theorem r0_apply_head_rp {A B F P : SepProp} (h : A ⊢ B) (heq : P = A ∗ F) : P ⊢ B ∗ F := by
   rw [heq]; exact sepConj_mono_left h
 
-def r0_gaps_rp (fsp : BitVec 64) : SepProp :=
+@[expose] def r0_gaps_rp (fsp : BitVec 64) : SepProp :=
   memRegion fsp 0x1d0 ∗ memRegion (fsp + 0x1e0#64) (0x4d0 - 0x1e0) ∗
     memRegion (fsp + 0x500#64) (0x1750 - 0x500) ∗ memRegion (fsp + 0x1770#64) (runLocalBytes - 0x1770)
 attribute [local irreducible] r0_gaps_rp
 
-def r0_storesRest_rp (A : RustAlloc) (a : BitVec 64) (g : StoresGhost) : SepProp :=
+@[expose] def r0_storesRest_rp (A : RustAlloc) (a : BitVec 64) (g : StoresGhost) : SepProp :=
   dirAt A (a + 0x28#64) g.identity.peers ∗ dirAt A (a + 0x50#64) g.signed ∗
     dirAt A (a + 0x78#64) g.kyber.oneTime ∗ dirAt A (a + 0xa0#64) g.kyber.lastResort ∗
     dirAt A (a + 0xc8#64) g.oneTime ∗ dirAt A (a + 0xf0#64) g.sessions ∗
@@ -491,7 +568,7 @@ theorem r0_probes_rejoin_rp (s0 : State) :
   exact Entails.sepExists_right 0#64
     (Entails.sepExists_right 0#64 (Entails.sepExists_right 0#64 (Entails.refl _)))
 
-def r0_ownedRest_rp (A : RustAlloc) (cap ptr : BitVec 64) (bs : Bytes) : SepProp :=
+@[expose] def r0_ownedRest_rp (A : RustAlloc) (cap ptr : BitVec 64) (bs : Bytes) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗ if cap = 0 then emp
     else A.live ptr cap.toNat 1 ∗ memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
 
@@ -642,19 +719,19 @@ abbrev r0_constFrame_rp [LibsignalPlacement] (A : RustAlloc) (g : RunCall) (s0 :
     CryptoVerification.SpqrV1.GF.Mul2U16.tokenInitPlacedAt ∗
     lsLogOff ∗ runSaved s0
 
-def r0_meRegs_rp (me : MeAtDispatch) (s : State) : Prop :=
+@[expose] def r0_meRegs_rp (me : MeAtDispatch) (s : State) : Prop :=
   match me with
   | .none => s.readReg64 (.gpr 21#5) = noneCap
   | .some meV meG => s.readReg64 (.gpr 21#5) = meG.name.cap ∧ s.readReg64 (.gpr 28#5) = meG.name.ptr ∧
       meG.name.bytes = meV.name ∧ meG.name.cap = BitVec.ofNat 64 meV.name.length ∧ meG.device = meV.device
 
-def r0_ownSem_rp (g : RunCall) (me : MeAtDispatch) : Prop :=
+@[expose] def r0_ownSem_rp (g : RunCall) (me : MeAtDispatch) : Prop :=
   ∃ ownB : Bytes, StoresGhost.opened.identity.own.get cliIo.rd (runFiles g.i) (utf8 "address") = .ok ownB ∧
     match me with
     | .none => addrParse uuidTryParse ownB = Option.none
     | .some meV _ => addrParse uuidTryParse ownB = Option.some meV
 
-def r0_tagRel_rp (w0 : BitVec 64) (tag : Nat) : Prop :=
+@[expose] def r0_tagRel_rp (w0 : BitVec 64) (tag : Nat) : Prop :=
   (w0.toNat < 2 ^ 63 ∧ tag = 1) ∨ (w0 = 0x8000000000000002#64 ∧ tag = 2) ∨
     (w0 = 0x8000000000000003#64 ∧ tag = 3)
 

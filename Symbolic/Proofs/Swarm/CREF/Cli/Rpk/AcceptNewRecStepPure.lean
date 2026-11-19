@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepNoRatchetPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvFreshLinkPure
@@ -32,7 +32,7 @@ arbitrary `runTraceMoves r₀ ms`, and establishes `TRNsBound`, singleton `PureT
 and skipped-key invariants across `decTailTr`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

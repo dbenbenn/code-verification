@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `StoreKit` Bridges from `FdsGe3Closed` Bundles at `A` to `withFds A`
@@ -25,7 +27,7 @@ and `repAlloc` definitionally. Lifts all six `fds = true` CLI store-kit bundles 
 `fds = false` store-kit bundles at `withFds A`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -171,26 +173,6 @@ private theorem shim_post_inner {M : AllocCostModel} {A : RustCliAllocBudget M}
   rw [hEq2, satisfies_pure_sepConj, satisfies_pure_sepConj]
   exact ⟨hQ, (hfds sf.fs).mp hfdsF, hRest⟩
 
-private theorem poll_pre4_inner {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} (henf : lim.enforced = true) {fdsOk : FsState → Prop}
-    (hfds : ∀ fs, fdsOk fs ↔ FdsGe3Closed fs)
-    {E : Prop} {P0 P1 P2 P3 S R : SepProp} {st : M.σ} {s0 : State}
-    (h : s0.mem ⊨ (⌜E⌝ ∗ (P0 ∗ P1 ∗ P2 ∗ P3 ∗ (withFds A).pool lim st s0 ∗ S)) ∗ R) :
-    s0.mem ⊨ (⌜E ∧ fdsOk s0.fs⌝ ∗ (P0 ∗ P1 ∗ P2 ∗ P3 ∗ A.pool lim st s0 ∗ S)) ∗ R := by
-  rw [withFds_pool_enforced A henf] at h
-  have hEq1 :
-      (⌜E⌝ ∗ (P0 ∗ P1 ∗ P2 ∗ P3 ∗ (⌜FdsGe3Closed s0.fs⌝ ∗ A.pool lim st s0) ∗ S)) ∗ R =
-      ⌜E⌝ ∗ (⌜FdsGe3Closed s0.fs⌝ ∗ ((P0 ∗ P1 ∗ P2 ∗ P3 ∗ A.pool lim st s0 ∗ S) ∗ R)) := by
-    sep_ac_rfl
-  rw [hEq1, satisfies_pure_sepConj, satisfies_pure_sepConj] at h
-  rcases h with ⟨hE, hClosed, hRest⟩
-  have hEq2 :
-      (⌜E ∧ fdsOk s0.fs⌝ ∗ (P0 ∗ P1 ∗ P2 ∗ P3 ∗ A.pool lim st s0 ∗ S)) ∗ R =
-      ⌜E ∧ fdsOk s0.fs⌝ ∗ ((P0 ∗ P1 ∗ P2 ∗ P3 ∗ A.pool lim st s0 ∗ S) ∗ R) := by
-    sep_ac_rfl
-  rw [hEq2, satisfies_pure_sepConj]
-  exact ⟨⟨hE, (hfds s0.fs).mpr hClosed⟩, hRest⟩
-
 private theorem poll_pre5_inner {M : AllocCostModel} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} (henf : lim.enforced = true) {fdsOk : FsState → Prop}
     (hfds : ∀ fs, fdsOk fs ↔ FdsGe3Closed fs)
@@ -232,33 +214,6 @@ private theorem poll_pre6_inner {M : AllocCostModel} {A : RustCliAllocBudget M}
     sep_ac_rfl
   rw [hEq2, satisfies_pure_sepConj]
   exact ⟨⟨hE, (hfds s0.fs).mpr hClosed⟩, hRest⟩
-
-private theorem poll_post3_inner {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} (henf : lim.enforced = true) {fdsOk : FsState → Prop}
-    (hfds : ∀ fs, fdsOk fs ↔ FdsGe3Closed fs)
-    {Q' Q : Prop} {Q1 Q2 Q3 S R : SepProp} {st : M.σ} {evs : List AllocEvent} {sf : State}
-    (h : sf.mem ⊨
-      (⌜Q'⌝ ∗ Q1 ∗ Q2 ∗ Q3 ∗ A.pool lim (M.stepEvents evs st) sf ∗ S) ∗ R)
-    (himp : Q' → Q ∧ fdsOk sf.fs := by
-      simp (config := { failIfUnchanged := false }) only [and_assoc]; exact id) :
-    sf.mem ⊨
-      (⌜Q⌝ ∗ Q1 ∗ Q2 ∗ Q3 ∗ (withFds A).pool lim (M.stepEvents evs st) sf ∗ S) ∗ R := by
-  have hEq1 :
-      (⌜Q'⌝ ∗ Q1 ∗ Q2 ∗ Q3 ∗ A.pool lim (M.stepEvents evs st) sf ∗ S) ∗ R =
-      ⌜Q'⌝ ∗ ((Q1 ∗ Q2 ∗ Q3 ∗ A.pool lim (M.stepEvents evs st) sf ∗ S) ∗ R) := by
-    sep_ac_rfl
-  rw [hEq1, satisfies_pure_sepConj] at h
-  rcases h with ⟨hQ', hRest⟩
-  obtain ⟨hQ, hfdsF⟩ := himp hQ'
-  rw [withFds_pool_enforced A henf]
-  have hEq2 :
-      (⌜Q⌝ ∗ Q1 ∗ Q2 ∗ Q3 ∗
-        (⌜FdsGe3Closed sf.fs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗ S) ∗ R =
-      ⌜Q⌝ ∗ (⌜FdsGe3Closed sf.fs⌝ ∗
-        ((Q1 ∗ Q2 ∗ Q3 ∗ A.pool lim (M.stepEvents evs st) sf ∗ S) ∗ R)) := by
-    sep_ac_rfl
-  rw [hEq2, satisfies_pure_sepConj, satisfies_pure_sepConj]
-  exact ⟨hQ, (hfds sf.fs).mp hfdsF, hRest⟩
 
 private theorem poll_post4_inner {M : AllocCostModel} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} (henf : lim.enforced = true) {fdsOk : FsState → Prop}
@@ -442,210 +397,5 @@ theorem identityStoreKitPlacedOkI_withFds_of_fds [LibsignalPlacement] {M : Alloc
       rcases hq with ⟨evs, hq⟩
       exact ⟨evs, poll_post5_inner henf hfds hq⟩
   saveFutDrop hblk := subroutine_ok_futDrop_rocl_false_of_true (h.saveFutDrop hblk)
-
-/-- Lift `PreKeyStoreKitPlacedOkFds A` (`fds = true`) to
-    `PreKeyStoreKitPlacedOk (withFds A) ... false` whenever `lim.enforced = true` and
-    `kit.fdsOk ↔ FdsGe3Closed`. -/
-theorem preKeyStoreKitPlacedOk_withFds_of_fds [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : PreKeyStoreSpec A.repAlloc 0#64} {kitEnv : PreKeyStoreBudgetEnv kit}
-    {H : LibsignalHooks}
-    (henf : lim.enforced = true)
-    (h : PreKeyStoreKitPlacedOkFds A lim kit kitEnv H)
-    (hfds : ∀ fs, kit.fdsOk fs ↔ FdsGe3Closed fs := by intro _; exact Iff.rfl) :
-    PreKeyStoreKitPlacedOk (withFds A) lim kit kitEnv H false where
-  getShim hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.getShim hblk) (fun ⟨x, st⟩ R s0 hp => ?_)
-      (fun ⟨x, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitPreKeyGetShimSpec] at hp ⊢
-      exact shim_pre_inner henf hfds hp
-    · dsimp only [kitPreKeyGetShimSpec, withFds_live] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, shim_post_inner henf hfds hq⟩
-  getPoll hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.getPoll hblk)
-      (fun ⟨x, st0, st⟩ R s0 hp => ?_) (fun ⟨x, st0, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitPreKeyGetPollSpecE, withEnvPre, kitPreKeyGetPollSpec] at hp ⊢
-      exact poll_pre4_inner henf hfds hp
-    · dsimp only [kitPreKeyGetPollSpecE, withEnvPre, kitPreKeyGetPollSpec] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨ans, hq⟩
-      refine ⟨ans, ?_⟩
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, poll_post3_inner henf hfds hq⟩
-  getFutDrop hblk := subroutine_ok_futDrop_rocl_false_of_true (h.getFutDrop hblk)
-  removeShim hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.removeShim hblk) (fun ⟨x, st⟩ R s0 hp => ?_)
-      (fun ⟨x, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitPreKeyRemoveShimSpec] at hp ⊢
-      exact shim_pre_inner henf hfds hp
-    · dsimp only [kitPreKeyRemoveShimSpec, withFds_live] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, shim_post_inner henf hfds hq⟩
-  removePoll hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.removePoll hblk)
-      (fun ⟨x, st0, st⟩ R s0 hp => ?_) (fun ⟨x, st0, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitPreKeyRemovePollSpecE, withEnvPre, kitPreKeyRemovePollSpec] at hp ⊢
-      exact poll_pre4_inner henf hfds hp
-    · dsimp only [kitPreKeyRemovePollSpecE, withEnvPre, kitPreKeyRemovePollSpec] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨ans, hq⟩
-      refine ⟨ans, ?_⟩
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, poll_post3_inner henf hfds hq⟩
-  removeFutDrop hblk := subroutine_ok_futDrop_rocl_false_of_true (h.removeFutDrop hblk)
-
-/-- Lift `SignedPreKeyStoreKitPlacedOkFds A` (`fds = true`) to
-    `SignedPreKeyStoreKitPlacedOk (withFds A) ... false` whenever `lim.enforced = true` and
-    `kit.fdsOk ↔ FdsGe3Closed`. -/
-theorem signedPreKeyStoreKitPlacedOk_withFds_of_fds [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : SignedPreKeyStoreSpec A.repAlloc 0#64} {kitEnv : SignedPreKeyStoreBudgetEnv kit}
-    {H : LibsignalHooks}
-    (henf : lim.enforced = true)
-    (h : SignedPreKeyStoreKitPlacedOkFds A lim kit kitEnv H)
-    (hfds : ∀ fs, kit.fdsOk fs ↔ FdsGe3Closed fs := by intro _; exact Iff.rfl) :
-    SignedPreKeyStoreKitPlacedOk (withFds A) lim kit kitEnv H false where
-  getShim hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.getShim hblk) (fun ⟨x, st⟩ R s0 hp => ?_)
-      (fun ⟨x, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitSpkGetShimSpec] at hp ⊢
-      exact shim_pre_inner henf hfds hp
-    · dsimp only [kitSpkGetShimSpec, withFds_live] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, shim_post_inner henf hfds hq⟩
-  getPoll hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.getPoll hblk)
-      (fun ⟨x, st0, st⟩ R s0 hp => ?_) (fun ⟨x, st0, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitSpkGetPollSpecE, withEnvPre, kitSpkGetPollSpec] at hp ⊢
-      exact poll_pre4_inner henf hfds hp
-    · dsimp only [kitSpkGetPollSpecE, withEnvPre, kitSpkGetPollSpec] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨ans, hq⟩
-      refine ⟨ans, ?_⟩
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, poll_post3_inner henf hfds hq⟩
-  getFutDrop hblk := subroutine_ok_futDrop_rocl_false_of_true (h.getFutDrop hblk)
-
-/-- Lift `KyberPreKeyStoreKitPlacedOkFds A` (`fds = true`) to
-    `KyberPreKeyStoreKitPlacedOk (withFds A) ... false` whenever `lim.enforced = true` and
-    `kit.fdsOk ↔ FdsGe3Closed`. -/
-theorem kyberPreKeyStoreKitPlacedOk_withFds_of_fds [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : KyberPreKeyStoreSpec A.repAlloc 0#64} {kitEnv : KyberPreKeyStoreBudgetEnv kit}
-    {H : LibsignalHooks}
-    (henf : lim.enforced = true)
-    (h : KyberPreKeyStoreKitPlacedOkFds A lim kit kitEnv H)
-    (hfds : ∀ fs, kit.fdsOk fs ↔ FdsGe3Closed fs := by intro _; exact Iff.rfl) :
-    KyberPreKeyStoreKitPlacedOk (withFds A) lim kit kitEnv H false where
-  getShim hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.getShim hblk) (fun ⟨x, st⟩ R s0 hp => ?_)
-      (fun ⟨x, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitKpkGetShimSpec] at hp ⊢
-      exact shim_pre_inner henf hfds hp
-    · dsimp only [kitKpkGetShimSpec, withFds_live] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, shim_post_inner henf hfds hq⟩
-  getPoll hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.getPoll hblk)
-      (fun ⟨x, st0, st⟩ R s0 hp => ?_) (fun ⟨x, st0, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitKpkGetPollSpecE, withEnvPre, kitKpkGetPollSpec] at hp ⊢
-      exact poll_pre4_inner henf hfds hp
-    · dsimp only [kitKpkGetPollSpecE, withEnvPre, kitKpkGetPollSpec] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨ans, hq⟩
-      refine ⟨ans, ?_⟩
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, poll_post3_inner henf hfds hq⟩
-  getFutDrop hblk := subroutine_ok_futDrop_rocl_false_of_true (h.getFutDrop hblk)
-  markShim hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.markShim hblk) (fun ⟨x, st⟩ R s0 hp => ?_)
-      (fun ⟨x, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitKpkMarkShimSpec] at hp ⊢
-      exact shim_pre_inner henf hfds hp
-    · dsimp only [kitKpkMarkShimSpec, withFds_live] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, shim_post_inner henf hfds hq⟩
-  markPoll hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.markPoll hblk)
-      (fun ⟨x, st0, st⟩ R s0 hp => ?_) (fun ⟨x, st0, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitKpkMarkPollSpecE, withEnvPre, kitKpkMarkPollSpec] at hp ⊢
-      exact poll_pre5_inner henf hfds hp
-    · dsimp only [kitKpkMarkPollSpecE, withEnvPre, kitKpkMarkPollSpec] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨ans, hq⟩
-      refine ⟨ans, ?_⟩
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, poll_post4_inner henf hfds hq⟩
-  markFutDrop hblk := subroutine_ok_futDrop_rocl_false_of_true (h.markFutDrop hblk)
-
-/-- Lift `IdentitySelfStoreKitPlacedOkIFds A` (`fds = true`) to
-    `IdentitySelfStoreKitPlacedOkI (withFds A) ... false` whenever `lim.enforced = true` and
-    `skit.fdsOk ↔ FdsGe3Closed`. -/
-theorem identitySelfStoreKitPlacedOkI_withFds_of_fds [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64}
-    {skit : IdentitySelfStoreSpec ikit} {senv : IdentitySelfStoreBudgetEnv skit}
-    {H : LibsignalHooks}
-    (henf : lim.enforced = true)
-    (h : IdentitySelfStoreKitPlacedOkIFds A lim ikit skit senv H)
-    (hfds : ∀ fs, skit.fdsOk fs ↔ FdsGe3Closed fs := by intro _; exact Iff.rfl) :
-    IdentitySelfStoreKitPlacedOkI (withFds A) lim ikit skit senv H false where
-  kpShim hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.kpShim hblk) (fun ⟨self, st⟩ R s0 hp => ?_)
-      (fun ⟨self, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitKpShimSpec] at hp ⊢
-      exact shim_pre_inner henf hfds hp
-    · dsimp only [kitKpShimSpec, withFds_live] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, shim_post_inner henf hfds hq⟩
-  kpPoll hblk := by
-    refine subroutine_ok_withLsRoCl_withLsLogOff_mono (h.kpPoll hblk)
-      (fun ⟨fut, out, self, ist0, st⟩ R s0 hp => ?_)
-      (fun ⟨fut, out, self, ist0, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitKpPollPlacedSpecI, kitKpPollSpecE, withEnvPre, kitKpPollSpec] at hp ⊢
-      exact poll_pre4_inner henf hfds hp
-    · dsimp only [kitKpPollPlacedSpecI, kitKpPollSpecE, withEnvPre, kitKpPollSpec] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨ans, hq⟩
-      refine ⟨ans, ?_⟩
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, poll_post3_inner henf hfds hq⟩
-  kpFutDrop hblk := subroutine_ok_futDrop_rocl_false_of_true (h.kpFutDrop hblk)
-  regIdShim hblk := by
-    refine subroutine_ok_withLsRoCl_mono (h.regIdShim hblk) (fun ⟨self, st⟩ R s0 hp => ?_)
-      (fun ⟨self, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitRegIdShimSpec] at hp ⊢
-      exact shim_pre_inner henf hfds hp
-    · dsimp only [kitRegIdShimSpec, withFds_live] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, shim_post_inner henf hfds hq⟩
-  regIdPoll hblk := by
-    refine subroutine_ok_withLsRoCl_withLsLogOff_mono (h.regIdPoll hblk)
-      (fun ⟨fut, out, self, ist0, st⟩ R s0 hp => ?_)
-      (fun ⟨fut, out, self, ist0, st⟩ R s0 sf hq => ?_)
-    · dsimp only [kitRegIdPollPlacedSpecI, kitRegIdPollSpecE, withEnvPre, kitRegIdPollSpec] at hp ⊢
-      exact poll_pre4_inner henf hfds hp
-    · dsimp only [kitRegIdPollPlacedSpecI, kitRegIdPollSpecE, withEnvPre, kitRegIdPollSpec] at hq ⊢
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨ans, hq⟩
-      refine ⟨ans, ?_⟩
-      rw [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-      rcases hq with ⟨evs, hq⟩
-      exact ⟨evs, poll_post3_inner henf hfds hq⟩
-  regIdFutDrop hblk := subroutine_ok_futDrop_rocl_false_of_true (h.regIdFutDrop hblk)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Store.StoreKitWithFds

@@ -11,9 +11,9 @@ module
 
 public import LibsignalBinary.Specifications.CryptoGames.SM.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
-public import Computational.Proofs.CryptoGames.AEAD.PrimitivesProofDefs
-public import Computational.Proofs.CryptoGames.CKA.CKAProofDefs
-public import Computational.Proofs.CryptoGames.SM.GameProofDefs
+import Computational.Proofs.CryptoGames.AEAD.PrimitivesProofDefs
+import Computational.Proofs.CryptoGames.CKA.CKAProofDefs
+import Computational.Proofs.CryptoGames.SM.GameProofDefs
 
 /-!
 # Proof Helpers for Theorem 7
@@ -22,7 +22,7 @@ public import Computational.Proofs.CryptoGames.SM.GameProofDefs
 correctness proof.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 

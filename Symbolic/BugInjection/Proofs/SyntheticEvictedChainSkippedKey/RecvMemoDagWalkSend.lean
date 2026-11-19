@@ -382,43 +382,4 @@ private theorem forall₂_append {α β : Type} {R : α → β → Prop} {l₁ l
   | nil => exact h₂
   | cons hr _ ih => exact List.Forall₂.cons hr ih
 
-/-- Participant names and `.toDRState` projections across `allStates24 cls` agree with the
-zero-coin schedule `cls0`. -/
-theorem allStates24_toDRState (cls : Nat → Nat) :
-    List.Forall₂
-      (fun ls ls₀ => ls.participant = ls₀.participant ∧ ls.state.toDRState = ls₀.state.toDRState)
-      (allStates24 cls) (allStates24 cls0) := by
-  unfold allStates24
-  refine forall₂_append ?_ ?_
-  · exact List.Forall₂.cons ⟨rfl, rfl⟩
-      (List.Forall₂.cons ⟨rfl, rfl⟩
-        (List.Forall₂.cons ⟨rfl, rfl⟩
-          (List.Forall₂.cons ⟨rfl, rfl⟩ List.Forall₂.nil)))
-  · have hstep : ∀ h : Nat, List.Forall₂
-        (fun ls ls₀ => ls.participant = ls₀.participant ∧ ls.state.toDRState = ls₀.state.toDRState)
-        (hrStates cls h) (hrStates cls0 h) := fun h => by
-      have ⟨hm, hp, hs, hr⟩ := hrConfig_toDRState cls h
-      rcases h1 : hrConfig cls h with ⟨me1, peer1, s1, r1⟩
-      rcases h0 : hrConfig cls0 h with ⟨me0, peer0, s0, r0s⟩
-      rw [h1, h0] at hm hp hs hr
-      dsimp only at hm hp hs hr
-      have hdhs : s1.dhs = s0.dhs := congrArg (·.dhs) hs
-      simp only [hrStates, h1, h0]
-      refine List.Forall₂.cons ⟨hm, encSt_toDRState hs⟩
-        (List.Forall₂.cons ⟨hp, ?_⟩ List.Forall₂.nil)
-      unfold recvStOf; rw [hdhs]
-      exact decSt0_toDRState hr
-    have hr10 : List.range 10 = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] := rfl
-    rw [hr10]
-    simp only [List.flatMap_cons, List.flatMap_nil, List.append_nil]
-    exact forall₂_append (hstep 0)
-      (forall₂_append (hstep 1)
-      (forall₂_append (hstep 2)
-      (forall₂_append (hstep 3)
-      (forall₂_append (hstep 4)
-      (forall₂_append (hstep 5)
-      (forall₂_append (hstep 6)
-      (forall₂_append (hstep 7)
-      (forall₂_append (hstep 8) (hstep 9)))))))))
-
 end Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.RecvMemoDagWalkSend

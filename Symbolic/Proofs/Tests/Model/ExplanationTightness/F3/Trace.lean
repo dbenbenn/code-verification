@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
-public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession
+import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
+public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -58,7 +58,7 @@ honest initiator handshake at index 27 and satisfies `HandshakeWasCompromisedAt`
 `CompromisedSPK`, whereas Alice's handshake at index 27 remains uncompromised.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -281,7 +281,7 @@ private theorem t_le_t8 : t4 ≤ t8 ∧ t5 ≤ t8 ∧ t6 ≤ t8 ∧ t7 ≤ t8 :=
   exact ⟨h48, h58, h68, h78⟩
 
 /-- Trace `t8` extended by `compromiseSPK "bob" 13`. -/
-def tC : ExecTrace :=
+@[expose] def tC : ExecTrace :=
   (t8.append (EvP (.CompromisedSPK "bob" (dhPk spkB)))).append (NetE spkB)
 
 theorem tC_length : tC.length = 56 := by
@@ -302,8 +302,8 @@ abbrev dhsR : Bytes := rnd 56 32
 
 /-- Responder state after the DH ratchet step of the replayed session; its receiving chain `cB`
 coincides with the honest session's. -/
-def stR' : TRState := (ratchetState stB00 (dhPk dhsA) dhsR).1
-def stR1 : TRState :=
+@[expose] def stR' : TRState := (ratchetState stB00 (dhPk dhsA) dhsR).1
+@[expose] def stR1 : TRState :=
   { stR' with recv := [cB'], spqr := recvSt (Spqr.spqrInit keys1.pqr spqrB2A) pqm0 }
 
 theorem recvR : Spqr.spqrRecv stR'.spqr pqm0 1 =
@@ -311,7 +311,7 @@ theorem recvR : Spqr.spqrRecv stR'.spqr pqm0 1 =
   recv8
 
 /-- Reachable witness trace extending `tC` with a replayed `bobStart` on Alice's initial message. -/
-def fTr : ExecTrace :=
+@[expose] def fTr : ExecTrace :=
   let tr1 := (tC.append (RndE 32)).append (NetE key0)
   let tr5 := (((tr1.append (EvP (.BobDone "bob" "alice" (dhPk ikB) (dhPk ikA) (dhPk spkB)
       (kemPk pqskB) none o1.ek o1.ct keys1))).append
@@ -536,11 +536,11 @@ def isDoneEv : PQXDHEvent → Bool
   | .AliceDone .. | .BobDone .. => true
   | _ => false
 
-def isIKorDH : PQXDHEvent → Bool
+@[expose] def isIKorDH : PQXDHEvent → Bool
   | .CompromisedIK .. | .BrokenDH => true
   | _ => false
 
-def isExposedEv : TREvent → Bool
+@[expose] def isExposedEv : TREvent → Bool
   | .ExposedRK .. | .ExposedDHs .. | .ExposedCKs .. | .ExposedCKr .. | .ExposedMK .. => true
   | _ => false
 
@@ -685,7 +685,7 @@ theorem excused_58 : HandshakeWasCompromisedAt fTr 58 :=
 
 /-- Existential variant of `HandshakeRootCompromised` requiring only some compromised handshake
 at `j` with matching keys instead of all handshakes deriving those keys. -/
-def HandshakeRootCompromised_old (tr : ExecTrace) (k : Bytes) : Prop :=
+@[expose] def HandshakeRootCompromised_old (tr : ExecTrace) (k : Bytes) : Prop :=
   ∃ keys j, HandshakeKeysAt tr j keys ∧ HandshakeWasCompromisedAt tr j ∧ (k = keys.rk ∨ k = keys.ck)
 
 theorem handshakeRootCompromised_old_fTr : HandshakeRootCompromised_old fTr keys1.rk :=

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.SignalSession.CliLabels
+public import LibsignalBinary.Proofs.Placed.CliLabels -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliLabelsLfo
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliProbeLabels
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternLabels
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliPanicLabels
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,16 +46,6 @@ theorem cliLabelsFromObjects_of_parts
     (h_panic : CliPanicLabelsSound) :
     CliLabelsFromObjects :=
   ⟨⟨bO, dO, h_lfo, h_probe⟩, h_ext, h_panic⟩
-
-/-- Existential-witness variant of `cliLabelsFromObjects_of_parts`. -/
-theorem cliLabelsFromObjects_of_exists
-    (h_lfo_probe : ∃ bO dO,
-      Obj.LabelsFromObjects cliLinkObjs libsignalSessionLib bO dO ∧
-        CliProbeLabelsAnchored dO)
-    (h_ext : CliExternLabelsUndefined)
-    (h_panic : CliPanicLabelsSound) :
-    CliLabelsFromObjects :=
-  ⟨h_lfo_probe, h_ext, h_panic⟩
 
 /-- Concrete label provenance certificate for `cliLinkObjs` and `libsignalSessionLib`. -/
 theorem cliLabelsFromObjects : CliLabelsFromObjects :=

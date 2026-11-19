@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDslBase -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedSendCorrSub -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitnessSub -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.Game.PromotedCostedReds.DrSessionSimSize
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInitCost
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedSendCorrCost
+public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
 
 /-!
 # Tracker-Halted Hop-2 State, Initializer, and Step Handler
@@ -80,7 +82,7 @@ open Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness (KemT
 open Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitnessSub (
   b64Take48ToB32E listNthOptB kemTrackDeliverAtomicE
   kemOnDeliverPostAtomicE kemOnDeliverPostAtomicE_cost)
-open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg (hop2FullStTy hop2ChallTy
+open Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs (hop2FullStTy hop2ChallTy
   hop2AuxTy hop2InitArgT hop2FullEnc Hop2Mode Hop2AuxBounded
   prgCoinMode prgLiftedMode
   compCoinToPrf size_compCoinToPrf compCoinToPrf_wk1Comp compCoinToPrf_eval_eq_liftM
@@ -327,7 +329,7 @@ theorem size_hop2InitPrfTrackC_le (k : ℕ) :
   simp only [Comp.size, draw256Coin_size, wk1Comp_size, Expr.size, Expr.v0, Expr.v1, Expr.v2]
   omega
 
-@[expose] noncomputable def hop2InitTrackImpl (k : ℕ) (sc : BitVec 256 × (BitVec 256 × BitVec 256)) :
+@[expose] def hop2InitTrackImpl (k : ℕ) (sc : BitVec 256 × (BitVec 256 × BitVec 256)) :
     CryptoVerification.E2E.Hop2Comp Pt
       (Unit × ((GameState (GhostState Bytes) (Plain ℓ) Bytes × Hop2Aux Pt) ×
         (KemFailTrackState C.F × List (Bytes × Party)))) := do

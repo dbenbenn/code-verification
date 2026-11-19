@@ -9,11 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Collect.EntryPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2CollectPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Collect.EntryPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2CollectPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Frame
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2IfacePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable `main` M2 Collect Half (`M+0xc0 → M+0x2f4 / M+0x1b0`)
@@ -23,7 +27,7 @@ read-only `argvAtROP`, advancing `A.pool` under `M2CollectEnv` from `AtM1EndPlac
 `AtM2DispatchPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -163,39 +167,5 @@ theorem main_m2_collect_placed [LibsignalPlacement] {CodeOk : Memory → Prop} [
         ⟨⟨by simpa only [mPcPlaced_eq] using hf'.pc,
           hf'.run, hf'.sp, hf'.fp, hf'.inv, hf'.vregs, hf'.spAligned⟩,
           hf'.spAligned, hx19', hx20', hx21', hx23', hx24', hvcap_ne', htr', hfs'⟩)
-
-theorem main_m2_collect_placed_any_st [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
-    {M : AllocCostModel} {H : LibsignalHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
-    {uuidParse : UuidParser} {i : Inputs} {s0 s : State} {ret : BitVec 64}
-    {stk hookStack resStack : Nat}
-    {buf p0 : BitVec 64} {ps : List (BitVec 64 × List (BitVec 8))}
-    {Statics : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hc : MainCalleesROBlk617 A lim H uuidParse hookStack resStack)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hok : CliInputsOk i) (hne : i.argv ≠ [])
-    (hps : ps.map (·.2) = i.argv.map bytesOfString)
-    (hfit : FitsEnv M lim st (M2CollectEnv i.argv.length))
-    (hs : AtM1EndPlaced CodeOk s0 s i.argv.length buf)
-    (hnext : ∀ (s' : State) (st' : M.σ) (vcap vptr : BitVec 64),
-      AtM2DispatchPlaced CodeOk s0 s' i.argv.length buf vcap vptr →
-      ProofLib.SepWPp (mProgPlaced H) ret s'
-        (argsBuf A.repAlloc vcap vptr ps ∗
-          argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
-          argvAtROP (s0.readReg64 .x1) ((p0, bytesOfString "libsignal-cli") :: ps) ∗
-          mainSaved s0 ∗ locals (s0.sp - BitVec.ofNat 64 mainFrameSize) [] ∗
-          stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
-          A.pool lim st' s' ∗ Statics)
-        Q Qp oom) :
-    ProofLib.SepWPp (mProgPlaced H) ret s
-      (argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
-        argvAtROP (s0.readReg64 .x1) ((p0, bytesOfString "libsignal-cli") :: ps) ∗
-        mainSaved s0 ∗ locals (s0.sp - BitVec.ofNat 64 mainFrameSize) [] ∗
-        stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
-        A.pool lim st s ∗ Statics)
-      Q Qp oom :=
-  main_m2_collect_placed hc hstk hstk64 hok hne hps hfit hs
-    fun s' vcap vptr _ _ hd => hnext s' _ vcap vptr hd
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2CollectPlacedBudget

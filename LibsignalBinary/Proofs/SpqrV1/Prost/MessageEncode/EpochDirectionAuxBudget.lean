@@ -9,12 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Budget
+import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced1Budget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.Iface
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Shared Budget & `VmPreserved` Combinators for `EpochDirection::encode` (`[local#1, 2]`)
@@ -24,7 +35,7 @@ Provides `VecU8ReserveChain` / `VecU8EncodeEnv` step combinators, the `noAllocEn
 for `EpochDirection::encode` (`Blocks 154 & 317`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -143,7 +154,7 @@ theorem vecU8ReserveChain_doReserve (v curCap curPtr : BitVec 64)
 
 /-- Enforced `BudgetLimits` rejecting every allocation event (`staticBytes = 1 > physCap = 0`),
 forcing `do_reserve_and_handle` preconditions to be vacuous while keeping `enforced = true`. -/
-def noAllocEnforcedLimits : BudgetLimits :=
+@[expose] def noAllocEnforcedLimits : BudgetLimits :=
   { staticCount := 0, staticBytes := 1, physCap := 0, enforced := true }
 
 theorem not_fitsEvent_noAllocEnforcedLimits (M : AllocCostModel) (st : M.σ) (ev : AllocEvent) :
@@ -166,7 +177,7 @@ theorem not_fitsEvents_doReserveEvents_noAllocEnforced (M : AllocCostModel) (st 
 
 /-- Augment `A` with pure `⌜VmPreserved s₀ s⌝` when `lim.enforced = true`, reusing `A.live` and
 `A.block_valid` directly. -/
-def withVmAnchor {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def withVmAnchor {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim₀ : BudgetLimits) (s₀ : State) : RustCliAllocBudget M where
   pool := fun lim st s =>
     if lim.enforced then ⌜VmPreserved s₀ s⌝ ∗ A.pool lim₀ st s
@@ -238,7 +249,7 @@ theorem encodeVarint4_det_noAllocEnforced_placed_ok [LibsignalPlacement] {resSta
 
 /-- Core specification of `encode<EpochDirection>` (pinned) before strengthening the spare-capacity
 postcondition with `VmPreserved s0 sf` via `withVmAnchor`. -/
-def encodeEpochDirectionPinnedCoreSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeEpochDirectionPinnedCoreSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodeEpochDirectionPinnedGhost × M.σ) where
   pre := (encodeEpochDirectionPinnedSpecOf resStack A lim).pre

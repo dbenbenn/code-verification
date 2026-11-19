@@ -17,13 +17,13 @@ import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanSem
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewSkip
+import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness
 
 /-!
 # Forward-Encoder Step Simulation for `simFig8RedProgHalted`
 
 Proves per-step forward-encoder simulation for `simFig8HaltedRawStepC` and full sanitized
-evaluation equivalence `simFig8RedProgHalted_eval_san`.
--/
+evaluation equivalence `simFig8RedProgHalted_eval_san`.-/
 
 public section
 
@@ -107,8 +107,6 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8Halted
    haltedSendInpT simFig8HaltedSendHookC simFig8HaltedStepSendC
    extractHaltedRecvOptE isHaltedSendOrChallE simHaltedStepDispatchC
    simFig8HaltedRawStepC simFig8RedProgHaltedReal simFig8RedProgHalted)
-
-noncomputable section
 
 section EvalHelpers
 
@@ -1138,6 +1136,5 @@ theorem simFig8RedProgHalted_eval_san (hℓ : ℓ < 10 ^ 6)
 
 end EvalHelpers
 
-end
-
 end Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedEvalStep
+

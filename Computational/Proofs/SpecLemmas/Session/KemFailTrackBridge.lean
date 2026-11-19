@@ -12,7 +12,7 @@ module
 public import Computational.Specifications.Session.StatementSession
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.KemFailFind
-public import LibsignalBinary.Proofs.SpqrV1Sync.CoinBridge
+public import LibsignalBinary.Proofs.SpqrV1Sync.CoinBridge -- proof-setup: allow-public-import
 public import ToMathlib.MeasureTheory.Measure.Bool
 import Mathlib.Tactic.Ring
 import VCVio.OracleComp.SimSemantics.SimulateQ
@@ -21,7 +21,7 @@ import VCVio.EvalDist.ProbabilityBounds
 import VCVio.EvalDist.MeasureTVDist.Event
 import VCVio.OracleComp.EvalDist.Measure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -58,7 +58,7 @@ open CryptoVerification.SpqrV1Sync.Braid (EncRand authNext coinEquiv coinEquiv_a
 
 /-! ## Braid tracker and tracker-halted `SM.gameR` -/
 
-def kemBraidParty : Party → CryptoVerification.SpqrV1Sync.Braid.Party
+@[expose] def kemBraidParty : Party → CryptoVerification.SpqrV1Sync.Braid.Party
   | .A => .a
   | .B => .b
 
@@ -76,7 +76,7 @@ structure KemFailTrackState (F : ShaCompress) where
 abbrev KemFailSessionTrack (F : ShaCompress) (C : Type) : Type :=
   KemFailTrackState F × List (C × Party)
 
-def initKemFailTrack (F : ShaCompress) (k : BitVec 256) : KemFailTrackState F :=
+@[expose] def initKemFailTrack (F : ShaCompress) (k : BitVec 256) : KemFailTrackState F :=
   let auth₀ := Authenticator.new F (keyToBytes32 k) 1#64
   let stA₀ : St F := .keysUnsampled { uc := { epoch := 1#64, auth := auth₀ } }
   let stB₀ : St F := .noHeaderReceived
@@ -89,12 +89,12 @@ def initKemFailTrack (F : ShaCompress) (k : BitVec 256) : KemFailTrackState F :=
     sendCtr := fun _ _ => 0
     cand := none }
 
-def initKemFailSessionTrack (F : ShaCompress) (C : Type) (k : BitVec 256) :
+@[expose] def initKemFailSessionTrack (F : ShaCompress) (C : Type) (k : BitVec 256) :
     KemFailSessionTrack F C :=
   (initKemFailTrack F k, [])
 
 /-- Advances `KemFailTrackState` on a send by `Q`, latching `cand` if encapsulation fails. -/
-def stepKemFailSend (F : ShaCompress) (K : MlKem) (tr : KemFailTrackState F) (Q : Party)
+@[expose] def stepKemFailSend (F : ShaCompress) (K : MlKem) (tr : KemFailTrackState F) (Q : Party)
     (r : BitVec 512) : KemFailTrackState F :=
   let cand' :=
     match tr.cand with
@@ -119,7 +119,7 @@ def stepKemFailSend (F : ShaCompress) (K : MlKem) (tr : KemFailTrackState F) (Q 
   | .error _ => { tr with cand := cand' }
 
 /-- Advances `KemFailTrackState` on an accepted delivery of honest send `j` to `Q`. -/
-def stepKemFailDeliver (F : ShaCompress) (K : MlKem) (tr : KemFailTrackState F) (Q : Party)
+@[expose] def stepKemFailDeliver (F : ShaCompress) (K : MlKem) (tr : KemFailTrackState F) (Q : Party)
     (j : ℕ) : KemFailTrackState F :=
   match tr.sentB[j]? with
   | none => tr
@@ -136,7 +136,7 @@ def stepKemFailDeliver (F : ShaCompress) (K : MlKem) (tr : KemFailTrackState F) 
     | .error _ => tr
 
 /-- Tracker-halted `transmit` oracle latching `cand` and returning `none` when `stepKemFailSend` fails. -/
-def transmitRTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def transmitRTrackHalted {Key St Msg RCoins C : Type}
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
     (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Option (BitVec 512)) →ₒ Option C)
@@ -161,7 +161,7 @@ def transmitRTrackHalted {Key St Msg RCoins C : Type}
         return some out.2
 
 /-- Tracker-halted `chall` oracle latching `cand` and returning `none` when `stepKemFailSend` fails. -/
-def challRTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def challRTrackHalted {Key St Msg RCoins C : Type}
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
     (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Msg × Option (BitVec 512)) →ₒ Option C)
@@ -188,7 +188,7 @@ def challRTrackHalted {Key St Msg RCoins C : Type}
         return some out.2
 
 /-- Tracker-halted `deliver` oracle advancing `stepKemFailDeliver` upon accepted honest deliveries. -/
-def deliverRTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def deliverRTrackHalted {Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType RCoins]
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
     (cfg : ConfigR St Msg C) :
@@ -204,7 +204,7 @@ def deliverRTrackHalted {Key St Msg RCoins C : Type}
     | _, _ => pure ()
     return res
 
-def oracleImplRTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def oracleImplRTrackHalted {Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType RCoins]
     (F : ShaCompress) (K : MlKem) (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
     (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
@@ -235,7 +235,7 @@ def cliOracleImplRTrackHalted {Key St' St Msg RCoins C : Type}
       QueryImpl (Party →ₒ Option St)
         (StateT (GameState St' Msg C) (StateT (KemFailSessionTrack F C) ProbComp)))
 
-def runRTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def runRTrackHalted {Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
     (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
     (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
@@ -248,7 +248,7 @@ def runRTrackHalted {Key St Msg RCoins C : Type}
   ((simulateQ impl A).run (initState sm.sendPart k b)).run (initKemFailTrack F (pqrOf k), [])
 
 /-- Tracker-halted `SM.gameR` returning `(b == b' || s.win, stTrack)`. -/
-def gameRTrackHalted {Key St Msg RCoins C : Type}
+@[expose] def gameRTrackHalted {Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
     (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
     (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
@@ -1575,35 +1575,6 @@ theorem gameRCoinLogged_good_le_trackHalted {Key St Msg RCoins C : Type}
         rw [← prEvent_eq_evalDist_of_discrete mGHalt
           (fun z => (p z.1 ∧ goodTL K z.2) ∧ ¬ (p z.1 ∧ z.2.1.1.cand = none)), hsupp_zero, add_zero]
 
-theorem prEvent_trackHalted_cand_isSome_le {Key St Msg RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
-    (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
-    (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
-    (Δ qep : ℕ) (cfg : ConfigR St Msg C) (A : Adversary St Msg (BitVec 512) C) :
-    Pr{let z ← gameRTrackHalted pqrOf F K sm Δ qep cfg A}[z.2.1.cand.isSome = true] ≤
-      Pr{let z ← gameRCoinLogged sm Δ qep cfg A}[K.KemFailBad (z.2.map coinBytes) = true] := by
-  let : MeasurableSpace (Bool × KemFailSessionTrack F C) := ⊤
-  let : MeasurableSpace (Bool × List (BitVec 512)) := ⊤
-  have hle := gameRCoinLogged_good_le_trackHalted pqrOf F K sm Δ qep cfg A (fun _ => True)
-  simp only [true_and] at hle
-  rw [prEvent_eq_evalDist_of_discrete, prEvent_eq_evalDist_of_discrete] at hle ⊢
-  have hcompl₁ :
-      (𝒟[gameRTrackHalted pqrOf F K sm Δ qep cfg A]) {z | z.2.1.cand.isSome = true} =
-        1 - (𝒟[gameRTrackHalted pqrOf F K sm Δ qep cfg A]) {z | z.2.1.cand = none} := by
-    have hset : ({z : Bool × KemFailSessionTrack F C | z.2.1.cand.isSome = true} : Set _) =
-        {z | z.2.1.cand = none}ᶜ := by
-      ext z; change (z.2.1.cand.isSome = true) ↔ ¬ (z.2.1.cand = none)
-      generalize z.2.1.cand = c; cases c <;> simp
-    rw [hset, MeasureTheory.prob_compl_eq_one_sub MeasurableSet.of_discrete]
-  have hcompl₂ :
-      (𝒟[gameRCoinLogged sm Δ qep cfg A]) {z | K.KemFailBad (z.2.map coinBytes) = true} =
-        1 - (𝒟[gameRCoinLogged sm Δ qep cfg A]) {z | K.KemFailBad (z.2.map coinBytes) = false} := by
-    have hset : ({z : Bool × List (BitVec 512) | K.KemFailBad (z.2.map coinBytes) = true} : Set _) =
-        {z | K.KemFailBad (z.2.map coinBytes) = false}ᶜ := by ext z; simp
-    rw [hset, MeasureTheory.prob_compl_eq_one_sub MeasurableSet.of_discrete]
-  rw [hcompl₁, hcompl₂]
-  exact tsub_le_tsub_left hle 1
-
 private theorem boolDist_fst_le_prEvent_of_good_le {β : Type}
     (exp : ProbComp (Bool × β)) (exp₀ : ProbComp Bool) (badEv : Bool × β → Prop)
     (hgood : ∀ b : Bool, Pr{let z ← exp}[z.1 = b ∧ ¬ badEv z] ≤ Pr{let b' ← exp₀}[b' = b]) :
@@ -1639,30 +1610,6 @@ private theorem boolBias_le_add_two_mul_of_boolDist_le (μ ν : Measure Bool)
         rw [Measure.boolBias_eq_two_mul_absDiff_half_of_isProbabilityMeasure ν]
     _ ≤ ν.boolBias + 2 * ε := by gcongr
 
-/-- Bounds the Boolean distance between `SM.gameR` and `gameRTrackHalted` by `KemFailBad`. -/
-theorem boolDist_gameR_trackHalted_le {Key St Msg RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
-    (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
-    (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
-    (Δ qep : ℕ) (cfg : ConfigR St Msg C) (A : Adversary St Msg (BitVec 512) C) :
-    (𝒟[gameR sm Δ qep cfg A]).boolDist
-        (𝒟[Prod.fst <$> gameRTrackHalted pqrOf F K sm Δ qep cfg A]) ≤
-      Pr{let z ← gameRCoinLogged sm Δ qep cfg A}[K.KemFailBad (z.2.map coinBytes) = true] := by
-  let : MeasurableSpace (Bool × KemFailSessionTrack F C) := ⊤
-  rw [← fst_gameRCoinLogged sm Δ qep cfg A]
-  refine boolDist_fst_le_prEvent_of_good_le
-    (gameRCoinLogged sm Δ qep cfg A)
-    (Prod.fst <$> gameRTrackHalted pqrOf F K sm Δ qep cfg A)
-    (fun z => K.KemFailBad (z.2.map coinBytes) = true) fun b => ?_
-  simp only [Bool.not_eq_true]
-  calc Pr{let z ← gameRCoinLogged sm Δ qep cfg A}[
-          z.1 = b ∧ K.KemFailBad (z.2.map coinBytes) = false]
-      ≤ Pr{let z ← gameRTrackHalted pqrOf F K sm Δ qep cfg A}[z.1 = b ∧ z.2.1.cand = none] :=
-        gameRCoinLogged_good_le_trackHalted pqrOf F K sm Δ qep cfg A (· = b)
-    _ ≤ Pr{let b' ← Prod.fst <$> gameRTrackHalted pqrOf F K sm Δ qep cfg A}[b' = b] := by
-        rw [prEvent_map, prEvent_eq_evalDist_of_discrete, prEvent_eq_evalDist_of_discrete]
-        exact MeasureTheory.measure_mono fun _ h => h.1
-
 theorem boolDist_bind_gameR_trackHalted_le {α Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
     (oa : ProbComp α) (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
@@ -1695,17 +1642,6 @@ theorem boolDist_bind_gameR_trackHalted_le {α Key St Msg RCoins C : Type}
         rw [prEvent_map, prEvent_eq_evalDist_of_discrete, prEvent_eq_evalDist_of_discrete]
         exact MeasureTheory.measure_mono fun _ h => h.1
 
-theorem boolBias_gameR_le_trackHalted_add_two_mul {Key St Msg RCoins C : Type}
-    [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
-    (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
-    (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C)
-    (Δ qep : ℕ) (cfg : ConfigR St Msg C) (A : Adversary St Msg (BitVec 512) C) :
-    (𝒟[gameR sm Δ qep cfg A]).boolBias ≤
-      (𝒟[Prod.fst <$> gameRTrackHalted pqrOf F K sm Δ qep cfg A]).boolBias +
-        2 * Pr{let z ← gameRCoinLogged sm Δ qep cfg A}[K.KemFailBad (z.2.map coinBytes) = true] :=
-  boolBias_le_add_two_mul_of_boolDist_le _ _ _
-    (boolDist_gameR_trackHalted_le pqrOf F K sm Δ qep cfg A)
-
 theorem boolBias_bind_gameR_le_trackHalted_add_two_mul {α Key St Msg RCoins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType RCoins]
     (oa : ProbComp α) (pqrOf : Key → BitVec 256) (F : ShaCompress) (K : MlKem)
@@ -1734,17 +1670,5 @@ theorem boolBias_session_le_trackHalted_add_two_mul_sessionKemFailProb {α : Typ
   unfold sessionKemFailProb
   exact boolBias_bind_gameR_le_trackHalted_add_two_mul oa sampledSessionPqrOf C.F K _ 3 qep
     (configRefuseEarlyBobCorr decT encT) A
-
-/-- Bounds the `libsignalSessionScheme` game bias by `gameRTrackHalted` plus twice `KemFailBad`. -/
-theorem boolBias_libsignalSession_le_trackHalted_add_two_mul {PQ Pt : Type} [Inhabited PQ]
-    (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
-    (encPt : Pt → List (BitVec 8)) (lam : Pt) (Δ qep : ℕ)
-    (cfg : ConfigR (GhostState PQ) (Plain ℓ) (List (BitVec 8)))
-    (A : Adversary (GhostState PQ) (Plain ℓ) (BitVec 512) (List (BitVec 8))) :
-    let sm := libsignalSessionScheme P ℓ encPt lam
-    (𝒟[gameR sm Δ qep cfg A]).boolBias ≤
-      (𝒟[Prod.fst <$> gameRTrackHalted libsignalSessionPqrOf P.C.F K sm Δ qep cfg A]).boolBias +
-        2 * Pr{let z ← gameRCoinLogged sm Δ qep cfg A}[K.KemFailBad (z.2.map coinBytes) = true] :=
-  boolBias_gameR_le_trackHalted_add_two_mul libsignalSessionPqrOf P.C.F K _ Δ qep cfg A
 
 end Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge

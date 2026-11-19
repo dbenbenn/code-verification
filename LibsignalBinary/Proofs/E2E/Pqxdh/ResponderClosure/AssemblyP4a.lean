@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP1
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP1 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Specs
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.OneKeyStoreBase
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.IdentityKeyStoreImpl.Defs
 import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RemoteIdBytes -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Stage P4 Framing and Store-Persistence Helpers for `message_decrypt_prekey::{closure#0}`
@@ -25,7 +25,7 @@ preservation lemmas for Stage P4 (`save_identity`, `mark_kyber_pre_key_used`, `r
 `store_session`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderClosure
 
@@ -57,17 +57,11 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-
 namespace P3P4
 
 /-! ## 1. Shared `SepWPp` Combinators and Memory Splitting / Folding Helpers -/
 
-def PanicOomProp (s0 sf : State) (Pf : SepProp) : Prop :=
+@[expose] def PanicOomProp (s0 sf : State) (Pf : SepProp) : Prop :=
   ∀ R : SepProp, (sf.mem ⊨ Pf ∗ R) →
     (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R)
 
@@ -93,43 +87,6 @@ theorem SepWPp.weaken_frame {prog : Program} {ret : BitVec 64} {s : State}
     SepWPp prog ret s P Q Qp := by
   rw [hP]
   exact SepWPp.weaken_pre (sepConj_mono_left hent) h
-
-theorem SepWPp.bind_sepWP_frame {prog : Program} {img : Obj.Image} {mid ret : BitVec 64} {s : State}
-    {P P_step P_step_post F : SepProp} {Q_regs : State → Prop}
-    {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hstep : SepWP prog mid s P_step
-      (fun sm P_step' => (P_step' ⊢ P_step_post) ∧ Q_regs sm))
-    (hP : P = P_step ∗ F)
-    (hnext : ∀ sm : State, sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Q_regs sm →
-      SepWPp prog ret sm (P_step_post ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  rw [hP, sepConj_assoc] at hm
-  obtain ⟨sm, hsteps, ⟨hpc, hrun, P_step', hmm, hent, hregs⟩ | ⟨_, _hoom⟩⟩ := hstep.elim hm hL
-  rotate_left; · first | exact False.elim _hoom | exact (not_satisfies_false_sepConj _hoom).elim
-  have hmm' : sm.mem ⊨ (P_step_post ∗ F) ∗ R := by
-    rw [sepConj_assoc]
-    exact Satisfies.mono (sepConj_mono_left hent) hmm
-  obtain ⟨sf, hsteps', hout'⟩ :=
-    hnext sm hpc hrun (hF.of_keepsFrozen hsteps.keepsFrozen)
-      (hsteps.symtab_eq.trans hsym) hregs R hmm' (hsteps.codeLoaded hL)
-  exact ⟨sf, hsteps.trans hsteps', hout'⟩
-
-theorem SepWPp.ret_sepWP_frame {prog : Program} {img : Obj.Image} {ret : BitVec 64} {s : State}
-    {P P_step P_step_post F : SepProp} {Q_regs : State → Prop}
-    {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hstep : SepWP prog ret s P_step
-      (fun sf P_step' => (P_step' ⊢ P_step_post) ∧ Q_regs sf))
-    (hP : P = P_step ∗ F)
-    (hret : ∀ sf : State, sf.pc = ret → sf.status = .Running →
-      img.FrozenLoaded sf → sf.symtab = img.symtab → Q_regs sf →
-      Q sf (P_step_post ∗ F)) :
-    SepWPp prog ret s P Q Qp :=
-  SepWPp.bind_sepWP_frame hF hsym hstep hP fun sf hpc hrun hF' hsym' hregs =>
-    SepWPp.done hpc hrun (hret sf hpc hrun hF' hsym' hregs)
 
 theorem SepWPp.bind_sepWPp_frame {prog : Program} {mid ret : BitVec 64} {s0 s : State}
     {P P_stage P_stage_post F : SepProp} {Q_regs : State → Prop}
@@ -199,74 +156,6 @@ theorem SepWPp.ret_sepWPp_frame {prog : Program} {ret : BitVec 64} {s0 s : State
     SepWPp prog ret s P Q (PanicOomProp s0) :=
   SepWPp.bind_sepWPp_frame hstage hP fun sf hpc hrun hregs =>
     SepWPp.done hpc hrun (hret sf hpc hrun hregs)
-
-theorem SepWPp.call_frame_frozen_nopanic {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_false : ∀ sf, spec.onPanic x s sf = ⌜False⌝ := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q Qp := by
-  refine SepWPp.call_wpp_frozen hcall (x := x) (F := F) hF hsym hpc hrun hsp hlr ?_ ?_ ?_ ?_ ?_
-  · intro R hm
-    rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-    exact ⟨hφ, hm⟩
-  · intro sf code R' _ hex
-    rw [hexit_false] at hex
-    exact allowPanic_not_exited hex
-  · intro sf _ ⟨R', hpan⟩
-    rw [hpan_false] at hpan
-    exact (allowPanic_not_exited hpan).elim
-  · intro sf hpcm hrunm hspm hcsm hFm hsymm
-    have hsp_alm : sf.spAligned = true := by simpa [State.spAligned, hspm] using hsp
-    exact hnext sf hpcm hrunm hspm hsp_alm hcsm hFm hsymm
-  · intro sf R' _ hoom
-    rw [hoom_false] at hoom
-    exact (not_satisfies_false_sepConj hoom).elim
-
-theorem SepWPp.call_frame_frozen_oom {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s0 s : State} {φ : Prop}
-    {P T F : SepProp} {Q : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (htr : s.trace = s0.trace)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_eq : ∀ sf, spec.onPanic x s sf =
-      (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (PanicOomProp s0))
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q (PanicOomProp s0) := by
-  refine SepWPp.call_wpp_frozen hcall (x := x) (F := F) hF hsym hpc hrun hsp hlr ?_ ?_ ?_ ?_ ?_
-  · intro R hm
-    rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-    exact ⟨hφ, hm⟩
-  · intro sf code R' _ hex
-    rw [hexit_false] at hex
-    exact allowPanic_not_exited hex
-  · intro sf _ _
-    rw [hpan_eq]
-    exact allowPanic_oom_of_trace_eq htr
-  · intro sf hpcm hrunm hspm hcsm hFm hsymm
-    have hsp_alm : sf.spAligned = true := by simpa [State.spAligned, hspm] using hsp
-    exact hnext sf hpcm hrunm hspm hsp_alm hcsm hFm hsymm
-  · intro sf R' _ hoom
-    rw [hoom_false] at hoom
-    exact (not_satisfies_false_sepConj hoom).elim
 
 theorem stackAt_sub_eq (sp : BitVec 64) (big small : Nat)
     (h1 : small ≤ big := by decide) (h2 : big ≤ 2 ^ 64 := by decide) :
@@ -552,7 +441,7 @@ theorem zeroExtend64_setWidth32 (x : BitVec 32) :
 
 /-- Callee-saved GPR preservation (`x19`–`x29`) across `decryptPrekeyClosure` Stage P4,
 with a 12th `True` conjunct matching the shape of `CalleeSavedPreserved`. -/
-def ClosureCalleeSavedP4 (s0 sf : State) : Prop :=
+@[expose] def ClosureCalleeSavedP4 (s0 sf : State) : Prop :=
   sf.readReg64 .x19 = s0.readReg64 .x19 ∧
   sf.readReg64 .x20 = s0.readReg64 .x20 ∧
   sf.readReg64 .x21 = s0.readReg64 .x21 ∧

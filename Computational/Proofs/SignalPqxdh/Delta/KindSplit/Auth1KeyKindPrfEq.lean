@@ -14,10 +14,10 @@ public import Computational.Proofs.ReductionDsl.StepSim -- proof-setup: allow-pu
 public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfCk -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfMk -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfBounds -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfBounds
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyPrfHmac -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKArms -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimBase -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindProgs -- proof-setup: allow-public-import
@@ -74,18 +74,6 @@ open Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKS
   (prfCk1KeyKindProg_forgetSim prfMsgKeys1KeyKindProg_forgetSim prfHmac1KeyKindProg_forgetSim)
 
 namespace Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindPrfEq
-
-theorem prfCkOldAtomicProg_def_eq (S : Setup) (b : QueryBudget) :
-    prfCkOldAtomicProg S b = liftAuth1Stage tlAuthPrim S (prfCkRedProg1Key S b.q_total) :=
-  rfl
-
-theorem prfMkOldAtomicProg_def_eq (S : Setup) (b : QueryBudget) :
-    prfMkOldAtomicProg S b = liftAuth1Stage tlPrfMk S (prfMsgKeysRedProg1Key S b.q_total) :=
-  rfl
-
-theorem prfHmacOldAtomicProg_def_eq (S : Setup) (b : QueryBudget) :
-    prfHmacOldAtomicProg S b = liftAuth1Stage tlPrfHmac S (prfHmacRedProg1Key S b.q_total) :=
-  rfl
 
 private theorem prfCkOldAtomicProg_eval_eq (S : Setup) (b : QueryBudget)
     (adv : Unit → OracleComp (unifSpec + authSpec S) Bool) (mkSeed ck1 : Bytes) :
@@ -178,41 +166,6 @@ theorem boundedAdv_isQueryBoundP_auth (S : Setup) (b : QueryBudget)
   | ⟨3, _⟩ =>
     exact hTotSub (authSimPred S ⟨3, by omega⟩)
 
-/-- Identifies `R_new.eval.ck b A` with the `prfCkRedProg1Key` distinguisher given a `ForgetSim`
-bundle on `R_new.ck b`. -/
-theorem eval_ck_eq_dslAdv_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.ck b).σ.denote → (prfCkOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.ck b).σ.denote → Prop}
-    (hSim : ∀ chalPair : ((.prod (PB 32) (PB 32)) : Ty pqAtomicSig).denote,
-      ForgetSim (R_new.ck b) (prfCkOldAtomicProg S b) forget P B chalPair Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    R_new.eval.ck b A =
-      ({ dist := fun mkSeed ck1 => (prfCkRedProg1Key S b.q_total).eval (fun _ => A.1.run) (mkSeed, ck1),
-         q_prf := 1, q_prim := primQueryBudget S b } : PrfCkAdv) :=
-  congrArg (fun r => ({ dist := r, q_prf := 1, q_prim := primQueryBudget S b } : PrfCkAdv))
-    (funext fun mkSeed => funext fun ck1 =>
-      ((hSim (mkSeed, ck1)).eval_eq (fun _ => A.1.run) hA).trans
-        (prfCkOldAtomicProg_eval_eq S b (fun _ => A.1.run) mkSeed ck1))
-
-theorem ck_le_of_forgetSim
-    (Prim : Primitives) (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.ck b).σ.denote → (prfCkOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.ck b).σ.denote → Prop}
-    (hSim : ∀ chalPair : ((.prod (PB 32) (PB 32)) : Ty pqAtomicSig).denote,
-      ForgetSim (R_new.ck b) (prfCkOldAtomicProg S b) forget P B chalPair Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    PrfChainKey Prim (prfCkReductionAuthFixed1Key S b A) ≤
-      PrfChainKey Prim (R_new.eval.ck b A) := by
-  rw [eval_ck_eq_dslAdv_of_forgetSim S b R_new hSim A hA]
-  exact (prfCkRedProg1Key_prfCk_eq Prim S b A).ge
-
 private theorem primBounded_authCkStepWithPrim1Key_aux (S : Setup)
     (sampAt : Nat → OracleComp PrimBaseSpec (Bytes × Bytes))
     (hSamp : ∀ s, PrimBounded (sampAt s) 2)
@@ -248,125 +201,6 @@ private theorem prfCkReductionAuthFixed1Key_bounded_aux (S : Setup) (b : QueryBu
       (AuthHybridStateFixed.empty S secb))
     (fun ⟨b', finalSt⟩ => primBounded_finalizeAuthFixedPrim S secb b' finalSt.toAuthHybridState)
     (by omega)
-
-theorem ck_bounded_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.ck b).σ.denote → (prfCkOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.ck b).σ.denote → Prop}
-    (hSim : ∀ chalPair : ((.prod (PB 32) (PB 32)) : Ty pqAtomicSig).denote,
-      ForgetSim (R_new.ck b) (prfCkOldAtomicProg S b) forget P B chalPair Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    (R_new.eval.ck b A).Bounded := by
-  rw [eval_ck_eq_dslAdv_of_forgetSim S b R_new hSim A hA]
-  intro mkSeed ck1
-  change ((prfCkReductionAuthFixed1KeyDslAdv S b A).dist mkSeed ck1).IsQueryBoundP
-    (fun q => isPrimQuery₀ q = true) (primQueryBudget S b)
-  rw [prfCkReductionAuthFixed1KeyDslAdv_eq]
-  exact (prfCkReductionAuthFixed1Key_bounded_aux S b A mkSeed ck1).mono
-    (by dsimp [prfCkReductionAuthFixed1Key, primQueryBudget]; nlinarith)
-
-/-- Identifies `R_new.eval.mk b A` with the `prfMsgKeysRedProg1Key` adversary given a `ForgetSim`
-bundle on `R_new.mk b`. -/
-theorem eval_mk_eq_dslAdv_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.mk b).σ.denote → (prfMkOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.mk b).σ.denote → Prop}
-    (hSim : ForgetSim (R_new.mk b) (prfMkOldAtomicProg S b) forget P B () Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    R_new.eval.mk b A =
-      ({ run := (prfMsgKeysRedProg1Key S b.q_total).eval (fun _ => A.1.run) (),
-         q_prf := S.N_recv_tot + 1, q_prim := primQueryBudget S b } : PrfMsgKeysAdv) :=
-  congrArg (fun r =>
-    ({ run := r, q_prf := S.N_recv_tot + 1, q_prim := primQueryBudget S b } : PrfMsgKeysAdv))
-    ((hSim.eval_eq (fun _ => A.1.run) hA).trans
-      (prfMkOldAtomicProg_eval_eq S b (fun _ => A.1.run)))
-
-theorem mk_bounded_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.mk b).σ.denote → (prfMkOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.mk b).σ.denote → Prop}
-    (hSim : ForgetSim (R_new.mk b) (prfMkOldAtomicProg S b) forget P B () Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    (R_new.eval.mk b A).Bounded := by
-  rw [eval_mk_eq_dslAdv_of_forgetSim S b R_new hSim A hA]
-  exact ⟨(prfMsgKeys1KeyDslAdv_bounded S b A).1,
-    (prfMsgKeys1KeyDslAdv_bounded S b A).2.mono (prfMsgKeys1KeyDslAdv_prim_queries S b A)⟩
-
-theorem mk_le_of_forgetSim
-    (Prim : Primitives) (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.mk b).σ.denote → (prfMkOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.mk b).σ.denote → Prop}
-    (hSim : ForgetSim (R_new.mk b) (prfMkOldAtomicProg S b) forget P B () Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    PrfMsgKeys Prim (prfMsgKeysReductionAuthFixed1Key S b A) ≤
-      PrfMsgKeys Prim (R_new.eval.mk b A) := by
-  rw [eval_mk_eq_dslAdv_of_forgetSim S b R_new hSim A hA]
-  exact (prfMsgKeysRedProg1Key_prfMsgKeys_eq Prim S b A).ge
-
-/-- Identifies `R_new.eval.int b A` with `prfHmac1KeyDslAdv S b A` given a `ForgetSim` bundle on
-`R_new.int b`. -/
-theorem eval_int_eq_dslAdv_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.int b).σ.denote → (prfHmacOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.int b).σ.denote → Prop}
-    (hSim : ForgetSim (R_new.int b) (prfHmacOldAtomicProg S b) forget P B () Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    R_new.eval.int b A = prfHmac1KeyDslAdv S b A :=
-  congrArg (fun r =>
-    ({ run := r, q_prf := S.N_recv_tot + 1, q_prim := primQueryBudget S b } : PrfHmacAdv))
-    ((hSim.eval_eq (fun _ => A.1.run) hA).trans
-      (prfHmacOldAtomicProg_eval_eq S b (fun _ => A.1.run)))
-
-theorem int_bounded_of_forgetSim
-    (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.int b).σ.denote → (prfHmacOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.int b).σ.denote → Prop}
-    (hSim : ForgetSim (R_new.int b) (prfHmacOldAtomicProg S b) forget P B () Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    (R_new.eval.int b A).Bounded := by
-  rw [eval_int_eq_dslAdv_of_forgetSim S b R_new hSim A hA]
-  exact prfHmac1KeyDslAdv_bounded S b A
-
-theorem int_le_of_forgetSim
-    (Prim : Primitives) (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forget : (R_new.int b).σ.denote → (prfHmacOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.int b).σ.denote → Prop}
-    (hSim : ForgetSim (R_new.int b) (prfHmacOldAtomicProg S b) forget P B () Inv)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    PrfHmac Prim (prfHmacReductionAuth1Key S b A) ≤
-      PrfHmac Prim (R_new.eval.int b A) := by
-  rw [eval_int_eq_dslAdv_of_forgetSim S b R_new hSim A hA]
-  exact (prfHmac1KeyDslAdv_prfHmac_eq S Prim b A).ge
-
-theorem pqxdhAuth1KeyKind_ck_eq (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).ck b = prfCk1KeyKindProg S b := rfl
-
-theorem pqxdhAuth1KeyKind_mk_eq (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).mk b = prfMsgKeys1KeyKindProg S b := rfl
-
-theorem pqxdhAuth1KeyKind_int_eq (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).int b = prfHmac1KeyKindProg S b := rfl
 
 theorem prfCk1KeyKindProg_eval_eq (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) (chalPair : Bytes × Bytes) :

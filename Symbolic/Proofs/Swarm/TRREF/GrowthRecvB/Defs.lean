@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 
 /-!
 # SPQR V1 Prenegotiated Receive Step Definitions
@@ -18,7 +18,7 @@ Defines `PrenegotiatedStep` and `recvAddEpochOpt` capturing the pre-negotiation 
 optional epoch addition in `Top.recv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +51,7 @@ inductive PrenegotiatedStep (F : ShaCompress) (K : MlKem) (mac : HmacFn)
       }
 
 /-- Optional epoch addition in `Top.recv`. -/
-def recvAddEpochOpt (hkdf : HkdfFn) (chain0 : Chain) (key : Option EpochSecret) :
+@[expose] def recvAddEpochOpt (hkdf : HkdfFn) (chain0 : Chain) (key : Option EpochSecret) :
     SpqrApiResult Chain :=
   match key with
   | some epochSecret => SpqrApiResult.ofChainPanic (chain0.addEpoch hkdf epochSecret)

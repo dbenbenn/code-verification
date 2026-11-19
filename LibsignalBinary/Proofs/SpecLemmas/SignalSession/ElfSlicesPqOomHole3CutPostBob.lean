@@ -9,8 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
+public import LibsignalBinary.Heap.AesDecErrRoBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkClosePostBob
 
 /-!
@@ -22,7 +26,7 @@ Proves `hole3_w4_decPk'`, the post-Bob `prev1` counterpart of `hole3_w4_decPk`
 concluding over `W4PostBobPrev1Dom.cliDecPkCanonSlotEnvExact' X W`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,16 +36,21 @@ open Arm64 (GhostName HookSat)
 open Arm64.Obj (MultiPlacement)
 open VerifiedLibraries (mallocngLib)
 open CryptoVerification
-  (LibsignalFullPlacement LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns)
-open CryptoVerification.E2E (UnreachedPqxdhPrimitives)
+  (ExternsDistinctOnHooked LibsignalFullPlacement LibsignalPlacement
+  libsignalMutatedBlocks)
+open CryptoVerification.E2E (UnreachedPqxdhPrimitives libcruxHmacHookMallocng)
+open CryptoVerification.LibsignalSpqrV1 (sha256Compress)
 open CryptoVerification.SignalSession
-  (CliHooks cliElfBytes cliElfImage cliExternsPlaced libsignalSessionLib lsReadFileSym)
+  (CliHooks cliElfBytes cliElfImage cliExternsPlaced libsignalSessionLib lsAesDecSym lsReadFileSym)
+open CryptoVerification.SpqrV1.Unchunked (spqrLibcruxHmacSym)
 open CryptoVerification.SignalSession.Cli.MainHops (cliIo cliRunBudgets cliWrOk)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks CliGhostHooksFs cliGhostExterns)
 open LibsignalBinary.Heap.Fine (fineCostModel fineHookRustCliAllocBudget)
+open LibsignalBinary.Heap.AesDecErrRoBudget (cliAesDecBudgetSpecErrRo)
 open LibsignalBinary.Proofs.PeakBudget.CliFitsTraceArith (cliBudgetLimits)
 open LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinkedBase (DecPkD2cSlotOkFrozenPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced (ReadFileRuleEnvFixed)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget (libsignalPlacementOf)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget
   (CliRunHooksBundle)
@@ -51,6 +60,54 @@ open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (readFileSpecPla
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
   (libsignalFullPlacementOf)
 
+/-- Post-Bob `prev1` counterpart of `hole3_w4_decPk` from an explicit `hHmac` `HookSat` witness. -/
+theorem hole3_w4_decPk'_of_hmac
+    {mpl mmpl : MultiPlacement}
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
+      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
+    (ghFixed : CliGhostHooks)
+    (hPl_mng : mallocngLib.Placeable mmpl)
+    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hDec : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (γ : GhostName) (tp : BitVec 64)
+    (hGSpqr :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+      CliGhostSpqrAllocHooks fineCostModel
+        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits ghFixed)
+    (hHmac :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+      HookSat (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) spqrLibcruxHmacSym
+        (withLsRet (LibsignalBinary.Heap.SpecBudget.libcruxHmacBudgetSpec W.C.F fineCostModel
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits)))
+    (hFs : CliGhostHooksFs ghFixed)
+    (hsat : HookSat (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) lsReadFileSym
+      (readFileSpecPlaced cliIo.rd cliWrOk
+        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+        cliRunBudgets.readFile (ReadFileRuleEnvFixed cliIo.rd)))
+    (hHooks : @CliRunHooksBundle (libsignalPlacementOf mpl hblk hext_nodup) mmpl ghFixed W
+      fineCostModel (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+      (ReadFileRuleEnvFixed cliIo.rd))
+    (hAesDec :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+      HookSat (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) lsAesDecSym
+        (withLsRet (cliAesDecBudgetSpecErrRo W.C.D fineCostModel
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits)))
+    (h547 : mpl.base 547 ≠ 0#64) :
+    letI : LibsignalFullPlacement := libsignalFullPlacementOf mpl hLs hblk hext_nodup
+    DecPkD2cSlotOkFrozenPlaced mmpl ghFixed W
+      (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+      (LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom.cliDecPkCanonSlotEnvExact' X W) := by
+  let _ := hFs
+  let _ : LibsignalFullPlacement := libsignalFullPlacementOf mpl hLs hblk hext_nodup
+  exact LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkClosePostBob.w4s2_decPkD2cSlotOk_canonPostBob_of_hmac
+    mmpl ghFixed W hF hX hPub hDec hK X γ tp cliElfImage.brkStart h547 hPl_mng hGSpqr hHmac hsat hHooks hAesDec
+
 /-- Post-Bob `prev1` counterpart of `hole3_w4_decPk`, establishing block-520 `decryptPrekey`
 at `W4PostBobPrev1Dom.cliDecPkCanonSlotEnvExact' X W` while preserving `SessionGhostValid`. -/
 theorem hole3_w4_decPk'
@@ -58,10 +115,18 @@ theorem hole3_w4_decPk'
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     (hPl_mng : mallocngLib.Placeable mmpl)
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64)
+    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hDec : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (hHmacLookup : ghFixed.extra.lookup spqrLibcruxHmacSym =
+      some (libcruxHmacHookMallocng mmpl W.C.F))
+    (γ : GhostName) (tp : BitVec 64)
     (hGSpqr :
       letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
       CliGhostSpqrAllocHooks fineCostModel
@@ -74,6 +139,11 @@ theorem hole3_w4_decPk'
     (hHooks : @CliRunHooksBundle (libsignalPlacementOf mpl hblk hext_nodup) mmpl ghFixed W
       fineCostModel (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
       (ReadFileRuleEnvFixed cliIo.rd))
+    (hAesDec :
+      letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+      HookSat (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) lsAesDecSym
+        (withLsRet (cliAesDecBudgetSpecErrRo W.C.D fineCostModel
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits)))
     (h547 : mpl.base 547 ≠ 0#64) :
     letI : LibsignalFullPlacement := libsignalFullPlacementOf mpl hLs hblk hext_nodup
     DecPkD2cSlotOkFrozenPlaced mmpl ghFixed W
@@ -82,6 +152,6 @@ theorem hole3_w4_decPk'
   let _ := hFs
   let _ : LibsignalFullPlacement := libsignalFullPlacementOf mpl hLs hblk hext_nodup
   exact LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkClosePostBob.w4s2_decPkD2cSlotOk_canonPostBob
-    mmpl ghFixed W X γ tp cliElfImage.brkStart h547 hPl_mng hGSpqr hsat hHooks
+    mmpl ghFixed W hF hX hPub hDec hK hHmacLookup X γ tp cliElfImage.brkStart h547 hPl_mng hGSpqr hsat hHooks hAesDec
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3CutPostBob

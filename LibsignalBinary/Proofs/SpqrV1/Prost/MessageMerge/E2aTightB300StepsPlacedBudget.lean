@@ -9,13 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledBudgetInit
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledBudgetInit
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -34,6 +33,11 @@ import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Varint
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Guarded-Tight Step Proofs for `Chunked.Ct1Sampled::merge` (Block `300`)
@@ -43,7 +47,7 @@ folds (`cap = 0#64`), loop-head invariant `e2ka_b300TightPre`, and per-field tig
 lemmas (`uc`, `sendingEk`, `receivingCt2`, and exit) for `Chunked.Ct1Sampled::merge` on Block `300`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -80,21 +84,7 @@ open CryptoVerification.SpqrV1.ProtoRepr
    vecVecU8Buf vecVecU8PinnedAt_eq_header_buf)
 open CryptoVerification.SpqrV1.ProtoRepr.EncodedLen
   (noneCap_add_one_beq_zero noneCap_add_one_bne_zero)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedCt1SampledMergeGhost ChunkedLoopRegs PolyDecoderMergeGhost
-   PolyEncoderMergeGhost SepWPpLscro
-   bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked
-   chunkedBelow_leaf chunkedBelow_leaf_entails
-   chunkedCt1SampledMerge_fnOff chunkedCt1SampledPBCapAt
-   chunkedCt1SampledPBCapAt_mono chunkedMergeStack chunkedSavedRegs
-   cmp_len_limit_of_eq cmp_len_limit_of_gt codecWireTypeToProto
-   memRegion_ct1Sent_none_split memRegion_polyDecoder_none_split
-   memRegion_polyEncoder_none_split
-   optUnchunkedCt1SentPBCapAt optUnchunkedCt1SentPBCapAt_mono
-   pointsTo64_zero_eq_pointsTo32_pair
-   polyDecoderToProto polyEncoderToProto protoPolynomialDecoderAt_eq_pb
-   protoPolynomialEncoderAt_eq_pb proto_mergeMessage_suffix setWidth8_ofNat64_wt
-   unchunkedCt1SentPBCapAt vecU8At_eq_header_sep_buf vecU8Buf)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedCt1SampledMergeGhost ChunkedLoopRegs PolyDecoderMergeGhost PolyEncoderMergeGhost SepWPpLscro bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked chunkedBelow_leaf chunkedBelow_leaf_entails chunkedCt1SampledPBCapAt chunkedCt1SampledPBCapAt_mono chunkedMergeStack chunkedSavedRegs cmp_len_limit_of_eq cmp_len_limit_of_gt codecWireTypeToProto memRegion_ct1Sent_none_split memRegion_polyDecoder_none_split memRegion_polyEncoder_none_split optUnchunkedCt1SentPBCapAt optUnchunkedCt1SentPBCapAt_mono pointsTo64_zero_eq_pointsTo32_pair polyDecoderToProto polyEncoderToProto protoPolynomialDecoderAt_eq_pb protoPolynomialEncoderAt_eq_pb proto_mergeMessage_suffix setWidth8_ofNat64_wt unchunkedCt1SentPBCapAt vecU8At_eq_header_sep_buf vecU8Buf)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.ChunkedMerge
   (UnchunkedCt1SentMergeGhost)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_300 blkPl_300)
@@ -131,8 +121,7 @@ open LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   noneCap_add_one_beq_zero noneCap_add_one_bne_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
-  chunkedCt1SampledMerge_fnOff setWidth8_ofNat64_wt
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero setWidth8_ofNat64_wt
 
 /-! ## 1. Pure Tight-Budget, Codec & Zero-Cap Initialization Helpers -/
 
@@ -357,7 +346,7 @@ theorem e2ka_default_polyDecoder_entails_zeroCap (A : RustAlloc) (p : BitVec 64)
 
 /-! ## 2. Concrete-Pool Loop-Head Invariant & Step Lemmas on `tlb_ChunkedCt1SampledDom` -/
 
-def e2ka_b300TightPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def e2ka_b300TightPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (evsAcc : List AllocEvent) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.Ct1Sampled) (bs cur : List (BitVec 8)) : SepProp :=

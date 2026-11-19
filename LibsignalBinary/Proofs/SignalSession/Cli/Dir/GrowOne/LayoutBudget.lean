@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.Layout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.Layout -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Cell and Byte Wrappers for `RawVec<(String, Vec<u8>)>::grow_one`
@@ -19,7 +19,7 @@ Defines `finishGrowZeroCellsSpec`, `finishGrowNeCellsSpec`, `growOneDirBytesInne
 conditional-OOM counterparts over `rawVecGrowEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,20 +36,20 @@ open CryptoVerification.SignalSession.Cli.GrowOne.Helpers
   (cliGrowOneStack CliGrowBytesGhost FGCellsGhost)
 
 /-- Event envelope of `finishGrowZeroCellsSpec` (`cap = 0`). -/
-def FinishGrowZeroEnv (new stride align : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def FinishGrowZeroEnv (new stride align : BitVec 64) (evs : List AllocEvent) : Prop :=
   evs = rustAllocEvents (new.toNat * stride.toNat) align.toNat
 
 /-- Event envelope of `finishGrowNeCellsSpec` (`cap ≠ 0`). -/
-def FinishGrowNeEnv (cap new stride align : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def FinishGrowNeEnv (cap new stride align : BitVec 64) (evs : List AllocEvent) : Prop :=
   evs = rustReallocEvents (cap.toNat * stride.toNat) (new.toNat * stride.toNat) align.toNat
 
 /-- Event envelope of `growOneDirBytesInnerSpec` (`elemSz = 48, minCap = 4, align = 8`). -/
-def GrowOneDirBytesEnv (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def GrowOneDirBytesEnv (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
   evs = rawVecGrowEvents 48 4 8 cap
 
 /-- Budget-threaded `finishGrowZeroCellsSpec`: under `LayoutOk` and `FitsEnv`, `__rust_alloc`
 cannot return null, so the `Err(AllocError)` (`tag = 1#64`) branch is dead. -/
-def finishGrowZeroCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def finishGrowZeroCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (FGCellsGhost × M.σ) where
   pre := fun ((out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp), st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -69,7 +69,7 @@ def finishGrowZeroCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim
       (out ↦₆₄ 0#64) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
 
 /-- Conditional-OOM variant of `finishGrowZeroCellsSpec` without `FitsEnv` in `pre`. -/
-def finishGrowZeroCellsCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def finishGrowZeroCellsCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FGCellsGhost × M.σ) where
   pre := fun ((out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp), st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -97,7 +97,7 @@ def finishGrowZeroCellsCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
 
 /-- Budget-threaded `finishGrowNeCellsSpec`: under `LayoutOk` and `FitsEnv`, `__rust_realloc`
 cannot return null, so the `Err(AllocError)` (`tag = 1#64`) branch is dead. -/
-def finishGrowNeCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def finishGrowNeCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (FGCellsGhost × M.σ) where
   pre := fun ((out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp), st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -119,7 +119,7 @@ def finishGrowNeCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim :
       (out ↦₆₄ 0#64) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
 
 /-- Conditional-OOM variant of `finishGrowNeCellsSpec` without `FitsEnv` in `pre`. -/
-def finishGrowNeCellsCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def finishGrowNeCellsCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (FGCellsGhost × M.σ) where
   pre := fun ((out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp), st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -153,7 +153,7 @@ def finishGrowNeCellsCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
       OomPreserved s0 sf⌝
 
 /-- Budget-threaded `growOneDirBytesInnerSpec` (`onPanic = ⌜False⌝` under `FitsEnv`). -/
-def growOneDirBytesInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def growOneDirBytesInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (CliGrowBytesGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length ≤ cap.toNat * 48 ∧ ptr ≠ 0#64 ∧

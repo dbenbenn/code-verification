@@ -11,21 +11,19 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneX
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.DefsBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Core
-import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Fetch
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 import ProofLib.SepLogic.WPp
 
@@ -38,7 +36,7 @@ at `extHookStack = 16384` and verifies `<alloc::raw_vec::RawVecInner>::finish_gr
 under `FitsEnv M lim st (GrowOne104Env cap)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -596,11 +594,11 @@ theorem finish_grow_placed_ok_ext_x [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Deterministic `AllocEvent` list for `<RawVec<Chain>>::grow_one` at capacity `cap`
 (`stride = 104`, `align = 8`, `new = max (2 * cap.toNat) 4`). -/
-def growOne104Events (cap : BitVec 64) : List AllocEvent :=
+@[expose] def growOne104Events (cap : BitVec 64) : List AllocEvent :=
   finishGrowEvents cap.toNat (max (2 * cap.toNat) 4) 8 104
 
 /-- Allocation envelope for `<RawVec<Chain>>::grow_one` at capacity `cap`. -/
-def GrowOne104Env (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
+@[expose] def GrowOne104Env (cap : BitVec 64) (evs : List AllocEvent) : Prop :=
   evs = growOne104Events cap
 
 abbrev growOneChainEvents := growOne104Events
@@ -612,7 +610,7 @@ theorem fitsEnv_growOne104_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M
 
 /-- Budget-threaded `growOne104SpecX` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under
 `FitsEnv M lim st (GrowOne104Env cap)`). -/
-def growOne104SpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOne104SpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length = cap.toNat * 104 ∧ ptr ≠ 0 ∧
@@ -763,7 +761,7 @@ private theorem finish_grow_104_ne_placed_ok_x [LibsignalPlacement] {M : AllocCo
 
 /-- Relocatable `<alloc::raw_vec::RawVec<Chain>>::grow_one` contract on Block `43` at
 `growOneChainStackX` (`16896` B). -/
-def GrowOneChainPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def GrowOneChainPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_43).rebase (blkPl_43).base H) (blkPl_43).base
     (withLsCodeLoaded lsmpl (growOneChainSpecX M A lim))

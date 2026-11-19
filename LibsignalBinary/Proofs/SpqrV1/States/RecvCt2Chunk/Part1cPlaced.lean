@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymA
@@ -17,6 +17,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part1bPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`): Relocatable Entry through Decapsulation
@@ -25,7 +26,7 @@ Composes prologue epoch check, `PolyDecoder::add_chunk` (Block `419`), `decoded_
 the `None` return path, and `Some(ct2Full)` allocation + decapsulation (`+0 .. +480`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

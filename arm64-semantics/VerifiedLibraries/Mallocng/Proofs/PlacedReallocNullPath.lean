@@ -175,8 +175,8 @@ theorem stackFrame800_entails_exists_cells (s0 : State) :
 /-! ## Null-Pointer Path -/
 
 set_option maxHeartbeats 400000 in
-theorem realloc_null_path_ok [MallocngMultiPlacement]
-    (hImpl : LibcMallocImplPlacedTightKStmt)
+theorem realloc_null_path_ok [MallocngMultiPlacement] {ro : Bool}
+    (hImpl : LibcMallocImplPlacedTightKStmt ro)
     {b : BitVec 64} (hb : BlkBase 14 b)
     (γ : GhostName) (tp brkStart newSize : BitVec 64) (a : Nat)
     (bgt : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
@@ -188,7 +188,7 @@ theorem realloc_null_path_ok [MallocngMultiPlacement]
     let ok := decide (newSize.toNat ≤ MallocngMaxAllocSize)
     let bf := mallocngReallocBudget ok none newSize.toNat bgt
     SepWP (blkPC_b14.rebase b (fun _ => none)) (s0.readReg64 Reg.lr) s0
-      (stackFrame s0 800 ∗ MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s0)
+      (stackFrame s0 800 ∗ MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s0)
       (fun sf Pf =>
         (sf.mem ⊨ Pf ∗ R →
           sf.mem ⊨
@@ -196,7 +196,7 @@ theorem realloc_null_path_ok [MallocngMultiPlacement]
                 (MallocngTightStepBound (if ok then mallocngReallocRes a newSize.toNat else 0) bgt.peakCount)
                 s0 sf⌝ ∗
               stackFrame s0 800 ∗
-              MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+              MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
               if ok then
                 ∃∗ q : BitVec 64,
                   ⌜sf.readReg64 .x0 = q ∧
@@ -232,8 +232,8 @@ theorem realloc_null_path_ok [MallocngMultiPlacement]
   have hspTail : sTail.sp = s0.sp := by rw [hsTail]; simp
   have hspAlignTail : sTail.spAligned = true := by
     unfold State.spAligned at hsp0 ⊢; rwa [hspTail]
-  have hEnvTail : MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 s0 =
-      MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 sTail := by
+  have hEnvTail : MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 s0 =
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 sTail := by
     unfold MallocngEnv
     have htpT : sTail.tpidrEl0 = s0.tpidrEl0 := by rw [hsTail]; rfl
     have hbrksT : sTail.brkStart = s0.brkStart := by rw [hsTail]; rfl
@@ -263,10 +263,10 @@ theorem realloc_null_path_ok [MallocngMultiPlacement]
       refine Satisfies.mono ?_ hm
       dsimp only [libcMallocImplPlacedTightKSpec, withCL]
       refine Entails.trans (Q :=
-          (stackFrame sTail 704 ∗ MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 sTail) ∗
+          (stackFrame sTail 704 ∗ MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 sTail) ∗
           stackFrameAt (s0.sp - 704#64) 96 ∗ R')
         (Entails.of_eq (by
-          generalize (MallocngEnv mallocngIface γ maddrs tp brkStart bgt ivs0 sTail) = PEnv
+          generalize (MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bgt ivs0 sTail) = PEnv
           ac_rfl)) ?_
       refine sepConj_mono_left ?_
       rw [sepConj_comm _ ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl sTail.mem⌝]
@@ -323,12 +323,12 @@ theorem realloc_null_path_ok [MallocngMultiPlacement]
           ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl sf.mem⌝ ∗
           (stackFrame sTail 704 ∗ stackFrameAt (s0.sp - 704#64) 96) ∗
           (MallocngRoTablesA maddrs ∗
-           MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+           MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
            MallocngRuntime maddrs tp) ∗
           ((q ↦ₛ bs) ∗ MallocngBlockTokenK γ q newSize.toNat 0) ∗ R := by
         refine Satisfies.mono (Entails.of_eq ?_) hm
         generalize (MallocngRoTablesA maddrs) = PRo
-        generalize (MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st') = PCore
+        generalize (MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st') = PCore
         generalize (MallocngRuntime maddrs tp) = PRt
         ac_rfl
       rw [← hSplit704, satisfies_pure_sepConj] at hm'
@@ -341,9 +341,9 @@ theorem realloc_null_path_ok [MallocngMultiPlacement]
       have ⟨hPureInit, hEntInit⟩ := mallocBlock_to_initBlock_nil γ q bs newSize.toNat a hWfQ hBsLen
       have hPostEnvEnt :
           MallocngRoTablesA maddrs ∗
-          MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+          MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
           MallocngRuntime maddrs tp ⊢
-            MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf :=
+            MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf :=
         Entails.trans (pack_mallocImpl_env γ tp brkStart bf st' sf htpSf hbrksSf hCountSt')
           (Entails.sepExists_right (dynamicRootRegions st')
             (Entails.pure_right hNoOrph0 (Entails.refl _)))
@@ -360,7 +360,7 @@ theorem realloc_null_path_ok [MallocngMultiPlacement]
           sepConj_assoc ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl sf.mem⌝ _ R,
           sepConj_assoc ⌜MallocngCallAccounting 16 _ s0 sf⌝ _ R,
           sepConj_assoc (stackFrame s0 800) _ R,
-          sepConj_assoc (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf) _ R]
+          sepConj_assoc (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf) _ R]
       refine Satisfies.mono ?_ hm'
       refine Entails.pure_right hclSf (Entails.pure_right hAcc0Sf ?_)
       exact sepConj_mono_right (sepConj_mono hPostEnvEnt (sepConj_mono_left hBlkEnt))
@@ -376,15 +376,15 @@ theorem realloc_null_path_ok [MallocngMultiPlacement]
       have hm' : sf.mem ⊨
           ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl sf.mem⌝ ∗
           (stackFrame sTail 704 ∗ stackFrameAt (s0.sp - 704#64) 96) ∗
-          MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 sTail sf ∗ R := by
+          MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 sTail sf ∗ R := by
         refine Satisfies.mono (Entails.of_eq ?_) hm
-        generalize (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 sTail sf) = PPost
+        generalize (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 sTail sf) = PPost
         ac_rfl
       rw [← hSplit704, satisfies_pure_sepConj] at hm'
       obtain ⟨hclSf, hm'⟩ := hm'
       have hPostCongr :
-          MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 sTail sf ⊢
-          MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf := by
+          MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 sTail sf ⊢
+          MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf := by
         unfold MallocngPostEnv
         refine Entails.sepExists_mono fun ivsf => Entails.pure_left fun hNoT => ?_
         refine Entails.pure_right (fun a hmA hor0 => ?_) (Entails.refl _)
@@ -396,7 +396,7 @@ theorem realloc_null_path_ok [MallocngMultiPlacement]
           sepConj_assoc ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl sf.mem⌝ _ R,
           sepConj_assoc ⌜MallocngCallAccounting 16 _ s0 sf⌝ _ R,
           sepConj_assoc (stackFrame s0 800) _ R,
-          sepConj_assoc (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf) _ R]
+          sepConj_assoc (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf) _ R]
       refine Satisfies.mono ?_ hm'
       refine Entails.pure_right hclSf (Entails.pure_right hAcc0Sf ?_)
       exact sepConj_mono_right

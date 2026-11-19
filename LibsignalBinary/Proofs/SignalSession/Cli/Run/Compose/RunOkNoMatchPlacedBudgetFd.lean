@@ -9,21 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommitPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitId.PlacedBudgetFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.PlacedBudgetFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlacedFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudgetFd
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # `FdsGe3Closed`-Threaded D2(c) and Generic `RunSem` `signal_session::run` Composition
@@ -34,7 +42,7 @@ and `[LibsignalFullPlacement]` (`LibsignalFrozen`), for arbitrary `S : RunSem`, 
 D2(c).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -134,7 +142,7 @@ theorem CliRunHooksBundleFd.readFile579 [LibsignalPlacement]
 
 /-- Pre-only `FdsGe3Closed` counterpart of `CliInitSlotOkPlacedAt` on `lsProg_579 H` calling
 `lsmpl.base 521` (definitionally equal to `ElfSlicesPqOomH2KIfaces.CliInitSlotOkPlacedAtPreFd`). -/
-def CliInitSlotOkPlacedAtPreFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliInitSlotOkPlacedAtPreFd [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (InitEnv : InitGhost → List AllocEvent → Prop)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) : Prop :=
@@ -158,7 +166,7 @@ abbrev CliInitSlotOkPlacedPreFd [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
 
 /-- Pre-only `FdsGe3Closed` counterpart of `DecPkD2cSlotOkPlacedAt` on `lsProg_579 H` calling
 `lsmpl.base 520` at `slotsOfPlaced`. -/
-def DecPkD2cSlotOkPlacedAtPreFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DecPkD2cSlotOkPlacedAtPreFd [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
@@ -172,7 +180,7 @@ def DecPkD2cSlotOkPlacedAtPreFd [LibsignalPlacement] {M : AllocCostModel}
       (lsProg_579 H) (lsmpl.base 520)
 
 /-- `cliGhostExterns` wrapper for `DecPkD2cSlotOkPlacedAtPreFd`. -/
-def DecPkD2cSlotOkPlacedPreFd [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def DecPkD2cSlotOkPlacedPreFd [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (g : CliGhostHooks) (W : CliHooks) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
@@ -182,7 +190,7 @@ def DecPkD2cSlotOkPlacedPreFd [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
 /-- Pre-only `FdsGe3Closed` counterpart of `DecPkD2cSlotOkFrozenPlacedAt` on `lsProg_579 H`
 calling `lsmpl.base 520` (definitionally equal to
 `ElfSlicesPqOomH2KIfaces.DecPkD2cSlotOkFrozenPlacedAtPreFd`). -/
-def DecPkD2cSlotOkFrozenPlacedAtPreFd [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DecPkD2cSlotOkFrozenPlacedAtPreFd [LibsignalPlacement] {M : AllocCostModel}
     (H : LibsignalHooks) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
@@ -198,7 +206,7 @@ def DecPkD2cSlotOkFrozenPlacedAtPreFd [LibsignalPlacement] {M : AllocCostModel}
 
 /-- `cliGhostExterns` wrapper for `DecPkD2cSlotOkFrozenPlacedAtPreFd` (definitionally equal to
 `ElfSlicesPqOomH2KIfaces.DecPkD2cSlotOkFrozenPlacedPreFd`). -/
-def DecPkD2cSlotOkFrozenPlacedPreFd [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def DecPkD2cSlotOkFrozenPlacedPreFd [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (g : CliGhostHooks) (W : CliHooks) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecPkEnv : DecPkGhost → List AllocEvent → Prop) : Prop :=
@@ -207,7 +215,7 @@ def DecPkD2cSlotOkFrozenPlacedPreFd [LibsignalPlacement] (mmpl : Obj.MultiPlacem
       (cliGhostExterns g (cliExternsPlaced mmpl W)) X W A lim DecPkEnv
 
 /-- Ok-only `fs`-preserving counterpart of `PksmSlotOkPlaced` (Block `111`). -/
-def PksmSlotOkPlacedFs [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
+@[expose] def PksmSlotOkPlacedFs [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
     (g : CliGhostHooks) (W : CliHooks) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PksmTryFromEnv : PksmGhost → List AllocEvent → Prop) : Prop :=
@@ -297,222 +305,6 @@ theorem cliPubCallees_of_arms_placed_fd [LibsignalPlacement]
         (callerProg := lsProg_579 H) (i := 579)
         hh stk hstk hstk64 (by decide)
     arms := harms }
-
-/-- Assemble `RunCalleesPlacedFd` at `slotsOfPlaced` from `CliRunHooksBundleFd`,
-`CliPubCalleesPlacedFd`, and the 5 slot contracts. -/
-theorem runCallees_cli_placed_fd [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {aEnvs : RunSem → RunArmEnvs}
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    {decPk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → List (BitVec 8) →
-      SlotAns (List (BitVec 8))}
-    {decPkOk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → Prop}
-    {parseFn : List (BitVec 8) → Option PreKeySignalMessage}
-    {decPkNeed : Nat}
-    (hHooks : CliRunHooksBundleFd mmpl g W A lim cEnvs.readFile)
-    (hpub : CliPubCalleesPlacedFd mmpl g A lim cEnvs sEnvs aEnvs W)
-    (henc : (slotWithPreFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).encrypt).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 464))
-    (hdecSig : (slotWithPreFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).decryptSignal).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 463))
-    (hinit : CliInitSlotOkPlacedPreFd mmpl g A lim sEnvs.initiate X W)
-    (hdecPk : (slotWithPreFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).decryptPrekey).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 520))
-    (hkem : (slotWithFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).kemDeserialize).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (blkPl_590).base) :
-    RunCalleesPlacedFd A lim cEnvs (cliGhostExterns g (cliExternsPlaced mmpl W)) cliRunBudgets
-      (slotsOfPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)) :=
-  { readFile := hHooks.readFile579
-    dirGet := hpub.dirGet
-    bundleRead := hpub.bundleRead
-    splitId := hpub.splitId
-    splitSigned := hpub.splitSigned
-    dropSpeX := hpub.dropSpeX
-    dropSpe := hpub.dropSpe
-    encrypt := henc
-    decryptSignal := hdecSig
-    initiate := hinit (cliRunSem X W decPk decPkOk parseFn) sEnvs (cliRunNeeds decPkNeed)
-      rfl rfl rfl rfl rfl
-    decryptPrekey := hdecPk
-    kemDeserialize := hkem }
-
-/-- Block-`617` transfer of `signal_session::run` (Block `579`) meeting
-`runSpecTightPlacedPreFd (LibsignalCodeRoLoaded lsmpl)`. -/
-theorem hrun_cli_placed_fd [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {aEnvs : RunSem → RunArmEnvs}
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    {decPk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → List (BitVec 8) →
-      SlotAns (List (BitVec 8))}
-    {decPkOk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → Prop}
-    {parseFn : List (BitVec 8) → Option PreKeySignalMessage}
-    {decPkNeed : Nat}
-    (_h547 : lsmpl.base 547 ≠ 0#64)
-    (hHooks : CliRunHooksBundleFd mmpl g W A lim cEnvs.readFile)
-    (hpub : CliPubCalleesPlacedFd mmpl g A lim cEnvs sEnvs aEnvs W)
-    (henc : (slotWithPreFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).encrypt).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 464))
-    (hdecSig : (slotWithPreFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).decryptSignal).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 463))
-    (hinit : CliInitSlotOkPlacedPreFd mmpl g A lim sEnvs.initiate X W)
-    (hdecPkNeed : decPkNeed ≤ 4194304)
-    (hdecPk : (slotWithPreFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).decryptPrekey).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 520))
-    (hkem : (slotWithFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).kemDeserialize).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (blkPl_590).base)
-    (htry : subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (lsmpl.base 85) (withLsCodeRoLoaded lsmpl (tryFromPlacedSpecOkFs A lim)))
-    (hpksm : subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      blkPl_111.base
-      (pksmSlotSpecPlacedOkFs M A lim
-        (aEnvs (cliRunSem X W decPk decPkOk parseFn)).pksmTryFrom
-        (cliRunSem X W decPk decPkOk parseFn))) :
-    subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 579)
-      (runSpecTightPlacedPreFd (LibsignalCodeRoLoaded lsmpl) A lim
-        (RunEnv (aEnvs (cliRunSem X W decPk decPkOk parseFn))) uuidTryParse
-        (runRel (cliRunSem X W decPk decPkOk parseFn)) cliWrOk cliResStack) :=
-  run_ok_placed_at_block_fd
-    (callerProg := mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (i := 617)
-    (hpub.arms (cliRunSem X W decPk decPkOk parseFn) decPkNeed)
-    hHooks.runHooks
-    (runCallees_cli_placed_fd mmpl g X W hHooks hpub henc hdecSig hinit hdecPk hkem)
-    htry
-    hpksm
-    (runNeed_cli_le_resStack_placed A lim sEnvs hdecPkNeed)
-    (by decide)
-    (by decide)
-
-/-- D2(c) specialization of `hrun_cli_placed_fd` at `runSpecTightPlacedPreFd`. -/
-theorem hrun_cli_d2c_tight_placed_fd [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {aEnvs : RunSem → RunArmEnvs}
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (h547 : lsmpl.base 547 ≠ 0#64)
-    (hHooks : CliRunHooksBundleFd mmpl g W A lim cEnvs.readFile)
-    (hpub : CliPubCalleesPlacedFd mmpl g A lim cEnvs sEnvs aEnvs W)
-    (henc : (slotWithPreFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).encrypt).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 464))
-    (hdecSig : (slotWithPreFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).decryptSignal).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 463))
-    (hinit : CliInitSlotOkPlacedPreFd mmpl g A lim sEnvs.initiate X W)
-    (hdecPk : DecPkD2cSlotOkPlacedPreFd mmpl g W A lim sEnvs.decryptPrekey)
-    (hkem : (slotWithFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).kemDeserialize).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (blkPl_590).base)
-    (htry : subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (lsmpl.base 85) (withLsCodeRoLoaded lsmpl (tryFromPlacedSpecOkFs A lim)))
-    (hpksm : PksmSlotOkPlacedFs mmpl g W A lim
-      (aEnvs (cliRunSem X W
-        (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-        (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-        pksmParse)).pksmTryFrom) :
-    subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 579)
-      (runSpecTightPlacedPreFd (LibsignalCodeRoLoaded lsmpl) A lim
-        (RunEnv (aEnvs (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)))
-        uuidTryParse
-        (runRel (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse))
-        cliWrOk cliResStack) :=
-  hrun_cli_placed_fd mmpl g X W
-    (decPk := decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-    (decPkOk := DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-    (parseFn := pksmParse)
-    (decPkNeed := cliDecryptPrekeyNeed cliRunBudgets)
-    h547 hHooks hpub henc hdecSig hinit (by decide)
-    (hdecPk X _ (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)) sEnvs rfl rfl rfl rfl rfl)
-    hkem htry (hpksm _ rfl)
-
-/-- D2(c) specialization of `hrun_cli_placed_fd` at `runSpecPlacedPreFd` (definitionally equal to
-`runSpecTightPlacedPreFd`). -/
-theorem hrun_cli_d2c_placed_fd [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {aEnvs : RunSem → RunArmEnvs}
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (h547 : lsmpl.base 547 ≠ 0#64)
-    (hHooks : CliRunHooksBundleFd mmpl g W A lim cEnvs.readFile)
-    (hpub : CliPubCalleesPlacedFd mmpl g A lim cEnvs sEnvs aEnvs W)
-    (henc : (slotWithPreFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).encrypt).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 464))
-    (hdecSig : (slotWithPreFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).decryptSignal).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 463))
-    (hinit : CliInitSlotOkPlacedPreFd mmpl g A lim sEnvs.initiate X W)
-    (hdecPk : DecPkD2cSlotOkPlacedPreFd mmpl g W A lim sEnvs.decryptPrekey)
-    (hkem : (slotWithFdsGe3Closed
-      (slotsOfPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).kemDeserialize).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (blkPl_590).base)
-    (htry : subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (lsmpl.base 85) (withLsCodeRoLoaded lsmpl (tryFromPlacedSpecOkFs A lim)))
-    (hpksm : PksmSlotOkPlacedFs mmpl g W A lim
-      (aEnvs (cliRunSem X W
-        (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-        (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-        pksmParse)).pksmTryFrom) :
-    subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 579)
-      (runSpecPlacedPreFd (LibsignalCodeRoLoaded lsmpl) A lim
-        (RunEnv (aEnvs (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)))
-        uuidTryParse
-        (runRel (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse))
-        cliWrOk cliResStack) :=
-  hrun_cli_d2c_tight_placed_fd mmpl g X W h547 hHooks hpub henc hdecSig hinit hdecPk hkem
-    htry hpksm
 
 /-! ## Section 3: `LibsignalFrozen` / `[LibsignalFullPlacement]` Composition -/
 
@@ -683,166 +475,5 @@ theorem hrun_cli_sem_full_placed_fd [LibsignalFullPlacement]
     (runNeed_cli_le_resStack_placed A lim sEnvs hdecPkNeed)
     (by decide)
     (by decide)
-
-/-- `[LibsignalFullPlacement]` `cliRunSem` specialization of `hrun_cli_sem_full_placed_fd`. -/
-theorem hrun_cli_full_placed_fd [LibsignalFullPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {aEnvs : RunSem → RunArmEnvs}
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    {decPk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → List (BitVec 8) →
-      SlotAns (List (BitVec 8))}
-    {decPkOk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → Prop}
-    {parseFn : List (BitVec 8) → Option PreKeySignalMessage}
-    {decPkNeed : Nat}
-    (h547 : lsmpl.base 547 ≠ 0#64)
-    (hHooks : CliRunHooksBundleFd mmpl g W A lim cEnvs.readFile)
-    (hpub : CliPubCalleesFrozenPlacedFd mmpl g A lim cEnvs sEnvs aEnvs W)
-    (henc : (slotWithPreFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).encrypt).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 464))
-    (hdecSig : (slotWithPreFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).decryptSignal).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 463))
-    (hinit : CliInitSlotOkPlacedPreFd mmpl g A lim sEnvs.initiate X W)
-    (hdecPkNeed : decPkNeed ≤ 4194304)
-    (hdecPk : (slotWithPreFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).decryptPrekey).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 520))
-    (hkem : (slotWithFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs (cliRunSem X W decPk decPkOk parseFn)
-        (cliRunNeeds decPkNeed)).kemDeserialize).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (blkPl_590).base)
-    (htry : subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (lsmpl.base 85) (withLsCodeRoLoaded lsmpl (tryFromPlacedSpecOkFs A lim)))
-    (hpksm : subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      blkPl_111.base
-      (pksmSlotSpecPlacedOkFs M A lim
-        (aEnvs (cliRunSem X W decPk decPkOk parseFn)).pksmTryFrom
-        (cliRunSem X W decPk decPkOk parseFn))) :
-    subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 579)
-      (runSpecTightPlacedPreFd (LibsignalFrozen lsmpl) A lim
-        (RunEnv (aEnvs (cliRunSem X W decPk decPkOk parseFn))) uuidTryParse
-        (runRel (cliRunSem X W decPk decPkOk parseFn)) cliWrOk cliResStack) :=
-  hrun_cli_sem_full_placed_fd mmpl g W (cliRunSem X W decPk decPkOk parseFn)
-    h547 hHooks hpub henc hdecSig
-    (hinit (cliRunSem X W decPk decPkOk parseFn) sEnvs (cliRunNeeds decPkNeed) rfl rfl rfl rfl rfl)
-    hdecPkNeed hdecPk hkem htry hpksm
-
-/-- `[LibsignalFullPlacement]` D2(c) `runSpecTightPlacedPreFd (LibsignalFrozen lsmpl)` assembly on
-`mProgPlaced`. -/
-theorem hrun_cli_d2c_tight_full_placed_fd [LibsignalFullPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {aEnvs : RunSem → RunArmEnvs}
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (h547 : lsmpl.base 547 ≠ 0#64)
-    (hHooks : CliRunHooksBundleFd mmpl g W A lim cEnvs.readFile)
-    (hpub : CliPubCalleesFrozenPlacedFd mmpl g A lim cEnvs sEnvs aEnvs W)
-    (henc : (slotWithPreFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).encrypt).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 464))
-    (hdecSig : (slotWithPreFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).decryptSignal).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 463))
-    (hinit : CliInitSlotOkPlacedPreFd mmpl g A lim sEnvs.initiate X W)
-    (hdecPk : DecPkD2cSlotOkFrozenPlacedPreFd mmpl g W A lim sEnvs.decryptPrekey)
-    (hkem : (slotWithFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).kemDeserialize).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (blkPl_590).base)
-    (htry : subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (lsmpl.base 85) (withLsCodeRoLoaded lsmpl (tryFromPlacedSpecOkFs A lim)))
-    (hpksm : PksmSlotOkPlacedFs mmpl g W A lim
-      (aEnvs (cliRunSem X W
-        (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-        (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-        pksmParse)).pksmTryFrom) :
-    subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 579)
-      (runSpecTightPlacedPreFd (LibsignalFrozen lsmpl) A lim
-        (RunEnv (aEnvs (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)))
-        uuidTryParse
-        (runRel (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse))
-        cliWrOk cliResStack) :=
-  hrun_cli_full_placed_fd mmpl g X W
-    (decPk := decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-    (decPkOk := DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-    (parseFn := pksmParse)
-    (decPkNeed := cliDecryptPrekeyNeed cliRunBudgets)
-    h547 hHooks hpub henc hdecSig hinit (by decide)
-    (hdecPk X _ (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)) sEnvs rfl rfl rfl rfl rfl)
-    hkem htry (hpksm _ rfl)
-
-/-- `[LibsignalFullPlacement]` D2(c) `runSpecPlacedPreFd (LibsignalFrozen lsmpl)` assembly on
-`mProgPlaced` (definitionally equal to `runSpecTightPlacedPreFd`). -/
-theorem hrun_cli_d2c_full_placed_fd [LibsignalFullPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {aEnvs : RunSem → RunArmEnvs}
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
-    (h547 : lsmpl.base 547 ≠ 0#64)
-    (hHooks : CliRunHooksBundleFd mmpl g W A lim cEnvs.readFile)
-    (hpub : CliPubCalleesFrozenPlacedFd mmpl g A lim cEnvs sEnvs aEnvs W)
-    (henc : (slotWithPreFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).encrypt).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 464))
-    (hdecSig : (slotWithPreFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).decryptSignal).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 463))
-    (hinit : CliInitSlotOkPlacedPreFd mmpl g A lim sEnvs.initiate X W)
-    (hdecPk : DecPkD2cSlotOkFrozenPlacedPreFd mmpl g W A lim sEnvs.decryptPrekey)
-    (hkem : (slotWithFdsGe3Closed
-      (slotsOfSigPkFrozenPlaced A lim sEnvs
-        (cliRunSem X W (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn) (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)
-        (cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets))).kemDeserialize).OkPlaced
-      (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (blkPl_590).base)
-    (htry : subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (lsmpl.base 85) (withLsCodeRoLoaded lsmpl (tryFromPlacedSpecOkFs A lim)))
-    (hpksm : PksmSlotOkPlacedFs mmpl g W A lim
-      (aEnvs (cliRunSem X W
-        (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-        (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-        pksmParse)).pksmTryFrom) :
-    subroutine_ok (mProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 579)
-      (runSpecPlacedPreFd (LibsignalFrozen lsmpl) A lim
-        (RunEnv (aEnvs (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse)))
-        uuidTryParse
-        (runRel (cliRunSem X W
-          (decPkDefD2c X ⟨W.C, W.Q⟩ scopeIn)
-          (DecPkOkD2c ⟨W.C, W.Q⟩ scopeIn)
-          pksmParse))
-        cliWrOk cliResStack) :=
-  hrun_cli_d2c_tight_full_placed_fd mmpl g X W h547 hHooks hpub henc hdecSig hinit hdecPk hkem
-    htry hpksm
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudgetFd

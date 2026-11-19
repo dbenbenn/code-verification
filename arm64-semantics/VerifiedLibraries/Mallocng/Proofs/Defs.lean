@@ -459,7 +459,10 @@ def OwnedRwByte (st : MallocngSt) (a : BitVec 64) : Prop :=
   ¬ CarvedUserByte st a ∧
   ¬ CarvedMetaByte st a
 
-instance (st : MallocngSt) : DecidablePred (OwnedRwByte st) := fun _ =>
+instance (st : MallocngSt) : DecidablePred (OwnedRwByte st) := fun a =>
+  letI : Decidable (∃ ma ∈ st.metaAreas, InRegion ma.base 4096 a) := List.decidableBEx _ st.metaAreas
+  letI : Decidable (∃ g ∈ st.groups, 0 < g.maplen ∧ InRegion g.mem (g.maplen * 4096) a) :=
+    List.decidableBEx _ st.groups
   inferInstanceAs (Decidable (_ ∧ _ ∧ _))
 
 /-- Dynamic `Perm.protNone` byte owned by `mallocng`: lies in a guard page or an unactivated
@@ -468,7 +471,10 @@ def OwnedProtNoneByte (st : MallocngSt) (a : BitVec 64) : Prop :=
   (∃ gp ∈ st.guardPages, InRegion gp 4096 a) ∨
   (∃ ap ∈ st.availMetaPages, InRegion ap 4096 a)
 
-instance (st : MallocngSt) : DecidablePred (OwnedProtNoneByte st) := fun _ =>
+instance (st : MallocngSt) : DecidablePred (OwnedProtNoneByte st) := fun a =>
+  letI : Decidable (∃ gp ∈ st.guardPages, InRegion gp 4096 a) := List.decidableBEx _ st.guardPages
+  letI : Decidable (∃ ap ∈ st.availMetaPages, InRegion ap 4096 a) :=
+    List.decidableBEx _ st.availMetaPages
   inferInstanceAs (Decidable (_ ∨ _))
 
 /-- Dynamic `memMapped` virtual-address reservation byte owned by `mallocng`: lies in any
@@ -481,7 +487,15 @@ def OwnedMappedByte (st : MallocngSt) (a : BitVec 64) : Prop :=
   (∃ ap ∈ st.availMetaPages, InRegion ap 4096 a) ∨
   (∃ g ∈ st.groups, 0 < g.maplen ∧ InRegion g.mem (g.maplen * 4096) a)
 
-instance (st : MallocngSt) : DecidablePred (OwnedMappedByte st) := fun _ =>
+instance (st : MallocngSt) : DecidablePred (OwnedMappedByte st) := fun a =>
+  letI : Decidable (∃ mb ∈ st.mmapMetaAreas, InRegion mb 4096 a) :=
+    List.decidableBEx _ st.mmapMetaAreas
+  letI : Decidable (∃ mg ∈ st.mmapGuardPages, InRegion mg 4096 a) :=
+    List.decidableBEx _ st.mmapGuardPages
+  letI : Decidable (∃ ap ∈ st.availMetaPages, InRegion ap 4096 a) :=
+    List.decidableBEx _ st.availMetaPages
+  letI : Decidable (∃ g ∈ st.groups, 0 < g.maplen ∧ InRegion g.mem (g.maplen * 4096) a) :=
+    List.decidableBEx _ st.groups
   inferInstanceAs (Decidable (_ ∨ _ ∨ _ ∨ _))
 
 end VerifiedLibraries.Mallocng.Proofs

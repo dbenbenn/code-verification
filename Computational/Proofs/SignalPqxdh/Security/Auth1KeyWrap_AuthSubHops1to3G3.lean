@@ -9,23 +9,23 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G2
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
-public import Computational.Proofs.SignalPqxdh.Security.SigHopA
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G2 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.Constructions.SampleableType.Measure
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G3
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key `RootKdfRO` Sub-Hop (`G3.5` to `G3.6`)
@@ -34,7 +34,7 @@ Bounds single-slot distinguishing probability via tracked bad-event coupling and
 single-identity-key `RootKdfRO` sub-hop `hop_G3_5_G3_6_1Key`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -47,7 +47,7 @@ open _root_.Proofs.SignalPqxdh.Security.FgGapDh
 
 namespace SignalPqxdh.Security.AuthSubHops1to3
 
-def authRkStepTracked1Key (S : Setup) (P : Primitives)
+@[expose] def authRkStepTracked1Key (S : Setup) (P : Primitives)
     (sampRkAt : Nat → ProbComp Bytes) (useIdealRkAt : Nat → Bool)
     (q : AuthQuery S) (stT : AuthRkTrackedState S) :
     ProbComp (AuthResponse × AuthRkTrackedState S) :=
@@ -76,7 +76,7 @@ def authRkStepTracked1Key (S : Setup) (P : Primitives)
     let (resp, hst') ← authCkOtherStep1Key S P q stT.1
     pure (resp, (hst', stT.2))
 
-def authRkTrackedImpl1Key (S : Setup) (P : Primitives)
+@[expose] def authRkTrackedImpl1Key (S : Setup) (P : Primitives)
     (sampRkAt : Nat → ProbComp Bytes) (useIdealRkAt : Nat → Bool) :
     QueryImpl (authSpec S) (StateT (AuthRkTrackedState S) ProbComp) :=
   fun q => StateT.mk (authRkStepTracked1Key S P sampRkAt useIdealRkAt q)

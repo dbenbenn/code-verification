@@ -10,11 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DecodesPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymFetch0Placed
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb` (Block `333`): Relocatable Specifications & Prologue/Epilogue
@@ -24,7 +25,7 @@ and proves the relocatable Block `333` prologue (`+0 -> +36`), epilogue (`+64 ->
 `None`-variant error path.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -56,14 +57,14 @@ attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_t
 /-! ## 1. Relocatable `[LibsignalPlacement]` Specifications for `<States>::from_pb` (Block `333`) -/
 
 /-- `<PolyDecoder>::from_pb` (Block `376`) meets `withLsCodeLoaded lsmpl (decoderFromPbSpec A)` on `lsProg_333 (Rust.withPanics ext)`. -/
-def DecoderFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecoderFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_333 (Rust.withPanics ext))
     (lsmpl.base 376)
     (withLsCodeLoaded lsmpl (decoderFromPbSpec A))
 
 /-- Relocatable specification of `<spqr::v1::chunked::states::States>::from_pb` (Block `333`, 2,911 insns). -/
-def statesFromPbPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) : Spec StatesFromPbGhost where
+@[expose] def statesFromPbPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) : Spec StatesFromPbGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.pbA ∧ v1StatePtsBound x.pb⌝ ∗
       memRegion x.out chunkedStatesSize ∗
@@ -79,7 +80,7 @@ def statesFromPbPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress
   onPanic := fun _ s0 sf => statesFromPbOnPanic s0 sf
 
 /-- Per-variant relocatable specification of `<States>::from_pb` (Block `333`) for a fixed `pb : V1State`. -/
-def statesFromPbVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def statesFromPbVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (pb : V1State) : Spec (BitVec 64 × BitVec 64) where
   pre := fun ⟨out, pbA⟩ s =>
     ⌜s.readReg64 .x8 = out ∧ s.readReg64 .x0 = pbA ∧ v1StatePtsBound pb⌝ ∗
@@ -96,7 +97,7 @@ def statesFromPbVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaC
   onPanic := fun _ s0 sf => statesFromPbOnPanic s0 sf
 
 /-- Extended-stack relocatable variant of `statesFromPbPlacedSpec`. -/
-def statesFromPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) : Spec StatesFromPbGhost where
+@[expose] def statesFromPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) : Spec StatesFromPbGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.pbA ∧ v1StatePtsBound x.pb⌝ ∗
       memRegion x.out chunkedStatesSize ∗
@@ -112,14 +113,14 @@ def statesFromPbPlacedSpecX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompres
   onPanic := fun _ s0 sf => statesFromPbOnPanic s0 sf
 
 /-- `<States>::from_pb` (Block `333`) meets `withLsCodeLoaded lsmpl (statesFromPbPlacedSpec A F)` on `lsProg_333 (Rust.withPanics ext)`. -/
-def StatesFromPbPlacedOk [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def StatesFromPbPlacedOk [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_333 (Rust.withPanics ext))
     (lsmpl.base 333)
     (withLsCodeLoaded lsmpl (statesFromPbPlacedSpec A F))
 
 /-- `<States>::from_pb` (Block `333`) meets `withLsCodeLoaded lsmpl (statesFromPbPlacedSpecX A F)` on `lsProg_333 (Rust.withPanics ext)`. -/
-def StatesFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def StatesFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_333 (Rust.withPanics ext))
     (lsmpl.base 333)
@@ -127,7 +128,7 @@ def StatesFromPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompres
 
 /-- `<States>::from_pb` (Block `333`) meets `withLsCodeRoLoaded lsmpl (statesFromPbPlacedSpecX A F)` on
     `libsignalSessionLib.blockProgram lsmpl 333 (Rust.withPanics ext)`. -/
-def StatesFromPbPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
+@[expose] def StatesFromPbPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 333 (Rust.withPanics ext))
     (lsmpl.base 333)

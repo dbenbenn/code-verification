@@ -9,16 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FreeArgsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseArgsShape
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainOkPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.LitsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.FreeArgsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M6Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseArgsShape
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainOk -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Hop Composer for `main` (`[LibsignalPlacement]`, Block `617`)
@@ -28,7 +33,7 @@ Composes the six placed hop continuations (`step1`..`step6`) into `mainSpecTight
 instantiated at `main_m1_placed_proof`, `main_m6_proof_placed`, and `main_ret_placed_proof`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

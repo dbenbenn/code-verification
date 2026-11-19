@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2a
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Stage P2.5 and P2.6 Layout and Error-Path Assembly for `message_decrypt_prekey::{closure#0}`
@@ -22,7 +22,7 @@ Stack-size/layout helpers and error-path assembly (`stageP2_sub6_err_ok`) for Su
 P2.6 of `message_decrypt_prekey::<PqxdhRng>::{closure#0}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,14 +56,6 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-
-/-! ## 1. Stack Size & Layout Helpers for Stage P2.5 and Stage P2.6 -/
-
 abbrev stageP2bStack : Nat := 768 + pqxdhEntryStack
 
 theorem exists_words4_of_len32 {bs : List (BitVec 8)} (hlen : bs.length = 32) :
@@ -94,15 +86,15 @@ theorem exists_opkSlot65_words (tag : BitVec 8) {opkPkBytes opkSkBytes : List (B
   exact point8_keyPair64UnalignedAt_eq_words8_byte tag b0 b1 b2 b3 b4 b5 b6 b63
     w0 w1 w2 w3 w4 w5 w6 opk0 hopk0 a
 
-def opkPresentTag (opkBSk? : Option Bytes) : BitVec 8 :=
+@[expose] def opkPresentTag (opkBSk? : Option Bytes) : BitVec 8 :=
   if (match opkBSk? with | some _ => true | none => false) = true then 1#8 else 0#8
 
-def opkOptFieldAt (a : BitVec 64) (opkBSk? : Option Bytes) : SepProp :=
+@[expose] def opkOptFieldAt (a : BitVec 64) (opkBSk? : Option Bytes) : SepProp :=
   match opkBSk? with
   | some opkSk => (a ↦ₛ bytesToBv8 opkSk)
   | none => .emp
 
-def opkUnusedFieldAt (a : BitVec 64) (opkBSk? : Option Bytes) (opkSkBytes : List (BitVec 8)) :
+@[expose] def opkUnusedFieldAt (a : BitVec 64) (opkBSk? : Option Bytes) (opkSkBytes : List (BitVec 8)) :
   SepProp :=
   match opkBSk? with
   | some _ => .emp

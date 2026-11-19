@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlaced
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-import GeneratedLean.LibsignalSessionObj
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Code-Loaded `[LibsignalPlacement]` Drop Glue for `Option<InnerState>` and `PqRatchetState`
@@ -25,7 +31,7 @@ Proves `withLsCodeLoaded lsmpl` subroutine contracts from `rustDeallocSpec A` fo
 - Block `270`: `core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

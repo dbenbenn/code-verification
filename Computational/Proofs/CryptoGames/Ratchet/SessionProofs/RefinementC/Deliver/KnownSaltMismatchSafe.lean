@@ -27,7 +27,7 @@ Closes the `deliver` step on a known chain when the SPQR salt differs from the h
 `safeInj 3` holds.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

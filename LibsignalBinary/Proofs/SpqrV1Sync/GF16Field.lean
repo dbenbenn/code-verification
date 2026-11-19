@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Mathlib.Algebra.Field.Defs
-public import LibsignalBinary.Proofs.SpqrV1Sync.GF16Laws
+public import LibsignalBinary.Proofs.SpqrV1Sync.GF16Laws -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.GF16
 
 /-!
@@ -21,7 +21,7 @@ model operations (`GF16.add`, `GF16.mul`, `GF16.div`, `GF16.ZERO`, `GF16.ONE`, `
 `a⁻¹ = GF16.div GF16.ONE a`), using the algebraic laws proved in `GF16Laws.lean`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.GF16Field
 

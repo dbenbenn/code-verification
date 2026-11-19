@@ -12,13 +12,13 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Gen
@@ -29,6 +29,7 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 
 /-!
 # Spatial Bundles and Substage P3.5 `Ok` Core for `Matched.M3PrevCapPlacedBudget`
@@ -38,7 +39,7 @@ and Substage P3.5 `Ok` path proofs (`stageP3_sub5_placed_ok`, `stageP3_sub5_decR
 for `Matched.M3PrevCapPlacedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -112,7 +113,7 @@ local macro "wp_steps_sync_518 " ext:term:max mid:term : tactic => `(tactic| (
 
 /-! ## Budget-threaded spatial bundles -/
 
-def stageP3DispatchPrePrevEmptyPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3DispatchPrePrevEmptyPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s_pool : State)
     (coroPtr outPtr initErrsPtr : BitVec 64) (g : RecordGhost)
     (res : Except SignalProtocolError (List (BitVec 8))) (b_2c0 : BitVec 8)
@@ -120,7 +121,7 @@ def stageP3DispatchPrePrevEmptyPlaced [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.stageP3DispatchPrePrevEmptyPlaced
     (A.atState lim st_b s_pool) s0 s coroPtr outPtr initErrsPtr g res b_2c0 G₂ recG st₂ recSt
 
-def stageP3DispatchOkMidPrevEmptyPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3DispatchOkMidPrevEmptyPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s' : State)
     (coroPtr outPtr initErrsPtr ptCap ptPtr : BitVec 64) (g : RecordGhost)
     (pt : List (BitVec 8)) (b_2c0 : BitVec 8)
@@ -128,7 +129,7 @@ def stageP3DispatchOkMidPrevEmptyPlaced [LibsignalPlacement] {M : AllocCostModel
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.stageP3DispatchOkMidPrevEmptyPlaced
     (A.atState lim st_b s') s0 s coroPtr outPtr initErrsPtr ptCap ptPtr g pt b_2c0 G₂ st₂
 
-def genP3S5PostFramePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3S5PostFramePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M)
     (sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr : BitVec 64)
     (msgVer : BitVec 32)
@@ -138,14 +139,14 @@ def genP3S5PostFramePlaced [LibsignalPlacement] {M : AllocCostModel}
     A.repAlloc sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr msgVer rem loc msgG msg
     coinsPost
 
-def genP3CallFramePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3CallFramePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (sp remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8)) (rem loc : AddrGhost)
     (msgG : SignalMessageGhost) (msg : SignalMessage) : SepProp :=
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.genP3CallFramePlaced
     A.repAlloc sp remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest rem loc msgG msg
 
-def genP3PrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3PrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -155,7 +156,7 @@ def genP3PrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A.atState lim st_b s) sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
     recG st rem loc msgG msg s
 
-def genP3PostSpatialPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3PostSpatialPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s_pool : State)
     (sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -165,7 +166,7 @@ def genP3PostSpatialPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A.atState lim st_b s_pool) sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
     recG st rem loc msgG msg
 
-def genP3PostEqPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3PostEqPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -175,7 +176,7 @@ def genP3PostEqPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A.atState lim st_b s) sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
     recG st rem loc msgG msg s
 
-def genP3PostNePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3PostNePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -185,7 +186,7 @@ def genP3PostNePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A.atState lim st_b s) sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
     recG st rem loc msgG msg s
 
-def genP3PostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3PostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -195,7 +196,7 @@ def genP3PostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A.atState lim st_b s) sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
     recG st rem loc msgG msg s
 
-def stageP3ErrPrePrevEmptyM3Placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3ErrPrePrevEmptyM3Placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s_pool : State)
     (coroPtr outPtr initErrsPtr : BitVec 64) (g : RecordGhost)
     (e : SignalProtocolError) (b_2c0 : BitVec 8)
@@ -203,7 +204,7 @@ def stageP3ErrPrePrevEmptyM3Placed [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.stageP3ErrPrePrevEmptyM3Placed
     (A.atState lim st_b s_pool) s0 s coroPtr outPtr initErrsPtr g e b_2c0 G₂ recG st₂ recSt
 
-def stageP3ErrPostPrevEmptyM3Placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3ErrPostPrevEmptyM3Placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s sf : State)
     (coroPtr outPtr : BitVec 64) (e : SignalProtocolError) : SepProp :=
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched.stageP3ErrPostPrevEmptyM3Placed

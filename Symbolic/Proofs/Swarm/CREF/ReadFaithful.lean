@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
-public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.ModelMono
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -23,7 +23,7 @@ across appended blocks (`readFaithful_append`) and restricts to move-aligned pre
 (`readFaithful_prefix`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 
 /-- The read condition of one (event, entry) pair against representation sets `R`, `P` (the body
 of `ReadFaithful`). -/
-def ReadOKWith (R : HwBytes → Set DY.Bytes) (P : HwBytes → Set PreKeyRep)
+@[expose] def ReadOKWith (R : HwBytes → Set DY.Bytes) (P : HwBytes → Set PreKeyRep)
     (e : MachineEvent) (v : VisEntry) : Prop :=
   match v.layout, v.terms, eventBytes e with
   | .whisper, [t], _ :: body => t ∈ R body

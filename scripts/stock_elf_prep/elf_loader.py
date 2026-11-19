@@ -768,7 +768,18 @@ def _parse_placed_reloc_line(s: str) -> RelocEntry:
 def parse_multi_placed_lib(lean_path: pathlib.Path, bin_path: pathlib.Path) -> MultiPlacedLib:
     src = lean_path.read_text(encoding="utf-8")
     blob = bin_path.read_bytes()
-    lines = src.splitlines()
+    shard_mods = re.findall(
+        rf"^(?:public\s+)?import\s+\S*\.({re.escape(lean_path.stem)}Shard\d+)\s*$",
+        src,
+        flags=re.MULTILINE,
+    )
+    shard_lines: list[str] = []
+    for mod in shard_mods:
+        shard_path = lean_path.parent / f"{mod}.lean"
+        if not shard_path.is_file():
+            raise FileNotFoundError(f"missing placed shard module {shard_path} imported by {lean_path}")
+        shard_lines.extend(shard_path.read_text(encoding="utf-8").splitlines())
+    lines = shard_lines + src.splitlines()
 
     byte_defs: dict[str, bytes] = {}
     for line in lines:

@@ -9,10 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegTrustPlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.WithStoresVT.ExtDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.Seg.SegTrustPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsVX
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSave
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegTrust
 
 /-!
 # Relocatable `SegTrust` (`+0x1fcc → +0x2150 / +0x21b0 / +0x2294`)
@@ -20,7 +26,7 @@ import Arm64.Trusted.Spec.SepLogic
 Proves relocatable (`[LibsignalPlacement]`) `segTrustVX_placed_ok` on `lsProg_463 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -249,7 +255,7 @@ theorem segTrustVX_placed_ok [LibsignalPlacement] {C : Crypto} {A : RustAlloc} {
         ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
       · rw [hx26_2, hx26_1, hx26, hsp]
       · rw [hx28_2]; decide
-      · rw [hmod.1]; decide
+      · rw [hmod.1]; nofun
       · intro p; rw [hmod.1]; exact nofun
       · intro r hr; dsimp only at hr; rw [hload] at hr; cases hr; exact hscope
       · rw [hmod.2]; exact ⟨hload ▸ hscope.2, trivial⟩

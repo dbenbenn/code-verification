@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
+public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # SPQR `spqr::recv` Runtime Chain Credit and Raw-Size Helpers
@@ -23,7 +25,7 @@ Exact-call-order `PhaseCreditSpec` bounds for the SPQR V1 runtime `Chain` operat
 `Chain::recv_key`), together with `maxOooCap`-parameterized `rawChain` growth bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -96,44 +98,6 @@ theorem nextKeyInternal_phaseCreditSpec
   rw [hE]
   exact ConcatEnv.append rfl rfl
 
-theorem nextKeyInternal_phaseCreditSpec_of_hyps
-    {M : AllocCostModel} [HasFineReallocCredit M] (hM : ModelHyps M) :
-    PhaseCreditSpec M NextKeyInternalEnv
-      (2 * nextKeyInternalReq + 9539)
-      (nextKeyInternalReq + 8195)
-      (nextKeyInternalReq + 8195)
-      nextKeyInternalReq where
-  req_align := by
-    rintro _ rfl ev hev
-    unfold nextKeyInternalEvents at hev
-    rcases List.mem_append.mp hev with h1 | h2
-    · exact req_align_rustAlloc (by decide) ev h1
-    · obtain ⟨hr, ha⟩ := req_align_rustDealloc nextKeyInternalReq 1 ev h2
-      exact ⟨by omega, ha⟩
-  credit_le := by
-    rintro st0 _ rfl
-    have heq : nextKeyInternalEvents =
-        rustAllocEvents nextKeyInternalReq 1 ++ rustDeallocEvents nextKeyInternalReq 1 := rfl
-    rw [heq, M.stepEvents_append]
-    by_cases hle : nextKeyInternalReq ≤ HasFineReallocCredit.smallMaxReq M
-    · have hpos : 0 < nextKeyInternalReq := by simp [nextKeyInternalReq]
-      obtain ⟨hc1, hl1, hp1⟩ :=
-        stepEvents_rustAlloc_small M (req := nextKeyInternalReq) (al := 1) st0 (by decide) hpos hle
-      have hsa := hM.smallAlloc_le hle
-      obtain ⟨hc2, hl2, hp2⟩ :=
-        (PhaseCreditSpec.rustDealloc_align16 M (req := nextKeyInternalReq) (al := 1)
-          (by decide)).credit_le (M.stepEvents (rustAllocEvents nextKeyInternalReq 1) st0) rfl
-      omega
-    · have hgt : HasFineReallocCredit.smallMaxReq M < nextKeyInternalReq := by omega
-      obtain ⟨hc1, hl1, hp1⟩ :=
-        stepEvents_rustAlloc_large M (req := nextKeyInternalReq) (al := 1) st0 (by decide) hgt
-      have hm := hM.meta_le
-      have hla := hM.largeCost_le hgt
-      obtain ⟨hc2, hl2, hp2⟩ :=
-        (PhaseCreditSpec.rustDealloc_align16 M (req := nextKeyInternalReq) (al := 1)
-          (by decide)).credit_le (M.stepEvents (rustAllocEvents nextKeyInternalReq 1) st0) rfl
-      omega
-
 /-! ## `<spqr::chain::Chain>::new` (`ChainNewEnv`) -/
 
 /-- `PhaseCreditSpec` for `ChainNewEnv` when `448 ≤ smallMaxReq M` (all six allocations are small-class, so `Δlive = Δpeak = 0`).
@@ -176,7 +140,7 @@ theorem chainNew_phaseCreditSpec
 
 /-! ## `<VecDeque<ChainEpoch>>::grow` and `<Chain>::add_epoch` (`ChainAddEpochEnv`) -/
 
-def vecDequeGrowMaxReq (capBound : Nat) : Nat :=
+@[expose] def vecDequeGrowMaxReq (capBound : Nat) : Nat :=
   max (2 * capBound) 4 * chainEpochSize
 
 /-- Single-step `PhaseCreditSpec` for `vecDequeGrowEvents cap` when `cap.toNat ≤ capBound`. -/
@@ -304,12 +268,12 @@ theorem chainAddEpoch_phaseCreditSpec
 
 /-- Virtual capacity `max cap 1` used in the exponential `reserveCap` doubling invariant `maxLen < virtCap cap * 2 ^ d`.
 -/
-def virtCap (cap : Nat) : Nat :=
+@[expose] def virtCap (cap : Nat) : Nat :=
   if cap = 0 then 1 else cap
 
 /-- Live `sc = 63` byte charge held by a `Vec<u8>` buffer of capacity `cap` (`largeCost M cap` above `smallMaxReq M`, `0` otherwise).
 -/
-def capLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
+@[expose] def capLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat :=
   if HasFineReallocCredit.smallMaxReq M < cap then
     HasFineReallocCredit.largeCost M cap
   else
@@ -317,7 +281,7 @@ def capLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (cap : Nat) : Nat
 
 /-- Remaining `KeyHistory::add` calls permitted along `keyAdvanceLoopEvents` from counter `ctr` toward `atIdx` (`min (atIdx - 1 - ctr) maxOoo`).
 -/
-def keyAddBudget (atIdx maxOoo ctr : Nat) : Nat :=
+@[expose] def keyAddBudget (atIdx maxOoo ctr : Nat) : Nat :=
   min (atIdx - 1 - ctr) maxOoo
 
 private theorem capLargeLive_le_aff {M : AllocCostModel} [HasFineReallocCredit M]
@@ -838,7 +802,7 @@ private theorem keyAdvanceLoopEvents_spec_ge
 
 /-- Maximum `KeyHistory` byte capacity allocated by `<Chain>::recv_key` from initial length bound `initLenBound` and `maxOooCap`.
 -/
-def recvKeyCapMax (initLenBound maxOooCap : Nat) : Nat :=
+@[expose] def recvKeyCapMax (initLenBound maxOooCap : Nat) : Nat :=
   2 * (initLenBound + 36 * maxOooCap) + 8
 
 /-- `PhaseCreditSpec` for `<spqr::chain::Chain>::recv_key` parameterized by `maxJumpCap`, `maxOooCap`,

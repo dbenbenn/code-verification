@@ -25,7 +25,7 @@ proofs with `realloc_inplace_preserves_fineInv`, `realloc_mremap_preserves_fineI
 
 set_option autoImplicit false
 
-@[expose] public noncomputable section
+@[expose] public section
 
 namespace LibsignalBinary.Heap.Fine
 
@@ -102,7 +102,7 @@ theorem realloc_stage2_fine_core_ok [MallocngMultiPlacement]
       (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
        MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-       MallocngReadRest (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
+       MallocngReadRestMode true (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
        MallocngBlockToken (fineBaseGam γ) p oldSz ∗
        ghostMapAuth (fineAlignGam γ) alignMap0 ∗
        ghostMapElem (fineAlignGam γ) p (max align 16) ∗
@@ -124,7 +124,7 @@ theorem realloc_stage2_fine_core_ok [MallocngMultiPlacement]
       (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
        MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-       MallocngReadRest (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
+       MallocngReadRestMode true (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
        MallocngBlockToken (fineBaseGam γ) p oldSz ∗
        ghostMapAuth (fineAlignGam γ) alignMap0 ∗
        ghostMapElem (fineAlignGam γ) p (max align 16) ∗
@@ -132,12 +132,12 @@ theorem realloc_stage2_fine_core_ok [MallocngMultiPlacement]
       (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
        MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-       MallocngReadRest (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
+       MallocngReadRestMode true (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st ∗
        MallocngBlockToken (fineBaseGam γ) p oldSz ∗
        (p ↦ₛ (origBs ++ tailBs)) ∗ alignFrame) := by
     dsimp only [alignFrame]
     generalize (MallocngRoTablesAt maddrs) = PRo
-    generalize (MallocngReadRest (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st) = PRest
+    generalize (MallocngReadRestMode true (fineBaseGam γ) maddrs tp brkStart s0.brk bCoarse ivs0 st) = PRest
     ac_rfl
   rw [hPreEq]
   refine SepWP.mono
@@ -159,15 +159,15 @@ theorem realloc_stage2_fine_core_ok [MallocngMultiPlacement]
   have hbrksSf : sf.brkStart = brkStart := hProcSf.2.2.2.1.trans hbrks0
   have hCoreEnt :
       ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-      MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ⊢
+      MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ⊢
         FineCoreStInflightA 0 γ maddrs brkStart sf.brk bf
           (dynamicRootRegions st') alignMap0 live' peak' st' := by
-    unfold FineCoreStInflightA MallocngCoreStA
+    unfold FineCoreStInflightA MallocngCoreStModeA
     exact Entails.pure_right hInv' (Entails.refl _)
   have hPostEnv :
       MallocngRoTablesA maddrs ∗
       (ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-       MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st') ∗
+       MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st') ∗
       MallocngRuntime maddrs tp ⊢
         FinePostEnv γ maddrs tp brkStart bf ivs0 s0 sf :=
     Entails.trans (sepConj_mono_right (sepConj_mono_left hCoreEnt))
@@ -180,7 +180,7 @@ theorem realloc_stage2_fine_core_ok [MallocngMultiPlacement]
       stackFrame s0 800 ∗
       (MallocngRoTablesA maddrs ∗
        (ghostMapAuth (fineAlignGam γ) alignMap0 ∗
-        MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st') ∗
+        MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st') ∗
        MallocngRuntime maddrs tp) ∗
       ⌜(FineInitBlockSem γ).pureWf p (newSz, max align 16, keptBs)⌝ ∗
       ((MallocngInitBlock mallocngIface (fineBaseGam γ)).interp p (newSz, keptBs) ∗
@@ -189,7 +189,7 @@ theorem realloc_stage2_fine_core_ok [MallocngMultiPlacement]
     (Entails.of_eq (by
       dsimp only [MallocngInitBlock, FineInitBlockSem, mallocngIface]
       generalize (MallocngRoTablesA maddrs) = PRo
-      generalize (MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st') = PCore
+      generalize (MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st') = PCore
       generalize (MallocngRuntime maddrs tp) = PRt
       ac_rfl)) ?_
   exact sepConj_mono_right (sepConj_mono hPostEnv
@@ -276,7 +276,7 @@ theorem commit_stage3_mremap_fine_bupd [MallocngMultiPlacement]
       s0.mem sf.mem)
     (htpSf : sf.tpidrEl0 = tp) (hbrksSf : sf.brkStart = brkStart)
     (hPf : Pf ⊢ stackFrame s0 800 ∗ MallocngRoTablesA maddrs ∗
-      MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
+      MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ∗
       MallocngRuntime maddrs tp ∗
       ⌜(MallocngInitBlock mallocngIface (fineBaseGam γ)).pureWf newQ (newSz, keptBs)⌝ ∗
       (MallocngInitBlock mallocngIface (fineBaseGam γ)).interp newQ (newSz, keptBs) ∗
@@ -309,15 +309,15 @@ theorem commit_stage3_mremap_fine_bupd [MallocngMultiPlacement]
     (maddrs.lock ↦₃₂ 0#32) ∗
     (maddrs.replaced ↦₃₂ 0#32) ∗
     (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-    ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗
-    MallocngAuxvState (fineBaseGam γ) st'.auxvPtr st'.auxvSnap ∗
+    MallocngAuxvPtrCell true maddrs.libc st'.auxvPtr ∗
+    MallocngAuxvStateRo true (fineBaseGam γ) st'.auxvPtr st'.auxvSnap ∗
     ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
     ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
     MappedSet st'.masterDom (OwnedMappedByte st')
   have hExtractWf :
-      MallocngCoreStA (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ⊢
+      MallocngCoreStModeA true (fineBaseGam γ) maddrs brkStart sf.brk live' peak' st' ⊢
         ⌜MallocngWF maddrs.base brkStart sf.brk live' peak' st'⌝ ∗ CoreBody := by
-    unfold MallocngCoreStA MallocngCoreStInflightA MallocngWF
+    unfold MallocngCoreStModeA MallocngCoreStInflightModeA MallocngWF
     exact Entails.of_eq rfl
   refine Entails.trans hPf ?_
   refine Entails.trans
@@ -354,7 +354,7 @@ theorem commit_stage3_mremap_fine_bupd [MallocngMultiPlacement]
       ghostMapAuth (fineAlignGam γ) alignMap' ∗ CoreBody ⊢
         FineCoreStInflightA 0 γ maddrs brkStart sf.brk bf
           (dynamicRootRegions st') alignMap' live' peak' st' := by
-    unfold FineCoreStInflightA MallocngCoreStInflightA
+    unfold FineCoreStInflightA MallocngCoreStInflightModeA
     rw [pure_sepConj_of_true hInv', pure_sepConj_of_true hwf']
     exact Entails.of_eq rfl
   have hPostEnv :
@@ -433,7 +433,7 @@ def ReallocS3PostMremapRawStmt : Prop :=
         ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ ReallocMremapFrame maddrs tp st g ∗
         MallocngLiveAuth γ st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
         (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+        MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap ∗
         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
         MallocngBlockToken γ p oldSz ∗ Frame))
       (fun sf Pf =>
@@ -449,7 +449,7 @@ def ReallocS3PostMremapRawStmt : Prop :=
           (∀ k, st'.liveMap k = if k = newQ then some newSz else if k = p then none else st.liveMap k) ∧
           MallocngNoOrphanMappings (dynamicRootRegions st) (dynamicRootRegions st') s0.mem sf.mem ∧
           (Pf ⊢ stackFrame s0 800 ∗ MallocngRoTablesA maddrs ∗
-            MallocngCoreStA γ maddrs brkStart sf.brk live' peak' st' ∗
+            MallocngCoreStModeA true γ maddrs brkStart sf.brk live' peak' st' ∗
             MallocngRuntime maddrs tp ∗
             ⌜(MallocngInitBlock mallocngIface γ).pureWf newQ (newSz, keptBs)⌝ ∗
             (MallocngInitBlock mallocngIface γ).interp newQ (newSz, keptBs) ∗ Frame)) oom
@@ -506,7 +506,7 @@ theorem realloc_s3_post_mremap_fine_of_raw [MallocngMultiPlacement]
         ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ ReallocMremapFrame maddrs tp st g ∗
         MallocngLiveAuth (fineBaseGam γ) st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
         (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-        ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
+        MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true (fineBaseGam γ) st.auxvPtr st.auxvSnap ∗
         ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
         MallocngBlockToken (fineBaseGam γ) p oldSz ∗
         (ghostMapAuth (fineAlignGam γ) alignMap0 ∗

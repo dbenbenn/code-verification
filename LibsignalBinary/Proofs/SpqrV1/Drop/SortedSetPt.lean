@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Drop Glue for `[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]`
@@ -28,19 +28,9 @@ Proves fixed-image (`drop_glue_sorted_set_pt16_ok_ext`) and relocatable `[Libsig
 (105 instructions).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Layout.L12
-
-open Lean Elab Tactic ProofLib CryptoVerification.SpqrV1.Drop in
-/-- Add instruction-fetch hypotheses for `drop_glue::<[SortedSet<Pt>; 16]>` (`105 * 4 = 420` B). -/
-elab "drop_sorted_set_pt16_fetches " b:term:max H:term:max : tactic => do
-  let eOff ← ProofLib.CodeLookup.lookup ``CryptoVerification.libsignalSessionCode .fnOff
-    "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>"
-  let hfn := mkCIdent eOff.decl
-  let offLit := Syntax.mkNumLit (toString eOff.val)
-  evalTactic (← `(tactic|
-    code_fetches CryptoVerification.libsignalSessionCode spqrDropChainEpochBin $b $H $hfn $offLit 420))
 
 end CryptoVerification.SpqrV1.Layout.L12
 
@@ -69,11 +59,11 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## `SortedSet<Pt>` (`Vec<Pt>`) Array Representation and Specification -/
 
 /-- A `Vec<Pt>` (`SortedSet<Pt>`) at `v` holding `pts : List Pt` (capacity and buffer pointer existentially quantified). -/
-def vecPtOf (A : RustAlloc) (v : BitVec 64) (pts : List Pt) : SepProp :=
+@[expose] def vecPtOf (A : RustAlloc) (v : BitVec 64) (pts : List Pt) : SepProp :=
   vecOf A ptStride ptAlign ptAt v pts
 
 /-- Contiguous array of `Vec<Pt>` headers at `base` with stride `24` bytes. -/
-def vecPtListOf (A : RustAlloc) : BitVec 64 → List (List Pt) → SepProp :=
+@[expose] def vecPtListOf (A : RustAlloc) : BitVec 64 → List (List Pt) → SepProp :=
   arrayAt (fun pts addr => vecPtOf A addr pts) vecHeaderBytes
 
 theorem sortedSetPtOf_eq_vecPtOf (A : RustAlloc) (v : BitVec 64) (s : SortedSetPt) :
@@ -99,7 +89,7 @@ structure DropGlueSortedSetPt16Ghost where
     (105 instructions):
     deallocates all non-zero-capacity `Vec<Pt>` buffers in the 16-element array at `x0 = arrA`
     and leaves `memRegion arrA 384`. -/
-def dropGlueSortedSetPt16Spec (A : RustAlloc) : Spec DropGlueSortedSetPt16Ghost where
+@[expose] def dropGlueSortedSetPt16Spec (A : RustAlloc) : Spec DropGlueSortedSetPt16Ghost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.arrA ∧ x.vecs.length = NUM_POLYS⌝ ∗
       vecPtListOf A x.arrA x.vecs ∗
@@ -112,12 +102,12 @@ def dropGlueSortedSetPt16Spec (A : RustAlloc) : Spec DropGlueSortedSetPt16Ghost 
 /-! ## Deallocation Helpers for `Vec<Pt>` -/
 
 /-- Conditional deallocation resource for a `Vec<Pt>` buffer (`sz = 4`, `align = 2`). -/
-def vecPtDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
+@[expose] def vecPtDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
   if (cap == 0#64) = true then emp
   else A.live ptr (cap <<< 2#64).toNat 2 ∗ memRegion ptr (cap <<< 2#64).toNat
 
 /-- Deallocatable 24-byte `Vec<Pt>` header at `a` plus its conditional heap buffer. -/
-def vecPtSlotDealloc (A : RustAlloc) (a cap ptr : BitVec 64) : SepProp :=
+@[expose] def vecPtSlotDealloc (A : RustAlloc) (a cap ptr : BitVec 64) : SepProp :=
   (a ↦₆₄ cap) ∗ ((a + 8#64) ↦₆₄ ptr) ∗ memRegion (a + 16#64) 8 ∗
     vecPtDealloc A cap ptr
 
@@ -539,112 +529,6 @@ local macro "sorted_set_pt16_main_steps " entry:term : tactic => `(tactic| (
         (tail_dealloc_poly16_post (s0.readReg64 (Reg.gpr 0#5)) A.pool s0.sp) ?_
       wp_done
 ))
-
-private theorem drop_glue_sorted_set_pt16_first8 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropSortedSetPt16Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp arrA : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (c0 c1 c2 c3 c4 c5 c6 c7 : List Pt) (rest : List (List Pt))
-    (s : State) (Frame : SepProp)
-    (hpc : s.pc = (dropProgAtExt b ext).fnAddr dropSortedSetPt16Name + 12#64)
-    (hrun : s.status = .Running)
-    (hx0 : s.readReg64 .x0 = arrA)
-    (hx20 : s.readReg64 .x20 = s0.readReg64 .x20)
-    (hx21 : s.readReg64 .x21 = s0.readReg64 .x21)
-    (hx22 : s.readReg64 .x22 = s0.readReg64 .x22)
-    (hx23 : s.readReg64 .x23 = s0.readReg64 .x23)
-    (hx24 : s.readReg64 .x24 = s0.readReg64 .x24)
-    (hx25 : s.readReg64 .x25 = s0.readReg64 .x25)
-    (hx26 : s.readReg64 .x26 = s0.readReg64 .x26)
-    (hx27 : s.readReg64 .x27 = s0.readReg64 .x27)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (hx29 : s.readReg64 .x29 = fsp)
-    (hsp : s.sp = fsp)
-    (htrace : s.trace = s0.trace)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0) :
-    SepWP (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropSortedSetPt16Name + 208#64)
-      s
-      (vecPtListOf A arrA (c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: c6 :: c7 :: rest) ∗
-        (A.pool ∗ stackAt fsp allocHookStack ∗ Frame))
-      (fun sm Pm =>
-        (Pm ⊢ vecPtListOf A (arrA + 192#64) rest ∗
-          (memRegion arrA 192 ∗ (A.pool ∗ stackAt fsp allocHookStack ∗ Frame))) ∧
-        Saved32Preserved s0 sm fsp arrA) := by
-  simp only [rustDeallocSpec] at hdealloc
-  dsimp only [dropProgAtExt, dropSortedSetPt16Name, BitVec.ofNat_eq_ofNat] at *
-  drop_sorted_set_pt16_fetches b (Rust.withPanics ext)
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" = entry
-  examples_hide_fetches
-  sorted_set_pt16_first8_steps entry
-
-private theorem drop_glue_sorted_set_pt16_mid7 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropSortedSetPt16Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp arrA : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (c8 c9 c10 c11 c12 c13 c14 : List Pt) (rest : List (List Pt))
-    (s : State) (Frame : SepProp)
-    (hpc : s.pc = (dropProgAtExt b ext).fnAddr dropSortedSetPt16Name + 208#64)
-    (hrun : s.status = .Running)
-    (hpres : Saved32Preserved s0 s fsp arrA) :
-    SepWP (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropSortedSetPt16Name + 376#64)
-      s
-      (vecPtListOf A (arrA + 192#64) (c8 :: c9 :: c10 :: c11 :: c12 :: c13 :: c14 :: rest) ∗
-        (memRegion arrA 192 ∗ (A.pool ∗ stackAt fsp allocHookStack ∗ Frame)))
-      (fun sm Pm =>
-        (Pm ⊢ vecPtListOf A (arrA + 360#64) rest ∗
-          (memRegion arrA 360 ∗ (A.pool ∗ stackAt fsp allocHookStack ∗ Frame))) ∧
-        Saved32Preserved s0 sm fsp arrA) := by
-  simp only [rustDeallocSpec] at hdealloc
-  dsimp only [dropProgAtExt, dropSortedSetPt16Name, BitVec.ofNat_eq_ofNat] at *
-  drop_sorted_set_pt16_fetches b (Rust.withPanics ext)
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" = entry
-  examples_hide_fetches
-  sorted_set_pt16_mid7_steps entry
-
-/-- `core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>`
-    (105 instructions) satisfies `dropGlueSortedSetPt16Spec A`. -/
-theorem drop_glue_sorted_set_pt16_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc_base : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropSortedSetPt16Name)
-      (dropGlueSortedSetPt16Spec A) := by
-  simp only [dropGlueSortedSetPt16Spec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropSortedSetPt16Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := num% (ls_rel% "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      dropSortedSetPt16_fnOff dealloc_fnOff_drop (by decide))
-    hdealloc_base
-  have hdealloc := hdealloc_raw
-  simp only [rustDeallocSpec] at hdealloc
-  have hfirst8 := drop_glue_sorted_set_pt16_first8 (b := b) (ext := ext) hdealloc_raw
-  have hmid7 := drop_glue_sorted_set_pt16_mid7 (b := b) (ext := ext) hdealloc_raw
-  drop_sorted_set_pt16_fetches b (Rust.withPanics ext)
-  dsimp only [dropProgAtExt, dropSortedSetPt16Name, BitVec.ofNat_eq_ofNat] at hdealloc hfirst8 hmid7 ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<[sorted_vec::SortedSet<spqr::encoding::polynomial::Pt>; 16]>" = entry
-  examples_hide_fetches
-  sorted_set_pt16_main_steps entry
-
-/-! ## Relocatable `[LibsignalPlacement]` Proof (Block `264`) -/
 
 private theorem drop_glue_sorted_set_pt16_placed_first8 [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

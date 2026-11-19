@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwned
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptDecode
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwned -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob -- proof-setup: allow-public-import
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `initialize_bob_session` (`0x21c80`): Owned-Error Rejecting Run
@@ -24,7 +24,7 @@ the owned `pqxdhAcceptErrPayloadAt` payload across the 48-byte `SignalProtocolEr
 `outPtr + 8#64`, on both `trTrapProgAt` and `tripleRatchetProgAtExt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,14 +46,11 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
   readReg64_setPC_pre readReg64_setMem_setPC_pre
   readReg32_setPC_pre readReg32_setMem_setPC_pre
   readReg_setPC_pre readReg_setMem_setPC_pre
-attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  CryptoVerification.libsignalSessionCode_fnOff_0x21c80
-
 /-- Owned-payload refinement of `initBobErrAt` for the 344-byte
 `Result<SessionState, SignalProtocolError>` sret slot `outPtr` of `initialize_bob_session`:
 `Result::Err` discriminant (`-1`) at `outPtr`, 48-byte `SignalProtocolError` at `outPtr + 8#64`,
 its `pqxdhAcceptErrPayloadAt`, and 288 trailing bytes at `outPtr + 56#64`. -/
-def initBobErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
+@[expose] def initBobErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
   (outPtr ↦₆₄ 0xffffffffffffffff#64) ∗
   ∃∗ errTag : BitVec 64, ∃∗ w2 : BitVec 64, ∃∗ w3 : BitVec 64,
   ∃∗ w4 : BitVec 64, ∃∗ w5 : BitVec 64, ∃∗ w6 : BitVec 64,
@@ -61,42 +58,6 @@ def initBobErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
     speWordsAt (outPtr + 8#64) errTag w2 w3 w4 w5 w6 ∗
     pqxdhAcceptErrPayloadAt A errTag w2 w3 w4 ∗
     memRegion (outPtr + 56#64) 288
-
-/-- `initializeBobSessionErrInnerSpec` strengthened so the `none` postcondition exposes
-`initBobErrOwnedAt A g.outPtr` (retaining the tag-24 heap buffer or tag-10 witness) instead of
-forgetting it into `initBobErrAt g.outPtr`. -/
-def initializeBobSessionErrOwnedInnerSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image) :
-    Spec InitBobCallGhost where
-  pre := fun (g : InitBobCallGhost) s =>
-    ⌜s.readReg64 .x0 = g.argPtr ∧
-      s.readReg64 .x1 = g.ratchetKeyPairPtr ∧
-      s.readReg64 .x8 = g.outPtr ∧
-      g.inp.trustedPeer = true ∧
-      g.inp.replayOk = true ∧
-      g.inp.hdr.opkId?.isSome = g.inp.opkBSk?.isSome ∧
-      WellSizedAcceptKeysInput g.inp ∧
-      g.ikBPk.length = 32 ∧
-      g.spkBPk.length = 32 ∧
-      Model.acceptKeys P g.inp = none⌝ ∗
-    bobParamsFieldsAt g.argPtr g.pqskPtr g.ctSlicePtr g.ctBufPtr g.ratchetKeyPairPtr
-      g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
-    memRegion g.outPtr 344 ∗
-    (logFilterAddr img ↦₆₄ 0#64) ∗
-    stackAt s.sp (768 + pqxdhEntryStack) ∗
-    A.pool
-  post := fun (g : InitBobCallGhost) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-    bobParamsFieldsAt g.argPtr g.pqskPtr g.ctSlicePtr g.ctBufPtr g.ratchetKeyPairPtr
-      g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
-    (initBobErrOwnedAt A g.outPtr ∗ anyHeap) ∗
-    (logFilterAddr img ↦₆₄ 0#64) ∗
-    stackAt s0.sp (768 + pqxdhEntryStack) ∗
-    A.pool
-  onPanic := rustPanicOnOom img
-
-def initializeBobSessionErrOwnedSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image) :
-    Spec InitBobCallGhost :=
-  (initializeBobSessionErrOwnedInnerSpec P A img).inImage img
 
 private theorem initBobErrOwnedAt_merge (A : RustAlloc)
     (outPtr errTag w2 w3 w4 w5 w6 : BitVec 64)
@@ -131,160 +92,5 @@ private theorem initBobErrOwnedAt_merge (A : RustAlloc)
   rw [pure_sepConj_of_true hw1]
   simp only [speWordsAt, BitVec.add_assoc, BitVec.reduceAdd]
   exact Entails.of_eq (by ac_rfl)
-
-set_option maxHeartbeats 1200000 in
-/-- Base `subroutine_ok` on `trTrapProgAt` for `initialize_bob_session` (`0x21c80`) when
-`Model.acceptKeys P inp = none`, retaining the owned `pqxdhAcceptErrPayloadAt` payload. -/
-theorem initializeBobSession_err_owned_base_ok_trap
-    {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {C : Crypto} {absHooks : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hWF : StructuralPrims P)
-    (hH : PqxdhHookContracts P A img absHooks)
-    (hag : PqxdhCalculateAgreementOk_trap P A img C absHooks) :
-    subroutine_ok (trTrapProgAt img.base C absHooks)
-      ((trTrapProgAt img.base C absHooks).fnAddr initializeBobSessionSym)
-      (initializeBobSessionErrOwnedSpec P A img) := by
-  unfold initializeBobSessionErrOwnedSpec Spec.inImage initializeBobSessionErrOwnedInnerSpec
-    bobParamsFieldsAt rustPanicOnOom
-  have hfn : libsignalSessionCode.fnOff initializeBobSessionSym = 0x21c80 :=
-    CryptoVerification.libsignalSessionCode_fnOff_0x21c80
-  have haccept := subroutine_ok_rel_pqxdh_trap
-    (pqxdhAccept_err_owned_base_ok_trap himg hWF hH hag)
-    CryptoVerification.libsignalSessionCode_fnOff_0x23920 hfn (k := 7328) (by decide)
-  dsimp only [pqxdhAcceptErrOwnedSpec, pqxdhAcceptErrOwnedInnerSpec, pqxdhAcceptErrOwnedAt]
-    at haccept
-  clear hfn
-  wpp_init x s0
-  have hfn : libsignalSessionCode.fnOff initializeBobSessionSym = 0x21c80 :=
-    CryptoVerification.libsignalSessionCode_fnOff_0x21c80
-  code_fetches CryptoVerification.libsignalSessionCode
-    CryptoVerification.E2E.Pqxdh.initializeBobSession img.base
-    (Rust.withPanics (trTrapExterns C absHooks)) hfn 0x21c80 608
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase img.base
-        (Rust.withPanics (trTrapExterns C absHooks))).fnAddr initializeBobSessionSym := by
-    try dsimp only [trTrapProgAt] at hpc
-    rw [hpc, Program.fnAddr_rebase, hfn]
-  dsimp only [trTrapProgAt] at haccept
-  clear hfn
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics (trTrapExterns C absHooks))).fnAddr initializeBobSessionSym = entry
-  examples_hide_fetches
-  obtain ⟨inp, ikBPk, spkBPk, sameAccountByte, argPtr, pqskPtr, ctSlicePtr, ctBufPtr,
-    ratchetKeyPairPtr, outPtr⟩ := x
-  dsimp only at *
-  subst h_3 h_4 h_5
-  rw (occs := .pos [1]) [stackAt_initBob_entry s0.sp]
-  simp (config := { maxSteps := 1000000 }) only [
-    cells, sepConj_emp, sepExists_sepConj_left, sepExists_sepConj_right,
-    bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]
-  repeat (refine SepWPp.exists_elim fun _ => ?_)
-  apply SepWPp.of_sepWP_frozen_inImage h_2 h_1 (mid := entry + 7328#64)
-  wp_steps
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
-  intro hF1 hsym1
-  refine SepWPp.call_inImage_frame' hF1 hsym1 haccept
-    (ret_pc := entry + 56#64)
-    (x := ⟨inp, s0.readReg64 (.gpr 0#5), pqskPtr, ctSlicePtr, ctBufPtr, s0.sp - 488#64⟩)
-    (by wp_norm_lhs) (by wp_norm_lhs) (by simp only [*, State.spAligned, arm64_norm])
-    (by wp_norm_lhs)
-    (by simp only [arm64_norm]; rfl)
-    (by simp only [arm64_norm, *])
-    (by sep_focus)
-    (fun _ _ _ _ hm => allowPanic_not_exited hm)
-    (fun sm _ hm => by
-      simpa only [sepConj_assoc] using
-        allowPanic_frame (fun h => allocFailedIn_of_trace_eq (s0 := s0)
-          (by simp only [arm64_norm]) h) hm)
-    (fun sf_1 hpc_1 hrun_1 hsp_1 hsp_al_1 hcs_1 hF2 hsym2 => ?_)
-  dsimp only at *
-  simp only [*, arm64_norm] at hsp_1
-  dsimp only [CalleeSavedPreserved, Reg.fp] at hcs_1
-  rcases hcs_1 with ⟨hcs1_19, hcs1_20, hcs1_21, hcs1_22, hcs1_23, hcs1_24, hcs1_25, hcs1_26,
-    hcs1_27, hcs1_28, hcs1_29, hcs1_vregs⟩
-  simp only [*, arm64_norm]
-    at hcs1_19 hcs1_20 hcs1_21 hcs1_22 hcs1_23 hcs1_24 hcs1_25 hcs1_26 hcs1_27 hcs1_28
-       hcs1_29 hcs1_vregs
-  conv =>
-    arg 4
-    simp only [speWordsAt, sepExists_sepConj_left, sepExists_sepConj_right,
-      bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub,
-      arm64_norm, sepConj_assoc]
-  refine SepWPp.exists_elim fun errTag => ?_
-  refine SepWPp.exists_elim fun w2 => ?_
-  refine SepWPp.exists_elim fun w3 => ?_
-  refine SepWPp.exists_elim fun w4 => ?_
-  refine SepWPp.exists_elim fun w5 => ?_
-  refine SepWPp.exists_elim fun w6 => ?_
-  refine SepWPp.pure_left fun ⟨htr1, herrTag⟩ => ?_
-  apply SepWPp.of_sepWP_ret
-  rw [memRegion_280_none_split s0.sp,
-      memRegion_344_none_split (s0.readReg64 (.gpr 8#5))]
-  simp (config := { maxSteps := 1000000 }) only [
-    cells, sepConj_emp, sepExists_sepConj_left, sepExists_sepConj_right,
-    bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub, sepConj_assoc]
-  wp_pull_exists
-  wp_steps
-  refine SepWP.fold
-    (initBobErrOwnedAt_merge A (s0.readReg64 (.gpr 8#5)) errTag w2 w3 w4 w5 w6 herrTag)
-    (by sep_focus) ?_
-  refine SepWP.fold (cells6_sub764_merge s0.sp _ _ _ _ _ _) (by sep_focus) ?_
-  refine SepWP.fold (Entails.of_eq (memRegion_280_none_split s0.sp).symm) (by sep_focus) ?_
-  refine SepWP.fold (sub488_none_104_merge s0.sp errTag w2 w3 w4 w5 w6) (by sep_focus) ?_
-  refine SepWP.fold (cells12_sub96_merge s0.sp _ _ _ _ _ _ _ _ _ _ _ _) (by sep_focus) ?_
-  refine SepWP.fold (Entails.of_eq (stackAt_initBob_entry s0.sp).symm) (by sep_focus) ?_
-  wp_done
-
-theorem initializeBobSession_err_owned_ok_trap
-    {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {C : Crypto} {absHooks : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hWF : StructuralPrims P)
-    (hH : PqxdhHookContracts P A img absHooks)
-    (hP : PrimitivesMatchCrypto P C) :
-    subroutine_ok (trTrapProgAt img.base C absHooks)
-      ((trTrapProgAt img.base C absHooks).fnAddr initializeBobSessionSym)
-      (initializeBobSessionErrOwnedSpec P A img) :=
-  initializeBobSession_err_owned_base_ok_trap himg hWF hH
-    (pqxdhCalculateAgreement_ok_trap hP himg hH.alloc)
-
-theorem initializeBobSession_err_owned_base_ok_ext
-    {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {C : Crypto} {absHooks ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hWF : StructuralPrims P)
-    (hH : PqxdhHookContracts P A img absHooks)
-    (hag : PqxdhCalculateAgreementOk_trap P A img C absHooks)
-    (htrap : ProofLib.Variant.TrapsOnly (trTrapProgAt img.base C absHooks)
-      (tripleRatchetProgAtExt img.base ext)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr initializeBobSessionSym)
-      (initializeBobSessionErrOwnedSpec P A img) := by
-  have haddr :
-      (tripleRatchetProgAtExt img.base ext).fnAddr initializeBobSessionSym =
-        (trTrapProgAt img.base C absHooks).fnAddr initializeBobSessionSym := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase]
-  rw [haddr]
-  exact subroutine_ok.of_trapsOnly htrap
-    (initializeBobSession_err_owned_base_ok_trap himg hWF hH hag)
-
-/-- Unconditional `subroutine_ok` on `tripleRatchetProgAtExt img.base ext` for
-`initialize_bob_session` (`0x21c80`) when `Model.acceptKeys P inp = none`, lifted across
-`TrapsOnly (trTrapProgAt img.base C absHooks) (tripleRatchetProgAtExt img.base ext)`. -/
-theorem initializeBobSession_err_owned_ok_ext
-    {P : Primitives} {A : RustAlloc} {img : Obj.Image}
-    {C : Crypto} {absHooks ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hWF : StructuralPrims P)
-    (hH : PqxdhHookContracts P A img absHooks)
-    (hP : PrimitivesMatchCrypto P C)
-    (htrap : ProofLib.Variant.TrapsOnly (trTrapProgAt img.base C absHooks)
-      (tripleRatchetProgAtExt img.base ext)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr initializeBobSessionSym)
-      (initializeBobSessionErrOwnedSpec P A img) :=
-  initializeBobSession_err_owned_base_ok_ext himg hWF hH
-    (pqxdhCalculateAgreement_ok_trap hP himg hH.alloc) htrap
 
 end CryptoVerification.E2E.Pqxdh.ResponderCore

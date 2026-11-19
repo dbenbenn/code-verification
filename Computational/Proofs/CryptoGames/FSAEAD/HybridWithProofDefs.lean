@@ -22,7 +22,7 @@ Sender oracles (`transmitHWith`, `challengeHWith`), full oracle implementation (
 tightened hybrid slot count (`slotCount`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 namespace CryptoGames.FSAEAD.Thm5
@@ -37,7 +37,7 @@ local notation "St" => HSt CK MK AD M C
 variable [DecidableEq AD] [DecidableEq M] [DecidableEq C]
 
 /-- Hybrid `transmit` oracle. -/
-def transmitHWith (q : AD × M) : StateT St m (Option (ℕ × C)) := do
+@[expose] def transmitHWith (q : AD × M) : StateT St m (Option (ℕ × C)) := do
   let st ← getH
   if st.ended then pure none else do
   let i := st.lastSentIdx + 1
@@ -48,7 +48,7 @@ def transmitHWith (q : AD × M) : StateT St m (Option (ℕ × C)) := do
   pure (some (i, e))
 
 /-- Hybrid `challenge` oracle. -/
-def challengeHWith (q : AD × M × M) : StateT St m (Option (ℕ × C)) := do
+@[expose] def challengeHWith (q : AD × M × M) : StateT St m (Option (ℕ × C)) := do
   let st ← getH
   if st.ended || st.senderCorruptedAt.isSome then pure none else do
   let i := st.lastSentIdx + 1
@@ -61,7 +61,7 @@ def challengeHWith (q : AD × M × M) : StateT St m (Option (ℕ × C)) := do
   pure (some (i, e))
 
 /-- Combined FS-AEAD game oracles for the hybrid game. -/
-def oraclesWith :
+@[expose] def oraclesWith :
     QueryImpl (spec (RatchetSenderState CK) (RatchetReceiverState CK MK) AD M (ℕ × C))
       (StateT St m) :=
   (transmitHWith ideal ae G P D ops : QueryImpl _ _)
@@ -75,7 +75,7 @@ def oraclesWith :
     + (injectH ae G maxSkip P D ops : QueryImpl _ _)
 
 /-- Full adversary query implementation (coins plus hybrid game oracles). -/
-def implWith : QueryImpl (unifSpec + spec (RatchetSenderState CK) (RatchetReceiverState CK MK) AD M
+@[expose] def implWith : QueryImpl (unifSpec + spec (RatchetSenderState CK) (RatchetReceiverState CK MK) AD M
     (ℕ × C)) (StateT St m) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT St m)
     + oraclesWith ideal ae G maxSkip P D ops
@@ -87,7 +87,7 @@ variable [SampleableType MK] [SampleableType CK] [DecidableEq AD] [DecidableEq M
   (ae : AEADScheme MK (ℕ × AD) M C) (G : ℕ → PRGScheme CK (CK × MK)) (maxSkip : ℕ)
 
 /-- Runs a hybrid game from initial slot `sl` in ambient monad `m` and projects output via `hOut`. -/
-def hRunWith {m : Type → Type} [Monad m] [MonadLiftT ProbComp m] (P : Params)
+@[expose] def hRunWith {m : Type → Type} [Monad m] [MonadLiftT ProbComp m] (P : Params)
     (D : ℕ → ProbComp (CK × MK))
     (ops : Option (SpecialOps AD M C m))
     (A : RatchetAdversary CK MK AD M C) (sl : Slot CK MK) : m Bool := do
@@ -96,11 +96,11 @@ def hRunWith {m : Type → Type} [Monad m] [MonadLiftT ProbComp m] (P : Params)
   pure (hOut P.la z)
 
 /-- Hybrid `A_k` with positions `< k` randomized and uncompromised indices `≤ k` ideal. -/
-def hybridA (k : ℕ) (la : Bool) (A : RatchetAdversary CK MK AD M C) : ProbComp Bool :=
+@[expose] def hybridA (k : ℕ) (la : Bool) (A : RatchetAdversary CK MK AD M C) : ProbComp Bool :=
   hRunWith ideal ae G maxSkip (hp k k la) (DG G) none A .unknown
 
 /-- PRG reduction at cumulative chain step `j` with `t = 0` (message-key slots kept real). -/
-def cumulativeChainPrgReduction (j : ℕ) (A : RatchetAdversary CK MK AD M C) :
+@[expose] def cumulativeChainPrgReduction (j : ℕ) (A : RatchetAdversary CK MK AD M C) :
     PRGScheme.PRGAdversary (CK × MK) := fun mt =>
   hRunWith ideal ae G maxSkip (hp (j / 2) 0 (isLookaheadHop j)) (DG G)
     (none : Option (SpecialOps AD M C ProbComp)) A (.mat (j / 2) mt)
@@ -114,7 +114,7 @@ variable [SampleableType MK] [SampleableType CK] [SampleableType C]
 end Uniform
 
 /-- Total active hybrid slots `2 * q + (maxSkip + 1)` (`q` main-chain plus `q + maxSkip + 1` lookahead-chain steps). -/
-def slotCount (maxSkip q : ℕ) : ℕ :=
+@[expose] def slotCount (maxSkip q : ℕ) : ℕ :=
   2 * q + (maxSkip + 1)
 
 end CryptoGames.FSAEAD.Thm5

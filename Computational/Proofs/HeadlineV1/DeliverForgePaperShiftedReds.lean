@@ -9,11 +9,45 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperTMinusFS
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperCKA
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgeShifted
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperTMinusFS -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperCKA -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgeShifted -- proof-setup: allow-public-import
 import ProofLib.BV.WidthNorm
 import Computational.Proofs.ReductionDsl.Notation
+import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperTMinusSim
+import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.E2E.RefuseCorrB0Core
+import Computational.Proofs.E2E.Relabel.GameEq
+import Computational.Proofs.E2E.SpkHop1A
+import Computational.Proofs.HeadlineV1.CouplingV1
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.Fig8Atomic
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+import Computational.Proofs.SessionCostedFig8.Bundles
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import Mathlib.Data.FinEnum
+import Mathlib.Data.Fintype.BigOperators
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Costed Shifted Paper `DeliverForge` Reductions
@@ -23,7 +57,7 @@ Defines the shifted paper-semantics `DeliverForge` engine and reductions (`redCK
 with their `CostedReduction` counterparts and evaluation bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +69,7 @@ open CryptoGames.SM.Construction.DeliverForge
 
 namespace CryptoGames.SM.Construction.DeliverForge
 
-def implEDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
+@[expose] def implEDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     {Γ T Sig SS RS M CCoins E HS Γv Sv SSv RSv : Type}
     [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (b1 : Bool) (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
@@ -52,7 +86,7 @@ def implEDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     deliverForgeEGen b1 hk Δ qep tStar cfg
   HAdd.hAdd i₀ (HAdd.hAdd i₁ i₂)
 
-def engRunDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
+@[expose] def engRunDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     {Γ T Sig SS RS M CCoins E HS Γv Sv SSv RSv : Type}
     [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (b1 : Bool) (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
@@ -72,7 +106,7 @@ def engRunDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     return some res
 
 /-- Shifted paper authenticity simulator at `Δ = 2 + Δcka` parameterized by `b1 : Bool`. -/
-def authSimDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
+@[expose] def authSimDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
     {K Γ T Sig SS RS M CCoins E HS Γv Sv SSv RSv : Type}
     [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     (b1 : Bool) (l : ℕ) (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep : ℕ)
@@ -112,7 +146,7 @@ def authSimDFShiftedPaperGen {ι : Type} {tspec : OracleSpec.{0, 0} ι}
   congr 1; funext r; rcases r with _ | ⟨_, es⟩ <;> rfl
 
 /-- Shifted paper PRF-PRNG reduction parameterized by `authH : Bool`. -/
-def redPRNGAuthDFShiftedPaperGen
+@[expose] def redPRNGAuthDFShiftedPaperGen
     {KC Γ CCoins T I KR Sig K SS RS M E : Type}
     [DecidableEq T] [DecidableEq M] [DecidableEq E] [Inhabited E]
     [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
@@ -150,7 +184,7 @@ def redPRNGAuthDFShiftedPaperGen
   exact authSimDFShiftedPaperGen_true l fs qep _ _ _ _ tStar A
 
 /-- Shifted paper FS-AEAD reduction parameterized by `authH : Bool`. -/
-def redFSAuthDFShiftedPaperGen
+@[expose] def redFSAuthDFShiftedPaperGen
     {KC Γ CCoins T I KR Sig K SS RS M E : Type}
     [DecidableEq T] [DecidableEq M] [DecidableEq E] [DecidableEq I] [Inhabited E]
     [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
@@ -221,7 +255,7 @@ local notation "OO" =>
   ckaOps ckaInitA ckaInitB ckaSend ckaReceive prngInit prngUp
     fsInitSender fsInitReceiver fsSend fsReceive eqT eqI eqM eqE lam defaultE
 
-def corrECShiftedPaper
+@[expose] def corrECShiftedPaper
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -248,7 +282,7 @@ def corrECShiftedPaper
         | none => return (none, esMk s0 h' true)
         | some st => return (some st, esMk s1 h' (esAbort es0))
 
-def implECShiftedPaperGen
+@[expose] def implECShiftedPaperGen
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (b1 : Bool) (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -278,7 +312,7 @@ def implECShiftedPaperGen
       (r, es') ← corrECShiftedPaper hk L l π es0 arg
       return (.inr r, es')
 
-def implECDFShiftedPaperGen
+@[expose] def implECDFShiftedPaperGen
     {ι : Type} {TSpec : OracleSpec.{0, 0} ι} {I' : Iface S (unifSpec + TSpec)}
     {γvT svT ssvT rsvT hsT : Ty S}
     (b1 : Bool) (hk : HooksC OO I' γvT svT ssvT rsvT hsT)
@@ -771,7 +805,7 @@ local notation "OO" =>
 local notation "II" =>
   ckaIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
 
-def redCKAAuthDFShiftedPaperGenProg (L B Δcka qep maxSkip l tStarH tStar : ℕ) :
+@[expose] def redCKAAuthDFShiftedPaperGenProg (L B Δcka qep maxSkip l tStarH tStar : ℕ) :
     CostedReduction OO II
       (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (ckaSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E)
@@ -941,7 +975,7 @@ local notation "II" =>
   prngIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
 
 /-- Costed shifted paper PRF-PRNG reduction parameterized by `authH : Bool`. -/
-def redPRNGAuthDFShiftedPaperGenProg (L B Δcka qep maxSkip l tStar : ℕ) (authH : Bool) :
+@[expose] def redPRNGAuthDFShiftedPaperGenProg (L B Δcka qep maxSkip l tStar : ℕ) (authH : Bool) :
     CostedReduction OO II (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E) .unit .unit .bool .bool where
   σ := prngEsTy

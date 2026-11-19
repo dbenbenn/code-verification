@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 import all Init.Data.Repr
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
-public import Symbolic.Proofs.Refinement.Composed.Cli.SDet.FilesOfAlg
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.SDet.FilesOfAlg -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.Composed.Cli.ParD7PureGates
 
 /-!
@@ -21,7 +21,7 @@ Proves disjointness of flat-bundle `pqInitInputsF` from `send`/`recv` inputs and
 parsed public bundle, coin tape, and `encodeDir` snapshot under `InputsEquiv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsAPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsBPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Bridge
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2OkPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsBPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Bridge
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -31,6 +31,13 @@ import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeys
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerialize
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP2a -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2Placed
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable Stage P2 Matched-Session Entry Bridge (`+0x0868 → +0x094c`)
@@ -39,7 +46,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `Matched.M2Bridge` on Block `5
 (`lsProg_518 ext`, `(blkPl_518).base = lsmpl.base 518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,8 +57,6 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_sub_96_eq_hsp_592
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched
 
@@ -105,7 +110,7 @@ theorem processPrekeyActive10At_eq_placed [LibsignalPlacement]
     idStorePtr idStoreVt preKeyStorePtr preKeyStoreVt
     kyberStorePtr kyberStoreVt
 
-def stageP2Matched0868PrePlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def stageP2Matched0868PrePlaced [LibsignalPlacement] (A : RustAlloc)
     (sp coroPtr msgPtr : BitVec 64)
     (msgVerByte b_4f1 : BitVec 8)
     (baseKey : PublicKey)
@@ -121,7 +126,7 @@ def stageP2Matched0868PrePlaced [LibsignalPlacement] (A : RustAlloc)
   A.pool ∗
   stackAt sp rootStack
 
-def stageP2Matched094cPostPlaced [LibsignalPlacement] (A : RustAlloc)
+@[expose] def stageP2Matched094cPostPlaced [LibsignalPlacement] (A : RustAlloc)
     (sp coroPtr msgPtr remoteAddrPtr localAddrPtr
       idStorePtr idStoreVt preKeyStorePtr preKeyStoreVt
       kyberStorePtr kyberStoreVt : BitVec 64)
@@ -772,4 +777,3 @@ theorem stageP2_matched_0868_to_094c_placed [LibsignalPlacement] {A : RustAlloc}
   exact Entails.of_eq (by ac_rfl)
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched
-end

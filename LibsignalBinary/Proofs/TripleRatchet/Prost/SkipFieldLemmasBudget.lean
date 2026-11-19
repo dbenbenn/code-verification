@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `skip_field` Induction Combinators
@@ -19,7 +19,7 @@ Depth- and predicate-specialized `skipFieldSpecAtX` contract, relocatable disjun
 combinators on `withLsCodeLoaded`, and the `StartGroup` loop invariant precondition `skipGroupLoopPreX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +36,7 @@ open CryptoVerification.LibsignalTripleRatchet.Prost
 open LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget (SkipFieldEnv)
 
 /-- Depth- and predicate-specialized budget-threaded `skip_field` contract at `skipFieldStackX`. -/
-def skipFieldSpecAtX {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def skipFieldSpecAtX {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (depth : Nat) (P : SkipFieldGhost → Prop) :
     Spec (SkipFieldGhost × M.σ) where
   pre := fun (x, st) s =>

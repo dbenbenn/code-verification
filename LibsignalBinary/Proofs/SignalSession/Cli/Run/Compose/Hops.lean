@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.States
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.States -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned
 
 /-!
 # `signal_session::run`: Continuation Abbreviations and `dropSpeOwned` Slot
@@ -32,7 +32,7 @@ slot used across `Compose/Arms/*` and wired into `run_ok'` in `Compose/RunOk.lea
 | `run_hop_join_ok` | `R+0xf8c / R+0x124 / R+0x2c7c → lr` | `AtJoin ∨ AtReject` | `runPost` at `lr` | `Compose/Arms/J.lean` |
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,35 +50,10 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 
 /-! ## Continuation abbreviations -/
 
-/-- Continuation from `AtJoin` (`R + 0xf8c`). -/
-abbrev JoinK (img : Obj.Image) (ext : String → Option (State → State)) (A : RustAlloc)
-    (g : RunCall) (s0 : State) (resStack : Nat) (Q Qp : State → SepProp → Prop) : Prop :=
-  ∀ (s : State) (g' : StoresGhost) (out : Bytes),
-    AtJoin img ext g g' out s0 s →
-    ProofLib.SepWPp (mProg img ext) (s0.readReg64 .lr) s
-      (joinMem A g g' out s0 resStack) Q Qp (runOom s0)
-
-/-- Continuation from `AtReject` (`R + 0x124` or `R + 0x2c7c`). -/
-abbrev RejectK (img : Obj.Image) (ext : String → Option (State → State)) (A : RustAlloc)
-    (g : RunCall) (s0 : State) (resStack : Nat) (Q Qp : State → SepProp → Prop) : Prop :=
-  ∀ (s : State) (g' : StoresGhost) (rk : RejectKind),
-    AtReject img ext g g' rk s0 s →
-    ProofLib.SepWPp (mProg img ext) (s0.readReg64 .lr) s
-      (rejectMem A g g' rk s0 resStack) Q Qp (runOom s0)
-
 /-- Panic continuation obligation for every hop (`g.a = none ∨ allocFailedIn s0 sf`). -/
 abbrev PanicK (g : RunCall) (s0 : State) (Qp : State → SepProp → Prop) : Prop :=
   ∀ (sf : State) (Pf : SepProp), runPanicProp g s0 sf → Qp sf Pf
 
 /-! ## `dropSpeOwnedSpec` callee slot -/
-
-/-- `drop_glue::<SignalProtocolError>` meets `dropSpeOwnedSpec` from `himg` and `hh.alloc`.
-Passed as `hdrop` to each SPE-dropping hop of `signal_session::run`. -/
-theorem run_hop_dropSpeOwned {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (halloc : AllocContractsX img A ext) :
-    RunDrop.DropSpeOwnedOk img A ext :=
-  RunProofs.cliDropSpeOwned_ok himg halloc
 
 end CryptoVerification.SignalSession.Cli.RunCompose

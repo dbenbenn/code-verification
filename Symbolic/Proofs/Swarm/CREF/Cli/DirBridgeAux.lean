@@ -21,7 +21,7 @@ file lists to right-biased folds over normalized paths (`filesOf_eq_optFold`,
 `filesOf_append_of_regular`, `mem_of_filesOf_eq_some`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,13 +37,13 @@ open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.SignalSession
 
 /-- Directory names under which 2-segment files of `encodeDir`, `initDirs`, and `CliCall.extra` live. -/
-def topFileDirs : List String :=
+@[expose] def topFileDirs : List String :=
   ["identities", "sessions", "signed-pre-keys", "one-time-pre-keys",
    "one-time-kyber-pre-keys", "last-resort-kyber-pre-keys", "bundle"]
 
 /-- Every file entry is visible (`normalizePath ≠ []`, not in `stdioPaths`), is not one of
 `topFileDirs`, and has strict directory prefixes only inside `topFileDirs`. -/
-def RegularFileList (files : List (String × HwBytes)) : Prop :=
+@[expose] def RegularFileList (files : List (String × HwBytes)) : Prop :=
   ∀ f ∈ files,
     Arm64.normalizePath f.1 ≠ [] ∧
     Arm64.normalizePath f.1 ∉ stdioPaths.map Arm64.normalizePath ∧

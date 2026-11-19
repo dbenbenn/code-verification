@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Assumptions.KemCorrect
-public import Computational.Proofs.SpecLemmas.SignalPqxdh.Assumptions
+public import Computational.Proofs.SpecLemmas.SignalPqxdh.Assumptions -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

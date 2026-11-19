@@ -10,12 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.E2E.HooksE.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+public import LibsignalBinary.Proofs.E2E.HooksE.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Adapters
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded External Hook Contract Bundles
@@ -25,7 +27,7 @@ bundles: conditional-OOM `Stage2ContractsPlaced` and total-correctness (`FitsEve
 `Stage2NoOomContractsPlaced`, plus `rustDeallocLayoutBudgetSpec'` and `rustAllocNoOomNW` bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,7 +68,7 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget (AllocContractsXPl
 
 /-- `rustCliDeallocBudgetSpec M A lim` with the `RustLayoutOk size align` precondition required by
 `Externs.deallocSpec`. -/
-def rustDeallocLayoutBudgetSpec' [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def rustDeallocLayoutBudgetSpec' [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BitVec 64 × Nat × Nat × M.σ) where
   pre := fun (p, size, align, st) s =>
     ⌜RustLayoutOk size align⌝ ∗ (rustCliDeallocBudgetSpec M A lim).pre (p, size, align, st) s

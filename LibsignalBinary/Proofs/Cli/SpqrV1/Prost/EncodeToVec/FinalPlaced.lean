@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.TopPlaced
 
 /-!
@@ -21,7 +21,7 @@ mirroring fixed-ELF `LibsignalBinary/Proofs/Cli/SpqrV1/Prost/EncodeToVec/Final.l
 all `Cli/SpqrV1` `MessageEncode` and `ProtoRepr` placed contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

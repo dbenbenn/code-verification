@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh -- proof-setup: allow-public-import
 
 /-!
 # Black-Box Reductions for PQXDH `Auth`: Handshake Simulators
@@ -18,7 +18,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndGapDh
 `fgAuthGapDhAdv4`) for the handshake game hops of the PQXDH `Auth` security game.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,7 +30,7 @@ open FgGapDh
 
 /-! ## `SigEufCma` simulator -/
 
-def evalRootKdfOrRoPrim (useRo : Bool)
+@[expose] def evalRootKdfOrRoPrim (useRo : Bool)
     (rootRoCache : List ((Bytes × Bytes) × (Bytes × Bytes)))
     (rk dh : Bytes) :
     OracleComp PrimBaseSpec ((Bytes × Bytes) × List ((Bytes × Bytes) × (Bytes × Bytes))) := do
@@ -45,7 +45,7 @@ def evalRootKdfOrRoPrim (useRo : Bool)
       let ck1 ← embedUnif sampleBytes32
       return ((rk1, ck1), ((rk, dh), (rk1, ck1)) :: rootRoCache)
 
-def runAuthSendSimPrim (S : Setup)
+@[expose] def runAuthSendSimPrim (S : Setup)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes) :
     StateT (AuthState S) (OracleComp PrimBaseSpec) AuthResponse := do
   let st ← get
@@ -140,7 +140,7 @@ def runAuthSendSimPrim (S : Setup)
   else
     return .sendUnfreshResp drKey rkCk.1 ck1_1 wireMsg
 
-def runAuthRecvStep2SimPrim (S : Setup)
+@[expose] def runAuthRecvStep2SimPrim (S : Setup)
     (st : AuthState S) (kEntry : PrincipalEntry) (msg : PreKeyMsg)
     (drKey : DRKey) (roCache' : List (Bytes × DRKey))
     (rk1 : Bytes) (ck1_1 : Bytes) (rootRoCache' : List ((Bytes × Bytes) × (Bytes × Bytes)))
@@ -177,7 +177,7 @@ def runAuthRecvStep2SimPrim (S : Setup)
         rootRoCache      := rootRoCache' }
       pure (.recvUnfreshResp drKey rk1 ck1_1 pt)
 
-def runAuthRecvFinishSimPrim (S : Setup)
+@[expose] def runAuthRecvFinishSimPrim (S : Setup)
     (st : AuthState S) (kEntry : PrincipalEntry) (msg : PreKeyMsg)
     (drKey : DRKey) (roCache' : List (Bytes × DRKey))
     (rk1 : Bytes) (ck1_0 : Bytes) (rootRoCache' : List ((Bytes × Bytes) × (Bytes × Bytes)))
@@ -195,7 +195,7 @@ def runAuthRecvFinishSimPrim (S : Setup)
     runAuthRecvStep2SimPrim S st kEntry msg drKey roCache' rk1 ck1_1 rootRoCache' mkSeed spqrSalt?
       opkEntries' usedRecvOPK' usedRecvNoOPK' usedTriples'
 
-def runAuthRecvOPKSimPrim (S : Setup)
+@[expose] def runAuthRecvOPKSimPrim (S : Setup)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg) :
     StateT (AuthState S) (OracleComp PrimBaseSpec) AuthResponse := do
   let st ← get
@@ -256,7 +256,7 @@ def runAuthRecvOPKSimPrim (S : Setup)
                     (checkAndMarkKyberBaseKeySeen st.seenKyberBaseKeys k.val msg.hdr.pqspkId msg.hdr.spkId
                       msg.hdr.ekAPk).2
 
-def runAuthRecvNoOPKSimPrim (S : Setup)
+@[expose] def runAuthRecvNoOPKSimPrim (S : Setup)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg) :
     StateT (AuthState S) (OracleComp PrimBaseSpec) AuthResponse := do
   let st ← get
@@ -304,7 +304,7 @@ def runAuthRecvNoOPKSimPrim (S : Setup)
                 (checkAndMarkKyberBaseKeySeen st.seenKyberBaseKeys k.val msg.hdr.pqspkId msg.hdr.spkId
                   msg.hdr.ekAPk).2
 
-def pqxdhAuthSimImplPrim (S : Setup) :
+@[expose] def pqxdhAuthSimImplPrim (S : Setup) :
     QueryImpl (authSpec S) (StateT (AuthState S) (OracleComp PrimBaseSpec)) := fun q =>
   match q with
   | .initPrin u => do
@@ -405,7 +405,7 @@ def pqxdhAuthSimImplPrim (S : Setup) :
     set { st with advKeys := (p8, pk) :: st.advKeys }
     return .pkResp pk
 
-def stepAuthForSigPrim (S : Setup)
+@[expose] def stepAuthForSigPrim (S : Setup)
     (q : AuthQuery S) (s : SigReductionState (AuthState S)) :
     OracleComp PrimBaseSpec (SigStepResultPrim (SigReductionState (AuthState S)) AuthResponse) := do
   if s.forgery.isSome then
@@ -494,19 +494,19 @@ def stepAuthForSigPrim (S : Setup)
       let (out, gs') ← (pqxdhAuthSimImplPrim S q_other).run s.gameState
       return .done out { s with gameState := gs' }
 
-@[reducible]
+@[expose, reducible]
 def simulateAuthForSigPrim (S : Setup) (targetParty : Nat) (targetPk : Bytes)
     (A : AuthAdversary S) :
     OracleComp (PrimBaseSpec + sigOracleSpec) (Bytes × Bytes) :=
   simulateForSigPrim S (AuthState.empty S) (stepAuthForSigPrim S) targetParty targetPk A.run
 
-def sigReductionAuthAt (S : Setup) (b : QueryBudget) (k : Nat)
+@[expose] def sigReductionAuthAt (S : Setup) (b : QueryBudget) (k : Nat)
     (A : BoundedAdv (AuthAdversary S) b) : SigEufCmaAdv where
   run := fun pk => simulateAuthForSigPrim S k pk A.val
   q_sig := 2 * S.N_spk_tot
   q_prim := b.q_total * (S.N_dh * 14 + 23)
 
-def sigReductionAuthRun (S : Setup) (A : AuthAdversary S) (pk : Bytes) :
+@[expose] def sigReductionAuthRun (S : Setup) (A : AuthAdversary S) (pk : Bytes) :
     OracleComp (PrimBaseSpec + sigOracleSpec) (Bytes × Bytes) :=
   if hN : 0 < S.N_id then
     haveI : NeZero S.N_id := ⟨Nat.ne_of_gt hN⟩
@@ -518,7 +518,7 @@ def sigReductionAuthRun (S : Setup) (A : AuthAdversary S) (pk : Bytes) :
 
 /-- `SigEufCma` reduction adversary for `Auth` embedding the challenge verification key at a
     uniformly sampled principal. -/
-def sigReductionAuth (S : Setup) (b : QueryBudget)
+@[expose] def sigReductionAuth (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : SigEufCmaAdv where
   run := sigReductionAuthRun S A.val
   q_sig := 2 * S.N_spk_tot
@@ -528,15 +528,15 @@ def sigReductionAuth (S : Setup) (b : QueryBudget)
 
 abbrev AuthShCrState (S : Setup) := ShCrState S (AuthState S)
 
-def isNoneAuthShCrResp (_ : AuthResponse) : Bool := false
+@[expose] def isNoneAuthShCrResp (_ : AuthResponse) : Bool := false
 
-def runAuthShCrAcceptPrim (S : Setup)
+@[expose] def runAuthShCrAcceptPrim (S : Setup)
     (k : Fin S.N_id) (j : Fin S.N_recv) (hdr : HandshakeHdr) (gq : AuthQuery S) :
     StateT (AuthShCrState S) (OracleComp PrimBaseSpec) AuthResponse := do
   let out ← liftShCrBasePrim (pqxdhAuthSimImplPrim S gq)
   recordAcceptKemGenericPrim AuthState.spkBundles isNoneAuthShCrResp k j hdr out
 
-def genSpkTargetAuthPrim (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) :
+@[expose] def genSpkTargetAuthPrim (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) :
     StateT (AuthShCrState S) (OracleComp PrimBaseSpec) AuthResponse := fun hst => do
   let st := hst.base
   if st.spkBundles.any (fun (k, _) => k == (u.val, j.val)) then
@@ -572,7 +572,7 @@ def genSpkTargetAuthPrim (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) :
   return (.bundleResp bundleOut,
     { hst with base := { st with spkBundles := ((u.val, j.val), bEntry) :: st.spkBundles } })
 
-def runAuthShCrGenSPKPrim (embedTarget : Bool) (S : Setup)
+@[expose] def runAuthShCrGenSPKPrim (embedTarget : Bool) (S : Setup)
     (u : Fin S.N_id) (j : Fin S.N_recv) :
     StateT (AuthShCrState S) (OracleComp PrimBaseSpec) AuthResponse := fun hst =>
   if !embedTarget then
@@ -586,7 +586,7 @@ def runAuthShCrGenSPKPrim (embedTarget : Bool) (S : Setup)
       else
         (liftShCrBasePrim (pqxdhAuthSimImplPrim S (.genSPK u j))).run hst
 
-def preCheckAuthSimPrim (S : Setup)
+@[expose] def preCheckAuthSimPrim (S : Setup)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (st : AuthState S) : OracleComp PrimBaseSpec (Option (PrincipalEntry × Option (Nat ×
         PrincipalEntry) × Bytes)) :=
@@ -609,7 +609,7 @@ def preCheckAuthSimPrim (S : Setup)
           let msgPlain := if isFreshPeer then (if st.secb then m1 else m0) else m0
           return some (uEntry, peerPrincipal?, msgPlain)
 
-def finishAuthSimBasePrim (S : Setup)
+@[expose] def finishAuthSimBasePrim (S : Setup)
     (sid : SessionId S) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (uInfo : PrincipalEntry × Option (Nat × PrincipalEntry) × Bytes)
     (ekASk ephASk spqrCoins ss kemCt : Bytes) (st : AuthState S) :
@@ -684,7 +684,7 @@ def finishAuthSimBasePrim (S : Setup)
       else .sendUnfreshResp drKey rk1 ck1_1 wireMsg
     return (resp, some base')
 
-def postKemAuthPrim (S : Setup)
+@[expose] def postKemAuthPrim (S : Setup)
     (sid : SessionId S) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (uInfo : PrincipalEntry × Option (Nat × PrincipalEntry) × Bytes)
     (hst : AuthShCrState S) (ss kemCt : Bytes) :
@@ -695,7 +695,7 @@ def postKemAuthPrim (S : Setup)
   let out ← finishAuthSimBasePrim S sid bundle m0 m1 uInfo ekASk ephASk spqrCoins ss kemCt hst.base
   return applyShCrFinish sid bundle.pqspkB ss kemCt hst out
 
-def runAuthShCrSendPrim (S : Setup)
+@[expose] def runAuthShCrSendPrim (S : Setup)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes) :
     StateT (AuthShCrState S) (OracleComp PrimBaseSpec) AuthResponse := fun hst => do
   match ← preCheckAuthSimPrim S sid u bundle m0 m1 hst.base with
@@ -717,7 +717,7 @@ def runAuthShCrSendPrim (S : Setup)
             hst.base
         return applyShCrFinish sid bundle.pqspkB ss kemCt hst out
 
-def pqxdhAuthShCrPrimImpl (embedTarget : Bool) (S : Setup) :
+@[expose] def pqxdhAuthShCrPrimImpl (embedTarget : Bool) (S : Setup) :
     QueryImpl (authSpec S) (StateT (AuthShCrState S) (OracleComp PrimBaseSpec))
   | .genSPK u j => runAuthShCrGenSPKPrim embedTarget S u j
   | .sendOPK u i bundle m0 m1 =>
@@ -741,7 +741,7 @@ structure PausedShCrAuthData (S : Setup) where
   hst    : AuthShCrState S
   cont   : AuthResponse → OracleComp (unifSpec + authSpec S) Bool
 
-def tryPauseAuthQueryPrim (S : Setup) (sIdx : Nat) (gq : AuthQuery S)
+@[expose] def tryPauseAuthQueryPrim (S : Setup) (sIdx : Nat) (gq : AuthQuery S)
     (cont : (authSpec S).Range gq → OracleComp (unifSpec + authSpec S) Bool)
     (hst : AuthShCrState S) : OracleComp PrimBaseSpec (Option (PausedShCrAuthData S)) :=
   match gq, cont with
@@ -785,7 +785,7 @@ def tryPauseAuthQueryPrim (S : Setup) (sIdx : Nat) (gq : AuthQuery S)
         else pure none
   | _, _ => pure none
 
-def runWithFuelAuthShCrPrim (S : Setup)
+@[expose] def runWithFuelAuthShCrPrim (S : Setup)
     (oa : OracleComp (unifSpec + authSpec S) Bool)
     (hst : AuthShCrState S) (fuel : ℕ) :
     OracleComp PrimBaseSpec (Bool × AuthShCrState S) :=
@@ -805,7 +805,7 @@ def runWithFuelAuthShCrPrim (S : Setup)
           r out hst' f)
     oa hst fuel
 
-def stepUntilShCrFuelAuthPrim (S : Setup) (sIdx : ℕ)
+@[expose] def stepUntilShCrFuelAuthPrim (S : Setup) (sIdx : ℕ)
     (oa : OracleComp (unifSpec + authSpec S) Bool)
     (hst : AuthShCrState S) (fuel : ℕ) :
     OracleComp PrimBaseSpec (Sum (Bool × AuthShCrState S) (PausedShCrAuthData S)) :=
@@ -829,7 +829,7 @@ def stepUntilShCrFuelAuthPrim (S : Setup) (sIdx : ℕ)
             r out hst' f)
     oa hst fuel
 
-def resumePausedAuthPrim (S : Setup) (fuel : ℕ) (d : PausedShCrAuthData S)
+@[expose] def resumePausedAuthPrim (S : Setup) (fuel : ℕ) (d : PausedShCrAuthData S)
     (ss kemCt : Bytes) : OracleComp PrimBaseSpec (Bool × AuthShCrState S) := do
   let (resp, hst') ← postKemAuthPrim S d.sid d.bundle d.m0 d.m1 d.uInfo d.hst ss kemCt
   runWithFuelAuthShCrPrim S (d.cont resp) hst' fuel
@@ -837,7 +837,7 @@ def resumePausedAuthPrim (S : Setup) (fuel : ℕ) (d : PausedShCrAuthData S)
 abbrev AuthShCrFinishState (S : Setup) :=
   Bytes × Bytes × Bytes × Sum (Bool × AuthShCrState S) (PausedShCrAuthData S)
 
-def choosePkAuthPrimAt (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
+@[expose] def choosePkAuthPrimAt (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
     (A : AuthAdversary S) (pk sk : Bytes) :
     OracleComp PrimBaseSpec (Bytes × AuthShCrFinishState S) := do
   let secb ← embedUnif ($ᵗ Bool)
@@ -853,7 +853,7 @@ def choosePkAuthPrimAt (S : Setup) (b : QueryBudget) (bIdx sIdx : ℕ)
     | Sum.inr d => d.bundle.pqspkB
   return (chosenPk, (pk, sk, chosenPk, res))
 
-def findCollisionAuthPrim (S : Setup) (b : QueryBudget)
+@[expose] def findCollisionAuthPrim (S : Setup) (b : QueryBudget)
     (st : AuthShCrFinishState S) (ss ct : Bytes) : OracleComp PrimBaseSpec Bytes := do
   let (pk, sk, chosenPk, res) := st
   let (_, finalHst) ← match res with
@@ -861,14 +861,14 @@ def findCollisionAuthPrim (S : Setup) (b : QueryBudget)
     | Sum.inr d    => resumePausedAuthPrim S b.q_total d ss ct
   extractCollidingKemCtPrim b.q_total pk sk chosenPk ct ss finalHst.recvKemRecs
 
-def shcrReductionAuthAt (S : Setup) (b : QueryBudget) (idx : ℕ)
+@[expose] def shcrReductionAuthAt (S : Setup) (b : QueryBudget) (idx : ℕ)
     (A : AuthAdversary S) : KemShCrAdv where
   State := AuthShCrFinishState S
   choosePk := choosePkAuthPrimAt S b (idx / S.N_send_tot) (idx % S.N_send_tot) A
   findCollision := findCollisionAuthPrim S b
   q_prim := primQueryBudget S b
 
-def shcrReductionAuthCore (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCrAdv where
+@[expose] def shcrReductionAuthCore (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : KemShCrAdv where
   State := AuthShCrFinishState S
   choosePk := fun pk sk => do
     let idx ← embedUnif (sampleIndexRange (S.N_spk_tot * S.N_send_tot))
@@ -878,7 +878,7 @@ def shcrReductionAuthCore (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : 
 
 /-- `KemShCr` reduction adversary for `Auth` pausing at a uniformly sampled bundle and initiator
     session pair. -/
-def shcrReductionAuth (S : Setup) (b : QueryBudget)
+@[expose] def shcrReductionAuth (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : KemShCrAdv :=
   shcrReductionAuthCore S b A.val
 
@@ -890,12 +890,12 @@ structure FgRootEntry where
   rk1   : Bytes
   ck1_0 : Bytes
 
-def fgRootEntryMatches (rk : Bytes) (dhPos : FgPoS) (e : FgRootEntry) :
+@[expose] def fgRootEntryMatches (rk : Bytes) (dhPos : FgPoS) (e : FgRootEntry) :
     OracleComp GdhSimSpec Bool := do
   if rk != e.rk then return false
   ddhEqGdh dhPos e.dhPos
 
-def fgRootPatch (maxLen : ℕ) (rk : Bytes) (dhPos : FgPoS) (L : List FgRootEntry) :
+@[expose] def fgRootPatch (maxLen : ℕ) (rk : Bytes) (dhPos : FgPoS) (L : List FgRootEntry) :
     OracleComp GdhSimSpec ((Bytes × Bytes) × List FgRootEntry) := do
   match ← findMGdh (fgRootEntryMatches rk dhPos) (L.take maxLen) with
   | some e => return ((e.rk1, e.ck1_0), L)
@@ -919,10 +919,10 @@ structure FgAuthSimState (S : Setup) where
   respRecs   : List AuthRespRecord := []
   advKeyPows : List (Bytes × Bytes) := []
 
-def FgAuthSimState.empty (S : Setup) (secb : Bool) : FgAuthSimState S :=
+@[expose] def FgAuthSimState.empty (S : Setup) (secb : Bool) : FgAuthSimState S :=
   { base := AuthState.empty S secb }
 
-def fgRoQueryAuthGdh {S : Setup} (maxLen : ℕ) (secrets : Bytes)
+@[expose] def fgRoQueryAuthGdh {S : Setup} (maxLen : ℕ) (secrets : Bytes)
     (st : FgAuthSimState S) : OracleComp GdhSimSpec (AuthResponse × FgAuthSimState S) := do
   let advRoLog' := secrets :: st.advRoLog
   match parseRoSecrets secrets with
@@ -944,13 +944,13 @@ def fgRoQueryAuthGdh {S : Setup} (maxLen : ℕ) (secrets : Bytes)
       return (.drKeyResp dk,
         { st with rawRoCache := (secrets, dk) :: st.rawRoCache, advRoLog := advRoLog' })
 
-def fgRoRootQueryAuthGdh {S : Setup} (maxLen : ℕ) (rk dh : Bytes)
+@[expose] def fgRoRootQueryAuthGdh {S : Setup} (maxLen : ℕ) (rk dh : Bytes)
     (st : FgAuthSimState S) : OracleComp GdhSimSpec (AuthResponse × FgAuthSimState S) := do
   let pos ← mkSecretPos dh
   let ((rk1, ck1_0), fgRootL') ← fgRootPatch maxLen rk pos st.fgRootL
   return (.rootKdfResp rk1 ck1_0, { st with fgRootL := fgRootL' })
 
-def fgRunSendAuthGdh (useDh1 : Bool) (targetIdx : ℕ) (S : Setup) (maxLen : ℕ) (U : Bytes)
+@[expose] def fgRunSendAuthGdh (useDh1 : Bool) (targetIdx : ℕ) (S : Setup) (maxLen : ℕ) (U : Bytes)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (st : FgAuthSimState S) : OracleComp GdhSimSpec (AuthResponse × FgAuthSimState S) := do
   if m0.length != m1.length then return (.noneResp, st)
@@ -1028,7 +1028,7 @@ def fgRunSendAuthGdh (useDh1 : Bool) (targetIdx : ℕ) (S : Setup) (maxLen : ℕ
   else
     return (.sendUnfreshResp drKey rk1 ck1_1 wireMsg, st')
 
-def fgFinishRecvStep2AuthGdh (S : Setup) (_k : Fin S.N_id) (_j : Fin S.N_recv)
+@[expose] def fgFinishRecvStep2AuthGdh (S : Setup) (_k : Fin S.N_id) (_j : Fin S.N_recv)
     (msg : PreKeyMsg) (kEntry : PrincipalEntry)
     (drKey : DRKey) (fgL' : List FgPatchEntry)
     (rk1 : Bytes) (ck1_1 : Bytes) (fgRootL' : List FgRootEntry)
@@ -1049,7 +1049,7 @@ def fgFinishRecvStep2AuthGdh (S : Setup) (_k : Fin S.N_id) (_j : Fin S.N_recv)
     | some _ => pure (.recvHonestResp, st')
     | none   => pure (.recvUnfreshResp drKey rk1 ck1_1 pt, st')
 
-def fgFinishRecvAuthGdh (S : Setup) (maxLen : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv)
+@[expose] def fgFinishRecvAuthGdh (S : Setup) (maxLen : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv)
     (msg : PreKeyMsg) (kEntry : PrincipalEntry) (bEntry : SpkBundleEntry)
     (ss : Bytes) (pos4? : Option FgPoS)
     (updBase : AuthState S → AuthState S)
@@ -1069,7 +1069,7 @@ def fgFinishRecvAuthGdh (S : Setup) (maxLen : ℕ) (k : Fin S.N_id) (j : Fin S.N
     fgFinishRecvStep2AuthGdh S k j msg kEntry dkL.1 dkL.2 rkOut.1.1 ck1_1
       rkOut.2 mkSeed spqr.2 updBase st
 
-def fgRunRecvOPKAuthGdh (S : Setup) (maxLen : ℕ)
+@[expose] def fgRunRecvOPKAuthGdh (S : Setup) (maxLen : ℕ)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (msg : PreKeyMsg)
     (st : FgAuthSimState S) : OracleComp GdhSimSpec (AuthResponse × FgAuthSimState S) := do
   if !(msg.hdr.spkId == UInt32.ofNat j.val &&
@@ -1105,7 +1105,7 @@ def fgRunRecvOPKAuthGdh (S : Setup) (maxLen : ℕ)
       opkEntries := opks', usedRecvOPK := (k.val, j.val, o.val) :: base.usedRecvOPK
       seenKyberBaseKeys := usedTriples' }) st
 
-def fgRunRecvNoOPKAuthGdh (S : Setup) (maxLen : ℕ)
+@[expose] def fgRunRecvNoOPKAuthGdh (S : Setup) (maxLen : ℕ)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (msg : PreKeyMsg)
     (st : FgAuthSimState S) : OracleComp GdhSimSpec (AuthResponse × FgAuthSimState S) := do
   if !(msg.hdr.spkId == UInt32.ofNat j.val &&
@@ -1135,7 +1135,7 @@ def fgRunRecvNoOPKAuthGdh (S : Setup) (maxLen : ℕ)
       usedRecvNoOPK := (k.val, j.val, l.val) :: base.usedRecvNoOPK
       seenKyberBaseKeys := usedTriples' }) st
 
-def fgAuthStep (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
+@[expose] def fgAuthStep (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (q : AuthQuery S) (st : FgAuthSimState S) :
     OracleComp GdhSimSpec (AuthResponse × FgAuthSimState S) := do
   match q with
@@ -1217,13 +1217,13 @@ def fgAuthStep (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLe
     let base' := { st.base with advKeys := (powPk, pk) :: st.base.advKeys }
     return (.pkResp pk, { st with base := base', advKeyPows := (sk, powPk) :: st.advKeyPows })
 
-def isTargetPrinCorrupted {S : Setup} (targetIdx : ℕ) (st : FgAuthSimState S) : Bool :=
+@[expose] def isTargetPrinCorrupted {S : Setup} (targetIdx : ℕ) (st : FgAuthSimState S) : Bool :=
   match st.base.principals.find? (fun (idx, _) => idx == targetIdx) with
   | some (_, e) => e.corrupted
   | none        => false
 
 /-- Halting wrapper around `fgAuthStep` that freezes `st` once the target principal is corrupted. -/
-def fgAuthStepHalt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def fgAuthStepHalt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (maxLen : ℕ) (U V : Bytes)
     (q : AuthQuery S) (st : FgAuthSimState S) :
     OracleComp GdhSimSpec (AuthResponse × FgAuthSimState S) :=
@@ -1232,18 +1232,18 @@ def fgAuthStepHalt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
   else
     fgAuthStep useDh1 targetIdx targetSpkIdx S maxLen U V q st
 
-def sessionSenderIdx {S : Setup} : SessionId S → Nat
+@[expose] def sessionSenderIdx {S : Setup} : SessionId S → Nat
   | .sendOPK u _     => u.val
   | .sendNoOPK u _   => u.val
   | .recvOPK k _ _   => k.val
   | .recvNoOPK k _ _ => k.val
 
-def lookupSenderIkPk (principals : List (Nat × PrincipalEntry)) (uIdx : Nat) : Bytes :=
+@[expose] def lookupSenderIkPk (principals : List (Nat × PrincipalEntry)) (uIdx : Nat) : Bytes :=
   match principals.find? (fun (idx, _) => idx == uIdx) with
   | some (_, e) => e.ikAPk
   | none        => []
 
-def lookupAuthSpkSkFromPows (spkPows advKeyPows : List (Bytes × Bytes)) (wSpk : Bytes) : Bytes :=
+@[expose] def lookupAuthSpkSkFromPows (spkPows advKeyPows : List (Bytes × Bytes)) (wSpk : Bytes) : Bytes :=
   match spkPows.find? (fun (sk, wB) => !sk.isEmpty && wB == wSpk) with
   | some (sk, _) => sk
   | none =>
@@ -1251,7 +1251,7 @@ def lookupAuthSpkSkFromPows (spkPows advKeyPows : List (Bytes × Bytes)) (wSpk :
     | some (sk, _) => sk
     | none => []
 
-def initAuthDh1CandWithPowsGdh {S : Setup}
+@[expose] def initAuthDh1CandWithPowsGdh {S : Setup}
     (principals : List (Nat × PrincipalEntry))
     (spkPows advKeyPows : List (Bytes × Bytes))
     (s : AuthInitiatorEntry S) : OracleComp GdhSimSpec Bytes := do
@@ -1260,7 +1260,7 @@ def initAuthDh1CandWithPowsGdh {S : Setup}
   let ikAPk := lookupSenderIkPk principals (sessionSenderIdx s.sid)
   primGdhQ (.x25519 spkSk ikAPk)
 
-def respAuthCandGdh (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
+@[expose] def respAuthCandGdh (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (bKey : Nat × Nat) (pk : Bytes) : OracleComp GdhSimSpec Bytes :=
   let spkSk := match (spkBundles.take S.N_dh).find? (fun (idx, _) => idx == bKey) with
     | some (_, b) => b.spkSk
@@ -1274,11 +1274,11 @@ abbrev respAuthDh3CandGdh (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBun
     (r : AuthRespRecord) : OracleComp GdhSimSpec Bytes :=
   respAuthCandGdh S spkBundles r.bKey r.ekAPk
 
-def initAuthDh3CandGdh {S : Setup} (s' : AuthInitiatorEntry S) : OracleComp GdhSimSpec Bytes :=
+@[expose] def initAuthDh3CandGdh {S : Setup} (s' : AuthInitiatorEntry S) : OracleComp GdhSimSpec Bytes :=
   if s'.ekASk.isEmpty then pure (List.replicate 32 0)
   else primGdhQ (.x25519 s'.ekASk s'.peerSpkPk)
 
-def extractCdhFromAuthSimState (S : Setup) (useDh1 : Bool) (maxLen : ℕ) (U V : Bytes)
+@[expose] def extractCdhFromAuthSimState (S : Setup) (useDh1 : Bool) (maxLen : ℕ) (U V : Bytes)
     (st : FgAuthSimState S) : OracleComp GdhSimSpec Bytes :=
   if useDh1 then do
     match ← findMGdh (fun z => ddhGdhQ U V z) ((st.advRoLog.take maxLen).map FgGapDh.extractDh1)
@@ -1307,7 +1307,7 @@ def extractCdhFromAuthSimState (S : Setup) (useDh1 : Bool) (maxLen : ℕ) (U V :
         | some z => return z
         | none   => return List.replicate 32 0
 
-def fgAuthGapDhRunAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def fgAuthGapDhRunAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b)
     (U V : Bytes) : OracleComp GdhSimSpec Bytes := do
   let secb ← unifGdh ($ᵗ Bool)
@@ -1316,14 +1316,14 @@ def fgAuthGapDhRunAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (fgAuthStepHalt useDh1 targetIdx targetSpkIdx S b.q_total U V) A.1.run initSt
   extractCdhFromAuthSimState S useDh1 b.q_total U V finalSt
 
-def fgAuthGapDhAdvAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def fgAuthGapDhAdvAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) : GapDhAdv where
   run U V := fgAuthGapDhRunAt useDh1 targetIdx targetSpkIdx S b A U V
   q_ddh := 5 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot
   q_prim := b.q_total * (S.N_dh * 18 + 26) + (S.N_dh * 3 + S.N_sess_tot)
 
 /-- Combined two-case (`DH1` and `DH3`) Fiedler–Günther `GapDH` reduction for `Auth`. -/
-def fgAuthGapDhAdv4 (S : Setup) (b : QueryBudget)
+@[expose] def fgAuthGapDhAdv4 (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : GapDhAdv where
   run U V := do
     let (flatIdx, bIdx) ← unifGdh (sampleIndexRange2 (S.N_id + S.N_send_tot) S.N_spk_tot)

@@ -9,17 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Pure
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooksPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Pure -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressA1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.StrlenUtf8A1
+public import VerifiedLibraries.Musl.Spec
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Read-Only `argv` Callee Specifications and Stub Contracts
@@ -30,7 +38,7 @@ Read-only (`↦ᵣ`) counterparts of `main`'s `argv`-consuming callee specificat
 placed stub discharges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -45,7 +53,7 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.LibsignalTripleRatchetRepr (AddrGhost UuidParser protocolAddressAt)
 open CryptoVerification.SignalSession
   (Utf8Ok fromUtf8Hook lsFromUtf8Sym lsMemrchrSym memrchrHook
-   strlenHook unmodelled)
+   strlenHook strlenHook_eq_classical unmodelled)
 open CryptoVerification.SignalSession.Cli.Main.Placed (blkPC_617 blkPl_617 lsProg_617)
 open CryptoVerification.SignalSession.Cli.MainHops
   (AddressCall MemrchrCall addrParse
@@ -71,7 +79,7 @@ abbrev cStrAtRO (p : BitVec 64) (s : List (BitVec 8)) : SepProp :=
   p ↦ᵣ (s ++ [0#8])
 
 /-- Read-only twin of `MainHops.strlenSpec`. -/
-def strlenSpecRO (hookStack : Nat) : Spec (BitVec 64 × List (BitVec 8)) where
+@[expose] def strlenSpecRO (hookStack : Nat) : Spec (BitVec 64 × List (BitVec 8)) where
   pre := fun (p, s) s0 =>
     ⌜s0.readReg64 .x0 = p ∧ ∀ b ∈ s, b ≠ 0#8⌝ ∗ cStrAtRO p s ∗ stackAt s0.sp hookStack
   post := fun (p, s) s0 sf =>
@@ -79,7 +87,7 @@ def strlenSpecRO (hookStack : Nat) : Spec (BitVec 64 × List (BitVec 8)) where
       cStrAtRO p s ∗ stackAt s0.sp hookStack
 
 /-- Read-only twin of `MainHops.fromUtf8AsciiSpec`. -/
-def fromUtf8AsciiSpecRO (hookStack : Nat) :
+@[expose] def fromUtf8AsciiSpecRO (hookStack : Nat) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (r, p, bs) s0 =>
     ⌜s0.readReg64 .x0 = p ∧ s0.readReg64 .x1 = BitVec.ofNat 64 bs.length ∧
@@ -91,7 +99,7 @@ def fromUtf8AsciiSpecRO (hookStack : Nat) :
       stackAt s0.sp hookStack
 
 /-- Read-only twin of `MainHops.memrchrSpec`. -/
-def memrchrSpecRO (stk : Nat) : Spec MemrchrCall where
+@[expose] def memrchrSpecRO (stk : Nat) : Spec MemrchrCall where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = x.c ∧ s.readReg64 .x1 = x.p ∧
       s.readReg64 .x2 = BitVec.ofNat 64 x.bs.length ∧ x.bs.length < 2 ^ 64⌝ ∗
@@ -102,7 +110,7 @@ def memrchrSpecRO (stk : Nat) : Spec MemrchrCall where
       | none => sf.readReg64 .x0 = 0#64⌝ ∗ (x.p ↦ᵣ x.bs) ∗ stackAt s0.sp stk
 
 /-- Read-only twin of `CalleesBudget.addressSpec`. -/
-def addressSpecRO {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def addressSpecRO {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (uuidParse : UuidParser) (resStack : Nat) : Spec (AddressCall × M.σ) where
   pre := fun (x, st) s0 =>
     ⌜s0.readReg64 .x0 = x.out ∧ s0.readReg64 .x1 = x.p ∧
@@ -156,14 +164,6 @@ theorem main_fromUtf8_ro_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       (withLsRoCl lsmpl (withVmPreserved (fromUtf8AsciiSpecRO hookStack))) :=
   hc.fromUtf8
 
-theorem main_address_ro_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {uuidParse : UuidParser} {hookStack resStack : Nat}
-    (hc : MainCalleesROBlk617 A lim H uuidParse hookStack resStack) :
-    subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsmpl.base 580)
-      (withLsRoCl lsmpl (addressSpecRO A lim uuidParse resStack)) :=
-  hc.address
-
 theorem address_ro_keepsFs_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
     {uuidParse : UuidParser} {hookStack resStack : Nat}
@@ -186,22 +186,6 @@ theorem main_reserve16_ro_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsmpl.base 561)
       (withLsRoCl lsmpl (reserve16Spec A lim resStack)) :=
   hc.reserve16
-
-theorem main_reserve1_ro_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {uuidParse : UuidParser} {hookStack resStack : Nat}
-    (hc : MainCalleesROBlk617 A lim H uuidParse hookStack resStack) :
-    subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsmpl.base 561)
-      (withLsRoCl lsmpl (doReserveSpecOf resStack A lim).keepsFs) :=
-  hc.reserve1
-
-theorem main_tryAllocateIn3_ro_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {uuidParse : UuidParser} {hookStack resStack : Nat}
-    (hc : MainCalleesROBlk617 A lim H uuidParse hookStack resStack) :
-    subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsmpl.base 588)
-      (withLsRoCl lsmpl (tryAllocateInRustSpecOf resStack A lim).keepsFs) :=
-  hc.tryAllocateIn3
 
 /-! ## Read-only slice address-space bounds -/
 
@@ -375,7 +359,8 @@ theorem strlenHook_ro_ok (hookStack : Nat) : HookOk strlenHook (strlenSpecRO hoo
       rw [Memory.read8_of_readBytes s0.mem p (s ++ [0#8]) hread m (by simp; omega),
         getD_append_left hm] at hm0
       exact hno0 s[m] (List.getElem_mem hm) hm0
-    unfold strlenHook
+    change strlenHook s0 = _
+    rw [strlenHook_eq_classical]
     dsimp only
     simp only [hx0, hex, ↓reduceDIte, hfind]
   · refine retHook_ok fun _ R s0 hrun hpre _hsp => ?_

@@ -9,14 +9,68 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegDecrypt
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
-public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegDecrypt
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
+public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.SepFocusAc
+meta import LibsignalBinary.Proofs.TripleRatchet.SepFocusAc -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
-import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WPp
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.Multi
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Record.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Decrypt and Dispatch Segment (`SegDecryptBudget`)
@@ -25,7 +79,7 @@ Relocatable `RustCliAllocBudget` / `SeamBudget` verification of the `try_decrypt
 and 3-way outcome dispatch (`+0x69c → +0x1e8c / +0x850`, block 197).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -95,6 +149,8 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget (
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
+
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 
 attribute [local arm64_norm ↓, local wp_norm ↓]
   sp_setPC_pre sp_setMem_setPC_pre
@@ -236,7 +292,7 @@ theorem segDecrypt_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       have htag_ne23' : speTag e ≠ 9223372036854775831#64 := htag_ne23
       apply segDecrypt_of_sepWP_placed hF_sf (mid := lsmpl.base 159)
       refine segDecrypt_replace_pre
-        (speAt_decomp6 A.repAlloc (utf8 "decrypt") (s.sp + 1200#64) e he_npan) (by sep_focus) ?_
+        (speAt_decomp6 A.repAlloc (utf8 "decrypt") (s.sp + 1200#64) e he_npan) (by sep_focus_ac) ?_
       rw [memRegion_5f0_split_b40 s.sp, memRegion48_eq_words6At (s.sp + 2880#64),
         stackAt_root_split_closure s.sp, errsAt_nil_unfold A.repAlloc s.sp]
       unfold words6At
@@ -252,7 +308,7 @@ theorem segDecrypt_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       rename_i hcl
       refine SepWP.transport_budgetPool hcl.1 (hnext := ?_)
       rw [hsp_sf]
-      refine segDecrypt_replace_pre (closureStack_to_growStack s.sp) (by sep_focus) ?_
+      refine segDecrypt_replace_pre (closureStack_to_growStack s.sp) (by sep_focus_ac) ?_
       wp_steps_sync_197 (lsmpl.base 42)
       apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
       intro hF3
@@ -269,14 +325,14 @@ theorem segDecrypt_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       rw [hsp_sf_1, hsp_sf, live_repAlloc A]
       refine segDecrypt_replace_pre
         (spe_errsAt_entails A.repAlloc s.sp p' e tag w1 w2 w3 w4 w5 H_spe hgrow_post.2.1 (hreassemble p'))
-        (by sep_focus) ?_
-      refine segDecrypt_replace_pre (words6_4b0_to_memRegion s.sp tag w1 w2 w3 w4 w5) (by sep_focus) ?_
-      refine segDecrypt_replace_pre (words6_b40_to_memRegion s.sp tag w1 w2 w3 w4 w5) (by sep_focus) ?_
-      refine segDecrypt_replace_pre (growStack_to_rootStack s.sp) (by sep_focus) ?_
+        (by sep_focus_ac) ?_
+      refine segDecrypt_replace_pre (words6_4b0_to_memRegion s.sp tag w1 w2 w3 w4 w5) (by sep_focus_ac) ?_
+      refine segDecrypt_replace_pre (words6_b40_to_memRegion s.sp tag w1 w2 w3 w4 w5) (by sep_focus_ac) ?_
+      refine segDecrypt_replace_pre (growStack_to_rootStack s.sp) (by sep_focus_ac) ?_
       refine segDecrypt_replace_pre
         (sessionStateAt_exists_intro A.repAlloc (s.sp + 3232#64) G₂
-          ((mkTryDecryptGhost s.sp x G₁).model C S uuidTryParse).2) (by sep_focus) ?_
-      refine segDecrypt_replace_pre (tapeAfter_tryDecrypt_entails C ctl s.sp x G₁ heq) (by sep_focus) ?_
+          ((mkTryDecryptGhost s.sp x G₁).model C S uuidTryParse).2) (by sep_focus_ac) ?_
+      refine segDecrypt_replace_pre (tapeAfter_tryDecrypt_entails C ctl s.sp x G₁ heq) (by sep_focus_ac) ?_
       apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
       intro hF4 hmf
       right
@@ -295,7 +351,7 @@ theorem segDecrypt_placed_ok [LibsignalPlacement] {M : AllocCostModel}
           simp only [sessionStateAt_atState, errsAt_atState]
         unfold recFramePlaced
         rw [RustCliAllocBudget.repAlloc_pool, sepConj_emp]
-        exact Eq.mp (congrArg (SepProp.Satisfies · _) (by sep_ac_rfl)) hmf
+        exact Eq.mp (congrArg (SepProp.Satisfies · _) (by sep_ac_rfl_defeq)) hmf
     · -- Duplicate error -> JStatePlaced
       have hsb_free : SeamBudget M lim (RecordDecryptEnv tdEnv x) st_init
           (M.stepEvents evs_td st) FreeOnlyEvs :=
@@ -320,9 +376,9 @@ theorem segDecrypt_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       segDecrypt_wp_extract_exists
       rename_i evs_drop hevs_drop
       rw [hsp_sf]
-      refine segDecrypt_replace_pre (dropLocal2Stack_to_rootStack s.sp) (by sep_focus) ?_
-      refine segDecrypt_replace_pre (errsAt_nil_exists_intro A.repAlloc s.sp) (by sep_focus) ?_
-      refine segDecrypt_replace_pre (tapeAfter_tryDecrypt_entails C ctl s.sp x G₁ heq) (by sep_focus) ?_
+      refine segDecrypt_replace_pre (dropLocal2Stack_to_rootStack s.sp) (by sep_focus_ac) ?_
+      refine segDecrypt_replace_pre (errsAt_nil_exists_intro A.repAlloc s.sp) (by sep_focus_ac) ?_
+      refine segDecrypt_replace_pre (tapeAfter_tryDecrypt_entails C ctl s.sp x G₁ heq) (by sep_focus_ac) ?_
       apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
       intro hF3 hmf
       left
@@ -347,7 +403,7 @@ theorem segDecrypt_placed_ok [LibsignalPlacement] {M : AllocCostModel}
         rw [RustCliAllocBudget.repAlloc_pool, sepConj_emp]
         dsimp only [recordResultAt, vecResultAt, speAt]
         simp only [BitVec.add_assoc, BitVec.reduceAdd]
-        exact Eq.mp (congrArg (SepProp.Satisfies · _) (by sep_ac_rfl)) hmf
+        exact Eq.mp (congrArg (SepProp.Satisfies · _) (by sep_ac_rfl_defeq)) hmf
   · -- Ok branch
     have hsb_free : SeamBudget M lim (RecordDecryptEnv tdEnv x) st_init
         (M.stepEvents evs_td st) FreeOnlyEvs :=
@@ -393,14 +449,14 @@ theorem segDecrypt_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     rw [hsp_sf_1, hsp_sf]
     refine segDecrypt_replace_pre
       (sessionStateAt_move_bytes_twice A.repAlloc (s.sp + 3232#64) (s.sp + 1520#64) (s.sp + 312#64)
-        G₂ ((mkTryDecryptGhost s.sp x G₁).model C S uuidTryParse).2 hbs.2) (by sep_focus) ?_
-    refine segDecrypt_replace_pre (memRegion_5f0_join344 s.sp) (by sep_focus) ?_
-    refine segDecrypt_replace_pre (setStack_to_rootStack s.sp) (by sep_focus) ?_
+        G₂ ((mkTryDecryptGhost s.sp x G₁).model C S uuidTryParse).2 hbs.2) (by sep_focus_ac) ?_
+    refine segDecrypt_replace_pre (memRegion_5f0_join344 s.sp) (by sep_focus_ac) ?_
+    refine segDecrypt_replace_pre (setStack_to_rootStack s.sp) (by sep_focus_ac) ?_
     refine segDecrypt_replace_pre
       (sessionStateAt_ok_exists_intro A.repAlloc (s.sp + 312#64) x.G G₂
-        ((mkTryDecryptGhost s.sp x G₁).model C S uuidTryParse).2 hrel) (by sep_focus) ?_
-    refine segDecrypt_replace_pre (errsAt_nil_exists_intro A.repAlloc s.sp) (by sep_focus) ?_
-    refine segDecrypt_replace_pre (tapeAfter_tryDecrypt_entails C ctl s.sp x G₁ heq) (by sep_focus) ?_
+        ((mkTryDecryptGhost s.sp x G₁).model C S uuidTryParse).2 hrel) (by sep_focus_ac) ?_
+    refine segDecrypt_replace_pre (errsAt_nil_exists_intro A.repAlloc s.sp) (by sep_focus_ac) ?_
+    refine segDecrypt_replace_pre (tapeAfter_tryDecrypt_entails C ctl s.sp x G₁ heq) (by sep_focus_ac) ?_
     apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
     intro hF4 hmf
     left

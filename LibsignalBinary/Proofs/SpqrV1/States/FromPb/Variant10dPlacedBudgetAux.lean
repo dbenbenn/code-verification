@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10d
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10aPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10bPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10d
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10b
@@ -23,6 +23,14 @@ import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Variant 10 (`Ct2Sampled`) Envelopes and Prefix
@@ -31,7 +39,7 @@ Allocation envelopes, `StatesFromPbEnv` subsumption, shared prefix `+1632 -> +57
 `sendingCt2 = none` error path for `InnerState.ct2Sampled` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -103,7 +111,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
     zero allocations (passing `zeroBudgetLimits`), while covering both `auth` cloning and
     non-empty `<PolyEncoder>::from_pb` allocations after dropping the input `ProtoAuthenticator`
     buffers. -/
-def Ct2SampledFromPbAllocEnv (s : V1State.Chunked.Ct2Sampled) (evs : List AllocEvent) : Prop :=
+@[expose] def Ct2SampledFromPbAllocEnv (s : V1State.Chunked.Ct2Sampled) (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => evs = []
   | some uc =>
@@ -121,7 +129,7 @@ def Ct2SampledFromPbAllocEnv (s : V1State.Chunked.Ct2Sampled) (evs : List AllocE
           evs = authFromPbEvents auth ++ evs_af ++ evs_enc
 
 /-- Full postcondition event envelope of Variant 10 (`InnerState.ct2Sampled`, `+1632`). -/
-def Ct2SampledFromPbEnv (s : V1State.Chunked.Ct2Sampled) (evs : List AllocEvent) : Prop :=
+@[expose] def Ct2SampledFromPbEnv (s : V1State.Chunked.Ct2Sampled) (evs : List AllocEvent) : Prop :=
   match s.uc with
   | none => FreeOnlyEvs evs
   | some uc =>

@@ -9,11 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVec
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.FrameROExt
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceFirstHalf
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVec -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.FrameROExt -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceFirstHalf -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigest
 import LibsignalBinary.Proofs.SpqrV1.Kdf.FinalizeFixedExt
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
@@ -21,16 +20,17 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExt
 import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSlice
 import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceGen
 import LibsignalBinary.Proofs.SpqrV1.Kdf.NewFromSliceGt64Ext
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Separation-Logic Contracts for `spqr::kdf::hkdf_to_slice` and `hkdf_to_vec`
 
-Bridges the `RunsTo` and `RunsToE` execution theorems for `spqr::kdf::hkdf_to_slice` (`0x63284`) to
-`subroutine_ok` contracts (in-image, `CliExternsOk`, and `[LibsignalPlacement]`), and discharges
-the tail call in `spqr::kdf::hkdf_to_vec` (`0x631c8`).
+Bridges the `RunsTo` execution theorems for `spqr::kdf::hkdf_to_slice` (`0x63284`) to
+`[LibsignalPlacement]` `subroutine_ok` contracts, and discharges the tail call in
+`spqr::kdf::hkdf_to_vec` (`0x631c8`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -52,7 +52,7 @@ open CryptoVerification.LibsignalSpqrV1 CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Kdf
 open CryptoVerification.SpqrV1.ChainProofs
 
-export CryptoVerification.SpqrV1.Kdf (hkdfToSliceSpqrSpec HkdfToSliceSpqrOkX)
+export CryptoVerification.SpqrV1.ChainProofs (hkdfToSliceSpqrSpec)
 
 private theorem ro_outside_rw {P Q R : SepProp} {b_ro b_rw : BitVec 64} {n_ro n_rw : ℕ}
     {Φ_ro Φ_rw : Memory → Prop} {m : Memory}
@@ -130,174 +130,10 @@ private theorem stackAt_hkdfToSlice (s₀ : State) :
     bv_lin
   rw [h1, h2]
 
-theorem hkdfToSlice_fnAddr_ext (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr ChainProofs.hkdfToSliceName = b + 0x5de8c#64 := by
-  unfold tripleRatchetProgAtExt ChainProofs.hkdfToSliceName
-  rw [Program.fnAddr_rebase, libsignalSessionCode_fnOff_0x5de8c]
-
-/-- `spqr::kdf::hkdf_to_slice` (`0x63284`, 473 instructions) meets
-    `(hkdfToSliceSpqrSpec (spqrHkdfWith C.F)).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-theorem hkdf_to_slice_spqr_ok_ext (img : Obj.Image) (C : Crypto)
-    {abs ext : String → Option (State → State)} [HkdfHooks C.F ext]
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hle : ∀ n f, Rust.withPanics (CryptoVerification.LibsignalSession.sessionExterns C.F abs) n = some f →
-      Rust.withPanics ext n = some f) :
-    HkdfToSliceSpqrOkX img (spqrHkdfWith C.F) ext := by
-  unfold HkdfToSliceSpqrOkX
-  rw [hkdfToSlice_fnAddr_ext]
-  refine subroutine_ok_intro fun x R s0 hpc hrun hpre hsp_al => ?_
-  rw [Spec.inImage, hkdfToSliceSpqrSpec, hkdfToSliceSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, _⟩, hpre⟩
-  dsimp only at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7,
-    hsalt_lt, hikm_len, hinfo_ge, hinfo_lt, hokm_len⟩, hsep⟩
-  rw [stackAt_hkdfToSlice s0] at hsep
-  have hb_okm := IsBlock.memRegion x.okmA x.okmLen
-  have hb_stk := IsBlock.memRegion (hsp s0 - 544#64) 1232
-  let R_inv : SepProp :=
-    bytesAt x.saltRO x.saltA x.salt ∗
-      bytesAt x.ikmRO x.ikmA x.ikm ∗
-      bytesAt x.infoRO x.infoA x.info ∗
-      memRegion (s0.sp - 16384#64) 15152 ∗ R
-  have hsep_okm_stk : s0.mem ⊨ memRegion x.okmA x.okmLen ∗
-      (memRegion (hsp s0 - 544#64) 1232 ∗ R_inv) := by
-    dsimp only [R_inv]; ac_nf at hsep ⊢
-  have hsep_stk : s0.mem ⊨ memRegion (hsp s0 - 544#64) 1232 ∗
-      (memRegion x.okmA x.okmLen ∗ R_inv) := by
-    dsimp only [R_inv]; ac_nf at hsep ⊢
-  have hsep_salt_stk : s0.mem ⊨ bytesAt x.saltRO x.saltA x.salt ∗
-      (memRegion (hsp s0 - 544#64) 1232 ∗
-        (bytesAt x.ikmRO x.ikmA x.ikm ∗ bytesAt x.infoRO x.infoA x.info ∗
-          memRegion x.okmA x.okmLen ∗ memRegion (s0.sp - 16384#64) 15152 ∗ R)) := by
-    ac_nf at hsep ⊢
-  have hsep_salt_okm : s0.mem ⊨ bytesAt x.saltRO x.saltA x.salt ∗
-      (memRegion x.okmA x.okmLen ∗
-        (memRegion (hsp s0 - 544#64) 1232 ∗ bytesAt x.ikmRO x.ikmA x.ikm ∗
-          bytesAt x.infoRO x.infoA x.info ∗ memRegion (s0.sp - 16384#64) 15152 ∗ R)) := by
-    ac_nf at hsep ⊢
-  have hsep_ikm_stk : s0.mem ⊨ bytesAt x.ikmRO x.ikmA x.ikm ∗
-      (memRegion (hsp s0 - 544#64) 1232 ∗
-        (bytesAt x.saltRO x.saltA x.salt ∗ bytesAt x.infoRO x.infoA x.info ∗
-          memRegion x.okmA x.okmLen ∗ memRegion (s0.sp - 16384#64) 15152 ∗ R)) := by
-    ac_nf at hsep ⊢
-  have hsep_ikm_okm : s0.mem ⊨ bytesAt x.ikmRO x.ikmA x.ikm ∗
-      (memRegion x.okmA x.okmLen ∗
-        (memRegion (hsp s0 - 544#64) 1232 ∗ bytesAt x.saltRO x.saltA x.salt ∗
-          bytesAt x.infoRO x.infoA x.info ∗ memRegion (s0.sp - 16384#64) 15152 ∗ R)) := by
-    ac_nf at hsep ⊢
-  have hsep_info_stk : s0.mem ⊨ bytesAt x.infoRO x.infoA x.info ∗
-      (memRegion (hsp s0 - 544#64) 1232 ∗
-        (bytesAt x.saltRO x.saltA x.salt ∗ bytesAt x.ikmRO x.ikmA x.ikm ∗
-          memRegion x.okmA x.okmLen ∗ memRegion (s0.sp - 16384#64) 15152 ∗ R)) := by
-    ac_nf at hsep ⊢
-  have hsep_info_okm : s0.mem ⊨ bytesAt x.infoRO x.infoA x.info ∗
-      (memRegion x.okmA x.okmLen ∗
-        (memRegion (hsp s0 - 544#64) 1232 ∗ bytesAt x.saltRO x.saltA x.salt ∗
-          bytesAt x.ikmRO x.ikmA x.ikm ∗ memRegion (s0.sp - 16384#64) 15152 ∗ R)) := by
-    ac_nf at hsep ⊢
-  have hokm_pos : 0 < x.okmLen := by omega
-  have hokm_le : x.okmLen ≤ 2 ^ 64 := by omega
-  have hrw_okm : s0.mem.RW x.okmA x.okmLen := fun a ha => hb_okm.permNoLazy_rw hsep_okm_stk ha
-  have hrw_stk : s0.mem.RW (hsp s0 - 544#64) 1232 := fun a ha => hb_stk.permNoLazy_rw hsep_stk ha
-  obtain ⟨hro_iv, hiv_eq⟩ := NewFromSlice3Proof.rodata_sha256IV_0x837d8 himg hF.roData
-  have hread_iv : s0.mem.Readable (img.base + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 :=
-    fun a ha => ⟨by rw [(hro_iv a ha).1]; rfl, (hro_iv a ha).2⟩
-  have hout_salt_stk : ∀ a, InRegion x.saltA x.salt.length a →
-      OutsideRegion (hsp s0 - 544#64) 1232 a :=
-    bytesAt_outside_rw (by omega) (by decide) hb_stk hsep_salt_stk
-  have h_hpre : HPre img.base x.salt x.ikm x.info x.saltA x.ikmA x.infoA x.okmA x.okmLen s0 :=
-    { pc_eq         := hpc
-      status        := hrun
-      x0_eq         := hx0
-      x1_eq         := hx1
-      x2_eq         := hx2
-      x3_eq         := hx3
-      x4_eq         := hx4
-      x5_eq         := hx5
-      x6_eq         := hx6
-      x7_eq         := hx7
-      salt_lt       := hsalt_lt
-      ikm_len       := hikm_len
-      info_ge       := hinfo_ge
-      info_lt       := hinfo_lt
-      okm_len       := hokm_len
-      base_al       := ProofLib.base_aligned_of_loads himg
-      ro_iv_bytes   := hiv_eq
-      ro_iv_read    := hread_iv
-      disj_iv_stk   := LibsignalSession.CryptoHmacSha256.disjointRegions_of_ro_rw
-                         (by decide) (by decide) hro_iv hrw_stk
-      disj_iv_okm   := LibsignalSession.CryptoHmacSha256.disjointRegions_of_ro_rw
-                         (by decide) hokm_pos hro_iv hrw_okm
-      salt_bytes    := bytesAt_read (by omega) hsep_salt_stk
-      ikm_bytes     := bytesAt_read (by omega) hsep_ikm_stk
-      info_bytes    := bytesAt_read (by omega) hsep_info_stk
-      rw_okm        := hrw_okm
-      rw_stack      := hrw_stk
-      disj_okm_stk  := hb_okm.disjoint hb_stk hokm_pos (by decide) hsep_okm_stk
-      disj_salt_stk := by
-        by_cases h0 : x.salt.length = 0
-        · exact Or.inl h0
-        · exact Or.inr (disjointRegions_of_outside (by omega) (by decide) hout_salt_stk)
-      out_salt_stk  := hout_salt_stk
-      out_salt_okm  := bytesAt_outside_rw (by omega) hokm_pos hb_okm hsep_salt_okm
-      out_ikm_stk   := bytesAt_outside_rw (by omega) (by decide) hb_stk hsep_ikm_stk
-      out_ikm_okm   := bytesAt_outside_rw (by omega) hokm_pos hb_okm hsep_ikm_okm
-      out_info_stk  := bytesAt_outside_rw (by omega) (by decide) hb_stk hsep_info_stk
-      out_info_okm  := bytesAt_outside_rw (by omega) hokm_pos hb_okm hsep_info_okm
-      sp_aligned    := by simpa [State.spAligned] using hsp_al }
-  have hNfs : Nfs3GenRunsToExt img.base C.F ext :=
-    fun hpc hstat hlen hiv hb hread_iv hdisj_iv h_out h_stk h_out_stk h_key_stk h_key_out hal =>
-      new_from_slice3_gen_runsTo_ext hle hpc hstat hlen hiv hb hread_iv hdisj_iv h_out h_stk h_out_stk h_key_stk h_key_out hal
-  refine (hkdf_to_slice_runsTo_ext hNfs h_hpre).to_reaches_pc fun sf hpost _ _ htr => ?_
-  rcases hpost with ⟨hpc_sf, hstat_sf, hcallee, hokm_sf, hframe_sf⟩
-  refine ⟨hpc_sf, hstat_sf, ?_, CallingConventionPreserved_of_calleeSaved hcallee⟩
-  rw [Spec.inImage, hkdfToSliceSpqrSpec, hkdfToSliceSpec]
-  dsimp only []
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  have h_spqr_eq : spqrHkdfWith C.F x.salt x.ikm x.info x.okmLen =
-      hkdfExpand C.F (hkdfExtractBytes C.F x.salt x.ikm) x.info x.okmLen := rfl
-  have h_exp_len : (spqrHkdfWith C.F x.salt x.ikm x.info x.okmLen).length = x.okmLen := by
-    rw [h_spqr_eq]
-    rcases hokm_len with h32 | h64 | h96
-    · rw [h32, hkdfExpand_32_eq, Expand.t1_length]
-    · rw [h64, hkdfExpand_64_eq]; simp [Expand.t1_length, Expand.t2_length]
-    · rw [h96, hkdfExpand_96_eq]; simp [Expand.t1_length, Expand.t2_length, Expand.t3_length]
-  refine ⟨⟨h_exp_len, htr.1⟩, ?_⟩
-  unfold HFrame at hframe_sf
-  rw [hx6] at hframe_sf
-  rw [← h_spqr_eq] at hokm_sf
-  have hb_okm' := IsBlock.pointsToBytes_len (a := x.okmA) h_exp_len
-  have hpost_sep : sf.mem ⊨ (x.okmA ↦ₛ spqrHkdfWith C.F x.salt x.ikm x.info x.okmLen) ∗
-      (memRegion (hsp s0 - 544#64) 1232 ∗ R_inv) :=
-    Frame.update_two_blocks hb_okm hb_okm' hb_stk hb_stk hsep_okm_stk hframe_sf
-      ⟨by rw [h_exp_len]; exact hokm_le, by rwa [h_exp_len]⟩ trivial
-  rw [stackAt_hkdfToSlice s0]
-  dsimp only [R_inv] at hpost_sep
-  ac_nf at hpost_sep ⊢
-
-/-- `spqr::kdf::hkdf_to_vec` (`0x631c8`, 47 instructions) meets
-    `(hkdfToVecSpec A (spqrHkdfWith C.F)).inImage img`, discharging the `hkdf_to_slice` tail call
-    directly via `hkdf_to_slice_spqr_ok_ext`. -/
-theorem hkdf_to_vec_spqr_ok_ext (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    {abs ext : String → Option (State → State)} [HkdfHooks C.F ext]
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hle : ∀ n f, Rust.withPanics (CryptoVerification.LibsignalSession.sessionExterns C.F abs) n = some f →
-      Rust.withPanics ext n = some f)
-    (hA : AllocContracts img.base A ext)
-    (hZero : HookSat ext allocZeroedName (rustAllocZeroedSpec A)) :
-    HkdfToVecOkX img A (spqrHkdfWith C.F) ext :=
-  hkdf_to_vec_ok_ext img A (spqrHkdfWith C.F) ext hA hZero
-    (hkdf_to_slice_spqr_ok_ext img C himg hle)
-
-/-! ## Contract-Backed (`*Ext`) `subroutine_ok` Proofs (`hkdfToSliceStackExt = 17616` B) -/
-
 export CryptoVerification.SpqrV1.ChainProofs
-  (hkdfToSliceStackExt hkdfToSliceSpecExt hkdfToSliceSpqrSpecExt
-   HkdfToSliceSpqrOkExt HkdfToSliceOkExt)
+  (hkdfToSliceStackExt hkdfToSliceSpecExt hkdfToSliceSpqrSpecExt)
 export CryptoVerification.SpqrV1.Kdf
-  (hkdfToVecStackExt hkdfToVecSpecExt hkdfToVecSpqrSpecExt
-   HkdfToVecOkExt HkdfToVecSpqrOkExt)
+  (hkdfToVecStackExt hkdfToVecSpecExt hkdfToVecSpqrSpecExt)
 
 private theorem bytesAt_readable {ro : Bool} {p : BitVec 64} {bs : List (BitVec 8)}
     {R : SepProp} {m : Memory} (hle : bs.length ≤ 2 ^ 64)
@@ -330,309 +166,6 @@ private def sliceROReg (ro : Bool) (p : BitVec 64) (n : ℕ) : List (BitVec 64 �
 private theorem mem_sliceROReg {r : BitVec 64 × ℕ} {ro : Bool} {p : BitVec 64} {n : ℕ} :
     r ∈ sliceROReg ro p n ↔ ro = true ∧ r = (p, n) := by
   cases ro <;> simp [sliceROReg]
-
-/-- `spqr::kdf::hkdf_to_slice` (473 instructions) meets
-    `(hkdfToSliceSpecExt (spqrHkdfWith F)).inImage img` (`HkdfToSliceSpqrOkExt`) on
-    `tripleRatchetProgAtExt img.base ext` under `SpqrKdfHooksExt img F ext`. -/
-theorem hkdf_to_slice_spqr_ok_of_hooks_ext (img : Obj.Image)
-    {F : ShaState → List (BitVec 8) → ShaState}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hHooks : SpqrKdfHooksExt img F ext) :
-    HkdfToSliceSpqrOkExt img (spqrHkdfWith F) ext := by
-  have hs : HkdfToSliceExtProof.HkdfStubsExt img F ext :=
-    ⟨hHooks, new_from_slice3_gen_runsToE_ext hHooks, finalize_fixed3_gen_runsToE_ext img F ext hHooks⟩
-  unfold HkdfToSliceSpqrOkExt
-  rw [HkdfToSliceExtProof.hkdfToSlice_fnAddr_lsoff]
-  refine subroutine_ok_intro fun x R s0 hpc hrun hpre hsp_al => ?_
-  rw [Spec.inImage, hkdfToSliceSpecExt, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hF, hsym⟩, hpre⟩
-  dsimp only at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, hx6, hx7,
-    hsalt_lt, hikm_len, hinfo_ge, hinfo_lt, hokm_len, hsalt_rw, hikm_rw⟩, hsep⟩
-  rw [HkdfToSliceExtProof.stackAt_hkdfToSlice_ext s0] at hsep
-  have hb_okm := IsBlock.memRegion x.okmA x.okmLen
-  have hb_stk := IsBlock.memRegion (hsp s0 - 16928#64) 17616
-  let roRegs : List (BitVec 64 × ℕ) :=
-    sliceROReg x.saltRO x.saltA x.salt.length ++
-      sliceROReg x.ikmRO x.ikmA x.ikm.length ++
-      sliceROReg x.infoRO x.infoA x.info.length
-  let R_inv : SepProp :=
-    bytesAt x.saltRO x.saltA x.salt ∗
-      bytesAt x.ikmRO x.ikmA x.ikm ∗
-      bytesAt x.infoRO x.infoA x.info ∗ R
-  have hro_R : ∀ ro ∈ roRegs, SpqrKdfExt.HasROAt ro R_inv := by
-    intro ro hmem
-    simp only [roRegs, List.mem_append, mem_sliceROReg] at hmem
-    rcases hmem with (⟨hro, rfl⟩ | ⟨hro, rfl⟩) | ⟨hro, rfl⟩
-    · dsimp only [R_inv]; rw [hro, bytesAt_true]
-      exact SpqrKdfExt.HasROAt.sepConj_left (SpqrKdfExt.HasROAt.pointsToBytesRO (by omega))
-    · dsimp only [R_inv]; rw [hro, bytesAt_true]
-      exact SpqrKdfExt.HasROAt.sepConj_right
-        (SpqrKdfExt.HasROAt.sepConj_left (SpqrKdfExt.HasROAt.pointsToBytesRO (by omega)))
-    · dsimp only [R_inv]; rw [hro, bytesAt_true]
-      exact SpqrKdfExt.HasROAt.sepConj_right (SpqrKdfExt.HasROAt.sepConj_right
-        (SpqrKdfExt.HasROAt.sepConj_left (SpqrKdfExt.HasROAt.pointsToBytesRO (by omega))))
-  have hsep_okm_stk : s0.mem ⊨ memRegion x.okmA x.okmLen ∗
-      (memRegion (hsp s0 - 16928#64) 17616 ∗ R_inv) := by
-    dsimp only [R_inv]; ac_nf at hsep ⊢
-  have hsep_stk : s0.mem ⊨ memRegion (hsp s0 - 16928#64) 17616 ∗
-      (memRegion x.okmA x.okmLen ∗ R_inv) := by
-    dsimp only [R_inv]; ac_nf at hsep ⊢
-  have hsep_salt_stk : s0.mem ⊨ bytesAt x.saltRO x.saltA x.salt ∗
-      (memRegion (hsp s0 - 16928#64) 17616 ∗
-        (bytesAt x.ikmRO x.ikmA x.ikm ∗ bytesAt x.infoRO x.infoA x.info ∗
-          memRegion x.okmA x.okmLen ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_salt_okm : s0.mem ⊨ bytesAt x.saltRO x.saltA x.salt ∗
-      (memRegion x.okmA x.okmLen ∗
-        (memRegion (hsp s0 - 16928#64) 17616 ∗ bytesAt x.ikmRO x.ikmA x.ikm ∗
-          bytesAt x.infoRO x.infoA x.info ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_ikm_stk : s0.mem ⊨ bytesAt x.ikmRO x.ikmA x.ikm ∗
-      (memRegion (hsp s0 - 16928#64) 17616 ∗
-        (bytesAt x.saltRO x.saltA x.salt ∗ bytesAt x.infoRO x.infoA x.info ∗
-          memRegion x.okmA x.okmLen ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_ikm_okm : s0.mem ⊨ bytesAt x.ikmRO x.ikmA x.ikm ∗
-      (memRegion x.okmA x.okmLen ∗
-        (memRegion (hsp s0 - 16928#64) 17616 ∗ bytesAt x.saltRO x.saltA x.salt ∗
-          bytesAt x.infoRO x.infoA x.info ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_info_stk : s0.mem ⊨ bytesAt x.infoRO x.infoA x.info ∗
-      (memRegion (hsp s0 - 16928#64) 17616 ∗
-        (bytesAt x.saltRO x.saltA x.salt ∗ bytesAt x.ikmRO x.ikmA x.ikm ∗
-          memRegion x.okmA x.okmLen ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_info_okm : s0.mem ⊨ bytesAt x.infoRO x.infoA x.info ∗
-      (memRegion x.okmA x.okmLen ∗
-        (memRegion (hsp s0 - 16928#64) 17616 ∗ bytesAt x.saltRO x.saltA x.salt ∗
-          bytesAt x.ikmRO x.ikmA x.ikm ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_ikm_salt : s0.mem ⊨ bytesAt x.ikmRO x.ikmA x.ikm ∗
-      (bytesAt x.saltRO x.saltA x.salt ∗
-        (bytesAt x.infoRO x.infoA x.info ∗ memRegion x.okmA x.okmLen ∗
-          memRegion (hsp s0 - 16928#64) 17616 ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_info_salt : s0.mem ⊨ bytesAt x.infoRO x.infoA x.info ∗
-      (bytesAt x.saltRO x.saltA x.salt ∗
-        (bytesAt x.ikmRO x.ikmA x.ikm ∗ memRegion x.okmA x.okmLen ∗
-          memRegion (hsp s0 - 16928#64) 17616 ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_salt_ikm : s0.mem ⊨ bytesAt x.saltRO x.saltA x.salt ∗
-      (bytesAt x.ikmRO x.ikmA x.ikm ∗
-        (bytesAt x.infoRO x.infoA x.info ∗ memRegion x.okmA x.okmLen ∗
-          memRegion (hsp s0 - 16928#64) 17616 ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_info_ikm : s0.mem ⊨ bytesAt x.infoRO x.infoA x.info ∗
-      (bytesAt x.ikmRO x.ikmA x.ikm ∗
-        (bytesAt x.saltRO x.saltA x.salt ∗ memRegion x.okmA x.okmLen ∗
-          memRegion (hsp s0 - 16928#64) 17616 ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_salt_info : s0.mem ⊨ bytesAt x.saltRO x.saltA x.salt ∗
-      (bytesAt x.infoRO x.infoA x.info ∗
-        (bytesAt x.ikmRO x.ikmA x.ikm ∗ memRegion x.okmA x.okmLen ∗
-          memRegion (hsp s0 - 16928#64) 17616 ∗ R)) := by ac_nf at hsep ⊢
-  have hsep_ikm_info : s0.mem ⊨ bytesAt x.ikmRO x.ikmA x.ikm ∗
-      (bytesAt x.infoRO x.infoA x.info ∗
-        (bytesAt x.saltRO x.saltA x.salt ∗ memRegion x.okmA x.okmLen ∗
-          memRegion (hsp s0 - 16928#64) 17616 ∗ R)) := by ac_nf at hsep ⊢
-  have hokm_pos : 0 < x.okmLen := by omega
-  have hokm_le : x.okmLen ≤ 2 ^ 64 := by omega
-  have hrw_okm : s0.mem.RW x.okmA x.okmLen := fun a ha => hb_okm.permNoLazy_rw hsep_okm_stk ha
-  have hrw_stk : s0.mem.RW (hsp s0 - 16928#64) 17616 := fun a ha => hb_stk.permNoLazy_rw hsep_stk ha
-  obtain ⟨hro_iv, hiv_eq⟩ := NewFromSlice3Proof.rodata_sha256IV_0x837d8 himg hF.roData
-  have hread_iv : s0.mem.Readable (img.base + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 := by
-    intro a ha; exact ⟨by rw [(hro_iv a ha).1]; rfl, (hro_iv a ha).2⟩
-  have hout_salt_stk := bytesAt_outside_rw (by omega) (by decide) hb_stk hsep_salt_stk
-  have hout_salt_okm := bytesAt_outside_rw (by omega) hokm_pos hb_okm hsep_salt_okm
-  have hout_ikm_stk := bytesAt_outside_rw (by omega) (by decide) hb_stk hsep_ikm_stk
-  have hout_ikm_okm := bytesAt_outside_rw (by omega) hokm_pos hb_okm hsep_ikm_okm
-  have hout_info_stk := bytesAt_outside_rw (by omega) (by decide) hb_stk hsep_info_stk
-  have hout_info_okm := bytesAt_outside_rw (by omega) hokm_pos hb_okm hsep_info_okm
-  have h_salt_inv : SpqrKdfExt.KdfSliceInv x.saltRO roRegs s0.mem x.saltA x.salt
-      (hsp s0 - 16928#64) 17616 x.okmA x.okmLen :=
-    { bytes_eq := bytesAt_read (by omega) hsep_salt_stk
-      readable := bytesAt_readable (by omega) hsep_salt_stk
-      perm_inv := by
-        cases hro : x.saltRO
-        · simp only [Bool.false_eq_true, ↓reduceIte]
-          refine ⟨bytesAt_rw_of_false (by rwa [hro] at hsep_salt_stk), fun r hr a ha => ?_⟩
-          simp only [roRegs, List.mem_append, mem_sliceROReg] at hr
-          rcases hr with (⟨h1, rfl⟩ | ⟨h1, rfl⟩) | ⟨h1, rfl⟩
-          · rw [hro] at h1; cases h1
-          · exact bytesAt_true_outside_false h1 hro (by omega) hsep_ikm_salt a ha
-          · exact bytesAt_true_outside_false h1 hro (by omega) hsep_info_salt a ha
-        · simp only [↓reduceIte]
-          exact fun a ha => ⟨(x.saltA, x.salt.length),
-            by simp [roRegs, mem_sliceROReg, hro], ha⟩
-      out_stk := hout_salt_stk
-      out_okm := hout_salt_okm }
-  have h_ikm_inv : SpqrKdfExt.KdfSliceInv x.ikmRO roRegs s0.mem x.ikmA x.ikm
-      (hsp s0 - 16928#64) 17616 x.okmA x.okmLen :=
-    { bytes_eq := bytesAt_read (by omega) hsep_ikm_stk
-      readable := bytesAt_readable (by omega) hsep_ikm_stk
-      perm_inv := by
-        cases hro : x.ikmRO
-        · simp only [Bool.false_eq_true, ↓reduceIte]
-          refine ⟨bytesAt_rw_of_false (by rwa [hro] at hsep_ikm_stk), fun r hr a ha => ?_⟩
-          simp only [roRegs, List.mem_append, mem_sliceROReg] at hr
-          rcases hr with (⟨h1, rfl⟩ | ⟨h1, rfl⟩) | ⟨h1, rfl⟩
-          · exact bytesAt_true_outside_false h1 hro (by omega) hsep_salt_ikm a ha
-          · rw [hro] at h1; cases h1
-          · exact bytesAt_true_outside_false h1 hro (by omega) hsep_info_ikm a ha
-        · simp only [↓reduceIte]
-          exact fun a ha => ⟨(x.ikmA, x.ikm.length),
-            by simp [roRegs, mem_sliceROReg, hro], ha⟩
-      out_stk := hout_ikm_stk
-      out_okm := hout_ikm_okm }
-  have h_info_inv : SpqrKdfExt.KdfSliceInv x.infoRO roRegs s0.mem x.infoA x.info
-      (hsp s0 - 16928#64) 17616 x.okmA x.okmLen :=
-    { bytes_eq := bytesAt_read (by omega) hsep_info_stk
-      readable := bytesAt_readable (by omega) hsep_info_stk
-      perm_inv := by
-        cases hro : x.infoRO
-        · simp only [Bool.false_eq_true, ↓reduceIte]
-          refine ⟨bytesAt_rw_of_false (by rwa [hro] at hsep_info_stk), fun r hr a ha => ?_⟩
-          simp only [roRegs, List.mem_append, mem_sliceROReg] at hr
-          rcases hr with (⟨h1, rfl⟩ | ⟨h1, rfl⟩) | ⟨h1, rfl⟩
-          · exact bytesAt_true_outside_false h1 hro (by omega) hsep_salt_info a ha
-          · exact bytesAt_true_outside_false h1 hro (by omega) hsep_ikm_info a ha
-          · rw [hro] at h1; cases h1
-        · simp only [↓reduceIte]
-          exact fun a ha => ⟨(x.infoA, x.info.length),
-            by simp [roRegs, mem_sliceROReg, hro], ha⟩
-      out_stk := hout_info_stk
-      out_okm := hout_info_okm }
-  have h_hpre : HkdfToSliceExtProof.HPreExt img.base x.saltRO x.ikmRO x.infoRO roRegs
-      x.salt x.ikm x.info x.saltA x.ikmA x.infoA x.okmA x.okmLen s0 :=
-    { pc_eq        := hpc
-      status       := hrun
-      x0_eq        := hx0
-      x1_eq        := hx1
-      x2_eq        := hx2
-      x3_eq        := hx3
-      x4_eq        := hx4
-      x5_eq        := hx5
-      x6_eq        := hx6
-      x7_eq        := hx7
-      salt_lt      := hsalt_lt
-      ikm_len      := hikm_len
-      info_ge      := hinfo_ge
-      info_lt      := hinfo_lt
-      okm_len      := hokm_len
-      base_al      := ProofLib.base_aligned_of_loads himg
-      ro_iv_bytes  := hiv_eq
-      ro_iv_read   := hread_iv
-      disj_iv_stk  := LibsignalSession.CryptoHmacSha256.disjointRegions_of_ro_rw
-                        (by decide) (by decide) hro_iv hrw_stk
-      disj_iv_okm  := LibsignalSession.CryptoHmacSha256.disjointRegions_of_ro_rw
-                        (by decide) hokm_pos hro_iv hrw_okm
-      salt_inv     := h_salt_inv
-      salt_ro_le   := fun ht => hsalt_rw.resolve_left (by simp [ht])
-      ikm_inv      := h_ikm_inv
-      ikm_ro_lt    := fun ht => hikm_rw.resolve_left (by simp [ht])
-      info_inv     := h_info_inv
-      rw_okm       := hrw_okm
-      rw_stack     := hrw_stk
-      disj_okm_stk := hb_okm.disjoint hb_stk hokm_pos (by decide) hsep_okm_stk
-      ro_out_stk   := by
-        intro r hr a ha
-        simp only [roRegs, List.mem_append, mem_sliceROReg] at hr
-        rcases hr with (⟨_, rfl⟩ | ⟨_, rfl⟩) | ⟨_, rfl⟩
-        · exact hout_salt_stk a ha
-        · exact hout_ikm_stk a ha
-        · exact hout_info_stk a ha
-      ro_out_okm   := by
-        intro r hr a ha
-        simp only [roRegs, List.mem_append, mem_sliceROReg] at hr
-        rcases hr with (⟨_, rfl⟩ | ⟨_, rfl⟩) | ⟨_, rfl⟩
-        · exact hout_salt_okm a ha
-        · exact hout_ikm_okm a ha
-        · exact hout_info_okm a ha
-      sp_aligned   := by simpa [State.spAligned] using hsp_al }
-  refine (HkdfToSliceExtProof.hkdf_to_slice_runsToE_ext hs hF hsym h_hpre).to_reaches_pc
-    fun sf hpost _ _ htr => ?_
-  rcases hpost with ⟨hpc_sf, hstat_sf, hcallee, hokm_sf, hframe_sf⟩
-  refine ⟨hpc_sf, hstat_sf, ?_, CallingConventionPreserved_of_calleeSaved hcallee⟩
-  rw [Spec.inImage, hkdfToSliceSpecExt]
-  dsimp only []
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  have h_spqr_eq : spqrHkdfWith F x.salt x.ikm x.info x.okmLen =
-      hkdfExpand F (hkdfExtractBytes F x.salt x.ikm) x.info x.okmLen := rfl
-  have h_exp_len : (spqrHkdfWith F x.salt x.ikm x.info x.okmLen).length = x.okmLen := by
-    rw [h_spqr_eq]
-    rcases hokm_len with h32 | h64 | h96
-    · rw [h32, hkdfExpand_32_eq, Expand.t1_length]
-    · rw [h64, hkdfExpand_64_eq]; simp [Expand.t1_length, Expand.t2_length]
-    · rw [h96, hkdfExpand_96_eq]; simp [Expand.t1_length, Expand.t2_length, Expand.t3_length]
-  refine ⟨⟨h_exp_len, htr.1⟩, ?_⟩
-  unfold HkdfToSliceExtProof.HFrameExt at hframe_sf
-  rw [hx6] at hframe_sf
-  rw [← h_spqr_eq] at hokm_sf
-  have hb_okm' := IsBlock.pointsToBytes_len (a := x.okmA) h_exp_len
-  have hpost_sep : sf.mem ⊨ (x.okmA ↦ₛ spqrHkdfWith F x.salt x.ikm x.info x.okmLen) ∗
-      (memRegion (hsp s0 - 16928#64) 17616 ∗ R_inv) :=
-    SpqrKdfExt.S2FrameRO.update_two_blocks_ro hb_okm hb_okm' hb_stk hb_stk hro_R hsep_okm_stk
-      hframe_sf ⟨by rw [h_exp_len]; exact hokm_le, by rwa [h_exp_len]⟩ trivial
-  rw [HkdfToSliceExtProof.stackAt_hkdfToSlice_ext s0]
-  dsimp only [R_inv] at hpost_sep
-  ac_nf at hpost_sep ⊢
-
-/-- `spqr::kdf::hkdf_to_slice` meets `HkdfToSliceSpqrOkExt` on raw `ext` under `CliExternsOk P A ext`. -/
-theorem hkdf_to_slice_spqr_ok_of_externsOk_raw (img : Obj.Image) {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hOk : SignalSession.CliExternsOk P A ext) :
-    HkdfToSliceSpqrOkExt img (spqrHkdfWith P.C.F) ext :=
-  hkdf_to_slice_spqr_ok_of_hooks_ext img himg (SpqrKdfHooksExt.of_externsOk_raw img hOk)
-
-/-- `spqr::kdf::hkdf_to_slice` meets `HkdfToSliceSpqrOkExt` on `cliExternsWith ext` under
-`CliExternsOk P A ext`. -/
-theorem hkdf_to_slice_spqr_ok_ext' (img : Obj.Image) {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hOk : SignalSession.CliExternsOk P A ext) :
-    HkdfToSliceSpqrOkExt img (spqrHkdfWith P.C.F) (SignalSession.cliExternsWith ext) :=
-  hkdf_to_slice_spqr_ok_of_hooks_ext img himg (SpqrKdfHooksExt.of_externsOk img hOk)
-
-private theorem hookSat_allocZeroed_cliExternsWith {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hZero : HookSat ext allocZeroedName (rustAllocZeroedSpec A)) :
-    HookSat (SignalSession.cliExternsWith ext) allocZeroedName (rustAllocZeroedSpec A) := by
-  obtain ⟨f, hf, hok⟩ := hZero
-  have hn : E2E.isImagePanicSymbol allocZeroedName = false := by
-    simp [E2E.isImagePanicSymbol, allocZeroedName, Rust.isPanicSymbol, E2E.extraImagePanicNames]
-  have heq : SignalSession.cliExternsWith ext allocZeroedName = ext allocZeroedName := by
-    simp [SignalSession.cliExternsWith, E2E.withImagePanics, hn]
-  exact ⟨f, heq.trans hf, hok⟩
-
-/-- `spqr::kdf::hkdf_to_vec` (47 instructions) meets `(hkdfToVecSpecExt A (spqrHkdfWith F)).inImage img`
-    (`HkdfToVecOkExt`) under `SpqrKdfHooksExt`, `AllocContractsX`, and `HookSat` for `alloc_zeroed`. -/
-theorem hkdf_to_vec_spqr_ok_of_hooks_ext (img : Obj.Image)
-    {F : ShaState → List (BitVec 8) → ShaState} (A : RustAlloc)
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hHooks : SpqrKdfHooksExt img F ext)
-    (hA : AllocContractsX img A ext)
-    (hZero : HookSat ext allocZeroedName (rustAllocZeroedSpec A)) :
-    HkdfToVecOkExt img A (spqrHkdfWith F) ext :=
-  hkdf_to_vec_ok_extX img A (spqrHkdfWith F) ext hA hZero
-    (hkdf_to_slice_spqr_ok_of_hooks_ext img himg hHooks)
-
-/-- `spqr::kdf::hkdf_to_vec` meets `HkdfToVecOkExt` on raw `ext` under `CliExternsOk P A ext`. -/
-theorem hkdf_to_vec_spqr_ok_of_externsOk_raw (img : Obj.Image) {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hOk : SignalSession.CliExternsOk P A ext)
-    (hA : AllocContractsX img A ext) :
-    HkdfToVecOkExt img A (spqrHkdfWith P.C.F) ext :=
-  hkdf_to_vec_spqr_ok_of_hooks_ext img A himg
-    (SpqrKdfHooksExt.of_externsOk_raw img hOk) hA hOk.allocZeroed
-
-/-- `spqr::kdf::hkdf_to_vec` meets `HkdfToVecOkExt` on `cliExternsWith ext` under
-`CliExternsOk P A ext`. -/
-theorem hkdf_to_vec_spqr_ok_ext' (img : Obj.Image) {P : E2E.PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hOk : SignalSession.CliExternsOk P A ext)
-    (hA : AllocContractsX img A (SignalSession.cliExternsWith ext)) :
-    HkdfToVecOkExt img A (spqrHkdfWith P.C.F) (SignalSession.cliExternsWith ext) :=
-  hkdf_to_vec_spqr_ok_of_hooks_ext img A himg
-    (SpqrKdfHooksExt.of_externsOk img hOk) hA (hookSat_allocZeroed_cliExternsWith hOk.allocZeroed)
-
-/-! ## Multi-Placed `[LibsignalPlacement]` Separation Logic Bridges (Blocks `379` & `428`) -/
 
 theorem rodata_sha256IV_placed [LibsignalPlacement] {m : Memory}
     (hro : LibsignalRoLoaded lsmpl m) :
@@ -709,7 +242,7 @@ theorem hkdf_to_slice_spqr_placed_ok [LibsignalPlacement] (C : Crypto)
   have hrw_okm : s0.mem.RW x.okmA x.okmLen := fun a ha => hb_okm.permNoLazy_rw hsep_okm_stk ha
   have hrw_stk : s0.mem.RW (hsp s0 - 544#64) 1232 := fun a ha => hb_stk.permNoLazy_rw hsep_stk ha
   obtain ⟨hro_iv, hiv_eq⟩ := rodata_sha256IV_placed hro
-  have hread_iv : s0.mem.Readable (NewFromSlice3Proof.nfs3PlacedFakeB + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 := by
+  have hread_iv : s0.mem.Readable (NewFromSlice3Proof.nfs3PlacedFakeB + bv% (601056 + 64)) 32 := by
     rw [NewFromSlice3Proof.nfs3PlacedFakeB_add_iv]
     exact fun a ha => ⟨by rw [(hro_iv a ha).1]; rfl, (hro_iv a ha).2⟩
   have hout_salt_stk : ∀ a, InRegion x.saltA x.salt.length a →

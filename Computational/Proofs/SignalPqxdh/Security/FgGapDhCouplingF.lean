@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingE
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingE -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDh
 import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
 
@@ -20,7 +20,7 @@ Maintains the `drKeyRand.rootKey` tag invariant `ValidTagState` across `pqxdhKey
 and proves that `lazyStop` implies `badKeyIndFgAny4` or `isKeyIndG3Abort`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,12 +35,12 @@ open Proofs.SignalPqxdh.Security.FgGapDh.Opk
 
 namespace Proofs.SignalPqxdh.Security
 
-def InSessions {S : Setup} (st : KeyIndState S) :
+@[expose] def InSessions {S : Setup} (st : KeyIndState S) :
     (KeyIndInitiatorEntry S ⊕ KeyIndRespEntry S) → Prop
   | .inl s => s ∈ st.sessions
   | .inr r => r ∈ st.respSessions
 
-def randRootKey {S : Setup} : (KeyIndInitiatorEntry S ⊕ KeyIndRespEntry S) → Bytes
+@[expose] def randRootKey {S : Setup} : (KeyIndInitiatorEntry S ⊕ KeyIndRespEntry S) → Bytes
   | .inl s => s.drKeyRand.rootKey
   | .inr r => r.drKeyRand.rootKey
 
@@ -914,7 +914,7 @@ theorem badKeyIndFgAny4_of_isSessionStillFreshKeyInd_mem_advRoLog {S : Setup} (P
 
 /-- Combined structural invariant on `adv : KeyIndAdvCutoffState S` maintained by
     `pqxdhKeyIndAdvTagImpl`. -/
-def ValidTagState {S : Setup} (P : Primitives) (maxLen : ℕ) (adv : KeyIndAdvCutoffState S) : Prop :=
+@[expose] def ValidTagState {S : Setup} (P : Primitives) (maxLen : ℕ) (adv : KeyIndAdvCutoffState S) : Prop :=
   adv.advRoLog.length ≤ maxLen ∧
   adv.shCr.sendCount ≤ S.N_send_tot ∧
   ValidKeyStores S P adv.shCr.base ∧
@@ -991,7 +991,7 @@ theorem badKeyIndFgAny4_of_init_stillFresh_ro5KeyInView {S : Setup} (P : Primiti
     · rw [hCleanR.1] at hDishon; nomatch hDishon
     · rw [hRev] at hCleanR; exact Bool.noConfusion hCleanR.2
 
-def KeyStoreExtends {S : Setup} (st st' : KeyIndState S) : Prop :=
+@[expose] def KeyStoreExtends {S : Setup} (st st' : KeyIndState S) : Prop :=
   (∀ u e, (u, e) ∈ st.principals →
     ∃ e', (u, e') ∈ st'.principals ∧ e'.ikAPk = e.ikAPk ∧ e'.secIKA0 = e.secIKA0) ∧
   (∀ k b, (k, b) ∈ st.spkBundles →
@@ -1007,7 +1007,7 @@ theorem KeyStoreExtends.refl {S : Setup} (st : KeyIndState S) : KeyStoreExtends 
    fun _ o h => ⟨o, h, rfl, rfl⟩,
    fun _ h => h⟩
 
-def ShCrExtends {S : Setup} (hst hst' : KeyIndShCrState S) : Prop :=
+@[expose] def ShCrExtends {S : Setup} (hst hst' : KeyIndShCrState S) : Prop :=
   KeyStoreExtends hst.base hst'.base ∧
   hst.sendCount ≤ hst'.sendCount ∧
   (∀ r ∈ hst.initKemRecs, r ∈ hst'.initKemRecs) ∧

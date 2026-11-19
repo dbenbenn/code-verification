@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bSigMsg
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.SigMsgWPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bIdentKeyPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCWPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bSigMsg -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.SigMsgWPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bIdentKeyPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCWPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
@@ -25,7 +25,7 @@ the `SignalMessage::try_from` call and slice clone to `PreKey8c0OkWPlaced` and
 `PreKeySigMsgErrWPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,7 +52,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-! ## Frames and `+0x8c0` continuation -/
 
-def w8bRowSRestPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def w8bRowSRestPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (sp' sret bkCap bkPtr kyberLen ikCap ikPtr msgCap msgPtr kyberBoxPtr kyberBoxLen : BitVec 64)
     (regTag regVal opkTag opkVal spkId kpkVal : BitVec 32)
     (p0 p1 p2 p3 p4 p5 p6 p7 p8 p31 : BitVec 8) (w9 : BitVec 32) (w13 : BitVec 16)
@@ -87,7 +87,7 @@ def w8bRowSRestPlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     memRegion (sp' - BitVec.ofNat 64 preKeyTryFromSubStack)
       (preKeyTryFromSubStack - Prost.skipFieldStackX 100)
 
-def w8bRowSFramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
+@[expose] def w8bRowSFramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     (sp' sret ptr bkCap bkPtr kyberLen ikCap ikPtr msgCap msgPtr kyberBoxPtr kyberBoxLen : BitVec 64)
     (regTag regVal opkTag opkVal spkId kpkVal : BitVec 32)
     (p0 p1 p2 p3 p4 p5 p6 p7 p8 p31 : BitVec 8) (w9 : BitVec 32) (w13 : BitVec 16)
@@ -100,7 +100,7 @@ def w8bRowSFramePlaced [LibsignalPlacement] (A : RustAlloc) (s0 : State)
     memRegion (sp' + 312#64) 120 ∗ (ptr ↦ₛ bytes) ∗ A.pool ∗ stackAt sp' (Prost.skipFieldStackX 100)
 
 /-- Relocatable continuation from `+0x8c0` to `ret` after a successful `SignalMessage::try_from` and slice clone. -/
-def PreKey8c0OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PreKey8c0OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 sf : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage) (bk ik msg : List (BitVec 8)) (spkId : BitVec 32)
     (pk ipk : PublicKey)
@@ -146,7 +146,7 @@ def PreKey8c0OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks)
 
 /-- Error-branch hypothesis for `PreKey864OkWPlaced` when `SignalMessage.tryFrom protoSignalCodec msg`
 returns an error. -/
-def PreKeySigMsgErrWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PreKeySigMsgErrWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 sf : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage) (bk ik msg : List (BitVec 8)) (spkId : BitVec 32)
     (pk ipk : PublicKey) (e : SignalProtocolError)

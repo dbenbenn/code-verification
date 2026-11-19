@@ -15,7 +15,7 @@ public import Computational.Theorems.Main
 /-!
 # Comparator solution module of the computational headlines
 
-`solution_module` of `comparator/computational.json`: imports the theorem files
-`Computational/Theorems/Lemmas.lean` and `Computational/Theorems/Main.lean` and declares nothing, so
-comparator checks the theorems (and their proofs) as they are. See `comparator/README.md`.
+`solution_module` of `comparator/computational.json`: imports `Computational/Theorems/Lemmas.lean`
+and `Computational/Theorems/Main.lean`, and declares nothing, so comparator checks the theorems
+(and their proofs) as they are. See `comparator/README.md`.
 -/

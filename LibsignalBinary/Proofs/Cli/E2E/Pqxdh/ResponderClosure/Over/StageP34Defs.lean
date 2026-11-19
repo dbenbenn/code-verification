@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Stage P3 and Stage P4 1-Element `previous_sessions` Heap Re-Exports
@@ -18,7 +20,7 @@ Re-exports the `Over.HeapDefs` predicates (`prevElem`, `HdrP`, `prevVecAt`, `rec
 `sessionRecordPrevAt`) under `OverP34` for Stage P3 and Stage P4.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -27,18 +29,6 @@ namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 open Arm64 ProofLib CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalPublicApiRepr
-
-theorem sessionRecordAt_eq_prevP34At (A : RustAlloc) (r : BitVec 64) (g : RecordGhost)
-    (rec : SessionRecord (List (BitVec 8))) :
-    sessionRecordAt A r g rec = sessionRecordPrevAt A r g [] rec := by
-  unfold sessionRecordAt sessionRecordPrevAt recCurAt
-  cases g.cur <;> cases rec.currentSession <;> rfl
-
-theorem sessionRecordPrevP34At_some (A : RustAlloc) (r cap q : BitVec 64) (G : SessionGhost)
-    (ps : List (List (BitVec 8))) (s : Session (List (BitVec 8))) :
-    sessionRecordPrevAt A r ⟨cap, q, some G⟩ ps ⟨some s⟩ =
-      prevVecAt A r cap q ps ∗ sessionStateReprAt A (r + 0x18#64) G s :=
-  rfl
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 

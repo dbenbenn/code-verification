@@ -11,8 +11,7 @@ module
 
 import all Init.Data.String.Defs
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Layout
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Layout -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.InImageKit
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommon
@@ -24,18 +23,16 @@ Symbolic relative offsets, cell-oriented callee wrappers (`shimCellsSpec`, `allo
 `112`-byte (`14`-cell) stack frame and `idRegIdOutAt` layout splits for `IdRegIdPoll`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-noncomputable section
-
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.IdRegIdPoll
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames CryptoGames.LibsignalSession
+open Arm64 ProofLib CryptoGames CryptoGames.LibsignalSession
 open CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr
@@ -55,126 +52,12 @@ open CryptoVerification.SignalSession.Cli.RunProofs.Initiate.PollCommon
 
 /-! ## Symbolic Relative Offsets and Callee Cell Wrappers -/
 
-theorem reg_dirGet_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr dirGetName =
-      (tripleRatchetProgAtExt b ext).fnAddr idRegIdPollName +
-        bv% (2 ^ 64 + ls_off% "<libsignal_cli::stores::Dir>::get" -
-          ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}") := by
-  have h1 := idRegIdPoll_fnOff
-  have h2 := dirGet_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idRegIdPollName, dirGetName, h1, h2]
-  bv_omega
-
-theorem reg_dealloc_fnOff_rel :
-    libsignalSessionCode.fnOff idRegIdPollName +
-      num% (ls_rel%
-        "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"
-        "__rustc::__rust_dealloc") =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by
-  rw [idRegIdPoll_fnOff, (ls_stub% "__rustc::__rust_dealloc")]
-
-theorem reg_shim_fnOff_rel :
-    libsignalSessionCode.fnOff idRegIdPollName +
-      num% (ls_rel%
-        "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"
-        "__rustc::__rust_no_alloc_shim_is_unstable_v2") =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-  rw [idRegIdPoll_fnOff, (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")]
-
-theorem reg_alloc_fnOff_rel :
-    libsignalSessionCode.fnOff idRegIdPollName +
-      num% (ls_rel%
-        "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"
-        "__rustc::__rust_alloc") =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by
-  rw [idRegIdPoll_fnOff, (ls_stub% "__rustc::__rust_alloc")]
-
-theorem reg_handle_error_fnOff_rel :
-    libsignalSessionCode.fnOff idRegIdPollName +
-      num% (ls_rel%
-        "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"
-        "alloc::raw_vec::handle_error") =
-      libsignalSessionCode.fnOff handleErrorName := by
-  rw [idRegIdPoll_fnOff, (ls_stub% "alloc::raw_vec::handle_error")]
-
-theorem idRegIdPoll_adrp_40 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : (b &&& 0xfff#64) = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr idRegIdPollName + bv% (40)) &&&
-      bv% (2 ^ 64 - 4096)) =
-      b + bv% (page% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 40)) := by
-  rw [Program.fnAddr_rebase, idRegIdPoll_fnOff, BitVec.add_assoc,
-    ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-  rfl
-
-theorem idRegIdPoll_adrp_156 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : (b &&& 0xfff#64) = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr idRegIdPollName + bv% (156)) &&&
-      bv% (2 ^ 64 - 4096)) =
-      b + bv% (page% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 156)) := by
-  rw [Program.fnAddr_rebase, idRegIdPoll_fnOff, BitVec.add_assoc,
-    ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-  rfl
-
-theorem idRegIdPoll_adrp_216 {b : BitVec 64} {H : String → Option (State → State)}
-    (hb : (b &&& 0xfff#64) = 0#64) :
-    (((libsignalSessionCode.rebase b H).fnAddr idRegIdPollName + bv% (216)) &&&
-      bv% (2 ^ 64 - 4096)) =
-      b + bv% (page% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}" + 216)) := by
-  rw [Program.fnAddr_rebase, idRegIdPoll_fnOff, BitVec.add_assoc,
-    ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-  rfl
-
-def shimCellsSpec (calleeStk : Nat) : Spec (BitVec 64) where
+@[expose] def shimCellsSpec (calleeStk : Nat) : Spec (BitVec 64) where
   pre := fun fsp s => ⌜s.sp = fsp⌝ ∗ stackAt fsp calleeStk
   post := fun fsp s0 sf => ⌜sf.trace = s0.trace⌝ ∗ stackAt fsp calleeStk
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem shimAt_cells_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {calleeStk : Nat}
-    (hC : AllocContractsX img A ext)
-    (hle : extHookStack ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr idRegIdPollName +
-        BitVec.ofNat 64 (num% (ls_rel%
-          "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"
-          "__rustc::__rust_no_alloc_shim_is_unstable_v2")))
-      ((shimCellsSpec calleeStk).inImage img) := by
-  have hShim := shim_ok_at2_ext_x hC (name := idRegIdPollName)
-    (k := num% (ls_rel%
-      "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"
-      "__rustc::__rust_no_alloc_shim_is_unstable_v2"))
-    reg_shim_fnOff_rel
-  refine subroutine_ok_outcome_intro fun fsp R s0 hpc hrun hpre hsp => ?_
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗ (shimCellsSpec calleeStk).pre fsp s0) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  simp only [shimCellsSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hfsp, hmem⟩
-  subst hfsp
-  rw [Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi] at hmem
-  let stkRem := memRegion (s0.sp - BitVec.ofNat 64 calleeStk) (calleeStk - extHookStack)
-  have hpre0 : s0.mem ⊨ (session2ShimSpecX.inImage img).pre () s0 ∗ (stkRem ∗ R) := by
-    refine satisfies_inImage_pre hinv ?_
-    dsimp only [session2ShimSpecX, stkRem]
-    convert hmem using 1; ac_rfl
-  refine hShim.mono_outcome () (stkRem ∗ R) s0 hpc hrun hpre0 hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, session2ShimSpecX, shimCellsSpec] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    rcases hq with ⟨htr, hq⟩
-    refine ⟨htr, ?_⟩
-    rw [Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi]
-    dsimp only [stkRem] at hq
-    convert hq using 1; ac_rfl
-  · dsimp only [Spec.inImage, session2ShimSpecX] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · dsimp only [Spec.inImage, session2ShimSpecX] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · dsimp only [Spec.inImage, session2ShimSpecX] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-
-def alloc14CellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec (BitVec 64) where
+@[expose] def alloc14CellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec (BitVec 64) where
   pre := fun fsp s =>
     ⌜s.readReg64 .x0 = 14#64 ∧ s.readReg64 .x1 = 1#64 ∧ s.sp = fsp⌝ ∗
       A.pool ∗ stackAt fsp calleeStk
@@ -187,70 +70,11 @@ def alloc14CellsSpec (A : RustAlloc) (calleeStk : Nat) : Spec (BitVec 64) where
           A.live (sf.readReg64 .x0) 14 1 ∗ memRegion (sf.readReg64 .x0) 14
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem alloc14At_cells_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} {calleeStk : Nat}
-    (hC : AllocContractsX img A ext)
-    (hle : extHookStack ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr idRegIdPollName +
-        BitVec.ofNat 64 (num% (ls_rel%
-          "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"
-          "__rustc::__rust_alloc")))
-      ((alloc14CellsSpec A calleeStk).inImage img) := by
-  have hAlloc := alloc_ok_at_norm_ext_x hC (name := idRegIdPollName)
-    (k := num% (ls_rel%
-      "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_local_registration_id::{closure#0}"
-      "__rustc::__rust_alloc"))
-    reg_alloc_fnOff_rel
-  refine subroutine_ok_outcome_intro fun fsp R s0 hpc hrun hpre hsp => ?_
-  change s0.mem ⊨ (⌜ImgCallInv img s0⌝ ∗
-    (alloc14CellsSpec A calleeStk).pre fsp s0) ∗ R at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, hpre⟩
-  simp only [alloc14CellsSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hfsp⟩, hmem⟩
-  subst hfsp
-  rw [Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi] at hmem
-  have hlay : LayoutOk 14 1 := ⟨by decide, ⟨0, rfl⟩, by decide⟩
-  let stkRem := memRegion (s0.sp - BitVec.ofNat 64 calleeStk) (calleeStk - extHookStack)
-  have hpre0 : s0.mem ⊨ ((rustAllocSpecWithStack A extHookStack).inImage img).pre
-      (14, 1) s0 ∗ (stkRem ∗ R) := by
-    refine satisfies_inImage_pre hinv ?_
-    dsimp only [rustAllocSpecWithStack]
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨by rw [hx0]; rfl, by rw [hx1]; rfl, hlay⟩, ?_⟩
-    dsimp only [stkRem]
-    convert hmem using 1; ac_rfl
-  refine hAlloc.mono_outcome (14, 1) (stkRem ∗ R) s0 hpc hrun hpre0 hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, rustAllocSpecWithStack, alloc14CellsSpec] at hq ⊢
-    by_cases hr0 : sf.readReg64 .x0 = 0#64
-    · have hr0' : sf.readReg64 .x0 = (0 : BitVec 64) := hr0
-      rw [if_pos hr0'] at hq
-      rw [if_pos hr0, Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi]
-      dsimp only [stkRem] at hq
-      convert hq using 1; ac_rfl
-    · have hr0' : sf.readReg64 .x0 ≠ (0 : BitVec 64) := hr0
-      have hmod : (((sf.readReg64 .x0).toNat % 1 = 0 ∧ sf.trace = s0.trace) : Prop) =
-          (sf.trace = s0.trace) := by
-        simp [Nat.mod_one]
-      rw [if_neg hr0', hmod] at hq
-      rw [if_neg hr0, Store.IdTrustPoll.Helpers.stackAt_sub_split s0.sp hle hhi]
-      dsimp only [stkRem] at hq
-      convert hq using 1; ac_rfl
-  · dsimp only [Spec.inImage, rustAllocSpecWithStack] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · dsimp only [Spec.inImage, rustAllocSpecWithStack] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · dsimp only [Spec.inImage, rustAllocSpecWithStack] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-
 theorem close_panic_subgoal (s0 : State) {sf : State} {t : List TraceEvent} {F R : SepProp}
     (hm : sf.mem ⊨ ((⌜(allocFailedEvent ∈ List.drop t.length sf.trace) ∧ t <+: sf.trace⌝ ∗ anyHeap) ∗ F) ∗ R)
     (htr : t = s0.trace) :
     sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R := by
-  refine allowPanic_frame ?_ (by rwa [sepConj_assoc] at hm)
+  refine allowPanic_frame (F := F) ?_ (by simpa only [sepConj_assoc] using hm)
   rintro ⟨hfail, hpref⟩
   unfold allocFailedIn
   rw [htr] at hfail hpref
@@ -586,7 +410,7 @@ theorem out_reg_err_malformed_fold (A : RustAlloc) (out buf o32 o40 : BitVec 64)
   rw [hgrp]
   exact sepConj_mono_right (sepConj_mono hvec14 htail16)
 
-def regPostAns (A : RustAlloc) (out : BitVec 64)
+@[expose] def regPostAns (A : RustAlloc) (out : BitVec 64)
     (expected : Except Unit (BitVec 32)) (s0 sf : State) : SepProp :=
   ∃∗ ans : Except Unit (BitVec 32),
     ⌜ans = expected ∧ sf.trace = s0.trace⌝ ∗ idRegIdOutAt A out ans

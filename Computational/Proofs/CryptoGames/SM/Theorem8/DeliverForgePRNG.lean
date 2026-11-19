@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForge
-public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForge -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10
 import VCVio.OracleComp.EvalDist.Measure
 
@@ -22,7 +22,7 @@ specification `specDF`: with a uniform CKA key in epoch `t_heal`, the simulation
 is bounded by that of `redPRNGAuthDF` with the real root RNG.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -46,7 +46,7 @@ abbrev SMSpecDF (Γ T Sig SS RS M CCoins E : Type) :=
 abbrev SMCompDF (Γ T Sig SS RS M CCoins E : Type) :=
   AdversaryCompDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E)
 
-def stepCDF (mo : Mode)
+@[expose] def stepCDF (mo : Mode)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esC : EStateC Γ T Sig SS RS M E I) (sc : CKA.GameState Γ T) :
     ProbComp (((SMSpecDF Γ T Sig SS RS M CCoins E).Range q ×
@@ -55,7 +55,7 @@ def stepCDF (mo : Mode)
     ((implEDF (hooksCKA cka prng fs Δcka mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run
       esC)).run sc
 
-def stepPDF (mo : Mode)
+@[expose] def stepPDF (mo : Mode)
     (q : (SMSpecDF Γ T Sig SS RS M CCoins E).Domain)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) :
     ProbComp (((SMSpecDF Γ T Sig SS RS M CCoins E).Range q ×
@@ -64,14 +64,14 @@ def stepPDF (mo : Mode)
     ((implEDF (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy q).run
       esP)).run sp
 
-def runLDF (mo : Mode) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runLDF (mo : Mode) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esC : EStateC Γ T Sig SS RS M E I) (sc : CKA.GameState Γ T) : ProbComp Bool := do
   let r ← (simulateQ (cImpl cka Δcka mo.tH)
     ((simulateQ (implEDF (hooksCKA cka prng fs Δcka mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy)
       oa).run esC)).run sc
   pure (authOut (2 + Δcka) mo.policy r.1.2)
 
-def runRDF (mo : Mode) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
+@[expose] def runRDF (mo : Mode) (oa : SMCompDF Γ T Sig SS RS M CCoins E Bool)
     (esP : EStateP Γ T Sig SS RS M E K) (sp : PRFPRNG.GameState Sig I K) : ProbComp Bool := do
   let r ← (simulateQ (pImpl prng)
     ((simulateQ (implEDF (hooksPRNG cka prng fs mo) (2 + Δcka) qep fs.maxSkip mo.cfg mo.policy)

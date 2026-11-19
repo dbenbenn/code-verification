@@ -11,13 +11,12 @@ module
 
 public meta import Lean -- shake: keep
 public meta import ProofLib -- shake: keep
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Core
-import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.Fetch
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 
 /-!
 # Budget-Threaded `RawVecInner::finish_grow` and `RawVec<Chain>::grow_one`
@@ -30,7 +29,7 @@ Proves relocatable `[LibsignalPlacement]` total-correctness (`onOom := ⌜False�
   shared by `Vec<Chain>` and `Vec<MessageKey>`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -202,12 +201,12 @@ macro "wp_steps_to_tgt_vm_s" " as " hvm:ident : tactic =>
 /-! ## 1. `wp_call`-Ready Extern Contract Projections on `AllocContractsBudgetPlaced` -/
 
 /-- Single-`⌜…⌝` `wp_call` form of `withVmPreserved session2ShimSpecX`. -/
-def shimVmExternSpecX : Spec Unit where
+@[expose] def shimVmExternSpecX : Spec Unit where
   pre := fun _ s => stackAt s.sp extHookStack
   post := fun _ s0 sf => ⌜sf.trace = s0.trace ∧ VmPreserved s0 sf⌝ ∗ stackAt s0.sp extHookStack
 
 /-- Single-`⌜…⌝` `wp_call` form of `withVmPreserved (sessionMemcpySpec extHookStack)`. -/
-def memcpyVmExternSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def memcpyVmExternSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s =>
     ⌜s.readReg64 .x0 = dst ∧ s.readReg64 .x1 = src ∧ (s.readReg64 .x2).toNat = bs.length⌝ ∗
       memRegion dst bs.length ∗ (src ↦ₛ bs) ∗ stackAt s.sp extHookStack
@@ -441,7 +440,7 @@ private theorem grow_104_new_cap_eq {cap : BitVec 64}
 /-! ## 3. `finishGrowEvents` & `finishGrowBudgetSpecX` (Block `45`) -/
 
 /-- Events emitted by `RawVecInner::finish_grow(cap, new, align, stride)`. -/
-def finishGrowEvents (cap new align stride : Nat) : List AllocEvent :=
+@[expose] def finishGrowEvents (cap new align stride : Nat) : List AllocEvent :=
   if cap = 0 then rustAllocEvents (new * stride) align
   else rustReallocEvents (cap * stride) (new * stride) align
 
@@ -467,7 +466,7 @@ theorem finishGrowEvents_104_eq {cap : Nat} (hcap : cap = 0 ∨ 2 ≤ cap) :
 
 /-- Budget-threaded total-correctness (`onOom := ⌜False⌝`, `onPanic := ⌜False⌝`) contract for
 `<alloc::raw_vec::RawVecInner>::finish_grow [local#1]` (Block `45`, `finishGrowStackX = 16,432` B). -/
-def finishGrowBudgetSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def finishGrowBudgetSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (FinishGrowCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.cap ∧ s.readReg64 .x2 = x.ptr ∧
@@ -782,7 +781,7 @@ theorem cap_zero_or_ge_two_of_isPow2Cap4 {cap : BitVec 64} (h : IsPow2Cap4 cap.t
 /-- Budget-threaded total-correctness (`onOom := ⌜False⌝`, `onPanic := ⌜False⌝`) contract for
 `<alloc::raw_vec::RawVec<Chain/MessageKey>>::grow_one` (Block `43`, `stride = 104, align = 8`,
 `growOneChainStackX = 16,896` B) under `FitsEvents M lim st (vec104GrowEvents cap.toNat)`. -/
-def growOne104BudgetSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def growOne104BudgetSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length = cap.toNat * 104 ∧ ptr ≠ 0 ∧
@@ -802,7 +801,7 @@ def growOne104BudgetSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim :
       A.pool lim st' sf ∗ stackAt s0.sp growOneChainStackX
 
 /-- Proposition packaging `growOne104BudgetSpecX` on Block `43`. -/
-def GrowOne104BudgetPlacedOk [LibsignalPlacement]
+@[expose] def GrowOne104BudgetPlacedOk [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_43).rebase (blkPl_43).base H) (blkPl_43).base
     (withLsCodeLoaded lsmpl (growOne104BudgetSpecX M A lim))

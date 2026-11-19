@@ -10,10 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.Defs
-import LibsignalBinary.Proofs.Common.CallInv
+import ProofLib
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.Fetch
 import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.ChainMergeAux.Pure
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Frame, Layout, and Callee Helpers for Seed `message::merge<Chain>`
@@ -23,7 +24,7 @@ lemmas, and `SepWPp` callee wrappers for `bytes::merge` and `int32::merge` insid
 `prost::encoding::message::merge::<Chain>` (`0x3974`, block `11`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeSeed
 
@@ -47,7 +48,7 @@ abbrev chainMergeSubStack : Nat := 12032
 
 /-- Local frame `[sp0 - 256#64 .. sp0 - 96#64)` and the 12 saved register words at
 `[sp0 - 96#64 .. sp0)` written by the prologue (`+0x000..+0x018`). -/
-def chainMergeSavedRegs (sp0 : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def chainMergeSavedRegs (sp0 : BitVec 64) (s0 : State) : SepProp :=
   memRegion (sp0 - 256#64) 160 ∗
   ((sp0 - 96#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp0 - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
@@ -213,262 +214,6 @@ theorem SepWPp.mono_pre_seedChain {prog : Program} {ret : BitVec 64} {s : State}
     SepWPp prog ret s P Q Qp := by
   intro R hm hL
   exact h R (Satisfies.mono (sepConj_mono_left hent) hm) hL
-
-theorem SepWPp.of_sepWP_frozen_seedChain {prog : Program} {img : Obj.Image} {ret mid : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P (fun sm Pm =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab → SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp :=
-  SepWPp.of_sepWP_frozen hF hsym h
-
-theorem SepWPp.call_frozen_seedChain {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {s : State} {P F : SepProp}
-    {Q Qp : State → SepProp → Prop} {spec : Spec α} (x : α)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hpre : ∀ R : SepProp, (s.mem ⊨ P ∗ R) → (s.mem ⊨ spec.pre x s ∗ (F ∗ R)))
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → img.FrozenLoaded sf → sf.symtab = img.symtab →
-      CalleeSavedPreserved s sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPp prog ret s P Q Qp := by
-  refine ProofLib.SepWPp.call_wpp_frozen (x := x) (F := F) hcall hF hsym hpc hrun hsp hlr hpre hexit
-    (fun sf hpan _ => hpanic sf hpan)
-    (fun sf hpcm hrunm hspm hcsm hFm hsymm => hnext sf hpcm hrunm hspm hFm hsymm hcsm)
-    (fun sf R' _ hoom_post => by
-      rw [hoom sf] at hoom_post
-      exact (not_satisfies_false_sepConj hoom_post).elim)
-
-/-- Steps a `bl bytes::merge` call inside `message::merge<Chain>` on a `< 128`-byte length-delimited
-field `[BitVec.ofNat 8 b.length] ++ b`. -/
-theorem step_chainMerge_bytesMerge_seedChain (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hBM : BytesMergeOk sessionImg0 C A0 ctl abs)
-    (v bufRef slot curPtr sp0 ret_pc : BitVec 64) (bs0 b rest : List (BitVec 8))
-    (hb : b.length < 128)
-    (hlen_lt : ([BitVec.ofNat 8 b.length] ++ b ++ rest).length < 2 ^ 32)
-    {x : ChainMergeGhost} {R : SepProp}
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr chainMergeName +
-      bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]")))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 256#64)
-    (halign : sp0 &&& 15#64 = 0#64)
-    (hF : sessionImg0.FrozenLoaded s)
-    (hsym : s.symtab = sessionImg0.symtab)
-    (htr : s.trace = s0.trace)
-    (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : (s.readReg64 .x0).setWidth 8 = 2#8)
-    (hx1 : s.readReg64 .x1 = v)
-    (hx2 : s.readReg64 .x2 = bufRef)
-    (hP : P = (vecU8 A0 v bs0 ∗ (bufRef ↦₆₄ slot) ∗
-      sliceCursorAt slot curPtr ([BitVec.ofNat 8 b.length] ++ b ++ rest) ∗
-      stackAt (sp0 - 256#64) chainMergeSubStack) ∗ F)
-    (hnext : ∀ (sm : State),
-      sm.pc = ret_pc →
-      sm.status = .Running →
-      sm.sp = sp0 - 256#64 →
-      sessionImg0.FrozenLoaded sm →
-      sm.symtab = sessionImg0.symtab →
-      sm.trace = s0.trace →
-      CalleeSavedPreserved s sm →
-      sm.readReg64 .x0 = 0#64 →
-      SepWPp (tripleRatchetProgAt sessionImg0.base C ctl abs) ret sm
-        ((vecU8 A0 v b ∗ (bufRef ↦₆₄ slot) ∗
-          (curPtr ↦ₛ ([BitVec.ofNat 8 b.length] ++ b)) ∗
-          sliceCursorAt slot (curPtr + BitVec.ofNat 64 (b.length + 1)) rest ∗
-          stackAt (sp0 - 256#64) chainMergeSubStack) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ chainMergeSeedSpec.onPanic x s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAt sessionImg0.base C ctl abs) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ chainMergeSeedSpec.onPanic x s0 sf ∗ R)) := by
-  have hcall := bytesMerge_ok_sub_seedChain hBM
-  rw [hP]
-  unfold vecU8
-  simp only [sepExists_sepConj_left]
-  refine SepWPp.exists_elim fun cap0 => SepWPp.exists_elim fun ptr0 => ?_
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]
-    exact sp_sub_256_aligned_seedChain halign
-  refine SepWPp.call_frozen_seedChain
-    (x := BytesMergeGhost.mk .lengthDelimited v cap0 ptr0 bs0 bufRef slot curPtr
-      ([BitVec.ofNat 8 b.length] ++ b ++ rest))
-    (F := memRegion (sp0 - 256#64 - BitVec.ofNat 64 chainMergeSubStack)
-      (chainMergeSubStack - bytesMergeStack) ∗ F)
-    hcall hpc hrun hsp_aligned hF hsym hlr ?_ ?_ ?_ ?_
-  · intro R' hm
-    rw [stackAt_sub_to_bytesMerge_seedChain (sp0 - 256#64)] at hm
-    dsimp only [bytesMergeSpec, Spec.inImage, bytesMergeRawSpec]
-    have hpool : A0.pool = emp := rfl
-    rw [hpool, hsp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hF, hsym⟩, ⟨hx0, hx1, hx2, Nat.lt_of_lt_of_le hlen_lt (by decide),
-      bytesMergeCapOk_of_len_lt32 hlen_lt⟩, ?_⟩
-    convert hm using 1; ac_rfl
-  · intro sf code R' _ hm
-    exact allowPanic_not_exited hm
-  · intro sf _ hm
-    dsimp only [bytesMergeSpec, Spec.inImage, bytesMergeRawSpec, chainMergeSeedSpec,
-      Serialization.allocPanic] at hm ⊢
-    simp only [allocFailedIn, htr] at hm ⊢
-    exact allowPanic_frame id hm
-  · intro sm hpcm hrunm hspm hFm hsymm hcsm
-    rw [hsp] at hspm
-    have hmB := mergeBytes_lt128_seedChain b rest hb
-    dsimp only [bytesMergeSpec, Spec.inImage, bytesMergeRawSpec]
-    rw [hmB, hsp]
-    dsimp only
-    have hpool : A0.pool = emp := rfl
-    rw [hpool]
-    simp only [sepConj_assoc]
-    refine SepWPp.pure_elim fun htrm => ?_
-    simp only [sepConj_pure_left_comm]
-    refine SepWPp.pure_elim fun hx0m => ?_
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-    refine SepWPp.exists_elim fun cap' => SepWPp.exists_elim fun ptr' => ?_
-    simp only [sepConj_assoc, sepConj_pure_left_comm]
-    refine SepWPp.pure_elim fun _hcapOk => ?_
-    have hcur := sliceCursorAfter_append_eq_seedChain slot curPtr ([BitVec.ofNat 8 b.length] ++ b) rest
-    have hlen1 : ([BitVec.ofNat 8 b.length] ++ b).length = b.length + 1 := by simp
-    rw [hlen1] at hcur
-    have hv : vecU8At A0 v cap' ptr' b ⊢ vecU8 A0 v b :=
-      Entails.sepExists_right cap' (Entails.sepExists_right ptr' (Entails.refl _))
-    refine SepWPp.mono_pre_seedChain ?_ (hnext sm hpcm hrunm hspm hFm hsymm (htrm.trans htr) hcsm hx0m)
-    rw [hcur, stackAt_sub_to_bytesMerge_seedChain (sp0 - 256#64)]
-    have hEq1 :
-        (bufRef ↦₆₄ slot) ∗ emp ∗ stackAt (sp0 - 256#64) bytesMergeStack ∗
-          vecU8At A0 v cap' ptr' b ∗
-          ((curPtr ↦ₛ ([BitVec.ofNat 8 b.length] ++ b)) ∗
-            sliceCursorAt slot (curPtr + BitVec.ofNat 64 (b.length + 1)) rest) ∗
-          memRegion (sp0 - 256#64 - BitVec.ofNat 64 chainMergeSubStack)
-            (chainMergeSubStack - bytesMergeStack) ∗ F =
-        vecU8At A0 v cap' ptr' b ∗
-          ((bufRef ↦₆₄ slot) ∗
-            (curPtr ↦ₛ ([BitVec.ofNat 8 b.length] ++ b)) ∗
-            sliceCursorAt slot (curPtr + BitVec.ofNat 64 (b.length + 1)) rest ∗
-            (memRegion (sp0 - 256#64 - BitVec.ofNat 64 chainMergeSubStack)
-              (chainMergeSubStack - bytesMergeStack) ∗
-              stackAt (sp0 - 256#64) bytesMergeStack) ∗ F) := by ac_rfl
-    have hEq2 :
-        vecU8 A0 v b ∗
-          ((bufRef ↦₆₄ slot) ∗
-            (curPtr ↦ₛ ([BitVec.ofNat 8 b.length] ++ b)) ∗
-            sliceCursorAt slot (curPtr + BitVec.ofNat 64 (b.length + 1)) rest ∗
-            (memRegion (sp0 - 256#64 - BitVec.ofNat 64 chainMergeSubStack)
-              (chainMergeSubStack - bytesMergeStack) ∗
-              stackAt (sp0 - 256#64) bytesMergeStack) ∗ F) =
-        (vecU8 A0 v b ∗ (bufRef ↦₆₄ slot) ∗
-          (curPtr ↦ₛ ([BitVec.ofNat 8 b.length] ++ b)) ∗
-          sliceCursorAt slot (curPtr + BitVec.ofNat 64 (b.length + 1)) rest ∗
-          (memRegion (sp0 - 256#64 - BitVec.ofNat 64 chainMergeSubStack)
-            (chainMergeSubStack - bytesMergeStack) ∗
-            stackAt (sp0 - 256#64) bytesMergeStack)) ∗ F := by ac_rfl
-    rw [hEq1, ← hEq2]
-    exact sepConj_mono_left hv
-
-/-- Steps a `bl int32::merge` call inside `message::merge<Chain>` on `pbVarintBody 5 i.toNat ++ rest`. -/
-theorem step_chainMerge_int32Merge_seedChain (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hIM : Int32MergeOk sessionImg0.base C A0 ctl abs)
-    (dst bufRef slot curPtr sp0 ret_pc : BitVec 64) (w0 : BitVec 32)
-    (i : BitVec 32) (rest : List (BitVec 8))
-    (hlen_lt : (pbVarintBody 5 i.toNat ++ rest).length < 2 ^ 32)
-    {x : ChainMergeGhost} {R : SepProp}
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr chainMergeName +
-      bv% (2 ^ 64 + (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>") - (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]")))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 256#64)
-    (halign : sp0 &&& 15#64 = 0#64)
-    (hF : sessionImg0.FrozenLoaded s)
-    (hsym : s.symtab = sessionImg0.symtab)
-    (htr : s.trace = s0.trace)
-    (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : (s.readReg64 .x0).setWidth 8 = 0#8)
-    (hx1 : s.readReg64 .x1 = dst)
-    (hx2 : s.readReg64 .x2 = bufRef)
-    (hP : P = ((dst ↦₃₂ w0) ∗ (bufRef ↦₆₄ slot) ∗
-      sliceCursorAt slot curPtr (pbVarintBody 5 i.toNat ++ rest) ∗
-      stackAt (sp0 - 256#64) chainMergeSubStack) ∗ F)
-    (hnext : ∀ (sm : State),
-      sm.pc = ret_pc →
-      sm.status = .Running →
-      sm.sp = sp0 - 256#64 →
-      sessionImg0.FrozenLoaded sm →
-      sm.symtab = sessionImg0.symtab →
-      sm.trace = s0.trace →
-      CalleeSavedPreserved s sm →
-      sm.readReg64 .x0 = 0#64 →
-      SepWPp (tripleRatchetProgAt sessionImg0.base C ctl abs) ret sm
-        (((dst ↦₃₂ i) ∗ (bufRef ↦₆₄ slot) ∗
-          (curPtr ↦ₛ pbVarintBody 5 i.toNat) ∗
-          sliceCursorAt slot (curPtr + BitVec.ofNat 64 (pbVarintBody 5 i.toNat).length) rest ∗
-          stackAt (sp0 - 256#64) chainMergeSubStack) ∗ F)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ chainMergeSeedSpec.onPanic x s0 sf ∗ R))) :
-    SepWPp (tripleRatchetProgAt sessionImg0.base C ctl abs) ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ chainMergeSeedSpec.onPanic x s0 sf ∗ R)) := by
-  have hcall := int32Merge_ok_sub_seedChain hIM
-  have hsp_aligned : s.spAligned = true := by
-    simp only [State.spAligned, hsp, beq_iff_eq]
-    exact sp_sub_256_aligned_seedChain halign
-  refine SepWPp.call_frozen_seedChain
-    (x := Int32MergeGhost.mk .varint dst bufRef slot curPtr (pbVarintBody 5 i.toNat ++ rest))
-    (F := memRegion (sp0 - 256#64 - BitVec.ofNat 64 chainMergeSubStack)
-      (chainMergeSubStack - int32MergeStack) ∗ F)
-    hcall hpc hrun hsp_aligned hF hsym hlr ?_ ?_ ?_ ?_
-  · intro R' hm
-    rw [hP, stackAt_sub_to_int32Merge_seedChain (sp0 - 256#64)] at hm
-    simp only [sepConj_assoc] at hm
-    have hcell : (dst ↦₃₂ w0) ⊢ memRegion dst 4 := by
-      rw [ProofLib.memRegion_four]
-      exact Entails.sepExists_right w0 (Entails.refl _)
-    have hm1 := Satisfies.mono (sepConj_mono_left hcell) hm
-    dsimp only [int32MergeSpec]
-    have hpool : A0.pool = emp := rfl
-    rw [hpool, hsp]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2, Nat.lt_of_lt_of_le hlen_lt (by decide)⟩, ?_⟩
-    convert hm1 using 1; ac_rfl
-  · intro sf code R' _ hm
-    exact allowPanic_not_exited hm
-  · intro sf _ hm
-    dsimp only [int32MergeSpec, chainMergeSeedSpec, Serialization.allocPanic] at hm ⊢
-    simp only [allocFailedIn, htr] at hm ⊢
-    exact allowPanic_frame id hm
-  · intro sm hpcm hrunm hspm hFm hsymm hcsm
-    rw [hsp] at hspm
-    have hmI := mergeUint32_pbVarintBody_seedChain i rest
-    dsimp only [int32MergeSpec]
-    rw [hmI, hsp]
-    dsimp only
-    have hpool : A0.pool = emp := rfl
-    rw [hpool]
-    simp only [sepConj_assoc]
-    refine SepWPp.pure_elim fun htrm => ?_
-    simp only [sepConj_pure_left_comm]
-    refine SepWPp.pure_elim fun hx0m => ?_
-    have hcur := sliceCursorAfter_append_eq_seedChain slot curPtr (pbVarintBody 5 i.toNat) rest
-    have hGoalEq :
-        ((bufRef ↦₆₄ slot) ∗ emp ∗ stackAt (sp0 - 256#64) int32MergeStack ∗
-          (dst ↦₃₂ i) ∗
-          sliceCursorAfter slot curPtr (pbVarintBody 5 i.toNat ++ rest) rest ∗
-          memRegion (sp0 - 256#64 - BitVec.ofNat 64 chainMergeSubStack)
-            (chainMergeSubStack - int32MergeStack) ∗ F) =
-        (((dst ↦₃₂ i) ∗ (bufRef ↦₆₄ slot) ∗
-          (curPtr ↦ₛ pbVarintBody 5 i.toNat) ∗
-          sliceCursorAt slot (curPtr + BitVec.ofNat 64 (pbVarintBody 5 i.toNat).length) rest ∗
-          stackAt (sp0 - 256#64) chainMergeSubStack) ∗ F) := by
-      rw [hcur, stackAt_sub_to_int32Merge_seedChain (sp0 - 256#64)]
-      ac_rfl
-    rw [hGoalEq]
-    exact hnext sm hpcm hrunm hspm hFm hsymm (htrm.trans htr) hcsm hx0m
-
-/-! ## Relocatable `[LibsignalPlacement]` Callee Wrappers -/
 
 section Placed
 

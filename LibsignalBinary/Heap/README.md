@@ -40,34 +40,31 @@ strictly within `{propext, Classical.choice, Quot.sound}`.
 | Module | `module` Status | Role | Key Declarations & Entry Points |
 |---|---|---|---|
 | [`Iface.lean`](Iface.lean) | `module` | Frozen unbudgeted state-indexed Rust global-allocator interface | `PoolPreserved`, `AllocCallPreserved`, `OomPreserved`, `RustLayoutOk`, `NullAllowed`, `RustCliAlloc`, `rustCli{Alloc,Dealloc,Realloc}Spec`, `RustCliAlloc{Hooks,Entries}` |
-| [`IfaceLemmas.lean`](IfaceLemmas.lean) | `module` | Unbudgeted WP transport, OOM-preserving stack wrappers, and `.inImage` combinators | `SepWP.transport_pool`, `SepWP.transport_oom`, `Spec.withHookStackOom`, `RustCliAllocHooks.toEntries` |
+| [`IfaceLemmas.lean`](IfaceLemmas.lean) | `module` | Unbudgeted WP transport and OOM-preserving stack wrappers | `SepWP.transport_pool`, `SepWP.transport_oom`, `Spec.withHookStackOom`, `RustCliAllocHooks.toEntries` |
 | [`IfaceBudgetBase.lean`](IfaceBudgetBase.lean) | `module` | Core `AllocEvent`, `AllocCostModel`, `BudgetLimits`, and `Fits*` envelope foundations | `AllocEvent`, `AllocCostModel`, `BudgetLimits`, `zeroBudgetLimits`, `FitsStep`, `FitsEvent`, `FitsEvents`, `FitsTrace`, `FitsTraceOf`, `FitsEnv`, `SeqEnv`, `LoopFreeEnv` |
 | [`IfaceBudget.lean`](IfaceBudget.lean) | `module` | Cost-model-parametric budget-threaded Rust global-allocator interface | `VmPreserved`, `RustCliAllocBudget` (`toRustCliAlloc`, `repAlloc`), `rustCli{Alloc,Dealloc,Realloc}{Budget,NoOom}Spec`, `RustCliAllocBudget{Hooks,Entries}`, `RustCliAllocNoOomEntries`, `RustCliAllocBudgetEntries.toNoOom`, `rustCliAllocEntries_of_budget` |
-| [`IfaceBudgetLemmas.lean`](IfaceBudgetLemmas.lean) | `module` | Caller-side WP transport, trace/envelope slicing, and `.inImage` / stack combinators for `RustCliAllocBudget M` | `RustCliAllocBudget.{atState,atBudget}`, `SepWP.transport_budgetPool`, `SepWPp.transport_budgetPool`, `SepWP.transport_atStatePool`, `SepWPp.transport_atStatePool`, `FitsEnv.{seq_left,seq_right}`, `RustCliAllocBudgetHooks.*`, `RustCliAlloc{Budget,NoOom}Entries.*` |
+| [`IfaceBudgetLemmas.lean`](IfaceBudgetLemmas.lean) | `module` | Caller-side WP transport, trace/envelope slicing, and stack combinators for `RustCliAllocBudget M` | `RustCliAllocBudget.{atState,atBudget}`, `SepWP.transport_budgetPool`, `SepWPp.transport_budgetPool`, `SepWP.transport_atStatePool`, `SepWPp.transport_atStatePool`, `FitsEnv.{seq_left,seq_right}`, `RustCliAllocBudgetHooks.*`, `RustCliAlloc{Budget,NoOom}Entries.*` |
 | [`MallocngBridgeBudget.lean`](MallocngBridgeBudget.lean) | `module` | Model-parametric C-entry budget bridge, `coarseCostModel`, `allocMemcpyVmSpec`, and `mallocng_oom_false` | `coarseCostModel`, `coarseCostModelIface`, `MallocngCostModelIface`, `MallocngCostModelSound`, `coarseCostModelSound_of_topFacts`, `allocMemcpyVmSpec`, `allocMemcpyVm_ok_of_{hasWords,wordTree}`, `StaticMappedCover`, `mallocngBudgetPoolInv`, `mallocngBudgetPool{At,}`, `mallocngRustCliAllocBudget{At,}`, `mallocngBudgetPool{At_of_init_resources,_of_init}`, `mallocng_oom_false`, `MallocngProgBudgetCContracts`, `mallocngProgBudgetCContracts_of_placed` |
 | [`MallocngRustBudget.lean`](MallocngRustBudget.lean) | `module` | Model-parametric placed `__rustc::__rdl_*` shim and `__rustc::__rust_*` `B`-thunk proofs for `RustCliAllocBudget M` | `rdl{Alloc,Dealloc,Realloc}_budget_placed_ok`, `rustCli{Alloc,Dealloc,Realloc}Budget_of_b_thunk`, `RustCliAllocBudgetEntries.of_thunks`, `mallocngRustCliAllocBudget{At,}Entries{,_thunks}`, `mallocngRustCliAllocNoOomEntries{,_thunks}` |
 | [`SpecBudget.lean`](SpecBudget.lean) | `module` | Budget-threaded counterparts of trusted `AllocHooks`, `TripleRatchetHooks`, `PublicApiHooks`, and CLI extern contracts | `AllocHooksBudget`, `TripleRatchetHooksBudget`, `PublicApiHooksBudget`, `SpqrHooksBudget`, `CliExternsBudgetOk` |
 | [`NonVacBudget.lean`](NonVacBudget.lean) | `module` | Pure `module` total-correctness (`onOom := ⌜False⌝`) smoke clients and worked multi-call caller recipe | `smokeAlloc72NoOomSpec`, `rustCliAllocNoOom_smoke_alloc72_{at,subroutine_ok}`, `rustCliAllocBudget_smoke_alloc72`, `smokeAlloc72ConditionalSpec`, `rustCliAllocBudget_smoke_alloc72_conditional`, `rustCliAllocNoOom_worked_{trace_obligations,seqEnv}` |
 | [`Fine/CostModel.lean`](Fine/CostModel.lean) | `module` | Tier T2 `fineCostModel` (`AllocCostModel` eliminating the `2 GiB` `realloc` reserve when `align ≤ 16`) | `fineCostModel`, `FineAllocState` |
-| [`Fine/RustEntriesFine.lean`](Fine/RustEntriesFine.lean) | `module` | Closed placed `__rustc::__rdl_*` and `__rustc::__rust_*` `RustCliAllocBudget fineCostModel` entries | `fineRustCliAllocBudget`, `fineRustCliAllocBudgetEntries{,_thunks}`, `fineHookRustCliAllocBudgetEntries{,_thunks}` |
-| [`Fine/SpecBudgetFine.lean`](Fine/SpecBudgetFine.lean) | `module` | Closed `SpecBudget` hook & CLI-extern bundle instantiations at `(fineCostModel, fineHookRustCliAllocBudget)` | `fineAllocHooksBudget_of_b2`, `fineTripleRatchetHooksBudget_of_b2`, `fineSpqrHooksBudget_of_b2`, `fineCliExternsBudgetOk` |
-| [`Fine/NonVacFine.lean`](Fine/NonVacFine.lean) | `module` | Closed `< 1 GiB` (`512 MiB`) non-vacuity and total-correctness (`onOom := ⌜False⌝`) smoke witnesses | `fineRustCliAllocBudgetEntries_nonVacuous`, `fineRustCliAllocBudget_smoke_alloc72_nonVacuous` |
+| [`Fine/RustEntriesFine.lean`](Fine/RustEntriesFine.lean) | `module` | Closed placed `__rustc::__rdl_*` and `__rustc::__rust_*` `RustCliAllocBudget fineCostModel` entries | `fineRustCliAllocBudget`, `fineRustCliAllocBudgetEntries{,_thunks}` |
+| [`Fine/SpecBudgetFine.lean`](Fine/SpecBudgetFine.lean) | `module` | Unified and raw `fineCostModel` budget pool bridge and `CryptoMallocngBudget` re-exports | `fineHookRustCliAllocBudget`, `fineHookBudgetPool_of_init`, `fineHookBudgetPool_of_codeLoaded` |
 
 ## Concrete Tier T2 (`Fine/`) Instantiation (`0` Entry-Contract Premises)
 
 All modules under `LibsignalBinary/Heap/` and `LibsignalBinary/Heap/Fine/` are strict `module`
-files (`0` `import all`, `0` rows in `scripts/non_module_allowlist.txt`):
+files (`0` `import all`):
 
 1. [`Fine/RustEntriesFine.lean`](Fine/RustEntriesFine.lean) and
    [`Fine/ElfInitFine.lean`](Fine/ElfInitFine.lean) discharge the placed `mallocng` C/Rust entry
    contracts directly for Tier T2's `fineCostModel` (`0` open `MallocngPlacedEntryContracts`
    premises).
 2. [`Fine/SpecBudgetFine.lean`](Fine/SpecBudgetFine.lean) and
-   [`Fine/ClientIntegration.lean`](Fine/ClientIntegration.lean) instantiate the full `SpecBudget`
-   hook and CLI-extern bundles for the placed `signal-session` binary.
-3. [`Fine/NonVacFine.lean`](Fine/NonVacFine.lean) proves closed, `0`-hypothesis execution and
-   joint-satisfiability witnesses (`fineRustCliAllocBudgetEntries_nonVacuous`,
-   `fineRustCliAllocBudget_smoke_alloc72_nonVacuous`) under a `512 MiB` physical memory cap.
+   [`Fine/ClientIntegration.lean`](Fine/ClientIntegration.lean) connect the raw `fineRustCliAllocBudget`
+   pool and `mallocng` runtime initialization to `fineHookRustCliAllocBudget` for the placed
+   `signal-session` binary.
 
 ## Caller Budget-Threading Recipe (`RustCliAllocBudget M`)
 

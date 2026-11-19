@@ -11,27 +11,32 @@ module
 
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.CalleeProofs.KyberMapPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.CalleeProofs.CmDropPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.DropsPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.UnackItemsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.ComposeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.ExtBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.ApplyBudget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.FromBudget
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.CalleeProofs.KyberMapPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.CalleeProofs.CmDropPlacedBudget
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.DropsPlacedBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.UnackItemsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.ComposeBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.ExtBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.ApplyBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.FromBudget
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.FrameBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable Auxiliary Definitions for CLI `MessageEncrypt`
@@ -42,7 +47,7 @@ Defines store-kit budget projections, `withStoresEncPlacedSpecV`, seam and tail 
 under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -142,7 +147,7 @@ theorem toTempTwinsIkitOk [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Relocatable budget-threaded `session_message_encrypt_with_stores` (`blkPl_464`, `lsProg_464 H`)
     contract parameterized by `SessionStoreSpec` and `IdentityStoreSpec` with their budget environments. -/
-def withStoresEncPlacedSpecV [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def withStoresEncPlacedSpecV [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -228,7 +233,7 @@ theorem withStoresEncPlacedSpecV_pre_addrOk [LibsignalPlacement] {M : AllocCostM
 /-! ## 3. Budget-Threaded Seam States & Tail State (`lsProg_464 H`) -/
 
 /-- Budget-threaded **Cur** (`+0x20c`) seam state under `[LibsignalPlacement]`. -/
-def CurStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CurStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -250,7 +255,7 @@ def CurStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     x r g sess R s0 s
 
 /-- Budget-threaded **Otr** (`+0x2c8`) seam state under `[LibsignalPlacement]`. -/
-def OtrStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def OtrStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -273,7 +278,7 @@ def OtrStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     x r sess otr taken pqCap pqPtr R s0 s
 
 /-- Budget-threaded **Key** (`+0x344`) seam state under `[LibsignalPlacement]`. -/
-def KeyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def KeyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -296,7 +301,7 @@ def KeyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     x r sess otr taken pqCap pqPtr k R s0 s
 
 /-- Budget-threaded **Cm** (`+0xa70`) seam state under `[LibsignalPlacement]`. -/
-def CmStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CmStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -320,7 +325,7 @@ def CmStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     x r sess otr taken k m otr' pqCap' pqPtr' R s0 s
 
 /-- Budget-threaded **Save** (`+0xbd4`) seam state under `[LibsignalPlacement]`. -/
-def SaveStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SaveStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -345,7 +350,7 @@ def SaveStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     x r sess otr taken k m otr' pqCap' pqPtr' R s0 s
 
 /-- Budget-threaded **Apply** (`+0xd9c`) seam state under `[LibsignalPlacement]`. -/
-def ApplyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ApplyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -368,7 +373,7 @@ def ApplyStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     x r sess otr taken k m otr' pqCap' pqPtr' c R s0 s
 
 /-- Budget-threaded **Stored** (`+0xe88`) seam state under `[LibsignalPlacement]`. -/
-def StoredStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StoredStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -390,7 +395,7 @@ def StoredStateVPlaced [LibsignalPlacement] {M : AllocCostModel}
     x r sess otr taken k m otr' c R s0 s
 
 /-- Budget-threaded error/result tail entry state under `[LibsignalPlacement]`. -/
-def EncTailVPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncTailVPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (kit : SessionStoreSpec A.repAlloc 0#64) (kitEnv : SessionStoreBudgetEnv kit) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A.repAlloc 0#64) (ikitEnv : IdentityStoreBudgetEnv ikit) (ist0 : ikit.IdState)
@@ -412,7 +417,7 @@ def EncTailVPlaced [LibsignalPlacement] {M : AllocCostModel}
 /-! ## 4. External Hooks & Callees on `lsProg_464 H` -/
 
 /-- `VmPreserved`-strengthened bounded `std::time::SystemTime::duration_since` contract (`0` allocations). -/
-def durationSinceBoundedBudgetSpec : Spec (BitVec 64 × BitVec 64) :=
+@[expose] def durationSinceBoundedBudgetSpec : Spec (BitVec 64 × BitVec 64) :=
   withVmPreserved durationSinceBoundedSpec
 
 /-- Budget-threaded external hook contracts and panic stubs on `H : LibsignalHooks` used by
@@ -455,7 +460,7 @@ theorem PublicApiEncHooksPlaced.toTempTwins [LibsignalPlacement] {M : AllocCostM
 
 /-- Budget-threaded relocatable `OTR::encrypt::<Coins>` raw spec (`onOom = ⌜False⌝`,
     `allocFailedIn` eliminated from `onPanic` under `FitsEnv`). -/
-def otrEncryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def otrEncryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) :
     Spec (OtrEncryptGhost × M.σ) where
@@ -475,7 +480,7 @@ def otrEncryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
 
 /-- Budget-threaded relocatable `OTR::encrypt::<Coins>` spec restricted to OTRs whose SPQR state
     satisfies `Q`. -/
-def otrEncryptPlacedSpecQ [LibsignalPlacement] {M : AllocCostModel} (Q : List (BitVec 8) → Prop)
+@[expose] def otrEncryptPlacedSpecQ [LibsignalPlacement] {M : AllocCostModel} (Q : List (BitVec 8) → Prop)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) :
     Spec (OtrEncryptGhost × M.σ) :=
@@ -487,7 +492,7 @@ def otrEncryptPlacedSpecQ [LibsignalPlacement] {M : AllocCostModel} (Q : List (B
 
 /-- Budget-threaded relocatable `OTR::encrypt::<Coins>` spec restricted to `(pqrState, rest)`
     satisfying `Q`, with `F` framed. -/
-def otrEncryptPlacedSpecQF [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def otrEncryptPlacedSpecQF [LibsignalPlacement] {M : AllocCostModel}
     (Q : List (BitVec 8) → List (BitVec 8) → Prop) (F : SepProp)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) :

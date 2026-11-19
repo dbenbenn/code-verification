@@ -24,10 +24,7 @@ cref_hide_foreign_instances
 namespace Symbolic.BugInjection.Proofs.Common443.Census443Close
 open Symbolic.BugInjection Symbolic.BugInjection.Proofs.Common443
 theorem nbscHighBitComp : Census443Defs.NbscHighBitComp' := CompC3Nbsc38HB.nbscHighBitComp_of_leaves CompC3Pre38HB.split38CtxPairsHB_qPreUntaggedNX (CompC3Census38HB.nonInj38CensusXZ_highBitComp CompRPlantWire.highBitWireBytes) CompC3KdfInjRest38HB.split38PairsHB_qKdfInjRest CompC3RestPre38HB.restPre38HB_holds CompC3RestFn38HB.rest38FnHB CompC3KdfChild38HB.kdfChild38HB
-theorem nbscTorsionComp : Census443Defs.NbscTorsionComp' := CompC3Nbsc38HB.nbscTorsionComp_of_leaves CompC3Pre38HB.split38CtxPairsTC_qPreUntaggedNX (CompC3Census38HB.nonInj38CensusXZ_torsionComp CompRPlantWire.torsionWireBytes) CompC3KdfInjRest38HB.split38PairsTC_qKdfInjRest CompC3RestPre38HB.restPre38TC_holds CompC3RestFn38HB.rest38FnTC CompC3KdfChild38HB.kdfChild38TC
 theorem noBsc38HB : CompRX0SS38.NoBsc38HB' := CompRX0SS38.noBsc38HB_of' nbscHighBitComp CompRX0SS38.split38DecompSwapRep_highBitComp
-theorem noBsc38TC : CompRX0SS38.NoBsc38TC' := CompRX0SS38.noBsc38TC_of' nbscTorsionComp CompRX0SS38.split38DecompSwapRep_torsionComp
-
 open CryptoProofLib.Refinement (ExternInterpretation)
 open DY
 open DY.Libsignal (HwBytes)
@@ -102,51 +99,6 @@ theorem split38_decomp_swap_rep_top_split {r : Records} {S : Sem} {who : List Pa
     exact ⟨pre, mid, post, hb, shown, cl, e, c', rfl, hc, hmr, hvis, hpre, hmid, hpost, hm₀, hnil, hex', hmem'⟩
   · exfalso; subst hidS ha hikA ho hstA; obtain ⟨ek', ct', hL, -⟩ := sendMatches_append_inv hsm hlen hq₀; rw [hL] at hsm; exact CompRX0Bytes.not_sendMatches_bobSelf hNe hEq hc hs1 hs2 w hw4 tr₁ tr₂ r.bob _ _ ek' ct' cl _ hsm
 
-theorem split38DecompSwapRep_highBitComp_split {blk₁ : List MachineEvent}
-    (hcs : Cli.CoinSplit [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes] blk₁) :
-    CompRX0SS38.Split38DecompSwapRep' Witnesses.Cheval26SmallSubgroupHighBitComp.setup
-      Witnesses.Cheval26SmallSubgroupHighBitComp.who Witnesses.Cheval26SmallSubgroupHighBitComp.ok
-      ((.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ blk₁)
-      Census443Defs.highBitWireBytes 1 0 := by
-  intro r S g ms p hfits hnb hex hp; rw [census_highBitWireBytes] at hp ⊢; rw [census_iniAliceOut, census_iniAliceStartState, census_iniAliceStartTr, census_encOut]
-  rcases hfits.1 with ⟨hwf, -, -, -, -, -, -, hb, hs, -, -, -, -, hEq, -, -⟩
-  have hs1 : compSecretIdx (clamp (secretBytes r 1)) = some ⟨4, by decide⟩ := by rw [hb]; exact highBitComp_compSecretIdx_bobId
-  have hs2 : compSecretIdx (clamp (secretBytes r 2)) = some ⟨3, by decide⟩ := by rw [hs]; exact highBitComp_compSecretIdx_spk
-  obtain ⟨q₀, hq₀, -⟩ := sentWireBytes_innerWireCanonical.1; have hcan : InnerWireCanonical p := highBitWireBytes_innerWireCanonical.2 p hp; obtain ⟨hpbk, hkc, hpm, -, -⟩ := wirePairOk_spec wirePairOk_highBit hq₀ hp
-  obtain ⟨pre, mid, post, hb_eq, shown, cl, e, c', hms_eq, hc, hmr, hvis, hpre, hmid, hpost, hm₀, hnil, hex', hmem'⟩ :=
-    split38_decomp_swap_rep_top_split (v := 1) (t := 0) hwf.1 hnb hEq hs1 hs2 hcs rfl rsT_len rsT_kind bunBytes_getElem4_ne sentWireBytes_head_ne sentWireBytes_hasTag4 sentWireBytes_len hq₀ (sentWireBytes_baseKey hq₀)
-      (fun _ => by rw [sentWireBytes_kyberCiphertext hq₀, compI0_kyberEncaps_rsT])
-      hp
-      (fun k hk hγ => by
-        rw [gamma_x25519TorsionVariant' S g k 1 0 (by decide), hk, hγ, clamp_b0_lookup]
-        exact hpbk)
-      hkc hpm hcan (outer_highBit hfits.1 hp) (CompRX0Split38.attackerKnows_torsionVariant 1 0) hex
-  obtain ⟨hnb_pre, hnb_mid, hnb_post⟩ := CompRX0Top.noBrkTr_split38 (hms_eq ▸ hnb)
-  exact ⟨pre, mid, post, hb_eq, shown, cl, e, c', hc, hmr, hvis, CompRX0SS38.movesFrom_to_census443 hnb_pre hpre, CompRX0SS38.movesFrom_to_census443 hnb_mid hmid, CompRX0SS38.movesFrom_to_census443 hnb_post hpost, hm₀, hnil, hex', hmem'⟩
-
-theorem split38DecompSwapRep_torsionComp_split {blk₁ : List MachineEvent}
-    (hcs : Cli.CoinSplit [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes] blk₁) :
-    CompRX0SS38.Split38DecompSwapRep' Witnesses.Cheval26SmallSubgroupTorsionComp.setup
-      Witnesses.Cheval26SmallSubgroupTorsionComp.who Witnesses.Cheval26SmallSubgroupTorsionComp.ok
-      ((.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ blk₁)
-      Census443Defs.torsionWireBytes 0 1 := by
-  intro r S g ms p hfits hnb hex hp; rw [census_torsionWireBytes] at hp ⊢; rw [census_iniAliceOut, census_iniAliceStartState, census_iniAliceStartTr, census_encOut]
-  rcases hfits.1 with ⟨hwf, -, -, -, -, -, -, hb, hs, -, -, -, -, hEq, -, -⟩
-  have hs1 : compSecretIdx (clamp (secretBytes r 1)) = some ⟨4, by decide⟩ := by rw [hb]; exact torsionComp_compSecretIdx_bobId
-  have hs2 : compSecretIdx (clamp (secretBytes r 2)) = some ⟨3, by decide⟩ := by rw [hs]; exact torsionComp_compSecretIdx_spk
-  obtain ⟨q₀, hq₀, -⟩ := sentWireBytes_innerWireCanonical.1; have hcan : InnerWireCanonical p := torsionWireBytes_innerWireCanonical.2 p hp; obtain ⟨hpbk, hkc, hpm, -, -⟩ := wirePairOk_spec wirePairOk_torsion hq₀ hp
-  have hv0 : variantBytes compEkATorsion 0 = compEkATorsion := by decide +kernel
-  obtain ⟨pre, mid, post, hb_eq, shown, cl, e, c', hms_eq, hc, hmr, hvis, hpre, hmid, hpost, hm₀, hnil, hex', hmem'⟩ :=
-    split38_decomp_swap_rep_top_split (v := 0) (t := 1) hwf.1 hnb hEq hs1 hs2 hcs rfl rsT_len rsT_kind bunBytes_getElem4_ne sentWireBytes_head_ne sentWireBytes_hasTag4 sentWireBytes_len hq₀ (sentWireBytes_baseKey hq₀)
-      (fun _ => by rw [sentWireBytes_kyberCiphertext hq₀, compI0_kyberEncaps_rsT])
-      hp
-      (fun k hk hγ => by
-        rw [gamma_x25519TorsionVariant' S g k 0 1 (by decide), hk, hγ, clamp_b0_lookup, torsionShift_compEkAPub_one, hv0]
-        exact hpbk)
-      hkc hpm hcan (outer_torsion hfits.1 hp) (CompRX0Split38.attackerKnows_torsionVariant 0 1) hex
-  obtain ⟨hnb_pre, hnb_mid, hnb_post⟩ := CompRX0Top.noBrkTr_split38 (hms_eq ▸ hnb)
-  exact ⟨pre, mid, post, hb_eq, shown, cl, e, c', hc, hmr, hvis, CompRX0SS38.movesFrom_to_census443 hnb_pre hpre, CompRX0SS38.movesFrom_to_census443 hnb_mid hmid, CompRX0SS38.movesFrom_to_census443 hnb_post hpost, hm₀, hnil, hex', hmem'⟩
-
 theorem nbsc38At_of_leaves_split {w : PQXDHSpqrSetup} {τ : List MachineEvent} {wire : HwBytes} {v : Fin 4} {t : Fin 8}
     (hZ : Split38CtxPairsAt QZNodup5 w τ wire v t)
     (hPre : Split38CtxPairsAt QPreUntaggedNX w τ wire v t)
@@ -202,35 +154,4 @@ theorem nbscTorsionComp_split {blk₁ : List MachineEvent}
     (CompC3KdfChild38HB.split38PairsAt_qKdfChild2_of_sentPrefix_split hcs)
   exact nbsc38'_of_nbsc38 (nbsc38_of_hmc hfits.1.1.1 hopk hidx (hmcAt38_of_classVT hvt hfits hp hopk))
 
-theorem noBsc38HB_split {blk₁ : List MachineEvent}
-    (hcs : Cli.CoinSplit [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes] blk₁)
-    (r : Records) (S : Sem) (g : Ghost) (ms : List Move) (p : PreKeyFields)
-    (hfits : compFitsPinned Witnesses.Cheval26SmallSubgroupHighBitComp.setup compI0 r)
-    (hnb : CompSetupSecrecy.NoBrk r ms)
-    (hex : ExplainsMoves compI0 r S Witnesses.Cheval26SmallSubgroupHighBitComp.who Witnesses.Cheval26SmallSubgroupHighBitComp.ok g ms
-      ((.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ blk₁))
-    (hp : parsePreKeyWire Census443Defs.highBitWireBytes = some p) :
-    ∃ g' ms', ExplainsMoves compI0 r S Witnesses.Cheval26SmallSubgroupHighBitComp.who Witnesses.Cheval26SmallSubgroupHighBitComp.ok g' ms'
-        ((.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ blk₁) ∧
-      ∃ x ∈ preKeyRepresentations compI0 r S g' ms' Census443Defs.highBitWireBytes,
-        ¬ BobStartCollision compI0 r S g' ms' p x := by
-  obtain ⟨pre, mid, post, hb, shown, cl, e, c', hc, hmr, hvis, hpre, hmid, hpost, hm₀, hnil, hex', hx₀⟩ :=
-    split38DecompSwapRep_highBitComp_split hcs r S g ms p hfits hnb hex hp
-  exact ⟨g, _, hex', _, hx₀, nbscHighBitComp_split hcs compI0 r S hfits g p hp pre mid post hb shown cl e c' hc hmr hvis hpre hmid hpost hm₀ hnil⟩
-
-theorem noBsc38TC_split {blk₁ : List MachineEvent}
-    (hcs : Cli.CoinSplit [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes] blk₁)
-    (r : Records) (S : Sem) (g : Ghost) (ms : List Move) (p : PreKeyFields)
-    (hfits : compFitsPinned Witnesses.Cheval26SmallSubgroupTorsionComp.setup compI0 r)
-    (hnb : CompSetupSecrecy.NoBrk r ms)
-    (hex : ExplainsMoves compI0 r S Witnesses.Cheval26SmallSubgroupTorsionComp.who Witnesses.Cheval26SmallSubgroupTorsionComp.ok g ms
-      ((.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ blk₁))
-    (hp : parsePreKeyWire Census443Defs.torsionWireBytes = some p) :
-    ∃ g' ms', ExplainsMoves compI0 r S Witnesses.Cheval26SmallSubgroupTorsionComp.who Witnesses.Cheval26SmallSubgroupTorsionComp.ok g' ms'
-        ((.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ blk₁) ∧
-      ∃ x ∈ preKeyRepresentations compI0 r S g' ms' Census443Defs.torsionWireBytes,
-        ¬ BobStartCollision compI0 r S g' ms' p x := by
-  obtain ⟨pre, mid, post, hb, shown, cl, e, c', hc, hmr, hvis, hpre, hmid, hpost, hm₀, hnil, hex', hx₀⟩ :=
-    split38DecompSwapRep_torsionComp_split hcs r S g ms p hfits hnb hex hp
-  exact ⟨g, _, hex', _, hx₀, nbscTorsionComp_split hcs compI0 r S hfits g p hp pre mid post hb shown cl e c' hc hmr hvis hpre hmid hpost hm₀ hnil⟩
 end Symbolic.BugInjection.Proofs.Common443.Census443Close

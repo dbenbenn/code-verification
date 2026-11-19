@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.G1RepPtAtomsTR
 
@@ -20,7 +20,7 @@ Combines the `spqrHeaded msg₀.mac = false` clause of `recvRepresentations` wit
 to establish `g1_rep_of_recvRepresentations`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

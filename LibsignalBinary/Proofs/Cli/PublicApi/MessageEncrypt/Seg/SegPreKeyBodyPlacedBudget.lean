@@ -9,13 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyBody
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyBody
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStalenessPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyStalePlacedBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyStale
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailBuildMessagePlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailEncryptPlaced
 
 /-!
 # Budget-Threaded Relocatable `segPreKey` Registration IDs, Kyber Closure, and Assembly
@@ -25,7 +36,7 @@ segment specification on Block `464` (`lsProg_464 Hk`) under `RustCliAllocBudget
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -151,7 +162,7 @@ theorem segPreKey_regId_kyber_placed_ok [LibsignalPlacement] {M : AllocCostModel
   refine sepWPp_elim_ex fun w14 => ?_
   refine SepWPp.fold (pollWithBaseKey_regId_unpack sp items) (by sep_focus) ?_
   refine sepWPp_elim_ex fun w590 => sepWPp_elim_ex fun w588 => sepWPp_elim_ex fun w580 => ?_
-  dsimp only [encSpillsAt, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq]
+  dsimp only [encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq]
   rw [show protocolAddressAt (A.atState lim st s) = protocolAddressAt A.repAlloc from rfl,
       show (A.atState lim st s).pool = A.pool lim st s from rfl,
       encSubStack_split_kyber hsp]
@@ -238,7 +249,7 @@ theorem segPreKey_regId_kyber_placed_ok [LibsignalPlacement] {M : AllocCostModel
       refine ⟨st', hbud_enc, ?_⟩
       dsimp only [PreKeyEncryptState'Placed,
         preKeyEncryptScratch, preKeyEncryptScratch', pollPreKeyEncrypt, pollE6c', encMidMetaPlaced,
-        encEntryPlaced, encSpillsAt, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
+        encEntryPlaced, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
         at hsp1 hx19_1 hx20_1 hx22_1 hx24_1' hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1 hmf ⊢
       refine ⟨prevCap, prevPtr, G, ts, expiry, pkVal, bp, hts, hexp, hlt, hpkVal,
         hpc1,
@@ -358,7 +369,7 @@ theorem segPreKey_regId_kyber_placed_ok [LibsignalPlacement] {M : AllocCostModel
       refine ⟨st', hbud_enc, ?_⟩
       dsimp only [PreKeyEncryptState'Placed,
         preKeyEncryptScratch, preKeyEncryptScratch', pollPreKeyEncrypt, pollE6c', encMidMetaPlaced,
-        encEntryPlaced, encSpillsAt, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
+        encEntryPlaced, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
         at hsp1 hx19_1 hx20_1 hx22_1 hx24_1' hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1 hmf ⊢
       refine ⟨prevCap, prevPtr, G, ts, expiry, pkVal, bp, hts, hexp, hlt, hpkVal,
         hpc1,

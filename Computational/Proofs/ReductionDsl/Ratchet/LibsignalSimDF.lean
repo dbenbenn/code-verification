@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- shake: keep
-public import Computational.Proofs.SessionCostedBase -- shake: keep
-public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSim -- shake: keep
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- shake: keep -- proof-setup: allow-public-import
+import Computational.Proofs.SessionCostedBase -- shake: keep
+public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSim -- shake: keep -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain -- shake: keep
 import VCVio.EvalDist.EvalDistEq -- shake: keep
 import Computational.Proofs.ReductionDsl.Bridge -- shake: keep
@@ -19,8 +19,9 @@ import Computational.Proofs.ReductionDsl.FSAEAD.SaltWire -- shake: keep
 import Computational.Proofs.ReductionDsl.PubRed -- shake: keep
 import Computational.Proofs.ReductionDsl.SM.RedFS -- shake: keep
 import Computational.Proofs.GameHop.StateSim -- shake: keep
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
-public import Computational.Proofs.GameHop.CompDedup -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
+import Computational.Proofs.GameHop.CompDedup -- shake: keep
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Soundness and Resource Bounds for `simDeliverForgeProg` and `kemFailRedProg`
@@ -29,7 +30,7 @@ Proves static query bounds, `GRedBounded` cost bounds, evaluation agreement, and
 equivalence bridges for `simDeliverForgeProg` and `kemFailRedProg`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.Ratchet.LibsignalSim
 
@@ -198,15 +199,15 @@ omit [DecidableEq Pt] [Zero Pt] [SampleableType PQC] in
     (e : Expr O' Γ (.prod t₁ t₂)) (ρ : Env Γ) :
     (Expr.snd e).eval ρ = (e.eval ρ).2 := rfl
 
-def keptDec (k : (@keptTy PQ PQC Pt ℓ).denote) : Kept Pt :=
+@[expose] def keptDec (k : (@keptTy PQ PQC Pt ℓ).denote) : Kept Pt :=
   ⟨k.1, fun t => match k.2.2 t with
     | some v? => v?
     | none => match k.2.1 with | some st => st.vR t | none => none⟩
 
-def snapDec (e : (@snapEntryTy PQ PQC Pt ℓ).denote) : Party × ℕ × GhostState PQ :=
+@[expose] def snapDec (e : (@snapEntryTy PQ PQC Pt ℓ).denote) : Party × ℕ × GhostState PQ :=
   (partyDec e.1, e.2.1, e.2.2)
 
-def snapEnc (e : Party × ℕ × GhostState PQ) : (@snapEntryTy PQ PQC Pt ℓ).denote :=
+@[expose] def snapEnc (e : Party × ℕ × GhostState PQ) : (@snapEntryTy PQ PQC Pt ℓ).denote :=
   (partyEnc e.1, e.2.1, e.2.2)
 
 omit [DecidableEq Pt] [Zero Pt] [SampleableType PQC] in
@@ -216,7 +217,7 @@ theorem snapDec_snapEnc (e : Party × ℕ × GhostState PQ) :
   rcases e with ⟨Q, ep, g⟩
   simp [snapDec, snapEnc]
 
-def simStateCDec (s : (@simStateCTy PQ PQC Pt ℓ).denote) : LibsignalToModularSchemeSimState PQ Pt ℓ :=
+@[expose] def simStateCDec (s : (@simStateCTy PQ PQC Pt ℓ).denote) : LibsignalToModularSchemeSimState PQ Pt ℓ :=
   ⟨simStateDec s.1,
    fun Q => match Q with | .A => keptDec s.2.1.1 | .B => keptDec s.2.1.2,
    s.2.2.1,
@@ -423,7 +424,7 @@ theorem spqrSendPubFigE_eval {Γ}
   · cases qB <;> cases unackA <;> rfl
 
 /-- Parse an incoming wire for `Q`, run `P.spqr.recv`, and extract the `B`-clamped 1-based counter, ratchet key, decoded point, and ciphertext body. -/
-def simParseRecvC (B : ℕ) (qB : Bool) (pq : PQ) (w : List (BitVec 8)) :
+@[expose] def simParseRecvC (B : ℕ) (qB : Bool) (pq : PQ) (w : List (BitVec 8)) :
     Option (PQ × (ℕ × (PublicKey × (Option Pt × (ℕ × LibsignalCiphertextWithSalt32))))) :=
   let Q := partyDec qB
   if w.length < 9 then none
@@ -996,7 +997,7 @@ omit [SampleableType PQC] in
         Env.get_cons_zero, Env.get_cons_succ]
 
 /-- `B`-clamped `SMScheme` wrapper matching `SimOp.fig8SendStep B` and `SimOp.fig8Receive B`. -/
-def fig8Clamp (B : ℕ)
+@[expose] def fig8Clamp (B : ℕ)
     (fig : SMScheme (BitVec 256 × BitVec 256) (SimFig8St Pt)
       (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (SimFig8C Pt)) :
     SMScheme (BitVec 256 × BitVec 256) (SimFig8St Pt)
@@ -1009,7 +1010,7 @@ def fig8Clamp (B : ℕ)
       (fig.receive st c).map fun (st', t, i, pm) => (st', min t B, min i B, pm) }
 
 /-- `B`-clamped `FSAEADScheme` wrapper matching `SimOp.fsReceive B`. -/
-def fsClampSim (B : ℕ)
+@[expose] def fsClampSim (B : ℕ)
     (fs : FSAEADScheme (BitVec 256) (FSAEAD.RatchetSenderState (BitVec 256))
       (FSAEAD.RatchetReceiverState (BitVec 256) (BitVec 256))
       (Header Pt) (LibsignalMsgPublicPart × Plain ℓ) (ℕ × LibsignalCiphertextWithSalt32)) :
@@ -1383,7 +1384,7 @@ theorem knownSeedRE_eval {Γ} (L : ℕ)
           · simp [hpk]; exact ih
       · simp [h1]; exact ih
 
-def evalCKClamp (B : ℕ) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (Q : Party)
+@[expose] def evalCKClamp (B : ℕ) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (Q : Party)
     (w : List (BitVec 8)) (c c' : SimFig8C Pt) :
     Option (Option (ℕ × ℕ × (LibsignalMsgPublicPart × Plain ℓ))) :=
   let idOf : Party → IdentityKey := fun R => if R == Party.A then P.idA else P.idB
@@ -1460,7 +1461,7 @@ theorem scMk_pSet_kept_eval {O' : Ops S} {Γ}
   cases hq : q.eval ρ <;> cases R <;>
     simp [pSet, scKept, partyDec, hq, Function.update, Expr.eval, Expr.v0]
 
-def scPostSendPure (sC : LibsignalToModularSchemeSimState PQ Pt ℓ)
+@[expose] def scPostSendPure (sC : LibsignalToModularSchemeSimState PQ Pt ℓ)
     (s₁ : GameState Unit (Plain ℓ) (List (BitVec 8)))
     (Q : Party) (m₀ : Plain ℓ) (isChall : Bool) (pq' : PQ)
     (pn5 : BitVec 32) (c : SimFig8C Pt) : LibsignalToModularSchemeSimState PQ Pt ℓ :=
@@ -1988,12 +1989,12 @@ theorem evalCKClamp_eq_evalCK (B : ℕ)
     funext fun seed => simKDecryptFig8_eq_kDecryptFig8 P B Q w c' seed ht hi
   rw [hkd]
 
-def kemCoinsEnc : CryptoVerification.SpqrV1Sync.Braid.Coins → SimKemCoins
+@[expose] def kemCoinsEnc : CryptoVerification.SpqrV1Sync.Braid.Coins → SimKemCoins
   | .init => .init
   | .seed s => .seed s
   | .both s r => .both s r
 
-def kemTrackEnc {F : ShaCompress}
+@[expose] def kemTrackEnc {F : ShaCompress}
     (tr : CryptoGames.LibsignalSM.Proofs.Refinement.KemFailTrackState F) :
     SimKemFailTrack F :=
   { e := tr.e
@@ -2068,7 +2069,7 @@ theorem simStepKemFailDeliver_kemTrackEnc (F : ShaCompress)
             simBe64, CryptoVerification.SpqrV1Sync.Braid.be64]
       · simp [hm]
 
-def onAcceptPure (qep : ℕ) (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
+@[expose] def onAcceptPure (qep : ℕ) (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
     (t i : ℕ) (m : Plain ℓ) (ci? : Option ℕ) (T : PublicKey) (pq' : PQ)
     (s : SimState PQ Pt ℓ) :
     Option (RecvResult (Plain ℓ)) × SimState PQ Pt ℓ :=
@@ -2094,7 +2095,7 @@ def onAcceptPure (qep : ℕ) (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
       else
         (some .rejected, { s with mir := { s.mir with win := true } })
 
-def onAnswerPure (qep : ℕ) (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
+@[expose] def onAnswerPure (qep : ℕ) (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
     (ci? : Option ℕ) (T : PublicKey) (pq' : PQ)
     (res : Option (RecvResult (LibsignalMsgPublicPart × Plain ℓ))) (s : SimState PQ Pt ℓ) :
     Option (RecvResult (Plain ℓ)) × SimState PQ Pt ℓ :=
@@ -2198,7 +2199,7 @@ structure SimCStateBounded (L : ℕ) (sC : LibsignalToModularSchemeSimState PQ P
   snaps_le : sC.snaps.length ≤ L
 
 /-- Query-budget invariant on `LibsignalToModularSchemeSimState PQ Pt ℓ` with `m` adversary queries remaining. -/
-def SimCStateInv (L m : ℕ) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) : Prop :=
+@[expose] def SimCStateInv (L m : ℕ) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) : Prop :=
   SimStateInv L m sC.base ∧ sC.sent.length + m ≤ L ∧ sC.snaps.length + m ≤ L
 
 omit [DecidableEq Pt] [Zero Pt] [SampleableType PQC] in
@@ -2294,7 +2295,7 @@ structure HookMatch {ι : Type} {T : OracleSpec ι} {I : Iface S T} {σExtra : T
     res.eval ρ₁ = res.eval ρ₂ → ex.eval ρ₁ = ex.eval ρ₂ →
     (hk.onDeliverPost qB j? res ex).eval ρ₁ = (hk.onDeliverPost qB j? res ex).eval ρ₂
 
-def semDrawSendCoins {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semDrawSendCoins {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex) (r : Option PQC) :
     OracleComp T (PQC × Option (BitVec 256)) :=
   match r with
@@ -2319,7 +2320,7 @@ theorem simDrawSendCoinsHookC_eval {ι : Type} {T : OracleSpec ι} {I : Iface S 
     h_hk.samplePqc_eval, h_hk.sampleBv256_eval]
   cases r.eval ρ <;> rfl
 
-def semSendHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semSendHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex) (qep : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (m₀ : Plain ℓ) (chal : Option (Plain ℓ)) (r : Option PQC) :
@@ -2530,7 +2531,7 @@ theorem simSendHookC_eval {ι : Type} {T : OracleSpec ι} {I : Iface S T}
             simp [ρ₇, ρ₆, ρ₅, ρ₄, ρ₃, ρ₂, ρ₁, pn, hsC, partyDec_partyEnc, isSomeE_eval,
               Expr.eval, Expr.v0, Expr.v1, Expr.v2, Expr.v6]
 
-def semFwdAnswerHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semFwdAnswerHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex) (qep : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ)
@@ -2654,7 +2655,7 @@ theorem fwdAnswerHookC_eval {ι : Type} {T : OracleSpec ι} {I : Iface S T}
   rcases res with _ | (_ | ⟨t, i, m⟩) <;>
     (dsimp only []; rw [hsC1]; try rw [hq1]) <;> rfl
 
-def semResyncHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semResyncHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex) (qep : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (w : List (BitVec 8)) (ci? : Option ℕ)
@@ -2792,7 +2793,7 @@ theorem resyncHookC_eval {ι : Type} {T : OracleSpec ι} {I : Iface S T}
         hsC5]
       rfl
 
-def semFwdHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semFwdHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex) (qep B : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ)
@@ -2922,7 +2923,7 @@ theorem fwdHookC_eval {ι : Type} {T : OracleSpec ι} {I : Iface S T}
         (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd .v1)))))))))
         ρ₂ sC₀ ex₀ Q hBound.base hEx hsC hex hq
 
-def semFwdEvictHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semFwdEvictHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex) (qep : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool)
@@ -2994,7 +2995,7 @@ theorem fwdEvictHookC_eval {ι : Type} {T : OracleSpec ι} {I : Iface S T}
       (.snd (.snd (.snd (.snd (.snd (.snd (.snd .v0)))))))
       ρ₁ sC₀ ex₀ Q hBound hEx hsC hex hq
 
-def semRecvHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semRecvHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex) (qep B : ℕ)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex)
     (Q : Party) (w : List (BitVec 8)) (isDel : Bool) :
@@ -3362,7 +3363,7 @@ theorem simRecvHookC_eval {ι : Type} {T : OracleSpec ι} {I : Iface S T}
             _ _ ρ₃ sC₀ ex₀ Q hBound hEx hsC hex hq, hhc3, hmk3]
           rfl
 
-def semCorrHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semCorrHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex) (Q : Party) :
     OracleComp T (Option (GhostState PQ) × (LibsignalToModularSchemeSimState PQ Pt ℓ × Ex)) := do
@@ -3392,7 +3393,7 @@ def semCorrHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
           snaps := (Q, sC.base.mir.epoch Q, ghostOut) :: sC.snaps }
       return (some ghostOut, (sC', ex₁))
 
-def semCorrHookDedup {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semCorrHookDedup {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex) (Q : Party) :
     OracleComp T (Option (GhostState PQ) × (LibsignalToModularSchemeSimState PQ Pt ℓ × Ex)) := do
@@ -3622,7 +3623,7 @@ theorem simCorrHookC_eval {ι : Type} {T : OracleSpec ι} {I : Iface S T}
       rcases fig8st.γ with _ | x <;>
         simp [ρ₃, ρ₂, ρ₁, hsC, hq, partyDec_partyEnc, Expr.eval, Expr.v0, Expr.v2]
 
-def semHandleHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semHandleHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex) (qep B : ℕ)
     (t : (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))).Domain)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex) :
@@ -3645,7 +3646,7 @@ def semHandleHook {ι : Type} {T : OracleSpec ι} {Ex : Type}
   | .inr Q =>
     semCorrHook P Dh encT sh sC ex Q
 
-def semHandleHookDedup {ι : Type} {T : OracleSpec ι} {Ex : Type}
+@[expose] def semHandleHookDedup {ι : Type} {T : OracleSpec ι} {Ex : Type}
     (sh : SemHook PQC Pt ℓ T Ex) (qep B : ℕ)
     (t : (SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))).Domain)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : Ex) :
@@ -4440,7 +4441,7 @@ theorem semHandleHookDedup_preserves_ex_inv {ι : Type} {T : OracleSpec ι} {Ex 
   · exact semCorrHookDedup_preserves_ex_inv P Dh encT h_inv m sC₀ ex₀ Q hEx
 
 /-- Combined raw-state invariant on `(simStateCTy × σExtra).denote` for `simHandleHookC`. -/
-def SimHookRawInv {σExtra : Ty S} {Ex : Type}
+@[expose] def SimHookRawInv {σExtra : Ty S} {Ex : Type}
     (exEnc : Ex → σExtra.denote) (ExInv : ℕ → ℕ → Ex → Prop) (L m : ℕ)
     (st_raw : (Ty.prod simStateCTy σExtra).denote) : Prop :=
   SimCStateInv L m (simStateCDec st_raw.1) ∧
@@ -4507,7 +4508,7 @@ theorem simHandleHookC_step {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     · exact semHandleHookDedup_preserves_ex_inv P Dh encPt encT decT lam h_inv m qep B
         t (simStateCDec st_raw.1) ex₀ hexInv _ hsem
 
-def deliverForgeSemHook :
+@[expose] def deliverForgeSemHook :
     SemHook PQC Pt ℓ
       (unifSpec + SM.specDF (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (SimFig8C Pt))
       (List (SimFig8C Pt)) where
@@ -4713,7 +4714,7 @@ theorem deliverForgeSemHookInv (L : ℕ) :
     simp only [deliverForgeSemHook, support_pure, Set.mem_singleton_iff] at hy
     subst hy; exact hEx
 
-def simStateCCanon (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) :
+@[expose] def simStateCCanon (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) :
     LibsignalToModularSchemeSimState PQ Pt ℓ :=
   { sC with base := simStateCanon sC.base }
 
@@ -5169,7 +5170,7 @@ private theorem semHandleHook_simStateCCanon {ι : Type} {T : OracleSpec ι} {Ex
   · exact semRecvHook_simStateCCanon P Dh encPt encT decT lam sh qep B sC ex Q w false
   · exact semCorrHook_simStateCCanon P Dh encT sh sC ex Q
 
-def simDeliverForgeOracle (qep B : ℕ) :
+@[expose] def simDeliverForgeOracle (qep B : ℕ) :
     QueryImpl (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (StateT (LibsignalToModularSchemeSimState PQ Pt ℓ × List (SimFig8C Pt))
         (SM.Construction.DeliverForge.AdversaryCompDF
@@ -5181,7 +5182,7 @@ def simDeliverForgeOracle (qep B : ℕ) :
   | .inr t => StateT.mk fun ⟨sC, ex⟩ =>
     semHandleHook P Dh encPt encT decT lam deliverForgeSemHook qep B t sC ex
 
-def simDeliverForgeOracleDedup (qep B : ℕ) :
+@[expose] def simDeliverForgeOracleDedup (qep B : ℕ) :
     QueryImpl (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (StateT (LibsignalToModularSchemeSimState PQ Pt ℓ × List (SimFig8C Pt))
         (SM.Construction.DeliverForge.AdversaryCompDF
@@ -5213,7 +5214,7 @@ private theorem run'_simulateQ_simDeliverForgeOracleDedup_eq (qep B : ℕ)
         qep B t sC ex
 
 /-- `B`-clamped semantic counterpart of `simDeliverForge` matching `simDeliverForgeProg`. -/
-def simDeliverForgeClamp (qep B : ℕ)
+@[expose] def simDeliverForgeClamp (qep B : ℕ)
     (A : SM.Adversary (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) :
     SM.Construction.DeliverForge.AdversaryCompDF
       (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (SimFig8C Pt) Bool := do
@@ -5304,7 +5305,7 @@ theorem simDeliverForgeProg_eval (L qep B : ℕ)
 abbrev KemExtraRaw (PQ PQC Pt : Type) [Zero Pt] (ℓ : ℕ) : Type :=
   (@kemExtraTy PQ PQC Pt ℓ).denote
 
-def kemFailSemHook (L qep B : ℕ) :
+@[expose] def kemFailSemHook (L qep B : ℕ) :
     SemHook PQC Pt ℓ unifSpec (KemExtraRaw PQ PQC Pt ℓ) where
   sampleBv256 := ($ᵗ (BitVec 256) : ProbComp (BitVec 256))
   samplePqc := ($ᵗ PQC : ProbComp PQC)
@@ -6420,7 +6421,7 @@ theorem kemFailSemHookInv (L qep B : ℕ) :
   onProbe_inv _ _ _ := trivial
   onDeliverPost_inv _ _ _ := trivial
 
-def kemFailOracle (L qep B : ℕ) :
+@[expose] def kemFailOracle (L qep B : ℕ) :
     QueryImpl (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (StateT (LibsignalToModularSchemeSimState PQ Pt ℓ × KemExtraRaw PQ PQC Pt ℓ) (OracleComp unifSpec))
   | .inl n => StateT.lift (query (spec := unifSpec) n)
@@ -6428,7 +6429,7 @@ def kemFailOracle (L qep B : ℕ) :
     semHandleHook P Dh encPt encT decT lam
       (kemFailSemHook (ℓ := ℓ) P Dh encPt encT decT lam K toKemCoins L qep B) qep B t sC ex
 
-def kemFailOracleDedup (L qep B : ℕ) :
+@[expose] def kemFailOracleDedup (L qep B : ℕ) :
     QueryImpl (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (StateT (LibsignalToModularSchemeSimState PQ Pt ℓ × KemExtraRaw PQ PQC Pt ℓ) (OracleComp unifSpec))
   | .inl n => StateT.lift (query (spec := unifSpec) n)
@@ -6463,7 +6464,7 @@ private theorem map_run_simulateQ_kemFailOracleDedup_eq (L qep B : ℕ)
         (kemFailSemHook (ℓ := ℓ) P Dh encPt encT decT lam K toKemCoins L qep B) qep B t sC ex
 
 /-- `B`-clamped semantic counterpart of `redKemFailHiddenSalt` matching `kemFailRedProg`. -/
-def redKemFailHiddenSaltClamp (L qep B : ℕ)
+@[expose] def redKemFailHiddenSaltClamp (L qep B : ℕ)
     (A : SM.Adversary (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) :
     OracleComp unifSpec (SimKemSeed × SimKemEncRand) := do
   let b ← ($ᵗ Bool : ProbComp Bool)
@@ -6580,7 +6581,7 @@ theorem kemFailRedProg_eval (L qep B : ℕ)
   refine bind_congr fun _ => bind_congr fun _ => bind_congr fun _ => bind_congr fun _ => ?_
   exact map_run_simulateQ_kemFailOracleDedup_eq P Dh encPt encT decT lam K toKemCoins L qep B A _
 
-def runDFM {α : Type}
+@[expose] def runDFM {α : Type}
     (x : StateT (LibsignalToModularSchemeSimState PQ Pt ℓ)
       (CryptoGames.LibsignalSM.Proofs.Refinement.DeliverForgeM Pt ℓ) α)
     (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (ex : List (SimFig8C Pt)) :
@@ -7218,11 +7219,11 @@ theorem simDeliverForge_eq_bind_runDFM (qep : ℕ)
     (initSimC (P.spqr.init .a2b pqrKey) (P.spqr.init .b2a pqrKey)) []
   simpa only [StateT.run'_eq] using h
 
-def fig8RecEnc (r : Record (LibsignalMsgPublicPart × Plain ℓ) (SimFig8C Pt)) :
+@[expose] def fig8RecEnc (r : Record (LibsignalMsgPublicPart × Plain ℓ) (SimFig8C Pt)) :
     (Bool × ℕ × ℕ) × (LibsignalMsgPublicPart × Plain ℓ) × SimFig8C Pt :=
   (posEnc r.pos, (r.msg, r.ct))
 
-def fig8MirEnc (s : GameState (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (SimFig8C Pt)) :
+@[expose] def fig8MirEnc (s : GameState (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (SimFig8C Pt)) :
     (mirTy (@fig8RecTy PQ PQC Pt ℓ)).denote :=
   (s.b,
    (s.win,
@@ -7236,7 +7237,7 @@ def fig8MirEnc (s : GameState (SimFig8St Pt) (LibsignalMsgPublicPart × Plain �
            (s.leaks,
             s.corrs.map (fun pe => (partyEnc pe.1, pe.2))))))))))))
 
-def fig8GsEnc (g : GameState (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (SimFig8C Pt)) :
+@[expose] def fig8GsEnc (g : GameState (SimFig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (SimFig8C Pt)) :
     (@fig8GsTy PQ PQC Pt ℓ).denote :=
   ((g.st .A, g.st .B), fig8MirEnc g)
 

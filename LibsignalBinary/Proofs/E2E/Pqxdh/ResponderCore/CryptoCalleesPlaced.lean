@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCallees
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCallees -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfGenFinPlaced
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.HkdfLongPlaced
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandSegsExt
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Extract
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
 import ProofLib.SepLogic.WPFrozen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Unconditional Crypto Callees and Hook Bundle (`[LibsignalPlacement]`)
@@ -28,7 +29,7 @@ Proves relocatable `[LibsignalPlacement]` contracts for `expand_multi_info` (`96
 packages the responder external-hook hypotheses into `PqxdhPlacedHookContracts`.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
@@ -609,7 +610,7 @@ abbrev lsHandleErrorSym : String :=
 blocks such as Block `79`), by transferring from Block `53` via `externs_eq`. -/
 theorem pqxdh_placed_externAt?_of_mem [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
   let p53 := (blkPC_53).rebase (blkPl_53).base H
   have h53_inst : IsLsBlockProg p53 53 H := inferInstance
@@ -626,17 +627,18 @@ blocks such as Block `79`) from `HookSat H sym spec`. -/
 theorem pqxdh_placed_hook_ok_of_mem [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
   obtain ⟨f, hf, hok⟩ := hsat
   exact subroutine_ok_of_hookOk ((pqxdh_placed_externAt?_of_mem hmem).trans hf) hok
 
 /-- Combined external-hook contract bundle for `ResponderCore` (`AcceptPlaced` / `InitBobPlaced`)
 under `[LibsignalPlacement]`. -/
-structure PqxdhPlacedHookContracts (P : Primitives) (C : Crypto) (A : RustAlloc)
+structure PqxdhPlacedHookContracts [LibsignalPlacement] (P : Primitives) (C : Crypto) (A : RustAlloc)
     (H : LibsignalHooks) : Prop where
   hkdf             : HkdfPlacedHooks C.F H
-  dh               : HookSat H Keys.lsDhSym (diffieHellmanSpec C.X)
+  dh               : HookSat H Keys.lsDhSym
+    (Keys.withLsRet624 (CryptoVerification.LibsignalTripleRatchet.withStack (diffieHellmanSpec C.X) 1808))
   sharedDrop       : HookSat H Keys.lsSharedDropSym zeroizeSecretSpec
   staticDrop       : HookSat H Keys.lsStaticDropSym zeroizeSecretSpec
   blackBox         : H lsBlackBoxU8Sym = some blackBoxHook

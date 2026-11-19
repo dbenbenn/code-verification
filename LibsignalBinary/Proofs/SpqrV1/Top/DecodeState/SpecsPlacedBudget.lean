@@ -10,15 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Specifications for `spqr::decode_state` (Block `325`)
@@ -27,7 +29,7 @@ Defines budget-threaded relocatable callee contract bundles and top-level specif
 (`spqrDecodeStatePlacedSpecOfEnv` and `spqrDecodeStatePlacedSpec`) for Block `325`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -68,7 +70,7 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj
 
 /-- Budget-threaded relocatable contract for
 `core::ptr::drop_glue::<Option<spqr::proto::pq_ratchet::v1_state::InnerState>>` (Block `267`). -/
-def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (H_inner : V1InnerHeapPred) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropOptProtoInnerStateGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -86,7 +88,7 @@ def dropOptProtoInnerStatePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded relocatable contract for
 `core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>` (Block `270`). -/
-def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (H_inner : V1InnerHeapPred) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DropProtoPqRatchetStateGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -104,7 +106,7 @@ def dropProtoPqRatchetStatePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Envelope-parameterized budget-threaded relocatable specification of `spqr::decode_state`
 (Block `325`). -/
-def spqrDecodeStatePlacedSpecOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def spqrDecodeStatePlacedSpecOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (H_inner : V1InnerHeapPred) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv PostEnv : DecodeStateGhost → List AllocEvent → Prop) :
     Spec (DecodeStateGhost × M.σ) where
@@ -126,7 +128,7 @@ def spqrDecodeStatePlacedSpecOfEnv [LibsignalPlacement] {M : AllocCostModel}
       decodeStateResultAt H_inner A.repAlloc x.outPtr (spqrDecodeState x.st.bytes) ∗
       stackAt s0.sp decodeStateStackX
 
-def spqrDecodeStatePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def spqrDecodeStatePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (H_inner : V1InnerHeapPred) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DecodeStateGhost × M.σ) :=
   spqrDecodeStatePlacedSpecOfEnv H_inner A lim DecodeStateEnv DecodeStateEnv
@@ -184,7 +186,7 @@ structure DecodeStateCalleeContractsPlacedX [LibsignalPlacement] {M : AllocCostM
   v1StateMerge : subroutine_ok ((blkPC_325).rebase (blkPl_325).base (Rust.withPanics ext))
     (lsmpl.base 298) (withLsCodeRoLoaded lsmpl (v1StateMergePlacedSpec A lim))
 
-def DecodeStatePlacedOkOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DecodeStatePlacedOkOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (H_inner : V1InnerHeapPred) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv PostEnv : DecodeStateGhost → List AllocEvent → Prop)
     (ext : String → Option (State → State)) : Prop :=
@@ -192,7 +194,7 @@ def DecodeStatePlacedOkOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (blkPl_325).base
     (withLsCodeRoLoaded lsmpl (spqrDecodeStatePlacedSpecOfEnv H_inner A lim PreEnv PostEnv))
 
-def DecodeStatePlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DecodeStatePlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (H_inner : V1InnerHeapPred) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_325).rebase (blkPl_325).base (Rust.withPanics ext))

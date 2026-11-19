@@ -13,7 +13,7 @@ public import Computational.Specifications.Session.ACD19.SM.Theorem8And12Stateme
 public import LibsignalBinary.Specifications.CryptoGames.SM.Construction
 public import Computational.Proofs.CryptoGames.SM.GameProofDefs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +46,7 @@ variable (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
   (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ)
 
 /-- Authenticity bound for the Fig. 8 scheme with healing window `2 + Δcka` (ACD19 Theorem 8). -/
-def Theorem8
+@[expose] def Theorem8
     (R₁ : Option ℕ → ℕ → SchemeAdversary Γ T Sig SS RS M CCoins E → CKA.Adversary Γ CCoins T I)
     (R₂ : Option ℕ → ℕ → SchemeAdversary Γ T Sig SS RS M CCoins E → PRFPRNG.Adversary Sig I K)
     (R₃ : ℕ → Option ℕ → ℕ → SchemeAdversary Γ T Sig SS RS M CCoins E →
@@ -58,7 +58,7 @@ def Theorem8
         + ∑ j ∈ Finset.range q, FSAEAD.advantage fs (R₃ j tL t A)
 
 /-- Privacy bound for the Fig. 8 scheme with healing window `2 + Δcka` (ACD19 Theorem 12). -/
-def Theorem12
+@[expose] def Theorem12
     (R₁ : Option ℕ → ℕ → SchemeAdversary Γ T Sig SS RS M CCoins E → CKA.Adversary Γ CCoins T I)
     (R₂ : Option ℕ → ℕ → SchemeAdversary Γ T Sig SS RS M CCoins E → PRFPRNG.Adversary Sig I K)
     (R₃ R₃' : Option ℕ → ℕ → SchemeAdversary Γ T Sig SS RS M CCoins E →

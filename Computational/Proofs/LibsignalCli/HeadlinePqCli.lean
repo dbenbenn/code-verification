@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.HeadlinePqCliMixEq
-public import Computational.Proofs.LibsignalCli.StatementPqSecure
+public import Computational.Proofs.LibsignalCli.HeadlinePqCliMixEq -- proof-setup: allow-public-import
+public import Computational.Proofs.LibsignalCli.StatementPqSecure -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.MainHaltedGame
 import Computational.Proofs.LibsignalCli.MainOfLemmas
 import Computational.Proofs.LibsignalCli.Oom.Transfer
@@ -19,10 +19,9 @@ import Computational.Proofs.LibsignalCli.Oom.Transfer
 # CLI security on PQXDH directories with SPQR from bridge premises
 
 Proves `LibsignalCliPqSecure S ℓ` from `PqxdhKeyIndSecureδ S` and `cliHaltedBoundProp_holds` via
-the halted-game `KemFailBad` transfer `cliPqAdvantage_le_add_kemFail`.
--/
+the halted-game `KemFailBad` transfer `cliPqAdvantage_le_add_kemFail`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,8 +41,8 @@ theorem libsignalCliPqSecure_of_bridges
   rcases Computational.Proofs.LibsignalCli.MainHaltedGame.cliHaltedBoundProp_holds (Pt := Pt) S ℓ with
     ⟨L_cli, D, reds, ⟨hSlotD, hBounds⟩, hMainH⟩
   refine ⟨L_cli, RK, D, reds, hCostRK, hSimRK, hSlotD, hBounds, ?_⟩
-  intro run X W hCli hK_tot hP δ_kem hKemBin Dh encPt encT decT qep hℓ hDh hX hdec
-    hdum hz hD hkerAll b qStart qs hq32 δ hδ A hA P qDR qInst qTot B_A Re b_ki advK
+  intro run X W hCli hK_tot hD hP δ_kem hKemBin Dh encPt encT decT qep hℓ hDh hX hdec
+    hdum hz hkerAll b qStart qs hq32 δ hδ A hA P qDR qInst qTot B_A Re b_ki advK
   obtain ⟨hK, hQueries, ⟨exp_H, δ_extra, hPtwise, hBiasH⟩⟩ :=
     hMainH run X W hCli hK_tot hP δ_kem hKemBin Dh encPt encT decT qep hℓ hDh hX hdec
       hdum hz hD hkerAll b qStart qs hq32 δ hδ A hA

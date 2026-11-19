@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreHol
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SigBudgetSim
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreHol
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKem -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SigBudgetSim -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndSigKemProofs
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SigNoQuery
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCoreSim -- proof-setup: allow-public-import
 
 /-!
 # Evaluation of `sigKeyIndProg`
@@ -23,7 +24,7 @@ Proves that the costed-DSL reduction `sigKeyIndProg` (`sigKeyIndDslAdv`) has the
 experiment distribution and advantage as the shallow `sigReductionKeyIndCore`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +68,7 @@ theorem liftBase_eq_liftChal {C : ChallengerOracle} {Γ : List PT} {t : PT}
 
 /-! ## Branch evaluation -/
 
-def sigStToVal {S : Setup} (p : SigReductionState (KeyIndState S) × Nat) : sigStTy.denote :=
+@[expose] def sigStToVal {S : Setup} (p : SigReductionState (KeyIndState S) × Nat) : sigStTy.denote :=
   (keyIndStateToVal p.1.gameState, (p.1.targetParty, (p.1.targetPk, (p.1.forgery, p.2))))
 
 section Branches
@@ -548,7 +549,7 @@ theorem sigKeyIndProg_eval_eq_of_pos (useRo : Bool) (S : Setup) (b : QueryBudget
   exact sigKeyIndProg_eval_eq_of_bound useRo S b.q_total A.1 pk hN b.q_total hA le_rfl
 
 /-- `SigEufCma` adversary obtained by running `sigKeyIndProg` with capacity `b.q_total`. -/
-def sigKeyIndDslAdv (useRo : Bool) (S : Setup) (b : QueryBudget)
+@[expose] def sigKeyIndDslAdv (useRo : Bool) (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : SigEufCmaAdv where
   run pk := (sigKeyIndProg useRo S b.q_total).eval (fun _ => A.1.run) pk
   q_sig := (sigReductionKeyIndCore useRo S b A).q_sig

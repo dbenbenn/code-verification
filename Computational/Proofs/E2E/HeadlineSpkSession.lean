@@ -9,20 +9,22 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop2
-public import Computational.Proofs.E2E.SpkHop1D
-public import Computational.Proofs.ReductionDsl.SpkHop2Red
-public import Computational.Proofs.ReductionDsl.SpkLeakRedU
+import Computational.Proofs.E2E.SpkHop2
+public import Computational.Proofs.E2E.SpkHop1D -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.SpkHop2Red
+import Computational.Proofs.ReductionDsl.SpkLeakRedU
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import Computational.Proofs.E2E.SpkCostedEval
 import Computational.Proofs.E2E.SpkHop1InitBridge
 import Computational.Proofs.SignalWireRoundTrip
 import Computational.Proofs.ReductionDsl.AtomicTablesHonest
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
-public import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg
-public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg
-public import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedTier2Prog
-public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2Tier2Prog
+public import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInDefs -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg
+import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg
+public import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedTier2Prog -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2Tier2Prog -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.StatementSpkModel
 
 /-!
@@ -36,7 +38,7 @@ rewrite (`DEV-LS33`, `DEV-LS34`), the costed SPK reduction bundle `mkSpkCostedRe
 size/cost/evaluation bridges, and the terminal Hop-2 hybrid bound `evalDist_hop2PrfRedK_last_le`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -86,7 +88,7 @@ variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 variable {PQC : Type} [SampleableType PQC]
 
 /-- Hop-3 uniform-scalar wrapper `spkLeakRedU` expressed over `ReductionDsl.atomicPureOps ℓ Pt`. -/
-def spkLeakRedUAtomicProg (ℓ : ℕ := 0) : SpkLeakRedUProg Pt ℓ where
+@[expose] def spkLeakRedUAtomicProg (ℓ : ℕ := 0) : SpkLeakRedUProg Pt ℓ where
   σ := .unit
   init :=
     .bind (.sample (ReductionDsl.UniformSamplerTag.base ReductionDsl.AtomicBaseUnif.bv256) .unit)
@@ -170,52 +172,6 @@ theorem spkLeakRedUAtomicProg_eval (ℓ : ℕ) (D : SpkLeakRed Pt ℓ PQC) (P : 
     ReductionDsl.Comp.eval, ReductionDsl.Expr.eval, bind_map_left]
   rfl
 
-private theorem spkRatchetCostBudget_lower (q qep : ℕ) :
-    16777216 * (q + 1) ≤ ratchetCostBudget q qep := by
-  unfold ratchetCostBudget maxForwardJumps
-  have hq : q + 1 ≤ (q + 1) ^ 2 := by nlinarith
-  have hm : 25000 ≤ q + 25000 + ReductionDsl.bits qep := by omega
-  nlinarith
-
-private theorem spkHopBudget_lower (q qep ℓ : ℕ) :
-    12800000 * (q + 1) ≤ spkHopBudget q qep ℓ := by
-  unfold spkHopBudget
-  refine le_min ?_ ?_
-  · unfold spkTier1Budget maxForwardJumps
-    omega
-  · unfold spkTier2Budget maxForwardJumps
-    have h1 : 12800000 ≤
-        64 * (ℓ + 512) + 64 * ReductionDsl.bits (q + 1) +
-          64 * ReductionDsl.bits qep + 2 ^ 9 * 25000 := by omega
-    calc 12800000 * (q + 1)
-      _ = (q + 1) * 12800000 := Nat.mul_comm _ _
-      _ ≤ (q + 1) * (64 * (ℓ + 512) + 64 * ReductionDsl.bits (q + 1) +
-            64 * ReductionDsl.bits qep + 2 ^ 9 * 25000) := Nat.mul_le_mul_left (q + 1) h1
-
-omit [DecidableEq Pt] [Zero Pt] [SampleableType Pt] in
-theorem spkLeakRedUAtomicProg_gRedBounded (ℓ q qep : ℕ) :
-    GRedBounded (spkLeakRedUAtomicProg (Pt := Pt) ℓ) (fun _ => 1) (fun _ => 0)
-      (q + 1) (q + 1) (ratchetCostBudget q qep) := by
-  refine Costed.gRedBounded_of_bounds (spkLeakRedUAtomicProg (Pt := Pt) ℓ)
-    (fun _ => 1) (fun _ => 0) (q + 1) (q + 1) (ratchetCostBudget q qep) ?_ ?_ ?_
-    (ReductionDsl.atomicPureOps_sizeHonest ℓ Pt)
-    (ReductionDsl.atomicBaseSamplers_sizeHonest ℓ Pt)
-  · have hbud := spkRatchetCostBudget_lower q qep
-    have hmax11 : max 1 11 = 11 := rfl
-    simp only [ReductionDsl.CostedReduction.totalCost, spkLeakRedUAtomicProg,
-      ReductionDsl.Comp.cost, ReductionDsl.Expr.cost,
-      ReductionDsl.extractPtPrfBaseIface, ReductionDsl.atomicPrfIface,
-      ReductionDsl.extractPtPrfCodec, ReductionDsl.atomicPrfCodec,
-      ReductionDsl.atomicBaseSamplers, ReductionDsl.unifSamplers,
-      ReductionDsl.AtomicBaseUnif.cost, Nat.reduceAdd, hmax11]
-    omega
-  · simp only [ReductionDsl.CostedReduction.size, spkLeakRedUAtomicProg,
-      ReductionDsl.Comp.size, ReductionDsl.Expr.size, ReductionDsl.reductionSizeBudget]
-    omega
-  · simp only [ReductionDsl.CostedReduction.totalQueries, spkLeakRedUAtomicProg,
-      ReductionDsl.Comp.queries]
-    omega
-
 omit [DecidableEq Pt] [Zero Pt] [SampleableType Pt] in
 theorem spkLeakRedUAtomicProg_gRedBounded_tight (ℓ q : ℕ) :
     GRedBounded (spkLeakRedUAtomicProg (Pt := Pt) ℓ) (fun _ => 1) (fun _ => 0)
@@ -240,108 +196,6 @@ theorem spkLeakRedUAtomicProg_gRedBounded_tight (ℓ q : ℕ) :
       ReductionDsl.Comp.queries]
     omega
 
-def mkSpkCostedRedsOf {ℓ : ℕ} {C : Crypto} {K : LibsignalSpqrV1.MlKem}
-    {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
-    {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
-    (spkLeak : SpkLeakRedProg Pt ℓ C K Dh encPt encT decT lam)
-    (hop2Prg : (k : ℕ) → SpkSwapPrgHybridProg Pt ℓ C K Dh encPt encT decT lam)
-    (hop2Prf : (k : ℕ) → SpkSwapPrfHybridProg Pt ℓ C K Dh encPt encT decT lam) :
-    SpkCostedReds Pt ℓ C K Dh encPt encT decT lam where
-  spkLeakRed := spkLeak
-  spkLeakRedU := spkLeakRedUAtomicProg ℓ
-  hop2PrgRedK := hop2Prg
-  hop2PrfRedK := hop2Prf
-
-def spkCostedRedsBoundedWitness (ℓ : ℕ) (C : Crypto) (K : LibsignalSpqrV1.MlKem)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt := 0) :
-    SpkCostedReds Pt ℓ C K Dh encPt encT decT lam where
-  spkLeakRed := {
-    σ := .unit
-    init := .ret (.pair .unit .unit)
-    handle := .ret (.pair (.pair .none (.pair .none .none)) .unit)
-    finish := .ret (.bool false)
-  }
-  spkLeakRedU := spkLeakRedUAtomicProg ℓ
-  hop2PrgRedK _ := {
-    σ := .unit
-    init := .ret (.pair .unit .unit)
-    handle := .ret (.pair (.pair .none (.pair .none .none)) .unit)
-    finish := .ret (.bool false)
-  }
-  hop2PrfRedK _ := {
-    σ := .unit
-    init := .ret (.pair .unit .unit)
-    handle := .ret (.pair (.pair .none (.pair .none .none)) .unit)
-    finish := .ret (.bool false)
-  }
-
-theorem spkCostedRedsBoundedWitness_bounds (ℓ : ℕ) (C : Crypto) (K : LibsignalSpqrV1.MlKem)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) (q qep : ℕ) :
-    spkCostedBounds q qep (spkCostedRedsBoundedWitness (Pt := Pt) ℓ C K Dh encPt encT decT lam) := by
-  have hbud := spkHopBudget_lower q qep ℓ
-  have hmax24 : max 1 24 = 24 := rfl
-  have hOps := ReductionDsl.atomicSessionOps_sizeHonest ℓ Pt C K Dh encPt encT decT lam
-  have hSamp := ReductionDsl.atomicSamplers_sizeHonest ℓ Pt
-  refine ⟨?_, spkLeakRedUAtomicProg_gRedBounded_tight ℓ q, fun k _ => ?_, fun k _ => ?_⟩
-  · refine Costed.gRedBounded_of_bounds _ (fun _ => 1) (fun _ => 0) q (q + 1)
-      (spkHopBudget q qep ℓ) ?_ ?_ ?_ hOps hSamp
-    · simp only [ReductionDsl.CostedReduction.totalCost, spkCostedRedsBoundedWitness,
-        ReductionDsl.Comp.cost, ReductionDsl.Expr.cost,
-        ReductionDsl.extractPtPrfIface, ReductionDsl.atomicPrfIface,
-        ReductionDsl.e2eSessionCodec, Nat.reduceAdd, hmax24]; omega
-    · simp only [ReductionDsl.CostedReduction.size, spkCostedRedsBoundedWitness,
-        ReductionDsl.Comp.size, ReductionDsl.Expr.size, ReductionDsl.reductionSizeBudget]; omega
-    · simp only [ReductionDsl.CostedReduction.totalQueries, spkCostedRedsBoundedWitness,
-        ReductionDsl.Comp.queries]; omega
-  · refine Costed.gRedBounded_of_bounds _ Empty.elim (fun _ => 0) q 0
-      (spkHopBudget q qep ℓ) ?_ ?_ ?_ hOps hSamp
-    · simp only [ReductionDsl.CostedReduction.totalCost, spkCostedRedsBoundedWitness,
-        ReductionDsl.Comp.cost, ReductionDsl.Expr.cost,
-        ReductionDsl.coinOnlyIface, ReductionDsl.e2eSessionCodec,
-        Nat.reduceAdd, hmax24]; omega
-    · simp only [ReductionDsl.CostedReduction.size, spkCostedRedsBoundedWitness,
-        ReductionDsl.Comp.size, ReductionDsl.Expr.size, ReductionDsl.reductionSizeBudget]; omega
-    · simp only [ReductionDsl.CostedReduction.totalQueries, spkCostedRedsBoundedWitness,
-        ReductionDsl.Comp.queries]; omega
-  · refine Costed.gRedBounded_of_bounds _ (fun _ => 1) (fun _ => 0) q q
-      (spkHopBudget q qep ℓ) ?_ ?_ ?_ hOps hSamp
-    · simp only [ReductionDsl.CostedReduction.totalCost, spkCostedRedsBoundedWitness,
-        ReductionDsl.Comp.cost, ReductionDsl.Expr.cost,
-        ReductionDsl.extractPtPrfIface, ReductionDsl.atomicPrfIface,
-        ReductionDsl.e2eSessionCodec, Nat.reduceAdd, hmax24]; omega
-    · simp only [ReductionDsl.CostedReduction.size, spkCostedRedsBoundedWitness,
-        ReductionDsl.Comp.size, ReductionDsl.Expr.size, ReductionDsl.reductionSizeBudget]; omega
-    · simp only [ReductionDsl.CostedReduction.totalQueries, spkCostedRedsBoundedWitness,
-        ReductionDsl.Comp.queries]; omega
-
-private theorem isGameQuery_of_makesAtMostQueries {ℓ q : ℕ}
-    {A : SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes}
-    (hq : SM.MakesAtMostQueries A q) :
-    A.IsQueryBoundP
-      (ReductionDsl.isGameQuery (G := SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes)) q :=
-  hq.of_imp (fun t ht => by cases t <;> simp_all [ReductionDsl.isGameQuery])
-
-theorem mkSpkCostedRedsOf_evalSpkLeakRedU
-    (P : Params Bytes (BitVec 512)) (ℓ : ℕ) {C : Crypto} {K : LibsignalSpqrV1.MlKem}
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) {lam : Pt}
-    (spkLeak : SpkLeakRedProg Pt ℓ C K Dh encPt encT decT lam)
-    (hop2Prg : (k : ℕ) → SpkSwapPrgHybridProg Pt ℓ C K Dh encPt encT decT lam)
-    (hop2Prf : (k : ℕ) → SpkSwapPrfHybridProg Pt ℓ C K Dh encPt encT decT lam)
-    (qep : ℕ)
-    (A : SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) (BitVec 512) Bytes)
-    (heval : ∀ x, evalSpkLeakRed spkLeak x A = spkLeakRed P Dh encPt encT decT qep x A) :
-    evalSpkLeakRedU (mkSpkCostedRedsOf spkLeak hop2Prg hop2Prf).spkLeakRedU
-        (fun x => evalSpkLeakRed (mkSpkCostedRedsOf spkLeak hop2Prg hop2Prf).spkLeakRed x A) =
-      spkLeakRedU spkLeakRed P Dh encPt encT decT qep A := by
-  have heq : (fun x => evalSpkLeakRed spkLeak x A) =
-      (fun x => spkLeakRed P Dh encPt encT decT qep x A) := funext heval
-  dsimp only [mkSpkCostedRedsOf]
-  rw [heq]
-  exact spkLeakRedUAtomicProg_eval ℓ spkLeakRed P Dh encPt encT decT qep A
-
 private theorem spk_ite_pos {α : Sort _} {c : Prop} [Decidable c] (h : c) (a b : α) :
     (if c then a else b) = a := by
   split_ifs
@@ -354,13 +208,13 @@ private theorem spk_ite_neg {α : Sort _} {c : Prop} [Decidable c] (h : ¬ c) (a
 
 /-- Canonical `SpkCostedReds` bundle over `atomicSessionOps`, selecting Tier-1 witnesses when
 `spkTier1Budget q qep ≤ spkTier2Budget q qep ℓ` and Tier-2 witnesses otherwise. -/
-def mkSpkCostedReds (ℓ : ℕ) (C : Crypto) (K : LibsignalSpqrV1.MlKem)
+@[expose] def mkSpkCostedReds (ℓ : ℕ) (C : Crypto) (K : LibsignalSpqrV1.MlKem)
     (idA idB : IdentityKey) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) (q qep : ℕ) :
     SpkCostedReds Pt ℓ C K Dh encPt encT decT lam where
   spkLeakRed :=
     if spkTier1Budget q qep ≤ spkTier2Budget q qep ℓ then
-      Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg.spkLeakRed
+      Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInDefs.spkLeakRed
         C K Dh encPt encT decT idA idB lam ℓ q qep
     else
       Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedTier2Prog.spkLeakRedTier2
@@ -368,14 +222,14 @@ def mkSpkCostedReds (ℓ : ℕ) (C : Crypto) (K : LibsignalSpqrV1.MlKem)
   spkLeakRedU := spkLeakRedUAtomicProg ℓ
   hop2PrgRedK k :=
     if spkTier1Budget q qep ≤ spkTier2Budget q qep ℓ then
-      Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2PrgRedK
+      Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2PrgRedK
         C K Dh encPt encT decT idA idB lam ℓ q qep k
     else
       Computational.Proofs.Game.PromotedCostedReds.SpkHop2Tier2Prog.hop2PrgRedKTier2
         C K Dh encPt encT decT idA idB lam ℓ q qep k
   hop2PrfRedK k :=
     if spkTier1Budget q qep ≤ spkTier2Budget q qep ℓ then
-      Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2PrfRedK
+      Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2PrfRedK
         C K Dh encPt encT decT idA idB lam ℓ q qep k
     else
       Computational.Proofs.Game.PromotedCostedReds.SpkHop2Tier2Prog.hop2PrfRedKTier2
@@ -391,15 +245,15 @@ theorem mkSpkCostedReds_bounds (ℓ : ℕ) (C : Crypto) (K : LibsignalSpqrV1.MlK
   by_cases h : spkTier1Budget q qep ≤ spkTier2Budget q qep ℓ
   · have hbud : spkHopBudget q qep ℓ = spkTier1Budget q qep := Nat.min_eq_left h
     rw [spk_ite_pos h, hbud]
-    refine ⟨Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg.spkLeakRed_gRedBounded_tier1
+    refine ⟨Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInDefs.spkLeakRed_gRedBounded_tier1
         C K Dh encPt encT decT idA idB lam ℓ q qep hqep,
       spkLeakRedUAtomicProg_gRedBounded_tight ℓ q,
       fun k _ => ?_, fun k _ => ?_⟩
     · rw [spk_ite_pos h]
-      exact Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2PrgRedK_gRedBounded_tier1
+      exact Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2PrgRedK_gRedBounded_tier1
         C K Dh encPt encT decT idA idB lam ℓ q qep k hqep
     · rw [spk_ite_pos h]
-      exact Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg.hop2PrfRedK_gRedBounded_tier1
+      exact Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInDefs.hop2PrfRedK_gRedBounded_tier1
         C K Dh encPt encT decT idA idB lam ℓ q qep k hqep
   · have hbud : spkHopBudget q qep ℓ = spkTier2Budget q qep ℓ :=
       Nat.min_eq_right (Nat.le_of_not_le h)

@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenEmptyPrefix
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenEmptyPrefix -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.Bin.CalleesStoreRecord -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenEmpty -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Specs
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenBase
 
 /-!
 # Non-Empty Session Proof (`open_subroutine_ok`) for `libsignal_pqxdh_e2e::open`
@@ -23,7 +26,7 @@ the non-empty session deserialization and identity/session store branch (`+0x1b8
 shared epilogue (`+0x2a4..+0x328`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.WireEntries
 
@@ -32,7 +35,7 @@ set_option linter.unusedVariables false
 set_option maxRecDepth 200000
 set_option maxHeartbeats 800000
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection
+open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 export CryptoVerification.RustHeap (vecU8)
@@ -100,44 +103,12 @@ attribute [local arm64_norm, local wp_norm]
 
 /-! ## Instruction-Level `SepWP` Lemmas (`+0x1bc..+0x2a4`) -/
 
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-
-/-! ## Segment Composition (`+0x1b8..ret`) -/
-
 theorem stateLenBv_beq_zero_false {stateLenBv : BitVec 64} {stateBytes : List (BitVec 8)}
     {sess : Session (List (BitVec 8))}
     (hx5 : stateLenBv.toNat = stateBytes.length)
     (hcan : RecordCanonical stateBytes sess) :
     (stateLenBv == 0#64) = false :=
   reg_nz_of_toNat_pos hx5 (recordCanonical_length_pos hcan)
-
-theorem openSpecP_panic_of_allocFailed (C : Crypto) (A : RustAlloc) (img : Obj.Image)
-    (g : OpenGhostP) (R : SepProp) {s0 s1 sf : State}
-    (htr : s1.trace = s0.trace) (hpan : sf.status = .Panicked)
-    (hm : sf.mem ⊨ anyHeap ∗ R) (halloc : allocFailedIn s1 sf ∧ s1.trace <+: sf.trace) :
-    SubroutineOutcome (openSpecP C A img) g R s0 sf := by
-  refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-  dsimp only [openSpecP, Spec.inImage]
-  have ⟨ha0, hpref⟩ := allocFailedIn_of_trace_eq htr halloc
-  have h1 : (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R =
-    ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ (anyHeap ∗ R) := by ac_rfl
-  rw [h1, satisfies_pure_sepConj]
-  exact ⟨⟨ha0, hpref⟩, hm⟩
-
-theorem openSpecP_panic_of_callee_onPanic (C : Crypto) (A : RustAlloc) (img : Obj.Image)
-    (g : OpenGhostP) (R R_extra : SepProp) {s0 s1 sf : State}
-    (htr : s1.trace = s0.trace) (hpan : sf.status = .Panicked)
-    (hm : sf.mem ⊨ (⌜allocFailedIn s1 sf ∧ s1.trace <+: sf.trace⌝ ∗ anyHeap) ∗ (R_extra ∗ R)) :
-    SubroutineOutcome (openSpecP C A img) g R s0 sf := by
-  have hm' : sf.mem ⊨ ⌜allocFailedIn s1 sf ∧ s1.trace <+: sf.trace⌝ ∗ ((anyHeap ∗ R_extra) ∗ R) :=
-    Satisfies.of_eq hm (by ac_rfl)
-  rw [satisfies_pure_sepConj] at hm'
-  exact openSpecP_panic_of_allocFailed C A img g R htr hpan
-    (Arm64.Satisfies.mono (sepConj_mono_left (anyHeap_absorb_right R_extra)) hm'.2) hm'.1
 
 theorem memRegion_openP_0x0f0_0x360_deser_split (sp : BitVec 64) :
     memRegion (sp + 0x0f0#64) 0x360 =
@@ -154,40 +125,6 @@ theorem memRegion_openP_0x260_0x1f0_join (sp : BitVec 64) :
       memRegion (sp + 0x260#64) 0x1f0 := by
   rw [← memRegion_split' (b := sp + 0x260#64) (b' := sp + 0x3d0#64)
         (N := 0x1f0) (n := 0x170) (k := 0x80) (by decide) (by bv_lin) (by decide)]
-
-def OpenSeam1e8P (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (uuidParse : UuidParser) (img : Obj.Image) (abs : String → Option (State → State))
-    (g : OpenGhostP) (role : Role) (R : SepProp) (s0 s : State) : Prop :=
-  s.pc = (tripleRatchetProgAt img.base C ctl abs).fnAddr openPqxdhName + 0x1e8#64 ∧
-    s.status = .Running ∧ s.spAligned = true ∧
-    s0.spAligned = true ∧ openPqxdhStack ≤ s0.sp.toNat ∧
-    s.sp = s0.sp - 0x4b0#64 ∧
-    s.tpidrEl0 = s0.tpidrEl0 ∧ ExecOnlyIn (Program.ofImage img) s.mem ∧
-    s.trace = s0.trace ∧
-    s.readReg64 .x19 = g.outPtr ∧
-    s.readReg64 .x24 = s.sp + 0x008#64 ∧
-    s.readReg64 .x25 = s.sp + 0x260#64 ∧
-    OpenX27VPreserved s s0 ∧
-    s.readReg64 .x29 = s0.sp - 0x60#64 ∧
-    g.meBytes.length = 36 ∧
-    g.stateBytes.length < 2 ^ 63 ∧
-    RecordCanonical g.stateBytes g.sess ∧
-    g.sess.state.remoteIdentity.isSome ∧
-    img.FrozenLoaded s ∧
-    (s.mem ⊨
-      callEmptyAtP A img (s.sp + 0x008#64) role
-        (meKeyPairBytes C.pubKey g.meBytes) (meRegId g.meBytes) ∗
-      (∃∗ G, ⌜BinCanonSession G g.sess⌝ ∗
-        sessionRecordAt A (s.sp + 0x0f0#64) ⟨0#64, 8#64, some G⟩ ⟨some g.sess⟩) ∗
-      memRegion s.sp 8 ∗ memRegion (s.sp + 0x260#64) 0x1f0 ∗
-      openSavedRegsAtP s0 ∗
-      memRegion g.outPtr 232 ∗ (g.mePtr ↦ₛ g.meBytes) ∗
-      (g.statePtr ↦ₛ g.stateBytes) ∗ logOff img ∗
-      (∃∗ tlsCur, tlsKeysAt (s0.tpidrEl0 + tlsKeysTpoff) tlsCur) ∗
-      A.pool ∗ memRegion (s0.sp - openPqxdhStack) (openPqxdhStack - 0x4b0) ∗
-      R ∗ anyHeap)
-
-/-! ### Segment 3b (`+0x1e8..+0x21c`): `remote_identity_key_bytes` and `IdentityKey::decode` -/
 
 theorem cap_add_one_beq_zero_false {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
     (cap + 1#64 == 0#64) = false := by
@@ -266,43 +203,6 @@ theorem vecU8_33_elim (A : RustAlloc) (sp : BitVec 64) (ik : IdentityKey) :
     exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
       (sepConj_mono_right (ProofLib.entails_anyHeap _))))
 
-def OpenSeam21cP (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (uuidParse : UuidParser) (img : Obj.Image) (abs : String → Option (State → State))
-    (g : OpenGhostP) (role : Role) (R : SepProp) (s0 s : State) : Prop :=
-  s.pc = (tripleRatchetProgAt img.base C ctl abs).fnAddr openPqxdhName + 0x21c#64 ∧
-    s.status = .Running ∧ s.spAligned = true ∧
-    s0.spAligned = true ∧ openPqxdhStack ≤ s0.sp.toNat ∧
-    s.sp = s0.sp - 0x4b0#64 ∧
-    s.tpidrEl0 = s0.tpidrEl0 ∧ ExecOnlyIn (Program.ofImage img) s.mem ∧
-    s.trace = s0.trace ∧
-    s.readReg64 .x19 = g.outPtr ∧
-    s.readReg64 .x24 = s.sp + 0x008#64 ∧
-    s.readReg64 .x25 = s.sp + 0x260#64 ∧
-    OpenX27VPreserved s s0 ∧
-    s.readReg64 .x29 = s0.sp - 0x60#64 ∧
-    g.meBytes.length = 36 ∧
-    g.stateBytes.length < 2 ^ 63 ∧
-    RecordCanonical g.stateBytes g.sess ∧
-    img.FrozenLoaded s ∧
-    (s.mem ⊨
-      callEmptyAtP A img (s.sp + 0x008#64) role
-        (meKeyPairBytes C.pubKey g.meBytes) (meRegId g.meBytes) ∗
-      (∃∗ G, ⌜BinCanonSession G g.sess⌝ ∗
-        sessionRecordAt A (s.sp + 0x0f0#64) ⟨0#64, 8#64, some G⟩ ⟨some g.sess⟩) ∗
-      (∃∗ peerKey : IdentityKey,
-        ⌜g.sess.state.remoteIdentity = some peerKey⌝ ∗
-        ((s.sp + 0x260#64) ↦₆₄ 0xfffffffffffffffe#64) ∗
-        ((s.sp + 0x268#64) ↦ₛ peerKey.publicKey.bytes.toList)) ∗
-      memRegion s.sp 8 ∗ memRegion (s.sp + 0x288#64) 0x1c8 ∗
-      openSavedRegsAtP s0 ∗
-      memRegion g.outPtr 232 ∗ (g.mePtr ↦ₛ g.meBytes) ∗
-      (g.statePtr ↦ₛ g.stateBytes) ∗ logOff img ∗
-      (∃∗ tlsCur, tlsKeysAt (s0.tpidrEl0 + tlsKeysTpoff) tlsCur) ∗
-      A.pool ∗ memRegion (s0.sp - openPqxdhStack) (openPqxdhStack - 0x4b0) ∗
-      R ∗ anyHeap)
-
-/-! ### Segment 3c (`+0x21c..+0x264`): `<InMemIdentityKeyStore>::save_identity` and `poll_once` -/
-
 theorem memRegion_openP_0x288_0x1c8_save_split (sp : BitVec 64) :
     memRegion (sp + 0x288#64) 0x1c8 =
       memRegion (sp + 0x288#64) 8 ∗
@@ -359,29 +259,5 @@ theorem save_poll_tail_entails_memRegion_40_and_0x160
           (N := 0x160) (n := 0x140) (k := 0x20) (by decide) (by bv_lin) (by decide)]
     exact sepConj_mono_right h32
   exact sepConj_mono h40 h160
-
-theorem table4SingleAt_identityBucketEntryAt_entails_inMemIdentityStoreAtP
-    (A : RustAlloc) (img : Obj.Image) (out k0 k1 : BitVec 64) (role : Role)
-    (keyPairBytes : List (BitVec 8)) (regId : BitVec 32) (peerKey : IdentityKey)
-    (gPeer clonedG : AddrGhost) (k : Nat)
-    (hkp : keyPairBytes.length = 64)
-    (hPeer : gPeer.val = role.peer.addrVal)
-    (hcName : clonedG.name.bytes = gPeer.name.bytes) (hcDev : clonedG.device = gPeer.device) :
-    (((out + 48#64) ↦ₛ keyPairBytes) ∗ ((out + 112#64) ↦₃₂ regId) ∗ memRegion (out + 116#64) 4 ∗
-     HashbrownBin.table4SingleAt A HashbrownBin.identityBucketStride out k0 k1 k
-       gPeer.name.bytes gPeer.device (HashbrownBin.identityBucketEntryAt A clonedG
-         peerKey.publicKey.bytes.toList)) ⊢
-      inMemIdentityStoreAtP A img out role keyPairBytes regId (some peerKey) := by
-  have hPeerName : gPeer.name.bytes = role.peer.nameBytes := by injection hPeer with h1 _
-  have hPeerDev : gPeer.device = 1#8 := by injection hPeer with _ h2
-  have hcVal : clonedG.val = role.peer.addrVal := by
-    unfold AddrGhost.val Role.addrVal; rw [hcName, hcDev, hPeerName, hPeerDev]
-  unfold inMemIdentityStoreAtP
-  refine Entails.pure_right hkp ?_
-  refine Entails.sepExists_right k0 (Entails.sepExists_right k1 ?_)
-  rw [hPeerName, hPeerDev]
-  refine sepConj_mono_right (sepConj_mono_right (sepConj_mono_right ?_))
-  exact Entails.sepExists_right k (Entails.sepExists_right clonedG (Entails.pure_right hcVal
-      (Entails.refl _)))
 
 end CryptoVerification.E2E.Pqxdh.WireEntries

@@ -9,12 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.PrefixRoPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.DevPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.PrefixRoPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.DevPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.AllocRoBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.AllocPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.AllocRoPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Placed Budgeted Read-Only `argv` Device Dispatch for `signal_session::address`
@@ -23,7 +33,7 @@ Establishes `step_dev_dispatch_ro_placed` on Block `580` against `M24.CalleesRO.
 for read-only (`↦ᵣ`) input slices.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

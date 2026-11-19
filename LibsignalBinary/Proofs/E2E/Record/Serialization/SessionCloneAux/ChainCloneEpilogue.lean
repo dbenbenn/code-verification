@@ -10,18 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneBase
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.HookTrace
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Epilogue, extern stubs, and panic tails for `<Chain as Clone>::clone` (`0x24848`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.ChainCloneLocal1
 
@@ -170,13 +173,6 @@ theorem chainClone_of_protoChainClone_trap
     ChainCloneLocal1Ok_trap b C A abs :=
   chainClone_of_protoChainClone_ext_trap hclone
 
-theorem chainClone_of_protoChainClone
-    {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hclone : ProtoChainCloneLocal1Ok b C A ctl abs) :
-    ChainCloneLocal1Ok b C A ctl abs :=
-  chainClone_of_protoChainClone_ext_trap hclone
-
 private theorem senderChainClone_of_chainClone_ext_trap
     {prog : Program} {entry : BitVec 64} {A : RustAlloc}
     (hbridge : ∀ A a g sc, optSenderChainAt A a (some g) (some sc) =
@@ -302,19 +298,6 @@ theorem senderChainClone_of_chainClone_trap
     SenderChainCloneLocal1Ok_trap b C A abs :=
   senderChainClone_of_chainClone_ext_trap hbridge hclone
 
-theorem senderChainClone_of_chainClone
-    {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hbridge : ∀ A a g sc, optSenderChainAt A a (some g) (some sc) =
-      ⌜g.priv.bytes = sc.ratchetKey.privateKey.bytes.toList ∧
-        Ratchet.clampScalar sc.ratchetKey.privateKey.bytes = sc.ratchetKey.privateKey.bytes ∧
-        g.srk.bytes.length = 33⌝ ∗
-      protoChainAt A (⟨g.srk, g.priv, g.mkCap, g.mkPtr, [], g.ck⟩,
-        ⟨sc.ratchetKey.publicKey, some sc.chainKey, []⟩) a)
-    (hclone : ProtoChainCloneLocal1Ok b C A ctl abs) :
-    SenderChainCloneLocal1Ok b C A ctl abs :=
-  senderChainClone_of_chainClone_ext_trap hbridge hclone
-
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local arm64_norm, local wp_norm]
@@ -336,23 +319,6 @@ meta def hex5Str (n : Nat) : String :=
     let v := (n >>> (4 * k)) &&& 0xf
     if v < 10 then Char.ofNat ('0'.toNat + v) else Char.ofNat ('a'.toNat + v - 10)
   String.ofList [d 4, d 3, d 2, d 1, d 0]
-
-/-- Introduces `fetch` hypotheses on `tripleRatchetProgAt` for instruction indices `[kStart, kEnd)` of `Chain::clone`. -/
-elab "clone_fetches_range " b:term:max C:term:max ctl:term:max abs:term:max
-    hfn:term:max kStart:num kEnd:num : tactic =>
-  Lean.Elab.Tactic.withMainContext do
-    let k0 := kStart.getNat
-    let k1 := kEnd.getNat
-    for k in [k0:k1] do
-      let byteOff := 4 * k
-      let absOff := num% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") + byteOff
-      let decName := (`CryptoVerification.LibsignalTripleRatchet.ChainCloneLocal1).str s!"chainCloneLocal1Bin_decode_0x{hex5Str absOff}"
-      let decId := Lean.mkIdent decName
-      let byteOffLit := Lean.Syntax.mkNumLit (toString byteOff)
-      Lean.Elab.Tactic.evalTactic (← `(tactic|
-        have := libsignalSessionCode_fetch_fnAddr (b := $b)
-          (H := Rust.withPanics (tripleRatchetExterns $C $ctl $abs))
-          $hfn (k := $byteOffLit) (by decide) $decId))
 
 structure Slots104 where
   v0 : BitVec 64
@@ -569,139 +535,8 @@ theorem epilogue_post_entails (A : RustAlloc) (x : ChainCloneGhost) (s0 sf : Sta
   rw [hgroup]
   exact sepConj_mono hg' (sepConj_mono_right (sepConj_mono_right hst))
 
-set_option maxHeartbeats 1200000 in
-theorem chain_clone_epilogue_trap {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    {Qp : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State)
-    (srkPtr' privPtr' mkPtr' x25 x28 v9 v10 v13 : BitVec 64)
-    (w27 : BitVec 32) (keys' : List MessageKeyGhost) (ckPin' : VecPin)
-    (hsrk : PublicKey.deserialize x.gc.1.srk.bytes = .ok x.gc.2.senderRatchetKey)
-    (hmax : x.gc.2.messageKeys.length ≤ maxMessageKeys)
-    (hklen : keys'.length = x.gc.2.messageKeys.length)
-    (hsrc_klen : x.gc.1.keys.length = x.gc.2.messageKeys.length)
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + 736#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 208#64)
-    (hsp_align : s.spAligned = true)
-    (hx29 : s.readReg64 (Reg.gpr 29#5) = s0.sp - 96#64)
-    (hx19 : s.readReg64 (Reg.gpr 19#5) = x.dst)
-    (hx21 : s.readReg64 (Reg.gpr 21#5) = BitVec.ofNat 64 x.gc.1.srk.bytes.length)
-    (hx22 : s.readReg64 (Reg.gpr 22#5) = srkPtr')
-    (hx23 : s.readReg64 (Reg.gpr 23#5) = BitVec.ofNat 64 x.gc.1.priv.bytes.length)
-    (hx24 : s.readReg64 (Reg.gpr 24#5) = privPtr')
-    (hx9 : s.readReg64 (Reg.gpr 9#5) = mkPtr')
-    (hx25 : s.readReg64 (Reg.gpr 25#5) = x25)
-    (hx28 : s.readReg64 (Reg.gpr 28#5) = x28)
-    (hw27 : s.readReg32 (Reg.gpr 27#5) = w27)
-    (htrace : s.trace = s0.trace)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0) :
-    SepWPp (trTrapProgAt b C abs) (s0.readReg64 (Reg.gpr 30#5)) s
-      (memRegion x.dst 104 ∗
-        vecU8Buf A (BitVec.ofNat 64 x.gc.1.srk.bytes.length) srkPtr' x.gc.1.srk.bytes ∗
-        vecU8Buf A (BitVec.ofNat 64 x.gc.1.priv.bytes.length) privPtr' x.gc.1.priv.bytes ∗
-        vecBuf A 104 8 (messageKeyAt A) (BitVec.ofNat 64 x.gc.2.messageKeys.length) mkPtr'
-          (keys'.zip x.gc.2.messageKeys) ∗
-        clonedOptChainKeyBuf A ckPin' x25 x28 w27 x.gc.2.chainKey ∗
-        protoChainAt A x.gc x.src ∗
-        A.pool ∗
-        stackAt (s0.sp - 208#64) allocHookStack ∗
-        spillSlotsExist s0.sp ∗
-        ((s0.sp - 144#64) ↦₆₄ BitVec.ofNat 64 x.gc.2.messageKeys.length) ∗
-        ((s0.sp - 136#64) ↦₆₄ v9) ∗
-        ((s0.sp - 128#64) ↦₆₄ v10) ∗
-        ((s0.sp - 104#64) ↦₆₄ v13) ∗
-        savedRegsOnStack s0)
-      (fun sf P_f =>
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf ∧
-        (P_f ⊢ (protoChainCloneSpec A).post x s0 sf))
-      Qp := by
-  have hfn : libsignalSessionCode.fnOff chainCloneLocal1Name = num% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") :=
-    libsignalSessionCode_fnOff_sym_24848
-  code_fetches_range libsignalSessionCode chainCloneLocal1Bin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") 736 64
-  clear hfn
-  unfold trTrapProgAt at hpc ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr chainCloneLocal1Name = entry
-  examples_hide_fetches
-  rw [memRegion_104_eq_slots104 x.dst, sepExists_sepConj_left]
-  refine SepWPp.exists_elim fun d => ?_
-  unfold savedRegsOnStack
-  simp only [sepConj_assoc]
-  apply SepWPp.of_sepWP (mid := s0.readReg64 (Reg.gpr 30#5))
-  wp_steps
-  apply SepWP.done (by simp_all) (by simp_all)
-  apply SepWPp.done (by simp_all) (by simp_all)
-  refine ⟨by simp_all, ?_, ?_⟩
-  · constructor <;> simp_all
-  · rw [show BitVec.truncate 32 (s.readReg64 (Reg.gpr 27#5)) = w27 from hw27]
-    refine Entails.trans ?_
-      (epilogue_post_entails A x s0 _ srkPtr' privPtr' mkPtr' x25 x28 v9 v10 v13
-        w27 keys' ckPin' hsrk hmax hklen hsrc_klen (by simp_all))
-    unfold savedRegsOnStack
-    exact Entails.of_eq (by ac_rfl)
-
-theorem chain_clone_epilogue {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    {Qp : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State)
-    (srkPtr' privPtr' mkPtr' x25 x28 v9 v10 v13 : BitVec 64)
-    (w27 : BitVec 32) (keys' : List MessageKeyGhost) (ckPin' : VecPin)
-    (hsrk : PublicKey.deserialize x.gc.1.srk.bytes = .ok x.gc.2.senderRatchetKey)
-    (hmax : x.gc.2.messageKeys.length ≤ maxMessageKeys)
-    (hklen : keys'.length = x.gc.2.messageKeys.length)
-    (hsrc_klen : x.gc.1.keys.length = x.gc.2.messageKeys.length)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + 736#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 208#64)
-    (hsp_align : s.spAligned = true)
-    (hx29 : s.readReg64 (Reg.gpr 29#5) = s0.sp - 96#64)
-    (hx19 : s.readReg64 (Reg.gpr 19#5) = x.dst)
-    (hx21 : s.readReg64 (Reg.gpr 21#5) = BitVec.ofNat 64 x.gc.1.srk.bytes.length)
-    (hx22 : s.readReg64 (Reg.gpr 22#5) = srkPtr')
-    (hx23 : s.readReg64 (Reg.gpr 23#5) = BitVec.ofNat 64 x.gc.1.priv.bytes.length)
-    (hx24 : s.readReg64 (Reg.gpr 24#5) = privPtr')
-    (hx9 : s.readReg64 (Reg.gpr 9#5) = mkPtr')
-    (hx25 : s.readReg64 (Reg.gpr 25#5) = x25)
-    (hx28 : s.readReg64 (Reg.gpr 28#5) = x28)
-    (hw27 : s.readReg32 (Reg.gpr 27#5) = w27)
-    (htrace : s.trace = s0.trace)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) (s0.readReg64 (Reg.gpr 30#5)) s
-      (memRegion x.dst 104 ∗
-        vecU8Buf A (BitVec.ofNat 64 x.gc.1.srk.bytes.length) srkPtr' x.gc.1.srk.bytes ∗
-        vecU8Buf A (BitVec.ofNat 64 x.gc.1.priv.bytes.length) privPtr' x.gc.1.priv.bytes ∗
-        vecBuf A 104 8 (messageKeyAt A) (BitVec.ofNat 64 x.gc.2.messageKeys.length) mkPtr'
-          (keys'.zip x.gc.2.messageKeys) ∗
-        clonedOptChainKeyBuf A ckPin' x25 x28 w27 x.gc.2.chainKey ∗
-        protoChainAt A x.gc x.src ∗
-        A.pool ∗
-        stackAt (s0.sp - 208#64) allocHookStack ∗
-        spillSlotsExist s0.sp ∗
-        ((s0.sp - 144#64) ↦₆₄ BitVec.ofNat 64 x.gc.2.messageKeys.length) ∗
-        ((s0.sp - 136#64) ↦₆₄ v9) ∗
-        ((s0.sp - 128#64) ↦₆₄ v10) ∗
-        ((s0.sp - 104#64) ↦₆₄ v13) ∗
-        savedRegsOnStack s0)
-      (fun sf P_f =>
-        sf.sp = s0.sp ∧
-        CalleeSavedPreserved s0 sf ∧
-        (P_f ⊢ (protoChainCloneSpec A).post x s0 sf))
-      Qp :=
-  SepWPp_kit_of_trTrap
-    (chain_clone_epilogue_trap x s0 s srkPtr' privPtr' mkPtr' x25 x28 v9 v10 v13
-      w27 keys' ckPin' hsrk hmax hklen hsrc_klen hpc hrun hsp hsp_align hx29 hx19
-      hx21 hx22 hx23 hx24 hx9 hx25 hx28 hw27 htrace hvregs)
-
-
-
-/-! ## Extern hook and panic-tail lemmas -/
-
 /-- Trace-preserving no-op allocator shim specification. -/
-def sessionShimSpec : Spec Unit where
+@[expose] def sessionShimSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
@@ -712,7 +547,7 @@ theorem sessionShim_hookOk : HookOk hookNoop sessionShimSpec := by
   exact hpre
 
 /-- Trace-preserving `memcpy` specification. -/
-def sessionMemcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def sessionMemcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧
      s0.readReg64 .x1 = src ∧
@@ -728,81 +563,6 @@ theorem sessionMemcpy_hookOk : HookOk hookMemcpy sessionMemcpySpec := by
   refine HookOk.of_trace hookMemcpy_region_ok fun _ _ _ ht hpost => ?_
   simp only [memcpyRegionSpec, sessionMemcpySpec, sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
   exact ⟨⟨hpost.1, ht⟩, hpost.2⟩
-
-theorem panic_at_handle_error_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} :
-    (trTrapProgAt b C abs).externAt?
-      ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]")) =
-      some Rust.panicked :=
-  panic_at_panicSymbol libsignalSessionCode_fnOff_sym_24848 (k := num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]")) (by decide)
-    (by decide) (ls_hook% "alloc::raw_vec::handle_error") (by simp [Rust.isPanicSymbol])
-
-theorem panic_at_handle_error {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    (tripleRatchetProgAt b C ctl abs).externAt?
-      ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]")) =
-      some Rust.panicked := by
-  have h := panic_at_handle_error_trap (b := b) (C := C) (abs := abs)
-  rcases (trapsOnly_trTrap_kit b C ctl abs).hook
-      ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]")) with
-    heq | ⟨f, hf, ht⟩
-  · exact heq.symm.trans h
-  · cases h.symm.trans hf
-    exact False.elim (ht default (ProofLib.Variant.OutcomeStatus.of_panicked rfl))
-
-theorem shim_ok_at_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-      sessionShimSpec :=
-  hook_ok_at libsignalSessionCode_fnOff_sym_24848 (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]")) (by decide) (by decide)
-    (ls_hook% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-    (by simp [Rust.isPanicSymbol])
-    ⟨hookNoop, by rw [trTrapExterns_eq_tripleRatchetExterns C 0#64 abs (by unfold rngFillName; decide)]; rfl, sessionShim_hookOk⟩
-
-theorem shim_ok_at {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-      sessionShimSpec :=
-  subroutine_ok_kit_of_trTrap (shim_ok_at_trap (b := b) (C := C) (abs := abs))
-
-theorem alloc_ok_at_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-      (rustAllocSpec A) := by
-  refine hook_ok_at_raw libsignalSessionCode_fnOff_sym_24848 (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]")) (by decide) (by decide)
-    (ls_hook% "__rustc::__rust_alloc") ?_
-  rw [HookSat, withPanics_trTrap_ne C abs (by unfold rngFillName; decide)]
-  simpa [HookSat, Rust.withPanics, Rust.isPanicSymbol, tripleRatchetExterns,
-    CryptoVerification.LibsignalSession.sessionExterns, dhName, pubFromSecretName,
-    staticDropName, sharedDropName, rngFillName, uuidTryParseName,
-    varintSlowName, noHookNames] using hA.alloc
-
-theorem alloc_ok_at {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-      (rustAllocSpec A) :=
-  subroutine_ok_kit_of_trTrap (alloc_ok_at_trap (b := b) (C := C) (abs := abs) hA)
-
-theorem memcpy_ok_at_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-      sessionMemcpySpec :=
-  hook_ok_at libsignalSessionCode_fnOff_sym_24848 (k := num% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]")) (by decide) (by decide)
-    (ls_hook% "memcpy")
-    (by simp [Rust.isPanicSymbol])
-    ⟨hookMemcpy, by rw [trTrapExterns_eq_tripleRatchetExterns C 0#64 abs (by unfold rngFillName; decide)]; rfl, sessionMemcpy_hookOk⟩
-
-theorem memcpy_ok_at {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-      sessionMemcpySpec :=
-  subroutine_ok_kit_of_trTrap (memcpy_ok_at_trap (b := b) (C := C) (abs := abs))
 
 theorem allocFailedIn_of_eq {s0 sf : State}
     (h : sf.trace = s0.trace ++ [allocFailedEvent]) :
@@ -836,236 +596,6 @@ theorem sepWPp_pure_mid {prog : Program} {ret : BitVec 64} {s : State}
     SepWPp prog ret s (A ∗ B ∗ ⌜φ⌝ ∗ C) Q Qp := by
   rw [show A ∗ B ∗ ⌜φ⌝ ∗ C = ⌜φ⌝ ∗ A ∗ B ∗ C by ac_rfl]
   exact SepWPp.pure_elim h
-
-theorem chain_clone_panic_800_trap {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + 800#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (trTrapProgAt b C abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hfn : libsignalSessionCode.fnOff chainCloneLocal1Name = num% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") :=
-    libsignalSessionCode_fnOff_sym_24848
-  have hpanic := panic_at_handle_error_trap (b := b) (C := C) (abs := abs)
-  code_fetches_range libsignalSessionCode chainCloneLocal1Bin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") 800 12
-  clear hfn
-  unfold trTrapProgAt at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr chainCloneLocal1Name = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone_panic_800 {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + 800#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) :=
-  SepWPp_kit_of_trTrap (chain_clone_panic_800_trap x s0 s P R hpc hrun htrace)
-
-theorem chain_clone_panic_812_trap {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + 812#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (trTrapProgAt b C abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hfn : libsignalSessionCode.fnOff chainCloneLocal1Name = num% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") :=
-    libsignalSessionCode_fnOff_sym_24848
-  have hpanic := panic_at_handle_error_trap (b := b) (C := C) (abs := abs)
-  code_fetches_range libsignalSessionCode chainCloneLocal1Bin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") 812 12
-  clear hfn
-  unfold trTrapProgAt at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr chainCloneLocal1Name = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone_panic_812 {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + 812#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) :=
-  SepWPp_kit_of_trTrap (chain_clone_panic_812_trap x s0 s P R hpc hrun htrace)
-
-theorem chain_clone_panic_824_trap {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + 824#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (trTrapProgAt b C abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hfn : libsignalSessionCode.fnOff chainCloneLocal1Name = num% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") :=
-    libsignalSessionCode_fnOff_sym_24848
-  have hpanic := panic_at_handle_error_trap (b := b) (C := C) (abs := abs)
-  code_fetches_range libsignalSessionCode chainCloneLocal1Bin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") 824 12
-  clear hfn
-  unfold trTrapProgAt at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr chainCloneLocal1Name = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone_panic_824 {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + 824#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) :=
-  SepWPp_kit_of_trTrap (chain_clone_panic_824_trap x s0 s P R hpc hrun htrace)
-
-theorem chain_clone_panic_836_trap {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + 836#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (trTrapProgAt b C abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hfn : libsignalSessionCode.fnOff chainCloneLocal1Name = num% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") :=
-    libsignalSessionCode_fnOff_sym_24848
-  have hpanic := panic_at_handle_error_trap (b := b) (C := C) (abs := abs)
-  code_fetches_range libsignalSessionCode chainCloneLocal1Bin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") 836 12
-  clear hfn
-  unfold trTrapProgAt at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr chainCloneLocal1Name = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone_panic_836 {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + 836#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) :=
-  SepWPp_kit_of_trTrap (chain_clone_panic_836_trap x s0 s P R hpc hrun htrace)
-
-theorem chain_clone_panic_848_trap {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + 848#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (trTrapProgAt b C abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hfn : libsignalSessionCode.fnOff chainCloneLocal1Name = num% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") :=
-    libsignalSessionCode_fnOff_sym_24848
-  have hpanic := panic_at_handle_error_trap (b := b) (C := C) (abs := abs)
-  code_fetches_range libsignalSessionCode chainCloneLocal1Bin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") 848 12
-  clear hfn
-  unfold trTrapProgAt at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr chainCloneLocal1Name = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone_panic_848 {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + 848#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) :=
-  SepWPp_kit_of_trTrap (chain_clone_panic_848_trap x s0 s P R hpc hrun htrace)
-
-theorem chain_clone_panic_860_trap {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (trTrapProgAt b C abs).fnAddr chainCloneLocal1Name + 860#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (trTrapProgAt b C abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) := by
-  have hfn : libsignalSessionCode.fnOff chainCloneLocal1Name = num% (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") :=
-    libsignalSessionCode_fnOff_sym_24848
-  have hpanic := panic_at_handle_error_trap (b := b) (C := C) (abs := abs)
-  code_fetches_range libsignalSessionCode chainCloneLocal1Bin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn
-    (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]") 860 12
-  clear hfn
-  unfold trTrapProgAt at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr chainCloneLocal1Name = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#1]"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  simpa only [protoChainCloneSpec, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
-theorem chain_clone_panic_860 {b : BitVec 64} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (x : ChainCloneGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name + 860#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (protoChainCloneSpec A).onPanic x s0 sf ∗ R)) :=
-  SepWPp_kit_of_trTrap (chain_clone_panic_860_trap x s0 s P R hpc hrun htrace)
-
-/-! ## Relocatable `[LibsignalPlacement]` epilogue and panic tails (block `82`) -/
 
 section Placed
 

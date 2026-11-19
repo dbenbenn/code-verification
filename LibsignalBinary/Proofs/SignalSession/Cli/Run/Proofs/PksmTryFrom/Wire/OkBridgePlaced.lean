@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.OkBridge
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.OkBridge
 public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
 
 /-!
 # Relocatable `[LibsignalPlacement]` `Ok`-Path State Cuts and Bridges
@@ -22,7 +24,7 @@ Re-exports `OkBridge` and defines the `[LibsignalPlacement]` midpoint state inva
 (`+0x7a8`), and `KyberOkStatePlaced` (`+0x86c`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +43,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 /-- Frozen Ok exit state at `+0x684` (`1668`) under `[LibsignalPlacement]`
 when `PublicKey.deserialize bk = .ok pk`: includes
 `ecKeyParses bk = true`, `pkOf bk = pk`, and `(pkOf bk).bytes.toList = (bk.take 33).drop 1`. -/
-def BaseKeyOkStatePlaced [LibsignalPlacement] (s0 : State)
+@[expose] def BaseKeyOkStatePlaced [LibsignalPlacement] (s0 : State)
     (sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap : BitVec 64) (vb : BitVec 8)
     (bk : List (BitVec 8)) (pk : PublicKey) (sf : State) : Prop :=
   PostEpilogueStatePlaced s0 sp' sf ∧
@@ -54,7 +56,7 @@ def BaseKeyOkStatePlaced [LibsignalPlacement] (s0 : State)
 
 /-- Frozen exit state at `+0x7a8` (`1960`) under `[LibsignalPlacement]`
 when `PublicKey.deserialize bk = .error e`. -/
-def DeserErrTailStatePlaced [LibsignalPlacement] (s0 : State)
+@[expose] def DeserErrTailStatePlaced [LibsignalPlacement] (s0 : State)
     (sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap : BitVec 64) (vb : BitVec 8)
     (sf : State) : Prop :=
   PostEpilogueStatePlaced s0 sp' sf ∧
@@ -66,14 +68,14 @@ def DeserErrTailStatePlaced [LibsignalPlacement] (s0 : State)
 
 /-- Exact-`SignalProtocolError` M2 exit state at `+0x7a8` (`1960`) under `[LibsignalPlacement]`,
 pinning `speWordsOf e (sf.readReg64 .x9) (sf.readReg64 .x8) (sf.readReg64 .x10)`. -/
-def DeserErrTailStateEPlaced [LibsignalPlacement] (s0 : State)
+@[expose] def DeserErrTailStateEPlaced [LibsignalPlacement] (s0 : State)
     (sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap : BitVec 64) (vb : BitVec 8)
     (e : SignalProtocolError) (sf : State) : Prop :=
   DeserErrTailStatePlaced s0 sp' sret len ptr0 kyberCap kyberPtr ikCap msgCap vb sf ∧
   speWordsOf e (sf.readReg64 .x9) (sf.readReg64 .x8) (sf.readReg64 .x10)
 
 /-- Frozen Ok exit state at `+0x86c` (`2156`) under `[LibsignalPlacement]`. -/
-def KyberOkStatePlaced [LibsignalPlacement] (s0 : State)
+@[expose] def KyberOkStatePlaced [LibsignalPlacement] (s0 : State)
     (sp' sret len ptr0 kyberBoxPtr kyberBoxLen ikCap msgCap : BitVec 64) (vb : BitVec 8)
     (bk : List (BitVec 8)) (pk : PublicKey) (sf : State) : Prop :=
   PostEpilogueStatePlaced s0 sp' sf ∧

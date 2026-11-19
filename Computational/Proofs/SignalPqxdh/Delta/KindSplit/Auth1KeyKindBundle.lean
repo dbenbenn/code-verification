@@ -18,10 +18,10 @@ import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindGdhBounds
 import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindShcrBounds
 import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindCpaBounds
 import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindPrfBounds
-import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindSiggdhEq
-import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindShcrEq
-import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindCpaEq
-import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindPrfEq
+public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindSiggdhEq -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindShcrEq -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindCpaEq -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindPrfEq -- proof-setup: allow-public-import
 
 /-!
 # One-Key PQXDH δ `Auth` Kind-Split Reduction Bundle
@@ -129,7 +129,7 @@ theorem pqxdhAuth1KeyKindCostedSims_simBounds (S : Setup) :
   int_bounded  := pqxdhAuth1KeyKind_int_bounded S
 
 /-- One-key `Auth` `ReductionDsl` family backed by `pqxdhAuth1KeyKindCostedSims S`. -/
-def auth1KeyKindDslFamily (S : Setup) : Auth1KeyDslFamily S where
+@[expose] def auth1KeyKindDslFamily (S : Setup) : Auth1KeyDslFamily S where
   R           := pqxdhAuth1KeyKindCostedSims S
   bounds      := pqxdhAuth1KeyKindCostedSims_costedBounds S
   queryBounds := pqxdhAuth1KeyKindCostedSims_simBounds S

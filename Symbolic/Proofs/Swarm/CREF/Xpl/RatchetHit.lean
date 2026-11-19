@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -37,7 +37,7 @@ hardware block contains `.rng rngBytes` misses `findRecvChain`, passes `x25519Lo
 `dhRatchetStep` with `g.σ tr.length 32 = rngBytes`, and decrypts on `trDhRatchetState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

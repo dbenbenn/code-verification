@@ -12,7 +12,7 @@ module
 public meta import Lean
 public import ProofLib.SepLogic.WP
 public import ProofLib.SepLogic.CFG
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Hoare.Hooks
 public import ProofLib.SepLogic.CodeLookup
 import ProofLib.SepLogic.Model
@@ -169,7 +169,7 @@ elab "wpp_init " a:ident s0:ident : tactic => do
   let hspId := mkIdent `hsp_align
   let _ ← tryTactic (evalTactic (← `(tactic|
     dsimp only [Program.relocSubroutineOk, Program.alignedSubroutineOk,
-      Obj.LinkedImage.subroutineOk, Program.subroutineOk, fn_subroutine_ok,
+      Program.subroutineOk, fn_subroutine_ok,
       ToBaseSpec.toSpec, instToBaseSpecId, instToBaseSpecFn, wp_proj_guard])))
   evalTactic (← `(tactic| (
     wp_unfold_specs

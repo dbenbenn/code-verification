@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodePlaced
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EkSentCt1ReceivedPlaced1
 import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4
@@ -29,7 +29,7 @@ Relocatable per-block verification of the second monomorphization
 callee bridges at `lsmpl.base 318`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -75,7 +75,7 @@ local macro "cs_step " hcs:term:max hinv:term:max : term =>
   `(UnchunkedEncodeCalleeSavedPlaced.step $hcs (by simp only [arm64_norm]) (by simp only [arm64_norm])
     (by simp only [arm64_norm]) (by simp only [arm64_norm]) (by simp only [arm64_norm]) $hinv)
 
-def IsEkEnc2PlacedProg (prog : Program) (fnBase encLen_pc varint_pc auth_pc reserve_pc memcpy_pc : BitVec 64) : Prop :=
+@[expose] def IsEkEnc2PlacedProg (prog : Program) (fnBase encLen_pc varint_pc auth_pc reserve_pc memcpy_pc : BitVec 64) : Prop :=
   ∃ (_ : LibsignalPlacement) (H : String → Option (State → State)),
     prog = lsProg_318 H ∧ fnBase = (blkPl_318).base ∧ encLen_pc = (blkPl_421).base ∧
     varint_pc = (blkPl_292).base ∧ auth_pc = lsmpl.base 314 ∧

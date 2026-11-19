@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonical
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonical -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -20,7 +20,7 @@ Proves relocatable contracts for mutated Block `202`
 (`<libsignal_core::curve::PublicKey>::is_canonical`) under `[LibsignalFullPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,7 +52,7 @@ abbrev lsDalekTorsionFreeSym : String :=
 
 /-! ## Image-Free Dalek and SHA-512 Hook Specifications -/
 
-def compressInPlaceStubSpecPlaced (fn : Bytes → Bytes → Bytes) (stateLen blockLen : Nat) :
+@[expose] def compressInPlaceStubSpecPlaced (fn : Bytes → Bytes → Bytes) (stateLen blockLen : Nat) :
     Spec CryptoCompressGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.statePtr ∧
@@ -70,7 +70,7 @@ def compressInPlaceStubSpecPlaced (fn : Bytes → Bytes → Bytes) (stateLen blo
       (g.blocksPtr ↦ₛ bytesToBv8 g.blockBytes) ∗
       stackAt s0.sp pqxdhHookStack
 
-def dalekMontToEdStubSpecPlaced (P : Primitives) :
+@[expose] def dalekMontToEdStubSpecPlaced (P : Primitives) :
     Spec DalekMontToEdGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.inPtr ∧
@@ -86,7 +86,7 @@ def dalekMontToEdStubSpecPlaced (P : Primitives) :
       dalekMontToEdOutAt P g.outPtr g.inBytes (g.signBit &&& 1) ∗
       stackAt s0.sp pqxdhHookStack
 
-def dalekDoubleMulStubSpecPlaced (P : Primitives) :
+@[expose] def dalekDoubleMulStubSpecPlaced (P : Primitives) :
     Spec DalekDoubleMulGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.hPtr ∧
@@ -106,7 +106,7 @@ def dalekDoubleMulStubSpecPlaced (P : Primitives) :
       (g.hPtr ↦ₛ bytesToBv8 g.hBytes) ∗
       (g.negAPtr ↦ₛ bytesToBv8 g.negABytes) ∗
       (g.sPtr ↦ₛ bytesToBv8 g.sBytes) ∗
-      (g.outPtr ↦ₛ fitBv8 160 (P.doubleScalarMulBasepoint g.hBytes g.negABytes g.sBytes)) ∗
+      (g.outPtr ↦ₛ fitBv8 160 (P.doubleScalarMulBasepointBytes g.hBytes g.negABytes g.sBytes)) ∗
       stackAt s0.sp pqxdhHookStack
 
 /-! ## Memory, Scalar-Range, and `SepWP` Normalization Helpers -/
@@ -352,7 +352,8 @@ private theorem pack64_4_allOnes_eq_drop1_take30 (keyBytes : Bytes) (h : keyByte
     exact ⟨⟨⟨h1, h2, h3, h4, h5, h6, h7, h8⟩, ⟨h9, h10, h11, h12, h13, h14, h15, h16⟩⟩,
            ⟨h17, h18, h19, h20, h21, h22, h23, h24⟩, ⟨h23, h24, h25, h26, h27, h28, h29, h30⟩⟩
 
-private theorem ecPubKeyIsCanonical_tail_eq (P : Primitives) (keyBytes edPt : Bytes)
+private theorem ecPubKeyIsCanonical_tail_eq (P : Primitives) (keyBytes : Bytes)
+    (edPt : VerifiedLibraries.Common.EdPoint)
     (h : keyBytes.length = 32)
     (hmont : P.montToEd keyBytes 0 = some edPt)
     (htors : P.isTorsionFree edPt = true)
@@ -422,9 +423,9 @@ meets `ecPubKeyIsCanonicalCallSpec P` under `[LibsignalFullPlacement]`. -/
 theorem isCanonical_placed_ok'_placed [LibsignalFullPlacement] {P : Primitives}
     {H : LibsignalHooks}
     (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
-    (hmontLen : ∀ u s ed, P.montToEd u s = some ed → ed.length = 160)
+    (hmontLt : ∀ u s pt, P.montToEd u s = some pt → pt.x < 256 ^ 80 ∧ pt.y < 256 ^ 80)
     (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubSpecPlaced P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160)) :
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFreeBytes 160)) :
     subroutine_ok ((blkPC_202).rebase (blkPl_202).base H)
       (blkPl_202).base
       (ecPubKeyIsCanonicalCallSpec P) := by
@@ -435,7 +436,7 @@ theorem isCanonical_placed_ok'_placed [LibsignalFullPlacement] {P : Primitives}
       (lsρ lsDalekMontToEdSym) (dalekMontToEdStubSpecPlaced P) :=
     ls_hook_ok_any hmontHook
   have htors_call : subroutine_ok ((blkPC_202).rebase (blkPl_202).base H)
-      (lsρ lsDalekTorsionFreeSym) (cryptoBoolRegStubSpec P.isTorsionFree 160) :=
+      (lsρ lsDalekTorsionFreeSym) (cryptoBoolRegStubSpec P.isTorsionFreeBytes 160) :=
     ls_hook_ok_any htorsHook
   clear hmontHook htorsHook
   wp_init g s0
@@ -469,10 +470,11 @@ theorem isCanonical_placed_ok'_placed [LibsignalFullPlacement] {P : Primitives}
   wp_conv_pre => rw [hpk_reg0_tail, hpk_sp_tail]
   wp_call hmont_call ⟨keyBytes, 0, s0.sp - 400#64, s0.sp - 360#64⟩
   wp_conv_pre => rw [show (0 : UInt8) &&& 1 = 0 from rfl, ← hpk_sp_tail]
-  cases hmont : P.montToEd keyBytes 0 with
+  cases hmont0 : P.montToEd keyBytes 0 with
   | none =>
+    have hmont : P.montToEdBytes keyBytes 0 = none := by simp [Primitives.montToEdBytes, hmont0]
     have hcanon_none : isCanonicalRef P keyBytes = false := by
-      simp [isCanonicalRef, hmont]
+      simp [isCanonicalRef, hmont0]
     rw [hcanon_none]
     wp_conv_pre =>
       rw [dalekMontToEdOutAt_none P keyBytes 0 hmont (s0.sp - 360#64), sepConj_assoc]
@@ -481,8 +483,12 @@ theorem isCanonical_placed_ok'_placed [LibsignalFullPlacement] {P : Primitives}
       (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
         (memRegion168_of_cell_and_memRegion160 (s0.sp - 360#64) 0#64 _))))) ?_
     wp_done
-  | some edPt =>
-    have hed_len : edPt.length = 160 := hmontLen keyBytes 0 edPt hmont
+  | some edPt0 =>
+    let edPt : Bytes := LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.packEdBytes edPt0
+    have hmont : P.montToEdBytes keyBytes 0 = some edPt := by
+      simp [Primitives.montToEdBytes, hmont0, edPt]
+    have hed_len : edPt.length = 160 :=
+      LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.packEdBytes_length edPt0
     have hed_bv_len : (bytesToBv8 edPt).length = 160 := by simp [bytesToBv8, hed_len]
     obtain ⟨e0, e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12, e13, e14, e15,
       e16, e17, e18, e19, hed_cells⟩ :=
@@ -515,10 +521,15 @@ theorem isCanonical_placed_ok'_placed [LibsignalFullPlacement] {P : Primitives}
           (s0.sp - 360#64) 1#64 hed_bv_len _)))))) ?_
     wp_call htors_call ⟨s0.sp - 192#64, edPt⟩
     refine SepWP.weaken_pre (memRegion160_of_bytes160 (s0.sp - 192#64) hed_bv_len _) ?_
-    cases htors : P.isTorsionFree edPt with
+    have hlt := hmontLt keyBytes 0 edPt0 hmont0
+    have htors_eq : P.isTorsionFreeBytes edPt = P.isTorsionFree edPt0 := by
+      simp [Primitives.isTorsionFreeBytes, edPt,
+        LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy.unpackEdBytes_packEdBytes hlt.1 hlt.2]
+    rw [htors_eq] at hpost_1
+    cases htors : P.isTorsionFree edPt0 with
     | false =>
       have hcanon_false : isCanonicalRef P keyBytes = false := by
-        simp [isCanonicalRef, hmont, htors]
+        simp [isCanonicalRef, hmont0, htors]
       rw [hcanon_false]
       simp only [htors, Bool.false_eq_true, ite_false] at hpost_1
       have hx0_8 : BitVec.setWidth 8 (sf_1.readReg64 (Reg.gpr 0#5)) = 0#8 := by
@@ -582,7 +593,7 @@ theorem isCanonical_placed_ok'_placed [LibsignalFullPlacement] {P : Primitives}
             exact (uint8_ult237_eq_true_iff _).mp hb0
           have hlen_beq : (keyBytes.length == 32) = true := beq_iff_eq.mpr h
           have hcanon_b0 : isCanonicalRef P keyBytes = true := by
-            simp only [isCanonicalRef, scalarIsInRange, hlen_beq, hb31_u8, hb0_u8, hmont, htors]
+            simp only [isCanonicalRef, scalarIsInRange, hlen_beq, hb31_u8, hb0_u8, hmont0, htors]
             rfl
           rw [hcanon_b0]
           simp only [ite_true]
@@ -602,94 +613,47 @@ theorem isCanonical_placed_ok'_placed [LibsignalFullPlacement] {P : Primitives}
           wp_conv_pre => rw [← hfocus64 17 (by decide), hfocus64 23 (by decide)]
           wp_steps
           wp_conv_pre => rw [← hfocus64 23 (by decide)]
-          rw [ecPubKeyIsCanonical_tail_eq P keyBytes edPt h hmont htors hb31_u8 hb0_u8]
+          rw [ecPubKeyIsCanonical_tail_eq P keyBytes edPt0 h hmont0 htors hb31_u8 hb0_u8]
           wp_done
 
 theorem isCanonical_placed_ok_placed [LibsignalFullPlacement] {P : Primitives}
     {H : LibsignalHooks}
     (hWF : StructuralPrims P)
     (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubSpecPlaced P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160)) :
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFreeBytes 160)) :
     subroutine_ok ((blkPC_202).rebase (blkPl_202).base H)
       (blkPl_202).base
       (ecPubKeyIsCanonicalCallSpec P) :=
-  isCanonical_placed_ok'_placed hWF.isCanonical_eq_isCanonicalRef hWF.montToEd_len hmontHook htorsHook
+  isCanonical_placed_ok'_placed hWF.isCanonical_eq_isCanonicalRef hWF.montToEd_lt hmontHook htorsHook
 
 theorem isCanonical_placed_ok'_cl_placed [LibsignalFullPlacement] {callerProg : Program} {i : Nat}
     {P : Primitives} {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
     (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
-    (hmontLen : ∀ u s ed, P.montToEd u s = some ed → ed.length = 160)
+    (hmontLt : ∀ u s pt, P.montToEd u s = some pt → pt.x < 256 ^ 80 ∧ pt.y < 256 ^ 80)
     (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubSpecPlaced P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160)) :
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFreeBytes 160)) :
     subroutine_ok callerProg (lsmpl.base 202)
       (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)) :=
   full_ls_subroutine_ok_of_plain (j := 202)
-    (isCanonical_placed_ok'_placed hisCanon hmontLen hmontHook htorsHook)
+    (isCanonical_placed_ok'_placed hisCanon hmontLt hmontHook htorsHook)
 
 theorem isCanonical_placed_ok_cl_placed [LibsignalFullPlacement] {callerProg : Program} {i : Nat}
     {P : Primitives} {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
     (hWF : StructuralPrims P)
     (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubSpecPlaced P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160)) :
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFreeBytes 160)) :
     subroutine_ok callerProg (lsmpl.base 202)
       (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)) :=
   full_ls_subroutine_ok_of_plain (j := 202) (isCanonical_placed_ok_placed hWF hmontHook htorsHook)
 
-/-- Relocatable `<libsignal_core::curve::PublicKey>::is_canonical` (Block `202`, mutated)
-meets `ecPubKeyIsCanonicalCallSpec P` under `[LibsignalFullPlacement]`. -/
-theorem isCanonical_placed_ok' [LibsignalFullPlacement] {P : Primitives}
-    {H : LibsignalHooks}
-    (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
-    (hmontLen : ∀ u s ed, P.montToEd u s = some ed → ed.length = 160)
-    (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubSpec P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160)) :
-    subroutine_ok ((blkPC_202).rebase (blkPl_202).base H)
-      (blkPl_202).base
-      (ecPubKeyIsCanonicalCallSpec P) :=
-  isCanonical_placed_ok'_placed hisCanon hmontLen hmontHook htorsHook
-
-theorem isCanonical_placed_ok [LibsignalFullPlacement] {P : Primitives}
-    {H : LibsignalHooks}
-    (hWF : StructuralPrims P)
-    (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubSpec P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160)) :
-    subroutine_ok ((blkPC_202).rebase (blkPl_202).base H)
-      (blkPl_202).base
-      (ecPubKeyIsCanonicalCallSpec P) :=
-  isCanonical_placed_ok_placed hWF hmontHook htorsHook
-
 theorem isCanonical_placed_ok'_cl [LibsignalFullPlacement] {callerProg : Program} {i : Nat}
     {P : Primitives} {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
     (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
-    (hmontLen : ∀ u s ed, P.montToEd u s = some ed → ed.length = 160)
+    (hmontLt : ∀ u s pt, P.montToEd u s = some pt → pt.x < 256 ^ 80 ∧ pt.y < 256 ^ 80)
     (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubSpec P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160)) :
+    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFreeBytes 160)) :
     subroutine_ok callerProg (lsmpl.base 202)
       (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)) :=
-  isCanonical_placed_ok'_cl_placed hisCanon hmontLen hmontHook htorsHook
-
-theorem isCanonical_placed_ok_cl [LibsignalFullPlacement] {callerProg : Program} {i : Nat}
-    {P : Primitives} {H : LibsignalHooks} [IsLsBlockProg callerProg i H]
-    (hWF : StructuralPrims P)
-    (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubSpec P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160)) :
-    subroutine_ok callerProg (lsmpl.base 202)
-      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)) :=
-  isCanonical_placed_ok_cl_placed hWF hmontHook htorsHook
-
-abbrev ecPubKeyIsCanonical_placed_ok' [LibsignalFullPlacement] {P : Primitives}
-    {H : LibsignalHooks}
-    (hisCanon : ∀ k, P.isCanonicalEC k = isCanonicalRef P k)
-    (hmontLen : ∀ u s ed, P.montToEd u s = some ed → ed.length = 160)
-    (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubSpec P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160)) :=
-  isCanonical_placed_ok' hisCanon hmontLen hmontHook htorsHook
-
-abbrev ecPubKeyIsCanonical_placed_ok [LibsignalFullPlacement] {P : Primitives}
-    {H : LibsignalHooks}
-    (hWF : StructuralPrims P)
-    (hmontHook : HookSat H lsDalekMontToEdSym (dalekMontToEdStubSpec P))
-    (htorsHook : HookSat H lsDalekTorsionFreeSym (cryptoBoolRegStubSpec P.isTorsionFree 160)) :=
-  isCanonical_placed_ok hWF hmontHook htorsHook
+  isCanonical_placed_ok'_cl_placed hisCanon hmontLt hmontHook htorsHook
 
 end CryptoVerification.E2E.Pqxdh.Shared

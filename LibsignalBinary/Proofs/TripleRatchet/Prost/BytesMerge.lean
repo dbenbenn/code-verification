@@ -9,9 +9,16 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Verification of `prost::encoding::bytes::merge::<Vec<u8>, &mut &[u8]> [local#1]`
@@ -20,4 +27,4 @@ Re-exports the verification of `prost::encoding::bytes::merge::<alloc::vec::Vec<
 against `bytesMergeSpec`.
 -/
 
-@[expose] public section
+public section

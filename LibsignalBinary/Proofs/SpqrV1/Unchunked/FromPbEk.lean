@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Unchunked.FromPbBase
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Verification of `<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb`
@@ -22,7 +22,7 @@ Verifies `<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb` against
 `ekSentCt1ReceivedFromPbSpec` on fixed-base and `[LibsignalPlacement]` programs.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Layout.L25
 
@@ -56,12 +56,6 @@ set_option hygiene false
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append
-
-macro "ekSentCt1ReceivedFromPb_fetches " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic| code_fetches_range_len CryptoVerification.libsignalSessionCode
-    CryptoVerification.SpqrV1.Unchunked.ekSentCt1ReceivedFromPbBin $b $H
-    CryptoVerification.SpqrV1.Unchunked.ekSentCt1ReceivedFromPb_fnOff
-    "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" $k0 $len)
 
 abbrev WppPostEk {α : Type} (spec : Spec α) (x : α) (R : SepProp) (s0 : State) :
     State → SepProp → Prop :=
@@ -239,52 +233,6 @@ local macro "ek_err_drop_steps " prog:term:max entry:term:max : tactic => `(tact
             (sepConj_mono_left (protoUnchunked2VecHeadersAt_entails_memRegion_104 pbA g)))
           (sepConj_mono_right (stackAt_ekSentCt1ReceivedFromPb_tail_allocHook s0.sp _ _ _ _ _ _)))) ?_
         wp_apply; wp_done))
-
-set_option maxHeartbeats 800000 in
-private theorem ek_sent_ct1_received_from_pb_err_drop {A : RustAlloc} {F : ShaCompress}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    {out pbA : BitVec 64} {pb : V1State.Unchunked.EkSentCt1Received} {R : SepProp} {s0 s1 : State}
-    {v_out0 : BitVec 64} {v_out8 : BitVec 8}
-    {g : TwoVecGhost}
-    (hdealloc_raw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedFromPbName +
-        bv% (ls_rel% "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (hcond : (pb.dk.length == DECAPSULATION_KEY_SIZE &&
-      pb.ct1.length == CIPHERTEXT1_SIZE) = false)
-    (hpc1 : s1.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr ekSentCt1ReceivedFromPbName + 176#64)
-    (hrun1 : s1.status = .Running)
-    (hpres1 : Saved48Preserved s0 s1 (s0.sp - 144#64))
-    (hx0_1 : s1.readReg64 .x0 = out)
-    (hx19_1 : s1.readReg64 .x19 = pbA)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) (s0.readReg64 .lr) s1
-      (((out ↦₆₄ v_out0) ∗ ((out + 8#64) ↦₈ v_out8) ∗ memRegion (out + 9#64) 95) ∗
-        (protoUnchunked2VecHeadersAt pbA g ∗
-          optProtoAuthenticatorAt A (pbA + 48#64) pb.auth ∗
-          memRegion (pbA + 96#64) 8 ∗
-          vecCapPtrDealloc A g.v1.cap g.v1.ptr ∗
-          vecCapPtrDealloc A g.v2.cap g.v2.ptr) ∗
-        A.pool ∗
-        memRegion (s0.sp - 4304#64) 64 ∗
-        stackAt (s0.sp - 144#64) allocHookStack ∗
-        memRegion (s0.sp - 144#64) 96 ∗
-        (((s0.sp - 48#64) ↦₆₄ s0.readReg64 .fp) ∗ ((s0.sp - 40#64) ↦₆₄ s0.readReg64 .lr) ∗
-         ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
-         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19)))
-      (WppPostEk (ekSentCt1ReceivedFromPbSpec A F) ⟨out, pbA, pb⟩ R s0) := by
-  simp only [WppPostEk, ekSentCt1ReceivedFromPbSpec, Unchunked.SendEk.EkSentCt1Received.from_pb,
-    hcond, Bool.false_eq_true, ↓reduceIte,
-    ekSentCt1ReceivedResultAt, stackAt_ekSentCt1ReceivedFromPb_split_allocHook, rustDeallocSpec]
-    at hdealloc_raw ⊢
-  ekSentCt1ReceivedFromPb_fetches b (Rust.withPanics ext) 176 120
-  ekSentCt1ReceivedFromPb_fetches b (Rust.withPanics ext) 336 20
-  dsimp only [tripleRatchetProgAtExt, ekSentCt1ReceivedFromPbName, BitVec.ofNat_eq_ofNat]
-    at hdealloc_raw hpc1 ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" = entry
-  examples_hide_fetches
-  ek_err_drop_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
 
 set_option maxHeartbeats 800000 in
 private theorem ek_sent_ct1_received_from_pb_err_drop_placed [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
@@ -479,56 +427,6 @@ local macro "ek_ok_after_auth_steps " prog:term:max entry:term:max : tactic => `
 ))
 
 set_option maxHeartbeats 1200000 in
-private theorem ek_sent_ct1_received_from_pb_ok_after_auth {A : RustAlloc} {F : ShaCompress}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    {out pbA c1 p1 c2 p2 : BitVec 64}
-    {pb : V1State.Unchunked.EkSentCt1Received} {auth : ProtoAuthenticator}
-    {ga : AuthenticatorPBGhost} {R : SepProp} {s0 s1 : State}
-    (hdealloc_raw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedFromPbName +
-        bv% (ls_rel% "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (hcond : (pb.dk.length == DECAPSULATION_KEY_SIZE &&
-      pb.ct1.length == CIPHERTEXT1_SIZE) = true)
-    (hauth : pb.auth = some auth)
-    (hpc1 : s1.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr ekSentCt1ReceivedFromPbName + 80#64)
-    (hrun1 : s1.status = .Running)
-    (hpres1 : Saved48Preserved s0 s1 (s0.sp - 144#64))
-    (hx19_1 : s1.readReg64 .x19 = pbA)
-    (hx20_1 : s1.readReg64 .x20 = ga.rootKey.cap)
-    (hx21_1 : s1.readReg64 .x21 = pb.epoch)
-    (hx22_1 : s1.readReg64 .x22 = out)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) (s0.readReg64 .lr) s1
-      (memRegion out 104 ∗
-        ((pbA ↦₆₄ c1) ∗ ((pbA + 8#64) ↦₆₄ p1) ∗ ((pbA + 16#64) ↦₆₄ BitVec.ofNat 64 pb.dk.length) ∗
-         ((pbA + 24#64) ↦₆₄ c2) ∗ ((pbA + 32#64) ↦₆₄ p2) ∗ ((pbA + 40#64) ↦₆₄ BitVec.ofNat 64 pb.ct1.length) ∗
-         authenticatorPBPinnedAt A ga (pbA + 48#64) auth ∗
-         ((pbA + 96#64) ↦₆₄ pb.epoch) ∗
-         vecU8Payload A c1 p1 pb.dk ∗
-         vecU8Payload A c2 p2 pb.ct1) ∗
-        A.pool ∗
-        stackAt (s0.sp - 144#64) authFromPbStack ∗
-        authenticatorAt A (s0.sp - 144#64) (Authenticator.fromPb auth) ∗
-        memRegion (s0.sp - 96#64) 48 ∗
-        (((s0.sp - 48#64) ↦₆₄ s0.readReg64 .fp) ∗ ((s0.sp - 40#64) ↦₆₄ s0.readReg64 .lr) ∗
-         ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
-         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19)))
-      (WppPostEk (ekSentCt1ReceivedFromPbSpec A F) ⟨out, pbA, pb⟩ R s0) := by
-  simp only [WppPostEk, ekSentCt1ReceivedFromPbSpec, Unchunked.SendEk.EkSentCt1Received.from_pb,
-    hcond, hauth, ↓reduceIte, spqrAuthApi, ekSentCt1ReceivedResultAt,
-    stackAt_ekSentCt1ReceivedFromPb_split_allocHook, rustDeallocSpec] at hdealloc_raw ⊢
-  ekSentCt1ReceivedFromPb_fetches b (Rust.withPanics ext) 80 96
-  ekSentCt1ReceivedFromPb_fetches b (Rust.withPanics ext) 268 28
-  ekSentCt1ReceivedFromPb_fetches b (Rust.withPanics ext) 336 20
-  dsimp only [tripleRatchetProgAtExt, ekSentCt1ReceivedFromPbName, BitVec.ofNat_eq_ofNat]
-    at hdealloc_raw hpc1 ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" = entry
-  examples_hide_fetches
-  ek_ok_after_auth_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
-
-set_option maxHeartbeats 1200000 in
 private theorem ek_sent_ct1_received_from_pb_ok_after_auth_placed [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}
     {out pbA c1 p1 c2 p2 : BitVec 64}
@@ -617,52 +515,6 @@ local macro "ek_auth_none_steps " prog:term:max entry:term:max : tactic => `(tac
 ))
 
 set_option maxHeartbeats 800000 in
-private theorem ek_sent_ct1_received_from_pb_auth_none {A : RustAlloc} {F : ShaCompress}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    {out pbA : BitVec 64} {pb : V1State.Unchunked.EkSentCt1Received} {R : SepProp} {s0 s1 : State}
-    {v_out0 : BitVec 64} {v_out8 : BitVec 8}
-    {g : TwoVecGhost}
-    (hdealloc_raw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedFromPbName +
-        bv% (ls_rel% "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (hcond : (pb.dk.length == DECAPSULATION_KEY_SIZE &&
-      pb.ct1.length == CIPHERTEXT1_SIZE) = true)
-    (hauth : pb.auth = none)
-    (hpc1 : s1.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr ekSentCt1ReceivedFromPbName + 296#64)
-    (hrun1 : s1.status = .Running)
-    (hpres1 : Saved48Preserved s0 s1 (s0.sp - 144#64))
-    (hx0_1 : s1.readReg64 .x0 = out)
-    (hx19_1 : s1.readReg64 .x19 = pbA)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) (s0.readReg64 .lr) s1
-      (((out ↦₆₄ v_out0) ∗ ((out + 8#64) ↦₈ v_out8) ∗ memRegion (out + 9#64) 95) ∗
-        (protoUnchunked2VecHeadersAt pbA g ∗
-          memRegion (pbA + 48#64) 48 ∗
-          memRegion (pbA + 96#64) 8 ∗
-          vecCapPtrDealloc A g.v1.cap g.v1.ptr ∗
-          vecCapPtrDealloc A g.v2.cap g.v2.ptr) ∗
-        A.pool ∗
-        memRegion (s0.sp - 4304#64) 64 ∗
-        stackAt (s0.sp - 144#64) allocHookStack ∗
-        memRegion (s0.sp - 144#64) 96 ∗
-        (((s0.sp - 48#64) ↦₆₄ s0.readReg64 .fp) ∗ ((s0.sp - 40#64) ↦₆₄ s0.readReg64 .lr) ∗
-         ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
-         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19)))
-      (WppPostEk (ekSentCt1ReceivedFromPbSpec A F) ⟨out, pbA, pb⟩ R s0) := by
-  simp only [WppPostEk, ekSentCt1ReceivedFromPbSpec, Unchunked.SendEk.EkSentCt1Received.from_pb,
-    hcond, hauth, ↓reduceIte,
-    ekSentCt1ReceivedResultAt, stackAt_ekSentCt1ReceivedFromPb_split_allocHook, rustDeallocSpec]
-    at hdealloc_raw ⊢
-  ekSentCt1ReceivedFromPb_fetches b (Rust.withPanics ext) 264 92
-  dsimp only [tripleRatchetProgAtExt, ekSentCt1ReceivedFromPbName, BitVec.ofNat_eq_ofNat]
-    at hdealloc_raw hpc1 ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" = entry
-  examples_hide_fetches
-  ek_auth_none_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
-
-set_option maxHeartbeats 800000 in
 private theorem ek_sent_ct1_received_from_pb_auth_none_placed [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}
     {out pbA : BitVec 64} {pb : V1State.Unchunked.EkSentCt1Received} {R : SepProp} {s0 s1 : State}
@@ -700,51 +552,6 @@ private theorem ek_sent_ct1_received_from_pb_auth_none_placed [LibsignalPlacemen
     at hdealloc_raw ⊢
   ek_auth_none_steps ((blkPC_348).rebase (blkPl_348).base H) (blkPl_348).base
 
-private theorem ek_sent_ct1_received_from_pb_err_drop_unpacked {A : RustAlloc} {F : ShaCompress}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    {out pbA c1 p1 c2 p2 : BitVec 64}
-    {pb : V1State.Unchunked.EkSentCt1Received} {R : SepProp} {s0 s1 : State}
-    (hdealloc_raw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedFromPbName +
-        bv% (ls_rel% "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (hcond : (pb.dk.length == DECAPSULATION_KEY_SIZE &&
-      pb.ct1.length == CIPHERTEXT1_SIZE) = false)
-    (hpc1 : s1.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr ekSentCt1ReceivedFromPbName + 176#64)
-    (hrun1 : s1.status = .Running)
-    (hpres1 : Saved48Preserved s0 s1 (s0.sp - 144#64))
-    (hx0_1 : s1.readReg64 .x0 = out)
-    (hx19_1 : s1.readReg64 .x19 = pbA)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) (s0.readReg64 .lr) s1
-      (memRegion out 104 ∗
-        ((pbA ↦₆₄ c1) ∗ ((pbA + 8#64) ↦₆₄ p1) ∗ ((pbA + 16#64) ↦₆₄ BitVec.ofNat 64 pb.dk.length) ∗
-         ((pbA + 24#64) ↦₆₄ c2) ∗ ((pbA + 32#64) ↦₆₄ p2) ∗ ((pbA + 40#64) ↦₆₄ BitVec.ofNat 64 pb.ct1.length) ∗
-         optProtoAuthenticatorAt A (pbA + 48#64) pb.auth ∗
-         ((pbA + 96#64) ↦₆₄ pb.epoch) ∗
-         vecU8Payload A c1 p1 pb.dk ∗
-         vecU8Payload A c2 p2 pb.ct1) ∗
-        A.pool ∗
-        stackAt (s0.sp - 144#64) authFromPbStack ∗
-        memRegion (s0.sp - 144#64) 96 ∗
-        (((s0.sp - 48#64) ↦₆₄ s0.readReg64 .fp) ∗ ((s0.sp - 40#64) ↦₆₄ s0.readReg64 .lr) ∗
-         ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
-         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19)))
-      (WppPostEk (ekSentCt1ReceivedFromPbSpec A F) ⟨out, pbA, pb⟩ R s0) := by
-  rw [stackAt_authFromPb_split_allocHook_sub144 s0.sp]
-  refine SepWP.weaken_pre
-    (sepConj_mono (memRegion_104_err_split out)
-      (sepConj_mono_left (unpacked_ekSentCt1Received_entails_dealloc A pbA c1 p1
-        (BitVec.ofNat 64 pb.dk.length) c2 p2 (BitVec.ofNat 64 pb.ct1.length)
-        pb.epoch pb.auth pb.dk pb.ct1))) ?_
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply ProofLib.SepWP.exists_left; intro v_out0
-  apply ProofLib.SepWP.exists_left; intro v_out8
-  refine SepWP.weaken_pre ?_
-    (ek_sent_ct1_received_from_pb_err_drop (v_out0 := v_out0) (v_out8 := v_out8) (g := ⟨⟨c1, p1⟩, ⟨c2, p2⟩⟩)
-      hdealloc_raw hcond hpc1 hrun1 hpres1 hx0_1 hx19_1 hsp_align)
-  exact Entails.of_eq (by ac_rfl)
-
 private theorem ek_sent_ct1_received_from_pb_err_drop_unpacked_placed [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)} {out pbA c1 p1 c2 p2 : BitVec 64}
     {pb : V1State.Unchunked.EkSentCt1Received} {R : SepProp} {s0 s1 : State}
@@ -776,56 +583,6 @@ private theorem ek_sent_ct1_received_from_pb_err_drop_unpacked_placed [Libsignal
   exact SepWP.weaken_pre (Entails.of_eq (by ac_rfl))
     (ek_sent_ct1_received_from_pb_err_drop_placed (v_out0 := v_out0) (v_out8 := v_out8) (g := ⟨⟨c1, p1⟩, ⟨c2, p2⟩⟩)
       hdealloc_raw hcond hpc1 hrun1 hpres1 hx0_1 hx19_1 hsp_align)
-
-private theorem ek_sent_ct1_received_from_pb_auth_none_unpacked {A : RustAlloc} {F : ShaCompress}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    {out pbA c1 p1 c2 p2 : BitVec 64}
-    {pb : V1State.Unchunked.EkSentCt1Received} {R : SepProp} {s0 s1 : State}
-    (hdealloc_raw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedFromPbName +
-        bv% (ls_rel% "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (hcond : (pb.dk.length == DECAPSULATION_KEY_SIZE &&
-      pb.ct1.length == CIPHERTEXT1_SIZE) = true)
-    (hauth : pb.auth = none)
-    (hpc1 : s1.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr ekSentCt1ReceivedFromPbName + 296#64)
-    (hrun1 : s1.status = .Running)
-    (hpres1 : Saved48Preserved s0 s1 (s0.sp - 144#64))
-    (hx0_1 : s1.readReg64 .x0 = out)
-    (hx19_1 : s1.readReg64 .x19 = pbA)
-    (hsp_align : (s0.sp &&& 15#64 == 0#64) = true) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) (s0.readReg64 .lr) s1
-      (memRegion out 104 ∗
-        ((pbA ↦₆₄ c1) ∗ ((pbA + 8#64) ↦₆₄ p1) ∗ ((pbA + 16#64) ↦₆₄ BitVec.ofNat 64 pb.dk.length) ∗
-         ((pbA + 24#64) ↦₆₄ c2) ∗ ((pbA + 32#64) ↦₆₄ p2) ∗ ((pbA + 40#64) ↦₆₄ BitVec.ofNat 64 pb.ct1.length) ∗
-         optProtoAuthenticatorAt A (pbA + 48#64) none ∗
-         ((pbA + 96#64) ↦₆₄ pb.epoch) ∗
-         vecU8Payload A c1 p1 pb.dk ∗
-         vecU8Payload A c2 p2 pb.ct1) ∗
-        A.pool ∗
-        stackAt (s0.sp - 144#64) authFromPbStack ∗
-        memRegion (s0.sp - 144#64) 96 ∗
-        (((s0.sp - 48#64) ↦₆₄ s0.readReg64 .fp) ∗ ((s0.sp - 40#64) ↦₆₄ s0.readReg64 .lr) ∗
-         ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
-         ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19)))
-      (WppPostEk (ekSentCt1ReceivedFromPbSpec A F) ⟨out, pbA, pb⟩ R s0) := by
-  rw [stackAt_authFromPb_split_allocHook_sub144 s0.sp]
-  refine SepWP.weaken_pre
-    (sepConj_mono (memRegion_104_err_split out)
-      (sepConj_mono_left (Entails.trans
-        (unpacked_ekSentCt1Received_entails_dealloc A pbA c1 p1
-          (BitVec.ofNat 64 pb.dk.length) c2 p2 (BitVec.ofNat 64 pb.ct1.length)
-          pb.epoch none pb.dk pb.ct1)
-        (sepConj_mono_right (sepConj_mono_left (by
-          rw [optProtoAuthenticatorAt_48_none]
-          exact optProtoAuthenticatorAt_48_none_entails_memRegion_48 A pbA)))))) ?_
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply ProofLib.SepWP.exists_left; intro v_out0
-  apply ProofLib.SepWP.exists_left; intro v_out8
-  refine SepWP.weaken_pre ?_
-    (ek_sent_ct1_received_from_pb_auth_none (v_out0 := v_out0) (v_out8 := v_out8) (g := ⟨⟨c1, p1⟩, ⟨c2, p2⟩⟩)
-      hdealloc_raw hcond hauth hpc1 hrun1 hpres1 hx0_1 hx19_1 hsp_align)
-  exact Entails.of_eq (by ac_rfl)
 
 private theorem ek_sent_ct1_received_from_pb_auth_none_unpacked_placed [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)} {out pbA c1 p1 c2 p2 : BitVec 64}
@@ -921,11 +678,6 @@ private theorem sepWPp_call_ret {α : Type} {prog : Program}
     (fun sf _ hm => Satisfies.mono (sepConj_mono_left (hpan sf)) hm)
     (fun sf hpcf hrunf hspf hcsf => SepWPp.of_sepWP_ret (hnext sf hpcf hrunf hspf hcsf))
     (fun sf _ _ hm => False.elim (by rw [hoom_eq] at hm; exact not_satisfies_false_sepConj hm))
-
-private theorem add_neg_38492_eq (a : BitVec 64) :
-    a - bv% (ls_rel% "<spqr::authenticator::Authenticator>::from_pb" "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb") =
-      a + bv% (2 ^ 64 - ls_rel% "<spqr::authenticator::Authenticator>::from_pb" "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb") := by
-  bv_omega
 
 private theorem memRegion_144_96_split_48_48 (sp : BitVec 64) :
     memRegion (sp - 144#64) 96 =
@@ -1117,46 +869,6 @@ local macro "ek_from_pb_main_steps " prog:term "," entry:term "," auth_target:te
 ))
 
 set_option maxHeartbeats 1200000 in
-theorem ek_sent_ct1_received_from_pb_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedFromPbName)
-      (ekSentCt1ReceivedFromPbSpec A F) := by
-  have hdealloc_raw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedFromPbName +
-        bv% (ls_rel% "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := num% (ls_rel% "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      ekSentCt1ReceivedFromPb_fnOff
-      (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hA.dealloc
-  have hauth_raw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr ekSentCt1ReceivedFromPbName +
-        bv% (2 ^ 64 - ls_rel% "<spqr::authenticator::Authenticator>::from_pb" "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb"))
-      (authFromPbPinnedSpec A) := sub_ok_of_addr_eq
-    (by
-      rw [← add_neg_38492_eq]
-      exact fnAddr_eq_sub_of_rel (Program.fnAddr_rel
-        (k := num% (ls_rel% "<spqr::authenticator::Authenticator>::from_pb" "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb"))
-        (b := b) (X := Rust.withPanics ext)
-        (ls_lemma% fnOff "<spqr::authenticator::Authenticator>::from_pb")
-        ekSentCt1ReceivedFromPb_fnOff (by decide)))
-    (auth_from_pb_pinned_ok_ext hA)
-  have h_after_auth := @ek_sent_ct1_received_from_pb_ok_after_auth A F b ext
-  have h_auth_none := @ek_sent_ct1_received_from_pb_auth_none_unpacked A F b ext
-  have h_err_drop := @ek_sent_ct1_received_from_pb_err_drop_unpacked A F b ext
-  ekSentCt1ReceivedFromPb_fetches b (Rust.withPanics ext) 0 80
-  dsimp only [tripleRatchetProgAtExt, ekSentCt1ReceivedFromPbName, BitVec.ofNat_eq_ofNat]
-    at hdealloc_raw hauth_raw h_after_auth h_auth_none h_err_drop ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb" = entry
-  examples_hide_fetches
-  ek_from_pb_main_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)), entry,
-    (entry + bv% (2 ^ 64 - ls_rel% "<spqr::authenticator::Authenticator>::from_pb" "<spqr::v1::unchunked::send_ek::EkSentCt1Received>::from_pb"))
-
-set_option maxHeartbeats 1200000 in
 theorem ek_sent_ct1_received_from_pb_placed_ok [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}
     (hdealloc_raw : subroutine_ok ((blkPC_348).rebase (blkPl_348).base H)
@@ -1183,20 +895,5 @@ theorem ek_sent_ct1_received_from_pb_placed_ok_x [LibsignalPlacement] {A : RustA
   dsimp only [withLsCodeLoaded] at hpre
   rw [sepConj_comm _ ⌜_⌝, sepConj_assoc, satisfies_pure_sepConj] at hpre
   exact hpre.2
-
-theorem ek_sent_ct1_received_from_pb_ok_x {img : Obj.Image} {A : RustAlloc} {F : ShaCompress}
-    {ext : String → Option (State → State)} (hA : AllocContracts img.base A ext) :
-    EkSentCt1ReceivedFromPbOkX img A F ext := by
-  unfold EkSentCt1ReceivedFromPbOkX
-  refine subroutine_ok_mono (ek_sent_ct1_received_from_pb_ok_ext hA)
-    (fun x R s0 hpre => ?_) (fun _ _ _ _ hpost => hpost)
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hpre.2
-
-theorem ek_sent_ct1_received_from_pb_ok_x_tripleRatchetExterns {img : Obj.Image} (C : Crypto)
-    {A : RustAlloc} {F : ShaCompress} (ctl : BitVec 64) {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) :
-    EkSentCt1ReceivedFromPbOkX img A F (tripleRatchetExterns C ctl abs) :=
-  ek_sent_ct1_received_from_pb_ok_x (AllocContracts.of_tripleRatchetProgAt img.base C A ctl abs hA)
 
 end CryptoVerification.SpqrV1.Unchunked

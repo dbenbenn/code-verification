@@ -9,13 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA
-import LibsignalBinary.Proofs.E2E.Record.Serialization.ChainLenAux.Fetch
+import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.E2E.Record.Serialization.ChainLenAux.Pure
 import LibsignalBinary.Proofs.E2E.Record.Serialization.MsgKeyLenBudget
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
@@ -31,7 +30,7 @@ Relocatable `[LibsignalPlacement]` proofs (block `88`) establishing
 `Serialization.DefsBudget.chainLenSpec`, threading `VmPreserved` across `Chain::encoded_len`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

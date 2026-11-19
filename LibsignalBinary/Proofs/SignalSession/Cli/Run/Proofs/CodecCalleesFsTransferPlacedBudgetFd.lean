@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferCoreFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferCoreFd -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
 import ProofLib.CoreLemmas
 import ProofLib.Hoare.SubroutineOk
 import ProofLib.Invariant
 import ProofLib.SepLogic.WP.StepsProcess
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Stage-B Trajectory Simulation and Pure-`fs` Transfer for `lsProg_579` Codec Callees
@@ -1132,5 +1137,84 @@ theorem pksmSlot_okFs_of_subsetA4_mallocng_cli_placed_at_579_impl [LibsignalPlac
     (cliGhostExterns_memcpy_some g (cliExternsPlaced mmpl W) hf_mc)
     (hookOk_withVmPreserved hok_fm hvm_mc) hfs_mc (hMcSkf f_mc hf_mc)
     hC.panic_alloc hC.panic_raw hSub hParse
+
+/-- Unconditional `sf.fs = s0.fs` transfer for `tryFrom` (`Block 85`) at `lsProg_579`, used to lift
+`tryFromPlacedSpecOkFs` onto `AllocWithFds.withFds A0`. -/
+theorem tryFrom_pure_fs_mallocng_cli_placed_at_579_impl [LibsignalPlacement]
+    {M : AllocCostModel} (I : MallocngCostModelIface M) (hS : MallocngCostModelSound M I)
+    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
+    (lim : BudgetLimits) (g : CliGhostHooks) (W : CliHooks)
+    (hG : CliGhostAllocHooks M (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim g)
+    (hMcSkf : ∀ f, g.memcpy = some f → MemcpyStripKeepsFrozen f) :
+    let A0 := mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart
+    subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 85)
+      { withLsCodeRoLoaded lsmpl (tryFromPlacedSpec A0 lim) with
+        post := fun x s0 sf =>
+          ⌜sf.fs = s0.fs⌝ ∗ (withLsCodeRoLoaded lsmpl (tryFromPlacedSpec A0 lim)).post x s0 sf } := by
+  let A0 := mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart
+  have hC := codecHooksPlaced_of_hooks mmpl g W hG
+  obtain ⟨f_mc, hf_mc, _, _, _, _, hok_fm, _, hvm_mc, hfs_mc, _⟩ := hG.memcpy
+  exact codec_pure_fs_transfer_at_579_mc I hS γ mmpl tp brkStart lim g
+    (cliExternsPlaced mmpl W) f_mc hG
+    (cliGhostExterns_memcpy_some g (cliExternsPlaced mmpl W) hf_mc)
+    (hookOk_withVmPreserved hok_fm hvm_mc) hfs_mc (hMcSkf f_mc hf_mc)
+    hC.panic_alloc hC.panic_raw
+    (specF := fun A => withLsCodeRoLoaded lsmpl (tryFromPlacedSpec A lim))
+    (fun hC' => tryFrom_at_579_of_codecHooks hC')
+    (b2_specPoolSwap_tryFrom I hS γ mmpl tp brkStart lim)
+    (fun _ _ _ hpre => (extract_withLsCodeRoLoaded hpre).1)
+    (fun ⟨g0, st0⟩ R s0 hpre => by
+      obtain ⟨_, hpre0⟩ := extract_withLsCodeRoLoaded hpre
+      let preRest : SepProp :=
+        ⌜s0.readReg64 .x0 = g0.bytesA ∧ (s0.readReg64 .x1).toNat = g0.bytes.length ∧
+          g0.bytes.length < 2 ^ 32 ∧ s0.readReg64 .x8 = g0.ret ∧
+          FitsEnv M lim st0 (TryFromEnvGen (fun q => TryFromPostEnv q.bytes) g0)⌝ ∗
+          (g0.bytesA ↦ₛ g0.bytes) ∗ memRegion g0.ret 120 ∗
+          CryptoVerification.LibsignalTripleRatchet.logOff tryFromPlacedImg ∗
+          stackAt s0.sp smallRootStack ∗ R
+      have hEq : (tryFromPlacedSpec A0 lim).pre (g0, st0) s0 ∗ R =
+          A0.pool lim st0 s0 ∗ preRest := by
+        dsimp only [tryFromPlacedSpec, tryFromPlacedSpecGen, preRest]
+        sep_ac_rfl
+      exact pool_rx_of_satisfies_mallocng (hEq ▸ hpre0))
+    (fun _ _ _ _ => rfl)
+    (fun _ _ _ _ _ => rfl)
+
+/-- Unconditional `sf.fs = s0.fs` transfer for `pksmSlot` (`Block 111`) at `lsProg_579`, used to
+lift `pksmSlotSpecPlacedOkFs` onto `AllocWithFds.withFds A0`. -/
+theorem pksmSlot_pure_fs_of_subsetA4_mallocng_cli_placed_at_579_impl [LibsignalPlacement]
+    {M : AllocCostModel} (I : MallocngCostModelIface M) (hS : MallocngCostModelSound M I)
+    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
+    (lim : BudgetLimits) (g : CliGhostHooks) (W : CliHooks)
+    {PksmEnv : PksmGhost → List AllocEvent → Prop} {S : RunSem}
+    (hG : CliGhostAllocHooks M (mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart) lim g)
+    (hMcSkf : ∀ f, g.memcpy = some f → MemcpyStripKeepsFrozen f)
+    (hSub : ∀ {A' : RustCliAllocBudget M} {H' : LibsignalHooks},
+      CodecHooksPlaced M A' lim H' → SubsetA4PksmTryFromPlaced M A' lim PksmEnv H')
+    (hParse : ∀ b, S.pksmParse b = pksmParse b) :
+    let A0 := mallocngHookRustCliAllocBudget M I hS γ mmpl tp brkStart
+    subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) blkPl_111.base
+      { pksmSlotSpecPlaced M A0 lim PksmEnv S with
+        post := fun x s0 sf =>
+          ⌜sf.fs = s0.fs⌝ ∗ (pksmSlotSpecPlaced M A0 lim PksmEnv S).post x s0 sf } := by
+  have hC := codecHooksPlaced_of_hooks mmpl g W hG
+  obtain ⟨f_mc, hf_mc, _, _, _, _, hok_fm, _, hvm_mc, hfs_mc, _⟩ := hG.memcpy
+  exact codec_pure_fs_transfer_at_579_mc I hS γ mmpl tp brkStart lim g
+    (cliExternsPlaced mmpl W) f_mc hG
+    (cliGhostExterns_memcpy_some g (cliExternsPlaced mmpl W) hf_mc)
+    (hookOk_withVmPreserved hok_fm hvm_mc) hfs_mc (hMcSkf f_mc hf_mc)
+    hC.panic_alloc hC.panic_raw
+    (specF := fun A => pksmSlotSpecPlaced M A lim PksmEnv S)
+    (fun hC' => pksmSlot_at_579_of_codecHooks hSub hParse hC')
+    (b2_specPoolSwap_pksmSlot I hS γ mmpl tp brkStart lim PksmEnv S)
+    (fun _ _ _ hpre => (extract_withLsCodeRoLoaded hpre).1)
+    (fun ⟨g0, st0⟩ R s0 hpre => by
+      obtain ⟨_, hpre0⟩ := extract_withLsCodeRoLoaded hpre
+      have hEq : ∀ (P1 P2 P3 P4 P5 Pool : SepProp),
+          (P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ Pool) ∗ R = Pool ∗ (P1 ∗ P2 ∗ P3 ∗ P4 ∗ P5 ∗ R) := by
+        intros; sep_ac_rfl
+      exact pool_rx_of_satisfies_mallocng (hEq _ _ _ _ _ _ ▸ hpre0))
+    (fun _ _ _ _ => rfl)
+    (fun _ _ _ _ _ => rfl)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsTransferPlacedBudgetFd

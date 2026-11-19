@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymA
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PublicApiCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 public import LibsignalBinary.Specifications.LibsignalPublicApi
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.EncodedLen
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Fields
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Prologue
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `PreKeySignalMessage::new` Top-Level Composition
@@ -27,7 +28,7 @@ Composes `prologue_ok`, `encodedLen_ok`, and `fields_ok` to establish `preKeyMsg
 relocatable `[LibsignalPlacement]` forms.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.Compose
 
@@ -41,44 +42,6 @@ open CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.Prologue
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.Fields
 open CryptoVerification.LibsignalPublicApi.MessageEncrypt.PreKeySignalMessageNew.EncodedLen
-
-variable {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-  {S : SpqrModel}
-  {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-  {abs : String → Option (State → State)}
-
-/-- `PreKeySignalMessage::new` (`0x15130`) satisfies `preKeyMsgNewSpec A`. -/
-theorem preKeyMsgNew_ok (h3 : PublicApiHooks C A S encRecord abs)
-    (himg : Obj.Loads libsignalSessionImage img) : PreKeyMsgNewOk img C A ctl abs := by
-  dsimp only [PreKeyMsgNewOk]
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hs hpre hsp => ?_
-  exact preKeyMsgSegExit_chain
-    (prologue_ok h3 himg (encodedLen_ok himg) x R s0 hs hpc hsp hpre)
-    (fun s' ⟨g, hA⟩ => fields_ok h3 himg x g R s0 s' hA)
-
-theorem preKeyMsgNew_ok_ext {ext : String → Option (State → State)}
-    (hA : AllocHooks A ext)
-    (hSh : HookSat ext shimName sessionShimSpec)
-    (hMc : HookSat ext memcpyName (sessionMemcpySpec allocHookStack))
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      (img.base + bv% (ls_off% "<libsignal_protocol::protocol::PreKeySignalMessage>::new"))
-      (preKeyMsgNewSpec A) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hs hpre hsp => ?_
-  exact preKeyMsgSegExit_chain_ext
-    (prologue_ok_ext hA hSh hMc himg (encodedLen_ok_ext himg) x R s0 hs hpc hsp hpre)
-    (fun s' ⟨g, hSeamA⟩ => fields_ok_ext hA hMc himg x g R s0 s' hSeamA)
-
-theorem preKeyMsgNew_ok_trap (h3 : TripleRatchetHooks C A S (trTrapExterns C abs))
-    (himg : Obj.Loads libsignalSessionImage img) :
-    PreKeyMsgNewOk_trap img C A abs := by
-  dsimp only [PreKeyMsgNewOk_trap]
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hs hpre hsp => ?_
-  exact preKeyMsgSegExit_chain_trap
-    (prologue_ok_trap h3 himg (encodedLen_ok_trap himg) x R s0 hs hpc hsp hpre)
-    (fun s ⟨g, hA⟩ => fields_ok_trap h3 himg x g R s0 s hA)
-
-/-! ## Relocatable Placement Proofs -/
 
 open CryptoVerification.LibsignalPublicApi.Placed
 

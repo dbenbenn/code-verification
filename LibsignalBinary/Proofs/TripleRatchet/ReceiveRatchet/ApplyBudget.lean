@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.ApplyBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.Apply
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.ApplyBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.Apply
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerializeBudget
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.CallsBudget
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.VecExtBudget
@@ -25,6 +25,7 @@ import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.ExtBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Verification of `TripleRatchet::apply_to_session_state`
@@ -34,7 +35,7 @@ Relocatable `RustCliAllocBudget`-threaded verification of
 `trApplyBoundedSpec{,X}` and `DefsBudget.trApplySpec{,X}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -740,98 +741,7 @@ theorem trApplyBounded_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     (drop_vec_message_key_placed_ok hdealloc)
     (drop_vec_chain_placed_ok hdealloc)
 
-/-- `rustAllocShimVmSpec` / `allocMemcpyVmSpec` convenience entry point for
-    `trApplyBounded_placed_ok`. -/
-theorem trApplyBounded_placed_ok_vm [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok ((blkPC_58).rebase (blkPl_58).base H)
-      (blkPl_58).base
-      (withLsCodeLoaded lsmpl (trApplyBoundedSpec M A lim)) :=
-  trApplyBounded_placed_ok
-    (hookSat_noAllocShim_of_rustAllocShimVm hshim) halloc hdealloc
-    (hookSat_framelessMemcpy_of_allocMemcpyVm hmemcpy)
-
-/-- `X`-stack (`trApplyStackX`) relocatable entry point for `TR::apply_to_session_state`
-    (Block `58`). -/
-theorem trApplyBounded_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (hdropMk : subroutine_ok ((blkPC_3).rebase (blkPl_3).base H)
-      (blkPl_3).base (dropVecMessageKeySpecX M A lim))
-    (hdropCh : subroutine_ok ((blkPC_2).rebase (blkPl_2).base H)
-      (blkPl_2).base (withLsCodeLoaded lsmpl (dropVecChainSpecX M A lim))) :
-    subroutine_ok ((blkPC_58).rebase (blkPl_58).base H)
-      (blkPl_58).base
-      (withLsCodeLoaded lsmpl (trApplyBoundedSpecX M A lim)) :=
-  trApplyBounded_placed_ok_opt
-    (calleeStack := dropVecChainStackX) (stubStack := extHookStack)
-    (mkStack := dropVecMessageKeyStackX) (chStack := dropVecChainStackX)
-    (pkHookStack := extHookStack) (privStack := privSerializeStackX)
-    (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)
-    stackAt_trApply_x stackAt_trApply_fold_x
-    (shimWithStack_of_noAllocShim extHookStack (ls_hook_ok_of_mem hshim))
-    (subroutine_ok_rustCliAllocNoOom_externWithStack (stk := extHookStack) (by decide) (by decide)
-      (subroutine_ok_allocNoOom_of_budget (ls_hook_ok_of_mem halloc)))
-    (subroutine_ok_rustCliDeallocBudget_externWithStack (stk := extHookStack) (by decide) (by decide)
-      (ls_hook_ok_of_mem hdealloc))
-    (memcpyWithStack_of_framelessMemcpy extHookStack (ls_hook_ok_of_mem hmemcpy))
-    (priv_serialize_placed_ok_at_x (prog := (blkPC_58).rebase (blkPl_58).base H)
-      (hookSat_sessionShim_of_noAllocShim hshim) halloc)
-    (ls_subroutine_ok_of_block (callerProg := (blkPC_58).rebase (blkPl_58).base H)
-      (subroutine_ok_withLsCodeLoaded_of_plain (public_key_serialize_placed_ok_x hshim halloc)))
-    (ls_subroutine_ok_of_block (callerProg := (blkPC_58).rebase (blkPl_58).base H)
-      (subroutine_ok_withLsCodeLoaded_of_plain hdropMk))
-    (ls_subroutine_ok_of_block (callerProg := (blkPC_58).rebase (blkPl_58).base H) hdropCh)
-
-/-- `rustAllocShimVmSpec` / `allocMemcpyVmSpec` convenience entry point for
-    `trApplyBounded_placed_ok_x`. -/
-theorem trApplyBounded_placed_ok_x_vm [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym allocMemcpyVmSpec)
-    (hdropMk : subroutine_ok ((blkPC_3).rebase (blkPl_3).base H)
-      (blkPl_3).base (dropVecMessageKeySpecX M A lim))
-    (hdropCh : subroutine_ok ((blkPC_2).rebase (blkPl_2).base H)
-      (blkPl_2).base (withLsCodeLoaded lsmpl (dropVecChainSpecX M A lim))) :
-    subroutine_ok ((blkPC_58).rebase (blkPl_58).base H)
-      (blkPl_58).base
-      (withLsCodeLoaded lsmpl (trApplyBoundedSpecX M A lim)) :=
-  trApplyBounded_placed_ok_x
-    (hookSat_noAllocShim_of_rustAllocShimVm hshim) halloc hdealloc
-    (hookSat_framelessMemcpy_of_allocMemcpyVm hmemcpy) hdropMk hdropCh
-
 /-! ## Corollaries for `DefsBudget.trApplySpec` and `DefsBudget.trApplySpecX` -/
-
-/-- Relocatable `TR::apply_to_session_state` (Block `58`) meets
-    `withLsCodeLoaded lsmpl (DefsBudget.trApplySpec M A lim)` from explicit drop-glue contracts. -/
-theorem trApply_placed_ok_of_drops [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (hdropMk : subroutine_ok ((blkPC_3).rebase (blkPl_3).base H)
-      (blkPl_3).base (dropVecMessageKeySpec M A lim))
-    (hdropCh : subroutine_ok ((blkPC_2).rebase (blkPl_2).base H)
-      (blkPl_2).base (withLsCodeLoaded lsmpl (dropVecChainSpec M A lim))) :
-    subroutine_ok ((blkPC_58).rebase (blkPl_58).base H)
-      (blkPl_58).base
-      (withLsCodeLoaded lsmpl (trApplySpec M A lim)) :=
-  subroutine_ok_trApply_of_bounded
-    (trApplyBounded_placed_ok_of_drops hshim halloc hdealloc hmemcpy hdropMk hdropCh)
 
 /-- Relocatable `TR::apply_to_session_state` (Block `58`) meets
     `withLsCodeLoaded lsmpl (DefsBudget.trApplySpec M A lim)` directly from allocator/libc `HookSat`
@@ -847,55 +757,5 @@ theorem trApply_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       (blkPl_58).base
       (withLsCodeLoaded lsmpl (trApplySpec M A lim)) :=
   subroutine_ok_trApply_of_bounded (trApplyBounded_placed_ok hshim halloc hdealloc hmemcpy)
-
-/-- `rustAllocShimVmSpec` / `allocMemcpyVmSpec` convenience entry point for `trApply_placed_ok`. -/
-theorem trApply_placed_ok_vm [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok ((blkPC_58).rebase (blkPl_58).base H)
-      (blkPl_58).base
-      (withLsCodeLoaded lsmpl (trApplySpec M A lim)) :=
-  subroutine_ok_trApply_of_bounded (trApplyBounded_placed_ok_vm hshim halloc hdealloc hmemcpy)
-
-/-- `X`-stack (`trApplyStackX`) relocatable entry point against
-    `withLsCodeLoaded lsmpl (DefsBudget.trApplySpecX M A lim)`. -/
-theorem trApply_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym framelessMemcpyBudgetSpec)
-    (hdropMk : subroutine_ok ((blkPC_3).rebase (blkPl_3).base H)
-      (blkPl_3).base (dropVecMessageKeySpecX M A lim))
-    (hdropCh : subroutine_ok ((blkPC_2).rebase (blkPl_2).base H)
-      (blkPl_2).base (withLsCodeLoaded lsmpl (dropVecChainSpecX M A lim))) :
-    subroutine_ok ((blkPC_58).rebase (blkPl_58).base H)
-      (blkPl_58).base
-      (withLsCodeLoaded lsmpl (trApplySpecX M A lim)) :=
-  subroutine_ok_trApplyX_of_bounded
-    (trApplyBounded_placed_ok_x hshim halloc hdealloc hmemcpy hdropMk hdropCh)
-
-/-- `rustAllocShimVmSpec` / `allocMemcpyVmSpec` convenience entry point for `trApply_placed_ok_x`. -/
-theorem trApply_placed_ok_x_vm [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hshim : HookSat H lsRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hdealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym allocMemcpyVmSpec)
-    (hdropMk : subroutine_ok ((blkPC_3).rebase (blkPl_3).base H)
-      (blkPl_3).base (dropVecMessageKeySpecX M A lim))
-    (hdropCh : subroutine_ok ((blkPC_2).rebase (blkPl_2).base H)
-      (blkPl_2).base (withLsCodeLoaded lsmpl (dropVecChainSpecX M A lim))) :
-    subroutine_ok ((blkPC_58).rebase (blkPl_58).base H)
-      (blkPl_58).base
-      (withLsCodeLoaded lsmpl (trApplySpecX M A lim)) :=
-  subroutine_ok_trApplyX_of_bounded
-    (trApplyBounded_placed_ok_x_vm hshim halloc hdealloc hmemcpy hdropMk hdropCh)
 
 end LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.ApplyBudget

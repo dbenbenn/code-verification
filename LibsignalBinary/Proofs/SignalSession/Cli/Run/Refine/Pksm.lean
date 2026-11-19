@@ -19,7 +19,7 @@ Defines `PksmCanonical S`—stating that `S.pksmParse` agrees with `pksmCanon` o
 `pksmParse_bytes_iff` characterization on typed `PreKeyMessageFields`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,17 +32,17 @@ open CryptoVerification.E2E.Pqxdh.ResponderWire
 
 /-- Canonical `PreKeySignalMessage::try_from` result on well-formed wire bytes `x.bytes`:
 `some (x.toModel i)` if `x.inner` parses to `i : SignalMessage`, and `none` otherwise. -/
-def pksmCanon (x : PreKeyTryFromArgs) : Option PreKeySignalMessage :=
+@[expose] def pksmCanon (x : PreKeyTryFromArgs) : Option PreKeySignalMessage :=
   match SignalMessage.tryFrom protoSignalCodec x.inner with
   | .ok i => some (x.toModel i)
   | .error _ => none
 
 /-- `S.pksmParse` agrees with `pksmCanon` on every well-formed `PreKeyTryFromArgs` with
 `x.inner.length + 2048 < 2^32`. -/
-def PksmCanonical (S : RunSem) : Prop :=
+@[expose] def PksmCanonical (S : RunSem) : Prop :=
   ∀ x : PreKeyTryFromArgs, x.inner.length + 2048 < 2 ^ 32 → S.pksmParse x.bytes = pksmCanon x
 
-def argsOf (m : PreKeyMessageFields) : PreKeyTryFromArgs :=
+@[expose] def argsOf (m : PreKeyMessageFields) : PreKeyTryFromArgs :=
   { ptr := 0, sret := 0, regId := m.regId, opkId := m.opkId, spkId := m.spkId, kpkId := m.kpkId,
     kyberCt := m.kyberCt, baseKey := m.baseKey, idPub := m.idPub, inner := m.inner }
 

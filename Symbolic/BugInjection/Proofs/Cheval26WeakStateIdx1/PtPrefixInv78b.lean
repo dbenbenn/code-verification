@@ -36,7 +36,6 @@ theorem rng41Str_eq : (str_of_hex (rngAt 41)) = String.ofList rng41Chars := rfl
 theorem rngAt41_length : (rngAt 41).length = 32 := by
   have h : rngAt 41 = hexBytes.go SpecTop.hexDigit rng41Chars := by rw [rngAt41_eq_hex, rng41Str_eq, SpecTop.hexBytes_ofList]
   rw [h]; rfl
-theorem seg38_eq_explicit : seg 38 2 = [.pt (ptAt 38), .send (sendAt 39)] := rfl
 theorem seg40_eq_explicit : ∃ b_pt, seg 40 3 = [.recv (wireAt 40), .rng (rngAt 41), .accept b_pt] := ⟨_, rfl⟩
 theorem seg43_eq_explicit : seg 43 35 = .recv (recvAt 43) :: PtDead78.call4Rng := rfl
 theorem call4Rng_map_kind : PtDead78.call4Rng.map eventKind = List.replicate 34 .rng := by
@@ -376,13 +375,4 @@ theorem pre78PrefixInv_rs {r : Records} {S : Sem} {who₀ : List Participant} {g
       exact .inr ⟨tr₄, a₄, ikA₄, hb₄, recvAt 43, PtDead78.call4Rng, hid₄, .inr rfl, hm₄_alice,
         .inl (congrArg (fun e : TRStEntry => e.st) hls_eq.symm)⟩
     · rw [hms]; exact .inl (ptAvoidFull_append _ (hst_pre₄ ls (mem_storedStates_iff.mpr ⟨j, hge, XplSteps.xlt_of_at?_some hat, hat⟩)))
-theorem trace_take_78_eq : trace.take 78 = ((((.recv bundle0 :: call0Rng) ++ [.pt (ptAt 35), .rng (rngAt 36), .send (sendAt 37)]) ++ [.pt (ptAt 38), .send (sendAt 39)]) ++ seg 40 3) ++ seg 43 35 := by
-  rw [take78_eq, take43_eq, take40_eq, seg38_eq_explicit, trace_take_38_eq]
-theorem pre78PrefixInv_ws {r : Records} {S : Sem} {who₀ : List Participant} {g : Ghost} {ms : List Move} (hwf : RecordsWF r) (hnb : CompSetupSecrecy.NoBrk r ms) (hmp : DY.Libsignal.Composed.Refinement.MatchedPrefix compI0 r S who₀ g ms (trace.take 78)) : PtDead78.Pre78PrefixInv r S g ms := by
-  rw [trace_take_78_eq] at hmp
-  exact pre78PrefixInv_rs (rs₁ := [.rng (rngAt 36)]) (rs₂ := []) hwf hnb
-    (fun e he => by simp at he; subst he; rfl)
-    (fun c hc => by simp at hc; subst hc; exact self_mem_inits _)
-    (fun _ he => by cases he) (fun _ hc => by cases hc) hmp
-theorem ptDeadAt78 : SpecTop.PtDeadAt 78 := PtDead78.ptDeadAt78_of (fun _ _ _ _ hfits hexp hnb => pre78PrefixInv_ws hfits.1.1 hnb hexp.1)
 end Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.PtPrefixInv78b

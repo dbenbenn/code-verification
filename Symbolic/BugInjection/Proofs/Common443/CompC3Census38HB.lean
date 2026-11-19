@@ -26,21 +26,52 @@ open DY.Libsignal.HwEvents (MachineEvent)
 open DY DY.Libsignal.Composed DY.Libsignal.Composed.Refinement Symbolic.BugInjection Symbolic.BugInjection.Disproofs.Hyp.FrozenSSC.Interp0 Symbolic.BugInjection.Proofs.Common443 CompRMemoKnown CompRI0TermInj CompRNonInj38Census CompRQRestCensusZ CompC2Census38 CompC2RestCore CompPrefixInvAlice CompPrefixInvEnc Symbolic.Swarm.CREF Symbolic.Swarm.COMPOSED Symbolic.Swarm.COMPOSED.CompTrace
 section Gen
 variable {S : Sem} {g : Ghost}
-theorem census_storedSecrets_gen {w : PQXDHSpqrSetup} {r : Records} {ms : List Move} (hfits : compFits w compI0 r) (hA : r.alice = "alice") (hB : r.bob = "bob") (hc : Compat compI0 r S g) (hns : ∀ m ∈ ms, m.isSetup = false) (hreach : (runTraceMoves r ms).Reachable DY.Libsignal.Composed.reachability) : ∀ u ∈ storedSecrets (runTraceMoves r ms), Census compI0 S g u := by
+theorem census_storedSecrets_gen {w : PQXDHSpqrSetup} {r : Records} {ms : List Move} (hfits : SetupMatches w compI0 r) (hA : r.alice = "alice") (hB : r.bob = "bob") (hc : Compat compI0 r S g) (hns : ∀ m ∈ ms, m.isSetup = false) (hreach : (runTraceMoves r ms).Reachable DY.Libsignal.Composed.reachability) : ∀ u ∈ storedSecrets (runTraceMoves r ms), Census compI0 S g u := by
+  have hNe : r.alice ≠ r.bob := hfits.1.1
+  have hinv := CompInv.spqrInv_of_reachable (runTraceMoves r ms) hreach
   have hL {ts sz} (hp : (ts, sz) ∈ setupRandomsAt r) (hsz : sz ≠ 0) (h32 : 32 ≤ sz) :
       32 ≤ (gamma compI0 S g (randTerm ts sz)).length := by
     rw [gamma_setup_len hc hfits.1 hp hsz]; exact h32
   intro u hu
-  obtain ⟨ls, rfl, ⟨hp, hsk⟩ | ⟨hp, hsk⟩⟩ := mem_storedSecrets_setup_cases hfits.1.1 hfits.2.1 hns hreach hu
-  · refine census_serialize_local_pqxdh (participant_size_ne (.inl (hp.trans hA))) ?_ ?_ <;> rw [hsk]
+  obtain ⟨j, _, ⟨part, ⟨kind, sk⟩⟩, hat, rfl⟩ := CompRX0NBSC38Parts.mem_storedSecrets_iff.mp hu
+  have hkind := hinv.stOK part ⟨kind, sk⟩ j hat; dsimp only [CompInv.KindOK] at hkind
+  cases kind with
+  | identity =>
+    rcases CompSetupSecrecy.ikAt_cases_of_no_setup hNe hns hkind with ⟨hp, rfl, _⟩ | ⟨hp, rfl, _⟩
+    · refine census_serialize_local_pqxdh (participant_size_ne (.inl (hp.trans hA))) ?_ ?_ <;>
+        dsimp only <;> rw [CompSetupSecrecy.setupSecret_0 hNe]
+      · exact census_randTerm _ _
+      · exact hL (CompPrefixInvFresh.mem_setupRandomsAt_32 hNe (.inl (.inl rfl))) (by decide) le_rfl
+    · refine census_serialize_local_pqxdh (participant_size_ne (.inr (hp.trans hB))) ?_ ?_ <;>
+        dsimp only <;> rw [CompSetupSecrecy.setupSecret_1 hNe]
+      · exact census_randTerm _ _
+      · exact hL (CompPrefixInvFresh.mem_setupRandomsAt_32 hNe (.inl (.inr (.inl rfl)))) (by decide) le_rfl
+  | signedPrekey =>
+    obtain ⟨hp, rfl, _⟩ := CompSetupSecrecy.spkAt_eq_of_no_setup hNe hns hkind
+    refine census_serialize_local_pqxdh (participant_size_ne (.inr (hp.trans hB))) ?_ ?_ <;>
+      dsimp only <;> rw [CompSetupSecrecy.setupSecret_2 hNe]
     · exact census_randTerm _ _
-    · exact hL (CompPrefixInvFresh.mem_setupRandomsAt_32 hfits.1.1 (.inl (.inl rfl))) (by decide) le_rfl
-  · refine census_serialize_local_pqxdh (participant_size_ne (.inr (hp.trans hB))) ?_ ?_
-    · rcases hsk with h | h | h <;> rw [h] <;> exact census_randTerm _ _
-    · rcases hsk with h | h | h <;> rw [h]
-      · exact hL (CompPrefixInvFresh.mem_setupRandomsAt_32 hfits.1.1 (.inl (.inr (.inl rfl)))) (by decide) le_rfl
-      · exact hL (CompPrefixInvFresh.mem_setupRandomsAt_32 hfits.1.1 (.inl (.inr (.inr rfl)))) (by decide) le_rfl
-      · exact hL (CompPrefixInvFresh.mem_setupRandomsAt_64 r hfits.1.1 (by simp)) (by decide) (by decide)
+    · exact hL (CompPrefixInvFresh.mem_setupRandomsAt_32 hNe (.inl (.inr (.inr rfl)))) (by decide) le_rfl
+  | pqPrekey =>
+    obtain ⟨hp, rfl, _⟩ := CompSetupSecrecy.pqAt_eq_of_no_setup hNe hns hkind
+    refine census_serialize_local_pqxdh (participant_size_ne (.inr (hp.trans hB))) ?_ ?_ <;>
+      dsimp only <;> rw [CompSetupSecrecy.setupSecret_4 hNe]
+    · exact census_randTerm _ _
+    · exact hL (CompPrefixInvFresh.mem_setupRandomsAt_64 r hNe (by simp)) (by decide) (by decide)
+  | oneTimePrekey =>
+    obtain ⟨t, rfl, _, hev⟩ := hkind
+    rcases CompSetupSecrecy.setupTrace_eventLoggedAt_cases hNe
+        (CompSetupSecrecy.noNewNonMovePQEv_runTrace r ms hns _ (t + 1) rfl hev) with
+      ⟨_, heq⟩ | ⟨_, heq⟩ | ⟨_, heq⟩ | ⟨_, heq⟩ | ⟨hopk_true, hj, heq⟩
+    · cases heq
+    · cases heq
+    · cases heq
+    · cases heq
+    · obtain rfl : t = 22 := by omega
+      injection heq with hp _
+      refine census_serialize_local_pqxdh (participant_size_ne (.inr (hp.trans hB))) ?_ ?_
+      · exact census_randTerm 22 32
+      · exact hL (CompPrefixInvFresh.mem_setupRandomsAt_32 hNe (.inr ⟨hopk_true, rfl⟩)) (by decide) le_rfl
 theorem gamma_x25519Key_dhPk (sk : DY.Bytes) : gamma compI0 S g (DY.X25519.x25519Key (DY.DiffieHellman.dhPk sk)) = compLookupPub (clamp (gamma compI0 S g sk)) := by rw [CompPlant.x25519Key_dhPk, CompFreshDistinct.gamma_dhPk_compI0]
 theorem census_torsionVariant {k : DY.Bytes} (v : Fin 4) (t : Fin 8) {pk : HwBytes} (hk : Census compI0 S g k) (hγ : gamma compI0 S g (DY.X25519.x25519Key k) = pk) (hP : ¬ (v = 0 ∧ t = 0) → NonInjOffXZ (variantBytes (DY.Libsignal.Refinement.torsionShift compI0 pk t) v)) : Census compI0 S g (DY.X25519.x25519TorsionVariant k v t) := by
   by_cases hvt : v = 0 ∧ t = 0
@@ -93,10 +124,6 @@ theorem rsT_coinHeads_length : (CompRX0Gamma.coinHeads (rsT.take 32)).length = 3
 theorem nonInjOffXZ_variant_ekA_one : NonInjOffXZ (variantBytes compEkAPub 1) := by unfold NonInjOffXZ NonInjOff KdfFree; decide +kernel
 theorem nonInjOffXZ_ekATorsion : NonInjOffXZ compEkATorsion := by unfold NonInjOffXZ NonInjOff KdfFree; decide +kernel
 theorem nonInj38CensusXZ_highBitComp (wire : HwBytes) : NonInj38CensusXZAt Witnesses.Cheval26SmallSubgroupHighBitComp.setup (Witnesses.Cheval26SmallSubgroupHighBitComp.trace.take 38) wire 1 0 := by refine nonInj38CensusXZAt_of_trace highBitComp_take38 rsT_len rsT_drop32 rsT_coinHeads_length (fun _ => ?_); rw [clamp_b0_lookup, CompI0Laws.torsionShift_compI0]; simpa using nonInjOffXZ_variant_ekA_one
-theorem nonInj38CensusXZ_torsionComp (wire : HwBytes) : NonInj38CensusXZAt Witnesses.Cheval26SmallSubgroupTorsionComp.setup (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.take 38) wire 0 1 := by
-  refine nonInj38CensusXZAt_of_trace torsionComp_take38 rsT_len rsT_drop32 rsT_coinHeads_length (fun _ => ?_); rw [clamp_b0_lookup, CompI0Laws.torsionShift_compI0]
-  have hv0 : variantBytes compEkATorsion 0 = compEkATorsion := by decide +kernel
-  simpa [hv0] using nonInjOffXZ_ekATorsion
 
 open Symbolic.BugInjection.Proofs.Common443.CompRNoBSC (encSalt_iniAliceStartState_eq_spqrChainKey encMsgKeys mem_bobTerms_x0_iff honestSalts_split_eq x25519Key_torsionVariant_aliceOut_ek)
 open Symbolic.BugInjection.Proofs.Common443.CompRX0NBSC38Parts (runTrace_split38_swap_eq isSetup_false_split38_swap)
@@ -186,7 +213,7 @@ theorem kirc_draws_of_encVis_split {r : Records} {S : Sem} {g : Ghost} {tr₂ : 
   exact ⟨hpt_lt, CompC2KdfInjRest.kirc_randTerm_of (.inr (by omega)),
     CompC2KdfInjRest.kirc_randTerm_of (hγ.symm ▸ hc (c.take n) hmem)⟩
 
-theorem split38PairsAt_qKdfInjRest_ss_split {w : PQXDHSpqrSetup} {τ blk₁ : List MachineEvent} {wire : HwBytes} (v : Fin 4) (t : Fin 8)
+theorem split38PairsAt_qKdfInjRest_ss_split {w : PQXDHSpqrSetup} [CompC3KdfInjRest38HB.NoOpk w.withOpk] {τ blk₁ : List MachineEvent} {wire : HwBytes} (v : Fin 4) (t : Fin 8)
     (ha : KdfFree w.aliceId) (hb_id : KdfFree w.bobId) (hs : KdfFree w.spk)
     (hcs : DY.Libsignal.Composed.Refinement.Cli.CoinSplit [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes] blk₁)
     (hτ : τ = (.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ blk₁) :

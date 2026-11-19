@@ -58,6 +58,8 @@ private theorem ora_next (s : State) : getOra s.nextOracle = getOra s := by case
 private theorem ora_brk (s : State) (b) : getOra (s.setBrk b) = getOra s := by cases s; rfl
 private theorem ora_sig (s : State) (sig act) : getOra (s.setSigAction sig act) = getOra s := by cases s; rfl
 private theorem ora_sas (s : State) (sas) : getOra (s.setSigAltStack sas) = getOra s := by cases s; rfl
+private theorem ora_sm (s : State) (m) : getOra (s.setSigMask m) = getOra s := by cases s; rfl
+private theorem ora_sp (s : State) (p) : getOra (s.setSigPending p) = getOra s := by cases s; rfl
 
 private theorem ora_ppoll (s : State) : getOra (execPpoll s) = getOra s := by
   unfold execPpoll; dsimp only; rcases evalPpollEntries s.fs s.mem (s.readReg64 .x0) (s.readReg32 .x1).toNat 0 0 with _ | ⟨m', count⟩ <;>
@@ -66,7 +68,8 @@ private theorem ora_applyOpenVerdict (s : State) (v : OpenVerdict) : getOra (app
   cases s; rcases v with ⟨_, _, _ | _⟩ | _ | _ <;> rfl
 private theorem ora_openat (s : State) : getOra (execOpenat s) = getOra s := by
   unfold execOpenat; dsimp only; cases checkOpenFlags (s.readReg32 .x2) <;>
-    (try cases readCString s.mem (s.readReg64 .x1)) <;> simp only [ora_applyOpenVerdict, ora_adv, ora_w64, ora_st]
+    (try cases readCString s.mem (s.readReg64 .x1)) <;> (try cases s.fs.allocFd) <;>
+    simp only [ora_applyOpenVerdict, ora_adv, ora_w64, ora_st]
 private theorem ora_write (s : State) : getOra (execWrite s) = getOra s := by
   unfold execWrite; dsimp only; cases s.fs.fds ((s.readReg32 .x0).zeroExtend 64) <;>
     simp (config := { decide := false }) only [apply_ite getOra, ora_adv, ora_w64, ora_st, ora_fs, ora_tr, ite_self]
@@ -103,6 +106,87 @@ private theorem standardEntry_io_oracle (s : State) :
           ora_readv, ora_writev, ora_adv, ora_w64, ora_mem, ora_st, ora_fs, ora_tr, ora_pma, ora_next, ora_brk, ora_sig]
         try (cases s; dsimp only [getOra]; rfl)))
 
+private theorem ora_mremap (s : State) : getOra (execMremap s) = getOra s := by
+  dsimp (config := { zetaHave := true }) only [execMremap]
+  cases sanitizeMmapAddr
+      (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 .x0)) (pageAlignUp (s.readReg64 .x1).toNat))
+      (s.oracle.mmap s.oracleIdx) (pageAlignUp (s.readReg64 .x2).toNat) <;>
+    simp (config := { decide := false }) only [apply_ite getOra, ora_adv, ora_w64, ora_mem,
+      ora_st, ora_pma, ora_next, ite_self]
+
+private theorem ora_ite {c : Bool} {a b : State} {x}
+    (ha : getOra a = x) (hb : getOra b = x) : getOra (if c = true then a else b) = x := by
+  cases c <;> assumption
+
+private theorem ora_rt_sigprocmask (s : State) : getOra (execRtSigprocmask s) = getOra s := by
+  unfold execRtSigprocmask
+  dsimp only
+  refine ora_ite (by simp only [ora_adv, ora_w64]) <|
+    ora_ite (by simp only [ora_adv, ora_w64]) <|
+    ora_ite (by simp only [ora_adv, ora_w64]) <|
+    ora_ite (ora_st _ _) <|
+    ora_ite (by simp only [ora_adv, ora_w64]) ?_
+  have hs1 : ∀ s1 : State, getOra s1 = getOra s →
+      let s2 :=
+        if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+        else if (!decide ((s.readReg64 Reg.x2).toNat + 8 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 8) = true then
+          (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        else
+          ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (leBytes64 s.sigMask))).writeReg64 Reg.x0 0#64).advancePC
+      getOra (
+        let deliverable := s2.sigPending &&& ~~~s2.sigMask
+        if (deliverable == 0#64) = true then s2
+        else if (deliverable == SIGABRT_MASK) = true then
+          let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+          let disp := (s3.getSigAction LINUX_SIGABRT).handler
+          if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+          else if (disp == SIG_IGN) = true then s3
+          else s3.setStatus (.Exception "unmodeled signal handler delivery")
+        else s2.setStatus (.Exception "unmodeled pending signal delivery")) = getOra s := by
+    intro s1 h1
+    have hs2 : ∀ s2 : State, getOra s2 = getOra s →
+        getOra (
+          let deliverable := s2.sigPending &&& ~~~s2.sigMask
+          if (deliverable == 0#64) = true then s2
+          else if (deliverable == SIGABRT_MASK) = true then
+            let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+            let disp := (s3.getSigAction LINUX_SIGABRT).handler
+            if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+            else if (disp == SIG_IGN) = true then s3
+            else s3.setStatus (.Exception "unmodeled signal handler delivery")
+          else s2.setStatus (.Exception "unmodeled pending signal delivery")) = getOra s := by
+      intro s2 h2
+      dsimp only
+      refine ora_ite h2 (ora_ite ?_ (by rw [ora_st, h2]))
+      refine ora_ite (by rw [ora_st, ora_sp, h2]) (ora_ite (by rw [ora_sp, h2]) (by rw [ora_st, ora_sp, h2]))
+    apply hs2
+    refine ora_ite (by rw [ora_adv, ora_w64, h1])
+      (ora_ite (by rw [ora_adv, ora_w64, h1]) (by rw [ora_adv, ora_w64, ora_mem, h1]))
+  apply hs1
+  exact ora_ite rfl (ora_sm _ _)
+
+private theorem ora_rt_sigaction (s : State) : getOra (execRtSigaction s) = getOra s := by
+  unfold execRtSigaction
+  dsimp only
+  refine ora_ite (by simp only [ora_adv, ora_w64]) <|
+    ora_ite (by simp only [ora_adv, ora_w64]) <|
+    ora_ite (ora_st _ _) <|
+    ora_ite (by simp only [ora_adv, ora_w64]) <|
+    ora_ite (by simp only [ora_adv, ora_w64]) <|
+    ora_ite (ora_st _ _) ?_
+  have hs1 : ∀ s1 : State, getOra s1 = getOra s →
+      getOra (
+        if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+        else if (!decide ((s.readReg64 Reg.x2).toNat + 32 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 32) = true then
+          (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        else
+          ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (SigAction.toBytes (s.getSigAction (s.readReg32 Reg.x0))))).writeReg64 Reg.x0 0#64).advancePC) = getOra s := by
+    intro s1 h1
+    refine ora_ite (by rw [ora_adv, ora_w64, h1])
+      (ora_ite (by rw [ora_adv, ora_w64, h1]) (by rw [ora_adv, ora_w64, ora_mem, h1]))
+  apply hs1
+  exact ora_ite rfl (ora_ite (by rw [ora_sp, ora_sig]) (ora_sig _ _ _))
+
 set_option linter.unusedSimpArgs false in
 set_option maxHeartbeats 400000 in
 private theorem standardEntry_rest_oracle (s : State) :
@@ -110,13 +194,14 @@ private theorem standardEntry_rest_oracle (s : State) :
       getOra (p.2 s) = getOra s := by
   simp only [Syscall.allocTable, Syscall.signalsTable, Syscall.timeTable, Syscall.randomTable, Syscall.miscTable,
     List.cons_append, List.nil_append, List.mem_cons, List.not_mem_nil, or_false]
-  rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl) <;>
-    (try dsimp (config := { zetaHave := true }) only [execRtSigprocmask, execRtSigaction, execSigaltstack,
-       execTkill, execTgkill, execSchedGetaffinity, execClockGettime, execMmap, execBrk, execMunmap,
-       execMremap, execMprotect, execMadvise, execGetrandom]
+  rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl) <;>
+    (try dsimp (config := { zetaHave := true }) only [execSigaltstack,
+       execTkill, execTgkill, execFutex, execSchedGetaffinity, execClockGettime, execMmap, execBrk, execMunmap,
+       execMprotect, execMadvise, execGetrandom]
      (repeat' split) <;>
-       (try simp (config := { decide := false }) only [ora_adv, ora_w64, ora_mem, ora_st, ora_fs,
-          ora_tr, ora_pma, ora_next, ora_brk, ora_sig, ora_sas]
+       (try simp (config := { decide := false }) only [ora_mremap, ora_rt_sigprocmask, ora_rt_sigaction,
+          ora_adv, ora_w64, ora_mem, ora_st, ora_fs,
+          ora_tr, ora_pma, ora_next, ora_brk, ora_sig, ora_sas, ora_sm, ora_sp]
         try (cases s; dsimp only [getOra]; rfl)))
 
 private theorem standardEntry_oracle (s : State) : ∀ p ∈ Syscall.standardTable, getOra (p.2 s) = getOra s := by

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.Tie.AcceptFramePureA
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.Tie.AcceptFramePureA -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -29,6 +29,7 @@ import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
 
 /-!
 # Other-Participant Record Preservation Across Promoted Prekey Receive
@@ -37,7 +38,7 @@ Shows that `promRcvFrame` preserves `bobDoneBaseKeys` and `PureCRecRel` for any 
 `q ≠ p`, so `OneMove (RecvStep p blk)` leaves other participants' `PureCRecRel` intact.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

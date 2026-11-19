@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendDispatch
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendHeaderReceived1Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3Placed
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendDispatch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendHeaderReceived1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendHeaderReceived2Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves2Placed
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `<States>::send` Post-Arm Reassembly and 11-Arm Dispatch (Block 124)
@@ -29,7 +30,7 @@ Verifies `step_send_post_arm_3068_to_3196_placed` and `step_send_statesSend_plac
 (`statesSendArmOffset st0 -> +3196`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -55,7 +56,7 @@ open CryptoVerification.SpqrV1.Top.Send.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [-arm64_norm]
   Kdf.HkdfToSliceProof.sp_sub_688_eq_hsp
   Kdf.HkdfToSliceProof.sp_add_neg688_eq_hsp

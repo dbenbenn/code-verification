@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirBridgeAux
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirBridgeAux -- proof-setup: allow-public-import
 import all Init.Data.Repr
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
 import Symbolic.Proofs.Refinement.Composed.Cli.Transfer
@@ -27,7 +27,7 @@ snapshots and Bob's `.base-keys` replay list to `PqParty` states, and derives `P
 `CliTurn.records`, and `CliTurn.opkUsed` projections.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -93,7 +93,7 @@ theorem ecKey_pubBytes_eq_djbKey_keyPairOf {interp : ExternInterpretation} {P : 
   rfl
 
 /-- Party tag corresponding to participant `p` in `r` (`.A` for `r.alice`, `.B` otherwise). -/
-def partyOf (r : ProtocolSetup) (p : Participant) : Party := if p = r.alice then .A else .B
+@[expose] def partyOf (r : ProtocolSetup) (p : Participant) : Party := if p = r.alice then .A else .B
 
 @[simp] theorem partyOf_alice (r : ProtocolSetup) : partyOf r r.alice = .A := by simp [partyOf]
 theorem partyOf_bob {r : ProtocolSetup} (hne : r.alice ≠ r.bob) : partyOf r r.bob = .B := by
@@ -197,7 +197,7 @@ structure PqPartyInv (interp : ExternInterpretation) (P : PEParams) (r : Protoco
 /-- Responder directory invariant accounting for `bobOff` quarantine: exact `PqPartyInv` when
 `bobOff = false`, and agreement with some `d₀` satisfying `PqPartyInv` at every path except
 `sessionPathOf r r.bob` when `bobOff = true`. -/
-def PqBobInv (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
+@[expose] def PqBobInv (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
     (accepted : List HwBytes) (bobOff : Bool) (stB : PqParty) (d : DirectorySnapshot) : Prop :=
   if bobOff then
     ∃ d₀, PqPartyInv interp P r accepted r.bob stB d₀ ∧
@@ -206,7 +206,7 @@ def PqBobInv (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
     PqPartyInv interp P r accepted r.bob stB d
 
 /-- Two-party CLI directory invariant coupling `t : CliTurn` to `accepted : List HwBytes`. -/
-def PqDirInv (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
+@[expose] def PqDirInv (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
     (t : CliTurn) (accepted : List HwBytes) : Prop :=
   (∃ stA, PqPartyInv interp P r accepted r.alice stA (t.dirs r.alice)) ∧
   (∃ stB, PqBobInv interp P r accepted t.bobOff stB (t.dirs r.bob)) ∧

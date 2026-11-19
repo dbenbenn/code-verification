@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedPlaced
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedPlaced
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunkedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesPolyPlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93PlacedBudget
 import ProofLib.SepLogic.WP.StateNorm
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed -- shake: keep
 meta import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs -- shake: keep
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesChunked
 
 /-!
 # `VmPreserved` Placed Proof for `chunked::Ct1Sampled::encoded_len [local#3]` (Block `486`)
@@ -27,7 +30,7 @@ Proves `VmPreserved`-threaded `[LibsignalPlacement]` `subroutine_ok` contracts f
 (calling Blocks `487`, `480`, and `493`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -812,22 +815,22 @@ private theorem ct1Sampled_486_pinned_wp [LibsignalPlacement] (Φ : Memory → P
 
 /-! ## 3. Exported Placed Contracts for Block `486` (`chunked::Ct1Sampled::encoded_len [local#3]`) -/
 
-def ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOkExt
+@[expose] def ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_486 (Rust.withPanics ext)) (blkPl_486).base
     (withLsCodeLoaded lsmpl (chunkedCt1SampledEncodedLenPinnedSpec A))
 
-def ChunkedCt1SampledEncodedLenLocal1PlacedOkExt
+@[expose] def ChunkedCt1SampledEncodedLenLocal1PlacedOkExt
     [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_486 (Rust.withPanics ext)) (blkPl_486).base
     (withLsCodeLoaded lsmpl (chunkedCt1SampledEncodedLenSpec A))
 
-def ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOk
+@[expose] def ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   ChunkedCt1SampledEncodedLenLocal1PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def ChunkedCt1SampledEncodedLenLocal1PlacedOk
+@[expose] def ChunkedCt1SampledEncodedLenLocal1PlacedOk
     [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (abs : String → Option (State → State)) : Prop :=
   ChunkedCt1SampledEncodedLenLocal1PlacedOkExt A (tripleRatchetExterns C ctl abs)

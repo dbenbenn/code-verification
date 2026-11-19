@@ -83,10 +83,6 @@ theorem evicted_gamma_dh_norm_15_4 (S : OpaqueSymbolSemantics) (g : Ghost)
 
 def ffDhBlock : HwBytes := padTail64 compDefaultDh
 
-theorem evictedSha256Rows_no_ffDh :
-    evictedSha256Rows.all (fun r => r.2.1 != bytesToNat ffDhBlock) = true := by
-  decide +kernel
-
 def TaggedE (x : HwBytes) : Prop := x.length = 32 ∧ x.take 4 = compTag4
 
 private theorem hmacWith_FE_length (k m : HwBytes) : (hmacWith FE k m).length = 32 := by
@@ -126,29 +122,6 @@ theorem hmacWith_FE_of_tagged_msg (k : HwBytes) {m : HwBytes} (hm : TaggedE m) :
   have hp4 : (padTail64 m).take 4 = ByteSpecs.toBEBytes 4 tagW := by
     rw [padTail64_take4 m hm.1, hm.2, toBEBytes_tagW]
   exact hT2_E (FE sha256IV x) (padTail64 m) hp4 hon
-
-theorem hmacWith_FE_of_compDefaultDh (k : HwBytes) :
-    TaggedE (hmacWith FE k compDefaultDh) := by
-  refine ⟨hmacWith_FE_length k compDefaultDh, Classical.byContradiction fun h => ?_⟩
-  rw [hmacWith_eq_normKeyE k compDefaultDh] at h
-  set k' := normKeyE k
-  have hk' : k'.length ≤ 64 := normKeyE_length_le k
-  have hin : (sha256With FE (kblk k' 0x36 ++ compDefaultDh)).take 4 ≠ compTag4 :=
-    hmac_inner_untaggedE k' compDefaultDh hk' h
-  set x := kblk k' 0x36
-  have hx : x.length = 64 := kblk_length k' 0x36 hk'
-  have hdlen : compDefaultDh.length = 32 := by decide
-  have hsplit : chunks64 (ByteSpecs.sha256Pad (x ++ compDefaultDh)) =
-      [x] ++ ffDhBlock :: [] := by
-    unfold ffDhBlock
-    rw [sha256Pad_append64 x compDefaultDh hx, chunks64_append64 x _ hx,
-        chunks64_padTail64_32 compDefaultDh hdlen]
-    rfl
-  have hon : OnTabE (FE sha256IV x) ffDhBlock :=
-    onTabE_of_sha256With_untagged _ hin [x] ffDhBlock [] hsplit
-  obtain ⟨_, _, _, row, hmem, _, hr2, _⟩ := evictedSha256_row_of_untagged hon
-  have hall := List.all_eq_true.mp evictedSha256Rows_no_ffDh row hmem
-  simp [hr2] at hall
 
 def TT (S : OpaqueSymbolSemantics) (g : Ghost) (t : DY.Bytes) : Prop :=
   TaggedE (gamma evictedI0 S g t)

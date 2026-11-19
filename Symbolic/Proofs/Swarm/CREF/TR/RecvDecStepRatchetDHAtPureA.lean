@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpine
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepSkippedG1LeavesPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpine -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -45,6 +45,8 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+public import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix -- proof-setup: allow-public-import
 
 /-!
 # DH-Ratchet Single-Explanation Receive Step Helpers
@@ -52,7 +54,7 @@ import Symbolic.DYBridge.DY.Actions.Random
 Proves pure helper lemmas for the DH-ratchet whisper receive branch at a fixed explanation.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -515,11 +517,11 @@ section AliceCoinsLen32
 
 open Symbolic.Swarm.CREF.XplSteps
 
-def NoAliceDoneFrom (n : Nat) (t : ExecTrace) : Prop :=
+@[expose] def NoAliceDoneFrom (n : Nat) (t : ExecTrace) : Prop :=
   ∀ i ev, n ≤ i → t.getEventAt DY.Libsignal.PQXDH.PQXDHEvent i = some ev →
     DY.Libsignal.Composed.Refinement.isAliceDone ev = false
 
-def NoAliceDone {α : Type} (x : Traceful α) : Prop :=
+@[expose] def NoAliceDone {α : Type} (x : Traceful α) : Prop :=
   ∀ tr, NoAliceDoneFrom tr.length (x.run tr).2.val
 
 theorem noAliceDone_of_quiet {α : Type} {x : Traceful α} (hx : XQuiet x) : NoAliceDone x := by

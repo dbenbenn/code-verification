@@ -15,7 +15,7 @@ public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyDefs -- proof-set
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndCoreKSimBase -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhKSimBase -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhKSimBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhKSimA
 
 public section
@@ -52,10 +52,6 @@ open Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapD
   (fgKeyInd1KeyGapDhKindAtomicProg_forgetSim)
 
 namespace Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindGapDhEq
-
-theorem pqxdhKeyInd1KeyKindCostedSims_gdh_eq (S : Setup) :
-    (pqxdhKeyInd1KeyKindCostedSims S).gdh = fgKeyInd1KeyGapDhKindAtomicProg S :=
-  rfl
 
 private theorem isQueryBoundP_of_imp {ι₀ : Type} {spec : OracleSpec ι₀} {α : Type}
     {oa : OracleComp spec α} {p p₀ : ι₀ → Prop}
@@ -145,14 +141,6 @@ theorem pqxdhKeyInd1KeyKindCostedSims_eval_gdh_eq
     ({ run := r, q_ddh := gdhQueryBudget S b, q_sig := 2 * min S.N_spk_tot S.N_recv,
        q_prim := gdhPrimQueryBudget S b } : GapDhWithSignAdv))
     (funext fun U => funext fun V => fgKeyInd1KeyGapDhKindAtomicProg_eval_eq S b A (U, V))
-
-theorem gapDhWithSign_keyInd1KeyKind_eq
-    (Prim : Primitives) (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :
-    GapDhWithSign Prim Prim.isValidDhTriple Prim.pow8
-        ((pqxdhKeyInd1KeyKindCostedSims S).eval.gdh b A) =
-      GapDhWithSign Prim Prim.isValidDhTriple Prim.pow8
-        ((pqxdhKeyInd1KeyActiveCostedSims S).eval.gdh b A) := by
-  rw [pqxdhKeyInd1KeyKindCostedSims_eval_gdh_eq S b A]
 
 theorem gapDhWithSignReal_keyInd1KeyKind_eq
     (Prim : Primitives) (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) :

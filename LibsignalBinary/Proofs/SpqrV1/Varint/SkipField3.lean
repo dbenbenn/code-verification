@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
-import LibsignalBinary.Proofs.TripleRatchet.InImage.Prost
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
+import LibsignalBinary.Proofs.TripleRatchet.TrapRng
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -25,7 +25,7 @@ Verifies the 105-instruction field-skipping routine (`0x4bb74`) against
 `LibsignalProtoCodec.skipField` (`skipField3Spec`) by induction on recursion depth.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Varint
 
@@ -50,10 +50,6 @@ private theorem bv64_add_zero (x : BitVec 64) : x + 0#64 = x := BitVec.add_zero 
 abbrev skipField3Name : String :=
   "prost::encoding::skip_field::<&mut &[u8]> [local#3]"
 
-theorem skipField3_fnOff :
-    libsignalSessionCode.fnOff skipField3Name = 0x4677c :=
-  libsignalSessionCode_fnOff_0x4677c
-
 /-- Stack budget for `prost::encoding::skip_field::<&mut &[u8]> [local#3]` (`0x4bb74`)
 at recursion budget `depth`: each recursive frame uses `0x60` bytes (`sub sp, sp, #96`),
 and leaf calls invoke `decode_varint [local#2]` (`decodeVarint2Stack`) or
@@ -63,7 +59,7 @@ abbrev skipField3Stack (depth : Nat) : Nat :=
 
 /-- Contract of `prost::encoding::skip_field::<&mut &[u8]> [local#3]` (`0x4bb74`)
 in terms of `LibsignalProtoCodec.skipField`. -/
-def skipField3Spec (A : RustAlloc) : Spec SkipFieldGhost where
+@[expose] def skipField3Spec (A : RustAlloc) : Spec SkipFieldGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.tag ∧ x.tag < 2 ^ 32 ∧
@@ -84,7 +80,7 @@ def skipField3Spec (A : RustAlloc) : Spec SkipFieldGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Case-restricted specification for `skip_field [local#3]` at fixed recursion budget `depth`. -/
-def skipField3SpecAt (A : RustAlloc) (depth : Nat) (P : SkipFieldGhost → Prop) :
+@[expose] def skipField3SpecAt (A : RustAlloc) (depth : Nat) (P : SkipFieldGhost → Prop) :
     Spec SkipFieldGhost where
   pre := fun x s =>
     ⌜P x ∧ x.depth = depth ∧
@@ -251,10 +247,6 @@ theorem subroutine_ok_skipField3_imp {A : RustAlloc} {prog : Program} {entry : B
 
 /-! ## Decode tree for `0x4bb74..0x4bd18` (105 instructions) -/
 
-gen_decodes libsignalSessionCode_tree skipField3 [0x4677c → 0x46920]
-
-/-! ## Case 1: `depth = 0` (`RecursionLimitReached`) -/
-
 set_option hygiene false in
 local macro "skipField3_top_err_call" entry:term:max fromTarget:term:max depthTerm:term:max hdepthTerm:term:max kind:term:max : tactic => `(tactic| (
   apply SepWPp.of_sepWP (mid := $fromTarget)
@@ -290,26 +282,6 @@ local macro "skipField3_depth_zero_body" entry:term:max fromTarget:term:max : ta
   rw [skipField_depth_zero]
   skipField3_top_err_call $entry $fromTarget 0 (by decide) 0x8000000000000002#64))
 
-theorem skipField3_depth_zero_ok {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 0xfffffffffffff22c#64)
-      (decodeErrorFromSpec A)) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name)
-      (skipField3SpecAt A 0 (fun _ => True)) := by
-  unfold skipField3SpecAt
-  simp only [sliceCursorAt, stackAt_skipField3 _ 0 (by decide),
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  wpp_init x s0
-  rcases x with ⟨wt, tag, depth, bufRef, slot, ptr, bs⟩
-  dsimp only at *
-  have hfn := libsignalSessionCode_fnOff_0x4677c
-  code_fetches CryptoVerification.libsignalSessionCode skipField3 b H hfn 0x4677c 420
-  examples_generalize_entry
-  examples_hide_fetches
-  skipField3_depth_zero_body entry (entry + 0xfffffffffffff22c#64)
-
 theorem skipField3_depth_zero_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
     (hFromCall : subroutine_ok ((blkPC_263).rebase (blkPl_263).base H)
@@ -333,28 +305,6 @@ local macro "skipField3_endGroup_body" entry:term:max fromTarget:term:max : tact
   dsimp [WireType.toNat] at hw0
   rw [skipField_succ_endGroup]
   skipField3_top_err_call $entry $fromTarget (d + 1) hdepth 0x8000000000000009#64))
-
-theorem skipField3_endGroup_ok {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 0xfffffffffffff22c#64)
-      (decodeErrorFromSpec A))
-    (d : Nat) (hdepth : d + 1 < 2 ^ 32) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name)
-      (skipField3SpecAt A (d + 1) (fun x => x.wt = .endGroup)) := by
-  unfold skipField3SpecAt
-  simp only [sliceCursorAt, stackAt_skipField3 _ (d + 1) hdepth,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  wpp_init x s0
-  rcases x with ⟨wt, tag, depth, bufRef, slot, ptr, bs⟩
-  dsimp only at *
-  subst h_1
-  have hfn := libsignalSessionCode_fnOff_0x4677c
-  code_fetches CryptoVerification.libsignalSessionCode skipField3 b H hfn 0x4677c 420
-  examples_generalize_entry
-  examples_hide_fetches
-  skipField3_endGroup_body entry (entry + 0xfffffffffffff22c#64)
 
 theorem skipField3_endGroup_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
@@ -392,28 +342,6 @@ local macro "skipField3_fixedWidth_body" entry:term:max fromTarget:term:max nNat
     wp_steps
     wp_done))
 
-theorem skipField3_sixtyFourBit_ok {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 0xfffffffffffff22c#64)
-      (decodeErrorFromSpec A))
-    (d : Nat) (hdepth : d + 1 < 2 ^ 32) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name)
-      (skipField3SpecAt A (d + 1) (fun x => x.wt = .sixtyFourBit)) := by
-  unfold skipField3SpecAt
-  simp only [sliceCursorAt, stackAt_skipField3 _ (d + 1) hdepth,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  wpp_init x s0
-  rcases x with ⟨wt, tag, depth, bufRef, slot, ptr, bs⟩
-  dsimp only at *
-  subst h_1
-  have hfn := libsignalSessionCode_fnOff_0x4677c
-  code_fetches CryptoVerification.libsignalSessionCode skipField3 b H hfn 0x4677c 420
-  examples_generalize_entry
-  examples_hide_fetches
-  skipField3_fixedWidth_body entry (entry + 0xfffffffffffff22c#64) 8 8#64 skipField_succ_sixtyFourBit
-
 theorem skipField3_sixtyFourBit_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
     (hFromCall : subroutine_ok ((blkPC_263).rebase (blkPl_263).base H)
@@ -429,28 +357,6 @@ theorem skipField3_sixtyFourBit_placed_ok [LibsignalPlacement] {A : RustAlloc}
   dsimp only at *
   subst h_1
   skipField3_fixedWidth_body (blkPl_263).base (lsmpl.base 261) 8 8#64 skipField_succ_sixtyFourBit
-
-theorem skipField3_thirtyTwoBit_ok {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 0xfffffffffffff22c#64)
-      (decodeErrorFromSpec A))
-    (d : Nat) (hdepth : d + 1 < 2 ^ 32) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name)
-      (skipField3SpecAt A (d + 1) (fun x => x.wt = .thirtyTwoBit)) := by
-  unfold skipField3SpecAt
-  simp only [sliceCursorAt, stackAt_skipField3 _ (d + 1) hdepth,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  wpp_init x s0
-  rcases x with ⟨wt, tag, depth, bufRef, slot, ptr, bs⟩
-  dsimp only at *
-  subst h_1
-  have hfn := libsignalSessionCode_fnOff_0x4677c
-  code_fetches CryptoVerification.libsignalSessionCode skipField3 b H hfn 0x4677c 420
-  examples_generalize_entry
-  examples_hide_fetches
-  skipField3_fixedWidth_body entry (entry + 0xfffffffffffff22c#64) 4 4#64 skipField_succ_thirtyTwoBit
 
 theorem skipField3_thirtyTwoBit_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
@@ -509,28 +415,6 @@ local macro "skipField3_varint_body" entry:term:max varintTarget:term:max : tact
     apply SepWP.fold (skipBelow3_leaf_entails s0.sp (d + 1) hdepth) (by sep_focus)
     wp_steps
     wp_done))
-
-theorem skipField3_varint_ok {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hVarintCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 6488#64)
-      (decodeVarint2Spec A))
-    (d : Nat) (hdepth : d + 1 < 2 ^ 32) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name)
-      (skipField3SpecAt A (d + 1) (fun x => x.wt = .varint)) := by
-  unfold skipField3SpecAt
-  simp only [sliceCursorAt, stackAt_skipField3 _ (d + 1) hdepth,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  wpp_init x s0
-  rcases x with ⟨wt, tag, depth, bufRef, slot, ptr, bs⟩
-  dsimp only at *
-  subst h_1
-  have hfn := libsignalSessionCode_fnOff_0x4677c
-  code_fetches CryptoVerification.libsignalSessionCode skipField3 b H hfn 0x4677c 420
-  examples_generalize_entry
-  examples_hide_fetches
-  skipField3_varint_body entry (entry + 6488#64)
 
 theorem skipField3_varint_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
@@ -627,31 +511,6 @@ local macro "skipField3_lengthDelimited_body" entry:term:max fromTarget:term:max
       apply SepWP.fold (skipBelow3_leaf_entails s0.sp (d + 1) hdepth) (by sep_focus)
       wp_steps
       wp_done))
-
-theorem skipField3_lengthDelimited_ok {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 0xfffffffffffff22c#64)
-      (decodeErrorFromSpec A))
-    (hVarintCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 6488#64)
-      (decodeVarint2Spec A))
-    (d : Nat) (hdepth : d + 1 < 2 ^ 32) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name)
-      (skipField3SpecAt A (d + 1) (fun x => x.wt = .lengthDelimited)) := by
-  unfold skipField3SpecAt
-  simp only [sliceCursorAt, stackAt_skipField3 _ (d + 1) hdepth,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  wpp_init x s0
-  rcases x with ⟨wt, tag, depth, bufRef, slot, ptr, bs⟩
-  dsimp only at *
-  subst h_1
-  have hfn := libsignalSessionCode_fnOff_0x4677c
-  code_fetches CryptoVerification.libsignalSessionCode skipField3 b H hfn 0x4677c 420
-  examples_generalize_entry
-  examples_hide_fetches
-  skipField3_lengthDelimited_body entry (entry + 0xfffffffffffff22c#64) (entry + 6488#64)
 
 theorem skipField3_lengthDelimited_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
@@ -1005,35 +864,6 @@ local macro "skipField3_startGroup_body" prog:term:max entry:term:max fromTarget
                     by simp only [arm64_norm, hx28_2], by simp only [arm64_norm, hvregs_2]⟩))
 
 set_option maxHeartbeats 2000000 in
-theorem skipField3_startGroup_ok {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 0xfffffffffffff22c#64)
-      (decodeErrorFromSpec A))
-    (hVarintCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 6488#64)
-      (decodeVarint2Spec A))
-    (d : Nat) (hdepth : d + 1 < 2 ^ 32)
-    (hrec : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name)
-      (skipField3SpecAt A d (fun _ => True))) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name)
-      (skipField3SpecAt A (d + 1) (fun x => x.wt = .startGroup)) := by
-  unfold skipField3SpecAt
-  simp only [sliceCursorAt, stackAt_skipField3 _ (d + 1) hdepth,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  wpp_init x s0
-  rcases x with ⟨wt, tag, depth, bufRef, slot, ptr, bs⟩
-  dsimp only at *
-  subst h_1
-  have hfn := libsignalSessionCode_fnOff_0x4677c
-  code_fetches CryptoVerification.libsignalSessionCode skipField3 b H hfn 0x4677c 420
-  examples_generalize_entry
-  examples_hide_fetches
-  skipField3_startGroup_body (libsignalSessionCode.rebase b H) entry (entry + 0xfffffffffffff22c#64) (entry + 6488#64)
-
-set_option maxHeartbeats 2000000 in
 theorem skipField3_startGroup_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
     (hFromCall : subroutine_ok ((blkPC_263).rebase (blkPl_263).base H)
@@ -1055,32 +885,6 @@ theorem skipField3_startGroup_placed_ok [LibsignalPlacement] {A : RustAlloc}
   skipField3_startGroup_body ((blkPC_263).rebase (blkPl_263).base H) (blkPl_263).base (lsmpl.base 261) (lsmpl.base 291)
 
 /-! ## Induction on Recursion Depth -/
-
-theorem skipField3_at_depth_ok {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 0xfffffffffffff22c#64)
-      (decodeErrorFromSpec A))
-    (hVarintCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 6488#64)
-      (decodeVarint2Spec A))
-    (depth : Nat) (hdepth : depth < 2 ^ 32) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name)
-      (skipField3SpecAt A depth (fun _ => True)) := by
-  induction depth with
-  | zero => exact skipField3_depth_zero_ok hFromCall
-  | succ d ih =>
-    have hrec := ih (by omega)
-    have hAll :=
-      subroutine_ok_skipField3_or (skipField3_varint_ok hVarintCall d hdepth)
-        (subroutine_ok_skipField3_or (skipField3_sixtyFourBit_ok hFromCall d hdepth)
-          (subroutine_ok_skipField3_or (skipField3_lengthDelimited_ok hFromCall hVarintCall d hdepth)
-            (subroutine_ok_skipField3_or (skipField3_startGroup_ok hFromCall hVarintCall d hdepth hrec)
-              (subroutine_ok_skipField3_or (skipField3_endGroup_ok hFromCall d hdepth)
-                (skipField3_thirtyTwoBit_ok hFromCall d hdepth)))))
-    refine subroutine_ok_skipField3_imp (fun x _ => ?_) hAll
-    cases x.wt <;> simp
 
 theorem skipField3_at_depth_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
@@ -1122,35 +926,6 @@ theorem subroutine_ok_skipField3Spec_of_at_depth {prog : Program} {entry : BitVe
   simp only [skipField3SpecAt, sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨⟨trivial, trivial, hpre'.1⟩, hpre'.2⟩
 
-theorem skipField3_add_from_eq_fnAddr (b : BitVec 64) (H : String → Option (State → State)) :
-    (libsignalSessionCode.rebase b H).fnAddr skipField3Name + 0xfffffffffffff22c#64 =
-      (libsignalSessionCode.rebase b H).fnAddr decodeErrorFromName := by
-  have h1 := libsignalSessionCode_fnOff_0x4677c
-  have h2 : libsignalSessionCode.fnOff decodeErrorFromName = 0x459a8 := libsignalSessionCode_fnOff_0x459a8
-  change (b + BitVec.ofNat 64 (libsignalSessionCode.fnOff skipField3Name)) + 0xfffffffffffff22c#64 =
-    b + BitVec.ofNat 64 (libsignalSessionCode.fnOff decodeErrorFromName)
-  rw [h1, h2]
-  bv_omega
-
-theorem skipField3_ok_of_contracts {b : BitVec 64} {A : RustAlloc}
-    {H : String → Option (State → State)}
-    (hFromCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 0xfffffffffffff22c#64)
-      (decodeErrorFromSpec A))
-    (hVarint : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr decodeVarint2Name)
-      (decodeVarint2Spec A)) :
-    subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name)
-      (skipField3Spec A) := by
-  have hVarintCall : subroutine_ok (libsignalSessionCode.rebase b H)
-      ((libsignalSessionCode.rebase b H).fnAddr skipField3Name + 6488#64)
-      (decodeVarint2Spec A) := by
-    rw [fnAddr_rebase_offset libsignalSessionCode_fnOff_0x4677c libsignalSessionCode_fnOff_0x480d4 (by decide)]
-    exact hVarint
-  exact subroutine_ok_skipField3Spec_of_at_depth
-    (skipField3_at_depth_ok hFromCall hVarintCall)
-
 theorem skipField3_placed_ok_of_contracts [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
     (hFromCall : subroutine_ok ((blkPC_263).rebase (blkPl_263).base H)
@@ -1161,25 +936,5 @@ theorem skipField3_placed_ok_of_contracts [LibsignalPlacement] {A : RustAlloc}
       (blkPl_263).base (skipField3Spec A) :=
   subroutine_ok_skipField3Spec_of_at_depth
     (skipField3_at_depth_placed_ok hFromCall hVarintCall)
-
-theorem skipField3_ok_ext {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts b C A ctl uuidTryParse S ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr skipField3Name)
-      (skipField3Spec A) := by
-  refine skipField3_ok_of_contracts ?_ (decodeVarint2_ok_ext hC)
-  rw [skipField3_add_from_eq_fnAddr]
-  exact hC.decode_error_from
-
-theorem skipField3_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hFrom : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr skipField3Name)
-      (skipField3Spec A) := by
-  refine skipField3_ok_of_contracts ?_ (decodeVarint2_ok hFrom)
-  rw [skipField3_add_from_eq_fnAddr]
-  exact LibsignalTripleRatchet.decodeErrorFrom_ok b C A ctl abs hFrom
 
 end CryptoVerification.SpqrV1.Varint

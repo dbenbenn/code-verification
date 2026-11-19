@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsA
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsA -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 public import VCVio.CryptoFoundations.SecExp.Measure
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
 public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-key `Auth` hybrid games and sub-hop interfaces (`G3 .. G5`)
@@ -27,7 +27,7 @@ Defines the stage-parameterised one-key `Auth` hybrid oracles `pqxdhAuthHybridKo
 statement interfaces for `G3.5 → G5` over `pqxdhAuthImpl1KeyG`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +38,7 @@ namespace SignalPqxdh.Security
 open SignalPqxdh
 
 /-- KOSK-aligned stage-parameterised one-key `Auth` hybrid oracle for `G3 .. G5`. -/
-def pqxdhAuthHybridKoskImpl1Key (stage : AuthHybridStage) (useRo checkAuth : Bool)
+@[expose] def pqxdhAuthHybridKoskImpl1Key (stage : AuthHybridStage) (useRo checkAuth : Bool)
     (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridState S) ProbComp) := fun q => do
   let hst ← get
@@ -200,7 +200,7 @@ def pqxdhAuthHybridKoskImpl1Key (stage : AuthHybridStage) (useRo checkAuth : Boo
 
 /-- Stage-parameterised one-key `Auth` hybrid oracle on `AuthHybridStateFixed S`, caching message
 keys up to effective HKDF salt (`mkSaltKeyMatch`, DEV-LS25) for stages `.g3_8 .. .g5`. -/
-def pqxdhAuthHybridFixedImpl1Key (stage : AuthHybridStage) (useRo checkAuth : Bool)
+@[expose] def pqxdhAuthHybridFixedImpl1Key (stage : AuthHybridStage) (useRo checkAuth : Bool)
     (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) := fun q => do
   let hst ← get
@@ -436,7 +436,7 @@ theorem map_toAuthHybridState_fullAuthHybridFixedImpl1Key (stage : AuthHybridSta
     exact map_toAuthHybridState_pqxdhAuthHybridFixedImpl1Key stage useRo checkAuth S P kq hst hStage
 
 /-- Stage experiment for `Auth` running `pqxdhAuthHybridKoskImpl1Key` on `AuthHybridState S`. -/
-noncomputable def authKoskExpAtStage1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] def authKoskExpAtStage1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridState.empty S secb
@@ -457,7 +457,7 @@ noncomputable def authKoskExpAtStage1Key (stage : AuthHybridStage) (S : Setup) (
     return (b' == secb)
 
 /-- Stage experiment for `Auth` running `pqxdhAuthHybridFixedImpl1Key` on `AuthHybridStateFixed S`. -/
-noncomputable def authFixedExpAtStage1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] def authFixedExpAtStage1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -497,14 +497,14 @@ theorem authFixedExpAtStage_eq_authKoskExpAtStage1Key (stage : AuthHybridStage)
   rw [← hsim, bind_map_left]
   rfl
 
-noncomputable def authFixedAdvAtStage1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] noncomputable def authFixedAdvAtStage1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpAtStage1Key stage S P A].boolBias).toReal
 
 /-- Idealised `Auth` execution branch on `AuthHybridStateFixed S` (`stage = .g5`, `checkAuth =
     false`), where every fresh session encrypts `m0` and unmatched honest-sender `recv` branches
     reject. -/
-noncomputable def authFixedIdealBranch1Key (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] def authFixedIdealBranch1Key (useRo : Bool) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let initSt := AuthHybridStateFixed.empty S false
   let impl :=
@@ -522,48 +522,48 @@ noncomputable def authFixedIdealBranch1Key (useRo : Bool) (S : Setup) (P : Primi
   else
     return b'
 
-noncomputable def authFixedExpG3_1Key (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG3_1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   authFixedExpAtStage1Key .g3 S P A
 
-noncomputable def authFixedExpG3_5_1Key (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG3_5_1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   authFixedExpAtStage1Key .g3_5 S P A
 
-noncomputable def authFixedExpG3_6_1Key (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG3_6_1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   authFixedExpAtStage1Key .g3_6 S P A
 
-noncomputable def authFixedExpG3_7_1Key (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG3_7_1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   authFixedExpAtStage1Key .g3_7 S P A
 
-noncomputable def authFixedExpG3_8_1Key (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG3_8_1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   authFixedExpAtStage1Key .g3_8 S P A
 
-noncomputable def authFixedExpG5_1Key (S : Setup) (P : Primitives)
+@[expose] def authFixedExpG5_1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let z ← if secb then authFixedIdealBranch1Key true S P A else authFixedIdealBranch1Key true S P A
   return (secb == z)
 
-noncomputable def authFixedAdvG3_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG3_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG3_1Key S P A].boolBias).toReal
 
-noncomputable def authFixedAdvG3_5_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG3_5_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG3_5_1Key S P A].boolBias).toReal
 
-noncomputable def authFixedAdvG3_6_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG3_6_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG3_6_1Key S P A].boolBias).toReal
 
-noncomputable def authFixedAdvG3_7_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG3_7_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG3_7_1Key S P A].boolBias).toReal
 
-noncomputable def authFixedAdvG3_8_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG3_8_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG3_8_1Key S P A].boolBias).toReal
 
-noncomputable def authFixedAdvG5_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
+@[expose] noncomputable def authFixedAdvG5_1Key (S : Setup) (P : Primitives) (A : AuthAdversary S) : ℝ :=
   (𝒟[authFixedExpG5_1Key S P A].boolBias).toReal
 
 @[simp]
@@ -573,14 +573,14 @@ theorem authFixedAdvG5_eq_zero1Key (S : Setup) (P : Primitives) (A : AuthAdversa
   rw [evalDist_boolBias_bind_uniformBool, Measure.boolDist_self, ENNReal.toReal_zero]
 
 /-- Sub-hop `G3.5 → G3.6` (`RootKdfRO`) bound statement for one-key `Auth`. -/
-def AuthHopG3_5G3_6Stmt1Key (S : Setup) : Prop :=
+@[expose] def AuthHopG3_5G3_6Stmt1Key (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
       |authFixedAdvG3_5_1Key S P A.1 - authFixedAdvG3_6_1Key S P A.1| ≤
         rootKdfRoTermReal S b.q_roRoot
 
 /-- Sub-hop `G3.6 → G3.7` (`PrfChainKey`) bound statement for one-key `Auth`. -/
-def AuthHopG3_6G3_7Stmt1Key (S : Setup)
+@[expose] def AuthHopG3_6G3_7Stmt1Key (S : Setup)
     (ck : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → PrfCkAdv) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
@@ -588,7 +588,7 @@ def AuthHopG3_6G3_7Stmt1Key (S : Setup)
         2 * (S.N_sess_tot : ℝ) * PrfChainKeyReal P (ck b A)
 
 /-- Sub-hop `G3.7 → G3.8` (`PrfMsgKeys`) bound statement for one-key `Auth`. -/
-def AuthHopG3_7G3_8Stmt1Key (S : Setup)
+@[expose] def AuthHopG3_7G3_8Stmt1Key (S : Setup)
     (mk : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → PrfMsgKeysAdv) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b),
@@ -596,7 +596,7 @@ def AuthHopG3_7G3_8Stmt1Key (S : Setup)
         2 * (S.N_sess_tot : ℝ) * PrfMsgKeysReal P (mk b A)
 
 /-- Combined sub-hop `G3.8 → G5` (`AeadIndCpa` + `AeadMuIntCtxt`) bound statement for one-key `Auth`. -/
-def AuthHopG3_8G5Stmt1Key (S : Setup)
+@[expose] def AuthHopG3_8G5Stmt1Key (S : Setup)
     (cpa : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → AeadIndCpaAdv)
     (int : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → AeadMuIntCtxtAdv) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
@@ -623,17 +623,5 @@ theorem pqxdhAuthHybridKoskImpl1Key_eq_of_ne_initPrin (stage : AuthHybridStage)
   cases q with
   | initPrin u => exact absurd rfl (hq u)
   | _ => rfl
-
-theorem pqxdhAuthHybridFixedImpl1Key_eq_of_ne_initPrin (stage : AuthHybridStage)
-    (useRo checkAuth : Bool) (S : Setup) (P : Primitives) (q : AuthQuery S)
-    (hq : ∀ u, q ≠ .initPrin u) :
-    pqxdhAuthHybridFixedImpl1Key stage useRo checkAuth S P q =
-      pqxdhAuthHybridFixedImpl stage useRo checkAuth S P q := by
-  cases q with
-  | initPrin u => exact absurd rfl (hq u)
-  | _ =>
-    have hK := pqxdhAuthHybridKoskImpl1Key_eq_of_ne_initPrin stage useRo checkAuth S P _ hq
-    unfold pqxdhAuthHybridFixedImpl1Key pqxdhAuthHybridFixedImpl
-    simp only [hK] <;> rfl
 
 end SignalPqxdh.Security

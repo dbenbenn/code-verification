@@ -10,20 +10,29 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendLeaves1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
 
 /-!
 # Budget-Threaded Relocatable Inlined `States::send` Immediate Arms and Leaf-Call Combinators
@@ -33,7 +42,7 @@ arms with `RustCliAllocBudget` pool transport, and provides budget-threaded leaf
 combinators on `spqrSendPlacedProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,7 +58,7 @@ open scoped CryptoVerification
 open scoped CryptoVerification.CodeLayout
 open scoped CryptoVerification.SpqrV1.Top.Send.Placed
 open CryptoGames.LibsignalSession (ShaCompress)
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsmpl)
+open CryptoVerification (LibsignalPlacement lsmpl)
 open CryptoVerification.LibsignalSpqrV1
   (Chunk Message MessagePayload States spqrAuthApi spqrPolyApi)
 open CryptoVerification.LibsignalSpqrV1.Chunked.SendCt (Ct1Acknowledged NoHeaderReceived)
@@ -84,7 +93,7 @@ export CryptoVerification.SpqrV1.Top.Send
   (SpqrSendJoinStatePlaced of_sepWP_lscro finish_sepWP_lscro)
 export LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsBudget (sepWP_seq_lscro)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.sub_add_cancel BitVec.toNat_zero
 
 /-! ## `VmPreserved`-Forwarding `memcpy` Relocation and Continuation Helpers -/

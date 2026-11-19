@@ -9,18 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoderBasePlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Alloc.FetchPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoderBasePlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyDecoderBasePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Auth.EncodeBaseBudget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Step Helpers for `encode<PolynomialDecoder> [local#3]` (Block `455`)
@@ -30,7 +33,7 @@ deterministic-capacity header stepper on CLI Block `455` under `[LibsignalPlacem
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -105,53 +108,53 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. Budget-Threaded Placed Contract Propositions for Block `455` -/
 
-def EncodePolyDecoder1PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder1PinnedPlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_455 H) (blkPl_455).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedSpecX A lim))
 
-def EncodePolyDecoder1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder1PlacedOkExtX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_455 H) (blkPl_455).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderSpecX A lim))
 
-def EncodePolyDecoder1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder1PinnedPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_455 (Rust.withPanics ext)) (blkPl_455).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedSpec A lim))
 
-def EncodePolyDecoder1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder1PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_455 (Rust.withPanics ext)) (blkPl_455).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderSpec A lim))
 
-def EncodePolyDecoder1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder1PinnedPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   EncodePolyDecoder1PinnedPlacedOkExt A lim (tripleRatchetExterns C ctl abs)
 
-def EncodePolyDecoder1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder1PlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   EncodePolyDecoder1PlacedOkExt A lim (tripleRatchetExterns C ctl abs)
 
-def EncodePolyDecoder1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder1PinnedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   EncodePolyDecoder1PinnedPlacedOkExtX A lim (Rust.withPanics (tripleRatchetExterns C ctl abs))
 
-def EncodePolyDecoder1PlacedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EncodePolyDecoder1PlacedPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   EncodePolyDecoder1PlacedOkExtX A lim (Rust.withPanics (tripleRatchetExterns C ctl abs))
 
 abbrev EncodePolyDecoder1PlacedOkX := @EncodePolyDecoder1PlacedPlacedOkX
 
-def EncodePolyDecoder1PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
+@[expose] def EncodePolyDecoder1PinnedExactPlacedOk [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_455 H) (blkPl_455).base
     (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedExactVmSpecOf resStack A))

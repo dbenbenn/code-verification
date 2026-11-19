@@ -20,7 +20,7 @@ import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 import DY.Trace.BaseAttackerKnowledge
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
 import Batteries.Tactic.SeqFocus
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
@@ -51,7 +51,7 @@ label, then either the attacker knows `s` or the term is the root key, sending c
 receiving chain key of a stored `TRState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

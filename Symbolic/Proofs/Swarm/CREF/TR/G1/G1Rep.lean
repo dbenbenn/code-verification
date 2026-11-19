@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.Specifications.Model.EquationalTheory.Trunc
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.G1RepPtAtomsTR
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
 
 /-!
 # Self-Memo Membership for Non-SPQR Non-Opaque Terms and MAC Shape Agreement
@@ -26,7 +27,7 @@ carries a self-memo entry (`self_mem_memo_of_notSpqrHeaded`), and derives MAC sh
 `¬MemoCollisionOn` (`g1_noSelfMemo_len8_of_notSpqrHeaded`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -161,7 +162,7 @@ private instance subSignG1R (i : ExternInterpretation) (S : OpaqueSymbolSemantic
 /-! ## `notSpqrHeaded`, `notOpaqueHeaded`, and self-memo membership -/
 
 /-- `u` is not headed by any of the seven SPQR constructors. -/
-def notSpqrHeaded (u : DY.Bytes) : Prop :=
+@[expose] def notSpqrHeaded (u : DY.Bytes) : Prop :=
   (u.view? DY.Spqr.InitState.SubF).isNone = true ∧
   (u.view? DY.Spqr.SendState.SubF).isNone = true ∧
   (u.view? DY.Spqr.SendKey.SubF).isNone = true ∧
@@ -185,7 +186,7 @@ theorem notSpqrHeaded_computeMac (mk ik1 ik2 w : DY.Bytes) :
   · rw [Symbolic.DYBridge.DY.BytesView.view?_pack_eq_none DY.Spqr.ChainKey.SubF]; rfl
 
 /-- `u` is not headed by an opaque KEM or signature constructor. -/
-def notOpaqueHeaded (u : DY.Bytes) : Prop :=
+@[expose] def notOpaqueHeaded (u : DY.Bytes) : Prop :=
   (u.view? DY.PQKem.Pk.SubF).isNone = true ∧
   (u.view? DY.PQKem.Encap.SubF).isNone = true ∧
   (u.view? DY.PQKem.SharedSecret.SubF).isNone = true ∧

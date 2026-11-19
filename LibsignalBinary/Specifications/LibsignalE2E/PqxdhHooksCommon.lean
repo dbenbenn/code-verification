@@ -10,16 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.LibsignalE2E.HooksCommon
-public import LibsignalBinary.Specifications.LibsignalSpqrV1.Hooks
+public import LibsignalBinary.Specifications.LibsignalSpqrV1.MlKem
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
 
 /-!
 # PQXDH and SPQR V1 Primitive Hooks
 
-**Trusted: the statement.** External-call hooks for the PQXDH and SPQR V1 cryptographic primitives
-(SHA-512 block compression, `curve25519-dalek` Edwards/scalar operations for XEdDSA, Kyber1024
-encapsulation/decapsulation, incremental ML-KEM-768, and `libcrux_hmac::hmac`), assembled into
-`spqrHookTable` and `pqxdhHookTable`. See `Computational/docs/TRUSTED_BASE.md`.
+**Checked by Lean.** Proof-side external-call hooks for the PQXDH and SPQR V1 cryptographic
+primitives (SHA-512 block compression, Kyber1024 encapsulation/decapsulation, and incremental
+ML-KEM-768; `0` definitions in any headline closure, retained for untrusted ghost-table replay).
+See `Computational/docs/TRUSTED_BASE.md`.
 -/
 
 @[expose] public section
@@ -29,36 +29,8 @@ set_option autoImplicit false
 namespace CryptoVerification.E2E
 
 open Arm64 ProofLib CryptoGames CryptoGames.LibsignalSession
-open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalAesCbc (toLEBytes returnToLinkRegister)
-open CryptoVerification.LibsignalSpqrV1
-  (MlKem mlkemFromSeedName mlkemPk1Name mlkemPk2Name mlkemEncaps1Name mlkemEncaps2Name
-   mlkemDecapsName mlkemValidatePkName libcruxHmacName)
-
-/-! ## Stub names -/
-
-/-- `sha2::sha512::compress512(state = x0, blocks = x1, n = x2)`. -/
-abbrev compress512Name : String := "sha2::sha512::compress512"
-/-- `MontgomeryPoint::to_edwards(&self = x0, sign = w1) -> Option<EdwardsPoint>` (sret `x8`). -/
-abbrev toEdwardsName : String := "<curve25519_dalek::montgomery::MontgomeryPoint>::to_edwards"
-/-- `EdwardsPoint::compress(&self = x0) -> CompressedEdwardsY` (sret `x8`). -/
-abbrev compressName : String := "<curve25519_dalek::edwards::EdwardsPoint>::compress"
-/-- `<EdwardsPoint as Neg>::neg(self = x0) -> EdwardsPoint` (sret `x8`). -/
-abbrev edNegName : String :=
-  "<curve25519_dalek::edwards::EdwardsPoint as core::ops::arith::Neg>::neg"
-/-- `EdwardsPoint::is_torsion_free(&self = x0) -> bool`. -/
-abbrev torsionFreeName : String := "<curve25519_dalek::edwards::EdwardsPoint>::is_torsion_free"
-/-- `EdwardsPoint::vartime_double_scalar_mul_basepoint(a = x0, A = x1, b = x2)` (sret `x8`). -/
-abbrev dsmbName : String :=
-  "<curve25519_dalek::edwards::EdwardsPoint>::vartime_double_scalar_mul_basepoint"
-/-- `Scalar::from_bytes_mod_order(bytes = x0) -> Scalar` (sret `x8`). -/
-abbrev scalarModName : String := "<curve25519_dalek::scalar::Scalar>::from_bytes_mod_order"
-/-- `Scalar::from_bytes_mod_order_wide(bytes = x0) -> Scalar` (sret `x8`). -/
-abbrev scalarWideName : String := "<curve25519_dalek::scalar::Scalar>::from_bytes_mod_order_wide"
-/-- `mlkem1024::kyber::encapsulate(pk = x0, randomness = x1) -> (ct, ss)` (sret `x8`). -/
-abbrev kemEncapsName : String := "libcrux_ml_kem::mlkem1024::kyber::encapsulate"
-/-- `mlkem1024::kyber::decapsulate(sk = x0, ct = x1) -> ss` (sret `x8`). -/
-abbrev kemDecapsName : String := "libcrux_ml_kem::mlkem1024::kyber::decapsulate"
+open CryptoVerification.LibsignalSpqrV1 (MlKem)
 
 /-! ## The hooks -/
 
@@ -91,61 +63,6 @@ def compress512Hook (F512 : Sha512State → List (BitVec 8) → Sha512State) (s 
   returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 .x0)
     (sha512StateBytesLE ((chunks128 bs).foldl F512 st))))
 
-/-- `MontgomeryPoint::to_edwards(&u = x0, sign = w1)` with `Option<EdwardsPoint>` at the sret `x8`:
-`some p` = tag `1` (u64) @0 and the 160 bytes of `p` @8; `none` = tag `0` @0, the other bytes
-unchanged. The sign bit is `w1 & 1` (`tbz w1, #0`; callers pass `sig[63] >> 7` or `0`). The callers
-test only `tag == 1` (`ldr x8, [sret]; cmp x8, #1`). -/
-def toEdwardsHook
-    (montToEd : List.Vector (BitVec 8) 32 → BitVec 8 → Option (List.Vector (BitVec 8) 160))
-    (s : State) : State :=
-  let r := s.readReg64 .x8
-  let m := match montToEd (readVecN s.mem (s.readReg64 .x0) 32) ((s.readReg64 .x1).setWidth 8 &&& 1#8) with
-    | some p => (s.mem.write64 r 1#64).writeBytes (r + 8#64) p.toList
-    | none => s.mem.write64 r 0#64
-  returnToLinkRegister (s.setMem m)
-
-/-- `EdwardsPoint::compress(&p = x0)`: `mem[x8 .. +32] := compress mem[x0 .. +160]`; `pc := lr`. -/
-def compressHook (compress : List.Vector (BitVec 8) 160 → List.Vector (BitVec 8) 32) (s : State) :
-    State :=
-  returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 .x8)
-    (compress (readVecN s.mem (s.readReg64 .x0) 160)).toList))
-
-/-- `<EdwardsPoint as Neg>::neg(&p = x0)`: `mem[x8 .. +160] := edNeg mem[x0 .. +160]`;
-`pc := lr`. -/
-def edNegHook (edNeg : List.Vector (BitVec 8) 160 → List.Vector (BitVec 8) 160) (s : State) :
-    State :=
-  returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 .x8)
-    (edNeg (readVecN s.mem (s.readReg64 .x0) 160)).toList))
-
-/-- `EdwardsPoint::is_torsion_free(&p = x0) -> bool`: `x0 := 1` if `isTorsionFree mem[x0 .. +160]`,
-else `0`; `pc := lr`. -/
-def torsionFreeHook (isTorsionFree : List.Vector (BitVec 8) 160 → Bool) (s : State) : State :=
-  returnToLinkRegister (s.writeReg64 .x0
-    (if isTorsionFree (readVecN s.mem (s.readReg64 .x0) 160) then 1#64 else 0#64))
-
-/-- `vartime_double_scalar_mul_basepoint(&a = x0, &A = x1, &b = x2)`:
-`mem[x8 .. +160] := dsmb mem[x0 .. +32] mem[x1 .. +160] mem[x2 .. +32]`, the double scalar
-multiplication `a·A + b·B` with the basepoint `B` (XEdDSA passes `h`, `-A`, `s`); `pc := lr`. -/
-def dsmbHook (dsmb : List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 160 →
-    List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 160) (s : State) : State :=
-  returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 .x8)
-    (dsmb (readVecN s.mem (s.readReg64 .x0) 32) (readVecN s.mem (s.readReg64 .x1) 160)
-      (readVecN s.mem (s.readReg64 .x2) 32)).toList))
-
-/-- `Scalar::from_bytes_mod_order(&b = x0)`: `mem[x8 .. +32] := scalarMod mem[x0 .. +32]`;
-`pc := lr`. -/
-def scalarModHook (scalarMod : List.Vector (BitVec 8) 32 → List.Vector (BitVec 8) 32) (s : State) :
-    State :=
-  returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 .x8)
-    (scalarMod (readVecN s.mem (s.readReg64 .x0) 32)).toList))
-
-/-- `Scalar::from_bytes_mod_order_wide(&b = x0)`: `mem[x8 .. +32] := scalarWide mem[x0 .. +64]`;
-`pc := lr`. -/
-def scalarWideHook (scalarWide : List.Vector (BitVec 8) 64 → List.Vector (BitVec 8) 32)
-    (s : State) : State :=
-  returnToLinkRegister (s.setMem (s.mem.writeBytes (s.readReg64 .x8)
-    (scalarWide (readVecN s.mem (s.readReg64 .x0) 64)).toList))
-
 /-- `kyber::encapsulate(&pk = x0, randomness = x1)` with `(ct, ss)` at the sret `x8`: the 1568-byte
 ciphertext @0 and the 32-byte shared secret @`0x620` of `encaps mem[x0 .. +1568] mem[x1 .. +32]`;
 `pc := lr`. The caller (`initialize_alice_session::<PqxdhRng>`) fills the 32 coin bytes from 32
@@ -172,14 +89,6 @@ def mlkemFromSeedHook (K : MlKem) : State → State :=
   retHook fun s =>
     s.setMem (s.mem.writeBytes (s.readReg64 .x8)
       (K.fromSeed (readVecN s.mem (s.readReg64 .x0) 64)).2.2.toList)
-
-/-- `<KeyPairCompressedBytes>::pk1(&kp = x0) -> &[u8; 64]`: returns `x0 + 2304#64`. -/
-def mlkemPk1Hook : State → State :=
-  retHook fun s => s.writeReg64 .x0 (s.readReg64 .x0 + 2304#64)
-
-/-- `<KeyPairCompressedBytes>::pk2(&kp = x0) -> &[u8; 1152]`: returns `x0 + 1152#64`. -/
-def mlkemPk2Hook : State → State :=
-  retHook fun s => s.writeReg64 .x0 (s.readReg64 .x0 + 1152#64)
 
 /-- `mlkem768::incremental::encapsulate1(pk1 = (x0, x1), &rand = x2, es = (x3, x4), ss = (x5, x6))`
 with sret `x8`: if `es.len < 2080` (`x4`) or `ss.len < 32` (`x6`), writes
@@ -228,63 +137,5 @@ def mlkemValidatePkHook (K : MlKem) : State → State :=
     let hdr := s.mem.readBytes (s.readReg64 .x0) (s.readReg64 .x1).toNat
     let ek := s.mem.readBytes (s.readReg64 .x2) (s.readReg64 .x3).toNat
     s.writeReg64 .x0 (if K.validPkBytes hdr ek then 0xff#64 else 0#64)
-
-/-- `libcrux_hmac::hmac(alg = w0, key = (x1, x2), data = (x3, x4), tag_len = (w5, x6))` with sret
-`x8`: fails closed (`Exception`) when `alg != Algorithm::Sha256` (`w0 != 0#32`); panics when
-`key.len() ≥ 2^32` or `data.len() ≥ 2^32`; otherwise allocates a 32-byte `Vec<u8>` (`cap = 32`) at
-`x8` holding `HMAC.hmacWith F key data`, truncated (`Vec::truncate`) to `min x6 32` when
-`tag_len` is `Some` (`w5 & 1 != 0`). -/
-noncomputable def libcruxHmacHook (F : HMAC.ShaState → List (BitVec 8) → HMAC.ShaState)
-    (s : State) : State :=
-  if (s.readReg64 .x0).setWidth 32 != 0#32 then
-    s.setStatus (.Exception "libcrux_hmac::hmac: alg != Sha256")
-  else
-    let keyLen := (s.readReg64 .x2).toNat
-    let dataLen := (s.readReg64 .x4).toNat
-    if keyLen < 2 ^ 32 ∧ dataLen < 2 ^ 32 then
-      let key := s.mem.readBytes (s.readReg64 .x1) keyLen
-      let data := s.mem.readBytes (s.readReg64 .x3) dataLen
-      let tag := HMAC.hmacWith F key data
-      let outLen :=
-        if (s.readReg64 .x5).setWidth 32 &&& 1#32 != 0#32 then
-          min (s.readReg64 .x6).toNat tag.length
-        else
-          tag.length
-      bumpThen tag.length 1
-        (fun s p =>
-          retHook (fun s =>
-            s.setMem (writeVecHeader (s.mem.writeBytes p tag) (s.readReg64 .x8)
-              (BitVec.ofNat 64 tag.length) p (BitVec.ofNat 64 outLen))) s)
-        allocPanicHook s
-    else
-      Rust.panicked s
-
-/-! ## The table -/
-
-/-- **The SPQR V1 rows** (8): the contracts' stubs (`SpqrHooks`), each with its hook above. -/
-noncomputable def spqrHookTable (C : Crypto) (K : MlKem) : List (String × (State → State)) :=
-  [(mlkemFromSeedName,   mlkemFromSeedHook K),
-   (mlkemPk1Name,        mlkemPk1Hook),
-   (mlkemPk2Name,        mlkemPk2Hook),
-   (mlkemEncaps1Name,    mlkemEncaps1Hook K),
-   (mlkemEncaps2Name,    mlkemEncaps2Hook K),
-   (mlkemDecapsName,     mlkemDecapsHook K),
-   (mlkemValidatePkName, mlkemValidatePkHook K),
-   (libcruxHmacName,     libcruxHmacHook C.F)]
-
-/-- **The PQXDH + SPQR rows of the hook table**: the eighteen hooks above. The first rows of
-`cliHookTablePlaced` (`SignalSession/CliBinaryPq.lean`, as `cliPqxdhHookTablePlaced`) are these
-rows under mangled symbol names, with `libcruxHmacHookMallocng` for `libcrux_hmac::hmac`. -/
-noncomputable def pqxdhHookTable (C : Crypto) (Q : PqxdhPrims) : List (String × (State → State)) :=
-  [(compress512Name,     compress512Hook Q.F512),
-   (toEdwardsName,       toEdwardsHook Q.montToEd),
-   (compressName,        compressHook Q.compress),
-   (edNegName,           edNegHook Q.edNeg),
-   (torsionFreeName,     torsionFreeHook Q.isTorsionFree),
-   (dsmbName,            dsmbHook Q.dsmb),
-   (scalarModName,       scalarModHook Q.scalarMod),
-   (scalarWideName,      scalarWideHook Q.scalarWide),
-   (kemEncapsName,       kemEncapsHook Q.encaps),
-   (kemDecapsName,       kemDecapsHook Q.decaps)] ++ spqrHookTable C Q.K
 
 end CryptoVerification.E2E

@@ -14,14 +14,13 @@ public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Halted -- proo
 public import Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedEvalStep -- proof-setup: allow-public-import
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanSem
-public import Computational.Proofs.HeadlineV1.SendShortC -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.SendShortC
 
 /-!
 # Sanitized Evaluation and Guard Bounds for `simFig8RedProgHalted`
 
 Re-exports `simFig8RedProgHalted_eval_san` and proves the query, public-header, and short-circuit
-guard invariants for `simFig8RedProgHalted`.
--/
+guard invariants for `simFig8RedProgHalted`.-/
 
 public section
 
@@ -31,21 +30,21 @@ namespace Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedEvalSan
 
 open OracleSpec OracleComp
 open _root_.CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.SM (RecvResult partyEnc)
-open CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart LibsignalCiphertextWithSalt32
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.SM (RecvResult partyEnc)
+open _root_.CryptoGames.Ratchet.LibsignalInst (LibsignalMsgPublicPart LibsignalCiphertextWithSalt32
   ratchetKeyAdmissible)
-open CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C Fig8Comp SimState
+open _root_.CryptoGames.Ratchet.LibsignalSim (Fig8St Fig8C Fig8Comp SimState
   inReceiveOnlyEpoch onAcceptPure onAnswerPure simParseRecvC mkPub)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
-open CryptoGames.LibsignalSession (Params Crypto ShaCompress IdentityKey PublicKey GhostState
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
+open _root_.CryptoGames.LibsignalSession (Params Crypto ShaCompress IdentityKey PublicKey GhostState
   signalWireCodec)
-open CryptoGames.LibsignalSM.Proofs.Refinement
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement
   (KemFailTrackState initKemFailTrack)
-open CryptoGames.LibsignalSM.Proofs.SessionShort (SendMsgsOk GuardedSMShort)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.E2E (Bytes paramsV1)
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort (SendMsgsOk GuardedSMShort)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.E2E (Bytes paramsV1)
 open Computational.Proofs.ReductionDsl.Fig8Atomic (atomicShortPubB)
 open Computational.Proofs.Game.PromotedCostedReds.SanOracleCore
   (evalCKS semFwdAnswerHookS semResyncHookS semFwdEvictHookS semFwdHookS
@@ -60,8 +59,6 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8Halted
 open Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedEvalStep
   (semSendHookHalted_eq)
 
-noncomputable section
-
 abbrev simHaltedEnc {ℓ : ℕ} {Pt : Type} {F : ShaCompress}
     (st : LibsignalToModularSchemeSimState Bytes Pt ℓ × KemFailTrackState F) :
     (simHaltedT ℓ Pt).denote :=
@@ -73,11 +70,11 @@ private theorem on_ite {α : Type _} (P : α → Prop) {c : Prop} [Decidable c] 
 
 section QueryInvariants
 
-open CryptoGames.LibsignalSM.Proofs.QueryBounds
+open _root_.CryptoGames.LibsignalSM.Proofs.QueryBounds
   (FSpec QInr QEq hQu_QInr hQu_QEq isQueryBoundP_congr isQueryBoundP_simulateQ_run_zero)
-open CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
   (QShort hQu_QShort badSendMsg shortB_mkPub)
-open CryptoVerification.LibsignalSession.HeadlineV1
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1
   (AtomicLengthsOk atomicLengthsOk_paramsIdsWithSpqr_v1 QAtomicShort hQu_QAtomicShort
    atomicShortPubB_mkPub)
 
@@ -348,9 +345,9 @@ end QueryInvariants
 
 section GuardedSMShortSan
 
-open CryptoGames.GuardedSafe (GuardedSafePost)
-open CryptoGames.LibsignalSM.Proofs.QueryBounds (FSpec)
-open CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
+open _root_.CryptoGames.GuardedSafe (GuardedSafePost)
+open _root_.CryptoGames.LibsignalSM.Proofs.QueryBounds (FSpec)
+open _root_.CryptoGames.LibsignalSM.Proofs.SessionShort.SimAndSM
   (smRespShort smRecvLong SimShortInv simShortInv_initSim simShortInv_record
    hQu_smRecvLong epMgmt_trans_eq mem_accept_trans inTransit_mem_and_ct)
 
@@ -797,7 +794,5 @@ theorem simFig8RedProgHalted_guardedSMShort (hℓ : ℓ < 10 ^ 6)
     qep (2 ^ 32 + q + 2) (50000 * q) (25001 * q + 25000) (25000 * q) A
 
 end Theorems
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimFig8HaltedEvalSan

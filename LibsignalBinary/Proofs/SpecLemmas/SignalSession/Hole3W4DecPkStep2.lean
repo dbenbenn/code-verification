@@ -9,27 +9,42 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
-public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked
-public import LibsignalBinary.Proofs.PeakBudget.GateM2rGSite3Eq
+public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
+public import LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.GateM2rGSite3Eq
 public import LibsignalBinary.Proofs.PeakBudget.RealCliDecPkGuardedDefs
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
-public import LibsignalBinary.Proofs.PeakBudget.TryDecryptCliLinkedOf
-public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetCore
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
+public import LibsignalBinary.Proofs.PeakBudget.TryDecryptCliLinkedOf -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkSlot
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetCore
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.GateM2rGStatesRecvTwins -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433PlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
 
 /-!
 # `clearPending` Length Bounds and `TopStateTight`-Guarded `tryDecrypt` Bridges (`W4`)
@@ -39,7 +54,7 @@ Establishes protobuf `clearPending` serialized-length monotonicity (`≤ 2 ^ 21`
 collapse lemmas for `w4s2_TryDecryptTopStateGuardedEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -64,7 +79,8 @@ open CryptoVerification.SignalSession.Cli (StoresGhost)
 open CryptoVerification.SignalSession.Cli.RunProofs.Poll (cliKitStk cliPollSessKitPlaced)
 open CryptoVerification.SignalSession.Cli.RunSkeleton (RunBudgets)
 open LibsignalBinary.Heap (AllocEvent FreeOnlyEvs SeqEnv rustAllocEvents)
-open LibsignalBinary.Heap.SpecBudget (FmtWriteEnv FormatInnerEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
+  (CliFmtWriteEnv CliFormatInnerEnv)
 open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget (CmkLoopAdvanceEvs)
 open LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs (W4BinaryArchiveDirectEnv)
 open LibsignalBinary.Proofs.PeakBudget.CliRealExistentialCalleeEnvs
@@ -334,7 +350,7 @@ theorem w4s2_tryDecryptCliLinkedEnvOf_eq_m2rg (maxOps : Nat) (C : Crypto) (K : M
   rfl
 
 /-- `TopStateTight`-guarded `spqr::recv` byte-slice envelope at `maxOps = 109`. -/
-def w4s2_SpqrRecvTopStateGuardedBytesEnv (F : ShaCompress) (K : MlKem)
+@[expose] def w4s2_SpqrRecvTopStateGuardedBytesEnv (F : ShaCompress) (K : MlKem)
     (stBs msgBs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   TopStateTight F K stBs → SpqrRecvC07C09aBytesEnvOf 109 F K stBs msgBs evs
 
@@ -345,10 +361,10 @@ theorem w4s2_spqrRecvTopStateGuardedBytesEnv_nonempty (F : ShaCompress) (K : MlK
   ⟨evs, fun _ => hevs⟩
 
 /-- `TryDecryptCliEnvOfPure` instantiated at `w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K`. -/
-noncomputable def w4s2_TryDecryptTopStateGuardedEnv (W : CliHooks) :
+@[expose] def w4s2_TryDecryptTopStateGuardedEnv (W : CliHooks) :
     TryDecryptEnvArgs → List AllocEvent → Prop :=
-  TryDecryptCliEnvOfPure W.C (spqrV1 W.C.F W.Q.K) FmtWriteEnv
-    (w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K) FormatInnerEnv
+  TryDecryptCliEnvOfPure W.C (spqrV1 W.C.F W.Q.K) CliFmtWriteEnv
+    (w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K) CliFormatInnerEnv
 
 private theorem w4s2_fromSessionState_ok_pqrState {PQ : Type} [Inhabited PQ]
     {s s1 : SessionState PQ} {tr0 : TripleRatchet PQ}
@@ -364,9 +380,9 @@ private theorem w4s2_pqRecvEnv_topStateGuarded_eq (W : CliHooks)
     (x : TryDecryptGhost) (tr : TripleRatchet (List (BitVec 8)))
     (hTop : TopStateTight W.C.F W.Q.K tr.pqrState) :
     PqRecvEnv (spqrV1 W.C.F W.Q.K) (w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K)
-        FormatInnerEnv x tr =
+        CliFormatInnerEnv x tr =
       PqRecvEnv (spqrV1 W.C.F W.Q.K) (SpqrRecvC07C09aBytesEnvOf 109 W.C.F W.Q.K)
-        FormatInnerEnv x tr := by
+        CliFormatInnerEnv x tr := by
   have hrecv :
       w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K tr.pqrState x.msg.pqRatchet =
         SpqrRecvC07C09aBytesEnvOf 109 W.C.F W.Q.K tr.pqrState x.msg.pqRatchet := by
@@ -391,17 +407,17 @@ theorem w4s2_tryDecryptTopStateGuardedEnv_eq_linked_of_top (W : CliHooks)
       apply congrArg (SeqEnv FreeOnlyEvs)
       let x := tryDecryptEnvArgsToGhost a
       let S := spqrV1 W.C.F W.Q.K
-      let s4Env := tryDecryptCmkSeg4Env FmtWriteEnv
+      let s4Env := tryDecryptCmkSeg4Env CliFmtWriteEnv
       have hTop0 : TopStateTight W.C.F W.Q.K tr0.pqrState :=
         (w4s2_fromSessionState_ok_pqrState hfrom).symm ▸ hTop
       have hs5g : ∀ (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
           (mkg : MessageKeyGenerator),
           TopStateTight W.C.F W.Q.K tr.pqrState →
           FromS5GenEnv W.C uuidTryParse S (stdAesOpt W.C)
-              (PqRecvEnv S (w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K) FormatInnerEnv)
+              (PqRecvEnv S (w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K) CliFormatInnerEnv)
               s6FreeOnlyEnv (s7Env W.C.F uuidTryParse) s8Env s9Env x trG tr st1 mkg =
             FromS5GenEnv W.C uuidTryParse S (stdAesOpt W.C)
-              (PqRecvEnv S (SpqrRecvC07C09aBytesEnvOf 109 W.C.F W.Q.K) FormatInnerEnv)
+              (PqRecvEnv S (SpqrRecvC07C09aBytesEnvOf 109 W.C.F W.Q.K) CliFormatInnerEnv)
               s6FreeOnlyEnv (s7Env W.C.F uuidTryParse) s8Env s9Env x trG tr st1 mkg := by
         intro trG tr mkg hT
         unfold FromS5GenEnv
@@ -409,10 +425,10 @@ theorem w4s2_tryDecryptTopStateGuardedEnv_eq_linked_of_top (W : CliHooks)
       have hs4g : ∀ (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8))) (ck : ChainKey),
           TopStateTight W.C.F W.Q.K tr.pqrState →
           FromS4GenEnv W.C uuidTryParse S (stdAesOpt W.C) s4Env
-              (PqRecvEnv S (w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K) FormatInnerEnv)
+              (PqRecvEnv S (w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K) CliFormatInnerEnv)
               s6FreeOnlyEnv (s7Env W.C.F uuidTryParse) s8Env s9Env x trG tr st1 ck =
             FromS4GenEnv W.C uuidTryParse S (stdAesOpt W.C) s4Env
-              (PqRecvEnv S (SpqrRecvC07C09aBytesEnvOf 109 W.C.F W.Q.K) FormatInnerEnv)
+              (PqRecvEnv S (SpqrRecvC07C09aBytesEnvOf 109 W.C.F W.Q.K) CliFormatInnerEnv)
               s6FreeOnlyEnv (s7Env W.C.F uuidTryParse) s8Env s9Env x trG tr st1 ck := by
         intro trG tr ck hT
         unfold FromS4GenEnv
@@ -430,11 +446,11 @@ theorem w4s2_tryDecryptTopStateGuardedEnv_eq_linked_of_top (W : CliHooks)
           TopStateTight W.C.F W.Q.K tr.pqrState →
           FromS3GenEnv W.C uuidTryParse S (stdAesOpt W.C)
               (s3DefaultEnv W.C) s4Env
-              (PqRecvEnv S (w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K) FormatInnerEnv)
+              (PqRecvEnv S (w4s2_SpqrRecvTopStateGuardedBytesEnv W.C.F W.Q.K) CliFormatInnerEnv)
               s6FreeOnlyEnv (s7Env W.C.F uuidTryParse) s8Env s9Env x trG tr st1 =
             FromS3GenEnv W.C uuidTryParse S (stdAesOpt W.C)
               (s3DefaultEnv W.C) s4Env
-              (PqRecvEnv S (SpqrRecvC07C09aBytesEnvOf 109 W.C.F W.Q.K) FormatInnerEnv)
+              (PqRecvEnv S (SpqrRecvC07C09aBytesEnvOf 109 W.C.F W.Q.K) CliFormatInnerEnv)
               s6FreeOnlyEnv (s7Env W.C.F uuidTryParse) s8Env s9Env x trG tr st1 := by
         intro trG tr hT
         unfold FromS3GenEnv

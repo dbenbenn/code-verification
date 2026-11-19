@@ -12,16 +12,16 @@ module
 meta import Lean -- shake: keep
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysBasePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysBasePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -33,13 +33,14 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
-import LibsignalBinary.Proofs.SpqrV1.Layout.Stubs
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Budget-Threaded Step & Loop Helpers for Placed Segment 2 (Block `518`)
@@ -49,7 +50,7 @@ steps (`+0x19b0 .. +0x1a5c`), and budget-threaded `__rust_alloc` / loop theorems
 (`rc_alloc_call_placed_budget_ok`, `rc_iter_placed_budget_ok`, `rc_loop_placed_budget_ok`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -108,7 +109,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.add_assoc BitVec.toNat_zero
 
 /-! ## 1. Representation Decompositions & Block `524 → 518` Callee Bridge -/
 
-def m3a2SessionStatePure (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Prop :=
+@[expose] def m3a2SessionStatePure (G : SessionGhost) (st : SessionState (List (BitVec 8))) : Prop :=
   PublicKey.deserialize G.localIk.bytes = .ok st.localIdentity.publicKey ∧
     (match st.remoteIdentity with
      | none => G.remoteIk.bytes = []
@@ -118,7 +119,7 @@ def m3a2SessionStatePure (G : SessionGhost) (st : SessionState (List (BitVec 8))
     G.localIk.bytes.length = 33 ∧
     (st.remoteIdentity.isSome → G.remoteIk.bytes.length = 33)
 
-def m3a2SessionStateRestAt' (A : RustAlloc) (coroPtr : BitVec 64)
+@[expose] def m3a2SessionStateRestAt' (A : RustAlloc) (coroPtr : BitVec 64)
     (G : SessionGhost) (st : SessionState (List (BitVec 8))) : SepProp :=
   vecGhostAt A G.localIk (coroPtr + 0xf8#64) ∗
     vecGhostAt A G.remoteIk (coroPtr + 0x110#64) ∗

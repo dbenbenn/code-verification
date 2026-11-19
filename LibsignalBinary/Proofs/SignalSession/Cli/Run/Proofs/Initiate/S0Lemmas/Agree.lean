@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bundle
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bundle -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Basic
 import all Init.Data.Repr
@@ -19,6 +19,9 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Spec
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
 import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
+import LibsignalBinary.Proofs.SpecLemmas.FsFold
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Model Agreement Lemmas for `pqInitiateAgrees_initDef`
@@ -29,7 +32,7 @@ Proves `agree_pqInit`, showing that `initDef` agrees with `pqInitModel` on every
 writes across disjoint head-segment classes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Specs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
-import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Fetch
+import Lean
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Glue
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<SessionRecord>::remote_identity_key_bytes` (`0x17c94`)
@@ -25,11 +26,11 @@ Proves `remoteIdentityKeyBytes_sp2_ok` and `remoteIdentityKeyBytes_ok` on `tripl
 `tripleRatchetProg`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.WireEntries
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames
+open Arm64 ProofLib CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
@@ -43,51 +44,6 @@ set_option maxHeartbeats 1600000
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  libsignalSessionCode_fnOff_0x17c94
-  libsignalSessionCode_fnOff_0x11b04
-  libsignalSessionCode_fnOff_0x3e2c4
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-
-/-! ## Callee and Stub Helpers -/
-
-private theorem fnAddr_remoteIdBytes_add_eq {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {target : String} {off : BitVec 64}
-    (h : BitVec.ofNat 64 (libsignalSessionCode.fnOff remoteIdentityKeyBytesName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff target) := by
-      fnoff_eq) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr remoteIdentityKeyBytesName + off =
-      (tripleRatchetProgAt b C ctl abs).fnAddr target := by
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, BitVec.add_assoc, h]
-
-private theorem remoteIdentityKey_ok_at_remoteIdBytes
-    {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr remoteIdentityKeyBytesName +
-      18446744073709526640#64)
-      (remoteIdentityKeySpec A img) := by
-  rw [fnAddr_remoteIdBytes_add_eq (target := remoteIdentityKeyName)]
-  exact Glue.remoteIdentityKeyOk img C A ctl abs himg
-
-private theorem publicKeySerialize_ok_at_remoteIdBytes
-    {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr remoteIdentityKeyBytesName + 157232#64)
-      (publicKeySerializeSpec A) := by
-  rw [fnAddr_remoteIdBytes_add_eq (target := publicKeySerializeName)]
-  exact Glue.publicKeySerializeOk hA
-
-/-! ## Stack and Memory Decomposition Helpers -/
-
 private theorem stackAt_remoteIdBytes (sp : BitVec 64) :
     stackAt sp (128 + publicKeySerializeStack) =
       stackAt (sp - 128#64) publicKeySerializeStack ∗
@@ -173,7 +129,7 @@ private theorem stackAt_publicKeySerialize_to_remoteIdentityKey (sp : BitVec 64)
 
 /-- The 6 disjoint chunks (`4 + 2 + 8 + 8 + 8 + 2 = 32` bytes) used by `0x17d28..0x17d7c`
 to shift `peerKey.publicKey.bytes` from `sp + 0x1a` down to `sp + 0x18`. -/
-def pkShiftChunks (a : BitVec 64) (v0 : BitVec 32) (v4 : BitVec 16)
+@[expose] def pkShiftChunks (a : BitVec 64) (v0 : BitVec 32) (v4 : BitVec 16)
     (v6 v14 v22 : BitVec 64) (v30 : BitVec 16) : SepProp :=
   (a ↦₃₂ v0) ∗ ((a + 4#64) ↦₁₆ v4) ∗ ((a + 6#64) ↦₆₄ v6) ∗
   ((a + 14#64) ↦₆₄ v14) ∗ ((a + 22#64) ↦₆₄ v22) ∗ ((a + 30#64) ↦₁₆ v30)
@@ -326,7 +282,7 @@ private theorem memRegion_out32_split (out : BitVec 64) :
 /-! ## `sessionRecordAt` Exposure -/
 
 /-- Rest of `sessionRecordAt` not touched by `remote_identity_key_bytes`. -/
-def sessionRecordRestAt (A : RustAlloc) (recPtr : BitVec 64) (G : SessionGhost)
+@[expose] def sessionRecordRestAt (A : RustAlloc) (recPtr : BitVec 64) (G : SessionGhost)
     (s : Session (List (BitVec 8))) : SepProp :=
   vecAt A 24 8 (fun (_ : Unit) _ => emp) recPtr 0#64 8#64 [] ∗
   ⌜PendingRel G.pending s.pendingPreKey ∧ KyberRel G.kyber s.pendingKyberPreKey ∧
@@ -447,186 +403,5 @@ private theorem sepWPp_pure_mid {prog : Program} {ret : BitVec 64} {s : State}
   exact SepWPp.pure_elim h
 
 /-! ## Main Subroutine Proof (`0x17c94`) -/
-
-theorem remoteIdentityKeyBytes_sp2_ok (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr remoteIdentityKeyBytesName)
-      (remoteIdentityKeyBytesSpec A img) := by
-  simp only [remoteIdentityKeyBytesSpec, stackAt_remoteIdBytes, memRegion_out32_split,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  have hrem := remoteIdentityKey_ok_at_remoteIdBytes (img := img) (C := C) (A := A)
-    (ctl := ctl) (abs := abs) himg
-  have hpk := publicKeySerialize_ok_at_remoteIdBytes (b := img.base) (C := C) (A := A)
-    (ctl := ctl) (abs := abs) hA
-  have hshim := noAllocShim_ok_at (b := img.base) (C := C) (ctl := ctl) (abs := abs)
-    (name := remoteIdentityKeyBytesName) (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x17c94))
-  have halloc :=
-    alloc_ok_at_norm (b :=
-      img.base) (C := C) (ctl := ctl) (name := remoteIdentityKeyBytesName) (k := num% (ls_off% "__rustc::__rust_alloc" - 0x17c94)) hA
-  have hmemcpy := framelessMemcpy_ok_at (b := img.base) (C := C) (ctl := ctl) (abs := abs)
-    (name := remoteIdentityKeyBytesName) (k := num% (ls_off% "memcpy" - 0x17c94))
-  have hdealloc :=
-    dealloc_ok_at_norm (b :=
-      img.base) (C := C) (ctl := ctl) (name := remoteIdentityKeyBytesName) (k := num% (ls_off% "__rustc::__rust_dealloc" - 0x17c94)) hA
-  have hpanic :=
-    panic_at_handle_error_norm (b :=
-      img.base) (C :=
-        C) (ctl := ctl) (abs := abs) (name := remoteIdentityKeyBytesName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x17c94))
-  dsimp only [remoteIdentityKeySpec] at hrem
-  dsimp only [noAllocShimSpec] at hshim
-  dsimp only [framelessMemcpySpec] at hmemcpy
-  wpp_init x s0
-  remoteIdBytes_fetches_range (img.base) (Rust.withPanics (tripleRatchetExterns C ctl abs)) 0 0x178
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase img.base
-        (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr remoteIdentityKeyBytesName := by
-    rw [hpc, Program.fnAddr_rebase, remoteIdentityKeyBytes_fnOff]
-  dsimp only [tripleRatchetProgAt] at hrem hpk hshim halloc hmemcpy hdealloc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr remoteIdentityKeyBytesName = entry
-  examples_hide_fetches
-  rcases x with ⟨recPtr, out, G, sess, peerKey⟩
-  dsimp only at *
-  obtain ⟨hcap_lt63, hrem_raw⟩ := sessionRecordAt_localIk_and_remoteId hpre
-  have hrem_deser : PublicKey.deserialize G.remoteIk.bytes = .ok peerKey.publicKey := by
-    simpa [h] using hrem_raw
-  have hcond_ne : ConditionHolds .EQ (addsPState64 G.localIk.cap 1#64) = false :=
-    cond_eq_adds_false_of_lt63 hcap_lt63
-  have hbs32 : peerKey.publicKey.bytes.toList.length = 32 := by simp
-  obtain ⟨v0, v4, v6, v14, v22, v30, hchunks⟩ := exists_pkShiftChunks_of_length_32 hbs32
-  rw [sessionRecordAt_expose_remoteId A recPtr G sess,
-      stackAt_publicKeySerialize_to_remoteIdentityKey (s0.sp - 128#64)]
-  subst h_1 h_2
-  apply SepWPp.of_sepWP (mid := entry + 157232#64)
-  wp_steps
-  wp_call hrem ⟨s0.readReg64 (Reg.gpr 0#5) + 0x18#64, G.remoteIk, some peerKey, s0.sp - 104#64⟩
-  dsimp only [remoteIdentityOkAt]
-  have hsp103 : s0.sp - 104#64 + 1#64 = s0.sp - 103#64 := by bv_omega
-  have hsp102 : s0.sp - 104#64 + 2#64 = s0.sp - 102#64 := by bv_omega
-  rw [hsp103, hsp102, hchunks (s0.sp - 102#64), pkShiftChunks_sp_102 s0.sp]
-  wp_steps
-  refine SepWP.focus_weaken
-    (shift_source_to_memRegion34 s0.sp v0 v4 v6 v14 v22 v30) (by sep_focus) ?_
-  rw [memRegion_34_split_dest s0.sp]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  apply SepWP.exists_elim; intro d32
-  apply SepWP.exists_elim; intro d30
-  apply SepWP.exists_elim; intro d22
-  apply SepWP.exists_elim; intro d14
-  apply SepWP.exists_elim; intro d6
-  apply SepWP.exists_elim; intro d4
-  apply SepWP.exists_elim; intro d0
-  wp_steps
-  have hdest_join :
-      (((s0.sp - 104#64) ↦₃₂ v0) ∗ ((s0.sp - 100#64) ↦₁₆ v4) ∗ ((s0.sp - 98#64) ↦₆₄ v6) ∗
-       ((s0.sp - 90#64) ↦₆₄ v14) ∗ ((s0.sp - 82#64) ↦₆₄ v22) ∗ ((s0.sp - 74#64) ↦₁₆ v30)) =
-      ((s0.sp - 104#64) ↦ₛ peerKey.publicKey.bytes.toList) := by
-    rw [← pkShiftChunks_sp_104, ← hchunks (s0.sp - 104#64)]
-  refine SepWP.focus_rw hdest_join (by sep_focus) ?_
-  have h3984 : s0.sp - 4256#64 = s0.sp - 128#64 - 4128#64 := by bv_omega
-  rw [h3984]
-  refine SepWP.focus_rw
-    (stackAt_publicKeySerialize_to_remoteIdentityKey (s0.sp - 128#64)).symm (by sep_focus) ?_
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  refine SepWPp.call_frame
-    (x := ⟨s0.sp - 104#64, peerKey.publicKey⟩)
-    (ret_pc := entry + 240#64) hpk
-    (by simp only [arm64_norm]) (by simp only [arm64_norm, hrun_sf])
-    (by simp only [State.spAligned, arm64_norm, hsp_sf]; exact hsp_align)
-    (by simp only [arm64_norm])
-    (by simp only [arm64_norm, hsp_sf]; rfl)
-    (rfl : s0.sp - 104#64 = s0.sp - 104#64)
-    (by sep_focus)
-    (fun _ _ _ _ hex => allowPanic_not_exited hex)
-    (fun _ _ hpan => by
-      simpa only [sepConj_assoc] using
-        allowPanic_frame (allocFailedIn_trans (by simp only [arm64_norm, hpost])) hpan) ?_
-  intro sf1 hpc1 hrun1 hsp1 hcs1
-  rcases hcs1 with ⟨h19_1, h20_1, h21_1, h22_1, h23_1, h24_1, h25_1, h26_1, h27_1, h28_1, hfp_1⟩
-  simp only [wp_norm, arm64_norm,
-    *] at hsp1 h19_1 h20_1 h21_1 h22_1 h23_1 h24_1 h25_1 h26_1 h27_1 h28_1 hfp_1
-  dsimp only [publicKeySerializeSpec]
-  simp only [State.sp_setMem, State.sp_setPC, State.sp_writeReg64,
-    State.trace_setMem, State.trace_setPC, State.trace_writeReg64,
-    reduceCtorEq, ↓reduceIte, hsp_sf, sepConj_assoc]
-  refine SepWPp.pure_elim fun ⟨hx1_1, htr1⟩ => ?_
-  have htr1_s0 : sf1.trace = s0.trace := htr1.trans hpost
-  have hser_ne : peerKey.publicKey.serialize ≠ [] := by simp [PublicKey.serialize]
-  have hser_len : peerKey.publicKey.serialize.length = 33 := by simp [PublicKey.serialize, hbs32]
-  dsimp only [boxU8Buf]
-  rw [ite_eq_right_iff.mpr fun h => absurd h hser_ne]
-  simp only [hser_len, sepConj_assoc]
-  have hpure_focus : ∀ {prog ret s P F Q Qp} (φ : Prop),
-      (φ → SepWPp prog ret s F Q Qp) → P = ⌜φ⌝ ∗ F → SepWPp prog ret s P Q Qp :=
-    fun _ h hf => hf ▸ SepWPp.pure_elim h
-  refine hpure_focus
-    (sf1.readReg64 .x0 ≠ 0#64 ∧ 33 < 2 ^ 63)
-    (fun ⟨hbox_ne, _⟩ => ?_) (by sep_focus)
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlay33 : LayoutOk 33 1 := ⟨by decide, hpow2, by decide⟩
-  apply SepWPp.of_sepWP (mid := entry + 300#64)
-  wp_steps
-  wp_call hshim ()
-  wp_steps
-  rw [stackAt_publicKeySerialize_to_allocHook (s0.sp - 128#64)]
-  wp_call halloc (33, 1)
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom : sf_2.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom64 : sf_2.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    simp only [hoom, ite_true]
-    refine sepWPp_pure_mid fun htrace => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x17c94))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.panic (by wp_norm_lhs) (by simpa only [arm64_norm] using hpanic) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked
-        (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace, ‹sf_1.trace =
-        sf1.trace›, htr1_s0])) hm
-  · have hoom64 : sf_2.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, sepConj_assoc]
-    refine sepWPp_pure_mid fun ⟨hmod, htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    have hmem_dst : memRegion (sf_2.readReg64 (Reg.gpr 0#5)) 33 =
-        memRegion (sf_2.readReg64 (Reg.gpr 0#5)) peerKey.publicKey.serialize.length := by
-      rw [hser_len]
-    refine SepWP.focus_rw hmem_dst (by sep_focus) ?_
-    wp_call hmemcpy (sf_2.readReg64 .x0, sf1.readReg64 .x0, peerKey.publicKey.serialize)
-    wp_steps
-    have hmem33 : ((sf1.readReg64 .x0) ↦ₛ peerKey.publicKey.serialize) ⊢
-        memRegion (sf1.readReg64 .x0) 33 := by
-      simpa [hser_len] using
-        pointsToBytes_entails_memRegion (sf1.readReg64 .x0) peerKey.publicKey.serialize
-    refine SepWP.focus_weaken hmem33 (by sep_focus) ?_
-    wp_call hdealloc (sf1.readReg64 .x0, 33, 1)
-    wp_steps
-    rw [show sf_3.sp = s0.sp - 128#64 by simp only [*]]
-    refine SepWP.focus_rw
-      (stackAt_publicKeySerialize_to_allocHook (s0.sp - 128#64)).symm (by sep_focus) ?_
-    refine SepWP.focus_weaken
-      (vecU8_intro_33 A (s0.readReg64 (Reg.gpr 8#5)) (sf_2.readReg64 (Reg.gpr 0#5))
-        peerKey.publicKey.serialize hser_len hoom64)
-      (by sep_focus) ?_
-    rw [hchunks (s0.sp - 104#64), pkShiftChunks_sp_104 s0.sp,
-        stackAt_publicKeySerialize_to_remoteIdentityKey (s0.sp - 128#64)]
-    dsimp only [PublicKey.serialize, djbType]
-    wp_done
-
-theorem remoteIdentityKeyBytes_ok (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProg img C ctl abs)
-      (img.base + remoteIdentityKeyBytesOff)
-      (remoteIdentityKeyBytesSpec A img) := by
-  have hfn : (tripleRatchetProgAt img.base C ctl abs).fnAddr remoteIdentityKeyBytesName =
-      img.base + remoteIdentityKeyBytesOff := by
-    rw [tripleRatchetProgAt, Program.fnAddr_rebase, remoteIdentityKeyBytes_fnOff]
-  rw [tripleRatchetProg_eq_tripleRatchetProgAt himg, ← hfn]
-  exact remoteIdentityKeyBytes_sp2_ok img C A ctl abs himg hA
 
 end CryptoVerification.E2E.Pqxdh.WireEntries

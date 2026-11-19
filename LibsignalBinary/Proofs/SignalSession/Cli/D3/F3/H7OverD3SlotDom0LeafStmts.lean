@@ -10,16 +10,27 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudgetAux
-public import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.CliRealBinaryKitEnvs
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.W4PathCVerNeWideDefs
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudgetAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # `OverD3` Stage-P1 and Stage-P3 Envelope Inclusion Statements
@@ -29,7 +40,7 @@ Statement interfaces `h7l1_Stmt` (Stage-P1 untrusted and trusted store-kit envel
 `W4StageP3Prev1WideEnvOf VerNeTightTopEnv` under the `2 MiB` `clearPending` record-length cap).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -75,7 +86,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (SegCloneEnv TryDecr
 /-- Stage-P1 `OverD3` untrusted (`CliDpPollUntrustedEnv`) and trusted (`CliStageP1OkEnv`)
 envelopes at `ReadFileRuleEnvFixed cliIo.rd` and `SessDeserializeCancelEnv` embed into
 `W4BinaryStageP1UntrustedEnvAllFixed` and `W4BinaryStageP1OkEnvAllFixed`. -/
-def h7l1_Stmt : Prop :=
+@[expose] def h7l1_Stmt : Prop :=
   ∀ [LibsignalPlacement] (A : RustAlloc) (B : RunBudgets) (g : DecPkGhost)
     (evs : List AllocEvent),
     let ReadEnv := ReadFileRuleEnvFixed cliIo.rd
@@ -88,7 +99,7 @@ def h7l1_Stmt : Prop :=
 `StageP3VerNePrev1Env VerNeTightTopRawEnv`, and `StageP3Prev1Env (tdEnv W) VerNeTightTopRawEnv`)
 embed into `W4StageP3Prev1WideEnvOf VerNeTightTopEnv` whenever
 `(encodeRecord ⟨some (clearPending s_old)⟩).length ≤ 2 ^ 21`. -/
-def h7l6_Stmt : Prop :=
+@[expose] def h7l6_Stmt : Prop :=
   ∀ (W : CliHooks) (tdEnv : CliHooks → TryDecryptEnvArgs → List AllocEvent → Prop)
     (recG : SessionGhost) (st0 : SessionState (List (BitVec 8)))
     (peer me : AddrGhost) (msg : SignalMessage) (coins : List (BitVec 8))

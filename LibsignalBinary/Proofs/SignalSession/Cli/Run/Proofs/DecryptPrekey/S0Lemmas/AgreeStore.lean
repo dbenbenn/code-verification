@@ -9,17 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreePaths
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreePaths -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Basic
 import all Init.Data.Repr
 import all Init.Data.ToString.Basic
 import all Init.Data.List.SplitOn.Basic
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCoins
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCoins -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Lemmas.Agree
 import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Base Store Lookups on `pqRecvInputs`
@@ -28,7 +30,7 @@ Proves `runFiles` and `cliRd` lookup lemmas, nodup reverse-lookup helpers, own/p
 `loadRec_pqRecv_eq`, and non-emptiness of encoded pre-key records on `runFiles (pqRecvInputs W st c rc)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,14 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrustedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrustedPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePanicPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMain
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed D2(c) Top-Level Poll Closure Assembly (`PollOverPlaced`)
@@ -26,14 +37,14 @@ Relocatable (`[LibsignalPlacement]`) counterpart of `DecryptPrekey/Over/PollOver
 `cliDpPollOk_d2c_placed_of_stages`, and `d2cStages_placed_inst` (plus `LibsignalFrozen` variants).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Poll
 
-open Arm64 Arm64.Obj Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.Variant
+open Arm64 Arm64.Obj Arm64.Process ProofLib ProofLib.Variant
 open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer (CliGhostHooks cliGhostExterns)
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
@@ -267,7 +278,7 @@ theorem overP1Ok_recombine_entails_stageP2_placed [LibsignalPlacement]
 
 /-! ## 2. Base Poll Stage Bundle Interfaces (`ClosureBaseStagesCliPlacedStmt` / `ClosureBaseStagesPlacedStmt`) -/
 
-def OverClosurePathAPlacedStmt [LibsignalPlacement]
+@[expose] def OverClosurePathAPlacedStmt [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop),
@@ -329,7 +340,7 @@ def OverClosurePathAPlacedStmt [LibsignalPlacement]
           Steps prog s0 sf → (sf.mem ⊨ P_f ∗ R) →
             (sf.mem ⊨ (StoreKit.withLsCodeRoLoaded lsmpl (dpPollSpecState K stk')).onPanic y s0 sf ∗ R))
 
-def OverClosurePathBPlacedStmt [LibsignalPlacement]
+@[expose] def OverClosurePathBPlacedStmt [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop),
@@ -393,7 +404,7 @@ def OverClosurePathBPlacedStmt [LibsignalPlacement]
           Steps prog s0 sf → (sf.mem ⊨ P_f ∗ R) →
             (sf.mem ⊨ (StoreKit.withLsCodeRoLoaded lsmpl (dpPollSpecState K stk')).onPanic y s0 sf ∗ R))
 
-def OverStageP1OkCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverStageP1OkCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost) (remoteIdKey : IdentityKey),
     let σ := cliKitStk B
@@ -531,7 +542,7 @@ def OverStageP1OkCliPlacedStmt [LibsignalPlacement] : Prop :=
           StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem)
         (CryptoVerification.E2E.Pqxdh.ResponderClosure.PanicOomProp s0)
 
-def OverClosureUntrustedD2cPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverClosureUntrustedD2cPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop),
@@ -600,7 +611,7 @@ structure ClosureBaseStagesPlacedStmt [LibsignalPlacement]
   pathA : OverClosurePathAPlacedStmt mmpl gh W
   pathB : OverClosurePathBPlacedStmt mmpl gh W
 
-def OverClosurePathAFrozenPlacedStmt [LibsignalPlacement]
+@[expose] def OverClosurePathAFrozenPlacedStmt [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop),
@@ -662,7 +673,7 @@ def OverClosurePathAFrozenPlacedStmt [LibsignalPlacement]
           Steps prog s0 sf → (sf.mem ⊨ P_f ∗ R) →
             (sf.mem ⊨ (withLsFrozen lsmpl (dpPollSpecState K stk')).onPanic y s0 sf ∗ R))
 
-def OverClosurePathBFrozenPlacedStmt [LibsignalPlacement]
+@[expose] def OverClosurePathBFrozenPlacedStmt [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop),

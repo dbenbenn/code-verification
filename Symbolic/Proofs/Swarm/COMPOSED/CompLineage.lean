@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Security.Model
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import all DY.Bytes.Basic
 import all DY.Actions.Network
 import all DY.Actions.ProtocolEvent
@@ -31,7 +31,7 @@ tracking PQXDH handshake origins, stored `TRState` ratchet indices, and receiver
 across transitions of `DY.Libsignal.Composed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -318,7 +318,7 @@ end InertOnPQXDH
 
 /-- Session `s` on `tr` was started by a PQXDH handshake at `doneIdx` (`ComposedEvent.HandshakeSession s doneIdx`)
 with `HandshakeKeysAt tr doneIdx keys`. -/
-def CompSessionOrigin (tr : ExecTrace) (s : SessionInfo) : Prop :=
+@[expose] def CompSessionOrigin (tr : ExecTrace) (s : SessionInfo) : Prop :=
   ∃ doneIdx keys,
     tr.EventLogged (ComposedEvent.HandshakeSession s doneIdx) ∧
     HandshakeKeysAt tr doneIdx keys

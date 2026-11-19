@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecv.HelpersA
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecv.HelpersA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.SHARED.SpqrX.Prost.MessageMerge.AppendX
 import Symbolic.Proofs.Swarm.SHARED.StateSizePure
 
@@ -22,7 +22,7 @@ Proves chain weight growth under `Chain.sendKey` and protobuf wire-decode weight
 `V1State` and `PqRatchetState` across `decodeState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -174,7 +174,7 @@ theorem chain_sendKey_weight_le {hkdf : HkdfFn} {c1 c2 : Chain} {ep : Epoch} {ou
 
 /-! ## `V1State` and `PqRatchetState` Wire Weight Bounds -/
 
-def bytesSum (xs : List Bytes) : Nat := (xs.map List.length).sum
+@[expose] def bytesSum (xs : List Bytes) : Nat := (xs.map List.length).sum
 
 @[scoped simp] theorem bytesSum_nil : bytesSum [] = 0 := rfl
 
@@ -188,17 +188,17 @@ theorem mergeRepeatedBytes_bytesSum_le {wt : Proto.WireType} {xs xs' : List Byte
   rcases except_bind_eq_ok h with ⟨⟨v, bs'⟩, hm, h⟩; rcases Prod.mk.inj (Except.ok.inj h) with ⟨rfl, rfl⟩
   rcases mergeBytes_length_le' hm with ⟨h1, _⟩; simp only [bytesSum_append, bytesSum_cons, bytesSum_nil]; omega
 
-def encWeight (m : PolynomialEncoder) : Nat := bytesSum m.pts + bytesSum m.polys
+@[expose] def encWeight (m : PolynomialEncoder) : Nat := bytesSum m.pts + bytesSum m.polys
 
-def optEncWeight : Option PolynomialEncoder → Nat := optWeight encWeight
+@[expose] def optEncWeight : Option PolynomialEncoder → Nat := optWeight encWeight
 
-def decWeight (m : PolynomialDecoder) : Nat := bytesSum m.pts
+@[expose] def decWeight (m : PolynomialDecoder) : Nat := bytesSum m.pts
 
-def optDecWeight : Option PolynomialDecoder → Nat := optWeight decWeight
+@[expose] def optDecWeight : Option PolynomialDecoder → Nat := optWeight decWeight
 
-def authWeight (m : ProtoAuthenticator) : Nat := m.rootKey.length + m.macKey.length
+@[expose] def authWeight (m : ProtoAuthenticator) : Nat := m.rootKey.length + m.macKey.length
 
-def optAuthWeight : Option ProtoAuthenticator → Nat := optWeight authWeight
+@[expose] def optAuthWeight : Option ProtoAuthenticator → Nat := optWeight authWeight
 
 theorem polyEnc_mergeField_weight_le (d : Nat) (m : PolynomialEncoder) (tag : BitVec 32) (wt : Proto.WireType)
     (rest : Bytes) (m' : PolynomialEncoder) (rest' : Bytes)
@@ -410,27 +410,27 @@ theorem ucCt2Sent_mergeField_le (d : Nat) (m : V1State.Unchunked.Ct2Sent) (tag :
     · rcases except_bind_eq_ok h with ⟨bs', hs, h⟩; rcases Prod.mk.inj (Except.ok.inj h) with ⟨rfl, rfl⟩
       have := GrowthRecv.skipField_length_le hs; omega
 
-def ckKeysUnsampledW (m : V1State.Chunked.KeysUnsampled) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc
+@[expose] def ckKeysUnsampledW (m : V1State.Chunked.KeysUnsampled) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc
 
-def ckKeysSampledW (m : V1State.Chunked.KeysSampled) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingHdr
+@[expose] def ckKeysSampledW (m : V1State.Chunked.KeysSampled) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingHdr
 
-def ckHeaderSentW (m : V1State.Chunked.HeaderSent) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingEk + optDecWeight m.receivingCt1
+@[expose] def ckHeaderSentW (m : V1State.Chunked.HeaderSent) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingEk + optDecWeight m.receivingCt1
 
-def ckCt1ReceivedW (m : V1State.Chunked.Ct1Received) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingEk
+@[expose] def ckCt1ReceivedW (m : V1State.Chunked.Ct1Received) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingEk
 
-def ckEkSentCt1ReceivedW (m : V1State.Chunked.EkSentCt1Received) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingCt2
+@[expose] def ckEkSentCt1ReceivedW (m : V1State.Chunked.EkSentCt1Received) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingCt2
 
-def ckNoHeaderReceivedW (m : V1State.Chunked.NoHeaderReceived) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingHdr
+@[expose] def ckNoHeaderReceivedW (m : V1State.Chunked.NoHeaderReceived) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingHdr
 
-def ckHeaderReceivedW (m : V1State.Chunked.HeaderReceived) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingEk
+@[expose] def ckHeaderReceivedW (m : V1State.Chunked.HeaderReceived) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingEk
 
-def ckCt1SampledW (m : V1State.Chunked.Ct1Sampled) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingCt1 + optDecWeight m.receivingEk
+@[expose] def ckCt1SampledW (m : V1State.Chunked.Ct1Sampled) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingCt1 + optDecWeight m.receivingEk
 
-def ckEkReceivedCt1SampledW (m : V1State.Chunked.EkReceivedCt1Sampled) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingCt1
+@[expose] def ckEkReceivedCt1SampledW (m : V1State.Chunked.EkReceivedCt1Sampled) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingCt1
 
-def ckCt1AcknowledgedW (m : V1State.Chunked.Ct1Acknowledged) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingEk
+@[expose] def ckCt1AcknowledgedW (m : V1State.Chunked.Ct1Acknowledged) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optDecWeight m.receivingEk
 
-def ckCt2SampledW (m : V1State.Chunked.Ct2Sampled) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingCt2
+@[expose] def ckCt2SampledW (m : V1State.Chunked.Ct2Sampled) : Nat := optWeight (fun u => optAuthWeight u.auth) m.uc + optEncWeight m.sendingCt2
 
 theorem ckKeysUnsampled_mergeField_le (d : Nat) (m : V1State.Chunked.KeysUnsampled) (tag : BitVec 32)
     (wt : Proto.WireType) (rest : Bytes) (m' : V1State.Chunked.KeysUnsampled) (rest' : Bytes)
@@ -601,7 +601,7 @@ theorem ckCt2Sampled_mergeField_le (d : Nat) (m : V1State.Chunked.Ct2Sampled) (t
     · rcases except_bind_eq_ok h with ⟨bs', hs, h⟩; rcases Prod.mk.inj (Except.ok.inj h) with ⟨rfl, rfl⟩
       have := GrowthRecv.skipField_length_le hs; omega
 
-def innerStateW : Option V1State.InnerState → Nat
+@[expose] def innerStateW : Option V1State.InnerState → Nat
   | none => 0
   | some (.keysUnsampled v) => ckKeysUnsampledW v | some (.keysSampled v) => ckKeysSampledW v
   | some (.headerSent v) => ckHeaderSentW v | some (.ct1Received v) => ckCt1ReceivedW v
@@ -610,7 +610,7 @@ def innerStateW : Option V1State.InnerState → Nat
   | some (.ekReceivedCt1Sampled v) => ckEkReceivedCt1SampledW v | some (.ct1Acknowledged v) => ckCt1AcknowledgedW v
   | some (.ct2Sampled v) => ckCt2SampledW v
 
-def v1Weight (m : V1State) : Nat := innerStateW m.innerState
+@[expose] def v1Weight (m : V1State) : Nat := innerStateW m.innerState
 
 theorem innerState_merge_le (d : Nat) (cur cur' : Option V1State.InnerState) (tag : BitVec 32)
     (wt : Proto.WireType) (rest rest' : Bytes)
@@ -673,9 +673,9 @@ theorem v1State_mergeField_le (d : Nat) (m : V1State) (tag : BitVec 32)
   · rcases except_bind_eq_ok h with ⟨bs', hs, h⟩; rcases Prod.mk.inj (Except.ok.inj h) with ⟨rfl, rfl⟩
     have := GrowthRecv.skipField_length_le hs; dsimp only [v1Weight]; omega
 
-def pqInnerW : Option PqRatchetState.Inner → Nat | none => 0 | some (.v1 v) => v1Weight v
+@[expose] def pqInnerW : Option PqRatchetState.Inner → Nat | none => 0 | some (.v1 v) => v1Weight v
 
-def stateWeight (m : PqRatchetState) : Nat := optVnWeight m.versionNegotiation + optChainWeight m.chain + pqInnerW m.inner
+@[expose] def stateWeight (m : PqRatchetState) : Nat := optVnWeight m.versionNegotiation + optChainWeight m.chain + pqInnerW m.inner
 
 theorem pqRatchetState_mergeField_le (d : Nat) (m : PqRatchetState) (tag : BitVec 32)
     (wt : Proto.WireType) (rest : Bytes) (m' : PqRatchetState) (rest' : Bytes)

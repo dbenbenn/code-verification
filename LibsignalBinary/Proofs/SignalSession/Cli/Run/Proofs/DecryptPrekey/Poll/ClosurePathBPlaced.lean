@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathB
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathB
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP3ExitFold -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` Poll Matched-Session Path B Spatial Bridges
@@ -24,7 +29,7 @@ Spatial exit folds and Stage P3 -> Stage P4 split (`pathBP4RemAtPlaced`) for mat
 Path B (`opt = some ⟨some sess⟩`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -235,7 +240,7 @@ theorem stageP3ErrPrevEmpty_entails_exit_placed [LibsignalPlacement]
 /-! ## 2. Spatial Split & Exit Fold for Stage P4 (`+0x34dc → x30`) on Path B -/
 
 /-- Caller resources framed across `StageP4MatchedPlacedStmt` (`+0x34dc → s0.readReg64.x30`). -/
-def pathBP4RemAtPlaced [LibsignalPlacement] (B : RunBudgets) {S : RunSem}
+@[expose] def pathBP4RemAtPlaced [LibsignalPlacement] (B : RunBudgets) {S : RunSem}
     (y : DpPollGhostState (dpSlotPollKStatePlaced E2E.HooksE.A0 B S))
     (sp rngPtr whisperMsgPtr : BitVec 64) (whisperG : SignalMessageGhost)
     (msgVer : BitVec 32) (preKeyMsgRem coinsPost : SepProp) : SepProp :=

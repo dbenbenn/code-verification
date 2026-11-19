@@ -40,7 +40,9 @@ def encodeTimespec (ts : Timespec) : List (BitVec 8) :=
     - `[INTENTIONAL_SCOPE]`: if `clk.toNat > 7`, fails closed with
       `.Exception "unmodeled clock_gettime clockid"` without consuming an oracle entry;
     - if `!s.mem.canWrite tp 16`, returns `EFAULT_RET` (`-EFAULT`, matching `put_timespec64`
-      `copy_to_user` in `kernel/time/time.c`) without consuming an oracle entry;
+      `copy_to_user` in `kernel/time/time.c`; on loaded process states `[USER_VA_LIMIT, 2 ^ 64)` is
+      unmapped, so `!s.mem.canWrite tp 16` also rejects `access_ok` overflows) without consuming an
+      oracle entry;
     - `[INTENTIONAL_OVERAPPROX]`: queries `ts := s.oracle.clockGettime s.oracleIdx`, writes the
       16-byte little-endian `struct timespec` (`encodeTimespec ts`), consumes one oracle entry via
       `s.nextOracle`, and returns `0`. No monotonicity is assumed across successive calls. -/

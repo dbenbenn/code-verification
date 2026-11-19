@@ -9,25 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds
+public import LibsignalBinary.Proofs.PeakBudget.CliGroupBounds -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
 public import LibsignalBinary.Proofs.PeakBudget.CliTopBudgetSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedGroupSplit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPhasePeak
-public import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
-public import LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738
-public import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedGroupSplit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightGroupSplit
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptPhasePeak
+import LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
+import LibsignalBinary.Proofs.PeakBudget.W2Seg4CmkSeeds738
+import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
+import LibsignalBinary.Proofs.PeakBudget.W4OuterPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.W4OuterStageHelpers
 public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
+import LibsignalBinary.Proofs.PeakBudget.W4OuterTightSpecAux
 public import LibsignalBinary.Proofs.PeakBudget.W4SlotGroupSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.DropSsLocal1Budget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget
-public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget
+import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.DropSsLocal1Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.Potential
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.SessionDeserializeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordMin.DeserializeCancelBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvC09aWire
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
+import LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec
 
 /-!
 # Witness-Free `recv-prekey` Real Slot Instance
@@ -43,7 +52,7 @@ Witness-free `CliSlotFineSpec.SingleSlotFineSpec` instantiation for the `decrypt
    and an allocating non-vacuity witness (`w4RecvPrekeyRealEnv_nonvacuous_alloc`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -179,45 +188,45 @@ structure W4ArchivedTrial (F : ShaCompress) : Type where
   fc_tr : W4FailedTryDecryptCall F
 
 /-- Curried `SpqrRecvC07TightLinkedEnv F K StatesRecvProtoEnv` at a concrete `SpqrRecvC07Witness F`. -/
-def W4SpqrLinkedStepEnv (F : ShaCompress) (K : MlKem) (stBytes : Bytes)
+@[expose] def W4SpqrLinkedStepEnv (F : ShaCompress) (K : MlKem) (stBytes : Bytes)
     (w : SpqrRecvC07Witness F) (evs : List AllocEvent) : Prop :=
   SpqrRecvC07TightLinkedEnv F K StatesRecvProtoEnv
     stBytes w.pre_pb w.vn w.pb w.st0 w.sckaMsg w.v
     w.xInit w.xNew w.xAdd w.xRk w.xSInto w.xCInto evs
 
 /-- Path B Stage P3 `try_decrypt` envelope (`W2TryDecryptTightEnv` + linked `SpqrRecvC07TightLinkedEnv`). -/
-def W4TryDecryptPathBEnv (F : ShaCompress) (K : MlKem) (td : W4TryDecryptCall F)
+@[expose] def W4TryDecryptPathBEnv (F : ShaCompress) (K : MlKem) (td : W4TryDecryptCall F)
     (evs : List AllocEvent) : Prop :=
   W2TryDecryptTightEnv td.dhCap td.needGrow td.caps
     (W4SpqrLinkedStepEnv F K td.stBytes td.w)
     td.withAddr td.errAlloc td.ctLen evs
 
 /-- Path A / Path C fresh-Bob (`maxSeeds = 12`, zero-skip) Stage P3 `try_decrypt` envelope. -/
-def W4TryDecryptPathACEnv (F : ShaCompress) (K : MlKem) (td : W4TryDecryptCall F)
+@[expose] def W4TryDecryptPathACEnv (F : ShaCompress) (K : MlKem) (td : W4TryDecryptCall F)
     (evs : List AllocEvent) : Prop :=
   W2TryDecryptSeedsEnv 12 td.dhCap td.needGrow td.caps
     (W4SpqrLinkedStepEnv F K td.stBytes td.w)
     td.withAddr td.errAlloc td.ctLen evs
 
 /-- Failed-trial inner `W2TryDecryptFailTightEnv` at linked `SpqrRecvC07TightLinkedEnv`. -/
-def W4TryDecryptFailLinkedEnv (F : ShaCompress) (K : MlKem) (td : W4TryDecryptCall F)
+@[expose] def W4TryDecryptFailLinkedEnv (F : ShaCompress) (K : MlKem) (td : W4TryDecryptCall F)
     (evs : List AllocEvent) : Prop :=
   W2TryDecryptFailTightEnv td.dhCap td.needGrow td.caps
     (W4SpqrLinkedStepEnv F K td.stBytes td.w)
     td.withAddr td.errAlloc td.ctLen evs
 
 /-- Failed-trial `try_decrypt` + drop-cancellation envelope (`Δlive = 0`). -/
-def W4FailedTdCancelEnv (F : ShaCompress) (K : MlKem) (fc : W4FailedTryDecryptCall F)
+@[expose] def W4FailedTdCancelEnv (F : ShaCompress) (K : MlKem) (fc : W4FailedTryDecryptCall F)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
     ConcatEnv (W4TryDecryptFailLinkedEnv F K fc.td) (· = optDeallocListEvs fc.failDropPairs) evs
 
 /-- Archived-trial `PrevDec` deserialization envelope (`SessDeserializeCancelEnv`). -/
-def W4TrialDecEnv (F : ShaCompress) (x : W4ArchivedTrial F) (evs : List AllocEvent) : Prop :=
+@[expose] def W4TrialDecEnv (F : ShaCompress) (x : W4ArchivedTrial F) (evs : List AllocEvent) : Prop :=
   SessDeserializeCancelEnv x.r_dec evs
 
 /-- Archived-trial version-mismatch (`FreeOnlyEvs`) or cloned-session failed `try_decrypt_pq` envelope. -/
-def W4TrialRunEnv (F : ShaCompress) (K : MlKem) (x : W4ArchivedTrial F)
+@[expose] def W4TrialRunEnv (F : ShaCompress) (K : MlKem) (x : W4ArchivedTrial F)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
     W4TryDecryptCloneFailEnv (SegCloneEnv x.G_tr x.ses_tr.state)
@@ -225,7 +234,7 @@ def W4TrialRunEnv (F : ShaCompress) (K : MlKem) (x : W4ArchivedTrial F)
       (· = dropClonedSessionEvents x.G_tr x.ses_tr.state) evs
 
 /-- Archived-trial deterministic `SessionStructure` drop envelope (`Block 6`). -/
-def W4TrialDropEnv (F : ShaCompress) (x : W4ArchivedTrial F) (evs : List AllocEvent) : Prop :=
+@[expose] def W4TrialDropEnv (F : ShaCompress) (x : W4ArchivedTrial F) (evs : List AllocEvent) : Prop :=
   evs = dropSessionStructureLocal1Events x.G_dec x.st_dec
 
 /-- Concrete parameter bundle for the real W4 (`recv-prekey` / `decrypt_prekey`) CLI slot. -/
@@ -263,7 +272,7 @@ structure W4RecvPrekeyRealParams : Type where
   enc_prev1 : List (BitVec 8)
 
 /-- Concrete `W4DecryptPrekeySlotParams` wired to `StoresGhost.opened` and `RecordDeserializeCancelEnv`. -/
-def mkW4RecvPrekeySlotParams (R : W4RecvPrekeyRealParams) :
+@[expose] def mkW4RecvPrekeySlotParams (R : W4RecvPrekeyRealParams) :
     W4DecryptPrekeySlotParams (W4ArchivedTrial R.F) where
   rd := R.rd
   DeserEnv := RecordDeserializeCancelEnv
@@ -305,11 +314,11 @@ def mkW4RecvPrekeySlotParams (R : W4RecvPrekeyRealParams) :
   enc_prev1 := R.enc_prev1
 
 /-- Concrete Path A / Path C Stage P3 `try_decrypt` envelope for `R`. -/
-def W4RecvPrekeyTryDecACEnv (R : W4RecvPrekeyRealParams) (evs : List AllocEvent) : Prop :=
+@[expose] def W4RecvPrekeyTryDecACEnv (R : W4RecvPrekeyRealParams) (evs : List AllocEvent) : Prop :=
   if R.isPathAC then W4TryDecryptPathACEnv R.F R.K R.td_AC evs else False
 
 /-- Concrete `recv-prekey` / `decrypt_prekey` slot envelope (`W4DecryptPrekeySplitSlotEnv`). -/
-def W4RecvPrekeyRealEnv (R : W4RecvPrekeyRealParams) (evs : List AllocEvent) : Prop :=
+@[expose] def W4RecvPrekeyRealEnv (R : W4RecvPrekeyRealParams) (evs : List AllocEvent) : Prop :=
   W4DecryptPrekeySplitSlotEnv (mkW4RecvPrekeySlotParams R) (W4RecvPrekeyTryDecACEnv R) evs
 
 /-! ## Witness-Free Domain Predicates -/
@@ -358,75 +367,75 @@ structure W4RecvPrekeyRealDom (R : W4RecvPrekeyRealParams) : Prop where
 /-! ## Closed `Nat` Constants & Kernel `by decide` Cap Check -/
 
 /-- Closed `c_cur = c_tdB` (`26,766,574` B) for `W2Seeds738` + `uncondHist` `spqr::recv`. -/
-def w4RealFailTdCum : Nat := w2TryDecryptSeeds738Cum 5 true 12 23313687
+@[expose] def w4RealFailTdCum : Nat := w2TryDecryptSeeds738Cum 5 true 12 23313687
 
 /-- Closed `p_cur = p_tdB` (`1,264,538` B) for `uncondHist` `spqr::recv` + `maxOldCap = 2000`. -/
-def w4RealFailTdPeak : Nat := w2TryDecryptTightPeak 2000 605066 621350 65536
+@[expose] def w4RealFailTdPeak : Nat := w2TryDecryptTightPeak 2000 605066 621350 65536
 
 /-- Closed `r_cur = r_tdB = r_tdAC` (`416,000` B) for `try_decrypt`. -/
-def w4RealTdMaxReq : Nat := w2TryDecryptMaxReq 5 2000 302480 65536
+@[expose] def w4RealTdMaxReq : Nat := w2TryDecryptMaxReq 5 2000 302480 65536
 
 /-- Closed `c_tr` (`35,052,216` B) for cloned-session failed trial. -/
-def w4RealTrialCum : Nat := 8277456 + w4RealFailTdCum + 8186
+@[expose] def w4RealTrialCum : Nat := 8277456 + w4RealFailTdCum + 8186
 
 /-- Closed `p_tr` (`2,640,425` B) for cloned-session failed trial. -/
-def w4RealTrialPeak : Nat := 1080975 + fineOptLarge 286196 + w4RealFailTdPeak
+@[expose] def w4RealTrialPeak : Nat := 1080975 + fineOptLarge 286196 + w4RealFailTdPeak
 
 /-- Closed `r_tr` (`416,000` B) for cloned-session failed trial. -/
-def w4RealTrialMaxReq : Nat := max (max (max 208000 286196) w4RealTdMaxReq) 192
+@[expose] def w4RealTrialMaxReq : Nat := max (max (max 208000 286196) w4RealTdMaxReq) 192
 
 /-- Closed `c_tdAC` (`5,890,676` B) for fresh-Bob `try_decrypt` (`maxSeeds = 12`, `0` skipped keys). -/
-def w4RealTdACCum : Nat := w2TryDecryptGenSeeds738Cum 12 5 true 12 3897904
+@[expose] def w4RealTdACCum : Nat := w2TryDecryptGenSeeds738Cum 12 5 true 12 3897904
 
 /-- Closed `l_tdB` (`829,066` B). -/
-def w4RealTdBLive : Nat := w2TryDecryptTightLive 2000 605066 65536
+@[expose] def w4RealTdBLive : Nat := w2TryDecryptTightLive 2000 605066 65536
 
 /-- Closed `l_tdAC` (`518,391` B). -/
-def w4RealTdACLive : Nat := w2TryDecryptTightLive 2000 294391 65536
+@[expose] def w4RealTdACLive : Nat := w2TryDecryptTightLive 2000 294391 65536
 
 /-- Closed `p_tdAC` (`591,927` B). -/
-def w4RealTdACPeak : Nat := w2TryDecryptTightPeak 2000 294391 294391 65536
+@[expose] def w4RealTdACPeak : Nat := w2TryDecryptTightPeak 2000 294391 294391 65536
 
 /-- Concrete closed-`Nat` W4 (`recv-prekey`) `Δcum` bound. -/
-def w4RecvPrekeyRealCum : Nat :=
+@[expose] def w4RecvPrekeyRealCum : Nat :=
   w4DecryptPrekeySplitTightCum 2097152 4096 0 deserCancelFineCum
     w4RealFailTdCum deserCancelFineCum w4RealTrialCum 9923
     w4RealFailTdCum w4RealTdACCum 4096
 
 /-- Concrete closed-`Nat` W4 (`recv-prekey`) `Δlive` bound. -/
-def w4RecvPrekeyRealLive : Nat :=
+@[expose] def w4RecvPrekeyRealLive : Nat :=
   w4DecryptPrekeySplitTightLive 2097152 4096 0 deserCancelFineLive
     2097152 2097152 2457152 w4RealTdBLive w4RealTdACLive
 
 /-- Concrete closed-`Nat` W4 (`recv-prekey`) `Δpeak` bound. -/
-def w4RecvPrekeyRealPeak : Nat :=
+@[expose] def w4RecvPrekeyRealPeak : Nat :=
   w4DecryptPrekeySplitTightPeak 2097152 4096 0 deserCancelFineLive deserCancelFinePeak
     286196 286196 2097152 286196 2097152 16384 2097152 2457152
     w4RealFailTdPeak deserCancelFinePeak w4RealTrialPeak
     w4RealTdBLive w4RealFailTdPeak w4RealTdACLive w4RealTdACPeak
 
 /-- Concrete closed-`Nat` W4 (`recv-prekey`) `maxReq` bound. -/
-def w4RecvPrekeyRealMaxReq : Nat :=
+@[expose] def w4RecvPrekeyRealMaxReq : Nat :=
   w4DecryptPrekeySplitTightMaxReq 2097152 4096 0 deserCancelFineMaxReq
     286196 286196 2097152 286196 2097152 16384 2097152 2457152
     w4RealTdMaxReq deserCancelFineMaxReq w4RealTrialMaxReq 192
     w4RealTdMaxReq w4RealTdMaxReq 4096
 
 /-- Fresh-Bob (`receiverChains = []`) scaled group bound for `SegCloneEnv` (`1,803,209`). -/
-def segCloneFreshBobFineGrpS : Nat :=
+@[expose] def segCloneFreshBobFineGrpS : Nat :=
   senderChainCloneDomFineGrpS + 21 * FineScale
 
 /-- Fresh-Bob (`receiverChains = []`) scaled group bound for `SerializePrev1CancelEnv` (`2,207,481`). -/
-def serializePrev1FreshBobFineGrpS : Nat :=
+@[expose] def serializePrev1FreshBobFineGrpS : Nat :=
   segCloneFreshBobFineGrpS + (11056 + 3 * FineScale) + 3 * FineScale
 
 /-- Scaled group bound (`676,809,815`) for one `W4TrialRunEnv`. -/
-def w4RealTrialFineGrpS : Nat :=
+@[expose] def w4RealTrialFineGrpS : Nat :=
   segCloneDomFineGrpS + w2TryDecryptFailTightGroupS_split_12 + w4ErrTailFineGrpS
 
 /-- Concrete closed-`Nat` W4 (`recv-prekey`) `grpS` bound across all 4 arms of
 `W4DecryptPrekeySplitSlotEnv`. -/
-def w4RecvPrekeyRealGrpS : Nat :=
+@[expose] def w4RecvPrekeyRealGrpS : Nat :=
   let gDeser := deserCancelFineGrpS
   let gCur := w2TryDecryptFailTightGroupS_split_12
   let gDec := deserCancelFineGrpS
@@ -1154,7 +1163,7 @@ theorem w4RecvPrekeyReal_phaseCreditSpec
 /-- Witness-free `SingleSlotFineSpec` for the real W4 (`recv-prekey` / `decrypt_prekey`) slot,
 with zero `PhaseCreditSpec` / `PhaseGroupSpec` / `DeallocCreditSpec` binders and zero
 `SpqrRecvTightDomain` in exported types. -/
-def w4RecvPrekeyReal_singleSlotFineSpec
+@[expose] def w4RecvPrekeyReal_singleSlotFineSpec
     (R : W4RecvPrekeyRealParams) (hDom : W4RecvPrekeyRealDom R) :
     SingleSlotFineSpec (W4RecvPrekeyRealEnv R) where
   cum := w4RecvPrekeyRealCum

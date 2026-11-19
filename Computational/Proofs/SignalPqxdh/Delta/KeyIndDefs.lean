@@ -10,11 +10,13 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingF
-public import Computational.Proofs.SignalPqxdh.Security.Reductions
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingF -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Reductions -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhCoupling
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingE -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthStatements -- proof-setup: allow-public-import
 
 /-!
 # PQXDH Key Indistinguishability with Imperfect KEM Correctness: Hop Statements
@@ -26,7 +28,7 @@ hop obligations for two-key `KeyInd` under `CryptoWellFormedPrimitivesδ` and as
 `pqxdh_key_ind_withδ_of_hops`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,28 +45,28 @@ namespace Proofs.SignalPqxdh.Security.PqxdhDelta
 
 /-- Whether initiator record `i` and responder record `r` share a Kyber pre-key and ciphertext whose
     decapsulation under `r.pqspkSk` differs from `some i.kemSs`. -/
-def isKemCorrPair {S : Setup} (P : Primitives)
+@[expose] def isKemCorrPair {S : Setup} (P : Primitives)
     (i : _root_.Proofs.SignalPqxdh.Security.InitKemRecord S)
     (r : _root_.Proofs.SignalPqxdh.Security.RecvKemRecord) : Bool :=
   decide (r.pqspkPk = i.pqspkPk) && decide (r.kemCt = i.kemCt) &&
     decide (P.kemDecaps r.pqspkSk r.kemCt ≠ some i.kemSs)
 
 /-- KEM correctness failure at flat index `idx = bIdx * N_send_tot + sIdx`. -/
-def hasBadKemCorrRecordsAt (S : Setup) (P : Primitives) (idx : Nat)
+@[expose] def hasBadKemCorrRecordsAt (S : Setup) (P : Primitives) (idx : Nat)
     (initRecs : List (_root_.Proofs.SignalPqxdh.Security.InitKemRecord S))
     (recvRecs : List _root_.Proofs.SignalPqxdh.Security.RecvKemRecord) : Bool :=
   initRecs.any (fun i =>
     (i.sendIdx == idx % S.N_send_tot) &&
     recvRecs.any (fun r => (r.bIdx == idx / S.N_send_tot) && isKemCorrPair P i r))
 
-def hasBadKemCorrRecords (S : Setup) (P : Primitives)
+@[expose] def hasBadKemCorrRecords (S : Setup) (P : Primitives)
     (initRecs : List (_root_.Proofs.SignalPqxdh.Security.InitKemRecord S))
     (recvRecs : List _root_.Proofs.SignalPqxdh.Security.RecvKemRecord) : Bool :=
   (List.range (S.N_spk_tot * S.N_send_tot)).any (fun idx =>
     hasBadKemCorrRecordsAt S P idx initRecs recvRecs)
 
 /-- Single-key KEM correctness experiment against public-key selector `choosePk`. -/
-noncomputable def kemCorrExpProb (P : Primitives) (choosePk : Bytes → Bytes → ProbComp Bytes) :
+@[expose] def kemCorrExpProb (P : Primitives) (choosePk : Bytes → Bytes → ProbComp Bytes) :
     ProbComp Bool := do
   let (pk, sk) ← sampleKemKeyGen P
   let pk' ← choosePk pk sk
@@ -98,7 +100,7 @@ theorem kemCorrExpProb_le (P : Primitives) (δ : ℝ) (hδ : KemDeltaCorrectReal
     · simp [hpk]
 
 /-- Two-key `G0 -> G3` hop bound under `CryptoWellFormedPrimitivesδ`. -/
-def KIHopG0G3Stmt (S : Setup) : Prop :=
+@[expose] def KIHopG0G3Stmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b),
       |KeyIndAdvantage S P A.1 - keyIndAdvG3 S P A.1| ≤
@@ -108,7 +110,7 @@ def KIHopG0G3Stmt (S : Setup) : Prop :=
         ((S.N_spk_tot * (S.N_spk_tot - 1) : ℕ) : ℝ) / (2 : ℝ) ^ 256
 
 /-- Two-key `GapDH` bound on `badKeyIndFgAny4` under `CryptoWellFormedPrimitivesδ`. -/
-def KIGapDhStmt (S : Setup) : Prop :=
+@[expose] def KIGapDhStmt (S : Setup) : Prop :=
   ∀ (b : QueryBudget) (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (A : BoundedAdv (KeyIndAdversary S) b),
       (𝒟[runKeyIndFgSim S P A.1 >>= fun x =>
@@ -120,7 +122,7 @@ def KIGapDhStmt (S : Setup) : Prop :=
 
 /-- State-level implication from `ValidTagState` and `lazyStop` to `badKeyIndFgAny4`,
     `isKeyIndG3Abort`, or `hasBadKemCorrRecords`. -/
-def KIStopStmt (S : Setup) : Prop :=
+@[expose] def KIStopStmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (maxLen : ℕ) (adv : KeyIndAdvCutoffState S),
       ValidTagState P maxLen adv →
@@ -130,7 +132,7 @@ def KIStopStmt (S : Setup) : Prop :=
       hasBadKemCorrRecords S P adv.shCr.initKemRecs adv.shCr.recvKemRecs = true
 
 /-- Up-to-bad `G3 -> G3.5` coupling bound including `hasBadKemCorrRecords`. -/
-def KICouplingStmt (S : Setup) : Prop :=
+@[expose] def KICouplingStmt (S : Setup) : Prop :=
   ∀ (P : Primitives) (maxLen : ℕ) (A : KeyIndAdversary S),
     (∀ (testReal : Bool),
       let full := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
@@ -147,7 +149,7 @@ def KICouplingStmt (S : Setup) : Prop :=
         pure (hasBadKemCorrRecords S P x.2.2.initKemRecs x.2.2.recvKemRecs)] {true}).toReal
 
 /-- Per-index reduction of `hasBadKemCorrRecordsAt` in `runKeyIndShCrSim` to `kemCorrExpProb`. -/
-def KICorrAtStmt (S : Setup) : Prop :=
+@[expose] def KICorrAtStmt (S : Setup) : Prop :=
   ∀ (P : Primitives), CryptoWellFormedPrimitivesδ P →
     ∀ (A : KeyIndAdversary S) (idx : ℕ), idx < S.N_spk_tot * S.N_send_tot →
       ∃ choosePk : Bytes → Bytes → ProbComp Bytes,

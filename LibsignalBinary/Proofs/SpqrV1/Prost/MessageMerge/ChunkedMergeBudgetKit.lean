@@ -10,15 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommon
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Shared Budget Combinators and `SpqrMergeLoopEnv` Kit
@@ -28,7 +29,7 @@ Reusable `SepWPpLscro` + `VmPreserved` stepping and call combinators together wi
 budget proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -60,7 +61,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
 
 /-- Panic postcondition predicate for budget-threaded `SepWPp` specs (`onPanic = ⌜False⌝`).
     Kept as a `def` (not `abbrev`) so `SepWPpLscro ... (WppPanicFalse R)` unifies `R` rigidly. -/
-def WppPanicFalse (R : SepProp) : State → SepProp → Prop :=
+@[expose] def WppPanicFalse (R : SepProp) : State → SepProp → Prop :=
   fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (⌜False⌝ : SepProp) ∗ R)
 
 theorem wppPanicFalse_frame {R F : SepProp} {sf : State} :
@@ -177,7 +178,7 @@ private theorem header_buf_entails_vecU8At_kit (A : RustAlloc) (a cap ptr : BitV
       vecU8Buf A cap ptr bs ⊢ vecU8At A a cap ptr bs := by
   rw [vecU8At_eq_header_sep_buf_kit, vecHeader]; sep_entail
 
-def authMacKeyCapAtKit (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def authMacKeyCapAtKit (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (auth : ProtoAuthenticator) : SepProp :=
   ∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64,
     ⌜BytesMergeCapOk cap bsLen⌝ ∗ vecU8At A (a + 0x18#64) cap ptr auth.macKey
@@ -237,35 +238,6 @@ theorem sepWPpLscro_pure_elim {pl : Obj.MultiPlacement} {prog : Program} {ret : 
     (h : φ → SepWPpLscro pl prog ret s P Q Qp) :
     SepWPpLscro pl prog ret s (⌜φ⌝ ∗ P) Q Qp :=
   fun hli => SepWPp.pure_left fun hφ => h hφ hli
-
-theorem sepWPpLscro_exists_elim {pl : Obj.MultiPlacement} {prog : Program} {ret : BitVec 64}
-    {s : State} {α : Sort _} {P : α → SepProp} {Q Qp : State → SepProp → Prop}
-    (h : ∀ a, SepWPpLscro pl prog ret s (P a) Q Qp) :
-    SepWPpLscro pl prog ret s (∃∗ a, P a) Q Qp := by
-  intro hli R hm hL
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm
-  rcases hm with ⟨a, hma⟩
-  exact h a hli R hma hL
-
-theorem call_budget {pl : Obj.MultiPlacement} {prog : Program} {ret : BitVec 64} {s : State}
-    {P : SepProp} {Q : State → SepProp → Prop} {R : SepProp}
-    {α : Type} {entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {φ : Prop} {T F : SepProp}
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      SepWPpLscro pl prog ret sf (spec.post x s sf ∗ F) Q (WppPanicFalse R))
-    (hexit_eq : ∀ sf code, spec.onExit x code s sf = ⌜False⌝ := by intros; rfl)
-    (hpanic_eq : ∀ sf, spec.onPanic x s sf = ⌜False⌝ := by intros; rfl)
-    (hoom_eq : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPpLscro pl prog ret s P Q (WppPanicFalse R) :=
-  SepWPpLscro.call_frame hcall hpc hrun hsp hlr hspec hφ hP
-    (fun sf code _ _ hex => by rw [hexit_eq sf code] at hex; exact not_satisfies_false_sepConj hex)
-    (fun sf _ => by rw [hpanic_eq sf]; exact wppPanicFalse_frame)
-    hnext
-    (fun sf _ _ hoom => by rw [hoom_eq sf] at hoom; exact (not_satisfies_false_sepConj hoom).elim)
 
 theorem call_budget_lscro {pl : Obj.MultiPlacement} {prog : Program} {ret : BitVec 64} {s : State}
     {P : SepProp} {Q : State → SepProp → Prop} {R : SepProp}
@@ -442,7 +414,7 @@ theorem pool_spqr_append {M : AllocCostModel} (A : RustCliAllocBudget M)
   exact pool_spqr_mono A lim st hvm hf (h₁.append h₂)
 
 /-- Opaque-friendly budget pool bundle at fuel `f` and state `s`. -/
-def spqrPoolAt {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def spqrPoolAt {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (f maxLen polyBound : Nat) (s : State) : SepProp :=
   ∃∗ evs : List AllocEvent,
     ⌜SpqrMergeLoopEnv f maxLen polyBound evs⌝ ∗
@@ -453,14 +425,6 @@ theorem spqrPoolAt_of_vmPreserved {M : AllocCostModel} {A : RustCliAllocBudget M
     (hvm : VmPreserved s s') :
     spqrPoolAt A lim st f maxLen polyBound s' = spqrPoolAt A lim st f maxLen polyBound s := by
   simp only [spqrPoolAt, A.pool_of_vmPreserved hvm]
-
-theorem spqrPoolAt_mono {M : AllocCostModel} (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (st : M.σ) {f₁ f₂ maxLen polyBound : Nat} {s sf : State}
-    (hvm : VmPreserved s sf) (hf : f₁ ≤ f₂) :
-    spqrPoolAt A lim st f₁ maxLen polyBound s ⊢ spqrPoolAt A lim st f₂ maxLen polyBound sf := by
-  unfold spqrPoolAt
-  exact Entails.sepExists_elim fun evs => Entails.pure_left fun hevs =>
-    pool_spqr_mono A lim st hvm hf hevs
 
 theorem pool_entails_spqrPoolAt_snoc {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) {f₁ f₂ maxLen polyBound : Nat}

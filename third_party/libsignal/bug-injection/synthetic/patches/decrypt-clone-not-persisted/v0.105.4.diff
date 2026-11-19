@@ -1,0 +1,10 @@
+--- a/rust/protocol/src/session_management.rs
++++ b/rust/protocol/src/session_management.rs
+@@ -426,7 +426,6 @@ pub(crate) fn try_decrypt_from_record<R: Rng + CryptoRng>(
+                             .sender_ratchet_key_for_logging()
+                             .expect("successful decrypt always has a valid base key"),
+                     );
+-                    record.set_session_state(current_state);
+                     return Ok(ptext);
+                 }
+                 Err(e @ SignalProtocolError::DuplicatedMessage(_, _)) => return Err(e),

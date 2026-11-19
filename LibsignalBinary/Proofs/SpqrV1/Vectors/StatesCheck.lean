@@ -17,9 +17,9 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.Poly
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Kdf
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Statements
-public import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol
+public import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol -- proof-setup: allow-public-import
 public meta import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
-public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol
+public meta import LibsignalBinary.Proofs.SpqrV1.Vectors.Protocol -- proof-setup: allow-public-import
 
 
 /-!
@@ -30,14 +30,14 @@ Checks `States`, wire serialization, ML-KEM wrappers, and assembled `spqrDeps` (
 `Vectors/Protocol.lean`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Vectors.StatesCheck
 
 open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1.Vectors.Protocol
 
-def toVec? (n : Nat) (xs : Bytes) : Option (List.Vector (BitVec 8) n) :=
+@[expose] def toVec? (n : Nat) (xs : Bytes) : Option (List.Vector (BitVec 8) n) :=
   if h : xs.length = n then some ⟨xs, h⟩ else none
 
 instance : Repr Chunk where
@@ -56,12 +56,12 @@ structure SysDecoder where
   is_complete : Bool
   deriving DecidableEq, Repr
 
-def lookupTestChunk (idx : BitVec 16) : List (BitVec 16 × Bytes) → Option Bytes
+@[expose] def lookupTestChunk (idx : BitVec 16) : List (BitVec 16 × Bytes) → Option Bytes
   | [] => none
   | (k, v) :: rest => if k == idx then some v else lookupTestChunk idx rest
 
 /-- Reconstruct `numChunks` consecutive 32-byte chunks `0 .. numChunks - 1` if all are present. -/
-def reconstructTestChunks (numChunks : Nat) (chunks : List (BitVec 16 × Bytes)) : Option Bytes :=
+@[expose] def reconstructTestChunks (numChunks : Nat) (chunks : List (BitVec 16 × Bytes)) : Option Bytes :=
   let rec go (i : Nat) (fuel : Nat) (acc : Bytes) : Option Bytes :=
     match fuel with
     | 0 => some acc
@@ -72,7 +72,7 @@ def reconstructTestChunks (numChunks : Nat) (chunks : List (BitVec 16 × Bytes))
   go 0 numChunks []
 
 /-- Deserialize 34-byte `(idx_hi :: idx_lo :: 32B)` records from `pb.pts[0]` back into `chunks`. -/
-def deserializeTestChunks : Nat → Bytes → Option (List (BitVec 16 × Bytes))
+@[expose] def deserializeTestChunks : Nat → Bytes → Option (List (BitVec 16 × Bytes))
   | _, [] => some []
   | 0, _ :: _ => none
   | fuel + 1, hi :: lo :: rest =>
@@ -88,7 +88,7 @@ def deserializeTestChunks : Nat → Bytes → Option (List (BitVec 16 × Bytes))
 /-- Test `PolyApi` instance for wire and in-order systematic chunking checks, using `Chunk`,
 `PolynomialError`, and `EncodingError` from `Poly.lean` and `PolynomialEncoder` /
 `PolynomialDecoder` from `Proto.lean`. -/
-def testPolyApi : PolyApi where
+@[expose] def testPolyApi : PolyApi where
   Chunk := Chunk
   PolynomialError := PolynomialError
   EncodingError := EncodingError
@@ -157,7 +157,7 @@ def testPolyApi : PolyApi where
 /-- Protobuf-identity `PolyApi` storing `Proto.lean`'s `PolynomialEncoder` and `PolynomialDecoder`
 directly so `States.from_pb` and `States.into_pb` can be checked directly against every real
 Rust-serialized `V1State` in `protocolRuns`, `tamperedRecvVectors`, and `stateRoundTripVectors`. -/
-def pbIdentityPolyApi : PolyApi where
+@[expose] def pbIdentityPolyApi : PolyApi where
   Chunk := Chunk
   PolynomialError := PolynomialError
   EncodingError := EncodingError
@@ -190,7 +190,7 @@ def pbIdentityPolyApi : PolyApi where
 /-- Build a lookup-table `MlKem` from a list of recorded `MlKemCallVec` entries. `keyPair` is the
 recorded `dk` (libcrux's whole 2400-byte `KeyPairCompressedBytes`); the recorded `hdr` / `ek` are
 not used: `K.fromSeed` slices them out of `dk`, and `checkMlKemCall` checks they agree. -/
-def mlKemOfCalls (calls : List MlKemCallVec) : MlKem where
+@[expose] def mlKemOfCalls (calls : List MlKemCallVec) : MlKem where
   keyPair seed :=
     let seedL := seed.toList
     match calls.findSome? (fun
@@ -244,7 +244,7 @@ def mlKemOfCalls (calls : List MlKemCallVec) : MlKem where
 
 /-- `AuthApi` for replaying `runInOrder` through `States.send` and `States.recv`, using
 `ProtoAuthenticator` from `Auth.lean` / `Proto.lean`. -/
-def replayAuthApi : AuthApi where
+@[expose] def replayAuthApi : AuthApi where
   Authenticator := ProtoAuthenticator
   new := fun _ _ => .ok { rootKey := List.replicate 32 0#8, macKey := List.replicate 32 0#8 }
   update := fun auth _ _ => .ok auth
@@ -269,7 +269,7 @@ def replayAuthApi : AuthApi where
 `spqrDecodeState` and that any `v1` inner state round-trips through `States.from_pb` and
 `States.into_pb` with `States.from_pb pbIdentityPolyApi replayAuthApi st.into_pb == .ok st`
 and `st.into_pb == v1Pb`. -/
-def checkRealV1StatePbRoundTrip (stateBytes : Bytes) : Bool :=
+@[expose] def checkRealV1StatePbRoundTrip (stateBytes : Bytes) : Bool :=
   match spqrDecodeState stateBytes with
   | .error _ => false
   | .ok stPb =>
@@ -284,7 +284,7 @@ def checkRealV1StatePbRoundTrip (stateBytes : Bytes) : Bool :=
 
 /-- Check that a single `MlKemCallVec` matches `States.lean`'s `incremental_mlkem768` wrappers
 (`generate`, `encaps1`, `encaps2`, `decaps`, `ek_matches_header`, and `issue1275` check). -/
-def checkMlKemCall (c : MlKemCallVec) : Bool :=
+@[expose] def checkMlKemCall (c : MlKemCallVec) : Bool :=
   let K := mlKemOfCalls [c]
   match c with
   | .fromSeed seed hdr ek dk =>
@@ -311,7 +311,7 @@ round-trips through `msg_preamble`, `Message.deserialize`, and `Message.serializ
 that both `step.stateBytes` and `step.newState` round-trip through `spqrDecodeState` and
 `States.from_pb` / `States.into_pb`, and that all `mlkemCalls` in the step match `States.lean`'s
 wrappers and RNG consumption. -/
-def checkProtocolStepWireAndMlKem (step : ProtocolStepVec) : Bool :=
+@[expose] def checkProtocolStepWireAndMlKem (step : ProtocolStepVec) : Bool :=
   let wireBytes := if step.op == "send" then step.msg else step.msgOrTape
   let wireOk :=
     match msg_preamble wireBytes with
@@ -372,14 +372,14 @@ def protocolMlKemCalls : List MlKemCallVec :=
 #guard !(tamperedRecvVectors.flatMap (·.mlkemCalls)).any isFromSeedCall
 
 /-- Dummy HKDF for chain bounds/replay checks (`KeyJump`, `KeyAlreadyRequested`) that fail before KDF. -/
-def dummyChainHkdf : HkdfFn := fun _ _ _ n => List.replicate n 0#8
+@[expose] def dummyChainHkdf : HkdfFn := fun _ _ _ n => List.replicate n 0#8
 
 /-- Fail-closed check of all 50 `tamperedRecvVectors` across all 9 `expectedError` categories
 (`MsgDecode`, `MinimumVersion`, `VersionMismatch`, `StateDecode`, `EpochOutOfRange`, `KeyJump`,
 `KeyAlreadyRequested`, `ErroneousDataReceived`, `MacVerifyFailed`) against `msg_preamble`,
 `Version`, `Message.deserialize`, `spqrDecodeState`, `Chain.fromPb`, `Chain.recvKey`,
 `States.from_pb`, and `States.recv`. -/
-def checkTamperedWire (v : TamperedRecvVec) : Bool :=
+@[expose] def checkTamperedWire (v : TamperedRecvVec) : Bool :=
   match v.expectedError with
   | "MsgDecode" =>
     match msg_preamble v.tamperedMsg with
@@ -467,15 +467,8 @@ def checkTamperedWire (v : TamperedRecvVec) : Bool :=
 
 #guard tamperedRecvVectors.all checkTamperedWire
 
-theorem tamperedRecv_wire_ok :
-    ((tamperedRecvVectors.filter fun v =>
-        v.expectedError == "MsgDecode" ||
-        v.expectedError == "MinimumVersion" ||
-        v.expectedError == "VersionMismatch").all checkTamperedWire) = true := by
-  decide +kernel
-
 /-- Extract the wire shape `(epoch, msgTypeU8, chunkIdx?)` of a `Message`. -/
-def messageShape {P : PolyApi} (m : Message P) : Epoch × BitVec 8 × Option (BitVec 16) :=
+@[expose] def messageShape {P : PolyApi} (m : Message P) : Epoch × BitVec 8 × Option (BitVec 16) :=
   let t := (MessageType.from_payload m.payload).toU8
   let idx? := match m.payload with
     | .hdr c | .ek c | .ekCt1Ack c | .ct1 c | .ct2 c => some (P.chunkIndex c)
@@ -578,7 +571,7 @@ def replayRunInOrder : Bool :=
 /-- Check that `initialState` and `currentVersion` (`Top.lean`) with the real assembled `spqrDeps`
 reproduce `aliceInitialState` and `bobInitialState` across all `protocolRuns`. -/
 def checkAssembledInitialState (run : ProtocolRunVec) : Bool :=
-  let deps := spqrDeps Tests.sha256Compress (mlKemOfCalls [])
+  let deps := spqrDeps sha256Compress (mlKemOfCalls [])
   let authKey := (run.aliceInitialState.drop 4).take 32
   let paramsA : Params := {
     direction := .A2B
@@ -602,14 +595,14 @@ def checkAssembledInitialState (run : ProtocolRunVec) : Bool :=
 #guard protocolRuns.all checkAssembledInitialState
 
 /-- Check a single `ProtocolStepVec` against the real assembled `send` / `recv` (`Top.lean`)
-(with `spqrDeps Tests.sha256Compress` and `spqrHkdfWith Tests.sha256Compress`),
+(with `spqrDeps sha256Compress` and `spqrHkdfWith sha256Compress`),
 `spqrV1Assembled`, and `spqrV1RecvAssembled`. -/
 def checkAssembledProtocolStep (step : ProtocolStepVec) : Bool :=
   let K := mlKemOfCalls step.mlkemCalls
-  let deps := spqrDeps Tests.sha256Compress K
-  let hkdf := spqrHkdfWith Tests.sha256Compress
-  let model := spqrV1Assembled Tests.sha256Compress K
-  let recvModel := spqrV1RecvAssembled Tests.sha256Compress K
+  let deps := spqrDeps sha256Compress K
+  let hkdf := spqrHkdfWith sha256Compress
+  let model := spqrV1Assembled sha256Compress K
+  let recvModel := spqrV1RecvAssembled sha256Compress K
   if step.op == "send" then
     send deps hkdf step.stateBytes step.msgOrTape ==
       (.ok { state := step.newState, msg := step.msg, key := step.key }, []) &&
@@ -638,10 +631,10 @@ def checkAssembledProtocolStep (step : ProtocolStepVec) : Bool :=
 `spqrV1Assembled`, and `spqrV1RecvAssembled`. -/
 def checkAssembledTamperedRecv (v : TamperedRecvVec) : Bool :=
   let K := mlKemOfCalls v.mlkemCalls
-  let deps := spqrDeps Tests.sha256Compress K
-  let hkdf := spqrHkdfWith Tests.sha256Compress
-  let model := spqrV1Assembled Tests.sha256Compress K
-  let recvModel := spqrV1RecvAssembled Tests.sha256Compress K
+  let deps := spqrDeps sha256Compress K
+  let hkdf := spqrHkdfWith sha256Compress
+  let model := spqrV1Assembled sha256Compress K
+  let recvModel := spqrV1RecvAssembled sha256Compress K
   let isStateDec := v.expectedError == "StateDecode"
   let modelOk :=
     recvModel.recv v.stateBytes v.tamperedMsg == .error isStateDec &&

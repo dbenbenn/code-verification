@@ -12,10 +12,10 @@ module
 public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedDrSessionLifter -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.HaltedDrTrackerDsl -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.LocalSessionStep -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.LocalSessionStep
 public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
-public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
+import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
 import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDslBase
 import Computational.Proofs.E2E.Dsl.M3SessionSize
 
@@ -588,45 +588,6 @@ private theorem haltedDrCrArmC_size_rel {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh
   dsimp only [haltedDrCrArmC, runLiftedCrCore, dummySmQE, dummyR1E, dummyR2E, dummyR3E,
     Comp.size, Expr.size, Expr.v0, Expr.v1, Expr.v5]
   rw [renComp_size, liftE2ECoinComp_size]
-  omega
-
-theorem haltedDrDlArmC_size_le {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
-    {C : Crypto} {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {ι : Type} {T : OracleSpec ι} (I : Iface (atomicSig ℓ Pt) T)
-    (hsmp : I.smp = atomicBaseSamplers ℓ Pt) (q : ℕ) {Γ : List (Ty (atomicSig ℓ Pt))}
-    (gsE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (gsAtomicTy ℓ Pt))
-    (shE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (sessHTy ℓ Pt))
-    (dlArgE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (.prod .bool (B 32))) :
-    (haltedDrDlArmC I hsmp q gsE shE dlArgE).size ≤
-      gsE.size + shE.size + dlArgE.size + 20 * bits q + 32500 := by
-  have hrel := haltedDrDlArmC_size_rel I hsmp q gsE shE dlArgE
-  have hdl := (size_dl_ij_cr_core ℓ (Pt := Pt) P C K decT encT q 0).2.1
-  omega
-
-theorem haltedDrIjArmC_size_le {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
-    {C : Crypto} {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {ι : Type} {T : OracleSpec ι} (I : Iface (atomicSig ℓ Pt) T)
-    (hsmp : I.smp = atomicBaseSamplers ℓ Pt) (q qep : ℕ) {Γ : List (Ty (atomicSig ℓ Pt))}
-    (gsE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (gsAtomicTy ℓ Pt))
-    (shE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (sessHTy ℓ Pt))
-    (ijArgE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (.prod .bool (B 32))) :
-    (haltedDrIjArmC I hsmp q qep gsE shE ijArgE).size ≤
-      gsE.size + shE.size + ijArgE.size + 17 * bits q + 5 * bits qep + 32070 := by
-  have hrel := haltedDrIjArmC_size_rel I hsmp q qep gsE shE ijArgE
-  have hij := (size_dl_ij_cr_core ℓ (Pt := Pt) P C K decT encT q qep).2.2.1
-  omega
-
-theorem haltedDrCrArmC_size_le {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
-    {C : Crypto} {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {ι : Type} {T : OracleSpec ι} (I : Iface (atomicSig ℓ Pt) T)
-    (hsmp : I.smp = atomicBaseSamplers ℓ Pt) (q : ℕ) {Γ : List (Ty (atomicSig ℓ Pt))}
-    (gsE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (gsAtomicTy ℓ Pt))
-    (shE : Expr (atomicE2EOps ℓ P C K decT encT) Γ (sessHTy ℓ Pt))
-    (crArgE : Expr (atomicE2EOps ℓ P C K decT encT) Γ .bool) :
-    (haltedDrCrArmC I hsmp q gsE shE crArgE).size ≤
-      gsE.size + shE.size + crArgE.size + 17 * bits q + 32070 := by
-  have hrel := haltedDrCrArmC_size_rel I hsmp q gsE shE crArgE
-  have hcr := (size_dl_ij_cr_core ℓ (Pt := Pt) P C K decT encT q 0).2.2.2
   omega
 
 theorem haltedDrRecvTailC_size_le {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}

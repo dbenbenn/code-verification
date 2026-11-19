@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.DhBlockWp507Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudgetCore
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetWp
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.DhBlockWp507Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMainBudgetCore -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetWp -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib.ProgramReflection -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
@@ -26,6 +26,7 @@ import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBlocks
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepRecvChain
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `VmPreserved` DH Ratchet Sub-Block WP Lemmas on Block `507`
@@ -34,7 +35,7 @@ import ProofLib.SepLogic.WPp
 Segment `S3` of `try_decrypt_with_state::<signal_session_handshake::Coins>` (Block `507`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -152,7 +153,7 @@ private theorem hchk_507 : VerifiedLibraries.RustStd.checkBlockNoSvc0 blkLib_508
   rfl_kernel
 
 set_option maxHeartbeats 1600000 in
-def dhStepBlockVmWp_507 [LibsignalPlacement] (H : String → Option (State → State)) :
+@[expose] def dhStepBlockVmWp_507 [LibsignalPlacement] (H : String → Option (State → State)) :
     DhStepBlockVmWp ((blkPC_508).rebase (blkPl_508).base H) (blkPl_508).base
       (lsmpl.base 618) where
   missingScAddr := (dhStepBlockWp_507 H).missingScAddr

@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.ElfBindingSha256 -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Witnesses.CliShapePlaced
 public import Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.ImplTrace
+import Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.ShaGuard
 
 /-!
 # Placed 3-Call Small-Subgroup CLI Implementation Trace Builder
@@ -34,14 +37,16 @@ open DY.Libsignal.Composed.Refinement
   (parsePreKeyWire sentBody PqFromHonest)
 open DY.Libsignal.Composed.Refinement.Cli
   (CliCall CliTurn DirectorySnapshot ValidCall InputsFor FilesBounded StdinBounded BobCallAllowed
-   PreKeyNoMatch CliTraces HonestBundleDir scrub bundleBlob aliceUuid bobUuid initDirs runInput
-   runEventOf)
+   PreKeyNoMatch CliTraces HonestBundleDir RealHooksAgreeOnInput scrub bundleBlob aliceUuid bobUuid
+   initDirs runInput runEventOf)
+open Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.ShaGuard
+  (realHooksAgreeOnInput_hbInp0 realHooksAgreeOnInput_hbInp1 realHooksAgreeOnInput_hbInp2)
 open CryptoVerification.SignalSession (filesOf)
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open Symbolic.BugInjection (PQXDHSpqrSetup TorsionShiftsRecorded cliCompShapePlaced)
 open Symbolic.BugInjection.Disproofs.Hyp.FrozenSSC.Interp0 (compI0)
 open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable
-  (compHooks0 cliCompFitsPinned compRecordsI0)
+  (compHooks0 CliSetupMatchesPinned compRecordsI0)
 open Symbolic.BugInjection.Proofs.Common443.CompRX0SS38 (bunBytes bunBytes_eq)
 open Symbolic.BugInjection.Proofs.Common443.CompSmallSubgroupTrace
   (bundleFast sentWireBytes highBitWireBytes highBitWireBytes_eq highBit_pqFromHonest)
@@ -56,7 +61,7 @@ open Symbolic.Proofs.Tests.Refinement.Cli
    bobPreKeyFiles_cliFilePath commonFiles_alice_bounded commonFiles_bob_bounded
    bobPreKeyFiles_bounded initDirs_alice_no_session)
 open Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.ImplTrace
-  (cliCompFits_of_pinned compRecordsI0_wf_of_plausible cliCompFitsPinned_compI0_of_plausible
+  (cliSetupMatches_of_pinned compRecordsI0_wf_of_plausible cliSetupMatchesPinned_compI0_of_plausible
    invertsGuarded_of_noInverts checkCanonicalPreKey canonicalPreKey_of_check
    checkRecvStdinBounded stdinBounded_recv_of_check canonicalPreKey_head_ne_whisper
    scrubList scrub_filesOf_eq_filesOf_scrubList ValidCall0Files ValidCall1Files
@@ -127,7 +132,7 @@ private theorem after_alice_mkTurn {w : PQXDHSpqrSetup} {aDir bDir outDir : Dire
   refine cliTurn_mk_eq (funext fun q => ?_) (by cases c.cmd <;> rfl) rfl
   by_cases hqa : q = "alice" <;> simp [hqa]
 
-/-- Builds `(cliCompShapePlaced mpl mmpl).ImplHalf` at `cliCompFitsPinned w` from three
+/-- Builds `(cliCompShapePlaced mpl mmpl).ImplHalf` at `CliSetupMatchesPinned w` from three
 `cliRunPlacedSig` executions (`init`, `send`, `recv`) with arbitrary Call 1 and Call 2 output
 snapshots. -/
 theorem ss_impl_half_pinned_of_three_calls_dirs_placed
@@ -150,11 +155,15 @@ theorem ss_impl_half_pinned_of_three_calls_dirs_placed
     (hRun1 : cliRunPlacedSig mpl mmpl H compHooks0 (ssInp1 files0) =
       some (.exited 0 ssC1Out outDir1))
     (hRun2 : cliRunPlacedSig mpl mmpl H compHooks0 (ssInp2 w c2Msg ssC2Coins) =
-      some (.exited 0 ssC2Out outDir2)) :
-    (cliCompShapePlaced mpl mmpl).ImplHalf (cliCompFitsPinned w) H evs := by
-  have hFits := cliCompFitsPinned_compI0_of_plausible w hPlaus hTor
-  have hwf := compRecordsI0_wf_of_plausible w hPlaus
-  refine ⟨(compI0, compHooks0), compRecordsI0 w, hFits, ⟨hFits.2.1, hFits.2.2⟩, ?_, ?_⟩
+      some (.exited 0 ssC2Out outDir2))
+    (hSha0 : RealHooksAgreeOnInput compHooks0 (ssInp0 w))
+    (hSha1 : RealHooksAgreeOnInput compHooks0 (ssInp1 files0))
+    (hSha2 : RealHooksAgreeOnInput compHooks0 (ssInp2 w c2Msg ssC2Coins))
+    (hw : w.withOpk = false := by rfl) :
+    (cliCompShapePlaced mpl mmpl).ImplHalf (CliSetupMatchesPinned w) H evs := by
+  have hFits := cliSetupMatchesPinned_compI0_of_plausible w hPlaus hTor hw
+  have hwf := compRecordsI0_wf_of_plausible w hPlaus hw
+  refine ⟨(compI0, compHooks0), compRecordsI0 w, hFits, ⟨hFits.2.1, hFits.2.2, rfl, rfl⟩, ?_, ?_⟩
   ·
     rw [← hEvs]
     have hHonBun : HonestBundleDir compI0 (compRecordsI0 w) (ssBundle w) := by
@@ -271,13 +280,17 @@ theorem ss_impl_half_pinned_of_three_calls_dirs_placed
       unfold runEventOf runInput ssCall2 evRecv
       rw [rngMsg39_eq_ssC2Coins, acceptMsg40_eq_ssC2Out]
       rfl
+    have hrunEq := LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.cliRunPlacedSig_eq mpl mmpl H compHooks0
     unfold cliEvents
     rw [← hEv0, ← hEv1, ← hEv2]
-    refine CliTraces.step (leaks := []) (fun _ h => nomatch h) hVal0 hInp0 hRun0 ?_
+    refine CliTraces.step (leaks := []) (fun _ h => nomatch h) hVal0 hInp0
+      ⟨(congrFun hrunEq _).symm.trans hRun0, hSha0⟩ ?_
     rw [hAfter0]
-    refine CliTraces.step (leaks := []) (fun _ h => nomatch h) hVal1 hInp1 hRun1 ?_
+    refine CliTraces.step (leaks := []) (fun _ h => nomatch h) hVal1 hInp1
+      ⟨(congrFun hrunEq _).symm.trans hRun1, hSha1⟩ ?_
     rw [hAfter1]
-    refine CliTraces.step (leaks := []) (fun _ h => nomatch h) hVal2 hInp2 hRun2 ?_
+    refine CliTraces.step (leaks := []) (fun _ h => nomatch h) hVal2 hInp2
+      ⟨(congrFun hrunEq _).symm.trans hRun2, hSha2⟩ ?_
     exact CliTraces.done _
   ·
     rw [← hEvs]
@@ -307,10 +320,15 @@ theorem ss_impl_half_pinned_of_three_calls_placed
     (hRun0 : cliRunPlacedSig mpl mmpl H compHooks0 (ssInp0 w) = some (ssOut0 files0))
     (hRun1 : cliRunPlacedSig mpl mmpl H compHooks0 (ssInp1 files0) = some (ssOut1 files1))
     (hRun2 : cliRunPlacedSig mpl mmpl H compHooks0 (ssInp2 w c2Msg ssC2Coins) =
-      some (ssOut2 ssC2Out files2)) :
-    (cliCompShapePlaced mpl mmpl).ImplHalf (cliCompFitsPinned w) H evs :=
+      some (ssOut2 ssC2Out files2))
+    (hSha0 : RealHooksAgreeOnInput compHooks0 (ssInp0 w))
+    (hSha1 : RealHooksAgreeOnInput compHooks0 (ssInp1 files0))
+    (hSha2 : RealHooksAgreeOnInput compHooks0 (ssInp2 w c2Msg ssC2Coins))
+    (hw : w.withOpk = false := by rfl) :
+    (cliCompShapePlaced mpl mmpl).ImplHalf (CliSetupMatchesPinned w) H evs :=
   ss_impl_half_pinned_of_three_calls_dirs_placed hPlaus hTor hSpkId hKpkId hBun hCanon hStdin2 hPq2
     hEvs mpl mmpl H files0 (filesOf files1) (filesOf files2) hValid0 hRun0 hRun1 hRun2
+    hSha0 hSha1 hSha2 hw
 
 private theorem hb_pqFromHonest :
     ∀ q, parsePreKeyWire hbC2Msg = some q →
@@ -328,24 +346,6 @@ private theorem hb_cliEvents_eq :
     ← Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.CliBridge.recvMsg38_eq_ss_highBitWireBytes]
   exact Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.CliBridge.cliEvents_eq
 
-theorem impl_half_pinned_of_three_calls_dirs_placed
-    (mpl mmpl : Arm64.Obj.MultiPlacement)
-    (H : Arm64.Process.ElfImage)
-    (files0 : List (String × HwBytes)) (outDir1 outDir2 : DirectorySnapshot)
-    (hValid0 : ValidCall0Files files0 = true)
-    (hRun0 : cliRunPlacedSig mpl mmpl H compHooks0 hbInp0 = some (hbOut0 files0))
-    (hRun1 : cliRunPlacedSig mpl mmpl H compHooks0 (hbInp1 files0) =
-      some (.exited 0 ssC1Out outDir1))
-    (hRun2 : cliRunPlacedSig mpl mmpl H compHooks0 hbInp2 = some (.exited 0 ssC2Out outDir2)) :
-    (cliCompShapePlaced mpl mmpl).ImplHalf
-      (cliCompFitsPinned Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
-      H Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.trace :=
-  ss_impl_half_pinned_of_three_calls_dirs_placed
-    (w := Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
-    (by decide +kernel) (fun _ h => nomatch h) rfl rfl hbBundle_blob_eq
-    (by decide +kernel) (by decide +kernel) hb_pqFromHonest hb_cliEvents_eq
-    mpl mmpl H files0 outDir1 outDir2 hValid0 hRun0 hRun1 hRun2
-
 /-- Placed pinned `ImplHalf` for `Cheval26SmallSubgroupHighBitCli` from three concrete CLI runs. -/
 theorem impl_half_pinned_of_three_calls_placed
     (mpl mmpl : Arm64.Obj.MultiPlacement)
@@ -357,30 +357,13 @@ theorem impl_half_pinned_of_three_calls_placed
     (hRun1 : cliRunPlacedSig mpl mmpl H compHooks0 (hbInp1 files0) = some (hbOut1 files1))
     (hRun2 : cliRunPlacedSig mpl mmpl H compHooks0 hbInp2 = some (hbOut2 files2)) :
     (cliCompShapePlaced mpl mmpl).ImplHalf
-      (cliCompFitsPinned Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
+      (CliSetupMatchesPinned Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
       H Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.trace :=
   ss_impl_half_pinned_of_three_calls_placed
     (w := Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
     (by decide +kernel) (fun _ h => nomatch h) rfl rfl hbBundle_blob_eq
     (by decide +kernel) (by decide +kernel) hb_pqFromHonest hb_cliEvents_eq
     mpl mmpl H files0 files1 files2 hValid0 hValid1 hRun0 hRun1 hRun2
-
-/-- Placed unpinned `ImplHalf` for `Cheval26SmallSubgroupHighBitCli` from three concrete CLI runs. -/
-theorem impl_half_of_three_calls_placed
-    (mpl mmpl : Arm64.Obj.MultiPlacement)
-    (H : Arm64.Process.ElfImage)
-    (files0 files1 files2 : List (String × HwBytes))
-    (hValid0 : ValidCall0Files files0 = true)
-    (hValid1 : ValidCall1Files files1 = true)
-    (hRun0 : cliRunPlacedSig mpl mmpl H compHooks0 hbInp0 = some (hbOut0 files0))
-    (hRun1 : cliRunPlacedSig mpl mmpl H compHooks0 (hbInp1 files0) = some (hbOut1 files1))
-    (hRun2 : cliRunPlacedSig mpl mmpl H compHooks0 hbInp2 = some (hbOut2 files2)) :
-    (cliCompShapePlaced mpl mmpl).ImplHalf
-      Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.fits
-      H Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.trace := by
-  obtain ⟨iw, r, hfit, hc, htr⟩ :=
-    impl_half_pinned_of_three_calls_placed mpl mmpl H files0 files1 files2 hValid0 hValid1
-      hRun0 hRun1 hRun2
-  exact ⟨iw, r, cliCompFits_of_pinned hfit, hc, htr⟩
+    realHooksAgreeOnInput_hbInp0 (realHooksAgreeOnInput_hbInp1 hValid0) realHooksAgreeOnInput_hbInp2
 
 end Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.ImplTracePlaced

@@ -10,9 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKit
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `IdentitySelfStore` Contracts
@@ -22,7 +23,7 @@ public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKit
 shim and poll contracts (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,8 +32,9 @@ namespace LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
 open Arm64 ProofLib
 open CryptoVerification.RecordCodecs (IdentityKeyPair)
 open CryptoVerification.RustHeap (RustAlloc)
-open CryptoVerification.LibsignalPublicApi.StoreKit
-  (IdentityStoreSpec IdentitySelfStoreSpec kpPollOutAt regIdPollOutAt withEnvPre)
+open CryptoVerification.LibsignalPublicApi.StoreKit (IdentityStoreSpec withEnvPre)
+open CryptoVerification.LibsignalPublicApi.StoreKit.IdentitySelf
+  (IdentitySelfStoreSpec kpPollOutAt regIdPollOutAt)
 open LibsignalBinary.Heap
   (AllocEvent AllocCostModel BudgetLimits RustCliAllocBudget FitsEnv SeqEnv rustDeallocEvents)
 open LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget (BoxAllocEnv)
@@ -83,7 +85,7 @@ structure IdentitySelfStoreBudgetEnv {A : RustAlloc} {b : BitVec 64}
   regIdPollEnv : ikit.IdState → List AllocEvent → Prop
 
 /-- `get_identity_key_pair` shim + poll + `Box` dealloc step envelope. -/
-def KpStepEnv {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def KpStepEnv {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) (senv : IdentitySelfStoreBudgetEnv skit)
     (ist0 : ikit.IdState) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv skit.kpBoxSize)
@@ -91,7 +93,7 @@ def KpStepEnv {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
       (· = rustDeallocEvents skit.kpBoxSize 8))
 
 /-- `get_local_registration_id` shim + poll + `Box` dealloc step envelope. -/
-def RegIdStepEnv {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
+@[expose] def RegIdStepEnv {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
     (skit : IdentitySelfStoreSpec ikit) (senv : IdentitySelfStoreBudgetEnv skit)
     (ist0 : ikit.IdState) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv skit.regIdBoxSize)
@@ -99,7 +101,7 @@ def RegIdStepEnv {A : RustAlloc} {b : BitVec 64} {ikit : IdentityStoreSpec A b}
       (· = rustDeallocEvents skit.regIdBoxSize 8))
 
 /-- Budget-threaded `get_identity_key_pair` shim contract. -/
-def kitKpShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitKpShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
     (skit : IdentitySelfStoreSpec ikit) (fds : Bool := false) :
     Spec (BitVec 64 × M.σ) where
@@ -125,7 +127,7 @@ def kitKpShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetL
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp skit.kpShimStack
 
 /-- Budget-threaded `get_local_registration_id` shim contract. -/
-def kitRegIdShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitRegIdShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
     (skit : IdentitySelfStoreSpec ikit) (fds : Bool := false) :
     Spec (BitVec 64 × M.σ) where
@@ -151,7 +153,7 @@ def kitRegIdShimSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Budg
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp skit.regIdShimStack
 
 /-- Budget-threaded `get_identity_key_pair` poll contract. -/
-def kitKpPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitKpPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
     (skit : IdentitySelfStoreSpec ikit) (senv : IdentitySelfStoreBudgetEnv skit)
     (fds : Bool := false) :
@@ -178,7 +180,7 @@ def kitKpPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetL
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp skit.kpPollStack
 
 /-- Budget-threaded `get_local_registration_id` poll contract. -/
-def kitRegIdPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kitRegIdPollSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {b : BitVec 64} {ikit : IdentityStoreSpec A.repAlloc b}
     (skit : IdentitySelfStoreSpec ikit) (senv : IdentitySelfStoreBudgetEnv skit)
     (fds : Bool := false) :

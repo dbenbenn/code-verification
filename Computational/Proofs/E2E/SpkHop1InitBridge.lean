@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1Phases01B
+public import Computational.Proofs.E2E.SpkHop1Phases01B -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import Computational.Proofs.SignalWireRoundTrip
 
@@ -21,7 +21,7 @@ Bounds the `boolDist` of `spkLeakRed` under a random function by the `k = 0` hyb
 (`evalDist_spkLeakRed_boolDist_le_hop2PrgRedK_zero`).
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option linter.unusedSectionVars false
 open Classical OracleComp OracleSpec ENNReal
@@ -1403,7 +1403,7 @@ theorem evalDist_runSpkBad_le_runHop2_zero {ℓ : ℕ} {P : Params Bytes PQC} (h
 
 /-! ## Top-level `spkLeakRed` to `hop2PrgRedK` bridge -/
 
-def hop2InitState0 {ℓ : ℕ} (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (b :
+@[expose] def hop2InitState0 {ℓ : ℕ} (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (b :
     Bool) (ck0 x alice pqr prk : BitVec 256) : Hop2State Pt ℓ :=
   let ck1 := (Ratchet.rootExpand P.C.F (keyToBytes32 prk)).2
   let I0 := Dh.dh x (Dh.dh alice Dh.base)

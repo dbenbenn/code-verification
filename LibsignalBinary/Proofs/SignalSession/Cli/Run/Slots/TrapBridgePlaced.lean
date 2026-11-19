@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridge
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridge
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import Init.Data.String.Defs
@@ -28,7 +28,7 @@ Defines `trTrapExternsPlaced` (replacing `libsignal_session_rng_fill` with `rngT
 `trTrapExternsPlaced` to `cliGhostExterns gh (cliExternsPlaced mmpl W)` via `TrapsOnly`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,14 +49,8 @@ theorem cliExternsPlaced_rngFill (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks
     (by decide +kernel) (by decide +kernel) (by decide +kernel)]
   exact cliExternsPlaced_none mmpl W (by decide +kernel) (by decide +kernel)
 
-theorem cliExternsPlaced_rngFillName (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) :
-    cliGhostExterns gh (cliExternsPlaced mmpl W) rngFillName = none := by
-  rw [cliGhostExterns_other gh _ (by decide +kernel) (by decide +kernel) (by decide +kernel)
-    (by decide +kernel) (by decide +kernel) (by decide +kernel)]
-  exact cliExternsPlaced_none mmpl W (by decide +kernel) (by decide +kernel)
-
 /-- Extern hook map replacing `lsRngFillSym` with `rngTrap`. -/
-def trTrapExternsPlaced (H : LibsignalHooks) : LibsignalHooks :=
+@[expose] def trTrapExternsPlaced (H : LibsignalHooks) : LibsignalHooks :=
   ProofLib.Variant.trapAt (· == lsRngFillSym) rngTrap H
 
 /-- `TrapsOnly` from `trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))` to `cliGhostExterns gh (cliExternsPlaced mmpl W)` on any rebased block program. -/

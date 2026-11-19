@@ -9,21 +9,32 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
-public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.Dsl.SpqrSimSend
 import Computational.Proofs.E2E.Dsl.SpqrSimRecv
+public import Computational.Proofs.ReductionDsl.Fig8Atomic -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 
 /-!
 # `SPQR`, `Fig8Atomic`, and Budget `DescBits` Bounds for `simFig8`
 
 Proves syntactic description-bit bounds for `bits` helpers, variable renamings, lifted SPQR V1
-step simulators (`spqrSendAtomicC`, `spqrRecvAtomicC`), and `Fig8Atomic` primitives.
--/
+step simulators (`spqrSendAtomicC`, `spqrRecvAtomicC`), and `Fig8Atomic` primitives.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
 open OracleSpec OracleComp
 open ReductionDsl (Sig Ty Var Env Ops Iface Expr Comp bits bits_mono lt_two_pow_bits
@@ -357,13 +368,13 @@ open Computational.Proofs.E2E.Dsl.TablesHonest (e2ePureOp e2eCurveOp e2eCryptoOp
 open Computational.Proofs.E2E.Dsl.PqxdhSimTypes (Ext v letV bindV bindV2 caseOptV caseSumV
   findMV anyMV mapMV orE isSomeE isNoneE optMapE)
 
-def e2eSortDescBits : E2ESort → ℕ
+@[expose] def e2eSortDescBits : E2ESort → ℕ
   | .pbytes w | .bytes w => 2 * bits w + 4
   | .fin n => 2 * bits n + 4
   | .pu32 | .u8 | .u32 | .u64 | .bv128 | .bv256 | .bv512
   | .pk | .idKey | .plain | .ghostSt | .binSt => 4
 
-@[simp] def e2eTyDescBits {ℓ : ℕ} : Ty (e2eSig ℓ) → ℕ
+@[expose, simp] def e2eTyDescBits {ℓ : ℕ} : Ty (e2eSig ℓ) → ℕ
   | .base b => e2eSortDescBits b + 4
   | .unit | .bool | .nat => 4
   | .opt t | .list t | .tbl t => e2eTyDescBits t + 4
@@ -394,7 +405,7 @@ private theorem varIdx_lt_len {S0 : Sig} :
   | _ :: _, _, .zero => Nat.zero_lt_succ _
   | _ :: _, _, .succ x => Nat.succ_lt_succ (varIdx_lt_len x)
 
-@[simp] def e2ePureOpDescBits : E2EPureOp → ℕ
+@[expose, simp] def e2ePureOpDescBits : E2EPureOp → ℕ
   | .pbytesLit w v => 8 * v.length + 2 * bits v.length + 2 * bits w + 8
   | .bytesLit w v => 8 * v.length + 2 * bits v.length + 2 * bits w + 8
   | .pbytesCat m n | .pbytesEq m n | .bytesCat m n | .bytesEq m n | .bytesLtOp m n =>
@@ -424,14 +435,14 @@ private theorem varIdx_lt_len {S0 : Sig} :
   | .spqrParsePreamble | .spqrAssembleMsg | .spqrStateSplit | .spqrStateJoin
   | .ghostStateSplit | .ghostStateJoin | .encodeSessionRecord => 8
 
-@[simp] def e2eOpDescUB {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
+@[expose, simp] def e2eOpDescUB {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey} :
     (e2eOps ℓ P C K decT encT).Op → ℕ
   | .inl o => e2ePureOpDescBits o + 4
   | .inr (.inl _) => 12
   | .inr (.inr _) => 200
 
-@[simp] def edepth {S0 : Sig} {O : Ops S0} : {Γ : List (Ty S0)} → {t : Ty S0} → Expr O Γ t → ℕ
+@[expose, simp] def edepth {S0 : Sig} {O : Ops S0} : {Γ : List (Ty S0)} → {t : Ty S0} → Expr O Γ t → ℕ
   | _, _, .var _ | _, _, .unit | _, _, .bool _ | _, _, .nat _ | _, _, .none | _, _, .nil => 0
   | _, _, .mulK _ a | _, _, .divK _ a | _, _, .modK _ a | _, _, .not a
   | _, _, .fst a | _, _, .snd a | _, _, .inl a | _, _, .inr a | _, _, .some a
@@ -446,7 +457,7 @@ private theorem varIdx_lt_len {S0 : Sig} :
     max (edepth e) (edepth b + 1)
   | _, _, .foldrB _ l z f => max (edepth l) (max (edepth z) (edepth f + 2))
 
-@[simp] def cdepth {S0 : Sig} {O : Ops S0} {ι : Type} {T : OracleSpec ι} {I : Iface S0 T} :
+@[expose, simp] def cdepth {S0 : Sig} {O : Ops S0} {ι : Type} {T : OracleSpec ι} {I : Iface S0 T} :
     {Γ : List (Ty S0)} → {t : Ty S0} → Comp O I Γ t → ℕ
   | _, _, .ret e | _, _, .sample _ e | _, _, .query _ e => edepth e
   | _, _, .bind c k => max (cdepth c) (cdepth k + 1)
@@ -458,7 +469,7 @@ private theorem varIdx_lt_len {S0 : Sig} :
   | _, _, .consumeFirstM _ l p mk => max (edepth l) (max (cdepth p + 1) (edepth mk + 1))
   | _, _, .foldM _ l z f => max (edepth l) (max (edepth z) (cdepth f + 2))
 
-@[simp] def e2eEDescUB {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
+@[expose, simp] def e2eEDescUB {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey} :
     {Γ : List (Ty (e2eSig ℓ))} → {t : Ty (e2eSig ℓ)} →
     Expr (e2eOps ℓ P C K decT encT) Γ t → ℕ
@@ -489,7 +500,7 @@ private theorem varIdx_lt_len {S0 : Sig} :
   | _, _, .foldrB k l z f =>
     2 * bits k + e2eEDescUB (Pt := Pt) l + e2eEDescUB (Pt := Pt) z + e2eEDescUB (Pt := Pt) f + 6
 
-@[simp] def e2eCDescUB {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
+@[expose, simp] def e2eCDescUB {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto} {K : MlKem}
     {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} {I : Iface (e2eSig ℓ) T} :
     {Γ : List (Ty (e2eSig ℓ))} → {t : Ty (e2eSig ℓ)} →

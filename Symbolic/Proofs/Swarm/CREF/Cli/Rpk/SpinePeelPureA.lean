@@ -42,7 +42,7 @@ Proves `spineRkK_and_ikmHolesK` and `ikmHolesKemK_of_loggedIkmRk` on reachable
 composed traces under `AliceKemLen32`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -109,7 +109,7 @@ attribute [local instance 2000]
   DY.Libsignal.Composed.instHasExecBytes
   DY.Libsignal.Composed.instHasExecTrace
 
-def sp_DoneOpkEkAk (tr : ExecTrace) : Prop :=
+@[expose] def sp_DoneOpkEkAk (tr : ExecTrace) : Prop :=
   (∀ a b ikA ikB spk pqpk opk ek ct keys i,
     tr.EventLoggedAt (PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) i →
     ∀ o, opk = some o → o.AttackerKnows tr) ∧
@@ -117,12 +117,12 @@ def sp_DoneOpkEkAk (tr : ExecTrace) : Prop :=
     tr.EventLoggedAt (PQXDHEvent.BobDone b a ikB ikA spk pqpk opk ek ct keys) i →
     ek.AttackerKnows tr)
 
-def isDoneEv : PQXDHEvent → Bool
+@[expose] def isDoneEv : PQXDHEvent → Bool
   | .AliceDone .. => true
   | .BobDone .. => true
   | _ => false
 
-def sp_NoDoneEv {α : Type} (f : Traceful α) : Prop :=
+@[expose] def sp_NoDoneEv {α : Type} (f : Traceful α) : Prop :=
   ∀ tr ev idx, isDoneEv ev = true → ((f.run tr).2.val).EventLoggedAt ev idx →
     tr.EventLoggedAt ev idx
 

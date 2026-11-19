@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacB
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacA
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacB -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacA -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -21,7 +21,7 @@ values from `tag` and record deferred forgery checks while non-deferred ranks us
 reshapes `simulateQ` of `gRun` into a single stateful outer simulation of `B.run`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,7 +33,7 @@ open SignalPqxdh
 open RoKem
 
 /-- Generic multi-key INT-CTXT step: deferred ranks (`defer r`) get tag values from `tag`. -/
-def gStep (defer : ℕ → Prop) [DecidablePred defer]
+@[expose] def gStep (defer : ℕ → Prop) [DecidablePred defer]
     (tag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes)
     (q : AeadMuIntQuery) (st : PrfHmacMuState) :
     OracleComp PrfHmacSimSpec (aeadMuIntSpec.Range q × PrfHmacMuState) :=
@@ -72,12 +72,12 @@ def gStep (defer : ℕ → Prop) [DecidablePred defer]
           pure (false, { st with bad := st.bad || res.isSome })
       else pure (false, st)
 
-def unifTag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes := fun _ _ => prfHmacUnif sampleBytes32
+@[expose] def unifTag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes := fun _ _ => prfHmacUnif sampleBytes32
 
 theorem gStep_prfHmacMuStep (j : ℕ) (q : AeadMuIntQuery) (st : PrfHmacMuState) :
     prfHmacMuStep j q st = gStep (fun r => r ≤ j) (prfHmacTagQ j) q st := rfl
 
-def gRun (defer : ℕ → Prop) [DecidablePred defer]
+@[expose] def gRun (defer : ℕ → Prop) [DecidablePred defer]
     (tag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes) {α : Type}
     (mx : OracleComp AeadMuIntSimSpec α) (st : PrfHmacMuState) :
     OracleComp PrfHmacSimSpec (α × PrfHmacMuState) :=
@@ -131,7 +131,7 @@ theorem prfMuRun_eq_gRun (j : ℕ) {α : Type} (mx : OracleComp AeadMuIntSimSpec
       exact congrArg _ (funext fun p => ih p.1 p.2)
 
 /-- Deferred checks of `gStep` (`prfHmacFinish` with a generic tag source). -/
-def gFinish (tag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes)
+@[expose] def gFinish (tag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes)
     (pending : List (ℕ × Bytes × Bytes)) : List (ℕ × Bytes) → OracleComp PrfHmacSimSpec Bool
   | [] => pure false
   | (r, x) :: pts => do
@@ -145,11 +145,11 @@ theorem prfHmacFinish_eq_gFinish (j : ℕ) (pending : List (ℕ × Bytes × Byte
   | (r, x) :: pts => by
     simp only [prfHmacFinish, gFinish, prfHmacFinish_eq_gFinish j pending pts]
 
-def pendPts (pending : List (ℕ × Bytes × Bytes)) : List (ℕ × Bytes) :=
+@[expose] def pendPts (pending : List (ℕ × Bytes × Bytes)) : List (ℕ × Bytes) :=
   (pending.map (fun e => (e.1, e.2.1))).dedup
 
 /-- Full generic hybrid running `B`, performing deferred tag checks, and returning `bad || hit`. -/
-def gAfter (defer : ℕ → Prop) [DecidablePred defer]
+@[expose] def gAfter (defer : ℕ → Prop) [DecidablePred defer]
     (tag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes)
     (B : AeadMuIntCtxtAdv) : OracleComp PrfHmacSimSpec Bool := do
   let (_, st) ← gRun defer tag B.run {}
@@ -166,10 +166,10 @@ section Reshape
 
 variable (P : Primitives) {σ : Type} (ev : QueryImpl prfHmacSpec (StateT σ ProbComp))
 
-noncomputable def gFull : QueryImpl PrfHmacSimSpec (StateT σ ProbComp) :=
+@[expose] def gFull : QueryImpl PrfHmacSimSpec (StateT σ ProbComp) :=
   (primBaseImpl P).liftTarget (StateT σ ProbComp) + ev
 
-noncomputable def gOuter (defer : ℕ → Prop) [DecidablePred defer]
+@[expose] def gOuter (defer : ℕ → Prop) [DecidablePred defer]
     (tag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes) :
     QueryImpl AeadMuIntSimSpec (StateT (PrfHmacMuState × σ) ProbComp) := fun q =>
   match q with

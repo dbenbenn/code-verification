@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.HelpersBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsPlacedBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.HelpersBudget
 
 /-!
 # Budget-Threaded Placed Stage P2 Over-Path Callee Contracts
@@ -22,7 +22,7 @@ Exposes `[LibsignalPlacement]` block-518 program aliases together with `VmPreser
 contracts (block 47) from `StageP2DefsBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +67,7 @@ noncomputable abbrev stageP2OverProgPlaced [LibsignalPlacement]
     (ext : String → Option (State → State)) : Program :=
   lsProg_518 ext
 
-noncomputable abbrev stageP2OverEntryPlaced [LibsignalPlacement] : BitVec 64 :=
+abbrev stageP2OverEntryPlaced [LibsignalPlacement] : BitVec 64 :=
   (blkPl_518).base
 
 abbrev PromoteMatchingMissAtPlacedProp [LibsignalPlacement] (A : RustAlloc)

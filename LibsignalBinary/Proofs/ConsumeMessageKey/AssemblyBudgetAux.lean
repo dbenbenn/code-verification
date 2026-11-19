@@ -9,15 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Hmac
+import LibsignalBinary.Proofs.ConsumeMessageKey.Hmac
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigest
-public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlock
+import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigest
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.EntryAndKeyBlock -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.NewFromSliceSecondHalf
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.WPp
+public import ProofLib.StdStartup.MemOps
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `VmPreserved` Block-Lifting Helpers for `AssemblyBudget`
@@ -27,7 +38,7 @@ Relocation-safe `MSR TPIDR_EL0` block scanner (`checkBlockNoMsrTpidrEl0`) and si
 `compress256` hooks.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -57,7 +68,7 @@ open LibsignalBinary.Proofs.Placed.BudgetVmSteps (
 
 /-! ## Relocation-Safe `MSR TPIDR_EL0` Block Scanner -/
 
-def checkBytesNoMsrTpidrEl0 (blk : CodeBlock) : Nat → List (BitVec 8) → Bool
+@[expose] def checkBytesNoMsrTpidrEl0 (blk : CodeBlock) : Nat → List (BitVec 8) → Bool
   | _, [] => true
   | off, b0 :: b1 :: b2 :: b3 :: rest =>
     let w := wordOfBytesLE [b0, b1, b2, b3] 0
@@ -67,7 +78,7 @@ def checkBytesNoMsrTpidrEl0 (blk : CodeBlock) : Nat → List (BitVec 8) → Bool
     checkBytesNoMsrTpidrEl0 blk (off + 4) rest
   | _, _ => false
 
-def checkBlockNoMsrTpidrEl0 (blk : CodeBlock) : Bool :=
+@[expose] def checkBlockNoMsrTpidrEl0 (blk : CodeBlock) : Bool :=
   checkBytesNoMsrTpidrEl0 blk 0 blk.code && blk.relocs.all (fun r => relocKindSafeNoSvc0 r.kind)
 
 private theorem checkBytesNoMsrTpidrEl0_wordOfBytesLE (blk : CodeBlock) :
@@ -194,6 +205,48 @@ private theorem ldrToAddWord_top6 (w : BitVec 32) :
   intro h; have hb := congrArg (fun v => v.getLsbD 26) h
   simp [ldrToAddWord] at hb
 
+private theorem nopWord_not_isMsr :
+    Arm64.isMsrTpidrEl0Word nopWord = false := rfl
+
+private theorem patchGotOrTlsIeRelaxed_not_isMsr (w : BitVec 32) (place target : BitVec 64)
+    {k : RelocKind} (hisgot : k.isGotOrTlsIe = true) :
+    Arm64.isMsrTpidrEl0Word (CodeBlock.patchGotOrTlsIeRelaxed w place target k) = false := by
+  cases hk : k
+  all_goals rw [hk] at hisgot; try contradiction
+  · exact nopWord_not_isMsr
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 (ldrToAddWord_top6 _) _)
+  · exact tlsieMovzWord_not_isMsr _ _
+  · exact tlsieMovkWord_not_isMsr _ _
+
+private theorem patchRelocWord_not_isMsr {w : BitVec 32} {r : RelocEntry}
+    (hksafe : relocKindSafeNoSvc0 r.kind = true)
+    (hw_off : checkRelocWordNoSvc0 w r = true)
+    (place target : BitVec 64) :
+    Arm64.isMsrTpidrEl0Word (patchRelocWord r.kind w place target) = false := by
+  unfold checkRelocWordNoSvc0 at hw_off
+  cases hk : r.kind
+  all_goals rw [hk] at hksafe; try contradiction
+  all_goals rw [hk] at hw_off; simp only [isTlsdescKind, isAdrpRelocKind, Bool.false_or,
+    Bool.true_or, Bool.not_true, Bool.not_false, Bool.and_true, Bool.and_eq_true,
+    bne_iff_ne, beq_iff_eq] at hw_off
+  · exact not_isMsrTpidrEl0Word_of_top6 (branchWord_top6 hw_off _ _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (branchWord_top6 hw_off _ _)
+  · exact adrpWord_not_isMsr hw_off.2 _ _
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 hw_off _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 hw_off _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 1 hw_off _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 2 hw_off _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 4 hw_off _)
+  · exact adrpWord_not_isMsr hw_off.2 _ _
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
+  · exact adrpWord_not_isMsr hw_off.2 _ _
+  · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
+  · exact tlsdescAdrPage21Word_not_isMsr _
+  · exact tlsdescLd64Lo12Word_not_isMsr _
+  · exact nopWord_not_isMsr
+  · exact nopWord_not_isMsr
+
 private theorem patchedWord_not_isMsrTpidrEl0 {blk : CodeBlock} (pl : Placement)
     (hchk : checkBlockNoMsrTpidrEl0 blk = true) {off : Nat}
     (hal : off % 4 = 0) (hlen : off + 4 ≤ blk.code.length) :
@@ -207,16 +260,18 @@ private theorem patchedWord_not_isMsrTpidrEl0 {blk : CodeBlock} (pl : Placement)
     | none => !Arm64.isMsrTpidrEl0Word (blk.wordAt off)
     | some r => checkRelocWordNoSvc0 (blk.wordAt off) r) = true at hw_off
   unfold CodeBlock.patchedWord
+  dsimp only
+  obtain ⟨w, hw_eq⟩ : ∃ w, blk.wordAt off = w := ⟨_, rfl⟩
+  rw [hw_eq] at hw_off ⊢
   cases hr : blk.relocAt? off with
   | none =>
     rw [hr] at hw_off
-    cases h : Arm64.isMsrTpidrEl0Word (blk.wordAt off) <;> simp_all
+    cases h : Arm64.isMsrTpidrEl0Word w <;> simp_all
   | some r =>
     dsimp only; rw [hr] at hw_off; dsimp only at hw_off
-    have hrmem : r ∈ blk.relocs := List.mem_of_find?_eq_some hr
-    have hksafe := hrelocs r hrmem
+    have hksafe := hrelocs r (List.mem_of_find?_eq_some hr)
     split
-    · decide
+    · exact nopWord_not_isMsr
     · split
       · exact adrWord_not_isMsr _ _ _
       · split
@@ -224,36 +279,8 @@ private theorem patchedWord_not_isMsrTpidrEl0 {blk : CodeBlock} (pl : Placement)
         · split
           · rename_i _ _ _ hgot
             simp only [Bool.and_eq_true] at hgot
-            have hisgot : r.kind.isGotOrTlsIe = true := hgot.1.1
-            cases hk : r.kind
-            all_goals rw [hk] at hisgot; try contradiction
-            · simp [CodeBlock.patchGotOrTlsIeRelaxed, nopWord, Arm64.isMsrTpidrEl0Word]
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 (ldrToAddWord_top6 _) _)
-            · exact tlsieMovzWord_not_isMsr _ _
-            · exact tlsieMovkWord_not_isMsr _ _
-          · unfold checkRelocWordNoSvc0 at hw_off
-            cases hk : r.kind
-            all_goals rw [hk] at hksafe; try contradiction
-            all_goals rw [hk] at hw_off; simp only [isTlsdescKind, isAdrpRelocKind, Bool.false_or,
-              Bool.true_or, Bool.not_true, Bool.not_false, Bool.and_true, Bool.and_eq_true,
-              bne_iff_ne, beq_iff_eq] at hw_off
-            · exact not_isMsrTpidrEl0Word_of_top6 (branchWord_top6 hw_off _ _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (branchWord_top6 hw_off _ _)
-            · exact adrpWord_not_isMsr hw_off.2 _ _
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 hw_off _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 0 hw_off _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 1 hw_off _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 2 hw_off _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 4 hw_off _)
-            · exact adrpWord_not_isMsr hw_off.2 _ _
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
-            · exact adrpWord_not_isMsr hw_off.2 _ _
-            · exact not_isMsrTpidrEl0Word_of_top6 (lo12Word_top6 3 hw_off _)
-            · exact tlsdescAdrPage21Word_not_isMsr _
-            · exact tlsdescLd64Lo12Word_not_isMsr _
-            · simp [patchRelocWord, nopWord, Arm64.isMsrTpidrEl0Word]
-            · simp [patchRelocWord, nopWord, Arm64.isMsrTpidrEl0Word]
+            exact patchGotOrTlsIeRelaxed_not_isMsr _ _ _ hgot.1.1
+          · exact patchRelocWord_not_isMsr hksafe hw_off _ _
 
 private theorem bytesAllWords_of_drop4 {pw : BitVec 32 → Bool} :
     ∀ (n : Nat) (bs : List (BitVec 8)), bs.length = 4 * n →
@@ -299,7 +326,7 @@ private theorem blockProgram_allInstrs_not_isMsrTpidrEl0 (lib : MultiPlacedLib) 
 
 /-! ## `VmPreserved` Lifting for `RunsTo` on Placed Blocks -/
 
-def hmacExcHooks (F : ShaState → List (BitVec 8) → ShaState) (H : LibsignalHooks) :
+@[expose] def hmacExcHooks (F : ShaState → List (BitVec 8) → ShaState) (H : LibsignalHooks) :
     LibsignalHooks :=
   fun n =>
     if n = lsMemcpySym then some memcpyHook

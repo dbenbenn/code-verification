@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkLeakRedModel
-public import Computational.Proofs.SpecLemmas.Reductions.E2E.CostedTables
-public import Computational.Proofs.ReductionDsl.SM.GameCosted
-public import Computational.Proofs.E2E.SpkHop2Red
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.E2E.SpkLeakRedModel -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.GameCosted -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop2Red -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Soundness
 import Computational.Proofs.ReductionDsl.Bridge
 import Computational.Proofs.ReductionDsl.Notation
 import Computational.Proofs.ReductionDsl.Size
@@ -27,7 +27,7 @@ Defines `spkLeakRedProg` as a `ReductionDsl.CostedReduction` program for the PRF
 evaluation agreement, and cost bounds.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Costed
 
@@ -55,7 +55,7 @@ section LiftOpsSum
 
 variable {S : Sig} {O₁ O₂ : Ops S}
 
-def _root_.ReductionDsl.Expr.liftL {Γ : List (Ty S)} {t : Ty S} :
+@[expose] def _root_.ReductionDsl.Expr.liftL {Γ : List (Ty S)} {t : Ty S} :
     Expr O₁ Γ t → Expr (O₁.sum O₂) Γ t
   | .var v => .var v
   | .unit => .unit
@@ -119,7 +119,7 @@ def _root_.ReductionDsl.Expr.liftL {Γ : List (Ty S)} {t : Ty S} :
     rw [ih]
   | _ => simp [Expr.liftL, Expr.cost, *]
 
-def _root_.ReductionDsl.Comp.liftL
+@[expose] def _root_.ReductionDsl.Comp.liftL
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ : List (Ty S)} {t : Ty S} :
     Comp O₁ I Γ t → Comp (O₁.sum O₂) I Γ t
@@ -336,7 +336,7 @@ theorem rootCreateChain_index_zero (C : Crypto) (rk : BitVec 256)
 @[simp] theorem evictReceiverChains_singleton (x : ReceiverChain) :
     RatchetState.evictReceiverChains [x] = [x] := rfl
 
-def e2eInitA {PQC : Type} (P : Params Bytes PQC)
+@[expose] def e2eInitA {PQC : Type} (P : Params Bytes PQC)
     (args : BitVec 256 × BitVec 256 × BitVec 256 × BitVec 256 × BitVec 256 × BitVec 256) :
     GhostState Bytes :=
   let (rk1, ck0, spkSc, alice, pqr, ck1) := args
@@ -347,13 +347,13 @@ def e2eInitA {PQC : Type} (P : Params Bytes PQC)
     sendingRatchetKey ⟨ck1, 0⟩
   ⟨.A, sess.setUnacknowledgedPreKeyMessage, 0, [0]⟩
 
-def e2eInitB {PQC : Type} (P : Params Bytes PQC)
+@[expose] def e2eInitB {PQC : Type} (P : Params Bytes PQC)
     (args : BitVec 256 × BitVec 256 × BitVec 256 × BitVec 256 × BitVec 256) :
     GhostState Bytes :=
   let (rk, ck0, spkSc, alice, pqr) := args
   P.initB ⟨rk, ck0, spkSc, alice, pqr⟩
 
-def senderKeyPt {Pt : Type} [DecidableEq Pt] [Zero Pt] {PQC : Type} (P : Params Bytes PQC)
+@[expose] def senderKeyPt {Pt : Type} [DecidableEq Pt] [Zero Pt] {PQC : Type} (P : Params Bytes PQC)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (c : Bytes) : Option Pt :=
   match SignalMessage.tryFrom P.codec c with
   | .error _ => none
@@ -363,7 +363,7 @@ def senderKeyPt {Pt : Type} [DecidableEq Pt] [Zero Pt] {PQC : Type} (P : Params 
     | some T =>
       if T = 0 ∨ encT T ≠ msg.senderRatchetKey then none else some T
 
-def finishRecvB0 {PQC : Type} (P : Params Bytes PQC) (ℓ : ℕ)
+@[expose] def finishRecvB0 {PQC : Type} (P : Params Bytes PQC) (ℓ : ℕ)
     (g : GhostState Bytes) (c : Bytes) (rc prk : BitVec 256) :
     Option (GhostState Bytes × ℕ × ℕ × CBC.Plain ℓ) :=
   match SignalMessage.tryFrom P.codec c with
@@ -388,13 +388,13 @@ def finishRecvB0 {PQC : Type} (P : Params Bytes PQC) (ℓ : ℕ)
         some ({ g with session := s_out, epoch := 1, chainEpochs := epochs },
           1, msg.counter.toNat + 1, padOrTruncatePlain ℓ m)
 
-def needsDH {PQC : Type} (P : Params Bytes PQC) (g : GhostState Bytes) (c : Bytes) : Bool :=
+@[expose] def needsDH {PQC : Type} (P : Params Bytes PQC) (g : GhostState Bytes) (c : Bytes) : Bool :=
   match SignalMessage.tryFrom P.codec c with
   | .error _ => false
   | .ok msg =>
     (g.session.receiverChains.findIdx? (·.senderRatchetKey == msg.senderRatchetKey)).isNone
 
-def dhTargetPt {Pt : Type} [DecidableEq Pt] [Zero Pt] {PQC : Type} (P : Params Bytes PQC)
+@[expose] def dhTargetPt {Pt : Type} [DecidableEq Pt] [Zero Pt] {PQC : Type} (P : Params Bytes PQC)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (g : GhostState Bytes) (c : Bytes) : Option Pt :=
   match SignalMessage.tryFrom P.codec c with
@@ -408,7 +408,7 @@ def dhTargetPt {Pt : Type} [DecidableEq Pt] [Zero Pt] {PQC : Type} (P : Params B
         | none => none
         | some _ => some T
 
-def sendHalfReal {PQC : Type} (P : Params Bytes PQC) (rkM : BitVec 256) (c : Bytes)
+@[expose] def sendHalfReal {PQC : Type} (P : Params Bytes PQC) (rkM : BitVec 256) (c : Bytes)
     (rc : BitVec 256) : Option (BitVec 256 × BitVec 256) :=
   match SignalMessage.tryFrom P.codec c with
   | .error _ => none
@@ -418,7 +418,7 @@ def sendHalfReal {PQC : Type} (P : Params Bytes PQC) (rkM : BitVec 256) (c : Byt
     | .error _ => none
     | .ok (rk', ck) => some (rk', ck.key)
 
-def finishHop2DH {PQC : Type} (P : Params Bytes PQC) (ℓ : ℕ)
+@[expose] def finishHop2DH {PQC : Type} (P : Params Bytes PQC) (ℓ : ℕ)
     (g : GhostState Bytes) (c : Bytes) (rc rk2 ckR ckS : BitVec 256) :
     Option (GhostState Bytes × ℕ × ℕ × CBC.Plain ℓ) :=
   match SignalMessage.tryFrom P.codec c with
@@ -459,110 +459,110 @@ local notation "II" => e2ePrfIface Pt ℓ PQC
 local notation "GS" => @gsTy Pt (GhostState Bytes) Unit (CBC.Plain ℓ) PQC (BitVec 256) Bytes
 local notation "RR" => @smRrTy Pt (GhostState Bytes) Unit (CBC.Plain ℓ) PQC (BitVec 256) Bytes
 
-def opReceive {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opReceive {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (c : Expr OO Γ (.base .ct)) (rc : Expr OO Γ (.base .rcoins)) :
     Expr OO Γ (.opt (.prod (.base .st) (.prod .nat (.prod .nat (.base .msg))))) :=
   Expr.op (O := OO) (Sum.inl (.receive B)) (.pair g (.pair c rc))
 
-def opInjOK {Γ : List (Ty S)} (c : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
+@[expose] def opInjOK {Γ : List (Ty S)} (c : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
   Expr.op (O := OO) (Sum.inl .injOK) c
 
-def opBasePt {Γ : List (Ty S)} : Expr OO Γ (.base .key) :=
+@[expose] def opBasePt {Γ : List (Ty S)} : Expr OO Γ (.base .key) :=
   Expr.op (O := OO) (Sum.inr .basePt) .unit
 
-def opDh {Γ : List (Ty S)} (sc : Expr OO Γ (.base .rcoins))
+@[expose] def opDh {Γ : List (Ty S)} (sc : Expr OO Γ (.base .rcoins))
     (T : Expr OO Γ (.base .key)) : Expr OO Γ (.base .key) :=
   Expr.op (O := OO) (Sum.inr .dh) (.pair sc T)
 
-def opIsZeroPt {Γ : List (Ty S)} (T : Expr OO Γ (.base .key)) : Expr OO Γ .bool :=
+@[expose] def opIsZeroPt {Γ : List (Ty S)} (T : Expr OO Γ (.base .key)) : Expr OO Γ .bool :=
   Expr.op (O := OO) (Sum.inr .isZeroPt) T
 
-def opEqPt {Γ : List (Ty S)} (T₁ T₂ : Expr OO Γ (.base .key)) : Expr OO Γ .bool :=
+@[expose] def opEqPt {Γ : List (Ty S)} (T₁ T₂ : Expr OO Γ (.base .key)) : Expr OO Γ .bool :=
   Expr.op (O := OO) (Sum.inr .eqPt) (.pair T₁ T₂)
 
-def opZeroBv {Γ : List (Ty S)} : Expr OO Γ (.base .rcoins) :=
+@[expose] def opZeroBv {Γ : List (Ty S)} : Expr OO Γ (.base .rcoins) :=
   Expr.op (O := OO) (Sum.inr .zeroBv) .unit
 
-def opSpkSc {Γ : List (Ty S)} : Expr OO Γ (.base .rcoins) :=
+@[expose] def opSpkSc {Γ : List (Ty S)} : Expr OO Γ (.base .rcoins) :=
   Expr.op (O := OO) (Sum.inr .spkSc) .unit
 
-def opRootExpand {Γ : List (Ty S)} (prk : Expr OO Γ (.base .rcoins)) :
+@[expose] def opRootExpand {Γ : List (Ty S)} (prk : Expr OO Γ (.base .rcoins)) :
     Expr OO Γ (.prod (.base .rcoins) (.base .rcoins)) :=
   Expr.op (O := OO) (Sum.inr .rootExpand) prk
 
-def opExtractTag {Γ : List (Ty S)} (rk : Expr OO Γ (.base .rcoins))
+@[expose] def opExtractTag {Γ : List (Ty S)} (rk : Expr OO Γ (.base .rcoins))
     (T : Expr OO Γ (.base .key)) : Expr OO Γ (.base .rcoins) :=
   Expr.op (O := OO) (Sum.inr .extractTag) (.pair rk T)
 
-def opRootCreateChain {Γ : List (Ty S)} (rk : Expr OO Γ (.base .rcoins))
+@[expose] def opRootCreateChain {Γ : List (Ty S)} (rk : Expr OO Γ (.base .rcoins))
     (pkBytes : Expr OO Γ (.base .ct)) (rc : Expr OO Γ (.base .rcoins)) :
     Expr OO Γ (.opt (.prod (.base .rcoins) (.base .rcoins))) :=
   Expr.op (O := OO) (Sum.inr .rootCreateChain) (.pair rk (.pair pkBytes rc))
 
-def opGenPub {Γ : List (Ty S)} (sc : Expr OO Γ (.base .rcoins)) : Expr OO Γ (.base .ct) :=
+@[expose] def opGenPub {Γ : List (Ty S)} (sc : Expr OO Γ (.base .rcoins)) : Expr OO Γ (.base .ct) :=
   Expr.op (O := OO) (Sum.inr .genPub) sc
 
-def opEncT {Γ : List (Ty S)} (T : Expr OO Γ (.base .key)) : Expr OO Γ (.base .ct) :=
+@[expose] def opEncT {Γ : List (Ty S)} (T : Expr OO Γ (.base .key)) : Expr OO Γ (.base .ct) :=
   Expr.op (O := OO) (Sum.inr .encT) T
 
-def opDecT {Γ : List (Ty S)} (bs : Expr OO Γ (.base .ct)) : Expr OO Γ (.opt (.base .key)) :=
+@[expose] def opDecT {Γ : List (Ty S)} (bs : Expr OO Γ (.base .ct)) : Expr OO Γ (.opt (.base .key)) :=
   Expr.op (O := OO) (Sum.inr .decT) bs
 
-def opEqBytes {Γ : List (Ty S)} (a b : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
+@[expose] def opEqBytes {Γ : List (Ty S)} (a b : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
   Expr.op (O := OO) (Sum.inr .eqBytes) (.pair a b)
 
-def opParseSenderKey {Γ : List (Ty S)} (c : Expr OO Γ (.base .ct)) :
+@[expose] def opParseSenderKey {Γ : List (Ty S)} (c : Expr OO Γ (.base .ct)) :
     Expr OO Γ (.opt (.base .ct)) :=
   Expr.op (O := OO) (Sum.inr .parseSenderKey) c
 
-def opStParty {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ .bool :=
+@[expose] def opStParty {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ .bool :=
   Expr.op (O := OO) (Sum.inr .stParty) g
 
-def opStEpoch {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ .nat :=
+@[expose] def opStEpoch {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ .nat :=
   Expr.op (O := OO) (Sum.inr (.stEpoch B)) g
 
-def opHasEpoch0Chain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ .bool :=
+@[expose] def opHasEpoch0Chain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ .bool :=
   Expr.op (O := OO) (Sum.inr .hasEpoch0Chain) g
 
-def opHasSenderChain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ .bool :=
+@[expose] def opHasSenderChain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ .bool :=
   Expr.op (O := OO) (Sum.inr .hasSenderChain) g
 
-def opHasRecvChain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opHasRecvChain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (pkBytes : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
   Expr.op (O := OO) (Sum.inr .hasRecvChain) (.pair g pkBytes)
 
-def opNewSession {Γ : List (Ty S)} (isB : Expr OO Γ .bool)
+@[expose] def opNewSession {Γ : List (Ty S)} (isB : Expr OO Γ .bool)
     (rk pqr : Expr OO Γ (.base .rcoins)) : Expr OO Γ (.base .st) :=
   Expr.op (O := OO) (Sum.inr .newSession) (.pair isB (.pair rk pqr))
 
-def opSetPendingPreKey {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ (.base .st) :=
+@[expose] def opSetPendingPreKey {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ (.base .st) :=
   Expr.op (O := OO) (Sum.inr .setPendingPreKey) g
 
-def opSetRootKey {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opSetRootKey {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (rk : Expr OO Γ (.base .rcoins)) : Expr OO Γ (.base .st) :=
   Expr.op (O := OO) (Sum.inr .setRootKey) (.pair g rk)
 
-def opSetSenderChain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opSetSenderChain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (sc ck : Expr OO Γ (.base .rcoins)) : Expr OO Γ (.base .st) :=
   Expr.op (O := OO) (Sum.inr .setSenderChain) (.pair g (.pair sc ck))
 
-def opAddRecvChain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opAddRecvChain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (pkBytes : Expr OO Γ (.base .ct)) (ck : Expr OO Γ (.base .rcoins)) :
     Expr OO Γ (.base .st) :=
   Expr.op (O := OO) (Sum.inr .addRecvChain) (.pair g (.pair pkBytes ck))
 
-def opResetEpoch0 {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ (.base .st) :=
+@[expose] def opResetEpoch0 {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ (.base .st) :=
   Expr.op (O := OO) (Sum.inr .resetEpoch0) g
 
-def opAdvancePrevCounter {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ (.base .st) :=
+@[expose] def opAdvancePrevCounter {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ (.base .st) :=
   Expr.op (O := OO) (Sum.inr .advancePrevCounter) g
 
-def opPushRecvChain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opPushRecvChain {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (pkBytes : Expr OO Γ (.base .ct)) (ck : Expr OO Γ (.base .rcoins)) :
     Expr OO Γ (.base .st) :=
   Expr.op (O := OO) (Sum.inr .pushRecvChain) (.pair g (.pair pkBytes ck))
 
-def opTryDecryptWhisper {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opTryDecryptWhisper {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (c : Expr OO Γ (.base .ct)) (rc : Expr OO Γ (.base .rcoins)) :
     Expr OO Γ (.opt (.prod (.base .st) (.prod .nat (.prod .nat (.base .msg))))) :=
   Expr.op (O := OO) (Sum.inr (.tryDecryptWhisper B)) (.pair g (.pair c rc))
@@ -855,7 +855,7 @@ def opTryDecryptWhisper {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (opTryDecryptWhisper P ℓ Dh encPt encT decT s B g c rc).cost =
       g.cost + (c.cost + rc.cost + 1) + 1 + bits B := rfl
 
-def opInitA {Γ : List (Ty S)}
+@[expose] def opInitA {Γ : List (Ty S)}
     (rk1 ck0 spkSc alice pqr ck1 : Expr OO Γ (.base .rcoins)) : Expr OO Γ (.base .st) :=
   opSetPendingPreKey P ℓ Dh encPt encT decT s
     (opSetSenderChain P ℓ Dh encPt encT decT s
@@ -864,21 +864,21 @@ def opInitA {Γ : List (Ty S)}
         (opGenPub P ℓ Dh encPt encT decT s spkSc) ck0)
       alice ck1)
 
-def opInitB {Γ : List (Ty S)}
+@[expose] def opInitB {Γ : List (Ty S)}
     (rk ck0 spkSc _alice pqr : Expr OO Γ (.base .rcoins)) : Expr OO Γ (.base .st) :=
   opSetSenderChain P ℓ Dh encPt encT decT s
     (opNewSession P ℓ Dh encPt encT decT s (.bool true) rk pqr)
     spkSc ck0
 
-def opIsB0 {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ .bool :=
+@[expose] def opIsB0 {Γ : List (Ty S)} (g : Expr OO Γ (.base .st)) : Expr OO Γ .bool :=
   .letE g
     (.and (opStParty P ℓ Dh encPt encT decT s .v0)
       (.eqN (opStEpoch P ℓ Dh encPt encT decT s 1 .v0) (.nat 0)))
 
-def opWireOk {Γ : List (Ty S)} (c : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
+@[expose] def opWireOk {Γ : List (Ty S)} (c : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
   isSomeE (opParseSenderKey P ℓ Dh encPt encT decT s c)
 
-def opSenderKeyPt {Γ : List (Ty S)} (c : Expr OO Γ (.base .ct)) :
+@[expose] def opSenderKeyPt {Γ : List (Ty S)} (c : Expr OO Γ (.base .ct)) :
     Expr OO Γ (.opt (.base .key)) :=
   .caseOpt (opParseSenderKey P ℓ Dh encPt encT decT s c)
     .none
@@ -891,7 +891,7 @@ def opSenderKeyPt {Γ : List (Ty S)} (c : Expr OO Γ (.base .ct)) :
         .none
         (.some .v0)))
 
-def opDhTargetPt {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opDhTargetPt {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (c : Expr OO Γ (.base .ct)) : Expr OO Γ (.opt (.base .key)) :=
   .letE (.pair g c)
     (.caseOpt (opSenderKeyPt P ℓ Dh encPt encT decT s (.snd .v0))
@@ -900,14 +900,14 @@ def opDhTargetPt {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
         (.some .v0)
         .none))
 
-def opNeedsDH {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opNeedsDH {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (c : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
   .letE (.pair g c)
     (.caseOpt (opParseSenderKey P ℓ Dh encPt encT decT s (.snd .v0))
       (.bool false)
       (.not (opHasRecvChain P ℓ Dh encPt encT decT s (.fst .v1) .v0)))
 
-def opSendHalfReal {Γ : List (Ty S)} (rkM : Expr OO Γ (.base .rcoins))
+@[expose] def opSendHalfReal {Γ : List (Ty S)} (rkM : Expr OO Γ (.base .rcoins))
     (c : Expr OO Γ (.base .ct)) (rc : Expr OO Γ (.base .rcoins)) :
     Expr OO Γ (.opt (.prod (.base .rcoins) (.base .rcoins))) :=
   .letE (.pair rkM (.pair c rc))
@@ -916,7 +916,7 @@ def opSendHalfReal {Γ : List (Ty S)} (rkM : Expr OO Γ (.base .rcoins))
       (opRootCreateChain P ℓ Dh encPt encT decT s
         (.fst .v1) .v0 (.snd (.snd .v1))))
 
-def opBadAt {Γ : List (Ty S)} (s' : Expr OO Γ (.base .rcoins))
+@[expose] def opBadAt {Γ : List (Ty S)} (s' : Expr OO Γ (.base .rcoins))
     (g : Expr OO Γ (.base .st)) (c : Expr OO Γ (.base .ct)) : Expr OO Γ .bool :=
   .letE (.pair s' (.pair g c))
     (.and
@@ -927,7 +927,7 @@ def opBadAt {Γ : List (Ty S)} (s' : Expr OO Γ (.base .rcoins))
         (opEqBytes P ℓ Dh encPt encT decT s .v0
           (opGenPub P ℓ Dh encPt encT decT s (.fst .v1)))))
 
-def opFinishHop2DH {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opFinishHop2DH {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (c : Expr OO Γ (.base .ct)) (rc rk2 ckR ckS : Expr OO Γ (.base .rcoins)) :
     Expr OO Γ (.opt (.prod (.base .st) (.prod .nat (.prod .nat (.base .msg))))) :=
   .letE (.pair g (.pair c (.pair rc (.pair rk2 (.pair ckR ckS)))))
@@ -947,7 +947,7 @@ def opFinishHop2DH {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
          opTryDecryptWhisper P ℓ Dh encPt encT decT s B st4 c1 rc1)
         .none))
 
-def opFinishRecvB0 {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
+@[expose] def opFinishRecvB0 {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
     (c : Expr OO Γ (.base .ct)) (rc prk : Expr OO Γ (.base .rcoins)) :
     Expr OO Γ (.opt (.prod (.base .st) (.prod .nat (.prod .nat (.base .msg))))) :=
   .letE (.pair g (.pair c (.pair rc (opRootExpand P ℓ Dh encPt encT decT s prk))))
@@ -1225,19 +1225,19 @@ def opFinishRecvB0 {Γ : List (Ty S)} (g : Expr OO Γ (.base .st))
 
 variable [SampleableType PQC]
 
-def spkDrawBool {Γ : List (Ty S)} : Comp OO II Γ .bool :=
+@[expose] def spkDrawBool {Γ : List (Ty S)} : Comp OO II Γ .bool :=
   rdsl do sample (I := II) (Sum.inr .bool) ()
 
-def spkDrawBv {Γ : List (Ty S)} : Comp OO II Γ (.base .rcoins) :=
+@[expose] def spkDrawBv {Γ : List (Ty S)} : Comp OO II Γ (.base .rcoins) :=
   rdsl do sample (I := II) (Sum.inr (.base true)) ()
 
-def spkDrawCoins
+@[expose] def spkDrawCoins
     {O' : Ops S} {Γ : List (Ty S)} : Comp O' II Γ (.opt (.base .coins)) :=
   rdsl do
     r ← sample (I := II) (Sum.inr (.base false)) ()
     return some r
 
-def initAOracleC {Γ : List (Ty S)}
+@[expose] def initAOracleC {Γ : List (Ty S)}
     (ck0 sE alice pqr : Expr OO Γ (.base .rcoins)) : Comp OO II Γ (.base .st) :=
   rdsl do
     (ck0_0, s0, alice0, pqr0) ← return (ck0, sE, alice, pqr)
@@ -1247,7 +1247,7 @@ def initAOracleC {Γ : List (Ty S)}
     let rkck := opRootExpand P ℓ Dh encPt encT decT s prk
     return opInitA P ℓ Dh encPt encT decT s rkck.1 ck0_0 s0 alice0 pqr0 rkck.2
 
-def receiveB0C {Γ : List (Ty S)}
+@[expose] def receiveB0C {Γ : List (Ty S)}
     (sE : Expr OO Γ (.base .rcoins)) (g : Expr OO Γ (.base .st))
     (c : Expr OO Γ (.base .ct)) (rc : Expr OO Γ (.base .rcoins)) :
     Comp OO II Γ (.opt (.prod (.base .st) (.prod .nat (.prod .nat (.base .msg))))) :=
@@ -1259,7 +1259,7 @@ def receiveB0C {Γ : List (Ty S)}
       prk ← query (I := II) () (opDh P ℓ Dh encPt encT decT s s0 ptT)
       return opFinishRecvB0 P ℓ Dh encPt encT decT s B g0 c0 rc0 prk
 
-def receiveSpkC {Γ : List (Ty S)}
+@[expose] def receiveSpkC {Γ : List (Ty S)}
     (sE : Expr OO Γ (.base .rcoins)) (g : Expr OO Γ (.base .st))
     (c : Expr OO Γ (.base .ct)) (rc : Expr OO Γ (.base .rcoins)) :
     Comp OO II Γ (.opt (.prod (.base .st) (.prod .nat (.prod .nat (.base .msg))))) :=
@@ -1270,7 +1270,7 @@ def receiveSpkC {Γ : List (Ty S)}
     else
       return opReceive P ℓ Dh encPt encT decT s B g0 c0 rc0
 
-def deliverSpkC {Γ : List (Ty S)}
+@[expose] def deliverSpkC {Γ : List (Ty S)}
     (stE : Expr OO Γ GS) (arg : Expr OO Γ (.prod .bool (.base .ct))) :
     Comp OO II Γ (.prod (.opt RR) GS) :=
   rdsl do
@@ -1293,7 +1293,7 @@ def deliverSpkC {Γ : List (Ty S)}
           let mOut := if challContainsE K gs0 rPos then none else some m'
           return (some (.inr (t', i', mOut)), s1)
 
-def injectSpkC {Γ : List (Ty S)}
+@[expose] def injectSpkC {Γ : List (Ty S)}
     (stE : Expr OO Γ GS) (arg : Expr OO Γ (.prod .bool (.base .ct))) :
     Comp OO II Γ (.prod (.opt RR) GS) :=
   rdsl do
@@ -1322,7 +1322,7 @@ def injectSpkC {Γ : List (Ty S)}
           else
             return (some (.inl ()), gsSetWin gs0 true)
 
-def spkOracleImplC {Γ : List (Ty S)}
+@[expose] def spkOracleImplC {Γ : List (Ty S)}
     (stE : Expr OO Γ GS)
     (q : Expr OO Γ (smQ Pt (GhostState Bytes) Unit (CBC.Plain ℓ) PQC (BitVec 256) Bytes)) :
     Comp OO II Γ
@@ -1349,7 +1349,7 @@ def spkOracleImplC {Γ : List (Ty S)}
       return (.inr res.1, res.2)
 
 /-- Costed `spkLeakRed` PRF reduction. -/
-def spkLeakRedProg :
+@[expose] def spkLeakRedProg :
     CostedReduction (spkLeakSessionOps P ℓ Dh encPt encT decT s) (e2ePrfIface Pt ℓ PQC)
       (SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) (e2eCodec Pt ℓ PQC)
       .unit .unit .bool .bool where
@@ -1654,7 +1654,7 @@ local notation "II" => e2ePrfIface Pt ℓ PQC
 local notation "GS" => @gsTy Pt (GhostState Bytes) Unit (CBC.Plain ℓ) PQC (BitVec 256) Bytes
 local notation "RR" => @smRrTy Pt (GhostState Bytes) Unit (CBC.Plain ℓ) PQC (BitVec 256) Bytes
 
-def sessionSchemeUPt :
+@[expose] def sessionSchemeUPt :
     SMSchemeR Pt (GhostState Bytes) (CBC.Plain ℓ) PQC (BitVec 256) Bytes where
   initA _ := e2eInitB P (0, 0, 0, 0, 0)
   initB _ := e2eInitB P (0, 0, 0, 0, 0)

@@ -11,16 +11,16 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StepsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StepsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
@@ -33,6 +33,11 @@ import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP4
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveId -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlaced
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Matched-Session Substage P4.1
@@ -42,7 +47,7 @@ Budget-threaded `[LibsignalPlacement]` counterpart of `Matched.M4SaveIdPlaced` o
 and `StageP4MatchedSaveErrEnv` on `Err ()` (`→ x30`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -465,7 +470,7 @@ theorem savePoll_pre_intro_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Spatial bundles and matched-session Substage P4.1 -/
 
-def stageP4MatchedSaveIdSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedSaveIdSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64)
     (s0 s s_pool : State)
@@ -494,7 +499,7 @@ def stageP4MatchedSaveIdSharedPlaced [LibsignalPlacement] {M : AllocCostModel}
   A.pool lim st s_pool ∗
   stackAt s.sp (saveIdCallStack ikit)
 
-def stageP4MatchedSaveIdPrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedSaveIdPrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64)
     (s0 s : State)
@@ -515,7 +520,7 @@ def stageP4MatchedSaveIdPrePlaced [LibsignalPlacement] {M : AllocCostModel}
   memRegion outPtr 48 ∗
   ikit.identityAt idStorePtr ist0
 
-def stageP4MatchedSaveIdOkPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedSaveIdOkPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st1 : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64)
     (s0 s s1 : State)
@@ -539,7 +544,7 @@ def stageP4MatchedSaveIdOkPostPlaced [LibsignalPlacement] {M : AllocCostModel}
   memRegion outPtr 48 ∗
   ikit.identityAt idStorePtr (ikit.saveUpdate ist0 peer.val remoteIk (.ok c))
 
-def stageP4MatchedSaveIdErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4MatchedSaveIdErrPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ)
     (ikit : IdentityStoreSpec A.repAlloc 0#64)
     (s0 s sf : State)

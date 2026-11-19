@@ -9,14 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W4ArchiveCancelPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4InnerHelpers
-public import LibsignalBinary.Proofs.PeakBudget.W4PrevDecPeak
-public import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.W4ArchiveCancelPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4InitBobPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4InnerHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4PrevDecPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W4TryDecryptPqPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # W4 Inner Handshake Family Peak Live-Heap Interface
@@ -27,7 +33,7 @@ inlined `SessionStructure::decode`), `W4ArchiveCancelPeak` (`≤ 4` archive/clon
 from `SerCloneStorePeakSpec` and `SpqrCodecPeakSpec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -155,22 +161,6 @@ abbrev phaseCredit_w4TryDecryptCloneFail_cancel :=
 
 /-! ## 2. Callee-Instantiated Corollaries -/
 
-/-- `SerializePrev1Env` instantiated with `SerCloneStorePeakSpec.sessionClone_phaseCredit`. -/
-theorem serializePrev1Env_c04_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {G : SessionGhost} {sess : Session (List (BitVec 8))}
-    {enc : List (BitVec 8)} {encCap outCap : Nat}
-    (hSmall24 : 24 ≤ HasFineReallocCredit.smallMaxReq M)
-    (henc : enc.length ≤ encCap)
-    (hout : (encodeRecordPrev1Mem G sess enc).length ≤ outCap) :
-    PhaseCreditSpec M (SerializePrev1Env G sess enc)
-      (segCloneCum G sess.state + (9587 + (2 * encCap + 9539)) + (2 * outCap + 9539))
-      (segCloneLarge M G sess.state + (encCap + 8195) + (outCap + 8195))
-      (max (segCloneLarge M G sess.state)
-        (segCloneLarge M G sess.state + (encCap + 8195) + (outCap + 8195)))
-      (max (segCloneMaxReq G sess.state) (max 24 (max encCap outCap))) :=
-  phaseCredit_serializePrev1Env_seqFree hM hSmall24 henc hout
-    (sessionClone_phaseCredit hM G sess.state)
-
 /-- `PromoteStateArchiveEnv` instantiated with `SerCloneStorePeakSpec.serialize_phaseCredit`. -/
 theorem promoteStateArchive_c04_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
@@ -199,63 +189,5 @@ theorem tryDecryptCloneFail_c04_cancel_phaseCredit {M : AllocCostModel} [HasFine
       (max (max (segCloneMaxReq G st) r_tr) 192) :=
   phaseCredit_w4TryDecryptCloneFail_cancel hM hSmall192 hTrialFail
     (fun hB => sessionClone_drop_cancel_phaseCredit hM G st hB)
-
-/-- Small-regime `W4InitBobSpqrEnv` instantiated with `SpqrCodecPeakSpec.initialState_phaseCreditSpec`.
--/
-theorem w4InitBob_c07_small_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (F : ShaCompress) {x_res : DoReserveCall} {hasOpk : Bool}
-    (x_spqr : InitialStateGhost) {ikmCap : Nat}
-    (hold : x_res.cap.toNat ≤ ikmCap)
-    (hnew : reserveCap x_res.cap.toNat x_res.bs.length x_res.additional ≤ ikmCap)
-    (hSmall : max ikmCap 1569 ≤ HasFineReallocCredit.smallMaxReq M) :
-    let R := 4 * x_spqr.p.authKey.length + 4096
-    PhaseCreditSpec M (W4InitBobSpqrEnv F x_res hasOpk x_spqr)
-      (w4InitBobOuterCum ikmCap + 128 * (2 * R + 9539))
-      (128 * (R + 8195))
-      (128 * (R + 8195))
-      (max (max ikmCap 1569) (max R 68)) := by
-  dsimp only
-  have h := phaseCredit_w4InitBob_small hM (hasOpk := hasOpk) hold hnew hSmall
-    (initialState_phaseCreditSpec hM F x_spqr)
-  exact h.mono (Nat.le_refl _) (Nat.le_refl _)
-    (Nat.max_le.mpr ⟨Nat.le_refl _, Nat.le_refl _⟩) (Nat.le_refl _)
-
-/-- Stage P2 `Over`-path responder bound (`W4StageP2OverBobEnv`) instantiated with `serialize_phaseCredit` and `initialState_phaseCreditSpec`.
--/
-theorem w4StageP2OverBob_c04_c07_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (F : ShaCompress)
-    (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
-    {VecPushEnv : List AllocEvent → Prop} {c_push r_push : Nat}
-    {x_res : DoReserveCall} {hasOpk : Bool} (x_spqr : InitialStateGhost) {ikmCap : Nat}
-    (hPush : PhaseCreditSpec M VecPushEnv c_push 0 0 r_push)
-    (hold : x_res.cap.toNat ≤ ikmCap)
-    (hnew : reserveCap x_res.cap.toNat x_res.bs.length x_res.additional ≤ ikmCap)
-    (hSmall : max ikmCap 1569 ≤ HasFineReallocCredit.smallMaxReq M) :
-    let R := 4 * x_spqr.p.authKey.length + 4096
-    PhaseCreditSpec M
-      (W4StageP2OverBobEnv (RecordSerializeCancelEnv g r) VecPushEnv x_res hasOpk
-        (SpqrV1.Top.InitialState.DefsPlacedBudget.InitialStateEnv F x_spqr))
-      (recordSerializeCum g r + c_push + w4InitBobOuterCum ikmCap + 128 * (2 * R + 9539))
-      (recordSerializeOutLarge M g r + 128 * (R + 8195))
-      (max (recordSerializePeak M g r)
-        (recordSerializeOutLarge M g r + 128 * (R + 8195)))
-      (max (max (recordSerializeMaxReq g r) r_push) (max (max ikmCap 1569) (max R 68))) := by
-  dsimp only
-  have h := W4InitBobPeak.phaseCredit_w4StageP2OverBob_small hM (hasOpk := hasOpk)
-    (serialize_phaseCredit hM g r) hPush hold hnew hSmall
-    (initialState_phaseCreditSpec hM F x_spqr)
-  have hp_le :
-      max (recordSerializePeak M g r)
-        (recordSerializeOutLarge M g r +
-          max (128 * ((4 * x_spqr.p.authKey.length + 4096) + 8195))
-            (128 * ((4 * x_spqr.p.authKey.length + 4096) + 8195))) ≤
-      max (recordSerializePeak M g r)
-        (recordSerializeOutLarge M g r +
-          128 * ((4 * x_spqr.p.authKey.length + 4096) + 8195)) :=
-    Nat.max_le.mpr ⟨Nat.le_max_left _ _,
-      Nat.le_trans
-        (Nat.add_le_add_left (Nat.max_le.mpr ⟨Nat.le_refl _, Nat.le_refl _⟩) _)
-        (Nat.le_max_right _ _)⟩
-  exact h.mono (Nat.le_refl _) (Nat.le_refl _) hp_le (Nat.le_refl _)
 
 end LibsignalBinary.Proofs.PeakBudget.W4InnerPeakSpec

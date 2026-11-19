@@ -9,11 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEnc
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacEnc -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaSend
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacMu
 import Computational.Proofs.GameHop.ReductionDsl.PeelSim
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
 
 /-!
 # Send Branch of the `PrfHmac` Evaluation Equivalence
@@ -22,7 +30,7 @@ Proves that `finishIntC` and `hmSendC` evaluate to `finishAuthIntSendPure` and t
 `hmPre`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,20 +44,6 @@ open Computational.Proofs.GameHop.ReductionDsl
 open OracleSpec OracleComp
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List PT}
-
-theorem initSlotE_eval {Γ : List PT} (e : Expr pqxdhOps Γ sessionIdTy) (env : Env Γ) (sid : SessionId S)
-    (he : e.eval env = sessionIdToVal sid) :
-    (initSlotE S e).eval env = initSessionSlotIdx sid := by
-  simp only [initSlotE, eCaseSum, v, Expr.eval, Ext.refl_wk, Env.get_zero, he]
-  cases sid with
-  | sendOPK u i =>
-    have hN : S.N_id ≠ 0 := Nat.ne_of_gt (Nat.zero_lt_of_lt u.isLt)
-    simp [sessionIdToVal, sidV, initSessionSlotIdx, hN, Nat.mul_comm]
-  | sendNoOPK u i =>
-    have hN : S.N_id ≠ 0 := Nat.ne_of_gt (Nat.zero_lt_of_lt u.isLt)
-    simp [sessionIdToVal, sidV, initSessionSlotIdx, hN, Nat.mul_comm]
-  | recvOPK _ _ _ => rfl
-  | recvNoOPK _ _ _ => rfl
 
 theorem initKeyIdE_eval {Γ : List PT} (e : Expr pqxdhOps Γ sessionIdTy) (env : Env Γ) (sid : SessionId S)
     (he : e.eval env = sessionIdToVal sid) :

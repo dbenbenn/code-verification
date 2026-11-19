@@ -9,17 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingE
-public import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingE
+import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
 
 /-!
 # One-Key `Auth` Cutoff Oracle Wrapper and Trace Monotonicity
@@ -28,7 +28,7 @@ Defines `pqxdhAuthAdvStageImpl1Key` over `pqxdhAuthHybridKoskImpl1Key` and prove
 and `isAuthG3Abort` monotonicity for the one-key `Auth` `G3 -> G3.5` hop.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 open SignalPqxdh SignalPqxdh.Security
@@ -38,7 +38,7 @@ open Proofs.SignalPqxdh.Security.FgGapDh
 namespace Proofs.SignalPqxdh.Security
 
 /-- Stage-parameterized one-key `Auth` oracle wrapper recording `advRoLog` and `respRecs`. -/
-def pqxdhAuthAdvStageImpl1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthAdvStageImpl1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthAdvCutoffState S) ProbComp) := fun q =>
   match q with
   | .roQuery secrets => StateT.mk (fun hst => do

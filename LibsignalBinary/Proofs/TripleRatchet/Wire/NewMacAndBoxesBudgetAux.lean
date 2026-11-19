@@ -12,14 +12,16 @@ module
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewMacAndBoxes
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewMacAndBoxes -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologueBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<SignalMessage>::new` Phase 3 Segments 1–5 (`+0x3dc .. +0x5ac`)
@@ -29,7 +31,7 @@ helpers, and relocatable `[LibsignalPlacement]` budget-threaded segment proofs f
 and MAC append, `ciphertext` and `pq_ratchet` cloning, `addresses` boxing, and 120-byte `sret` stores.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -150,24 +152,24 @@ private theorem call_noPanic_extern {α : Type} {prog : Program}
 /-! ## Phase 3 event lists and `FitsEvents` splitting lemmas -/
 
 /-- Events of Phase 3 Segment 2 (`ciphertext.into_boxed_slice()` clone) in `<SignalMessage>::new`. -/
-def newCtCloneEvents (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newCtCloneEvents (x : SignalMessageNewGhost) : List AllocEvent :=
   if x.ciphertext.isEmpty then [] else rustAllocEvents x.ciphertext.length 1
 
 /-- Events of Phase 3 Segment 3 (`pq_ratchet` clone) in `<SignalMessage>::new`. -/
-def newPqCloneEvents (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newPqCloneEvents (x : SignalMessageNewGhost) : List AllocEvent :=
   if x.pqRatchet.isEmpty then [] else rustAllocEvents x.pqRatchet.length 1
 
 /-- Events of Phase 3 Segment 6a (deallocating temporary `rkPtr` and `ctCopyPtr`). -/
-def newDeallocRkAndCtEvents (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newDeallocRkAndCtEvents (x : SignalMessageNewGhost) : List AllocEvent :=
   rustDeallocEvents 33 1 ++
     (if x.ciphertext.isEmpty then [] else rustDeallocEvents x.ciphertext.length 1)
 
 /-- Events of Phase 3 Segment 6b (deallocating temporary `pqCopyPtr`). -/
-def newDeallocPqEvents (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newDeallocPqEvents (x : SignalMessageNewGhost) : List AllocEvent :=
   if x.pqRatchet.isEmpty then [] else rustDeallocEvents x.pqRatchet.length 1
 
 /-- Total allocator event sequence of Phase 3 (`+0x3dc..ret`) in `<SignalMessage>::new`. -/
-def newPhase3Events (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newPhase3Events (x : SignalMessageNewGhost) : List AllocEvent :=
   computeMacEvents ++
     newCtCloneEvents x ++
     newPqCloneEvents x ++

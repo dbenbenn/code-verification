@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhD -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.WellFormedDelta
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 
 open SignalPqxdh
 open OracleSpec OracleComp
@@ -38,9 +38,9 @@ theorem pqxdhKeyIndFgPreImpl_preserves_spkTargetRevealed {S : Setup} (useDh1 : B
       bIdx
   unfold spkTargetRevealed at hRev ⊢
   rcases Bool.and_eq_true_iff.mp hRev with ⟨hDec, hAll⟩
-  have hFired : hasFiredSpk S bIdx hst := @of_decide_eq_true _ (Classical.propDecidable _) hDec
-  have hFired' : @decide (hasFiredSpk S bIdx x.2) (Classical.propDecidable _) = true :=
-    @decide_eq_true _ (Classical.propDecidable _) (hFiredPres hFired)
+  have hFired : hasFiredSpk S bIdx hst := of_decide_eq_true hDec
+  have hFired' : decide (hasFiredSpk S bIdx x.2) = true :=
+    decide_eq_true (hFiredPres hFired)
   rw [hFired', Bool.true_and]
   have hUnchanged : x.2.base.spkBundles = hst.base.spkBundles →
       x.2.base.spkBundles.all (fun (k, b) => !(spkBundleFlatIdxVal S k == bIdx) || b.revealed) =
@@ -96,7 +96,7 @@ theorem spkTargetRevealed_map_revealed_of_eq {S : Setup} (bIdx : ℕ)
     refine ⟨(k0, bEntry), hMem0, ?_⟩
     dsimp only [Function.comp_apply]
     split_ifs; exact hEq0
-  rw [@decide_eq_true _ (Classical.propDecidable _) hFired', Bool.true_and, List.all_map,
+  rw [decide_eq_true hFired', Bool.true_and, List.all_map,
     List.all_eq_true]
   rintro ⟨k, b⟩ hMem
   dsimp only [Function.comp_apply]
@@ -135,7 +135,7 @@ theorem eraseSpkBundleEntryFg_eq_self_of_ne (S : Setup) (bIdx : ℕ)
   rw [hFlat, hTgtF]
   rfl
 
-noncomputable def deadDh3Full {S : Setup} (P : Primitives) (sIdx bIdx : ℕ) (V : Bytes)
+@[expose] def deadDh3Full {S : Setup} (P : Primitives) (sIdx bIdx : ℕ) (V : Bytes)
     (hst : KeyIndFgCutoffState S) : Bool :=
   deadDh3 P sIdx bIdx V hst || spkTargetRevealed bIdx hst
 
@@ -269,13 +269,13 @@ theorem acceptKeys_noOpk_eq_none_or_some (P : Primitives) (hP : CryptoWellFormed
       cases (P.x25519 ikBSk hdr.ekAPk != List.replicate 32 0) <;>
       cases (P.x25519 spkBSk hdr.ekAPk != List.replicate 32 0) <;> simp
 
-def FgAdvEq (P : Primitives) (stLog hstLog : List Bytes)
+@[expose] def FgAdvEq (P : Primitives) (stLog hstLog : List Bytes)
     (advKeyPows advKeys : List (Bytes × Bytes)) : Prop :=
   stLog = hstLog ∧
   advKeyPows = advKeys.map (fun (sk, pk) => (sk, P.pow8 pk)) ∧
   (∀ kv ∈ advKeys, kv.1.length = 32 ∧ kv.2 = P.x25519Base kv.1)
 
-def FgSimInvDh3 (S : Setup) (b : QueryBudget) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
+@[expose] def FgSimInvDh3 (S : Setup) (b : QueryBudget) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
     (sIdx bIdx : ℕ) (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32)
     (rem : ℕ) (hst : KeyIndFgCutoffState S) (st : FgKeyIndSimState S) : Prop :=
   st.base = eraseStateFg false sIdx bIdx hst.base ∧
@@ -1435,30 +1435,6 @@ theorem koskBundleOkTake_erasePrin_eraseSpk_eq (S : Setup) (P : Primitives) (uId
     (by rw [erasePrincipalsFg_length]; exact hP) hS hO hAdvPows]
   unfold koskBundleOk
   rw [isGameIdKey_erasePrincipalsFg]
-
-theorem computeOptPosPure_left_len32_rep4 {P : Primitives} (R : FgSlotReps P)
-    (hP : WellFormedPrimitivesδ P) (ekASk ekAPk : Bytes) (hLen : ekASk.length = 32)
-    (opkB? : Option (UInt32 × Bytes)) :
-    R.Rep4
-      (computeOptPosPure P ekASk ekAPk (opkB?.map (fun (_, opkPk) => ([], opkPk))))
-      (opkB?.map (fun (_, opkPk) => P.x25519 ekASk opkPk)) := by
-  have hEq :
-      computeOptPosPure P ekASk ekAPk (opkB?.map (fun (_, opkPk) => ([], opkPk))) =
-        (opkB?.map (fun (_, opkPk) => P.x25519 ekASk opkPk)).map (mkSecretPosPure P) := by
-    cases opkB? with
-    | none => rfl
-    | some p =>
-      dsimp only [Option.map, computeOptPosPure]
-      rw [computeTwoSideOrPairPosPure_left_len32 P ekASk [] ekAPk p.2 hLen]
-  rw [hEq]
-  apply R.sec4
-  intro d hd
-  cases opkB? with
-  | none => cases hd
-  | some p =>
-    simp only [Option.map_some, Option.some.injEq] at hd
-    subst hd
-    exact hP.x25519_len ekASk p.2
 
 theorem computeOptPosPure_left_len32_fgOptRightRep (P : Primitives)
     (hP : WellFormedPrimitivesδ P) (vSk ekASk ekAPk : Bytes)

@@ -309,5 +309,4 @@ theorem ptAvoidFull_prefixTerms_of_pre38PrefixInv {r : Records} {S : Sem} {who�
     obtain ⟨tr₁, a, ikA, hb_h, hid, hm₀_vis, rfl | ⟨tr₂, cl₁, hcpin, rfl⟩⟩ := hinv.2.1 ls hls
     · exact ptAvoidFull_iniAliceStartState_of_aliceVis hcompat hwf hb32 hid hm₀_vis hrs_ek hrs_dhs
     · exact ptAvoidFull_encSt_of_aliceVis hcompat hwf hb32 hid hm₀_vis hrs_ek hrs_dhs (ptAvoidFull_randTerm_of_mem_rng36_inits hb hcpin)
-theorem ptDeadAt38_of (hinv : ∀ (r : Records) (S : Sem) (g : Ghost) (ms : List Move), compFitsPinned setup compI0 r → ExplainsMoves compI0 r S who ok g ms (trace.take 38) → Common443.CompSetupSecrecy.NoBrk r ms → Pre38PrefixInv r S g ms (ptAt 38)) : PtDeadAt 38 := by intro r S g ms hfits hnb hexp hem hcol; exact not_pt_collision_of_ne_bytes_full hem (ptAvoidFull_prefixTerms_of_pre38PrefixInv hfits.1.1 hexp.1 (.inl rfl) (hinv r S g ms hfits hexp hnb)) (hcol g ⟨rfl, hexp.1⟩)
 end Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.PtDead38

@@ -21,7 +21,7 @@ Defines `SessionGhost.AgreeExceptPq` and `SessionGhost.AfterOutgoingRatchetApply
 `OutgoingTripleRatchet::{from_session_state, apply_to_session_state}` frame updates.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchetRepr
 open Arm64 CryptoGames CryptoGames.HMAC CryptoGames.HKDF CryptoGames.LibsignalSession
@@ -29,12 +29,12 @@ open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 
 /-- `G'` is `G` except possibly the pq pin (`OTR::from_session_state` takes the pq state and, on
 its version / identity errors, frees it). -/
-def SessionGhost.AgreeExceptPq (G G' : SessionGhost) : Prop :=
+@[expose] def SessionGhost.AgreeExceptPq (G G' : SessionGhost) : Prop :=
   G' = { G with pq := G'.pq }
 
 /-- The ghost after `OTR::apply_to_session_state`: only the sender chain's chain-key pin and the pq
 pin change. -/
-def SessionGhost.AfterOutgoingRatchetApply (G G' : SessionGhost) : Prop :=
+@[expose] def SessionGhost.AfterOutgoingRatchetApply (G G' : SessionGhost) : Prop :=
   ∃ sg sg', G.sender = some sg ∧ G'.sender = some sg' ∧ sg' = { sg with ck := sg'.ck } ∧
     G' = { G with sender := some sg', pq := G'.pq }
 

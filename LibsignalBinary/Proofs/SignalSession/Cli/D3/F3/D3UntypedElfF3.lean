@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3PollRejectAuxF3
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3PollRejectAuxF3
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Domains
@@ -18,6 +18,10 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk
 import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Two-Placement Whole-Process ELF Rejection for `pkToE? pm = none`
@@ -27,7 +31,7 @@ Defines `cliRunSemD3` and `MainOkUntypedD3F3`, projects `MainOkParseNoneD3F3` di
 `cliRunPlacedSig mpl mmpl elf W` (`d3_untypedReject_strict_of_f3`, `d3_untypedReject_f3`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,9 +42,10 @@ open CryptoGames.HMAC (keyToBytes32)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
 open CryptoVerification.E2E (PEParams wirePrekey)
 open CryptoVerification.SignalSession (
-  CliHooks CliReachesOOMPlaced OutcomeOrExcusedAbort PqParty PqxdhPartyInSpecDomain
-  cliExternsPlaced cliProcessInputs filesOf observe pqRecvInputs stdinCapBytes
+  CliHooks OutcomeOrExcusedAbort PqParty PqxdhPartyInSpecDomain cliExternsPlaced
+  cliProcessInputs filesOf observe pqRecvInputs stdinCapBytes
 )
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliReachesOOMPlaced)
 open CryptoVerification.SignalSession.Cli (CommitOk MainResult)
 open CryptoVerification.SignalSession.Cli.MainHops (domainArgv_pqRecv)
 open CryptoVerification.SignalSession.Cli.RunCompose (
@@ -50,7 +55,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs (SessMatchesPm decPkDef pkTo
 open CryptoVerification.SignalSession.Cli.RunProofs.Pksm (pksmParse)
 open CryptoVerification.SignalSession.Cli.RunRefine (addrValE runAns_pqRecvPrekey_eq runBounds_pqRecv)
 open CryptoVerification.SignalSession.Cli.Slots (runEncOk_pqRecv scopeIn)
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open LibsignalBinary.Heap.Fine (fineCostModel fineHookRustCliAllocBudget)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3 (d3PqSessionOf)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3 (
@@ -122,7 +127,7 @@ theorem runRel_pqRecv_untypedReject (W : CliHooks) (st : PqParty) (body : List (
 
 /-- `NeedLocks` + `cliBudgetLimits` `main`-level specification for untyped / bad-KEM
 pre-key rejection (`pkToE? pm = none`), scoped via `pqD3ScopedRun`. -/
-def MainOkUntypedD3F3
+@[expose] def MainOkUntypedD3F3
     (mpl mmpl : MultiPlacement) (CodeOk : Memory → Prop)
     (libcAddr brkStart : BitVec 64) (stk : Nat) : Prop :=
   mpl.base 547 ≠ 0#64 →

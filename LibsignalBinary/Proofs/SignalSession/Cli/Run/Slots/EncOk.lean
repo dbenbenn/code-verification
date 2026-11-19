@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.FilesOk -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.Repr
 import LibsignalBinary.Proofs.E2E.Reach.BundleCommon
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Encrypt Slot Input Condition (`encOk₀` and `RunEncOk`)
@@ -27,7 +30,7 @@ which requires `64 ≤ coins.length` (DEV-SPQR5: on a shorter tape the binary ze
 any tape length suffices.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,18 +49,18 @@ open CryptoVerification.SignalSession.Cli.KitInst
 /-! ## `encOk₀` and `PeerPqEmpty` -/
 
 /-- Injectivity of `E2E.Record.encodeRecord` (`SessionRecord::serialize`) on `Scope`. -/
-def EncodeInjOn (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
+@[expose] def EncodeInjOn (Scope : SessionRecord (List (BitVec 8)) → Prop) : Prop :=
   ∀ r₁ r₂, Scope r₁ → Scope r₂ → E2E.Record.encodeRecord r₁ = E2E.Record.encodeRecord r₂ → r₁ = r₂
 
 /-- Every record in `Scope` encoded by `peer`'s session file on `F` has an empty post-quantum
 ratchet state (`pqRatchetState = []`). -/
-def PeerPqEmpty (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles) (peer : AddrVal) :
+@[expose] def PeerPqEmpty (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles) (peer : AddrVal) :
     Prop :=
   ∀ bs r, StoresGhost.opened.sessions.get cliIo.rd F (Cli.addressText peer) = .ok bs →
     E2E.Record.encodeRecord r = bs → Scope r → E2E.Record.RecordPqEmpty r
 
 /-- Encrypt slot input condition: either `64 ≤ coins.length` or `PeerPqEmpty Scope F peer`. -/
-def encOk₀ (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles) (peer : AddrVal)
+@[expose] def encOk₀ (Scope : SessionRecord (List (BitVec 8)) → Prop) (F : FsFiles) (peer : AddrVal)
     (coins : List (BitVec 8)) : Prop :=
   64 ≤ coins.length ∨ PeerPqEmpty Scope F peer
 

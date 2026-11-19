@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
 public import LibsignalBinary.Heap.Fine.ClientBounds
 
 /-!
@@ -30,7 +30,7 @@ reordering:
 5. Whole-trace `evalLog` and `footprint_le` corollaries at `st0 = M.init`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +56,7 @@ open LibsignalBinary.Heap.Fine.ClientBounds (
 
 /-- Iterative left-to-right sequential envelope over `List α` using `Heap.SeqEnv`: preserves call
 order and includes prefix early-exits so `FitsEnv` projects step-by-step. -/
-def IterSeqEnv {α : Type} (Step : α → List AllocEvent → Prop) :
+@[expose] def IterSeqEnv {α : Type} (Step : α → List AllocEvent → Prop) :
     List α → List AllocEvent → Prop
   | [], evs => evs = []
   | x :: xs, evs => SeqEnv (Step x) (IterSeqEnv Step xs) evs
@@ -64,17 +64,17 @@ def IterSeqEnv {α : Type} (Step : α → List AllocEvent → Prop) :
 /-- Strict left-to-right concatenation envelope (`evs = evs₁ ++ evs₂`) where both phases run to
 completion in exact execution order (without `SeqEnv`'s early-exit `Or.inl` disjunct). Used when
 a trailing deallocation phase unconditionally runs and cancels a preceding large allocation. -/
-def ConcatEnv (E₁ E₂ : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
+@[expose] def ConcatEnv (E₁ E₂ : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   ∃ evs₁ evs₂, evs = evs₁ ++ evs₂ ∧ E₁ evs₁ ∧ E₂ evs₂
 
 /-- Strict left-to-right concatenation over `List α` where every element's phase completes. -/
-def IterConcatEnv {α : Type} (Step : α → List AllocEvent → Prop) :
+@[expose] def IterConcatEnv {α : Type} (Step : α → List AllocEvent → Prop) :
     List α → List AllocEvent → Prop
   | [], evs => evs = []
   | x :: xs, evs => ConcatEnv (Step x) (IterConcatEnv Step xs) evs
 
 /-- Deallocation-only event list with standard Rust `al ≤ 16` alignments. -/
-def FreeOnlyAlign16Evs (evs : List AllocEvent) : Prop :=
+@[expose] def FreeOnlyAlign16Evs (evs : List AllocEvent) : Prop :=
   ∀ ev ∈ evs, ∃ al, al ≤ 16 ∧ ∃ sz, ev = .free al sz
 
 theorem SeqEnv.mono {E₁ E₁' E₂ E₂' : List AllocEvent → Prop}
@@ -84,17 +84,6 @@ theorem SeqEnv.mono {E₁ E₁' E₂ E₂' : List AllocEvent → Prop}
   rcases h with hE1 | ⟨evs₁, evs₂, rfl, hE1, hE2⟩
   · exact Or.inl (h1 evs hE1)
   · exact Or.inr ⟨evs₁, evs₂, rfl, h1 evs₁ hE1, h2 evs₂ hE2⟩
-
-/-- Left-reassociation of `SeqEnv` in exact execution order (`E₁; (E₂; E₃)` implies `(E₁; E₂); E₃`). -/
-theorem SeqEnv.assoc_left {E₁ E₂ E₃ : List AllocEvent → Prop} {evs : List AllocEvent}
-    (h : SeqEnv E₁ (SeqEnv E₂ E₃) evs) :
-    SeqEnv (SeqEnv E₁ E₂) E₃ evs := by
-  rcases h with h1 | ⟨evs₁, evs₂₃, rfl, h1, h23⟩
-  · exact Or.inl (Or.inl h1)
-  · rcases h23 with h2 | ⟨evs₂, evs₃, rfl, h2, h3⟩
-    · exact Or.inl (Or.inr ⟨evs₁, evs₂₃, rfl, h1, h2⟩)
-    · exact Or.inr ⟨evs₁ ++ evs₂, evs₃, (List.append_assoc evs₁ evs₂ evs₃).symm,
-        Or.inr ⟨evs₁, evs₂, rfl, h1, h2⟩, h3⟩
 
 theorem ConcatEnv.append {E₁ E₂ : List AllocEvent → Prop} {evs₁ evs₂ : List AllocEvent}
     (h1 : E₁ evs₁) (h2 : E₂ evs₂) :
@@ -129,15 +118,6 @@ theorem ConcatEnv.nil_right_iff {E : List AllocEvent → Prop} {evs : List Alloc
   · intro hE
     exact ⟨evs, [], (List.append_nil evs).symm, hE, rfl⟩
 
-theorem ConcatEnv.assoc_iff {E₁ E₂ E₃ : List AllocEvent → Prop} {evs : List AllocEvent} :
-    ConcatEnv (ConcatEnv E₁ E₂) E₃ evs ↔ ConcatEnv E₁ (ConcatEnv E₂ E₃) evs := by
-  constructor
-  · rintro ⟨evs₁₂, evs₃, rfl, ⟨evs₁, evs₂, rfl, h1, h2⟩, h3⟩
-    exact ⟨evs₁, evs₂ ++ evs₃, List.append_assoc evs₁ evs₂ evs₃, h1, ⟨evs₂, evs₃, rfl, h2, h3⟩⟩
-  · rintro ⟨evs₁, evs₂₃, rfl, h1, ⟨evs₂, evs₃, rfl, h2, h3⟩⟩
-    exact ⟨evs₁ ++ evs₂, evs₃, (List.append_assoc evs₁ evs₂ evs₃).symm,
-      ⟨evs₁, evs₂, rfl, h1, h2⟩, h3⟩
-
 theorem IterSeqEnv.nil {α : Type} (Step : α → List AllocEvent → Prop) :
     IterSeqEnv Step [] [] :=
   rfl
@@ -151,11 +131,6 @@ theorem IterSeqEnv.cons_iff {α : Type} {Step : α → List AllocEvent → Prop}
     {x : α} {xs : List α} {evs : List AllocEvent} :
     IterSeqEnv Step (x :: xs) evs ↔ SeqEnv (Step x) (IterSeqEnv Step xs) evs :=
   Iff.rfl
-
-theorem IterSeqEnv.cons_inl {α : Type} {Step : α → List AllocEvent → Prop}
-    {x : α} {xs : List α} {evs : List AllocEvent} (hx : Step x evs) :
-    IterSeqEnv Step (x :: xs) evs :=
-  Or.inl hx
 
 theorem IterSeqEnv.cons_append {α : Type} {Step : α → List AllocEvent → Prop}
     {x : α} {xs : List α} {evs₁ evs₂ : List AllocEvent}
@@ -190,45 +165,6 @@ theorem IterSeqEnv.mono {α : Type} {Step₁ Step₂ : α → List AllocEvent �
       (hstep x List.mem_cons_self)
       (fun evs' h' => ih (fun y hy => hstep y (List.mem_cons_of_mem x hy)) h')
       h
-
-/-- Decomposes `IterSeqEnv Step (xs ++ ys)` into `SeqEnv (IterSeqEnv Step xs) (IterSeqEnv Step ys)`
-in exact execution order for arbitrary `xs, ys : List α`. -/
-theorem IterSeqEnv.to_seqEnv_append {α : Type} {Step : α → List AllocEvent → Prop}
-    (xs ys : List α) :
-    ∀ {evs : List AllocEvent},
-      IterSeqEnv Step (xs ++ ys) evs →
-      SeqEnv (IterSeqEnv Step xs) (IterSeqEnv Step ys) evs := by
-  induction xs with
-  | nil =>
-    intro evs h
-    exact Or.inr ⟨[], evs, rfl, rfl, h⟩
-  | cons x xs ih =>
-    intro evs h
-    rcases h with hx | ⟨evs₁, evs_rest, rfl, hx, hrest⟩
-    · exact Or.inl (Or.inl hx)
-    · rcases ih hrest with hxs | ⟨evs₂, evs₃, rfl, hxs, hys⟩
-      · exact Or.inl (Or.inr ⟨evs₁, evs_rest, rfl, hx, hxs⟩)
-      · exact Or.inr ⟨evs₁ ++ evs₂, evs₃, (List.append_assoc evs₁ evs₂ evs₃).symm,
-          Or.inr ⟨evs₁, evs₂, rfl, hx, hxs⟩, hys⟩
-
-/-- Non-empty prefix lift for `IterSeqEnv`: any early-exiting or completed trace of a non-empty
-prefix `xs` is a valid trace of `xs ++ ys`. -/
-theorem IterSeqEnv.prefix_of_ne_nil {α : Type} {Step : α → List AllocEvent → Prop}
-    {xs : List α} (ys : List α) (hne : xs ≠ []) :
-    ∀ {evs : List AllocEvent}, IterSeqEnv Step xs evs → IterSeqEnv Step (xs ++ ys) evs := by
-  induction xs with
-  | nil => exact False.elim (hne rfl)
-  | cons x xs ih =>
-    intro evs h
-    rcases h with hx | ⟨evs₁, evs₂, rfl, hx, hxs⟩
-    · exact Or.inl hx
-    · cases xs with
-      | nil =>
-        cases hxs
-        rw [List.append_nil]
-        exact Or.inl hx
-      | cons x' xs' =>
-        exact Or.inr ⟨evs₁, evs₂, rfl, hx, ih (List.cons_ne_nil x' xs') hxs⟩
 
 theorem IterConcatEnv.nil {α : Type} (Step : α → List AllocEvent → Prop) :
     IterConcatEnv Step [] [] :=
@@ -315,35 +251,6 @@ theorem IterConcatEnv.append_iff {α : Type} {Step : α → List AllocEvent → 
       exact ⟨e₁, e₂ ++ e₃, List.append_assoc e₁ e₂ e₃,
         hx, ih.mpr ⟨e₂, e₃, rfl, hxs, hys⟩⟩
 
-/-- Constructs `IterSeqEnv Step (xs ++ ys) (evs₁ ++ evs₂)` from a completed prefix `xs`
-followed in exact order by a `ys` trace. -/
-theorem IterSeqEnv.of_concat_append {α : Type} {Step : α → List AllocEvent → Prop}
-    {xs ys : List α} {evs₁ evs₂ : List AllocEvent}
-    (hxs : IterConcatEnv Step xs evs₁) (hys : IterSeqEnv Step ys evs₂) :
-    IterSeqEnv Step (xs ++ ys) (evs₁ ++ evs₂) := by
-  induction xs generalizing evs₁ with
-  | nil =>
-    cases hxs
-    simpa using hys
-  | cons _ xs ih =>
-    obtain ⟨e₁, e_rest, rfl, hx, hrest⟩ := hxs
-    rw [List.append_assoc]
-    exact Or.inr ⟨e₁, e_rest ++ evs₂, rfl, hx, ih hrest⟩
-
-/-- Project `FitsEnv` to the head element of `IterSeqEnv Step (x :: xs)`. -/
-theorem FitsEnv.iterSeq_head {α : Type} {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
-    {Step : α → List AllocEvent → Prop} {x : α} {xs : List α}
-    (h : FitsEnv M lim st (IterSeqEnv Step (x :: xs))) :
-    FitsEnv M lim st (Step x) :=
-  FitsEnv.seq_left h
-
-/-- Advance `FitsEnv` past a completed head element `Step x evs₁` into `IterSeqEnv Step xs`. -/
-theorem FitsEnv.iterSeq_tail {α : Type} {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
-    {Step : α → List AllocEvent → Prop} {x : α} {xs : List α} {evs₁ : List AllocEvent}
-    (h : FitsEnv M lim st (IterSeqEnv Step (x :: xs))) (hx : Step x evs₁) :
-    FitsEnv M lim (M.stepEvents evs₁ st) (IterSeqEnv Step xs) :=
-  FitsEnv.seq_right h hx
-
 theorem FreeOnlyAlign16Evs.nil : FreeOnlyAlign16Evs [] := by
   intro _ h; nomatch h
 
@@ -396,7 +303,7 @@ end Simp
 /-- Plain `Prop` hypothesis asserting that arbitrary-alignment `.free al sz` events never raise
 `cumSmall`, `liveLarge`, or `peakLarge` (discharged on `fineCostModel` by
 `SeqCreditKitLemmas.fineCostModel_freeNonInc` without needing `al ≤ 16` on `Heap.FreeOnlyEvs`). -/
-def FreeNonInc (M : AllocCostModel) [HasFineReallocCredit M] : Prop :=
+@[expose] def FreeNonInc (M : AllocCostModel) [HasFineReallocCredit M] : Prop :=
   ∀ (al sz : Nat) (st : M.σ),
     let st' := M.step (.free al sz) st
     HasFineReallocCredit.cumSmall st' ≤ HasFineReallocCredit.cumSmall st ∧
@@ -681,7 +588,7 @@ theorem PhaseCreditSpec.concat {M : AllocCostModel} [HasFineReallocCredit M]
   (h₁.seq h₂).of_imp fun _ => ConcatEnv.toSeqEnv
 
 /-- Exact right-folded transient peak recurrence across a list of sequential phases. -/
-def iterPeak {α : Type} (l p : α → Nat) : List α → Nat
+@[expose] def iterPeak {α : Type} (l p : α → Nat) : List α → Nat
   | [] => 0
   | x :: xs => max (p x) (l x + iterPeak l p xs)
 
@@ -962,33 +869,6 @@ theorem PhaseCreditSpec.concat_rustRealloc_large_large {M : AllocCostModel} [Has
       stepEvents_rustRealloc_large_large M (M.stepEvents evs₁ st0) hal hal_new hold_gt hnew_gt
     omega
 
-/-- Chained Quadrant L→S `rustReallocEvents old new al` (`al ≤ 16`, `al ≤ new`,
-`smallMaxReq M < old`, `0 < new ≤ smallMaxReq M`) cancelling `largeCost M old` from `Δlive`. -/
-theorem PhaseCreditSpec.concat_rustRealloc_large_small {M : AllocCostModel} [HasFineReallocCredit M]
-    {E₁ : List AllocEvent → Prop} {c₁ l_keep p₁ r₁ old new al : Nat}
-    (h₁ : PhaseCreditSpec M E₁ c₁ (l_keep + HasFineReallocCredit.largeCost M old) p₁ r₁)
-    (hal : al ≤ 16) (hal_new : al ≤ new)
-    (hold_gt : HasFineReallocCredit.smallMaxReq M < old)
-    (hnew_pos : 0 < new) (hnew_le : new ≤ HasFineReallocCredit.smallMaxReq M) :
-    PhaseCreditSpec M (ConcatEnv E₁ (· = rustReallocEvents old new al))
-      (c₁ + HasFineReallocCredit.smallReallocCost M new)
-      l_keep p₁ (max r₁ new) where
-  req_align := by
-    rintro _ ⟨evs₁, _, rfl, hE1, rfl⟩ ev hev
-    rcases List.mem_append.mp hev with he1 | he2
-    · obtain ⟨hreq, ha⟩ := h₁.req_align evs₁ hE1 ev he1
-      exact ⟨Nat.le_trans hreq (Nat.le_max_left r₁ new), ha⟩
-    · obtain ⟨hreq, ha⟩ := req_align_rustRealloc hal hal_new ev he2
-      exact ⟨Nat.le_trans hreq (Nat.le_max_right r₁ new), ha⟩
-  credit_le := by
-    rintro st0 _ ⟨evs₁, _, rfl, hE1, rfl⟩
-    rw [M.stepEvents_append]
-    obtain ⟨hc₁, hl₁, hp₁⟩ := h₁.credit_le st0 hE1
-    obtain ⟨hc₂, hl₂, hp₂⟩ :=
-      stepEvents_rustRealloc_large_small M (M.stepEvents evs₁ st0)
-        hal hal_new hold_gt hnew_pos hnew_le
-    omega
-
 /-- Exact-order deallocation-credit specification: `Env` emits only `0`-request, `≤ 16`-step-align
 events, never increases `cumSmall` or `peakLarge`, and subtracts at least `credit` bytes from
 `liveLarge` via `Nat` subtraction, allowing small and `sc = 63` large frees to interleave in drop
@@ -1115,15 +995,6 @@ theorem DeallocCreditSpec.freeOnly_align16 (M : AllocCostModel) [HasFineReallocC
   credit_sub st0 {_} hf := by
     simpa using stepEvents_freeOnlyAlign16_le M hf st0
 
-/-- Every `DeallocCreditSpec` is a `0`-cost `PhaseCreditSpec`. -/
-theorem DeallocCreditSpec.toPhaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    {Env : List AllocEvent → Prop} {c : Nat} (h : DeallocCreditSpec M Env c) :
-    PhaseCreditSpec M Env 0 0 0 0 where
-  req_align := h.req_align
-  credit_le st0 {_} hE := by
-    obtain ⟨hc, hl, hp⟩ := h.credit_sub st0 hE
-    omega
-
 /-- When `E_work` ends with `Δlive_keep + credit` live large bytes and is followed in call order
 (`ConcatEnv E_work E_free`) by a deallocation phase `E_free` crediting back `credit`, the net
 post-phase live large delta drops to `Δlive_keep` while `Δpeak` preserves the intra-phase peak. -/
@@ -1182,22 +1053,6 @@ theorem PhaseCreditSpec.largeAllocBodyFree_cancel {M : AllocCostModel} [HasFineR
         (max req r_b) :=
     h12.mono (Nat.le_refl _) (by omega) (by omega) (Nat.le_refl _)
   exact h12'.concat_dealloc_cancel (DeallocCreditSpec.free_large M hal hgt)
-
-/-- Right-associated variant of `PhaseCreditSpec.largeAllocBodyFree_cancel`:
-`ConcatEnv (· = rustAllocEvents req al) (ConcatEnv E_body (· = rustDeallocEvents req al))`. -/
-theorem PhaseCreditSpec.largeAllocBodyFree_cancel_right
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    {req al : Nat} {E_body : List AllocEvent → Prop} {c_b l_b p_b r_b : Nat}
-    (hal : al ≤ 16) (hgt : HasFineReallocCredit.smallMaxReq M < req)
-    (hbody : PhaseCreditSpec M E_body c_b l_b p_b r_b) :
-    PhaseCreditSpec M
-      (ConcatEnv (· = rustAllocEvents req al) (ConcatEnv E_body (· = rustDeallocEvents req al)))
-      (HasFineReallocCredit.largeMetaCost M + c_b)
-      l_b
-      (HasFineReallocCredit.largeCost M req + p_b)
-      (max req r_b) :=
-  (PhaseCreditSpec.largeAllocBodyFree_cancel hal hgt hbody).of_imp fun _ =>
-    ConcatEnv.assoc_iff.mpr
 
 /-- `DeallocCreditSpec.freeOnly` directly from `(hM : ModelHyps M)`. -/
 theorem DeallocCreditSpec.freeOnly_of_hyps {M : AllocCostModel} [HasFineReallocCredit M]
@@ -1291,18 +1146,6 @@ theorem PhaseCreditSpec.tempAllocBodyFree_aff {M : AllocCostModel} [HasFineReall
     have hl := hM.largeCost_le hgt
     exact (PhaseCreditSpec.largeAllocBodyFree_cancel hal hgt hbody).mono
       (by omega) (Nat.le_refl l_b) (by omega) (Nat.le_refl _)
-
-/-- Right-associated variant of `PhaseCreditSpec.tempAllocBodyFree_aff`. -/
-theorem PhaseCreditSpec.tempAllocBodyFree_aff_right
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {req al : Nat} {E_body : List AllocEvent → Prop} {c_b l_b p_b r_b : Nat}
-    (hal : al ≤ 16)
-    (hbody : PhaseCreditSpec M E_body c_b l_b p_b r_b) :
-    PhaseCreditSpec M
-      (ConcatEnv (· = rustAllocEvents req al) (ConcatEnv E_body (· = rustDeallocEvents req al)))
-      (2 * req + 9539 + c_b) l_b (req + 8195 + p_b) (max req r_b) :=
-  (PhaseCreditSpec.tempAllocBodyFree_aff hM hal hbody).of_imp fun _ =>
-    ConcatEnv.assoc_iff.mpr
 
 /-! ## 5. Whole-Trace `evalLog` & `footprint_le` Corollaries (`st0 = M.init`) -/
 

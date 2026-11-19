@@ -18,7 +18,7 @@ Defines `bytesMerge3RawSpecW`, `bytesMerge3SpecW`, and `BytesMerge6OkExtW` (`x.b
 without `BytesMergeCapOk` in `pre` or `post`) at `bytesMerge3Stack` (`33120` B).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,7 +33,7 @@ open CryptoVerification.LibsignalTripleRatchet.Prost
 
 /-- `bytesMerge3RawSpec` with `x.bs.length < 2 ^ 62` at `bytesMerge3Stack` (`33120` B) and no
 `BytesMergeCapOk` in `pre` or `post`. -/
-def bytesMerge3RawSpecW (A : RustAlloc) : Spec BytesMergeGhost where
+@[expose] def bytesMerge3RawSpecW (A : RustAlloc) : Spec BytesMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 62⌝ ∗
@@ -52,16 +52,5 @@ def bytesMerge3RawSpecW (A : RustAlloc) : Spec BytesMergeGhost where
           vecU8At A x.valPtr x.valCap x.valBuf x.valBs ∗
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def bytesMerge3SpecW (A : RustAlloc) (img : Obj.Image) : Spec BytesMergeGhost :=
-  (bytesMerge3RawSpecW A).inImage img
-
-/-- `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#6]`
-meets `bytesMerge3SpecW A img` on `tripleRatchetProgAtExt img.base ext`. -/
-def BytesMerge6OkExtW (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr bytesMerge6Name)
-    (bytesMerge3SpecW A img)
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec

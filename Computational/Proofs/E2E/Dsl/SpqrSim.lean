@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.SpqrSimSend
-public import Computational.Proofs.E2E.Dsl.SpqrSimRecv
-public import Computational.Proofs.E2E.Dsl.DrSessionSimHooks
+public import Computational.Proofs.E2E.Dsl.SpqrSimSend -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.SpqrSimRecv -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.DrSessionSimHooks -- proof-setup: allow-public-import
 
 /-!
 # SPQR V1 `ReductionDsl` Simulation
@@ -20,7 +20,7 @@ Re-exports `spqrSendComp` and `spqrRecvComp` with their cost, zero-query, and ev
 theorems, and bundles them into `spqrDslHooks`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +34,7 @@ export SpqrSimSend (spqrSendComp spqrSendComp_cost spqrSendComp_queries spqrSend
 export SpqrSimRecv (spqrRecvComp spqrRecvComp_cost spqrRecvComp_queries spqrRecvComp_eval)
 
 /-- Concrete `SpqrDslHooks` bundle backed by `spqrSendComp` and `spqrRecvComp`. -/
-def spqrDslHooks (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives)
+@[expose] def spqrDslHooks (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives)
     (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     SpqrDslHooks ℓ P C K decT encT where

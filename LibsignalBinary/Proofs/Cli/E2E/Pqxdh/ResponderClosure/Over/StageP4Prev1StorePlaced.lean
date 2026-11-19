@@ -9,15 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Store
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProofPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Store -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProofPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSession
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34Err
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StorePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveId
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34Defs
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Placed Stage P4.4 (`store_session`) on 1-Element `previous_sessions`
@@ -27,7 +36,7 @@ Defines the `[LibsignalPlacement]` `SessionPrev1KitPlacedOkSE` contract interfac
 (`+0x3cc → s0.readReg64 .x30`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -68,7 +77,7 @@ open CryptoVerification.SignalSession
 
 /-- Placed `store_session` poll specification on
 `sessionRecordPrevAt A x.recA ⟨x.prevCap, x.prevPtr, some x.G⟩ [x.enc] ⟨some x.sess⟩`. -/
-def kitStorePollPrev1PlacedSpec [LibsignalPlacement] {A : RustAlloc}
+@[expose] def kitStorePollPrev1PlacedSpec [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (ops : StorePrev1Ops kit) :
     Spec (StorePrev1Call × BitVec 64 × kit.StoreState) where
   pre := fun (x, self, st0) s =>
@@ -131,7 +140,7 @@ private theorem coro2c8_16_fold_prev1_pl (coroPtr v0 v1 : BitVec 64) :
   exact sepConj_mono (pointsTo64_entails_memRegion _ _) (pointsTo64_entails_memRegion _ _)
 
 /-- Shared spatial resources across placed Substage P4.4 over `prevVecAt [enc]`. -/
-def stageP4StoreSessionPrev1SharedPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4StoreSessionPrev1SharedPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (s0 s : State)
     (coroPtr remoteAddrPtr sessionStorePtr : BitVec 64) (peer : AddrGhost) : SepProp :=
   ((coroPtr + 0x78#64) ↦₆₄ remoteAddrPtr) ∗
@@ -147,7 +156,7 @@ def stageP4StoreSessionPrev1SharedPlaced [LibsignalPlacement] {A : RustAlloc}
   stackAt s.sp (storeSessionCallStack kit)
 
 /-- Precondition of placed Substage P4.4 at `(blkPl_518).base + 0x3cc`. -/
-def stageP4StoreSessionPrev1PrePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4StoreSessionPrev1PrePlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (s0 s : State)
     (coroPtr outPtr remoteAddrPtr sessionStorePtr prevCap prevPtr ptCap ptPtr : BitVec 64)
     (b_2c0 : BitVec 8) (pt enc : List (BitVec 8))
@@ -165,7 +174,7 @@ def stageP4StoreSessionPrev1PrePlaced [LibsignalPlacement] {A : RustAlloc}
   memRegion outPtr 48 ∗ kit.storeAt sessionStorePtr sst0
 
 /-- Postcondition of placed Substage P4.4 on `Ok(())` at `s0.readReg64 .x30`. -/
-def stageP4StoreSessionPrev1OkPostPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4StoreSessionPrev1OkPostPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (ops : StorePrev1Ops kit)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr sessionStorePtr : BitVec 64)
@@ -181,7 +190,7 @@ def stageP4StoreSessionPrev1OkPostPlaced [LibsignalPlacement] {A : RustAlloc}
   kit.storeAt sessionStorePtr (ops.storeUpdatePrev1 sst0 peer.val G ss enc (.ok ()))
 
 /-- Postcondition of placed Substage P4.4 on `Err(())` at `s0.readReg64 .x30`. -/
-def stageP4StoreSessionPrev1ErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def stageP4StoreSessionPrev1ErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (ops : StorePrev1Ops kit)
     (s0 s : State)
     (coroPtr outPtr remoteAddrPtr sessionStorePtr : BitVec 64)

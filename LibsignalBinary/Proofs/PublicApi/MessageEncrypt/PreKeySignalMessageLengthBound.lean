@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
 
 /-!
 # Serialized Length Bound for `PreKeySignalMessage::new`
@@ -19,7 +19,7 @@ Pure upper bound `< 2 ^ 42` on the protobuf-serialized byte length produced by
 `SignalMessage` and `< 2 ^ 32` on the optional Kyber ciphertext.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt
 

@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Refinement.Composed.Cli.SDet.Defs
-public import Symbolic.Proofs.Refinement.Composed.Cli.SDet.FilesOfAlg
+public import Symbolic.Proofs.Refinement.Composed.Cli.SDet.FilesOfAlg -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.Composed.Cli.ParD3OverlapGates
 import Symbolic.Proofs.Refinement.Composed.Cli.ParD7PureGates
 import Symbolic.Proofs.Refinement.Composed.Cli.SDet.ModelCongrD3
@@ -25,7 +25,7 @@ Defines `SDetBridges`, proves congruence of the PQXDH CLI models under `PqPartyE
 derives `PqModelPost` from `Draft.PqModelRel` (`sdet_of_bridges`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

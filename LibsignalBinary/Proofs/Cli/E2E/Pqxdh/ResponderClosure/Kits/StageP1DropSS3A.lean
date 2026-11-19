@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
 /-!
 # `drop_session_structure3` Separation-Logic Helpers — Part A
@@ -23,7 +25,7 @@ Separation-logic decomposition and initial basic-block segment lemmas (`+16 → 
 `SessionStructure` teardown).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,8 +47,6 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 abbrev dropSessionStructure3Name : String :=
   "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]"
 
-gen_decodes libsignalSessionCode_tree dropSs3BinCliKits [(ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]" + 0) → (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]" + 272)]
-
 theorem stackAt_split_bottom' (sp : BitVec 64) (n d : Nat) (h : n + d ≤ 2 ^ 64) :
     stackAt sp (n + d) = memRegion (sp - BitVec.ofNat 64 (n + d)) d ∗ stackAt sp n := by
   simp only [stackAt]
@@ -64,17 +64,6 @@ theorem dealloc_hookSat_tripleRatchetExterns {A : RustAlloc} (C : Crypto) (ctl :
     staticDropName, sharedDropName, rngFillName, uuidTryParseName,
     varintSlowName, noHookNames] using hA.dealloc
 
-theorem dealloc_ok_at {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} (hA : AllocHooks A abs)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "__rustc::__rust_dealloc")) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (rustDeallocSpec A) :=
-  hook_ok_at_raw hfn hk (by decide) (ls_hook% "__rustc::__rust_dealloc")
-    (dealloc_hookSat_tripleRatchetExterns C ctl hA)
-
 theorem seq_clean {prog : Program} {mid target : BitVec 64} {s : State}
     {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop}
     (h1 : SepWP prog mid s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm))
@@ -86,11 +75,11 @@ theorem seq_clean {prog : Program} {mid target : BitVec 64} {s : State}
 
 /-! ## Separation-logic deallocation helpers for `SessionStructure` (344 bytes) -/
 
-def vecPinDealloc (A : RustAlloc) (pin : VecPin) : SepProp :=
+@[expose] def vecPinDealloc (A : RustAlloc) (pin : VecPin) : SepProp :=
   if (pin.cap == 0#64) = true then emp
   else A.live pin.ptr pin.cap.toNat 1 ∗ memRegion pin.ptr pin.cap.toNat
 
-def sgnPinDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
+@[expose] def sgnPinDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
   if cap.slt 1#64 = true then emp
   else A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat
 
@@ -227,7 +216,7 @@ theorem sender_none_entails_memRegion_104 (a : BitVec 64) :
   rw [ProofLib.memRegion_split' (b := a) (n := 8) (k := 96) (b' := a + 8#64) rfl rfl (by decide)]
   exact sepConj_mono_left (pointsTo64_entails_memRegion _ _)
 
-def srkRest (A : RustAlloc) (a : BitVec 64) (g : VecGhost) : SepProp :=
+@[expose] def srkRest (A : RustAlloc) (a : BitVec 64) (g : VecGhost) : SepProp :=
   ((a + 8#64) ↦₆₄ g.ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.bytes.length) ∗
     (if g.cap = 0 then emp
      else A.live g.ptr g.cap.toNat 1 ∗ (g.ptr ↦ₛ g.bytes) ∗
@@ -315,7 +304,7 @@ theorem session_memRegions_entails_344 (ss : BitVec 64) :
         (by bv_omega) (by decide)]
   exact Entails.refl _
 
-@[reducible]
+@[expose, reducible]
 def ssFirst3HeadersAt (ss : BitVec 64) (G : SessionGhost) : SepProp :=
   (ss ↦₆₄ G.localIk.cap) ∗ ((ss + 8#64) ↦₆₄ G.localIk.ptr) ∗ memRegion (ss + 16#64) 8 ∗
   ((ss + 24#64) ↦₆₄ G.remoteIk.cap) ∗ ((ss + 32#64) ↦₆₄ G.remoteIk.ptr) ∗ memRegion (ss + 40#64) 8 ∗
@@ -369,7 +358,7 @@ theorem ssFirst3HeadersAt_entails_memRegions (ss : BitVec 64) (G : SessionGhost)
   rw [hgroup]
   exact sepConj_mono h1 (sepConj_mono h2 h3)
 
-@[reducible]
+@[expose, reducible]
 def ssTail3HeadersAt (ss : BitVec 64) (pCap pPtr kCap kPtr : BitVec 64)
     (G : SessionGhost) : SepProp :=
   ((ss + 248#64) ↦₆₄ pCap) ∗ ((ss + 256#64) ↦₆₄ pPtr) ∗ memRegion (ss + 264#64) 32 ∗
@@ -565,7 +554,7 @@ theorem drop6_strengthen_post {prog : Program} {target_pc : BitVec 64} {s : Stat
 
 /-! ## Callee-saved predicate, stack splits, and first two segments (`+16 -> +100`) -/
 
-@[reducible]
+@[expose, reducible]
 def Saved48Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.readReg64 .x23 = s0.readReg64 .x23 ∧
   s.readReg64 .x24 = s0.readReg64 .x24 ∧
@@ -639,16 +628,6 @@ theorem tail_dealloc_ss2_pre_weaken (ss cap ptr : BitVec 64)
   refine Entails.trans (sepConj_mono h1 (sepConj_mono_right (sepConj_mono_right
     (sepConj_mono_right h2)))) ?_
   exact Entails.of_eq (by ac_rfl)
-
-theorem fnAddr_dropChain_eq_ss2_add (b : BitVec 64) (C : Crypto)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr CryptoVerification.Cli.LibsignalTripleRatchet.Getters.dropChain2Name =
-      (tripleRatchetProgAt b C ctl abs).fnAddr dropSessionStructure3Name + bv% ((2^64 + ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::session_structure::Chain> [local#3]" - ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]") % 2^64) := by
-  unfold tripleRatchetProgAt
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::proto::storage::session_structure::Chain> [local#3]"),
-      (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]")]
-  bv_omega
 
 theorem ofNat_succ_eq_add_one (n : Nat) :
     BitVec.ofNat 64 (n + 1) = BitVec.ofNat 64 n + 1#64 :=
@@ -767,170 +746,5 @@ theorem chains_header24_weaken (ss cap ptr : BitVec 64) (Rest : SepProp) :
   have h2 : (ss + 72#64) + 16#64 = ss + 88#64 := by bv_omega
   rw [← h1, ← h2]
   exact header24_weaken (ss + 72#64) cap ptr Rest
-
-set_option maxHeartbeats 2000000 in
-theorem drop_ss2_first3 {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hdealloc : subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr dropSessionStructure3Name + bv% ((2^64 + ls_off% "__rustc::__rust_dealloc" - (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]")) % 2^64))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp ss : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (G : SessionGhost) (s : State) (Frame : SepProp),
-      s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr dropSessionStructure3Name + 16#64 →
-      s.status = .Running →
-      Saved48Preserved s0 s fsp →
-      s.readReg64 .x0 = ss →
-      SepWP (tripleRatchetProgAt b C ctl abs)
-        ((tripleRatchetProgAt b C ctl abs).fnAddr dropSessionStructure3Name + 80#64)
-        s
-        ((ssFirst3HeadersAt ss G ∗
-          vecPinDealloc A ⟨G.localIk.cap, G.localIk.ptr⟩ ∗
-          vecPinDealloc A ⟨G.remoteIk.cap, G.remoteIk.ptr⟩ ∗
-          vecPinDealloc A G.root) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm =>
-          (Pm ⊢ (memRegion ss 24 ∗ memRegion (ss + 24#64) 24 ∗ memRegion (ss + 48#64) 24) ∗
-            A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧
-          sm.readReg64 .x19 = ss) := by
-  simp only [rustDeallocSpec] at hdealloc
-  have hfn : libsignalSessionCode.fnOff dropSessionStructure3Name = (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]") :=
-    (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]")
-  dsimp only [tripleRatchetProgAt, dropSessionStructure3Name] at *
-  code_fetches_range CryptoVerification.libsignalSessionCode dropSs3BinCliKits b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]") 16 64
-  examples_generalize_entry
-  examples_hide_fetches
-  intro G s Frame hpc hrun hpres hx0
-  rcases hpres with ⟨hx23, hx24, hx25, hx26, hx27, hx28, hsp, htrace, hvregs⟩
-  refine seq_clean (mid := entry + 40#64) (P_mid :=
-    (ssFirst3HeadersAt ss G ∗
-      vecPinDealloc A ⟨G.remoteIk.cap, G.remoteIk.ptr⟩ ∗
-      vecPinDealloc A G.root) ∗
-    A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-    (Q := fun sm => Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ss)
-    ?_ ?_
-  · dsimp only [ssFirst3HeadersAt, vecPinDealloc]
-    by_cases hcap : (G.localIk.cap == 0#64) = true <;>
-      simp only [hcap, ↓reduceIte, emp_sepConj]
-    · wp_steps
-      wp_done
-    · wp_steps
-      wp_call hdealloc (G.localIk.ptr, G.localIk.cap.toNat, 1)
-      refine align_pre (by rw [hsp]; ac_rfl) ?_
-      wp_done
-  · intro s1 hpc1 hrun1 ⟨⟨hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1⟩
-    refine seq_clean (mid := entry + 60#64) (P_mid :=
-      (ssFirst3HeadersAt ss G ∗ vecPinDealloc A G.root) ∗
-      A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-      (Q := fun sm => Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ss)
-      ?_ ?_
-    · dsimp only [ssFirst3HeadersAt, vecPinDealloc]
-      by_cases hcap : (G.remoteIk.cap == 0#64) = true <;>
-        simp only [hcap, ↓reduceIte, emp_sepConj]
-      · wp_steps
-        wp_done
-      · wp_steps
-        wp_call hdealloc (G.remoteIk.ptr, G.remoteIk.cap.toNat, 1)
-        refine align_pre (by rw [hsp_1]; ac_rfl) ?_
-        wp_done
-    · intro s2 hpc2 hrun2 ⟨⟨hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hsp_2, htrace_2, hvregs_2⟩,
-      hx19_2⟩
-      have hstep3 : SepWP (libsignalSessionCode.rebase b (Rust.withPanics
-        (tripleRatchetExterns C ctl abs))) (entry + 80#64) s2
-          ((ssFirst3HeadersAt ss G ∗ vecPinDealloc A G.root) ∗ A.pool ∗
-            stackAt fsp allocHookStack ∗ Frame)
-          (fun sm Pm =>
-            (Pm ⊢ ssFirst3HeadersAt ss G ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-            Saved48Preserved s0 sm fsp ∧
-            sm.readReg64 .x19 = ss) := by
-        dsimp only [ssFirst3HeadersAt, vecPinDealloc]
-        by_cases hcap : (G.root.cap == 0#64) = true <;>
-          simp only [hcap, ↓reduceIte, sepConj_emp]
-        · wp_steps
-          wp_done
-        · wp_steps
-          wp_call hdealloc (G.root.ptr, G.root.cap.toNat, 1)
-          refine align_pre (by rw [hsp_2]; ac_rfl) ?_
-          wp_done
-      exact SepWP.mono hstep3 (fun sm Pm _ _ h =>
-        ⟨Entails.trans h.1 (sepConj_mono_left (ssFirst3HeadersAt_entails_memRegions ss G)), h.2⟩)
-
-set_option maxHeartbeats 2000000 in
-theorem drop_ss2_sender {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hdrop_chain : subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr dropSessionStructure3Name + bv% ((2^64 + ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::session_structure::Chain> [local#3]" - ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]") % 2^64))
-      (dropProtoChainSpec A))
-    (s0 : State) (fsp ss : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (senderG : Option SenderChainGhost) (senderSt : Option SenderChain)
-      (s : State) (Frame : SepProp),
-      s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr dropSessionStructure3Name + 80#64 →
-      s.status = .Running →
-      Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ss →
-      SepWP (tripleRatchetProgAt b C ctl abs)
-        ((tripleRatchetProgAt b C ctl abs).fnAddr dropSessionStructure3Name + 100#64)
-        s
-        (optSenderChainAt A (ss + 144#64) senderG senderSt ∗
-          A.pool ∗ stackAt fsp dropChainStack ∗ Frame)
-        (fun sm Pm =>
-          (Pm ⊢ memRegion (ss + 144#64) 104 ∗ A.pool ∗ stackAt fsp dropChainStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧
-          sm.readReg64 .x19 = ss) := by
-  simp only [dropProtoChainSpec] at hdrop_chain
-  have hfn : libsignalSessionCode.fnOff dropSessionStructure3Name = (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]") :=
-    (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]")
-  dsimp only [tripleRatchetProgAt, dropSessionStructure3Name] at *
-  code_fetches_range CryptoVerification.libsignalSessionCode dropSs3BinCliKits b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#4]") 80 20
-  examples_generalize_entry
-  examples_hide_fetches
-  intro senderG senderSt s Frame hpc hrun hpres hx19
-  rcases hpres with ⟨hx23, hx24, hx25, hx26, hx27, hx28, hsp, htrace, hvregs⟩
-  cases senderG with
-  | none =>
-    cases senderSt with
-    | none =>
-      unfold optSenderChainAt
-      have hstep : SepWP (libsignalSessionCode.rebase b (Rust.withPanics
-        (tripleRatchetExterns C ctl abs))) (entry + 100#64) s
-          ((((ss + 144#64) ↦₆₄ noneCap) ∗ memRegion ((ss + 144#64) + 8#64) 96) ∗
-            A.pool ∗ stackAt fsp dropChainStack ∗ Frame)
-          (fun sm Pm =>
-            (Pm ⊢ (((ss + 144#64) ↦₆₄ noneCap) ∗ memRegion ((ss + 144#64) + 8#64) 96) ∗
-              A.pool ∗ stackAt fsp dropChainStack ∗ Frame) ∧
-            Saved48Preserved s0 sm fsp ∧
-            sm.readReg64 .x19 = ss) := by
-        dsimp only [noneCap]
-        wp_steps
-        wp_done
-      exact SepWP.mono hstep (fun sm Pm _ _ h =>
-        ⟨Entails.trans h.1 (sepConj_mono_left (sender_none_entails_memRegion_104 (ss + 144#64))),
-          h.2⟩)
-    | some _ =>
-      simp only [optSenderChainAt]
-      exact false_elim_left
-  | some sg =>
-    cases senderSt with
-    | none =>
-      simp only [optSenderChainAt]
-      exact false_elim_left
-    | some sc =>
-      refine SepWP.weaken_pre (sepConj_mono_left (optSenderChainAt_some_expose A
-        (ss + 144#64) sg sc)) ?_
-      rw [sepConj_assoc]
-      refine SepWP.pure_elim ?_
-      rintro ⟨hpk, hlen, hcap_lt, hptr_ne, hcmn⟩
-      have hcmn_beq : (sg.srk.cap + 1#64 == 0#64) = false := beq_eq_false_iff_ne.mpr hcmn
-      wp_steps
-      refine SepWP.weaken_pre
-        (sepConj_mono_left (chainAt_of_exposed_sender A
-          (ss + 144#64) sg sc hpk hlen hcap_lt hptr_ne)) ?_
-      wp_call hdrop_chain ⟨ss + 144#64, (⟨sg.srk, sg.priv, sg.mkCap, sg.mkPtr, [], sg.ck⟩,
-        ⟨sc.ratchetKey.publicKey, some sc.chainKey, []⟩)⟩
-      refine align_pre (by rw [hsp]) ?_
-      wp_done
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.DropSS3

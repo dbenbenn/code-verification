@@ -10,23 +10,34 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddressesBudgetAux
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hmac.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Mac.AddressesBudget
+import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacCompare
+import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddresses
+import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddressesBudget
 
 /-!
-# `HookSat`-backed `black_box` Sibling of `Mac.VerifyBudget` (`VerifyBudgetSat`)
+# `HookSat`-backed Sibling of `Mac.VerifyBudget` (`VerifyBudgetSat`)
 
-Replaces raw `withVmPreserved blackBoxSpec` / `withStack blackBoxU8BudgetSpec extHookStack`
-`subroutine_ok` premises in Block `62` `<SignalMessage>::verify_mac_with_addresses`
-(`VerifyBudget.lean:110–269`) with `HookSat H lsBlackBoxU8Sym blackBoxSpecSat`, keeping
-token-identical conclusions across all six budget variants (`_placed_ok`, `_placed_ok_x`,
-`_placed_cro_ok`, and their `_of_rustAllocShimVm` twins).
+Replaces `blackBoxSpec`, `newFromSliceBudgetSpec`, and `compress256BudgetSpec` premises across all
+six Block `62` `<SignalMessage>::verify_mac_with_addresses` budget variants with `blackBoxSpecSat`,
+`720`-B `newFromSliceBudgetSpecSat C.F`, and `176`-B `sessionCompress256ROBudgetSpec C.F 176`.
 -/
 
 public section
@@ -37,66 +48,72 @@ namespace LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyBudgetSat
 
 open Arm64 ProofLib SepProp
 open CryptoGames.HMAC (keyToBytes32)
-open CryptoGames.LibsignalSession (Crypto computeMac macLength)
-open CryptoVerification
-  (IsLsBlockProg LibsignalHooks LibsignalPlacement blkPC_60 blkPC_61 blkPC_62 blkPl_60 blkPl_61
-   blkPl_62 extract_withLsCodeLoaded libsignalMutatedBlocks libsignalSessionLib lsBlackBoxU8Sym
-   lsLogFilterAddr ls_externAt?_blockProgram_eq_of_externs_eq lsmpl lsρ withLsCodeLoaded)
-open CryptoVerification.LibsignalTripleRatchet
-  (ComputeMacGhost SerializeAddressesGhost blackBoxSpec computeMacStack computeMacStackX
-   extHookStack keys_ls_subroutine_ok_of_block_cro lsMacCompress256Sym lsMacMemcpySym
-   lsMacMemsetSym lsMacRustAllocSym lsMacRustDeallocSym lsMacRustNoAllocShimSym macLsLogOff
-   mac_ls_hook_ok_of_mem optSerializeAddressesAt serializeAddressesStack serializeAddressesStackX
-   subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded verifyMacResultAt withLsCodeRoLoaded)
-open CryptoVerification.LibsignalTripleRatchet.Mac.VerifyMacWithAddresses
-  (VmaCroState VmaInvClass VmaSymState bne_zext32_ite boxU8At_expose_nonempty computeMac_length
-   cset_eq_byte cset_eq_byte_alt forall_some_eq_imp ite_one_zero_and_32 ite_one_zero_and_64
-   ite_one_zero_and_8 ite_one_zero_and_one_64 ite_one_zero_and_one_8 keepVmaClState len_sub_8_bv
-   len_sub_8_eq len_sub_8_ult len_ult_8_false list_beq_comm list_beq_false_of_length_ne
-   mac8_eq_bool memRegion_16_of_sp_208 memRegion_24_of_16_8 memRegion_24_split_16_8
-   memRegion_36_of_pointsToBytes memRegion_9_split noneCap_add_one_eq_zero okTagVec_add_two_eq_zero
-   okTagVec_add_two_ne_zero optBoxU8At_some_expose optSerializeAddressesAt_none_eq
-   optSerializeAddressesAt_some_eq pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3
-   pack64_byte4 pack64_byte5 pack64_byte6 pack64_byte7 pointsToBytes_serialized_split
-   serializeAddresses_some_length setWidth32_and_1095216660735 setWidth32_and_4294967297
-   setWidth32_ite_one_zero_64 setWidth8_and32 setWidth8_and64 setWidth8_ite_one_zero_64
-   setWidth8_setWidth32 setWidth8_zext64_32 signalMessageAt_expose signalMessageRest
-   stackAt_combine_ge stackAt_split_ge stackAt_verifyMacWithAddresses_gen
-   subroutine_ok_keepVmaClState verifyMacFrameRest verifyMacWithAddresses_fnOff
-   verifyMacWithAddresses_of_addrs_none verifyMacWithAddresses_of_exp_none
-   verifyMacWithAddresses_of_exp_some verifyMacWithAddresses_of_mac_false withVmaClState
-   zeroExtend32_ite_one_zero_8 zeroExtend64_ite_one_zero_32)
-open CryptoVerification.LibsignalTripleRatchetRepr
-  (UuidParser noneCap okTagVec optBoxU8At protocolAddressAt serializeAddresses serviceIdParse
-   uuidTryParse)
+open CryptoGames.LibsignalSession (Crypto ShaCompress computeMac macLength)
+open CryptoVerification (IsLsBlockProg LibsignalHooks LibsignalPlacement blkPC_60 blkPC_61 blkPC_62
+  blkPl_60 blkPl_61 blkPl_62 extract_withLsCodeLoaded libsignalMutatedBlocks libsignalSessionLib
+  lsBlackBoxU8Sym lsLogFilterAddr ls_externAt?_blockProgram_eq_of_externs_eq lsmpl lsρ
+  withLsCodeLoaded)
+open CryptoVerification.LibsignalHmac (shaStateBytes)
+open CryptoVerification.LibsignalTripleRatchet (ComputeMacGhost LsClInv SerializeAddressesGhost
+  blackBoxSpec computeMacStack computeMacStackX extHookStack keys_ls_subroutine_ok_of_block_cro
+  lsMacCompress256Sym lsMacMemcpySym lsMacMemsetSym lsMacRustAllocSym lsMacRustDeallocSym
+  lsMacRustNoAllocShimSym macLsLogOff mac_ls_hook_ok_of_mem optSerializeAddressesAt
+  serializeAddressesStack serializeAddressesStackX subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
+  verifyMacResultAt withLsCodeRoLoaded)
+open CryptoVerification.LibsignalTripleRatchet.Mac.VerifyMacWithAddresses (VmaCroState VmaInvClass
+  VmaSymState bne_zext32_ite boxU8At_expose_nonempty computeMac_length cset_eq_byte cset_eq_byte_alt
+  forall_some_eq_imp ite_one_zero_and_32 ite_one_zero_and_64 ite_one_zero_and_8
+  ite_one_zero_and_one_64 ite_one_zero_and_one_8 keepVmaClState len_sub_8_bv len_sub_8_eq
+  len_sub_8_ult len_ult_8_false list_beq_comm list_beq_false_of_length_ne mac8_eq_bool
+  memRegion_16_of_sp_208 memRegion_24_of_16_8 memRegion_24_split_16_8 memRegion_36_of_pointsToBytes
+  memRegion_9_split noneCap_add_one_eq_zero okTagVec_add_two_eq_zero okTagVec_add_two_ne_zero
+  optBoxU8At_some_expose optSerializeAddressesAt_none_eq optSerializeAddressesAt_some_eq
+  pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3 pack64_byte4 pack64_byte5 pack64_byte6
+  pack64_byte7 pointsToBytes_serialized_split serializeAddresses_some_length
+  setWidth32_and_1095216660735 setWidth32_and_4294967297 setWidth32_ite_one_zero_64 setWidth8_and32
+  setWidth8_and64 setWidth8_ite_one_zero_64 setWidth8_setWidth32 setWidth8_zext64_32
+  signalMessageAt_expose signalMessageRest stackAt_combine_ge stackAt_split_ge
+  stackAt_verifyMacWithAddresses_gen subroutine_ok_keepVmaClState verifyMacFrameRest
+  verifyMacWithAddresses_of_addrs_none
+  verifyMacWithAddresses_of_exp_none verifyMacWithAddresses_of_exp_some
+  verifyMacWithAddresses_of_mac_false withVmaClState zeroExtend32_ite_one_zero_8
+  zeroExtend64_ite_one_zero_32)
+open CryptoVerification.LibsignalTripleRatchetRepr (UuidParser noneCap okTagVec optBoxU8At
+  protocolAddressAt serializeAddresses serviceIdParse uuidTryParse)
 open CryptoVerification.RustHeap (allocHookStack)
-open LibsignalBinary.Heap
-  (AllocCostModel BudgetLimits FitsEnv RustCliAllocBudget RustLayoutOk rustCliAllocBudgetSpec
-   rustCliDeallocBudgetSpec rustDeallocEvents)
+open LibsignalBinary.Heap (AllocCostModel BudgetLimits FitsEnv RustCliAllocBudget RustLayoutOk
+  rustCliAllocBudgetSpec rustCliDeallocBudgetSpec rustDeallocEvents)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
-open LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat
-  (blackBoxSpec16 blackBoxSpecSat hookSat_blackBox_withStack_vm_of_sat)
-open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-  (publicKeySerializeSpec publicKeySerializeSpecX)
-open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-  (sessionMemcpyRegionBudgetSpec sessionMemsetRegionBudgetSpec)
-open LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-  (blackBoxU8BudgetSpec rustDeallocExternSpecWithStack rustDeallocExternWithStack_of_rustDealloc
-   withStack)
-open LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget
-  (parseSidCodeBudgetSpec parseSidCodeStackBudgetSpec)
-open LibsignalBinary.Proofs.TripleRatchet.Mac.AddressesBudget
-  (serialize_addresses_placed_ok serialize_addresses_placed_ok_of_rustAllocShimVm
-   serialize_addresses_placed_ok_x serialize_addresses_placed_ok_x_of_rustAllocShimVm)
-open LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudget
-  (computeMac_placed_cro_ok computeMac_placed_ok computeMac_placed_ok_x)
-open LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux
-  (compress256BudgetSpec newFromSliceBudgetSpec)
-open LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-  (computeMacEvents computeMacSpecWithStack serializeAddressesEvents serializeAddressesSpecWithStack
-   verifyMacWithAddressesEvents verifyMacWithAddressesPlacedSpec
-   verifyMacWithAddressesPlacedSpecWithStack verifyMacWithAddressesPlacedSpecX)
+open LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat (blackBoxSpec16
+  blackBoxSpecSat hookSat_blackBox_withStack_vm_of_sat)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
+open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (publicKeySerializeSpec
+  publicKeySerializeSpecX publicKeySerializeStack publicKeySerializeStackX)
+open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat (newFromSliceBudgetSpecSat)
+open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat (newFromSliceSpecSat newFromSliceStackSat)
+open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (compress256Blocks
+  sessionCompress256ROBudgetSpec sessionCompress256ROSpec sessionMemcpyRegionBudgetSpec
+  sessionMemsetRegionBudgetSpec)
+open LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget (blackBoxU8BudgetSpec
+  rustDeallocExternSpecWithStack rustDeallocExternWithStack_of_rustDealloc withStack)
+open LibsignalBinary.Proofs.TripleRatchet.InImageCallees.DefsBudget (parseSidCodeBudgetSpec
+  parseSidCodeStackBudgetSpec)
+open LibsignalBinary.Proofs.TripleRatchet.Mac.AddressesBudget (serialize_addresses_placed_ok
+  serialize_addresses_placed_ok_of_rustAllocShimVm serialize_addresses_placed_ok_x
+  serialize_addresses_placed_ok_x_of_rustAllocShimVm)
+open LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudget (computeMac_placed_ok_of_hooks_gen)
+open LibsignalBinary.Proofs.TripleRatchet.Mac.ComputeBudgetAux (dealloc_pkStack_placed_budget_ok
+  framelessMemcpyBudget_of_sessionMemcpyRegionBudget memcpy_pkStack_placed_budget_ok
+  memset_pkStack_placed_budget_ok newFromSlicePkStackBudgetSpecAt publicKeySerializeBudgetSpecAt
+  session2Compress256PkStackBudgetSpecAt session2MemsetBudget_of_sessionMemsetRegionBudget
+  subroutine_ok_lscl_of_withLsClState subroutine_ok_lscro_of_withLsClState
+  subroutine_ok_withLsClState_of_lscl subroutine_ok_withLsClState_of_lscro
+  subroutine_ok_withLsClState_of_plain)
+open LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget (computeMacEvents computeMacSpec
+  computeMacSpecAt computeMacSpecWithStack serializeAddressesEvents serializeAddressesSpecWithStack
+  verifyMacWithAddressesEvents verifyMacWithAddressesPlacedSpec
+  verifyMacWithAddressesPlacedSpecWithStack verifyMacWithAddressesPlacedSpecX)
 open LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddressesBudget
   (verifyMacWithAddresses_placed_ok_of_compute_x verifyMacWithAddresses_placed_ok_of_hooks_gen)
 open LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddressesBudgetAux
@@ -116,17 +133,14 @@ attribute [local arm64_norm, local wp_norm]
   calleeSavedVRegs_writeReg calleeSavedVRegs_writeVReg128_ite calleeSavedVRegs_writeVReg64_ite
   calleeSavedVRegs_writeVReg32_ite isCalleeSavedVReg updateCalleeSavedVRegs
 attribute [local simp, local arm64_norm]
-  verifyMacWithAddresses_fnOff
   cset_eq_byte cset_eq_byte_alt bne_zext32_ite
   okTagVec_add_two_ne_zero okTagVec_add_two_eq_zero noneCap_add_one_eq_zero
-  pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3
-  pack64_byte4 pack64_byte5 pack64_byte6 pack64_byte7
-  ite_one_zero_and_64 ite_one_zero_and_32 setWidth32_ite_one_zero_64
-  zeroExtend64_ite_one_zero_32 ite_one_zero_and_one_64 setWidth8_ite_one_zero_64
-  mac8_eq_bool
-  setWidth8_zext64_32 setWidth8_setWidth32 setWidth8_and64 setWidth8_and32
-  ite_one_zero_and_8 setWidth32_and_4294967297 setWidth32_and_1095216660735
-  ite_one_zero_and_one_8 zeroExtend32_ite_one_zero_8
+  pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3 pack64_byte4 pack64_byte5 pack64_byte6
+  pack64_byte7 ite_one_zero_and_64 ite_one_zero_and_32 setWidth32_ite_one_zero_64
+  zeroExtend64_ite_one_zero_32 ite_one_zero_and_one_64 setWidth8_ite_one_zero_64 mac8_eq_bool
+  setWidth8_zext64_32 setWidth8_setWidth32 setWidth8_and64 setWidth8_and32 ite_one_zero_and_8
+  setWidth32_and_4294967297 setWidth32_and_1095216660735 ite_one_zero_and_one_8
+  zeroExtend32_ite_one_zero_8
 
 private theorem subroutine_ok_withVmaClState_of_lscro [LibsignalPlacement] {α : Type}
     {prog : Program} {addr : BitVec 64} {spec : Spec α}
@@ -136,8 +150,7 @@ private theorem subroutine_ok_withVmaClState_of_lscro [LibsignalPlacement] {α :
     h.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
   dsimp only [withVmaClState, withLsCodeRoLoaded, VmaCroState, VmaSymState] at hpre ⊢
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-  exact ⟨hpre.1.1, hpre.2⟩
+  rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]; exact ⟨hpre.1.1, hpre.2⟩
 
 private theorem subroutine_ok_lscro_of_withVmaClState [LibsignalPlacement] {α : Type}
     {prog : Program} {addr : BitVec 64} {spec : Spec α}
@@ -147,8 +160,7 @@ private theorem subroutine_ok_lscro_of_withVmaClState [LibsignalPlacement] {α :
     h.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
   dsimp only [withVmaClState, withLsCodeRoLoaded, VmaCroState, VmaSymState] at hpre ⊢
   rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨⟨hpre.1, trivial⟩, hpre.2⟩
+  rw [sepConj_assoc, satisfies_pure_sepConj]; exact ⟨⟨hpre.1, trivial⟩, hpre.2⟩
 
 private theorem ls_subroutine_ok_lscl_of_block [LibsignalPlacement] {α : Type}
     {callerProg calleeProg : Program} {i j : Nat} {H : LibsignalHooks}
@@ -158,12 +170,10 @@ private theorem ls_subroutine_ok_lscl_of_block [LibsignalPlacement] {α : Type}
     (_hi : i < 619 := by decide) (hj : j < 619 := by decide)
     (hj_unmut : (j ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok callerProg entry (withLsCodeLoaded lsmpl spec) := by
-  apply subroutine_ok_outcome_intro
-  intro x R s0 hpc hrun hpre hsp
+  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
   have ⟨hcl0, _⟩ := extract_withLsCodeLoaded hpre
-  have hQL : calleeProg.CodeLoaded s0.mem :=
-    hcallee_prog.eq_blockProgram ▸
-      hcl0 j (Nat.lt_of_lt_of_le hj (by decide)) hj_unmut H (fun _ => none) Syscall.standard
+  have hQL : calleeProg.CodeLoaded s0.mem := hcallee_prog.eq_blockProgram ▸
+    hcl0 j (Nat.lt_of_lt_of_le hj (by decide)) hj_unmut H (fun _ => none) Syscall.standard
   obtain ⟨sf, hstepsQ, hout, _⟩ := hcallee.no_fault_before_outcome x R s0 hpc hrun hpre hsp hQL
   have hext : ∀ pc, calleeProg.externAt? pc = callerProg.externAt? pc := fun pc => by
     rw [hcallee_prog.eq_blockProgram, hcaller.eq_blockProgram,
@@ -174,54 +184,44 @@ private theorem ls_subroutine_ok_lscl_of_block [LibsignalPlacement] {α : Type}
   exact reaches_outcome_steps (Steps.of_sameHooks hext hsvc hstepsQ) (reaches_outcome.of_outcome hout)
 
 private theorem of_sepWP_vma {VmaInv : Memory → Prop} [VmaInvClass VmaInv]
-    {prog : Program} {ret mid : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
+    {prog : Program} {ret mid : BitVec 64} {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
     (hF : VmaInv s.mem) (_hsym : VmaSymState s)
     (h : SepWP prog mid s P
       (fun sm Pm => VmaInv sm.mem → VmaSymState sm → SepWPp prog ret sm Pm Q Qp)) :
     SepWPp prog ret s P Q Qp :=
-  SepWPp.seq_frozen (Φ := VmaInv)
-    (fun _ _ => VmaInvClass.of_keepsFrozen) hF
+  SepWPp.seq_frozen (Φ := VmaInv) (fun _ _ => VmaInvClass.of_keepsFrozen) hF
     (SepWP.mono h fun _ _ _ _ hnext hcl => hnext hcl trivial)
 
 private theorem seq_vma {VmaInv : Memory → Prop} [VmaInvClass VmaInv]
     {prog : Program} (mid : BitVec 64) {target_pc : BitVec 64}
     {s : State} {P : SepProp} {post : State → SepProp → Prop}
     (hF : VmaInv s.mem) (_hsym : VmaSymState s)
-    (h : SepWP prog mid s P (fun sm Pm =>
-      VmaInv sm.mem → VmaSymState sm → SepWP prog target_pc sm Pm post)) :
+    (h : SepWP prog mid s P
+      (fun sm Pm => VmaInv sm.mem → VmaSymState sm → SepWP prog target_pc sm Pm post)) :
     SepWP prog target_pc s P post :=
-  SepWP.seq_frozen (Φ := VmaInv)
-    (fun _ _ => VmaInvClass.of_keepsFrozen) hF
+  SepWP.seq_frozen (Φ := VmaInv) (fun _ _ => VmaInvClass.of_keepsFrozen) hF
     (SepWP.mono h fun _ _ _ _ hnext hcl => hnext hcl trivial)
 
 private theorem seq_vma_x30 {VmaInv : Memory → Prop} [VmaInvClass VmaInv]
-    {prog : Program} {target_pc : BitVec 64}
-    {s : State} {P : SepProp} {post : State → SepProp → Prop}
-    (hF : VmaInv s.mem) (hsym : VmaSymState s)
-    (h : SepWP prog (s.readReg64 .x30) s P (fun sm Pm =>
-      VmaInv sm.mem → VmaSymState sm → SepWP prog target_pc sm Pm post)) :
-    SepWP prog target_pc s P post :=
-  seq_vma (s.readReg64 .x30) hF hsym h
+    {prog : Program} {target_pc : BitVec 64} {s : State} {P : SepProp}
+    {post : State → SepProp → Prop} (hF : VmaInv s.mem) (hsym : VmaSymState s)
+    (h : SepWP prog (s.readReg64 .x30) s P
+      (fun sm Pm => VmaInv sm.mem → VmaSymState sm → SepWP prog target_pc sm Pm post)) :
+    SepWP prog target_pc s P post := seq_vma (s.readReg64 .x30) hF hsym h
 
-local macro "wp_sync_pool " mid:term : tactic =>
-  `(tactic| (
-    wp_steps_sync_pool $mid
-    try conv => arg 3; simp only [State.setMem_setMem]
-    try conv => arg 4; pattern (RustCliAllocBudget.pool _ _ _ _); simp only [State.setMem_setMem]))
+local macro "wp_sync_pool " mid:term : tactic => `(tactic| (
+  wp_steps_sync_pool $mid
+  try conv => arg 3; simp only [State.setMem_setMem]
+  try conv => arg 4; pattern (RustCliAllocBudget.pool _ _ _ _); simp only [State.setMem_setMem]))
 
-local macro "wp_steps_vma_pool " mid:term : tactic =>
-  `(tactic| (
-    refine seq_vma $mid ‹_› ‹_› ?_
-    wp_sync_pool $mid
-    apply SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
-    intro hF_step hsym_step))
+local macro "wp_steps_vma_pool " mid:term : tactic => `(tactic| (
+  refine seq_vma $mid ‹_› ‹_› ?_; wp_sync_pool $mid
+  apply SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
+  intro hF_step hsym_step))
 
 private theorem sepWPp_done_vma {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp}
-    {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = ret) (hrun : s.status = .Running) (hq : Q s P) :
-    SepWPp prog ret s P Q Qp :=
-  SepWPp.done hpc hrun hq
+    {Q Qp : State → SepProp → Prop} (hpc : s.pc = ret) (hrun : s.status = .Running) (hq : Q s P) :
+    SepWPp prog ret s P Q Qp := SepWPp.done hpc hrun hq
 
 private theorem sepWPp_bind_vma {VmaInv : Memory → Prop} [VmaInvClass VmaInv]
     {prog : Program} (mid : BitVec 64) {ret : BitVec 64}
@@ -238,18 +238,17 @@ private theorem sepWPp_bind_vma {VmaInv : Memory → Prop} [VmaInvClass VmaInv]
   · exact ⟨sm, hsteps, Or.inr (Or.inl hpan)⟩
   · exact ⟨sm, hsteps, Or.inr (Or.inr hoom)⟩
 
-private theorem macLsLogOff_eq [LibsignalPlacement] :
-    macLsLogOff = (lsLogFilterAddr ↦₆₄ 0#64) := rfl
+private theorem macLsLogOff_eq [LibsignalPlacement] : macLsLogOff = (lsLogFilterAddr ↦₆₄ 0#64) := rfl
 
 private structure VMHooksPlacedBudget [LibsignalPlacement] (VmaInv : Memory → Prop)
-    (cmStack saStack daStack : Nat) (C : Crypto)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (parse : UuidParser) (H : String → Option (State → State)) : Prop where
-  hdealloc : subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-    (lsρ lsMacRustDeallocSym) (rustDeallocExternSpecWithStack M A lim daStack)
+    (cmStack saStack daStack : Nat) (C : Crypto) (M : AllocCostModel)
+    (A : RustCliAllocBudget M) (lim : BudgetLimits) (parse : UuidParser)
+    (H : String → Option (State → State)) : Prop where
+  hdealloc : subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (lsρ lsMacRustDeallocSym)
+    (rustDeallocExternSpecWithStack M A lim daStack)
   hbb_all : ∀ (sp_cur : BitVec 64) (n : Nat), daStack ≤ n → n ≤ cmStack → ∀ (v : BitVec 8),
-    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (lsρ lsBlackBoxU8Sym) (session2BlackBoxBudgetSpecX sp_cur n v)
+    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (lsρ lsBlackBoxU8Sym)
+      (session2BlackBoxBudgetSpecX sp_cur n v)
   hser : subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (lsmpl.base 61)
     (withVmaClState (VmaInv := VmaInv) (serializeAddressesSpecWithStack M A lim parse saStack))
   hCompute : subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (lsmpl.base 60)
@@ -911,51 +910,132 @@ private theorem blackBox_placed_budget_ok_16_sat {prog : Program} {addr : BitVec
     exact ⟨trivial, hmem⟩
   refine hbb_sat.mono_outcome (s0.readReg64 .x0)
     (memRegion (sp_cur - BitVec.ofNat 64 n) (n - 16) ∗ R) s0 hpc hrun hpre' hsp fun sf hout => ?_
+  dsimp only [SubroutineOutcome, blackBoxSpecSat, withVmPreserved, blackBoxSpec16,
+    CryptoVerification.LibsignalTripleRatchet.withStack, blackBoxSpec] at hout
   rcases hout with ⟨hret, hcc, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩
   · refine Or.inl ⟨hret, hcc, ?_⟩
-    simp only [blackBoxSpecSat, withVmPreserved, blackBoxSpec16,
-      CryptoVerification.LibsignalTripleRatchet.withStack, blackBoxSpec,
-      session2BlackBoxBudgetSpecX, hsp_eq, hsplit, sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+    simp only [session2BlackBoxBudgetSpecX, hsp_eq, hsplit, sepConj_assoc,
+      satisfies_pure_sepConj] at hpost ⊢
     rcases hpost with ⟨hvm, ⟨hx0, htr⟩, hmem'⟩
-    have hx0_8 : (sf.readReg64 .x0).setWidth 8 = v := by
-      rw [hx0, hv]; bv_bits
-    exact ⟨⟨hx0_8, htr, hvm⟩, hmem'⟩
-  · exact (not_satisfies_false_sepConj (by simpa only [blackBoxSpecSat, withVmPreserved,
-      blackBoxSpec16, CryptoVerification.LibsignalTripleRatchet.withStack, blackBoxSpec]
-      using hpan)).elim
-  · exact (not_satisfies_false_sepConj (by simpa only [blackBoxSpecSat, withVmPreserved,
-      blackBoxSpec16, CryptoVerification.LibsignalTripleRatchet.withStack, blackBoxSpec]
-      using hex)).elim
-  · exact (not_satisfies_false_sepConj (by simpa only [blackBoxSpecSat, withVmPreserved,
-      blackBoxSpec16, CryptoVerification.LibsignalTripleRatchet.withStack, blackBoxSpec]
-      using hoom)).elim
+    exact ⟨⟨by rw [hx0, hv]; bv_bits, htr, hvm⟩, hmem'⟩
+  all_goals exact (not_satisfies_false_sepConj ‹_›).elim
 
 private theorem hookSat_blackBoxU8Budget_ext_of_sat {H : String → Option (State → State)}
     {sym : String} (h_bb : HookSat H sym blackBoxSpecSat) :
     HookSat H sym (withStack blackBoxU8BudgetSpec extHookStack) := by
-  refine HookSat.mono (hookSat_blackBox_withStack_vm_of_sat h_bb (n := extHookStack)) ?_
-  intro x R s0 hpre
+  refine HookSat.mono (hookSat_blackBox_withStack_vm_of_sat h_bb (n := extHookStack))
+    fun x R s0 hpre => ?_
   dsimp only [withStack, CryptoVerification.LibsignalTripleRatchet.withStack, blackBoxU8BudgetSpec,
     withVmPreserved, CryptoVerification.LibsignalTripleRatchet.blackBoxU8Spec, blackBoxSpec]
     at hpre ⊢
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  refine ⟨x, R, ?_, fun sf hpost => ?_⟩
-  · simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact hpre
-  · simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨hvm, ⟨hx0, htr⟩, hmem⟩
-    refine ⟨hvm, ⟨?_, htr⟩, hmem⟩
-    rw [hx0]
-    bv_bits
+  refine ⟨x, R, by simp only [sepConj_assoc, satisfies_pure_sepConj]; exact hpre, fun sf hpost => ?_⟩
+  simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+  rcases hpost with ⟨hvm, ⟨hx0, htr⟩, hmem⟩
+  exact ⟨hvm, ⟨by rw [hx0]; bv_bits, htr⟩, hmem⟩
 
-/-- `HookSat` `black_box` sibling of `verifyMacWithAddresses_placed_ok` (`VerifyBudget.lean:110`). -/
-theorem verifyMacWithAddresses_placed_ok_sat [LibsignalPlacement]
-    (C : Crypto) (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (parse : UuidParser) (H : String → Option (State → State))
+private theorem newFromSlice_pkStack_budget_lscl_of_sat {LsClState : State → Prop}
+    {F : ShaCompress} {prog : Program} {addr : BitVec 64} {pkStack : Nat}
+    (h720 : newFromSliceStackSat ≤ pkStack) (hbound : pkStack < 2 ^ 64)
+    (hnew : subroutine_ok prog addr ((newFromSliceBudgetSpecSat F).withLsClState (LsClState := LsClState))) :
+    subroutine_ok prog addr ((newFromSlicePkStackBudgetSpecAt F pkStack).withLsClState (LsClState := LsClState)) := by
+  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
+  have hsplit := stackAt_split_ge s0.sp pkStack newFromSliceStackSat h720 hbound
+  refine subroutine_ok.mono_outcome hnew x
+    (memRegion (s0.sp - BitVec.ofNat 64 pkStack) (pkStack - newFromSliceStackSat) ∗ R) s0 hpc hrun
+    (by simpa only [Spec.withLsClState, newFromSliceBudgetSpecSat, withVmPreserved,
+      newFromSliceSpecSat, newFromSlicePkStackBudgetSpecAt, hsplit, sepConj_assoc] using hpre)
+    hsp fun _ hraw => ?_
+  dsimp only [SubroutineOutcome, Spec.withLsClState, newFromSliceBudgetSpecSat, withVmPreserved, newFromSliceSpecSat] at hraw
+  rcases hraw with ⟨hret, hcc, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩
+  · refine Or.inl ⟨hret, hcc, ?_⟩
+    simp only [Spec.withLsClState, newFromSlicePkStackBudgetSpecAt, hsplit, sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+    exact ⟨⟨hpost.2.1, hpost.1⟩, hpost.2.2⟩
+  all_goals exact (not_satisfies_false_sepConj ‹_›).elim
+
+private theorem compress256_pkStack_placed_budget_of_roSat [LibsignalPlacement] {F : ShaCompress}
+    {prog : Program} {addr : BitVec 64} {pkStack : Nat} (sp_cur : BitVec 64)
+    (h176 : 176 ≤ pkStack) (hbound : pkStack < 2 ^ 64)
+    (hcomp : subroutine_ok prog addr (withLsRet (sessionCompress256ROBudgetSpec F 176))) :
+    subroutine_ok prog addr (withLsRet (session2Compress256PkStackBudgetSpecAt F pkStack sp_cur)) := by
+  have hsplit := stackAt_split_ge sp_cur pkStack 176 h176 hbound
+  refine subroutine_ok_outcome_intro fun ⟨stA, st, blkA, blk, n⟩ R s0 hpc hrun hpre hsp => ?_
+  simp only [withLsRet, session2Compress256PkStackBudgetSpecAt, sepConj_assoc, satisfies_pure_sepConj] at hpre
+  rcases hpre with ⟨hlr, ⟨hx0, hx1, hx2, hblk, hsp_eq⟩, hmem⟩
+  have hsep_blk : s0.mem ⊨ (blkA ↦ₛ blk) ∗ ((stA ↦ₛ shaStateBytes st) ∗ stackAt sp_cur pkStack ∗ R) :=
+    Eq.mp (congrArg (fun Q => s0.mem ⊨ Q) (by sep_ac_rfl)) hmem
+  have hblk_le : blk.length ≤ 2 ^ 64 := ((IsBlock.pointsToBytes blkA blk).read hsep_blk).1
+  simp only [hsplit, sepConj_assoc] at hmem
+  have hpre' : s0.mem ⊨ (withLsRet (sessionCompress256ROBudgetSpec F 176)).pre (false, stA, st, blkA, blk, n) s0 ∗
+      (memRegion (sp_cur - BitVec.ofNat 64 pkStack) (pkStack - 176) ∗ R) := by
+    simp only [withLsRet, sessionCompress256ROBudgetSpec, sessionCompress256ROSpec, compress256Blocks, Bool.cond_false, hsp_eq, sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨hlr, ⟨hx0, hx1, hx2, hblk, hblk_le⟩, hmem⟩
+  refine subroutine_ok.mono_outcome hcomp (false, stA, st, blkA, blk, n)
+    (memRegion (sp_cur - BitVec.ofNat 64 pkStack) (pkStack - 176) ∗ R) s0 hpc hrun hpre' hsp fun _ hraw => ?_
+  dsimp only [SubroutineOutcome, withLsRet, sessionCompress256ROBudgetSpec, sessionCompress256ROSpec] at hraw
+  rcases hraw with ⟨hret, hcc, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩
+  · refine Or.inl ⟨hret, hcc, ?_⟩
+    simp only [compress256Blocks, Bool.cond_false, withLsRet, session2Compress256PkStackBudgetSpecAt, hsp_eq, hsplit, sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+    exact ⟨⟨hpost.2.1, hpost.1.1⟩, hpost.2.2⟩
+  all_goals exact (not_satisfies_false_sepConj ‹_›).elim
+
+private theorem computeMac_placed_budget_lscl_of_sat [LibsignalPlacement]
+    {LsClState : State → Prop} [LsClInv LsClState] (pkStack : Nat) (C : Crypto)
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+    (H : String → Option (State → State))
+    (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
+      ((newFromSliceBudgetSpecSat C.F).withLsClState (LsClState := LsClState)))
+    (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
+      ((publicKeySerializeBudgetSpecAt M A lim pkStack).withLsClState (LsClState := LsClState)))
+    (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
+    (hcompress : HookSat H lsMacCompress256Sym (withLsRet (sessionCompress256ROBudgetSpec C.F 176)))
+    (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
+    (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec)
+    (h720 : newFromSliceStackSat ≤ pkStack := by decide) (h176 : 176 ≤ pkStack := by decide)
+    (hle_alloc : allocHookStack ≤ pkStack := by decide)
+    (hpk_lt : pkStack < 2 ^ 64 := by decide) (hbound : pkStack + 496 < 2 ^ 64 := by decide) :
+    subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (blkPl_60).base
+      ((computeMacSpecAt M A lim C.F pkStack).withLsClState (LsClState := LsClState)) :=
+  computeMac_placed_ok_of_hooks_gen pkStack hbound C M A lim H
+    (newFromSlice_pkStack_budget_lscl_of_sat h720 hpk_lt hnew) hpk
+    (fun sp_cur => memcpy_pkStack_placed_budget_ok sp_cur
+      (framelessMemcpyBudget_of_sessionMemcpyRegionBudget (mac_ls_hook_ok_of_mem (i := 60) hmemcpy)))
+    (fun sp_cur => subroutine_ok_withLsClState_of_plain
+      (compress256_pkStack_placed_budget_of_roSat sp_cur h176 hpk_lt
+        (mac_ls_hook_ok_of_mem (i := 60) hcompress)))
+    (subroutine_ok_withLsClState_of_plain (dealloc_pkStack_placed_budget_ok
+      (rustDeallocExternWithStack_of_rustDealloc (stk := pkStack) hle_alloc (Nat.le_of_lt hpk_lt)
+        (mac_ls_hook_ok_of_mem (i := 60) hdealloc))))
+    (fun sp_cur => memset_pkStack_placed_budget_ok sp_cur
+      (session2MemsetBudget_of_sessionMemsetRegionBudget (mac_ls_hook_ok_of_mem (i := 60) hmemset)))
+
+/-- `HookSat` sibling of `ComputeBudget.computeMac_placed_cro_ok` (`ComputeBudget.lean:1143`),
+consuming `newFromSliceBudgetSpecSat C.F` (`720` B) and `sessionCompress256ROBudgetSpec C.F 176` (`176` B). -/
+theorem computeMac_placed_cro_ok_sat [LibsignalPlacement] (C : Crypto)
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State))
+    (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
+      (withLsCodeRoLoaded lsmpl (newFromSliceBudgetSpecSat C.F)))
+    (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
+      (withLsCodeRoLoaded lsmpl (publicKeySerializeSpec M A lim)))
+    (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
+    (hcompress : HookSat H lsMacCompress256Sym (withLsRet (sessionCompress256ROBudgetSpec C.F 176)))
+    (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
+    (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec) :
+    subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (blkPl_60).base
+      (withLsCodeRoLoaded lsmpl (computeMacSpec M A lim C.F)) :=
+  subroutine_ok_lscro_of_withLsClState
+    (computeMac_placed_budget_lscl_of_sat publicKeySerializeStack C M A lim H
+      (subroutine_ok_withLsClState_of_lscro hnew) (subroutine_ok_withLsClState_of_lscro hpk)
+      hmemcpy hcompress hdealloc hmemset)
+
+/-- `HookSat` sibling of `verifyMacWithAddresses_placed_ok` (`VerifyBudget.lean:110`). -/
+theorem verifyMacWithAddresses_placed_ok_sat [LibsignalPlacement] (C : Crypto)
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (parse : UuidParser)
+    (H : String → Option (State → State))
     (hparse : subroutine_ok ((blkPC_61).rebase (blkPl_61).base H) (lsmpl.base 206)
       (withLsCodeLoaded lsmpl (parseSidCodeBudgetSpec parse)))
     (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
-      (withLsCodeLoaded lsmpl (newFromSliceBudgetSpec C.F)))
+      (withLsCodeLoaded lsmpl (newFromSliceBudgetSpecSat C.F)))
     (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
       (withLsCodeLoaded lsmpl (publicKeySerializeSpec M A lim)))
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
@@ -963,34 +1043,30 @@ theorem verifyMacWithAddresses_placed_ok_sat [LibsignalPlacement]
     (halloc : HookSat H lsMacRustAllocSym (rustCliAllocBudgetSpec M A lim false))
     (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hcompress : HookSat H lsMacCompress256Sym (compress256BudgetSpec C.F))
+    (hcompress : HookSat H lsMacCompress256Sym (withLsRet (sessionCompress256ROBudgetSpec C.F 176)))
     (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec) :
-    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (blkPl_62).base
+    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (blkPl_62).base
       (withLsCodeLoaded lsmpl (verifyMacWithAddressesPlacedSpec M A lim C.F parse)) :=
-  let hbb_sat := mac_ls_hook_ok_of_mem (i := 62) h_bb
-  verifyMacWithAddresses_placed_ok_of_hooks_gen
-    computeMacStack serializeAddressesStack allocHookStack
+  verifyMacWithAddresses_placed_ok_of_hooks_gen computeMacStack serializeAddressesStack allocHookStack
     (by decide) (by decide) (by decide) C M A lim parse H
     (rustDeallocExternWithStack_of_rustDealloc (stk := allocHookStack) (by decide) (by decide)
       (mac_ls_hook_ok_of_mem (i := 62) hdealloc))
-    (fun sp_cur n hn hncm v =>
-      blackBox_placed_budget_ok_16_sat sp_cur n hbb_sat v
-        (Nat.le_trans (by decide : 16 ≤ allocHookStack) hn)
-        (Nat.lt_of_le_of_lt hncm (by decide)))
+    (fun sp_cur n hn hncm v => blackBox_placed_budget_ok_16_sat sp_cur n
+      (mac_ls_hook_ok_of_mem (i := 62) h_bb) v (Nat.le_trans (by decide) hn) (Nat.lt_of_le_of_lt hncm (by decide)))
     (ls_subroutine_ok_lscl_of_block (serialize_addresses_placed_ok hparse hshim halloc))
-    (ls_subroutine_ok_lscl_of_block
-      (computeMac_placed_ok C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))
+    (ls_subroutine_ok_lscl_of_block (subroutine_ok_lscl_of_withLsClState
+      (computeMac_placed_budget_lscl_of_sat publicKeySerializeStack C M A lim H
+        (subroutine_ok_withLsClState_of_lscl hnew) (subroutine_ok_withLsClState_of_lscl hpk)
+        hmemcpy hcompress hdealloc hmemset)))
 
-/-- `HookSat` `black_box` sibling of `verifyMacWithAddresses_placed_ok_of_rustAllocShimVm`
-(`VerifyBudget.lean:136`). -/
-theorem verifyMacWithAddresses_placed_ok_of_rustAllocShimVm_sat [LibsignalPlacement]
-    (C : Crypto) (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (parse : UuidParser) (H : String → Option (State → State))
+/-- `HookSat` sibling of `verifyMacWithAddresses_placed_ok_of_rustAllocShimVm`. -/
+theorem verifyMacWithAddresses_placed_ok_of_rustAllocShimVm_sat [LibsignalPlacement] (C : Crypto)
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (parse : UuidParser)
+    (H : String → Option (State → State))
     (hparse : subroutine_ok ((blkPC_61).rebase (blkPl_61).base H) (lsmpl.base 206)
       (withLsCodeLoaded lsmpl (parseSidCodeBudgetSpec parse)))
     (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
-      (withLsCodeLoaded lsmpl (newFromSliceBudgetSpec C.F)))
+      (withLsCodeLoaded lsmpl (newFromSliceBudgetSpecSat C.F)))
     (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
       (withLsCodeLoaded lsmpl (publicKeySerializeSpec M A lim)))
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
@@ -998,35 +1074,29 @@ theorem verifyMacWithAddresses_placed_ok_of_rustAllocShimVm_sat [LibsignalPlacem
     (halloc : HookSat H lsMacRustAllocSym (rustCliAllocBudgetSpec M A lim false))
     (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hcompress : HookSat H lsMacCompress256Sym (compress256BudgetSpec C.F))
+    (hcompress : HookSat H lsMacCompress256Sym (withLsRet (sessionCompress256ROBudgetSpec C.F 176)))
     (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec) :
-    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (blkPl_62).base
+    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (blkPl_62).base
       (withLsCodeLoaded lsmpl (verifyMacWithAddressesPlacedSpec M A lim C.F parse)) :=
-  let hbb_sat := mac_ls_hook_ok_of_mem (i := 62) h_bb
-  verifyMacWithAddresses_placed_ok_of_hooks_gen
-    computeMacStack serializeAddressesStack allocHookStack
+  verifyMacWithAddresses_placed_ok_of_hooks_gen computeMacStack serializeAddressesStack allocHookStack
     (by decide) (by decide) (by decide) C M A lim parse H
     (rustDeallocExternWithStack_of_rustDealloc (stk := allocHookStack) (by decide) (by decide)
       (mac_ls_hook_ok_of_mem (i := 62) hdealloc))
-    (fun sp_cur n hn hncm v =>
-      blackBox_placed_budget_ok_16_sat sp_cur n hbb_sat v
-        (Nat.le_trans (by decide : 16 ≤ allocHookStack) hn)
-        (Nat.lt_of_le_of_lt hncm (by decide)))
-    (ls_subroutine_ok_lscl_of_block
-      (serialize_addresses_placed_ok_of_rustAllocShimVm hparse hshim halloc))
-    (ls_subroutine_ok_lscl_of_block
-      (computeMac_placed_ok C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))
+    (fun sp_cur n hn hncm v => blackBox_placed_budget_ok_16_sat sp_cur n
+      (mac_ls_hook_ok_of_mem (i := 62) h_bb) v (Nat.le_trans (by decide) hn) (Nat.lt_of_le_of_lt hncm (by decide)))
+    (ls_subroutine_ok_lscl_of_block (serialize_addresses_placed_ok_of_rustAllocShimVm hparse hshim halloc))
+    (ls_subroutine_ok_lscl_of_block (subroutine_ok_lscl_of_withLsClState
+      (computeMac_placed_budget_lscl_of_sat publicKeySerializeStack C M A lim H
+        (subroutine_ok_withLsClState_of_lscl hnew) (subroutine_ok_withLsClState_of_lscl hpk)
+        hmemcpy hcompress hdealloc hmemset)))
 
-/-- `HookSat` `black_box` sibling of `verifyMacWithAddresses_placed_ok_x`
-(`VerifyBudget.lean:163`). -/
-theorem verifyMacWithAddresses_placed_ok_x_sat [LibsignalPlacement]
-    (C : Crypto) (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
+/-- `HookSat` sibling of `verifyMacWithAddresses_placed_ok_x` (`VerifyBudget.lean:163`). -/
+theorem verifyMacWithAddresses_placed_ok_x_sat [LibsignalPlacement] (C : Crypto)
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State))
     (hparse : subroutine_ok ((blkPC_61).rebase (blkPl_61).base H) (lsmpl.base 206)
       (withLsCodeLoaded lsmpl (parseSidCodeStackBudgetSpec extHookStack)))
     (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
-      (withLsCodeLoaded lsmpl (newFromSliceBudgetSpec C.F)))
+      (withLsCodeLoaded lsmpl (newFromSliceBudgetSpecSat C.F)))
     (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
       (withLsCodeLoaded lsmpl (publicKeySerializeSpecX M A lim)))
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
@@ -1034,27 +1104,25 @@ theorem verifyMacWithAddresses_placed_ok_x_sat [LibsignalPlacement]
     (halloc : HookSat H lsMacRustAllocSym (rustCliAllocBudgetSpec M A lim false))
     (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hcompress : HookSat H lsMacCompress256Sym (compress256BudgetSpec C.F))
+    (hcompress : HookSat H lsMacCompress256Sym (withLsRet (sessionCompress256ROBudgetSpec C.F 176)))
     (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec) :
-    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (blkPl_62).base
+    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (blkPl_62).base
       (withLsCodeLoaded lsmpl (verifyMacWithAddressesPlacedSpecX M A lim C.F uuidTryParse)) :=
-  verifyMacWithAddresses_placed_ok_of_compute_x C M A lim uuidTryParse H
-    hdealloc
+  verifyMacWithAddresses_placed_ok_of_compute_x C M A lim uuidTryParse H hdealloc
     (mac_ls_hook_ok_of_mem (i := 62) (hookSat_blackBoxU8Budget_ext_of_sat h_bb))
     (ls_subroutine_ok_lscl_of_block (serialize_addresses_placed_ok_x hparse hshim halloc))
-    (ls_subroutine_ok_lscl_of_block
-      (computeMac_placed_ok_x C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))
+    (ls_subroutine_ok_lscl_of_block (subroutine_ok_lscl_of_withLsClState
+      (computeMac_placed_budget_lscl_of_sat publicKeySerializeStackX C M A lim H
+        (subroutine_ok_withLsClState_of_lscl hnew) (subroutine_ok_withLsClState_of_lscl hpk)
+        hmemcpy hcompress hdealloc hmemset)))
 
-/-- `HookSat` `black_box` sibling of `verifyMacWithAddresses_placed_ok_x_of_rustAllocShimVm`
-(`VerifyBudget.lean:189`). -/
-theorem verifyMacWithAddresses_placed_ok_x_of_rustAllocShimVm_sat [LibsignalPlacement]
-    (C : Crypto) (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (H : String → Option (State → State))
+/-- `HookSat` sibling of `verifyMacWithAddresses_placed_ok_x_of_rustAllocShimVm`. -/
+theorem verifyMacWithAddresses_placed_ok_x_of_rustAllocShimVm_sat [LibsignalPlacement] (C : Crypto)
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : String → Option (State → State))
     (hparse : subroutine_ok ((blkPC_61).rebase (blkPl_61).base H) (lsmpl.base 206)
       (withLsCodeLoaded lsmpl (parseSidCodeStackBudgetSpec extHookStack)))
     (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
-      (withLsCodeLoaded lsmpl (newFromSliceBudgetSpec C.F)))
+      (withLsCodeLoaded lsmpl (newFromSliceBudgetSpecSat C.F)))
     (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
       (withLsCodeLoaded lsmpl (publicKeySerializeSpecX M A lim)))
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
@@ -1062,28 +1130,26 @@ theorem verifyMacWithAddresses_placed_ok_x_of_rustAllocShimVm_sat [LibsignalPlac
     (halloc : HookSat H lsMacRustAllocSym (rustCliAllocBudgetSpec M A lim false))
     (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hcompress : HookSat H lsMacCompress256Sym (compress256BudgetSpec C.F))
+    (hcompress : HookSat H lsMacCompress256Sym (withLsRet (sessionCompress256ROBudgetSpec C.F 176)))
     (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec) :
-    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (blkPl_62).base
+    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (blkPl_62).base
       (withLsCodeLoaded lsmpl (verifyMacWithAddressesPlacedSpecX M A lim C.F uuidTryParse)) :=
-  verifyMacWithAddresses_placed_ok_of_compute_x C M A lim uuidTryParse H
-    hdealloc
+  verifyMacWithAddresses_placed_ok_of_compute_x C M A lim uuidTryParse H hdealloc
     (mac_ls_hook_ok_of_mem (i := 62) (hookSat_blackBoxU8Budget_ext_of_sat h_bb))
-    (ls_subroutine_ok_lscl_of_block
-      (serialize_addresses_placed_ok_x_of_rustAllocShimVm hparse hshim halloc))
-    (ls_subroutine_ok_lscl_of_block
-      (computeMac_placed_ok_x C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))
+    (ls_subroutine_ok_lscl_of_block (serialize_addresses_placed_ok_x_of_rustAllocShimVm hparse hshim halloc))
+    (ls_subroutine_ok_lscl_of_block (subroutine_ok_lscl_of_withLsClState
+      (computeMac_placed_budget_lscl_of_sat publicKeySerializeStackX C M A lim H
+        (subroutine_ok_withLsClState_of_lscl hnew) (subroutine_ok_withLsClState_of_lscl hpk)
+        hmemcpy hcompress hdealloc hmemset)))
 
-/-- `HookSat` `black_box` sibling of `verifyMacWithAddresses_placed_cro_ok`
-(`VerifyBudget.lean:216`). -/
-theorem verifyMacWithAddresses_placed_cro_ok_sat [LibsignalPlacement]
-    (C : Crypto) (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (parse : UuidParser) (H : String → Option (State → State))
+/-- `HookSat` sibling of `verifyMacWithAddresses_placed_cro_ok` (`VerifyBudget.lean:216`). -/
+theorem verifyMacWithAddresses_placed_cro_ok_sat [LibsignalPlacement] (C : Crypto)
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (parse : UuidParser)
+    (H : String → Option (State → State))
     (hparse : subroutine_ok ((blkPC_61).rebase (blkPl_61).base H) (lsmpl.base 206)
       (withLsCodeLoaded lsmpl (parseSidCodeBudgetSpec parse)))
     (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
-      (withLsCodeRoLoaded lsmpl (newFromSliceBudgetSpec C.F)))
+      (withLsCodeRoLoaded lsmpl (newFromSliceBudgetSpecSat C.F)))
     (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
       (withLsCodeRoLoaded lsmpl (publicKeySerializeSpec M A lim)))
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
@@ -1091,38 +1157,30 @@ theorem verifyMacWithAddresses_placed_cro_ok_sat [LibsignalPlacement]
     (halloc : HookSat H lsMacRustAllocSym (rustCliAllocBudgetSpec M A lim false))
     (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hcompress : HookSat H lsMacCompress256Sym (compress256BudgetSpec C.F))
+    (hcompress : HookSat H lsMacCompress256Sym (withLsRet (sessionCompress256ROBudgetSpec C.F 176)))
     (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec) :
-    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (blkPl_62).base
+    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (blkPl_62).base
       (withLsCodeRoLoaded lsmpl (verifyMacWithAddressesPlacedSpec M A lim C.F parse)) :=
-  let hbb_sat := mac_ls_hook_ok_of_mem (i := 62) h_bb
   subroutine_ok_lscro_of_withVmaClState
-    (verifyMacWithAddresses_placed_ok_of_hooks_gen_aux
-      computeMacStack serializeAddressesStack allocHookStack
+    (verifyMacWithAddresses_placed_ok_of_hooks_gen_aux computeMacStack serializeAddressesStack allocHookStack
       (by decide) (by decide) (by decide) C M A lim parse H
       ⟨rustDeallocExternWithStack_of_rustDealloc (stk := allocHookStack) (by decide) (by decide)
          (mac_ls_hook_ok_of_mem (i := 62) hdealloc),
-       fun sp_cur n hn hncm v =>
-         blackBox_placed_budget_ok_16_sat sp_cur n hbb_sat v
-           (Nat.le_trans (by decide : 16 ≤ allocHookStack) hn)
-           (Nat.lt_of_le_of_lt hncm (by decide)),
-       subroutine_ok_withVmaClState_of_lscro
-         (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-           (ls_subroutine_ok_lscl_of_block (serialize_addresses_placed_ok hparse hshim halloc))),
-       subroutine_ok_withVmaClState_of_lscro
-         (keys_ls_subroutine_ok_of_block_cro
-           (computeMac_placed_cro_ok C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))⟩)
+       fun sp_cur n hn hncm v => blackBox_placed_budget_ok_16_sat sp_cur n
+         (mac_ls_hook_ok_of_mem (i := 62) h_bb) v (Nat.le_trans (by decide) hn) (Nat.lt_of_le_of_lt hncm (by decide)),
+       subroutine_ok_withVmaClState_of_lscro (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
+         (ls_subroutine_ok_lscl_of_block (serialize_addresses_placed_ok hparse hshim halloc))),
+       subroutine_ok_withVmaClState_of_lscro (keys_ls_subroutine_ok_of_block_cro
+         (computeMac_placed_cro_ok_sat C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))⟩)
 
-/-- `HookSat` `black_box` sibling of `verifyMacWithAddresses_placed_cro_ok_of_rustAllocShimVm`
-(`VerifyBudget.lean:243`). -/
-theorem verifyMacWithAddresses_placed_cro_ok_of_rustAllocShimVm_sat [LibsignalPlacement]
-    (C : Crypto) (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (parse : UuidParser) (H : String → Option (State → State))
+/-- `HookSat` sibling of `verifyMacWithAddresses_placed_cro_ok_of_rustAllocShimVm`. -/
+theorem verifyMacWithAddresses_placed_cro_ok_of_rustAllocShimVm_sat [LibsignalPlacement] (C : Crypto)
+    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (parse : UuidParser)
+    (H : String → Option (State → State))
     (hparse : subroutine_ok ((blkPC_61).rebase (blkPl_61).base H) (lsmpl.base 206)
       (withLsCodeLoaded lsmpl (parseSidCodeBudgetSpec parse)))
     (hnew : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 114)
-      (withLsCodeRoLoaded lsmpl (newFromSliceBudgetSpec C.F)))
+      (withLsCodeRoLoaded lsmpl (newFromSliceBudgetSpecSat C.F)))
     (hpk : subroutine_ok ((blkPC_60).rebase (blkPl_60).base H) (lsmpl.base 205)
       (withLsCodeRoLoaded lsmpl (publicKeySerializeSpec M A lim)))
     (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
@@ -1130,28 +1188,20 @@ theorem verifyMacWithAddresses_placed_cro_ok_of_rustAllocShimVm_sat [LibsignalPl
     (halloc : HookSat H lsMacRustAllocSym (rustCliAllocBudgetSpec M A lim false))
     (hdealloc : HookSat H lsMacRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
     (hmemcpy : HookSat H lsMacMemcpySym sessionMemcpyRegionBudgetSpec)
-    (hcompress : HookSat H lsMacCompress256Sym (compress256BudgetSpec C.F))
+    (hcompress : HookSat H lsMacCompress256Sym (withLsRet (sessionCompress256ROBudgetSpec C.F 176)))
     (hmemset : HookSat H lsMacMemsetSym sessionMemsetRegionBudgetSpec) :
-    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H)
-      (blkPl_62).base
+    subroutine_ok ((blkPC_62).rebase (blkPl_62).base H) (blkPl_62).base
       (withLsCodeRoLoaded lsmpl (verifyMacWithAddressesPlacedSpec M A lim C.F parse)) :=
-  let hbb_sat := mac_ls_hook_ok_of_mem (i := 62) h_bb
   subroutine_ok_lscro_of_withVmaClState
-    (verifyMacWithAddresses_placed_ok_of_hooks_gen_aux
-      computeMacStack serializeAddressesStack allocHookStack
+    (verifyMacWithAddresses_placed_ok_of_hooks_gen_aux computeMacStack serializeAddressesStack allocHookStack
       (by decide) (by decide) (by decide) C M A lim parse H
       ⟨rustDeallocExternWithStack_of_rustDealloc (stk := allocHookStack) (by decide) (by decide)
          (mac_ls_hook_ok_of_mem (i := 62) hdealloc),
-       fun sp_cur n hn hncm v =>
-         blackBox_placed_budget_ok_16_sat sp_cur n hbb_sat v
-           (Nat.le_trans (by decide : 16 ≤ allocHookStack) hn)
-           (Nat.lt_of_le_of_lt hncm (by decide)),
-       subroutine_ok_withVmaClState_of_lscro
-         (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-           (ls_subroutine_ok_lscl_of_block
-             (serialize_addresses_placed_ok_of_rustAllocShimVm hparse hshim halloc))),
-       subroutine_ok_withVmaClState_of_lscro
-         (keys_ls_subroutine_ok_of_block_cro
-           (computeMac_placed_cro_ok C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))⟩)
+       fun sp_cur n hn hncm v => blackBox_placed_budget_ok_16_sat sp_cur n
+         (mac_ls_hook_ok_of_mem (i := 62) h_bb) v (Nat.le_trans (by decide) hn) (Nat.lt_of_le_of_lt hncm (by decide)),
+       subroutine_ok_withVmaClState_of_lscro (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
+         (ls_subroutine_ok_lscl_of_block (serialize_addresses_placed_ok_of_rustAllocShimVm hparse hshim halloc))),
+       subroutine_ok_withVmaClState_of_lscro (keys_ls_subroutine_ok_of_block_cro
+         (computeMac_placed_cro_ok_sat C M A lim H hnew hpk hmemcpy hcompress hdealloc hmemset))⟩)
 
 end LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyBudgetSat

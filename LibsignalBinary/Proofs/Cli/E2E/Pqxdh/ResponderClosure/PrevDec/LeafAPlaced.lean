@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafA
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafDefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LeafDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
 
 /-!
 # Relocatable `prost::encoding::skip_field::<&mut &[u8]> [local#5]` (Cases 1–6)
@@ -25,7 +29,7 @@ Relocatable (`[LibsignalPlacement]`) verification of the six non-group dispatch 
 `prost::encoding::skip_field::<&mut &[u8]> [local#5]` on Block `510`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +61,7 @@ private theorem bv64_add_zero_pl (x : BitVec 64) : x + 0#64 = x := BitVec.add_ze
 /-- Case-restricted relocatable `[LibsignalPlacement]` contract for
 `prost::encoding::skip_field::<&mut &[u8]> [local#5]` (Block `510`, `lsmpl.base 510`) at recursion
 budget `depth` under predicate `P`. -/
-def SkipField6AtPlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SkipField6AtPlacedOk [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) (depth : Nat) (P : SkipFieldGhost → Prop) : Prop :=
   subroutine_ok (lsProg_518 ext) (lsmpl.base 510)
     (withLsCl lsmpl (skipField3SpecAt A depth P))

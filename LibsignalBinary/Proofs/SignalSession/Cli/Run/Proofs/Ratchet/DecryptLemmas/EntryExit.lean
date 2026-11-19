@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionSpec
 public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentitySpec
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Entry and Exit Separation-Logic Bridges for `decrypt_signal`
@@ -20,7 +23,7 @@ Unpacks `storesAt` into the session and identity store kits alongside the five u
 fields, and relates `apiDecResultAt` to `decResAt` when no store error occurs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -39,7 +42,7 @@ open CryptoVerification.SignalSession.Cli.RunCompose hiding Bytes
 
 /-- The five `Stores` directory fields (`signed`, `kyber.oneTime`, `kyber.lastResort`, `oneTime`,
 `pub`) untouched by `decrypt_signal`. -/
-def storesOther5At (A : RustAlloc) (a : BitVec 64) (g : StoresGhost) : SepProp :=
+@[expose] def storesOther5At (A : RustAlloc) (a : BitVec 64) (g : StoresGhost) : SepProp :=
   dirAt A (a + 0x50#64) g.signed ∗ dirAt A (a + 0x78#64) g.kyber.oneTime ∗
     dirAt A (a + 0xa0#64) g.kyber.lastResort ∗ dirAt A (a + 0xc8#64) g.oneTime ∗
     dirAt A (a + 0x118#64) g.pub

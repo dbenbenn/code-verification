@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.MergeDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Handshake `bytes::merge [local#6]` W-Mode Definitions
@@ -19,7 +19,7 @@ Defines the budget-threaded unconstrained-capacity (`x.bs.length < 2 ^ 62`, `req
 contract `bytesMerge3RawSpecW` at `bytesMerge3Stack` (`33120` B).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,12 +38,9 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget (
   BytesMergeEnv bytesMergeRawSpecGen
 )
 
-theorem bytesMerge3Stack_eq_gen :
-    0xe0 + (0x50 + (48 + decodeErrorHookStackX)) = bytesMerge3Stack := rfl
-
 /-- Budget-threaded `bytesMerge3RawSpec` with `x.bs.length < 2 ^ 62` at `bytesMerge3Stack`
 (`33120` B) and no `BytesMergeCapOk` in `pre` or `post` (`reqCap = false`). -/
-def bytesMerge3RawSpecW {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3RawSpecW {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧

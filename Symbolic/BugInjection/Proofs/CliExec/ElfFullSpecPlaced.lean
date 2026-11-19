@@ -17,6 +17,7 @@ public import ProofLib.ProgramReflection
 public import VerifiedLibraries.Mallocng.Spec
 public import LibsignalBinary.Specifications.SignalSession.CliProcess
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMemAux
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMem

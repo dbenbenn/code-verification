@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import Mathlib.Data.List.Basic
 
 /-!
@@ -20,7 +20,7 @@ Introduction, membership, inversion, monotonicity, and `gamma`-congruence lemmas
 `RecvCollision`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -514,13 +514,13 @@ theorem whisperTrials_congr_gamma
 /-- Bob's one-time prekey selection in `bobTrials`: `some none` when `p.preKeyId = none`,
 `some (some (setupSecret r 6))` when `p.preKeyId` matches `r.opkId` with `r.withOpk = true`, and
 `none` when `p.preKeyId` names an unknown one-time prekey id. -/
-def bobOpk? (r : ProtocolSetup) (p : PreKeyFields) : Option (Option DY.Bytes) :=
+@[expose] def bobOpk? (r : ProtocolSetup) (p : PreKeyFields) : Option (Option DY.Bytes) :=
   match p.preKeyId with
   | none => some none
   | some id => if r.withOpk && id == r.opkId then some (some (setupSecret r 6)) else none
 
 /-- Bob's PQXDH handshake keys for selected `opk` and representation `x`. -/
-def bobHandshakeKeys (r : ProtocolSetup) (opk : Option DY.Bytes) (x : PreKeyRep) : HandshakeKeys :=
+@[expose] def bobHandshakeKeys (r : ProtocolSetup) (opk : Option DY.Bytes) (x : PreKeyRep) : HandshakeKeys :=
   let ikA := setupPublic r 0
   let spk := setupSecret r 2
   let pqsk := setupSecret r 4
@@ -530,12 +530,12 @@ def bobHandshakeKeys (r : ProtocolSetup) (opk : Option DY.Bytes) (x : PreKeyRep)
     (agree x.ek spk) (opk.map (agree x.ek ·)) ss)
 
 /-- Bob's initial receiving chain for handshake `keys` and inner message `msg`. -/
-def bobInitChain (r : ProtocolSetup) (keys : HandshakeKeys) (msg : TRSignalMsg) : RecvChain :=
+@[expose] def bobInitChain (r : ProtocolSetup) (keys : HandshakeKeys) (msg : TRSignalMsg) : RecvChain :=
   { ratchetKey := msg.ratchetKey,
     chainKey := (createChain keys.rk msg.ratchetKey (setupSecret r 2)).2, index := 0, rIdx := 2 }
 
 /-- Pre-MAC handshake guard Boolean in `bobTrials`. -/
-def bobTrialGuard (r : ProtocolSetup) (tr : ExecTrace) (p : PreKeyFields) (x : PreKeyRep)
+@[expose] def bobTrialGuard (r : ProtocolSetup) (tr : ExecTrace) (p : PreKeyFields) (x : PreKeyRep)
     (msg : TRSignalMsg) (opk : Option DY.Bytes) : Bool :=
   let ekBytes := ((p.baseKey.take 33).drop 1).map BitVec.toNat
   let rkBytes := p.inner.senderRatchetKey.bytes.toList.map BitVec.toNat

@@ -237,12 +237,12 @@ theorem slot_set_size_addrs {start slotEnd p : BitVec 64} {stride newSz : Nat}
   · rw [show slotEnd + (-4#64) = slotEnd - 4#64 by bv_lin]
     dsimp only [base, res] at hSub4 hEn h48 hR5 ⊢; bv_omega
 
-theorem satisfies_readRest_wf {m : Memory} {γ : GhostName} {A : MallocngAddrs}
+theorem satisfies_readRest_wf {ro : Bool} {m : Memory} {γ : GhostName} {A : MallocngAddrs}
     {tp brkStart brk : BitVec 64} {b : MallocngBudget} {ivs : List (BitVec 64 × Nat)}
     {st : MallocngSt} {Rest : SepProp}
-    (hm : m ⊨ MallocngReadRest γ A tp brkStart brk b ivs st ∗ Rest) :
+    (hm : m ⊨ MallocngReadRestMode ro γ A tp brkStart brk b ivs st ∗ Rest) :
     MallocngCountIvsWF b ivs st ∧ MallocngWF A.base brkStart brk b.liveCost b.peakCost st := by
-  unfold MallocngReadRest at hm
+  unfold MallocngReadRestMode at hm
   rw [sepConj_assoc, satisfies_pure_sepConj] at hm
   exact hm.1
 
@@ -290,7 +290,7 @@ scoped macro "wp_str64_slice" m:ident hm:ident off:term:max val:term:max hVal:te
 
 set_option maxHeartbeats 400000 in
 /-- Shared reconvergence tail (`+0x2fc` to `ret`) for all three branches of in-place `set_size`. -/
-theorem realloc_s2_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase 14 b)
+theorem realloc_s2_finish_ok [MallocngMultiPlacement] {ro : Bool} {b : BitVec 64} (hb : BlkBase 14 b)
     (γ : GhostName) (tp brkStart : BitVec 64) (bgt : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
     (s0 s : State) (st : MallocngSt)
     {g : GroupDesc} (hg : g ∈ st.groups) {idx : Nat} (hIdx : idx < g.slots.length)
@@ -327,12 +327,12 @@ theorem realloc_s2_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
        (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
         MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
         ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion base g.stride a) st.byteVal ∗
-        MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+        MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
         MallocngTightBlock γ p oldSz al ∗ Frame))
       (fun sf Pf => sf.mem.perm = s0.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = p ∧
         (Pf ⊢ stackFrame s0 800 ∗
-          MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+          MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
           ⌜(MallocngTightInitBlock γ al).pureWf p (newSz, keptBs)⌝ ∗
           (MallocngTightInitBlock γ al).interp p (newSz, keptBs) ∗
           Frame)) oom := by
@@ -357,12 +357,12 @@ theorem realloc_s2_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
           stackFrameAt (s0.sp - 80#64) 720 ∗
           (MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
            ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion base g.stride a) st.byteVal ∗
-           MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+           MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
            MallocngTightBlock γ p oldSz al ∗ Frame)))
         (fun sf Pf => sf.mem.perm = s0.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
           sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = p ∧
           (Pf ⊢ stackFrame s0 800 ∗
-            MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+            MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
             ⌜(MallocngTightInitBlock γ al).pureWf p (newSz, keptBs)⌝ ∗
             (MallocngTightInitBlock γ al).interp p (newSz, keptBs) ∗ Frame)) oom := by
     intro m1 s2 hm1Perm hpc2 hrun2 hmem2 hbrk2 hproc2 hsp2 hal2 hx20_2 hx23_2 hx24_2 hx25_2 hx26_2 hcs2
@@ -372,24 +372,24 @@ theorem realloc_s2_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
         stackFrameAt (s0.sp - 80#64) 720 ∗
         (MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
          ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion base g.stride a) st.byteVal ∗
-         (base ↦ₛ bsFinal) ∗ MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+         (base ↦ₛ bsFinal) ∗ MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
          MallocngTightBlock γ p oldSz al) ∗ Frame)
       (Entails.of_eq (by
         dsimp only [base]
         generalize (MallocngRoTablesAt maddrs) = PRo
-        generalize (MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
+        generalize (MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
         ac_rfl)) ?_
     apply sepWP_bupd_pre (Q :=
         ReallocSavedLo s0 (s0.sp - 80#64) ∗
         (memRegion (s0.sp - 80#64 + 48#64) 8 ∗ memRegion (s0.sp - 80#64 + 56#64) 8 ∗
          memRegion (s0.sp - 80#64 + 64#64) 8 ∗ memRegion (s0.sp - 80#64 + 72#64) 8) ∗
         stackFrameAt (s0.sp - 80#64) 720 ∗
-        (MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 s2 ∗
+        (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 s2 ∗
          ⌜(MallocngTightInitBlock γ al).pureWf p (newSz, keptBs)⌝ ∗
          (MallocngTightInitBlock γ al).interp p (newSz, keptBs) ∗ Frame))
     · have hSub4 : (g.slotStart idx - 4#64).toNat = (g.slotStart idx).toNat - 4 :=
         bv64_sub_toNat (by omega)
-      have hAbs := reallocInPlace_absorb (al := al) γ maddrs tp brkStart bgt ivs0 s0 s2
+      have hAbs := reallocInPlace_absorb (ro := ro) (al := al) γ maddrs tp brkStart bgt ivs0 s0 s2
         st hg hIdx origBs tailBs hOrigLen hTailLen hSlot hNewMax hFit hScLe
         (hproc2.2.2.1.trans htp0) (hproc2.2.2.2.1.trans hbrks0)
         (mallocngMappedDelta_of_perm_eq (hmem2 ▸ hm1Perm0))
@@ -426,7 +426,7 @@ theorem realloc_s2_finish_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkB
   conv => arg 4; dsimp only [sp1]
   generalize hRestEnv : (MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
     ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion base g.stride a) st.byteVal ∗
-    MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+    MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
     MallocngTightBlock γ p oldSz al ∗ Frame) = RestEnv
   refine (fun {P post} (h : ∀ post', post' = post →
       SepWP (blkPC_b14.rebase b (fun _ => none)) (s0.readReg64 .x30) s P post' oom) => h post rfl) ?_
@@ -472,7 +472,7 @@ set_option maxHeartbeats 400000 in
 /-- Executes Stage 2 (`+0x2cc` to `ret`): updates `set_size(p, end, newSz)` in place across all
     three residual-slack cases (`res = 0`, `1 ≤ res ≤ 4`, `5 ≤ res`), absorbs the `.liveUser` slot
     update into `MallocngPostEnv`, and returns `p` via `realloc_epilogue_ok`. -/
-theorem realloc_stage2_inplace_ok [MallocngMultiPlacement] {b : BitVec 64} (hb : BlkBase 14 b)
+theorem realloc_stage2_inplace_ok [MallocngMultiPlacement] {ro : Bool} {b : BitVec 64} (hb : BlkBase 14 b)
     (γ : GhostName) (tp brkStart : BitVec 64) (bgt : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
     (s0 s : State) (st : MallocngSt)
     {g : GroupDesc} (hg : g ∈ st.groups) {idx : Nat} (hIdx : idx < g.slots.length)
@@ -499,12 +499,12 @@ theorem realloc_stage2_inplace_ok [MallocngMultiPlacement] {b : BitVec 64} (hb :
       (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
        MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-       MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+       MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
        MallocngTightBlock γ p oldSz al ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ Frame)
       (fun sf Pf => sf.mem.perm = s0.mem.perm ∧ sf.brk = s0.brk ∧ MallocngProcPreserved s0 sf ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.readReg64 .x0 = p ∧
         (Pf ⊢ stackFrame s0 800 ∗
-          MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+          MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
           ⌜(MallocngTightInitBlock γ al).pureWf p (newSz, keptBs)⌝ ∗
           (MallocngTightInitBlock γ al).interp p (newSz, keptBs) ∗
           Frame)) oom := by
@@ -517,7 +517,7 @@ theorem realloc_stage2_inplace_ok [MallocngMultiPlacement] {b : BitVec 64} (hb :
       MallocngTightBlock γ p oldSz al ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ Frame ∗ R)
       (Satisfies.mono (Entails.of_eq (by
         generalize (MallocngRoTablesAt maddrs) = PRo
-        generalize (MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
+        generalize (MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
         ac_rfl)) hm))
   rintro ⟨_, hwf⟩
   obtain ⟨hLo, _, hSt4, _hSub4, hEn, h48, hCapMax, hIdx31, hBs0Hdr⟩ :=
@@ -539,21 +539,21 @@ theorem realloc_stage2_inplace_ok [MallocngMultiPlacement] {b : BitVec 64} (hb :
       (ReallocSavedLo s0 sp1 ∗ ReallocSavedHi s0 sp1 ∗ stackFrameAt sp1 720 ∗
        MallocngRoTablesAt maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        ByteMap st.masterDom (fun a => OwnedRwByte st a ∧ ¬ InRegion base g.stride a) st.byteVal ∗
-       MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+       MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
        MallocngTightBlock γ p oldSz al ∗ Frame))
     (Entails.of_eq (by
       have hAssoc : (ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
-          (MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+          (MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
            MallocngTightBlock γ p oldSz al ∗ (p ↦ₛ (origBs ++ tailBs)) ∗ Frame)) =
         ((ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗ (p ↦ₛ (origBs ++ tailBs))) ∗
-          MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
+          MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st ∗
           MallocngTightBlock γ p oldSz al ∗ Frame) := by
-        generalize (MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
+        generalize (MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
         ac_rfl
       rw [hAssoc, hSliceEq]
       dsimp only [base]
       generalize (MallocngRoTablesAt maddrs) = PRo
-      generalize (MallocngReadRest γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
+      generalize (MallocngReadRestMode ro γ maddrs tp brkStart s0.brk bgt ivs0 st) = PRest
       ac_rfl)) ?_
   have hCapFold : (g.slotStart idx).toNat - 4 + g.stride - p.toNat = oldCap := by
     dsimp only [oldCap]; omega

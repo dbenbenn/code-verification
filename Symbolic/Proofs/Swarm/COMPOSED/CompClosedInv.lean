@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTightClosed
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTightClosed -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -20,13 +20,13 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPresBob -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompLineage
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
-import Symbolic.DYBridge.DY.Trace.Monad
+public import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Trace.BaseAttackerKnowledge
 import Symbolic.DYBridge.DY.Actions.Network
@@ -44,7 +44,7 @@ SPQR states, and proves its preservation across all transitions of `Composed.rea
 in `CompTrClosed (CompStructuredExposure tr)` (`attackerKnows_implies_compTrClosed`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

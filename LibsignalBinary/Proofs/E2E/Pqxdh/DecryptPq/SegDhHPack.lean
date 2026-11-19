@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHChain
+public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegDhHChain -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Byte Packing, Address Arithmetic, and `ReachesOrPanic` Combinators for `S3CommitSpec`
@@ -19,7 +20,7 @@ Little-endian byte/word packing lemmas, stack-region splitting helpers, and `Rea
 composition combinators for `S3CommitSpec`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegBH
 
@@ -63,7 +64,7 @@ private theorem extractLsb'_shiftLeft8_or_succ (w : Nat) (acc : BitVec w) (b : B
 private def bytesOfBV {w : Nat} (n : Nat) (v : BitVec w) : List (BitVec 8) :=
   (List.range n).map fun j => v.extractLsb' (8 * j) 8
 
-protected def packBV (w : Nat) (bs : List (BitVec 8)) : BitVec w :=
+@[expose] protected def packBV (w : Nat) (bs : List (BitVec 8)) : BitVec w :=
   bs.foldr (fun b acc => (acc <<< 8) ||| b.zeroExtend w) 0
 
 private theorem bytesOfBV_packBV (w : Nat) :
@@ -89,9 +90,9 @@ private theorem bytesOfBV_packBV (w : Nat) :
     rw [hmap]
     exact bytesOfBV_packBV w bs (by omega)
 
-def pack64 (bs : List (BitVec 8)) : BitVec 64 := SegBH.packBV 64 bs
+@[expose] def pack64 (bs : List (BitVec 8)) : BitVec 64 := SegBH.packBV 64 bs
 
-def pack32 (bs : List (BitVec 8)) : BitVec 32 := SegBH.packBV 32 bs
+@[expose] def pack32 (bs : List (BitVec 8)) : BitVec 32 := SegBH.packBV 32 bs
 
 theorem unpack64_pack64 {bs : List (BitVec 8)} (h : bs.length = 8) :
     unpack64 (pack64 bs) = bs := by
@@ -353,7 +354,7 @@ theorem chainHeap_srk_cap_ne_zero (A : RustAlloc) (gc : ChainGhost × ReceiverCh
       gc.1.srk.ptr gc.1.srk.bytes))) ?_
   exact Entails.of_eq (by ac_rfl)
 
-def newChainGhost (srkPtr ckPtr : BitVec 64) (srk : PublicKey) : ChainGhost :=
+@[expose] def newChainGhost (srkPtr ckPtr : BitVec 64) (srk : PublicKey) : ChainGhost :=
   { srk := ⟨33#64, srkPtr, srk.serialize⟩
     priv := ⟨0#64, 1#64, []⟩
     mkCap := 0#64
@@ -361,7 +362,7 @@ def newChainGhost (srkPtr ckPtr : BitVec 64) (srk : PublicKey) : ChainGhost :=
     keys := []
     ck := ⟨32#64, ckPtr⟩ }
 
-def newReceiverChain (srk : PublicKey) (rck : ChainKey) : ReceiverChain :=
+@[expose] def newReceiverChain (srk : PublicKey) (rck : ChainKey) : ReceiverChain :=
   { senderRatchetKey := srk
     chainKey := some rck
     messageKeys := [] }
@@ -498,172 +499,5 @@ theorem stackAt_sub_split (sp : BitVec 64) (n : Nat) (hn : n ≤ tryDecryptSubSt
       sp - BitVec.ofNat 64 n - BitVec.ofNat 64 (tryDecryptSubStack - n) := by
     rw [BitVec.sub_sub, ← BitVec.ofNat_add, Nat.add_comm]
   rw [h1, e1, Nat.add_sub_cancel, BitVec.sub_add_cancel]
-
-theorem satisfies_tryDecrypt_onPanic_of_allocFailed
-    (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (img : Obj.Image) (x : TryDecryptGhost)
-    {s0 sf : State} {P R : SepProp}
-    (hfail : allocFailedIn s0 sf) (hpfx : s0.trace <+: sf.trace)
-    (hmem : sf.mem ⊨ P ∗ R) :
-    sf.mem ⊨ (tryDecryptSpec C A ctl uuidTryParse S img).onPanic x s0 sf ∗ R := by
-  dsimp only [tryDecryptSpec, Spec.inImage]
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨⟨Or.inr (Or.inr hfail), hpfx⟩, ?_⟩
-  exact Satisfies.mono (sepConj_mono_left (entails_anyHeap P)) hmem
-
-def ReachesOrPanic (prog : Program) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel) (img : Obj.Image)
-    (x : TryDecryptGhost) (R : SepProp) (s0 s : State) (Post : State → Prop) : Prop :=
-  ∃ s', Steps prog s s' ∧
-    (Post s' ∨
-     (s'.status = .Panicked ∧
-       (s'.mem ⊨ (tryDecryptSpec C A ctl parse S img).onPanic x s0 s' ∗ R)))
-
-theorem ReachesOrPanic.done {prog : Program} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image}
-    {x : TryDecryptGhost} {R : SepProp} {s0 s : State} {Post : State → Prop}
-    (h : Post s) :
-    ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s Post :=
-  ⟨s, .refl s, Or.inl h⟩
-
-theorem ReachesOrPanic.seq {prog : Program} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image}
-    {x : TryDecryptGhost} {R : SepProp} {s0 s : State} {P Q : State → Prop}
-    (h1 : ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s P)
-    (h2 : ∀ s1, s.mem.KeepsFrozen s1.mem → s1.symtab = s.symtab → P s1 →
-      ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s1 Q) :
-    ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s Q := by
-  obtain ⟨s1, hsteps1, hP | hPan⟩ := h1
-  · obtain ⟨s2, hsteps2, hQ⟩ := h2 s1 hsteps1.keepsFrozen hsteps1.symtab_eq hP
-    exact ⟨s2, hsteps1.trans hsteps2, hQ⟩
-  · exact ⟨s1, hsteps1, Or.inr hPan⟩
-
-theorem ReachesOrPanic.of_sepWP {prog : Program} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image}
-    {x : TryDecryptGhost} {R : SepProp} {s0 s : State}
-    {target : BitVec 64} {Pre Frame : SepProp}
-    {PostWP : State → SepProp → Prop} {Q : State → Prop}
-    (hwp : SepWP prog target s Pre PostWP)
-    (hmem : s.mem ⊨ Pre ∗ (Frame ∗ R))
-    (hL : prog.CodeLoaded s.mem)
-    (hcont : ∀ s1 P_out,
-      s1.pc = target → s1.status = .Running →
-      s.mem.KeepsFrozen s1.mem → s1.symtab = s.symtab →
-      prog.CodeLoaded s1.mem →
-      (s1.mem ⊨ P_out ∗ (Frame ∗ R)) →
-      PostWP s1 P_out →
-      ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s1 Q) :
-    ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s Q := by
-  obtain ⟨s1, hsteps1, ⟨hpc1, hrun1, P_out, hm1, hpost1⟩ | ⟨_, _hoom⟩⟩ := hwp.elim hmem hL
-  rotate_left; · exact (not_satisfies_false_sepConj _hoom).elim
-  have hkf1 := hsteps1.keepsFrozen
-  have hsym1 := hsteps1.symtab_eq
-  have hL1 := hL.of_keepsFrozen hkf1
-  obtain ⟨s2, hsteps2, hQ⟩ := hcont s1 P_out hpc1 hrun1 hkf1 hsym1 hL1 hm1 hpost1
-  exact ⟨s2, hsteps1.trans hsteps2, hQ⟩
-
-theorem ReachesOrPanic.of_call_no_panic {α : Type} {prog : Program} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {img : Obj.Image}
-    {x : TryDecryptGhost} {R : SepProp} {s0 s : State}
-    {entry ret_pc : BitVec 64} {spec : Spec α} {arg : α} {Frame : SepProp}
-    {Q : State → Prop}
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 .x30 = ret_pc)
-    (hpre : s.mem ⊨ spec.pre arg s ∗ (Frame ∗ R))
-    (hL : prog.CodeLoaded s.mem)
-    (hpan_false : ∀ sf, spec.onPanic arg s sf = ⌜False⌝ := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit arg code s sf = ⌜False⌝ := by intros; rfl)
-    (hcont : ∀ s1,
-      s1.pc = ret_pc → s1.status = .Running →
-      s1.sp = s.sp → s1.spAligned = true →
-      CalleeSavedPreserved s s1 →
-      s.mem.KeepsFrozen s1.mem → s1.symtab = s.symtab →
-      prog.CodeLoaded s1.mem →
-      (s1.mem ⊨ spec.post arg s s1 ∗ (Frame ∗ R)) →
-      ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s1 Q)
-    (hoom_false : ∀ sf, spec.onOom arg s sf = ⌜False⌝ := by intro _; rfl) :
-    ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s Q := by
-  obtain ⟨s1, hsteps1, hout, _⟩ :=
-    hcall.no_fault_before_outcome arg (Frame ∗ R) s hpc hrun hpre hsp hL
-  rcases hout with ⟨⟨hpc1, hsp1, hrun1⟩, ⟨_, hcs1⟩, hpost1⟩ | ⟨_, hpost1⟩ | ⟨code, _, hpost1⟩ | ⟨_, hpost1⟩
-  · rw [show Reg.lr = Reg.x30 from rfl, hlr] at hpc1
-    have hkf1 := hsteps1.keepsFrozen
-    have hsym1 := hsteps1.symtab_eq
-    have hL1 := hL.of_keepsFrozen hkf1
-    have hsp_align1 : s1.spAligned = true := by
-      unfold State.spAligned at hsp ⊢; rw [hsp1]; exact hsp
-    obtain ⟨s2, hsteps2, hQ⟩ := hcont s1 hpc1 hrun1 hsp1 hsp_align1 hcs1 hkf1 hsym1 hL1 hpost1
-    exact ⟨s2, hsteps1.trans hsteps2, hQ⟩
-  · rw [hpan_false s1, satisfies_pure_sepConj] at hpost1
-    exact False.elim hpost1.1
-  · rw [hexit_false code s1, satisfies_pure_sepConj] at hpost1
-    exact False.elim hpost1.1
-  · rw [hoom_false s1, satisfies_pure_sepConj] at hpost1
-    exact False.elim hpost1.1
-
-theorem ReachesOrPanic.of_call_alloc_panic {α : Type} {prog : Program} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {img : Obj.Image}
-    {x : TryDecryptGhost} {R : SepProp} {s0 s : State}
-    {entry ret_pc : BitVec 64} {spec : Spec α} {arg : α} {Frame : SepProp}
-    {Q : State → Prop}
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 .x30 = ret_pc)
-    (htrace : s.trace = s0.trace)
-    (hpre : s.mem ⊨ spec.pre arg s ∗ (Frame ∗ R))
-    (hL : prog.CodeLoaded s.mem)
-    (hpan_eq : ∀ sf, spec.onPanic arg s sf =
-      ⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit arg code s sf = ⌜False⌝ := by intros; rfl)
-    (hcont : ∀ s1,
-      s1.pc = ret_pc → s1.status = .Running →
-      s1.sp = s.sp → s1.spAligned = true →
-      CalleeSavedPreserved s s1 →
-      s.mem.KeepsFrozen s1.mem → s1.symtab = s.symtab →
-      prog.CodeLoaded s1.mem →
-      (s1.mem ⊨ spec.post arg s s1 ∗ (Frame ∗ R)) →
-      ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s1 Q)
-    (hoom_false : ∀ sf, spec.onOom arg s sf = ⌜False⌝ := by intro _; rfl) :
-    ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s Q := by
-  obtain ⟨s1, hsteps1, hout, _⟩ :=
-    hcall.no_fault_before_outcome arg (Frame ∗ R) s hpc hrun hpre hsp hL
-  rcases hout with ⟨⟨hpc1, hsp1, hrun1⟩, ⟨_, hcs1⟩, hpost1⟩ | ⟨hpan1, hpost1⟩ | ⟨code, _, hpost1⟩ | ⟨_, hpost1⟩
-  · rw [show Reg.lr = Reg.x30 from rfl, hlr] at hpc1
-    have hkf1 := hsteps1.keepsFrozen
-    have hsym1 := hsteps1.symtab_eq
-    have hL1 := hL.of_keepsFrozen hkf1
-    have hsp_align1 : s1.spAligned = true := by
-      unfold State.spAligned at hsp ⊢; rw [hsp1]; exact hsp
-    obtain ⟨s2, hsteps2, hQ⟩ := hcont s1 hpc1 hrun1 hsp1 hsp_align1 hcs1 hkf1 hsym1 hL1 hpost1
-    exact ⟨s2, hsteps1.trans hsteps2, hQ⟩
-  · rw [hpan_eq s1, sepConj_assoc, satisfies_pure_sepConj] at hpost1
-    rcases hpost1 with ⟨⟨hfail, hpfx⟩, hmem1⟩
-    have hfail0 : allocFailedIn s0 s1 := by
-      unfold allocFailedIn at hfail ⊢; rwa [← htrace]
-    have hpfx0 : s0.trace <+: s1.trace := by rwa [← htrace]
-    rw [← sepConj_assoc] at hmem1
-    exact ⟨s1, hsteps1, Or.inr ⟨hpan1,
-      satisfies_tryDecrypt_onPanic_of_allocFailed C A ctl S img x hfail0 hpfx0 hmem1⟩⟩
-  · rw [hexit_false code s1, satisfies_pure_sepConj] at hpost1
-    exact False.elim hpost1.1
-  · rw [hoom_false s1, satisfies_pure_sepConj] at hpost1
-    exact False.elim hpost1.1
-
-theorem ReachesOrPanic.of_panic_extern {prog : Program} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {img : Obj.Image}
-    {x : TryDecryptGhost} {P R : SepProp} {s0 s : State} {Q : State → Prop}
-    (hrun : s.status = .Running)
-    (hext : prog.externAt? s.pc = some Rust.panicked)
-    (hfail : allocFailedIn s0 s) (hpfx : s0.trace <+: s.trace)
-    (hmem : s.mem ⊨ P ∗ R) :
-    ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s Q := by
-  refine ⟨Rust.panicked s,
-    Steps.step (Step.extern hrun hext (Memory.KeepsFrozen.refl _)) (Steps.refl _),
-    Or.inr ⟨rfl, ?_⟩⟩
-  have hfail' : allocFailedIn s0 (Rust.panicked s) := hfail
-  have hpfx' : s0.trace <+: (Rust.panicked s).trace := hpfx
-  have hmem' : (Rust.panicked s).mem ⊨ P ∗ R := hmem
-  exact satisfies_tryDecrypt_onPanic_of_allocFailed C A ctl S img x hfail' hpfx' hmem'
 
 end CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegBH

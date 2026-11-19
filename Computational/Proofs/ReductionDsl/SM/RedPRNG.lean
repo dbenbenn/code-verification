@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.Engine
-public import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.ReductionDsl.Notation
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Costed `redPRNGAuth` and `redPRNGPriv` Reductions
@@ -21,7 +24,7 @@ Defines the ACD19 `B2` reductions (`redPRNGAuthProg`, `redPRNGPrivProg`, and
 `ReductionDsl.CostedReduction` programs, with evaluation agreement, query bounds, and cost bounds.
 -/
 
-@[expose] public section
+public section
 
 open ReductionDsl OracleSpec OracleComp
 
@@ -449,24 +452,24 @@ local notation "rrTy" => ckaRrTy KC Γ CCoins T I KR RSt K SS RS M E
 
 /-! ## `PRNGState` representation and `hooksPRNGC` -/
 
-@[reducible] def prngHsTy : Ty S :=
+@[expose, reducible] def prngHsTy : Ty S :=
   .tbl (.opt (.prod (.base .t) (.prod (.opt (.base .sig)) (.base .k))))
 
-def prngHsEnc (s : PRNGState T RSt K) :
+@[expose] def prngHsEnc (s : PRNGState T RSt K) :
     (@prngHsTy KC Γ CCoins T I KR RSt K SS RS M E).denote :=
   s.cache
 
-@[reducible] def prngVpTy : Ty S :=
+@[expose, reducible] def prngVpTy : Ty S :=
   @vpTblTy KC Γ CCoins T I KR RSt K SS RS M E
     (.base .γ) (.opt (.base .sig)) (.base .ss) (.base .rs)
 
-@[reducible] def prngVpEnc (p : VP Γ T (Option RSt) SS RS) :
+@[expose, reducible] def prngVpEnc (p : VP Γ T (Option RSt) SS RS) :
     (@prngVpTy KC Γ CCoins T I KR RSt K SS RS M E).denote :=
   vpTblEnc (KC := KC) (Γ := Γ) (CCoins := CCoins) (I := I) (KR := KR) (RSt := RSt)
     (K := K) (SS := SS) (RS := RS) (M := M) (E := E)
     (γvT := .base .γ) (svT := .opt (.base .sig)) (ssvT := .base .ss) (rsvT := .base .rs) p
 
-@[reducible] def prngEsTy : Ty S :=
+@[expose, reducible] def prngEsTy : Ty S :=
   esTy prngVpTy prngHsTy
 
 section HooksPRNGC
@@ -501,7 +504,7 @@ local notation "OO" =>
 local notation "II" =>
   prngIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
 
-def prngProcessCorrC {Γ'} (ikOptE : Expr OO Γ' (.opt (.base .i))) :
+@[expose] def prngProcessCorrC {Γ'} (ikOptE : Expr OO Γ' (.opt (.base .i))) :
     Comp OO II Γ' (.opt (.prod (.opt (.base .sig)) (.base .k))) :=
   rdsl do
     kOpt ← query (O := OO) (I := II) PRNGTag.process ikOptE
@@ -513,7 +516,7 @@ def prngProcessCorrC {Γ'} (ikOptE : Expr OO Γ' (.opt (.base .i))) :
       | none => return none
       | some σOut => return (some (some σOut, kOut))
 
-def rootPRNGC (mo : Mode) {Γ'}
+@[expose] def rootPRNGC (mo : Mode) {Γ'}
     (tE : Expr OO Γ' .nat)
     (ikE : Expr OO Γ' (.base .i))
     (σvE : Expr OO Γ' (.opt (.base .sig))) :
@@ -554,7 +557,7 @@ def rootPRNGC (mo : Mode) {Γ'}
       | none => return none
       | some kOut => return (some (none, kOut))
 
-def prngStartSendC (mo : Mode) {Γ'}
+@[expose] def prngStartSendC (mo : Mode) {Γ'}
     (hE : Expr OO Γ' prngHsTy)
     (_ctxE : Expr OO Γ' (cGsTy prngVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -581,7 +584,7 @@ def prngStartSendC (mo : Mode) {Γ'}
       let ss := Expr.op (O := OO) CKAOp.fsInitSender kVal
       return (some (cOut.1, tMsg, σ', ss), h1)
 
-def prngStartRecvC (mo : Mode) {Γ'}
+@[expose] def prngStartRecvC (mo : Mode) {Γ'}
     (hE : Expr OO Γ' prngHsTy)
     (_ctxE : Expr OO Γ' (cGsTy prngVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -616,7 +619,7 @@ def prngStartRecvC (mo : Mode) {Γ'}
       let rs := Expr.op (O := OO) CKAOp.fsInitReceiver kVal
       return (some (some (γ', σc, rs)), h0)
 
-def prngFsSendC {Γ'}
+@[expose] def prngFsSendC {Γ'}
     (hE : Expr OO Γ' prngHsTy)
     (_ctxE : Expr OO Γ' (cGsTy prngVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -629,7 +632,7 @@ def prngFsSendC {Γ'}
   rdsl do
     return (some (Expr.op (O := OO) CKAOp.fsSend (ssE, hdrE, mE)), hE)
 
-def prngFsRecvC (B : ℕ) {Γ'}
+@[expose] def prngFsRecvC (B : ℕ) {Γ'}
     (hE : Expr OO Γ' prngHsTy)
     (_ctxE : Expr OO Γ' (cGsTy prngVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -643,7 +646,7 @@ def prngFsRecvC (B : ℕ) {Γ'}
   rdsl do
     return (some (Expr.op (O := OO) (CKAOp.fsReceive B) (rsE, hdrE, eE)), hE)
 
-def prngCommitC {Γ'}
+@[expose] def prngCommitC {Γ'}
     (hE : Expr OO Γ' prngHsTy)
     (_ctxE : Expr OO Γ' (cGsTy prngVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -652,7 +655,7 @@ def prngCommitC {Γ'}
   rdsl do
     return (some newE, hE)
 
-def prngRevealC {Γ'}
+@[expose] def prngRevealC {Γ'}
     (hE : Expr OO Γ' prngHsTy)
     (_ctxE : Expr OO Γ' (cGsTy prngVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -665,7 +668,7 @@ def prngRevealC {Γ'}
     | some σ =>
       return (some (realPartyE vp0 (vpΓ vp0) σ (vpVS vp0) (vpVR vp0)), h0)
 
-def hooksPRNGC (B : ℕ) (mo : Mode) :
+@[expose] def hooksPRNGC (B : ℕ) (mo : Mode) :
     HooksC OO II (.base .γ) (.opt (.base .sig)) (.base .ss) (.base .rs) prngHsTy where
   startSend := prngStartSendC mo
   startRecv := prngStartRecvC mo
@@ -1036,12 +1039,12 @@ theorem prngRevealC_eval [DecidableEq T] [SampleableType CCoins]
 
 /-! ## Costed initialization and reduction programs -/
 
-def abortedParties (γA γB : Γ) :
+@[expose] def abortedParties (γA γB : Γ) :
     VP Γ T (Option RSt) SS RS × VP Γ T (Option RSt) SS RS :=
   ({ id := .A, root := none, vS := none, vR := fun _ => none, γ := γA, curCkaMsg := none, tcur := 0 },
    { id := .B, root := none, vS := none, vR := fun _ => none, γ := γB, curCkaMsg := none, tcur := 0 })
 
-def abortedPartiesE {Γ'} (γAE γBE : Expr OO Γ' (.base .γ)) :
+@[expose] def abortedPartiesE {Γ'} (γAE γBE : Expr OO Γ' (.base .γ)) :
     Expr OO Γ' (.prod prngVpTy prngVpTy) :=
   rdslExpr =>
     (vpMk (bool (partyEnc .A)) none none (tconst none) γAE none 0,
@@ -1054,7 +1057,7 @@ def abortedPartiesE {Γ'} (γAE γBE : Expr OO Γ' (.base .γ)) :
           (γAE.eval ρ) (γBE.eval ρ)) := by
   simp [abortedPartiesE, abortedParties, vpMk, prngVpEnc, vpTblEnc, vpEnc, Prod.map, Expr.eval]
 
-def initPRNGRaw [SampleableType KC]
+@[expose] def initPRNGRaw [SampleableType KC]
     (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR RSt I K)
     (fs : FSAEADScheme K SS RS (Header T) M E)
@@ -1073,7 +1076,7 @@ def initPRNGRaw [SampleableType KC]
       (fs.initSender k) (fs.initReceiver k)
     pure { g := { st := fun | .A => vA | .B => vB, b := b }, h := h₀, abort := false }
 
-def initPRNGEStateC (mo : Mode) {Γ'} (bE : Expr OO Γ' .bool) : Comp OO II Γ' prngEsTy :=
+@[expose] def initPRNGEStateC (mo : Mode) {Γ'} (bE : Expr OO Γ' .bool) : Comp OO II Γ' prngEsTy :=
   rdsl do
     b0 ← return bE
     kc ← sample (O := OO) (I := II) CKASamp.kc ()
@@ -1231,7 +1234,7 @@ theorem initPRNGRaw_inv [SampleableType KC]
     exact ⟨(SMEngineInv.init _ b hB1 hBB).mono hqB, rfl⟩
 
 /-- Costed `redPRNGAuth` reduction (`B2` for authenticity, ACD19 Lemma 10). -/
-def redPRNGAuthProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redPRNGAuthProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodec KC Γ CCoins T I KR RSt K SS RS M E)
@@ -1247,7 +1250,7 @@ def redPRNGAuthProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     return (authOutE L (raw (2 + Δcka)) (raw (⟨true, tL, t⟩ : Mode).policy) es)
 
 /-- Costed `redPRNGPriv` reduction (`B2` for privacy, ACD19 Lemma 14). -/
-def redPRNGPrivProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redPRNGPrivProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodec KC Γ CCoins T I KR RSt K SS RS M E)
@@ -1265,7 +1268,7 @@ def redPRNGPrivProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
       (raw (fun {Γ''} => rdsl do sample (O := OO) (I := II) (Γ := Γ'') CKASamp.bit ()))
       (cGsB (esG es)) guess es
 
-def prngStartRecvMainC {Γ'}
+@[expose] def prngStartRecvMainC {Γ'}
     (hE : Expr OO Γ' prngHsTy)
     (_ctxE : Expr OO Γ' (cGsTy prngVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -1290,7 +1293,7 @@ def prngStartRecvMainC {Γ'}
       let rs := Expr.op (O := OO) CKAOp.fsInitReceiver kVal
       return (some (some (γ', σc, rs)), h0)
 
-def hooksPRNGMainC (B : ℕ) (mo : Mode) :
+@[expose] def hooksPRNGMainC (B : ℕ) (mo : Mode) :
     HooksC OO II (.base .γ) (.opt (.base .sig)) (.base .ss) (.base .rs) prngHsTy where
   startSend := prngStartSendC mo
   startRecv := prngStartRecvMainC
@@ -1299,7 +1302,7 @@ def hooksPRNGMainC (B : ℕ) (mo : Mode) :
   commit := prngCommitC
   reveal := prngRevealC
 
-def isHonestHdrPRNGE {Γ'} (hE : Expr OO Γ' prngHsTy) (hdrE : Expr OO Γ' hdrTy) : Expr OO Γ' .bool :=
+@[expose] def isHonestHdrPRNGE {Γ'} (hE : Expr OO Γ' prngHsTy) (hdrE : Expr OO Γ' hdrTy) : Expr OO Γ' .bool :=
   rdslExpr =>
     letE (hE, hdrE) fun (h0, hdr0) =>
       match tget h0 hdr0.1 with
@@ -1309,10 +1312,10 @@ def isHonestHdrPRNGE {Γ'} (hE : Expr OO Γ' prngHsTy) (hdrE : Expr OO Γ' hdrTy
         | none => false
         | some tn0 => Expr.op (O := OO) CKAOp.eqT (tCached, tn0)
 
-@[reducible] def prngStage2EsTy : Ty S := .prod prngEsTy .bool
+@[expose, reducible] def prngStage2EsTy : Ty S := .prod prngEsTy .bool
 
 /-- Stage-2 coin-averaged (`main` / `forgedHdr`) `redPRNGAuth` reduction at `(tL, t)`. -/
-def redPRNGAuthStage2Prog (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redPRNGAuthStage2Prog (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodec KC Γ CCoins T I KR RSt K SS RS M E)

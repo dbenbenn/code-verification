@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkPeel
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkPeel -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -20,10 +20,10 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrDHS
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepGood
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
+public import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrDHS -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepGood -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkBobGuard
@@ -50,6 +50,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.CREF.TR.StoredRk
 
 /-!
 # Skipped-Key Provenance and `spb_ProvRIdx2Inv` Preservation Helpers
@@ -58,7 +59,7 @@ Defines `spb_RecvKeysUnique` and `spb_ProvRIdx2Inv`, and proves `SpineRkK` closu
 per-step preservation helpers for skipped message keys.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -192,7 +193,7 @@ theorem spb_compSessionAt_resp_ikm_dh_eq {tr : ExecTrace} {s : SessionInfo}
     · exact hne₁ h2
   rw [hdh₁, hdh₂, hpk_eq, hspk_eq]
 
-def spb_RecvKeysUnique (l : List RecvChain) : Prop :=
+@[expose] def spb_RecvKeysUnique (l : List RecvChain) : Prop :=
   ∀ c₁ ∈ l, ∀ c₂ ∈ l, c₁.ratchetKey = c₂.ratchetKey → c₁ = c₂
 
 theorem spb_recvKeysUnique_drop {l : List RecvChain} (k : Nat) (h : spb_RecvKeysUnique l) :
@@ -237,7 +238,7 @@ open Symbolic.Swarm.COMPOSED.CompRatchet.TrDHS (InertOnNonTR)
 open DY.Libsignal.TripleRatchet (logSkippedKeys logMessageKeyAndStore)
 open Symbolic.Swarm.CREF.TR.RecvDec (StEntry)
 
-def SkippedEventRIdx2At (tr : ExecTrace) (pk : DY.Bytes) (n : UInt32) (rIdx src : Nat) : Prop :=
+@[expose] def SkippedEventRIdx2At (tr : ExecTrace) (pk : DY.Bytes) (n : UInt32) (rIdx src : Nat) : Prop :=
   (∃ (p₀ : Participant) (st₀ : TRState) (c₀ : RecvChain) (fresh : Bool) (seed' : DY.Bytes) (c₀' : RecvChain),
     TR.G1.TRStateStoredAt p₀ st₀ src tr ∧
     recvChainFor st₀.toDRState pk = some (c₀, fresh) ∧
@@ -249,7 +250,7 @@ private theorem skippedEventRIdx2At_mono {tr tr' : ExecTrace} (hle : tr ≤ tr')
   h.elim (fun ⟨p₀, st₀, c₀, fresh, seed', c₀', hst₀, hrc, hcons⟩ =>
     .inl ⟨p₀, st₀, c₀, fresh, seed', c₀', trStateStoredAt_mono hle hst₀, hrc, hcons⟩) Or.inr
 
-def spb_ProvRIdx2Inv (tr : ExecTrace) : Prop :=
+@[expose] def spb_ProvRIdx2Inv (tr : ExecTrace) : Prop :=
   (∀ p st i, TR.G1.TRStateStoredAt p st i tr → spb_RecvKeysUnique st.recv) ∧
   (∀ s pk n seed rIdx src skIdx,
     tr.EventLoggedAt (TREvent.SkippedKeyStored s pk n seed rIdx src) skIdx →

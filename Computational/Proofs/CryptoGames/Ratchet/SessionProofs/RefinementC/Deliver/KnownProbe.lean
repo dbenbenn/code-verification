@@ -15,7 +15,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupli
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.HelpersC
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
 
 /-!
 # Deliver step: known chain, case 3a probe
@@ -24,7 +24,7 @@ Closes `deliver` on a known receiver chain under `!safeInj 3` when `predictRecei
 answering `rejected` and setting the probe flag iff Fig. 8 accepts the salt-replaced record.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

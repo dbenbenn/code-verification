@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # Case B (`DH2`) Step Coupling and `GapDH` Bound
@@ -19,7 +20,7 @@ Per-query couplings between the pre-sampled game `pqxdhKeyIndFgPreImplIk` and th
 simulator `fgKeyIndSimImplIk` under `FgSimInvDh2`, yielding `prob_badKeyIndFgDh2At_le_gapDh`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

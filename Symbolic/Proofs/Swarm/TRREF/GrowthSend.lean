@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.TRREF.GrowthSend.Wire
-public import Symbolic.Proofs.SpecLemmas.ProofHubsPure
+public import Symbolic.Proofs.Swarm.TRREF.GrowthSend.Wire -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.ProofHubsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.SHARED.StateSizePure
 import Symbolic.Proofs.Swarm.TRREF.GrowthOoo.Fold
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

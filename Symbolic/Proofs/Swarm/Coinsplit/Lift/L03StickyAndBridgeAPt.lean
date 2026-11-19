@@ -20,7 +20,7 @@ Proves `bridgeA_pt : BridgeAPtSpec`, lifting a `.pt` `PrefixGhosts` memo collisi
 `CollisionAfterExplainedPrefixMoves` on `σ₁ ++ .pt b :: σ₂` under `NoAdjRng σ₁`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

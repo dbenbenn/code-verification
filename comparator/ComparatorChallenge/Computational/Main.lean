@@ -11,15 +11,17 @@ module
 
 public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
-public import LibsignalBinary.Specifications.SignalSession.CliLabels
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 
 /-!
 # Comparator challenge: Lemma 4 and the Main Theorem (`Computational/Theorems/Main.lean`)
 
-**Trusted: the statements.** Each theorem below has the same name and the same statement, byte for
-byte, as the theorem of `Computational/Theorems/Main.lean` (lake library `CliElfLib`), with `sorry`
-as its proof. It imports the three specification modules that `Main.lean` imports publicly, plus
+**Trusted: the statements.** Each headline theorem below has the same name and the same statement,
+byte for byte, as the headline theorem of `Computational/Theorems/Main.lean` (lake library
+`CliElfLib`), with `sorry` as its proof (`Main.lean`'s intermediate KEM-generic lemma
+`libsignal_cli_pq_secure_elf_binary_any_kem` and its specification `StatementPqElfAnyKem` are
+omitted here, since `comparator` checks the top Kyber-1024 Main Theorem
+`libsignal_cli_pq_secure_elf_binary` directly). It imports `StatementPqElf` and `CliBinaryPq`, plus
 `LibsignalBinary.Specifications.SignalSession.CliElf` for `cliElfBytes`, which `Main.lean` gets
 through its public import of `Computational.Proofs.LibsignalCli.ElfHeadlinePq` (which this challenge
 must not import). It imports no proof module. See `comparator/README.md`.
@@ -31,18 +33,8 @@ set_option autoImplicit false
 
 namespace CryptoVerification.SignalSession
 
-theorem libsignal_cli_pq_binary_correct_placed :
-    CliPqxdhBinaryCorrectPlaced cliElfBytes :=
-  sorry
-
-theorem libsignal_cli_elf_linked_in : libsignalSessionLib.LinkedIn cliElfBytes :=
-  sorry
-
-theorem libsignal_cli_elf_mallocng_linked_in :
-    VerifiedLibraries.mallocngLib.LinkedIn cliElfBytes :=
-  sorry
-
-theorem libsignal_cli_labels_from_objects : CliLabelsFromObjects :=
+theorem libsignal_cli_pq_binary_correct :
+    CliPqxdhBinaryCorrect cliElfBytes :=
   sorry
 
 end CryptoVerification.SignalSession
@@ -51,8 +43,8 @@ namespace CryptoVerification.LibsignalCli
 
 open CryptoVerification.SignalSession (cliElfBytes)
 
-theorem libsignal_cli_pq_secure_elf_binary_placed :
-    CliPqxdhBinaryCorrectAndSecurePlaced cliElfBytes :=
+theorem libsignal_cli_pq_secure_elf_binary :
+    CliPqxdhBinaryCorrectAndSecure cliElfBytes :=
   sorry
 
 end CryptoVerification.LibsignalCli

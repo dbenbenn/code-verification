@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Specification for `spqr::encode_varint` (Block `326`)
@@ -26,7 +30,7 @@ Verifies `<alloc::raw_vec::RawVecInner>::finish_grow` (Block `620`) and
 and defines the relocatable budget contracts for `spqr::encode_varint` (Block `326`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -248,7 +252,7 @@ theorem finish_grow_620_budget_placed_ok [LibsignalPlacement] {M : AllocCostMode
       (subroutine_ok_reallocNoOom_externWithStack_of_hookSat hrealloc spqr_externAt?_of_mem_623))
 
 /-- Tight `4192`-byte stack budget contract of `<alloc::raw_vec::RawVec<u8>>::grow_one` (Block `619`). -/
-def growOneU8BsBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneU8BsBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length ≤ cap.toNat ∧ ptr ≠ 0#64 ∧
@@ -396,7 +400,7 @@ theorem growOneU8_budget_placed_cl_ok [LibsignalPlacement] {M : AllocCostModel}
 
 /-- `<alloc::raw_vec::RawVec<u8>>::grow_one` (Block `619`) meets
 `withLsCodeLoaded lsmpl (growOneU8BudgetSpec M A lim)` on `(blkPC_326).rebase (blkPl_326).base (Rust.withPanics ext)`. -/
-def GrowOneU8PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def GrowOneU8PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_326).rebase (blkPl_326).base (Rust.withPanics ext))
@@ -404,7 +408,7 @@ def GrowOneU8PlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (withLsCodeLoaded lsmpl (growOneU8BudgetSpec M A lim))
 
 /-- Step-invariant-wrapped `<alloc::raw_vec::RawVec<u8>>::grow_one` (Block `619`) budget contract anchored at `s0`. -/
-def GrowOneU8StepOkExt [LibsignalPlacement] (s0 : State) {M : AllocCostModel}
+@[expose] def GrowOneU8StepOkExt [LibsignalPlacement] (s0 : State) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_326).rebase (blkPl_326).base (Rust.withPanics ext))
@@ -434,7 +438,7 @@ theorem growOneU8_placed_ok_ext [LibsignalPlacement] {M : AllocCostModel}
 
 /-- `spqr::encode_varint` (Block `326`) meets `withLsCodeLoaded lsmpl (spqrEncodeVarintSpecX A lim)` on
 `(blkPC_326).rebase (blkPl_326).base (Rust.withPanics ext)`. -/
-def SpqrEncodeVarintPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SpqrEncodeVarintPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_326).rebase (blkPl_326).base (Rust.withPanics ext))
@@ -443,7 +447,7 @@ def SpqrEncodeVarintPlacedOkExt [LibsignalPlacement] {M : AllocCostModel}
 
 /-- `spqr::encode_varint` (Block `326`) meets `withLsCodeLoaded lsmpl (spqrEncodeVarintSpecX A lim)`
 on `libsignalSessionLib.blockProgram lsmpl 326 (Rust.withPanics ext)`. -/
-def SpqrEncodeVarintPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def SpqrEncodeVarintPlacedOkX [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 326 (Rust.withPanics ext))

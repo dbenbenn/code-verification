@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.OooRpkPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
 
 /-!
 # `PureBobKyberNone` Preservation on Session Promotion
@@ -20,7 +23,7 @@ Proves `bobKyberNone_post_promoteWireRecCanon`, showing that `PureBobKyberNone` 
 post-state record of an accepting promote call.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -404,16 +404,16 @@ theorem State.pc_setMem (s : State) (m : Memory) : (s.setMem m).pc = s.pc := by
 /-! ## Relational Condition-Flag Lemmas -/
 
 private theorem not_ule_eq_ult_64 (x y : BitVec 64) : (!BitVec.ule y x) = BitVec.ult x y := by
-  bv_decide
+  rw [Bool.eq_iff_iff]; simp [BitVec.ule, BitVec.ult]
 
 private theorem not_ult_eq_ule_64 (x y : BitVec 64) : (!BitVec.ult y x) = BitVec.ule x y := by
-  bv_decide
+  rw [Bool.eq_iff_iff]; simp [BitVec.ule, BitVec.ult]
 
 private theorem not_ule_eq_ult_32 (x y : BitVec 32) : (!BitVec.ule y x) = BitVec.ult x y := by
-  bv_decide
+  rw [Bool.eq_iff_iff]; simp [BitVec.ule, BitVec.ult]
 
 private theorem not_ult_eq_ule_32 (x y : BitVec 32) : (!BitVec.ult y x) = BitVec.ule x y := by
-  bv_decide
+  rw [Bool.eq_iff_iff]; simp [BitVec.ule, BitVec.ult]
 
 private theorem ule_and_not_beq_eq_ult_64 (x y : BitVec 64) :
     (BitVec.ule y x && !(x == y)) = BitVec.ult y x := by
@@ -516,7 +516,7 @@ theorem addWithCarry64_sub_fst (x y : BitVec 64) :
 @[simp, arm64_norm]
 theorem addWithCarry64_add_fst (x y : BitVec 64) :
     (AddWithCarry64 x y false).1 = x + y := by
-  dsimp only [AddWithCarry64]; bv_decide
+  simp only [AddWithCarry64, Bool.false_eq_true, ↓reduceIte, BitVec.zero_add]; bv_bits
 
 @[simp, arm64_norm]
 theorem addWithCarry32_sub_fst (x y : BitVec 32) :
@@ -526,7 +526,7 @@ theorem addWithCarry32_sub_fst (x y : BitVec 32) :
 @[simp, arm64_norm]
 theorem addWithCarry32_add_fst (x y : BitVec 32) :
     (AddWithCarry32 x y false).1 = x + y := by
-  dsimp only [AddWithCarry32]; bv_decide
+  simp only [AddWithCarry32, Bool.false_eq_true, ↓reduceIte, BitVec.zero_add]; bv_bits
 
 /-- Flag state produced by 64-bit `SUBS` (`CMP`). Keeping `x` and `y` un-inverted prevents
     `simp (config := { decide := true })` from reducing `~~~0#64` before `ConditionHolds` rewrites fire. -/
@@ -2569,6 +2569,76 @@ theorem Returned_setSigAltStack_left (s0 s : State) (sas : SigAltStack) :
     Returned (s0.setSigAltStack sas) s ↔ Returned s0 s := by
   cases s0; constructor <;> exact id
 
+@[simp, arm64_norm, wp_norm]
+theorem CalleeSavedPreserved_setSigMask (s0 s : State) (m : BitVec 64) :
+    CalleeSavedPreserved s0 (s.setSigMask m) ↔ CalleeSavedPreserved s0 s := by
+  cases s; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem CalleeSavedPreserved_setSigMask_left (s0 s : State) (m : BitVec 64) :
+    CalleeSavedPreserved (s0.setSigMask m) s ↔ CalleeSavedPreserved s0 s := by
+  cases s0; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem CallingConventionPreserved_setSigMask (s0 s : State) (m : BitVec 64) :
+    CallingConventionPreserved s0 (s.setSigMask m) ↔ CallingConventionPreserved s0 s := by
+  cases s; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem CallingConventionPreserved_setSigMask_left (s0 s : State) (m : BitVec 64) :
+    CallingConventionPreserved (s0.setSigMask m) s ↔ CallingConventionPreserved s0 s := by
+  cases s0; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem Returned_setSigMask (s0 s : State) (m : BitVec 64) :
+    Returned s0 (s.setSigMask m) ↔ Returned s0 s := by
+  cases s; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem Returned_setSigMask_left (s0 s : State) (m : BitVec 64) :
+    Returned (s0.setSigMask m) s ↔ Returned s0 s := by
+  cases s0; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem calleeSavedVRegs_setSigMask (s : State) (m : BitVec 64) :
+    calleeSavedVRegs (s.setSigMask m) = calleeSavedVRegs s := by
+  cases s; rfl
+
+@[simp, arm64_norm, wp_norm]
+theorem CalleeSavedPreserved_setSigPending (s0 s : State) (p : BitVec 64) :
+    CalleeSavedPreserved s0 (s.setSigPending p) ↔ CalleeSavedPreserved s0 s := by
+  cases s; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem CalleeSavedPreserved_setSigPending_left (s0 s : State) (p : BitVec 64) :
+    CalleeSavedPreserved (s0.setSigPending p) s ↔ CalleeSavedPreserved s0 s := by
+  cases s0; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem CallingConventionPreserved_setSigPending (s0 s : State) (p : BitVec 64) :
+    CallingConventionPreserved s0 (s.setSigPending p) ↔ CallingConventionPreserved s0 s := by
+  cases s; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem CallingConventionPreserved_setSigPending_left (s0 s : State) (p : BitVec 64) :
+    CallingConventionPreserved (s0.setSigPending p) s ↔ CallingConventionPreserved s0 s := by
+  cases s0; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem Returned_setSigPending (s0 s : State) (p : BitVec 64) :
+    Returned s0 (s.setSigPending p) ↔ Returned s0 s := by
+  cases s; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem Returned_setSigPending_left (s0 s : State) (p : BitVec 64) :
+    Returned (s0.setSigPending p) s ↔ Returned s0 s := by
+  cases s0; constructor <;> exact id
+
+@[simp, arm64_norm, wp_norm]
+theorem calleeSavedVRegs_setSigPending (s : State) (p : BitVec 64) :
+    calleeSavedVRegs (s.setSigPending p) = calleeSavedVRegs s := by
+  cases s; rfl
+
 @[simp, arm64_norm]
 theorem CallingConventionPreserved_writeVReg128 (s0 s : State) (v : BitVec 5) (val : BitVec 128)
     (h : isCalleeSavedVReg v = false := by decide) :
@@ -2623,7 +2693,7 @@ attribute [simp, arm64_norm]
   SYS_BRK SYS_MUNMAP SYS_MREMAP SYS_MMAP SYS_MPROTECT SYS_MADVISE
   SYS_TKILL SYS_TGKILL SYS_SIGALTSTACK SYS_RT_SIGACTION SYS_RT_SIGPROCMASK
   SYS_CLOCK_GETTIME SYS_GETRANDOM
-  SYS_SET_TID_ADDRESS SYS_SCHED_GETAFFINITY SYS_GETPID SYS_GETTID
+  SYS_SET_TID_ADDRESS SYS_FUTEX SYS_SCHED_GETAFFINITY SYS_GETPID SYS_GETTID
 
 @[simp, arm64_norm]
 theorem execInstWithSvc_svc0 (svc : State → State) (s : State) :
@@ -2667,7 +2737,7 @@ local macro "prove_execSyscall_nr" : tactic =>
       SYS_BRK, SYS_MUNMAP, SYS_MREMAP, SYS_MMAP, SYS_MPROTECT, SYS_MADVISE,
       SYS_SIGALTSTACK, SYS_RT_SIGACTION, SYS_RT_SIGPROCMASK, SYS_TKILL, SYS_TGKILL,
       SYS_CLOCK_GETTIME, SYS_GETRANDOM,
-      SYS_SET_TID_ADDRESS, SYS_SCHED_GETAFFINITY, SYS_GETPID, SYS_GETTID, *]))
+      SYS_SET_TID_ADDRESS, SYS_FUTEX, SYS_SCHED_GETAFFINITY, SYS_GETPID, SYS_GETTID, *]))
 
 @[simp, arm64_norm]
 theorem execSyscall_fcntl (s : State) (h : s.readReg64 .x8 = 25#64) :
@@ -2916,6 +2986,10 @@ theorem execSyscall_set_tid_address (s : State) (h : s.readReg64 .x8 = 96#64) :
     execSyscall s = execSetTidAddress s := by prove_execSyscall_nr
 
 @[simp, arm64_norm]
+theorem execSyscall_futex (s : State) (h : s.readReg64 .x8 = 98#64) :
+    execSyscall s = execFutex s := by prove_execSyscall_nr
+
+@[simp, arm64_norm]
 theorem execSyscall_clock_gettime (s : State) (h : s.readReg64 .x8 = 113#64) :
     execSyscall s = execClockGettime s := by prove_execSyscall_nr
 
@@ -3012,11 +3086,19 @@ theorem execSyscall_getrandom (s : State) (h : s.readReg64 .x8 = 278#64) :
       let count := s.readReg64 .x1
       let flags := s.readReg32 .x2
       if (flags &&& ~~~GRND_KNOWN_MASK) != 0#32 ||
-          (flags &&& (GRND_RANDOM ||| GRND_INSECURE)) == (GRND_RANDOM ||| GRND_INSECURE) ||
-          count.toNat > MAX_RW_COUNT then
+          (flags &&& (GRND_RANDOM ||| GRND_INSECURE)) == (GRND_RANDOM ||| GRND_INSECURE) then
         (s.writeReg64 .x0 (-EINVAL)).advancePC
+      else if count.toNat > MAX_RW_COUNT then
+        s.setStatus (.Exception "unmodeled getrandom count > MAX_RW_COUNT (short read)")
+      else if count == 0#64 then
+        if !decide (buf.toNat ≤ USER_VA_LIMIT) then
+          (s.writeReg64 .x0 EFAULT_RET).advancePC
+        else
+          (s.writeReg64 .x0 0#64).advancePC
       else if !s.mem.canWrite buf count.toNat then
-        (s.writeReg64 .x0 EFAULT_RET).advancePC
+        if !s.mem.canWrite buf 1 then
+          (s.writeReg64 .x0 EFAULT_RET).advancePC
+        else s.setStatus (.Exception "unmodeled getrandom partial-fault short read")
       else
         let bytes := (List.range count.toNat).map (s.oracle.getrandom s.oracleIdx)
         (((s.setMem (s.mem.writeBytes buf bytes)).nextOracle).writeReg64 .x0 count).advancePC := by
@@ -3084,11 +3166,6 @@ theorem Memory.mapZero_zero (m : Memory) (base : BitVec 64) :
     m.mapZero base 0 = m := by
   simp [Memory.mapZero]
 
-@[simp, arm64_norm]
-theorem Memory.unmapWritable_zero (m : Memory) (base : BitVec 64) :
-    m.unmapWritable base 0 = m := by
-  simp [Memory.unmapWritable]
-
 theorem execMmap_fixed_protNone_ok (s : State)
     (hprot : s.readReg64 .x2 = 0#64) (hflags : s.readReg64 .x3 = 0x32#64)
     (hoff : s.readReg64 .x5 = 0#64) (hlen : s.readReg64 .x1 ≠ 0#64)
@@ -3153,6 +3230,20 @@ theorem execMmap_oom (s : State)
     execMmap s = s.setStatus .OutOfMemory :=
   execMmap_anon_oom s hprot (Or.inl hflags) hoff hlen hfail
 
+@[simp, arm64_norm]
+theorem untaggedAddr_of_le_user_va {x : BitVec 64} (h : x.toNat ≤ 2 ^ 48) :
+    untaggedAddr x = x := by
+  have hb55 : x.getLsbD 55 = false := by
+    rw [BitVec.getLsbD_eq_getElem (by decide), BitVec.getElem_eq_testBit_toNat]
+    exact Nat.testBit_lt_two_pow (by omega)
+  unfold untaggedAddr
+  rw [hb55]
+  simp only [Bool.false_eq_true, ↓reduceIte]
+  apply BitVec.eq_of_toNat_eq
+  simp only [BitVec.toNat_and, show (0x00ffffffffffffff#64 : BitVec 64).toNat = 2 ^ 56 - 1 from rfl,
+    Nat.and_two_pow_sub_one_eq_mod]
+  exact Nat.mod_eq_of_lt (by omega)
+
 theorem execMunmap_ok (s : State)
     (hal : (s.readReg64 .x0).toNat % PAGE_SIZE = 0)
     (hlen : s.readReg64 .x1 ≠ 0#64)
@@ -3166,7 +3257,9 @@ theorem execMunmap_ok (s : State)
             (pageAlignUp (s.readReg64 .x1).toNat))).writeReg64 .x0 0#64).advancePC := by
   have hlen' : (s.readReg64 .x1).toNat ≠ 0 := by
     intro h; exact hlen (BitVec.eq_of_toNat_eq (by simpa using h))
-  simp [execMunmap, hal, hlen', hfit, hfrz]
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  simp [execMunmap, hunt, hal, hlen', hfit, hfrz]
 
 theorem execMprotect_ok (s : State)
     (hprot : s.readReg64 .x2 = 0#64 ∨ s.readReg64 .x2 = 3#64)
@@ -3194,12 +3287,18 @@ theorem execMprotect_ok (s : State)
         .x0 0#64).advancePC := by
   have hlen' : (s.readReg64 .x1).toNat ≠ 0 := by
     intro h; exact hlen (BitVec.eq_of_toNat_eq (by simpa using h))
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have hlenMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    unfold pageAlignUp PAGE_SIZE at hfit; unfold PAGE_SIZE; omega
+  have hfit64 : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat < 2 ^ 64 := by omega
   rcases hprot with hp | hp
   · cases s
-    simp [execMprotect, MMAP_PROT_NONE, MMAP_PROT_RW, hp, hal, hlen', hfit, hfrz, hmap,
-      State.setMem, State.setPhysMemAvail]
+    simp [execMprotect, hunt, MMAP_PROT_NONE, MMAP_PROT_RW, hp, hal, hlen', hlenMax, hfit64, hfit,
+      hfrz, hmap, State.setMem, State.setPhysMemAvail]
   · have hphys' := hphys hp
-    simp [execMprotect, MMAP_PROT_NONE, MMAP_PROT_RW, hp, hal, hlen', hfit, hfrz, hmap, hphys']
+    simp [execMprotect, hunt, MMAP_PROT_NONE, MMAP_PROT_RW, hp, hal, hlen', hlenMax, hfit64, hfit,
+      hfrz, hmap, hphys']
 
 theorem execMprotect_rw_oom (s : State)
     (hprot : s.readReg64 .x2 = 3#64)
@@ -3216,7 +3315,13 @@ theorem execMprotect_rw_oom (s : State)
     execMprotect s = s.setStatus .OutOfMemory := by
   have hlen' : (s.readReg64 .x1).toNat ≠ 0 := by
     intro h; exact hlen (BitVec.eq_of_toNat_eq (by simpa using h))
-  simp [execMprotect, MMAP_PROT_NONE, MMAP_PROT_RW, hprot, hal, hlen', hfit, hfrz, hmap, hphys]
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have hlenMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    unfold pageAlignUp PAGE_SIZE at hfit; unfold PAGE_SIZE; omega
+  have hfit64 : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat < 2 ^ 64 := by omega
+  simp [execMprotect, hunt, MMAP_PROT_NONE, MMAP_PROT_RW, hprot, hal, hlen', hlenMax, hfit64, hfit,
+    hfrz, hmap, hphys]
 
 theorem execMadvise_dontneed_ok (s : State)
     (hadv : s.readReg64 .x2 = 4#64)
@@ -3234,8 +3339,15 @@ theorem execMadvise_dontneed_ok (s : State)
           (pageAlignUp (s.readReg64 .x1).toNat))).writeReg64 .x0 0#64).advancePC := by
   have hlen' : (s.readReg64 .x1).toNat ≠ 0 := by
     intro h; exact hlen (BitVec.eq_of_toNat_eq (by simpa using h))
-  have hfit64 : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ 2 ^ 64 := by omega
-  simp [execMadvise, MADV_DONTNEED, MADV_FREE, hadv, hal, hlen', hfit, hfit64, hfrz, hmap, hanon]
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have hlenMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    unfold pageAlignUp PAGE_SIZE at hfit; unfold PAGE_SIZE; omega
+  have hfit64 : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat < 2 ^ 64 := by omega
+  have hadv32 : (s.readReg32 .x2).signExtend 64 = 4#64 := by
+    simp [State.readReg32, hadv]
+  simp [execMadvise, hunt, MADV_DONTNEED, MADV_FREE, hadv32, hal, hlen', hlenMax, hfit, hfit64,
+    hfrz, hmap, hanon]
 
 theorem execMadvise_free_ok (s : State)
     (hadv : s.readReg64 .x2 = 8#64)
@@ -3253,8 +3365,15 @@ theorem execMadvise_free_ok (s : State)
           (pageAlignUp (s.readReg64 .x1).toNat))).writeReg64 .x0 0#64).advancePC := by
   have hlen' : (s.readReg64 .x1).toNat ≠ 0 := by
     intro h; exact hlen (BitVec.eq_of_toNat_eq (by simpa using h))
-  have hfit64 : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ 2 ^ 64 := by omega
-  simp [execMadvise, MADV_DONTNEED, MADV_FREE, hadv, hal, hlen', hfit, hfit64, hfrz, hmap, hanon]
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have hlenMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    unfold pageAlignUp PAGE_SIZE at hfit; unfold PAGE_SIZE; omega
+  have hfit64 : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat < 2 ^ 64 := by omega
+  have hadv32 : (s.readReg32 .x2).signExtend 64 = 8#64 := by
+    simp [State.readReg32, hadv]
+  simp [execMadvise, hunt, MADV_DONTNEED, MADV_FREE, hadv32, hal, hlen', hlenMax, hfit, hfit64,
+    hfrz, hmap, hanon]
 
 theorem execMadvise_noop_ok (s : State)
     (hadv : (s.readReg64 .x2 == MADV_NORMAL || s.readReg64 .x2 == MADV_RANDOM ||
@@ -3271,7 +3390,18 @@ theorem execMadvise_noop_ok (s : State)
     execMadvise s = (s.writeReg64 .x0 0#64).advancePC := by
   have hlen' : (s.readReg64 .x1).toNat ≠ 0 := by
     intro h; exact hlen (BitVec.eq_of_toNat_eq (by simpa using h))
-  have hfit64 : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat ≤ 2 ^ 64 := by omega
+  have hunt : untaggedAddr (s.readReg64 .x0) = s.readReg64 .x0 :=
+    untaggedAddr_of_le_user_va (by omega)
+  have hlenMax : (s.readReg64 .x1).toNat ≤ 2 ^ 64 - PAGE_SIZE := by
+    unfold pageAlignUp PAGE_SIZE at hfit; unfold PAGE_SIZE; omega
+  have hfit64 : (s.readReg64 .x0).toNat + pageAlignUp (s.readReg64 .x1).toNat < 2 ^ 64 := by omega
+  have hadv32 : (s.readReg32 .x2).signExtend 64 = s.readReg64 .x2 := by
+    have hadv' := hadv
+    simp only [MADV_NORMAL, MADV_RANDOM, MADV_SEQUENTIAL, MADV_WILLNEED,
+      MADV_HUGEPAGE, MADV_NOHUGEPAGE, MADV_DONTDUMP, MADV_DODUMP,
+      Bool.or_eq_true, beq_iff_eq] at hadv'
+    rcases hadv' with ((((((h | h) | h) | h) | h) | h) | h) | h <;>
+      simp [State.readReg32, h]
   have hnd : (s.readReg64 .x2 == MADV_DONTNEED) = false ∧
       (s.readReg64 .x2 == MADV_FREE) = false := by
     have hadv' := hadv
@@ -3280,7 +3410,8 @@ theorem execMadvise_noop_ok (s : State)
       Bool.or_eq_true, beq_iff_eq] at hadv'
     rcases hadv' with ((((((h | h) | h) | h) | h) | h) | h) | h <;>
       simp [h, MADV_DONTNEED, MADV_FREE]
-  simp [execMadvise, hadv, hnd.1, hnd.2, hal, hlen', hfit, hfit64, hfrz, hmap]
+  simp [execMadvise, hunt, hadv32, hadv, hnd.1, hnd.2, hal, hlen', hlenMax, hfit, hfit64,
+    hfrz, hmap]
 
 @[simp, arm64_norm]
 theorem Memory.canMap_zero (m : Memory) (base : BitVec 64) : m.canMap base 0 = true := rfl
@@ -3320,11 +3451,13 @@ theorem execBrk_grow_ok (s : State)
         .x0 (s.readReg64 .x0)).advancePC := by
   have hult : (s.readReg64 .x0).ult s.brkStart = false := ult_eq_false_of_ule hmin
   rcases Nat.eq_or_lt_of_le hle with heq | hlt
-  · simp [execBrk, hne, hult, heq]
-  · have hnotle : ¬ (pageAlignUp (s.readReg64 .x0).toNat ≤ pageAlignUp s.brk.toNat) := by omega
+  · cases s
+    simp [execBrk, hne, hult, heq, State.setBrk, State.setMem, State.setPhysMemAvail]
+  · have hne_pg : ¬ (pageAlignUp (s.readReg64 .x0).toNat = pageAlignUp s.brk.toNat) := by omega
+    have hnlt_pg : ¬ (pageAlignUp (s.readReg64 .x0).toNat < pageAlignUp s.brk.toNat) := by omega
     have hfit' := hfit hlt
     have hmap' := hmap hlt
-    simp [execBrk, hne, hult, hnotle, hfit', hmap', hphys]
+    simp [execBrk, hne, hult, hne_pg, hnlt_pg, hfit', hmap', hphys]
 
 theorem execBrk_fail (s : State)
     (hne : s.readReg64 .x0 ≠ 0#64)
@@ -3337,12 +3470,13 @@ theorem execBrk_fail (s : State)
   unfold execBrk
   rcases hfail with hult | ⟨hlt, hbad⟩
   · simp [hult]
-  · have hnotle : ¬ (pageAlignUp (s.readReg64 .x0).toNat ≤ pageAlignUp s.brk.toNat) := by omega
+  · have hne_pg : ¬ (pageAlignUp (s.readReg64 .x0).toNat = pageAlignUp s.brk.toNat) := by omega
+    have hnlt_pg : ¬ (pageAlignUp (s.readReg64 .x0).toNat < pageAlignUp s.brk.toNat) := by omega
     by_cases hult : (s.readReg64 .x0).ult s.brkStart = true
     · simp [hult]
     · rcases hbad with hfit | hmap
-      · simp [hne, hult, hnotle, hfit]
-      · simp [hne, hult, hnotle, hmap]
+      · simp [hne, hult, hne_pg, hnlt_pg, hfit]
+      · simp [hne, hult, hne_pg, hnlt_pg, hmap]
 
 theorem execBrk_oom (s : State)
     (hne : s.readReg64 .x0 ≠ 0#64)
@@ -3354,8 +3488,9 @@ theorem execBrk_oom (s : State)
     (hphys : ¬ (pageAlignUp (s.readReg64 .x0).toNat - pageAlignUp s.brk.toNat ≤ s.physMemAvail)) :
     execBrk s = s.setStatus .OutOfMemory := by
   have hult : (s.readReg64 .x0).ult s.brkStart = false := ult_eq_false_of_ule hmin
-  have hnotle : ¬ (pageAlignUp (s.readReg64 .x0).toNat ≤ pageAlignUp s.brk.toNat) := by omega
-  simp [execBrk, hne, hult, hnotle, hfit, hmap, hphys]
+  have hne_pg : ¬ (pageAlignUp (s.readReg64 .x0).toNat = pageAlignUp s.brk.toNat) := by omega
+  have hnlt_pg : ¬ (pageAlignUp (s.readReg64 .x0).toNat < pageAlignUp s.brk.toNat) := by omega
+  simp [execBrk, hne, hult, hne_pg, hnlt_pg, hfit, hmap, hphys]
 
 theorem pageAlignUp_le (n : Nat) : n ≤ pageAlignUp n := by
   unfold pageAlignUp PAGE_SIZE; omega
@@ -4068,6 +4203,112 @@ theorem State.trace_panicked (s : State) : (Rust.panicked s).trace = s.trace := 
 @[arm64_norm, wp_norm] theorem State.sigAltStack_panicked (s : State) :
     (Rust.panicked s).sigAltStack = s.sigAltStack := by cases s; rfl
 
+@[arm64_norm, wp_norm] theorem State.sigMask_writeReg64 (s : State) (r : Reg) (v : BitVec 64) :
+    (s.writeReg64 r v).sigMask = s.sigMask := by cases s; cases r <;> rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_writeReg32 (s : State) (r : Reg) (v : BitVec 32) :
+    (s.writeReg32 r v).sigMask = s.sigMask := State.sigMask_writeReg64 s r _
+@[arm64_norm, wp_norm] theorem State.sigMask_writeReg (s : State) (w : Width) (r : Reg) (v : BitVec 64) :
+    (s.writeReg w r v).sigMask = s.sigMask := State.sigMask_writeReg64 s r _
+@[arm64_norm, wp_norm] theorem State.sigMask_writeVReg128 (s : State) (idx : BitVec 5) (v : BitVec 128) :
+    (s.writeVReg128 idx v).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_writeVReg64 (s : State) (idx : BitVec 5) (v : BitVec 64) :
+    (s.writeVReg64 idx v).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_writeVReg32 (s : State) (idx : BitVec 5) (v : BitVec 32) :
+    (s.writeVReg32 idx v).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_advancePC (s : State) :
+    s.advancePC.sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setPC (s : State) (pc : BitVec 64) :
+    (s.setPC pc).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setPState (s : State) (ps : PState) :
+    (s.setPState ps).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setFpsr (s : State) (f : BitVec 32) :
+    (s.setFpsr f).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_orFpsr (s : State) (f : BitVec 32) :
+    (s.orFpsr f).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setMem (s : State) (m : Memory) :
+    (s.setMem m).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setFs (s : State) (f : FsState) :
+    (s.setFs f).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setStatus (s : State) (st : ExecStatus) :
+    (s.setStatus st).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setBrk (s : State) (b : BitVec 64) :
+    (s.setBrk b).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setPhysMemAvail (s : State) (n : Nat) :
+    (s.setPhysMemAvail n).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_nextOracle (s : State) :
+    s.nextOracle.sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_appendTrace (s : State) (evs : List TraceEvent) :
+    (s.appendTrace evs).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_stepExclOracle (s : State) :
+    s.stepExclOracle.sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_stepExclLoop (s : State) :
+    s.stepExclLoop.sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setTpidrEl0 (s : State) (v : BitVec 64) :
+    (setTpidrEl0 s v).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setSigAction (s : State) (sig : BitVec 32) (act : SigAction) :
+    (s.setSigAction sig act).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setSigAltStack (s : State) (sas : SigAltStack) :
+    (s.setSigAltStack sas).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).sigMask = m := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).sigMask = s.sigMask := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigMask_panicked (s : State) :
+    (Rust.panicked s).sigMask = s.sigMask := by cases s; rfl
+
+@[arm64_norm, wp_norm] theorem State.sigPending_writeReg64 (s : State) (r : Reg) (v : BitVec 64) :
+    (s.writeReg64 r v).sigPending = s.sigPending := by cases s; cases r <;> rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_writeReg32 (s : State) (r : Reg) (v : BitVec 32) :
+    (s.writeReg32 r v).sigPending = s.sigPending := State.sigPending_writeReg64 s r _
+@[arm64_norm, wp_norm] theorem State.sigPending_writeReg (s : State) (w : Width) (r : Reg) (v : BitVec 64) :
+    (s.writeReg w r v).sigPending = s.sigPending := State.sigPending_writeReg64 s r _
+@[arm64_norm, wp_norm] theorem State.sigPending_writeVReg128 (s : State) (idx : BitVec 5) (v : BitVec 128) :
+    (s.writeVReg128 idx v).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_writeVReg64 (s : State) (idx : BitVec 5) (v : BitVec 64) :
+    (s.writeVReg64 idx v).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_writeVReg32 (s : State) (idx : BitVec 5) (v : BitVec 32) :
+    (s.writeVReg32 idx v).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_advancePC (s : State) :
+    s.advancePC.sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setPC (s : State) (pc : BitVec 64) :
+    (s.setPC pc).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setPState (s : State) (ps : PState) :
+    (s.setPState ps).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setFpsr (s : State) (f : BitVec 32) :
+    (s.setFpsr f).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_orFpsr (s : State) (f : BitVec 32) :
+    (s.orFpsr f).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setMem (s : State) (m : Memory) :
+    (s.setMem m).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setFs (s : State) (f : FsState) :
+    (s.setFs f).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setStatus (s : State) (st : ExecStatus) :
+    (s.setStatus st).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setBrk (s : State) (b : BitVec 64) :
+    (s.setBrk b).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setPhysMemAvail (s : State) (n : Nat) :
+    (s.setPhysMemAvail n).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_nextOracle (s : State) :
+    s.nextOracle.sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_appendTrace (s : State) (evs : List TraceEvent) :
+    (s.appendTrace evs).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_stepExclOracle (s : State) :
+    s.stepExclOracle.sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_stepExclLoop (s : State) :
+    s.stepExclLoop.sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setTpidrEl0 (s : State) (v : BitVec 64) :
+    (setTpidrEl0 s v).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setSigAction (s : State) (sig : BitVec 32) (act : SigAction) :
+    (s.setSigAction sig act).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setSigAltStack (s : State) (sas : SigAltStack) :
+    (s.setSigAltStack sas).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).sigPending = s.sigPending := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).sigPending = p := by cases s; rfl
+@[arm64_norm, wp_norm] theorem State.sigPending_panicked (s : State) :
+    (Rust.panicked s).sigPending = s.sigPending := by cases s; rfl
+
 @[simp, arm64_norm]
 theorem State.stdoutBytes_def (s : State) :
     s.stdoutBytes = s.trace.filterMap (fun | .writeByte .stdout b => some b | _ => none) := by
@@ -4315,6 +4556,10 @@ theorem CallingConventionPreserved_setStatus (s0 s : State) (st : ExecStatus) :
     (s.setSigAction sig act).physMemAvail = s.physMemAvail := by cases s; rfl
 @[simp, arm64_norm, wp_norm] theorem State.physMemAvail_setSigAltStack (s : State) (sas : SigAltStack) :
     (s.setSigAltStack sas).physMemAvail = s.physMemAvail := by cases s; rfl
+@[simp, arm64_norm, wp_norm] theorem State.physMemAvail_setSigMask (s : State) (m : BitVec 64) :
+    (s.setSigMask m).physMemAvail = s.physMemAvail := by cases s; rfl
+@[simp, arm64_norm, wp_norm] theorem State.physMemAvail_setSigPending (s : State) (p : BitVec 64) :
+    (s.setSigPending p).physMemAvail = s.physMemAvail := by cases s; rfl
 @[simp, arm64_norm] theorem CalleeSavedPreserved_setPhysMemAvail (s0 s : State) (n : Nat) :
     CalleeSavedPreserved s0 (s.setPhysMemAvail n) ↔ CalleeSavedPreserved s0 s := by cases s; constructor <;> exact id
 @[simp, arm64_norm] theorem CalleeSavedPreserved_setPhysMemAvail_left (s0 s : State) (n : Nat) :

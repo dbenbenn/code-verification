@@ -9,14 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsReserveBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveExtBudgetAux
 
 /-!
 # Budget-Threaded `<Ct1SentEkReceived>::send_ct2`: Relocatable Segments 2–5a
@@ -25,7 +34,7 @@ Composes `[LibsignalPlacement]` `RustCliAllocBudget`-threaded Segments 2–5a (`
 and proves `UnchunkedSendCt2PreEnv` / `UnchunkedSendCt2PostEnv` composition lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -58,6 +67,7 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec)
 open LibsignalBinary.Heap.SpecBudget (libcruxHmacBudgetSpec withVmPreserved)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget (sliceConcat3Spec)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux (framelessMemcpyAcpSpec)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget (doReserveSpec)
@@ -66,6 +76,7 @@ open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux (
   libcruxHmacSafeBudgetSpec sendCt2ConcatHmacEvents sendCt2FlipAllocEvents
   sendCt2PlacedPostQ sendCt2PlacedPostQp sendCt2Reserve128Events sendCt2Seg23Events
   sepWPp_rw_pre_eq subroutine_ok_libcruxHmacSafe_of_budget
+  subroutine_ok_withLsRet_libcruxHmacSafe_of_budget
 )
 open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsReserveBudget (
   send_ct2_reserve_ct1_placed_preEnv_wpp send_ct2_reserve_ct1_placed_wpp
@@ -82,65 +93,6 @@ open LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidPlacedBudget (
   send_ct2_append_hmac_placed_preEnv_wpp send_ct2_append_hmac_placed_wpp
 )
 
-export CryptoVerification.SpqrV1.Unchunked (
-  spqrRustDeallocSym
-  spqrMlkemEncaps2Sym
-  spqrLibcruxHmacSym
-)
-
-export LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudget (
-  Ct1SentEkReceived
-  sendCt2FlipAllocEvents
-  sendCt2FlipDeallocEvents
-  sendCt2Seg23Events
-  sendCt2Reserve128Events
-  SendCt2Reserve128Env
-  sendCt2ConcatHmacEvents
-  UnchunkedSendCt2PreEnv
-  UnchunkedSendCt2PostEnv
-  UnchunkedSendCt2Env
-  unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv
-  unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfEnv
-  unchunkedCt1SentEkReceivedSendCt2PlacedSpec
-  UnchunkedCt1SentEkReceivedSendCt2PlacedOk
-  sendCt2PlacedPostQOfPostEnv
-  sendCt2PlacedPostQOfEnv
-  sendCt2PlacedPostQ
-  sendCt2PlacedPostQp
-  libcruxHmacSafeBudgetSpec
-  subroutine_ok_libcruxHmacSafe_of_budget
-  libcrux_hmac_safe_placed_ok
-  mlkem_encaps2_vm_placed_ok
-  swap_loop_placed_ok
-  swap_loop_placed_pool_ok
-  scan_loop_false_placed_ok
-  scan_loop_false_placed_pool_ok
-  scan_loop_true_placed_ok
-  scan_loop_true_placed_pool_ok
-  send_ct2_prologue_to_scan_placed
-  send_ct2_prologue_to_scan_placed_pool
-  send_ct2_5d8_to_604_placed_wpp
-  send_ct2_scan_to_628_placed_wpp
-  send_ct2_scan_to_628_placed_preEnv_wpp
-  send_ct2_reserve_ct1_placed_wpp
-  send_ct2_reserve_ct1_placed_preEnv_wpp
-)
-
-export LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux (
-  sendCt2MdDeallocEvents
-  sendCt2Seg5aEvents
-  freeOnlyEvs_rustDeallocEvents
-  freeOnlyEvs_sendCt2MdDeallocEvents
-  freeOnlyEvs_sendCt2FlipDeallocEvents
-  send_ct2_628_to_690_placed_wpp
-  send_ct2_628_to_690_placed_preEnv_wpp
-)
-
-export LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidPlacedBudget (
-  send_ct2_append_hmac_placed_wpp
-  send_ct2_append_hmac_placed_preEnv_wpp
-)
-
 set_option allowUnsafeReducibility true in
 attribute [local reducible] spqrAuthApi
 
@@ -155,6 +107,15 @@ theorem libcrux_hmac_safe_of_subroutine_ok {prog : Program} {entry : BitVec 64}
     (hraw : subroutine_ok prog entry (libcruxHmacBudgetSpec F M A lim)) :
     subroutine_ok prog entry (libcruxHmacSafeBudgetSpec F M A lim) :=
   subroutine_ok_libcruxHmacSafe_of_budget hraw
+
+/-- `withLsRet`-wrapped counterpart of `libcrux_hmac_safe_of_subroutine_ok`. -/
+theorem libcrux_hmac_safe_withLsRet_of_subroutine_ok [LibsignalPlacement]
+    {prog : Program} {entry : BitVec 64}
+    {F : ShaState → List (BitVec 8) → ShaState}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    (hraw : subroutine_ok prog entry (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
+    subroutine_ok prog entry (withLsRet (libcruxHmacSafeBudgetSpec F M A lim)) :=
+  subroutine_ok_withLsRet_libcruxHmacSafe_of_budget hraw
 
 /-- Any `SendCt2Reserve128Env` trace `evsRes` witnesses `UnchunkedSendCt2PreEnv x` on
     `sendCt2Seg23Events x.st.es ++ evsRes ++ sendCt2ConcatHmacEvents x.st.ct1.length`. -/
@@ -406,7 +367,7 @@ theorem send_ct2_append_hmac_placed_postQ_wpp [LibsignalPlacement] {K : MlKem} {
     (h_concat3 : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsmpl.base 386) (sliceConcat3Spec M A lim))
     (h_hmac : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacSafeBudgetSpec F M A lim))
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacSafeBudgetSpec F M A lim)))
     (h_dealloc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
     (x : UnchunkedSendCt2Ghost F) (st0 : M.σ) (evsRes : List AllocEvent)
@@ -518,7 +479,7 @@ theorem send_ct2_segs_2_to_5a_placed_preEnv_wpp [LibsignalPlacement]
     (henc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrMlkemEncaps2Sym) (withVmPreserved (mlkemEncaps2Spec K)))
     (hhmac_safe : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacSafeBudgetSpec F M A lim))
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacSafeBudgetSpec F M A lim)))
     (x : UnchunkedSendCt2Ghost F) (st0 : M.σ)
     (mkPtr esPtr ekPtr ct1Cap ct1Ptr e0 : BitVec 64)
     (esVec : List.Vector (BitVec 8) 2080) (ekVec : List.Vector (BitVec 8) 1152)
@@ -697,7 +658,7 @@ theorem send_ct2_segs_2_to_5a_placed_postQ_wpp [LibsignalPlacement]
     (henc : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
       (lsρ spqrMlkemEncaps2Sym) (withVmPreserved (mlkemEncaps2Spec K)))
     (hhmac_safe : subroutine_ok ((blkPC_347).rebase (blkPl_347).base H)
-      (lsρ spqrLibcruxHmacSym) (libcruxHmacSafeBudgetSpec F M A lim))
+      (lsρ spqrLibcruxHmacSym) (withLsRet (libcruxHmacSafeBudgetSpec F M A lim)))
     (x : UnchunkedSendCt2Ghost F) (st0 : M.σ)
     (mkPtr esPtr ekPtr ct1Cap ct1Ptr e0 : BitVec 64)
     (esVec : List.Vector (BitVec 8) 2080) (ekVec : List.Vector (BitVec 8) 1152)

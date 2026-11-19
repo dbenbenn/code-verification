@@ -966,7 +966,7 @@ private theorem evalSvc_standard_exitGroup {s : State} (hx8 : (s.readReg64 Reg.x
   rw [hstd]
   cases s with
   | mk regs vregs sp pc pstate mem tpidrEl0 fpsr brkStart brk physMemAvail fs
-       oracle oracleIdx exclFails trace status sigHandlers sigAltStack symtab =>
+       oracle oracleIdx exclFails trace status sigHandlers sigAltStack sigMask sigPending symtab =>
     cases mem with
     | mk cells =>
       simp only [State.setStatus, ite_self]
@@ -988,7 +988,7 @@ private theorem evalSvc_standard_setTidAddress {s : State}
   rw [hstd]
   cases s with
   | mk regs vregs sp pc pstate mem tpidrEl0 fpsr brkStart brk physMemAvail fs
-       oracle oracleIdx exclFails trace status sigHandlers sigAltStack symtab =>
+       oracle oracleIdx exclFails trace status sigHandlers sigAltStack sigMask sigPending symtab =>
     cases mem with
     | mk cells =>
       simp [State.writeReg64, State.advancePC]

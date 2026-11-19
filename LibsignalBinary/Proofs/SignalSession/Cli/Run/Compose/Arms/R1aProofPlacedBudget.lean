@@ -9,22 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetMid
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetMid
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlacedBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Arm `R1a` Proof
@@ -34,7 +39,7 @@ Defines the Arm `R1a` allocation-event envelope `Init1Env` and proves `run_hop_i
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -133,13 +138,13 @@ attribute [local simp, local arm64_norm, local wp_norm]
 /-! ## Allocation-Event Envelopes (`Init1AfterReadEnv`, `Init1Env`) -/
 
 /-- Post-`read_file` allocation-event envelope of Arm `R1a`: allocates the 22-byte `"file could not be read"` buffer plus `FreeOnlyEvs` on `Err`, and performs only `FreeOnlyEvs` deallocations on `Ok`. -/
-def Init1AfterReadEnv (r : Except Unit (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
+@[expose] def Init1AfterReadEnv (r : Except Unit (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   match r with
   | .error () => ∃ evs_f, FreeOnlyEvs evs_f ∧ evs = rustAllocEvents 22 1 ++ evs_f
   | .ok _ => FreeOnlyEvs evs
 
 /-- Full Arm `R1a` allocation-event envelope (`R+0x214 → R+0x74c` or `RejectKPlacedEnv`). -/
-def Init1Env (cEnvs : RunCalleesEnvs) (g : RunCall) (me : MeAtDispatch)
+@[expose] def Init1Env (cEnvs : RunCalleesEnvs) (g : RunCall) (me : MeAtDispatch)
     (_peerV : AddrV) (dir : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   match me with
   | .none => FreeOnlyEvs evs

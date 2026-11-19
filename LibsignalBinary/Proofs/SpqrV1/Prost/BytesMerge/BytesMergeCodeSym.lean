@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Bytes.BytesCodeSym -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.Prost.ProstCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Varint.VarintCodeSym -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Bytes.BytesCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard11
 
 /-!
 # Relocatable Per-Block Fetches for `Prost/BytesMerge`
@@ -26,7 +28,7 @@ Pre-extracted instruction-fetch tables for `prost::encoding::bytes::merge::<Vec<
 `do_reserve_and_handle` in Block `320`, and `<Bytes as From<Vec<u8>>>::from` in Block `250`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

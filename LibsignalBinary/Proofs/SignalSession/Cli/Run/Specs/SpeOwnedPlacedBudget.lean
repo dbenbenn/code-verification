@@ -9,11 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwnedPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
 
 /-!
 # Budget-Threaded `dropSpeOwnedSpecPlaced` Aliases and `.proto` Projections (Placed)
@@ -23,7 +27,7 @@ Aliases the budget-threaded `[LibsignalPlacement]` `dropSpeOwnedSpecPlaced`, `Dr
 proves agreement on `.proto`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

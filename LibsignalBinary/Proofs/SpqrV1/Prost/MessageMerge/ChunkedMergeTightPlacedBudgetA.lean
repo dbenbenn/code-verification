@@ -9,21 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt2SampledClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB300PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB301PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB302PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB303PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightU311PlacedBudgetR2
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedClPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Auth.MergeClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1SampledClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt2SampledClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedHeaderSentClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB300PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB301PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB302PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightB303PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.E2aTightU311PlacedBudgetR2
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoderClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1SentClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1ReceivedClPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
 
 /-!
 # Guarded-Tight Placed Budget Contracts for Blocks `300`–`303` and `311`–`312`
@@ -37,7 +40,7 @@ for `Chunked.Ct1Sampled::merge` (Block `300`: `731,332` B, `maxReq = 2,560` B, `
 and `Chunked.Ct1Received::merge` (Block `303`: `384,723` B, `ucOps + encOps ≤ maxOps`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

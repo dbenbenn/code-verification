@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Loop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Loop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Outer
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder>::into_pb`: Placed Outer Loops (Block `375`)
@@ -21,7 +22,7 @@ Relocatable `[LibsignalPlacement]` verification of the `.polys` and `.points` ou
 loops for `<spqr::encoding::polynomial::PolyEncoder>::into_pb`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

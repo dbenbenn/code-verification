@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.CHistStepPure -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -21,7 +21,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTie
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTie -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SkippedKeyRunInvPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptRecRelInvPure
@@ -43,7 +43,7 @@ Proves that `TR.CHistStep.CHist` and `SkippedInstallByteFresh` step across `Move
 Bob accepts a pre-key message into a fresh session.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

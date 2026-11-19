@@ -9,11 +9,18 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceId
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PrivateKeySerialize
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ProtocolAddressDisplay
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceId
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PrivateKeySerialize
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ProtocolAddressDisplay
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
 
 /-!
 # In-Image Whole-Crate Callee Proofs
@@ -22,4 +29,4 @@ Aggregates verification proofs for `Uuid::try_parse`, `ServiceId::parse_from_ser
 `PublicKey::try_from`, `PrivateKey::serialize`, and `<ProtocolAddress as Display>::fmt`.
 -/
 
-@[expose] public section
+public section

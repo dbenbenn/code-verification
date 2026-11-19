@@ -9,14 +9,30 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSim
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
+public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSim -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound -- proof-setup: allow-public-import
 import Computational.Proofs.SessionCostedBase
 import Computational.Proofs.ReductionDsl.Bridge
 import Computational.Proofs.ReductionDsl.Notation
 import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 import Computational.Proofs.GameHop.ReductionDsl.CostUB
+import Computational.Proofs.GameHop.ReductionDsl.CostAttr
+import Init.Data.List.Control
+import Init.Data.Range.Basic
+import Init.Data.String.Defs
+import Init.Data.String.Pattern.Basic
+import Init.Data.String.Pattern.String
+import Init.Data.String.Slice
+import Init.Data.String.TakeDrop
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Costed `LibsignalSim` Reduction Witness

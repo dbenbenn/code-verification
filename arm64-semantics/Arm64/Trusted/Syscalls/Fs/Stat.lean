@@ -42,8 +42,9 @@ def encodeLinuxStat (e : FsEntry) : List (BitVec 8) :=
 
 /-- Execute `fstat(fd, statbuf)` (`__NR_fstat = 80`, `fs/stat.c:525` `newfstat`). Models
 `.localFile` and `.localDir` descriptors, raising `.Exception` on unmodeled `.stdio` or non-file
-descriptors. Validates `fd` before checking `statbuf` write permissions (`EFAULT_RET`), matching
-`vfs_fstat` followed by `cp_new_stat`. -/
+descriptors. Validates `fd` before checking `statbuf` write permissions (`EFAULT_RET`, matching
+`vfs_fstat` followed by `cp_new_stat`; on loaded process states `[USER_VA_LIMIT, 2 ^ 64)` is
+unmapped, so `!s.mem.canWrite statbuf 128` also rejects `access_ok` overflows). -/
 def execFstat (s : State) : State :=
   let rawFd   := s.readReg32 Reg.x0
   let statbuf := s.readReg64 Reg.x1
@@ -58,8 +59,9 @@ def execFstat (s : State) : State :=
       if desc.kind != .localFile && desc.kind != .localDir then
         s.setStatus (.Exception "unmodeled non-file fd")
       else
-        let entry := (s.fs.files desc.path).getD (.file [])
-        if !s.mem.canWrite statbuf 128 then (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
+        let entry := if desc.kind == .localDir then .dir else (s.fs.files desc.path).getD (.file [])
+        if !s.mem.canWrite statbuf 128 then
+          (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
         else ((s.setMem (s.mem.writeBytes statbuf (encodeLinuxStat entry))).writeReg64 Reg.x0 0#64).advancePC
 
 end Arm64

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodedLenPhase
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish1Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.TopRegions
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodedLenPhase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChainPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesFinish1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.TopRegions -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesBridge1Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesBridge2
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesBridge2Placed
@@ -28,7 +28,7 @@ Composes relocatable Phases 3b–3e, Phase 4 (`TopRegionsPlaced.lean`), and the 
 epilogue into `step_send_from_314d8_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -74,7 +74,7 @@ open CryptoVerification.SpqrV1.Top.Send.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local simp, local arm64_norm, local wp_norm] ite_zero32_self ite_zero64_self
 
 theorem step_send_from_320a4_placed {A : RustAlloc} {φ_panic : State → Prop}
@@ -251,7 +251,7 @@ theorem step_send_from_317fc_placed {A : RustAlloc} {F : ShaCompress}
       memRegion (sp + 0x950#64) 928 ∗ memRegion (sp + 0xcf0#64) 80 ∗ memRegion (sp + 0xd40#64) 80 ∗
       memRegion (sp + 0xde0#64) 80 ∗ memRegion (sp + 0x1bc0#64) 16 ∗ memRegion (sp + 7136#64) 16 ∗
       stackRestCF0_1F20 sp ∗ spqrSendSavedRegs sp s0 ∗ spqrSendDropJumpTablePlacedAt ∗ Rest)
-    hpc hrun hsp rfl hx24 hx26 hx28 ⟨fun _ h => h, rfl, rfl⟩
+    hpc hrun hsp rfl hx24 hx26 hx28 ⟨fun _ _ => ⟨rfl, rfl, rfl, rfl⟩, rfl, rfl⟩
     (by rw [memRegion_590_224_eq_88_136 sp, memRegion_1260_928_eq_88_840 sp]; ac_rfl) ?_
   intro sm g w0_new pq' hpc_m hrun_m hsp_m htr_m hx19_m hx21_m hx23_m _ hx25_ch hx27_m hx28_m hinv_m hinvm_lscro
   simp_rw [encodeToVecOnPanic_congr htr]

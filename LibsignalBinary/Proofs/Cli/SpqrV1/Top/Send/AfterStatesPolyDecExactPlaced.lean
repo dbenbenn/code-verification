@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoder1Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoder1Placed -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Exact-Capacity `PolynomialDecoder::encode [local#3]` (Block `455`)
@@ -17,7 +17,7 @@ public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoder1
 Re-exports `encode_polyDecoder_1_exact_pinned_placed_ok{_x}` (Block `455`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -10,21 +10,25 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetAuxSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetAuxSat
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat` Sibling of `CryptoBridgePlacedBudget` (`CryptoBridgePlacedBudgetSat`)
 
 Re-types the `[HkdfPlacedHooks C.F H]` contracts in `CryptoBridgePlacedBudget`:
-- `expand_multi_info_placed_vm_ok_of_other_block_sat`
+- `expand_multi_info_placed_vm_ok_of_other_block_sat` (`816`-B `expandMultiInfoBudgetSpecSat`)
 - `pqxdhHkdfExpand_8_placed_ok_sat`
 - `pqxdhHkdfExpand_10_placed_ok_sat`
-to `[HkdfPlacedHooksBudgetSat C.F H]` (`HookSat H lsMemsetSym sessionMemsetRegionBudgetSpec`).
+to `[HkdfPlacedHooksExactBudgetSat C.F H]`.
 -/
 
 set_option autoImplicit false
@@ -39,12 +43,12 @@ open CryptoGames.LibsignalSession (Crypto)
 open CryptoVerification
   (IsLsBlockProg LibsignalCodeLoaded LibsignalHooks LibsignalPlacement
    lsmpl withLsCodeLoaded)
+open CryptoVerification.RustHeap (allocHookStack)
 open CryptoVerification.LibsignalTripleRatchet
-  (LibsignalCodeRoLoaded blkPC_53 blkPl_53 expandMultiInfoSpec expandMultiInfoStack
+  (LibsignalCodeRoLoaded blkPC_53 blkPl_53
    keys_ls_subroutine_ok_of_block_cro
    subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded withLsCodeRoLoaded)
-open CryptoVerification.LibsignalTripleRatchet.Keys
-  (hmacCore_entails_cells stackAt_alloc_expand)
+open CryptoVerification.LibsignalTripleRatchet.Keys (hmacCore_entails_cells)
 open CryptoVerification.E2E.Pqxdh.Initiator
   (INFO_MSG_KEYS INFO_RATCHET Primitives bytesToBv8)
 open CryptoVerification.E2E.Pqxdh.ResponderCore
@@ -56,7 +60,15 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetAuxSat
   (expand_multi_info_placed_vm_ok_sat)
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat
-  (HkdfPlacedHooksBudgetSat HkdfPlacedHooksExactBudgetSat)
+  (HkdfPlacedHooksExactBudgetSat expandMultiInfoBudgetSpecSat)
+open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
+  (expandMultiInfoSpecSat expandMultiInfoStackSat)
+
+private theorem stackAt_alloc_expand_sat (sp : BitVec 64) :
+    stackAt sp allocHookStack =
+      memRegion (sp - 4096#64) 3280 ∗ stackAt sp expandMultiInfoStackSat := by
+  simp only [stackAt, allocHookStack, expandMultiInfoStackSat]
+  exact ProofLib.memRegion_split' rfl (by bv_omega) (by decide)
 
 private theorem satisfies_withLsCodeLoaded_intro {α : Type} {pl : Obj.MultiPlacement}
     {spec : Spec α} {x : α} {s0 : State} {R : SepProp}
@@ -105,7 +117,7 @@ public theorem expand_multi_info_placed_vm_ok_of_other_block_sat [LibsignalPlace
     [IsLsBlockProg callerProg i H] [HkdfPlacedHooksExactBudgetSat C.F H]
     (hi : i < 619 := by decide) :
     subroutine_ok callerProg (lsmpl.base 53)
-      (withLsCodeRoLoaded lsmpl (withVmPreserved (expandMultiInfoSpec C.F))) :=
+      (withLsCodeRoLoaded lsmpl (expandMultiInfoBudgetSpecSat C.F)) :=
   keys_ls_subroutine_ok_of_block_cro
     (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded (expand_multi_info_placed_vm_ok_sat C H))
     hi (by decide) (by decide)
@@ -122,7 +134,7 @@ public theorem pqxdhHkdfExpand_8_placed_ok_sat [LibsignalPlacement]
   rintro ⟨hkdfA, prk, infoHdrA, infoA, info, okmA, sp⟩ R s0 hpre
   dsimp only [pqxdhHkdfExpandCellsPlacedSpec, withVmPreserved,
     CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExpandCellsPlacedSpec] at hpre
-  rw [stackAt_alloc_expand sp, ← memRegion_cells okmA 8 (by decide)] at hpre
+  rw [stackAt_alloc_expand_sat sp, ← memRegion_cells okmA 8 (by decide)] at hpre
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hF, hx0, hx1, hx2, hx3, hsp, hprk, hcases⟩, hpre⟩
   have hinfo : info = INFO_RATCHET := by
@@ -136,18 +148,18 @@ public theorem pqxdhHkdfExpand_8_placed_ok_sat [LibsignalPlacement]
   rw [pqxdhHmacStateAt_eq hP hkdfA (by omega)] at hpre
   refine ⟨⟨hkdfA, bytesToBv8 prk, infoHdrA, infoA, bytesToBv8 info, okmA, 64⟩,
     memRegion (sp - 8192#64) 3936 ∗ memRegion (sp - 4256#64) 160 ∗
-      memRegion (sp - 4096#64) 3456 ∗ R, ?_, ?_⟩
+      memRegion (sp - 4096#64) 3280 ∗ R, ?_, ?_⟩
   · apply satisfies_withLsCodeLoaded_intro hF.code
-    dsimp only [withVmPreserved, expandMultiInfoSpec]
+    dsimp only [withVmPreserved, expandMultiInfoSpecSat]
     subst hsp
     repeat rw [bytesToBv8_length]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨⟨hx0, hx1, hx2, hx3, hprk_le, hinfo_lt, Or.inl trivial⟩, by arm64_sep_close⟩
   · intro sf hpost
-    dsimp only [withLsCodeLoaded, withVmPreserved, expandMultiInfoSpec,
+    dsimp only [withLsCodeLoaded, withVmPreserved, expandMultiInfoSpecSat,
       pqxdhHkdfExpandCellsPlacedSpec,
       CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExpandCellsPlacedSpec] at hpost ⊢
-    rw [stackAt_alloc_expand sp]
+    rw [stackAt_alloc_expand_sat sp]
     subst hsp
     repeat rw [bytesToBv8_length] at hpost
     simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
@@ -157,9 +169,9 @@ public theorem pqxdhHkdfExpand_8_placed_ok_sat [LibsignalPlacement]
       (Q := ((infoHdrA ↦₆₄ infoA) ∗ ((infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 info.length) ∗
         (infoA ↦ᵣ bytesToBv8 info) ∗
         (okmA ↦ₛ hkdfExpand C.F (bytesToBv8 prk) (bytesToBv8 info) 64) ∗
-        stackAt s0.sp expandMultiInfoStack ∗
+        stackAt s0.sp expandMultiInfoStackSat ∗
         memRegion (s0.sp - 8192#64) 3936 ∗ memRegion (s0.sp - 4256#64) 160 ∗
-        memRegion (s0.sp - 4096#64) 3456) ∗ R)
+        memRegion (s0.sp - 4096#64) 3280) ∗ R)
       (hmacCore_entails_cells C.F hkdfA (bytesToBv8 prk))
     replace hpost := Satisfies.mono hE (by simpa only [sepConj_assoc] using hpost)
     exact ⟨hvm, htr, by arm64_sep_close⟩
@@ -176,7 +188,7 @@ public theorem pqxdhHkdfExpand_10_placed_ok_sat [LibsignalPlacement]
   rintro ⟨hkdfA, prk, infoHdrA, infoA, info, okmA, sp⟩ R s0 hpre
   dsimp only [pqxdhHkdfExpandCellsPlacedSpec, withVmPreserved,
     CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExpandCellsPlacedSpec] at hpre
-  rw [stackAt_alloc_expand sp, ← memRegion_cells okmA 10 (by decide)] at hpre
+  rw [stackAt_alloc_expand_sat sp, ← memRegion_cells okmA 10 (by decide)] at hpre
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hF, hx0, hx1, hx2, hx3, hsp, hprk, hcases⟩, hpre⟩
   have hinfo : info = INFO_MSG_KEYS := by
@@ -190,18 +202,18 @@ public theorem pqxdhHkdfExpand_10_placed_ok_sat [LibsignalPlacement]
   rw [pqxdhHmacStateAt_eq hP hkdfA (by omega)] at hpre
   refine ⟨⟨hkdfA, bytesToBv8 prk, infoHdrA, infoA, bytesToBv8 info, okmA, 80⟩,
     memRegion (sp - 8192#64) 3936 ∗ memRegion (sp - 4256#64) 160 ∗
-      memRegion (sp - 4096#64) 3456 ∗ R, ?_, ?_⟩
+      memRegion (sp - 4096#64) 3280 ∗ R, ?_, ?_⟩
   · apply satisfies_withLsCodeLoaded_intro hF.code
-    dsimp only [withVmPreserved, expandMultiInfoSpec]
+    dsimp only [withVmPreserved, expandMultiInfoSpecSat]
     subst hsp
     repeat rw [bytesToBv8_length]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨⟨hx0, hx1, hx2, hx3, hprk_le, hinfo_lt, Or.inr trivial⟩, by arm64_sep_close⟩
   · intro sf hpost
-    dsimp only [withLsCodeLoaded, withVmPreserved, expandMultiInfoSpec,
+    dsimp only [withLsCodeLoaded, withVmPreserved, expandMultiInfoSpecSat,
       pqxdhHkdfExpandCellsPlacedSpec,
       CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExpandCellsPlacedSpec] at hpost ⊢
-    rw [stackAt_alloc_expand sp]
+    rw [stackAt_alloc_expand_sat sp]
     subst hsp
     repeat rw [bytesToBv8_length] at hpost
     simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
@@ -211,9 +223,9 @@ public theorem pqxdhHkdfExpand_10_placed_ok_sat [LibsignalPlacement]
       (Q := ((infoHdrA ↦₆₄ infoA) ∗ ((infoHdrA + 8#64) ↦₆₄ BitVec.ofNat 64 info.length) ∗
         (infoA ↦ᵣ bytesToBv8 info) ∗
         (okmA ↦ₛ hkdfExpand C.F (bytesToBv8 prk) (bytesToBv8 info) 80) ∗
-        stackAt s0.sp expandMultiInfoStack ∗
+        stackAt s0.sp expandMultiInfoStackSat ∗
         memRegion (s0.sp - 8192#64) 3936 ∗ memRegion (s0.sp - 4256#64) 160 ∗
-        memRegion (s0.sp - 4096#64) 3456) ∗ R)
+        memRegion (s0.sp - 4096#64) 3280) ∗ R)
       (hmacCore_entails_cells C.F hkdfA (bytesToBv8 prk))
     replace hpost := Satisfies.mono hE (by simpa only [sepConj_assoc] using hpost)
     exact ⟨hvm, htr, by arm64_sep_close⟩

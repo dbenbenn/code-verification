@@ -10,9 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
 import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
 import ProofLib.SepLogic.HeapIntro
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExtractCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookOk` Elimination Helper for `blackBoxSpecSat` (`Hole3W3VerifySigBbSat`)

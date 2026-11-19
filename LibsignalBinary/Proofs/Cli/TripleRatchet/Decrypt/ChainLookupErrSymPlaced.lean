@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Getters.Drops.ChainPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailProof
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Getters.Drops.ChainPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailProof
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailSym
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.TightTargets
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
 
 /-!
 # Relocatable `ErrTail` Symbolic Execution on Block `433`
@@ -23,7 +26,7 @@ Relocatable `[LibsignalPlacement]` `SepWP` step lemmas and tight return-epilogue
 `ErrTail` block of `try_decrypt_with_state::<Coins>` (block `433`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

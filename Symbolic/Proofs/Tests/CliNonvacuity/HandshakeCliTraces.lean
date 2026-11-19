@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeModel
+public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeModel -- proof-setup: allow-public-import
 import all Init.Data.Repr
 import all Init.Data.String.Defs
 import Symbolic.Proofs.Swarm.CREF.Cli.DirCodecBridge
@@ -22,7 +22,7 @@ for the 3-call CLI execution (`init` on Alice, `send` on Alice, `recv` on Bob) a
 for every `X : UnreachedPqxdhPrimitives` and both `withOpk = false` and `withOpk = true`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +48,7 @@ open CryptoVerification.SignalSession
    filesOf encodeDir stdioPaths sessionFile partyAddress
    coinsFile bundleDir partyDirs)
 open Symbolic.Proofs.Tests.CliNonvacuity.Witness
-  (myParams myInterp myHooks_agree pt0 myKyberSecField mkRecords mkRecords_wf mkRecords_opaqueBytes_6)
+  (myParams myInterp mySigBytes myHooks_agree pt0 myKyberSecField mkRecords mkRecords_wf mkRecords_opaqueBytes_6)
 open Symbolic.Proofs.Tests.CliNonvacuity.HandshakeModel
   (tapeInitBytes tapeInit cSend0 cSend0Vec rcBytes rcVal keyToBytes32_rcVal
    idPubA_vec spkPubB_vec opkPubB_vec myKyberPub1568 myKyberSec3168
@@ -65,32 +65,32 @@ open Symbolic.Proofs.Tests.Refinement.Cli
 open Symbolic.Swarm.CREF.Cli (bundleTyped_iff_exists_bundleE)
 open Symbolic.Swarm.TRREF.SpqrSemOf (bytesToVec)
 
-def call0 (withOpk : Bool) : CliCall where
+@[expose] def call0 (withOpk : Bool) : CliCall where
   party := "alice"
   cmd := .init (peerOf (mkRecords withOpk) "alice") bundleDir
   bundle := (publicBundleOf (bE_cli withOpk)).files bundleDir
   stdin := []
   coins := tapeInitBytes withOpk
 
-def call1 (withOpk : Bool) : CliCall where
+@[expose] def call1 (withOpk : Bool) : CliCall where
   party := "alice"
   cmd := .send (peerOf (mkRecords withOpk) "alice")
   bundle := []
   stdin := pt0
   coins := cSend0
 
-def call2 (withOpk : Bool) : CliCall where
+@[expose] def call2 (withOpk : Bool) : CliCall where
   party := "bob"
   cmd := .recv (peerOf (mkRecords withOpk) "bob")
   bundle := []
   stdin := wire0 withOpk
   coins := rcBytes withOpk
 
-def ev0 (withOpk : Bool) : RunEvent := runEventOf (call0 withOpk) (some (0, []))
-def ev1 (withOpk : Bool) : RunEvent := runEventOf (call1 withOpk) (some (0, wire0 withOpk))
-def ev2 (withOpk : Bool) : RunEvent := runEventOf (call2 withOpk) (some (0, pt0))
+@[expose] def ev0 (withOpk : Bool) : RunEvent := runEventOf (call0 withOpk) (some (0, []))
+@[expose] def ev1 (withOpk : Bool) : RunEvent := runEventOf (call1 withOpk) (some (0, wire0 withOpk))
+@[expose] def ev2 (withOpk : Bool) : RunEvent := runEventOf (call2 withOpk) (some (0, pt0))
 
-def evsOf (withOpk : Bool) : List CliEvent :=
+@[expose] def evsOf (withOpk : Bool) : List CliEvent :=
   [.run (ev0 withOpk), .run (ev1 withOpk), .run (ev2 withOpk)]
 
 theorem call0_runInput (withOpk : Bool) :
@@ -117,7 +117,7 @@ private theorem mkRecords_sec0 (withOpk : Bool) :
   rw [mkRecords_secretBytes_eq]; cases withOpk <;> rfl
 
 private theorem mkRecords_sec1 (withOpk : Bool) :
-    secretBytes (mkRecords withOpk) 1 = List.replicate 32 6#8 := by
+    secretBytes (mkRecords withOpk) 1 = List.replicate 32 9#8 := by
   rw [mkRecords_secretBytes_eq]; cases withOpk <;> rfl
 
 private theorem mkRecords_sec2 (withOpk : Bool) :
@@ -179,8 +179,8 @@ private def commonFilesBobClosed (withOpk : Bool) : List (String × HwBytes) :=
         (DY.Libsignal.Composed.Refinement.Cli.addrOf (mkRecords withOpk) "bob").text),
    (CryptoVerification.SignalSession.identityKeyPairFile,
      CryptoVerification.RecordCodecs.IdentityKeyPairStructure.encode
-       ⟨ecKey (DY.Libsignal.Composed.Refinement.pubBytes myInterp (List.replicate 32 6#8)),
-        List.replicate 32 6#8⟩),
+       ⟨ecKey (DY.Libsignal.Composed.Refinement.pubBytes myInterp (List.replicate 32 9#8)),
+        List.replicate 32 9#8⟩),
    (CryptoVerification.SignalSession.registrationIdFile,
      CryptoVerification.SignalSession.le32
        (DY.Libsignal.Composed.Refinement.Cli.regIdOf (mkRecords withOpk) "bob")),
@@ -231,13 +231,13 @@ theorem initDirs_bob_eq (withOpk : Bool) :
           CryptoVerification.RecordCodecs.SignedPreKeyRecordStructure.encode
             ⟨(mkRecords true).spkId,
              ecKey (DY.Libsignal.Composed.Refinement.pubBytes myInterp (List.replicate 32 11#8)),
-             List.replicate 32 11#8, List.replicate 64 0#8, 0⟩),
+             List.replicate 32 11#8, mySigBytes, 0⟩),
         ("last-resort-kyber-pre-keys/" ++ toString (mkRecords true).kpkId.toNat,
           CryptoVerification.RecordCodecs.SignedPreKeyRecordStructure.encode
             ⟨(mkRecords true).kpkId,
              DY.Libsignal.Composed.Refinement.kyberKey Witness.myKyberPubBytes,
              DY.Libsignal.Composed.Refinement.kyberKey ((mkRecords true).kyberSecB.drop 1),
-             List.replicate 64 0#8, 0⟩),
+             mySigBytes, 0⟩),
         ("last-resort-kyber-pre-keys/" ++ toString (mkRecords true).kpkId.toNat ++ ".base-keys", [])] ++
        if (mkRecords true).withOpk then
          [("one-time-pre-keys/" ++ toString (mkRecords true).opkId.toNat,

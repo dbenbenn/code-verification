@@ -13,8 +13,8 @@ public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
 public import Computational.Proofs.SpecLemmas.Session.KemFailTrackEpochClamp -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitness -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.PqxdhSimTypes -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.E2EStateRepr -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.PqxdhSimTypes
+import Computational.Proofs.E2E.Dsl.E2EStateRepr
 
 /-!
 # Per-Instance Epoch and Clamped Driver Invariants

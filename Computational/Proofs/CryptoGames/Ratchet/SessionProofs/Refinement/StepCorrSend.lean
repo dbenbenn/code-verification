@@ -22,7 +22,7 @@ Lean's kernel checks every proof in it: you do not need to read it to trust thos
 Proves `CloseByState` preservation across `corr`, `transmit`, and `chall` queries under `SimInv`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -521,7 +521,7 @@ private theorem closeByState_inr_same_amb_bind_const_sim {α γ β : Type}
         exact OracleComp.evalDist_bind_const _ _
   · simp only [runRCont_inr_bind, hD0, hstepR, bind_assoc, pure_bind, hans]
 
-def samCoin {Coins : Type} [SampleableType Coins] (r : Option Coins) : ProbComp Coins :=
+@[expose] def samCoin {Coins : Type} [SampleableType Coins] (r : Option Coins) : ProbComp Coins :=
   match r with
   | some rq => pure rq
   | none => ($ᵗ Coins : ProbComp Coins)

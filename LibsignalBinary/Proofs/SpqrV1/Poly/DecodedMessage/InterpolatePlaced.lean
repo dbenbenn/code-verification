@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Loop
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Loop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Interpolate
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message`: Relocatable Inlined `lagrange_interpolate` Loops and Cleanup
@@ -21,7 +22,7 @@ Relocatable `[LibsignalPlacement]` proofs of the inner accumulation loop, outer 
 temporary-buffer deallocation, and cache-slot store on Block `418`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.DecodedMessage
 
@@ -31,14 +32,11 @@ open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalTripleR
 open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.CodeLayout
-open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTableAt reduceTablePlacedAt)
+open CryptoVerification.SpqrV1.GF.UnacceleratedMul (reduceTablePlacedAt)
 open CryptoVerification.SpqrV1.GF.Mul2U16
 open CryptoVerification.SpqrV1.Alloc
 open CryptoVerification.SpqrV1.Poly
-open CryptoVerification.SpqrV1.Poly.LagrangePrepare
-  (lagrangePrepareName lagrangePrepare_fnOff LagrangePrepareArgs lagrangePrepareSpec
-   lagrangePreparePlacedSpec lagrangePreparePure lagrangePreparePure_length
-   lagrangePrepareStack polyOf_eq)
+open CryptoVerification.SpqrV1.Poly.LagrangePrepare (lagrangePrepareName LagrangePrepareArgs lagrangePreparePlacedSpec lagrangePreparePure lagrangePreparePure_length lagrangePrepareStack polyOf_eq)
 open CryptoVerification.SpqrV1.Poly.LagrangeComplete
 open CryptoVerification.SpqrV1.Poly.ComputeAt
 

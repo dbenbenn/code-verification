@@ -9,12 +9,36 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDecodeStatePlacedInstBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProofClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeStateClPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDecodeStatePlacedInstBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateProofClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeStateClPlacedBudget
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.TrapBridgePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirectionBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget -- proof-setup: allow-public-import
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirectionClPlacedBudget
 
 /-!
 # Budget-Threaded Placed `V1State::merge` & `spqr::decode_state` Instantiations
@@ -25,7 +49,7 @@ with leaf-discharged corollaries parameterized only by `bytes::merge` (Block 290
 `merge` blocks (Blocks 300..310).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -94,66 +118,6 @@ private theorem hExt_withPanics {mmpl : Obj.MultiPlacement} {gh : CliGhostHooks}
       Rust.withPanics ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym := fun sym hne => by
   rw [← withPanics_cliGhostExterns mmpl gh W]
   simp only [Rust.withPanics, hExt sym hne]
-
-/-- Envelope-parameterized own-block code-loaded `V1State::merge` (`Block 298`) contract under
-`[CliSpqrExt W ext]`. -/
-theorem cliV1StateMergeOfEnv_cl [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    {PreEnv PostEnv : V1StateMergeGhost → List AllocEvent → Prop}
-    (hpre : ∀ x evs, V1StateMergeEnv x evs → PreEnv x evs)
-    (hpost : ∀ x evs, V1StateMergePostEnv x evs → PostEnv x evs)
-    (hDrop267 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 267 (Rust.withPanics ext))
-      (lsmpl.base 267) (withLsCodeLoaded lsmpl (dropOptProtoInnerStatePlacedSpec M A lim)))
-    (hDrop281 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 281 (Rust.withPanics ext))
-      (lsmpl.base 281) (withLsCodeLoaded lsmpl (dropProtoChunkedHeaderSentSpec M A lim)))
-    (hDrop282 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 282 (Rust.withPanics ext))
-      (lsmpl.base 282) (withLsCodeLoaded lsmpl (dropProtoChunkedCt1ReceivedSpec M A lim)))
-    (hPush257 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)))
-    (hFrom261 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromBudgetSpec M A lim)))
-    (hSkip263 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A lim)))
-    (hVarint291 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A lim)))
-    (hMerge300 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 300 (Rust.withPanics ext))
-      (lsmpl.base 300) (withLsCodeRoLoaded lsmpl (chunkedCt1SampledMergeSpec A lim)))
-    (hMerge301 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 301 (Rust.withPanics ext))
-      (lsmpl.base 301) (withLsCodeRoLoaded lsmpl (chunkedCt2SampledMergeSpec A lim)))
-    (hMerge302 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 302 (Rust.withPanics ext))
-      (lsmpl.base 302) (withLsCodeRoLoaded lsmpl (chunkedHeaderSentMergeSpec A lim)))
-    (hMerge303 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 303 (Rust.withPanics ext))
-      (lsmpl.base 303) (withLsCodeRoLoaded lsmpl (chunkedCt1ReceivedMergeSpec A lim)))
-    (hMerge304 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 304 (Rust.withPanics ext))
-      (lsmpl.base 304) (withLsCodeRoLoaded lsmpl (chunkedKeysSampledMergeSpec A lim)))
-    (hMerge305 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 305 (Rust.withPanics ext))
-      (lsmpl.base 305) (withLsCodeRoLoaded lsmpl (chunkedKeysUnsampledMergeSpec A lim)))
-    (hMerge306 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 306 (Rust.withPanics ext))
-      (lsmpl.base 306) (withLsCodeRoLoaded lsmpl (chunkedHeaderReceivedMergeSpec A lim)))
-    (hMerge307 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 307 (Rust.withPanics ext))
-      (lsmpl.base 307) (withLsCodeRoLoaded lsmpl (chunkedCt1AcknowledgedMergeSpec A lim)))
-    (hMerge308 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 308 (Rust.withPanics ext))
-      (lsmpl.base 308) (withLsCodeRoLoaded lsmpl (chunkedNoHeaderReceivedMergeSpec A lim)))
-    (hMerge309 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 309 (Rust.withPanics ext))
-      (lsmpl.base 309) (withLsCodeRoLoaded lsmpl (chunkedEkSentCt1ReceivedMergeSpec A lim)))
-    (hMerge310 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 310 (Rust.withPanics ext))
-      (lsmpl.base 310) (withLsCodeRoLoaded lsmpl (chunkedEkReceivedCt1SampledMergeSpec A lim))) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 298 (Rust.withPanics ext))
-      (lsmpl.base 298)
-      (withLsCodeRoLoaded lsmpl (v1StateMergePlacedSpecOfEnv A lim PreEnv PostEnv)) :=
-  v1State_mergeOfEnv_cl hpre hpost
-    (cliDeallocBudget_at_block mmpl gh W hA (hExt_withPanics hExt) (i := 298))
-    hFrom261 hPush257 hVarint291 hSkip263
-    hDrop267 hDrop282 hDrop281
-    (cliDrop_285_cl mmpl gh W hA hExt) (cliDrop_284_cl mmpl gh W hA hExt) (cliDrop_283_cl mmpl gh W hA hExt)
-    (cliDrop_286_cl mmpl gh W hA hExt) (cliDrop_271_cl mmpl gh W hA hExt)
-    hMerge305 hMerge304 hMerge302 hMerge303 hMerge309 hMerge308 hMerge306
-    hMerge300 hMerge310 hMerge307 hMerge301
 
 /-- Own-block code-loaded `V1State::merge` (`Block 298`) contract under `[CliSpqrExt W ext]`. -/
 theorem cliV1StateMerge_cl [LibsignalPlacement]
@@ -416,136 +380,6 @@ theorem cliSpqrDecodeState_sendCoins_ok [LibsignalPlacement]
       (lsmpl.base 325)
       (withLsCodeRoLoaded lsmpl (decodeStatePlacedSpecX canonicalV1InnerHeap A lim)) :=
   cliSpqrDecodeState_cl mmpl gh W hA (fun _ _ => rfl)
-    hDrop267 hDrop270 hDrop281 hDrop282
-    hPush257 hFrom261 hSkip263 hBytes290 hVarint291 hChainParams294 hEpochDir299
-    hMerge300 hMerge301 hMerge302 hMerge303 hMerge304 hMerge305 hMerge306
-    hMerge307 hMerge308 hMerge309 hMerge310
-
-/-- on `spqrSendPlacedProg ext`: Exact `hDecodeState` hypothesis of
-`ContractsPlacedBudget.spqrSendPlacedContractsTight_of_okX`, generic in `[CliSpqrExt W ext]`. -/
-theorem cliSpqrSend_decodeState_ok_ext [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    (hDrop267 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 267 (Rust.withPanics ext))
-      (lsmpl.base 267) (withLsCodeLoaded lsmpl (dropOptProtoInnerStatePlacedSpec M A lim)))
-    (hDrop270 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 270 (Rust.withPanics ext))
-      (lsmpl.base 270) (withLsCodeLoaded lsmpl (dropProtoPqRatchetStatePlacedSpec M A lim)))
-    (hDrop281 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 281 (Rust.withPanics ext))
-      (lsmpl.base 281) (withLsCodeLoaded lsmpl (dropProtoChunkedHeaderSentSpec M A lim)))
-    (hDrop282 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 282 (Rust.withPanics ext))
-      (lsmpl.base 282) (withLsCodeLoaded lsmpl (dropProtoChunkedCt1ReceivedSpec M A lim)))
-    (hPush257 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)))
-    (hFrom261 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics ext))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromBudgetSpec M A lim)))
-    (hSkip263 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics ext))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A lim)))
-    (hBytes290 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 290 (Rust.withPanics ext))
-      (lsmpl.base 290) (withLsCodeRoLoaded lsmpl (bytesMerge3RawBudgetSpec M A lim)))
-    (hVarint291 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics ext))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A lim)))
-    (hChainParams294 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 294 (Rust.withPanics ext))
-      (lsmpl.base 294)
-      (withLsCodeLoaded lsmpl
-        (LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsBudget.chainParamsMergeSpec A lim)))
-    (hEpochDir299 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 299 (Rust.withPanics ext))
-      (lsmpl.base 299)
-      (withLsCodeRoLoaded lsmpl
-        (LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirectionBudgetAux.epochDirectionMergeSpec A lim)))
-    (hMerge300 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 300 (Rust.withPanics ext))
-      (lsmpl.base 300) (withLsCodeRoLoaded lsmpl (chunkedCt1SampledMergeSpec A lim)))
-    (hMerge301 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 301 (Rust.withPanics ext))
-      (lsmpl.base 301) (withLsCodeRoLoaded lsmpl (chunkedCt2SampledMergeSpec A lim)))
-    (hMerge302 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 302 (Rust.withPanics ext))
-      (lsmpl.base 302) (withLsCodeRoLoaded lsmpl (chunkedHeaderSentMergeSpec A lim)))
-    (hMerge303 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 303 (Rust.withPanics ext))
-      (lsmpl.base 303) (withLsCodeRoLoaded lsmpl (chunkedCt1ReceivedMergeSpec A lim)))
-    (hMerge304 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 304 (Rust.withPanics ext))
-      (lsmpl.base 304) (withLsCodeRoLoaded lsmpl (chunkedKeysSampledMergeSpec A lim)))
-    (hMerge305 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 305 (Rust.withPanics ext))
-      (lsmpl.base 305) (withLsCodeRoLoaded lsmpl (chunkedKeysUnsampledMergeSpec A lim)))
-    (hMerge306 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 306 (Rust.withPanics ext))
-      (lsmpl.base 306) (withLsCodeRoLoaded lsmpl (chunkedHeaderReceivedMergeSpec A lim)))
-    (hMerge307 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 307 (Rust.withPanics ext))
-      (lsmpl.base 307) (withLsCodeRoLoaded lsmpl (chunkedCt1AcknowledgedMergeSpec A lim)))
-    (hMerge308 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 308 (Rust.withPanics ext))
-      (lsmpl.base 308) (withLsCodeRoLoaded lsmpl (chunkedNoHeaderReceivedMergeSpec A lim)))
-    (hMerge309 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 309 (Rust.withPanics ext))
-      (lsmpl.base 309) (withLsCodeRoLoaded lsmpl (chunkedEkSentCt1ReceivedMergeSpec A lim)))
-    (hMerge310 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 310 (Rust.withPanics ext))
-      (lsmpl.base 310) (withLsCodeRoLoaded lsmpl (chunkedEkReceivedCt1SampledMergeSpec A lim))) :
-    subroutine_ok (spqrSendPlacedProg ext)
-      (lsmpl.base 325)
-      (withLsCodeRoLoaded lsmpl (spqrDecodeStatePlacedSpec canonicalV1InnerHeap A lim)) :=
-  ls_subroutine_ok_of_blockProgram_cro
-    (cliSpqrDecodeState_cl mmpl gh W hA hExt
-      hDrop267 hDrop270 hDrop281 hDrop282
-      hPush257 hFrom261 hSkip263 hBytes290 hVarint291 hChainParams294 hEpochDir299
-      hMerge300 hMerge301 hMerge302 hMerge303 hMerge304 hMerge305 hMerge306
-      hMerge307 hMerge308 hMerge309 hMerge310)
-
-/-- specialized to `cliGhostExterns gh (cliExternsPlaced mmpl W)` on
-`spqrSendPlacedProg (cliGhostExterns gh (cliExternsPlaced mmpl W))`. -/
-theorem cliSpqrSend_decodeState_ok [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    (hDrop267 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 267 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 267) (withLsCodeLoaded lsmpl (dropOptProtoInnerStatePlacedSpec M A lim)))
-    (hDrop270 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 270 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 270) (withLsCodeLoaded lsmpl (dropProtoPqRatchetStatePlacedSpec M A lim)))
-    (hDrop281 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 281 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 281) (withLsCodeLoaded lsmpl (dropProtoChunkedHeaderSentSpec M A lim)))
-    (hDrop282 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 282 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 282) (withLsCodeLoaded lsmpl (dropProtoChunkedCt1ReceivedSpec M A lim)))
-    (hPush257 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 257) (withLsCodeLoaded lsmpl (decodeErrorPushMergeBudgetSpec M A lim)))
-    (hFrom261 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 261 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 261) (withLsCodeLoaded lsmpl (decodeErrorFromBudgetSpec M A lim)))
-    (hSkip263 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 263 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 263) (withLsCodeLoaded lsmpl (skipField3Spec A lim)))
-    (hBytes290 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 290 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 290) (withLsCodeRoLoaded lsmpl (bytesMerge3RawBudgetSpec M A lim)))
-    (hVarint291 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 291 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 291) (withLsCodeLoaded lsmpl (decodeVarint2Spec A lim)))
-    (hChainParams294 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 294 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 294)
-      (withLsCodeLoaded lsmpl
-        (LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsBudget.chainParamsMergeSpec A lim)))
-    (hEpochDir299 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 299 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 299)
-      (withLsCodeRoLoaded lsmpl
-        (LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirectionBudgetAux.epochDirectionMergeSpec A lim)))
-    (hMerge300 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 300 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 300) (withLsCodeRoLoaded lsmpl (chunkedCt1SampledMergeSpec A lim)))
-    (hMerge301 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 301 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 301) (withLsCodeRoLoaded lsmpl (chunkedCt2SampledMergeSpec A lim)))
-    (hMerge302 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 302 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 302) (withLsCodeRoLoaded lsmpl (chunkedHeaderSentMergeSpec A lim)))
-    (hMerge303 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 303 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 303) (withLsCodeRoLoaded lsmpl (chunkedCt1ReceivedMergeSpec A lim)))
-    (hMerge304 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 304 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 304) (withLsCodeRoLoaded lsmpl (chunkedKeysSampledMergeSpec A lim)))
-    (hMerge305 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 305 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 305) (withLsCodeRoLoaded lsmpl (chunkedKeysUnsampledMergeSpec A lim)))
-    (hMerge306 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 306 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 306) (withLsCodeRoLoaded lsmpl (chunkedHeaderReceivedMergeSpec A lim)))
-    (hMerge307 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 307 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 307) (withLsCodeRoLoaded lsmpl (chunkedCt1AcknowledgedMergeSpec A lim)))
-    (hMerge308 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 308 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 308) (withLsCodeRoLoaded lsmpl (chunkedNoHeaderReceivedMergeSpec A lim)))
-    (hMerge309 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 309 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 309) (withLsCodeRoLoaded lsmpl (chunkedEkSentCt1ReceivedMergeSpec A lim)))
-    (hMerge310 : subroutine_ok (libsignalSessionLib.blockProgram lsmpl 310 (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsmpl.base 310) (withLsCodeRoLoaded lsmpl (chunkedEkReceivedCt1SampledMergeSpec A lim))) :
-    subroutine_ok (spqrSendPlacedProg (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-      (lsmpl.base 325)
-      (withLsCodeRoLoaded lsmpl (spqrDecodeStatePlacedSpec canonicalV1InnerHeap A lim)) :=
-  cliSpqrSend_decodeState_ok_ext mmpl gh W hA (fun _ _ => rfl)
     hDrop267 hDrop270 hDrop281 hDrop282
     hPush257 hFrom261 hSkip263 hBytes290 hVarint291 hChainParams294 hEpochDir299
     hMerge300 hMerge301 hMerge302 hMerge303 hMerge304 hMerge305 hMerge306

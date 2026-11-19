@@ -20,7 +20,7 @@ Proves `closeByStateC_inr_fig8_win`, closing an oracle step when the determinist
 step reaches a Fig. 8 winning state.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

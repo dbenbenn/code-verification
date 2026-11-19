@@ -18,6 +18,18 @@ import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCore
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimArmsFixed
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimPrfBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimCpaBase
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.ReductionDsl.AtomicSizeHonest
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaProofs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaSend
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacMu
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacProofs
 
 /-!
 # Two-Stage Forgetful Simulation for `AuthAeadCpa`
@@ -1703,46 +1715,6 @@ private theorem eval_inl_wrapCpaSlot {K_ctx Γ₁ Γ₂ : List (Ty pqSig)}
   dsimp only [_root_.SignalPqxdh.Security.ReductionDsl.AuthAead.wrapCpaSlot]
   rw [prf_bindV_eval, prf_bindV_eval, map_eq_bind_pure_comp, bind_assoc]
   congr 1
-
-private theorem initPrin1KeyFixedKB_ren2 (F : AuthKindFuels) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    [h₁ : Ext Γ₁ Δ] [h₂ : Ext Γ₂ Δ] (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat) :
-    Computational.Proofs.SignalPqxdh.AtomicLift.compRename (ren2 (h₁.wk fhst) (h₂.wk u))
-      (initPrin1KeyFixedKB F (Γ₁ := [authHybridStateFixedTy, .nat]) (Γ₂ := [.nat])
-        (Δ := [authHybridStateFixedTy, .nat]) .zero .zero) =
-    initPrin1KeyFixedKB F fhst u := rfl
-
-private theorem corruptFixedKB_ren2 (F : AuthKindFuels) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    [h₁ : Ext Γ₁ Δ] [h₂ : Ext Γ₂ Δ] (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat) :
-    Computational.Proofs.SignalPqxdh.AtomicLift.compRename (ren2 (h₁.wk fhst) (h₂.wk u))
-      (corruptFixedKB F (Γ₁ := [authHybridStateFixedTy, .nat]) (Γ₂ := [.nat])
-        (Δ := [authHybridStateFixedTy, .nat]) .zero .zero) =
-    corruptFixedKB F fhst u := rfl
-
-private theorem genSpkFixedKB_ren2 (F : AuthKindFuels) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    [h₁ : Ext Γ₁ Δ] [h₂ : Ext Γ₂ Δ]
-    (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ (.prod .nat .nat)) :
-    Computational.Proofs.SignalPqxdh.AtomicLift.compRename (ren2 (h₁.wk fhst) (h₂.wk x))
-      (genSpkFixedKB F (Γ₁ := [authHybridStateFixedTy, .prod .nat .nat])
-        (Γ₂ := [.prod .nat .nat]) (Δ := [authHybridStateFixedTy, .prod .nat .nat]) .zero .zero) =
-    genSpkFixedKB F fhst x := rfl
-
-private theorem genOpkFixedKB_ren2 (F : AuthKindFuels) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    [h₁ : Ext Γ₁ Δ] [h₂ : Ext Γ₂ Δ]
-    (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ (.prod .nat (.prod .nat .nat))) :
-    Computational.Proofs.SignalPqxdh.AtomicLift.compRename (ren2 (h₁.wk fhst) (h₂.wk x))
-      (genOpkFixedKB F
-        (Γ₁ := [authHybridStateFixedTy, .prod .nat (.prod .nat .nat)])
-        (Γ₂ := [.prod .nat (.prod .nat .nat)])
-        (Δ := [authHybridStateFixedTy, .prod .nat (.prod .nat .nat)]) .zero .zero) =
-    genOpkFixedKB F fhst x := rfl
-
-private theorem registerFixedKB_ren2 {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    [h₁ : Ext Γ₁ Δ] [h₂ : Ext Γ₂ Δ]
-    (fhst : Var Γ₁ authHybridStateFixedTy) (sk : Var Γ₂ (B 32)) :
-    Computational.Proofs.SignalPqxdh.AtomicLift.compRename (ren2 (h₁.wk fhst) (h₂.wk sk))
-      (registerFixedKB (Γ₁ := [authHybridStateFixedTy, B 32])
-        (Γ₂ := [B 32]) (Δ := [authHybridStateFixedTy, B 32]) .zero .zero) =
-    registerFixedKB fhst sk := rfl
 
 private theorem initPrin1KeyFixedB_ren2 (K : ℕ) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
     [h₁ : Ext Γ₁ Δ] [h₂ : Ext Γ₂ Δ] (fhst : Var Γ₁ authHybridStateFixedTy) (u : Var Γ₂ .nat) :

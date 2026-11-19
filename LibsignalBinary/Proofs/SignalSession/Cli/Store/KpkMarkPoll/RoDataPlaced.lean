@@ -9,19 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Pure
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.RoData
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Pure
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.RoData
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import all Init.Data.String.Defs
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import ProofLib
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WPp
+public import VerifiedLibraries.Mallocng.Spec
 
 /-!
 # `.rodata` Loading Witness & Overlapping Error-String Store Helpers for `KpkMarkPoll` (`[LibsignalPlacement]`)
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -50,7 +61,7 @@ abbrev malformedStrAddrPlaced [LibsignalPlacement] : BitVec 64 :=
   lsρ malformedStrSym
 
 /-- Read-only spatial bundle carried across `kpkMarkPollName` under `[LibsignalPlacement]`. -/
-def kpkMarkRoBundlePlaced [LibsignalPlacement] (wDot wR0 wR7 wM0 wM6 : BitVec 64) : SepProp :=
+@[expose] def kpkMarkRoBundlePlaced [LibsignalPlacement] (wDot wR0 wR7 wM0 wM6 : BitVec 64) : SepProp :=
   (dotBaseKeAddrPlaced ↦₆₄ᵣ wDot) ∗
   (reusedStrAddrPlaced ↦₆₄ᵣ wR0) ∗
   ((reusedStrAddrPlaced + 7#64) ↦₆₄ᵣ wR7) ∗

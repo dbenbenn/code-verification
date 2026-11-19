@@ -9,33 +9,33 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchCallee
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePromote
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.PreKeyKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitCodecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Base
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInst
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFolds
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1OkTrapPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedOkTrapPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SelfSpecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsPlaced
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.MatchCallee
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePromote
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.PreKeyKitOkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitCodecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInst
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFolds
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1OkTrapPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedOkTrapPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SelfSpecPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBbSat
@@ -46,6 +46,16 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.In
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Fetch
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlaced
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Shared Poll & Store Rejection Helpers (`pkToE? pm = none`)
@@ -55,7 +65,7 @@ Store well-formedness and message rejection predicates (`DecPkStoreOk`, `MsgCond
 bundles on `cliGhostExterns`, and relocatable poll entry unpacking.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -121,7 +131,7 @@ structure DecPkStoreOk (W : PEParams) (F : FsFiles) : Prop where
 
 /-- Message rejection condition: `pm` parses from some wire body via `Pksm.pksmParse`,
 has `pkToE? pm = none`, has distinct peer/self service IDs, and matches no active session. -/
-def MsgCondPkToENone (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def MsgCondPkToENone (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   (∃ body : List (BitVec 8), Pksm.pksmParse body = some pm) ∧
   pkToE? pm = none ∧
@@ -171,7 +181,7 @@ theorem toRecord_currentSession_eq_pqSessionOf (x : RecordExtras)
   rfl
 
 /-- `decPkOk` predicate combining `DecPkStoreOk` and `MsgCondPkToENone`. -/
-def DecPkOkD3Untyped (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def DecPkOkD3Untyped (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   DecPkStoreOk W F ∧ MsgCondPkToENone Scope F peer me pm
 
@@ -273,55 +283,6 @@ theorem cliStageP2ClosureHooksPlaced_d3 [LibsignalPlacement]
     (Slots.cliExternsPlaced_sessionMemcpy_sat mmpl g W hG allocHookStack)
     (Slots.cliGhostExterns_panic_handle_error mmpl g W)
 
-theorem cliUuidTryParse_placed_ok_d3 [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) :
-    subroutine_ok
-      ((blkPC_252).rebase (blkPl_252).base (cliGhostExterns g (cliExternsPlaced mmpl W)))
-      (blkPl_252).base
-      (withLsCodeLoaded lsmpl (uuidTryParseCodeSpec uuidTryParse)) := by
-  refine subroutine_ok_map_panic
-    (UuidFs.uuidTryParse_placed_okFs_F (cliGhostExterns g (cliExternsPlaced mmpl W)))
-    (fun x R s0 hpre => ⟨x, R, ?_, fun sf hpost => ?_, fun _ hpan => ?_⟩)
-    (fun _ _ _ _ _ _ he => False.elim (by
-      rw [show (withLsCodeLoaded lsmpl (uuidTryParseCodeSpec uuidTryParse).keepsFs).onExit _ _ _ _ =
-        ⌜False⌝ from rfl, satisfies_pure_sepConj] at he; exact he.1))
-    (fun _ _ _ _ _ _ _ ho => False.elim (by
-      rw [show (withLsCodeLoaded lsmpl (uuidTryParseCodeSpec uuidTryParse).keepsFs).onOom _ _ _ =
-        ⌜False⌝ from rfl, satisfies_pure_sepConj] at ho; exact ho.1))
-  · dsimp only [withLsCodeLoaded, Spec.keepsFs] at hpre ⊢
-    exact hpre
-  · dsimp only [withLsCodeLoaded, Spec.keepsFs] at hpost ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
-    exact hpost.2
-  · rw [show (withLsCodeLoaded lsmpl (uuidTryParseCodeSpec uuidTryParse).keepsFs).onPanic _ _ _ =
-      ⌜False⌝ from rfl, satisfies_pure_sepConj] at hpan
-    exact False.elim hpan.1
-
-private theorem cliGhostExterns_blackBox_sat_d3 [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 g) :
-    HookSat (cliGhostExterns g (cliExternsPlaced mmpl W))
-      lsBlackBoxSym
-      LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat.blackBoxSpecSat :=
-  LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs.hookSat_cliGhostExterns_of_extraOk
-    g (cliExternsPlaced mmpl W) hG.extraOk fun _ _ hRow =>
-      hRow.blackBox_budget_ok (by decide : 16 ≤ 16) (by decide)
-
-theorem cliStageP2BaseCalleesPlaced4K_d3 [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
-    (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 g) :
-    StageP2BaseCalleesPlaced4K E2E.HooksE.A0 (cliGhostExterns g (cliExternsPlaced mmpl W)) :=
-  StageP2BaseCalleesPlaced4K.of_hooks
-    (Slots.cliExternsPlaced_noAllocShim_sat mmpl g W hG.shim_eq)
-    (Slots.cliExternsPlaced_alloc_sat mmpl g W hG)
-    (Slots.cliExternsPlaced_dealloc_sat mmpl g W hG)
-    (Slots.cliExternsPlaced_sessionMemcpy_sat mmpl g W hG allocHookStack)
-    (Slots.cliGhostExterns_panic_handle_error mmpl g W)
-    (Slots.cliGhostExterns_panic_handle_alloc_error mmpl g W)
-    (LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBbSat.isSameAccount_4k_placed_ok_on_stageP1_sat
-      (cliGhostExterns_blackBox_sat_d3 mmpl g W hG)
-      (cliUuidTryParse_placed_ok_d3 mmpl g W))
-
 theorem cliStrToOwnedLocal2_placed_ok [LibsignalPlacement]
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks)
     (hG : Slots.CliGhostA0Hooks E2E.HooksE.A0 g) :
@@ -352,7 +313,7 @@ theorem cliStrToOwnedLocal2_placed_ok [LibsignalPlacement]
 /-! ## 3. Relocatable Poll Entry Unpacking -/
 
 /-- Relocatable spatial bundle at the entry of `cliDpPollName` (Block `518`). -/
-def dpPollEntrySpatialPlaced [LibsignalPlacement] {B : RunBudgets} {S : RunSem}
+@[expose] def dpPollEntrySpatialPlaced [LibsignalPlacement] {B : RunBudgets} {S : RunSem}
     (stk' : Nat) (y : DpPollGhostState (dpSlotPollKStatePlaced E2E.HooksE.A0 B S))
     (s0 : State) (R : SepProp) : SepProp :=
   memRegion y.out 48 ∗

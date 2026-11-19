@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommon
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint4BasePlaced -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -20,7 +20,7 @@ Provides `[LibsignalPlacement]` loop-body step helpers (`step_copy_placed`, `ste
 `step_latch_zero_placed`, `step_latch_succ_placed`) for Block `448`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2ArmsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Msg
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2ArmsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Msg
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -27,6 +27,30 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrC
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Fetch
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsAPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2KitsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPre -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsBPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsCPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrBPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ErrCPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Open
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenDeserId
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Stage P2 Bad-KEM Composition & General `v4` Message Unpack/Reassembly
@@ -36,7 +60,7 @@ with `pm.kyberPayload = some kp`, proves Error Arms 4–5 exit bridges, and comp
 Stage P2 Bad-KEM rejection on Path A and Over-Path C when `pkVecTag? 8#8 1568 ctBytes = none`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -85,7 +109,7 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 /-- Canonical `HandshakeHdr` extracted from a general `v4` `PreKeySignalMessage` with
 `pm.kyberPayload = some kp` (pairing real curve/pre-key header fields with a dummy 1568-byte
 `kemCt` placeholder for `WellSizedAcceptKeysInput`). -/
-def mkBadKemHdr (pm : PreKeySignalMessage) (kp : KyberPayload) : HandshakeHdr where
+@[expose] def mkBadKemHdr (pm : PreKeySignalMessage) (kp : KyberPayload) : HandshakeHdr where
   ikAPk := E2E.vecU8 pm.identityKey.publicKey.bytes
   ekAPk := E2E.vecU8 pm.baseKey.bytes
   spkId := u32 pm.signedPreKeyId
@@ -129,7 +153,7 @@ theorem boxU8_payload_split_d3 (A : RustAlloc) (ptr : BitVec 64) (bs : List (Bit
 
 /-- Remainder of `preKeyMsgAt` outside `p2BadKemMsgFieldsAt` + `signalMessageRestVerAt` for any
 `v4` `PreKeySignalMessage` with `pm.kyberPayload = some kp` (empty or non-empty `kp.ciphertext`). -/
-def badKemMsgRemInnerAt (g : PreKeyMsgGhost) (msgA : BitVec 64)
+@[expose] def badKemMsgRemInnerAt (g : PreKeyMsgGhost) (msgA : BitVec 64)
     (pm : PreKeySignalMessage) (kp : KyberPayload) : SepProp :=
   ⌜g.kyberPtr ≠ 0 ∧ kp.ciphertext.length < 2 ^ 63⌝ ∗
   (if kp.ciphertext = [] then emp else E2E.HooksE.A0.live g.kyberPtr kp.ciphertext.length 1) ∗
@@ -1121,54 +1145,6 @@ abbrev stageP2_over_badKem_kits_placed [LibsignalPlacement]
   stageP2_over_badKem_kits_memInv_at_placed StageP2MemInv.codeRoLoaded ext
     hH hPure.to_4K.toStageP2BaseCalleesPlaced4K (isSameAccountDistinctSpec_to_at_placed hPure.isSameAccount)
     hInitBobBadKemErrOwned ikit skit hskitVt hskitOk spkKit hspkVt hspkOk kpkKit hkpkVt hkpkOk pkKit hpkVt hpkOk stk
-    ((stageP2OverCallStack4K_eq spkKit kpkKit pkKit skit).symm ▸
-      Nat.le_trans (p2_over_callStack_le_v1CallStack spkKit kpkKit pkKit skit) hstk)
-    (Nat.le_trans (p2_sub56Stack_le_v1CallStack spkKit kpkKit pkKit skit)
-      (Nat.le_trans (p2_over_baseV1Call_le_v1CallStack spkKit kpkKit pkKit skit) hstk))
-    (Nat.le_trans p2_over_dropSS3_le_overPure (Nat.le_trans (p2_over_pure_le_v1CallStack spkKit kpkKit pkKit skit) hstk))
-    (Nat.le_trans p2_isSameAccount_le_bobV1
-      (Nat.le_trans (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit)
-        (Nat.le_trans (p2_over_baseV1Call_le_v1CallStack spkKit kpkKit pkKit skit) hstk)))
-    (Nat.le_trans p2_badKem_entry_le_stageP2bStack
-      (Nat.le_trans p2_stageP2bStack_le_bobV1
-        (Nat.le_trans (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit)
-          (Nat.le_trans (p2_over_baseV1Call_le_v1CallStack spkKit kpkKit pkKit skit) hstk))))
-
-abbrev stageP2_pathA_badKem_kits_frozen_placed [LibsignalPlacement] {A : RustAlloc}
-    (ext : String → Option (State → State)) (hH : StageP2ClosureHooksPlaced A ext) (hPure : StageP2BaseCalleesPlaced4K A ext)
-    (hSameAcct : subroutine_ok (stageP1ProgPlaced ext) (lsmpl.base 17)
-      (withLsCodeLoaded lsmpl (isSameAccountDistinctAtSpec A uuidTryParse isSameAccountDistinctStack)))
-    (hInitBobBadKemErrOwned : subroutine_ok (stageP1ProgPlaced ext) (lsmpl.base 75)
-      (initializeBobSessionBadKemErrOwnedFrozenPlacedSpec A))
-    (ikit : IdentityStoreSpec A 0#64) (skit : IdentitySelfStoreSpec ikit)
-    (hskitVt : IdentitySelfVtablesPlacedOk ikit skit) (hskitOk : IdentitySelfStoreKitPlacedOkI ikit skit ext)
-    (spkKit : SignedPreKeyStoreSpec A 0#64) (hspkVt : SignedPreKeyVtablesPlacedOk spkKit) (hspkOk : SignedPreKeyStoreKitPlacedOk spkKit ext)
-    (kpkKit : KyberPreKeyStoreSpec A 0#64) (hkpkVt : KyberPreKeyVtablesPlacedOk kpkKit) (hkpkOk : KyberPreKeyStoreKitPlacedOk kpkKit ext)
-    (pkKit : PreKeyStoreSpec A 0#64) (hpkVt : PreKeyVtablesPlacedOk pkKit) (hpkOk : PreKeyStoreKitPlacedOk pkKit ext)
-    (stk : Nat) (hstk : stageP2V1CallStack spkKit kpkKit pkKit skit ≤ stk) :=
-  stageP2_pathA_badKem_kits_memInv_at_placed StageP2MemInv.frozen ext hH hPure hSameAcct
-    (of_frozen_badKem_errOwned_placed hInitBobBadKemErrOwned)
-    ikit skit hskitVt hskitOk spkKit hspkVt hspkOk kpkKit hkpkVt hkpkOk pkKit hpkVt hpkOk stk
-    (Nat.le_trans (p2_callStack_le_v1CallStack spkKit kpkKit pkKit skit) hstk)
-    (Nat.le_trans p2_isSameAccount_le_bobV1 (Nat.le_trans (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit) hstk))
-    (Nat.le_trans p2_badKem_entry_le_stageP2bStack
-      (Nat.le_trans p2_stageP2bStack_le_bobV1 (Nat.le_trans (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit) hstk)))
-
-abbrev stageP2_over_badKem_kits_frozen_placed [LibsignalPlacement] {A : RustAlloc}
-    (ext : String → Option (State → State)) (hH : StageP2ClosureHooksPlaced A ext) (hPure : StageP2BaseCalleesPlaced4K A ext)
-    (hSameAcct : subroutine_ok (stageP1ProgPlaced ext) (lsmpl.base 17)
-      (withLsCodeLoaded lsmpl (isSameAccountDistinctAtSpec A uuidTryParse isSameAccountDistinctStack)))
-    (hInitBobBadKemErrOwned : subroutine_ok (stageP1ProgPlaced ext) (lsmpl.base 75)
-      (initializeBobSessionBadKemErrOwnedFrozenPlacedSpec A))
-    (ikit : IdentityStoreSpec A 0#64) (skit : IdentitySelfStoreSpec ikit)
-    (hskitVt : IdentitySelfVtablesPlacedOk ikit skit) (hskitOk : IdentitySelfStoreKitPlacedOkI ikit skit ext)
-    (spkKit : SignedPreKeyStoreSpec A 0#64) (hspkVt : SignedPreKeyVtablesPlacedOk spkKit) (hspkOk : SignedPreKeyStoreKitPlacedOk spkKit ext)
-    (kpkKit : KyberPreKeyStoreSpec A 0#64) (hkpkVt : KyberPreKeyVtablesPlacedOk kpkKit) (hkpkOk : KyberPreKeyStoreKitPlacedOk kpkKit ext)
-    (pkKit : PreKeyStoreSpec A 0#64) (hpkVt : PreKeyVtablesPlacedOk pkKit) (hpkOk : PreKeyStoreKitPlacedOk pkKit ext)
-    (stk : Nat) (hstk : stageP2OverV1CallStack spkKit kpkKit pkKit skit ≤ stk) :=
-  stageP2_over_badKem_kits_memInv_at_placed StageP2MemInv.frozen ext hH hPure hSameAcct
-    (of_frozen_badKem_errOwned_placed hInitBobBadKemErrOwned)
-    ikit skit hskitVt hskitOk spkKit hspkVt hspkOk kpkKit hkpkVt hkpkOk pkKit hpkVt hpkOk stk
     ((stageP2OverCallStack4K_eq spkKit kpkKit pkKit skit).symm ▸
       Nat.le_trans (p2_over_callStack_le_v1CallStack spkKit kpkKit pkKit skit) hstk)
     (Nat.le_trans (p2_sub56Stack_le_v1CallStack spkKit kpkKit pkKit skit)

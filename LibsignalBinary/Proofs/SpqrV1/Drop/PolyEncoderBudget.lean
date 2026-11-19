@@ -10,15 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Drop Glue for `spqr::encoding::polynomial::PolyEncoder`
@@ -28,7 +29,7 @@ relocatable `[LibsignalPlacement]` contracts for `PolyEncoder [local#1]` (Block 
 `PolyEncoder [local#2]` (Block `272`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -62,7 +63,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Budget-Threaded Specifications -/
 
-def dropGluePolyEncoderSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropGluePolyEncoderSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropGluePolyEncoderGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.encA⌝ ∗
@@ -77,7 +78,7 @@ def dropGluePolyEncoderSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M)
 /-- Budget-threaded specification of `core::ptr::drop_glue::<spqr::encoding::polynomial::PolyEncoder>`
 (`[local#1]` and `[local#2]`): consumes `polyEncoderAt A.repAlloc x.encA x.enc` (400 bytes)
 and leaves `memRegion x.encA 400` with `FreeOnlyEvs`. -/
-def dropGluePolyEncoderSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropGluePolyEncoderSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropGluePolyEncoderGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.encA ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗

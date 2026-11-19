@@ -536,7 +536,7 @@ theorem metaAreas_mmap_bytes_le_allocMetaPlacedByteBound
 /-! ## Placed Core Allocator Subroutine Contracts -/
 
 /-- Placed `__malloc_alloc_meta()` (`blk07`, `224` B stack, `inflight ≤ 7`). -/
-def AllocMetaPlacedStmt : Prop :=
+def AllocMetaPlacedStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (inflight : Nat) (_hInflight : inflight ≤ 7)
     (γ : GhostName) (tp brkStart : BitVec 64)
@@ -546,7 +546,7 @@ def AllocMetaPlacedStmt : Prop :=
       pre := fun (_ : Unit) s0 =>
         ⌜s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart⌝ ∗
         stackFrame s0 224 ∗
-        MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
+        MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
         MallocngRuntime maddrs tp
       post := fun _ s0 sf =>
         ∃∗ st' : MallocngSt,
@@ -572,13 +572,13 @@ def AllocMetaPlacedStmt : Prop :=
           stackFrame s0 224 ∗
           MallocngRuntime maddrs tp ∗
           (m ↦ₛ List.replicate 40 0#8) ∗
-          MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
+          MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
       onOom := fun _ s0 sf =>
         ⌜MallocngPlacedOomCond msvc 1 (allocMetaPlacedByteBound peakCount) s0 sf⌝
     })
 
 /-- Placed `alloc_slot(sc, req)` (`blk08`, `(allocSlotDepthBound sc + 1) * 96 + 224` B stack). -/
-def AllocSlotPlacedStmt : Prop :=
+def AllocSlotPlacedStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (sc req inflight : Nat)
     (_hSc : sc < 48)
@@ -594,7 +594,7 @@ def AllocSlotPlacedStmt : Prop :=
          (s0.readReg64 .x1).toNat = req⌝ ∗
         stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStInflightA inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
+        MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s0.brk liveCost peakCost st ∗
         MallocngRuntime maddrs tp
       post := fun _ s0 sf =>
         ∃∗ st' : MallocngSt,
@@ -616,7 +616,7 @@ def AllocSlotPlacedStmt : Prop :=
           stackFrame s0 ((allocSlotDepthBound sc + 1) * 96 + 224) ∗
           MallocngRoTablesA maddrs ∗
           MallocngRuntime maddrs tp ∗
-          MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
+          MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sf.brk liveCost peakCost st'
       onOom := fun _ s0 sf =>
         ⌜MallocngPlacedOomCond msvc (2 * (allocSlotDepthBound sc + 1))
            (allocSlotPlacedByteBound sc peakCount) s0 sf⌝
@@ -626,14 +626,14 @@ def AllocSlotPlacedStmt : Prop :=
     `default_malloc(req)` / `malloc(req)` (`blk04`, `704` B stack). -/
 def libcMallocImplPlacedSpec [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
-    (ivs0 : List (BitVec 64 × Nat)) (req : Nat) : Spec Unit :=
+    (ivs0 : List (BitVec 64 × Nat)) (req : Nat) (ro : Bool := false) : Spec Unit :=
   let ok := decide (req ≤ MallocngMaxAllocSize)
   let bf := mallocngAllocBudget ok req b
   withCL mmpl {
     pre := fun (_ : Unit) s0 =>
       ⌜(s0.readReg64 .x0).toNat = req⌝ ∗
       stackFrame s0 704 ∗
-      MallocngEnv mallocngIface γ maddrs tp brkStart b ivs0 s0
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart b ivs0 s0
     post := fun _ s0 sf =>
       ⌜MallocngProcPreserved s0 sf ∧
        MallocngMappedDelta 16 (MallocngStepBound (if ok then req else 0) b.peakCount) s0.mem sf.mem⌝ ∗
@@ -653,13 +653,13 @@ def libcMallocImplPlacedSpec [MallocngMultiPlacement]
              p.toNat - (g'.slotStart idx).toNat ≤ 255 * 16 ∧
              (g'.isMmapped = true → bs = List.replicate req 0#8)⌝ ∗
           MallocngRoTablesA maddrs ∗
-          MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+          MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
           MallocngRuntime maddrs tp ∗
           (p ↦ₛ bs) ∗
-          mallocngIface.Block γ p req
+          (mallocngModeIface ro).Block γ p req
       else
         ⌜sf.readReg64 .x0 = 0#64⌝ ∗
-        MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf
+        MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf
     onOom := fun _ s0 sf => ⌜MallocngOomCond msvc (if ok then req else 0) b.peakCount s0 sf⌝
   }
 
@@ -667,14 +667,14 @@ def libcMallocImplPlacedSpec [MallocngMultiPlacement]
     `default_malloc(req)` / `malloc(req)` (`blk04`, `704` B stack) with `MallocngTightOomCond`. -/
 def libcMallocImplPlacedTightSpec [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
-    (ivs0 : List (BitVec 64 × Nat)) (req : Nat) : Spec Unit :=
+    (ivs0 : List (BitVec 64 × Nat)) (req : Nat) (ro : Bool := false) : Spec Unit :=
   let ok := decide (req ≤ MallocngMaxAllocSize)
   let bf := mallocngAllocBudget ok req b
   withCL mmpl {
     pre := fun (_ : Unit) s0 =>
       ⌜(s0.readReg64 .x0).toNat = req⌝ ∗
       stackFrame s0 704 ∗
-      MallocngEnv mallocngIface γ maddrs tp brkStart b ivs0 s0
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart b ivs0 s0
     post := fun _ s0 sf =>
       ⌜MallocngProcPreserved s0 sf ∧
        MallocngMappedDelta 16 (MallocngTightStepBound (if ok then req else 0) b.peakCount) s0.mem sf.mem⌝ ∗
@@ -694,13 +694,13 @@ def libcMallocImplPlacedTightSpec [MallocngMultiPlacement]
              p.toNat - (g'.slotStart idx).toNat ≤ 255 * 16 ∧
              (g'.isMmapped = true → bs = List.replicate req 0#8)⌝ ∗
           MallocngRoTablesA maddrs ∗
-          MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+          MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
           MallocngRuntime maddrs tp ∗
           (p ↦ₛ bs) ∗
-          mallocngIface.Block γ p req
+          (mallocngModeIface ro).Block γ p req
       else
         ⌜sf.readReg64 .x0 = 0#64⌝ ∗
-        MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf
+        MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf
     onOom := fun _ s0 sf => ⌜MallocngTightOomCond msvc (if ok then req else 0) b.peakCount s0 sf⌝
   }
 
@@ -708,14 +708,14 @@ def libcMallocImplPlacedTightSpec [MallocngMultiPlacement]
     (consumed by tight `realloc`, whose result block keeps an alignment-indexed overhead bound). -/
 def libcMallocImplPlacedTightKSpec [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
-    (ivs0 : List (BitVec 64 × Nat)) (req : Nat) : Spec Unit :=
+    (ivs0 : List (BitVec 64 × Nat)) (req : Nat) (ro : Bool := false) : Spec Unit :=
   let ok := decide (req ≤ MallocngMaxAllocSize)
   let bf := mallocngAllocBudget ok req b
   withCL mmpl {
     pre := fun (_ : Unit) s0 =>
       ⌜(s0.readReg64 .x0).toNat = req⌝ ∗
       stackFrame s0 704 ∗
-      MallocngEnv mallocngIface γ maddrs tp brkStart b ivs0 s0
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart b ivs0 s0
     post := fun _ s0 sf =>
       ⌜MallocngProcPreserved s0 sf ∧
        MallocngMappedDelta 16 (MallocngTightStepBound (if ok then req else 0) b.peakCount) s0.mem sf.mem⌝ ∗
@@ -735,76 +735,76 @@ def libcMallocImplPlacedTightKSpec [MallocngMultiPlacement]
              p.toNat - (g'.slotStart idx).toNat ≤ 255 * 16 ∧
              (g'.isMmapped = true → bs = List.replicate req 0#8)⌝ ∗
           MallocngRoTablesA maddrs ∗
-          MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+          MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
           MallocngRuntime maddrs tp ∗
           (p ↦ₛ bs) ∗
           MallocngBlockTokenK γ p req 0
       else
         ⌜sf.readReg64 .x0 = 0#64⌝ ∗
-        MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf
+        MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf
     onOom := fun _ s0 sf => ⌜MallocngTightOomCond msvc (if ok then req else 0) b.peakCount s0 sf⌝
   }
 
-def LibcMallocImplPlacedStmt : Prop :=
+def LibcMallocImplPlacedStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat),
     subroutine_ok (mallocngBlockProg mmpl 9 msvc) (mbase 9)
-      (libcMallocImplPlacedSpec γ tp brkStart b ivs0 req)
+      (libcMallocImplPlacedSpec γ tp brkStart b ivs0 req ro)
 
-def LibcMallocImplPlacedTightStmt : Prop :=
+def LibcMallocImplPlacedTightStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat),
     subroutine_ok (mallocngBlockProg mmpl 9 msvc) (mbase 9)
-      (libcMallocImplPlacedTightSpec γ tp brkStart b ivs0 req)
+      (libcMallocImplPlacedTightSpec γ tp brkStart b ivs0 req ro)
 
-def LibcMallocImplPlacedTightKStmt : Prop :=
+def LibcMallocImplPlacedTightKStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat),
     subroutine_ok (mallocngBlockProg mmpl 9 msvc) (mbase 9)
-      (libcMallocImplPlacedTightKSpec γ tp brkStart b ivs0 req)
+      (libcMallocImplPlacedTightKSpec γ tp brkStart b ivs0 req ro)
 
-def DefaultMallocPlacedStmt : Prop :=
+def DefaultMallocPlacedStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat),
     subroutine_ok (mallocngBlockProg mmpl 4 msvc) (mbase 4)
-      (libcMallocImplPlacedSpec γ tp brkStart b ivs0 req)
+      (libcMallocImplPlacedSpec γ tp brkStart b ivs0 req ro)
 
-def DefaultMallocPlacedTightStmt : Prop :=
+def DefaultMallocPlacedTightStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat),
     subroutine_ok (mallocngBlockProg mmpl 4 msvc) (mbase 4)
-      (libcMallocImplPlacedTightSpec γ tp brkStart b ivs0 req)
+      (libcMallocImplPlacedTightSpec γ tp brkStart b ivs0 req ro)
 
 /-- Placed `__libc_free(p)` (`blk06`, `272` B stack). -/
 def libcFreePlacedSpec [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart p : BitVec 64) (n : Nat)
-    (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)) : Spec Unit :=
+    (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)) (ro : Bool := false) : Spec Unit :=
   let bf := mallocngFreeBudget (p == 0#64) n b
   withCL mmpl {
     pre := fun (_ : Unit) s0 =>
       ⌜s0.readReg64 .x0 = p⌝ ∗
       stackFrame s0 272 ∗
-      MallocngEnv mallocngIface γ maddrs tp brkStart b ivs0 s0 ∗
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart b ivs0 s0 ∗
       if p = 0#64 then emp
-      else memRegion p n ∗ mallocngIface.Block γ p n
+      else memRegion p n ∗ (mallocngModeIface ro).Block γ p n
     post := fun _ s0 sf =>
       ⌜MallocngProcPreserved s0 sf ∧
        MallocngMappedDelta 0 0 s0.mem sf.mem⌝ ∗
       stackFrame s0 272 ∗
-      MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf
+      MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf
   }
 
-def LibcFreePlacedStmt : Prop :=
+def LibcFreePlacedStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart p : BitVec 64) (n : Nat)
     (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)),
     subroutine_ok (mallocngBlockProg mmpl 6 msvc) (mbase 6)
-      (libcFreePlacedSpec γ tp brkStart p n b ivs0)
+      (libcFreePlacedSpec γ tp brkStart p n b ivs0 ro)
 
 /-- Placed `__libc_realloc(p, newSize)` (`blk14`, `800` B stack) on an alignment-indexed old
     block (`MallocngTightInitBlock γ a`, ghost overhead `≤ a - 16`), charging the tight reserve
@@ -812,7 +812,7 @@ def LibcFreePlacedStmt : Prop :=
 def libcReallocPlacedSpec [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart p newSize : BitVec 64) (a : Nat)
     (oldBlk : Option (Nat × List (BitVec 8)))
-    (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)) : Spec Unit :=
+    (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)) (ro : Bool := false) : Spec Unit :=
   let ok := decide (newSize.toNat ≤ MallocngMaxAllocSize)
   let keptBs := ((oldBlk.map Prod.snd).getD []).take newSize.toNat
   let bf := mallocngReallocBudget ok oldBlk newSize.toNat b
@@ -821,14 +821,14 @@ def libcReallocPlacedSpec [MallocngMultiPlacement]
       ⌜s0.readReg64 .x0 = p ∧ s0.readReg64 .x1 = newSize ∧
        (OptOwn (MallocngTightInitBlock γ a)).pureWf p oldBlk⌝ ∗
       stackFrame s0 800 ∗
-      MallocngEnv mallocngIface γ maddrs tp brkStart b ivs0 s0 ∗
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart b ivs0 s0 ∗
       (OptOwn (MallocngTightInitBlock γ a)).interp p oldBlk
     post := fun _ s0 sf =>
       ⌜MallocngCallAccounting 16
          (MallocngTightStepBound (if ok then mallocngReallocRes a newSize.toNat else 0) b.peakCount)
          s0 sf⌝ ∗
       stackFrame s0 800 ∗
-      MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+      MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
       if ok then
         ∃∗ q : BitVec 64,
           ⌜sf.readReg64 .x0 = q ∧
@@ -841,80 +841,85 @@ def libcReallocPlacedSpec [MallocngMultiPlacement]
       ⌜MallocngTightOomCond msvc (if ok then newSize.toNat else 0) b.peakCount s0 sf⌝
   }
 
-def LibcReallocPlacedStmt : Prop :=
+def LibcReallocPlacedStmt (ro : Bool := false) : Prop :=
   ∀ [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart p newSize : BitVec 64) (a : Nat)
     (oldBlk : Option (Nat × List (BitVec 8)))
     (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)),
     subroutine_ok (mallocngBlockProg mmpl 14 msvc) (mbase 14)
-      (libcReallocPlacedSpec γ tp brkStart p newSize a oldBlk b ivs0)
+      (libcReallocPlacedSpec γ tp brkStart p newSize a oldBlk b ivs0 ro)
 
 /-! ## Cross-Block Caller Lifts and Tight Public Entry Specs -/
 
-theorem call_placed_libcMallocImpl [MallocngMultiPlacement] (h : LibcMallocImplPlacedStmt)
+theorem call_placed_libcMallocImpl [MallocngMultiPlacement] {ro : Bool}
+    (h : LibcMallocImplPlacedStmt ro)
     {P : Program} (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat)
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 9) (libcMallocImplPlacedSpec γ tp brkStart b ivs0 req) :=
+    subroutine_ok P (mbase 9) (libcMallocImplPlacedSpec γ tp brkStart b ivs0 req ro) :=
   subroutine_ok_block_to_block (j := 9) (by decide) (h γ tp brkStart b ivs0 req) hext hsvc
 
-theorem call_placed_libcMallocImpl_tight [MallocngMultiPlacement]
-    (h : LibcMallocImplPlacedTightStmt)
+theorem call_placed_libcMallocImpl_tight [MallocngMultiPlacement] {ro : Bool}
+    (h : LibcMallocImplPlacedTightStmt ro)
     {P : Program} (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat)
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 9) (libcMallocImplPlacedTightSpec γ tp brkStart b ivs0 req) :=
+    subroutine_ok P (mbase 9) (libcMallocImplPlacedTightSpec γ tp brkStart b ivs0 req ro) :=
   subroutine_ok_block_to_block (j := 9) (by decide) (h γ tp brkStart b ivs0 req) hext hsvc
 
-theorem call_placed_libcMallocImpl_tightK [MallocngMultiPlacement]
-    (h : LibcMallocImplPlacedTightKStmt)
+theorem call_placed_libcMallocImpl_tightK [MallocngMultiPlacement] {ro : Bool}
+    (h : LibcMallocImplPlacedTightKStmt ro)
     {P : Program} (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat)
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 9) (libcMallocImplPlacedTightKSpec γ tp brkStart b ivs0 req) :=
+    subroutine_ok P (mbase 9) (libcMallocImplPlacedTightKSpec γ tp brkStart b ivs0 req ro) :=
   subroutine_ok_block_to_block (j := 9) (by decide) (h γ tp brkStart b ivs0 req) hext hsvc
 
-theorem call_placed_defaultMalloc [MallocngMultiPlacement] (h : DefaultMallocPlacedStmt)
+theorem call_placed_defaultMalloc [MallocngMultiPlacement] {ro : Bool}
+    (h : DefaultMallocPlacedStmt ro)
     {P : Program} (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat)
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 4) (libcMallocImplPlacedSpec γ tp brkStart b ivs0 req) :=
+    subroutine_ok P (mbase 4) (libcMallocImplPlacedSpec γ tp brkStart b ivs0 req ro) :=
   subroutine_ok_block_to_block (j := 4) (by decide) (h γ tp brkStart b ivs0 req) hext hsvc
 
-theorem call_placed_defaultMalloc_tight [MallocngMultiPlacement] (h : DefaultMallocPlacedTightStmt)
+theorem call_placed_defaultMalloc_tight [MallocngMultiPlacement] {ro : Bool}
+    (h : DefaultMallocPlacedTightStmt ro)
     {P : Program} (γ : GhostName) (tp brkStart : BitVec 64) (b : MallocngBudget)
     (ivs0 : List (BitVec 64 × Nat)) (req : Nat)
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 4) (libcMallocImplPlacedTightSpec γ tp brkStart b ivs0 req) :=
+    subroutine_ok P (mbase 4) (libcMallocImplPlacedTightSpec γ tp brkStart b ivs0 req ro) :=
   subroutine_ok_block_to_block (j := 4) (by decide) (h γ tp brkStart b ivs0 req) hext hsvc
 
-theorem call_placed_libcFree [MallocngMultiPlacement] (h : LibcFreePlacedStmt)
+theorem call_placed_libcFree [MallocngMultiPlacement] {ro : Bool}
+    (h : LibcFreePlacedStmt ro)
     {P : Program} (γ : GhostName) (tp brkStart p : BitVec 64) (n : Nat)
     (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 6) (libcFreePlacedSpec γ tp brkStart p n b ivs0) :=
+    subroutine_ok P (mbase 6) (libcFreePlacedSpec γ tp brkStart p n b ivs0 ro) :=
   subroutine_ok_block_to_block (j := 6) (by decide) (h γ tp brkStart p n b ivs0) hext hsvc
 
-theorem call_placed_libcRealloc [MallocngMultiPlacement] (h : LibcReallocPlacedStmt)
+theorem call_placed_libcRealloc [MallocngMultiPlacement] {ro : Bool}
+    (h : LibcReallocPlacedStmt ro)
     {P : Program} (γ : GhostName) (tp brkStart p newSize : BitVec 64) (a : Nat)
     (oldBlk : Option (Nat × List (BitVec 8)))
     (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 14) (libcReallocPlacedSpec γ tp brkStart p newSize a oldBlk b ivs0) :=
+    subroutine_ok P (mbase 14) (libcReallocPlacedSpec γ tp brkStart p newSize a oldBlk b ivs0 ro) :=
   subroutine_ok_block_to_block (j := 14) (by decide) (h γ tp brkStart p newSize a oldBlk b ivs0)
     hext hsvc
 

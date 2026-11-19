@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.Witness
-public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirBridge
+public import Symbolic.Proofs.Tests.CliNonvacuity.Witness -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Tests.Shared.Composed.HonestSession -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirBridge -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -42,7 +42,7 @@ Defines the concrete setup (`r0`), opaque byte semantics (`S0`), coin tapes, `St
 and `runTrace` equations shared by the multi-turn session non-vacuity proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -76,10 +76,10 @@ open Symbolic.Swarm.TRREF.SpqrSemOf (bytesToVec)
 abbrev r0 : ProtocolSetup := mkRecords false
 abbrev S0 : OpaqueSymbolSemantics := mySem false
 
-def stA_init : PqParty := initPqParty myInterp r0 "alice"
-def stB_init : PqParty := initPqParty myInterp r0 "bob"
+@[expose] def stA_init : PqParty := initPqParty myInterp r0 "alice"
+@[expose] def stB_init : PqParty := initPqParty myInterp r0 "bob"
 
-def bE : PreKeyBundleFields where
+@[expose] def bE : PreKeyBundleFields where
   regId := r0.regIdB
   spkId := r0.spkId
   spkPub := bytesToVec 32 (pubBytes myInterp (secretBytes r0 2))
@@ -90,35 +90,35 @@ def bE : PreKeyBundleFields where
   idPub := bytesToVec 32 (pubBytes myInterp (secretBytes r0 1))
   opk := none
 
-def tapeInitBytes : HwBytes :=
+@[expose] def tapeInitBytes : HwBytes :=
   freshBytes 22 32 ++ List.replicate 128 24#8 ++ freshBytes 24 32
 
-def tapeInit : List.Vector (BitVec 8) initiateTapeLen :=
+@[expose] def tapeInit : List.Vector (BitVec 8) initiateTapeLen :=
   bytesToVec initiateTapeLen tapeInitBytes
 
-def cSend0 : HwBytes := List.replicate 64 0x31#8
-def cSend1 : HwBytes := List.replicate 64 0x32#8
-def cSendReply0 : HwBytes := List.replicate 64 0x33#8
-def cSend2 : HwBytes := List.replicate 64 0x34#8
+@[expose] def cSend0 : HwBytes := List.replicate 64 0x31#8
+@[expose] def cSend1 : HwBytes := List.replicate 64 0x32#8
+@[expose] def cSendReply0 : HwBytes := List.replicate 64 0x33#8
+@[expose] def cSend2 : HwBytes := List.replicate 64 0x34#8
 
-def cSend0Vec : List.Vector (BitVec 8) 64 := ⟨cSend0, rfl⟩
-def cSend1Vec : List.Vector (BitVec 8) 64 := ⟨cSend1, rfl⟩
-def cSendReply0Vec : List.Vector (BitVec 8) 64 := ⟨cSendReply0, rfl⟩
-def cSend2Vec : List.Vector (BitVec 8) 64 := ⟨cSend2, rfl⟩
+@[expose] def cSend0Vec : List.Vector (BitVec 8) 64 := ⟨cSend0, rfl⟩
+@[expose] def cSend1Vec : List.Vector (BitVec 8) 64 := ⟨cSend1, rfl⟩
+@[expose] def cSendReply0Vec : List.Vector (BitVec 8) 64 := ⟨cSendReply0, rfl⟩
+@[expose] def cSend2Vec : List.Vector (BitVec 8) 64 := ⟨cSend2, rfl⟩
 
-def rc3Bytes : HwBytes := freshBytes 45 32
-def rc4Bytes : HwBytes := List.replicate 32 0x56#8
-def rc6Bytes : HwBytes := freshBytes 65 32
-def rc8Bytes : HwBytes := freshBytes 83 32
+@[expose] def rc3Bytes : HwBytes := freshBytes 45 32
+@[expose] def rc4Bytes : HwBytes := List.replicate 32 0x56#8
+@[expose] def rc6Bytes : HwBytes := freshBytes 65 32
+@[expose] def rc8Bytes : HwBytes := freshBytes 83 32
 
-def rc3 : BitVec 256 := bytesToKey32 rc3Bytes
-def rc4 : BitVec 256 := bytesToKey32 rc4Bytes
-def rc6 : BitVec 256 := bytesToKey32 rc6Bytes
-def rc8 : BitVec 256 := bytesToKey32 rc8Bytes
+@[expose] def rc3 : BitVec 256 := bytesToKey32 rc3Bytes
+@[expose] def rc4 : BitVec 256 := bytesToKey32 rc4Bytes
+@[expose] def rc6 : BitVec 256 := bytesToKey32 rc6Bytes
+@[expose] def rc8 : BitVec 256 := bytesToKey32 rc8Bytes
 
 /-! ## Concrete `Ghost` Witness -/
 
-def myGhostSigma (ts n : Nat) : HwBytes :=
+@[expose] def myGhostSigma (ts n : Nat) : HwBytes :=
   if n == 32 then
     if ts == 31 then pt0
     else if ts == 32 then cSend0.take 32
@@ -131,10 +131,10 @@ def myGhostSigma (ts n : Nat) : HwBytes :=
     else freshBytes ts n
   else freshBytes ts n
 
-def msg0WireTerm : DY.Bytes := (encSig stA0 coins0 key0 m0).wire
-def msg1WireTerm : DY.Bytes := (encSig stA1 coins1 key1 m1).wire
+@[expose] def msg0WireTerm : DY.Bytes := (encSig stA0 coins0 key0 m0).wire
+@[expose] def msg1WireTerm : DY.Bytes := (encSig stA1 coins1 key1 m1).wire
 
-def myGhostAddr (t : DY.Bytes) : HwBytes :=
+@[expose] def myGhostAddr (t : DY.Bytes) : HwBytes :=
   if t == msg0WireTerm then
     ((pqxdhSessionParams myParams).sendAddrs .A).getD []
   else if t == msg1WireTerm then
@@ -142,7 +142,7 @@ def myGhostAddr (t : DY.Bytes) : HwBytes :=
   else
     []
 
-def myGhost : Ghost where
+@[expose] def myGhost : Ghost where
   σ := myGhostSigma
   addr := myGhostAddr
 
@@ -154,26 +154,26 @@ theorem myGhost_compat : GhostAndSemMatchSetup myInterp r0 S0 myGhost := by
 
 /-! ## Concrete `Step` Sequences and `runTrace` Equations -/
 
-def move0_init : Step := .aliceStart "alice" "bob" 4 6 bh1
-def move1_enc0 : Step := .messageEncrypt "alice" 30 32 33
-def move2_enc1 : Step := .messageEncrypt "alice" 36 32 40
-def move3_bobStart : Step := .bobStart "bob" "alice" kh1 1 mh1 33 1
-def move4_dec1 : Step := .messageDecrypt "bob" 53 44 40 2
-def move5_encReply0 : Step := .messageEncrypt "bob" 57 32 60
-def move6_decReply0 : Step := .messageDecrypt "alice" 43 64 60 1
-def move7_leakCkr : Step := .exposeKey "alice" 71 (.ckr (DY.DiffieHellman.dhPk spkB))
-def move8_leakCks : Step := .exposeKey "alice" 71 .cks
-def move9_enc2 : Step := .messageEncrypt "alice" 71 32 78
-def move10_dec2 : Step := .messageDecrypt "bob" 63 82 78 3
+@[expose] def move0_init : Step := .aliceStart "alice" "bob" 4 6 bh1
+@[expose] def move1_enc0 : Step := .messageEncrypt "alice" 30 32 33
+@[expose] def move2_enc1 : Step := .messageEncrypt "alice" 36 32 40
+@[expose] def move3_bobStart : Step := .bobStart "bob" "alice" kh1 1 mh1 33 1
+@[expose] def move4_dec1 : Step := .messageDecrypt "bob" 53 44 40 2
+@[expose] def move5_encReply0 : Step := .messageEncrypt "bob" 57 32 60
+@[expose] def move6_decReply0 : Step := .messageDecrypt "alice" 43 64 60 1
+@[expose] def move7_leakCkr : Step := .exposeKey "alice" 71 (.ckr (DY.DiffieHellman.dhPk spkB))
+@[expose] def move8_leakCks : Step := .exposeKey "alice" 71 .cks
+@[expose] def move9_enc2 : Step := .messageEncrypt "alice" 71 32 78
+@[expose] def move10_dec2 : Step := .messageDecrypt "bob" 63 82 78 3
 
-def msHonest : List Step :=
+@[expose] def msHonest : List Step :=
   [move0_init, move1_enc0, move2_enc1, move3_bobStart, move4_dec1, move5_encReply0, move6_decReply0]
 
-def msLeaks : List Step := [move7_leakCkr, move8_leakCks]
+@[expose] def msLeaks : List Step := [move7_leakCkr, move8_leakCks]
 
-def msTail : List Step := [move9_enc2, move10_dec2]
+@[expose] def msTail : List Step := [move9_enc2, move10_dec2]
 
-def msExposed : List Step := msHonest ++ msLeaks ++ msTail
+@[expose] def msExposed : List Step := msHonest ++ msLeaks ++ msTail
 
 private theorem stepIn_next (c : DY.ReachabilityConfig)
     [inst : DY.ReachabilityConfig.HasStep c reachability]

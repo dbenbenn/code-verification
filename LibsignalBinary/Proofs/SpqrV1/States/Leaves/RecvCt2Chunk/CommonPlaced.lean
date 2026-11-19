@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Relocatable Call Helpers for `recv_ct1_ack` and `recv_ct2_chunk`
@@ -21,7 +22,7 @@ Re-exports pure and spatial helpers from `RecvCt2Chunk/Common.lean` and provides
 `call_sendCt2Encoder_cl`, `call_addChunk_cl`, `call_dropGluePoly16_wpp_cl`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,22 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCallees
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.KemPubSerializeLocal2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DropSessionStructureLocal5Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Extract
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.KemPubSerializeLocal2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DropSessionStructureLocal5Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive
+import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Extract
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.ModelBridge
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedSat
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.DerivePublicKeyBytes
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.X25519CallerBridges
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Local Handshake and E2E Callees for `initiate`
@@ -34,12 +40,10 @@ Transfers the 18 local handshake, PQXDH, TripleRatchet, and SPQR callees onto `i
 bundled into `InitLocalCalleesPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate
 
@@ -63,7 +67,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 /-! ## Image-free inner specifications for `withLsCodeRoLoaded lsmpl` -/
 
 /-- Image-free inner specification of `<kem::Key<Public>>::serialize [local#1]` (block `523`). -/
-def kemPubSerializeInnerSpec (A : RustAlloc) (stk : Nat) : Spec KemPubSerializeGhost where
+@[expose] def kemPubSerializeInnerSpec (A : RustAlloc) (stk : Nat) : Spec KemPubSerializeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.kpkPtr ∧ s.readReg64 .x1 = 1568#64 ∧ x.kpk.length = 1568⌝ ∗
       (x.keyRef ↦₆₄ x.kpkPtr) ∗ ((x.keyRef + 8#64) ↦₆₄ 1568#64) ∗
@@ -76,8 +80,11 @@ def kemPubSerializeInnerSpec (A : RustAlloc) (stk : Nat) : Spec KemPubSerializeG
       (x.kpkPtr ↦ₛ x.kpk) ∗ A.pool ∗ stackAt s0.sp stk
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
+/-- Hook stack budget (`5120` B = `dalekHookStack`) for `<PublicKey>::verify_signature` (block `203`). -/
+abbrev verifySigHookStack : Nat := 5120
+
 /-- Image-free inner specification of `<PublicKey>::verify_signature` (block `203`). -/
-def verifySignatureInnerSpec (P : SignalPqxdh.Primitives) : Spec VerifySignatureGhost where
+@[expose] def verifySignatureInnerSpec (P : SignalPqxdh.Primitives) : Spec VerifySignatureGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.pkPtr ∧
       s.readReg64 .x1 = g.msgPtr ∧
@@ -90,17 +97,17 @@ def verifySignatureInnerSpec (P : SignalPqxdh.Primitives) : Spec VerifySignature
       (g.pkPtr ↦ₛ Pqxdh.Shared.bytesToBv8 g.pk) ∗
       (g.msgPtr ↦ₛ Pqxdh.Shared.bytesToBv8 g.m) ∗
       (g.sigPtr ↦ₛ Pqxdh.Shared.bytesToBv8 g.sig) ∗
-      stackAt s.sp (Pqxdh.Shared.pqxdhHookStack + 1280)
+      stackAt s.sp (verifySigHookStack + 1280)
   post := fun g s0 sf =>
     ⌜sf.readReg64 .x0 = (if P.sigVerify g.pk g.m g.sig = true then 1#64 else 0#64) ∧
       sf.trace = s0.trace⌝ ∗
       (g.pkPtr ↦ₛ Pqxdh.Shared.bytesToBv8 g.pk) ∗
       (g.msgPtr ↦ₛ Pqxdh.Shared.bytesToBv8 g.m) ∗
       (g.sigPtr ↦ₛ Pqxdh.Shared.bytesToBv8 g.sig) ∗
-      stackAt s0.sp (Pqxdh.Shared.pqxdhHookStack + 1280)
+      stackAt s0.sp (verifySigHookStack + 1280)
 
 /-- Image-free inner specification of `<PrivateKey>::calculate_agreement` (block `207`). -/
-def pqxdhCalculateAgreementPlacedInnerSpec (P : SignalPqxdh.Primitives) (A : RustAlloc) :
+@[expose] def pqxdhCalculateAgreementPlacedInnerSpec (P : SignalPqxdh.Primitives) (A : RustAlloc) :
     Spec (BitVec 64 × Pqxdh.Shared.Bytes × BitVec 64 × Pqxdh.Shared.Bytes ×
       BitVec 64 × BitVec 64) where
   pre := fun (ourA, ourSk32, theirA, theirPk32, ret, sp) s =>
@@ -118,7 +125,7 @@ def pqxdhCalculateAgreementPlacedInnerSpec (P : SignalPqxdh.Primitives) (A : Rus
   onPanic := Pqxdh.Initiator.rustPanicOnOomPlaced
 
 /-- Image-free inner specification of `spqr::initial_state` (block `327`). -/
-def spqrInitialStateInnerSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
+@[expose] def spqrInitialStateInnerSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) :
     Spec CryptoVerification.SpqrV1.Top.InitialState.InitialStateGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.pA ∧
@@ -141,7 +148,7 @@ def spqrInitialStateInnerSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompr
   onPanic := fun _ s0 sf => CryptoVerification.SpqrV1.Top.InitialState.initialStateOnPanic s0 sf
 
 /-- Image-free inner specification of `<SessionState>::set_unacknowledged_pre_key_message` at `UNIX_EPOCH` (block `33`). -/
-def setUnackPreKeyMsgEpochInnerSpec (A : RustAlloc) :
+@[expose] def setUnackPreKeyMsgEpochInnerSpec (A : RustAlloc) :
     Spec Pqxdh.TopLevel.SetUnackExactGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x5 = 0#64 ∧ (s.readReg64 .x6).setWidth 32 = 0#32⌝ ∗
@@ -290,10 +297,13 @@ theorem dropSessionStructure_cli_placed_ok [LibsignalPlacement] {A : RustAlloc} 
 theorem derivePubKeyBytes_cli_placed_ok [LibsignalPlacement] {A : RustAlloc} (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (hh : RunHooksPlaced W A (cliGhostExterns gh (cliExternsPlaced mmpl W))) :
     subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 200)
-      (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (derivePublicKeyBytesSpec W.C.pubKey)) :=
+      (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
+        (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+          (derivePublicKeyBytesStackSpec W.C.pubKey 1904))) :=
   transfer_plain_block
     (calleeProg := CryptoVerification.lsProg_200 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (derive_public_key_bytes_placed_ok hh.pubFromSecret)
+    (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.X25519CallerBridges.derive_public_key_bytes_placed_withLsRet_rawStack_ok_of_hookSat
+      1904 hh.pubFromSecret)
 
 /-- `<HandshakeKeys>::derive` (block `59`) on `initProgPlaced`. -/
 theorem handshakeDerive_cli_placed_ok [LibsignalPlacement] {A : RustAlloc} (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
@@ -463,7 +473,9 @@ structure InitLocalCalleesPlaced [LibsignalPlacement] (A : RustAlloc) (mmpl : Mu
     (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
       (pqxdhCalculateAgreementPlacedInnerSpec (modelPrims X ⟨W.C, W.Q⟩) A))
   derivePubKeyBytes : subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 200)
-    (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (derivePublicKeyBytesSpec W.C.pubKey))
+    (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
+      (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+        (derivePublicKeyBytesStackSpec W.C.pubKey 1904)))
   handshakeDerive : ∀ (X : UnreachedPqxdhPrimitives), subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 59)
     (LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
       (Pqxdh.Initiator.handshakeKeysDerivePlacedBaseSpec (modelPrims X ⟨W.C, W.Q⟩) A))

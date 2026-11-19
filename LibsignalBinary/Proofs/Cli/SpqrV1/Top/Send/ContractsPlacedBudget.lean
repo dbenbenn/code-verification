@@ -9,13 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.ContractsPlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ChainEpochPlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.ProtoChainPlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1Placed
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 /-!
 # Budget-Threaded Relocatable Callee Contract & `.rodata` Scaffolding (Block `427`)
@@ -24,7 +30,7 @@ Provides panic-polymorphic `.rodata` extraction helpers and discharges budget-th
 `SpqrSendPlacedContracts` for `spqr::send::<signal_session_ratchet::Coins>`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -87,22 +93,6 @@ export CryptoVerification.Cli.SpqrV1.Top.Send
 export CryptoVerification.Cli.SpqrV1.Top.Send
   (ls_subroutine_ok_cro_of_plain ls_subroutine_ok_of_blockProgram_plain)
 
-/-- `oom`-polymorphic companion of `sepWPp_intro_spqrSendRoPlacedAt`:
-    introduces `spqrSendRoPlacedAt` into the precondition of a `SepWPp` obligation from
-    `tokenInitPlacedAt ∗ P` under `LibsignalRoLoaded lsmpl s0.mem`. -/
-theorem sepWPp_intro_spqrSendRoPlacedAt_oom
-    {prog : Program} {ret : BitVec 64} {s0 : State} (hro : LibsignalRoLoaded lsmpl s0.mem)
-    {P : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (h : SepWPp prog ret s0 (spqrSendRoPlacedAt ∗ P) Q Qp oom) :
-    SepWPp prog ret s0 (tokenInitPlacedAt ∗ P) Q Qp oom := by
-  intro R0 hm hL
-  have hm_assoc : s0.mem ⊨ tokenInitPlacedAt ∗ (P ∗ R0) := by
-    rwa [← sepConj_assoc]
-  have hm' : s0.mem ⊨ (spqrSendRoPlacedAt ∗ P) ∗ R0 := by
-    rw [sepConj_assoc]
-    exact lsro_spqrSendRoPlacedAt hro hm_assoc
-  exact h R0 hm' hL
-
 /-! ## 2. Budget-Threaded CGU-Local Drop Glue (`Block 439`, `Block 446`) & `CliSpqrSendPeerSeams` Wiring -/
 
 /-- `core::ptr::drop_in_place::<spqr::proto::pq_ratchet::Chain>` (`Block 439`) meets
@@ -124,18 +114,6 @@ theorem drop_chain_epoch_slice_local1_placed_ok_x
     subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 446)
       (withLsCodeRoLoaded lsmpl (dropChainEpochSliceSpec M A lim)) :=
   ls_subroutine_ok_cro_of_plain (drop_chain_epoch_slice_local1_placed hA.dealloc)
-
-/-- `withLsCodeLoaded`-wrapped companion of `drop_chain_epoch_slice_local1_placed_ok_x` (`Block 446`)
-    on `spqrSendPlacedProg ext`. -/
-theorem drop_chain_epoch_slice_local1_placed_lscl_x
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : AllocContractsPlaced M A lim ext) :
-    subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 446)
-      (withLsCodeLoaded lsmpl (dropChainEpochSliceSpec M A lim)) :=
-  ls_subroutine_ok_of_block (callerProg := spqrSendPlacedProg ext)
-    (subroutine_ok_withLsCodeLoaded_of_plain
-      (drop_chain_epoch_slice_local1_placed hA.dealloc))
 
 /-- `<HeaderSent>::send_ek_chunk` (`Block 336`) meets `HeaderSentSendEkChunkPlacedOkX M A lim C.F ext`. -/
 theorem headerSent_send_ek_chunk_placed_ok_x

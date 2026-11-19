@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
 import all Init.Data.Repr
 import all Init.Data.String.Defs
 
@@ -20,7 +20,7 @@ Proves `scrub` lookup identities on `pqInputs` (`IsScrubbedPath`) and preservati
 across `pqInitModel`, `pqSendModel`, `pqRecvWhisperModel`, and `pqRecvPrekeyModel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -40,7 +40,7 @@ open Symbolic.Swarm.TRREF.SpqrSemOf (bytesToVec)
 /-! ## `IsScrubbedPath` and `scrub` identities -/
 
 /-- Paths removed by `scrub`: `coins` and anything under `bundle/`. -/
-def IsScrubbedPath (p : String) : Bool :=
+@[expose] def IsScrubbedPath (p : String) : Bool :=
   SamePath p coinsFile || (Arm64.normalizePath p).head? == some bundleDir
 
 theorem isScrubbedPath_congr {p q : String}

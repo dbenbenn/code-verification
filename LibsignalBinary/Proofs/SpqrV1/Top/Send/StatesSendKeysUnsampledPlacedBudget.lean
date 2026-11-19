@@ -9,10 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdrBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdrBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeamsBudget
 
 /-!
 # Budget-Threaded Relocatable Callee Contracts for Inlined `.keysUnsampled` Arm (Block 124)
@@ -21,7 +34,7 @@ Defines `RustCliAllocBudget M` counterparts `AuthMacHdrPinnedPlacedOkX` (Block 3
 `DoReserve2PlacedOkX` (Block 157) on `spqrSendPlacedProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,7 +64,7 @@ variable [LibsignalPlacement]
 
 /-- `<spqr::authenticator::Authenticator>::mac_hdr` (Block `342`) meets
     `withLsCodeRoLoaded lsmpl (authMacHdrPinnedSpec F M A lim)` on `spqrSendPlacedProg ext`. -/
-def AuthMacHdrPinnedPlacedOkX (F : ShaCompress) (M : AllocCostModel)
+@[expose] def AuthMacHdrPinnedPlacedOkX (F : ShaCompress) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 342)
@@ -59,7 +72,7 @@ def AuthMacHdrPinnedPlacedOkX (F : ShaCompress) (M : AllocCostModel)
 
 /-- `alloc::raw_vec::RawVecInner<A>::do_reserve_and_handle [local#2]` (Block `157`) meets
     `withLsCodeRoLoaded lsmpl (doReserve1Raw32Spec M A lim)` on `spqrSendPlacedProg ext`. -/
-def DoReserve2PlacedOkX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def DoReserve2PlacedOkX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 157)
     (withLsCodeRoLoaded lsmpl (doReserve1Raw32Spec M A lim))

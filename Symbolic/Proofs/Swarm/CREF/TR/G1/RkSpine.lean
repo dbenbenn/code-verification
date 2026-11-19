@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpqrRkForgedMac
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpqrRkForgedMac -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.ALaCarte.Basic
@@ -35,7 +35,6 @@ import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 public import Symbolic.Proofs.Swarm.CREF.TR.G1.KdfProvNon01Defs
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompClosed
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
@@ -43,7 +42,7 @@ import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresTRExp
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.CREF.Prelude
-import Symbolic.Proofs.Swarm.CREF.TR.G1.KdfProvNon01
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.KdfProvNon01 -- proof-setup: allow-public-import
 
 /-!
 # Root and Receiving-Chain Spine Invariant
@@ -53,7 +52,7 @@ on any reachable trace (`stRkSpine_of_stored`), together with the receiving-chai
 `acceptedChain_honest_or_prkAK` and `acceptedBaseChain_ckAK`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -81,7 +80,7 @@ attribute [local instance 2000]
 
 /-- `root` is the base of the sending chain (`st'.cks = chainKeyAt root j'`) of a stored `TRState`
 on `T`, paired with `st'.rk = (createChain rk1 k st'.dhs).1` and `root = (createChain rk1 k st'.dhs).2`. -/
-def HonestSendRoot (T : ExecTrace) (root : DY.Bytes) : Prop :=
+@[expose] def HonestSendRoot (T : ExecTrace) (root : DY.Bytes) : Prop :=
   ∃ (p' : Participant) (st' : TRState) (i' j' : Nat),
     TRStateStoredAt p' st' i' T ∧ st'.cks = chainKeyAt root j' ∧
     ∃ (rk1 k : DY.Bytes), root = (createChain rk1 k st'.dhs).2 ∧ st'.rk = (createChain rk1 k st'.dhs).1
@@ -102,7 +101,7 @@ def RkDhsPair (T : ExecTrace) (rk' : DY.Bytes) (t : Nat) : Prop :=
 lies in `RkTree T` with `RkDhsPair T rk' t`, its `chainKey` is `chainKeyAt root j`, and either
 `root` is an `HonestSendRoot` or `prk = hmac rk' (dh (normalizeX25519Key c.ratchetKey) (randTerm t 32))`
 is `AttackerKnows T`. -/
-def CreateSpine (T : ExecTrace) (c : RecvChain) : Prop :=
+@[expose] def CreateSpine (T : ExecTrace) (c : RecvChain) : Prop :=
   ∃ (rk' : DY.Bytes) (t j : Nat), RkTree T rk' ∧ RkDhsPair T rk' t ∧
     c.chainKey = chainKeyAt (createChain rk' c.ratchetKey (randTerm t 32)).2 j ∧
     (HonestSendRoot T (createChain rk' c.ratchetKey (randTerm t 32)).2 ∨
@@ -110,7 +109,7 @@ def CreateSpine (T : ExecTrace) (c : RecvChain) : Prop :=
 
 /-- Alice's initial PQXDH receiving chain `(pqxdhKdf ikm).ck` from `aliceStart`: either unconsumed
 (`j = 0`) or its root chain key `(pqxdhKdf ikm).ck` is `AttackerKnows T`. -/
-def BaseSpine (T : ExecTrace) (c : RecvChain) : Prop :=
+@[expose] def BaseSpine (T : ExecTrace) (c : RecvChain) : Prop :=
   ∃ (dh1 dh2 dh3 : DY.Bytes) (dh4 : Option DY.Bytes) (pk_kem r_kem : DY.Bytes) (j : Nat),
     c.chainKey = chainKeyAt (DY.Libsignal.PQXDH.pqxdhKdf
       (DY.Libsignal.PQXDH.pqxdhIkm dh1 dh2 dh3 dh4 (PQKem.kemEncap pk_kem r_kem).2)).ck j ∧
@@ -119,16 +118,16 @@ def BaseSpine (T : ExecTrace) (c : RecvChain) : Prop :=
 
 /-- Receiving-chain spine invariant on `T`: either a `createChain` ratchet receiving chain
 (`CreateSpine T c`) or a PQXDH base receiving chain (`BaseSpine T c`). -/
-def RecvChainSpine (T : ExecTrace) (c : RecvChain) : Prop :=
+@[expose] def RecvChainSpine (T : ExecTrace) (c : RecvChain) : Prop :=
   CreateSpine T c ∨ BaseSpine T c
 
 /-- Full state-side root and receiving-chain spine invariant for a stored `TRState`. -/
-def StRkSpine (T : ExecTrace) (st : TRState) : Prop :=
+@[expose] def StRkSpine (T : ExecTrace) (st : TRState) : Prop :=
   StRkDhsInv T T.length st ∧ ∀ c ∈ st.recv, RecvChainSpine T c
 
 /-- Every stored state's sending chain `st.cks` is `chainKeyAt (createChain rk1 k st.dhs).2 j`
 paired with `st.rk = (createChain rk1 k st.dhs).1`. -/
-def StCksIsCreateChain (st : TRState) : Prop :=
+@[expose] def StCksIsCreateChain (st : TRState) : Prop :=
   ∃ (rk1 k : DY.Bytes) (j : Nat),
     st.cks = chainKeyAt (createChain rk1 k st.dhs).2 j ∧
     st.rk = (createChain rk1 k st.dhs).1
@@ -136,7 +135,7 @@ def StCksIsCreateChain (st : TRState) : Prop :=
 /-- Skipped-key seed spine invariant on `T`: every logged `SkippedKeyStored` seed comes from a
 chain `c` that either satisfies `CreateSpine T c` or is a `BaseSpine` chain whose root `ck` is
 already `AttackerKnows T` (since `logSkippedKeys` runs only after `verifyMacAndDecrypt`). -/
-def ActiveRecvChainSpine (T : ExecTrace) (c : RecvChain) : Prop :=
+@[expose] def ActiveRecvChainSpine (T : ExecTrace) (c : RecvChain) : Prop :=
   CreateSpine T c ∨
   ∃ (dh1 dh2 dh3 : DY.Bytes) (dh4 : Option DY.Bytes) (pk_kem r_kem : DY.Bytes) (j : Nat),
     c.chainKey = chainKeyAt (DY.Libsignal.PQXDH.pqxdhKdf
@@ -144,7 +143,7 @@ def ActiveRecvChainSpine (T : ExecTrace) (c : RecvChain) : Prop :=
     (DY.Libsignal.PQXDH.pqxdhKdf
       (DY.Libsignal.PQXDH.pqxdhIkm dh1 dh2 dh3 dh4 (PQKem.kemEncap pk_kem r_kem).2)).ck.AttackerKnows T
 
-def SkippedSeedSpine (T : ExecTrace) (seed : DY.Bytes) : Prop :=
+@[expose] def SkippedSeedSpine (T : ExecTrace) (seed : DY.Bytes) : Prop :=
   ∃ c : RecvChain, ActiveRecvChainSpine T c ∧ seed = (kdfCk c.chainKey).2
 
 /-! ## `chainKeyAt` Algebraic and Injectivity Helpers -/
@@ -281,12 +280,12 @@ theorem createChain_snd_chainKeyAt_eq_imp_prk_eq {rk₁ pk₁ sk₁ rk₂ pk₂ 
 
 /-- State-side invariant tracked by `JRkSpine`: `st.cks` is a `createChain` sending chain and
 every `c ∈ st.recv` satisfies `RecvChainSpine T c`. -/
-def StSpineInv (T : ExecTrace) (st : TRState) : Prop :=
+@[expose] def StSpineInv (T : ExecTrace) (st : TRState) : Prop :=
   StCksIsCreateChain st ∧ ∀ c ∈ st.recv, RecvChainSpine T c
 
 /-- Trace invariant for `RkSpine`: every stored state satisfies `StSpineInv T st` and every
 logged `SkippedKeyStored` event satisfies `SkippedSeedSpine T seed`. -/
-def JRkSpine (T tr : ExecTrace) : Prop :=
+@[expose] def JRkSpine (T tr : ExecTrace) : Prop :=
   (∀ p st i, TRStateStoredAt p st i tr → StSpineInv T st) ∧
   (∀ i s pk n seed rIdx src,
     tr.EventLoggedAt (TREvent.SkippedKeyStored s pk n seed rIdx src) i →

@@ -31,6 +31,7 @@ import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
 
 /-!
 # Diffie-Hellman Inversion Step
@@ -40,7 +41,7 @@ environment event extends any `Explains` witness of `evs` by appending `Step.net
 and `Step.invertDH`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

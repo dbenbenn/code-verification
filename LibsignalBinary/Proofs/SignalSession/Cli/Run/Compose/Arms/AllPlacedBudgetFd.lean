@@ -9,21 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bBadPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.HopSpecsPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bProofPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2ProofPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aProofPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bBadPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkPlacedBudgetFd
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # `FdsGe3Closed`-Threaded `RunArmsPlacedFd` and `CliPubCalleesPlacedFd` Aggregator
@@ -33,7 +41,7 @@ Assembles the file-descriptor-preserving (`FdsGe3Closed`) arm hop contracts on B
 counterparts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -95,105 +103,6 @@ export LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget
   (cliRunArmEnvs cliRunCalleesEnvs)
 
 /-! ## `LibsignalCodeRoLoaded` Aggregators -/
-
-/-- Discharges `join`, `init3`, `send`, `recvW`, `recvP`, and `recvBad` on Block `579`, reducing `RunArmsPlacedFd` to `pre`, `init1`, and `init2`. -/
-theorem runArmsPlacedFd_of_pre_init1_init2 [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {cEnvs : RunCalleesEnvs} {sEnvs : RunSlotEnvs}
-    {PksmTryFromEnv : PksmGhost → List AllocEvent → Prop}
-    {H : LibsignalHooks} {B : RunBudgets} {S : RunSem} {needs : RunNeeds} {resStack : Nat}
-    (hpre : RunHopPrePlacedFd (LibsignalCodeRoLoaded lsmpl) A lim cEnvs sEnvs (PreEnv cEnvs)
-      H B S needs resStack)
-    (hinit1 : RunHopInit1PlacedFd (LibsignalCodeRoLoaded lsmpl) A lim cEnvs sEnvs (Init1Env cEnvs)
-      H B S needs resStack)
-    (hinit2 : RunHopInit2PlacedFd (LibsignalCodeRoLoaded lsmpl) A lim cEnvs sEnvs (Init2Env cEnvs)
-      H B S needs resStack)
-    (hinit_addr : ∀ g d2 fsp,
-      sEnvs.initiate (r1cInitGhost g d2 fsp) = sEnvs.initiate (r1cInitGhost g d2 0#64) := by
-      intros; rfl)
-    (henc_addr : ∀ g peerV peerG meG fsp,
-      peerG.val = addrValOf peerV →
-      sEnvs.encrypt (r2EncGhost g peerG meG fsp) =
-        sEnvs.encrypt (r2EncGhost g (r2PeerGhost0 peerV) meG 0#64) := by
-      intros; rfl)
-    (hdec_ghost : ∀ g fsp w peerV meG msgG m,
-      sEnvs.decryptSignal (r3aDecSigGhost g fsp (r3aPeerGhost w peerV) meG msgG m) =
-        sEnvs.decryptSignal (r3aDecSigGhost0 g peerV meG m) := by
-      intros; rfl)
-    (hpksm_addr : ∀ x y : PksmGhost, x.bytes = y.bytes → PksmTryFromEnv x = PksmTryFromEnv y := by
-      intros; rfl)
-    (hdp_ghost : ∀ x y : DecPkGhost,
-      x.peer.val = y.peer.val → x.me.val = y.me.val →
-      x.stores = y.stores → x.coinsP = y.coinsP →
-      x.F = y.F → x.coins = y.coins → x.msg = y.msg →
-      sEnvs.decryptPrekey x = sEnvs.decryptPrekey y := by intros; rfl) :
-    RunArmsPlacedFd (LibsignalCodeRoLoaded lsmpl) A lim
-      cEnvs sEnvs (cliRunArmEnvs cEnvs sEnvs PksmTryFromEnv S) H B S needs resStack :=
-  { join := run_hop_join_placed_ok
-    pre := hpre
-    init1 := hinit1
-    init2 := hinit2
-    init3 := run_hop_init3_placed_ok_fd hinit_addr
-    send := run_hop_send_placed_ok_fd henc_addr
-    recvW := run_hop_recvW_placed_ok_fd hdec_ghost
-    recvP := run_hop_recvP_placed_ok_fd hpksm_addr hdp_ghost
-    recvBad := run_hop_recvBad_placed_ok }
-
-/-- Assembles `CliPubCalleesPlacedFd` from `CliRunHooksBundleFd`, `hPath589`, `hBundleRead`, `pre`, `init1`, and `init2`. -/
-theorem cliPubCallees_placed_fd_of_pre_init1_init2 [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (g : CliGhostHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {sEnvs : RunSlotEnvs} {PksmTryFromEnv : PksmGhost → List AllocEvent → Prop}
-    (W : CliHooks)
-    (hHooks : CliRunHooksBundleFd mmpl g W A lim ReadEnv)
-    (hPath589 : subroutine_ok
-      (lsProg_589 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 596)
-      (withFdsGe3Closed (pathSpecPlaced A lim PathEnv pathNeed)))
-    (hBundleRead : ∀ {stk : Nat}, cliRunBudgets.bundleReadNeed ≤ stk →
-      subroutine_ok (lsProg_579 (cliGhostExterns g (cliExternsPlaced mmpl W))) (lsmpl.base 563)
-        (withFdsGe3Closed
-          (bundleReadSpecPlaced cliIo.rd cliWrOk A lim (cliRunCalleesEnvs ReadEnv).bundleRead stk)))
-    (hpre : ∀ (S : RunSem) (decPkNeed : Nat),
-      RunHopPrePlacedFd (LibsignalCodeRoLoaded lsmpl) A lim (cliRunCalleesEnvs ReadEnv) sEnvs
-        (PreEnv (cliRunCalleesEnvs ReadEnv))
-        (cliGhostExterns g (cliExternsPlaced mmpl W)) cliRunBudgets S (cliRunNeeds decPkNeed)
-        cliResStack)
-    (hinit1 : ∀ (S : RunSem) (decPkNeed : Nat),
-      RunHopInit1PlacedFd (LibsignalCodeRoLoaded lsmpl) A lim (cliRunCalleesEnvs ReadEnv) sEnvs
-        (Init1Env (cliRunCalleesEnvs ReadEnv))
-        (cliGhostExterns g (cliExternsPlaced mmpl W)) cliRunBudgets S (cliRunNeeds decPkNeed)
-        cliResStack)
-    (hinit2 : ∀ (S : RunSem) (decPkNeed : Nat),
-      RunHopInit2PlacedFd (LibsignalCodeRoLoaded lsmpl) A lim (cliRunCalleesEnvs ReadEnv) sEnvs
-        (Init2Env (cliRunCalleesEnvs ReadEnv))
-        (cliGhostExterns g (cliExternsPlaced mmpl W)) cliRunBudgets S (cliRunNeeds decPkNeed)
-        cliResStack)
-    (hinit_addr : ∀ g d2 fsp,
-      sEnvs.initiate (r1cInitGhost g d2 fsp) = sEnvs.initiate (r1cInitGhost g d2 0#64) := by
-      intros; rfl)
-    (henc_addr : ∀ g peerV peerG meG fsp,
-      peerG.val = addrValOf peerV →
-      sEnvs.encrypt (r2EncGhost g peerG meG fsp) =
-        sEnvs.encrypt (r2EncGhost g (r2PeerGhost0 peerV) meG 0#64) := by
-      intros; rfl)
-    (hdec_ghost : ∀ g fsp w peerV meG msgG m,
-      sEnvs.decryptSignal (r3aDecSigGhost g fsp (r3aPeerGhost w peerV) meG msgG m) =
-        sEnvs.decryptSignal (r3aDecSigGhost0 g peerV meG m) := by
-      intros; rfl)
-    (hpksm_addr : ∀ x y : PksmGhost, x.bytes = y.bytes → PksmTryFromEnv x = PksmTryFromEnv y := by
-      intros; rfl)
-    (hdp_ghost : ∀ x y : DecPkGhost,
-      x.peer.val = y.peer.val → x.me.val = y.me.val →
-      x.stores = y.stores → x.coinsP = y.coinsP →
-      x.F = y.F → x.coins = y.coins → x.msg = y.msg →
-      sEnvs.decryptPrekey x = sEnvs.decryptPrekey y := by intros; rfl) :
-    CliPubCalleesPlacedFd mmpl g A lim (cliRunCalleesEnvs ReadEnv) sEnvs
-      (cliRunArmEnvs (cliRunCalleesEnvs ReadEnv) sEnvs PksmTryFromEnv) W :=
-  cliPubCallees_of_arms_placed_fd mmpl g W hHooks hPath589 hBundleRead fun S decPkNeed =>
-    runArmsPlacedFd_of_pre_init1_init2
-      (hpre S decPkNeed) (hinit1 S decPkNeed) (hinit2 S decPkNeed)
-      hinit_addr henc_addr hdec_ghost hpksm_addr hdp_ghost
 
 /-! ## `LibsignalFrozen` Aggregators -/
 

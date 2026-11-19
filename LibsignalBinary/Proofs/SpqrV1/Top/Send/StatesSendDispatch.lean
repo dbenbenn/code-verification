@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeBase
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1Dispatch
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.Pure
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
 
 /-!
 # `spqr::send::<HookRng>`: `<States>::send` 11-Arm Dispatch and Post-Arm Join (`0x31458..0x314d8`)
@@ -30,7 +31,7 @@ Proves `statesSendPreInv_of_spqrDecodeState`, the shared post-arm reassembly epi
 `step_send_statesSend` (`statesSendArmOffset st0 -> +3196`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -81,7 +82,7 @@ theorem headerReceived_rootKey_le_rawV1State {F : ShaCompress}
 
 /-- Precondition on `st0 : States` for `States.send`: in the `.headerReceived` arm,
     `s.uc.auth.rootKey.length + 32 < 2 ^ 63` (discharging `authUpdateSpec`). -/
-def statesSendPreInv {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
+@[expose] def statesSendPreInv {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
   | .headerReceived s => s.uc.auth.rootKey.length + 32 < 2 ^ 63
   | _ => True
 
@@ -216,7 +217,7 @@ theorem memRegion_1bc0_16_eq_words2 (sp : BitVec 64) :
       ProofLib.memRegion_eight (sp + 0x1bc0#64), ProofLib.memRegion_eight (sp + 0x1bc8#64)]
 
 /-- In `States.send`, `.ct1Ack b` only occurs with `b = true` (at `0x314d0`, `mov w8, #1; strb w8, [x9, #9]`). -/
-def validSendPayload : MessagePayload spqrPolyApi → Prop
+@[expose] def validSendPayload : MessagePayload spqrPolyApi → Prop
   | .ct1Ack b => b = true
   | _ => True
 
@@ -259,7 +260,7 @@ theorem tail14_formA_eq_formB (a : BitVec 64) (w3 : BitVec 64) (w4 : BitVec 16) 
         show (a + BitVec.ofNat 64 4) + BitVec.ofNat 64 2 = a + 6#64 by bv_omega]
   rw [h1, h2, unpack_tail14_eq]
 
-def keyWordsDetached (A : RustAlloc) (x21 x27 : BitVec 64) (key : Option EpochSecret)
+@[expose] def keyWordsDetached (A : RustAlloc) (x21 x27 : BitVec 64) (key : Option EpochSecret)
     (kw0 kw1 : BitVec 64) : SepProp :=
   match key with
   | none => ⌜x21 = noneCap⌝
@@ -327,7 +328,7 @@ theorem words_keyWordsDetached_entails_optEpochSecretRegSlotAt (A : RustAlloc) (
     refine Entails.pure_right hne ?_
     exact Entails.of_eq (by ac_rfl)
 
-def payloadTagByte : MessagePayload spqrPolyApi → BitVec 8
+@[expose] def payloadTagByte : MessagePayload spqrPolyApi → BitVec 8
   | .none => 0#8
   | .hdr _ => 1#8
   | .ek _ => 2#8
@@ -336,7 +337,7 @@ def payloadTagByte : MessagePayload spqrPolyApi → BitVec 8
   | .ct1 _ => 5#8
   | .ct2 _ => 6#8
 
-def payloadWordsReconstruct (pay : MessagePayload spqrPolyApi)
+@[expose] def payloadWordsReconstruct (pay : MessagePayload spqrPolyApi)
     (w0 w1 w2 w3 : BitVec 64) (w4 : BitVec 16) : Prop :=
   match pay with
   | .none | .ct1Ack _ => True
@@ -532,11 +533,11 @@ theorem words2_to_memRegion_580_16 (sp w0 w1 : BitVec 64) :
   exact sepConj_mono (Entails.sepExists_right w0 (Entails.refl _))
     (Entails.sepExists_right w1 (Entails.refl _))
 
-def optChainPBWord0 (g : ChainFrom.ChainPBGhost) : Option ChainPB → BitVec 64
+@[expose] def optChainPBWord0 (g : ChainFrom.ChainPBGhost) : Option ChainPB → BitVec 64
   | none => noneCap
   | some _ => g.linksCap
 
-def optChainPBRestAt (A : RustAlloc) (g : ChainFrom.ChainPBGhost) (a : BitVec 64) :
+@[expose] def optChainPBRestAt (A : RustAlloc) (g : ChainFrom.ChainPBGhost) (a : BitVec 64) :
     Option ChainPB → SepProp
   | none => memRegion (a + 8#64) 72
   | some pb =>
@@ -613,7 +614,7 @@ theorem optChainPBRestAt_expose_word0_inv (A : RustAlloc) (g : ChainFrom.ChainPB
 
 /-! ## Shared Post-Arm Reassembly Epilogue (`0x31458..0x314d8`, `+3068..+3196`) -/
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.sub_add_cancel BitVec.toNat_zero
 
 /-- Framed `memcpy` call rule for an explicit byte slice `src ↦ₛ bs`. -/
@@ -651,170 +652,6 @@ theorem call_memcpy_bytes {prog : Program} {entry ret_pc target_pc : BitVec 64}
       hcs_sf.1 hcs_sf.2.1 hcs_sf.2.2.1 hcs_sf.2.2.2.1 hcs_sf.2.2.2.2.1
       hcs_sf.2.2.2.2.2.1 hcs_sf.2.2.2.2.2.2.1 hcs_sf.2.2.2.2.2.2.2.1
       hcs_sf.2.2.2.2.2.2.2.2.1 hcs_sf.2.2.2.2.2.2.2.2.2.1 hcs_sf.2.2.2.2.2.2.2.2.2.2.2
-
-/-- Shared post-`States::send` reassembly epilogue (`0x31458 -> 0x314d8`, offsets `3068..3196`):
-    - Relocates `chunkedStatesTail920At A (sp + 0x590#64) st1` and `x20 = chunkedStatesWord0 st1`
-      into `chunkedStatesAt A (sp + 0x190#64) st1` (leaving `memRegion (sp + 0x590#64) 920` and
-      `memRegion (sp + 0x530#64) 24`),
-    - Moves `spqrSendKeySlotAt A sp x21 x27 key` (`sp + 0x580..0x590`) into
-      `optEpochSecretRegSlotAt A sp x21 x27 key` (`sp + 0x1bc0..0x1bd0`),
-    - Moves `spqrSendPayloadSlotAt sp w24 msg.payload` (`sp + 0x550..0x576`) and `x22 = msg.epoch`
-      into `messageAt spqrPolyApi (sp + 0x1d70#64) msg`,
-    - Loads `x23` from `[sp + 0x60]` (`ProtoRepr.optChainPBAt A (sp + 0x60#64) chain`) and executes
-      `cmn x23, #0x1`, setting `sf.pstate = addsPState64 (sf.readReg64 .x23) 1#64`. -/
-theorem step_send_post_arm_3068_to_3196 {F : ShaCompress}
-    (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State))
-    (hA : AllocContracts img.base A ext) {s0 s : State} (sp : BitVec 64)
-    (chain : Option ChainPB) (msg : Message spqrPolyApi) (key : Option EpochSecret)
-    (st1 : States spqrPolyApi (spqrAuthApi F)) (hvalid : validSendPayload msg.payload)
-    (hjoin : SpqrSendJoinState img.base sp ext s0 s msg st1)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    {ret : BitVec 64} {P Frame : SepProp} {post panicPost : State → SepProp → Prop}
-    (hinv : ImgCallInv img s)
-    (hP : P = (ProtoRepr.optChainPBAt A (sp + 0x60#64) chain ∗
-      memRegion (sp + 0x190#64) 928 ∗ memRegion (sp + 0x530#64) 24 ∗
-      spqrSendPayloadSlotAt sp ((s.readReg64 .x24).setWidth 8) msg.payload ∗
-      spqrSendKeySlotAt A sp (s.readReg64 .x21) (s.readReg64 .x27) key ∗
-      chunkedStatesTail920At A (sp + 0x590#64) st1 ∗
-      memRegion (sp + 0x1bc0#64) 16 ∗ memRegion (sp + 0x1d70#64) 48) ∗ Frame)
-    (hnext : ∀ sf : State, ImgCallInv img sf →
-      sf.pc = (tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName + 3196#64 →
-      sf.status = .Running → sf.sp = sp → sf.trace = s0.trace →
-      sf.readReg64 .x19 = s0.readReg64 .x19 → sf.readReg64 .x20 = chunkedStatesWord0 st1 →
-      sf.readReg64 .x21 = s.readReg64 .x21 → sf.readReg64 .x22 = msg.epoch →
-      sf.readReg64 .x25 = sp + 0x550#64 → sf.readReg64 .x26 = sp + 0x1260#64 →
-      sf.readReg64 .x27 = s.readReg64 .x27 → sf.readReg64 .x28 = s0.readReg64 .x28 →
-      (sf.readReg64 .x23 = noneCap ↔ chain = none) →
-      sf.pstate = addsPState64 (sf.readReg64 .x23) 1#64 →
-      calleeSavedVRegs sf = calleeSavedVRegs s0 →
-      SepWPp (tripleRatchetProgAtExt img.base ext) ret sf
-        ((ProtoRepr.optChainPBAt A (sp + 0x60#64) chain ∗
-          chunkedStatesAt A (sp + 0x190#64) st1 ∗
-          memRegion (sp + 0x530#64) 24 ∗ memRegion (sp + 0x550#64) 38 ∗
-          memRegion (sp + 0x580#64) 16 ∗ memRegion (sp + 0x590#64) 920 ∗
-          optEpochSecretRegSlotAt A sp (sf.readReg64 .x21) (sf.readReg64 .x27) key ∗
-          messageAt spqrPolyApi (sp + 0x1d70#64) msg) ∗ Frame) post panicPost) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P post panicPost := by
-  have hmemcpy := spqrSend_memcpy_ok hA
-  rcases hjoin with ⟨hpc, hrun, hsp, htr, hx19, hx20, hx22, hx25, hx26, hx28, hvregs⟩
-  spqr_send_fetches_range img.base (Rust.withPanics ext) 3068 128
-  generalize_entry hentry : (tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName = entry
-  examples_hide_fetches; subst hP
-  apply of_sepWP_inImage (mid := entry + 3196#64) img hinv
-  rw [ChainFrom.optChainPBAt_protoRepr_eq_exists A (sp + 0x60#64) chain]
-  simp only [sepExists_sepConj_left]; apply SepWP.exists_elim; intro gChain
-  rw [optChainPBAt_eq_word0_rest A gChain (sp + 0x60#64) chain]
-  refine SepWP.focus_weaken (optChainPBRestAt_expose_word0_inv A gChain (sp + 0x60#64) chain) (by sep_focus) ?_
-  wp_focus_pure; intro hchain_iff
-  refine SepWP.focus_weaken (chunkedStatesTail920At_590_entails_reloc A sp st1) (by sep_focus) ?_
-  wp_pull_exists; rename_i bs920 sw1 sw2 sw3 bs896
-  wp_focus_pure; rintro ⟨hbs920, hlen896⟩
-  refine SepWP.focus_weaken (spqrSendPayloadSlotAt_entails_words sp ((s.readReg64 .x24).setWidth 8) msg.payload) (by sep_focus) ?_
-  wp_pull_exists; rename_i pw0 pw1 pw2 pw3 pw4 pad32
-  wp_focus_pure; rintro ⟨hw24, hpay_rec⟩
-  refine SepWP.focus_weaken (spqrSendKeySlotAt_entails_words A sp (s.readReg64 .x21) (s.readReg64 .x27) key) (by sep_focus) ?_
-  wp_pull_exists; rename_i kw0 kw1
-  rw [memRegion_190_928_split sp, memRegion_530_24_split sp,
-      memRegion_1bc0_16_eq_words2 sp, memRegion_1d70_48_split sp]
-  wp_pull_exists; wp_steps
-  refine call_memcpy_bytes hmemcpy (sp + 0x1b0#64) (sp + 0x5a8#64) hlen896
-    (s0 := s0) (sp_call := sp)
-    (Frame := ((sp + 0x60#64) ↦₆₄ optChainPBWord0 gChain chain) ∗
-      optChainPBRestAt A gChain (sp + 0x60#64) chain ∗
-      ((sp + 0x190#64) ↦₆₄ _) ∗ ((sp + 0x198#64) ↦₆₄ _) ∗ ((sp + 0x1a0#64) ↦₆₄ _) ∗ ((sp + 0x1a8#64) ↦₆₄ _) ∗
-      ((sp + 0x530#64) ↦₆₄ sw1) ∗ ((sp + 0x538#64) ↦₆₄ sw2) ∗ ((sp + 0x540#64) ↦₆₄ sw3) ∗
-      ((sp + 0x550#64) ↦₆₄ pw0) ∗ ((sp + 0x558#64) ↦₆₄ pw1) ∗ ((sp + 0x560#64) ↦₆₄ pw2) ∗ ((sp + 0x568#64) ↦₆₄ pw3) ∗
-      ((sp + 0x570#64) ↦₁₆ pw4) ∗ ((sp + 0x572#64) ↦₃₂ pad32) ∗ ((sp + 0x580#64) ↦₆₄ kw0) ∗ ((sp + 0x588#64) ↦₆₄ kw1) ∗
-      keyWordsDetached A (s.readReg64 .x21) (s.readReg64 .x27) key kw0 kw1 ∗
-      ((sp + 0x590#64) ↦₆₄ sw1) ∗ ((sp + 0x598#64) ↦₆₄ sw2) ∗ ((sp + 0x5a0#64) ↦₆₄ sw3) ∗
-      relocatedHeap (fun dst => chunkedStatesTail920At A dst st1) bs920 ∗
-      ((sp + 0x1bc0#64) ↦₆₄ _) ∗ ((sp + 0x1bc8#64) ↦₆₄ _) ∗ ((sp + 0x1d70#64) ↦₆₄ _) ∗ ((sp + 0x1d78#64) ↦₈ _) ∗
-      ((sp + 0x1d79#64) ↦₈ _) ∗ ((sp + 0x1d7a#64) ↦₆₄ _) ∗ ((sp + 0x1d82#64) ↦₆₄ _) ∗ ((sp + 0x1d8a#64) ↦₆₄ _) ∗
-      ((sp + 0x1d92#64) ↦₆₄ _) ∗ ((sp + 0x1d9a#64) ↦₁₆ _) ∗ ((sp + 0x1d9c#64) ↦₃₂ _) ∗ Frame)
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    hsp_align (ret_pc := entry + 3108#64) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm]) (by ac_rfl) ?_
-  intro sm hpc_m hrun_m hsp_m htr_m hx19_m hx20_m hx21_m hx22_m _ hx24_m hx25_m hx26_m hx27_m hx28_m hvregs_m
-  simp only [arm64_norm, *] at hx19_m hx20_m hx21_m hx22_m hx24_m hx25_m hx26_m hx27_m hx28_m hvregs_m
-  wp_steps
-  have h568_to_B :
-      ((sp + 0x568#64) ↦₆₄ pw3) ∗ ((sp + 0x570#64) ↦₁₆ pw4) ∗ ((sp + 0x572#64) ↦₃₂ pad32) ⊢
-      ((sp + 0x568#64) ↦₃₂ pw3.extractLsb' 0 32) ∗
-      ((sp + 0x56c#64) ↦₁₆ pw3.extractLsb' 32 16) ∗
-      ((sp + 0x56e#64) ↦₆₄ (pad32 ++ pw4 ++ pw3.extractLsb' 48 16)) := by
-    have h := tail14_formA_eq_formB (sp + 0x568#64) pw3 pw4 pad32
-    rw [sp_add_568_add_4 sp, sp_add_568_add_6 sp, sp_add_568_add_8 sp, sp_add_568_add_10 sp] at h
-    exact Entails.of_eq h
-  refine SepWP.focus_weaken h568_to_B (by sep_focus) ?_; wp_steps
-  have h1d92_to_B (dw4 : BitVec 16) (dpad32 : BitVec 32) :
-      ((sp + 0x1d92#64) ↦₆₄ pw3) ∗ ((sp + 0x1d9a#64) ↦₁₆ dw4) ∗ ((sp + 0x1d9c#64) ↦₃₂ dpad32) ⊢
-      ((sp + 0x1d92#64) ↦₃₂ pw3.extractLsb' 0 32) ∗
-      ((sp + 0x1d96#64) ↦₁₆ pw3.extractLsb' 32 16) ∗
-      ((sp + 0x1d98#64) ↦₆₄ (dpad32 ++ dw4 ++ pw3.extractLsb' 48 16)) := by
-    have h := tail14_formA_eq_formB (sp + 0x1d92#64) pw3 dw4 dpad32
-    rw [sp_add_1d92_add_4 sp, sp_add_1d92_add_6 sp, sp_add_1d92_add_8 sp, sp_add_1d92_add_10 sp] at h
-    exact Entails.of_eq h
-  refine SepWP.focus_weaken (h1d92_to_B _ _) (by sep_focus) ?_; wp_steps
-  have h568_to_A :
-      ((sp + 0x568#64) ↦₃₂ pw3.extractLsb' 0 32) ∗
-      ((sp + 0x56c#64) ↦₁₆ pw3.extractLsb' 32 16) ∗
-      ((sp + 0x56e#64) ↦₆₄ (pad32 ++ pw4 ++ pw3.extractLsb' 48 16)) ⊢
-      ((sp + 0x568#64) ↦₆₄ pw3) ∗ ((sp + 0x570#64) ↦₁₆ pw4) ∗ ((sp + 0x572#64) ↦₃₂ pad32) := by
-    have h := (tail14_formA_eq_formB (sp + 0x568#64) pw3 pw4 pad32).symm
-    rw [sp_add_568_add_4 sp, sp_add_568_add_6 sp, sp_add_568_add_8 sp, sp_add_568_add_10 sp] at h
-    exact Entails.of_eq h
-  have h1d92_to_A :
-      ((sp + 0x1d92#64) ↦₃₂ pw3.extractLsb' 0 32) ∗
-      ((sp + 0x1d96#64) ↦₁₆ pw3.extractLsb' 32 16) ∗
-      ((sp + 0x1d98#64) ↦₆₄ (pad32 ++ pw4 ++ pw3.extractLsb' 48 16)) ⊢
-      ((sp + 0x1d92#64) ↦₆₄ pw3) ∗ ((sp + 0x1d9a#64) ↦₁₆ pw4) ∗ ((sp + 0x1d9c#64) ↦₃₂ pad32) := by
-    have h := (tail14_formA_eq_formB (sp + 0x1d92#64) pw3 pw4 pad32).symm
-    rw [sp_add_1d92_add_4 sp, sp_add_1d92_add_6 sp, sp_add_1d92_add_8 sp, sp_add_1d92_add_10 sp] at h
-    exact Entails.of_eq h
-  refine SepWP.focus_weaken h568_to_A (by sep_focus) ?_
-  refine SepWP.focus_weaken h1d92_to_A (by sep_focus) ?_
-  have h550_38 :
-      ((sp + 0x550#64) ↦₆₄ pw0) ∗ ((sp + 0x558#64) ↦₆₄ pw1) ∗
-      ((sp + 0x560#64) ↦₆₄ pw2) ∗ ((sp + 0x568#64) ↦₆₄ pw3) ∗
-      ((sp + 0x570#64) ↦₁₆ pw4) ∗ ((sp + 0x572#64) ↦₃₂ pad32) ⊢
-      memRegion (sp + 0x550#64) 38 := by
-    have h := words_to_memRegion_38 (sp + 0x550#64) pw0 pw1 pw2 pw3 pw4 pad32
-    rwa [sp_add_550_add_8 sp,
-         show (sp + 0x550#64) + 16#64 = sp + 0x560#64 by rw [BitVec.add_assoc]; rfl,
-         show (sp + 0x550#64) + 24#64 = sp + 0x568#64 by rw [BitVec.add_assoc]; rfl,
-         show (sp + 0x550#64) + 32#64 = sp + 0x570#64 by rw [BitVec.add_assoc]; rfl,
-         show (sp + 0x550#64) + 34#64 = sp + 0x572#64 by rw [BitVec.add_assoc]; rfl] at h
-  have hchain_recompose :
-      ((sp + 0x60#64) ↦₆₄ optChainPBWord0 gChain chain) ∗
-      optChainPBRestAt A gChain (sp + 0x60#64) chain ⊢
-      ProtoRepr.optChainPBAt A (sp + 0x60#64) chain := by
-    rw [← optChainPBAt_eq_word0_rest A gChain (sp + 0x60#64) chain]
-    exact ChainFrom.optChainPBAt_entails_protoRepr A gChain (sp + 0x60#64) chain
-  refine SepWP.focus_weaken hchain_recompose (by sep_focus) ?_
-  refine SepWP.focus_weaken (reassemble_chunkedStatesAt_190 A sp st1 sw1 sw2 sw3 hbs920) (by sep_focus) ?_
-  refine SepWP.focus_weaken (words3_to_memRegion_530_24 sp sw1 sw2 sw3) (by sep_focus) ?_
-  refine SepWP.focus_weaken h550_38 (by sep_focus) ?_
-  refine SepWP.focus_weaken (words2_to_memRegion_580_16 sp kw0 kw1) (by sep_focus) ?_
-  refine SepWP.focus_weaken (reassemble_590_after_memcpy sp sw1 sw2 sw3 hlen896) (by sep_focus) ?_
-  refine SepWP.focus_weaken
-    (words_keyWordsDetached_entails_optEpochSecretRegSlotAt A sp (s.readReg64 .x21) (s.readReg64 .x27) key kw0 kw1)
-    (by sep_focus) ?_
-  refine SepWP.focus_weaken (words_entails_messageAt_1d70 sp msg pw0 pw1 pw2 pw3 pw4 pad32 hvalid hpay_rec) (by sep_focus) ?_
-  refine finish_sepWP_inImage (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (fun hinv_f => ?_) (Entails.refl _)
-  refine SepWPp.mono_pre' ?_ (hnext _ hinv_f
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
-    (by simp only [wp_norm, arm64_norm, *]))
-  simp only [arm64_norm, *]; exact Entails.of_eq (by ac_rfl)
-
-/-! ## Unified 11-Arm `<States>::send` Dispatch (`statesSendArmOffset st0 -> +3196`) -/
 
 private theorem tapeAt_entails_tapeAfter_same (a cur : BitVec 64) (tape : List (BitVec 8)) :
     tapeAt a cur tape ⊢ tapeAfter a cur tape (tape.length - tape.length) := by
@@ -856,13 +693,13 @@ private theorem memRegion_7536_400_eq (sp : BitVec 64) :
 
 /-- Scratch slots in `[sp + 0xde0, sp + 0x1f00)` untouched after `+3068`,
     excluding `sp + 0x1bc0..0x1bd0` (16B) and `sp + 0x1d70..0x1da0` (48B). -/
-def statesSendPostArmScratch (sp : BitVec 64) : SepProp :=
+@[expose] def statesSendPostArmScratch (sp : BitVec 64) : SepProp :=
   memRegion (sp + 32#64) 16 ∗ memRegion (sp + 3552#64) 504 ∗ memRegion (sp + 4056#64) 8 ∗ memRegion (sp + 4064#64) 16 ∗
   memRegion (sp + 4080#64) 104 ∗ memRegion (sp + 4192#64) 504 ∗ memRegion (sp + 0x1260#64) 2400 ∗
   memRegion (sp + 7120#64) 8 ∗ memRegion (sp + 7136#64) 400 ∗ memRegion (sp + 7584#64) 352
 
 /-- Pre-arm scratch slots in `[sp + 0x20, sp + 0x30)` and `[sp + 0xde0, sp + 0x1f00)`. -/
-def statesSendPreArmScratch (sp : BitVec 64) : SepProp :=
+@[expose] def statesSendPreArmScratch (sp : BitVec 64) : SepProp :=
   memRegion (sp + 32#64) 16 ∗ memRegion (sp + 3552#64) 504 ∗ memRegion (sp + 4056#64) 8 ∗ memRegion (sp + 4064#64) 16 ∗
   memRegion (sp + 4080#64) 104 ∗ memRegion (sp + 4192#64) 504 ∗ memRegion (sp + 0x1260#64) 2400 ∗
   memRegion (sp + 7104#64) 24 ∗ memRegion (sp + 7136#64) 400 ∗ memRegion (sp + 7536#64) 400
@@ -881,113 +718,6 @@ private theorem statesSendPreArmScratch_eq_leaf (sp : BitVec 64) (sz : Nat) (hsz
     statesSendPreArmScratch sp = memRegion (sp + 0x1260#64) (sz + chunkSize) ∗ statesSendLeafScratchRest sp sz := by
   unfold statesSendPreArmScratch statesSendLeafScratchRest; rw [memRegion_1260_2400_split sp sz hsz]; ac_rfl
 
-private def statesSendLeafFrame {ctl : BitVec 64} (b : BitVec 64) (A : RustAlloc) (sp cur : BitVec 64)
-    (tape : List (BitVec 8)) (chain : Option ChainPB) (sz : Nat) (Frame : SepProp) : SepProp :=
-  spqrLogLevelZeroAt b ∗ tapeAt ctl cur tape ∗ ProtoRepr.optChainPBAt A (sp + 0x60#64) chain ∗
-  memRegion (sp + 0x190#64) 928 ∗ memRegion (sp + 0x530#64) 24 ∗ statesSendLeafScratchRest sp sz ∗ Frame
-
-private def statesSendImmFrame {ctl : BitVec 64} (b : BitVec 64) (A : RustAlloc) (sp cur : BitVec 64)
-    (tape : List (BitVec 8)) (chain : Option ChainPB) (Frame : SepProp) : SepProp :=
-  stackAt sp spqrSendCalleeStack ∗ A.pool ∗ GF.Mul2U16.tokenInitAt b ∗ GF.UnacceleratedMul.reduceTableAt b ∗ spqrLogLevelZeroAt b ∗
-  tapeAt ctl cur tape ∗ ProtoRepr.optChainPBAt A (sp + 0x60#64) chain ∗
-  memRegion (sp + 0x190#64) 928 ∗ memRegion (sp + 0x530#64) 24 ∗ statesSendPreArmScratch sp ∗ Frame
-
-/-- Continuation contract at `+3196` (`0x314d8`) after `<States>::send` and post-arm reassembly. -/
-abbrev SpqrSendAt3196 {F : ShaCompress} {ctl : BitVec 64}
-    (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State))
-    (s0 : State) (sp cur : BitVec 64) (tape tape' : List (BitVec 8)) (chain : Option ChainPB) (key : Option EpochSecret)
-    (msg : Message spqrPolyApi) (st1 : States spqrPolyApi (spqrAuthApi F))
-    (ret : BitVec 64) (Frame Fr : SepProp) (post : State → SepProp → Prop) : Prop :=
-  ∀ sf : State, ImgCallInv img sf → sf.pc = (tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName + 3196#64 →
-    sf.status = .Running → sf.sp = sp → sf.trace = s0.trace →
-    sf.readReg64 .x19 = s0.readReg64 .x19 → sf.readReg64 .x20 = chunkedStatesWord0 st1 →
-    sf.readReg64 .x22 = msg.epoch → sf.readReg64 .x25 = sp + 0x550#64 →
-    sf.readReg64 .x26 = sp + 0x1260#64 → sf.readReg64 .x28 = s0.readReg64 .x28 →
-    (sf.readReg64 .x23 = noneCap ↔ chain = none) → sf.pstate = addsPState64 (sf.readReg64 .x23) 1#64 →
-    calleeSavedVRegs sf = calleeSavedVRegs s0 →
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret sf
-      ((ProtoRepr.optChainPBAt A (sp + 0x60#64) chain ∗ chunkedStatesAt A (sp + 0x190#64) st1 ∗
-        memRegion (sp + 0x530#64) 24 ∗ memRegion (sp + 0x550#64) 38 ∗ memRegion (sp + 0x580#64) 16 ∗ memRegion (sp + 0x590#64) 920 ∗
-        memRegion (sp + 0x950#64) 928 ∗ optEpochSecretRegSlotAt A sp (sf.readReg64 .x21) (sf.readReg64 .x27) key ∗
-        messageAt spqrPolyApi (sp + 0x1d70#64) msg ∗ statesSendPostArmScratch sp ∗
-        tapeAfter ctl cur tape (tape.length - tape'.length) ∗ GF.Mul2U16.tokenInitAt img.base ∗
-        GF.UnacceleratedMul.reduceTableAt img.base ∗ spqrLogLevelZeroAt img.base ∗ A.pool ∗ stackAt sp spqrSendCalleeStack) ∗ Frame) post
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr))
-
-/-- Shared continuation from `+3068` (`0x31458`) to `+3196` (`0x314d8`) after any of the 11 arms. -/
-theorem step_send_post_arm_cont {F : ShaCompress} {ctl : BitVec 64}
-    (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) (hA : AllocContracts img.base A ext)
-    {s0 s1 : State} (sp cur : BitVec 64) (tape tape' : List (BitVec 8)) (chain : Option ChainPB) (key : Option EpochSecret)
-    {msg : Message spqrPolyApi} {st1 : States spqrPolyApi (spqrAuthApi F)}
-    (hjoin1 : SpqrSendJoinState img.base sp ext s0 s1 msg st1) (hvalid : validSendPayload msg.payload)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true) {ret : BitVec 64} {P0 Frame Fr : SepProp} {post : State → SepProp → Prop}
-    (hinv1 : ImgCallInv img s1)
-    (hP0 : P0 ⊢
-      (stackAt sp spqrSendCalleeStack ∗ A.pool ∗ GF.Mul2U16.tokenInitAt img.base ∗
-        GF.UnacceleratedMul.reduceTableAt img.base ∗ spqrLogLevelZeroAt img.base ∗
-        tapeAfter ctl cur tape (tape.length - tape'.length) ∗ ProtoRepr.optChainPBAt A (sp + 0x60#64) chain ∗
-        memRegion (sp + 0x190#64) 928 ∗ memRegion (sp + 0x530#64) 24 ∗ memRegion (sp + 0x950#64) 928 ∗
-        spqrSendPayloadSlotAt sp ((s1.readReg64 .x24).setWidth 8) msg.payload ∗
-        spqrSendKeySlotAt A sp (s1.readReg64 .x21) (s1.readReg64 .x27) key ∗
-        chunkedStatesTail920At A (sp + 0x590#64) st1 ∗ statesSendPreArmScratch sp) ∗ Frame)
-    (hnext : SpqrSendAt3196 (ctl := ctl) img A ext s0 sp cur tape tape' chain key msg st1 ret Frame Fr post) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s1 P0 post
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) := by
-  refine SepWPp.mono_pre' hP0 ?_; rw [statesSendPreArmScratch_eq_post sp]
-  refine step_send_post_arm_3068_to_3196 img A ext hA sp chain msg key st1 hvalid hjoin1 hsp_align hinv1
-    (Frame := memRegion (sp + 0x950#64) 928 ∗ statesSendPostArmScratch sp ∗ tapeAfter ctl cur tape (tape.length - tape'.length) ∗
-      GF.Mul2U16.tokenInitAt img.base ∗ GF.UnacceleratedMul.reduceTableAt img.base ∗
-      spqrLogLevelZeroAt img.base ∗ A.pool ∗ stackAt sp spqrSendCalleeStack ∗ Frame)
-    (by ac_rfl) ?_
-  intro sf hinv_f hpc_f hrun_f hsp_f htr_f hx19_f hx20_f _ hx22_f hx25_f hx26_f _ hx28_f hx23_none hz_f hvregs_f
-  refine SepWPp.mono_pre' ?_
-    (hnext sf hinv_f hpc_f hrun_f hsp_f htr_f hx19_f hx20_f hx22_f hx25_f hx26_f hx28_f hx23_none hz_f hvregs_f)
-  exact Entails.of_eq (by ac_rfl)
-
-private theorem step_send_post_arm_cont_leaf {F : ShaCompress} {ctl : BitVec 64}
-    (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State))
-    (hA : AllocContracts img.base A ext) {s0 s1 : State} (sp cur : BitVec 64) (tape : List (BitVec 8))
-    (chain : Option ChainPB) (sz : Nat) (hsz : sz + chunkSize ≤ 2400 := by decide)
-    {msg : Message spqrPolyApi} {st1 : States spqrPolyApi (spqrAuthApi F)}
-    (hjoin1 : SpqrSendJoinState img.base sp ext s0 s1 msg st1)
-    (hvalid : validSendPayload msg.payload) (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    {ret : BitVec 64} {Frame Fr : SepProp} {post : State → SepProp → Prop} (hinv1 : ImgCallInv img s1)
-    (hnext : SpqrSendAt3196 (ctl := ctl) img A ext s0 sp cur tape tape chain none msg st1 ret Frame Fr post) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s1
-      ((stackAt sp spqrSendCalleeStack ∗ A.pool ∗ GF.Mul2U16.tokenInitAt img.base ∗ GF.UnacceleratedMul.reduceTableAt img.base ∗
-        memRegion (sp + 0x950#64) 928 ∗ memRegion (sp + 0x1260#64) (sz + chunkSize) ∗
-        spqrSendPayloadSlotAt sp ((s1.readReg64 .x24).setWidth 8) msg.payload ∗
-        spqrSendKeySlotAt A sp (s1.readReg64 .x21) (s1.readReg64 .x27) none ∗
-        chunkedStatesTail920At A (sp + 0x590#64) st1) ∗
-       statesSendLeafFrame (ctl := ctl) img.base A sp cur tape chain sz Frame) post
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) := by
-  refine step_send_post_arm_cont (ctl := ctl) img A ext hA sp cur tape tape chain none hjoin1 hvalid hsp_align hinv1 ?_ hnext
-  unfold statesSendLeafFrame; rw [statesSendPreArmScratch_eq_leaf sp sz hsz]
-  exact Entails.trans
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left (tapeAt_entails_tapeAfter_same _ _ _))))
-    (Entails.of_eq (by ac_rfl))
-
-private theorem step_send_post_arm_cont_imm {F : ShaCompress} {ctl : BitVec 64}
-    (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)) (hA : AllocContracts img.base A ext)
-    {s0 s1 : State} (sp cur : BitVec 64) (tape : List (BitVec 8)) (chain : Option ChainPB)
-    {msg : Message spqrPolyApi} {st1 : States spqrPolyApi (spqrAuthApi F)}
-    (hjoin1 : SpqrSendJoinState img.base sp ext s0 s1 msg st1) (hvalid : validSendPayload msg.payload)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true) {ret : BitVec 64} {Frame Fr : SepProp} {post : State → SepProp → Prop}
-    (hinv1 : ImgCallInv img s1)
-    (hnext : SpqrSendAt3196 (ctl := ctl) img A ext s0 sp cur tape tape chain none msg st1 ret Frame Fr post) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s1
-      ((memRegion (sp + 0x950#64) 928 ∗ spqrSendPayloadSlotAt sp ((s1.readReg64 .x24).setWidth 8) msg.payload ∗
-        spqrSendKeySlotAt A sp (s1.readReg64 .x21) (s1.readReg64 .x27) none ∗
-        chunkedStatesTail920At A (sp + 0x590#64) st1) ∗
-       statesSendImmFrame (ctl := ctl) img.base A sp cur tape chain Frame) post
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) := by
-  refine step_send_post_arm_cont (ctl := ctl) img A ext hA sp cur tape tape chain none hjoin1 hvalid hsp_align hinv1 ?_ hnext
-  unfold statesSendImmFrame
-  exact Entails.trans
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left (tapeAt_entails_tapeAfter_same _ _ _))))))))
-    (Entails.of_eq (by ac_rfl))
-
 private theorem states_send_ok_elim {F : ShaCompress} {α : Type}
     {r : Except StatesPanic α} {f : α → V1Send spqrPolyApi (spqrAuthApi F) × Bytes}
     {sOut : V1Send spqrPolyApi (spqrAuthApi F)} {tape' : Bytes}
@@ -996,191 +726,6 @@ private theorem states_send_ok_elim {F : ShaCompress} {α : Type}
   cases r with
   | error p => contradiction
   | ok x => exact ⟨x, rfl, Except.ok.inj h⟩
-
-set_option maxHeartbeats 800000 in
-/-- Unified `*Ext` 11-arm `<States>::send` + post-arm reassembly (`statesSendArmOffset st0 -> +3196`,
-    `0x309cc..0x31458 -> 0x314d8`) when `st0.send K tape = .ok (sOut, tape')`. -/
-theorem step_send_statesSend_ext {F : ShaCompress} {K : MlKem} {ctl : BitVec 64}
-    (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img) (hbase : img.base &&& 0xfff#64 = 0#64)
-    (hA : AllocContracts img.base A ext) (hZero : HookSat ext allocZeroedName (rustAllocZeroedSpec A))
-    (hrng : HookSat ext rngFillName (rngFillSpec ctl)) (hseed : HookSat ext mlkemFromSeedName (mlkemFromSeedSpec K))
-    (hpk1 : HookSat ext mlkemPk1Name mlkemPk1Spec) (hpk2 : HookSat ext mlkemPk2Name mlkemPk2Spec)
-    (henc1 : HookSat ext mlkemEncaps1Name (mlkemEncaps1Spec K))
-    (hpk1_slice : ∀ s : List.Vector (BitVec 8) 64, ((K.fromSeed s).2.2.toList.drop 2304).take 64 = (K.fromSeed s).1.toList)
-    (hpk2_slice : ∀ s : List.Vector (BitVec 8) 64, ((K.fromSeed s).2.2.toList.drop 1152).take 1152 = (K.fromSeed s).2.1.toList)
-    (hmac_call : AuthMacHdrPinnedOkX img F A ext) (hres_call : DoReserve2OkX img A ext)
-    (henc_call : EncodeBytesOkX img A ext) (hnc_call : PolyNextChunkOkX img A ext)
-    (hhkdf : HkdfToVecOkExt img A (spqrHkdfWith F) ext) (hupd : AuthUpdateOkExt img F A ext)
-    (hhs_call : HeaderSentSendEkChunkOkX img A F ext) (hct1r_call : Ct1ReceivedSendEkChunkOkX img A F ext)
-    (hct1s_call : Ct1SampledSendCt1ChunkOkX img A F ext) (hct2s_call : Ct2SampledSendCt2ChunkOkX img A F ext)
-    (hekct1s_call : EkReceivedCt1SampledSendCt1ChunkOkX img A F ext)
-    {s0 s : State} (sp cur : BitVec 64) (tape tape' : Bytes)
-    (chain : Option ChainPB) (st0 : States spqrPolyApi (spqrAuthApi F)) (sOut : V1Send spqrPolyApi (spqrAuthApi F))
-    (hroot_len : ∀ st, st0 = .headerReceived st → st.uc.auth.rootKey.length + 32 < 2 ^ 63)
-    (hsend : st0.send K tape = .ok (sOut, tape'))
-    {ret : BitVec 64} {P Frame Fr : SepProp} {post : State → SepProp → Prop} (hinv : ImgCallInv img s)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName + statesSendArmOffset st0)
-    (hrun : s.status = .Running) (hsp : s.sp = sp) (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (htr : s.trace = s0.trace) (hx19 : s.readReg64 .x19 = s0.readReg64 .x19) (hx20 : s.readReg64 .x20 = chunkedStatesWord0 st0)
-    (hx24 : s.readReg64 .x24 = sp + 0x950#64) (hx25 : s.readReg64 .x25 = sp + 0x550#64)
-    (hx26 : s.readReg64 .x26 = sp + 0x1260#64) (hx28 : s.readReg64 .x28 = sp + 0x1060#64)
-    (hx28_0 : s.readReg64 .x28 = s0.readReg64 .x28) (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hP : P = (stackAt sp spqrSendCalleeStack ∗ A.pool ∗
-      GF.Mul2U16.tokenInitAt img.base ∗ GF.UnacceleratedMul.reduceTableAt img.base ∗ spqrLogLevelZeroAt img.base ∗
-      tapeAt ctl cur tape ∗ ProtoRepr.optChainPBAt A (sp + 0x60#64) chain ∗
-      memRegion (sp + 0x190#64) 928 ∗ memRegion (sp + 0x530#64) 24 ∗ memRegion (sp + 0x550#64) 38 ∗
-      memRegion (sp + 0x580#64) 16 ∗ memRegion (sp + 0x590#64) 920 ∗
-      chunkedStatesAt A (sp + 0x950#64) st0 ∗ statesSendPreArmScratch sp) ∗ Frame)
-    (hnext : SpqrSendAt3196 (ctl := ctl) img A ext s0 sp cur tape tape' chain sOut.key sOut.msg sOut.state ret Frame Fr post) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P post
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
-        (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) := by
-  subst hP; cases st0 with
-  | keysUnsampled st =>
-    obtain ⟨⟨outSt, chunk, tape1⟩, h1, h2⟩ := states_send_ok_elim hsend
-    rcases Prod.mk.inj h2.symm with ⟨rfl, rfl⟩; unfold statesSendPreArmScratch
-    refine step_send_arm_keysUnsampled img A ext hA hbase hrng hseed hpk1 hpk2
-      hmac_call hres_call henc_call hnc_call hpk1_slice hpk2_slice sp cur tape tape' st outSt chunk h1
-      (Frame := ProtoRepr.optChainPBAt A (sp + 0x60#64) chain ∗ memRegion (sp + 0x190#64) 928 ∗
-        memRegion (sp + 0x530#64) 24 ∗ memRegion (sp + 32#64) 16 ∗ memRegion (sp + 4064#64) 16 ∗ Frame)
-      hinv hpc hrun hsp hsp_align htr hx19 hx24 hx26 hx28_0 hvregs
-      (by rw [show (sp + 0x1260#64 : BitVec 64) = sp + 4704#64 from rfl]; ac_rfl) fun s1 hinv1 hjoin1 => ?_
-    refine step_send_post_arm_cont img A ext hA sp cur tape tape' chain none hjoin1 trivial hsp_align hinv1 ?_ hnext
-    unfold statesSendPreArmScratch; rw [show (sp + 0x1260#64 : BitVec 64) = sp + 4704#64 from rfl]
-    exact Entails.of_eq (by ac_rfl)
-  | keysSampled st =>
-    obtain ⟨⟨outSt, chunk⟩, h1, h2⟩ := states_send_ok_elim hsend; rcases Prod.mk.inj h2 with ⟨rfl, rfl⟩
-    rw [statesSendPreArmScratch_eq_leaf sp 504]
-    refine step_send_arm_keysSampled img A ext hA hbase hct1r_call sp st outSt chunk h1
-      (Frame := statesSendLeafFrame (ctl := ctl) img.base A sp cur tape chain 504 Frame)
-      hinv hpc hrun hsp hsp_align htr hx19 hx24 hx25 hx26 hx28_0 hvregs
-      (by unfold statesSendLeafFrame; ac_rfl) fun s1 hinv1 hjoin1 => ?_
-    exact step_send_post_arm_cont_leaf img A ext hA sp cur tape chain 504 (by decide) hjoin1 trivial hsp_align hinv1 hnext
-  | headerSent st =>
-    obtain ⟨⟨outSt, chunk⟩, h1, h2⟩ := states_send_ok_elim hsend; rcases Prod.mk.inj h2 with ⟨rfl, rfl⟩
-    rw [statesSendPreArmScratch_eq_leaf sp 880]
-    refine step_send_arm_headerSent img A ext hA hbase hhs_call sp st outSt chunk h1
-      (Frame := statesSendLeafFrame (ctl := ctl) img.base A sp cur tape chain 880 Frame)
-      hinv hpc hrun hsp hsp_align htr hx19 hx24 hx25 hx26 hx28_0 hvregs
-      (by unfold statesSendLeafFrame; ac_rfl) fun s1 hinv1 hjoin1 => ?_
-    exact step_send_post_arm_cont_leaf img A ext hA sp cur tape chain 880 (by decide) hjoin1 trivial hsp_align hinv1 hnext
-  | ct1Received st =>
-    obtain ⟨⟨outSt, chunk⟩, h1, h2⟩ := states_send_ok_elim hsend; rcases Prod.mk.inj h2 with ⟨rfl, rfl⟩
-    rw [statesSendPreArmScratch_eq_leaf sp 504]
-    refine step_send_arm_ct1Received img A ext hA hbase hct1r_call sp st outSt chunk h1
-      (Frame := statesSendLeafFrame (ctl := ctl) img.base A sp cur tape chain 504 Frame)
-      hinv hpc hrun hsp hsp_align htr hx19 hx24 hx25 hx26 hx28_0 hvregs
-      (by unfold statesSendLeafFrame; ac_rfl) fun s1 hinv1 hjoin1 => ?_
-    exact step_send_post_arm_cont_leaf img A ext hA sp cur tape chain 504 (by decide) hjoin1 trivial hsp_align hinv1 hnext
-  | ekSentCt1Received st =>
-    rcases Prod.mk.inj (Except.ok.inj hsend) with ⟨rfl, rfl⟩
-    apply of_sepWP_inImage (mid := (tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName + 3068#64) img hinv
-    refine step_send_arm_ekSentCt1Received img.base A ext hA sp st
-      (Frame := statesSendImmFrame (ctl := ctl) img.base A sp cur tape chain Frame)
-      hpc hrun hsp hsp_align htr hx19 hx20 hx24 hx25 hx26 hx28_0 hvregs
-      (by unfold statesSendImmFrame; ac_rfl) fun s1 hjoin1 => ?_
-    apply SepWP.done hjoin1.pc hjoin1.run; intro hinv1
-    exact step_send_post_arm_cont_imm img A ext hA sp cur tape chain hjoin1 rfl hsp_align hinv1 hnext
-  | noHeaderReceived st =>
-    rcases Prod.mk.inj (Except.ok.inj hsend) with ⟨rfl, rfl⟩
-    apply of_sepWP_inImage (mid := (tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName + 3068#64) img hinv
-    refine step_send_arm_noHeaderReceived img.base A ext hA sp st
-      (Frame := statesSendImmFrame (ctl := ctl) img.base A sp cur tape chain Frame)
-      hpc hrun hsp hsp_align htr hx19 hx20 hx24 hx25 hx26 hx28_0 hvregs
-      (by unfold statesSendImmFrame; ac_rfl) fun s1 hjoin1 => ?_
-    apply SepWP.done hjoin1.pc hjoin1.run; intro hinv1
-    exact step_send_post_arm_cont_imm img A ext hA sp cur tape chain hjoin1 trivial hsp_align hinv1 hnext
-  | headerReceived st =>
-    obtain ⟨⟨outSt, chunk, ek, tape1⟩, h1, h2⟩ := states_send_ok_elim hsend
-    rcases Prod.mk.inj h2.symm with ⟨rfl, rfl⟩; unfold statesSendPreArmScratch
-    rw [memRegion_190_928_eq sp, memRegion_4080_104_eq sp, memRegion_4192_504_eq sp]
-    refine step_send_arm_headerReceived_ext img A ext himg hbase hA hZero hrng henc1
-      hhkdf hupd henc_call hnc_call sp cur tape tape' st outSt chunk ek (hroot_len st rfl) h1
-      (Frame := ProtoRepr.optChainPBAt A (sp + 0x60#64) chain ∗ memRegion (sp + 1320#64) 8 ∗
-        memRegion (sp + 0x530#64) 24 ∗ memRegion (sp + 3552#64) 504 ∗
-        memRegion (sp + 4128#64) 56 ∗ memRegion (sp + 4640#64) 56 ∗ Frame)
-      hinv hpc hrun hsp hsp_align htr hx19 hx24 hx26 hx28 hx28_0 hvregs (by ac_rfl) fun s1 hinv1 hjoin1 => ?_
-    refine step_send_post_arm_cont img A ext hA sp cur tape tape' chain (some ek) hjoin1 trivial hsp_align hinv1 ?_ hnext
-    unfold statesSendPreArmScratch
-    rw [memRegion_190_928_eq sp, memRegion_4080_104_eq sp, memRegion_4192_504_eq sp]
-    exact Entails.of_eq (by ac_rfl)
-  | ct1Sampled st =>
-    obtain ⟨⟨outSt, chunk⟩, h1, h2⟩ := states_send_ok_elim hsend; rcases Prod.mk.inj h2 with ⟨rfl, rfl⟩
-    rw [statesSendPreArmScratch_eq_leaf sp 928]
-    refine step_send_arm_ct1Sampled img A ext hA hbase hct1s_call sp st outSt chunk h1
-      (Frame := statesSendLeafFrame (ctl := ctl) img.base A sp cur tape chain 928 Frame)
-      hinv hpc hrun hsp hsp_align htr hx19 hx24 hx25 hx26 hx28_0 hvregs
-      (by unfold statesSendLeafFrame; ac_rfl) fun s1 hinv1 hjoin1 => ?_
-    exact step_send_post_arm_cont_leaf img A ext hA sp cur tape chain 928 (by decide) hjoin1 trivial hsp_align hinv1 hnext
-  | ekReceivedCt1Sampled st =>
-    obtain ⟨⟨outSt, chunk⟩, h1, h2⟩ := states_send_ok_elim hsend; rcases Prod.mk.inj h2 with ⟨rfl, rfl⟩
-    rw [statesSendPreArmScratch_eq_leaf sp 528]
-    refine step_send_arm_ekReceivedCt1Sampled img A ext hA hbase hekct1s_call sp st outSt chunk h1
-      (Frame := statesSendLeafFrame (ctl := ctl) img.base A sp cur tape chain 528 Frame)
-      hinv hpc hrun hsp hsp_align htr hx19 hx24 hx25 hx26 hx28_0 hvregs
-      (by unfold statesSendLeafFrame; ac_rfl) fun s1 hinv1 hjoin1 => ?_
-    exact step_send_post_arm_cont_leaf img A ext hA sp cur tape chain 528 (by decide) hjoin1 trivial hsp_align hinv1 hnext
-  | ct1Acknowledged st =>
-    rcases Prod.mk.inj (Except.ok.inj hsend) with ⟨rfl, rfl⟩
-    apply of_sepWP_inImage (mid := (tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName + 3068#64) img hinv
-    refine step_send_arm_ct1Acknowledged img.base A ext hA sp st
-      (Frame := statesSendImmFrame (ctl := ctl) img.base A sp cur tape chain Frame)
-      hpc hrun hsp hsp_align htr hx19 hx20 hx24 hx25 hx26 hx28_0 hvregs
-      (by unfold statesSendImmFrame; ac_rfl) fun s1 hjoin1 => ?_
-    apply SepWP.done hjoin1.pc hjoin1.run; intro hinv1
-    exact step_send_post_arm_cont_imm img A ext hA sp cur tape chain hjoin1 trivial hsp_align hinv1 hnext
-  | ct2Sampled st =>
-    obtain ⟨⟨outSt, chunk⟩, h1, h2⟩ := states_send_ok_elim hsend; rcases Prod.mk.inj h2 with ⟨rfl, rfl⟩
-    rw [statesSendPreArmScratch_eq_leaf sp 456]
-    refine step_send_arm_ct2Sampled img A ext hA hbase hct2s_call sp st outSt chunk h1
-      (Frame := statesSendLeafFrame (ctl := ctl) img.base A sp cur tape chain 456 Frame)
-      hinv hpc hrun hsp hsp_align htr hx19 hx24 hx25 hx26 hx28_0 hvregs
-      (by unfold statesSendLeafFrame; ac_rfl) fun s1 hinv1 hjoin1 => ?_
-    exact step_send_post_arm_cont_leaf img A ext hA sp cur tape chain 456 (by decide) hjoin1 trivial hsp_align hinv1 hnext
-
-/-- Unified 11-arm `<States>::send` + post-arm reassembly (`statesSendArmOffset st0 -> +3196`,
-    `0x309cc..0x31458 -> 0x314d8`) when `st0.send K tape = .ok (sOut, tape')`. -/
-theorem step_send_statesSend {F : ShaCompress} {K : MlKem} {ctl : BitVec 64}
-    (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img) (hbase : img.base &&& 0xfff#64 = 0#64)
-    (hA : AllocContracts img.base A ext) (hZero : HookSat ext allocZeroedName (rustAllocZeroedSpec A))
-    (hrng : HookSat ext rngFillName (rngFillSpec ctl)) (hseed : HookSat ext mlkemFromSeedName (mlkemFromSeedSpec K))
-    (hpk1 : HookSat ext mlkemPk1Name mlkemPk1Spec) (hpk2 : HookSat ext mlkemPk2Name mlkemPk2Spec)
-    (henc1 : HookSat ext mlkemEncaps1Name (mlkemEncaps1Spec K))
-    (hpk1_slice : ∀ s : List.Vector (BitVec 8) 64, ((K.fromSeed s).2.2.toList.drop 2304).take 64 = (K.fromSeed s).1.toList)
-    (hpk2_slice : ∀ s : List.Vector (BitVec 8) 64, ((K.fromSeed s).2.2.toList.drop 1152).take 1152 = (K.fromSeed s).2.1.toList)
-    (hmac_call : AuthMacHdrPinnedOkX img F A ext) (hres_call : DoReserve2OkX img A ext)
-    (henc_call : EncodeBytesOkX img A ext) (hnc_call : PolyNextChunkOkX img A ext)
-    (hhkdf : HkdfToVecOkX img A (spqrHkdfWith F) ext) (hupd : AuthUpdateOkX img F A ext)
-    (hhs_call : HeaderSentSendEkChunkOkX img A F ext) (hct1r_call : Ct1ReceivedSendEkChunkOkX img A F ext)
-    (hct1s_call : Ct1SampledSendCt1ChunkOkX img A F ext) (hct2s_call : Ct2SampledSendCt2ChunkOkX img A F ext)
-    (hekct1s_call : EkReceivedCt1SampledSendCt1ChunkOkX img A F ext)
-    {s0 s : State} (sp cur : BitVec 64) (tape tape' : Bytes)
-    (chain : Option ChainPB) (st0 : States spqrPolyApi (spqrAuthApi F)) (sOut : V1Send spqrPolyApi (spqrAuthApi F))
-    (hroot_len : ∀ st, st0 = .headerReceived st → st.uc.auth.rootKey.length + 32 < 2 ^ 63)
-    (hsend : st0.send K tape = .ok (sOut, tape'))
-    {ret : BitVec 64} {P Frame Fr : SepProp} {post : State → SepProp → Prop} (hinv : ImgCallInv img s)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName + statesSendArmOffset st0)
-    (hrun : s.status = .Running) (hsp : s.sp = sp) (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (htr : s.trace = s0.trace) (hx19 : s.readReg64 .x19 = s0.readReg64 .x19) (hx20 : s.readReg64 .x20 = chunkedStatesWord0 st0)
-    (hx24 : s.readReg64 .x24 = sp + 0x950#64) (hx25 : s.readReg64 .x25 = sp + 0x550#64)
-    (hx26 : s.readReg64 .x26 = sp + 0x1260#64) (hx28 : s.readReg64 .x28 = sp + 0x1060#64)
-    (hx28_0 : s.readReg64 .x28 = s0.readReg64 .x28) (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hP : P = (stackAt sp spqrSendCalleeStack ∗ A.pool ∗
-      GF.Mul2U16.tokenInitAt img.base ∗ GF.UnacceleratedMul.reduceTableAt img.base ∗ spqrLogLevelZeroAt img.base ∗
-      tapeAt ctl cur tape ∗ ProtoRepr.optChainPBAt A (sp + 0x60#64) chain ∗
-      memRegion (sp + 0x190#64) 928 ∗ memRegion (sp + 0x530#64) 24 ∗ memRegion (sp + 0x550#64) 38 ∗
-      memRegion (sp + 0x580#64) 16 ∗ memRegion (sp + 0x590#64) 920 ∗
-      chunkedStatesAt A (sp + 0x950#64) st0 ∗ statesSendPreArmScratch sp) ∗ Frame)
-    (hnext : SpqrSendAt3196 (ctl := ctl) img A ext s0 sp cur tape tape' chain sOut.key sOut.msg sOut.state ret Frame Fr post) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P post
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) →
-        (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ Fr)) :=
-  step_send_statesSend_ext img A ext himg hbase hA hZero hrng hseed hpk1 hpk2 henc1 hpk1_slice hpk2_slice
-    hmac_call hres_call henc_call hnc_call (hkdfToVecOkExt_of_okX hhkdf) (authUpdateOkExt_of_okX hupd)
-    hhs_call hct1r_call hct1s_call hct2s_call hekct1s_call sp cur tape tape' chain st0 sOut hroot_len hsend
-    hinv hpc hrun hsp hsp_align htr hx19 hx20 hx24 hx25 hx26 hx28 hx28_0 hvregs hP hnext
 
 end CryptoVerification.SpqrV1.Top.Send
 

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacDsl
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacShallow
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacDsl -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacShallow -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval -- proof-setup: allow-public-import
 
 /-!
 # Encodings and Invariants for the `PrfHmac` Reduction
@@ -20,7 +20,7 @@ Value encodings of shallow `PrfHmac` states into `ReductionDsl` types and list-l
 for the evaluation proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +35,7 @@ open OracleSpec OracleComp
 
 /-- Injects flat shallow key indices into `muKeyIdTy`, mapping `< N_send_tot` to session IDs and
 `N_send_tot + rc` to `.inr rc`. -/
-def natToMuKeyIdVal (S : Setup) (i : Nat) : muKeyIdTy.denote :=
+@[expose] def natToMuKeyIdVal (S : Setup) (i : Nat) : muKeyIdTy.denote :=
   if i < S.N_send_opk_tot then
     .inl (.inl (i / S.N_send_opk, i % S.N_send_opk))
   else if i < S.N_send_tot then
@@ -44,33 +44,33 @@ def natToMuKeyIdVal (S : Setup) (i : Nat) : muKeyIdTy.denote :=
   else
     .inr (i - S.N_send_tot)
 
-def muStToVal (st : PrfHmacMuState) : muStTy.denote :=
+@[expose] def muStToVal (st : PrfHmacMuState) : muStTy.denote :=
   (st.keys.map (fun e => ((.inr e.1 : muKeyIdTy.denote), (e.2.1, msgKeysToVal e.2.2))),
     (st.chal.map (fun e => ((.inr e.1 : muKeyIdTy.denote), e.2)), (st.pending, st.bad)))
 
-def muStToValS (S : Setup) (st : PrfHmacMuState) : muStTy.denote :=
+@[expose] def muStToValS (S : Setup) (st : PrfHmacMuState) : muStTy.denote :=
   (st.keys.map (fun e => (natToMuKeyIdVal S e.1, (e.2.1, msgKeysToVal e.2.2))),
     (st.chal.map (fun e => (natToMuKeyIdVal S e.1, e.2)), (st.pending, st.bad)))
 
-def hmStToVal {S : Setup} (jt : Nat) (hst : AuthHybridStateFixed S) (mst : PrfHmacMuState) :
+@[expose] def hmStToVal {S : Setup} (jt : Nat) (hst : AuthHybridStateFixed S) (mst : PrfHmacMuState) :
     hmStTy.denote :=
   (jt, (authHybridStateFixedToVal hst, muStToValS S mst))
 
-def encContToVal (c : HmEncCont) : encContTy.denote :=
+@[expose] def encContToVal (c : HmEncCont) : encContTy.denote :=
   ((.inr c.i : muKeyIdTy.denote), (c.r, (c.ad, (c.ct, muStToVal c.st))))
 
-def encContToValS (S : Setup) (c : HmEncCont) : encContTy.denote :=
+@[expose] def encContToValS (S : Setup) (c : HmEncCont) : encContTy.denote :=
   (natToMuKeyIdVal S c.i, (c.r, (c.ad, (c.ct, muStToValS S c.st))))
 
-def encPreToVal : (Option Bytes × PrfHmacMuState) ⊕ HmEncCont → encPreTy.denote
+@[expose] def encPreToVal : (Option Bytes × PrfHmacMuState) ⊕ HmEncCont → encPreTy.denote
   | .inl (ct?, st) => .inl (ct?, muStToVal st)
   | .inr c => .inr (encContToVal c)
 
-def encPreToValS (S : Setup) : (Option Bytes × PrfHmacMuState) ⊕ HmEncCont → encPreTy.denote
+@[expose] def encPreToValS (S : Setup) : (Option Bytes × PrfHmacMuState) ⊕ HmEncCont → encPreTy.denote
   | .inl (ct?, st) => .inl (ct?, muStToValS S st)
   | .inr c => .inr (encContToValS S c)
 
-def intPrepToVal {S : Setup} (p : AuthIntSendPrep S) : intPrepTy.denote :=
+@[expose] def intPrepToVal {S : Setup} (p : AuthIntSendPrep S) : intPrepTy.denote :=
   (principalEntryToVal p.uEntry, (p.peerPrincipal?.map (Prod.map id principalEntryToVal),
     ((p.isFreshPeer, (p.isIdealSend, p.msgPlain)),
       ((p.ekASk, (p.ekAPk, (p.ss, (p.kemCt, (p.ephASk, p.ephAPk))))),
@@ -78,35 +78,35 @@ def intPrepToVal {S : Setup} (p : AuthIntSendPrep S) : intPrepTy.denote :=
           (p.spqrSalt?, (p.pqRatchetMsg, (p.ad, ((p.spkHon, (p.opkHon, p.pqspkHon)),
             (p.roCache'.map (Prod.map id drKeyToVal), p.rootRoCache')))))))))))
 
-def hmSendContToVal {S : Setup} (c : HmSendCont S) : hmSendContTy.denote :=
+@[expose] def hmSendContToVal {S : Setup} (c : HmSendCont S) : hmSendContTy.denote :=
   (sessionIdToVal c.sid, (preKeyBundleToVal c.bundle, ((c.m0, c.m1),
     (intPrepToVal c.p, (authHybridStateFixedToVal c.hst, encContToValS S c.enc)))))
 
-def hmResToVal {S : Setup} (r : HmRes S) : hmResTy.denote :=
+@[expose] def hmResToVal {S : Setup} (r : HmRes S) : hmResTy.denote :=
   ((authRespToVal r.1.1, authHybridStateFixedToVal r.1.2), muStToValS S r.2)
 
-def hmPreToVal {S : Setup} : HmRes S ⊕ HmSendCont S → hmPreTy.denote
+@[expose] def hmPreToVal {S : Setup} : HmRes S ⊕ HmSendCont S → hmPreTy.denote
   | .inl r => .inl (hmResToVal r)
   | .inr c => .inr (hmSendContToVal c)
 
-def hmRecvDataToVal {S : Setup} (d : HmRecvData S) : hmRecvDataTy.denote :=
+@[expose] def hmRecvDataToVal {S : Setup} (d : HmRecvData S) : hmRecvDataTy.denote :=
   (principalEntryToVal d.kEntry, (spkBundleEntryToVal d.bEntry, (d.opkPk?, (d.secrets,
     (authHybridStateToVal d.hstDec, (d.usedTriples', d.senderIsHonest))))))
 
-def schedPrepToVal {S : Setup} (sp : AuthIntRecvSchedPrep S) : schedPrepTy.denote :=
+@[expose] def schedPrepToVal {S : Setup} (sp : AuthIntRecvSchedPrep S) : schedPrepTy.denote :=
   (sp.isUncorruptedHonestSender, (sp.matchedSess?.map idealAuthSessionToVal,
     (sp.useIdealBranch, (drKeyToVal sp.drKey, (sp.roCache'.map (Prod.map id drKeyToVal),
       (sp.sameEph, (sp.rk1, (sp.ck1_0, (sp.rootRoCache', (sp.mkSeed, (sp.ck1_1,
         sp.spqrSalt?)))))))))))
 
-def schedOutToVal (o : HmSchedOut) : schedOutTy.denote :=
+@[expose] def schedOutToVal (o : HmSchedOut) : schedOutTy.denote :=
   o.map fun (dk, rk1, ck, pt, ro, root) =>
     (drKeyToVal dk, (rk1, (ck, (pt, (ro.map (Prod.map id drKeyToVal), root)))))
 
-def hmCacheToVal {S : Setup} (cache : AuthMkSaltCache S) : authMkSaltCacheTy.denote :=
+@[expose] def hmCacheToVal {S : Setup} (cache : AuthMkSaltCache S) : authMkSaltCacheTy.denote :=
   cache.map (fun ((sid, salt?), (rc, mk)) => ((sessionIdToVal sid, salt?), (rc, msgKeysToVal mk)))
 
-def schedResToVal {S : Setup} (r : (HmSchedOut × AuthMkSaltCache S) × PrfHmacMuState) :
+@[expose] def schedResToVal {S : Setup} (r : (HmSchedOut × AuthMkSaltCache S) × PrfHmacMuState) :
     schedResTy.denote :=
   ((schedOutToVal r.1.1, hmCacheToVal r.1.2), muStToValS S r.2)
 
@@ -151,7 +151,7 @@ structure HmSendCont.BoundedV2 {S : Setup} (n : Nat) (c : HmSendCont S) : Prop w
   pending_le : c.enc.st.pending.length ≤ n
   post_inv   : ∀ t, HmInvV2 (n + 1) (c.post t).1.2 (c.post t).2
 
-def HmPreLeaf {S : Setup} (n : Nat) : HmRes S ⊕ HmSendCont S → Prop
+@[expose] def HmPreLeaf {S : Setup} (n : Nat) : HmRes S ⊕ HmSendCont S → Prop
   | .inl r => HmInv (n + 1) r.1.2 r.2
   | .inr c => c.Bounded n
 

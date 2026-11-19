@@ -176,8 +176,8 @@ DEFAULT_CLI_PANIC_SYMBOLS_PLACED: frozenset[str] = frozenset({
     "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed",
 })
 
-# Reference 37-entry WP6c `cliHookTablePlaced` (after WP6c + `libsignal-cli` rename; `alink_check` reads `CliBinaryPq.lean` / `--lock` directly per D-C2d)
-DEFAULT_CLI_HOOK_TABLE_PLACED: frozenset[str] = frozenset({
+# Historical 37-entry WP6c `cliHookTablePlaced` (after WP6c + `libsignal-cli` rename; retained for S5/C2 unit tests)
+WP6C_37_CLI_HOOK_TABLE_PLACED: frozenset[str] = frozenset({
     # 18 PQXDH crypto/session hooks (`cliPqxdhHookTablePlaced`)
     "_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512",
     "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint10to_edwards",
@@ -218,6 +218,9 @@ DEFAULT_CLI_HOOK_TABLE_PLACED: frozenset[str] = frozenset({
     "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop",
     "_RNvXse_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12SharedSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop",
 })
+
+# Post-Stage-B 0-hook reference `cliHookTablePlaced` (`alink_check` reads `CliBinaryPq.lean` / `--lock` directly per D-C2d)
+DEFAULT_CLI_HOOK_TABLE_PLACED: frozenset[str] = frozenset()
 
 # Baseline commit-1 stock ELF (`2f20c836342437a882b5882c34eab604e4f23b2b388c2b2a0696eeda51cddc7e`)
 # `.text.crate` `extern_stubs_clean.o` 4-byte `udf #0` slot addresses (`0x46890c..0x468a48`).
@@ -313,6 +316,11 @@ DISPLACED_WEAK_ATOMICS: frozenset[str] = frozenset({
 DEFAULT_FAILSTOP_DROP_STUBS: frozenset[str] = frozenset({
     "_RNvXsd_NtNtCskxtBwYRO61I_4core2io5errorNtB5_11CustomOwnerNtNtNtB9_3ops4drop4Drop4drop",
     "<core::io::error::CustomOwner as core::ops::drop::Drop>::drop",
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter25debug_tuple_field1_finish",
+    "<core::fmt::Formatter>::debug_tuple_field1_finish",
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter9write_str",
+    "<core::fmt::Formatter>::write_str",
+    "__rust_unreachable_unwind_pad",
 })
 
 # Pinned `rustc 1.98.1` `aarch64-unknown-linux-musl/lib/self-contained/libc.a` & member digests (GK rows 373-375)
@@ -325,6 +333,7 @@ DEFAULT_TRUSTED_EXTERN_DATA: frozenset[str] = frozenset({
     "_RNvNtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u649constants23ED25519_BASEPOINT_TABLE",
     "_RNvNtNtCs40xgxkZUUew_9getrandom8backends27linux_android_with_fallback12GETRANDOM_FN",
     "_RNvNtNtNtCskxtBwYRO61I_4core7unicode12unicode_data11white_space14WHITESPACE_MAP",
+    "_RNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes7STORAGE",
 })
 
 R_AARCH64_NAMES: dict[int, str] = {
@@ -1504,7 +1513,9 @@ _RDLS_RUSTC_SHIM_RE = re.compile(
     r"14___rust_dealloc|"
     r"14___rust_realloc|"
     r"19___rust_alloc_zeroed|"
-    r"35___rust_no_alloc_shim_is_unstable_v2"
+    r"35___rust_no_alloc_shim_is_unstable_v2|"
+    r"17rust_begin_unwind|"
+    r"26___rust_alloc_error_handler"
     r")$"
 )
 
@@ -2068,17 +2079,23 @@ def compare_defined_symbol_bytes(
 # Trusted Lean Table & Pin Readers
 # ==============================================================================
 
+def is_rust_panic_symbol(raw_or_demangled: str) -> bool:
+    """Mirror `Rust.isPanicSymbol`: `core::panicking::*` or exact known Rust panic entry points."""
+    dem = demangle_rust(raw_or_demangled)
+    for cand in (raw_or_demangled, dem):
+        if cand.startswith("core::panicking::") or cand in RUST_PANIC_EXACT_NAMES:
+            return True
+    return False
+
+
 def is_cli_panic_symbol_placed(
     raw_or_demangled: str,
     extra_panic_syms: Iterable[str] = DEFAULT_CLI_PANIC_SYMBOLS_PLACED,
 ) -> bool:
-    """Mirror `CliBinaryPq.isCliPanicSymbolPlaced`: `Rust.isPanicSymbol name || cliPanicSymbolsPlaced.contains name`."""
+    """Mirror `CliBinaryPqPlaced.isCliPanicSymbolPlaced`: `cliPanicSymbolsPlaced.contains name`."""
     dem = demangle_rust(raw_or_demangled)
     extra_set = set(extra_panic_syms)
-    for cand in (raw_or_demangled, dem):
-        if cand.startswith("core::panicking::") or cand in RUST_PANIC_EXACT_NAMES or cand in extra_set:
-            return True
-    return False
+    return raw_or_demangled in extra_set or dem in extra_set
 
 
 _STRLEN_WORD_RE = re.compile(r"0x([0-9a-fA-F]{8})#32")
@@ -2245,7 +2262,7 @@ def is_failstop_z_symbol(
     extra_panics: Iterable[str] = DEFAULT_CLI_PANIC_SYMBOLS_PLACED,
 ) -> bool:
     """True iff `raw_or_demangled` is allowed in A-LINK Rule (vi)'s `failstop_z` set."""
-    if is_cli_panic_symbol_placed(raw_or_demangled, extra_panics):
+    if is_rust_panic_symbol(raw_or_demangled) or is_cli_panic_symbol_placed(raw_or_demangled, extra_panics):
         return True
     dem = demangle_rust(raw_or_demangled)
     fset = set(extra_failstop)
@@ -2267,11 +2284,11 @@ class CliBinaryPqTables:
 
 
 _LEAN_ABBREV_STR_RE = re.compile(
-    r"(?:^|\n)\s*(?:private\s+|protected\s+)?(?:abbrev|def)\s+([A-Za-z0-9_']+)\s*(?::\s*String)?\s*:=\s*\"([^\"\\]*(?:\\.[^\"\\]*)*)\""
+    r"(?:^|\n)\s*(?:@\[[^\]]+\]\s*)*(?:public\s+|private\s+|protected\s+)*(?:abbrev|def)\s+([A-Za-z0-9_']+)\s*(?::\s*String)?\s*:=\s*\"([^\"\\]*(?:\\.[^\"\\]*)*)\""
 )
 _LEAN_IDENT_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_']*$")
 _LEAN_TOP_CMD_RE = re.compile(
-    r"(?:noncomputable|def|abbrev|theorem|lemma|private|protected|namespace|end|section|open|set_option|structure|inductive|class|instance|opaque|axiom|mutual|variable|#|@\[)(?:\b|$)"
+    r"(?:public|noncomputable|def|abbrev|theorem|lemma|private|protected|namespace|end|section|open|set_option|structure|inductive|class|instance|opaque|axiom|mutual|variable|#|@\[)(?:\b|$)"
 )
 
 
@@ -2375,7 +2392,7 @@ def _extract_lean_list_rhs_segments(
     """Locate `def|abbrev <def_name> ... := <seg> (++ <seg>)*` and return `[('list', inner) | ('ref', ident), ...]`."""
     matches = list(
         re.finditer(
-            rf"(?:^|\n)[ \t]*(?:noncomputable\s+)?(?:def|abbrev)\s+{re.escape(def_name)}\b",
+            rf"(?:^|\n)[ \t]*(?:@\[[^\]]+\]\s*)*(?:public\s+|private\s+|protected\s+|noncomputable\s+)*(?:def|abbrev)\s+{re.escape(def_name)}\b",
             code,
         )
     )
@@ -2606,11 +2623,6 @@ def parse_cli_binary_pq_text(
         panic_segs, abbrev_map, {}, source, "cliPanicSymbolsPlaced"
     )
 
-    if not hook_list:
-        raise ValueError(f"{source}: `cliHookTablePlaced` parsed as empty")
-    if not panic_list:
-        raise ValueError(f"{source}: `cliPanicSymbolsPlaced` parsed as empty")
-
     _ensure_unique_entries(hook_list, source, "cliHookTablePlaced")
     _ensure_unique_entries(dehooked_list, source, "cliDehookedSymsPlaced")
     _ensure_unique_entries(panic_list, source, "cliPanicSymbolsPlaced")
@@ -2645,16 +2657,79 @@ def parse_cli_binary_pq_text(
 
 
 def load_cli_binary_pq_tables(repo_root: pathlib.Path) -> CliBinaryPqTables:
-    """Load `CliBinaryPqTables` from `<repo_root>/LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean`."""
+    """Load `CliBinaryPqTables` from `<repo_root>/LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean`
+    (supplementing with untrusted `LibsignalBinary/Proofs/Placed/CliBinaryPqPlaced.lean` when
+    `cliDehookedSymsPlaced` / `cliHookTablePlaced` live there; `pq_lean_sha256` pins `CliBinaryPq.lean`)."""
     pq_lean = (repo_root / "LibsignalBinary/Specifications/SignalSession/CliBinaryPq.lean").resolve()
     if not pq_lean.is_file():
         raise FileNotFoundError(f"trusted `CliBinaryPq.lean` missing: {pq_lean}")
     raw_bytes = pq_lean.read_bytes()
+    text = raw_bytes.decode("utf-8")
+    if "cliDehookedSymsPlaced" not in text or "cliHookTablePlaced" not in text:
+        placed_pq = (repo_root / "LibsignalBinary/Proofs/Placed/CliBinaryPqPlaced.lean").resolve()
+        if placed_pq.is_file():
+            placed_text = placed_pq.read_text(encoding="utf-8")
+            m_ns = re.search(
+                r"(?m)^namespace CryptoVerification\.SignalSession(?=\s|$).*?^end CryptoVerification\.SignalSession(?=\s|$)",
+                placed_text,
+                flags=re.DOTALL,
+            )
+            text = text + "\n" + (m_ns.group(0) if m_ns is not None else placed_text)
     return parse_cli_binary_pq_text(
-        raw_bytes.decode("utf-8"),
+        text,
         str(pq_lean),
         raw_sha256=sha256_bytes(raw_bytes),
     )
+
+
+def apply_staged_dehook_overlay(
+    tables: CliBinaryPqTables, staged_syms: Sequence[str]
+) -> CliBinaryPqTables:
+    """Idempotently overlay pre-cutover `c2_staged_dehook_syms` onto `CliBinaryPqTables`."""
+    staged_list = [str(s) for s in dict.fromkeys(staged_syms) if str(s)]
+    if not staged_list:
+        return tables
+    staged_set = frozenset(staged_list)
+    if staged_set & tables.panic_set:
+        raise ValueError(
+            f"`c2_staged_dehook_syms` overlaps `cliPanicSymbolsPlaced`: {sorted(staged_set & tables.panic_set)}"
+        )
+    new_hooks = tuple(h for h in tables.hooks if h not in staged_set)
+    new_dehooked = tuple(dict.fromkeys([*tables.dehooked, *staged_list]))
+    return CliBinaryPqTables(
+        hooks=new_hooks,
+        hook_set=frozenset(new_hooks),
+        dehooked=new_dehooked,
+        dehooked_set=frozenset(new_dehooked),
+        panics=tables.panics,
+        panic_set=tables.panic_set,
+        pq_lean_path=tables.pq_lean_path,
+        pq_lean_sha256=tables.pq_lean_sha256,
+    )
+
+
+def load_lock_staged_dehook_syms(
+    repo_root: pathlib.Path | None = None,
+    inputs_lock_path: pathlib.Path | None = None,
+) -> tuple[str, ...]:
+    """Read optional `c2_staged_dehook_syms` from `inputs_stock_stdbin.lock` when present."""
+    import tomllib
+
+    cand = inputs_lock_path
+    if cand is None and repo_root is not None:
+        default_p = (
+            repo_root
+            / "third_party/libsignal/libsignal-session/cli-elf/stock/inputs_stock_stdbin.lock"
+        )
+        if default_p.is_file():
+            cand = default_p
+    if cand is None or not cand.is_file():
+        return ()
+    doc = tomllib.loads(cand.read_text(encoding="utf-8"))
+    raw = doc.get("c2_staged_dehook_syms")
+    if isinstance(raw, list):
+        return tuple(str(x) for x in dict.fromkeys(raw) if str(x))
+    return ()
 
 
 def load_cli_hook_and_panic_tables(
@@ -2667,11 +2742,14 @@ def load_cli_hook_and_panic_tables(
     if not pq_lean.is_file():
         return DEFAULT_CLI_HOOK_TABLE_PLACED, DEFAULT_CLI_PANIC_SYMBOLS_PLACED
     tables = load_cli_binary_pq_tables(repo_root)
+    staged = load_lock_staged_dehook_syms(repo_root)
+    if staged:
+        tables = apply_staged_dehook_overlay(tables, staged)
     return tables.hook_set, tables.panic_set
 
 
 def load_config_declared_exports(repo_root: pathlib.Path, config_rel_path: str) -> list[str]:
-    """Read `[placed].exports` from `<repo_root>/<config_rel_path>`."""
+    """Read `[placed].exports` (plus `[lib2_rows.*.helper_roots]`) from `<repo_root>/<config_rel_path>`."""
     import tomllib
 
     cfg_file = (repo_root / config_rel_path).resolve()
@@ -2679,12 +2757,18 @@ def load_config_declared_exports(repo_root: pathlib.Path, config_rel_path: str) 
         raise ValueError(f"translation config missing: {cfg_file}")
     cfg = tomllib.loads(cfg_file.read_text(encoding="utf-8"))
     placed = cfg.get("placed")
+    out: list[str] = []
     if isinstance(placed, dict) and isinstance(placed.get("exports"), list):
-        return [str(x) for x in placed["exports"]]
-    exports = cfg.get("exports")
-    if isinstance(exports, list):
-        return [str(x) for x in exports]
-    return []
+        out.extend(str(x) for x in placed["exports"])
+    elif isinstance(cfg.get("exports"), list):
+        out.extend(str(x) for x in cfg["exports"])
+    rows_tbl = cfg.get("lib2_rows")
+    if isinstance(rows_tbl, dict):
+        for rinfo in rows_tbl.values():
+            if isinstance(rinfo, dict):
+                for hr in rinfo.get("helper_roots") or ():
+                    out.append(str(hr))
+    return list(dict.fromkeys(out))
 
 
 def find_rustc_musl_libc_archive(

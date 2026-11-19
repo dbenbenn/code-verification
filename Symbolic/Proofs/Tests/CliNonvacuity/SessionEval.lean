@@ -27,7 +27,7 @@ Provides `concretizeAll_split`, transparent fuel-bounded `DY.Bytes` equality (`b
 in the Lean kernel.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +51,7 @@ unseal DY.Bytes
 
 /-! ## Term Children and `concretizeAll_split` -/
 
-def children (x : DY.BytesF DY.Bytes) : List DY.Bytes :=
+@[expose] def children (x : DY.BytesF DY.Bytes) : List DY.Bytes :=
   match x with
   | ⟨⟨0, _⟩, _⟩ | ⟨⟨1, _⟩, _⟩ => []
   | ⟨⟨2, _⟩, ⟨⟨0, _⟩, v⟩⟩ => [v.lhs, v.rhs]
@@ -153,7 +153,7 @@ local instance (id : DY.ALaCarte.Representable.CtorId DY.BytesF) :
     DecidableEq (DY.ALaCarte.Representable.ctors (f := DY.BytesF) id).Data :=
   DY.ALaCarte.RepresentableDecidableEq.ctor_data_deq (f := DY.BytesF) id
 
-def beqListOpt {α : Type} (eq : α → α → Option Bool) : List α → List α → Option Bool
+@[expose] def beqListOpt {α : Type} (eq : α → α → Option Bool) : List α → List α → Option Bool
   | [], [] => some true
   | a :: as, b :: bs =>
     match eq a b with
@@ -162,7 +162,7 @@ def beqListOpt {α : Type} (eq : α → α → Option Bool) : List α → List �
     | none => none
   | _, _ => some false
 
-def beqBareOptFast : Nat → ComposedBare → ComposedBare → Option Bool
+@[expose] def beqBareOptFast : Nat → ComposedBare → ComposedBare → Option Bool
   | 0, _, _ => none
   | fuel + 1, ⟨id1, d1, as1⟩, ⟨id2, d2, as2⟩ =>
     if hid : id1 = id2 then
@@ -239,7 +239,7 @@ theorem beqBareOptFast_false :
       · next hd => intro heq; cases heq; exact hd rfl
     · next hid => intro heq; cases heq; exact hid rfl
 
-noncomputable def decEqBytesFast : DecidableEq DY.Bytes :=
+@[expose] def decEqBytesFast : DecidableEq DY.Bytes :=
   fun a b =>
     match h : beqBareOptFast 256 a.val b.val with
     | some true => isTrue (Subtype.ext (beqBareOptFast_true 256 a.val b.val h))
@@ -264,22 +264,22 @@ inductive Trie (α : Type) where
   | leaf (bucket : List α)
   | branch (lo hi : Trie α)
 
-def emptyTrie {α : Type} : Nat → Trie α
+@[expose] def emptyTrie {α : Type} : Nat → Trie α
   | 0 => .leaf []
   | d + 1 => .branch (emptyTrie d) (emptyTrie d)
 
-def trieBucket {α : Type} : Trie α → Nat → List α
+@[expose] def trieBucket {α : Type} : Trie α → Nat → List α
   | .leaf bs, _ => bs
   | .branch lo hi, h =>
     if Nat.beq (h % 2) 0 then trieBucket lo (h / 2) else trieBucket hi (h / 2)
 
-def trieInsert {α : Type} : Trie α → Nat → α → Trie α
+@[expose] def trieInsert {α : Type} : Trie α → Nat → α → Trie α
   | .leaf bs, _, x => .leaf (x :: bs)
   | .branch lo hi, h, x =>
     if Nat.beq (h % 2) 0 then .branch (trieInsert lo (h / 2) x) hi
     else .branch lo (trieInsert hi (h / 2) x)
 
-def trieToList {α : Type} : Trie α → List α
+@[expose] def trieToList {α : Type} : Trie α → List α
   | .leaf bs => bs
   | .branch lo hi => trieToList lo ++ trieToList hi
 
@@ -340,7 +340,7 @@ theorem forceListOnce_eq {α β : Type} (xs : List α) (k : List α → β) :
     forceListOnce xs k = k xs := by
   cases xs <;> rfl
 
-def forceTrieOnce {α β : Type} : Trie α → (Trie α → β) → β
+@[expose] def forceTrieOnce {α β : Type} : Trie α → (Trie α → β) → β
   | .leaf bs, k => k (.leaf bs)
   | .branch lo hi, k => k (.branch lo hi)
 
@@ -348,7 +348,7 @@ theorem forceTrieOnce_eq {α β : Type} (t : Trie α) (k : Trie α → β) :
     forceTrieOnce t k = k t := by
   cases t <;> rfl
 
-def withForcedList {α β : Type} : List α → List α → (List α → β) → β
+@[expose] def withForcedList {α β : Type} : List α → List α → (List α → β) → β
   | [], acc, k => k acc.reverse
   | x :: xs, acc, k => withForcedList xs (x :: acc) k
 
@@ -381,7 +381,7 @@ theorem foldlTrie_eq {α β : Type} (f : Trie α → β → Trie α) :
   | [], _ => rfl
   | x :: xs, t => by dsimp only [foldlTrie, List.foldl_cons]; rw [withForcedTrie_eq, foldlTrie_eq]
 
-def hashTermNat : Nat → DY.Bytes → Nat
+@[expose] def hashTermNat : Nat → DY.Bytes → Nat
   | 0, _ => 7
   | fuel + 1, b =>
     match b.view? DY.BytesF with

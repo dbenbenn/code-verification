@@ -46,6 +46,7 @@ import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
+import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge
 
 /-!
 # No-Ratchet Decrypt Collision Bridge
@@ -55,7 +56,7 @@ DH-ratchet coins (`pureDrawsCoins = false`), any `ModelAcceptsTermAfterCoinSplit
 on `(g, ms)` whose cut draws `.rng rb` before `.accept out` yields `RecvCollision interp' r S g ms t_rep`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

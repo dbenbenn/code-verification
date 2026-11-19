@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -20,6 +20,12 @@ import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Filesystem-Preserving and `FdsGe3Closed`-Threaded `signal_session::stores::path` (Block 596)
@@ -29,7 +35,7 @@ on Block 596, using the fact that `path` invokes only allocator, `memcpy`, and `
 operations and leaves `State.fs` unchanged.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -1096,21 +1102,6 @@ theorem path_placed_keepsFs_ok_of_res [LibsignalPlacement] {M : AllocCostModel}
     rw [← hvec_out]; exact Eq.mp (by sep_ac_rfl) hPR
   · simp only [arm64_norm, wp_norm, ← hfsp, fsp_add_112_eq]
 
-/-- Caller-transferable `.keepsFs` `path` contract for any block `< 619` from a `.keepsFs` reserve contract. -/
-theorem path_placed_keepsFs_caller_ok_of_res [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {callerProg resProg : Program} {i resBlk : Nat}
-    [IsLsBlockProg callerProg i H] [IsLsBlockProg resProg resBlk H] {resStack stk : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hRes : subroutine_ok resProg (lsmpl.base 561)
-      (withLsCodeRoLoaded lsmpl (doReserveSpecOf resStack A lim).keepsFs))
-    (hstk : 0x70 + max resStack extHookStack ≤ stk) (hi : i < 619 := by decide)
-    (hresBlk : resBlk < 619 := by decide)
-    (hresUnmut : (resBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 596) (pathSpecPlaced A lim PathEnv stk).keepsFs :=
-  ls_transfer_keepsFs_lscro (callerProg := callerProg) (calleeProg := lsProg_596 H)
-    (i := i) (j := 596) (path_placed_keepsFs_ok_of_res hFs hRes hstk hresBlk hresUnmut) hi
-
 /-- Block-`596` `.keepsFs` `path` contract discharging Block `561` via `reserve1_blk561_ok`. -/
 theorem path_placed_keepsFs_ok_of_allocFs [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
@@ -1138,36 +1129,6 @@ theorem path_placed_keepsFs_caller_ok_of_allocFs [LibsignalPlacement] {M : Alloc
     subroutine_ok callerProg (lsmpl.base 596) (pathSpecPlaced A lim PathEnv stk).keepsFs :=
   ls_transfer_keepsFs_lscro (callerProg := callerProg) (calleeProg := lsProg_596 H)
     (i := i) (j := 596) (path_placed_keepsFs_ok_of_allocFs (resStack := resStack) hFs hres hstk hpan) hi
-
-/-- Block-`596` `withFdsGe3Closed (pathSpecPlaced A lim PathEnv stk)` twin from a `.keepsFs` reserve contract. -/
-theorem path_placed_ok_of_res_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {resProg : Program} {resBlk : Nat} [IsLsBlockProg resProg resBlk H] {resStack stk : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hRes : subroutine_ok resProg (lsmpl.base 561)
-      (withLsCodeRoLoaded lsmpl (doReserveSpecOf resStack A lim).keepsFs))
-    (hstk : 0x70 + max resStack extHookStack ≤ stk) (hresBlk : resBlk < 619 := by decide)
-    (hresUnmut : (resBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok (lsProg_596 H) (lsmpl.base 596)
-      (withFdsGe3Closed (pathSpecPlaced A lim PathEnv stk)) :=
-  subroutine_ok_withFdsGe3Closed_of_keepsFs
-    (path_placed_keepsFs_ok_of_res hFs hRes hstk hresBlk hresUnmut)
-
-/-- Caller-transferable `withFdsGe3Closed (pathSpecPlaced A lim PathEnv stk)` twin from a `.keepsFs` reserve contract. -/
-theorem path_placed_caller_ok_of_res_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {callerProg resProg : Program} {i resBlk : Nat}
-    [IsLsBlockProg callerProg i H] [IsLsBlockProg resProg resBlk H] {resStack stk : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hRes : subroutine_ok resProg (lsmpl.base 561)
-      (withLsCodeRoLoaded lsmpl (doReserveSpecOf resStack A lim).keepsFs))
-    (hstk : 0x70 + max resStack extHookStack ≤ stk) (hi : i < 619 := by decide)
-    (hresBlk : resBlk < 619 := by decide)
-    (hresUnmut : (resBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 596)
-      (withFdsGe3Closed (pathSpecPlaced A lim PathEnv stk)) :=
-  subroutine_ok_withFdsGe3Closed_of_keepsFs
-    (path_placed_keepsFs_caller_ok_of_res hFs hRes hstk hi hresBlk hresUnmut)
 
 /-- Caller-transferable `withFdsGe3Closed (pathSpecPlaced A lim PathEnv stk)` twin from `AllocContractsFsPlaced`. -/
 theorem path_placed_caller_ok_of_allocFs_fd [LibsignalPlacement] {M : AllocCostModel}

@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.Base
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Proof
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Base Step Lemmas for `<Message>::deserialize`
@@ -25,7 +28,7 @@ meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 `<spqr::v1::chunked::states::Message>::deserialize` (Block `351`) under `RustCliAllocBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -114,7 +117,7 @@ private theorem sepWP_msgDeser_finish [LibsignalPlacement]
   simp only [sepExists_sepConj_left, satisfies_sepExists]
   refine ⟨evs, ?_⟩
   rw [sepConj_assoc, satisfies_pure_sepConj]
-  exact ⟨⟨htrf, hevs⟩, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm1⟩
+  exact ⟨⟨htrf, Or.inl hevs⟩, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hm1⟩
 
 set_option maxHeartbeats 800000 in
 private theorem step_err_tail_core [LibsignalPlacement] (P_poly : PolyApi)

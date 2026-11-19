@@ -13,11 +13,14 @@ public import ProofLib.StdStartup.StackInit
 public import ProofLib.StdStartup.Strlen
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Strlen -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WP.Structural
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # SWAR-Padded Read-Only `argv` Predicates & Honest `strlenSpecROSat` (`Cli/M24/ArgvPad.lean`)
@@ -162,93 +165,6 @@ theorem argvAtROPPad_append (a : BitVec 64) (xs ys : List (BitVec 64 × List (Bi
 
 /-! ## 2. Startup `argv` Duplication Keeping the SWAR Pad (`argvTable_dup_argvAtROPad`) -/
 
-/-- Duplicate `argvAtROPad sl.argvTableAddr inputs.argv` out of the initial Linux stack's read-only
-`argv` pointer table and `upperStrBytes` region, retaining the SWAR read-ahead padding witness from
-`InitialStackInfo.dup_argv_cstr_padded`. -/
-theorem argvTable_dup_argvAtROPad {img : ElfImage} {inputs : ProcessInputs} {s0 : State}
-    (hinfo : InitialStackInfo img inputs s0) (hargs : ArgsValid inputs) :
-    let sl := StackLayout.of img inputs
-    ((sl.argvTableAddr ↦₆₄ᵣ* (sl.argvAddrs ++ [0#64])) ∗ (sl.argvBase ↦ᵣ sl.upperStrBytes)) ⊢
-      argvAtROPad sl.argvTableAddr inputs.argv ∗
-        (sl.argvTableAddr ↦₆₄ᵣ* (sl.argvAddrs ++ [0#64])) ∗
-        (sl.argvBase ↦ᵣ sl.upperStrBytes) := by
-  dsimp only
-  let sl := StackLayout.of img inputs
-  have hlen : sl.argvAddrs.length = inputs.argv.length := hinfo.argvAddrs_length
-  have htop48 : inputs.init.stackTop.toNat ≤ 2 ^ 48 := hinfo.stackTop_align.2.2
-  suffices hgen : ∀ (k : Nat), k ≤ inputs.argv.length →
-      (((sl.argvTableAddr + BitVec.ofNat 64 (8 * k)) ↦₆₄ᵣ* (sl.argvAddrs.drop k ++ [0#64])) ∗
-        (sl.argvBase ↦ᵣ sl.upperStrBytes)) ⊢
-      argvAtROPad (sl.argvTableAddr + BitVec.ofNat 64 (8 * k)) (inputs.argv.drop k) ∗
-        ((sl.argvTableAddr + BitVec.ofNat 64 (8 * k)) ↦₆₄ᵣ* (sl.argvAddrs.drop k ++ [0#64])) ∗
-        (sl.argvBase ↦ᵣ sl.upperStrBytes) by
-    simpa only [Nat.mul_zero, BitVec.ofNat_eq_ofNat, BitVec.add_zero, List.drop_zero] using
-      hgen 0 (Nat.zero_le _)
-  intro k hk
-  induction hd : inputs.argv.length - k generalizing k with
-  | zero =>
-    have hk_eq : k = inputs.argv.length := by omega
-    subst hk_eq
-    have hd1 : sl.argvAddrs.drop inputs.argv.length = [] := List.drop_eq_nil_of_le (by omega)
-    rw [hd1, List.drop_length, List.nil_append]
-    simp only [argvAtROPad, pointsToWords64RO_cons, pointsToWords64RO_nil, sepConj_emp]
-    exact Entails.trans (sepConj_mono_left (Entails.of_eq (pointsTo64RO_dup _ _).symm))
-      (Entails.of_eq (by sep_ac_rfl))
-  | succ rem ih =>
-    have hk_lt : k < inputs.argv.length := by omega
-    have hk_lt' : k < sl.argvAddrs.length := by omega
-    have hd_a : sl.argvAddrs.drop k = sl.argvAddrs[k] :: sl.argvAddrs.drop (k + 1) :=
-      List.drop_eq_getElem_cons hk_lt'
-    have hd_v : inputs.argv.drop k = inputs.argv[k] :: inputs.argv.drop (k + 1) :=
-      List.drop_eq_getElem_cons hk_lt
-    rw [hd_a, hd_v, List.cons_append]
-    simp only [argvAtROPad, pointsToWords64RO_cons]
-    have hstep_addr : (sl.argvTableAddr + BitVec.ofNat 64 (8 * k)) + 8#64 =
-        sl.argvTableAddr + BitVec.ofNat 64 (8 * (k + 1)) := by
-      rw [BitVec.add_assoc, show (8#64 : BitVec 64) = BitVec.ofNat 64 8 from rfl, ← BitVec.ofNat_add]
-      exact congrArg (sl.argvTableAddr + BitVec.ofNat 64 ·) (by omega)
-    rw [hstep_addr]
-    obtain ⟨pad, _hno0, _hpad8, hswar, htop, hdup_str⟩ := hinfo.dup_argv_cstr_padded hargs hk_lt
-    have h48_lt : (2 ^ 48 : Nat) < 2 ^ 64 := by decide
-    have hpad_ok : StrlenSwarPadBound sl.argvAddrs[k] inputs.argv[k] pad :=
-      ⟨hswar, by dsimp only [sl]; omega⟩
-    have habs_str : (sl.argvBase ↦ᵣ sl.upperStrBytes) ⊢
-        cStrAtROPad sl.argvAddrs[k] inputs.argv[k] ∗ (sl.argvBase ↦ᵣ sl.upperStrBytes) := by
-      have hdup' : (sl.argvBase ↦ᵣ sl.upperStrBytes) =
-          (sl.argvAddrs[k] ↦ᵣ (inputs.argv[k] ++ [0#8] ++ pad)) ∗
-            (sl.argvBase ↦ᵣ sl.upperStrBytes) := by
-        dsimp only [sl]
-        exact hdup_str.symm.trans (sepConj_comm _ _)
-      exact Entails.trans (Entails.of_eq hdup')
-        (sepConj_mono_left (Entails.sepExists_right pad (Entails.pure_right hpad_ok (Entails.refl _))))
-    have hih := ih (k + 1) (by omega) (by omega)
-    refine Entails.trans ?_
-      (sepConj_mono_left (Entails.sepExists_right sl.argvAddrs[k] (Entails.refl _)))
-    refine Entails.trans
-      (sepConj_mono_left (sepConj_mono_left (Entails.of_eq (pointsTo64RO_dup _ _).symm))) ?_
-    refine Entails.trans
-      (Q := ((sl.argvTableAddr + BitVec.ofNat 64 (8 * k)) ↦₆₄ᵣ sl.argvAddrs[k]) ∗
-        ((sl.argvTableAddr + BitVec.ofNat 64 (8 * k)) ↦₆₄ᵣ sl.argvAddrs[k]) ∗
-        (((sl.argvTableAddr + BitVec.ofNat 64 (8 * (k + 1))) ↦₆₄ᵣ*
-          (sl.argvAddrs.drop (k + 1) ++ [0#64])) ∗
-          (cStrAtROPad sl.argvAddrs[k] inputs.argv[k] ∗
-            (sl.argvBase ↦ᵣ sl.upperStrBytes))))
-      (Entails.trans (Entails.of_eq (by sep_ac_rfl))
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right habs_str))))
-      ?_
-    refine Entails.trans
-      (Q := ((sl.argvTableAddr + BitVec.ofNat 64 (8 * k)) ↦₆₄ᵣ sl.argvAddrs[k]) ∗
-        cStrAtROPad sl.argvAddrs[k] inputs.argv[k] ∗
-        ((sl.argvTableAddr + BitVec.ofNat 64 (8 * k)) ↦₆₄ᵣ sl.argvAddrs[k]) ∗
-        (((sl.argvTableAddr + BitVec.ofNat 64 (8 * (k + 1))) ↦₆₄ᵣ*
-          (sl.argvAddrs.drop (k + 1) ++ [0#64])) ∗
-          (sl.argvBase ↦ᵣ sl.upperStrBytes)))
-      (Entails.of_eq (by sep_ac_rfl))
-      ?_
-    exact Entails.trans
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hih)))
-      (Entails.of_eq (by sep_ac_rfl))
-
 /-! ## 3. Pad-Forgetting Bridges (`argvAtROPad` / `argvAtROPPad` → `argvAtRO` / `argvAtROP`) -/
 
 theorem cStrAtROPad_entails_exists_frame (p : BitVec 64) (s : List (BitVec 8)) :
@@ -297,34 +213,6 @@ theorem argvAtROPPad_entails_argvAtROP_frame (a : BitVec 64)
     apply Entails.sepExists_elim; intro R1
     exact Entails.sepExists_right (R1 ∗ R2) (Entails.of_eq (by sep_ac_rfl))
 
-theorem cStrAtROPad_anyHeap_entails (p : BitVec 64) (s : List (BitVec 8)) :
-    cStrAtROPad p s ∗ anyHeap ⊢ cStrAtRO p s ∗ anyHeap := by
-  refine Entails.trans (sepConj_mono_left (cStrAtROPad_entails_exists_frame p s)) ?_
-  rw [sepExists_sepConj_left]
-  apply Entails.sepExists_elim
-  intro Rpad
-  rw [sepConj_assoc]
-  exact sepConj_mono_right (entails_anyHeap _)
-
-theorem argvAtROPad_anyHeap_entails (a : BitVec 64) (ss : List (List (BitVec 8))) :
-    argvAtROPad a ss ∗ anyHeap ⊢ argvAtRO a ss ∗ anyHeap := by
-  refine Entails.trans (sepConj_mono_left (argvAtROPad_entails_argvAtRO_frame a ss)) ?_
-  rw [sepExists_sepConj_left]
-  apply Entails.sepExists_elim
-  intro Rpad
-  rw [sepConj_assoc]
-  exact sepConj_mono_right (entails_anyHeap _)
-
-theorem argvAtROPPad_anyHeap_entails (a : BitVec 64)
-    (ps : List (BitVec 64 × List (BitVec 8))) :
-    argvAtROPPad a ps ∗ anyHeap ⊢ argvAtROP a ps ∗ anyHeap := by
-  refine Entails.trans (sepConj_mono_left (argvAtROPPad_entails_argvAtROP_frame a ps)) ?_
-  rw [sepExists_sepConj_left]
-  apply Entails.sepExists_elim
-  intro Rpad
-  rw [sepConj_assoc]
-  exact sepConj_mono_right (entails_anyHeap _)
-
 theorem b2MainFrameFinePad_entails_frame {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (stk : Nat) (Statics : SepProp) (i : Inputs) (s : State) :
     b2MainFrameFinePad A lim st stk Statics i s ⊢
@@ -335,15 +223,6 @@ theorem b2MainFrameFinePad_entails_frame {M : AllocCostModel} (A : RustCliAllocB
   apply Entails.sepExists_elim
   intro Rpad
   exact Entails.sepExists_right Rpad (Entails.of_eq (by sep_ac_rfl))
-
-theorem satisfies_argvAtRO_of_argvAtROPad {m : Memory} {a : BitVec 64}
-    {ss : List (List (BitVec 8))} {Fr : SepProp}
-    (hm : m ⊨ argvAtROPad a ss ∗ Fr) :
-    ∃ Fr' : SepProp, m ⊨ argvAtRO a ss ∗ Fr' := by
-  have hm' := Satisfies.mono (sepConj_mono_left (argvAtROPad_entails_argvAtRO_frame a ss)) hm
-  rw [sepExists_sepConj_left, satisfies_sepExists] at hm'
-  rcases hm' with ⟨Rpad, hr⟩
-  exact ⟨Rpad ∗ Fr, by rwa [← sepConj_assoc]⟩
 
 theorem sepWPp_forget_frame {prog : Program} {ret : BitVec 64} {s : State}
     {P Rpad : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
@@ -518,25 +397,5 @@ theorem strlen_ro_sat_placed_ok_of_sat [LibsignalPlacement]
       (withLsRoCl lsmpl (strlenSpecROSat hookStack)) :=
   subroutine_ok_rocl_of_plain
     (ls_hook_ok_ultra_of_mem (prog := lsProg_617 H) (i := 617) hsat (by decide))
-
-/-- `toSat` corollary: `H "strlen" = some strlenHook` discharges Block `617`
-`strlenSpecROSat hookStack` via `hookSat_strlenHook_ro_sat`. -/
-theorem strlen_ro_sat_placed_ok_of_hooks [LibsignalPlacement]
-    {H : LibsignalHooks} {hookStack : Nat}
-    (hext : H "strlen" = some strlenHook) :
-    subroutine_ok (lsProg_617 H) (lsρ "strlen")
-      (withLsRoCl lsmpl (strlenSpecROSat hookStack)) :=
-  strlen_ro_sat_placed_ok_of_sat (hookSat_strlenHook_ro_sat hext)
-
-/-- Real `musl` / `rustc 1.98.1` `libc.a` AArch64 `strlen` words (`muslStrlenWords`, 22 words = 88
-bytes) satisfy `strlenSpecROSat hookStack` on any hook-free program (re-exported from
-`HookDischarge.Libc.Strlen.strlen_strlenSpecRO_padRO_withVmPreserved_ok`). -/
-theorem muslStrlen_strlenSpecROSat_ok {prog : Program} {entry : BitVec 64}
-    (hookStack : Nat)
-    (hc : prog.hasWords entry muslStrlenWords)
-    (h_no_ext : ∀ pc, prog.externAt? pc = none)
-    (haddr : entry.toNat + 88 ≤ 2 ^ 64) :
-    subroutine_ok prog entry (strlenSpecROSat hookStack) :=
-  strlen_strlenSpecRO_padRO_withVmPreserved_ok hookStack hc h_no_ext haddr
 
 end LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad

@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
-public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF
+public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 
 /-!
 # Loop Invariant, Cost, and Description-Size Infrastructure for `kemFailRed`
@@ -19,10 +20,9 @@ import VCVio.EvalDist.Monad.Basic
 Defines the `(BitVec 512 × BitVec 256) ↔ SimKemSeed × SimKemEncRand` candidate codec, syntactic
 `descBits` measures (`atomicRedDescBits`, `ratchetDescBudget`), and relational `simulateQ` loop
 coupling lemmas. Assembles `kemFailRedProg` (`KemFailAtomicClampBundle`, `KemFailAtomicRealBundle`)
-with unconditional `GRedBounded` and `descBits` bounds and call-site advantage bridges.
--/
+with unconditional `GRedBounded` and `descBits` bounds and call-site advantage bridges.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,29 +38,29 @@ open ReductionDsl (Sig Ty Var Env Ops Samplers Iface Expr Comp GameCodec CostedR
   isGameQuery handlerImpl bind_congr_of_mem_support'
   atomicSig atomicSamplers atomicSessionOps coinOnlyIface e2eSessionCodec
   BV256 BV512 GhostStT PlainT B)
-open CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.HMAC (keyToBytes32)
-open CryptoGames.HKDF (bytesToKey32)
-open CryptoGames.Ratchet (keyToBytesVec32)
-open CryptoGames.Ratchet.LibsignalSim (SimKemSeed SimKemEncRand SimKemFailTrack
+open _root_.CryptoGames (Party)
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.HMAC (keyToBytes32)
+open _root_.CryptoGames.HKDF (bytesToKey32)
+open _root_.CryptoGames.Ratchet (keyToBytesVec32)
+open _root_.CryptoGames.Ratchet.LibsignalSim (SimKemSeed SimKemEncRand SimKemFailTrack
   simDefaultKemCand simKemFailCand KemExtraRaw SimOp simOpsUnitCost fig8GsTy Fig8St Fig8C
   kemFailOracle kemFailOracleDedup redKemFailHiddenSaltClamp
   redKemFailHiddenSaltClamp_evalDistEq redKemFailHiddenSaltClamp_advantage_eq)
-open CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
-open CryptoGames.Ratchet.LibsignalInst (lFig8 LibsignalMsgPublicPart)
-open CryptoGames.LibsignalSM.Proofs.Refinement (KemFailTrackState initKemFailTrack
+open _root_.CryptoGames.Ratchet.LibsignalSimC (LibsignalToModularSchemeSimState initSimC)
+open _root_.CryptoGames.Ratchet.LibsignalInst (lFig8 LibsignalMsgPublicPart)
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement (KemFailTrackState initKemFailTrack
   kemFailSimImpl redKemFailHiddenSalt)
-open CryptoGames.SM (GameState initState MakesAtMostQueries)
-open CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey ShaCompress GhostState
+open _root_.CryptoGames.SM (GameState initState MakesAtMostQueries)
+open _root_.CryptoGames.LibsignalSession (Crypto IdentityKey PublicKey ShaCompress GhostState
   maxForwardJumps Params)
-open CryptoVerification.LibsignalSpqrV1 (MlKem coinBytes coinBytes_length spqrV1SessionUniformCoins)
-open CryptoVerification.LibsignalAesCbc (toLEBytes)
-open CryptoVerification.LibsignalSession (ratchetCostBudget GRedBounded)
-open CryptoVerification.E2E (Bytes idsOf paramsV1)
-open CryptoVerification.E2E.HeadlineU (sample_prod_bindU)
-open CryptoVerification.E2E.Costed (gRedBounded_of_bounds)
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem coinBytes coinBytes_length spqrV1SessionUniformCoins)
+open _root_.CryptoVerification.LibsignalAesCbc (toLEBytes)
+open _root_.CryptoVerification.LibsignalSession (ratchetCostBudget GRedBounded)
+open _root_.CryptoVerification.E2E (Bytes idsOf paramsV1)
+open _root_.CryptoVerification.E2E.HeadlineU (sample_prod_bindU)
+open _root_.CryptoVerification.E2E.Costed (gRedBounded_of_bounds)
 open Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest (atomicSessionOps_sizeHonest
   atomicSamplers_sizeHonest)
 open Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge (sessPureOp
@@ -117,10 +117,10 @@ theorem extractLsb'_bytesToWordLE (w : ℕ) (bs : Bytes) (j : ℕ)
 
 /-- Map raw `(seed, rand) : BitVec 512 × BitVec 256` output of `SessionCostedReductions.kemFailRed`
 to `(SimKemSeed × SimKemEncRand)` as in `StatementComposed.hiddenSaltMixtureBound`. -/
-def kemCandBvToVec (p : BitVec 512 × BitVec 256) : SimKemSeed × SimKemEncRand :=
+@[expose] def kemCandBvToVec (p : BitVec 512 × BitVec 256) : SimKemSeed × SimKemEncRand :=
   (⟨coinBytes p.1, coinBytes_length p.1⟩, keyToBytesVec32 p.2)
 
-def kemCandVecToBv (p : SimKemSeed × SimKemEncRand) : BitVec 512 × BitVec 256 :=
+@[expose] def kemCandVecToBv (p : SimKemSeed × SimKemEncRand) : BitVec 512 × BitVec 256 :=
   (bytesToWordLE 512 p.1.toList, bytesToWordLE 256 p.2.toList)
 
 theorem coinBytes_bytesToWordLE512 (bs : Bytes) (h : bs.length = 64) :
@@ -225,7 +225,7 @@ variable {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-def defaultKemCandAtomicE {Γ : List (Ty ASig)} : Expr AOps Γ (.prod BV512 BV256) :=
+@[expose] def defaultKemCandAtomicE {Γ : List (Ty ASig)} : Expr AOps Γ (.prod BV512 BV256) :=
   .pair
     (sessPureOp (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
       (decT := decT) (lam := lam) (.bv512Lit 0#512) .unit)
@@ -246,7 +246,7 @@ theorem cost_defaultKemCandAtomicE {Γ : List (Ty ASig)} :
       (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) (Γ := Γ)).cost = 8 := rfl
   omega
 
-def kemCandOptGetDE {Γ : List (Ty ASig)}
+@[expose] def kemCandOptGetDE {Γ : List (Ty ASig)}
     (optE : Expr AOps Γ (.opt (.prod BV512 BV256))) : Expr AOps Γ (.prod BV512 BV256) :=
   .caseOpt optE
     (defaultKemCandAtomicE (C := C) (K := K) (Dh := Dh)
@@ -272,7 +272,7 @@ theorem cost_kemCandOptGetDE {Γ : List (Ty ASig)}
   simp only [kemCandOptGetDE, Expr.cost]
   omega
 
-def kemFailInitCoinsC {σ : Ty ASig}
+@[expose] def kemFailInitCoinsC {σ : Ty ASig}
     (mkInitE : Expr AOps [BV256, BV256, BV256, .bool, .unit] σ) :
     Comp AOps (coinOnlyIface ℓ Pt) [.unit] (.prod .unit σ) :=
   .bind (Comp.sample (I := coinOnlyIface ℓ Pt) UniformSamplerTag.bool .unit)
@@ -320,23 +320,23 @@ end AtomicCombinators
 
 section DescBits
 
-def atomicSortDescBits : AtomicSort → ℕ
+@[expose] def atomicSortDescBits : AtomicSort → ℕ
   | .pbytes w | .bytes w => 2 * bits w + 4
   | .fin n => 2 * bits n + 4
   | .pu32 | .u8 | .u32 | .u64 | .bv128 | .bv256 | .bv512
   | .pk | .idKey | .plain | .pt | .ghostSt | .binSt => 4
 
-def atomicTyDescBits {ℓ : ℕ} {Pt : Type} : Ty (atomicSig ℓ Pt) → ℕ
+@[expose] def atomicTyDescBits {ℓ : ℕ} {Pt : Type} : Ty (atomicSig ℓ Pt) → ℕ
   | .base b => atomicSortDescBits b + 4
   | .unit | .bool | .nat => 4
   | .opt t | .list t | .tbl t => atomicTyDescBits t + 4
   | .prod t u | .sum t u => atomicTyDescBits t + atomicTyDescBits u + 4
 
-def varIdx {S : Sig} : {Γ : List (Ty S)} → {t : Ty S} → Var Γ t → ℕ
+@[expose] def varIdx {S : Sig} : {Γ : List (Ty S)} → {t : Ty S} → Var Γ t → ℕ
   | _, _, .zero => 0
   | _, _, .succ v => varIdx v + 1
 
-def atomicPureOpDescBits : AtomicPureOp → ℕ
+@[expose] def atomicPureOpDescBits : AtomicPureOp → ℕ
   | .pbytesLit w v => 8 * v.length + 2 * bits v.length + 2 * bits w + 8
   | .bytesLit w v => 8 * v.length + 2 * bits v.length + 2 * bits w + 8
   | .pbytesCat m n | .pbytesEq m n | .bytesCat m n | .bytesEq m n | .bytesLtOp m n =>
@@ -370,11 +370,11 @@ def atomicPureOpDescBits : AtomicPureOp → ℕ
   | .spqrParsePreamble | .spqrAssembleMsg | .spqrStateSplit | .spqrStateJoin
   | .ghostStateSplit | .ghostStateJoin | .encodeSessionRecord => 8
 
-def atomicSymOpDescBits : AtomicSymOp → ℕ
+@[expose] def atomicSymOpDescBits : AtomicSymOp → ℕ
   | .hmacSha256Op w => 2 * bits w + 8
   | _ => 8
 
-def atomicSessionOpDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
+@[expose] def atomicSessionOpDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
     {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
     {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt} :
     (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam).Op → ℕ
@@ -386,7 +386,7 @@ def atomicSessionOpDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
   | .inl (.inr (.inr _)) => 8 + 3
   | .inr _ => 8 + 1
 
-def atomicExprDescBits {ℓ : ℕ} {Pt : Type} {O : Ops (atomicSig ℓ Pt)} (opBits : O.Op → ℕ) :
+@[expose] def atomicExprDescBits {ℓ : ℕ} {Pt : Type} {O : Ops (atomicSig ℓ Pt)} (opBits : O.Op → ℕ) :
     {Γ : List (Ty (atomicSig ℓ Pt))} → {t : Ty (atomicSig ℓ Pt)} → Expr O Γ t → ℕ
   | _, _, .var v => 2 * bits (varIdx v) + 6
   | _, _, .unit => 6
@@ -417,7 +417,7 @@ def atomicExprDescBits {ℓ : ℕ} {Pt : Type} {O : Ops (atomicSig ℓ Pt)} (opB
     2 * bits k + atomicExprDescBits opBits l + atomicExprDescBits opBits z +
       atomicExprDescBits opBits f + 6
 
-def atomicCompDescBits {ℓ : ℕ} {Pt : Type} {O : Ops (atomicSig ℓ Pt)}
+@[expose] def atomicCompDescBits {ℓ : ℕ} {Pt : Type} {O : Ops (atomicSig ℓ Pt)}
     {ι : Type} {T : OracleSpec ι} {I : Iface (atomicSig ℓ Pt) T}
     (opBits : O.Op → ℕ) (sBits : I.smp.Samp → ℕ) (qBits : I.Tag → ℕ) :
     {Γ : List (Ty (atomicSig ℓ Pt))} → {t : Ty (atomicSig ℓ Pt)} → Comp O I Γ t → ℕ
@@ -448,7 +448,7 @@ def atomicCompDescBits {ℓ : ℕ} {Pt : Type} {O : Ops (atomicSig ℓ Pt)}
 
 /-- Total syntactic description bit-length of a session-level `CostedReduction` over
 `atomicSessionOps` and `coinOnlyIface`. -/
-def atomicRedDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def atomicRedDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
     {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
     {κ : Type} {G : OracleSpec κ} {GC : GameCodec (atomicSig ℓ Pt) G}
@@ -464,11 +464,11 @@ def atomicRedDescBits {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sample
 
 abbrev defaultDescBitBudget : ℕ := 2 ^ 24
 
-def descBitBudget (costBudget : ℕ) : ℕ :=
+@[expose] def descBitBudget (costBudget : ℕ) : ℕ :=
   2 ^ 23 + 2 ^ 13 * bits costBudget
 
 /-- Per-session ratchet/SM description-bit budget at query bound `q` and epoch cap `qep`. -/
-def ratchetDescBudget (q qep : ℕ) : ℕ :=
+@[expose] def ratchetDescBudget (q qep : ℕ) : ℕ :=
   descBitBudget (ratchetCostBudget q qep + qep)
 
 theorem descBitBudget_mono {B₁ B₂ : ℕ} (h : B₁ ≤ B₂) :
@@ -1016,7 +1016,7 @@ end LoopInvariants
 
 section KemFailRedAssembly
 
-def kemFailClampInitState {Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
+@[expose] def kemFailClampInitState {Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
     (P : Params Bytes (BitVec 512)) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (lam : Pt) (K : MlKem) (b : Bool) (k1 k2 pqrKey : BitVec 256) :
@@ -1029,7 +1029,7 @@ def kemFailClampInitState {Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
     (simOpsUnitCost (ℓ := ℓ) P Dh encPt encT decT lam K id).eval SimOp.initKemFailTrack pqrKey
   (sC₀, (gFig₀, trCand₀))
 
-def kemFailSimInitState {Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
+@[expose] def kemFailSimInitState {Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ}
     (P : Params Bytes (BitVec 512)) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (lam : Pt)
     (b : Bool) (k1 k2 pqrKey : BitVec 256) :

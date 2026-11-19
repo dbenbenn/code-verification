@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2b
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2b -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
 import VCVio.EvalDist.Monad.Basic
 
@@ -20,7 +20,7 @@ Defines the key-masking projection `projectMuState` for `aeadMuIntReductionAuth`
 `simulateQ` characterizations of the reduction's primitive sub-computations on projected states.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,21 +30,21 @@ namespace SignalPqxdh.Security
 
 open SignalPqxdh
 
-def maskMuSession {S : Setup} (s : IdealAuthSession S) : IdealAuthSession S :=
+@[expose] def maskMuSession {S : Setup} (s : IdealAuthSession S) : IdealAuthSession S :=
   { s with deriveMessageKeys := default }
 
-def maskMuCache {S : Setup} (c : AuthMkSaltCache S) : AuthMkSaltCache S :=
+@[expose] def maskMuCache {S : Setup} (c : AuthMkSaltCache S) : AuthMkSaltCache S :=
   c.map (fun (k, (r0, _)) => (k, (r0, default)))
 
 /-- Reduction view of a hybrid state with events erased, adversary keys normalized, and all
     ideal-session message keys masked. -/
-def projectMuHybrid {S : Setup} (P : Primitives) (hst : AuthHybridState S) : AuthHybridState S :=
+@[expose] def projectMuHybrid {S : Setup} (P : Primitives) (hst : AuthHybridState S) : AuthHybridState S :=
   let e := eraseAuthEvents hst
   { e with
     base := { e.base with advKeys := e.base.advKeys.map (fun (_, pk) => (P.pow8 pk, pk)) }
     idealSessions := e.idealSessions.map maskMuSession }
 
-def projectMuState {S : Setup} (P : Primitives) (hst : AuthHybridStateFixed S) :
+@[expose] def projectMuState {S : Setup} (P : Primitives) (hst : AuthHybridStateFixed S) :
     AuthHybridStateFixed S :=
   { toAuthHybridState := projectMuHybrid P hst.toAuthHybridState
     recvCount := hst.recvCount
@@ -94,7 +94,7 @@ theorem find?_maskMuCache_pred {S : Setup}
       (c.find? (fun (k, _) => p k)).map (fun (k, (r0, _)) => (k, (r0, default))) := by
   unfold maskMuCache; rw [List.find?_map]; rfl
 
-def isFreshSenderM3 (o : Option (Nat × PrincipalEntry)) : Bool :=
+@[expose] def isFreshSenderM3 (o : Option (Nat × PrincipalEntry)) : Bool :=
   match o with
   | some (_, sEntry) => !sEntry.corrupted
   | none => false

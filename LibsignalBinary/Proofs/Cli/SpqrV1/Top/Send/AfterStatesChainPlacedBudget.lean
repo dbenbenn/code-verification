@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainPlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChain
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainPlaced
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesChain -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
@@ -25,6 +25,57 @@ import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop2
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 /-!
 # Budget-Threaded `spqr::send` Phase 3a Panic Blocks, Epilogue, and Error Cleanup
@@ -34,7 +85,7 @@ panic blocks (`+12004`, `+13552`), shared epilogue (`+4576 -> +4664`), and error
 of `spqr::send::<signal_session_ratchet::Coins>`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,7 +100,7 @@ open scoped CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatche
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement extract_withMemEq libsignalSessionCode lsmpl lsρ
+  (LibsignalCodeLoaded LibsignalPlacement extract_withMemEq lsmpl lsρ
    sepWP_seq_lscl withLsCodeLoaded withMemEq)
 open CryptoVerification.Cli.SpqrV1.Drop
   (chunkedStatesLocal1JumpTablePlacedAt chunkedStatesLocal1JumpTableSym)
@@ -73,6 +124,11 @@ open LibsignalBinary.Heap
   (AllocCallPreserved AllocCostModel AllocEvent BudgetLimits FreeOnlyEvs
    RustCliAllocBudget VmPreserved rustCliDeallocBudgetSpec rustDeallocEvents)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget (dropChunkedStatesLocal1PlacedSpec)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (SpqrErrorValidTag spqrSendResultDispAt spqrSendResultDispAt_entails_spqrSendResultAt
+   spqrSendResultDispAt_none_of_byte)
+open LibsignalBinary.Proofs.SpqrV1.Top.Send.Phase1StepsPlacedBudget
+  (err_ret_entails_sendResultDispAt_none)
 
 export CryptoVerification.Cli.SpqrV1.Drop
   (chunkedStatesLocal1JumpTablePlacedAt chunkedStatesLocal1JumpTableSym)
@@ -82,7 +138,7 @@ export LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget (dropChunkedS
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local simp, local arm64_norm, local wp_norm]
   LibsignalBinary.Heap.RustCliAllocBudget.pool_setPC LibsignalBinary.Heap.RustCliAllocBudget.pool_advancePC
@@ -510,6 +566,143 @@ theorem step_drop_key_31784_placed {M : AllocCostModel} {A : RustCliAllocBudget 
             sep_ac_rfl)⟩
 
 /-- `+3896 -> +4576` (`0x31794 -> 0x31a3c`):
+    `Error::ChainNotAvailable` cleanup when `state_pb.chain = none` and `state_pb.version_negotiation = none`,
+    strengthened to `spqrSendResultDispAt A.repAlloc ret none` (`15#8 = Error::ChainNotAvailable`). -/
+theorem step_err_31794_disp_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {F : ShaCompress}
+    {ext : String → Option (State → State)}
+    (hdealloc : DeallocOkPlaced M A lim ext)
+    (hdrop_states : subroutine_ok (spqrSendPlacedProg ext)
+      (lsmpl.base 443) (withLsCodeLoaded lsmpl (dropChunkedStatesLocal1PlacedSpec M A lim F)))
+    (s : State) (st : M.σ) (ret x21 x27 x23 : BitVec 64)
+    (st1 : States spqrPolyApi (spqrAuthApi F))
+    (key : Option EpochSecret) (Frame : SepProp)
+    (hcl : LibsignalCodeLoaded lsmpl s.mem)
+    (hpc : s.pc = spqrSendPlacedEntry + 3896#64)
+    (hrun : s.status = .Running)
+    (hx19 : s.readReg64 .x19 = ret)
+    (hx21 : s.readReg64 .x21 = x21)
+    (hx27 : s.readReg64 .x27 = x27)
+    (hx23 : s.readReg64 .x23 = x23)
+    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) :
+    SepWP (spqrSendPlacedProg ext)
+      (spqrSendPlacedEntry + 4576#64) s
+      (memRegion ret 72 ∗
+        chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗
+        optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
+        chunkedStatesLocal1JumpTablePlacedAt ∗
+        A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+      (fun sf Q =>
+        ∃ evs : List AllocEvent,
+          FreeOnlyEvs evs ∧
+          AllocCallPreserved s sf ∧
+          sf.status = .Running ∧
+          sf.trace = s.trace ∧
+          sf.sp = s.sp ∧
+          sf.readReg64 .x23 = x23 ∧
+          calleeSavedVRegs sf = calleeSavedVRegs s ∧
+          (Q ⊢ spqrSendResultDispAt A.repAlloc ret none ∗
+            memRegion (s.sp + 0x190#64) 928 ∗
+            memRegion (s.sp + 0x1bc0#64) 16 ∗
+            chunkedStatesLocal1JumpTablePlacedAt ∗
+            A.pool lim (M.stepEvents evs st) sf ∗
+            stackAt s.sp spqrSendCalleeStack ∗ Frame)) := by
+  have hstack_drop :
+      stackAt s.sp spqrSendCalleeStack =
+        memRegion (s.sp - 123008#64)
+          (spqrSendCalleeStack - dropStackPoly64) ∗
+          stackAt s.sp dropStackPoly64 :=
+    ProofLib.stackAt_split_bottom s.sp dropStackPoly64
+      (spqrSendCalleeStack - dropStackPoly64) (by decide)
+  refine SepWP.seq
+    (mid := spqrSendPlacedEntry + 3920#64)
+    (Mid := fun s1 P1 =>
+      ∃ evs₁ : List AllocEvent,
+        FreeOnlyEvs evs₁ ∧
+        AllocCallPreserved s s1 ∧
+        s1.status = .Running ∧
+        s1.trace = s.trace ∧
+        s1.sp = s.sp ∧
+        s1.readReg64 .x21 = x21 ∧
+        s1.readReg64 .x27 = x27 ∧
+        s1.readReg64 .x23 = x23 ∧
+        calleeSavedVRegs s1 = calleeSavedVRegs s ∧
+        (P1 ⊢ optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
+          A.pool lim (M.stepEvents evs₁ st) s1 ∗
+          stackAt s.sp spqrSendCalleeStack ∗
+          (spqrSendResultDispAt A.repAlloc ret none ∗
+            memRegion (s.sp + 0x190#64) 928 ∗
+            chunkedStatesLocal1JumpTablePlacedAt ∗ Frame)))
+    ?_ ?_
+  · dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, BitVec.ofNat_eq_ofNat] at hpc ⊢
+    rw [memRegion_72_split_byte ret, hstack_drop]
+    wp_pull_exists
+    have hret15 :
+        (ret ↦₆₄ 18446744073709551615#64) ∗ ((ret + 8#64) ↦₈ 15#8) ∗ memRegion (ret + 9#64) 63 ⊢
+          spqrSendResultDispAt A.repAlloc ret none :=
+      spqrSendResultDispAt_none_of_byte A.repAlloc ret 15#8 (by decide)
+    refine seq_vm_lscl hcl (mid := lsmpl.base 443)
+      (P_mid := chunkedStatesAt A.repAlloc (s.sp + 400#64) st1 ∗
+        chunkedStatesLocal1JumpTablePlacedAt ∗
+        A.pool lim st s ∗ stackAt s.sp dropStackPoly64 ∗
+        (spqrSendResultDispAt A.repAlloc ret none ∗
+          optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
+          memRegion (s.sp - 123008#64) (spqrSendCalleeStack - dropStackPoly64) ∗ Frame))
+      (Q := fun sc =>
+        AllocCallPreserved s sc ∧
+        sc.sp = s.sp ∧
+        sc.trace = s.trace ∧
+        sc.readReg64 .x0 = s.sp + 400#64 ∧
+        sc.readReg64 .x30 = (blkPl_427).base + 3920#64 ∧
+        sc.readReg64 .x21 = x21 ∧
+        sc.readReg64 .x27 = x27 ∧
+        sc.readReg64 .x23 = x23 ∧
+        calleeSavedVRegs sc = calleeSavedVRegs s)
+      ?_ ?_
+    · by_vm_steps (
+        wp_steps
+        refine SepWP.focus_weaken hret15 (by sep_focus) ?_
+        exact ProofLib.SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
+          ⟨by wp_norm_goal, Entails.of_eq (by sep_ac_rfl),
+            by wp_norm_goal, by wp_norm_goal, by wp_norm_goal,
+            by wp_norm_goal, by wp_norm_goal, by wp_norm_goal,
+            by wp_norm_goal, by wp_norm_goal, by wp_norm_goal⟩)
+    · intro sc hpcc hrunc hcl_call hvmc
+        ⟨hacpc, hspc, htrc, hx0c, hlrc, hx21c, hx27c, hx23c, hvregsc⟩
+      rw [← A.pool_of_vmPreserved hvmc, ← hspc]
+      have hdrop_st := subroutine_ok_withMemEq_of_withLsCodeLoaded hcl_call hdrop_states
+      simp only [withMemEq, dropChunkedStatesLocal1PlacedSpec] at hdrop_st
+      dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, BitVec.ofNat_eq_ofNat] at hdrop_st
+      wp_call hdrop_st (⟨sc.sp + 400#64, st1⟩, st)
+      rw [hspc]
+      have hacp_st : AllocCallPreserved sc sf := by assumption
+      have hevs_st : FreeOnlyEvs w := by assumption
+      exact ProofLib.SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
+        ⟨w, hevs_st, hacpc.trans hacp_st,
+          by wp_norm_goal, (by wp_norm_goal : _ = sc.trace).trans htrc,
+          (by wp_norm_goal : _ = sc.sp).trans hspc,
+          (by wp_norm_goal : _ = sc.readReg64 .x21).trans hx21c,
+          (by wp_norm_goal : _ = sc.readReg64 .x27).trans hx27c,
+          (by wp_norm_goal : _ = sc.readReg64 .x23).trans hx23c,
+          (by simp only [wp_norm, arm64_norm, *] : _ = calleeSavedVRegs sc).trans hvregsc, by
+            dsimp only [chunkedStatesSize]
+            exact Entails.of_eq (by sep_ac_rfl)⟩
+  · intro s1 P1 hpc1 _ ⟨evs₁, hevs₁, hacp₁, hrun1, htr1, hsp1, hx21_1, hx27_1, hx23_1, hvregs1, hP1⟩
+    have hsp1_align : (s1.sp &&& 15#64 == 0#64) = true := by rw [hsp1]; exact hsp_align
+    refine SepWP.weaken_pre hP1 ?_
+    have hstep := step_drop_key_317ac_placed hdealloc s1 (M.stepEvents evs₁ st) x21 x27 x23 key
+      (spqrSendResultDispAt A.repAlloc ret none ∗ memRegion (s.sp + 0x190#64) 928 ∗
+        chunkedStatesLocal1JumpTablePlacedAt ∗ Frame)
+      hpc1 hrun1 hx21_1 hx27_1 hx23_1 hsp1_align
+    rw [hsp1] at hstep
+    refine SepWP.mono hstep ?_
+    intro sf Q _ _ ⟨evs₂, hevs₂, hacp₂, hrunf, htrf, hspf, hx23f, hvregsf, hQ⟩
+    refine ⟨evs₁ ++ evs₂, LibsignalBinary.Heap.FreeOnlyEvs.append hevs₁ hevs₂, hacp₁.trans hacp₂,
+      hrunf, htrf.trans htr1, hspf, hx23f, hvregsf.trans hvregs1, ?_⟩
+    rw [M.stepEvents_append]
+    exact Entails.trans hQ (Entails.of_eq (by sep_ac_rfl))
+
+/-- `+3896 -> +4576` (`0x31794 -> 0x31a3c`):
     `Error::ChainNotAvailable` cleanup when `state_pb.chain = none` and `state_pb.version_negotiation = none`.
     Writes `spqrSendResultAt A.repAlloc ret none`, drops `st1` at `s.sp + 0x190#64` via Block `443`,
     drops `key` in `(x21, x27, [s.sp + 0x1bc0])`, and reaches `+4576`. -/
@@ -552,6 +745,58 @@ theorem step_err_31794_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
             chunkedStatesLocal1JumpTablePlacedAt ∗
             A.pool lim (M.stepEvents evs st) sf ∗
             stackAt s.sp spqrSendCalleeStack ∗ Frame)) := by
+  refine SepWP.mono
+    (step_err_31794_disp_placed hdealloc hdrop_states s st ret x21 x27 x23 st1 key Frame
+      hcl hpc hrun hx19 hx21 hx27 hx23 hsp_align) ?_
+  intro sf Q _ _ ⟨evs, hevs, hacp, hrunf, htrf, hspf, hx23f, hvregsf, hQ⟩
+  exact ⟨evs, hevs, hacp, hrunf, htrf, hspf, hx23f, hvregsf,
+    Entails.trans hQ (sepConj_mono_left (spqrSendResultDispAt_entails_spqrSendResultAt A.repAlloc ret none))⟩
+
+private theorem step_err_31764_gen_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {F : ShaCompress}
+    {ext : String → Option (State → State)}
+    (hdealloc : DeallocOkPlaced M A lim ext)
+    (hdrop_states : subroutine_ok (spqrSendPlacedProg ext)
+      (lsmpl.base 443) (withLsCodeLoaded lsmpl (dropChunkedStatesLocal1PlacedSpec M A lim F)))
+    (s : State) (st : M.σ) (ret x21 x27 x23 w1 w2 w3 : BitVec 64)
+    (st1 : States spqrPolyApi (spqrAuthApi F))
+    (key : Option EpochSecret) (OutRes Frame : SepProp)
+    (hout : (ret ↦₆₄ 18446744073709551615#64) ∗ ((ret + 8#64) ↦₆₄ w1) ∗
+      ((ret + 16#64) ↦₆₄ w2) ∗ ((ret + 24#64) ↦₆₄ w3) ∗ memRegion (ret + 32#64) 40 ⊢ OutRes)
+    (hcl : LibsignalCodeLoaded lsmpl s.mem)
+    (hpc : s.pc = spqrSendPlacedEntry + 3848#64)
+    (hrun : s.status = .Running)
+    (hx19 : s.readReg64 .x19 = ret)
+    (hx21 : s.readReg64 .x21 = x21)
+    (hx27 : s.readReg64 .x27 = x27)
+    (hx23 : s.readReg64 .x23 = x23)
+    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) :
+    SepWP (spqrSendPlacedProg ext)
+      (spqrSendPlacedEntry + 4576#64) s
+      (memRegion ret 72 ∗
+        ((s.sp + 0x1060#64) ↦₆₄ w1) ∗
+        ((s.sp + 0x1068#64) ↦₆₄ w2) ∗
+        ((s.sp + 0x1070#64) ↦₆₄ w3) ∗
+        chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗
+        optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
+        chunkedStatesLocal1JumpTablePlacedAt ∗
+        A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+      (fun sf Q =>
+        ∃ evs : List AllocEvent,
+          FreeOnlyEvs evs ∧
+          AllocCallPreserved s sf ∧
+          sf.status = .Running ∧
+          sf.trace = s.trace ∧
+          sf.sp = s.sp ∧
+          sf.readReg64 .x23 = x23 ∧
+          calleeSavedVRegs sf = calleeSavedVRegs s ∧
+          (Q ⊢ OutRes ∗
+            memRegion (s.sp + 0x1060#64) 24 ∗
+            memRegion (s.sp + 0x190#64) 928 ∗
+            memRegion (s.sp + 0x1bc0#64) 16 ∗
+            chunkedStatesLocal1JumpTablePlacedAt ∗
+            A.pool lim (M.stepEvents evs st) sf ∗
+            stackAt s.sp spqrSendCalleeStack ∗ Frame)) := by
   have hstack_drop :
       stackAt s.sp spqrSendCalleeStack =
         memRegion (s.sp - 123008#64)
@@ -559,8 +804,18 @@ theorem step_err_31794_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
           stackAt s.sp dropStackPoly64 :=
     ProofLib.stackAt_split_bottom s.sp dropStackPoly64
       (spqrSendCalleeStack - dropStackPoly64) (by decide)
+  have h24 :
+      ((s.sp + 4192#64) ↦₆₄ w1) ∗ ((s.sp + 4200#64) ↦₆₄ w2) ∗ ((s.sp + 4208#64) ↦₆₄ w3) ⊢
+        memRegion (s.sp + 4192#64) 24 := by
+    rw [ProofLib.memRegion_split' (b := s.sp + 4192#64) (n := 8) (k := 16)
+          (b' := s.sp + 4200#64) rfl (by bv_omega) (by decide),
+        ProofLib.memRegion_split' (b := s.sp + 4200#64) (n := 8) (k := 8)
+          (b' := s.sp + 4208#64) rfl (by bv_omega) (by decide)]
+    exact sepConj_mono (ProofLib.pointsTo64_entails_memRegion _ _)
+      (sepConj_mono (ProofLib.pointsTo64_entails_memRegion _ _)
+        (ProofLib.pointsTo64_entails_memRegion _ _))
   refine SepWP.seq
-    (mid := spqrSendPlacedEntry + 3920#64)
+    (mid := spqrSendPlacedEntry + 3880#64)
     (Mid := fun s1 P1 =>
       ∃ evs₁ : List AllocEvent,
         FreeOnlyEvs evs₁ ∧
@@ -575,18 +830,20 @@ theorem step_err_31794_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
         (P1 ⊢ optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
           A.pool lim (M.stepEvents evs₁ st) s1 ∗
           stackAt s.sp spqrSendCalleeStack ∗
-          (spqrSendResultAt A.repAlloc ret none ∗
+          (OutRes ∗
+            memRegion (s.sp + 0x1060#64) 24 ∗
             memRegion (s.sp + 0x190#64) 928 ∗
             chunkedStatesLocal1JumpTablePlacedAt ∗ Frame)))
     ?_ ?_
   · dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, BitVec.ofNat_eq_ofNat] at hpc ⊢
-    rw [memRegion_72_split_byte ret, hstack_drop]
+    rw [memRegion_72_split_words3 ret, hstack_drop]
     wp_pull_exists
     refine seq_vm_lscl hcl (mid := lsmpl.base 443)
       (P_mid := chunkedStatesAt A.repAlloc (s.sp + 400#64) st1 ∗
         chunkedStatesLocal1JumpTablePlacedAt ∗
         A.pool lim st s ∗ stackAt s.sp dropStackPoly64 ∗
-        (spqrSendResultAt A.repAlloc ret none ∗
+        (OutRes ∗
+          memRegion (s.sp + 4192#64) 24 ∗
           optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
           memRegion (s.sp - 123008#64) (spqrSendCalleeStack - dropStackPoly64) ∗ Frame))
       (Q := fun sc =>
@@ -594,7 +851,7 @@ theorem step_err_31794_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
         sc.sp = s.sp ∧
         sc.trace = s.trace ∧
         sc.readReg64 .x0 = s.sp + 400#64 ∧
-        sc.readReg64 .x30 = (blkPl_427).base + 3920#64 ∧
+        sc.readReg64 .x30 = (blkPl_427).base + 3880#64 ∧
         sc.readReg64 .x21 = x21 ∧
         sc.readReg64 .x27 = x27 ∧
         sc.readReg64 .x23 = x23 ∧
@@ -602,7 +859,8 @@ theorem step_err_31794_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
       ?_ ?_
     · by_vm_steps (
         wp_steps
-        refine SepWP.focus_weaken (sendResultAt_none_of_byte A.repAlloc ret 15#8) (by sep_focus) ?_
+        refine SepWP.focus_weaken hout (by sep_focus) ?_
+        refine SepWP.focus_weaken h24 (by sep_focus) ?_
         exact ProofLib.SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
           ⟨by wp_norm_goal, Entails.of_eq (by sep_ac_rfl),
             by wp_norm_goal, by wp_norm_goal, by wp_norm_goal,
@@ -631,8 +889,9 @@ theorem step_err_31794_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
   · intro s1 P1 hpc1 _ ⟨evs₁, hevs₁, hacp₁, hrun1, htr1, hsp1, hx21_1, hx27_1, hx23_1, hvregs1, hP1⟩
     have hsp1_align : (s1.sp &&& 15#64 == 0#64) = true := by rw [hsp1]; exact hsp_align
     refine SepWP.weaken_pre hP1 ?_
-    have hstep := step_drop_key_317ac_placed hdealloc s1 (M.stepEvents evs₁ st) x21 x27 x23 key
-      (spqrSendResultAt A.repAlloc ret none ∗ memRegion (s.sp + 0x190#64) 928 ∗
+    have hstep := step_drop_key_31784_placed hdealloc s1 (M.stepEvents evs₁ st) x21 x27 x23 key
+      (OutRes ∗ memRegion (s.sp + 0x1060#64) 24 ∗
+        memRegion (s.sp + 0x190#64) 928 ∗
         chunkedStatesLocal1JumpTablePlacedAt ∗ Frame)
       hpc1 hrun1 hx21_1 hx27_1 hx23_1 hsp1_align
     rw [hsp1] at hstep
@@ -690,110 +949,62 @@ theorem step_err_31764_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
             memRegion (s.sp + 0x1bc0#64) 16 ∗
             chunkedStatesLocal1JumpTablePlacedAt ∗
             A.pool lim (M.stepEvents evs st) sf ∗
-            stackAt s.sp spqrSendCalleeStack ∗ Frame)) := by
-  have hstack_drop :
-      stackAt s.sp spqrSendCalleeStack =
-        memRegion (s.sp - 123008#64)
-          (spqrSendCalleeStack - dropStackPoly64) ∗
-          stackAt s.sp dropStackPoly64 :=
-    ProofLib.stackAt_split_bottom s.sp dropStackPoly64
-      (spqrSendCalleeStack - dropStackPoly64) (by decide)
-  have h24 :
-      ((s.sp + 4192#64) ↦₆₄ w1) ∗ ((s.sp + 4200#64) ↦₆₄ w2) ∗ ((s.sp + 4208#64) ↦₆₄ w3) ⊢
-        memRegion (s.sp + 4192#64) 24 := by
-    rw [ProofLib.memRegion_split' (b := s.sp + 4192#64) (n := 8) (k := 16)
-          (b' := s.sp + 4200#64) rfl (by bv_omega) (by decide),
-        ProofLib.memRegion_split' (b := s.sp + 4200#64) (n := 8) (k := 8)
-          (b' := s.sp + 4208#64) rfl (by bv_omega) (by decide)]
-    exact sepConj_mono (ProofLib.pointsTo64_entails_memRegion _ _)
-      (sepConj_mono (ProofLib.pointsTo64_entails_memRegion _ _)
-        (ProofLib.pointsTo64_entails_memRegion _ _))
-  refine SepWP.seq
-    (mid := spqrSendPlacedEntry + 3880#64)
-    (Mid := fun s1 P1 =>
-      ∃ evs₁ : List AllocEvent,
-        FreeOnlyEvs evs₁ ∧
-        AllocCallPreserved s s1 ∧
-        s1.status = .Running ∧
-        s1.trace = s.trace ∧
-        s1.sp = s.sp ∧
-        s1.readReg64 .x21 = x21 ∧
-        s1.readReg64 .x27 = x27 ∧
-        s1.readReg64 .x23 = x23 ∧
-        calleeSavedVRegs s1 = calleeSavedVRegs s ∧
-        (P1 ⊢ optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
-          A.pool lim (M.stepEvents evs₁ st) s1 ∗
-          stackAt s.sp spqrSendCalleeStack ∗
-          (spqrSendResultAt A.repAlloc ret none ∗
+            stackAt s.sp spqrSendCalleeStack ∗ Frame)) :=
+  step_err_31764_gen_placed hdealloc hdrop_states s st ret x21 x27 x23 w1 w2 w3 st1 key
+    (spqrSendResultAt A.repAlloc ret none) Frame
+    (sendResultAt_none_of_words3 A.repAlloc ret w1 w2 w3)
+    hcl hpc hrun hx19 hx21 hx27 hx23 hsp_align
+
+/-- `+3848 -> +4576` (`0x31764 -> 0x31a3c`):
+    `Chain::from_pb` / `chain_from_version_negotiation` error cleanup, strengthened to
+    `spqrSendResultDispAt A.repAlloc ret none` when `SpqrErrorValidTag (w1.truncate 8)`. -/
+theorem step_err_31764_disp_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {F : ShaCompress}
+    {ext : String → Option (State → State)}
+    (hdealloc : DeallocOkPlaced M A lim ext)
+    (hdrop_states : subroutine_ok (spqrSendPlacedProg ext)
+      (lsmpl.base 443) (withLsCodeLoaded lsmpl (dropChunkedStatesLocal1PlacedSpec M A lim F)))
+    (s : State) (st : M.σ) (ret x21 x27 x23 w1 w2 w3 : BitVec 64)
+    (st1 : States spqrPolyApi (spqrAuthApi F))
+    (key : Option EpochSecret) (Frame : SepProp)
+    (htag : SpqrErrorValidTag (w1.truncate 8))
+    (hcl : LibsignalCodeLoaded lsmpl s.mem)
+    (hpc : s.pc = spqrSendPlacedEntry + 3848#64)
+    (hrun : s.status = .Running)
+    (hx19 : s.readReg64 .x19 = ret)
+    (hx21 : s.readReg64 .x21 = x21)
+    (hx27 : s.readReg64 .x27 = x27)
+    (hx23 : s.readReg64 .x23 = x23)
+    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) :
+    SepWP (spqrSendPlacedProg ext)
+      (spqrSendPlacedEntry + 4576#64) s
+      (memRegion ret 72 ∗
+        ((s.sp + 0x1060#64) ↦₆₄ w1) ∗
+        ((s.sp + 0x1068#64) ↦₆₄ w2) ∗
+        ((s.sp + 0x1070#64) ↦₆₄ w3) ∗
+        chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗
+        optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
+        chunkedStatesLocal1JumpTablePlacedAt ∗
+        A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+      (fun sf Q =>
+        ∃ evs : List AllocEvent,
+          FreeOnlyEvs evs ∧
+          AllocCallPreserved s sf ∧
+          sf.status = .Running ∧
+          sf.trace = s.trace ∧
+          sf.sp = s.sp ∧
+          sf.readReg64 .x23 = x23 ∧
+          calleeSavedVRegs sf = calleeSavedVRegs s ∧
+          (Q ⊢ spqrSendResultDispAt A.repAlloc ret none ∗
             memRegion (s.sp + 0x1060#64) 24 ∗
             memRegion (s.sp + 0x190#64) 928 ∗
-            chunkedStatesLocal1JumpTablePlacedAt ∗ Frame)))
-    ?_ ?_
-  · dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, BitVec.ofNat_eq_ofNat] at hpc ⊢
-    rw [memRegion_72_split_words3 ret, hstack_drop]
-    wp_pull_exists
-    refine seq_vm_lscl hcl (mid := lsmpl.base 443)
-      (P_mid := chunkedStatesAt A.repAlloc (s.sp + 400#64) st1 ∗
-        chunkedStatesLocal1JumpTablePlacedAt ∗
-        A.pool lim st s ∗ stackAt s.sp dropStackPoly64 ∗
-        (spqrSendResultAt A.repAlloc ret none ∗
-          memRegion (s.sp + 4192#64) 24 ∗
-          optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
-          memRegion (s.sp - 123008#64) (spqrSendCalleeStack - dropStackPoly64) ∗ Frame))
-      (Q := fun sc =>
-        AllocCallPreserved s sc ∧
-        sc.sp = s.sp ∧
-        sc.trace = s.trace ∧
-        sc.readReg64 .x0 = s.sp + 400#64 ∧
-        sc.readReg64 .x30 = (blkPl_427).base + 3880#64 ∧
-        sc.readReg64 .x21 = x21 ∧
-        sc.readReg64 .x27 = x27 ∧
-        sc.readReg64 .x23 = x23 ∧
-        calleeSavedVRegs sc = calleeSavedVRegs s)
-      ?_ ?_
-    · by_vm_steps (
-        wp_steps
-        refine SepWP.focus_weaken (sendResultAt_none_of_words3 A.repAlloc ret w1 w2 w3) (by sep_focus) ?_
-        refine SepWP.focus_weaken h24 (by sep_focus) ?_
-        exact ProofLib.SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-          ⟨by wp_norm_goal, Entails.of_eq (by sep_ac_rfl),
-            by wp_norm_goal, by wp_norm_goal, by wp_norm_goal,
-            by wp_norm_goal, by wp_norm_goal, by wp_norm_goal,
-            by wp_norm_goal, by wp_norm_goal, by wp_norm_goal⟩)
-    · intro sc hpcc hrunc hcl_call hvmc
-        ⟨hacpc, hspc, htrc, hx0c, hlrc, hx21c, hx27c, hx23c, hvregsc⟩
-      rw [← A.pool_of_vmPreserved hvmc, ← hspc]
-      have hdrop_st := subroutine_ok_withMemEq_of_withLsCodeLoaded hcl_call hdrop_states
-      simp only [withMemEq, dropChunkedStatesLocal1PlacedSpec] at hdrop_st
-      dsimp only [spqrSendPlacedProg, spqrSendPlacedEntry, BitVec.ofNat_eq_ofNat] at hdrop_st
-      wp_call hdrop_st (⟨sc.sp + 400#64, st1⟩, st)
-      rw [hspc]
-      have hacp_st : AllocCallPreserved sc sf := by assumption
-      have hevs_st : FreeOnlyEvs w := by assumption
-      exact ProofLib.SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-        ⟨w, hevs_st, hacpc.trans hacp_st,
-          by wp_norm_goal, (by wp_norm_goal : _ = sc.trace).trans htrc,
-          (by wp_norm_goal : _ = sc.sp).trans hspc,
-          (by wp_norm_goal : _ = sc.readReg64 .x21).trans hx21c,
-          (by wp_norm_goal : _ = sc.readReg64 .x27).trans hx27c,
-          (by wp_norm_goal : _ = sc.readReg64 .x23).trans hx23c,
-          (by simp only [wp_norm, arm64_norm, *] : _ = calleeSavedVRegs sc).trans hvregsc, by
-            dsimp only [chunkedStatesSize]
-            exact Entails.of_eq (by sep_ac_rfl)⟩
-  · intro s1 P1 hpc1 _ ⟨evs₁, hevs₁, hacp₁, hrun1, htr1, hsp1, hx21_1, hx27_1, hx23_1, hvregs1, hP1⟩
-    have hsp1_align : (s1.sp &&& 15#64 == 0#64) = true := by rw [hsp1]; exact hsp_align
-    refine SepWP.weaken_pre hP1 ?_
-    have hstep := step_drop_key_31784_placed hdealloc s1 (M.stepEvents evs₁ st) x21 x27 x23 key
-      (spqrSendResultAt A.repAlloc ret none ∗ memRegion (s.sp + 0x1060#64) 24 ∗
-        memRegion (s.sp + 0x190#64) 928 ∗
-        chunkedStatesLocal1JumpTablePlacedAt ∗ Frame)
-      hpc1 hrun1 hx21_1 hx27_1 hx23_1 hsp1_align
-    rw [hsp1] at hstep
-    refine SepWP.mono hstep ?_
-    intro sf Q _ _ ⟨evs₂, hevs₂, hacp₂, hrunf, htrf, hspf, hx23f, hvregsf, hQ⟩
-    refine ⟨evs₁ ++ evs₂, LibsignalBinary.Heap.FreeOnlyEvs.append hevs₁ hevs₂, hacp₁.trans hacp₂,
-      hrunf, htrf.trans htr1, hspf, hx23f, hvregsf.trans hvregs1, ?_⟩
-    rw [M.stepEvents_append]
-    exact Entails.trans hQ (Entails.of_eq (by sep_ac_rfl))
+            memRegion (s.sp + 0x1bc0#64) 16 ∗
+            chunkedStatesLocal1JumpTablePlacedAt ∗
+            A.pool lim (M.stepEvents evs st) sf ∗
+            stackAt s.sp spqrSendCalleeStack ∗ Frame)) :=
+  step_err_31764_gen_placed hdealloc hdrop_states s st ret x21 x27 x23 w1 w2 w3 st1 key
+    (spqrSendResultDispAt A.repAlloc ret none) Frame
+    (err_ret_entails_sendResultDispAt_none A.repAlloc ret w1 w2 w3 htag)
+    hcl hpc hrun hx19 hx21 hx27 hx23 hsp_align
 
 end LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainPlacedBudget

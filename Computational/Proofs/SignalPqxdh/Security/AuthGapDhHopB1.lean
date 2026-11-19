@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.RoKemHopB -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.EvalDist.Monad.Basic
 
@@ -21,11 +21,9 @@ Defines the `KemShCr` simulation `runAuthShCrSim` and bounds `badKemShCrProbAuth
 per-index `KemShCr` advantages.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open Classical
 open scoped BigOperators ENNReal
@@ -42,7 +40,7 @@ abbrev liftAuthShCrBase {S : Setup} {α : Type}
     (m : StateT (AuthState S) ProbComp α) : StateT (AuthShCrState S) ProbComp α :=
   liftShCrBase m
 
-def preCheckAuthSim (S : Setup) (P : Primitives)
+@[expose] def preCheckAuthSim (S : Setup) (P : Primitives)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (st : AuthState S) : Option (PrincipalEntry × Option (Nat × PrincipalEntry) × Bytes) :=
   if m0.length != m1.length then none
@@ -62,7 +60,7 @@ def preCheckAuthSim (S : Setup) (P : Primitives)
         let msgPlain := if isFreshPeer then (if st.secb then m1 else m0) else m0
         some (uEntry, peerPrincipal?, msgPlain)
 
-def finishAuthSimBase (S : Setup) (P : Primitives)
+@[expose] def finishAuthSimBase (S : Setup) (P : Primitives)
     (sid : SessionId S) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (uInfo : PrincipalEntry × Option (Nat × PrincipalEntry) × Bytes)
     (ekASk ephASk spqrCoins ss kemCt : Bytes)
@@ -203,7 +201,7 @@ abbrev runAuthShCrGenSPK (embedTarget : Bool) (S : Setup) (P : Primitives)
   runShCrGenSPKGeneric embedTarget P AuthState.principals AuthState.spkBundles
     (fun st bs => { st with spkBundles := bs }) AuthResponse.noneResp AuthResponse.bundleResp u j
 
-def pqxdhAuthShCrSimImpl (embedTarget : Bool) (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthShCrSimImpl (embedTarget : Bool) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthShCrState S) ProbComp)
   | .genSPK u j => runAuthShCrGenSPK embedTarget S P u j
   | .sendOPK u i bundle m0 m1 =>
@@ -220,7 +218,7 @@ def pqxdhAuthShCrSimImpl (embedTarget : Bool) (S : Setup) (P : Primitives) :
       (pqxdhAuthSimImpl S P (.recvNoOPK k j l msg)) k j msg.hdr
   | q_other => liftAuthShCrBase (pqxdhAuthSimImpl S P q_other)
 
-noncomputable def tryPauseAuthQuery (S : Setup) (P : Primitives)
+@[expose] def tryPauseAuthQuery (S : Setup) (P : Primitives)
     (sIdx : Nat) (gq : AuthQuery S)
     (cont : (authSpec S).Range gq → OracleComp (unifSpec + authSpec S) Bool)
     (hst : AuthShCrState S) : Option (PausedShCrKem S (AuthState S)) :=
@@ -237,13 +235,13 @@ noncomputable def tryPauseAuthQuery (S : Setup) (P : Primitives)
       (finishAuthSimBase S P (.sendNoOPK u i) bundle m0 m1) sIdx cont hst
   | _, _ => none
 
-noncomputable def shcrChoosePkAuthAt (S : Setup) (P : Primitives)
+@[expose] def shcrChoosePkAuthAt (S : Setup) (P : Primitives)
     (bIdx sIdx : Nat) (A : AuthAdversary S) :
     Bytes → Bytes → ProbComp (Bytes × (Bytes → Bytes → ProbComp Bytes)) :=
   shcrChoosePkGenericAt P ($ᵗ Bool >>= fun secb => pure (AuthState.empty S secb))
     (pqxdhAuthShCrSimImpl true S P) (tryPauseAuthQuery S P) bIdx sIdx A.run
 
-noncomputable def runAuthShCrSim (S : Setup) (P : Primitives)
+@[expose] def runAuthShCrSim (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthShCrState S) := do
   let secb ← $ᵗ Bool
   let initSt : AuthShCrState S := { base := AuthState.empty S secb }
@@ -252,13 +250,13 @@ noncomputable def runAuthShCrSim (S : Setup) (P : Primitives)
   let (b', finalHst) ← (simulateQ impl A.run).run initSt
   return (secb, b', finalHst)
 
-noncomputable def badKemShCrProbAuthAt (S : Setup) (P : Primitives)
+@[expose] noncomputable def badKemShCrProbAuthAt (S : Setup) (P : Primitives)
     (idx : Nat) (A : AuthAdversary S) : ℝ :=
   (𝒟[runAuthShCrSim S P A >>= fun (_, _, finalHst) =>
     pure (_root_.Proofs.SignalPqxdh.Security.hasBadKemShCrRecordsAt S P idx finalHst.initKemRecs
       finalHst.recvKemRecs)] {true}).toReal
 
-noncomputable def badKemShCrProbAuth (S : Setup) (P : Primitives)
+@[expose] noncomputable def badKemShCrProbAuth (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ℝ :=
   (𝒟[runAuthShCrSim S P A >>= fun (_, _, finalHst) =>
     pure (_root_.Proofs.SignalPqxdh.Security.hasBadKemShCrRecords S P finalHst.initKemRecs

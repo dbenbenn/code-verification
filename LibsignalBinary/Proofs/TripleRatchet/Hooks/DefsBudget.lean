@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.MallocngBridgeBudget
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
@@ -23,48 +23,76 @@ together with allocator-budget contracts and event envelopes for
 `prost::encoding::varint::decode_varint_slow::<&mut &[u8]>`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 
 open Arm64 ProofLib
+open CryptoGames.HMAC (ShaState chunks64)
+open CryptoVerification.LibsignalHmac (shaStateBytes)
 open CryptoVerification.LibsignalTripleRatchet
   (varintSlow decodeErrorAtStackLen decodeErrorHookStack extHookStack
    sessionShimSpec sessionMemcpyRegionSpec sessionMemcpySpec
    sessionMemmoveSpec sessionMemsetRegionSpec sessionMemsetSpec)
 open LibsignalBinary.Heap
-  (VmPreserved AllocEvent AllocCostModel BudgetLimits RustCliAllocBudget FitsEnv
+  (AllocCallPreserved VmPreserved AllocEvent AllocCostModel BudgetLimits RustCliAllocBudget FitsEnv
    rustAllocEvents allocMemcpyVmSpec)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec)
 
 /-! ## `VmPreserved`-strengthened shim and memory contracts -/
 
-def sessionShimBudgetSpec : Spec Unit :=
+@[expose] def sessionShimBudgetSpec : Spec Unit :=
   { sessionShimSpec with post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ sessionShimSpec.post x s0 sf }
 
-def sessionMemcpyRegionBudgetSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
+@[expose] def sessionMemcpyRegionBudgetSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   { sessionMemcpyRegionSpec with post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ sessionMemcpyRegionSpec.post x s0 sf }
 
-def sessionMemcpyBudgetSpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemcpyBudgetSpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   { sessionMemcpySpec hookStack with
     post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ (sessionMemcpySpec hookStack).post x s0 sf }
 
-def sessionMemmoveBudgetSpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemmoveBudgetSpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × List (BitVec 8) × Nat × Nat × Nat) :=
   { sessionMemmoveSpec hookStack with
     post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ (sessionMemmoveSpec hookStack).post x s0 sf }
 
-def sessionMemsetRegionBudgetSpec : Spec (BitVec 64 × BitVec 8 × Nat) :=
+@[expose] def sessionMemsetRegionBudgetSpec : Spec (BitVec 64 × BitVec 8 × Nat) :=
   { sessionMemsetRegionSpec with
     post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ sessionMemsetRegionSpec.post x s0 sf }
 
-def sessionMemsetBudgetSpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemsetBudgetSpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × BitVec 8 × Nat) :=
   { sessionMemsetSpec hookStack with
     post := fun x s0 sf => ⌜VmPreserved s0 sf⌝ ∗ (sessionMemsetSpec hookStack).post x s0 sf }
+
+abbrev compress256Blocks (ro : Bool) (blkA : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+  bif ro then blkA ↦ᵣ bs else blkA ↦ₛ bs
+
+/-- Permission-polymorphic (`ro = true` read-only `↦ᵣ`, `ro = false` read-write `↦ₛ`) stacked
+contract for `sha2::sha256::compress256`. -/
+@[expose] def sessionCompress256ROSpec (F : ShaState → List (BitVec 8) → ShaState)
+    (hookStack : Nat := 176) :
+    Spec (Bool × BitVec 64 × ShaState × BitVec 64 × List (BitVec 8) × Nat) where
+  pre := fun (ro, stA, st, blkA, bs, n) s0 =>
+    ⌜s0.readReg64 .x0 = stA ∧ s0.readReg64 .x1 = blkA ∧ (s0.readReg64 .x2).toNat = n ∧
+      bs.length = 64 * n ∧ bs.length ≤ 2 ^ 64⌝ ∗
+      (stA ↦ₛ shaStateBytes st) ∗ compress256Blocks ro blkA bs ∗ stackAt s0.sp hookStack
+  post := fun (ro, stA, st, blkA, bs, _) s0 sf =>
+    ⌜sf.trace = s0.trace⌝ ∗
+      (stA ↦ₛ shaStateBytes ((chunks64 bs).foldl F st)) ∗
+      compress256Blocks ro blkA bs ∗ stackAt s0.sp hookStack
+
+/-- `VmPreserved` + `AllocCallPreserved` strengthening of `sessionCompress256ROSpec`. -/
+@[expose] def sessionCompress256ROBudgetSpec (F : ShaState → List (BitVec 8) → ShaState)
+    (hookStack : Nat := 176) :
+    Spec (Bool × BitVec 64 × ShaState × BitVec 64 × List (BitVec 8) × Nat) :=
+  { sessionCompress256ROSpec F hookStack with
+    post := fun x s0 sf =>
+      ⌜VmPreserved s0 sf ∧ AllocCallPreserved s0 sf⌝ ∗
+        (sessionCompress256ROSpec F hookStack).post x s0 sf }
 
 theorem subroutine_ok_sessionShimBudget_of_rustAllocShimVm {P : Program} {a : BitVec 64}
     (h : subroutine_ok P a rustAllocShimVmSpec) :
@@ -109,17 +137,17 @@ abbrev varintSlowStack : Nat := 64 + decodeErrorHookStack
 /-- Exact allocator event sequence of `decode_varint_slow::<&mut &[u8]>`:
     `[]` on `some (v, k)`, and `rustAllocEvents 72 8` (`DecodeError::from`'s 72-byte `Box<Inner>`)
     on `none`. -/
-def decodeVarintSlowEvents (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def decodeVarintSlowEvents (bs : List (BitVec 8)) : List AllocEvent :=
   match varintSlow bs with
   | some _ => []
   | none => rustAllocEvents 72 8
 
-def DecodeVarintSlowEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeVarintSlowEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = decodeVarintSlowEvents bs
 
 /-- Allocator-budget contract for `decode_varint_slow::<&mut &[u8]>` under
     `FitsEnv M lim st (DecodeVarintSlowEnv bs)`. Ghost: `(slotA, slot, ptr, bs, st)`. -/
-def decodeVarintSlowBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def decodeVarintSlowBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8) × M.σ) where
   pre := fun (slotA, slot, ptr, bs, st) s =>
@@ -145,7 +173,7 @@ def decodeVarintSlowBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
           ((slot + 8#64) ↦₆₄ BitVec.ofNat 64 (bs.length - min 10 bs.length))
 
 /-- Stack-parameterized variant of `decodeVarintSlowBudgetSpec`. -/
-def decodeVarintSlowBudgetSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def decodeVarintSlowBudgetSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat := extHookStack) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8) × M.σ) where
   pre := fun (slotA, slot, ptr, bs, st) s =>

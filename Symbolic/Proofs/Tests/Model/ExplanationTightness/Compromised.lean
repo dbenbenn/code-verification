@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Security.Model
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon
+public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.TRCommon -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -33,7 +33,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -107,14 +107,14 @@ inductive CompromisedKind where
   | bdh
   deriving DecidableEq
 
-def keepUnless (drop : Option CompromisedKind) (kind : CompromisedKind) (p : Prop) : Prop :=
+@[expose] def keepUnless (drop : Option CompromisedKind) (kind : CompromisedKind) (p : Prop) : Prop :=
   match drop with
   | none => p
   | some o => o ≠ kind ∧ p
 
 /-- `mkTestTracePredicates tr` with the top-level `Compromised` disjunct `drop` omitted
 (`drop = none` keeps every disjunct). -/
-def tracePredicatesWithout (tr : ExecTrace) (drop : Option CompromisedKind) : TestTracePredicates :=
+@[expose] def tracePredicatesWithout (tr : ExecTrace) (drop : Option CompromisedKind) : TestTracePredicates :=
   let honestDH (d : Bytes) : Prop :=
     (∃ s i, tr.EventLogged (TREvent.HonestDH s d i)) ∨
     (∃ me st idx, StateStoredAt me st idx tr ∧ st.dhs = d)
@@ -128,10 +128,10 @@ def tracePredicatesWithout (tr : ExecTrace) (drop : Option CompromisedKind) : Te
       keepUnless drop .hrc (HandshakeRootCompromised tr k) ∨
       keepUnless drop .bdh (honestDH k ∧ tr.EventLogged PQXDHEvent.BrokenDH) }
 
-def ForwardSecrecyWithout (drop : Option CompromisedKind) : Prop :=
+@[expose] def ForwardSecrecyWithout (drop : Option CompromisedKind) : Prop :=
   ∀ tr : ExecTrace, tr.Reachable reachability → FSQueryP (tracePredicatesWithout tr drop)
 
-def PostCompromiseSecurityWithout (drop : Option CompromisedKind) : Prop :=
+@[expose] def PostCompromiseSecurityWithout (drop : Option CompromisedKind) : Prop :=
   ∀ tr : ExecTrace, tr.Reachable reachability → PCSQueryP (tracePredicatesWithout tr drop)
 
 theorem tracePredicatesWithout_none (tr : ExecTrace) :
@@ -480,7 +480,7 @@ section HandshakeRootCompromisedMutants
 
 /-- `HandshakeRootCompromised` parameterized by handshake-key predicate `HK`, handshake-excuse
 predicate `HE`, and key-block selector `KB`. -/
-def HandshakeRootCompromisedWith
+@[expose] def HandshakeRootCompromisedWith
     (HK : ExecTrace → Nat → HandshakeKeys → Prop)
     (HE : ExecTrace → Nat → Prop)
     (KB : HandshakeKeys → Bytes → Prop)
@@ -493,7 +493,7 @@ theorem handshakeRootCompromisedWith_real :
       (fun keys k => k = keys.rk ∨ k = keys.ck) = HandshakeRootCompromised := rfl
 
 /-- `mkTestTracePredicates` with `HandshakeRootCompromised` replaced by `HRC`. -/
-def tracePredicatesWithHRC (HRC : ExecTrace → Bytes → Prop) (tr : ExecTrace) : TestTracePredicates :=
+@[expose] def tracePredicatesWithHRC (HRC : ExecTrace → Bytes → Prop) (tr : ExecTrace) : TestTracePredicates :=
   let honestDH (d : Bytes) : Prop :=
     (∃ s i, tr.EventLogged (TREvent.HonestDH s d i)) ∨
     (∃ me st idx, StateStoredAt me st idx tr ∧ st.dhs = d)
@@ -507,7 +507,7 @@ def tracePredicatesWithHRC (HRC : ExecTrace → Bytes → Prop) (tr : ExecTrace)
       HRC tr k ∨
       (honestDH k ∧ tr.EventLogged PQXDHEvent.BrokenDH) }
 
-def ForwardSecrecyWithHRC (HRC : ExecTrace → Bytes → Prop) : Prop :=
+@[expose] def ForwardSecrecyWithHRC (HRC : ExecTrace → Bytes → Prop) : Prop :=
   ∀ tr : ExecTrace, tr.Reachable reachability → FSQueryP (tracePredicatesWithHRC HRC tr)
 
 theorem tracePredicatesWithHRC_real (tr : ExecTrace) :
@@ -517,20 +517,20 @@ theorem forwardSecrecyWithHRC_real :
     ForwardSecrecyWithHRC HandshakeRootCompromised ↔ ForwardSecrecy := by
   simp only [ForwardSecrecyWithHRC, tracePredicatesWithHRC_real, ForwardSecrecy, fsQuery_iff_test]
 
-def HandshakeRootCompromised_withoutRk (tr : ExecTrace) (k : Bytes) : Prop :=
+@[expose] def HandshakeRootCompromised_withoutRk (tr : ExecTrace) (k : Bytes) : Prop :=
   HandshakeRootCompromisedWith HandshakeKeysAt HandshakeWasCompromisedAt (fun keys k => k = keys.ck) tr k
 
-def HandshakeRootCompromised_withoutCk (tr : ExecTrace) (k : Bytes) : Prop :=
+@[expose] def HandshakeRootCompromised_withoutCk (tr : ExecTrace) (k : Bytes) : Prop :=
   HandshakeRootCompromisedWith HandshakeKeysAt HandshakeWasCompromisedAt (fun keys k => k = keys.rk) tr k
 
 /-- `HandshakeWasCompromisedAt` restricted to the `BobDone` disjunct. -/
-def HandshakeExcusedAt_withoutAlice (tr : ExecTrace) (j : Nat) : Prop :=
+@[expose] def HandshakeExcusedAt_withoutAlice (tr : ExecTrace) (j : Nat) : Prop :=
   ∃ b a ikB ikA spk pqpk opk ek ct keys,
     tr.EventLoggedAt (PQXDHEvent.BobDone b a ikB ikA spk pqpk opk ek ct keys) j ∧
       BobHandshakeWasCompromised b a ikB ikA spk pqpk opk j tr
 
 /-- `HandshakeWasCompromisedAt` restricted to the `AliceDone` disjunct. -/
-def HandshakeExcusedAt_withoutBob (tr : ExecTrace) (j : Nat) : Prop :=
+@[expose] def HandshakeExcusedAt_withoutBob (tr : ExecTrace) (j : Nat) : Prop :=
   ∃ a b ikA ikB spk pqpk opk ek ct keys,
     tr.EventLoggedAt (PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) j ∧
       AliceHandshakeWasCompromised b ikB spk pqpk j tr
@@ -539,11 +539,11 @@ theorem handshakeExcusedAt_real (tr : ExecTrace) (j : Nat) :
     (HandshakeExcusedAt_withoutBob tr j ∨ HandshakeExcusedAt_withoutAlice tr j) =
       HandshakeWasCompromisedAt tr j := rfl
 
-def HandshakeRootCompromised_withoutAliceExcuse (tr : ExecTrace) (k : Bytes) : Prop :=
+@[expose] def HandshakeRootCompromised_withoutAliceExcuse (tr : ExecTrace) (k : Bytes) : Prop :=
   HandshakeRootCompromisedWith HandshakeKeysAt HandshakeExcusedAt_withoutAlice
     (fun keys k => k = keys.rk ∨ k = keys.ck) tr k
 
-def HandshakeRootCompromised_withoutBobExcuse (tr : ExecTrace) (k : Bytes) : Prop :=
+@[expose] def HandshakeRootCompromised_withoutBobExcuse (tr : ExecTrace) (k : Bytes) : Prop :=
   HandshakeRootCompromisedWith HandshakeKeysAt HandshakeExcusedAt_withoutBob
     (fun keys k => k = keys.rk ∨ k = keys.ck) tr k
 
@@ -553,7 +553,7 @@ def HandshakeKeysAt_withoutAlice (tr : ExecTrace) (j : Nat) (keys : HandshakeKey
     tr.EventLoggedAt (PQXDHEvent.BobDone b a ikB ikA spk pqpk opk ek ct keys) j
 
 /-- `HandshakeKeysAt` restricted to the `AliceDone` disjunct. -/
-def HandshakeKeysAt_withoutBob (tr : ExecTrace) (j : Nat) (keys : HandshakeKeys) : Prop :=
+@[expose] def HandshakeKeysAt_withoutBob (tr : ExecTrace) (j : Nat) (keys : HandshakeKeys) : Prop :=
   ∃ a b ikA ikB spk pqpk opk ek ct,
     tr.EventLoggedAt (PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) j
 
@@ -573,7 +573,7 @@ def HandshakeRootCompromised_withoutAliceKeys (tr : ExecTrace) (k : Bytes) : Pro
   HandshakeRootCompromisedWith HandshakeKeysAt_withoutAlice HandshakeWasCompromisedAt
     (fun keys k => k = keys.rk ∨ k = keys.ck) tr k
 
-def HandshakeRootCompromised_withoutBobKeys (tr : ExecTrace) (k : Bytes) : Prop :=
+@[expose] def HandshakeRootCompromised_withoutBobKeys (tr : ExecTrace) (k : Bytes) : Prop :=
   HandshakeRootCompromisedWith HandshakeKeysAt_withoutBob HandshakeWasCompromisedAt
     (fun keys k => k = keys.rk ∨ k = keys.ck) tr k
 
@@ -749,7 +749,7 @@ section BrokenDHHonestMutants
 
 /-- `mkTestTracePredicates` with the `honestDH` predicate inside `Compromised`'s `BrokenDH` disjunct
 replaced by `HDH tr` (leaving `TestTracePredicates.HonestDH` unchanged). -/
-def tracePredicatesWithBDH (HDH : ExecTrace → Bytes → Prop) (tr : ExecTrace) : TestTracePredicates :=
+@[expose] def tracePredicatesWithBDH (HDH : ExecTrace → Bytes → Prop) (tr : ExecTrace) : TestTracePredicates :=
   { mkTestTracePredicates tr with
     Compromised := fun k =>
       (∃ s i, tr.EventLogged (TREvent.ExposedRK s k i)) ∨
@@ -761,11 +761,11 @@ def tracePredicatesWithBDH (HDH : ExecTrace → Bytes → Prop) (tr : ExecTrace)
       (HDH tr k ∧ tr.EventLogged PQXDHEvent.BrokenDH) }
 
 /-- The `TREvent.HonestDH` event disjunct of `honestDH`. -/
-def HonestDHEventOnly (tr : ExecTrace) (d : Bytes) : Prop :=
+@[expose] def HonestDHEventOnly (tr : ExecTrace) (d : Bytes) : Prop :=
   ∃ s i, tr.EventLogged (TREvent.HonestDH s d i)
 
 /-- The stored-`TRState.dhs` disjunct of `honestDH`. -/
-def HonestDHStoredOnly (tr : ExecTrace) (d : Bytes) : Prop :=
+@[expose] def HonestDHStoredOnly (tr : ExecTrace) (d : Bytes) : Prop :=
   ∃ me st idx, StateStoredAt me st idx tr ∧ st.dhs = d
 
 theorem honestDH_real (tr : ExecTrace) (d : Bytes) :
@@ -775,10 +775,10 @@ theorem tracePredicatesWithBDH_real (tr : ExecTrace) :
     tracePredicatesWithBDH (fun tr d => HonestDHEventOnly tr d ∨ HonestDHStoredOnly tr d) tr =
       mkTestTracePredicates tr := rfl
 
-def ForwardSecrecyWithBDH (HDH : ExecTrace → Bytes → Prop) : Prop :=
+@[expose] def ForwardSecrecyWithBDH (HDH : ExecTrace → Bytes → Prop) : Prop :=
   ∀ tr : ExecTrace, tr.Reachable reachability → FSQueryP (tracePredicatesWithBDH HDH tr)
 
-def PostCompromiseSecurityWithBDH (HDH : ExecTrace → Bytes → Prop) : Prop :=
+@[expose] def PostCompromiseSecurityWithBDH (HDH : ExecTrace → Bytes → Prop) : Prop :=
   ∀ tr : ExecTrace, tr.Reachable reachability → PCSQueryP (tracePredicatesWithBDH HDH tr)
 
 theorem forwardSecrecyWithBDH_real :

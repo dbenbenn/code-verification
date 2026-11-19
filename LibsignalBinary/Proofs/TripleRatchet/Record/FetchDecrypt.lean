@@ -10,9 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Record.Defs
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+import ProofLib.Sep
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+public import LibsignalBinary.Proofs.CodeLayout -- proof-setup: allow-public-import
 
 /-!
 # Instruction Fetches and `recErrAt` Helpers for `SegDecrypt` and `SegMismatch`
@@ -22,7 +23,7 @@ spatial decompositions of `speAt` / `recErrAt` for the decrypt and version-misma
 `session_message_decrypt_signal` (`0x3a4a8`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Record
 
@@ -60,50 +61,6 @@ elab "segDecrypt_code_fetches_from " codeId:ident decPrefix:ident b:term:max H:t
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
 
-/-- Fetch hypotheses for `session_message_decrypt_signal` (`hfn : fnOff ... = 0x3a4a8`), from
-    fn-relative offset `k0`, `len` bytes. -/
-macro "segDecrypt_rec_fetches " b:term:max H:term:max hfn:term:max k0:num len:num : tactic =>
-  `(tactic| segDecrypt_code_fetches_from CryptoVerification.libsignalSessionCode segDecryptBin $b $H
-    $hfn (num% (ls_off% "session_message_decrypt_signal")) $k0 $len)
-
-/-! ## Instruction decode lemmas -/
-
-gen_decodes libsignalSessionCode_tree segDecryptBin [(ls_off% "session_message_decrypt_signal" + 1692) → (ls_off% "session_message_decrypt_signal" + 1712), raw (ls_off% "session_message_decrypt_signal" + 1716), (ls_off% "session_message_decrypt_signal" + 1720) → (ls_off% "session_message_decrypt_signal" + 1752),
-    (ls_off% "session_message_decrypt_signal" + 1984) → (ls_off% "session_message_decrypt_signal" + 2004), raw (ls_off% "session_message_decrypt_signal" + 2008), (ls_off% "session_message_decrypt_signal" + 2012) → (ls_off% "session_message_decrypt_signal" + 2056), raw (ls_off% "session_message_decrypt_signal" + 2060), (ls_off% "session_message_decrypt_signal" + 2064) → (ls_off% "session_message_decrypt_signal" + 2080), raw (ls_off% "session_message_decrypt_signal" + 2084),
-    (ls_off% "session_message_decrypt_signal" + 2088) → (ls_off% "session_message_decrypt_signal" + 2124), (ls_off% "session_message_decrypt_signal" + 5948) → (ls_off% "session_message_decrypt_signal" + 6020), raw (ls_off% "session_message_decrypt_signal" + 6024), (ls_off% "session_message_decrypt_signal" + 6028) → (ls_off% "session_message_decrypt_signal" + 6044), raw (ls_off% "session_message_decrypt_signal" + 6048),
-    (ls_off% "session_message_decrypt_signal" + 6052) → (ls_off% "session_message_decrypt_signal" + 6096), raw (ls_off% "session_message_decrypt_signal" + 6100), (ls_off% "session_message_decrypt_signal" + 7812), raw (ls_off% "session_message_decrypt_signal" + 7816)]
-
-/-! ## Fetch tactic macros -/
-
-macro "segDecrypt_mismatch_fetches" : term =>
-  `([(ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2020)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2024)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2028)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2032)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2036)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2040)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2044)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2048)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2052)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2056)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2060)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2064)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2068)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2072)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2076)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2080)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2084)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2088)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2092)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2096)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2100)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2104)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2108)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2112)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2116)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2120)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2124))])
-
-macro "segDecrypt_decrypt_fetches" : term =>
-  `([(ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1692)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1696)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1700)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1704)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1708)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1712)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1716)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1720)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1724)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1728)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1732)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1736)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1740)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1744)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1748)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1752)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1984)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1988)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1992)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 1996)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2000)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2004)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2008)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2012)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 2016)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5948)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5952)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5956)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5960)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5964)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5968)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5972)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5976)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5980)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5984)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5988)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5992)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 5996)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6000)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6004)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6008)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6012)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6016)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6020)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6024)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6028)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6032)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6036)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6040)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6044)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6048)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6052)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6056)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6060)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6064)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6068)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6072)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6076)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6080)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6084)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6088)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6092)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6096)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 6100)),
-     (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 7812)), (ls_decode% segDecryptBin (ls_off% "session_message_decrypt_signal" + 7816))])
-
 namespace SegDecryptFacts
 
 /-! ## Model bridges (`RecordDecryptGhost.model` and `RecordDecryptGhost.draws`) -/
@@ -128,7 +85,7 @@ theorem tapeAfter_zero (ctl : BitVec 64) (cur : BitVec 64) (rest : List (BitVec 
   exact Entails.pure_left fun _ => Entails.refl _
 
 /-- Ghost state passed to `try_decrypt_with_state` from `VState`. -/
-def mkTryDecryptGhost (sp : BitVec 64) (x : RecordDecryptGhost) (G₁ : SessionGhost) :
+@[expose] def mkTryDecryptGhost (sp : BitVec 64) (x : RecordDecryptGhost) (G₁ : SessionGhost) :
     TryDecryptGhost where
   ret := sp + 0x4b0#64
   ss := sp + 0xca0#64
@@ -204,23 +161,13 @@ theorem model_panic_of_tryDecrypt_panic (C : Crypto) (S : SpqrModel)
 /-! ## 48-byte `recErrAt` and `speAt` 6-word decomposition lemmas -/
 
 /-- Six consecutive 64-bit words starting at `a` (`48` bytes). -/
-def words6At (a w0 w1 w2 w3 w4 w5 : BitVec 64) : SepProp :=
+@[expose] def words6At (a w0 w1 w2 w3 w4 w5 : BitVec 64) : SepProp :=
   (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₆₄ w1) ∗ ((a + 16#64) ↦₆₄ w2) ∗
   ((a + 24#64) ↦₆₄ w3) ∗ ((a + 32#64) ↦₆₄ w4) ∗ ((a + 40#64) ↦₆₄ w5)
 
 theorem words6At_entails_memRegion (a w0 w1 w2 w3 w4 w5 : BitVec 64) :
     words6At a w0 w1 w2 w3 w4 w5 ⊢ memRegion a 48 := by
-  unfold words6At
-  rw [show (48 : Nat) = 8 * 6 by rfl, memRegion_cells a 6 (by decide)]
-  repeat (first | rw [cells_succ] | rw [cells_zero])
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_emp]
-  refine Entails.sepExists_right w0 ?_
-  refine sepConj_mono_right (Entails.sepExists_right w1 ?_)
-  refine sepConj_mono_right (Entails.sepExists_right w2 ?_)
-  refine sepConj_mono_right (Entails.sepExists_right w3 ?_)
-  refine sepConj_mono_right (Entails.sepExists_right w4 ?_)
-  refine sepConj_mono_right (Entails.sepExists_right w5 ?_)
-  exact Entails.refl _
+  sep_interval
 
 theorem memRegion48_eq_words6At (a : BitVec 64) :
     memRegion a 48 =
@@ -236,36 +183,12 @@ theorem version_words6At_entails_recErrAt (A : RustAlloc) (a : BitVec 64)
     (v hi : BitVec 32) (w2 w3 w4 w5 : BitVec 64) :
     words6At a (speWord 6) (hi ++ v) w2 w3 w4 w5 ⊢ recErrAt A a (.version v) := by
   unfold words6At recErrAt
-  rw [← pointsTo32_pair (a + 8#64) v hi]
-  have ha12 : a + 8#64 + 4#64 = a + 12#64 := by bv_kernel
-  rw [ha12]
+  rw [← pointsTo32_pair (a + 8#64) v hi, show a + 8#64 + 4#64 = a + 12#64 by bv_kernel]
   simp only [sepConj_assoc]
-  refine sepConj_mono_right (sepConj_mono_right ?_)
-  have ha16 : a + 12#64 + BitVec.ofNat 64 (unpack32 hi).length = a + 16#64 := by
-    change a + 12#64 + 4#64 = a + 16#64; bv_kernel
-  have ha24 : a + 16#64 + BitVec.ofNat 64 (unpack64 w2).length = a + 24#64 := by
-    change a + 16#64 + 8#64 = a + 24#64; bv_kernel
-  have ha32 : a + 24#64 + BitVec.ofNat 64 (unpack64 w3).length = a + 32#64 := by
-    change a + 24#64 + 8#64 = a + 32#64; bv_kernel
-  have ha40 : a + 32#64 + BitVec.ofNat 64 (unpack64 w4).length = a + 40#64 := by
-    change a + 32#64 + 8#64 = a + 40#64; bv_kernel
-  have hbytes :
-      ((a + 12#64) ↦₃₂ hi) ∗ ((a + 16#64) ↦₆₄ w2) ∗ ((a + 24#64) ↦₆₄ w3) ∗
-        ((a + 32#64) ↦₆₄ w4) ∗ ((a + 40#64) ↦₆₄ w5) =
-      ((a + 12#64) ↦ₛ (unpack32 hi ++ (unpack64 w2 ++ (unpack64 w3 ++ (unpack64 w4 ++ unpack64 w5))))) := by
-    rw [pointsTo32_eq_pointsToBytes (a + 12#64),
-        pointsTo64_eq_pointsToBytes (a + 16#64),
-        pointsTo64_eq_pointsToBytes (a + 24#64),
-        pointsTo64_eq_pointsToBytes (a + 32#64),
-        pointsTo64_eq_pointsToBytes (a + 40#64)]
-    simp only [pointsToBytes_append, ha16, ha24, ha32, ha40]
-  rw [hbytes]
-  have hlen : (unpack32 hi ++ (unpack64 w2 ++ (unpack64 w3 ++ (unpack64 w4 ++ unpack64 w5)))).length = 36 := by
-    simp
-  exact hlen ▸ pointsToBytes_entails_memRegion (a + 12#64) _
+  exact sepConj_mono_right (sepConj_mono_right (by sep_interval))
 
 /-- Discriminant word 0 of a `SignalProtocolError`. -/
-def speTag : SignalProtocolError → BitVec 64
+@[expose] def speTag : SignalProtocolError → BitVec 64
   | .invalidState => speWord 1
   | .invalidProtobufEncoding => speWord 2
   | .ciphertextMessageTooShort _ => speWord 3
@@ -313,6 +236,8 @@ private theorem strRefAt_eq_bytes16_sep_ro (a : BitVec 64) (lit : List (BitVec 8
   rw [pointsToBytes_append, unpack64_length, ← pointsTo64_eq_pointsToBytes,
     ← pointsTo64_eq_pointsToBytes, sepConj_assoc]
 
+attribute [local irreducible] vecU8Buf
+
 private theorem speAt_tag_region40 (w0 : BitVec 64) (a : BitVec 64) :
     ((a ↦₆₄ w0) ∗ memRegion (a + 8#64) 40) ⊢
       ∃∗ bs : List (BitVec 8), ∃∗ H : SepProp,
@@ -320,13 +245,10 @@ private theorem speAt_tag_region40 (w0 : BitVec 64) (a : BitVec 64) :
         (a ↦₆₄ w0) ∗ ((a + 8#64) ↦ₛ bs) ∗ H := by
   rw [memRegion_eq_exists_bytes (a + 8#64) 40 (by decide), sepExists_sepConj_right]
   apply Entails.sepExists_elim; intro bs
-  have h1 : (a ↦₆₄ w0) ∗ (⌜bs.length = 40⌝ ∗ ((a + 8#64) ↦ₛ bs)) =
-      ⌜bs.length = 40⌝ ∗ (a ↦₆₄ w0) ∗ ((a + 8#64) ↦ₛ bs) := by ac_rfl
-  rw [h1]
+  conv => lhs; simp only [sepConj_assoc, sepConj_pure_left_comm]
   apply Entails.pure_left; intro hbs
   refine Entails.sepExists_right bs (Entails.sepExists_right emp ?_)
-  rw [sepConj_emp]
-  refine Entails.pure_right ⟨hbs, fun b => ?_⟩ (Entails.refl _)
+  refine Entails.pure_right ⟨hbs, fun b => ?_⟩ (by bi_entail)
   rw [sepConj_emp]
   exact sepConj_mono_right (hbs ▸ pointsToBytes_entails_memRegion (b + 8#64) bs)
 
@@ -342,13 +264,11 @@ private theorem speAt_tag_word_region32 (w0 w1 : BitVec 64) (a : BitVec 64) :
   apply Entails.sepExists_elim; intro tail
   have ha16 : ∀ c : BitVec 64, c + 8#64 + BitVec.ofNat 64 (unpack64 w1).length = c + 16#64 := by
     intro c; change c + 8#64 + 8#64 = c + 16#64; bv_kernel
-  have h1 : (a ↦₆₄ w0) ∗ ((a + 8#64) ↦ₛ unpack64 w1) ∗ (⌜tail.length = 32⌝ ∗ ((a + 16#64) ↦ₛ tail)) =
-      ⌜tail.length = 32⌝ ∗ (a ↦₆₄ w0) ∗ (((a + 8#64) ↦ₛ unpack64 w1) ∗ ((a + 16#64) ↦ₛ tail)) := by ac_rfl
-  rw [h1]
+  conv => lhs; simp only [sepConj_assoc, sepConj_pure_left_comm]
   apply Entails.pure_left; intro htail
   refine Entails.sepExists_right (unpack64 w1 ++ tail) (Entails.sepExists_right emp ?_)
-  rw [pointsToBytes_append, ha16 a, sepConj_emp]
-  refine Entails.pure_right ⟨by simp [htail], fun b => ?_⟩ (Entails.refl _)
+  rw [pointsToBytes_append, ha16 a]
+  refine Entails.pure_right ⟨by simp [htail], fun b => ?_⟩ (by bi_entail)
   simp only [pointsToBytes_append, ha16 b, ← pointsTo64_eq_pointsToBytes, sepConj_emp]
   exact sepConj_mono_right (sepConj_mono_right (htail ▸ pointsToBytes_entails_memRegion (b + 16#64) tail))
 
@@ -365,13 +285,11 @@ private theorem speAt_tag_byte_region39 (w0 : BitVec 64) (v : BitVec 8) (a : Bit
     intro d
     have hd9 : d + 9#64 = d + 8#64 + 1#64 := by bv_kernel
     rw [hd9, ← pointsToBytes_cons]
-  have h1 : (a ↦₆₄ w0) ∗ ((a + 8#64) ↦₈ v) ∗ (⌜tail.length = 39⌝ ∗ ((a + 9#64) ↦ₛ tail)) =
-      ⌜tail.length = 39⌝ ∗ (a ↦₆₄ w0) ∗ (((a + 8#64) ↦₈ v) ∗ ((a + 9#64) ↦ₛ tail)) := by ac_rfl
-  rw [h1, hcons a]
+  conv => lhs; simp only [sepConj_assoc, sepConj_pure_left_comm]
   apply Entails.pure_left; intro htail
+  rw [hcons a]
   refine Entails.sepExists_right (v :: tail) (Entails.sepExists_right emp ?_)
-  rw [sepConj_emp]
-  refine Entails.pure_right ⟨by simp [htail], fun b => ?_⟩ (Entails.refl _)
+  refine Entails.pure_right ⟨by simp [htail], fun b => ?_⟩ (by bi_entail)
   simp only [← hcons b, sepConj_emp]
   exact sepConj_mono_right (sepConj_mono_right (htail ▸ pointsToBytes_entails_memRegion (b + 9#64) tail))
 
@@ -409,32 +327,19 @@ private theorem speAt_inline_bytes (A : RustAlloc) (fnName : List (BitVec 8))
     have ha24 : ∀ d : BitVec 64,
         d + 8#64 + BitVec.ofNat 64 (unpack64 p ++ unpack64 (BitVec.ofNat 64 (invalidSessionStructureStr r).length)).length = d + 24#64 := by
       intro d; change d + 8#64 + 16#64 = d + 24#64; bv_kernel
-    have h1 :
-        (a ↦₆₄ speWord 20) ∗
-          (((a + 8#64) ↦ₛ (unpack64 p ++ unpack64 (BitVec.ofNat 64 (invalidSessionStructureStr r).length))) ∗ (p ↦ᵣ invalidSessionStructureStr r)) ∗
-          (⌜tail.length = 24⌝ ∗ ((a + 24#64) ↦ₛ tail)) =
-        ⌜tail.length = 24⌝ ∗ (a ↦₆₄ speWord 20) ∗
-          (((a + 8#64) ↦ₛ (unpack64 p ++ unpack64 (BitVec.ofNat 64 (invalidSessionStructureStr r).length))) ∗ ((a + 24#64) ↦ₛ tail)) ∗
-          (p ↦ᵣ invalidSessionStructureStr r) := by ac_rfl
-    rw [h1]
+    conv => lhs; simp only [sepConj_assoc, sepConj_pure_left_comm]
     apply Entails.pure_left; intro htail
     refine Entails.sepExists_right (unpack64 p ++ unpack64 (BitVec.ofNat 64 (invalidSessionStructureStr r).length) ++ tail)
       (Entails.sepExists_right (p ↦ᵣ invalidSessionStructureStr r) ?_)
     rw [pointsToBytes_append (a + 8#64) (unpack64 p ++ unpack64 (BitVec.ofNat 64 (invalidSessionStructureStr r).length)) tail, ha24 a]
-    refine Entails.pure_right ⟨by simp [htail], fun b => ?_⟩ (Entails.refl _)
+    refine Entails.pure_right ⟨by simp [htail], fun b => ?_⟩ (by bi_entail)
     rw [pointsToBytes_append (b + 8#64) (unpack64 p ++ unpack64 (BitVec.ofNat 64 (invalidSessionStructureStr r).length)) tail,
         ha24 b, strRefAt_eq_bytes16_sep_ro (b + 8#64) (invalidSessionStructureStr r)]
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     refine Entails.sepExists_right p ?_
-    have hgoal :
-        ((b ↦₆₄ speWord 20) ∗
-          (((b + 8#64) ↦ₛ (unpack64 p ++ unpack64 (BitVec.ofNat 64 (invalidSessionStructureStr r).length))) ∗
-            ((b + 24#64) ↦ₛ tail)) ∗ (p ↦ᵣ invalidSessionStructureStr r)) =
-        ((b ↦₆₄ speWord 20) ∗
-          (((b + 8#64) ↦ₛ (unpack64 p ++ unpack64 (BitVec.ofNat 64 (invalidSessionStructureStr r).length))) ∗
-            (p ↦ᵣ invalidSessionStructureStr r)) ∗ ((b + 24#64) ↦ₛ tail)) := by ac_rfl
-    rw [hgoal]
-    exact sepConj_mono_right (sepConj_mono_right (htail ▸ pointsToBytes_entails_memRegion (b + 24#64) tail))
+    refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono_right
+      (htail ▸ pointsToBytes_entails_memRegion (b + 24#64) tail)))
+    bi_entail
   | invalidState =>
     dsimp only [speAt, speTag]
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
@@ -451,19 +356,10 @@ private theorem speAt_inline_bytes (A : RustAlloc) (fnName : List (BitVec 8))
       (vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length) ++
         (unpack64 p ++ unpack64 (BitVec.ofNat 64 fnName.length)))
       (Entails.sepExists_right (vecU8Buf A cap ptr bs ∗ (p ↦ᵣ fnName)) ?_)
-    have h1 :
-        (a ↦₆₄ speWord 1) ∗
-          (((a + 8#64) ↦ₛ vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length)) ∗ vecU8Buf A cap ptr bs) ∗
-          (((a + 32#64) ↦ₛ (unpack64 p ++ unpack64 (BitVec.ofNat 64 fnName.length))) ∗ (p ↦ᵣ fnName)) =
-        (a ↦₆₄ speWord 1) ∗
-          (((a + 8#64) ↦ₛ vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length)) ∗
-            ((a + 32#64) ↦ₛ (unpack64 p ++ unpack64 (BitVec.ofNat 64 fnName.length)))) ∗
-          (vecU8Buf A cap ptr bs ∗ (p ↦ᵣ fnName)) := by ac_rfl
-    rw [h1,
-        pointsToBytes_append (a + 8#64) (vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length))
+    rw [pointsToBytes_append (a + 8#64) (vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length))
           (unpack64 p ++ unpack64 (BitVec.ofNat 64 fnName.length)),
         ha32 a]
-    refine Entails.pure_right ⟨by simp [vecHeaderBytes], fun b => ?_⟩ (Entails.refl _)
+    refine Entails.pure_right ⟨by simp [vecHeaderBytes], fun b => ?_⟩ (by bi_entail)
     rw [pointsToBytes_append (b + 8#64) (vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length))
           (unpack64 p ++ unpack64 (BitVec.ofNat 64 fnName.length)),
         ha32 b]
@@ -471,16 +367,7 @@ private theorem speAt_inline_bytes (A : RustAlloc) (fnName : List (BitVec 8))
     rw [vecU8_eq_bytes24_sep_buf A (b + 8#64) bs, strRefAt_eq_bytes16_sep_ro (b + 32#64) fnName]
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     refine Entails.sepExists_right p (Entails.sepExists_right cap (Entails.sepExists_right ptr ?_))
-    have hb :
-        (b ↦₆₄ speWord 1) ∗
-          (((b + 8#64) ↦ₛ vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length)) ∗
-            ((b + 32#64) ↦ₛ (unpack64 p ++ unpack64 (BitVec.ofNat 64 fnName.length)))) ∗
-          (vecU8Buf A cap ptr bs ∗ (p ↦ᵣ fnName)) =
-        (b ↦₆₄ speWord 1) ∗
-          (((b + 8#64) ↦ₛ vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length)) ∗ vecU8Buf A cap ptr bs) ∗
-          (((b + 32#64) ↦ₛ (unpack64 p ++ unpack64 (BitVec.ofNat 64 fnName.length))) ∗ (p ↦ᵣ fnName)) := by ac_rfl
-    rw [hb]
-    exact Entails.refl _
+    bi_entail
   | invalidMessage t r =>
     dsimp only [speAt, speTag]
     have hstr : ∀ d : BitVec 64,
@@ -510,12 +397,16 @@ private theorem speAt_inline_bytes (A : RustAlloc) (fnName : List (BitVec 8))
     refine Entails.trans (sepConj_mono_right (sepConj_mono_left (hstr (a + 8#64)))) ?_
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     apply Entails.sepExists_elim; intro bs
+    conv => lhs; simp only [sepConj_assoc, sepConj_pure_left_comm]
+    apply Entails.pure_left; intro hr
     rw [vecU8_eq_bytes24_sep_buf A (a + 8#64) bs,
         memRegion_eq_exists_bytes (a + 33#64) 15 (by decide)]
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     apply Entails.sepExists_elim; intro tail
     apply Entails.sepExists_elim; intro cap
     apply Entails.sepExists_elim; intro ptr
+    conv => lhs; simp only [sepConj_assoc, sepConj_pure_left_comm]
+    apply Entails.pure_left; intro htail
     have ha32 : ∀ d : BitVec 64,
         d + 8#64 + BitVec.ofNat 64 (vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length)).length = d + 32#64 := by
       intro d; change d + 8#64 + 24#64 = d + 32#64; bv_kernel
@@ -525,40 +416,20 @@ private theorem speAt_inline_bytes (A : RustAlloc) (fnName : List (BitVec 8))
       intro d
       have hd33 : d + 33#64 = d + 32#64 + 1#64 := by bv_kernel
       rw [hd33, ← pointsToBytes_cons]
-    have hrearrange :
-        (a ↦₆₄ speWord 24) ∗
-          (⌜∀ c : BitVec 64, vecU8 A c bs ⊢ invalidMessageStrAt A c r⌝ ∗
-            (((a + 8#64) ↦ₛ vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length)) ∗ vecU8Buf A cap ptr bs)) ∗
-          ((a + 32#64) ↦₈ msgTypeByte t) ∗ (⌜tail.length = 15⌝ ∗ ((a + 33#64) ↦ₛ tail)) =
-        ⌜tail.length = 15⌝ ∗ ⌜∀ c : BitVec 64, vecU8 A c bs ⊢ invalidMessageStrAt A c r⌝ ∗
-          (a ↦₆₄ speWord 24) ∗
-          (((a + 8#64) ↦ₛ vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length)) ∗
-            (((a + 32#64) ↦₈ msgTypeByte t) ∗ ((a + 33#64) ↦ₛ tail))) ∗
-          vecU8Buf A cap ptr bs := by ac_rfl
-    rw [hrearrange]
-    apply Entails.pure_left; intro htail
-    apply Entails.pure_left; intro hr
-    rw [hcons a]
     refine Entails.sepExists_right
       (vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length) ++ (msgTypeByte t :: tail))
       (Entails.sepExists_right (vecU8Buf A cap ptr bs) ?_)
-    rw [pointsToBytes_append, ha32 a]
-    refine Entails.pure_right ⟨by simp [vecHeaderBytes, htail], fun b => ?_⟩ (Entails.refl _)
+    rw [pointsToBytes_append, ha32 a, ← hcons a]
+    refine Entails.pure_right ⟨by simp [vecHeaderBytes, htail], fun b => ?_⟩ (by bi_entail)
     rw [pointsToBytes_append, ha32 b, ← hcons b]
-    have hb :
-        ((b ↦₆₄ speWord 24) ∗
-          (((b + 8#64) ↦ₛ vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length)) ∗
-            (((b + 32#64) ↦₈ msgTypeByte t) ∗ ((b + 33#64) ↦ₛ tail))) ∗
-          vecU8Buf A cap ptr bs) =
-        ((b ↦₆₄ speWord 24) ∗
-          (((b + 8#64) ↦ₛ vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length)) ∗ vecU8Buf A cap ptr bs) ∗
-          ((b + 32#64) ↦₈ msgTypeByte t) ∗ ((b + 33#64) ↦ₛ tail)) := by ac_rfl
-    rw [hb]
-    refine sepConj_mono_right (sepConj_mono ?_ (sepConj_mono_right
-      (htail ▸ pointsToBytes_entails_memRegion (b + 33#64) tail)))
-    refine Entails.trans ?_ (hr (b + 8#64))
-    rw [vecU8_eq_bytes24_sep_buf A (b + 8#64) bs]
-    exact Entails.sepExists_right cap (Entails.sepExists_right ptr (Entails.refl _))
+    have hvec : ((b + 8#64) ↦ₛ vecHeaderBytes cap ptr (BitVec.ofNat 64 bs.length)) ∗ vecU8Buf A cap ptr bs ⊢
+        invalidMessageStrAt A (b + 8#64) r := by
+      refine Entails.trans ?_ (hr (b + 8#64))
+      rw [vecU8_eq_bytes24_sep_buf A (b + 8#64) bs]
+      exact Entails.sepExists_right cap (Entails.sepExists_right ptr (Entails.refl _))
+    refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono hvec (sepConj_mono_right
+      (htail ▸ pointsToBytes_entails_memRegion (b + 33#64) tail))))
+    bi_entail
 
 /-- Every non-panic `SignalProtocolError` at `a` decomposes into 6 inline 64-bit words
     `words6At a (speTag e) w1 w2 w3 w4 w5` and a detached heap predicate `H` that can be reassembled

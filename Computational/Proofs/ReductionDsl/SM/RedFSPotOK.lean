@@ -11,6 +11,7 @@ module
 
 public import Computational.Proofs.ReductionDsl.SM.RedFSPotOKHooks -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Notation
+import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
 
 /-!
 # Potential-based FS-AEAD query bounds

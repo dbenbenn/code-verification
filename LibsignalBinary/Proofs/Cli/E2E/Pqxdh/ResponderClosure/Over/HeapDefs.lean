@@ -12,6 +12,17 @@ module
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
 import LibsignalBinary.Specifications.AsmConstants
 public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs -- shake: keep
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+public import LibsignalBinary.Specifications.LibsignalPublicApiRepr
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Heap Predicates for `SessionRecord` with Previous Sessions
@@ -22,7 +33,7 @@ non-empty `previous_sessions`. This module defines the separation-logic predicat
 `Prev1`, `sessionRecordPrevAt`, and `sessionBucketEntryPrevAt`) shared across the over-path proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +61,7 @@ abbrev prevVecAt (A : RustAlloc) (r cap ptr : BitVec 64) (ps : List (List (BitVe
 
 /-- Backing buffer of `previous_sessions` after `insert(0, enc)` into an empty vector (`grow_one`
 allocates capacity 4 = 96 bytes, with `enc` in slot 0 and 72 spare bytes), kept opaque to framing. -/
-def Prev1 (A : RustAlloc) (q : BitVec 64) (enc : List (BitVec 8)) : SepProp :=
+@[expose] def Prev1 (A : RustAlloc) (q : BitVec 64) (enc : List (BitVec 8)) : SepProp :=
   vecBuf A 24 8 (prevElem A) 4#64 q [enc]
 
 theorem hdrP_prev1_eq (A : RustAlloc) (r q : BitVec 64) (enc : List (BitVec 8)) :
@@ -107,7 +118,7 @@ theorem prevVecAt_one_eq (A : RustAlloc) (r cap q : BitVec 64) (enc : List (BitV
 
 /-- The `current_session` field of a `SessionRecord` (`r + 0x18`, 344 bytes): niche word
 `noneCap` plus 336 slack bytes when `None`, or `sessionStateReprAt` when `Some`. -/
-def recCurAt (A : RustAlloc) (r : BitVec 64) (cur : Option SessionGhost)
+@[expose] def recCurAt (A : RustAlloc) (r : BitVec 64) (cur : Option SessionGhost)
     (rec : SessionRecord (List (BitVec 8))) : SepProp :=
   match cur, rec.currentSession with
   | none, none => ((r + 0x18#64) ↦₆₄ noneCap) ∗ memRegion (r + 0x20#64) 336
@@ -121,7 +132,7 @@ theorem recCurAt_some (A : RustAlloc) (r : BitVec 64) (G : SessionGhost)
 
 /-- A 368-byte `SessionRecord` at `r` whose `previous_sessions` holds `ps`: `prevVecAt` at
 offset 0 paired with `recCurAt` at `+0x18`. -/
-def sessionRecordPrevAt (A : RustAlloc) (r : BitVec 64) (g : RecordGhost)
+@[expose] def sessionRecordPrevAt (A : RustAlloc) (r : BitVec 64) (g : RecordGhost)
     (ps : List (List (BitVec 8))) (rec : SessionRecord (List (BitVec 8))) : SepProp :=
   prevVecAt A r g.prevCap g.prevPtr ps ∗ recCurAt A r g.cur rec
 
@@ -130,20 +141,11 @@ theorem sessionRecordPrevAt_eq (A : RustAlloc) (r cap ptr : BitVec 64) (cur : Op
     sessionRecordPrevAt A r ⟨cap, ptr, cur⟩ ps rec = prevVecAt A r cap ptr ps ∗ recCurAt A r cur rec :=
   rfl
 
-theorem sessionRecordPrevAt_one_some_eq (A : RustAlloc) (r cap q : BitVec 64) (G : SessionGhost)
-    (s : Session (List (BitVec 8))) (enc : List (BitVec 8)) (hcap : cap ≠ 0#64) :
-    sessionRecordPrevAt A r ⟨cap, q, some G⟩ [enc] ⟨some s⟩ =
-      (HdrP r cap q 1#64 ∗ ⌜1 ≤ cap.toNat ∧ cap.toNat * 24 < 2 ^ 63 ∧ q ≠ 0#64⌝ ∗
-        (A.live q (cap.toNat * 24) 8 ∗ vecU8 A q enc ∗
-          memRegion (q + 24#64) ((cap.toNat - 1) * 24))) ∗
-      sessionStateReprAt A (r + 0x18#64) G s := by
-  rw [sessionRecordPrevAt_eq, prevVecAt_one_eq A r cap q enc hcap, recCurAt_some]
-
 /-! ## Session-Store Bucket with Previous Sessions -/
 
 /-- A `RawTable<(ProtocolAddress, SessionRecord)>` bucket at `a` holding a canonical current
 session `ss` (ghost `G`) and previous sessions `ps`. -/
-def sessionBucketEntryPrevAt (A : RustAlloc) (g : AddrGhost) (G : SessionGhost)
+@[expose] def sessionBucketEntryPrevAt (A : RustAlloc) (g : AddrGhost) (G : SessionGhost)
     (ss : Session (List (BitVec 8))) (cap ptr : BitVec 64) (ps : List (List (BitVec 8)))
     (a : BitVec 64) : SepProp :=
   ⌜CanonSession G ss⌝ ∗

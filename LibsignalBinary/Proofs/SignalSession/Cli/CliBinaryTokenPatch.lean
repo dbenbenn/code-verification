@@ -10,16 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.SignalSession.CliProcess
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslElf
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliProcessFixed
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.MuslElf -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRunFixed -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 /-!
-# Initial Token Cells and Ghost `patchElfTokens` Transport (`DEV-CLI10`)
+# Initial Token Cells and Ghost `patchElfTokens` Transport (`DEV-CLI10`, `DEV-M17`)
 
 Layout-generic ELF segment-patching lemmas bridging `CliRunsTo`'s `cliTokenPatch s0` to
 `Cli.MuslHarness`'s unpatched `elf'.loadState` interface via `patchElfTokens elf`:
@@ -35,12 +35,15 @@ namespace CryptoVerification.SignalSession
 open Arm64 Arm64.Process ProofLib
 open CryptoVerification.SignalSession.MuslElf CryptoVerification.SignalSession.InitStack
 
+abbrev tokenStorageOff : BitVec 64 := 0x9a038#64
+abbrev tokenOnceOff : BitVec 64 := 0x9a048#64
+
 /-- `PT_LOAD` `.data` slice bundle witnessing SPQR's initial unprobed CPU-feature cells
 (`STORAGE.0 = 0xff` and `TOKEN` `Once` state `= 3`, `DEV-CLI10`). -/
 structure CliElfTokenCells (elf : ElfImage) : Prop where
-  storage : SegSlice elf (cliBase + CryptoVerification.LibsignalSpqrV1.tokenStorageOff)
+  storage : SegSlice elf (cliBase + tokenStorageOff)
     [0xff#8] Perm.rw
-  once : SegSlice elf (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff)
+  once : SegSlice elf (cliBase + tokenOnceOff)
     [3#8, 0#8, 0#8, 0#8] Perm.rw
 
 /-- Before `cliTokenPatch`, any state `s0` loaded from `elf` holds `0xff#8` at
@@ -48,8 +51,8 @@ structure CliElfTokenCells (elf : ElfImage) : Prop where
 theorem tokenCellsInitial_of_dataSeg {elf : ElfImage}
     (hE : Cli.ElfStaticOk elf) (htok : CliElfTokenCells elf)
     {inputs : ProcessInputs} {s0 : State} (hload : elf.loadState inputs = .ok s0) :
-    s0.mem.read8 (cliBase + CryptoVerification.LibsignalSpqrV1.tokenStorageOff) = 0xff#8 ∧
-    s0.mem.read32 (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff) = 3#32 := by
+    s0.mem.read8 (cliBase + tokenStorageOff) = 0xff#8 ∧
+    s0.mem.read32 (cliBase + tokenOnceOff) = 3#32 := by
   have hs := (htok.storage.holdsBytes hE.1 hE.2 hload) 0 (by decide)
   have ho0 := (htok.once.holdsBytes hE.1 hE.2 hload) 0 (by decide)
   have ho1 := (htok.once.holdsBytes hE.1 hE.2 hload) 1 (by decide)
@@ -58,34 +61,34 @@ theorem tokenCellsInitial_of_dataSeg {elf : ElfImage}
   have h0 : [0xff#8][0] = 0xff#8 := rfl
   refine ⟨by simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero, h0] using hs.1, ?_⟩
   unfold Memory.read32; dsimp only
-  have e0 : s0.mem.read8 (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 0#64) = 3#8 := ho0.1
-  have e1 : s0.mem.read8 (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 1#64) = 0#8 := ho1.1
-  have e2 : s0.mem.read8 (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 2#64) = 0#8 := ho2.1
-  have e3 : s0.mem.read8 (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 3#64) = 0#8 := ho3.1
+  have e0 : s0.mem.read8 (cliBase + tokenOnceOff + 0#64) = 3#8 := ho0.1
+  have e1 : s0.mem.read8 (cliBase + tokenOnceOff + 1#64) = 0#8 := ho1.1
+  have e2 : s0.mem.read8 (cliBase + tokenOnceOff + 2#64) = 0#8 := ho2.1
+  have e3 : s0.mem.read8 (cliBase + tokenOnceOff + 3#64) = 0#8 := ho3.1
   rw [e0, e1, e2, e3]; rfl
 
 /-- Specialization of `tokenCellsInitial_of_dataSeg` to `cliProcessInputs i`. -/
 theorem tokenCellsInitial_cliProcessInputs {elf : ElfImage}
     (hE : Cli.ElfStaticOk elf) (htok : CliElfTokenCells elf) :
     ∀ i s0, elf.loadState (cliProcessInputs i) = .ok s0 →
-      s0.mem.read8 (cliBase + CryptoVerification.LibsignalSpqrV1.tokenStorageOff) = 0xff#8 ∧
-      s0.mem.read32 (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff) = 3#32 :=
+      s0.mem.read8 (cliBase + tokenStorageOff) = 0xff#8 ∧
+      s0.mem.read32 (cliBase + tokenOnceOff) = 3#32 :=
   fun _ _ hload => tokenCellsInitial_of_dataSeg hE htok hload
 
 /-- Overwrite byte `addr` with `val` in region `r` when `addr` falls within `r`. -/
-def patchRegionByte (addr : BitVec 64) (val : BitVec 8) (r : Snapshot.Region) : Snapshot.Region :=
+@[expose] def patchRegionByte (addr : BitVec 64) (val : BitVec 8) (r : Snapshot.Region) : Snapshot.Region :=
   let i := (addr - r.start).toNat
   if i < r.bytes.length then { r with bytes := r.bytes.set i val } else r
 
 /-- Overwrite byte `addr` with `val` across all `PT_LOAD` segments of `elf`. -/
-def patchElfByte (addr : BitVec 64) (val : BitVec 8) (elf : ElfImage) : ElfImage :=
+@[expose] def patchElfByte (addr : BitVec 64) (val : BitVec 8) (elf : ElfImage) : ElfImage :=
   { elf with segments := elf.segments.map (patchRegionByte addr val) }
 
 /-- Ghost `ElfImage` with spqr's 5 CPU-probe `.data` bytes pre-set to `0` (`DEV-CLI10`), so its
 `loadState` equals `(elf.loadState ·).map cliTokenPatch`. -/
-def patchElfTokens (elf : ElfImage) : ElfImage :=
-  let sAddr := cliBase + CryptoVerification.LibsignalSpqrV1.tokenStorageOff
-  let oAddr := cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff
+@[expose] def patchElfTokens (elf : ElfImage) : ElfImage :=
+  let sAddr := cliBase + tokenStorageOff
+  let oAddr := cliBase + tokenOnceOff
   patchElfByte (oAddr + 3#64) 0#8 (patchElfByte (oAddr + 2#64) 0#8
     (patchElfByte (oAddr + 1#64) 0#8 (patchElfByte oAddr 0#8 (patchElfByte sAddr 0#8 elf))))
 
@@ -134,7 +137,7 @@ theorem elfStaticOk_patchElfTokens {elf : ElfImage} (hE : Cli.ElfStaticOk elf) :
     (elfStaticOk_patchElfByte (elfStaticOk_patchElfByte hE))))
 
 /-- `addr` falls within at least one `PT_LOAD` segment of `elf`. -/
-def AddrInElf (elf : ElfImage) (addr : BitVec 64) : Prop :=
+@[expose] def AddrInElf (elf : ElfImage) (addr : BitVec 64) : Prop :=
   ∃ r ∈ elf.segments, (addr - r.start).toNat < r.bytes.length
 
 @[simp] theorem addrInElf_patchElfByte (a : BitVec 64) (v : BitVec 8) (elf : ElfImage)
@@ -310,84 +313,6 @@ theorem loadState_patchElfByte {elf : ElfImage} {addr : BitVec 64} (val : BitVec
       · rfl
     · rfl
 
-private theorem bv_add_1_1 (x : BitVec 64) : x + 1#64 + 1#64 = x + 2#64 := by
-  rw [BitVec.add_assoc]; rfl
-
-private theorem bv_add_2_1 (x : BitVec 64) : x + 2#64 + 1#64 = x + 3#64 := by
-  rw [BitVec.add_assoc]; rfl
-
-/-- When SPQR's 5 token `.data` cells lie in `elf` (`htok`), loading `patchElfTokens elf`
-produces `(elf.loadState inputs).map cliTokenPatch`. -/
-theorem loadState_patchElfTokens {elf : ElfImage}
-    (hE : Cli.ElfStaticOk elf) (htok : CliElfTokenCells elf) (inputs : ProcessInputs) :
-    (patchElfTokens elf).loadState inputs = (elf.loadState inputs).map cliTokenPatch := by
-  have hs : AddrInElf elf (cliBase + CryptoVerification.LibsignalSpqrV1.tokenStorageOff) := by
-    simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using
-      segSlice_addrInElf htok.storage hE (j := 0) (by decide)
-  have ho0 : AddrInElf elf (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff) := by
-    simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using
-      segSlice_addrInElf htok.once hE (j := 0) (by decide)
-  have ho1 : AddrInElf elf (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 1#64) :=
-    segSlice_addrInElf htok.once hE (j := 1) (by decide)
-  have ho2 : AddrInElf elf (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 2#64) :=
-    segSlice_addrInElf htok.once hE (j := 2) (by decide)
-  have ho3 : AddrInElf elf (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 3#64) :=
-    segSlice_addrInElf htok.once hE (j := 3) (by decide)
-  unfold patchElfTokens
-  dsimp only
-  rw [loadState_patchElfByte _ (by simpa only [addrInElf_patchElfByte] using ho3),
-      loadState_patchElfByte _ (by simpa only [addrInElf_patchElfByte] using ho2),
-      loadState_patchElfByte _ (by simpa only [addrInElf_patchElfByte] using ho1),
-      loadState_patchElfByte _ (by simpa only [addrInElf_patchElfByte] using ho0),
-      loadState_patchElfByte _ hs]
-  cases elf.loadState inputs with
-  | error _ => rfl
-  | ok s0 =>
-    simp only [Except.map, cliTokenPatch, State.setMem,
-      Memory.writeBytes, bv_add_1_1, bv_add_2_1]
-
-private theorem keepsFrozen_write8_of_perm_rw {m : Memory} {addr : BitVec 64} (val : BitVec 8)
-    (hp : m.perm addr = some Perm.rw) : m.KeepsFrozen (m.write8 addr val) := by
-  intro a ha
-  have hne : a ≠ addr := by
-    rintro rfl
-    unfold Memory.Frozen at ha
-    simp only [hp, Option.frozen, Perm.frozen] at ha
-    exact Bool.noConfusion ha
-  simp [Memory.write8, Memory.read8, Memory.perm, Memory.isLazyFree, Memory.isAnon, hne]
-
-/-- `cliTokenPatch` preserves all frozen (`.rx`/`.ro`) bytes of `s0.mem` because spqr's 5 token
-cells are `Perm.rw` (`htok`). -/
-theorem keepsFrozen_cliTokenPatch {elf : ElfImage}
-    (hE : Cli.ElfStaticOk elf) (htok : CliElfTokenCells elf)
-    {inputs : ProcessInputs} {s0 : State} (hload : elf.loadState inputs = .ok s0) :
-    s0.mem.KeepsFrozen (cliTokenPatch s0).mem := by
-  have ps : s0.mem.perm (cliBase + CryptoVerification.LibsignalSpqrV1.tokenStorageOff) = some .rw := by
-    simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero, show Perm.rw.rwx = Perm.rw from rfl] using
-      ((htok.storage.holdsBytes hE.1 hE.2 hload) 0 (by decide)).2.1
-  have p0 : s0.mem.perm (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff) = some .rw := by
-    simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero, show Perm.rw.rwx = Perm.rw from rfl] using
-      ((htok.once.holdsBytes hE.1 hE.2 hload) 0 (by decide)).2.1
-  have p1 : s0.mem.perm (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 1#64) = some .rw :=
-    ((htok.once.holdsBytes hE.1 hE.2 hload) 1 (by decide)).2.1
-  have p2 : s0.mem.perm (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 2#64) = some .rw :=
-    ((htok.once.holdsBytes hE.1 hE.2 hload) 2 (by decide)).2.1
-  have p3 : s0.mem.perm (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 3#64) = some .rw :=
-    ((htok.once.holdsBytes hE.1 hE.2 hload) 3 (by decide)).2.1
-  have hmem : (cliTokenPatch s0).mem =
-      (((((s0.mem.write8 (cliBase + CryptoVerification.LibsignalSpqrV1.tokenStorageOff) 0#8).write8
-        (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff) 0#8).write8
-        (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 1#64) 0#8).write8
-        (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 2#64) 0#8).write8
-        (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 3#64) 0#8) := by
-    simp only [cliTokenPatch, State.setMem, Memory.writeBytes, bv_add_1_1, bv_add_2_1]
-  rw [hmem]
-  exact ((((keepsFrozen_write8_of_perm_rw 0#8 ps).trans
-    (keepsFrozen_write8_of_perm_rw 0#8 (by simpa only [Memory.perm_write8_apply] using p0))).trans
-    (keepsFrozen_write8_of_perm_rw 0#8 (by simpa only [Memory.perm_write8_apply] using p1))).trans
-    (keepsFrozen_write8_of_perm_rw 0#8 (by simpa only [Memory.perm_write8_apply] using p2))).trans
-    (keepsFrozen_write8_of_perm_rw 0#8 (by simpa only [Memory.perm_write8_apply] using p3))
-
 /-- Any `SegSlice` disjoint from `addr` is preserved by `patchElfByte addr val`. -/
 theorem segSlice_patchElfByte_of_ne {elf : ElfImage} {a addr : BitVec 64} {val : BitVec 8}
     {bs : List (BitVec 8)} {p : Perm} (hs : SegSlice elf a bs p) (hE : Cli.ElfStaticOk elf)
@@ -432,20 +357,20 @@ theorem segSlice_patchElfByte_of_ne {elf : ElfImage} {a addr : BitVec 64} {val :
 theorem segSlice_patchElfTokens_of_ne {elf : ElfImage} {a : BitVec 64}
     {bs : List (BitVec 8)} {p : Perm} (hs : SegSlice elf a bs p) (hE : Cli.ElfStaticOk elf)
     (hs_ne : ∀ j (_ : j < bs.length),
-      a + BitVec.ofNat 64 j ≠ cliBase + CryptoVerification.LibsignalSpqrV1.tokenStorageOff)
+      a + BitVec.ofNat 64 j ≠ cliBase + tokenStorageOff)
     (ho0_ne : ∀ j (_ : j < bs.length),
-      a + BitVec.ofNat 64 j ≠ cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff)
+      a + BitVec.ofNat 64 j ≠ cliBase + tokenOnceOff)
     (ho1_ne : ∀ j (_ : j < bs.length),
-      a + BitVec.ofNat 64 j ≠ cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 1#64)
+      a + BitVec.ofNat 64 j ≠ cliBase + tokenOnceOff + 1#64)
     (ho2_ne : ∀ j (_ : j < bs.length),
-      a + BitVec.ofNat 64 j ≠ cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 2#64)
+      a + BitVec.ofNat 64 j ≠ cliBase + tokenOnceOff + 2#64)
     (ho3_ne : ∀ j (_ : j < bs.length),
-      a + BitVec.ofNat 64 j ≠ cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 3#64) :
+      a + BitVec.ofNat 64 j ≠ cliBase + tokenOnceOff + 3#64) :
     SegSlice (patchElfTokens elf) a bs p := by
-  have e1 := elfStaticOk_patchElfByte (addr := cliBase + CryptoVerification.LibsignalSpqrV1.tokenStorageOff) (val := 0#8) hE
-  have e2 := elfStaticOk_patchElfByte (addr := cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff) (val := 0#8) e1
-  have e3 := elfStaticOk_patchElfByte (addr := cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 1#64) (val := 0#8) e2
-  have e4 := elfStaticOk_patchElfByte (addr := cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff + 2#64) (val := 0#8) e3
+  have e1 := elfStaticOk_patchElfByte (addr := cliBase + tokenStorageOff) (val := 0#8) hE
+  have e2 := elfStaticOk_patchElfByte (addr := cliBase + tokenOnceOff) (val := 0#8) e1
+  have e3 := elfStaticOk_patchElfByte (addr := cliBase + tokenOnceOff + 1#64) (val := 0#8) e2
+  have e4 := elfStaticOk_patchElfByte (addr := cliBase + tokenOnceOff + 2#64) (val := 0#8) e3
   exact segSlice_patchElfByte_of_ne
     (segSlice_patchElfByte_of_ne
       (segSlice_patchElfByte_of_ne
@@ -471,11 +396,11 @@ theorem segSlice_patchElfTokens_of_ne_rw {elf : ElfImage} {a : BitVec 64}
     rw [heq, hrw] at hpj
     exact hp_ne (Option.some.inj hpj).symm
   have ps : (elf.rawState (processInputs ["libsignal-cli"] [] [] [])).mem.perm
-      (cliBase + CryptoVerification.LibsignalSpqrV1.tokenStorageOff) = some .rw := by
+      (cliBase + tokenStorageOff) = some .rw := by
     simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero, show Perm.rw.rwx = Perm.rw from rfl] using
       ((htok.storage.holdsBytes hE.1 hE.2 hload) 0 (by decide)).2.1
   have p0 : (elf.rawState (processInputs ["libsignal-cli"] [] [] [])).mem.perm
-      (cliBase + CryptoVerification.LibsignalSpqrV1.tokenOnceOff) = some .rw := by
+      (cliBase + tokenOnceOff) = some .rw := by
     simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero, show Perm.rw.rwx = Perm.rw from rfl] using
       ((htok.once.holdsBytes hE.1 hE.2 hload) 0 (by decide)).2.1
   exact segSlice_patchElfTokens_of_ne hs hE (hperm_ne _ ps) (hperm_ne _ p0)

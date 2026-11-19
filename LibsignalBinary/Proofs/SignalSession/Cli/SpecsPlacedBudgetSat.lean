@@ -9,19 +9,20 @@ limitations under the License.
 
 module
 
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `HookSat`-Ready Relocatable `MainIoPlacedSat` Bundle (`SpecsPlacedBudgetSat`)
 
-- **Role**: `Role::Proof` (outside the TCB). Untrusted groundwork for #1255 (HOOKS-PREP).
-- **Overview**:
-  Honest-write-spec twin of `SpecsPlacedBudget.MainIoPlaced` on Block `617` (`lsProg_617 H`):
-  `readStdin` and `readFile` stay unchanged; `writeFile` and `writeStdout` use the honest contracts
-  `writeFileSpecPlacedSat` and `writeStdoutSpecPlacedSat` (`IoHonestSpecs.lean`), accompanied by the
-  stack-floor bounds `writeFileStackFloor ≤ hookStack` and `writeStdoutStackFloor ≤ hookStack` so
-  consumers generic in `hookStack` (`M5`, `M6`) can project them without a concrete `decide`.
+Honest-write-spec twin of `SpecsPlacedBudget.MainIoPlaced` on Block `617` (`lsProg_617 H`):
+`readStdin` and `readFile` stay unchanged; `writeFile` and `writeStdout` use
+`writeFileSpecPlacedSat` and `writeStdoutSpecPlacedSat` (`IoHonestSpecs.lean`), accompanied by the
+stack-floor bounds `writeFileStackFloor ≤ hookStack` and `writeStdoutStackFloor ≤ hookStack` so
+consumers generic in `hookStack` (`M5`, `M6`) can project them without a concrete `decide`.
 -/
 
 public section
@@ -38,6 +39,7 @@ open CryptoVerification.SignalSession
 open CryptoVerification.SignalSession.Cli.Main.Placed (lsProg_617)
 open CryptoVerification.SignalSession.Cli.MainHops (IoModel)
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs
   (writeFileSpecPlacedSat writeFileStackFloor writeStdoutSpecPlacedSat writeStdoutStackFloor)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
@@ -52,9 +54,9 @@ structure MainIoPlacedSat [LibsignalPlacement] {M : AllocCostModel}
   readFile : subroutine_ok (lsProg_617 H) (lsρ lsReadFileSym)
     (withLsRoCl lsmpl (readFileLitSpecPlaced io A lim hookStack))
   writeFile : subroutine_ok (lsProg_617 H) (lsρ lsWriteFileSym)
-    (withLsRoCl lsmpl (writeFileSpecPlacedSat io A lim hookStack))
+    (withLsRoCl lsmpl (withLsRet (writeFileSpecPlacedSat io A lim hookStack)))
   writeStdout : subroutine_ok (lsProg_617 H) (lsρ lsWriteStdoutSym)
-    (withLsRoCl lsmpl (writeStdoutSpecPlacedSat A lim hookStack))
+    (withLsRoCl lsmpl (withLsRet (writeStdoutSpecPlacedSat A lim hookStack)))
   hWriteFileStack : writeFileStackFloor ≤ hookStack
   hWriteStdoutStack : writeStdoutStackFloor ≤ hookStack
 

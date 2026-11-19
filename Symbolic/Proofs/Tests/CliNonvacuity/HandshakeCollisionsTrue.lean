@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeEval
+public import Symbolic.Proofs.Tests.CliNonvacuity.HandshakeEval -- proof-setup: allow-public-import
 import all DY.ALaCarte.Basic
 import all DY.ALaCarte.DecidableEq
 import all DY.ALaCarte.Ordering
@@ -55,7 +55,7 @@ Discharges `¬ BobSessionStartCollidesOrImplicitRejectsOn` for the `withOpk = tr
 Ratchet handshake trace via certified table checkers and `decide +kernel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -42,7 +42,7 @@ the head entry kind of a non-setup move (`XplSteps.xpl_vis_head_kind'`), and pro
 emitting no visible entries has `NoSessionEffect` (`XplSteps.noSessionEffect_of_vis_nil'`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,7 +55,7 @@ cref_open
 /-! ## Own entries and exposures -/
 
 /-- A move's own entries (`Move.vis` without the exposures). -/
-def xpl_ownVis (m : Move) (tr : ExecTrace) : List VisEntry :=
+@[expose] def xpl_ownVis (m : Move) (tr : ExecTrace) : List VisEntry :=
   let tr' := m.next tr
   match m with
   | .aliceStart _ _ _ _ h shown => (aliceVis tr tr' h).take shown
@@ -141,7 +141,7 @@ theorem xbind_mono {α β : Type} {x : Traceful α} {f : α → Traceful β} {tr
   · exact hx
 
 /-- `x` never changes the trace. -/
-def XFix {α : Type} (x : Traceful α) : Prop := ∀ tr, (x.run tr).2.val = tr
+@[expose] def XFix {α : Type} (x : Traceful α) : Prop := ∀ tr, (x.run tr).2.val = tr
 
 theorem xfix_bind {α β : Type} {x : Traceful α} {f : α → Traceful β} (hx : XFix x)
     (hf : ∀ a, XFix (f a)) : XFix (x >>= f) := by
@@ -173,7 +173,7 @@ theorem xrun_bind_unit {α : Type} (x : Traceful α) (tr : ExecTrace) :
   · rfl
 
 /-- A fresh value sits at index `tr.length` of `t`. -/
-def XRandAt (tr t : ExecTrace) : Prop :=
+@[expose] def XRandAt (tr t : ExecTrace) : Prop :=
   ∃ e : DY.Random.ExecEntryT, (t.at? tr.length : Option DY.Random.ExecEntryT) = some e
 
 theorem xrandAt_mono (tr : ExecTrace) : ∀ t t', t ≤ t' → XRandAt tr t → XRandAt tr t' :=
@@ -199,7 +199,7 @@ theorem xpl_messageEncrypt_shape (me : Participant) (stateIdx coinsLen pqIdx : N
   exact Or.inr (xbind_mono (XRandAt tr) (xrandAt_mono tr) (xrandAt_genRand 32 tr))
 
 /-- `x` fails and leaves the trace unchanged. -/
-def XStuck {α : Type} (x : Traceful α) (tr : ExecTrace) : Prop :=
+@[expose] def XStuck {α : Type} (x : Traceful α) (tr : ExecTrace) : Prop :=
   (x.run tr).1 = none ∧ (x.run tr).2.val = tr
 
 theorem xstuck_bind {α β : Type} {x : Traceful α} {f : α → Traceful β} {tr : ExecTrace}
@@ -242,17 +242,17 @@ theorem xpl_messageDecryptSkipped_stuck {me : Participant} {stateIdx msgIdx k pq
   exact xbind_fix (· = tr) (xfix_getLocalState _ _ tr) rfl fun _ =>
     (xstuck_bind (xstuck_receiveSignalMsg h)).2
 
-def xplPqLeakEv : PQXDH.PQXDHEvent → Bool
+@[expose] def xplPqLeakEv : PQXDH.PQXDHEvent → Bool
   | .CompromisedIK .. | .CompromisedSPK .. | .CompromisedOPK .. | .CompromisedPQSPK .. => true
   | _ => false
 
-def xplTrLeakEv : TripleRatchet.TREvent → Bool
+@[expose] def xplTrLeakEv : TripleRatchet.TREvent → Bool
   | .ExposedRK .. | .ExposedDHs .. | .ExposedCKs .. | .ExposedCKr .. | .ExposedMK ..
   | .ExposedSpqr .. => true
   | _ => false
 
 /-- A compromise or exposure event sits at index `tr.length` of `t`. -/
-def XLeakAt (tr t : ExecTrace) : Prop :=
+@[expose] def XLeakAt (tr t : ExecTrace) : Prop :=
   (∃ e : ProtocolEvent.ExecEntryT PQXDH.PQXDHEvent,
       (t.at? tr.length : Option _) = some e ∧ xplPqLeakEv e.ev = true) ∨
     (∃ e : ProtocolEvent.ExecEntryT TripleRatchet.TREvent,

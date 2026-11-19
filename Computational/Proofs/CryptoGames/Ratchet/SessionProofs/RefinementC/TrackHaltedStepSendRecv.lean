@@ -17,6 +17,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Eag
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.CorrSend
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Base
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupling
 
 /-!
 # Pre-latch send steps for tracker-halted `RefinementC`
@@ -27,7 +28,7 @@ Proves `closeByStateCTrack_transmit_step` and `closeByStateCTrack_chall_step` wh
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 

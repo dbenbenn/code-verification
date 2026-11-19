@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSep -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -21,7 +21,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import Symbolic.Specifications.Model.EquationalTheory.Kem
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.OwnKeyBranch -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SpinePeelPureA
@@ -45,6 +45,8 @@ import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber
 
 /-!
 # Attacker-Built Seed Exclusion via One-Sided Spine Peel
@@ -53,7 +55,7 @@ Proves `SeedSepAKRun` on reachable composed traces and derives
 `G1cAttackerBuiltSeedExcl'` from `SeedSepAKRun` and `AliceKemLen32`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

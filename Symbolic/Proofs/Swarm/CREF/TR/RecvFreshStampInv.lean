@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
-public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.COMPOSED.CompRatchet
 import Symbolic.Proofs.Swarm.CREF.CBadG2.StampsReach
@@ -25,7 +25,7 @@ no receiver `MessageKey` or `SkippedKeyStored` event carries a session identifie
 `concat (dhPk (mkRand L 32)) rk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

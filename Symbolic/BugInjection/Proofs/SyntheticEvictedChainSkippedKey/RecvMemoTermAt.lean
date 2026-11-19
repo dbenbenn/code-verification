@@ -467,17 +467,6 @@ theorem safeMemo_kemPk {sk : Bytes} (hsk : SafeMemo dagSize opOf bytesOf S g pts
     SafeMemo dagSize opOf bytesOf S g pts (DY.PQKem.kemPk sk) :=
   memoOK_kemPk hsk
 
-theorem safeMemo_vk {sk : Bytes} (hsk : SafeMemo dagSize opOf bytesOf S g pts sk) :
-    SafeMemo dagSize opOf bytesOf S g pts (DY.Signature.vk sk) :=
-  memoOK_vk hsk
-
-theorem safeMemo_sign {sk nonce msg : Bytes}
-    (hsk : SafeMemo dagSize opOf bytesOf S g pts sk)
-    (hn : SafeMemo dagSize opOf bytesOf S g pts nonce)
-    (hm : SafeMemo dagSize opOf bytesOf S g pts msg) :
-    SafeMemo dagSize opOf bytesOf S g pts (DY.Signature.sign sk nonce msg) :=
-  memoOK_sign hsk hn hm
-
 theorem safeMemo_spqrInit {k p : Bytes}
     (hk : SafeMemo dagSize opOf bytesOf S g pts k)
     (hp : SafeMemo dagSize opOf bytesOf S g pts p) :
@@ -503,42 +492,6 @@ theorem safeMemo_spqrSend {st coins : Bytes}
     | none => exact safeMemo_lit_short (by decide)
     | some d => cases d <;> exact safeMemo_lit_short (by decide)
   · exact memoOK_spqrSendKey_pack hst hc
-
-theorem safeMemo_spqrRecv
-    (hZero : SafeMemo dagSize opOf bytesOf S g pts DY.Spqr.zeroKey)
-    {st msg st' key : Bytes} {idx : UInt32}
-    (hst : SafeMemo dagSize opOf bytesOf S g pts st)
-    (hmsg : SafeMemo dagSize opOf bytesOf S g pts msg)
-    (hrecv : DY.Spqr.spqrRecv st msg idx = some (st', key)) :
-    SafeMemo dagSize opOf bytesOf S g pts st' ∧ SafeMemo dagSize opOf bytesOf S g pts key := by
-  unfold DY.Spqr.spqrRecv at hrecv
-  split at hrecv
-  · cases hrecv
-  · have hp := DY.Bytes.pack_view? DY.Spqr.InitState.SubF st
-    cases hv : st.view? DY.Spqr.InitState.SubF with
-    | none =>
-      rw [hv] at hrecv
-      injection hrecv with hrecv'; injection hrecv' with hst_eq hkey
-      subst hst_eq hkey
-      exact ⟨memoOK_spqrRecvState_pack hst hmsg, memoOK_spqrRecvKey_pack hst hmsg⟩
-    | some x =>
-      rw [hv] at hrecv hp
-      rcases x with ⟨authKey, params⟩
-      dsimp only at hrecv hp
-      have hst' := hst; rw [← hp] at hst'
-      obtain ⟨hk, _⟩ := memoOK_spqrInit_elim (s := ⟨authKey, params⟩) hst'
-      cases hd : DY.Spqr.spqrParamsDir? params with
-      | none => rw [hd] at hrecv; cases hrecv
-      | some dir =>
-        rw [hd] at hrecv
-        injection hrecv with hrecv'; injection hrecv' with hst_eq hkey
-        subst hst_eq hkey
-        refine ⟨memoOK_spqrRecvState_pack hst hmsg, ?_⟩
-        split
-        · exact hZero
-        · refine memoOK_spqrChainKey hk ?_ ?_
-          · cases dir <;> exact safeMemo_lit_short (by decide)
-          · unfold DY.Spqr.encodeSpqrIndexTerm; exact safeMemo_lit_short (show 4 < 8 by decide)
 
 theorem termAt_computeMac (hNodes : ∀ i < dagSize, dagNodeOk opOf bytesOf i = true)
     {mk pIk mIk w : Bytes} {mk_id pIk_id mIk_id w_id c1_id c2_id h_id t_id : Nat}

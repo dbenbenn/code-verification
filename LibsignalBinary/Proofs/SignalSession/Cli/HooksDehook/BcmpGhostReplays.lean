@@ -13,10 +13,15 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraRowSpecs.B
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhost -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhost
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhostK -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpLrTrap -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Card L1-c Pilot — `"bcmp"` Row Consumer Spec & Generic-`InvS` Ghost Replay (`HooksDehook.BcmpGhostReplays`)
@@ -205,11 +210,6 @@ theorem bcmpSubProg_codeLoaded_of_stripExecOutside {mpl : Obj.MultiPlacement} {m
   rw [ProofLib.strip_perm_of_keep hk] at hperm
   rw [ProofLib.strip_isLazyFree] at hlf
   exact ⟨hbyte, hperm, hlf⟩
-
-theorem bcmpSubProg_codeLoaded_stripExecOutside_iff {mpl : Obj.MultiPlacement} {mem : Memory} :
-    (bcmpSubProg mpl).CodeLoaded (stripExecOutside (keepR_bcmp mpl) mem) ↔
-      (bcmpSubProg mpl).CodeLoaded mem :=
-  ⟨bcmpSubProg_codeLoaded_of_stripExecOutside, bcmpSubProg_codeLoaded_stripExecOutside⟩
 
 /-- `W`-independent ghost hook for `"bcmp"` (`CliGhostHooks.extra` entry `("bcmp", bcmpGhost mpl mmpl)`).
     Uses `BcmpGhostK.f3EmptyBcmpGhostHook` (`P_real := emptyStdProg`, `fallback := hookBcmpFallback`),
@@ -421,108 +421,6 @@ theorem bcmpGhost_rowReplayOn
         (emptyStdProg_svc.trans (realProg617_svc mpl mmpl W).symm)
         (fun pc _ => emptyStdProg_externAt pc)
         (fun _ hk => hRealHullNoExt W hk)
-        hvis
-    have hSetPC : u.setPC (bcmpHullBase mpl + memcmpByteLen) = u :=
-      setPC_eq_self_of_pc_eq (hpc.trans (bcmpHullBase_add_memcmpByteLen mpl).symm)
-    rw [hSetPC] at hStepsSetPC
-    exact ⟨hStepsSetPC, hfr_fu, hInvKeep u (bcmpGhost mpl mmpl u) hInvU hkf hfs_fu⟩
-
-/-- `C4` interior-stub signature wrapper for `bcmpGhost_rowReplayOn` (accepting split `hRealNone`
-    at `stubPc` + `hInteriorGhost` with the `Or.inr` `TrapHook` interior-stub disjunct on
-    `pc ≠ resolve mpl "bcmp"`). -/
-theorem bcmpGhost_rowReplayOn_of_interior
-    (mpl mmpl : Obj.MultiPlacement)
-    (InvS : State → Prop)
-    (EG : CliHooks → String → Option (State → State))
-    (hCL : ∀ u : State, InvS u → (bcmpSubProg mpl).CodeLoaded u.mem)
-    (hInvKeep : ∀ u v : State, InvS u → u.mem.KeepsFrozen v.mem → v.fs = u.fs → InvS v)
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? (libsignalSessionLib.resolve mpl "bcmp") =
-        some (bcmpGhost mpl mmpl))
-    (hRealNone : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt?
-        (libsignalSessionLib.resolve mpl "bcmp") = none)
-    (hInteriorGhost : ∀ (W : CliHooks) (pc : BitVec 64),
-      keepR_bcmp mpl pc = true → pc ≠ libsignalSessionLib.resolve mpl "bcmp" →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none ∧
-      ((cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-        ∃ gStub, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some gStub ∧
-          ∀ L : BitVec 64, keepR_bcmp mpl L = true → TrapHook L gStub)) :
-    GhostRowReplayOn mpl mmpl InvS EG "bcmp" (bcmpEntryGuard mpl) (bcmpGhost mpl mmpl) where
-  preserves_execFrozen := fun u _ _ hfr =>
-    ⟨bcmpGhost_preserves_execFrozen mpl mmpl hfr, bcmpGhost_fs mpl mmpl u⟩
-  replay_at_stub := by
-    intro W s0 sf _ _ _ hEntry hRetPc hNoExSf hNotHaltSf
-    have hRealHullNoExt : ∀ {pc : BitVec 64},
-        keepR_bcmp mpl pc = true →
-        (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none := by
-      intro pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl "bcmp"
-      · rw [hEq]; exact hRealNone W
-      · exact (hInteriorGhost W pc hk hEq).1
-    have hRegExt : ∀ pc : BitVec 64, keepBcmpHull (bcmpHullBase mpl) pc = true →
-        (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none ∨
-          ∃ f, (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = some f ∧
-            ∀ L, keepBcmpHull (bcmpHullBase mpl) L = true → TrapHook L f := by
-      intro pc hk
-      by_cases hEq : pc = libsignalSessionLib.resolve mpl "bcmp"
-      · rw [hEq]
-        exact Or.inr ⟨bcmpGhost mpl mmpl, hGhostAt W, fun L hL =>
-          trapHook_f3EmptyBcmpGhostHook_of_cover (bcmpSubProg mpl)
-            (bcmpHullBase mpl + memcmpByteLen) (fun _ h => h) hL⟩
-      · rcases (hInteriorGhost W pc hk hEq).2 with hNone | ⟨gStub, hSome, hTrap⟩
-        · exact Or.inl hNone
-        · exact Or.inr ⟨gStub, hSome, hTrap⟩
-    right
-    refine ⟨hRealNone W, ?_⟩
-    intro u _ hStepsAfter hpc hrun hnoex hkf hfr hInvU
-    have hCodeU : (bcmpSubProg mpl).CodeLoaded u.mem := hCL u hInvU
-    have hLrOut : keepR_bcmp mpl (u.readReg64 .lr) = false :=
-      bcmpHull_keepLr_false_after_hook_of_codeLoaded_u
-        (P_ghost := cliProgExtPlacedAt mpl EG 617 W)
-        (P_sub := bcmpSubProg mpl)
-        (m := bcmpHullBase mpl)
-        (f_stub := bcmpGhost mpl mmpl)
-        rfl
-        (bcmpSubProg_hasWords mpl)
-        hRegExt
-        (fun _ hL => trapHook_f3EmptyBcmpGhostHook_of_cover (bcmpSubProg mpl)
-          (bcmpHullBase mpl + memcmpByteLen) (fun _ h => h) hL)
-        hEntry.1
-        hRetPc
-        hNoExSf
-        hNotHaltSf
-        u
-        hCodeU
-        hStepsAfter
-        hrun
-        hkf
-    have hCodeStrip : (bcmpSubProg mpl).CodeLoaded (stripExecOutside (keepR_bcmp mpl) u.mem) :=
-      bcmpSubProg_codeLoaded_stripExecOutside hCodeU
-    obtain ⟨_, _, hfr_fu, hfs_fu, hvis⟩ :=
-      f3EmptyBcmpGhostHook_visitedIn
-        (keepR := keepR_bcmp mpl)
-        (P_sub := bcmpSubProg mpl)
-        (m := bcmpHullBase mpl)
-        (bcmpSubProg_svc mpl)
-        (bcmpSubProg_externAt_none mpl)
-        (bcmpSubProg_hasWords mpl)
-        rfl
-        hrun
-        hnoex
-        hfr
-        hLrOut
-        hCodeStrip
-    have hStepsSetPC :
-        Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-          (u.setPC (bcmpHullBase mpl + memcmpByteLen))
-          (bcmpGhost mpl mmpl u) :=
-      h2fsgen_steps_lift_of_visitedIn_noExtern
-        (P1 := emptyStdProg)
-        (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (emptyStdProg_svc.trans (realProg617_svc mpl mmpl W).symm)
-        (fun pc _ => emptyStdProg_externAt pc)
-        (fun _ hk => hRealHullNoExt hk)
         hvis
     have hSetPC : u.setPC (bcmpHullBase mpl + memcmpByteLen) = u :=
       setPC_eq_self_of_pc_eq (hpc.trans (bcmpHullBase_add_memcmpByteLen mpl).symm)

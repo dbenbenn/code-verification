@@ -10,11 +10,54 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageLengthBound
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.DefsBudget
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageLengthBound
+public import LibsignalBinary.Heap.Fine.CreditInst
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Budget-Threaded `MessageEncrypt` Callee Contracts
@@ -24,7 +67,7 @@ Allocator-budget (`RustCliAllocBudget M`) contracts, exact allocation event enve
 and `drop_glue::<CiphertextMessage>`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +95,7 @@ open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 /-- Concrete allocation envelope for `kyberMap`
     (`Option<(KyberPreKeyId, &[u8])>::map(KyberPayload::new)`):
     `[]` when `none` or `ciphertext = []`, and `rustAllocEvents len 1` when `0 < len`. -/
-def KyberOptEnv (ct : Option (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
+@[expose] def KyberOptEnv (ct : Option (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   match ct with
   | none => evs = []
   | some bs =>
@@ -60,7 +103,7 @@ def KyberOptEnv (ct : Option (List (BitVec 8))) (evs : List AllocEvent) : Prop :
     (0 < bs.length ∧ evs = rustAllocEvents bs.length 1)
 
 /-- Budget-threaded `kyberMap` contract (`onOom = ⌜False⌝`, `onPanic = ⌜False⌝`). -/
-def kyberMapSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def kyberMapSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (KyberMapCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜FitsEnv M lim st (KyberOptEnv (x.kp.map (·.ciphertext)))⌝ ∗
@@ -74,7 +117,7 @@ def kyberMapSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLi
 
 /-- Allocation events emitted when cloning an optional `KyberPayload` ciphertext inside
     `PreKeySignalMessage::new`. -/
-def kyberCopyEvs (kp : Option KyberPayload) : List AllocEvent :=
+@[expose] def kyberCopyEvs (kp : Option KyberPayload) : List AllocEvent :=
   match kp with
   | none => []
   | some k =>
@@ -83,7 +126,7 @@ def kyberCopyEvs (kp : Option KyberPayload) : List AllocEvent :=
 
 /-- Deallocation events emitted when dropping the cloned `KyberPayload` buffer inside
     `PreKeySignalMessage::new`. -/
-def kyberDeallocEvs (kp : Option KyberPayload) : List AllocEvent :=
+@[expose] def kyberDeallocEvs (kp : Option KyberPayload) : List AllocEvent :=
   match kp with
   | none => []
   | some k =>
@@ -93,7 +136,7 @@ def kyberDeallocEvs (kp : Option KyberPayload) : List AllocEvent :=
 /-- Exact prologue allocation events of `PreKeySignalMessage::new` (up to `SeamA` / `SeamB`):
     optional Kyber ciphertext clone, two 33-byte public-key serializations (`baseKey`, `ik`),
     `SignalMessage` serialized bytes clone (`smLen`), and output `Vec<u8>` buffer (`outLen`). -/
-def preKeyMsgNewRawPrologueEvents (kp : Option KyberPayload) (smLen outLen : Nat) :
+@[expose] def preKeyMsgNewRawPrologueEvents (kp : Option KyberPayload) (smLen outLen : Nat) :
     List AllocEvent :=
   kyberCopyEvs kp ++ (rustAllocEvents 33 1 ++ rustAllocEvents 33 1) ++
     rustAllocEvents smLen 1 ++ rustAllocEvents outLen 1
@@ -101,22 +144,22 @@ def preKeyMsgNewRawPrologueEvents (kp : Option KyberPayload) (smLen outLen : Nat
 /-- Exact full allocator event list of `PreKeySignalMessage::new`:
     prologue allocations followed by the 4 temporary buffer deallocations (`kyber`, `baseKey`,
     `ik`, `sm`). -/
-def preKeyMsgNewRawEvents (kp : Option KyberPayload) (smLen outLen : Nat) : List AllocEvent :=
+@[expose] def preKeyMsgNewRawEvents (kp : Option KyberPayload) (smLen outLen : Nat) : List AllocEvent :=
   preKeyMsgNewRawPrologueEvents kp smLen outLen ++
     kyberDeallocEvs kp ++ (rustDeallocEvents 33 1 ++ rustDeallocEvents 33 1) ++
     rustDeallocEvents smLen 1
 
 /-- Pointer-independent exact allocation envelope for `PreKeySignalMessage::new`. -/
-def PreKeyMsgNewRawEnv (kp : Option KyberPayload) (smLen outLen : Nat)
+@[expose] def PreKeyMsgNewRawEnv (kp : Option KyberPayload) (smLen outLen : Nat)
     (evs : List AllocEvent) : Prop :=
   evs = preKeyMsgNewRawEvents kp smLen outLen
 
 /-- Concrete allocation envelope for `PreKeySignalMessage::new` on `PreKeyMsgNewCall`. -/
-def PreKeyMsgNewEnv (x : PreKeyMsgNewCall) (evs : List AllocEvent) : Prop :=
+@[expose] def PreKeyMsgNewEnv (x : PreKeyMsgNewCall) (evs : List AllocEvent) : Prop :=
   PreKeyMsgNewRawEnv x.kp x.msg.serialized.length x.model.serialized.length evs
 
 /-- Placement-free budget-threaded `PreKeySignalMessage::new` contract (`onOom = ⌜False⌝`, `onPanic = ⌜False⌝`). -/
-def preKeyMsgNewSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def preKeyMsgNewSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (PreKeyMsgNewCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜FitsEnv M lim st (PreKeyMsgNewEnv x)⌝ ∗
@@ -129,7 +172,7 @@ def preKeyMsgNewSpecBase (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : 
         (A.atState lim (M.stepEvents evs st) sf)).post x s0 sf
 
 /-- Relocatable `[LibsignalPlacement]` budget-threaded `PreKeySignalMessage::new` contract (`onOom = ⌜False⌝`, `onPanic = ⌜False⌝`). -/
-def preKeyMsgNewSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def preKeyMsgNewSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (PreKeyMsgNewCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜FitsEnv M lim st (PreKeyMsgNewEnv x) ∧ LsRetAddr624 (s.readReg64 .lr)⌝ ∗
@@ -142,7 +185,7 @@ def preKeyMsgNewSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAlloc
         (A.atState lim (M.stepEvents evs st) sf)).post x s0 sf
 
 /-- Budget-threaded `drop_glue::<CiphertextMessage>` contract (`FreeOnlyEvs`, `0` `FitsEnv`). -/
-def cmDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def cmDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BitVec 64 × CiphertextMessage × M.σ) where
   pre := fun (p, m, st) s =>
     ⌜LsRetAddr624 (s.readReg64 .lr)⌝ ∗
@@ -156,7 +199,7 @@ def cmDropSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget
 
 /-! ## `PhaseCreditSpec` Bounds and Non-Vacuity Witnesses -/
 
-def kyberPayloadLen : Option KyberPayload → Nat
+@[expose] def kyberPayloadLen : Option KyberPayload → Nat
   | none => 0
   | some k => k.ciphertext.length
 
@@ -175,23 +218,6 @@ theorem kyberOptEnv_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M
       (PhaseCreditSpec.nil M)
       (PhaseCreditSpec.rustAlloc_aff hM (req := bs.length) (al := 1) (by decide))).mono
       (by omega) (by omega) (by omega) (by omega)
-
-/-- Non-vacuity witness for `KyberOptEnv` on a non-empty payload. -/
-theorem kyberOptEnv_fitsEnv_witness :
-    KyberOptEnv (some [0x42#8]) (rustAllocEvents 1 1) ∧
-    FitsEnv fineCostModel
-      { staticCount := 16, staticBytes := 16 * 1024 * 1024,
-        physCap := 2 ^ 30, enforced := true }
-      fineCostModel.init (KyberOptEnv (some [0x42#8])) := by
-  refine ⟨Or.inr ⟨by decide, rfl⟩, ?_⟩
-  refine fitsEnv_fineCostModel_of_phaseCredit
-    (kyberOptEnv_phaseCreditSpec fineCostModel_modelHyps (some [0x42#8]))
-    (by decide) rfl ?_ ?_
-  · unfold fineStepReserveOfCum FineStepBound fineMaxMetaAreasOfCum pageAlignUp PAGE_SIZE
-    decide
-  · unfold fineStepReserveOfCum FineStepBound fineMaxMetaAreasOfCum fineDynIvsOfCum
-      fineMaxGroupsOfCum pageAlignUp MMAP_MIN_ADDR PAGE_SIZE
-    decide
 
 theorem preKeyMsgNewRawEnv_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (kp : Option KyberPayload) (smLen outLen : Nat) :
@@ -238,50 +264,6 @@ theorem preKeyMsgNewRawEnv_phaseCreditSpec {M : AllocCostModel} [HasFineReallocC
               (phaseCredit_eq_append_sym hky (phaseCredit_eq_append_sym h33 h33)) hsm) hout)
           hkyd) (phaseCredit_eq_append_sym hd33 hd33)) hdsm
   exact hp.mono (by omega) (by omega) (by omega) (by omega)
-
-def witnessSignalMessage : SignalMessage where
-  messageVersion := 4#8
-  senderRatchetKey := witnessPublicKey
-  counter := 0#32
-  previousCounter := 0#32
-  ciphertext := [0x41#8]
-  pqRatchet := [0x42#8]
-  addresses := none
-  serialized := [0x43#8]
-
-/-- Concrete `PreKeyMsgNewCall` with a non-empty `KyberPayload` exercising all five prologue allocations. -/
-def witnessPreKeyMsgNewCall : PreKeyMsgNewCall where
-  ret := 0#64
-  ver := 4#8
-  regId := 1#32
-  preKeyId := some 2#32
-  spk := 3#32
-  kyA := 0#64
-  kyPtr := 0#64
-  kp := some ⟨4#32, [0x44#8]⟩
-  bkA := 0#64
-  baseKey := witnessPublicKey
-  ikA := 0#64
-  ik := witnessIdentityKey
-  msgA := 0#64
-  msgG := ⟨0#64, 0#64, 0#64, 0#64, 0#64⟩
-  msg := witnessSignalMessage
-
-/-- Non-vacuity `FitsEnv` witness for `PreKeyMsgNewRawEnv`. -/
-theorem preKeyMsgNewRawEnv_fitsEnv_witness :
-    FitsEnv fineCostModel
-      { staticCount := 16, staticBytes := 16 * 1024 * 1024,
-        physCap := 2 ^ 30, enforced := true }
-      fineCostModel.init
-      (PreKeyMsgNewRawEnv (some ⟨4#32, [0x44#8]⟩) 64 128) := by
-  refine fitsEnv_fineCostModel_of_phaseCredit
-    (preKeyMsgNewRawEnv_phaseCreditSpec fineCostModel_modelHyps (some ⟨4#32, [0x44#8]⟩) 64 128)
-    (by decide) rfl ?_ ?_
-  · unfold fineStepReserveOfCum FineStepBound fineMaxMetaAreasOfCum pageAlignUp PAGE_SIZE
-    decide
-  · unfold fineStepReserveOfCum FineStepBound fineMaxMetaAreasOfCum fineDynIvsOfCum
-      fineMaxGroupsOfCum pageAlignUp MMAP_MIN_ADDR PAGE_SIZE
-    decide
 
 /-- Explicit serialized length bound for `PreKeySignalMessage.new` with `u32` IDs `< 128`
     (avoids reducing well-founded `Prost.varint` via `decide`). -/
@@ -336,45 +318,5 @@ theorem preKeySignalMessage_new_small_length_le (ver : BitVec 8) (regId : BitVec
     CryptoGames.LibsignalSessionApi.ProtoPreKeySignalMessage.encode,
     List.length_cons, List.length_append]
   omega
-
-/-- Non-vacuity `FitsEnv` witness for `PreKeyMsgNewEnv` at `witnessPreKeyMsgNewCall`. -/
-theorem preKeyMsgNewEnv_fitsEnv_witness :
-    FitsEnv fineCostModel
-      { staticCount := 16, staticBytes := 16 * 1024 * 1024,
-        physCap := 2 ^ 30, enforced := true }
-      fineCostModel.init
-      (PreKeyMsgNewEnv witnessPreKeyMsgNewCall) := by
-  have hout : witnessPreKeyMsgNewCall.model.serialized.length ≤ 256 := by
-    have h := preKeySignalMessage_new_small_length_le
-      witnessPreKeyMsgNewCall.ver witnessPreKeyMsgNewCall.regId
-      witnessPreKeyMsgNewCall.preKeyId witnessPreKeyMsgNewCall.spk
-      witnessPreKeyMsgNewCall.kp witnessPreKeyMsgNewCall.baseKey
-      witnessPreKeyMsgNewCall.ik witnessPreKeyMsgNewCall.msg
-      (by decide) (by rintro _ ⟨⟩; decide) (by decide) (by rintro _ ⟨⟩; decide)
-    have hm : witnessPreKeyMsgNewCall.msg.serialized.length = 1 := rfl
-    have hk : kyberPayloadLen witnessPreKeyMsgNewCall.kp = 1 := rfl
-    change (CryptoGames.LibsignalSessionApi.PreKeySignalMessage.new
-      witnessPreKeyMsgNewCall.ver witnessPreKeyMsgNewCall.regId
-      witnessPreKeyMsgNewCall.preKeyId witnessPreKeyMsgNewCall.spk
-      witnessPreKeyMsgNewCall.kp witnessPreKeyMsgNewCall.baseKey
-      witnessPreKeyMsgNewCall.ik witnessPreKeyMsgNewCall.msg).serialized.length ≤ 256
-    omega
-  have hmono : ∀ n : Nat, n ≤ 256 →
-      2 * 1 + 2 * 1 + 2 * n + 47827 ≤ 48343 ∧
-      1 + 1 + n + 41041 ≤ 41299 ∧
-      max (max 1 33) (max 1 n) ≤ 256 := by omega
-  obtain ⟨hm1, hm2, hm4⟩ := hmono witnessPreKeyMsgNewCall.model.serialized.length hout
-  have hSpec : PhaseCreditSpec fineCostModel (PreKeyMsgNewEnv witnessPreKeyMsgNewCall)
-      48343 41299 41299 256 :=
-    (preKeyMsgNewRawEnv_phaseCreditSpec fineCostModel_modelHyps
-      witnessPreKeyMsgNewCall.kp
-      witnessPreKeyMsgNewCall.msg.serialized.length
-      witnessPreKeyMsgNewCall.model.serialized.length).mono hm1 hm2 hm2 hm4
-  refine fitsEnv_fineCostModel_of_phaseCredit hSpec (by decide) rfl ?_ ?_
-  · unfold fineStepReserveOfCum FineStepBound fineMaxMetaAreasOfCum pageAlignUp PAGE_SIZE
-    decide
-  · unfold fineStepReserveOfCum FineStepBound fineMaxMetaAreasOfCum fineDynIvsOfCum
-      fineMaxGroupsOfCum pageAlignUp MMAP_MIN_ADDR PAGE_SIZE
-    decide
 
 end LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget

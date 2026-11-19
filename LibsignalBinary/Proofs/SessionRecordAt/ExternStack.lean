@@ -13,7 +13,7 @@ public import Mathlib.Algebra.Group.Nat.Defs
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -28,8 +28,5 @@ namespace CryptoVerification.RustSpec
 end CryptoVerification.RustSpec
 
 namespace CryptoVerification.RustSpecAt
-
-/-- The stack (bytes below `sp`) every extern may use (16 KiB). -/
-abbrev externStack : Nat := 2 ^ 14
 
 end CryptoVerification.RustSpecAt

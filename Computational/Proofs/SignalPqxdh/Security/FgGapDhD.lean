@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsC
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsC -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 
-@[expose] public section
+public section
 
 open SignalPqxdh
 open OracleSpec OracleComp
@@ -363,7 +363,7 @@ theorem buildSecrets_eq_iff_of_len32
 
 /-! ## `FgPoS` representation relations -/
 
-def FgPosRightRep (P : Primitives) (vSk : Bytes) (pos : FgPoS) (dh : Bytes) : Prop :=
+@[expose] def FgPosRightRep (P : Primitives) (vSk : Bytes) (pos : FgPoS) (dh : Bytes) : Prop :=
   dh.length = 32 ∧
   (pos = mkSecretPosPure P dh ∨
    ∃ pk1 pk2,
@@ -373,7 +373,7 @@ def FgPosRightRep (P : Primitives) (vSk : Bytes) (pos : FgPoS) (dh : Bytes) : Pr
      P.pow8 pk2 = P.pow8 (P.x25519Base vSk) ∧
      ∀ z, P.isValidDhTriple pk1 pk2 z = P.isValidDhTriple pk1 (P.x25519Base vSk) z)
 
-def FgPosLeftRep (P : Primitives) (uSk : Bytes) (pos : FgPoS) (dh : Bytes) : Prop :=
+@[expose] def FgPosLeftRep (P : Primitives) (uSk : Bytes) (pos : FgPoS) (dh : Bytes) : Prop :=
   dh.length = 32 ∧
   (pos = mkSecretPosPure P dh ∨
    ∃ pk1 pk2,
@@ -383,12 +383,12 @@ def FgPosLeftRep (P : Primitives) (uSk : Bytes) (pos : FgPoS) (dh : Bytes) : Pro
      P.pow8 pk1 = P.pow8 (P.x25519Base uSk) ∧
      ∀ z, P.isValidDhTriple pk1 pk2 z = P.isValidDhTriple (P.x25519Base uSk) pk2 z)
 
-def FgOptLeftRep (P : Primitives) (uSk : Bytes) : Option FgPoS → Option Bytes → Prop
+@[expose] def FgOptLeftRep (P : Primitives) (uSk : Bytes) : Option FgPoS → Option Bytes → Prop
   | none, none => True
   | some pos, some dh => FgPosLeftRep P uSk pos dh
   | _, _ => False
 
-def FgOptRightRep (P : Primitives) (vSk : Bytes) : Option FgPoS → Option Bytes → Prop
+@[expose] def FgOptRightRep (P : Primitives) (vSk : Bytes) : Option FgPoS → Option Bytes → Prop
   | none, none => True
   | some pos, some dh => FgPosRightRep P vSk pos dh
   | _, _ => False
@@ -529,12 +529,12 @@ structure FgSlotReps (P : Primitives) where
   sec4 : ∀ d? : Option Bytes, (∀ d, d? = some d → d.length = 32) →
            Rep4 (d?.map (mkSecretPosPure P)) d?
 
-def FgTupleRel {P : Primitives} (R : FgSlotReps P)
+@[expose] def FgTupleRel {P : Primitives} (R : FgSlotReps P)
     (pos1 pos2 pos3 : FgPoS) (pos4? : Option FgPoS)
     (dh1 dh2 dh3 : Bytes) (dh4? : Option Bytes) (ss : Bytes) : Prop :=
   R.Rep1 pos1 dh1 ∧ R.Rep2 pos2 dh2 ∧ R.Rep3 pos3 dh3 ∧ R.Rep4 pos4? dh4? ∧ ss.length = 32
 
-def FgEntryRel {P : Primitives} (R : FgSlotReps P)
+@[expose] def FgEntryRel {P : Primitives} (R : FgSlotReps P)
     (e : FgPatchEntry) (sdk : Bytes × DRKey) : Prop :=
   ∃ dh1 dh2 dh3 dh4?,
     sdk.1 = buildSecrets dh1 dh2 dh3 dh4? e.ss ∧
@@ -567,7 +567,7 @@ theorem fgEntryMatchesPure_eq_beq_of_fgEntryRel {P : Primitives} (R : FgSlotReps
   · have hne : (ss != e.ss) = true := bne_iff_ne.mpr hss_eq
     simp [hne, hss_eq]
 
-def FgCacheRel {P : Primitives} (R : FgSlotReps P) (maxLen : ℕ)
+@[expose] def FgCacheRel {P : Primitives} (R : FgSlotReps P) (maxLen : ℕ)
     (fgL : List FgPatchEntry) (rawRoCache roCache : List (Bytes × DRKey)) : Prop :=
   fgL.length ≤ maxLen ∧
   rawRoCache = roCache.filter (fun (s, _) => (parseRoSecrets s).isNone) ∧
@@ -670,7 +670,7 @@ theorem validTaggedPks_length_le_fg {N : Nat} {tagged : List (Nat × Bytes)}
       exact List.mem_range.mpr (hV.1 p hp))
   simpa using hsub.length_le
 
-def noOpkSlotFlatIdx (S : Setup) (p : Nat × Nat × Nat) : Nat :=
+@[expose] def noOpkSlotFlatIdx (S : Setup) (p : Nat × Nat × Nat) : Nat :=
   (p.1 * S.N_recv + p.2.1) * S.N_no_opk + p.2.2
 
 theorem noOpkSlotFlatIdx_lt (S : Setup) {u j l : Nat}
@@ -707,11 +707,11 @@ theorem noOpkSlotFlatIdx_inj (S : Setup) {k1 k2 : Nat × Nat × Nat}
   subst hl
   rfl
 
-def ValidUsedRecvOpk (S : Setup) (used : List (Nat × Nat × Nat)) : Prop :=
+@[expose] def ValidUsedRecvOpk (S : Setup) (used : List (Nat × Nat × Nat)) : Prop :=
   (∀ x ∈ used, x.1 < S.N_id ∧ x.2.1 < S.N_recv ∧ x.2.2 < S.N_opk) ∧
   (used.map (opkSlotFlatIdx S)).Nodup
 
-def ValidUsedRecvNoOpk (S : Setup) (used : List (Nat × Nat × Nat)) : Prop :=
+@[expose] def ValidUsedRecvNoOpk (S : Setup) (used : List (Nat × Nat × Nat)) : Prop :=
   (∀ x ∈ used, x.1 < S.N_id ∧ x.2.1 < S.N_recv ∧ x.2.2 < S.N_no_opk) ∧
   (used.map (noOpkSlotFlatIdx S)).Nodup
 
@@ -761,12 +761,12 @@ theorem validUsedRecvNoOpk_cons (S : Setup) (k : Fin S.N_id) (j : Fin S.N_recv) 
   · rw [List.map_cons, List.nodup_cons]
     exact ⟨hnot_in, hV.2⟩
 
-def ValidKeyIndRespFg (S : Setup) (st : KeyIndState S) : Prop :=
+@[expose] def ValidKeyIndRespFg (S : Setup) (st : KeyIndState S) : Prop :=
   ValidUsedRecvOpk S st.usedRecvOPK ∧
   ValidUsedRecvNoOpk S st.usedRecvNoOPK ∧
   st.respSessions.length ≤ st.usedRecvOPK.length + st.usedRecvNoOPK.length
 
-def ValidKeyIndEcFg (S : Setup) (st : KeyIndState S) : Prop :=
+@[expose] def ValidKeyIndEcFg (S : Setup) (st : KeyIndState S) : Prop :=
   ValidPrincipals S st.principals ∧
   ValidSpkBundles S st.spkBundles ∧
   ValidOpkEntries S st.opkEntries ∧
@@ -836,22 +836,22 @@ theorem chooseInitPartnerDrKeyRand_eq_pure {S : Setup} (P : Primitives)
   rw [hFn]
   cases respSessions.find? (fun r => keyIndPartner P s2 r) <;> rfl
 
-def erasePrincipalEntryFg (uIdx idx : ℕ) (e : PrincipalEntry) : PrincipalEntry :=
+@[expose] def erasePrincipalEntryFg (uIdx idx : ℕ) (e : PrincipalEntry) : PrincipalEntry :=
   if idx == uIdx then { e with secIKA0 := [] } else e
 
-def erasePrincipalsFg (uIdx : ℕ) (principals : List (Nat × PrincipalEntry)) :
+@[expose] def erasePrincipalsFg (uIdx : ℕ) (principals : List (Nat × PrincipalEntry)) :
     List (Nat × PrincipalEntry) :=
   principals.map (fun (idx, e) => (idx, erasePrincipalEntryFg uIdx idx e))
 
-def eraseSessionEntryFg {S : Setup} (sIdx : ℕ) (s : KeyIndInitiatorEntry S) :
+@[expose] def eraseSessionEntryFg {S : Setup} (sIdx : ℕ) (s : KeyIndInitiatorEntry S) :
     KeyIndInitiatorEntry S :=
   if initSessionSlotIdx s.sid == sIdx then { s with ekASk := [] } else s
 
-def eraseSessionsFg {S : Setup} (sIdx : ℕ) (sessions : List (KeyIndInitiatorEntry S)) :
+@[expose] def eraseSessionsFg {S : Setup} (sIdx : ℕ) (sessions : List (KeyIndInitiatorEntry S)) :
     List (KeyIndInitiatorEntry S) :=
   sessions.map (eraseSessionEntryFg sIdx)
 
-def eraseStateFg {S : Setup} (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def eraseStateFg {S : Setup} (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (st : KeyIndState S) : KeyIndState S :=
   { st with
     principals := if useDh1 then erasePrincipalsFg targetIdx st.principals else st.principals
@@ -1220,7 +1220,7 @@ theorem evalDist_simulateQ_le_of_step_or_dead
 
 /-! ## Case C (`DH3`) invariant and terminal win -/
 
-def FgSlotReps.ofDh3 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
+@[expose] def FgSlotReps.ofDh3 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
     (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32) : FgSlotReps P where
   Rep1 := FgPosRightRep P vSk
   Rep2 := FgPosLeftRep P uSk
@@ -1246,7 +1246,7 @@ def FgSlotReps.ofDh3 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
     | none => trivial
     | some d => exact ⟨hd d rfl, Or.inl rfl⟩
 
-def spkTargetIsV {S : Setup} (bIdx : ℕ) (V : Bytes) (hst : KeyIndFgCutoffState S) : Bool :=
+@[expose] def spkTargetIsV {S : Setup} (bIdx : ℕ) (V : Bytes) (hst : KeyIndFgCutoffState S) : Bool :=
   hst.base.spkBundles.all (fun (k, b) => !(spkBundleFlatIdxVal S k == bIdx) || (b.spkPk == V))
 
 theorem spkTargetIsV_map_revealed_base {S : Setup} (bIdx : ℕ) (V : Bytes)
@@ -1268,7 +1268,7 @@ theorem spkTargetIsV_map_revealed {S : Setup} (bIdx : ℕ) (V : Bytes)
       spkTargetIsV bIdx V hst :=
   spkTargetIsV_map_revealed_base bIdx V u j hst _ rfl
 
-def deadDh3 {S : Setup} (P : Primitives) (sIdx bIdx : ℕ) (V : Bytes)
+@[expose] def deadDh3 {S : Setup} (P : Primitives) (sIdx bIdx : ℕ) (V : Bytes)
     (hst : KeyIndFgCutoffState S) : Bool :=
   spkTargetIsV bIdx V hst &&
   match hst.base.sessions.find? (fun s => initSessionSlotIdx s.sid == sIdx) with
@@ -1380,8 +1380,13 @@ theorem pqxdhKeyIndFgPreImpl_preserves_deadDh3 {S : Setup} (P : Primitives)
       rw [hFS]
       exact Bool.and_eq_true_iff.mpr ⟨hAll, hSessFind⟩
 
-noncomputable def spkTargetRevealed {S : Setup} (bIdx : ℕ) (hst : KeyIndFgCutoffState S) : Bool :=
-  @decide (hasFiredSpk S bIdx hst) (Classical.propDecidable _) &&
+instance instDecidableHasFiredSpk {S : Setup} (bIdx : ℕ)
+    (hst : KeyIndFgCutoffState S) : Decidable (hasFiredSpk S bIdx hst) := by
+  unfold hasFiredSpk
+  infer_instance
+
+@[expose] def spkTargetRevealed {S : Setup} (bIdx : ℕ) (hst : KeyIndFgCutoffState S) : Bool :=
+  decide (hasFiredSpk S bIdx hst) &&
   hst.base.spkBundles.all (fun (k, b) => !(spkBundleFlatIdxVal S k == bIdx) || b.revealed)
 
 theorem badKeyIndFgDh3At_eq_false_of_spkTargetRevealed {S : Setup} (P : Primitives)

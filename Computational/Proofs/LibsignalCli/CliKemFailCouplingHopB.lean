@@ -13,9 +13,9 @@ public import Computational.Specifications.Game.StatementPqOomGame
 public import Computational.Specifications.Session.StatementSession
 public import Computational.Specifications.Composition.StatementModel
 public import Computational.Specifications.Assumptions.KeyInd1KeyReal
-public import Computational.Proofs.LibsignalCli.StatementPqSecure
-public import Computational.Proofs.LibsignalCli.CliPqAdapterDefs
-public import Computational.Proofs.LibsignalCli.CliPqBadKemBound
+import Computational.Proofs.LibsignalCli.StatementPqSecure
+import Computational.Proofs.LibsignalCli.CliPqAdapterDefs
+public import Computational.Proofs.LibsignalCli.CliPqBadKemBound -- proof-setup: allow-public-import
 public import Computational.Proofs.LibsignalCli.CliKemFailCouplingDefs
 import VCVio.EvalDist.MeasureTVDist.Event
 import VCVio.OracleComp.EvalDist.Measure
@@ -31,7 +31,7 @@ Bounds the good-log outcome probability in `cliPqExpProjCoinLogged` by the corre
 probability in `cliE2EExpWithKiCoinLogged` plus `cliRunBadKemExp`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

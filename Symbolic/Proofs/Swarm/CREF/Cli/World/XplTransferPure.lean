@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.CallCountPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.CallCountPure -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -18,7 +18,7 @@ import DY.Actions.PersistentGlobalState
 import DY.Actions.PersistentLocalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Network
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyFrame
 import Symbolic.Proofs.Swarm.CREF.Cli.World.RelCliPure
 import Symbolic.Proofs.Swarm.CREF.ModelSplit
@@ -32,6 +32,15 @@ import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Network
+public import Symbolic.Proofs.Swarm.CREF.RoleSnapshots -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2
+import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure
 
 /-!
 # Quiet Trace Transfer for `PureCRel` and `CoinSplit` Combinators
@@ -40,7 +49,7 @@ Transfers `PureCRel` across call-boundary blocks whose explanations satisfy `NoS
 emit no `.send` events, and proves `CoinSplit` combinators for CLI entry and leak event lists.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,7 +75,7 @@ abbrev QPqE := ProtocolEvent.ExecEntryT PQXDHEvent
 abbrev QCE := ProtocolEvent.ExecEntryT ComposedEvent
 
 /-- `tr'` extends `tr` by entries that are no state, PQXDH, TR or composed event. -/
-def QuietExt (tr tr' : ExecTrace) : Prop :=
+@[expose] def QuietExt (tr tr' : ExecTrace) : Prop :=
   tr ≤ tr' ∧ ∀ i, tr.length ≤ i → i < tr'.length →
     (tr'.at? i : Option QStE) = none ∧ Symbolic.Proofs.Swarm.CREF.Cli.MoveBrkLemmas.NonSessionPQAt tr' i ∧
       (tr'.at? i : Option QTrE) = none ∧ (tr'.at? i : Option QCE) = none

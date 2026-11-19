@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS1Err507Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainSym
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainStack
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.ChainLookupS1Err507Placed
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainSym
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainStack
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.RegChain
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.ChainKeyCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.FindReceiverChainKey -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailSym
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
 
 /-!
 # Relocatable Segment `S2` Step and Call Lemmas on Block `507`
@@ -24,7 +31,7 @@ reachability for Segment `S2` of `try_decrypt_with_state::<signal_session_handsh
 (Block `507`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

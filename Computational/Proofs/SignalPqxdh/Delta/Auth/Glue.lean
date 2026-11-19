@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import Computational.Proofs.SignalPqxdh.Delta.AuthDefs
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c5
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c5 -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # PQXDH δ Authentication: `G3 → G3.5` Cutoff Glue
@@ -21,7 +22,7 @@ Proves `authCutoffGlue : AuthCutoffGlueStmt S` (DEV-PQ21), combining the `.recvO
 cutoff under `badSendδ`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -137,102 +138,5 @@ theorem badSendδ_mono (S : Setup) (hMono : AuthCorrMonoStmt S) (P : Primitives)
       (badAuthFgAnyLatchedMono_mono_advLatched_g3 P hP maxRo) q s3 hRunInv hRo hRecv h1 y hy,
       Bool.true_or]
   · rw [hMono P q s3 h2 y hy, Bool.or_true]
-
-theorem prob_hasBadAuthKemCorr_sendLatchedFrozen_le (S : Setup) (hMono : AuthCorrMonoStmt S)
-    (P : Primitives) (A : AuthAdversary S) :
-    let fullFr := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedFrozenG3Impl S P
-    (𝒟[($ᵗ Bool : ProbComp Bool) >>= fun secb =>
-      (simulateQ fullFr A.run).run (AuthSendLatchedState.empty S secb) >>= fun p =>
-        pure (hasBadAuthKemCorr P p.2.hyb)] {true}).toReal ≤
-    (𝒟[runAuthSendLatchedSim .g3 S P A >>= fun x =>
-      pure (hasBadAuthKemCorr P x.2.2.hyb)] {true}).toReal := by
-  intro fullFr
-  have hLe :
-      𝒟[($ᵗ Bool : ProbComp Bool) >>= fun secb =>
-        (simulateQ fullFr A.run).run (AuthSendLatchedState.empty S secb) >>= fun p =>
-          pure (hasBadAuthKemCorr P p.2.hyb)] {true} ≤
-      𝒟[runAuthSendLatchedSim .g3 S P A >>=
-        fun x => pure (hasBadAuthKemCorr P x.2.2.hyb)] {true} := by
-    unfold runAuthSendLatchedSim
-    simp only [bind_assoc, pure_bind]
-    refine evalDist_bind_true_mono_of_support ($ᵗ Bool) _ _ (fun secb _ => ?_)
-    dsimp only [fullFr, pqxdhAuthSendLatchedFrozenG3Impl]
-    exact evalDist_simulateQ_bad_freeze_le_unfrozen
-      (fun s : AuthSendLatchedState S => s.hyb.base.hasWonAuth)
-      (fun _ : AuthQuery S => AuthResponse.noneResp)
-      (pqxdhAuthSendLatchedStageImpl .g3 S P) (fun s => hasBadAuthKemCorr P s.hyb)
-      (fun q st x hx hB => hMono P q st hB x hx)
-      A.run (AuthSendLatchedState.empty S secb)
-  exact (ENNReal.toReal_le_toReal
-    (MeasureTheory.measure_ne_top _ _) (MeasureTheory.measure_ne_top _ _)).mpr hLe
-
-theorem authCutoffGlue (S : Setup) : AuthCutoffGlueStmt S := by
-  intro hOPK hNoOPK hMono P hP b A
-  let impl35 := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedStageImpl .g3_5 S P
-  let impl3 := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedStageImpl .g3 S P
-  let fullFr := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedFrozenG3Impl S P
-  let m35 : Bool → ProbComp (Bool × AuthSendLatchedState S) := fun secb =>
-    (simulateQ impl35 A.1.run).run (AuthSendLatchedState.empty S secb)
-  let m3 : Bool → ProbComp (Bool × AuthSendLatchedState S) := fun secb =>
-    (simulateQ impl3 A.1.run).run (AuthSendLatchedState.empty S secb)
-  let mFr : Bool → ProbComp (Bool × AuthSendLatchedState S) := fun secb =>
-    (simulateQ fullFr A.1.run).run (AuthSendLatchedState.empty S secb)
-  let fin : Bool → Bool × AuthSendLatchedState S → ProbComp Bool :=
-    fun secb p => finalizeAuthKosk S P secb p.1 p.2.hyb
-  let badSend : AuthSendLatchedState S → Bool := badSendδ P b.q_ro
-  have hSim : ∀ secb, 𝒟[m35 secb >>= fin secb] {true} ≤
-        𝒟[m3 secb >>= fin secb] {true} +
-        𝒟[mFr secb >>= fun p => pure (badSend p.2)] {true} ∧
-      𝒟[m3 secb >>= fin secb] {true} ≤
-        𝒟[m35 secb >>= fin secb] {true} +
-        𝒟[mFr secb >>= fun p => pure (badSend p.2)] {true} :=
-    fun secb => evalDist_simulateQ_sendLatchedStage_qb_runInv_le_of_step_or_abort_or_won
-      S P secb b.q_ro S.N_recv_tot (AuthSendWinGuardedCoupledInv P) badSend
-      (fun _ _ h => h.1.1)
-      (badSendδ_mono S hMono P hP b.q_ro)
-      (fgAuthStepCoupling_sendLatched_winGuardedδ S hOPK hNoOPK P hP b.q_ro)
-      A.1.run b.q_ro S.N_recv_tot (QueryBounded.auth_ro A.2) (QueryBounded.auth_recv A.2)
-      (AuthSendLatchedState.empty S secb) (AuthSendLatchedState.empty S secb)
-      ⟨authWinGuardedG3G3_5CoupledInv_empty S P secb, rfl⟩
-      (validAuthHybridRunInv_empty S P secb)
-      (by simp [AuthSendLatchedState.empty, AuthAdvLatchedState.empty, AuthAdvCutoffState.empty])
-      (by simp [AuthSendLatchedState.empty, AuthAdvLatchedState.empty, AuthAdvCutoffState.empty])
-  have hOuter := evalDist_outer_bind_abs_sub_le_three ($ᵗ Bool)
-    (fun secb => m35 secb >>= fin secb)
-    (fun secb => m3 secb >>= fin secb)
-    (fun secb => mFr secb >>= fun p => pure (badSend p.2))
-    hSim
-  have hExp35 : (($ᵗ Bool : ProbComp Bool) >>= fun secb => m35 secb >>= fin secb) =
-      authKoskExpAtStage .g3_5 S P A.1 :=
-    (authKoskExpAtStage_eq_sendLatchedStage .g3_5 S P A.1).symm
-  have hExp3 : (($ᵗ Bool : ProbComp Bool) >>= fun secb => m3 secb >>= fin secb) =
-      authKoskExpAtStage .g3 S P A.1 :=
-    (authKoskExpAtStage_eq_sendLatchedStage .g3 S P A.1).symm
-  rw [hExp35, hExp3] at hOuter
-  have hBias := authFixedAdvG3_sub_G3_5_le_two_mul_abs_sub S P A.1
-  have hBindEq : (($ᵗ Bool : ProbComp Bool) >>= fun secb => mFr secb >>= fun p =>
-      pure (badSend p.2)) =
-      ((($ᵗ Bool : ProbComp Bool) >>= fun secb => mFr secb) >>= fun p =>
-        pure ((badAuthFgAnyLatchedMono P b.q_ro p.2.toFg || p.2.respEkCollLatched) ||
-          hasBadAuthKemCorr P p.2.hyb)) := by
-    simp only [bind_assoc, badSend, badSendδ]
-  have hOr1 := toReal_evalDist_bind_or_le_add
-    (($ᵗ Bool : ProbComp Bool) >>= fun secb => mFr secb)
-    (fun p => badAuthFgAnyLatchedMono P b.q_ro p.2.toFg || p.2.respEkCollLatched)
-    (fun p => hasBadAuthKemCorr P p.2.hyb)
-  have hOr2 := toReal_evalDist_bind_or_le_add
-    (($ᵗ Bool : ProbComp Bool) >>= fun secb => mFr secb)
-    (fun p => badAuthFgAnyLatchedMono P b.q_ro p.2.toFg)
-    (fun p => p.2.respEkCollLatched)
-  simp only [← hBindEq, bind_assoc] at hOr1
-  simp only [bind_assoc] at hOr2
-  have hFg := prob_badAuthFgAnyLatchedMono_sendLatchedFrozen_le_fgLatched S P hP b A
-  have hColl := prob_respEkCollLatched_sendLatchedFrozen_le S P hP b A
-  have hCorr := prob_hasBadAuthKemCorr_sendLatchedFrozen_le S hMono P A.1
-  linarith
 
 end Proofs.SignalPqxdh.Security.PqxdhDelta

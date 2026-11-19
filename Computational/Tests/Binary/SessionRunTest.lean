@@ -9,30 +9,31 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionObj -- shake: keep
+public import Std.Data.HashMap
+public import GeneratedLean.LibsignalSessionPlacedObj -- shake: keep
 public import ProofLib.Hoare.LibcHooks
 public import Computational.Tests.AEAD.HMACTest
 public import LibsignalBinary.Specifications.LibsignalHmac
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
+public meta import Std.Data.HashMap -- shake: keep
+public meta import GeneratedLean.LibsignalSessionPlacedObj -- shake: keep
 public meta import ProofLib.Hoare.LibcHooks -- shake: keep
 public meta import Computational.Tests.AEAD.HMACTest -- shake: keep
 public meta import LibsignalBinary.Specifications.LibsignalHmac -- shake: keep
 public meta import LibsignalBinary.Specifications.LibsignalSessionRepr -- shake: keep
 public import LibsignalTestVectors.ChainKeyDerivation
 public meta import LibsignalTestVectors.ChainKeyDerivation -- shake: keep
-import LibsignalBinary.Proofs.CodeLayout
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 
 /-!
 # Binary Run Tests for Double-Ratchet Chain and Message-Key Methods
 
 Executes `ChainKey::next_chain_key`, `ChainKey::message_keys`,
 `RatchetState::consume_message_key`, and `RatchetState::find_receiver_chain_key` in
-`CryptoVerification.libsignalSessionImage` at `0x400000` with `sha256Compress` and a trace-recording
-bump allocator. Verifies that final memory states and `sret` results decode to the exact outcomes
-of `CryptoGames.LibsignalSession`, that multiset heap balance holds without leaks or double frees,
-and that bytes pinned by `RatchetGhost.AgreeExcept` outside the touched receiver chain remain
-unchanged.
+`CryptoVerification.libsignalSessionMultiLib` placed at `0x400000` with `sha256Compress` and a
+trace-recording bump allocator. Verifies that final memory states and `sret` results decode to the
+exact outcomes of `CryptoGames.LibsignalSession`, that multiset heap balance holds without leaks or
+double frees, and that bytes pinned by `RatchetGhost.AgreeExcept` outside the touched receiver chain
+remain unchanged.
 -/
 
 @[expose] public section
@@ -42,84 +43,242 @@ namespace CryptoVerification.SessionBin.RunTest
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.HMAC.Tests CryptoGames.HKDF
 open CryptoGames.LibsignalSession
 
-open Lean Meta in
-/-- Extracts raw bytes from a `List (BitVec 8)` literal expression. -/
-meta partial def byteLits (e : Expr) (acc : Array UInt8 := #[]) : MetaM (Array UInt8) := do
-  match e.consumeMData.getAppFnArgs with
-  | (``List.nil, _) => return acc
-  | (``List.cons, #[_, hd, tl]) =>
-    match hd.consumeMData.getAppFnArgs with
-    | (``BitVec.ofNat, #[_, n]) =>
-      match n.consumeMData.rawNatLit? <|> n.consumeMData.nat? with
-      | some v => byteLits tl (acc.push v.toUInt8)
-      | none => throwError "byteLits: not a literal {n}"
-    | _ => throwError "byteLits: unexpected element {hd}"
-  | _ => throwError "byteLits: unexpected {e}"
-
-open Lean in
-private meta partial def inlineNoncomputable (env : Environment) (e : Expr) : Expr :=
-  e.replace fun
-    | .const c [] =>
-      if isNoncomputable env c then
-        match env.find? c with
-        | some (.defnInfo d) => some (inlineNoncomputable env d.value)
-        | _ => none
-      else none
-    | _ => none
-
-private meta partial def lakeRootOf (f : System.FilePath) : IO System.FilePath := do
-  match f.parent with
-  | none => return "."
-  | some d => if (← (d / "lakefile.lean").pathExists) then return d else lakeRootOf d
-
-open Lean Elab Term in
-elab "gen_dir%" : term => do
-  let f ← IO.FS.realPath (← getFileName)
-  let root ← lakeRootOf f
-  return Lean.mkStrLit (root / ".GeneratedLean" / "GeneratedLean").toString
-
-open Lean Meta Elab Term in
-/-- Reconstructs the `noncomputable` linked image `id` as a computable function of `code` and `data`,
-verifying at elaboration time that both fields match the on-disk `.bin` files. -/
-elab "image_with_bins% " id:ident codeF:str dataF:str : term => do
-  let n ← realizeGlobalConstNoOverloadWithInfo id
-  let some (.defnInfo d) := (← getEnv).find? n | throwError "`{n}` is not a definition"
-  let v := d.value.consumeMData
-  let args := v.getAppArgs
-  unless v.getAppFn.isConstOf ``Obj.LinkedImage.mk && args.size == 13 do
-    throwError "unexpected shape of {n}"
-  let f ← IO.FS.realPath (← getFileName)
-  let root ← lakeRootOf f
-  let dir := root / ".GeneratedLean" / "GeneratedLean"
-  for (i, file) in [(0, codeF.getString), (2, dataF.getString)] do
-    let lit ← byteLits args[i]!
-    let bytes ← IO.FS.readBinFile (dir / file)
-    unless lit == bytes.data do
-      throwError "image_with_bins%: field {i} of {n} differs from {file}"
-  let env ← getEnv
-  let ty := mkApp (mkConst ``List [Level.zero]) (mkApp (mkConst ``BitVec) (mkNatLit 8))
-  withLocalDeclD `code ty fun c => withLocalDeclD `data ty fun dt => do
-    let args' := args.mapIdx fun i a =>
-      if i == 0 then c else if i == 2 then dt else inlineNoncomputable env a
-    mkLambdaFVars #[c, dt] (mkAppN v.getAppFn args')
-
-set_option maxRecDepth 100000 in
-def mkImage : List (BitVec 8) → List (BitVec 8) → Obj.LinkedImage :=
-  image_with_bins% CryptoVerification.libsignalSessionImage
-    "LibsignalSessionObj.code.bin" "LibsignalSessionObj.data.bin"
-
 def testBase : BitVec 64 := 0x400000#64
+def dataBase : BitVec 64 := testBase + BitVec.ofNat 64 (2 * 1024 * 1024)
+def logFilterSym : String := "_RNvCs4Dv7yoBiUx4_3log20MAX_LOG_LEVEL_FILTER"
+def ed25519TableSym : String :=
+  "_RNvNtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u649constants23ED25519_BASEPOINT_TABLE"
 
-def readBin (f : String) : IO (List (BitVec 8)) := do
-  let b ← IO.FS.readBinFile (System.FilePath.mk gen_dir% / f)
-  return b.data.toList.map fun x => BitVec.ofNat 8 x.toNat
+/-- Maps mangled Rust v0 extern symbols in `libsignalSessionMultiLib` to the demangled names used
+by the specification hook tables and `Rust.withPanics`. -/
+def demangleExtern (sym : String) : String :=
+  match sym with
+  | "_RINvCsdqpLrhraQXi_6subtle9black_boxhECs2wR8L9wiBdT_16curve25519_dalek" =>
+    "subtle::black_box::<u8>"
+  | "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedjjEB4_" =>
+    "core::panicking::assert_failed::<usize, usize>"
+  | "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedyyEB4_" =>
+    "core::panicking::assert_failed::<u64, u64>"
+  | "_RNvCs1njKG4L9aB3_7___rustc12___rust_alloc" => "__rustc::__rust_alloc"
+  | "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc" => "__rustc::__rust_dealloc"
+  | "_RNvCs1njKG4L9aB3_7___rustc14___rust_realloc" => "__rustc::__rust_realloc"
+  | "_RNvCs1njKG4L9aB3_7___rustc19___rust_alloc_zeroed" => "__rustc::__rust_alloc_zeroed"
+  | "_RNvCs1njKG4L9aB3_7___rustc35___rust_no_alloc_shim_is_unstable_v2" =>
+    "__rustc::__rust_no_alloc_shim_is_unstable_v2"
+  | "_RNvMs6_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecret14diffie_hellman" =>
+    "<x25519_dalek::x25519::StaticSecret>::diffie_hellman"
+  | "_RNvNtCs69KKACWg7bl_5alloc5alloc18handle_alloc_error" => "alloc::alloc::handle_alloc_error"
+  | "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error" => "alloc::raw_vec::handle_error"
+  | "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_decrypt" =>
+    "signal_crypto::aes_cbc::aes_256_cbc_decrypt"
+  | "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_encrypt" =>
+    "signal_crypto::aes_cbc::aes_256_cbc_encrypt"
+  | "_RNvNtCsbvWyylYiyxg_4sha26sha25611compress256" => "sha2::sha256::compress256"
+  | "_RNvNtCskxtBwYRO61I_4core3fmt5write" => "core::fmt::write"
+  | "_RNvNtCskxtBwYRO61I_4core6option13expect_failed" => "core::option::expect_failed"
+  | "_RNvNtCskxtBwYRO61I_4core6option13unwrap_failed" => "core::option::unwrap_failed"
+  | "_RNvNtCskxtBwYRO61I_4core6result13unwrap_failed" => "core::result::unwrap_failed"
+  | "_RNvNtCskxtBwYRO61I_4core9panicking18panic_bounds_check" => "core::panicking::panic_bounds_check"
+  | "_RNvNtCskxtBwYRO61I_4core9panicking19assert_failed_inner" => "core::panicking::assert_failed_inner"
+  | "_RNvNtCskxtBwYRO61I_4core9panicking5panic" => "core::panicking::panic"
+  | "_RNvNtCskxtBwYRO61I_4core9panicking9panic_fmt" => "core::panicking::panic_fmt"
+  | "_RNvNtNtCsfr5T3GFabw_3std4sync9lazy_lock14panic_poisoned" => "std::sync::lazy_lock::panic_poisoned"
+  | "_RNvNtNtCskxtBwYRO61I_4core5slice5index16slice_index_fail" => "core::slice::index::slice_index_fail"
+  | "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_add_overflow" =>
+    "core::panicking::panic_const::panic_const_add_overflow"
+  | "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_mul_overflow" =>
+    "core::panicking::panic_const::panic_const_mul_overflow"
+  | "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_shl_overflow" =>
+    "core::panicking::panic_const::panic_const_shl_overflow"
+  | "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_sub_overflow" =>
+    "core::panicking::panic_const::panic_const_sub_overflow"
+  | "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const28panic_const_async_fn_resumed" =>
+    "core::panicking::panic_const::panic_const_async_fn_resumed"
+  | "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed" =>
+    "<alloc::vec::Vec<_, _>>::remove::assert_failed"
+  | "_RNvNvNtCs69KKACWg7bl_5alloc3fmt6format12format_inner" => "alloc::fmt::format::format_inner"
+  | "_RNvXs0_NtCs4Dv7yoBiUx4_3log13___private_apiNtB5_12GlobalLoggerNtB7_3Log3log" =>
+    "<log::__private_api::GlobalLogger as log::Log>::log"
+  | "_RNvXs8_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_9PublicKeyINtNtCskxtBwYRO61I_4core7convert4FromRNtB5_12StaticSecretE4from" =>
+    "<x25519_dalek::x25519::PublicKey as core::convert::From<&x25519_dalek::x25519::StaticSecret>>::from"
+  | "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop" =>
+    "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop"
+  | "_RNvXse_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12SharedSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop" =>
+    "<x25519_dalek::x25519::SharedSecret as core::ops::drop::Drop>::drop"
+  | _ => sym
 
-def loadImg : IO Obj.Image := do
-  let li := mkImage (← readBin "LibsignalSessionObj.code.bin")
-    (← readBin "LibsignalSessionObj.data.bin")
-  match li.load testBase with
-  | .ok img => return img
-  | .error e => throw (IO.userError s!"load failed: {e}")
+def checkCodeRelocRange (kind : Obj.RelocKind) (place target : BitVec 64) : Bool :=
+  let sInRange (lo hi : Int) (d : BitVec 64) : Bool :=
+    decide (lo ≤ d.toInt) && decide (d.toInt < hi)
+  match kind with
+  | .call26 | .jump26 =>
+    decide ((target - place).toNat % 4 = 0) && sInRange (-134217728) 134217728 (target - place)
+  | .adrpHi21 => sInRange (-4294967296) 4294967296 (Obj.pageOf target - Obj.pageOf place)
+  | .adrpHi21Nc | .addLo12 | .ldst8Lo12 => true
+  | .ldst16Lo12 => (target &&& 1#64) == 0#64
+  | .ldst32Lo12 => (target &&& 3#64) == 0#64
+  | .ldst64Lo12 => (target &&& 7#64) == 0#64
+  | .ldst128Lo12 => (target &&& 15#64) == 0#64
+  | _ => false
+
+/-- Synthetic concrete placement of an `Obj.MultiPlacedLib` at `testBase` (`r-x` blocks + extern
+stubs) and `dataBase` (`r--` / `rw-` data objects). -/
+structure PlacedImg where
+  base : BitVec 64
+  code : Array (BitVec 8)
+  dataAddr : BitVec 64
+  data : Array (BitVec 8)
+  dataPerm : Array (Option Perm)
+  symbols : List (String × Nat)
+  stubs : List (String × Nat)
+  mpl : Obj.MultiPlacement
+  logFilterAddr : BitVec 64
+  symtab : String → String → Option (BitVec 64)
+
+def loadPlaced (lib : Obj.MultiPlacedLib := CryptoVerification.libsignalSessionMultiLib) :
+    IO PlacedImg := do
+  let blks := lib.blocks.toArray
+  let mut curAddr : Nat := testBase.toNat
+  let mut baseArr : Array (BitVec 64) := Array.mkEmpty blks.size
+  let mut symMap : Std.HashMap String (BitVec 64) := {}
+  let mut symbols : List (String × Nat) := []
+  let mut rawExts : List String := []
+  let mut seenExt : Std.HashMap String Unit := {}
+  for i in [0:blks.size] do
+    let blk := blks[i]!
+    let a := Nat.max 4 blk.align
+    let addr := (curAddr + a - 1) / a * a
+    let off := addr - testBase.toNat
+    let bAddr := BitVec.ofNat 64 addr
+    baseArr := baseArr.push bAddr
+    for (sname, soff) in blk.symbols do
+      if symMap.contains sname then
+        throw (IO.userError s!"duplicate block symbol: {sname}")
+      symMap := symMap.insert sname (bAddr + BitVec.ofNat 64 soff)
+      symbols := (sname, off + soff) :: symbols
+    for ext in blk.externs do
+      if !seenExt.contains ext then
+        seenExt := seenExt.insert ext ()
+        rawExts := ext :: rawExts
+    curAddr := addr + blk.code.length
+  symbols := symbols.reverse
+  rawExts := rawExts.reverse
+  let stubStartOff := ((curAddr - testBase.toNat) + 3) / 4 * 4
+  let mut rhoMap : Std.HashMap String (BitVec 64) := {}
+  let mut stubs : List (String × Nat) := []
+  let mut extIdx : Nat := 0
+  for rawExt in rawExts do
+    let off := stubStartOff + 4 * extIdx
+    let sAddr := testBase + BitVec.ofNat 64 off
+    let dem := demangleExtern rawExt
+    rhoMap := rhoMap.insert rawExt sAddr
+    symMap := (symMap.insert rawExt sAddr).insert dem sAddr
+    stubs := (dem, off) :: stubs
+    extIdx := extIdx + 1
+  stubs := stubs.reverse
+  let totalCodeBytes := stubStartOff + 4 * rawExts.length
+  if testBase.toNat + totalCodeBytes > dataBase.toNat then
+    throw (IO.userError "placed code overlaps dataBase")
+  let dataItems := lib.data.toArray
+  let mut dataAddrs : Array Nat := Array.mkEmpty dataItems.size
+  let mut dataCur : Nat := dataBase.toNat
+  for i in [0:dataItems.size] do
+    let d := dataItems[i]!
+    let a := Nat.max 1 d.align
+    let addr := (dataCur + a - 1) / a * a
+    dataAddrs := dataAddrs.push addr
+    let bvAddr := BitVec.ofNat 64 addr
+    rhoMap := rhoMap.insert d.sym bvAddr
+    symMap := symMap.insert d.sym bvAddr
+    dataCur := addr + d.bytes.length + d.zeroTail
+  let logFilterAddr : BitVec 64 := BitVec.ofNat 64 (((dataCur + 4095) / 4096 + 1) * 4096)
+  let ed25519TableAddr : BitVec 64 := logFilterAddr + 0x1000#64
+  rhoMap := (rhoMap.insert logFilterSym logFilterAddr).insert ed25519TableSym ed25519TableAddr
+  symMap := ((symMap.insert logFilterSym logFilterAddr).insert
+    "log::MAX_LOG_LEVEL_FILTER" logFilterAddr).insert ed25519TableSym ed25519TableAddr
+  let mut codeArr : Array (BitVec 8) := Array.replicate totalCodeBytes 0#8
+  for i in [0:blks.size] do
+    let blk := blks[i]!
+    let bAddr := baseArr[i]!
+    let bOff := (bAddr - testBase).toNat
+    let raw := blk.code.toArray
+    let nw := raw.size / 4
+    let mut words : Array (BitVec 32) := Array.mkEmpty nw
+    for j in [0:nw] do
+      words := words.push (raw[4 * j + 3]! ++ raw[4 * j + 2]! ++ raw[4 * j + 1]! ++ raw[4 * j]!)
+    for r in blk.relocs do
+      let place := bAddr + BitVec.ofNat 64 r.off
+      let some symAddr := symMap[r.sym]?
+        | throw (IO.userError s!"unresolved code reloc symbol: {r.sym}")
+      let target := Obj.addSignedAddr symAddr r.addend
+      unless r.off % 4 == 0 && r.off + 4 ≤ raw.size && checkCodeRelocRange r.kind place target do
+        throw (IO.userError s!"code reloc out of range in block {i}: {r.sym}")
+      let wIdx := r.off / 4
+      words := words.set! wIdx (Obj.patchRelocWord r.kind words[wIdx]! place target)
+    for j in [0:nw] do
+      let w := words[j]!
+      let o := bOff + 4 * j
+      codeArr := (((codeArr.set! o (w.extractLsb' 0 8)).set! (o + 1) (w.extractLsb' 8 8)).set!
+        (o + 2) (w.extractLsb' 16 8)).set! (o + 3) (w.extractLsb' 24 8)
+  let totalDataBytes := dataCur - dataBase.toNat
+  let mut dataArr : Array (BitVec 8) := Array.replicate totalDataBytes 0#8
+  let mut dataPerm : Array (Option Perm) := Array.replicate totalDataBytes none
+  for i in [0:dataItems.size] do
+    let d := dataItems[i]!
+    let addr := dataAddrs[i]!
+    let dOff := addr - dataBase.toNat
+    let raw := d.bytes.toArray
+    let sz := raw.size + d.zeroTail
+    let p : Option Perm := some (if d.readOnly then .ro else .rw)
+    for k in [0:raw.size] do
+      dataArr := dataArr.set! (dOff + k) raw[k]!
+    for k in [0:sz] do
+      dataPerm := dataPerm.set! (dOff + k) p
+    for r in d.relocs do
+      let some symAddr := symMap[r.sym]?
+        | throw (IO.userError s!"unresolved data reloc symbol: {r.sym}")
+      let t := Obj.addSignedAddr symAddr r.addend
+      match r.kind with
+      | .abs64 =>
+        unless r.off + 8 ≤ raw.size do throw (IO.userError s!"data reloc OOB in {d.sym}")
+        for k in [0:8] do
+          dataArr := dataArr.set! (dOff + r.off + k) (t.extractLsb' (8 * k) 8)
+      | .abs32 =>
+        unless r.off + 4 ≤ raw.size do throw (IO.userError s!"data reloc OOB in {d.sym}")
+        for k in [0:4] do
+          dataArr := dataArr.set! (dOff + r.off + k) (t.extractLsb' (8 * k) 8)
+      | .prel32 =>
+        unless r.off + 4 ≤ raw.size do throw (IO.userError s!"data reloc OOB in {d.sym}")
+        let rel := t - BitVec.ofNat 64 (addr + r.off)
+        for k in [0:4] do
+          dataArr := dataArr.set! (dOff + r.off + k) (rel.extractLsb' (8 * k) 8)
+      | _ => throw (IO.userError s!"unsupported data reloc in {d.sym}")
+  let mpl : Obj.MultiPlacement :=
+    { base := fun i => baseArr[i]?.getD 0#64
+      ρ := fun s => rhoMap.getD s 0#64 }
+  return {
+    base := testBase
+    code := codeArr
+    dataAddr := dataBase
+    data := dataArr
+    dataPerm
+    symbols
+    stubs
+    mpl
+    logFilterAddr
+    symtab := fun _ name => symMap[name]?
+  }
+
+def PlacedImg.toProgram (img : PlacedImg)
+    (externs : String → Option (State → State) := fun _ => none)
+    (overrides : String → Option (State → State) := fun _ => none) : Program :=
+  { base := img.base
+    code := img.code.toList
+    symbols := img.symbols
+    stubs := img.stubs
+    externs
+    overrides
+    svc := Syscall.standard }
 
 def progress (msg : String) : IO Unit := do
   let h ← IO.FS.Handle.mk "/tmp/srt.progress" .append
@@ -187,42 +346,42 @@ def externs (F : ShaState → List (BitVec 8) → ShaState) : String → Option 
     else if sym == "<alloc::vec::Vec<_, _>>::remove::assert_failed" then some Rust.panicked
     else none
 
-def prog (img : Obj.Image) : Program :=
-  Program.ofImage img (Rust.withPanics (externs sha256Compress))
+def prog (img : PlacedImg) : Program :=
+  img.toProgram (Rust.withPanics (externs sha256Compress))
 
-/-- Initial image memory: `r-x` code, image data permissions, `r--` GOT, and zeroed `rw` elsewhere
-(`log::MAX_LOG_LEVEL_FILTER = 0`). -/
-def imgMem (img : Obj.Image) : Memory :=
-  let code := img.code.toArray
-  let data := img.data.toArray
-  let got := img.gotBytes.toArray
+/-- Initial placed memory: `r-x` relocated code and stubs, `r--` / `rw-` placed data objects, and
+zeroed `rw` elsewhere (`log::MAX_LOG_LEVEL_FILTER = 0`). -/
+def imgMem (img : PlacedImg) : Memory :=
+  let code := img.code
+  let data := img.data
+  let dPerm := img.dataPerm
   Memory.ofFn
     (fun a =>
       let i := (a - img.base).toNat
       let j := (a - img.dataAddr).toNat
-      let k := (a - img.gotAddr).toNat
-      if i < code.size then code[i]! else if j < data.size then data[j]!
-      else if k < got.size then got[k]! else 0)
+      if i < code.size then code[i]! else if j < data.size then data[j]! else 0)
     (fun a =>
-      if (a - img.base).toNat < code.size then some .rx
-      else if (a - img.dataAddr).toNat < data.size then img.dataPerm a
-      else if (a - img.gotAddr).toNat < got.size then some .ro else some .rw)
+      let i := (a - img.base).toNat
+      let j := (a - img.dataAddr).toNat
+      if i < code.size then some .rx
+      else if j < dPerm.size then dPerm[j]!
+      else some .rw)
 
 def retAddr : BitVec 64 := 0x00dead00#64
 def stackTop : BitVec 64 := 0x70000000#64
 
-def callState (img : Obj.Image) (entry : BitVec 64) (m : Memory) (regs : List (Reg × BitVec 64)) :
+def callState (img : PlacedImg) (entry : BitVec 64) (m : Memory) (regs : List (Reg × BitVec 64)) :
     State :=
   let s : State := { sp := stackTop, pc := entry, mem := m, symtab := img.symtab }
   (regs.foldl (fun s (r, v) => s.writeReg64 r v) s).writeReg64 .lr retAddr
 
 def fuel : ℕ := 60000
 
-def run (img : Obj.Image) (s : State) : State := execUntilPC fuel (prog img) retAddr s
+def run (img : PlacedImg) (s : State) : State := execUntilPC fuel (prog img) retAddr s
 
 def returned (sf : State) : Bool := sf.pc == retAddr && sf.status == .Running
 
-def entry (img : Obj.Image) (name : String) : BitVec 64 := (Program.ofImage img).fnAddr name
+def entry (img : PlacedImg) (name : String) : BitVec 64 := (img.toProgram).fnAddr name
 
 def writeVec (m : Memory) (hdr : BitVec 64) (cap : ℕ) (ptr : BitVec 64) (len : ℕ) : Memory :=
   ((m.write64 hdr (BitVec.ofNat 64 cap)).write64 (hdr + 8) ptr).write64 (hdr + 16)
@@ -466,7 +625,7 @@ def sretA : BitVec 64 := 0x13000300#64
 
 /-- Executes compiled `RatchetState::consume_message_key` and decodes its `sret`, post-state, and
 heap balance. -/
-def binCmk (img : Obj.Image) (P : Placement) (m : Memory) (their : PublicKey) (ck : ChainKey)
+def binCmk (img : PlacedImg) (P : Placement) (m : Memory) (their : PublicKey) (ck : ChainKey)
     (counter : BitVec 32) (t : MessageType) : Outcome × State × Bool :=
   let m := ((m.writeBytes theirA their.bytes.toList).writeBytes ckA
     (keyToBytes32 ck.key ++ le32 ck.index)).writeBytes addrA (le 4 0x41414141)
@@ -506,14 +665,22 @@ def ckAt (i : ℕ) : ChainKey := ⟨bytesToKey32 ck0Bytes, BitVec.ofNat 32 i⟩
 
 #eval show IO Unit from do
   let t0 ← IO.monoMsNow
-  let img ← loadImg
-  check "image loads at 0x400000 (code and data + bss lengths, data address)"
-    (img.code.length == num% (ls_field% codeLen) &&
-      img.data.length == num% (ls_field% dataLen) + (mkImage [] []).bss &&
-      img.dataAddr == testBase + num% (ls_xref% 0x2440 0x2444))
-  check "log::MAX_LOG_LEVEL_FILTER is extern data outside the image data (reads 0 = Off)"
-    (img.externData.any fun (n, a, w) => n == "log::MAX_LOG_LEVEL_FILTER" && w == 8 &&
-      img.dataAddr.toNat + img.data.length ≤ a.toNat)
+  let lib := CryptoVerification.libsignalSessionMultiLib
+  let img ← loadPlaced lib
+  check "placed library loads at 0x400000 (624 code blocks, data objects, TCB CodeBlock.patched match)"
+    (lib.blocks.length == 624 && !lib.data.isEmpty && img.base == testBase &&
+      img.code.size > 0 && img.data.size > 0 &&
+      (match lib.blocks[0]? with
+       | some blk0 =>
+         let bpl0 : Obj.Placement :=
+           { base := img.mpl.base 0, ρ := fun s => (img.symtab "" s).getD (img.mpl.ρ s) }
+         (img.code.extract 0 blk0.code.length).toList == blk0.patched bpl0
+       | none => false))
+  check "log::MAX_LOG_LEVEL_FILTER is extern data outside placed data (reads 0 = Off)"
+    (img.logFilterAddr.toNat % 8 == 0 &&
+      img.dataAddr.toNat + img.data.size ≤ img.logFilterAddr.toNat &&
+      img.mpl.ρ logFilterSym == img.logFilterAddr &&
+      img.symtab "" "log::MAX_LOG_LEVEL_FILTER" == some img.logFilterAddr)
   let m0 := imgMem img
   let s := callState img (entry img "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key")
     ((m0.writeBytes ckA (ck0Bytes ++ le32 5))) [(.x0, ckA), (.x8, sretA)]

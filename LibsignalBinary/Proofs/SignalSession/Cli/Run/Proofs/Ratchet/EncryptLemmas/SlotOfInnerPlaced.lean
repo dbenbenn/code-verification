@@ -9,16 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInner
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlBridgePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.SlotOfInner
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptLemmas.PanicAndWire
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable Outer Slot Reduction for `encrypt`
@@ -28,7 +32,7 @@ Defines `withStoresEncPlacedSpecVT_cli` and reduces `encSlotSpecPlaced` at `lsmp
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -53,7 +57,7 @@ open CryptoVerification
 
 /-! ## Relocatable inner encrypt specification -/
 
-def withStoresEncPlacedSpecVT_cli [LibsignalPlacement] {A : RustAlloc}
+@[expose] def withStoresEncPlacedSpecVT_cli [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
@@ -84,7 +88,7 @@ private theorem loadSession_some_of_model_ok {C : Crypto} {S : SpqrModel} {uuidP
   · simp [hl] at hok
   · exact ⟨r, rfl⟩
 
-private noncomputable def w1SlotAnsOfRc (F : FsFiles)
+private def w1SlotAnsOfRc (F : FsFiles)
     (rc : Except (ApiError AddrVal Unit) CiphertextMessage ×
       List (StoreCall AddrVal (List (BitVec 8)))) : SlotAns CiphertextMessage :=
   match rc with

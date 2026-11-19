@@ -1,20 +1,18 @@
 # Registry of synthetic specification-audit mutants (`Symbolic/BugInjection/Synthetic/README.md`).
 # Loaded alongside `../bugs.toml` by `scripts/bug_injection.py` (`kind = "synthetic"`).
-# Paths (`patch`, `inputs`) are relative to `third_party/libsignal/bug-injection/synthetic/`.
-
-[[bug]]
-id = "synthetic-spqr-key-drop"
-kind = "synthetic"
-title = "MessageKeyGenerator::generate_keys drops the SPQR message key and derives symmetric keys with None"
-source = "Spec-audit synthetic mutant (Issue 1: unpinned OpaqueSymbolSemantics SPQR message-key mix; companion PR: csutton/spec-fix-spqr-and-sha256)"
-patch = "patches/spqr-key-drop/v0.105.4.diff"
-patch_sha256 = "2c98c9390a3276badf20a216de91e1454e518b62e1273d0007416ae652fafc70"
+# Paths (`patch`, `cli_patch`, `inputs`) are relative to `third_party/libsignal/bug-injection/synthetic/`.
+#
+# Scope note: dropping the SPQR post-quantum ratchet key (`pqr_key -> None`) is intentionally not
+# registered against `SignalSessionSecurePlaced`, which existentially quantifies
+# `S : OpaqueSymbolSemantics` without pinning SPQR V1 inside `Symbolic`;
+# SPQR V1 byte-faithfulness is enforced instead by `Computational/Theorems/Main.lean`
+# (`libsignal_cli_pq_secure_elf_binary`).
 
 [[bug]]
 id = "synthetic-addr-key-leak"
 kind = "synthetic"
 title = "SignalMessage::new writes mac_key into the wire protobuf addresses field"
-source = "Spec-audit synthetic mutant (Issue 2: wire SignalMessage.addresses unconstrained on send; companion PR: pr2-wire-headers)"
+source = "Spec-audit synthetic mutant (Issue 2: wire SignalMessage.addresses unconstrained on send)"
 patch = "patches/addr-key-leak/v0.105.4.diff"
 patch_sha256 = "add6afd4d05fa8895b19ddd7d568ea8caf8842dd950d657b733c6b0fe38c8c5b"
 
@@ -22,7 +20,7 @@ patch_sha256 = "add6afd4d05fa8895b19ddd7d568ea8caf8842dd950d657b733c6b0fe38c8c5b
 id = "synthetic-unack-prekey-omitted"
 kind = "synthetic"
 title = "process_prekey_bundle omits unacknowledged PreKey state so Alice's initial send emits a bare 0x02 SignalMessage"
-source = "Spec-audit synthetic mutant (Issue 3: outer PreKeySignalMessage wrapper not required before session acknowledgment; companion PR: pr2-wire-headers)"
+source = "Spec-audit synthetic mutant (Issue 3: outer PreKeySignalMessage wrapper not required before session acknowledgment)"
 patch = "patches/unack-prekey-omitted/v0.105.4.diff"
 patch_sha256 = "da8c35d4b5cc6fb0f1bf7b232342779aa8a549cdb720bf130a521034cce0db10"
 
@@ -30,7 +28,7 @@ patch_sha256 = "da8c35d4b5cc6fb0f1bf7b232342779aa8a549cdb720bf130a521034cce0db10
 id = "synthetic-recv-chain-priv-retained"
 kind = "synthetic"
 title = "RatchetState::dh_ratchet_step retains rotated-out sender_private_key in receiver_chains[*].sender_ratchet_key_private"
-source = "Spec-audit synthetic mutant (Issue 4b: receiver_chains private key omitted from KeyInRecord; companion PR #949 / csutton/spec-fix-recv-chain-clear)"
+source = "Spec-audit synthetic mutant (Issue 4b: receiver_chains private key omitted from KeyInRecord)"
 patch = "patches/recv-chain-priv-retained/v0.105.4.diff"
 patch_sha256 = "4c0f2491bdb7207630039d15a9bbc1fed80bda0df3c2b0665fb467c142d19632"
 
@@ -38,7 +36,7 @@ patch_sha256 = "4c0f2491bdb7207630039d15a9bbc1fed80bda0df3c2b0665fb467c142d19632
 id = "synthetic-keep-opk"
 kind = "synthetic"
 title = "message_decrypt_prekey skips pre_key_store.remove_pre_key, leaving the consumed one-time pre-key on disk"
-source = "Spec-audit synthetic mutant (Issue 6: consumed one-time pre-key retention on disk; companion PR: pr3-opk-lifecycle)"
+source = "Spec-audit synthetic mutant (Issue 6: consumed one-time pre-key retention on disk)"
 patch = "patches/keep-opk/v0.105.4.diff"
 patch_sha256 = "b35f5fdd19277583c67c1aca6b345d49ebb425a9a4d03cc91ab37ab187bfdfed"
 
@@ -46,7 +44,7 @@ patch_sha256 = "b35f5fdd19277583c67c1aca6b345d49ebb425a9a4d03cc91ab37ab187bfdfed
 id = "synthetic-verify-mac-skip"
 kind = "synthetic"
 title = "SignalMessage::verify_mac ignores the computed MAC and returns Ok(true)"
-source = "Spec-audit synthetic mutant (Issue 7: SignalMessage MAC verification bypassed; companion PR: csutton/spec-fix-spqr-and-sha256)"
+source = "Spec-audit synthetic mutant (Issue 7: SignalMessage MAC verification bypassed)"
 patch = "patches/verify-mac-skip/v0.105.4.diff"
 patch_sha256 = "1ff1098fa8637b7b49cf7b382fb81383d8b0a1b4eee8b2e86410ef9270023431"
 
@@ -82,65 +80,120 @@ source = "Round-4 spec-audit synthetic mutant (Issue 1: unguarded bobTrials excu
 patch = "patches/zero-base-key-pqxdh/v0.105.4.diff"
 patch_sha256 = "730c2a1538af5337ba2cf6c8f47dcbe62096e825a4e7861b8b9c7f2b7e89512b"
 
-[[witness]]
-id = "synthetic-spqr-key-drop-cli"
-bug = "synthetic-spqr-key-drop"
-statement = "DY.Libsignal.Composed.Security.SignalSessionSecure"
-inputs = "witnesses/spqr-key-drop-cli.json"
-expect = "live"
-spec_half = "open (not claimed true)"
-notes = """
-Alice initiates from Bob's honest bundle and sends her first pre-key message; the mutant drops
-`pqr_key` in `MessageKeyGenerator::generate_keys` (`MessageKeys::derive_keys(&seed, None, counter)`),
-so Alice's sent ciphertext/MAC and Bob's `recv` input differ from clean v0.105.4 (`live`).
-Under an unpinned `S : OpaqueSymbolSemantics` (`ghostOk := True` in `cliCompShape`), choosing
-`S.sendKey` and `S.recvKey` to return `[]` simulates `pqr_key = None`, making `Explains` satisfiable
-until `OpaqueSymbolSemantics`'s SPQR fields are pinned to SPQR V1 (`csutton/spec-fix-spqr-and-sha256`)
-and carried into `cliCompShape.ghostOk` (along with HKDF/HMAC non-collision in `cliCompFits`).
-"""
+[[bug]]
+id = "synthetic-pqxdh-kem-ss-omitted"
+kind = "synthetic"
+title = "pqxdh_initiate and pqxdh_accept omit the 32-byte Kyber shared secret from HandshakeKeys::derive"
+source = "Round-4 caught-mutant regression (PQXDH shared-secret binding in HandshakeKeys::derive)"
+patch = "patches/pqxdh-kem-ss-omitted/v0.105.4.diff"
+patch_sha256 = "1a74f7980d0f47b533113567d3b9c8c7851d0642a08571dc0b7c4f1714e67eae"
+
+[[bug]]
+id = "synthetic-dh-ratchet-no-send-step"
+kind = "synthetic"
+title = "RatchetState::dh_ratchet_step omits the sending DH half-step and retains the prior sender_chain"
+source = "Round-4 caught-mutant regression (Double Ratchet sending-chain state progression in dh_ratchet_step)"
+patch = "patches/dh-ratchet-no-send-step/v0.105.4.diff"
+patch_sha256 = "ac5e3c1cf94ff4b081d221fabc02e398cfa50f7d04742096561fddf82e05c14b"
+
+[[bug]]
+id = "synthetic-decrypt-clone-not-persisted"
+kind = "synthetic"
+title = "try_decrypt_from_record omits record.set_session_state(current_state), leaving the pre-decrypt session state on disk and accepting replayed messages"
+source = "Round-4 receive-path regression mutant (omitted state persistence on successful decrypt; caught on unmodified main)"
+patch = "patches/decrypt-clone-not-persisted/v0.105.4.diff"
+patch_sha256 = "4f7dc8c9e30b1b082a9ccf517647ad6dc8544af7db2d99894f13303319e597ff"
+
+[[bug]]
+id = "synthetic-signal-msg-canonical-mac"
+kind = "synthetic"
+title = "SignalMessage::try_from re-encodes the decoded protobuf and reconstructed version byte into serialized before verify_mac"
+source = "Round-4 receive-path regression mutant (non-canonical wire encoding canonicalized prior to MAC verification; caught on unmodified main)"
+patch = "patches/signal-msg-canonical-mac/v0.105.4.diff"
+patch_sha256 = "b796a035b1000230384a326902a96356238338e47e79115ca392bcf9c7d02581"
+
+[[bug]]
+id = "synthetic-prekey-start-v3-accept"
+kind = "synthetic"
+title = "process_prekey_impl omits the CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION check, accepting downgraded 0x33 (v3) outer PreKeySignalMessages"
+source = "Round-5 spec-audit synthetic mutant (outer PreKeySignalMessage version v4 enforcement in BytesMatchEntry and NextEventCollides)"
+patch = "patches/prekey-start-v3-accept/v0.105.4.diff"
+patch_sha256 = "d293d15df98c195ab95a159951c619d413e24c6514c58b140f203e83e2e9d003"
+
+[[bug]]
+id = "synthetic-skipped-key-replay"
+kind = "synthetic"
+title = "RatchetState and TripleRatchet retain consumed skipped message keys and SPQR state across out-of-order decrypts"
+source = "Round-5 spec-audit synthetic mutant (single-use skipped message key consumption in TripleRatchet.messageDecryptSkipped)"
+patch = "patches/skipped-key-replay/v0.105.4.diff"
+patch_sha256 = "a4bbd990f08495f6edb44257c47224372b91b07cad177ba1825525f4a7aaec9f"
+
+[[bug]]
+id = "synthetic-exit1-eager-session-commit"
+kind = "synthetic"
+title = "message_decrypt_prekey calls store_session before try_decrypt_from_record and Dir::put flushes eagerly to disk"
+source = "Round-5 spec-audit synthetic mutant (failed recv state-non-mutation across subsequent send calls)"
+patch = "patches/exit1-eager-session-commit/v0.105.4.diff"
+patch_sha256 = "0f705a800141f19a3aa2247553ced599e97793d99d41ab6ae09e89510c2c65ba"
+cli_patch = "patches/exit1-eager-session-commit/cli.diff"
+cli_patch_sha256 = "6e05af2721cad89887d60dc4ee77634235399ce33c8a2f3264093744b5a206fd"
+
+[[bug]]
+id = "synthetic-pre-abort-stdout-exfil"
+kind = "synthetic"
+title = "libsignal-cli send writes identity-key-pair and plaintext stdin to stdout before aborting via panic!"
+source = "Round-5 spec-audit synthetic mutant (OutcomeMatchesProcess .aborted omitted out.stdout = [], allowing pre-abort stdout exfiltration)"
+patch = "patches/pre-abort-stdout-exfil/v0.105.4.diff"
+patch_sha256 = "32e08a56613ba254aedf85388af4a5dbd85076324ea5d34039b62f46968c2f98"
+patch_target = "libsignal-session"
 
 [[witness]]
 id = "synthetic-addr-key-leak-cli"
 bug = "synthetic-addr-key-leak"
-statement = "DY.Libsignal.Composed.Security.SignalSessionSecure"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
 inputs = "witnesses/addr-key-leak-cli.json"
 expect = "live"
-spec_half = "open (not claimed true)"
+spec_half = "proved at CliSetupMatchesPinned (Symbolic.BugInjection.Proofs.SyntheticAddrKeyLeak.Top)"
 notes = """
 Alice initiates from Bob's honest bundle and sends `"attack-at-dawn"`. The mutant sets protobuf field 6
 (`addresses`) of the inner `SignalMessage` to `Some(mac_key.to_vec())`, exfiltrating the 32-byte MAC
 key in Alice's `send` stdout (`live` against clean v0.105.4, which writes serialized sender/recipient
 UUID+device addresses).
-Under unconstrained `EncodingVariation` extra fields (`Ghost.addr`), an adversarial per-trace ghost
-could place arbitrary bytes in field 6 unless the wire specification pins `addresses` on honest sends
-(`pr2-wire-headers`). Accordingly (S) is left open until that wire constraint is in place.
+`GhostWF` requires honest `0x03` `PreKeySignalMessage` sends to serialize the sender/recipient
+`ProtocolAddress` pair in field 6 (and `0x02` whisper sends to omit field 6), ruling out `Explains` on
+this trace. At the unpinned `CliSetupMatches`, `CollisionAfterExplainedPrefix` excuses on unpinned
+HKDF/HMAC/`OpaqueSymbolSemantics` remain open; `(S)` is machine-checked at `CliSetupMatchesPinned` in
+`Symbolic.BugInjection.Proofs.SyntheticAddrKeyLeak.Top`.
 """
 
 [[witness]]
 id = "synthetic-unack-prekey-omitted-cli"
 bug = "synthetic-unack-prekey-omitted"
-statement = "DY.Libsignal.Composed.Security.SignalSessionSecure"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
 inputs = "witnesses/unack-prekey-omitted-cli.json"
 expect = "live"
-spec_half = "open (not claimed true)"
+spec_half = "proved at CliSetupMatchesPinned (Symbolic.BugInjection.Proofs.SyntheticUnackPrekeyOmitted.Top)"
 notes = """
 Alice initiates from Bob's honest bundle and sends `"hello bob"`. Because the mutant omits
 `set_unacknowledged_pre_key_message` and `set_unacknowledged_kyber_pre_key_id` in
 `process_prekey_bundle`, Alice's first `send` outputs a bare `0x02 ‖ SignalMessage` whisper frame
 instead of a `0x03 ‖ PreKeySignalMessage` frame (`live`).
-In `TraceExplanation`, `encSendEntry` / `runWrapped` previously allowed a symbolic `aliceSend` step to
-match either `0x02` or `0x03` wire framing before Bob's reply acknowledged the session; pinning
-`PreKeySignalMessage` framing while the session is unacknowledged (`pr2-wire-headers`) closes `Explains`
-on this trace. (S) is left open until that framing constraint lands.
+In `ModelTraces` / `TraceExplanation`, `encSendEntry` and `runWrapped` previously allowed a symbolic
+`aliceSend` step to match either `0x02` or `0x03` wire framing before Bob's reply acknowledged the
+session; tracking `pendingPreKey` until Alice's first decrypt now requires `0x03`
+`PreKeySignalMessage` framing while unacknowledged, ruling out `Explains` on this trace. At the
+unpinned `CliSetupMatches`, `CollisionAfterExplainedPrefix` excuses on unpinned
+HKDF/HMAC/`OpaqueSymbolSemantics` remain open; `(S)` is machine-checked at `CliSetupMatchesPinned` in
+`Symbolic.BugInjection.Proofs.SyntheticUnackPrekeyOmitted.Top`.
 """
 
 [[witness]]
 id = "synthetic-recv-chain-priv-retained-cli"
 bug = "synthetic-recv-chain-priv-retained"
-statement = "DY.Libsignal.Composed.Security.SignalSessionSecure"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
 inputs = "witnesses/recv-chain-priv-retained-cli.json"
 expect = "live"
-spec_half = "open (not claimed true)"
+spec_half = "proved at rcprCompFitsPinned (Symbolic.BugInjection.Proofs.SyntheticRecvChainPrivRetained.Top)"
 notes = """
 Across a full DH ratchet round (`init`, Alice `send` m0, Bob `recv` m0, Bob `send` m1, Alice `recv` m1),
 the mutant's `RatchetState::dh_ratchet_step` writes Alice's rotated-out `sender_private_key` into
@@ -150,42 +203,42 @@ field, emitting `.env (.leak "alice" dhs_A0_priv)` on the mutant while emitting 
 v0.105.4 (`live`).
 (1) On (S): in the symbolic model, Alice's `messageDecrypt` on m1 rotates her sending ratchet key from
 `dhs_A0` to `dhs_A1`, erasing `dhs_A0` from her symbolic session state, so no symbolic `leakRatchet`
-transition after Call 4 can match `.env (.leak "alice" dhs_A0_priv)` (modulo collision excuses on
-unpinned `OpaqueSymbolSemantics` / HKDF / HMAC).
-(2) On (I): before PR #949 (`csutton/spec-fix-recv-chain-clear`), `KeyInRecord` inspected only
-`senderChain`'s private key and ignored `receiverChains[*].senderRatchetKeyPrivate`, preventing
-`CliTraces` (`LeaksFrom`) from surfacing the retained secret on disk; PR #949 exposes any non-empty
-`receiverChains[*].senderRatchetKeyPrivate` in `KeyInRecord` so `(I)` holds on the mutant.
+transition after Call 4 can match `.env (.leak "alice" dhs_A0_priv)`; `(S)` is machine-checked on the
+double-leak carrier trace `rcprTrace` at `rcprCompFitsPinned` in
+`Symbolic.BugInjection.Proofs.SyntheticRecvChainPrivRetained.Top`.
+(2) On (I): `KeyInRecord` previously inspected only `senderChain`'s private key and ignored
+`receiverChains[*].senderRatchetKeyPrivate`, preventing `CliTraces` (`LeaksFrom`) from surfacing the
+retained secret on disk; `KeyInRecord` now exposes any non-empty `receiverChains[*].senderRatchetKeyPrivate`
+so `(I)` holds on the mutant.
 """
 
 [[witness]]
 id = "synthetic-keep-opk-cli"
 bug = "synthetic-keep-opk"
-statement = "DY.Libsignal.Composed.Security.SignalSessionSecure"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
 inputs = "witnesses/keep-opk-cli.json"
 expect = "live"
-spec_half = "open (not claimed true)"
+spec_half = "proved at keepOpkCompFitsPinned (Symbolic.BugInjection.Proofs.SyntheticKeepOpk.Top)"
 notes = """
-Provisioned with a one-time EC pre-key (`with_opk = true`), Alice initiates from Bob's honest bundle,
-sends an OPK-bearing pre-key message, and Bob runs `recv`. Clean v0.105.4 calls
-`pre_key_store.remove_pre_key`, emptying `bob/one-time-pre-keys/3`; the mutant skips `remove_pre_key`,
-leaving `bob/one-time-pre-keys/3` non-empty (`t.opkUsed r = false`), so `KeyInDir` permits leaking
-Bob's OPK secret (`.env (.leak "bob" opk_priv)`) before Bob's reply (`live`; companion audit track:
-`pr3-opk-lifecycle`).
-In the symbolic model on `r.withOpk = true`, Bob's `bobStart` consumes his one-time pre-key during
-`recv`, disabling symbolic `leakOpk` thereafter (modulo `CollisionAfterExplainedPrefix` excuses on
-unpinned `OpaqueSymbolSemantics` / HKDF / HMAC). Note that `cliCompFits` in `CliShape.lean` currently
-fixes `r.withOpk = false`, so proving `(S)` and `(I)` on this witness will widen `compFits` to carry
-`withOpk : Bool` and `opk` / `opkId`.
+Provisioned with a one-time EC pre-key (`with_opk = true`, `setup_seed = 23209`, `rng_seed = 41`), Alice
+initiates session A1 from Bob's honest OPK bundle and sends `m1`, which Bob receives. Clean v0.105.4 calls
+`pre_key_store.remove_pre_key`, deleting `bob/one-time-pre-keys/3`; the mutant skips `remove_pre_key`,
+leaving `bob/one-time-pre-keys/3` on disk. Alice then clears her session (`clear`, emitting no `CliEvent`),
+initiates a second session A2 reusing the same one-time pre-key bundle, and sends `m2`: clean v0.105.4
+rejects `m2` (`exit = 1`), whereas the mutant accepts `m2` (`exit = 0`, `live`; 6 `RunEvent`s total).
+In the symbolic model on `r.withOpk = true` (`SetupMatches` widened with `withOpk`, `opkId`, and
+`secretBytes r 6 = w.opk`), Bob's `bobStart` on `m1` consumes his single one-time pre-key, so no second
+`bobStart` can accept `m2`; `(S)` is machine-checked at `keepOpkCompFitsPinned` in
+`Symbolic.BugInjection.Proofs.SyntheticKeepOpk.Top`.
 """
 
 [[witness]]
 id = "synthetic-verify-mac-skip-cli"
 bug = "synthetic-verify-mac-skip"
-statement = "DY.Libsignal.Composed.Security.SignalSessionSecure"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
 inputs = "witnesses/verify-mac-skip-cli.json"
 expect = "live"
-spec_half = "open (not claimed true)"
+spec_half = "proved at CliSetupMatchesPinned (Symbolic.BugInjection.Proofs.SyntheticVerifyMacSkip.Top)"
 notes = """
 Alice initiates from Bob's honest bundle and sends a pre-key message; the attacker replaces the 8-byte
 MAC tag at the end of the inner `SignalMessage` with `ffffffffffffffff`, and Bob runs `recv`. Clean
@@ -193,18 +246,17 @@ v0.105.4 rejects (`exit = 1`); the mutant's `SignalMessage::verify_mac` ignores 
 and returns `Ok(true)`, accepting and outputting Alice's plaintext (`exit = 0`, `live`).
 (1) No model run satisfies `Explains`: `bobStart`'s symbolic MAC verification rejects a forged tag on
 an honest session without key compromise (`evs` has no `leak`).
-(2) On `CollisionAfterExplainedPrefix` excuses, `MacTagForgeryOrCollision` and `MemoCollisionOn` read
-`S : OpaqueSymbolSemantics` (`ghostOk := True` in `cliCompShape`) and `interp`'s HMAC/HKDF, which
-`cliCompFits` does not yet pin (`csutton/spec-fix-spqr-and-sha256`). Accordingly (S) is left open.
+(2) Under `CliSetupMatchesPinned` (`compI0`), `CollisionAfterExplainedPrefix` excuses on `cliEventsVMS`
+are refuted and `(S)` is machine-checked in `Symbolic.BugInjection.Proofs.SyntheticVerifyMacSkip.Top`.
 """
 
 [[witness]]
 id = "synthetic-promoted-prekey-headers-cli"
 bug = "synthetic-promoted-prekey-headers"
-statement = "DY.Libsignal.Composed.Security.SignalSessionSecure"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
 inputs = "witnesses/promoted-prekey-headers-cli.json"
 expect = "live"
-spec_half = "proved at cliCompFitsPinned (Symbolic.BugInjection.Proofs.SyntheticPromotedPrekeyHeaders.Top)"
+spec_half = "proved at CliSetupMatchesPinned (Symbolic.BugInjection.Proofs.SyntheticPromotedPrekeyHeaders.Top)"
 notes = """
 Alice initiates from Bob's honest bundle and sends two unacknowledged `PreKeySignalMessage`s (`first`,
 `second`) sharing `base_key = ek_A`. Bob receives `second`, establishing his session on `ek_A`, pinning
@@ -219,16 +271,16 @@ both `Explains` (Call 4's tampered `identityKey` matches none of `.whisper`, `.p
 `.preKeyInner`) and `CollisionAfterExplainedPrefix` (Splits 0–3 follow `Cheval26WeakStateIdx1Cli`, and
 Split 4 fails `KnownBaseKeyOn`'s `identityKey` guard while Call 3's `bobStart` establishes
 `KnownBaseKeyOn` on `ek_A`, closing the `¬ KnownBaseKeyOn` branch); `(S)` is machine-checked at
-`cliCompFitsPinned` in `Symbolic.BugInjection.Proofs.SyntheticPromotedPrekeyHeaders.Top`.
+`CliSetupMatchesPinned` in `Symbolic.BugInjection.Proofs.SyntheticPromotedPrekeyHeaders.Top`.
 """
 
 [[witness]]
 id = "synthetic-implicit-reject-mac-cli"
 bug = "synthetic-implicit-reject-mac"
-statement = "DY.Libsignal.Composed.Security.SignalSessionSecure"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
 inputs = "witnesses/implicit-reject-mac-cli.json"
 expect = "live"
-spec_half = "proved at cliCompFitsPinned (Symbolic.BugInjection.Proofs.SyntheticImplicitRejectMac.Top)"
+spec_half = "proved at CliSetupMatchesPinned (Symbolic.BugInjection.Proofs.SyntheticImplicitRejectMac.Top)"
 notes = """
 Alice initiates from Bob's honest bundle and sends `hello bob`. An active network attacker sets the
 high bit of byte 0 of `kyber_ciphertext` and overwrites the trailing 8-byte inner `SignalMessage` MAC
@@ -236,15 +288,15 @@ with `0000000000000000`, and Bob runs `recv`. Clean v0.105.4 fails inner HMAC ve
 without touching disk; the mutant swallows `try_decrypt_from_record`'s error via `unwrap_or_default()`,
 exits `0`, and commits an unauthenticated session (`live`). Moving `ImplicitReject` inside
 `match parseTrSignalMsg x.msg` and conjoining `TrialMacMatches` in `BobSessionStartCollidesOrImplicitRejectsOn`
-closes the unconditional `ImplicitReject` inner-MAC bypass, and `(S)` is proved at `cliCompFitsPinned` in
+closes the unconditional `ImplicitReject` inner-MAC bypass, and `(S)` is proved at `CliSetupMatchesPinned` in
 `Symbolic.BugInjection.Proofs.SyntheticImplicitRejectMac.Top` (`spec_half_pinned`, with non-vacuity
-`cliCompFitsPinned_satisfiable` and security-negation bridge `not_signalSessionSecure_of_implHalf`).
+`cliSetupMatchesPinned_satisfiable` and security-negation bridge `not_signalSessionSecurePlaced_of_implHalf`).
 """
 
 [[witness]]
 id = "synthetic-evicted-chain-skipped-key-cli"
 bug = "synthetic-evicted-chain-skipped-key"
-statement = "DY.Libsignal.Composed.Security.SignalSessionSecure"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
 inputs = "witnesses/evicted-chain-skipped-key-cli.json"
 expect = "live"
 spec_half = "proved at evictedCompFitsPinned (Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.Top)"
@@ -260,17 +312,17 @@ Guarding `TripleRatchet.messageDecryptSkipped`, `Step.LocalOk` (`.exposeSkipped`
 `maxReceiverChains = 5`) closes the retention gap, and restricting `Step.LocalOk` on `.messageEncrypt`
 to SPQR V1's actual send draw sizes (`coinsLen ∈ {0, 32, 64}` rather than arbitrary `≤ 64`) rules out
 spurious 1-byte coin collisions with `litByte` protocol constants; `spec_half_pinned` and
-`not_signalSessionSecure_of_implHalf` are machine-checked at `evictedCompFitsPinned` in
+`not_signalSessionSecurePlaced_of_implHalf` are machine-checked at `evictedCompFitsPinned` in
 `Symbolic.BugInjection.Proofs.SyntheticEvictedChainSkippedKey.Top`.
 """
 
 [[witness]]
 id = "synthetic-zero-base-key-pqxdh-cli"
 bug = "synthetic-zero-base-key-pqxdh"
-statement = "DY.Libsignal.Composed.Security.SignalSessionSecure"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
 inputs = "witnesses/zero-base-key-pqxdh-cli.json"
 expect = "live"
-spec_half = "proved at cliCompFitsPinned (Symbolic.BugInjection.Proofs.SyntheticZeroBaseKeyPqxdh.Top)"
+spec_half = "proved at CliSetupMatchesPinned (Symbolic.BugInjection.Proofs.SyntheticZeroBaseKeyPqxdh.Top)"
 notes = """
 Alice initiates from Bob's honest bundle and sends `hello bob`. An active network participant
 knowing `DH(ikA, spkB)` substitutes `base_key = 0x05 ‖ 0^32` while preserving Alice's honest
@@ -282,7 +334,172 @@ to `[0u8; 32]`, accepting and outputting `forged!!!` (`exit = 0`, `live`). Guard
 `libsignal`'s pre-MAC handshake checks (`base_key < p25519`, `!PQXDH.x25519LowOrder x.ek`,
 `msg.version = 4`, `!TripleRatchet.x25519LowOrder msg.ratchetKey`, and unconsumed `OPK`) ensures
 `bobTrials = []` when a pre-MAC guard is violated so `UnknownSeedMacGuess` cannot excuse the trace,
-and `(S)` is proved at `cliCompFitsPinned` in `Symbolic.BugInjection.Proofs.SyntheticZeroBaseKeyPqxdh.Top`
-(`spec_half_pinned`, with non-vacuity `cliCompFitsPinned_satisfiable` and security-negation bridge
-`not_signalSessionSecure_of_implHalf`).
+and `(S)` is proved at `CliSetupMatchesPinned` in `Symbolic.BugInjection.Proofs.SyntheticZeroBaseKeyPqxdh.Top`
+(`spec_half_pinned`, with non-vacuity `cliSetupMatchesPinned_satisfiable` and security-negation bridge
+`not_signalSessionSecurePlaced_of_implHalf`).
+"""
+
+[[witness]]
+id = "synthetic-pqxdh-kem-ss-omitted-cli"
+bug = "synthetic-pqxdh-kem-ss-omitted"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
+inputs = "witnesses/pqxdh-kem-ss-omitted-cli.json"
+expect = "live"
+spec_half = "proved at cliCompFitsPinned (Symbolic.BugInjection.Proofs.SyntheticPqxdhKemSsOmitted.Top)"
+notes = """
+Alice initiates from Bob's honest bundle and sends an initial `PreKeySignalMessage`; in the mutant,
+`pqxdh_initiate` and `pqxdh_accept` run Kyber-1024 encapsulation/decapsulation on the CSPRNG stream
+and wire ciphertext but omit appending the 32-byte Kyber shared secret `ss` before calling
+`HandshakeKeys::derive(&secrets)`. Flipping the high bit of byte 0 of `kyber_ciphertext` causes
+clean v0.105.4 to fail inner `SignalMessage` MAC verification on Kyber implicit rejection (`exit = 1`),
+while the mutant derives matching classical-only handshake keys on both sides (`exit = 0`, `live`).
+Already at Call 1 (`alice send`), any symbolic `aliceStart` step derives `o.keys` from the full
+160-byte PQXDH input key material including `concretizeKemSS`, so Alice's sent ciphertext/MAC under
+the model disagrees with Call 1's stdout under pinned HKDF/AES/HMAC semantics (`[ev0, ev1]` has no
+`Explains` witness and `CollisionAfterExplainedPrefix` only inspects prefixes before `ev1`); `(S)` is
+machine-checked at `cliCompFitsPinned` in `Symbolic.BugInjection.Proofs.SyntheticPqxdhKemSsOmitted.Top`.
+"""
+
+[[witness]]
+id = "synthetic-dh-ratchet-no-send-step-cli"
+bug = "synthetic-dh-ratchet-no-send-step"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
+inputs = "witnesses/dh-ratchet-no-send-step-cli.json"
+expect = "live"
+spec_half = "proved at cliCompFitsPinned (Symbolic.BugInjection.Proofs.SyntheticDhRatchetNoSendStep.Top)"
+notes = """
+Alice initiates from Bob's honest bundle and sends an initial `PreKeySignalMessage`, Bob receives it,
+Bob sends a whisper reply, and Alice receives Bob's reply. In the mutant, `RatchetState::dh_ratchet_step`
+performs only the receiving DH half-step and omits generating a fresh `sender_chain` keypair and root
+chain step, so Bob's reply at Call 3 reuses his static signed pre-key public key as `sender_ratchet_key`
+instead of a fresh ephemeral ratchet key (`live`). In the symbolic model, Call 2 (`bob recv`) forces
+`Step.bobStart`, drawing Bob's fresh ratchet key `dhsB` from `ev2.coins` and storing `st.dhs = dhsB`,
+so Call 3 (`bob send`) requires `sender_ratchet_key = ecKey (gamma (dhPk dhsB))` independently of
+`S : OpaqueSymbolSemantics`, refuting `Explains` at `[ev0..ev3]` and restricting
+`CollisionAfterExplainedPrefix` to prefixes up to Call 3; `(S)` is machine-checked at `cliCompFitsPinned`
+in `Symbolic.BugInjection.Proofs.SyntheticDhRatchetNoSendStep.Top`.
+"""
+
+[[witness]]
+id = "synthetic-decrypt-clone-not-persisted-cli"
+bug = "synthetic-decrypt-clone-not-persisted"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
+inputs = "witnesses/decrypt-clone-not-persisted-cli.json"
+expect = "live"
+spec_half = "proved at cliCompFitsPinned7003 (Symbolic.BugInjection.Proofs.SyntheticDecryptCloneNotPersisted.Top)"
+notes = """
+Alice initiates from Bob's honest bundle and sends a `PreKeySignalMessage` (`replay-wire-transfer`,
+counter `0`). Bob receives that message once (`exit = 0`) and then receives an exact replay of the
+same message. Clean v0.105.4 persists the post-decrypt `SessionState` (`index = 1`) on the first
+`recv` and rejects the replay (`exit = 1`); the mutant omits `record.set_session_state(current_state)`
+in `try_decrypt_from_record`, leaving the pre-decrypt state (`index = 0`) on disk and accepting the
+replay (`exit = 0`, `live`). In the symbolic model, Call 2's `bobStart` logs `BobDone` on `ek_A`
+and stores `c'.index = 1` with zero skipped keys, so Call 3 is barred from `bobStart` by
+`PathFaithfulAt` and fails `consumeMessageKey c' 0 = none` in `messageDecrypt`, refuting `Explains`;
+`(S)` is machine-checked at `cliCompFitsPinned7003` in
+`Symbolic.BugInjection.Proofs.SyntheticDecryptCloneNotPersisted.Top`.
+"""
+
+[[witness]]
+id = "synthetic-signal-msg-canonical-mac-cli"
+bug = "synthetic-signal-msg-canonical-mac"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
+inputs = "witnesses/signal-msg-canonical-mac-cli.json"
+expect = "live"
+spec_half = "proved at cliCompFitsPinned7003 (Symbolic.BugInjection.Proofs.SyntheticSignalMsgCanonicalMac.Top)"
+notes = """
+Alice initiates from Bob's honest bundle, sends her initial pre-key message, Bob receives it and
+sends an authenticated `0x02` whisper reply (`authenticated-reply`). On delivery to Alice, the wire
+encoding of Bob's whisper message is modified to a non-canonical form (low version nibble `0x44` ->
+`0x4f`, shadowed duplicate `counter = 42` field before `counter = 0`, and unknown protobuf field
+`15 = 1`) while keeping Bob's original 8-byte MAC tag unchanged. Clean v0.105.4 retains raw wire
+bytes in `SignalMessage.serialized` and rejects the modified packet during `verify_mac` (`exit = 1`);
+the mutant re-encodes the decoded protobuf and reconstructed version byte into `serialized`,
+erasing the wire differences prior to MAC verification and accepting (`exit = 0`, `live`).
+In the symbolic model, any representation `t ∈ recvRepresentationsOn` at Call 4 has
+`γ msg.wire = wire_mut ≠ wire_honest`, failing symbolic `verifyMacAndDecrypt` under uncompromised
+session keys (`¬ Explains`); `(S)` is machine-checked at `cliCompFitsPinned7003` in
+`Symbolic.BugInjection.Proofs.SyntheticSignalMsgCanonicalMac.Top`.
+"""
+
+[[witness]]
+id = "synthetic-prekey-start-v3-accept-cli"
+bug = "synthetic-prekey-start-v3-accept"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
+inputs = "witnesses/prekey-start-v3-accept-cli.json"
+expect = "live"
+spec_half = "proved at CliSetupMatchesPinned (Symbolic.BugInjection.Proofs.SyntheticPrekeyStartV3Accept.Top)"
+notes = """
+Alice initiates from Bob's honest bundle and sends `hello bob` wrapped in an outer `0x03 ‖ 0x44`
+`PreKeySignalMessage` (wire version v4, retaining Kyber fields 7 and 8). An active network
+participant downgrades byte 1 (`PreKeySignalMessage` version byte) from `0x44` (v4) to `0x33` (v3),
+and Bob runs `recv`. Clean v0.105.4 rejects `message.message_version() ==
+CIPHERTEXT_MESSAGE_PRE_KYBER_VERSION` in `process_prekey_impl` (`exit = 1`); the mutant omits that
+check and accepts (`exit = 0`, `live`). Requiring `p.version = 4` on `.preKeyRecv` and
+`.preKeyInner` in `BytesMatchEntry` and on both the `KnownBaseKeyOn` and
+`BobSessionStartCollidesOrImplicitRejectsOn` branches of `NextEventCollides` refutes `Explains` and
+`p.version = 3` session-start excuses; `(S)` is machine-checked at `CliSetupMatchesPinned` in
+`Symbolic.BugInjection.Proofs.SyntheticPrekeyStartV3Accept.Top`.
+"""
+
+[[witness]]
+id = "synthetic-skipped-key-replay-cli"
+bug = "synthetic-skipped-key-replay"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
+inputs = "witnesses/skipped-key-replay-cli.json"
+expect = "live"
+spec_half = "proved at CliSetupMatchesPinned (Symbolic.BugInjection.Proofs.SyntheticSkippedKeyReplay.Top)"
+notes = """
+Alice initiates from Bob's honest bundle (`rng_seed = 43`) and sends counter 0 (`first`) and
+counter 1 (`second`) as `PreKeySignalMessage`s on her initial ratchet chain. Bob receives counter 1
+(`exit = 0`), establishing his session and caching skipped message key `(pk_A0, 0)`, then receives
+delayed counter 0 (`exit = 0`), and finally receives a replayed copy of counter 0. Clean v0.105.4
+consumes the cached skipped message key via `keys.remove(pos)` in `RatchetState` and advances
+`self.pqr_state` on the first delivery of counter 0, rejecting the replay as a duplicate message
+(`exit = 1`); the mutant clones `keys[pos].clone()` and skips `self.pqr_state = new_pqr_state` when
+`is_skipped`, accepting the replay (`exit = 0`, `live`). In `TripleRatchet.messageDecryptSkipped`,
+consuming a skipped key removes `(pk, n)` from `st.toDRState.skipped`, so no symbolic run explains
+two successful decrypts at `(pk_A0, 0)` (`¬ Explains`); `(S)` is machine-checked at `CliSetupMatchesPinned`
+in `Symbolic.BugInjection.Proofs.SyntheticSkippedKeyReplay.Top`.
+"""
+
+[[witness]]
+id = "synthetic-exit1-eager-session-commit-cli"
+bug = "synthetic-exit1-eager-session-commit"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
+inputs = "witnesses/exit1-eager-session-commit-cli.json"
+expect = "live"
+spec_half = "proved at CliSetupMatchesPinned (Symbolic.BugInjection.Proofs.SyntheticExit1EagerSessionCommit.Top)"
+notes = """
+Alice initiates from Bob's honest bundle and sends `hello bob`. An active network participant
+overwrites the trailing 8-byte inner `SignalMessage` MAC tag with `ffffffffffffffff`, Bob runs
+`recv` (`exit = 1` on both clean and mutant), and Bob then runs `send` (`hello bob`). Clean v0.105.4
+calls `store_session` only after `try_decrypt_from_record` succeeds, so Bob still has no session
+after the rejected `recv` and Bob's subsequent `send` fails (`exit = 1`); the mutant eagerly calls
+`store_session` inside `message_decrypt_prekey` before `try_decrypt_from_record` and writes eagerly
+in `Dir::put` (`cli/src/stores.rs`), so Bob's subsequent `send` succeeds on the uncommitted session
+(`exit = 0`, `live`). Because `ModelTraces.runWrapped` treats any `exit ≠ 0` event as a pure state
+no-op (`s' = s`), dropping a rejected `recv` preserves `Explains`, leaving Bob with `sessions = ∅`
+before `bob send` (`¬ Explains` at unpinned `CliSetupMatches`), and `(S)` is machine-checked at
+`CliSetupMatchesPinned` in `Symbolic.BugInjection.Proofs.SyntheticExit1EagerSessionCommit.Top`.
+"""
+
+[[witness]]
+id = "synthetic-pre-abort-stdout-exfil-cli"
+bug = "synthetic-pre-abort-stdout-exfil"
+statement = "DY.Libsignal.Composed.Security.SignalSessionSecurePlaced"
+inputs = "witnesses/pre-abort-stdout-exfil-cli.json"
+expect = "live"
+spec_half = "open (not claimed true)"
+notes = """
+Alice initiates from Bob's honest bundle (`exit = 0`) and invokes `send` on `"secret-msg-before-abort"`.
+Clean `libsignal-cli` writes only the 1,662-byte `PreKeySignalMessage` ciphertext to stdout and exits `0`;
+the mutant (`patch_target = "libsignal-session"`) additionally writes Alice's 65-byte `identity-key-pair`
+file and 23-byte plaintext stdin (1,750 stdout bytes total) before calling `panic!`, terminating with
+`SIGABRT` (`signal = some 6`, `exitCode = 134#64`, recorded as `exit = none` by the harness, `live`).
+In `ModelTraces.runWrapped`, `exit = none` (`Outcome.aborted`) is treated as a symbolic state no-op, so
+preventing pre-abort stdout exfiltration requires `out.stdout = []` on `OutcomeMatchesProcess .aborted`
+in `CliProcess.lean` (so an aborting process with non-empty stdout yields `cliRunAbortOnPanic = none` and
+refutes `CliElfProgressPlaced` / `SignalSessionSecurePlaced`). Accordingly `(S)` is left open until that
+process-boundary pin lands.
 """

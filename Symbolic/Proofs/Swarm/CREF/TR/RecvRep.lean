@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519 -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -62,7 +62,7 @@ Proves `decrypt_recvRepresentations_nonempty_of_tryFrom` and its corollary
 admits an attacker-known canonical symbolic representation in `recvRepresentations`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

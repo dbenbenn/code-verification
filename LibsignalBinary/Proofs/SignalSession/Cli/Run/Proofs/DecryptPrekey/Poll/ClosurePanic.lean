@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SpecState
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SpecState -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
 
 /-!
 # Poll Panic Postcondition Bridges
@@ -20,7 +21,7 @@ Lifts `P3P4.PanicOomProp`, `ResponderClosure.PanicOomProp`, and `GenP3.genP3S5Pa
 outer spatial frame into `((dpPollSpecState K stk').inImage img).onPanic`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,84 +40,6 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 
 private theorem anyHeap_sepConj_left (Fr : SepProp) : anyHeap ∗ Fr ⊢ anyHeap :=
   entails_anyHeap (anyHeap ∗ Fr)
-
-/-- Lifts `GenP3.genP3S5ModelPanicProp` across an outer spatial frame `Fr` into
-`((dpPollSpecState K stk').inImage img).onPanic y s0 sf ∗ R` whenever the pure model panic implies
-`K.panics y.g`. -/
-theorem dpPollOnPanic_of_modelPanic {K : DpPollKState} {img : Obj.Image} (stk' : Nat)
-    (y : DpPollGhostState K)
-    {C : Crypto} {Q : LibsignalSpqrV1.MlKem}
-    {rem loc : AddrGhost} {st : SessionState (List (BitVec 8))}
-    {msg : SignalMessage} {msgVer : BitVec 32} {rest : List (BitVec 8)}
-    {s0 sf : State} {Pf Fr R : SepProp}
-    (hmod : genP3S5ModelPanicProp C Q rem loc st msg msgVer rest s0 sf Pf)
-    (hpan : st.version = msgVer →
-      (genP3S5Model C Q rem loc msg rest st).1 = .error .panic → K.panics y.g)
-    (hm : sf.mem ⊨ (Pf ∗ Fr) ∗ R) :
-    sf.mem ⊨ ((dpPollSpecState K stk').inImage img).onPanic y s0 sf ∗ R := by
-  rw [sepConj_assoc] at hm
-  have h1 := hmod (Fr ∗ R) hm
-  rw [sepConj_assoc, satisfies_pure_sepConj] at h1
-  obtain ⟨⟨hver, herr, htr⟩, hrest⟩ := h1
-  have hkpan : K.panics y.g := hpan hver herr
-  dsimp only [Spec.inImage, dpPollSpecState]
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨⟨htr, Or.inr hkpan⟩, ?_⟩
-  rw [← sepConj_assoc] at hrest
-  exact Satisfies.mono (sepConj_mono_left (anyHeap_sepConj_left Fr)) hrest
-
-/-- Lifts `P3P4.PanicOomProp s0` across an outer spatial frame `Fr` into
-`((dpPollSpecState K stk').inImage img).onPanic y s0 sf ∗ R`. -/
-theorem dpPollOnPanic_of_p3p4Oom {K : DpPollKState} {img : Obj.Image} (stk' : Nat)
-    (y : DpPollGhostState K)
-    {s0 sf : State} {Pf Fr R : SepProp}
-    (hoom : CryptoVerification.E2E.Pqxdh.ResponderClosure.P3P4.PanicOomProp s0 sf Pf)
-    (hm : sf.mem ⊨ (Pf ∗ Fr) ∗ R) :
-    sf.mem ⊨ ((dpPollSpecState K stk').inImage img).onPanic y s0 sf ∗ R := by
-  rw [sepConj_assoc] at hm
-  have h1 := hoom (Fr ∗ R) hm
-  rw [sepConj_assoc, satisfies_pure_sepConj] at h1
-  obtain ⟨⟨ha, htr⟩, hrest⟩ := h1
-  dsimp only [Spec.inImage, dpPollSpecState]
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨⟨htr, Or.inl ha⟩, ?_⟩
-  rw [← sepConj_assoc] at hrest
-  exact Satisfies.mono (sepConj_mono_left (anyHeap_sepConj_left Fr)) hrest
-
-/-- Lifts `ResponderClosure.PanicOomProp s0` across an outer spatial frame `Fr` into
-`((dpPollSpecState K stk').inImage img).onPanic y s0 sf ∗ R`. -/
-theorem dpPollOnPanic_of_closOom {K : DpPollKState} {img : Obj.Image} (stk' : Nat)
-    (y : DpPollGhostState K)
-    {s0 sf : State} {Pf Fr R : SepProp}
-    (hoom : CryptoVerification.E2E.Pqxdh.ResponderClosure.PanicOomProp s0 sf Pf)
-    (hm : sf.mem ⊨ (Pf ∗ Fr) ∗ R) :
-    sf.mem ⊨ ((dpPollSpecState K stk').inImage img).onPanic y s0 sf ∗ R := by
-  rw [sepConj_assoc] at hm
-  have h1 := hoom (Fr ∗ R) hm
-  rw [sepConj_assoc, satisfies_pure_sepConj] at h1
-  obtain ⟨⟨ha, htr⟩, hrest⟩ := h1
-  dsimp only [Spec.inImage, dpPollSpecState]
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨⟨htr, Or.inl ha⟩, ?_⟩
-  rw [← sepConj_assoc] at hrest
-  exact Satisfies.mono (sepConj_mono_left (anyHeap_sepConj_left Fr)) hrest
-
-/-- Lifts `GenP3.genP3S5PanicProp` (either `P3P4.PanicOomProp` or `genP3S5ModelPanicProp`) into
-`((dpPollSpecState K stk').inImage img).onPanic y s0 sf ∗ R`. -/
-theorem dpPollOnPanic_of_genP3 {K : DpPollKState} {img : Obj.Image} (stk' : Nat)
-    (y : DpPollGhostState K)
-    {C : Crypto} {Q : LibsignalSpqrV1.MlKem}
-    {rem loc : AddrGhost} {st : SessionState (List (BitVec 8))}
-    {msg : SignalMessage} {msgVer : BitVec 32} {rest : List (BitVec 8)}
-    {s0 sf : State} {Pf Fr R : SepProp}
-    (hgen : genP3S5PanicProp C Q rem loc st msg msgVer rest s0 sf Pf)
-    (hpan : st.version = msgVer →
-      (genP3S5Model C Q rem loc msg rest st).1 = .error .panic → K.panics y.g)
-    (hm : sf.mem ⊨ (Pf ∗ Fr) ∗ R) :
-    sf.mem ⊨ ((dpPollSpecState K stk').inImage img).onPanic y s0 sf ∗ R := by
-  rcases hgen with hoom | hmod
-  · exact dpPollOnPanic_of_p3p4Oom stk' y hoom hm
-  · exact dpPollOnPanic_of_modelPanic stk' y hmod hpan hm
 
 /-- Monotonicity adapter from `ResponderClosure.PanicOomProp s0` to `P3P4.PanicOomProp s0`. -/
 theorem p3p4PanicOom_of_closPanicOom {s0 sf : State} {Pf : SepProp}

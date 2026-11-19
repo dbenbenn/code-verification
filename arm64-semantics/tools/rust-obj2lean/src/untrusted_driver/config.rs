@@ -105,7 +105,7 @@ pub fn resolve_perturb_layout_bytes(
 
 #[derive(Parser, Debug)]
 #[command(
-    about = "Link the relocatable AArch64 objects (`.o`) of Rust crates and C sources and export the result to Lean 4 as an `Arm64.Obj.LinkedImage`, or generate fetch-decode lemmas.",
+    about = "Extract AArch64 objects (`.o`) of Rust crates and C sources and export them to Lean 4 as `Arm64.Obj.PlacedLib` / `Arm64.Obj.MultiPlacedLib` (and optional `Arm64.Obj.ExtractedObj`), or generate fetch-decode lemmas.",
     after_help = "Additional subcommands (dispatched directly):\n  symexec         Fast untrusted ARM64 symbolic execution advisor (`rust-obj2lean symexec --help`)\n  layout          Print DWARF struct/union layouts (`rust-obj2lean layout --help`)\n\nEnvironment variables:\n  RUST_OBJ2LEAN_PERTURB_BYTES=<BYTES>  Fallback for `--perturb-layout <BYTES>` when not set on the CLI.\n\nExamples:\n  tools/target/release/rust-obj2lean --config CaseStudies/<Campaign>/Implementation/translation.toml\n  tools/target/release/rust-obj2lean --config CaseStudies/<Campaign>/Implementation/translation.toml --perturb-layout 64\n  RUST_OBJ2LEAN_PERTURB_BYTES=4096 tools/target/release/rust-obj2lean --config CaseStudies/<Campaign>/Implementation/translation.toml\n  tools/target/release/rust-obj2lean --check --only MyTarget\n  tools/target/release/rust-obj2lean fetch-decode-lemmas --prog myProg --base 0x1000 0x91000400 0xd65f03c0\n  tools/target/release/rust-obj2lean symexec MyLib my_func --to 0x40"
 )]
 pub struct Cli {
@@ -156,8 +156,7 @@ pub struct Cli {
     #[arg(long = "multi-placed", global = true)]
     pub multi_placed: bool,
 
-    /// Emit only `[placed]` outputs (and `<ObjName>ExtractedObj.*` when enabled) without invoking
-    /// `untrusted_legacy_linker::link` or emitting `<ObjName>Obj.lean`.
+    /// Emit `[placed]` outputs (and `<ObjName>ExtractedObj.*` when enabled).
     #[arg(long = "placed-only", global = true)]
     pub placed_only: bool,
 
@@ -185,11 +184,6 @@ pub struct Cli {
         global = true
     )]
     pub placed_witness_out: Option<PathBuf>,
-
-    /// Opt in to deprecated legacy `Arm64.Obj.LinkedImage` (`<ObjName>Obj.lean`) emission when
-    /// `[placed] placed_only = true` is not set.
-    #[arg(long = "legacy-linked-image", global = true)]
-    pub legacy_linked_image: bool,
 
     /// Do not write: fail if a generated file differs from what the compiler produces now.
     #[arg(long)]
@@ -284,7 +278,7 @@ pub struct TranslationConfig {
     pub registry_facts: bool,
     /// Optional explicit output path for `<ObjName>RegistryFacts.lean`.
     pub registry_facts_file: Option<PathBuf>,
-    /// Whether to emit `relocFns` and `dataSyms` on `ObjectInfo` in `<ObjName>Obj.lean`.
+    /// Accepted in `translation.toml` for configuration compatibility.
     #[serde(default)]
     pub layout_generic_relocs: bool,
     /// Whether to emit `<c>_lookup_0x<off>` and `<c>_unique_0x<off>` lemmas for all symbols in `<ObjName>Code.lean`.
@@ -295,11 +289,11 @@ pub struct TranslationConfig {
     #[serde(default)]
     pub slice_stubs_in_code: bool,
     /// Whether to place non-empty `.rodata`, writable `.data`/`.bss`/extern-data, and the GOT on
-    /// separate 4 KiB pages (`DataLayout::PageSeparated`; default `false` = `DataLayout::Interleaved`).
+    /// separate 4 KiB pages (`false` by default).
     #[serde(default)]
     pub page_separate_data: bool,
-    /// Opt in to deprecated legacy `Arm64.Obj.LinkedImage` (`<ObjName>Obj.lean`) emission when
-    /// `[placed] placed_only = true` is not set.
+    /// Accepted when `false` in `translation.toml` for configuration compatibility; setting
+    /// `true` is rejected.
     #[serde(default)]
     pub legacy_linked_image: bool,
     pub namespace_prefix: Option<String>,
@@ -409,8 +403,8 @@ pub struct PlacedTomlConfig {
     /// a contract for each boundary function, typically another config's export.
     #[serde(default)]
     pub extern_boundary: Vec<String>,
-    /// Emit only the placed-library artifacts (`<ObjName>PlacedObj.lean`, `<ObjName>ElfObj.lean`,
-    /// `<ObjName>PlacedWitness.lean`), skipping `untrusted_legacy_linker::link` and `<ObjName>Obj.lean`.
+    /// Emit the placed-library artifacts (`<ObjName>PlacedObj.lean`, `<ObjName>ElfObj.lean`,
+    /// `<ObjName>PlacedWitness.lean`); accepted in `[placed]` for configuration compatibility.
     #[serde(default)]
     pub placed_only: bool,
     /// Emit `<ObjName>ExtractedObj.lean` and `<ObjName>ExtractedObj.bin` directly from the
@@ -534,7 +528,7 @@ pub struct PlacedConfig {
     pub placed_shards: usize,
     /// `[placed] extern_boundary`: functions at which the reachability cone stops (`multi` only).
     pub extern_boundary: Vec<String>,
-    /// Emit only the placed-library artifacts without invoking `untrusted_legacy_linker::link` or emitting `<ObjName>Obj.lean`.
+    /// Emit the placed-library artifacts (`[placed] placed_only`).
     pub placed_only: bool,
     /// Emit `<ObjName>ExtractedObj.lean` and `<ObjName>ExtractedObj.bin` from `trusted_extractor`.
     pub emit_extracted_obj: bool,
@@ -795,18 +789,15 @@ pub struct ExportConfig {
     /// Optional output path and Lean module name of `<ObjName>RegistryFacts.lean`.
     pub registry_facts_file: Option<PathBuf>,
     pub registry_facts_module: Option<String>,
-    /// Whether to emit `relocFns` and `dataSyms` on `ObjectInfo` in `<ObjName>Obj.lean`.
+    /// Accepted in `translation.toml` for configuration compatibility.
     pub layout_generic_relocs: bool,
     /// Whether to emit `<c>_lookup_0x<off>` and `<c>_unique_0x<off>` lemmas for all symbols in `<ObjName>Code.lean`.
     pub emit_symbol_unique_lemmas: bool,
     /// Whether `<code>` in `<ObjName>Code.lean` slices `.code` to `<imgName>.code.take <code>TextEnd`.
     pub slice_stubs_in_code: bool,
     /// Whether to place non-empty `.rodata`, writable `.data`/`.bss`/extern-data, and the GOT on
-    /// separate 4 KiB pages (`DataLayout::PageSeparated`; default `false` = `DataLayout::Interleaved`).
+    /// separate 4 KiB pages (`false` by default).
     pub page_separate_data: bool,
-    /// Opt in to deprecated legacy `Arm64.Obj.LinkedImage` (`<ObjName>Obj.lean`) emission when
-    /// `[placed] placed_only = true` is not set.
-    pub legacy_linked_image: bool,
     /// Deterministic layout perturbation shift in bytes (`0` for normal layout, else multiple of 4).
     pub perturb_layout_bytes: u64,
     pub namespace_prefix: String,
@@ -847,7 +838,7 @@ pub struct ExportTarget {
 }
 
 impl ExportConfig {
-    /// `Obj` module metadata passed to `untrusted_legacy_linker` / `untrusted_placed`.
+    /// `Obj` module metadata passed to `trusted_extractor` and `untrusted_placed`.
     pub fn obj_meta(&self) -> ObjModuleMeta {
         ObjModuleMeta {
             obj_name: self.obj_name.clone(),
@@ -902,7 +893,7 @@ impl ExportConfig {
         self.obj_meta().obj_def_name_for(crate_name, num_objects)
     }
 
-    /// `<obj_name>Image : Obj.LinkedImage`, the linked image of all objects.
+    /// `<obj_name>Image` Lean definition identifier derived from `obj_name`.
     pub fn image_def_name(&self) -> String {
         self.obj_meta().image_def_name()
     }
@@ -1208,6 +1199,11 @@ pub fn load_config(
             config_path.display()
         )
     })?;
+    if cfg.legacy_linked_image {
+        bail!(
+            "legacy_linked_image = true is no longer supported; configure [placed] for Obj.PlacedLib / Obj.MultiPlacedLib"
+        );
+    }
 
     let config_rel = relative_display(config_path, repo_root);
     let config_hash = sha256_hex(raw.as_bytes());
@@ -1546,11 +1542,10 @@ pub fn load_config(
         .or_else(|| infer_namespace_prefix_from_out_dir(out_dir))
         .unwrap_or_else(|| "Examples".to_string());
 
-    let placed_only = cfg.placed.as_ref().is_some_and(|p| p.placed_only);
     let stem = upper_camel(&cfg.obj_name);
     let anchor_lean_file = match cfg.targets.first() {
         Some(first) => first.lean_file.clone(),
-        None if placed_only || cfg.obj_file.is_some() => cfg
+        None if cfg.placed.is_some() || cfg.obj_file.is_some() => cfg
             .obj_file
             .clone()
             .unwrap_or_else(|| PathBuf::from(format!("Examples/Generated/{stem}Obj.lean"))),
@@ -1703,7 +1698,6 @@ pub fn load_config(
         emit_symbol_unique_lemmas: cfg.emit_symbol_unique_lemmas,
         slice_stubs_in_code: cfg.slice_stubs_in_code,
         page_separate_data: cfg.page_separate_data,
-        legacy_linked_image: cfg.legacy_linked_image,
         perturb_layout_bytes,
         title: cfg.title.unwrap_or_else(|| {
             targets
@@ -1762,7 +1756,7 @@ pub fn load_configs(
             }
         }
         let mut files = Vec::new();
-        if !loaded.placed.as_ref().is_some_and(|p| p.placed_only) {
+        if loaded.placed.is_none() {
             files.push(loaded.obj_file.clone());
             files.push(loaded.code_file.clone());
             files.push(loaded.code_bin_file());

@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Qpan -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Substage P2.5 V1 Bundle and Combinators
@@ -25,7 +30,7 @@ combinators, `VmPreserved` `is_same_account` bridges, and stack-parameterized
 `initializeBobSessionErrOwned` contracts on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -71,6 +76,7 @@ open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudge
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget (
   initializeBobSessionErrOwned4KInnerPlacedSpec p2_call_frame_cro_nopanic_placed
 )
+open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (pqxdhAcceptPlacedStack)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget (
   initializeBobSessionErrOwnedInnerPlacedSpec initializeBobSessionErrOwnedPlacedSpec
 )
@@ -78,7 +84,7 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget 
 /-! ## 1. Budget-Threaded V1 Session Bundle & Substage-5 Stack / Error Helpers -/
 
 /-- The `0x700` stack bytes `initialize_bob_session` at SPQR V1 needs below `stageP2bStack`. -/
-def p2BobV1StackExtra (sp : BitVec 64) : SepProp :=
+@[expose] def p2BobV1StackExtra (sp : BitVec 64) : SepProp :=
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.p2BobV1StackExtra sp
 
 theorem p2BobV1StackExtra_join (sp : BitVec 64) :
@@ -87,7 +93,7 @@ theorem p2BobV1StackExtra_join (sp : BitVec 64) :
 
 /-- Bob's 344-byte V1 `SessionState` at `outPtr`, its SPQR vec buffer, and its 7 heap boxes over
 `A : RustCliAllocBudget M` (`A.repAlloc`). -/
-def p2BobSessV1At {M : AllocCostModel} (A : RustCliAllocBudget M) (outPtr : BitVec 64)
+@[expose] def p2BobSessV1At {M : AllocCostModel} (A : RustCliAllocBudget M) (outPtr : BitVec 64)
     (inp : AcceptKeysInput) (ikBPk spkBPk : Bytes) (drKey : DRKey)
     (pq : List (BitVec 8)) : SepProp :=
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.p2BobSessV1At
@@ -139,20 +145,20 @@ theorem p2_initBobErrAt_entails_speWordsAt (sp : BitVec 64) :
   CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits.p2_initBobErrAt_entails_speWordsAt sp
 
 theorem p2_stageP2bStack_le_bobV1 :
-    stageP2bStack ≤ stageP2bStack + 0x700 :=
-  Nat.le_add_right _ _
+    stageP2bStack ≤ 768 + pqxdhAcceptPlacedStack := by
+  decide
 
 theorem p2_isSameAccount_le_bobV1 :
-    isSameAccountDistinctStack ≤ stageP2bStack + 0x700 := by
+    isSameAccountDistinctStack ≤ 768 + pqxdhAcceptPlacedStack := by
   decide
 
 theorem p2_isSameAccountExt_le_bobExt :
-    isSameAccountDistinctStackExt ≤ 768 + pqxdhEntryStackExt := by
+    isSameAccountDistinctStackExt ≤ 768 + pqxdhAcceptPlacedStack := by
   decide
 
 theorem p2_bobErr4K_le_bobExt :
-    768 + pqxdhEntryStackExt ≤ 768 + pqxdhEntryStackExt :=
-  Nat.le_refl _
+    768 + pqxdhEntryStackExt ≤ 768 + pqxdhAcceptPlacedStack := by
+  decide
 
 /-! ## 2. Placed `LibsignalCodeRoLoaded` Sequencing and Call Combinators -/
 
@@ -406,7 +412,7 @@ namespace Sub5Placed
 /-- Stack-parameterized placed `initializeBobSessionErrOwned` inner contract over
 `A : RustCliAllocBudget M` (`Kits.initBobErrOwnedAt A.repAlloc`, `onPanic = ⌜False⌝`,
 `onOom = ⌜False⌝` under `FitsEnv M lim st (AcceptErrEnv g.inp)`). -/
-def initializeBobSessionErrOwnedAtInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrOwnedAtInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) (stk : Nat) :
     Spec (InitBobCallGhost × M.σ) where
@@ -860,7 +866,7 @@ theorem p2_call_memInv_nopanic_steps_frame_sub5 [LibsignalPlacement] {Φ : Memor
 
 namespace Sub5Placed
 
-def initializeBobSessionErrOwnedMemInvAtPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrOwnedMemInvAtPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (Φ : Memory → Prop) (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) (stk : Nat) :
     Spec (InitBobCallGhost × M.σ) :=

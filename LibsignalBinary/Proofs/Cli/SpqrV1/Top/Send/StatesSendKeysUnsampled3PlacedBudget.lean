@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled3Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.Phase1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled3Placed
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.StatesSendKeysUnsampled3 -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
@@ -27,6 +27,13 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderBudgetAux
 import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `.keysUnsampled` Arm (Part 3: `+2588..+3068` & Full Arm, Block `427`)
@@ -35,7 +42,7 @@ Threads `RustCliAllocBudget` through `PolyEncoder` chunking, `mac` / `hdr` deall
 and the complete `.keysUnsampled` arm (`+372 -> +3068`) in Block `427`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +55,7 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampled3Pla
 
 open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoGames.LibsignalSession (ShaCompress)
-open CryptoVerification (LibsignalPlacement libsignalSessionCode lsLogFilterAddr lsmpl lsρ)
+open CryptoVerification (LibsignalPlacement lsLogFilterAddr lsmpl lsρ)
 open CryptoVerification.Cli.SpqrV1.Top.Send
   (spqrCoinsAfterPlaced spqrCoinsAtPlaced
    spqrMlkemFromSeedSym spqrMlkemPk1Sym spqrMlkemPk2Sym)
@@ -109,7 +116,9 @@ open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.StatesSendKeysUnsampledPlacedBud
   (SpqrSendJoinStatePlaced call_lscro_calleeStack_evs_sepWP call_lscro_calleeStack_sepWP
    finish_sepWP_lscro_plain of_sepWP_lscro_plain spqrSend_dealloc_ok_placed
    spqrSend_session_memcpy_region_ok_placed)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (mlkemFromSeedAtSpec)
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
   (EncodeBytesEnv encodeBytesAllocEvents encodeBytesSpecX encodeBytesSpecXOfEnv)
 open LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlacedBudget
@@ -126,7 +135,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
   readReg32_setPC_pre readReg32_setMem_setPC_pre
   readReg_setPC_pre readReg_setMem_setPC_pre
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 
 run_cmd Lean.Elab.Command.liftCoreM do
   for nm in [
@@ -147,7 +156,7 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.sub_add_cancel
 
 /-- Address-independent `PolyNextChunkGhost` witness for `PolyNextChunkEnv` (which depends only
     on `.enc`). -/
-def polyNextChunkGhostOf (enc enc' : PolyEncoder) (chunk : Chunk) : PolyNextChunkGhost :=
+@[expose] def polyNextChunkGhostOf (enc enc' : PolyEncoder) (chunk : Chunk) : PolyNextChunkGhost :=
   { outA := 0, encA := 0, enc := enc, enc' := enc', chunk := chunk }
 
 theorem polyNextChunkEnv_eq_ghostOf (x : PolyNextChunkGhost) :
@@ -176,7 +185,7 @@ theorem keysUnsampledDeallocEvents_freeOnly (macCap : Nat) :
 /-- Allocator event envelope of `.keysUnsampled` sub-step 2 (`+2588 -> +3068`):
     `PolyEncoder::encode_bytes` on the 96-byte `hdr ++ mac` buffer, followed by
     `PolyEncoder::next_chunk`, followed by `FreeOnlyEvs` (`mac_ptr` and `hdr_ptr'`). -/
-def KeysUnsampledTailEnv (sending_hdr out_hdr : PolyEncoder) (chunk : Chunk) :
+@[expose] def KeysUnsampledTailEnv (sending_hdr out_hdr : PolyEncoder) (chunk : Chunk) :
     List AllocEvent → Prop :=
   SeqEnv (EncodeBytesEnv 96)
     (SeqEnv (PolyNextChunkEnv (polyNextChunkGhostOf sending_hdr out_hdr chunk)) FreeOnlyEvs)
@@ -193,16 +202,16 @@ theorem keysUnsampledTailEnv_of_nextChunk {sending_hdr out_hdr : PolyEncoder} {c
   SeqEnv.append rfl (SeqEnv.append hnc_evs (keysUnsampledDeallocEvents_freeOnly macCap))
 
 /-- Seed vector extracted from `tape` when `64 ≤ tape.length` (0-filled fallback otherwise). -/
-def keysUnsampledSeed (tape : Bytes) : List.Vector (BitVec 8) 64 :=
+@[expose] def keysUnsampledSeed (tape : Bytes) : List.Vector (BitVec 8) 64 :=
   if h : 64 ≤ tape.length then ⟨tape.take 64, take_64_len h⟩
   else List.Vector.replicate 64 0#8
 
 /-- Deterministic 64-byte ML-KEM header slice derived from `tape`. -/
-def keysUnsampledHdr (K : MlKem) (tape : Bytes) : Bytes :=
+@[expose] def keysUnsampledHdr (K : MlKem) (tape : Bytes) : Bytes :=
   (K.fromSeed (keysUnsampledSeed tape)).1.toList
 
 /-- Deterministic 32-byte HMAC tag over `keysUnsampledHdr K tape`. -/
-def keysUnsampledMac (F : ShaCompress) (K : MlKem) (auth : Authenticator)
+@[expose] def keysUnsampledMac (F : ShaCompress) (K : MlKem) (auth : Authenticator)
     (epoch : BitVec 64) (tape : Bytes) : Bytes :=
   auth.macHdrUnchecked F epoch (keysUnsampledHdr K tape)
 
@@ -210,7 +219,7 @@ def keysUnsampledMac (F : ShaCompress) (K : MlKem) (auth : Authenticator)
     sequences `KeysUnsampledAllocEnv` (`+512..+684`), `KeysUnsampledMacReserveEnv` (`+684..+2588`),
     and `KeysUnsampledTailEnv` (`+2588..+3068`) when `encodeBytesResult` succeeds (`evs = []` on the
     unreachable error arm). -/
-def KeysUnsampledArmEnv (F : ShaCompress) (K : MlKem)
+@[expose] def KeysUnsampledArmEnv (F : ShaCompress) (K : MlKem)
     (st : KeysUnsampled (spqrAuthApi F))
     (out_hdr : PolyEncoder) (chunk : Chunk) (tape : Bytes)
     (evs : List AllocEvent) : Prop :=
@@ -1264,7 +1273,7 @@ theorem step_keysUnsampled_372_to_512_at_placed
     {ext : String → Option (State → State)}
     (hcoinsFill : CoinsFillPlacedOkX ext)
     (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
-      (withVmPreserved (mlkemFromSeedSpec K)))
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (g : AuthenticatorGhost) (auth : Authenticator) (epoch sp cur : BitVec 64)
     (tape : List (BitVec 8)) (h64 : 64 ≤ tape.length)
@@ -1312,7 +1321,7 @@ theorem step_send_arm_keysUnsampled_sepWP_placed {F : ShaCompress} {K : MlKem} {
     (hA : AllocContractsPlaced M A lim ext)
     (hcoinsFill : CoinsFillPlacedOkX ext)
     (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
-      (withVmPreserved (mlkemFromSeedSpec K)))
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (hpk2 : HookSat (Rust.withPanics ext) spqrMlkemPk2Sym (withVmPreserved mlkemPk2Spec))
     (hmac_call : AuthMacHdrPinnedPlacedOkX F M A lim ext)
@@ -1590,7 +1599,7 @@ theorem step_send_arm_keysUnsampled_placed {F : ShaCompress} {K : MlKem} {ctl : 
     (hA : AllocContractsPlaced M A lim ext)
     (hcoinsFill : CoinsFillPlacedOkX ext)
     (hseed : HookSat (Rust.withPanics ext) spqrMlkemFromSeedSym
-      (withVmPreserved (mlkemFromSeedSpec K)))
+      (withLsRet (withVmPreserved (mlkemFromSeedAtSpec 36864 K))))
     (hpk1 : HookSat (Rust.withPanics ext) spqrMlkemPk1Sym (withVmPreserved mlkemPk1Spec))
     (hpk2 : HookSat (Rust.withPanics ext) spqrMlkemPk2Sym (withVmPreserved mlkemPk2Spec))
     (hmac_call : AuthMacHdrPinnedPlacedOkX F M A lim ext)

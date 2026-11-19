@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.CodeLayout
 public import Aesop.BuiltinRules
 public import ProofLib.Lemmas
 public import ProofLib.SepLogic
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import ProofLib.SepLogic.WPp
 import VCVio.Prelude.Core
-public import GeneratedLean.LibsignalSessionObj -- shake: keep
+public import ProofLib.GenDecodes
+public import ProofLib.VCGen
 
 /-!
 # Error-Branch Normalization Helpers for `message_decrypt_prekey::{closure#0}`
@@ -26,7 +26,7 @@ Address-arithmetic, bitvector-condition, and separation-logic normalization lemm
 Stage P2 and Stage P3 error-exit funnels of `message_decrypt_prekey::<PqxdhRng>::{closure#0}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,14 +39,6 @@ set_option maxHeartbeats 1600000
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-
-/-! ## 1. Helper Normalization Lemmas for Error Branches -/
-
 @[local simp, local wp_norm, local arm64_norm]
 theorem cond_ne_adds64_neg1_2 :
     ConditionHolds CondCode.NE (addsPState64 0xffffffffffffffff#64 2#64) = true := by
@@ -115,26 +107,6 @@ theorem cond_eq_subs64_of_ne_dup {w : BitVec 64} (h : w ≠ 0x8000000000000017#6
     ConditionHolds CondCode.EQ (subsPState64 w 0x8000000000000017#64) = false := by
   rw [conditionHolds_eq_subsPState64, beq_eq_false_iff_ne]
   exact h
-
-theorem adrp_logLevel_0x2dec {b entry : BitVec 64}
-    (hb : b &&& 0xfff#64 = 0#64) (he : entry = b + 0x7200c#64) :
-    (((entry + 0x2dec#64) &&& 0xfffffffffffff000#64) + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) - 0x74000) = b + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256))) ∧
-    (((0x7200c#64 + (b + 0x2dec#64)) &&& 0xfffffffffffff000#64) + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) - 0x74000) = b + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256))) := by
-  subst he
-  constructor
-  · have hp : ((b + 0x7200c#64 + 0x2dec#64) &&& 0xfffffffffffff000#64) = b + 0x74000#64 := by
-      rw [BitVec.add_assoc, ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-      rfl
-    rw [hp]
-    bv_omega
-  · have hp : ((0x7200c#64 + (b + 0x2dec#64)) &&& 0xfffffffffffff000#64) = b + 0x74000#64 := by
-      rw [show 0x7200c#64 + (b + 0x2dec#64) = b + (0x7200c#64 + 0x2dec#64) by bv_omega,
-          ProofLib.ObjectLoad.adrp_page_of_aligned hb]
-      rfl
-    rw [hp]
-    bv_omega
-
-/-! ## 2. Stage P2 Error-Exit Helpers -/
 
 theorem pointsTo64_split32_coro_268 (coroPtr w : BitVec 64) :
     ((coroPtr + 0x268#64) ↦₆₄ w) =

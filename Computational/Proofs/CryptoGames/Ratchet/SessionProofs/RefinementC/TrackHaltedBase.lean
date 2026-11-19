@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupling
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Eager
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Eager
-public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupling
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Eager
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementWeak.Eager
+public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
 
 /-!
 # Tracker-halted base definitions and combinators
@@ -27,7 +29,7 @@ eager tracker-halted simulator runners and joint invariant `SimInvCXTrack`, and 
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 
@@ -52,12 +54,12 @@ set_option linter.style.haveILetI false
 
 /-! ## Tracker state isomorphism -/
 
-def toRefTrack {F : ShaCompress}
+@[expose] def toRefTrack {F : ShaCompress}
     (tr : KemFailTrackBridge.KemFailTrackState F) : KemFailTrackState F :=
   { e := tr.e, auth := tr.auth, c := tr.c, st := tr.st,
     sentB := tr.sentB, sendCtr := tr.sendCtr, cand := tr.cand }
 
-def ofRefTrack {F : ShaCompress}
+@[expose] def ofRefTrack {F : ShaCompress}
     (tr : KemFailTrackState F) : KemFailTrackBridge.KemFailTrackState F :=
   { e := tr.e, auth := tr.auth, c := tr.c, st := tr.st,
     sentB := tr.sentB, sendCtr := tr.sendCtr, cand := tr.cand }
@@ -137,7 +139,7 @@ theorem honestWires_reverse_findIdx_eq {α β : Type}
   rw [← List.map_reverse, List.findIdx?_map]
   rfl
 
-def honestWiresOf {Pt : Type} (honest : List (List (BitVec 8) × Fig8C Pt)) :
+@[expose] def honestWiresOf {Pt : Type} (honest : List (List (BitVec 8) × Fig8C Pt)) :
     List (List (BitVec 8) × Party) :=
   honest.map fun wc => (wc.1, Party.senderOf wc.2.1.1)
 
@@ -149,7 +151,7 @@ theorem honestWiresOf_reverse_findIdx_eq {Pt : Type}
     (fun (wc : List (BitVec 8) × Fig8C Pt) => (wc.1, Party.senderOf wc.2.1.1))
     (fun wp => wp.1 == w && wp.2 == Q.other) honest
 
-def dropSendsImpl (PQ PQC : Type) (ℓ : ℕ) :
+@[expose] def dropSendsImpl (PQ PQC : Type) (ℓ : ℕ) :
     QueryImpl (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (SM.AdversaryComp (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) :=
   fun t => match t with
@@ -171,7 +173,7 @@ def dropSendsImpl (PQ PQC : Type) (ℓ : ℕ) :
       (spec := unifSpec + SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)))
       (.inr (.inr Q)))
 
-def dropSendsAdv {PQ PQC α : Type} {ℓ : ℕ}
+@[expose] def dropSendsAdv {PQ PQC α : Type} {ℓ : ℕ}
     (oa : SM.AdversaryComp (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)) α) :
     SM.AdversaryComp (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8)) α :=
   simulateQ (dropSendsImpl PQ PQC ℓ) oa
@@ -209,7 +211,7 @@ theorem isQueryBoundP_dropSendsAdv {PQ PQC α : Type} {ℓ r : ℕ}
 
 /-! ## Tracker-halted runners and `CloseByStateCTrack` -/
 
-def eps0EventTrackHalted {PQ Pt : Type} [Inhabited PQ] (P : Params PQ (BitVec 512)) (K : MlKem)
+@[expose] def eps0EventTrackHalted {PQ Pt : Type} [Inhabited PQ] (P : Params PQ (BitVec 512)) (K : MlKem)
     (ℓ : ℕ) (encPt : Pt → List (BitVec 8)) (lam : Pt) (onImage : List (BitVec 8) → Bool) (qep : ℕ)
     (A : LibAdv PQ (BitVec 512) ℓ) : ProbComp Bool := do
   let b ← ($ᵗ Bool : ProbComp Bool)
@@ -218,7 +220,7 @@ def eps0EventTrackHalted {PQ Pt : Type} [Inhabited PQ] (P : Params PQ (BitVec 51
     (libsignalSessionScheme P ℓ encPt lam) 3 qep (configEpoch0Distinguisher onImage) b A
   return (decide (0 < s.maxAcc .A 0) || s.win) && !(s.corrs.contains (.B, 0))
 
-def simCNoneWinEventTrackHalted {PQ Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt]
+@[expose] def simCNoneWinEventTrackHalted {PQ Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt]
     [SampleableType Pt] (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey)
@@ -230,7 +232,7 @@ def simCNoneWinEventTrackHalted {PQ Pt : Type} [Inhabited PQ] [DecidableEq Pt] [
     (runLibsignalToModularSchemeSimTrackHalted P K Dh encPt encT decT idOf lam qep A)
   return s.win
 
-def stepRTrack {Key St Msg RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def stepRTrack {Key St Msg RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType RCoins] (F : ShaCompress) (K : MlKem)
     (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C)
     (q : (SM.spec St Msg (BitVec 512) C).Domain) (s : GameState St Msg C)
@@ -239,7 +241,7 @@ def stepRTrack {Key St Msg RCoins C : Type} [DecidableEq Msg] [DecidableEq C]
       KemFailTrackBridge.KemFailSessionTrack F C) :=
   ((KemFailTrackBridge.oracleImplRTrackHalted F K sm Δ qep cfg q).run s).run stTr
 
-def runRContTrack {Key St Msg RCoins C α : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def runRContTrack {Key St Msg RCoins C α : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType RCoins] (F : ShaCompress) (K : MlKem)
     (sm : SMSchemeR Key St Msg (BitVec 512) RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C)
     (oa : SM.AdversaryComp St Msg (BitVec 512) C α) (s : GameState St Msg C)
@@ -250,7 +252,7 @@ def runRContTrack {Key St Msg RCoins C α : Type} [DecidableEq Msg] [DecidableEq
     KemFailTrackBridge.oracleImplRTrackHalted F K sm Δ qep cfg
   ((simulateQ impl oa).run s).run stTr
 
-def stepSimCEagerSendTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
+@[expose] def stepSimCEagerSendTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
     [Inhabited PQ] (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (_decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (_k : Option ℕ)
@@ -288,7 +290,7 @@ def stepSimCEagerSendTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [Sampleable
       updateAllEagerCoins x.1.base.mir x'.1.base.mir (fun _ => false) ec >>= fun ec' =>
       pure (z.1.1, ((x', tr'), ec'))
 
-def stepSimCEagerDeliverTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
+@[expose] def stepSimCEagerDeliverTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
     [Inhabited PQ] (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
@@ -303,7 +305,7 @@ def stepSimCEagerDeliverTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [Samplea
       | _, _ => tr
     pure (res.1, ((res.2.1, tr'), res.2.2))
 
-def stepSimCEagerTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
+@[expose] def stepSimCEagerTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
     [Inhabited PQ] (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
@@ -325,7 +327,7 @@ def stepSimCEagerTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType
     stepSimCEagerCorr P ℓ Dh encPt encT decT idOf lam qep k Q x ec >>= fun res =>
       pure (res.1, ((res.2.1, tr), res.2.2))
 
-def simEagerImplCTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
+@[expose] def simEagerImplCTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
     [Inhabited PQ] (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ) :
@@ -334,7 +336,7 @@ def simEagerImplCTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType
   fun q => StateT.mk fun ⟨⟨x, tr⟩, ec⟩ =>
     stepSimCEagerTrack P K ℓ Dh encPt encT decT idOf lam qep k q x tr ec
 
-def runSimCEagerTrack {PQ Pt α : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
+@[expose] def runSimCEagerTrack {PQ Pt α : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
     [Inhabited PQ] (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ) (k : Option ℕ)
@@ -346,7 +348,7 @@ def runSimCEagerTrack {PQ Pt α : Type} [Zero Pt] [DecidableEq Pt] [SampleableTy
     simEagerImplCTrack P K ℓ Dh encPt encT decT idOf lam qep k
   (simulateQ impl oa).run ((x, tr), ec)
 
-def runWinAtCTrack {PQ Pt α : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
+@[expose] def runWinAtCTrack {PQ Pt α : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
     [Inhabited PQ] (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
@@ -364,7 +366,7 @@ def runWinAtCTrack {PQ Pt α : Type} [Zero Pt] [DecidableEq Pt] [SampleableType 
       runSimCEagerTrack P K ℓ Dh encPt encT decT idOf lam qep (some j) oa x tr ec >>=
         fun r => pure (r.2.1.1.1.base.stopped && r.2.1.1.2.1.win)
 
-def runHidCTrack {PQ Pt α : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
+@[expose] def runHidCTrack {PQ Pt α : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
     [Inhabited PQ] (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
     (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
@@ -388,7 +390,7 @@ structure SimInvCXTrack {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableTyp
   htr : stTrR.1 = ofRefTrack trC
   hhw : stTrR.2 = honestWiresOf sC.base.honest
 
-def CloseByStateCTrack {PQ Pt α : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
+@[expose] def CloseByStateCTrack {PQ Pt α : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt]
     [Inhabited PQ] (P : Params PQ (BitVec 512)) (K : MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep q : ℕ)
@@ -1053,81 +1055,6 @@ theorem closeByStateCTrack_inr_same_amb_bind_const_R {α γ : Type} (P : Params 
   · simp only [runRContTrack_inr_bind, hD0, hstepR, bind_assoc, pure_bind]
     exact OracleComp.evalDist_bind_const _ _
   · simp only [runHidCTrack, runSimCEagerTrack_inr_bind, hstepSim, pure_bind]
-
-theorem closeByStateCTrack_inr_same_amb_bind_const_sim {α γ β : Type} (P : Params PQ (BitVec 512))
-    (K : MlKem) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8))
-    (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey)
-    (lam : Pt) (qep q : ℕ) (δ : ℝ≥0∞) (post : α → Bool)
-    (q_sm : (SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512) (List (BitVec 8))).Domain)
-    (cont : (SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512) (List (BitVec 8))).Range q_sm →
-      SM.AdversaryComp (GhostState PQ) (Plain ℓ) (BitVec 512) (List (BitVec 8)) α)
-    (s_R : SM.GameState (GhostState PQ) (Plain ℓ) (List (BitVec 8)))
-    (stTrR : KemFailTrackBridge.KemFailSessionTrack P.C.F (List (BitVec 8)))
-    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ)
-    (trC : KemFailTrackState P.C.F)
-    (s_fig8 : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) (fl : Bool)
-    (ec : Party → BitVec 256) (winBefore : ℕ → Bool)
-    (N : ProbComp γ) (M : ProbComp β)
-    (fR : γ → ((SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512) (List (BitVec 8))).Range q_sm ×
-      SM.GameState (GhostState PQ) (Plain ℓ) (List (BitVec 8))) ×
-      KemFailTrackBridge.KemFailSessionTrack P.C.F (List (BitVec 8)))
-    (fS : γ → (SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512) (List (BitVec 8))).Range q_sm ×
-      ((JointC PQ Pt ℓ × KemFailTrackState P.C.F) × (Party → BitVec 256)))
-    (hans : ∀ x, (fR x).1.1 = (fS x).1)
-    (hD0 : stepRTrack P.C.F K (libsignalSessionScheme P ℓ encPt lam) 3 qep
-        (configEpoch0Distinguisher (ratchetKeyAdmissible P.codec decT encT)) q_sm s_R stTrR =
-      stepRTrack P.C.F K (libsignalSessionScheme P ℓ encPt lam) 3 qep
-        (configR1OnCurve (ratchetKeyAdmissible P.codec decT encT)) q_sm s_R stTrR)
-    (hstepR : stepRTrack P.C.F K (libsignalSessionScheme P ℓ encPt lam) 3 qep
-        (configR1OnCurve (ratchetKeyAdmissible P.codec decT encT)) q_sm s_R stTrR =
-      N >>= fun x => pure (fR x))
-    (hstepSim : stepSimCEagerTrack P K ℓ Dh encPt encT decT idOf lam qep none q_sm
-        (sC, s_fig8, fl) trC ec =
-      N >>= fun x => M >>= fun _ => pure (fS x))
-    (hstepWin : ∀ idx, ¬ idx < sC.base.amb →
-      stepSimCEagerTrack P K ℓ Dh encPt encT decT idOf lam qep (some idx) q_sm
-        (sC, s_fig8, fl) trC ec =
-        N >>= fun x => M >>= fun _ => pure (fS x))
-    (hamb : ∀ x, (fS x).2.1.1.1.base.amb = sC.base.amb)
-    (hrem : ∀ x, remWin qep (fS x).2.1.1.1.base.mir ≤ remWin qep sC.base.mir)
-    (hcont : ∀ x, CloseByStateCTrack P K ℓ Dh encPt encT decT idOf lam qep q δ post
-      (cont (fS x).1) (fR x).1.2 (fR x).2 (fS x).2.1.1.1 (fS x).2.1.2 (fS x).2.1.1.2.1
-      (fS x).2.1.1.2.2 (fS x).2.2 winBefore) :
-    CloseByStateCTrack P K ℓ Dh encPt encT decT idOf lam qep q δ post
-      (liftM (OracleSpec.query
-        (spec := unifSpec + SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512) (List (BitVec 8)))
-        (.inr q_sm)) >>= cont)
-      s_R stTrR sC trC s_fig8 fl ec winBefore := by
-  unfold CloseByStateCTrack
-  refine closeByRefinesH_congr_all ?_ ?_ ?_ ?_ ?_
-    (closeByRefinesH_bind (q + 1) (stepSlack P encPt Dh q qep δ (remWin qep sC.base.mir)) N
-      (fun x => closeByRefinesH_mono_d (stepSlack_mono P encPt Dh q qep δ (hrem x)) (hcont x)))
-  · simp only [runRContTrack_inr_bind, hstepR, bind_assoc, pure_bind, hans]
-  · simp only [runSimCEagerTrack_inr_bind, hstepSim, bind_assoc, pure_bind]
-    refine evalDist_bind_congr N _ _ fun x => ?_
-    exact OracleComp.evalDist_bind_const _ _
-  · intro idx _
-    unfold runWinAtCTrack
-    cases idx with
-    | zero =>
-      rw [runSimCEagerTrack_inr_bind, hstepSim]
-      simp only [bind_assoc, pure_bind]
-      refine evalDist_bind_congr N _ _ fun x => ?_
-      exact OracleComp.evalDist_bind_const _ _
-    | succ j =>
-      dsimp only
-      simp only [hamb]
-      split
-      · exact (OracleComp.evalDist_bind_const _ _).symm
-      · rename_i hnot
-        rw [runSimCEagerTrack_inr_bind, hstepWin j hnot]
-        simp only [bind_assoc, pure_bind]
-        refine evalDist_bind_congr N _ _ fun x => ?_
-        exact OracleComp.evalDist_bind_const _ _
-  · simp only [runRContTrack_inr_bind, hD0, hstepR, bind_assoc, pure_bind, hans]
-  · simp only [runHidCTrack, runSimCEagerTrack_inr_bind, hstepSim, bind_assoc, pure_bind]
-    refine evalDist_bind_congr N _ _ fun x => ?_
-    exact OracleComp.evalDist_bind_const _ _
 
 end Combinators
 

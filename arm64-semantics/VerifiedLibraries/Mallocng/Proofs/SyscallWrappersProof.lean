@@ -594,9 +594,12 @@ theorem step_svc_mremap_tight {prog : Program} {svc : State → State}
     (hposOld : 0 < oldLen) (hdvdOld : 4096 ∣ oldLen) (hdvdAddr : 4096 ∣ oldAddr.toNat)
     (holdFit : oldAddr.toNat + oldLen ≤ 2 ^ 48)
     (hposNew : 0 < newRawLen) (hmaxNew : newRawLen ≤ 2 ^ 64 - 4096)
-    (hfail : SepWP prog target_pc
-      ((s.nextOracle.writeReg64 .x0 (-12#64)).setPC (pc + 4#64))
-      ((oldAddr ↦ₛ oldBs) ∗ memMapped oldAddr oldLen ∗ P) post oom)
+    (hfail : ∀ (err : Nat) (sFail : State),
+      1 ≤ err → err ≤ 4095 →
+      (sFail = (s.writeReg64 .x0 (-BitVec.ofNat 64 err)).setPC (pc + 4#64) ∨
+       sFail = (s.nextOracle.writeReg64 .x0 (-BitVec.ofNat 64 err)).setPC (pc + 4#64)) →
+      SepWP prog target_pc sFail
+        ((oldAddr ↦ₛ oldBs) ∗ memMapped oldAddr oldLen ∗ P) post oom)
     (hok : ∀ (newBase : BitVec 64),
       newBase ≠ 0#64 → 4096 ∣ newBase.toNat → newBase.toNat + pageAlignUp newRawLen ≤ 2 ^ 48 →
       SepWP prog target_pc
@@ -635,18 +638,31 @@ theorem step_svc_mremap_tight {prog : Program} {svc : State → State}
     exact Satisfies.allAnon_of_memMapped hm_map
   have hstep := (hSvc s).2.2.2.2 hx8 hflags halMod (by omega) (by omega)
     (by unfold PAGE_SIZE; omega) (by rwa [holdAddr, halOld]) hrw hanon
-  rcases hstep with hsvc_fail | ⟨hphysLt, hsvc_oom⟩ | ⟨newBase, hne, hnbMod, hnbFit, hnbMap, hsvc_ok⟩
-  · have heval : prog.evalInst (.system false 0#16) s = svc s := by
-      rw [evalInst_svc0_prog hProgSvc]
-      · rw [hsvc_fail]; exact Memory.KeepsFrozen.refl _
-      · rw [hsvc_fail]; simp [arm64_norm]
-      · rw [hsvc_fail]; simp [arm64_norm]
-    rw [heval, hsvc_fail]
-    have hst : ((s.nextOracle).writeReg64 Reg.x0 (-ENOMEM)).advancePC =
-        (s.nextOracle.writeReg64 .x0 (-12#64)).setPC (pc + 4#64) := by
-      cases s; simp [ENOMEM, State.nextOracle, State.writeReg64, State.advancePC, State.setPC] at hpc ⊢
-      exact hpc
-    rw [hst]; exact SepWP.to_reaches_pc hfail hm
+  rcases hstep with ⟨err, herr1, herr4095, hsvc_fail⟩ | ⟨hphysLt, hsvc_oom⟩ |
+      ⟨newBase, hne, hnbMod, hnbFit, hnbMap, hsvc_ok⟩
+  · rcases hsvc_fail with hsvc_fail | hsvc_fail
+    · have heval : prog.evalInst (.system false 0#16) s = svc s := by
+        rw [evalInst_svc0_prog hProgSvc]
+        · rw [hsvc_fail]; exact Memory.KeepsFrozen.refl _
+        · rw [hsvc_fail]; simp [arm64_norm]
+        · rw [hsvc_fail]; simp [arm64_norm]
+      rw [heval, hsvc_fail]
+      have hst : (s.writeReg64 Reg.x0 (-BitVec.ofNat 64 err)).advancePC =
+          (s.writeReg64 .x0 (-BitVec.ofNat 64 err)).setPC (pc + 4#64) := by
+        cases s; simp [State.writeReg64, State.advancePC, State.setPC] at hpc ⊢
+        exact hpc
+      rw [hst]; exact SepWP.to_reaches_pc (hfail err _ herr1 herr4095 (Or.inl rfl)) hm
+    · have heval : prog.evalInst (.system false 0#16) s = svc s := by
+        rw [evalInst_svc0_prog hProgSvc]
+        · rw [hsvc_fail]; exact Memory.KeepsFrozen.refl _
+        · rw [hsvc_fail]; simp [arm64_norm]
+        · rw [hsvc_fail]; simp [arm64_norm]
+      rw [heval, hsvc_fail]
+      have hst : ((s.nextOracle).writeReg64 Reg.x0 (-BitVec.ofNat 64 err)).advancePC =
+          (s.nextOracle.writeReg64 .x0 (-BitVec.ofNat 64 err)).setPC (pc + 4#64) := by
+        cases s; simp [State.nextOracle, State.writeReg64, State.advancePC, State.setPC] at hpc ⊢
+        exact hpc
+      rw [hst]; exact SepWP.to_reaches_pc (hfail err _ herr1 herr4095 (Or.inr rfl)) hm
   · have heval : prog.evalInst (.system false 0#16) s = svc s := by
       rw [evalInst_svc0_prog hProgSvc]
       · rw [hsvc_oom]; exact Memory.KeepsFrozen.refl _
@@ -694,9 +710,12 @@ theorem step_svc_mremap {prog : Program} {svc : State → State}
     (hposOld : 0 < oldLen) (hdvdOld : 4096 ∣ oldLen) (hdvdAddr : 4096 ∣ oldAddr.toNat)
     (holdFit : oldAddr.toNat + oldLen ≤ 2 ^ 48)
     (hposNew : 0 < newRawLen) (hmaxNew : newRawLen ≤ 2 ^ 64 - 4096)
-    (hfail : SepWP prog target_pc
-      ((s.nextOracle.writeReg64 .x0 (-12#64)).setPC (pc + 4#64))
-      ((oldAddr ↦ₛ oldBs) ∗ memMapped oldAddr oldLen ∗ P) post oom)
+    (hfail : ∀ (err : Nat) (sFail : State),
+      1 ≤ err → err ≤ 4095 →
+      (sFail = (s.writeReg64 .x0 (-BitVec.ofNat 64 err)).setPC (pc + 4#64) ∨
+       sFail = (s.nextOracle.writeReg64 .x0 (-BitVec.ofNat 64 err)).setPC (pc + 4#64)) →
+      SepWP prog target_pc sFail
+        ((oldAddr ↦ₛ oldBs) ∗ memMapped oldAddr oldLen ∗ P) post oom)
     (hok : ∀ (newBase : BitVec 64),
       newBase ≠ 0#64 → 4096 ∣ newBase.toNat → newBase.toNat + pageAlignUp newRawLen ≤ 2 ^ 48 →
       SepWP prog target_pc

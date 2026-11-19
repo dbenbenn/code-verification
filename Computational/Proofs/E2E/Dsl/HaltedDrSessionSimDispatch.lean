@@ -9,11 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.DrSessionSim
 public import Computational.Proofs.E2E.Dsl.LocalSessionStep -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
 public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
 public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.ComposedKeyIndHop
+import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.Soundness
 
 /-!
 # Pure Driver Wrapper and Receive-Tail Oracle Bridge for `HaltedDrSessionSim`

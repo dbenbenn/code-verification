@@ -11,7 +11,7 @@ module
 
 public import Symbolic.Specifications.Refinement.Statement
 public import Symbolic.Proofs.SpecLemmas.LeakableSecretProofDefs
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 
 /-!
 # Move-Based CLI Refinement Statement
@@ -21,7 +21,7 @@ explanation predicates (`ExplainsCli`), collision excuses, and the move-based re
 statement `CompRefinesCliMoves`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +39,7 @@ open CryptoVerification.SignalSession (Inputs Outcome CliRun Cmd PublicBundle fi
 
 /-- Entry events emitted by a CLI call `c`: its input (`recv` of the parsed bundle blob or stdin,
 or `pt` of stdin) followed by `.rng c.coins`. -/
-def cliEntryEvents (c : CliCall) : List MachineEvent :=
+@[expose] def cliEntryEvents (c : CliCall) : List MachineEvent :=
   (match c.cmd with
    | .init _ _ => [.recv (((parseBundleFiles (filesOf c.bundle)).map bundleBlob).getD [])]
    | .send _ => [.pt c.stdin]
@@ -47,7 +47,7 @@ def cliEntryEvents (c : CliCall) : List MachineEvent :=
   [.rng c.coins]
 
 /-- Exit events emitted by a CLI call `c` with exit code `code` and stdout `out`. -/
-def cliExitEvents (c : CliCall) (code : Nat) (out : HwBytes) : List MachineEvent :=
+@[expose] def cliExitEvents (c : CliCall) (code : Nat) (out : HwBytes) : List MachineEvent :=
   match code, c.cmd with
   | 0, .send _ => [.send out]
   | 0, .recv _ => [.accept out]
@@ -87,7 +87,7 @@ inductive CliTracesMoves (Rel : Inputs → Option Outcome → Prop) (interp : Ex
       CliTracesMoves Rel interp r t (leaks ++ cliEntryEvents c) [(c.party, false)]
 
 /-- Agreement of `calls` with caller schedule `who` and non-final call outcome schedule `ok`. -/
-def CallsMatchSchedules (calls : List (Participant × Bool)) (who : List Participant) (ok : Nat → Bool) :
+@[expose] def CallsMatchSchedules (calls : List (Participant × Bool)) (who : List Participant) (ok : Nat → Bool) :
     Prop :=
   calls.map Prod.fst <+: who ∧ ∀ k p b, k + 1 < calls.length → calls[k]? = some (p, b) → ok k = b
 
@@ -95,7 +95,7 @@ def CallsMatchSchedules (calls : List (Participant × Bool)) (who : List Partici
 
 /-- `OutcomeFaithful` strengthened at CLI granularity: every call in `ms` with `ok k = true`
 completes in the model via `send`, `accept`, or `AliceDone`. -/
-def OutcomeFaithfulCli (r : ProtocolSetup) (ok : Nat → Bool) (ms : List Move) : Prop :=
+@[expose] def OutcomeFaithfulCli (r : ProtocolSetup) (ok : Nat → Bool) (ms : List Move) : Prop :=
   OutcomeFaithful r ok ms ∧
     ∀ (i : Nat) (m : Move), ms[i]? = some m →
       let tr := runTraceMoves r (ms.take i)
@@ -106,7 +106,7 @@ def OutcomeFaithfulCli (r : ProtocolSetup) (ok : Nat → Bool) (ms : List Move) 
         (eventIdx isAliceDone tr (m.next tr)).isSome
 
 /-- Every `.single`-layout `.rng` entry of a `.recv`-headed move in `ms` concretizes to 32 bytes. -/
-def RngLengthsFaithfulCli (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def RngLengthsFaithfulCli (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) : Prop :=
   ∀ (i : Nat) (m : Move), ms[i]? = some m →
     let tr := runTraceMoves r (ms.take i)
@@ -117,12 +117,12 @@ def RngLengthsFaithfulCli (interp : ExternInterpretation) (r : ProtocolSetup) (S
       (gamma interp S g t).length = 32
 
 /-- CLI-granularity prefix explanation of `σ₁` via coin split `τ₁` and model run `(g, ms)`. -/
-def ExplainsCli (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (who : List Participant)
+@[expose] def ExplainsCli (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (who : List Participant)
     (ok : Nat → Bool) (σ₁ τ₁ : List MachineEvent) (g : Ghost) (ms : List Move) : Prop :=
   CoinSplit σ₁ τ₁ ∧ MatchedPrefix interp r S who g ms τ₁ ∧ OutcomeFaithfulCli r ok ms ∧
     RngLengthsFaithfulCli interp r S g ms
 
-def ModelAcceptsTermAfterAttackerSendsMoves (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (who : List Participant)
+@[expose] def ModelAcceptsTermAfterAttackerSendsMoves (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (who : List Participant)
     (ok : Nat → Bool) (g : Ghost) (ms : List Move) (τ₁ : List MachineEvent) (e : MachineEvent)
     (σ₂ : List MachineEvent) (t : DY.Bytes) : Prop :=
   ∃ τ₂, CoinSplit σ₂ τ₂ ∧ ModelAcceptsTermAfterCoinSplit interp r S who ok g ms τ₁ e τ₂ t
@@ -130,7 +130,7 @@ def ModelAcceptsTermAfterAttackerSendsMoves (interp : ExternInterpretation) (r :
 /-- Under prefix explanation `(τ₁', g', ms')`, either every representation of `b` hits a receive or
 reselection collision, or some representation is accepted and every accepted representation hits
 `RecvCollision`. -/
-def RepresentationsCollideOrAcceptedCollideMoves (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def RepresentationsCollideOrAcceptedCollideMoves (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (who : List Participant) (ok : Nat → Bool)
     (τ₁' : List MachineEvent) (g' : Ghost) (ms' : List Move)
     (e : MachineEvent) (σ₂ : List MachineEvent) (b : HwBytes) : Prop :=
@@ -141,7 +141,7 @@ def RepresentationsCollideOrAcceptedCollideMoves (interp : ExternInterpretation)
 
 /-- Received `SignalMessage` body `b` has a term representation and triggers
 `RepresentationsCollideOrAcceptedCollideMoves` under every read-collision-free explanation of `σ₁`. -/
-def SignalMsgAcceptedOnlyViaCollisionMoves (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def SignalMsgAcceptedOnlyViaCollisionMoves (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (who : List Participant) (ok : Nat → Bool)
     (g : Ghost) (ms : List Move) (σ₁ : List MachineEvent)
     (e : MachineEvent) (σ₂ : List MachineEvent) (b : HwBytes) : Prop :=
@@ -151,7 +151,7 @@ def SignalMsgAcceptedOnlyViaCollisionMoves (interp : ExternInterpretation) (r : 
       RepresentationsCollideOrAcceptedCollideMoves interp r S who ok τ₁' g' ms' e σ₂ b
 
 /-- Collision or `KyberMismatch` excuse for a new pre-key message `p` after CLI prefix `σ₁`. -/
-def PreKeyStartCollidesOrRejectsMoves (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PreKeyStartCollidesOrRejectsMoves (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) (g : Ghost) (ms : List Move)
     (σ₁ : List MachineEvent) (b : HwBytes) (p : PreKeyFields) : Prop :=
   (∃ x, x ∈ preKeyRepresentations interp r S g ms b) ∧
@@ -161,12 +161,12 @@ def PreKeyStartCollidesOrRejectsMoves (interp : ExternInterpretation) (r : Proto
         ∀ x ∈ preKeyRepresentations interp r S g' ms' b, BobSessionStartCollidesOrImplicitRejects interp r S g' ms' p x)
 
 /-- Ghosts sharing `g.σ` that explain some coin split `τ₁'` of `σ₁` under `ms`. -/
-def PrefixExplainingGhostsMoves (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def PrefixExplainingGhostsMoves (interp : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (g : Ghost) (ms : List Move) (σ₁ : List MachineEvent) : Set Ghost :=
   {g' | g'.σ = g.σ ∧ ∃ τ₁', CoinSplit σ₁ τ₁' ∧ MatchedPrefix interp r S who g' ms τ₁'}
 
 /-- Next hardware event `e` after prefix `σ₁` triggers a cryptographic collision relative to `(g, ms)`. -/
-def NextEventCollidesMoves (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def NextEventCollidesMoves (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (who : List Participant) (ok : Nat → Bool)
     (g : Ghost) (ms : List Move) (σ₁ : List MachineEvent) (e : MachineEvent)
     (σ₂ : List MachineEvent) : Prop :=
@@ -192,7 +192,7 @@ def NextEventCollidesMoves (interp : ExternInterpretation) (r : ProtocolSetup)
   | _ => False
 
 /-- Existence of an explained CLI prefix `σ₁` of `σ` whose next event triggers `NextEventCollidesMoves`. -/
-def CollisionAfterExplainedPrefixMoves (interp : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def CollisionAfterExplainedPrefixMoves (interp : ExternInterpretation) (r : ProtocolSetup)
     (S : OpaqueSymbolSemantics) (who : List Participant) (ok : Nat → Bool)
     (σ : List MachineEvent) : Prop :=
   ∃ (σ₁ : List MachineEvent) (e : MachineEvent) (σ₂ τ₁ : List MachineEvent) (g : Ghost)
@@ -205,7 +205,7 @@ def CollisionAfterExplainedPrefixMoves (interp : ExternInterpretation) (r : Prot
 
 /-- Move-based whole-protocol CLI refinement from initial directories `dirs`, parameterized by run
 relation `R`. -/
-def CompRefinesCliRMoves {ω : Type} (Agree : ExternInterpretation → ω → Prop)
+@[expose] def CompRefinesCliRMoves {ω : Type} (Agree : ExternInterpretation → ω → Prop)
     (R : ExternInterpretation → ω → Inputs → Option Outcome → Prop)
     (dirs : ExternInterpretation → ProtocolSetup → Participant → DirectorySnapshot) : Prop :=
   ∀ interp : ExternInterpretation, ExternContractsHoldCli interp →
@@ -218,7 +218,7 @@ def CompRefinesCliRMoves {ω : Type} (Agree : ExternInterpretation → ω → Pr
         CollisionAfterExplainedPrefixMoves interp r S who ok τ
 
 /-- `CompRefinesCliRMoves` instantiated at `initDirs`. -/
-def CompRefinesCliMoves {ω : Type} (Agree : ExternInterpretation → ω → Prop)
+@[expose] def CompRefinesCliMoves {ω : Type} (Agree : ExternInterpretation → ω → Prop)
     (R : ExternInterpretation → ω → Inputs → Option Outcome → Prop) : Prop :=
   CompRefinesCliRMoves Agree R initDirs
 

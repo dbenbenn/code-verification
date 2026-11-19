@@ -20,7 +20,7 @@ and 1-byte append for `1 ≤ ntail ≤ 6`), `RandomState::hash_one::<&ProtocolAd
 (on `addrBorrowAt` and `protocolAddressAt`), and the `RawTable::reserve_rehash` closures.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.SipHashBin
 
@@ -41,7 +41,7 @@ structure SipWriteGhost where
 
 /-- Specification of `SipHasher13::write` for a 36-byte slice starting from `h.ntail = 0`
 (4 full 8-byte blocks plus a 4-byte tail). -/
-def sipWrite36Spec : Spec SipWriteGhost where
+@[expose] def sipWrite36Spec : Spec SipWriteGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.hAddr ∧ s.readReg64 .x1 = x.msgPtr ∧
       s.readReg64 .x2 = 36#64 ∧ x.msg.length = 36 ∧
@@ -59,7 +59,7 @@ structure SipWriteU8Ghost where
   b : BitVec 8
 
 /-- Specification of `SipHasher13::write` for a 1-byte slice when `1 ≤ h.ntail ≤ 6`. -/
-def sipWriteU8Spec : Spec SipWriteU8Ghost where
+@[expose] def sipWriteU8Spec : Spec SipWriteU8Ghost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.hAddr ∧ s.readReg64 .x1 = x.bPtr ∧
       s.readReg64 .x2 = 1#64 ∧ 1 ≤ x.h.ntail ∧ x.h.ntail ≤ 6 ∧
@@ -81,7 +81,7 @@ structure HashOneAddrBorrowGhost where
   dev : BitVec 8
 
 /-- Borrowed-footprint specification of `hash_one::<&ProtocolAddress>` for a 36-byte name. -/
-def hashOneAddrBorrow36Spec : Spec HashOneAddrBorrowGhost where
+@[expose] def hashOneAddrBorrow36Spec : Spec HashOneAddrBorrowGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.k0 ∧ s.readReg64 .x1 = x.k1 ∧
       s.readReg64 .x2 = x.addr ∧ x.name.length = 36⌝ ∗
@@ -100,7 +100,7 @@ structure HashOneAddrGhost where
   g : AddrGhost
 
 /-- Full `protocolAddressAt` specification of `hash_one::<&ProtocolAddress>` for a 36-byte name. -/
-def hashOneAddr36Spec (A : RustAlloc) : Spec HashOneAddrGhost where
+@[expose] def hashOneAddr36Spec (A : RustAlloc) : Spec HashOneAddrGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.k0 ∧ s.readReg64 .x1 = x.k1 ∧
       s.readReg64 .x2 = x.addr ∧ x.g.name.bytes.length = 36⌝ ∗
@@ -128,15 +128,15 @@ structure RehashClosureGhost where
   dev : BitVec 8
 
 /-- Downward 64-byte bucket address `dataEnd - (idx <<< 6) - 0x40` in `RawTable<(ProtocolAddress, IdentityKey)>`. -/
-def idBucketAddr (dataEnd idx : BitVec 64) : BitVec 64 :=
+@[expose] def idBucketAddr (dataEnd idx : BitVec 64) : BitVec 64 :=
   (dataEnd - (idx <<< 6#64)) - 0x40#64
 
 /-- Downward 400-byte bucket address `dataEnd - idx * 0x190 - 0x190` in `RawTable<(ProtocolAddress, SessionRecord)>`. -/
-def sessionBucketAddr (dataEnd idx : BitVec 64) : BitVec 64 :=
+@[expose] def sessionBucketAddr (dataEnd idx : BitVec 64) : BitVec 64 :=
   (dataEnd + (0#64 - idx * 0x190#64)) - 0x190#64
 
 /-- Specification of the `RawTable<(ProtocolAddress, IdentityKey)>::reserve_rehash` hasher closure. -/
-def rehashIdClosure36Spec : Spec RehashClosureGhost where
+@[expose] def rehashIdClosure36Spec : Spec RehashClosureGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.closurePtr ∧ s.readReg64 .x1 = x.tablePtr ∧
       s.readReg64 .x2 = x.idx ∧ x.name.length = 36⌝ ∗
@@ -156,7 +156,7 @@ def rehashIdClosure36Spec : Spec RehashClosureGhost where
       stackAt s0.sp rehashIdClosureStack
 
 /-- Specification of the `RawTable<(ProtocolAddress, SessionRecord)>::reserve_rehash` hasher closure. -/
-def rehashSessionClosure36Spec : Spec RehashClosureGhost where
+@[expose] def rehashSessionClosure36Spec : Spec RehashClosureGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.closurePtr ∧ s.readReg64 .x1 = x.tablePtr ∧
       s.readReg64 .x2 = x.idx ∧ x.name.length = 36⌝ ∗

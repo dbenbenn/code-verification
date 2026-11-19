@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B3
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 import Computational.Proofs.SignalPqxdh.Security.SigHop
 import VCVio.CryptoFoundations.SecExp.Measure
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
 /-!
 # `Auth` `IND-CPA` Endpoint Equivalence and `AuthSubHops4to5Bundle` Assembly
 
@@ -25,7 +26,7 @@ derives the `G4 → G5` `IND-CPA` bound `authHopG4G5_le`, and combines it with a
 `INT-CTXT` reduction to assemble `AuthSubHops4to5Bundle`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxHeartbeats 400000
 open Classical
@@ -1843,7 +1844,7 @@ private theorem evalDist_finalizeAuthGame_eraseAuthCpa_beq (S : Setup) (P : Prim
   · simp only [↓reduceIte]
     exact evalDist_uniformBool_beq_local secb
 
-noncomputable def authCpaCoinCutoffExp (cut : Nat) (S : Setup) (P : Primitives)
+def authCpaCoinCutoffExp (cut : Nat) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let z ← if secb then authCpaCutoffExp cut S P A else authCpaCutoffExp S.N_send_tot S P A
@@ -1930,7 +1931,7 @@ theorem authHopG3_8G5_of_int (S : Setup)
 
 /-- Assembles `AuthSubHops4to5Bundle S` from `aeadCpaReductionAuthFixed S` and a multi-key
     `INT-CTXT` reduction. -/
-def authSubHops4to5Bundle_of_int (S : Setup)
+@[expose] def authSubHops4to5Bundle_of_int (S : Setup)
     (int : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → AeadMuIntCtxtAdv)
     (hIntQ : ∀ b A, (int b A).q_dec ≤ S.N_recv_tot)
     (hIntEncQ : ∀ b A, (int b A).q_enc ≤ S.N_send_tot)

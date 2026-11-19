@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlaced
+import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceId
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -19,6 +19,8 @@ import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEq
 meta import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEq -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` Relocatable Contracts for `<IdentityKey>::is_same_account` (Block `17`)
@@ -27,7 +29,7 @@ Proves `RecvWireSameAccountBudget.isSameAccountDistinctRawSpec` and `isSameAccou
 on Block `17` (`<IdentityKey>::is_same_account`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -22,7 +22,7 @@ Provides stack-frame splitting (`0xf0`-byte frame with 104-byte temporary `Chain
 `prostSSAt` `receiver_chains` focus lemmas for `SessionStructure::merge_field` tag `7`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeSeed
 
@@ -44,7 +44,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 abbrev mfSubStack_receiverChains : Nat := 16144
 
 /-- The 9 saved register words (plus 1 untouched word `w56` at `sp0 - 56#64`) at `[sp0 - 80#64 .. sp0)`. -/
-def mfSavedRegs_receiverChains (sp0 : BitVec 64) (s0 : State) (w56 : BitVec 64) : SepProp :=
+@[expose] def mfSavedRegs_receiverChains (sp0 : BitVec 64) (s0 : State) (w56 : BitVec 64) : SepProp :=
   ((sp0 - 80#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp0 - 72#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp0 - 64#64) ↦₆₄ s0.readReg64 .x25) ∗
@@ -58,7 +58,7 @@ def mfSavedRegs_receiverChains (sp0 : BitVec 64) (s0 : State) (w56 : BitVec 64) 
 
 /-- Untouched padding in the 240-byte stack frame outside the 104-byte `Chain` slot `[sp' + 8 .. sp' + 0x70)`
 and the 80-byte saved-register area `[sp' + 0xa0 .. sp' + 0xf0)`. -/
-def mfFramePad_receiverChains (sp0 : BitVec 64) : SepProp :=
+@[expose] def mfFramePad_receiverChains (sp0 : BitVec 64) : SepProp :=
   memRegion (sp0 - 240#64) 8 ∗ memRegion (sp0 - 128#64) 48
 
 theorem sp_sub_240_aligned_receiverChains {sp0 : BitVec 64} (h : sp0 &&& 15#64 = 0#64) :
@@ -371,7 +371,7 @@ theorem move_bytes_pair_receiverChains {P1 P2 : BitVec 64 → SepProp} {n1 n2 : 
   exact sepConj_mono (hmov1 b) (hmov2 (b + off))
 
 /-- The 32-byte `chain_key` tail of `prostChainAt` at `a` (= `chain + 0x48`). -/
-def prostCkAt_receiverChains (A : RustAlloc) (a : BitVec 64) :
+@[expose] def prostCkAt_receiverChains (A : RustAlloc) (a : BitVec 64) :
     Option (BitVec 32 × List (BitVec 8)) → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 24
   | some (i, k) => vecU8 A a k ∗ ((a + 0x18#64) ↦₃₂ i) ∗ memRegion (a + 0x1c#64) 4
@@ -553,7 +553,7 @@ theorem memRegion104_eq_exists_chunks104_6QWAt_receiverChains (a : BitVec 64) :
 /-! ## `prostSSAt` `receiver_chains` Focus -/
 
 /-- All of `prostSSAt A ss v` except the `receiver_chains` field at `ss + 0x48#64`. -/
-def prostSSRest_receiverChains (A : RustAlloc) (ss : BitVec 64) (v : SSV) : SepProp :=
+@[expose] def prostSSRest_receiverChains (A : RustAlloc) (ss : BitVec 64) (v : SSV) : SepProp :=
   vecU8 A ss v.lik ∗ vecU8 A (ss + 0x18#64) v.rik ∗ vecU8 A (ss + 0x30#64) v.root ∗
     vecU8 A (ss + 0x60#64) [] ∗ vecU8 A (ss + 0x78#64) [] ∗
     (match v.sender with
@@ -618,20 +618,6 @@ theorem memRegion_cap_nonzero_split_receiverChains (cap ptr : BitVec 64)
   have hsplit := memRegion_split ptr 104 ((cap.toNat - 1) * 104) (by omega)
   rw [← hmul, show BitVec.ofNat 64 104 = 104#64 from rfl] at hsplit
   exact hsplit
-
-theorem growOne_cap0_pre_intro_receiverChains (ss ptr : BitVec 64) (s : State)
-    (hx0 : s.readReg64 .x0 = ss + 0x48#64) (hptr : ptr ≠ 0#64) :
-    ((ss + 0x48#64) ↦₆₄ 0#64) ∗ ((ss + 0x50#64) ↦₆₄ ptr) ∗ stackAt s.sp 4608 ⊢
-      (CryptoVerification.LibsignalSession.growOneSpec A0).pre (ss + 0x48#64, 0#64, ptr, []) s := by
-  unfold CryptoVerification.LibsignalSession.growOneSpec
-  dsimp only [List.length_nil, BitVec.toNat_ofNat, Nat.zero_mul]
-  have e50 : ss + 0x48#64 + 8#64 = ss + 0x50#64 := by rw [BitVec.add_assoc]; rfl
-  have hpool : A0.pool = emp := rfl
-  have hif : (if (0#64 : BitVec 64) = 0 then emp else A0.live ptr 0 8 ∗ (ptr ↦ₛ [])) = emp := rfl
-  rw [e50, hpool, hif]
-  simp only [emp_sepConj]
-  refine Entails.pure_right ⟨hx0, rfl, hptr, by decide⟩ ?_
-  exact Entails.of_eq (by ac_rfl)
 
 theorem growOne_cap0_post_elim_receiverChains (ss ptr : BitVec 64) (s0 sf : State) :
     (CryptoVerification.LibsignalSession.growOneSpec A0).post (ss + 0x48#64, 0#64, ptr, []) s0 sf ⊢

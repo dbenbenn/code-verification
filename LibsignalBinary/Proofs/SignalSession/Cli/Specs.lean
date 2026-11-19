@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Kits
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Chain.Defs
 import all Init.Data.String.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 
 /-!
@@ -28,7 +27,7 @@ and `signal_session::stores::decimal` against the pure path and decimal-formatti
   `u32`), returning a fresh `String` with ASCII `decimalText n`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SignalSession.Cli
 
@@ -47,23 +46,6 @@ abbrev decimalName : String := "libsignal_cli::stores::decimal"
 abbrev cliDoReserveName : String :=
   "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#9]"
 
-theorem path_fnOff :
-    libsignalSessionCode.fnOff pathName = num% (ls_off% "libsignal_cli::stores::path") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "libsignal_cli::stores::path")
-
-theorem decimal_fnOff :
-    libsignalSessionCode.fnOff decimalName = num% (ls_off% "libsignal_cli::stores::decimal") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "libsignal_cli::stores::decimal")
-
-theorem cliDoReserve_fnOff :
-    libsignalSessionCode.fnOff cliDoReserveName = num% (ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#9]") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#9]")
-
-/-! ## `signal_session::stores::path` -/
-
 /-- Ghost arguments for `signal_session::stores::path`: two input slices (each read-only or owned
 according to its `ro` flag), output sret pointer, and `do_reserve_and_handle` stack budget `resStack`. -/
 structure PathGhost where
@@ -74,26 +56,6 @@ structure PathGhost where
   name : List (BitVec 8)
   nameRo : Bool
   ret : BitVec 64
-
-/-- Specification of `signal_session::stores::path`: writes a fresh owned `String` holding
-`dir ++ "/" ++ name` to `x0`, returns both input slices (`bytesAt ro`), and panics only on
-allocation failure. -/
-def pathSpec (A : RustAlloc) (img : Obj.Image) (stk : Nat) : Spec PathGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.dirA ∧
-          (s.readReg64 .x2).toNat = x.dir.length ∧ s.readReg64 .x3 = x.nameA ∧
-          (s.readReg64 .x4).toNat = x.name.length ∧
-          x.dir.length < 2 ^ 32 ∧ x.name.length < 2 ^ 32⌝ ∗
-          SpqrV1.ChainProofs.bytesAt x.dirRo x.dirA x.dir ∗
-          SpqrV1.ChainProofs.bytesAt x.nameRo x.nameA x.name ∗ memRegion x.ret 24 ∗
-          stackAt s.sp stk ∗ A.pool
-      post := fun x s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗ vecU8 A x.ret (x.dir ++ [0x2f#8] ++ x.name) ∗
-          SpqrV1.ChainProofs.bytesAt x.dirRo x.dirA x.dir ∗
-          SpqrV1.ChainProofs.bytesAt x.nameRo x.nameA x.name ∗ stackAt s0.sp stk ∗ A.pool
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
 
 theorem utf8_slash : utf8 "/" = [0x2f#8] := by decide +kernel
 
@@ -107,19 +69,5 @@ theorem pathOf_eq_path {dir : List (BitVec 8)} (h : dir ≠ []) (name : List (Bi
 structure DecimalGhost where
   n : BitVec 32
   ret : BitVec 64
-
-/-- Specification of `signal_session::stores::decimal`: writes a fresh owned `String` holding
-`decimalText n` to `x0`, requiring `10 * 0x50 + resStack` stack bytes, and panics only on
-allocation failure. -/
-def decimalSpec (A : RustAlloc) (img : Obj.Image) (stk : Nat) : Spec DecimalGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ret ∧ s.readReg32 .x1 = x.n⌝ ∗ memRegion x.ret 24 ∗
-          stackAt s.sp stk ∗ A.pool
-      post := fun x s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗ vecU8 A x.ret (decimalText x.n.toNat) ∗
-          stackAt s0.sp stk ∗ A.pool
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
 
 end CryptoVerification.SignalSession.Cli

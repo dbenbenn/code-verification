@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvict
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvict -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
+import ProofLib.Sep
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -22,7 +23,7 @@ Verifies `+0xb98 → +0x3e4`: commits `sender_chain = some ⟨newSenderKey, send
 `segConsumeMsgKeyPC`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Decrypt.DhCommit
 
@@ -148,22 +149,12 @@ theorem elim_memRegion_20 {m : Memory} {base : BitVec 64} {R : SepProp}
 
 theorem pointsTo64_2_entails_memRegion (base : BitVec 64) (v0 v1 : BitVec 64) :
     ((base ↦₆₄ v0) ∗ ((base + 8#64) ↦₆₄ v1)) ⊢ memRegion base 16 := by
-  have h := memRegion_split base 8 8 (by decide)
-  rw [show (8 + 8 : Nat) = 16 from rfl] at h
-  rw [h]
-  exact sepConj_mono (pointsTo64_entails_memRegion base v0)
-    (pointsTo64_entails_memRegion (base + 8#64) v1)
+  sep_interval
 
 theorem pointsTo64_4_entails_memRegion (base : BitVec 64) (v0 v1 v2 v3 : BitVec 64) :
     ((base ↦₆₄ v0) ∗ ((base + 8#64) ↦₆₄ v1) ∗ ((base + 16#64) ↦₆₄ v2) ∗ ((base + 24#64) ↦₆₄ v3)) ⊢
       memRegion base 32 := by
-  have h := memRegion_split base 16 16 (by decide)
-  rw [show (16 + 16 : Nat) = 32 from rfl] at h
-  have h01 := pointsTo64_2_entails_memRegion base v0 v1
-  have h23 := pointsTo64_2_entails_memRegion (base + 16#64) v2 v3
-  rw [show base + 16#64 + 8#64 = base + 24#64 from add_assoc_const _ _ _ _] at h23
-  refine Entails.trans (Entails.of_eq ?_) (Entails.trans (sepConj_mono h01 h23) (Entails.of_eq h.symm))
-  ac_rfl
+  sep_interval
 
 theorem pointsTo64_10_entails_memRegion (base : BitVec 64)
     (v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 : BitVec 64) :
@@ -171,25 +162,7 @@ theorem pointsTo64_10_entails_memRegion (base : BitVec 64)
      ((base + 32#64) ↦₆₄ v4) ∗ ((base + 40#64) ↦₆₄ v5) ∗ ((base + 48#64) ↦₆₄ v6) ∗
      ((base + 56#64) ↦₆₄ v7) ∗ ((base + 64#64) ↦₆₄ v8) ∗ ((base + 72#64) ↦₆₄ v9)) ⊢
       memRegion base 80 := by
-  have h := memRegion_split base 32 48 (by decide)
-  rw [show (32 + 48 : Nat) = 80 from rfl] at h
-  have h2 := memRegion_split (base + 32#64) 32 16 (by decide)
-  rw [show (32 + 16 : Nat) = 48 from rfl,
-      show base + 32#64 + 32#64 = base + 64#64 from add_assoc_const _ _ _ _] at h2
-  have h03 := pointsTo64_4_entails_memRegion base v0 v1 v2 v3
-  have h47 := pointsTo64_4_entails_memRegion (base + 32#64) v4 v5 v6 v7
-  rw [show base + 32#64 + 8#64 = base + 40#64 from add_assoc_const _ _ _ _,
-      show base + 32#64 + 16#64 = base + 48#64 from add_assoc_const _ _ _ _,
-      show base + 32#64 + 24#64 = base + 56#64 from add_assoc_const _ _ _ _] at h47
-  have h89 := pointsTo64_2_entails_memRegion (base + 64#64) v8 v9
-  rw [show base + 64#64 + 8#64 = base + 72#64 from add_assoc_const _ _ _ _] at h89
-  have h49 :
-      (((base + 32#64) ↦₆₄ v4) ∗ ((base + 40#64) ↦₆₄ v5) ∗ ((base + 48#64) ↦₆₄ v6) ∗
-       ((base + 56#64) ↦₆₄ v7)) ∗ (((base + 64#64) ↦₆₄ v8) ∗ ((base + 72#64) ↦₆₄ v9)) ⊢
-      memRegion (base + 32#64) 48 :=
-    Entails.trans (sepConj_mono h47 h89) (Entails.of_eq h2.symm)
-  refine Entails.trans (Entails.of_eq ?_) (Entails.trans (sepConj_mono h03 h49) (Entails.of_eq h.symm))
-  ac_rfl
+  sep_interval
 
 theorem pointsToBytes_rck_take20 (base : BitVec 64) (ck : ChainKey) :
     (((base ↦ₛ (chainKeyBytes ck).take 16) ∗
@@ -231,8 +204,8 @@ theorem vecAt_chains_eq (A : RustAlloc) (sp cap ptr : BitVec 64)
       show sp + 0x38#64 + 16#64 = sp + 0x48#64 from add_assoc_const _ _ _ _]
   ac_rfl
 
-theorem reachesOrPanic_mono {prog : Program} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {img : Obj.Image}
+theorem reachesOrPanic_mono [LibsignalPlacement] {prog : Program} {C : Crypto} {A : RustAlloc}
+    {ctl : BitVec 64} {S : SpqrModel} {img : Unit}
     {x : TryDecryptGhost} {R : SepProp} {s0 s : State} {P Q : State → Prop}
     (h1 : ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s P)
     (h2 : ∀ sf, s.mem.KeepsFrozen sf.mem → sf.symtab = s.symtab → P sf → Q sf) :
@@ -244,8 +217,8 @@ end DhCommitFacts
 open DhCommitFacts
 
 /-- Generic Sub-segment 5 (`+0xb98 → +0x3e4`) parameterized over `prog` and `entry`. -/
-theorem dhCommit_step5_of_wp {prog : Program} {entry : BitVec 64}
-    (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+theorem dhCommit_step5_of_wp [LibsignalPlacement] {prog : Program} {entry : BitVec 64}
+    (img : Unit) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (S : SpqrModel)
     (x : TryDecryptGhost) (pad : List (BitVec 8))
     (sc : SenderChain) (receiverChainKey : ChainKey) (newSenderKey : KeyPair)
@@ -747,34 +720,13 @@ theorem dhCommit_step5_of_wp {prog : Program} {entry : BitVec 64}
        memRegion (sp + 0x14#64) 8 ∗
        ((sp + 0x1c#64) ↦₃₂ msgW)) ⊢
       memRegion sp 0x20 := by
-    have h8 := pointsTo32_entails_memRegion (sp + 0x8#64) sck16
-    have h10 := pointsTo32_entails_memRegion (sp + 0x10#64) rck16
-    have h1c := pointsTo32_entails_memRegion (sp + 0x1c#64) msgW
-    have hs1 := (memRegion_split sp 8 4 (by decide)).symm
-    have hs2 := (memRegion_split sp 12 4 (by decide)).symm
-    have hs3 := (memRegion_split sp 16 4 (by decide)).symm
-    have hs4 := (memRegion_split sp 20 8 (by decide)).symm
-    have hs5 := (memRegion_split sp 28 4 (by decide)).symm
-    rw [show sp + 12#64 = sp + 0xc#64 from rfl] at hs2
-    rw [show sp + 16#64 = sp + 0x10#64 from rfl] at hs3
-    rw [show sp + 20#64 = sp + 0x14#64 from rfl] at hs4
-    rw [show sp + 28#64 = sp + 0x1c#64 from rfl] at hs5
-    refine Entails.trans (sepConj_mono_right (sepConj_mono h8 (sepConj_mono_right (sepConj_mono h10 (sepConj_mono_right h1c))))) ?_
-    rw [← sepConj_assoc, hs1, ← sepConj_assoc, hs2, ← sepConj_assoc, hs3, ← sepConj_assoc, hs4, hs5]
-    exact Entails.refl _
+    sep_interval
   have h_sp140_2b0 :
       (memRegion (sp + 0x140#64) 0x50 ∗
        memRegion (sp + 0x190#64) 104 ∗
        memRegion (sp + 0x1f8#64) 0xb8) ⊢
       memRegion (sp + 0x140#64) 0x170 := by
-    have hs1 := (memRegion_split (sp + 0x140#64) 0x50 104 (by decide)).symm
-    rw [show sp + 0x140#64 + 80#64 = sp + 0x190#64 from add_assoc_const _ _ _ _,
-        show (0x50 + 104 : Nat) = 184 from rfl] at hs1
-    have hs2 := (memRegion_split (sp + 0x140#64) 184 0xb8 (by decide)).symm
-    rw [show sp + 0x140#64 + 184#64 = sp + 0x1f8#64 from add_assoc_const _ _ _ _,
-        show (184 + 0xb8 : Nat) = 0x170 from rfl] at hs2
-    rw [← sepConj_assoc, hs1, hs2]
-    exact Entails.refl _
+    sep_interval
   have h_sp2d4_580 :
       (memRegion (sp + 0x2d4#64) 0xfc ∗
        ((sp + 0x3d0#64) ↦ₛ chainKeyBytes receiverChainKey) ∗
@@ -791,85 +743,8 @@ theorem dhCommit_step5_of_wp {prog : Program} {entry : BitVec 64}
        memRegion (sp + 0x500#64) 96 ∗
        memRegion (sp + 0x560#64) 0x20) ⊢
       memRegion (sp + 0x2d4#64) 0x2ac := by
-    have h3d0 : ((sp + 0x3d0#64) ↦ₛ chainKeyBytes receiverChainKey) ⊢ memRegion (sp + 0x3d0#64) 36 := by
-      have h := pointsToBytes_entails_memRegion (sp + 0x3d0#64) (chainKeyBytes receiverChainKey)
-      rwa [chainKeyBytes_length] at h
-    have h400 := pointsTo64_4_entails_memRegion (sp + 0x400#64) spk0 spk1 spk2 spk3
-    rw [show sp + 0x400#64 + 8#64 = sp + 0x408#64 from add_assoc_const _ _ _ _,
-        show sp + 0x400#64 + 16#64 = sp + 0x410#64 from add_assoc_const _ _ _ _,
-        show sp + 0x400#64 + 24#64 = sp + 0x418#64 from add_assoc_const _ _ _ _] at h400
-    have h420 := pointsTo64_4_entails_memRegion (sp + 0x420#64) sk0 sk1 sk2 sk3
-    rw [show sp + 0x420#64 + 8#64 = sp + 0x428#64 from add_assoc_const _ _ _ _,
-        show sp + 0x420#64 + 16#64 = sp + 0x430#64 from add_assoc_const _ _ _ _,
-        show sp + 0x420#64 + 24#64 = sp + 0x438#64 from add_assoc_const _ _ _ _] at h420
-    have h440 := pointsTo64_2_entails_memRegion (sp + 0x440#64) sck0 sck1
-    rw [show sp + 0x440#64 + 8#64 = sp + 0x448#64 from add_assoc_const _ _ _ _] at h440
-    have h450 := pointsTo64_10_entails_memRegion (sp + 0x450#64) spk0 spk1 spk2 spk3 sk0 sk1 sk2 sk3 sck0 sck1
-    rw [show sp + 0x450#64 + 8#64 = sp + 0x458#64 from add_assoc_const _ _ _ _,
-        show sp + 0x450#64 + 16#64 = sp + 0x460#64 from add_assoc_const _ _ _ _,
-        show sp + 0x450#64 + 24#64 = sp + 0x468#64 from add_assoc_const _ _ _ _,
-        show sp + 0x450#64 + 32#64 = sp + 0x470#64 from add_assoc_const _ _ _ _,
-        show sp + 0x450#64 + 40#64 = sp + 0x478#64 from add_assoc_const _ _ _ _,
-        show sp + 0x450#64 + 48#64 = sp + 0x480#64 from add_assoc_const _ _ _ _,
-        show sp + 0x450#64 + 56#64 = sp + 0x488#64 from add_assoc_const _ _ _ _,
-        show sp + 0x450#64 + 64#64 = sp + 0x490#64 from add_assoc_const _ _ _ _,
-        show sp + 0x450#64 + 72#64 = sp + 0x498#64 from add_assoc_const _ _ _ _] at h450
-    have h4c0 := pointsTo64_4_entails_memRegion (sp + 0x4c0#64) rck2 rck3 rck0 rck1
-    rw [show sp + 0x4c0#64 + 8#64 = sp + 0x4c8#64 from add_assoc_const _ _ _ _,
-        show sp + 0x4c0#64 + 16#64 = sp + 0x4d0#64 from add_assoc_const _ _ _ _,
-        show sp + 0x4c0#64 + 24#64 = sp + 0x4d8#64 from add_assoc_const _ _ _ _] at h4c0
-    have h4e0 := pointsTo64_4_entails_memRegion (sp + 0x4e0#64) sck2 sck3 sck0 sck1
-    rw [show sp + 0x4e0#64 + 8#64 = sp + 0x4e8#64 from add_assoc_const _ _ _ _,
-        show sp + 0x4e0#64 + 16#64 = sp + 0x4f0#64 from add_assoc_const _ _ _ _,
-        show sp + 0x4e0#64 + 24#64 = sp + 0x4f8#64 from add_assoc_const _ _ _ _] at h4e0
-    refine Entails.trans
-      (sepConj_mono_right (sepConj_mono h3d0 (sepConj_mono_right (sepConj_mono h400
-        (sepConj_mono h420 (sepConj_mono h440 (sepConj_mono h450 (sepConj_mono_right
-          (sepConj_mono h4c0 (sepConj_mono h4e0 (Entails.refl _))))))))))) ?_
-    have hs1 := (memRegion_split (sp + 0x2d4#64) 252 36 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 252#64 = sp + 0x3d0#64 from add_assoc_const _ _ _ _,
-        show (252 + 36 : Nat) = 288 from rfl] at hs1
-    have hs2 := (memRegion_split (sp + 0x2d4#64) 288 12 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 288#64 = sp + 0x3f4#64 from add_assoc_const _ _ _ _,
-        show (288 + 12 : Nat) = 300 from rfl] at hs2
-    have hs3 := (memRegion_split (sp + 0x2d4#64) 300 32 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 300#64 = sp + 0x400#64 from add_assoc_const _ _ _ _,
-        show (300 + 32 : Nat) = 332 from rfl] at hs3
-    have hs4 := (memRegion_split (sp + 0x2d4#64) 332 32 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 332#64 = sp + 0x420#64 from add_assoc_const _ _ _ _,
-        show (332 + 32 : Nat) = 364 from rfl] at hs4
-    have hs5 := (memRegion_split (sp + 0x2d4#64) 364 16 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 364#64 = sp + 0x440#64 from add_assoc_const _ _ _ _,
-        show (364 + 16 : Nat) = 380 from rfl] at hs5
-    have hs6 := (memRegion_split (sp + 0x2d4#64) 380 80 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 380#64 = sp + 0x450#64 from add_assoc_const _ _ _ _,
-        show (380 + 80 : Nat) = 460 from rfl] at hs6
-    have hs7 := (memRegion_split (sp + 0x2d4#64) 460 32 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 460#64 = sp + 0x4a0#64 from add_assoc_const _ _ _ _,
-        show (460 + 32 : Nat) = 492 from rfl] at hs7
-    have hs8 := (memRegion_split (sp + 0x2d4#64) 492 32 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 492#64 = sp + 0x4c0#64 from add_assoc_const _ _ _ _,
-        show (492 + 32 : Nat) = 524 from rfl] at hs8
-    have hs9 := (memRegion_split (sp + 0x2d4#64) 524 32 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 524#64 = sp + 0x4e0#64 from add_assoc_const _ _ _ _,
-        show (524 + 32 : Nat) = 556 from rfl] at hs9
-    have hs10 := (memRegion_split (sp + 0x2d4#64) 556 96 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 556#64 = sp + 0x500#64 from add_assoc_const _ _ _ _,
-        show (556 + 96 : Nat) = 652 from rfl] at hs10
-    have hs11 := (memRegion_split (sp + 0x2d4#64) 652 32 (by decide)).symm
-    rw [show sp + 0x2d4#64 + 652#64 = sp + 0x560#64 from add_assoc_const _ _ _ _,
-        show (652 + 32 : Nat) = 684 from rfl] at hs11
-    change (memRegion (sp + 0x2d4#64) 252 ∗ memRegion (sp + 0x3d0#64) 36 ∗
-      memRegion (sp + 0x3f4#64) 12 ∗ memRegion (sp + 0x400#64) 32 ∗
-      memRegion (sp + 0x420#64) 32 ∗ memRegion (sp + 0x440#64) 16 ∗
-      memRegion (sp + 0x450#64) 80 ∗ memRegion (sp + 0x4a0#64) 32 ∗
-      memRegion (sp + 0x4c0#64) 32 ∗ memRegion (sp + 0x4e0#64) 32 ∗
-      memRegion (sp + 0x500#64) 96 ∗ memRegion (sp + 0x560#64) 32) ⊢
-      memRegion (sp + 0x2d4#64) 684
-    rw [← sepConj_assoc, hs1, ← sepConj_assoc, hs2, ← sepConj_assoc, hs3, ← sepConj_assoc, hs4,
-        ← sepConj_assoc, hs5, ← sepConj_assoc, hs6, ← sepConj_assoc, hs7, ← sepConj_assoc, hs8,
-        ← sepConj_assoc, hs9, ← sepConj_assoc, hs10, hs11]
-    exact Entails.refl _
+    have hrck := chainKeyBytes_length receiverChainKey
+    sep_interval
   have hmf_grouped : sf.mem ⊨
       (((sp + 0x50#64) ↦₃₂ 1#32) ∗
        (((sp + 0x54#64) ↦₆₄ spk0) ∗ ((sp + 0x5c#64) ↦₆₄ spk1) ∗ ((sp + 0x64#64) ↦₆₄ spk2) ∗ ((sp + 0x6c#64) ↦₆₄ spk3)) ∗
@@ -915,99 +790,6 @@ theorem dhCommit_step5_of_wp {prog : Program} {entry : BitVec 64}
   rw [sepConj_assoc ((sp + 0x2b0#64) ↦ₛ (chainKeyBytes receiverChainKey).drop 20)] at hmf_final
   exact ReachesOrPanic.done ⟨hpcf, hrunf, hspf, hsp_alignf, htrf,
     hx12f, hx19f, hx20f, hx21f, hx22f, hx23f, hx24f, hx25f, hx29f, hx30f, hvregsf, hLf, hmf_final⟩
-
-/-- Sub-segment 5 (`+0xb98 → +0x3e4`): wraps `commit_step5_wp` to commit `sender_chain`,
-stage `receiverChainKey` at `sp + 0x2b0..0x2d4`, and reassemble the stack scratch regions
-`memRegion sp 0x20`, `memRegion (sp + 0x140#64) 0x170`, and `memRegion (sp + 0x2d4#64) 0x2ac`. -/
-theorem dhCommit_step5 (img : Obj.Image) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (ext : String → Option (State → State))
-    (x : TryDecryptGhost) (pad : List (BitVec 8))
-    (sc : SenderChain) (receiverChainKey : ChainKey) (newSenderKey : KeyPair)
-    (senderChainKey : ChainKey) (msgW : BitVec 32)
-    (Frame R : SepProp) (s0 s : State)
-    (sp : BitVec 64) (hsp_def : sp = s0.sp - 1504#64)
-    (hpad : pad.length = 100)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr tryDecryptName + 0xb98#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp)
-    (hsp_align : s.spAligned = true)
-    (hx25 : s.readReg64 .x25 = sp + 0x190#64)
-    (hL : (tripleRatchetProgAtExt img.base ext).CodeLoaded s.mem)
-    (hm : s.mem ⊨
-      memRegion sp 8 ∗
-      ((sp + 0x8#64) ↦₃₂ sckWord16 senderChainKey) ∗
-      memRegion (sp + 0xc#64) 4 ∗
-      ((sp + 0x10#64) ↦ₛ ((chainKeyBytes receiverChainKey).drop 16).take 4) ∗
-      memRegion (sp + 0x14#64) 8 ∗
-      ((sp + 0x1c#64) ↦₃₂ msgW) ∗
-      ((sp + 0x50#64) ↦₃₂ 1#32) ∗
-      ((sp + 0x54#64) ↦ₛ sc.ratchetKey.publicKey.bytes.toList) ∗
-      ((sp + 0x74#64) ↦ₛ sc.ratchetKey.privateKey.bytes.toList) ∗
-      ((sp + 0x94#64) ↦ₛ chainKeyBytes sc.chainKey) ∗
-      memRegion (sp + 0x140#64) 0x50 ∗
-      memRegion (sp + 0x190#64) 104 ∗
-      memRegion (sp + 0x1f8#64) 0xb8 ∗
-      memRegion (sp + 0x2b0#64) 0x10 ∗
-      memRegion (sp + 0x2c0#64) 0x14 ∗
-      memRegion (sp + 0x2d4#64) 0xfc ∗
-      ((sp + 0x3d0#64) ↦ₛ chainKeyBytes receiverChainKey) ∗
-      memRegion (sp + 0x3f4#64) 12 ∗
-      ((sp + 0x400#64) ↦ₛ newSenderKey.publicKey.bytes.toList) ∗
-      ((sp + 0x420#64) ↦ₛ newSenderKey.privateKey.bytes.toList) ∗
-      ((sp + 0x440#64) ↦₆₄ sckWord0 senderChainKey) ∗
-      ((sp + 0x448#64) ↦₆₄ sckWord8 senderChainKey) ∗
-      memRegion (sp + 0x450#64) 0x50 ∗
-      memRegion (sp + 0x4a0#64) 0x20 ∗
-      ((sp + 0x4c0#64) ↦ₛ (chainKeyBytes receiverChainKey).drop 20) ∗
-      ((sp + 0x4d0#64) ↦ₛ (chainKeyBytes receiverChainKey).take 16) ∗
-      ((sp + 0x4e0#64) ↦₆₄ sckWord20 senderChainKey) ∗
-      ((sp + 0x4e8#64) ↦₆₄ sckWord28 senderChainKey) ∗
-      ((sp + 0x4f0#64) ↦₆₄ sckWord0 senderChainKey) ∗
-      ((sp + 0x4f8#64) ↦₆₄ sckWord8 senderChainKey) ∗
-      memRegion (sp + 0x500#64) 96 ∗
-      memRegion (sp + 0x560#64) 0x20 ∗
-      (Frame ∗ R)) :
-    ReachesOrPanic (tripleRatchetProgAtExt img.base ext) C A ctl uuidTryParse S img x R s0 s
-      (fun sf =>
-        sf.pc = (tripleRatchetProgAtExt img.base ext).fnAddr tryDecryptName + 0x3e4#64 ∧
-        sf.status = .Running ∧
-        sf.sp = sp ∧
-        sf.spAligned = true ∧
-        sf.trace = s.trace ∧
-        sf.readReg64 .x12 = sp + 0x2c0#64 ∧
-        sf.readReg64 .x19 = s.readReg64 .x19 ∧
-        sf.readReg64 .x20 = s.readReg64 .x20 ∧
-        sf.readReg64 .x21 = s.readReg64 .x21 ∧
-        sf.readReg64 .x22 = s.readReg64 .x22 ∧
-        sf.readReg64 .x23 = s.readReg64 .x23 ∧
-        sf.readReg64 .x24 = msgW.zeroExtend 64 ∧
-        sf.readReg64 .x25 = sp + 0x190#64 ∧
-        sf.readReg64 .x29 = s.readReg64 .x29 ∧
-        sf.readReg64 .x30 = s.readReg64 .x30 ∧
-        calleeSavedVRegs sf = calleeSavedVRegs s ∧
-        (tripleRatchetProgAtExt img.base ext).CodeLoaded sf.mem ∧
-        (sf.mem ⊨
-          ((sp + 0x50#64) ↦ₛ optSenderChainBytes (some ⟨newSenderKey, senderChainKey⟩) pad) ∗
-          memRegion sp 0x20 ∗
-          memRegion (sp + 0x140#64) 0x170 ∗
-          ((sp + 0x2b0#64) ↦ₛ (chainKeyBytes receiverChainKey).drop 20) ∗
-          ((sp + 0x2c0#64) ↦ₛ (chainKeyBytes receiverChainKey).take 20) ∗
-          memRegion (sp + 0x2d4#64) 0x2ac ∗
-          (Frame ∗ R))) :=
-  dhCommit_step5_of_wp img C A ctl S x pad sc receiverChainKey newSenderKey senderChainKey
-    msgW Frame R s0 s sp hsp_def hpad
-    (fun sck16 rck16 msgW oldTag oldSck16 v2d0
-         oldSpk0 oldSpk1 oldSpk2 oldSpk3 oldSk0 oldSk1 oldSk2 oldSk3
-         oldSck0 oldSck1 oldSck2 oldSck3 spk0 spk1 spk2 spk3 sk0 sk1 sk2 sk3
-         sck0 sck1 sck2 sck3 rck0 rck1 rck2 rck3 v2b0 v2b8 v2c0 v2c8
-         v450 v458 v460 v468 v470 v478 v480 v488 v490 v498 =>
-      commit_step5_wp img.base ext sp sck16 rck16 msgW oldTag oldSck16 v2d0
-        oldSpk0 oldSpk1 oldSpk2 oldSpk3 oldSk0 oldSk1 oldSk2 oldSk3
-        oldSck0 oldSck1 oldSck2 oldSck3 spk0 spk1 spk2 spk3 sk0 sk1 sk2 sk3
-        sck0 sck1 sck2 sck3 rck0 rck1 rck2 rck3 v2b0 v2b8 v2c0 v2c8
-        v450 v458 v460 v468 v470 v478 v480 v488 v490 v498
-        s hpc hrun hsp hsp_align hx25)
-    hL hm
 
 theorem dhCommit_step5_placed [LibsignalPlacement] {prog : Program} {entry dropChainEntry : BitVec 64}
     (hwp : DhCommitBlockWp prog entry dropChainEntry)

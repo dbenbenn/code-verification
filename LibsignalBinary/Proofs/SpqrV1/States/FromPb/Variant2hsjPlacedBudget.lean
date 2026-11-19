@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsgPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsgPlacedBudget -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -21,6 +21,19 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsePlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsh
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hshPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsiPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsg
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsgPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hshPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsiPlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 2 (`HeaderSent`) — Part J
@@ -29,7 +42,7 @@ Total-correctness relocatable Block-`333` `+9036 -> ret` continuation (`sendingE
 for `InnerState.headerSent` under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.longLine false
@@ -740,15 +753,6 @@ theorem v2hstop_some_enc_9036_to_ret_sepWP_placed [LibsignalPlacement]
         rw [M.stepEvents_append]
         exact Entails.trans hPf (Entails.of_eq (by dsimp only [RestRO]; sep_ac_rfl))
 
-theorem v2hstop_some_enc_9036_to_ret_sepWP_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (hdec_ok_ext : DefsBudget.DecoderFromPbPlacedOkExt M A lim ext)
-    (s : V1State.Chunked.HeaderSent) :
-    v2hstop_SomeEnc9036SepWPHypPlaced M A lim F ext s :=
-  v2hstop_some_enc_9036_to_ret_sepWP_placed hA (encoder_from_pb_ok_of_alloc_placed hA) hdec_ok_ext s
-
 /-- Proves `v2hstop_SomeEnc9036HypPlaced` (`SepWPp` interface): from `+9036`
     (`sendingEk = some pbEnc`) to `s0.x30` under `RustCliAllocBudget M`. -/
 theorem v2hstop_some_enc_9036_to_ret_placed [LibsignalPlacement]
@@ -761,15 +765,5 @@ theorem v2hstop_some_enc_9036_to_ret_placed [LibsignalPlacement]
     v2hstop_SomeEnc9036HypPlaced M A lim F ext s :=
   v2hstop_someEnc9036HypPlacedOfEnv_of_sepWP
     (v2hstop_some_enc_9036_to_ret_sepWP_placed hA henc_ok hdec_ok_ext s)
-
-theorem v2hstop_some_enc_9036_to_ret_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (hdec_ok_ext : DefsBudget.DecoderFromPbPlacedOkExt M A lim ext)
-    (s : V1State.Chunked.HeaderSent) :
-    v2hstop_SomeEnc9036HypPlaced M A lim F ext s :=
-  v2hstop_someEnc9036HypPlacedOfEnv_of_sepWP
-    (v2hstop_some_enc_9036_to_ret_sepWP_of_alloc_placed hA hdec_ok_ext s)
 
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsjPlacedBudget

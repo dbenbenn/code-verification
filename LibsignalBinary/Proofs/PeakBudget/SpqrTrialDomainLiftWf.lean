@@ -9,11 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -79,27 +83,6 @@ theorem peerSpqrStateTight640_of_pqRecv_wf {W : PEParams} {st : PqParty}
   have hok := filesOkPeer_pqRecv W st ct rc hcov hcap
   have hlrK := loadRec_scopeKit_eq encodeInjOn_deserializeScopeP_Q (fun _ h => h) hok
   have hlrIn := loadRec_pqRecv encodeInjOn_scopeIn W st ct rc hcov hcap
-  rw [hpeer]
-  unfold PeerSpqrStateTight640
-  rw [hlrK, hlrIn]
-  rcases hs : st.session with _ | ⟨x, g⟩
-  · trivial
-  · exact recordSpqrStateTight640_of_wfSession' hwf hs
-
-theorem peerSpqrStateTight640_of_pqSend_wf {W : PEParams} {st : PqParty}
-    {m : List (BitVec 8)} {r : List.Vector (BitVec 8) 64} {peer : AddrV}
-    (hwf : PqxdhPartyInSpecDomain W st)
-    (hparse : parseArgs uuidTryParse ((pqSendInputs W st m r).argv.map bytesOfString) =
-      some (.send peer)) :
-    PeerSpqrStateTight640 W.C.F W.Q.K (runFiles (pqSendInputs W st m r)) (addrValOf peer) := by
-  have ha : (pqSendInputs W st m r).argv = (Cmd.send (partyAddress st.party.other)).argv := rfl
-  have hpeer : addrValOf peer = partyAddr st.party.other :=
-    callPeer_of_cmd (.send (partyAddress st.party.other)) rfl (ha ▸ hparse) rfl
-  have hcov := fun x g hs => ratchetScopeCoversPq_scopeIn W st x g hwf hs
-  have hcap := pqSessBytes_le_fileCapBytes hwf
-  have hok := filesOkPeer_pqSend W st m r hcov hcap
-  have hlrK := loadRec_scopeKit_eq encodeInjOn_deserializeScopeP_Q (fun _ h => h) hok
-  have hlrIn := loadRec_pqSend encodeInjOn_scopeIn W st m r hcov hcap
   rw [hpeer]
   unfold PeerSpqrStateTight640
   rw [hlrK, hlrIn]

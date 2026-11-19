@@ -230,17 +230,6 @@ theorem termAt_kdf_b {S : OpaqueSymbolSemantics} {g : Ghost} {pts : List Bytes}
   obtain ⟨rfl, rfl⟩ := hop
   exact termAt_kdf dag_nodes_ok hid h hs hi
 
-theorem termAt_trunc8_b {S : OpaqueSymbolSemantics} {g : Ghost} {pts : List Bytes}
-    {m : Bytes} {a id : Nat}
-    (hok : (decide (id < dagSize) && isTrunc8Op (dagOp id) a) = true)
-    (hm : TermAt dagSize dagOp dagBytes S g pts m a) :
-    TermAt dagSize dagOp dagBytes S g pts (DY.Trunc.trunc8 m) id := by
-  simp only [Bool.and_eq_true, decide_eq_true_eq] at hok
-  obtain ⟨hid, hop⟩ := hok
-  cases h : dagOp id <;> simp [isTrunc8Op, h] at hop
-  subst hop
-  exact termAt_trunc8 dag_nodes_ok hid h hm
-
 theorem termAt_kemEncap_b {S : OpaqueSymbolSemantics} {g : Ghost} {pts : List Bytes}
     {pk e : Bytes} {p_id e_id id1 id2 : Nat}
     (hok : (decide (id1 < dagSize) && isKemEncapOp (dagOp id1) p_id e_id &&

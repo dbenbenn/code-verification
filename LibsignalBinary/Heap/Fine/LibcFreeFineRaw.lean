@@ -45,14 +45,14 @@ def LibcFreeRawPostRel (p : BitVec 64) (n : Nat) (st st' : MallocngSt) : Prop :=
       bs.length = n ∧
       SameLiveUserSub st' (VendorFree.mkReleasedSt st g idx p bs)
 
-noncomputable def libcFreeRaw272Spec [MallocngMultiPlacement]
+def libcFreeRaw272Spec [MallocngMultiPlacement]
     (γ : GhostName) (tp brkStart p : BitVec 64) (n liveCost peakCost : Nat)
     (st : MallocngSt) : Spec Unit :=
   { pre := fun (_ : Unit) s0 =>
       ⌜s0.readReg64 .x0 = p ∧ s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart⌝ ∗
       stackFrame s0 272 ∗
       MallocngRoTablesA maddrs ∗
-      MallocngCoreStA γ maddrs brkStart s0.brk liveCost peakCost st ∗
+      MallocngCoreStModeA true γ maddrs brkStart s0.brk liveCost peakCost st ∗
       MallocngRuntime maddrs tp ∗
       if p = 0#64 then emp else memRegion p n ∗ MallocngBlockToken γ p n
     post := fun (_ : Unit) s0 sf =>
@@ -65,7 +65,7 @@ noncomputable def libcFreeRaw272Spec [MallocngMultiPlacement]
          LibcFreeRawPostRel p n st st'⌝ ∗
         stackFrame s0 272 ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart sf.brk liveCost' peakCost st' ∗
+        MallocngCoreStModeA true γ maddrs brkStart sf.brk liveCost' peakCost st' ∗
         MallocngRuntime maddrs tp }
 
 /-! ## Spatial Focus and Postcondition Packing Helpers -/
@@ -132,7 +132,7 @@ private theorem pack_libcFree_raw_post [MallocngMultiPlacement]
     (hno : MallocngNoOrphanMappings (dynamicRootRegions st) (dynamicRootRegions stf) s0.mem sf.mem)
     (hrel : LibcFreeRawPostRel p n st stf) :
     ((MallocngRoTablesA maddrs ∗
-      MallocngCoreStA γ maddrs brkStart sf.brk liveCost' peakCost stf ∗
+      MallocngCoreStModeA true γ maddrs brkStart sf.brk liveCost' peakCost stf ∗
       MallocngRuntime maddrs tp) ∗ stackFrameAt sp0 272) ⊢
       (libcFreeRaw272Spec γ tp brkStart p n liveCost peakCost st).post () s0 sf := by
   dsimp only [libcFreeRaw272Spec]
@@ -171,7 +171,7 @@ private theorem libcFree_munmap_tail_raw_ok [MallocngMultiPlacement] {b : BitVec
     (hx20_e : se.readReg64 (.gpr 20#5) = miBase) :
     SepWP (blkPC_b06.rebase b (fun _ => none)) (s0.readReg64 .lr) se
       (MallocngRoTablesA maddrs ∗
-       MallocngCoreStA γ maddrs brkStart se.brk liveCost' peakCost st' ∗
+       MallocngCoreStModeA true γ maddrs brkStart se.brk liveCost' peakCost st' ∗
        MallocngRuntime maddrs tp ∗
        stackFrameAt (sp0 - 48#64) 224 ∗ LibcFreeSpillSlots sp0 s0 w5 ∗
        memRegion miBase miLenBv.toNat ∗ memMapped miBase miLenBv.toNat)
@@ -193,7 +193,7 @@ private theorem libcFree_munmap_tail_raw_ok [MallocngMultiPlacement] {b : BitVec
   have hMuSub := placed_munmapWrapper_unmap_ok (P := blkPC_b06.rebase b (fun _ => none))
     tp miBase errnoVal miLenBv.toNat hPos hAlBase (by rw [hPA]; exact hFit)
   let FrameMu := MallocngRoTablesA maddrs ∗
-    MallocngCoreStA γ maddrs brkStart se.brk liveCost' peakCost st' ∗
+    MallocngCoreStModeA true γ maddrs brkStart se.brk liveCost' peakCost st' ∗
     ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
     stackFrameAt (sp0 - 48#64 - 64#64) 160 ∗ LibcFreeSpillSlots sp0 s0 w5
   refine SepWP.call_subroutine_frame (F := FrameMu) (x := ()) (ret_pc := b + 0x2f0#64) hMuSub
@@ -236,7 +236,7 @@ private theorem libcFree_munmap_tail_raw_ok [MallocngMultiPlacement] {b : BitVec
   try wp_norm_state
   wp_step
   let RestF := MallocngRoTablesA maddrs ∗
-    MallocngCoreStA γ maddrs brkStart se.brk liveCost' peakCost st' ∗
+    MallocngCoreStModeA true γ maddrs brkStart se.brk liveCost' peakCost st' ∗
     MallocngRuntime maddrs tp
   refine SepWP.weaken_pre (P' := RestF ∗ stackFrameAt (sp0 - 48#64) 224 ∗ LibcFreeSpillSlots sp0 s0 w5) ?_ ?_
   · have hMR64 : ∀ a : BitVec 64, a = sp0 - 48#64 - 64#64 →
@@ -247,7 +247,7 @@ private theorem libcFree_munmap_tail_raw_ok [MallocngMultiPlacement] {b : BitVec
       rw [← stackFrameAt_224_split_64 (sp0 - 48#64)]; exact Entails.refl _
     let Mid := ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗
       MallocngRoTablesA maddrs ∗
-      MallocngCoreStA γ maddrs brkStart se.brk liveCost' peakCost st' ∗
+      MallocngCoreStModeA true γ maddrs brkStart se.brk liveCost' peakCost st' ∗
       ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64) ∗
       LibcFreeSpillSlots sp0 s0 w5
     refine Entails.trans (Q := (stackFrameAt (sp0 - 48#64) 64 ∗ stackFrameAt (sp0 - 48#64 - 64#64) 160) ∗ Mid)
@@ -313,7 +313,7 @@ private theorem libcFree_after_unlock_raw_ok [MallocngMultiPlacement] {b : BitVe
     (hx20 : su.readReg64 (.gpr 20#5) = miBase) :
     SepWP (blkPC_b06.rebase b (fun _ => none)) (s0.readReg64 .lr) su
       (MallocngRoTablesA maddrs ∗
-       MallocngCoreStA γ maddrs brkStart su.brk liveCost' peakCost st' ∗
+       MallocngCoreStModeA true γ maddrs brkStart su.brk liveCost' peakCost st' ∗
        MallocngRuntime maddrs tp ∗
        stackFrameAt (sp0 - 48#64) 224 ∗ LibcFreeSpillSlots sp0 s0 w5 ∗
        NfRetSep st1 st' miBase miLenBv)
@@ -330,7 +330,7 @@ private theorem libcFree_after_unlock_raw_ok [MallocngMultiPlacement] {b : BitVe
     wp_focus_pure; intro hDynEq
     wp_step
     let Rest := MallocngRoTablesA maddrs ∗
-      MallocngCoreStA γ maddrs brkStart su.brk liveCost' peakCost st' ∗
+      MallocngCoreStModeA true γ maddrs brkStart su.brk liveCost' peakCost st' ∗
       MallocngRuntime maddrs tp
     refine SepWP.weaken_pre (P' := Rest ∗ stackFrameAt (sp0 - 48#64) 224 ∗ LibcFreeSpillSlots sp0 s0 w5)
       (by dsimp only [Rest]; sep_frame) ?_
@@ -364,7 +364,7 @@ private theorem libcFree_after_unlock_raw_ok [MallocngMultiPlacement] {b : BitVe
     conv in State.setPC _ _ => simp only [hx19, hNe0, Bool.false_eq_true, ↓reduceIte]
     wp_step
     let FrameE := MallocngRoTablesA maddrs ∗
-      MallocngCoreStA γ maddrs brkStart su.brk liveCost' peakCost st' ∗
+      MallocngCoreStModeA true γ maddrs brkStart su.brk liveCost' peakCost st' ∗
       MallocngRuntime maddrs tp ∗
       stackFrameAt (sp0 - 48#64) 224 ∗ LibcFreeSpillSlots sp0 s0 w5 ∗
       memRegion miBase miLenBv.toNat ∗ memMapped miBase miLenBv.toNat
@@ -410,10 +410,10 @@ private theorem libcFree_after_unlock_raw_ok [MallocngMultiPlacement] {b : BitVe
     rw [← hbrk_e']
     sep_frame
 
-private noncomputable def CoreWithoutLock [MallocngMultiPlacement] (γ : GhostName) (st : MallocngSt) : SepProp :=
+private def CoreWithoutLock [MallocngMultiPlacement] (γ : GhostName) (st : MallocngSt) : SepProp :=
   MallocngLiveAuth γ st.liveMap ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
   (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-  ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+  MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap ∗
   ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
   ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
   MappedSet st.masterDom (OwnedMappedByte st)
@@ -440,7 +440,7 @@ private theorem libcFree_slow_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (h
     (hx20 : s.readReg64 (.gpr 20#5) = (BitVec.ofNat 32 idx).zeroExtend 64) :
     SepWP (blkPC_b06.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (MallocngRoTablesA maddrs ∗
-       MallocngCoreStInflightA 1 γ maddrs brkStart s.brk liveCost' peakCost st1 ∗
+       MallocngCoreStInflightModeA true 1 γ maddrs brkStart s.brk liveCost' peakCost st1 ∗
        MallocngRuntime maddrs tp ∗
        stackFrameAt (sp0 - 48#64) 224 ∗ LibcFreeSpillSlots sp0 s0 w5)
       (fun sf Pf =>
@@ -455,7 +455,7 @@ private theorem libcFree_slow_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (h
   conv => arg 4; dsimp only [MallocngRuntime]
   wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
   conv => arg 4; change MallocngRoTablesA maddrs ∗
-    MallocngCoreStInflightA 1 γ maddrs brkStart s.brk liveCost' peakCost st1 ∗
+    MallocngCoreStInflightModeA true 1 γ maddrs brkStart s.brk liveCost' peakCost st1 ∗
     MallocngRuntime maddrs tp ∗
     stackFrameAt (sp0 - 48#64) 224 ∗ LibcFreeSpillSlots sp0 s0 w5
   let FrameNt := MallocngRuntime maddrs tp ∗ LibcFreeSpillSlots sp0 s0 w5
@@ -486,7 +486,7 @@ private theorem libcFree_slow_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (h
   apply SepWP.exists_elim; intro st'
   wp_focus_pure
   rintro ⟨hproc_m, hbrk_m, htp_m, hperm_m, _hdelta_m, hSubSt, _hLiveLe, _hDynLe⟩
-  (conv => arg 4; dsimp only [MallocngCoreStA, MallocngCoreStInflightA]); wp_focus_pure; intro hwf'
+  (conv => arg 4; dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA]); wp_focus_pure; intro hwf'
   have hwf'_s : MallocngWFInflight 0 maddrs.base brkStart s.brk liveCost' peakCost st' := by
     simpa [arm64_norm] using hwf'
   let miBase := sm.readReg64 (.gpr 0#5)
@@ -522,7 +522,7 @@ private theorem libcFree_slow_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (h
           memRegion a 224 = stackFrameAt (sp0 - 48#64) 224 := by
         intro a ha; rw [ha, stackFrameAt_eq_memRegion (sp0 - 48#64) 224]
       rw [← sepConj_assoc]; refine Satisfies.mono (sepConj_mono_left ?_) hm
-      dsimp only [withCL, FrameU, MallocngCoreStA, MallocngCoreStInflightA, CoreWithoutLock, PostRem, miBase, miLenBv]
+      dsimp only [withCL, FrameU, MallocngCoreStModeA, MallocngCoreStInflightModeA, CoreWithoutLock, PostRem, miBase, miLenBv]
       rw [hMR224 _ (by simp [arm64_norm, hsp])]
       conv =>
         rhs
@@ -556,7 +556,7 @@ private theorem libcFree_slow_raw_ok [MallocngMultiPlacement] {b : BitVec 64} (h
     (libcFree_after_unlock_raw_ok hb γ tp brkStart p sp0 w5 miBase miLenBv n liveCost liveCost' peakCost
       hDyn1 hwf'_s.live_le_peak (hMkRel st' hSubSt) s0 su
       hcl_u hpc_u hrun_u hsp_u' hsp0 hspAl0 (hbrk_u'.trans hbrk0s) htp_u hbrks_u hperm0u hproc0u hcs0u hx19_u hx20_u)
-  dsimp only [FrameU, FrameNt, MallocngCoreStA, MallocngCoreStInflightA, CoreWithoutLock, PostRem]
+  dsimp only [FrameU, FrameNt, MallocngCoreStModeA, MallocngCoreStInflightModeA, CoreWithoutLock, PostRem]
   rw [hbrk_u', pure_sepConj_of_true hwf'_s]
   sep_frame
 
@@ -587,7 +587,7 @@ private theorem libcFree_fast_or_slow_raw_ok [MallocngMultiPlacement] {b : BitVe
     (hx20_reg : s.readReg64 .x20 = (BitVec.ofNat 32 idx).zeroExtend 64) :
     SepWP (blkPC_b06.rebase b (fun _ => none)) (s0.readReg64 .lr) s
       (MallocngRoTablesA maddrs ∗
-       MallocngCoreStInflightA 1 γ maddrs brkStart s.brk bf.liveCost bf.peakCost st1 ∗
+       MallocngCoreStInflightModeA true 1 γ maddrs brkStart s.brk bf.liveCost bf.peakCost st1 ∗
        MallocngRuntime maddrs tp ∗
        stackFrameAt (sp0 - 48#64) 224 ∗ LibcFreeSpillSlots sp0 s0 w5)
       (fun sf Pf =>
@@ -600,7 +600,7 @@ private theorem libcFree_fast_or_slow_raw_ok [MallocngMultiPlacement] {b : BitVe
   have hx7 : s.readReg64 (.gpr 7#5) = maddrs.libc := hx7_reg
   have hx19 : s.readReg64 (.gpr 19#5) = g1.metaPtr := hx19_reg
   have hx20 : s.readReg64 (.gpr 20#5) = (BitVec.ofNat 32 idx).zeroExtend 64 := hx20_reg
-  (conv => arg 4; dsimp only [MallocngCoreStInflightA]); wp_focus_pure; intro hwf1
+  (conv => arg 4; dsimp only [MallocngCoreStInflightModeA]); wp_focus_pure; intro hwf1
   have hGWf := hwf1.groups_wf g1 hg1
   have hSWf := hGWf.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2 idx hIdx1
   rw [hSlot1] at hSWf
@@ -627,7 +627,7 @@ private theorem libcFree_fast_or_slow_raw_ok [MallocngMultiPlacement] {b : BitVe
           ⟨by simp [arm64_norm], by simp [arm64_norm], by simp [arm64_norm], by simp [arm64_norm],
            by simp [arm64_norm], by simp [arm64_norm], by simp [arm64_norm], by simp [calleeSavedVRegs]⟩)
         (by simp [arm64_norm, hx19]) (by simp [arm64_norm, hx20]))
-    dsimp only [MallocngCoreStInflightA]
+    dsimp only [MallocngCoreStInflightModeA]
     rw [← focus_meta_of_mem_groups hwf1 hg1, show (_ : State).brk = s.brk by rfl,
         pure_sepConj_of_true hwf1]
     sep_frame
@@ -644,7 +644,7 @@ private theorem libcFree_fast_or_slow_raw_ok [MallocngMultiPlacement] {b : BitVe
             ⟨by simp [arm64_norm], by simp [arm64_norm], by simp [arm64_norm], by simp [arm64_norm],
              by simp [arm64_norm], by simp [arm64_norm], by simp [arm64_norm], by simp [calleeSavedVRegs]⟩)
           (by simp [arm64_norm, hx19]) (by simp [arm64_norm, hx20]))
-      dsimp only [MallocngCoreStInflightA]
+      dsimp only [MallocngCoreStInflightModeA]
       rw [← focus_meta_of_mem_groups hwf1 hg1, show (_ : State).brk = s.brk by rfl,
           pure_sepConj_of_true hwf1]
       sep_frame
@@ -677,10 +677,10 @@ private theorem libcFree_fast_or_slow_raw_ok [MallocngMultiPlacement] {b : BitVe
       try wp_norm_state
       wp_step
       let RestEp := MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart s.brk bf.liveCost bf.peakCost st2 ∗
+        MallocngCoreStModeA true γ maddrs brkStart s.brk bf.liveCost bf.peakCost st2 ∗
         MallocngRuntime maddrs tp
       refine SepWP.weaken_pre (P' := RestEp ∗ stackFrameAt (sp0 - 48#64) 224 ∗ LibcFreeSpillSlots sp0 s0 w5) ?_ ?_
-      · dsimp only [RestEp, MallocngCoreStA, MallocngCoreStInflightA, MallocngRuntime]
+      · dsimp only [RestEp, MallocngCoreStModeA, MallocngCoreStInflightModeA, MallocngRuntime]
         rw [pure_sepConj_of_true hFast.2.2.2.2.2, hFast.2.1, hFast.2.2.1, ← hFast.2.2.2.1]
         dsimp only [st2]
         sep_frame
@@ -728,7 +728,7 @@ theorem placed_libcFree_raw_ok [MallocngMultiPlacement]
   let sp0 := s0.sp
   let P0 := stackFrame s0 272 ∗
     MallocngRoTablesA maddrs ∗
-    MallocngCoreStA γ maddrs brkStart s0.brk liveCost peakCost st ∗
+    MallocngCoreStModeA true γ maddrs brkStart s0.brk liveCost peakCost st ∗
     MallocngRuntime maddrs tp ∗
     if p = 0#64 then emp else memRegion p n ∗ MallocngBlockToken γ p n
   have hpre' : s0.mem ⊨ ⌜s0.mem = m0⌝ ∗ ⌜s0.readReg64 .x0 = p ∧ s0.tpidrEl0 = tp ∧ s0.brkStart = brkStart⌝ ∗ P0 ∗ R := by
@@ -749,7 +749,7 @@ theorem placed_libcFree_raw_ok [MallocngMultiPlacement]
     arg 4
     unfold stackFrame
     rw [← stackFrameAt_eq_memRegion s0.sp 272]
-  (conv => arg 4; dsimp only [MallocngCoreStA, MallocngCoreStInflightA]); wp_focus_pure; intro hwf
+  (conv => arg 4; dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA]); wp_focus_pure; intro hwf
   by_cases hp0 : p = 0#64
   · subst hp0
     wp_step; wp_step
@@ -765,14 +765,14 @@ theorem placed_libcFree_raw_ok [MallocngMultiPlacement]
         ⟨rfl, rfl, rfl, rfl, rfl, rfl, by simp⟩
         (mappedDelta_zero_of_perm_eq rfl) rfl rfl htp0 hbrks0 hwf.live_le_peak
         (noOrphanMappings_refl_of_perm_eq rfl) (by simp [LibcFreeRawPostRel]))
-    dsimp only [MallocngCoreStA, MallocngCoreStInflightA]
+    dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA]
     rw [show (s0.setPC (s0.readReg64 (.gpr 30#5))).brk = s0.brk by rfl, pure_sepConj_of_true hwf]
     sep_frame
   · conv => arg 4; simp only [hp0, ↓reduceIte]
     refine SepWP.weaken_pre (P' := (MallocngLiveAuth γ st.liveMap ∗ MallocngBlockToken γ p n) ∗
       (stackFrameAt sp0 272 ∗ MallocngRoTablesA maddrs ∗ (maddrs.ctx ↦ₛ st.ctx.toBytes) ∗
        (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-       ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+       MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap ∗
        ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
        ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
        MappedSet st.masterDom (OwnedMappedByte st) ∗ MallocngRuntime maddrs tp ∗ memRegion p n))
@@ -790,7 +790,7 @@ theorem placed_libcFree_raw_ok [MallocngMultiPlacement]
       synthCoarseFreeBudget_countIvsWF liveCost peakCost st hGrp
     let RestStage1 := MallocngLiveAuth γ st.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
       (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-      ((maddrs.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+      MallocngAuxvPtrCell true maddrs.libc st.auxvPtr ∗ MallocngAuxvStateRo true γ st.auxvPtr st.auxvSnap ∗
       ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
       MappedSet st.masterDom (OwnedMappedByte st) ∗ MallocngRuntime maddrs tp ∗
       (p ↦ₛ bs) ∗ mallocngIface.Block γ p n
@@ -803,11 +803,11 @@ theorem placed_libcFree_raw_ok [MallocngMultiPlacement]
     let RestStage2 := MallocngRuntime maddrs tp ∗ stackFrameAt (sp0 - 48#64) 224 ∗ LibcFreeSpillSlots sp0 s0 w5
     refine SepWP.weaken_pre
       (P' := MallocngRoTablesA maddrs ∗
-        MallocngCoreStA γ maddrs brkStart s7.brk bud.liveCost bud.peakCost st ∗
+        MallocngCoreStModeA true γ maddrs brkStart s7.brk bud.liveCost bud.peakCost st ∗
         (p ↦ₛ bs) ∗ mallocngIface.Block γ p n ∗ RestStage2)
       (Entails.trans hP7 (by
         rw [hbrk7]
-        dsimp only [RestStage1, RestStage2, MallocngRoTablesA, MallocngCoreStA, MallocngCoreStInflightA, mallocngIface, bud]
+        dsimp only [RestStage1, RestStage2, MallocngRoTablesA, MallocngCoreStModeA, MallocngCoreStInflightModeA, mallocngIface, bud]
         rw [synthCoarseFreeBudget_liveCost, synthCoarseFreeBudget_peakCost, pure_sepConj_of_true hwf]; sep_frame)) ?_
     refine SepWP.seq (libcFree_release_ib_ok hb γ brkStart p n effCost idx bud (dynamicRootRegions st)
       (hbrk7 ▸ hwf) hCnt hg hIdx hSlot hBsLen hF.last_le_31 hF.idx_le_last RestStage2
@@ -829,16 +829,5 @@ theorem placed_libcFree_raw_ok [MallocngMultiPlacement]
       hcl8 hpc8 hrun8 (hsp8.trans hsp7) rfl hspAl0 (hbrk8.trans hbrk7) htp8 hbrks8
       (hperm8.trans hperm7) hproc08 (calleeSaved22_28_trans hcs7 hcs8)
       hw5_8 hw6_8 hx7_8 hx19_8 hx20_8
-
-theorem call_placed_libcFree_raw [MallocngMultiPlacement]
-    {P : Program} (γ : GhostName) (tp brkStart p : BitVec 64) (n liveCost peakCost : Nat)
-    (st : MallocngSt) (hGrp : Cost.GroupsGrpBound 128 st.groups)
-    (hext : ∀ pc, P.externAt? pc = none := by
-      intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
-    (hsvc : P.svc = (mallocngBlockProg mmpl 6 msvc).svc := by rfl) :
-    subroutine_ok P (mbase 6)
-      (withCL mmpl (libcFreeRaw272Spec γ tp brkStart p n liveCost peakCost st)) :=
-  subroutine_ok_block_to_block (j := 6) (by decide)
-    (placed_libcFree_raw_ok γ tp brkStart p n liveCost peakCost st hGrp) hext hsvc
 
 end LibsignalBinary.Heap.Fine

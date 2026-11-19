@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
-public import LibsignalBinary.Specifications.RecordCodecsBinary
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsBinary -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.InImageKit -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -25,70 +27,12 @@ namespace CryptoVerification.SignalSession.Cli.Store.IdTrustPoll.Helpers
 open Arm64 ProofLib CryptoGames CryptoGames.LibsignalSession CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr
-open CryptoVerification.LibsignalTripleRatchet hiding
-  stackAt_split_cells memRegion_eight allocFailedIn_of_eq memRegion_cells
+open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalPublicApiRepr CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoGames.LibsignalSessionApi CryptoVerification.RecordCodecs
 open CryptoVerification.CodeLayout CryptoVerification.SignalSession.Cli
 
-/-! ## 1. Symbolic relative callee offsets (layout-independent) -/
-
-theorem identityKeyDecode_fnOff :
-    libsignalSessionCode.fnOff RecordCodecsBinary.identityKeyDecodeName =
-      num% (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::decode")
-
-theorem publicKeyEq_fnOff :
-    libsignalSessionCode.fnOff Getters.publicKeyEqName =
-      num% (ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq") :=
-  Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-    (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq")
-
-theorem dirGet_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr dirGetName =
-      (tripleRatchetProgAtExt b ext).fnAddr idTrustPollName +
-        bv% (ls_rel%
-          "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}"
-          "<libsignal_cli::stores::Dir>::get") := by
-  have h1 := idTrustPoll_fnOff
-  have h2 := dirGet_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idTrustPollName, dirGetName, h1, h2]
-  bv_omega
-
-theorem identityKeyDecode_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr RecordCodecsBinary.identityKeyDecodeName =
-      (tripleRatchetProgAtExt b ext).fnAddr idTrustPollName -
-        bv% (ls_rel%
-          "<libsignal_protocol::identity_key::IdentityKey>::decode"
-          "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}") := by
-  have h1 := idTrustPoll_fnOff
-  have h2 := identityKeyDecode_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idTrustPollName,
-    RecordCodecsBinary.identityKeyDecodeName, h1, h2]
-  bv_omega
-
-theorem publicKeyEq_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr Getters.publicKeyEqName =
-      (tripleRatchetProgAtExt b ext).fnAddr idTrustPollName -
-        bv% (ls_rel%
-          "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq"
-          "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}") := by
-  have h1 := idTrustPoll_fnOff
-  have h2 := publicKeyEq_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idTrustPollName,
-    Getters.publicKeyEqName, h1, h2]
-  bv_omega
-
-theorem dealloc_fnOff_rel :
-    libsignalSessionCode.fnOff idTrustPollName +
-      num% (ls_rel%
-        "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}"
-        "__rustc::__rust_dealloc") =
-      libsignalSessionCode.fnOff "__rustc::__rust_dealloc" := by
-  rw [idTrustPoll_fnOff, (ls_stub% "__rustc::__rust_dealloc")]
-
-/-! ## 2. Pure BitVec & model helpers -/
+/-! ## 1. Pure BitVec & model helpers -/
 
 theorem publicKey_beq_eq_decide (ik1 ik2 : IdentityKey) :
     (ik1.publicKey == ik2.publicKey) = decide (ik1 = ik2) := by
@@ -140,41 +84,19 @@ theorem stackAt_idTrustPoll_frame (sp : BitVec 64) {calleeStk : Nat}
       stackAt (sp - 192#64) calleeStk ∗ cells (sp - 192#64) 24 :=
   ProofLib.stackAt_split_cells sp calleeStk 24 hhi
 
-private theorem memRegion_16_eq_stackFrameFor_eq (sp : BitVec 64) :
-    memRegion (sp - 16#64) 16 =
-      stackFrameFor libsignalSessionImage
-        "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" sp := by
-  rw [show (16 : Nat) = 8 * 2 by rfl, memRegion_cells (sp - 16#64) 2 (by decide)]
-  cells_unfold
-  simp only [stackFrameFor,
-    (ls_lemma% frameBytes "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq"),
-    reduceStackFrameAt]
-
-private theorem memRegion_48_eq_stackFrameFor_ct_eq (sp : BitVec 64) :
-    memRegion (sp - 48#64) 48 =
-      stackFrameFor libsignalSessionImage
-        "<[u8] as subtle::ConstantTimeEq>::ct_eq" sp := by
-  rw [show (48 : Nat) = 8 * 6 by rfl, memRegion_cells (sp - 48#64) 6 (by decide)]
-  cells_unfold
-  simp only [stackFrameFor,
-    (ls_lemma% frameBytes "<[u8] as subtle::ConstantTimeEq>::ct_eq"),
-    reduceStackFrameAt]
-
 theorem stackAt_64_eq_pkEq_frames (sp : BitVec 64) :
     stackAt sp 64 =
-      stackFrameFor libsignalSessionImage
-        "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" sp ∗
-      stackFrameFor libsignalSessionImage
-        "<[u8] as subtle::ConstantTimeEq>::ct_eq" (sp - 16#64) := by
+      stackFrameAt sp 16 ∗ stackFrameAt (sp - 16#64) 48 := by
+  rw [stackFrameAt_eq_memRegion sp 16, stackFrameAt_eq_memRegion (sp - 16#64) 48]
   simp only [stackAt]
   rw [ProofLib.memRegion_split' (b := sp - 64#64) (n := 48) (k := 16)
         (b' := sp - 16#64) rfl (by bv_omega) (by decide)]
   have e48 : sp - 64#64 = sp - 16#64 - 48#64 := by bv_omega
-  rw [e48, sepConj_comm, memRegion_16_eq_stackFrameFor_eq, memRegion_48_eq_stackFrameFor_ct_eq]
+  rw [e48, sepConj_comm]
 
 /-! ## 4. `vecU8At` & `protocolAddressAt` exposure (works uniformly for `cap = 0` and `cap ≠ 0`) -/
 
-def vecU8BufRest (A : RustAlloc) (cap ptr : BitVec 64) (n : Nat) : SepProp :=
+@[expose] def vecU8BufRest (A : RustAlloc) (cap ptr : BitVec 64) (n : Nat) : SepProp :=
   if cap = 0#64 then emp
   else A.live ptr cap.toNat 1 ∗ memRegion (ptr + BitVec.ofNat 64 n) (cap.toNat - n)
 
@@ -401,7 +323,7 @@ theorem pointsTo64_out_8_any_eq (out : BitVec 64) (sCap : BitVec 64)
   simp only [pointsToBytes_cons, pointsToBytes_nil, sepConj_emp, sepConj_assoc,
     BitVec.add_assoc, BitVec.reduceAdd, e0, e1, e2, e3, e4, e5, e6, e7]
 
-def pollKeyChunks (a : BitVec 64)
+@[expose] def pollKeyChunks (a : BitVec 64)
     (w0 : BitVec 32) (w4 : BitVec 16) (b6 : BitVec 8)
     (v7 v15 v23 : BitVec 64) (b31 : BitVec 8) : SepProp :=
   (a ↦₃₂ w0) ∗ ((a + 4#64) ↦₁₆ w4) ∗ ((a + 6#64) ↦₈ b6) ∗

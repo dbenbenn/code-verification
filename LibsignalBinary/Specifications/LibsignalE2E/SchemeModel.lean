@@ -98,10 +98,11 @@ free `C`, and the RNG is a tape the game fills. Why: primitives are verified or 
 separately. Effect: out of scope: their compiled code is trusted to match. For AES-CBC that code
 is the whole `signal_crypto::aes_cbc::aes_256_cbc_encrypt` / `aes_256_cbc_decrypt`: CBC chaining
 and PKCS#7 padding / unpadding (with its padding check) are trusted, not only the block cipher.
-The build pins the portable software AES backend (`--cfg aes_backend="soft"`,
-`third_party/libsignal/libsignal-session/translation.toml`), so there is no run-time CPU dispatch: the
-code that would run is the `aes` crate's software fixslice implementation, which is outside the
-image. `Uuid::try_parse` is not a hook: its compiled code is in the image and verified against
+In the CLI ELF binary (`CliBinaryPq.lean`), `aes_256_cbc_encrypt` and `aes_256_cbc_decrypt`
+(compiled with default `aes` 0.9.1 AArch64 `AT_HWCAP` dispatch between ARMv8 hardware AES and
+`fixslice64`) execute their linked code directly and are verified against `aesCbcEncrypt` /
+`aesCbcDecrypt` over FIPS 197 `CryptoGames.AES256`. `Uuid::try_parse` is not a hook: its compiled
+code is in the image and verified against
 the trusted model `uuidTryParse` (`LibsignalTripleRatchetRepr.lean`). -/
 def spqrOffSessionParams (C : Crypto) : Params Bytes Unit :=
   ⟨C, protoSignalCodec, spqrOffB, partyIdentityKey .A, partyIdentityKey .B, serializedPartyAddresses uuidTryParse .A .B,

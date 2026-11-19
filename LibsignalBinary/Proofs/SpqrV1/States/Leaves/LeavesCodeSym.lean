@@ -9,8 +9,11 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymA
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymB
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymA
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesCodeSymB
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
 
 /-!
 # SPQR V1 Leaf Transitions: Relocatable Block Programs Umbrella
@@ -19,6 +22,6 @@ Re-exports all 15 `[LibsignalPlacement]` leaf block program reflections from `Le
 and `LeavesCodeSymB`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false

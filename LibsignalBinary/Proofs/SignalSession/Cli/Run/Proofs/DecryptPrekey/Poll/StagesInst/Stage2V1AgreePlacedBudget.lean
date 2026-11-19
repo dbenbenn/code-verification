@@ -11,13 +11,18 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Agree
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1FoldsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1OkFoldPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Agree -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1FoldsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1OkFoldPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Open
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenDeserId
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` CLI Poll Stage P2 V1 Agreement Helpers
@@ -26,7 +31,7 @@ Generalizes `kyberPtr ≠ 0` duplication bridges, `cliPoll*KitPlaced` pre-key ca
 and `pathA_acceptInput_agree_placed` to `RustCliAllocBudget M` and `{A : RustAlloc}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -55,7 +60,7 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton (RunBudgets)
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlacedBudget
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoVerification.SignalSession.Cli.RunCompose (DecPkGhost RunSem)
 open CryptoVerification.SignalSession.Cli.RunProofs.Poll
   (DpKitStk PathAEntryWords cliKitStk cliPollIdKitPlaced cliPollKpkKitPlaced
@@ -103,18 +108,6 @@ abbrev pathAInnerFramePlaced :=
 abbrev pathAInnerFramePlacedExt :=
   @Stage2V1FoldsPlacedBudget.pathAInnerFramePlacedExt
 
-/-- Duplicate `⌜y.g.msgG.kyberPtr ≠ 0#64⌝` out of `pathAInnerFramePlaced A_r`. -/
-theorem pathAInnerFrame_dup_kyberPtr_placed_alloc {M : AllocCostModel}
-    {A_b : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    {B : RunBudgets} {S : RunSem} [LibsignalPlacement]
-    (A_r : RustAlloc)
-    (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A_b lim DecPkEnv B S))
-    (m : PreKeyMessageFields) (i : SignalMessage) (rngPtr sp : BitVec 64) :
-    pathAInnerFramePlaced A_r y m i rngPtr sp ⊢
-      ⌜y.g.msgG.kyberPtr ≠ 0#64⌝ ∗ pathAInnerFramePlaced A_r y m i rngPtr sp :=
-  Stage2V1FoldsPlacedBudget.pathAInnerFrame_dup_kyberPtr_placed A_r y m i rngPtr sp
-
 /-- Duplicate `⌜y.g.msgG.kyberPtr ≠ 0#64⌝` out of `pathAInnerFramePlaced A.repAlloc`. -/
 theorem pathAInnerFrame_dup_kyberPtr_placed {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -125,56 +118,6 @@ theorem pathAInnerFrame_dup_kyberPtr_placed {M : AllocCostModel}
     pathAInnerFramePlaced A.repAlloc y m i rngPtr sp ⊢
       ⌜y.g.msgG.kyberPtr ≠ 0#64⌝ ∗ pathAInnerFramePlaced A.repAlloc y m i rngPtr sp :=
   Stage2V1FoldsPlacedBudget.pathAInnerFrame_dup_kyberPtr_placed A.repAlloc y m i rngPtr sp
-
-/-- Duplicate `⌜y.g.msgG.kyberPtr ≠ 0#64⌝` out of `pathAInnerFramePlaced (A.atState lim st_b s1)`. -/
-theorem pathAInnerFrame_dup_kyberPtr_placed_atState {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    {B : RunBudgets} {S : RunSem} {st_b : M.σ} {s1 : State} [LibsignalPlacement]
-    (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A lim DecPkEnv B S))
-    (m : PreKeyMessageFields) (i : SignalMessage) (rngPtr sp : BitVec 64) :
-    pathAInnerFramePlaced (A.atState lim st_b s1) y m i rngPtr sp ⊢
-      ⌜y.g.msgG.kyberPtr ≠ 0#64⌝ ∗ pathAInnerFramePlaced (A.atState lim st_b s1) y m i rngPtr sp :=
-  Stage2V1FoldsPlacedBudget.pathAInnerFrame_dup_kyberPtr_placed
-    (A.atState lim st_b s1) y m i rngPtr sp
-
-/-- Kit- and allocator-polymorphic `stageP2PreAt_dup_kyberPtr_placed` over arbitrary
-`{A_s A_r : RustAlloc}` and store kits `{spkKit kpkKit pkKit ikit}`. -/
-theorem stageP2PreAt_dup_kyberPtr_placed_kits {M : AllocCostModel}
-    {A_b : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    {B : RunBudgets} {S : RunSem} [LibsignalPlacement]
-    {A_s A_r : RustAlloc}
-    {spkKit : SignedPreKeyStoreSpec A_s 0#64}
-    {kpkKit : KyberPreKeyStoreSpec A_s 0#64}
-    {pkKit : PreKeyStoreSpec A_s 0#64}
-    {ikit : IdentityStoreSpec A_s 0#64}
-    (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A_b lim DecPkEnv B S))
-    (m : PreKeyMessageFields) (i : SignalMessage) (w : PathAEntryWords)
-    (s0 : State) (sp fp rngPtr v_a8 v_b8 v_d0 : BitVec 64)
-    (stSpk : spkKit.SpkState) (stKpk : kpkKit.KpkState)
-    (stPk : pkKit.PkState) (stId : ikit.IdState) :
-    stageP2PreAtPlaced A_s spkKit kpkKit pkKit ikit
-      s0 sp fp y.fut y.cx y.out y.g.msgA y.g.msgG.kyberPtr y.g.peerA y.g.meA
-      y.g.stores (y.g.stores + 0xc8#64) (y.g.stores + 0x50#64) (y.g.stores + 0x78#64)
-      y.g.peerA (y.g.msgA + 0xc8#64) w.u_488 w.u_80 w.u_88 w.u_90 v_a8 v_b8 v_d0
-      (mkPathAHdr m) i.messageVersion 0#8 0#8 w.b_4b0 w.b_4f1 0#8
-      w.opkWord m.kpkId m.regId m.spkId
-      stSpk stKpk stPk stId
-      y.g.me y.g.peer (dpClosSubStack B)
-      (pathAInnerFramePlaced A_r y m i rngPtr sp) ⊢
-    ⌜y.g.msgG.kyberPtr ≠ 0#64⌝ ∗
-    stageP2PreAtPlaced A_s spkKit kpkKit pkKit ikit
-      s0 sp fp y.fut y.cx y.out y.g.msgA y.g.msgG.kyberPtr y.g.peerA y.g.meA
-      y.g.stores (y.g.stores + 0xc8#64) (y.g.stores + 0x50#64) (y.g.stores + 0x78#64)
-      y.g.peerA (y.g.msgA + 0xc8#64) w.u_488 w.u_80 w.u_88 w.u_90 v_a8 v_b8 v_d0
-      (mkPathAHdr m) i.messageVersion 0#8 0#8 w.b_4b0 w.b_4f1 0#8
-      w.opkWord m.kpkId m.regId m.spkId
-      stSpk stKpk stPk stId
-      y.g.me y.g.peer (dpClosSubStack B)
-      (pathAInnerFramePlaced A_r y m i rngPtr sp) :=
-  Stage2V1FoldsPlacedBudget.stageP2PreAt_dup_kyberPtr_placed
-    y m i w s0 sp fp rngPtr v_a8 v_b8 v_d0 stSpk stKpk stPk stId
 
 /-- `RustAlloc`-polymorphic `stageP2PreAt_dup_kyberPtr_placed` specialized to `cliPoll*KitPlaced A_s`
 and `pathAInnerFramePlaced A_r`. -/
@@ -266,47 +209,6 @@ theorem stageP2PreAt_dup_kyberPtr_placed {M : AllocCostModel}
       y.g.me y.g.peer (dpClosSubStack B)
       (pathAInnerFramePlaced A.repAlloc y m i rngPtr sp) :=
   stageP2PreAt_dup_kyberPtr_placed_ext (A.atState lim st_b s1) A.repAlloc
-    y m i w s0 sp fp rngPtr v_a8 v_b8 v_d0
-
-/-- Variant of `stageP2PreAt_dup_kyberPtr_placed` with both outer kits and inner frame at
-`A.repAlloc`. -/
-theorem stageP2PreAt_dup_kyberPtr_placed_rep {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
-    {B : RunBudgets} {S : RunSem} [LibsignalPlacement]
-    (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A lim DecPkEnv B S))
-    (m : PreKeyMessageFields) (i : SignalMessage) (w : PathAEntryWords)
-    (s0 : State) (sp fp rngPtr v_a8 v_b8 v_d0 : BitVec 64) :
-    stageP2PreAtPlaced A.repAlloc
-      (cliPollSpkKitPlaced A.repAlloc y.g.F m.spkId (cliKitStk B))
-      (cliPollKpkKitPlaced A.repAlloc y.g.F m.kpkId m.spkId y.g.msg.baseKey (cliKitStk B))
-      (cliPollPkKitPlaced A.repAlloc y.g.F w.opkWord (cliKitStk B))
-      (cliPollIdKitPlaced A.repAlloc y.g.F y.g.peer (cliKitStk B))
-      s0 sp fp y.fut y.cx y.out y.g.msgA y.g.msgG.kyberPtr y.g.peerA y.g.meA
-      y.g.stores (y.g.stores + 0xc8#64) (y.g.stores + 0x50#64) (y.g.stores + 0x78#64)
-      y.g.peerA (y.g.msgA + 0xc8#64) w.u_488 w.u_80 w.u_88 w.u_90 v_a8 v_b8 v_d0
-      (mkPathAHdr m) i.messageVersion 0#8 0#8 w.b_4b0 w.b_4f1 0#8
-      w.opkWord m.kpkId m.regId m.spkId
-      CryptoVerification.SignalSession.Cli.StoresGhost.opened.signed CryptoVerification.SignalSession.Cli.StoresGhost.opened.kyber
-      CryptoVerification.SignalSession.Cli.StoresGhost.opened.oneTime CryptoVerification.SignalSession.Cli.StoresGhost.opened.identity
-      y.g.me y.g.peer (dpClosSubStack B)
-      (pathAInnerFramePlaced A.repAlloc y m i rngPtr sp) ⊢
-    ⌜y.g.msgG.kyberPtr ≠ 0#64⌝ ∗
-    stageP2PreAtPlaced A.repAlloc
-      (cliPollSpkKitPlaced A.repAlloc y.g.F m.spkId (cliKitStk B))
-      (cliPollKpkKitPlaced A.repAlloc y.g.F m.kpkId m.spkId y.g.msg.baseKey (cliKitStk B))
-      (cliPollPkKitPlaced A.repAlloc y.g.F w.opkWord (cliKitStk B))
-      (cliPollIdKitPlaced A.repAlloc y.g.F y.g.peer (cliKitStk B))
-      s0 sp fp y.fut y.cx y.out y.g.msgA y.g.msgG.kyberPtr y.g.peerA y.g.meA
-      y.g.stores (y.g.stores + 0xc8#64) (y.g.stores + 0x50#64) (y.g.stores + 0x78#64)
-      y.g.peerA (y.g.msgA + 0xc8#64) w.u_488 w.u_80 w.u_88 w.u_90 v_a8 v_b8 v_d0
-      (mkPathAHdr m) i.messageVersion 0#8 0#8 w.b_4b0 w.b_4f1 0#8
-      w.opkWord m.kpkId m.regId m.spkId
-      CryptoVerification.SignalSession.Cli.StoresGhost.opened.signed CryptoVerification.SignalSession.Cli.StoresGhost.opened.kyber
-      CryptoVerification.SignalSession.Cli.StoresGhost.opened.oneTime CryptoVerification.SignalSession.Cli.StoresGhost.opened.identity
-      y.g.me y.g.peer (dpClosSubStack B)
-      (pathAInnerFramePlaced A.repAlloc y m i rngPtr sp) :=
-  stageP2PreAt_dup_kyberPtr_placed_ext A.repAlloc A.repAlloc
     y m i w s0 sp fp rngPtr v_a8 v_b8 v_d0
 
 /-! ## 2. `RustAlloc`-Polymorphic Placed Store Canonicality & Self-Kit Relations -/

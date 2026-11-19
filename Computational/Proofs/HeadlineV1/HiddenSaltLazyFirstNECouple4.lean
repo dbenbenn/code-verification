@@ -9,28 +9,53 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple3
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyWire
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple3 -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyWire -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
+import Computational.Proofs.E2E.RefuseCorrB0Core
+import Computational.Proofs.E2E.Relabel.GameEq
+import Computational.Proofs.E2E.SpkHop1A
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.Fig8Atomic
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.Engine
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import Computational.Proofs.ReductionDsl.Soundness
+import Computational.Proofs.SessionCostedFig8.Bundles
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 
 /-!
 # Per-Query Cell-Family Step Infrastructure
 
 **Checked by Lean.** Defines single-step cell execution `runCellStep`, proves that `CellK4Doomed`
 cells win with probability zero under `cellSimRun`, and provides query-bind decomposition and
-double-sum step lemmas across cells.
--/
+double-sum step lemmas across cells.-/
 
-@[expose] public section
+namespace CryptoVerification.LibsignalSession.HeadlineV1
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
 
-namespace CryptoVerification.LibsignalSession.HeadlineV1
 
 open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
 open CryptoVerification.SpqrV1Sync.SendTotal (Encaps1Total TopState)
@@ -439,39 +464,8 @@ theorem simulateQ_cell_fig8ToDFImpl_chall_run
 
 /-! ## Single-step cell execution -/
 
-theorem sum_cellSimRun_le_of_doomed_or_eq {α : Type}
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (P : Params (List (BitVec 8)) (BitVec 512)) (ℓ : ℕ)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
-    (oa_pre oa_post : OracleComp (unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
-      (BitVec 512) (List (BitVec 8))) α)
-    (sC sC₁ : LibsignalToModularSchemeSimState (List (BitVec 8)) Pt ℓ)
-    (g₁ : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
-    (sent sent₁ : List (Fig8C Pt))
-    (m' m₁' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
-    (s_cell s_cell₁ : ℕ → Option ℕ → SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
-    (hcells : ∀ t ∈ Finset.range ((qep + 1) + 2), ∀ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      CellK4Doomed tL t g₁ (s_cell₁ t tL) ∨
-      cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL oa_pre sC sent m' (s_cell t tL) =
-        cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL oa_post sC₁ sent₁ m₁'
-          (s_cell₁ t tL)) :
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL oa_post sC₁ sent₁ m₁'
-          (s_cell₁ t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL oa_pre sC sent m' (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
-  refine Finset.sum_le_sum fun t ht => Finset.sum_le_sum fun tL htL => ?_
-  rcases hcells t ht tL htL with hdoomed | heq
-  · rw [evalDist_cellSimRun_cellWinPred_eq_zero_of_doomed P ℓ Dh encPt encT decT idOf lam qep
-      t tL oa_post sC₁ sent₁ m₁' hdoomed]
-    exact zero_le
-  · rw [heq]
-
 /-- Executes one simulator step inside the `(t, tL)` paper reduction cell. -/
-noncomputable def runCellStep {PQ Pt α : Type} {ℓ : ℕ} [DecidableEq Pt] [Zero Pt]
+@[expose] def runCellStep {PQ Pt α : Type} {ℓ : ℕ} [DecidableEq Pt] [Zero Pt]
     (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
     (qep : ℕ) (t : ℕ) (tL : Option ℕ)
     (mDF : StateT (LibsignalToModularSchemeSimState PQ Pt ℓ) (DeliverForgeM Pt ℓ) α)
@@ -833,7 +827,7 @@ theorem runCellStep_guardC_stopped_false {α PQ Pt : Type} {ℓ : ℕ} [Decidabl
   rw [runCellStep_bind, runCellStep_get]
   simp only [pure_bind, hstop, Bool.false_eq_true, ↓reduceIte]
 
-def corrStepChains {PQ Pt : Type} {ℓ : ℕ} (encT : Pt → PublicKey) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def corrStepChains {PQ Pt : Type} {ℓ : ℕ} (encT : Pt → PublicKey) (Dh : DHFun (BitVec 256) Pt)
     (s : SimState PQ Pt ℓ) (Q : Party) (st : Fig8St Pt) : Party → List GhostChain :=
   if Q == Party.B && s.mir.epoch Party.B == 0 then
     match st.γ with
@@ -842,12 +836,12 @@ def corrStepChains {PQ Pt : Type} {ℓ : ℕ} (encT : Pt → PublicKey) (Dh : DH
     | _ => s.chains
   else s.chains
 
-def corrStepGhost {PQ PQC Pt : Type} {ℓ : ℕ} (P : Params PQ PQC) (encT : Pt → PublicKey)
+@[expose] def corrStepGhost {PQ PQC Pt : Type} {ℓ : ℕ} (P : Params PQ PQC) (encT : Pt → PublicKey)
     (Dh : DHFun (BitVec 256) Pt) (s : SimState PQ Pt ℓ) (Q : Party) (st : Fig8St Pt) :
     GhostState PQ :=
   toGhost (P := P) { s with chains := corrStepChains encT Dh s Q st } Q st
 
-def corrStepStateC {PQ PQC Pt : Type} {ℓ : ℕ} (P : Params PQ PQC) (encT : Pt → PublicKey)
+@[expose] def corrStepStateC {PQ PQC Pt : Type} {ℓ : ℕ} (P : Params PQ PQC) (encT : Pt → PublicKey)
     (Dh : DHFun (BitVec 256) Pt) (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (Q : Party) (st : Fig8St Pt) :
     LibsignalToModularSchemeSimState PQ Pt ℓ :=
   let s := sC.base
@@ -1113,6 +1107,35 @@ theorem cellSimRun_chall_query_bind {α : Type}
   cellSimRun_inr_query_bind P ℓ Dh encPt encT decT idOf lam qep t tL
     (.inl (.inl (.inl (.inr (Q, m₀, m₁, r))))) u sC sent m' s_cell
 
-end CryptoVerification.LibsignalSession.HeadlineV1
+/-- Single-win 3-family Stage-2 continuation win-probability sum (`B1` + `B2` + `(tL, par)` buckets),
+matching `forgeStage2CellBucketSumPaper` on initial states while reusing `cellSimRun` for `B1`/`B2`
+and `bucketSimRun` on `(s_cell 0 none, none)` for `(tL, par)` buckets. -/
+@[expose] noncomputable def stage2CellBucketSumRun {α : Type}
+    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    {PQ : Type} [Inhabited PQ]
+    (P : Params PQ (BitVec 512)) (ℓ : ℕ)
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt) (qep : ℕ)
+    (oa : OracleComp (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) (BitVec 512)
+      (List (BitVec 8))) α)
+    (sC : LibsignalToModularSchemeSimState PQ Pt ℓ) (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s_cell : ℕ → Option ℕ → SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)) :
+    ℝ≥0∞ :=
+  (∑ t ∈ Finset.Ico 2 ((qep + 1) + 2),
+    𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t (some (t - 2))
+        oa sC sent m' (s_cell t (some (t - 2))) >>=
+      fun z => pure (cellWinPred (some (t - 2)) t z.2)] {true}) +
+  (∑ t ∈ Finset.Ico 3 ((qep + 1) + 2),
+    𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t (some (t - 3))
+        oa sC sent m' (s_cell t (some (t - 3))) >>=
+      fun z => pure (cellWinPred (some (t - 3)) t z.2)] {true}) +
+  (∑ tL ∈ SM.admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∑ par ∈ ({false, true} : Finset Bool),
+    𝒟[bucketSimRun P ℓ Dh encPt encT decT idOf lam qep tL par
+        oa sC sent m' (s_cell 0 none, none) >>=
+      fun z => pure (bucketWinPred tL z.2)] {true})
+
 
 end
+
+end CryptoVerification.LibsignalSession.HeadlineV1

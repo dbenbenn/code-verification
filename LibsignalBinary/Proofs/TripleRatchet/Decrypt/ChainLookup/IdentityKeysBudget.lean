@@ -10,22 +10,24 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.CommonBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSymBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysStepsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeys
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSymBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysStepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeys
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainStack
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import ProofLib.Sep
 import ProofLib.RegChain
 import ProofLib.SepLogic.WP.Apply
 meta import ProofLib.SepLogic.WP.Apply -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Segment S0 (`IdentityKeys`) & Pre-Key Callee Contracts
@@ -36,7 +38,7 @@ Segment S0 seams (`identityKeys_placed_ok`, `S0SeamPlaced`, `S0SeamXPlaced`) on 
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -111,8 +113,6 @@ theorem remote_identity_key_placed_ok [LibsignalPlacement] (A : RustAlloc) (H : 
 
 /-! ## 2. Block `35`: `<SessionState>::clear_unacknowledged_pre_key_message` -/
 
-abbrev clearUpkBudgetSpecWithStack := @clearUpkSpecWithStack
-
 private theorem slt_one_iff_eq_zero_placed {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
     (cap.slt 1#64 = true) ↔ cap = 0 := by
   have h1 : (cap = 0) ↔ cap.toNat = 0 := ⟨by rintro rfl; rfl, fun h0 => BitVec.eq_of_toNat_eq h0⟩
@@ -165,19 +165,8 @@ private theorem optTailVecAt_entails_deallocX_placed (A : RustAlloc) (size : Nat
             (b' := a + 24#64) rfl (by bv_omega) (by omega)]
       apply sepConj_mono (pointsTo64_entails_memRegion _ _)
       have hb := pointsToBytes_entails_memRegion (a + 24#64) g.tail; rwa [htail] at hb
-    have hpull1 :
-        (((a ↦₆₄ g.vec.cap) ∗ ((a + 8#64) ↦₆₄ g.vec.ptr) ∗
-          ((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.vec.bytes.length) ∗
-          (if g.vec.cap.slt 1#64 = true then emp
-           else ⌜0 < g.vec.cap.toNat ∧ g.vec.cap.toNat < 2 ^ 63⌝ ∗
-             A.live g.vec.ptr g.vec.cap.toNat 1 ∗ memRegion g.vec.ptr g.vec.cap.toNat)) ∗
-          ((a + 24#64) ↦ₛ g.tail)) =
-        ((a ↦₆₄ g.vec.cap) ∗ ((a + 8#64) ↦₆₄ g.vec.ptr) ∗
-          (((a + 16#64) ↦₆₄ BitVec.ofNat 64 g.vec.bytes.length) ∗ ((a + 24#64) ↦ₛ g.tail)) ∗
-          (if g.vec.cap.slt 1#64 = true then emp
-           else ⌜0 < g.vec.cap.toNat ∧ g.vec.cap.toNat < 2 ^ 63⌝ ∗
-             A.live g.vec.ptr g.vec.cap.toNat 1 ∗ memRegion g.vec.ptr g.vec.cap.toNat)) := by sep_ac_rfl
-    rw [hpull1]; exact sepConj_mono_right (sepConj_mono_right (sepConj_mono_left h16))
+    refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left h16)))
+    by_cases hlt : g.vec.cap.slt 1#64 = true <;> simp only [hlt, ↓reduceIte] <;> bi_entail
 
 private theorem stackAt_clearUpk_opt_placed {hookStack : Nat}
     (hstack : hookStack + 32 ≤ 2 ^ 64) (sp : BitVec 64) :
@@ -204,12 +193,7 @@ private theorem sepWP_instantiate_post_exists_4 {α : Type} {prog : Program} {pc
         sf.mem ⊨ ∃∗ x : BitVec 64, ∃∗ x_1 : BitVec 64, ∃∗ x_2 : BitVec 64, ∃∗ x_3 : BitVec 64,
           ∃∗ a : α, Q sf x x_1 x_2 x_3 a) ∧ rest sf) := by
   refine SepWP.mono h fun sf _ _ _ ⟨h1, h2⟩ => ⟨fun hm => ?_, h2⟩
-  refine Satisfies.mono ?_ (h1 hm)
-  apply Entails.sepExists_elim; intro x; refine Entails.sepExists_right x ?_
-  apply Entails.sepExists_elim; intro x_1; refine Entails.sepExists_right x_1 ?_
-  apply Entails.sepExists_elim; intro x_2; refine Entails.sepExists_right x_2 ?_
-  apply Entails.sepExists_elim; intro x_3; refine Entails.sepExists_right x_3 ?_
-  exact Entails.sepExists_right w (Entails.refl _)
+  exact Satisfies.mono (by bi_entail) (h1 hm)
 
 private theorem clearUpkBudget_strengthen_post {prog : Program} {target_pc : BitVec 64} {s : State}
     {P R S₁ S₂ : SepProp}
@@ -440,6 +424,21 @@ theorem identityKeys_step5_some_reaches_placed [LibsignalPlacement]
       (pack64 b7 b8 b9 b10 b11 b12 b13 b14) w3 b31)) hm3
   dsimp only [sp] at hm4 ⊢; convert hm4 using 1; sep_ac_rfl
 
+private theorem bi_frame3 {P A B C F : SepProp} (h : P ⊢ (A ∗ B ∗ C) ∗ F) :
+    P ⊢ A ∗ B ∗ C ∗ F := by simpa only [sepConj_assoc] using h
+
+private theorem bi_frame4 {P A B C D F : SepProp} (h : P ⊢ (A ∗ B ∗ C ∗ D) ∗ F) :
+    P ⊢ A ∗ B ∗ C ∗ D ∗ F := by simpa only [sepConj_assoc] using h
+
+private theorem bi_frame5 {P A B C D E F : SepProp} (h : P ⊢ (A ∗ B ∗ C ∗ D ∗ E) ∗ F) :
+    P ⊢ A ∗ B ∗ C ∗ D ∗ E ∗ F := by simpa only [sepConj_assoc] using h
+
+private theorem bi_frame8 {P A1 A2 A3 A4 A5 A6 A7 A8 F : SepProp}
+    (h : P ⊢ (A1 ∗ A2 ∗ A3 ∗ A4 ∗ A5 ∗ A6 ∗ A7 ∗ A8) ∗ F) :
+    P ⊢ A1 ∗ A2 ∗ A3 ∗ A4 ∗ A5 ∗ A6 ∗ A7 ∗ A8 ∗ F := by simpa only [sepConj_assoc] using h
+
+attribute [local irreducible] remoteGroupC remoteGroupD
+
 theorem identityKeys_step45_reaches_placed [LibsignalPlacement]
     {H : String → Option (State → State)} (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (x : TryDecryptGhost) (F : SepProp) (s0 s3 : State) (hcl : LibsignalCodeLoaded lsmpl s3.mem)
@@ -473,42 +472,22 @@ theorem identityKeys_step45_reaches_placed [LibsignalPlacement]
   · rw [hrem_opt] at hm; dsimp only [remoteIdentityOkAt] at hm
     rw [show sp + 400#64 + 1#64 = sp + 401#64 by bv_omega,
         show sp + 400#64 + 2#64 = sp + 402#64 by bv_omega] at hm
-    have hm_402 : s3.mem ⊨ memRegion (sp + 402#64) 32 ∗
-        (((sp + 400#64) ↦₈ 0#8) ∗ ((sp + 401#64) ↦₈ 0#8) ∗
-         memRegion (sp + 56#64) 344 ∗ memRegion (sp + 434#64) 846 ∗
-         ((sp + 1280#64) ↦ₛ x.st.localIdentity.publicKey.bytes.toList) ∗
-         memRegion (sp + 1312#64) 96 ∗ ((sp + 48#64) ↦₆₄ x.remA) ∗
-         logOff tryDecryptDummyImg ∗ stackAt sp tryDecryptSubStack ∗ F) := by
-      dsimp only [sp] at hm ⊢; convert hm using 1; sep_ac_rfl
     obtain ⟨w0, b4, b5, b6, b7, b8, b9, b10, b11, b12, b13, b14, b15, b16, b17, b18, b19, b20, b21, b22, w3, b31, hent_402, hm_402⟩ :=
-      exists_remoteGroupC_of_memRegion_32 hm_402
-    have hm_s4 : s3.mem ⊨
-        ((sp + 400#64) ↦₈ 0#8) ∗ ((sp + 401#64) ↦₈ 0#8) ∗
-        remoteGroupC (sp + 402#64) w0 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 w3 b31 ∗
-        memRegion (sp + 56#64) 344 ∗ memRegion (sp + 434#64) 846 ∗
-        (((sp + 1280#64) ↦ₛ x.st.localIdentity.publicKey.bytes.toList) ∗
-         memRegion (sp + 1312#64) 96 ∗ ((sp + 48#64) ↦₆₄ x.remA) ∗
-         logOff tryDecryptDummyImg ∗ stackAt sp tryDecryptSubStack ∗ F) := by
-      dsimp only [sp] at hm_402 ⊢; convert hm_402 using 1; sep_ac_rfl
+      exists_remoteGroupC_of_memRegion_32 (Satisfies.mono (Q := memRegion (sp + 402#64) 32 ∗ _) (by bi_frame) hm)
     refine reaches_pc_seq
       (identityKeys_step4_reaches_placed x _ s0 s3 0#8 w0 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22
-        w3 b31 h_pc h_run h_sp h_sp_align htr hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx29 (hent_402 (sp + 402#64)) hm_s4) ?_
+        w3 b31 h_pc h_run h_sp h_sp_align htr hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx29 (hent_402 (sp + 402#64))
+        (Satisfies.mono (bi_frame5 (by bi_frame)) hm_402)) ?_
     intro s4 hpc4 hrun4 ⟨hvm4, hsp4, halign4, htr4, _, _, _, hx11_4, hx19_4, hx20_4, hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx29_4, hm4⟩
-    have hm4_re : s4.mem ⊨
-        (memRegion (sp + 56#64) 296 ∗ ((sp + 352#64) ↦₆₄ w3) ∗ ((sp + 360#64) ↦₈ b31) ∗
-         memRegion (sp + 361#64) 39 ∗ memRegion (sp + 400#64) 34 ∗ memRegion (sp + 434#64) 542 ∗
-         ((sp + 976#64) ↦₃₂ w0) ∗ ((sp + 980#64) ↦₈ b4) ∗ ((sp + 981#64) ↦₈ b5) ∗
-         memRegion (sp + 982#64) 298 ∗ ((sp + 1280#64) ↦ₛ x.st.localIdentity.publicKey.bytes.toList) ∗
-         memRegion (sp + 1312#64) 96) ∗
-        (logOff tryDecryptDummyImg ∗ (((sp + 48#64) ↦₆₄ x.remA) ∗ stackAt sp tryDecryptSubStack ∗ F)) := by
-      dsimp only [sp] at hm4 ⊢; convert hm4 using 1; sep_ac_rfl
-    have hm4_1352 := Satisfies.mono (sepConj_mono_left (identityKeys_step4_to_memRegion_1352 sp x.st.localIdentity w0 b4 b5 w3 b31)) hm4_re
+    have hm4_1352 := Satisfies.mono (Entails.trans (by bi_entail)
+      (sepConj_mono_left (Q := logOff tryDecryptDummyImg ∗ (((sp + 48#64) ↦₆₄ x.remA) ∗ stackAt sp tryDecryptSubStack ∗ F))
+        (identityKeys_step4_to_memRegion_1352 sp x.st.localIdentity w0 b4 b5 w3 b31))) hm4
     refine reaches_pc_mono
       (identityKeys_step5_none_reaches_placed x (((sp + 48#64) ↦₆₄ x.remA) ∗ stackAt sp tryDecryptSubStack ∗ F)
         s0 s4 hpc4 hrun4 hsp4 halign4 htr4 hx11_4 hx19_4 hx20_4 hx21_4 hx22_4 hx23_4 hx24_4 hx25_4 hx29_4 hm4_1352) ?_
     intro s5 _ _ ⟨hvm5, hsp5, halign5, htr5, hx1_5, hx19_5, hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx29_5, hm5⟩
-    refine ⟨hvm4.trans hvm5, hsp5, halign5, htr5, hx1_5, hx19_5, hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx29_5, ?_⟩
-    dsimp only [sp] at hm5; convert hm5 using 1; sep_ac_rfl
+    exact ⟨hvm4.trans hvm5, hsp5, halign5, htr5, hx1_5, hx19_5, hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx29_5,
+      Satisfies.mono (by bi_entail) hm5⟩
   · rw [hrem_opt] at hm; dsimp only [remoteIdentityOkAt] at hm
     rw [show sp + 400#64 + 1#64 = sp + 401#64 by bv_omega,
         show sp + 400#64 + 2#64 = sp + 402#64 by bv_omega] at hm
@@ -520,38 +499,23 @@ theorem identityKeys_step45_reaches_placed [LibsignalPlacement]
       have hlen : remIk.publicKey.bytes.toList.length = 32 := List.Vector.toList_length _
       have h := pointsToBytes_entails_memRegion (sp + 402#64) remIk.publicKey.bytes.toList; rwa [hlen] at h
     rw [hrem_c (sp + 402#64)] at hm
-    have hm_s4 : s3.mem ⊨
-        ((sp + 400#64) ↦₈ 0#8) ∗ ((sp + 401#64) ↦₈ 1#8) ∗
-        remoteGroupC (sp + 402#64) w0 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 w3 b31 ∗
-        memRegion (sp + 56#64) 344 ∗ memRegion (sp + 434#64) 846 ∗
-        (((sp + 1280#64) ↦ₛ x.st.localIdentity.publicKey.bytes.toList) ∗
-         memRegion (sp + 1312#64) 96 ∗ ((sp + 48#64) ↦₆₄ x.remA) ∗
-         logOff tryDecryptDummyImg ∗ stackAt sp tryDecryptSubStack ∗ F) := by
-      dsimp only [sp] at hm ⊢; convert hm using 1; sep_ac_rfl
     refine reaches_pc_seq_lscl hcl
       (identityKeys_step4_reaches_placed x _ s0 s3 1#8 w0 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22
-        w3 b31 h_pc h_run h_sp h_sp_align htr hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx29 hent_402 hm_s4) ?_
+        w3 b31 h_pc h_run h_sp h_sp_align htr hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx29 hent_402
+        (Satisfies.mono (bi_frame5 (by bi_frame)) hm)) ?_
     intro s4 hpc4 hrun4 ⟨hvm4, hsp4, halign4, htr4, hx8_4, hx9_4, hx10_4, hx11_4, hx19_4, hx20_4, hx21_4, hx22_4, hx23_4, hx24_4, hx25_4, hx29_4, hm4⟩ hcl4
     have hrem_d : ∀ a : BitVec 64, (a ↦ₛ remIk.publicKey.bytes.toList) =
         remoteGroupD a w0 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 w3 b31 :=
       fun a => (hrem_c a).trans (remoteGroupC_eq_remoteGroupD a w0 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 w3 b31)
     have hdiff : x.st.localIdentity ≠ remIk := by intro heq; apply hnot_self; rw [hrem_opt, heq]
-    have hm4_re : s4.mem ⊨
-        ((sp + 48#64) ↦₆₄ x.remA) ∗ memRegion (sp + 400#64) 34 ∗
-        ((sp + 352#64) ↦₆₄ w3) ∗ ((sp + 360#64) ↦₈ b31) ∗ ((sp + 976#64) ↦₃₂ w0) ∗
-        ((sp + 980#64) ↦₈ b4) ∗ ((sp + 981#64) ↦₈ b5) ∗ memRegion (sp + 56#64) 296 ∗
-        memRegion (sp + 361#64) 39 ∗ memRegion (sp + 434#64) 542 ∗ memRegion (sp + 982#64) 298 ∗
-        ((sp + 1280#64) ↦ₛ x.st.localIdentity.publicKey.bytes.toList) ∗
-        memRegion (sp + 1312#64) 96 ∗ stackAt sp tryDecryptSubStack ∗ (logOff tryDecryptDummyImg ∗ F) := by
-      dsimp only [sp] at hm4 ⊢; convert hm4 using 1; sep_ac_rfl
     refine reaches_pc_mono
       (identityKeys_step5_some_reaches_placed h_bb x remIk (logOff tryDecryptDummyImg ∗ F) s0 s4 hcl4
         w0 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15 b16 b17 b18 b19 b20 b21 b22 w3 b31
         hpc4 hrun4 hsp4 halign4 htr4 hx8_4 hx9_4 hx10_4 hx11_4 hx19_4 hx20_4 hx21_4 hx22_4 hx23_4 hx24_4 hx25_4 hx29_4
-        hrem_d hdiff hm4_re) ?_
+        hrem_d hdiff (Satisfies.mono (by bi_entail) hm4)) ?_
     intro s5 _ _ ⟨hvm5, hsp5, halign5, htr5, hx1_5, hx19_5, hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx29_5, hm5⟩
-    refine ⟨hvm4.trans hvm5, hsp5, halign5, htr5, hx1_5, hx19_5, hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx29_5, ?_⟩
-    convert hm5 using 1; sep_ac_rfl
+    exact ⟨hvm4.trans hvm5, hsp5, halign5, htr5, hx1_5, hx19_5, hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx29_5,
+      Satisfies.mono (by bi_entail) hm5⟩
 
 /-- Block `130` Segment S0 under `[LibsignalPlacement]` (`RustCliAllocBudget M`): reaches
 `segLoadRatchetPC_placed` with budget-threaded `LoadRatchetState_placed`. -/
@@ -572,125 +536,73 @@ theorem identityKeys_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   dsimp only [tryDecryptRawSpec, tryDecryptRawSpecPlaced] at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨_hfits, hpre⟩
-  let A0 : RustAlloc := A.atState lim st_init s0
-  change s0.mem ⊨
+  have ⟨A0, hA0_eq⟩ : ∃ A0 : RustAlloc, A.atState lim st_init s0 = A0 := ⟨_, rfl⟩
+  rw [show (CryptoVerification.LibsignalTripleRatchet.Decrypt.tryDecryptRawSpecPlaced
+      C (A.atState lim st_init s0) ctl uuidTryParse S) =
     (CryptoVerification.LibsignalTripleRatchet.Decrypt.tryDecryptRawSpecPlaced
-      C A0 ctl uuidTryParse S).pre x s0 ∗ R at hpre
+      C A0 ctl uuidTryParse S) by rw [hA0_eq]] at hpre
   dsimp only [CryptoVerification.LibsignalTripleRatchet.Decrypt.tryDecryptRawSpecPlaced] at hpre
   rw [← tryDecryptDummyImg_eq_placedImg] at hpre
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, hx4, hx5, hnot_self, _, _, _⟩, hm0⟩
   unfold sessionStateAt at hm0; rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hm0
   rcases hm0 with ⟨⟨hdeser_loc, hdeser_rem, hss_rest⟩, hm0⟩
-  have hm_s1 : s0.mem ⊨ stackAt s0.sp rootStack ∗ vecGhostAt A0 x.G.localIk x.ss ∗ logOff tryDecryptDummyImg ∗
-      (vecGhostAt A0 x.G.remoteIk (x.ss + 0x18#64) ∗
-       vecU8At A0 (x.ss + 0x30#64) x.G.root.cap x.G.root.ptr (keyToBytes32 x.st.rootKey) ∗
-       vecAt A0 104 8 (chainAt A0) (x.ss + 0x48#64) x.G.chainsCap x.G.chainsPtr (x.G.chains.zip x.st.receiverChains) ∗
-       vecGhostAt A0 x.G.alice (x.ss + 0x60#64) ∗
-       vecU8At A0 (x.ss + 0x78#64) x.G.pq.cap x.G.pq.ptr x.st.pqRatchetState ∗
-       optSenderChainAt A0 (x.ss + 0x90#64) x.G.sender x.st.senderChain ∗
-       optTailVecAt A0 48 (x.ss + 0xf8#64) x.G.pending ∗ optTailVecAt A0 32 (x.ss + 0x128#64) x.G.kyber ∗
-       ((x.ss + 0x148#64) ↦₃₂ x.st.sessionVersion) ∗ ((x.ss + 0x14c#64) ↦₃₂ x.st.previousCounter) ∗
-       ((x.ss + 0x150#64) ↦ₛ x.G.regIds) ∗ memRegion x.ret 48 ∗
-       protocolAddressAt A0 x.rem x.remA ∗ protocolAddressAt A0 x.loc x.locA ∗
-       signalMessageAt A0 x.msgG x.msgA x.msg ∗ tapeAt ctl x.cur x.rest ∗ A0.pool ∗ R) := by
-    convert hm0 using 1; sep_ac_rfl
-  refine reaches_pc_seq_lscl hcl
-    (identityKeys_step1_reaches_placed x _ s0 hcl h_pc h_run h_sp_align hx0 hx1 hx2 hx3 hx4 hx5 hdeser_loc hm_s1) ?_
-  intro s1 hpc1 hrun1 ⟨hvm1, hsp1, halign1, htr1, hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx29_1, hm1⟩ hcl1
-  have hm_s2 : s1.mem ⊨ localIdentityOkAt ((s0.sp - 1504#64) + 400#64) x.st.localIdentity ∗
-      memRegion ((s0.sp - 1504#64) + 56#64) 344 ∗ memRegion ((s0.sp - 1504#64) + 433#64) 975 ∗
-      (vecGhostAt A0 x.G.localIk x.ss ∗ vecGhostAt A0 x.G.remoteIk (x.ss + 0x18#64) ∗
-       memRegion (s0.sp - 1504#64) 48 ∗ ((s0.sp - 1504#64 + 48#64) ↦₆₄ x.remA) ∗
-       stackAt (s0.sp - 1504#64) tryDecryptSubStack ∗ tryDecryptSavedRegs s0.sp s0 ∗
-       (vecU8At A0 (x.ss + 0x30#64) x.G.root.cap x.G.root.ptr (keyToBytes32 x.st.rootKey) ∗
-        vecAt A0 104 8 (chainAt A0) (x.ss + 0x48#64) x.G.chainsCap x.G.chainsPtr (x.G.chains.zip x.st.receiverChains) ∗
-        vecGhostAt A0 x.G.alice (x.ss + 0x60#64) ∗
-        vecU8At A0 (x.ss + 0x78#64) x.G.pq.cap x.G.pq.ptr x.st.pqRatchetState ∗
-        optSenderChainAt A0 (x.ss + 0x90#64) x.G.sender x.st.senderChain ∗
-        optTailVecAt A0 48 (x.ss + 0xf8#64) x.G.pending ∗ optTailVecAt A0 32 (x.ss + 0x128#64) x.G.kyber ∗
-        ((x.ss + 0x148#64) ↦₃₂ x.st.sessionVersion) ∗ ((x.ss + 0x14c#64) ↦₃₂ x.st.previousCounter) ∗
-        ((x.ss + 0x150#64) ↦ₛ x.G.regIds) ∗ logOff tryDecryptDummyImg ∗ memRegion x.ret 48 ∗
-        protocolAddressAt A0 x.rem x.remA ∗ protocolAddressAt A0 x.loc x.locA ∗
-        signalMessageAt A0 x.msgG x.msgA x.msg ∗ tapeAt ctl x.cur x.rest ∗ A0.pool ∗ R)) := by
-    convert hm1 using 1; sep_ac_rfl
-  refine reaches_pc_seq_lscl hcl1
-    (identityKeys_step2_reaches_placed x _ s0 s1 hpc1 hrun1 hsp1 halign1 htr1 hx19_1 hx20_1 hx21_1 hx22_1 hx23_1 hx24_1 hx25_1 hx29_1 hm_s2) ?_
-  intro s2 hpc2 hrun2 ⟨hvm2, hsp2, halign2, htr2, hx0_2, hx8_2, hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx29_2, hm2⟩ hcl2
-  have hm_s3 : s2.mem ⊨ vecGhostAt A0 x.G.remoteIk (x.ss + 0x18#64) ∗
-      memRegion ((s0.sp - 1504#64) + 400#64) 34 ∗ logOff tryDecryptDummyImg ∗ stackAt (s0.sp - 1504#64) tryDecryptSubStack ∗
-      (memRegion ((s0.sp - 1504#64) + 56#64) 344 ∗ memRegion ((s0.sp - 1504#64) + 434#64) 846 ∗
-       ((s0.sp - 1504#64 + 1280#64) ↦ₛ x.st.localIdentity.publicKey.bytes.toList) ∗
-       memRegion ((s0.sp - 1504#64) + 1312#64) 96 ∗ vecGhostAt A0 x.G.localIk x.ss ∗
-       memRegion (s0.sp - 1504#64) 48 ∗ ((s0.sp - 1504#64 + 48#64) ↦₆₄ x.remA) ∗
-       tryDecryptSavedRegs s0.sp s0 ∗
-       (vecU8At A0 (x.ss + 0x30#64) x.G.root.cap x.G.root.ptr (keyToBytes32 x.st.rootKey) ∗
-        vecAt A0 104 8 (chainAt A0) (x.ss + 0x48#64) x.G.chainsCap x.G.chainsPtr (x.G.chains.zip x.st.receiverChains) ∗
-        vecGhostAt A0 x.G.alice (x.ss + 0x60#64) ∗
-        vecU8At A0 (x.ss + 0x78#64) x.G.pq.cap x.G.pq.ptr x.st.pqRatchetState ∗
-        optSenderChainAt A0 (x.ss + 0x90#64) x.G.sender x.st.senderChain ∗
-        optTailVecAt A0 48 (x.ss + 0xf8#64) x.G.pending ∗ optTailVecAt A0 32 (x.ss + 0x128#64) x.G.kyber ∗
-        ((x.ss + 0x148#64) ↦₃₂ x.st.sessionVersion) ∗ ((x.ss + 0x14c#64) ↦₃₂ x.st.previousCounter) ∗
-        ((x.ss + 0x150#64) ↦ₛ x.G.regIds) ∗ memRegion x.ret 48 ∗
-        protocolAddressAt A0 x.rem x.remA ∗ protocolAddressAt A0 x.loc x.locA ∗
-        signalMessageAt A0 x.msgG x.msgA x.msg ∗ tapeAt ctl x.cur x.rest ∗ A0.pool ∗ R)) := by
-    convert hm2 using 1; sep_ac_rfl
-  have hremote := ls_subroutine_ok_of_block (callerProg := (blkPC_131).rebase (blkPl_131).base H)
-    (remote_identity_key_placed_ok A0 H)
-  refine reaches_pc_seq_lscl hcl2
-    (identityKeys_step3_reaches_placed hremote x _ s0 s2 hcl2 hpc2 hrun2 hsp2 halign2 htr2 hx0_2 hx8_2 hx19_2 hx20_2 hx21_2 hx22_2 hx23_2 hx24_2 hx25_2 hx29_2 hdeser_rem hm_s3) ?_
-  intro s3 hpc3 hrun3 ⟨hvm3, hsp3, halign3, htr3, hx19_3, hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx29_3, hm3⟩ hcl3
-  have hm_s45 : s3.mem ⊨ remoteIdentityOkAt ((s0.sp - 1504#64) + 400#64) x.st.remoteIdentity ∗
-      memRegion ((s0.sp - 1504#64) + 56#64) 344 ∗ memRegion ((s0.sp - 1504#64) + 434#64) 846 ∗
-      ((s0.sp - 1504#64 + 1280#64) ↦ₛ x.st.localIdentity.publicKey.bytes.toList) ∗
-      memRegion ((s0.sp - 1504#64) + 1312#64) 96 ∗ ((s0.sp - 1504#64 + 48#64) ↦₆₄ x.remA) ∗
-      logOff tryDecryptDummyImg ∗ stackAt (s0.sp - 1504#64) tryDecryptSubStack ∗
-      (vecGhostAt A0 x.G.localIk x.ss ∗ vecGhostAt A0 x.G.remoteIk (x.ss + 0x18#64) ∗
-       memRegion (s0.sp - 1504#64) 48 ∗ tryDecryptSavedRegs s0.sp s0 ∗
-       vecU8At A0 (x.ss + 0x30#64) x.G.root.cap x.G.root.ptr (keyToBytes32 x.st.rootKey) ∗
+  obtain ⟨F_tail, hF_tail⟩ : ∃ P : SepProp,
+      (vecU8At A0 (x.ss + 0x30#64) x.G.root.cap x.G.root.ptr (keyToBytes32 x.st.rootKey) ∗
        vecAt A0 104 8 (chainAt A0) (x.ss + 0x48#64) x.G.chainsCap x.G.chainsPtr
          (x.G.chains.zip x.st.receiverChains) ∗
        vecGhostAt A0 x.G.alice (x.ss + 0x60#64) ∗
        vecU8At A0 (x.ss + 0x78#64) x.G.pq.cap x.G.pq.ptr x.st.pqRatchetState ∗
        optSenderChainAt A0 (x.ss + 0x90#64) x.G.sender x.st.senderChain ∗
-       optTailVecAt A0 48 (x.ss + 0xf8#64) x.G.pending ∗ optTailVecAt A0 32 (x.ss + 0x128#64) x.G.kyber ∗
-       ((x.ss + 0x148#64) ↦₃₂ x.st.sessionVersion) ∗ ((x.ss + 0x14c#64) ↦₃₂ x.st.previousCounter) ∗
+       optTailVecAt A0 48 (x.ss + 0xf8#64) x.G.pending ∗
+       optTailVecAt A0 32 (x.ss + 0x128#64) x.G.kyber ∗
+       ((x.ss + 0x148#64) ↦₃₂ x.st.sessionVersion) ∗
+       ((x.ss + 0x14c#64) ↦₃₂ x.st.previousCounter) ∗
        ((x.ss + 0x150#64) ↦ₛ x.G.regIds) ∗ memRegion x.ret 48 ∗
        protocolAddressAt A0 x.rem x.remA ∗ protocolAddressAt A0 x.loc x.locA ∗
-       signalMessageAt A0 x.msgG x.msgA x.msg ∗ tapeAt ctl x.cur x.rest ∗ A0.pool ∗ R) := by
-    convert hm3 using 1; sep_ac_rfl
+       signalMessageAt A0 x.msgG x.msgA x.msg ∗ A0.pool ∗ R) = P := ⟨_, rfl⟩
+  obtain ⟨P_loc, hP_loc⟩ : ∃ P : SepProp, vecGhostAt A0 x.G.localIk x.ss = P := ⟨_, rfl⟩
+  obtain ⟨P_rem, hP_rem⟩ : ∃ P : SepProp, vecGhostAt A0 x.G.remoteIk (x.ss + 0x18#64) = P := ⟨_, rfl⟩
+  obtain ⟨P_tape, hP_tape⟩ : ∃ P : SepProp, tapeAt ctl x.cur x.rest = P := ⟨_, rfl⟩
+  have hm_s1 : s0.mem ⊨ stackAt s0.sp rootStack ∗ vecGhostAt A0 x.G.localIk x.ss ∗
+      logOff tryDecryptDummyImg ∗ (P_rem ∗ P_tape ∗ F_tail) := by
+    subst hP_rem hP_tape hF_tail; convert hm0 using 1; sep_ac_rfl
+  refine reaches_pc_seq_lscl hcl
+    (identityKeys_step1_reaches_placed x _ s0 hcl h_pc h_run h_sp_align hx0 hx1 hx2 hx3 hx4 hx5 hdeser_loc hm_s1) ?_
+  intro s1 hpc1 hrun1 ⟨hvm1, hsp1, halign1, htr1, hx19_1, hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx29_1, hm1⟩ hcl1
+  rw [hP_loc] at hm1
+  refine reaches_pc_seq_lscl hcl1
+    (identityKeys_step2_reaches_placed x _ s0 s1 hpc1 hrun1 hsp1 halign1 htr1 hx19_1 hx20_1 hx21_1 hx22_1 hx23_1 hx24_1 hx25_1 hx29_1
+      (Satisfies.mono (bi_frame3 (by bi_frame)) hm1)) ?_
+  intro s2 hpc2 hrun2 ⟨hvm2, hsp2, halign2, htr2, hx0_2, hx8_2, hx19_2, hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx29_2, hm2⟩ hcl2
+  rw [← hP_rem] at hm2
+  have hremote := ls_subroutine_ok_of_block (callerProg := (blkPC_131).rebase (blkPl_131).base H)
+    (remote_identity_key_placed_ok A0 H)
+  refine reaches_pc_seq_lscl hcl2
+    (identityKeys_step3_reaches_placed hremote x _ s0 s2 hcl2 hpc2 hrun2 hsp2 halign2 htr2 hx0_2 hx8_2 hx19_2 hx20_2 hx21_2 hx22_2 hx23_2 hx24_2 hx25_2 hx29_2 hdeser_rem
+      (Satisfies.mono (bi_frame4 (by bi_frame)) hm2)) ?_
+  intro s3 hpc3 hrun3 ⟨hvm3, hsp3, halign3, htr3, hx19_3, hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx29_3, hm3⟩ hcl3
+  rw [hP_rem] at hm3
   refine reaches_pc_mono
     (reaches_pc_lscl hcl3
       (identityKeys_step45_reaches_placed h_bb x _ s0 s3 hcl3 hpc3 hrun3 hsp3 halign3 htr3
-        hx19_3 hx20_3 hx21_3 hx22_3 hx23_3 hx24_3 hx25_3 hx29_3 hnot_self hm_s45)) ?_
+        hx19_3 hx20_3 hx21_3 hx22_3 hx23_3 hx24_3 hx25_3 hx29_3 hnot_self
+        (Satisfies.mono (bi_frame8 (by bi_frame)) hm3))) ?_
   intro s5 hpc5 hrun5 ⟨⟨hvm45, hsp5, halign5, htr5, hx1_5, hx19_5, hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx29_5, hm5⟩, hcl5⟩
   have hvm : VmPreserved s0 s5 := ((hvm1.trans hvm2).trans hvm3).trans hvm45
-  have hA_eq : A.atState lim st_init s5 = A0 := A.atState_eq_of_vmPreserved lim st_init hvm
+  have hA_eq : A.atState lim st_init s5 = A0 :=
+    (A.atState_eq_of_vmPreserved lim st_init hvm).trans hA0_eq
   unfold LoadRatchetState_placed
   rw [hA_eq]
   refine ⟨hpc5, ⟨hrun5, hsp5, h_sp_align, halign5, hx29_5, htr5.1, hcl5, htr5.2⟩,
     hx19_5, hx20_5, hx21_5, hx22_5, hx23_5, hx24_5, hx25_5, hx1_5, ?_⟩
   unfold sessionStateAt tryDecryptCommonHeap; rw [sepConj_assoc, satisfies_pure_sepConj]
   refine ⟨⟨hdeser_loc, hdeser_rem, hss_rest⟩, ?_⟩
-  have hm5_tape : s5.mem ⊨
-      tapeAt ctl x.cur x.rest ∗ (((s0.sp - 1504#64 + 48#64) ↦₆₄ x.remA) ∗
-       memRegion (s0.sp - 1504#64 + 56#64) 1352 ∗ logOff tryDecryptDummyImg ∗
-       stackAt (s0.sp - 1504#64) tryDecryptSubStack ∗ vecGhostAt A0 x.G.localIk x.ss ∗
-       vecGhostAt A0 x.G.remoteIk (x.ss + 0x18#64) ∗ memRegion (s0.sp - 1504#64) 48 ∗
-       tryDecryptSavedRegs s0.sp s0 ∗
-       vecU8At A0 (x.ss + 0x30#64) x.G.root.cap x.G.root.ptr (keyToBytes32 x.st.rootKey) ∗
-       vecAt A0 104 8 (chainAt A0) (x.ss + 0x48#64) x.G.chainsCap x.G.chainsPtr
-         (x.G.chains.zip x.st.receiverChains) ∗
-       vecGhostAt A0 x.G.alice (x.ss + 0x60#64) ∗
-       vecU8At A0 (x.ss + 0x78#64) x.G.pq.cap x.G.pq.ptr x.st.pqRatchetState ∗
-       optSenderChainAt A0 (x.ss + 0x90#64) x.G.sender x.st.senderChain ∗
-       optTailVecAt A0 48 (x.ss + 0xf8#64) x.G.pending ∗ optTailVecAt A0 32 (x.ss + 0x128#64) x.G.kyber ∗
-       ((x.ss + 0x148#64) ↦₃₂ x.st.sessionVersion) ∗ ((x.ss + 0x14c#64) ↦₃₂ x.st.previousCounter) ∗
-       ((x.ss + 0x150#64) ↦ₛ x.G.regIds) ∗ memRegion x.ret 48 ∗
-       protocolAddressAt A0 x.rem x.remA ∗ protocolAddressAt A0 x.loc x.locA ∗
-       signalMessageAt A0 x.msgG x.msgA x.msg ∗ A0.pool ∗ R) := by
-    convert hm5 using 1; sep_ac_rfl
-  have hm5_after := Satisfies.mono (sepConj_mono_left (tapeAfter_zero ctl x.cur x.rest)) hm5_tape
+  rw [← hP_tape] at hm5
+  have hm5_after := Satisfies.mono (sepConj_mono_left (tapeAfter_zero ctl x.cur x.rest))
+    (Satisfies.mono (Q := tapeAt ctl x.cur x.rest ∗ _) (by bi_frame) hm5)
+  subst hP_loc hP_rem hF_tail
+  dsimp only [tryDecryptSavedRegs, logOff, tryDecryptDummyImg]
   convert hm5_after using 1; sep_ac_rfl
 
 /-- Block `130` Segment S0 under `[LibsignalPlacement]` (`tryDecryptFnPlacedSpec` variant). -/

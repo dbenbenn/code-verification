@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.Fetch
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.Fetch -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.Core
 
 /-!
@@ -20,18 +20,12 @@ allocates the 36-byte `"message from too far into the future"` error string (or 
 `+0x9f4`), writes `InvalidMessage(msgType, msg)` into `ret`, and returns via `+0x77c`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession
 
 open Arm64 ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
-
-/-- Too-far future-counter path correctness (`TooFarPathSpec`). -/
-theorem tooFarPath_ok (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) :
-    TooFarPathSpec F A alloc img :=
-  TooFarPath.tooFarPath_ok' F A alloc img
 
 /-- Placed too-far future-counter path correctness (`TooFarPathPlacedSpec`). -/
 theorem tooFarPath_placed_ok [LibsignalPlacement]

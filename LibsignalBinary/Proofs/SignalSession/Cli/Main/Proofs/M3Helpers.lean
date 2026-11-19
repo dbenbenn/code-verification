@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Arithmetic, Heap, and Error-Path Drop Helpers for `main` Hop M3
@@ -21,7 +22,7 @@ Bitvector tag-decoding and drop-guard arithmetic lemmas, `ErrHist` trace-invaria
 continuations for `main`'s Hop M3.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,19 +42,6 @@ open CryptoVerification.SignalSession.Cli.MainHops
 theorem zext32_eq_self_of_lt {v : BitVec 64} (h : v.toNat < 2 ^ 32) :
     (v.setWidth 32).setWidth 64 = v := by
   bv_omega
-
-/-- PC-relative `adrp x0, ...; add x0, x0, #0x1a8` at `M+0x5a4 .. M+0x5a8` resolves to
-`b + coinsLitOff` for any 4 KiB-aligned image base `b`. -/
-theorem adrp_coins_ok {b fnBase : BitVec 64}
-    (hb : (b &&& 0xfff#64) = 0#64)
-    (hfn : fnBase = b + bv% (ls_off% "main")) :
-    (((fnBase + 0x5a4#64) &&& bv% (2 ^ 64 - 4096)) +
-      bv% (page% (153 * 4096) - page% (ls_off% "main" + 0x5a4))) +
-      0x1a8#64 =
-      b + coinsLitOff := by
-  subst hfn
-  dsimp only [coinsLitOff]
-  bv_bits
 
 /-- For any capacity `cap` with `cap.toNat < 2 ^ 63`, `cmn cap, #1` (`adds xzr, cap, #1`) does not set `Z`. -/
 theorem cmn_neg1_ne_of_lt {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
@@ -105,7 +93,7 @@ theorem msb_false_of_lt {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
 /-! ## 2. Trace & History Helpers -/
 
 /-- Error history invariant carried from `read_file("coins")` `Err` to `free_args`. -/
-def ErrHist (i : Inputs) (_s0 s st : State) : Prop :=
+@[expose] def ErrHist (i : Inputs) (_s0 s st : State) : Prop :=
   st.fs.files = (initFsState (cliInputs i)).files ∧ ¬ CoinsReadable i ∧ st.trace = s.trace
 
 theorem ErrHist.of_eq {i : Inputs} {s0 s st st' : State}
@@ -120,7 +108,7 @@ theorem ErrHist.of_files_eq {i : Inputs} {s0 s st st' : State}
 
 /-- Parametric error history invariant carried from `read_file("coins")` / `read_stdin` `Err`
 to `free_args`. -/
-def ErrHistP (P : Prop) (i : Inputs) (_s0 s st : State) : Prop :=
+@[expose] def ErrHistP (P : Prop) (i : Inputs) (_s0 s st : State) : Prop :=
   st.fs.files = (initFsState (cliInputs i)).files ∧ P ∧ st.trace = s.trace
 
 theorem ErrHistP.of_eq {P : Prop} {i : Inputs} {s0 s st st' : State}
@@ -156,14 +144,6 @@ theorem entails_sepExists_left {α : Type _} {P : α → SepProp} {Q : SepProp}
 
 theorem sepProp_ext {P Q : SepProp} (h1 : P ⊢ Q) (h2 : Q ⊢ P) : P = Q :=
   sepProp_eq_of_entails h1 h2
-
-/-- Focus the `"coins"` read-only literal in `mainLits img`. -/
-def mainLitsRest (img : Obj.Image) : SepProp :=
-  dirLits.foldr (fun l P => ((img.base + l.1) ↦ᵣ utf8 l.2) ∗ P) emp
-
-theorem mainLits_eq (img : Obj.Image) :
-    mainLits img = ((img.base + coinsLitOff) ↦ᵣ utf8 "coins") ∗ mainLitsRest img :=
-  rfl
 
 /-- Unpack `vecU8 A v bs` into its 3 header words plus `ownedBytes A cap ptr (BitVec.ofNat 64 bs.length) bs`. -/
 theorem vecU8_to_ownedBytes (A : RustAlloc) (v : BitVec 64) (bs : List (BitVec 8)) :
@@ -238,7 +218,7 @@ theorem ownedBytes_to_dealloc (A : RustAlloc) {cap ptr len : BitVec 64} {bs : Li
 
 /-- Unified optional owned-buffer predicate for the error-path drop block at `M+0xa50`:
 holds either `ownedBytes A cap ptr len bs` (when `ok = true`) or `emp` with `cap = -1` (when `ok = false`). -/
-def optOwnedBytes (A : RustAlloc) (ok : Bool) (cap ptr : BitVec 64) : SepProp :=
+@[expose] def optOwnedBytes (A : RustAlloc) (ok : Bool) (cap ptr : BitVec 64) : SepProp :=
   if ok then
     ∃∗ len : BitVec 64, ∃∗ bs : List (BitVec 8), ownedBytes A cap ptr len bs
   else

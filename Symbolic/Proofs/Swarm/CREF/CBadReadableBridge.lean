@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -52,7 +52,7 @@ Establishes `RecvCollision` invariance under `.attackerSend` of attacker-known t
 accepting `decrypt` or `decryptSkipped` move `m`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

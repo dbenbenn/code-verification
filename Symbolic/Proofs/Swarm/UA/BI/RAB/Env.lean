@@ -18,6 +18,12 @@ import Symbolic.Proofs.Swarm.UA.BI.RAB.Base
 import Symbolic.Proofs.Swarm.UA.BI.Step
 import Symbolic.Proofs.Swarm.UA.Base
 import Symbolic.Proofs.Swarm.UA.BI.G.PendingPreKey
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.UA.Defs
+import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot
+import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
 
 /-!
 # Break and Invert Environment Steps
@@ -27,7 +33,7 @@ the trace invariant `UAInvB`. A break or invert event flattens to the empty reti
 preserves `AliceRecordPendingInSession`, and extends any clean explanation by decrypt-free steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

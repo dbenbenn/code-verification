@@ -10,16 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.GrowOneSpecs
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlaced
+import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlaced
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefs
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Hooks
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Fetch
 import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneSysrootExt
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Helpers for `SessionRecord::archive_current_state_inner`
@@ -30,7 +31,7 @@ stack/`previous_sessions` buffer layouts for both `prevCap = 0` (`grow_one`) and
 (in-place slot-`0` store).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,100 +56,8 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Callee Offsets and Lifted Contracts -/
 
-theorem libsignalSessionCode_fnOff_archive :
-    libsignalSessionCode.fnOff archiveCurrentStateInnerName =
-      num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner") := by
-  exact (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner")
-
-theorem libsignalSessionCode_fnOff_promote :
-    libsignalSessionCode.fnOff promoteStateName =
-      num% (ls_off% "<libsignal_protocol::state::session::SessionRecord>::promote_state") := by
-  exact (ls_lemma% fnOff "<libsignal_protocol::state::session::SessionRecord>::promote_state")
-
-theorem archive_rel_fnAddrX (b : BitVec 64) (ext : String → Option (State → State))
-    (name : String) (k : BitVec 64)
-    (hk : BitVec.ofNat 64 (libsignalSessionCode.fnOff archiveCurrentStateInnerName) + k =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff name)) :
-    (SP2Ext b ext).fnAddr archiveCurrentStateInnerName + k = (SP2Ext b ext).fnAddr name := by
-  simp only [SP2Ext, Program.fnAddr_rebase]
-  rw [BitVec.add_assoc, hk]
-
-/-- Transfer a contract at `serialize + k` to `archive + k'` when both name the same callee. -/
-theorem sub_ok_serialize_to_archiveX {α : Type} {b : BitVec 64}
-    {ext : String → Option (State → State)} {spec : Spec α} (k k' : BitVec 64) (name : String)
-    (hk : BitVec.ofNat 64 (libsignalSessionCode.fnOff serializeName) + k =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff name))
-    (hk' : BitVec.ofNat 64 (libsignalSessionCode.fnOff archiveCurrentStateInnerName) + k' =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff name))
-    (h : subroutine_ok (SP2Ext b ext) ((SP2Ext b ext).fnAddr serializeName + k) spec) :
-    subroutine_ok (SP2Ext b ext) ((SP2Ext b ext).fnAddr archiveCurrentStateInnerName + k') spec := by
-  rw [archive_rel_fnAddrX b ext name k' hk']
-  rwa [serialize_rel_fnAddrX b ext name k hk] at h
-
-theorem sessionLen_arch_okX (A : RustAlloc) (b : BitVec 64)
-    (ext : String → Option (State → State)) :
-    subroutine_ok (SP2Ext b ext)
-      ((SP2Ext b ext).fnAddr archiveCurrentStateInnerName +
-        bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encoded_len" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-      (sessionLenSubSpecX A) :=
-  sub_ok_serialize_to_archiveX _ _ sessionLenName
-    (by rw [libsignalSessionCode_fnOff_serialize, libsignalSessionCode_fnOff_sessionLen]; rfl)
-    (by rw [libsignalSessionCode_fnOff_archive, libsignalSessionCode_fnOff_sessionLen]; rfl)
-    (sessionLen_sub_okX A b ext)
-
-theorem encodeRaw_arch_okX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hRaw : EncodeRawOkX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr archiveCurrentStateInnerName +
-        bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>") -
-          (ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner")))
-      ((encodeRawSubSpecX A).inImage img) :=
-  sub_ok_serialize_to_archiveX _ _ encodeRawName
-    (by rw [libsignalSessionCode_fnOff_serialize, libsignalSessionCode_fnOff_encodeRaw]; rfl)
-    (by rw [libsignalSessionCode_fnOff_archive, libsignalSessionCode_fnOff_encodeRaw]; rfl)
-    (encodeRaw_sub_okX hRaw)
-
-theorem dropLocal1_arch_okX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hDrop : DropSessionStructureLocal1OkX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr archiveCurrentStateInnerName +
-        bv% (2 ^ 64 + (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::SessionStructure> [local#1]") -
-          (ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner")))
-      ((dropLocal1SubSpecX A).inImage img) :=
-  sub_ok_serialize_to_archiveX _ _ FromRecordCallees.dropSessionStructureLocal1Name
-    (by rw [libsignalSessionCode_fnOff_serialize, libsignalSessionCode_fnOff_dropLocal1]; rfl)
-    (by rw [libsignalSessionCode_fnOff_archive, libsignalSessionCode_fnOff_dropLocal1]; rfl)
-    (dropLocal1_sub_okX hDrop)
-
-theorem alloc_arch_okX {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr archiveCurrentStateInnerName +
-        bv% (ls_off% "__rustc::__rust_alloc" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-      ((rustAllocSubSpecX A).inImage img) := by
-  have halloc := hC.alloc.alloc_ok_at archiveCurrentStateInnerName
-    (num% (ls_off% "__rustc::__rust_alloc" -
-      ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-    (by simp only [libsignalSessionCode_fnOff_archive, arm64_norm])
-  refine subroutine_ok_frame_weaken_inImage
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStackX)
-      (serializeSubStackX - Proofs.libsignal.Stage1X.extHookStack))
-    halloc
-    (fun ⟨size, align⟩ s0 => ?_)
-    (fun ⟨size, align⟩ s0 sf => ?_)
-    (fun _ _ _ => Entails.pure_left False.elim)
-    (fun _ _ _ _ => rfl)
-  · simp only [rustAllocSubSpecX, Proofs.libsignal.Stage1X.rustAllocSpecWithStack,
-      stackAt_serializeSub_splitX s0.sp Proofs.libsignal.Stage1X.extHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [rustAllocSubSpecX, Proofs.libsignal.Stage1X.rustAllocSpecWithStack,
-      stackAt_serializeSub_splitX s0.sp Proofs.libsignal.Stage1X.extHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
 /-- `__rust_dealloc` lifted to the callee stack budget `serializeSubStackX`. -/
-def rustDeallocSubSpecX (A : RustAlloc) : Spec (BitVec 64 × Nat × Nat) where
+@[expose] def rustDeallocSubSpecX (A : RustAlloc) : Spec (BitVec 64 × Nat × Nat) where
   pre := fun (p, size, align) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = size ∧
       (s.readReg64 .x2).toNat = align ∧ LayoutOk size align⌝ ∗
@@ -156,88 +65,8 @@ def rustDeallocSubSpecX (A : RustAlloc) : Spec (BitVec 64 × Nat × Nat) where
   post := fun _ s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ A.pool ∗ stackAt s0.sp serializeSubStackX
 
-theorem dealloc_arch_okX {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr archiveCurrentStateInnerName +
-        bv% (ls_off% "__rustc::__rust_dealloc" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-      ((rustDeallocSubSpecX A).inImage img) := by
-  have hdealloc := hC.alloc.dealloc_ok_at (name := archiveCurrentStateInnerName)
-    (k := num% (ls_off% "__rustc::__rust_dealloc" -
-      ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-    (by simp only [libsignalSessionCode_fnOff_archive, arm64_norm])
-  refine subroutine_ok_frame_weaken_inImage
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStackX)
-      (serializeSubStackX - Proofs.libsignal.Stage1X.extHookStack))
-    hdealloc
-    (fun ⟨p, size, align⟩ s0 => ?_)
-    (fun ⟨p, size, align⟩ s0 sf => ?_)
-    (fun _ _ _ => Entails.pure_left False.elim)
-    (fun _ _ _ _ => rfl)
-  · simp only [rustDeallocSubSpecX, Proofs.libsignal.Stage1X.rustDeallocExternSpecWithStack,
-      stackAt_serializeSub_splitX s0.sp Proofs.libsignal.Stage1X.extHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [rustDeallocSubSpecX, Proofs.libsignal.Stage1X.rustDeallocExternSpecWithStack,
-      stackAt_serializeSub_splitX s0.sp Proofs.libsignal.Stage1X.extHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem shim_arch_okX {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr archiveCurrentStateInnerName +
-        bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-      (shimSubSpecX.inImage img) := by
-  have hshim := hC.alloc.shim_ok_at archiveCurrentStateInnerName
-    (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-      ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-    (by simp only [libsignalSessionCode_fnOff_archive, arm64_norm])
-  refine subroutine_ok_frame_weaken_inImage
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStackX)
-      (serializeSubStackX - Proofs.libsignal.Stage1X.extHookStack))
-    hshim
-    (fun _ s0 => ?_)
-    (fun _ s0 sf => ?_)
-    (fun _ _ _ => Entails.pure_left False.elim)
-    (fun _ _ _ _ => rfl)
-  · simp only [shimSubSpecX, Proofs.libsignal.Stage1X.session2ShimSpecX, sessionShimSpec,
-      Spec.withHookStack, emp_sepConj,
-      stackAt_serializeSub_splitX s0.sp Proofs.libsignal.Stage1X.extHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [shimSubSpecX, Proofs.libsignal.Stage1X.session2ShimSpecX, sessionShimSpec,
-      Spec.withHookStack,
-      stackAt_serializeSub_splitX s0.sp Proofs.libsignal.Stage1X.extHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem memcpy_arch_okX {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr archiveCurrentStateInnerName +
-        bv% (ls_off% "memcpy" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-      (memcpySubSpecX.inImage img) := by
-  have hmemcpy := hC.memcpy_ok_at archiveCurrentStateInnerName
-    (num% (ls_off% "memcpy" -
-      ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-    (by simp only [libsignalSessionCode_fnOff_archive, arm64_norm])
-  refine subroutine_ok_frame_weaken_inImage
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStackX)
-      (serializeSubStackX - CryptoVerification.LibsignalTripleRatchet.extHookStack))
-    hmemcpy
-    (fun ⟨dst, src, bs⟩ s0 => ?_)
-    (fun ⟨dst, src, bs⟩ s0 sf => ?_)
-    (fun _ _ _ => Entails.pure_left False.elim)
-    (fun _ _ _ _ => rfl)
-  · simp only [memcpySubSpecX, sessionMemcpySpec, libcMemcpySpec,
-      stackAt_serializeSub_splitX s0.sp CryptoVerification.LibsignalTripleRatchet.extHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [memcpySubSpecX, sessionMemcpySpec,
-      stackAt_serializeSub_splitX s0.sp CryptoVerification.LibsignalTripleRatchet.extHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
 /-- `RawVec<Vec<u8>>::grow_one` (`growOneVecU8Spec`) lifted to `serializeSubStackX`. -/
-def growOneSubSpecX (A : RustAlloc) : Spec GrowOneCall where
+@[expose] def growOneSubSpecX (A : RustAlloc) : Spec GrowOneCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.v ∧ x.bs.length = x.cap.toNat * 24 ∧ x.ptr ≠ 0 ∧
       max (2 * x.cap.toNat) 4 * 24 + 8 ≤ 2 ^ 63⌝ ∗
@@ -254,203 +83,15 @@ def growOneSubSpecX (A : RustAlloc) : Spec GrowOneCall where
       A.pool ∗ stackAt s0.sp serializeSubStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-theorem growOne_arch_okX {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hA : Proofs.libsignal.Stage1X.AllocContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr archiveCurrentStateInnerName +
-        bv% (ls_off% "<alloc::raw_vec::RawVec<alloc::vec::Vec<u8>>>::grow_one" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-      ((growOneSubSpecX A).inImage img) := by
-  have hfn_fg :
-      libsignalSessionCode.fnOff CryptoVerification.SpqrV1.Alloc.finishGrowLibstdName =
-        num% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [libstd]") :=
-    (ls_lemma% fnOff "<alloc::raw_vec::RawVecInner>::finish_grow [libstd]")
-  have hshim0 := hA.shim_ok_at CryptoVerification.SpqrV1.Alloc.finishGrowLibstdName
-    (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-      ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [libstd]"))
-    (by simp only [hfn_fg, arm64_norm])
-  have hshim : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        CryptoVerification.SpqrV1.Alloc.finishGrowLibstdName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-          ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [libstd]")))
-      (CryptoVerification.SpqrV1.Alloc.Spec.withOptInv
-        (CryptoVerification.SpqrV1.Alloc.session2ShimSpecWithStack
-          CryptoVerification.LibsignalTripleRatchet.extHookStack) (some img)) := by
-    refine subroutine_ok_inImage_map' hshim0 fun _ R s0 hpre => ⟨(), R, ?_, fun sf hpost => ?_⟩
-    · simp only [CryptoVerification.SpqrV1.Alloc.session2ShimSpecWithStack,
-        Proofs.libsignal.Stage1X.session2ShimSpecX, sessionShimSpec, Spec.withHookStack,
-        emp_sepConj, CryptoVerification.LibsignalTripleRatchet.extHookStack,
-        Proofs.libsignal.Stage1X.extHookStack] at hpre ⊢
-      exact hpre
-    · simp only [CryptoVerification.SpqrV1.Alloc.session2ShimSpecWithStack,
-        Proofs.libsignal.Stage1X.session2ShimSpecX, sessionShimSpec, Spec.withHookStack,
-        emp_sepConj, sepConj_assoc,
-        CryptoVerification.LibsignalTripleRatchet.extHookStack,
-        Proofs.libsignal.Stage1X.extHookStack] at hpost ⊢
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpost
-  have halloc0 := hA.alloc_ok_at CryptoVerification.SpqrV1.Alloc.finishGrowLibstdName
-    (num% (ls_off% "__rustc::__rust_alloc" -
-      ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [libstd]"))
-    (by simp only [hfn_fg, arm64_norm])
-  have halloc : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        CryptoVerification.SpqrV1.Alloc.finishGrowLibstdName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_alloc" -
-          ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [libstd]")))
-      (CryptoVerification.SpqrV1.Alloc.Spec.withOptInv
-        (CryptoVerification.LibsignalTripleRatchet.rustAllocSpecWithStack A
-          CryptoVerification.LibsignalTripleRatchet.extHookStack) (some img)) := by
-    refine subroutine_ok_inImage_map' halloc0 fun ⟨size, align⟩ R s0 hpre =>
-      ⟨(size, align), R, ?_, fun sf hpost => ?_⟩
-    · simp only [CryptoVerification.LibsignalTripleRatchet.rustAllocSpecWithStack,
-        Proofs.libsignal.Stage1X.rustAllocSpecWithStack,
-        CryptoVerification.LibsignalTripleRatchet.extHookStack,
-        Proofs.libsignal.Stage1X.extHookStack] at hpre ⊢
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre
-    · simp only [CryptoVerification.LibsignalTripleRatchet.rustAllocSpecWithStack,
-        Proofs.libsignal.Stage1X.rustAllocSpecWithStack,
-        CryptoVerification.LibsignalTripleRatchet.extHookStack,
-        Proofs.libsignal.Stage1X.extHookStack] at hpost ⊢
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpost
-  have hrealloc0 := hA.realloc_ok_at CryptoVerification.SpqrV1.Alloc.finishGrowLibstdName
-    (num% (ls_off% "__rustc::__rust_realloc" -
-      ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [libstd]"))
-    (by simp only [hfn_fg, arm64_norm])
-  have hrealloc : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        CryptoVerification.SpqrV1.Alloc.finishGrowLibstdName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_realloc" -
-          ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [libstd]")))
-      (CryptoVerification.SpqrV1.Alloc.Spec.withOptInv
-        (CryptoVerification.LibsignalTripleRatchet.rustReallocExternSpecWithStack A
-          CryptoVerification.LibsignalTripleRatchet.extHookStack) (some img)) := by
-    refine subroutine_ok_inImage_map' hrealloc0 fun ⟨p, old_size, align, new_size, bs⟩ R s0 hpre =>
-      ⟨(p, old_size, align, new_size, bs), R, ?_, fun sf hpost => ?_⟩
-    · simp only [CryptoVerification.LibsignalTripleRatchet.rustReallocExternSpecWithStack,
-        Proofs.libsignal.Stage1X.rustReallocExternSpecWithStack,
-        CryptoVerification.LibsignalTripleRatchet.extHookStack,
-        Proofs.libsignal.Stage1X.extHookStack, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-      obtain ⟨⟨hx0, hx1, hx2, hx3, hlay_old, hlay_new, hbs1, hbs2⟩, hmem⟩ := hpre
-      exact ⟨⟨hx0, hx1, hx2, hx3, hbs1, hbs2, hlay_old, hlay_new⟩,
-        Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem⟩
-    · simp only [CryptoVerification.LibsignalTripleRatchet.rustReallocExternSpecWithStack,
-        CryptoVerification.LibsignalTripleRatchet.rustReallocSpecWithStack,
-        Proofs.libsignal.Stage1X.rustReallocExternSpecWithStack,
-        Proofs.libsignal.Stage1X.rustReallocSpecWithStack,
-        CryptoVerification.LibsignalTripleRatchet.extHookStack,
-        Proofs.libsignal.Stage1X.extHookStack] at hpost ⊢
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpost
-  have hbs0 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr growOneVecU8Name)
-      ((CryptoVerification.SpqrV1.Alloc.growOneVecU8BsSpecWithStack A
-        CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img) :=
-    CryptoVerification.SpqrV1.Alloc.growOneVecU8_bs_opt_ok (A := A) (b := img.base) (ext := ext)
-      (hookStack := CryptoVerification.LibsignalTripleRatchet.extHookStack) (img? := some img)
-      (by decide)
-      (CryptoVerification.SpqrV1.Alloc.finish_grow_libstd_opt_ok (A := A) (b := img.base)
-        (ext := ext) (hookStack := CryptoVerification.LibsignalTripleRatchet.extHookStack)
-        (img? := some img) (by decide) hshim halloc hrealloc)
-  have hg0 : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr growOneVecU8Name)
-      ((CryptoVerification.SpqrV1.Alloc.growOneVecU8Stack32kSpec A).inImage img) := by
-    refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-    let Frame : SepProp := memRegion (s0.sp - 32768#64) 16272
-    have hstack : stackAt s0.sp 32768 =
-        Frame ∗ stackAt s0.sp ((CryptoVerification.LibsignalTripleRatchet.extHookStack + 48) + 64) :=
-      ProofLib.stackAt_split_bottom s0.sp
-        ((CryptoVerification.LibsignalTripleRatchet.extHookStack + 48) + 64) 16272 (by decide)
-    dsimp only [Spec.inImage] at hpre
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-    rcases hpre with ⟨hinv, hpre0⟩
-    simp only [CryptoVerification.SpqrV1.Alloc.growOneVecU8Stack32kSpec, BitVec.ofNat_eq_ofNat,
-      sepConj_assoc, satisfies_pure_sepConj] at hpre0
-    rcases hpre0 with ⟨⟨hx0, hlen, hptr, hbound⟩, hmem⟩
-    have hpre' : s0.mem ⊨
-        ((CryptoVerification.SpqrV1.Alloc.growOneVecU8BsSpecWithStack A
-          CryptoVerification.LibsignalTripleRatchet.extHookStack).inImage img).pre
-          (x.v, x.cap, x.ptr, x.bs) s0 ∗ (Frame ∗ R) := by
-      dsimp only [Spec.inImage]
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      refine ⟨hinv, ?_⟩
-      simp only [CryptoVerification.SpqrV1.Alloc.growOneVecU8BsSpecWithStack, sepConj_assoc,
-        satisfies_pure_sepConj]
-      refine ⟨⟨hx0, Nat.le_of_eq hlen, hptr, hbound⟩, ?_⟩
-      rw [hstack] at hmem
-      by_cases hcap0 : x.cap = 0#64
-      · simp only [hcap0, ite_true] at hmem ⊢
-        exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem
-      · simp only [hcap0, ite_false, ← hlen, Nat.sub_self, memRegion_zero, sepConj_emp,
-          sepConj_assoc] at hmem ⊢
-        exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hmem
-    refine hbs0.mono_outcome (x.v, x.cap, x.ptr, x.bs) (Frame ∗ R) s0 hpc hrun hpre' hsp
-      fun sf hout => ?_
-    rcases hout with ⟨hret, hcc, hq⟩ | ⟨hp_st, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩
-    · refine Or.inl ⟨hret, hcc, ?_⟩
-      have hsub_mul : (max (2 * x.cap.toNat) 4 - x.cap.toNat) * 24 =
-          max (2 * x.cap.toNat) 4 * 24 - x.bs.length := by
-        rw [Nat.sub_mul, hlen]
-      dsimp only [Spec.inImage, CryptoVerification.SpqrV1.Alloc.growOneVecU8BsSpecWithStack,
-        CryptoVerification.SpqrV1.Alloc.growOneVecU8Stack32kSpec, newCapVecU8] at hq ⊢
-      rw [hstack, hsub_mul]
-      simp only [BitVec.ofNat_eq_ofNat] at hq ⊢
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hq
-    · refine Or.inr (Or.inl ⟨hp_st, ?_⟩)
-      dsimp only [Spec.inImage, CryptoVerification.SpqrV1.Alloc.growOneVecU8BsSpecWithStack,
-        CryptoVerification.SpqrV1.Alloc.growOneVecU8Stack32kSpec] at hq ⊢
-      exact allowPanic_frame id (by rwa [sepConj_assoc])
-    · exact False.elim (allowPanic_not_exited hq)
-    · exact False.elim (allowPanic_not_exited hq)
-  have hg : subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr archiveCurrentStateInnerName +
-        bv% (ls_off% "<alloc::raw_vec::RawVec<alloc::vec::Vec<u8>>>::grow_one" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-      ((CryptoVerification.SpqrV1.Alloc.growOneVecU8Stack32kSpec A).inImage img) := by
-    rw [archive_rel_fnAddrX img.base ext growOneVecU8Name _
-      (by rw [libsignalSessionCode_fnOff_archive,
-        (ls_lemma% fnOff "<alloc::raw_vec::RawVec<alloc::vec::Vec<u8>>>::grow_one")]; rfl)]
-    exact hg0
-  refine subroutine_ok_frame_weaken_inImage
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStackX)
-      (serializeSubStackX - 32768))
-    hg
-    (fun x s0 => ?_)
-    (fun x s0 sf => ?_)
-    (fun x s0 sf => allocPanic_frame_entails x s0 sf _)
-    (fun _ _ _ _ => rfl)
-  · simp only [growOneSubSpecX, CryptoVerification.SpqrV1.Alloc.growOneVecU8Stack32kSpec,
-      stackAt_serializeSub_splitX s0.sp 32768 (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [growOneSubSpecX, CryptoVerification.SpqrV1.Alloc.growOneVecU8Stack32kSpec,
-      stackAt_serializeSub_splitX s0.sp 32768 (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-theorem archive_panic_at_handle_errorX {b : BitVec 64} {ext : String → Option (State → State)} :
-    (SP2Ext b ext).externAt?
-      ((SP2Ext b ext).fnAddr archiveCurrentStateInnerName +
-        bv% (ls_off% "alloc::raw_vec::handle_error" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner")) =
-      some Rust.panicked := by
-  exact panic_at_panicSymbol_ext (b := b) (ext := ext)
-    (name := archiveCurrentStateInnerName) (hname := "alloc::raw_vec::handle_error")
-    (k := num% (ls_off% "alloc::raw_vec::handle_error" -
-      ls_off% "<libsignal_protocol::state::session::SessionRecord>::archive_current_state_inner"))
-    (stub := num% (ls_off% "alloc::raw_vec::handle_error"))
-    libsignalSessionCode_fnOff_archive (by simp only [arm64_norm]) (by decide)
-    (ls_hook% "alloc::raw_vec::handle_error")
-    (by simp [Rust.isPanicSymbol])
-
-/-! ## General `pending` and `kyber` Byte and Heap Decomposition -/
-
 /-- First 64-bit word (`noneCap` or `g.vec.cap`) of an `OptTailVecInline` representation. -/
-def optTailCap : Option TailVecGhost → BitVec 64
+@[expose] def optTailCap : Option TailVecGhost → BitVec 64
   | none => noneCap
   | some g => g.vec.cap
 
 /-- Deallocation obligation for a niche-tagged `Option<TailVecGhost>` whose first two words are
 `(cap, ptr)`: when `cap <ₛ 1` (`noneCap = -1` or `cap = 0`), nothing is freed; otherwise
 `1 ≤ cap < 2^63` and `__rust_dealloc(ptr, cap, 1)` frees the owned buffer. -/
-def tailPinDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
+@[expose] def tailPinDealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
   if cap.slt 1#64 = true then emp
   else ⌜1 ≤ cap.toNat ∧ cap.toNat < 2 ^ 63⌝ ∗ A.live ptr cap.toNat 1 ∗ memRegion ptr cap.toNat
 

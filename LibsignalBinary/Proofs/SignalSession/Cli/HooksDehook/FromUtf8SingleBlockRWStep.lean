@@ -13,6 +13,10 @@ public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
 public import VerifiedLibraries.RustStd.Proofs.Wave2.FromUtf8Step
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8SingleBlock -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Single-Block Return & Multi-Byte UTF-8 Stepping for `from_utf8` (`HooksDehook.FromUtf8SingleBlockRWStep`)

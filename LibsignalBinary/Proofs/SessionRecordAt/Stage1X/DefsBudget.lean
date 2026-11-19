@@ -11,7 +11,13 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
-public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Defs
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Stage-1 `X` Contract Definitions
@@ -21,7 +27,7 @@ Defines `VmPreserved`-augmented zero-allocation `[LibsignalPlacement]` contracts
 `<RatchetState>::find_receiver_chain_index` (`findIndexPlacedSpecX`, `FindIndexPlacedOkX`, Block `26`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +51,7 @@ open Proofs.libsignal.Stage1X (hmacStackX findIndexStackX)
 
 /-- `VmPreserved`-augmented contract of `crypto::hmac_sha256` with `hmacStackX = 18432` B stack
 (`0` allocations, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def hmacSpecX (F : ShaCompress) :
+@[expose] def hmacSpecX (F : ShaCompress) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8)) where
   pre := fun (out, ka, key, ia, inp) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = ka ∧ (s.readReg64 .x2).toNat = key.length ∧
@@ -74,7 +80,7 @@ theorem hmac_placed_ok_cl [LibsignalPlacement] {F : ShaCompress} {H : LibsignalH
 /-- `VmPreserved`-augmented relocatable `[LibsignalPlacement]` contract of
 `find_receiver_chain_index` with `findIndexStackX = 17408` B stack (`0` allocations; callers pass
 `A.repAlloc` and transport `A.pool lim st` via `VmPreserved s0 sf`). -/
-def findIndexPlacedSpecX [LibsignalPlacement] (A : RustAlloc) : Spec FindIndexGhost where
+@[expose] def findIndexPlacedSpecX [LibsignalPlacement] (A : RustAlloc) : Spec FindIndexGhost where
   pre := fun (p, cs, theirA, their) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = cs.length ∧ s.readReg64 .x2 = theirA ∧
       cs.length * 104 < 2 ^ 63⌝ ∗

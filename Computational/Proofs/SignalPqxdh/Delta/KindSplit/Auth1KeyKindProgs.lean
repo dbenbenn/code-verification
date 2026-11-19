@@ -48,22 +48,4 @@ open Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthGapDhK
 theorem pqxdhAuth1KeyKindCostedSims_sig (S : Setup) (b : QueryBudget) :
     (pqxdhAuth1KeyKindCostedSims S).sig b = a1s2KindProg S b := rfl
 
-theorem pqxdhAuth1KeyKindCostedSims_shcr (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).shcr b = shcrAuth1KeyKindProg S b := rfl
-
-theorem pqxdhAuth1KeyKindCostedSims_gdh (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).gdh b = a1g2KindProg S b := rfl
-
-theorem pqxdhAuth1KeyKindCostedSims_ck (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).ck b = prfCk1KeyKindProg S b := rfl
-
-theorem pqxdhAuth1KeyKindCostedSims_mk (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).mk b = prfMsgKeys1KeyKindProg S b := rfl
-
-theorem pqxdhAuth1KeyKindCostedSims_cpa (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).cpa b = aeadCpa1KeyKindProg S b := rfl
-
-theorem pqxdhAuth1KeyKindCostedSims_int (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).int b = prfHmac1KeyKindProg S b := rfl
-
 end Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindProgs

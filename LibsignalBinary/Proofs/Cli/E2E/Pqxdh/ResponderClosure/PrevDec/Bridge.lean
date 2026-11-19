@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.ReprMove
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Decoded Previous Session to Drop Precondition Bridge
@@ -20,7 +21,7 @@ Separation-logic entailments (`prevDec_sessionAt`, `prevDec_sessionStateAt_canon
 `sessionStateAt` precondition of `dropSessionStructure3` on the version-mismatch exit.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

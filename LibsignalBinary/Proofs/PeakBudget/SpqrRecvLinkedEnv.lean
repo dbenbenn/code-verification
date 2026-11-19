@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvC09aWire
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvC09aWire
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightBranches -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.V1Ratchet4 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrStatesRecvPeakSpec
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvTightSpec
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,7 +60,7 @@ open LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
 path) `v1ChainAfterKey`. Under `TopStateTight F K stBytes`, both `spqrDecodeState` and `chainFrom`
 succeed, while on malformed inputs the `SpqrRecvTightEnv` conjunct in the linked envelope still
 bounds `evs`. -/
-def SpqrRecvGhostLink (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvGhostLink (F : ShaCompress) (K : MlKem)
     (stBytes : Bytes) (sckaMsg : Message spqrPolyApi)
     (xAdd : ChainAddEpochGhost) (xRk : ChainRecvKeyGhost) : Prop :=
   match spqrDecodeState stBytes with
@@ -78,7 +82,7 @@ def SpqrRecvGhostLink (F : ShaCompress) (K : MlKem)
         | _ => False)
 
 /-- Linked counterpart of `SpqrRecvTightEnv` conjoined with `SpqrRecvGhostLink`. -/
-def SpqrRecvTightLinkedEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvTightLinkedEnv (F : ShaCompress) (K : MlKem)
     (DecodeStateEnv : Bytes → List AllocEvent → Prop)
     (StatesFromPbEnv : V1State → List AllocEvent → Prop)
     (StatesIntoPbEnv' : StatesIntoPbGhost F → List AllocEvent → Prop)
@@ -98,7 +102,7 @@ def SpqrRecvTightLinkedEnv (F : ShaCompress) (K : MlKem)
 
 /-- Codec-instantiated linked envelope (`SpqrRecvC07TightEnv` conjoined with `SpqrRecvGhostLink`).
 -/
-def SpqrRecvC07TightLinkedEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvC07TightLinkedEnv (F : ShaCompress) (K : MlKem)
     (StatesRecvEnv' : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
       List AllocEvent → Prop)
     (stBytes : Bytes)
@@ -114,7 +118,7 @@ def SpqrRecvC07TightLinkedEnv (F : ShaCompress) (K : MlKem)
     SpqrRecvGhostLink F K stBytes sckaMsg xAdd xRk
 
 /-- Closed linked envelope specialized to `StatesRecvProtoEnv`. -/
-def SpqrRecvC07C09aTightLinkedEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvC07C09aTightLinkedEnv (F : ShaCompress) (K : MlKem)
     (stBytes : Bytes)
     (pre_pb : PqRatchetState) (vn : VersionNegotiationPB) (pb : V1State)
     (st0 : States spqrPolyApi (spqrAuthApi F)) (sckaMsg : Message spqrPolyApi)
@@ -228,7 +232,7 @@ theorem spqrRecvGhostLink_of_v1ChainAfterKey
   rw [hrecv]
   exact ⟨hAdd, Or.inr hAfter⟩
 
-def mkDefaultChainAddEpochGhost (c : Chain) : ChainAddEpochGhost :=
+@[expose] def mkDefaultChainAddEpochGhost (c : Chain) : ChainAddEpochGhost :=
   { selfPtr := 0#64
     esPtr := 0#64
     G :=
@@ -241,7 +245,7 @@ def mkDefaultChainAddEpochGhost (c : Chain) : ChainAddEpochGhost :=
     self := c
     epochSecret := default }
 
-def mkDefaultChainRecvKeyGhost (c : Chain) : ChainRecvKeyGhost :=
+@[expose] def mkDefaultChainRecvKeyGhost (c : Chain) : ChainRecvKeyGhost :=
   { out := 0#64
     selfPtr := 0#64
     epoch := 0#64
@@ -380,44 +384,5 @@ theorem spqrRecvTightDomain_of_topStateTight_and_link
                 rw [hRkCh1] at hrk
                 exact hch1_rc c xRk.epoch xRk.index rawKey hrk
   exact ⟨hvn, hcLinks4, hv1PreRaw, hAddLinks4, hRkLinks4, hRkSmall, hRkCp, hRkRc, hv1PostRaw⟩
-
-theorem spqrRecvTightDomain_of_topStateTight_and_tightLinkedEnv
-    {F : ShaCompress} {K : MlKem}
-    {DecodeStateEnv : Bytes → List AllocEvent → Prop}
-    {StatesFromPbEnv : V1State → List AllocEvent → Prop}
-    {StatesIntoPbEnv' : StatesIntoPbGhost F → List AllocEvent → Prop}
-    {StatesRecvEnv' : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
-      List AllocEvent → Prop}
-    {stBytes : Bytes}
-    {pre_pb : PqRatchetState} {vn : VersionNegotiationPB} {pb : V1State}
-    {st0 : States spqrPolyApi (spqrAuthApi F)} {sckaMsg : Message spqrPolyApi}
-    {v : V1Recv spqrPolyApi (spqrAuthApi F)}
-    {xInit : InitInnerGhost} {xNew : ChainNewGhost}
-    {xAdd : ChainAddEpochGhost} {xRk : ChainRecvKeyGhost}
-    {xSInto : StatesIntoPbGhost F} {xCInto : ChainIntoPbCall}
-    {evs : List AllocEvent}
-    (hTop : TopStateTight F K stBytes)
-    (hevs : SpqrRecvTightLinkedEnv F K DecodeStateEnv StatesFromPbEnv StatesIntoPbEnv'
-      StatesRecvEnv' stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs) :
-    SpqrRecvTightDomain F K stBytes xAdd xRk :=
-  spqrRecvTightDomain_of_topStateTight_and_link hTop hevs.2
-
-theorem spqrRecvTightDomain_of_topStateTight_and_linkedEnv
-    {F : ShaCompress} {K : MlKem}
-    {StatesRecvEnv' : States spqrPolyApi (spqrAuthApi F) → Message spqrPolyApi →
-      List AllocEvent → Prop}
-    {stBytes : Bytes}
-    {pre_pb : PqRatchetState} {vn : VersionNegotiationPB} {pb : V1State}
-    {st0 : States spqrPolyApi (spqrAuthApi F)} {sckaMsg : Message spqrPolyApi}
-    {v : V1Recv spqrPolyApi (spqrAuthApi F)}
-    {xInit : InitInnerGhost} {xNew : ChainNewGhost}
-    {xAdd : ChainAddEpochGhost} {xRk : ChainRecvKeyGhost}
-    {xSInto : StatesIntoPbGhost F} {xCInto : ChainIntoPbCall}
-    {evs : List AllocEvent}
-    (hTop : TopStateTight F K stBytes)
-    (hevs : SpqrRecvC07TightLinkedEnv F K StatesRecvEnv'
-      stBytes pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto evs) :
-    SpqrRecvTightDomain F K stBytes xAdd xRk :=
-  spqrRecvTightDomain_of_topStateTight_and_link hTop hevs.2
 
 end LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv

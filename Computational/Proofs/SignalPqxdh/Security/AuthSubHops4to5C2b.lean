@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsC
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsC -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHopA -- proof-setup: allow-public-import
 
 /-!
 # `INT-CTXT` Slot Invariant and Send Coupling
@@ -22,7 +25,7 @@ Defines `RelProbDom`, `projectIntState`, and `IntSlotInv`, and proves the initia
 coupling for `aeadIntReductionAuthCached`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +38,7 @@ open _root_.Proofs.SignalPqxdh.Security
 open _root_.Proofs.SignalPqxdh.Security.FgGapDh
 
 /-- One-sided heterogeneous relational dominance up to a right-hand bad/win event `bad`. -/
-def RelProbDom {α5 α6 : Type} (R : α5 → α6 → Prop) (bad : α6 → Bool)
+@[expose] def RelProbDom {α5 α6 : Type} (R : α5 → α6 → Prop) (bad : α6 → Bool)
     (m5 : ProbComp α5) (m6 : ProbComp α6) : Prop :=
   ∀ (w5 : α5 → ℝ≥0∞) (w6 : α6 → ℝ≥0∞),
     (∀ y5, w5 y5 ≤ 1) →
@@ -80,7 +83,7 @@ theorem RelProbDom.bind_rel {β5 β6 α5 α6 : Type}
     (fun b6 hb6 => probExpect_eq_const_of_support _ _ 1 (fun y6 hy6 => hw6 y6 (hbad b6 hb6 y6 hy6)))
     (fun b5 b6 hR1 => hf b5 b6 hR1 w5 w6 hw5 hw6 hle)
 
-def ValidAuthLengths (S : Setup) (hst : AuthHybridState S) : Prop :=
+@[expose] def ValidAuthLengths (S : Setup) (hst : AuthHybridState S) : Prop :=
   ValidPrincipals S hst.base.principals ∧
   ValidSpkBundles S hst.base.spkBundles ∧
   ValidOpkEntries S hst.base.opkEntries ∧

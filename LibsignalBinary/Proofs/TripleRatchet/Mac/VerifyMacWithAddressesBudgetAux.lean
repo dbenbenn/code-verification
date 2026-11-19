@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddresses
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Mac.VerifyMacWithAddresses
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.MacCodeSym -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` and Budget Helpers for `SignalMessage::verify_mac_with_addresses`
@@ -25,7 +26,7 @@ Factors out `FitsEnv` decomposition lemmas for `verifyMacWithAddressesEvents`,
 MAC/address comparison lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,21 +44,7 @@ open CryptoVerification.LibsignalTripleRatchet (
   SerializeAddressesGhost VerifyMacWithAddressesGhost
   blackBoxSpec extHookStack
 )
-open CryptoVerification.LibsignalTripleRatchet.Mac.VerifyMacWithAddresses (
-  bne_zext32_ite cset_eq_byte cset_eq_byte_alt
-  ite_one_zero_and_32 ite_one_zero_and_64 ite_one_zero_and_8
-  ite_one_zero_and_one_64 ite_one_zero_and_one_8
-  list_length_8_eq mac8_eq_bool memRegion_16_of_two_words
-  noneCap_add_one_eq_zero ofNat_cons_cons_bne_one ofNat_cons_sub_one
-  okTagVec_add_two_eq_zero okTagVec_add_two_ne_zero
-  pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3
-  pack64_byte4 pack64_byte5 pack64_byte6 pack64_byte7
-  pointsToBytes_8_bytes pointsToBytes_pack64 pointsToBytes_serialized_split
-  setWidth32_and_1095216660735 setWidth32_and_4294967297 setWidth32_ite_one_zero_64
-  setWidth8_and32 setWidth8_and64 setWidth8_ite_one_zero_64
-  setWidth8_setWidth32 setWidth8_zext64_32 stackAt_split_ge
-  verifyMacWithAddresses_fnOff zeroExtend32_ite_one_zero_8 zeroExtend64_ite_one_zero_32
-)
+open CryptoVerification.LibsignalTripleRatchet.Mac.VerifyMacWithAddresses (bne_zext32_ite cset_eq_byte cset_eq_byte_alt ite_one_zero_and_32 ite_one_zero_and_64 ite_one_zero_and_8 ite_one_zero_and_one_64 ite_one_zero_and_one_8 list_length_8_eq mac8_eq_bool memRegion_16_of_two_words noneCap_add_one_eq_zero ofNat_cons_cons_bne_one ofNat_cons_sub_one okTagVec_add_two_eq_zero okTagVec_add_two_ne_zero pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3 pack64_byte4 pack64_byte5 pack64_byte6 pack64_byte7 pointsToBytes_8_bytes pointsToBytes_pack64 pointsToBytes_serialized_split setWidth32_and_1095216660735 setWidth32_and_4294967297 setWidth32_ite_one_zero_64 setWidth8_and32 setWidth8_and64 setWidth8_ite_one_zero_64 setWidth8_setWidth32 setWidth8_zext64_32 stackAt_split_ge zeroExtend32_ite_one_zero_8 zeroExtend64_ite_one_zero_32)
 open LibsignalBinary.Heap (
   AllocCostModel BudgetLimits FitsEnv FitsEvents VmPreserved
   fitsEvents_append rustAllocEvents rustDeallocEvents
@@ -82,18 +69,7 @@ attribute [local arm64_norm, local wp_norm]
   calleeSavedVRegs_setPState calleeSavedVRegs_writeReg64 calleeSavedVRegs_writeReg32
   calleeSavedVRegs_writeReg calleeSavedVRegs_writeVReg128_ite calleeSavedVRegs_writeVReg64_ite
   calleeSavedVRegs_writeVReg32_ite isCalleeSavedVReg updateCalleeSavedVRegs
-attribute [local simp, local arm64_norm, local wp_norm]
-  verifyMacWithAddresses_fnOff
-  cset_eq_byte cset_eq_byte_alt bne_zext32_ite
-  okTagVec_add_two_ne_zero okTagVec_add_two_eq_zero noneCap_add_one_eq_zero
-  pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3
-  pack64_byte4 pack64_byte5 pack64_byte6 pack64_byte7
-  ite_one_zero_and_64 ite_one_zero_and_32 setWidth32_ite_one_zero_64
-  zeroExtend64_ite_one_zero_32 ite_one_zero_and_one_64 setWidth8_ite_one_zero_64
-  mac8_eq_bool
-  setWidth8_zext64_32 setWidth8_setWidth32 setWidth8_and64 setWidth8_and32
-  ite_one_zero_and_8 setWidth32_and_4294967297 setWidth32_and_1095216660735
-  ite_one_zero_and_one_8 zeroExtend32_ite_one_zero_8
+attribute [local simp, local arm64_norm, local wp_norm] cset_eq_byte cset_eq_byte_alt bne_zext32_ite okTagVec_add_two_ne_zero okTagVec_add_two_eq_zero noneCap_add_one_eq_zero pack64_byte0 pack64_byte1 pack64_byte2 pack64_byte3 pack64_byte4 pack64_byte5 pack64_byte6 pack64_byte7 ite_one_zero_and_64 ite_one_zero_and_32 setWidth32_ite_one_zero_64 zeroExtend64_ite_one_zero_32 ite_one_zero_and_one_64 setWidth8_ite_one_zero_64 mac8_eq_bool setWidth8_zext64_32 setWidth8_setWidth32 setWidth8_and64 setWidth8_and32 ite_one_zero_and_8 setWidth32_and_4294967297 setWidth32_and_1095216660735 ite_one_zero_and_one_8 zeroExtend32_ite_one_zero_8
 
 @[local simp, local arm64_norm, local wp_norm]
 private theorem pack64_byte1_trunc (m0 m1 m2 m3 m4 m5 m6 m7 : BitVec 8) :
@@ -185,7 +161,7 @@ theorem stepEvents_verifyMac_of_exp_some (M : AllocCostModel) (st : M.σ)
 
 /-! ## `VmPreserved` `subtle::black_box::<u8>` placed contracts -/
 
-def session2BlackBoxBudgetSpecX (sp_cur : BitVec 64) (n : Nat) (b : BitVec 8) : Spec Unit where
+@[expose] def session2BlackBoxBudgetSpecX (sp_cur : BitVec 64) (n : Nat) (b : BitVec 8) : Spec Unit where
   pre := fun _ s =>
     ⌜(s.readReg64 .x0).setWidth 8 = b ∧ s.sp = sp_cur⌝ ∗ stackAt sp_cur n
   post := fun _ s0 sf =>

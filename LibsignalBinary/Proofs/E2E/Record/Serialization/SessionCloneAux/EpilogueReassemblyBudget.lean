@@ -9,14 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.EpilogueReassembly
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.EpilogueReassembly -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Fetch
+import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.VCGen
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.SepLogic.WP
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.NonVmSteps
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import LibsignalBinary.Heap.IfaceBudget
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `VmPreserved`-threaded epilogue and reassembly for `SessionStructure::clone`
@@ -25,7 +33,7 @@ Relocatable `[LibsignalPlacement]` epilogue proofs (`+924..ret`) for `SessionStr
 (block `80`), threading `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

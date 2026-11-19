@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.FinalizeFixed
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.FinalizeFixed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
 import LibsignalBinary.Proofs.SpqrV1.Chain.Defs -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Kdf.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Generalized SPQR KDF Contracts
@@ -22,7 +24,7 @@ Read-only / read-write byte-slice permissions (`kdfBytesAt`), RFC 2104 key norma
 `finalize_fixed [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +39,7 @@ open CryptoVerification.CodeLayout
 
 /-- Read-only / read-write byte slice permission at `p`: read-only (`p ↦ᵣ bs`) when `ro = true`,
 read-write (`p ↦ₛ bs`) when `ro = false`. -/
-def kdfBytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def kdfBytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if ro then p ↦ᵣ bs else p ↦ₛ bs
 
 @[simp] theorem kdfBytesAt_true (p : BitVec 64) (bs : List (BitVec 8)) :
@@ -48,7 +50,7 @@ def kdfBytesAt (ro : Bool) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
 
 /-- Effective HMAC key after RFC 2104 key normalization: `sha256With F key` (32 bytes) when
 `64 < key.length`, and `key` when `key.length ≤ 64`. -/
-def effectiveHmacKey (F : ShaState → List (BitVec 8) → ShaState) (key : List (BitVec 8)) :
+@[expose] def effectiveHmacKey (F : ShaState → List (BitVec 8) → ShaState) (key : List (BitVec 8)) :
     List (BitVec 8) :=
   if 64 < key.length then sha256With F key else key
 
@@ -88,7 +90,7 @@ structure NewFromSliceGenGhost where
 
 /-- Generalized SL specification of `<hmac::Hmac<sha2::Sha256> as KeyInit>::new_from_slice [local#3]`
 (`0x66fa0`) for SPQR V1: allows `kdfBytesAt x.keyRO x.keyA x.key` and `x.key.length < 2 ^ 63`. -/
-def newFromSliceGenSpec (F : ShaState → List (BitVec 8) → ShaState) : Spec NewFromSliceGenGhost where
+@[expose] def newFromSliceGenSpec (F : ShaState → List (BitVec 8) → ShaState) : Spec NewFromSliceGenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.outA ∧
       s.readReg64 .x1 = x.keyA ∧
@@ -103,45 +105,6 @@ def newFromSliceGenSpec (F : ShaState → List (BitVec 8) → ShaState) : Spec N
       hmacCoreAt F (x.outA + 8#64) (effectiveHmacKey F x.key) [] ∗
       kdfBytesAt x.keyRO x.keyA x.key ∗
       stackAt s0.sp newFromSliceStack
-
-/-- `<hmac::Hmac<sha2::Sha256> as KeyInit>::new_from_slice [local#3]` (`0x66fa0`) meets
-`(newFromSliceGenSpec C.F).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-def NewFromSlice3GenOkX (img : Obj.Image) (C : Crypto)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr newFromSlice3Name)
-    ((newFromSliceGenSpec C.F).inImage img)
-
-/-- Generalized `RunsTo` contract of `new_from_slice [local#3]` (`0x66fa0`) on
-`tripleRatchetProgAtExt b ext` for any key slice of length `< 2 ^ 63`. -/
-def Nfs3GenRunsToExt (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
-    (ext : String → Option (State → State)) : Prop :=
-  ∀ {s₀ : State},
-    s₀.pc = b + 0x61ba8#64 →
-    s₀.status = .Running →
-    (s₀.readReg64 .x2).toNat < 2 ^ 63 →
-    s₀.mem.readBytes (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 = LibsignalHmac.shaStateBytes sha256IV →
-    (b &&& 0xfff#64) = 0#64 →
-    s₀.mem.Readable (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 →
-    DisjointRegions (b + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 (s₀.sp - 544#64) 544 →
-    s₀.mem.RW (s₀.readReg64 .x0) 0x98 →
-    s₀.mem.RW (s₀.sp - 544#64) 544 →
-    DisjointRegions (s₀.readReg64 .x0) 0x98 (s₀.sp - 544#64) 544 →
-    ((s₀.readReg64 .x2).toNat = 0 ∨
-      DisjointRegions (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat (s₀.sp - 544#64) 544) →
-    ((s₀.readReg64 .x2).toNat = 0 ∨
-      DisjointRegions (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat (s₀.readReg64 .x0) 0x98) →
-    (s₀.sp &&& 0b1111#64) = 0#64 →
-    RunsTo (tripleRatchetProgAtExt b ext) s₀ (fun s' =>
-      s'.pc = s₀.readReg64 .lr ∧
-      s'.status = .Running ∧
-      CalleeSaved s₀ s' ∧
-      s'.mem.read64 (s₀.readReg64 .x0) = 0#64 ∧
-      HmacSt s'.mem (s₀.readReg64 .x0 + 8#64) F
-        (effectiveHmacKey F (s₀.mem.readBytes (s₀.readReg64 .x1) (s₀.readReg64 .x2).toNat)) [] ∧
-      Frame s₀.mem s'.mem [(s₀.readReg64 .x0, 0x98), (s₀.sp - 544#64, 544)])
-
-/-! ## Generalized SPQR-local `finalize_fixed [local#3]` (`0x6ce50`) contract -/
 
 /-- Bundled entry preconditions of generalized `finalize_fixed [local#3]` (`b + 0x6ce50`) over
 `HmacStN` (`pfx.length % 64 = 0`, `tail.length < 64` including both `< 56` one-block and `[56, 64)`
@@ -161,22 +124,6 @@ structure FinPre3Gen (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaSt
   disj_hm_fsp  : DisjointRegions (s₀.readReg64 .x1) 0x90 (s₀.sp - 144#64) 144
   sp_aligned   : (s₀.sp &&& 15#64) = 0#64
 
-/-- Generalized `RunsTo` contract of `finalize_fixed [local#3]` (`0x6ce50`) on
-`tripleRatchetProgAtExt b ext` over `HmacStN` (`tail.length < 64`, any `key`). -/
-def Fin3GenRunsToExt (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
-    (ext : String → Option (State → State)) : Prop :=
-  ∀ {key pfx tail : List (BitVec 8)} {s₀ : State},
-    FinPre3Gen b F key pfx tail s₀ →
-    RunsTo (tripleRatchetProgAtExt b ext) s₀ (fun s' =>
-      s'.pc = s₀.readReg64 .lr ∧
-      s'.status = .Running ∧
-      CalleeSaved s₀ s' ∧
-      s'.mem.readBytes (s₀.readReg64 .x0) 32 = hmacWith F key (pfx ++ tail) ∧
-      Frame s₀.mem s'.mem
-        [(s₀.readReg64 .x0, 32), (s₀.readReg64 .x1, 0x90), (s₀.sp - 144#64, 144)])
-
-/-! ## Multi-block `compress256` step and bitvector split helpers -/
-
 theorem compress256Hook_multi_eq (F : ShaState → List (BitVec 8) → ShaState) {s : State}
     {stPtr blkPtr lr : BitVec 64} {st : ShaState} {nBlocks : ℕ} {pfx : List (BitVec 8)}
     (hx0 : s.readReg64 .x0 = stPtr)
@@ -193,38 +140,6 @@ theorem compress256Hook_multi_eq (F : ShaState → List (BitVec 8) → ShaState)
         F (LibsignalHmac.readShaState s.mem (s.readReg64 .x0)))))).readReg64 .lr = lr := by
     simpa [arm64_norm] using hlr
   rw [hlr', hx0, hx1, hx2, readShaState_of_shaStateBytes s.mem stPtr st hst, hblk]
-
-theorem s2_compress256_multi_step_ext
-    (b_arg : BitVec 64) (C_arg : Crypto) (ext_arg : String → Option (State → State))
-    [HkdfHooks C_arg.F ext_arg]
-    {s₀ s : State} {Q : State → Prop}
-    {stPtr blkPtr lr : BitVec 64} {st st' : ShaState} {nBlocks : ℕ} {pfx : List (BitVec 8)}
-    (hrun : s.status = .Running)
-    (hpc : s.pc = b_arg + bv% (ls_off% "sha2::sha256::compress256"))
-    (hx0 : s.readReg64 .x0 = stPtr)
-    (hx1 : s.readReg64 .x1 = blkPtr)
-    (hx2 : (s.readReg64 .x2).toNat = nBlocks)
-    (hlr : s.readReg64 .lr = lr)
-    (hst : s.mem.readBytes stPtr 32 = shaStateBytes st)
-    (hblk : s.mem.readBytes blkPtr (64 * nBlocks) = pfx)
-    (hst' : (chunks64 pfx).foldl C_arg.F st = st')
-    (hrw : s.mem.RW stPtr 32)
-    (h : RunsToFrom (tripleRatchetProgAtExt b_arg ext_arg) s₀
-      ((s.setMem (s.mem.writeBytes stPtr (shaStateBytes st'))).setPC lr) Q) :
-    RunsToFrom (tripleRatchetProgAtExt b_arg ext_arg) s₀ s Q := by
-  have hcan : s.mem.canWrite stPtr (shaStateBytes st').length = true := by
-    rw [shaStateBytes_length]
-    exact hrw.canWrite_sub (by simp) (by decide)
-  have hhook : (tripleRatchetProgAtExt b_arg ext_arg).externAt? s.pc = some (compress256Hook C_arg.F) := by
-    rw [hpc]; exact tripleRatchetProgAtExt_externAt_273212 b_arg (F := C_arg.F) ext_arg
-  have hstate : compress256Hook C_arg.F s =
-      (s.setMem (s.mem.writeBytes stPtr (shaStateBytes st'))).setPC lr := by
-    rw [compress256Hook_multi_eq C_arg.F hx0 hx1 hx2 hlr hst hblk, hst']
-  have hkeep : s.mem.KeepsFrozen (compress256Hook C_arg.F s).mem := by
-    rw [hstate]; exact Memory.keepsFrozen_writeBytes _ hcan
-  have hsym : (compress256Hook C_arg.F s).symtab = s.symtab := by rw [hstate]; rfl
-  refine RunsTo.hook hrun hhook hkeep hsym ?_
-  rwa [hstate]
 
 theorem HmacSt.of_writeBytes_lt63_write8_pos {m : Memory} {a : BitVec 64}
     {F : ShaState → List (BitVec 8) → ShaState} {key msg : List (BitVec 8)}

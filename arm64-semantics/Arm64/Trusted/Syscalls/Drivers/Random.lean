@@ -34,21 +34,36 @@ def GRND_KNOWN_MASK : BitVec 32 := GRND_NONBLOCK ||| GRND_RANDOM ||| GRND_INSECU
 /-- `getrandom(buf, count, flags)` (`__NR_getrandom = 278`, `drivers/char/random.c:1395`):
     - `flags` is `unsigned int` (`W2`): rejects bits outside `GRND_KNOWN_MASK` (`0x7`) and the
       mutually exclusive combination `GRND_INSECURE | GRND_RANDOM` (`0x6`) with `-EINVAL`.
-    - `count > MAX_RW_COUNT` (`0x7ffff000`) returns `-EINVAL` without writing memory or advancing
-      `oracleIdx` (Linux clamps `count` to `MAX_RW_COUNT` for a short read).
     - Assumes an initialized kernel CRNG, so `GRND_NONBLOCK` never returns `-EAGAIN` and valid
       requests fill `count` bytes from `s.oracle.getrandom s.oracleIdx`.
-    - Checks `flags` before checking `s.mem.canWrite buf count.toNat` (`copy_to_user`). -/
+    - Checks `flags` before `import_ubuf` (`lib/iov_iter.c:1445`: `access_ok(buf, min(count, MAX_RW_COUNT))`,
+      so `count == 0` with `buf > USER_VA_LIMIT` returns `-EFAULT` before `get_random_bytes_user`
+      returns `0`) and before checking `s.mem.canWrite buf count.toNat` (`copy_to_iter`).
+    - `-EFAULT` when `count == 0` with `buf > USER_VA_LIMIT` (`import_ubuf` `access_ok`) or when
+      `count > 0` and the first byte of `buf` is not writable (`get_random_bytes_user` returns
+      `-EFAULT` only when nothing was copied; on loaded process states `[USER_VA_LIMIT, 2 ^ 64)` is
+      unmapped, so `!s.mem.canWrite buf 1` also rejects `buf + count > 2 ^ 64`).
+    - `[INTENTIONAL_SCOPE]`: Fails closed with `.Exception` when `count > MAX_RW_COUNT`
+      (`0x7ffff000`; Linux `import_ubuf` clamps to a short `MAX_RW_COUNT` read) and when `buf` is
+      writable for a nonempty prefix but faults later (Linux returns the short copied count). -/
 def execGetrandom (s : State) : State :=
   let buf := s.readReg64 Reg.x0
   let count := s.readReg64 Reg.x1
   let flags := s.readReg32 Reg.x2
   if (flags &&& ~~~GRND_KNOWN_MASK) != 0#32 ||
-      (flags &&& (GRND_RANDOM ||| GRND_INSECURE)) == (GRND_RANDOM ||| GRND_INSECURE) ||
-      count.toNat > MAX_RW_COUNT then
+      (flags &&& (GRND_RANDOM ||| GRND_INSECURE)) == (GRND_RANDOM ||| GRND_INSECURE) then
     (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
+  else if count.toNat > MAX_RW_COUNT then
+    s.setStatus (.Exception "unmodeled getrandom count > MAX_RW_COUNT (short read)")
+  else if count == 0#64 then
+    if !decide (buf.toNat ≤ USER_VA_LIMIT) then
+      (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
+    else
+      (s.writeReg64 Reg.x0 0#64).advancePC
   else if !s.mem.canWrite buf count.toNat then
-    (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
+    if !s.mem.canWrite buf 1 then
+      (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
+    else s.setStatus (.Exception "unmodeled getrandom partial-fault short read")
   else
     let bytes := (List.range count.toNat).map (s.oracle.getrandom s.oracleIdx)
     (((s.setMem (s.mem.writeBytes buf bytes)).nextOracle).writeReg64 Reg.x0 count).advancePC

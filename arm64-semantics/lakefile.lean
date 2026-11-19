@@ -23,7 +23,8 @@ The repository is organized as layered standalone Lake packages:
   ISA/loader/syscall conformance & regression tests, guided tours (`Arm64Testing`), and test
   executables (`unit_tests`, `diff_eval`, `elf_eval`, `placed_eval`, `elf_run`).
 - `VerifiedLibraries/lakefile.lean` (`verified-libraries`, requires `prooflib`): reusable
-  verified C/Rust runtime foundations (`Mallocng`, `Musl`, `RustStd`, `SwissTable`).
+  verified C/Rust runtime foundations (`Mallocng`, `Musl`, `RustStd`, `SwissTable`) and shared
+  mathematical specifications (`VerifiedLibraries.Common.Spec.Curve25519`).
 - `Equivalence/lakefile.toml` (`equivalence`, requires `prooflib`): program-equivalence theory
   over placed ARM64 code (`Equivalence.Spec.*` trusted vocabulary, `Equivalence.Proofs.*`
   untrusted lemmas); not required by this root package.
@@ -78,20 +79,16 @@ def sanitizeSubpackageBuilds (dir : FilePath) : IO Unit := do
   let rootIr := dir / ".lake" / "build" / "ir"
   for ext in #["olean", "olean.hash", "ilean", "ilean.hash", "trace"] do
     removeFileIfExists ((rootLibLean / "Arm64").withExtension ext)
-    removeFileIfExists ((rootLibLean / "Arm64" / "Legacy").withExtension ext)
     removeFileIfExists ((rootLibLean / "ProofLib").withExtension ext)
     removeFileIfExists ((rootLibLean / "Arm64" / "Testing").withExtension ext)
     removeFileIfExists ((rootLibLean / "VerifiedLibraries").withExtension ext)
   for ext in #["c", "setup.json"] do
     removeFileIfExists ((rootIr / "Arm64").withExtension ext)
-    removeFileIfExists ((rootIr / "Arm64" / "Legacy").withExtension ext)
     removeFileIfExists ((rootIr / "ProofLib").withExtension ext)
     removeFileIfExists ((rootIr / "Arm64" / "Testing").withExtension ext)
     removeFileIfExists ((rootIr / "VerifiedLibraries").withExtension ext)
   removeDirAllIfExists (rootLibLean / "Arm64" / "Trusted")
   removeDirAllIfExists (rootIr / "Arm64" / "Trusted")
-  removeDirAllIfExists (rootLibLean / "Arm64" / "Legacy")
-  removeDirAllIfExists (rootIr / "Arm64" / "Legacy")
   removeDirAllIfExists (rootLibLean / "Arm64" / "Testing")
   removeDirAllIfExists (rootIr / "Arm64" / "Testing")
   removeDirAllIfExists (rootLibLean / "ProofLib")
@@ -202,7 +199,7 @@ require «verified-libraries» from "VerifiedLibraries"
 
 meta if get_config? env = some "dev" then
 require «doc-gen4» from git
-  "https://github.com/leanprover/doc-gen4" @ "v4.34.0"
+  "https://github.com/leanprover/doc-gen4" @ "v4.35.0"
 
 /-- Default target of a bare `lake build` at the repository root: the core engine libraries
 `Arm64` (package `arm64`) and `ProofLib` (package `prooflib`), the part a downstream project gets

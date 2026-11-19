@@ -43,6 +43,10 @@ import Mathlib.MeasureTheory.Integral.Bochner.Basic -- shake: keep
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.Cli.World.CallCountPure -- shake: keep
 import VCVio.Prelude.Core -- shake: keep
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
+import Symbolic.Proofs.Swarm.CREF.Initiate.InitRej
 
 /-!
 # Cut-Polymorphic Session-Promote Pre-Key `recv` Slot Refinement
@@ -52,7 +56,7 @@ Proves `SlotRpkPromCliSpec`, lifting the matching-session promote branch
 `CliLiveAtCli`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -155,7 +159,7 @@ private def CliSlotPostCore (NC : List Participant → (Nat → Bool) → Prop)
 
 /-- Cut-local non-collision hypothesis: on exit `0`, `SignalMsgAcceptedOnlyViaCollisionMoves`
 fails at the call's own cut for every clean explanation of `σ_pre`. -/
-def RpkPromNC (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def RpkPromNC (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (c : CliCall) (code : Nat) (out : HwBytes) (q : PreKeyFields)
     (σ_pre : List MachineEvent) (who : List Participant) (ok : Nat → Bool) : Prop :=
   code = 0 →

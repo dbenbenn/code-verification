@@ -9,12 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.NextChunkCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Poly.Repr
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.NextChunkCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.Repr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.GF.AcceleratedMul
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Epilogue
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed `gf::parallel_mult` Shift Table and Odd Tail
@@ -26,7 +30,7 @@ shift-table initialization (`+2752 -> +3384`), and odd trailing element multipli
 (`+3608 -> +3784`) for `gf::parallel_mult`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,22 +45,118 @@ open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1.Poly
 open CryptoVerification.SpqrV1.Poly.ComputeAt
 open CryptoVerification.SpqrV1.GF.UnacceleratedMul
+open CryptoVerification.SpqrV1.GF.AcceleratedMul
 open CryptoVerification.SpqrV1.GF.Mul2U16
 open CryptoVerification.SpqrV1.Poly.LagrangePrepare
+open LibsignalBinary.Heap (VmPreserved)
+open LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget (sepWP_seg_416)
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
+private theorem pc_setMem_sm1 (s : State) (m : Memory) : (s.setMem m).pc = s.pc := by cases s; rfl
+private theorem status_setMem_sm1 (s : State) (m : Memory) : (s.setMem m).status = s.status := by cases s; rfl
+private theorem pstate_setMem_sm1 (s : State) (m : Memory) : (s.setMem m).pstate = s.pstate := by cases s; rfl
+private theorem trace_setMem_sm1 (s : State) (m : Memory) : (s.setMem m).trace = s.trace := by cases s; rfl
+private theorem calleeSavedVRegs_setMem_sm1 (s : State) (m : Memory) :
+    calleeSavedVRegs (s.setMem m) = calleeSavedVRegs s := by cases s; rfl
+
+@[local arm64_norm, local wp_norm]
+theorem fsp_1104_sub_32 (fsp : BitVec 64) : (fsp + 1104#64) - 32#64 = fsp + 1072#64 := by bv_omega
+@[local arm64_norm, local wp_norm]
+theorem fsp_1104_sub_64 (fsp : BitVec 64) : (fsp + 1104#64) - 64#64 = fsp + 1040#64 := by bv_omega
+@[local arm64_norm, local wp_norm]
+theorem fsp_1104_add_neg32 (fsp : BitVec 64) :
+    (fsp + 1104#64) + 18446744073709551584#64 = fsp + 1072#64 := by bv_omega
+@[local arm64_norm, local wp_norm]
+theorem fsp_1104_add_neg64 (fsp : BitVec 64) :
+    (fsp + 1104#64) + 18446744073709551552#64 = fsp + 1040#64 := by bv_omega
+
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero ls_resolve_blk_416
+  Arm64.Obj.pageOf_add_lo12Of conditionHolds_eq_subsPState32 conditionHolds_ne_subsPState32
 attribute [local arm64_norm ↓, local wp_norm ↓]
-  sp_setMem_pre readReg64_setMem_pre readReg32_setMem_pre readReg_setMem_pre
+  sp_setMem_pre pc_setMem_sm1 status_setMem_sm1 pstate_setMem_sm1 trace_setMem_sm1
+  calleeSavedVRegs_setMem_sm1 readReg64_setMem_pre readReg32_setMem_pre readReg_setMem_pre
   LagrangePrepare.sp_setPC_pre LagrangePrepare.sp_setMem_setPC_pre
   LagrangePrepare.readReg64_setPC_pre LagrangePrepare.readReg64_setMem_setPC_pre
   LagrangePrepare.readReg32_setPC_pre LagrangePrepare.readReg32_setMem_setPC_pre
   LagrangePrepare.readReg_setPC_pre LagrangePrepare.readReg_setMem_setPC_pre
+
+/-- Frame scratch slots used by the two `Once::call` slow paths inside Block `416`
+    (`gf::parallel_mult` pair step `[sp, #4]`, `[x29, #-0x40]`, `[x29, #-0x20]`, and odd tail
+    `[x29, #-0x40]`, `[x29, #-0x20]`, where `x29 = fsp + 1104#64`). -/
+@[expose] def onceScratch416 (fsp : BitVec 64) : SepProp :=
+  memRegion fsp 8 ∗ memRegion (fsp + 1040#64) 8 ∗ memRegion (fsp + 1064#64) 40
+
+theorem onceScratch416_split_pair (fsp : BitVec 64) :
+    onceScratch416 fsp =
+      (∃∗ w0 : BitVec 32, fsp ↦₃₂ w0) ∗
+      (∃∗ w4 : BitVec 32, (fsp + 4#64) ↦₃₂ w4) ∗
+      (∃∗ d : BitVec 64, (fsp + 1040#64) ↦₆₄ d) ∗
+      memRegion (fsp + 1064#64) 8 ∗
+      (∃∗ sl : BitVec 64, (fsp + 1072#64) ↦₆₄ sl) ∗
+      memRegion (fsp + 1080#64) 24 := by
+  unfold onceScratch416
+  rw [ProofLib.memRegion_split' (b := fsp) (n := 4) (k := 4) (b' := fsp + 4#64) rfl rfl (by decide),
+      ProofLib.memRegion_four fsp, ProofLib.memRegion_four (fsp + 4#64),
+      ProofLib.memRegion_eight (fsp + 1040#64),
+      ProofLib.memRegion_split' (b := fsp + 1064#64) (n := 8) (k := 32) (b' := fsp + 1072#64)
+        rfl (by bv_omega) (by decide),
+      ProofLib.memRegion_split' (b := fsp + 1072#64) (n := 8) (k := 24) (b' := fsp + 1080#64)
+        rfl (by bv_omega) (by decide),
+      ProofLib.memRegion_eight (fsp + 1072#64)]
+  simp only [sepConj_assoc]
+
+theorem onceScratch416_merge_pair (fsp : BitVec 64) (w0 w4 : BitVec 32) (d sl : BitVec 64) :
+    (fsp ↦₃₂ w0) ∗ ((fsp + 4#64) ↦₃₂ w4) ∗ ((fsp + 1040#64) ↦₆₄ d) ∗
+    memRegion (fsp + 1064#64) 8 ∗ ((fsp + 1072#64) ↦₆₄ sl) ∗ memRegion (fsp + 1080#64) 24 ⊢
+      onceScratch416 fsp := by
+  rw [onceScratch416_split_pair fsp]
+  exact sepConj_mono (Entails.sepExists_intro w0)
+    (sepConj_mono (Entails.sepExists_intro w4)
+      (sepConj_mono (Entails.sepExists_intro d)
+        (sepConj_mono (Entails.refl _)
+          (sepConj_mono (Entails.sepExists_intro sl) (Entails.refl _)))))
+
+theorem onceScratch416_split_odd (fsp : BitVec 64) :
+    onceScratch416 fsp =
+      memRegion fsp 8 ∗
+      (∃∗ d : BitVec 64, (fsp + 1040#64) ↦₆₄ d) ∗
+      memRegion (fsp + 1064#64) 8 ∗
+      (∃∗ sl : BitVec 64, (fsp + 1072#64) ↦₆₄ sl) ∗
+      memRegion (fsp + 1080#64) 24 := by
+  unfold onceScratch416
+  rw [ProofLib.memRegion_eight (fsp + 1040#64),
+      ProofLib.memRegion_split' (b := fsp + 1064#64) (n := 8) (k := 32) (b' := fsp + 1072#64)
+        rfl (by bv_omega) (by decide),
+      ProofLib.memRegion_split' (b := fsp + 1072#64) (n := 8) (k := 24) (b' := fsp + 1080#64)
+        rfl (by bv_omega) (by decide),
+      ProofLib.memRegion_eight (fsp + 1072#64)]
+
+theorem onceScratch416_merge_odd (fsp : BitVec 64) (d sl : BitVec 64) :
+    memRegion fsp 8 ∗ ((fsp + 1040#64) ↦₆₄ d) ∗
+    memRegion (fsp + 1064#64) 8 ∗ ((fsp + 1072#64) ↦₆₄ sl) ∗ memRegion (fsp + 1080#64) 24 ⊢
+      onceScratch416 fsp := by
+  rw [onceScratch416_split_odd fsp]
+  exact sepConj_mono (Entails.refl _)
+    (sepConj_mono (Entails.sepExists_intro d)
+      (sepConj_mono (Entails.refl _)
+        (sepConj_mono (Entails.sepExists_intro sl) (Entails.refl _))))
+
+theorem allocHookStack_split_once (fsp : BitVec 64) :
+    stackAt fsp allocHookStack =
+      memRegion (fsp - 4096#64) (allocHookStack - 160) ∗ stackAt fsp 160 := by
+  have h := ProofLib.stackAt_split_bottom fsp 160 (allocHookStack - 160) (by decide)
+  rw [show 160 + (allocHookStack - 160) = allocHookStack by decide] at h
+  exact h
+
+theorem allocHookStack_merge_once (fsp : BitVec 64) :
+    memRegion (fsp - 4096#64) (allocHookStack - 160) ∗ stackAt fsp 160 ⊢
+      stackAt fsp allocHookStack :=
+  Entails.of_eq (allocHookStack_split_once fsp).symm
 
 @[local arm64_norm, local wp_norm] theorem exists_pow_two_eq_two_sm_pl :
     (∃ k : Nat, 2 = 2 ^ k) ↔ True :=
@@ -99,38 +199,11 @@ theorem parallelMult_length_pl (a : GF16) :
   | _ :: _ :: rest => by
     simp [parallelMult_pair_cons_pl, parallelMult_length_pl a rest]
 
-theorem parallelMult_append_pair_pl (a : GF16) :
-    ∀ (pre : List GF16) (hpre_even : pre.length % 2 = 0) (rest : List GF16),
-      parallelMult a (pre ++ rest) =
-        pre.map (fun x => (⟨unaccelerated.mul a.value x.value⟩ : GF16)) ++
-          parallelMult a rest
-  | [], _, _ => rfl
-  | [_], h, _ => by simp at h
-  | x1 :: x2 :: pre', h, rest => by
-    have h' : pre'.length % 2 = 0 := by
-      simp only [List.length_cons] at h
-      omega
-    simp only [List.cons_append, parallelMult_pair_cons_pl, List.map_cons,
-      parallelMult_append_pair_pl a pre' h' rest]
-
-theorem parallelMult_even_eq_map_pl (a : GF16) (cs : List GF16) (heven : cs.length % 2 = 0) :
-    parallelMult a cs =
-      cs.map (fun x => (⟨unaccelerated.mul a.value x.value⟩ : GF16)) := by
-  have h := parallelMult_append_pair_pl a cs heven []
-  simpa using h
-
-theorem parallelMult_odd_eq_map_snoc_pl (a : GF16) (pre : List GF16) (heven : pre.length % 2 = 0)
-    (last : GF16) :
-    parallelMult a (pre ++ [last]) =
-      pre.map (fun x => (⟨unaccelerated.mul a.value x.value⟩ : GF16)) ++
-        [⟨unaccelerated.mul last.value a.value⟩] :=
-  parallelMult_append_pair_pl a pre heven [last]
-
 /-! ## 2. Stack-Slot Bundle for `parallel_mult` (`fsp + 112..232`) -/
 
 /-- The 15 precomputed 32-bit shifts of `yv` stored on the stack at `fsp + 148..228` by
     `+2752..+3380` and read on every iteration of `+3384..+3572`. -/
-def shiftTableAt_pl (fsp : BitVec 64) (yv : BitVec 16) : SepProp :=
+@[expose] def shiftTableAt_pl (fsp : BitVec 64) (yv : BitVec 16) : SepProp :=
   let y32 := BitVec.zeroExtend 32 yv
   ((fsp + 148#64) ↦₃₂ (y32 <<< 15)) ∗ ((fsp + 152#64) ↦₃₂ (y32 <<< 14)) ∗
   ((fsp + 156#64) ↦₃₂ (y32 <<< 13)) ∗ ((fsp + 160#64) ↦₃₂ (y32 <<< 12)) ∗
@@ -142,7 +215,7 @@ def shiftTableAt_pl (fsp : BitVec 64) (yv : BitVec 16) : SepProp :=
   ((fsp + 224#64) ↦₃₂ (y32 <<< 1))
 
 /-- Raw 32-bit stack slots at `fsp + 148..228`. -/
-def shiftSlotsRawAt_pl (fsp : BitVec 64) : SepProp :=
+@[expose] def shiftSlotsRawAt_pl (fsp : BitVec 64) : SepProp :=
   ∃∗ d148 : BitVec 32, ∃∗ d152 : BitVec 32, ∃∗ d156 : BitVec 32, ∃∗ d160 : BitVec 32,
   ∃∗ d164 : BitVec 32, ∃∗ d168 : BitVec 32, ∃∗ d172 : BitVec 32, ∃∗ d176 : BitVec 32,
   ∃∗ d180 : BitVec 32, ∃∗ d184 : BitVec 32, ∃∗ d192 : BitVec 32, ∃∗ d200 : BitVec 32,
@@ -160,7 +233,7 @@ theorem shiftTableAt_entails_raw_pl (fsp : BitVec 64) (yv : BitVec 16) :
   exact Entails.refl _
 
 /-- Unused 4-byte padding cells in `fsp + 144..232`. -/
-def shiftTablePadAt_pl (fsp : BitVec 64) : SepProp :=
+@[expose] def shiftTablePadAt_pl (fsp : BitVec 64) : SepProp :=
   memRegion (fsp + 144#64) 4 ∗ memRegion (fsp + 188#64) 4 ∗ memRegion (fsp + 196#64) 4 ∗
   memRegion (fsp + 204#64) 4 ∗ memRegion (fsp + 212#64) 4 ∗ memRegion (fsp + 220#64) 4 ∗
   memRegion (fsp + 228#64) 4
@@ -295,7 +368,7 @@ theorem memRegion_112_fold_sum_pl (fsp u112 u120 u128 u136 : BitVec 64) :
 
 /-! ## 3. Bitvector Normalization Rules for `parallel_mult` Pair Loop -/
 
-def pmTerm_sm_pl (cv yv : BitVec 16) (i : Nat) : BitVec 32 :=
+@[expose] def pmTerm_sm_pl (cv yv : BitVec 16) (i : Nat) : BitVec 32 :=
   (BitVec.zeroExtend 32 cv <<< i) &&& (if yv.getLsbD i = true then 0xffff_ffff#32 else 0#32)
 
 @[local arm64_norm ↓, local wp_norm ↓]
@@ -596,6 +669,7 @@ theorem shiftTableInit_placed_sepWP [LibsignalPlacement]
     (hcont : ∀ s1 : State,
       s1.pc = (blkPl_416).base + 3384#64 →
       s1.status = .Running → s1.sp = fsp → s1.trace = s.trace →
+      VmPreserved s s1 →
       calleeSavedVRegs s1 = calleeSavedVRegs s →
       s1.readReg64 .x18 = lsρ reduceTableSym →
       s1.readReg64 .x20 = BitVec.ofNat 64 n →
@@ -622,19 +696,61 @@ theorem shiftTableInit_placed_sepWP [LibsignalPlacement]
   apply sepWP_exists_left_sep; intro d192; apply sepWP_exists_left_sep; intro d200
   apply sepWP_exists_left_sep; intro d208; apply sepWP_exists_left_sep; intro d216
   apply sepWP_exists_left_sep; intro d224
+  apply sepWP_seg_416 (mid := (blkPl_416).base + 3384#64)
+  intro _m_strip
   wp_steps 32
+  refine SepWP.done (by wp_norm_goal) (by wp_norm_lhs) fun _m_real _hnsp => ?_
+  have hvm : VmPreserved s _ :=
+    _hnsp.toVmPreserved (by simp only [arm64_norm, wp_norm, hrun, hsp])
   unfold shiftTableAt_pl at hcont; dsimp only at hcont
   refine SepWP.weaken_pre (Entails.of_eq (by ac_rfl))
-    (hcont _ (by wp_norm_goal) (by wp_norm_lhs) (by simp only [wp_norm, hsp])
-      (by simp only [arm64_norm, wp_norm]) rfl (by simp only [arm64_norm, wp_norm])
-      (by simp only [wp_norm, hx20]) (by simp only [wp_norm, hx21])
-      (by simp only [wp_norm, hx22]) (by simp only [wp_norm, hx22])
+    (hcont _ (by wp_norm_goal) (by wp_norm_lhs) (by simp only [arm64_norm, wp_norm, hsp])
+      (by simp only [arm64_norm, wp_norm]) hvm (by simp only [arm64_norm, wp_norm])
+      (by simp only [arm64_norm, wp_norm])
+      (by simp only [arm64_norm, wp_norm, hx20]) (by simp only [arm64_norm, wp_norm, hx21])
+      (by simp only [arm64_norm, wp_norm, hx22]) (by simp only [arm64_norm, wp_norm, hx22])
       (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs) (by wp_norm_lhs))
 
 /-! ## 5. Odd Trailing Element (`(blkPl_416).base + 3608#64 -> + 3784#64`) -/
 
+attribute [local wp_norm] zeroExtend_16_truncate_32_64
+attribute [local arm64_norm, local wp_norm]
+  polyReduce_setWidth16_eq polyReduce_setWidth16_comm_eq mul2UnreducedWord_truncate32
+
+@[local arm64_norm, local wp_norm]
+private theorem zext64_trunc32_shr32_mul2Unreduced_sm1 (a b1 b2 : BitVec 16) :
+    BitVec.zeroExtend 64 (BitVec.truncate 32 (mul2UnreducedWord a b1 b2 >>> 32)) =
+      (unaccelerated.polyMul a b1).zeroExtend 64 := by
+  rw [mul2UnreducedWord_shr32]; bv_bits
+
+@[local arm64_norm, local wp_norm]
+private theorem trunc32_shr32_mul2Unreduced_sm1 (a b1 b2 : BitVec 16) :
+    BitVec.truncate 32 (mul2UnreducedWord a b1 b2 >>> 32) =
+      unaccelerated.polyMul a b1 := by
+  rw [mul2UnreducedWord_shr32]; bv_bits
+
+@[local arm64_norm, local wp_norm]
+private theorem polyReduce_asm_eq_trunc_sm1 (a b_arg : BitVec 16) :
+    BitVec.truncate 16
+      (BitVec.zeroExtend 64
+          (reduce.reduceByteEntry
+            (BitVec.truncate 8
+              ((unaccelerated.polyMul a b_arg ^^^
+                  BitVec.zeroExtend 32
+                      (reduce.reduceByteEntry
+                        (BitVec.truncate 8 (unaccelerated.polyMul a b_arg >>> 24))) <<< 8) >>> 16))) ^^^
+        (unaccelerated.polyMul a b_arg ^^^
+          BitVec.zeroExtend 32
+              (reduce.reduceByteEntry
+                (BitVec.truncate 8 (unaccelerated.polyMul a b_arg >>> 24))) <<< 8).zeroExtend 64) =
+      unaccelerated.mul a b_arg := by
+  rw [← zeroExtend_16_truncate_32_64]
+  exact polyReduce_asm_eq a b_arg
+
+set_option maxHeartbeats 1600000 in
 theorem parallelMultOddTail_placed_sepWP [LibsignalPlacement]
     {ext : String → Option (State → State)}
+    (hOnce : OnceCallHookOk (Rust.withPanics ext))
     {ret : BitVec 64} {post : State → SepProp → Prop}
     (idx : Nat) (yv : BitVec 16) (last : GF16) (hidx_lt : 2 * idx < 2 ^ 63)
     (s : State) (hcl : LibsignalCodeLoaded lsmpl s.mem)
@@ -645,10 +761,12 @@ theorem parallelMultOddTail_placed_sepWP [LibsignalPlacement]
     (hx19 : s.readReg64 .x19 = BitVec.ofNat 64 idx)
     (hx21 : s.readReg64 .x21 = BitVec.zeroExtend 64 yv)
     (hx22 : s.readReg64 .x22 = clonePtr)
+    (hx29 : s.readReg64 .x29 = fsp + 1104#64)
     (hcont : ∀ s1 : State,
       LibsignalCodeLoaded lsmpl s1.mem →
       s1.pc = (blkPl_416).base + 3784#64 →
       s1.status = .Running → s1.sp = fsp → s1.trace = s.trace →
+      VmPreserved s s1 →
       calleeSavedVRegs s1 = calleeSavedVRegs s →
       s1.readReg64 .x20 = s.readReg64 .x20 →
       s1.readReg64 .x22 = clonePtr →
@@ -657,43 +775,208 @@ theorem parallelMultOddTail_placed_sepWP [LibsignalPlacement]
       s1.readReg64 .x26 = s.readReg64 .x26 →
       s1.readReg64 .x27 = s.readReg64 .x27 →
       s1.readReg64 .x28 = s.readReg64 .x28 →
-      s1.readReg64 .x29 = s.readReg64 .x29 →
+      s1.readReg64 .x29 = fsp + 1104#64 →
       SepWP ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext)) ret s1
         (gf16At ⟨unaccelerated.mul last.value yv⟩ (clonePtr + BitVec.ofNat 64 (2 * idx)) ∗
+         onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗
          tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ Frame) post) :
     SepWP ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext)) ret s
       (gf16At last (clonePtr + BitVec.ofNat 64 (2 * idx)) ∗
+       onceScratch416 fsp ∗ stackAt fsp allocHookStack ∗
        tokenInitPlacedAt ∗ reduceTablePlacedAt ∗ Frame) post := by
   apply sepWP_seq_lscl (mid := (blkPl_416).base + 3784#64) hcl
-  have hmul : subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
-      (lsmpl.base 384) (withMemEq s.mem unacceleratedMulPlacedSpec) :=
-    lscall_blk (unacceleratedMul_placed_ok (Rust.withPanics ext)) hcl
   have halign := GF.Mul2U16.aligned_tokenOnce_placed
-  try dsimp only [BitVec.ofNat_eq_ofNat] at hmul hpc hcont ⊢
+  have honce : subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
+      (lsρ spqrOnceCallSym) spqrOnceCallGhostSpec :=
+    spqr_onceCall_ok hOnce
+  try dsimp only [BitVec.ofNat_eq_ofNat] at hpc hcont ⊢
   have hlsl : BitVec.ofNat 64 idx <<< 1 = BitVec.ofNat 64 (2 * idx) := shl_one_ofNat_eq_nat_sm_pl idx
-  unfold gf16At tokenInitPlacedAt
-  wp_steps 2
-  apply step_ldar32
-  · wp_norm_lhs
-  · wp_norm_lhs
-  · simp only [arm64_norm]; rfl
-  · wp_norm_lhs
-  · wp_norm_lhs
-  · exact halign
-  · wp_sep_access
-  · wp_norm_lhs
-  wp_steps 8
-  wp_call hmul
-  wp_steps 1
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  intro hcl1
-  unfold gf16At tokenInitPlacedAt at hcont; dsimp only at hcont
-  refine SepWP.weaken_pre (Entails.of_eq (by ac_rfl))
-    (hcont _ hcl1 (by wp_norm_goal) (by wp_norm_lhs)
-      (by simp only [wp_norm, ‹sf.sp = _›, hsp])
-      (by simp only [arm64_norm, wp_norm, hpost])
-      (by simp only [arm64_norm, wp_norm, *])
-      (by simp only [wp_norm, h_1]) (by simp only [wp_norm, h_3, hx22])
-      (by simp only [wp_norm, h_5]) (by simp only [wp_norm, h_6])
-      (by simp only [wp_norm, h_7]) (by simp only [wp_norm, h_8])
-      (by simp only [wp_norm, h_9]) (by simp only [wp_norm, hcs_sf]))
+  unfold gf16At
+  wp_simp_pre [tokenInitPlacedAt]
+  wp_pull_exists
+  rename_i probed
+  cases probed
+  · -- Unprobed slow path (`probed = false`)
+    wp_simp_pre [tokenUnprobedPlacedAt, onceScratch416_split_odd fsp, allocHookStack_split_once fsp]
+    wp_pull_exists
+    apply sepWP_seq_lscl (mid := (blkPl_416).base + 3648#64) hcl
+    wp_steps 2
+    apply step_ldar32
+    · wp_norm_lhs
+    · wp_norm_lhs
+    · simp only [arm64_norm]; rfl
+    · wp_norm_lhs
+    · wp_norm_lhs
+    · exact halign
+    · wp_sep_access
+    · wp_norm_lhs
+    apply sepWP_seg_416 (mid := (blkPl_416).base + 3748#64)
+    intro _m_strip
+    wp_steps 13
+    refine SepWP.done (by wp_norm_goal) (by wp_norm_lhs) fun _m_real _hnsp => ?_
+    have hvm_once0 : VmPreserved s _ :=
+      (by simp only [wp_norm, arm64_norm] : VmPreserved s _).trans
+        (_hnsp.toVmPreserved (by simp only [arm64_norm, wp_norm, hrun, hsp]))
+    wp_steps 1
+    wp_call honce
+    have hvm_once1 : VmPreserved s sf :=
+      (hvm_once0.trans (by
+        unfold VmPreserved LibsignalBinary.Heap.PoolPreserved LibsignalBinary.Heap.FdsHiFrame
+        exact ⟨⟨rfl, rfl, rfl⟩, rfl, fun _ => rfl, fun _ _ _ => rfl⟩)).trans (by assumption)
+    have htr_once1 : sf.trace = s.trace :=
+      (by assumption : sf.trace = _).trans (by simp only [wp_norm, arm64_norm])
+    have _hsp_once : sf.sp = fsp := by simp only [arm64_norm, wp_norm, *]
+    have _hx19_once : sf.readReg64 .x19 = BitVec.ofNat 64 idx := by simp only [arm64_norm, wp_norm, *]
+    have _hx21_once : sf.readReg64 .x21 = BitVec.zeroExtend 64 yv := by simp only [arm64_norm, wp_norm, *]
+    have _hx22_once : sf.readReg64 .x22 = clonePtr := by simp only [arm64_norm, wp_norm, *]
+    wp_steps 7
+    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
+    intro hcl_once
+    apply SepWP.fold (allocHookStack_merge_once fsp) (by sep_focus)
+    apply SepWP.fold (onceScratch416_merge_odd fsp _ _) (by sep_focus)
+    apply SepWP.fold tokenInitPlacedAt_fold (by sep_focus)
+    have hmul_after := lscall_blk (callerProg := (blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
+      (acceleratedMul2Unreduced_vm_placed_ok (Rust.withPanics ext)) hcl_once
+    simp only [withMemEq, acceleratedMul2UnreducedPlacedSpec, BitVec.ofNat_eq_ofNat] at hmul_after
+    wp_steps 1
+    wp_call hmul_after (last.value, yv, 0#16)
+    have hvm_mul : VmPreserved s sf_1 := by
+      apply VmPreserved.trans; swap; assumption
+      exact hvm_once1.trans (by simp only [arm64_norm, wp_norm])
+    have htr_mul : sf_1.trace = s.trace :=
+      (by assumption : sf_1.trace = _).trans (by simpa [arm64_norm, wp_norm] using htr_once1)
+    have _hsp_mul : sf_1.sp = fsp := by simp only [arm64_norm, wp_norm, *]
+    have _hx19_mul : sf_1.readReg64 .x19 = BitVec.ofNat 64 idx := by simp only [arm64_norm, wp_norm, *]
+    have _hx22_mul : sf_1.readReg64 .x22 = clonePtr := by simp only [arm64_norm, wp_norm, *]
+    apply sepWP_seg_416 (mid := (blkPl_416).base + 3784#64)
+    intro _m_strip2
+    wp_steps 4
+    wp_conv_pre =>
+      rw [reduceTablePlacedAt_focus16 (BitVec.truncate 8 (unaccelerated.polyMul last.value yv >>> 24)),
+          uxtx1_hi_idx1_nomask_eq last.value yv 0#16]
+    wp_steps 1
+    wp_conv_pre =>
+      rw [← uxtx1_hi_idx1_nomask_eq last.value yv 0#16,
+          ← reduceTablePlacedAt_focus16 (BitVec.truncate 8 (unaccelerated.polyMul last.value yv >>> 24))]
+    wp_steps 2
+    wp_conv_pre =>
+      rw [reduceTablePlacedAt_focus16
+            (BitVec.truncate 8
+              ((unaccelerated.polyMul last.value yv ^^^
+                  BitVec.zeroExtend 32
+                      (reduce.reduceByteEntry
+                        (BitVec.truncate 8 (unaccelerated.polyMul last.value yv >>> 24))) <<<
+                    8) >>>
+                16)),
+          uxtw1_idx2_eq]
+    wp_steps 1
+    wp_conv_pre =>
+      rw [← uxtw1_idx2_eq,
+          ← reduceTablePlacedAt_focus16
+            (BitVec.truncate 8
+              ((unaccelerated.polyMul last.value yv ^^^
+                  BitVec.zeroExtend 32
+                      (reduce.reduceByteEntry
+                        (BitVec.truncate 8 (unaccelerated.polyMul last.value yv >>> 24))) <<<
+                    8) >>>
+                16))]
+    wp_steps 3
+    refine SepWP.done (by wp_norm_goal) (by wp_norm_lhs) fun _m_real2 _hnsp2 => ?_
+    have hvm_tot : VmPreserved s _ :=
+      hvm_mul.trans (_hnsp2.toVmPreserved (by simp only [arm64_norm, wp_norm, hrun_sf_1]))
+    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
+    intro hcl1
+    unfold gf16At at hcont; dsimp only at hcont
+    refine SepWP.weaken_pre (Entails.of_eq (by ac_rfl))
+      (hcont _ hcl1 (by wp_norm_goal) (by wp_norm_lhs)
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        hvm_tot
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *]))
+  · -- Probed fast path (`probed = true`)
+    have hmul := lscall_blk (callerProg := (blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
+      (acceleratedMul2Unreduced_vm_placed_ok (Rust.withPanics ext)) hcl
+    simp only [withMemEq, acceleratedMul2UnreducedPlacedSpec, BitVec.ofNat_eq_ofNat] at hmul
+    wp_simp_pre [tokenProbedPlacedAt]
+    wp_steps 2
+    apply step_ldar32
+    · wp_norm_lhs
+    · wp_norm_lhs
+    · simp only [arm64_norm]; rfl
+    · wp_norm_lhs
+    · wp_norm_lhs
+    · exact halign
+    · wp_sep_access
+    · wp_norm_lhs
+    wp_steps 9
+    apply SepWP.fold tokenInitPlacedAt_fold (by sep_focus)
+    wp_call hmul (last.value, yv, 0#16)
+    have hvm_mul : VmPreserved s sf := by
+      apply VmPreserved.trans; swap; assumption
+      simp only [arm64_norm, wp_norm]
+    have htr_mul : sf.trace = s.trace :=
+      (by assumption : sf.trace = _).trans (by simp only [arm64_norm, wp_norm])
+    have _hsp_mul : sf.sp = fsp := by simp only [arm64_norm, wp_norm, ‹sf.sp = _›, hsp]
+    have _hx19_mul : sf.readReg64 .x19 = BitVec.ofNat 64 idx := by simp only [arm64_norm, wp_norm, *]
+    have _hx22_mul : sf.readReg64 .x22 = clonePtr := by simp only [arm64_norm, wp_norm, *]
+    apply sepWP_seg_416 (mid := (blkPl_416).base + 3784#64)
+    intro _m_strip
+    wp_steps 4
+    wp_conv_pre =>
+      rw [reduceTablePlacedAt_focus16 (BitVec.truncate 8 (unaccelerated.polyMul last.value yv >>> 24)),
+          uxtx1_hi_idx1_nomask_eq last.value yv 0#16]
+    wp_steps 1
+    wp_conv_pre =>
+      rw [← uxtx1_hi_idx1_nomask_eq last.value yv 0#16,
+          ← reduceTablePlacedAt_focus16 (BitVec.truncate 8 (unaccelerated.polyMul last.value yv >>> 24))]
+    wp_steps 2
+    wp_conv_pre =>
+      rw [reduceTablePlacedAt_focus16
+            (BitVec.truncate 8
+              ((unaccelerated.polyMul last.value yv ^^^
+                  BitVec.zeroExtend 32
+                      (reduce.reduceByteEntry
+                        (BitVec.truncate 8 (unaccelerated.polyMul last.value yv >>> 24))) <<<
+                    8) >>>
+                16)),
+          uxtw1_idx2_eq]
+    wp_steps 1
+    wp_conv_pre =>
+      rw [← uxtw1_idx2_eq,
+          ← reduceTablePlacedAt_focus16
+            (BitVec.truncate 8
+              ((unaccelerated.polyMul last.value yv ^^^
+                  BitVec.zeroExtend 32
+                      (reduce.reduceByteEntry
+                        (BitVec.truncate 8 (unaccelerated.polyMul last.value yv >>> 24))) <<<
+                    8) >>>
+                16))]
+    wp_steps 3
+    refine SepWP.done (by wp_norm_goal) (by wp_norm_lhs) fun _m_real _hnsp => ?_
+    have hvm_tot : VmPreserved s _ :=
+      hvm_mul.trans (_hnsp.toVmPreserved (by simp only [arm64_norm, wp_norm, hrun_sf]))
+    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
+    intro hcl1
+    unfold gf16At at hcont; dsimp only at hcont
+    refine SepWP.weaken_pre (Entails.of_eq (by ac_rfl))
+      (hcont _ hcl1 (by wp_norm_goal) (by wp_norm_lhs)
+        (by simp only [arm64_norm, wp_norm, ‹sf.sp = _›, hsp])
+        (by simp only [arm64_norm, wp_norm, htr_mul])
+        hvm_tot
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *])
+        (by simp only [arm64_norm, wp_norm, *]))

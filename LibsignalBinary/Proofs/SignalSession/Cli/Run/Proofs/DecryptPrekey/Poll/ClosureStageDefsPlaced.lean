@@ -9,12 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePanicPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePanicPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Relocatable `[LibsignalPlacement]` Poll Stage P1 Interfaces
@@ -23,7 +28,7 @@ Defines `[LibsignalPlacement]` Stage P1 interfaces (`StageP1OkPlacedStmt` and
 `StageP1UntrustedPlacedStmt`) on `dpPollProgPlaced ext` at `dpPollEntryPlaced` (`lsmpl.base 518`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +55,7 @@ open CryptoVerification.SignalSession.Cli.MainHops
 open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `StageP1OkExtStmt`. -/
-def StageP1OkPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP1OkPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {A : RustAlloc}
     {ext : String → Option (State → State)}
     {Scope : SessionRecord (List (BitVec 8)) → Prop}
@@ -189,7 +194,7 @@ def StageP1OkPlacedStmt [LibsignalPlacement] : Prop :=
         (PanicOomProp s0)
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `StageP1UntrustedExtStmt`. -/
-def StageP1UntrustedPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP1UntrustedPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {A : RustAlloc}
     {ext : String → Option (State → State)}
     {_Scope : SessionRecord (List (BitVec 8)) → Prop}

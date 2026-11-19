@@ -9,19 +9,10 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
-
-/-!
-# CLI SPQR V1 `prost::encoding::message::encode` Symbol Names and Offsets
-
-Defines CLI symbol names and `fnOff` lemmas for `PolynomialEncoder`, `ChainParams`,
-`PolynomialDecoder`, and `EpochDirection` message encoders (`[local#3]`).
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -45,21 +36,5 @@ abbrev _root_.CryptoVerification.Cli.SpqrV1.Prost.MessageEncode.encodePolyDecode
 
 abbrev _root_.CryptoVerification.Cli.SpqrV1.Prost.MessageEncode.encodeEpochDirection1Name : String :=
   "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#3]"
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Prost.MessageEncode.encodePolyEncoder1_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Prost.MessageEncode.encodePolyEncoder1Name = (ls_off% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::PolynomialEncoder, alloc::vec::Vec<u8>> [local#3]") :=
-  (ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::PolynomialEncoder, alloc::vec::Vec<u8>> [local#3]")
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Prost.MessageEncode.encodeChainParams1_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Prost.MessageEncode.encodeChainParams1Name = (ls_off% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::ChainParams, alloc::vec::Vec<u8>> [local#3]") :=
-  (ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::ChainParams, alloc::vec::Vec<u8>> [local#3]")
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Prost.MessageEncode.encodePolyDecoder1_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Prost.MessageEncode.encodePolyDecoder1Name = (ls_off% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::PolynomialDecoder, alloc::vec::Vec<u8>> [local#3]") :=
-  (ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::PolynomialDecoder, alloc::vec::Vec<u8>> [local#3]")
-
-@[simp, arm64_norm] theorem _root_.CryptoVerification.Cli.SpqrV1.Prost.MessageEncode.encodeEpochDirection1_fnOff :
-    libsignalSessionCode.fnOff CryptoVerification.Cli.SpqrV1.Prost.MessageEncode.encodeEpochDirection1Name = (ls_off% "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#3]") :=
-  (ls_lemma% fnOff "prost::encoding::message::encode::<spqr::proto::pq_ratchet::chain::epoch::EpochDirection, alloc::vec::Vec<u8>> [local#3]")
 
 end CryptoVerification.SpqrV1.Prost.MessageEncode

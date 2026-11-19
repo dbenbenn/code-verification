@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPathsProofs.Core
-public import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPathsProofs.FetchBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPathsProofs.Core
+import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPathsProofs.FetchBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPaths
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPathsProofs.Fetch
 
 /-!
 # Budget-Threaded Panic-Path Proofs for `consume_message_key` (Block 24)
@@ -27,7 +28,7 @@ Proves `EpiloguePanicPlacedSpec`, `EpiloguePanicPlacedRoSpec`, `LoopNoChainPanic
 `LoopNoChainPanicPlacedRoSpec` under `RustCliAllocBudget M` and `SeamBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

@@ -9,11 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.FSAEAD.HybridRedBase -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.FSAEAD.HybridRedBase
 import Computational.Proofs.ReductionDsl.SimRel
 import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.ReductionDsl.Tables
 import Computational.Proofs.GameHop.StateSim
+public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
+public import Computational.Proofs.ReductionDsl.FSAEAD.HybridCosted -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Out
 
 public section
 

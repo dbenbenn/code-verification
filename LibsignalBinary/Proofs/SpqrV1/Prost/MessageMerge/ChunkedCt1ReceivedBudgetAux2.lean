@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -24,6 +23,8 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPQR V1: Budget-Threaded Field-1 & Field-2 Step Lemmas for `Chunked.Ct1Received::merge` (Block `303`)
@@ -33,7 +34,7 @@ Proves budget-threaded `tag = 1` (`uc : Unchunked.EkSentCt1Received`) and `tag =
 `V1State.Chunked.Ct1Received::merge` (Block `303`) with `withLsCodeRoLoaded lsmpl` callees.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -63,20 +64,7 @@ open CryptoVerification.SpqrV1.ProtoRepr.EncodedLen
    noneCap_add_one_beq_zero noneCap_add_one_bne_zero)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.ChunkedMerge
   (UnchunkedEkSentCt1ReceivedMergeGhost)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedCt1ReceivedMergeGhost ChunkedLoopRegs PolyEncoderMergeGhost SepWPpLscro
-   bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked
-   chunkedCt1ReceivedMerge_fnOff chunkedCt1ReceivedPBAt chunkedCt1ReceivedPBCapAt
-   chunkedSavedRegs codecWireTypeToProto
-   default_ekSentCt1Received_entails_cap default_polyEncoder_entails_pb
-   memRegion_48_split_128 memRegion_ekSentCt1Received_none_split memRegion_polyEncoder_none_split
-   optPolyEncoderPolysLen optPolyEncoderPtsLen
-   optPolyEncoder_getD_default_polys_len optPolyEncoder_getD_default_pts_len
-   optUnchunkedEkSentCt1ReceivedPBCapAt
-   optUnchunkedEkSentCt1ReceivedPBCapAt_entails_optEkSentCt1ReceivedPBAt
-   optUnchunkedEkSentCt1ReceivedPBCapAt_mono polyEncoderToProto
-   protoPolynomialEncoderAt_eq_pb proto_mergeMessage_len_le
-   unchunkedEkSentCt1ReceivedPBCapAt vecU8Buf vecVecU8Buf_entails_cap_lt)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedCt1ReceivedMergeGhost ChunkedLoopRegs PolyEncoderMergeGhost SepWPpLscro bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked chunkedCt1ReceivedPBAt chunkedCt1ReceivedPBCapAt chunkedSavedRegs codecWireTypeToProto default_ekSentCt1Received_entails_cap default_polyEncoder_entails_pb memRegion_48_split_128 memRegion_ekSentCt1Received_none_split memRegion_polyEncoder_none_split optPolyEncoderPolysLen optPolyEncoderPtsLen optPolyEncoder_getD_default_polys_len optPolyEncoder_getD_default_pts_len optUnchunkedEkSentCt1ReceivedPBCapAt optUnchunkedEkSentCt1ReceivedPBCapAt_entails_optEkSentCt1ReceivedPBAt optUnchunkedEkSentCt1ReceivedPBCapAt_mono polyEncoderToProto protoPolynomialEncoderAt_eq_pb proto_mergeMessage_len_le unchunkedEkSentCt1ReceivedPBCapAt vecU8Buf vecVecU8Buf_entails_cap_lt)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_303 blkPl_303)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget VmPreserved)
@@ -114,7 +102,7 @@ private theorem calleeSavedVRegs_setMem_pre (s : State) (m : Memory) :
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   noneCap_add_one_beq_zero noneCap_add_one_bne_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero chunkedCt1ReceivedMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 attribute [local arm64_norm ↓, local wp_norm ↓]
   sp_setMem_pre pc_setMem_pre status_setMem_pre pstate_setMem_pre trace_setMem_pre
   readReg64_setMem_pre readReg32_setMem_pre readReg_setMem_pre calleeSavedVRegs_setMem_pre

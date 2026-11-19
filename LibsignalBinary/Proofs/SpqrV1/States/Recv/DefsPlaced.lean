@@ -10,12 +10,12 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DecodesPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -25,7 +25,7 @@ Relocatable `[LibsignalPlacement]` callee contract bundle `StatesRecvPlacedContr
 top-level / per-variant specifications (`statesRecvPlacedSpec`, `StatesRecvPlacedOkX`) for Block `332`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -288,7 +288,7 @@ end StatesRecvPlacedContracts
 /-! ## Top-Level and Per-Variant Relocatable Specifications of `<States>::recv` (Block `332`) -/
 
 /-- Relocatable specification of `<spqr::v1::chunked::states::States>::recv` (Block `332`, 4,884 insns). -/
-def statesRecvPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) (K : MlKem) :
+@[expose] def statesRecvPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) (K : MlKem) :
     Spec (StatesRecvGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.outA ∧
@@ -310,7 +310,7 @@ def statesRecvPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) 
   onPanic := fun x s0 sf => statesRecvOnPanic K x s0 sf
 
 /-- Per-variant relocatable specification of `<States>::recv` (Block `332`) for a fixed `(self, msg)`. -/
-def statesRecvVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) (K : MlKem)
+@[expose] def statesRecvVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) (K : MlKem)
     (self : States spqrPolyApi (spqrAuthApi F)) (msg : Message spqrPolyApi) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64) where
   pre := fun ⟨outA, selfA, msgA⟩ s =>
@@ -335,14 +335,14 @@ def statesRecvVariantPlacedSpec [LibsignalPlacement] (A : RustAlloc) (F : ShaCom
 
 /-- `<States>::recv` (Block `332`) meets `withLsCodeRoLoaded lsmpl (statesRecvPlacedSpec A F K)`
     on `lsProg_332 (Rust.withPanics ext)`. -/
-def StatesRecvPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) (K : MlKem)
+@[expose] def StatesRecvPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_332 (Rust.withPanics ext)) (lsmpl.base 332)
     (withLsCodeRoLoaded lsmpl (statesRecvPlacedSpec A F K))
 
 /-- `<States>::recv` (Block `332`) meets `withLsCodeRoLoaded lsmpl (statesRecvPlacedSpec A F K)`
     on `libsignalSessionLib.blockProgram lsmpl 332 (Rust.withPanics ext)`. -/
-def StatesRecvPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) (K : MlKem)
+@[expose] def StatesRecvPlacedOkX [LibsignalPlacement] (A : RustAlloc) (F : ShaCompress) (K : MlKem)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 332 (Rust.withPanics ext)) (lsmpl.base 332)
     (withLsCodeRoLoaded lsmpl (statesRecvPlacedSpec A F K))

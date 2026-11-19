@@ -9,25 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeGrow
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeGrowBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeGrow -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeGrowBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
+import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Alloc.Fetch
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable `<VecDeque<spqr::chain::ChainEpoch>>::grow` (Block 353)
@@ -37,7 +37,7 @@ non-wrapping, wrapping-`memcpy`, and wrapping-`memmove` branches, assembling
 `Chain.DefsBudget.vecDequeGrowSpec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -243,7 +243,7 @@ private theorem madd_112_eq (p x : BitVec 64) (_h : x.toNat * 112 < 2 ^ 64) :
 /-! ## Branch Budget Contracts -/
 
 /-- Non-wrapping budget contract (`head + len ≤ cap`). -/
-def vecDequeGrowNonwrapBsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def vecDequeGrowNonwrapBsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (VecDequeGrowGhost × M.σ) where
   pre := fun ((d, cap, ptr, head, len, bs), st) s =>
     let newCap := max (2 * cap.toNat) 4
@@ -270,7 +270,7 @@ def vecDequeGrowNonwrapBsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     stackAt s0.sp vecDequeGrowStack
 
 /-- Empty-`VecDeque` budget contract (`cap = 0, head = 0, len = 0`). -/
-def vecDequeGrowEmptySpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def vecDequeGrowEmptySpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec ((BitVec 64 × BitVec 64) × M.σ) where
   pre := fun ((d, ptr), st) s =>
     ⌜s.readReg64 .x0 = d ∧ ptr ≠ 0#64 ∧
@@ -289,7 +289,7 @@ def vecDequeGrowEmptySpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     stackAt s0.sp vecDequeGrowStack
 
 /-- Wrapping `memcpy` budget contract (`head < cap - head`). -/
-def vecDequeGrowWrapMemcpyBsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def vecDequeGrowWrapMemcpyBsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (VecDequeGrowWrapGhost × M.σ) where
   pre := fun ((d, cap, ptr, head, bs_back, bs_front), st) s =>
     let newCap := max (2 * cap.toNat) 4
@@ -321,7 +321,7 @@ def vecDequeGrowWrapMemcpyBsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     stackAt s0.sp vecDequeGrowStack
 
 /-- Wrapping `memmove` budget contract (`cap - head ≤ head`). -/
-def vecDequeGrowWrapMemmoveBsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def vecDequeGrowWrapMemmoveBsSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (VecDequeGrowWrapGhost × M.σ) where
   pre := fun ((d, cap, ptr, head, bs_back, bs_front), st) s =>
     let newCap := max (2 * cap.toNat) 4

@@ -14,6 +14,7 @@ public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat -- proof-setup
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandSegsExt
 import LibsignalBinary.Specifications.LibsignalE2E.State -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `expand_multi_info` (`okmLen = 96`, `info.length = 46`) — Part A under `HkdfPlacedHooksSat`

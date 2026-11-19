@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegLoadCommon
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Common.StringClonePlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegLoadCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Common.StringClonePlaced
 public import ProofLib.SepLogic.WPp
 public import ProofLib.SepLogic.WP.Apply
 import all Arm64.Trusted.Spec.Hoare
@@ -22,6 +22,12 @@ import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
 import all Init.Data.String.Defs
+public import ProofLib.RegChain
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable CLI `SegLoad` Shared Infrastructure
@@ -31,7 +37,7 @@ hook `subroutine_ok` lemmas on `lsProg_464 Hk`, `.rodata` vtable and `"message_e
 materialization, `SpeStaged` lemmas, and `loadPollPlacedOutAtS` decomposition.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -377,7 +383,7 @@ theorem speStaged_sessionNotFound_devWord_placed (A : RustAlloc)
 /-! ## 5. Parametric Decomposition of `loadPollPlacedOutAtS` -/
 
 /-- Residual fact after extracting the 7 header words and 312-B tail from `loadPollPlacedOutAtS`. -/
-def LoadOutResPlaced (Scope : SessionRecord (List (BitVec 8)) → Prop) (A : RustAlloc)
+@[expose] def LoadOutResPlaced (Scope : SessionRecord (List (BitVec 8)) → Prop) (A : RustAlloc)
     (ans : Except Unit (Option (SessionRecord (List (BitVec 8)))))
     (w0 w1 w2 w3 w4 w5 w6 : BitVec 64) (tail : List (BitVec 8)) : SepProp :=
   match ans with

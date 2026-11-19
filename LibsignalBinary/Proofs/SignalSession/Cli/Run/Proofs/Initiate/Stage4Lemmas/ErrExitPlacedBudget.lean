@@ -9,21 +9,46 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.CellsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.CellsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import Lean
-import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Decode
+import Mathlib.Tactic.Basic
+import Mathlib.Tactic.ToAdditive
+import Mathlib.Tactic.ToDual
+import Lean.Elab.SyntheticMVars
+import Lean.Meta.Reduce
+import ProofLib.GenDecodes
+import ProofLib.GenPlacedFetches
+import ProofLib.ProgramReflection
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.SepLogic.WP.ControlTactics
+import ProofLib.VCGen
+import ProofLib
+import ProofLib.FsTrace
+import ProofLib.Placed.Multi
+import ProofLib.ProgramReflection.Variant.TrapTransfer
+import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Frames
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.FramesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.PurePlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Stage 4 OOM Helpers and Early `Err` Exit (`[LibsignalPlacement]`, `+4508 → RET`)
@@ -33,15 +58,13 @@ Verifies Stage 4's early `Err(InvalidKeyAgreement)` exit (`+4508 → RET`) under
 `stage4ErrExitEvents`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 set_option linter.unusedSimpArgs false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExitPlacedBudget
 
@@ -145,13 +168,13 @@ theorem panic_oom_only_entails_initOnPanic_placed [LibsignalPlacement] {M : Allo
 /-! ## Error Cleanup Event Sequence and Proof (`+4508 → RET`) -/
 
 /-- Allocator events along Stage 4's early `Err` exit (`+4508 → RET`): `dealloc(1569, 1)` then `dealloc(1568, 1)`. -/
-def stage4ErrExitEvents : List AllocEvent :=
+@[expose] def stage4ErrExitEvents : List AllocEvent :=
   rustDeallocEvents 1569 1 ++ rustDeallocEvents 1568 1
 
-def Stage4ErrExitEnv (evs : List AllocEvent) : Prop :=
+@[expose] def Stage4ErrExitEnv (evs : List AllocEvent) : Prop :=
   evs = stage4ErrExitEvents
 
-def errExitMemPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def errExitMemPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (x : InitGhost) (kp : IdentityKeyPair)
     (ekASk ekAPk : List (BitVec 8))
@@ -486,7 +509,7 @@ theorem stage4_err_exit_placed [LibsignalPlacement] {M : AllocCostModel}
       ⟨by rw [htr_sf], hfiles_sf, by rw [htr_sf]⟩
     have hslotOut : slotOut (S.initiate x.F x.peer.val x.me.val x.bundle x.coins)
         StoresGhost.opened (.error (.protocol .invalidKeyAgreement)) s0 sf :=
-      ⟨by decide, by decide, herr⟩
+      ⟨by nofun, by nofun, herr⟩
     dsimp only [initSlotSpecPlaced, LibsignalPublicApi.StoreKit.withLsCodeRoLoaded]
     exact Entails.trans hent
       (Entails.sepExists_right evs
@@ -496,4 +519,3 @@ theorem stage4_err_exit_placed [LibsignalPlacement] {M : AllocCostModel}
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExitPlacedBudget
 
-end

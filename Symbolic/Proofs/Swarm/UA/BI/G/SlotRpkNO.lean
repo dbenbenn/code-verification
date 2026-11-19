@@ -40,6 +40,7 @@ import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
+import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
 
 /-!
 # Bob Non-Promote Pre-Key Receive Slot
@@ -49,7 +50,7 @@ Bob's non-promote pre-key `recv` slot preserves the turn simulation `PqTurnSim1A
 invariant `UAInvB` across prefixes containing break and invert steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

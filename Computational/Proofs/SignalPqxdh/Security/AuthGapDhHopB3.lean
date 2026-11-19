@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB1 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
 import Computational.Proofs.SignalPqxdh.Security.Collisions
 import Computational.Proofs.SignalPqxdh.Security.RoKemHop
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA -- shake: keep
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA -- shake: keep
 
 /-!
 # `Auth` hop `G0 → G3`: KEM split-key hash collision bridge and assembly
@@ -24,7 +24,7 @@ Couples the `G3` hybrid game to `runAuthShCrSim` and combines the EC/KEM collisi
 `KemShCr` bounds via freeze-on-win hybrids to prove `auth_hop_G0_G3_le`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open scoped ENNReal
 open MeasureTheory
@@ -32,7 +32,7 @@ open OracleSpec OracleComp
 open SignalPqxdh SignalPqxdh.Security
 namespace Proofs.SignalPqxdh.Security
 /-! ## Freeze-on-win provenance hybrids -/
-def CommutesProj {St1 St2 R : Type} (proj : St2 → St1) (st : St2)
+@[expose] def CommutesProj {St1 St2 R : Type} (proj : St2 → St1) (st : St2)
     (m1 : StateT St1 ProbComp R) (m2 : StateT St2 ProbComp R) : Prop :=
   (m1.run (proj st)) = Prod.map id proj <$> (m2.run st)
 theorem CommutesProj.get_bind {St1 St2 R : Type} (proj : St2 → St1) (st : St2)
@@ -122,33 +122,33 @@ theorem runAuthHybridSendKosk_g3_commutes_base (S : Setup) (P : Primitives)
         rcases spqrTriple with ⟨_pqrStA, spqrSalt?, pqRatchetMsg⟩; dsimp only
         cases (findHonestPrincipal P hst.base.principals bundle.ikB).isSome <;>
           exact CommutesProj.set_bind _ _ _ _ rfl (CommutesProj.pure _ _ _)
-def freezeImpl {ι : Type} {spec : OracleSpec.{0, 0} ι} {St : Type}
+@[expose] def freezeImpl {ι : Type} {spec : OracleSpec.{0, 0} ι} {St : Type}
     (hasWon : St → Bool) (defResp : ∀ q : ι, spec.Range q)
     (impl : QueryImpl spec (StateT St ProbComp)) :
     QueryImpl spec (StateT St ProbComp) := fun q => do
   let st ← get
   if hasWon st then return defResp q else impl q
-def pqxdhAuthWithProvFrozenImpl (S : Setup) (P : Primitives) (provFn : ProvFnType) :
+@[expose] def pqxdhAuthWithProvFrozenImpl (S : Setup) (P : Primitives) (provFn : ProvFnType) :
     QueryImpl (authSpec S) (StateT (AuthState S) ProbComp) :=
   freezeImpl AuthState.hasWonAuth (fun _ => .noneResp) (pqxdhAuthWithProvImpl S P provFn)
-noncomputable def runAuthWithProvFrozen (prov : ProvFnType) (S : Setup) (P : Primitives)
+@[expose] def runAuthWithProvFrozen (prov : ProvFnType) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthState S) := do
   let secb ← $ᵗ Bool; let initSt := AuthState.empty S secb
   let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (AuthState S) ProbComp) +
     pqxdhAuthWithProvFrozenImpl S P prov
   let (b', finalSt) ← (simulateQ impl A.run).run initSt; return (secb, b', finalSt)
-noncomputable def authExpG0Frozen (S : Setup) (P : Primitives)
+def authExpG0Frozen (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   runAuthWithProvFrozen (checkBundleProvenance P) S P A >>= contAuth S P
-noncomputable def authExpG0_1WithProvFrozen (prov : ProvFnType) (S : Setup) (P : Primitives)
+@[expose] def authExpG0_1WithProvFrozen (prov : ProvFnType) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   runAuthWithProvFrozen prov S P A >>= fun a =>
     if hasEcPkCollisionAuth P a.2.2 then $ᵗ Bool else contAuth S P a
-noncomputable def authExpG1WithProvFrozen (prov : ProvFnType) (S : Setup) (P : Primitives)
+@[expose] def authExpG1WithProvFrozen (prov : ProvFnType) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   runAuthWithProvFrozen prov S P A >>= fun a =>
     if hasEcPkCollisionAuth P a.2.2 || hasBadSigAuth a.2.2 then $ᵗ Bool else contAuth S P a
-noncomputable def authExpG2_1WithProvFrozen (prov : ProvFnType) (S : Setup) (P : Primitives)
+@[expose] def authExpG2_1WithProvFrozen (prov : ProvFnType) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   runAuthWithProvFrozen prov S P A >>= fun a =>
     if (hasEcPkCollisionAuth P a.2.2 || hasBadSigAuth a.2.2) ||
@@ -296,7 +296,7 @@ theorem map_base_fullAuthHybridKoskImpl_g3 (S : Setup) (P : Primitives)
   cases q with
   | inl uq => simp [QueryImpl.liftTarget, StateT.run_monadLift, Prod.map]
   | inr kq => exact map_base_pqxdhAuthHybridKoskImpl_g3 S P hP kq hst
-noncomputable def runAuthKoskG3 (S : Setup) (P : Primitives)
+@[expose] def runAuthKoskG3 (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthHybridState S) := do
   let secb ← $ᵗ Bool; let initSt := AuthHybridState.empty S secb
   let impl :=
@@ -346,7 +346,7 @@ theorem auth_hop_G2_1_exact_G3_le_prob (S : Setup) (P : Primitives)
     (fun (secb, b', finalSt) => contAuth S P (secb, b', finalSt.base))
 /-! ## Bridge to `runAuthShCrSim` -/
 abbrev AuthHybridShCrState (S : Setup) := ShCrState S (AuthHybridState S)
-def mapShCrBase {S : Setup} {B1 B2 : Type} (f : B1 → B2) (hst : ShCrState S B1) : ShCrState S B2 :=
+@[expose] def mapShCrBase {S : Setup} {B1 B2 : Type} (f : B1 → B2) (hst : ShCrState S B1) : ShCrState S B2 :=
   { base := f hst.base, targetBIdx? := hst.targetBIdx?, targetPk := hst.targetPk,
     targetSk := hst.targetSk, sendCount := hst.sendCount, initKemRecs := hst.initKemRecs,
     recvKemRecs := hst.recvKemRecs }
@@ -424,7 +424,7 @@ theorem mapShCrBase_runShCrInitiate4 {S : Setup} {B1 B2 R U : Type} (P : Primiti
         simp only [Functor.map_map]; congr 1; funext out
         exact mapShCrBase_applyShCrFinish f sid bundle.pqspkB ss kemCt hst out
     · simp [Prod.map, mapShCrBase]
-def finishAuthHybridG3Base (S : Setup) (P : Primitives)
+@[expose] def finishAuthHybridG3Base (S : Setup) (P : Primitives)
     (sid : SessionId S) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (uInfo : PrincipalEntry × Option (Nat × PrincipalEntry) × Bytes)
     (ekASk ephASk spqrCoins ss kemCt : Bytes)
@@ -451,13 +451,13 @@ def finishAuthHybridG3Base (S : Setup) (P : Primitives)
       bundle m0 m1 ekASk ekAPk ss kemCt ephASk ephAPk drKey rk1 ck1_0 mkSeed ck1_1
       spqrSalt? pqRatchetMsg deriveMessageKeys ad aeadCt msgPlain roCache' rootRoCache' hst
     return (resp, some hst')
-def clearHybridWon {S : Setup} (h : AuthHybridState S) : AuthHybridState S :=
+@[expose] def clearHybridWon {S : Setup} (h : AuthHybridState S) : AuthHybridState S :=
   { h with base := { h.base with hasWonAuth := false } }
 @[simp]
 theorem clearHybridWon_eq_self {S : Setup} (h : AuthHybridState S)
     (hWon : h.base.hasWonAuth = false) : clearHybridWon h = h := by
   cases h; rename_i base _ _ _; cases base; simp [clearHybridWon] at hWon ⊢; exact hWon
-def pqxdhAuthHybridKoskUnfrozenImpl (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthHybridKoskUnfrozenImpl (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridState S) ProbComp)
   | .sendOPK u i bundle m0 m1 => do
     if bundle.opkB?.isNone then return .noneResp
@@ -493,14 +493,14 @@ theorem pqxdhAuthHybridKoskImpl_g3_eq_freeze (S : Setup) (P : Primitives)
   · simp only [Bool.false_eq_true, ↓reduceIte]
     exact pqxdhAuthHybridKoskImpl_g3_of_hasWonAuth_false S P q h hWon
   · unfold pqxdhAuthHybridKoskImpl; simp [StateT.run_bind, StateT.run_get, pure_bind, hWon]
-noncomputable def runAuthKoskG3Unfrozen (S : Setup) (P : Primitives)
+@[expose] def runAuthKoskG3Unfrozen (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthHybridState S) := do
   let secb ← $ᵗ Bool; let initSt := AuthHybridState.empty S secb
   let impl :=
     (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (AuthHybridState S) ProbComp) +
     pqxdhAuthHybridKoskUnfrozenImpl S P
   let (b', finalSt) ← (simulateQ impl A.run).run initSt; return (secb, b', finalSt)
-def pqxdhAuthHybridShCrImpl (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthHybridShCrImpl (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridShCrState S) ProbComp)
   | .genSPK u j => liftShCrBase (pqxdhAuthHybridKoskUnfrozenImpl S P (.genSPK u j))
   | .sendOPK u i bundle m0 m1 =>
@@ -615,10 +615,10 @@ theorem map_base_fullAuthHybridShCrImpl (S : Setup) (P : Primitives)
   cases q with
   | inl uq => simp [QueryImpl.liftTarget, StateT.run_monadLift, Prod.map]
   | inr kq => exact map_base_pqxdhAuthHybridShCrImpl S P kq hst
-def eraseOpkAuthSessions {S : Setup} : AuthState S → AuthState S := mapAuthSessions (fun s =>
+@[expose] def eraseOpkAuthSessions {S : Setup} : AuthState S → AuthState S := mapAuthSessions (fun s =>
     let (s', o', p') := eraseOpkTriples (s.spkHonest, s.opkHonest, s.pqspkHonest)
     { s with spkHonest := s', opkHonest := o', pqspkHonest := p' })
-def projHybridToSim (S : Setup) (P : Primitives) (h : AuthHybridState S) : AuthState S :=
+@[expose] def projHybridToSim (S : Setup) (P : Primitives) (h : AuthHybridState S) : AuthState S :=
   projAuthSim S P (eraseOpkAuthSessions h.base)
 theorem map_projHybridToSim_pqxdhAuthHybridKoskImpl_g3_clear (S : Setup) (P : Primitives)
     (hP : CryptoWellFormedPrimitivesδ P)
@@ -759,7 +759,7 @@ theorem mapShCrBase_fullAuthHybridShCrImpl (S : Setup) (P : Primitives)
   cases q with
   | inl uq => simp [QueryImpl.liftTarget, StateT.run_monadLift, Prod.map]
   | inr kq => exact mapShCrBase_pqxdhAuthHybridShCrImpl S P hP kq hst
-noncomputable def runAuthHybridShCr (S : Setup) (P : Primitives)
+@[expose] def runAuthHybridShCr (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthHybridShCrState S) := do
   let secb ← $ᵗ Bool; let initSt : AuthHybridShCrState S := { base := AuthHybridState.empty S secb }
   let impl :=
@@ -795,10 +795,10 @@ theorem runAuthHybridShCr_map_shcr (S : Setup) (P : Primitives)
     eraseOpkAuthSessions, mapAuthSessions_empty, projAuthSim_empty] at hsim
   rw [← hsim, bind_map_left]; rfl
 /-! ## KEM record synchronization invariant -/
-def dropSendIdx {S : Setup} (r : _root_.Proofs.SignalPqxdh.Security.InitKemRecord S) :
+@[expose] def dropSendIdx {S : Setup} (r : _root_.Proofs.SignalPqxdh.Security.InitKemRecord S) :
     _root_.SignalPqxdh.Security.InitKemRecord S :=
   { sid := r.sid, pqspkPk := r.pqspkPk, kemCt := r.kemCt, kemSs := r.kemSs }
-def dropBIdx (r : _root_.Proofs.SignalPqxdh.Security.RecvKemRecord) :
+@[expose] def dropBIdx (r : _root_.Proofs.SignalPqxdh.Security.RecvKemRecord) :
     _root_.SignalPqxdh.Security.RecvKemRecord :=
   { k := r.k, j := r.j, pqspkPk := r.pqspkPk, pqspkSk := r.pqspkSk,
     kemCt := r.kemCt, kemSs := r.kemSs }
@@ -810,7 +810,7 @@ theorem isKemShCrPair_eq_of_drop {S : Setup} (P : Primitives)
       (dropSendIdx i').pqspkPk != (dropBIdx r').pqspkPk)) =
     isKemShCrPair P i' r' := by
   unfold dropSendIdx dropBIdx isKemShCrPair; dsimp only; rw [Bool.eq_iff_iff]; simp
-def ValidHybridShCr (S : Setup) (hst : AuthHybridShCrState S) : Prop := (∀ i ∈ hst.base.initKemRecs,
+@[expose] def ValidHybridShCr (S : Setup) (hst : AuthHybridShCrState S) : Prop := (∀ i ∈ hst.base.initKemRecs,
     ∃ i' ∈ hst.initKemRecs, dropSendIdx i' = i ∧ i'.sendIdx < hst.sendCount) ∧
   (∀ r ∈ hst.base.recvKemRecs, ∃ r' ∈ hst.recvKemRecs, dropBIdx r' = r ∧ r'.bIdx < S.N_spk_tot)
 theorem mem_support_finishAuthHybridG3Base (S : Setup) (P : Primitives)
@@ -835,7 +835,7 @@ theorem mem_support_finishAuthHybridG3Base (S : Setup) (P : Primitives)
   · rename_i spqrTriple; rcases spqrTriple with ⟨_pqrStA, spqrSalt?, pqRatchetMsg⟩
     intro hout; simp only [support_pure, Set.mem_singleton_iff] at hout; subst hout
     exact Or.inr ⟨_, rfl, rfl, rfl⟩
-def RecvHybridStep {S : Setup} (P : Primitives) (k : Fin S.N_id) (j : Fin S.N_recv)
+@[expose] def RecvHybridStep {S : Setup} (P : Primitives) (k : Fin S.N_id) (j : Fin S.N_recv)
     (hdr : HandshakeHdr) (h base' : AuthHybridState S) : Prop :=
   base'.initKemRecs = h.initKemRecs ∧ base'.base.spkBundles = h.base.spkBundles ∧
   (base'.recvKemRecs = h.recvKemRecs ∨ ∃ idxPair bEntry ss,
@@ -1643,7 +1643,7 @@ theorem probExpect_safe_freeze_eq_zero {S : Setup} {α : Type} (P : Primitives)
         support ((pqxdhAuthSimImpl S P gq).run (projAuthSim S P s)) := by
       rw [← (pqxdhAuthSimImpl_commutes_projAuthSim S P hP gq s).symm, support_map]; exact ⟨x, hx, rfl⟩
     exact authSim_safe_step S P k gq (projAuthSim S P s) hs (Prod.map id (projAuthSim S P) x) hmem
-noncomputable def liftAuthSimFL (S : Setup) (P : Primitives) {q : AuthQuery S}
+@[expose] noncomputable def liftAuthSimFL (S : Setup) (P : Primitives) {q : AuthQuery S}
     (fL0 : (authSpec S).Range q × AuthState S → ℝ≥0∞) :
     (authSpec S).Range q × AuthState S → ℝ≥0∞ := fun (out, st') =>
   ⨆ (fst' : { fst' : AuthState S // projAuthSim S P fst' = st' }),
@@ -1896,7 +1896,7 @@ theorem auth_hop_G0_G2_1_exact_frozen_le (S : Setup) (P : Primitives)
     ((𝒟[authExpG2_1WithProvFrozen (checkBundleProvenanceExact P) S P A.val].boolBias).toReal)
   set_option exponentiation.threshold 512 in
   linarith
-def HybridRecsSub {S : Setup} (h h' : AuthHybridState S) : Prop :=
+@[expose] def HybridRecsSub {S : Setup} (h h' : AuthHybridState S) : Prop :=
   (∀ i ∈ h.initKemRecs, i ∈ h'.initKemRecs) ∧ (∀ r ∈ h.recvKemRecs, r ∈ h'.recvKemRecs)
 theorem runAuthHybridSendKosk_g3_sub (S : Setup) (P : Primitives)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)

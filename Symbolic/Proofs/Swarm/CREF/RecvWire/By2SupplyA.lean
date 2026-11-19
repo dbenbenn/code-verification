@@ -19,12 +19,12 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFreshStepStart
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFreshStepStart -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
-import Symbolic.Proofs.Swarm.CREF.RecvWire.FreshStepInit
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.FreshStepInit -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.TR.BobSessionSidInv
 import Symbolic.Proofs.Swarm.CREF.TR.G1.CanonPath
 import Symbolic.Proofs.Swarm.CREF.TR.RecvFreshDecB1
@@ -46,7 +46,7 @@ Proves `nodup_ratchetKey_of_runTrace_getLocalState` across all stored `TRState` 
 derives `TR.TRRecvFreshAll` on `ModelRun` and `MatchedPrefix` executions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

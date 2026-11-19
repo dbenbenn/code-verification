@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BridgeReloc
-import ProofLib.GenPlacedFetches
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- shake: keep
+public import ProofLib.GenPlacedFetches
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- shake: keep
 public meta import Lean -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- proof-setup: allow-public-import
+meta import GeneratedLean.LibsignalSessionPlacedObjShard3
+meta import GeneratedLean.LibsignalSessionPlacedObjShard4
+meta import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
+import LibsignalBinary.Proofs.Placed.BlocksTreeDefs
 
 /-!
 # Relocatable Per-Block Fetches for `ResponderCore`
@@ -230,10 +236,12 @@ private meta def elabGenLsBlkMulti : CommandElab := fun stx => do
             (full_block_placeable $idxStx:num (by decide))
       ))
       elabCommand (← `(command|
+        -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
         noncomputable def $blkPCId:ident [LibsignalFullPlacement] : Program :=
           ($blkLibId:ident).program $blkPlId:ident
       ))
       elabCommand (← `(command|
+        -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
         noncomputable abbrev $lsProgId:ident [LibsignalFullPlacement] (H : LibsignalHooks) : Program :=
           ($blkPCId:ident).rebase ($blkPlId:ident).base H
       ))
@@ -259,10 +267,12 @@ private meta def elabGenLsBlkMulti : CommandElab := fun stx => do
             (LibsignalPlacement.block_placeable $idxStx:num (by decide) (by decide))
       ))
       elabCommand (← `(command|
+        -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
         noncomputable def $blkPCId:ident [LibsignalPlacement] : Program :=
           ($blkLibId:ident).program $blkPlId:ident
       ))
       elabCommand (← `(command|
+        -- noncomputable: the generated `blkLib_*` constants have no compiled code (added with `addDecl` only); compiling this def panics in LCNF.ExplicitBoxing
         noncomputable abbrev $lsProgId:ident [LibsignalPlacement] (H : LibsignalHooks) : Program :=
           ($blkPCId:ident).rebase ($blkPlId:ident).base H
       ))

@@ -11,7 +11,11 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrDefsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Version-Skip Tail Statement
@@ -21,7 +25,7 @@ Allocator-budget (`RustCliAllocBudget M`) statement `OverPrevErrCliPlacedStmt`
 panic/OOM (`Qp = fun _ _ => False`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +46,7 @@ open LibsignalBinary.Heap (
 (`+8148 → +11516 in Block 518`) on `lsProg_518 ext`.
 Only `drop_in_place<SessionStructure>` touches the heap (`FreeOnlyEvs`), so no `FitsEnv`
 precondition is required and neither OOM nor panic is reachable (`Qp = fun _ _ => False`). -/
-def OverPrevErrCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverPrevErrCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)),
     ∀ (st0 : M.σ) (s0 s : State) (prevPtr errsPtr : BitVec 64) (msgVer : BitVec 32)

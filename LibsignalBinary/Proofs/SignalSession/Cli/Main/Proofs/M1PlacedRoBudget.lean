@@ -9,16 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Frame
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WP.Structural
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Read-Only `argv` Hop M1 (`M+0x00 → M+0xc0`, Block `617`)
@@ -28,7 +33,7 @@ Verifies `main`'s Hop M1 (`M+0x00 → M+0xc0`) on Block `617` with read-only `ar
 retaining `A.pool` across the empty-`argv` fast exit (`ExitKPoolPlaced`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -941,41 +946,5 @@ theorem main_m1_ro_pool_placed_step1 [LibsignalPlacement] {CodeOk : Memory → P
     hexit
     (fun s buf ps p0 hemp hps hm1 =>
       hnext s buf ps p0 _ (hSt01 hok hst0 hemp).2 hemp hps hm1)
-
-theorem main_m1_ro_placed_proof [LibsignalPlacement] {CodeOk : Memory → Prop}
-    [LsCodeInv CodeOk] {M : AllocCostModel} {H : LibsignalHooks}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
-    {i : Inputs} {s0 : State} {stk hookStack resStack : Nat}
-    {Statics : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hc_alloc : AllocContractsFsPlaced A lim H)
-    (hstrlen : subroutine_ok ((blkPC_617).rebase (blkPl_617).base H) (lsρ "strlen")
-      (withLsRoCl lsmpl (withVmPreserved
-        ({ pre := fun (p, s) s_c =>
-             ⌜s_c.readReg64 .x0 = p ∧ ∀ b ∈ s, b ≠ 0#8⌝ ∗ cStrAtRO p s ∗ stackAt s_c.sp hookStack
-           post := fun (p, s) s_c sf =>
-             ⌜sf.readReg64 .x0 = BitVec.ofNat 64 s.length ∧ sf.trace = s_c.trace ∧ sf.fs = s_c.fs⌝ ∗
-               cStrAtRO p s ∗ stackAt s_c.sp hookStack } :
-          Spec (BitVec 64 × List (BitVec 8))))))
-    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hs0 : AtEntryPlaced CodeOk i s0)
-    (hok : CliInputsOk i)
-    (hfits : i.argv ≠ [] → FitsEvents M lim st (rustAllocEvents (16 * i.argv.length) 8))
-    (hexit : ExitKPlaced CodeOk H A s0 stk
-      (fun code s => code = 2 ∧ i.argv = [] ∧ s.trace = s0.trace ∧ s.fs = s0.fs) Q Qp)
-    (hnext : ∀ (s : State) (buf : BitVec 64) (ps : List (BitVec 64 × List (BitVec 8))) (p0 : BitVec 64),
-      i.argv ≠ [] → ps.map (·.2) = i.argv.map bytesOfString →
-      AtM1EndPlaced CodeOk s0 s i.argv.length buf →
-      ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s
-        (argsBuf A.repAlloc (BitVec.ofNat 64 i.argv.length) buf ps ∗
-          argvAtROP (s0.readReg64 .x1) ((p0, bytesOfString "libsignal-cli") :: ps) ∗
-          mainSaved s0 ∗ locals (s0.sp - BitVec.ofNat 64 mainFrameSize) [] ∗
-          stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
-          A.pool lim (M.stepEvents (rustAllocEvents (16 * i.argv.length) 8) st) s ∗ Statics)
-        Q Qp oom) :
-    ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s0 (b2MainFrameFine A lim st stk Statics i s0)
-      Q Qp oom :=
-  main_m1_ro_pool_placed_proof hc_alloc hstrlen hstk hstk64 hs0 hok hfits
-    (exitKPoolPlaced_of_exitKPlaced hexit) hnext
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1PlacedRoBudget

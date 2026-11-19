@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Proof
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
@@ -27,7 +27,7 @@ Relocatable `[LibsignalPlacement]` contracts on `lsProg_382 (Rust.withPanics ext
 `send_ct2_encoder_placed_ok_x`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

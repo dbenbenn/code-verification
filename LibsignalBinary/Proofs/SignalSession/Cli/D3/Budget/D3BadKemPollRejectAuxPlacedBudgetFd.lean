@@ -12,18 +12,28 @@ module
 public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPlacedBudgetFd -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3PollRejectAuxPlacedBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3V3RejectPlacedBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.DecPkPollKitsFdsPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStmts
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
 
 /-!
 # Kit-Parametric and `withFds` Untyped Poll and `v3` Rejection
@@ -730,33 +740,5 @@ theorem decPk_v3_reject_poll_placedBudget_of_kits [LibsignalPlacement]
         y R s0 opt evs_p1 s1 rngPtr v_a8 v_b8 v_d0 hfPeer hv3Cond hans hfits_p2
         (fun evs2 hevs2 => Or.inr ⟨opt, Or.inr ⟨evs_p1, evs2, rfl, hevs_p1, hevs2⟩⟩)
         hload_rel htr1 hro1 hs1_sp hsp_sub hpc1 hrun1 halign1 hregs1)
-
-/-- `withFds A` specialization of `decPk_v3_reject_poll_placedBudget_of_kits` from
-`CliDecPkPollKitsPlacedOkFds`. -/
-theorem decPk_v3_reject_poll_placedBudget_withFds [LibsignalPlacement]
-    {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (henf : lim.enforced = true)
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop}
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    (B : RunBudgets) (S : RunSem)
-    (Scope : SessionRecord (List (BitVec 8)) → Prop)
-    (hh : RunHooksPlaced (withFds A) lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hKits : CliDecPkPollKitsPlacedOkFds A lim B ReadEnv DeserEnv
-      (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hinjK : EncodeInjOn scopeKit) (hsub : ∀ r, Scope r → scopeIn r)
-    (hok : ∀ F peer me pm, S.filesOk F peer me → S.decPkOk F peer me pm →
-      FilesOkPeer Scope F peer ∧ DecPkStoreOk ⟨W.C, W.Q⟩ F ∧
-      MsgCondV3 Scope F peer me pm ∧
-      (∀ coins, S.decryptPrekey F peer me pm coins = some none))
-    (stk' : Nat) (hneed : dpPollNeed B ≤ stk') (hstk63 : stk' ≤ 2 ^ 63) :
-    subroutine_ok (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))) dpPollEntryPlaced
-      (withLsCodeRoLoaded lsmpl (dpPollSpecStateBudget
-        (dpSlotPollKStatePlaced (withFds A) lim
-          (DecPkD3UntypedPollEnv (A := A.repAlloc) B ReadEnv DeserEnv (fun _ _ => StageP2V3RejectEnv)) B S)
-        stk')) :=
-  decPk_v3_reject_poll_placedBudget_of_kits (withFds A) lim
-    hDropNz mmpl gh W B S Scope hh (cliDecPkPollKitsFds_toWithFds henf hKits) hinjK hsub hok stk' hneed hstk63
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemPollRejectAuxPlacedBudgetFd

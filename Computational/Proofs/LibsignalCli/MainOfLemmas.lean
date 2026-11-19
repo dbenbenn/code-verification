@@ -12,22 +12,28 @@ module
 public import Computational.Specifications.Session.StatementSession
 public import Computational.Specifications.Composition.StatementModel
 public import Computational.Specifications.LibsignalCli.StatementPqElf
-public import Computational.Proofs.LibsignalCli.StatementPqSecure
+public import Computational.Specifications.LibsignalCli.StatementPqElfAnyKem
+public import Computational.Proofs.LibsignalCli.StatementPqSecure -- proof-setup: allow-public-import
+import Computational.Proofs.LibsignalCli.ConcreteX25519Prims
+import Computational.Proofs.LibsignalCli.MlKemHeadlineWitnesses
 import Computational.Proofs.SpecLemmas.Pqxdh.Security.HeadlineDelta
+import Computational.Proofs.LibsignalCli.Oom.PatchRun
 import Computational.Proofs.LibsignalCli.Oom.Transfer
+import LibsignalBinary.Proofs.HookDischarge.CryptoAes.Aes256Roundtrip
 import VCVio.EvalDist.Monad.Basic
 
 /-!
-# Relocatable Main Theorem from Lemmas 1–4, No-OOM, and Halted-Game Composition
+# ELF-Direct KEM-Generic CLI Security from Lemmas 1–4, No-OOM, and Halted-Game Composition
 
 **Checked by Lean.** Combines PQXDH key-indistinguishability (`L1`), session and model security
-(`L2`, `L3`) with the halted-game composition interface `CliHaltedBoundProp`, relocatable CLI
-functional correctness up to `.OutOfMemory` (`L4`, DEV-CLI15), and pointwise OOM-freedom (`hNoOOM`)
-to derive `CliPqxdhBinaryCorrectAndSecurePlaced bytes` (`main_of_lemmas_placed`). No proof of
-`L1`–`L4` or `hNoOOM` lies in this file's transitive import closure.
+(`L2`, `L3`) with the halted-game composition interface `CliHaltedBoundProp`, ELF-direct CLI
+functional correctness up to `.OutOfMemory` and `SampleNTT` seed divergence (`L4`, DEV-CLI15,
+DEV-CLI22), and pointwise OOM-freedom (`hNoOOM`) to derive
+`CliPqxdhBinaryCorrectAndSecureAnyKem bytes` (`main_of_lemmas`). No proof of `L1`–`L4` or `hNoOOM`
+lies in this file's transitive import closure.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,25 +41,26 @@ namespace Computational.Proofs.LibsignalCli.MainOfLemmas
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec
-open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
 open CryptoGames.CKA (DHFun)
-open CryptoGames.LibsignalSession (Crypto PublicKey)
+open CryptoGames.LibsignalSession (Crypto PublicKey ShaCompress)
 open CryptoGames.Ratchet.LibsignalInst (X25519RealizesDh dummyKey)
 open CryptoVerification.E2E (CliAdapterCostBounded CliGameAdversary
-  CliGameAdversaryPerInstanceBounded CliKemFailProb CliPqxdhAdvantage
-  CliToModelAdapterProg CompositionCostedReductionFamily
+  CliGameAdversaryPerInstanceBounded CliKemFailProb CliPqxdhAdvantage CliPqxdhExcusedAbort
+  CliPqxdhFlagProb CliToModelAdapterProg CompositionCostedReductionFamily
   CompositionCostedReductionFamilyBounded DhKerUniform LibsignalCliPqSecure
   MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds ModelSecure PEParams SessionCostedReductionFamily
   SessionCostedReductionFamilyBounded SessionSecure UnreachedPqxdhPrimitives
   bhPrefixFullBoundMixV1With cliCoinsTape? cliGameAdversaryReassoc cliPqxdhExpFlagged
   keyIndReductionBudget modelPrims stageOneAsProbComp withExcusedAbortTerm)
 open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.SignalSession (CliHooks CliPqxdhBinaryCorrectPlaced
-  CliPqxdhInputs CliReachesOOMPlaced CliRun CliSpecPqxdh CliSpecPqxdhOrExcusedAbort Inputs
-  libsignalSessionLib)
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
-open Computational.Proofs.LibsignalCli.Oom.Transfer (cliPqAdvantage_le_add_kemFail)
+open CryptoVerification.SignalSession (CliElfAddrs CliPqxdhBinaryCorrect CliPqxdhElfCorrect
+  CliPqxdhInputs CliReachesOOMElf CliReachesSampleNttStuckElf CliRun CliSpecPqxdh
+  CliSpecPqxdhOrExcusedAbort Inputs Outcome OutcomeOrExcusedAbort cliExcusedElf cliRunElf
+  realPEParams resolveCliElfAddrs)
+open Computational.Proofs.LibsignalCli.Oom.PatchRun (cliSpecPq_patchRun patchRun patchRun_eq_of_not)
+open Computational.Proofs.LibsignalCli.Oom.Transfer (cliPqAdvantage_le_add_kemFail
+  cliPqAdvantage_le_add_kemFail_and_badProb)
 
 /-! ## Halted-game CLI composition interface -/
 
@@ -76,7 +83,7 @@ abbrev CliHaltedRedsBounded {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableTy
 
 /-- Halted-game CLI composition interface packaging costed reductions `(L_cli, D, reds)` that bound
 `cliPqxdhExpFlagged` away from `KemFailBad` via a halted experiment. -/
-def CliHaltedBoundProp {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def CliHaltedBoundProp {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (S : SignalPqxdh.Setup) (ℓ : ℕ) : Prop :=
   ∃ (L_cli : ∀ (decT : PublicKey → Option Pt) (encT : Pt → PublicKey),
         CliToModelAdapterProg S ℓ decT encT)
@@ -139,8 +146,8 @@ theorem libsignalCliPqSecure_of_halted
   rcases hL1.keyInd S with ⟨RK, hCostRK, hSimRK, hKiBound⟩
   rcases hHalt with ⟨L_cli, D, reds, ⟨hSlotD, hBounds⟩, hMainH⟩
   refine ⟨L_cli, RK, D, reds, hCostRK, hSimRK, hSlotD, hBounds, ?_⟩
-  intro run X W hCli hK_tot hP δ_kem hKemBin Dh encPt encT decT qep hℓ hDh hX hdec
-    hdum hz hD hkerAll b qStart qs hq32 δ hδ A hA P qDR qInst qTot B_A Re b_ki advK
+  intro run X W hCli hK_tot hD hP δ_kem hKemBin Dh encPt encT decT qep hℓ hDh hX hdec
+    hdum hz hkerAll b qStart qs hq32 δ hδ A hA P qDR qInst qTot B_A Re b_ki advK
   obtain ⟨hK, hQueries, ⟨exp_H, δ_extra, hPtwise, hBiasH⟩⟩ :=
     hMainH run X W hCli hK_tot hP δ_kem hKemBin Dh encPt encT decT qep hℓ hDh hX hdec
       hdum hz hD hkerAll b qStart qs hq32 δ hδ A hA
@@ -167,86 +174,134 @@ theorem libsignalCliPqSecure_of_halted
   dsimp only [withExcusedAbortTerm]
   gcongr
 
-/-! ## Relocatable binary security assembly -/
+/-! ## ELF-direct binary security assembly -/
 
-abbrev CliPqxdhElfSecurePlaced {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    (mpl mmpl : MultiPlacement) (S : SignalPqxdh.Setup) (ℓ : ℕ) (elf : ElfImage) : Prop :=
-  CryptoVerification.LibsignalCli.CliPqxdhElfSecurePlaced (Pt := Pt) mpl mmpl S ℓ elf
+private abbrev CliPqxdhElfSecureLocal {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+    (S : SignalPqxdh.Setup) (ℓ : ℕ) (elf : ElfImage) (addrs : CliElfAddrs) : Prop :=
+  CryptoVerification.E2E.CliPqxdhSecurityForAbstract (Pt := Pt) S ℓ fun Bound =>
+    ∀ (X : UnreachedPqxdhPrimitives),
+      Bound (cliRunElf elf addrs) X realPEParams
+        (some (CliReachesSampleNttStuckElf elf addrs))
 
-abbrev CliPqxdhBinaryCorrectAndSecurePlacedAt (mpl mmpl : MultiPlacement)
-    (bytes : List (BitVec 8)) : Prop :=
-  CryptoVerification.LibsignalCli.CliPqxdhBinaryCorrectAndSecurePlacedAt mpl mmpl bytes
+abbrev CliPqxdhBinaryCorrectAndSecureAnyKem (bytes : List (BitVec 8)) : Prop :=
+  CryptoVerification.LibsignalCli.CliPqxdhBinaryCorrectAndSecureAnyKem bytes
 
-abbrev CliPqxdhBinaryCorrectAndSecurePlaced (bytes : List (BitVec 8)) : Prop :=
-  CryptoVerification.LibsignalCli.CliPqxdhBinaryCorrectAndSecurePlaced bytes
+private theorem outcomeOrExcusedAbort_of_or_not_left
+    {exc₁ exc₂ : Inputs → Prop} {run : CliRun} {i : Inputs} {P : Outcome → Prop}
+    (h : OutcomeOrExcusedAbort (fun j => exc₁ j ∨ exc₂ j) run i P)
+    (hno : ¬ exc₁ i) :
+    OutcomeOrExcusedAbort exc₂ run i P := by
+  rcases h with hok | ⟨hnone, h₁ | h₂⟩
+  · exact .inl hok
+  · exact False.elim (hno h₁)
+  · exact .inr ⟨hnone, h₂⟩
 
-private theorem cliSpecPqxdh_of_orExcusedAbort_placed
-    {mpl mmpl : MultiPlacement} {elf : ElfImage} {W : CliHooks} {X : UnreachedPqxdhPrimitives}
-    (h : CliSpecPqxdhOrExcusedAbort (CliReachesOOMPlaced mpl mmpl elf W)
-      (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩)
-    (hAlloc : ∀ i : Inputs, CliPqxdhInputs ⟨W.C, W.Q⟩ i → ¬ CliReachesOOMPlaced mpl mmpl elf W i) :
-    CliSpecPqxdh (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩ := by
+private theorem cliSpecPqxdhOrExcusedAbort_of_noOOM
+    {elf : ElfImage} {addrs : CliElfAddrs} {X : UnreachedPqxdhPrimitives}
+    (h : CliSpecPqxdhOrExcusedAbort (cliExcusedElf elf addrs)
+      (cliRunElf elf addrs) X realPEParams)
+    (hAlloc : ∀ i : Inputs, CliPqxdhInputs realPEParams i → ¬ CliReachesOOMElf elf addrs i) :
+    CliSpecPqxdhOrExcusedAbort (CliReachesSampleNttStuckElf elf addrs)
+      (cliRunElf elf addrs) X realPEParams := by
   intro st hst
   obtain ⟨hInit, hSend, hWhisper, hPrekey, hBad⟩ := h st hst
   refine ⟨?_, ?_, ?_, ?_, ?_⟩
   · intro b t hnone
-    rcases hInit b t hnone with ⟨_, hr, rfl⟩ | ⟨_, hf⟩
-    · exact hr
-    · exact False.elim (hAlloc _ ⟨st, hst, .inl ⟨hnone, b, t, rfl⟩⟩ hf)
+    exact outcomeOrExcusedAbort_of_or_not_left (hInit b t hnone)
+      (hAlloc _ ⟨st, hst, .inl ⟨hnone, b, t, rfl⟩⟩)
   · intro m r hm
-    rcases hSend m r hm with ⟨_, hr, rfl⟩ | ⟨_, hf⟩
-    · rw [hr]; split_ifs <;> rfl
-    · exact False.elim (hAlloc _ ⟨st, hst, .inr (.inl ⟨m, r, hm, rfl⟩)⟩ hf)
+    exact outcomeOrExcusedAbort_of_or_not_left (hSend m r hm)
+      (hAlloc _ ⟨st, hst, .inr (.inl ⟨m, r, hm, rfl⟩)⟩)
   · intro c rc hc
-    rcases hWhisper c rc hc with ⟨_, hr, rfl⟩ | ⟨_, hf⟩
-    · rw [hr]; split_ifs <;> rfl
-    · exact False.elim (hAlloc _ ⟨st, hst, .inr (.inr (.inl ⟨c, rc, hc, rfl⟩))⟩ hf)
+    exact outcomeOrExcusedAbort_of_or_not_left (hWhisper c rc hc)
+      (hAlloc _ ⟨st, hst, .inr (.inr (.inl ⟨c, rc, hc, rfl⟩))⟩)
   · intro m rc hm hmatch
-    rcases hPrekey m rc hm hmatch with ⟨_, hr, rfl⟩ | ⟨_, hf⟩
-    · rw [hr]; split_ifs <;> rfl
-    · exact False.elim (hAlloc _ ⟨st, hst, .inr (.inr (.inr (.inl ⟨m, rc, hm, rfl⟩)))⟩ hf)
+    exact outcomeOrExcusedAbort_of_or_not_left (hPrekey m rc hm hmatch)
+      (hAlloc _ ⟨st, hst, .inr (.inr (.inr (.inl ⟨m, rc, hm, rfl⟩)))⟩)
   · intro c rc hc h2 h3
-    rcases hBad c rc hc h2 h3 with ⟨_, hr, rfl⟩ | ⟨_, hf⟩
-    · rw [hr]; split_ifs <;> rfl
-    · exact False.elim (hAlloc _ ⟨st, hst, .inr (.inr (.inr (.inr ⟨c, rc, hc, h2, h3, rfl⟩)))⟩ hf)
+    exact outcomeOrExcusedAbort_of_or_not_left (hBad c rc hc h2 h3)
+      (hAlloc _ ⟨st, hst, .inr (.inr (.inr (.inr ⟨c, rc, hc, h2, h3, rfl⟩)))⟩)
 
-private theorem libsignalCliPqElfSecurePlaced_of_spec_aux
+private theorem libsignalCliPqElfSecure_of_halted
     {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
-    {mpl mmpl : MultiPlacement} {S : SignalPqxdh.Setup} {ℓ : ℕ} {elf : ElfImage}
-    (hSec : LibsignalCliPqSecure (Pt := Pt) S ℓ)
-    (hSpec : ∀ (W : CliHooks) (X : UnreachedPqxdhPrimitives),
-      CliSpecPqxdh (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩) :
-    CliPqxdhElfSecurePlaced (Pt := Pt) mpl mmpl S ℓ elf := by
-  rcases hSec with ⟨L_cli, RK, D, R_e2e, hCostRK, hSimRK, hSlotD, hCostE2E, hMain⟩
-  refine ⟨L_cli, RK, D, R_e2e, hCostRK, hSimRK, hSlotD, hCostE2E, ?_⟩
-  intro W X
-  exact hMain (cliRunPlacedSig mpl mmpl elf W) X ⟨W.C, W.Q⟩ (hSpec W X)
+    {elf : ElfImage} {addrs : CliElfAddrs}
+    (S : SignalPqxdh.Setup) (ℓ : ℕ)
+    (hL1 : SignalPqxdh.Security.PqxdhCorrectAndSecureδ)
+    (hHalt : CliHaltedBoundProp (Pt := Pt) S ℓ)
+    (hSpec : ∀ (X : UnreachedPqxdhPrimitives),
+      CliSpecPqxdhOrExcusedAbort (CliReachesSampleNttStuckElf elf addrs)
+        (cliRunElf elf addrs) X realPEParams) :
+    CliPqxdhElfSecureLocal (Pt := Pt) S ℓ elf addrs := by
+  rcases hL1.keyInd S with ⟨RK, hCostRK, hSimRK, hKiBound⟩
+  rcases hHalt with ⟨L_cli, D, reds, ⟨hSlotD, hBounds⟩, hMainH⟩
+  refine ⟨L_cli, RK, D, reds, hCostRK, hSimRK, hSlotD, hBounds, ?_⟩
+  intro X hP δ_kem hKemBin Dh encPt encT decT qep hℓ hDh hX hdec
+    hdum hz hkerAll b qStart qs hq32 δ hδ A hA P qDR qInst qTot B_A Re b_ki advK
+  let run := cliRunElf elf addrs
+  let Wp : PEParams := realPEParams
+  let exc := CliReachesSampleNttStuckElf elf addrs
+  let run₀ := patchRun exc run X Wp
+  have hCli₀ : CliSpecPqxdh run₀ X Wp := cliSpecPq_patchRun (hSpec X)
+  have hK_tot : MlKemEncaps1SucceedsOn64ByteHeaderAndSeeds Wp.Q.K :=
+    Computational.Proofs.LibsignalCli.MlKemHeadlineWitnesses.encaps1SucceedsOn64ByteHeaderAndSeeds_of_eq_mlkem768Incremental
+      rfl
+  have hD : ∀ k x, Wp.C.D k (Wp.C.E k x) = x :=
+    LibsignalBinary.Proofs.HookDischarge.CryptoAes.Aes256Roundtrip.aes256Dec_aes256Enc
+  obtain ⟨hK, hQueries, ⟨exp_H, δ_extra, hPtwise, hBiasH⟩⟩ :=
+    hMainH run₀ X Wp hCli₀ hK_tot hP δ_kem hKemBin Dh encPt encT decT qep hℓ hDh hX hdec
+      hdum hz hD hkerAll b qStart qs hq32 δ hδ A hA
+  refine ⟨hK, hQueries, ?_⟩
+  intro prefixSum
+  have hTrans :=
+    cliPqAdvantage_le_add_kemFail_and_badProb S (run := run) (run₀ := run₀) X Wp ℓ qep
+      decT encT A exp_H δ_extra
+      (bad := CliPqxdhExcusedAbort exc run Wp)
+      (fun i hi => (patchRun_eq_of_not (run := run) (X := X) hi).symm)
+      hPtwise
+  have hClause1 :
+      CliPqxdhAdvantage S run X Wp ℓ qep decT encT A ≤
+        withExcusedAbortTerm S run X Wp ℓ qep decT encT A (some exc)
+          (2 * SignalPqxdh.KeyInd1KeyRealAdvantage S P advK + prefixSum +
+            SignalPqxdh.Security.kemDecapsFailureTerm S δ_kem +
+            2 * CliKemFailProb S run X Wp ℓ qep decT encT A) :=
+    hTrans.trans (add_le_add (add_le_add hBiasH le_rfl) le_rfl)
+  refine ⟨hClause1, fun ε_ro hRo => hClause1.trans ?_⟩
+  have hGapLe :
+      SignalPqxdh.KeyInd1KeyRealAdvantage S P advK ≤
+        (let R := RK.eval
+         let Ab : SignalPqxdh.BoundedAdv (SignalPqxdh.KeyIndAdversary S) b_ki := ⟨advK, hK⟩
+         SignalPqxdh.Security.pqxdhKeyIndAdvantageBoundActiveδ S b_ki.q_on δ_kem
+           (SignalPqxdh.GapSigEufCma P P.isValidDhTriple (R.sig _ Ab))
+           (SignalPqxdh.KemShCr P (R.shcr _ Ab))
+           (SignalPqxdh.GapDhWithSign P P.isValidDhTriple P.pow8 (R.gdh _ Ab)) + ε_ro) :=
+    le_trans hRo (add_le_add (hKiBound P hP δ_kem hKemBin b_ki ⟨advK, hK⟩) le_rfl)
+  dsimp only [withExcusedAbortTerm]
+  gcongr
 
-/-- Derives `CliPqxdhBinaryCorrectAndSecurePlaced bytes` from Lemmas 1–4, pointwise OOM-freedom
+/-- Derives `CliPqxdhBinaryCorrectAndSecureAnyKem bytes` from Lemmas 1–4, pointwise OOM-freedom
 `hNoOOM`, and `CliHaltedBoundProp`. -/
-theorem main_of_lemmas_placed {bytes : List (BitVec 8)}
+theorem main_of_lemmas {bytes : List (BitVec 8)}
     (hL1 : SignalPqxdh.Security.PqxdhCorrectAndSecureδ)
     (_hL2 : ∀ {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] (ℓ : ℕ),
       SessionSecure (Pt := Pt) ℓ)
     (_hL3 : ∀ {Pt : Type} (S : SignalPqxdh.Setup) (ℓ : ℕ),
       ModelSecure (Pt := Pt) S ℓ)
-    (hL4 : CliPqxdhBinaryCorrectPlaced bytes)
-    (hNoOOM : ∀ (mpl mmpl : MultiPlacement), libsignalSessionLib.LinkedAt bytes mpl →
-      VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl →
-      ∀ elf : ElfImage, ElfImage.parse bytes = .ok elf →
-      ∀ (W : CliHooks) (i : Inputs), CliPqxdhInputs ⟨W.C, W.Q⟩ i →
-        ¬ CliReachesOOMPlaced mpl mmpl elf W i)
+    (hL4 : CliPqxdhBinaryCorrect bytes)
+    (hNoOOM : ∀ (elf : ElfImage) (addrs : CliElfAddrs),
+      ElfImage.parse bytes = .ok elf →
+      resolveCliElfAddrs bytes elf = .ok addrs →
+      ∀ (i : Inputs), CliPqxdhInputs realPEParams i →
+        ¬ CliReachesOOMElf elf addrs i)
     (hHalt : ∀ {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
       (S : SignalPqxdh.Setup) (ℓ : ℕ), CliHaltedBoundProp (Pt := Pt) S ℓ) :
-    CliPqxdhBinaryCorrectAndSecurePlaced bytes := by
-  intro mpl mmpl hLink hMLink
-  rcases hL4 mpl mmpl hLink hMLink with ⟨elf, hParse, hElfBin⟩
-  refine ⟨elf, hParse, hElfBin, ?_⟩
-  intro Pt _ _ _ S ℓ
-  exact libsignalCliPqElfSecurePlaced_of_spec_aux
-    (libsignalCliPqSecure_of_halted S ℓ hL1 (hHalt S ℓ))
-    (fun W X =>
-      cliSpecPqxdh_of_orExcusedAbort_placed (hElfBin.2 W X).1
-        (hNoOOM mpl mmpl hLink hMLink elf hParse W))
+    CliPqxdhBinaryCorrectAndSecureAnyKem bytes := by
+  rcases hL4 with ⟨elf, addrs, hParse, hRes, hElfBin⟩
+  have hNoOOMF := hNoOOM elf addrs hParse hRes
+  refine ⟨elf, addrs, hParse, hRes, hElfBin, ?_⟩
+  intro S ℓ
+  exact Computational.Proofs.LibsignalCli.ConcreteX25519Prims.cliPqxdhElfSecureAnyKem_of_abstract
+    S ℓ elf addrs
+    (libsignalCliPqElfSecure_of_halted (Pt := CryptoGames.RFC7748.X25519Pt) S ℓ hL1 (hHalt S ℓ)
+      (fun X => cliSpecPqxdhOrExcusedAbort_of_noOOM (hElfBin X).1 hNoOOMF))
 
 end Computational.Proofs.LibsignalCli.MainOfLemmas

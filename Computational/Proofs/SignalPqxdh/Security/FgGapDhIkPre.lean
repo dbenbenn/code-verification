@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk -- shake: keep
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk -- shake: keep
 
 /-!
 # Case B (`DH2`) pre-sampled `KeyInd` implementation
@@ -24,7 +24,7 @@ of principal `kIdx`, together with the pre-sampling equivalence
 `evalDist_runKeyIndFgSim_eq_preSample_dh2`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +41,7 @@ open Proofs.SignalPqxdh.Security.FgGapDh
 
 /-- Case B pre-sampled implementation: `uSk` as the ephemeral secret of initiator slot
     `targetIdx`, `vSk` as the identity DH secret of principal `targetPrinIdx`. -/
-noncomputable def pqxdhKeyIndFgPreImplIk (targetIdx targetPrinIdx : ℕ)
+@[expose] def pqxdhKeyIndFgPreImplIk (targetIdx targetPrinIdx : ℕ)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp)
   | .initPrin u =>

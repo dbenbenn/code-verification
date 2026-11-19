@@ -11,15 +11,19 @@ module
 
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlaced
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public meta import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.SpqrSendEmpty.CorePlaced
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget -- shake: keep -- proof-setup: allow-public-import
 public meta import Lean -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.SendCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable `spqr::send::<Coins>` on Empty PQ State
@@ -28,7 +32,7 @@ Threads `RustCliAllocBudget M` across `spqr::send::<signal_session_ratchet::Coin
 an empty PQ state, dropping `allocFailedIn` from `onPanic` while preserving `S.sendPanics`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -60,6 +64,7 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
 open LibsignalBinary.Proofs.Placed.BudgetVmSteps (sepWP_rebase_vmPreserved trapHooks)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (spqrSendResultDispAt)
 open LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget (
   decodeStateEmptyBudgetSpec decodeStateEmpty_vm_placed_ok
   memcpyPcsBudgetSpec memcpyPcsBudget_of_sessionMemcpyRegion
@@ -107,7 +112,7 @@ local elab_rules : tactic
 /-- Budget-threaded relocatable `[LibsignalPlacement]` contract for
 `spqr::send::<signal_session_ratchet::Coins>` (Block `427`), parameterized by allocation envelope
 `E` (`allocFailedIn` dropped from `onPanic`; genuine model panic `S.sendPanics` preserved). -/
-def spqrSendCoinsPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def spqrSendCoinsPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
     (E : SendCall → List AllocEvent → Prop := fun _ evs => evs = []) :
     Spec (SendCall × M.σ) where
@@ -128,7 +133,7 @@ def spqrSendCoinsPlacedSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustC
     ⌜S.sendPanics x.st.bytes x.rest ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Empty-state specialization (`x.st.bytes = []`, `evs = []`, `0` `FitsEnv` needed). -/
-def spqrSendEmptyCoinsPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def spqrSendEmptyCoinsPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel) :
     Spec (SendCall × M.σ) where
   pre := fun (x, stB) s =>
@@ -175,7 +180,6 @@ theorem spqrSendEmpty_coins_placed_ok_of_memcpy [LibsignalPlacement] {M : AllocC
     refine SepWP.done (by wp_norm_lhs) (by wp_norm_lhs) ⟨by wp_norm_lhs, fun hvm1 hcl_call => ?_⟩
     refine SepWP.transport_budgetPool hvm1 (hnext := ?_)
     wp_apply
-    try (refine SepWP.focus_pure (by sep_focus) fun _hvm_dec => ?_)
     refine SepWP.transport_budgetPool ‹VmPreserved _ _› (hnext := ?_)
     wp_simp_pre only [decodeEmpty_split, sepExists_sepConj_left, sepExists_sepConj_right,
       sepConj_assoc]
@@ -188,7 +192,6 @@ theorem spqrSendEmpty_coins_placed_ok_of_memcpy [LibsignalPlacement] {M : AllocC
       refine SepWP.done (by wp_norm_lhs) (by wp_norm_lhs) ⟨by wp_norm_lhs, fun hvm2 => ?_⟩
       refine SepWP.transport_budgetPool hvm2 (hnext := ?_)
       wp_apply
-      try (refine SepWP.focus_pure (by sep_focus) fun _hvm_mc => ?_)
       refine SepWP.transport_budgetPool ‹VmPreserved _ _› (hnext := ?_)
       wp_simp_pre only [ret_split ret, sepExists_sepConj_left, sepExists_sepConj_right]
       apply SepWP.exists_elim; intro r6
@@ -263,6 +266,130 @@ theorem spqrSendEmpty_coins_placed_ok_env [LibsignalPlacement] {M : AllocCostMod
         (⌜E x [] ∧ S.draws x.st.bytes x.rest ≤ x.rest.length ∧ sf.trace = s0.trace ∧
           ¬ S.sendPanics x.st.bytes x.rest⌝ ∗ x.st.at A.repAlloc ∗
         spqrSendResultAt A.repAlloc x.ret (S.send x.st.bytes x.rest) ∗
+        cliTapeAfter ctl x.cur x.rest (S.draws x.st.bytes x.rest) ∗
+        (lsLogFilterAddr ↦₆₄ 0#64) ∗ A.pool lim (M.stepEvents [] stB) sf ∗
+        stackAt s0.sp spqrSendStack) ∗ R := by
+      dsimp only [AllocCostModel.stepEvents]
+      rw [sepConj_assoc, satisfies_pure_sepConj]
+      exact ⟨⟨hEnv x hbs, hdr, htr, hnp⟩, hpost_mem⟩
+    exact Satisfies.mono (sepConj_mono_left (Entails.sepExists_intro [])) hbody
+  · right; left; exact ⟨hpan, hpost⟩
+  · right; right; left; exact ⟨code, hex, hpost⟩
+  · right; right; right; exact ⟨hoom, hpost⟩
+
+/-- Display-tag-strengthened budget-threaded relocatable `[LibsignalPlacement]` contract for
+`spqr::send::<signal_session_ratchet::Coins>` (Block `427`), strengthening `spqrSendResultAt` to
+`spqrSendResultDispAt`. -/
+@[expose] def spqrSendCoinsDispPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel)
+    (E : SendCall → List AllocEvent → Prop := fun _ evs => evs = []) :
+    Spec (SendCall × M.σ) where
+  pre := fun (x, stB) s =>
+    ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.st.v ∧ FitsEnv M lim stB (E x)⌝ ∗
+      x.st.at A.repAlloc ∗ memRegion x.ret 72 ∗
+      cliTapeAt ctl x.cur x.rest ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
+      A.pool lim stB s ∗ stackAt s.sp spqrSendStack
+  post := fun (x, stB) s0 sf =>
+    ∃∗ evs : List AllocEvent,
+      ⌜E x evs ∧ S.draws x.st.bytes x.rest ≤ x.rest.length ∧ sf.trace = s0.trace ∧
+        ¬ S.sendPanics x.st.bytes x.rest⌝ ∗ x.st.at A.repAlloc ∗
+      spqrSendResultDispAt A.repAlloc x.ret (S.send x.st.bytes x.rest) ∗
+      cliTapeAfter ctl x.cur x.rest (S.draws x.st.bytes x.rest) ∗
+      (lsLogFilterAddr ↦₆₄ 0#64) ∗ A.pool lim (M.stepEvents evs stB) sf ∗
+      stackAt s0.sp spqrSendStack
+  onPanic := fun (x, _) s0 sf =>
+    ⌜S.sendPanics x.st.bytes x.rest ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
+
+/-- Display-tag-strengthened empty-state specialization (`x.st.bytes = []`, `evs = []`,
+`0` `FitsEnv` needed). On `x.st.bytes = []`, `S.send [] x.rest = some ([], none, [])`, so
+`spqrSendResultDispAt = spqrSendResultAt` definitionally. -/
+@[expose] def spqrSendEmptyCoinsDispPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) (S : SpqrModel) :
+    Spec (SendCall × M.σ) where
+  pre := fun (x, stB) s =>
+    ⌜x.st.bytes = [] ∧ s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.st.v⌝ ∗
+      x.st.at A.repAlloc ∗ memRegion x.ret 72 ∗
+      cliTapeAt ctl x.cur x.rest ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
+      A.pool lim stB s ∗ stackAt s.sp spqrSendStack
+  post := fun (x, stB) s0 sf =>
+    ⌜S.draws x.st.bytes x.rest ≤ x.rest.length ∧ sf.trace = s0.trace ∧
+      ¬ S.sendPanics x.st.bytes x.rest⌝ ∗ x.st.at A.repAlloc ∗
+      spqrSendResultDispAt A.repAlloc x.ret (S.send x.st.bytes x.rest) ∗
+      cliTapeAfter ctl x.cur x.rest (S.draws x.st.bytes x.rest) ∗
+      (lsLogFilterAddr ↦₆₄ 0#64) ∗ A.pool lim stB sf ∗ stackAt s0.sp spqrSendStack
+  onPanic := fun (x, _) s0 sf =>
+    ⌜S.sendPanics x.st.bytes x.rest ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
+
+theorem spqrSendEmpty_coins_disp_placed_ok [LibsignalPlacement] {M : AllocCostModel}
+    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
+    (S : SpqrModel) {H : String → Option (State → State)} (hE : S.SendEmptyOk)
+    (hmc : HookSat H "memcpy" (withVmPreserved sessionMemcpyRegionSpec)) :
+    subroutine_ok ((blkPC_427).rebase (blkPl_427).base H) (blkPl_427).base
+      (withLsCodeLoaded lsmpl (spqrSendEmptyCoinsDispPlacedSpec M A lim ctl S)) := by
+  refine subroutine_ok_outcome_intro fun ⟨x, stB⟩ R s0 hpc hrun hpre hsp => ?_
+  have hpre_base : s0.mem ⊨
+      (withLsCodeLoaded lsmpl (spqrSendEmptyCoinsPlacedSpec M A lim ctl S)).pre (x, stB) s0 ∗ R :=
+    hpre
+  obtain ⟨_, hpre1⟩ := extract_withLsCodeLoaded hpre
+  dsimp only [spqrSendEmptyCoinsDispPlacedSpec] at hpre1
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre1
+  have hbs : x.st.bytes = [] := hpre1.1.1
+  have hdisp : spqrSendResultDispAt A.repAlloc x.ret (S.send x.st.bytes x.rest) =
+      spqrSendResultAt A.repAlloc x.ret (S.send x.st.bytes x.rest) := by
+    rw [hbs, hE.send]
+    rfl
+  refine (spqrSendEmpty_coins_placed_ok A lim ctl S hE hmc).mono_outcome
+    (x, stB) R s0 hpc hrun hpre_base hsp fun sf hout => ?_
+  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
+  · left
+    refine ⟨hret, hcc, ?_⟩
+    dsimp only [withLsCodeLoaded, spqrSendEmptyCoinsPlacedSpec,
+      spqrSendEmptyCoinsDispPlacedSpec] at hpost ⊢
+    rwa [hdisp]
+  · right; left; exact ⟨hpan, hpost⟩
+  · right; right; left; exact ⟨code, hex, hpost⟩
+  · right; right; right; exact ⟨hoom, hpost⟩
+
+/-- Lift `spqrSendEmpty_coins_disp_placed_ok` to any allocation envelope `E` admitting `[]` on
+empty state. -/
+theorem spqrSendEmpty_coins_disp_placed_ok_env [LibsignalPlacement] {M : AllocCostModel}
+    (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
+    (S : SpqrModel) {E : SendCall → List AllocEvent → Prop}
+    {H : String → Option (State → State)} (hE : S.SendEmptyOk)
+    (hEnv : ∀ x, x.st.bytes = [] → E x [])
+    (hmc : HookSat H "memcpy" (withVmPreserved sessionMemcpyRegionSpec)) :
+    subroutine_ok ((blkPC_427).rebase (blkPl_427).base H) (blkPl_427).base
+      (withLsCodeLoaded lsmpl
+        { spqrSendCoinsDispPlacedSpec M A lim ctl S E with
+          pre := fun (x, stB) s =>
+            ⌜x.st.bytes = []⌝ ∗ (spqrSendCoinsDispPlacedSpec M A lim ctl S E).pre (x, stB) s }) := by
+  refine subroutine_ok_outcome_intro fun ⟨x, stB⟩ R s0 hpc hrun hpre hsp => ?_
+  obtain ⟨hcl, hpre1⟩ := extract_withLsCodeLoaded hpre
+  dsimp only [spqrSendCoinsDispPlacedSpec] at hpre1
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre1
+  obtain ⟨hbs, hpre2⟩ := hpre1
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre2
+  obtain ⟨⟨hx0, hx1, _⟩, hmem⟩ := hpre2
+  have hpre_e : s0.mem ⊨
+      (withLsCodeLoaded lsmpl (spqrSendEmptyCoinsDispPlacedSpec M A lim ctl S)).pre (x, stB) s0 ∗ R := by
+    dsimp only [withLsCodeLoaded, spqrSendEmptyCoinsDispPlacedSpec]
+    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
+    refine ⟨hcl, ?_⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨⟨hbs, hx0, hx1⟩, hmem⟩
+  refine (spqrSendEmpty_coins_disp_placed_ok A lim ctl S hE hmc).mono_outcome
+    (x, stB) R s0 hpc hrun hpre_e hsp fun sf hout => ?_
+  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
+  · left
+    refine ⟨hret, hcc, ?_⟩
+    dsimp only [spqrSendEmptyCoinsDispPlacedSpec] at hpost
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
+    obtain ⟨⟨hdr, htr, hnp⟩, hpost_mem⟩ := hpost
+    dsimp only [withLsCodeLoaded, spqrSendCoinsDispPlacedSpec, AllocCostModel.stepEvents]
+    have hbody : sf.mem ⊨
+        (⌜E x [] ∧ S.draws x.st.bytes x.rest ≤ x.rest.length ∧ sf.trace = s0.trace ∧
+          ¬ S.sendPanics x.st.bytes x.rest⌝ ∗ x.st.at A.repAlloc ∗
+        spqrSendResultDispAt A.repAlloc x.ret (S.send x.st.bytes x.rest) ∗
         cliTapeAfter ctl x.cur x.rest (S.draws x.st.bytes x.rest) ∗
         (lsLogFilterAddr ↦₆₄ 0#64) ∗ A.pool lim (M.stepEvents [] stB) sf ∗
         stackAt s0.sp spqrSendStack) ∗ R := by

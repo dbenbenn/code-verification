@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -20,7 +20,7 @@ signing budget in the state (`sigLiftStep`), and proves bounded state simulation
 invariant (`runWithIfaceStep_sig_map_state_bounded`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace SignalPqxdh.Security.ReductionDsl
@@ -77,11 +77,11 @@ theorem HoldsOnLeaves.embedPrim {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : 
   simp only [embedPrim_bind, embedPrim_pure, bind_assoc, pure_bind] at he'
   rw [hF, hG]; exact he'
 
-def SigResInv {St R : Type} (I : St → Prop) : SigStepResultPrim St R → Prop
+@[expose] def SigResInv {St R : Type} (I : St → Prop) : SigStepResultPrim St R → Prop
   | .done _ st' => I st'
   | .signTwo _ k1 fb => I fb.2 ∧ ∀ pq s1 s2, I ((k1 pq s1).2 s2).2
 
-def sigLiftK {St R St' : Type} (f : St × Nat → St') (b : Nat) :
+@[expose] def sigLiftK {St R St' : Type} (f : St × Nat → St') (b : Nat) :
     SigStepResultPrim St R → OracleComp (PrimBaseSpec + sigOracleSpec) (R × St')
   | .done res st' => Pure.pure (res, f (st', b))
   | .signTwo msg1 k1 fb =>
@@ -96,7 +96,7 @@ def sigLiftK {St R St' : Type} (f : St × Nat → St') (b : Nat) :
       Pure.pure (p.1, f (p.2, b'))
 
 /-- Stateful `pqxdhEufCmaIface` step lifting a shallow `SigStepResultPrim` handler with budget `b`. -/
-def sigLiftStep {St R St' : Type} (f : St × Nat → St')
+@[expose] def sigLiftStep {St R St' : Type} (f : St × Nat → St')
     (step : St → OracleComp PrimBaseSpec (SigStepResultPrim St R)) (st : St) (b : Nat) :
     OracleComp (PrimBaseSpec + sigOracleSpec) (R × St') :=
   _root_.SignalPqxdh.Security.embedPrim (spec := sigOracleSpec) (step st) >>= sigLiftK f b

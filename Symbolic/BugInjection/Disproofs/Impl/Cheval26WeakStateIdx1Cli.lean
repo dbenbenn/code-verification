@@ -33,15 +33,15 @@ namespace Symbolic.BugInjection.Disproofs.Impl.Cheval26WeakStateIdx1Cli
 
 open Symbolic.BugInjection
   (not_signalSessionSecureFor_placed_of_witness not_signalSessionSecurePlaced_of_witness)
-open Symbolic.BugInjection.Disproofs.Impl.WeakState.MutantLink (mutantMpl mutantMmpl)
+open Symbolic.BugInjection.Disproofs.Impl.WeakState.MutantLink (mutantMpl)
 open CryptoVerification.BugInjection (mutantCliElfBytes)
 
 /-- Refutes `SignalSessionSecureFor` on the `cheval26-weak-state` mutant at its linked placements. -/
 theorem disproof_secureFor :
     ∀ elf : Arm64.Process.ElfImage, Arm64.Process.ElfImage.parse mutantCliElfBytes = .ok elf →
       ¬ DY.Libsignal.Composed.Security.SignalSessionSecureFor
-          DY.Libsignal.Composed.Refinement.Cli.HooksMatchInterpretation
-          (DY.Libsignal.Composed.Refinement.Cli.elfRelPlaced mutantMpl mutantMmpl elf) :=
+          DY.Libsignal.Composed.Refinement.Cli.HooksMatchPlaced
+          (DY.Libsignal.Composed.Refinement.Cli.elfRelPlaced mutantMpl elf) :=
   not_signalSessionSecureFor_placed_of_witness
     WeakState.Nodes.spec_half_pinned WeakState.NodesPlaced.impl_half_bytes_placed
     Symbolic.BugInjection.Proofs.Common.CoinsFresh.coinsFresh_cheval26WeakStateIdx1Cli

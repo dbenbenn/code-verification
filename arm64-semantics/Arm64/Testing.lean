@@ -14,7 +14,6 @@ public import Arm64.Testing.Harness.TestCase
 public import Arm64.Testing.Harness.FpEval
 public import Arm64.Testing.Harness.Compare
 public import Arm64.Testing.Harness.Serve
-public import Arm64.Testing.Harness.ElfRegionLoad
 public import Arm64.Testing.Harness.ElfLoaderDiff
 public import Arm64.Testing.Harness.FastSemantics
 public import Arm64.Testing.Generators.ExternalSuites
@@ -36,7 +35,6 @@ public import Arm64.Testing.SyscallDiff
 public import Arm64.Testing.Regression.SyscallFamilies
 public import Arm64.Testing.Regression.StdSyscalls
 public import Arm64.Testing.Regression.MadvFree
-public import Arm64.Testing.Regression.ObjectLoad
 public import Arm64.Testing.Regression.IncludeBytes
 public import Arm64.Testing.Regression.DisproofTests
 public import Arm64.Testing.Regression.SimdScalarSteps

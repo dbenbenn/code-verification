@@ -14,7 +14,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.Chain
 import Symbolic.Proofs.Swarm.SHARED.SpqrX.Prost.MessageMerge.AppendX
 import Symbolic.Proofs.Swarm.SHARED.StateSizePure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

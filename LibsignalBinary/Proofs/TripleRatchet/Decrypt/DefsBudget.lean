@@ -11,7 +11,8 @@ module
 
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Checkpoint States, Specs & Segment Seams for `try_decrypt_with_state`
@@ -23,7 +24,7 @@ Defines `RustCliAllocBudget M` / `SeamBudget` checkpoint states (`ErrTailStatePl
 `ErrTailSeamPlaced`, and `X` variants).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +58,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (
 
 /-! ## 1. Budget-Threaded Checkpoint States -/
 
-def ErrTailStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ErrTailStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -65,7 +66,7 @@ def ErrTailStatePlaced [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.LibsignalTripleRatchet.Decrypt.ErrTailStatePlaced
     entry (A.atState lim st s) ctl x trG tr st1 e draws R s0 s
 
-def ErrTailStateXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ErrTailStateXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -82,13 +83,13 @@ theorem ErrTailStatePlaced.toX [LibsignalPlacement] {M : AllocCostModel}
     ErrTailStateXPlaced entry A lim st ctl x trG tr st1 e draws R s0 s :=
   CryptoVerification.LibsignalTripleRatchet.Decrypt.ErrTailStatePlaced.toX h
 
-def LoadRatchetStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def LoadRatchetStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (R : SepProp) (s0 s : State) : Prop :=
   CryptoVerification.LibsignalTripleRatchet.Decrypt.LoadRatchetStatePlaced
     entry (A.atState lim st s) ctl x R s0 s
 
-def FindChainStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def FindChainStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -96,7 +97,7 @@ def FindChainStatePlaced [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.LibsignalTripleRatchet.Decrypt.FindChainStatePlaced
     entry (A.atState lim st s) ctl x trG tr st1 R s0 s
 
-def DhStepStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DhStepStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -104,7 +105,7 @@ def DhStepStatePlaced [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.LibsignalTripleRatchet.Decrypt.DhStepStatePlaced
     entry (A.atState lim st s) ctl x trG tr st1 R s0 s
 
-def ConsumeMsgKeyStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ConsumeMsgKeyStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -112,7 +113,7 @@ def ConsumeMsgKeyStatePlaced [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.LibsignalTripleRatchet.Decrypt.ConsumeMsgKeyStatePlaced
     entry (A.atState lim st s) ctl x trG tr st1 ck draws R s0 s
 
-def PqRecvStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def PqRecvStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -120,7 +121,7 @@ def PqRecvStatePlaced [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.LibsignalTripleRatchet.Decrypt.PqRecvStatePlaced
     entry (A.atState lim st s) ctl x trG tr st1 mkg draws R s0 s
 
-def DeriveKeysStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DeriveKeysStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -129,7 +130,7 @@ def DeriveKeysStatePlaced [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.LibsignalTripleRatchet.Decrypt.DeriveKeysStatePlaced
     entry (A.atState lim st s) ctl x trG tr st1 mkg newPqrState pqrKey draws R s0 s
 
-def VerifyMacStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def VerifyMacStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -138,7 +139,7 @@ def VerifyMacStatePlaced [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.LibsignalTripleRatchet.Decrypt.VerifyMacStatePlaced
     entry (A.atState lim st s) ctl x trG tr st1 mks newPqrState draws R s0 s
 
-def AesDecryptStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AesDecryptStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -147,7 +148,7 @@ def AesDecryptStatePlaced [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.LibsignalTripleRatchet.Decrypt.AesDecryptStatePlaced
     entry (A.atState lim st s) ctl x trG tr st1 mks newPqrState draws R s0 s
 
-def ApplyRatchetStatePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ApplyRatchetStatePlaced [LibsignalPlacement] {M : AllocCostModel}
     (entry : BitVec 64) (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (ctl : BitVec 64) (x : TryDecryptGhost) (trG : TrGhost)
     (tr : TripleRatchet (List (BitVec 8))) (st1 : SessionState (List (BitVec 8)))
@@ -160,14 +161,14 @@ def ApplyRatchetStatePlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Panic postcondition of budget-threaded `try_decrypt_with_state` (`allocFailedIn` dropped;
     retains only legitimate model / SPQR panics). Independent of `tdEnv` and `st_init`. -/
-def tryDecryptOnPanic (C : Crypto) (uuidParse : UuidParser) (S : SpqrModel)
+@[expose] def tryDecryptOnPanic (C : Crypto) (uuidParse : UuidParser) (S : SpqrModel)
     (x : TryDecryptGhost) (s0 sf : State) : SepProp :=
   ⌜((x.model C S uuidParse).1 = .error .panic ∨
       S.recvPanics x.st.pqRatchetState x.msg.pqRatchet) ∧
     s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Panic postcondition of budget-threaded `tryDecryptFnSpecPlaced` (`decFn` variant). -/
-def tryDecryptFnOnPanic (C : Crypto)
+@[expose] def tryDecryptFnOnPanic (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
     (uuidParse : UuidParser) (S : SpqrModel)
     (x : TryDecryptGhost) (s0 sf : State) : SepProp :=
@@ -175,7 +176,7 @@ def tryDecryptFnOnPanic (C : Crypto)
       S.recvPanics x.st.pqRatchetState x.msg.pqRatchet) ∧
     s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def tryDecryptRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
@@ -191,14 +192,14 @@ def tryDecryptRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
         C (A.atState lim (M.stepEvents evs st) sf) ctl uuidParse S).post x s0 sf
   onPanic := fun (x, _) s0 sf => tryDecryptOnPanic C uuidParse S x s0 sf
 
-def tryDecryptSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel)
     (tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop) :
     Spec (TryDecryptGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (tryDecryptRawSpecPlaced C A lim ctl uuidParse S tdEnv)
 
-def tryDecryptFnRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptFnRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
@@ -213,7 +214,7 @@ def tryDecryptFnRawSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
         C decFn (A.atState lim (M.stepEvents evs st) sf) ctl uuidParse S).post x s0 sf
   onPanic := fun (x, _) s0 sf => tryDecryptFnOnPanic C decFn uuidParse S x s0 sf
 
-def tryDecryptFnSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tryDecryptFnSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
@@ -224,7 +225,7 @@ def tryDecryptFnSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## 3. Budget-Threaded Segment Seams (`S0SeamPlaced` .. `S9SeamPlaced`, `ErrTailSeamPlaced`) -/
 
-def ErrTailSeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ErrTailSeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -240,7 +241,7 @@ def ErrTailSeamPlaced [LibsignalPlacement] {M : AllocCostModel}
       (decryptDraws C x.st x.msg.senderRatchetKey x.rest) R s0 s →
     reaches_outcome prog (tryDecryptSpecPlaced C A lim ctl parse S tdEnv) (x, st_init) R s0 s
 
-def S0SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S0SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -251,7 +252,7 @@ def S0SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     reaches_pc prog (segLoadRatchetPC_at entry) s0
       (LoadRatchetStatePlaced entry A lim st_init ctl x R s0)
 
-def S1SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S1SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -270,7 +271,7 @@ def S1SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
         ∃ evs trG, s1OkEnv x evs ∧
           FindChainStatePlaced entry A lim (M.stepEvents evs st) ctl x trG tr st1 R s0 s'
 
-def S2SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S2SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64) : Prop :=
   ∀ (x : TryDecryptGhost) (st : M.σ) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
@@ -288,7 +289,7 @@ def S2SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
       reaches_pc prog (errTailPC_at entry) s
         (ErrTailStatePlaced entry A lim st ctl x trG tr st1 e 0 R s0)
 
-def S3SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S3SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -321,7 +322,7 @@ def S3SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
          (s'.status = .Panicked ∧
            (s'.mem ⊨ tryDecryptOnPanic C parse S x s0 s' ∗ R)))
 
-def S4SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S4SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -351,7 +352,7 @@ def S4SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
            (e = .panic ∧ s0.trace <+: s'.trace) ∧
            (s'.mem ⊨ anyHeap ∗ R)))
 
-def S5SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S5SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -383,7 +384,7 @@ def S5SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
          (s'.status = .Panicked ∧
            (s'.mem ⊨ tryDecryptOnPanic C parse S x s0 s' ∗ R)))
 
-def S6SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S6SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (s6Env : MessageKeyGenerator → List AllocEvent → Prop) : Prop :=
@@ -399,7 +400,7 @@ def S6SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
         VerifyMacStatePlaced entry A lim (M.stepEvents evs st) ctl
           x trG tr st1 (mkg.generateKeys C.F pqrKey) newPqrState draws R s0 s')
 
-def S7SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S7SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -428,7 +429,7 @@ def S7SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
          (s'.status = .Panicked ∧
            (s'.mem ⊨ tryDecryptOnPanic C parse S x s0 s' ∗ R)))
 
-def S8SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S8SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -456,7 +457,7 @@ def S8SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
          (s'.status = .Panicked ∧
            (s'.mem ⊨ tryDecryptOnPanic C parse S x s0 s' ∗ R)))
 
-def S9SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S9SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel)
@@ -477,7 +478,7 @@ def S9SeamPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## 4. `Stage2ContractsX` (`X`) Budget-Threaded Segment Seams -/
 
-def ErrTailSeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ErrTailSeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -496,7 +497,7 @@ def ErrTailSeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     reaches_outcome prog (tryDecryptFnSpecPlaced C decFn A lim ctl parse S tdEnv)
       (x, st_init) R s0 s
 
-def S0SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S0SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -509,7 +510,7 @@ def S0SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     reaches_pc prog (segLoadRatchetPC_at entry) s0
       (LoadRatchetStatePlaced entry A lim st_init ctl x R s0)
 
-def S1SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S1SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -533,7 +534,7 @@ def S1SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 abbrev S2SeamXPlaced [LibsignalPlacement] := @S2SeamPlaced
 
-def S3SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S3SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -568,7 +569,7 @@ def S3SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
          (s'.status = .Panicked ∧
            (s'.mem ⊨ tryDecryptFnOnPanic C decFn parse S x s0 s' ∗ R)))
 
-def S4SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S4SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -600,7 +601,7 @@ def S4SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
            (e = .panic ∧ s0.trace <+: s'.trace) ∧
            (s'.mem ⊨ anyHeap ∗ R)))
 
-def S5SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S5SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -636,7 +637,7 @@ def S5SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 abbrev S6SeamXPlaced [LibsignalPlacement] := @S6SeamPlaced
 
-def S7SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S7SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -667,7 +668,7 @@ def S7SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
          (s'.status = .Panicked ∧
            (s'.mem ⊨ tryDecryptFnOnPanic C decFn parse S x s0 s' ∗ R)))
 
-def S8SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S8SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))
@@ -697,7 +698,7 @@ def S8SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
          (s'.status = .Panicked ∧
            (s'.mem ⊨ tryDecryptFnOnPanic C decFn parse S x s0 s' ∗ R)))
 
-def S9SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def S9SeamXPlaced [LibsignalPlacement] {M : AllocCostModel}
     (prog : Program) (entry : BitVec 64)
     (C : Crypto)
     (decFn : List (BitVec 8) → List (BitVec 8) → List (BitVec 8) → Option (List (BitVec 8)))

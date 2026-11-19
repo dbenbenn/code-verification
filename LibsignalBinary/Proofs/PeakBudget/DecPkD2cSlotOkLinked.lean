@@ -10,16 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWitness
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetCore
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWitness
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetCore -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.VerifyMacBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWitnessAux
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Linked `spqr::recv` Byte-Slice and Block-`507` `TryDecryptCliLinkedEnv` Interface
@@ -30,7 +35,7 @@ Pure-definition interface for `SpqrRecvC07C09aBytesEnv`, `spqrRecvC07C09aBytesEn
 without `*TrapPlaced*` imports.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,11 +47,12 @@ open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1)
 open CryptoVerification.LibsignalTripleRatchet (SpqrModel TrGhost TryDecryptGhost)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
 open LibsignalBinary.Heap (AllocEvent FreeOnlyEvs SeqEnv rustAllocEvents)
-open LibsignalBinary.Heap.SpecBudget (FmtWriteEnv FormatInnerEnv)
 open LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget (CmkLoopAdvanceEvs)
 open LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedEnv (SpqrRecvC07C09aTightLinkedEnv)
 open LibsignalBinary.Proofs.PeakBudget.SpqrRecvLinkedWitness
   (spqrRecvC07C09aTightLinkedEnv_nil_exists)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
+  (CliFmtWriteEnv CliFormatInnerEnv)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecryptBudget (s8Env)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchetBudget (s9Env)
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget (s6FreeOnlyEnv)
@@ -61,7 +67,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 
 /-- Existentially lifted 12-ghost linked `spqr::recv` byte-slice envelope matching
 `SpqrRecvLinkedWitness.spqr_recv_placed_ok_blockProgram_ext_of_contracts_c07c09aTightLinked`. -/
-def SpqrRecvC07C09aBytesEnv (F : ShaCompress) (K : MlKem)
+@[expose] def SpqrRecvC07C09aBytesEnv (F : ShaCompress) (K : MlKem)
     (stBs _msgBs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   ∃ pre_pb vn pb st0 sckaMsg v xInit xNew xAdd xRk xSInto xCInto,
     SpqrRecvC07C09aTightLinkedEnv F K
@@ -76,7 +82,7 @@ theorem spqrRecvC07C09aBytesEnv_nonempty (F : ShaCompress) (K : MlKem)
 
 /-- Canonical zero-pointer lift of `TryDecryptEnvArgs` to `TryDecryptGhost` (`rfl`-identical to
 `TryDecryptPV1TrapPlacedBudget.envArgsToGhost`). -/
-def tryDecryptEnvArgsToGhost (a : TryDecryptEnvArgs) : TryDecryptGhost where
+@[expose] def tryDecryptEnvArgsToGhost (a : TryDecryptEnvArgs) : TryDecryptGhost where
   ret := 0#64
   ss := 0#64
   G := a.G
@@ -94,7 +100,7 @@ def tryDecryptEnvArgsToGhost (a : TryDecryptEnvArgs) : TryDecryptGhost where
 
 /-- Pointer-free Segment-4 `consume_message_key` step envelope (`rfl`-identical to
 `ConsumeMsgKeyTrapPlacedBudget.CmkStepEnv`). -/
-def tryDecryptCmkStepEnv (msgCounter : BitVec 32) (senderRatchetKey : PublicKey)
+@[expose] def tryDecryptCmkStepEnv (msgCounter : BitVec 32) (senderRatchetKey : PublicKey)
     (trG : TrGhost) (r : RatchetState) (ck : ChainKey) (evs : List AllocEvent) : Prop :=
   if msgCounter < ck.index then
     FreeOnlyEvs evs
@@ -115,7 +121,7 @@ def tryDecryptCmkStepEnv (msgCounter : BitVec 32) (senderRatchetKey : PublicKey)
 
 /-- Full Segment-4 (`ConsumeMsgKey`) allocation-event envelope (`rfl`-identical to
 `ConsumeMsgKeyTrapPlacedBudget.CmkSeg4Env`). -/
-def tryDecryptCmkSeg4Env (fmtWriteEnv : List AllocEvent → Prop)
+@[expose] def tryDecryptCmkSeg4Env (fmtWriteEnv : List AllocEvent → Prop)
     (x : TryDecryptGhost) (trG : TrGhost) (tr : TripleRatchet (List (BitVec 8)))
     (ck : ChainKey) : List AllocEvent → Prop :=
   SeqEnv fmtWriteEnv
@@ -124,7 +130,7 @@ def tryDecryptCmkSeg4Env (fmtWriteEnv : List AllocEvent → Prop)
 
 /-- Pure `FromS2GenEnv` formulation of `TryDecryptPV1TrapPlacedBudget.TryDecryptCliEnvOf`
 (`rfl`-identical across all inputs). -/
-def TryDecryptCliEnvOfPure (C : Crypto) (S : SpqrModel)
+@[expose] def TryDecryptCliEnvOfPure (C : Crypto) (S : SpqrModel)
     (fmtWriteEnv : List AllocEvent → Prop)
     (RecvBytesEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (fmtEnv : List AllocEvent → Prop)
@@ -142,6 +148,6 @@ def TryDecryptCliEnvOfPure (C : Crypto) (S : SpqrModel)
 `SpqrRecvC07C09aBytesEnv`. -/
 abbrev TryDecryptCliLinkedEnv (C : Crypto) (K : MlKem) :
     TryDecryptEnvArgs → List AllocEvent → Prop :=
-  TryDecryptCliEnvOfPure C (spqrV1 C.F K) FmtWriteEnv (SpqrRecvC07C09aBytesEnv C.F K) FormatInnerEnv
+  TryDecryptCliEnvOfPure C (spqrV1 C.F K) CliFmtWriteEnv (SpqrRecvC07C09aBytesEnv C.F K) CliFormatInnerEnv
 
 end LibsignalBinary.Proofs.PeakBudget.DecPkD2cSlotOkLinked

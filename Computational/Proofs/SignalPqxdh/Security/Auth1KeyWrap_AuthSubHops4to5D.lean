@@ -9,26 +9,26 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B3
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
-public import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 public import VCVio.CryptoFoundations.SecExp.Measure
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5D
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5D
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5B3
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5C -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
 
 /-!
 # One-Key `G3.8` to `G5` AEAD Sub-Hop Assembly
@@ -38,7 +38,7 @@ Equates `authSplitFixedExp1Key .g3_8 .g5` with the `IND-CPA` coin-cutoff experim
 INT-CTXT reduction.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxHeartbeats 400000
 open Classical
@@ -1856,7 +1856,7 @@ private theorem evalDist_finalizeAuthGame_eraseAuthCpa_beq (S : Setup) (P : Prim
   · simp only [↓reduceIte]
     exact evalDist_uniformBool_beq_local secb
 
-noncomputable def authCpaCoinCutoffExp1Key (cut : Nat) (S : Setup) (P : Primitives)
+def authCpaCoinCutoffExp1Key (cut : Nat) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let z ← if secb then authCpaCutoffExp1Key cut S P A else authCpaCutoffExp1Key S.N_send_tot S P A
@@ -1948,7 +1948,7 @@ theorem authHopG3_8G5_of_int1Key (S : Setup)
   linarith
 
 /-- Assembles `AuthSubHops4to5Bundle1Key` from `aeadCpaReductionAuthFixed1Key` and a multi-key INT-CTXT reduction. -/
-def authSubHops4to5Bundle_of_int1Key (S : Setup)
+@[expose] def authSubHops4to5Bundle_of_int1Key (S : Setup)
     (int : (b : QueryBudget) → BoundedAdv (AuthAdversary S) b → AeadMuIntCtxtAdv)
     (hIntQ : ∀ b A, (int b A).q_dec ≤ S.N_recv_tot)
     (hIntEncQ : ∀ b A, (int b A).q_enc ≤ S.N_send_tot)

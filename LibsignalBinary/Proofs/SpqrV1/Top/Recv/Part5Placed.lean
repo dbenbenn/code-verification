@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part3
@@ -30,7 +30,7 @@ Relocatable version-branch continuation contracts (`V0ChainPlacedTail`, `InitInn
 for `spqr::recv` (Block `329`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -66,7 +66,7 @@ open CryptoVerification.SpqrV1.Top.Recv.Placed
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. Continuation Contracts for the Three Version Branches (`+496`, `+1076`, `+1532`) -/
@@ -74,7 +74,7 @@ attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 /-- Continuation contract at `+496` for the V0 chain-ratchet path (`Ordering::Greater`:
     `pre_pb.versionNegotiation = some vn`, `pre_pb.inner = some (.v1 pb)`, `pre.version ≥
     vn.minVersion.truncate 8`, and `pre.version > 1#8`). -/
-def V0ChainPlacedTail (A : RustAlloc)
+@[expose] def V0ChainPlacedTail (A : RustAlloc)
     (F : CryptoGames.LibsignalSession.ShaCompress) (K : MlKem)
     (ext : String → Option (State → State))
     (st msg : VecArg) (ret : BitVec 64)
@@ -126,7 +126,7 @@ def V0ChainPlacedTail (A : RustAlloc)
     `pre_pb.versionNegotiation = some vn`, `pre_pb.inner = some (.v1 pb)`, `pre.version ≥
     vn.minVersion.truncate 8`, and `pre.version < 1#8`, i.e., `pre.version = 0#8` and
     `vn.minVersion.truncate 8 = 0#8`). -/
-def InitInnerPlacedTail (A : RustAlloc)
+@[expose] def InitInnerPlacedTail (A : RustAlloc)
     (F : CryptoGames.LibsignalSession.ShaCompress) (K : MlKem)
     (ext : String → Option (State → State))
     (st msg : VecArg) (ret : BitVec 64)
@@ -176,7 +176,7 @@ def InitInnerPlacedTail (A : RustAlloc)
       (spqrRecvPanicPost (spqrV1Recv F K) st msg s0 R)
 
 /-- `SepWPpLS` continuation contract at `+1532` for the V1 ratchet path (`Ordering::Equal`). -/
-def V1RatchetPlacedTailLS (A : RustAlloc)
+@[expose] def V1RatchetPlacedTailLS (A : RustAlloc)
     (F : CryptoGames.LibsignalSession.ShaCompress) (K : MlKem)
     (ext : String → Option (State → State))
     (st msg : VecArg) (ret : BitVec 64)

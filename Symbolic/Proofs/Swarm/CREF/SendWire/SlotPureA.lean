@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.OpkRelC
-public import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
-public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPure
+import Symbolic.Proofs.Swarm.CREF.OpkRelC
+public import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Initiate.TransferPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.SendWire.GhostInvariance
@@ -27,7 +27,7 @@ Defines `SndWhisperFailOut` and `SndWhisperRetOut`, and proves `matchedPrefix_sn
 `snd_ret_eval_clause`, and `snd_ret_cOooAll`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +50,7 @@ open Proofs.libsignal.Hooks2 (cryptoOf')
 open Symbolic.Swarm.TRREF.SpqrSemOf (spqrModelOf)
 
 /-- Pure hardware draw outcome of a failed / aborted `send_wire` call given CLI `coins_cli`. -/
-def SndWhisperFailOut (coins_cli : HwBytes) (mid : List MachineEvent) : Prop :=
+@[expose] def SndWhisperFailOut (coins_cli : HwBytes) (mid : List MachineEvent) : Prop :=
   mid = [] ∨ ∃ coins : HwBytes, coins.length ≠ 0 ∧ coins <+: coins_cli ∧ mid = [.rng coins]
 
 /-- Pure postcondition of an exit-`0` `send_wire` call on a canonical Whisper record. -/

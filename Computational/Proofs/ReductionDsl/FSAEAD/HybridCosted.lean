@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.OTCCA.CostedTables
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.FSAEAD.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.PRG.CostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.OTCCA.CostedTables -- proof-setup: allow-public-import
 public import Computational.Specifications.Reductions.ReductionDsl.Samplers
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Hybrid
 import Computational.Proofs.ReductionDsl.Notation
@@ -25,7 +25,7 @@ Two-stage costed `ReductionDsl` witness programs (`prgRedZeroProg`, `multiRedPro
 `corruptReceiver` query so receiver-state materialization runs once in Stage 2.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -87,122 +87,122 @@ local notation "HT" => Ty (fsSig CK MK AD Unit M C)
 
 /-! ## State representation and pure helpers -/
 
-@[reducible] def recTy : HT :=
+@[expose, reducible] def recTy : HT :=
   .prod .nat (.prod (bt .ad) (.prod (bt .msg) (.prod .nat (bt .ct))))
 
 /-- Encoded frontier slot (`unknown`, `seed w`, or `mat pos (w', K)`). -/
-@[reducible] def slotTy : HT :=
+@[expose, reducible] def slotTy : HT :=
   .sum .unit (.sum (bt .ss) (.prod .nat (.prod (bt .ss) (bt .rs))))
 
-@[reducible] def metaTy : HT :=
+@[expose, reducible] def metaTy : HT :=
   .prod (.prod .bool .nat) (.prod (.opt .nat) .nat)
 
-@[reducible] def flagsTy : HT :=
+@[expose, reducible] def flagsTy : HT :=
   .prod .bool (.prod .bool .bool)
 
-@[reducible] def transTy : HT :=
+@[expose, reducible] def transTy : HT :=
   .prod (.list recTy) (.list .nat)
 
-@[reducible] def kcTy : HT :=
+@[expose, reducible] def kcTy : HT :=
   .prod .nat (.tbl (.opt (bt .rs)))
 
-@[reducible] def chainTy : HT :=
+@[expose, reducible] def chainTy : HT :=
   .prod kcTy (.prod (.opt (bt .ss)) (.tbl .bool))
 
-@[reducible] def hsTy : HT :=
+@[expose, reducible] def hsTy : HT :=
   .prod (.prod metaTy flagsTy) (.prod transTy chainTy)
 
-@[reducible] def stTy : HT :=
+@[expose, reducible] def stTy : HT :=
   .prod hsTy slotTy
 
-@[reducible] def callE
+@[expose, reducible] def callE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} {a b : HT}
     (arg : Expr O Γ a) (body : Expr O (a :: Γ) b) : Expr O Γ b :=
   .letE arg body
 
-@[reducible] def callC
+@[expose, reducible] def callC
     {O : Ops (HSig CK MK AD M C)} {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T}
     {Γ : List HT} {a b : HT} (arg : Expr O Γ a) (body : Comp O I (a :: Γ) b) : Comp O I Γ b :=
   .bind (.ret arg) body
 
-@[reducible] def orE
+@[expose, reducible] def orE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (a b : Expr O Γ .bool) : Expr O Γ .bool :=
   .ite a (.bool true) b
 
-@[reducible] def beqBoolE
+@[expose, reducible] def beqBoolE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (a b : Expr O Γ .bool) : Expr O Γ .bool :=
   .ite a b (.not b)
 
-@[reducible] def isSomeE
+@[expose, reducible] def isSomeE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} {t : HT} (e : Expr O Γ (.opt t)) :
     Expr O Γ .bool :=
   .caseOpt e (.bool false) (.bool true)
 
-@[reducible] def maxNatE
+@[expose, reducible] def maxNatE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (a b : Expr O Γ .nat) : Expr O Γ .nat :=
   .ite (.lt a (.add b (.nat 1))) b a
 
-@[reducible] def recIdx
+@[expose, reducible] def recIdx
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (r : Expr O Γ recTy) : Expr O Γ .nat :=
   .fst r
-@[reducible] def recAd
+@[expose, reducible] def recAd
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (r : Expr O Γ recTy) : Expr O Γ (bt .ad) :=
   .fst (.snd r)
-@[reducible] def recMsg
+@[expose, reducible] def recMsg
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (r : Expr O Γ recTy) : Expr O Γ (bt .msg) :=
   .fst (.snd (.snd r))
-@[reducible] def recCt
+@[expose, reducible] def recCt
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (r : Expr O Γ recTy) :
     Expr O Γ (.prod .nat (bt .ct)) :=
   .snd (.snd (.snd r))
 
-@[reducible] def hsB
+@[expose, reducible] def hsB
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) : Expr O Γ .bool :=
   .fst (.fst (.fst (.fst hs)))
-@[reducible] def hsLastSent
+@[expose, reducible] def hsLastSent
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) : Expr O Γ .nat :=
   .snd (.fst (.fst (.fst hs)))
-@[reducible] def hsCorrAt
+@[expose, reducible] def hsCorrAt
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) :
     Expr O Γ (.opt .nat) :=
   .fst (.snd (.fst (.fst hs)))
-@[reducible] def hsRecvIdx
+@[expose, reducible] def hsRecvIdx
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) : Expr O Γ .nat :=
   .snd (.snd (.fst (.fst hs)))
-@[reducible] def hsEnded
+@[expose, reducible] def hsEnded
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) : Expr O Γ .bool :=
   .fst (.snd (.fst hs))
-@[reducible] def hsWin
+@[expose, reducible] def hsWin
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) : Expr O Γ .bool :=
   .fst (.snd (.snd (.fst hs)))
-@[reducible] def hsLf
+@[expose, reducible] def hsLf
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) : Expr O Γ .bool :=
   .snd (.snd (.snd (.fst hs)))
-@[reducible] def hsInTransit
+@[expose, reducible] def hsInTransit
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) :
     Expr O Γ (.list recTy) :=
   .fst (.fst (.snd hs))
-@[reducible] def hsChalls
+@[expose, reducible] def hsChalls
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) :
     Expr O Γ (.list .nat) :=
   .snd (.fst (.snd hs))
-@[reducible] def hsNKeys
+@[expose, reducible] def hsNKeys
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) : Expr O Γ .nat :=
   .fst (.fst (.snd (.snd hs)))
-@[reducible] def hsKeysT
+@[expose, reducible] def hsKeysT
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) :
     Expr O Γ (.tbl (.opt (bt .rs))) :=
   .snd (.fst (.snd (.snd hs)))
-@[reducible] def hsCorrKey
+@[expose, reducible] def hsCorrKey
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) :
     Expr O Γ (.opt (bt .ss)) :=
   .fst (.snd (.snd (.snd hs)))
-@[reducible] def hsSkipped
+@[expose, reducible] def hsSkipped
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (hs : Expr O Γ hsTy) :
     Expr O Γ (.tbl .bool) :=
   .snd (.snd (.snd (.snd hs)))
 
-@[reducible] def mkHS
+@[expose, reducible] def mkHS
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT}
     (b : Expr O Γ .bool) (lastSentIdx : Expr O Γ .nat)
     (senderCorruptedAt : Expr O Γ (.opt .nat)) (receiverIdx : Expr O Γ .nat)
@@ -216,12 +216,12 @@ local notation "HT" => Ty (fsSig CK MK AD Unit M C)
         (.pair (.pair inTransit challs)
                (.pair (.pair nKeys keysT) (.pair corrKey skipped)))
 
-@[reducible] def withKcE
+@[expose, reducible] def withKcE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT}
     (hs : Expr O Γ hsTy) (kc : Expr O Γ kcTy) : Expr O Γ hsTy :=
   .pair (.fst hs) (.pair (.fst (.snd hs)) (.pair kc (.snd (.snd (.snd hs)))))
 
-@[reducible] def withSkippedE
+@[expose, reducible] def withSkippedE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT}
     (hs : Expr O Γ hsTy) (sk : Expr O Γ (.tbl .bool)) : Expr O Γ hsTy :=
   .pair (.fst hs)
@@ -229,28 +229,28 @@ local notation "HT" => Ty (fsSig CK MK AD Unit M C)
       (.pair (.fst (.snd (.snd hs)))
         (.pair (.fst (.snd (.snd (.snd hs)))) sk)))
 
-@[reducible] def initHSE
+@[expose, reducible] def initHSE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (b : Expr O Γ .bool) : Expr O Γ hsTy :=
   mkHS b (.nat 0) .none (.nat 0) (.bool false) (.bool false) (.bool false)
     .nil .nil (.nat 0) (.tconst .none) .none (.tconst (.bool false))
 
-def isCompromisedBody
+@[expose] def isCompromisedBody
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} :
     Expr O (.prod hsTy .nat :: Γ) .bool :=
   .caseOpt (hsCorrAt (.fst .v0)) (.bool false) (.lt .v0 (.snd .v1))
 
-def isCompromisedE
+@[expose] def isCompromisedE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT}
     (st : Expr O Γ hsTy) (i : Expr O Γ .nat) : Expr O Γ .bool :=
   callE (.pair st i) isCompromisedBody
 
-@[reducible] def appendKcE
+@[expose, reducible] def appendKcE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT}
     (kc : Expr O Γ kcTy) (K : Expr O Γ (bt .rs)) : Expr O Γ kcTy :=
   .pair (.add (.fst kc) (.nat 1))
         (.tset (.snd kc) (.fst kc) (.some K))
 
-def removeFromTransitBody
+@[expose] def removeFromTransitBody
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (q : ℕ) :
     Expr O (.prod hsTy .nat :: Γ) hsTy :=
   let st := Expr.fst .v0
@@ -262,111 +262,111 @@ def removeFromTransitBody
       (.ite (.not (.eqN .v0 (.snd .v2))) (.cons .v0 .v1) .v1))
     (hsNKeys st) (hsKeysT st) (hsCorrKey st) (hsSkipped st)
 
-def removeFromTransitE
+@[expose] def removeFromTransitE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (q : ℕ)
     (st : Expr O Γ hsTy) (i : Expr O Γ .nat) : Expr O Γ hsTy :=
   callE (.pair st i) (removeFromTransitBody q)
 
-@[reducible] def skippedContainsE
+@[expose, reducible] def skippedContainsE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT}
     (st : Expr O Γ hsTy) (i : Expr O Γ .nat) : Expr O Γ .bool :=
   .tget (hsSkipped st) i
 
-def skippedRemoveBody
+@[expose] def skippedRemoveBody
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} :
     Expr O (.prod hsTy .nat :: Γ) hsTy :=
   let st := Expr.fst .v0
   withSkippedE st (.tset (hsSkipped st) (.snd .v0) (.bool false))
 
-def skippedRemoveE
+@[expose] def skippedRemoveE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT}
     (st : Expr O Γ hsTy) (i : Expr O Γ .nat) : Expr O Γ hsTy :=
   callE (.pair st i) skippedRemoveBody
 
-@[reducible] def prgGenE {Γ : List HT}
+@[expose, reducible] def prgGenE {Γ : List HT}
     (pw : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.prod .nat (bt .ss))) :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.prod (bt .ss) (bt .rs)) :=
   Expr.op (O := hybOps CK MK AD M C ae G kPRG kAEAD) (Sum.inl () : Unit ⊕ OtccaOp) pw
 
-@[reducible] def aeadEncE {Γ : List HT}
+@[expose, reducible] def aeadEncE {Γ : List HT}
     (x : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ
       (.prod (bt .rs) (.prod (.prod .nat (bt .ad)) (bt .msg)))) :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (bt .ct) :=
   Expr.op (O := hybOps CK MK AD M C ae G kPRG kAEAD) (Sum.inr OtccaOp.enc : Unit ⊕ OtccaOp) x
 
-@[reducible] def aeadDecE {Γ : List HT}
+@[expose, reducible] def aeadDecE {Γ : List HT}
     (x : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ
       (.prod (bt .rs) (.prod (.prod .nat (bt .ad)) (bt .ct)))) :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.opt (bt .msg)) :=
   Expr.op (O := hybOps CK MK AD M C ae G kPRG kAEAD) (Sum.inr OtccaOp.dec : Unit ⊕ OtccaOp) x
 
-@[reducible] def eqAdE {Γ : List HT}
+@[expose, reducible] def eqAdE {Γ : List HT}
     (x : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.prod (bt .ad) (bt .ad))) :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ .bool :=
   Expr.op (O := hybOps CK MK AD M C ae G kPRG kAEAD) (Sum.inr OtccaOp.eqAD : Unit ⊕ OtccaOp) x
 
-@[reducible] def eqME {Γ : List HT}
+@[expose, reducible] def eqME {Γ : List HT}
     (x : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.prod (bt .msg) (bt .msg))) :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ .bool :=
   Expr.op (O := hybOps CK MK AD M C ae G kPRG kAEAD) (Sum.inr OtccaOp.eqM : Unit ⊕ OtccaOp) x
 
-@[reducible] def eqCE {Γ : List HT}
+@[expose, reducible] def eqCE {Γ : List HT}
     (x : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.prod (bt .ct) (bt .ct))) :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ .bool :=
   Expr.op (O := hybOps CK MK AD M C ae G kPRG kAEAD) (Sum.inr OtccaOp.eqC : Unit ⊕ OtccaOp) x
 
-def recMatchesE {Γ : List HT} :
+@[expose] def recMatchesE {Γ : List HT} :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD)
       (recTy :: .prod (bt .ad) (.prod .nat (bt .ct)) :: Γ) .bool :=
   .and (eqAdE ae G kPRG kAEAD (.pair (recAd .v0) (.fst .v1)))
     (.and (.eqN (.fst (recCt .v0)) (.fst (.snd .v1)))
           (eqCE ae G kPRG kAEAD (.pair (.snd (recCt .v0)) (.snd (.snd .v1)))))
 
-def findInTransitBody {Γ : List HT} (q : ℕ) :
+@[expose] def findInTransitBody {Γ : List HT} (q : ℕ) :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD)
       (.prod hsTy (.prod (bt .ad) (.prod .nat (bt .ct))) :: Γ) (.opt recTy) :=
   .letE (.snd .v0) (.findB q (hsInTransit (.fst .v1)) (recMatchesE ae G kPRG kAEAD))
 
-def findInTransitE {Γ : List HT} (q : ℕ)
+@[expose] def findInTransitE {Γ : List HT} (q : ℕ)
     (st : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ hsTy)
     (qry : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.prod (bt .ad) (.prod .nat (bt .ct)))) :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.opt recTy) :=
   callE (.pair st qry) (findInTransitBody ae G kPRG kAEAD q)
 
-def anyInTransitBody {Γ : List HT} (q : ℕ) :
+@[expose] def anyInTransitBody {Γ : List HT} (q : ℕ) :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD)
       (.prod hsTy (.prod (bt .ad) (.prod .nat (bt .ct))) :: Γ) .bool :=
   .letE (.snd .v0) (.anyB q (hsInTransit (.fst .v1)) (recMatchesE ae G kPRG kAEAD))
 
-def anyInTransitE {Γ : List HT} (q : ℕ)
+@[expose] def anyInTransitE {Γ : List HT} (q : ℕ)
     (st : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ hsTy)
     (qry : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.prod (bt .ad) (.prod .nat (bt .ct)))) :
     Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ .bool :=
   callE (.pair st qry) (anyInTransitBody ae G kPRG kAEAD q)
 
-def anyUncompInTransitBody
+@[expose] def anyUncompInTransitBody
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (q : ℕ) :
     Expr O (hsTy :: Γ) .bool :=
   .anyB q (hsInTransit .v0) (.not (isCompromisedE .v1 (recIdx .v0)))
 
-def anyUncompInTransitE
+@[expose] def anyUncompInTransitE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (q : ℕ)
     (st : Expr O Γ hsTy) : Expr O Γ .bool :=
   callE st (anyUncompInTransitBody q)
 
-def challsContainsBody
+@[expose] def challsContainsBody
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (q : ℕ) :
     Expr O (.prod hsTy .nat :: Γ) .bool :=
   .anyB q (hsChalls (.fst .v0)) (.eqN .v0 (.snd .v1))
 
-def challsContainsE
+@[expose] def challsContainsE
     {O : Ops (HSig CK MK AD M C)} {Γ : List HT} (q : ℕ)
     (st : Expr O Γ hsTy) (i : Expr O Γ .nat) : Expr O Γ .bool :=
   callE (.pair st i) (challsContainsBody q)
 
 /-! ## Monadic hybrid subroutines -/
 
-def genStepKcBody
+@[expose] def genStepKcBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT} :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) (I₀.withSamp (HSamp CK MK AD M C))
       (.prod kcTy slotTy :: .prod .nat .nat :: Γ) (.prod kcTy slotTy) :=
@@ -390,7 +390,7 @@ def genStepKcBody
       else
         return (appendKcE kc K, .inr (.inl w'))
 
-def genUpToBody
+@[expose] def genUpToBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (maxSkip jPos : ℕ) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) (I₀.withSamp (HSamp CK MK AD M C))
@@ -404,7 +404,7 @@ def genUpToBody
         return acc
     return (withKcE st kc', slot')
 
-def genUpToC
+@[expose] def genUpToC
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (maxSkip jPos : ℕ)
     (i : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ .nat)
@@ -412,7 +412,7 @@ def genUpToC
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) (I₀.withSamp (HSamp CK MK AD M C)) Γ stTy :=
   callC (.pair i s) (genUpToBody ae G kPRG kAEAD maxSkip jPos)
 
-def revealBody
+@[expose] def revealBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT} :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) (I₀.withSamp (HSamp CK MK AD M C))
       (stTy :: Γ) (.prod (bt .ss) stTy) :=
@@ -427,7 +427,7 @@ def revealBody
       w ← sample (Sum.inr (.base true)) ()
       return (w, (st, .inr (.inl w)))
 
-def chainFromBody
+@[expose] def chainFromBody
     {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (fuel : ℕ) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) I
@@ -440,7 +440,7 @@ def chainFromBody
         step)
     return wOut
 
-def chainFromC
+@[expose] def chainFromC
     {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (fuel : ℕ)
     (c : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ .nat)
@@ -449,7 +449,7 @@ def chainFromC
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) I Γ (bt .ss) :=
   callC (.pair c (.pair w m)) (chainFromBody ae G kPRG kAEAD fuel)
 
-def senderKeyBody
+@[expose] def senderKeyBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (q : ℕ) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) (I₀.withSamp (HSamp CK MK AD M C))
@@ -464,7 +464,7 @@ def senderKeyBody
         w' ← chainFromC ae G kPRG kAEAD q c w (hsLastSent st - c)
         return (w', s)
 
-def prependNewSkippedBody
+@[expose] def prependNewSkippedBody
     {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (maxSkip : ℕ) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) I
@@ -479,7 +479,7 @@ def prependNewSkippedBody
     return out
 
 /-- Scans `1 .. (maxSkip + 1) * q` upward to materialize `st.skipped` in strictly decreasing order. -/
-def corruptReceiverDBody
+@[expose] def corruptReceiverDBody
     {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (maxSkip q : ℕ) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) I
@@ -504,7 +504,7 @@ def corruptReceiverDBody
               acc))
       return out
 
-def decIdxBody
+@[expose] def decIdxBody
     {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (mSlot : ℕ)
     (specialDec : Option (∀ {Δ},
@@ -537,7 +537,7 @@ def decIdxBody
     | some msg =>
       return (some msg)
 
-def encIdxBody
+@[expose] def encIdxBody
     {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (mSlot : ℕ)
     (sampleIdeal : ∀ {Δ},
@@ -568,7 +568,7 @@ def encIdxBody
     else
       raw fallbackArm
 
-def receiveBody
+@[expose] def receiveBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (maxSkip jPos mSlot : ℕ) (la : Bool)
     (specialDec : Option (∀ {Δ},
@@ -601,7 +601,7 @@ def receiveBody
 
 /-! ## Oracle handlers and two-stage components -/
 
-def corruptSenderBody
+@[expose] def corruptSenderBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (q : ℕ) (la : Bool) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) (I₀.withSamp (HSamp CK MK AD M C))
@@ -623,7 +623,7 @@ def corruptSenderBody
           (hsEnded st') (hsWin st') (hsLf st') (hsInTransit st') (hsChalls st')
           (hsNKeys st') (hsKeysT st') (some corrKey') (hsSkipped st'), sl'))
 
-def corruptReceiverResumeBody
+@[expose] def corruptReceiverResumeBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (maxSkip q : ℕ) (la : Bool) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) (I₀.withSamp (HSamp CK MK AD M C))
@@ -649,7 +649,7 @@ def corruptReceiverResumeBody
           true (hsWin st') (hsLf st') (hsInTransit st') (hsChalls st')
           (hsNKeys st') (hsKeysT st') (hsCorrKey st') (hsSkipped st'), sl'))
 
-def transmitBody
+@[expose] def transmitBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (maxSkip jPos mSlot : ℕ)
     (sampleIdeal : ∀ {Δ},
@@ -677,7 +677,7 @@ def transmitBody
           (cons recE (hsInTransit st')) (hsChalls st')
           (hsNKeys st') (hsKeysT st') (hsCorrKey st') (hsSkipped st'), sl'))
 
-def challengeBody
+@[expose] def challengeBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (maxSkip jPos mSlot : ℕ)
     (sampleIdeal : ∀ {Δ},
@@ -707,7 +707,7 @@ def challengeBody
           (cons recE (hsInTransit st')) (cons nextIdx (hsChalls st'))
           (hsNKeys st') (hsKeysT st') (hsCorrKey st') (hsSkipped st'), sl'))
 
-def deliverBody
+@[expose] def deliverBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (maxSkip q jPos mSlot : ℕ) (la : Bool)
     (specialDec : Option (∀ {Δ},
@@ -746,7 +746,7 @@ def deliverBody
           return (some (.inr (i', outOpt)),
             (removeFromTransitE q stUpd rIdx, sl'))
 
-def injectBody
+@[expose] def injectBody
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T} {Γ : List HT}
     (maxSkip q jPos mSlot : ℕ) (la : Bool)
     (specialDec : Option (∀ {Δ},
@@ -778,7 +778,7 @@ def injectBody
           (removeFromTransitE q stUpd i', sl'))
 
 /-- Stage-1 hybrid oracle handler that pauses on the first valid `corruptReceiver` query. -/
-def hybHandlePreC
+@[expose] def hybHandlePreC
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T}
     (maxSkip q jPos mSlot : ℕ) (la : Bool)
     (sampleIdeal : ∀ {Δ},
@@ -823,30 +823,30 @@ def hybHandlePreC
         (injectBody ae G kPRG kAEAD maxSkip q jPos mSlot la specialDec)
       return (.inl (.inr (.inr (.inr r)), s'))
 
-def hybChDoneC
+@[expose] def hybChDoneC
     {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T} :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) I [stTy, .bool] .unit :=
   .ret .unit
 
-def hybResumeC
+@[expose] def hybResumeC
     {ι : Type} {T : OracleSpec ι} {I₀ : Iface (HSig CK MK AD M C) T}
     (maxSkip q : ℕ) (la : Bool) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) (I₀.withSamp (HSamp CK MK AD M C))
       [stTy, .unit, .unit] (.prod ratchetR stTy) :=
   corruptReceiverResumeBody ae G kPRG kAEAD maxSkip q la
 
-def hybHandlePostC
+@[expose] def hybHandlePostC
     {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T} :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) I [stTy, ratchetQ] (.prod ratchetR stTy) :=
   .ret (.pair (.inl .none) .v0)
 
-def hybFinishC
+@[expose] def hybFinishC
     {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T} (la : Bool) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) I [stTy, .bool, .unit] .bool :=
   rdsl [(st, _), b', _] do
     return (if bool la then hsLf st else orE (beqBoolE (hsB st) b') (hsWin st))
 
-def hybFinishAuthC
+@[expose] def hybFinishAuthC
     {ι : Type} {T : OracleSpec ι} {I : Iface (HSig CK MK AD M C) T} :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) I [stTy, .bool, .unit] .bool :=
   .ret (.var (.succ .zero))
@@ -854,7 +854,7 @@ def hybFinishAuthC
 /-! ## Top-level two-stage costed reductions -/
 
 /-- Two-stage costed program for `cumulativeChainPrgReduction ideal ae G maxSkip j`. -/
-def prgRedZeroProg (q maxSkip j : ℕ) :
+@[expose] def prgRedZeroProg (q maxSkip j : ℕ) :
     TwoStageCostedReduction (hybOps CK MK AD M C ae G kPRG kAEAD)
       (prgRedZeroIface CK MK AD M C ideal kIdeal)
       (spec (RatchetSenderState CK) (RatchetReceiverState CK MK) AD M (ℕ × C))
@@ -877,7 +877,7 @@ def prgRedZeroProg (q maxSkip j : ℕ) :
   finish := hybFinishC ae G kPRG kAEAD (isLookaheadHop j)
 
 /-- Direct-output (`Auth`-mode) two-stage costed program for `cumulativeChainPrgReductionOut`. -/
-def prgRedAuthProg (q maxSkip j : ℕ) :
+@[expose] def prgRedAuthProg (q maxSkip j : ℕ) :
     TwoStageCostedReduction (hybOps CK MK AD M C ae G kPRG kAEAD)
       (prgRedZeroIface CK MK AD M C ideal kIdeal)
       (spec (RatchetSenderState CK) (RatchetReceiverState CK MK) AD M (ℕ × C))
@@ -899,7 +899,7 @@ def prgRedAuthProg (q maxSkip j : ℕ) :
   handlePost := hybHandlePostC ae G kPRG kAEAD
   finish := hybFinishAuthC ae G kPRG kAEAD
 
-def otSpecialEncC {Γ : List HT}
+@[expose] def otSpecialEncC {Γ : List HT}
     (iam : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.prod (.prod .nat (bt .ad)) (bt .msg))) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) (multiRedIface CK MK AD M C ideal kIdeal)
       Γ (bt .ct) :=
@@ -914,7 +914,7 @@ def otSpecialEncC {Γ : List HT}
     | some ct =>
       return ct
 
-def otSpecialDecC {Γ : List HT}
+@[expose] def otSpecialDecC {Γ : List HT}
     (iae : Expr (hybOps CK MK AD M C ae G kPRG kAEAD) Γ (.prod (.prod .nat (bt .ad)) (bt .ct))) :
     Comp (hybOps CK MK AD M C ae G kPRG kAEAD) (multiRedIface CK MK AD M C ideal kIdeal)
       Γ (.opt (bt .msg)) :=
@@ -922,7 +922,7 @@ def otSpecialDecC {Γ : List HT}
     (I := multiRedIface CK MK AD M C ideal kIdeal) OtccaTag.dec iae
 
 /-- Two-stage costed program for `multiSlotOtccaReduction ideal ae G maxSkip N la`. -/
-def multiRedProg (q maxSkip N : ℕ) (la : Bool) :
+@[expose] def multiRedProg (q maxSkip N : ℕ) (la : Bool) :
     TwoStageCostedReduction (hybOps CK MK AD M C ae G kPRG kAEAD)
       (multiRedIface CK MK AD M C ideal kIdeal)
       (spec (RatchetSenderState CK) (RatchetReceiverState CK MK) AD M (ℕ × C))
@@ -946,7 +946,7 @@ def multiRedProg (q maxSkip N : ℕ) (la : Bool) :
   finish := hybFinishC ae G kPRG kAEAD la
 
 /-- Direct-output (`Auth`-mode) two-stage costed program for `multiSlotOtccaReductionOut`. -/
-def multiRedAuthProg (q maxSkip N : ℕ) (la : Bool) :
+@[expose] def multiRedAuthProg (q maxSkip N : ℕ) (la : Bool) :
     TwoStageCostedReduction (hybOps CK MK AD M C ae G kPRG kAEAD)
       (multiRedIface CK MK AD M C ideal kIdeal)
       (spec (RatchetSenderState CK) (RatchetReceiverState CK MK) AD M (ℕ × C))

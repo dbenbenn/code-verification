@@ -30,7 +30,7 @@ Proves `closeByStateCTrack_deliver_newChain_saltMatch` for honest new-epoch deli
 under `SimInvCXTrack`.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open OracleComp OracleSpec MeasureTheory

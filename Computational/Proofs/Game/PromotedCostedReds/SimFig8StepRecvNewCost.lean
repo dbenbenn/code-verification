@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
+public import Computational.Proofs.ReductionDsl.MacroLift -- proof-setup: allow-public-import
 
 /-!
 # Concrete `Comp` Programs and Cost Bounds for `simFig8` New-Epoch Receive
@@ -23,7 +24,7 @@ outer `semRecvHookS` dispatcher (`recvHookOfBranchesC`), and deliver/inject arm 
 (`recvArmC`), together with static query, cost, and description-bit bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -89,52 +90,52 @@ local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 /-! ## Input and output types -/
 
 /-- Encoded `(Option (RecvResult (Plain ℓ)) × LibsignalToModularSchemeSimState Bytes Pt ℓ)`. -/
-@[reducible] def recvOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def recvOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (.opt (recvResultT (ℓ := ℓ) (Pt := Pt))) (simFullT ℓ Pt)
 
 /-- Input tuple `(sC, (qB, (w, (isDel, (ci?, (pk, (pq', (honestC, c'))))))))` to `semFwdHookS`. -/
-@[reducible] def fwdHookInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def fwdHookInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simFullT ℓ Pt) (.prod .bool (.prod (B 32) (.prod .bool (.prod (.opt .nat)
     (.prod PK (.prod (B 32) (.prod (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt)))
       (fig8CtT (ℓ := ℓ) (Pt := Pt)))))))))
 
 /-- Input tuple `(sC, (qB, (w, (isDel, (parsed, (honestC, ci))))))` to same-chain branch. -/
-@[reducible] def recvSameInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def recvSameInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simFullT ℓ Pt) (.prod .bool (.prod (B 32) (.prod .bool
     (.prod (parseOutT ℓ Pt) (.prod (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))) .nat)))))
 
 /-- Input tuple `(sC, (qB, (w, (isDel, (parsed, honestC)))))` to new-chain branch. -/
-@[reducible] def recvNewInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def recvNewInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simFullT ℓ Pt) (.prod .bool (.prod (B 32) (.prod .bool
     (.prod (parseOutT ℓ Pt) (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt)))))))
 
 /-- Input tuple `(sC, (qB, (w, isDel)))` to `semRecvHookS`. -/
-@[reducible] def recvHookInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def recvHookInpT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simFullT ℓ Pt) (.prod .bool (.prod (B 32) .bool))
 
 /-- Deliver / Inject query payload `(qB, w)`. -/
-@[reducible] def smRecvArgT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def smRecvArgT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod .bool (B 32)
 
 /-! ## Pure helper expressions -/
 
-@[reducible] def wkTop1Comp {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose, reducible] def wkTop1Comp {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ : List (Ty S)} {a t : Ty S} (c : Comp O I [a] t) : Comp O I (a :: Γ) t :=
   Comp.renameM
     (fun ⦃_⦄ v => match v with
       | .zero => .zero
       | .succ w => nomatch w) c
 
-def callSub1C {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def callSub1C {S : Sig} {O : Ops S} {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ : List (Ty S)} {a t : Ty S}
     (c : Comp O I [a] t) (argE : Expr O Γ a) : Comp O I Γ t :=
   .bind (.ret argE) (wkTop1Comp c)
 
-def rejOutE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def rejOutE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (sCE : Expr O' Γ (simFullT ℓ Pt)) : Expr O' Γ (recvOutT ℓ Pt) :=
   .pair (.some (.inl .unit)) sCE
 
-def noneOutE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def noneOutE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (sCE : Expr O' Γ (simFullT ℓ Pt)) : Expr O' Γ (recvOutT ℓ Pt) :=
   .pair .none sCE
 
@@ -154,7 +155,7 @@ private theorem fig8Ct_pair_eval {O' : Ops ASig} {Γ : List (Ty ASig)}
   rw [Expr.eval, Expr.eval, ht, hT, hl]
   rfl
 
-def mkCAtomicE {Γ : List (Ty ASig)}
+@[expose] def mkCAtomicE {Γ : List (Ty ASig)}
     (honestCE : Expr AOps Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))))
     (tE : Expr AOps Γ .nat)
     (tOptE : Expr AOps Γ (.opt PtT))
@@ -169,7 +170,7 @@ def mkCAtomicE {Γ : List (Ty ASig)}
         .v0
         (.snd .v1)))
 
-def recvNewEvictedE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def recvNewEvictedE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (honestCE : Expr O' Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))))
     (ep1E : Expr O' Γ .nat) : Expr O' Γ .bool :=
   eLet (.pair honestCE ep1E)
@@ -177,7 +178,7 @@ def recvNewEvictedE {O' : Ops ASig} {Γ : List (Ty ASig)}
       (.bool false)
       (.not (.eqN (.fst (.fst .v0)) (.snd .v1))))
 
-def recvNewSaltEqE {Γ : List (Ty ASig)}
+@[expose] def recvNewSaltEqE {Γ : List (Ty ASig)}
     (honestCE : Expr AOps Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))))
     (lctE : Expr AOps Γ (lctT (ℓ := ℓ) (Pt := Pt))) : Expr AOps Γ .bool :=
   eLet (.pair honestCE lctE)
@@ -186,7 +187,7 @@ def recvNewSaltEqE {Γ : List (Ty ASig)}
       (lctSaltEqOfLctAtomicE (C := C) (K := K) (Dh := Dh) (encPt := encPt)
         (encT := encT) (decT := decT) (lam := lam) .v0 (.snd .v1)))
 
-def recvNewSCAmbE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def recvNewSCAmbE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (sCE : Expr O' Γ (simFullT ℓ Pt)) (qBE : Expr O' Γ .bool) :
     Expr O' Γ (simFullT ℓ Pt) :=
   eLet (.pair sCE qBE)
@@ -200,13 +201,13 @@ def recvNewSCAmbE {O' : Ops ASig} {Γ : List (Ty ASig)}
        (scSetBase s0 (ssSetAmb b0 (.add (ssAmb b0) (.nat 1))))
        s0)
 
-def recvNewRangeBadE {O' : Ops ASig} {Γ : List (Ty ASig)}
+@[expose] def recvNewRangeBadE {O' : Ops ASig} {Γ : List (Ty ASig)}
     (sCE : Expr O' Γ (simFullT ℓ Pt)) (qBE : Expr O' Γ .bool)
     (iE : Expr O' Γ .nat) : Expr O' Γ .bool :=
   orE (orE (mInWinE (ssMir (scBase sCE)) qBE) (.lt (.nat 25000) (.sub iE (.nat 1))))
     (.not (.lt iE (.nat (2 ^ 32))))
 
-def recvRefuseE (Lq : ℕ) {Γ : List (Ty ASig)}
+@[expose] def recvRefuseE (Lq : ℕ) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (wE : Expr AOps Γ (B (ℓ := ℓ) (Pt := Pt) 32)) (isDelE : Expr AOps Γ .bool) :
     Expr AOps Γ .bool :=
@@ -236,7 +237,7 @@ def recvRefuseE (Lq : ℕ) {Γ : List (Ty ASig)}
               (.not (injOKAtomicE (C := C) (K := K) (Dh := Dh) (encPt := encPt)
                 (encT := encT) (decT := decT) (lam := lam) w1))))))
 
-def honestLookupE (Lq : ℕ) {Γ : List (Ty ASig)}
+@[expose] def honestLookupE (Lq : ℕ) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (wE : Expr AOps Γ (B (ℓ := ℓ) (Pt := Pt) 32)) :
     Expr AOps Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))) :=
@@ -251,7 +252,7 @@ def honestLookupE (Lq : ℕ) {Γ : List (Ty ASig)}
 /-! ## Concrete `Comp` programs -/
 
 /-- New-chain (`findIdx? = none`) receive branch in `Comp`, calling `fwdHookC` at most once. -/
-def recvNewOfFwdC
+@[expose] def recvNewOfFwdC
     (fwdHookC : Comp AOps (fig8SmIface ℓ Pt) [fwdHookInpT ℓ Pt] (recvOutT ℓ Pt)) :
     Comp AOps (fig8SmIface ℓ Pt) [recvNewInpT ℓ Pt] (recvOutT ℓ Pt) :=
   let inp0 : Expr AOps [recvNewInpT ℓ Pt] (recvNewInpT ℓ Pt) := .v0
@@ -315,7 +316,7 @@ def recvNewOfFwdC
               (callSub1C fwdHookC fwdInp2)))))
 
 /-- Full `semRecvHookS` in `Comp`, parameterized by `sameBranchC` and `newBranchC`. -/
-def recvHookOfBranchesC (idA idB : IdentityKey) (Lq : ℕ)
+@[expose] def recvHookOfBranchesC (idA idB : IdentityKey) (Lq : ℕ)
     (sameBranchC : Comp AOps (fig8SmIface ℓ Pt) [recvSameInpT ℓ Pt] (recvOutT ℓ Pt))
     (newBranchC : Comp AOps (fig8SmIface ℓ Pt) [recvNewInpT ℓ Pt] (recvOutT ℓ Pt)) :
     Comp AOps (fig8SmIface ℓ Pt) [recvHookInpT ℓ Pt] (recvOutT ℓ Pt) :=
@@ -392,7 +393,7 @@ def recvHookOfBranchesC (idA idB : IdentityKey) (Lq : ℕ)
 
 /-- Two-variable arm `[simFullT ℓ Pt, smRecvArgT ℓ Pt] → recvOutT ℓ Pt` for Deliver (`isDel = true`)
 or Inject (`isDel = false`). -/
-def recvArmC (isDel : Bool)
+@[expose] def recvArmC (isDel : Bool)
     (recvHookC : Comp AOps (fig8SmIface ℓ Pt) [recvHookInpT ℓ Pt] (recvOutT ℓ Pt)) :
     Comp AOps (fig8SmIface ℓ Pt) [simFullT ℓ Pt, smRecvArgT ℓ Pt] (recvOutT ℓ Pt) :=
   callSub1C recvHookC
@@ -400,7 +401,7 @@ def recvArmC (isDel : Bool)
 
 /-- Semantic new-epoch (`findIdx? = none`) sub-branch of `semRecvHookS` with `fig8IdSemHook none`
 (projecting away the `Unit` extra state). -/
-def semRecvNewBranch
+@[expose] def semRecvNewBranch
     (idA idB : IdentityKey) (qep B T Kc : ℕ)
     (sC : LibsignalToModularSchemeSimState Bytes Pt ℓ)
     (Q : Party) (w : Bytes) (isDel : Bool)

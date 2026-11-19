@@ -11,26 +11,39 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.ExtBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSomeBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.E4PortHelpers
-public import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRootBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.ExtBudget
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSomeBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.CalleesPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.E4PortHelpers
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
-import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.Apply
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.IntoBoxedSliceBudget
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.TryCloneFromRefBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromOkPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPureBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Callee Contracts (`PksmCalleesPlaced`)
@@ -39,7 +52,7 @@ Allocation-budget (`RustCliAllocBudget M`) and `VmPreserved`-strengthened callee
 for `PreKeySignalMessage::try_from` (Block `111`), discharged from `CodecHooksPlaced M A lim H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -159,7 +172,7 @@ export CryptoVerification.SignalSession.Cli.RunProofs.PksmWire (
 
 /-- `VmPreserved`-strengthened word-level Err specification of
 `<IdentityKey as TryFrom<&[u8]>>::try_from` (Block `116`) under `[LibsignalPlacement]`. -/
-def identityKeyTryFromSliceWordsErrPlacedSpec [LibsignalPlacement] :
+@[expose] def identityKeyTryFromSliceWordsErrPlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × SignalProtocolError × BitVec 64) :=
   withVmPreserved
     CryptoVerification.SignalSession.Cli.RunProofs.PksmWire.identityKeyTryFromSliceWordsErrPlacedSpec
@@ -167,7 +180,7 @@ def identityKeyTryFromSliceWordsErrPlacedSpec [LibsignalPlacement] :
 /-- `VmPreserved`-strengthened exact `speAt` Err specification of
 `<IdentityKey as TryFrom<&[u8]>>::try_from` (Block `116`) under `[LibsignalPlacement]` on a
 48-byte sret (`memRegion outPtr 48`). -/
-def identityKeyTryFromSliceErrPlacedSpec [LibsignalPlacement] (A : RustAlloc)
+@[expose] def identityKeyTryFromSliceErrPlacedSpec [LibsignalPlacement] (A : RustAlloc)
     (fn : List (BitVec 8)) :
     Spec (BitVec 64 × List (BitVec 8) × SignalProtocolError × BitVec 64) :=
   withVmPreserved

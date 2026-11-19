@@ -10,10 +10,13 @@ limitations under the License.
 module
 
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.Defs
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import ProofLib.Sep
+meta import Lean
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Frame and Session Exposure Helpers for `TripleRatchet::from_session_state`
@@ -22,7 +25,7 @@ SessionState and sender-chain spatial exposure/reassembly lemmas and 496-byte st
 decompositions for `<TripleRatchet>::from_session_state` (`0x1c60c`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -80,7 +83,7 @@ theorem exists_chainKey_split_of_length_32 {bs : List (BitVec 8)} (h : bs.length
     simp only [pointsTo64_eq_bytes8, pointsTo32_eq_bytes4, pointsTo16_eq_bytes2,
       BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
 
-def sessionFromFrame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionFromFrame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) : SepProp :=
   ⌜(match st.remoteIdentity with
      | none => G.remoteIk.bytes = []
@@ -94,6 +97,14 @@ def sessionFromFrame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
   optTailVecAt A 32 (ss + 0x128#64) G.kyber ∗
   ((ss + 0x148#64) ↦₃₂ st.sessionVersion) ∗
   ((ss + 0x150#64) ↦ₛ G.regIds)
+
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``sessionFromFrame, #[1])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
 
 theorem vecAt_nil_chains_0_8 (A : RustAlloc) (v : BitVec 64) :
     ((v ↦₆₄ 0#64) ∗ ((v + 8#64) ↦₆₄ 8#64) ∗ ((v + 16#64) ↦₆₄ 0#64)) ⊢
@@ -128,15 +139,6 @@ theorem vecU8At_nil_0_1 (A : RustAlloc) (v : BitVec 64) :
       (0#64 : BitVec 64).toNat < 2 ^ 63 ∧ (1#64 : BitVec 64) ≠ 0 := by decide
   exact Entails.pure_right hp (Entails.refl _)
 
-theorem SepWP.intro_rodata_missingRemoteIdentity {prog : Program} {img : Obj.Image}
-    {target_pc : BitVec 64} {s : State} {P : SepProp} {post : State → SepProp → Prop}
-    (himg : Obj.Loads libsignalSessionImage img) (hfl : img.FrozenLoaded s)
-    (h : SepWP prog target_pc s (((img.base + bv% (ls_xref% (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 748) (ls_off% "<libsignal_protocol::triple_ratchet::OutgoingTripleRatchet>::from_session_state" + 752))) ↦ᵣ invalidSessionStructureStr .missingRemoteIdentity) ∗ P) post) :
-    SepWP prog target_pc s P post := by
-  refine ProofLib.SepWP.of_reaches_pc fun R hm => ProofLib.SepWP.to_reaches_pc h ?_
-  rw [sepConj_assoc]
-  exact rodata_missingRemoteIdentity_intro himg hfl.roData hm
-
 theorem entails_exists_right {α : Type _} {P : SepProp} {Q : α → SepProp} (a : α)
     (h : P ⊢ Q a) : P ⊢ (∃∗ x, Q x) :=
   Entails.sepExists_right a h
@@ -151,11 +153,7 @@ theorem speAt_missingRemoteIdentity_intro (A : RustAlloc) (a p : BitVec 64) :
   have hlen : BitVec.ofNat 64 (invalidSessionStructureStr .missingRemoteIdentity).length = 27#64 := by rfl_kernel
   have hw : speWord 20 = 0x8000000000000014#64 := rfl
   simp only [BitVec.add_assoc, BitVec.reduceAdd, hlen, hw]
-  refine sepConj_mono (Entails.refl _) ?_
-  rw [← sepConj_assoc, ← sepConj_assoc]
-  exact sepConj_mono
-    (entails_exists_right p (by simpa only [sepConj_assoc] using Entails.refl _))
-    (Entails.refl _)
+  bi_entail
 
 theorem trResultAt_err_missingRemoteIdentity_intro (A : RustAlloc) (r : BitVec 64) (G : SessionGhost)
     (p : BitVec 64) :
@@ -166,15 +164,12 @@ theorem trResultAt_err_missingRemoteIdentity_intro (A : RustAlloc) (r : BitVec 6
      memRegion (r + 32#64) 24 ∗
      memRegion (r + 56#64) 208) ⊢
       trResultAt A r G (.error (.invalidSessionStructure .missingRemoteIdentity)) := by
-  unfold trResultAt errResultAt
+  dsimp only [trResultAt, errResultAt, speAt, strRefAt]
   have herr : errTag = 0xffffffffffffffff#64 := rfl
-  rw [herr]
-  have hspe := speAt_missingRemoteIdentity_intro A (r + 8#64) p
-  simp only [BitVec.add_assoc, BitVec.reduceAdd] at hspe ⊢
-  refine sepConj_mono (Entails.refl _) ?_
-  rw [← sepConj_assoc, ← sepConj_assoc, ← sepConj_assoc, ← sepConj_assoc]
-  refine sepConj_mono ?_ (Entails.refl _)
-  simpa only [sepConj_assoc] using hspe
+  have hlen : BitVec.ofNat 64 (invalidSessionStructureStr .missingRemoteIdentity).length = 27#64 := by rfl_kernel
+  have hw : speWord 20 = 0x8000000000000014#64 := rfl
+  simp only [BitVec.add_assoc, BitVec.reduceAdd, herr, hlen, hw]
+  bi_entail
 
 theorem trResultAt_ok_intro (A : RustAlloc) (r : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) (rem : IdentityKey) (senderPad : List (BitVec 8))
@@ -216,20 +211,13 @@ theorem trResultAt_ok_intro (A : RustAlloc) (r : BitVec 64) (G : SessionGhost)
   simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
   exact Entails.refl _
 
-theorem base_aligned_of_loads {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img) :
-    img.base &&& 0xfff#64 = 0#64 :=
-  ProofLib.ObjectLoad.base_aligned_of_loads h
-
 theorem memRegion_32_to_bytes (a : BitVec 64) :
     memRegion a 32 ⊢ ∃∗ bs : List (BitVec 8), ⌜bs.length = 32⌝ ∗ (a ↦ₛ bs) := by
-  have h2a : memRegion a 32 = memRegion a 8 ∗ memRegion (a + 8#64) 24 :=
-    memRegion_split' (by decide) rfl (by decide)
-  have h2b : memRegion (a + 8#64) 24 =
-      memRegion (a + 8#64) 8 ∗ memRegion (a + 16#64) 8 ∗ memRegion (a + 24#64) 8 := by
-    rw [mr_cut_add a 8 8 16 (by decide)]
-    rw [mr_cut_add a 16 8 8 (by decide)]
-  rw [h2a, h2b, memRegion_eight a, memRegion_eight (a + 8#64),
-      memRegion_eight (a + 16#64), memRegion_eight (a + 24#64)]
+  have hsplit : memRegion a 32 =
+      (∃∗ w0 : BitVec 64, a ↦₆₄ w0) ∗ (∃∗ w1 : BitVec 64, (a + 8#64) ↦₆₄ w1) ∗
+      (∃∗ w2 : BitVec 64, (a + 16#64) ↦₆₄ w2) ∗ (∃∗ w3 : BitVec 64, (a + 24#64) ↦₆₄ w3) := by
+    sep_interval_eq
+  rw [hsplit]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right]
   apply Entails.sepExists_elim; intro w3
   apply Entails.sepExists_elim; intro w2
@@ -253,77 +241,63 @@ theorem memRegion_33_to_tag_and_32 (a : BitVec 64) :
     memRegion a 33 ⊢
       ∃∗ tag0 : BitVec 8, ∃∗ out32 : List (BitVec 8),
         ⌜out32.length = 32⌝ ∗ (a ↦₈ tag0) ∗ ((a + 1#64) ↦ₛ out32) := by
-  have h1 : memRegion a 33 = memRegion a 1 ∗ memRegion (a + 1#64) 32 :=
-    memRegion_split' (by decide) rfl (by decide)
-  rw [h1, memRegion_one a]
+  have h1 : memRegion a 33 = (∃∗ tag0 : BitVec 8, a ↦₈ tag0) ∗ memRegion (a + 1#64) 32 := by
+    sep_interval_eq
+  rw [h1]
   refine Entails.trans (sepConj_mono (Entails.refl _) (memRegion_32_to_bytes (a + 1#64))) ?_
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply Entails.sepExists_elim; intro out32
-  apply Entails.sepExists_elim; intro tag0
-  rw [sepConj_pure_left_comm]
-  apply Entails.pure_left; intro hout_len
-  apply entails_exists_right tag0
-  apply entails_exists_right out32
-  exact Entails.pure_right hout_len (Entails.refl _)
+  bi_entail
 
 theorem stackAt_dropVecChain_eq_remoteIdentityKey (sp : BitVec 64) :
     stackAt (sp - 496#64) dropVecChainStack =
       memRegion (sp - 4688#64) 4048 ∗ stackAt (sp - 496#64) remoteIdentityKeyStack := by
-  rw [ReceiveRatchetApply.stackAt_sub_split (sp - 496#64) dropVecChainStack remoteIdentityKeyStack
-    (by decide) (by decide)]
-  have heq : sp - 496#64 - BitVec.ofNat 64 dropVecChainStack = sp - 4688#64 := by
-    simp only [dropVecChainStack, dropVecMessageKeyStack, allocHookStack]; bv_omega
-  rw [heq]; rfl
+  dsimp only [stackAt, dropVecChainStack, dropVecMessageKeyStack, allocHookStack, remoteIdentityKeyStack]
+  sep_interval_eq
 
 theorem stackAt_dropVecChain_eq_dropSpe (sp : BitVec 64) :
     stackAt (sp - 496#64) dropVecChainStack =
       memRegion (sp - 4688#64) 64 ∗ stackAt (sp - 496#64) dropSpeStack := by
-  rw [ReceiveRatchetApply.stackAt_sub_split (sp - 496#64) dropVecChainStack dropSpeStack
-    (by decide) (by decide)]
-  have heq : sp - 496#64 - BitVec.ofNat 64 dropVecChainStack = sp - 4688#64 := by
-    simp only [dropVecChainStack, dropVecMessageKeyStack, allocHookStack]; bv_omega
-  rw [heq]; rfl
+  dsimp only [stackAt, dropVecChainStack, dropVecMessageKeyStack, allocHookStack, dropSpeStack]
+  sep_interval_eq
 
 theorem stackAt_dropVecChain_eq_allocHook (sp : BitVec 64) :
     stackAt (sp - 496#64) dropVecChainStack =
       memRegion (sp - 4688#64) 96 ∗ stackAt (sp - 496#64) allocHookStack := by
-  rw [ReceiveRatchetApply.stackAt_sub_split (sp - 496#64) dropVecChainStack allocHookStack
-    (by decide) (by decide)]
-  have heq : sp - 496#64 - BitVec.ofNat 64 dropVecChainStack = sp - 4688#64 := by
-    simp only [dropVecChainStack, dropVecMessageKeyStack, allocHookStack]; bv_omega
-  rw [heq]; rfl
+  dsimp only [stackAt, dropVecChainStack, dropVecMessageKeyStack, allocHookStack]
+  sep_interval_eq
 
 theorem stackAt_dropVecChain_eq_remoteIdentityKey_x (sp : BitVec 64) :
     stackAt (sp - 496#64) dropVecChainStackX =
       memRegion (sp - 16976#64) 16336 ∗ stackAt (sp - 496#64) remoteIdentityKeyStack := by
-  rw [ReceiveRatchetApply.stackAt_sub_split (sp - 496#64) dropVecChainStackX remoteIdentityKeyStack
-    (by decide) (by decide)]
-  have heq : sp - 496#64 - BitVec.ofNat 64 dropVecChainStackX = sp - 16976#64 := by
-    simp only [dropVecChainStackX, dropVecMessageKeyStackX, extHookStack]; bv_omega
-  rw [heq]; rfl
+  simp only [stackAt, dropVecChainStackX, dropVecMessageKeyStackX, extHookStack,
+    remoteIdentityKeyStack, Nat.reducePow, Nat.reduceAdd]
+  sep_interval_eq
 
 theorem stackAt_dropVecChain_eq_dropSpe_x (sp : BitVec 64) :
     stackAt (sp - 496#64) dropVecChainStackX =
       memRegion (sp - 16976#64) 64 ∗ stackAt (sp - 496#64) dropSpeStackX := by
-  rw [ReceiveRatchetApply.stackAt_sub_split (sp - 496#64) dropVecChainStackX dropSpeStackX
-    (by decide) (by decide)]
-  have heq : sp - 496#64 - BitVec.ofNat 64 dropVecChainStackX = sp - 16976#64 := by
-    simp only [dropVecChainStackX, dropVecMessageKeyStackX, extHookStack]; bv_omega
-  rw [heq]; rfl
+  simp only [stackAt, dropVecChainStackX, dropVecMessageKeyStackX, extHookStack, dropSpeStackX,
+    Nat.reducePow, Nat.reduceAdd]
+  sep_interval_eq
 
 theorem stackAt_dropVecChain_eq_allocHook_x (sp : BitVec 64) :
     stackAt (sp - 496#64) dropVecChainStackX =
       memRegion (sp - 16976#64) 96 ∗ stackAt (sp - 496#64) extHookStack := by
-  rw [ReceiveRatchetApply.stackAt_sub_split (sp - 496#64) dropVecChainStackX extHookStack
-    (by decide) (by decide)]
-  have heq : sp - 496#64 - BitVec.ofNat 64 dropVecChainStackX = sp - 16976#64 := by
-    simp only [dropVecChainStackX, dropVecMessageKeyStackX, extHookStack]; bv_omega
-  rw [heq]; rfl
+  simp only [stackAt, dropVecChainStackX, dropVecMessageKeyStackX, extHookStack,
+    Nat.reducePow, Nat.reduceAdd]
+  sep_interval_eq
 
-def vecU8Rest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Rest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
   A.live ptr cap.toNat 1 ∗
   memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
+
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``vecU8Rest, #[1, 2])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
 
 theorem vecU8At_expose_slice (A : RustAlloc) (v cap ptr : BitVec 64) (bs : List (BitVec 8))
     (hne : 0 < bs.length) :
@@ -348,11 +322,7 @@ theorem vecU8At_expose_slice (A : RustAlloc) (v cap ptr : BitVec 64) (bs : List 
   have hbs_toNat : (BitVec.ofNat 64 bs.length).toNat = bs.length := by
     rw [BitVec.toNat_ofNat]; omega
   rw [ite_eq_right_iff.mpr (fun h => (hcap_ne h).elim)]
-  apply Entails.pure_right ⟨hcap_cmn, hbs_lt, hbs_toNat⟩
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm]
-  apply Entails.pure_right ⟨hle, hlt, hptr⟩
-  exact Entails.of_eq (by ac_rfl)
+  bi_entail
 
 theorem vecU8At_reassemble_slice (A : RustAlloc) (v cap ptr : BitVec 64) (bs : List (BitVec 8))
     (hne : 0 < bs.length) :
@@ -369,9 +339,7 @@ theorem vecU8At_reassemble_slice (A : RustAlloc) (v cap ptr : BitVec 64) (bs : L
   have hpos : 0 < cap.toNat := by omega
   have hcap_ne : cap ≠ 0 := fun h => by subst h; simp at hpos
   rw [ite_eq_right_iff.mpr (fun h => (hcap_ne h).elim)]
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm]
-  apply Entails.pure_right ⟨hle, hlt, hptr⟩
-  exact Entails.of_eq (by ac_rfl)
+  bi_entail
 
 theorem vecBuf_chains_cmn (A : RustAlloc) (cap ptr : BitVec 64)
     (xs : List (ChainGhost × ReceiverChain)) :
@@ -442,10 +410,7 @@ theorem sessionStateAt_expose_from (A : RustAlloc) (ss : BitVec 64) (G : Session
     unfold sessionStateAt sessionFromFrame vecGhostAt
     apply Entails.pure_left
     rintro ⟨hlik, hrik, hchains, hpend, hreg, hlik33, hrik33⟩
-    apply Entails.pure_right ⟨hlik, hchains⟩
-    simp only [sepConj_assoc]
-    apply Entails.pure_right ⟨hrik, hpend, hreg, hlik33, hrik33⟩
-    exact Entails.of_eq (by ac_rfl)
+    bi_entail
   refine Entails.trans h1 ?_
   apply Entails.pure_left
   rintro ⟨hlik, hchains⟩
@@ -496,33 +461,7 @@ theorem sessionStateAt_expose_from (A : RustAlloc) (ss : BitVec 64) (G : Session
   refine Entails.trans (sepConj_mono (Entails.refl _)
     (sepConj_mono hlik_exp (sepConj_mono hroot_exp
       (sepConj_mono hchains_exp (sepConj_mono hpq_exp (sepConj_mono hsc_eq (Entails.refl _))))))) ?_
-  simp only [sepConj_assoc]
-  rw [sepConj_pure_left_comm]
-  apply Entails.pure_left; rintro ⟨_, _, hlik_toNat⟩
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm]
-  apply Entails.pure_left; intro _
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm]
-  apply Entails.pure_left; intro hcmn
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm]
-  apply Entails.pure_left; rintro ⟨hpq1, hpq2⟩
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm]
-  apply Entails.pure_left; intro hsc
-  apply Entails.pure_right ⟨hlik, hlik_toNat, hchains, hcmn, hpq1, hpq2, hsc⟩
-  exact Entails.refl _
+  bi_entail
 
 theorem sessionStateAt_reassemble_from (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8)))
@@ -574,13 +513,13 @@ theorem sessionStateAt_reassemble_from (A : RustAlloc) (ss : BitVec 64) (G : Ses
   simp only [sepConj_assoc] at h1
   refine Entails.trans h1 ?_
   unfold sessionStateAt SessionGhost.afterTrFrom sessionFromFrame vecGhostAt
+  dsimp only
   simp only [sepConj_assoc]
   apply Entails.pure_left
   rintro ⟨hrik, hpend, hreg, hlik33, hrik33⟩
-  apply Entails.pure_right ⟨hlik, hrik, rfl, hpend, hreg, hlik33, hrik33⟩
-  exact Entails.of_eq (by ac_rfl)
+  bi_entail
 
-def senderChainFromFrame (A : RustAlloc) (ss : BitVec 64)
+@[expose] def senderChainFromFrame (A : RustAlloc) (ss : BitVec 64)
     (sg : SenderChainGhost) (sc : SenderChain) : SepProp :=
   ⌜PublicKey.deserialize sg.srk.bytes = .ok sc.ratchetKey.publicKey ∧
     sg.priv.bytes = sc.ratchetKey.privateKey.bytes.toList ∧
@@ -592,6 +531,14 @@ def senderChainFromFrame (A : RustAlloc) (ss : BitVec 64)
   vecAt A 104 8 (messageKeyAt A) (ss + 192#64) sg.mkCap sg.mkPtr [] ∗
   vecU8Rest A sg.ck.cap sg.ck.ptr (CryptoGames.HMAC.keyToBytes32 sc.chainKey.key) ∗
   memRegion (ss + 244#64) 4
+
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``senderChainFromFrame, #[1])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
 
 theorem optSenderChainAt_some_expose_from (A : RustAlloc) (ss : BitVec 64)
     (sg : SenderChainGhost) (sc : SenderChain) :
@@ -628,21 +575,8 @@ theorem optSenderChainAt_some_expose_from (A : RustAlloc) (ss : BitVec 64)
   simp only [BitVec.add_assoc, BitVec.reduceAdd] at hsrk_exp hpriv_exp hck_exp
   refine Entails.trans (sepConj_mono hsrk_exp (sepConj_mono hpriv_exp
     (sepConj_mono (Entails.refl _) (sepConj_mono hck_exp (Entails.refl _))))) ?_
-  simp only [sepConj_assoc]
-  apply Entails.pure_left; rintro ⟨hsrk_cmn, hsrk_lt, hsrk_toNat⟩
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm]
-  apply Entails.pure_left; intro _
-  rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
-    sepConj_pure_left_comm, sepConj_pure_left_comm]
-  apply Entails.pure_left; rintro ⟨hck_cmn, _, _⟩
-  apply Entails.pure_right ⟨hsrk, hsrk_lt, hsrk_toNat, hclamp, hsrk_cmn, hck_cmn⟩
   unfold senderChainFromFrame
-  simp only [sepConj_assoc]
-  apply Entails.pure_right ⟨hsrk, hpriv, hclamp, hsrk33⟩
-  exact Entails.of_eq (by ac_rfl)
+  bi_entail
 
 theorem optSenderChainAt_some_reassemble_from (A : RustAlloc) (ss : BitVec 64)
     (sg : SenderChainGhost) (sc : SenderChain) :
@@ -694,8 +628,7 @@ theorem optSenderChainAt_some_reassemble_from (A : RustAlloc) (ss : BitVec 64)
       ((ss + 240#64) ↦₃₂ sc.chainKey.index) ∗ memRegion (ss + 244#64) 4 :=
     sepConj_mono hsrk_re (sepConj_mono hpriv_re
       (sepConj_mono (Entails.refl _) (sepConj_mono hck_re (Entails.refl _))))
-  refine Entails.trans ?_ h1
-  exact Entails.of_eq (by ac_rfl)
+  refine Entails.trans (by bi_entail) h1
 
 theorem exists_bytes_of_bv16 (w : BitVec 16) :
     ∃ b0 b1 : BitVec 8, w = b1 ++ b0 :=
@@ -749,15 +682,9 @@ theorem exists_err22_split (p w16 : BitVec 64) :
 theorem memRegion_34_of_tag_32_1 (a : BitVec 64) (tag : BitVec 8) (bs : List (BitVec 8))
     (h : bs.length = 32) :
     ((a ↦₈ tag) ∗ ((a + 1#64) ↦ₛ bs) ∗ memRegion (a + 33#64) 1) ⊢ memRegion a 34 := by
-  have h1a : memRegion a 34 = memRegion a 1 ∗ memRegion (a + 1#64) 33 :=
-    memRegion_split' (by decide) rfl (by decide)
-  have h1b : memRegion (a + 1#64) 33 = memRegion (a + 1#64) 32 ∗ memRegion (a + 33#64) 1 :=
-    mr_cut_add a 1 32 1 (by decide)
-  rw [h1a, h1b]
-  exact sepConj_mono (pointsTo8_entails_memRegion a tag)
-    (sepConj_mono (h ▸ pointsToBytes_entails_memRegion (a + 1#64) bs) (Entails.refl _))
+  sep_interval
 
-def remoteIdentityTag : Option IdentityKey → BitVec 8
+@[expose] def remoteIdentityTag : Option IdentityKey → BitVec 8
   | none => 0#8
   | some _ => 1#8
 
@@ -783,7 +710,7 @@ theorem remoteIdentityOkAt_unified (a : BitVec 64) (rem : Option IdentityKey) :
     refine Entails.pure_right ⟨ik.publicKey.bytes.toList_length, ?_⟩ (Entails.refl _)
     rintro _ ⟨rfl⟩; rfl
 
-def sessionFromBase (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionFromBase (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) : SepProp :=
   ⌜(match st.remoteIdentity with
      | none => G.remoteIk.bytes = []
@@ -796,6 +723,14 @@ def sessionFromBase (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
   optTailVecAt A 32 (ss + 0x128#64) G.kyber ∗
   ((ss + 0x148#64) ↦₃₂ st.sessionVersion) ∗
   ((ss + 0x150#64) ↦ₛ G.regIds)
+
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``sessionFromBase, #[1])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
 
 theorem sessionFromFrame_expose_remoteIk (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) :
@@ -820,7 +755,7 @@ theorem sessionFromFrame_reassemble_remoteIk (A : RustAlloc) (ss : BitVec 64) (G
   rw [sepConj_pure_left_comm]
   exact Entails.refl _
 
-def sessionAfter208Frame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionAfter208Frame (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) : SepProp :=
   sessionFromBase A ss G st ∗
   (ss ↦₆₄ G.localIk.cap) ∗ ((ss + 8#64) ↦₆₄ G.localIk.ptr) ∗
@@ -845,9 +780,8 @@ theorem sessionStateAt_reassemble_after208 (A : RustAlloc) (ss : BitVec 64) (G :
         { st with receiverChains := [], pqRatchetState := [] } := by
   refine Entails.trans ?_ (sessionStateAt_reassemble_from A ss G st hlik)
   unfold sessionAfter208Frame
-  refine Entails.trans ?_
+  refine Entails.trans (by bi_entail)
     (sepConj_mono (sessionFromFrame_reassemble_remoteIk A ss G st) (Entails.refl _))
-  exact Entails.of_eq (by ac_rfl)
 
 theorem stack_496_40_split (sp : BitVec 64) :
     memRegion (sp - 496#64) 40 =
@@ -857,12 +791,7 @@ theorem stack_496_40_split (sp : BitVec 64) :
       (∃∗ u_480 : BitVec 64, (sp - 480#64) ↦₆₄ u_480) ∗
       (∃∗ u_472 : BitVec 64, (sp - 472#64) ↦₆₄ u_472) ∗
       (∃∗ u_464 : BitVec 64, (sp - 464#64) ↦₆₄ u_464) := by
-  rw [mr_cut' sp 496 488 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 488 484 4 28 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 484 480 4 24 28 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 480 472 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 472 464 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  simp only [memRegion_four, memRegion_eight]
+  sep_interval_eq
 
 theorem stack_496_40_fold (sp : BitVec 64) (u_488 u_484 : BitVec 32)
     (u_480 u_472 u_464 : BitVec 64) :
@@ -871,16 +800,7 @@ theorem stack_496_40_fold (sp : BitVec 64) (u_488 u_484 : BitVec 32)
       ((sp - 480#64) ↦₆₄ u_480) ∗ ((sp - 472#64) ↦₆₄ u_472) ∗
       ((sp - 464#64) ↦₆₄ u_464)) ⊢
       memRegion (sp - 496#64) 40 := by
-  rw [mr_cut' sp 496 488 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 488 484 4 28 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 484 480 4 24 28 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 480 472 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 472 464 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  refine sepConj_mono (Entails.refl _) ?_
-  refine sepConj_mono (pointsTo32_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo32_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  exact sepConj_mono (pointsTo64_entails_memRegion _ _) (pointsTo64_entails_memRegion _ _)
+  sep_interval
 
 theorem stack_280_184_split (sp : BitVec 64) :
     memRegion (sp - 280#64) 184 =
@@ -902,41 +822,19 @@ theorem stack_280_184_split (sp : BitVec 64) :
       memRegion (sp - 127#64) 1 ∗
       memRegion (sp - 126#64) 14 ∗
       memRegion (sp - 112#64) 16 := by
-  rw [mr_cut' sp 280 272 8 176 184 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 272 271 1 175 176 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 271 264 7 168 175 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 264 260 4 164 168 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 260 258 2 162 164 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 258 232 26 136 162 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 232 228 4 132 136 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 228 226 2 130 132 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 226 208 18 112 130 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 208 204 4 108 112 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 204 184 20 88 108 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 184 176 8 80 88 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 176 174 2 78 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 174 160 14 64 78 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 160 127 33 31 64 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 127 126 1 30 31 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 126 112 14 16 30 rfl rfl (by decide) (by decide) (by decide)]
-  simp only [memRegion_eight, memRegion_four, memRegion_two, memRegion_one]
+  sep_interval_eq
 
 theorem memRegion_48_split_8_2_38 (sp : BitVec 64) :
     memRegion (sp - 160#64) 48 =
       (∃∗ u_160 : BitVec 64, (sp - 160#64) ↦₆₄ u_160) ∗
       (∃∗ u_152 : BitVec 16, (sp - 152#64) ↦₁₆ u_152) ∗
       memRegion (sp - 150#64) 38 := by
-  rw [mr_cut' sp 160 152 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 152 150 2 38 40 rfl rfl (by decide) (by decide) (by decide)]
-  simp only [memRegion_eight, memRegion_two]
+  sep_interval_eq
 
 theorem memRegion_24_of_8_2_14 (sp : BitVec 64) (w136 : BitVec 64) (h128 : BitVec 16) :
     (((sp - 136#64) ↦₆₄ w136) ∗ ((sp - 128#64) ↦₁₆ h128) ∗ memRegion (sp - 126#64) 14) ⊢
       memRegion (sp - 136#64) 24 := by
-  rw [mr_cut' sp 136 128 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 128 126 2 14 16 rfl rfl (by decide) (by decide) (by decide)]
-  exact sepConj_mono (pointsTo64_entails_memRegion _ _)
-    (sepConj_mono (pointsTo16_entails_memRegion _ _) (Entails.refl _))
+  sep_interval
 
 theorem ret_264_split_some (r : BitVec 64) :
     memRegion r 264 =
@@ -967,35 +865,7 @@ theorem ret_264_split_some (r : BitVec 64) :
       (∃∗ w24 : BitVec 64, (r + 192#64) ↦₆₄ w24) ∗
       memRegion (r + 200#64) 32 ∗
       memRegion (r + 232#64) 32 := by
-  have h0 : memRegion r 264 = memRegion r 8 ∗ memRegion (r + 8#64) 256 :=
-    memRegion_split' (by decide) rfl (by decide)
-  rw [h0]
-  rw [mr_cut_add r 8 8 248 (by decide)]
-  rw [mr_cut_add r 16 8 240 (by decide)]
-  rw [mr_cut_add r 24 8 232 (by decide)]
-  rw [mr_cut_add r 32 8 224 (by decide)]
-  rw [mr_cut_add r 40 8 216 (by decide)]
-  rw [mr_cut_add r 48 8 208 (by decide)]
-  rw [mr_cut_add r 56 8 200 (by decide)]
-  rw [mr_cut_add r 64 8 192 (by decide)]
-  rw [mr_cut_add r 72 8 184 (by decide)]
-  rw [mr_cut_add r 80 8 176 (by decide)]
-  rw [mr_cut_add r 88 8 168 (by decide)]
-  rw [mr_cut_add r 96 8 160 (by decide)]
-  rw [mr_cut_add r 104 8 152 (by decide)]
-  rw [mr_cut_add r 112 8 144 (by decide)]
-  rw [mr_cut_add r 120 8 136 (by decide)]
-  rw [mr_cut_add r 128 8 128 (by decide)]
-  rw [mr_cut_add r 136 8 120 (by decide)]
-  rw [mr_cut_add r 144 8 112 (by decide)]
-  rw [mr_cut_add r 152 8 104 (by decide)]
-  rw [mr_cut_add r 160 8 96 (by decide)]
-  rw [mr_cut_add r 168 8 88 (by decide)]
-  rw [mr_cut_add r 176 8 80 (by decide)]
-  rw [mr_cut_add r 184 8 72 (by decide)]
-  rw [mr_cut_add r 192 8 64 (by decide)]
-  rw [mr_cut_add r 200 32 32 (by decide)]
-  simp only [memRegion_eight]
+  sep_interval_eq
 
 theorem ret_264_split_none (r : BitVec 64) :
     memRegion r 264 =
@@ -1008,25 +878,12 @@ theorem ret_264_split_none (r : BitVec 64) :
       (∃∗ r38 : BitVec 16, (r + 38#64) ↦₁₆ r38) ∗
       memRegion (r + 40#64) 16 ∗
       memRegion (r + 56#64) 208 := by
-  have h0 : memRegion r 264 = memRegion r 8 ∗ memRegion (r + 8#64) 256 :=
-    memRegion_split' (by decide) rfl (by decide)
-  rw [h0]
-  rw [mr_cut_add r 8 8 248 (by decide)]
-  rw [mr_cut_add r 16 4 244 (by decide)]
-  rw [mr_cut_add r 20 2 242 (by decide)]
-  rw [mr_cut_add r 22 8 234 (by decide)]
-  rw [mr_cut_add r 30 8 226 (by decide)]
-  rw [mr_cut_add r 38 2 224 (by decide)]
-  rw [mr_cut_add r 40 16 208 (by decide)]
-  simp only [memRegion_eight, memRegion_four, memRegion_two]
+  sep_interval_eq
 
 theorem memRegion_48_of_8_2_38 (sp : BitVec 64) (u_160 : BitVec 64) (u_152 : BitVec 16) :
     (((sp - 160#64) ↦₆₄ u_160) ∗ ((sp - 152#64) ↦₁₆ u_152) ∗ memRegion (sp - 150#64) 38) ⊢
       memRegion (sp - 160#64) 48 := by
-  rw [mr_cut' sp 160 152 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 152 150 2 38 40 rfl rfl (by decide) (by decide) (by decide)]
-  exact sepConj_mono (pointsTo64_entails_memRegion _ _)
-    (sepConj_mono (pointsTo16_entails_memRegion _ _) (Entails.refl _))
+  sep_interval
 
 theorem memRegion_48_of_8_8_8_8_2_14 (sp : BitVec 64)
     (w160 w152 w144 w136 : BitVec 64) (h128 : BitVec 16) :
@@ -1034,24 +891,12 @@ theorem memRegion_48_of_8_8_8_8_2_14 (sp : BitVec 64)
      ((sp - 144#64) ↦₆₄ w144) ∗ ((sp - 136#64) ↦₆₄ w136) ∗
      ((sp - 128#64) ↦₁₆ h128) ∗ memRegion (sp - 126#64) 14) ⊢
       memRegion (sp - 160#64) 48 := by
-  rw [mr_cut' sp 160 152 8 40 48 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 152 144 8 32 40 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 144 136 8 24 32 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 136 128 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 128 126 2 14 16 rfl rfl (by decide) (by decide) (by decide)]
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  exact sepConj_mono (pointsTo16_entails_memRegion _ _) (Entails.refl _)
+  sep_interval
 
 theorem memRegion_24_of_8_8_8 (sp : BitVec 64) (w0 w1 w2 : BitVec 64) :
     (((sp - 456#64) ↦₆₄ w0) ∗ ((sp - 448#64) ↦₆₄ w1) ∗ ((sp - 440#64) ↦₆₄ w2)) ⊢
       memRegion (sp - 456#64) 24 := by
-  rw [mr_cut' sp 456 448 8 16 24 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 448 440 8 8 16 rfl rfl (by decide) (by decide) (by decide)]
-  exact sepConj_mono (pointsTo64_entails_memRegion _ _)
-    (sepConj_mono (pointsTo64_entails_memRegion _ _) (pointsTo64_entails_memRegion _ _))
+  sep_interval
 
 theorem stack_280_184_fold (sp : BitVec 64)
     (u_280 : BitVec 64) (u_272 : BitVec 8) (u_264 : BitVec 32) (u_260 : BitVec 16)
@@ -1064,35 +909,7 @@ theorem stack_280_184_fold (sp : BitVec 64)
      ((sp - 184#64) ↦₆₄ u_184) ∗ ((sp - 176#64) ↦₁₆ u_176) ∗ memRegion (sp - 174#64) 14 ∗
      memRegion (sp - 160#64) 48 ∗ memRegion (sp - 112#64) 16) ⊢
       memRegion (sp - 280#64) 184 := by
-  rw [mr_cut' sp 280 272 8 176 184 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 272 271 1 175 176 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 271 264 7 168 175 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 264 260 4 164 168 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 260 258 2 162 164 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 258 232 26 136 162 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 232 228 4 132 136 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 228 226 2 130 132 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 226 208 18 112 130 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 208 204 4 108 112 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 204 184 20 88 108 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 184 176 8 80 88 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 176 174 2 78 80 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 174 160 14 64 78 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 160 112 48 16 64 rfl rfl (by decide) (by decide) (by decide)]
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo8_entails_memRegion _ _) ?_
-  refine sepConj_mono (Entails.refl _) ?_
-  refine sepConj_mono (pointsTo32_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo16_entails_memRegion _ _) ?_
-  refine sepConj_mono (Entails.refl _) ?_
-  refine sepConj_mono (pointsTo32_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo16_entails_memRegion _ _) ?_
-  refine sepConj_mono (Entails.refl _) ?_
-  refine sepConj_mono (pointsTo32_entails_memRegion _ _) ?_
-  refine sepConj_mono (Entails.refl _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo16_entails_memRegion _ _) ?_
-  exact sepConj_mono (Entails.refl _) (sepConj_mono (Entails.refl _) (Entails.refl _))
+  sep_interval
 
 theorem stack_400_fold (sp : BitVec 64) (bs104 bs32 : List (BitVec 8))
     (h104 : bs104.length = 104) (h32 : bs32.length = 32)
@@ -1106,20 +923,7 @@ theorem stack_400_fold (sp : BitVec 64) (bs104 bs32 : List (BitVec 8))
      ((sp - 284#64) ↦₃₂ d284) ∗
      memRegion (sp - 280#64) 184) ⊢
       memRegion (sp - 496#64) 400 := by
-  rw [mr_cut' sp 496 456 40 360 400 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 456 432 24 336 360 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 432 328 104 232 336 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 328 296 32 200 232 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 296 288 8 192 200 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 288 284 4 188 192 rfl rfl (by decide) (by decide) (by decide)]
-  rw [mr_cut' sp 284 280 4 184 188 rfl rfl (by decide) (by decide) (by decide)]
-  refine sepConj_mono (Entails.refl _) ?_
-  refine sepConj_mono (Entails.refl _) ?_
-  refine sepConj_mono (h104 ▸ pointsToBytes_entails_memRegion _ _) ?_
-  refine sepConj_mono (h32 ▸ pointsToBytes_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) ?_
-  refine sepConj_mono (pointsTo32_entails_memRegion _ _) ?_
-  exact sepConj_mono (pointsTo32_entails_memRegion _ _) (Entails.refl _)
+  sep_interval
 
 theorem vecAt_chains_stack_fold (A : RustAlloc) (sp : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) (hchains : G.chains.length = st.receiverChains.length) :
@@ -1138,7 +942,6 @@ theorem vecAt_chains_stack_fold (A : RustAlloc) (sp : BitVec 64) (G : SessionGho
   rw [h1, h2]
   simp only [sepConj_assoc]
   exact Entails.refl _
-
 
 end ReceiveRatchetFrom
 end CryptoVerification.LibsignalTripleRatchet

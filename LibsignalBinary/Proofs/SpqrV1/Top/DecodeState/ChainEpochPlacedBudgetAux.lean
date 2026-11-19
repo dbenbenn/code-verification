@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochErrPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochErrPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.VersionNegotiationLoop
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochErrPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubPlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `spqr::decode_state` (Block `325`): Budget Relocatable `ChainEpochPB` Call & Framing Helpers
@@ -26,7 +29,7 @@ Budget-threaded relocatable `[LibsignalPlacement]` call wrappers, stack/heap fra
 and `DecodeStateLoopEnv` bridges for `ChainEpochPB::merge`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -43,43 +46,21 @@ open CryptoVerification.RustHeap (RustAlloc allocHookStack vecHeader vecU8At)
 open CryptoVerification.LibsignalProtoCodec (WireType)
 open CryptoVerification.LibsignalTripleRatchet (decodeErrorAtStackLen withLsCodeRoLoaded)
 open CryptoVerification.LibsignalTripleRatchetRepr (noneCap)
-open CryptoVerification.LibsignalTripleRatchet.Prost
-  (BytesMergeCapOk IsDropSuffix SkipFieldGhost pointsToBytes_prefix_join sliceCursorAfter
-   sliceCursorAt)
+open CryptoVerification.LibsignalTripleRatchet.Prost (BytesMergeCapOk IsDropSuffix SkipFieldGhost pointsToBytes_prefix_join sliceCursorAfter sliceCursorAt)
 open CryptoVerification.SpqrV1.Alloc (GrowGhost)
-open CryptoVerification.SpqrV1.ProtoRepr
-  (chainEpochPBAt epochDirectionPBAt optEpochDirectionPBAt)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (codecWireTypeToProto v1StateJumpTablesPlacedAt v1StateMergeStack)
+open CryptoVerification.SpqrV1.ProtoRepr (chainEpochPBAt epochDirectionPBAt optEpochDirectionPBAt)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (codecWireTypeToProto v1StateJumpTablesPlacedAt v1StateMergeStack)
 open CryptoVerification.LibsignalSpqrV1 (ChainEpochPB EpochDirectionPB PqRatchetState)
 open CryptoVerification.LibsignalSpqrV1.Proto (mergeMessage)
-open CryptoVerification.SpqrV1.Top.DecodeState
-  (DecodeStateGhost EpochDirectionMergeGhost TraceVRegs V1InnerHeapPred chainEpochPBCapOkAt
-   chainEpochPBCapOkAt_entails_chainEpochPBAt chainEpochPBCapOkAt_eq_placed decodeStateSavedAt
-   epochDirectionMergeStack epochDirectionPBCapOkAt lower_352_fold optEpochDirectionPBCapOkAt
-   protoPqRatchetStateAt protoPqRatchetStateCapOkAt
-   protoPqRatchetStateCapOkAt_entails_protoPqRatchetStateAt proto_mergeMessage_suffix
-   sliceCursorAfter_to_memRegion sp_sub_1392_aligned stackAt_of_callee stackAt_to_callee
-   upper_240_fold vecArgRestAt vecArg_join_bytes vecU8At_eq_header_heap vecU8CapOkAt vecU8Heap
-   vecU8Heap_cap_lt)
-open LibsignalBinary.Heap
-  (AllocCostModel AllocEvent BudgetLimits FitsEnv FreeOnlyEvs RustCliAllocBudget)
+open CryptoVerification.SpqrV1.Top.DecodeState (DecodeStateGhost EpochDirectionMergeGhost TraceVRegs V1InnerHeapPred chainEpochPBCapOkAt chainEpochPBCapOkAt_entails_chainEpochPBAt chainEpochPBCapOkAt_eq_placed decodeStateSavedAt epochDirectionMergeStack epochDirectionPBCapOkAt lower_352_fold optEpochDirectionPBCapOkAt protoPqRatchetStateAt protoPqRatchetStateCapOkAt protoPqRatchetStateCapOkAt_entails_protoPqRatchetStateAt proto_mergeMessage_suffix sliceCursorAfter_to_memRegion sp_sub_1392_aligned stackAt_of_callee stackAt_to_callee upper_240_fold vecArgRestAt vecArg_join_bytes vecU8At_eq_header_heap vecU8CapOkAt vecU8Heap vecU8Heap_cap_lt)
+open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits FitsEnv FreeOnlyEvs RustCliAllocBudget)
 open LibsignalBinary.Heap.SpecBudget (DecodeErrorPushEnv)
 open LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget (SkipField3Env)
-open LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
-  (GrowOneStrideEnv growOneStrideEvents growOneStrideFullSpec growOneStrideFullSpecWithStack)
-open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-  (DecodeStateEnv DecodeStateIterEnv DecodeStateLoopEnv EpochDirectionMergeEnv
-   EpochDirectionMergePostEnv FitsEnv.decodeStateLoop_head FitsEnv.decodeStateLoop_mono
-   FitsEnv.decodeStateLoop_split FitsEnv.decodeStateLoop_tail epochDirectionMergeSpec
-   epochDirectionMergeSpecOfEnv)
-open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubPlacedBudgetAux
-  (fitsEnv_decodeErrorPush_of_loop)
-open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochErrPlacedBudget
-  (decodeStateEpochErrFramePlaced decodeStateEpochErrTailFramePlaced
-   fitsEnv_epochDrop_push1_of_loop fitsEnv_epochDrop_push2_of_loop)
-open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlacedBudget
-  (SepWPpIPlaced decodeStateLoopCommonPlaced)
+open LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget (GrowOneStrideEnv growOneStrideEvents growOneStrideFullSpec growOneStrideFullSpecWithStack)
+open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget (DecodeStateEnv DecodeStateIterEnv DecodeStateLoopEnv EpochDirectionMergeEnv EpochDirectionMergePostEnv FitsEnv.decodeStateLoop_head FitsEnv.decodeStateLoop_mono FitsEnv.decodeStateLoop_split FitsEnv.decodeStateLoop_tail epochDirectionMergeSpec epochDirectionMergeSpecOfEnv)
+open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubPlacedBudgetAux (fitsEnv_decodeErrorPush_of_loop)
+open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ChainEpochErrPlacedBudget (decodeStateEpochErrFramePlaced decodeStateEpochErrTailFramePlaced fitsEnv_epochDrop_push1_of_loop fitsEnv_epochDrop_push2_of_loop)
+open LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommonPlacedBudget (SepWPpIPlaced decodeStateLoopCommonPlaced)
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff Program.fnAddr Obj.lookup
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -327,7 +308,7 @@ theorem optEpochDirectionPBCapOkAt_none (A : RustAlloc) (a : BitVec 64) (remLen 
 theorem optEpochDirectionPBAt_some_eq (A : RustAlloc) (a : BitVec 64) (d : EpochDirectionPB) :
     optEpochDirectionPBAt A a (some d) = epochDirectionPBAt A a d := rfl
 
-def epochDirectionPBCapOkRestAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat)
+@[expose] def epochDirectionPBCapOkRestAt (A : RustAlloc) (a : BitVec 64) (remLen : Nat)
     (cap1 : BitVec 64) (d : EpochDirectionPB) : SepProp :=
   (∃∗ ptr1 : BitVec 64,
     ((a + 8#64) ↦₆₄ ptr1) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 d.next.length) ∗

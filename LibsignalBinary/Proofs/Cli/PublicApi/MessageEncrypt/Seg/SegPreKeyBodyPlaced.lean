@@ -9,10 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyBody
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyTailPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyBody
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStalenessPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyStalePlaced
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyStale
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CmDropPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrPreKeyEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrSignalEncryptPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.ProtocolErrStoreHookPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Relocatable `segPreKey` Registration IDs, Kyber Closure, and Segment Assembly
@@ -21,7 +36,7 @@ Proves `segPreKey_regId_kyber_placed_ok` (`+0x6fc..+0x8b4`, calling `kyberMap` o
 Block `464` (`lsProg_464 Hk`) under `[LibsignalPlacement]`, and assembles `segPreKey_placed_okV`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -95,7 +110,7 @@ theorem segPreKey_regId_kyber_placed_ok [LibsignalPlacement]
   refine sepWPp_elim_ex fun w14 => ?_
   refine SepWPp.fold (pollWithBaseKey_regId_unpack sp items) (by sep_focus) ?_
   refine sepWPp_elim_ex fun w590 => sepWPp_elim_ex fun w588 => sepWPp_elim_ex fun w580 => ?_
-  dsimp only [encSpillsAt, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq]
+  dsimp only [encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq]
   rw [encSubStack_split_kyber hsp]
   dsimp only [lsProg_464, ite_true] at hkyber_call ⊢
   cases hky : sess.pendingKyberPreKey with
@@ -167,7 +182,7 @@ theorem segPreKey_regId_kyber_placed_ok [LibsignalPlacement]
       intro hcrl_f hmf
       dsimp only [PreKeyEncryptStatePlaced, PreKeyEncryptState'Placed, preKeyEncryptScratch,
         preKeyEncryptScratch', pollPreKeyEncrypt, pollE6c', encMidMetaPlaced, encEntryPlaced,
-        encSpillsAt, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
+        encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
         at hsp1 hx19_1 hx20_1 hx22_1 hx24_1' hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1 hmf ⊢
       refine ⟨prevCap, prevPtr, G, ts, expiry, pkVal, bp, hts, hexp, hlt, hpkVal,
         hpc1,
@@ -264,7 +279,7 @@ theorem segPreKey_regId_kyber_placed_ok [LibsignalPlacement]
       intro hcrl_f hmf
       dsimp only [PreKeyEncryptStatePlaced, PreKeyEncryptState'Placed, preKeyEncryptScratch,
         preKeyEncryptScratch', pollPreKeyEncrypt, pollE6c', encMidMetaPlaced, encEntryPlaced,
-        encSpillsAt, encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
+        encSpillsAtV, encCommonPlaced, nowAt, lsLogOff_eq, sp]
         at hsp1 hx19_1 hx20_1 hx22_1 hx24_1' hx25_1 hx26_1 hx27_1 hx28_1 hx29_1 hvregs_1 hmf ⊢
       refine ⟨prevCap, prevPtr, G, ts, expiry, pkVal, bp, hts, hexp, hlt, hpkVal,
         hpc1,

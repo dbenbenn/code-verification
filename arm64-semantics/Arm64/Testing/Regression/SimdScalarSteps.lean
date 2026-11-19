@@ -168,9 +168,11 @@ error: wp_step: no step rule succeeded for instruction `Instr.ldrSimd SimdMemSiz
   (AddrMode.Offset (Reg.gpr 23#5)
     0#64)` (full: `Instr.ldrSimd SimdMemSize.D64 (0#5)
   (AddrMode.Offset (Reg.gpr 23#5) 0#64)`) at PC `prog.fnAddr "simd_ldr_only"`
+effective address: `q`
 spatial context points-to atoms: (none)
 (detail: wp_sep_access: no cell at q in
   emp)
+hint: if the target cell is in context at a different width (`↦₆₄` vs `↦₈`/`↦₁₆`/`↦₃₂`) or inside a byte slice/region (`↦ₛ`, `↦ᵣ`, `memRegion`, `stackFrameAt`), prove the slice length bound (`off + w ≤ bs.length` for `wp_sep_access`), split the cell (`pointsToBytes_focus` / `stackFrameAt_split_close`), or use `wp_sym_steps`
 -/
 #guard_msgs (error) in
 example (prog : Program) (h_code : simdLdrOnlyCode.holds prog) :

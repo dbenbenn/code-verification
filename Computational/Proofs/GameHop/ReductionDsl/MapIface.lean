@@ -20,7 +20,7 @@ Defines semantics- and cost-preserving `OpsHom` maps and commutes `simulateQ` th
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.GameHop.ReductionDsl.MapIface
 
@@ -41,21 +41,21 @@ structure OpsHom (O₁ O₂ : Ops S) where
     cast (congrArg Ty.denote (cod_eq o).symm) (O₁.eval o x)
   cost_le : ∀ o, O₂.cost (mapOp o) ≤ O₁.cost o
 
-def OpsHom.inl (O₁ O₂ : Ops S) : OpsHom O₁ (O₁.sum O₂) where
+@[expose] def OpsHom.inl (O₁ O₂ : Ops S) : OpsHom O₁ (O₁.sum O₂) where
   mapOp := Sum.inl
   dom_eq _ := rfl
   cod_eq _ := rfl
   eval_eq _ _ := rfl
   cost_le _ := Nat.le_refl _
 
-def OpsHom.inr (O₁ O₂ : Ops S) : OpsHom O₂ (O₁.sum O₂) where
+@[expose] def OpsHom.inr (O₁ O₂ : Ops S) : OpsHom O₂ (O₁.sum O₂) where
   mapOp := Sum.inr
   dom_eq _ := rfl
   cod_eq _ := rfl
   eval_eq _ _ := rfl
   cost_le _ := Nat.le_refl _
 
-def OpsHom.id (O : Ops S) : OpsHom O O where
+@[expose] def OpsHom.id (O : Ops S) : OpsHom O O where
   mapOp o := o
   dom_eq _ := rfl
   cod_eq _ := rfl
@@ -148,7 +148,7 @@ theorem simulateQ_liftP_eq_self (I : Iface S T₁) (qi : QueryImpl T₁ ProbComp
   exact simulateQ_id' p
 
 /-- Translates `Comp O I₁` into `Comp O I₂` by substituting `.sample` and `.query` calls. -/
-def compSubstCalls {I₁ : Iface S T₁} {I₂ : Iface S T₂}
+@[expose] def compSubstCalls {I₁ : Iface S T₁} {I₂ : Iface S T₂}
     (onSample : ∀ {Γ : List (Ty S)} (s : I₁.smp.Samp),
       Expr O Γ (I₁.smp.sDom s) → Comp O I₂ Γ (I₁.smp.sTy s))
     (onQuery : ∀ {Γ : List (Ty S)} (g : I₁.Tag),
@@ -227,71 +227,6 @@ theorem simulateQ_comp_eval_eq_substCalls {I₁ : Iface S T₁} {I₂ : Iface S 
     congr 1; funext x; funext acc
     exact simulateQ_comp_eval_eq_substCalls qi onSample onQuery hSample hQuery f
       (.cons x (.cons acc ρ))
-
-theorem compSubstCalls_cost_le {I₁ : Iface S T₁} {I₂ : Iface S T₂}
-    (onSample : ∀ {Γ : List (Ty S)} (s : I₁.smp.Samp),
-      Expr O Γ (I₁.smp.sDom s) → Comp O I₂ Γ (I₁.smp.sTy s))
-    (onQuery : ∀ {Γ : List (Ty S)} (g : I₁.Tag),
-      Expr O Γ (I₁.dom g) → Comp O I₂ Γ (I₁.cod g))
-    (hSampleCost : ∀ {Γ : List (Ty S)} (s : I₁.smp.Samp) (e : Expr O Γ (I₁.smp.sDom s)),
-      (onSample s e).cost ≤ e.cost + I₁.smp.sCost s)
-    (hQueryCost : ∀ {Γ : List (Ty S)} (g : I₁.Tag) (e : Expr O Γ (I₁.dom g)),
-      (onQuery g e).cost ≤ e.cost + I₁.qCost g) :
-    ∀ {Γ : List (Ty S)} {t : Ty S} (c : Comp O I₁ Γ t),
-      (compSubstCalls onSample onQuery c).cost ≤ c.cost
-  | _, _, .ret _ => le_rfl
-  | _, _, .bind c k => by
-    have hc := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost c
-    have hk := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost k
-    simp only [compSubstCalls, Comp.cost]
-    omega
-  | _, _, .ite _ c d => by
-    have hc := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost c
-    have hd := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost d
-    simp only [compSubstCalls, Comp.cost]
-    omega
-  | _, _, .caseOpt _ n s => by
-    have hn := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost n
-    have hs := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost s
-    simp only [compSubstCalls, Comp.cost]
-    omega
-  | _, _, .caseSum _ l r => by
-    have hl := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost l
-    have hr := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost r
-    simp only [compSubstCalls, Comp.cost]
-    omega
-  | _, _, .sample s e => hSampleCost s e
-  | _, _, .query g e => hQueryCost g e
-  | _, _, .iter n _ body => by
-    have hb := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost body
-    simp only [compSubstCalls, Comp.cost]
-    exact Nat.add_le_add_right
-      (Nat.add_le_add_left (Nat.mul_le_mul_left n (Nat.add_le_add_right hb 1)) _) 1
-  | _, _, .findM K _ p => by
-    have hp := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost p
-    simp only [compSubstCalls, Comp.cost]
-    exact Nat.add_le_add_right
-      (Nat.add_le_add_left (Nat.mul_le_mul_left K (Nat.add_le_add_right hp 1)) _) 1
-  | _, _, .anyM K _ p => by
-    have hp := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost p
-    simp only [compSubstCalls, Comp.cost]
-    exact Nat.add_le_add_right
-      (Nat.add_le_add_left (Nat.mul_le_mul_left K (Nat.add_le_add_right hp 1)) _) 1
-  | _, _, .mapM K _ f => by
-    have hf := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost f
-    simp only [compSubstCalls, Comp.cost]
-    exact Nat.add_le_add_right
-      (Nat.add_le_add_left (Nat.mul_le_mul_left K (Nat.add_le_add_right hf 1)) _) 1
-  | _, _, .consumeFirstM K _ p _ => by
-    have hp := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost p
-    simp only [compSubstCalls, Comp.cost]
-    exact Nat.add_le_add_right
-      (Nat.add_le_add_left (Nat.mul_le_mul_left K (by omega)) _) 1
-  | _, _, .foldM K _ _ f => by
-    have hf := compSubstCalls_cost_le onSample onQuery hSampleCost hQueryCost f
-    simp only [compSubstCalls, Comp.cost]
-    exact Nat.add_le_add_right
-      (Nat.add_le_add_left (Nat.mul_le_mul_left K (Nat.add_le_add_right hf 1)) _) 1
 
 end SimulateQCompEval
 

@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session
-public import LibsignalBinary.Proofs.SignalSession.Cli.Fs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.RecordMove
-public import LibsignalBinary.Proofs.E2E.InMem.SessionStoreImpl.ReprBridge
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.RecordMove -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.InMem.SessionStoreImpl.ReprBridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -79,7 +80,7 @@ theorem q128_entails_memRegion16 (a : BitVec 64) (q : BitVec 128) :
   exact Entails.sepExists_right q (Entails.refl _)
 
 /-- Exact 848-byte (`0x350`) stack-frame decomposition of `load_session::{closure#0}`. -/
-def loadPollFrameSlots (sp : BitVec 64)
+@[expose] def loadPollFrameSlots (sp : BitVec 64)
     (c_sp0 : BitVec 64) (q140 : BitVec 128)
     (c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 c10 c11 : BitVec 64) : SepProp :=
   ((sp - 0x350#64) ↦₆₄ c_sp0) ∗
@@ -232,7 +233,7 @@ theorem slot170_split48 (sp : BitVec 64) :
 /-! ## `Vec<u8>` borrow-and-drop decomposition -/
 
 /-- Remaining heap ownership of a `Vec<u8>` after borrowing `SpqrV1.ChainProofs.bytesAt false ptr bs`. -/
-def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if cap = 0#64 then emp
   else A.live ptr cap.toNat 1 ∗ memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
 
@@ -542,36 +543,6 @@ theorem slot170_ok_collapse (sp w0 w1 w2 w3 : BitVec 64) :
         (b' := sp - 0x1d8#64) rfl (by bv_omega) (by decide)]
   exact Entails.refl _
 
-theorem recordDeserialize_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr sessLoadPollName -
-      bv% (ls_rel% "<libsignal_protocol::state::session::SessionRecord>::deserialize"
-        "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::load_session::{closure#0}") =
-      (tripleRatchetProgAtExt b ext).fnAddr recordDeserializeName := by
-  have h1 := sessLoadPoll_fnOff
-  have h2 := recordDeserialize_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, sessLoadPollName, recordDeserializeName, h1, h2]
-  bv_omega
-
-theorem addressText_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr sessLoadPollName +
-      bv% (ls_rel% "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::load_session::{closure#0}"
-        "libsignal_cli::stores::address_text") =
-      (tripleRatchetProgAtExt b ext).fnAddr addressTextName := by
-  have h1 := sessLoadPoll_fnOff
-  have h2 := addressText_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, sessLoadPollName, addressTextName, h1, h2]
-  bv_omega
-
-theorem dirGet_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr sessLoadPollName +
-      bv% (ls_rel% "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::load_session::{closure#0}"
-        "<libsignal_cli::stores::Dir>::get") =
-      (tripleRatchetProgAtExt b ext).fnAddr dirGetName := by
-  have h1 := sessLoadPoll_fnOff
-  have h2 := dirGet_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, sessLoadPollName, dirGetName, h1, h2]
-  bv_omega
-
 theorem files_eq_of_fsInv_trace_eq {F0 : FsFiles} {T0 : List TraceEvent} {s : State}
     (hinv : FsInv F0 T0 s) (ht : s.trace = T0) : s.fs.files = F0 :=
   files_eq_at_callback hinv (ht.trans (List.append_nil T0).symm) .nil
@@ -722,7 +693,7 @@ theorem subStack_split (sp : BitVec 64) {addrStk getStk K : Nat}
       stackAt (sp - 0x350#64) K :=
   stackAt_sub_split (sp - 0x350#64) hK (by unfold pollMinStk at hhi; omega)
 
-def savedCalleeSlots (s0 : State) : SepProp :=
+@[expose] def savedCalleeSlots (s0 : State) : SepProp :=
   ((s0.sp - 0x60#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((s0.sp - 0x58#64) ↦₆₄ s0.readReg64 .lr) ∗
   ((s0.sp - 0x50#64) ↦₆₄ s0.readReg64 .x28) ∗
@@ -736,7 +707,7 @@ def savedCalleeSlots (s0 : State) : SepProp :=
   ((s0.sp - 0x10#64) ↦₆₄ s0.readReg64 .x20) ∗
   ((s0.sp - 0x08#64) ↦₆₄ s0.readReg64 .x19)
 
-def epiloguePre (s0 : State) (x : SessLoadPollGhost)
+@[expose] def epiloguePre (s0 : State) (x : SessLoadPollGhost)
     (q140 : BitVec 128) (bs312 : List (BitVec 8)) : SepProp :=
   ((s0.sp - 0x210#64) ↦₁₂₈ q140) ∗
   ((s0.sp - 0x348#64) ↦ₛ bs312) ∗
@@ -745,7 +716,7 @@ def epiloguePre (s0 : State) (x : SessLoadPollGhost)
   stackAt (s0.sp - 0x350#64) extHookStack ∗
   savedCalleeSlots s0
 
-def epilogueOut (s0 : State) (x : SessLoadPollGhost)
+@[expose] def epilogueOut (s0 : State) (x : SessLoadPollGhost)
     (w0 w1 w2 w3 w4 : BitVec 64) (q140 : BitVec 128) (bs312 : List (BitVec 8)) : SepProp :=
   (x.call.out ↦₆₄ w0) ∗ ((x.call.out + 8#64) ↦₆₄ w1) ∗
   ((x.call.out + 0x10#64) ↦₆₄ w2) ∗ ((x.call.out + 0x18#64) ↦₆₄ w3) ∗
@@ -791,34 +762,6 @@ theorem layoutOk_u8_of_ne_zero {cap : BitVec 64} (hc : cap ≠ 0#64) (hlt : cap.
   have hpos : 0 < cap.toNat := Nat.pos_of_ne_zero (fun h => hc (BitVec.eq_of_toNat_eq h))
   exact ⟨hpos, ⟨0, rfl⟩, by omega⟩
 
-theorem lpoll_dealloc_ok_at {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sessLoadPollName +
-        bv% (ls_rel%
-          "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::load_session::{closure#0}"
-          "__rustc::__rust_dealloc"))
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img) :=
-  dealloc_ok_at_norm_ext_x hC (name := sessLoadPollName)
-    (k := num% (ls_rel%
-      "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::load_session::{closure#0}"
-      "__rustc::__rust_dealloc"))
-    (by rw [sessLoadPoll_fnOff, (ls_stub% "__rustc::__rust_dealloc")])
-
-theorem lpoll_memcpy_ok_at {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr sessLoadPollName +
-        bv% (ls_rel%
-          "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::load_session::{closure#0}"
-          "memcpy"))
-      (session2MemcpySpecX.inImage img) :=
-  memcpy_ok_at2_ext_x hC (name := sessLoadPollName)
-    (k := num% (ls_rel%
-      "<libsignal_cli::stores::SessionFiles as libsignal_protocol::storage::traits::SessionStore>::load_session::{closure#0}"
-      "memcpy"))
-    (by rw [sessLoadPoll_fnOff, (ls_stub% "memcpy")])
-
 theorem sepWPp_conseq {prog : Program} {ret : BitVec 64} {s : State} {P P' : SepProp}
     {Q Qp : State → SepProp → Prop} (h : P ⊢ P')
     (hw : SepWPp prog ret s P' Q Qp) : SepWPp prog ret s P Q Qp :=
@@ -833,246 +776,5 @@ theorem sepWPp_with_stk_bound {prog : Program} {ret : BitVec 64} {s : State}
     have h1 := Satisfies.mono (sepConj_mono_left hfoc) hm
     simpa only [stackAt, sepConj_assoc] using h1
   exact hw (memRegion_bound_of_pointsTo64 hm') R hm hL
-
-/-- Call any `Spec` whose panic implies `allocFailedIn` and whose exit/OOM are `False`, preserving `ImgCallInv img`. -/
-theorem lpoll_call_panicking_raw {α : Type} {prog : Program} {img : Obj.Image}
-    {callee ret_pc ret : BitVec 64} {spec : Spec α}
-    (hcall : subroutine_ok prog callee spec)
-    (x : α) (F : SepProp) {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee)
-    (hrun : s.status = .Running)
-    (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htr : s.trace = s0.trace)
-    (hinv : ImgCallInv img s)
-    (hpan : ∀ sf P_f, (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace) → Qp sf P_f)
-    (hpre : P ⊢ spec.pre x s ∗ F)
-    (hpan_imp : ∀ (sm : State) (R' : SepProp),
-      (sm.mem ⊨ spec.onPanic x s sm ∗ R') → allocFailedIn s sm ∧ s.trace <+: sm.trace)
-    (hexit_imp : ∀ (code : BitVec 64) (sm : State) (R' : SepProp),
-      ¬ (sm.mem ⊨ spec.onExit x code s sm ∗ R'))
-    (hoom_imp : ∀ (sm : State) (R' : SepProp),
-      ¬ (sm.mem ⊨ spec.onOom x s sm ∗ R'))
-    (hnext : ∀ sm : State, sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      SepWPp prog ret sm (spec.post x s sm ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine ProofLib.SepWPp.call_wpp_frozen hcall (x := x) (F := F) hinv.1 hinv.2
-    hpc hrun hsp_align hlr
-    (fun R' hm => by
-      have hm' := Satisfies.mono (sepConj_mono_left hpre) hm
-      rwa [sepConj_assoc] at hm')
-    (fun sm code _ _ hex => hexit_imp code sm _ hex)
-    (fun sm _ ⟨R', hpost⟩ =>
-      hpan sm _ (by simpa [allocFailedIn, htr] using hpan_imp sm R' hpost))
-    (fun sm hpcm hrunm hspm hcsm hfz hsym =>
-      hnext sm hpcm hrunm hspm hcsm ⟨hfz, hsym⟩)
-    (fun sm _ _ hpost => (hoom_imp sm _ hpost).elim)
-
-theorem lpoll_call_addrText {prog : Program} {img : Obj.Image} {A : RustAlloc} {addrStk : Nat}
-    {callee ret_pc ret : BitVec 64} {s0_files : FsFiles} {s0_trace : List TraceEvent}
-    (hcall : subroutine_ok prog callee (withFsInv (addrTextSpec A img addrStk) s0_files s0_trace))
-    (xg : AddrTextGhost) (F : SepProp)
-    {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace)
-    (hinv : ImgCallInv img s) (hfs : FsInv s0_files s0_trace s)
-    (hx0 : s.readReg64 .x0 = xg.ret) (hx1 : s.readReg64 .x1 = xg.addr)
-    (hlen : xg.g.name.bytes.length < 2 ^ 32)
-    (hpan : ∀ sf P_f, (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace) → Qp sf P_f)
-    (hpre : P ⊢ (protocolAddressAt A xg.g xg.addr ∗ memRegion xg.ret 24 ∗
-      stackAt s.sp addrStk ∗ A.pool) ∗ F)
-    (hnext : ∀ sm : State, sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      FsInv s0_files s0_trace sm → sm.trace = s.trace →
-      SepWPp prog ret sm
-        ((vecU8 A xg.ret (addressText xg.g.val) ∗ protocolAddressAt A xg.g xg.addr ∗
-          stackAt s.sp addrStk ∗ A.pool) ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine lpoll_call_panicking_raw hcall xg F hpc hrun hsp_align hlr htr hinv hpan ?_ ?_ ?_ ?_ ?_
-  · refine Entails.trans hpre ?_
-    simp only [withFsInv, addrTextSpec, Spec.inImage, sepConj_assoc]
-    exact Entails.pure_right hfs
-      (Entails.pure_right hinv (Entails.pure_right ⟨hx0, hx1, hlen⟩ (Entails.refl _)))
-  · intro sm R' hpost
-    simp only [withFsInv, addrTextSpec, Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    exact hpost.2.1
-  · intro code sm R' hpost
-    simp only [withFsInv, addrTextSpec, Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    exact hpost.2.1
-  · intro sm R' hpost
-    simp only [withFsInv, addrTextSpec, Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    exact hpost.2.1
-  · intro sm hpcm hrunm hspm hcsm hinvm
-    simp only [withFsInv, addrTextSpec, Spec.inImage, sepConj_assoc]
-    refine SepWPp.pure_elim fun hfsm => SepWPp.pure_elim fun htrm => ?_
-    exact sepWPp_conseq (Entails.of_eq (by ac_rfl))
-      (hnext sm hpcm hrunm hspm hcsm hinvm hfsm htrm)
-
-theorem lpoll_call_dirGet {prog : Program} {img : Obj.Image} {A : RustAlloc}
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk : Nat}
-    {callee ret_pc ret : BitVec 64}
-    (hcall : subroutine_ok prog callee (dirGetSpec rd pathOk A img getStk))
-    (xg : DirGetGhost) (F : SepProp)
-    {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace)
-    (hinv : ImgCallInv img s)
-    (hx0 : s.readReg64 .x0 = xg.ret) (hx1 : s.readReg64 .x1 = xg.self)
-    (hx2 : s.readReg64 .x2 = xg.nameA) (hx3 : (s.readReg64 .x3).toNat = xg.name.length)
-    (hnlen : xg.name.length < 2 ^ 32) (hdlen : xg.dir.path.length < 2 ^ 32)
-    (hpOk : pathOk (pathOf xg.dir.path xg.name))
-    (hpan : ∀ sf P_f, (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace) → Qp sf P_f)
-    (hpre : P ⊢ (dirAt A xg.self xg.dir ∗ SpqrV1.ChainProofs.bytesAt xg.nameRo xg.nameA xg.name ∗
-      memRegion xg.ret 48 ∗ stackAt s.sp getStk ∗ A.pool) ∗ F)
-    (hnext : ∀ (sm : State) (gr : Except Unit (List (BitVec 8))),
-      sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      (gr = xg.dir.get rd s.fs.files xg.name ∧ sm.trace = s.trace) →
-      SepWPp prog ret sm
-        ((getResultAt A xg.ret gr ∗ dirAt A xg.self xg.dir ∗
-          SpqrV1.ChainProofs.bytesAt xg.nameRo xg.nameA xg.name ∗
-          stackAt s.sp getStk ∗ A.pool) ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine lpoll_call_panicking_raw hcall xg F hpc hrun hsp_align hlr htr hinv hpan ?_ ?_ ?_ ?_ ?_
-  · refine Entails.trans hpre ?_
-    simp only [dirGetSpec, Spec.inImage, sepConj_assoc]
-    exact Entails.pure_right hinv
-      (Entails.pure_right ⟨hx0, hx1, hx2, hx3, hnlen, hdlen, hpOk⟩ (Entails.refl _))
-  · intro sm R' hpost
-    simp only [dirGetSpec, Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    exact hpost.1
-  · intro code sm R' hpost
-    simp only [dirGetSpec, Spec.inImage] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost
-    simp only [dirGetSpec, Spec.inImage] at hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm hcsm hinvm
-    simp only [dirGetSpec, Spec.inImage, sepExists_sepConj_left, sepConj_assoc]
-    refine SepWPp.exists_elim fun gr => SepWPp.pure_elim fun hgr => ?_
-    exact sepWPp_conseq (Entails.of_eq (by ac_rfl))
-      (hnext sm gr hpcm hrunm hspm hcsm hinvm hgr)
-
-theorem lpoll_call_deser {prog : Program} {img : Obj.Image} {A : RustAlloc}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {callee ret_pc ret : BitVec 64}
-    (hcall : subroutine_ok prog callee (sessDeserializeSpec Scope A img))
-    (xg : E2E.Record.DeserializeGeneral.DeserializeGenGhost) (F : SepProp)
-    {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace)
-    (hinv : ImgCallInv img s)
-    (hx0 : s.readReg64 .x0 = xg.p)
-    (hx1 : s.readReg64 .x1 = BitVec.ofNat 64 (E2E.Record.encodeRecord xg.r).length)
-    (hx8 : s.readReg64 .x8 = xg.out)
-    (hsc : Scope xg.r)
-    (hpan : ∀ sf P_f, (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace) → Qp sf P_f)
-    (hpre : P ⊢ ((xg.p ↦ₛ E2E.Record.encodeRecord xg.r) ∗ memRegion xg.out 368 ∗
-      stackAt s.sp E2E.Record.recDeserializeStack) ∗ F)
-    (hnext : ∀ (sm : State) (gE2E : E2E.Record.RecordGhost),
-      sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      sm.trace = s.trace → E2E.Record.Serialization.CanonRecord gE2E xg.r →
-      SepWPp prog ret sm
-        (((xg.p ↦ₛ E2E.Record.encodeRecord xg.r) ∗
-          E2E.Record.sessionRecordAt A xg.out gE2E xg.r ∗
-          stackAt s.sp E2E.Record.recDeserializeStack) ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine lpoll_call_panicking_raw hcall xg F hpc hrun hsp_align hlr htr hinv hpan ?_ ?_ ?_ ?_ ?_
-  · refine Entails.trans hpre ?_
-    simp only [sessDeserializeSpec, sepConj_assoc]
-    exact Entails.pure_right ⟨hx0, hx1, hx8, hsc, hinv.1, hinv.2⟩ (Entails.refl _)
-  · intro sm R' hpost
-    simp only [sessDeserializeSpec, E2E.Record.Serialization.allocPanic, sepConj_assoc,
-      satisfies_pure_sepConj] at hpost
-    exact hpost.1
-  · intro code sm R' hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm hcsm hinvm
-    simp only [sessDeserializeSpec, sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun gE2E => SepWPp.pure_elim fun htrm => ?_
-    refine sepWPp_conseq
-      (P' := ⌜E2E.Record.Serialization.CanonRecord gE2E xg.r⌝ ∗
-        (((xg.p ↦ₛ E2E.Record.encodeRecord xg.r) ∗
-          E2E.Record.sessionRecordAt A xg.out gE2E xg.r ∗
-          stackAt s.sp E2E.Record.recDeserializeStack) ∗ F))
-      (Entails.of_eq (by ac_rfl)) ?_
-    exact SepWPp.pure_elim fun hcan =>
-      hnext sm gE2E hpcm hrunm hspm hcsm hinvm htrm hcan
-
-theorem subroutine_ok_sessDeserializeExtSpec_of_spec {prog : Program} {entry : BitVec 64}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} {A : RustAlloc} {img : Obj.Image}
-    (h : subroutine_ok prog entry (sessDeserializeSpec Scope A img)) :
-    subroutine_ok prog entry (sessDeserializeExtSpec Scope A img) := by
-  refine subroutine_ok_map_panic h fun x R s0 hpre => ?_
-  refine ⟨x, A.pool ∗ R, ?_, ?_, ?_⟩
-  · dsimp only [sessDeserializeExtSpec, sessDeserializeSpec] at hpre ⊢
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre
-  · intro sf hpost
-    dsimp only [sessDeserializeExtSpec, sessDeserializeSpec] at hpost ⊢
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpost
-  · intro sf hpan
-    dsimp only [sessDeserializeExtSpec, sessDeserializeSpec,
-      E2E.Record.Serialization.allocPanic] at hpan ⊢
-    have habsorb : anyHeap ∗ A.pool ⊢ anyHeap := entails_anyHeap (anyHeap ∗ A.pool)
-    have h1 : (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ (A.pool ∗ R) =
-        ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ (anyHeap ∗ A.pool) ∗ R := by ac_rfl
-    have h2 : (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R =
-        ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap ∗ R := by ac_rfl
-    rw [h1] at hpan
-    rw [h2]
-    exact Satisfies.mono (sepConj_mono_right (sepConj_mono_left habsorb)) hpan
-
-theorem lpoll_call_deser_ext {prog : Program} {img : Obj.Image} {A : RustAlloc}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop}
-    {callee ret_pc ret : BitVec 64}
-    (hcall : subroutine_ok prog callee (sessDeserializeExtSpec Scope A img))
-    (xg : E2E.Record.DeserializeGeneral.DeserializeGenGhost) (F : SepProp)
-    {s0 s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = callee) (hrun : s.status = .Running) (hsp_align : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc) (htr : s.trace = s0.trace)
-    (hinv : ImgCallInv img s)
-    (hx0 : s.readReg64 .x0 = xg.p)
-    (hx1 : s.readReg64 .x1 = BitVec.ofNat 64 (E2E.Record.encodeRecord xg.r).length)
-    (hx8 : s.readReg64 .x8 = xg.out)
-    (hsc : Scope xg.r)
-    (hpan : ∀ sf P_f, (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace) → Qp sf P_f)
-    (hpre : P ⊢ ((xg.p ↦ₛ E2E.Record.encodeRecord xg.r) ∗ memRegion xg.out 368 ∗ A.pool ∗
-      stackAt s.sp E2E.Record.recDeserializeStack) ∗ F)
-    (hnext : ∀ (sm : State) (gE2E : E2E.Record.RecordGhost),
-      sm.pc = ret_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → ImgCallInv img sm →
-      sm.trace = s.trace → E2E.Record.Serialization.CanonRecord gE2E xg.r →
-      SepWPp prog ret sm
-        (((xg.p ↦ₛ E2E.Record.encodeRecord xg.r) ∗
-          E2E.Record.sessionRecordAt A xg.out gE2E xg.r ∗
-          stackAt s.sp E2E.Record.recDeserializeStack ∗ A.pool) ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  refine lpoll_call_panicking_raw hcall xg F hpc hrun hsp_align hlr htr hinv hpan ?_ ?_ ?_ ?_ ?_
-  · refine Entails.trans hpre ?_
-    simp only [sessDeserializeExtSpec, sepConj_assoc]
-    exact Entails.pure_right ⟨hx0, hx1, hx8, hsc, hinv.1, hinv.2⟩ (Entails.refl _)
-  · intro sm R' hpost
-    simp only [sessDeserializeExtSpec, E2E.Record.Serialization.allocPanic, sepConj_assoc,
-      satisfies_pure_sepConj] at hpost
-    exact hpost.1
-  · intro code sm R' hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm R' hpost
-    exact not_satisfies_false_sepConj hpost
-  · intro sm hpcm hrunm hspm hcsm hinvm
-    simp only [sessDeserializeExtSpec, sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun gE2E => SepWPp.pure_elim fun htrm => ?_
-    refine sepWPp_conseq
-      (P' := ⌜E2E.Record.Serialization.CanonRecord gE2E xg.r⌝ ∗
-        (((xg.p ↦ₛ E2E.Record.encodeRecord xg.r) ∗
-          E2E.Record.sessionRecordAt A xg.out gE2E xg.r ∗
-          stackAt s.sp E2E.Record.recDeserializeStack ∗ A.pool) ∗ F))
-      (Entails.of_eq (by ac_rfl)) ?_
-    exact SepWPp.pure_elim fun hcan =>
-      hnext sm gE2E hpcm hrunm hspm hcsm hinvm htrm hcan
 
 end CryptoVerification.SignalSession.Cli.Store.LoadPoll.Helpers

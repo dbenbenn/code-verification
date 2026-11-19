@@ -9,12 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudgetSteps
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1AcknowledgedBudgetSteps
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -24,6 +23,8 @@ import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPQR V1: Budget-Threaded Loop & Top-Level Proof for `Chunked.Ct1Acknowledged::merge` (Block `307`)
@@ -34,7 +35,7 @@ Proves the budget-threaded `[LibsignalPlacement]` loop invariant and top-level c
 (Block `307`) against `withLsCodeRoLoaded lsmpl (chunkedCt1AcknowledgedMergeSpec A lim)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -61,22 +62,7 @@ open CryptoVerification.SpqrV1.Prost.BytesMerge (proto_decodeVarint_toOption)
 open CryptoVerification.LibsignalSpqrV1 (PolynomialDecoder V1State)
 open CryptoVerification.LibsignalSpqrV1.Proto (mergeMessage)
 open CryptoVerification.SpqrV1.Auth (WppPost)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedCt1AcknowledgedMergeGhost ChunkedLoopRegs SepWPpLscro
-   bv64_add_zero bv64_sub_zero bv_len_sub_limit chunkedBelow
-   chunkedBelow_leaf chunkedBelow_leaf_entails
-   chunkedCt1AcknowledgedMerge_fnOff
-   chunkedCt1AcknowledgedPBCapAt_entails_pb chunkedCt1AcknowledgedPBCapAt_mono
-   chunkedCt1Acknowledged_mergeField_other chunkedCt1Acknowledged_mergeField_tag1
-   chunkedCt1Acknowledged_mergeField_tag2 chunkedSavedRegs codecWireTypeToProto
-   memRegion_48_split_128 memRegion_48_wtErr128 mergeLoopBin
-   mergeLoopBin_of_key_ok mergeMessageBin mergeMessageBin_eq_proto_mergeMessage
-   optPolyDecoderPtsLen optPolyDecoder_getD_default_pts_len
-   polyDecoder_mergeMessage_pts_len
-   protoPrefixStep_chunked_ct1Acknowledged_mergeField proto_mergeMessage_suffix
-   stackAt_chunkedMerge subroutine_ok_withLsCodeRoLoaded_of_withLscroProp
-   withLscroProp wtErr128_entails_memRegion40 wt_beq_two_of_lengthDelimited
-   wt_beq_two_of_ne_lengthDelimited)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedCt1AcknowledgedMergeGhost ChunkedLoopRegs SepWPpLscro bv64_add_zero bv64_sub_zero bv_len_sub_limit chunkedBelow chunkedBelow_leaf chunkedBelow_leaf_entails chunkedCt1AcknowledgedPBCapAt_entails_pb chunkedCt1AcknowledgedPBCapAt_mono chunkedCt1Acknowledged_mergeField_other chunkedCt1Acknowledged_mergeField_tag1 chunkedCt1Acknowledged_mergeField_tag2 chunkedSavedRegs codecWireTypeToProto memRegion_48_split_128 memRegion_48_wtErr128 mergeLoopBin mergeLoopBin_of_key_ok mergeMessageBin mergeMessageBin_eq_proto_mergeMessage optPolyDecoderPtsLen optPolyDecoder_getD_default_pts_len polyDecoder_mergeMessage_pts_len protoPrefixStep_chunked_ct1Acknowledged_mergeField proto_mergeMessage_suffix stackAt_chunkedMerge subroutine_ok_withLsCodeRoLoaded_of_withLscroProp withLscroProp wtErr128_entails_memRegion40 wt_beq_two_of_lengthDelimited wt_beq_two_of_ne_lengthDelimited)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_307 blkPl_307)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget VmPreserved)
@@ -107,7 +93,7 @@ open LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget (skipField3Spec)
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero chunkedCt1AcknowledgedMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 
 private theorem pool_entails_spqrPoolAt_snoc0 {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) {maxLen polyBound : Nat}

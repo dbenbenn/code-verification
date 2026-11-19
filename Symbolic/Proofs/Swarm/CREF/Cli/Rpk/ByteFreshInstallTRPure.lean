@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure
-public import Symbolic.Proofs.RngG.R3ModelInv
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
 /-!
@@ -23,7 +23,7 @@ chain `c ∈ st.recv` has a matching concrete `ReceiverChain` in `(ratchetStateO
 whose `senderRatchetKey` equals `vec32 (gamma interpretation S g c.ratchetKey)`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

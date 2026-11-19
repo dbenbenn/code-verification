@@ -9,19 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget
-public meta import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlaced
-public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneKeys -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget
+public meta import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegMismatchPlacedBudget -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneKeysPlaced
+public meta import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneKeys -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneKeys
 
 /-!
 # Budget-Threaded Relocatable CLI `SegClone` Entry and Fields 1–3
@@ -31,7 +35,7 @@ Proves entry frame initialization (`+0x1a8 → +0x1fc`) and cloning of `local_id
 `RustCliAllocBudget M` and `VmPreserved`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -83,13 +87,13 @@ attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Optional sender-chain clone `AllocEvent` sequence matching `segCloneEvents`. -/
-def senderChainOptCloneEvents : Option SenderChainGhost → Option SenderChain → List AllocEvent
+@[expose] def senderChainOptCloneEvents : Option SenderChainGhost → Option SenderChain → List AllocEvent
   | some gs, some sc => senderChainCloneEvents gs sc
   | _, _ => []
 
 /-- Combined `AllocEvent` sequence for `SegClone` fields 1–4 (`localIk`, `remoteIk`, `rootKey`,
     `senderChain`), matching the prefix of `segCloneEvents`. -/
-def fields1To4Events (G : SessionGhost) (st : SessionState (List (BitVec 8))) : List AllocEvent :=
+@[expose] def fields1To4Events (G : SessionGhost) (st : SessionState (List (BitVec 8))) : List AllocEvent :=
   vecCloneEvents G.localIk ++
   vecCloneEvents G.remoteIk ++
   rustAllocEvents 32 1 ++

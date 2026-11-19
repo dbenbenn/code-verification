@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeX
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeX -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
@@ -20,6 +19,11 @@ import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneX
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `SessionRecord::serialize` `Some` Branch (Block `52`)
@@ -29,7 +33,7 @@ Defines the `Some`-branch allocation envelope `SerializeSomeAllocEnv` and verifi
 (`serializeSomeSpecX M A lim`) under `FitsEnv M lim st (SerializeSomeAllocEnv x.G x.sess)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -110,14 +114,14 @@ attribute [local simp] bv64_ult_zeroX
 
 /-- Allocation-only prefix envelope for `SessionRecord::serialize` (`Some` branch), equal to
     `DefsBudget.SerializeEnv g r` whenever `g.cur = some G` and `r.currentSession = some sess`. -/
-def SerializeSomeAllocEnv (G : SessionGhost)
+@[expose] def SerializeSomeAllocEnv (G : SessionGhost)
     (sess : Session (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   let encLen := (lenField 1 (encSessionMem G sess)).length
   BoundedRustEvs (8 * encLen + 128) (256 * (encLen + 16)) evs
 
 /-- Budget-threaded specification of `SessionRecord::serialize` on a record with a current session
     (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝` under `FitsEnv M lim st (SerializeSomeAllocEnv x.G x.sess)`). -/
-def serializeSomeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializeSomeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializeSomeGhostX × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧

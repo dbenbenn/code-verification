@@ -10,18 +10,21 @@ limitations under the License.
 module
 
 public import VerifiedLibraries.Mallocng.Spec
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomProofF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomSpecF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3NonCanonF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3ExternNoAllocFail
-public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.BundleInitElfF3
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomProofF3
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3BinaryOomSpecF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3NonCanonF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3ExternNoAllocFail
+public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.BundleInitElfF3 -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Inst
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Two-Placement ELF-Byte V2-OOM Constructors
@@ -32,7 +35,7 @@ and `CliPqBinaryV2OomF3BytesPlaced`) from `CliElfF3B2NeedLocksAssumptions` and t
 and `hinitSem`), discharging `externPreservesNoAllocFailed_cliExternsPlaced` internally.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,11 +69,6 @@ open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 (
 open LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.BundleInitElfF3 (
   MainInitSemF3
 )
-
-/-- Placement-pinned `(mpl, mmpl)` raw ELF-byte V2-OOM predicate. -/
-abbrev CliPqBinaryV2OomF3BytesPlacedAt
-    (mpl mmpl : MultiPlacement) (bytes : List (BitVec 8)) : Prop :=
-  LibsignalCliPqBinaryV2OomF3PlacedAt mpl mmpl bytes
 
 /-- Universal two-placement `LinkedAt` V2-OOM predicate on raw ELF `bytes`. -/
 abbrev CliPqBinaryV2OomF3BytesPlaced (bytes : List (BitVec 8)) : Prop :=

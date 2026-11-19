@@ -9,21 +9,31 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroCPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudgetAux
-public import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+public import LibsignalBinary.Heap.AesDecErrRoBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.TryDecryptPV1TrapPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.CryptoGames.DH.X25519
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.Chain3CroCPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 
 /-!
@@ -34,7 +44,7 @@ Discharges the Stage-P3 leaf callees (blocks `524`, `512`, `42`, `48`), `StageP3
 block-`507` `overPollTryDecryptPlacedSpecTPTight` on `dpPollProgPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -57,7 +67,6 @@ open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over (
   OverPrevEncOK overScratch stageP3Sub5ExtraPrePrev1
 )
 open CryptoVerification.CliHandshake.RespClosurePlaced (instIsLsBlockProg_518 lsProg_518)
-open CryptoVerification.E2E (aesDecHookMallocng)
 open CryptoVerification.E2E.Pqxdh.ResponderClosure (ClosureCalleeSaved)
 open CryptoVerification.E2E.Pqxdh.WireEntries (DistinctSid)
 open CryptoVerification.LibsignalPublicApi.StoreKit (LibsignalCodeRoLoaded withLsCodeRoLoaded)
@@ -68,8 +77,8 @@ open CryptoVerification.LibsignalTripleRatchetRepr (
   AddrGhost SessionGhost SignalMessageGhost UuidParser decryptDraws uuidTryParse
 )
 open CryptoVerification.SignalSession (
-  CliHooks cliExternsPlaced lsRustAllocSymCli lsRustDeallocSymCli lsRustNoAllocShimSymCli
-  lsRustReallocSymCli
+  CliHooks cliExternsPlaced lsAesDecSym lsFmtWriteSym lsFormatInnerSym lsRustAllocSymCli
+  lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli
 )
 open CryptoVerification.SignalSession.Cli.RunGlue (
   CliGhostHooks cliExternsPlaced_row cliGhostExterns cliGhostExterns_shim
@@ -85,8 +94,11 @@ open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget
   rustCliAllocBudgetSpec rustCliDeallocBudgetSpec
 )
+open LibsignalBinary.Heap.AesDecErrRoBudget (cliAesDecBudgetSpecErrRo)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec)
-open LibsignalBinary.Heap.SpecBudget (aesDecBudgetSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  fmtWriteProtoAddrCliLsSpec formatInnerCallCliLsSpec
+)
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.RootTrapPlacedBudget (
   TryDecryptCliEnv tryDecryptPqV1_placed_ok_PTight_cli_at_block
 )
@@ -131,6 +143,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Poll
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlacedBudget (
   pollTryDecryptPlacedSpecP pollTryDecryptPlacedSpecTPTight
 )
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget (
   CliGhostAllocHooks cliExternsPlaced_alloc_budget_sat cliExternsPlaced_dealloc_budget_sat
   cliExternsPlaced_framelessMemcpy_budget_sat cliExternsPlaced_noAllocShim_budget_sat
@@ -278,7 +291,7 @@ private theorem pollTryDecryptM3PlacedSpecTPTight_eq_over [LibsignalPlacement]
 and `PrevEncOK`, parameterized over the honest binary Stage-P3 `Prev1` envelopes
 (`StageP3Prev1Env`, `StageP3OkPrefixM3Env`, `StageP3ErrM3Env`, `StageP3VerNePrev1Env VerNeTopEnv`)
 and eliminating `allocFailedIn` from `onPanic` (`genP3S5ModelPanicProp`). -/
-def StageP3Prev1D3AtPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP3Prev1D3AtPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (tdEnv : CliHooks → TryDecryptEnvArgs → List AllocEvent → Prop)
     (PrevEncOK : List (BitVec 8) → Prop) : Prop :=
@@ -314,6 +327,7 @@ def StageP3Prev1D3AtPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
       SeedsLen32 st →
       st.receiverChains.length < 2 ^ 32 →
       st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       LibsignalCodeRoLoaded lsmpl s.mem →
       s.pc = dpPollEntryPlaced + 0x1778#64 →
       s.status = .Running →
@@ -465,7 +479,7 @@ theorem stageP3Prev1D3_placed_of_verNeAt [LibsignalPlacement]
     StageP3Prev1D3AtPlacedStmt A lim tdEnv PrevEncOK := by
   intro mmpl gh W st_b hG hAllocX hcc hscc hroot hDropSS3 s0 s coroPtr ctxPtr outPtr initErrsPtr
     prevCap prevPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer b_2c0 enc rest recG st rem loc
-    msgG msg F_frame Q hfits hinit hcap hprev hv4 hns hsd hrc hpq hcro hpc hrun hsp hroot_sp hfp
+    msgG msg F_frame Q hfits hinit hcap hprev hv4 hns hsd hrc hpq hrem_le hcro hpc hrun hsp hroot_sp hfp
     htr hvregs hOk hErr hVerNe
   let ext := cliGhostExterns gh (cliExternsPlaced mmpl W)
   have hshim : subroutine_ok (lsProg_518 ext) (lsρ lsRustNoAllocShimSym)
@@ -505,7 +519,7 @@ theorem stageP3Prev1D3_placed_of_verNeAt [LibsignalPlacement]
     hDropSS3 (hLog519 mmpl gh W hG) hcc hscc hrootM3 (hVerNeAt mmpl gh W hG hAllocX hDropSS3)
     st_b s0 s coroPtr ctxPtr outPtr initErrsPtr prevCap prevPtr remAddrPtr locAddrPtr whisperMsgPtr
     cur msgVer b_2c0 enc rest recG st rem loc msgG msg F_frame Q
-    hfits hinit hcap hprev hv4 hns hsd hrc hpq hcro hpc hrun hsp hroot_sp hfp htr hvregs
+    hfits hinit hcap hprev hv4 hns hsd hrc hpq hrem_le hcro hpc hrun hsp hroot_sp hfp htr hvregs
     (fun G₁ G' pt ptCap ptPtr evs_ok s' P_s' => hOk G₁ G' evs_ok pt ptCap ptPtr s' P_s')
     (fun G₁ G' e evs_err sf P_f => hErr G₁ G' evs_err e sf P_f)
     (fun evs_vn sf P_f hver hevs hPf => hVerNe evs_vn sf P_f hver hevs
@@ -530,13 +544,21 @@ theorem stageP3_prev1_d3_placed_ok [LibsignalPlacement]
 
 /-- Discharges Block-`507` `overPollTryDecryptPlacedSpecTPTight` at
 `TryDecryptCliEnv W.C (spqrV1 W.C.F W.Q.K)` on `dpPollProgPlaced` from `CliGhostAllocHooks`,
-`aesDecBudgetSpec`, and `SpqrV1PlacedSeams`. -/
+`cliAesDecBudgetSpecErrRo`, `SpqrV1PlacedSeams`, and formatting hook witnesses. -/
 theorem over_tryDecrypt_cli_placed_ok_at [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (ctl : BitVec 64)
     (hG : CliGhostAllocHooks M A lim gh)
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
-    (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W) :
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
+    (hSpqr : SpqrV1PlacedSeams M A lim mmpl gh W)
+    (hFmtWrite : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M A lim))
+    (hFmtInner : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsFormatInnerSym
+      (formatInnerCallCliLsSpec M A lim)) :
     subroutine_ok (dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 508)
       (withLsCodeRoLoaded lsmpl
@@ -544,14 +566,14 @@ theorem over_tryDecrypt_cli_placed_ok_at [LibsignalPlacement]
           (spqrV1 W.C.F W.Q.K) (TryDecryptCliEnv W.C (spqrV1 W.C.F W.Q.K)))) :=
   tryDecryptPqV1_placed_ok_PTight_cli_at_block
     (callerProg := lsProg_518 (cliGhostExterns gh (cliExternsPlaced mmpl W))) (i := 518)
-    mmpl gh W ctl hG hAesDec hSpqr (by decide)
+    mmpl gh W ctl hG hF hX hPub hAesDec hSpqr hFmtWrite hFmtInner (by decide)
 
 /-! ## 4. `[LibsignalFullPlacement]` / `LibsignalFrozen` Variants -/
 
 /-- `LibsignalFrozen`-guarded `StageP3Prev1D3AtFrozenPlacedStmt` over `RustCliAllocBudget M` and
 `PrevEncOK` (`s.mem` guarded by `LibsignalFrozen`, `s'.mem` / `sf.mem` guarded by
 `LibsignalCodeRoLoaded`). -/
-def StageP3Prev1D3AtFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP3Prev1D3AtFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (tdEnv : CliHooks → TryDecryptEnvArgs → List AllocEvent → Prop)
     (PrevEncOK : List (BitVec 8) → Prop) : Prop :=
@@ -587,6 +609,7 @@ def StageP3Prev1D3AtFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
       SeedsLen32 st →
       st.receiverChains.length < 2 ^ 32 →
       st.pqRatchetState.length < 2 ^ 32 →
+      rem.name.bytes.length ≤ 40 →
       LibsignalFrozen lsmpl s.mem →
       s.pc = dpPollEntryPlaced + 0x1778#64 →
       s.status = .Running →
@@ -731,7 +754,7 @@ theorem stageP3Prev1D3_full_placed_of_verNeAt [LibsignalFullPlacement]
     StageP3Prev1D3AtFrozenPlacedStmt A lim tdEnv PrevEncOK := by
   intro mmpl gh W st_b hG hAllocX hcc hscc hroot hDropSS3 s0 s coroPtr ctxPtr outPtr initErrsPtr
     prevCap prevPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer b_2c0 enc rest recG st rem loc
-    msgG msg F_frame Q hfits hinit hcap hprev hv4 hns hsd hrc hpq hfr hpc hrun hsp hroot_sp hfp
+    msgG msg F_frame Q hfits hinit hcap hprev hv4 hns hsd hrc hpq hrem_le hfr hpc hrun hsp hroot_sp hfp
     htr hvregs hOk hErr hVerNe
   let ext := cliGhostExterns gh (cliExternsPlaced mmpl W)
   have hshim : subroutine_ok (lsProg_518 ext) (lsρ lsRustNoAllocShimSym)
@@ -771,7 +794,7 @@ theorem stageP3Prev1D3_full_placed_of_verNeAt [LibsignalFullPlacement]
     hDropSS3 hcc hscc hrootM3 (hVerNeAt mmpl gh W hG hAllocX hDropSS3)
     st_b s0 s coroPtr ctxPtr outPtr initErrsPtr prevCap prevPtr remAddrPtr locAddrPtr whisperMsgPtr
     cur msgVer b_2c0 enc rest recG st rem loc msgG msg F_frame Q
-    hfits hinit hcap hprev hv4 hns hsd hrc hpq hfr hpc hrun hsp hroot_sp hfp htr hvregs
+    hfits hinit hcap hprev hv4 hns hsd hrc hpq hrem_le hfr hpc hrun hsp hroot_sp hfp htr hvregs
     (fun G₁ G' pt ptCap ptPtr evs_ok s' P_s' => hOk G₁ G' evs_ok pt ptCap ptPtr s' P_s')
     (fun G₁ G' e evs_err sf P_f => hErr G₁ G' evs_err e sf P_f)
     (fun evs_vn sf P_f hver hevs hPf => hVerNe evs_vn sf P_f hver hevs

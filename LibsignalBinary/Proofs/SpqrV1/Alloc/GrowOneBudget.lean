@@ -10,18 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Alloc.Fetch
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 
@@ -32,7 +30,7 @@ Proves `RustCliAllocBudget M` / `AllocCallPreserved` `[LibsignalPlacement]` cont
 for blocks 356..360 calling block 361 (`finish_grow [local#8]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -117,7 +115,7 @@ abbrev FG8CellsGhost (σ : Type) :=
   BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8) ×
     BitVec 64 × BitVec 64 × BitVec 64 × BitVec 64 × σ
 
-def finishGrow8ZeroCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow8ZeroCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FG8CellsGhost M.σ) where
   pre := fun (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp, st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -138,7 +136,7 @@ def finishGrow8ZeroCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents (rustAllocEvents (new.toNat * stride.toNat) align.toNat) st) sf ∗
       stackAt fsp (hookStack + 48)
 
-def finishGrow8NeCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def finishGrow8NeCellsSpecG (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (hookStack : Nat) : Spec (FG8CellsGhost M.σ) where
   pre := fun (out, cap, ptr, new, align, stride, bs, o0, o1, o2, fsp, st) s =>
     ⌜s.readReg64 .x0 = out ∧ s.readReg64 .x1 = cap ∧ s.readReg64 .x2 = ptr ∧
@@ -308,11 +306,11 @@ theorem finish_grow_8_ne_cells_placed_ok [LibsignalPlacement] {M : AllocCostMode
 /-! ## Generic `(stride, align)` Budget Specifications -/
 
 /-- Deterministic allocator events of `RawVec<T>::grow_one` (`stride > 1`). -/
-def growOneStrideEvents (cap : BitVec 64) (stride align : Nat) : List AllocEvent :=
+@[expose] def growOneStrideEvents (cap : BitVec 64) (stride align : Nat) : List AllocEvent :=
   if cap = 0#64 then rustAllocEvents (4 * stride) align
   else rustReallocEvents (cap.toNat * stride) (max (2 * cap.toNat) 4 * stride) align
 
-def GrowOneStrideEnv (cap : BitVec 64) (stride align : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def GrowOneStrideEnv (cap : BitVec 64) (stride align : Nat) (evs : List AllocEvent) : Prop :=
   evs = growOneStrideEvents cap stride align
 
 theorem fitsEnv_growOneStride_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -322,7 +320,7 @@ theorem fitsEnv_growOneStride_iff {M : AllocCostModel} {lim : BudgetLimits} {st 
   FitsEnv.eq_iff
 
 /-- Prefix-preserving budget contract for `RawVec<T>::grow_one` (`stride > 1`). -/
-def growOneStrideBsSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneStrideBsSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stride align hookStack : Nat) : Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length ≤ cap.toNat * stride ∧ ptr ≠ 0#64 ∧
@@ -344,7 +342,7 @@ def growOneStrideBsSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     stackAt s0.sp ((hookStack + 48) + 64)
 
 /-- Full-buffer budget contract for `RawVec<T>::grow_one` (`bs.length = cap.toNat * stride`). -/
-def growOneStrideFullSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneStrideFullSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stride align hookStack : Nat) : Spec (GrowGhost × M.σ) where
   pre := fun ((v, cap, ptr, bs), st) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length = cap.toNat * stride ∧ ptr ≠ 0#64 ∧
@@ -364,7 +362,7 @@ def growOneStrideFullSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget 
     stackAt s0.sp ((hookStack + 48) + 64)
 
 /-- Uninitialized (`memRegion`) budget contract for `RawVec<T>::grow_one` (`bs = []`). -/
-def growOneStrideEmptySpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def growOneStrideEmptySpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stride align hookStack : Nat) :
     Spec ((BitVec 64 × BitVec 64 × BitVec 64) × M.σ) where
   pre := fun ((v, cap, ptr), st) s =>

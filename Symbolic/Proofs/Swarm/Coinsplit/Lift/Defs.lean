@@ -9,12 +9,27 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.Coinsplit.Slots.S1CoinSplitAlgebra
-public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot
-public import Symbolic.Proofs.Swarm.CREF.Sanitize
-public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
+public import Symbolic.Proofs.Swarm.Coinsplit.Slots.S1CoinSplitAlgebra -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot
+public import Symbolic.Proofs.Swarm.CREF.Sanitize -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- shake: keep
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
+public import LibsignalBinary.Specifications.LibsignalE2E.StateXModel
+public import LibsignalBinary.Specifications.SignalSession.PqDir
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridgeAux -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Coin-Split Lift Definitions and Interface Contracts
@@ -25,7 +40,7 @@ Defines the hardware-step certificate `GoodStepCut`, the cut-polymorphic CLI liv
 model explanations across `CoinSplit` cuts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -139,7 +154,7 @@ theorem CliLiveAtCli.cliLiveAt_of_cut {interp : ExternInterpretation} {r : Proto
 
 /-- Single-step lift from `Clean` on `τ_pre ++ blk_hw` to `ExplainsCli` on `σ_pre ++ blk_cli`
 along a `GoodStepCut` block `blk_hw`. -/
-def GoodExit0CutSpec : Prop :=
+@[expose] def GoodExit0CutSpec : Prop :=
   ∀ {interp : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics}
     {who : List Participant} {ok : Nat → Bool}
     {σ_pre τ_pre blk_cli blk_hw : List MachineEvent}
@@ -154,7 +169,7 @@ def GoodExit0CutSpec : Prop :=
       ¬ ReadCollision interp r S g₁ (ms_pre ++ δ) (τ_pre ++ blk_hw)
 
 /-- Base `init`, `clearSession`, and `leaks` stepping specification for `CliLiveAtCli`. -/
-def InitClearLeakSpec : Prop :=
+@[expose] def InitClearLeakSpec : Prop :=
   (∀ {interp' : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics},
       ProtocolSetupWF r → SemReady interp' r S →
       ∀ (who : List Participant) (ok : Nat → Bool),
@@ -175,7 +190,7 @@ def InitClearLeakSpec : Prop :=
 
 /-- Lifting of a `.pt` `PrefixGhosts` memo collision on `τ₁` to
 `CollisionAfterExplainedPrefixMoves` on `σ₁ ++ .pt b :: σ₂` under `NoAdjRng σ₁`. -/
-def BridgeAPtSpec : Prop :=
+@[expose] def BridgeAPtSpec : Prop :=
   ∀ {interp : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics}
     {who : List Participant} {ok : Nat → Bool} {g : Ghost} {ms : List Move}
     {σ₁ τ₁ σ₂ : List MachineEvent} {b : HwBytes},
@@ -190,7 +205,7 @@ def BridgeAPtSpec : Prop :=
 
 /-- Transfer of `PureCRel ∧ COpkRelC` across any `CoinSplit` cut `blk'` of `[e, .rng coins]` on a
 failed call (`ok (callStarts τ_pre).length = false`). -/
-def BridgeBQuietFailSpec : Prop :=
+@[expose] def BridgeBQuietFailSpec : Prop :=
   ∀ {interp : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics}
     {who : List Participant} {ok : Nat → Bool}
     {records : Participant → Option HwBytes} {sent accepted : List HwBytes} {opkUsed : Bool}
@@ -205,7 +220,7 @@ def BridgeBQuietFailSpec : Prop :=
       COpkRelC interp r S who ok opkUsed (τ_pre ++ blk')
 
 /-- Binary session-decryption hypotheses for whisper or RPK-promote receive steps. -/
-def BinarySessionDecryptOk (interp' : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
+@[expose] def BinarySessionDecryptOk (interp' : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
     (accepted sent : List HwBytes) (records : Participant → Option HwBytes)
     (me : Participant) (st st' : PqParty) (d_me : DirectorySnapshot)
     (x : RecordExtras) (g_st : GhostState HwBytes)
@@ -226,7 +241,7 @@ def BinarySessionDecryptOk (interp' : ExternInterpretation) (P : PEParams) (r : 
 
 /-- Receive-collision extraction when `pureDrawsCoins = false` in the binary but the model cut
 `τ₂` draws `.rng` before `.accept out`. -/
-def BridgeCCaseASpec : Prop :=
+@[expose] def BridgeCCaseASpec : Prop :=
   ∀ {interp : ExternInterpretation} {P : PEParams} {r : ProtocolSetup}
     {who : List Participant} {ok : Nat → Bool}
     {records : Participant → Option HwBytes} {sent accepted : List HwBytes}
@@ -253,7 +268,7 @@ def BridgeCCaseASpec : Prop :=
 
 /-- Receive-collision extraction when `pureDrawsCoins = true` in the binary but the model cut
 `τ₂` draws no randomness before `.accept out`. -/
-def BridgeCCaseBSpec : Prop :=
+@[expose] def BridgeCCaseBSpec : Prop :=
   ∀ {interp : ExternInterpretation} {P : PEParams} {r : ProtocolSetup}
     {who : List Participant} {ok : Nat → Bool}
     {records : Participant → Option HwBytes} {sent accepted : List HwBytes}

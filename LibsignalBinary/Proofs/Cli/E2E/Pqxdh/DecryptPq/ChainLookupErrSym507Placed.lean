@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailProof
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2Placed
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailProof
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.ErrTailSym
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.TightTargets
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
 
 /-!
 # Relocatable `ErrTail` Symbolic Execution for CLI `try_decrypt_with_state::<Coins>`
@@ -24,7 +27,7 @@ shared `ErrTail` cleanup block of `try_decrypt_with_state::<signal_session_hands
 (Block `507`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

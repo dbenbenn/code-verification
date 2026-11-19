@@ -9,20 +9,72 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserve
-public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
-public meta import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget -- shake: keep
-public meta import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserve
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WPp
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.BV.MaskLemmas
+public import ProofLib.BV.PolyMul
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.Multi
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Mallocng.Spec.Top
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import LibsignalBinary.Heap.IfaceBudgetBase
+import LibsignalBinary.Heap.SpecBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `RawVecInner::reserve::do_reserve_and_handle` (`0x4cac`, Block `13`)
@@ -33,34 +85,22 @@ Verifies `<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<all
 `onPanic = ⌜False⌝` and `onOom = ⌜False⌝` under `FitsEnv M lim st (DoReserveEnv x)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
 
+open CryptoVerification.LibsignalTripleRatchet (FinishGrowCall extHookStack vecU8At_eq_shared_lb)
+
+open CryptoVerification (LibsignalCodeLoaded LibsignalPlacement blkPC_13 blkPC_45 blkPl_13 blkPl_45 extract_withLsCodeLoaded lsRustAllocSym lsRustNoAllocShimSym lsRustReallocSym ls_subroutine_ok_of_block lsmpl sepWP_seq_lscl subroutine_ok_withLsCodeLoaded_of_plain withLsCodeLoaded)
+
 open Arm64 ProofLib SepProp
 open CryptoGames.LibsignalSession (Crypto)
-open CryptoVerification (
-  LibsignalCodeLoaded LibsignalPlacement blkPC_13 blkPC_45 blkPl_13 blkPl_45
-  extract_withLsCodeLoaded libsignalSessionCode ls_subroutine_ok_of_block lsmpl
-  lsRustAllocSym lsRustNoAllocShimSym lsRustReallocSym
-  sepWP_seq_lscl subroutine_ok_withLsCodeLoaded_of_plain withLsCodeLoaded
-)
 open CryptoVerification.RustHeap (
   LayoutOk allocHookStack vecU8At
 )
-open CryptoVerification.InImageLift (OptCallInv)
-open CryptoVerification.LibsignalTripleRatchet (
-  DoReserveCall FinishGrowCall
-  doReserveName extHookStack finishGrowName specWithOptInv
-  subroutine_ok_kit_of_trTrap subroutine_ok_of_optNone subroutine_ok_to_optNone
-  trTrapProgAt trTrapProgAt_fnAddr_eq tripleRatchetProgAt tripleRatchetProgAtExt
-  vecU8At_eq_shared_lb
-)
-open CryptoVerification.LibsignalTripleRatchet.DoReserveFacts (
-  doReserve_fnOff finishGrow_fnOff
-)
+
 open LibsignalBinary.Heap (
   AllocCostModel BudgetLimits FitsEvents RustCliAllocBudget RustLayoutOk
   rustAllocEvents rustCliAllocBudgetSpec rustCliAllocNoOomSpec
@@ -68,21 +108,12 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Heap.SpecBudget (AllocHooksBudgetBase)
 open LibsignalBinary.Proofs.Placed.BudgetVmSteps (trapHooks)
-open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (
-  AllocContractsBudget AllocContractsXBudget
-  DoReserveEnv FinishGrowEnv doReserveEvents doReserveRawSpec doReserveRawSpecX
-  doReserveSpec doReserveSpecX finishGrowEvents fitsEnv_doReserve_iff fitsEnv_finishGrow_iff
-  noAllocShimBudgetSpec reserveCap
-)
+open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (DoReserveEnv FinishGrowEnv doReserveEvents doReserveRawSpec doReserveRawSpecX doReserveSpec doReserveSpecX finishGrowEvents fitsEnv_doReserve_iff fitsEnv_finishGrow_iff noAllocShimBudgetSpec reserveCap)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget (
   doReserveRawSpecWithStack doReserveSpecWithStack finishGrowSpecWithStack
   rebase_trapHooks_fnAddr
 )
-open LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget (
-  finish_grow_ok_ext finish_grow_ok_ext_x
-  finish_grow_placed_ok finish_grow_placed_ok_noOom
-  finish_grow_placed_ok_x finish_grow_placed_ok_x_noOom
-)
+open LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget (finish_grow_placed_ok finish_grow_placed_ok_noOom finish_grow_placed_ok_x finish_grow_placed_ok_x_noOom)
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -154,10 +185,6 @@ private theorem doReserve_post_repack (P1 P2 P6 P3 P4 P5 P7 R : SepProp) :
   sep_ac_rfl
 
 private abbrev vecU8At_eq := @vecU8At_eq_shared_lb
-
-private theorem optCallInv_none (s : State) : OptCallInv none s := trivial
-
-/-! ## Arithmetic & Stack Helpers for `do_reserve_and_handle` -/
 
 private theorem adds_cs_eq_false {x2 x1 : BitVec 64}
     (h : x2.toNat + x1.toNat < 2 ^ 64) :
@@ -256,72 +283,6 @@ private def finishGrow1ZeroSpecWithStack (M : AllocCostModel) (A : RustCliAllocB
       stackAt fsp fgStack ∗
       (out ↦₆₄ 0#64) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
 
-private theorem finish_grow_1_zero_ok_of_fg_opt {oimg : Option Obj.Image} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)} {hookStack : Nat}
-    (hfg : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (specWithOptInv oimg (finishGrowSpecWithStack M A lim hookStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (specWithOptInv oimg (finishGrow1ZeroSpecWithStack M A lim (hookStack + 48))) := by
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨out, cap, ptr, new, bs, o0, o1, o2, fsp, st⟩ R s0 hpc hrun hpre hsp
-  dsimp only [specWithOptInv] at hpre
-  simp only [finishGrow1ZeroSpecWithStack, sepConj_assoc,
-    satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, hfsp, hcap0, hbs, hle, hpos, hbound, hfit⟩, hmem⟩
-  subst hfsp; subst hcap0; subst hbs
-  let hcall : FinishGrowCall := ⟨out, 0#64, ptr, new, 1#64, 1#64, []⟩
-  have hrlay : RustLayoutOk (new.toNat * (1#64 : BitVec 64).toNat) (1#64 : BitVec 64).toNat := by
-    refine ⟨⟨by change 0 < new.toNat * 1; omega, ⟨0, rfl⟩, ?_⟩, by decide⟩
-    change new.toNat * 1 + 1 ≤ 2 ^ 63; omega
-  have hfit_env : LibsignalBinary.Heap.FitsEnv M lim st (FinishGrowEnv hcall) := by
-    rw [fitsEnv_finishGrow_iff]
-    have ha1 : (1#64 : BitVec 64).toNat = 1 := rfl
-    simpa only [finishGrowEvents, hcall, BitVec.toNat_zero, ↓reduceIte, ha1, Nat.mul_one] using hfit
-  have hpre' : s0.mem ⊨
-      (specWithOptInv oimg (finishGrowSpecWithStack M A lim hookStack)).pre (hcall, st) s0 ∗ R := by
-    dsimp only [specWithOptInv]
-    simp only [finishGrowSpecWithStack,
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.finishGrowSpecWithStack,
-      hcall, FinishGrowCall.oldBuf, ite_true, memRegion_24_cells, emp_sepConj,
-      sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists]
-    refine ⟨o2, o1, o0, ?_⟩
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, fun _ => trivial, Nat.zero_le _, hle, hpos,
-      by decide, hrlay, hfit_env⟩, by simpa only [sepConj_assoc] using hmem⟩
-  refine hfg.mono_outcome (hcall, st) R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [specWithOptInv] at hq ⊢
-    simp only [finishGrowSpecWithStack,
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.finishGrowSpecWithStack,
-      finishGrow1ZeroSpecWithStack, hcall, finishGrowEvents, BitVec.toNat_zero, ↓reduceIte,
-      pointsToBytes_nil, List.length_nil, BitVec.add_zero, Nat.sub_zero, emp_sepConj,
-      sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    rcases hq with ⟨p', hq⟩
-    have hm1 : new.toNat * (1#64 : BitVec 64).toNat = new.toNat := Nat.mul_one _
-    have ha1 : (1#64 : BitVec 64).toNat = 1 := rfl
-    rw [hm1] at hq
-    rw [ha1] at hq
-    refine ⟨p', BitVec.ofNat 64 new.toNat, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-    rcases hq with ⟨⟨hp', _, htrace⟩, hrest⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hp', htrace⟩, ?_⟩
-    have hrest' : sf.mem ⊨
-        ((out ↦₆₄ 0#64) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ BitVec.ofNat 64 new.toNat) ∗
-          A.live p' new.toNat 1 ∗ memRegion p' new.toNat ∗
-          A.pool lim (M.stepEvents (rustAllocEvents new.toNat 1) st) sf ∗
-          stackAt s0.sp (hookStack + 48)) ∗ R := by
-      simpa only [sepConj_assoc] using hrest
-    rw [fg0_post_repack] at hrest'
-    simpa only [sepConj_assoc] using hrest'
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
 private def finishGrow1NeSpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (fgStack : Nat) : Spec (FG1BudgetGhost M) where
   pre := fun (out, cap, ptr, new, bs, o0, o1, o2, fsp, st) s =>
@@ -343,344 +304,11 @@ private def finishGrow1NeSpecWithStack (M : AllocCostModel) (A : RustCliAllocBud
       stackAt fsp fgStack ∗
       (out ↦₆₄ 0#64) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ o2')
 
-private theorem finish_grow_1_ne_ok_of_fg_opt {oimg : Option Obj.Image} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)} {hookStack : Nat}
-    (hfg : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (specWithOptInv oimg (finishGrowSpecWithStack M A lim hookStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (specWithOptInv oimg (finishGrow1NeSpecWithStack M A lim (hookStack + 48))) := by
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨out, cap, ptr, new, bs, o0, o1, o2, fsp, st⟩ R s0 hpc hrun hpre hsp
-  dsimp only [specWithOptInv] at hpre
-  simp only [finishGrow1NeSpecWithStack, sepConj_assoc,
-    satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, hfsp, hcap, hbs, hle, hpos, hbound, hfit⟩, hmem⟩
-  subst hfsp
-  let hcall : FinishGrowCall := ⟨out, cap, ptr, new, 1#64, 1#64, bs⟩
-  have hcap_nat_ne : cap.toNat ≠ 0 := fun hc => hcap (BitVec.eq_of_toNat_eq hc)
-  have hrlay : RustLayoutOk (new.toNat * (1#64 : BitVec 64).toNat) (1#64 : BitVec 64).toNat := by
-    refine ⟨⟨by change 0 < new.toNat * 1; omega, ⟨0, rfl⟩, ?_⟩, by decide⟩
-    change new.toNat * 1 + 1 ≤ 2 ^ 63; omega
-  have hfit_env : LibsignalBinary.Heap.FitsEnv M lim st (FinishGrowEnv hcall) := by
-    rw [fitsEnv_finishGrow_iff]
-    have ha1 : (1#64 : BitVec 64).toNat = 1 := rfl
-    simpa only [finishGrowEvents, hcall, hcap_nat_ne, ↓reduceIte, ha1, Nat.mul_one] using hfit
-  have hpre' : s0.mem ⊨
-      (specWithOptInv oimg (finishGrowSpecWithStack M A lim hookStack)).pre (hcall, st) s0 ∗ R := by
-    dsimp only [specWithOptInv]
-    simp only [finishGrowSpecWithStack,
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.finishGrowSpecWithStack,
-      hcall, FinishGrowCall.oldBuf, RustCliAllocBudget.repAlloc_live, hcap, ite_false,
-      memRegion_24_cells, sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists]
-    refine ⟨o2, o1, o0, ?_⟩
-    have hm_cap : cap.toNat * (1#64 : BitVec 64).toNat = cap.toNat := Nat.mul_one _
-    have ha1 : (1#64 : BitVec 64).toNat = 1 := rfl
-    rw [hm_cap, ha1]
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hx5, False.elim, hbs, hle, hpos,
-      by decide, hrlay, hfit_env⟩, by simpa only [sepConj_assoc] using hmem⟩
-  refine hfg.mono_outcome (hcall, st) R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [specWithOptInv] at hq ⊢
-    simp only [finishGrowSpecWithStack,
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.finishGrowSpecWithStack,
-      finishGrow1NeSpecWithStack, hcall, finishGrowEvents, hcap_nat_ne, ↓reduceIte,
-      sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    rcases hq with ⟨p', hq⟩
-    have hm_new : new.toNat * (1#64 : BitVec 64).toNat = new.toNat := Nat.mul_one _
-    have hm_cap : cap.toNat * (1#64 : BitVec 64).toNat = cap.toNat := Nat.mul_one _
-    have ha1 : (1#64 : BitVec 64).toNat = 1 := rfl
-    rw [hm_new, hm_cap, ha1] at hq
-    refine ⟨p', BitVec.ofNat 64 new.toNat, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-    rcases hq with ⟨⟨hp', _, htrace⟩, hrest⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hp', htrace⟩, ?_⟩
-    have hrest' : sf.mem ⊨
-        ((out ↦₆₄ 0#64) ∗ ((out + 8#64) ↦₆₄ p') ∗ ((out + 16#64) ↦₆₄ BitVec.ofNat 64 new.toNat) ∗
-          A.live p' new.toNat 1 ∗ (p' ↦ₛ bs) ∗
-          memRegion (p' + BitVec.ofNat 64 bs.length) (new.toNat - bs.length) ∗
-          A.pool lim (M.stepEvents (rustReallocEvents cap.toNat new.toNat 1) st) sf ∗
-          stackAt s0.sp (hookStack + 48)) ∗ R := by
-      simpa only [sepConj_assoc] using hrest
-    rw [fg1_post_repack] at hrest'
-    simpa only [sepConj_assoc] using hrest'
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
-
-/-! ## Fixed-Base Verification of `do_reserve_and_handle` (`doReserveRawSpec` and `doReserveSpec`) -/
-
 section FixedBaseSteps
 
 attribute [local irreducible] Program.fnOff
 
-theorem do_reserve_raw_ok_of_fg_opt {oimg : Option Obj.Image} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)} {hookStack : Nat}
-    (hstack : (hookStack + 48) + 64 ≤ 2 ^ 64 := by decide)
-    (hfg : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (specWithOptInv oimg (finishGrowSpecWithStack M A lim hookStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr doReserveName)
-      (specWithOptInv oimg (doReserveRawSpecWithStack M A lim (hookStack + 48))) := by
-  have hfn : libsignalSessionCode.fnOff doReserveName =
-      num% (ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]") :=
-    doReserve_fnOff
-  have hfg0 := finish_grow_1_zero_ok_of_fg_opt hfg
-  have hfg1 := finish_grow_1_ne_ok_of_fg_opt hfg
-  rw [Program.fnAddr_rel (name := doReserveName)
-    hfn finishGrow_fnOff
-    (k := num% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]" -
-      ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]"))
-    (by decide)] at hfg0 hfg1
-  clear hfg
-  unfold specWithOptInv tripleRatchetProgAtExt at hfg0 hfg1 ⊢
-  unfold doReserveRawSpecWithStack
-    LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.doReserveRawSpecWithStack
-  simp only [stackAt_doReserve_opt hstack, sepExists_sepConj_right]
-  code_fetches CryptoVerification.libsignalSessionCode
-    CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBin b
-    trapHooks hfn
-    (num% (ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]")) 140
-  rw [← rebase_trapHooks_fnAddr libsignalSessionCode b (Rust.withPanics ext) doReserveName]
-    at hfg0 hfg1 ⊢
-  generalize_entry (libsignalSessionCode.rebase b trapHooks).fnAddr doReserveName = entry
-  examples_hide_fetches
-  wp_init x s0
-  obtain ⟨⟨v, cap, ptr, bs, additional⟩, st⟩ := x
-  dsimp only at *
-  have hinv0 : OptCallInv oimg s0 := by assumption
-  have hx1_eq : (s0.readReg64 .x1).toNat = bs.length := by assumption
-  have hx2_eq : (s0.readReg64 .x2).toNat = additional := by assumption
-  have hbs_le_cap : bs.length ≤ cap.toNat := by assumption
-  have hfit0 : LibsignalBinary.Heap.FitsEnv M lim st
-      (DoReserveEnv ⟨v, cap, ptr, bs, additional⟩) := by assumption
-  have hbound : reserveCap cap.toNat bs.length additional + 1 ≤ 2 ^ 63 := by
-    dsimp [reserveCap, CryptoVerification.LibsignalTripleRatchet.reserveCap] at *; omega
-  have hmax : max (max (bs.length + additional) (2 * cap.toNat)) 8 + 1 ≤ 2 ^ 63 := hbound
-  have hcs := adds_cs_eq_false (x2 := s0.readReg64 .x2) (x1 := s0.readReg64 .x1) (by
-    rw [hx2_eq, hx1_eq]; omega)
-  have hnew_eq := reserve_new_cap_eq (cap := cap) hx1_eq hx2_eq hbound
-  let new := BitVec.ofNat 64 (reserveCap cap.toNat bs.length additional)
-  have hnew_toNat : new.toNat = reserveCap cap.toNat bs.length additional := by
-    dsimp [new]; rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hcap_le_new : cap.toNat ≤ new.toNat := by
-    rw [hnew_toNat]; dsimp [reserveCap, CryptoVerification.LibsignalTripleRatchet.reserveCap]; omega
-  have hnew_pos : 0 < new.toNat := by
-    rw [hnew_toNat]; dsimp [reserveCap, CryptoVerification.LibsignalTripleRatchet.reserveCap]; omega
-  have hnew_bound : new.toNat + 1 ≤ 2 ^ 63 := by omega
-  by_cases hcap0 : cap = 0#64
-  · subst hcap0
-    have hbs : bs = [] := List.eq_nil_of_length_eq_zero (Nat.eq_zero_of_le_zero hbs_le_cap)
-    subst hbs
-    have hfit_ev : FitsEvents M lim st (rustAllocEvents new.toNat 1) := by
-      simpa only [fitsEnv_doReserve_iff, doReserveEvents, ↓reduceIte, ← hnew_toNat] using hfit0
-    have hnew_eq0 :
-        (if (8#64).ult
-              (if (0#64).ult (s0.readReg64 .x2 + s0.readReg64 .x1) = true then
-                s0.readReg64 .x2 + s0.readReg64 .x1
-               else 0#64) = true then
-          if (0#64).ult (s0.readReg64 .x2 + s0.readReg64 .x1) = true then
-            s0.readReg64 .x2 + s0.readReg64 .x1
-          else 0#64
-         else 8#64) = new := hnew_eq
-    simp only [ite_true, emp_sepConj, pointsToBytes_nil,
-      List.length_nil, BitVec.add_zero, Nat.sub_zero]
-    wp_steps_opt_vm
-      (entry + bv% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]" -
-        ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]"))
-      hinv0 =>
-      wp_call hfg0 (s0.sp - 56#64, 0#64, ptr, new, [], v_stk_1, v_stk_2, v_stk_3, s0.sp - 64#64, st)
-      wp_steps_opt_vm (s0.readReg64 .lr) (optCallInv_none _) =>
-        simp only [doReserveEvents, ↓reduceIte, ← hnew_toNat]
-        wp_done
-  · have hcap0' : cap ≠ 0 := hcap0
-    have hfit_ev : FitsEvents M lim st (rustReallocEvents cap.toNat new.toNat 1) := by
-      simpa only [fitsEnv_doReserve_iff, doReserveEvents, hcap0, ↓reduceIte, ← hnew_toNat] using hfit0
-    simp only [hcap0, ite_false, sepConj_assoc]
-    have hsub_eq : reserveCap cap.toNat bs.length additional - bs.length = new.toNat - bs.length := by
-      rw [hnew_toNat]
-    rw [hsub_eq]
-    wp_steps_opt_vm
-      (entry + bv% (ls_off% "<alloc::raw_vec::RawVecInner>::finish_grow [local#1]" -
-        ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]"))
-      hinv0 =>
-      wp_call hfg1 (s0.sp - 56#64, cap, ptr, new, bs, v_stk_1, v_stk_2, v_stk_3, s0.sp - 64#64, st)
-      wp_steps_opt_vm (s0.readReg64 .lr) (optCallInv_none _) =>
-        simp only [doReserveEvents, hcap0, ↓reduceIte, ← hnew_toNat]
-        wp_done
-
 end FixedBaseSteps
-
-theorem do_reserve_raw_ok_ext {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContractsBudget b M A lim ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr doReserveName)
-      (doReserveRawSpec M A lim) :=
-  subroutine_ok_of_optNone <|
-    do_reserve_raw_ok_of_fg_opt (by decide)
-      (subroutine_ok_to_optNone (finish_grow_ok_ext hA))
-
-theorem do_reserve_raw_ok_trap {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {C : Crypto} {abs : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr doReserveName)
-      (doReserveRawSpec M A lim) :=
-  do_reserve_raw_ok_ext (AllocContractsBudget.of_tripleRatchetProgAt_trap b C M A lim abs hA)
-
-/-- `<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]`
-(`0x4cac`) meets `doReserveRawSpec M A lim` on `tripleRatchetProgAt`. -/
-theorem do_reserve_raw_ok {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr doReserveName)
-      (doReserveRawSpec M A lim) :=
-  (trTrapProgAt_fnAddr_eq b C ctl abs doReserveName).rec
-    (motive := fun addr _ =>
-      subroutine_ok (tripleRatchetProgAt b C ctl abs) addr (doReserveRawSpec M A lim))
-    (subroutine_ok_kit_of_trTrap (do_reserve_raw_ok_trap hA))
-
-theorem do_reserve_ok_of_raw_opt {oimg : Option Obj.Image} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)} {fgStack : Nat}
-    (hraw : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr doReserveName)
-      (specWithOptInv oimg (doReserveRawSpecWithStack M A lim fgStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr doReserveName)
-      (specWithOptInv oimg (doReserveSpecWithStack M A lim fgStack)) := by
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨x, st⟩ R s0 hpc hrun hpre hsp
-  dsimp only [specWithOptInv] at hpre
-  simp only [doReserveSpecWithStack,
-    LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.doReserveSpecWithStack,
-    vecU8At_eq, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hbound, hfit⟩, ⟨hlen, hcap63, hptr⟩, hmem⟩
-  have hpre' : s0.mem ⊨
-      (specWithOptInv oimg (doReserveRawSpecWithStack M A lim fgStack)).pre (x, st) s0 ∗
-      (((x.v + 16#64) ↦₆₄ BitVec.ofNat 64 x.bs.length) ∗ R) := by
-    dsimp only [specWithOptInv]
-    simp only [doReserveRawSpecWithStack,
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.doReserveRawSpecWithStack,
-      sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨hinv, ⟨hx0, hx1, hx2, hx3, hx4, hlen, hptr, hbound, hfit⟩, ?_⟩
-    rwa [doReserve_pre_repack]
-  refine hraw.mono_outcome (x, st)
-      (((x.v + 16#64) ↦₆₄ BitVec.ofNat 64 x.bs.length) ∗ R) s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [specWithOptInv] at hq ⊢
-    simp only [doReserveRawSpecWithStack, doReserveSpecWithStack,
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.doReserveRawSpecWithStack,
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.doReserveSpecWithStack,
-      vecU8At_eq] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq
-    rcases hq with ⟨htrace, hq⟩
-    simp only [sepExists_sepConj_left, satisfies_sepExists] at hq
-    rcases hq with ⟨p', hq⟩
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hq
-    rcases hq with ⟨hp', hmem⟩
-    have hlt : reserveCap x.cap.toNat x.bs.length x.additional < 2 ^ 64 := by omega
-    have htoNat : (BitVec.ofNat 64 (reserveCap x.cap.toNat x.bs.length x.additional)).toNat =
-        reserveCap x.cap.toNat x.bs.length x.additional := by
-      rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hlt]
-    have hlen_le : x.bs.length ≤ reserveCap x.cap.toNat x.bs.length x.additional := by
-      dsimp [reserveCap, CryptoVerification.LibsignalTripleRatchet.reserveCap]; omega
-    have hcap63' : reserveCap x.cap.toNat x.bs.length x.additional < 2 ^ 63 := by
-      omega
-    have hcap_ne : BitVec.ofNat 64 (reserveCap x.cap.toNat x.bs.length x.additional) ≠ 0#64 := by
-      intro heq
-      have := congrArg BitVec.toNat heq
-      rw [htoNat] at this
-      change reserveCap x.cap.toNat x.bs.length x.additional = 0 at this
-      dsimp [reserveCap, CryptoVerification.LibsignalTripleRatchet.reserveCap] at this; omega
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htrace, ?_⟩
-    simp only [sepExists_sepConj_left, satisfies_sepExists]
-    refine ⟨p', ?_⟩
-    simp only [hcap_ne, ite_false, htoNat]
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hlen_le, hcap63', hp'⟩, ?_⟩
-    rwa [doReserve_post_repack]
-  · dsimp only [specWithOptInv, doReserveRawSpecWithStack,
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.doReserveRawSpecWithStack] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · dsimp only [specWithOptInv, doReserveRawSpecWithStack,
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.doReserveRawSpecWithStack] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-  · dsimp only [specWithOptInv, doReserveRawSpecWithStack,
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.doReserveRawSpecWithStack] at hq
-    exact (not_satisfies_false_sepConj hq).elim
-
-theorem do_reserve_ok_of_fg_opt {oimg : Option Obj.Image} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)} {hookStack : Nat}
-    (hstack : (hookStack + 48) + 64 ≤ 2 ^ 64 := by decide)
-    (hfg : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr finishGrowName)
-      (specWithOptInv oimg (finishGrowSpecWithStack M A lim hookStack))) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr doReserveName)
-      (specWithOptInv oimg (doReserveSpecWithStack M A lim (hookStack + 48))) :=
-  do_reserve_ok_of_raw_opt (do_reserve_raw_ok_of_fg_opt hstack hfg)
-
-theorem do_reserve_ok_ext {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {ext : String → Option (State → State)}
-    (hA : AllocContractsBudget b M A lim ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr doReserveName)
-      (doReserveSpec M A lim) :=
-  subroutine_ok_of_optNone <|
-    do_reserve_ok_of_raw_opt (subroutine_ok_to_optNone (do_reserve_raw_ok_ext hA))
-
-theorem do_reserve_ok_trap {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {C : Crypto} {abs : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim abs) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr doReserveName)
-      (doReserveSpec M A lim) :=
-  do_reserve_ok_ext (AllocContractsBudget.of_tripleRatchetProgAt_trap b C M A lim abs hA)
-
-/-- `<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]`
-(`0x4cac`) meets `doReserveSpec M A lim` on `tripleRatchetProgAt`. -/
-theorem do_reserve_ok {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {b : BitVec 64} {C : Crypto} {ctl : BitVec 64} {abs : String → Option (State → State)}
-    (hA : AllocHooksBudgetBase M A lim abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr doReserveName)
-      (doReserveSpec M A lim) :=
-  (trTrapProgAt_fnAddr_eq b C ctl abs doReserveName).rec
-    (motive := fun addr _ =>
-      subroutine_ok (tripleRatchetProgAt b C ctl abs) addr (doReserveSpec M A lim))
-    (subroutine_ok_kit_of_trTrap (do_reserve_ok_trap hA))
-
-theorem do_reserve_raw_ok_ext_x {img : Obj.Image} {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {ext : String → Option (State → State)}
-    (hA : AllocContractsXBudget img M A lim ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr doReserveName)
-      ((doReserveRawSpecX M A lim).inImage img) :=
-  do_reserve_raw_ok_of_fg_opt (oimg := some img) (by decide)
-    (finish_grow_ok_ext_x hA)
-
-theorem do_reserve_ok_ext_x {img : Obj.Image} {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {ext : String → Option (State → State)}
-    (hA : AllocContractsXBudget img M A lim ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr doReserveName)
-      ((doReserveSpecX M A lim).inImage img) :=
-  do_reserve_ok_of_raw_opt (oimg := some img) (do_reserve_raw_ok_ext_x hA)
-
-/-! ## Relocatable Per-Block Proofs (`[LibsignalPlacement]`, Block `13`, Calling Block `45`) -/
 
 private theorem finish_grow_1_zero_placed_ok_of_fg_opt [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}

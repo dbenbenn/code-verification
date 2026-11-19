@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Defs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Qpan
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Qpan -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwned -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwned -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlaced -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Stage P2 Substage P2.5 V1 Bundle and Combinators
@@ -24,7 +27,7 @@ Defines placed `StageP2MemInv` sequencing/call combinators and stack-parameteriz
 `initializeBobSessionErrOwned` contracts (`Sub5Placed`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -126,9 +129,9 @@ theorem p2_call_oom_rocl_sub5_qpan [LibsignalPlacement] {α : Type} {prog : Prog
       StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
     (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by
-      intro _ _; repeat (first | simp only [StoreKit.withLsLogOff] | simp only [withLogOff] | simp only [withEnvPre]); rfl)
+      intro _ _; repeat (first | simp only [StoreKit.withLsLogOff] | simp only [withEnvPre]); rfl)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro _; repeat (first | simp only [StoreKit.withLsLogOff] | simp only [withLogOff] | simp only [withEnvPre]); rfl) :
+      intro _; repeat (first | simp only [StoreKit.withLsLogOff] | simp only [withEnvPre]); rfl) :
     SepWPp prog ret s P Q Qp := by
   intro R hm hL
   rw [hP, sepConj_assoc] at hm
@@ -243,9 +246,9 @@ theorem p2_call_oom_rocl_memInv_sub5_qpan [LibsignalPlacement] {Φ : Memory → 
       sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
       Φ sf.mem → SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
     (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by
-      intro _ _; repeat (first | simp only [StoreKit.withLsLogOff] | simp only [withLogOff] | simp only [withEnvPre]); rfl)
+      intro _ _; repeat (first | simp only [StoreKit.withLsLogOff] | simp only [withEnvPre]); rfl)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro _; repeat (first | simp only [StoreKit.withLsLogOff] | simp only [withLogOff] | simp only [withEnvPre]); rfl) :
+      intro _; repeat (first | simp only [StoreKit.withLsLogOff] | simp only [withEnvPre]); rfl) :
     SepWPp prog ret s P Q Qp :=
   p2_call_oom_rocl_sub5_qpan hpan_qp (hInv.toCodeRo hΦ) htr hcall hpc hrun hsp hlr hpre hP hpan
     (fun sf hsteps hpcm hrunm hspm hspal hcsm _ =>
@@ -354,7 +357,7 @@ theorem initBobErrOwnedAt_eq_kits (A : RustAlloc) (outPtr : BitVec 64) :
 namespace Sub5Placed
 
 /-- Stack-parameterized placed `initializeBobSessionErrOwned` inner contract (`Kits.initBobErrOwnedAt`). -/
-def initializeBobSessionErrOwnedAtInnerPlacedSpec [LibsignalPlacement]
+@[expose] def initializeBobSessionErrOwnedAtInnerPlacedSpec [LibsignalPlacement]
     (P : Primitives) (A : RustAlloc) (stk : Nat) : Spec InitBobCallGhost where
   pre := fun (g : InitBobCallGhost) s =>
     ⌜s.readReg64 .x0 = g.argPtr ∧
@@ -383,7 +386,7 @@ def initializeBobSessionErrOwnedAtInnerPlacedSpec [LibsignalPlacement]
     A.pool
   onPanic := rustPanicOnOomPlaced
 
-def initializeBobSessionErrOwnedAtPlacedSpec [LibsignalPlacement]
+@[expose] def initializeBobSessionErrOwnedAtPlacedSpec [LibsignalPlacement]
     (P : Primitives) (A : RustAlloc) (stk : Nat) : Spec InitBobCallGhost :=
   StoreKit.withLsCodeRoLoaded lsmpl (initializeBobSessionErrOwnedAtInnerPlacedSpec P A stk)
 
@@ -472,7 +475,7 @@ theorem of_responderCore_errOwned_to_4K_placed [LibsignalPlacement] {prog : Prog
   initializeBobSessionErrOwnedAtPlacedSpec_mono_stack (by decide) (by decide)
     (of_responderCore_errOwned_placed h)
 
-def initializeBobSessionErrOwnedMemInvAtPlacedSpec [LibsignalPlacement]
+@[expose] def initializeBobSessionErrOwnedMemInvAtPlacedSpec [LibsignalPlacement]
     (Φ : Memory → Prop) (P : Primitives) (A : RustAlloc) (stk : Nat) : Spec InitBobCallGhost :=
   StoreKit.withLsCodeRoLoaded lsmpl
     (withBobMemInv Φ (initializeBobSessionErrOwnedAtInnerPlacedSpec P A stk))

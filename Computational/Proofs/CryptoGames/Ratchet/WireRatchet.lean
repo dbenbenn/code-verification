@@ -11,10 +11,10 @@ module
 
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.WireRatchetDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtM
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDec
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 
 /-!
 # Lemmas for libsignal's symmetric wire ratchet
@@ -22,7 +22,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
 **Checked by Lean.** Proves `fitPlain_toList` for `padOrTruncatePlain` from `WireRatchetDefs.lean`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 

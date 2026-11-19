@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeader
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeader -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhasePlaced
@@ -24,6 +24,7 @@ import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1State
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncodePlaced
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send::<HookRng>` Phase 3e Header (Block 124)
@@ -33,7 +34,7 @@ for encoding `Option<pq_ratchet_state::Inner>` and `Option<v1_state::InnerState>
 the jump-table dispatch at `+6616` (`StepSendInnerStateAt6616Placed`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -73,7 +74,7 @@ theorem spqrSendEncodeJumpTablePlacedAt_eq_bytes :
 
 /-! ## `[local#1]` Callee `subroutine_ok` Bridges -/
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry
   EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32
@@ -834,7 +835,7 @@ theorem step_send_inner_to_6616_placed
 
 /-- Unified stepping obligation from `spqrSendPlacedEntry + 6616#64` (jump-table dispatch)
 to `spqrSendPlacedEntry + 6216#64` (post-encode join) for a `V1State.InnerState` value `is`. -/
-def StepSendInnerStateAt6616Placed (resStack : Nat) (A : RustAlloc)
+@[expose] def StepSendInnerStateAt6616Placed (resStack : Nat) (A : RustAlloc)
     (ext : String → Option (State → State)) (roBase : BitVec 64)
     (s0 : State) (is : V1State.InnerState) : Prop :=
   ∀ (sp cap ptr w25 : BitVec 64) (g : V1StatePBGhost) (bs : List (BitVec 8)),

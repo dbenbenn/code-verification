@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefs
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPE Error-Ownership and Store Impossibility Bridges
@@ -22,7 +24,7 @@ and `apiDecResultAt`) into `decResAt E2E.HooksE.A0 out (.error err) ∗ anyHeap`
 and `cliPollIdKit.saveRel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -107,11 +109,6 @@ theorem words3_heap_entails_exists_vecU8 (A : RustAlloc) (p cap ptr len : BitVec
 
 /-! ## 2. Structured `speAt` / `recordResultAt` / `SpeErrSpec` → `decResAt` Bridges -/
 
-theorem speAt_entails_decResAt_err (A : RustAlloc) (fnName : List (BitVec 8))
-    (out : BitVec 64) (e : SignalProtocolError) (err : ApiError AddrVal Unit) :
-    speAt A fnName out e ⊢ decResAt A out (.error err) :=
-  speOwnedAt_entails_decResAt_err A out (.proto fnName e) err
-
 theorem recordResultAt_err_entails_decResAt (A : RustAlloc) (out : BitVec 64)
     (e : SignalProtocolError) (err : ApiError AddrVal Unit) :
     recordResultAt A out (.error e) ⊢ decResAt A out (.error err) :=
@@ -159,13 +156,6 @@ theorem strSpeWords_entails_decResAt_anyHeap (A : RustAlloc) (out : BitVec 64)
       (sepConj_mono (words3_heap_entails_exists_vecU8 A out cap ptr len)
         (words2_at20_entails_memRegion16 out w4 w5))) ?_
   exact speOwnedAt_entails_decResAt_err A out (.withString i hi) err
-
-theorem cliReadErrSpec_entails_decResAt_anyHeap (A : RustAlloc) (out : BitVec 64)
-    (e : CliReadErr) (err : ApiError AddrVal Unit) :
-    speErrAt (cliReadErrSpec A) out e ⊢ decResAt A out (.error err) ∗ anyHeap := by
-  dsimp only [speErrAt, cliReadErrSpec, cliReadErrHeap]
-  exact strSpeWords_entails_decResAt_anyHeap A out 1 (by decide)
-    e.cap e.ptr e.len e.w4 e.w5 _ err
 
 theorem cliGetErrSpec_entails_decResAt_anyHeap (A : RustAlloc) (out : BitVec 64)
     (w : Nat) (hw : w < 32) (hw_plain : RunDrop.PlainSpeTag w)
@@ -236,13 +226,6 @@ theorem cliPollKpk_getErr_entails_decResAt_anyHeap (A : RustAlloc) (b : BitVec 6
     speErrAt (cliPollKpkKit A b F0 kid ksid kbk σ).getErr out e ⊢
       decResAt A out (.error err) ∗ anyHeap :=
   cliGetErrSpec_entails_decResAt_anyHeap A out 15 (by decide) (by decide) e err
-
-theorem cliPollPk_removeErr_entails_decResAt_anyHeap (A : RustAlloc) (b : BitVec 64)
-    (F0 : FsFiles) (pid : BitVec 32) (σ : DpKitStk) (out : BitVec 64)
-    (e : (cliPollPkKit A b F0 pid σ).RemoveErr) (err : ApiError AddrVal Unit) :
-    speErrAt (cliPollPkKit A b F0 pid σ).removeErr out e ⊢
-      decResAt A out (.error err) ∗ anyHeap :=
-  cliReadErrSpec_entails_decResAt_anyHeap A out e err
 
 theorem cliPollKpk_markErr_entails_decResAt_anyHeap (A : RustAlloc) (b : BitVec 64)
     (F0 : FsFiles) (kid ksid : BitVec 32) (kbk : PublicKey) (σ : DpKitStk) (out : BitVec 64)

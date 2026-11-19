@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit -- proof-setup: allow-public-import
 import LibsignalBinary.Heap.IfaceSimp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -24,6 +24,10 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.EncoderFromPbExitClPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudget
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
+import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Closed `[LibsignalPlacement]` Epilogue & Exit Blocks for `<PolyEncoder>::from_pb`
@@ -34,7 +38,7 @@ in the 5 exit theorems of `<spqr::encoding::polynomial::PolyEncoder>::from_pb` (
 `LibsignalCodeLoaded` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

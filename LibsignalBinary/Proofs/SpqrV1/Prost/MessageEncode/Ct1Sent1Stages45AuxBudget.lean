@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1Stages13AuxBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCSBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent1Stages13AuxBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.UnchunkedPlacedCSBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Auth.Encode1
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Ct1Sent2StagesPlacedAuxBudget
 
 /-!
 # Budget-Threaded Stages 4–5 of `unchunked::Ct1Sent::encode [local#1]` (`Block 156`)
@@ -25,7 +26,7 @@ Re-exports Stages 1–3 from `Ct1Sent1Stages13AuxBudget` and proves relocatable 
 stage steppers on `lsProg_156` for Stage 4 (`hdr: Vec<u8>`) and Stage 5 (`es: Vec<u8>`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

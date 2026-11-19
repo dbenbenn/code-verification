@@ -20,7 +20,7 @@ Defines `MsgEnc48CalleeSavedPlaced`, `withMsgEnc48CSPlaced`, and generic `Progra
 tailcall steppers for 48-byte `message::encode` frames.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -43,7 +43,7 @@ set_option maxHeartbeats 400000
 
 /-- Callee-saved registers `x22..x28` untouched by 48-byte `message::encode` (`x19..x21, fp, lr`
 are saved on stack), together with `StepInvPlaced s0 s`. -/
-def MsgEnc48CalleeSavedPlaced (s0 s : State) : Prop :=
+@[expose] def MsgEnc48CalleeSavedPlaced (s0 s : State) : Prop :=
   s.readReg64 (Reg.gpr 22#5) = s0.readReg64 (Reg.gpr 22#5) ∧
   s.readReg64 (Reg.gpr 23#5) = s0.readReg64 (Reg.gpr 23#5) ∧
   s.readReg64 (Reg.gpr 24#5) = s0.readReg64 (Reg.gpr 24#5) ∧
@@ -99,7 +99,7 @@ theorem msgEnc48CalleeSavedPlaced_setPC {s0 s : State} (pc : BitVec 64)
     (State.readReg64_setPC _ _ _) (State.readReg64_setPC _ _ _)
     (State.readReg64_setPC _ _ _) hinv
 
-def withMsgEnc48CSPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
+@[expose] def withMsgEnc48CSPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s => ⌜MsgEnc48CalleeSavedPlaced s0 s⌝ ∗ spec.pre x s }
 
 theorem subroutine_ok_withLsCodeLoaded [LibsignalPlacement] {α : Type}
@@ -119,17 +119,6 @@ theorem subroutine_ok_withMsgEnc48CSPlaced_ext {α : Type} {prog : Program} {ent
   exact h.mono_outcome x R s hpc hrun hpre.2 hsp fun _ hout => hout
 
 abbrev subroutine_ok_withMsgEnc48CSPlaced := @subroutine_ok_withMsgEnc48CSPlaced_ext
-
-theorem subroutine_ok_withMsgEnc48CSPlaced_x {α : Type} {prog : Program} {entry : BitVec 64} {spec : Spec α}
-    (img : Obj.Image) (s0 : State) (hinv0 : ImgCallInv img s0)
-    (h : subroutine_ok prog entry (spec.inImage img)) :
-    subroutine_ok prog entry (withMsgEnc48CSPlaced s0 spec) := by
-  refine subroutine_ok_outcome_intro fun x R s hpc hrun hpre hsp => ?_
-  rw [withMsgEnc48CSPlaced, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  have hpre' : s.mem ⊨ (spec.inImage img).pre x s ∗ R := by
-    rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpre.1.2.2.2.2.2.2.2.2.1 img hinv0, hpre.2⟩
-  exact h.mono_outcome x R s hpc hrun hpre' hsp fun _ hout => hout
 
 theorem subroutine_ok_withMsgEnc48CSPlaced_placed [LibsignalPlacement] {α : Type} {prog : Program}
     {entry : BitVec 64} {spec : Spec α} (s0 : State) (hcl0 : LibsignalCodeLoaded lsmpl s0.mem)

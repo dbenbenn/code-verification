@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Pure
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Pure -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Proof
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed `EncoderState::Polys` Path
@@ -23,7 +24,7 @@ Relocatable `[LibsignalPlacement]` verification of the 16-iteration `EncoderStat
 evaluation loop (`+92 -> +136..+220 -> +4484`), invoking `computeAt_placed_ok` (Block `371`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -462,7 +463,7 @@ theorem polysLoop_step_placed_sepWPp [LibsignalPlacement]
   have hcomp : subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (lsmpl.base 371) (withLsCodeLoaded lsmpl (computeAtPlacedSpec A)) :=
     ls_subroutine_ok_of_block
-      (computeAt_placed_ok A ext hA.handle_error hA.shim hA.alloc hA.realloc hA.dealloc)
+      (computeAt_placed_ok A ext hA.once_ok hA.handle_error hA.shim hA.alloc hA.realloc hA.dealloc)
   clear hA
   rw [polyListOf_split_idx A (x.encA + 8#64) polys i hi_len]
   apply SepWPp.fold (polyOf_unfold A ((x.encA + 8#64) + BitVec.ofNat 64 (24 * i)) (polys[i]'hi_len)) (by sep_focus)

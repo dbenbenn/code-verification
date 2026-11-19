@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpers
+public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Chain.ChainPbCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Chain.ChainPbCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.VecDequeHeap
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Helper Lemmas and Specifications for `<spqr::chain::Chain>::send_key`
@@ -23,7 +24,7 @@ specification, `VecDeque` front-pop and slot-update lemmas, and `Chain`/`ChainEp
 lemmas for `<spqr::chain::Chain>::send_key` (`0x60db0`, 149 instructions).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ChainProofs
 
@@ -40,7 +41,7 @@ set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
 /-- Panic spec of `<ChainEpochDirection>::next_key_internal` (`0x5fd94`). -/
-def nextKeyInternalPanicSpecX : Spec NextKeyInternalGhost where
+@[expose] def nextKeyInternalPanicSpecX : Spec NextKeyInternalGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x2 = BitVec.ofNat 64 x.next.length ∧ s.readReg64 .x3 = x.ctrA ∧
       x.next.length < 2 ^ 64 ∧ (x.next.length ≠ 32 ∨ x.ctr = 0xffffffff#32)⌝ ∗
@@ -48,12 +49,7 @@ def nextKeyInternalPanicSpecX : Spec NextKeyInternalGhost where
   post := fun _ _ _ => ⌜False⌝
   onPanic := fun _ s0 sf => ⌜sf.trace = s0.trace⌝ ∗ anyHeap
 
-def NextKeyInternalPanicOkX (img : Obj.Image) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr nextKeyInternalName)
-    (nextKeyInternalPanicSpecX.inImage img)
-
-def NextKeyInternalPanicPlacedOkX [LibsignalPlacement]
+@[expose] def NextKeyInternalPanicPlacedOkX [LibsignalPlacement]
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_362).rebase (blkPl_362).base H)
     (blkPl_362).base
@@ -62,11 +58,11 @@ def NextKeyInternalPanicPlacedOkX [LibsignalPlacement]
 abbrev chainSendKeyName : String := "<spqr::chain::Chain>::send_key"
 abbrev chainSendKeyStackX : Nat := 208 + nextKeyInternalStackX
 
-def sendKeyOkAt (A : RustAlloc) (out : BitVec 64) (ctr : BitVec 32) (key : Bytes) : SepProp :=
+@[expose] def sendKeyOkAt (A : RustAlloc) (out : BitVec 64) (ctr : BitVec 32) (key : Bytes) : SepProp :=
   (out ↦₆₄ 0#64) ∗ ((out + 0x08#64) ↦₃₂ ctr) ∗
     memRegion (out + 0x0c#64) 4 ∗ vecU8 A (out + 0x10#64) key
 
-def sendKeyErrAt (out : BitVec 64) (err : Error) : SepProp :=
+@[expose] def sendKeyErrAt (out : BitVec 64) (err : Error) : SepProp :=
   (out ↦₆₄ 1#64) ∗ ((out + 0x08#64) ↦₈ spqrErrorTag err) ∗ memRegion (out + 0x09#64) 7 ∗
     (match err with
      | .sendKeyEpochDecreased s e =>
@@ -75,7 +71,7 @@ def sendKeyErrAt (out : BitVec 64) (err : Error) : SepProp :=
        ((out + 0x10#64) ↦₆₄ e) ∗ memRegion (out + 0x18#64) 16
      | _ => memRegion (out + 0x10#64) 24)
 
-def sendKeyPostAt (A : RustAlloc) (selfPtr out : BitVec 64) (self : Chain) :
+@[expose] def sendKeyPostAt (A : RustAlloc) (selfPtr out : BitVec 64) (self : Chain) :
     ChainResult (Chain × (BitVec 32 × Bytes)) → SepProp
   | .ok (self', (ctr, key)) => chainRepr A selfPtr self' ∗ sendKeyOkAt A out ctr key
   | .error (.err err) => chainRepr A selfPtr self ∗ sendKeyErrAt out err
@@ -88,7 +84,7 @@ structure ChainSendKeyGhost where
   G : ChainGhost
   self : Chain
 
-def chainSendKeySpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainSendKeyGhost where
+@[expose] def chainSendKeySpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainSendKeyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.selfPtr ∧ s.readReg64 .x1 = x.epoch ∧ s.readReg64 .x8 = x.out⌝ ∗
       memRegion x.out 40 ∗ chainAt A x.selfPtr x.G x.self ∗
@@ -101,13 +97,7 @@ def chainSendKeySpecX (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainSendKeyGhost w
     ⌜((Chain.sendKey hkdf x.self x.epoch).isPanic = true ∧ sf.trace = s0.trace) ∨
       (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace)⌝ ∗ anyHeap
 
-def ChainSendKeyOkX (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainSendKeyName)
-    ((chainSendKeySpecX hkdf A).inImage img)
-
-def ChainSendKeyPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (A : RustAlloc)
+@[expose] def ChainSendKeyPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_367).rebase (blkPl_367).base H)
     (blkPl_367).base
@@ -116,7 +106,7 @@ def ChainSendKeyPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (A : RustAlloc)
 /-- `<spqr::chain::Chain>::send_key` stack under `CliExternsOk` (`208 + nextKeyInternalStackExt = 18000` B). -/
 abbrev chainSendKeyStackExt : Nat := 208 + nextKeyInternalStackExt
 
-def chainSendKeySpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainSendKeyGhost where
+@[expose] def chainSendKeySpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainSendKeyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.selfPtr ∧ s.readReg64 .x1 = x.epoch ∧ s.readReg64 .x8 = x.out⌝ ∗
       memRegion x.out 40 ∗ chainAt A x.selfPtr x.G x.self ∗
@@ -128,12 +118,6 @@ def chainSendKeySpecExt (hkdf : HkdfFn) (A : RustAlloc) : Spec ChainSendKeyGhost
   onPanic := fun x s0 sf =>
     ⌜((Chain.sendKey hkdf x.self x.epoch).isPanic = true ∧ sf.trace = s0.trace) ∨
       (allocFailedIn s0 sf ∧ s0.trace <+: sf.trace)⌝ ∗ anyHeap
-
-def ChainSendKeyOkExt (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainSendKeyName)
-    ((chainSendKeySpecExt hkdf A).inImage img)
 
 theorem stackAt_nextKeyInternalExt_eq (sp : BitVec 64) :
     stackAt sp nextKeyInternalStackExt =
@@ -752,7 +736,7 @@ theorem sendKeyOkAt_intro (A : RustAlloc) (out : BitVec 64) (ctr : BitVec 32)
   exact Entails.sepExists_right 32#64 (Entails.sepExists_right p_key hvec)
 
 /-- Common tail expression of `Chain.sendKey` once `sendEpoch1`, `links2`, and `epochIndex` are resolved. -/
-def sendKeyTail (hkdf : HkdfFn) (self : Chain) (sendEpoch1 : Epoch)
+@[expose] def sendKeyTail (hkdf : HkdfFn) (self : Chain) (sendEpoch1 : Epoch)
     (links2 : List ChainEpoch) (epochIndex : Nat) (hi : epochIndex < links2.length) :
     ChainResult (Chain × (BitVec 32 × Bytes)) := do
   let link := links2[epochIndex]
@@ -847,7 +831,6 @@ theorem add_not_eq_ofNat_sub {len : Nat} {b : BitVec 64}
   rw [BitVec.ofNat_add, BitVec.ofNat_add, BitVec.ofNat_toNat, BitVec.setWidth_eq]
   bv_kernel
 
-
 theorem physIdx_madd_eq {head cap ptr : BitVec 64} {len : Nat}
     (hhead : head.toNat < cap.toNat) (hlen : len < cap.toNat) (hcap : cap.toNat * 112 < 2 ^ 63) :
     ptr + (head + BitVec.ofNat 64 len -
@@ -909,7 +892,7 @@ theorem physIdx_one_eq {head cap : BitVec 64}
 /-! ## `chainAt` and `chainEpochAt` Unpack/Pack Lemmas -/
 
 /-- Untouched fields of `Chain` during `send_key`: `next_root`, `params`, `dir`, and 4B tail padding. -/
-def chainRestSendKeyAt (A : RustAlloc) (a : BitVec 64) (G : ChainGhost) (c : Chain) : SepProp :=
+@[expose] def chainRestSendKeyAt (A : RustAlloc) (a : BitVec 64) (G : ChainGhost) (c : Chain) : SepProp :=
   vecU8At A (a + 0x20#64) G.nextRoot.cap G.nextRoot.ptr c.nextRoot ∗
     chainParamsAt (a + 0x48#64) c.params ∗ directionAt (a + 0x50#64) c.dir ∗ memRegion (a + 0x54#64) 4
 

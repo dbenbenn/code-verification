@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PqValid
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PqValid -- proof-setup: allow-public-import
 
 /-!
 # CLI Session-Record Scopes (`scopeKit` and `scopeIn`)
@@ -23,7 +23,7 @@ Defines the two `SessionRecord` scopes used across the CLI `run` proof:
   encrypt or decrypt step.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

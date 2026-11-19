@@ -10,16 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.Common.CallInv
+import ProofLib
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym
-import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.Fetch
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession.StoreLoop
 
@@ -121,33 +120,6 @@ theorem cmkLoopFrame_eq_deriveSeed (sp0 ret : BitVec 64) (counter : BitVec 32) :
   unfold cmkLoopFrame
   rw [memRegion_256_split_hmac, sepExists_sepConj_right, sepExists_sepConj_right,
       sepExists_sepConj_right, sepExists_sepConj_right]
-
-theorem sepWP_elim_inv {prog : Program} {img : Obj.Image} {mid : BitVec 64}
-    {s : State} {P R : SepProp} {post : State → SepProp → Prop}
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hm : s.mem ⊨ P ∗ R) (hL : prog.CodeLoaded s.mem)
-    (hwp : SepWP prog mid s P post) :
-    ∃ sm, Steps prog s sm ∧ sm.pc = mid ∧ sm.status = .Running ∧
-      img.FrozenLoaded sm ∧ sm.symtab = img.symtab ∧
-      prog.CodeLoaded sm.mem ∧
-      ∃ Pm, (sm.mem ⊨ Pm ∗ R) ∧ post sm Pm := by
-  rcases hwp.elim hm hL with ⟨sm, hsteps, ⟨hpc, hrun, Pm, hmm, hpost⟩ | ⟨_, hoom⟩⟩
-  · exact ⟨sm, hsteps, hpc, hrun, hfl.of_keepsFrozen hsteps.keepsFrozen,
-      hsteps.symtab_eq.trans hsym, hsteps.codeLoaded hL, Pm, hmm, hpost⟩
-  · exact (not_satisfies_false_sepConj hoom).elim
-
-theorem reaches_outcome_of_inImage {α : Type} {prog : Program} {entry : BitVec 64}
-    {spec : Spec α} {img : Obj.Image}
-    (h : subroutine_ok prog entry (spec.inImage img))
-    (x : α) (R : SepProp) (s : State)
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry) (hrun : s.status = .Running)
-    (hpre : s.mem ⊨ spec.pre x s ∗ R) (hsp : s.spAligned = true) :
-    reaches_outcome prog spec x R s s := by
-  have hpre' : s.mem ⊨ (spec.inImage img).pre x s ∗ R := by
-    rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hfl, hsym⟩, hpre⟩
-  exact (h.to_outcome x R s hpc hrun hpre' hsp).mono_outcome fun _ hout => hout
 
 theorem allocFailedIn_of_eq {F : ShaState → List (BitVec 8) → ShaState} {x : ConsumeMessageKeyGhost}
     {s0 sf : State} (h : sf.trace = s0.trace ++ [allocFailedEvent]) :
@@ -327,23 +299,6 @@ theorem ratchetAt_reassemble_after_findIndex (A : RustAlloc) (self : BitVec 64)
   apply sepConj_mono_right
   exact Entails.pure_right ⟨hcap_le, hcap_lt, hptr_ne⟩ (Entails.refl _)
 
-theorem steps_of_sepWPp {prog : Program} {img : Obj.Image} {ret : BitVec 64}
-    {s : State} {P R : SepProp}
-    {Q Qp : State → SepProp → Prop}
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hm : s.mem ⊨ P ∗ R) (hL : prog.CodeLoaded s.mem)
-    (hwp : SepWPp prog ret s P Q Qp) :
-    ∃ sf, Steps prog s sf ∧
-      ((sf.pc = ret ∧ sf.status = .Running ∧ img.FrozenLoaded sf ∧ sf.symtab = img.symtab ∧
-        ∃ P_f, (sf.mem ⊨ P_f ∗ R) ∧ Q sf P_f) ∨
-       (sf.status = .Panicked ∧ ∃ P_f, (sf.mem ⊨ P_f ∗ R) ∧ Qp sf P_f)) := by
-  rcases hwp R hm hL with
-    ⟨sf, hsteps, ⟨hpc, hrun, P_f, hmf, hq⟩ | ⟨hpan, P_f, hmf, hqp⟩ | ⟨_, hoom⟩⟩
-  · exact ⟨sf, hsteps, Or.inl ⟨hpc, hrun, hfl.of_keepsFrozen hsteps.keepsFrozen,
-      hsteps.symtab_eq.trans hsym, P_f, hmf, hq⟩⟩
-  · exact ⟨sf, hsteps, Or.inr ⟨hpan, P_f, hmf, hqp⟩⟩
-  · exact (not_satisfies_false_sepConj hoom).elim
-
 theorem ci_lt_and_find_match {Gc : RatchetGhost} {stc : RatchetState}
     {their : PublicKey} {ci : Nat} {chc : ReceiverChain}
     (hchains_len : Gc.chains.length = stc.receiverChains.length)
@@ -425,158 +380,6 @@ theorem cmkLoopFrame_of_deriveSeed (sp0 ret : BitVec 64) (counter : BitVec 32)
   rw [hpull]
   repeat' apply sepConj_mono_right
   exact sepConj_mono_left (words_entails_memRegion_32 (sp0 - 224#64) w0 w1 w2 w3)
-
-theorem deriveSeed_ok (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (alloc : String → Option (State → State)) (img : Obj.Image) :
-    DeriveSeedSpec F A alloc img := by
-  intro hA himg hfind_ok hhmac_ok x Gc stc ckc ci chc R s0 s _hlt hfind_idx hchc hstate hL
-  rcases hstate with ⟨hpc, ⟨hrun, hsp, hsp0_align, hsp_align, hx29, htrace, hfl, hsym, hvregs⟩,
-    ⟨hx21, hx23, hx26, hx27, hx28⟩, hx19_fn, hmem⟩
-  have hx19 : s.readReg64 .x19 = 1#64 := hx19_fn rfl
-  clear hx19_fn
-  rw [sessionProg_eq_SP himg F alloc] at hL ⊢
-  rw [cmkLoopPC_eq_fnAddr himg F alloc] at hpc
-  have hfn := (ls_lemma% fnOff "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key")
-  have hhmac := hmac_ok_at_cmk himg hhmac_ok
-  have hshim := shim_ok_at (b := img.base) (F := F) (alloc := alloc) hfn (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key")) (by decide)
-  have halloc := alloc_ok_at (b := img.base) (F := F) hA hfn (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key")) (by decide)
-  have hfind := find_index_ok_at_cmk himg hfind_ok
-  have hpanic := panic_at_handle_error (b := img.base) (F := F) (alloc := alloc) hfn (k := num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key")) (by decide)
-  unfold Spec.inImage hmacSpec at hhmac
-  unfold Spec.inImage findIndexSpec at hfind
-  cmk_fetches_range img.base (Rust.withPanics (sessionExterns F alloc)) hfn 205 229
-  cmk_fetches_range img.base (Rust.withPanics (sessionExterns F alloc)) hfn 621 624
-  clear hfn
-  have hpartB_eq := cmkInsertKeyPC_eq_fnAddr himg F alloc
-  generalize_entry (SP img.base F alloc).fnAddr cmkSym = entry
-  examples_hide_fetches
-  have hci_lt : ci < stc.receiverChains.length := (List.getElem?_eq_some_iff.mp hchc).1
-  have hchains_pos : 0 < stc.receiverChains.length := by omega
-  have hkey_len : (keyToBytes32 ckc.key).length = 32 := keyToBytes32_length ckc.key
-  have hmsg1_len : ([1#8] : List (BitVec 8)).length = 1 := rfl
-  have hseed_eq : (ckc.messageKeys F).seed = hmacWith F (keyToBytes32 ckc.key) [1#8] :=
-    messageKeys_seed_eq F ckc
-  have hseed_len : (hmacWith F (keyToBytes32 ckc.key) [1#8]).length = 32 :=
-    hmacWith_length F (keyToBytes32 ckc.key) [1#8]
-  obtain ⟨sw0, sw1, sw2, sw3, hseed_unpack, hseed_pts⟩ := exists_unpack64_of_length_32 hseed_len
-  have hpow1 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hlayout32 : LayoutOk 32 1 := ⟨Nat.zero_lt_succ 31, ⟨0, rfl⟩, by decide⟩
-  have hwp : SepWPp (SP img.base F alloc) (entry + bv% (916)) s
-      (cmkLoopHeap A img x Gc stc ckc s0)
-      (fun sA P_f =>
-        sA.sp = s0.sp - 480#64 ∧ sA.spAligned = true ∧
-        sA.readReg64 .x29 = s0.sp - 96#64 ∧
-        (sA.trace = s0.trace ∧ calleeSavedVRegs sA = calleeSavedVRegs s0) ∧
-        ∃ seedPtr, InsertKeyRegs x Gc ckc ci seedPtr s0 sA ∧ seedPtr ≠ 0#64 ∧
-          (sA.mem ⊨ P_f ∗ R →
-            sA.mem ⊨ (cmkLoopHeap A img x Gc stc ckc s0 ∗
-              vecU8Buf A 32#64 seedPtr (ckc.messageKeys F).seed) ∗ R))
-      (fun sA P_f => (sA.mem ⊨ P_f ∗ R) → (sA.mem ⊨ (consumeMessageKeySpec F A img).onPanic x s0 sA ∗ R)) := by
-    conv =>
-      arg 4
-      unfold cmkLoopHeap
-      rw [← hsp, pointsToBytes_chainKeyBytes x.ckA ckc, cmkLoopFrame_eq_deriveSeed s0.sp x.ret x.counter]
-    simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-    apply SepWPp.exists_elim; intro b0
-    apply SepWPp.of_sepWP_inv hfl hsym (mid := entry + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key"))
-    wp_steps
-    apply SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
-    intro hfl1 hsym1
-    rw [pointsTo8_eq_pointsToBytes_singleton (s0.sp - 320#64) 1#8,
-        stackAt_7712_eq_hmac s.sp]
-    apply SepWPp.of_sepWP_inv hfl1 hsym1 (mid := entry + bv% (864))
-    wp_call hhmac (s0.sp - 224#64, x.ckA, keyToBytes32 ckc.key, s0.sp - 320#64, [1#8])
-    apply SepWP.fold (Entails.of_eq (stackAt_7712_eq_hmac s.sp).symm) (by sep_focus)
-    rw [stackAt_7712_eq_alloc s.sp]
-    wp_steps
-    wp_apply
-    have hsp1 : sf_1.sp = s.sp := by simp only [wp_norm, arm64_norm, *]
-    wp_steps
-    wp_apply
-    apply SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
-    intro hfl2 hsym2
-    have hsp2 : sf_2.sp = s.sp := by simp only [wp_norm, arm64_norm, *]
-    rw [hsp1]
-    apply SepWPp.fold (Entails.of_eq (stackAt_7712_eq_alloc s.sp).symm) (by sep_focus)
-    by_cases hoom : sf_2.readReg64 Reg.x0 = 0#64
-    · simp only [hoom, BitVec.ofNat_eq_ofNat, ite_true, sepConj_pure_left_comm, sepConj_assoc]
-      refine SepWPp.pure_elim fun htrace_oom => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key"))
-      wp_steps
-      apply SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *]) fun hm => ?_
-      simpa only [consumeMessageKeySpec, Spec.inImage, sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · have hoom' : sf_2.readReg64 Reg.x0 ≠ 0 := hoom
-      have hoom_beq : (sf_2.readReg64 Reg.x0 == 0#64) = false := beq_eq_false_iff_ne.mpr hoom
-      simp only [hoom', ite_false, sepConj_pure_left_comm, sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨_halign_alloc, htrace_alloc⟩ => ?_
-      apply SepWPp.fold (ratchetAt_expose_for_findIndex A x.self Gc stc hchains_pos) (by sep_focus)
-      simp only [sepConj_assoc]
-      refine SepWPp.pure_elim fun ⟨hchains_len, hpad_len, hmax_jumps, hcap_le, hcap_lt, hptr_ne, hcap_ne⟩ => ?_
-      have hzip_len : (Gc.chains.zip stc.receiverChains).length = stc.receiverChains.length := by
-        simp [hchains_len]
-      have hzip_lt : (Gc.chains.zip stc.receiverChains).length * 104 < 2 ^ 63 := by
-        rw [hzip_len]; omega
-      have hlen_lt_64 : stc.receiverChains.length < 2 ^ 64 := by omega
-      have hlen_toNat : (BitVec.ofNat 64 stc.receiverChains.length).toNat = (Gc.chains.zip stc.receiverChains).length := by
-        rw [hzip_len, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hlen_lt_64]
-      have ⟨_, hfind_zip⟩ := ci_lt_and_find_match hchains_len hfind_idx hchc
-      rw [hseed_pts (s0.sp - 224#64),
-          memRegion_32_eq_exists_words (sf_2.readReg64 Reg.x0)]
-      simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-      apply SepWPp.exists_elim; intro dw0
-      apply SepWPp.exists_elim; intro dw1
-      apply SepWPp.exists_elim; intro dw2
-      apply SepWPp.exists_elim; intro dw3
-      apply SepWPp.of_sepWP_inv hfl2 hsym2 (mid := entry + bv% (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::find_receiver_chain_index" - ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key"))
-      wp_steps
-      apply SepWP.done (by simp only [wp_norm, arm64_norm, *]) (by simp only [wp_norm, arm64_norm, *])
-      intro hfl3 hsym3
-      rw [stackAt_7712_eq_find s.sp]
-      apply SepWPp.of_sepWP_ret
-      wp_apply
-      rw [hsp2]
-      apply SepWP.fold (Entails.of_eq (stackAt_7712_eq_find s.sp).symm) (by sep_focus)
-      rw [hsp]
-      have ⟨hx0_sf3, hx1_sf3⟩ : sf_3.readReg64 Reg.x0 = 1#64 ∧ (sf_3.readReg64 Reg.x1).toNat = ci := by
-        simpa only [hfind_zip] using hpost_2
-      have hx1_eq : sf_3.readReg64 Reg.x1 = BitVec.ofNat 64 ci := by
-        apply BitVec.eq_of_toNat_eq
-        rw [hx1_sf3, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-      have hcs_false : (BitVec.ofNat 64 stc.receiverChains.length).ule (BitVec.ofNat 64 ci) = false :=
-        bitvec_ofNat_lt_eq_false hci_lt hlen_lt_64
-      wp_steps
-      apply SepWP.fold
-        (ratchetAt_reassemble_after_findIndex A x.self Gc stc
-          hchains_len hpad_len hmax_jumps hcap_le hcap_lt hptr_ne hcap_ne)
-        (by sep_focus)
-      apply SepWP.fold
-        (words_entails_vecU8Buf_32 A (sf_2.readReg64 Reg.x0) (ckc.messageKeys F).seed
-          hoom' (hseed_eq ▸ hseed_len) (hseed_eq ▸ hseed_pts))
-        (by sep_focus)
-      apply SepWP.fold
-        (cmkLoopFrame_of_deriveSeed s0.sp x.ret x.counter 1#8 sw0 sw1 sw2 sw3)
-        (by sep_focus)
-      apply SepWP.fold
-        (Entails.of_eq (pointsToBytes_chainKeyBytes x.ckA ckc).symm)
-        (by sep_focus)
-      refine SepWP.done (by simp only [wp_norm, arm64_norm, *])
-        (by simp only [wp_norm, arm64_norm, *])
-        ⟨by simp only [wp_norm, arm64_norm, *], by simpa [State.spAligned, hsp_sf_3, hsp2, hsp] using hsp_align,
-         by simp only [wp_norm, arm64_norm, *],
-         ⟨by simp only [wp_norm, arm64_norm, *], by simp only [wp_norm, arm64_norm, *]⟩,
-         sf_2.readReg64 Reg.x0, ?_, hoom, fun hm => ?_⟩
-      · unfold InsertKeyRegs
-        refine ⟨?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩ <;> simp only [wp_norm, arm64_norm, *]
-      · exact Satisfies.mono (Entails.of_eq (by unfold cmkLoopHeap; ac_rfl)) hm
-  obtain ⟨sA, hsteps, ⟨hpcA, hrunA, hflA, hsymA, P_f, hmf, hspA, hsp_alignA, hx29A, htraceA,
-      seedPtr, hregsA, hseed_ne, hmemA⟩ | ⟨hpanA, P_f, hmf, hqp⟩⟩ :=
-    steps_of_sepWPp hfl hsym hmem hL hwp
-  · refine ⟨sA, hsteps, Or.inl ⟨seedPtr, ?_⟩⟩
-    exact ⟨hpartB_eq.symm ▸ hpcA, ⟨hrunA, hspA, hsp0_align, hsp_alignA, hx29A, htraceA.1, hflA, hsymA, htraceA.2⟩,
-      hregsA, hseed_ne, hmemA hmf⟩
-  · exact ⟨sA, hsteps, Or.inr ⟨hpanA, hqp hmf⟩⟩
 
 set_option maxRecDepth 200000 in
 private theorem deriveSeed_placed_ok_of_hmac [LibsignalPlacement]

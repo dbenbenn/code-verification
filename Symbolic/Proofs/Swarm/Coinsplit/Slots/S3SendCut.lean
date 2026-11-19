@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 import all DY.Bytes.Basic
 import all DY.Actions.Network
 import all DY.Actions.PersistentLocalState
@@ -32,7 +32,7 @@ Classifies model moves whose visible entries contain `.pt` (`encrypt`, `encryptA
 `n ≤ coins.length`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +47,7 @@ open _root_.DY.Libsignal.Composed.Refinement
 open _root_.DY.Libsignal.Composed.Refinement.Cli
 
 /-- Canonical `blk_hw` cut of `[.pt stdin, .rng coins, .send out]` for a given `coinsLen`. -/
-def sendCutOfLen (stdin coins out : HwBytes) (coinsLen : Nat) : List MachineEvent :=
+@[expose] def sendCutOfLen (stdin coins out : HwBytes) (coinsLen : Nat) : List MachineEvent :=
   if coinsLen = 0 then
     [.pt stdin, .send out]
   else

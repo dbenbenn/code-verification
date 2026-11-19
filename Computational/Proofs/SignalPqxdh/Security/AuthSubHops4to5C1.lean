@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
-public import Computational.Proofs.SignalPqxdh.Security.SigHopA
-public import Computational.Proofs.GameHop.Swap
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHopA -- proof-setup: allow-public-import
+public import Computational.Proofs.GameHop.Swap -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B2
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 import VCVio.EvalDist.Monad.Basic
@@ -26,7 +26,7 @@ and constructs the session-indexed `INT-CTXT` cutoff hybrid (`authIntCutoffExp`)
 boundary identities across `G3.8`, `G4`, and `G5`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -49,7 +49,7 @@ end SlotM
 
 /-- Invariant that every recorded fresh initiator session in `idealSessions` has valid `aeadCt`
     and slot index below `S.N_send_tot`. -/
-def IdealSessionsAeadValid {S : Setup} (P : Primitives) (hst : AuthHybridStateFixed S) : Prop :=
+@[expose] def IdealSessionsAeadValid {S : Setup} (P : Primitives) (hst : AuthHybridStateFixed S) : Prop :=
   ∀ s ∈ hst.toAuthHybridState.idealSessions,
     s.aeadCt = P.aeadEnc s.deriveMessageKeys s.ad s.msgPlain ∧ initSessionSlotIdx s.sid < S.N_send_tot
 theorem idealSessionsAeadValid_empty (S : Setup) (P : Primitives) (secb : Bool) :

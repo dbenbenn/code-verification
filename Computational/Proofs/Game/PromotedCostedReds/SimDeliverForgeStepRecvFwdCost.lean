@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
-public import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
+import Computational.Proofs.ReductionDsl.Ratchet.LibsignalSimDF
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
 
 /-!
 # Receive Pipeline Programs and Cost Bounds for `SimDeliverForge`
@@ -21,7 +22,7 @@ Defines the atomic `ReductionDsl` expressions and computations for the `SimDeliv
 pipeline over `fig8SmIfaceDF`, together with query, step-cost, and description-bit bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -56,52 +57,50 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
   (sameWireFig8AtomicE eqFig8CAtomicE defaultMcAtomicE fsReceiveAtomicE fig8ReceiveAtomicE
    keptRecvAtomicE keptEvalAtomicE sentEvalAtomicE)
 
-noncomputable section
-
 /-- Combined `(sC, sent)` state type in `atomicSig ℓ Pt` for `SimDeliverForge`. -/
-@[reducible] def dfStepT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfStepT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (simFullT ℓ Pt) (.list (fig8CtT (ℓ := ℓ) (Pt := Pt)))
 
-@[reducible] def dfStepDec {ℓ : ℕ} {Pt : Type} (v : (dfStepT ℓ Pt).denote) :
+@[expose, reducible] def dfStepDec {ℓ : ℕ} {Pt : Type} (v : (dfStepT ℓ Pt).denote) :
     LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt) :=
   (simFullDec v.1, v.2.map fig8CtOfV)
 
-def dfStepEnc {ℓ : ℕ} {Pt : Type}
+@[expose] def dfStepEnc {ℓ : ℕ} {Pt : Type}
     (st : LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt)) :
     (dfStepT ℓ Pt).denote :=
   (simFullEnc st.1, st.2.map fig8CtV)
 
 /-- Output type `(rr?, (sC', sent'))` of a `SimDeliverForge` receive sub-branch. -/
-@[reducible] def dfRecvOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfRecvOutT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (.opt (smRrT (ℓ := ℓ) (Pt := Pt) (PlainT (ℓ := ℓ) (Pt := Pt)))) (dfStepT ℓ Pt)
 
-@[reducible] def dfRecvOutDec {ℓ : ℕ} {Pt : Type} (v : (dfRecvOutT ℓ Pt).denote) :
+@[expose, reducible] def dfRecvOutDec {ℓ : ℕ} {Pt : Type} (v : (dfRecvOutT ℓ Pt).denote) :
     Option (RecvResult (Plain ℓ)) ×
       (LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt)) :=
   (v.1.map (smRrDec id), dfStepDec v.2)
 
-@[reducible] def dfFwdEvictInT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfFwdEvictInT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (dfStepT ℓ Pt)
     (.prod .bool (.prod (B 32) (.prod .bool
       (.prod PK (.prod (B 32) (fig8CtT (ℓ := ℓ) (Pt := Pt)))))))
 
-@[reducible] def dfFwdInT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfFwdInT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (dfStepT ℓ Pt)
     (.prod .bool (.prod (B 32) (.prod .bool (.prod (.opt .nat)
       (.prod PK (.prod (B 32)
         (.prod (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))) (fig8CtT (ℓ := ℓ) (Pt := Pt)))))))))
 
-@[reducible] def dfRecvNewInT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfRecvNewInT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (dfStepT ℓ Pt)
     (.prod .bool (.prod (B 32) (.prod .bool
       (.prod (parseOutT ℓ Pt) (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt)))))))
 
-@[reducible] def dfRecvSameInT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfRecvSameInT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (dfStepT ℓ Pt)
     (.prod .bool (.prod (B 32) (.prod .bool
       (.prod (parseOutT ℓ Pt) (.prod (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))) .nat)))))
 
-@[reducible] def dfRecvInT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
+@[expose, reducible] def dfRecvInT (ℓ : ℕ) (Pt : Type) : Ty (atomicSig ℓ Pt) :=
   .prod (dfStepT ℓ Pt) (.prod .bool (.prod (B 32) .bool))
 
 section Builders
@@ -307,24 +306,24 @@ theorem sentEvalAtomicE_cost_tight (L B_cap : ℕ) {Γ : List (Ty ASig)}
 
 /-! ## Pure receive helpers -/
 
-def fwdOrElseOptE {Γ : List (Ty ASig)} {a : Ty ASig}
+@[expose] def fwdOrElseOptE {Γ : List (Ty ASig)} {a : Ty ASig}
     (e1 e2 : Expr AOps Γ (.opt a)) : Expr AOps Γ (.opt a) :=
   eLet (.pair e1 e2) (.caseOpt (.fst .v0) (.snd .v0) (.some .v0))
 
-def fwdNoneOutE {Γ : List (Ty ASig)} (stE : Expr AOps Γ (dfStepT ℓ Pt)) :
+@[expose] def fwdNoneOutE {Γ : List (Ty ASig)} (stE : Expr AOps Γ (dfStepT ℓ Pt)) :
     Expr AOps Γ (dfRecvOutT ℓ Pt) :=
   .pair .none stE
 
-def fwdRejOutE {Γ : List (Ty ASig)} (stE : Expr AOps Γ (dfStepT ℓ Pt)) :
+@[expose] def fwdRejOutE {Γ : List (Ty ASig)} (stE : Expr AOps Γ (dfStepT ℓ Pt)) :
     Expr AOps Γ (dfRecvOutT ℓ Pt) :=
   .pair (.some (.inl .unit)) stE
 
-def fwdAccRrE {Γ : List (Ty ASig)} (tE iE : Expr AOps Γ .nat)
+@[expose] def fwdAccRrE {Γ : List (Ty ASig)} (tE iE : Expr AOps Γ .nat)
     (mOptE : Expr AOps Γ (.opt (PlainT (ℓ := ℓ) (Pt := Pt)))) :
     Expr AOps Γ (.opt (smRrT (ℓ := ℓ) (Pt := Pt) (PlainT (ℓ := ℓ) (Pt := Pt)))) :=
   .some (.inr (.pair tE (.pair iE mOptE)))
 
-def fwdOnAcceptFinishE (qep Lq : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdOnAcceptFinishE (qep Lq : ℕ) {Γ : List (Ty ASig)}
     (sE : Expr AOps Γ (simBaseT ℓ Pt))
     (csE : Expr AOps Γ (.list (ghostChainT ℓ Pt)))
     (qBE : Expr AOps Γ .bool) (wE : Expr AOps Γ (B 32)) (isDelE : Expr AOps Γ .bool)
@@ -367,7 +366,7 @@ def fwdOnAcceptFinishE (qep Lq : ℕ) {Γ : List (Ty ASig)}
               (mkS' .v0 (mAcceptE Lq (ssMir (s0 .v0)) (q0 .v0) posE)))
             (.pair (.some (.inl .unit)) (ssSetMirWin (s0 .v0))))))
 
-def fwdInTE (Lq : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdInTE (Lq : ℕ) {Γ : List (Ty ASig)}
     (sE : Expr AOps Γ (simBaseT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (c'E : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) : Expr AOps Γ .bool :=
   eLet (.pair sE (.pair qBE c'E))
@@ -381,7 +380,7 @@ def fwdInTE (Lq : ℕ) {Γ : List (Ty ASig)}
             (decT := decT) (lam := lam) (.snd (.snd .v0))))
         (.bool false) (.bool true)))
 
-def fwdScAcceptUpdateE (T : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdScAcceptUpdateE (T : ℕ) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt)) (base'E : Expr AOps Γ (simBaseT ℓ Pt))
     (qBE : Expr AOps Γ .bool) (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ (simFullT ℓ Pt) :=
@@ -395,7 +394,7 @@ def fwdScAcceptUpdateE (T : ℕ) {Γ : List (Ty ASig)}
          (decT := decT) (lam := lam) idA idB T (pGet (scKept sC0) q0) c0)
      scMk b0 kept' (scSent sC0) (scSnaps sC0))
 
-def fwdMkCE {Γ : List (Ty ASig)}
+@[expose] def fwdMkCE {Γ : List (Ty ASig)}
     (honestCE : Expr AOps Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))))
     (tE : Expr AOps Γ .nat) (T?E : Expr AOps Γ (.opt PtT))
     (lctE : Expr AOps Γ (lctT (ℓ := ℓ) (Pt := Pt))) :
@@ -409,7 +408,7 @@ def fwdMkCE {Γ : List (Ty ASig)}
         .v0
         (.pair (.pair (.fst (.snd .v1)) (.fst (.snd (.snd .v1)))) (.snd (.snd (.snd .v1))))))
 
-def fwdEvictedE {Γ : List (Ty ASig)}
+@[expose] def fwdEvictedE {Γ : List (Ty ASig)}
     (honestCE : Expr AOps Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))))
     (sE : Expr AOps Γ (simBaseT ℓ Pt)) (qBE : Expr AOps Γ .bool) : Expr AOps Γ .bool :=
   eLet (.pair honestCE (.pair sE qBE))
@@ -418,7 +417,7 @@ def fwdEvictedE {Γ : List (Ty ASig)}
       (.not (.eqN (.fst (.fst .v0))
         (.add (pGet (mEpoch (ssMir (.fst (.snd .v1)))) (.snd (.snd .v1))) (.nat 1)))))
 
-def fwdSaltEqE {Γ : List (Ty ASig)}
+@[expose] def fwdSaltEqE {Γ : List (Ty ASig)}
     (honestCE : Expr AOps Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))))
     (lctE : Expr AOps Γ (lctT (ℓ := ℓ) (Pt := Pt))) : Expr AOps Γ .bool :=
   eLet (.pair honestCE lctE)
@@ -427,14 +426,14 @@ def fwdSaltEqE {Γ : List (Ty ASig)}
       (lctSaltEqOfLctAtomicE (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
         (decT := decT) (lam := lam) .v0 (.snd .v1)))
 
-def fwdAmbCondE {Γ : List (Ty ASig)}
+@[expose] def fwdAmbCondE {Γ : List (Ty ASig)}
     (sE : Expr AOps Γ (simBaseT ℓ Pt)) (qBE : Expr AOps Γ .bool) : Expr AOps Γ .bool :=
   eLet (.pair sE qBE)
     (orE (mInWinE (ssMir (.fst .v0)) (.snd .v0))
       (.and (.not (.snd .v0))
         (anyChainKeyNoneE (pGet (ssChains (.fst .v0)) (.snd .v0)))))
 
-def fwdScAmbE {Γ : List (Ty ASig)}
+@[expose] def fwdScAmbE {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt)) (qBE : Expr AOps Γ .bool) :
     Expr AOps Γ (simFullT ℓ Pt) :=
   eLet (.pair sCE qBE)
@@ -445,7 +444,7 @@ def fwdScAmbE {Γ : List (Ty ASig)}
        (scSetBase sC0 (ssSetAmb b0 (.add (ssAmb b0) (.nat 1))))
        sC0)
 
-def fwdNewGuardRejectE {Γ : List (Ty ASig)}
+@[expose] def fwdNewGuardRejectE {Γ : List (Ty ASig)}
     (sE : Expr AOps Γ (simBaseT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (iE : Expr AOps Γ .nat) : Expr AOps Γ .bool :=
   eLet (.pair sE (.pair qBE iE))
@@ -454,7 +453,7 @@ def fwdNewGuardRejectE {Γ : List (Ty ASig)}
         (.lt (.nat 25000) (.sub (.snd (.snd .v0)) (.nat 1))))
       (.not (.lt (.snd (.snd .v0)) (.nat (2 ^ 32)))))
 
-def fwdRefuseE (Lq : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdRefuseE (Lq : ℕ) {Γ : List (Ty ASig)}
     (sE : Expr AOps Γ (simBaseT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (wE : Expr AOps Γ (B 32)) (isDelE : Expr AOps Γ .bool) : Expr AOps Γ .bool :=
   eLet (.pair sE (.pair qBE (.pair wE isDelE)))
@@ -473,7 +472,7 @@ def fwdRefuseE (Lq : ℕ) {Γ : List (Ty ASig)}
              (.not (injOKAtomicE (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
                (decT := decT) (lam := lam) w0))))))
 
-def fwdHonestCE (Lq : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdHonestCE (Lq : ℕ) {Γ : List (Ty ASig)}
     (sE : Expr AOps Γ (simBaseT ℓ Pt)) (qBE : Expr AOps Γ .bool)
     (wE : Expr AOps Γ (B 32)) :
     Expr AOps Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))) :=
@@ -489,7 +488,7 @@ def fwdHonestCE (Lq : ℕ) {Γ : List (Ty ASig)}
 
 /-! ## Atomic receive computations -/
 
-def fwdOnAcceptC (qep Lq : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdOnAcceptC (qep Lq : ℕ) {Γ : List (Ty ASig)}
     (sE : Expr AOps Γ (simBaseT ℓ Pt))
     (ci?E : Expr AOps Γ (.opt .nat)) (pkE : Expr AOps Γ PK)
     (qBE : Expr AOps Γ .bool) (wE : Expr AOps Γ (B 32)) (isDelE : Expr AOps Γ .bool)
@@ -527,7 +526,7 @@ def fwdOnAcceptC (qep Lq : ℕ) {Γ : List (Ty ASig)}
         (fwdOnAcceptFinishE C K Dh encPt encT decT lam qep Lq
           (s0 .v1) .v0 (q0 .v1) (w0 .v1) (isDel0 .v1) (t0 .v1) (i0 .v1) (m0 .v1) (pq0 .v1))))
 
-def fwdProbeC (Lq : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdProbeC (Lq : ℕ) {Γ : List (Ty ASig)}
     (qBE : Expr AOps Γ .bool)
     (c'E : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt)))
     (exE : Expr AOps Γ (.list (fig8CtT (ℓ := ℓ) (Pt := Pt)))) :
@@ -541,7 +540,7 @@ def fwdProbeC (Lq : ℕ) {Γ : List (Ty ASig)}
       (.bind (Comp.query (I := IDF) SMTagDF.df (.pair (.fst .v1) (.pair .v0 (.fst (.snd .v1)))))
         (.ret (.snd (.snd .v2)))))
 
-def fwdEvalCKSC (Lq T Kc B_cap : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdEvalCKSC (Lq T Kc B_cap : ℕ) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt)) (qBE : Expr AOps Γ .bool) (wE : Expr AOps Γ (B 32))
     (cE c'E : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) :
     Comp AOps IDF Γ (.opt (.opt (kDecOutT ℓ Pt))) :=
@@ -563,7 +562,7 @@ def fwdEvalCKSC (Lq T Kc B_cap : ℕ) {Γ : List (Ty ASig)}
          (scSnaps sC0) q0 (.fst (.fst c0)) w0 c'0)
        (.ret (.some .v0)))
 
-def fwdResyncC (qep Lq T : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdResyncC (qep Lq T : ℕ) {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (dfStepT ℓ Pt)) (qBE : Expr AOps Γ .bool) (wE : Expr AOps Γ (B 32))
     (ci?E : Expr AOps Γ (.opt .nat)) (pkE : Expr AOps Γ PK) (pq'E : Expr AOps Γ (B 32))
     (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt)))
@@ -600,7 +599,7 @@ def fwdResyncC (qep Lq T : ℕ) {Γ : List (Ty ASig)}
                       (.fst (st0 .v5)) (.snd .v0) (q0 .v5) (c0 .v5))
                     (.snd (st0 .v5))))))))))
 
-def fwdAnswerC (qep Lq T : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdAnswerC (qep Lq T : ℕ) {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (dfStepT ℓ Pt)) (qBE : Expr AOps Γ .bool) (wE : Expr AOps Γ (B 32))
     (isDelE : Expr AOps Γ .bool) (ci?E : Expr AOps Γ (.opt .nat))
     (pkE : Expr AOps Γ PK) (pq'E : Expr AOps Γ (B 32))
@@ -642,7 +641,7 @@ def fwdAnswerC (qep Lq T : ℕ) {Γ : List (Ty ASig)}
                     (.fst (st0 .v4)) (.snd .v0) (q0 .v4) (c'0 .v4))
                   (.snd (st0 .v4)))))))))
 
-def fwdEvictC (qep q : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdEvictC (qep q : ℕ) {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (dfStepT ℓ Pt)) (qBE : Expr AOps Γ .bool) (wE : Expr AOps Γ (B 32))
     (isDelE : Expr AOps Γ .bool) (pkE : Expr AOps Γ PK) (pq'E : Expr AOps Γ (B 32))
     (c'E : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) :
@@ -665,7 +664,7 @@ def fwdEvictC (qep q : ℕ) {Γ : List (Ty ASig)}
       (fwdAnswerC C K idA idB Dh encPt encT decT lam qep Lq T
         (st0 .v0) (q0 .v0) (w0 .v0) (isDel0 .v0) .none (pk0 .v0) (pq0 .v0) (c'0 .v0)))
 
-def fwdHookC (qep q : ℕ) {Γ : List (Ty ASig)}
+@[expose] def fwdHookC (qep q : ℕ) {Γ : List (Ty ASig)}
     (stE : Expr AOps Γ (dfStepT ℓ Pt)) (qBE : Expr AOps Γ .bool) (wE : Expr AOps Γ (B 32))
     (isDelE : Expr AOps Γ .bool) (ci?E : Expr AOps Γ (.opt .nat))
     (pkE : Expr AOps Γ PK) (pq'E : Expr AOps Γ (B 32))
@@ -713,7 +712,7 @@ def fwdHookC (qep q : ℕ) {Γ : List (Ty ASig)}
           (st0 .v1) (q0 .v1) (w0 .v1) (isDel0 .v1) (ci0 .v1) (pk0 .v1) (pq0 .v1) (c'0 .v1))))
 
 /-- Atomic computation for the new-epoch (`findIdx? = none`) receive branch of `semRecvHookS`. -/
-def fwdRecvNewC (qep q : ℕ) :
+@[expose] def fwdRecvNewC (qep q : ℕ) :
     Comp AOps IDF [dfRecvNewInT ℓ Pt] (dfRecvOutT ℓ Pt) :=
   let tupT := dfRecvNewInT ℓ Pt
   let st0 {Δ} (x : Expr AOps Δ tupT) := Expr.fst x
@@ -755,7 +754,7 @@ def fwdRecvNewC (qep q : ℕ) :
                (hc0 .v1) mkC)))))
 
 /-- Atomic computation for the existing-epoch (`findIdx? = some ci`) receive branch of `semRecvHookS`. -/
-def fwdRecvSameC (qep q : ℕ) :
+@[expose] def fwdRecvSameC (qep q : ℕ) :
     Comp AOps IDF [dfRecvSameInT ℓ Pt] (dfRecvOutT ℓ Pt) :=
   let st0 := Expr.fst (O := AOps) (Γ := [dfRecvSameInT ℓ Pt]) .v0
   let q0 := Expr.fst (.snd .v0)
@@ -776,12 +775,12 @@ def fwdRecvSameC (qep q : ℕ) :
     (fwdHookC C K idA idB Dh encPt encT decT lam qep q
       st0 q0 w0 isDel0 (.some ci0) pk0 pq0 hc0 c'0)
 
-def singletonWk {A : Ty ASig} {Δ : List (Ty ASig)} :
+@[expose] def singletonWk {A : Ty ASig} {Δ : List (Ty ASig)} :
     ∀ {u : Ty ASig}, _root_.ReductionDsl.Var [A] u → _root_.ReductionDsl.Var (A :: Δ) u
   | _, .zero => .zero
 
 /-- Full `semRecvHookS` dispatcher combining wire refusal, parsing, and chain-index dispatch. -/
-def fwdRecvDispatchC (q : ℕ)
+@[expose] def fwdRecvDispatchC (q : ℕ)
     (newBranchC : Comp AOps IDF [dfRecvNewInT ℓ Pt] (dfRecvOutT ℓ Pt))
     (sameBranchC : Comp AOps IDF [dfRecvSameInT ℓ Pt] (dfRecvOutT ℓ Pt)) :
     Comp AOps IDF [dfRecvInT ℓ Pt] (dfRecvOutT ℓ Pt) :=
@@ -2631,7 +2630,5 @@ theorem fwdRecvDispatchC_descBits_le (qep q : ℕ) (hℓ : ℓ < 10 ^ 6)
   omega
 
 end Builders
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdCost

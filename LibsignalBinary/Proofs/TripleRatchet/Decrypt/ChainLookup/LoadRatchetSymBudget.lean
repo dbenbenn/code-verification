@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.CommonBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetSym
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244PlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.MainBudget -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.LoadRatchetSym
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.MainBudget -- shake: keep
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.IdentityKeysSymBudget
+import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Main
 
 /-!
 # Budget-Threaded Relocatable `LoadRatchet` Symbolic Execution Lemmas
@@ -25,7 +27,7 @@ Relocatable `[LibsignalPlacement]` Segment S1 symbolic execution step lemmas on 
 recording `VmPreserved` across error/success continuations after `TripleRatchet::from_session_state`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

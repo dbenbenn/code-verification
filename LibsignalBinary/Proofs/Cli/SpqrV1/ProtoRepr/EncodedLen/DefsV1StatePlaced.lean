@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1State
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.DefsV1State -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 
 /-!
@@ -20,7 +20,7 @@ import LibsignalBinary.Proofs.Placed.BridgeReloc
 Defines `.rodata` jump-table symbols and `[LibsignalPlacement]` entry helpers for CLI Block `484`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -47,11 +47,5 @@ theorem v1StateJumpTableBytes_lsro_cli_intro {pl : MultiPlacement} {m : Memory}
     (hro : LibsignalRoLoaded pl m) {P : SepProp} (hP : m ⊨ P) :
     m ⊨ (pl.ρ cliV1StateJtSym ↦ᵣ v1StateJumpTableBytes) ∗ P :=
   lsro_slice_intro hro (sym := cliV1StateJtSym) (off := 0) (by simp) (by decide +kernel) hP
-
-theorem hasJumpTableStepP2_placed_cli [LibsignalPlacement] (H : LibsignalHooks) :
-    HasJumpTableStepP2 ((blkPC_484).rebase (blkPl_484).base H) (blkPl_484).base
-      (lsρ cliV1StateJtSym) := by
-  intro s P post oom hpc hrun hnext
-  exact blkPC_484_pairStep_0x38 (blkPl_484).base H rfl hpc hrun hnext
 
 end CryptoVerification.Cli.SpqrV1.ProtoRepr

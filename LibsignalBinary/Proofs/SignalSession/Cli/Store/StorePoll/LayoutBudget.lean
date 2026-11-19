@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Cell Wrappers for `StorePoll`
@@ -21,7 +22,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout
 envelope `CliStorePollEnv` for `store_session::{closure#0}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +46,7 @@ open CryptoVerification.SignalSession.Cli.Store.StorePoll.Helpers
 
 /-- Composed `AllocEvent` envelope for `store_session::{closure#0}`: `address_text` followed by
 `SessionRecord::serialize` followed by `Dir::put`. -/
-def CliStorePollEnv
+@[expose] def CliStorePollEnv
     (AddrEnv : AddrGhost → List AllocEvent → Prop)
     (SerEnv : RecordGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
@@ -54,7 +55,7 @@ def CliStorePollEnv
     (SeqEnv (SerEnv (toRecordGhost x.call.call.g) x.call.call.record)
       (PutEnv x.dir (addressText x.call.call.addr.val) (encodeRecord x.call.call.record)))
 
-def addrTextCellsSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def addrTextCellsSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (AddrEnv : AddrGhost → List AllocEvent → Prop) (calleeStk : Nat) :
     Spec (AddrCellsGhost × M.σ) where
   pre := fun ((addrA, g, ret, o0, o1, o2, fsp), st) s =>
@@ -71,7 +72,7 @@ def addrTextCellsSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllo
       protocolAddressAt A.repAlloc g addrA ∗
       stackAt fsp calleeStk ∗ A.pool lim (M.stepEvents evs st) sf
 
-def serializeCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def serializeCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (SerEnv : RecordGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (SerCellsGhost × M.σ) where
   pre := fun ((recA, out, g, r, o0, o1, o2, o3, fsp), st) s =>
@@ -91,7 +92,7 @@ def serializeCellsSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : Bu
       vecU8Buf A.repAlloc bCap bPtr (encodeRecord r) ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt fsp calleeStk
 
-def dirPutCellsSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def dirPutCellsSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (calleeStk : Nat) : Spec (PutCellsGhost × M.σ) where
@@ -115,7 +116,7 @@ def dirPutCellsSpec [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocB
       (bytesV ↦₆₄ m0) ∗ ((bytesV + 8#64) ↦₆₄ m1) ∗ ((bytesV + 16#64) ↦₆₄ m2) ∗
       stackAt fsp calleeStk ∗ A.pool lim (M.stepEvents evs st) sf
 
-def cliStorePollInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def cliStorePollInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AddrEnv : AddrGhost → List AllocEvent → Prop)
     (SerEnv : RecordGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)

@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
 
@@ -22,7 +21,7 @@ Proves path-normalization head-segment lemmas for `filesOf` and shows that `init
 session files, so `CliTurn.init (initDirs interp r)` starts with empty `records` and `leakRecords`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -45,7 +45,7 @@ Every `.pt` visible entry emitted along a composed run comes from the initial 32
 Hence `msg₀.mac ∉ plaintextTerms (runVis r₀ ms ++ extra)` (`g1_rep_ptAtoms_tr`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

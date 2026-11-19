@@ -14,6 +14,7 @@ public import GeneratedLean.BugInjectionMutant
 public meta import GeneratedLean.BugInjectionMutant
 public import GeneratedLean.BugInjectionMutantImage
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import ProofLib.Placed.Multi
 public import Symbolic.BugInjection.Disproofs.Impl.MutantParse
 public import Symbolic.BugInjection.Disproofs.Impl.MutantLink.MutantSymChars

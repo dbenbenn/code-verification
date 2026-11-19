@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Peak Live-Heap & Group Interface for `PreKeySignalMessage::try_from`
@@ -23,7 +25,7 @@ Top-level interface for `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from`, re-
    (`preKeyTryFrom_phaseCredit_of_sig`, `preKeyTryFrom_phaseCredit`, `preKeyTryFrom_phaseGroup`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -229,31 +231,31 @@ theorem pksmTryFrom_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 abbrev PreKeyTryFromBoundedEnv (x : PreKeyTryFromArgs) : List AllocEvent → Prop :=
   PreKeyTryFromEnv (fun bs => SigTryFromBoundedEnv ⟨0#64, bs, 0#64⟩) x
 
-def preKeyTryFromCapDeltaCum (M_cap B_cap : Nat) : Nat :=
+@[expose] def preKeyTryFromCapDeltaCum (M_cap B_cap : Nat) : Nat :=
   2 * min M_cap 135167 + 2 * min (max 8 (2 * M_cap)) 135167 +
     2 * min B_cap 135167 + 108386 + sigTryFromCapDeltaCum M_cap
 
-def preKeyTryFromCapDeltaLive (M_cap B_cap : Nat) : Nat :=
+@[expose] def preKeyTryFromCapDeltaLive (M_cap B_cap : Nat) : Nat :=
   2 * M_cap + B_cap + 16390 + sigTryFromCapDeltaLive M_cap
 
-def preKeyTryFromCapDeltaPeak (M_cap B_cap : Nat) : Nat :=
+@[expose] def preKeyTryFromCapDeltaPeak (M_cap B_cap : Nat) : Nat :=
   3 * M_cap + B_cap + 16390 + sigTryFromCapDeltaLive M_cap + sigTryFromCapDeltaPeak M_cap
 
-def preKeyTryFromCapMaxReq (M_cap B_cap : Nat) : Nat :=
+@[expose] def preKeyTryFromCapMaxReq (M_cap B_cap : Nat) : Nat :=
   max (max 3138 (max (2 * M_cap) B_cap)) (sigTryFromCapMaxReq M_cap)
 
-def preKeyTryFromDeltaCum (x : PreKeyTryFromArgs) : Nat :=
+@[expose] def preKeyTryFromDeltaCum (x : PreKeyTryFromArgs) : Nat :=
   2 * min x.inner.length 135167 + 2 * min (max 8 (2 * x.inner.length)) 135167 +
     2 * min x.bytes.length 135167 + 108386 + sigTryFromDeltaCum ⟨0#64, x.inner, 0#64⟩
 
-def preKeyTryFromDeltaLive (x : PreKeyTryFromArgs) : Nat :=
+@[expose] def preKeyTryFromDeltaLive (x : PreKeyTryFromArgs) : Nat :=
   2 * x.inner.length + x.bytes.length + 16390 + sigTryFromDeltaLive ⟨0#64, x.inner, 0#64⟩
 
-def preKeyTryFromDeltaPeak (x : PreKeyTryFromArgs) : Nat :=
+@[expose] def preKeyTryFromDeltaPeak (x : PreKeyTryFromArgs) : Nat :=
   3 * x.inner.length + x.bytes.length + 16390 +
     sigTryFromDeltaLive ⟨0#64, x.inner, 0#64⟩ + sigTryFromDeltaPeak ⟨0#64, x.inner, 0#64⟩
 
-def preKeyTryFromMaxReq (x : PreKeyTryFromArgs) : Nat :=
+@[expose] def preKeyTryFromMaxReq (x : PreKeyTryFromArgs) : Nat :=
   max (max 3138 (max (2 * x.inner.length) x.bytes.length)) (sigTryFromMaxReq ⟨0#64, x.inner, 0#64⟩)
 
 private theorem min_right_mono {a b S : Nat} (h : a ≤ b) : min a S ≤ min b S := by

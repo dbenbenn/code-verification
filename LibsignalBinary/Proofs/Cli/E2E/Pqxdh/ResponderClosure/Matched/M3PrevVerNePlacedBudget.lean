@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevVerNePlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevVerNePlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 meta import Lean -- shake: keep
@@ -31,6 +31,8 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneBase
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Stage P3 Version-Mismatch Path
@@ -40,7 +42,7 @@ version-mismatch path (`(blkPl_518).base + 0x1e04 → s0.readReg64 .x30`) over g
 `prevSessionsEmptyAt A.repAlloc coroPtr g` under `StageP3VerNeM3Env`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -706,7 +708,7 @@ theorem stageP3_ver_ne_prevEmpty_placed_ok [LibsignalPlacement]
 
 /-- Packaged statement of the budget-threaded Stage P3 version-mismatch path over general
 `prevSessionsEmptyAt A.repAlloc coroPtr g` under `[LibsignalPlacement]`. -/
-def StageP3VerNePrevEmptyPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP3VerNePrevEmptyPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {Qp : State → SepProp → Prop}
     (ext : String → Option (State → State))
@@ -938,7 +940,7 @@ theorem stageP3_ver_ne_prevEmpty_full_placed_ok [CryptoVerification.LibsignalFul
 
 /-- Packaged statement of the budget-threaded `[LibsignalFullPlacement]` Stage P3
 version-mismatch path over general `prevSessionsEmptyAt A.repAlloc coroPtr g`. -/
-def StageP3VerNePrevEmptyFullPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
+@[expose] def StageP3VerNePrevEmptyFullPlacedStmt [CryptoVerification.LibsignalFullPlacement] : Prop :=
   ∀ {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {Qp : State → SepProp → Prop}
     (ext : String → Option (State → State))

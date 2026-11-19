@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1Sampled
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1Sampled
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -23,6 +22,9 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoder
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedCt1Sent
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # SPQR V1: Budget-Threaded Step Helpers for `Chunked.Ct1Sampled::merge` (Block `300`)
@@ -32,7 +34,7 @@ Proves budget-threaded error exits (`err0_ret`, `from_err`, `push_err`), `loop_l
 `withLsCodeRoLoaded lsmpl` callees.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -57,20 +59,7 @@ open CryptoVerification.LibsignalSpqrV1 (V1State)
 open CryptoVerification.LibsignalSpqrV1.Proto (mergeMessage)
 open CryptoVerification.SpqrV1.Auth (WppPost)
 open CryptoVerification.SpqrV1.ProtoRepr (chunkedCt1SampledPBAt)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedCt1SampledMergeGhost ChunkedHighCalleeSaved ChunkedLoopRegs SepWPpLscro
-   bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_err chunkedBelow_err_entails
-   chunkedBelow_leaf chunkedBelow_leaf_entails chunkedCt1SampledMerge_fnOff
-   chunkedCt1SampledPBAt_entails_exists
-   chunkedCt1SampledPBCapAt chunkedCt1SampledPBCapAt_entails_pb
-   chunkedCt1SampledPBCapAt_mono chunkedMergeStack chunkedSavedRegs
-   cmp_len_limit_of_eq cmp_len_limit_of_gt cmp_len_limit_of_lt codecWireTypeToProto
-   memRegion8_memRegion40_entails_48_128 memRegion_48_split2_128 memRegion_48_split_128
-   mergeLoopBin mergeLoopBin_eq_limit mergeLoopBin_lt_limit
-   mergeLoopBin_of_decodeVarint_none mergeLoopBin_of_key_ge
-   mergeLoopBin_of_tag_zero mergeLoopBin_of_wt_none
-   pointsTo64_memRegion32_entails_40_128 pointsTo64_memRegion40_entails_48_128
-   protoPrefixStep_chunked_ct1Sampled_mergeField stackAt_chunkedMerge)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedCt1SampledMergeGhost ChunkedHighCalleeSaved ChunkedLoopRegs SepWPpLscro bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_err chunkedBelow_err_entails chunkedBelow_leaf chunkedBelow_leaf_entails chunkedCt1SampledPBAt_entails_exists chunkedCt1SampledPBCapAt chunkedCt1SampledPBCapAt_entails_pb chunkedCt1SampledPBCapAt_mono chunkedMergeStack chunkedSavedRegs cmp_len_limit_of_eq cmp_len_limit_of_gt cmp_len_limit_of_lt codecWireTypeToProto memRegion8_memRegion40_entails_48_128 memRegion_48_split2_128 memRegion_48_split_128 mergeLoopBin mergeLoopBin_eq_limit mergeLoopBin_lt_limit mergeLoopBin_of_decodeVarint_none mergeLoopBin_of_key_ge mergeLoopBin_of_tag_zero mergeLoopBin_of_wt_none pointsTo64_memRegion32_entails_40_128 pointsTo64_memRegion40_entails_48_128 protoPrefixStep_chunked_ct1Sampled_mergeField stackAt_chunkedMerge)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_300 blkPl_300)
 open CryptoVerification.SpqrV1.Varint (decodeVarint2Stack)
 open LibsignalBinary.Heap
@@ -93,10 +82,10 @@ open LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2Budget
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero chunkedCt1SampledMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 
 /-- Budget-threaded error-exit separation-logic bundle at fuel `f` (`f ≤ 6 * bs.length + 12`). -/
-def ct1SampledErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def ct1SampledErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (f polyBound : Nat) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.Ct1Sampled) (bs : List (BitVec 8)) : SepProp :=
@@ -105,7 +94,7 @@ def ct1SampledErrFrame {M : AllocCostModel} (A : RustCliAllocBudget M)
     (bufRef ↦₆₄ slot) ∗ memRegion slot 16 ∗ (ptr ↦ₛ bs)
 
 /-- Budget-threaded loop-head (`+192#64`) separation-logic bundle for `Chunked.Ct1Sampled::merge`. -/
-def ct1SampledLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def ct1SampledLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.Ct1Sampled) (bs cur : List (BitVec 8))

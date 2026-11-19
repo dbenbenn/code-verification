@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperFS
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperPRNG
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperFS -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperPRNG -- proof-setup: allow-public-import
 import ProofLib.BV.WidthNorm
 import VCVio.EvalDist.Monad.Basic
 import Computational.Proofs.ReductionDsl.Notation
@@ -20,12 +20,12 @@ import Computational.Proofs.ReductionDsl.Notation
 # Costed FS-AEAD Shifted Paper Reductions and Cost Dominance
 
 Defines the costed FS-AEAD shifted paper reductions and proves their advantage bridges and
-paper-vs-non-paper cost dominance bounds.
--/
+paper-vs-non-paper cost dominance bounds.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 open scoped BigOperators ENNReal Computational.Proofs.ReductionDsl.Notation
 open ReductionDsl ReductionDsl.Comp OracleSpec OracleComp
 open CryptoGames CryptoGames.CKA CryptoGames.PRFPRNG CryptoGames.FSAEAD CryptoGames.SM
@@ -51,7 +51,7 @@ local notation "II" =>
   fsaeadHeaderAdIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
 local notation "esTyFS" => fsEsTy KC Γ CCoins T I KR RSt K SS RS M E
 
-def runFSDFShiftedPaper [DecidableEq T] [DecidableEq I] [DecidableEq M] [DecidableEq E]
+@[expose] def runFSDFShiftedPaper [DecidableEq T] [DecidableEq I] [DecidableEq M] [DecidableEq E]
     [Inhabited E] [SampleableType KR] [SampleableType KC] [SampleableType CCoins]
     [SampleableType I] [SampleableType K]
     (b1 : Bool) (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR RSt I K)
@@ -83,7 +83,7 @@ theorem runFSDFShiftedPaper_eq_bind_initFSRaw
     bind_congr fun ⟨⟨_, _, _⟩, _⟩ => bind_congr fun ⟨_, _⟩ => rfl
 
 /-- Costed shifted paper FS-AEAD reduction parameterized by `authH : Bool`. -/
-def redFSAuthDFShiftedPaperGenProg (L B Δcka qep maxSkip j l tStar : ℕ) (authH : Bool) :
+@[expose] def redFSAuthDFShiftedPaperGenProg (L B Δcka qep maxSkip j l tStar : ℕ) (authH : Bool) :
     CostedReduction OO II (SM.specDF (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (prngSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E) .unit .unit .bool .bool where
   σ := esTyFS

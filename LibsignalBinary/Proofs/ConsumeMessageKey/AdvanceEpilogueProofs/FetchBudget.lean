@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.DefsBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.Fetch
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TooFarPathProofs.Fetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Checkpoint States, Envelope, and Segment Contracts for `consume_message_key`
@@ -21,7 +21,7 @@ Defines `VmPreserved`-lifted callee contracts, the stack-independent `AllocEvent
 `SeamBudget`-threaded intermediate checkpoint states, and segment specifications for Block 24.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -61,11 +61,11 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (SeamBudget)
 
 /-! ## Budget-Threaded Extern and Callee Contracts -/
 
-def cmkShimSpec : Spec Unit :=
+@[expose] def cmkShimSpec : Spec Unit :=
   withVmPreserved CryptoVerification.LibsignalSession.cmkShimSpec
 
 /-- Budget-threaded allocator and panic hook assumptions for `consume_message_key`. -/
-def CmkAllocHooks [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def CmkAllocHooks [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
   HookSat H cmkRustAllocSym (rustCliAllocBudgetSpec M A lim false) ∧
   HookSat H cmkRustDeallocSym (rustCliDeallocBudgetSpec M A lim) ∧
@@ -74,22 +74,22 @@ def CmkAllocHooks [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBud
   H cmkExpectFailedSym = some Rust.panicked ∧
   H cmkPanicAddOverflowSym = some Rust.panicked
 
-def findIndexPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def findIndexPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) : Spec FindIndexGhost :=
   withVmPreserved (CryptoVerification.LibsignalSession.findIndexPlacedSpec A.repAlloc)
 
-def FindIndexPlacedOk [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def FindIndexPlacedOk [LibsignalPlacement] {M : AllocCostModel}
     (H : String → Option (State → State)) (A : RustCliAllocBudget M) : Prop :=
   subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (lsmpl.base 26)
     (withLsCodeLoaded lsmpl (findIndexPlacedSpec A))
 
-def HmacPlacedOk [LibsignalPlacement]
+@[expose] def HmacPlacedOk [LibsignalPlacement]
     (H : String → Option (State → State))
     (F : ShaState → List (BitVec 8) → ShaState) : Prop :=
   subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (lsmpl.base 73)
     (withLsCodeLoaded lsmpl (hmacSpec F))
 
-def HmacPlacedRoOk [LibsignalPlacement]
+@[expose] def HmacPlacedRoOk [LibsignalPlacement]
     (H : String → Option (State → State))
     (F : ShaState → List (BitVec 8) → ShaState) : Prop :=
   subroutine_ok ((blkPC_24).rebase (blkPl_24).base H) (lsmpl.base 73)
@@ -100,7 +100,7 @@ def HmacPlacedRoOk [LibsignalPlacement]
 
 /-- Remaining allocation events at `cmkEpiloguePC_placed` (`+0x4dc`): `[]` on pre-allocation
 panic, or two 32-byte allocations separated by an optional `chain_key` deallocation. -/
-def CmkEpilogueEvs (isPanic : Bool) (evs : List AllocEvent) : Prop :=
+@[expose] def CmkEpilogueEvs (isPanic : Bool) (evs : List AllocEvent) : Prop :=
   if isPanic then
     evs = []
   else
@@ -125,7 +125,7 @@ inductive CmkLoopAdvanceEvs : Nat → BitVec 64 → Nat → Bool → List AllocE
         (rustAllocEvents 32 1 ++ evs_grow ++ evs_pop ++ evs_rest)
 
 /-- Full `AllocEvent` envelope for `RatchetState::consume_message_key`. -/
-def CmkEnv (x : ConsumeMessageKeyGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def CmkEnv (x : ConsumeMessageKeyGhost) (evs : List AllocEvent) : Prop :=
   if x.counter < x.ck.index then
     FreeOnlyEvs evs
   else if (x.counter - x.ck.index).toNat ≤ x.st.maxForwardJumps then
@@ -154,7 +154,7 @@ theorem cmkEnv_tooFar {x : ConsumeMessageKeyGhost} {evs : List AllocEvent}
 /-! ## Budget-Threaded Specification and Seam States -/
 
 /-- Budget-threaded relocatable `consume_message_key` specification with `.OutOfMemory` ruled out. -/
-def cmkPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def cmkPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (ConsumeMessageKeyGhost × M.σ) where
@@ -169,21 +169,21 @@ def cmkPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
   onPanic := fun (x, _) s0 sf =>
     ⌜(x.model F).1 = .error .panic ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def CmkTakeState_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CmkTakeState_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ConsumeMessageKeyGhost) (st_init st : M.σ) (R : SepProp)
     (s0 s : State) : Prop :=
   SeamBudget M lim (CmkEnv x) st_init st FreeOnlyEvs ∧
   CryptoVerification.LibsignalSession.CmkTakeState_placed (A.atState lim st s) x R s0 s
 
-def CmkTooFarState_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CmkTooFarState_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ConsumeMessageKeyGhost) (st_init st : M.σ) (R : SepProp)
     (s0 s : State) : Prop :=
   SeamBudget M lim (CmkEnv x) st_init st (fun evs => evs = rustAllocEvents 36 1) ∧
   CryptoVerification.LibsignalSession.CmkTooFarState_placed (A.atState lim st s) x R s0 s
 
-def CmkLoopState_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CmkLoopState_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ConsumeMessageKeyGhost) (st_init st : M.σ)
     (remEnv : List AllocEvent → Prop)
@@ -194,7 +194,7 @@ def CmkLoopState_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Budget-Threaded Segment Contracts -/
 
-def ProloguePastPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def ProloguePastPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -205,7 +205,7 @@ def ProloguePastPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     reaches_pc ((blkPC_24).rebase (blkPl_24).base H) cmkTakePC_placed s0
       (CmkTakeState_placed A lim x st_init st_init R s0)
 
-def PrologueTooFarPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def PrologueTooFarPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -217,7 +217,7 @@ def PrologueTooFarPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     reaches_pc ((blkPC_24).rebase (blkPl_24).base H) cmkTooFarPC_placed s0
       (CmkTooFarState_placed A lim x st_init st_init R s0)
 
-def PrologueAdvanceEntryPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def PrologueAdvanceEntryPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -230,7 +230,7 @@ def PrologueAdvanceEntryPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     reaches_pc ((blkPC_24).rebase (blkPl_24).base H) targetPC s0
       (CmkLoopState_placed A lim x st_init st_init (CmkEnv x) x.G x.st x.ck R targetPC s0)
 
-def TooFarPathPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def TooFarPathPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -243,7 +243,7 @@ def TooFarPathPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H)
         (cmkPlacedSpec F A lim) (x, st_init) R s0 s
 
-def AdvanceEpiloguePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AdvanceEpiloguePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -267,7 +267,7 @@ def AdvanceEpiloguePlacedSpec [LibsignalPlacement] {M : AllocCostModel}
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H)
         (cmkPlacedSpec F A lim) (x, st_init) R s0 s
 
-def LoopNoChainPanicPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def LoopNoChainPanicPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -281,7 +281,7 @@ def LoopNoChainPanicPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H)
         (cmkPlacedSpec F A lim) (x, st_init) R s0 s
 
-def EpiloguePanicPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EpiloguePanicPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -298,7 +298,7 @@ def EpiloguePanicPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H)
         (cmkPlacedSpec F A lim) (x, st_init) R s0 s
 
-def AdvanceEpiloguePlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AdvanceEpiloguePlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -323,7 +323,7 @@ def AdvanceEpiloguePlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H)
         (cmkPlacedSpec F A lim) (x, st_init) R s0 s
 
-def LoopNoChainPanicPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def LoopNoChainPanicPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -338,7 +338,7 @@ def LoopNoChainPanicPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
       reaches_outcome ((blkPC_24).rebase (blkPl_24).base H)
         (cmkPlacedSpec F A lim) (x, st_init) R s0 s
 
-def EpiloguePanicPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EpiloguePanicPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=

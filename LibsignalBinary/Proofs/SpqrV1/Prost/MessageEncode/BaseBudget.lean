@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Base
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommon -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Shared Helpers for 48-Byte `Message::encode` Monomorphizations
@@ -26,7 +27,7 @@ and `encodeRepeatedStep`, together with VM-preserving `SepWPp` basic-block and c
 (`sepWPp_of_sepWP_cs_vm_placed`, `sepWP_done_tpidr_placed`, `sepWPp_call_cs_placed_noPanic`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -51,7 +52,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
     if `len + additional ≤ cap`, capacity is unchanged and `[]` events are emitted; otherwise
     `do_reserve_and_handle` grows to `reserveCap cap len additional`, emitting `rustAllocEvents`
     when `cap = 0` and `rustReallocEvents` when `0 < cap`. -/
-def reserveStep (cap len additional : Nat) : Nat × List AllocEvent :=
+@[expose] def reserveStep (cap len additional : Nat) : Nat × List AllocEvent :=
   if len + additional ≤ cap then
     (cap, [])
   else
@@ -99,7 +100,7 @@ theorem reserveStep_fst_ge (cap len additional : Nat) :
   split_ifs with h h0 <;> simp only [reserveCap] <;> omega
 
 /-- Capacity-and-events transition for pushing `n` bytes one-by-one into `Vec<u8>`. -/
-def pushBytesStep : Nat → Nat → Nat → Nat × List AllocEvent
+@[expose] def pushBytesStep : Nat → Nat → Nat → Nat × List AllocEvent
   | 0, cap, _ => (cap, [])
   | n + 1, cap, len =>
     let s1 := pushByteStep cap len
@@ -122,7 +123,7 @@ theorem pushBytesStep_of_spare :
 
 /-- Capacity-and-events transition of one iteration of `encode_repeated` (`key` varint +
     `elem.length` varint + `do_reserve_and_handle` for `elem.length` bytes). -/
-def encodeRepeatedElemStep (tag cap len : Nat) (elemBs : List (BitVec 8)) :
+@[expose] def encodeRepeatedElemStep (tag cap len : Nat) (elemBs : List (BitVec 8)) :
     Nat × List AllocEvent :=
   let keyLen := (encodeVarint (BitVec.ofNat 64 (tag * 8 + 2))).length
   let s1 := pushBytesStep keyLen cap len
@@ -132,7 +133,7 @@ def encodeRepeatedElemStep (tag cap len : Nat) (elemBs : List (BitVec 8)) :
   (s3.1, s1.2 ++ s2.2 ++ s3.2)
 
 /-- Capacity-and-events transition of `prost::encoding::bytes::encode_repeated` over `elems`. -/
-def encodeRepeatedStep (tag : Nat) : Nat → Nat → List (List (BitVec 8)) → Nat × List AllocEvent
+@[expose] def encodeRepeatedStep (tag : Nat) : Nat → Nat → List (List (BitVec 8)) → Nat × List AllocEvent
   | cap, _, [] => (cap, [])
   | cap, len, elemBs :: rest =>
     let s1 := encodeRepeatedElemStep tag cap len elemBs

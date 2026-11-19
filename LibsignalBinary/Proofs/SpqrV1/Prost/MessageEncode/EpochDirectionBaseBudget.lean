@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBase
 import LibsignalBinary.Proofs.Common.SharedHelpers
 
@@ -21,11 +21,13 @@ and concrete `RustCliAllocBudget` specifications, exact-capacity `VmPreserved` c
 pinned-to-unpinned bridges for `encode<EpochDirection>` (`[local#1, 2]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBaseBudget
+
+open CryptoVerification.LibsignalTripleRatchet (doReserveStack doReserveStackX)
 
 open Arm64 Arm64.Obj ProofLib SepProp
 open LibsignalBinary.Heap
@@ -34,8 +36,6 @@ open LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.ChainParamsBaseBudget
   (VecU8EncodeEnv fitsEnv_vecU8EncodeEnv_of_spare)
 open CryptoVerification.RustHeap (RustAlloc vecU8At)
 open CryptoVerification.LibsignalSpqrV1 (EpochDirectionPB)
-open CryptoVerification.LibsignalTripleRatchet
-  (doReserveStack doReserveStackX tripleRatchetProgAtExt)
 open CryptoVerification.SpqrV1.Auth (authEncodeStackOf)
 open CryptoVerification.SpqrV1.ProtoRepr
   (EpochDirectionPBGhost epochDirectionPBAt epochDirectionPBAt_eq_exists_pinned
@@ -47,12 +47,12 @@ open CryptoVerification.SpqrV1.Prost.MessageEncode
 /-! ## 1. Allocator Event Envelopes for `encode<EpochDirection>` -/
 
 /-- Concrete allocator event envelope of `encode<EpochDirection>` (pinned ghost). -/
-def EncodeEpochDirectionPinnedEnv (x : EncodeEpochDirectionPinnedGhost)
+@[expose] def EncodeEpochDirectionPinnedEnv (x : EncodeEpochDirectionPinnedGhost)
     (evs : List AllocEvent) : Prop :=
   VecU8EncodeEnv x.cap.toNat (x.bs.length + (encodeEpochDirectionMsg x.tag x.dir).length) evs
 
 /-- Concrete allocator event envelope of `encode<EpochDirection>` (unpinned ghost). -/
-def EncodeEpochDirectionEnv (x : EncodeEpochDirectionGhost)
+@[expose] def EncodeEpochDirectionEnv (x : EncodeEpochDirectionGhost)
     (evs : List AllocEvent) : Prop :=
   VecU8EncodeEnv x.cap.toNat (x.bs.length + (encodeEpochDirectionMsg x.tag x.dir).length) evs
 
@@ -71,7 +71,7 @@ theorem encodeEpochDirectionEnv_eq_nil_of_spare
 /-! ## 2. Budget-Threaded Pinned & Unpinned Specifications (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`) -/
 
 /-- Envelope-parameterized pinned budget specification of `encode<EpochDirection>`. -/
-def encodeEpochDirectionPinnedSpecOfEnv (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeEpochDirectionPinnedSpecOfEnv (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv : EncodeEpochDirectionPinnedGhost → (List AllocEvent → Prop) → Prop)
     (PostEnv : EncodeEpochDirectionPinnedGhost → List AllocEvent → Prop) :
@@ -102,7 +102,7 @@ def encodeEpochDirectionPinnedSpecOfEnv (resStack : Nat) {M : AllocCostModel}
       stackAt s0.sp (authEncodeStackOf resStack)
 
 /-- Envelope-parameterized unpinned budget specification of `encode<EpochDirection>`. -/
-def encodeEpochDirectionSpecOfEnv (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeEpochDirectionSpecOfEnv (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv : EncodeEpochDirectionGhost → (List AllocEvent → Prop) → Prop)
     (PostEnv : EncodeEpochDirectionGhost → List AllocEvent → Prop) :
@@ -133,7 +133,7 @@ def encodeEpochDirectionSpecOfEnv (resStack : Nat) {M : AllocCostModel}
       stackAt s0.sp (authEncodeStackOf resStack)
 
 /-- Concrete pinned budget specification of `encode<EpochDirection>`. -/
-def encodeEpochDirectionPinnedSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeEpochDirectionPinnedSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodeEpochDirectionPinnedGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -162,7 +162,7 @@ def encodeEpochDirectionPinnedSpecOf (resStack : Nat) {M : AllocCostModel}
       stackAt s0.sp (authEncodeStackOf resStack)
 
 /-- Concrete unpinned budget specification of `encode<EpochDirection>`. -/
-def encodeEpochDirectionSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def encodeEpochDirectionSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncodeEpochDirectionGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -191,7 +191,7 @@ def encodeEpochDirectionSpecOf (resStack : Nat) {M : AllocCostModel}
       stackAt s0.sp (authEncodeStackOf resStack)
 
 /-- Exact-capacity 0-allocation (`VmPreserved`) pinned contract of `encode<EpochDirection>`. -/
-def encodeEpochDirectionPinnedExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
+@[expose] def encodeEpochDirectionPinnedExactVmSpecOf (resStack : Nat) (A : RustAlloc) :
     Spec EncodeEpochDirectionPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg32 .x0 = x.tag ∧
@@ -294,93 +294,5 @@ theorem epochDirection_unpinned_of_pinned {resStack : Nat} {M : AllocCostModel}
   · exact (not_satisfies_false_sepConj hq).elim
   · exact (not_satisfies_false_sepConj hq).elim
   · exact (not_satisfies_false_sepConj hq).elim
-
-theorem epochDirection_unpinned_of_pinned_x {resStack : Nat} {M : AllocCostModel}
-    {img : Obj.Image} {prog : Program} {entry : BitVec 64}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hpinned : subroutine_ok prog entry ((encodeEpochDirectionPinnedSpecOf resStack A lim).inImage img)) :
-    subroutine_ok prog entry ((encodeEpochDirectionSpecOf resStack A lim).inImage img) := by
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨hinv0, hpre⟩ := hpre
-  dsimp only [encodeEpochDirectionSpecOf] at hpre
-  rw [epochDirectionPBAt_eq_exists_pinned] at hpre
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpre
-  rcases hpre with ⟨g, hpre⟩
-  have hpre' : s0.mem ⊨ ((encodeEpochDirectionPinnedSpecOf resStack A lim).inImage img).pre
-      (⟨x.tag, x.dirA, g, x.dir, x.v, x.cap, x.ptr, x.bs⟩, st) s0 ∗ R := by
-    rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hinv0, hpre⟩
-  refine hpinned.mono_outcome (⟨x.tag, x.dirA, g, x.dir, x.v, x.cap, x.ptr, x.bs⟩, st)
-      R s0 hpc hrun hpre' hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨_, hq⟩ | ⟨_, _, hq⟩ | ⟨_, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    exact epochDirection_post_unpinned_of_pinned_env
-      (PreP := fun y Env => Env = EncodeEpochDirectionPinnedEnv y)
-      (PreU := fun y Env => Env = EncodeEpochDirectionEnv y)
-      (fun _ h => h)
-      (by
-        dsimp only [Spec.inImage, encodeEpochDirectionPinnedSpecOf] at hq
-        dsimp only [encodeEpochDirectionPinnedSpecOfEnv]
-        exact hq)
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-  · exact (not_satisfies_false_sepConj hq).elim
-
-def EncodeEpochDirection1PinnedOkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection1Name)
-    (encodeEpochDirectionPinnedSpec A lim)
-
-def EncodeEpochDirection1OkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection1Name)
-    (encodeEpochDirectionSpec A lim)
-
-def EncodeEpochDirection1PinnedOkX {M : AllocCostModel} (img : Obj.Image)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encodeEpochDirection1Name)
-    ((encodeEpochDirectionPinnedSpecX A lim).inImage img)
-
-def EncodeEpochDirection1OkX {M : AllocCostModel} (img : Obj.Image)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encodeEpochDirection1Name)
-    ((encodeEpochDirectionSpecX A lim).inImage img)
-
-def EncodeEpochDirection2PinnedOkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name)
-    (encodeEpochDirectionPinnedSpec A lim)
-
-def EncodeEpochDirection2OkExt {M : AllocCostModel} (b : BitVec 64)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encodeEpochDirection2Name)
-    (encodeEpochDirectionSpec A lim)
-
-def EncodeEpochDirection2PinnedOkX {M : AllocCostModel} (img : Obj.Image)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encodeEpochDirection2Name)
-    ((encodeEpochDirectionPinnedSpecX A lim).inImage img)
-
-def EncodeEpochDirection2OkX {M : AllocCostModel} (img : Obj.Image)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encodeEpochDirection2Name)
-    ((encodeEpochDirectionSpecX A lim).inImage img)
 
 end LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBaseBudget

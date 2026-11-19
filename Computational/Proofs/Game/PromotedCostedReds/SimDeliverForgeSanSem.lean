@@ -9,11 +9,52 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanOracle
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanGame
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2
+public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanOracle -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanGame -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2
 import Computational.Proofs.GameHop.CompDedup
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanSem
+import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+import Computational.Proofs.CryptoGames.FSAEAD.Theorem5Start
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.E2E.RefuseCorrB0Core
+import Computational.Proofs.E2E.Relabel.GameEq
+import Computational.Proofs.E2E.SpkHop1A
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
+import Computational.Proofs.HeadlineV1.CouplingV1
+import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.Fig8Atomic
+import Computational.Proofs.ReductionDsl.Fig8ExcessCosts
+import Computational.Proofs.ReductionDsl.Fig8SourceCosts
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.MacroLift
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.Engine
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import Computational.Proofs.SessionCostedFig8.Bundles
+import Computational.Proofs.SessionCostedFig8.ProgSizeBounds
+import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Step Invariant Preservation and Sanitized-vs-Dedup Agreement for `SimDeliverForge`
@@ -23,7 +64,7 @@ and single-step agreement between `simDeliverForgeOracleSan`, `simDeliverForgeOr
 `simDeliverForgeOracle`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -460,28 +501,6 @@ theorem sanSnapExtra_step_df {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
       T Kc Bsk (deliverForgeSemHook (PQC := BitVec 512) (Pt := Pt) (ℓ := ℓ)) qep B t sC sent hEx x hx,
     semHandleHookDedupS_chainSnapWF (paramsV1 C K idA idB) Dh encPt encT decT lam
       T Kc Bsk (deliverForgeSemHook (PQC := BitVec 512) (Pt := Pt) (ℓ := ℓ)) qep B t sC sent hCS x hx⟩
-
-/-- Combined step-wise preservation of `DFStateInv L m` (`SimCStateInv L m` and
-`sent.length + m ≤ L`), `SimCStateBounded L`, `sent.length ≤ L`, and `SanSnapExtra C K`
-along `simDeliverForgeOracleSan`. -/
-theorem simDeliverForgeOracleSan_step_preserves_inv {ℓ : ℕ} {Pt : Type}
-    [DecidableEq Pt] [Zero Pt]
-    (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
-    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
-    (decT : PublicKey → Option Pt) (lam : Pt) (L m qep B T Kc Bsk : ℕ)
-    (t : (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain)
-    (s : LibsignalToModularSchemeSimState Bytes Pt ℓ × List (Fig8C Pt))
-    (hInv : DFStateInv L (m + 1) s) (hEx : SanSnapExtra C K s.1) :
-    ∀ x ∈ support ((simDeliverForgeOracleSan (paramsV1 C K idA idB) Dh encPt encT decT lam
-        qep B T Kc Bsk (.inr t)).run s),
-      DFStateInv L m x.2 ∧ SimCStateBounded L x.2.1 ∧ x.2.2.length ≤ L ∧
-        SanSnapExtra C K x.2.1 := by
-  intro x hx
-  have hdf := simDeliverForgeOracleSan_preserves_dfStateInv (paramsV1 C K idA idB)
-    Dh encPt encT decT lam L m qep B T Kc Bsk t s hInv x hx
-  have hbd : DFStateBounded L x.2 := hdf.toBounded
-  exact ⟨hdf, hbd.1, hbd.2,
-    sanSnapExtra_step_df C K idA idB Dh encPt encT decT lam qep B T Kc Bsk t s hEx x hx⟩
 
 theorem fig8StTruncSkB_eq_self {Pt : Type} {B0 Bsk : ℕ} {st : Fig8St Pt}
     (hsk : ∀ t v, st.vR t = some v → SkippedLenLe B0 v) (hle : B0 ≤ Bsk) :

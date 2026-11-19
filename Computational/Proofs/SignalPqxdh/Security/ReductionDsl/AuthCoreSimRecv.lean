@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import VCVio.EvalDist.Monad.Basic
 
@@ -20,7 +20,7 @@ Proves that `recvB` evaluates to the shallow `pqxdhAuthSimImplPrim` receive bran
 `authRespToVal`, `authStateToVal`, and `AuthBaseListsBounded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

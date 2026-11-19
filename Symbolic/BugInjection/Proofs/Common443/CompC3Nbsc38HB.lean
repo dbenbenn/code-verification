@@ -37,7 +37,6 @@ abbrev NonInj38CensusXZHB : Prop := NonInj38CensusXZAt Witnesses.Cheval26SmallSu
 abbrev NonInj38CensusTC : Prop := NonInj38CensusAt Witnesses.Cheval26SmallSubgroupTorsionComp.setup (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.take 38) torsionWireBytes 0 1
 abbrev NonInj38CensusXZTC : Prop := NonInj38CensusXZAt Witnesses.Cheval26SmallSubgroupTorsionComp.setup (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.take 38) torsionWireBytes 0 1
 theorem nonInj38CensusHB_of_XZ (h : NonInj38CensusXZHB) : NonInj38CensusHB := nonInj38CensusAt_of_XZ h
-theorem nonInj38CensusTC_of_XZ (h : NonInj38CensusXZTC) : NonInj38CensusTC := nonInj38CensusAt_of_XZ h
 def msg32OfHmac (prk : HwBytes) : HwBytes :=
   match rowOfTake8 (prk.take 8) with
   | none => []
@@ -102,13 +101,8 @@ theorem split38CtxPairsAt_qZNodup5_of_take38 {w : PQXDHSpqrSetup} {τ : List Mac
   rw [gamma_take5, hP, hF]; exact zChainSS_nodup
 theorem split38CtxPairsHB_qZNodup5 : Split38CtxPairsHB QZNodup5 :=
   split38CtxPairsAt_qZNodup5_of_take38 CompRX0SS38.highBitComp_take38
-theorem split38CtxPairsTC_qZNodup5 : Split38CtxPairsTC QZNodup5 :=
-  split38CtxPairsAt_qZNodup5_of_take38 CompRX0SS38.torsionComp_take38
 theorem split38PairsHB_qTagged_of_min (hPre : Split38CtxPairsHB QPreUntaggedNX) (hC : NonInj38CensusHB) : Split38PairsHB QTagged := taggedW_of_partsT (split38CtxPairsAt_qZInjT_of_nodup split38CtxPairsHB_qZNodup5) (split38CtxPairsAt_mono qPreUntagged_of_nx hPre) (ctxNonInjOffZ_of_census hC)
-theorem split38PairsTC_qTagged_of_min (hPre : Split38CtxPairsTC QPreUntaggedNX) (hC : NonInj38CensusTC) : Split38PairsTC QTagged := taggedW_of_partsT (split38CtxPairsAt_qZInjT_of_nodup split38CtxPairsTC_qZNodup5) (split38CtxPairsAt_mono qPreUntagged_of_nx hPre) (ctxNonInjOffZ_of_census hC)
 theorem nbscHighBitComp_of_weak (hT : Split38PairsHB QTagged) (hU : Split38PairsHB QUntagged) : Census443Defs.NbscHighBitComp' := CompRNbsc38VT.nbscHighBitComp_of_classVT (split38VT_of_weak hT hU)
-theorem nbscTorsionComp_of_weak (hT : Split38PairsTC QTagged) (hU : Split38PairsTC QUntagged) : Census443Defs.NbscTorsionComp' := CompRNbsc38VT.nbscTorsionComp_of_classVT (split38VT_of_weak hT hU)
-
 theorem split38_zpins_ss_split {r : Records} {S : Sem} {g : Ghost} (hNe : r.alice ≠ r.bob) {pre mid post : List Move} {hb : DY.Libsignal.PQXDH.BundleHandles} {shown cl e c' : Nat} {blk₁ : List MachineEvent} (hpre : MovesFrom InvisibleNoEffect (setupTrace r) pre) (hmid : MovesFrom InvisibleNoEffect ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1) mid) (hpost : MovesFrom InvisibleNoEffect ((Move.encrypt r.alice ((runMoves pre (setupTrace r)).1.length + 8) cl ((runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2) (some (e, c'))).next (runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1) post) (hm₀ : (Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1 = iniAliceStartTr (runMoves pre (setupTrace r)).1 r.alice r.bob (iniAliceOut (runMoves pre (setupTrace r)).1 (setupSecret r 0) (setupPublic r 2) (setupPublic r 4) (setupPublic r 6) none)) (hcs₁ : Cli.CoinSplit [.pt CompRX0SS38.ptB, .rng CompRX0SS38.cB, .send CompRPlantWire.sentWireBytes] blk₁) (hvis : List.Forall₂ (EventMatchesEntry compI0 r S g) ((.recv CompRX0SS38.bunBytes :: .rng CompRX0SS38.b0Bytes :: CompRX0SS38.rsT) ++ blk₁) (runVis r (pre ++ Move.aliceStart r.alice r.bob 4 6 hb shown :: mid ++ Move.encrypt r.alice ((runMoves pre (setupTrace r)).1.length + 8) cl ((runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2) (some (e, c')) :: post))) : let tr₁ := (runMoves pre (setupTrace r)).1;
     let o := iniAliceOut tr₁ (setupSecret r 0) (setupPublic r 2) (setupPublic r 4) (setupPublic r 6) none; let tr₂ := (runMoves mid ((Move.aliceStart r.alice r.bob 4 6 hb shown).next tr₁)).1; let stA := iniAliceStartState tr₁ r.bob o;
     gamma compI0 S g (zprkT stA) = zprk0SS ∧

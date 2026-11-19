@@ -9,24 +9,33 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.LayoutBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.DropsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortErrPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.FinishGrowPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.LayoutBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.DropsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortErrPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.EpiloguePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.CallSpecs
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.DropsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Pure
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Calls
 
 /-!
 # Budget-Threaded Exit Event Lists & Block-`561` Reserve Wrapper for `KpkMarkPoll`
@@ -35,7 +44,7 @@ Defines `last_resort` error and append event lists, `vecU8At`/`vecU8` packing le
 budget-threaded `Vec<u8>::reserve` contract (`kpkDoReserveSpec`) on Block `561`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -92,22 +101,22 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## 1. Event Lists for `reused`, `malformed`, and `seen ++ used` Append Exits -/
 
 /-- Events emitted by `kpk_reused_230_placed`: 15-byte string alloc followed by error cleanup. -/
-def kpkReusedEvents (usedCap seenCap fileCap : BitVec 64) : List AllocEvent :=
+@[expose] def kpkReusedEvents (usedCap seenCap fileCap : BitVec 64) : List AllocEvent :=
   rustAllocEvents 15 1 ++ kpkErrCleanupEvents usedCap seenCap fileCap
 
 /-- Events emitted by `kpk_malformed_2a4_placed`: 14-byte string alloc followed by error cleanup. -/
-def kpkMalformedEvents (usedCap seenCap fileCap : BitVec 64) : List AllocEvent :=
+@[expose] def kpkMalformedEvents (usedCap seenCap fileCap : BitVec 64) : List AllocEvent :=
   rustAllocEvents 14 1 ++ kpkErrCleanupEvents usedCap seenCap fileCap
 
 /-- Optional `Vec::reserve(37)` events emitted on `seen` before `memcpy` in `kpk_append_37c_placed`. -/
-def kpkAppendReserveEvents (seenCap : BitVec 64) (seenBs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def kpkAppendReserveEvents (seenCap : BitVec 64) (seenBs : List (BitVec 8)) : List AllocEvent :=
   if (seenCap - BitVec.ofNat 64 seenBs.length).ult 37#64 then
     doReserveEvents ⟨0#64, seenCap, 0#64, seenBs, 37⟩
   else []
 
 /-- Events emitted before `Dir::put` in `kpk_append_37c_placed` (optional `seen.reserve(37)` plus
 dropping `used`). -/
-def kpkAppendPrePutEvents (seenCap : BitVec 64) (seenBs : List (BitVec 8))
+@[expose] def kpkAppendPrePutEvents (seenCap : BitVec 64) (seenBs : List (BitVec 8))
     (usedCap : BitVec 64) : List AllocEvent :=
   kpkAppendReserveEvents seenCap seenBs ++ optDeallocBufEvents usedCap
 
@@ -336,7 +345,7 @@ private theorem kpkReserve_raw_placed_ok [LibsignalPlacement] {M : AllocCostMode
     wp_done
 
 /-- Budget-threaded `Vec<u8>::reserve` contract at stack budget `resStack`. -/
-def kpkDoReserveSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kpkDoReserveSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (resStack : Nat) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional

@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
-public import Symbolic.Proofs.Swarm.CREF.Sem
+import Symbolic.Proofs.Swarm.CREF.Cli.World.TopPure
+import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
+import Symbolic.Proofs.Swarm.CREF.Sem
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendRetBridge
 import Symbolic.Proofs.Swarm.CREF.Cli.World.TurnPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPure
 import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureB
+public import LibsignalBinary.Specifications.SignalSession.Run
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 
 /-!
 # CLI Turn and Leak-Record Transitions for `Cmd.send`
@@ -25,7 +29,7 @@ Proves how `CliTurn.after`, `CliTurn.leakRecords`, `cliEntryEvents`, and `cliExi
 evolve across accepted (`code = 0`) and rejected (`code ≠ 0`) `Cmd.send` calls.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

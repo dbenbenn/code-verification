@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2b
 import VCVio.EvalDist.Monad.Basic
 
@@ -20,7 +20,7 @@ Defines the explicit lazy-key runner `runMu` for the unguarded oracle of `aeadMu
 proves closed-form query lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,7 +31,7 @@ namespace SignalPqxdh.Security
 open SignalPqxdh
 
 /-- Unguarded `aeadMuIntSpec` oracle agreeing with `aeadMuIntCtxtExp` on first-message ADs. -/
-noncomputable def aeadMuImpl (P : Primitives) :
+@[expose] def aeadMuImpl (P : Primitives) :
     QueryImpl aeadMuIntSpec (StateT AeadMuIntState ProbComp) := fun q =>
     match q with
     | .encOnce i ad pt => do
@@ -55,11 +55,11 @@ noncomputable def aeadMuImpl (P : Primitives) :
         return true
       | none => return false
 
-noncomputable def aeadMuFullImpl (P : Primitives) :
+@[expose] def aeadMuFullImpl (P : Primitives) :
     QueryImpl AeadMuIntSimSpec (StateT AeadMuIntState ProbComp) :=
   (primBaseImpl P).liftTarget (StateT AeadMuIntState ProbComp) + aeadMuImpl P
 
-noncomputable abbrev runMu {α : Type} (P : Primitives) (oa : OracleComp AeadMuIntSimSpec α)
+abbrev runMu {α : Type} (P : Primitives) (oa : OracleComp AeadMuIntSimSpec α)
     (st : AeadMuIntState) : ProbComp (α × AeadMuIntState) :=
   (simulateQ (aeadMuFullImpl P) oa).run st
 

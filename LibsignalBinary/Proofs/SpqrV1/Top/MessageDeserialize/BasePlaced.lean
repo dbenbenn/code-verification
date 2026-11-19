@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.Base
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Proof
 import ProofLib.SepLogic.WPp
 
@@ -21,7 +21,7 @@ Relocatable varint loop, post-varint chunk copy, and epilogue steppers for
 `<spqr::v1::chunked::states::Message>::deserialize` (Block `351`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

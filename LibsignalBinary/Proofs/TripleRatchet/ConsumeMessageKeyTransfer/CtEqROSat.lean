@@ -36,12 +36,12 @@ namespace LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.CtEqROS
 
 open Arm64 ProofLib
 open CryptoVerification
-  (LibsignalPlacement blkLib_eq_213 blkPC_213 blkPl_213 libsignalSessionImage lsBlackBoxU8Sym
+  (LibsignalPlacement blkLib_eq_213 blkPC_213 blkPl_213 lsBlackBoxU8Sym
    ls_externAt?_of_mem lsmpl lsρ subroutine_ok_withLsCodeLoaded_of_plain withLsCodeLoaded)
 open LibsignalBinary.Heap (VmPreserved VmPreserved.refl VmPreserved.trans)
 open LibsignalBinary.Heap.SpecBudget (subroutine_ok_of_withVmPreserved withVmPreserved)
 open CryptoVerification.LibsignalSession.FindReceiverChainIndex
-  (ctEq_pre_rearrange_ext32 ct_eq_bool_32_u8_ext32 extHookStack32 fnFrameBytes_ctEqName_ext32
+  (ctEq_pre_rearrange_ext32 ct_eq_bool_32_u8_ext32 extHookStack32
    ite_one_zero_and_8_ext32 ite_one_zero_and_one_8_ext32 pointsToBytes32
    pointsToBytes_eq_pointsToBytes32 setWidth32_and_4294967297_ext32 setWidth8_and32_ext32
    setWidth8_and64_ext32 setWidth8_ite_1_0_32_ext32 setWidth8_ite_prop_1_0_ext32
@@ -55,21 +55,21 @@ open LibsignalBinary.Proofs.Placed.BudgetPoolSync (hooksException sepWP_seg_ls_v
 /-! ## 1. Tight `+16 B` (`64` B) Read-Only Second-Slice Specs -/
 
 /-- Read-only second-slice `ct_eq` contract extended with `16` B below `ct_eq`'s 48-byte frame. -/
-@[expose] noncomputable def ctEqSliceROSpec16 :
+@[expose] def ctEqSliceROSpec16 :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p1, k1, p2, k2, sp) s =>
     ⌜s.readReg64 .x0 = p1 ∧ s.readReg64 .x1 = p2 ∧ s.sp = sp ∧ k1.length = 32 ∧ k2.length = 32⌝ ∗
       (p1 ↦ₛ k1) ∗ (p2 ↦ᵣ k2) ∗
-      stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" sp ∗
+      stackFrameAt sp 48 ∗
       stackAt (sp - 48#64) 16
   post := fun (p1, k1, p2, k2, sp) s0 sf =>
     ⌜sf.readReg64 .x0 = (if k1 = k2 then 1#64 else 0#64) ∧ sf.trace = s0.trace⌝ ∗
       (p1 ↦ₛ k1) ∗ (p2 ↦ᵣ k2) ∗
-      stackFrameFor libsignalSessionImage "<[u8] as subtle::ConstantTimeEq>::ct_eq" sp ∗
+      stackFrameAt sp 48 ∗
       stackAt (sp - 48#64) 16
 
 /-- `VmPreserved`-strengthened `ctEqSliceROSpec16`. -/
-@[expose] noncomputable def ctEqSliceROBudgetSpec16 :
+@[expose] def ctEqSliceROBudgetSpec16 :
     Spec (BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8) × BitVec 64) :=
   withVmPreserved ctEqSliceROSpec16
 
@@ -106,7 +106,6 @@ attribute [local simp, local wp_norm, local arm64_norm]
   setWidth8_ite_prop_1_0_ext32 setWidth8_ite_1_0_32_ext32 setWidth8_zext64_32_ext32
   setWidth8_setWidth32_ext32 setWidth8_and64_ext32 setWidth8_and32_ext32
   ite_one_zero_and_8_ext32 setWidth32_and_4294967297_ext32 ite_one_zero_and_one_8_ext32
-  fnFrameBytes_ctEqName_ext32
 
 set_option hygiene false in
 local macro "wp_seg_bb_213 " : tactic =>

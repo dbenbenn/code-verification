@@ -9,18 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitChain
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitChain -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
 # DH Step Commit Sub-Segment: Layout Packing & `ReachesOrPanic` Combinators
 
-Byte/word packing helpers, address arithmetic lemmas, and fixed-image / relocatable
-`[LibsignalPlacement]` `ReachesOrPanic` stepping combinators for `DhCommit`.
+Byte/word packing helpers and relocatable `[LibsignalPlacement]` `ReachesOrPanic` stepping
+combinators for `DhCommit`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Decrypt.DhCommit
 
@@ -63,7 +62,7 @@ private theorem extractLsb'_shiftLeft8_or_succ (w : Nat) (acc : BitVec w) (b : B
 private def bytesOfBV {w : Nat} (n : Nat) (v : BitVec w) : List (BitVec 8) :=
   (List.range n).map fun j => v.extractLsb' (8 * j) 8
 
-protected def packBV (w : Nat) (bs : List (BitVec 8)) : BitVec w :=
+@[expose] protected def packBV (w : Nat) (bs : List (BitVec 8)) : BitVec w :=
   bs.foldr (fun b acc => (acc <<< 8) ||| b.zeroExtend w) 0
 
 private theorem bytesOfBV_packBV (w : Nat) :
@@ -88,9 +87,9 @@ private theorem bytesOfBV_packBV (w : Nat) :
     rw [hmap]
     exact bytesOfBV_packBV w bs (by omega)
 
-def pack64 (bs : List (BitVec 8)) : BitVec 64 := DhCommit.packBV 64 bs
+@[expose] def pack64 (bs : List (BitVec 8)) : BitVec 64 := DhCommit.packBV 64 bs
 
-def pack32 (bs : List (BitVec 8)) : BitVec 32 := DhCommit.packBV 32 bs
+@[expose] def pack32 (bs : List (BitVec 8)) : BitVec 32 := DhCommit.packBV 32 bs
 
 theorem unpack64_pack64 {bs : List (BitVec 8)} (h : bs.length = 8) :
     unpack64 (pack64 bs) = bs := by
@@ -344,7 +343,7 @@ theorem chainHeap_srk_cap_ne_zero (A : RustAlloc) (gc : ChainGhost × ReceiverCh
     (sepConj_mono_right (sepConj_mono_left (vecU8Buf_cap_add_one_ne_zero A gc.1.srk.cap gc.1.srk.ptr gc.1.srk.bytes))) ?_
   exact Entails.of_eq (by ac_rfl)
 
-def newChainGhost (srkPtr ckPtr : BitVec 64) (srk : PublicKey) : ChainGhost :=
+@[expose] def newChainGhost (srkPtr ckPtr : BitVec 64) (srk : PublicKey) : ChainGhost :=
   { srk := ⟨33#64, srkPtr, srk.serialize⟩
     priv := ⟨0#64, 1#64, []⟩
     mkCap := 0#64
@@ -352,7 +351,7 @@ def newChainGhost (srkPtr ckPtr : BitVec 64) (srk : PublicKey) : ChainGhost :=
     keys := []
     ck := ⟨32#64, ckPtr⟩ }
 
-def newReceiverChain (srk : PublicKey) (rck : ChainKey) : ReceiverChain :=
+@[expose] def newReceiverChain (srk : PublicKey) (rck : ChainKey) : ReceiverChain :=
   { senderRatchetKey := srk
     chainKey := some rck
     messageKeys := [] }
@@ -440,104 +439,7 @@ theorem stackAt_split_from (sp : BitVec 64) (total sub : Nat)
   rw [haddr] at hsplit
   exact hsplit
 
-/-! ## 6. Address Lemmas and `ReachesOrPanic` Combinators -/
-
-theorem tryDecryptEntry_eq_base {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img) :
-    tryDecryptEntry img = img.base + bv% (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>") := by
-  unfold tryDecryptEntry entryOf
-  rw [libsignalSessionCode_ofImage h, Program.fnAddr_rebase, (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")]
-
-theorem fnAddr_tryDecrypt_eq_base (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr tryDecryptName = b + bv% (ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>") := by
-  unfold tripleRatchetProgAtExt
-  rw [Program.fnAddr_rebase, (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")]
-
-theorem tryDecryptEntry_eq_fnAddr {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img)
-    (ext : String → Option (State → State)) :
-    tryDecryptEntry img = (tripleRatchetProgAtExt img.base ext).fnAddr tryDecryptName := by
-  rw [tryDecryptEntry_eq_base h, fnAddr_tryDecrypt_eq_base]
-
-theorem segS3CommitPC_eq_fnAddr {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img)
-    (ext : String → Option (State → State)) :
-    segDhCommitPC img = (tripleRatchetProgAtExt img.base ext).fnAddr tryDecryptName + 0x8ac#64 := by
-  unfold segDhCommitPC
-  rw [tryDecryptEntry_eq_fnAddr h ext]
-
-theorem segS4PC_eq_fnAddr {img : Obj.Image} (h : Obj.Loads libsignalSessionImage img)
-    (ext : String → Option (State → State)) :
-    segConsumeMsgKeyPC img = (tripleRatchetProgAtExt img.base ext).fnAddr tryDecryptName + 0x3e4#64 := by
-  unfold segConsumeMsgKeyPC
-  rw [tryDecryptEntry_eq_fnAddr h ext]
-
-theorem fnAddr_publicKeySerialize_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + bv% (ls_off% "<libsignal_core::curve::PublicKey>::serialize" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>") =
-      (tripleRatchetProgAtExt b ext).fnAddr publicKeySerializeName := by
-  unfold tripleRatchetProgAtExt
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"), (ls_lemma% fnOff "<libsignal_core::curve::PublicKey>::serialize")]
-  bv_omega
-
-theorem fnAddr_chainKeyToPb_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + 0xfffffffffffd8944#64 =
-      (tripleRatchetProgAtExt b ext).fnAddr chainKeyToPbName := by
-  unfold tripleRatchetProgAtExt
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"), (ls_lemma% fnOff "<libsignal_protocol::ratchet::keys::ChainKey>::to_pb")]
-  bv_omega
-
-theorem fnAddr_growOneChain_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + 0xfffffffffffe1688#64 =
-      (tripleRatchetProgAtExt b ext).fnAddr growOneChainName := by
-  unfold tripleRatchetProgAtExt
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"), (ls_lemma% fnOff "<alloc::raw_vec::RawVec<libsignal_protocol::proto::storage::session_structure::Chain>>::grow_one")]
-  bv_omega
-
-theorem fnAddr_dropChain_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + bv% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::proto::storage::session_structure::Chain> [local#1]" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>") =
-      (tripleRatchetProgAtExt b ext).fnAddr dropChainName := by
-  unfold tripleRatchetProgAtExt
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"), (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::proto::storage::session_structure::Chain> [local#1]")]
-  bv_omega
-
-theorem shim_ok_at_0xe6a8 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) noAllocShimSpec :=
-  hA.shim_ok_at tryDecryptName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-
-theorem alloc_ok_at_0xe6ac {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) (rustAllocSpec A) :=
-  hA.alloc_ok_at tryDecryptName (num% (ls_off% "__rustc::__rust_alloc" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-
-theorem dealloc_ok_at_0xe6b8 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + bv% (ls_off% "__rustc::__rust_dealloc" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) (rustDeallocSpec A) :=
-  hA.dealloc_ok_at tryDecryptName (num% (ls_off% "__rustc::__rust_dealloc" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-
-theorem memmove_ok_at_0xe6c0 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext)
-    (stackSize : Nat := 4096) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + bv% (ls_off% "memmove" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) (sessionMemmoveSpec stackSize) :=
-  hA.session_memmove_ok_at tryDecryptName (num% (ls_off% "memmove" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) stackSize
-
-theorem memcpy_ok_at_0xe6d8 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + bv% (ls_off% "memcpy" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) framelessMemcpySpec :=
-  hA.session_memcpy_region_ok_at tryDecryptName (num% (ls_off% "memcpy" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
-
-theorem panic_at_0xe6f4 {b : BitVec 64}
-    {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).externAt?
-      ((tripleRatchetProgAtExt b ext).fnAddr tryDecryptName + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>")) =
-      some Rust.panicked :=
-  panic_at_handle_error_ext b ext tryDecryptName (num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "libsignal_protocol::session_management::try_decrypt_with_state::<libsignal_session::HookRng>"))
+/-! ## 6. Stack Splitting and `ReachesOrPanic` Combinators -/
 
 theorem stackAt_sub_split (sp : BitVec 64) (n : Nat) (hn : n ≤ tryDecryptSubStack) :
     stackAt sp tryDecryptSubStack =
@@ -555,35 +457,36 @@ theorem stackAt_sub_split (sp : BitVec 64) (n : Nat) (hn : n ≤ tryDecryptSubSt
     rw [BitVec.sub_sub, ← BitVec.ofNat_add, Nat.add_comm]
   rw [h1, e1, Nat.add_sub_cancel, BitVec.sub_add_cancel]
 
-theorem satisfies_tryDecrypt_onPanic_of_allocFailed
+theorem satisfies_tryDecrypt_onPanic_of_allocFailed [LibsignalPlacement]
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (img : Obj.Image) (x : TryDecryptGhost)
+    (S : SpqrModel) (img : Unit) (x : TryDecryptGhost)
     {s0 sf : State} {P R : SepProp}
     (hfail : allocFailedIn s0 sf) (hpfx : s0.trace <+: sf.trace)
     (hmem : sf.mem ⊨ P ∗ R) :
-    sf.mem ⊨ (tryDecryptSpec C A ctl uuidTryParse S img).onPanic x s0 sf ∗ R := by
-  dsimp only [tryDecryptSpec, Spec.inImage]
+    sf.mem ⊨ (tryDecryptSpecPlaced C A ctl uuidTryParse S).onPanic x s0 sf ∗ R := by
+  have _ := img
+  dsimp only [tryDecryptSpecPlaced, withLsCodeRoLoaded, tryDecryptRawSpecPlaced]
   rw [sepConj_assoc, satisfies_pure_sepConj]
   refine ⟨⟨Or.inr (Or.inr hfail), hpfx⟩, ?_⟩
   exact Satisfies.mono (sepConj_mono_left (ProofLib.entails_anyHeap P)) hmem
 
-def ReachesOrPanic (prog : Program) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel) (img : Obj.Image)
+@[expose] def ReachesOrPanic [LibsignalPlacement] (prog : Program) (C : Crypto) (A : RustAlloc)
+    (ctl : BitVec 64) (parse : UuidParser) (S : SpqrModel) (_img : Unit)
     (x : TryDecryptGhost) (R : SepProp) (s0 s : State) (Post : State → Prop) : Prop :=
   ∃ s', Steps prog s s' ∧
     (Post s' ∨
      (s'.status = .Panicked ∧
-       (s'.mem ⊨ (tryDecryptSpec C A ctl parse S img).onPanic x s0 s' ∗ R)))
+       (s'.mem ⊨ (tryDecryptSpecPlaced C A ctl parse S).onPanic x s0 s' ∗ R)))
 
-theorem ReachesOrPanic.done {prog : Program} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image}
+theorem ReachesOrPanic.done [LibsignalPlacement] {prog : Program} {C : Crypto} {A : RustAlloc}
+    {ctl : BitVec 64} {S : SpqrModel} {img : Unit}
     {x : TryDecryptGhost} {R : SepProp} {s0 s : State} {Post : State → Prop}
     (h : Post s) :
     ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s Post :=
   ⟨s, .refl s, Or.inl h⟩
 
-theorem ReachesOrPanic.seq {prog : Program} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image}
+theorem ReachesOrPanic.seq [LibsignalPlacement] {prog : Program} {C : Crypto} {A : RustAlloc}
+    {ctl : BitVec 64} {S : SpqrModel} {img : Unit}
     {x : TryDecryptGhost} {R : SepProp} {s0 s : State} {P Q : State → Prop}
     (h1 : ReachesOrPanic prog C A ctl uuidTryParse S img x R s0 s P)
     (h2 : ∀ s1, s.mem.KeepsFrozen s1.mem → s1.symtab = s.symtab → P s1 →
@@ -594,8 +497,8 @@ theorem ReachesOrPanic.seq {prog : Program} {C : Crypto} {A : RustAlloc} {ctl : 
     exact ⟨s2, hsteps1.trans hsteps2, hQ⟩
   · exact ⟨s1, hsteps1, Or.inr hPan⟩
 
-theorem ReachesOrPanic.of_sepWP {prog : Program} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image}
+theorem ReachesOrPanic.of_sepWP [LibsignalPlacement] {prog : Program} {C : Crypto} {A : RustAlloc}
+    {ctl : BitVec 64} {S : SpqrModel} {img : Unit}
     {x : TryDecryptGhost} {R : SepProp} {s0 s : State}
     {target : BitVec 64} {Pre Frame : SepProp}
     {PostWP : State → SepProp → Prop} {Q : State → Prop}
@@ -618,8 +521,8 @@ theorem ReachesOrPanic.of_sepWP {prog : Program} {C : Crypto} {A : RustAlloc} {c
     exact ⟨s2, hsteps1.trans hsteps2, hQ⟩
   · exact (not_satisfies_false_sepConj hoom).elim
 
-theorem ReachesOrPanic.of_call_no_panic {α : Type} {prog : Program} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {img : Obj.Image}
+theorem ReachesOrPanic.of_call_no_panic [LibsignalPlacement] {α : Type} {prog : Program}
+    {C : Crypto} {A : RustAlloc} {ctl : BitVec 64} {S : SpqrModel} {img : Unit}
     {x : TryDecryptGhost} {R : SepProp} {s0 s : State}
     {entry ret_pc : BitVec 64} {spec : Spec α} {arg : α} {Frame : SepProp}
     {Q : State → Prop}
@@ -658,8 +561,8 @@ theorem ReachesOrPanic.of_call_no_panic {α : Type} {prog : Program} {C : Crypto
   · rw [hoom_false s1, satisfies_pure_sepConj] at hpost1
     exact False.elim hpost1.1
 
-theorem ReachesOrPanic.of_call_alloc_panic {α : Type} {prog : Program} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {img : Obj.Image}
+theorem ReachesOrPanic.of_call_alloc_panic [LibsignalPlacement] {α : Type} {prog : Program}
+    {C : Crypto} {A : RustAlloc} {ctl : BitVec 64} {S : SpqrModel} {img : Unit}
     {x : TryDecryptGhost} {R : SepProp} {s0 s : State}
     {entry ret_pc : BitVec 64} {spec : Spec α} {arg : α} {Frame : SepProp}
     {Q : State → Prop}
@@ -706,8 +609,8 @@ theorem ReachesOrPanic.of_call_alloc_panic {α : Type} {prog : Program} {C : Cry
   · rw [hoom_false s1, satisfies_pure_sepConj] at hpost1
     exact False.elim hpost1.1
 
-theorem ReachesOrPanic.of_panic_extern {prog : Program} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel} {img : Obj.Image}
+theorem ReachesOrPanic.of_panic_extern [LibsignalPlacement] {prog : Program} {C : Crypto}
+    {A : RustAlloc} {ctl : BitVec 64} {S : SpqrModel} {img : Unit}
     {x : TryDecryptGhost} {P R : SepProp} {s0 s : State} {Q : State → Prop}
     (hrun : s.status = .Running)
     (hext : prog.externAt? s.pc = some Rust.panicked)

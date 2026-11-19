@@ -48,6 +48,7 @@ typedef unsigned char u8;
 #define SYS_exit 93
 #define SYS_exit_group 94
 #define SYS_set_tid_address 96
+#define SYS_futex 98
 #define SYS_clock_gettime 113
 #define SYS_sched_getaffinity 123
 #define SYS_tkill 130
@@ -141,6 +142,10 @@ typedef unsigned char u8;
 #define POLLIN 0x001
 #define POLLOUT 0x004
 #define POLLNVAL 0x020
+#define FUTEX_WAKE 1
+#define FUTEX_PRIVATE_FLAG 128
+#define FUTEX_CLOCK_REALTIME 256
+#define FUTEX_WAKE_PRIVATE (FUTEX_WAKE | FUTEX_PRIVATE_FLAG)
 #define PAGE 4096UL
 
 struct sd_iovec {

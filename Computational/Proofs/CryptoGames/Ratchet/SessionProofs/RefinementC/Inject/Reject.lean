@@ -20,7 +20,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 Closes `inject` queries that fail the outer guard or are rejected before chain lookup (short wire, parse failure, invalid addresses, SPQR error, or SPQR panic).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

@@ -10,19 +10,22 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Proof
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.StepsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Proof
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.StepsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.Steps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::init_inner` (`Block 324`): Callee-Parametric Relocatable Budget Proof
@@ -32,7 +35,7 @@ contracts, `<Authenticator>::new` (`Block 340`), and `<States>::into_pb` (`Block
 prove callee-parametric relocatable entrypoints for `spqr::init_inner`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -124,7 +127,7 @@ theorem le_mallocngMaxAllocSize_of_fitsEnv_spqrBoundedEvs
   omega
 
 /-- Deterministic allocation events emitted by cloning `authKey : &[u8]` into `Vec<u8>`. -/
-def cloneEvs (authKey : Bytes) : List AllocEvent :=
+@[expose] def cloneEvs (authKey : Bytes) : List AllocEvent :=
   if authKey.length = 0 then [] else rustAllocEvents authKey.length 1
 
 theorem cloneEvs_of_length_zero {authKey : Bytes} (h : authKey.length = 0) :
@@ -286,14 +289,14 @@ theorem encodeRaw_initV1State_length_le (F : ShaCompress) (d : Direction) (authK
 /-- Bounded allocation envelope for `<spqr::authenticator::Authenticator>::new`:
     at most `24` non-`free` events of request size `≤ 2 * x.rootKey.length + 512` and
     alignment `≤ 16`. -/
-def AuthNewBudgetEnv (x : AuthNewGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def AuthNewBudgetEnv (x : AuthNewGhost) (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 24 (2 * x.rootKey.length + 512) evs
 
 theorem authNewBudgetEnv_nil (x : AuthNewGhost) : AuthNewBudgetEnv x [] :=
   SpqrBoundedEvs.nil 24 _
 
 /-- Envelope-parametric budget specification of `<Authenticator>::new`. -/
-def authNewBudgetSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def authNewBudgetSpecOfEnv [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress)
     (Env : AuthNewGhost → List AllocEvent → Prop) :
     Spec (AuthNewGhost × M.σ) where
@@ -376,23 +379,6 @@ theorem fitsEnv_statesIntoPb_of_initInnerEnv
   have hf := (fitsEvents_append M lim (cloneEvs authKey ++ evs₂) evs₃ st).mp (hfit _ h123)
   rw [M.stepEvents_append] at hf
   exact hf.2
-
-theorem statesIntoPbVariantPlacedSpec_of_statesIntoPbPlacedSpec [LibsignalPlacement]
-    {P : Program} {addr : BitVec 64}
-    {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} {F : ShaCompress}
-    (h : subroutine_ok P addr (statesIntoPbPlacedSpec M A lim F))
-    (stateVal : States spqrPolyApi (spqrAuthApi F)) :
-    subroutine_ok P addr (statesIntoPbVariantPlacedSpec M A lim F stateVal) := by
-  refine subroutine_ok_outcome_intro fun (⟨out, stA⟩, st) R s0 hpc hrun hpre hal => ?_
-  have hpre' : s0.mem ⊨ (statesIntoPbPlacedSpec M A lim F).pre (⟨out, stA, stateVal⟩, st) s0 ∗ R :=
-    hpre
-  refine h.mono_outcome (⟨out, stA, stateVal⟩, st) R s0 hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan_st, hpan⟩ | ⟨c, hex_st, hex⟩ | ⟨hoom_st, hoom⟩
-  · exact Or.inl ⟨hret, hcc, hpost⟩
-  · exact Or.inr (Or.inl ⟨hpan_st, hpan⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨c, hex_st, hex⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom_st, hoom⟩))
 
 theorem withLsCodeLoaded_statesIntoPbVariantPlacedSpec_of_statesIntoPbPlacedSpec [LibsignalPlacement]
     {P : Program} {addr : BitVec 64}
@@ -721,7 +707,7 @@ theorem sepWPp_call_total_keepLsInv [LibsignalPlacement] {α : Type} {prog : Pro
     (fun _ sf _ ho => by rw [hoom sf] at ho; exact (not_satisfies_false_sepConj ho).elim)
 
 /-- Postcondition predicate of relocatable `spqr::init_inner` (`Block 324`) under `RustCliAllocBudget M`. -/
-def InitInnerPlacedBudgetPost [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def InitInnerPlacedBudgetPost [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (s0 : State) (x : InitInnerGhost) (st0 : M.σ) : State → SepProp → Prop :=
   fun sf Pf =>
@@ -734,7 +720,7 @@ def InitInnerPlacedBudgetPost [LibsignalPlacement] (M : AllocCostModel)
     sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace
 
 /-- Panic predicate for panic-free budget specs (`onPanic = ⌜False⌝`). -/
-def InitInnerBudgetPanic (R : SepProp) : State → SepProp → Prop :=
+@[expose] def InitInnerBudgetPanic (R : SepProp) : State → SepProp → Prop :=
   fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ ⌜False⌝ ∗ R)
 
 theorem sepWPp_of_init_inner_placed_budget_wpp [LibsignalPlacement]
@@ -1310,7 +1296,7 @@ theorem init_inner_clone_b2a_placed [LibsignalPlacement]
 /-! ## 4. Relocatable Callee Wrappers (`<Authenticator>::new` & `<States>::into_pb`) & Body -/
 
 /-- Abstract budget-threaded call interface for `<Authenticator>::new` at `lsmpl.base 340` on `Block 324`. -/
-def AuthBudgetCallAtPlaced [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def AuthBudgetCallAtPlaced [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State))
     (s0 : State) (authKey : Bytes) (st1 : M.σ)
@@ -1455,7 +1441,7 @@ theorem call_authNew_budget_placed_x [LibsignalPlacement]
     (by rw [hsp_sf, hsp]) hcode_sf hcs_sf (by rw [htr_sf, htrace]) hevs₂
 
 /-- Abstract budget-threaded call interface for `<States>::into_pb` at `lsmpl.base 334` on `Block 324`. -/
-def IntoPbBudgetCallAtPlaced [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def IntoPbBudgetCallAtPlaced [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress)
     (ext : String → Option (State → State))
     (s0 : State) (out : BitVec 64) (d : Direction) (authKey : Bytes)

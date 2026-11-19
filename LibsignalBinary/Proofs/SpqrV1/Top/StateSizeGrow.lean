@@ -26,7 +26,7 @@ with `maxOooKeysOrDefault ≤ 2000`) and proves that one step of `send` or `recv
 `keyAdvanceLoop` over-approximation of `StateSize.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,19 +45,19 @@ open CryptoVerification.SpqrV1Sync.Codec (decodeState_spqrDeps_encodeState_pb)
 /-! ## Valid SPQR State Predicate (`ValidState`) -/
 
 /-- A `ChainParamsPB` has valid out-of-order key limit (`≤ 2000`, matching `ChainParams.default`). -/
-def ValidChainParams (p : ChainParamsPB) : Prop :=
+@[expose] def ValidChainParams (p : ChainParamsPB) : Prop :=
   p.maxOooKeysOrDefault.toNat ≤ 2000
 
 /-- A `PqRatchetState` is valid when any `ChainParamsPB` present in `versionNegotiation` or `chain`
 satisfies `ValidChainParams`. -/
-def ValidPqState (st : PqRatchetState) : Prop :=
+@[expose] def ValidPqState (st : PqRatchetState) : Prop :=
   (∀ vn, st.versionNegotiation = some vn → ∀ p, vn.chainParams = some p → ValidChainParams p) ∧
   (∀ ch, st.chain = some ch → ∀ p, ch.params = some p → ValidChainParams p)
 
 /-- A serialized SPQR state `s : Bytes` is valid if it is either the V0 empty state `[]` or the
 canonical protobuf encoding `Proto.encodeState st` of a `ValidPqState st`.
 Note that `ValidState` is a pure format predicate independent of `F` and `K`. -/
-def ValidState (s : Bytes) : Prop :=
+@[expose] def ValidState (s : Bytes) : Prop :=
   s = [] ∨ ∃ st : PqRatchetState, s = Proto.encodeState st ∧ ValidPqState st
 
 theorem validState_nil : ValidState [] := Or.inl rfl
@@ -487,7 +487,7 @@ theorem ChainEpochDirection.key_raw_le_valid (hkdf : HkdfFn) (ed : ChainEpochDir
   unfold ValidChainParams at hval; omega
 
 /-- Wire byte length of a single encoded `ChainEpochPB` link (`Proto.encodeMessage ChainEpochPB.encodeRaw 3#32`). -/
-def linkWireLen (ep : ChainEpochPB) : Nat :=
+@[expose] def linkWireLen (ep : ChainEpochPB) : Nat :=
   (Proto.encodeMessage ChainEpochPB.encodeRaw 3#32 ep).length
 
 /-- Wire byte length of a model `ChainEpoch` link. -/
@@ -496,7 +496,7 @@ def linkModelWireLen (link : ChainEpoch) : Nat :=
 
 /-- Core wire payload of a `ChainPB` (`links` wire bytes + `nextRoot` bytes), avoiding the `200 * links.length`
 slack of `rawChain`. -/
-def chainWireCore (pb : ChainPB) : Nat :=
+@[expose] def chainWireCore (pb : ChainPB) : Nat :=
   (pb.links.map linkWireLen).sum + pb.nextRoot.length
 
 theorem rawChainEpoch_le_linkWireLen (ep : ChainEpochPB) :
@@ -1112,40 +1112,5 @@ theorem spqrV1_recv_validState_length_le (F : ShaCompress) (K : MlKem)
       rw [hsalt] at h; dsimp only [] at h
       have hinj := (Prod.mk.inj (Except.ok.inj h)).1; subst hinj
       exact recv_validState_length_le F K (spqrHkdfWith F) s msg out hval hlen hrecv
-
-/-- Model-level one-step growth bound for `(spqrV1Recv F K).recv`: preserves `ValidState` and grows
-the state byte length by at most `1128000` bytes. -/
-theorem spqrV1Recv_recv_validState_length_le (F : ShaCompress) (K : MlKem)
-    (s msg : Bytes) (s' : Bytes) (key : MessageKey)
-    (hval : ValidState s) (hlen : s.length < 2 ^ 64)
-    (h : (spqrV1Recv F K).recv s msg = .ok (s', key)) :
-    ValidState s' ∧ s'.length ≤ s.length + 1128000 := by
-  rw [spqrV1Recv_eq] at h; unfold toSpqrRecvModel at h; dsimp only at h
-  cases hrecv : recv (spqrDeps F K) (spqrHkdfWith F) s msg with
-  | error e => rw [hrecv] at h; cases e <;> contradiction
-  | ok out =>
-    rw [hrecv] at h; dsimp only [] at h
-    have hinj := (Prod.mk.inj (Except.ok.inj h)).1; subst hinj
-    exact recv_validState_length_le F K (spqrHkdfWith F) s msg out hval hlen hrecv
-
-/-- Any `ValidState s` with `s.length < 2^31` transitions under `(spqrV1 F K).send`
-to a `ValidState s'` with `s'.length < 2^32`. -/
-theorem spqrV1_send_validState_lt_2_32 (F : ShaCompress) (K : MlKem)
-    (s : Bytes) (tape : Bytes) (s' : Bytes) (salt : Salt) (msg : Bytes)
-    (hval : ValidState s) (hlen : s.length < 2 ^ 31)
-    (h : (spqrV1 F K).send s tape = some (s', salt, msg)) :
-    ValidState s' ∧ s'.length < 2 ^ 32 := by
-  have ⟨hv', hle⟩ := spqrV1_send_validState_length_le F K s tape s' salt msg hval (by omega) h
-  exact ⟨hv', by omega⟩
-
-/-- Any `ValidState s` with `s.length < 2^31` transitions under `(spqrV1 F K).recv`
-to a `ValidState s'` with `s'.length < 2^32`. -/
-theorem spqrV1_recv_validState_lt_2_32 (F : ShaCompress) (K : MlKem)
-    (s msg : Bytes) (s' : Bytes) (salt : Salt)
-    (hval : ValidState s) (hlen : s.length < 2 ^ 31)
-    (h : (spqrV1 F K).recv s msg = .ok (s', salt)) :
-    ValidState s' ∧ s'.length < 2 ^ 32 := by
-  have ⟨hv', hle⟩ := spqrV1_recv_validState_length_le F K s msg s' salt hval (by omega) h
-  exact ⟨hv', by omega⟩
 
 end CryptoVerification.SpqrV1.Top.StateSize

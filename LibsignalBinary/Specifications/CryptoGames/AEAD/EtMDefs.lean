@@ -51,10 +51,6 @@ namespace CipherScheme
 
 variable {Key Message Ciphertext : Type}
 
-/-- Perfect correctness: `Dec(k, Enc(k, m)) = some m`. -/
-def Correct (cipher : CipherScheme Key Message Ciphertext) : Prop :=
-  ∀ k m, cipher.dec k (cipher.enc k m) = some m
-
 /-- One-time IND-CPA oracle: a single `encrypt` query (`none` if queried again). -/
 abbrev indcpaSpec (Message Ciphertext : Type) :=
   Message →ₒ Option Ciphertext
@@ -93,33 +89,6 @@ def branch [SampleableType Key] (cipher : CipherScheme Key Message Ciphertext)
   let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
       (StateT (INDCPAState Key) ProbComp) + indcpaEncrypt cipher
   (simulateQ impl A).run' { key, b }
-
-/-- One-time IND-CPA hidden-bit game. -/
-def indcpaGame [SampleableType Key] (cipher : CipherScheme Key Message Ciphertext)
-    (A : INDCPAAdversary Message Ciphertext) : ProbComp Bool := do
-  let b ← $ᵗ Bool
-  let key ← $ᵗ Key
-  let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (INDCPAState Key) ProbComp) + indcpaEncrypt cipher
-  let b' ← (simulateQ impl A).run' { key, b }
-  return b == b'
-
-/-- `Adv^{ind-cpa}_{cipher}(A)`, the bias `2·|Pr[b = b'] − 1/2|`. -/
-noncomputable def indcpaAdvantage [SampleableType Key]
-    (cipher : CipherScheme Key Message Ciphertext)
-    (A : INDCPAAdversary Message Ciphertext) : ℝ≥0∞ :=
-  𝒟[cipher.indcpaGame A].boolBias
-
-theorem indcpaAdvantage_eq_boolDist [SampleableType Key]
-    (cipher : CipherScheme Key Message Ciphertext)
-    (A : INDCPAAdversary Message Ciphertext) :
-    cipher.indcpaAdvantage A = 𝒟[cipher.branch true A].boolDist 𝒟[cipher.branch false A] := by
-  have hcoin : ∀ x : Bool, 𝒟[($ᵗ Bool : ProbComp Bool)] {x} = 1 / 2 := fun _ => by simp
-  rw [← evalDist_boolBias_bind_coin ($ᵗ Bool) _ _ (hcoin true) (hcoin false)]
-  unfold indcpaAdvantage indcpaGame
-  congr 2
-  refine bind_congr fun b => ?_
-  cases b <;> simp [branch]
 
 end CipherScheme
 
@@ -255,13 +224,6 @@ def cipherRedImpl [SampleableType T] :
       return some (c, τ)
   | .inr (.inr _) => return none
 
-/-- One-time IND-CPA reduction `redCipher B`: simulates `B` with `decrypt` always returning `none`,
-and answers the one-time `encrypt(a, m)` query by forwarding `m` to the `indcpaSpec` oracle and
-sampling a uniform tag `τ ← $ᵗ T`. -/
-def redCipher [SampleableType T] (B : OTCCAAdversary AD M (C × T)) :
-    CipherScheme.INDCPAAdversary M C :=
-  simulateQ cipherRedImpl B
-
 /-- Query implementation for `redMACChall`. -/
 def challRedImpl (cipher : CipherScheme KE M C) (ke : KE) :
     QueryImpl (unifSpec + otccaSpec AD M (C × T))
@@ -276,18 +238,6 @@ def challRedImpl (cipher : CipherScheme KE M C) (ke : KE) :
     let τ ← StateT.lift (MACScheme.evalQuery (a, c))
     return some (c, τ)
   | .inr (.inr _) => return none
-
-/-- Challenge-tag PRF reduction `redMACChall cipher B`: samples `ke ← $ᵗ KE`, simulates `B` with
-`decrypt` always returning `none`, and answers the one-time `encrypt(a, m)` query by computing
-`c = cipher.enc ke m` and querying the PRF oracle once at `(a, c)`. -/
-def redMACChall [SampleableType KE] (cipher : CipherScheme KE M C)
-    (B : OTCCAAdversary AD M (C × T)) :
-    MACScheme.PRFAdversary (AD × C) T :=
-  (do
-    let ke ← (liftM ($ᵗ KE : ProbComp KE) :
-      OracleComp (unifSpec + MACScheme.prfSpec (AD × C) T) KE)
-    (simulateQ (challRedImpl cipher ke) B).run' false :
-      OracleComp (unifSpec + MACScheme.prfSpec (AD × C) T) Bool)
 
 /-- State of the `j`-th decryption-query forgery PRF reduction `redMACForge`. -/
 structure ForgeState (AD C T : Type) where
@@ -318,21 +268,6 @@ def forgeRedImpl [DecidableEq AD] [DecidableEq C] [DecidableEq T]
     else
       set { st with idx := st.idx + 1 }
       return none
-
-/-- Decryption-forgery PRF reduction `redMACForge cipher j B` for the `j`-th decryption query:
-samples `ke ← $ᵗ KE`, runs `B` with `decrypt` always returning `none` (and `encrypt` querying the
-PRF oracle once at `(a, cipher.enc ke m)`), and on the `j`-th decryption query `(a, (c, τ))` with
-`chal != some (a, (c, τ))`, queries the PRF oracle at `(a, c)` and records whether the tag matches
-`τ`. Outputs `forged`. -/
-def redMACForge [DecidableEq AD] [DecidableEq C] [DecidableEq T] [SampleableType KE]
-    (cipher : CipherScheme KE M C) (j : ℕ) (B : OTCCAAdversary AD M (C × T)) :
-    MACScheme.PRFAdversary (AD × C) T :=
-  (do
-    let ke ← (liftM ($ᵗ KE : ProbComp KE) :
-      OracleComp (unifSpec + MACScheme.prfSpec (AD × C) T) KE)
-    let (_, st) ← (simulateQ (forgeRedImpl cipher ke j) B).run {}
-    return st.forged :
-      OracleComp (unifSpec + MACScheme.prfSpec (AD × C) T) Bool)
 
 end EtM
 

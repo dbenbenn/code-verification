@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Descriptor-Threaded Stage P2 Store-Kit `withFds` Lifts
@@ -27,7 +29,7 @@ Lifts `StageP2ClosureHooksPlaced` and the four Stage P2 `*PlacedOkFds` store-kit
 and pure-extraction helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -500,23 +502,9 @@ theorem sepWPp_pure_false {prog : Program} {ret : BitVec 64} {s : State}
     SepWPp prog ret s ⌜False⌝ post Qp oom :=
   SepWPp.congr_pre (pure_false_sepConj ⌜True⌝).symm (SepWPp.pure_left False.elim)
 
-theorem withFds_pool_drop {M : AllocCostModel} (A : RustCliAllocBudget M)
-    {lim : BudgetLimits} (henf : lim.enforced = true)
-    (st : M.σ) (s : State) :
-    (withFds A).pool lim st s ⊢ A.pool lim st s := by
-  rw [withFds_pool_enforced A henf]
-  exact Entails.pure_left fun _ => Entails.refl _
-
 theorem entails_drop_pure_sep {φ : Prop} {P Q : SepProp}
     (hEq : P = ⌜φ⌝ ∗ Q) : P ⊢ Q := by
   rw [hEq]
   exact Entails.pure_left fun _ => Entails.refl _
-
-theorem sepWPp_extract_pure_sep {prog : Program} {ret : BitVec 64} {s : State}
-    {φ : Prop} {P Q : SepProp} {post Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hEq : P = ⌜φ⌝ ∗ Q)
-    (h : φ → SepWPp prog ret s Q post Qp oom) :
-    SepWPp prog ret s P post Qp oom :=
-  SepWPp.congr_pre hEq (SepWPp.pure_left h)
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudgetFd

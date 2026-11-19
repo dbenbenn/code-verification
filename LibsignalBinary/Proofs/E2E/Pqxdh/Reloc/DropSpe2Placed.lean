@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.RelocCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.RelocCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Common
 import ProofLib.SepLogic.WP.Apply
@@ -22,7 +22,7 @@ Proves `withLsRoLoaded lsmpl (dropSpeSpec A)` and `withLsRoLoaded lsmpl (dropSpe
 Block `511` (`core::ptr::drop_glue::<SignalProtocolError> [local#2]`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -268,7 +268,7 @@ theorem drop_spe2_placed_cl_ok_at [LibsignalPlacement] {A : RustAlloc}
 
 /-- Spec for dropping `SignalProtocolError::UnrecognizedMessageVersion` (`0x8000000000000006#64`),
 matching `ResponderClosure.P3P4.dropSpeVerSpec`. -/
-def dropSpe2VerSpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 32) where
+@[expose] def dropSpe2VerSpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 32) where
   pre := fun (a, msgVer) s =>
     ⌜s.readReg64 .x0 = a⌝ ∗
     (a ↦₆₄ 0x8000000000000006#64) ∗

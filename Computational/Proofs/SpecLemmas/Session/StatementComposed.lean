@@ -14,7 +14,7 @@ public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhModelLink
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,8 +29,7 @@ Covers composed-model deviations `DEV-C5` and `DEV-C8`–`DEV-C13`, alongside in
 `DEV-LS2`, `DEV-LS22`, `DEV-LS24`, `DEV-LS28`, `DEV-LS33`, `DEV-LS34`, `DEV-LS37`, `DEV-PQ1`,
 `DEV-PQ3`, `DEV-PQ5`, `DEV-PQ6`, `DEV-PQ8`, `DEV-PQ11`, `DEV-CLI11`, and `DEV-E8`.
 **DEV-C14 (formalization): Per-session `u32` counter budget (`_hq32`).** Per-session query budgets
-`qs k` satisfy `2 * (qs k + 1) + 25002 < 2 ^ 32`.
--/
+`qs k` satisfy `2 * (qs k + 1) + 25002 < 2 ^ 32`.-/
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 
@@ -43,9 +42,9 @@ open CryptoGames CryptoGames.LibsignalSM Ratchet LibsignalInst LibsignalSession
   CryptoVerification.LibsignalProtoCodec CryptoVerification.LibsignalSession
   CryptoVerification.LibsignalSpqrV1
 
-def bytesWord (bs : List UInt8) : BitVec 256 := bytesToKey32 (ofU8 bs)
+@[expose] def bytesWord (bs : List UInt8) : BitVec 256 := bytesToKey32 (ofU8 bs)
 
-def keySOf (dk : SignalPqxdh.DRKey) (aliceCoins : BitVec 256) : SampledSessionKey :=
+@[expose] def keySOf (dk : SignalPqxdh.DRKey) (aliceCoins : BitVec 256) : SampledSessionKey :=
   ((bytesWord dk.rootKey, bytesWord dk.chainKey), aliceCoins, bytesWord dk.pqrKey)
 
 abbrev sessionSchemeSpkWithSpqr {PQ PQC : Type} [Inhabited PQ] (P : Params PQ PQC) (ℓ : ℕ)
@@ -72,7 +71,7 @@ structure DrvState (S : SignalPqxdh.Setup) (ℓ : ℕ) where
   sends : List (SignalPqxdh.SessionId S × SignalPqxdh.PreKeyBundleInput ×
     SignalPqxdh.HandshakeHdr) := []
 
-def drvMirror {S : SignalPqxdh.Setup} {ℓ : ℕ} (ds : DrvState S ℓ) :
+@[expose] def drvMirror {S : SignalPqxdh.Setup} {ℓ : ℕ} (ds : DrvState S ℓ) :
     SignalPqxdh.KeyIndQuery S → SignalPqxdh.KeyIndResponse → DrvState S ℓ
   | .initPrin u, .initPrinResp ikAPk _ => { ds with prins := (u, ikAPk) :: ds.prins }
   | .genSPK u j, .bundleResp bnd => { ds with bundles := ((u, j), bnd.spkB) :: ds.bundles }
@@ -92,7 +91,7 @@ headers. -/
 **DEV-C11 (formalization): Post-promotion responder handoff to Double Ratchet.** -/
 
 /-- Composed end-of-game freshness predicate matching `KeyInd`'s `allTestedClean`. -/
-def composedClean {S : SignalPqxdh.Setup} (P : SignalPqxdh.Primitives)
+@[expose] def composedClean {S : SignalPqxdh.Setup} (P : SignalPqxdh.Primitives)
     (st : SignalPqxdh.KeyIndState S) : Bool :=
   st.sessions.all (fun s =>
       !s.tested ||
@@ -113,7 +112,7 @@ end CryptoVerification.E2E
 
 namespace Computational.Proofs.SpecLemmas.Session.StatementComposed
 
-open CryptoGames CryptoGames.LibsignalSM Ratchet LibsignalInst LibsignalSession
+open _root_.CryptoGames CryptoGames.LibsignalSM Ratchet LibsignalInst LibsignalSession
   HMAC HKDF CBC LibsignalAead SM SM.Construction CKA AEADScheme MACScheme WireAEAD FSAEAD
   CryptoGames.Ratchet.LibsignalSim
   CryptoGames.FSAEAD.Thm5
@@ -131,23 +130,6 @@ theorem admissibleLastLeakGuesses_mono (Δ : ℕ) {t₁ t₂ : ℕ} (ht : t₁ �
   rcases hx with rfl | ⟨k, hk, rfl⟩
   · exact Or.inl rfl
   · exact Or.inr ⟨k, by omega, rfl⟩
-
-theorem card_admissibleLastLeakGuesses_le (Δ tStar : ℕ) :
-    (admissibleLastLeakGuesses Δ tStar).card ≤ (tStar + 1 - Δ) + 1 := by
-  unfold admissibleLastLeakGuesses
-  have h1 := Finset.card_insert_le none ((Finset.range (tStar + 1 - Δ)).image some)
-  have h2 : ((Finset.range (tStar + 1 - Δ)).image some).card ≤
-      (Finset.range (tStar + 1 - Δ)).card := Finset.card_image_le
-  rw [Finset.card_range] at h2
-  omega
-
-theorem card_admissibleLastLeakGuesses (Δ tStar : ℕ) :
-    (admissibleLastLeakGuesses Δ tStar).card = (tStar + 1 - Δ) + 1 := by
-  unfold admissibleLastLeakGuesses
-  have hnotmem : none ∉ (Finset.range (tStar + 1 - Δ)).image some := by
-    simp
-  rw [Finset.card_insert_of_notMem hnotmem,
-    Finset.card_image_of_injective _ (Option.some_injective _), Finset.card_range]
 
 /-! ## Ratchet and FS-AEAD cost and size budgets -/
 
@@ -194,16 +176,6 @@ theorem ratchetFsAdapterBudget_mono {qR₁ qR₂ qep₁ qep₂ : ℕ}
     Nat.mul_le_mul (Nat.mul_le_mul_left _ (by omega)) (SizeBudgetBridge.bits_mono hqep)
   omega
 
-theorem ratchetFsAdapterBudget_le_ratchetCostBudget (qR qep : ℕ) :
-    ratchetFsAdapterBudget qR qep ≤ ratchetCostBudget qR qep := by
-  unfold ratchetFsAdapterBudget ratchetCostBudget
-  have hmfj : maxForwardJumps = 25000 := rfl
-  have hsq : qR + 1 ≤ (qR + 1) ^ 2 := by nlinarith
-  have hb : 2 ^ 12 * (qR + 1) * ReductionDsl.bits qep ≤
-      2 ^ 12 * (qR + 1) ^ 2 * ReductionDsl.bits qep :=
-    Nat.mul_le_mul_right _ (Nat.mul_le_mul_left _ hsq)
-  nlinarith
-
 theorem fsRatchetCostBudget_mono {q₁ q₂ qep₁ qep₂ : ℕ}
     (hq : q₁ ≤ q₂) (hqep : qep₁ ≤ qep₂) :
     fsRatchetCostBudget q₁ qep₁ ≤ fsRatchetCostBudget q₂ qep₂ := by
@@ -225,31 +197,6 @@ theorem reductionSizeBudget_add_bits_mono {B₁ B₂ : ℕ} (hB : B₁ ≤ B₂)
     ReductionDsl.reductionSizeBudget + 2 ^ 12 * ReductionDsl.bits B₁ ≤
       ReductionDsl.reductionSizeBudget + 2 ^ 12 * ReductionDsl.bits B₂ :=
   Nat.add_le_add_left (Nat.mul_le_mul_left _ (SizeBudgetBridge.bits_mono hB)) _
-
-theorem ratchetDescBudget_expr_mono {q₁ q₂ qep₁ qep₂ : ℕ}
-    (hq : q₁ ≤ q₂) (hqep : qep₁ ≤ qep₂) :
-    2 ^ 23 + 2 ^ 13 * ReductionDsl.bits (ratchetCostBudget q₁ qep₁ + qep₁) ≤
-      2 ^ 23 + 2 ^ 13 * ReductionDsl.bits (ratchetCostBudget q₂ qep₂ + qep₂) :=
-  Nat.add_le_add_left
-    (Nat.mul_le_mul_left _
-      (SizeBudgetBridge.bits_mono (Nat.add_le_add (ratchetCostBudget_mono hq hqep) hqep))) _
-
-/-- When `ratchetCostBudget q qep + qep < 2 ^ 126`, the ratchet description-size expression fits
-inside `ReductionDsl.reductionSizeBudget`. -/
-theorem ratchetDescBudget_expr_le_reductionSizeBudget {q qep : ℕ}
-    (hB : ratchetCostBudget q qep + qep < 2 ^ 126) :
-    2 ^ 23 + 2 ^ 13 * ReductionDsl.bits (ratchetCostBudget q qep + qep) ≤
-      ReductionDsl.reductionSizeBudget := by
-  have hbits : ReductionDsl.bits (ratchetCostBudget q qep + qep) ≤ 126 := by
-    have hpos : ratchetCostBudget q qep + qep ≠ 0 := by
-      have := ratchetCostBudget_pos q qep
-      omega
-    have hlog : Nat.log 2 (ratchetCostBudget q qep + qep) < 126 :=
-      Nat.log_lt_of_lt_pow hpos hB
-    unfold ReductionDsl.bits
-    omega
-  unfold ReductionDsl.reductionSizeBudget
-  omega
 
 /-! ## `CostedFits`, `GRedBounded`, and `GTwoStageBounded` monotonicity -/
 
@@ -325,21 +272,18 @@ theorem fsCostedBounds_mono_qep {Pt : Type} [DecidableEq Pt]
     ratchetFsAdapterBudget_mono le_rfl hqep
   have hHyb : fsRatchetCostBudget qR qep₁ ≤ fsRatchetCostBudget qR qep₂ :=
     fsRatchetCostBudget_mono le_rfl hqep
-  rcases h with ⟨h1, h2, h3, h4, h5, h6, h7⟩
+  rcases h with ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩
   exact ⟨gRedBounded_mono_budget hAdapt h1,
     fun j hj => gTwoStageBounded_mono_budget hHyb (h2 j hj),
     fun la => gTwoStageBounded_mono_budget hHyb (h3 la),
     fun j hj => gRedBounded_mono_budget hAdapt (h4 j hj),
     gRedBounded_mono_budget hAdapt h5,
     fun j hj => gRedBounded_mono_budget hAdapt (h6 j hj),
-    gRedBounded_mono_budget hAdapt h7⟩
+    gRedBounded_mono_budget hAdapt h7,
+    fun j hj => gTwoStageBounded_mono_budget hHyb (h8 j hj),
+    fun la => gTwoStageBounded_mono_budget hHyb (h9 la)⟩
 
 /-! ## Two-tier SPK budgets -/
-
-theorem spkLeakRedUBudget_mono {q₁ q₂ : ℕ} (hq : q₁ ≤ q₂) :
-    spkLeakRedUBudget q₁ ≤ spkLeakRedUBudget q₂ := by
-  unfold spkLeakRedUBudget
-  omega
 
 theorem spkLeakRedUBudget_le_ratchetCostBudget (q qep : ℕ) :
     spkLeakRedUBudget q ≤ ratchetCostBudget q qep := by
@@ -374,10 +318,6 @@ theorem spkHopBudget_mono {q₁ q₂ qep₁ qep₂ ℓ₁ ℓ₂ : ℕ}
     spkHopBudget q₁ qep₁ ℓ₁ ≤ spkHopBudget q₂ qep₂ ℓ₂ :=
   min_le_min (spkTier1Budget_mono hq hqep) (spkTier2Budget_mono hq hqep hℓ)
 
-theorem spkHopBudget_mono_q {q₁ q₂ : ℕ} (hq : q₁ ≤ q₂) (qep ℓ : ℕ) :
-    spkHopBudget q₁ qep ℓ ≤ spkHopBudget q₂ qep ℓ :=
-  spkHopBudget_mono hq le_rfl le_rfl
-
 theorem spkHopBudget_mono_qep {q qep₁ qep₂ ℓ : ℕ} (hqep : qep₁ ≤ qep₂) :
     spkHopBudget q qep₁ ℓ ≤ spkHopBudget q qep₂ ℓ :=
   spkHopBudget_mono le_rfl hqep le_rfl
@@ -385,10 +325,6 @@ theorem spkHopBudget_mono_qep {q qep₁ qep₂ ℓ : ℕ} (hqep : qep₁ ≤ qep
 theorem spkHopBudget_le_spkTier1Budget (q qep ℓ : ℕ) :
     spkHopBudget q qep ℓ ≤ spkTier1Budget q qep :=
   min_le_left _ _
-
-theorem spkHopBudget_le_spkTier2Budget (q qep ℓ : ℕ) :
-    spkHopBudget q qep ℓ ≤ spkTier2Budget q qep ℓ :=
-  min_le_right _ _
 
 theorem spkTier1Budget_le_ratchetCostBudget (q qep : ℕ) :
     spkTier1Budget q qep ≤ ratchetCostBudget q qep := by
@@ -444,6 +380,8 @@ theorem refineConst_mono_qep {Pt : Type} [DecidableEq Pt] [Zero Pt]
   have h1 : (qep₁ : ℝ≥0∞) ≤ (qep₂ : ℝ≥0∞) := Nat.cast_le.mpr hqep
   gcongr
 
+/-- `hiddenSaltMixtureBound` (with unclamped `B_{cka,prng,fs}_u` and hoisted `macForgeryTerm`)
+is monotone in `qep`. -/
 theorem hiddenSaltMixtureBound_mono_qep {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {α : Type} (Z : Crypto) (K : CryptoVerification.LibsignalSpqrV1.MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
@@ -457,45 +395,49 @@ theorem hiddenSaltMixtureBound_mono_qep {Pt : Type} [DecidableEq Pt] [Zero Pt] [
   by
     unfold hiddenSaltMixtureBound
     dsimp only
-    have hSum :
-        (∑ t ∈ Finset.range ((qep₁ + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-          ((∫⁻ o, CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
-              (((R o).B_cka tL t).eval
-                (fun _ => (R o).challSimDF.eval
-                  (fun _ => (R o).simDeliverForge.eval (fun _ => A o) ()) ()) ()) ∂𝒟[oa]) +
-            (∫⁻ o, PRFPRNG.advantage (rootPRNG Z.F encPt)
-              (((R o).B_prng tL t).eval
-                (fun _ => (R o).challSimDF.eval
-                  (fun _ => (R o).simDeliverForge.eval (fun _ => A o) ()) ()) ()) ∂𝒟[oa]) +
-            (∑ j ∈ Finset.range q,
-              ∫⁻ o, fsAeadSlotSumBound Z (min (2 * q) (q + 2)) (R o).fs
-                (((R o).B_fs j tL t).eval
+    let termU (qep : ℕ) (tL : Option ℕ) : ℝ≥0∞ :=
+      ∑ par ∈ ({false, true} : Finset Bool),
+        ((∫⁻ o, CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+            (((R o).B_cka_u tL par).eval
+              (fun _ => (R o).challSimDF.eval
+                (fun _ => (R o).simDeliverForge.eval (fun _ => A o) ()) ()) ()) ∂𝒟[oa]) +
+          (∑ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+            ((∫⁻ o, PRFPRNG.advantage (rootPRNG Z.F encPt)
+                (((R o).B_prng_u tL par t).eval
                   (fun _ => (R o).challSimDF.eval
                     (fun _ => (R o).simDeliverForge.eval (fun _ => A o) ()) ()) ()) ∂𝒟[oa]) +
-            4 * (q : ℝ≥0∞) * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) ≤
-        (∑ t ∈ Finset.range ((qep₂ + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
-          ((∫⁻ o, CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
-              (((R o).B_cka tL t).eval
-                (fun _ => (R o).challSimDF.eval
-                  (fun _ => (R o).simDeliverForge.eval (fun _ => A o) ()) ()) ()) ∂𝒟[oa]) +
-            (∫⁻ o, PRFPRNG.advantage (rootPRNG Z.F encPt)
-              (((R o).B_prng tL t).eval
-                (fun _ => (R o).challSimDF.eval
-                  (fun _ => (R o).simDeliverForge.eval (fun _ => A o) ()) ()) ()) ∂𝒟[oa]) +
-            (∑ j ∈ Finset.range q,
-              ∫⁻ o, fsAeadSlotSumBound Z (min (2 * q) (q + 2)) (R o).fs
-                (((R o).B_fs j tL t).eval
-                  (fun _ => (R o).challSimDF.eval
-                    (fun _ => (R o).simDeliverForge.eval (fun _ => A o) ()) ()) ()) ∂𝒟[oa]) +
-            4 * (q : ℝ≥0∞) * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) :=
-      Finset.sum_le_sum_of_subset (Finset.range_mono (by omega))
+              (∑ j ∈ Finset.range q,
+                ∫⁻ o, fsAeadAuthSlotSumBound Z (min (2 * q) (q + 2)) (R o).fs
+                  (fun stage la => ((R o).B_fs_u stage la j tL par t).eval
+                    (fun _ => (R o).challSimDF.eval
+                      (fun _ => (R o).simDeliverForge.eval (fun _ => A o) ()) ()) ()) ∂𝒟[oa]))) +
+          4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)
+    have hU : ∑ tL ∈ admissibleLastLeakGuesses 4 ((qep₁ + 1) + 1), termU qep₁ tL ≤
+        ∑ tL ∈ admissibleLastLeakGuesses 4 ((qep₂ + 1) + 1), termU qep₂ tL := by
+      refine le_trans
+        (Finset.sum_le_sum fun tL _ => Finset.sum_le_sum fun par _ =>
+          add_le_add
+            (add_le_add le_rfl
+              (Finset.sum_le_sum_of_subset (Finset.Ico_subset_Ico_right (by omega))))
+            le_rfl)
+        (Finset.sum_le_sum_of_subset (admissibleLastLeakGuesses_mono 4 (by omega)))
     have hsp := spuriousStepTerm_mono_qep Z.F encPt Dh q hqep
     have hδ : ((qep₁ : ℝ≥0∞) + 1) * ((qep₁ : ℝ≥0∞) + 2) * δ ≤
         ((qep₂ : ℝ≥0∞) + 1) * ((qep₂ : ℝ≥0∞) + 2) * δ := by
       have hqcast : (qep₁ : ℝ≥0∞) ≤ (qep₂ : ℝ≥0∞) := Nat.cast_le.mpr hqep
       gcongr
-    exact add_le_add (add_le_add hSum hsp) hδ
+    exact add_le_add
+      (add_le_add
+        (add_le_add
+          (add_le_add
+            (Finset.sum_le_sum_of_subset (Finset.Ico_subset_Ico_right (by omega)))
+            (Finset.sum_le_sum_of_subset (Finset.Ico_subset_Ico_right (by omega))))
+          hU)
+        hsp)
+      hδ
 
+/-- `fig8MixShortAuthV1` (with hoisted `8 * macForgeryTerm Z q` per `tL` bucket) is monotone
+in `qep`. -/
 theorem fig8MixShortAuthV1_mono_qep {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {α : Type} (Z : Crypto) (K : CryptoVerification.LibsignalSpqrV1.MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
@@ -506,8 +448,37 @@ theorem fig8MixShortAuthV1_mono_qep {Pt : Type} [DecidableEq Pt] [Zero Pt] [Samp
     fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep₁ q oa ida idb R A ≤
       fig8MixShortAuthV1 Z K ℓ Dh encPt encT decT lam qep₂ q oa ida idb R A := by
   unfold fig8MixShortAuthV1
-  exact mul_le_mul_of_nonneg_left
-    (Finset.sum_le_sum_of_subset (Finset.range_mono (by omega))) zero_le
+  dsimp only
+  let termA (qep : ℕ) (tL : Option ℕ) : ℝ≥0∞ :=
+    CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+        (prefixAdvAvg oa fun o =>
+          ((R o).fig8.redCKAAuth tL).eval
+            (fun _ => (R o).fig8.challSim.eval
+              (fun _ => (R o).simFig8.eval (fun _ => A o) ()) ()) ())
+      + (∑ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+          (2 * PRFPRNG.advantage (rootPRNG Z.F encPt)
+              (prefixAdvAvg oa fun o =>
+                ((R o).fig8.redPRNGAuth tL t).eval
+                  (fun _ => (R o).fig8.challSim.eval
+                    (fun _ => (R o).simFig8.eval (fun _ => A o) ()) ()) ())
+            + ∑ j ∈ Finset.range (q + 1),
+                fsAeadAuthMixtureCompBound Z protoSignalCodec ℓ oa (min (2 * q) (q + 2))
+                  (fun o => (R o).fs)
+                  (fun stage la o =>
+                    ((R o).fig8.redFSAuth stage la j tL t).eval
+                      (fun _ => (R o).fig8.challSim.eval
+                        (fun _ => (R o).simFig8.eval (fun _ => A o) ()) ()) ())))
+      + 8 * CryptoVerification.LibsignalSession.macForgeryTerm Z q
+  have hSum : ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep₁ + 1) + 1), termA qep₁ tL ≤
+      ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep₂ + 1) + 1), termA qep₂ tL :=
+    le_trans
+      (Finset.sum_le_sum fun tL _ =>
+        add_le_add
+          (add_le_add le_rfl
+            (Finset.sum_le_sum_of_subset (Finset.Ico_subset_Ico_right (by omega))))
+          le_rfl)
+      (Finset.sum_le_sum_of_subset (admissibleLastLeakGuesses_mono (2 + 1) (by omega)))
+  exact mul_le_mul_of_nonneg_left hSum zero_le
 
 theorem fig8MixShortPrivV1_mono_qep {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {α : Type} (Z : Crypto) (K : CryptoVerification.LibsignalSpqrV1.MlKem) (ℓ : ℕ)

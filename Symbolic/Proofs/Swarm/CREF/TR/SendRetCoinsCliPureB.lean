@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureA
-public import Symbolic.Proofs.Refinement.TrWireCovered -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureA -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.TrWireCovered -- shake: keep
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Init.Data.String
-public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts
+public import Symbolic.Proofs.Swarm.CREF.SendWire.Ghosts -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.ExecBridgeSendCtOS
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+import Symbolic.Proofs.Refinement.TripleRatchet.WireCovered
 
 /-!
 # Concretization Lemmas for Send-Wire Key Derivation and Serialization
@@ -27,7 +28,7 @@ Provides `SubFunction` instances and `gamma` unfolding lemmas across `kdfCk`, `t
 `symEnc`, `trHonestWireMsg`, and session record erasure for `SendRetCoinsCliPure`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

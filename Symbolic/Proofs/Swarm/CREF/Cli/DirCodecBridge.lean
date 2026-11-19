@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat
+public import Symbolic.Proofs.Refinement.Composed.Cli.LeakRecordsCompat -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.PqDir
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import Symbolic.Proofs.Refinement.RecordBytesBridge
@@ -21,7 +21,7 @@ Characterizes `sentBody` on whisper wire messages and equates `BundleTyped` with
 `publicBundleOf` on `PreKeyBundleFields`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

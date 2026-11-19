@@ -11,20 +11,22 @@ module
 
 public import Arm64.Trusted.Spec.Hoare
 public import LibsignalBinary.Heap.Fine.F3LayoutData
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHooksUnfetchedPerPc -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import ProofLib
 public import ProofLib.Placed.Multi
 public import ProofLib.ProgramReflection
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
 
 /-!
 # Concrete `externAt?` Witnesses and Step-Lifting Corollaries for `cliProgExtPlacedAt`
@@ -38,10 +40,10 @@ program `P_real_W := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` under
 `h2fsgen_HooksUnfetched`) with **zero duplicate inductives**:
 
 1. **Consumer Leaf `L1` (`h2sl_realW_noExtern_keepSub` & `h2sl_realW_noExtern_keepExec`):**
-   - `h2sl_keepExec` (`[0x4686a0, 0x468724) ∪ [0x469000, 0x46f000)`), containing all `132` code
-     bytes of `hole2_str1Prog mpl` (block `623`) and all `24,576` bytes of `f3TrialRxProg`
-     (`seg[2]`), while excluding all hooked addresses in `lsPlacedCompactLit` (`< 0x469000` and
-     disjoint from `[0x4686a0, 0x468724)`);
+   - `h2sl_keepExec` (`[0x4736a0, 0x473724) ∪ [0x474000, 0x4ca000)`), containing all `132` code
+     bytes of `hole2_str1Prog mpl` (block `623`) and all `352,256` bytes of `f3TrialRxProg`
+     (`seg[2]`), while excluding all hooked addresses in `lsPlacedCompactLit` (`< 0x474000` and
+     disjoint from `[0x4736a0, 0x473724)`);
    - Non-`Sig` compact-tag reduction (`h2sl_realW_externAt_eq_compact`) + `rfl_kernel` disjointness
      row on `lsPlacedCompactLit`, establishing `h2sl_realW_noExtern_keepExec` and
      `h2sl_realW_noExtern_keepSub` (`∀ pc, hole2_keepSub pc = true → P_real_W.externAt? pc = none`).
@@ -58,7 +60,7 @@ program `P_real_W := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` under
      `h2sl_stepsUntil_emptyProg_to_realW_of_allProg`, and `h2sl_stepsUntil_strClone_to_realW_perPc`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,8 +68,9 @@ namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2StepsL
 
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open CryptoVerification.SignalSession
-  (CliHooks cliDehookedSymsPlaced cliElfBytes cliElfImage cliExternsPlaced
-   cliHookTablePlaced cliPanicSymbolsPlaced isCliPanicSymbolPlaced libsignalSessionLib)
+  (CliHooks cliCratePanicSyms cliDehookedSymsPlaced cliElfBytes cliElfImage cliExternsPlaced
+  cliNonPanicDehookedSyms cliPanicSymbolsPlaced isCliPanicSymbolPlaced libsignalSessionLib)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliHookTablePlaced)
 open CryptoVerification.SignalSession.Placed (DirectOrBranchStub)
 open LibsignalBinary.Heap.Fine (f3RxWordCount)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
@@ -79,8 +82,8 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
    ls_block617_externs_eq ls_blockSymsMatch_ok ls_idsOk ls_names_nodup ls_sharedExterns_lt
    ls_toMultiPlacedLib_eq)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesPlaced
-  (f3CliElf_dehooked_witness_of_inElf f3CliElf_libsignal_inElf_unique
-   f3CliElf_rho_handleError_eq_of_linkedAt f3LsMpl f3TrialElf_parse)
+  (f3CliElf_dehooked_witness_of_inElf f3CliElf_externAt_none_of_lt_lib2TextLo
+   f3CliElf_libsignal_inElf_unique f3CliElf_rho_handleError_eq_of_linkedAt f3LsMpl f3TrialElf_parse)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
   (f3TrialRxProg f3TrialRxProg_base f3TrialRxWordTree_eq f3TrialRxWordTree_size)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
@@ -93,11 +96,37 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
 
 /-! ## Executable Domain `h2sl_keepExec` -/
 
-/-- Executable PC domain `[0x4686a0, 0x468724) ∪ [0x469000, 0x46f000)` (`<String as Clone>::clone` and `:text_b`),
-covering all 132 bytes of `hole2_str1Prog mpl` and all 24,576 bytes of `f3TrialRxProg` while excluding
-`:text_a`'s hooked stub/function range `[0x468724, 0x469000)`. -/
+/-- Panic-free lower `rxSeg` prefix `[0x474000, 0x479798)` (`.text.b_pre` + `mallocng` + `musl`),
+strictly below all 18 linked `.text.lib2` panic entry points (`≥ 0x479798`). -/
+@[expose] def h2sl_keepLoSub (a : BitVec 64) : Bool :=
+  decide (0x474000 ≤ a.toNat ∧ a.toNat < 0x479798)
+
+/-- Panic-free executable PC domain (`<String as Clone>::clone` `[0x4736a0, 0x473724)` and
+lower `rxSeg` `[0x474000, 0x479798)`). -/
+def h2sl_keepLoExec (a : BitVec 64) : Bool :=
+  decide ((Wp4LayoutGen.hole2_keepR1Lo ≤ a.toNat ∧ a.toNat < Wp4LayoutGen.h2sl_keepExecR1Hi) ∨
+    (0x474000 ≤ a.toNat ∧ a.toNat < 0x479798))
+
+theorem h2sl_keepLoSub_imp_keepLoExec {a : BitVec 64} (h : h2sl_keepLoSub a = true) :
+    h2sl_keepLoExec a = true := by
+  unfold h2sl_keepLoSub at h
+  unfold h2sl_keepLoExec
+  rw [decide_eq_true_eq] at h ⊢
+  exact Or.inr h
+
+theorem h2sl_keepLoSub_imp_keepSub {a : BitVec 64} (h : h2sl_keepLoSub a = true) :
+    hole2_keepSub a = true := by
+  unfold h2sl_keepLoSub at h
+  unfold hole2_keepSub Wp4LayoutGen.hole2_keepSubLo Wp4LayoutGen.hole2_keepSubHi
+  rw [decide_eq_true_eq] at h ⊢
+  exact ⟨h.1, by omega⟩
+
+/-- Executable PC domain (`<String as Clone>::clone` and `:text_b`),
+covering all 132 bytes of `hole2_str1Prog mpl` and all bytes of `f3TrialRxProg` while excluding
+`:text_a`'s hooked stub/function range. -/
 def h2sl_keepExec (a : BitVec 64) : Bool :=
-  decide ((0x4686a0 ≤ a.toNat ∧ a.toNat < 0x468724) ∨ (0x469000 ≤ a.toNat ∧ a.toNat < 0x46f000))
+  decide ((Wp4LayoutGen.hole2_keepR1Lo ≤ a.toNat ∧ a.toNat < Wp4LayoutGen.h2sl_keepExecR1Hi) ∨
+    (Wp4LayoutGen.hole2_keepSubLo ≤ a.toNat ∧ a.toNat < Wp4LayoutGen.hole2_keepSubHi))
 
 theorem h2sl_keepSub_imp_keepExec {a : BitVec 64} (h : hole2_keepSub a = true) :
     h2sl_keepExec a = true := by
@@ -232,7 +261,7 @@ private theorem h2sl_lookup_zip_eq_map {α : Type} (d : α) :
       cases h2sl_lookupKeyIdx ks s <;> rfl
     · rfl
 
-private noncomputable def h2sl_cliHookVals (mmpl : MultiPlacement) (W : CliHooks) :
+private def h2sl_cliHookVals (mmpl : MultiPlacement) (W : CliHooks) :
     List (State → State) :=
   (cliHookTablePlaced mmpl W).map Prod.snd
 
@@ -252,7 +281,7 @@ private noncomputable def h2sl_placedExternTag (s : String) : Option Nat :=
   if isCliPanicSymbolPlaced s then some 0
   else (h2sl_lookupKeyIdx lsHookNamesPlaced s).map Nat.succ
 
-private noncomputable def h2sl_evalCliTagRaw (mmpl : MultiPlacement) (W : CliHooks) :
+private def h2sl_evalCliTagRaw (mmpl : MultiPlacement) (W : CliHooks) :
     Nat → State → State
   | 0 => Rust.panicked
   | k + 1 => (h2sl_cliHookVals mmpl W).getD k Rust.panicked
@@ -349,7 +378,7 @@ private theorem h2sl_isPanicSymbol_eq_fast (name : String) :
   rw [h2sl_string_startsWith_eq_isPrefixOf, h2sl_core_panicking_toList_eq]
 
 private noncomputable def h2sl_placedExternTagFast (s : String) : Option Nat :=
-  if cliPanicSymbolsPlaced.contains s || h2sl_isPanicSymbolFast s then some 0
+  if cliCratePanicSyms.contains s || h2sl_isPanicSymbolFast s then some 0
   else (h2sl_lookupKeyIdx lsHookNamesPlaced s).map Nat.succ
 
 private theorem h2sl_placedExternTag_eq_fast (s : String) :
@@ -443,54 +472,42 @@ private theorem h2sl_lookupAddrTagNat_none_of_all_ne :
 private def h2sl_notInRangeNat (lo hi a : Nat) : Bool :=
   !(Nat.ble lo a && Nat.blt a hi)
 
-private theorem h2sl_lsPlacedCompactLit_disjoint_keepExec :
-    (lsPlacedCompactLit.all fun p =>
-      h2sl_notInRangeNat 0x4686a0 0x468724 p.1 &&
-      h2sl_notInRangeNat 0x469000 0x46f000 p.1) = true := by
-  rfl_kernel
-
-private theorem h2sl_beq_false_of_notInRange {lo hi a x : Nat}
-    (hn : h2sl_notInRangeNat lo hi a = true)
-    (hlo : lo ≤ x) (hhi : x < hi) :
-    (!Nat.beq a x) = true := by
-  cases hbeq : Nat.beq a x with
-  | false => rfl
-  | true =>
-    have heq : a = x := Nat.beq_eq.mp hbeq
-    subst heq
-    unfold h2sl_notInRangeNat at hn
-    rw [Nat.ble_eq.mpr hlo, Nat.blt_eq.mpr hhi] at hn
-    cases hn
-
-/-- Every `pc` with `h2sl_keepExec pc = true` (`[0x4686a0, 0x468724) ∪ [0x469000, 0x46f000)`) has `externAt? pc = none` in `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W`. -/
-theorem h2sl_realW_noExtern_keepExec
+/-- Every `pc` with `pc.toNat < 0x479798` has `externAt? pc = none` in
+`cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W`. -/
+theorem h2sl_realW_noExtern_lt_lib2TextLo
     {mpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (mmpl : MultiPlacement) (W : CliHooks) (pc : BitVec 64)
-    (hk : h2sl_keepExec pc = true) :
+    (mmpl : MultiPlacement) (W : CliHooks) {pc : BitVec 64}
+    (hlt : pc.toNat < 0x479798) :
     (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none := by
-  have hall : (lsPlacedCompactLit.all fun p => (!Nat.beq p.1 pc.toNat)) = true := by
-    rw [List.all_eq_true]
-    intro p hp
-    have hd := Bool.and_eq_true_iff.mp
-      (List.all_eq_true.mp h2sl_lsPlacedCompactLit_disjoint_keepExec p hp)
-    unfold h2sl_keepExec at hk
-    rw [decide_eq_true_eq] at hk
-    rcases hk with ⟨hlo, hhi⟩ | ⟨hlo, hhi⟩
-    · exact h2sl_beq_false_of_notInRange hd.1 hlo hhi
-    · exact h2sl_beq_false_of_notInRange hd.2 hlo hhi
-  rw [h2sl_realW_externAt_eq_compact hLs mmpl W pc,
-    h2sl_lookupAddrTagNat_none_of_all_ne lsPlacedCompactLit pc.toNat hall]
-  rfl
+  obtain ⟨_, hp, hpl, hin⟩ := hLs
+  cases f3TrialElf_parse.symm.trans hp
+  exact externAt?_cliProgExtPlacedSigAt_eq_none.mp
+    (f3CliElf_externAt_none_of_lt_lib2TextLo hpl hin mmpl W hlt)
 
-/-- Every `pc` with `hole2_keepSub pc = true` (`[0x469000, 0x46f000)`) has `externAt? pc = none` in `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W`. -/
-theorem h2sl_realW_noExtern_keepSub
+/-- Every `pc` with `h2sl_keepLoExec pc = true` (`[0x4736a0, 0x473724) ∪ [0x474000, 0x479798)`)
+has `externAt? pc = none` in `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W`. -/
+theorem h2sl_realW_noExtern_keepLoExec
     {mpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (mmpl : MultiPlacement) (W : CliHooks) (pc : BitVec 64)
-    (hk : hole2_keepSub pc = true) :
+    (hk : h2sl_keepLoExec pc = true) :
+    (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none := by
+  unfold h2sl_keepLoExec Wp4LayoutGen.hole2_keepR1Lo Wp4LayoutGen.h2sl_keepExecR1Hi at hk
+  rw [decide_eq_true_eq] at hk
+  rcases hk with ⟨_, hhi⟩ | ⟨_, hhi⟩
+  · exact h2sl_realW_noExtern_lt_lib2TextLo hLs mmpl W (by omega)
+  · exact h2sl_realW_noExtern_lt_lib2TextLo hLs mmpl W hhi
+
+/-- Every `pc` with `h2sl_keepLoSub pc = true` (`[0x474000, 0x479798)`) has `externAt? pc = none`
+in `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W`. -/
+theorem h2sl_realW_noExtern_keepLoSub
+    {mpl : MultiPlacement}
+    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
+    (mmpl : MultiPlacement) (W : CliHooks) (pc : BitVec 64)
+    (hk : h2sl_keepLoSub pc = true) :
     (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none :=
-  h2sl_realW_noExtern_keepExec hLs mmpl W pc (h2sl_keepSub_imp_keepExec hk)
+  h2sl_realW_noExtern_keepLoExec hLs mmpl W pc (h2sl_keepLoSub_imp_keepLoExec hk)
 
 /-! ## Symbol Pins and `hole2_strCloneProg` Extern Lookups -/
 
@@ -501,21 +518,21 @@ private theorem h2sl_memcpy_pin_ok :
     (Nat.blt h2sl_memcpyIdx lsInternedMultiLib.names.length &&
      (lsInternedMultiLib.names.getD h2sl_memcpyIdx "" == "memcpy") &&
      (Obj.Interned.lookupBlockSymId h2sl_memcpyIdx lsInternedMultiLib.blocks == none) &&
-     (f3LsSymAddrs.getD h2sl_memcpyIdx 0#64 == 0x469650#64)) = true := by
+     (f3LsSymAddrs.getD h2sl_memcpyIdx 0#64 == 0x474650#64)) = true := by
   rfl_kernel
 
 private theorem h2sl_handleError_addr_ok :
-    f3LsSymAddrs.getD f3HandleErrorIdx 0#64 = 0x468964#64 := by
+    f3LsSymAddrs.getD f3HandleErrorIdx 0#64 = 0x4cb088#64 := by
   rfl_kernel
 
 private theorem h2sl_handleError_tag_ok :
-    h2sl_lookupAddrTagNat lsPlacedCompactLit 0x468964 = some 0 := by
+    h2sl_lookupAddrTagNat lsPlacedCompactLit 0x4cb088 = some 0 := by
   rfl_kernel
 
 private theorem h2sl_blk623_lt_ok : Nat.blt 623 f3LsBlocksLen = true := by
   rfl_kernel
 
-private theorem h2sl_blk623_base_ok : f3LsBlockBases.getD 623 0#64 = 0x4686a0#64 := by
+private theorem h2sl_blk623_base_ok : f3LsBlockBases.getD 623 0#64 = 0x4736a0#64 := by
   rfl_kernel
 
 private theorem h2sl_blk623_len_ok :
@@ -531,7 +548,7 @@ private theorem h2sl_f3LsMpl_rho_of_idx {s : String} {idx : Nat}
 
 theorem h2sl_mpl_rho_memcpy {mpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
-    mpl.ρ "memcpy" = 0x469650#64 := by
+    mpl.ρ "memcpy" = 0x474650#64 := by
   obtain ⟨_, hp, hpl, hin⟩ := hLs
   cases f3TrialElf_parse.symm.trans hp
   have hc := h2sl_memcpy_pin_ok
@@ -544,7 +561,7 @@ theorem h2sl_mpl_rho_memcpy {mpl : MultiPlacement}
 
 theorem h2sl_mpl_rho_handleError {mpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
-    mpl.ρ "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error" = 0x468964#64 := by
+    mpl.ρ "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error" = 0x4cb088#64 := by
   have hρ := f3CliElf_rho_handleError_eq_of_linkedAt hLs
   have hp := f3HandleError_pin_ok
   simp only [Bool.and_eq_true, Nat.blt_eq, beq_iff_eq] at hp
@@ -556,7 +573,7 @@ theorem h2sl_mpl_rho_handleError {mpl : MultiPlacement}
 
 theorem h2sl_mpl_base623 {mpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
-    mpl.base 623 = 0x4686a0#64 ∧
+    mpl.base 623 = 0x4736a0#64 ∧
       (libsignalSessionLib.blockProgram mpl 623).code.length = 132 := by
   obtain ⟨_, hp, hpl, hin⟩ := hLs
   cases f3TrialElf_parse.symm.trans hp
@@ -582,8 +599,8 @@ theorem h2sl_realW_externAt_handleError
         (mpl.ρ "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error") =
       some Arm64.Rust.panicked := by
   rw [h2sl_mpl_rho_handleError hLs,
-    h2sl_realW_externAt_eq_compact hLs mmpl W 0x468964#64]
-  change (h2sl_lookupAddrTagNat lsPlacedCompactLit 0x468964).map
+    h2sl_realW_externAt_eq_compact hLs mmpl W 0x4cb088#64]
+  change (h2sl_lookupAddrTagNat lsPlacedCompactLit 0x4cb088).map
     (h2sl_evalCliTagRaw mmpl W) = some Arm64.Rust.panicked
   rw [h2sl_handleError_tag_ok]
   rfl
@@ -605,14 +622,14 @@ theorem h2sl_strCloneProg_externAt_sub_realW
 private theorem h2sl_mkProg_code (b : BitVec 64) (c : List (BitVec 8)) (sv : State → State) :
     ({ base := b, code := c, svc := sv : Program }).code = c := rfl
 
-/-- `CodeLoaded` on `hole2_str1Prog mpl` (`132` bytes in `[0x4686a0, 0x468724)`) agrees between `stripExecOutside h2sl_keepExec` and `stripExecOutside hole2_keep`. -/
+/-- `CodeLoaded` on `hole2_str1Prog mpl` (`132` bytes in `[0x4736a0, 0x473724)`) agrees between `stripExecOutside h2sl_keepExec` and `stripExecOutside hole2_keep`. -/
 theorem h2sl_str1Prog_codeLoaded_keepExec_iff_keep
     {mpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl) (m : Memory) :
     (hole2_str1Prog mpl).CodeLoaded (stripExecOutside h2sl_keepExec m) ↔
       (hole2_str1Prog mpl).CodeLoaded (stripExecOutside hole2_keep m) := by
   obtain ⟨hb, hlen623⟩ := h2sl_mpl_base623 hLs
-  have hbase : (hole2_str1Prog mpl).base = 0x4686a0#64 := hb
+  have hbase : (hole2_str1Prog mpl).base = 0x4736a0#64 := hb
   have hlen : (hole2_str1Prog mpl).code.length = 132 := by
     unfold hole2_str1Prog
     rw [h2sl_mkProg_code]
@@ -622,7 +639,9 @@ theorem h2sl_str1Prog_codeLoaded_keepExec_iff_keep
   · obtain ⟨hr, hp, hlz⟩ := hbytes i hi
     have hi132 : i < 132 := by rwa [hlen] at hi
     have hk_exec : h2sl_keepExec ((hole2_str1Prog mpl).base + BitVec.ofNat 64 i) = true := by
-      rw [hbase]; unfold h2sl_keepExec; rw [decide_eq_true_eq]; left; bv_omega
+      rw [hbase]
+      unfold h2sl_keepExec Wp4LayoutGen.hole2_keepR1Lo Wp4LayoutGen.h2sl_keepExecR1Hi
+      rw [decide_eq_true_eq]; left; bv_omega
     have hk_keep : hole2_keep ((hole2_str1Prog mpl).base + BitVec.ofNat 64 i) = true :=
       h2sl_keepExec_imp_keep hk_exec
     rw [strip_read8] at hr ⊢
@@ -633,7 +652,9 @@ theorem h2sl_str1Prog_codeLoaded_keepExec_iff_keep
   · obtain ⟨hr, hp, hlz⟩ := hbytes i hi
     have hi132 : i < 132 := by rwa [hlen] at hi
     have hk_exec : h2sl_keepExec ((hole2_str1Prog mpl).base + BitVec.ofNat 64 i) = true := by
-      rw [hbase]; unfold h2sl_keepExec; rw [decide_eq_true_eq]; left; bv_omega
+      rw [hbase]
+      unfold h2sl_keepExec Wp4LayoutGen.hole2_keepR1Lo Wp4LayoutGen.h2sl_keepExecR1Hi
+      rw [decide_eq_true_eq]; left; bv_omega
     have hk_keep : hole2_keep ((hole2_str1Prog mpl).base + BitVec.ofNat 64 i) = true :=
       h2sl_keepExec_imp_keep hk_exec
     rw [strip_read8] at hr ⊢
@@ -642,20 +663,22 @@ theorem h2sl_str1Prog_codeLoaded_keepExec_iff_keep
     rw [strip_perm, hk_exec]
     exact ⟨hr, hp, hlz⟩
 
-/-- `CodeLoaded` on `f3TrialRxProg` (`24,576` bytes in `[0x469000, 0x46f000)`) agrees between `stripExecOutside h2sl_keepExec` and `stripExecOutside hole2_keep`. -/
+/-- `CodeLoaded` on `f3TrialRxProg` (`356,352` bytes in `[0x474000, 0x4cb000)`) agrees between `stripExecOutside h2sl_keepExec` and `stripExecOutside hole2_keep`. -/
 theorem h2sl_rxProg_codeLoaded_keepExec_iff_keep (m : Memory) :
     f3TrialRxProg.CodeLoaded (stripExecOutside h2sl_keepExec m) ↔
       f3TrialRxProg.CodeLoaded (stripExecOutside hole2_keep m) := by
   have hlen : f3TrialRxProg.code.length = 4 * f3RxWordCount := by
     rw [f3TrialRxWordTree_eq]
     exact ProofLib.ProgramReflection.WordTree.length_toBytes_of_checkSize? f3TrialRxWordTree_size
-  have hbase : f3TrialRxProg.base = 0x469000#64 := f3TrialRxProg_base
+  have hbase : f3TrialRxProg.base = 0x474000#64 := f3TrialRxProg_base
   rw [Program.codeLoaded_iff, Program.codeLoaded_iff]
   constructor <;> rintro ⟨hal, hfit, hbytes⟩ <;> refine ⟨hal, hfit, fun i hi => ?_⟩
   · obtain ⟨hr, hp, hlz⟩ := hbytes i hi
-    have hi_lt : i < 24576 := by rw [hlen] at hi; exact hi
+    have hi_lt : i < 360448 := by rw [hlen] at hi; exact hi
     have hk_exec : h2sl_keepExec (f3TrialRxProg.base + BitVec.ofNat 64 i) = true := by
-      rw [hbase]; unfold h2sl_keepExec; rw [decide_eq_true_eq]; right; bv_omega
+      rw [hbase]
+      unfold h2sl_keepExec Wp4LayoutGen.hole2_keepSubLo Wp4LayoutGen.hole2_keepSubHi
+      rw [decide_eq_true_eq]; right; bv_omega
     have hk_keep : hole2_keep (f3TrialRxProg.base + BitVec.ofNat 64 i) = true :=
       h2sl_keepExec_imp_keep hk_exec
     rw [strip_read8] at hr ⊢
@@ -664,9 +687,11 @@ theorem h2sl_rxProg_codeLoaded_keepExec_iff_keep (m : Memory) :
     rw [strip_perm, hk_keep]
     exact ⟨hr, hp, hlz⟩
   · obtain ⟨hr, hp, hlz⟩ := hbytes i hi
-    have hi_lt : i < 24576 := by rw [hlen] at hi; exact hi
+    have hi_lt : i < 360448 := by rw [hlen] at hi; exact hi
     have hk_exec : h2sl_keepExec (f3TrialRxProg.base + BitVec.ofNat 64 i) = true := by
-      rw [hbase]; unfold h2sl_keepExec; rw [decide_eq_true_eq]; right; bv_omega
+      rw [hbase]
+      unfold h2sl_keepExec Wp4LayoutGen.hole2_keepSubLo Wp4LayoutGen.hole2_keepSubHi
+      rw [decide_eq_true_eq]; right; bv_omega
     have hk_keep : hole2_keep (f3TrialRxProg.base + BitVec.ofNat 64 i) = true :=
       h2sl_keepExec_imp_keep hk_exec
     rw [strip_read8] at hr ⊢
@@ -675,12 +700,12 @@ theorem h2sl_rxProg_codeLoaded_keepExec_iff_keep (m : Memory) :
     rw [strip_perm, hk_exec]
     exact ⟨hr, hp, hlz⟩
 
-/-- Every symbol in `cliDehookedSymsPlaced` has `externAt? = none` at both `mpl.ρ sym` and
+/-- Every symbol in `cliNonPanicDehookedSyms` has `externAt? = none` at both `mpl.ρ sym` and
 `targetVa`, with `DirectOrBranchStub cliElfImage (mpl.ρ sym) targetVa`. -/
 theorem h2sl_realW_dehooked_witness
     {mpl mmpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    {sym : String} (hsym : sym ∈ cliDehookedSymsPlaced) :
+    {sym : String} (hsym : sym ∈ cliNonPanicDehookedSyms) :
     (∀ W : CliHooks,
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? (mpl.ρ sym) = none) ∧
     ∃ targetVa : BitVec 64,
@@ -696,72 +721,69 @@ theorem h2sl_realW_dehooked_witness
   · exact externAt?_cliProgExtPlacedSigAt_eq_none.mp (hstub_sig W)
   · exact externAt?_cliProgExtPlacedSigAt_eq_none.mp (htgt_sig W)
 
-/-- Lifts `Steps` to `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` when visited PCs stay in `hole2_keepSub`. -/
-theorem h2sl_steps_realW_of_visitedIn_keepSub
+/-- Lifts `Steps` to `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` when visited PCs stay in `h2sl_keepLoSub` (`[0x474000, 0x479798)`). -/
+theorem h2sl_steps_realW_of_visitedIn_keepLoSub
     {mpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (mmpl : MultiPlacement) (W : CliHooks)
     {s sf : State}
-    (hvis : h2fsgen_StepsVisitedIn hole2_keepSub hole2_emptyProg s sf) :
+    (hvis : h2fsgen_StepsVisitedIn h2sl_keepLoSub hole2_emptyProg s sf) :
     Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) s sf :=
   h2fsgen_steps_lift_of_visitedIn_noExtern
     (P1 := hole2_emptyProg)
     (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
     (h2sl_emptyProg_svc.trans (h2sl_realW_svc mpl mmpl W).symm)
     (fun pc _ => h2sl_emptyProg_externAt pc)
-    (h2sl_realW_noExtern_keepSub hLs mmpl W)
+    (h2sl_realW_noExtern_keepLoSub hLs mmpl W)
     hvis
 
-/-- Lifts `Steps` to `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` when visited PCs stay in `h2sl_keepExec`. -/
-theorem h2sl_steps_realW_of_visitedIn_keepExec
+/-- Lifts `Steps` to `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` when visited PCs stay in `h2sl_keepLoExec` (`[0x4736a0, 0x473724) ∪ [0x474000, 0x479798)`). -/
+theorem h2sl_steps_realW_of_visitedIn_keepLoExec
     {mpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (mmpl : MultiPlacement) (W : CliHooks)
     {s sf : State}
-    (hvis : h2fsgen_StepsVisitedIn h2sl_keepExec hole2_emptyProg s sf) :
+    (hvis : h2fsgen_StepsVisitedIn h2sl_keepLoExec hole2_emptyProg s sf) :
     Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) s sf :=
   h2fsgen_steps_lift_of_visitedIn_noExtern
     (P1 := hole2_emptyProg)
     (P2 := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
     (h2sl_emptyProg_svc.trans (h2sl_realW_svc mpl mmpl W).symm)
     (fun pc _ => h2sl_emptyProg_externAt pc)
-    (h2sl_realW_noExtern_keepExec hLs mmpl W)
+    (h2sl_realW_noExtern_keepLoExec hLs mmpl W)
     hvis
 
 /-! ## Stock-Clean Per-Address `HooksUnfetchedPerPc` and `StepsUntil` Lifts -/
 
-/-- Per-address stock-clean replacement for `h2sl_realW_hooksUnfetched` on `hole2_keepSub` and
-    `hole2_emptyProg`: requires zero `F3CodeInv` and zero `[0, 0, 0, 0]` stub checks. -/
-theorem h2sl_realW_hooksUnfetchedPerPc_keepSub
+/-- Per-address `HooksUnfetchedPerPc` on `h2sl_keepLoSub` and `hole2_emptyProg`. -/
+theorem h2sl_realW_hooksUnfetchedPerPc_keepLoSub
     {mpl mmpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (W : CliHooks) (m : Memory) :
-    HooksUnfetchedPerPc hole2_keepSub hole2_emptyProg
+    HooksUnfetchedPerPc h2sl_keepLoSub hole2_emptyProg
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) m :=
   hooksUnfetchedPerPc_of_noNewExternOn m fun pc hD _ =>
-    h2sl_realW_noExtern_keepSub hLs mmpl W pc hD
+    h2sl_realW_noExtern_keepLoSub hLs mmpl W pc hD
 
-/-- Per-address stock-clean replacement for `h2sl_realW_hooksUnfetched` on `h2sl_keepExec` and
-    `hole2_emptyProg`: requires zero `F3CodeInv` and zero `[0, 0, 0, 0]` stub checks. -/
-theorem h2sl_realW_hooksUnfetchedPerPc_keepExec
+/-- Per-address `HooksUnfetchedPerPc` on `h2sl_keepLoExec` and `hole2_emptyProg`. -/
+theorem h2sl_realW_hooksUnfetchedPerPc_keepLoExec
     {mpl mmpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (W : CliHooks) (m : Memory) :
-    HooksUnfetchedPerPc h2sl_keepExec hole2_emptyProg
+    HooksUnfetchedPerPc h2sl_keepLoExec hole2_emptyProg
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) m :=
   hooksUnfetchedPerPc_of_noNewExternOn m fun pc hD _ =>
-    h2sl_realW_noExtern_keepExec hLs mmpl W pc hD
+    h2sl_realW_noExtern_keepLoExec hLs mmpl W pc hD
 
-/-- Per-address `HooksUnfetchedPerPc` for `hole2_strCloneProg mpl` on `h2sl_keepExec`
-    (zero `F3CodeInv`, zero `[0, 0, 0, 0]` stub check). -/
+/-- Per-address `HooksUnfetchedPerPc` for `hole2_strCloneProg mpl` on `h2sl_keepLoExec`. -/
 theorem h2sl_realW_hooksUnfetchedPerPc_strClone
     {mpl mmpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (W : CliHooks) (m : Memory) :
-    HooksUnfetchedPerPc h2sl_keepExec (hole2_strCloneProg mpl)
+    HooksUnfetchedPerPc h2sl_keepLoExec (hole2_strCloneProg mpl)
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) m :=
   hooksUnfetchedPerPc_of_noNewExternOn m fun pc hD _ =>
-    h2sl_realW_noExtern_keepExec hLs mmpl W pc hD
+    h2sl_realW_noExtern_keepLoExec hLs mmpl W pc hD
 
 /-- Generic per-address `HooksUnfetchedPerPc` for `hole2_strCloneProg mpl` on any domain `D`
     where every `P_real_W`-hooked `pc` either lies outside `D` or is already hooked in
@@ -779,30 +801,30 @@ theorem h2sl_realW_hooksUnfetchedPerPc_strClone_on
     | Or.inl hDf => Or.inl hDf
     | Or.inr hP1 => Or.inr (Or.inl hP1)
 
-/-- Lifts first-stop `StepsUntil` from `hole2_emptyProg` to `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` via `h2fsgen_StepsVisitedIn hole2_keepSub` (stock-clean per-address). -/
-theorem h2sl_stepsUntil_emptyProg_to_realW_perPc
+/-- Lifts first-stop `StepsUntil` from `hole2_emptyProg` to `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` via `h2fsgen_StepsVisitedIn h2sl_keepLoSub`. -/
+theorem h2sl_stepsUntil_emptyProg_to_realW_perPc_lo
     {mpl mmpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (W : CliHooks)
     {u sf : State} {entryTarget : BitVec 64}
-    (hvis : h2fsgen_StepsVisitedIn hole2_keepSub hole2_emptyProg (u.setPC entryTarget) sf)
+    (hvis : h2fsgen_StepsVisitedIn h2sl_keepLoSub hole2_emptyProg (u.setPC entryTarget) sf)
     (_hstop : SubroutineStop u sf) :
     Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) (u.setPC entryTarget) sf :=
-  h2sl_steps_realW_of_visitedIn_keepSub hLs mmpl W hvis
+  h2sl_steps_realW_of_visitedIn_keepLoSub hLs mmpl W hvis
 
-/-- Lifts first-stop `StepsUntil` from `hole2_emptyProg` to `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` via the standard universal `(R)` quantifier `hAllP` (stock-clean). -/
-theorem h2sl_stepsUntil_emptyProg_to_realW_of_allProg
+/-- Lifts first-stop `StepsUntil` from `hole2_emptyProg` to `cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W` via the universal `(R)` quantifier `hAllP` on `h2sl_keepLoSub` (`[0x474000, 0x479798)`). -/
+theorem h2sl_stepsUntil_emptyProg_to_realW_of_allProg_lo
     {mpl mmpl : MultiPlacement}
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (W : CliHooks)
     {u sf : State} {entryTarget : BitVec 64}
     (hAllP : ∀ (Q : Program), Q.svc = Syscall.standard →
-      (∀ pc : BitVec 64, hole2_keepSub pc = true → Q.externAt? pc = none) →
+      (∀ pc : BitVec 64, h2sl_keepLoSub pc = true → Q.externAt? pc = none) →
       ∃ sf' : State, StepsUntil Q (SubroutineStop u) (u.setPC entryTarget) sf' ∧
         SubroutineStop u sf')
     (huntil : StepsUntil hole2_emptyProg (SubroutineStop u) (u.setPC entryTarget) sf) :
     Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) (u.setPC entryTarget) sf :=
-  h2sl_steps_realW_of_visitedIn_keepSub hLs mmpl W
+  h2sl_steps_realW_of_visitedIn_keepLoSub hLs mmpl W
     (stepsVisitedIn_of_allProg
       (fun pc _ => h2sl_emptyProg_externAt pc)
       (fun Q hsvc hno => hAllP Q (hsvc.trans h2sl_emptyProg_svc) hno)

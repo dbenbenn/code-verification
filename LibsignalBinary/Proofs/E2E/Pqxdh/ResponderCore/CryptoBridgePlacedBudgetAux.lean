@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlaced
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Expand
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -25,6 +25,11 @@ import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
 import ProofLib.OpcodeExclusion
 import ProofLib.SepLogic.WP.Apply
 import VerifiedLibraries.RustStd.Proofs.ExecSegSym
+public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.FindIndexCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `VmPreserved` Lockstep Bridges for `ct_eq` (Block `213`) and `expand_multi_info` (Block `53`)
@@ -33,7 +38,7 @@ Proves `ct_eq_ro_placed_vm_ok` (Block `213`) and `expand_multi_info_placed_vm_ok
 `VmPreserved` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

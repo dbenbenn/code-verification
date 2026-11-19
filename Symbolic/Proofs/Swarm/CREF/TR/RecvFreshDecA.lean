@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Actions.ProtocolEvent
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
@@ -26,7 +26,7 @@ Proves preservation of `TRRecvCountersFresh` and `TRSkippedRIdxChainRel` across 
 an existing receiver chain.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

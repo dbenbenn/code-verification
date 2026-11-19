@@ -20,7 +20,7 @@ public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 series bounds (`IsSuperDoubling`), and parametric `RawVec` doubling-ladder recurrences.
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers
 
@@ -44,12 +44,12 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit
 
 /-- Direct-`mmap` (`sc = 63`) live-byte contribution of an allocation of `req` bytes:
 `0` in the small-class regime (`req ≤ smallMaxReq M`), and `largeCost M req` above it. -/
-def allocLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
+@[expose] def allocLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
   if req ≤ HasFineReallocCredit.smallMaxReq M then 0
   else HasFineReallocCredit.largeCost M req
 
 /-- Single-step `cumSmall` charge of `rustAllocEvents req align` (`0 < req`, `align ≤ 16`). -/
-def allocStepCum (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
+@[expose] def allocStepCum (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat :=
   if req ≤ HasFineReallocCredit.smallMaxReq M then
     HasFineReallocCredit.smallAllocCost M req
   else
@@ -58,7 +58,7 @@ def allocStepCum (M : AllocCostModel) [HasFineReallocCredit M] (req : Nat) : Nat
 /-- Single-step `cumSmall` charge of `rustReallocEvents oldReq newReq align` (`0 < oldReq`,
 `0 < newReq`, `align ≤ 16`), covering both `[.realloc align oldReq newReq]` (`align ≤ newReq`)
 and `[.aligned (max align 8) newReq, .free align oldReq]` (`newReq < align`). -/
-def reallocStepCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def reallocStepCum (M : AllocCostModel) [HasFineReallocCredit M]
     (newReq align : Nat) : Nat :=
   if newReq ≤ HasFineReallocCredit.smallMaxReq M then
     if align ≤ newReq then HasFineReallocCredit.smallReallocCost M newReq
@@ -67,12 +67,12 @@ def reallocStepCum (M : AllocCostModel) [HasFineReallocCredit M]
     HasFineReallocCredit.largeMetaCost M
 
 /-- Unified `AllocEvent` list for fresh allocation (`oldReq = 0`) vs reallocation (`0 < oldReq`). -/
-def growOrReallocEvents (oldReq newReq align : Nat) : List AllocEvent :=
+@[expose] def growOrReallocEvents (oldReq newReq align : Nat) : List AllocEvent :=
   if oldReq = 0 then rustAllocEvents newReq align
   else rustReallocEvents oldReq newReq align
 
 /-- Unified `cumSmall` step charge matching `growOrReallocEvents oldReq newReq align`. -/
-def growOrReallocStepCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def growOrReallocStepCum (M : AllocCostModel) [HasFineReallocCredit M]
     (oldReq newReq align : Nat) : Nat :=
   if oldReq = 0 then allocStepCum M newReq
   else reallocStepCum M newReq align
@@ -460,11 +460,11 @@ theorem stepEvents_alloc_growOrRealloc_dealloc_credit
 
 /-! ## 3. Super-Doubling Capacity Traces -/
 
-def headOrZero : List Nat → Nat
+@[expose] def headOrZero : List Nat → Nat
   | [] => 0
   | x :: _ => x
 
-def lastOrZero : List Nat → Nat
+@[expose] def lastOrZero : List Nat → Nat
   | [] => 0
   | [x] => x
   | _ :: b :: rest => lastOrZero (b :: rest)
@@ -493,19 +493,6 @@ theorem super_doubling_sum_le {cs : List Nat} {capMax : Nat}
     cs.sum ≤ 2 * capMax := by
   have hsum := h.sum_add_head_le_two_mul_last
   omega
-
-theorem IsSuperDoubling.head_mul_two_pow_le_last {cs : List Nat}
-    (h : IsSuperDoubling cs) :
-    headOrZero cs * 2 ^ (cs.length - 1) ≤ lastOrZero cs := by
-  induction h with
-  | nil => simp [headOrZero, lastOrZero]
-  | singleton c => simp [headOrZero, lastOrZero]
-  | @cons a b rest hab _ ih =>
-    simp only [headOrZero, lastOrZero, List.length_cons, Nat.add_sub_cancel] at ih ⊢
-    have hpow : a * 2 ^ (rest.length + 1) = (2 * a) * 2 ^ rest.length := by
-      rw [Nat.pow_succ, Nat.mul_comm (2 ^ rest.length) 2, ← Nat.mul_assoc, Nat.mul_comm a 2]
-    rw [hpow]
-    exact Nat.le_trans (Nat.mul_le_mul_right (2 ^ rest.length) hab) ih
 
 /-- Amortized potential step for a super-doubling jump `2 * oldReq ≤ newReq` under potential `Φ(r) = 4 * min r S`.
 -/
@@ -542,12 +529,12 @@ theorem growOrReallocStepCum_amortized (M : AllocCostModel) [HasFineReallocCredi
 
 /-- Capacity reached after `k` `RawVec<T>::grow_one` calls from initial capacity `0`:
 `0` at `k = 0`, and `minCap * 2 ^ (k - 1)` for `k ≥ 1`. -/
-def doublingCap (minCap : Nat) : Nat → Nat
+@[expose] def doublingCap (minCap : Nat) : Nat → Nat
   | 0 => 0
   | k + 1 => minCap * 2 ^ k
 
 /-- Auxiliary positive-target step counter for `doublingSteps`. -/
-def doublingStepsPos (minCap rem : Nat) : Nat :=
+@[expose] def doublingStepsPos (minCap rem : Nat) : Nat :=
   if h : minCap = 0 ∨ rem ≤ minCap then 1
   else 1 + doublingStepsPos minCap ((rem + 1) / 2)
 termination_by rem
@@ -555,7 +542,7 @@ decreasing_by
   omega
 
 /-- Number of `grow_one` steps from `0` needed to reach capacity `≥ targetCap` (for `0 < minCap`). -/
-def doublingSteps (minCap targetCap : Nat) : Nat :=
+@[expose] def doublingSteps (minCap targetCap : Nat) : Nat :=
   if targetCap = 0 then 0 else doublingStepsPos minCap targetCap
 
 @[simp] theorem doublingCap_zero (minCap : Nat) : doublingCap minCap 0 = 0 := rfl
@@ -683,13 +670,13 @@ theorem rawVecGrowEvents_eq_growOrReallocEvents {elemSz minCap align j : Nat} {c
     simp [hcap_ne, hmul_ne]
 
 /-- Post-step `sc = 63` live-byte footprint of a `RawVec` buffer of capacity `cap` and stride `elemSz`. -/
-def rawVecLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def rawVecLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
     (elemSz cap : Nat) : Nat :=
   allocLargeLive M (cap * elemSz)
 
 /-- Single-step `cumSmall` charge of the `j`-th `RawVec<T>::grow_one` transition
 (`doublingCap minCap j → doublingCap minCap (j + 1)`). -/
-def rawVecStepCum (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def rawVecStepCum (M : AllocCostModel) [HasFineReallocCredit M]
     (elemSz minCap align j : Nat) : Nat :=
   growOrReallocStepCum M
     (doublingCap minCap j * elemSz)
@@ -698,14 +685,14 @@ def rawVecStepCum (M : AllocCostModel) [HasFineReallocCredit M]
 
 /-- Cumulative `cumSmall` charge across `k` `RawVec<T>::grow_one` transitions from `0` to
 `doublingCap minCap k`. -/
-def rawVecCumOfSteps (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def rawVecCumOfSteps (M : AllocCostModel) [HasFineReallocCredit M]
     (elemSz minCap align : Nat) : Nat → Nat
   | 0 => 0
   | k + 1 => rawVecCumOfSteps M elemSz minCap align k + rawVecStepCum M elemSz minCap align k
 
 /-- Worst-case transient `sc = 63` overlap (`old + new`) across `k` `RawVec<T>::grow_one`
 transitions from `0` to `doublingCap minCap k`. -/
-def rawVecPeakOfSteps (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def rawVecPeakOfSteps (M : AllocCostModel) [HasFineReallocCredit M]
     (elemSz minCap : Nat) : Nat → Nat
   | 0 => 0
   | k + 1 =>
@@ -848,7 +835,7 @@ theorem rawVecLargeLive_le_affine (M : AllocCostModel) [HasFineReallocCredit M]
 
 /-- Worst-case post-step `sc = 63` live-byte footprint across prefixes `0 ≤ m ≤ k` of the `RawVec` doubling ladder.
 -/
-def rawVecMaxLiveOfSteps (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def rawVecMaxLiveOfSteps (M : AllocCostModel) [HasFineReallocCredit M]
     (elemSz minCap : Nat) : Nat → Nat
   | 0 => 0
   | k + 1 =>
@@ -857,7 +844,7 @@ def rawVecMaxLiveOfSteps (M : AllocCostModel) [HasFineReallocCredit M]
 
 /-- Capacity words `[doublingCap minCap j, ..., doublingCap minCap (j + n - 1)]` for `n`
 consecutive `grow_one` calls starting from ladder index `j`. -/
-def doublingCapsFrom (minCap j : Nat) : Nat → List (BitVec 64)
+@[expose] def doublingCapsFrom (minCap j : Nat) : Nat → List (BitVec 64)
   | 0 => []
   | n + 1 => BitVec.ofNat 64 (doublingCap minCap j) :: doublingCapsFrom minCap (j + 1) n
 

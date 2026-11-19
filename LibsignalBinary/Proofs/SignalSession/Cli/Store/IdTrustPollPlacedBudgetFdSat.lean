@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudgetFd -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudgetFd
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
@@ -20,6 +20,24 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
 meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlacedBudgetFd -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPollPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.Sym
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `HookSat`-backed `black_box` Sibling of `IdTrustPollPlacedBudgetFd` (`IdTrustPollPlacedBudgetFdSat`)
@@ -137,16 +155,6 @@ theorem fdsGe3Closed_of_vmPreserved {s0 sf : State}
     FdsGe3Closed sf.fs :=
   fun fd hlo hhi => (hvm.fdsHiFrame fd hlo hhi).trans (h0 fd hlo hhi)
 
-/-- Any `subroutine_ok` for `withVmPreserved spec` lifts directly to `withFdsGe3Closed`. -/
-theorem subroutine_ok_withFdsGe3Closed_of_vmPreserved {α : Type} {P : Program} {entry : BitVec 64}
-    {spec : Spec α}
-    (h : subroutine_ok P entry (withVmPreserved spec)) :
-    subroutine_ok P entry (withFdsGe3Closed (withVmPreserved spec)) := by
-  refine subroutine_ok_withFdsGe3Closed h fun _ _ s0 sf h0 hpost => ?_
-  dsimp only [withVmPreserved] at hpost
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
-  exact fdsGe3Closed_of_vmPreserved hpost.1 h0
-
 /-- Any `subroutine_ok` for `withLsCodeLoaded lsmpl (withVmPreserved spec)` lifts directly to
 `withFdsGe3Closed (withLsCodeLoaded lsmpl (withVmPreserved spec))`. -/
 theorem subroutine_ok_withFdsGe3Closed_of_lscl_vmPreserved [LibsignalPlacement] {α : Type}
@@ -157,30 +165,6 @@ theorem subroutine_ok_withFdsGe3Closed_of_lscl_vmPreserved [LibsignalPlacement] 
   dsimp only [withLsCodeLoaded, withVmPreserved] at hpost
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
   exact fdsGe3Closed_of_vmPreserved hpost.1 h0
-
-/-- `withFdsGe3Closed`-threaded `ct_eq` (Block `213`) on `ctEqSliceSpecExt` (`48 + 16384` B) under
-`HookSat H lsBlackBoxU8Sym blackBoxSpecSat`. -/
-theorem ct_eq_placed_ok_ext_fd_sat [LibsignalPlacement] {H : LibsignalHooks}
-    (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat) :
-    subroutine_ok ((blkPC_213).rebase (blkPl_213).base H) (lsmpl.base 213)
-      (withFdsGe3Closed (withVmPreserved ctEqSliceSpecExt)) :=
-  subroutine_ok_withFdsGe3Closed_of_vmPreserved (ct_eq_placed_vm_ok_ext_sat h_bb)
-
-/-- `withFdsGe3Closed`-threaded `<PublicKey as PartialEq>::eq` (Block `212`) on
-`publicKeyEqSpecExt` (`64 + 16384` B) under `HookSat H lsBlackBoxU8Sym blackBoxSpecSat`. -/
-theorem publicKeyEq_placed_ok_of_bb_ext_fd_sat [LibsignalPlacement] {H : LibsignalHooks}
-    (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat) :
-    subroutine_ok ((blkPC_212).rebase (blkPl_212).base H) (lsmpl.base 212)
-      (withFdsGe3Closed (withLsCodeLoaded lsmpl (withVmPreserved publicKeyEqSpecExt))) :=
-  subroutine_ok_withFdsGe3Closed_of_lscl_vmPreserved (publicKey_eq_placed_vm_ok_ext_sat h_bb)
-
-/-- `withFdsGe3Closed`-threaded `<PublicKey as PartialEq>::eq` (Block `212`) on
-`publicKeyEqSpec16` (`80 = 64 + 16` B) under `HookSat H lsBlackBoxU8Sym blackBoxSpecSat`. -/
-theorem publicKeyEq_placed_ok_of_bb_16_fd_sat [LibsignalPlacement] {H : LibsignalHooks}
-    (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat) :
-    subroutine_ok ((blkPC_212).rebase (blkPl_212).base H) (lsmpl.base 212)
-      (withFdsGe3Closed (withLsCodeLoaded lsmpl (withVmPreserved publicKeyEqSpec16))) :=
-  subroutine_ok_withFdsGe3Closed_of_lscl_vmPreserved (publicKey_eq_placed_vm_ok_16_sat h_bb)
 
 /-- `withFdsGe3Closed`-threaded `<PublicKey as PartialEq>::eq` (Block `212`) on
 `publicKeyEqMemSpec16` (`80 = 64 + 16` B) under `HookSat H lsBlackBoxU8Sym blackBoxSpecSat`. -/
@@ -802,49 +786,6 @@ theorem idTrustPollInner_env_placed_ok_16_fd [LibsignalPlacement] {M : AllocCost
 
 /-! ## 4. Block `566` Entry Theorems under `HookSat H lsBlackBoxU8Sym blackBoxSpecSat` -/
 
-/-- Generic-envelope `80`-byte `eq` form of `idTrustPoll_placed_ok_of_deps_gen_fd` (Block `566`). -/
-theorem idTrustPoll_placed_ok_of_deps_gen_16_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {TrustEnv : FsFiles → IdPollGhost → List AllocEvent → Prop}
-    {getProg decProg eqProg : Program} {getBlk decBlk eqBlk : Nat}
-    [IsLsBlockProg getProg getBlk H]
-    [IsLsBlockProg decProg decBlk H]
-    [IsLsBlockProg eqProg eqBlk H]
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk stk : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hGet : subroutine_ok getProg (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (hDec : subroutine_ok decProg (lsmpl.base 18)
-      (withFdsGe3Closed (identityKeyDecodePlacedBudgetSpec A)))
-    (hEq : subroutine_ok eqProg (lsmpl.base 212)
-      (withFdsGe3Closed (withLsCodeLoaded lsmpl (withVmPreserved publicKeyEqMemSpec16))))
-    (hFitGet : ∀ F0 x st, FitsEnv M lim st (TrustEnv F0 x) →
-      FitsEnv M lim st (GetEnv F0 x.peers x.call.call.addr.name.bytes))
-    (hTrustGet : ∀ F0 x evs, GetEnv F0 x.peers x.call.call.addr.name.bytes evs →
-      TrustEnv F0 x evs)
-    (hTrustGetFree : ∀ F0 x evs₁ evs₂,
-      GetEnv F0 x.peers x.call.call.addr.name.bytes evs₁ → FreeOnlyEvs evs₂ →
-      TrustEnv F0 x (evs₁ ++ evs₂))
-    (hstk : 192 + max (max getStk 96) (max 64 extHookStack) ≤ stk)
-    (hGetBlk : getBlk < 619 := by decide)
-    (hGetUnmut : (getBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hDecBlk : decBlk < 619 := by decide)
-    (hDecUnmut : (decBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hEqBlk : eqBlk < 619 := by decide)
-    (hEqUnmut : (eqBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok (lsProg_566 H) (lsmpl.base 566)
-      (withFdsGe3Closed (idTrustPollSpecPlaced rd pathOk A lim TrustEnv stk)) := by
-  have hGet' := ls_transfer_withFdsGe3Closed_lscro (callerProg := lsProg_566 H)
-    hGet (by decide) hGetBlk hGetUnmut
-  have hDec' := ls_transfer_withFdsGe3Closed_cl_to_lscro (callerProg := lsProg_566 H)
-    hDec (by decide) hDecBlk hDecUnmut
-  have hEq' := ls_transfer_withFdsGe3Closed_cl_to_lscro (callerProg := lsProg_566 H)
-    hEq (by decide) hEqBlk hEqUnmut
-  exact idTrustPoll_placed_of_inner_fd
-    (fun hhi => idTrustPollInner_placed_ok_16_fd hFs hGet' hDec' hEq'
-      hFitGet hTrustGet hTrustGetFree hhi) hstk
-
 /-- `CliIdTrustPollEnv` `80`-byte `eq` form of `idTrustPoll_placed_ok_of_deps_fd` (Block `566`). -/
 theorem idTrustPoll_placed_ok_of_deps_16_fd [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
@@ -899,100 +840,6 @@ theorem idTrustPoll_placed_ok_of_get_bb_fd_sat [LibsignalPlacement] {M : AllocCo
   idTrustPoll_placed_ok_of_deps_16_fd hFs hGet
     (identityKey_decode_placed_ok_fd H)
     (publicKeyEq_mem_placed_ok_of_bb_16_fd_sat h_bb) hstk hGetBlk hGetUnmut
-
-/-- Caller-block-polymorphic form of `idTrustPoll_placed_ok_of_deps_gen_16_fd`. -/
-theorem idTrustPoll_placed_caller_ok_of_deps_gen_16_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {TrustEnv : FsFiles → IdPollGhost → List AllocEvent → Prop}
-    {callerProg getProg decProg eqProg : Program}
-    {callerBlk getBlk decBlk eqBlk : Nat}
-    [IsLsBlockProg callerProg callerBlk H]
-    [IsLsBlockProg getProg getBlk H]
-    [IsLsBlockProg decProg decBlk H]
-    [IsLsBlockProg eqProg eqBlk H]
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk stk : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hGet : subroutine_ok getProg (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (hDec : subroutine_ok decProg (lsmpl.base 18)
-      (withFdsGe3Closed (identityKeyDecodePlacedBudgetSpec A)))
-    (hEq : subroutine_ok eqProg (lsmpl.base 212)
-      (withFdsGe3Closed (withLsCodeLoaded lsmpl (withVmPreserved publicKeyEqMemSpec16))))
-    (hFitGet : ∀ F0 x st, FitsEnv M lim st (TrustEnv F0 x) →
-      FitsEnv M lim st (GetEnv F0 x.peers x.call.call.addr.name.bytes))
-    (hTrustGet : ∀ F0 x evs, GetEnv F0 x.peers x.call.call.addr.name.bytes evs →
-      TrustEnv F0 x evs)
-    (hTrustGetFree : ∀ F0 x evs₁ evs₂,
-      GetEnv F0 x.peers x.call.call.addr.name.bytes evs₁ → FreeOnlyEvs evs₂ →
-      TrustEnv F0 x (evs₁ ++ evs₂))
-    (hstk : 192 + max (max getStk 96) (max 64 extHookStack) ≤ stk)
-    (hCallerBlk : callerBlk < 619 := by decide)
-    (hGetBlk : getBlk < 619 := by decide)
-    (hGetUnmut : (getBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hDecBlk : decBlk < 619 := by decide)
-    (hDecUnmut : (decBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hEqBlk : eqBlk < 619 := by decide)
-    (hEqUnmut : (eqBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 566)
-      (withFdsGe3Closed (idTrustPollSpecPlaced rd pathOk A lim TrustEnv stk)) :=
-  ls_transfer_withFdsGe3Closed_lscro (callerProg := callerProg) (j := 566)
-    (idTrustPoll_placed_ok_of_deps_gen_16_fd hFs hGet hDec hEq
-      hFitGet hTrustGet hTrustGetFree hstk
-      hGetBlk hGetUnmut hDecBlk hDecUnmut hEqBlk hEqUnmut) hCallerBlk
-
-/-- Caller-block-polymorphic form of `idTrustPoll_placed_ok_of_deps_16_fd`. -/
-theorem idTrustPoll_placed_caller_ok_of_deps_16_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {callerProg getProg decProg eqProg : Program}
-    {callerBlk getBlk decBlk eqBlk : Nat}
-    [IsLsBlockProg callerProg callerBlk H]
-    [IsLsBlockProg getProg getBlk H]
-    [IsLsBlockProg decProg decBlk H]
-    [IsLsBlockProg eqProg eqBlk H]
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk stk : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hGet : subroutine_ok getProg (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (hDec : subroutine_ok decProg (lsmpl.base 18)
-      (withFdsGe3Closed (identityKeyDecodePlacedBudgetSpec A)))
-    (hEq : subroutine_ok eqProg (lsmpl.base 212)
-      (withFdsGe3Closed (withLsCodeLoaded lsmpl (withVmPreserved publicKeyEqMemSpec16))))
-    (hstk : 192 + max (max getStk 96) (max 64 extHookStack) ≤ stk)
-    (hCallerBlk : callerBlk < 619 := by decide)
-    (hGetBlk : getBlk < 619 := by decide)
-    (hGetUnmut : (getBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hDecBlk : decBlk < 619 := by decide)
-    (hDecUnmut : (decBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hEqBlk : eqBlk < 619 := by decide)
-    (hEqUnmut : (eqBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 566)
-      (withFdsGe3Closed (idTrustPollSpecPlaced rd pathOk A lim (CliIdTrustPollEnv GetEnv) stk)) :=
-  ls_transfer_withFdsGe3Closed_lscro (callerProg := callerProg) (j := 566)
-    (idTrustPoll_placed_ok_of_deps_16_fd hFs hGet hDec hEq hstk
-      hGetBlk hGetUnmut hDecBlk hDecUnmut hEqBlk hEqUnmut) hCallerBlk
-
-/-- Caller-block-polymorphic form of `idTrustPoll_placed_ok_of_get_bb_fd_sat`. -/
-theorem idTrustPoll_placed_caller_ok_of_get_bb_fd_sat [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {callerProg getProg : Program} {callerBlk getBlk : Nat}
-    [IsLsBlockProg callerProg callerBlk H]
-    [IsLsBlockProg getProg getBlk H]
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {getStk stk : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hGet : subroutine_ok getProg (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (h_bb : HookSat H lsBlackBoxU8Sym blackBoxSpecSat)
-    (hstk : 192 + max (max getStk 96) (max 64 extHookStack) ≤ stk)
-    (hCallerBlk : callerBlk < 619 := by decide)
-    (hGetBlk : getBlk < 619 := by decide)
-    (hGetUnmut : (getBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 566)
-      (withFdsGe3Closed (idTrustPollSpecPlaced rd pathOk A lim (CliIdTrustPollEnv GetEnv) stk)) :=
-  ls_transfer_withFdsGe3Closed_lscro (callerProg := callerProg) (j := 566)
-    (idTrustPoll_placed_ok_of_get_bb_fd_sat hFs hGet h_bb hstk hGetBlk hGetUnmut) hCallerBlk
 
 end Placed
 

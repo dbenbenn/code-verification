@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
-public import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Bytes.Basic
@@ -20,7 +20,8 @@ public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
 public import Symbolic.Proofs.Swarm.SHARED.SpqrBytesDefs
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
-public import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
 
 /-!
 # Pre-Decrypt Invariants and Initial `StateRel` for Pre-Key Accept
@@ -29,7 +30,7 @@ Defines `AcceptRecTie` and `AcceptSt0ModelInvs`, and proves `rpkTie_stateRel_ini
 that Bob's pre-decrypt `SessionState HwBytes` is `TR.StateRel`-related to `bobInitSt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +47,7 @@ open Swarm.Phase0WholeFunctionBridge (sessionToRecordRec)
 open ByteSpecs (hmacWith)
 
 /-- Record-encoding and base-key invariants for an accepting pre-key output `sm`. -/
-def AcceptRecTie (r : ProtocolSetup) (p : PreKeyFields) (baseKey : HwBytes)
+@[expose] def AcceptRecTie (r : ProtocolSetup) (p : PreKeyFields) (baseKey : HwBytes)
     (st' : SessionState HwBytes) (sm : StateAndMessage) : Prop :=
   baseKey = p.baseKey.take 33 ∧
   ∃ f248 : BitVec 32,
@@ -65,7 +66,7 @@ def AcceptRecTie (r : ProtocolSetup) (p : PreKeyFields) (baseKey : HwBytes)
 
 /-- Pre-decrypt `SessionState HwBytes` invariants entering `tryDecryptWithStateW` on a pre-key
 message. -/
-def AcceptSt0ModelInvs (interpretation : ExternInterpretation) (r : ProtocolSetup) (p : PreKeyFields)
+@[expose] def AcceptSt0ModelInvs (interpretation : ExternInterpretation) (r : ProtocolSetup) (p : PreKeyFields)
     (st0 : SessionState HwBytes) : Prop :=
   let F := sha256CompressFunction interpretation
   let ikABytes := pubBytes interpretation (secretBytes r 0)
@@ -84,7 +85,7 @@ def AcceptSt0ModelInvs (interpretation : ExternInterpretation) (r : ProtocolSetu
     (((p.baseKey.take 33).drop 1).length = 32 ∧
       DY.X25519.leValue (((p.baseKey.take 33).drop 1).map BitVec.toNat) < DY.X25519.p25519 ∧
       DY.X25519.isLowOrderKey (((p.baseKey.take 33).drop 1).map BitVec.toNat) = false ∧
-      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interpretation ((p.baseKey.take 33).drop 1)) ∧
+      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree ((p.baseKey.take 33).drop 1)) ∧
     (p.inner.serialized = p.message ∧ p.message.length ≥ 8) ∧
     st0.remoteIdentity =
       some ⟨⟨List.Vector.ofFn (fun i => (pubBytes interpretation (secretBytes r 0)).getD i.val 0#8)⟩⟩ ∧

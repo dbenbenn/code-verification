@@ -21,7 +21,8 @@ trust the PQXDH-mode CLI statements (see `Computational/docs/TRUSTED_BASE.md`).
 
 `CliSpecPqxdh run X W` specifies `init`, `send`, and `recv` on directories encoded (`encodeDir`)
 from a party state `st : PqParty` in `PqxdhPartyInSpecDomain W st` over model primitives `W : PEParams`
-(extern hooks in the binary: DEV-E8, DEV-PQ1) and `X : UnreachedPqxdhPrimitives`:
+(instantiated to the closed primitives `realPEParams` executed by the linked ELF in the ELF-direct CLI
+headlines) and `X : UnreachedPqxdhPrimitives`:
 * `init <peer> bundle` (with `st.session = none`): trust-on-first-use check (`PqParty.trusts`), then
   `initiateState` (`pqInitModel`).
 * `send <peer>`: `messageEncrypt` with SPQR V1 (`pqSendModel`), emitting `3 ‖ PreKeySignalMessage`

@@ -11,7 +11,8 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.Callees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.Callees
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 
 /-!
 # Budget-Threaded Stage 1 Callee Specifications
@@ -20,7 +21,7 @@ Defines `RustCliAllocBudget M` specifications for `<String as Clone>::clone` (`s
 and `<PublicKey>::serialize` (`pubKeySerializeAtStkSpec`) at residual stack `calleeStk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -38,7 +39,7 @@ open CryptoVerification.LibsignalSessionRepr (VecGhost vecGhostAt)
 open CryptoVerification.LibsignalTripleRatchet (PublicKeySerializeCall boxU8Buf)
 
 /-- Budget-threaded specification of `<String as Clone>::clone` at residual stack `calleeStk`. -/
-def stringCloneAtStkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def stringCloneAtStkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (calleeStk : Nat) : Spec ((BitVec 64 × BitVec 64 × VecGhost) × M.σ) where
   pre := fun ((p, ret, g), st) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret ∧
@@ -52,7 +53,7 @@ def stringCloneAtStkSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliA
       A.pool lim (M.stepEvents (stringCloneEvents g) st) sf ∗ stackAt s0.sp calleeStk
 
 /-- Budget-threaded specification of `<PublicKey>::serialize` at residual stack `calleeStk` (`rustAllocEvents 33 1`). -/
-def pubKeySerializeAtStkSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def pubKeySerializeAtStkSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (calleeStk : Nat) : Spec (PublicKeySerializeCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ FitsEvents M lim st (rustAllocEvents 33 1)⌝ ∗

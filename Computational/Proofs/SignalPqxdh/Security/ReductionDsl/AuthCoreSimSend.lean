@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -19,7 +19,7 @@ Proves that `sendB` evaluates to the shallow `pqxdhAuthSimImplPrim` send branche
 `authRespToVal`, `authStateToVal`, and `AuthBaseListsBounded`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

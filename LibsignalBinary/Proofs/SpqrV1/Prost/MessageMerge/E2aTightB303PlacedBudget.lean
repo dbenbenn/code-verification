@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedClPlacedBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedClPlacedBudget
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -28,6 +27,12 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.MessageMergePart2CodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Loop
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt1ReceivedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Guarded-Tight Placed Budget Proof for `Chunked.Ct1Received::merge` (Block `303`)
@@ -38,7 +43,7 @@ Proves `tlb_ChunkedCt1ReceivedMergePlacedTightOkOf` on Block `303` within
 `tlb_ChunkedCt1ReceivedDom` inputs, falling back to `ChunkedCt1ReceivedMergeEnv` outside the domain.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -73,20 +78,7 @@ open CryptoVerification.SpqrV1.ProtoRepr.EncodedLen
 open CryptoVerification.SpqrV1.Varint (decodeVarint2Stack)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.ChunkedMerge
   (UnchunkedEkSentCt1ReceivedMergeGhost)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedCt1ReceivedMergeGhost ChunkedLoopRegs PolyEncoderMergeGhost SepWPpLscro
-   bv64_add_zero bv64_sub_zero bv_len_sub_limit
-   chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked chunkedBelow_leaf
-   chunkedBelow_leaf_entails chunkedCt1ReceivedMerge_fnOff chunkedCt1ReceivedPBCapAt
-   chunkedCt1ReceivedPBCapAt_mono chunkedMergeStack chunkedSavedRegs
-   cmp_len_limit_of_eq cmp_len_limit_of_gt codecWireTypeToProto
-   memRegion_ekSentCt1Received_none_split memRegion_polyEncoder_none_split
-   optPolyEncoderPolysLen optPolyEncoderPtsLen
-   optUnchunkedEkSentCt1ReceivedPBCapAt optUnchunkedEkSentCt1ReceivedPBCapAt_mono
-   polyEncoderToProto protoPolynomialEncoderAt_eq_pb
-   proto_mergeMessage_len_le proto_mergeMessage_suffix
-   stackAt_chunkedMerge subroutine_ok_withLsCodeRoLoaded_of_withLscroProp
-   vecU8At_eq_header_sep_buf vecU8Buf withLscroProp wt_beq_two_of_lengthDelimited)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedCt1ReceivedMergeGhost ChunkedLoopRegs PolyEncoderMergeGhost SepWPpLscro bv64_add_zero bv64_sub_zero bv_len_sub_limit chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked chunkedBelow_leaf chunkedBelow_leaf_entails chunkedCt1ReceivedPBCapAt chunkedCt1ReceivedPBCapAt_mono chunkedMergeStack chunkedSavedRegs cmp_len_limit_of_eq cmp_len_limit_of_gt codecWireTypeToProto memRegion_ekSentCt1Received_none_split memRegion_polyEncoder_none_split optPolyEncoderPolysLen optPolyEncoderPtsLen optUnchunkedEkSentCt1ReceivedPBCapAt optUnchunkedEkSentCt1ReceivedPBCapAt_mono polyEncoderToProto protoPolynomialEncoderAt_eq_pb proto_mergeMessage_len_le proto_mergeMessage_suffix stackAt_chunkedMerge subroutine_ok_withLsCodeRoLoaded_of_withLscroProp vecU8At_eq_header_sep_buf vecU8Buf withLscroProp wt_beq_two_of_lengthDelimited)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_303 blkPl_303)
 open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget VmPreserved fitsEvents_append)
@@ -141,7 +133,7 @@ private theorem e2b303_calleeSavedVRegs_setMem_pre (s : State) (m : Memory) :
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   noneCap_add_one_beq_zero noneCap_add_one_bne_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero chunkedCt1ReceivedMerge_fnOff
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 attribute [local arm64_norm ↓, local wp_norm ↓]
   e2b303_sp_setMem_pre e2b303_pc_setMem_pre e2b303_status_setMem_pre e2b303_pstate_setMem_pre
   e2b303_trace_setMem_pre e2b303_readReg64_setMem_pre e2b303_readReg32_setMem_pre
@@ -336,7 +328,7 @@ private theorem e2b303_mergeMessage_polyEncoder (e : PolynomialEncoder)
 /-- Parametric guarded-tight allocation envelope for Block `303` (`Chunked.Ct1Received::merge`):
 enforces `SpqrTightEvs maxOps cumCap maxReq` on canonical `tlb_ChunkedCt1ReceivedDom` inputs and
 falls back to `ChunkedCt1ReceivedMergeEnv` outside `tlb_ChunkedCt1ReceivedDom`. -/
-def e2b303_ChunkedCt1ReceivedGuardedEnv (maxOps cumCap maxReq : Nat) :
+@[expose] def e2b303_ChunkedCt1ReceivedGuardedEnv (maxOps cumCap maxReq : Nat) :
     ChunkedCt1ReceivedMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedCt1ReceivedDom
     (SpqrTightEvs maxOps cumCap maxReq) ChunkedCt1ReceivedMergeEnv

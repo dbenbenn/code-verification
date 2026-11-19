@@ -28,7 +28,7 @@ Characterizes trace extensions that log only quantum-break marker events (`Broke
 session-completion events and preserve `bobDoneBaseKeys` and `eventIdx`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,12 +45,12 @@ open scoped DY.Libsignal.Composed
 
 /-- Whether a `PQXDHEvent` is one of the two quantum-break marker events (`BrokenDH` / `BrokenKEM`),
 which emit no visible entry and create/modify no session or prekey state. -/
-def isBreakPQEv : PQXDHEvent → Bool
+@[expose] def isBreakPQEv : PQXDHEvent → Bool
   | .BrokenDH | .BrokenKEM => true
   | _ => false
 
 /-- At trace index `i`, any logged `PQXDHEvent` is a quantum-break marker (`BrokenDH` / `BrokenKEM`). -/
-def NonSessionPQAt (tr : ExecTrace) (i : Nat) : Prop :=
+@[expose] def NonSessionPQAt (tr : ExecTrace) (i : Nat) : Prop :=
   ∀ e : DY.ProtocolEvent.ExecEntryT PQXDHEvent, tr.at? i = some e → isBreakPQEv e.ev = true
 
 theorem nonSessionPQAt_of_eq_none {tr : ExecTrace} {i : Nat}

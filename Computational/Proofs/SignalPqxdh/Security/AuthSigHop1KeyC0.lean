@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPreSample
+import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyB
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPreSample -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthSigHop1KeyA -- proof-setup: allow-public-import
 
 /-!
 # One-key `Auth` bad-signature hop: shared real-side definitions
@@ -20,7 +23,7 @@ identity scalar (`pqxdhAuthSigPreImpl1Key`), the active-phase invariant `authSig
 `NoOpk` to `Exact` rewrite for `authSig1KeyPerKBound`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,7 +33,7 @@ open OracleSpec OracleComp
 namespace Proofs.SignalPqxdh.Security
 
 /-- Frozen one-key `Exact` provenance oracle with principal `k`'s identity scalar pre-sampled. -/
-noncomputable def pqxdhAuthSigPreImpl1Key (k : ℕ) (optSk : Option Bytes) (S : Setup)
+@[expose] def pqxdhAuthSigPreImpl1Key (k : ℕ) (optSk : Option Bytes) (S : Setup)
     (P : Primitives) : QueryImpl (authSpec S) (StateT (AuthState S) ProbComp) :=
   freezeImpl AuthState.hasWonAuth (fun _ => .noneResp) (fun q =>
     match q with
@@ -89,7 +92,7 @@ theorem authSig1KeyPerK_lhs_noOpk_eq_exact (S : Setup) (P : Primitives) (k : ℕ
   rw [hasBadSigAuthAt_mapAuthSessions_eraseOpk]
 
 /-- Active-phase invariant of the real side of the one-key `Auth` signature coupling. -/
-def authSigGood1Key (S : Setup) (P : Primitives) (k : ℕ) (sk : Bytes) (st : AuthState S) : Prop :=
+@[expose] def authSigGood1Key (S : Setup) (P : Primitives) (k : ℕ) (sk : Bytes) (st : AuthState S) : Prop :=
   ValidPrincipals S st.principals ∧
   (∀ e, (k, e) ∈ st.principals →
     e.secIKAsign = sk ∧ e.ikSignPk = P.sigPkGen sk ∧ e.corrupted = false) ∧

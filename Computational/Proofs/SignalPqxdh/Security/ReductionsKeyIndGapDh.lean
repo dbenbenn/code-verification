@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem -- proof-setup: allow-public-import
 
 /-!
 # Two-key `KeyInd` `GapDH` simulator
@@ -19,7 +19,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyIndSigKem
 Fig. 11) with a DDH-consistency patch table across all four X25519 legs (`DH1`–`DH4`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,10 +35,10 @@ namespace FgGapDh
 abbrev GdhSimSpec : OracleSpec.{0, 0} ((ℕ ⊕ PrimQuery) ⊕ (Bytes × Bytes × Bytes)) :=
   PrimBaseSpec + gapDhOracleSpec
 
-def embedUnif {α : Type} (mx : ProbComp α) : OracleComp PrimBaseSpec α :=
+@[expose] def embedUnif {α : Type} (mx : ProbComp α) : OracleComp PrimBaseSpec α :=
   liftComp mx PrimBaseSpec
 
-def embedPrim {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type}
+@[expose] def embedPrim {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type}
     (mx : OracleComp PrimBaseSpec α) : OracleComp (PrimBaseSpec + spec) α :=
   OracleComp.construct
     (C := fun _ => OracleComp (PrimBaseSpec + spec) α)
@@ -46,35 +46,35 @@ def embedPrim {ι : Type} {spec : OracleSpec.{0, 0} ι} {α : Type}
     (fun q _ r => liftM (OracleSpec.query (spec := PrimBaseSpec + spec) (Sum.inl q)) >>= r)
     mx
 
-def unifGdh {α : Type} (mx : ProbComp α) : OracleComp GdhSimSpec α :=
+@[expose] def unifGdh {α : Type} (mx : ProbComp α) : OracleComp GdhSimSpec α :=
   embedPrim (spec := gapDhOracleSpec) (embedUnif mx)
 
-def primGdhQ (op : PrimQuery) : OracleComp GdhSimSpec (primSpec.Range op) :=
+@[expose] def primGdhQ (op : PrimQuery) : OracleComp GdhSimSpec (primSpec.Range op) :=
   query (spec := GdhSimSpec) (Sum.inl (Sum.inr op))
 
-def ddhGdhQ (X Y Z : Bytes) : OracleComp GdhSimSpec Bool :=
+@[expose] def ddhGdhQ (X Y Z : Bytes) : OracleComp GdhSimSpec Bool :=
   query (spec := GdhSimSpec) (Sum.inr (X, Y, Z))
 
-def findMGdh {α : Type} (p : α → OracleComp GdhSimSpec Bool) :
+@[expose] def findMGdh {α : Type} (p : α → OracleComp GdhSimSpec Bool) :
     List α → OracleComp GdhSimSpec (Option α)
   | [] => pure none
   | x :: xs => do
     if ← p x then return some x else findMGdh p xs
 
-def anyMGdh {α : Type} (p : α → OracleComp GdhSimSpec Bool) :
+@[expose] def anyMGdh {α : Type} (p : α → OracleComp GdhSimSpec Bool) :
     List α → OracleComp GdhSimSpec Bool
   | [] => pure false
   | x :: xs => do
     if ← p x then return true else anyMGdh p xs
 
-def findMapMGdh {α : Type} (f : α → OracleComp GdhSimSpec Bytes) (U V : Bytes) :
+@[expose] def findMapMGdh {α : Type} (f : α → OracleComp GdhSimSpec Bytes) (U V : Bytes) :
     List α → OracleComp GdhSimSpec (Option Bytes)
   | [] => pure none
   | x :: xs => do
     let z ← f x
     if ← ddhGdhQ U V z then return some z else findMapMGdh f U V xs
 
-def spkPowsGdh :
+@[expose] def spkPowsGdh :
     List ((Nat × Nat) × SpkBundleEntry) → OracleComp GdhSimSpec (List (Bytes × Bytes))
   | [] => pure []
   | (_, b) :: xs => do
@@ -96,16 +96,16 @@ structure FgPatchEntry where
   dk    : DRKey
   deriving DecidableEq, Repr
 
-def mkSecretPos (z : Bytes) : OracleComp GdhSimSpec FgPoS := do
+@[expose] def mkSecretPos (z : Bytes) : OracleComp GdhSimSpec FgPoS := do
   let c ← primGdhQ (.isCanonical z)
   return FgPoS.secret z c
 
-def mkPairPos (pk1 pk2 : Bytes) : OracleComp GdhSimSpec FgPoS := do
+@[expose] def mkPairPos (pk1 pk2 : Bytes) : OracleComp GdhSimSpec FgPoS := do
   let w1 ← primGdhQ (.pow8 pk1)
   let w2 ← primGdhQ (.pow8 pk2)
   return FgPoS.pair pk1 pk2 w1 w2
 
-def computeTwoSideOrPairPos (sk1 sk2 pk1 pk2 : Bytes) : OracleComp GdhSimSpec FgPoS :=
+@[expose] def computeTwoSideOrPairPos (sk1 sk2 pk1 pk2 : Bytes) : OracleComp GdhSimSpec FgPoS :=
   if !sk1.isEmpty then do
     let z ← primGdhQ (.x25519 sk1 pk2)
     mkSecretPos z
@@ -115,12 +115,12 @@ def computeTwoSideOrPairPos (sk1 sk2 pk1 pk2 : Bytes) : OracleComp GdhSimSpec Fg
   else
     mkPairPos pk1 pk2
 
-def computeOptPos (sk1 : Bytes) (pk1 : Bytes) :
+@[expose] def computeOptPos (sk1 : Bytes) (pk1 : Bytes) :
     Option (Bytes × Bytes) → OracleComp GdhSimSpec (Option FgPoS)
   | none => pure none
   | some (sk2, pk2) => some <$> computeTwoSideOrPairPos sk1 sk2 pk1 pk2
 
-def ddhEqGdh : FgPoS → FgPoS → OracleComp GdhSimSpec Bool
+@[expose] def ddhEqGdh : FgPoS → FgPoS → OracleComp GdhSimSpec Bool
   | .secret z1 _, .secret z2 _ =>
     pure (z1 == z2)
   | .pair _ _ w1 w2, .pair _ _ w3 w4 =>
@@ -130,12 +130,12 @@ def ddhEqGdh : FgPoS → FgPoS → OracleComp GdhSimSpec Bool
   | .secret z isCanon, .pair pk1 pk2 _ _ =>
     if isCanon then ddhGdhQ pk1 pk2 z else pure false
 
-def ddhEqOptGdh : Option FgPoS → Option FgPoS → OracleComp GdhSimSpec Bool
+@[expose] def ddhEqOptGdh : Option FgPoS → Option FgPoS → OracleComp GdhSimSpec Bool
   | none, none => pure true
   | some p1, some p2 => ddhEqGdh p1 p2
   | _, _ => pure false
 
-def fgEntryMatches (pos1 pos2 pos3 : FgPoS) (pos4? : Option FgPoS) (ss : Bytes)
+@[expose] def fgEntryMatches (pos1 pos2 pos3 : FgPoS) (pos4? : Option FgPoS) (ss : Bytes)
     (e : FgPatchEntry) : OracleComp GdhSimSpec Bool := do
   if ss != e.ss then
     return false
@@ -145,7 +145,7 @@ def fgEntryMatches (pos1 pos2 pos3 : FgPoS) (pos4? : Option FgPoS) (ss : Bytes)
   let b4 ← ddhEqOptGdh pos4? e.pos4?
   return (b1 && b2 && b3 && b4)
 
-def fgPatch (maxLen : ℕ) (pos1 pos2 pos3 : FgPoS) (pos4? : Option FgPoS) (ss : Bytes)
+@[expose] def fgPatch (maxLen : ℕ) (pos1 pos2 pos3 : FgPoS) (pos4? : Option FgPoS) (ss : Bytes)
     (L : List FgPatchEntry) : OracleComp GdhSimSpec (DRKey × List FgPatchEntry) := do
   match ← findMGdh (fgEntryMatches pos1 pos2 pos3 pos4? ss) (L.take maxLen) with
   | some e => return (e.dk, L)
@@ -156,41 +156,41 @@ def fgPatch (maxLen : ℕ) (pos1 pos2 pos3 : FgPoS) (pos4? : Option FgPoS) (ss :
     }
     return (dk, entry :: L)
 
-def primQ (q : PrimQuery) : OracleComp PrimBaseSpec (primSpec.Range q) :=
+@[expose] def primQ (q : PrimQuery) : OracleComp PrimBaseSpec (primSpec.Range q) :=
   query (spec := PrimBaseSpec) (Sum.inr q)
 
-def findMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) :
+@[expose] def findMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) :
     List α → OracleComp PrimBaseSpec (Option α)
   | [] => pure none
   | x :: xs => do
     if ← p x then return some x else findMPrim p xs
 
-def anyMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) :
+@[expose] def anyMPrim {α : Type} (p : α → OracleComp PrimBaseSpec Bool) :
     List α → OracleComp PrimBaseSpec Bool
   | [] => pure false
   | x :: xs => do
     if ← p x then return true else anyMPrim p xs
 
-def findHonestPrincipalPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
+@[expose] def findHonestPrincipalPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     (ikB : Bytes) : OracleComp PrimBaseSpec (Option (Nat × PrincipalEntry)) :=
   findMPrim (fun (_, entry) => do
     let p1 ← primQ (.pow8 ikB)
     let p2 ← primQ (.pow8 entry.ikAPk)
     return (p1 == p2)) (principals.take S.N_dh)
 
-def resolveSigPkPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
+@[expose] def resolveSigPkPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     (ikB : Bytes) : OracleComp PrimBaseSpec Bytes := do
   match ← findHonestPrincipalPrim S principals ikB with
   | some (_, entry) => return entry.ikSignPk
   | none            => return ikB
 
-def isHonestUncorruptedPeerPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
+@[expose] def isHonestUncorruptedPeerPrim (S : Setup) (principals : List (Nat × PrincipalEntry))
     (ikB : Bytes) : OracleComp PrimBaseSpec (Option Nat) := do
   match ← findHonestPrincipalPrim S principals ikB with
   | some (k, entry) => return (if !entry.corrupted then some k else none)
   | none            => return none
 
-def checkBundleProvenancePrim (S : Setup)
+@[expose] def checkBundleProvenancePrim (S : Setup)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
@@ -213,10 +213,10 @@ def checkBundleProvenancePrim (S : Setup)
           return (u == k && p1 == p2)) (opkEntries.take S.N_dh)
     return (spkHon, opkHon, pqspkHon)
 
-def isAdvRegisteredPows (advKeyPows : List (Bytes × Bytes)) (wPk : Bytes) : Bool :=
+@[expose] def isAdvRegisteredPows (advKeyPows : List (Bytes × Bytes)) (wPk : Bytes) : Bool :=
   advKeyPows.any (fun (_, wPk') => wPk' == wPk)
 
-def koskSenderOkPrim (S : Setup)
+@[expose] def koskSenderOkPrim (S : Setup)
     (principals : List (Nat × PrincipalEntry))
     (advKeyPows : List (Bytes × Bytes))
     (ikAPk : Bytes) : OracleComp PrimBaseSpec Bool := do
@@ -224,7 +224,7 @@ def koskSenderOkPrim (S : Setup)
   let wIk ← primQ (.pow8 ikAPk)
   return (hp.isSome || isAdvRegisteredPows advKeyPows wIk)
 
-def isGameSpkPrim (S : Setup)
+@[expose] def isGameSpkPrim (S : Setup)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (spkPk : Bytes) : OracleComp PrimBaseSpec Bool :=
   anyMPrim (fun (_, b) => do
@@ -232,7 +232,7 @@ def isGameSpkPrim (S : Setup)
     let p2 ← primQ (.pow8 spkPk)
     return (p1 == p2)) (spkBundles.take S.N_dh)
 
-def isGameOpkPrim (S : Setup)
+@[expose] def isGameOpkPrim (S : Setup)
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
     (opkPk : Bytes) : OracleComp PrimBaseSpec Bool :=
   anyMPrim (fun (_, e) => do
@@ -240,7 +240,7 @@ def isGameOpkPrim (S : Setup)
     let p2 ← primQ (.pow8 opkPk)
     return (p1 == p2)) (opkEntries.take S.N_dh)
 
-def koskBundleOkPrim (S : Setup)
+@[expose] def koskBundleOkPrim (S : Setup)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
@@ -260,7 +260,7 @@ def koskBundleOkPrim (S : Setup)
       pure (gOpk || isAdvRegisteredPows advKeyPows wOpk)
   return (ikOk && spkOk && opkOk)
 
-def lookupSpkSkPrim (S : Setup)
+@[expose] def lookupSpkSkPrim (S : Setup)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (advKeyPows : List (Bytes × Bytes))
     (spkPk : Bytes) : OracleComp PrimBaseSpec Bytes := do
@@ -275,7 +275,7 @@ def lookupSpkSkPrim (S : Setup)
     | some (sk, _) => return sk
     | none => return []
 
-def keyIndPartnerPrim {S : Setup} (s : KeyIndInitiatorEntry S) (r : KeyIndRespEntry S) :
+@[expose] def keyIndPartnerPrim {S : Setup} (s : KeyIndInitiatorEntry S) (r : KeyIndRespEntry S) :
     OracleComp PrimBaseSpec Bool := do
   let sIk ← primQ (.pow8 s.hdr.ikAPk)
   let rIk ← primQ (.pow8 r.hdr.ikAPk)
@@ -293,7 +293,7 @@ def keyIndPartnerPrim {S : Setup} (s : KeyIndInitiatorEntry S) (r : KeyIndRespEn
           s.peerPqspkPk == r.pqspkPk &&
           s.hdr.kemCt == r.hdr.kemCt)
 
-def choosePartnerDrKeyRandGdh {S : Setup} (sessions : List (KeyIndInitiatorEntry S))
+@[expose] def choosePartnerDrKeyRandGdh {S : Setup} (sessions : List (KeyIndInitiatorEntry S))
     (r : KeyIndRespEntry S) : OracleComp GdhSimSpec DRKey := do
   let found ← embedPrim (spec := gapDhOracleSpec)
     (findMPrim (fun s => keyIndPartnerPrim s r) (sessions.take S.N_dh))
@@ -301,7 +301,7 @@ def choosePartnerDrKeyRandGdh {S : Setup} (sessions : List (KeyIndInitiatorEntry
   | some s => return s.drKeyRand
   | none   => unifGdh sampleDRKey96
 
-def chooseInitPartnerDrKeyRandGdh {S : Setup} (respSessions : List (KeyIndRespEntry S))
+@[expose] def chooseInitPartnerDrKeyRandGdh {S : Setup} (respSessions : List (KeyIndRespEntry S))
     (s : KeyIndInitiatorEntry S) : OracleComp GdhSimSpec DRKey := do
   let found ← embedPrim (spec := gapDhOracleSpec)
     (findMPrim (fun r => keyIndPartnerPrim s r) (respSessions.take S.N_sess_tot))
@@ -309,46 +309,46 @@ def chooseInitPartnerDrKeyRandGdh {S : Setup} (respSessions : List (KeyIndRespEn
   | some r => return r.drKeyRand
   | none   => unifGdh sampleDRKey96
 
-def sampleIndexRange2 (M N : ℕ) : ProbComp (ℕ × ℕ) := do
+@[expose] def sampleIndexRange2 (M N : ℕ) : ProbComp (ℕ × ℕ) := do
   let i ← sampleIndexRange M
   let j ← sampleIndexRange N
   return (i, j)
 
-def spkBundleFlatIdx (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) : Nat :=
+@[expose] def spkBundleFlatIdx (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv) : Nat :=
   u.val * S.N_recv + j.val
 
-def initSessionSlotIdx {S : Setup} : SessionId S → Nat
+@[expose] def initSessionSlotIdx {S : Setup} : SessionId S → Nat
   | .sendOPK u i     => u.val * S.N_send_opk + i.val
   | .sendNoOPK u i   => S.N_send_opk_tot + (u.val * S.N_send_no_opk + i.val)
   | .recvOPK _ _ _   => S.N_send_tot
   | .recvNoOPK _ _ _ => S.N_send_tot
 
-def respBundleKey {S : Setup} : SessionId S → Nat × Nat
+@[expose] def respBundleKey {S : Setup} : SessionId S → Nat × Nat
   | .recvOPK k j _   => (k.val, j.val)
   | .recvNoOPK k j _ => (k.val, j.val)
   | .sendOPK u _     => (u.val, 0)
   | .sendNoOPK u _   => (u.val, 0)
 
-def extractDh1 (bs : Bytes) : Bytes :=
+@[expose] def extractDh1 (bs : Bytes) : Bytes :=
   List.take 32 (List.drop 32 bs)
 
-def extractDh2 (bs : Bytes) : Bytes :=
+@[expose] def extractDh2 (bs : Bytes) : Bytes :=
   List.take 32 (List.drop 64 bs)
 
-def extractDh3 (bs : Bytes) : Bytes :=
+@[expose] def extractDh3 (bs : Bytes) : Bytes :=
   List.take 32 (List.drop 96 bs)
 
-def extractDh4 (bs : Bytes) : Bytes :=
+@[expose] def extractDh4 (bs : Bytes) : Bytes :=
   List.take 32 (List.drop 128 bs)
 
-def extractKemSsNoOPK (bs : Bytes) : Bytes :=
+@[expose] def extractKemSsNoOPK (bs : Bytes) : Bytes :=
   List.take 32 (List.drop 128 bs)
 
-def extractKemSsOPK (bs : Bytes) : Bytes :=
+@[expose] def extractKemSsOPK (bs : Bytes) : Bytes :=
   List.take 32 (List.drop 160 bs)
 
 /-- Parse a `buildSecrets` byte string into `(dh1, dh2, dh3, dh4?, ss)`. -/
-def parseRoSecrets (bs : Bytes) : Option (Bytes × Bytes × Bytes × Option Bytes × Bytes) :=
+@[expose] def parseRoSecrets (bs : Bytes) : Option (Bytes × Bytes × Bytes × Option Bytes × Bytes) :=
   if bs.take 32 != F_X25519 then
     none
   else if bs.length == 160 then
@@ -365,10 +365,10 @@ structure FgKeyIndSimState (S : Setup) where
   advRoLog   : List Bytes := []
   advKeyPows : List (Bytes × Bytes) := []
 
-def FgKeyIndSimState.empty (S : Setup) (secb : Bool) : FgKeyIndSimState S :=
+@[expose] def FgKeyIndSimState.empty (S : Setup) (secb : Bool) : FgKeyIndSimState S :=
   { base := KeyIndState.empty S secb }
 
-def fgRoQueryGdh {S : Setup} (maxLen : ℕ) (secrets : Bytes)
+@[expose] def fgRoQueryGdh {S : Setup} (maxLen : ℕ) (secrets : Bytes)
     (st : FgKeyIndSimState S) : OracleComp GdhSimSpec (KeyIndResponse × FgKeyIndSimState S) := do
   let advRoLog' := secrets :: st.advRoLog
   match parseRoSecrets secrets with
@@ -390,7 +390,7 @@ def fgRoQueryGdh {S : Setup} (maxLen : ℕ) (secrets : Bytes)
       return (.drKeyResp dk,
         { st with rawRoCache := (secrets, dk) :: st.rawRoCache, advRoLog := advRoLog' })
 
-def fgRunInitiateGdh (useDh1 : Bool) (targetIdx : ℕ) (S : Setup) (maxLen : ℕ) (U : Bytes)
+@[expose] def fgRunInitiateGdh (useDh1 : Bool) (targetIdx : ℕ) (S : Setup) (maxLen : ℕ) (U : Bytes)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput)
     (st : FgKeyIndSimState S) : OracleComp GdhSimSpec (KeyIndResponse × FgKeyIndSimState S) := do
   if st.base.sessions.any (fun e => e.sid == sid) then
@@ -462,7 +462,7 @@ def fgRunInitiateGdh (useDh1 : Bool) (targetIdx : ℕ) (S : Setup) (maxLen : ℕ
   | none   => return (.initUnfreshResp drKeyReal hdr, st')
 
 /-- Fiedler–Günther Fig. 11 lines 19–35 `acceptOPK` handler in `GdhSimSpec`. -/
-def fgRunAcceptOPKGdh (S : Setup) (maxLen : ℕ)
+@[expose] def fgRunAcceptOPKGdh (S : Setup) (maxLen : ℕ)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (hdr : HandshakeHdr)
     (st : FgKeyIndSimState S) : OracleComp GdhSimSpec (KeyIndResponse × FgKeyIndSimState S) := do
   if !(hdr.spkId == UInt32.ofNat j.val &&
@@ -532,7 +532,7 @@ def fgRunAcceptOPKGdh (S : Setup) (maxLen : ℕ)
   | none   => return (.drKeyResp drKey, st')
 
 /-- Fiedler–Günther Fig. 11 lines 19–35 `acceptNoOPK` handler in `GdhSimSpec`. -/
-def fgRunAcceptNoOPKGdh (S : Setup) (maxLen : ℕ)
+@[expose] def fgRunAcceptNoOPKGdh (S : Setup) (maxLen : ℕ)
     (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk) (hdr : HandshakeHdr)
     (st : FgKeyIndSimState S) : OracleComp GdhSimSpec (KeyIndResponse × FgKeyIndSimState S) := do
   if !(hdr.spkId == UInt32.ofNat j.val &&
@@ -591,7 +591,7 @@ def fgRunAcceptNoOPKGdh (S : Setup) (maxLen : ℕ)
   | some _ => return (.acceptFreshResp, st')
   | none   => return (.drKeyResp drKey, st')
 
-def fgKeyIndStep (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
+@[expose] def fgKeyIndStep (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyIndSimState S) :
     OracleComp GdhSimSpec (KeyIndResponse × FgKeyIndSimState S) := do
   match q with
@@ -733,7 +733,7 @@ def fgKeyIndStep (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (max
     let base' := { st.base with advKeys := (sk, pk) :: st.base.advKeys }
     return (.pkResp pk, { st with base := base', advKeyPows := (sk, wPk) :: st.advKeyPows })
 
-def runWithGdhStep {ιI : Type}
+@[expose] def runWithGdhStep {ιI : Type}
     {GSpec : OracleSpec.{0, 0} ιI} {St α : Type}
     (step : (q : ιI) → St → OracleComp GdhSimSpec (GSpec.Range q × St))
     (mx : OracleComp (unifSpec + GSpec) α) (st : St) :
@@ -752,7 +752,7 @@ def runWithGdhStep {ιI : Type}
     mx st
 
 
-def extractCdhFromAdvRoLog (useDh1 : Bool) (maxLen : ℕ) (U V : Bytes)
+@[expose] def extractCdhFromAdvRoLog (useDh1 : Bool) (maxLen : ℕ) (U V : Bytes)
     (advRoLog : List Bytes) : OracleComp GdhSimSpec Bytes := do
   let cands := (advRoLog.take maxLen).map
     (fun sec => if useDh1 then extractDh1 sec else extractDh3 sec)
@@ -760,7 +760,7 @@ def extractCdhFromAdvRoLog (useDh1 : Bool) (maxLen : ℕ) (U V : Bytes)
   | some z => return z
   | none   => return List.replicate 32 0
 
-def lookupSpkSkFromPows (spkPows advKeyPows : List (Bytes × Bytes)) (wSpk : Bytes) : Bytes :=
+@[expose] def lookupSpkSkFromPows (spkPows advKeyPows : List (Bytes × Bytes)) (wSpk : Bytes) : Bytes :=
   match spkPows.find? (fun (_, wB) => wB == wSpk) with
   | some (sk, _) => sk
   | none =>
@@ -768,13 +768,13 @@ def lookupSpkSkFromPows (spkPows advKeyPows : List (Bytes × Bytes)) (wSpk : Byt
     | some (sk, _) => sk
     | none => []
 
-def initDh1CandWithPowsGdh {S : Setup} (spkPows advKeyPows : List (Bytes × Bytes))
+@[expose] def initDh1CandWithPowsGdh {S : Setup} (spkPows advKeyPows : List (Bytes × Bytes))
     (s : KeyIndInitiatorEntry S) : OracleComp GdhSimSpec Bytes := do
   let wSpk ← primGdhQ (.pow8 s.peerSpkPk)
   let spkSk := lookupSpkSkFromPows spkPows advKeyPows wSpk
   primGdhQ (.x25519 spkSk s.hdr.ikAPk)
 
-def respDh1CandGdh (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
+@[expose] def respDh1CandGdh (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (r : KeyIndRespEntry S) : OracleComp GdhSimSpec Bytes :=
   let key := respBundleKey r.sid
   let spkSk := match (spkBundles.take S.N_dh).find? (fun (idx, _) => idx == key) with
@@ -782,7 +782,7 @@ def respDh1CandGdh (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntr
     | none => []
   primGdhQ (.x25519 spkSk r.hdr.ikAPk)
 
-def extractCdhFromSimState (S : Setup) (useDh1 : Bool) (maxLen : ℕ) (U V : Bytes)
+@[expose] def extractCdhFromSimState (S : Setup) (useDh1 : Bool) (maxLen : ℕ) (U V : Bytes)
     (st : FgKeyIndSimState S) : OracleComp GdhSimSpec Bytes :=
   if useDh1 then do
     match ← findMGdh (fun z => ddhGdhQ U V z) ((st.advRoLog.take maxLen).map extractDh1) with
@@ -800,7 +800,7 @@ def extractCdhFromSimState (S : Setup) (useDh1 : Bool) (maxLen : ℕ) (U V : Byt
   else
     extractCdhFromAdvRoLog false maxLen U V st.advRoLog
 
-def fgKeyIndGapDhRunAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def fgKeyIndGapDhRunAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
     (U V : Bytes) : OracleComp GdhSimSpec Bytes := do
   let secb ← unifGdh ($ᵗ Bool)
@@ -822,7 +822,7 @@ def fgKeyIndGapDhAdv (S : Setup) (b : QueryBudget)
 
   q_prim := b.q_total * (S.N_dh * 20 + S.N_sess_tot * 8 + 18) + (S.N_dh * 3 + S.N_sess_tot)
 
-def fgKeyIndGapDhAdvAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def fgKeyIndGapDhAdvAt (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) : GapDhAdv where
   run U V := fgKeyIndGapDhRunAt useDh1 targetIdx targetSpkIdx S b A U V
   q_ddh := 4 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot
@@ -887,23 +887,23 @@ namespace FgGapDh.Ik
 
 open FgGapDh
 
-def noSpkIdx (S : Setup) : ℕ := S.N_spk_tot
+@[expose] def noSpkIdx (S : Setup) : ℕ := S.N_spk_tot
 
-def fgKeyIndStepIk (targetIdx targetPrinIdx : ℕ) (S : Setup) (maxLen : ℕ)
+@[expose] def fgKeyIndStepIk (targetIdx targetPrinIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyIndSimState S) :
     OracleComp GdhSimSpec (KeyIndResponse × FgKeyIndSimState S) :=
   match q with
   | .initPrin u => fgKeyIndStep true targetPrinIdx (noSpkIdx S) S maxLen V V (.initPrin u) st
   | q => fgKeyIndStep false targetIdx (noSpkIdx S) S maxLen U V q st
 
-def extractCdh2FromAdvRoLog (maxLen : ℕ) (U V : Bytes)
+@[expose] def extractCdh2FromAdvRoLog (maxLen : ℕ) (U V : Bytes)
     (advRoLog : List Bytes) : OracleComp GdhSimSpec Bytes := do
   let cands := (advRoLog.take maxLen).map extractDh2
   match ← findMGdh (fun z => ddhGdhQ U V z) cands with
   | some z => return z
   | none   => return List.replicate 32 0
 
-def fgKeyIndGapDhRunAtIk (targetIdx targetPrinIdx : ℕ)
+@[expose] def fgKeyIndGapDhRunAtIk (targetIdx targetPrinIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
     (U V : Bytes) : OracleComp GdhSimSpec Bytes := do
   let secb ← unifGdh ($ᵗ Bool)
@@ -912,7 +912,7 @@ def fgKeyIndGapDhRunAtIk (targetIdx targetPrinIdx : ℕ)
     (fgKeyIndStepIk targetIdx targetPrinIdx S b.q_total U V) A.1.run initSt
   extractCdh2FromAdvRoLog b.q_total U V finalSt.advRoLog
 
-def fgKeyIndGapDhAdvAtIk (targetIdx targetPrinIdx : ℕ)
+@[expose] def fgKeyIndGapDhAdvAtIk (targetIdx targetPrinIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) : GapDhAdv where
   run U V := fgKeyIndGapDhRunAtIk targetIdx targetPrinIdx S b A U V
   q_ddh := 4 * b.q_total ^ 2 + b.q_total
@@ -934,12 +934,12 @@ namespace FgGapDh.Opk
 
 open FgGapDh
 
-def opkFlatIdx (S : Setup) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) : ℕ :=
+@[expose] def opkFlatIdx (S : Setup) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) : ℕ :=
   opkSlotFlatIdx S (k.val, j.val, o.val)
 
-def noSpkIdx (S : Setup) : ℕ := S.N_spk_tot
+@[expose] def noSpkIdx (S : Setup) : ℕ := S.N_spk_tot
 
-def fgGenOPKGdhOpk (targetOpkIdx : ℕ) (S : Setup) (V : Bytes)
+@[expose] def fgGenOPKGdhOpk (targetOpkIdx : ℕ) (S : Setup) (V : Bytes)
     (u : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
     (st : FgKeyIndSimState S) : OracleComp GdhSimSpec (KeyIndResponse × FgKeyIndSimState S) := do
   if st.base.opkEntries.any (fun (k, _) => k == (u.val, j.val, o.val)) then
@@ -954,7 +954,7 @@ def fgGenOPKGdhOpk (targetOpkIdx : ℕ) (S : Setup) (V : Bytes)
   let base' := { st.base with opkEntries := ((u.val, j.val, o.val), oEntry) :: st.base.opkEntries }
   return (.pkResp oEntry.opkPk, { st with base := base' })
 
-def fgRunAcceptOPKGdhOpk (S : Setup) (maxLen : ℕ)
+@[expose] def fgRunAcceptOPKGdhOpk (S : Setup) (maxLen : ℕ)
     (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk) (hdr : HandshakeHdr)
     (st : FgKeyIndSimState S) : OracleComp GdhSimSpec (KeyIndResponse × FgKeyIndSimState S) := do
   if !(hdr.spkId == UInt32.ofNat j.val &&
@@ -1021,7 +1021,7 @@ def fgRunAcceptOPKGdhOpk (S : Setup) (maxLen : ℕ)
   | some _ => return (.acceptFreshResp, st')
   | none   => return (.drKeyResp drKey, st')
 
-def fgKeyIndStepOpk (targetIdx targetOpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
+@[expose] def fgKeyIndStepOpk (targetIdx targetOpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyIndSimState S) :
     OracleComp GdhSimSpec (KeyIndResponse × FgKeyIndSimState S) :=
   match q with
@@ -1029,14 +1029,14 @@ def fgKeyIndStepOpk (targetIdx targetOpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
   | .acceptOPK k j o hdr => fgRunAcceptOPKGdhOpk S maxLen k j o hdr st
   | q => fgKeyIndStep false targetIdx (noSpkIdx S) S maxLen U V q st
 
-def extractCdh4FromAdvRoLog (maxLen : ℕ) (U V : Bytes)
+@[expose] def extractCdh4FromAdvRoLog (maxLen : ℕ) (U V : Bytes)
     (advRoLog : List Bytes) : OracleComp GdhSimSpec Bytes := do
   let cands := (advRoLog.take maxLen).map extractDh4
   match ← findMGdh (fun z => ddhGdhQ U V z) cands with
   | some z => return z
   | none   => return List.replicate 32 0
 
-def fgKeyIndGapDhRunAtOpk (targetIdx targetOpkIdx : ℕ)
+@[expose] def fgKeyIndGapDhRunAtOpk (targetIdx targetOpkIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b)
     (U V : Bytes) : OracleComp GdhSimSpec Bytes := do
   let secb ← unifGdh ($ᵗ Bool)
@@ -1045,7 +1045,7 @@ def fgKeyIndGapDhRunAtOpk (targetIdx targetOpkIdx : ℕ)
     (fgKeyIndStepOpk targetIdx targetOpkIdx S b.q_total U V) A.1.run initSt
   extractCdh4FromAdvRoLog b.q_total U V finalSt.advRoLog
 
-def fgKeyIndGapDhAdvAtOpk (targetIdx targetOpkIdx : ℕ)
+@[expose] def fgKeyIndGapDhAdvAtOpk (targetIdx targetOpkIdx : ℕ)
     (S : Setup) (b : QueryBudget) (A : BoundedAdv (KeyIndAdversary S) b) : GapDhAdv where
   run U V := fgKeyIndGapDhRunAtOpk targetIdx targetOpkIdx S b A U V
   q_ddh := 4 * b.q_total ^ 2 + b.q_total
@@ -1068,11 +1068,11 @@ export FgGapDh.Opk (
 
 open FgGapDh
 
-def fgTotalIndexCount (S : Setup) : ℕ :=
+@[expose] def fgTotalIndexCount (S : Setup) : ℕ :=
   S.N_id * S.N_spk_tot + S.N_send_tot * S.N_spk_tot +
   S.N_send_tot * S.N_id + S.N_send_opk_tot * S.N_opk_tot
 
-def fgKeyIndGapDhRunAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
+@[expose] def fgKeyIndGapDhRunAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) (U V : Bytes) : OracleComp GdhSimSpec Bytes :=
   let nA := S.N_id * S.N_spk_tot
   let nC := S.N_send_tot * S.N_spk_tot
@@ -1089,14 +1089,14 @@ def fgKeyIndGapDhRunAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
     let r := idx - (nA + nC + nB)
     fgKeyIndGapDhRunAtOpk (r / S.N_opk_tot) (r % S.N_opk_tot) S b A U V
 
-def fgKeyIndGapDhAdvAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
+@[expose] def fgKeyIndGapDhAdvAtFlat (idx : ℕ) (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : GapDhAdv where
   run U V := fgKeyIndGapDhRunAtFlat idx S b A U V
   q_ddh := 4 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot
 
   q_prim := b.q_total * (S.N_dh * 20 + S.N_sess_tot * 8 + 18) + (S.N_dh * 3 + S.N_sess_tot)
 
-def fgKeyIndGapDhAdv4 (S : Setup) (b : QueryBudget)
+@[expose] def fgKeyIndGapDhAdv4 (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (KeyIndAdversary S) b) : GapDhAdv where
   run U V := do
     let idx ← unifGdh (FgGapDh.sampleIndexRange (fgTotalIndexCount S))

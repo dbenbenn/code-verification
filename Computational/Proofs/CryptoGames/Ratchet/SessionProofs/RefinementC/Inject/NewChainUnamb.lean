@@ -23,7 +23,7 @@ Proves `closeByStateC_inject_newChain_unamb`, closing the inject step when a new
 unambiguously outside the prekey collision case.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

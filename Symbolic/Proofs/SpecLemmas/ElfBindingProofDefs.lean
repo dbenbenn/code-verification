@@ -13,14 +13,14 @@ public import Symbolic.Specifications.Refinement.ElfBinding
 public import Symbolic.Proofs.SpecLemmas.ExternInterpretationProofDefs
 
 /-!
-# CLI extern-contract satisfiability predicate
+# CLI extern-contract satisfiability predicates
 
-Defines `CompExternsSatisfiableCli`, asserting the joint satisfiability of
-`ExternInterpretationTotalOnUsedSymbols`, `ExternContractsHoldCli`, and
-`HooksMatchInterpretation`.
+Defines `CompExternsSatisfiableCli` and `RealAes256ContractsSatisfiable`, asserting the joint
+satisfiability of `ExternInterpretationTotalOnUsedSymbols`, `ExternContractsHoldCli`, and
+`HooksMatchInterpretation` / `HooksMatchPlaced` (with `W.C.E = aes256Enc` and `W.C.D = aes256Dec`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,8 +30,16 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 open CryptoVerification.SignalSession (CliHooks)
 
 /-- Joint satisfiability of extern totality, CLI extern contracts, and hook agreement. -/
-def CompExternsSatisfiableCli : Prop :=
+@[expose] def CompExternsSatisfiableCli : Prop :=
   ∃ (interp : ExternInterpretation) (W : CliHooks),
     ExternInterpretationTotalOnUsedSymbols interp ∧ ExternContractsHoldCli interp ∧ HooksMatchInterpretation interp W
+
+/-- Joint satisfiability of extern totality, CLI extern contracts, and placed hook agreement
+(`HooksMatchPlaced`, pinning `W.C.E = CryptoGames.AES256.aes256Enc` and
+`W.C.D = CryptoGames.AES256.aes256Dec`), witnessing that the universal `(interp, W)` hypotheses of
+`CompRefinesCliBinary` and `SignalSessionSecure` are non-vacuous. -/
+@[expose] def RealAes256ContractsSatisfiable : Prop :=
+  ∃ (interp : ExternInterpretation) (W : CliHooks),
+    ExternInterpretationTotalOnUsedSymbols interp ∧ ExternContractsHoldCli interp ∧ HooksMatchPlaced interp W
 
 end DY.Libsignal.Composed.Refinement.Cli

@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Kdf.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.KdfCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixed
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.KdfCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.FinalizeFixed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.AesCbc.Bytes
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Verification of `Hmac<Sha256>::finalize_fixed` (`0x6ce50`, Block `425`)
@@ -24,7 +24,7 @@ instructions) over `HmacStN` (`pfx.length % 64 = 0`, `tail.length < 56`), coveri
 and multi-block HMAC finalizations in `spqr::kdf::hkdf_to_slice`.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
@@ -46,11 +46,8 @@ attribute [local arm64_norm] MemWidth.bytes SimdMemSize.bytes
 set_option maxRecDepth 2000000
 set_option maxHeartbeats 400000
 
-@[simp, arm64_norm] private
-gen_decodes libsignalSessionCode_tree libsignalSessionCode [0x67a58 → 0x67c14]
-
 abbrev fin3PlacedFakeB [LibsignalPlacement] : BitVec 64 :=
-  (blkPl_425).base - bv% (ls_off% "<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#2]")
+  (blkPl_425).base - 0x67a58#64
 
 @[simp, arm64_norm] theorem fin3PlacedFakeB_off_0 [LibsignalPlacement] :
     fin3PlacedFakeB + 0x67a58#64 = (blkPl_425).base := BitVec.sub_add_cancel _ _
@@ -101,10 +98,7 @@ macro "fin3_step" : tactic =>
     refine RunsTo.step (inst := ?inst) ?hrun ?hfetch ?_
     case hfetch => (
       (try simp (config := { decide := true }) only [arm64_norm, *])
-      first
-      | (refine libsignalSessionCode_fetch_rebase_text ?_ (by decide) (by decide)
-         (try simp only [arm64_norm]) <;> rfl)
-      | rfl)
+      rfl)
     case hrun => (simp only [arm64_norm, *])
     try dsimp only [execInst, execAddSubImm, execAddSubExt, execAddSubShift, execAddSubCarry, execLogicalImm,
       execLogicalShift, execMoveWide, execBitfield, execCondSelect, execCondCompare,
@@ -120,7 +114,7 @@ macro "fin3_step" : tactic =>
 /-- The last message block of the inner hash after `nBlocks` 64-byte blocks (including the 64-byte
 key block) and a tail `tail` of `< 56` bytes:
 `tail ‖ 0x80 ‖ 0… ‖ BE64(8·(64·nBlocks + |tail|))`, 64 bytes. -/
-def innerLastBlockN (nBlocks : ℕ) (tail : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def innerLastBlockN (nBlocks : ℕ) (tail : List (BitVec 8)) : List (BitVec 8) :=
   tail ++ [0x80] ++ List.replicate (55 - tail.length) 0 ++
     toBEBytes 8 (BitVec.ofNat 64 (8 * (64 * nBlocks + tail.length)))
 
@@ -136,7 +130,7 @@ theorem innerLastBlockN_length {nBlocks : ℕ} {tail : List (BitVec 8)} (hlt : t
 
 /-- Generalized `Hmac<Sha256>` (0x90 bytes) at `a`: MAC state of `key` after absorbing `pfx`
 (a multiple of 64 bytes, already compressed into `a + 0x40`) and buffering `tail` (`|tail| < 64`). -/
-def HmacStN (m : Memory) (a : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
+@[expose] def HmacStN (m : Memory) (a : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key pfx tail : List (BitVec 8)) : Prop :=
   pfx.length % 64 = 0 ∧
   tail.length < 64 ∧
@@ -424,12 +418,6 @@ local macro "seg1a_body" : tactic => `(tactic| (
       x1_eq := by fin3_reg
       hmac_st := by rw [mem_setMem]; exact HmacStN.of_agreesOutside hpre.hmac_st hag hpre.disj_hm_fsp.symm }))
 
-set_option maxHeartbeats 1600000 in
-private theorem seg1a_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key pfx tail : List (BitVec 8)} {s0 : State}
-    (hpre : FinPre3Pfx b C.F key pfx tail s0) :
-    RunsTo (tripleRatchetProgAtExt b ext) s0 (StateF0p b C.F key pfx tail s0) := by
-  seg1a_body
-
 /-- Cut `F1` at `b + 0x6ce9c` (after `memsetHook`): buffer `hm[0..64]` holds `tail ++ [0x80] ++ 0…0`. -/
 private structure StateF1 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
     (key pfx tail : List (BitVec 8)) (s0 s : State) : Prop where
@@ -506,13 +494,6 @@ local macro "seg1b_body" memsetStep:term:max lrTerm:term:max : tactic => `(tacti
       ist_eq := (hag.readBytes_eq hd_hm64_ist (by decide)).trans hin_eq
       ost_eq := (hag.readBytes_eq hd_hm64_ost (by decide)).trans hout_eq
       obl_eq := (hag.read64_eq hd_hm64_obl).trans hobl_eq }))
-
-set_option maxHeartbeats 1600000 in
-private theorem seg1b_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3Pfx b C.F key pfx tail s0)
-    (hs : StateF0p b C.F key pfx tail s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF1 b C.F key pfx tail s0) := by
-  seg1b_body (s2_memset_step_ext b C ext) (b + 0x67aa4#64)
 
 /-- Cut `F2` at `b + 0x6cf00` (right before inner `bl compress256`). -/
 private structure StateF2 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
@@ -630,13 +611,6 @@ local macro "seg2a_body" : tactic => `(tactic| (
           ((hag2.read64_eq hd_hm64_obl).trans
             ((hag1.read64_eq hd_fsp64_obl).trans hobl)) }))
 
-set_option maxHeartbeats 1600000 in
-private theorem seg2a_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3Pfx b C.F key pfx tail s0)
-    (hs : StateF1 b C.F key pfx tail s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF2 b C.F key pfx tail s0) := by
-  seg2a_body
-
 set_option hygiene false in
 local macro "seg2b_body" compStep:term:max lrTerm:term:max : tactic => `(tactic| (
   rcases hs with ⟨hpc, hcom, hx0, hx1, hx2, hx19, hx20, hx21, hx22, hblk, hist, host, hobl⟩
@@ -677,13 +651,6 @@ local macro "seg2b_body" compStep:term:max lrTerm:term:max : tactic => `(tactic|
         exact Bytes.readBytes_writeBytes_same s.mem _ blk_in (by rw [hlen]; decide)
       ost_eq := (hag_comp.readBytes_eq hd_ist_ost (by decide)).trans host
       obl_eq := (hag_comp.read64_eq hd_ist_obl).trans hobl }))
-
-set_option maxHeartbeats 1600000 in
-private theorem seg2b_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3Pfx b C.F key pfx tail s0)
-    (hs : StateF2 b C.F key pfx tail s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF3 b C.F key pfx tail s0) := by
-  seg2b_body (s2_compress256_step_ext b C ext) (b + 0x67b0c#64)
 
 /-- Cut `F3b` at `b + 0x6cf80` (right before outer `bl compress256`). -/
 private structure StateF3b (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
@@ -770,13 +737,6 @@ local macro "seg3a_body" : tactic => `(tactic| (
         rw [mem_setMem]
         exact ost_eq_seg3a host hag1 hag2 hag3 hag4 hd_hm64_ost hd_fsp64_ost }))
 
-set_option maxHeartbeats 1600000 in
-private theorem seg3a_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3Pfx b C.F key pfx tail s0)
-    (hs : StateF3 b C.F key pfx tail s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF3b b C.F key pfx tail s0) := by
-  seg3a_body
-
 set_option hygiene false in
 local macro "seg3b_body" compStep:term:max lrTerm:term:max : tactic => `(tactic| (
   rcases hs with ⟨hpc, hcom, hx0, hx1, hx2, hx19, hx20, hblk, host⟩
@@ -812,13 +772,6 @@ local macro "seg3b_body" compStep:term:max lrTerm:term:max : tactic => `(tactic|
         have hlen : blk_out.length = 32 := shaStateBytes_length _
         rw [← hlen]
         exact Bytes.readBytes_writeBytes_same s.mem _ blk_out (by rw [hlen]; decide) }))
-
-set_option maxHeartbeats 1600000 in
-private theorem seg3b_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3Pfx b C.F key pfx tail s0)
-    (hs : StateF3b b C.F key pfx tail s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF4 b C.F key pfx tail s0) := by
-  seg3b_body (s2_compress256_step_ext b C ext) (b + 0x67b8c#64)
 
 /-- Cut `F5` at `b + 0x6cff4` (right before the 7-instruction epilogue). -/
 private structure StateF5 (b : BitVec 64) (F : ShaState → List (BitVec 8) → ShaState)
@@ -910,13 +863,6 @@ local macro "seg4a_body" : tactic => `(tactic| (
           (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _) (toLEBytes_4_rev32 _)).trans
           (hmacWith_pfx_short C.F key pfx tail hpre.key_le hpre.hmac_st.1 hpre.tail_lt).symm }))
 
-set_option maxHeartbeats 1600000 in
-private theorem seg4a_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3Pfx b C.F key pfx tail s0)
-    (hs : StateF4 b C.F key pfx tail s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (StateF5 b C.F key pfx tail s0) := by
-  seg4a_body
-
 set_option hygiene false in
 local macro "seg4b_body" : tactic => `(tactic| (
   rcases hs with ⟨hpc, hcom, hout⟩
@@ -939,36 +885,6 @@ local macro "seg4b_body" : tactic => `(tactic| (
   simp only [List.mem_cons, List.not_mem_nil, or_false] at hr
   rcases hr with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl
   all_goals simp only [arm64_norm, hx26, hx27, hx28]))
-
-set_option maxHeartbeats 1600000 in
-private theorem seg4b_runsTo [HkdfHooks C.F ext] {b : BitVec 64} {key pfx tail : List (BitVec 8)} {s0 s : State}
-    (hpre : FinPre3Pfx b C.F key pfx tail s0)
-    (hs : StateF5 b C.F key pfx tail s0 s) :
-    RunsTo (tripleRatchetProgAtExt b ext) s (FinPost C.F key (pfx ++ tail) s0) := by
-  seg4b_body
-
-/-- Full multi-block `RunsTo` contract of `finalize_fixed [local#3]` (`0x6ce50 → s0.readReg64 .lr`)
-on `tripleRatchetProgAtExt b ext`. -/
-theorem finalize_fixed3_pfx_runsTo_ext [HkdfHooks C.F ext] {b : BitVec 64}
-    {key pfx tail : List (BitVec 8)} {s0 : State}
-    (hpre : FinPre3Pfx b C.F key pfx tail s0) :
-    RunsTo (tripleRatchetProgAtExt b ext) s0 (FinPost C.F key (pfx ++ tail) s0) :=
-  (seg1a_runsTo hpre).trans fun _ hs1 =>
-  (seg1b_runsTo hpre hs1).trans fun _ hs2 =>
-  (seg2a_runsTo hpre hs2).trans fun _ hs3 =>
-  (seg2b_runsTo hpre hs3).trans fun _ hs4 =>
-  (seg3a_runsTo hpre hs4).trans fun _ hs5 =>
-  (seg3b_runsTo hpre hs5).trans fun _ hs6 =>
-  (seg4a_runsTo hpre hs6).trans fun _ hs7 =>
-  seg4b_runsTo hpre hs7
-
-/-- Single-block (`pfx = []`) `RunsTo` contract of `finalize_fixed [local#3]`
-(`0x6ce50 → s0.readReg64 .lr`) on `tripleRatchetProgAtExt b ext`. -/
-theorem finalize_fixed3_runsTo_ext [HkdfHooks C.F ext] {b : BitVec 64}
-    {key msg : List (BitVec 8)} {s0 : State}
-    (hpre : FinPre3 b C.F key msg s0) :
-    RunsTo (tripleRatchetProgAtExt b ext) s0 (FinPost C.F key msg s0) :=
-  @finalize_fixed3_pfx_runsTo_ext C ext _ b key [] msg s0 hpre.to_pfx
 
 section Placed
 
@@ -1158,26 +1074,9 @@ local macro "finalize_fixed3_ok_body" fakeB:term:max runsToLem:term:max : tactic
     ((x.out ↦ₛ hmacWith C.F x.key x.msg) ∗ memRegion x.hm 0x90 ∗ memRegion (s0.sp - 144#64) 144) ∗ R
   ac_nf at hpost_sep ⊢))
 
-/-- `<hmac::Hmac<sha2::Sha256> as digest::FixedOutput>::finalize_fixed [local#3]` (`0x67974`)
-meets `finalizeFixedSpec C.F` on `tripleRatchetProgAtExt b ext`. -/
-def FinalizeFixed3OkExt (b : BitVec 64) (C : Crypto)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr finalizeFixed3Name)
-    (finalizeFixedSpec C.F)
-
-theorem finalize_fixed3_ok_ext (b : BitVec 64) (C : Crypto)
-    (ext : String → Option (State → State)) [HkdfHooks C.F ext] :
-    FinalizeFixed3OkExt b C ext := by
-  unfold FinalizeFixed3OkExt
-  have hfn : (tripleRatchetProgAtExt b ext).fnAddr finalizeFixed3Name = b + 0x67a58#64 := by
-    unfold tripleRatchetProgAtExt finalizeFixed3Name
-    rw [Program.fnAddr_rebase, libsignalSessionCode_fnOff_0x67a58]
-  rw [hfn]
-  finalize_fixed3_ok_body b (FinalizeFixed3Proof.finalize_fixed3_runsTo_ext (ext := ext))
-
 /-- Relocatable `subroutine_ok` contract for `finalize_fixed [local#3]` (Block `425`)
 on `(blkPC_425).rebase (blkPl_425).base H`. -/
-def FinalizeFixed3PlacedOk [LibsignalPlacement] (C : Crypto) (H : LibsignalHooks) : Prop :=
+@[expose] def FinalizeFixed3PlacedOk [LibsignalPlacement] (C : Crypto) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_425).rebase (blkPl_425).base H) (blkPl_425).base (finalizeFixedSpec C.F)
 
 theorem finalize_fixed3_placed_ok [LibsignalPlacement] (C : Crypto)

@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import ProofLib.ProgramReflection.SortedFresh
+meta import GeneratedLean.LibsignalSessionPlacedObjShard1
+meta import GeneratedLean.LibsignalSessionPlacedObjShard2
+meta import GeneratedLean.LibsignalSessionPlacedObjShard4
+meta import GeneratedLean.LibsignalSessionPlacedObjShard5
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -23,12 +27,6 @@ set_option maxRecDepth 2000000
 namespace CryptoVerification.E2E.Pqxdh
 
 open Arm64 CryptoVerification ProofLib.ProgramReflection
-
-gen_decodes libsignalSessionCode_tree kemPublicKeyLength [0x29afc → 0x29b04]
-gen_decodes libsignalSessionCode_tree kyberPreKeyIdDisplay [0x245ac → 0x245e8]
-gen_decodes libsignalSessionCode_tree setUnackKyberPreKeyId [0x123d0 → 0x12404]
-gen_decodes libsignalSessionCode_tree setKyberCiphertext [0x12064 → 0x120bc]
-gen_decodes libsignalSessionCode_tree privateKeyPublicKey [0x3e678 → 0x3e6e0]
 
 end CryptoVerification.E2E.Pqxdh
 

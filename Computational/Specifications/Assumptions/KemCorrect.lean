@@ -24,8 +24,14 @@ probability (DEV-PQ21) rather than perfect KEM correctness (`WellFormedPrimitive
 Together with `WellFormedPrimitivesδ` (`Model.lean`), this file defines `KemDeltaCorrect P δ`,
 bounding the honest failure probability by `δ`, and `CryptoWellFormedPrimitivesδ P`, recording the
 X25519 and Kyber-1024 public-key collision bounds and wire-length rejection laws. The bound `δ` is
-taken as a hypothesis: FIPS 203 (Aug. 2024, Table 1) gives `δ = 2^-174.8` for ML-KEM-1024 and the
-Kyber v3.02 specification (§1.4, Table 1) gives `2^-174` under heuristic noise models.
+taken as a hypothesis in the generic PQXDH theorems (FIPS 203, Aug. 2024, Table 1 gives
+`δ = 2^-174.8` for ML-KEM-1024 and the Kyber v3.02 specification, §1.4, Table 1 gives `2^-174`
+under heuristic compression-noise models); for concrete Round-3 CRYSTALS-Kyber-1024 at
+`realPEParams` and `kyber1024KemKeyGen`, `kyber1024_kem_delta_correct`
+(`Computational/Theorems/Lemmas.lean`, statement `Kyber1024KemDeltaCorrect` in
+`Computational/Specifications/LibsignalCli/Kyber1024Delta.lean`) proves the rigorous bound
+`δ = ε + 1 / 2 ^ 112` under the single CBD-noise idealization hypothesis `KyberNoiseGap ε`
+(`Computational/Specifications/Assumptions/Kyber1024Correct.lean`).
 -/
 
 @[expose] public section

@@ -19,7 +19,8 @@ public import Arm64.Trusted.ISA.Memory
 - **Purpose & Key Exports**: Programmer-visible AArch64 machine state (`State`), including
   condition flags (`PState`: `n`, `z`, `c`, `v`), 64-bit general-purpose registers
   (`RegFile`), 128-bit SIMD/FP registers (`VRegFile`), execution status
-  (`ExecStatus`), nondeterministic oracle (`Oracle`, `Timespec`), recorded signal dispositions
+  (`ExecStatus`), nondeterministic oracle (`Oracle`, `Timespec`, `MremapRefusal`,
+  `SchedAffinityResult`), recorded signal dispositions
   and alternate signal stack (`SigAction`, `SigAltStack`), and state accessors (`readReg64`, `writeReg64`,
   `readReg32`, `writeReg32`, `readVReg128`, `writeVReg128`, `advancePC`, `setPC`).
 - **When to read**: Read when writing or auditing `State` field projections in `Spec.lean`
@@ -212,6 +213,33 @@ structure Timespec where
   nsec : Fin 1000000000 := ⟨0, Nat.zero_lt_succ _⟩
   deriving DecidableEq, Repr, Inhabited, BEq
 
+/-- Non-deterministic refusal outcome for a valid `mremap` call (`Oracle.mremapRefusal`,
+    over-approximating host limits and VMA boundaries invisible in flat byte-granular `Memory`):
+    - `enomem`: returns `-ENOMEM` (`12`, e.g. `RLIMIT_AS` in `may_expand_vm` or
+      `vm.max_map_count` in `check_map_count_against_split_early`, `mm/mremap.c:1870,2039`);
+    - `efault`: returns `-EFAULT` (`14`, e.g. `old_len > vma->vm_end - addr` in
+      `check_prep_vma`, `mm/mremap.c:1849`, when adjacent anonymous mappings remain separate
+      `vm_area_struct`s in the kernel maple tree). -/
+inductive MremapRefusal where
+  | enomem
+  | efault
+  deriving DecidableEq, Repr, Inhabited, BEq
+
+/-- Per-call kernel environment for `sched_getaffinity` (`Oracle.schedGetaffinity`,
+    `kernel/sched/syscalls.c:1278-1333`):
+    - `singleCpu0`: single-CPU kernel (`nr_cpu_ids = 1`, `cpumask_size() = 8`) with CPU 0 online;
+    - `hostMask nrCpuIds maskWords`: multi-CPU kernel with `nr_cpu_ids = max 1 (min 8192 nrCpuIds)`
+      (`cpumask_size() = ((nr_cpu_ids + 63) / 64) * 8` bytes) and 64-bit active-CPU mask words
+      `maskWords` (masked to `[0, nr_cpu_ids)`, defaulting bit 0 to `1` if empty);
+    - `refuseEnomem`: `zalloc_cpumask_var` allocation failure (`-ENOMEM`);
+    - `refuseEperm`: LSM `security_task_getscheduler` refusal (`-EPERM`). -/
+inductive SchedAffinityResult where
+  | singleCpu0
+  | hostMask (nrCpuIds : Nat) (maskWords : List (BitVec 64))
+  | refuseEnomem
+  | refuseEperm
+  deriving DecidableEq, Repr, Inhabited, BEq
+
 /-- Results of the nondeterministic system calls. Query `n` is the `n`-th nondeterministic
     syscall of the run, counting from zero (`State.oracleIdx`).
 
@@ -229,10 +257,11 @@ structure Timespec where
       byte, they deterministically substitute the lowest free page-aligned gap in
       `[MMAP_MIN_ADDR, 2 ^ 48)` that fits, failing only when no free gap of the requested size
       exists,
-    - `mremapFail n`: whether the `n`-th query refuses an `mremap(..., MREMAP_MAYMOVE)` with
-      `-ENOMEM` (leaving the existing mapping intact), conservatively retained to over-approximate
-      nondeterministic `mremap` refusal (e.g. `RLIMIT_AS` / `vm.max_map_count` or allocator fallback
-      paths from `mremap` to `mmap`),
+    - `mremapRefusal n`: optional non-deterministic refusal (`some .enomem` -> `-ENOMEM` for
+      `RLIMIT_AS` / `vm.max_map_count`, or `some .efault` -> `-EFAULT` when `[oldAddr, oldAddr + oldLen)`
+      spans unmerged adjacent VMAs in `check_prep_vma`, leaving existing mappings intact),
+    - `schedGetaffinity n`: kernel `nr_cpu_ids`, active `cpumask_t`, or `-ENOMEM`/`-EPERM` refusal
+      observed by the `n`-th query if it is `sched_getaffinity` (defaulting to `.singleCpu0`),
     - `getrandom n i`: byte `i` of the buffer filled by the `n`-th query if it is a `getrandom`,
     - `clockGettime n`: normalized `struct timespec` (`0 ≤ nsec < 1_000_000_000`) written by the
       `n`-th query if it is a successful `clock_gettime`, with no monotonicity relation between
@@ -244,11 +273,12 @@ structure Timespec where
       exclusive monitor; a retry-less `stxr` is unprovable because `exclFails = [true]` is a
       valid initial state. -/
 structure Oracle where
-  mmap         : Nat → BitVec 64 := fun _ => 0#64
-  mremapFail   : Nat → Bool := fun _ => false
-  getrandom    : Nat → Nat → BitVec 8 := fun _ _ => 0#8
-  clockGettime : Nat → Timespec := fun _ => {}
-  exclFails    : List Bool := []
+  mmap             : Nat → BitVec 64 := fun _ => 0#64
+  mremapRefusal    : Nat → Option MremapRefusal := fun _ => none
+  schedGetaffinity : Nat → SchedAffinityResult := fun _ => .singleCpu0
+  getrandom        : Nat → Nat → BitVec 8 := fun _ _ => 0#8
+  clockGettime     : Nat → Timespec := fun _ => {}
+  exclFails        : List Bool := []
 
 instance : Inhabited Oracle := ⟨{}⟩
 
@@ -459,7 +489,8 @@ structure SigAltStack where
 
 /-- Complete AArch64 architectural machine state, plus the process state this model keeps
     for Linux syscalls and hardware nondeterminism (`brkStart`, `brk`, `fs`, `oracle`,
-    `oracleIdx`, `exclFails`, `trace`, `status`, `sigActions`, `sigAltStack`). -/
+    `oracleIdx`, `exclFails`, `trace`, `status`, `sigActions`, `sigAltStack`, `sigMask`,
+    `sigPending`). -/
 @[ext]
 structure State where
   regs      : RegFile := RegFile.empty
@@ -507,6 +538,16 @@ structure State where
       `include/linux/sched/signal.h:602-608`; see `E1` in `Arm64/Trusted/Process/Assumptions.lean`
       for why the raw flags are `0` rather than the `sas_ss_reset` value `SS_DISABLE`). -/
   sigAltStack : SigAltStack := {}
+  /-- Per-thread blocked signal mask (`current->blocked`, bit `sig - 1` for `1 ≤ sig ≤ 64`),
+      initialized to `0` (empty blocked mask; see `E1` in `Arm64/Trusted/Process/Assumptions.lean`).
+      `SIGKILL` (`9`) and `SIGSTOP` (`19`) are never blockable (`SIG_UNBLOCKABLE_MASK`). -/
+  sigMask     : BitVec 64 := 0#64
+  /-- Per-thread pending signal bitset (`bit sig - 1` for `1 ≤ sig ≤ 64`), initialized to `0`
+      (empty pending set; see `E1` in `Arm64/Trusted/Process/Assumptions.lean`).
+      Queued by `tkill`/`tgkill` when `SIGABRT` is blocked in `sigMask`, flushed by
+      `rt_sigaction(SIGABRT, SIG_IGN, ...)` and delivered synchronously when `rt_sigprocmask`
+      unblocks it. -/
+  sigPending  : BitVec 64 := 0#64
   /-- Remaining dynamic physical `Perm.rw` byte budget (`mm/mmap.c` `accountable_mapping` /
       `__vm_enough_memory`). Initialized from `inputs.init.physMemAvail` in `ElfImage.loadState`
       after ELF `PT_LOAD` segments and the initial stack are mapped; pure ISA steps and I/O
@@ -632,6 +673,14 @@ def setSigAction (s : State) (sig : BitVec 32) (act : SigAction) : State :=
 /-- Update the recorded alternate signal stack (`sigAltStack`). -/
 def setSigAltStack (s : State) (sas : SigAltStack) : State :=
   { s with sigAltStack := sas }
+
+/-- Update the blocked signal mask (`sigMask`). -/
+def setSigMask (s : State) (mask : BitVec 64) : State :=
+  { s with sigMask := mask }
+
+/-- Update the pending signal bitset (`sigPending`). -/
+def setSigPending (s : State) (pending : BitVec 64) : State :=
+  { s with sigPending := pending }
 
 /-- Consume one `oracle` query (increment `oracleIdx`). -/
 def nextOracle (s : State) : State :=

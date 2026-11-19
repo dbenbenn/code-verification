@@ -33,10 +33,10 @@ import Symbolic.Specifications.Model.EquationalTheory.X25519
 import Symbolic.Specifications.Model.EquationalTheory.Kem
 import Symbolic.Specifications.Model.EquationalTheory.Spqr
 import Symbolic.Specifications.Model.EquationalTheory.TrWireMsg
-public import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519
+import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.X25519
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
-import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra -- proof-setup: allow-public-import
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
@@ -65,7 +65,7 @@ chain-key, and hybrid cipher-key inversion lemmas (`CompTrClosed.inv_chainKeyAt`
 `CompTrClosed.inv_trKeyKnown`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -96,7 +96,7 @@ end SizeOfPos
 
 set_option linter.unusedVariables false in
 /-- Number of `kdfExtract` (`hmac`) applications along the left (`salt`) spine of a symbolic term. -/
-def saltDepth (b : Bytes) : Nat :=
+@[expose] def saltDepth (b : Bytes) : Nat :=
   match h : b.view? KdfExtract.KdfExtract.SubF with
   | some v => saltDepth v.salt + 1
   | none => 0
@@ -181,7 +181,7 @@ theorem kdfCk_fst_ne_snd (ck₁ ck₂ : Bytes) : (kdfCk ck₁).1 ≠ (kdfCk ck�
   intro h; have hm := litByte_inj (hmac_inj h).2; revert hm; decide
 
 /-- A chain root `ck₀` is not the `.1` step of any `kdfCk`. -/
-def IsChainRoot (ck₀ : Bytes) : Prop := ∀ x, ck₀ ≠ (kdfCk x).1
+@[expose] def IsChainRoot (ck₀ : Bytes) : Prop := ∀ x, ck₀ ≠ (kdfCk x).1
 
 theorem isChainRoot_mkRand (ts sz : Nat) : IsChainRoot (mkRand ts sz) :=
   fun _ h => by
@@ -216,7 +216,7 @@ theorem chainKeyAt_root_inj {ck₁ ck₂ : Bytes} (h₁ : IsChainRoot ck₁) (h�
 
 /-- `IsAtomicExposure E` means every term in `E` is atomic (`Random` or `KdfExtract`) and never
 packs as `Concat`, `SymEnc.Enc`, `X25519.Variant`, `TrWireMsg`, or `Spqr` states. -/
-def IsAtomicExposure (E : Bytes → Prop) : Prop :=
+@[expose] def IsAtomicExposure (E : Bytes → Prop) : Prop :=
   ∀ b, E b →
     b.view? Concat.Concat.SubF = none ∧
     b.view? SymEnc.Enc.SubF = none ∧

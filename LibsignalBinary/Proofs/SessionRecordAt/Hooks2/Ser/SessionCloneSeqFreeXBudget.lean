@@ -9,23 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneCkXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneEntryXPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.EpilogueReassemblyXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.KyberBaseKeyPqStateXPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.PrologueFields1To4XPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ReceiverChainsPendingPreKeyXPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.SessionCloneTailXPlacedBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneCkXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneEntryXPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.EpilogueReassemblyXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.KyberBaseKeyPqStateXPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.PrologueFields1To4XPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ReceiverChainsPendingPreKeyXPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.SessionCloneTailXPlacedBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionClone
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneX
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.ChainCloneBaseX -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.EpilogueReassemblyX
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Exact-Event (`SegCloneEnv`) `SessionStructure::clone` (Block `80`)
@@ -34,7 +41,7 @@ Verifies `<SessionStructure as Clone>::clone` (Block `80`) at `sessionCloneStack
 deterministic event specification `sessionCloneSegSpecX M A lim` (`evs = segCloneEvents x.G x.s.state`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -125,7 +132,7 @@ set_option linter.unusedSimpArgs false
 /-! ## Exact `SegCloneEnv` specification and helpers -/
 
 /-- Exact-event (`SegCloneEnv x.G x.s.state`) `sessionCloneSpec` at `sessionCloneStackX`. -/
-def sessionCloneSegSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def sessionCloneSegSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SessionCloneGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧
@@ -668,14 +675,5 @@ theorem sessionClone_seg_placed_ok_ext [LibsignalPlacement] {M : AllocCostModel}
         hpc hrun hs0_align hx0 hx1 hcl)
     intro sf P_f ⟨hsp_f, hcc_f, hpost_f⟩
     exact ⟨fun hm => Satisfies.mono (sepConj_mono_left hpost_f) hm, hsp_f, hcc_f⟩
-
-theorem sessionClone_seg_placed_ok_cl [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {callerBlk : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg callerBlk H]
-    (hC : SerContractsXPlaced M A lim H) :
-    subroutine_ok callerProg (lsmpl.base 80) (withLsCl lsmpl (sessionCloneSegSpecX M A lim)) :=
-  ls_subroutine_ok_cl_of_callee (callerProg := callerProg)
-    (sessionClone_seg_placed_ok_ext hC)
 
 end LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionCloneSeqFreeXBudget

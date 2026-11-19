@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DecDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DecDefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DecDefs
 
 /-!
 # Relocatable One-Element `previous_sessions` Loop Statement
@@ -21,7 +23,7 @@ Relocatable (`[LibsignalPlacement]`) statement `OverPrevLoopCliPlacedStmtGen`
 (`(blkPl_518).base + 0x1e78 → (blkPl_518).base + 0x2cfc`) on `lsProg_518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +40,7 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Relocatable `[LibsignalPlacement]` 1-element `previous_sessions` loop
 (`(blkPl_518).base + 0x1e78 → (blkPl_518).base + 0x2cfc`) on `lsProg_518 ext`. -/
-def OverPrevLoopCliPlacedStmtGen [LibsignalPlacement] (trackVRegs : Bool) : Prop :=
+@[expose] def OverPrevLoopCliPlacedStmtGen [LibsignalPlacement] (trackVRegs : Bool) : Prop :=
   ∀ (ext : String → Option (State → State)),
     ∀ (s0 s : State) (coroPtr prevCap prevPtr errsPtr wd0 u3e0 : BitVec 64)
       (msgVer : BitVec 32) (enc : List (BitVec 8)),

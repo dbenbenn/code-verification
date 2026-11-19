@@ -9,20 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodedLen -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymB -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBase
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Base stepping, stack, and slice helpers for `SessionStructure::encode_raw` (`0x4d38`)
@@ -32,7 +32,7 @@ composition combinators, `vecU8At` append lemmas, and subroutine call wrappers f
 `do_reserve_and_handle`, `encode_varint`, `memcpy`, and `encode::<Chain>`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization.EncodeRawAux
 
@@ -64,53 +64,6 @@ theorem not_satisfies_false_sepConj2 {m : Memory} {R : SepProp} (h : m ⊨ ⌜Fa
 
 /-! ## Callee offset resolution on `tripleRatchetProgAt` -/
 
-theorem fnAddr_encraw_add_eq {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    {target : String} {off : BitVec 64}
-    (h : BitVec.ofNat 64 (libsignalSessionCode.fnOff encodeRawName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff target) := by
-      fnoff_eq) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + off =
-      (tripleRatchetProgAt b C ctl abs).fnAddr target := by
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, BitVec.add_assoc, h]
-
-theorem encraw_encodeVarint_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hEV : Prost.EncodeVarintOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + bv% (2 ^ 64 + (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")))
-      (encodeVarintSpec A) := by
-  rw [fnAddr_encraw_add_eq (target := encodeVarintName)]
-  exact hEV
-
-theorem encraw_doReserve_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hDR : OkAt b C ctl abs doReserveName (doReserveSpec A)) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + bv% (2 ^ 64 + (ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")))
-      (doReserveSpec A) := by
-  rw [fnAddr_encraw_add_eq (target := doReserveName)]
-  exact hDR
-
-theorem encraw_encodeChain_ok {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hEC : OkAt b C ctl abs encodeChainName (encodeChainSpec A)) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + bv% (2 ^ 64 + (ls_off% "prost::encoding::message::encode::<libsignal_protocol::proto::storage::session_structure::Chain, alloc::vec::Vec<u8>>") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")))
-      (encodeChainSpec A) := by
-  rw [fnAddr_encraw_add_eq (target := encodeChainName)]
-  exact hEC
-
-theorem encraw_memcpy_ok {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>"))
-      framelessMemcpySpec :=
-  hook_ok_at_raw (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>") (k := num% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")) rfl (by decide)
-    (ls_hook% "memcpy") ⟨hookMemcpy, rfl, framelessMemcpy_hookOk⟩
-
-/-! ## Stack frame splitting -/
-
 /-- Callee stack budget below `sp0 - 80#64` inside `encode_raw`. -/
 abbrev encodeRawSubStack : Nat :=
   Prost.encodeVarintStack + doReserveStack + encodeChainStack
@@ -140,7 +93,7 @@ theorem encraw_stackAt_split_top (sp : BitVec 64) (n d : Nat) (h : n + d ≤ 2 ^
   rw [e2, e1]
 
 /-- Saved registers and scratch slot in the 80-byte frame of `encode_raw`. -/
-def encRawSavedRegs (sp0 : BitVec 64) (s0 : State) (v56 : BitVec 64) : SepProp :=
+@[expose] def encRawSavedRegs (sp0 : BitVec 64) (s0 : State) (v56 : BitVec 64) : SepProp :=
   ((sp0 - 80#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp0 - 72#64) ↦₆₄ s0.readReg64 .lr) ∗
   ((sp0 - 64#64) ↦₆₄ s0.readReg64 .x25) ∗
@@ -231,7 +184,7 @@ theorem stackAt_sub_to_encodeChain (sp : BitVec 64) :
 
 /-! ## `SepWPp` composition with `PanicAllocPost` -/
 
-def PanicAllocPost (s0 : State) : State → SepProp → Prop :=
+@[expose] def PanicAllocPost (s0 : State) : State → SepProp → Prop :=
   fun sf P_f => ∀ R, (sf.mem ⊨ P_f ∗ R) →
     (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R)
 
@@ -591,282 +544,10 @@ theorem reserveCap_bounds_add {cap len add : Nat}
   rw [htoNat]
   omega
 
-theorem encraw_call_doReserve {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hDR : OkAt b C ctl abs doReserveName (doReserveSpec A))
-    (sp0 v cap ptr ret_pc : BitVec 64) (bs : List (BitVec 8)) (add : Nat)
-    (hcap_le : cap.toNat ≤ bs.length + add)
-    (hlen_lt : bs.length + add < 2 ^ 62)
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + bv% (2 ^ 64 + (ls_off% "<alloc::raw_vec::RawVecInner<_>>::reserve::do_reserve_and_handle::<alloc::alloc::Global> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 80#64)
-    (halign : s.spAligned = true)
-    (htr : s.trace = s0.trace)
-    (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = v)
-    (hx1 : (s.readReg64 .x1).toNat = bs.length)
-    (hx2 : (s.readReg64 .x2).toNat = add)
-    (hx3 : s.readReg64 .x3 = 1#64)
-    (hx4 : s.readReg64 .x4 = 1#64)
-    (hP : P = (vecU8At A v cap ptr bs ∗ A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F := by sep_focus)
-    (hnext : ∀ (sm : State) (newCap p' : BitVec 64),
-      sm.pc = ret_pc →
-      sm.status = .Running →
-      sm.sp = sp0 - 80#64 →
-      sm.trace = s0.trace →
-      CalleeSavedPreserved s sm →
-      bs.length + add ≤ newCap.toNat →
-      newCap.toNat < 2 ^ 63 →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        ((vecU8At A v newCap p' bs ∗ A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F)
-        Q (PanicAllocPost s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  have hcall := encraw_doReserve_ok hDR
-  obtain ⟨hres_bound, hnew_ge, hnew_lt⟩ := reserveCap_bounds_add hcap_le hlen_lt
-  refine SepWPp.call (x := DoReserveCall.mk v cap ptr bs add)
-    (F := memRegion (sp0 - 80#64 - 17104#64) 12896 ∗ F)
-    hcall hpc hrun halign hlr ?_ ?_ ?_ ?_
-  · intro R' hm
-    rw [hP, stackAt_sub_to_doReserve_er (sp0 - 80#64)] at hm
-    simp only [doReserveSpec, hsp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2, hx3, hx4, hres_bound⟩, ?_⟩
-    apply satisfies_of_sep_focus hm
-    sep_focus
-  · intro _ _ _ _ hm
-    exact not_satisfies_false_sepConj hm
-  · intro sf _ R' hm
-    simp only [doReserveSpec, allocFailedIn, htr] at hm ⊢
-    exact allowPanic_frame id hm
-  · intro sm hpcm hrunm hspm hcsm
-    rw [hsp] at hspm
-    simp only [doReserveSpec, hsp, sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun p' => ?_
-    refine SepWPp.pure_elim fun htrm => ?_
-    have htrm' : sm.trace = s0.trace := htrm.trans htr
-    refine SepWPp.weaken_pre ?_ (hnext sm (BitVec.ofNat 64 (reserveCap cap.toNat bs.length add)) p'
-      hpcm hrunm hspm htrm' hcsm hnew_ge hnew_lt)
-    rw [stackAt_sub_to_doReserve_er (sp0 - 80#64)]
-    exact entails_of_sep_focus (by sep_focus)
-
-theorem encraw_call_encodeVarint {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hEV : Prost.EncodeVarintOk b C A ctl abs)
-    (sp0 val v cap ptr ret_pc : BitVec 64) (bs : List (BitVec 8))
-    (hlen_lt : bs.length + 10 < 2 ^ 62)
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + bv% (2 ^ 64 + (ls_off% "prost::encoding::varint::encode_varint::<alloc::vec::Vec<u8>> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 80#64)
-    (halign : s.spAligned = true)
-    (htr : s.trace = s0.trace)
-    (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = val)
-    (hx1 : s.readReg64 .x1 = v)
-    (hP : P = (vecU8At A v cap ptr bs ∗ A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F := by sep_focus)
-    (hnext : ∀ (sm : State) (cap' ptr' : BitVec 64),
-      sm.pc = ret_pc →
-      sm.status = .Running →
-      sm.sp = sp0 - 80#64 →
-      sm.trace = s0.trace →
-      CalleeSavedPreserved s sm →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        ((vecU8At A v cap' ptr' (bs ++ encodeVarint val) ∗ A.pool ∗
-          stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F)
-        Q (PanicAllocPost s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  have hcall := encraw_encodeVarint_ok hEV
-  refine SepWPp.call (x := ⟨val, v, cap, ptr, bs⟩)
-    (F := memRegion (sp0 - 80#64 - 17104#64) 12848 ∗ F)
-    hcall hpc hrun halign hlr ?_ ?_ ?_ ?_
-  · intro R' hm
-    rw [hP, stackAt_sub_to_encodeVarint_er (sp0 - 80#64)] at hm
-    simp only [encodeVarintSpec, hsp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, Or.inr hlen_lt⟩, ?_⟩
-    apply satisfies_of_sep_focus hm
-    sep_focus
-  · intro _ _ _ _ hm
-    exact not_satisfies_false_sepConj hm
-  · intro sf _ R' hm
-    simp only [encodeVarintSpec, allocFailedIn, htr] at hm ⊢
-    exact allowPanic_frame id hm
-  · intro sm hpcm hrunm hspm hcsm
-    rw [hsp] at hspm
-    simp only [encodeVarintSpec, hsp, sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun cap' => SepWPp.exists_elim fun ptr' => ?_
-    refine SepWPp.pure_elim fun htrm => ?_
-    refine SepWPp.pure_elim fun _ => ?_
-    have htrm' : sm.trace = s0.trace := htrm.trans htr
-    refine SepWPp.weaken_pre ?_ (hnext sm cap' ptr' hpcm hrunm hspm htrm' hcsm)
-    rw [stackAt_sub_to_encodeVarint_er (sp0 - 80#64)]
-    exact entails_of_sep_focus (by sep_focus)
-
-theorem encraw_call_memcpy {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (v cap ptr srcPtr ret_pc : BitVec 64) (bs payload : List (BitVec 8))
-    (hle : bs.length + payload.length ≤ cap.toNat)
-    (hcap : cap.toNat < 2 ^ 63)
-    (hptr : ptr ≠ 0#64)
-    (hne : payload ≠ [])
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + bv% (ls_off% "memcpy" - ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>"))
-    (hrun : s.status = .Running)
-    (halign : s.spAligned = true)
-    (htr : s.trace = s0.trace)
-    (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = ptr + BitVec.ofNat 64 bs.length)
-    (hx1 : s.readReg64 .x1 = srcPtr)
-    (hx2 : (s.readReg64 .x2).toNat = payload.length)
-    (hP : P = (vecU8At A v cap ptr bs ∗ (srcPtr ↦ₛ payload)) ∗ F := by sep_focus)
-    (hnext : ∀ sm : State,
-      sm.pc = ret_pc →
-      sm.status = .Running →
-      sm.sp = s.sp →
-      sm.trace = s0.trace →
-      CalleeSavedPreserved s sm →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        (((v ↦₆₄ cap) ∗ ((v + 8#64) ↦₆₄ ptr) ∗ ((v + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
-          A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
-          ((ptr + BitVec.ofNat 64 bs.length) ↦ₛ payload) ∗
-          memRegion (ptr + BitVec.ofNat 64 bs.length + BitVec.ofNat 64 payload.length)
-            (cap.toNat - bs.length - payload.length) ∗
-          (srcPtr ↦ₛ payload)) ∗ F)
-        Q (PanicAllocPost s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  have hcall := encraw_memcpy_ok (b := b) (C := C) (ctl := ctl) (abs := abs)
-  have hpos : 0 < payload.length := List.length_pos_of_ne_nil hne
-  refine SepWPp.call (x := (ptr + BitVec.ofNat 64 bs.length, srcPtr, payload))
-    (F := ((v ↦₆₄ cap) ∗ ((v + 8#64) ↦₆₄ ptr) ∗ ((v + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
-           A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
-           memRegion (ptr + BitVec.ofNat 64 bs.length + BitVec.ofNat 64 payload.length)
-             (cap.toNat - bs.length - payload.length)) ∗ F)
-    hcall hpc hrun halign hlr ?_ ?_ ?_ ?_
-  · intro R' hm
-    rw [hP, vecU8At_expose_slice A v cap ptr bs payload.length hle hcap hptr hpos] at hm
-    simp only [framelessMemcpySpec, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2⟩, ?_⟩
-    apply satisfies_of_sep_focus hm
-    sep_focus
-  · intro _ _ _ _ hm
-    exact not_satisfies_false_sepConj hm
-  · intro _ _ _ hm
-    simp only [framelessMemcpySpec, sepConj_assoc, satisfies_pure_sepConj] at hm
-    exact False.elim hm.1
-  · intro sm hpcm hrunm hspm hcsm
-    simp only [framelessMemcpySpec, sepConj_assoc]
-    refine SepWPp.pure_elim fun ⟨_, htrm⟩ => ?_
-    have htrm' : sm.trace = s0.trace := htrm.trans htr
-    refine SepWPp.weaken_pre ?_ (hnext sm hpcm hrunm hspm htrm' hcsm)
-    exact entails_of_sep_focus (by sep_focus)
-
-theorem encraw_call_protoEncodeChain {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hEC : OkAt b C ctl abs encodeChainName (encodeChainSpec A))
-    (tag : Nat) (sp0 a v cap ptr ret_pc : BitVec 64)
-    (gc : ChainGhost × ReceiverChain) (bs : List (BitVec 8))
-    (htag : tag = 6 ∨ tag = 7)
-    (hlen_lt : bs.length + (lenField tag (encChainMem gc)).length < 2 ^ 32)
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + bv% (2 ^ 64 + (ls_off% "prost::encoding::message::encode::<libsignal_protocol::proto::storage::session_structure::Chain, alloc::vec::Vec<u8>>") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 80#64)
-    (halign : s.spAligned = true)
-    (htr : s.trace = s0.trace)
-    (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = BitVec.ofNat 64 tag)
-    (hx1 : s.readReg64 .x1 = a)
-    (hx2 : s.readReg64 .x2 = v)
-    (hP : P = (protoChainAt A gc a ∗ vecU8At A v cap ptr bs ∗ A.pool ∗
-      stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F := by sep_focus)
-    (hnext : ∀ (sm : State) (cap' ptr' : BitVec 64),
-      sm.pc = ret_pc →
-      sm.status = .Running →
-      sm.sp = sp0 - 80#64 →
-      sm.trace = s0.trace →
-      CalleeSavedPreserved s sm →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        ((protoChainAt A gc a ∗ vecU8At A v cap' ptr' (bs ++ lenField tag (encChainMem gc)) ∗
-          A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F)
-        Q (PanicAllocPost s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  have hcall := encraw_encodeChain_ok hEC
-  refine SepWPp.call (x := ⟨tag, a, gc, v, cap, ptr, bs⟩)
-    (F := memRegion (sp0 - 80#64 - 17104#64) 8464 ∗ F)
-    hcall hpc hrun halign hlr ?_ ?_ ?_ ?_
-  · intro R' hm
-    rw [hP, stackAt_sub_to_encodeChain (sp0 - 80#64)] at hm
-    simp only [encodeChainSpec, hsp, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hx2, htag, hlen_lt⟩, ?_⟩
-    apply satisfies_of_sep_focus hm
-    sep_focus
-  · intro _ _ _ _ hm
-    exact not_satisfies_false_sepConj hm
-  · intro sf _ R' hm
-    simp only [encodeChainSpec, allocPanic, allocFailedIn, htr] at hm ⊢
-    exact allowPanic_frame id hm
-  · intro sm hpcm hrunm hspm hcsm
-    rw [hsp] at hspm
-    simp only [encodeChainSpec, hsp, sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun cap' => SepWPp.exists_elim fun ptr' => ?_
-    refine SepWPp.pure_elim fun htrm => ?_
-    have htrm' : sm.trace = s0.trace := htrm.trans htr
-    refine SepWPp.weaken_pre ?_ (hnext sm cap' ptr' hpcm hrunm hspm htrm' hcsm)
-    rw [stackAt_sub_to_encodeChain (sp0 - 80#64)]
-    exact entails_of_sep_focus (by sep_focus)
-
-theorem encraw_call_encodeChain {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hEC : OkAt b C ctl abs encodeChainName (encodeChainSpec A))
-    (tag : Nat) (sp0 a v cap ptr ret_pc : BitVec 64)
-    (gc : ChainGhost × ReceiverChain) (bs : List (BitVec 8))
-    (htag : tag = 6 ∨ tag = 7)
-    (hlen_lt : bs.length + (lenField tag (encChainMem gc)).length < 2 ^ 32)
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    (hpc : s.pc = (tripleRatchetProgAt b C ctl abs).fnAddr encodeRawName + bv% (2 ^ 64 + (ls_off% "prost::encoding::message::encode::<libsignal_protocol::proto::storage::session_structure::Chain, alloc::vec::Vec<u8>>") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>")))
-    (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 80#64)
-    (halign : s.spAligned = true)
-    (htr : s.trace = s0.trace)
-    (hlr : s.readReg64 .lr = ret_pc)
-    (hx0 : s.readReg64 .x0 = BitVec.ofNat 64 tag)
-    (hx1 : s.readReg64 .x1 = a)
-    (hx2 : s.readReg64 .x2 = v)
-    (hP : P = (chainAt A gc a ∗ vecU8At A v cap ptr bs ∗ A.pool ∗
-      stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F := by sep_focus)
-    (hnext : ∀ (sm : State) (cap' ptr' : BitVec 64),
-      sm.pc = ret_pc →
-      sm.status = .Running →
-      sm.sp = sp0 - 80#64 →
-      sm.trace = s0.trace →
-      CalleeSavedPreserved s sm →
-      SepWPp (tripleRatchetProgAt b C ctl abs) ret sm
-        ((chainAt A gc a ∗ vecU8At A v cap' ptr' (bs ++ lenField tag (encChainMem gc)) ∗
-          A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F)
-        Q (PanicAllocPost s0)) :
-    SepWPp (tripleRatchetProgAt b C ctl abs) ret s P Q (PanicAllocPost s0) := by
-  have hP' : P = (protoChainAt A gc a ∗ vecU8At A v cap ptr bs ∗ A.pool ∗
-      stackAt (sp0 - 80#64) encodeRawSubStack) ∗
-      (⌜gc.1.srk.bytes.length = 33 ∧ gc.1.priv.bytes = []⌝ ∗ F) := by
-    rw [hP, chainAt_eq_protoChainAt_er A gc a]; ac_rfl
-  refine encraw_call_protoEncodeChain hEC tag sp0 a v cap ptr ret_pc gc bs htag hlen_lt
-    hpc hrun hsp halign htr hlr hx0 hx1 hx2 hP' ?_
-  intro sm cap' ptr' hpcm hrunm hspm htrm hcsm
-  have hPostEq :
-      ((protoChainAt A gc a ∗ vecU8At A v cap' ptr' (bs ++ lenField tag (encChainMem gc)) ∗
-        A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗
-        (⌜gc.1.srk.bytes.length = 33 ∧ gc.1.priv.bytes = []⌝ ∗ F)) =
-      ((chainAt A gc a ∗ vecU8At A v cap' ptr' (bs ++ lenField tag (encChainMem gc)) ∗
-        A.pool ∗ stackAt (sp0 - 80#64) encodeRawSubStack) ∗ F) := by
-    rw [chainAt_eq_protoChainAt_er A gc a]; ac_rfl
-  rw [hPostEq]
-  exact hnext sm cap' ptr' hpcm hrunm hspm htrm hcsm
-
-/-! ## Register preservation and protobuf field rewrites -/
-
 @[arm64_norm]
 theorem and_self_true : (True ∧ True) = True := and_self True
 
-def EncRawUpperSaved (s0 s : State) : Prop :=
+@[expose] def EncRawUpperSaved (s0 s : State) : Prop :=
   s.readReg64 .x26 = s0.readReg64 .x26 ∧
   s.readReg64 .x27 = s0.readReg64 .x27 ∧
   (s.readReg64 .x28 = s0.readReg64 .x28 ∧ calleeSavedVRegs s = calleeSavedVRegs s0)

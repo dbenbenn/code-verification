@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Wire.X.CalleesW
-public import LibsignalBinary.Proofs.CodeLayout
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.Wire.X.CalleesW -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
 import ProofLib.SepLogic.WPFrozen
@@ -24,7 +23,7 @@ transfer lemmas for `SignalMessage::try_from` on `contractProg img.base ext` and
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,133 +42,6 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 theorem L1_TryFromDefsX : True := trivial
 
 /-! ## Page-aligned ADRP helper for `try_from` (second page) -/
-
-theorem fnAddr_tryFrom_adrpX {b : BitVec 64} {ext : String → Option (State → State)}
-    (hb : b &&& 0xfff#64 = 0#64) {k : BitVec 64}
-    (hk : (bv% (ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from") + k) &&& 0xfffffffffffff000#64 = bv% (page% (ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")) := by rfl) :
-    (((contractProg b ext).fnAddr tryFromName + k) &&&
-      0xfffffffffffff000#64) = b + bv% (page% (ls_off% "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")) := by
-  rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from"), BitVec.add_assoc,
-    adrp_page_of_aligned hb, hk]
-
-/-! ## Panic-stub lookup -/
-
-/-- The `alloc::alloc::handle_alloc_error` stub panics on `contractProg b ext`. -/
-theorem panic_at_handle_alloc_errorX {b : BitVec 64} {ext : String → Option (State → State)}
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" := by fnoff_eq) :
-    (contractProg b ext).externAt? ((contractProg b ext).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  panic_at_panicSymbol (hname := "alloc::alloc::handle_alloc_error") rfl hk
-    (by fnoff_eq)
-    (by fnoff_eq) (by simp [Rust.isPanicSymbol])
-
-/-! ## Caller-relative callee obligations -/
-
-theorem decodeErrorFrom_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : DecodeErrorFromOkW img A ext)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff decodeErrorFromName := by fnoff_eq) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((decodeErrorFromSpecX A).inImage img) := by
-  rw [← Program.fnAddr_rel rfl rfl hk]; exact h
-
-theorem decodeErrorPush_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : DecodeErrorPushOkW img A ext)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff decodeErrorPushName := by fnoff_eq) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((decodeErrorPushSpecX A).inImage img) := by
-  rw [← Program.fnAddr_rel rfl rfl hk]; exact h
-
-theorem decodeVarintSlow_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : DecodeVarintSlowOkW img A ext)
-    {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff varintSlowName := by fnoff_eq) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((decodeVarintSlowSpecX A).inImage img) := by
-  rw [← Program.fnAddr_rel rfl rfl hk]; exact h
-
-theorem decodeVarintSlice_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : DecodeVarintSliceOkW img A ext)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "prost::encoding::varint::decode_varint_slice")) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((decodeVarintSliceSpecW A).inImage img) := by
-  rw [← Program.fnAddr_rel hfn (ls_lemma% fnOff "prost::encoding::varint::decode_varint_slice") hk]; exact h
-
-theorem int32Merge_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : Int32MergeOkW img A ext)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "prost::encoding::int32::merge::<&mut &[u8]>")) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((int32MergeSpecW A).inImage img) := by
-  rw [← Program.fnAddr_rel hfn (ls_lemma% fnOff "prost::encoding::int32::merge::<&mut &[u8]>") hk]; exact h
-
-theorem skipField_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : SkipFieldOkW img A ext)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "prost::encoding::skip_field::<&mut &[u8]> [local#1]")) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((skipFieldSpecW A).inImage img) := by
-  rw [← Program.fnAddr_rel hfn (ls_lemma% fnOff "prost::encoding::skip_field::<&mut &[u8]> [local#1]") hk]; exact h
-
-theorem dropDecodeError_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : DropDecodeErrorOkW img A ext)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "core::ptr::drop_glue::<prost::error::DecodeError> [local#1]")) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((dropDecodeErrorSpecW A).inImage img) := by
-  rw [← Program.fnAddr_rel hfn (ls_lemma% fnOff "core::ptr::drop_glue::<prost::error::DecodeError> [local#1]") hk]; exact h
-
-theorem bytesMerge_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : BytesMergeOkW img A ext)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]")) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      (bytesMergeSpecW A img) := by
-  rw [← Program.fnAddr_rel hfn (ls_lemma% fnOff "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") hk]; exact h
-
-theorem dropSpe_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : DropSpeOkW img A ext)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]")) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((dropSpeSpecX A).inImage img) := by
-  rw [← Program.fnAddr_rel hfn (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]") hk]; exact h
-
-theorem intoBoxedSlice_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : IntoBoxedSliceOkW img A ext)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "<alloc::vec::Vec<u8>>::into_boxed_slice")) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((intoBoxedSliceSpecX A).inImage img) := by
-  rw [← Program.fnAddr_rel hfn (ls_lemma% fnOff "<alloc::vec::Vec<u8>>::into_boxed_slice") hk]; exact h
-
-theorem tryCloneFromRef_ok_atX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (h : TryCloneFromRefOkW img A ext)
-    {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = num% (ls_off% "<alloc::boxed::Box<[u8]>>::try_clone_from_ref_in")) :
-    subroutine_ok (contractProg img.base ext)
-      ((contractProg img.base ext).fnAddr name + BitVec.ofNat 64 k)
-      ((tryCloneFromRefSpecX A).inImage img) := by
-  rw [← Program.fnAddr_rel hfn (ls_lemma% fnOff "<alloc::boxed::Box<[u8]>>::try_clone_from_ref_in") hk]; exact h
-
-/-! ## Relocatable `[LibsignalPlacement]` Proofs -/
 
 section Placed
 

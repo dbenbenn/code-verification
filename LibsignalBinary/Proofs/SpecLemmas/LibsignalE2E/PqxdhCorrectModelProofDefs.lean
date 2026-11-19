@@ -21,7 +21,7 @@ Helper definitions (`pqxdhSpqrModel`, `preKeyStoreEventsBytes`, `recvPrekeyModel
 `LibsignalBinary/Specifications/LibsignalE2E/PqxdhCorrectModel.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace CryptoVerification.E2E
@@ -31,14 +31,14 @@ open CryptoVerification.LibsignalAesCbc (toLEBytes)
 
 /-- The V1 SPQR model (`LibsignalSpqrV1.spqrV1`) at `W`'s SHA-256 compression function `W.C.F`
 and ML-KEM-768 primitives `W.Q.K`. -/
-def pqxdhSpqrModel (W : PEParams) : LibsignalTripleRatchet.SpqrModel :=
+@[expose] def pqxdhSpqrModel (W : PEParams) : LibsignalTripleRatchet.SpqrModel :=
   LibsignalSpqrV1.spqrV1 W.C.F W.Q.K
 
 /-- The 47-byte events header that `recvPrekeyModel` puts before the plaintext after a
 successful `message_decrypt_prekey` on `m`. It records one
 `mark_kyber_pre_key_used(kpk_id, spk_id, base_key)` call, then `remove_pre_key(opk_id)` if a
 one-time pre-key was used. -/
-def preKeyStoreEventsBytes (m : PreKeyMessageFields) : List (BitVec 8) :=
+@[expose] def preKeyStoreEventsBytes (m : PreKeyMessageFields) : List (BitVec 8) :=
   1#8 :: toLEBytes 4 m.kpkId ++ toLEBytes 4 m.spkId ++ djbKey m.baseKey ++
     (match m.opkId with
      | some i => 1#8 :: toLEBytes 4 i
@@ -46,7 +46,7 @@ def preKeyStoreEventsBytes (m : PreKeyMessageFields) : List (BitVec 8) :=
 
 /-- Bob's pre-key `recv` outcome as bytes: `recvPrekeyState`'s, with the record
 `encodeRecordUnderExtras` of its state under its extras and the message part `preKeyStoreEventsBytes m ‖ plaintext`. -/
-def recvPrekeyModel (X : UnreachedPqxdhPrimitives) (W : PEParams) (P : Party) (me : LocalIdentity) (k : ResponderPreKeySecrets)
+@[expose] def recvPrekeyModel (X : UnreachedPqxdhPrimitives) (W : PEParams) (P : Party) (me : LocalIdentity) (k : ResponderPreKeySecrets)
     (m : PreKeyMessageFields) (rc : BitVec 256) : Option (Option (Bytes × Bytes)) :=
   (recvPrekeyState X W P me k m rc).map
     (Option.map fun (x, g, pt) => (encodeRecordUnderExtras (fun _ => x) g, preKeyStoreEventsBytes m ++ pt))

@@ -1,0 +1,12 @@
+{
+  "comment": "Mutant dh-ratchet-no-send-step: RatchetState::dh_ratchet_step performs only the receiving DH half-step and omits rotating self.sender_chain with a fresh ephemeral keypair. Bob encrypts his reply under his static signed pre-key and initial PQXDH handshake chain key, and Alice accepts it via her pre-populated SPK receiver chain without stepping her DH ratchet.",
+  "setup_seed": 23209,
+  "rng_seed": 41,
+  "calls": [
+    {"entry": "init", "who": 0, "b": {"honest_bundle": true}},
+    {"entry": "send", "who": 0, "b": {"utf8": "alice-initial-hello"}},
+    {"entry": "recv", "who": 1, "b": {"message_of": 1}},
+    {"entry": "send", "who": 1, "b": {"utf8": "bob-unratcheted-reply"}},
+    {"entry": "recv", "who": 0, "b": {"message_of": 3}}
+  ]
+}

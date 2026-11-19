@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindProgs -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.AtomicSizeHonest
@@ -31,6 +31,7 @@ import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindGapDhBound
 import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindSigEq
 import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindShcrEq
 import Computational.Proofs.SignalPqxdh.Delta.KindSplit.KeyInd1KeyKindGapDhEq
+public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyDefs
 
 /-!
 # One-Key PQXDH δ Key-Indistinguishability Kind-Split Bundle
@@ -173,38 +174,6 @@ theorem ki1KeyKindActiveGapDhDsl (S : Setup) :
       (fun P hP b A _sOpkOrd hsOrd _opkOrd hoOrd =>
         Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveGapDhLeg4Alt.prob_badKeyIndFgDh4OrdAt_1Key_le_gapDhWithSign_active
           S b P hP A hsOrd hoOrd))
-
-theorem ki1KeyKindGapDhDsl (S : Setup) :
-    KI1KeyG3BoundStmt S (pqxdhKeyInd1KeyKindCostedSims S).eval.gdh := by
-  intro P hP δ hδ b A
-  have hAct := ki1KeyKindActiveGapDhDsl S P hP δ hδ b A
-  dsimp only at hAct
-  refine hAct.trans ?_
-  have hGdh_nonneg :
-      0 ≤ GapDhWithSignReal P P.isValidDhTriple P.pow8
-            ((pqxdhKeyInd1KeyKindCostedSims S).eval.gdh b A) := by
-    unfold GapDhWithSignReal
-    exact ENNReal.toReal_nonneg
-  have hid : (activeIdCount S b.q_on : ℝ) ≤ S.N_id := by
-    unfold activeIdCount; exact_mod_cast Nat.min_le_right b.q_on S.N_id
-  have hspk : (activeSpkCount S b.q_on : ℝ) ≤ S.N_spk_tot := by
-    unfold activeSpkCount; exact_mod_cast Nat.min_le_right b.q_on S.N_spk_tot
-  have hopk : (activeOpkCount S b.q_on : ℝ) ≤ S.N_opk_tot := by
-    unfold activeOpkCount; exact_mod_cast Nat.min_le_right b.q_on S.N_opk_tot
-  have hsend : (activeSendCount S b.q_on : ℝ) ≤ S.N_send_tot := by
-    unfold activeSendCount; exact_mod_cast Nat.min_le_right b.q_on S.N_send_tot
-  have hsopk : (activeSendOpkCount S b.q_on : ℝ) ≤ S.N_send_opk_tot := by
-    unfold activeSendOpkCount; exact_mod_cast Nat.min_le_right b.q_on S.N_send_opk_tot
-  have hPoly :
-      (activeSpkCount S b.q_on : ℝ) * ((activeIdCount S b.q_on : ℝ) + (activeSendCount S b.q_on : ℝ)) +
-        (activeIdCount S b.q_on : ℝ) * (activeSendCount S b.q_on : ℝ) +
-        (activeOpkCount S b.q_on : ℝ) * (activeSendOpkCount S b.q_on : ℝ) ≤
-      (S.N_spk_tot : ℝ) * ((S.N_id : ℝ) + (S.N_send_tot : ℝ)) +
-        (S.N_id : ℝ) * (S.N_send_tot : ℝ) +
-        (S.N_opk_tot : ℝ) * (S.N_send_opk_tot : ℝ) := by
-    gcongr
-  have hMul := mul_le_mul_of_nonneg_right hPoly hGdh_nonneg
-  linarith
 
 theorem pqxdhKeyInd1KeyKindCostedSims_securityδ (S : Setup) :
     PqxdhKeyIndReductionBoundδ S (pqxdhKeyInd1KeyKindCostedSims S).eval :=

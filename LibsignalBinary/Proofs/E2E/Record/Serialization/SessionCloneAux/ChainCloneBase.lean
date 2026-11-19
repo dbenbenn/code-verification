@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneFetch
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneFetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymE -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import ProofLib.SepLogic.WPp
@@ -21,7 +21,7 @@ import ProofLib.SepLogic.WPp
 # Stack and heap layout helpers for `<Chain as Clone>::clone` (`0x24848`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.ChainCloneLocal1
 
@@ -35,7 +35,7 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
+@[expose] def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 64) : SepProp :=
   ⌜PublicKey.deserialize gc.1.srk.bytes = .ok gc.2.senderRatchetKey ∧
     gc.2.messageKeys.length ≤ maxMessageKeys ∧
     gc.1.keys.length = gc.2.messageKeys.length⌝ ∗
@@ -45,7 +45,7 @@ def protoChainAt (A : RustAlloc) (gc : ChainGhost × ReceiverChain) (a : BitVec 
     (gc.1.keys.zip gc.2.messageKeys) ∗
   optChainKeyAt A gc.1.ck gc.2.chainKey (a + 72#64)
 
-def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
+@[expose] def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src⌝ ∗
       memRegion x.dst 104 ∗ protoChainAt A x.gc x.src ∗ A.pool ∗ stackAt s.sp chainCloneStack
@@ -58,37 +58,20 @@ def protoChainCloneSpec (A : RustAlloc) : Spec ChainCloneGhost where
       protoChainAt A x.gc x.src ∗ A.pool ∗ stackAt s0.sp chainCloneStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def ProtoChainCloneLocal1Ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def ProtoChainCloneLocal1Ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name)
     (protoChainCloneSpec A)
 
-def ProtoChainCloneLocal1Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name)
-    (protoChainCloneSpec A)
-
-def ChainCloneLocal1Ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def ChainCloneLocal1Ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name)
     (chainCloneSpec A)
 
-def ChainCloneLocal1Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name)
-    (chainCloneSpec A)
-
-def SenderChainCloneLocal1Ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
+@[expose] def SenderChainCloneLocal1Ok_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
     (abs : String → Option (State → State)) : Prop :=
   subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr chainCloneLocal1Name)
     (senderChainCloneSpec A)
-
-def SenderChainCloneLocal1Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr chainCloneLocal1Name)
-    (senderChainCloneSpec A)
-
-/-! ## Stack frame decomposition and address normalization -/
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -182,7 +165,6 @@ theorem readReg_setMem_setPC_pre (s : State) (pc : BitVec 64) (m : Memory) (w : 
   cases w <;> cases r <;> rfl
 
 end ChainCloneStateSimp
-
 
 theorem memRegion_eight_eq_two_four (a : BitVec 64) :
     (∃∗ v : BitVec 64, a ↦₆₄ v) =
@@ -430,7 +412,7 @@ theorem vecU8Buf_pos_eq (A : RustAlloc) (ptr' : BitVec 64) (bs : List (BitVec 8)
 
 /-- Register and heap invariant for a cloned `Option<chain::ChainKey>` before storing to
 `dst + 72`. -/
-def clonedOptChainKeyBuf (A : RustAlloc) (ckPin' : VecPin)
+@[expose] def clonedOptChainKeyBuf (A : RustAlloc) (ckPin' : VecPin)
     (x25 x28 : BitVec 64) (w27 : BitVec 32) : Option ChainKey → SepProp
   | none => ⌜x25 = optChainKeyNone⌝
   | some ck =>
@@ -505,7 +487,7 @@ theorem fold_optChainKeyAt (A : RustAlloc) (ckPin' : VecPin)
     exact Entails.refl _
 
 /-- Unread fields of a source `chain::MessageKey` at `a` during the `MessageKey` clone loop. -/
-def messageKeySourceFrame (A : RustAlloc) (gk : MessageKeyGhost)
+@[expose] def messageKeySourceFrame (A : RustAlloc) (gk : MessageKeyGhost)
     (mkg : MessageKeyGenerator) (a : BitVec 64) : SepProp :=
   (a ↦₆₄ gk.cipher.cap) ∗ ((a + 8#64) ↦₆₄ gk.cipher.ptr) ∗ vecU8Buf A gk.cipher.cap gk.cipher.ptr [] ∗
   ((a + 24#64) ↦₆₄ gk.mac.cap) ∗ ((a + 32#64) ↦₆₄ gk.mac.ptr) ∗ vecU8Buf A gk.mac.cap gk.mac.ptr [] ∗
@@ -626,7 +608,7 @@ theorem messageKeyAt_eq_source (A : RustAlloc) (gk : MessageKeyGhost)
     rw [hpure_comm]
     exact Entails.pure_right ⟨hlen, hlt, hptr⟩ (Entails.refl _)
 
-def clonedMessageKeyGhost (seedLen seedPtr' : BitVec 64) : MessageKeyGhost :=
+@[expose] def clonedMessageKeyGhost (seedLen seedPtr' : BitVec 64) : MessageKeyGhost :=
   { cipher := ⟨0#64, 1#64⟩
     mac    := ⟨0#64, 1#64⟩
     iv     := ⟨0#64, 1#64⟩
@@ -706,7 +688,7 @@ theorem fold_cloned_messageKeyAt (A : RustAlloc) (mkg : MessageKeyGenerator)
       ac_rfl
     rw [hcomm]; exact Entails.refl _
 
-def clonedChainGhost (gc : ChainGhost × ReceiverChain)
+@[expose] def clonedChainGhost (gc : ChainGhost × ReceiverChain)
     (srkPtr' privPtr' mkCap' mkPtr' : BitVec 64)
     (keys' : List MessageKeyGhost) (ckPin' : VecPin) : ChainGhost :=
   { srk   := ⟨BitVec.ofNat 64 gc.1.srk.bytes.length, srkPtr', gc.1.srk.bytes⟩
@@ -810,7 +792,7 @@ theorem fold_chainAt_dst (A : RustAlloc) (gc : ChainGhost × ReceiverChain)
 /-! ## Saved registers and spill slots -/
 
 /-- Callee-saved register area `[s0.sp - 96 .. s0.sp)` and unused slots `[s0.sp - 120 .. s0.sp - 108)`. -/
-def savedRegsOnStack (s0 : State) : SepProp :=
+@[expose] def savedRegsOnStack (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗
@@ -828,7 +810,7 @@ def savedRegsOnStack (s0 : State) : SepProp :=
   (∃∗ w12b : BitVec 32, (s0.sp - 108#64) ↦₃₂ w12b)
 
 /-- Existentially quantified spill slots `[sp - 208 .. sp - 152)`. -/
-def spillSlotsExist (sp : BitVec 64) : SepProp :=
+@[expose] def spillSlotsExist (sp : BitVec 64) : SepProp :=
   (∃∗ v0 : BitVec 64, (sp - 208#64) ↦₆₄ v0) ∗
   (∃∗ w1a : BitVec 32, (sp - 200#64) ↦₃₂ w1a) ∗
   (∃∗ w1b : BitVec 32, (sp - 196#64) ↦₃₂ w1b) ∗
@@ -1017,15 +999,15 @@ section Placed
 
 open CryptoVerification CryptoVerification.E2E.Record.Placed
 
-def ProtoChainCloneLocal1PlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ProtoChainCloneLocal1PlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_82 H) (blkPl_82).base (protoChainCloneSpec A)
 
-def ChainCloneLocal1PlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainCloneLocal1PlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_82 H) (blkPl_82).base (chainCloneSpec A)
 
-def SenderChainCloneLocal1PlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def SenderChainCloneLocal1PlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_82 H) (blkPl_82).base (senderChainCloneSpec A)
 

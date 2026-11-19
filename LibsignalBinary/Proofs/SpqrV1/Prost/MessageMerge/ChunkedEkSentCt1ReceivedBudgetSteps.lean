@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkSentCt1ReceivedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedEkSentCt1ReceivedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
@@ -23,6 +22,8 @@ import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyDecoder
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.UnchunkedEkSentCt1Received
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Tag/Skip Step Proofs for `Chunked.EkSentCt1Received::merge` (Block `309`)
@@ -31,7 +32,7 @@ Proves the budget-threaded `skip`, `tag = 1` (`uc : Option Unchunked.EkSentCt1Re
 `tag = 3` (`receivingCt2 : Option PolynomialDecoder`) step lemmas on Block `309`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -52,18 +53,7 @@ open CryptoVerification.LibsignalSpqrV1.Proto (mergeMessage)
 open CryptoVerification.SpqrV1.Auth (WppPost)
 open CryptoVerification.SpqrV1.ProtoRepr
   (ekSentCt1ReceivedPBAt optEkSentCt1ReceivedPBAt optPolynomialDecoderPBAt polynomialDecoderPBAt)
-open CryptoVerification.SpqrV1.Prost.MessageMerge
-  (ChunkedEkSentCt1ReceivedMergeGhost ChunkedLoopRegs PolyDecoderMergeGhost SepWPpLscro
-   bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked
-   chunkedBelow_skipField3_98 chunkedBelow_skipField3_98_entails
-   chunkedEkSentCt1ReceivedMerge_fnOff chunkedEkSentCt1ReceivedPBAt chunkedEkSentCt1ReceivedPBCapAt
-   chunkedEkSentCt1ReceivedPBCapAt_entails_pb chunkedEkSentCt1ReceivedPBCapAt_mono chunkedSavedRegs
-   codecWireTypeToProto memRegion_48_split_128 optPolyDecoderPtsLen
-   optPolyDecoder_getD_default_pts_len optUnchunkedEkSentCt1ReceivedPBCapAt
-   optUnchunkedEkSentCt1ReceivedPBCapAt_entails_optEkSentCt1ReceivedPBAt
-   optUnchunkedEkSentCt1ReceivedPBCapAt_mono
-   protoPolynomialDecoderAt_eq_pb proto_mergeMessage_len_le setWidth8_ofNat64_wt
-   unchunkedEkSentCt1ReceivedPBCapAt)
+open CryptoVerification.SpqrV1.Prost.MessageMerge (ChunkedEkSentCt1ReceivedMergeGhost ChunkedLoopRegs PolyDecoderMergeGhost SepWPpLscro bv64_add_zero bv64_sub_zero chunkedBelow chunkedBelow_eq_poly chunkedBelow_eq_unchunked chunkedBelow_skipField3_98 chunkedBelow_skipField3_98_entails chunkedEkSentCt1ReceivedPBAt chunkedEkSentCt1ReceivedPBCapAt chunkedEkSentCt1ReceivedPBCapAt_entails_pb chunkedEkSentCt1ReceivedPBCapAt_mono chunkedSavedRegs codecWireTypeToProto memRegion_48_split_128 optPolyDecoderPtsLen optPolyDecoder_getD_default_pts_len optUnchunkedEkSentCt1ReceivedPBCapAt optUnchunkedEkSentCt1ReceivedPBCapAt_entails_optEkSentCt1ReceivedPBAt optUnchunkedEkSentCt1ReceivedPBCapAt_mono protoPolynomialDecoderAt_eq_pb proto_mergeMessage_len_le setWidth8_ofNat64_wt unchunkedEkSentCt1ReceivedPBCapAt)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.ChunkedMerge
   (UnchunkedEkSentCt1ReceivedMergeGhost unchunkedMergeStack)
 open CryptoVerification.SpqrV1.Prost.MessageMerge.Part2 (blkPC_309 blkPl_309)
@@ -91,8 +81,7 @@ open LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3Budget (skipField3Spec)
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff VmPreserved
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
-  chunkedEkSentCt1ReceivedMerge_fnOff setWidth8_ofNat64_wt
+attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero setWidth8_ofNat64_wt
 
 @[local simp, local arm64_norm]
 private theorem iwt_w0_setWidth8_1 (iwt : WireType) :

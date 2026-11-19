@@ -13,17 +13,20 @@ public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit -- pro
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInitCost
 public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedSendCorrSub -- proof-setup: allow-public-import
 import Computational.Proofs.Game.PromotedCostedReds.KemFailRedSendCorrCost
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitness
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
 public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepSend -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepCorr -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvSame -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewCost -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNew -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedDeliverWitnessSub -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.SessionCostedBase
 
 /-!
 # Online Tracker-Halted Figure 8 Reduction
@@ -103,8 +106,6 @@ open Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNew (simFig8Rec
 open Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon
   (session_cost_le_ratchetCostBudget
    dummyBoolSessionRed dummyBoolSessionRed_totalQueries dummyBoolSessionRed_totalCost_le)
-
-noncomputable section
 
 /-! ## Tracker-halted Figure 8 simulator -/
 
@@ -1191,7 +1192,5 @@ theorem simFig8RedProgHalted_gRedBounded (ℓ : ℕ) (C : Crypto) (K : MlKem)
     hqep (Nat.le_refl _)
 
 end Theorems
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimFig8Halted

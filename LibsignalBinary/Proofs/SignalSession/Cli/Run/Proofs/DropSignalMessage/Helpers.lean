@@ -9,22 +9,13 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
-
-/-!
-# Exact-Stack Symbolic Execution for `SignalMessage` Drop Glue
-
-Decomposes `signalMessageAt` (120 bytes) into deallocatable slice capabilities and proves the
-exact-stack contract for `core::ptr::drop_glue::<SignalMessage>` at `32 + extHookStack`.
--/
-
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -37,12 +28,6 @@ open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 
 attribute [local irreducible] Program.fetch Program.externAt?
-
-gen_decodes CryptoVerification.libsignalSessionCode_tree smDropDec
-  [(ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>") →
-   (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 116)]
-
-/-! ## Arithmetic and stack helpers -/
 
 private theorem ofNat_beq_zero_false {n : Nat} (h0 : 0 < n) (hlt : n < 2 ^ 64) :
     (BitVec.ofNat 64 n == 0#64) = false := by
@@ -330,25 +315,6 @@ private def Saved32Preserved (s0 s : State) (fsp : BitVec 64) : Prop :=
   s.trace = s0.trace ∧
   calleeSavedVRegs s = calleeSavedVRegs s0
 
-private theorem seq_clean32 {prog : Program} {img : Obj.Image} {mid target : BitVec 64} {s : State}
-    {P P_mid : SepProp} {Q : State → Prop} {post : State → SepProp → Prop}
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h1 : SepWP prog mid s P (fun sm Pm => (Pm ⊢ P_mid) ∧ Q sm))
-    (h2 : ∀ sm : State, sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Q sm →
-      SepWP prog target sm P_mid post) :
-    SepWP prog target s P post := by
-  unfold SepWP reaches_pc
-  intro R hm hL
-  obtain ⟨sm, hsteps1, ⟨hpcm, hrunm, P_m, hm_m, hent, hQ⟩ | ⟨hoom1, hfalse1⟩⟩ := h1.elim hm hL
-  · have hfrozen_m : img.FrozenLoaded sm := hfrozen.of_keepsFrozen hsteps1.keepsFrozen
-    have hsym_m : sm.symtab = img.symtab := hsteps1.symtab_eq.trans hsym
-    have hm_m' : sm.mem ⊨ P_mid ∗ R := Satisfies.mono (sepConj_mono_left hent) hm_m
-    obtain ⟨sf, hsteps2, hout2⟩ :=
-      (h2 sm hpcm hrunm hfrozen_m hsym_m hQ).elim hm_m' (hsteps1.codeLoaded hL)
-    exact ⟨sf, Steps.trans hsteps1 hsteps2, hout2⟩
-  · exact ⟨sm, hsteps1, Or.inr ⟨hoom1, hfalse1⟩⟩
-
 private theorem sm_tail_pre_weaken
     (a pqCap pqPtr ctPtr ctLen serPtr serLen w0 w1 : BitVec 64)
     (live1 live2 pool : SepProp) (sp fp lr x19 w3 : BitVec 64) :
@@ -379,209 +345,11 @@ private theorem sm_tail_pre_weaken
 
 /-! ## Exact-stack proof (`32 + extHookStack`) -/
 
-def smDropRawSpec (A : RustAlloc) (stk : Nat) :
+@[expose] def smDropRawSpec (A : RustAlloc) (stk : Nat) :
     Spec (BitVec 64 × SignalMessageGhost × SignalMessage) where
   pre := fun (a, g, m) s =>
     ⌜s.readReg64 .x0 = a⌝ ∗ signalMessageAt A g a m ∗ A.pool ∗ stackAt s.sp stk
   post := fun (a, _, _) s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ memRegion a 120 ∗ A.pool ∗ stackAt s0.sp stk
-
-set_option maxHeartbeats 1600000 in
-theorem smDropRaw_exact_ok {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr
-        "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>")
-      ((smDropRawSpec A (32 + extHookStack)).inImage img) := by
-  simp only [Spec.inImage, smDropRawSpec]
-  have hdealloc := hA.dealloc_ok_at
-    "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>"
-    (num% (ls_off% "__rustc::__rust_dealloc" -
-      ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>"))
-    (by
-      rw [(ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>")]
-      simp only [arm64_norm])
-  simp only [Spec.inImage, rustDeallocExternSpecWithStack] at hdealloc
-  have hfnOff := ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>"
-  have f0 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 0) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 0))
-  have f4 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 4) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 4))
-  have f8 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 8) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 8))
-  have f12 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 12) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 12))
-  have f16 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 16) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 16))
-  have f20 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 20) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 20))
-  have f24 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 24) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 24))
-  have f28 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 28) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 28))
-  have f32 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 32) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 32))
-  have f36 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 36) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 36))
-  have f40 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 40) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 40))
-  have f44 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 44) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 44))
-  have f48 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 48) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 48))
-  have f52 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 52) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 52))
-  have f56 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 56) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 56))
-  have f60 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 60) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 60))
-  have f64 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 64) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 64))
-  have f68 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 68) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 68))
-  have f72 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 72) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 72))
-  have f76 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 76) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 76))
-  have f80 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 80) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 80))
-  have f84 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 84) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 84))
-  have f88 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 88) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 88))
-  have f92 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 92) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 92))
-  have f96 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 96) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 96))
-  have f100 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 100) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 100))
-  have f104 := CryptoVerification.libsignalSessionCode_fetch_fnAddr (b := img.base) (H := Rust.withPanics ext) (k := 104) hfnOff (by decide) (ls_decode% smDropDec (ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" + 104))
-  dsimp only [tripleRatchetProgAtExt, BitVec.ofNat_eq_ofNat] at hdealloc f0 f4 f8 f12 f16 f20 f24 f28 f32 f36 f40 f44 f48 f52 f56 f60 f64 f68 f72 f76 f80 f84 f88 f92 f96 f100 f104 ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>" = pEntry
-  rw [BitVec.add_zero] at f0
-  examples_hide_fetches
-  wp_init x s0
-  rcases x with ⟨a, g, msg⟩
-  dsimp only at *
-  subst h
-  have hfsp_align : ((s0.sp - 32#64) &&& 15#64 == 0#64) = true :=
-    ProofLib.spAligned_sub s0.sp 32#64 (by assumption)
-  nth_rw 1 [stackAt_smDrop_split s0.sp]
-  cells_unfold
-  wp_pull_exists
-  rename_i st0 st1 st2 w3
-  refine SepWP.weaken_pre
-    (sepConj_mono_left (signalMessageAt_expose A g (s0.readReg64 (Reg.gpr 0#5)) msg)) ?_
-  wp_pull_exists
-  rename_i w0 w1
-  refine SepWP.pure_elim ?_
-  rintro ⟨hser_ne0, _, _, _⟩
-  refine seq_clean32 (mid := pEntry + bv% (20))
-    (P_mid :=
-      smHeadersAt (s0.readReg64 (Reg.gpr 0#5)) g.pqCap g.pqPtr
-        g.ctPtr (BitVec.ofNat 64 msg.ciphertext.length)
-        g.serPtr (BitVec.ofNat 64 msg.serialized.length) w0 w1 ∗
-      deallocOpt A (BitVec.ofNat 64 msg.ciphertext.length) g.ctPtr ∗
-      deallocOpt A g.pqCap g.pqPtr ∗
-      deallocOpt A (if (w0 == 0#64) = true then 0#64 else w1) w0 ∗
-      A.live g.serPtr (BitVec.ofNat 64 msg.serialized.length).toNat 1 ∗
-      memRegion g.serPtr (BitVec.ofNat 64 msg.serialized.length).toNat ∗
-      A.pool ∗ stackAt (s0.sp - 32#64) extHookStack ∗
-      ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
-      ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
-      ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5)) ∗
-      ((s0.sp - 8#64) ↦₆₄ w3))
-    (Q := fun sm =>
-      Saved32Preserved s0 sm (s0.sp - 32#64) ∧
-      sm.readReg64 (Reg.gpr 19#5) = s0.readReg64 (Reg.gpr 0#5) ∧
-      sm.readReg64 (Reg.gpr 1#5) = BitVec.ofNat 64 msg.ciphertext.length)
-    h_2 h_1
-    (by
-      dsimp only [smHeadersAt]
-      wp_steps
-      wp_done) ?_
-  intro sp0 hpcp0 hrunp0 hfrozenp0 hsymp0 ⟨⟨hx20_0, hx21_0, hx22_0, hx23_0, hx24_0, hx25_0, hx26_0, hx27_0, hx28_0, hsp_0, htrace_0, hvregs_0⟩, hx19_0, hx1_0⟩
-  refine seq_clean32 (mid := pEntry + bv% (36))
-    (P_mid :=
-      smHeadersAt (s0.readReg64 (Reg.gpr 0#5)) g.pqCap g.pqPtr
-        g.ctPtr (BitVec.ofNat 64 msg.ciphertext.length)
-        g.serPtr (BitVec.ofNat 64 msg.serialized.length) w0 w1 ∗
-      deallocOpt A g.pqCap g.pqPtr ∗
-      deallocOpt A (if (w0 == 0#64) = true then 0#64 else w1) w0 ∗
-      A.live g.serPtr (BitVec.ofNat 64 msg.serialized.length).toNat 1 ∗
-      memRegion g.serPtr (BitVec.ofNat 64 msg.serialized.length).toNat ∗
-      A.pool ∗ stackAt (s0.sp - 32#64) extHookStack ∗
-      ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
-      ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
-      ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5)) ∗
-      ((s0.sp - 8#64) ↦₆₄ w3))
-    (Q := fun sm =>
-      Saved32Preserved s0 sm (s0.sp - 32#64) ∧
-      sm.readReg64 (Reg.gpr 19#5) = s0.readReg64 (Reg.gpr 0#5))
-    hfrozenp0 hsymp0 ?_ ?_
-  · dsimp only [smHeadersAt, deallocOpt]
-    by_cases hct : (BitVec.ofNat 64 msg.ciphertext.length == 0#64) = true <;>
-      simp only [hct, Bool.false_eq_true, ↓reduceIte, emp_sepConj]
-    · wp_steps
-      wp_done
-    · refine SepWP.focus_pure (by sep_focus) ?_
-      rintro ⟨_, _, _⟩
-      wp_steps
-      wp_call hdealloc (g.ctPtr, (BitVec.ofNat 64 msg.ciphertext.length).toNat, 1)
-      wp_done
-  · intro s1 hpc1 hrun1 hfrozen1 hsym1 ⟨⟨hx20_1, hx21_1, hx22_1, hx23_1, hx24_1, hx25_1, hx26_1, hx27_1, hx28_1, hsp_1, htrace_1, hvregs_1⟩, hx19_1⟩
-    refine seq_clean32 (mid := pEntry + bv% (56))
-      (P_mid :=
-        smHeadersAt (s0.readReg64 (Reg.gpr 0#5)) g.pqCap g.pqPtr
-          g.ctPtr (BitVec.ofNat 64 msg.ciphertext.length)
-          g.serPtr (BitVec.ofNat 64 msg.serialized.length) w0 w1 ∗
-        deallocOpt A (if (w0 == 0#64) = true then 0#64 else w1) w0 ∗
-        A.live g.serPtr (BitVec.ofNat 64 msg.serialized.length).toNat 1 ∗
-        memRegion g.serPtr (BitVec.ofNat 64 msg.serialized.length).toNat ∗
-        A.pool ∗ stackAt (s0.sp - 32#64) extHookStack ∗
-        ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
-        ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
-        ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5)) ∗
-        ((s0.sp - 8#64) ↦₆₄ w3))
-      (Q := fun sm =>
-        Saved32Preserved s0 sm (s0.sp - 32#64) ∧
-        sm.readReg64 (Reg.gpr 19#5) = s0.readReg64 (Reg.gpr 0#5))
-      hfrozen1 hsym1 ?_ ?_
-    · dsimp only [smHeadersAt, deallocOpt]
-      by_cases hpq : (g.pqCap == 0#64) = true <;>
-        simp only [hpq, Bool.false_eq_true, ↓reduceIte, emp_sepConj]
-      · wp_steps
-        wp_done
-      · refine SepWP.focus_pure (by sep_focus) ?_
-        rintro ⟨_, _, _⟩
-        wp_steps
-        wp_call hdealloc (g.pqPtr, g.pqCap.toNat, 1)
-        wp_done
-    · intro s2 hpc2 hrun2 hfrozen2 hsym2 ⟨⟨hx20_2, hx21_2, hx22_2, hx23_2, hx24_2, hx25_2, hx26_2, hx27_2, hx28_2, hsp_2, htrace_2, hvregs_2⟩, hx19_2⟩
-      refine seq_clean32 (mid := pEntry + bv% (80))
-        (P_mid :=
-          smHeadersAt (s0.readReg64 (Reg.gpr 0#5)) g.pqCap g.pqPtr
-            g.ctPtr (BitVec.ofNat 64 msg.ciphertext.length)
-            g.serPtr (BitVec.ofNat 64 msg.serialized.length) w0 w1 ∗
-          A.live g.serPtr (BitVec.ofNat 64 msg.serialized.length).toNat 1 ∗
-          memRegion g.serPtr (BitVec.ofNat 64 msg.serialized.length).toNat ∗
-          A.pool ∗ stackAt (s0.sp - 32#64) extHookStack ∗
-          ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
-          ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
-          ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5)) ∗
-          ((s0.sp - 8#64) ↦₆₄ w3))
-        (Q := fun sm =>
-          Saved32Preserved s0 sm (s0.sp - 32#64) ∧
-          sm.readReg64 (Reg.gpr 19#5) = s0.readReg64 (Reg.gpr 0#5))
-        hfrozen2 hsym2 ?_ ?_
-      · dsimp only [smHeadersAt, deallocOpt]
-        by_cases hw0 : (w0 == 0#64) = true
-        · simp only [hw0, beq_self_eq_true, ↓reduceIte, emp_sepConj]
-          wp_steps
-          wp_done
-        · simp only [hw0, Bool.false_eq_true, ↓reduceIte]
-          by_cases hw1 : (w1 == 0#64) = true <;>
-            simp only [hw1, Bool.false_eq_true, ↓reduceIte, emp_sepConj]
-          · wp_steps
-            wp_done
-          · refine SepWP.focus_pure (by sep_focus) ?_
-            rintro ⟨_, _, _⟩
-            wp_steps
-            wp_call hdealloc (w0, w1.toNat, 1)
-            wp_done
-      · intro s3 hpc3 hrun3 hfrozen3 hsym3 ⟨⟨hx20_3, hx21_3, hx22_3, hx23_3, hx24_3, hx25_3, hx26_3, hx27_3, hx28_3, hsp_3, htrace_3, hvregs_3⟩, hx19_3⟩
-        apply SepWP.seq_inImage (img := img) ⟨hfrozen3, hsym3⟩
-          (mid := pEntry + bv% (ls_off% "__rustc::__rust_dealloc" -
-            ls_off% "core::ptr::drop_glue::<libsignal_protocol::protocol::SignalMessage>"))
-        dsimp only [smHeadersAt]
-        wp_steps
-        refine SepWP.weaken_pre
-          (sm_tail_pre_weaken (s0.readReg64 (Reg.gpr 0#5)) g.pqCap g.pqPtr
-            g.ctPtr (BitVec.ofNat 64 msg.ciphertext.length)
-            g.serPtr (BitVec.ofNat 64 msg.serialized.length) w0 w1
-            _ _ A.pool s0.sp
-            (s0.readReg64 (Reg.gpr 29#5)) (s0.readReg64 (Reg.gpr 30#5))
-            (s0.readReg64 (Reg.gpr 19#5)) w3) ?_
-        apply SepWP.done (by rfl)
-          (by simp only [State.status_setPC, State.status_writeReg64, hrun3])
-        rintro ⟨hfrozen_tail, hsym_tail⟩
-        wp_call hdealloc (g.serPtr, (BitVec.ofNat 64 msg.serialized.length).toNat, 1)
-        refine SepWP.weaken_pre (sm_tail_post_weaken (s0.readReg64 (Reg.gpr 0#5)) A.pool s0.sp) ?_
-        wp_done
 
 end CryptoVerification.SignalSession.Cli.RunProofs.DropSignalMessageHelpers

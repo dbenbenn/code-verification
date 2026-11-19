@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Getters
 

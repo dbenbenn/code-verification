@@ -10,17 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage4PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3StageP3Prev1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage4PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3StageP3Prev1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegs
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathAP4
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathAP4Cont
@@ -33,6 +32,24 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3MatchingPathBAuxPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverFoldsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.BodyPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAux2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4Spatial
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
 
 /-!
 # Budget-Threaded Poll Branch Helpers for Non-Matching Overwrite (`DecPkOkOverV4`)
@@ -42,7 +59,7 @@ Proves the `Path C Over` branch (`dpPollEntryPlaced + 0x0868#64`) and untrusted-
 `LibsignalFrozen` and pointwise `(X, mmpl, gh, W)` variants.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -202,6 +219,33 @@ open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionShimBudgetSpe
 open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 
 /-! ## 1. Budget-Threaded `Path C Over` Branch (`dpPollEntryPlaced + 0x0868#64`) -/
+
+private theorem d3opaux_byteArray_loop_len (bs : ByteArray) (i : Nat) (acc : List UInt8)
+    (hi : i ≤ bs.size) :
+    (ByteArray.toList.loop bs i acc).length = acc.length + (bs.size - i) := by
+  unfold ByteArray.toList.loop
+  split
+  · rw [d3opaux_byteArray_loop_len bs (i + 1) _ (by omega)]; simp; omega
+  · simp; omega
+termination_by bs.size - i
+decreasing_by
+  have : i < bs.size := ‹_›; omega
+
+private theorem d3opaux_peer_name_len_le_40 {W : CryptoVerification.E2E.PEParams}
+    {Scope : CryptoGames.LibsignalSessionApi.SessionRecord (List (BitVec 8)) → Prop}
+    {F : CryptoVerification.LibsignalPublicApi.StoreKit.FsFiles}
+    {peer me : CryptoVerification.LibsignalTripleRatchetRepr.AddrGhost} {pm}
+    (hd : CryptoVerification.SignalSession.Cli.RunProofs.DecPkOk₀ W Scope F peer.val me.val pm) :
+    peer.name.bytes.length ≤ 40 := by
+  obtain ⟨P, hp, _⟩ := hd.party
+  change peer.val.name.length ≤ 40
+  rw [congrArg CryptoVerification.LibsignalPublicApiRepr.AddrVal.name hp]
+  dsimp only [CryptoVerification.SignalSession.Cli.RunRefine.addrValE]
+  unfold CryptoVerification.SignalSession.Cli.utf8 ByteArray.toList
+  rw [List.length_map, d3opaux_byteArray_loop_len _ 0 [] (Nat.zero_le _),
+    String.toUTF8_eq_toByteArray]
+  simp only [List.length_nil, Nat.zero_add, Nat.sub_zero, String.size_toByteArray]
+  cases P <;> decide
 
 set_option maxHeartbeats 1200000 in
 theorem closure_pathCOver_d3_placedBudget_ok [LibsignalPlacement] {M : AllocCostModel}
@@ -574,6 +618,7 @@ theorem closure_pathCOver_d3_placedBudget_ok [LibsignalPlacement] {M : AllocCost
       (hFits3 evs_p2 m i k kp reg dk recG whisperG hevs2 hpk hmsg_i hi hk hkp hreg hacc hex)
       (by decide) hcap_nz hprevOK hver4
       (Or.inr (distinctSid_of_decPkOk hd0)) hSeeds hRC hPqLt
+      (d3opaux_peer_name_len_le_40 hd0)
       hro2 hpc2 hrun2 hsp_align2 (hs2_sp ▸ hroot)
       (x29_eq_sp_add_c70_over_d3_placed hx29_2 hs2_sp) htr20 hvregs2 ?_ ?_ ?_
     · intro G₁ G' evs_p3 pt ptCap ptPtr s' P_s' hver hcl hdec_rel hevs3 hok
@@ -1365,6 +1410,7 @@ theorem closure_pathCOver_d3_full_placedBudget_ok [LibsignalPlacement] {M : Allo
       (hFits3 evs_p2 m i k kp reg dk recG whisperG hevs2 hpk hmsg_i hi hk hkp hreg hacc hex)
       (by decide) hcap_nz hprevOK hver4
       (Or.inr (distinctSid_of_decPkOk hd0)) hSeeds hRC hPqLt
+      (d3opaux_peer_name_len_le_40 hd0)
       hfroz2 hpc2 hrun2 hsp_align2 (hs2_sp ▸ hroot)
       (x29_eq_sp_add_c70_over_d3_placed hx29_2 hs2_sp) htr20 hvregs2 ?_ ?_ ?_
     · intro G₁ G' evs_p3 pt ptCap ptPtr s' P_s' hver hcl hdec_rel hevs3 hok
@@ -1526,7 +1572,7 @@ theorem closure_untrusted_over_d3_full_placedBudget_ok [LibsignalPlacement]
 /-- Pointwise `(mmpl, gh, W)` budget-threaded placed Stage P4 (`+0x34dc → s0.readReg64 .x30`)
 contract over 1-element `previous_sessions` on
 `dpPollProgPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))` parameterized by `p4Envs`. -/
-def StageP4Prev1VRegsAtPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP4Prev1VRegsAtPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (p4Envs : ∀ (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
@@ -1798,7 +1844,7 @@ theorem closure_pathCOver_p4_d3_cont_at_placedBudget [LibsignalPlacement] {M : A
       LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget.RunHooksPlaced
         A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
     ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs, hh.utf8, hh.memrchr,
-      hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.blackBox⟩
+      hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner, hh.fmtWrite, hh.blackBox⟩
   have hf' : s'.fs.files = y.g.F :=
     (cliFiles_eq_of_trace_eq_placed hh hsteps2' (htr'.trans htr2.symm)).trans hfiles2
   have hsub64 : dpClosSubStack B ≤ 2 ^ 64 := by
@@ -1934,8 +1980,12 @@ theorem closure_pathCOver_p4_d3_cont_at_placedBudget [LibsignalPlacement] {M : A
   have hrecOk : ops.RecPrev1Ok G' ses' enc := by
     refine ⟨canonSession_of_sessionStateAt_extraRel hex' hm_sess, ?_⟩
     have hlen := encodeRecordPrev1_pathCOver_lt_32 hd0 hr_in hcur hver hok
-    dsimp only at hlen
-    rwa [hst'_eq] at hlen
+    change (encodeRecordPrev1
+      { pathAInitSession ⟨W.C, W.Q⟩ meE k m dk with
+        state := (genP3S5Model W.C W.Q.K y.g.peer y.g.me y.g.msg.message y.g.coins st0).2
+        pendingPreKey := none, pendingKyberPreKey := none } enc).length < 2 ^ 32 at hlen
+    rw [hst'_eq] at hlen
+    exact hlen
   have hwp4 := hP4 B y.g.F y.g.peer pid m.kpkId m.spkId y.g.msg.baseKey st_pre hh_p4
     s0 s'
     y.fut y.cx y.g.msgA y.out y.g.peerA (y.g.msgA + 0xc8#64)
@@ -2517,6 +2567,7 @@ theorem closure_pathCOver_d3_at_full_placedBudget_ok [LibsignalPlacement] {M : A
       (hFits3 evs_p2 m i k kp reg dk recG whisperG hevs2 hpk hmsg_i hi hk hkp hreg hacc hex)
       (by decide) hcap_nz hprevOK hver4
       (Or.inr (distinctSid_of_decPkOk hd0)) hSeeds hRC hPqLt
+      (d3opaux_peer_name_len_le_40 hd0)
       hfroz2 hpc2 hrun2 hsp_align2 (hs2_sp ▸ hroot)
       (x29_eq_sp_add_c70_over_d3_placed hx29_2 hs2_sp) htr20 hvregs2 ?_ ?_ ?_
     · intro G₁ G' evs_p3 pt ptCap ptPtr s' P_s' hver hcl hdec_rel hevs3 hok

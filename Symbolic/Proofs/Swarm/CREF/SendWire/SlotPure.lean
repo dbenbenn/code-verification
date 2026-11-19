@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureC
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
+public import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureC -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyFrame
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureB
 import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPure
 import Symbolic.Proofs.Swarm.CREF.Stage1Wire
 import Symbolic.Proofs.Swarm.CREF.Xpl.PrefixReach
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.SendWire.SlotPureA -- proof-setup: allow-public-import
 
 /-!
 # Pending-PreKey `SendWire` Return Step and `CoinSplit` Closure
@@ -25,7 +27,7 @@ Proves `sndP_ret_pure_step` over `PureCRel` and `COpkRelC`, together with `CoinS
 for failed and returning `send_wire` calls.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

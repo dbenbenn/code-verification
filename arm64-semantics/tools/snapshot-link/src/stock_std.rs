@@ -99,15 +99,8 @@ pub fn prepare_std_bin(
     }
     let sc = |f: &str| copied[f].clone();
 
-    let (raw_main, builtins) = build_std_main_objects(
-        &std_tc,
-        std_crate,
-        repo_root,
-        work,
-        &objcopy,
-        // Weakened below by `weaken_image_symbols`, which also records the names.
-        &Default::default(),
-    )?;
+    let (raw_main, builtins) =
+        build_std_main_objects(&std_tc, std_crate, repo_root, work, &objcopy)?;
     // The objects as emitted into `work/` (a trimmed sysroot object as its trim), so only names
     // the linked library really defines are weakened.
     let emitted = images

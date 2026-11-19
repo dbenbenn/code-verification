@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewWire
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecord.DRBound
-public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewParams
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewWire -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTieNormPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptHypsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.GrowthRecord.DRBound -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewParams -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptBinPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.OooRpkPure
 import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewContract
@@ -26,6 +26,9 @@ import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewTie
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewTieCrypto
 import Symbolic.Proofs.Swarm.CREF.Grow.PqInit
 import Symbolic.Proofs.Swarm.CREF.Prelude
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Refinement.LemmasPure
+import Symbolic.Proofs.Refinement.X25519Covered
 
 /-!
 # Fresh Pre-Key Receive Accept Bundle
@@ -34,7 +37,7 @@ Assembles `HonestIdentity`, base-key freshness, `RecvAcceptContractPure`, `RpkAc
 `AcceptD.AcceptTieD` (`rpkNew_accept_tie_bundle`) for Bob's fresh pre-key `recv` acceptance step.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -251,7 +254,7 @@ theorem recvAcceptContractPure_of_bob
         DY.X25519.p25519 ∧
       DY.X25519.isLowOrderKey ((((rpkNew_preKeyFieldsOf m inner).baseKey.take 33).drop 1).map BitVec.toNat) =
         false ∧
-      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree interp
+      DY.Libsignal.PQXDH.Refinement.X25519TorsionFree
         (((rpkNew_preKeyFieldsOf m inner).baseKey.take 33).drop 1))
     (hlow : DY.X25519.isLowOrderKey
       ((rpkNew_preKeyFieldsOf m inner).inner.senderRatchetKey.bytes.toList.map BitVec.toNat) = false)
@@ -328,7 +331,7 @@ theorem encodeRecordX_length_eq_encodeRecord_pqSession
 
 /-- Minimal `PqParty` carrying `stB`'s identity and `session := some (x, g)` with empty key stores,
 discharging `PqxdhPartyInSpecDomain` without bounding the post-accept `.base-keys` store. -/
-def minSessionParty (stB : PqParty) (x : RecordExtras) (g : GhostState HwBytes) : PqParty :=
+@[expose] def minSessionParty (stB : PqParty) (x : RecordExtras) (g : GhostState HwBytes) : PqParty :=
   { party := stB.party
     me := stB.me
     peerId := none

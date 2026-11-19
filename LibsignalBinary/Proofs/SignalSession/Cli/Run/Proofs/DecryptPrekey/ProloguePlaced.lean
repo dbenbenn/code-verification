@@ -9,11 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Prologue
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.FramePlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Prologue -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.FramePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymC -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.SepLogic.WP.Apply
+public import VerifiedLibraries.Mallocng.Spec
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Domains
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Pure
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 
 /-!
 # Relocatable Wrapper Prologue Symbolic Execution for `decrypt_prekey`
@@ -22,12 +40,10 @@ Steps the `signal_session_handshake::decrypt_prekey` wrapper prologue on block `
 under `[LibsignalPlacement]` up to the poll closure call.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.DecryptPrekeyHelpers
 
@@ -283,4 +299,3 @@ theorem dpWrapper_prologue_b_placed [LibsignalPlacement] {ext : String → Optio
       trace := by simp only [wp_norm, arm64_norm, *] }
 
 end CryptoVerification.SignalSession.Cli.RunProofs.DecryptPrekeyHelpers
-end

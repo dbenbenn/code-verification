@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRoot
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromRoot
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded Root Assembly for `<SignalMessage as TryFrom<&[u8]>>::try_from`
@@ -23,7 +24,7 @@ Instantiates `TryFromEnvGen` and `tryFromPlacedSpecGen` with `TryFromPostEnv` an
 on Block `85`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

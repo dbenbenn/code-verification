@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.CodeLayout
 import ProofLib.CoreLemmas
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.GenDecodes
+public import ProofLib.VCGen
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,9 +39,6 @@ theorem readReg_setPC_pre_send (s : State) (pc : BitVec 64) (w : RegWidth) (r : 
     (s.setPC pc).readReg w r = s.readReg w r := by cases w <;> cases r <;> rfl
 theorem readReg_setMem_setPC_pre_send (s : State) (pc : BitVec 64) (m : Memory) (w : RegWidth) (r : Reg) :
     ((s.setPC pc).setMem m).readReg w r = s.readReg w r := by cases w <;> cases r <;> rfl
-theorem bv_add_neg_0x50 (x : BitVec 64) : x + bv% (2 ^ 64 - 80) = x - 80#64 := by bv_lin
-theorem bv_add_neg_0x4f0 (x : BitVec 64) : x + bv% (2 ^ 64 - 1264) = x - 1264#64 := by bv_lin
-
 end PreSimp
 
 end CryptoVerification.E2E.Bin

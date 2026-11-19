@@ -13,6 +13,11 @@ public import LibsignalBinary.Heap.Fine.F3LayoutData -- proof-setup: allow-publi
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhostReplays -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Card L1-c Pilot — `F3CodeInv` / `rxProg` Replay Wrappers & Block-`617` `"bcmp"` Entry Guards (`ElfBcmpEntryGuard`)
@@ -66,163 +71,6 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpGhostReplays (
 )
 
 /-! ## 1. Artifact 2b — `F3CodeInv` / `rxProg` `GhostRowReplayOn` Wrappers (Verbatim C2 Premises) -/
-
-/-- Default-target sub-slice `CodeLoaded (stripExecOutside (keepR_bcmp mpl) m)` projection from
-    `rxProg.CodeLoaded m` (`:= hInv.rxCode` at `rxProg := Tie.f3TrialRxProg`), mirroring
-    `Lib2LayoutFacts.lean @a230f2671b:203-215` (`f3CodeInv_rxWords_codeLoaded_strip`; cf. `:271`
-    `hasWords_subslice_of_hasWords` for contiguous multi-block `hasWords` sub-slices) while
-    discharging `:214` (`hKeep`) automatically via `keepR_bcmp_of_code_offset`. -/
-theorem bcmpSubProg_codeLoaded_strip_of_rxProg
-    {mpl : Obj.MultiPlacement} {rxProg : Program} {m : Memory}
-    (hRx : rxProg.CodeLoaded m)
-    -- [Lib2LayoutFacts.lean @a230f2671b:203, :208] f3CodeInv_rxWords_codeLoaded_strip:
-    (hAlign : (bcmpHullBase mpl).toNat % 4 = 0)
-    -- [Lib2LayoutFacts.lean @a230f2671b:203, :209] f3CodeInv_rxWords_codeLoaded_strip:
-    (hNoWrap :
-      (bcmpHullBase mpl).toNat + 4 * (bcmpHullWords (bcmpHullBase mpl)).length ≤ 2 ^ 64)
-    -- [Lib2LayoutFacts.lean @a230f2671b:203, :210-213] f3CodeInv_rxWords_codeLoaded_strip
-    -- (cf. Lib2LayoutFacts.lean @a230f2671b:271 hasWords_subslice_of_hasWords):
-    (hSubSlice : ∀ (i : Nat) (hi : i < (bcmpSubProg mpl).code.length),
-      ∃ (j : Nat) (hj : j < rxProg.code.length),
-        bcmpHullBase mpl + BitVec.ofNat 64 i = rxProg.base + BitVec.ofNat 64 j ∧
-        (bcmpSubProg mpl).code[i] = rxProg.code[j]) :
-    (bcmpSubProg mpl).CodeLoaded (stripExecOutside (keepR_bcmp mpl) m) := by
-  have hLen4 : 4 * (bcmpHullWords (bcmpHullBase mpl)).length = (bcmpSubProg mpl).code.length := by
-    rw [bcmpSubProg_code_length]
-    exact LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpLrTrap.four_mul_bcmpHullWords_length
-      (bcmpHullBase mpl) (fun _ => bcmpHullBase mpl)
-  have hAlignBase : (bcmpSubProg mpl).base.toNat % 4 = 0 := hAlign
-  refine Program.CodeLoaded.intro hAlignBase (by rw [bcmpSubProg_base, ← hLen4]; exact hNoWrap) ?_
-  intro i hi
-  obtain ⟨j, hj, haddr_eq, hbyte_eq⟩ := hSubSlice i hi
-  have hk_i : keepR_bcmp mpl ((bcmpSubProg mpl).base + BitVec.ofNat 64 i) = true :=
-    keepR_bcmp_of_code_offset mpl hi
-  dsimp only [bcmpSubProg_base] at hk_i ⊢
-  have hr_rx := hRx.byte_eq j hj
-  have hp_rx := hRx.perm_eq j hj
-  have hlf_rx := hRx.isLazyFree_eq j hj
-  rw [ProofLib.strip_read8, ProofLib.strip_perm_of_keep hk_i, ProofLib.strip_isLazyFree]
-  rw [haddr_eq, hr_rx, hbyte_eq, hp_rx, hlf_rx]
-  exact ⟨rfl, rfl, rfl⟩
-
-/-- **Artifact 2b (direct `hStripCL` form):** `GhostRowReplayOn` over
-    `(fun u => CodeInv u.mem ∧ PredFs u.fs)` (`CodeInv := StartupStatics.F3CodeInv mpl mmpl`,
-    `rxProg := Tie.f3TrialRxProg`), consuming `f3CodeInv_rxWords_codeLoaded_strip`'s conclusion
-    (`Lib2LayoutFacts.lean @a230f2671b:203-215`) directly alongside `:114`, `:316`/`:317`/`:338`
-    (cf. `:428` `StepsVisitedIn`, `:444` `f3RxSeg_steps_realW_of_visitedIn`), `:326`/`:355`, and
-    `:368`/`:374`. -/
-theorem bcmpGhost_rowReplayOn_f3CodeInv_of_strip
-    (mpl mmpl : Obj.MultiPlacement)
-    (CodeInv : Memory → Prop)
-    (PredFs : FsState → Prop)
-    (rxProg : Program)
-    (EG : CliHooks → String → Option (State → State))
-    (hInvKf : ∀ m m' : Memory, CodeInv m → m.KeepsFrozen m' → CodeInv m')
-    -- [Lib2LayoutFacts.lean @a230f2671b:203-215] f3CodeInv_rxWords_codeLoaded_strip
-    -- (cf. Lib2LayoutFacts.lean @a230f2671b:271 hasWords_subslice_of_hasWords):
-    (hStripCL : ∀ m : Memory, CodeInv m →
-      (bcmpSubProg mpl).CodeLoaded (stripExecOutside (keepR_bcmp mpl) m))
-    -- [Lib2LayoutFacts.lean @a230f2671b:114] keepTextBPre_sub_rxProg (composed with keepR_bcmp ⊆ keepTextBPre):
-    (hSubRx : ∀ {pc : BitVec 64}, keepR_bcmp mpl pc = true → progKeep rxProg pc = true)
-    -- [Lib2LayoutFacts.lean @a230f2671b:316, :317, :338] C2ExternTableFacts.realRxNoExtern /
-    -- f3RxSeg_realProg617_externAt_none (cf. :428 StepsVisitedIn, :444 f3RxSeg_steps_realW_of_visitedIn):
-    (hRealRxNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      progKeep rxProg pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none)
-    -- [Lib2LayoutFacts.lean @a230f2671b:316, :326, :355] C2ExternTableFacts.ghostRxEntry /
-    -- f3RxSeg_ghostProg617_externAt_entry:
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? (libsignalSessionLib.resolve mpl "bcmp") =
-        some (bcmpGhost mpl mmpl))
-    -- [Lib2LayoutFacts.lean @a230f2671b:368, :374] f3Row_ghostProg617_externAt_none_of_ne_entry
-    -- (sym = "bcmp", with hOther :374: memmove ends at m, strlen starts at m + 56):
-    (hGhostNoExtNe : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_bcmp mpl pc = true →
-      pc ≠ libsignalSessionLib.resolve mpl "bcmp" →
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none) :
-    GhostRowReplayOn mpl mmpl (fun u => CodeInv u.mem ∧ PredFs u.fs)
-      EG "bcmp" (bcmpEntryGuard mpl) (bcmpGhost mpl mmpl) :=
-  bcmpGhost_rowReplayOn mpl mmpl (fun u => CodeInv u.mem ∧ PredFs u.fs) EG
-    (fun u ⟨hCode, _⟩ => bcmpSubProg_codeLoaded_of_stripExecOutside (hStripCL u.mem hCode))
-    (fun u v ⟨hCode, hFs⟩ hkf hfs => ⟨hInvKf u.mem v.mem hCode hkf, hfs ▸ hFs⟩)
-    hGhostAt
-    (fun W {_} hk => hRealRxNoExt W (hSubRx hk))
-    hGhostNoExtNe
-
-/-- **Artifact 2b (slice-premise form):** `GhostRowReplayOn` over
-    `(fun u => CodeInv u.mem ∧ PredFs u.fs)` (`CodeInv := StartupStatics.F3CodeInv mpl mmpl`,
-    `rxProg := Tie.f3TrialRxProg`), taking the verbatim slice premises (`:208–213`) of
-    `Lib2LayoutFacts.f3CodeInv_rxWords_codeLoaded_strip` (`:203`) + `hInvRx : ∀ m, CodeInv m →
-    rxProg.CodeLoaded m` (`:= fun _ h => h.rxCode`). -/
-theorem bcmpGhost_rowReplayOn_f3CodeInv
-    (mpl mmpl : Obj.MultiPlacement)
-    (CodeInv : Memory → Prop)
-    (PredFs : FsState → Prop)
-    (rxProg : Program)
-    (EG : CliHooks → String → Option (State → State))
-    (hInvRx : ∀ m : Memory, CodeInv m → rxProg.CodeLoaded m)
-    (hInvKf : ∀ m m' : Memory, CodeInv m → m.KeepsFrozen m' → CodeInv m')
-    -- [Lib2LayoutFacts.lean @a230f2671b:203, :208] f3CodeInv_rxWords_codeLoaded_strip:
-    (hAlign : (bcmpHullBase mpl).toNat % 4 = 0)
-    -- [Lib2LayoutFacts.lean @a230f2671b:203, :209] f3CodeInv_rxWords_codeLoaded_strip:
-    (hNoWrap :
-      (bcmpHullBase mpl).toNat + 4 * (bcmpHullWords (bcmpHullBase mpl)).length ≤ 2 ^ 64)
-    -- [Lib2LayoutFacts.lean @a230f2671b:203, :210-213] f3CodeInv_rxWords_codeLoaded_strip
-    -- (cf. Lib2LayoutFacts.lean @a230f2671b:271 hasWords_subslice_of_hasWords):
-    (hSubSlice : ∀ (i : Nat) (hi : i < (bcmpSubProg mpl).code.length),
-      ∃ (j : Nat) (hj : j < rxProg.code.length),
-        bcmpHullBase mpl + BitVec.ofNat 64 i = rxProg.base + BitVec.ofNat 64 j ∧
-        (bcmpSubProg mpl).code[i] = rxProg.code[j])
-    -- [Lib2LayoutFacts.lean @a230f2671b:114] keepTextBPre_sub_rxProg (composed with keepR_bcmp ⊆ keepTextBPre):
-    (hSubRx : ∀ {pc : BitVec 64}, keepR_bcmp mpl pc = true → progKeep rxProg pc = true)
-    -- [Lib2LayoutFacts.lean @a230f2671b:316, :317, :338] C2ExternTableFacts.realRxNoExtern /
-    -- f3RxSeg_realProg617_externAt_none (cf. :428 StepsVisitedIn, :444 f3RxSeg_steps_realW_of_visitedIn):
-    (hRealRxNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      progKeep rxProg pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none)
-    -- [Lib2LayoutFacts.lean @a230f2671b:316, :326, :355] C2ExternTableFacts.ghostRxEntry /
-    -- f3RxSeg_ghostProg617_externAt_entry:
-    (hGhostAt : ∀ W : CliHooks,
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? (libsignalSessionLib.resolve mpl "bcmp") =
-        some (bcmpGhost mpl mmpl))
-    -- [Lib2LayoutFacts.lean @a230f2671b:368, :374] f3Row_ghostProg617_externAt_none_of_ne_entry
-    -- (sym = "bcmp", with hOther :374: memmove ends at m, strlen starts at m + 56):
-    (hGhostNoExtNe : ∀ (W : CliHooks) {pc : BitVec 64},
-      keepR_bcmp mpl pc = true →
-      pc ≠ libsignalSessionLib.resolve mpl "bcmp" →
-      (cliProgExtPlacedAt mpl EG 617 W).externAt? pc = none) :
-    GhostRowReplayOn mpl mmpl (fun u => CodeInv u.mem ∧ PredFs u.fs)
-      EG "bcmp" (bcmpEntryGuard mpl) (bcmpGhost mpl mmpl) :=
-  bcmpGhost_rowReplayOn_f3CodeInv_of_strip mpl mmpl CodeInv PredFs rxProg EG hInvKf
-    (fun m hCode =>
-      bcmpSubProg_codeLoaded_strip_of_rxProg (hInvRx m hCode) hAlign hNoWrap hSubSlice)
-    hSubRx hRealRxNoExt hGhostAt hGhostNoExtNe
-
-/-- `K`-narrowed companion to `bcmpGhost_rowReplayOn_f3CodeInv_of_strip` (requiring zero ghost-table
-    or entry-`lr` premises). -/
-theorem bcmpGhostK_rowReplayOn_f3CodeInv_of_strip
-    (mpl mmpl : Obj.MultiPlacement)
-    (CodeInv : Memory → Prop)
-    (PredFs : FsState → Prop)
-    (rxProg : Program)
-    (EG : CliHooks → String → Option (State → State))
-    (hInvKf : ∀ m m' : Memory, CodeInv m → m.KeepsFrozen m' → CodeInv m')
-    -- [Lib2LayoutFacts.lean @a230f2671b:203-215] f3CodeInv_rxWords_codeLoaded_strip:
-    (hStripCL : ∀ m : Memory, CodeInv m →
-      (bcmpSubProg mpl).CodeLoaded (stripExecOutside (keepR_bcmp mpl) m))
-    -- [Lib2LayoutFacts.lean @a230f2671b:114] keepTextBPre_sub_rxProg:
-    (hSubRx : ∀ {pc : BitVec 64}, keepR_bcmp mpl pc = true → progKeep rxProg pc = true)
-    -- [Lib2LayoutFacts.lean @a230f2671b:316, :317, :338] C2ExternTableFacts.realRxNoExtern /
-    -- f3RxSeg_realProg617_externAt_none:
-    (hRealRxNoExt : ∀ (W : CliHooks) {pc : BitVec 64},
-      progKeep rxProg pc = true →
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none) :
-    GhostRowReplayOn mpl mmpl (fun u => CodeInv u.mem ∧ PredFs u.fs)
-      EG "bcmp" (fun _ => True) (bcmpGhostK mpl mmpl) :=
-  bcmpGhostK_rowReplayOn mpl mmpl (fun u => CodeInv u.mem ∧ PredFs u.fs) EG
-    (fun u ⟨hCode, _⟩ => bcmpSubProg_codeLoaded_of_stripExecOutside (hStripCL u.mem hCode))
-    (fun u v ⟨hCode, hFs⟩ hkf hfs => ⟨hInvKf u.mem v.mem hCode hkf, hfs ▸ hFs⟩)
-    (fun W {_} hk => hRealRxNoExt W (hSubRx hk))
 
 /-! ## 2. Artifact 3 — Block-`617` Startup `lr` (`bcmpEntryGuard` / `ExtraEntryGuard`) Discharge -/
 

@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneKeys
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlaced
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneKeys
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Record.SegCloneBasePlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.RegChain
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegCloneAssemble
 
 /-!
 # Relocatable CLI `SegClone` Entry and Sub-Segments 1–4
@@ -23,7 +25,7 @@ Proves `[LibsignalPlacement]` entry frame initialization (`+0x1a8 → +0x1fc`) a
 `local_identity_key`, `remote_identity_key`, `root_key`, and `sender_chain` on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

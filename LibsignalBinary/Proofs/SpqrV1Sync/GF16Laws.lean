@@ -22,7 +22,7 @@ the degree-16 irreducible polynomial `POLY`):
   multiplicative order `65535 = 3 * 5 * 17 * 257`, generating `GF16 \ {0}`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.GF16Field
 
@@ -177,9 +177,6 @@ private theorem clmul64_assoc (a b c : BitVec 64) :
 private def degLt (d : Nat) (x : BitVec 64) : Prop :=
   ∀ k, d ≤ k → x.getLsbD k = false
 
-private theorem degLt_zero (d : Nat) : degLt d 0#64 := by
-  intro k _
-  simp
 
 private theorem degLt_of_le {d1 d2 : Nat} {x : BitVec 64} (hx : degLt d1 x) (hle : d1 ≤ d2) :
     degLt d2 x :=
@@ -283,8 +280,6 @@ private theorem clmul64_poly_zero_of_degLt :
 private def equivModPoly (x y : BitVec 64) : Prop :=
   ∃ q : BitVec 64, degLt 48 q ∧ x ^^^ y = clmul64 q POLY64
 
-private theorem equivModPoly_refl (x : BitVec 64) : equivModPoly x x :=
-  ⟨0#64, degLt_zero 48, by simp [clmul64_zero_left]⟩
 
 private theorem equivModPoly_symm {x y : BitVec 64} (h : equivModPoly x y) : equivModPoly y x := by
   rcases h with ⟨q, hq, heq⟩
@@ -951,7 +946,6 @@ theorem div_eq_mul_inv' (a b : GF16) :
 theorem inv_zero' : GF16.div GF16.ONE GF16.ZERO = GF16.ZERO := by
   decide +kernel
 
-theorem constSub_eq_add (a b : GF16) : GF16.constSub a b = GF16.add a b := rfl
 
 theorem constMul_eq_mul (a b : GF16) : GF16.constMul a b = GF16.mul a b := rfl
 

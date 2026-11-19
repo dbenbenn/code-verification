@@ -11,8 +11,9 @@ module
 
 public import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.KemFailFind
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
+public import Computational.Proofs.ReductionDsl.Size -- proof-setup: allow-public-import
 
 /-!
 # Incremental `KemFailBad` Send-Coin Log Guard

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedEqPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedEqPure -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -19,10 +19,10 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedShapePure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.AcceptNewRecTieSeedShapePure -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineRkKDefs
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvFresh -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompPresPQXDH
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.A2bSameOriginPure
@@ -34,7 +34,7 @@ import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeAddr
 import Symbolic.Proofs.Swarm.CREF.TR.G1.SkippedPkLineage
 import Symbolic.Proofs.Swarm.CREF.TR.G1.SpineLink
 import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
-public import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials -- shake: keep
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
@@ -52,7 +52,7 @@ Proves `prom_fresh_of_matchedPrefix`, `prom_crossSeedExcl`, `prom_seedShapeEqRes
 the `pdtr_NoDoneEv` preservation lemmas used by `PromDecTieResidPure`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -194,7 +194,7 @@ attribute [local instance 2000]
   DY.Libsignal.Composed.instHasExecBytes
   DY.Libsignal.Composed.instHasExecTrace
 
-def pdtr_DoneOpkEkAk (tr : ExecTrace) : Prop :=
+@[expose] def pdtr_DoneOpkEkAk (tr : ExecTrace) : Prop :=
   (∀ a b ikA ikB spk pqpk opk ek ct keys i,
     tr.EventLoggedAt (PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) i →
     ∀ o, opk = some o → o.AttackerKnows tr) ∧
@@ -208,7 +208,7 @@ local notation "isDoneEv_pdtrpa758" => (fun (ev : PQXDHEvent) => match ev with
   | .BobDone .. => true
   | _ => false)
 
-def pdtr_NoDoneEv {α : Type} (f : Traceful α) : Prop :=
+@[expose] def pdtr_NoDoneEv {α : Type} (f : Traceful α) : Prop :=
   ∀ tr ev idx, isDoneEv_pdtrpa758 ev = true → ((f.run tr).2.val).EventLoggedAt ev idx →
     tr.EventLoggedAt ev idx
 

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNone
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
-public import Symbolic.Proofs.SpecLemmas.ProofHubsPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.BobKyberNone -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.ProofHubsPure -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.ALaCarte.Ordering
@@ -30,8 +30,8 @@ import DY.EquationalTheory.DiffieHellman
 import DY.EquationalTheory.Sign
 import Symbolic.Specifications.Model.EquationalTheory.Kem
 import Symbolic.Specifications.Model.EquationalTheory.Spqr
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
-public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.Ghosts -- shake: keep
@@ -46,6 +46,7 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Refinement.RecordBytesBridge
 
 /-!
 # Session Initiation Trace and Postcondition Lemmas
@@ -55,7 +56,7 @@ under `gamma`, pending-record serialization (`recordBytes_sessionToRecordRecPend
 initial state invariants `aliceStart_stateRel_pending` and `trKeyShape_aliceStartState`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -74,7 +75,7 @@ open Symbolic.Swarm.COMPOSED
 /-! ## `aliceStart` trace evaluation and visible entries -/
 
 /-- Initial `TRState` stored by `aliceStart` at `tr.length + 8` after `aliceHandshake` returns `o`. -/
-def aliceStartState (tr : ExecTrace) (b : DY.Participant) (o : PQXDH.AliceHandshakeOut) :
+@[expose] def aliceStartState (tr : ExecTrace) (b : DY.Participant) (o : PQXDH.AliceHandshakeOut) :
     TripleRatchet.TRState :=
   let dhsA := randTerm (tr.length + 2) 32
   let (rkA, cksA) := DY.Libsignal.TripleRatchet.createChain o.keys.rk o.spk dhsA
@@ -94,7 +95,7 @@ def aliceStartState (tr : ExecTrace) (b : DY.Participant) (o : PQXDH.AliceHandsh
 
 /-- The 9-entry extension produced by `aliceStart a b idStateIdx regIdxB h` on `tr` when
 `aliceHandshake` returns `some o`. -/
-def aliceStartTrOfOut (tr : ExecTrace) (a b : DY.Participant) (o : PQXDH.AliceHandshakeOut) :
+@[expose] def aliceStartTrOfOut (tr : ExecTrace) (a b : DY.Participant) (o : PQXDH.AliceHandshakeOut) :
     ExecTrace :=
   let dhsA := randTerm (tr.length + 2) 32
   let stA := aliceStartState tr b o
@@ -873,18 +874,18 @@ theorem gamma_spqrInit (interpretation : ExternInterpretation) (S : OpaqueSymbol
   show ((({ authKey := k, params := d } : DY.Spqr.InitState.SubF DY.Bytes).pack).rec (concretizeAll interpretation S g)).bytes = _
   rw [DY.Bytes.rec_eq (concretizeSpqrInit S) (concretizeAll interpretation S g)]; rfl
 
-def kemEncapCtBytes (interpretation : ExternInterpretation) (pk e : HwBytes) : HwBytes :=
+@[expose] def kemEncapCtBytes (interpretation : ExternInterpretation) (pk e : HwBytes) : HwBytes :=
   if e.length = 32 then
     ((interpretation DY.Libsignal.PQXDH.Refinement.kyberEncapsSymbol [pk, e]).getD []).take 1568
   else []
 
-def kemEncapSSBytes (interpretation : ExternInterpretation) (r : ProtocolSetup) (pk e : HwBytes) :
+@[expose] def kemEncapSSBytes (interpretation : ExternInterpretation) (r : ProtocolSetup) (pk e : HwBytes) :
     HwBytes :=
   if e.length = 32 then
     ((interpretation DY.Libsignal.PQXDH.Refinement.kyberEncapsSymbol [pk, e]).getD []).drop 1568
   else (kyberDecapsBytes interpretation r e).getD []
 
-def aliceLitIkmBytes (interpretation : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def aliceLitIkmBytes (interpretation : ExternInterpretation) (r : ProtocolSetup)
     (bundle : HwBytes) (ds : List HwBytes) : HwBytes :=
   let dh1 := dhAgreeBytes interpretation (secretBytes r 0) (pubBytes interpretation (secretBytes r 2))
   let dh2 := dhAgreeBytes interpretation (ds.getD 0 []) (pubBytes interpretation (secretBytes r 1))

@@ -21,7 +21,7 @@ records: byte-level field decomposition, per-field well-formedness and freshness
 decoded state `ssgxOf`, and the `2 ^ 20` encoded-length bound.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX
 
@@ -34,7 +34,7 @@ open CryptoVerification.E2E.RecordX
 
 /-- Projects `s` onto its `DeserializeGeneral` subset by clearing pending pre-keys, registration
 IDs, `aliceBaseKey`, and `pqRatchetState`. -/
-def baseSession (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
+@[expose] def baseSession (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
   { s with
     state := { s.state with pendingPreKey := false, pqRatchetState := [] }
     localRegistrationId := 0
@@ -44,7 +44,7 @@ def baseSession (s : Session (List (BitVec 8))) : Session (List (BitVec 8)) :=
     aliceBaseKey := [] }
 
 /-- Single-session record wrapping `baseSession s`. -/
-def baseRecord (s : Session (List (BitVec 8))) : SessionRecord (List (BitVec 8)) :=
+@[expose] def baseRecord (s : Session (List (BitVec 8))) : SessionRecord (List (BitVec 8)) :=
   ⟨some (baseSession s)⟩
 
 
@@ -67,9 +67,6 @@ theorem deserializeScopeP_session {r : SessionRecord (List (BitVec 8))} (hr : De
   rw [hs] at hs'
   cases hs'
   exact hsc
-
-theorem recFields_baseRecord (s : Session (List (BitVec 8))) :
-    recFields (baseRecord s) = genFields (baseSession s) := rfl
 
 private theorem genField_enc_lenField_x (fl : GenField) :
     (∀ b, fl = .lik b → fl.enc = lenField 2 b) ∧
@@ -464,7 +461,7 @@ private theorem genFields_baseSession_fresh (s : Session (List (BitVec 8)))
       exact freshListB_recvChains _ _ _ _ _ [] _ _ _ (by simpa using hmax)
 
 /-- Sequential freshness of `xs` starting from `v`: each field is fresh with respect to the state folded from earlier fields. -/
-def FreshListX (v : SSGX) (xs : List GenFieldX) : Prop :=
+@[expose] def FreshListX (v : SSGX) (xs : List GenFieldX) : Prop :=
   ∀ k (hk : k < xs.length), (xs[k]'hk).Fresh ((xs.take k).foldl SSGX.apply v)
 
 private theorem freshListX_nil (v : SSGX) : FreshListX v [] := by

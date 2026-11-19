@@ -21,7 +21,7 @@ ciphertext) and separation-logic isolating splits for the 32-byte `Option<Pendin
 slot at `ss + 0x128`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX.Leaf.MF14Aux
 
@@ -52,7 +52,7 @@ theorem encodeKey_2_ld : encodeKey 2 .lengthDelimited = [18#8] := by
   decide
 
 /-- Inner tag-2 payload suffix consisting of the length-prefixed ciphertext followed by `tail`. -/
-def innerBytes (ct tail : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def innerBytes (ct tail : List (BitVec 8)) : List (BitVec 8) :=
   encodeVarint (BitVec.ofNat 64 ct.length) ++ (ct ++ tail)
 
 theorem innerBytes_length {ct : List (BitVec 8)} (hct : ct.length = 1569) (tail : List (BitVec 8)) :
@@ -144,7 +144,7 @@ theorem encodeVarint_1573_add_mf14 {m : Nat} (hm : m ≤ 10) :
   · omega
 
 /-- Leading byte of the 2-byte outer length varint when `i ≠ 0#32`. -/
-def kyberB0 (i : BitVec 32) : BitVec 8 :=
+@[expose] def kyberB0 (i : BitVec 32) : BitVec 8 :=
   BitVec.ofNat 8 (165 + (encodeVarint (i.setWidth 64)).length)
 
 theorem kyberB0_signExtend_getLsbD_63 (i : BitVec 32) :
@@ -173,7 +173,7 @@ theorem kyberB0_signExtend_getLsbD_63_beq (i : BitVec 32) :
 
 /-- Bytes following the inner tag-1 key `0x08` when `i ≠ 0#32`: varint-encoded `i` and tag-2
 ciphertext field. -/
-def kyberIdBytes (i : BitVec 32) (ct tail : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def kyberIdBytes (i : BitVec 32) (ct tail : List (BitVec 8)) : List (BitVec 8) :=
   encodeVarint (i.setWidth 64) ++ (18#8 :: innerBytes ct tail)
 
 theorem kyberIdBytes_length (i : BitVec 32) {ct : List (BitVec 8)} (hct : ct.length = 1569)
@@ -245,7 +245,7 @@ theorem mergeUint32_kyberIdBytes (i : BitVec 32) {ct : List (BitVec 8)} (tail : 
 /-! ## `SessionStructure` layout split at `+0x128` -/
 
 /-- Portion of `prostSSGXAt` outside the 32-byte `pending_kyber_pre_key` slot at `ss + 0x128`. -/
-def restX14 (A : RustAlloc) (ss : BitVec 64) (v : SSGX) : SepProp :=
+@[expose] def restX14 (A : RustAlloc) (ss : BitVec 64) (v : SSGX) : SepProp :=
   vecU8 A ss v.base.lik ∗ vecU8 A (ss + 0x18#64) v.base.rik ∗ vecU8 A (ss + 0x30#64) v.base.root ∗
     vecOf A 104 8 (fun c a => prostChainGAt A a c) (ss + 0x48#64) v.base.recv ∗
     vecU8 A (ss + 0x60#64) v.ext.abk ∗ vecU8 A (ss + 0x78#64) v.ext.pq ∗

@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendCreditHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
+public import LibsignalBinary.Proofs.PeakBudget.SpqrSendCreditHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # 48-Class `fineCostModel` Bucket Bounds and Leaf Credit Specs for `spqr::send`
@@ -28,7 +29,7 @@ quantifier-free `FineSmallEvs` trace envelope with `nonFreeCount` composition le
 `<Poly>::compute_at`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -123,60 +124,6 @@ theorem smallAllocCost_le_143484_of_le_135167 {req : Nat} (hreq : req ≤ 135167
     rw [hdecl]
     exact Nat.le_trans (Nat.add_le_add_right (Nat.add_le_add_right hreq 8195) 122) (by decide)
 
-theorem smallReallocCost_le_9789_of_le_896 {newSz : Nat} (hnew : newSz ≤ 896) :
-    HasFineReallocCredit.smallReallocCost fineCostModel newSz ≤ 9789 := by
-  change fineSmallReallocCost newSz ≤ 9789
-  have hle : newSz ≤ MmapThresholdReq := by unfold MmapThresholdReq; omega
-  have hspec := sizeToClass_spec (by unfold MmapThresholdReq at hle; exact hle)
-  dsimp only at hspec
-  have hrmin : sendMinReq (sizeToClassUnits ((newSz + 3) / 16)) ≤ 896 := by
-    unfold sendMinReq
-    rcases hspec.2.2 with h0 | hprev
-    · simp [h0]
-    · split <;> omega
-  have hcell := List.all_eq_true.mp checkSendFineBuckets_true _ (List.mem_range.mpr hspec.1)
-  have hb := (of_decide_eq_true hcell).2.2.1 hrmin
-  have hcap : newSz ≤ nominalSlotCap (sizeToClassUnits ((newSz + 3) / 16)) := hspec.2.1
-  unfold fineSmallReallocCost sendClassReallocWt declCost63 at *
-  simp only [hle, ↓reduceIte]
-  omega
-
-theorem smallReallocCost_le_10397_of_le_2080 {newSz : Nat} (hnew : newSz ≤ 2080) :
-    HasFineReallocCredit.smallReallocCost fineCostModel newSz ≤ 10397 := by
-  change fineSmallReallocCost newSz ≤ 10397
-  have hle : newSz ≤ MmapThresholdReq := by unfold MmapThresholdReq; omega
-  have hspec := sizeToClass_spec (by unfold MmapThresholdReq at hle; exact hle)
-  dsimp only at hspec
-  have hrmin : sendMinReq (sizeToClassUnits ((newSz + 3) / 16)) ≤ 2080 := by
-    unfold sendMinReq
-    rcases hspec.2.2 with h0 | hprev
-    · simp [h0]
-    · split <;> omega
-  have hcell := List.all_eq_true.mp checkSendFineBuckets_true _ (List.mem_range.mpr hspec.1)
-  have hb := (of_decide_eq_true hcell).2.2.2.1 hrmin
-  have hcap : newSz ≤ nominalSlotCap (sizeToClassUnits ((newSz + 3) / 16)) := hspec.2.1
-  unfold fineSmallReallocCost sendClassReallocWt declCost63 at *
-  simp only [hle, ↓reduceIte]
-  omega
-
-theorem smallReallocCost_le_10717_of_le_2400 {newSz : Nat} (hnew : newSz ≤ 2400) :
-    HasFineReallocCredit.smallReallocCost fineCostModel newSz ≤ 10717 := by
-  change fineSmallReallocCost newSz ≤ 10717
-  have hle : newSz ≤ MmapThresholdReq := by unfold MmapThresholdReq; omega
-  have hspec := sizeToClass_spec (by unfold MmapThresholdReq at hle; exact hle)
-  dsimp only at hspec
-  have hrmin : sendMinReq (sizeToClassUnits ((newSz + 3) / 16)) ≤ 2400 := by
-    unfold sendMinReq
-    rcases hspec.2.2 with h0 | hprev
-    · simp [h0]
-    · split <;> omega
-  have hcell := List.all_eq_true.mp checkSendFineBuckets_true _ (List.mem_range.mpr hspec.1)
-  have hb := (of_decide_eq_true hcell).2.2.2.2 hrmin
-  have hcap : newSz ≤ nominalSlotCap (sizeToClassUnits ((newSz + 3) / 16)) := hspec.2.1
-  unfold fineSmallReallocCost sendClassReallocWt declCost63 at *
-  simp only [hle, ↓reduceIte]
-  omega
-
 theorem fineSmallAlloc_53 : fineSmallAllocCost 53 = 1126 := by decide +kernel
 theorem fineSmallAlloc_64 : fineSmallAllocCost 64 = 1607 := by decide +kernel
 theorem fineSmallAlloc_72 : fineSmallAllocCost 72 = 1607 := by decide +kernel
@@ -190,11 +137,9 @@ theorem fineSmallAlloc_224 : fineSmallAllocCost 224 = 8186 := by decide +kernel
 theorem fineSmallAlloc_336 : fineSmallAllocCost 336 = 5822 := by decide +kernel
 theorem fineSmallAlloc_384 : fineSmallAllocCost 384 = 5822 := by decide +kernel
 theorem fineSmallAlloc_448 : fineSmallAllocCost 448 = 5491 := by decide +kernel
-theorem fineSmallAlloc_672 : fineSmallAllocCost 672 = 3506 := by decide +kernel
 theorem fineSmallAlloc_720 : fineSmallAllocCost 720 = 3506 := by decide +kernel
 theorem fineSmallAlloc_816 : fineSmallAllocCost 816 = 3506 := by decide +kernel
 theorem fineSmallAlloc_864 : fineSmallAllocCost 864 = 3506 := by decide +kernel
-theorem fineSmallAlloc_896 : fineSmallAllocCost 896 = 3506 := by decide +kernel
 theorem fineSmallAlloc_960 : fineSmallAllocCost 960 = 3506 := by decide +kernel
 
 theorem fineSmallRealloc_8 : fineSmallReallocCost 8 = 8325 := by decide +kernel
@@ -336,30 +281,14 @@ theorem boundedCount_fine_cap_phaseCreditSpec (maxNonFree maxReq stepCap : Nat)
     exact ⟨hc, Nat.le_trans hl (Nat.le_add_right _ 0),
       Nat.le_trans hp (Nat.le_max_left _ _)⟩
 
-theorem boundedCount_fine_2080_phaseCreditSpec :
-    PhaseCreditSpec fineCostModel (BoundedCountEvs 8 2080) 83176 0 0 2080 := by
-  have h := boundedCount_fine_cap_phaseCreditSpec 8 2080 10397 (by decide)
-    (fun r hr => Nat.le_trans (smallAllocCost_le_9789_of_le_2560 (Nat.le_trans hr (by decide)))
-      (by decide))
-    (fun _ hn => smallReallocCost_le_10397_of_le_2080 hn)
-  exact h.mono (by decide) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 2080)
-
-theorem boundedCount_fine_2400_phaseCreditSpec :
-    PhaseCreditSpec fineCostModel (BoundedCountEvs 8 2400) 85736 0 0 2400 := by
-  have h := boundedCount_fine_cap_phaseCreditSpec 8 2400 10717 (by decide)
-    (fun r hr => Nat.le_trans (smallAllocCost_le_9789_of_le_2560 (Nat.le_trans hr (by decide)))
-      (by decide))
-    (fun _ hn => smallReallocCost_le_10717_of_le_2400 hn)
-  exact h.mono (by decide) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.le_refl 2400)
-
 /-- Per-event `cumSmall` charge on `fineCostModel` for small-class events (`≤ 135,167` bytes). -/
-def fineSmallEventCost : AllocEvent → Nat
+@[expose] def fineSmallEventCost : AllocEvent → Nat
   | .free _ _ => 0
   | .alloc req => fineSmallAllocCost req
   | .aligned _ req => fineSmallAllocCost req
   | .realloc _ _ newSz => fineSmallReallocCost newSz
 
-def fineSmallTraceCost : List AllocEvent → Nat
+@[expose] def fineSmallTraceCost : List AllocEvent → Nat
   | [] => 0
   | ev :: tl => fineSmallEventCost ev + fineSmallTraceCost tl
 
@@ -381,7 +310,7 @@ theorem fineSmallTraceCost_eq_zero_of_freeOnly {evs : List AllocEvent} (hf : Fre
 
 /-- Small-class trace envelope on `fineCostModel` bounding operation count by `maxOps`, cumulative cost by `cumCap`, and request size by `maxReq ≤ 135,167`.
 -/
-def FineSmallEvs (maxOps cumCap maxReq : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def FineSmallEvs (maxOps cumCap maxReq : Nat) (evs : List AllocEvent) : Prop :=
   nonFreeCount evs ≤ maxOps ∧
   fineSmallTraceCost evs ≤ cumCap ∧
   ∀ ev ∈ evs, eventStepReq ev ≤ maxReq ∧ eventStepAlign ev ≤ 16
@@ -543,11 +472,6 @@ theorem fineSmallEvs_phaseCreditSpec (maxOps cumCap : Nat) {maxReq : Nat}
       Nat.le_trans hp (Nat.le_max_left _ _)⟩
 
 /-! ## `nonFreeCount` Composition Lemmas -/
-
-theorem nonFreeCount_boundedCount_le {maxNonFree maxReq : Nat} {evs : List AllocEvent}
-    (h : BoundedCountEvs maxNonFree maxReq evs) :
-    nonFreeCount evs ≤ maxNonFree :=
-  h.1
 
 theorem nonFreeCount_rustAlloc (req al : Nat) :
     nonFreeCount (rustAllocEvents req al) = 1 := by
@@ -765,14 +689,14 @@ theorem encodeBytes_nonFreeCount_le (msgLen : Nat) {evs : List AllocEvent}
 
 /-- `cumSmall` charge of `<Poly>::compute_at` on `.rodata` polynomial degree `n` (`8,513` at `n = 1`, `188` for `n ∈ {0, 2..6}`, `1,607` for `7 ≤ n ≤ 36`).
 -/
-def computeAtRodataCum (n : Nat) : Nat :=
+@[expose] def computeAtRodataCum (n : Nat) : Nat :=
   if n = 1 then 8513
   else if n ≤ 6 then 188
   else 1607
 
 /-- Optional `<Poly>::compute_at` envelope in `PolysLoop` (`evs = []` on fast-prefix slots `j < i0`, `ComputeAtCallEnv n` on `j ≥ i0`).
 -/
-def ComputeAtOptEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def ComputeAtOptEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨ ComputeAtCallEnv n evs
 
 theorem computeAtCall_fine_rodata_phaseCreditSpec {n : Nat} (hn : n ≤ 36) :
@@ -830,42 +754,7 @@ theorem computeAtOpt_fine_rodata_phaseCreditSpec {n : Nat} (hn : n ≤ 36) :
     (Nat.le_refl 0) (Nat.le_refl 0)
     (Nat.max_le.mpr ⟨Nat.zero_le _, Nat.le_refl _⟩)
 
-theorem computeAtCall_fine_640_phaseCreditSpec {n : Nat} (hn : n ≤ 640) :
-    PhaseCreditSpec fineCostModel (ComputeAtCallEnv n) 9789 0 0 (max 8 (2 * n)) := by
-  have halloc :
-      PhaseCreditSpec fineCostModel (· = computeAtAllocEvents n) 9789 0 0 (max 8 (2 * n)) := by
-    unfold computeAtAllocEvents
-    by_cases h0 : n = 0
-    · subst h0
-      simp only [↓reduceIte]
-      have ha8 : PhaseCreditSpec fineCostModel (· = rustAllocEvents 8 2) 188 0 0 8 :=
-        rustAlloc_fine_phaseCreditSpec (by decide) (by decide)
-          (Nat.le_of_eq (smallAllocCost_eq_188_of_le_12 (by decide)))
-      exact ha8.mono (by decide) (Nat.le_refl 0) (Nat.le_refl 0) (by decide)
-    · by_cases h1 : n = 1
-      · subst h1
-        simp only [↓reduceIte]
-        have ha2 : PhaseCreditSpec fineCostModel (· = rustAllocEvents 2 2) 188 0 0 2 :=
-          rustAlloc_fine_phaseCreditSpec (by decide) (by decide)
-            (Nat.le_of_eq (smallAllocCost_eq_188_of_le_12 (by decide)))
-        have hre8 : PhaseCreditSpec fineCostModel (· = rustReallocEvents 2 8 2) 8325 0 0 8 :=
-          rustRealloc_fine_phaseCreditSpec (by decide) (by decide) (by decide) (by decide)
-            (by decide) (by decide) (Nat.le_of_eq fineSmallRealloc_8)
-        refine (ha2.concat hre8).congr_mono ?_ (by decide) (by decide) (by decide) (by decide)
-        intro evs hevs
-        subst hevs
-        exact ⟨rustAllocEvents 2 2, rustReallocEvents 2 8 2, rfl, rfl, rfl⟩
-      · simp only [h0, h1, ↓reduceIte]
-        have ha2n : PhaseCreditSpec fineCostModel (· = rustAllocEvents (2 * n) 2)
-            9789 0 0 (2 * n) :=
-          rustAlloc_fine_phaseCreditSpec (by decide) (by omega)
-            (smallAllocCost_le_9789_of_le_2560 (by omega))
-        exact ha2n.mono (Nat.le_refl 9789) (Nat.le_refl 0) (Nat.le_refl 0)
-          (Nat.le_max_right 8 (2 * n))
-  exact (halloc.seq (PhaseCreditSpec.freeOnly_of_hyps fineCostModel_modelHyps)).mono
-    (by decide) (Nat.le_refl 0) (Nat.le_refl 0) (Nat.max_le.mpr ⟨Nat.le_refl _, Nat.zero_le _⟩)
-
-def computeAtOps (n : Nat) : Nat :=
+@[expose] def computeAtOps (n : Nat) : Nat :=
   if n = 1 then 2 else 1
 
 theorem computeAtCall_nonFreeCount_exact_le (n : Nat) {evs : List AllocEvent}

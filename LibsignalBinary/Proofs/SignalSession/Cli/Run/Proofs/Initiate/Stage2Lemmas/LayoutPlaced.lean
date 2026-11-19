@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Layout
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.CommonPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.CommonPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Relocatable Stage 2 Stack and Key Byte-Split Lemmas
@@ -22,12 +26,10 @@ Provides `[LibsignalPlacement]` counterparts of `initArgsAt_eq_sp` and
 from `Stage2Lemmas/Layout`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage2Lemmas
 
@@ -96,4 +98,3 @@ theorem initArgsAtPlaced_entails_memRegion [LibsignalPlacement] (x : InitGhost) 
   exact mr_fold (s0.sp - 7128#64) (s0.sp - 7120#64) 8 8 16 (mr_of_u64 _ _) (mr_of_u64 _ _)
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage2Lemmas
-end

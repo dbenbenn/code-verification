@@ -181,7 +181,6 @@ def pendingTag : BitVec 64 := 0xFFFFFFFFFFFFFFFD#64
 
 /-- SPE variant indices of the three errors W0 adds (`error.rs` declaration order). -/
 def speUntrustedIdentity : Nat := 12
-def speSessionNotFound : Nat := 19
 def speApplicationCallback : Nat := 26
 
 /-- The `"store hook"` literal of `hook_error()` (10 bytes, rodata `0x56ab0`; store poll

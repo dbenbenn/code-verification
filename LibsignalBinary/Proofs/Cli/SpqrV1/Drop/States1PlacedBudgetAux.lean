@@ -9,14 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1Placed
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyDecoderPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.PolyEncoderPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Chunked `States` Drop Glue (Block `443`, Part 2/2)
@@ -26,7 +30,7 @@ Proves the remaining five variant contracts (`ct2Sampled`, `headerSent`, `ct1Rec
 (`lsProg_443 H`) under `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

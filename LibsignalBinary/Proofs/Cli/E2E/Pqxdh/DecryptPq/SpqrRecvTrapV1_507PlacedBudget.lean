@@ -9,20 +9,31 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.SpqrRecvErr507PlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.SpqrRecvTrapV1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import GeneratedLean.LibsignalTripleRatchet -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.SpqrRecvErr507PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.SpqrRecvTrapV1PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import ProofLib.SepLogic.Entry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.VerifyMacTrap507PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ConsumeMsgKeyBudget
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Segments S5 & S6 (`blkPl_508`)
@@ -32,7 +43,7 @@ Budget-threaded (`RustCliAllocBudget M`) proofs of Segment S6 (`deriveKeys_507_p
 for `try_decrypt_with_state::<signal_session_handshake::Coins>` (`blkPC_508` / `blkPl_508`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,13 +57,13 @@ open LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs.Simp (
   sessionStateAt_atState trAt_atState trRestAt_atState
   protocolAddressAt_atState signalMessageAt_atState signalMessageRestAt_atState
   vecU8At_atState spqrRecvKeyAt_atState spqrRecvResultAt_atState
-  vecArg_at_atState
+  spqrRecvResultDispAt_atState vecArg_at_atState
 )
 open LibsignalBinary.Proofs.TripleRatchet.Decrypt.PqRecvBudgetDefs (
   steps_of_sepWP_placed_state s5_out_add_np_evs
-  spqrRecvRawSpecPlaced PqRecvEnv
+  spqrRecvRawSpecPlaced spqrRecvRawDispSpec spqrRecvRawDispSpecPlaced PqRecvEnv
   fitsEnv_recv_of_pqRecvEnv fitsEnv_fmt_of_pqRecvEnv_err pqRecvEnv_of_err_parts
-  onPanic_of_spqrRecv_budget_placed
+  onPanic_of_spqrRecv_budget_placed onPanic_of_spqrRecv_disp_budget_placed
 )
 
 open Arm64 ProofLib ProofLib.ProgramReflection
@@ -110,8 +121,14 @@ open LibsignalBinary.Heap (
   AllocEvent AllocCostModel BudgetLimits RustCliAllocBudget
   VmPreserved rustCliDeallocBudgetSpec
 )
-open LibsignalBinary.Heap.SpecBudget (
-  FormatInnerEnv formatInnerBudgetEnvSpec
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (
+  CliFormatInnerEnv formatInnerLsEnvSpec
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  formatInnerCallLsEnvSpec
+)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag (
+  spqrRecvResultDispAt
 )
 open LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget (
   GenerateKeysEnv freeOnlyEvs_of_generateKeysEnv
@@ -139,6 +156,7 @@ open LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget (
 open LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget (
   SpqrRecvBytesEnv SpqrV1PlacedSeams SpqrV1PlacedSeamsOfEnv
   spqrRecvRawSpecPlacedT spqrRecvPlacedInnerSpecXT_imp_spqrRecvRawSpecPlacedT
+  spqrRecvRawDispSpecPlacedT spqrRecvPlacedInnerDispSpecXT_imp_spqrRecvRawDispSpecPlacedT
 )
 
 attribute [local irreducible] Program.fetch Program.externAt?
@@ -151,6 +169,9 @@ attribute [local simp, local wp_norm, local arm64_norm] extractLsb0_8_append56
 abbrev spqrRecvRawSpecT := @spqrRecvRawSpecPlacedT
 abbrev spqrRecvPlacedInnerSpecXT_imp_spqrRecvRawSpecT :=
   @spqrRecvPlacedInnerSpecXT_imp_spqrRecvRawSpecPlacedT
+abbrev spqrRecvRawDispSpecT := @spqrRecvRawDispSpecPlacedT
+abbrev spqrRecvPlacedInnerDispSpecXT_imp_spqrRecvRawDispSpecT :=
+  @spqrRecvPlacedInnerDispSpecXT_imp_spqrRecvRawDispSpecPlacedT
 
 /-! ## 2. Segment 6 (`DeriveKeys`) on CLI Block `507` -/
 
@@ -522,39 +543,39 @@ private theorem spqrRecvStack_le_placed {sp0 sp : BitVec 64}
     simp only [BitVec.toNat_ofNat]
     omega
 
-private theorem pre_spqrRecvRawSpecPlacedT [LibsignalPlacement] {M : AllocCostModel}
+private theorem pre_spqrRecvRawDispSpecPlacedT [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {S : SpqrModel}
     {RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
     {stArg msgArg : VecArg} {ret : BitVec 64} {stB : M.σ} {sm : State} {F R : SepProp}
     (h1 : stArg.bytes.length < 2 ^ 32)
     (h2 : msgArg.bytes.length < 2 ^ 40)
     (h3 : spqrRecvStack ≤ sm.sp.toNat)
-    (h : sm.mem ⊨ (spqrRecvRawSpecPlaced A lim S RecvEnv).pre ((stArg, msgArg, ret), stB) sm ∗
+    (h : sm.mem ⊨ (spqrRecvRawDispSpecPlaced A lim S RecvEnv).pre ((stArg, msgArg, ret), stB) sm ∗
       (F ∗ (tokenInitPlacedAt ∗ R))) :
-    sm.mem ⊨ (spqrRecvRawSpecPlacedT A lim S RecvEnv).pre ((stArg, msgArg, ret), stB) sm ∗
+    sm.mem ⊨ (spqrRecvRawDispSpecPlacedT A lim S RecvEnv).pre ((stArg, msgArg, ret), stB) sm ∗
       (F ∗ R) := by
-  dsimp only [spqrRecvRawSpecPlacedT]
+  dsimp only [spqrRecvRawDispSpecPlacedT]
   rw [sepConj_assoc, satisfies_pure_sepConj]
   refine ⟨⟨h1, h2, h3⟩, ?_⟩
   have heq :
       (tokenInitPlacedAt ∗
-        (spqrRecvRawSpecPlaced A lim S RecvEnv).pre ((stArg, msgArg, ret), stB) sm) ∗ (F ∗ R) =
-      (spqrRecvRawSpecPlaced A lim S RecvEnv).pre ((stArg, msgArg, ret), stB) sm ∗
+        (spqrRecvRawDispSpecPlaced A lim S RecvEnv).pre ((stArg, msgArg, ret), stB) sm) ∗ (F ∗ R) =
+      (spqrRecvRawDispSpecPlaced A lim S RecvEnv).pre ((stArg, msgArg, ret), stB) sm ∗
         (F ∗ (tokenInitPlacedAt ∗ R)) := by
     sep_ac_rfl
   exact heq ▸ h
 
-private theorem post_spqrRecvRawSpecPlacedT [LibsignalPlacement] {M : AllocCostModel}
+private theorem post_spqrRecvRawDispSpecPlacedT [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {S : SpqrModel}
     {RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
     {x : VecArg × VecArg × BitVec 64} {stB : M.σ} {sm sf1 : State} {F R : SepProp}
-    (h : sf1.mem ⊨ ((spqrRecvRawSpecPlacedT A lim S RecvEnv).post (x, stB) sm sf1 ∗ F) ∗ R) :
-    sf1.mem ⊨ ((spqrRecvRawSpecPlaced A lim S RecvEnv).post (x, stB) sm sf1 ∗ F) ∗
+    (h : sf1.mem ⊨ ((spqrRecvRawDispSpecPlacedT A lim S RecvEnv).post (x, stB) sm sf1 ∗ F) ∗ R) :
+    sf1.mem ⊨ ((spqrRecvRawDispSpecPlaced A lim S RecvEnv).post (x, stB) sm sf1 ∗ F) ∗
       (tokenInitPlacedAt ∗ R) := by
-  dsimp only [spqrRecvRawSpecPlacedT] at h
+  dsimp only [spqrRecvRawDispSpecPlacedT] at h
   have heq :
-      ((tokenInitPlacedAt ∗ (spqrRecvRawSpecPlaced A lim S RecvEnv).post (x, stB) sm sf1) ∗ F) ∗ R =
-      ((spqrRecvRawSpecPlaced A lim S RecvEnv).post (x, stB) sm sf1 ∗ F) ∗ (tokenInitPlacedAt ∗ R) := by
+      ((tokenInitPlacedAt ∗ (spqrRecvRawDispSpecPlaced A lim S RecvEnv).post (x, stB) sm sf1) ∗ F) ∗ R =
+      ((spqrRecvRawDispSpecPlaced A lim S RecvEnv).post (x, stB) sm sf1 ∗ F) ∗ (tokenInitPlacedAt ∗ R) := by
     sep_ac_rfl
   exact heq ▸ h
 
@@ -574,14 +595,15 @@ theorem pqRecv_507_placed_ok_WT [LibsignalPlacement] {M : AllocCostModel}
     (C : Crypto) (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (S : SpqrModel)
     (RecvEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
-    (fmtEnv : List AllocEvent → Prop := FormatInnerEnv)
+    (fmtEnv : List AllocEvent → Prop := CliFormatInnerEnv)
     (H : String → Option (State → State))
     (hrecv_call : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H) (lsmpl.base 329)
-      (withLsCodeRoLoaded lsmpl (spqrRecvRawSpecPlacedT A lim S RecvEnv)))
+      (withLsCodeRoLoaded lsmpl (spqrRecvRawDispSpecPlacedT A lim S RecvEnv)))
     (hfmt_call : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H)
-      (lsρ lsFormatInnerSym) (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (lsρ lsFormatInnerSym) (formatInnerCallLsEnvSpec M A lim fmtEnv))
     (hdealloc_call : subroutine_ok ((blkPC_508).rebase (blkPl_508).base H)
-      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
+      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hfmt_sub : ∀ evs, CliFormatInnerEnv evs → fmtEnv evs := by exact fun _ h => h) :
     S5WTSeamPlaced ((blkPC_508).rebase (blkPl_508).base H) (blkPl_508).base
       tokenInitPlacedAt C A lim ctl uuidTryParse S (PqRecvEnv S RecvEnv fmtEnv) := by
   intro x st trG tr st1 mkg draws R s0 s hQ hstack hfits hpqr_eq h5 hL
@@ -691,7 +713,7 @@ theorem pqRecv_507_placed_ok_WT [LibsignalPlacement] {M : AllocCostModel}
     let stArg : VecArg := ⟨sp + 232#64, trG.pq.cap, trG.pq.ptr, tr.pqrState⟩
     let msgArg : VecArg := ⟨x.msgA, x.msgG.pqCap, x.msgG.pqPtr, x.msg.pqRatchet⟩
     have hpre_call0 : sm.mem ⊨
-        (spqrRecvRawSpecPlaced A lim S RecvEnv).pre ((stArg, msgArg, sp + 1280#64), st) sm ∗
+        (spqrRecvRawDispSpecPlaced A lim S RecvEnv).pre ((stArg, msgArg, sp + 1280#64), st) sm ∗
         ((signalMessageRestAt A.repAlloc x.msgG x.msgA x.msg ∗
           trRestAt A.repAlloc sp trG tr ∗
           sessionStateAt A.repAlloc x.ss x.G.afterTrFrom st1 ∗
@@ -718,7 +740,7 @@ theorem pqRecv_507_placed_ok_WT [LibsignalPlacement] {M : AllocCostModel}
           memRegion (sp - BitVec.ofNat 64 tryDecryptSubStack)
             (tryDecryptSubStack - spqrRecvStack) ∗
           tryDecryptSavedRegs s0.sp s0) ∗ R0) := by
-      dsimp only [spqrRecvRawSpecPlaced, spqrRecvRawSpec, stArg, msgArg]
+      dsimp only [spqrRecvRawDispSpecPlaced, spqrRecvRawDispSpec, spqrRecvRawSpec, stArg, msgArg]
       simp only [vecArg_at_atState, RustCliAllocBudget.atState_pool]
       dsimp only [VecArg.at]
       rw [hspm]
@@ -739,7 +761,7 @@ theorem pqRecv_507_placed_ok_WT [LibsignalPlacement] {M : AllocCostModel}
       rw [hspm]
       exact spqrRecvStack_le_placed hstack hsp_def
     subst hR0_def
-    have hpre_call := pre_spqrRecvRawSpecPlacedT hst_lt hpq_lt hsp_lt hpre_call0
+    have hpre_call := pre_spqrRecvRawDispSpecPlacedT hst_lt hpq_lt hsp_lt hpre_call0
     clear hpre_call0
     cases hrecv : S.recv tr.pqrState x.msg.pqRatchet with
     | ok pair =>
@@ -747,15 +769,15 @@ theorem pqRecv_507_placed_ok_WT [LibsignalPlacement] {M : AllocCostModel}
       refine steps_call_out_placed_cro ((stArg, msgArg, sp + 1280#64), st) hrecv_call
         hpcm hrunm hsp_alm hlrm hclm hLm hpre_call
         (fun sf hpan hpost => Or.inr ⟨hpan,
-          onPanic_of_spqrRecv_budget_placed (A := A) (lim := lim) (RecvEnv := RecvEnv)
+          onPanic_of_spqrRecv_disp_budget_placed (A := A) (lim := lim) (RecvEnv := RecvEnv)
             (st_v := stArg) (msg_v := msgArg)
             (ret := sp + 1280#64) (st_m := st) htracem hpqr_eq rfl hpost⟩) ?_
       intro sf1 hpcf1 hrunf1 hspf1 hsp_alf1 hcsf1 hclf1 hLf1 hpost1_raw
-      have hpost1 := post_spqrRecvRawSpecPlacedT hpost1_raw
+      have hpost1 := post_spqrRecvRawDispSpecPlacedT hpost1_raw
       clear hpost1_raw
       generalize hR'_def : (tokenInitPlacedAt ∗ R) = R' at hpost1
-      dsimp only [spqrRecvRawSpecPlaced, spqrRecvRawSpec, stArg, msgArg] at hpost1
-      simp only [vecArg_at_atState, spqrRecvResultAt_atState,
+      dsimp only [spqrRecvRawDispSpecPlaced, spqrRecvRawDispSpec, stArg, msgArg] at hpost1
+      simp only [vecArg_at_atState, spqrRecvResultDispAt_atState,
         RustCliAllocBudget.atState_pool] at hpost1
       dsimp only [VecArg.at] at hpost1
       rw [hspm] at hspf1 hpost1
@@ -776,7 +798,7 @@ theorem pqRecv_507_placed_ok_WT [LibsignalPlacement] {M : AllocCostModel}
       have hnpF : S.recvPanics tr.pqrState x.msg.pqRatchet = false := by simpa using hnoP
       rw [htracem] at htrace1
       rw [hrecv] at hpost1
-      dsimp only [spqrRecvResultAt] at hpost1
+      dsimp only [spqrRecvResultDispAt, spqrRecvResultAt] at hpost1
       unfold vecU8 at hpost1
       simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpost1
       rcases hpost1 with ⟨newPqrCap, newPqrPtr, hpost1⟩
@@ -896,15 +918,15 @@ theorem pqRecv_507_placed_ok_WT [LibsignalPlacement] {M : AllocCostModel}
       refine steps_call_out_placed_cro ((stArg, msgArg, sp + 1280#64), st) hrecv_call
         hpcm hrunm hsp_alm hlrm hclm hLm hpre_call
         (fun sf hpan hpost => Or.inr ⟨hpan,
-          onPanic_of_spqrRecv_budget_placed (A := A) (lim := lim) (RecvEnv := RecvEnv)
+          onPanic_of_spqrRecv_disp_budget_placed (A := A) (lim := lim) (RecvEnv := RecvEnv)
             (st_v := stArg) (msg_v := msgArg)
             (ret := sp + 1280#64) (st_m := st) htracem hpqr_eq rfl hpost⟩) ?_
       intro sf1 hpcf1 hrunf1 hspf1 hsp_alf1 hcsf1 hclf1 hLf1 hpost1_raw
-      have hpost1 := post_spqrRecvRawSpecPlacedT hpost1_raw
+      have hpost1 := post_spqrRecvRawDispSpecPlacedT hpost1_raw
       clear hpost1_raw
       generalize hR'_def : (tokenInitPlacedAt ∗ R) = R' at hpost1
-      dsimp only [spqrRecvRawSpecPlaced, spqrRecvRawSpec, stArg, msgArg] at hpost1
-      simp only [vecArg_at_atState, spqrRecvResultAt_atState,
+      dsimp only [spqrRecvRawDispSpecPlaced, spqrRecvRawDispSpec, stArg, msgArg] at hpost1
+      simp only [vecArg_at_atState, spqrRecvResultDispAt_atState,
         RustCliAllocBudget.atState_pool] at hpost1
       dsimp only [VecArg.at] at hpost1
       rw [hspm] at hspf1 hpost1
@@ -924,13 +946,13 @@ theorem pqRecv_507_placed_ok_WT [LibsignalPlacement] {M : AllocCostModel}
       have hnpF : S.recvPanics tr.pqrState x.msg.pqRatchet = false := by simpa using hnoP
       rw [htracem] at htrace1
       rw [hrecv] at hpost1
-      dsimp only [spqrRecvResultAt, errTag] at hpost1
+      dsimp only [spqrRecvResultDispAt, errTag] at hpost1
       simp only [sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpost1
       rcases hpost1 with ⟨d, hpost1⟩
       simp only [sepConj_assoc] at hpost1
       rw [sepConj_pure_left_comm, sepConj_pure_left_comm, sepConj_pure_left_comm,
         satisfies_pure_sepConj] at hpost1
-      rcases hpost1 with ⟨hd_iff, hpost1⟩
+      rcases hpost1 with ⟨⟨hd_iff, hd_valid⟩, hpost1⟩
       set st_r := M.stepEvents evs1 st
       have hfits_fmt := fitsEnv_fmt_of_pqRecvEnv_err hrecv hfits hevs1
       have hpost1' : sf1.mem ⊨
@@ -983,7 +1005,7 @@ theorem pqRecv_507_placed_ok_WT [LibsignalPlacement] {M : AllocCostModel}
         obtain ⟨s', hsteps, (⟨evs2, evs3, hevs2, hevs3, hok⟩ | ⟨hpan, hm⟩)⟩ :=
           pqRecv_recv_err_true_507_placed C A lim st_r ctl S fmtEnv H x trG tr st1 mkg draws
             (tokenInitPlacedAt ∗ R) s0
-            hfits_fmt hsp0_al' hseed1 hseed2 hfmt_call hdealloc_call hsp_def
+            hfits_fmt hsp0_al' hseed1 hseed2 hfmt_call hdealloc_call hfmt_sub hsp_def
             sf1 hpcf1 hrunf1 hspf1 hsp_alf1 hx19_1 hx20_1 hx23_1 hw24_1 hx25_1 hx28_1 hfp_1
             htrace1 hvregs_1 hclf1 hLf1 hpost1'
         · refine ⟨s', hsteps, Or.inl ⟨(evs1 ++ evs2) ++ evs3,
@@ -996,7 +1018,7 @@ theorem pqRecv_507_placed_ok_WT [LibsignalPlacement] {M : AllocCostModel}
         obtain ⟨s', hsteps, (⟨evs2, evs3, hevs2, hevs3, hok⟩ | ⟨hpan, hm⟩)⟩ :=
           pqRecv_recv_err_false_507_placed C A lim st_r ctl S fmtEnv H x trG tr st1 mkg draws
             (tokenInitPlacedAt ∗ R) s0
-            hfits_fmt hmsgW hsp0_al' hseed1 hseed2 hfmt_call hdealloc_call hsp_def hd_ne
+            hfits_fmt hmsgW hsp0_al' hseed1 hseed2 hfmt_call hdealloc_call hfmt_sub hsp_def hd_ne hd_valid
             sf1 hpcf1 hrunf1 hspf1 hsp_alf1 hx19_1 hx20_1 hx23_1 hw24_1 hx25_1 hx28_1 hfp_1
             htrace1 hvregs_1 hclf1 hLf1 hpost1'
         · refine ⟨s', hsteps, Or.inl ⟨(evs1 ++ evs2) ++ evs3,
@@ -1020,10 +1042,11 @@ theorem pqRecv_507_placed_ok_WT_of_seams_ofEnv [LibsignalPlacement]
     (ctl : BitVec 64)
     (hfmt_call : subroutine_ok
       ((blkPC_508).rebase (blkPl_508).base (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsρ lsFormatInnerSym) (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (lsρ lsFormatInnerSym) (formatInnerCallLsEnvSpec M A lim fmtEnv))
     (hdealloc_call : subroutine_ok
       ((blkPC_508).rebase (blkPl_508).base (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
+      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hfmt_sub : ∀ evs, CliFormatInnerEnv evs → fmtEnv evs := by exact fun _ h => h) :
     S5WTSeamPlaced
       ((blkPC_508).rebase (blkPl_508).base (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))))
       (blkPl_508).base tokenInitPlacedAt W.C A lim ctl uuidTryParse
@@ -1031,9 +1054,9 @@ theorem pqRecv_507_placed_ok_WT_of_seams_ofEnv [LibsignalPlacement]
   have _ := instIsLsBlockProg_508 (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W)))
   exact pqRecv_507_placed_ok_WT W.C A lim ctl (spqrV1 W.C.F W.Q.K)
     RecvBytesEnv fmtEnv (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (spqrRecvPlacedInnerSpecXT_imp_spqrRecvRawSpecPlacedT
-      (hS.spqrRecv_trTrap_at_block (i := 508)))
-    hfmt_call hdealloc_call
+    (spqrRecvPlacedInnerDispSpecXT_imp_spqrRecvRawDispSpecPlacedT
+      (hS.spqrRecvDisp_trTrap_at_block (i := 508)))
+    hfmt_call hdealloc_call hfmt_sub
 
 /-- Default `SpqrRecvBytesEnv` `S5WTSeamPlaced` on `blkPl_508` at
     `Slots.trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))` from `SpqrV1PlacedSeams`,
@@ -1045,15 +1068,16 @@ theorem pqRecv_507_placed_ok_WT_of_seams [LibsignalPlacement]
     {fmtEnv : List AllocEvent → Prop}
     (hfmt_call : subroutine_ok
       ((blkPC_508).rebase (blkPl_508).base (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsρ lsFormatInnerSym) (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (lsρ lsFormatInnerSym) (formatInnerCallLsEnvSpec M A lim fmtEnv))
     (hdealloc_call : subroutine_ok
       ((blkPC_508).rebase (blkPl_508).base (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))))
-      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
+      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hfmt_sub : ∀ evs, CliFormatInnerEnv evs → fmtEnv evs := by exact fun _ h => h) :
     S5WTSeamPlaced
       ((blkPC_508).rebase (blkPl_508).base (trTrapExternsPlaced (cliGhostExterns gh (cliExternsPlaced mmpl W))))
       (blkPl_508).base tokenInitPlacedAt W.C A lim ctl uuidTryParse
       (spqrV1 W.C.F W.Q.K) (PqRecvEnv (spqrV1 W.C.F W.Q.K) SpqrRecvBytesEnv fmtEnv) :=
-  pqRecv_507_placed_ok_WT_of_seams_ofEnv hS ctl hfmt_call hdealloc_call
+  pqRecv_507_placed_ok_WT_of_seams_ofEnv hS ctl hfmt_call hdealloc_call hfmt_sub
 
 /-- Envelope-parametric `S5WTSeamPlaced` on `blkPl_508` at `cliGhostExterns gh (cliExternsPlaced mmpl W)`
     from `SpqrV1PlacedSeamsOfEnv` (used by `RootTrapPlacedBudget.pqRecv_507_cli`). -/
@@ -1069,10 +1093,11 @@ theorem pqRecv_507_placed_ok_WT_cli_of_seams_ofEnv [LibsignalPlacement]
     (ctl : BitVec 64)
     (hfmt_call : subroutine_ok
       ((blkPC_508).rebase (blkPl_508).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-      (lsρ lsFormatInnerSym) (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (lsρ lsFormatInnerSym) (formatInnerCallLsEnvSpec M A lim fmtEnv))
     (hdealloc_call : subroutine_ok
       ((blkPC_508).rebase (blkPl_508).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
+      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hfmt_sub : ∀ evs, CliFormatInnerEnv evs → fmtEnv evs := by exact fun _ h => h) :
     S5WTSeamPlaced
       ((blkPC_508).rebase (blkPl_508).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (blkPl_508).base tokenInitPlacedAt W.C A lim ctl uuidTryParse
@@ -1080,8 +1105,8 @@ theorem pqRecv_507_placed_ok_WT_cli_of_seams_ofEnv [LibsignalPlacement]
   have _ := instIsLsBlockProg_508 (cliGhostExterns gh (cliExternsPlaced mmpl W))
   exact pqRecv_507_placed_ok_WT W.C A lim ctl (spqrV1 W.C.F W.Q.K)
     RecvBytesEnv fmtEnv (cliGhostExterns gh (cliExternsPlaced mmpl W))
-    (hS.spqrRecv_rawSpecPlacedT_at_block (i := 508))
-    hfmt_call hdealloc_call
+    (hS.spqrRecv_rawDispSpecPlacedT_at_block (i := 508))
+    hfmt_call hdealloc_call hfmt_sub
 
 /-- Default `SpqrRecvBytesEnv` `S5WTSeamPlaced` on `blkPl_508` at `cliGhostExterns gh (cliExternsPlaced mmpl W)`
     from `SpqrV1PlacedSeams`. -/
@@ -1092,14 +1117,15 @@ theorem pqRecv_507_placed_ok_WT_cli_of_seams [LibsignalPlacement]
     {fmtEnv : List AllocEvent → Prop}
     (hfmt_call : subroutine_ok
       ((blkPC_508).rebase (blkPl_508).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-      (lsρ lsFormatInnerSym) (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (lsρ lsFormatInnerSym) (formatInnerCallLsEnvSpec M A lim fmtEnv))
     (hdealloc_call : subroutine_ok
       ((blkPC_508).rebase (blkPl_508).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim)) :
+      (lsρ lsRustDeallocSym) (rustCliDeallocBudgetSpec M A lim))
+    (hfmt_sub : ∀ evs, CliFormatInnerEnv evs → fmtEnv evs := by exact fun _ h => h) :
     S5WTSeamPlaced
       ((blkPC_508).rebase (blkPl_508).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (blkPl_508).base tokenInitPlacedAt W.C A lim ctl uuidTryParse
       (spqrV1 W.C.F W.Q.K) (PqRecvEnv (spqrV1 W.C.F W.Q.K) SpqrRecvBytesEnv fmtEnv) :=
-  pqRecv_507_placed_ok_WT_cli_of_seams_ofEnv hS ctl hfmt_call hdealloc_call
+  pqRecv_507_placed_ok_WT_cli_of_seams_ofEnv hS ctl hfmt_call hdealloc_call hfmt_sub
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.SpqrRecvTrapV1_507PlacedBudget

@@ -31,7 +31,7 @@ oracle implementations.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 
@@ -44,7 +44,7 @@ section HoldsSec
 variable {m : Type → Type} [Monad m] {α β : Type}
 
 /-- Every outcome of `x` satisfies `P`. -/
-def Holds (x : m α) (P : α → Prop) : Prop :=
+@[expose] def Holds (x : m α) (P : α → Prop) : Prop :=
   ∃ y : m {a // P a}, x = Subtype.val <$> y
 
 variable [LawfulMonad m]
@@ -75,10 +75,6 @@ theorem Holds.mono {x : m α} {P Q : α → Prop} (hx : Holds x P) (h : ∀ a, P
   obtain ⟨y, rfl⟩ := hx
   exact ⟨(fun a => ⟨a.1, h a.1 a.2⟩) <$> y, by simp [Functor.map_map]⟩
 
-theorem Holds.bindT {x : m α} {f : α → m β} {Q : β → Prop} (hf : ∀ a, Holds (f a) Q) :
-    Holds (x >>= f) Q :=
-  (Holds.true x).bind' fun a _ => hf a
-
 end HoldsSec
 
 theorem Holds.of_support {ι : Type} {spec : OracleSpec ι} {α : Type} (x : OracleComp spec α)
@@ -99,25 +95,12 @@ theorem Holds.support {ι : Type} {spec : OracleSpec ι} {α : Type} {x : Oracle
   obtain ⟨b, _, rfl⟩ := ha
   exact b.2
 
-/-- `simulateQ` preserves a state invariant whenever every oracle query does. -/
-theorem simulateQ_holds {ι : Type} {spec : OracleSpec ι} {m : Type → Type} [Monad m] [LawfulMonad m]
-    {σ α : Type} (impl : QueryImpl spec (StateT σ m)) (I : σ → Prop)
-    (himpl : ∀ t s, I s → Holds ((impl t).run s) fun z => I z.2) (oa : OracleComp spec α) :
-    ∀ s, I s → Holds ((simulateQ impl oa).run s) fun z => I z.2 := by
-  induction oa using OracleComp.inductionOn with
-  | pure x => intro s hs; simpa using Holds.pure' (m := m) (x, s) hs
-  | query_bind t oa ih =>
-    intro s hs
-    simp only [simulateQ_bind, simulateQ_query, OracleQuery.input_query, OracleQuery.cont_query,
-      StateT.run_bind]
-    exact Holds.of_eq (by simp) ((himpl t s hs).bind' fun z hz => ih z.1 z.2 hz)
-
 section HoldsS
 
 variable {m : Type → Type} [Monad m] [LawfulMonad m] {σ α β : Type}
 
 /-- Every outcome of `x` run from state `T` satisfies `P`. -/
-def HoldsS (x : StateT σ m α) (T : σ) (P : α → σ → Prop) : Prop :=
+@[expose] def HoldsS (x : StateT σ m α) (T : σ) (P : α → σ → Prop) : Prop :=
   Holds (x.run T) fun z => P z.1 z.2
 
 theorem HoldsS.pure' {T : σ} {P : α → σ → Prop} (a : α) (h : P a T) :
@@ -232,9 +215,6 @@ theorem abs_sub_evalDist_bind_le_of_support {α : Type}
       _ = δ := by
           rw [← mul_assoc, inv_mul_cancel₀ (by positivity : (t : ℝ) + 1 ≠ 0), one_mul]
 
-private theorem probBool_le_one (mx : ProbComp Bool) : 𝒟[mx] {true} ≤ 1 :=
-  le_trans (measure_mono (Set.subset_univ _)) (evalDist_apply_univ_eq_one _).le
-
 private theorem bind_apply_le_add_true {α : Type} (mx : ProbComp α)
     (f g : α → ProbComp Bool) (fl : α → ProbComp Bool) (x : Bool)
     (h : ∀ a ∈ support mx, 𝒟[f a] {x} ≤ 𝒟[g a] {x} + 𝒟[fl a] {true}) :
@@ -248,46 +228,6 @@ private theorem bind_apply_le_add_true {α : Type} (mx : ProbComp α)
     refine lintegral_mono fun u => ih u fun a ha => h a ?_
     rw [mem_support_bind_iff]
     exact ⟨u, by simp, ha⟩
-
-/-- Continuations agreeing whenever `bad a = false` differ in `{true}` mass by at most `Pr[bad]`. -/
-theorem abs_sub_bind_toReal_le_of_bad_eq_false {α : Type}
-    (mx : ProbComp α) (g₁ g₂ : α → ProbComp Bool) (bad : α → Bool)
-    (hgood : ∀ a ∈ support mx, bad a = false → g₁ a = g₂ a) :
-    |(𝒟[mx >>= g₁] {true}).toReal - (𝒟[mx >>= g₂] {true}).toReal| ≤
-      (𝒟[bad <$> mx] {true}).toReal := by
-  have h1_le : 𝒟[mx >>= g₁] {true} ≤ 𝒟[mx >>= g₂] {true} + 𝒟[bad <$> mx] {true} := by
-    rw [map_eq_bind_pure_comp]
-    refine bind_apply_le_add_true mx g₁ g₂ (fun a => pure (bad a)) true fun a ha => ?_
-    by_cases hb : bad a = true
-    · simp only [hb, evalDist_pure, Measure.dirac_apply' _ (measurableSet_singleton _),
-        Set.mem_singleton_iff, Set.indicator_of_mem, Pi.one_apply]
-      exact (probBool_le_one (g₁ a)).trans le_add_self
-    · have hbf : bad a = false := Bool.eq_false_iff.mpr hb
-      rw [hgood a ha hbf]
-      exact le_self_add
-  have h2_le : 𝒟[mx >>= g₂] {true} ≤ 𝒟[mx >>= g₁] {true} + 𝒟[bad <$> mx] {true} := by
-    rw [map_eq_bind_pure_comp]
-    refine bind_apply_le_add_true mx g₂ g₁ (fun a => pure (bad a)) true fun a ha => ?_
-    by_cases hb : bad a = true
-    · simp only [hb, evalDist_pure, Measure.dirac_apply' _ (measurableSet_singleton _),
-        Set.mem_singleton_iff, Set.indicator_of_mem, Pi.one_apply]
-      exact (probBool_le_one (g₂ a)).trans le_add_self
-    · have hbf : bad a = false := Bool.eq_false_iff.mpr hb
-      rw [hgood a ha hbf]
-      exact le_self_add
-  have hfin1 : 𝒟[mx >>= g₁] {true} ≠ ⊤ := measure_ne_top _ _
-  have hfin2 : 𝒟[mx >>= g₂] {true} ≠ ⊤ := measure_ne_top _ _
-  have hfinB : 𝒟[bad <$> mx] {true} ≠ ⊤ := measure_ne_top _ _
-  have hr1 : (𝒟[mx >>= g₁] {true}).toReal ≤
-      (𝒟[mx >>= g₂] {true}).toReal + (𝒟[bad <$> mx] {true}).toReal := by
-    rw [← ENNReal.toReal_add hfin2 hfinB]
-    exact ENNReal.toReal_mono (ENNReal.add_ne_top.mpr ⟨hfin2, hfinB⟩) h1_le
-  have hr2 : (𝒟[mx >>= g₂] {true}).toReal ≤
-      (𝒟[mx >>= g₁] {true}).toReal + (𝒟[bad <$> mx] {true}).toReal := by
-    rw [← ENNReal.toReal_add hfin1 hfinB]
-    exact ENNReal.toReal_mono (ENNReal.add_ne_top.mpr ⟨hfin1, hfinB⟩) h2_le
-  rw [abs_le]
-  constructor <;> linarith
 
 /-! ## `ApproxOn` combinators -/
 
@@ -319,24 +259,6 @@ theorem ApproxOn.of_eq {σ α : Type} (Inv : σ → Prop) (δ : ℝ) (hδ : 0 �
 theorem ApproxOn.pure' {σ α : Type} (Inv : σ → Prop) (δ : ℝ) (hδ : 0 ≤ δ) (a : α) :
     ApproxOn Inv δ (pure a) (pure a) :=
   ApproxOn.of_eq Inv δ hδ (pure a) (pure a) (fun _ _ => rfl) (fun _ hs => HoldsS.pure' a hs)
-
-theorem ApproxOn.bind_of_left_eq {σ α β : Type} (Inv : σ → Prop) (δ : ℝ) (hδ : 0 ≤ δ)
-    {m₁ m₂ : StateT σ ProbComp α} {f₁ f₂ : α → StateT σ ProbComp β}
-    (heq : ∀ s, Inv s → m₁.run s = m₂.run s)
-    (hm : ∀ s, Inv s → HoldsS m₁ s fun _ s' => Inv s')
-    (hf : ∀ a, ApproxOn Inv δ (f₁ a) (f₂ a)) :
-    ApproxOn Inv δ (m₁ >>= f₁) (m₂ >>= f₂) := by
-  refine ⟨fun s hs => (hm s hs).bind fun a s' hs' => (hf a).pres₁ s' hs',
-    fun s hs => ?_, fun s hs k => ?_⟩
-  · have hm₂ : HoldsS m₂ s fun _ s' => Inv s' := by
-      unfold HoldsS; rw [← heq s hs]; exact hm s hs
-    exact hm₂.bind fun a s' hs' => (hf a).pres₂ s' hs'
-  · simp only [StateT.run_bind, bind_assoc]
-    rw [← heq s hs]
-    refine abs_sub_evalDist_bind_le_of_support (m₁.run s)
-      (fun z => (f₁ z.1).run z.2 >>= k)
-      (fun z => (f₂ z.1).run z.2 >>= k) δ hδ fun z hz => ?_
-    exact (hf z.1).dist z.2 ((hm s hs).support z hz) k
 
 theorem ApproxOn.bind_of_right_eq {σ α β : Type} (Inv : σ → Prop) (δ : ℝ)
     {m₁ m₂ : StateT σ ProbComp α} {f : α → StateT σ ProbComp β}
@@ -463,7 +385,7 @@ theorem abs_sub_simulateQ_le_of_approxOn_pred
         have htri : |L - R| ≤ |L - M| + |M - R| := abs_sub_le L M R
         linarith
 
-def isGameQuery {ι : Type} {spec : OracleSpec ι} : (unifSpec + spec).Domain → Bool
+@[expose] def isGameQuery {ι : Type} {spec : OracleSpec ι} : (unifSpec + spec).Domain → Bool
   | .inl _ => false
   | .inr _ => true
 

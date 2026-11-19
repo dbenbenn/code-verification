@@ -9,9 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.FetchChunkedV1
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -25,7 +23,7 @@ at `a + off2`) of `spqr::proto::pq_ratchet::V1State::encoded_len`:
 - `k = 1`: `.keysSampled` (`+576..+708`, `+1424..+1448`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 
@@ -36,7 +34,6 @@ open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalSpqrV1
 open EncodedLen
 
-local notation "tripleRatchetProgAtExt" => CryptoVerification.LibsignalTripleRatchet.contractProg
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000

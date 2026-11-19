@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPreSample
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdPreSample
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC4 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre -- proof-setup: allow-public-import
 
 /-!
 # Clearing the target signing secret in the one-key `Auth` simulator
@@ -19,7 +21,7 @@ in `FgAuthSimState S`, and proves that `AuthDh3.fgAuthStepPure` commutes with `c
 every query except `.initPrin`, `.corruptIK`, and `.genSPK`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,11 +36,11 @@ namespace Proofs.SignalPqxdh.Security
 local macro "splitc" : tactic =>
   `(tactic| (split <;> (rename_i hc; try simp only [hc, ↓reduceIte, Bool.false_eq_true, pure_bind])))
 
-def clearAuthSecSignBase {S : Setup} (tIdx : ℕ) (st : AuthState S) : AuthState S :=
+@[expose] def clearAuthSecSignBase {S : Setup} (tIdx : ℕ) (st : AuthState S) : AuthState S :=
   { st with principals := st.principals.map (fun (idx, e) => (idx, clearTargetPrinSecSign tIdx idx e)) }
 
 /-- Clear `secIKAsign` at principal `tIdx` in `FgAuthSimState S`. -/
-def clearAuthSecSign {S : Setup} (tIdx : ℕ) (st : FgAuthSimState S) : FgAuthSimState S :=
+@[expose] def clearAuthSecSign {S : Setup} (tIdx : ℕ) (st : FgAuthSimState S) : FgAuthSimState S :=
   { st with base := clearAuthSecSignBase tIdx st.base }
 
 @[simp] theorem clearAuthSecSign_base_principals {S : Setup} (tIdx : ℕ) (st : FgAuthSimState S) :
@@ -272,7 +274,7 @@ theorem fgRunRecvNoOPKAuthPure_clearAuthSecSign (S : Setup) (P : Primitives)
               bEntry ss _ _ (fun _ => ?_) st
             rfl
 
-def isDelegatedAuthQuery {S : Setup} : AuthQuery S → Bool
+@[expose] def isDelegatedAuthQuery {S : Setup} : AuthQuery S → Bool
   | .initPrin _  => false
   | .corruptIK _ => false
   | .genSPK _ _  => false

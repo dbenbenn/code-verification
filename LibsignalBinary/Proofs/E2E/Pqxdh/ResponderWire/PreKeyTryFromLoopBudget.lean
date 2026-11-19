@@ -9,13 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromLoop
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.Fetch
+public import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- proof-setup: allow-public-import
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
@@ -24,8 +23,17 @@ import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.StdStartup.MemOps
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
 
 /-!
 # Budget-Threaded Protobuf Decode Loop for `PreKeySignalMessage::try_from` (Block `111`)
@@ -35,7 +43,7 @@ Defines the deterministic loop allocator event trace `preKeyLoopEvents` and prov
 (`+0 → +0x460`) of Block `111` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -78,7 +86,7 @@ attribute [local arm64_norm, local wp_norm]
 
 /-- Exact allocator event list of the 4 `bytes::merge` field decodes (`bk`, `ik`, `inner`,
 `kyber`) in `PreKeySignalMessage::try_from`'s protobuf decode loop on `x : PreKeyTryFromArgs`. -/
-def preKeyLoopEvents (x : PreKeyTryFromArgs) : List AllocEvent :=
+@[expose] def preKeyLoopEvents (x : PreKeyTryFromArgs) : List AllocEvent :=
   bytesMergeEventsCore .lengthDelimited 0#64 (encodeVarint 33#64 ++ x.bkBytes ++ psmRem2 x) ++
     bytesMergeEventsCore .lengthDelimited 0#64 (encodeVarint 33#64 ++ x.ikBytes ++ psmRem3 x) ++
     bytesMergeEventsCore .lengthDelimited 0#64
@@ -86,7 +94,7 @@ def preKeyLoopEvents (x : PreKeyTryFromArgs) : List AllocEvent :=
     bytesMergeEventsCore .lengthDelimited 0#64
       (encodeVarint 1569#64 ++ x.kyberBytes ++ psmRem8 x)
 
-def PreKeyLoopEnv (x : PreKeyTryFromArgs) (evs : List AllocEvent) : Prop :=
+@[expose] def PreKeyLoopEnv (x : PreKeyTryFromArgs) (evs : List AllocEvent) : Prop :=
   evs = preKeyLoopEvents x
 
 /-- Individual field `bytes::merge` event lists (`bk`, `ik`, `inner`, `kyber`). -/
@@ -106,7 +114,7 @@ abbrev psmEvs8 (x : PreKeyTryFromArgs) : List AllocEvent :=
 abbrev withLoopInv {α : Type} (Inv : Memory → Prop) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s0 => spec.pre x s0 ∗ ⌜Inv s0.mem⌝ }
 
-def noPanicQp (_s0 : State) : State → SepProp → Prop :=
+@[expose] def noPanicQp (_s0 : State) : State → SepProp → Prop :=
   fun _ _ => False
 
 theorem sepWPp_weaken_qp {prog : Program} {ret : BitVec 64} {s0 s : State}

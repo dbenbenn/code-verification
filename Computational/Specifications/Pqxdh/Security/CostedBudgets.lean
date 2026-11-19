@@ -31,7 +31,7 @@ In `stepCostBudgetSplit S b q_off`, online queries (`M_on = min q_on q_total`) a
 random-oracle queries (`M_off = min q_off q_total`) are accounted separately via
 `CostBoundedByKind`: only online queries allocate keys and sessions (clamping `M_dh` and `M_sess`
 against `M_on`), while random-oracle lookups and bilinear random-oracle-by-session consistency
-checks (`O(M_off · M_on)`) are charged on their own terms. Because neither budget dominates the
+checks (`O(M_off · M_on)`) are charged separately. Because neither budget dominates the
 other across all `b`, the headline reduction bundles state both bounds.
 -/
 
@@ -64,14 +64,9 @@ def outputSizeBudget (S : Setup) (b : QueryBudget) (ℓ : Nat) : Nat :=
     `M_on = min b.q_on b.q_total` online queries and `M_off = min q_off b.q_total` offline
     random-oracle queries (`q_off = b.q_ro` for `KeyInd`, `b.q_ro + b.q_roRoot` for `Auth`).
     Because only online queries create keys and sessions, `M_dh` and `M_sess` clamp against `M_on`,
-    while random-oracle lookups over at most `M_off + 2 * M_on + 1` entries and bilinear
-    random-oracle-by-session consistency checks (`2 ^ 13 * M_off * M_on`) are charged separately.
-    The lookup term is sized for a balanced lookup tree with `O(bits K)` lookup plus insert,
-    `K = M_off + 2 * M_on + 1`. The current proofs use an AVL table (proof side, ported from #1283);
-    in the `Auth` CPA, PRF and SHCR reductions each offline query costs at most
-    `4420 * bits K + 1750`, and `avl_split_budget_le` (`avl_split_budget_twoStage_le` for SHCR)
-    bounds the offline steps plus the online table syncs by the lookup term up to an `O(M_on ^ 2)`
-    remainder (`Proofs/SignalPqxdh/Security/ReductionDsl/KindSplit/AuthCoreKCostBase.lean`). -/
+    while random-oracle lookups over at most `K = M_off + 2 * M_on + 1` entries (`O(bits K)` per
+    balanced-tree lookup/insert) and bilinear random-oracle-by-session consistency checks
+    (`2 ^ 13 * M_off * M_on`) are charged separately. -/
 def stepCostBudgetSplit (S : Setup) (b : QueryBudget) (q_off : Nat) : Nat :=
   let M_on := min b.q_on b.q_total
   let M_off := min q_off b.q_total

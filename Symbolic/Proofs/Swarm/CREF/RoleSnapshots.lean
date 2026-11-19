@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix
+public import Symbolic.Proofs.Swarm.CREF.Xpl.StepsMix -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -35,7 +35,7 @@ Defines `RoleSnapshots r tr`, stating that every stored `TRState` snapshot for `
 model moves, and `OneMove` blocks.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,7 +49,7 @@ open TripleRatchet (TREvent TRState)
 open PQXDH (PQXDHEvent)
 
 /-- Every `TRState` snapshot stored for `p` in `tr` has `st.initiator = decide (p = r.alice)`. -/
-def RoleSnapshots (r : ProtocolSetup) (tr : ExecTrace) : Prop :=
+@[expose] def RoleSnapshots (r : ProtocolSetup) (tr : ExecTrace) : Prop :=
   ∀ (p : Participant) (st : TRState) (i : Nat),
     (tr.at? i : Option (PersistentGlobalState.State.ExecEntryT
       (PersistentLocalState.LocalState TRState))) = some ⟨⟨p, st⟩⟩ →

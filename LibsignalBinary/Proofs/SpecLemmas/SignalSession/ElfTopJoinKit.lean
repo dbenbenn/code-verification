@@ -9,13 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole2FitsEnvParts
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
+public import LibsignalBinary.Proofs.PeakBudget.W4PostBobPrev1Dom -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole2FitsEnvParts -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
 import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactAsm
 import LibsignalBinary.Proofs.PeakBudget.RealMainEnvAdapter
 import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0PostBob
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bProofPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.EncryptPlaced
 
 /-!
 # Post-Bob `prev1` Whole-`main` `FitsEnv` and `RunEnv` Inclusion
@@ -27,13 +41,12 @@ Proves `FitsEnv fineCostModel cliBudgetLimits` and whole-`run` `RunEnv` inclusio
 `PeerSpqrStateTight640` and `SessionGetPrev0Guard` at every prekey `recv` call site.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfTopJoinKit
 
-open Arm64.Obj (Image)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
 open CryptoVerification (LibsignalPlacement)
@@ -74,7 +87,7 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
 
 /-- Whole-`main` `FitsEnv` at `cliBudgetLimits` for `fits2_realCliMainBinaryKitEnvOfDecPk (cliDecPkCanonSlotEnvExact' X W)` under `CliPqxdhInputs`. -/
 theorem realCliMainBinaryKitEnvOfExact'_fitsEnv_cliBudgetLimits_closed [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (i : Inputs) (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ i) :
     FitsEnv fineCostModel cliBudgetLimits fineCostModel.init
       (fits2_realCliMainBinaryKitEnvOfDecPk (cliDecPkCanonSlotEnvExact' X W) img S X W i) :=
@@ -95,7 +108,7 @@ theorem realCliMainBinaryKitEnvOfExact'_fitsEnv_cliBudgetLimits_closed [Libsigna
 theorem hole_hmain_runEnvExact'_sub_binaryKit_closed [LibsignalPlacement]
     {M : AllocCostModel}
     {FallbackEnv : PksmGhost → List AllocEvent → Prop}
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget M) (B : RunBudgets)
     {g : RunCall}
     (hi : CliPqxdhInputs ⟨W.C, W.Q⟩ g.i)
@@ -127,14 +140,14 @@ private example (i : Inputs) (w : ValidPostSetupWitness i) (peerV : AddrV)
   ⟨w.g_i, hgc ▸ w.parse_ok⟩
 
 private example [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks) (i : Inputs) :
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks) (i : Inputs) :
     RealCliMainBinaryEnvOf
       (fits2_mkBinaryKitRealCalleeEnvsDecPk (cliDecPkCanonSlotEnvExact' X W) img S X W) i =
     fits2_realCliMainBinaryKitEnvOfDecPk (cliDecPkCanonSlotEnvExact' X W) img S X W i :=
   rfl
 
 private example [LibsignalPlacement]
-    (img : Image) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks) (g : RunCall) :
+    (img : Unit) (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : CliHooks) (g : RunCall) :
     CliRunBinaryEnv cliIo.rd
       (fits2_mkBinaryKitRealCalleeEnvsDecPk (cliDecPkCanonSlotEnvExact' X W) img S X W g)
       sessionCapBytes g =

@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.DrSessionSimHooks
-public import Computational.Proofs.E2E.Dsl.DrSessionSimSend
-public import Computational.Proofs.E2E.Dsl.DrSessionSimRecv
-public import Computational.Proofs.E2E.Dsl.DrSessionSimBookkeeping
-public import Computational.Proofs.E2E.Dsl.SmReachInv
-public import Computational.Proofs.E2E.Dsl.M2Interfaces
+public import Computational.Proofs.E2E.Dsl.DrSessionSimHooks -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.DrSessionSimSend -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.DrSessionSimRecv -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.DrSessionSimBookkeeping -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.SmReachInv
+public import Computational.Proofs.E2E.Dsl.M2Interfaces -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # `ReductionDsl` Step Simulator for `SM.oracleImplR`
@@ -25,7 +26,7 @@ five arms of `SM.oracleImplR` on `sessionSchemeFixedSpk`. Establishes exact eval
 zero non-coin target queries, concrete step-cost bounds, and the `DrSessionSimIface` instance.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -118,7 +119,7 @@ structure E2ECoinSamplers (ℓ : ℕ) {Pt : Type} (P : SignalPqxdh.Primitives) (
   draw512_eval : ∀ {Γ : List (Ty (e2eSig ℓ))} (ρ : Env Γ),
     (draw512 (Γ := Γ)).eval ρ = I.liftP ($ᵗ (BitVec 512))
 
-def mkE2ECoinSamplers {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
+@[expose] def mkE2ECoinSamplers {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
     {C : Crypto} {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι}
     (fwdU : (n : ℕ) → OracleComp T (Fin (n + 1))) (uCost : ℕ)
@@ -142,7 +143,7 @@ def mkE2ECoinSamplers {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
     draw256_eval := fun {_} _ => by dsimp only [Comp.eval]; congr 1
     draw512_eval := fun {_} _ => by dsimp only [Comp.eval]; congr 1 }
 
-def E2ECoinSamplers.ofSmpEq {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
+@[expose] def E2ECoinSamplers.ofSmpEq {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
     {C : Crypto} {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} {I : Iface (e2eSig ℓ) T}
     (hsmp : I.smp = e2eSamplers ℓ) : E2ECoinSamplers ℓ P C K decT encT I := by
@@ -170,7 +171,7 @@ def e2eAdapterCoinSamplers (SetupS : SignalPqxdh.Setup) (ℓ : ℕ) {Ctl : Type}
     E2ECoinSamplers ℓ P C K decT encT (e2eAdapterIface SetupS ℓ mkStart) :=
   E2ECoinSamplers.ofSmpEq rfl
 
-def e2eStepACoinSamplers (ℓ : ℕ) {Pt : Type}
+@[expose] def e2eStepACoinSamplers (ℓ : ℕ) {Pt : Type}
     (P : SignalPqxdh.Primitives) (C : Crypto) (K : MlKem)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) :
@@ -232,7 +233,7 @@ private theorem epMgmt_preserve_fields {Δ qep : ℕ}
 
 /-- `SM.samIfNec` on `Option (BitVec 512)`: draws fresh 512-bit coins with `bad = false` on `none`
 and returns `(r, true)` on `some r`. -/
-def e2eSamIfNec512C {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def e2eSamIfNec512C {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (coins : E2ECoinSamplers ℓ P C K decT encT I) {Γ : List (Ty S)}
     (optR : Expr OO Γ (.opt BV512)) : Comp OO I Γ (.prod BV512 .bool) :=
   .caseOpt optR
@@ -271,7 +272,7 @@ theorem e2eSamIfNec512C_eval {ι : Type} {T : OracleSpec ι} {I : Iface S T}
   · simp [samIfNec, coins.draw512_eval, Iface.liftP, Expr.eval, Expr.v0]
   · simp [samIfNec, Iface.liftP, Expr.eval, Expr.v0]
 
-def drTrArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
+@[expose] def drTrArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (coins : E2ECoinSamplers ℓ P C K decT encT I)
     (q Δ qep : ℕ) {Γ : List (Ty S)}
@@ -297,7 +298,7 @@ def drTrArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
              .ret (.pair (smRWireE (.some ct'))
                (e2eRecordE q Δ s1 p3 st' posE m3 ct' (.bool false))))))))
 
-def drChArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
+@[expose] def drChArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (coins : E2ECoinSamplers ℓ P C K decT encT I)
     (q Δ qep : ℕ) {Γ : List (Ty S)}
@@ -333,7 +334,7 @@ def drChArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
                 .ret (.pair (smRWireE (.some ct'))
                   (e2eRecordE q Δ s1 p3 st' posE mCh3 ct' (.bool true)))))))))
 
-def drDlArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
+@[expose] def drDlArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (coins : E2ECoinSamplers ℓ P C K decT encT I)
     (q : ℕ) {Γ : List (Ty S)}
@@ -363,7 +364,7 @@ def drDlArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
                .ret (.pair (smRRecvE (.some (recvResultAccE t' i' mOut)))
                  (e2eAcceptE q gs4 p4 st' rPos))))))))
 
-def drIjArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
+@[expose] def drIjArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (coins : E2ECoinSamplers ℓ P C K decT encT I)
     (q Δ qep : ℕ) {Γ : List (Ty S)}
@@ -401,7 +402,7 @@ def drIjArmC (hooks : SpqrDslHooks ℓ P C K decT encT)
                    (.ret (.pair (smRRecvE (.some recvResultRejE))
                      (e2eGsSetWin gs3 (.bool true))))))))))
 
-def drCrArmC {ι : Type} {T : OracleSpec ι} {I : Iface S T}
+@[expose] def drCrArmC {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (q : ℕ) {Γ : List (Ty S)}
     (gsE : Expr OO Γ (e2eGsTy ℓ))
     (crArg : Expr OO Γ .bool) :
@@ -419,7 +420,7 @@ def drCrArmC {ι : Type} {T : OracleSpec ι} {I : Iface S T}
          (e2eAfterCorrAllowedE gs0 p0))))
 
 /-- Combined `ReductionDsl` step simulator for `SM.oracleImplR` over `smQT` and `e2eGsTy ℓ`. -/
-def drOracleStepC (hooks : SpqrDslHooks ℓ P C K decT encT)
+@[expose] def drOracleStepC (hooks : SpqrDslHooks ℓ P C K decT encT)
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (coins : E2ECoinSamplers ℓ P C K decT encT I)
     (q Δ qep : ℕ) {Γ : List (Ty S)}
@@ -1302,11 +1303,11 @@ theorem drOracleStepC_eval_rdec (hooks : SpqrDslHooks ℓ P C K decT encT)
 
 /-! ## `DrSessionSimIface` instance -/
 
-def drOracleStepCost (ℓ qBound qep : ℕ) : ℕ :=
+@[expose] def drOracleStepCost (ℓ qBound qep : ℕ) : ℕ :=
   5105306 + 10 * (ℓ / 32 + 1) + 420 * qBound + bits qep + bits (qep + 1)
 
 /-- `DrSessionSimIface` instance wired from `drOracleStepC` over `SpqrDslHooks`. -/
-def drSessionSimIface (hooks : SpqrDslHooks ℓ P C K decT encT) :
+@[expose] def drSessionSimIface (hooks : SpqrDslHooks ℓ P C K decT encT) :
     DrSessionSimIface ℓ P C K decT encT where
   oracleStepC := fun {_} {_} I₀ qBound qep {_} gsE qE =>
     drOracleStepC hooks (e2eStepACoinSamplers ℓ P C K decT encT I₀)

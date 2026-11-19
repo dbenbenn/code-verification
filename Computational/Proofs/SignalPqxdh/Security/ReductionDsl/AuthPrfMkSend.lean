@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkShallow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfMkShallow -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -19,7 +19,7 @@ Proves that `finishAuthSendMkC` and `authMkSendPreB` evaluate to `finishAuthSend
 send cases of `mkPre`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,14 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ErrK2
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridgePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ErrK2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridgePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.PrevBridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP1
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Version-Mismatch Epilogue over One Archived Session
@@ -25,7 +32,7 @@ Relocatable (`[LibsignalPlacement]`) proof of `overK2Seg_cli_placed`
 (`(blkPl_518).base + 0x359c → retAddr`) on `lsProg_518` for a 1-element `previous_sessions`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -40,7 +47,6 @@ open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.E2E.Pqxdh.ResponderClosure
 open CryptoVerification.E2E.Pqxdh.ResponderClosure.P3P4
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure
-open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.GenP3
 open CryptoVerification.CliHandshake.RespClosurePlaced
 
 attribute [-arm64_norm]
@@ -55,7 +61,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-- Relocatable `[LibsignalPlacement]` K2 per-site epilogue
 (`(blkPl_518).base + 0x359c → retAddr`) on `lsProg_518 ext` for a 1-element `previous_sessions`
 (`prevVecAt A (coroPtr + 0xe0#64) prevCap prevPtr [enc]`), preserving `calleeSavedVRegs`. -/
-def OverK2SegCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverK2SegCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {A : RustAlloc} (ext : String → Option (State → State)),
     ∀ (s : State) (coroPtr outPtr errTag prevCap prevPtr
         w_370 w_378 w_380 w_388

@@ -13,12 +13,12 @@ public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import Computational.Specifications.Game.ModelIface
 public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers -- proof-setup: allow-public-import
 public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1 -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.AtomicTablesHonest -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitness -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.CompositionHaltedWitnessInst -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.KindRedHaltedEval -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.KindRedHaltedEval
+import Computational.Proofs.E2E.Dsl.PrefixRedHaltedEval
 import Computational.Proofs.ReductionDsl.Soundness
 
 /-!
@@ -465,16 +465,6 @@ theorem oneStage_eval_eq_inst
   rcases hSimInv (b_out, σ_out) hout with ⟨qKi1, qSend1, qSt1, qSess1, hInvOut⟩
   dsimp only [Prod.map, id_eq]
   exact spec.finish_eq hInvOut b_out
-
-theorem evalDist_pqxdhKeyIndExp_oneStage_eq_inst
-    (spec : OneStageAtomicSimSpecInst S Pt ℓ O b qStart qs DrvSt)
-    (P : SignalPqxdh.Primitives)
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (hB : HaltedTargetAdvPerInstanceBounded B_A b qStart qs) :
-    𝒟[pqxdhKeyIndExpForHandshake S P ki ⟨spec.R.eval (fun _ => B_A) ()⟩] =
-      𝒟[pqxdhKeyIndExpForHandshake S P ki ⟨spec.R_ref.eval (fun _ => B_A) ()⟩] := by
-  rw [oneStage_eval_eq_inst spec B_A hB]
 
 end OneStageSimProofs
 
@@ -1057,22 +1047,6 @@ theorem twoStage_stage12_comp_eq_inst
   have h2 := twoStage_eval2_eq_inst spec B_A hB fuel1 fuel2 dflt o ho flip
   dsimp only [Function.comp_def, mapOut1Enc, atomicPrefixCtxEnc]
   rw [h2]
-
-theorem evalDist_twoStage_stage12_eq_inst
-    (spec : TwoStageAtomicSimSpecInst S Pt ℓ O b qStart qs DrvSt π_ref)
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (hB : HaltedTargetAdvPerInstanceBounded B_A b qStart qs)
-    {β : Type} [MeasurableSpace β]
-    (game2 : IdentityKey → IdentityKey → BitVec 256 →
-      OracleComp
-        (unifSpec + CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes) Bool →
-      ProbComp β)
-    (fuel1 fuel2 : ℕ) (dflt flip : Bool) :
-    𝒟[stageOneAsProbComp (spec.R.eval1 (fun _ => B_A) () fuel1 dflt) >>= fun o =>
-      game2 o.1.1 o.1.2.1 o.1.2.2 (spec.R.eval2 o.2 flip fuel2 dflt)] =
-    𝒟[stageOneAsProbComp (spec.R_ref.eval1 (fun _ => B_A) () fuel1 dflt) >>= fun o =>
-      game2 o.1.idA o.1.idB o.1.spkCoins (spec.R_ref.eval2 o.2 flip fuel2 dflt)] :=
-  congrArg evalDist (twoStage_stage12_comp_eq_inst spec B_A hB game2 fuel1 fuel2 dflt flip)
 
 end TwoStageSimProofs
 

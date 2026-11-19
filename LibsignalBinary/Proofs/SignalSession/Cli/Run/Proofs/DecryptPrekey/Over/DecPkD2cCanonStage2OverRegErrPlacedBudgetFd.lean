@@ -9,18 +9,44 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.DecPkD2cCanonStage2OverPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.DecPkD2cCanonStage2V1RegErrPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.DecPkD2cCanonStage2OverPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.DecPkD2cCanonStage2V1RegErrPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.DecPkD2cCanonStage2PathAPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFolds
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFoldsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathAKeys
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMain
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1PlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Open
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenDeserId
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePendPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
 
 /-!
 # Fixed-`B` and `regErr` Stage-P2 Over Producers
@@ -30,7 +56,7 @@ Fixed-`B` and `regId = .error ()` (`regErr`) Stage-P2 Path C (`Over`,
 `growOneVecU8` caller contract on `lsProg_51`.
 -/
 
-@[expose] public section
+public section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.DecPkD2cCanonStage2OverRegErrPlacedBudgetFd
 
@@ -309,7 +335,7 @@ theorem cliGrowOneVecU8_lsProg51_withLsCl_ok [LibsignalPlacement]
 
 /-! ## 2. `regErr` Stage-P2 Path C Statement & Kit-Parametric CPS Producer -/
 
-def StageP2PathCOverQpanCliRegErrMemInvPlacedAtStmt (Φ : Memory → Prop) [LibsignalPlacement]
+@[expose] def StageP2PathCOverQpanCliRegErrMemInvPlacedAtStmt (Φ : Memory → Prop) [LibsignalPlacement]
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PromEnv : SessionGhost → Session (List (BitVec 8)) → List AllocEvent → Prop)
     (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
@@ -445,6 +471,9 @@ theorem stageP2PathCOver_qpan_cli_regErr_full_placed_at_of_init75_aux [Libsignal
           selfEnvOf spkEnvOf kpkEnvOf pkEnvOf g r))
     (hDropNz : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
     (hInit75 : InitialStateMemInvPlacedOkOfEnv M (LibsignalCodeRoLoaded lsmpl) A lim W.C.F
       (InitialStateEnv W.C.F) (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hSelfKit : ∀ (F0 : FsFiles) (peer : AddrGhost)
@@ -575,8 +604,8 @@ theorem stageP2PathCOver_qpan_cli_regErr_full_placed_at_of_init75_aux [Libsignal
       (cliGhostExterns gh (cliExternsPlaced mmpl W)) (cliModelPrims_structural X W)
       (cliStageP2ClosureHooksPlaced mmpl gh W hh)
       (cliStageP2BaseCalleesPlaced4K mmpl gh W hh)
-      (cliInitBobErrOwnedFrozen4K_ok X mmpl gh W hG hh)
-      (cliInitBobV1FrozenOkPlaced4K_of_init75 X mmpl gh W hG hh hInit75)
+      (cliInitBobErrOwnedFrozen4K_ok X mmpl gh W hG hF hX hDecaps hh)
+      (cliInitBobV1FrozenOkPlaced4K_of_init75 X mmpl gh W hG hF hX hDecaps hh hInit75)
       (cliPollIdKitPlaced A.repAlloc y.g.F y.g.peer (cliKitStk B))
       (cliPollSelfKitPlaced A.repAlloc y.g.F y.g.peer (cliKitStk B))
       (selfEnvOf y.g.F y.g.peer m.spkId m.kpkId opkWord0 y.g.msg.baseKey)
@@ -874,6 +903,9 @@ theorem stageP2PathCOver_qpan_cli_archive_regErr_placed_at_of_init75_and_kits [L
           kitEnvs g r))
     (hDropNz : lsmpl.base 547 ≠ 0#64)
     (hG : CliGhostAllocHooks M A lim gh)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hDecaps : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
     (hInit75 : InitialStateMemInvPlacedOkOfEnv M (LibsignalCodeRoLoaded lsmpl) A lim W.C.F
       (InitialStateEnv W.C.F) (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (hSelfKit : ∀ (F0 : FsFiles) (peer : AddrGhost)
@@ -918,6 +950,6 @@ theorem stageP2PathCOver_qpan_cli_archive_regErr_placed_at_of_init75_and_kits [L
     (fun st_b g r hRegErr hf => by
       rw [← p2OverPathCErrEnvOf_eq_aux]
       exact hFitsErr st_b g r hRegErr hf)
-    hDropNz hG hInit75 hSelfKit hSpkKit hKpkKit hPkKit
+    hDropNz hG hF hX hDecaps hInit75 hSelfKit hSpkKit hKpkKit hPkKit
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.DecPkD2cCanonStage2OverRegErrPlacedBudgetFd

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
-public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
+public import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToVecBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import LibsignalBinary.Proofs.AesCbc.Bytes
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.CompressAndDigest
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
@@ -27,6 +27,9 @@ import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 import ProofLib.OpcodeExclusion
 import VerifiedLibraries.RustStd.Proofs.ExecSegSym
+public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.Common -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Placed Contracts for `spqr::kdf::hkdf_to_slice` and `hkdf_to_vec`
@@ -35,7 +38,7 @@ Relocatable `[LibsignalPlacement]` separation-logic contracts for Block `379` (`
 preserving `VmPreserved`) and Block `378` (`hkdf_to_vec`, threading `RustCliAllocBudget`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -946,7 +949,7 @@ theorem hkdf_to_slice_spqr_placed_ok [LibsignalPlacement] (C : Crypto)
     obtain ⟨hp, hlf⟩ := hro_iv a ha
     exact ⟨by rw [hp]; rfl, hlf⟩
   have hread_iv0_fake : s0.mem.Readable
-      (nfs3PlacedFakeB + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 := by
+      (nfs3PlacedFakeB + bv% (601056 + 64)) 32 := by
     rw [nfs3PlacedFakeB_add_iv]
     exact hread_iv0
   have hread_iv' : s0'.mem.Readable spqrSha256IVAddr 32 := by
@@ -957,7 +960,7 @@ theorem hkdf_to_slice_spqr_placed_ok [LibsignalPlacement] (C : Crypto)
     rw [ProofLib.strip_perm, hp]
     cases keepKdf a <;> rfl
   have hread_iv_fake : s0'.mem.Readable
-      (nfs3PlacedFakeB + bv% (ls_bytes% "0000000000000000000000000000000000000000000000000000000000000000456e63617073756c6174696f6e206b6579204d414320697320696e76616c6964" + 64)) 32 := by
+      (nfs3PlacedFakeB + bv% (601056 + 64)) 32 := by
     rw [nfs3PlacedFakeB_add_iv]
     exact hread_iv'
   have hout_salt_stk : ∀ a, InRegion x.saltA x.salt.length a →

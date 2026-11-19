@@ -9,15 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.Common
+public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.Common -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Specs
 public import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.DecodesIsTrusted
 import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.HashOne
 import LibsignalBinary.Proofs.E2E.InMem.SipHashBin.Skeleton
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `InMemIdentityKeyStore::is_trusted_identity::{closure#0}` (`0x079c4`)
@@ -25,7 +24,7 @@ import ProofLib.SepLogic.WP.Apply
 Proves `isTrustedIdentitySingle_ok'` on a 1-item `InMemIdentityKeyStore`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures
 
@@ -270,7 +269,7 @@ theorem table4SingleAt_of_parts (A : RustAlloc) (stride : Nat) (mp k0 k1 : BitVe
   refine entails_sepExists_intro ctrl ?_
   exact Entails.pure_right hctrl (Entails.refl _)
 
-def addrRestAt (A : RustAlloc) (g : AddrGhost) (addr : BitVec 64) : SepProp :=
+@[expose] def addrRestAt (A : RustAlloc) (g : AddrGhost) (addr : BitVec 64) : SepProp :=
   ⌜g.name.bytes.length ≤ g.name.cap.toNat ∧ g.name.cap.toNat < 2 ^ 63 ∧ g.name.ptr ≠ 0⌝ ∗
   (addr ↦₆₄ g.name.cap) ∗
   A.live g.name.ptr g.name.cap.toNat 1 ∗
@@ -413,22 +412,6 @@ theorem step_ldpSimd64_sp' {prog : Program} {target_pc : BitVec 64}
 
 /-! ## `<PublicKey as PartialEq>::eq` (`0x3ebf0`) on 32-Byte Slices -/
 
-private theorem memRegion_16_eq_stackFrameFor_eq (sp : BitVec 64) :
-    memRegion (sp - 16#64) 16 =
-      stackFrameFor libsignalSessionImage
-        "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" sp := by
-  rw [show (16 : Nat) = 8 * 2 by rfl, memRegion_cells (sp - 16#64) 2 (by decide)]
-  cells_unfold
-  simp only [stackFrameFor, libsignalSessionCode_frameBytes_0x3ecd4, reduceStackFrameAt]
-
-private theorem memRegion_48_eq_stackFrameFor_ct_eq (sp : BitVec 64) :
-    memRegion (sp - 48#64) 48 =
-      stackFrameFor libsignalSessionImage
-        "<[u8] as subtle::ConstantTimeEq>::ct_eq" sp := by
-  rw [show (48 : Nat) = 8 * 6 by rfl, memRegion_cells (sp - 48#64) 6 (by decide)]
-  cells_unfold
-  simp only [stackFrameFor, libsignalSessionCode_frameBytes_0x3eda8, reduceStackFrameAt]
-
 private theorem stackAt_extHookStack_split_publicKeyEq (sp : BitVec 64) :
     stackAt sp extHookStack =
       memRegion (sp - 16384#64) 16320 ∗
@@ -452,7 +435,7 @@ structure PublicKeyEqSliceCall where
   bs2 : List (BitVec 8)
   sp : BitVec 64
 
-def publicKeyEqSliceSpec : Spec PublicKeyEqSliceCall where
+@[expose] def publicKeyEqSliceSpec : Spec PublicKeyEqSliceCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.p1 ∧ s.readReg64 .x1 = x.p2 ∧ s.sp = x.sp ∧
       x.bs1.length = 32 ∧ x.bs2.length = 32⌝ ∗
@@ -462,41 +445,6 @@ def publicKeyEqSliceSpec : Spec PublicKeyEqSliceCall where
     ⌜sf.readReg64 .x0 = (if x.bs1 = x.bs2 then 1#64 else 0#64) ∧ sf.trace = s0.trace⌝ ∗
     (x.p1 ↦ₛ x.bs1) ∗ (x.p2 ↦ₛ x.bs2) ∗
     stackAt x.sp extHookStack
-
-theorem publicKeyEqSlice_ok_at_isTrustedIdentity (b : BitVec 64) {A : RustAlloc} {ext : HookMap}
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr isTrustedIdentityClosureName + bv% (ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" - ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}"))
-      publicKeyEqSliceSpec := by
-  refine subroutine_ok_map (publicKeyEq_ok_at_isTrustedIdentity b hHooks) ?_
-  rintro ⟨p1, bs1, p2, bs2, sp⟩ R s0 hpre
-  simp only [publicKeyEqSliceSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hsp, hlen1, hlen2⟩, hmem⟩
-  let pk1 : PublicKey := ⟨⟨bs1, hlen1⟩⟩
-  let pk2 : PublicKey := ⟨⟨bs2, hlen2⟩⟩
-  have hpk1 : pk1.bytes.toList = bs1 := rfl
-  have hpk2 : pk2.bytes.toList = bs2 := rfl
-  rw [stackAt_extHookStack_split_publicKeyEq sp] at hmem
-  refine ⟨(p1, pk1, p2, pk2, sp), memRegion (sp - 16384#64) 16320 ∗ R, ?_, fun sf hpost => ?_⟩
-  · simp only [CryptoVerification.LibsignalSession.FindReceiverChainIndex.publicKeyEqSpec,
-      ← memRegion_16_eq_stackFrameFor_eq sp,
-      ← memRegion_48_eq_stackFrameFor_ct_eq (sp - 16#64),
-      hpk1, hpk2, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hx0, hx1, hsp⟩, ?_⟩
-    convert hmem using 1; ac_rfl
-  · simp only [CryptoVerification.LibsignalSession.FindReceiverChainIndex.publicKeyEqSpec,
-      ← memRegion_16_eq_stackFrameFor_eq sp,
-      ← memRegion_48_eq_stackFrameFor_ct_eq (sp - 16#64),
-      hpk1, hpk2, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨⟨hret, htr⟩, hpost⟩
-    rw [← CryptoVerification.LibsignalSession.FindReceiverChainIndex.publicKey_ite_toList_eq pk1 pk2] at hret
-    change sf.readReg64 .x0 = (if bs1 = bs2 then 1#64 else 0#64) at hret
-    simp only [publicKeyEqSliceSpec, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hret, htr⟩, ?_⟩
-    rw [stackAt_extHookStack_split_publicKeyEq sp]
-    convert hpost using 1; ac_rfl
-
-/-! ## NEON Group and Probe Lemmas -/
 
 private theorem zext128_shr_and_255_eq_groupByte (w : BitVec 64) (i : Nat) :
     BitVec.zeroExtend 128 w >>> (i * 8) &&& 255#128 = (groupByte w i).zeroExtend 128 := by
@@ -945,203 +893,6 @@ theorem pollBoolResultAt_of_eq (sret : BitVec 64) (v : BitVec 8) (b : Bool)
 
 /-! ## `isTrustedIdentitySingle_ok'` (`0x079c4`) -/
 
-set_option maxHeartbeats 800000 in
-theorem isTrustedIdentitySingle_ok' (b : BitVec 64) (ext : HookMap) (A : RustAlloc)
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr isTrustedIdentityClosureName)
-      (isTrustedIdentitySingleSpec A) := by
-  have hHash : subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr isTrustedIdentityClosureName + 0xfffffffffffff3e4#64)
-      (hashOneAddr36Spec A) := by
-    have h := hashOneAddr36_ok_at_isTrustedIdentityClosure b ext A
-    have hsub :
-        (RebasedProg b ext).fnAddr isTrustedIdentityClosureName + 0xfffffffffffff3e4#64 =
-        (SipHashBin.RebasedProg b ext).fnAddr SipHashBin.isTrustedIdentityClosureName - 0x0c1c#64 := by
-      rw [BitVec.sub_eq_add_neg]; rfl
-    rwa [hsub]
-  have hBcmp := bcmp_ok_at_isTrustedIdentity b hHooks
-  have hPkEq := publicKeyEqSlice_ok_at_isTrustedIdentity b hHooks
-  simp only [isTrustedIdentitySingleSpec]
-  have hfn : libsignalSessionCode.fnOff isTrustedIdentityClosureName = num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}") :=
-    (ls_lemma% fnOff "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}")
-  code_fetches CryptoVerification.libsignalSessionCode libsignalSessionBin b ext hfn (num% (ls_off% "<libsignal_protocol::storage::inmem::InMemIdentityKeyStore as libsignal_protocol::storage::traits::IdentityKeyStore>::is_trusted_identity::{closure#0}")) 368
-  clear hfn
-  dsimp only [RebasedProg, BitVec.ofNat_eq_ofNat] at hHash hBcmp hPkEq ⊢
-  generalize_entry (libsignalSessionCode.rebase b ext).fnAddr isTrustedIdentityClosureName = entry
-  generalize_entry (libsignalSessionCode.rebase b ext) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  wp_init x s0
-  examples_hide_fetches
-  obtain ⟨futPtr, sret, mp, k0, k1, k, peerG, peerKeyBytes, qAddrPtr, qG, qKeyPtr, qKeyBytes, direction⟩ := x
-  dsimp only [IsTrustedIdentitySingleGhost.futPtr, IsTrustedIdentitySingleGhost.sret,
-    IsTrustedIdentitySingleGhost.mp, IsTrustedIdentitySingleGhost.k0, IsTrustedIdentitySingleGhost.k1,
-    IsTrustedIdentitySingleGhost.k, IsTrustedIdentitySingleGhost.peerG,
-    IsTrustedIdentitySingleGhost.peerKeyBytes, IsTrustedIdentitySingleGhost.qAddrPtr,
-    IsTrustedIdentitySingleGhost.qG, IsTrustedIdentitySingleGhost.qKeyPtr,
-    IsTrustedIdentitySingleGhost.qKeyBytes, IsTrustedIdentitySingleGhost.direction] at *
-  wp_conv_pre => rw [table4SingleAt_eq]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  apply sepWP_exists_elim; intro ctrl
-  wp_conv_pre => rw [sret48_isTrusted_split_eq sret]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  repeat' (apply sepWP_exists_elim; intro _)
-  wp_conv_pre => rw [stackAt_isTrusted_eq s0.sp]
-  simp only [sepExists_sepConj_right]
-  repeat' (apply sepWP_exists_elim; intro _)
-  refine sepWP_extract_pure (P := k < 4) (by sep_focus) fun hk => ?_
-  refine sepWP_extract_pure (by sep_focus) ?_
-  rintro ⟨hctrl_nz, hctrl_align, hctrl_ge, hctrl_lt, hlen4, hmirror, hfull⟩
-  wp_steps
-  wp_conv_pre => rw [stackAt_isTrusted_sub_eq (s0.sp - 128#64)]
-  wp_apply
-  refine SepWP.fold (Entails.of_eq (stackAt_isTrusted_sub_eq (s0.sp - 128#64)).symm) (by sep_focus) ?_
-  wp_conv_pre => rw [protocolAddressAt_eq_of_len36 A qG qAddrPtr (by assumption)]
-  wp_steps
-  let pos := (hashAddrBv k0 k1 qG.name.bytes qG.device &&& 3#64).toNat
-  have hpos_lt : pos < 4 := probePos_3_toNat_lt (hashAddrBv k0 k1 qG.name.bytes qG.device)
-  have hpos_bv : BitVec.ofNat 64 pos = hashAddrBv k0 k1 qG.name.bytes qG.device &&& 3#64 := by
-    simp [pos]
-  have hcbs_len : (singleCtrl4 k (h2Tag (hashAddrBv k0 k1 peerG.name.bytes peerG.device))).length = 12 := by
-    simp [singleCtrl4, mkCtrl4]
-  have hcbs_split := pointsToBytes_ctrl12_split_at ctrl
-    (singleCtrl4 k (h2Tag (hashAddrBv k0 k1 peerG.name.bytes peerG.device))) hcbs_len pos hpos_lt
-  rw [hpos_bv] at hcbs_split
-  refine SepWP.fold (Entails.of_eq hcbs_split) (by sep_focus) ?_
-  refine step_ldrSimd64 (ea := ctrl + (hashAddrBv k0 k1 qG.name.bytes qG.device &&& 3#64)) (wb := none)
-    (by wp_norm_lhs) (by wp_norm_lhs) (by wp_assumption)
-    rfl (by simp [evalAddrMode, extendVal, arm64_norm, *])
-    (by wp_sep_access_fast) (by wp_norm_lhs) ?_
-  wp_conv_pre => rw [← hcbs_split]
-  wp_steps
-  rw [rawMatchTagMask_eq_findGroupIterMask]
-  wp_if hmask
-  · wp_steps
-    wp_if hemp
-    · wp_steps
-      have hne_key : ¬(qG.name.bytes = peerG.name.bytes ∧ qG.device = peerG.device) :=
-        findGroupIterMask_singleCtrl4_eq_zero_imp_ne k0 k1 k hk
-          peerG.name.bytes qG.name.bytes peerG.device qG.device hmask
-      rw [decide_imp_of_not (Q := peerKeyBytes = qKeyBytes) hne_key]
-      refine SepWP.fold (Entails.of_eq (protocolAddressAt_eq_of_len36 A qG qAddrPtr (by assumption)).symm)
-        (by sep_focus) ?_
-      refine SepWP.fold (pollBoolResultAt_true_of_cells sret)
-        (by sep_focus) ?_
-      refine SepWP.fold (table4SingleAt_of_parts A identityBucketStride mp k0 k1 k hk
-        peerG.name.bytes peerG.device (identityBucketEntryAt A peerG peerKeyBytes) ctrl
-        ⟨hctrl_nz, hctrl_align, hctrl_ge, hctrl_lt, hlen4, hmirror, hfull⟩)
-        (by sep_focus) ?_
-      refine SepWP.fold (stackAt_isTrusted_of_parts s0.sp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-        (by sep_focus) ?_
-      wp_done
-    · exfalso
-      exact hemp (evalUmaxv_matchEmpty_singleCtrl4_getLsbD_zero k _ pos hk hpos_lt)
-  · have hmask_eq := findGroupIterMask_singleCtrl4_ne_zero_eq k0 k1 k pos hk hpos_lt
-      peerG.name.bytes qG.name.bytes peerG.device qG.device hmask
-    rw [hmask_eq]
-    refine SepWP.fold (Entails.of_eq (bucketArray_isTrusted_eq A ctrl k peerG peerKeyBytes hk (by assumption) (by assumption)))
-      (by sep_focus) ?_
-    wp_steps
-    rw [← hpos_bv, eval_probeBucket_singleCtrl4 k pos hk hpos_lt,
-        sub_shl6_eq_bucketAddr_add_64 ctrl k hk]
-    wp_steps
-    wp_conv_pre => rw [stackAt_isTrusted_ext_eq (s0.sp - 128#64)]
-    wp_apply
-    refine SepWP.fold (stackAt_isTrusted_ext_restore s0.sp _ (by assumption)) (by sep_focus) ?_
-    wp_steps
-    wp_if hcbnz
-    · wp_steps
-      wp_if hloop
-      · exfalso
-        exact hloop (eval_clearLowestBit_laneBit_sub k pos hk hpos_lt)
-      · wp_steps
-        wp_if hemp2
-        · wp_steps
-          have hne_key : ¬(qG.name.bytes = peerG.name.bytes ∧ qG.device = peerG.device) :=
-            ne_of_cbnz_bcmp (by assumption) hcbnz
-          rw [decide_imp_of_not (Q := peerKeyBytes = qKeyBytes) hne_key]
-          refine SepWP.fold (Entails.of_eq (protocolAddressAt_eq_of_len36 A qG qAddrPtr (by assumption)).symm)
-            (by sep_focus) ?_
-          refine SepWP.fold (Entails.of_eq (bucketArray_isTrusted_eq A ctrl k peerG peerKeyBytes hk (by assumption) (by assumption)).symm)
-            (by sep_focus) ?_
-          refine SepWP.fold (pollBoolResultAt_true_of_cells sret)
-            (by sep_focus) ?_
-          refine SepWP.fold (table4SingleAt_of_parts A identityBucketStride mp k0 k1 k hk
-            peerG.name.bytes peerG.device (identityBucketEntryAt A peerG peerKeyBytes) ctrl
-            ⟨hctrl_nz, hctrl_align, hctrl_ge, hctrl_lt, hlen4, hmirror, hfull⟩)
-            (by sep_focus) ?_
-          refine SepWP.fold (stackAt_isTrusted_of_parts s0.sp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-            (by sep_focus) ?_
-          wp_done
-        · exfalso
-          rw [readVReg128_eq_of_vregs_eq 9#5 (by assumption)] at hemp2
-          dsimp only [Arm64.State.writeVReg128, Arm64.State.writeReg64, Arm64.State.setPC,
-            Arm64.State.setPState, Arm64.State.setMem, VRegFile.read, VRegFile.write,
-            arm64_norm] at hemp2
-          exact hemp2 (evalUmaxv_matchEmpty_singleCtrl4_getLsbD_zero k _ pos hk hpos_lt)
-    · wp_steps
-      wp_if hdev
-      · wp_steps
-        wp_conv_pre => rw [stackAt_isTrusted_ext_eq (s0.sp - 128#64)]
-        wp_apply
-        refine SepWP.fold (Entails.of_eq (stackAt_isTrusted_ext_eq (s0.sp - 128#64)).symm) (by sep_focus) ?_
-        wp_steps
-        have heq_key : qG.name.bytes = peerG.name.bytes ∧ qG.device = peerG.device :=
-          ⟨eq_of_not_cbnz_bcmp (by assumption) hcbnz, dev_eq_of_zeroExtend hdev⟩
-        refine sepWP_fold_focus
-          (P' := (sret ↦₆₄ 0xfffffffffffffffe#64) ∗ ((sret + 8#64) ↦₈ _) ∗ memRegion (sret + 9#64) 39)
-          (by sep_focus)
-          (pollBoolResultAt_of_eq sret _
-            (decide ((qG.name.bytes = peerG.name.bytes ∧ qG.device = peerG.device) → peerKeyBytes = qKeyBytes))
-            (by by_cases hq : peerKeyBytes = qKeyBytes <;> simp [*])) ?_
-        refine SepWP.fold (Entails.of_eq (protocolAddressAt_eq_of_len36 A qG qAddrPtr (by assumption)).symm)
-          (by sep_focus) ?_
-        refine SepWP.fold (Entails.of_eq (bucketArray_isTrusted_eq A ctrl k peerG peerKeyBytes hk (by assumption) (by assumption)).symm)
-          (by sep_focus) ?_
-        refine SepWP.fold (table4SingleAt_of_parts A identityBucketStride mp k0 k1 k hk
-          peerG.name.bytes peerG.device (identityBucketEntryAt A peerG peerKeyBytes) ctrl
-          ⟨hctrl_nz, hctrl_align, hctrl_ge, hctrl_lt, hlen4, hmirror, hfull⟩)
-          (by sep_focus) ?_
-        refine SepWP.fold (stackAt_isTrusted_of_parts s0.sp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-          (by sep_focus) ?_
-        wp_done
-      · wp_steps
-        wp_if hloop
-        · exfalso
-          exact hloop (eval_clearLowestBit_laneBit_sub k pos hk hpos_lt)
-        · wp_steps
-          wp_if hemp2
-          · wp_steps
-            have hne_key : ¬(qG.name.bytes = peerG.name.bytes ∧ qG.device = peerG.device) :=
-              dev_ne_of_not_zeroExtend hdev
-            rw [decide_imp_of_not (Q := peerKeyBytes = qKeyBytes) hne_key]
-            refine SepWP.fold (Entails.of_eq (protocolAddressAt_eq_of_len36 A qG qAddrPtr (by assumption)).symm)
-              (by sep_focus) ?_
-            refine SepWP.fold (Entails.of_eq (bucketArray_isTrusted_eq A ctrl k peerG peerKeyBytes hk (by assumption) (by assumption)).symm)
-              (by sep_focus) ?_
-            refine SepWP.fold (pollBoolResultAt_true_of_cells sret)
-              (by sep_focus) ?_
-            refine SepWP.fold (table4SingleAt_of_parts A identityBucketStride mp k0 k1 k hk
-              peerG.name.bytes peerG.device (identityBucketEntryAt A peerG peerKeyBytes) ctrl
-              ⟨hctrl_nz, hctrl_align, hctrl_ge, hctrl_lt, hlen4, hmirror, hfull⟩)
-              (by sep_focus) ?_
-            refine SepWP.fold (stackAt_isTrusted_of_parts s0.sp _ _ _ _ _ _ _ _ _ _ _ _ _ _ _)
-              (by sep_focus) ?_
-            wp_done
-          · exfalso
-            rw [readVReg128_eq_of_vregs_eq 9#5 (by assumption)] at hemp2
-            dsimp only [Arm64.State.writeVReg128, Arm64.State.writeReg64, Arm64.State.setPC,
-              Arm64.State.setPState, Arm64.State.setMem, VRegFile.read, VRegFile.write,
-              arm64_norm] at hemp2
-            exact hemp2 (evalUmaxv_matchEmpty_singleCtrl4_getLsbD_zero k _ pos hk hpos_lt)
-
 end IsTrusted
-
-theorem isTrustedIdentitySingle_ok' (b : BitVec 64) (ext : HookMap) (A : RustAlloc)
-    (hHooks : HashbrownBinHooks A ext) :
-    subroutine_ok (RebasedProg b ext)
-      ((RebasedProg b ext).fnAddr isTrustedIdentityClosureName)
-      (isTrustedIdentitySingleSpec A) :=
-  IsTrusted.isTrustedIdentitySingle_ok' b ext A hHooks
 
 end CryptoVerification.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures

@@ -12,15 +12,15 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssembly
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.LoopStepWPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailWPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxesBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssembly
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.LoopStepWPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailWPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxesBudget
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
@@ -28,6 +28,14 @@ import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCleanup
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ParseLemmas
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrAt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.OkBridge
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.Common
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.DecodeKeyPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Allocator Envelopes and Post-Loop Interface
@@ -37,7 +45,7 @@ Defines the branch-indexed allocator event envelopes (`PksmFrom*Env`, `PksmPostE
 (`w8bRetPost`), and `PreKeyPostLoopOkWPlaced` over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -74,7 +82,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxesBudget
 
 /-- Shared `SepWPp` return postcondition at `s0.readReg64 .x30` from intermediate cost-model
 state `st` with remaining allocation-event envelope `RemEnv`. -/
-def w8bRetPost [LibsignalPlacement]
+@[expose] def w8bRetPost [LibsignalPlacement]
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (RemEnv : List AllocEvent → Prop)
     (x : CryptoVerification.SignalSession.Cli.RunCompose.PksmGhost) (st : M.σ) (s0 sf : State) (Pf : SepProp) : Prop :=
@@ -147,22 +155,6 @@ theorem w8b_errRetPost_placed [LibsignalPlacement]
   exact sepConj_mono_right
     (sepConj_mono_left (pksmResAt_err_of_parse A.repAlloc fn x.ret x.bytes e R hparse))
 
-/-- Zero-event (`evs = []`) specialization of `w8b_errRetPost_placed`. -/
-theorem w8b_errRetPost_nil_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {RemEnv : List AllocEvent → Prop}
-    {x : CryptoVerification.SignalSession.Cli.RunCompose.PksmGhost} {st : M.σ} {s0 sf : State}
-    {Pf R : SepProp} {fn : List (BitVec 8)} {e : SignalProtocolError}
-    (hparse : CryptoVerification.SignalSession.Cli.RunProofs.Pksm.pksmParse x.bytes = none)
-    (hnil : RemEnv [])
-    (h : sf.sp = s0.sp ∧
-      (calleeSavedVRegs sf = calleeSavedVRegs s0 → CalleeSavedPreserved s0 sf) ∧
-      (Pf ⊢ ⌜sf.trace = s0.trace⌝ ∗
-        (pksmErrE A.repAlloc fn x.ret e ∗ R) ∗ (x.ptr ↦ₛ x.bytes) ∗ lsLogOff ∗
-        stackAt s0.sp preKeyTryFromStack ∗ A.pool lim st sf)) :
-    w8bRetPost A lim RemEnv x st s0 sf Pf :=
-  w8b_errRetPost_placed hparse hnil (evs := []) h
-
 /-- Heap-free (`R = emp`) specialization of `w8b_errRetPost_placed`. -/
 theorem w8b_errRetPost_noHeap_placed [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -189,7 +181,7 @@ theorem w8b_errRetPost_noHeap_placed [LibsignalPlacement]
 
 /-- Allocator event envelope of the inner `<SignalMessage as TryFrom<&[u8]>>::try_from` call
 on `msg` (depends only on `msg`, independent of `bytesA` and `ret`). -/
-def SigMsgCallEnv (msg : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def SigMsgCallEnv (msg : List (BitVec 8)) : List AllocEvent → Prop :=
   TryFromEnvGen (fun g => TryFromPostEnv g.bytes) { bytesA := 0#64, bytes := msg, ret := 0#64 }
 
 theorem sigMsgCallEnv_iff_ghost (ptr ret : BitVec 64) (msg : List (BitVec 8))
@@ -204,38 +196,29 @@ theorem sigMsgCallEnv_iff_ghost (ptr ret : BitVec 64) (msg : List (BitVec 8))
   · exact .loopOnly ‹_›
   · exact .loopPost ‹_› ‹_›
 
-theorem fitsEnv_sigMsgCall_iff_ghost {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
-    (ptr ret : BitVec 64) (msg : List (BitVec 8)) :
-    FitsEnv M lim st
-        (TryFromEnvGen (fun g => TryFromPostEnv g.bytes) { bytesA := ptr, bytes := msg, ret := ret }) ↔
-      FitsEnv M lim st (SigMsgCallEnv msg) := by
-  constructor
-  · exact fun h evs hevs => h evs ((sigMsgCallEnv_iff_ghost ptr ret msg evs).mpr hevs)
-  · exact fun h evs hevs => h evs ((sigMsgCallEnv_iff_ghost ptr ret msg evs).mp hevs)
-
 /-- Allocation-phase envelope from `+0x864` (`2148`):
 `SigMsgCallEnv msg` on `.error _`, and `SeqEnv (SigMsgCallEnv msg) (TryCloneBytesEnv xBytes)` on `.ok _`. -/
-def PksmFrom864PreEnv (xBytes msg : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def PksmFrom864PreEnv (xBytes msg : List (BitVec 8)) : List AllocEvent → Prop :=
   match CryptoGames.LibsignalSession.SignalMessage.tryFrom protoSignalCodec msg with
   | .error _ => SigMsgCallEnv msg
   | .ok _ => SeqEnv (SigMsgCallEnv msg) (TryCloneBytesEnv xBytes)
 
 /-- Remaining-events envelope from `+0x864` (`2148`) to function return. -/
-def PksmFrom864Env (xBytes msg : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def PksmFrom864Env (xBytes msg : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv (PksmFrom864PreEnv xBytes msg) FreeOnlyEvs
 
 /-- Allocation-phase envelope from `+0x830` (`2096`). -/
-def PksmFrom830PreEnv (xBytes ik msg : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def PksmFrom830PreEnv (xBytes ik msg : List (BitVec 8)) : List AllocEvent → Prop :=
   match CryptoGames.LibsignalSession.PublicKey.deserialize ik with
   | .error _ => (· = [])
   | .ok _ => PksmFrom864PreEnv xBytes msg
 
 /-- Remaining-events envelope from `+0x830` (`2096`) to function return. -/
-def PksmFrom830Env (xBytes ik msg : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def PksmFrom830Env (xBytes ik msg : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv (PksmFrom830PreEnv xBytes ik msg) FreeOnlyEvs
 
 /-- Allocation-phase envelope from `+0x684` (`1668`). -/
-def PksmFrom684PreEnv (vb : BitVec 8) (xBytes ik msg : List (BitVec 8))
+@[expose] def PksmFrom684PreEnv (vb : BitVec 8) (xBytes ik msg : List (BitVec 8))
     (kpkOpt : Option (BitVec 32)) (kyberOpt : Option (List (BitVec 8))) :
     List AllocEvent → Prop :=
   if (kpkOpt.isSome != kyberOpt.isSome) = true then
@@ -246,13 +229,13 @@ def PksmFrom684PreEnv (vb : BitVec 8) (xBytes ik msg : List (BitVec 8))
     SeqEnv (IntoBoxedOptBoundedEnv kyberOpt) (PksmFrom830PreEnv xBytes ik msg)
 
 /-- Remaining-events envelope from `+0x684` (`1668`) to function return. -/
-def PksmFrom684Env (vb : BitVec 8) (xBytes ik msg : List (BitVec 8))
+@[expose] def PksmFrom684Env (vb : BitVec 8) (xBytes ik msg : List (BitVec 8))
     (kpkOpt : Option (BitVec 32)) (kyberOpt : Option (List (BitVec 8))) :
     List AllocEvent → Prop :=
   SeqEnv (PksmFrom684PreEnv vb xBytes ik msg kpkOpt kyberOpt) FreeOnlyEvs
 
 /-- Allocation-phase envelope from `+0x5b4` (`1460`). -/
-def PksmFrom5b4PreEnv (vb : BitVec 8) (xBytes bk ik msg : List (BitVec 8))
+@[expose] def PksmFrom5b4PreEnv (vb : BitVec 8) (xBytes bk ik msg : List (BitVec 8))
     (kpkOpt : Option (BitVec 32)) (kyberOpt : Option (List (BitVec 8))) :
     List AllocEvent → Prop :=
   match CryptoGames.LibsignalSession.PublicKey.deserialize bk with
@@ -260,7 +243,7 @@ def PksmFrom5b4PreEnv (vb : BitVec 8) (xBytes bk ik msg : List (BitVec 8))
   | .ok _ => PksmFrom684PreEnv vb xBytes ik msg kpkOpt kyberOpt
 
 /-- Remaining-events envelope from `+0x5b4` (`1460`) to function return. -/
-def PksmFrom5b4Env (vb : BitVec 8) (xBytes bk ik msg : List (BitVec 8))
+@[expose] def PksmFrom5b4Env (vb : BitVec 8) (xBytes bk ik msg : List (BitVec 8))
     (kpkOpt : Option (BitVec 32)) (kyberOpt : Option (List (BitVec 8))) :
     List AllocEvent → Prop :=
   SeqEnv (PksmFrom5b4PreEnv vb xBytes bk ik msg kpkOpt kyberOpt) FreeOnlyEvs
@@ -268,7 +251,7 @@ def PksmFrom5b4Env (vb : BitVec 8) (xBytes bk ik msg : List (BitVec 8))
 /-- Allocation-phase envelope from `+0x460` (`1120`, post-loop presence check) on decoded `m`:
 leading `FreeOnlyEvs` from `post_seg1_xok_to_5b4`'s `drop_in_place::<SignalProtocolError>` calls
 followed by `PksmFrom5b4PreEnv` when all four required fields are present, else `(· = [])`. -/
-def PksmPostPreEnv (vb : BitVec 8) (xBytes : List (BitVec 8)) (m : ProtoPreKeySignalMessage) :
+@[expose] def PksmPostPreEnv (vb : BitVec 8) (xBytes : List (BitVec 8)) (m : ProtoPreKeySignalMessage) :
     List AllocEvent → Prop :=
   match m.baseKey, m.identityKey, m.message, m.signedPreKeyId with
   | some bk, some ik, some msg, some _ =>
@@ -276,13 +259,13 @@ def PksmPostPreEnv (vb : BitVec 8) (xBytes : List (BitVec 8)) (m : ProtoPreKeySi
   | _, _, _, _ => (· = [])
 
 /-- Remaining-events envelope from `+0x460` (`1120`, post-loop decode `some m`) to function return. -/
-def PksmPostEnv (vb : BitVec 8) (xBytes : List (BitVec 8)) (m : ProtoPreKeySignalMessage) :
+@[expose] def PksmPostEnv (vb : BitVec 8) (xBytes : List (BitVec 8)) (m : ProtoPreKeySignalMessage) :
     List AllocEvent → Prop :=
   SeqEnv (PksmPostPreEnv vb xBytes m) FreeOnlyEvs
 
 /-- Post-loop envelope from `+0x460` (`1120`) parameterized by `Pksm.decodeProto (b1 :: bs1)`:
 `FreeOnlyEvs` on protobuf decode failure (`none`), and `PksmPostEnv vb xBytes m` on `some m`. -/
-def PksmAfterLoopEnv (vb : BitVec 8) (xBytes : List (BitVec 8)) :
+@[expose] def PksmAfterLoopEnv (vb : BitVec 8) (xBytes : List (BitVec 8)) :
     Option ProtoPreKeySignalMessage → List AllocEvent → Prop
   | none => FreeOnlyEvs
   | some m => PksmPostEnv vb xBytes m
@@ -560,7 +543,7 @@ theorem fitsEnv_pksmTryFrom_post {M : AllocCostModel} {lim : BudgetLimits} {st :
 /-- Post-loop `Ok` continuation `+0x460 → ret` (`1120 → ret`) under `[LibsignalPlacement]`:
 from the loop exit with `x24 = 0` and decoded `m` of `b1 :: bs1` (version byte `vb` in the
 accepted window), `preKeyPlacedProg H` returns with `w8bRetPost A lim (PksmPostEnv vb x.bytes m)`. -/
-def PreKeyPostLoopOkWPlaced [LibsignalPlacement]
+@[expose] def PreKeyPostLoopOkWPlaced [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : LibsignalHooks) : Prop :=
   ∀ (x : CryptoVerification.SignalSession.Cli.RunCompose.PksmGhost) (st : M.σ) (s0 s : State)

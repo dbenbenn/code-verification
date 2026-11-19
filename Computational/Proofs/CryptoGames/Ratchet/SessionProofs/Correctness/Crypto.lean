@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSMInstance
-import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDec
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec
 
 /-!
 # Cryptographic and wire-format lemmas for session correctness
@@ -21,7 +21,7 @@ X25519 scalar clamping, AES-256-CBC round-trip, and `SignalMessage` MAC and wire
 used in `libsignal_corr`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 open CryptoGames.CKA

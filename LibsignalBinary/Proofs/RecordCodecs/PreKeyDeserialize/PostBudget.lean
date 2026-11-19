@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.DefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.Post
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.Post -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
@@ -26,7 +25,7 @@ import ProofLib.SepLogic.WPp
 `PreKeyRecord::deserialize` (Block `65`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

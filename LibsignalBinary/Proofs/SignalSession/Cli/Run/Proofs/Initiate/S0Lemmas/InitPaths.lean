@@ -25,7 +25,7 @@ Proves peer address length and `cliIo.pathOk` guards (`nameLt`, `textLt`, `sessP
 and X25519 scalar clamping idempotence with `IdentityKeyPair.tryFrom` decoding (`idPairDerived`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -243,7 +243,7 @@ theorem clampScalar_idem (sk : List.Vector (BitVec 8) 32) :
     rw [clamp_lo_idem, clamp_hi_idem]
 
 /-- The encoded bytes of `st`'s `identity-key-pair` entry in `encodeDir W st`. -/
-def ikBytes (W : PEParams) (st : PqParty) : List (BitVec 8) :=
+@[expose] def ikBytes (W : PEParams) (st : PqParty) : List (BitVec 8) :=
   IdentityKeyPairStructure.encode
     ⟨djbKey (keyPairOf W.C st.me.idPriv).publicKey.bytes, st.me.idPriv.toList⟩
 

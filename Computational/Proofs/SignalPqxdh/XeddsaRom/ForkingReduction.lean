@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.XeddsaRom.Statements
-public import Computational.Proofs.SignalPqxdh.XeddsaRom.HvzkSim
+public import Computational.Proofs.SignalPqxdh.XeddsaRom.Statements -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.XeddsaRom.HvzkSim -- proof-setup: allow-public-import
 public import VCVio.CryptoFoundations.ReplayForkCost
 public import VCVio.CryptoFoundations.FiatShamir.Sigma.Fork
 public import VCVio.OracleComp.Constructions.SampleableType.Measure
 public import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import Mathlib.Algebra.Field.ZMod
 
 /-!
 # Forking-lemma reduction from `GapSigEufCmaRo` to standalone `GapDH`
@@ -25,7 +26,7 @@ challenge-digest lifting (`xeddsaModLoss`), 2-special soundness with clamped `±
 and a replay-forking reduction (`GapSigEufCmaRoBoundQuad` and `GapSigEufCmaRoBound`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 4096
@@ -165,7 +166,7 @@ theorem add_mul_lt_two_pow_512_of_ge_wideRem {r q : ℕ}
       < l25519 * wideQuot + wideRem := by omega
     _ = 2 ^ 512 := two_pow_512_eq
 
-noncomputable def liftChalFin (h : ZMod l25519) : ProbComp (Fin (2 ^ 512)) :=
+@[expose] def liftChalFin (h : ZMod l25519) : ProbComp (Fin (2 ^ 512)) :=
   if hlt : h.val < wideRem then
     (fun q : Fin (wideQuot + 1) =>
       ⟨h.val + l25519 * q.val, add_mul_lt_two_pow_512_of_lt_wideRem hlt q.isLt⟩) <$>
@@ -176,7 +177,7 @@ noncomputable def liftChalFin (h : ZMod l25519) : ProbComp (Fin (2 ^ 512)) :=
       ($ᵗ (Fin wideQuot))
 
 /-- Conditional uniform 64-byte little-endian preimage sampler lifting `h : ZMod l25519` into `Bytes`. -/
-noncomputable def liftChalTo64 (h : ZMod l25519) : ProbComp Bytes :=
+@[expose] def liftChalTo64 (h : ZMod l25519) : ProbComp Bytes :=
   (fun k : Fin (2 ^ 512) => bytesOfNatLE 64 k.val) <$> liftChalFin h
 
 theorem liftChalFin_mod_eq {h : ZMod l25519} {k : Fin (2 ^ 512)}
@@ -305,7 +306,7 @@ theorem sampleRandom64_evalDist_eq :
     SampleableType.evalDist_uniformSample, ← uniformOn_univ_prod]
   exact map_uniformOn_univ_of_bijective Measurable.of_discrete pairBitVec256ToFin512_bijective
 
-noncomputable def liftChalSampleFin : ProbComp (Fin (2 ^ 512)) := do
+def liftChalSampleFin : ProbComp (Fin (2 ^ 512)) := do
   let h ← $ᵗ (ZMod l25519)
   liftChalFin h
 
@@ -637,7 +638,7 @@ theorem measureETVDist_sampleRandom64_liftChalTo64 :
 
 /-! ## `H_1` domain separation and `xeddsaModLoss` hop -/
 
-def isH1Input (bs : Bytes) : Bool :=
+@[expose] def isH1Input (bs : Bytes) : Bool :=
   bs.take 32 == xeddsaHashPrefix
 
 theorem isH1Input_xeddsaHashPrefix_append (rest : Bytes) :
@@ -710,18 +711,18 @@ abbrev ChalDigestSpec : OracleSpec (ℕ ⊕ Unit) :=
 abbrev ChalRoComp : Type → Type :=
   StateT sha512RoSpec.QueryCache (OracleComp ChalDigestSpec)
 
-noncomputable def liftProbToChal {α : Type} (oa : ProbComp α) : OracleComp ChalDigestSpec α :=
+@[expose] noncomputable def liftProbToChal {α : Type} (oa : ProbComp α) : OracleComp ChalDigestSpec α :=
   simulateQ (QueryImpl.ofLift unifSpec (OracleComp ChalDigestSpec)) oa
 
-noncomputable def splitRoBaseImpl : QueryImpl sha512RoSpec (OracleComp ChalDigestSpec) :=
+@[expose] noncomputable def splitRoBaseImpl : QueryImpl sha512RoSpec (OracleComp ChalDigestSpec) :=
   fun bs =>
     if isH1Input bs then liftProbToChal sampleRandom64
     else liftM (ChalDigestSpec.query (Sum.inr ()))
 
-noncomputable def splitRoImpl : QueryImpl sha512RoSpec ChalRoComp :=
+@[expose] noncomputable def splitRoImpl : QueryImpl sha512RoSpec ChalRoComp :=
   splitRoBaseImpl.withCaching
 
-noncomputable def xeddsaSimSignChal (P : Primitives) (pk : Bytes) (bSim : UInt8) (m : Bytes) :
+@[expose] noncomputable def xeddsaSimSignChal (P : Primitives) (pk : Bytes) (bSim : UInt8) (m : Bytes) :
     ChalRoComp Bytes := do
   let edPk := (P.montToEd pk bSim).getD (edDummy P)
   let capA := P.compress edPk
@@ -741,13 +742,13 @@ noncomputable def xeddsaSimSignChal (P : Primitives) (pk : Bytes) (bSim : UInt8)
 noncomputable def primSplitRoImpl (P : Primitives) : QueryImpl primSpec ChalRoComp :=
   fun q => simulateQ splitRoImpl (primRoStep P q)
 
-noncomputable def primBaseSplitRoImpl (P : Primitives) :
+@[expose] noncomputable def primBaseSplitRoImpl (P : Primitives) :
     QueryImpl (PrimBaseSpec + sha512RoSpec) ChalRoComp :=
   ((QueryImpl.ofLift unifSpec (OracleComp ChalDigestSpec)).liftTarget ChalRoComp +
     primSplitRoImpl P) + splitRoImpl
 
 /-- Simulated-signing EUF-CMA experiment factored through `ChalDigestSpec`. -/
-noncomputable def simWithChalDigest (P : Primitives)
+@[expose] noncomputable def simWithChalDigest (P : Primitives)
     (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
     (pk : Bytes) (bSim : UInt8) (A : GapSigEufCmaRoAdv) :
     OracleComp ChalDigestSpec Bool := do
@@ -766,10 +767,10 @@ noncomputable def simWithChalDigest (P : Primitives)
     return (ok && decide (mStar ∉ signedMsgs))
   checkInRo.run' ∅
 
-noncomputable def implReal : QueryImpl ChalDigestSpec ProbComp :=
+@[expose] noncomputable def implReal : QueryImpl ChalDigestSpec ProbComp :=
   QueryImpl.ofLift unifSpec ProbComp + fun () => sampleRandom64
 
-noncomputable def implLifted : QueryImpl ChalDigestSpec ProbComp :=
+@[expose] noncomputable def implLifted : QueryImpl ChalDigestSpec ProbComp :=
   QueryImpl.ofLift unifSpec ProbComp + fun () => do
     let h ← $ᵗ (ZMod l25519)
     liftChalTo64 h
@@ -1111,10 +1112,13 @@ private theorem prEvent_gapSigEufCmaSimExpOnPk_le_lifted_add
     refine (measureETVDist_map_le _ _ Prod.fst Measurable.of_discrete).trans ?_
     refine OracleComp.ProgramLogic.Relational.measureETVDist_simulateQ_run_le_queryBoundP_mul
       impl₁ impl₂ (· = Sum.inr ()) ?_ ?_ oa (simWithChalDigest_isQueryBoundP P isValidDhTriple pk bSim hA) ()
-    · rintro (_ | ⟨⟩) hS ⟨⟩
+    · rintro (_ | u) hS ⟨⟩
       · cases hS
       · let _ : MeasurableSpace Bytes := ⊤
-        let _ : MeasurableSpace (Bytes × PUnit) := ⊤
+        let _ : MeasurableSpace (Bytes × Unit) := ⊤
+        let _ : MeasurableSpace (ChalDigestSpec.Range (Sum.inr u)) := ⊤
+        let _ : MeasurableSpace (ChalDigestSpec.Range (Sum.inr u) × Unit) := ⊤
+        rcases u with ⟨⟩
         have hm1 : ((impl₁ (Sum.inr ())).run ()) = (·, ()) <$> sampleRandom64 := by
           simp only [impl₁, QueryImpl.liftTarget_apply, OracleComp.liftM_run_StateT,
             map_eq_bind_pure_comp]
@@ -1133,41 +1137,13 @@ private theorem prEvent_gapSigEufCmaSimExpOnPk_le_lifted_add
   exact (prEvent_le_prEvent_add_measureETVDist _ _ (· = true) Measurable.of_discrete).trans
     (add_le_add le_rfl hetv)
 
-/-- Replacing uniform 64-byte SHA-512 challenge digests with uniform `ZMod l25519` challenges lifted
-    via `liftChalTo64` changes the simulated-signing EUF-CMA win probability by at most
-    `xeddsaModLoss q_H`. -/
-theorem gapSigEufCmaSimExpOnPk_le_lifted_add_modLoss
-    (P : Primitives) (isValidDhTriple : Bytes → Bytes → Bytes → Bool)
-    (pk : Bytes) (bSim : UInt8) {A : GapSigEufCmaRoAdv} (hA : A.Bounded) :
-    let q_H := xeddsaChalBudget A.q_ro A.q_verify A.q_prim_sigSign
-    (𝒟[gapSigEufCmaSimExpOnPk P isValidDhTriple pk bSim A] {true}).toReal ≤
-      (𝒟[simulateQ implLifted (simWithChalDigest P isValidDhTriple pk bSim A)] {true}).toReal +
-        xeddsaModLoss q_H := by
-  intro q_H
-  let _ : MeasurableSpace Bool := ⊤
-  have hpr := prEvent_gapSigEufCmaSimExpOnPk_le_lifted_add P isValidDhTriple pk bSim hA
-  dsimp only at hpr
-  rw [prEvent_eq_evalDist_singleton, prEvent_eq_evalDist_singleton] at hpr
-  have hdelta_nn : 0 ≤ deltaWide := by
-    unfold deltaWide
-    exact div_nonneg (mul_nonneg (Nat.cast_nonneg _) (Nat.cast_nonneg _))
-      (mul_pos (Nat.cast_pos.mpr l25519_pos) (pow_pos zero_lt_two 512)).le
-  have hfin1 : 𝒟[simulateQ implLifted (simWithChalDigest P isValidDhTriple pk bSim A)] {true} ≠ ⊤ :=
-    measure_ne_top _ _
-  have hfin2 : ((q_H + 1 : ℕ) : ℝ≥0∞) * ENNReal.ofReal deltaWide ≠ ⊤ :=
-    ENNReal.mul_ne_top (ENNReal.natCast_ne_top _) ENNReal.ofReal_ne_top
-  have htoReal := ENNReal.toReal_mono (ENNReal.add_ne_top.mpr ⟨hfin1, hfin2⟩) hpr
-  rw [ENNReal.toReal_add hfin1 hfin2, ENNReal.toReal_mul, ENNReal.toReal_natCast,
-    ENNReal.toReal_ofReal hdelta_nn] at htoReal
-  simpa [xeddsaModLoss, Nat.cast_add, Nat.cast_one] using htoReal
-
 abbrev ChalZModSpec : OracleSpec (ℕ ⊕ Unit) :=
   unifSpec + (Unit →ₒ ZMod l25519)
 
 noncomputable local instance : OracleSpec.UniformAnswerMeasure (Unit →ₒ ZMod l25519) :=
   OracleSpec.UniformAnswerMeasure.ofFiniteNonempty (Unit →ₒ ZMod l25519)
 
-noncomputable def liftChalImpl : QueryImpl ChalDigestSpec (OracleComp ChalZModSpec)
+@[expose] noncomputable def liftChalImpl : QueryImpl ChalDigestSpec (OracleComp ChalZModSpec)
   | .inl n  => liftM (ChalZModSpec.query (Sum.inl n))
   | .inr () => do
       let h ← liftM (ChalZModSpec.query (Sum.inr ()))
@@ -1185,6 +1161,7 @@ theorem evalChalZMod_evalDistEq {α : Type} (oa : OracleComp ChalZModSpec α) :
   · simp only [evalChalZMod, QueryImpl.add_apply_inl, QueryImpl.ofLift_eq_id', QueryImpl.id'_apply]
     exact evalDist_liftM_query_uniform (spec := unifSpec) n
   · let _ : MeasurableSpace (ZMod l25519) := ⊤
+    let _ : MeasurableSpace (ChalZModSpec.Range (Sum.inr u)) := ⊤
     simp only [evalChalZMod, QueryImpl.add_apply_inr, uniformSampleImpl_apply]
     exact SampleableType.evalDist_uniformSample
 
@@ -1335,7 +1312,7 @@ theorem xeddsaVerifyWithDigest_spec {P : Primitives} (C : XeddsaCurveWitness P)
 
 /-- Recovers a 32-byte clamped X25519 scalar from two signatures `(sig₁, sig₂)` and distinct
     challenges `(h₁, h₂)` in `ZMod l25519`. -/
-noncomputable def extractClampedKey (sig₁ sig₂ : Bytes) (h₁ h₂ : ZMod l25519) : Bytes :=
+def extractClampedKey (sig₁ sig₂ : Bytes) (h₁ h₂ : ZMod l25519) : Bytes :=
   recoverClampedScalar ((sigRespScalar sig₁ - sigRespScalar sig₂) * (h₁ - h₂)⁻¹)
 
 /-- Two accepting verifications on `P.x25519Base sk` sharing the same challenge input under distinct
@@ -1423,7 +1400,7 @@ theorem x25519_extractClampedKey_eq {P : Primitives}
 abbrev ForkSpec : OracleSpec (((ℕ ⊕ PrimQuery) ⊕ DdhQuery) ⊕ Unit) :=
   (PrimBaseSpec + gapDhOracleSpec) + (Unit →ₒ ZMod l25519)
 
-def primEval (P : Primitives) : (q : PrimQuery) → primSpec.Range q
+@[expose] def primEval (P : Primitives) : (q : PrimQuery) → primSpec.Range q
   | .x25519 sk pk          => P.x25519 sk pk
   | .x25519Base sk         => P.x25519Base sk
   | .isCanonical pk        => P.isCanonical pk
@@ -1457,7 +1434,7 @@ def sideImpl (P : Primitives) (isValidDhTriple : Bytes → Bytes → Bytes → B
 
 /-- Eliminates deterministic side queries from an `OracleComp ForkSpec` tree by structural
     recursion, preserving `implicit_reducible` path indices. -/
-@[implicit_reducible]
+@[expose, implicit_reducible]
 def elimSide (P : Primitives) (isValidDhTriple : Bytes → Bytes → Bytes → Bool) {α : Type} :
     OracleComp ForkSpec α → OracleComp ChalZModSpec α
   | .pure x => .pure x
@@ -1497,7 +1474,7 @@ theorem simulateQ_sideImpl_eq_elimSide
         exact congrArg (PFunctor.FreeM.liftBind (P := ChalZModSpec.toPFunctor) (Sum.inr ()))
           (funext ih)
 
-noncomputable def answerChalOnBase :
+def answerChalOnBase :
     QueryImpl ForkSpec (OracleComp (PrimBaseSpec + gapDhOracleSpec))
   | .inl q  => liftM ((PrimBaseSpec + gapDhOracleSpec).query q)
   | .inr () =>
@@ -1921,7 +1898,7 @@ structure Trace where
   queryLog  : List Bytes
   deriving DecidableEq
 
-def Trace.hUsed (tr : Trace) : ZMod l25519 :=
+@[expose] def Trace.hUsed (tr : Trace) : ZMod l25519 :=
   decodeScalarBytes (fitBytesRef 64 tr.wStar)
 
 /-- Fork-index selector locating `tr.targetKey` in `tr.queryLog` when `tr.accepted = true`. -/
@@ -2025,7 +2002,7 @@ private theorem progSignStep_invariants {P : Primitives} (C : XeddsaCurveWitness
 noncomputable def liftUnifChal {α : Type} (oa : ProbComp α) : OracleComp ChalZModSpec α :=
   simulateQ (QueryImpl.ofLift unifSpec (OracleComp ChalZModSpec)) oa
 
-noncomputable def liftUnifFork {α : Type} (oa : ProbComp α) : OracleComp ForkSpec α :=
+def liftUnifFork {α : Type} (oa : ProbComp α) : OracleComp ForkSpec α :=
   simulateQ (QueryImpl.ofLift unifSpec (OracleComp ForkSpec)) oa
 
 private theorem elimSide_pure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
@@ -2037,26 +2014,6 @@ private theorem elimSide_monad_bind (P : Primitives) (ddh : Bytes → Bytes → 
     elimSide P ddh (m >>= f) = (elimSide P ddh m >>= fun a => elimSide P ddh (f a)) := by
   rw [← simulateQ_sideImpl_eq_elimSide, simulateQ_bind]
   simp only [simulateQ_sideImpl_eq_elimSide]
-
-private theorem elimSide_query_unif (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool) (n : ℕ) :
-    elimSide P ddh (liftM (ForkSpec.query (Sum.inl (Sum.inl (Sum.inl n))))) =
-      liftM (ChalZModSpec.query (Sum.inl n)) := by
-  rw [← simulateQ_sideImpl_eq_elimSide]
-  exact simulateQ_spec_query (sideImpl P ddh) _
-
-private theorem elimSide_query_prim (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
-    (p : PrimQuery) :
-    elimSide P ddh (liftM (ForkSpec.query (Sum.inl (Sum.inl (Sum.inr p))))) =
-      pure (primEval P p) := by
-  rw [← simulateQ_sideImpl_eq_elimSide]
-  exact simulateQ_spec_query (sideImpl P ddh) _
-
-private theorem elimSide_query_ddh (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
-    (X Y Z : Bytes) :
-    elimSide P ddh (liftM (ForkSpec.query (Sum.inl (Sum.inr (X, Y, Z))))) =
-      pure (ddh X Y Z) := by
-  rw [← simulateQ_sideImpl_eq_elimSide]
-  exact simulateQ_spec_query (sideImpl P ddh) _
 
 private theorem elimSide_query_chal (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool) :
     elimSide P ddh (liftM (ForkSpec.query (Sum.inr ()))) =
@@ -2157,7 +2114,7 @@ noncomputable def wrappedTrace (P : Primitives) (isValidDhTriple : Bytes → Byt
   buildTrace P pk <$>
     (simulateQ (trackedInnerImpl P pk bSim) (innerFull P isValidDhTriple pk A)).run ([], ∅, [])
 
-noncomputable def rawRoImpl3 :
+def rawRoImpl3 :
     QueryImpl sha512RoSpec (StateT SimState3 (OracleComp ForkSpec)) :=
   fun bs => do
     let (msgs, cache, qlog) ← get
@@ -2174,14 +2131,14 @@ noncomputable def rawRoImpl3 :
           set (msgs, cache.cacheQuery bs w, qlog ++ [bs])
           pure w
 
-noncomputable def rawPrimImpl3 (P : Primitives) :
+def rawPrimImpl3 (P : Primitives) :
     QueryImpl primSpec (StateT SimState3 (OracleComp ForkSpec))
   | .sigSign sk m rand  => simulateQ rawRoImpl3 (xeddsaSignRo P sk m rand)
   | .sigVerify pk m sig => simulateQ rawRoImpl3 (xeddsaVerifyRo P pk m sig)
   | q                   =>
       liftM (m := OracleComp ForkSpec) (ForkSpec.query (Sum.inl (Sum.inl (Sum.inr q))))
 
-noncomputable def rawAdvImpl (P : Primitives) (pk : Bytes) (bSim : UInt8) :
+def rawAdvImpl (P : Primitives) (pk : Bytes) (bSim : UInt8) :
     QueryImpl XeddsaRomOracleSpec (StateT SimState3 (OracleComp ForkSpec))
   | .inl (.inl (.inl n)) =>
       liftM (m := OracleComp ForkSpec) (ForkSpec.query (Sum.inl (Sum.inl (Sum.inl n))))
@@ -2196,7 +2153,7 @@ noncomputable def rawAdvImpl (P : Primitives) (pk : Bytes) (bSim : UInt8) :
   | .inr (.inr (X, Y, Z)) =>
       liftM (m := OracleComp ForkSpec) (ForkSpec.query (Sum.inl (Sum.inr (X, Y, Z))))
 
-noncomputable def rawFull (P : Primitives) (pk : Bytes) (bSim : UInt8) (A : GapSigEufCmaRoAdv) :
+def rawFull (P : Primitives) (pk : Bytes) (bSim : UInt8) (A : GapSigEufCmaRoAdv) :
     StateT SimState3 (OracleComp ForkSpec) (Bytes × Bytes × Option Bytes) := do
   let out ← simulateQ (rawAdvImpl P pk bSim) (A.run pk)
   match xeddsaVerifyChalInput? P pk out.1 out.2 with
@@ -2207,7 +2164,7 @@ noncomputable def rawFull (P : Primitives) (pk : Bytes) (bSim : UInt8) (A : GapS
 
 /-- Live simulated-signing EUF-CMA trace computation over `ForkSpec` executed inside `forkGapDhAdv`
     via `OracleComp.contextFork`. -/
-noncomputable def rawTrace (P : Primitives) (pk : Bytes) (bSim : UInt8) (A : GapSigEufCmaRoAdv) :
+def rawTrace (P : Primitives) (pk : Bytes) (bSim : UInt8) (A : GapSigEufCmaRoAdv) :
     OracleComp ForkSpec Trace :=
   buildTrace P pk <$> (rawFull P pk bSim A).run ([], ∅, [])
 
@@ -3635,17 +3592,95 @@ end Coupling
 
 section MainReduction
 
-noncomputable local instance : DecidableEq ForkSpec.Domain :=
-  Classical.decEq _
+abbrev PrimQueryKey :=
+  Nat × List Bytes × Option Bytes × Option SignalPqxdh.MessageKeys
 
-noncomputable local instance (t : ForkSpec.Domain) : DecidableEq (ForkSpec.Range t) :=
-  Classical.decEq _
+def primQueryToKey : PrimQuery → PrimQueryKey
+  | .x25519 sk pk          => (0, [sk, pk], none, none)
+  | .x25519Base sk         => (1, [sk], none, none)
+  | .isCanonical pk        => (2, [pk], none, none)
+  | .pow8 pk               => (3, [pk], none, none)
+  | .sigPkGen sk           => (4, [sk], none, none)
+  | .sigSign sk m r        => (5, [sk, m, r], none, none)
+  | .sigVerify pk m sg     => (6, [pk, m, sg], none, none)
+  | .kemKeyGen seed        => (7, [seed], none, none)
+  | .kemEncaps pk r        => (8, [pk, r], none, none)
+  | .kemDecaps sk ct       => (9, [sk, ct], none, none)
+  | .hkdfDerive96 ikm      => (10, [ikm], none, none)
+  | .rootCreateChain rk dh => (11, [rk, dh], none, none)
+  | .chainKdfSeed ck       => (12, [ck], none, none)
+  | .chainKdfNext ck       => (13, [ck], none, none)
+  | .spqrInitSend q r      => (14, [q, r], none, none)
+  | .spqrInitRecv q m      => (15, [q, m], none, none)
+  | .deriveMsgKeys m s     => (16, [m], s, none)
+  | .aeadEnc mk ad pt      => (17, [ad, pt], none, some mk)
+  | .aeadDec mk ad ct      => (18, [ad, ct], none, some mk)
 
-noncomputable def liftUnifBase {α : Type} (oa : ProbComp α) :
+def primQueryOfKey : PrimQueryKey → PrimQuery
+  | (0, [sk, pk], _, _)        => .x25519 sk pk
+  | (1, [sk], _, _)            => .x25519Base sk
+  | (2, [pk], _, _)            => .isCanonical pk
+  | (3, [pk], _, _)            => .pow8 pk
+  | (4, [sk], _, _)            => .sigPkGen sk
+  | (5, [sk, m, r], _, _)      => .sigSign sk m r
+  | (6, [pk, m, sg], _, _)     => .sigVerify pk m sg
+  | (7, [seed], _, _)          => .kemKeyGen seed
+  | (8, [pk, r], _, _)         => .kemEncaps pk r
+  | (9, [sk, ct], _, _)        => .kemDecaps sk ct
+  | (10, [ikm], _, _)          => .hkdfDerive96 ikm
+  | (11, [rk, dh], _, _)       => .rootCreateChain rk dh
+  | (12, [ck], _, _)           => .chainKdfSeed ck
+  | (13, [ck], _, _)           => .chainKdfNext ck
+  | (14, [q, r], _, _)         => .spqrInitSend q r
+  | (15, [q, m], _, _)         => .spqrInitRecv q m
+  | (16, [m], s, _)            => .deriveMsgKeys m s
+  | (17, [ad, pt], _, some mk) => .aeadEnc mk ad pt
+  | (18, [ad, ct], _, some mk) => .aeadDec mk ad ct
+  | _                          => .isCanonical []
+
+theorem primQueryOfKey_toKey (q : PrimQuery) : primQueryOfKey (primQueryToKey q) = q := by
+  cases q <;> rfl
+
+local instance : DecidableEq PrimQuery := fun a b =>
+  decidable_of_iff (primQueryToKey a = primQueryToKey b)
+    ⟨fun h => by rw [← primQueryOfKey_toKey a, ← primQueryOfKey_toKey b, h],
+     congrArg primQueryToKey⟩
+
+local instance : DecidableEq ForkSpec.Domain :=
+  inferInstance
+
+def decEqPrimRange : (q : PrimQuery) → DecidableEq (primSpec.Range q)
+  | .x25519 _ _          => inferInstanceAs (DecidableEq Bytes)
+  | .x25519Base _        => inferInstanceAs (DecidableEq Bytes)
+  | .isCanonical _       => inferInstanceAs (DecidableEq Bool)
+  | .pow8 _              => inferInstanceAs (DecidableEq Bytes)
+  | .sigPkGen _          => inferInstanceAs (DecidableEq Bytes)
+  | .sigSign _ _ _       => inferInstanceAs (DecidableEq Bytes)
+  | .sigVerify _ _ _     => inferInstanceAs (DecidableEq Bool)
+  | .kemKeyGen _         => inferInstanceAs (DecidableEq (Bytes × Bytes))
+  | .kemEncaps _ _       => inferInstanceAs (DecidableEq (Option (Bytes × Bytes)))
+  | .kemDecaps _ _       => inferInstanceAs (DecidableEq (Option Bytes))
+  | .hkdfDerive96 _      => inferInstanceAs (DecidableEq SignalPqxdh.DRKey)
+  | .rootCreateChain _ _ => inferInstanceAs (DecidableEq (Bytes × Bytes))
+  | .chainKdfSeed _      => inferInstanceAs (DecidableEq Bytes)
+  | .chainKdfNext _      => inferInstanceAs (DecidableEq Bytes)
+  | .spqrInitSend _ _    => inferInstanceAs (DecidableEq (Option (Bytes × Option Bytes × Bytes)))
+  | .spqrInitRecv _ _    => inferInstanceAs (DecidableEq (Option (Bytes × Option Bytes)))
+  | .deriveMsgKeys _ _   => inferInstanceAs (DecidableEq SignalPqxdh.MessageKeys)
+  | .aeadEnc _ _ _       => inferInstanceAs (DecidableEq Bytes)
+  | .aeadDec _ _ _       => inferInstanceAs (DecidableEq (Option Bytes))
+
+local instance : (t : ForkSpec.Domain) → DecidableEq (ForkSpec.Range t)
+  | .inl (.inl (.inl n)) => inferInstanceAs (DecidableEq (Fin (n + 1)))
+  | .inl (.inl (.inr q)) => decEqPrimRange q
+  | .inl (.inr _)        => inferInstanceAs (DecidableEq Bool)
+  | .inr ()              => inferInstanceAs (DecidableEq (ZMod l25519))
+
+@[expose] def liftUnifBase {α : Type} (oa : ProbComp α) :
     OracleComp (PrimBaseSpec + gapDhOracleSpec) α :=
   simulateQ (QueryImpl.ofLift unifSpec (OracleComp (PrimBaseSpec + gapDhOracleSpec))) oa
 
-noncomputable def forkRunAt (P : Primitives) (A : GapSigEufCmaRoAdv)
+@[expose] def forkRunAt (P : Primitives) (A : GapSigEufCmaRoAdv)
     (bSim : UInt8) (U V : Bytes) :
     OracleComp (PrimBaseSpec + gapDhOracleSpec) Bytes := do
   let q_H := xeddsaChalBudget A.q_ro A.q_verify A.q_prim_sigSign
@@ -3659,7 +3694,7 @@ noncomputable def forkRunAt (P : Primitives) (A : GapSigEufCmaRoAdv)
 
 /-- Replay-forking `GapDH` adversary guessing the Edwards public-key sign bit before
     `OracleComp.contextFork` and issuing a single `.x25519` query on the recovered clamped scalar. -/
-noncomputable def forkGapDhAdv (P : Primitives) (A : GapSigEufCmaRoAdv) : GapDhAdv where
+@[expose] def forkGapDhAdv (P : Primitives) (A : GapSigEufCmaRoAdv) : GapDhAdv where
   run U V := do
     let bBool ← liftUnifBase ($ᵗ Bool)
     let bSim : UInt8 := if bBool then 1 else 0

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaProofs
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaEvalExp
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaProofs -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaEvalExp -- proof-setup: allow-public-import
 
 /-!
 # `ReductionDsl` `Auth` `AeadIndCpa` Adversary Wiring
@@ -19,7 +19,7 @@ Instantiates `aeadCpaRedProg` at `K = b.q_total` and proves step-cost bounds and
 compliance for `aeadCpaDslAdv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,14 +31,6 @@ open OracleSpec OracleComp
 
 abbrev aeadCpaDslProg (S : Setup) (b : QueryBudget) :=
   aeadCpaRedProg S b.q_total
-
-theorem aeadCpaDslProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (aeadCpaDslProg S b).totalCost b.q_total ≤ stepCostBudget S b :=
-  aeadCpaRedProg_totalCost_le S b
-
-theorem aeadCpaDslProg_totalCost_le_security (S : Setup) (b : QueryBudget) :
-    (aeadCpaDslProg S b).totalCost b.q_total ≤ _root_.SignalPqxdh.Security.stepCostBudget S b :=
-  aeadCpaRedProg_totalCost_le_security S b
 
 /-- Query-bound compliance for `aeadCpaDslAdv`. -/
 theorem aeadCpaDslAdv_bounded (S : Setup) (b : QueryBudget) (A : AuthAdversary S) :

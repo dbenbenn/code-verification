@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.Defs
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Instruction Fetch, Jump Table, and Layout Helpers for Seed `merge_field` Tag `6`
@@ -22,35 +24,13 @@ splitting, and `prostSSAt` `sender_chain` (`SS + 0x90`) focus lemmas for
 `SessionStructure::merge_field` (`0x581c`, block `15`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeSeed
 
 section Fetch
 
 open Lean Meta Elab Command Tactic Arm64 ProofLib ProofLib.ProgramReflection
-
-gen_decodes libsignalSessionCode_tree mf6 [(ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") → (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 60), (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 264) → (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 328), (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1880) → (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1904)]
-
-elab "mf6_fetches_range " b:term:max H:term:max kStart:num kEnd:num : tactic => do
-  let off := num% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")
-  let kStart := kStart.getNat
-  let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let hfn ← `(ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")
-  let mut k := kStart
-  while k <= kEnd do
-    let dec := mkIdent (.str `CryptoVerification.E2E.Record.DeserializeSeed
-      s!"mf6_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-    let kq := Syntax.mkNumLit (toString k)
-    if k == 0 then
-      evalTactic (← `(tactic|
-        have := $fetchEntry (b := $b) (H := $H) $hfn (by decide) $dec))
-    else
-      evalTactic (← `(tactic|
-        have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-    k := k + 4
 
 end Fetch
 
@@ -63,87 +43,12 @@ open CryptoVerification.E2E.Record
 
 /-! ## Callee Offset Resolution -/
 
-theorem chainMerge_fnAddr_eq_senderChain (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr mergeFieldName + bv% (2 ^ 64 + (ls_off% "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) =
-      (tripleRatchetProgAt b C ctl abs).fnAddr chainMergeName := by
-  have h1 := (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")
-  have h2 := (ls_lemma% fnOff "prost::encoding::message::merge::<libsignal_protocol::proto::storage::session_structure::Chain, &mut &[u8]> [local#1]")
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, mergeFieldName, chainMergeName, h1, h2]
-  rw [BitVec.add_assoc]
-  rfl
-
-/-! ## `.rodata` Jump Table (`0x4901c`, Index `5` for Tag `6`) -/
-
 def jumpTable_senderChain : List (BitVec 8) :=
   [0x00#8, 0x82#8, 0x77#8, 0x5f#8, 0x19#8, 0x32#8, 0x8d#8, 0x6d#8,
    0xb5#8, 0xd6#8, 0xcb#8, 0x6d#8, 0x0b#8, 0x4c#8, 0x24#8]
 
-theorem rodata_0x4601c_eq_senderChain :
-    (libsignalSessionImage.data.drop (num% (ls_bytes% "0082775f19328d6db5d6cb6d") - num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)))).take 15 = jumpTable_senderChain := by
-  rfl_kernel
-
-theorem rodata_0x4601c_mem_senderChain :
-    (num% (ls_bytes% "0082775f19328d6db5d6cb6d"), 15) ∈ libsignalSessionImage.roData :=
-  List.mem_of_elem_eq_true (by rfl_kernel)
-
-theorem rodata_jumpTable_intro_senderChain {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d")) ↦ᵣ jumpTable_senderChain) ∗ P := by
-  have h := ProofLib.Satisfies.of_rodata_loads himg
-    (secOff := num% (ls_bytes% "0082775f19328d6db5d6cb6d")) (secLen := 15) (dataOff := num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)))
-    rfl rodata_0x4601c_mem_senderChain (by decide) (by decide)
-    (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) hro hP
-  rwa [rodata_0x4601c_eq_senderChain] at h
-
-theorem jumpTable_byte5_split_senderChain (base : BitVec 64) :
-    ((base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d")) ↦ᵣ jumpTable_senderChain) =
-      ((base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d")) ↦ᵣ jumpTable_senderChain.take 5) ∗
-        (((base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 5)) ↦₈ᵣ 0x32#8) ∗
-         ((base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 6)) ↦ᵣ jumpTable_senderChain.drop 6)) := by
-  have heq : jumpTable_senderChain = jumpTable_senderChain.take 5 ++ (0x32#8 :: jumpTable_senderChain.drop 6) := rfl
-  have hlen : (jumpTable_senderChain.take 5).length = 5 := rfl
-  have h1 : (base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d")) + BitVec.ofNat 64 5 = base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 5) := by
-    rw [BitVec.add_assoc]; rfl
-  have h2 : (base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 5)) + 1#64 = base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 6) := by
-    rw [BitVec.add_assoc]; rfl
-  conv_lhs => rw [heq]
-  rw [pointsToBytesRO_append, pointsToBytesRO_cons, hlen, h1, h2]
-
-theorem rodata_byte5_intro_senderChain {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 5)) ↦₈ᵣ 0x32#8) ∗ P := by
-  have hm := rodata_jumpTable_intro_senderChain himg hro hP
-  rw [jumpTable_byte5_split_senderChain img.base, sepConj_assoc] at hm
-  have hm1 := Satisfies.of_sep_right hm
-  rw [sepConj_comm (((img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 5)) ↦₈ᵣ 0x32#8)) _, sepConj_assoc] at hm1
-  exact Satisfies.of_sep_right hm1
-
-theorem sepWPp_intro_rodata_byte5_senderChain {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp}
-    {Q Qp : State → SepProp → Prop}
-    (hro : img.RoDataLoaded s.mem)
-    (h : SepWPp prog ret s (((img.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 5)) ↦₈ᵣ 0x32#8) ∗ P) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  refine h R ?_ hL
-  rw [sepConj_assoc]
-  exact rodata_byte5_intro_senderChain himg hro hm
-
-theorem adrp_0x46000_eq_senderChain {base entry : BitVec 64}
-    (hb : base &&& 0xfff#64 = 0#64) (he : entry = base + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) :
-    (entry + bv% (40) &&& bv% (2 ^ 64 - 4096)) = base + 20480#64 := by
-  subst he
-  have hadd : base + bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") + 40#64 = base + 22596#64 := by
-    rw [BitVec.add_assoc]; rfl
-  rw [hadd, adrp_page_of_aligned hb]
-  rfl
-
-/-! ## Stack Frame Decomposition -/
-
 /-- The saved register words and untouched cell at `[sp0 - 80#64 .. sp0)` after the prologue. -/
-def savedRegs_senderChain (sp0 w56 : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def savedRegs_senderChain (sp0 w56 : BitVec 64) (s0 : State) : SepProp :=
   ((sp0 - 80#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp0 - 72#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp0 - 64#64) ↦₆₄ s0.readReg64 .x25) ∗
@@ -209,7 +114,7 @@ theorem sp_sub_240_aligned_senderChain {sp0 : BitVec 64} (h : sp0 &&& 15#64 = 0#
 /-! ## `prostSSAt` `sender_chain` Layout Helpers -/
 
 /-- All fields of `prostSSAt A ss v` except `sender` at `ss + 0x90`. -/
-def prostSSRest_senderChain (A : RustAlloc) (ss : BitVec 64) (v : SSV) : SepProp :=
+@[expose] def prostSSRest_senderChain (A : RustAlloc) (ss : BitVec 64) (v : SSV) : SepProp :=
   vecU8 A ss v.lik ∗ vecU8 A (ss + 0x18#64) v.rik ∗ vecU8 A (ss + 0x30#64) v.root ∗
     vecOf A 104 8 (fun c a => prostChainAt A a c) (ss + 0x48#64) v.recv ∗
     vecU8 A (ss + 0x60#64) [] ∗ vecU8 A (ss + 0x78#64) [] ∗

@@ -11,17 +11,26 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.CalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayoutPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.SegPrologueHelpersPlaced
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.CalleesPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayoutPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.SegPrologueHelpersPlaced
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.CalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.ModelAndLayoutPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.SegPrologueHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Stage 1 Frame Combinators and Early Error Exits
@@ -32,15 +41,13 @@ Provides `VmPreserved`-preserving basic-block steppers (`sepWPp_step_to_vm_place
 while re-exporting pure frame/layout helpers from `SegPrologueHelpers`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.SegPrologueHelpersPlacedBudget
-
-noncomputable section
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib SepProp
 open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer (CliGhostHooks cliGhostExterns)
@@ -138,26 +145,6 @@ theorem sepWPp_step_to_vm_placed [LibsignalPlacement] {prog : Program} (mid : Bi
   rcases h.elim hm hL with ⟨sm, hsteps, ⟨hpc, hrun, Pm, hmm, hvm, hnext⟩ | ⟨_, hfalse⟩⟩
   · obtain ⟨sf, hsteps', hout⟩ :=
       hnext sm rfl hpc hrun (hinv.of_keepsFrozen hsteps.keepsFrozen) hvm
-        R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact (not_satisfies_false_sepConj hfalse).elim
-
-/-- Two-goal sequential `VmPreserved` basic-block stepper over `SepWP` with explicit post-block assertion `P'`. -/
-theorem sepWPp_step_vm_placed [LibsignalPlacement] {prog : Program} (mid : BitVec 64)
-    {ret : BitVec 64} {s : State} {P : SepProp} (P' : SepProp) {R_st : State → Prop}
-    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hinv : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hstep : SepWP prog mid s P (fun sm Pm => VmPreserved s sm ∧ (R_st sm ∧ Pm = P')))
-    (hcont : ∀ sm : State,
-      sm.pc = mid → sm.status = .Running →
-      LibsignalCodeRoLoaded lsmpl sm.mem →
-      VmPreserved s sm → R_st sm →
-      SepWPp prog ret sm P' Q Qp oom) :
-    SepWPp prog ret s P Q Qp oom := by
-  intro R hm hL
-  rcases hstep.elim hm hL with ⟨sm, hsteps, ⟨hpc, hrun, Pm, hmm, hvm, hrst, rfl⟩ | ⟨_, hfalse⟩⟩
-  · obtain ⟨sf, hsteps', hout⟩ :=
-      hcont sm hpc hrun (hinv.of_keepsFrozen hsteps.keepsFrozen) hvm hrst
         R hmm (hsteps.codeLoaded hL)
     exact ⟨sf, hsteps.trans hsteps', hout⟩
   · exact (not_satisfies_false_sepConj hfalse).elim
@@ -649,35 +636,5 @@ theorem stage1_untrusted_exit_placed_ok [LibsignalPlacement] {M : AllocCostModel
     change sm.pc = (blkPl_521).base + 600#64 at hpcM
     exact stage1_untrusted_step2_placed_ok hEnv hS hstk hstk64 hx8 hsp hal0 htrustF hpost
       hpcM hrunM hinvM hspM' hx20M hx21M hfpM hx19M hvregsM htrM' hfsM')
-
-theorem stage1_untrusted_exit_placed_ok_of_append [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {mmpl : MultiPlacement} {gh : CliGhostHooks} {W : CliHooks} {X : UnreachedPqxdhPrimitives} {B : RunBudgets} {S : RunSem}
-    {x : InitGhost} {st0 : M.σ} {evsPre : List AllocEvent} {stk : Nat} {s0 s : State}
-    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hFits : FitsEnv M lim st0 (InitEnv x))
-    (hEnv : InitEnv x (evsPre ++ stringCloneEvents x.peer.name))
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hstk : cliInitiateNeed B ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hx8 : s0.readReg64 .x8 = x.ret)
-    (hctrl : InInitiatePlaced s0 s 0x0244)
-    (hx21 : s.readReg64 (.gpr 21#5) = s.sp + 0xfe0#64)
-    (htr : s.trace = s0.trace)
-    (htrustF : StoresGhost.opened.identity.trusted cliIo.rd x.F x.peer.val x.bundle.idKey =
-      .ok false)
-    (hpost : ∀ sf Pf, InitExitPostPlaced A lim InitEnv S x st0 stk s0 sf Pf → Q sf Pf)
-    (hpanic : ∀ sf Pf, InitPanicPostPlaced A lim InitEnv S x st0 stk s0 sf Pf → Qp sf Pf) :
-    SepWPp (initProgPlaced mmpl gh W) (s0.readReg64 .lr) s
-      (stage2MemPlaced A lim (M.stepEvents evsPre st0) x stk s0 s) Q Qp oom :=
-  stage1_untrusted_exit_placed_ok hh
-    ((fitsEvents_append M lim evsPre (stringCloneEvents x.peer.name) st0).mp (hFits _ hEnv)).2
-    ⟨evsPre ++ stringCloneEvents x.peer.name, hEnv,
-      (M.stepEvents_append evsPre (stringCloneEvents x.peer.name) st0).symm⟩
-    hS hstk hstk64 hx8 hctrl hx21 htr htrustF hpost hpanic
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage1Lemmas.SegPrologueHelpersPlacedBudget

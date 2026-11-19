@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegFront.S0Sym
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegFront.Common
+public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegFront.S0Sym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegFront.Common -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegA
 
@@ -67,7 +68,7 @@ theorem exists_remoteGroupC_of_memRegion_32 {a : BitVec 64} {R : SepProp} {m : M
   rw [← heq q, ← hlen]
   exact pointsToBytes_entails_memRegion q bs
 
-def sessionStateRestAt (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
+@[expose] def sessionStateRestAt (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
     (st : SessionState (List (BitVec 8))) : SepProp :=
   ⌜PublicKey.deserialize G.localIk.bytes = .ok st.localIdentity.publicKey ∧
     (match st.remoteIdentity with

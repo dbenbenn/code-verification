@@ -9,12 +9,42 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDh
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDhProofs
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhProofs
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeGapDhProofs -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhProofs -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
 import Computational.Proofs.ReductionDsl.Size
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC1
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.SignalPqxdh.Security.SigHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHopC
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Cost, Query, and Block-Size Bounds for `fgAuth1KeyGapDhProg`
@@ -23,7 +53,7 @@ import Computational.Proofs.ReductionDsl.Size
 for `fgAuth1KeyGapDhProg`, together with `CostedReduction.queryBound_eval` soundness bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -72,36 +102,37 @@ theorem a1g_wsZero_eq : KeyIndGapDh.wsZero = gdhWS := rfl
 /-! ## Step cost -/
 
 section
-set_option maxHeartbeats 16000000
+set_option maxHeartbeats 1600000
 set_option maxRecDepth 100000
 
 local macro "a1g_step_cost_simp" : tactic => `(tactic|
   simp only [a1gStepC, a1gPreC, a1gInitPrinC, a1gGenSpkC,
     a1gStep2C, a1gPre2C, a1gInitPrin2C, a1gGenSpk2C,
     KeyInd1KeyGapDh.liftGdhComp_costUB, KeyInd1KeyGapDh.sigChalQ_dsl_costUB,
+    onBaseF_costUB, fgInitPrinC_costUB, fgGenSpkC_costUB,
+    fgSendC_true_costUB, fgSendC_false_costUB, fgRecvB_true_costUB, fgRecvB_false_costUB,
+    fgRoC_costUB, fgRoRootC_costUB, fgRegisterC_costUB,
+    corruptB_costUB, genOpkB_costUB,
     findHonestC_costUB, isGameSpkC_costUB, isGameOpkC_costUB, resolveSigPkC_costUB,
+    koskBundleOkPowsC_costUB, lookupSpkSkC_costUB,
+    twoSideC_costUB, twoSideOptC_costUB, patchC_costUB, mkSecretPosC_costUB, rootPatchC_costUB,
     firstMsgADE_costUB, sidEq_costUB, optU32Eq_costUB, kyberCheckE_costUB,
-    fgStepC, fgInitPrinC, fgGenSpkC, fgSendC, fgStep2C, fgInitPrin2C, fgGenSpk2C, fgSend2C,
-    fgRecvC, fgRecvB, fgRoC, fgRoRootC, fgRegisterC, onBaseF, corruptB, genOpkB, sendGuardE,
-    mkSecretPosC, mkPairPosC, twoSideC, twoSideOptC, ddhEqC, ddhEqOptC, entryMatchesC, patchC,
-    rootPatchC, isAdvPowsC, koskBundleOkPowsC, koskSenderOkPowsC, lookupSpkSkC,
+    fgStepC, fgStep2C, fgInitPrin2C, fgGenSpk2C, fgSend2C, sendGuardE,
     bindV, letV, caseOptV, caseSumV, findMV, eCaseOpt, eCaseSum, eFind, eAny, eMap,
     natEq, nat2Eq, nat3Eq, isSomeE, optFst, optSnd, bytesEmpty, slice32, q4,
     stSecb, stHasWon, stPrin, stSpks, stOpks, stSess, stUsedS, stUsedO, stUsedN, stKyb,
     stSOE, stSNE, stROE, stRNE, stRo, stRoot, stAdv, stMk, stUpd, seMk,
-    pmHdr, pmEphAPk, pmPqMsg, pmAeadCt, peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted,
-    peMk, peUpd, sbSpkSk, sbSpkPk, sbPqspkSk, sbPqspkPk, sbMk, oeOpkSk, oeOpkPk, oeConsumed,
-    oeMk, oeUpd, buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
-    hdIkAPk, hdEkAPk, hdSpkId, hdOpkId, hdPqspkId, hdKemCt, hdMk,
-    fsBase, fsL, fsRootL, fsRaw, fsLog, fsResp, fsPows, fsMk, fsUpd,
+    peSecIKA0, peIkAPk, peSecIKAsign, peIkSignPk, peCorrupted,
+    peMk, peUpd, sbSpkSk, sbSpkPk, sbPqspkSk, sbPqspkPk, sbMk,
+    buIkB, buSpkId, buSpkB, buSpkSig, buOpkB, buPqspkId, buPqspkB, buPqspkSig, buMk,
+    hdMk, fsBase, fsL, fsRootL, fsRaw, fsLog, fsResp, fsPows, fsMk, fsUpd,
     paU, paV, paDh1, paTI, paTS, pa2U, pa2V, pa2Role, pa2TS, pa2Dh1,
-    feP1, feP2, feP3, feP4, feSs, feDk, pkP1, pkP2, pkP3, pkP4, pkSs, reRk, rePos, reRk1, reCk,
-    aNone, aInitPrin, aPk, aCorr, aBundle, aSendFresh, aSendUnfresh, aRecvHonest, aRecvUnfresh,
-    aDrKey, aRootKdf, rs, Comp.costUB_liftChal, Comp.letC,
+    aNone, aInitPrin, aBundle, aSendFresh, aSendUnfresh,
+    Comp.costUB_liftChal, Comp.costUB_letC,
     costUB_encEC, costUB_encKEM, costUB_bytesTakeK, costUB_bytesDrop, costUB_bytesLen,
     costUB_bytesBeq, costUB_litBytes, costUB_u32OfNat, costUB_u32Beq, costUB_sampleBytes32,
     costUB_sampleBytes32C, costUB_sampleRandom64C, costUB_sampleDrKey96C, costUB_queryPrim,
-    costUB_queryPrimC, costUB_queryDdh, Ty.wd, v, Comp.costUB, Expr.costUB,
+    costUB_queryPrimC, costUB_queryDdh, Ty.wd, costUB_v, Comp.costUB, Expr.costUB,
     PNat.val_ofNat, F_X25519_length, List.length_nil,
     bits_0, bits_1, bits_32, bits_64, bits_96, bits_128, bits_160, bits_192,
     ite_true, ite_false, Bool.false_eq_true])
@@ -117,6 +148,7 @@ theorem a1gStepC_costUB_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSi
     have := bits_le_succ (nSendNoOpkEff S); have := nSendNoOpkEff_le_N_dh S; omega
   have hb4 : bits S.N_send_opk_tot ≤ S.N_dh + 1 := by
     have := bits_le_succ S.N_send_opk_tot; unfold Setup.N_dh Setup.N_send_tot; omega
+  have hm : min K S.N_dh ≤ S.N_dh := Nat.min_le_right K S.N_dh
   a1g_step_cost_simp
   omega
 
@@ -357,28 +389,30 @@ theorem a1g_handle_sig_le (S : Setup) (K : Nat) :
 
 local macro "a1g_ddh_q_simp" : tactic => `(tactic|
   simp only [a1gStepC, a1gPreC, a1gInitPrinC, a1gGenSpkC,
-    a1gStep2C, a1gPre2C, a1gInitPrin2C, a1gGenSpk2C, Comp.letC, Comp.iteC,
+    a1gStep2C, a1gPre2C, a1gInitPrin2C, a1gGenSpk2C, Comp.queries_letC, Comp.iteC,
     a1g_liftGdhComp_queries_ddh, KeyInd1KeyGapDh.sigChalQ_dsl_queries_ddh,
     queries_liftChal_gdhChalW, queries_queryDdh_chal,
-    fgStepC, fgInitPrinC, fgGenSpkC, fgSendC, fgStep2C, fgInitPrin2C, fgGenSpk2C, fgSend2C,
-    fgRecvC, fgRecvB, fgRoC, fgRoRootC, fgRegisterC, onBaseF, corruptB, genOpkB,
-    mkSecretPosC, mkPairPosC, twoSideC, twoSideOptC, ddhEqC, ddhEqOptC, entryMatchesC, patchC,
-    rootPatchC, findMV, Comp.sampleDrKey96C, gdhChalW, gdhWS, bindV, letV, caseOptV, caseSumV,
+    onBaseF_chal, fgInitPrinC_chal, fgGenSpkC_chal, fgSendC_chal, fgRecvB_chal,
+    fgRoC_chal, fgRoRootC_chal, fgRegisterC_chal,
+    twoSideC_chal, twoSideOptC_chal, patchC_chal, mkSecretPosC_chal, rootPatchC_chal,
+    fgStepC, fgStep2C, fgInitPrin2C, fgGenSpk2C, fgSend2C,
+    Comp.sampleDrKey96C, gdhChalW, gdhWS, bindV, letV, caseOptV, caseSumV,
     Comp.sampleBytes32C, Comp.sampleRandom64C, Comp.queryPrimC, a1g_wDdh_inl, a1g_wsZero1Key,
     Comp.queries, ite_true, ite_false, Bool.false_eq_true,
     Nat.zero_max, Nat.max_zero, max_self, Nat.add_zero, Nat.zero_add, Nat.mul_one])
 
 local macro "a1g_prim_q_simp" : tactic => `(tactic|
   simp only [a1gStepC, a1gPreC, a1gInitPrinC, a1gGenSpkC,
-    a1gStep2C, a1gPre2C, a1gInitPrin2C, a1gGenSpk2C, Comp.letC, Comp.iteC,
+    a1gStep2C, a1gPre2C, a1gInitPrin2C, a1gGenSpk2C, Comp.queries_letC, Comp.iteC,
     a1g_liftGdhComp_queries_prim, KeyInd1KeyGapDh.sigChalQ_dsl_queries_prim,
     findHonestC_queries, isGameSpkC_queries, isGameOpkC_queries, resolveSigPkC_queries,
     queries_liftChal_gdhPrimW, queries_queryDdh_prim,
-    fgStepC, fgInitPrinC, fgGenSpkC, fgSendC, fgStep2C, fgInitPrin2C, fgGenSpk2C, fgSend2C,
-    fgRecvC, fgRecvB, fgRoC, fgRoRootC, fgRegisterC, onBaseF, corruptB, genOpkB,
-    mkSecretPosC, mkPairPosC, twoSideC, twoSideOptC, ddhEqC, ddhEqOptC, entryMatchesC, patchC,
-    rootPatchC, isAdvPowsC, koskBundleOkPowsC, koskSenderOkPowsC, lookupSpkSkC,
-    findMV, Comp.sampleBytes32, Comp.sampleDrKey96C, Comp.queryPrim, primW, primWS, gdhPrimW, gdhWS,
+    onBaseF_prim, fgInitPrinC_prim, fgGenSpkC_prim, fgSendC_prim, fgRecvB_prim,
+    fgRoC_prim, fgRoRootC_prim, fgRegisterC_prim, corruptB_queries, genOpkB_queries,
+    twoSideC_prim, twoSideOptC_prim, patchC_prim, mkSecretPosC_prim, rootPatchC_prim,
+    koskBundleOkPowsC_prim, lookupSpkSkC_prim,
+    fgStepC, fgStep2C, fgInitPrin2C, fgGenSpk2C, fgSend2C,
+    Comp.sampleBytes32, Comp.sampleDrKey96C, Comp.queryPrim, primW, primWS, gdhPrimW, gdhWS,
     bindV, letV, caseOptV, caseSumV, Comp.sampleBytes32C, Comp.sampleRandom64C, Comp.queryPrimC,
     a1g_wPrim_inl, a1g_wsZero1Key, Comp.queries, ite_true, ite_false, Bool.false_eq_true,
     Nat.zero_max, Nat.max_zero, max_self, Nat.add_zero, Nat.zero_add, Nat.mul_zero, Nat.mul_one])
@@ -943,19 +977,27 @@ private theorem a1g_firstMsgADE_size {Γ : List (Ty pqSig)} (ikA ikB eph pq : Ex
     a1g_ops_sum_opSize_inr, a1g_pqBytesOps_opSize, a1g_pqU32Ops_opSize, a1g_pqxdhOps_opSize, hb0]
   dsimp only [pqxdhOps, Ops.sum, pqBytesOps, pqU32Ops, Sum.elim]; omega
 
+private theorem hb_32 : bits 32 = 6 := by decide
+private theorem hb_64 : bits 64 = 7 := by decide
+private theorem hb_96 : bits 96 = 7 := by decide
+private theorem hb_128 : bits 128 = 8 := by decide
+private theorem hb_160 : bits 160 = 8 := by decide
+private theorem hb_192 : bits 192 = 8 := by decide
+
+private theorem a1g_hb_consts :
+    bits 32 = 6 ∧ bits 64 = 7 ∧ bits 96 = 7 ∧ bits 128 = 8 ∧ bits 160 = 8 ∧ bits 192 = 8 :=
+  ⟨hb_32, hb_64, hb_96, hb_128, hb_160, hb_192⟩
+
 set_option maxRecDepth 100000 in
-local macro "a1g_fgstep_size_simp" : tactic => `(tactic|
-  simp (config := { maxSteps := 4000000 }) only [
-    fgStepC, fgInitPrinC, fgGenSpkC, fgSendC, fg2StepC, fg2InitPrinC, fg2GenSpkC, fg2SendC,
-    fgStep2C, fgInitPrin2C, fgGenSpk2C, fgSend2C, fgRecvC, fgRecvB, fgRoC, fgRoRootC, fgRegisterC,
-    onBaseF, sendGuardE, isAdvPowsC, koskBundleOkPowsC, koskSenderOkPowsC, lookupSpkSkC,
-    mkSecretPosC, mkPairPosC, twoSideC, twoSideOptC, ddhEqC, ddhEqOptC, entryMatchesC,
+local macro "a1g_fgstep_leaf_size_simp" : tactic => `(tactic|
+  simp (config := { maxSteps := 1000000 }) only [
+    onBaseF, sendGuardE, isAdvPowsC, koskSenderOkPowsC, lookupSpkSkC,
+    mkSecretPosC, mkPairPosC, twoSideC, twoSideOptC, ddhEqC, ddhEqOptC,
     patchC, rootPatchC, fsBase, fsL, fsRootL, fsRaw, fsLog, fsResp, fsPows, fsMk, fsUpd,
     paU, paV, paDh1, paTI, paTS, fg2PaU, fg2PaV, fg2PaDh1, fg2PaTI, fg2PaSendOpk, fg2PaSendIdx,
     fg2PaTS, pa2U, pa2V, pa2Role, pa2TS, pa2Dh1, feP1, feP2, feP3, feP4, feSs, feDk,
     pkP1, pkP2, pkP3, pkP4, pkSs, reRk, rePos, reRk1, reCk, q4, bytesEmpty, slice32, zero32,
-    emptySimE, initPrinB, corruptB, genSpkB, genOpkB, registerB, sendC, sendB, recvTailC, recvB,
-    roB, roRootB, findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
+    emptySimE, findHonestC, isAdvRegC, isGameSpkC, isGameOpkC, koskBundleOkC, koskSenderOkC,
     resolveSigPkC, honestPeerC, hkdfOrRoC, rootRoC,
     stSecb, stHasWon, stPrin, stSpks, stOpks, stSess, stUsedS, stUsedO, stUsedN, stKyb,
     stSOE, stSNE, stROE, stRNE, stRo, stRoot, stAdv, stMk, stUpd,
@@ -983,21 +1025,199 @@ local macro "a1g_fgstep_size_simp" : tactic => `(tactic|
     a1g_sampleIndex_size, a1g_queryPrim_size, a1g_sampleBoolC_size, a1g_sampleBytes32C_size,
     a1g_sampleRandom64C_size, a1g_sampleDrKey96C_size, a1g_sampleIndexC_size, a1g_queryPrimC_size,
     a1g_queryChal_size, a1g_queryDdh_size, a1g_encEC_size, a1g_encKEM_size, Comp.size, Expr.size,
-    a1g_pqxdhOps_opSize, bits_0, bits_1, ↓reduceIte, Bool.false_eq_true])
+    a1g_pqxdhOps_opSize, bits_0, bits_1, hb_32, hb_64, hb_96, hb_128, hb_160, hb_192,
+    ↓reduceIte, Bool.false_eq_true])
 
-private theorem a1g_hb_consts :
-    bits 32 = 6 ∧ bits 64 = 7 ∧ bits 96 = 7 ∧ bits 128 = 8 ∧ bits 160 = 8 ∧ bits 192 = 8 := by decide
+private def entryMatchesC_sz : Nat :=
+  (entryMatchesC (Γ₁ := [patchKeyTy]) (Γ₂ := [fgPatchEntryTy, patchKeyTy])
+    (Δ := [fgPatchEntryTy, patchKeyTy]) .vz .vz).size
 
 set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 3200000 in
+@[simp] private theorem entryMatchesC_size_eq {Γ₁ Γ₂ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+    (k : Var Γ₁ patchKeyTy) (e : Var Γ₂ fgPatchEntryTy) :
+    (entryMatchesC (Δ := Δ) k e).size = entryMatchesC_sz := by
+  unfold entryMatchesC_sz entryMatchesC; a1g_fgstep_leaf_size_simp
+
+set_option linter.unusedSimpArgs false in
+private theorem entryMatchesC_sz_le : entryMatchesC_sz ≤ 800 := by
+  unfold entryMatchesC_sz entryMatchesC; a1g_fgstep_leaf_size_simp; omega
+
+private def koskBundleOkPowsC_sz (S : Setup) (K : Nat) : Nat :=
+  (koskBundleOkPowsC (Γ₁ := [authStateTy])
+    (Γ₂ := [.list (.prod (B 32) (B 32)), authStateTy])
+    (Γ₃ := [preKeyBundleTy, .list (.prod (B 32) (B 32)), authStateTy])
+    (Δ := [preKeyBundleTy, .list (.prod (B 32) (B 32)), authStateTy])
+    S K .vz .vz .vz).size
+
+set_option linter.unusedSimpArgs false in
+@[simp] private theorem koskBundleOkPowsC_size_eq (S : Setup) (K : Nat)
+    {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
+    (st : Var Γ₁ authStateTy) (pows : Var Γ₂ (.list (.prod (B 32) (B 32))))
+    (bu : Var Γ₃ preKeyBundleTy) :
+    (koskBundleOkPowsC (Δ := Δ) S K st pows bu).size = koskBundleOkPowsC_sz S K := by
+  unfold koskBundleOkPowsC_sz koskBundleOkPowsC; a1g_fgstep_leaf_size_simp
+
+set_option linter.unusedSimpArgs false in
+private theorem koskBundleOkPowsC_sz_le (S : Setup) (K : Nat) :
+    koskBundleOkPowsC_sz S K ≤ 3 * bits K + 3 * bits (min K S.N_dh) + 200 := by
+  unfold koskBundleOkPowsC_sz koskBundleOkPowsC; a1g_fgstep_leaf_size_simp; omega
+
+private theorem a1g_caseSumV_v_size_le {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
+    {Γs Γ : List (Ty pqSig)} [Ext Γs Γ] {τ₁ τ₂ τ : Ty pqSig}
+    (q : Var Γs (.sum τ₁ τ₂))
+    (kl : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ)
+    (kr : Var (τ₂ :: Γ) τ₂ → Comp pqxdhOps I (τ₂ :: Γ) τ)
+    {bl br : Nat} (hl : (kl .vz).size ≤ bl) (hr : (kr .vz).size ≤ br) :
+    (caseSumV (v (Δ := Γ) q) kl kr).size ≤ bl + br + 2 := by
+  simp only [a1g_caseSumV_size, a1g_v_size]; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem a1g_onBaseF_size_le {Γ₁ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] (sim : Var Γ₁ fgSimTy)
+    (br : Var (authStateTy :: Δ) authStateTy → Comp pqxdhOps pqPrimIface (authStateTy :: Δ) RS)
+    {b : Nat} (hbr : (br .vz).size ≤ b) :
+    (onBaseF (Δ := Δ) sim br).size ≤ b + 80 := by
+  simp only [onBaseF, fsBase, fsUpd, fsL, fsRootL, fsRaw, fsLog, fsResp, fsPows, fsMk,
+    a1g_bindV_size, a1g_liftChal_size, a1g_letV_size, a1g_v_size, Comp.size, Expr.size,
+    a1g_pqxdhOps_opSize]
+  omega
+
+set_option linter.unusedSimpArgs false in
+private theorem a1g_ret_aNone_size_le {Γ₁ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] (sim : Var Γ₁ fgSimTy) :
+    ((Comp.ret (.pair aNone (v sim)) : CG Δ RSF)).size ≤ 50 := by
+  a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem fgInitPrinC_size_le (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
+    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
+    (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (u : Var Γ₃ .nat) :
+    (fgInitPrinC (Δ := Δ) K pa sim u).size ≤ bits K + 300 := by
+  unfold fgInitPrinC; a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem fgGenSpkC_size_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
+    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
+    (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ (.prod .nat .nat)) :
+    (fgGenSpkC (Δ := Δ) S K pa sim x).size ≤ 2 * bits K + bits (nRecvEff S) + 400 := by
+  unfold fgGenSpkC; a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem fg2InitPrinC_size_le (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
+    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
+    (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (u : Var Γ₃ .nat) :
+    (fg2InitPrinC (Δ := Δ) K pa sim u).size ≤ bits K + 300 := by
+  unfold fg2InitPrinC; a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem fg2GenSpkC_size_le (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
+    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
+    (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ (.prod .nat .nat)) :
+    (fg2GenSpkC (Δ := Δ) K pa sim x).size ≤ 2 * bits K + 400 := by
+  unfold fg2GenSpkC; a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem fgInitPrin2C_size_le (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
+    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
+    (pa : Var Γ₁ a1gParams2Ty) (sim : Var Γ₂ fgSimTy) (u : Var Γ₃ .nat) :
+    (fgInitPrin2C (Δ := Δ) K pa sim u).size ≤ bits K + 300 := by
+  unfold fgInitPrin2C; a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem fgGenSpk2C_size_le (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
+    [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
+    (pa : Var Γ₁ a1gParams2Ty) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ (.prod .nat .nat)) :
+    (fgGenSpk2C (Δ := Δ) K pa sim x).size ≤ 2 * bits K + 400 := by
+  unfold fgGenSpk2C; a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem corruptB_size_le (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+    (st : Var Γ₁ authStateTy) (u : Var Γ₂ .nat) :
+    (corruptB (Δ := Δ) K st u).size ≤ 2 * bits K + 350 := by
+  unfold corruptB; a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem genOpkB_size_le (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+    (st : Var Γ₁ authStateTy) (x : Var Γ₂ (.prod .nat (.prod .nat .nat))) :
+    (genOpkB (Δ := Δ) K st x).size ≤ bits K + 350 := by
+  unfold genOpkB; a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem fgRoC_size_le (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+    (sim : Var Γ₁ fgSimTy) (sec : Var Γ₂ (B 192)) :
+    (fgRoC (Δ := Δ) K sim sec).size ≤ 2 * bits K + 1300 := by
+  unfold fgRoC; a1g_fgstep_leaf_size_simp
+  simp only [entryMatchesC_size_eq]; have := entryMatchesC_sz_le; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem fgRoRootC_size_le (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+    (sim : Var Γ₁ fgSimTy) (x : Var Γ₂ (.prod (B 32) (B 32))) :
+    (fgRoRootC (Δ := Δ) K sim x).size ≤ bits K + 450 := by
+  unfold fgRoRootC; a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem fgRegisterC_size_le {Γ₁ Γ₂ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+    (sim : Var Γ₁ fgSimTy) (sk : Var Γ₂ (B 32)) :
+    (fgRegisterC (Δ := Δ) sim sk).size ≤ 300 := by
+  unfold fgRegisterC; a1g_fgstep_leaf_size_simp; omega
+
+set_option linter.unusedSimpArgs false in
+private theorem fgRecvB_size_le (S : Setup) (K : Nat) (opk : Bool)
+    {Γ₁ Γ₂ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+    (sim : Var Γ₁ fgSimTy) (x : Var Γ₂ recvQTy) :
+    (fgRecvB (Δ := Δ) S K opk sim x).size ≤ 10 * bits K + 2 * bits (min K S.N_dh) + 3100 := by
+  cases opk <;> (
+    unfold fgRecvB fgRecvC; a1g_fgstep_leaf_size_simp
+    simp only [entryMatchesC_size_eq]; have := entryMatchesC_sz_le; omega)
+
+set_option linter.unusedSimpArgs false in
+private theorem fgSendC_size_le (S : Setup) (K : Nat) (opk : Bool)
+    {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
+    (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ sendQTy) :
+    (fgSendC (Δ := Δ) S K opk pa sim x).size ≤
+      10 * bits K + 6 * bits (min K S.N_dh) +
+      bits (nSendOpkEff S) + bits (nSendNoOpkEff S) + bits S.N_send_opk_tot + 3600 := by
+  cases opk <;> (
+    unfold fgSendC; a1g_fgstep_leaf_size_simp
+    simp only [entryMatchesC_size_eq, koskBundleOkPowsC_size_eq]
+    have := entryMatchesC_sz_le; have := koskBundleOkPowsC_sz_le S K; omega)
+
+set_option linter.unusedSimpArgs false in
+private theorem fg2SendC_size_le (S : Setup) (K : Nat) (opk : Bool)
+    {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
+    (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ sendQTy) :
+    (fg2SendC (Δ := Δ) S K opk pa sim x).size ≤ 10 * bits K + 6 * bits (min K S.N_dh) + 3600 := by
+  cases opk <;> (
+    unfold fg2SendC; a1g_fgstep_leaf_size_simp
+    simp only [entryMatchesC_size_eq, koskBundleOkPowsC_size_eq]
+    have := entryMatchesC_sz_le; have := koskBundleOkPowsC_sz_le S K; omega)
+
+set_option linter.unusedSimpArgs false in
+private theorem fgSend2C_size_le (S : Setup) (K : Nat) (opk : Bool)
+    {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)} [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ]
+    (pa : Var Γ₁ a1gParams2Ty) (sim : Var Γ₂ fgSimTy) (x : Var Γ₃ sendQTy) :
+    (fgSend2C (Δ := Δ) S K opk pa sim x).size ≤ 10 * bits K + 6 * bits (min K S.N_dh) + 3600 := by
+  cases opk <;> (
+    unfold fgSend2C; a1g_fgstep_leaf_size_simp
+    simp only [entryMatchesC_size_eq, koskBundleOkPowsC_size_eq]
+    have := entryMatchesC_sz_le; have := koskBundleOkPowsC_sz_le S K; omega)
+
 private theorem fgStepC_size_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
     (pa : Var Γ₁ paramsTy) (sim : Var Γ₂ fgSimTy) (q : Var Γ₃ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] :
     (fgStepC (Δ := Δ) S K pa sim q).size ≤
       105 * bits K + 45 * bits S.N_dh + 15 * bits S.N_sess_tot + 18500 := by
-  a1g_fgstep_size_simp
-  have hb_consts := a1g_hb_consts; obtain ⟨hNR, hSO, hSN⟩ := a1g_eff_le_dh S
+  unfold fgStepC
+  refine le_trans (a1g_caseSumV_v_size_le _ _ _ (fgInitPrinC_size_le K pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (a1g_onBaseF_size_le sim _ (corruptB_size_le K _ _)) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgGenSpkC_size_le S K pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (a1g_onBaseF_size_le sim _ (genOpkB_size_le K _ _)) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgSendC_size_le S K true pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgSendC_size_le S K false pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRecvB_size_le S K true sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRecvB_size_le S K false sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRoC_size_le K sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRoRootC_size_le K sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (a1g_ret_aNone_size_le sim) (fgRegisterC_size_le sim _)) ?_
+  obtain ⟨hNR, hSO, hSN⟩ := a1g_eff_le_dh S
   have := bits_mono hNR; have := bits_mono hSO; have := bits_mono hSN
   have hd : S.N_dh = S.N_id + S.N_spk_tot + S.N_opk_tot + S.N_send_tot := rfl
   have hs : S.N_send_tot = S.N_send_opk_tot + S.N_send_no_opk_tot := rfl
@@ -1005,23 +1225,41 @@ private theorem fgStepC_size_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : Li
   have : bits (min K S.N_dh) ≤ bits S.N_dh := bits_mono (Nat.min_le_right _ _)
   omega
 
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 3200000 in
 private theorem fg2StepC_size_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
     (pa : Var Γ₁ fg2ParamsTy) (sim : Var Γ₂ fgSimTy) (q : Var Γ₃ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] :
     (fg2StepC (Δ := Δ) S K pa sim q).size ≤ 105 * bits K + 45 * bits (min K S.N_dh) + 18500 := by
-  a1g_fgstep_size_simp; have hb_consts := a1g_hb_consts; omega
+  unfold fg2StepC
+  refine le_trans (a1g_caseSumV_v_size_le _ _ _ (fg2InitPrinC_size_le K pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (a1g_onBaseF_size_le sim _ (corruptB_size_le K _ _)) <|
+    a1g_caseSumV_v_size_le _ _ _ (fg2GenSpkC_size_le K pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (a1g_onBaseF_size_le sim _ (genOpkB_size_le K _ _)) <|
+    a1g_caseSumV_v_size_le _ _ _ (fg2SendC_size_le S K true pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fg2SendC_size_le S K false pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRecvB_size_le S K true sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRecvB_size_le S K false sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRoC_size_le K sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRoRootC_size_le K sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (a1g_ret_aNone_size_le sim) (fgRegisterC_size_le sim _)) ?_
+  omega
 
-set_option linter.unusedSimpArgs false in
-set_option maxRecDepth 100000 in
-set_option maxHeartbeats 3200000 in
 private theorem fgStep2C_size_le (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Δ : List (Ty pqSig)}
     (pa : Var Γ₁ a1gParams2Ty) (sim : Var Γ₂ fgSimTy) (q : Var Γ₃ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] :
     (fgStep2C (Δ := Δ) S K pa sim q).size ≤ 105 * bits K + 45 * bits (min K S.N_dh) + 18500 := by
-  a1g_fgstep_size_simp; have hb_consts := a1g_hb_consts; omega
+  unfold fgStep2C
+  refine le_trans (a1g_caseSumV_v_size_le _ _ _ (fgInitPrin2C_size_le K pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (a1g_onBaseF_size_le sim _ (corruptB_size_le K _ _)) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgGenSpk2C_size_le K pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (a1g_onBaseF_size_le sim _ (genOpkB_size_le K _ _)) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgSend2C_size_le S K true pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgSend2C_size_le S K false pa sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRecvB_size_le S K true sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRecvB_size_le S K false sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRoC_size_le K sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (fgRoRootC_size_le K sim _) <|
+    a1g_caseSumV_v_size_le _ _ _ (a1g_ret_aNone_size_le sim) (fgRegisterC_size_le sim _)) ?_
+  omega
 
 local macro "a1g_step_size_simp" : tactic => `(tactic|
   simp only [a1gStepC, a1gPreC, a1gInitPrinC, a1gGenSpkC,

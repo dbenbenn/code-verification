@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTight
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.OnPanicTight -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Model
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Model Equivalence for `spqr::recv` Panics After `consume_message_key`
@@ -21,7 +22,7 @@ Proves `model_of_recvPanics` and `tryDecrypt_onPanicTight_of_afterCmk`: once `fr
 `tryDecryptOnPanicTight`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Decrypt.Model
 
@@ -59,30 +60,5 @@ theorem model_of_recvPanics {C : Crypto} {S : SpqrModel}
   dsimp only [SpqrModel.spqr]
   simp only [hpq, hp, ↓reduceIte]
   rfl
-
-/-- After `consumeMessageKey` succeeds, the binding panic condition of `tryDecryptSpec` implies the
-tight one: its `S.recvPanics` disjunct is a model panic (`model_of_recvPanics`). -/
-theorem tryDecrypt_onPanicTight_of_afterCmk {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image} {x : TryDecryptGhost}
-    {tr : TripleRatchet (List (BitVec 8))} {st1 : SessionState (List (BitVec 8))}
-    {ck : ChainKey} {r1 r2 : RatchetState} {mkg : MessageKeyGenerator} {R : SepProp}
-    {s0 sf : State}
-    (htr : Mut.exec TripleRatchet.fromSessionState x.st = (.ok tr, st1))
-    (herc : Mut.exec (RatchetState.ensureReceiverChain C x.msg.senderRatchetKey (coinsOf x.rest))
-      tr.ratchet = (.ok ck, r1))
-    (hcmk : Mut.exec (RatchetState.consumeMessageKey C.F x.msg.senderRatchetKey ck x.msg.counter
-      x.msgType) r1 = (.ok mkg, r2))
-    (h : sf.mem ⊨ (tryDecryptSpec C A ctl uuidTryParse S img).onPanic x s0 sf ∗ R) :
-    sf.mem ⊨ tryDecryptOnPanicTight C S uuidTryParse x s0 sf ∗ R := by
-  simp only [tryDecryptSpec, Spec.inImage] at h
-  rw [sepConj_assoc, satisfies_pure_sepConj] at h
-  simp only [tryDecryptOnPanicTight]
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  obtain ⟨⟨hc, htrace⟩, hmem⟩ := h
-  refine ⟨⟨?_, htrace⟩, hmem⟩
-  rcases hc with hm | hp | ha
-  · exact Or.inl hm
-  · exact Or.inl (model_of_recvPanics htr herc hcmk hp)
-  · exact Or.inr ha
 
 end CryptoVerification.LibsignalTripleRatchet.Decrypt.Model

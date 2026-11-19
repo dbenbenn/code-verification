@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.OpkRelC
-public import Symbolic.Proofs.Swarm.CREF.CBad
-public import Symbolic.Proofs.Swarm.TRREF.SrHonestVerPure -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.BinPendPure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepPure
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.TRREF.SrHonestVerPure -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.BinPendPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvRecv -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.Cli.World.RelCliPure
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
@@ -33,7 +33,7 @@ decoding, `DeltaFaithful` from `RoleFaithful`, Bob base-key preservation, entry 
 canonicity, and reject-step `Clean` preservation.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

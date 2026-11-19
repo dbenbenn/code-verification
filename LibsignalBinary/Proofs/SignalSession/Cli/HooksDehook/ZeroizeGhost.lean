@@ -10,9 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhostK -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ZeroizeCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Ghost `zeroize` Drop Hooks, `HookOk` Suite & Stock-Safe `StepsVisitedIn` Replays (`HooksDehook.ZeroizeGhost`)
@@ -155,18 +162,6 @@ noncomputable abbrev f3EmptySharedSecretDropGhostHook (keep : BitVec 64 → Bool
 noncomputable abbrev f3EmptySharedSecretDropGhostHookK (keep : BitVec 64 → Bool) (P_sub : Program) (m : BitVec 64) : State → State :=
   f3EmptyZeroizeGhostHookK keep P_sub (m + sharedSecretDropEntryOff)
 
-noncomputable abbrev zeroizeGhostHookPure63 (keep : BitVec 64 → Bool) (P_real : Program) (entry : BitVec 64) : State → State :=
-  zeroizeGhostHook keep P_real (pureWordsProg entry zeroize32Words) entry
-
-noncomputable abbrev zeroizeGhostHookPure63K (keep : BitVec 64 → Bool) (P_real : Program) (entry : BitVec 64) : State → State :=
-  zeroizeGhostHookK keep P_real (pureWordsProg entry zeroize32Words) entry
-
-noncomputable abbrev sharedSecretDropGhostHookPure64 (keep : BitVec 64 → Bool) (P_real : Program) (m : BitVec 64) : State → State :=
-  sharedSecretDropGhostHook keep P_real (pureWordsProg m sharedSecretDropHullWords) m
-
-noncomputable abbrev sharedSecretDropGhostHookPure64K (keep : BitVec 64 → Bool) (P_real : Program) (m : BitVec 64) : State → State :=
-  sharedSecretDropGhostHookK keep P_real (pureWordsProg m sharedSecretDropHullWords) m
-
 /-! ## 2. `SpecStripSInvariant`, `SpecPreservesFsTrace`, PC Invariance & `processZeroizeSpec` Lifts -/
 
 theorem specStripSInvariant_masterZeroize (keep : BitVec 64 → Bool) :
@@ -218,14 +213,6 @@ theorem keepFsTrace_zeroizeSecretHook_eq (s0 : State) :
 
 theorem keepFsTrace_zeroizeSecretHook_master_ok : HookOk (keepFsTrace zeroizeSecretHook) masterZeroizeSpec := by
   rw [funext keepFsTrace_zeroizeSecretHook_eq]; exact zeroizeSecretHook_masterZeroize_ok
-
-theorem keepFsTrace_zeroizeSecretHook_masterK_ok (keep : BitVec 64 → Bool) :
-    HookOk (keepFsTrace zeroizeSecretHook) (zeroizeSpecK keep masterZeroizeSpec) := by
-  rw [funext keepFsTrace_zeroizeSecretHook_eq]; exact zeroizeSecretHook_masterZeroizeK_ok keep
-
-theorem zeroizeSecretHook_preserves_oom_pool (s0 : State) :
-    OomPreserved s0 (zeroizeSecretHook s0) ∧ PoolPreserved s0 (zeroizeSecretHook s0) := by
-  unfold zeroizeSecretHook; exact ⟨⟨rfl, rfl, rfl⟩, ⟨rfl, rfl, rfl⟩⟩
 
 theorem zeroizeSecretHook_preserves_execFrozen {s0 : State} (hfr : ExecFrozen s0.mem) :
     ExecFrozen (zeroizeSecretHook s0).mem :=
@@ -401,14 +388,6 @@ private theorem oomPoolPreserved_of_processFieldsPreserved {s0 sf : State} (h : 
 
 -- 3.1 Unconditional `.fs`, `HookFsTraced`, `ExecFrozen`, and `lr` branch properties:
 
-theorem zeroizeGhostHook_fs (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64) (s0 : State) :
-    (zeroizeGhostHook keep P_real P_sub entryTarget s0).fs = s0.fs :=
-  linkedCallHook_fs keep P_real P_sub entryTarget masterZeroizeSpec zeroizeSecretHook s0
-
-theorem zeroizeGhostHookK_fs (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64) (s0 : State) :
-    (zeroizeGhostHookK keep P_real P_sub entryTarget s0).fs = s0.fs :=
-  linkedCallHook_fs keep P_real P_sub entryTarget (zeroizeSpecK keep masterZeroizeSpec) zeroizeSecretHook s0
-
 theorem f3EmptyZeroizeGhostHook_fs (keep : BitVec 64 → Bool) (P_sub : Program) (entryTarget : BitVec 64) (s0 : State) :
     (f3EmptyZeroizeGhostHook keep P_sub entryTarget s0).fs = s0.fs :=
   f3LinkedCallHook_fs keep emptyStdProg P_sub entryTarget (fun _ _ => masterZeroizeSpec) zeroizeSecretHook s0
@@ -417,21 +396,9 @@ theorem f3EmptyZeroizeGhostHookK_fs (keep : BitVec 64 → Bool) (P_sub : Program
     (f3EmptyZeroizeGhostHookK keep P_sub entryTarget s0).fs = s0.fs :=
   f3LinkedCallHook_fs keep emptyStdProg P_sub entryTarget (fun _ _ => zeroizeSpecK keep masterZeroizeSpec) zeroizeSecretHook s0
 
-theorem zeroizeGhostHook_fsT (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64) :
-    HookFsTraced IsFsC (zeroizeGhostHook keep P_real P_sub entryTarget) :=
-  linkedCallHook_fsT keep P_real P_sub entryTarget masterZeroizeSpec zeroizeSecretHook
-
-theorem zeroizeGhostHookK_fsT (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64) :
-    HookFsTraced IsFsC (zeroizeGhostHookK keep P_real P_sub entryTarget) :=
-  linkedCallHook_fsT keep P_real P_sub entryTarget (zeroizeSpecK keep masterZeroizeSpec) zeroizeSecretHook
-
 theorem f3EmptyZeroizeGhostHook_fsT (keep : BitVec 64 → Bool) (P_sub : Program) (entryTarget : BitVec 64) :
     HookFsTraced IsFsC (f3EmptyZeroizeGhostHook keep P_sub entryTarget) :=
   f3LinkedCallHook_fsT keep emptyStdProg P_sub entryTarget (fun _ _ => masterZeroizeSpec) zeroizeSecretHook
-
-theorem f3EmptyZeroizeGhostHookK_fsT (keep : BitVec 64 → Bool) (P_sub : Program) (entryTarget : BitVec 64) :
-    HookFsTraced IsFsC (f3EmptyZeroizeGhostHookK keep P_sub entryTarget) :=
-  f3LinkedCallHook_fsT keep emptyStdProg P_sub entryTarget (fun _ _ => zeroizeSpecK keep masterZeroizeSpec) zeroizeSecretHook
 
 theorem zeroizeGhostHook_preserves_execFrozen (keep : BitVec 64 → Bool) (P_real P_sub : Program)
     (entryTarget : BitVec 64) {s0 : State} (hfr : ExecFrozen s0.mem) :
@@ -470,22 +437,6 @@ theorem zeroizeGhostHookK_keepLr_false_of_noException {keep : BitVec 64 → Bool
   rcases linkedCallHook_activeRealPre_of_noException hnoex with ⟨_, _, a, R, hpre⟩
   dsimp only [zeroizeSpecK, memsetSpecK] at hpre; rw [sepConj_assoc, satisfies_pure_sepConj] at hpre; exact hpre.1
 
-theorem f3EmptyZeroizeGhostHookK_keepLr_false_of_noException {keep : BitVec 64 → Bool} {P_sub : Program}
-    {entryTarget : BitVec 64} {u : State}
-    (hnoex : ∀ msg, (f3EmptyZeroizeGhostHookK keep P_sub entryTarget u).status ≠ .Exception msg) :
-    keep (u.readReg64 .lr) = false := by
-  rw [f3EmptyZeroizeGhostHookK_eq] at hnoex; exact zeroizeGhostHookK_keepLr_false_of_noException hnoex
-
-theorem zeroizeGhostHook_of_keepLr_true {keep : BitVec 64 → Bool} {P_real P_sub : Program}
-    {entryTarget : BitVec 64} {s0 : State} (hActPre : ActiveRealPre masterZeroizeSpec s0)
-    (hlr_in : keep (s0.readReg64 .lr) = true) :
-    zeroizeGhostHook keep P_real P_sub entryTarget s0 = zeroizeSecretHook s0 := by
-  classical
-  have hnReal : ¬ ActiveRealRun keep P_real P_sub entryTarget s0 := fun hR => by
-    have hf := hR.2.1; rw [hlr_in] at hf; exact Bool.noConfusion hf
-  unfold zeroizeGhostHook linkedCallHook; simp only [hActPre, hnReal, ↓reduceDIte]
-  exact keepFsTrace_zeroizeSecretHook_eq s0
-
 theorem zeroizeGhostHookK_of_keepLr_true {keep : BitVec 64 → Bool} {P_real P_sub : Program}
     {entryTarget : BitVec 64} {s0 : State} (hlr_in : keep (s0.readReg64 .lr) = true) :
     zeroizeGhostHookK keep P_real P_sub entryTarget s0 =
@@ -496,18 +447,6 @@ theorem zeroizeGhostHookK_of_keepLr_true {keep : BitVec 64 → Bool} {P_real P_s
     rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
     have hf := hpre.1; rw [hlr_in] at hf; exact Bool.noConfusion hf
   unfold zeroizeGhostHookK linkedCallHook; simp only [hnAct, ↓reduceDIte]
-
-theorem f3EmptyZeroizeGhostHook_of_keepLr_true {keep : BitVec 64 → Bool} {P_sub : Program}
-    {entryTarget : BitVec 64} {s0 : State} (hActPre : ActiveRealPre masterZeroizeSpec s0)
-    (hlr_in : keep (s0.readReg64 .lr) = true) :
-    f3EmptyZeroizeGhostHook keep P_sub entryTarget s0 = zeroizeSecretHook s0 := by
-  rw [f3EmptyZeroizeGhostHook_eq]; exact zeroizeGhostHook_of_keepLr_true hActPre hlr_in
-
-theorem f3EmptyZeroizeGhostHookK_of_keepLr_true {keep : BitVec 64 → Bool} {P_sub : Program}
-    {entryTarget : BitVec 64} {s0 : State} (hlr_in : keep (s0.readReg64 .lr) = true) :
-    f3EmptyZeroizeGhostHookK keep P_sub entryTarget s0 =
-      { s0 with status := .Exception "ghost-hook precondition violated" } := by
-  rw [f3EmptyZeroizeGhostHookK_eq]; exact zeroizeGhostHookK_of_keepLr_true hlr_in
 
 -- 3.2 Generic `hsub_proc` master `HookOk` & pointwise `VmPreserved` / `OomPoolPreserved` / `trace`:
 
@@ -526,14 +465,6 @@ theorem zeroizeGhostHook_master_ok_of_process :
     (specStripSInvariant_masterZeroize keep) specPreservesFsTrace_masterZeroize
     masterZeroize_pre_setPC masterZeroize_outcome_setPC keepFsTrace_zeroizeSecretHook_master_ok
 
-theorem zeroizeGhostHookK_masterK_ok_of_process :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep masterZeroizeSpec) :=
-  linkedCallHook_ok hsvc_real hsvc_sub hreal_no hsub_no
-    (subroutine_ok_masterZeroizeK_of_process keep hsub_proc)
-    (specStripSInvariant_masterZeroizeK keep) (specPreservesFsTrace_masterZeroizeK keep)
-    (masterZeroizeK_pre_setPC keep) (masterZeroizeK_outcome_setPC keep)
-    (keepFsTrace_zeroizeSecretHook_masterK_ok keep)
-
 theorem zeroizeGhostHook_vmPreserved_of_process (s0 : State) :
     VmPreserved s0 (zeroizeGhostHook keep P_real P_sub entryTarget s0) := by
   classical
@@ -545,43 +476,6 @@ theorem zeroizeGhostHook_vmPreserved_of_process (s0 : State) :
     · rw [keepFsTrace_zeroizeSecretHook_eq]; exact zeroizeSecretHook_vmPreserved s0
   · exact VmPreserved.refl s0
 
-theorem zeroizeGhostHookK_vmPreserved_of_process (s0 : State) :
-    VmPreserved s0 (zeroizeGhostHookK keep P_real P_sub entryTarget s0) := by
-  classical
-  unfold zeroizeGhostHookK linkedCallHook; split
-  · rename_i hActPre; split
-    · rename_i hReal; rcases hActPre with ⟨hrun, hsp, a, R, hpre⟩
-      dsimp only [zeroizeSpecK, memsetSpecK] at hpre; rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-      exact vmPreserved_of_processFieldsPreserved
-        (activeRealRun_processZeroize hsvc_real hsvc_sub hreal_no hsub_no hsub_proc hrun hsp hpre.2 hReal)
-    · rw [keepFsTrace_zeroizeSecretHook_eq]; exact zeroizeSecretHook_vmPreserved s0
-  · exact VmPreserved.refl s0
-
-theorem zeroizeGhostHook_oomPoolPreserved_of_process (s0 : State) :
-    OomPreserved s0 (zeroizeGhostHook keep P_real P_sub entryTarget s0) ∧
-      PoolPreserved s0 (zeroizeGhostHook keep P_real P_sub entryTarget s0) := by
-  classical
-  unfold zeroizeGhostHook linkedCallHook; split
-  · rename_i hActPre; split
-    · rename_i hReal; rcases hActPre with ⟨hrun, hsp, a, R, hpre⟩
-      exact oomPoolPreserved_of_processFieldsPreserved
-        (activeRealRun_processZeroize hsvc_real hsvc_sub hreal_no hsub_no hsub_proc hrun hsp hpre hReal)
-    · rw [keepFsTrace_zeroizeSecretHook_eq]; exact zeroizeSecretHook_preserves_oom_pool s0
-  · exact ⟨⟨rfl, rfl, rfl⟩, ⟨rfl, rfl, rfl⟩⟩
-
-theorem zeroizeGhostHookK_oomPoolPreserved_of_process (s0 : State) :
-    OomPreserved s0 (zeroizeGhostHookK keep P_real P_sub entryTarget s0) ∧
-      PoolPreserved s0 (zeroizeGhostHookK keep P_real P_sub entryTarget s0) := by
-  classical
-  unfold zeroizeGhostHookK linkedCallHook; split
-  · rename_i hActPre; split
-    · rename_i hReal; rcases hActPre with ⟨hrun, hsp, a, R, hpre⟩
-      dsimp only [zeroizeSpecK, memsetSpecK] at hpre; rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-      exact oomPoolPreserved_of_processFieldsPreserved
-        (activeRealRun_processZeroize hsvc_real hsvc_sub hreal_no hsub_no hsub_proc hrun hsp hpre.2 hReal)
-    · rw [keepFsTrace_zeroizeSecretHook_eq]; exact zeroizeSecretHook_preserves_oom_pool s0
-  · exact ⟨⟨rfl, rfl, rfl⟩, ⟨rfl, rfl, rfl⟩⟩
-
 theorem zeroizeGhostHook_trace_of_process (s0 : State) :
     (zeroizeGhostHook keep P_real P_sub entryTarget s0).trace = s0.trace := by
   classical
@@ -589,17 +483,6 @@ theorem zeroizeGhostHook_trace_of_process (s0 : State) :
   · rename_i hActPre; split
     · rename_i hReal; rcases hActPre with ⟨hrun, hsp, a, R, hpre⟩
       exact (activeRealRun_processZeroize hsvc_real hsvc_sub hreal_no hsub_no hsub_proc hrun hsp hpre hReal).2.1
-    · rfl
-  · rfl
-
-theorem zeroizeGhostHookK_trace_of_process (s0 : State) :
-    (zeroizeGhostHookK keep P_real P_sub entryTarget s0).trace = s0.trace := by
-  classical
-  unfold zeroizeGhostHookK linkedCallHook; split
-  · rename_i hActPre; split
-    · rename_i hReal; rcases hActPre with ⟨hrun, hsp, a, R, hpre⟩
-      dsimp only [zeroizeSpecK, memsetSpecK] at hpre; rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-      exact (activeRealRun_processZeroize hsvc_real hsvc_sub hreal_no hsub_no hsub_proc hrun hsp hpre.2 hReal).2.1
     · rfl
   · rfl
 
@@ -619,42 +502,15 @@ theorem f3EmptyZeroizeGhostHook_master_ok_of_process :
   rw [f3EmptyZeroizeGhostHook_eq]
   exact zeroizeGhostHook_master_ok_of_process emptyStdProg_svc hsvc_sub (fun pc _ => emptyStdProg_externAt_none pc) hsub_no hsub_proc
 
-theorem f3EmptyZeroizeGhostHookK_masterK_ok_of_process :
-    HookOk (f3EmptyZeroizeGhostHookK keep P_sub entryTarget) (zeroizeSpecK keep masterZeroizeSpec) := by
-  rw [f3EmptyZeroizeGhostHookK_eq]
-  exact zeroizeGhostHookK_masterK_ok_of_process emptyStdProg_svc hsvc_sub (fun pc _ => emptyStdProg_externAt_none pc) hsub_no hsub_proc
-
 theorem f3EmptyZeroizeGhostHook_vmPreserved_of_process (s0 : State) :
     VmPreserved s0 (f3EmptyZeroizeGhostHook keep P_sub entryTarget s0) := by
   rw [f3EmptyZeroizeGhostHook_eq]
   exact zeroizeGhostHook_vmPreserved_of_process emptyStdProg_svc hsvc_sub (fun pc _ => emptyStdProg_externAt_none pc) hsub_no hsub_proc s0
 
-theorem f3EmptyZeroizeGhostHookK_vmPreserved_of_process (s0 : State) :
-    VmPreserved s0 (f3EmptyZeroizeGhostHookK keep P_sub entryTarget s0) := by
-  rw [f3EmptyZeroizeGhostHookK_eq]
-  exact zeroizeGhostHookK_vmPreserved_of_process emptyStdProg_svc hsvc_sub (fun pc _ => emptyStdProg_externAt_none pc) hsub_no hsub_proc s0
-
-theorem f3EmptyZeroizeGhostHook_oomPoolPreserved_of_process (s0 : State) :
-    OomPreserved s0 (f3EmptyZeroizeGhostHook keep P_sub entryTarget s0) ∧
-      PoolPreserved s0 (f3EmptyZeroizeGhostHook keep P_sub entryTarget s0) := by
-  rw [f3EmptyZeroizeGhostHook_eq]
-  exact zeroizeGhostHook_oomPoolPreserved_of_process emptyStdProg_svc hsvc_sub (fun pc _ => emptyStdProg_externAt_none pc) hsub_no hsub_proc s0
-
-theorem f3EmptyZeroizeGhostHookK_oomPoolPreserved_of_process (s0 : State) :
-    OomPreserved s0 (f3EmptyZeroizeGhostHookK keep P_sub entryTarget s0) ∧
-      PoolPreserved s0 (f3EmptyZeroizeGhostHookK keep P_sub entryTarget s0) := by
-  rw [f3EmptyZeroizeGhostHookK_eq]
-  exact zeroizeGhostHookK_oomPoolPreserved_of_process emptyStdProg_svc hsvc_sub (fun pc _ => emptyStdProg_externAt_none pc) hsub_no hsub_proc s0
-
 theorem f3EmptyZeroizeGhostHook_trace_of_process (s0 : State) :
     (f3EmptyZeroizeGhostHook keep P_sub entryTarget s0).trace = s0.trace := by
   rw [f3EmptyZeroizeGhostHook_eq]
   exact zeroizeGhostHook_trace_of_process emptyStdProg_svc hsvc_sub (fun pc _ => emptyStdProg_externAt_none pc) hsub_no hsub_proc s0
-
-theorem f3EmptyZeroizeGhostHookK_trace_of_process (s0 : State) :
-    (f3EmptyZeroizeGhostHookK keep P_sub entryTarget s0).trace = s0.trace := by
-  rw [f3EmptyZeroizeGhostHookK_eq]
-  exact zeroizeGhostHookK_trace_of_process emptyStdProg_svc hsvc_sub (fun pc _ => emptyStdProg_externAt_none pc) hsub_no hsub_proc s0
 
 end F3EmptyProcessPointwise
 
@@ -666,32 +522,6 @@ variable {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entryTarget : Bit
   (hwords : P_sub.hasWords entryTarget zeroize32Words)
 include hsvc_real hsvc_sub hreal_no hsub_no hwords
 
-theorem zeroizeGhostHook_master_ok : HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) masterZeroizeSpec :=
-  zeroizeGhostHook_master_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords)
-
-theorem zeroizeGhostHookK_masterK_ok : HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep masterZeroizeSpec) :=
-  zeroizeGhostHookK_masterK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords)
-
-theorem zeroizeGhostHook_vmPreserved (s0 : State) : VmPreserved s0 (zeroizeGhostHook keep P_real P_sub entryTarget s0) :=
-  zeroizeGhostHook_vmPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords) s0
-
-theorem zeroizeGhostHookK_vmPreserved (s0 : State) : VmPreserved s0 (zeroizeGhostHookK keep P_real P_sub entryTarget s0) :=
-  zeroizeGhostHookK_vmPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords) s0
-
-theorem zeroizeGhostHook_oomPoolPreserved (s0 : State) :
-    OomPreserved s0 (zeroizeGhostHook keep P_real P_sub entryTarget s0) ∧ PoolPreserved s0 (zeroizeGhostHook keep P_real P_sub entryTarget s0) :=
-  zeroizeGhostHook_oomPoolPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords) s0
-
-theorem zeroizeGhostHookK_oomPoolPreserved (s0 : State) :
-    OomPreserved s0 (zeroizeGhostHookK keep P_real P_sub entryTarget s0) ∧ PoolPreserved s0 (zeroizeGhostHookK keep P_real P_sub entryTarget s0) :=
-  zeroizeGhostHookK_oomPoolPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords) s0
-
-theorem zeroizeGhostHook_trace (s0 : State) : (zeroizeGhostHook keep P_real P_sub entryTarget s0).trace = s0.trace :=
-  zeroizeGhostHook_trace_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords) s0
-
-theorem zeroizeGhostHookK_trace (s0 : State) : (zeroizeGhostHookK keep P_real P_sub entryTarget s0).trace = s0.trace :=
-  zeroizeGhostHookK_trace_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords) s0
-
 end StaticSecretHasWords
 
 section SharedSecretHullHasWords
@@ -701,32 +531,6 @@ variable {keep : BitVec 64 → Bool} {P_real P_sub : Program} {m : BitVec 64}
   (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none) (hsub_no : ∀ pc, P_sub.externAt? pc = none)
   (hwords : P_sub.hasWords m sharedSecretDropHullWords)
 include hsvc_real hsvc_sub hreal_no hsub_no hwords
-
-theorem sharedSecretDropGhostHook_master_ok : HookOk (sharedSecretDropGhostHook keep P_real P_sub m) masterZeroizeSpec :=
-  zeroizeGhostHook_master_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords)
-
-theorem sharedSecretDropGhostHookK_masterK_ok : HookOk (sharedSecretDropGhostHookK keep P_real P_sub m) (zeroizeSpecK keep masterZeroizeSpec) :=
-  zeroizeGhostHookK_masterK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords)
-
-theorem sharedSecretDropGhostHook_vmPreserved (s0 : State) : VmPreserved s0 (sharedSecretDropGhostHook keep P_real P_sub m s0) :=
-  zeroizeGhostHook_vmPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords) s0
-
-theorem sharedSecretDropGhostHookK_vmPreserved (s0 : State) : VmPreserved s0 (sharedSecretDropGhostHookK keep P_real P_sub m s0) :=
-  zeroizeGhostHookK_vmPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords) s0
-
-theorem sharedSecretDropGhostHook_oomPoolPreserved (s0 : State) :
-    OomPreserved s0 (sharedSecretDropGhostHook keep P_real P_sub m s0) ∧ PoolPreserved s0 (sharedSecretDropGhostHook keep P_real P_sub m s0) :=
-  zeroizeGhostHook_oomPoolPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords) s0
-
-theorem sharedSecretDropGhostHookK_oomPoolPreserved (s0 : State) :
-    OomPreserved s0 (sharedSecretDropGhostHookK keep P_real P_sub m s0) ∧ PoolPreserved s0 (sharedSecretDropGhostHookK keep P_real P_sub m s0) :=
-  zeroizeGhostHookK_oomPoolPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords) s0
-
-theorem sharedSecretDropGhostHook_trace (s0 : State) : (sharedSecretDropGhostHook keep P_real P_sub m s0).trace = s0.trace :=
-  zeroizeGhostHook_trace_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords) s0
-
-theorem sharedSecretDropGhostHookK_trace (s0 : State) : (sharedSecretDropGhostHookK keep P_real P_sub m s0).trace = s0.trace :=
-  zeroizeGhostHookK_trace_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords) s0
 
 end SharedSecretHullHasWords
 
@@ -742,176 +546,11 @@ include hsvc_real hsvc_sub hreal_no hsub_no hsub_proc
 
 -- 4.1 Plain contracts on `zeroizeGhostHook`:
 
-theorem zeroizeGhostHook_zeroizeSecret_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) zeroizeSecretSpec :=
-  hookOk_zeroizeSecret_of_master (zeroizeGhostHook_master_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_zeroizeSecret_keepsFs_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) zeroizeSecretSpec.keepsFs :=
-  hookOk_zeroizeSecret_keepsFs_of_master (zeroizeGhostHook_master_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_zeroizeSecret_withFsPred_ok_of_process (Pfs : FsState → Prop) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withFsPred Pfs zeroizeSecretSpec) :=
-  hookOk_zeroizeSecret_withFsPred_of_master Pfs
-    (zeroizeGhostHook_master_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_zeroizeSecret_withStack_ok_of_process (stk : Nat) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withStack zeroizeSecretSpec stk) :=
-  hookOk_withStack_zeroizeSecret_of_master
-    (zeroizeGhostHook_master_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc) stk
-
-theorem zeroizeGhostHook_cliZeroize_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) zeroizeSpec :=
-  hookOk_cliZeroize_of_master (zeroizeGhostHook_master_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_cliZeroize_keepsFs_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) zeroizeSpec.keepsFs :=
-  hookOk_cliZeroize_keepsFs_of_master (zeroizeGhostHook_master_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_zeroizeSecret_execFrozen_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withExecFrozen zeroizeSecretSpec) :=
-  hookOk_withExecFrozen_of_plain (zeroizeGhostHook_zeroizeSecret_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_cliZeroize_execFrozen_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withExecFrozen zeroizeSpec) :=
-  hookOk_withExecFrozen_of_plain (zeroizeGhostHook_cliZeroize_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
 -- 4.2 Budget / `withVmPreserved` variants on `zeroizeGhostHook`:
-
-theorem zeroizeGhostHook_masterBudget_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) masterZeroizeBudgetSpec :=
-  hookOk_withVmPreserved
-    (zeroizeGhostHook_master_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-    (zeroizeGhostHook_vmPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_zeroizeSecretBudget_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withVmPreserved zeroizeSecretSpec) :=
-  hookOk_withVmPreserved
-    (zeroizeGhostHook_zeroizeSecret_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-    (zeroizeGhostHook_vmPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_zeroizeSecretBudget_keepsFs_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withVmPreserved zeroizeSecretSpec).keepsFs :=
-  (zeroizeGhostHook_zeroizeSecretBudget_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc).keepsFs
-    (zeroizeGhostHook_fs keep P_real P_sub entryTarget)
-
-theorem zeroizeGhostHook_zeroizeSecretBudget_withFsPred_ok_of_process (Pfs : FsState → Prop) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget)
-      (withFsPred Pfs (withVmPreserved zeroizeSecretSpec)) :=
-  hookOk_zeroizeSecretBudget_withFsPred_of_masterBudget Pfs
-    (zeroizeGhostHook_masterBudget_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_zeroizeSecretBudget_withStack_ok_of_process (stk : Nat) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget)
-      (withStack (withVmPreserved zeroizeSecretSpec) stk) :=
-  hookOk_withStack (zeroizeGhostHook_zeroizeSecretBudget_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc) stk
-
-theorem zeroizeGhostHook_cliZeroizeBudget_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withVmPreserved zeroizeSpec) :=
-  hookOk_withVmPreserved
-    (zeroizeGhostHook_cliZeroize_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-    (zeroizeGhostHook_vmPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_cliZeroizeBudget_keepsFs_ok_of_process :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withVmPreserved zeroizeSpec).keepsFs :=
-  (zeroizeGhostHook_cliZeroizeBudget_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc).keepsFs
-    (zeroizeGhostHook_fs keep P_real P_sub entryTarget)
 
 -- 4.2b C11 `withAlloc` pool-framed contracts on `zeroizeGhostHook`:
 
-theorem zeroizeGhostHook_zeroizeSecret_withAlloc_ok_of_process {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withAlloc (M := M) A lim zeroizeSecretSpec) :=
-  hookOk_withAlloc_of_withVmPreserved A lim
-    (zeroizeGhostHook_zeroizeSecretBudget_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_zeroizeSecretBudget_withAlloc_ok_of_process {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget)
-      (withAlloc (M := M) A lim (withVmPreserved zeroizeSecretSpec)) :=
-  hookOk_withAlloc_withVmPreserved A lim
-    (zeroizeGhostHook_zeroizeSecretBudget_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_cliZeroize_withAlloc_ok_of_process {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withAlloc (M := M) A lim zeroizeSpec) :=
-  hookOk_withAlloc_of_withVmPreserved A lim
-    (zeroizeGhostHook_cliZeroizeBudget_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHook_cliZeroizeBudget_withAlloc_ok_of_process {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withAlloc (M := M) A lim (withVmPreserved zeroizeSpec)) :=
-  hookOk_withAlloc_withVmPreserved A lim
-    (zeroizeGhostHook_cliZeroizeBudget_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
 -- 4.3 `zeroizeSpecK`-narrowed contracts on `zeroizeGhostHook` and `zeroizeGhostHookK`:
-
-omit hsvc_real hsvc_sub hreal_no hsub_no hsub_proc in
-theorem zeroizeGhostHook_any_zeroizeSpecK_ok {α : Type} {spec : Spec α} (keep' : BitVec 64 → Bool)
-    (hh : HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) spec) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (zeroizeSpecK keep' spec) :=
-  hookOk_memsetSpecK_of_plain keep' hh
-
-theorem zeroizeGhostHookK_zeroizeSecretK_ok_of_process :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep zeroizeSecretSpec) :=
-  hookOk_zeroizeSecretK_of_master keep (zeroizeGhostHookK_masterK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHookK_zeroizeSecretK_keepsFs_ok_of_process :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep zeroizeSecretSpec).keepsFs :=
-  hookOk_zeroizeSecretK_keepsFs_of_master keep (zeroizeGhostHookK_masterK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHookK_zeroizeSecretK_withFsPred_ok_of_process (Pfs : FsState → Prop) :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep (withFsPred Pfs zeroizeSecretSpec)) :=
-  hookOk_zeroizeSecretK_withFsPred_of_master keep Pfs (zeroizeGhostHookK_masterK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHookK_zeroizeSecretK_withStack_ok_of_process (stk : Nat) :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep (withStack zeroizeSecretSpec stk)) :=
-  hookOk_withStack_zeroizeSecretK_of_master keep (zeroizeGhostHookK_masterK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc) stk
-
-theorem zeroizeGhostHookK_cliZeroizeK_ok_of_process :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep zeroizeSpec) :=
-  hookOk_cliZeroizeK_of_master keep (zeroizeGhostHookK_masterK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHookK_cliZeroizeK_keepsFs_ok_of_process :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep zeroizeSpec).keepsFs :=
-  (zeroizeGhostHookK_cliZeroizeK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc).keepsFs
-    (zeroizeGhostHookK_fs keep P_real P_sub entryTarget)
-
-theorem zeroizeGhostHookK_zeroizeSecretBudgetK_ok_of_process :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep (withVmPreserved zeroizeSecretSpec)) := by
-  rw [← zeroizeSpecK_withVmPreserved]
-  exact hookOk_withVmPreserved
-    (zeroizeGhostHookK_zeroizeSecretK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-    (zeroizeGhostHookK_vmPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHookK_zeroizeSecretBudgetK_keepsFs_ok_of_process :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep (withVmPreserved zeroizeSecretSpec)).keepsFs :=
-  (zeroizeGhostHookK_zeroizeSecretBudgetK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc).keepsFs
-    (zeroizeGhostHookK_fs keep P_real P_sub entryTarget)
-
-theorem zeroizeGhostHookK_zeroizeSecretBudgetK_withFsPred_ok_of_process (Pfs : FsState → Prop) :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep (withFsPred Pfs (withVmPreserved zeroizeSecretSpec))) :=
-  hookOk_zeroizeSpecK_withFsPred_of_keepsFs keep Pfs
-    (zeroizeGhostHookK_zeroizeSecretBudgetK_keepsFs_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-    (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl)
-
-theorem zeroizeGhostHookK_zeroizeSecretBudgetK_withStack_ok_of_process (stk : Nat) :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep (withStack (withVmPreserved zeroizeSecretSpec) stk)) :=
-  hookOk_zeroizeSpecK_withStack_pureAbort keep
-    (zeroizeGhostHookK_zeroizeSecretBudgetK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc) stk
-    (fun _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ => rfl)
-
-theorem zeroizeGhostHookK_cliZeroizeBudgetK_ok_of_process :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep (withVmPreserved zeroizeSpec)) := by
-  rw [← zeroizeSpecK_withVmPreserved]
-  exact hookOk_withVmPreserved
-    (zeroizeGhostHookK_cliZeroizeK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-    (zeroizeGhostHookK_vmPreserved_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc)
-
-theorem zeroizeGhostHookK_cliZeroizeBudgetK_keepsFs_ok_of_process :
-    HookOk (zeroizeGhostHookK keep P_real P_sub entryTarget) (zeroizeSpecK keep (withVmPreserved zeroizeSpec)).keepsFs :=
-  (zeroizeGhostHookK_cliZeroizeBudgetK_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no hsub_proc).keepsFs
-    (zeroizeGhostHookK_fs keep P_real P_sub entryTarget)
 
 end GenericHookOkSuite
 
@@ -924,34 +563,6 @@ variable {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entryTarget m : B
   (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none) (hsub_no : ∀ pc, P_sub.externAt? pc = none)
 include hsvc_real hsvc_sub hreal_no hsub_no
 
-theorem zeroizeGhostHook_zeroizeSecret_ok (hwords : P_sub.hasWords entryTarget zeroize32Words) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) zeroizeSecretSpec :=
-  zeroizeGhostHook_zeroizeSecret_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords)
-
-theorem zeroizeGhostHook_zeroizeSecretBudget_ok (hwords : P_sub.hasWords entryTarget zeroize32Words) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withVmPreserved zeroizeSecretSpec) :=
-  zeroizeGhostHook_zeroizeSecretBudget_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords)
-
-theorem zeroizeGhostHook_zeroizeSecretBudget_withAlloc_ok {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (hwords : P_sub.hasWords entryTarget zeroize32Words) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) (withAlloc (M := M) A lim (withVmPreserved zeroizeSecretSpec)) :=
-  zeroizeGhostHook_zeroizeSecretBudget_withAlloc_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no
-    (subroutine_ok_processZeroize_of_hasWords hsub_no hwords) A lim
-
-theorem zeroizeGhostHook_cliZeroize_ok (hwords : P_sub.hasWords entryTarget zeroize32Words) :
-    HookOk (zeroizeGhostHook keep P_real P_sub entryTarget) zeroizeSpec :=
-  zeroizeGhostHook_cliZeroize_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords)
-
-theorem sharedSecretDropGhostHook_zeroizeSecretBudget_ok (hwords : P_sub.hasWords m sharedSecretDropHullWords) :
-    HookOk (sharedSecretDropGhostHook keep P_real P_sub m) (withVmPreserved zeroizeSecretSpec) :=
-  zeroizeGhostHook_zeroizeSecretBudget_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords)
-
-theorem sharedSecretDropGhostHook_zeroizeSecretBudget_withAlloc_ok {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (hwords : P_sub.hasWords m sharedSecretDropHullWords) :
-    HookOk (sharedSecretDropGhostHook keep P_real P_sub m) (withAlloc (M := M) A lim (withVmPreserved zeroizeSecretSpec)) :=
-  zeroizeGhostHook_zeroizeSecretBudget_withAlloc_ok_of_process hsvc_real hsvc_sub hreal_no hsub_no
-    (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords) A lim
-
 end HasWordsRealConsumerHookOk
 
 section F3EmptyConsumerHookOk
@@ -959,39 +570,6 @@ section F3EmptyConsumerHookOk
 variable {keep : BitVec 64 → Bool} {P_sub : Program} {entryTarget m : BitVec 64}
   (hsvc_sub : P_sub.svc = Syscall.standard) (hsub_no : ∀ pc, P_sub.externAt? pc = none)
 include hsvc_sub hsub_no
-
-theorem f3EmptyZeroizeGhostHook_zeroizeSecretBudget_ok_of_process (hsub_proc : subroutine_ok P_sub entryTarget processZeroizeSpec) :
-    HookOk (f3EmptyZeroizeGhostHook keep P_sub entryTarget) (withVmPreserved zeroizeSecretSpec) := by
-  rw [f3EmptyZeroizeGhostHook_eq]
-  exact zeroizeGhostHook_zeroizeSecretBudget_ok_of_process emptyStdProg_svc hsvc_sub (fun pc _ => emptyStdProg_externAt_none pc) hsub_no hsub_proc
-
-theorem f3EmptyZeroizeGhostHook_zeroizeSecretBudget_withAlloc_ok_of_process {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (hsub_proc : subroutine_ok P_sub entryTarget processZeroizeSpec) :
-    HookOk (f3EmptyZeroizeGhostHook keep P_sub entryTarget) (withAlloc (M := M) A lim (withVmPreserved zeroizeSecretSpec)) :=
-  hookOk_withAlloc_withVmPreserved A lim (f3EmptyZeroizeGhostHook_zeroizeSecretBudget_ok_of_process hsvc_sub hsub_no hsub_proc)
-
-theorem f3EmptyZeroizeGhostHookK_zeroizeSecretBudgetK_ok_of_process (hsub_proc : subroutine_ok P_sub entryTarget processZeroizeSpec) :
-    HookOk (f3EmptyZeroizeGhostHookK keep P_sub entryTarget) (zeroizeSpecK keep (withVmPreserved zeroizeSecretSpec)) := by
-  rw [f3EmptyZeroizeGhostHookK_eq]
-  exact zeroizeGhostHookK_zeroizeSecretBudgetK_ok_of_process emptyStdProg_svc hsvc_sub (fun pc _ => emptyStdProg_externAt_none pc) hsub_no hsub_proc
-
-theorem f3EmptyZeroizeGhostHook_zeroizeSecretBudget_ok (hwords : P_sub.hasWords entryTarget zeroize32Words) :
-    HookOk (f3EmptyZeroizeGhostHook keep P_sub entryTarget) (withVmPreserved zeroizeSecretSpec) :=
-  f3EmptyZeroizeGhostHook_zeroizeSecretBudget_ok_of_process hsvc_sub hsub_no (subroutine_ok_processZeroize_of_hasWords hsub_no hwords)
-
-theorem f3EmptyZeroizeGhostHook_zeroizeSecretBudget_withAlloc_ok {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (hwords : P_sub.hasWords entryTarget zeroize32Words) :
-    HookOk (f3EmptyZeroizeGhostHook keep P_sub entryTarget) (withAlloc (M := M) A lim (withVmPreserved zeroizeSecretSpec)) :=
-  hookOk_withAlloc_withVmPreserved A lim (f3EmptyZeroizeGhostHook_zeroizeSecretBudget_ok hsvc_sub hsub_no hwords)
-
-theorem f3EmptySharedSecretDropGhostHook_zeroizeSecretBudget_ok (hwords : P_sub.hasWords m sharedSecretDropHullWords) :
-    HookOk (f3EmptySharedSecretDropGhostHook keep P_sub m) (withVmPreserved zeroizeSecretSpec) :=
-  f3EmptyZeroizeGhostHook_zeroizeSecretBudget_ok_of_process hsvc_sub hsub_no (subroutine_ok_sharedSecretHull_processZeroize_of_hasWords hsub_no hwords)
-
-theorem f3EmptySharedSecretDropGhostHook_zeroizeSecretBudget_withAlloc_ok {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (hwords : P_sub.hasWords m sharedSecretDropHullWords) :
-    HookOk (f3EmptySharedSecretDropGhostHook keep P_sub m) (withAlloc (M := M) A lim (withVmPreserved zeroizeSecretSpec)) :=
-  hookOk_withAlloc_withVmPreserved A lim (f3EmptySharedSecretDropGhostHook_zeroizeSecretBudget_ok hsvc_sub hsub_no hwords)
 
 end F3EmptyConsumerHookOk
 
@@ -1133,64 +711,6 @@ variable {InvMem : Memory → Prop} {keep : BitVec 64 → Bool} {P_real P_sub : 
   (hLiftVis : ∀ u sf : State, u.status = .Running → ExecFrozen u.mem → InvMem u.mem →
     h2fsgen_StepsVisitedIn keep emptyStdProg (u.setPC entryTarget) sf → Steps P_real (u.setPC entryTarget) sf)
 include hsvc_sub hsub_no hsub_proc hreal_stub_none hStub hInvLoaded hInvKf hLiftVis
-
-/-- Stock-safe `emptyStdProg → P_real` replay for `f3EmptyZeroizeGhostHook` via `hLiftVis`. -/
-theorem f3EmptyZeroizeGhostHook_replayOn_of_visitedIn_process :
-    P_real.externAt? stubPc = none ∧
-    ∀ u : State, u.pc = stubPc → u.status = .Running →
-      (∀ msg, (f3EmptyZeroizeGhostHook keep P_sub entryTarget u).status ≠ .Exception msg) →
-      ExecFrozen u.mem → keep (u.readReg64 .lr) = false → InvMem u.mem →
-      Steps P_real u (f3EmptyZeroizeGhostHook keep P_sub entryTarget u) ∧
-      ExecFrozen (f3EmptyZeroizeGhostHook keep P_sub entryTarget u).mem ∧
-      InvMem (f3EmptyZeroizeGhostHook keep P_sub entryTarget u).mem ∧
-      (f3EmptyZeroizeGhostHook keep P_sub entryTarget u).fs = u.fs := by
-  refine ⟨hreal_stub_none, fun u hpc hrun hnoex hfr hlr hinv => ?_⟩
-  obtain ⟨hvis, hfr_sf, hfs_sf⟩ := f3EmptyZeroizeGhostHook_visitedIn_of_process hsvc_sub hsub_no
-    hsub_proc hrun hnoex hfr hlr (hInvLoaded u.mem hfr hinv)
-  have hSteps := (hStub u hpc hrun hfr hinv).trans (hLiftVis u _ hrun hfr hinv hvis)
-  exact ⟨hSteps, hfr_sf, hInvKf u.mem _ hinv hSteps.keepsFrozen, hfs_sf⟩
-
-/-- Stock-safe `emptyStdProg → P_real` replay for `f3EmptyZeroizeGhostHookK` via `hLiftVis` (zero `lr` premise). -/
-theorem f3EmptyZeroizeGhostHookK_replayOn_of_visitedIn_process :
-    P_real.externAt? stubPc = none ∧
-    ∀ u : State, u.pc = stubPc → u.status = .Running →
-      (∀ msg, (f3EmptyZeroizeGhostHookK keep P_sub entryTarget u).status ≠ .Exception msg) →
-      ExecFrozen u.mem → InvMem u.mem →
-      Steps P_real u (f3EmptyZeroizeGhostHookK keep P_sub entryTarget u) ∧
-      ExecFrozen (f3EmptyZeroizeGhostHookK keep P_sub entryTarget u).mem ∧
-      InvMem (f3EmptyZeroizeGhostHookK keep P_sub entryTarget u).mem ∧
-      (f3EmptyZeroizeGhostHookK keep P_sub entryTarget u).fs = u.fs := by
-  refine ⟨hreal_stub_none, fun u hpc hrun hnoex hfr hinv => ?_⟩
-  obtain ⟨hvis, hfr_sf, hfs_sf⟩ := f3EmptyZeroizeGhostHookK_visitedIn_of_process hsvc_sub hsub_no
-    hsub_proc hrun hnoex hfr (hInvLoaded u.mem hfr hinv)
-  have hSteps := (hStub u hpc hrun hfr hinv).trans (hLiftVis u _ hrun hfr hinv hvis)
-  exact ⟨hSteps, hfr_sf, hInvKf u.mem _ hinv hSteps.keepsFrozen, hfs_sf⟩
-
-/-- Single-row `GhostExternReplaysS` packager for `f3EmptyZeroizeGhostHook` via `hLiftVis`. -/
-theorem f3EmptyZeroizeGhostHook_replaysS_of_visitedIn_process {P_ghost : Program}
-    (hghost_stub : P_ghost.externAt? stubPc = some (f3EmptyZeroizeGhostHook keep P_sub entryTarget))
-    (hother : ∀ pc, pc ≠ stubPc → P_ghost.externAt? pc = P_real.externAt? pc)
-    (hreal_pres : ∀ pc f, P_real.externAt? pc = some f → ∀ u : State, u.status = .Running →
-      u.mem.KeepsFrozen (f u).mem → ExecFrozen u.mem → InvMem u.mem → ExecFrozen (f u).mem ∧ InvMem (f u).mem) :
-    GhostExternReplaysS keep (fun u => InvMem u.mem) P_ghost P_real := by
-  have ⟨hnone, hstep⟩ := f3EmptyZeroizeGhostHook_replayOn_of_visitedIn_process hsvc_sub hsub_no
-    hsub_proc hreal_stub_none hStub hInvLoaded hInvKf hLiftVis
-  exact ghostExternReplaysS_of_single_stub hghost_stub hother hreal_pres
-    ⟨hnone, fun u hpc hrun hnoex hfr hlr hinv =>
-      let ⟨hs, hfr', hinv', _⟩ := hstep u hpc hrun hnoex hfr hlr hinv; ⟨hs, hfr', hinv'⟩⟩
-
-/-- Single-row `GhostExternReplaysS keep_any` packager for `f3EmptyZeroizeGhostHookK` via `hLiftVis`. -/
-theorem f3EmptyZeroizeGhostHookK_replaysS_of_visitedIn_process {keep_any : BitVec 64 → Bool} {P_ghost : Program}
-    (hghost_stub : P_ghost.externAt? stubPc = some (f3EmptyZeroizeGhostHookK keep P_sub entryTarget))
-    (hother : ∀ pc, pc ≠ stubPc → P_ghost.externAt? pc = P_real.externAt? pc)
-    (hreal_pres : ∀ pc f, P_real.externAt? pc = some f → ∀ u : State, u.status = .Running →
-      u.mem.KeepsFrozen (f u).mem → ExecFrozen u.mem → InvMem u.mem → ExecFrozen (f u).mem ∧ InvMem (f u).mem) :
-    GhostExternReplaysS keep_any (fun u => InvMem u.mem) P_ghost P_real := by
-  have ⟨hnone, hstep⟩ := f3EmptyZeroizeGhostHookK_replayOn_of_visitedIn_process hsvc_sub hsub_no
-    hsub_proc hreal_stub_none hStub hInvLoaded hInvKf hLiftVis
-  exact ghostExternReplaysS_of_single_stub hghost_stub hother hreal_pres
-    ⟨hnone, fun u hpc hrun hnoex hfr _ hinv =>
-      let ⟨hs, hfr', hinv', _⟩ := hstep u hpc hrun hnoex hfr hinv; ⟨hs, hfr', hinv'⟩⟩
 
 end StockSafeVisitedInReplays
 

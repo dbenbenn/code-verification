@@ -11,7 +11,7 @@ module
 
 public import ProofLib.SepLogic.CFG
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,7 +29,7 @@ namespace CryptoVerification.SignalSession.MuslStart
 open Arm64 ProofLib
 
 /-- Instruction decodes of musl's AArch64 `memset` (`B + 0x1e0 .. B + 0x2e0`, 65 words). -/
-def MuslMemsetFetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslMemsetFetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x1e0#64) = some (Arm64.Instr.simdInsDup true false 0x01#5 0x1#4 0x01#5 0x00#5) ∧
   Q.fetch (B + 0x1e4#64) = some (Arm64.Instr.addSubShift (Arm64.RegWidth.W64) (Arm64.AddSubOp.ADD) (Arm64.Reg.gpr 0x04#5) (Arm64.Reg.gpr 0x00#5) (Arm64.Reg.gpr 0x02#5) (Arm64.ShiftType.LSL) 0) ∧
   Q.fetch (B + 0x1e8#64) = some (Arm64.Instr.addSubImm (Arm64.RegWidth.W64) (Arm64.AddSubOp.SUBS) (Arm64.Reg.xzr) (Arm64.Reg.gpr 0x02#5) 0x060#12 false) ∧
@@ -97,7 +97,7 @@ def MuslMemsetFetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x2e0#64) = some (Arm64.Instr.ret (Arm64.Reg.gpr 0x1e#5))
 
 /-- Hop 2 fetches: `__init_libc` prologue (`B + 0x5f4 .. B + 0x614`) and `MuslMemsetFetch Q B`. -/
-def MuslHop2Fetch (Q : Program) (B : BitVec 64) : Prop :=
+@[expose] def MuslHop2Fetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x5f4#64) = some (Arm64.Instr.addSubImm (Arm64.RegWidth.W64) (Arm64.AddSubOp.SUB) (Arm64.Reg.sp) (Arm64.Reg.sp) 0x180#12 false) ∧
   Q.fetch (B + 0x5f8#64) = some (Arm64.Instr.stp (Arm64.RegWidth.W64) (Arm64.Reg.gpr 0x1d#5) (Arm64.Reg.gpr 0x1e#5) (Arm64.AddrMode.Offset (Arm64.Reg.sp) 0x0000000000000160#64)) ∧
   Q.fetch (B + 0x5fc#64) = some (Arm64.Instr.stp (Arm64.RegWidth.W64) (Arm64.Reg.gpr 0x14#5) (Arm64.Reg.gpr 0x13#5) (Arm64.AddrMode.Offset (Arm64.Reg.sp) 0x0000000000000170#64)) ∧
@@ -109,7 +109,7 @@ def MuslHop2Fetch (Q : Program) (B : BitVec 64) : Prop :=
   Q.fetch (B + 0x614#64) = some (Arm64.Instr.bl 0xfffffffffffffbcc#64) ∧
   MuslMemsetFetch Q B
 
-def Hop2Regs (sp0 envp p m : BitVec 64)
+@[expose] def Hop2Regs (sp0 envp p m : BitVec 64)
     (fs0 : FsState) (tr0 : List TraceEvent) (s : State) : Prop :=
   s.sp = sp0 - 416#64 ∧ s.readReg64 .x19 = p ∧ s.readReg64 .x20 = envp ∧ s.readReg64 .x21 = m ∧
   s.fs = fs0 ∧ s.trace = tr0

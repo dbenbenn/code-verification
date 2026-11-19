@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeyGapDh
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeyGapDh -- proof-setup: allow-public-import
 
 /-!
 # Costed One-Key `KeyInd` `GapDhWithSign` Reduction
@@ -20,7 +20,7 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionsKeyInd1KeyGapD
 the tuple-keyed `fgKeyInd1KeyGapDh2Prog`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,15 +41,15 @@ end
 
 abbrev Ren (Γ Δ : List PT) := {τ : PT} → Var Γ τ → Var Δ τ
 
-def liftRen {Γ Δ : List PT} {σ : PT} (ρ : Ren Γ Δ) : Ren (σ :: Γ) (σ :: Δ)
+@[expose] def liftRen {Γ Δ : List PT} {σ : PT} (ρ : Ren Γ Δ) : Ren (σ :: Γ) (σ :: Δ)
   | _, .zero => .zero
   | _, .succ x => .succ (ρ x)
 
-def twoVarRen {Δ : List PT} {τ₁ τ₂ : PT} (v₁ : Var Δ τ₁) (v₂ : Var Δ τ₂) : Ren [τ₁, τ₂] Δ
+@[expose] def twoVarRen {Δ : List PT} {τ₁ τ₂ : PT} (v₁ : Var Δ τ₁) (v₂ : Var Δ τ₂) : Ren [τ₁, τ₂] Δ
   | _, .zero => v₁
   | _, .succ .zero => v₂
 
-def renameExpr : {Γ Δ : List PT} → {t : PT} → Ren Γ Δ → Expr pqxdhOps Γ t → Expr pqxdhOps Δ t
+@[expose] def renameExpr : {Γ Δ : List PT} → {t : PT} → Ren Γ Δ → Expr pqxdhOps Γ t → Expr pqxdhOps Δ t
   | _, _, _, ρ, .var x => .var (ρ x)
   | _, _, _, _, .unit => .unit
   | _, _, _, _, .bool b => .bool b
@@ -91,7 +91,7 @@ def renameExpr : {Γ Δ : List PT} → {t : PT} → Ren Γ Δ → Expr pqxdhOps 
   | _, _, _, ρ, .tget m i => .tget (renameExpr ρ m) (renameExpr ρ i)
   | _, _, _, ρ, .tset m i a => .tset (renameExpr ρ m) (renameExpr ρ i) (renameExpr ρ a)
 
-def renameComp {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T} :
+@[expose] def renameComp {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T} :
     {Γ Δ : List PT} → {t : PT} → Ren Γ Δ → Comp pqxdhOps I Γ t → Comp pqxdhOps I Δ t
   | _, _, _, ρ, .ret e => .ret (renameExpr ρ e)
   | _, _, _, ρ, .bind c k => .bind (renameComp ρ c) (renameComp (liftRen ρ) k)
@@ -112,7 +112,7 @@ def renameComp {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T} :
     .foldM K (renameExpr ρ l) (renameExpr ρ z) (renameComp (liftRen (liftRen ρ)) f)
 
 /-- Lifts a `pqGapDhIface` computation into `pqSigAndDdhIface` with zero signing queries. -/
-def liftGdhComp : {Γ : List PT} → {t : PT} →
+@[expose] def liftGdhComp : {Γ : List PT} → {t : PT} →
     Comp pqxdhOps pqGapDhIface Γ t → Comp pqxdhOps pqSigAndDdhIface Γ t
   | _, _, .ret e => .ret e
   | _, _, .bind c k => .bind (liftGdhComp c) (liftGdhComp k)
@@ -131,7 +131,7 @@ def liftGdhComp : {Γ : List PT} → {t : PT} →
   | _, _, .consumeFirstM K l p mk => .consumeFirstM K l (liftGdhComp p) mk
   | _, _, .foldM K l z f => .foldM K l z (liftGdhComp f)
 
-def sigChalQ_dsl (m : ℕ+) {Γ : List PT} (msg : Expr pqxdhOps Γ (B m)) :
+@[expose] def sigChalQ_dsl (m : ℕ+) {Γ : List PT} (msg : Expr pqxdhOps Γ (B m)) :
     Comp pqxdhOps pqSigAndDdhIface Γ (B 64) :=
   Comp.query (I := pqSigAndDdhIface) (Sum.inr (Sum.inl m)) msg
 
@@ -139,18 +139,18 @@ def sigChalQ_dsl (m : ℕ+) {Γ : List PT} (msg : Expr pqxdhOps Γ (B m)) :
 
 abbrev gdh1KeyStateTy : PT := .prod gdhStateTy .nat
 
-def sim1KeyStateToVal {S : Setup} (pa : paramsTy.denote) (st : FgKeyInd1KeySimState S) :
+@[expose] def sim1KeyStateToVal {S : Setup} (pa : paramsTy.denote) (st : FgKeyInd1KeySimState S) :
     gdh1KeyStateTy.denote :=
   ((pa, simStateToVal st.sim), st.sigBudget)
 
-def callGdhHandle (S : Setup) (K : Nat) {Δ : List PT}
+@[expose] def callGdhHandle (S : Setup) (K : Nat) {Δ : List PT}
     (st1 : Var Δ gdh1KeyStateTy) (q : Var Δ keyIndQueryTy) :
     Comp pqxdhOps pqSigAndDdhIface Δ (.prod keyIndRespTy gdh1KeyStateTy) :=
   letV (.fst (v st1)) fun gst =>
   bindV (renameComp (twoVarRen gst (.succ q)) (liftGdhComp (gdhHandle S K))) fun res =>
   .ret (.pair (.fst (v res)) (.pair (.snd (v res)) (.snd (v st1))))
 
-def initPrin1KeyB (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def initPrin1KeyB (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (st1 : Var Γ₁ gdh1KeyStateTy) (u : Var Γ₂ .nat) :
     Comp pqxdhOps pqSigAndDdhIface Δ (.prod keyIndRespTy gdh1KeyStateTy) :=
   letV (.fst (.fst (v st1))) fun pa =>
@@ -170,7 +170,7 @@ def initPrin1KeyB (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂
 
 /-- One-key `.genSPK u j` handler signing target-principal bundles via two `sigChalQ_dsl` queries
 while `sigBudget > 0`. -/
-def genSpk1KeyB (S : Setup) (K : Nat) {Δ : List PT}
+@[expose] def genSpk1KeyB (S : Setup) (K : Nat) {Δ : List PT}
     (st1 : Var Δ gdh1KeyStateTy) (q : Var Δ keyIndQueryTy)
     (x : Var Δ (.prod .nat .nat)) :
     Comp pqxdhOps pqSigAndDdhIface Δ (.prod keyIndRespTy gdh1KeyStateTy) :=
@@ -206,7 +206,7 @@ def genSpk1KeyB (S : Setup) (K : Nat) {Δ : List PT}
               .ret (.pair (rBundle buOut) (.pair (.pair (v paV) sm') (.sub (v sigB) (.nat 1)))))))
     (callGdhHandle S K st1 q)
 
-def gdh1KeyHandle (S : Setup) (K : Nat) :
+@[expose] def gdh1KeyHandle (S : Setup) (K : Nat) :
     Comp pqxdhOps pqSigAndDdhIface [gdh1KeyStateTy, keyIndQueryTy]
       (.prod keyIndRespTy gdh1KeyStateTy) :=
   let st1 : Var [gdh1KeyStateTy, keyIndQueryTy] gdh1KeyStateTy := .zero
@@ -216,7 +216,7 @@ def gdh1KeyHandle (S : Setup) (K : Nat) :
   caseSumV (v r2) (fun x => genSpk1KeyB S K (.succ (.succ (.succ st1))) (.succ (.succ (.succ q))) x)
     fun _ => callGdhHandle S K (.succ (.succ (.succ st1))) (.succ (.succ (.succ q)))
 
-def gdh1KeyFinish (S : Setup) (K : Nat) :
+@[expose] def gdh1KeyFinish (S : Setup) (K : Nat) :
     Comp pqxdhOps pqSigAndDdhIface [gdh1KeyStateTy, .bool] (B 32) :=
   let st1 : Var [gdh1KeyStateTy, .bool] gdh1KeyStateTy := .zero
   letV (.fst (v st1)) fun gst =>
@@ -224,12 +224,12 @@ def gdh1KeyFinish (S : Setup) (K : Nat) :
 
 /-! ## Flat-Indexed Reduction -/
 
-def initParams1KeyIk (S : Setup) {Γ : List PT}
+@[expose] def initParams1KeyIk (S : Setup) {Γ : List PT}
     (tIdx pIdx : Expr pqxdhOps Γ .nat) (U V : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ paramsTy :=
   paMk V U U (.bool true) pIdx (.bool false) tIdx (.nat S.N_spk_tot)
     (.bool false) (.nat S.N_opk_tot) (.nat 2)
 
-def initParams1KeyFlat (S : Setup) {Γ : List PT}
+@[expose] def initParams1KeyFlat (S : Setup) {Γ : List PT}
     (U V : Expr pqxdhOps Γ (B 32)) (idx : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ paramsTy :=
   let nA := S.N_id * S.N_spk_tot
   let nC := S.N_send_tot * S.N_spk_tot
@@ -247,20 +247,20 @@ def initParams1KeyFlat (S : Setup) {Γ : List PT}
         (let r := Expr.sub idx (.nat (nA + nC + nB))
          initParamsOpk S (.divK S.N_opk_tot r) (.modK S.N_opk_tot r) U V)))
 
-def initAdv4_1KeyBase (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
+@[expose] def initAdv4_1KeyBase (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
     Comp pqxdhOps pqGapDhIface Γ gdhStateTy :=
   letV (.pair U V) fun uv =>
   bindV (gPrim (sIndex (fgTotalIndexCount S))) fun idx =>
   bindV (gPrim sBool) fun secb =>
   .ret (.pair (initParams1KeyFlat S (.fst (v uv)) (.snd (v uv)) (v idx)) (emptySimE (v secb)))
 
-def initAdv4_1Key (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
+@[expose] def initAdv4_1Key (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
     Comp pqxdhOps pqSigAndDdhIface Γ gdh1KeyStateTy :=
   bindV (liftGdhComp (initAdv4_1KeyBase S U V)) fun s =>
   .ret (.pair (v s) (.nat (min S.N_spk_tot S.N_recv)))
 
 /-- Flat-indexed `CostedReduction` syntax tree for `fgKeyInd1KeyGapDhAdv4 S b`. -/
-def fgKeyInd1KeyGapDhProg (S : Setup) (K : Nat) :
+@[expose] def fgKeyInd1KeyGapDhProg (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqSigAndDdhIface (keyIndSpec S) (keyIndCodec S)
       (.prod (B 32) (B 32)) .unit .bool (B 32) where
   σ      := gdh1KeyStateTy
@@ -274,18 +274,18 @@ def fgKeyInd1KeyGapDhProg (S : Setup) (K : Nat) :
 
 abbrev gdh1KeyState2Ty : PT := .prod gdhState2Ty .nat
 
-def sim1KeyState2ToVal {S : Setup} (pa2 : params2Ty.denote) (st : FgKeyInd1KeySimState S)
+@[expose] def sim1KeyState2ToVal {S : Setup} (pa2 : params2Ty.denote) (st : FgKeyInd1KeySimState S)
     (sigB : Nat) : gdh1KeyState2Ty.denote :=
   ((pa2, simStateToVal st.sim), sigB)
 
-def callGdhHandle2 (S : Setup) (K : Nat) {Δ : List PT}
+@[expose] def callGdhHandle2 (S : Setup) (K : Nat) {Δ : List PT}
     (st1 : Var Δ gdh1KeyState2Ty) (q : Var Δ keyIndQueryTy) :
     Comp pqxdhOps pqSigAndDdhIface Δ (.prod keyIndRespTy gdh1KeyState2Ty) :=
   letV (.fst (v st1)) fun gst =>
   bindV (renameComp (twoVarRen gst (.succ q)) (liftGdhComp (gdhHandle2 S K))) fun res =>
   .ret (.pair (.fst (v res)) (.pair (.snd (v res)) (.snd (v st1))))
 
-def initPrin1Key2B (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
+@[expose] def initPrin1Key2B (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ₂ Δ]
     (st1 : Var Γ₁ gdh1KeyState2Ty) (u : Var Γ₂ .nat) :
     Comp pqxdhOps pqSigAndDdhIface Δ (.prod keyIndRespTy gdh1KeyState2Ty) :=
   letV (.fst (.fst (v st1))) fun pa =>
@@ -303,7 +303,7 @@ def initPrin1Key2B (K : Nat) {Γ₁ Γ₂ Δ : List PT} [Ext Γ₁ Δ] [Ext Γ�
      let sm' := smUpd (v sm) (base := bSt')
      .ret (.pair (rInitPrin (v ikPk) (v ikPk)) (.pair (.pair (v pa) sm') (.snd (v st1)))))
 
-def genSpk1Key2B (S : Setup) (K : Nat) {Δ : List PT}
+@[expose] def genSpk1Key2B (S : Setup) (K : Nat) {Δ : List PT}
     (st1 : Var Δ gdh1KeyState2Ty) (q : Var Δ keyIndQueryTy)
     (x : Var Δ (.prod .nat .nat)) :
     Comp pqxdhOps pqSigAndDdhIface Δ (.prod keyIndRespTy gdh1KeyState2Ty) :=
@@ -339,7 +339,7 @@ def genSpk1Key2B (S : Setup) (K : Nat) {Δ : List PT}
               .ret (.pair (rBundle buOut) (.pair (.pair (v paV) sm') (.sub (v sigB) (.nat 1)))))))
     (callGdhHandle2 S K st1 q)
 
-def gdh1KeyHandle2 (S : Setup) (K : Nat) :
+@[expose] def gdh1KeyHandle2 (S : Setup) (K : Nat) :
     Comp pqxdhOps pqSigAndDdhIface [gdh1KeyState2Ty, keyIndQueryTy]
       (.prod keyIndRespTy gdh1KeyState2Ty) :=
   let st1 : Var [gdh1KeyState2Ty, keyIndQueryTy] gdh1KeyState2Ty := .zero
@@ -349,7 +349,7 @@ def gdh1KeyHandle2 (S : Setup) (K : Nat) :
   caseSumV (v r2) (fun x => genSpk1Key2B S K (.succ (.succ (.succ st1))) (.succ (.succ (.succ q))) x)
     fun _ => callGdhHandle2 S K (.succ (.succ (.succ st1))) (.succ (.succ (.succ q)))
 
-def gdh1KeyFinish2 (S : Setup) (K : Nat) :
+@[expose] def gdh1KeyFinish2 (S : Setup) (K : Nat) :
     Comp pqxdhOps pqSigAndDdhIface [gdh1KeyState2Ty, .bool] (B 32) :=
   let st1 : Var [gdh1KeyState2Ty, .bool] gdh1KeyState2Ty := .zero
   letV (.fst (v st1)) fun gst =>
@@ -357,7 +357,7 @@ def gdh1KeyFinish2 (S : Setup) (K : Nat) :
 
 /-- Tuple-keyed 4-mode parameter sampler matching `params1KeyFlatVal` under `params2ToFlat S`
 without `bits S.N_*` AST size terms. -/
-def initParams1Key2C (S : Setup) {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
+@[expose] def initParams1Key2C (S : Setup) {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
     (uv : Var Γ₁ (.prod (B 32) (B 32))) : Comp pqxdhOps pqGapDhIface Δ params2Ty :=
   if fgTotalIndexCount S = 0 then
     let U := .fst (v uv)
@@ -402,21 +402,21 @@ def initParams1Key2C (S : Setup) {Γ₁ Δ : List PT} [Ext Γ₁ Δ]
             let V := .snd (v uv)
             .ret (pa2Mk U V U .none (.bool false) (v et) .none (.bool true) (v ot) (.nat 3))))
 
-def initAdv4_1Key2Base (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
+@[expose] def initAdv4_1Key2Base (S : Setup) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
     Comp pqxdhOps pqGapDhIface Γ gdhState2Ty :=
   letV (.pair U V) fun uv =>
   bindV (initParams1Key2C S uv) fun pa =>
   bindV (gPrim sBool) fun secb =>
   .ret (.pair (v pa) (emptySimE (v secb)))
 
-def initAdv4_1Key2 (S : Setup) (K : Nat) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
+@[expose] def initAdv4_1Key2 (S : Setup) (K : Nat) {Γ : List PT} (U V : Expr pqxdhOps Γ (B 32)) :
     Comp pqxdhOps pqSigAndDdhIface Γ gdh1KeyState2Ty :=
   bindV (liftGdhComp (initAdv4_1Key2Base S U V)) fun s =>
   .ret (.pair (v s) (.nat (min K (min S.N_spk_tot S.N_recv))))
 
 /-- Tuple-keyed `CostedReduction` syntax tree for `fgKeyInd1KeyGapDhAdv4 S b` without `bits S.N_*`
 AST size terms. -/
-def fgKeyInd1KeyGapDh2Prog (S : Setup) (K : Nat) :
+@[expose] def fgKeyInd1KeyGapDh2Prog (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqSigAndDdhIface (keyIndSpec S) (keyIndCodec S)
       (.prod (B 32) (B 32)) .unit .bool (B 32) where
   σ      := gdh1KeyState2Ty

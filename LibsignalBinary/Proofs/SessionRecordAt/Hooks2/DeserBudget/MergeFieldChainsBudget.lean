@@ -11,12 +11,11 @@ module
 
 public meta import Lean -- shake: keep
 public meta import ProofLib -- shake: keep
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public meta import LibsignalBinary.Proofs.Placed.BridgeReloc
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ChainBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.MergeFieldBasicBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BridgeReloc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ChainBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.MergeFieldBasicBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Leaf.MergeFieldGenSenderChain
@@ -28,6 +27,8 @@ import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.MergeReceiverChainsAux.
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.MergeFieldGenSenderChainExt
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.MergeFieldGenReceiverChainsExt
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
 
 /-!
 # Budget-Threaded `SessionStructure::merge_field` on Chain Fields and All Tags
@@ -38,7 +39,7 @@ telescoping (`stepEvents_mergeFieldQ_telescope`), tag `6` (`sender_chain`), and 
 (`receiver_chains` via `chainMergeGen_budget_placed_ok_cl` and `grow_one_104_budget_placed_ok_cl`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -149,7 +150,7 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.MergeFieldBasicBu
 /-- Unified symbolic per-field `cumSmall` charge across all `GenFieldQ` tags (`1–7, 9–11, 13–15`).
 For `receiver_chains` (tag `7`), the outer `Vec<Chain>` growth charges telescope separately via
 `vec104CumRem M capMaxRecv capRecv` in `stepEvents_mergeFieldQ_telescope`. -/
-def fieldQSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
+@[expose] def fieldQSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
   match fl with
   | .base (.sender c) => chainMergeSmallCost M c
   | .base (.recv c) => chainMergeSmallCost M c
@@ -157,7 +158,7 @@ def fieldQSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenField
 
 /-- Unified symbolic post-merge direct-`mmap` live cost added to `SessionStructure` fields
 (excluding the outer `receiver_chains` `Vec<Chain>` buffer, tracked via `vec104LargeLive M capRecv`). -/
-def fieldQLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
+@[expose] def fieldQLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
   match fl with
   | .base (.sender c) => chainMergeLargeLive M c
   | .base (.recv c) => chainMergeLargeLive M c
@@ -165,7 +166,7 @@ def fieldQLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenField
 
 /-- Unified symbolic transient direct-`mmap` peak of merging field `fl` itself
 (before any outer `receiver_chains` `grow_one<Chain>` step). -/
-def fieldQPeakLarge (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
+@[expose] def fieldQPeakLarge (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
   match fl with
   | .base (.sender c) => chainMergePeakLarge M c
   | .base (.recv c) => chainMergePeakLarge M c
@@ -393,7 +394,6 @@ attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
   LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.MergeFieldBasicBudget.MergeFieldVmSimp.physMemAvail_writeReg
   LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.MergeFieldBasicBudget.MergeFieldVmSimp.tpidrEl0_writeReg
   LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.MergeFieldBasicBudget.MergeFieldVmSimp.mem_writeReg
-
 
 /-! ## 3. Tag `6` (`sender_chain` at `ss + 0x90`, Inline `Option<Chain>`) -/
 
@@ -629,7 +629,6 @@ theorem mergeFieldSenderChain_budget_placed_ok [LibsignalPlacement]
     | _ => simp [GenFieldQ.tag, GenField.tag] at hP
   | _ => simp [GenFieldQ.tag] at hP
 
-
 /-! ## 4. Tag `7` (`receiver_chains` at `ss + 0x48`, `Vec<Chain>`) -/
 
 private theorem stackAt_sub_to_chainMerge_mfc (sp : BitVec 64) :
@@ -785,7 +784,6 @@ private theorem arrayAt_prostChainGAtCap_move_bytes (A : RustAlloc)
       simp [Nat.add_mul, Nat.add_comm]
     rw [hlen] at hm
     exact hm
-
 
 private theorem vecAt_recvCap_open (A : RustAlloc) (ss : BitVec 64) (capRecv : Nat)
     (cs : List ChainG) :
@@ -1054,7 +1052,6 @@ private theorem step_tag7_from_1116_mfc [LibsignalPlacement]
       mfSavedRegs_receiverChains]
   sep_ac_rfl
 
-
 set_option maxHeartbeats 1600000 in
 private theorem step_tag7_from_700_mfc [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
@@ -1295,7 +1292,6 @@ private theorem step_tag7_from_700_mfc [LibsignalPlacement]
         (by simp only [wp_norm, arm64_norm, hx27])
         (by simp only [wp_norm, arm64_norm, hx28])
         (by simp only [wp_norm, arm64_norm, hvregs]))
-
 
 set_option maxHeartbeats 1600000 in
 private theorem step_tag7_recv_mfc [LibsignalPlacement]

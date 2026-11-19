@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Initiate.InitRej
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Refinement.X25519Covered
-public import Symbolic.Proofs.Swarm.Leaves.IC12_Stage1MatchedPrefixPure
+public import Symbolic.Proofs.Swarm.CREF.Initiate.InitRej -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.X25519Covered -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.Leaves.IC12_Stage1MatchedPrefixPure -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.ALaCarte.Basic
@@ -29,7 +29,7 @@ import DY.Actions.Random
 import DY.EquationalTheory.Literal
 import DY.EquationalTheory.DiffieHellman
 import Symbolic.Specifications.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Swarm.CREF.ModelBridge
+public import Symbolic.Proofs.Swarm.CREF.ModelBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil
 import Symbolic.DYBridge.DY.Bytes.Basic
@@ -54,7 +54,7 @@ variations to `DY.X25519.x25519Variant`, and evaluates the 9-entry `Composed.ali
 `shown = 35` together with its 34-draw RNG correspondence.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -719,7 +719,7 @@ theorem Runs.aliceHandshake {tr : ExecTrace} {a b : DY.Participant} {idH regB : 
             Symbolic.DYBridge.DY.Trace.length_eq_2])))))
 
 /-- Initial `TRState` stored by `Composed.aliceStart` starting at `tr`. -/
-def iniAliceStartState (tr : ExecTrace) (b : DY.Participant) (o : AliceHandshakeOut) : TRState :=
+@[expose] def iniAliceStartState (tr : ExecTrace) (b : DY.Participant) (o : AliceHandshakeOut) : TRState :=
   let dhsA := randTerm (tr.length + 2) 32
   let (rkA, cksA) := DY.Libsignal.TripleRatchet.createChain o.keys.rk o.spk dhsA
   { peer := b,
@@ -737,7 +737,7 @@ def iniAliceStartState (tr : ExecTrace) (b : DY.Participant) (o : AliceHandshake
     spqr := DY.Spqr.spqrInit o.keys.pqr DY.Libsignal.TripleRatchet.spqrA2B }
 
 /-- Exact 9-entry post-trace produced by `Composed.aliceStart` starting at `tr`. -/
-def iniAliceStartTr (tr : ExecTrace) (a b : DY.Participant) (o : AliceHandshakeOut) : ExecTrace :=
+@[expose] def iniAliceStartTr (tr : ExecTrace) (a b : DY.Participant) (o : AliceHandshakeOut) : ExecTrace :=
   let dhsA := randTerm (tr.length + 2) 32
   let stA := iniAliceStartState tr b o
   ((((((((tr.append (ini_RndE 32)).append (ini_RndE 32)).append (ini_RndE 32)).append

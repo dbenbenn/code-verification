@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.G1Rep -- proof-setup: allow-public-import
 import Symbolic.Specifications.Model.EquationalTheory.Kem
 import all DY.EquationalTheory.Sign
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -23,7 +23,7 @@ length at most 8, whereas all opaque KEM and signature constructors have length 
 `notOpaqueHeaded msg₀.mac` holds unconditionally.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

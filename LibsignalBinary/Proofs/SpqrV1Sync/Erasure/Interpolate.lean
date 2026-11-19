@@ -11,9 +11,9 @@ module
 
 public import LibsignalBinary.Proofs.SpqrV1Sync.ErasureDefs
 import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.Complete
-import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.Prepare
+public import LibsignalBinary.Proofs.SpqrV1Sync.Erasure.Prepare -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +45,7 @@ theorem length_le_of_nodup_x (pts : List Pt) (hnd : (pts.map Pt.x).Nodup) :
   rw [List.card_toFinset, hnd_ns.dedup, Finset.card_range] at hcard
   simpa [ns] using hcard
 
-def zipAdd : List GF16 → List GF16 → List GF16
+@[expose] def zipAdd : List GF16 → List GF16 → List GF16
   | [], _ => []
   | _, [] => []
   | a :: as, b :: bs => GF16.add a b :: zipAdd as bs

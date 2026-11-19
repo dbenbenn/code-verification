@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3NonCanonF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3ExternNoAllocFail
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3NonCanonF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3ExternNoAllocFail
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 
 /-!
 # Two-Placement Whole-Process Overwrite and Canonical Non-Matching Session Lifts
@@ -22,7 +26,7 @@ of `MainOkOverD3F3` discharging `CliPqBinaryV2OomF3Placed.validOver` and
 `CliPqBinaryV2OomF3Placed.canonicalNoMatch`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,11 +41,12 @@ open CryptoVerification.E2E (
   PEParams PreKeyMessageFields RecordExtras UnreachedPqxdhPrimitives wirePrekey
 )
 open CryptoVerification.SignalSession (
-  CliHooks CliReachesOOMPlaced Outcome OutcomeMatchesModelExceptPath OutcomeOrExcusedAbort
-  PqParty PqSessionMatches PqxdhPartyInSpecDomain filesOf partyAddress pqRecvInputs
-  pqRecvPrekeyModel sessionFile stdinCapBytes
+  CliHooks Outcome OutcomeMatchesModelExceptPath OutcomeOrExcusedAbort PqParty PqSessionMatches
+  PqxdhPartyInSpecDomain filesOf partyAddress pqRecvInputs pqRecvPrekeyModel sessionFile
+  stdinCapBytes
 )
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (CliReachesOOMPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open CryptoVerification.SignalSession.Cli.RunProofs (pkToE?)
 open CryptoVerification.SignalSession.Cli.RunProofs.Pksm (pksmParse)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3 (D3NoMatchSessionFile)

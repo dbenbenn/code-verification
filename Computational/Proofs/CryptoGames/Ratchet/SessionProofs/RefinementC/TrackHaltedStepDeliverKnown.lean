@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedBase
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedRecvBase
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Base
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedRecvBase
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliver
@@ -36,7 +36,7 @@ for `CloseByStateCTrack`.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 

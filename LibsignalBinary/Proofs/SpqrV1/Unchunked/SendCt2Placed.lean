@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Issue1275
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Steps
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Issue1275 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Steps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Base
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<Ct1SentEkReceived>::send_ct2`: Relocatable `[LibsignalPlacement]` Loops and Prologue
@@ -28,7 +29,7 @@ Defines `unchunkedCt1SentEkReceivedSendCt2PlacedSpec` and proves `[LibsignalPlac
 Issue-1275 loops and Segment 1 prologue (`+0x00 → +0x88`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Unchunked
 
@@ -65,12 +66,12 @@ theorem ls_resolve_logFilterSym (pl : Arm64.Obj.MultiPlacement) :
 
 /-- Read-only `.rodata` + `MAX_LOG_LEVEL_FILTER` bundle required by
     `<Unchunked.SendCt.Ct1SentEkReceived>::send_ct2` (Block `347`) under `[LibsignalPlacement]`. -/
-def unchunkedSendCt2PlacedRoAt [LibsignalPlacement] : SepProp :=
+@[expose] def unchunkedSendCt2PlacedRoAt [LibsignalPlacement] : SepProp :=
   (lsLogFilterAddr ↦₆₄ 0#64) ∗ ((lsρ "spqr:.rodata..Lanon.137") ↦ᵣ Authenticator.ctLabel)
 
 /-- Relocatable specification of `<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2`
     (Block `347`) under `[LibsignalPlacement]`. -/
-def unchunkedCt1SentEkReceivedSendCt2PlacedSpec [LibsignalPlacement]
+@[expose] def unchunkedCt1SentEkReceivedSendCt2PlacedSpec [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress) (K : MlKem) :
     Spec (UnchunkedSendCt2Ghost F) where
   pre := fun x s =>

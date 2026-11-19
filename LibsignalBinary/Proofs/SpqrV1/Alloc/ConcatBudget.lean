@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Alloc.Fetch
 import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
 
 /-!
 # Budget-Threaded `<[&[u8]] as alloc::slice::Concat<u8>>::concat [local#2]` (Block 386)
@@ -27,7 +28,7 @@ Re-exports 2-slice budget concatenation from `ConcatBudgetAux` and proves reloca
 `RustCliAllocBudget M` / `AllocCallPreserved` 3-slice concatenation contracts for block 386.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -99,7 +100,7 @@ abbrev slice_concat_2_placed_ok_xa := @ConcatBudgetAux.slice_concat_2_placed_ok_
 
 abbrev sliceConcat3Events := LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget.sliceConcat2Events
 
-def SliceConcat3Env (x : SliceConcat3Ghost) (evs : List AllocEvent) : Prop :=
+@[expose] def SliceConcat3Env (x : SliceConcat3Ghost) (evs : List AllocEvent) : Prop :=
   evs = sliceConcat3Events (x.bs0.length + x.bs1.length + x.bs2.length)
 
 theorem fitsEnv_sliceConcat3_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -109,7 +110,7 @@ theorem fitsEnv_sliceConcat3_iff {M : AllocCostModel} {lim : BudgetLimits} {st :
   FitsEnv.eq_iff
 
 /-- Budget-threaded 3-slice concatenation specification parameterized by callee `hookStack`. -/
-def sliceConcat3SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def sliceConcat3SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (hookStack : Nat) : Spec (SliceConcat3Ghost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.outVec ∧ s.readReg64 .x1 = x.slicesA ∧ s.readReg64 .x2 = 3#64 ∧
@@ -133,7 +134,7 @@ def sliceConcat3SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M) (l
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp (hookStack + 96)
 
 /-- Budget-threaded 3-slice concatenation specification at `extHookStack`. -/
-def sliceConcat3Spec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def sliceConcat3Spec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (SliceConcat3Ghost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.outVec ∧ s.readReg64 .x1 = x.slicesA ∧ s.readReg64 .x2 = 3#64 ∧

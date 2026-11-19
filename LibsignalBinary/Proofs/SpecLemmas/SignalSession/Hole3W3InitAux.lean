@@ -10,19 +10,20 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAt
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlaced
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3BudgetFitsAux
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3VerifySigAux
+public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliElfProof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HInit.CliInitSlotOkPlacedAt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOkNoMatchPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrInitialStatePlacedInstBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlaced
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3BudgetFitsAux
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3VerifySigAux
 public import LibsignalBinary.Specifications.SignalSession.CliElf
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Closed Block-521 `initiate` (`W3`) Slot Bridge
@@ -34,7 +35,7 @@ Proves `w3m_hole3_w3_init`, discharging `CliInitSlotOkPlaced` at
 `w3m_cliInitSlotOkPlacedAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -46,9 +47,11 @@ open Arm64 (GhostName HookSat subroutine_ok)
 open Arm64.Obj (MultiPlacement)
 open VerifiedLibraries (mallocngLib)
 open CryptoVerification
-  (LibsignalFullPlacement LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns lsmpl)
+  (ExternsDistinctOnHooked LibsignalFullPlacement LibsignalPlacement
+  libsignalMutatedBlocks lsmpl)
 open CryptoVerification.E2E (UnreachedPqxdhPrimitives)
 open CryptoVerification.LibsignalPublicApi.StoreKit (withLsCodeRoLoaded)
+open CryptoVerification.LibsignalSpqrV1 (sha256Compress)
 open CryptoVerification.SignalSession
   (CliHooks cliElfBytes cliElfImage cliExternsPlaced libsignalSessionLib lsReadFileSym)
 open CryptoVerification.SignalSession.Cli.MainHops (cliIo cliRunBudgets cliWrOk)
@@ -78,12 +81,12 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W3VerifySigAux
   (w3m_verifySignature_vm_ok)
 
 /-- Constructs `LibsignalFullPlacement` from `libsignalSessionLib.LinkedAt cliElfBytes mpl`. -/
-@[instance_reducible]
+@[expose, instance_reducible]
 def w3m_libsignalFullPlacementOf (mpl : MultiPlacement)
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup) : LibsignalFullPlacement where
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ) : LibsignalFullPlacement where
   toLibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
   placeable := hLs.choose_spec.2.1
 
@@ -91,6 +94,10 @@ def w3m_libsignalFullPlacementOf (mpl : MultiPlacement)
 theorem w3m_ghostHooks [LibsignalPlacement]
     {M : AllocCostModel} {mmpl : MultiPlacement} {ghFixed : CliGhostHooks} {W : CliHooks}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec)
     (hGSpqr : CliGhostSpqrAllocHooks M A lim ghFixed)
     (hFs : CliGhostHooksFs ghFixed)
     (hsat : HookSat (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) lsReadFileSym
@@ -101,14 +108,20 @@ theorem w3m_ghostHooks [LibsignalPlacement]
   alloc := hGSpqr
   strClone_fsT := hFs.stringClone_fsT
   stringClone := hHooks.runHooks.stringClone
-  formatInner := hHooks.runHooks.formatInner
+  formatInnerCall := hHooks.runHooks.formatInner
+  fmtWrite := hHooks.runHooks.fmtWrite
   readFile := hsat
+  f_eq := hF
+  x_eq := hX
+  pub_eq := hPub
+  enc_eq := hEnc
 
 /-- Lifts block-327 `spqrInitialStateInnerSpec` onto `initProgPlaced`. -/
 theorem w3m_spqrInitialState_initProg_ok [LibsignalFullPlacement]
     {mmpl : MultiPlacement} (ghFixed : CliGhostHooks)
     (_hPl_mng : mallocngLib.Placeable mmpl)
-    (W : CliHooks) (γ : GhostName) (tp brkStart : BitVec 64)
+    (W : CliHooks) (hF : W.C.F = sha256Compress)
+    (γ : GhostName) (tp brkStart : BitVec 64)
     (hGSpqr : CliGhostSpqrAllocHooks fineCostModel
       (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits ghFixed)
     (_hHooks : CliRunHooksBundle mmpl ghFixed W
@@ -119,7 +132,7 @@ theorem w3m_spqrInitialState_initProg_ok [LibsignalFullPlacement]
       (withLsCodeRoLoaded lsmpl
         (spqrInitialStateInnerSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart)
           cliBudgetLimits (InitialStateParamsEnv W.C.F) W.C.F)) :=
-  cliSpqrInitialState_initProg mmpl ghFixed W hGSpqr
+  cliSpqrInitialState_initProg mmpl ghFixed W hGSpqr hF
 
 /-- Closed block-521 `initiate` (`W3`) slot witness at `realCliInitBinarySlotEnvFixed W`. -/
 theorem w3m_hole3_w3_init
@@ -127,10 +140,16 @@ theorem w3m_hole3_w3_init
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     (hPl_mng : mallocngLib.Placeable mmpl)
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64)
+    (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec)
+    (γ : GhostName) (tp : BitVec 64)
     (hGSpqr : @CliGhostSpqrAllocHooks (libsignalPlacementOf mpl hblk hext_nodup) fineCostModel
       (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits ghFixed)
     (hFs : CliGhostHooksFs ghFixed)
@@ -149,9 +168,9 @@ theorem w3m_hole3_w3_init
       (realCliInitBinarySlotEnvFixed W) X W := by
   let _ : LibsignalFullPlacement := w3m_libsignalFullPlacementOf mpl hLs hblk hext_nodup
   exact w3m_cliInitSlotOkPlacedAt mmpl ghFixed W X
-    (w3m_ghostHooks hGSpqr hFs hsat hHooks)
-    (w3m_spqrInitialState_initProg_ok ghFixed hPl_mng W γ tp cliElfImage.brkStart hGSpqr hHooks h547)
-    (w3m_verifySignature_vm_ok ghFixed W hGSpqr.toCliGhostAllocHooks)
+    (w3m_ghostHooks hF hX hPub hEnc hGSpqr hFs hsat hHooks)
+    (w3m_spqrInitialState_initProg_ok ghFixed hPl_mng W hF γ tp cliElfImage.brkStart hGSpqr hHooks h547)
+    (w3m_verifySignature_vm_ok ghFixed W hGSpqr.toCliGhostAllocHooks hF512)
     hghNoAlloc
     (w3m_initiate_budgetFits W X)
 

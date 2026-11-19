@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopClPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PeakBudget.SpqrSendRodataCaps
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bBudget
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cBudget
@@ -26,6 +26,44 @@ import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecv
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopSend
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
+public import ProofLib.Disproof.Basic
+public import ProofLib.Placed.OpcodeExclusion
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Musl.Spec
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlacedBudget
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part2ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part3bClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4bClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4cClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part4dClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5eBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5eClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5ePlacedBudget
 
 /-!
 # Guarded-Tight `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) Envelope & Placed Contracts
@@ -37,7 +75,7 @@ arms), proves `StatesIntoPbVariantExactEnv st evs → SpqrTightEvs 42 376193 240
 `States.from_pb`, `States.recv`, and `States.send`, and derives guarded-tight Block `334` contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -104,16 +142,16 @@ open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionMemcpyRegionB
 /-! ## 1. Structural Leaf Guard (`StatesIntoPbTightDom`) -/
 
 /-- Structural encoder slot-count and per-slot length cap for `<PolyEncoder>::into_pb` tight credit. -/
-def EncIntoPbTightDom (enc : PolyEncoder) : Prop :=
+@[expose] def EncIntoPbTightDom (enc : PolyEncoder) : Prop :=
   (encoderIntoPbVecs enc).length ≤ 16 ∧ ∀ cs ∈ encoderIntoPbVecs enc, cs.length ≤ 640
 
 /-- Structural decoder slot-count and per-slot length cap for `<PolyDecoder>::into_pb` tight credit. -/
-def DecIntoPbTightDom (dec : PolyDecoder) : Prop :=
+@[expose] def DecIntoPbTightDom (dec : PolyDecoder) : Prop :=
   dec.pts.length ≤ 16 ∧ ∀ s ∈ dec.pts, s.vec.length ≤ 576
 
 /-- Per-constructor structural leaf domain on `States` making `<States>::into_pb` (Block `334`)
     satisfy `StatesIntoPbTightEnv` (`SpqrTightEvs 42 376193 2400`). -/
-def StatesIntoPbTightDom {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
+@[expose] def StatesIntoPbTightDom {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
   | .keysUnsampled _ => True
   | .keysSampled s => EncIntoPbTightDom s.sending_hdr
   | .headerSent s => EncIntoPbTightDom s.sending_ek ∧ DecIntoPbTightDom s.receiving_ct1
@@ -270,33 +308,10 @@ theorem statesIntoPbExactEnv_tight {F : ShaCompress}
     StatesIntoPbTightEnv evs :=
   statesIntoPbVariantExactEnv_tight hDom hEnv
 
-/-- Exact ghost-indexed tight inclusion on
-    `LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlacedBudget.StatesIntoPbExactEnv`
-    (matching arm-by-arm with `TopClPlacedBudget.StatesIntoPbExactEnv`). -/
-theorem statesIntoPbTopPlacedExactEnv_tight {F : ShaCompress}
-    {g : StatesIntoPbGhost F} {evs : List AllocEvent}
-    (hDom : StatesIntoPbTightDom g.st)
-    (hEnv :
-      LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlacedBudget.StatesIntoPbExactEnv g evs) :
-    StatesIntoPbTightEnv evs := by
-  rcases g with ⟨_, _, st⟩
-  cases st <;> exact statesIntoPbVariantExactEnv_tight hDom hEnv
-
-/-- Exact ghost-indexed tight inclusion on
-    `LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopBudget.StatesIntoPbExactEnv`
-    (`tripleRatchetProgAtExt` producer `TopBudget.states_into_pb_exact`). -/
-theorem statesIntoPbTopBudgetExactEnv_tight {F : ShaCompress}
-    {g : StatesIntoPbGhost F} {evs : List AllocEvent}
-    (hDom : StatesIntoPbTightDom g.st)
-    (hEnv : LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopBudget.StatesIntoPbExactEnv g evs) :
-    StatesIntoPbTightEnv evs := by
-  rcases g with ⟨_, _, st⟩
-  cases st <;> exact statesIntoPbVariantExactEnv_tight hDom hEnv
-
 /-- Domain-split guarded-tight ghost-indexed envelope (`PreEnv = PostEnv`, zero existentials):
     `StatesIntoPbTightEnv` on `StatesIntoPbTightDom g.st`, falling back to
     `TopClPlacedBudget.StatesIntoPbExactEnv g` outside the domain (preserving `FitsEnv`). -/
-def StatesIntoPbGuardedTightEnv {F : ShaCompress}
+@[expose] def StatesIntoPbGuardedTightEnv {F : ShaCompress}
     (g : StatesIntoPbGhost F) (evs : List AllocEvent) : Prop :=
   (StatesIntoPbTightDom g.st ∧ StatesIntoPbTightEnv evs) ∨
     (¬ StatesIntoPbTightDom g.st ∧
@@ -314,30 +329,7 @@ theorem statesIntoPbExactEnv_imp_guardedTight {F : ShaCompress}
   · exact Or.inl ⟨hDom, statesIntoPbExactEnv_tight hDom hEnv⟩
   · exact Or.inr ⟨hDom, hEnv⟩
 
-/-- Under `StatesIntoPbTightDom g.st`, `StatesIntoPbGuardedTightEnv g` is equivalent to
-    `StatesIntoPbTightEnv`. -/
-theorem statesIntoPbGuardedTightEnv_iff_of_dom {F : ShaCompress}
-    {g : StatesIntoPbGhost F} (hDom : StatesIntoPbTightDom g.st) (evs : List AllocEvent) :
-    StatesIntoPbGuardedTightEnv g evs ↔ StatesIntoPbTightEnv evs :=
-  ⟨fun h => h.elim And.right (fun hn => False.elim (hn.1 hDom)),
-   fun ht => Or.inl ⟨hDom, ht⟩⟩
-
 /-! ## 3. Domain Bridges from `BOkTight` & `SpqrTrialDomainLiftAux.TopStateTight` -/
-
-private theorem e2cr_encPtsBoundedAt_640_of_encWF {len : Nat} {enc : PolyEncoder}
-    (hlen : len = 96 ∨ len = 160 ∨ len = 960 ∨ len = 1152) (hwf : EncWF len enc) :
-    EncPtsBoundedAt 640 enc := by
-  obtain ⟨msg, hinv, hmlen⟩ := hwf
-  intro pts hpts pt hpt
-  rcases hinv with hs | ⟨polys, hs, _, _⟩
-  · rw [hs] at hpts
-    cases hpts
-    unfold msgPoints at hpt
-    rcases List.mem_map.mp hpt with ⟨j, _, rfl⟩
-    simp only [List.length_map, List.length_range, hmlen]
-    exact Nat.le_trans (needed_isRodata_and_le_36 hlen j).2 (by decide)
-  · rw [hs] at hpts
-    cases hpts
 
 private theorem e2cr_encIntoPbTightDom_of_encWF {len : Nat} {enc : PolyEncoder}
     (hlen : len = 96 ∨ len = 160 ∨ len = 960 ∨ len = 1152) (hwf : EncWF len enc) :
@@ -398,32 +390,6 @@ private theorem e2cr_decIntoPbTightDom_of_decWFTight {n : Nat} {d : PolyDecoder}
     rw [List.toFinset_card_of_nodup hnd, List.length_map]
   omega
 
-/-- Any `BOkTight` SPQR V1 braid state satisfies `StatesPtsBoundedAt 640`
-    (`EncWF len` with `len ∈ {96, 160, 960, 1152}` bounds per-point length by `len / 32 ≤ 36 ≤ 640`
-    via `SpqrSendRodataCaps.needed_isRodata_and_le_36`, and `Codec.UcOk.ekHeaderSent` gives
-    `ek.length = 1152` on `.keysSampled`). -/
-theorem statesPtsBoundedAt_640_of_bokTight {F : ShaCompress}
-    {st : States spqrPolyApi (spqrAuthApi F)}
-    (hbok : BOkTight st) :
-    StatesPtsBoundedAt 640 st := by
-  rcases hbok with ⟨hb, _⟩
-  cases st with
-  | keysUnsampled _ | ekSentCt1Received _ | noHeaderReceived _
-  | headerReceived _ | ct1Acknowledged _ =>
-    trivial
-  | keysSampled _ =>
-    exact ⟨e2cr_encPtsBoundedAt_640_of_encWF (Or.inl rfl) hb.2.2, hb.2.1.2⟩
-  | headerSent _ =>
-    exact e2cr_encPtsBoundedAt_640_of_encWF (Or.inr (Or.inr (Or.inr rfl))) hb.2.2.1
-  | ct1Received _ =>
-    exact e2cr_encPtsBoundedAt_640_of_encWF (Or.inr (Or.inr (Or.inr rfl))) hb.2.2
-  | ct1Sampled _ =>
-    exact e2cr_encPtsBoundedAt_640_of_encWF (Or.inr (Or.inr (Or.inl rfl))) hb.2.2.1
-  | ekReceivedCt1Sampled _ =>
-    exact e2cr_encPtsBoundedAt_640_of_encWF (Or.inr (Or.inr (Or.inl rfl))) hb.2.2
-  | ct2Sampled _ =>
-    exact e2cr_encPtsBoundedAt_640_of_encWF (Or.inr (Or.inl rfl)) hb.2
-
 /-- Any `BOkTight` SPQR V1 braid state satisfies `StatesIntoPbTightDom`:
     - Encoder slots: `EncWF len` (`len ∈ {96, 160, 960, 1152}`) gives `16` slots of length
       `len / 32 ≤ 36 ≤ 640` (`SpqrSendRodataCaps.needed_isRodata_and_le_36`),
@@ -465,211 +431,6 @@ theorem statesIntoPbTightDom_of_bokTight {F : ShaCompress}
   | ct2Sampled _ =>
     exact e2cr_encIntoPbTightDom_of_encWF (Or.inr (Or.inl rfl)) hb.2
 
-/-- Decoding a `TopStateTight` (`SpqrTrialDomainLiftAux`) serialized state into `st0` via
-    `spqrDecodeState` + `States.from_pb` yields `BOkTight st0` and `StatesIntoPbTightDom st0`. -/
-theorem topStateTight_from_pb_statesIntoPbTightDom {F : ShaCompress} {K : MlKem}
-    {stBytes : List (BitVec 8)} {pre_pb : PqRatchetState} {pb : V1State}
-    {st0 : States spqrPolyApi (spqrAuthApi F)}
-    (hTight : LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux.TopStateTight F K stBytes)
-    (hDec : spqrDecodeState stBytes = .ok pre_pb)
-    (hV1 : pre_pb.inner = some (.v1 pb))
-    (hFromPb : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st0) :
-    BOkTight st0 ∧ StatesIntoPbTightDom st0 := by
-  obtain ⟨_, _, hlt31⟩ := topStateTight_to_tightValid640 hTight
-  have hsize : stBytes.length < 2 ^ 64 := Nat.lt_trans hlt31 (by decide)
-  obtain ⟨_, _, _, st, _, _, _, vn?, ch?, _, hw⟩ := hTight
-  have hdec_eq : spqrDecodeState stBytes = .ok (pbToPqRatchetState (topPb st vn? ch?)) := by
-    have hbeq : stBytes = encodeState (pbToPqRatchetState (topPb st vn? ch?)) := hw.htop.hbytes
-    rw [hbeq] at hsize ⊢
-    exact spqrDecodeState_encodeState (pbToPqRatchetState (topPb st vn? ch?)) hsize
-  rw [hdec_eq] at hDec
-  have hpre := Except.ok.inj hDec
-  subst hpre
-  simp only [pbToPqRatchetState, topPb, Option.map, Option.some.injEq] at hV1
-  cases hV1
-  have hcodec : States.from_pb spqrPolyApi (spqrAuthApi F) st.into_pb = .ok st :=
-    st_bCodec F st hw.hbok.1
-  rw [hcodec] at hFromPb
-  have hst0 := Except.ok.inj hFromPb
-  subst hst0
-  exact ⟨hw.hbok, statesIntoPbTightDom_of_bokTight hw.hbok⟩
-
-/-- `SpqrStateTight640` lift of `topStateTight_from_pb_statesIntoPbTightDom`
-    (`stBytes = []` decodes `inner = none`, vacating `hV1`). -/
-theorem spqrStateTight640_from_pb_statesIntoPbTightDom {F : ShaCompress} {K : MlKem}
-    {stBytes : List (BitVec 8)} {pre_pb : PqRatchetState} {pb : V1State}
-    {st0 : States spqrPolyApi (spqrAuthApi F)}
-    (hTight :
-      LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux.SpqrStateTight640 F K stBytes)
-    (hDec : spqrDecodeState stBytes = .ok pre_pb)
-    (hV1 : pre_pb.inner = some (.v1 pb))
-    (hFromPb : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st0) :
-    BOkTight st0 ∧ StatesIntoPbTightDom st0 := by
-  rcases hTight with rfl | hTop
-  · have hdec0 : spqrDecodeState ([] : List (BitVec 8)) = .ok default :=
-      spqrDecodeState_encodeState (default : PqRatchetState) (by decide)
-    rw [hdec0] at hDec
-    have hpre := Except.ok.inj hDec
-    subst hpre
-    cases hV1
-  · exact topStateTight_from_pb_statesIntoPbTightDom hTop hDec hV1 hFromPb
-
-/-- Post-`States.recv` domain preservation from `TopStateTight`: the `v.state` passed to
-    `<States>::into_pb` inside `spqr::recv` (Block `329`) satisfies `StatesIntoPbTightDom`. -/
-theorem topStateTight_recv_statesIntoPbTightDom {F : ShaCompress} {K : MlKem}
-    {stBytes : List (BitVec 8)} {pre_pb : PqRatchetState} {pb : V1State}
-    {st0 : States spqrPolyApi (spqrAuthApi F)}
-    {msg : Message spqrPolyApi} {v : V1Recv spqrPolyApi (spqrAuthApi F)}
-    (hTight : LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux.TopStateTight F K stBytes)
-    (hDec : spqrDecodeState stBytes = .ok pre_pb)
-    (hV1 : pre_pb.inner = some (.v1 pb))
-    (hFromPb : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st0)
-    (hRecv : States.recv K st0 msg = .ok v) :
-    StatesIntoPbTightDom v.state := by
-  obtain ⟨hbok0, _⟩ := topStateTight_from_pb_statesIntoPbTightDom hTight hDec hV1 hFromPb
-  rcases v with ⟨key, st1⟩
-  have hbok1 : BOkTight st1 := by
-    cases hek : isEkSide st0
-    · exact st_bRecvCt_tight F K hek hbok0 hRecv
-    · exact st_bRecvEk_tight F K hek hbok0 hRecv
-  exact statesIntoPbTightDom_of_bokTight hbok1
-
-/-- Post-`States.recv` domain preservation from `SpqrStateTight640`. -/
-theorem spqrStateTight640_recv_statesIntoPbTightDom {F : ShaCompress} {K : MlKem}
-    {stBytes : List (BitVec 8)} {pre_pb : PqRatchetState} {pb : V1State}
-    {st0 : States spqrPolyApi (spqrAuthApi F)}
-    {msg : Message spqrPolyApi} {v : V1Recv spqrPolyApi (spqrAuthApi F)}
-    (hTight :
-      LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux.SpqrStateTight640 F K stBytes)
-    (hDec : spqrDecodeState stBytes = .ok pre_pb)
-    (hV1 : pre_pb.inner = some (.v1 pb))
-    (hFromPb : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st0)
-    (hRecv : States.recv K st0 msg = .ok v) :
-    StatesIntoPbTightDom v.state := by
-  obtain ⟨hbok0, _⟩ := spqrStateTight640_from_pb_statesIntoPbTightDom hTight hDec hV1 hFromPb
-  rcases v with ⟨key, st1⟩
-  have hbok1 : BOkTight st1 := by
-    cases hek : isEkSide st0
-    · exact st_bRecvCt_tight F K hek hbok0 hRecv
-    · exact st_bRecvEk_tight F K hek hbok0 hRecv
-  exact statesIntoPbTightDom_of_bokTight hbok1
-
-/-- Post-`States.send` domain preservation from `TopStateTight`: the `v.state` passed to
-    `<States>::into_pb` inside `spqr::send` (Block `427`) satisfies `StatesIntoPbTightDom`. -/
-theorem topStateTight_send_statesIntoPbTightDom {F : ShaCompress} {K : MlKem}
-    {stBytes : List (BitVec 8)} {pre_pb : PqRatchetState} {pb : V1State}
-    {st0 : States spqrPolyApi (spqrAuthApi F)}
-    {tape tape' : List (BitVec 8)} {v : V1Send spqrPolyApi (spqrAuthApi F)}
-    (hTight : LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux.TopStateTight F K stBytes)
-    (hDec : spqrDecodeState stBytes = .ok pre_pb)
-    (hV1 : pre_pb.inner = some (.v1 pb))
-    (hFromPb : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st0)
-    (hSend : st0.send K tape = .ok (v, tape')) :
-    StatesIntoPbTightDom v.state := by
-  obtain ⟨hbok0, _⟩ := topStateTight_from_pb_statesIntoPbTightDom hTight hDec hV1 hFromPb
-  rcases v with ⟨m, key, st1⟩
-  exact statesIntoPbTightDom_of_bokTight (st_bSendClosed_tight F K hbok0 hSend)
-
-/-- Post-`States.send` domain preservation from `SpqrStateTight640`. -/
-theorem spqrStateTight640_send_statesIntoPbTightDom {F : ShaCompress} {K : MlKem}
-    {stBytes : List (BitVec 8)} {pre_pb : PqRatchetState} {pb : V1State}
-    {st0 : States spqrPolyApi (spqrAuthApi F)}
-    {tape tape' : List (BitVec 8)} {v : V1Send spqrPolyApi (spqrAuthApi F)}
-    (hTight :
-      LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux.SpqrStateTight640 F K stBytes)
-    (hDec : spqrDecodeState stBytes = .ok pre_pb)
-    (hV1 : pre_pb.inner = some (.v1 pb))
-    (hFromPb : States.from_pb spqrPolyApi (spqrAuthApi F) pb = .ok st0)
-    (hSend : st0.send K tape = .ok (v, tape')) :
-    StatesIntoPbTightDom v.state := by
-  obtain ⟨hbok0, _⟩ := spqrStateTight640_from_pb_statesIntoPbTightDom hTight hDec hV1 hFromPb
-  rcases v with ⟨m, key, st1⟩
-  exact statesIntoPbTightDom_of_bokTight (st_bSendClosed_tight F K hbok0 hSend)
-
 /-! ## 4. Placed Block `334` (`<States>::into_pb`) Guarded-Tight Producer Corollaries -/
-
-/-- Guarded-tight `StatesIntoPbPlacedOkExtOfEnv` on `(blkPC_334).rebase`. -/
-theorem states_into_pb_cl_placed_ok_ext_guardedTight [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (withLsCodeLoaded lsmpl (encoderIntoPbSpec M A lim)))
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCodeLoaded lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    StatesIntoPbPlacedOkExtOfEnv M A lim F StatesIntoPbGuardedTightEnv ext :=
-  states_into_pb_cl_placed_ok_ext_of_env hA henc_cl hdec_cl hmemcpy_raw
-    statesIntoPbExactEnv_imp_guardedTight
-
-/-- Guarded-tight `withLsCodeRoLoaded` contract (`statesIntoPbPlacedRoSpecXOfEnv`) on
-    `(blkPC_334).rebase`. -/
-theorem states_into_pb_cl_placed_ro_cro_ok_x_guardedTight [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (withLsCodeLoaded lsmpl (encoderIntoPbSpec M A lim)))
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCodeLoaded lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (blkPl_334).base
-      (withLsCodeRoLoaded lsmpl
-        (statesIntoPbPlacedRoSpecXOfEnv M A lim F StatesIntoPbGuardedTightEnv)) :=
-  states_into_pb_cl_placed_ro_cro_ok_x_of_env hA henc_cl hdec_cl hmemcpy_raw
-    statesIntoPbExactEnv_imp_guardedTight
-
-/-- Guarded-tight `.rodata`-free extended-stack contract (`StatesIntoPbPlacedRoFreeOkXOfEnv`)
-    on `(blkPC_334).rebase`. -/
-theorem states_into_pb_cl_placed_ok_x_guardedTight [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (withLsCodeLoaded lsmpl (encoderIntoPbSpec M A lim)))
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCodeLoaded lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    StatesIntoPbPlacedRoFreeOkXOfEnv M A lim F StatesIntoPbGuardedTightEnv ext :=
-  states_into_pb_cl_placed_ok_x_of_env hA henc_cl hdec_cl hmemcpy_raw
-    statesIntoPbExactEnv_imp_guardedTight
-
-/-- Guarded-tight `StatesIntoPbPlacedOkXOfEnv` on `libsignalSessionLib.blockProgram lsmpl 334`. -/
-theorem states_into_pb_cl_placed_blockProgram_ok_x_guardedTight [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (withLsCodeLoaded lsmpl (encoderIntoPbSpec M A lim)))
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCodeLoaded lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    StatesIntoPbPlacedOkXOfEnv M A lim F StatesIntoPbGuardedTightEnv ext :=
-  states_into_pb_cl_placed_blockProgram_ok_x_of_env hA henc_cl hdec_cl hmemcpy_raw
-    statesIntoPbExactEnv_imp_guardedTight
-
-/-- Guarded-tight `withLsCodeRoLoaded` contract on `libsignalSessionLib.blockProgram lsmpl 334`
-    matching `SpqrRecvPlacedContractsOfEnv.statesIntoPb_ok` and `SpqrStatesIntoPbPlacedInstBudget`. -/
-theorem states_into_pb_cl_placed_blockProgram_ro_cro_ok_x_guardedTight [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hA : StatesIntoPbAllocPlacedBudget M A lim ext)
-    (henc_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 375) (withLsCodeLoaded lsmpl (encoderIntoPbSpec M A lim)))
-    (hdec_cl : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsmpl.base 377) (withLsCodeLoaded lsmpl (decoderIntoPbSpec M A lim)))
-    (hmemcpy_raw : subroutine_ok ((blkPC_334).rebase (blkPl_334).base (Rust.withPanics ext))
-      (lsρ "memcpy") sessionMemcpyRegionBudgetSpec) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 334 (Rust.withPanics ext))
-      (lsmpl.base 334)
-      (withLsCodeRoLoaded lsmpl
-        (statesIntoPbPlacedSpecXOfEnv M A lim F StatesIntoPbGuardedTightEnv)) :=
-  states_into_pb_cl_placed_blockProgram_ro_cro_ok_x_of_env hA henc_cl hdec_cl hmemcpy_raw
-    statesIntoPbExactEnv_imp_guardedTight
 
 end LibsignalBinary.Proofs.SpqrV1.States.IntoPb.TopPlacedTightBudgetR

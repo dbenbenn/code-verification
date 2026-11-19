@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeys
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeys -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
-import GeneratedLean.LibsignalSession -- shake: keep
-import LibsignalBinary.Proofs.Common.CallInv
+import ProofLib
 import LibsignalBinary.Proofs.TripleRatchet.ChainKey.NextChainKey
 import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Contract-Backed Callee Bridges on `tripleRatchetProgAtExt`
@@ -26,7 +26,7 @@ Layout-independent stack splits and `ChainKey::next_chain_key` verification (`Ne
 `tripleRatchetProgAtExt` under `extHookStack`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,28 +49,6 @@ theorem stackAt_rootStack_split_dropChainX (sp : BitVec 64) :
 abbrev hmacStackX : Nat := 2048 + extHookStack
 
 abbrev nextChainKeyStackX : Nat := nextChainKeyStack + extHookStack
-
-def nextChainKeySpecX (F : ShaCompress) (img : Obj.Image) : Spec ChainKeyGhost :=
-  Spec.inImage
-    { pre := fun (self, ck, ret) s =>
-        ⌜s.readReg64 .x0 = self ∧ s.readReg64 .x8 = ret⌝ ∗
-        (self ↦ₛ chainKeyBytes ck) ∗ memRegion ret 36 ∗ stackAt s.sp nextChainKeyStackX
-      post := fun (self, ck, ret) s0 sf =>
-        ⌜ck.nextChainKey F ≠ .error .panic ∧ sf.trace = s0.trace⌝ ∗
-        (self ↦ₛ chainKeyBytes ck) ∗
-        (match ck.nextChainKey F with
-          | .ok ck' => ret ↦ₛ chainKeyBytes ck'
-          | .error _ => ⌜False⌝) ∗
-        stackAt s0.sp nextChainKeyStackX
-      onPanic := fun (_, ck, _) s0 sf =>
-        ⌜ck.nextChainKey F = .error .panic ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
-def NextChainKeyOkX (img : Obj.Image) (F : ShaCompress)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr nextChainKeyName)
-    (nextChainKeySpecX F img)
 
 theorem stackAt_split_ge (sp : BitVec 64) {small big : Nat}
     (hle : small ≤ big) (hmax : big < 2 ^ 64) :
@@ -192,37 +170,6 @@ private theorem stackAt_nextChainKeyX_repack (sp : BitVec 64) (w0 w1 w2 w3 v29 v
     (sepConj_mono h32 (sepConj_mono hb0 (sepConj_mono_right
       (sepConj_mono hv29 (sepConj_mono hv30 (sepConj_mono hv20 hv19))))))))
 
-private theorem panic_at_add_overflow_trExt {b : BitVec 64}
-    {ext : String → Option (State → State)} {name : String} {off k : Nat}
-    (hfn : CryptoVerification.libsignalSessionCode.fnOff name = off)
-    (hk : off + k = num% (ls_off% "core::panicking::panic_const::panic_const_add_overflow")) :
-    (tripleRatchetProgAtExt b ext).externAt? ((tripleRatchetProgAtExt b ext).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  panic_at_panicSymbol hfn hk (by decide)
-    (ls_hook% "core::panicking::panic_const::panic_const_add_overflow")
-    (by simp [Rust.isPanicSymbol])
-
-private theorem hmac_ok_at_nextChainKey_x {img : Obj.Image} {F : ShaCompress}
-    {ext : String → Option (State → State)}
-    (hhmac : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr "libsignal_protocol::crypto::hmac_sha256")
-      ((hmacSpecWithStack F hmacStackX).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr nextChainKeyName +
-        bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key"))
-      ((hmacSpecWithStack F hmacStackX).inImage img) := by
-  have haddr :
-      (tripleRatchetProgAtExt img.base ext).fnAddr nextChainKeyName +
-        bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key") =
-      (tripleRatchetProgAtExt img.base ext).fnAddr "libsignal_protocol::crypto::hmac_sha256" := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-        (ls_lemma% fnOff "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key"),
-        (ls_lemma% fnOff "libsignal_protocol::crypto::hmac_sha256"),
-        BitVec.add_assoc]
-    rfl
-  rw [haddr]
-  exact hhmac
-
 private theorem pure_and_entails_pure_sep_of {P P' Q : Prop} {R : SepProp}
     (h : P → P' ∧ Q) :
     ⌜P⌝ ∗ R ⊢ ⌜P'⌝ ∗ (⌜Q⌝ ∗ R) := by
@@ -230,130 +177,5 @@ private theorem pure_and_entails_pure_sep_of {P P' Q : Prop} {R : SepProp}
   intro hp
   rcases h hp with ⟨hp', hq⟩
   exact Entails.pure_right hp' (Entails.pure_right hq (Entails.refl R))
-
-private theorem hmacX_ok_at_state {b : BitVec 64} {F : ShaCompress}
-    {ext : String → Option (State → State)} {img : Obj.Image} {addr : BitVec 64} {s : State}
-    (hhmac : subroutine_ok (tripleRatchetProgAtExt b ext) addr ((hmacSpecWithStack F hmacStackX).inImage img))
-    (hfrozen : img.FrozenLoaded s) (hsym : s.symtab = img.symtab) :
-    subroutine_ok (tripleRatchetProgAtExt b ext) addr
-      { pre := fun (out, ka, key, ia, inp) s' =>
-          ⌜s'.mem = s.mem ∧ s'.symtab = s.symtab ∧
-            s'.readReg64 .x0 = out ∧ s'.readReg64 .x1 = ka ∧ (s'.readReg64 .x2).toNat = key.length ∧
-            s'.readReg64 .x3 = ia ∧ (s'.readReg64 .x4).toNat = inp.length ∧ key.length = 32 ∧
-            inp.length = 1⌝ ∗
-          memRegion out 32 ∗ (ka ↦ₛ key) ∗ (ia ↦ₛ inp) ∗ stackAt s'.sp hmacStackX
-        post := (hmacSpecWithStack F hmacStackX).post } := by
-  refine subroutine_ok_mono hhmac (fun ⟨out, ka, key, ia, inp⟩ R s0 hm => ?_)
-    (fun _ _ _ _ hpost => hpost)
-  refine Satisfies.mono (sepConj_mono_left ?_) hm
-  dsimp only [Spec.inImage, hmacSpecWithStack]
-  exact pure_and_entails_pure_sep_of fun ⟨hmem, hsym', hrest⟩ =>
-    ⟨⟨frozenLoaded_of_mem_eq hmem hfrozen, hsym'.trans hsym⟩, hrest⟩
-
-set_option maxHeartbeats 800000 in
-theorem nextChainKey_ok_of_hmacX
-    {img : Obj.Image} {F : ShaCompress} {ext : String → Option (State → State)}
-    (hhmac : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr "libsignal_protocol::crypto::hmac_sha256")
-      ((hmacSpecWithStack F hmacStackX).inImage img)) :
-    NextChainKeyOkX img F ext := by
-  unfold NextChainKeyOkX
-  have hfn := (ls_lemma% fnOff "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key")
-  have hhmac_at := hmac_ok_at_nextChainKey_x hhmac
-  have hpan_ovf := panic_at_add_overflow_trExt (b := img.base) (ext := ext) hfn
-    (k := num% (ls_off% "core::panicking::panic_const::panic_const_add_overflow" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key")) (by simp only [arm64_norm])
-  apply subroutine_ok_of_sepWPp
-  intro ⟨self, ck, ret⟩ R s0 hpc hrun hpre hsp0
-  simp only [nextChainKeySpecX, Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hfrozen, hsym⟩, ⟨hx0, hx8⟩, hmem⟩
-  refine ⟨(self ↦ₛ chainKeyBytes ck) ∗ memRegion ret 36 ∗ stackAt s0.sp nextChainKeyStackX,
-    R, ?_, ?_⟩
-  · simpa [sepConj_assoc] using hmem
-  rw [pointsToBytes_chainKeyBytes_eq self ck, memRegion36_unpack ret, stackAt_nextChainKeyX s0.sp]
-  simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-  refine SepWPp.exists_elim fun d0 => SepWPp.exists_elim fun d1 =>
-    SepWPp.exists_elim fun d2 => SepWPp.exists_elim fun d3 =>
-    SepWPp.exists_elim fun d4 => SepWPp.exists_elim fun b0 =>
-    SepWPp.exists_elim fun v29 => SepWPp.exists_elim fun v30 =>
-    SepWPp.exists_elim fun v20 => SepWPp.exists_elim fun v19 => ?_
-  code_fetches CryptoVerification.libsignalSessionCode CryptoVerification.LibsignalSession.libsignalSessionBin
-    img.base (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key")) 116
-  generalize_entry hentry : (tripleRatchetProgAtExt img.base ext).fnAddr nextChainKeyName = entry
-  apply ProofLib.SepWPp.of_sepWP_frozen (mid := entry + bv% (ls_off% "libsignal_protocol::crypto::hmac_sha256" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key")) hfrozen hsym
-  wp_steps
-  examples_hide_fetches
-  apply SepWP.done (by simp_all) (by simp_all)
-  intro hfrozen1 hsym1
-  have hhmac1 := hmacX_ok_at_state hhmac_at hfrozen1 hsym1
-  have hlen_key : (keyToBytes32 ck.key).length = 32 := by simp [keyToBytes32]
-  have hlen_inp : ([2#8] : List (BitVec 8)).length = 1 := rfl
-  rw [pointsTo8_eq_pointsToBytes1 (s0.sp - 36#64) 2#8]
-  apply ProofLib.SepWPp.of_sepWP_frozen (mid := entry + bv% (56)) hfrozen1 hsym1
-  wp_call hhmac1 (s0.sp - 68#64, self, keyToBytes32 ck.key, s0.sp - 36#64, [2#8])
-  examples_hide_fetches
-  apply SepWP.done (by simp_all) (by simp_all)
-  intro hfrozen2 hsym2
-  by_cases hidx : ck.index = BitVec.allOnes 32
-  · have hidx_max : ck.index = 0xffffffff#32 := hidx
-    rw [hidx_max]
-    code_fetches CryptoVerification.libsignalSessionCode CryptoVerification.LibsignalSession.libsignalSessionBin
-      img.base (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key")) 116
-    subst hentry
-    generalize_entry hentry : (tripleRatchetProgAtExt img.base ext).fnAddr nextChainKeyName = entry
-    apply ProofLib.SepWPp.of_sepWP_frozen
-      (mid := entry + bv% (ls_off% "core::panicking::panic_const::panic_const_add_overflow" - ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key"))
-      hfrozen2 hsym2
-    wp_steps
-    examples_hide_fetches
-    apply SepWP.done (by simp_all) (by simp_all)
-    intro _ _
-    refine SepWPp.panic (by simp_all) (by simpa using hpan_ovf) fun hm' => ?_
-    simpa only [nextChainKeySpecX, Spec.inImage, sepConj_assoc] using
-      allowPanic_panicked ⟨nextChainKey_panic_of_eq F ck hidx,
-        by simp_all [Rust.panicked]⟩ hm'
-  · have hz2 : (ck.index + 1#32 == 0#32) = false := by
-      rw [beq_eq_false_iff_ne]
-      intro h; apply hidx; apply BitVec.eq_of_toNat_eq
-      have h1 := congrArg BitVec.toNat h
-      have h2 := ck.index.isLt
-      rw [BitVec.toNat_add] at h1
-      change (ck.index.toNat + 1) % 4294967296 = 0 at h1
-      change ck.index.toNat = 4294967295
-      omega
-    obtain ⟨w0, w1, w2, w3, _, hw32⟩ :=
-      exists_unpack64_of_length_32 (nck_length_hmacWith F (keyToBytes32 ck.key) [2#8])
-    have hw_sp := hw32 (s0.sp - 68#64)
-    have h60 : s0.sp - 68#64 + 8#64 = s0.sp - 60#64 := by bv_arith
-    have h52 : s0.sp - 68#64 + 16#64 = s0.sp - 52#64 := by bv_arith
-    have h44 : s0.sp - 68#64 + 24#64 = s0.sp - 44#64 := by bv_arith
-    rw [h60, h52, h44] at hw_sp
-    rw [hw_sp]
-    code_fetches CryptoVerification.libsignalSessionCode CryptoVerification.LibsignalSession.libsignalSessionBin
-      img.base (Rust.withPanics ext) hfn (num% (ls_off% "<libsignal_protocol::ratchet::keys::ChainKey>::next_chain_key")) 116
-    subst hentry
-    generalize_entry hentry : (tripleRatchetProgAtExt img.base ext).fnAddr nextChainKeyName = entry
-    apply ProofLib.SepWPp.of_sepWP_frozen (mid := s0.readReg64 Reg.lr) hfrozen2 hsym2
-    wp_steps
-    examples_hide_fetches
-    apply SepWP.done (by simp_all) (by simp_all)
-    intro _ _
-    refine SepWPp.done (by simp_all) (by simp_all) ⟨fun hm => ?_, rfl, by ck_cc_close⟩
-    refine Satisfies.mono (sepConj_mono_left ?_) hm
-    have hok := nextChainKey_ok_of_ne F ck hidx
-    rw [hok]
-    dsimp only
-    refine Entails.pure_right ⟨by nofun, by simp_all⟩ ?_
-    let ck' : ChainKey := ⟨bytesToKey32 (Ratchet.chainHmac F ck.key Ratchet.chainKeySeed), ck.index + 1⟩
-    have hkey_eq : keyToBytes32 ck'.key = hmacWith F (keyToBytes32 ck.key) [2#8] := by
-      show keyToBytes32 (bytesToKey32 (Ratchet.chainHmac F ck.key Ratchet.chainKeySeed)) = _
-      rw [← hmacWith_two_eq_chainStep]
-      exact keyToBytes32_bytesToKey32 _ (nck_length_hmacWith F _ _)
-    rw [pointsToBytes_chainKeyBytes_eq self ck, pointsToBytes_chainKeyBytes_eq ret ck',
-        hkey_eq, hw32 ret]
-    have hstk := stackAt_nextChainKeyX_repack s0.sp w0 w1 w2 w3
-      (s0.readReg64 Reg.x29) (s0.readReg64 Reg.lr) (s0.readReg64 Reg.x20) (s0.readReg64 Reg.x19) 2#8
-    refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono_right hstk))
-    have heq : ∀ {P Q : SepProp}, P = Q → (P ⊢ Q) := fun h => h ▸ Entails.refl _
-    exact heq (by dsimp only [ck', Reg.x19, Reg.x20, Reg.lr, Reg.x29]; ac_rfl)
 
 end CryptoVerification.Cli.LibsignalTripleRatchet.ExtCallees

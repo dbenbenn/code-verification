@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import Computational.Proofs.E2E.Dsl.PqxdhSim -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.PqxdhSimBranches
+import Computational.Proofs.ReductionDsl.Size
 
 /-!
 # Compositional Syntax-Size Bound for `pqxdh1KeyRealStepC`

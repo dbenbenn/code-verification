@@ -14,6 +14,10 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8Singl
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import VerifiedLibraries.RustStd.Proofs.Wave2.FromUtf8
 import ProofLib
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.Placed.Bridge
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Single-Block Read-Only Slice Stepping for `from_utf8` (`HooksDehook.FromUtf8SingleBlockRO`)

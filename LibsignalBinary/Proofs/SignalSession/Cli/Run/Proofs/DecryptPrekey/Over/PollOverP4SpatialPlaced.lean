@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4Spatial
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseStepsBPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4Spatial
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseStepsBPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridgePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathB
@@ -25,6 +25,15 @@ import LibsignalBinary.Proofs.E2E.RecordX.LengthP
 import LibsignalBinary.Proofs.E2E.V1.ReachSteps
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathAP4Cont
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP3ExitFold -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Placed CLI Poll Overwrite-Path (`Path C`) Stage P4 Spatial Bridges
@@ -33,7 +42,7 @@ Relocatable (`[LibsignalPlacement]`) counterpart of `Over/PollOverP4Spatial.lean
 `pathC_recPrev1Ok_of_tryDecrypt_placed` and `cliPollPrev1StoresKitsAtPlaced_entails_storesAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -129,7 +138,7 @@ theorem cliPollPrev1StoresKitsAtPlaced_entails_storesAt [LibsignalPlacement] {A 
 
 /-! ## 3. Placed GenP3 / Exit / Stage P4 Frame Definitions -/
 
-def overGenP3CallFrame_placed (A : RustAlloc) [LibsignalPlacement] (sp : BitVec 64)
+@[expose] def overGenP3CallFrame_placed (A : RustAlloc) [LibsignalPlacement] (sp : BitVec 64)
     (remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32)
     (rest : List (BitVec 8)) (rem loc : AddrGhost) (msgG : SignalMessageGhost)
     (msg : SignalMessage) : SepProp :=
@@ -147,7 +156,7 @@ def overGenP3CallFrame_placed (A : RustAlloc) [LibsignalPlacement] (sp : BitVec 
     FromRecordCallees.lsLogOff ∗
     memRegion (sp - BitVec.ofNat 64 rootStack) (rootStack - chainCloneStack)
 
-def overGenP3Pre_placed (A : RustAlloc) [LibsignalPlacement] (sp fp coroPtr ctxPtr
+@[expose] def overGenP3Pre_placed (A : RustAlloc) [LibsignalPlacement] (sp fp coroPtr ctxPtr
     remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32)
     (rest : List (BitVec 8)) (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
@@ -165,7 +174,7 @@ def overGenP3Pre_placed (A : RustAlloc) [LibsignalPlacement] (sp fp coroPtr ctxP
       msgG msg ∗
     genP3SpillAll sp
 
-def overGenP3S5PostFrame_placed (A : RustAlloc) [LibsignalPlacement]
+@[expose] def overGenP3S5PostFrame_placed (A : RustAlloc) [LibsignalPlacement]
     (sp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr : BitVec 64) (msgVer : BitVec 32)
     (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
     (coinsPost : SepProp) : SepProp :=
@@ -183,7 +192,7 @@ def overGenP3S5PostFrame_placed (A : RustAlloc) [LibsignalPlacement]
     memRegion (sp - BitVec.ofNat 64 rootStack) (rootStack - growOneSpeStack) ∗
     genP3S5SpillRem sp
 
-def overStageP3ErrPostPrevEmpty_placed [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
+@[expose] def overStageP3ErrPostPrevEmpty_placed [LibsignalPlacement] (A : RustAlloc) (s0 s : State)
     (coroPtr outPtr : BitVec 64) (e : SignalProtocolError) : SepProp :=
   (∃∗ errsCap : BitVec 64, ∃∗ errsPtr : BitVec 64, ∃∗ errsLen : BitVec 64,
     ((s.sp + 0x3c8#64) ↦₆₄ errsCap) ∗ ((s.sp + 0x3d0#64) ↦₆₄ errsPtr) ∗
@@ -197,7 +206,7 @@ def overStageP3ErrPostPrevEmpty_placed [LibsignalPlacement] (A : RustAlloc) (s0 
   memRegion (s.sp + 0x370#64) 36 ∗ memRegion (s.sp + 0x930#64) 48 ∗
   decryptPrekeySavedRegsAt (s.sp + 0xcd0#64) s0 ∗ A.pool ∗ stackAt s.sp growOneSpeStack
 
-def overPathAP4RemAtPlaced [LibsignalPlacement] (B : RunBudgets) {S : RunSem}
+@[expose] def overPathAP4RemAtPlaced [LibsignalPlacement] (B : RunBudgets) {S : RunSem}
     (y : DpPollGhostState (dpSlotPollKStatePlaced E2E.HooksE.A0 B S))
     (sp rngPtr whisperMsgPtr : BitVec 64) (whisperG : SignalMessageGhost)
     (msgVer pid kid spkId : BitVec 32)

@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsA -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.Advantage
 import Computational.Proofs.GameHop.Fel
 import Computational.Proofs.GameHop.StateSim
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -128,7 +128,7 @@ theorem toReal_any_range_le_sum {α : Type} (mx : ProbComp α) (n : Nat) (badAt 
 
 /-! ## Simulation cores and collision-abort hybrids -/
 
-noncomputable def runKeyIndSim (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] def runKeyIndSim (useRo : Bool) (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp (Bool × Bool × KeyIndState S) := do
   let secb ← $ᵗ Bool
   let initSt := KeyIndState.empty S secb
@@ -137,7 +137,7 @@ noncomputable def runKeyIndSim (useRo : Bool) (S : Setup) (P : Primitives)
   let (b', finalSt) ← (simulateQ impl A.run).run initSt
   return (secb, b', finalSt)
 
-noncomputable def runAuthSim (useRo checkAuth : Bool) (S : Setup) (P : Primitives)
+@[expose] def runAuthSim (useRo checkAuth : Bool) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthState S) := do
   let secb ← $ᵗ Bool
   let initSt := AuthState.empty S secb
@@ -146,17 +146,17 @@ noncomputable def runAuthSim (useRo checkAuth : Bool) (S : Setup) (P : Primitive
   let (b', finalSt) ← (simulateQ impl A.run).run initSt
   return (secb, b', finalSt)
 
-noncomputable def ecCollProbKeyInd (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] noncomputable def ecCollProbKeyInd (useRo : Bool) (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyIndSim useRo S P A >>= fun (_, _, finalSt) =>
     pure (hasEcPkCollisionKeyInd P finalSt)] {true}).toReal
 
-noncomputable def kemCollProbKeyInd (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] noncomputable def kemCollProbKeyInd (useRo : Bool) (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ℝ :=
   (𝒟[runKeyIndSim useRo S P A >>= fun (_, _, finalSt) =>
     pure (hasKemPkCollisionKeyInd finalSt)] {true}).toReal
 
-noncomputable def keyIndExpG0_1Core (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] def keyIndExpG0_1Core (useRo : Bool) (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := KeyIndState.empty S secb
@@ -176,11 +176,11 @@ noncomputable def keyIndExpG0_1Core (useRo : Bool) (S : Setup) (P : Primitives)
   else
     return (b' == secb)
 
-noncomputable def keyIndExpG0_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyIndExpG0_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool :=
   keyIndExpG0_1Core true S P A
 
-noncomputable def keyIndExpG1Core (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] def keyIndExpG1Core (useRo : Bool) (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := KeyIndState.empty S secb
@@ -200,7 +200,7 @@ noncomputable def keyIndExpG1Core (useRo : Bool) (S : Setup) (P : Primitives)
   else
     return (b' == secb)
 
-noncomputable def keyIndExpG2_1Core (useRo : Bool) (S : Setup) (P : Primitives)
+@[expose] def keyIndExpG2_1Core (useRo : Bool) (S : Setup) (P : Primitives)
     (A : KeyIndAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := KeyIndState.empty S secb
@@ -221,14 +221,14 @@ noncomputable def keyIndExpG2_1Core (useRo : Bool) (S : Setup) (P : Primitives)
   else
     return (b' == secb)
 
-noncomputable def keyIndExpG2_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
+@[expose] def keyIndExpG2_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
     ProbComp Bool :=
   keyIndExpG2_1Core true S P A
 
-noncomputable def keyIndAdvG0_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyIndAdvG0_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyIndExpG0_1 S P A].boolBias).toReal
 
-noncomputable def keyIndAdvG2_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
+@[expose] noncomputable def keyIndAdvG2_1 (S : Setup) (P : Primitives) (A : KeyIndAdversary S) : ℝ :=
   (𝒟[keyIndExpG2_1 S P A].boolBias).toReal
 
 /-- Bounds the `KeyInd` / `HndlKeyInd` EC-collision hop (`G0 → G0_1`) by `ecCollProbKeyInd`. -/
@@ -311,7 +311,7 @@ theorem keyInd_hop_G2_G2_1_le_prob (S : Setup) (P : Primitives) (A : KeyIndAdver
 /-! ## Supermartingale expectation -/
 
 /-- Expectation of an `ℝ≥0∞` valuation over a `ProbComp α` computation. -/
-noncomputable def probExpect {α : Type} (mx : ProbComp α) (v : α → ℝ≥0∞) : ℝ≥0∞ :=
+@[expose] noncomputable def probExpect {α : Type} (mx : ProbComp α) (v : α → ℝ≥0∞) : ℝ≥0∞ :=
   letI : MeasurableSpace α := ⊤
   ∫⁻ x, v x ∂𝒟[mx]
 
@@ -384,7 +384,7 @@ theorem toReal_bind_bool_mono_of_support {α : Type} (mx : ProbComp α) (p q : �
   exact (ENNReal.toReal_le_toReal (measure_ne_top _ _) (measure_ne_top _ _)).mpr
     (evalDist_bind_bool_mono_of_support mx p q h)
 
-def PreservesAt {St B R : Type} (proj : St → B) (st : St) (m : StateT St ProbComp R) : Prop :=
+@[expose] def PreservesAt {St B R : Type} (proj : St → B) (st : St) (m : StateT St ProbComp R) : Prop :=
   ∀ x ∈ support (m.run st), proj x.2 = proj st
 
 theorem PreservesAt.pure {St B R : Type} (proj : St → B) (st : St) (a : R) :
@@ -450,7 +450,7 @@ theorem PreservesAt.runKeyIndInitiate {S : Setup} {B : Type}
     | (with_reducible apply PreservesAt.set_bind; exact h_proj _ _)
     | (split; try simp only [pure_bind]; try dsimp only))
 
-def spkSlotFlatIdx (S : Setup) (p : Nat × Nat) : Nat :=
+@[expose] def spkSlotFlatIdx (S : Setup) (p : Nat × Nat) : Nat :=
   p.1 * S.N_recv + p.2
 
 theorem spkSlotFlatIdx_lt (S : Setup) {u j : Nat} (hu : u < S.N_id) (hj : j < S.N_recv) :
@@ -480,10 +480,10 @@ theorem spkSlotFlatIdx_inj (S : Setup) {k1 k2 : Nat × Nat}
   subst hj
   rfl
 
-def allHonestKemPks (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) : List Bytes :=
+@[expose] def allHonestKemPks (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) : List Bytes :=
   spkBundles.map (fun (_, b) => b.pqspkPk)
 
-def ValidSpkBundlesKem (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) : Prop :=
+@[expose] def ValidSpkBundlesKem (S : Setup) (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) : Prop :=
   (∀ e ∈ spkBundles, e.1.1 < S.N_id ∧ e.1.2 < S.N_recv) ∧
   (spkBundles.map (fun e => spkSlotFlatIdx S e.1)).Nodup
 
@@ -514,7 +514,7 @@ theorem validSpkBundlesKem_cons (S : Setup) (u : Fin S.N_id) (j : Fin S.N_recv)
     rw [hFresh] at hany
     cases hany
 
-def hasKemBundlePairCollAt (S : Setup)
+@[expose] def hasKemBundlePairCollAt (S : Setup)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) (b1 b2 : Nat) : Bool :=
   decide (b2 < b1) &&
   match spkBundles.find? (fun e => spkSlotFlatIdx S e.1 == b1),
@@ -597,7 +597,7 @@ theorem hasDuplicateBytes_allHonestKemPks_imp_any_double_range (S : Setup)
     unfold hasKemBundlePairCollAt
     simp [hgt, hf1, hf2, hpk]
 
-noncomputable def kemPairPotential (S : Setup)
+@[expose] noncomputable def kemPairPotential (S : Setup)
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry)) (b1 b2 : Nat) : ℝ≥0∞ :=
   if b2 < b1 then
     match spkBundles.find? (fun e => spkSlotFlatIdx S e.1 == b1),

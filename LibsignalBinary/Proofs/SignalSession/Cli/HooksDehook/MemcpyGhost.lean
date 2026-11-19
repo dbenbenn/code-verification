@@ -11,11 +11,15 @@ module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
 import ProofLib.Process.OracleEq
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Ghost `memcpy` Hook & Complete `HookOk` Suite (`HooksDehook.MemcpyGhost`)
@@ -155,11 +159,6 @@ noncomputable abbrev memcpyGhostHookPure20
     (keep : BitVec 64 → Bool) (P_real : Program) (mmpl : Obj.MultiPlacement) : State → State :=
   memcpyGhostHook keep P_real (pureWordsProg (mmpl.base 20) memcpySymWords) (mmpl.base 20)
 
-/-- Specialization of `memcpyGhostHookK` to `P_sub = pureWordsProg (mmpl.base 20) memcpySymWords`. -/
-noncomputable abbrev memcpyGhostHookPure20K
-    (keep : BitVec 64 → Bool) (P_real : Program) (mmpl : Obj.MultiPlacement) : State → State :=
-  memcpyGhostHookK keep P_real (pureWordsProg (mmpl.base 20) memcpySymWords) (mmpl.base 20)
-
 /-- Minimal placement-generic `keep` predicate retaining only the 396-byte `memcpy` block (`blk20`). -/
 @[expose] def keepMemcpyBlk20 (mmpl : Obj.MultiPlacement) (a : BitVec 64) : Bool :=
   decide ((a - mmpl.base 20).toNat < 396)
@@ -181,24 +180,6 @@ theorem keepCoversBlk20_keepMemcpyBlk20 (mmpl : Obj.MultiPlacement) :
     bv_omega
   rw [hsub, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
   exact decide_eq_true hoff
-
-theorem keepCoversBlk20_keepMemOps (mmpl : Obj.MultiPlacement) :
-    KeepCoversBlk20 (keepMemOps mmpl) mmpl := by
-  intro off hoff
-  unfold keepMemOps
-  rw [keepCoversBlk20_keepMemcpyBlk20 mmpl off hoff, Bool.true_or]
-
-theorem keepCoversBlk20_of_inRegion
-    {keep : BitVec 64 → Bool} {mmpl : Obj.MultiPlacement}
-    (hin : ∀ a : BitVec 64, InRegion (mmpl.base 20) 396 a → keep a = true) :
-    KeepCoversBlk20 keep mmpl := by
-  intro off hoff
-  apply hin
-  unfold InRegion
-  have hsub : mmpl.base 20 + BitVec.ofNat 64 off - mmpl.base 20 = BitVec.ofNat 64 off := by
-    bv_omega
-  rw [hsub, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  exact hoff
 
 theorem keepCoversBlk20_of_range
     {keep : BitVec 64 → Bool} {mmpl : Obj.MultiPlacement} (lo hi : Nat)
@@ -341,11 +322,6 @@ theorem memcpyGhostHook_fsT
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64) :
     HookFsTraced IsFsC (memcpyGhostHook keep P_real P_sub entryTarget) :=
   linkedCallHook_fsT keep P_real P_sub entryTarget masterMemcpySpec hookMemcpy
-
-theorem memcpyGhostHookK_fsT
-    (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entryTarget : BitVec 64) :
-    HookFsTraced IsFsC (memcpyGhostHookK keep P_real P_sub entryTarget) :=
-  linkedCallHook_fsT keep P_real P_sub entryTarget (memcpySpecK keep masterMemcpySpec) hookMemcpy
 
 private theorem perm_eq_of_stripExecOutside_keepsFrozen
     {keep : BitVec 64 → Bool} {m0 mf : Memory}
@@ -1095,41 +1071,5 @@ theorem memcpyGhostHook_any_memcpySpecK_ok {α : Type} {spec : Spec α}
 end GenericHookOkSuite
 
 /-! ## 5. `mallocngBlockProg mmpl 20` & `pureWordsProg` Specializations -/
-
-theorem memcpyGhostHookBlk20_master_ok
-    {keep : BitVec 64 → Bool} {P_real : Program} (mmpl : Obj.MultiPlacement)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none) :
-    HookOk (memcpyGhostHookBlk20 keep P_real mmpl) masterMemcpySpec :=
-  memcpyGhostHook_master_ok hsvc_real rfl hreal_no
-    (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg20_hasWords mmpl Syscall.standard)
-
-theorem memcpyGhostHookBlk20K_masterK_ok
-    {keep : BitVec 64 → Bool} {P_real : Program} (mmpl : Obj.MultiPlacement)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none) :
-    HookOk (memcpyGhostHookBlk20K keep P_real mmpl) (memcpySpecK keep masterMemcpySpec) :=
-  memcpyGhostHookK_masterK_ok hsvc_real rfl hreal_no
-    (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg20_hasWords mmpl Syscall.standard)
-
-theorem memcpyGhostHookPure20_master_ok
-    {keep : BitVec 64 → Bool} {P_real : Program} (mmpl : Obj.MultiPlacement)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none) :
-    HookOk (memcpyGhostHookPure20 keep P_real mmpl) masterMemcpySpec :=
-  memcpyGhostHook_master_ok hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none (mmpl.base 20) memcpySymWords)
-    (pureWordsProg_memcpy_hasWords (mmpl.base 20))
-
-theorem memcpyGhostHookPure20K_masterK_ok
-    {keep : BitVec 64 → Bool} {P_real : Program} (mmpl : Obj.MultiPlacement)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none) :
-    HookOk (memcpyGhostHookPure20K keep P_real mmpl) (memcpySpecK keep masterMemcpySpec) :=
-  memcpyGhostHookK_masterK_ok hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none (mmpl.base 20) memcpySymWords)
-    (pureWordsProg_memcpy_hasWords (mmpl.base 20))
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhost

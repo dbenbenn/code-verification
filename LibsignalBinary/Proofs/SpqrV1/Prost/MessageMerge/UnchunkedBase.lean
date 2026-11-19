@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedRepr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedRepr -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefs
 import ProofLib.SepLogic.WPp
 
@@ -23,7 +23,7 @@ contracts bridged to `ChunkedMerge.unchunked{Ct1Sent,EkSentCt1Received}MergeSpec
 `Unchunked.Ct1Sent::merge` (`0x51e9c`, Block `312`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageMerge
 
@@ -48,8 +48,6 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-attribute [local simp, local arm64_norm] unchunkedCt1SentMerge_fnOff unchunkedEkSentCt1ReceivedMerge_fnOff
-
 @[local simp, local arm64_norm]
 theorem bv64_sub_zero_u (x : BitVec 64) : x - 0#64 = x := BitVec.sub_zero x
 
@@ -256,7 +254,7 @@ theorem tag_gt_two_branch {tag : Nat} (hgt : 2 < tag) (htag_lt : tag < 2 ^ 29) :
   · rw [sf_truncate32_ofNat64]; exact h2
 
 /-- High callee-saved registers `X24..X28` preserved (since `X19..X23` are saved on the stack). -/
-def HighCalleeSaved24 (s0 s : State) : Prop :=
+@[expose] def HighCalleeSaved24 (s0 s : State) : Prop :=
   s.readReg64 (Reg.gpr 24#5) = s0.readReg64 (Reg.gpr 24#5) ∧
     s.readReg64 (Reg.gpr 25#5) = s0.readReg64 (Reg.gpr 25#5) ∧
     s.readReg64 (Reg.gpr 26#5) = s0.readReg64 (Reg.gpr 26#5) ∧
@@ -267,7 +265,7 @@ def HighCalleeSaved24 (s0 s : State) : Prop :=
 /-! ## 3. Capacity-Bounded Predicates for `Option<ProtoAuthenticator>`, `Ct1Sent`, `EkSentCt1Received` -/
 
 /-- Capacity-bounded `Vec<u8>` at `a` (`24` bytes) with `BytesMergeCapOk cap bsLen`. -/
-def vecU8CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8CapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) (bs : List (BitVec 8)) : SepProp :=
   ∃∗ cap : BitVec 64, ∃∗ ptr : BitVec 64,
     ⌜BytesMergeCapOk cap bsLen⌝ ∗ vecU8At A a cap ptr bs
 
@@ -281,7 +279,7 @@ theorem vecU8CapAt_entails_vecU8_u (A : RustAlloc) (a : BitVec 64) (n : Nat) (bs
   Auth.vecU8CapAt_entails_vecU8 A a n bs
 
 /-- Capacity-bounded `Option<ProtoAuthenticator>` at `a` (`48` bytes). -/
-def optProtoAuthenticatorCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
+@[expose] def optProtoAuthenticatorCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat) :
     Option ProtoAuthenticator → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 40
   | some auth => authenticatorPBCapAt A a bsLen auth
@@ -363,7 +361,7 @@ theorem cap_add_one_ne_zero_of_lt63 {cap : BitVec 64} (h : cap.toNat < 2 ^ 63) :
   exact ⟨beq_eq_false_iff_ne.mpr hne, bne_iff_ne.mpr hne⟩
 
 /-- Capacity-bounded `spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent` at `a` (`128` bytes). -/
-def protoUnchunkedCt1SentCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def protoUnchunkedCt1SentCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (pb : V1State.Unchunked.Ct1Sent) : SepProp :=
   vecU8CapAt A a bsLen pb.hdr ∗
     vecU8CapAt A (a + 0x18#64) bsLen pb.es ∗
@@ -394,7 +392,7 @@ theorem protoUnchunkedCt1SentAt_entails_exists (A : RustAlloc) (a : BitVec 64)
   Entails.sepExists_intro m
 
 /-- Capacity-bounded `spqr::proto::pq_ratchet::v1_state::unchunked::EkSentCt1Received` at `a` (`104` bytes). -/
-def protoUnchunkedEkSentCt1ReceivedCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
+@[expose] def protoUnchunkedEkSentCt1ReceivedCapAt (A : RustAlloc) (a : BitVec 64) (bsLen : Nat)
     (pb : V1State.Unchunked.EkSentCt1Received) : SepProp :=
   vecU8CapAt A a bsLen pb.dk ∗
     vecU8CapAt A (a + 0x18#64) bsLen pb.ct1 ∗
@@ -425,7 +423,7 @@ theorem protoUnchunkedEkSentCt1ReceivedAt_entails_exists (A : RustAlloc) (a : Bi
 
 /-- Exact 112-byte-frame contract of `prost::encoding::message::merge::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent, &mut &[u8]>`
 (`0x51e9c`, 181 instructions) at outer recursion depth `98`. -/
-def unchunkedCt1SentMergeOwnSpec (A : RustAlloc) : Spec UnchunkedCt1SentMergeGhost where
+@[expose] def unchunkedCt1SentMergeOwnSpec (A : RustAlloc) : Spec UnchunkedCt1SentMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧
@@ -450,7 +448,7 @@ def unchunkedCt1SentMergeOwnSpec (A : RustAlloc) : Spec UnchunkedCt1SentMergeGho
 
 /-- Exact 112-byte-frame contract of `prost::encoding::message::merge::<spqr::proto::pq_ratchet::v1_state::unchunked::EkSentCt1Received, &mut &[u8]>`
 (`0x51c00`, 167 instructions) at outer recursion depth `98`. -/
-def unchunkedEkSentCt1ReceivedMergeOwnSpec (A : RustAlloc) : Spec UnchunkedEkSentCt1ReceivedMergeGhost where
+@[expose] def unchunkedEkSentCt1ReceivedMergeOwnSpec (A : RustAlloc) : Spec UnchunkedEkSentCt1ReceivedMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.msgPtr ∧
@@ -499,74 +497,6 @@ private theorem panic_anyHeap_frame_drop {s0 sf : State} {R_extra R : SepProp}
   have hq' : sf.mem ⊨ ((⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R_extra) ∗ R := by
     rwa [sepConj_assoc]
   exact allowPanic_frame (allocFailedIn_trans rfl) hq'
-
-theorem subroutine_ok_unchunkedCt1SentMerge_of_own {prog : Program} {entry : BitVec 64}
-    {A : RustAlloc} {img : Obj.Image} (h : subroutine_ok prog entry ((unchunkedCt1SentMergeOwnSpec A).inImage img)) :
-    subroutine_ok prog entry ((unchunkedCt1SentMergeSpec A).inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  let R_extra : SepProp := memRegion (s0.sp - BitVec.ofNat 64 unchunkedMergeStack) 48
-  have hpre_eq : ((unchunkedCt1SentMergeSpec A).inImage img).pre x s0 ∗ R =
-      ((unchunkedCt1SentMergeOwnSpec A).inImage img).pre x s0 ∗ (R_extra ∗ R) := by
-    dsimp only [Spec.inImage, unchunkedCt1SentMergeSpec, unchunkedCt1SentMergeOwnSpec, R_extra,
-      unchunkedCt1SentPBCapAt, optAuthenticatorPBCapAt, protoUnchunkedCt1SentCapAt,
-      vecU8CapAt, optProtoAuthenticatorCapAt]
-    rw [stackAt_unchunkedMergeStack_eq_own s0.sp]
-    ac_rfl
-  rw [hpre_eq] at hpre
-  refine h.mono_outcome x (R_extra ∗ R) s0 hpc hrun hpre hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨_, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    have hpost_eq : ((unchunkedCt1SentMergeSpec A).inImage img).post x s0 sf ∗ R =
-        ((unchunkedCt1SentMergeOwnSpec A).inImage img).post x s0 sf ∗ (R_extra ∗ R) := by
-      dsimp only [Spec.inImage, unchunkedCt1SentMergeSpec, unchunkedCt1SentMergeOwnSpec, R_extra,
-        unchunkedCt1SentPBCapAt, optAuthenticatorPBCapAt, protoUnchunkedCt1SentCapAt,
-        vecU8CapAt, optProtoAuthenticatorCapAt, ct1SentPBAt, unchunked5At,
-        rustBytesVecAt, optAuthenticatorPBAt, protoUnchunkedCt1SentAt, optProtoAuthenticatorAt]
-      rw [stackAt_unchunkedMergeStack_eq_own s0.sp]
-      ac_rfl
-    rw [hpost_eq]
-    exact hq
-  · exact Or.inr (Or.inl ⟨hpan, panic_anyHeap_frame_drop hq⟩)
-  · dsimp only [Spec.inImage, unchunkedCt1SentMergeOwnSpec] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-  · dsimp only [Spec.inImage, unchunkedCt1SentMergeOwnSpec] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-
-theorem subroutine_ok_unchunkedEkSentCt1ReceivedMerge_of_own {prog : Program} {entry : BitVec 64}
-    {A : RustAlloc} {img : Obj.Image} (h : subroutine_ok prog entry ((unchunkedEkSentCt1ReceivedMergeOwnSpec A).inImage img)) :
-    subroutine_ok prog entry ((unchunkedEkSentCt1ReceivedMergeSpec A).inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  let R_extra : SepProp := memRegion (s0.sp - BitVec.ofNat 64 unchunkedMergeStack) 48
-  have hpre_eq : ((unchunkedEkSentCt1ReceivedMergeSpec A).inImage img).pre x s0 ∗ R =
-      ((unchunkedEkSentCt1ReceivedMergeOwnSpec A).inImage img).pre x s0 ∗ (R_extra ∗ R) := by
-    dsimp only [Spec.inImage, unchunkedEkSentCt1ReceivedMergeSpec, unchunkedEkSentCt1ReceivedMergeOwnSpec, R_extra,
-      unchunkedEkSentCt1ReceivedPBCapAt, optAuthenticatorPBCapAt, protoUnchunkedEkSentCt1ReceivedCapAt,
-      vecU8CapAt, optProtoAuthenticatorCapAt]
-    rw [stackAt_unchunkedMergeStack_eq_own s0.sp]
-    ac_rfl
-  rw [hpre_eq] at hpre
-  refine h.mono_outcome x (R_extra ∗ R) s0 hpc hrun hpre hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨_, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    have hpost_eq : ((unchunkedEkSentCt1ReceivedMergeSpec A).inImage img).post x s0 sf ∗ R =
-        ((unchunkedEkSentCt1ReceivedMergeOwnSpec A).inImage img).post x s0 sf ∗ (R_extra ∗ R) := by
-      dsimp only [Spec.inImage, unchunkedEkSentCt1ReceivedMergeSpec, unchunkedEkSentCt1ReceivedMergeOwnSpec, R_extra,
-        unchunkedEkSentCt1ReceivedPBCapAt, optAuthenticatorPBCapAt, protoUnchunkedEkSentCt1ReceivedCapAt,
-        vecU8CapAt, optProtoAuthenticatorCapAt, ekSentCt1ReceivedPBAt, unchunked4At,
-        rustBytesVecAt, optAuthenticatorPBAt, protoUnchunkedEkSentCt1ReceivedAt, optProtoAuthenticatorAt]
-      rw [stackAt_unchunkedMergeStack_eq_own s0.sp]
-      ac_rfl
-    rw [hpost_eq]
-    exact hq
-  · exact Or.inr (Or.inl ⟨hpan, panic_anyHeap_frame_drop hq⟩)
-  · dsimp only [Spec.inImage, unchunkedEkSentCt1ReceivedMergeOwnSpec] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
-  · dsimp only [Spec.inImage, unchunkedEkSentCt1ReceivedMergeOwnSpec] at hq
-    rw [satisfies_pure_sepConj] at hq
-    exact False.elim hq.1
 
 theorem subroutine_ok_unchunkedCt1SentMerge_of_own_placed [LibsignalPlacement] {prog : Program} {entry : BitVec 64}
     {A : RustAlloc} (h : subroutine_ok prog entry (withLsCodeRoLoaded lsmpl (unchunkedCt1SentMergeOwnSpec A))) :

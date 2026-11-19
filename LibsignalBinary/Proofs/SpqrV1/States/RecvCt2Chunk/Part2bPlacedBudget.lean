@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import Lean -- shake: keep
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 meta import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
@@ -30,7 +33,7 @@ Relocatable `[LibsignalPlacement]` `RustCliAllocBudget` proof of `ct1.reserve(12
 and `ct2` append, `sliceConcat3`, `libcrux_hmac`, and `mac_data` deallocation (`+684 .. +860`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -47,14 +50,15 @@ open CryptoVerification.LibsignalSpqrV1 (
   Authenticator Bytes LibcruxHmacCall MlKem spqrAuthApi spqrHkdfWith spqrPolyApi
 )
 open CryptoVerification.LibsignalTripleRatchet (
-  DoReserveCall LibsignalCodeRoLoaded doReserveStackX extHookStack reserveCap
+  DoReserveCall LibsignalCodeRoLoaded doReserveStackX extHookStack reserveCap withLsCodeRoLoaded
 )
 open CryptoVerification.RustHeap (vecU8 vecU8At)
-open CryptoVerification.SpqrV1.Alloc (SliceConcat3Ghost)
+open CryptoVerification.SpqrV1.Alloc (SliceConcat3Ghost spqr_hook_ok_of_mem)
 open CryptoVerification.SpqrV1.Auth (
   AuthenticatorGhost authenticatorPinAt pointsTo64_rev64_eq_toBEBytes toBEBytes_8_length
 )
 open CryptoVerification.SpqrV1.ChainProofs (bytesAt_false bytesAt_true)
+open CryptoVerification.SpqrV1.States.Leaves (subroutine_ok_withLsCodeRoLoaded_of_plain)
 open CryptoVerification.SpqrV1.States.RecvCt2Chunk (
   RecvCt2ChunkGhost bytes_rem_entails_ct2DeallocAt bytes_rem_entails_memRegion ct2DeallocAt
   exists_unpack64_of_length_128 fold_sp_1248_24_24 le_of_not_ule_sub_960
@@ -70,21 +74,75 @@ open LibsignalBinary.Heap (
   RustCliAllocBudget RustLayoutOk fitsEvents_append rustCliDeallocBudgetExternSpecWithStack
   rustDeallocEvents
 )
-open LibsignalBinary.Heap.SpecBudget (libcruxHmacBudgetSpec libcruxHmacSha256Events)
+open LibsignalBinary.Heap.SpecBudget (LibcruxHmacEnv libcruxHmacBudgetSpec libcruxHmacSha256Events)
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (
+  LsRetAddr624 lsLen lsRetAddr624_blockPlacement_base_add
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (
+  extract_withLsRet intro_withLsRet withLsRet
+)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudget (
   SliceConcat3Env fitsEnv_sliceConcat3_iff sliceConcat3Events sliceConcat3Spec
 )
 open LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget (doReserveSpecX)
-open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudget (libcruxHmacSafeBudgetSpec)
+open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudget (
+  fitsEnv_libcruxHmacEnv_of_fitsEvents libcruxHmacSafeBudgetSpec
+)
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget (
   RecvCt2PlacedAlloc RecvCt2ReserveCt1Env ctLabelSym fitsEnv_doReserve_of_reserveCt1
-  freeOnlyEvs_rustDealloc1 libcrux_hmac_safe_placed_lscro recvCt2HmacEvents
+  freeOnlyEvs_rustDealloc1 recvCt2HmacEvents
   recvCt2PlacedPostQOfPrePostEnv recvCt2PlacedPostQp recvCt2ReserveCt1Env_nil
   recvCt2ReserveCt1Env_of_doReserve sepWPp_of_sepWP_lscro
 )
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (
   DoReserveEnv doReserveEvents doReserveSpecWithStack
 )
+
+@[local wp_norm]
+private theorem lsRetAddr624_blkPl_350 [LibsignalPlacement] (off : BitVec 64)
+    (ho : off.toNat < lsLen 350 := by decide) :
+    LsRetAddr624 ((blkPl_350).base + off) :=
+  lsRetAddr624_blockPlacement_base_add 350 off (by decide) ho
+
+private theorem libcrux_hmac_safe_withLsRet_placed_lscro [LibsignalPlacement] {F : ShaCompress}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {ext : String → Option (State → State)}
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
+    subroutine_ok (lsProg_350 (Rust.withPanics ext)) (lsρ spqrLibcruxHmacSym')
+      (withLsCodeRoLoaded lsmpl (withLsRet (libcruxHmacSafeBudgetSpec F M A lim))) := by
+  refine subroutine_ok_withLsCodeRoLoaded_of_plain ?_
+  have hhok := spqr_hook_ok_of_mem (prog := lsProg_350 (Rust.withPanics ext)) hhmac
+  refine subroutine_ok_outcome_intro fun (x, st) R s0 hpc hrun hpre hsp => ?_
+  obtain ⟨hlr, hpre⟩ := extract_withLsRet hpre
+  dsimp only [libcruxHmacSafeBudgetSpec] at hpre
+  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
+  rcases hpre with ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6, hk_lt, hd_lt, hfit⟩, hmem⟩
+  have hfit_env : FitsEnv M lim st (LibcruxHmacEnv x) :=
+    fitsEnv_libcruxHmacEnv_of_fitsEvents x hk_lt hd_lt hfit
+  have hpre' : s0.mem ⊨ (withLsRet (libcruxHmacBudgetSpec F M A lim)).pre (x, st) s0 ∗ R := by
+    refine intro_withLsRet hlr ?_
+    dsimp only [libcruxHmacBudgetSpec]
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨⟨hx8, hx0, hx1, hx2, hx3, hx4, hx5, hx6, hfit_env⟩, hmem⟩
+  refine (hhok.to_outcome (x, st) R s0 hpc hrun hpre' hsp).mono_outcome fun sf hout => ?_
+  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
+  · refine Or.inl ⟨hret, hcc, ?_⟩
+    dsimp only [withLsRet, libcruxHmacBudgetSpec, libcruxHmacSafeBudgetSpec] at hpost ⊢
+    rw [sepExists_sepConj_left, satisfies_sepExists] at hpost
+    rcases hpost with ⟨evs, hpost⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
+    rcases hpost with ⟨⟨_, _, htr, hevs⟩, hmem'⟩
+    unfold LibcruxHmacEnv at hevs
+    simp only [hk_lt, hd_lt, and_self, ↓reduceIte] at hevs
+    rw [hevs] at hmem'
+    exact ⟨htr, hmem'⟩
+  · refine Or.inr (Or.inl ⟨hpan, ?_⟩)
+    dsimp only [withLsRet, libcruxHmacBudgetSpec] at hpost
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
+    rcases hpost with ⟨⟨hk_ge | hd_ge, _⟩, _⟩ <;> omega
+  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hpost⟩))
+  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hpost⟩))
 
 private theorem ctLabel_length : Authenticator.ctLabel.length = 35 := rfl
 private theorem replicate_32_zero_length : (List.replicate 32 0#8).length = 32 := rfl
@@ -380,7 +438,8 @@ theorem recv_ct2_chunk_append_hmac_placed_wpp [LibsignalPlacement] {K : MlKem} {
     {PreEnv PostEnv : RecvCt2ChunkGhost F → List AllocEvent → Prop}
     {ext : String → Option (State → State)}
     (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacBudgetSpec F M A lim))
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
+      (withLsRet (libcruxHmacBudgetSpec F M A lim)))
     (x : RecvCt2ChunkGhost F)
     (st0 σ : M.σ)
     (ct2Full : Bytes)
@@ -477,8 +536,8 @@ theorem recv_ct2_chunk_append_hmac_placed_wpp [LibsignalPlacement] {K : MlKem} {
       (recvCt2PlacedPostQp K x s0 R) := by
   have h_concat3 := hA.sliceConcat3_lscro
   dsimp only [sliceConcat3Spec] at h_concat3
-  have h_hmac := libcrux_hmac_safe_placed_lscro hhmac
-  dsimp only [libcruxHmacSafeBudgetSpec] at h_hmac
+  have h_hmac := libcrux_hmac_safe_withLsRet_placed_lscro hhmac
+  dsimp only [withLsRet, libcruxHmacSafeBudgetSpec] at h_hmac
   have h_dealloc := hA.dealloc_lscro
   dsimp only [LibsignalBinary.Heap.IfaceBudgetLemmas.rustCliDeallocBudgetExternSpecWithStack,
     rustCliDeallocBudgetExternSpecWithStack] at h_dealloc

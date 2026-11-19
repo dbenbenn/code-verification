@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Shared Stack-Frame, Locals, and State Helpers for `main`
@@ -20,7 +21,7 @@ collapsing sub-regions in the `0x480`-byte `locals` area, `mainSaved` callee-sav
 `stackAt` splitting and disjointness bounds, and `InMain` alignment/step preservation.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -35,17 +36,17 @@ open CryptoVerification.SignalSession CryptoVerification.SignalSession.Cli
 /-! ## 1. `localsFrom` / `locals` / `cell` Helpers -/
 
 /-- Upper offset bounding the leading gap of `localsFrom fsp off cs`. -/
-def localsBound : List (Nat × Nat × SepProp) → Nat
+@[expose] def localsBound : List (Nat × Nat × SepProp) → Nat
   | [] => 0x480
   | (o, _, _) :: _ => o
 
 /-- End offset after laying out `cs` starting from `off`. -/
-def localsEnd (off : Nat) : List (Nat × Nat × SepProp) → Nat
+@[expose] def localsEnd (off : Nat) : List (Nat × Nat × SepProp) → Nat
   | [] => off
   | (o, n, _) :: cs => localsEnd (o + n) cs
 
 /-- Spatial context surrounding a focused entry `(o, n, _)` inside `localsFrom fsp off (cs₁ ++ (o, n, P) :: cs₂)`. -/
-def localsCtx (fsp : BitVec 64) :
+@[expose] def localsCtx (fsp : BitVec 64) :
     Nat → List (Nat × Nat × SepProp) → Nat → Nat → List (Nat × Nat × SepProp) → SepProp
   | off, [], o, n, cs₂ =>
     memRegion (fsp + BitVec.ofNat 64 off) (o - off) ∗ localsFrom fsp (o + n) cs₂
@@ -54,7 +55,7 @@ def localsCtx (fsp : BitVec 64) :
       localsCtx fsp (o₁ + n₁) cs₁ o n cs₂
 
 /-- Well-formedness of an ordered list of local pieces starting from `off`. -/
-def LocalsWF : Nat → List (Nat × Nat × SepProp) → Prop
+@[expose] def LocalsWF : Nat → List (Nat × Nat × SepProp) → Prop
   | off, [] => off ≤ 0x480
   | off, (o, n, _) :: cs => off ≤ o ∧ LocalsWF (o + n) cs
 
@@ -511,73 +512,5 @@ theorem retMem_entails_post (A : RustAlloc) (s0 : State) {stk : Nat}
   exact sepConj_mono_left (mainFrame_merge hstk hstk64)
 
 /-! ## 4. `InMain` Alignment and Step Helpers -/
-
-/-- When `s0.spAligned = true`, every state `s` in `InMain` has `s.spAligned = true`. -/
-theorem InMain.spAligned_of_s0 {img : Obj.Image} {ext : String → Option (State → State)}
-    {s0 s : State} {k : Nat}
-    (hs : InMain img ext s0 s k) (hsp0 : s0.spAligned = true) :
-    s.spAligned = true := by
-  simp only [State.spAligned, hs.sp, mainFrameSize]
-  exact ProofLib.spAligned_sub s0.sp 0x4e0#64 hsp0
-
-/-- Equivalence: `s.spAligned = true` in `InMain` iff `s0.spAligned = true`. -/
-theorem InMain.spAligned_iff {img : Obj.Image} {ext : String → Option (State → State)}
-    {s0 s : State} {k : Nat} (hs : InMain img ext s0 s k) :
-    s.spAligned = true ↔ s0.spAligned = true := by
-  refine ⟨fun h => ?_, hs.spAligned_of_s0⟩
-  have heq : s0.sp = s.sp - (-0x4e0#64) := by
-    calc
-      s0.sp = s0.sp + (-0x4e0#64 + 0x4e0#64) := (BitVec.add_zero s0.sp).symm
-      _ = (s0.sp + -0x4e0#64) + 0x4e0#64 := (BitVec.add_assoc _ _ _).symm
-      _ = s.sp - (-0x4e0#64) := by
-        rw [hs.sp, mainFrameSize]
-        simp only [BitVec.sub_eq_add_neg, BitVec.neg_neg]
-  simp only [State.spAligned] at h ⊢
-  rw [heq]
-  exact ProofLib.spAligned_sub s.sp (-0x4e0#64) h
-
-/-- Every state `s` in `InMain` has `s.spAligned = true` (from `hs.spAligned : s0.spAligned = true`). -/
-theorem InMain.spAligned_state {img : Obj.Image} {ext : String → Option (State → State)}
-    {s0 s : State} {k : Nat} (hs : InMain img ext s0 s k) :
-    s.spAligned = true :=
-  hs.spAligned_of_s0 hs.spAligned
-
-/-- Assemble `InMain` after a straight-line step sequence or call returning with `ImgCallInv`. -/
-theorem InMain.mk_step {img : Obj.Image} {ext : String → Option (State → State)}
-    {s0 s s' : State} {k k' : Nat}
-    (hs : InMain img ext s0 s k)
-    (hpc : s'.pc = mPc img ext k')
-    (hrun : s'.status = .Running)
-    (hsp : s'.sp = s.sp)
-    (hfp : s'.readReg64 .fp = s.readReg64 .fp)
-    (hinv : ImgCallInv img s')
-    (hvregs : calleeSavedVRegs s' = calleeSavedVRegs s) :
-    InMain img ext s0 s' k' where
-  pc := hpc
-  run := hrun
-  sp := hsp.trans hs.sp
-  fp := hfp.trans hs.fp
-  inv := hinv
-  vregs := hvregs.trans hs.vregs
-  spAligned := hs.spAligned
-
-/-- Assemble `InMain` across a `subroutine_ok` callee return (`CalleeSavedPreserved s s'`). -/
-theorem InMain.of_call {img : Obj.Image} {ext : String → Option (State → State)}
-    {s0 s s' : State} {k k' : Nat}
-    (hs : InMain img ext s0 s k)
-    (hpc : s'.pc = mPc img ext k')
-    (hrun : s'.status = .Running)
-    (hsp : s'.sp = s.sp)
-    (hcs : CalleeSavedPreserved s s')
-    (hkf : s.mem.KeepsFrozen s'.mem)
-    (hsym : s'.symtab = s.symtab) :
-    InMain img ext s0 s' k' where
-  pc := hpc
-  run := hrun
-  sp := hsp.trans hs.sp
-  fp := hcs.2.2.2.2.2.2.2.2.2.2.1.trans hs.fp
-  inv := ⟨Obj.Image.FrozenLoaded.of_keepsFrozen hs.inv.1 hkf, hsym.trans hs.inv.2⟩
-  vregs := hcs.2.2.2.2.2.2.2.2.2.2.2.trans hs.vregs
-  spAligned := hs.spAligned
 
 end CryptoVerification.SignalSession.Cli.MainHops

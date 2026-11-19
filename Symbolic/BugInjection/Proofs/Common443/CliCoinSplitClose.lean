@@ -366,12 +366,12 @@ theorem noBsc38TC_cli {who : List Participant} {ok : Nat → Bool} {σ₁ blk₁
     noBsc38TC_cli_swap hcs r S g ms p hfits hnb hex hp
   exact ⟨g, _, hex', x, hx, hnbsc⟩
 
-abbrev cliCompFitsPinned := Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.cliCompFitsPinned
+abbrev CliSetupMatchesPinned := Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable.CliSetupMatchesPinned
 
-theorem cliCompFitsPinned_imp_cliCompFits (w : PQXDHSpqrSetup)
+theorem cliSetupMatchesPinned_imp_cliSetupMatches (w : PQXDHSpqrSetup)
     (iw : ExternInterpretation × CryptoVerification.SignalSession.CliHooks)
     (r : Records)
-    (h : cliCompFitsPinned w iw r) : Symbolic.BugInjection.cliCompFits w iw r :=
+    (h : CliSetupMatchesPinned w iw r) : Symbolic.BugInjection.CliSetupMatches w iw r :=
   ⟨h.1.1, h.2.1, h.2.2⟩
 
 theorem coinSplit_nonRng_cons {e : MachineEvent} {σ τ : List MachineEvent}
@@ -453,12 +453,12 @@ local elab "str_of_hex_cli" id:ident : term => do
 def cliCoins0 : HwBytes :=
   hexBytes "49c93ba96e848e114ccd7a9ac6fa2f998172a9bdebc69e1b8b4e2a527db2be9e051310e3058b50f2e6340ad91254ddaf320aceff3b048bcc387f996aa41a2a1f4396fa34fcba7a943f37fed8842a7a3484bd1ae79dc7fb3af4d2112dba377abdd5c50a08141ee32e1e5622a5073163413fa1c60b082178b8fc1d349d1c2f4c19060ea05c8c7ca842d116c8ba3ffdf0a7c020c1a4bc16764fdbce839c26eadab24a260419c077fbe8fa8e46b8368f6f20481ee60124cec354836099e2304f9626"
 
-private def cliCoins0Chars : List Char := chars_of_hex_cli cliCoins0
+def cliCoins0Chars : List Char := chars_of_hex_cli cliCoins0
 private theorem cliCoins0_eq_hex : cliCoins0 = hexBytes (str_of_hex_cli cliCoins0) := rfl
 private theorem cliCoins0Str_eq : (str_of_hex_cli cliCoins0) = String.ofList cliCoins0Chars := rfl
-private def cliCoins0Fast : HwBytes := hexBytes.go CompRPlantWire.hexDigit cliCoins0Chars
+def cliCoins0Fast : HwBytes := hexBytes.go CompRPlantWire.hexDigit cliCoins0Chars
 
-private theorem cliCoins0_eq_fast : cliCoins0 = cliCoins0Fast := by
+theorem cliCoins0_eq_fast : cliCoins0 = cliCoins0Fast := by
   change cliCoins0 = hexBytes.go CompRPlantWire.hexDigit cliCoins0Chars
   rw [cliCoins0_eq_hex, cliCoins0Str_eq, CompRPlantWire.hexBytes_ofList]
 

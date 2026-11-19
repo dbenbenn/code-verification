@@ -19,7 +19,7 @@ Proves `prostSSG_repr`, converting `prostSSGAt A ss (ssgOf s)` for an in-scope s
 `sessionStateReprAt` with a canonical `SessionGhost` (`CanonSession`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.ProstSSGRepr
 

@@ -5,8 +5,8 @@
 // Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Undefined external symbol classification (`ExternDecl`) for `.rlib`/C extraction and the
-//! `[OUTSIDE TCB]` legacy `LinkedImage` proof-cache exporter (`untrusted_driver::externs`).
+//! Undefined external symbol classification (`ExternDecl`) for `.rlib` and C archive extraction
+//! (`untrusted_driver::externs`).
 //!
 //! # Purpose & Trust Role
 //! - **Trust Role:** `[OUTSIDE TCB]` (`[infra]`). Pre-link `Obj.ExtractedObj` emission
@@ -14,8 +14,7 @@
 //!   ([`crate::untrusted_placed`]) operate directly on [`ObjObject`]s without `ExternDecl` records;
 //!   `Arm64.Obj.LabelsFromObjects` checks undefined external symbols inside the Lean kernel. This
 //!   module synthesizes `ExternDecl` records (`Func` / `Object` / `Tls`, size, alignment, origin)
-//!   under the Q1 rule for [`crate::untrusted_driver::extract`], the `[OUTSIDE TCB]` legacy
-//!   `LinkedImage` cache ([`crate::untrusted_legacy_linker`]), and `spec-oracle`.
+//!   under the Q1 rule for [`crate::untrusted_driver::extract`] and `spec-oracle`.
 //! - **Key Types & Functions:** [`NeededExtern`], [`RlibDef`], [`needed_externs`],
 //!   [`resolve_externs`], [`resolve_externs_with_config`], [`check_extern_collisions`].
 //! - **When to Read This File:** Read when inspecting Q1 external symbol classification against

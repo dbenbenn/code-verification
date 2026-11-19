@@ -9,7 +9,6 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Defs
 public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Defs
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
@@ -18,6 +17,10 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntryEq
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk`: Stack Layout, Prologue, and Epilogue
@@ -26,7 +29,7 @@ Stack-frame splitting helpers, prologue (`0x6a384..0x6a3e0`), OOM panic block (`
 shared epilogue (`0x6b508..0x6b558`) for `<PolyEncoder as Encoder>::next_chunk`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.NextChunk
 
@@ -62,31 +65,6 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 theorem bv_add_lit_add_lit (x : BitVec 64) (a b : Nat) :
     (x + BitVec.ofNat 64 a) + BitVec.ofNat 64 b = x + BitVec.ofNat 64 (a + b) := by
   rw [BitVec.add_assoc, ← BitVec.ofNat_add]
-
-ls_attribute [ simp, arm64_norm ↓, wp_norm ↓]
-  (ls_lemma% fnOff "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk")
-  (ls_lemma% fnOff "<spqr::encoding::polynomial::Poly>::compute_at")
-  (ls_lemma% fnOff "<spqr::encoding::polynomial::Poly>::lagrange_interpolate_prepare")
-  (ls_lemma% fnOff "<spqr::encoding::polynomial::Poly>::lagrange_interpolate_complete")
-  (ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-  (ls_stub% "core::panicking::panic")
-  (ls_stub% "core::panicking::panic_bounds_check")
-  (ls_stub% "core::result::unwrap_failed")
-  (ls_stub% "core::slice::index::slice_index_fail")
-
-/-- Add instruction-fetch hypotheses for a byte range `[k0, k0 + len)` inside
-    `<PolyEncoder as Encoder>::next_chunk` (`0x6a384..0x6b6b8`). -/
-macro "poly_next_chunk_fetches_range " b:term:max H:term:max k0:num len:num : tactic =>
-  `(tactic|
-    code_fetches_range CryptoVerification.libsignalSessionCode polyNextChunkBin $b $H
-      polyNextChunk_fnOff 0x64f8c $k0 $len)
-
-/-! ## 1. Stack Budget and Frame Splitting Helpers -/
 
 /-- Callee stack budget below `s0.sp - 1200#64` (`848 + extHookStack = 17,232` bytes). -/
 abbrev nextChunkCalleeStack : Nat := 848 + extHookStack
@@ -144,7 +122,7 @@ attribute [local simp, local arm64_norm, local wp_norm]
   chunkDataOff chunkIndexOff chunkSize
 
 /-- The 12 saved register cells at `s0.sp - 96#64 .. s0.sp - 8#64`. -/
-def savedCells (s0 : State) : SepProp :=
+@[expose] def savedCells (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗
@@ -236,7 +214,7 @@ theorem pointsTo64_eq_pointsTo32_pair (a : BitVec 64) (w : BitVec 64) :
       unpack32_length, ← pointsTo32_eq_pointsToBytes, ← pointsTo32_eq_pointsToBytes]
 
 /-- Pack 8 bytes (little-endian) into a `BitVec 64`. -/
-def pack64 (bs : List (BitVec 8)) : BitVec 64 :=
+@[expose] def pack64 (bs : List (BitVec 8)) : BitVec 64 :=
   (bs[7]?.getD 0#8) ++ (bs[6]?.getD 0#8) ++ (bs[5]?.getD 0#8) ++ (bs[4]?.getD 0#8) ++
   (bs[3]?.getD 0#8) ++ (bs[2]?.getD 0#8) ++ (bs[1]?.getD 0#8) ++ (bs[0]?.getD 0#8)
 
@@ -315,7 +293,7 @@ theorem sepWP_exists_left_sep {α : Type} {prog : Program} {target_pc : BitVec 6
 
 /-- Untouched regions of the 1,104-byte local frame at `fsp = s0.sp - 1200#64` outside
     `[fsp + 56, fsp + 64)` (`outA`) and `[fsp + 232, fsp + 256)` (`out` `Vec<u8>` header). -/
-def localFrameRest (fsp : BitVec 64) : SepProp :=
+@[expose] def localFrameRest (fsp : BitVec 64) : SepProp :=
   memRegion fsp 56 ∗ memRegion (fsp + 64#64) 168 ∗ memRegion (fsp + 256#64) 848
 
 theorem localFrame_split_prologue (fsp : BitVec 64) :
@@ -428,156 +406,6 @@ theorem restore_full_stack (s0 : State) (v56 v232 v240 v248 : BitVec 64) (R : Se
 
 /-! ## 2. Shared Epilogue (`0x6b508..0x6b558`, offset `+4484`, 21 insns) -/
 
-set_option maxHeartbeats 1600000 in
-theorem epilogue_sepWP
-    (A : RustAlloc) (b : BitVec 64) (ext : String → Option (State → State))
-    (hA : AllocContracts b A ext)
-    (x : PolyNextChunkGhost) (R : SepProp) (s0 sf : State)
-    (out_ptr : BitVec 64) (_hout_ne : out_ptr ≠ 0#64)
-    (hidx_chunk : x.chunk.index = x.enc.idx.setWidth 16)
-    (hidx_enc' : x.enc'.idx = x.enc.idx + 1#32)
-    (hpc : sf.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 4484#64)
-    (hrun : sf.status = .Running)
-    (hsp : sf.sp = s0.sp - 1200#64)
-    (hsp0 : s0.sp &&& 0xf#64 = 0#64)
-    (htr : sf.trace = s0.trace)
-    (hx20 : sf.readReg64 .x20 = 32#64)
-    (hx24 : sf.readReg64 .x24 = x.encA)
-    (hx27 : (sf.readReg64 .x27).setWidth 16 = x.enc.idx.setWidth 16)
-    (hvregs : calleeSavedVRegs sf = calleeSavedVRegs s0 := by simp only [arm64_norm, wp_norm, *]) :
-    SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext)) (s0.readReg64 Reg.lr) sf
-      ((out_ptr ↦ₛ x.chunk.data.toList) ∗
-       A.live out_ptr 32 1 ∗
-       memRegion x.outA chunkSize ∗
-       encoderStateAt A x.encA x.enc'.s ∗
-       ((x.encA + polyEncoderIdxOff) ↦₃₂ x.enc.idx) ∗
-       memRegion (x.encA + polyEncoderPadOff) polyEncoderPadSize ∗
-       (((s0.sp - 1200#64) + 56#64) ↦₆₄ x.outA) ∗
-       (((s0.sp - 1200#64) + 232#64) ↦₆₄ 32#64) ∗
-       (((s0.sp - 1200#64) + 240#64) ↦₆₄ out_ptr) ∗
-       (((s0.sp - 1200#64) + 248#64) ↦₆₄ 32#64) ∗
-       localFrameRest (s0.sp - 1200#64) ∗
-       savedCells s0 ∗
-       tokenInitAt b ∗
-       reduceTableAt b ∗
-       A.pool ∗
-       stackAt (s0.sp - 1200#64) nextChunkCalleeStack)
-      (fun sf1 P_f =>
-        ((sf1.mem ⊨ P_f ∗ R) →
-          (sf1.mem ⊨
-            ⌜sf1.trace = s0.trace⌝ ∗
-             chunkAt x.outA x.chunk ∗
-             polyEncoderAt A x.encA x.enc' ∗
-             tokenInitAt b ∗
-             reduceTableAt b ∗
-             A.pool ∗
-             stackAt s0.sp polyNextChunkStack ∗ R)) ∧
-          sf1.sp = s0.sp ∧ CalleeSavedPreserved s0 sf1) := by
-  have hdealloc := hA.dealloc_ok_at polyNextChunkName
-    (num% (ls_off% "__rustc::__rust_dealloc" -
-      ls_off% "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk"))
-    (by rw [polyNextChunk_fnOff, (ls_stub% "__rustc::__rust_dealloc")])
-  poly_next_chunk_fetches_range b (Rust.withPanics ext) 0x1184 84
-  dsimp only [tripleRatchetProgAtExt] at hdealloc
-  clear hA
-  generalize_entry hentry :
-    (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName = entry
-  examples_hide_fetches
-  have hlen32 : x.chunk.data.toList.length = 32 := x.chunk.data.2
-  have hpow2 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  apply SepWP.fold (memRegion_chunkSize_entails_cells x.outA) (by sep_focus)
-  apply sepWP_exists_left_sep; intro w0
-  apply sepWP_exists_left_sep; intro w1
-  apply sepWP_exists_left_sep; intro w2
-  apply sepWP_exists_left_sep; intro w3
-  apply sepWP_exists_left_sep; intro idx0
-  wp_conv_pre =>
-    rw [pointsToBytes32_eq_pointsTo64_four out_ptr hlen32,
-        stackAt_nextChunkCallee_split_allocHook (s0.sp - 1200#64),
-        ← hsp]
-  unfold savedCells
-  wp_steps 10
-  have hbuf_mem :
-      (out_ptr ↦₆₄ pack64 ((x.chunk.data.toList.take 16).take 8)) ∗
-        ((out_ptr + 8#64) ↦₆₄ pack64 ((x.chunk.data.toList.take 16).drop 8)) ∗
-        ((out_ptr + 16#64) ↦₆₄ pack64 ((x.chunk.data.toList.drop 16).take 8)) ∗
-        ((out_ptr + 24#64) ↦₆₄ pack64 ((x.chunk.data.toList.drop 16).drop 8)) ⊢
-        memRegion out_ptr 32 := by
-    rw [← pointsToBytes32_eq_pointsTo64_four out_ptr hlen32]
-    have h := pointsToBytes_entails_memRegion out_ptr x.chunk.data.toList
-    rwa [hlen32] at h
-  apply SepWP.fold hbuf_mem (by sep_focus)
-  wp_call hdealloc
-  have hsp_sf1 : sf_1.sp = s0.sp - 1200#64 := by rw [hsp_sf, hsp]
-  have hx24_sf1 : sf_1.readReg64 (Reg.gpr 24#5) = x.encA := by rw [h_5, hx24]
-  wp_conv_pre => rw [hsp]
-  wp_steps 11
-  have hchunk_fold :
-      (x.outA ↦₆₄ pack64 ((x.chunk.data.toList.take 16).take 8)) ∗
-        ((x.outA + 8#64) ↦₆₄ pack64 ((x.chunk.data.toList.take 16).drop 8)) ∗
-        ((x.outA + 16#64) ↦₆₄ pack64 ((x.chunk.data.toList.drop 16).take 8)) ∗
-        ((x.outA + 24#64) ↦₆₄ pack64 ((x.chunk.data.toList.drop 16).drop 8)) ∗
-        ((x.outA + 32#64) ↦₁₆ ((sf.readReg64 (Reg.gpr 27#5)).setWidth 32).setWidth 16) ⊢
-        chunkAt x.outA x.chunk := by
-    have htr16 : ((sf.readReg64 (Reg.gpr 27#5)).setWidth 32).setWidth 16 = x.chunk.index := by
-      rw [BitVec.setWidth_setWidth_of_le (sf.readReg64 (Reg.gpr 27#5)) (by decide : 16 ≤ 32)]
-      exact hx27.trans hidx_chunk.symm
-    unfold chunkAt
-    simp only [chunkIndexOff, htr16, pointsToBytes32_eq_pointsTo64_four x.outA hlen32]
-    exact Entails.of_eq (by ac_rfl)
-  apply SepWP.fold hchunk_fold (by sep_focus)
-  have henc_fold :
-      encoderStateAt A x.encA x.enc'.s ∗
-        ((x.encA + 392#64) ↦₃₂ (x.enc.idx + 1#32)) ∗
-        memRegion (x.encA + 396#64) 4 ⊢
-        polyEncoderAt A x.encA x.enc' := by
-    unfold polyEncoderAt
-    simp only [polyEncoderIdxOff, polyEncoderPadOff, polyEncoderPadSize, ← hidx_enc']
-    exact Entails.of_eq (by ac_rfl)
-  apply SepWP.fold henc_fold (by sep_focus)
-  have hstk_fold :
-      ((s0.sp - 96#64) ↦₆₄ s0.readReg64 .x29) ∗
-        ((s0.sp - 88#64) ↦₆₄ s0.readReg64 .x30) ∗
-        ((s0.sp - 80#64) ↦₆₄ s0.readReg64 .x28) ∗
-        ((s0.sp - 72#64) ↦₆₄ s0.readReg64 .x27) ∗
-        ((s0.sp - 64#64) ↦₆₄ s0.readReg64 .x26) ∗
-        ((s0.sp - 56#64) ↦₆₄ s0.readReg64 .x25) ∗
-        ((s0.sp - 48#64) ↦₆₄ s0.readReg64 .x24) ∗
-        ((s0.sp - 40#64) ↦₆₄ s0.readReg64 .x23) ∗
-        ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗
-        ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
-        ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
-        ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19) ∗
-        memRegion (s0.sp - 18432#64) 13136 ∗
-        stackAt (s0.sp - 1200#64) allocHookStack ∗
-        localFrameRest (s0.sp - 1200#64) ∗
-        ((s0.sp - 1144#64) ↦₆₄ x.outA) ∗
-        ((s0.sp - 968#64) ↦₆₄ 32#64) ∗
-        ((s0.sp - 960#64) ↦₆₄ out_ptr) ∗
-        ((s0.sp - 952#64) ↦₆₄ 32#64) ∗
-        chunkAt x.outA x.chunk ∗
-        polyEncoderAt A x.encA x.enc' ∗
-        tokenInitAt b ∗
-        reduceTableAt b ∗
-        A.pool ⊢
-        (chunkAt x.outA x.chunk ∗ polyEncoderAt A x.encA x.enc' ∗
-          tokenInitAt b ∗ reduceTableAt b ∗ A.pool) ∗
-          stackAt s0.sp polyNextChunkStack := by
-    have h0 := restore_full_stack s0 x.outA 32#64 out_ptr 32#64
-      (chunkAt x.outA x.chunk ∗ polyEncoderAt A x.encA x.enc' ∗
-        tokenInitAt b ∗ reduceTableAt b ∗ A.pool)
-    have hsub18432 : (s0.sp - 1200#64) - 17232#64 = s0.sp - 18432#64 := by bv_omega
-    unfold savedCells at h0
-    simp only [arm64_norm, hsub18432] at h0
-    exact Entails.trans h0 (Entails.of_eq (by ac_rfl))
-  apply SepWP.fold hstk_fold (by sep_focus)
-  conv => arg 5; ext sf1 P_f; rw [CalleeSavedPreserved, ← hvregs]
-  have htr_ret : sf_1.trace = s0.trace := by
-    rw [hpost, htr]
-  wp_done
-
-/-! ## 3. OOM Panic Helper (`+4736`, `0x6b604..0x6b60c`) and Prologue (`0x6a384..0x6a3e0`) -/
-
 /-- Common `onPanic` postcondition for `polyNextChunkSpec`. -/
 abbrev nextChunkOnPanic (s0 sf : State) : SepProp :=
   ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
@@ -597,45 +425,6 @@ theorem sepWPp_pure_mid {prog : Program} {target_pc : BitVec 64}
 
 @[local arm64_norm, local wp_norm] theorem sp_sub_96_sub_1104 (sp : BitVec 64) :
     (sp - 96#64) - 1104#64 = sp - 1200#64 := by bv_omega
-
-/-- OOM panic block at `+0x1280` (`+4736..+4744`: `mov w0, #1; mov w1, #32; bl handle_error`). -/
-theorem next_chunk_panic_4736 {b : BitVec 64} {ext : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 4736#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (libsignalSessionCode.rebase b (Rust.withPanics ext)) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R)) := by
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := polyNextChunkName)
-    (k := num% (ls_off% "alloc::raw_vec::handle_error" -
-      ls_off% "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk"))
-    (by rw [polyNextChunk_fnOff, (ls_stub% "alloc::raw_vec::handle_error")])
-  poly_next_chunk_fetches_range b (Rust.withPanics ext) 0x1280 12
-  dsimp only [tripleRatchetProgAtExt, polyNextChunkName, BitVec.ofNat_eq_ofNat] at hpc hpanic ⊢
-  generalize_entry hentry :
-    (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry +
-    bv% (ls_off% "alloc::raw_vec::handle_error" -
-      ls_off% "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  simpa only [nextChunkOnPanic, sepConj_assoc] using
-    allowPanic_panicked (by simp [allocFailedIn, Rust.panicked, arm64_norm, htrace]) hm
-
-theorem sepWPp_panic_of_sepWP_4736 {b : BitVec 64} {ext : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (s0 s : State) (P R : SepProp)
-    (hwp : SepWP (libsignalSessionCode.rebase b (Rust.withPanics ext))
-      ((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 4736#64) s P
-      (fun sm Pm => (Pm ⊢ P) ∧ sm.trace = s0.trace ++ [allocFailedEvent])) :
-    SepWPp (libsignalSessionCode.rebase b (Rust.withPanics ext)) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R)) :=
-  SepWPp.of_sepWP (SepWP.mono hwp fun sm Pm hpcm hrunm ⟨hPm, htrm⟩ =>
-    SepWPp.weaken_pre hPm (next_chunk_panic_4736 s0 sm P R hpcm hrunm htrm))
 
 theorem prologue_stack_split (s0 : State) :
     stackAt s0.sp polyNextChunkStack ⊢
@@ -704,170 +493,5 @@ theorem prologue_stack_split (s0 : State) :
               (Entails.sepExists_right u0 (Entails.sepExists_right u56
                 (Entails.sepExists_right u232 (Entails.sepExists_right u240
                   (Entails.sepExists_right u248 (Entails.of_eq (by ac_rfl))))))))))))))))))
-
-set_option maxHeartbeats 1600000 in
-theorem prologue_sepWPp
-    (A : RustAlloc) (b : BitVec 64) (ext : String → Option (State → State))
-    (hA : AllocContracts b A ext)
-    (x : PolyNextChunkGhost) (tag : BitVec 64) (restEnc R : SepProp)
-    {Q : State → SepProp → Prop}
-    (s0 : State)
-    (hpc : s0.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName)
-    (hrun : s0.status = .Running)
-    (hsp0 : s0.sp &&& 0xf#64 = 0#64)
-    (hx0 : s0.readReg64 .x0 = x.encA)
-    (hx8 : s0.readReg64 .x8 = x.outA)
-    (hcont : ∀ s1 (out_ptr : BitVec 64),
-      out_ptr ≠ 0#64 →
-      s1.pc = (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr polyNextChunkName + 92#64 →
-      s1.status = .Running →
-      s1.sp = s0.sp - 1200#64 →
-      s1.trace = s0.trace →
-      calleeSavedVRegs s1 = calleeSavedVRegs s0 →
-      s1.readReg64 .x9 = (tag.setWidth 32).setWidth 64 →
-      s1.readReg64 .x19 = x.encA + 8#64 →
-      s1.readReg64 .x24 = x.encA →
-      s1.readReg64 .x27 = (x.enc.idx.setWidth 16).setWidth 64 →
-      s1.readReg64 .x29 = s0.sp - 96#64 →
-      SepWPp (libsignalSessionCode.rebase b (Rust.withPanics ext)) (s0.readReg64 Reg.lr) s1
-        (memRegion out_ptr 32 ∗
-         A.live out_ptr 32 1 ∗
-         memRegion x.outA chunkSize ∗
-         (x.encA ↦₆₄ tag) ∗
-         restEnc ∗
-         ((x.encA + polyEncoderIdxOff) ↦₃₂ x.enc.idx) ∗
-         memRegion (x.encA + polyEncoderPadOff) polyEncoderPadSize ∗
-         (((s0.sp - 1200#64) + 56#64) ↦₆₄ x.outA) ∗
-         (((s0.sp - 1200#64) + 232#64) ↦₆₄ 32#64) ∗
-         (((s0.sp - 1200#64) + 240#64) ↦₆₄ out_ptr) ∗
-         (((s0.sp - 1200#64) + 248#64) ↦₆₄ 0#64) ∗
-         localFrameRest (s0.sp - 1200#64) ∗
-         savedCells s0 ∗
-         tokenInitAt b ∗
-         reduceTableAt b ∗
-         A.pool ∗
-         stackAt (s0.sp - 1200#64) nextChunkCalleeStack)
-        Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R))) :
-    SepWPp (libsignalSessionCode.rebase b (Rust.withPanics ext)) (s0.readReg64 Reg.lr) s0
-      (memRegion x.outA chunkSize ∗
-       (x.encA ↦₆₄ tag) ∗
-       restEnc ∗
-       ((x.encA + polyEncoderIdxOff) ↦₃₂ x.enc.idx) ∗
-       memRegion (x.encA + polyEncoderPadOff) polyEncoderPadSize ∗
-       tokenInitAt b ∗
-       reduceTableAt b ∗
-       A.pool ∗
-       stackAt s0.sp polyNextChunkStack)
-      Q (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ nextChunkOnPanic s0 sf ∗ R)) := by
-  have hlayout : LayoutOk 32 1 := ⟨by decide, ⟨0, rfl⟩, by decide⟩
-  have h32_toNat : (32#64 : BitVec 64).toNat = 32 := rfl
-  have h1_toNat : (1#64 : BitVec 64).toNat = 1 := rfl
-  have hshim := hA.shim_ok_at polyNextChunkName
-    (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-      ls_off% "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk"))
-    (by rw [polyNextChunk_fnOff, (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")])
-  simp only [sessionShimSpec] at hshim
-  have halloc := hA.alloc_ok_at polyNextChunkName
-    (num% (ls_off% "__rustc::__rust_alloc" -
-      ls_off% "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk"))
-    (by rw [polyNextChunk_fnOff, (ls_stub% "__rustc::__rust_alloc")])
-  simp only [rustAllocSpec] at halloc
-  have hpanic4736 := fun (s : State) (P : SepProp) =>
-    @sepWPp_panic_of_sepWP_4736 b ext Q s0 s P R
-  poly_next_chunk_fetches_range b (Rust.withPanics ext) 0 92
-  dsimp only [tripleRatchetProgAtExt, polyNextChunkName, BitVec.ofNat_eq_ofNat] at hpc hshim halloc hpanic4736 hcont ⊢
-  clear hA
-  generalize_entry hentry :
-    (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-      "<spqr::encoding::polynomial::PolyEncoder as spqr::encoding::Encoder>::next_chunk" = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + 64#64)
-  apply SepWP.fold (prologue_stack_split s0) (by sep_focus)
-  apply sepWP_exists_left_sep; intro v29
-  apply sepWP_exists_left_sep; intro v30
-  apply sepWP_exists_left_sep; intro v28
-  apply sepWP_exists_left_sep; intro v27
-  apply sepWP_exists_left_sep; intro v26
-  apply sepWP_exists_left_sep; intro v25
-  apply sepWP_exists_left_sep; intro v24
-  apply sepWP_exists_left_sep; intro v23
-  apply sepWP_exists_left_sep; intro v22
-  apply sepWP_exists_left_sep; intro v21
-  apply sepWP_exists_left_sep; intro v20
-  apply sepWP_exists_left_sep; intro v19
-  apply sepWP_exists_left_sep; intro u0
-  apply sepWP_exists_left_sep; intro u56
-  apply sepWP_exists_left_sep; intro u232
-  apply sepWP_exists_left_sep; intro u240
-  apply sepWP_exists_left_sep; intro u248
-  wp_conv_pre =>
-    rw [pointsTo32_eq_pointsTo16_pair (x.encA + polyEncoderIdxOff) x.enc.idx,
-        pointsTo64_eq_pointsTo32_pair x.encA tag]
-    dsimp only [polyEncoderIdxOff]
-  wp_steps; wp_apply; wp_steps; wp_apply
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0#64
-  · conv => arg 4; simp only [hoom, ↓reduceIte, sepConj_assoc]
-    apply sepWPp_pure_mid; intro htr0
-    refine hpanic4736 _ _ ?_
-    wp_steps
-    exact SepWP.done (by wp_norm_goal) (by wp_norm_lhs) ⟨Entails.refl _, by simp only [arm64_norm, wp_norm, *]⟩
-  · conv => arg 4; simp only [hoom, ↓reduceIte, sepConj_assoc]
-    apply sepWPp_pure_mid; rintro ⟨_, htr0⟩
-    have hbeq0 : (sf_1.readReg64 (Reg.gpr 0#5) == 0#64) = false := beq_eq_false_iff_ne.mpr hoom
-    apply SepWPp.of_sepWP (mid := entry + 92#64)
-    wp_steps
-    have hfold_tag :
-        (x.encA ↦₃₂ tag.setWidth 32) ∗ ((x.encA + 4#64) ↦₃₂ (tag >>> 32).setWidth 32) ⊢
-          (x.encA ↦₆₄ tag) := by
-      rw [← pointsTo64_eq_pointsTo32_pair x.encA tag]
-      exact Entails.refl _
-    apply SepWP.fold hfold_tag (by sep_focus)
-    have hfold_idx :
-        ((x.encA + 392#64) ↦₁₆ x.enc.idx.setWidth 16) ∗
-          (((x.encA + 392#64) + 2#64) ↦₁₆ (x.enc.idx >>> 16).setWidth 16) ⊢
-          ((x.encA + polyEncoderIdxOff) ↦₃₂ x.enc.idx) := by
-      dsimp only [polyEncoderIdxOff]
-      rw [← pointsTo32_eq_pointsTo16_pair (x.encA + 392#64) x.enc.idx]
-      exact Entails.refl _
-    apply SepWP.fold hfold_idx (by sep_focus)
-    have hfold_rest :
-        ((s0.sp - 1200#64) ↦₆₄ 0#64) ∗
-          memRegion ((s0.sp - 1200#64) + 8#64) 48 ∗
-          memRegion ((s0.sp - 1200#64) + 64#64) 168 ∗
-          memRegion ((s0.sp - 1200#64) + 256#64) 848 ⊢
-          localFrameRest (s0.sp - 1200#64) :=
-      localFrameRest_fold_prologue (s0.sp - 1200#64) 0#64
-    apply SepWP.fold hfold_rest (by sep_focus)
-    have hfold_saved :
-        ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
-          ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
-          ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (Reg.gpr 28#5)) ∗
-          ((s0.sp - 72#64) ↦₆₄ s0.readReg64 (Reg.gpr 27#5)) ∗
-          ((s0.sp - 64#64) ↦₆₄ s0.readReg64 (Reg.gpr 26#5)) ∗
-          ((s0.sp - 56#64) ↦₆₄ s0.readReg64 (Reg.gpr 25#5)) ∗
-          ((s0.sp - 48#64) ↦₆₄ s0.readReg64 (Reg.gpr 24#5)) ∗
-          ((s0.sp - 40#64) ↦₆₄ s0.readReg64 (Reg.gpr 23#5)) ∗
-          ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 22#5)) ∗
-          ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 21#5)) ∗
-          ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 20#5)) ∗
-          ((s0.sp - 8#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5)) ⊢
-          savedCells s0 := by
-      unfold savedCells
-      exact Entails.refl _
-    apply SepWP.fold hfold_saved (by sep_focus)
-    wp_conv_pre => rw [h_1]
-    have hfold_callee :
-        memRegion ((s0.sp - 1200#64) - 17232#64) 13136 ∗
-          stackAt (s0.sp - 1200#64) allocHookStack ⊢
-          stackAt (s0.sp - 1200#64) nextChunkCalleeStack := by
-      rw [← stackAt_nextChunkCallee_split_allocHook (s0.sp - 1200#64)]
-      exact Entails.refl _
-    apply SepWP.fold hfold_callee (by sep_focus)
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.weaken_pre ?_ (hcont _ (sf_1.readReg64 (Reg.gpr 0#5)) hoom ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_)
-    · simp only [arm64_norm]
-      exact Entails.of_eq (by ac_rfl)
-    all_goals simp only [arm64_norm, wp_norm, Reg.x0, Reg.x8, Reg.x9, Reg.x19, Reg.x24, Reg.x27, Reg.x29, Reg.lr, *]
 
 end CryptoVerification.SpqrV1.Poly.NextChunk

@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSlice
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import ProofLib.SepLogic.WPp
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
 
 /-!
 # Relocatable Leaf Cases 1–6 for `CliC` `skip_field [local#6]`
@@ -25,7 +27,7 @@ Proves the `[LibsignalPlacement]` base and non-group wire-type branches (depth z
 (Block `546`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

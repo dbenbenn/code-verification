@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5aPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5b
@@ -18,8 +18,9 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5bPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5cPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5d
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -63,7 +64,7 @@ set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
 
 attribute [local irreducible]
-  Program.fetch Program.externAt? Program.fnOff libsignalSessionCode
+  Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_333
 
 /-! ## 1. Error Paths from `+6420`, `+1396`, and `+6520` (`-> s0.x30`) -/

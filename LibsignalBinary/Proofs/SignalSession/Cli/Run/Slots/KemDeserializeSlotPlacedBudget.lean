@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializePlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KemDeserializeSlotPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializePlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `kem::Key<Public>::deserialize` Slot Adapter (Placed)
@@ -21,7 +25,7 @@ Defines the budget-threaded `kemDeserializeSlotPlaced A lim` slot under `[Libsig
 proves it on any caller block `i < 619` for Block `590` (`kem::Key<Public>::deserialize`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -43,7 +47,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserializePlacedBud
 )
 
 /-- Budget-threaded `[LibsignalPlacement]` slot for `kem::Key<Public>::deserialize` (Block `590`). -/
-def kemDeserializeSlotPlaced [LibsignalPlacement]
+@[expose] def kemDeserializeSlotPlaced [LibsignalPlacement]
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) : CalleeSlotPlaced where
   Ghost := KemDeserializeGhost × M.σ
   spec := fun stk => cliKemDeserializeSpecPlaced M A lim stk

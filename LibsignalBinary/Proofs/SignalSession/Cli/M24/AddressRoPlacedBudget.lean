@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.DevRoPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.ParseSidRoPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.DevRoPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.ParseSidRoPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AddressPlaced
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
@@ -24,6 +24,13 @@ meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Pure
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.AddressRO.AllocRoPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Alloc
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Placed Budgeted Read-Only `signal_session::address` Refinement
@@ -32,7 +39,7 @@ Assembles `address_ro_blk580_ok`, `address_ro_placed_ok_rocl`, and `address_ro_p
 `signal_session::address` (Block `580`) on read-only (`↦ᵣ`) input slices.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -351,21 +358,6 @@ theorem address_ro_placed_ok_ls [LibsignalPlacement]
       (withLsRoCl lsmpl (addressSpecRO A lim uuidTryParse resStack)) :=
   address_ro_placed_ok_rocl_ls (prog := lsProg_617 H) (i := 617)
     hFs hmemrchr hres hres64 (by decide)
-
-/-- Legacy corollary of `address_ro_blk580_ok_ls` over unnarrowed `memrchrSpecRO extHookStack`. -/
-theorem address_ro_blk580_ok [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} {resStack : Nat}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (hmemrchr : subroutine_ok (lsProg_580 H) (lsρ lsMemrchrSym)
-      (withLsRoCl lsmpl (withVmPreserved (memrchrSpecRO extHookStack))))
-    (hres : 0xB0 + extHookStack ≤ resStack) (hres64 : resStack ≤ 2 ^ 63) :
-    subroutine_ok (lsProg_580 H) (lsmpl.base 580)
-      (withLsCodeRoLoaded lsmpl (addressSpecRO A lim uuidTryParse resStack)) :=
-  address_ro_blk580_ok_ls hFs
-    (withLsRet_withLsRoCl lsmpl (withVmPreserved (memrchrSpecRO extHookStack)) ▸
-      subroutine_ok_withLsRet hmemrchr)
-    hres hres64
 
 /-- Legacy corollary of `address_ro_placed_ok_rocl_ls` over unnarrowed `memrchrSpecRO extHookStack`. -/
 theorem address_ro_placed_ok_rocl [LibsignalPlacement] {prog : Program} {i : Nat}

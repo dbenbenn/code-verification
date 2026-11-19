@@ -12,28 +12,35 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BridgePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5V1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6V1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2TransPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms2PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BridgePlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5V1PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub6V1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2TransPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1Placed
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Trans
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Fresh-Session Composition
@@ -44,7 +51,7 @@ envelopes (`P2Sub6Env`, `P2V1Arm4Env`, `P2V1Arm5EnvOfAcceptErr`, `P2V1Arm6EnvOfB
 `P2V1OkEnvOfBob`) and proving both standard and `StageP2MemInv` / `LibsignalFrozen` entry points.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -56,7 +63,7 @@ open Arm64 Arm64.Process ProofLib
 open CryptoGames.LibsignalSession (PublicKey ShaCompress)
 open CryptoVerification (LibsignalFrozen LibsignalPlacement lsmpl withLsCodeLoaded)
 open CryptoVerification.LibsignalTripleRatchet (withLsCodeRoLoaded)
-open CryptoVerification.RustHeap (allocHookStack)
+open CryptoVerification.RustHeap (RustAlloc allocHookStack)
 open CryptoVerification.RecordCodecs (
   IdentityKeyPair KyberPreKeyRecord PreKeyRecord SignedPreKeyRecord
 )
@@ -116,6 +123,7 @@ open LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget (
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedABudget (
   AcceptOptFieldsEnv
 )
+open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptBudget (pqxdhAcceptPlacedStack)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget (
   initializeBobSessionErrOwnedFrozenPlacedSpec initializeBobSessionErrOwnedPlacedSpec
 )
@@ -219,7 +227,7 @@ theorem p2_arm5_err_payload_pull_placed [LibsignalPlacement] {M : AllocCostModel
 
 /-- Bounded sequential envelope for Substage P2.6 (`regIdShim` box allocation, `regIdPollEnv`, and
 pure-deallocation tail on either `+0x1778` normal exit or Arm 6 error unwind). -/
-def P2Sub6Env (regIdBoxSize : Nat) (regIdPollEnv : List AllocEvent → Prop) :
+@[expose] def P2Sub6Env (regIdBoxSize : Nat) (regIdPollEnv : List AllocEvent → Prop) :
     List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv regIdBoxSize) (SeqEnv regIdPollEnv FreeOnlyEvs)
 
@@ -227,7 +235,7 @@ example : P2Sub6Env 64 (· = []) (boxAllocEvents 64) :=
   Or.inl ((boxAllocEnv_iff_eq 64 _).mpr rfl)
 
 /-- Arm 4 (`get_identity_key_pair` error) event envelope across Substages P2.1–P2.5. -/
-def P2V1Arm4Env (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
+@[expose] def P2V1Arm4Env (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
     (kpkBoxSize : Nat) (kpkPollEnv : List AllocEvent → Prop)
     (pkBoxSize : Nat) (pkPollEnv : BitVec 32 → List AllocEvent → Prop)
     (kpBoxSize : Nat) (opkId? : Option (BitVec 32))
@@ -242,7 +250,7 @@ example : P2V1Arm4Env 64 (· = []) 64 (· = []) 64 (fun _ => (· = [])) 64 none 
 
 /-- Arm 5 (`initialize_bob_session` rejection) event envelope across Substages P2.1–P2.5 for a
 fixed `AcceptErrForInp` envelope. -/
-def P2V1Arm5EnvOfAcceptErr (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
+@[expose] def P2V1Arm5EnvOfAcceptErr (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
     (kpkBoxSize : Nat) (kpkPollEnv : List AllocEvent → Prop)
     (pkBoxSize : Nat) (pkPollEnv : BitVec 32 → List AllocEvent → Prop)
     (kpBoxSize : Nat) (opkId? : Option (BitVec 32))
@@ -257,7 +265,7 @@ example : P2V1Arm5EnvOfAcceptErr 64 (· = []) 64 (· = []) 64 (fun _ => (· = []
 
 /-- Arm 6 (`get_local_registration_id` error) event envelope across Substages P2.1–P2.6 for a
 fixed `BobForInp` envelope. -/
-def P2V1Arm6EnvOfBob (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
+@[expose] def P2V1Arm6EnvOfBob (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
     (kpkBoxSize : Nat) (kpkPollEnv : List AllocEvent → Prop)
     (pkBoxSize : Nat) (pkPollEnv : BitVec 32 → List AllocEvent → Prop)
     (kpBoxSize : Nat) (opkId? : Option (BitVec 32))
@@ -275,7 +283,7 @@ example : P2V1Arm6EnvOfBob 64 (· = []) 64 (· = []) 64 (fun _ => (· = [])) 64 
 
 /-- Normal `+0x1778` exit event envelope across Substages P2.1–P2.6 for a fixed `BobForInp`
 envelope. -/
-def P2V1OkEnvOfBob (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
+@[expose] def P2V1OkEnvOfBob (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
     (kpkBoxSize : Nat) (kpkPollEnv : List AllocEvent → Prop)
     (pkBoxSize : Nat) (pkPollEnv : BitVec 32 → List AllocEvent → Prop)
     (kpBoxSize : Nat) (opkId? : Option (BitVec 32))
@@ -1276,7 +1284,9 @@ theorem stageP2_v1_kits_placed_ofEnv [LibsignalPlacement]
     (pkEnv : PreKeyStoreBudgetEnv pkKit)
     (hpkVt : PreKeyVtablesPlacedOk pkKit)
     (hpkOk : PreKeyStoreKitPlacedOk A lim pkKit pkEnv ext)
-    (stk : Nat) (hstk : stageP2V1CallStack spkKit kpkKit pkKit skit ≤ stk) :
+    (stk : Nat)
+    (hstk :
+      max (stageP2V1CallStack spkKit kpkKit pkKit skit) (768 + pqxdhAcceptPlacedStack) ≤ stk) :
     stageP2V1KitsAtPlacedOfEnvProp P A lim F BobV1Env AcceptErrEnv ext
       skit senv spkKit spkEnv kpkKit kpkEnv pkKit pkEnv stk :=
   stageP2_v1_kits_at_placed_ofEnv ext hWF hH hPure.to_4K
@@ -1288,9 +1298,25 @@ theorem stageP2_v1_kits_placed_ofEnv [LibsignalPlacement]
     spkKit spkEnv hspkVt hspkOk
     kpkKit kpkEnv hkpkVt hkpkOk
     pkKit pkEnv hpkVt hpkOk
-    (p2_callStack_le_v1CallStack spkKit kpkKit pkKit skit)
-    (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit)
+    (Nat.le_trans (p2_callStack_le_v1CallStack spkKit kpkKit pkKit skit) (Nat.le_max_left _ _))
+    (Nat.le_max_right _ _)
     stk hstk
+
+/-- Placed Stage P2 stack bound at SPQR V1 (`stageP2V1CallStack` widened to cover
+`768 + pqxdhAcceptPlacedStack = 42,752` B for `initialize_bob_session` + `Pqxdh::accept`). -/
+@[expose] def stageP2V1PlacedCallStack {A : RustAlloc} {b : BitVec 64}
+    (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
+    (pkKit : PreKeyStoreSpec A b) {ikit : IdentityStoreSpec A b}
+    (skit : IdentitySelfStoreSpec ikit) : Nat :=
+  max (stageP2V1CallStack spkKit kpkKit pkKit skit) (768 + pqxdhAcceptPlacedStack)
+
+/-- Placed 4K Stage P2 stack bound at SPQR V1 (`stageP2V1CallStack4K` widened to cover
+`768 + pqxdhAcceptPlacedStack = 42,752` B). -/
+@[expose] def stageP2V1PlacedCallStack4K {A : RustAlloc} {b : BitVec 64}
+    (spkKit : SignedPreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
+    (pkKit : PreKeyStoreSpec A b) {ikit : IdentityStoreSpec A b}
+    (skit : IdentitySelfStoreSpec ikit) : Nat :=
+  max (stageP2V1CallStack4K spkKit kpkKit pkKit skit) (768 + pqxdhAcceptPlacedStack)
 
 /-- Budget-threaded `[LibsignalPlacement]` fresh-session Stage P2 under `StageP2PureCalleesPlaced`. -/
 abbrev stageP2_v1_kits_placed [LibsignalPlacement]
@@ -1325,7 +1351,7 @@ theorem stageP2_v1_kits_ext_placed_ofEnv [LibsignalPlacement]
     (pkEnv : PreKeyStoreBudgetEnv pkKit)
     (hpkVt : PreKeyVtablesPlacedOk pkKit)
     (hpkOk : PreKeyStoreKitPlacedOk A lim pkKit pkEnv ext)
-    (stk : Nat) (hstk : stageP2V1CallStack4K spkKit kpkKit pkKit skit ≤ stk) :
+    (stk : Nat) (hstk : stageP2V1PlacedCallStack4K spkKit kpkKit pkKit skit ≤ stk) :
     stageP2V1KitsAtPlacedOfEnvProp P A lim F BobV1Env AcceptErrEnv ext
       skit senv spkKit spkEnv kpkKit kpkEnv pkKit pkEnv stk :=
   stageP2_v1_kits_at_placed_ofEnv ext hWF hH hPure
@@ -1337,9 +1363,11 @@ theorem stageP2_v1_kits_ext_placed_ofEnv [LibsignalPlacement]
     spkKit spkEnv hspkVt hspkOk
     kpkKit kpkEnv hkpkVt hkpkOk
     pkKit pkEnv hpkVt hpkOk
-    (Nat.le_trans (p2_callStack_le_4K spkKit kpkKit pkKit skit)
-      (p2_callStack4K_le_v1CallStack4K spkKit kpkKit pkKit skit))
-    (p2_bobStack4K_le_v1CallStack4K spkKit kpkKit pkKit skit)
+    (Nat.le_trans
+      (Nat.le_trans (p2_callStack_le_4K spkKit kpkKit pkKit skit)
+        (p2_callStack4K_le_v1CallStack4K spkKit kpkKit pkKit skit))
+      (Nat.le_max_left _ _))
+    (Nat.le_max_right _ _)
     stk hstk
 
 abbrev stageP2_v1_kits_ext_placed [LibsignalPlacement]
@@ -2513,7 +2541,7 @@ theorem stageP2_v1_kits_frozen_placed_ofEnv [LibsignalPlacement]
     (pkEnv : PreKeyStoreBudgetEnv pkKit)
     (hpkVt : PreKeyVtablesPlacedOk pkKit)
     (hpkOk : PreKeyStoreKitPlacedOk A lim pkKit pkEnv ext)
-    (stk : Nat) (hstk : stageP2V1CallStack spkKit kpkKit pkKit skit ≤ stk) :
+    (stk : Nat) (hstk : stageP2V1PlacedCallStack spkKit kpkKit pkKit skit ≤ stk) :
     stageP2V1KitsFrozenAtPlacedOfEnvProp P A lim F BobV1Env AcceptErrEnv ext
       skit senv spkKit spkEnv kpkKit kpkEnv pkKit pkEnv stk :=
   stageP2_v1_kits_memInv_at_placed_ofEnv StageP2MemInv.frozen ext hWF hH hPure
@@ -2525,8 +2553,8 @@ theorem stageP2_v1_kits_frozen_placed_ofEnv [LibsignalPlacement]
     spkKit spkEnv hspkVt hspkOk
     kpkKit kpkEnv hkpkVt hkpkOk
     pkKit pkEnv hpkVt hpkOk
-    (p2_callStack_le_v1CallStack spkKit kpkKit pkKit skit)
-    (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit)
+    (Nat.le_trans (p2_callStack_le_v1CallStack spkKit kpkKit pkKit skit) (Nat.le_max_left _ _))
+    (Nat.le_max_right _ _)
     stk hstk
 
 abbrev stageP2_v1_kits_frozen_placed [LibsignalPlacement]
@@ -2563,7 +2591,7 @@ theorem stageP2_v1_kits_frozen_ext_placed_ofEnv [LibsignalPlacement]
     (pkEnv : PreKeyStoreBudgetEnv pkKit)
     (hpkVt : PreKeyVtablesPlacedOk pkKit)
     (hpkOk : PreKeyStoreKitPlacedOk A lim pkKit pkEnv ext)
-    (stk : Nat) (hstk : stageP2V1CallStack4K spkKit kpkKit pkKit skit ≤ stk) :
+    (stk : Nat) (hstk : stageP2V1PlacedCallStack4K spkKit kpkKit pkKit skit ≤ stk) :
     stageP2V1KitsFrozenAtPlacedOfEnvProp P A lim F BobV1Env AcceptErrEnv ext
       skit senv spkKit spkEnv kpkKit kpkEnv pkKit pkEnv stk :=
   stageP2_v1_kits_memInv_at_placed_ofEnv StageP2MemInv.frozen ext hWF hH hPure
@@ -2574,9 +2602,11 @@ theorem stageP2_v1_kits_frozen_ext_placed_ofEnv [LibsignalPlacement]
     spkKit spkEnv hspkVt hspkOk
     kpkKit kpkEnv hkpkVt hkpkOk
     pkKit pkEnv hpkVt hpkOk
-    (Nat.le_trans (p2_callStack_le_4K spkKit kpkKit pkKit skit)
-      (p2_callStack4K_le_v1CallStack4K spkKit kpkKit pkKit skit))
-    (p2_bobStack4K_le_v1CallStack4K spkKit kpkKit pkKit skit)
+    (Nat.le_trans
+      (Nat.le_trans (p2_callStack_le_4K spkKit kpkKit pkKit skit)
+        (p2_callStack4K_le_v1CallStack4K spkKit kpkKit pkKit skit))
+      (Nat.le_max_left _ _))
+    (Nat.le_max_right _ _)
     stk hstk
 
 abbrev stageP2_v1_kits_frozen_ext_placed [LibsignalPlacement]
@@ -2619,7 +2649,7 @@ theorem stageP2_v1_kits_frozen_ext_defs_placed_ofEnv [LibsignalPlacement]
     (pkEnv : PreKeyStoreBudgetEnv pkKit)
     (hpkVt : PreKeyVtablesPlacedOk pkKit)
     (hpkOk : PreKeyStoreKitPlacedOk A lim pkKit pkEnv ext)
-    (stk : Nat) (hstk : stageP2V1CallStack4K spkKit kpkKit pkKit skit ≤ stk) :
+    (stk : Nat) (hstk : stageP2V1PlacedCallStack4K spkKit kpkKit pkKit skit ≤ stk) :
     stageP2V1KitsFrozenAtPlacedOfEnvProp P A lim F BobV1Env AcceptErrEnv ext
       skit senv spkKit spkEnv kpkKit kpkEnv pkKit pkEnv stk :=
   stageP2_v1_kits_frozen_ext_placed_ofEnv ext hWF hH hPure

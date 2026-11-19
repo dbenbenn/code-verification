@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInit
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInitPlacedABudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInit
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInitPlacedABudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Block A Init (Part B)
@@ -27,7 +30,7 @@ scatter (`+820 -> +976`), and combined `blockA_placed_sepWPp` (`+436 -> +976`) t
 `RustCliAllocBudget M`, `BudgetLimits`, and `BlockAEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -109,11 +112,11 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 /-! ## 1. Exact Allocator Event Envelopes for Block A (`11..15` and Complete `0..15`) -/
 
 /-- Exact allocator event sequence for Block A allocations `11..15` (`5` allocations of `2` bytes, align `2`). -/
-def blockAAlloc1115Events : List AllocEvent :=
+@[expose] def blockAAlloc1115Events : List AllocEvent :=
   rustAllocEvents 2 2 ++ rustAllocEvents 2 2 ++ rustAllocEvents 2 2 ++
     rustAllocEvents 2 2 ++ rustAllocEvents 2 2
 
-def BlockAAlloc1115Env (evs : List AllocEvent) : Prop :=
+@[expose] def BlockAAlloc1115Env (evs : List AllocEvent) : Prop :=
   evs = blockAAlloc1115Events
 
 theorem fitsEnv_blockAAlloc1115_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :
@@ -123,10 +126,10 @@ theorem fitsEnv_blockAAlloc1115_iff {M : AllocCostModel} {lim : BudgetLimits} {s
   · intro h evs hevs; rw [hevs]; exact h
 
 /-- Exact allocator event sequence for complete Block A (`16` allocations of `2` bytes, align `2`). -/
-def blockAEvents : List AllocEvent :=
+@[expose] def blockAEvents : List AllocEvent :=
   blockAAlloc05Events ++ blockAAlloc610Events ++ blockAAlloc1115Events
 
-def BlockAEnv (evs : List AllocEvent) : Prop :=
+@[expose] def BlockAEnv (evs : List AllocEvent) : Prop :=
   evs = blockAEvents
 
 theorem fitsEnv_blockA_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} :

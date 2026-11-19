@@ -211,7 +211,7 @@ error: [spec_smoke] STUCK (missingCellAuditCode missingCellAuditSpec): 0/1 path(
 #guard_msgs (error, drop info) in
 #spec_smoke! missingCellAuditCode missingCellAuditSpec
 
-/-- `ldr h0, [x1, #2]; ret`: a 2-byte SIMD load (no step rule exists, so the smoke run gets stuck). -/
+/-- `ldr h0, [x1, #2]; ret`: a 2-byte offset SIMD load stepped via subword auto-focus. -/
 def simdH16AuditCode : FnCode :=
   .atAddr "simd_h16_fn" missing_cell_addr
     ("7d400420 " ++ -- 0x70200: ldr h0, [x1, #2]
@@ -222,20 +222,32 @@ def simdH16AuditSpec : Spec (BitVec 64 × BitVec 32) where
   pre := fun a s0 => ⌜s0.readReg64 .x1 = a.1⌝ ∗ (a.1 ↦₃₂ a.2)
   post := fun a _ _ => (a.1 ↦₃₂ a.2)
 
--- `[a.1 + 2, a.1 + 4)` lies inside the `↦₃₂` block, so the diagnosis must report the missing step
--- rule, not `no cell at a.1 + 2#64`.
+#spec_smoke! simdH16AuditCode simdH16AuditSpec
+
+/-- `ldxp x0, x2, [x1]; ret`: exclusive pair load (no `ldxp` step rule exists, so the smoke run gets stuck). -/
+def ldxpMissingRuleAuditCode : FnCode :=
+  .atAddr "ldxp_missing_rule_fn" missing_cell_addr
+    ("c87f0820 " ++ -- 0x70200: ldxp x0, x2, [x1]
+     "d65f03c0")    -- 0x70204: ret
+
+/-- Owns the 16 bytes `[a.1, a.1 + 16)` read by `ldxp x0, x2, [x1]`. -/
+def ldxpMissingRuleAuditSpec : Spec (BitVec 64 × BitVec 128) where
+  pre := fun a s0 => ⌜s0.readReg64 .x1 = a.1⌝ ∗ (a.1 ↦₁₂₈ a.2)
+  post := fun a _ _ => (a.1 ↦₁₂₈ a.2)
+
+-- `[a.1, a.1 + 16)` is owned by `↦₁₂₈`, so the diagnosis must report the missing step
+-- rule, not `no cell at a.1`.
 /--
-error: [spec_smoke] STUCK (simdH16AuditCode simdH16AuditSpec): 0/1 path(s) reached return (0 closed postcondition)
-  - path 1 (unconditional): STUCK at PC 0x70200#64 (Instr.ldrSimd SimdMemSize.H16 (0#5)
-  (AddrMode.Offset (Reg.gpr 1#5)
-    2#64)): wp_step: no step rule succeeded for instruction `Instr.ldrSimd SimdMemSize.H16 (0#5)
-  (AddrMode.Offset (Reg.gpr 1#5)
-    2#64)` (full: `Instr.ldrSimd SimdMemSize.H16 (0#5) (AddrMode.Offset (Reg.gpr 1#5) 2#64)`) at PC `459264#64`
-spatial context points-to atoms: a.fst ↦₃₂ a.snd
+error: [spec_smoke] STUCK (ldxpMissingRuleAuditCode ldxpMissingRuleAuditSpec): 0/1 path(s) reached return (0 closed postcondition)
+  - path 1 (unconditional): STUCK at PC 0x70200#64 (Instr.ldxp MemWidth.X64 false (Reg.gpr 1#5) (Reg.gpr 0#5)
+  (Reg.gpr
+    2#5)): wp_step: no step rule succeeded for instruction `Instr.ldxp MemWidth.X64 false (Reg.gpr 1#5) (Reg.gpr 0#5)
+  (Reg.gpr 2#5)` (full: `Instr.ldxp MemWidth.X64 false (Reg.gpr 1#5) (Reg.gpr 0#5) (Reg.gpr 2#5)`) at PC `459264#64`
+spatial context points-to atoms: a.fst ↦₁₂₈ a.snd
 (detail: `simp` made no progress)
 -/
 #guard_msgs (error, drop info) in
-#spec_smoke! simdH16AuditCode simdH16AuditSpec
+#spec_smoke! ldxpMissingRuleAuditCode ldxpMissingRuleAuditSpec
 
 /-! ## Bounded `#spec_nonvacuous!` Mode and Read-Only (`↦ᵣ`) Spatial Atoms -/
 

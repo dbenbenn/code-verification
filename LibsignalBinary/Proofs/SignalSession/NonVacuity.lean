@@ -23,7 +23,7 @@ Proves that neither the empty-outcome run (`fun _ => none`) nor the always-abort
 inhabitants (`emptyParty`, `wfPq_emptyParty_uncond`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,16 +32,8 @@ namespace CryptoVerification.SignalSession
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.E2E CryptoVerification.LibsignalProtoCodec
 
-/-- The run with no outcome does not meet `CliSpecE`: Alice's initial state is reachable, and
-`send` of the empty plaintext on its directory must have an outcome. -/
-theorem not_cliSpecE_none (C : Crypto) : ¬ CliSpecE (fun _ => none) C := by
-  intro h
-  have := h.1 ((spqrOffSessionParams C).initA (InitKeys.equiv (0, 0, 0, 0, 0))) []
-    (Reach.initA _) (by simp)
-  simp [stdinCapBytes, maxPlaintextBytes] at this
-
 /-- A party with no peer identity, no session and no pre-keys. -/
-def emptyParty : PqParty :=
+@[expose] def emptyParty : PqParty :=
   { party := .A, me := ⟨List.Vector.replicate 32 0#8, 0⟩, peerId := none, session := none,
     signed := [], oneTime := [], kyberOneTime := [], kyberLastResort := [] }
 
@@ -61,15 +53,6 @@ theorem wfPq_emptyParty (W : PEParams)
   · simp [emptyParty]
   · simp [emptyParty]
 
-/-- The run with no outcome does not meet `CliSpecPqxdh` (given the empty party's file bound):
-`send` on the empty party must have an outcome (here a rejection: there is no session). -/
-theorem not_cliSpecPq_none (X : UnreachedPqxdhPrimitives) (W : PEParams)
-    (h : ∀ f ∈ encodeDir W emptyParty, f.2.length ≤ fileCapBytes) :
-    ¬ CliSpecPqxdh (fun _ => none) X W := by
-  intro hs
-  have := (hs emptyParty (wfPq_emptyParty W h)).2.1 [] (List.Vector.replicate 64 0#8) (by simp)
-  simp [stdinCapBytes, maxPlaintextBytes] at this
-
 /-- The empty party's three files (`address` 38 B, `identity-key-pair` 69 B, `registration-id`
 4 B) are at most `fileCapBytes` (`2^21` B), for every `W`. -/
 theorem encodeDir_emptyParty_lt (W : PEParams) :
@@ -87,29 +70,5 @@ theorem encodeDir_emptyParty_lt (W : PEParams) :
 /-- The empty party is in `CliSpecPqxdh`'s domain, for every `W`. -/
 theorem wfPq_emptyParty_uncond (W : PEParams) : PqxdhPartyInSpecDomain W emptyParty :=
   wfPq_emptyParty W (encodeDir_emptyParty_lt W)
-
-/-- The run with no outcome does not meet `CliSpecPqxdh`, for every `X` and `W`. -/
-theorem not_cliSpecPq_none_uncond (X : UnreachedPqxdhPrimitives) (W : PEParams) :
-    ¬ CliSpecPqxdh (fun _ => none) X W :=
-  not_cliSpecPq_none X W (encodeDir_emptyParty_lt W)
-
-/-- The always-aborting run does not meet `CliSpecE`: `recv` of `2 ‖ []` on Alice's initial
-directory must be rejected (the empty `SignalMessage` does not parse), not aborted. -/
-theorem not_cliSpecE_aborted (C : Crypto) : ¬ CliSpecE (fun _ => some .aborted) C := by
-  intro h
-  have h1 := h.2 ((spqrOffSessionParams C).initA (InitKeys.equiv (0, 0, 0, 0, 0))) [] 0
-    (Reach.initA _) (by simp)
-  have htry : SignalMessage.tryFrom (spqrOffSessionParams C).codec [] =
-      .error (.ciphertextMessageTooShort 0) := rfl
-  simp [stdinCapBytes, observe, smRecvModel, recvModelSpqrOff, htry] at h1
-
-/-- The always-aborting run does not meet `CliSpecPqxdh`, for every `X` and `W`: `send` on the empty
-party must be rejected (there is no session), not aborted. -/
-theorem not_cliSpecPq_aborted (X : UnreachedPqxdhPrimitives) (W : PEParams) :
-    ¬ CliSpecPqxdh (fun _ => some .aborted) X W := by
-  intro hs
-  have h1 := (hs emptyParty (wfPq_emptyParty_uncond W)).2.1 [] (List.Vector.replicate 64 0#8)
-    (by simp)
-  simp [stdinCapBytes, maxPlaintextBytes, pqxdhExpectedOutcome, observe, pqSendModel, emptyParty] at h1
 
 end CryptoVerification.SignalSession

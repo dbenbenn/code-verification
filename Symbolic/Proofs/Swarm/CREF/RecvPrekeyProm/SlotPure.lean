@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.AcceptCliPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.EntryPure
+public import Symbolic.Proofs.Refinement.Composed.Cli.OldShape -- proof-setup: allow-public-import
 
 /-!
 # Promote Pre-Key Accept Step
@@ -21,7 +22,7 @@ Proves `slot_rpk_prom_accept_pure`, stepping `CReadyPure` across an accepting, n
 `.preKey` promote call by supplying `prom_noDrawOK_proved` and `prom_versionOK_proved`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder>::into_pb`: Budget-Threaded Specifications
@@ -20,7 +21,7 @@ Allocator-budget specifications (`RustCliAllocBudget M`, `BudgetLimits`) and det
 `<spqr::encoding::polynomial::PolyEncoder>::into_pb` (Block `375`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,7 +30,6 @@ namespace LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget
 open Arm64 ProofLib
 open CryptoVerification (LibsignalPlacement blkPC_375 blkPl_375)
 open CryptoVerification.LibsignalSpqrV1 (GF16 Point Poly PolyEncoder)
-open CryptoVerification.LibsignalTripleRatchet (tripleRatchetProgAtExt)
 open CryptoVerification.SpqrV1.Poly (
   polyEncoderAt polyEncoderSize protoPolynomialEncoderAt protoPolynomialEncoderSize
 )
@@ -45,11 +45,11 @@ open LibsignalBinary.Heap (
 
 /-- Deterministic `AllocEvent` list emitted when serializing one `Point` or `Poly` (`List GF16`)
     slot in `<PolyEncoder>::into_pb`: `[]` if empty, else `rustAllocEvents (2 * cs.length) 1`. -/
-def encoderIntoPbSlotEvents (cs : List GF16) : List AllocEvent :=
+@[expose] def encoderIntoPbSlotEvents (cs : List GF16) : List AllocEvent :=
   if cs.isEmpty then [] else rustAllocEvents (2 * cs.length) 1
 
 /-- Underlying 16 `List GF16` element vectors of `enc : PolyEncoder` in serialization order. -/
-def encoderIntoPbVecs (enc : PolyEncoder) : List (List GF16) :=
+@[expose] def encoderIntoPbVecs (enc : PolyEncoder) : List (List GF16) :=
   match enc.s with
   | .points pts => pts.map Point.value
   | .polys polys => polys.map Poly.coefficients
@@ -57,19 +57,19 @@ def encoderIntoPbVecs (enc : PolyEncoder) : List (List GF16) :=
 /-- Deterministic `AllocEvent` list for the allocation phase of `<PolyEncoder>::into_pb`:
     two `384`-byte outer `Vec<Vec<u8>>` buffers (`pts` and `polys`, each `align = 8`) followed by
     per-slot `Vec<u8>` allocations across `encoderIntoPbVecs enc`. -/
-def encoderIntoPbAllocEvents (enc : PolyEncoder) : List AllocEvent :=
+@[expose] def encoderIntoPbAllocEvents (enc : PolyEncoder) : List AllocEvent :=
   rustAllocEvents 384 8 ++ rustAllocEvents 384 8 ++
     (encoderIntoPbVecs enc).flatMap encoderIntoPbSlotEvents
 
 /-- Precondition allocation envelope of `<PolyEncoder>::into_pb` (before the trailing
     `drop_glue::<[Poly; 16]>` deallocations). -/
-def EncoderIntoPbAllocEnv (enc : PolyEncoder) (evs : List AllocEvent) : Prop :=
+@[expose] def EncoderIntoPbAllocEnv (enc : PolyEncoder) (evs : List AllocEvent) : Prop :=
   evs = encoderIntoPbAllocEvents enc
 
 /-- Full postcondition event envelope of `<PolyEncoder>::into_pb`: deterministic allocations
     `encoderIntoPbAllocEvents enc` followed by `FreeOnlyEvs` from dropping the 16 `Vec<GF16>`
     buffers. -/
-def EncoderIntoPbEnv (enc : PolyEncoder) (evs : List AllocEvent) : Prop :=
+@[expose] def EncoderIntoPbEnv (enc : PolyEncoder) (evs : List AllocEvent) : Prop :=
   ∃ evs_alloc evs_free,
     evs = evs_alloc ++ evs_free ∧
     EncoderIntoPbAllocEnv enc evs_alloc ∧
@@ -90,7 +90,7 @@ theorem fitsEnv_encoderIntoPbAllocEnv_of_encoderIntoPbEnv {M : AllocCostModel}
 
 /-- Budget-threaded specification of `<spqr::encoding::polynomial::PolyEncoder>::into_pb`
     (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def encoderIntoPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def encoderIntoPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncoderIntoPbGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.encA ∧
@@ -105,7 +105,7 @@ def encoderIntoPbSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : Bud
       memRegion x.encA polyEncoderSize ∗
       A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp encoderIntoPbStack
 
-def encoderIntoPbSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def encoderIntoPbSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EncoderIntoPbGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.encA ∧
@@ -155,24 +155,9 @@ theorem encoderIntoPbSpecX_of_encoderIntoPbSpec {P : Program} {addr : BitVec 64}
   · exact (not_satisfies_false_sepConj hex).elim
   · exact (not_satisfies_false_sepConj hoom).elim
 
-/-- `<PolyEncoder>::into_pb` meets `encoderIntoPbSpec M A lim` on `tripleRatchetProgAtExt b ext`. -/
-def EncoderIntoPbOkExt (b : BitVec 64) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encoderIntoPbName)
-    (encoderIntoPbSpec M A lim)
-
-/-- `<PolyEncoder>::into_pb` meets `(encoderIntoPbSpecX M A lim).inImage img` on
-    `tripleRatchetProgAtExt img.base ext`. -/
-def EncoderIntoPbOkX (img : Obj.Image) (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encoderIntoPbName)
-    ((encoderIntoPbSpecX M A lim).inImage img)
-
 /-- `<PolyEncoder>::into_pb` (Block `375`) meets `encoderIntoPbSpec M A lim` under
     `[LibsignalPlacement]`. -/
-def EncoderIntoPbPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def EncoderIntoPbPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_375).rebase (blkPl_375).base (Rust.withPanics ext))
@@ -181,7 +166,7 @@ def EncoderIntoPbPlacedOkExt [LibsignalPlacement] (M : AllocCostModel)
 
 /-- `<PolyEncoder>::into_pb` (Block `375`) meets `encoderIntoPbSpecX M A lim` under
     `[LibsignalPlacement]`. -/
-def EncoderIntoPbPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def EncoderIntoPbPlacedOkX [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_375).rebase (blkPl_375).base (Rust.withPanics ext))

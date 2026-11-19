@@ -20,7 +20,7 @@ that any heap-resident session or record (`sessionStateReprAt`, `sessionRecordAt
 `InMemRecOk`) carries a canonical ghost (`CanonSession`, `CanonRecord`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,11 +39,11 @@ open CryptoVerification.E2E.Record.Serialization (CanonChain CanonSender CanonPe
 
 /-! ## `Record` and `LibsignalPublicApiRepr` Equivalence -/
 
-def toRecordGhost (g : CryptoVerification.LibsignalPublicApiRepr.RecordGhost) :
+@[expose] def toRecordGhost (g : CryptoVerification.LibsignalPublicApiRepr.RecordGhost) :
     CryptoVerification.E2E.Record.RecordGhost :=
   ⟨g.prevCap, g.prevPtr, g.cur⟩
 
-def ofRecordGhost (g : CryptoVerification.E2E.Record.RecordGhost) :
+@[expose] def ofRecordGhost (g : CryptoVerification.E2E.Record.RecordGhost) :
     CryptoVerification.LibsignalPublicApiRepr.RecordGhost :=
   ⟨g.prevCap, g.prevPtr, g.cur⟩
 
@@ -57,38 +57,12 @@ theorem ofRecordGhost_toRecordGhost (g : CryptoVerification.LibsignalPublicApiRe
     ofRecordGhost (toRecordGhost g) = g := by
   cases g; rfl
 
-theorem optU32Rel_eq :
-    CryptoVerification.E2E.Record.OptU32Rel =
-      CryptoVerification.LibsignalPublicApiRepr.OptU32Rel :=
-  rfl
-
-theorem pendingRel_eq :
-    CryptoVerification.E2E.Record.PendingRel =
-      CryptoVerification.LibsignalPublicApiRepr.PendingRel :=
-  rfl
-
-theorem kyberRel_eq :
-    CryptoVerification.E2E.Record.KyberRel =
-      CryptoVerification.LibsignalPublicApiRepr.KyberRel :=
-  rfl
-
-theorem record_sessionAt_eq (A : RustAlloc) (ss : BitVec 64) (G : SessionGhost)
-    (s : Session (List (BitVec 8))) :
-    CryptoVerification.E2E.Record.sessionStateReprAt A ss G s =
-      CryptoVerification.LibsignalPublicApiRepr.sessionStateReprAt A ss G s :=
-  rfl
-
 theorem record_sessionRecordAt_eq (A : RustAlloc) (r : BitVec 64)
     (g : CryptoVerification.LibsignalPublicApiRepr.RecordGhost)
     (rec : SessionRecord (List (BitVec 8))) :
     CryptoVerification.E2E.Record.sessionRecordAt A r (toRecordGhost g) rec =
       CryptoVerification.LibsignalPublicApiRepr.sessionRecordAt A r g rec := by
   cases g; rfl
-
-theorem record_recordInScope_eq :
-    CryptoVerification.E2E.Record.RecordInScope =
-      CryptoVerification.LibsignalPublicApi.RecordInScope :=
-  rfl
 
 /-! ## Canonical Ghost Extraction -/
 
@@ -217,49 +191,12 @@ theorem canonSession_of_satisfies_sessionAt (A : RustAlloc) (ss : BitVec 64)
   exact hsat.1
 
 /-- Store-side record invariant: in-scope `SessionRecord` with empty PQ state and present current session. -/
-def InMemRecOk (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def InMemRecOk (r : SessionRecord (List (BitVec 8))) : Prop :=
   CryptoVerification.E2E.Record.RecordInScope r ∧
   CryptoVerification.E2E.Record.RecordPqEmpty r ∧ r.currentSession.isSome
 
 theorem InMemRecOk.recordInScope {r : SessionRecord (List (BitVec 8))} (h : InMemRecOk r) :
     RecordInScope r :=
   h.1
-
-theorem InMemRecOk.of_deserializeScope {r : SessionRecord (List (BitVec 8))} (h : DeserializeScope r) :
-    InMemRecOk r := by
-  obtain ⟨⟨hIn, hPq, _⟩, s, hs, _⟩ := h
-  exact ⟨hIn, hPq, by rw [hs]; rfl⟩
-
-theorem canonRecord_of_sessionRecordAt_some (A : RustAlloc) (a : BitVec 64)
-    (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
-    (hSome : r.currentSession.isSome) :
-    ∀ m, sessionRecordAt A a g r m → CanonRecord (toRecordGhost g) r := by
-  intro m hm
-  unfold sessionRecordAt at hm
-  obtain ⟨_, hcur⟩ := sepConj_right hm
-  obtain ⟨s, hr⟩ := Option.isSome_iff_exists.mp hSome
-  rw [hr] at hcur
-  cases hg : g.cur with
-  | none =>
-    rw [hg] at hcur
-    dsimp only at hcur
-    rw [← sepConj_emp ⌜False⌝] at hcur
-    exact False.elim (SepProp.holds_pure_sepConj hcur).1
-  | some G =>
-    rw [hg] at hcur
-    dsimp only at hcur
-    unfold CanonRecord CanonCur toRecordGhost
-    dsimp only
-    rw [hg, hr]
-    exact canonSession_of_sessionAt A (a + 0x18#64) G s _ hcur
-
-/-- Any `SessionRecord` satisfying `sessionRecordAt` and `InMemRecOk` has canonical ghost `CanonRecord`. -/
-theorem canonRecord_of_sessionRecordAt (A : RustAlloc) (a : BitVec 64)
-    (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
-    (hOk : InMemRecOk r) :
-    ∀ m, sessionRecordAt A a g r m → CanonRecord (toRecordGhost g) r :=
-  canonRecord_of_sessionRecordAt_some A a g r hOk.2.2
-
-abbrev canonRecord_of_inMemRecOk := canonRecord_of_sessionRecordAt
 
 end CryptoVerification.E2E.InMem.SessionStoreImpl

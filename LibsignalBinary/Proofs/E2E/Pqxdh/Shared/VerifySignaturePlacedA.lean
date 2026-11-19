@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignatureA
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonicalPlaced
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.VerifySignatureA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.IsCanonicalPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.NewFromSliceInvariants
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.TripleRatchet.ConsumeMessageKeyTransfer.CtEqRO
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `VerifySignature` — Hook Bundles, SHA-512 IVs, and Segments 2–3 (Block `204`)
@@ -26,7 +29,7 @@ decoupled from Block `202` (`PublicKey::is_canonical`), proves `.rodata` SHA-512
 `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -39,6 +42,10 @@ open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalTripleRatchet CryptoVerification.LibsignalSession
 open CryptoVerification.LibsignalTripleRatchet.ConsumeMessageKeyTransfer
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (lsLen)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (
+  satisfies_withLsRet_of_blockPlacement_base_add withLsRet
+)
 open SignalPqxdh SignalPqxdh.Model
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff
@@ -100,9 +107,12 @@ structure VerifySignaturePrims (P : Primitives) : Prop where
   sigVerify_eq_xeddsaVerifyRef : ∀ pk m sig, P.sigVerify pk m sig = xeddsaVerifyRef P pk m sig
   scalarFromBytesModOrder_len  : ∀ b, (P.scalarFromBytesModOrder b).length = 32
   scalarFromWide_len           : ∀ b, (P.scalarFromWide b).length = 32
-  montToEd_len                 : ∀ u s pt, P.montToEd u s = some pt → pt.length = 160
-  edNeg_len                    : ∀ pt, (P.edNeg pt).length = 160
-  doubleScalarMulBasepoint_len : ∀ h a s, (P.doubleScalarMulBasepoint h a s).length = 160
+  montToEd_lt                  : ∀ u s pt, P.montToEd u s = some pt →
+                                   pt.x < 256 ^ 80 ∧ pt.y < 256 ^ 80
+  edNeg_lt                     : ∀ pt, (P.edNeg pt).x < 256 ^ 80 ∧ (P.edNeg pt).y < 256 ^ 80
+  doubleScalarMulBasepoint_lt  : ∀ h a s,
+                                   (P.doubleScalarMulBasepoint h a s).x < 256 ^ 80 ∧
+                                     (P.doubleScalarMulBasepoint h a s).y < 256 ^ 80
   compress_len                 : ∀ pt, (P.compress pt).length = 32
 
 theorem VerifySignaturePrims.of_structuralPrims {P : Primitives}
@@ -112,42 +122,60 @@ theorem VerifySignaturePrims.of_structuralPrims {P : Primitives}
   sigVerify_eq_xeddsaVerifyRef := hWF.sigVerify_eq_xeddsaVerifyRef
   scalarFromBytesModOrder_len  := hWF.scalarFromBytesModOrder_len
   scalarFromWide_len           := hWF.scalarFromWide_len
-  montToEd_len                 := hWF.montToEd_len
-  edNeg_len                    := hWF.edNeg_len
-  doubleScalarMulBasepoint_len := hWF.doubleScalarMulBasepoint_len
+  montToEd_lt                  := hWF.montToEd_lt
+  edNeg_lt                     := hWF.edNeg_lt
+  doubleScalarMulBasepoint_lt  := hWF.doubleScalarMulBasepoint_lt
   compress_len                 := hWF.compress_len
+
+theorem VerifySignaturePrims.montToEd_len {P : Primitives} (_hWF : VerifySignaturePrims P)
+    (u : Bytes) (s : UInt8) (pt : Bytes) (h : P.montToEdBytes u s = some pt) :
+    pt.length = 160 :=
+  P.montToEdBytes_len u s pt h
+
+theorem VerifySignaturePrims.edNeg_len {P : Primitives} (_hWF : VerifySignaturePrims P)
+    (pt : Bytes) : (P.edNegBytes pt).length = 160 :=
+  P.edNegBytes_len pt
+
+theorem VerifySignaturePrims.doubleScalarMulBasepoint_len {P : Primitives}
+    (_hWF : VerifySignaturePrims P) (h a s : Bytes) :
+    (P.doubleScalarMulBasepointBytes h a s).length = 160 :=
+  P.doubleScalarMulBasepointBytes_len h a s
+
+theorem VerifySignaturePrims.compressBytes_len {P : Primitives} (hWF : VerifySignaturePrims P)
+    (pt : Bytes) : (P.compressBytes pt).length = 32 :=
+  P.compressBytes_len hWF.compress_len pt
 
 /-- Relocatable external hook contracts required by Blocks `203` and `204` (independent of
     `is_torsion_free` / Block `202`). -/
-structure VerifySignaturePlacedHooks (P : Primitives) (H : LibsignalHooks) : Prop where
+structure VerifySignaturePlacedHooks (P : Primitives) (H : LibsignalHooks) [LibsignalPlacement] : Prop where
   memcpy         : HookSat H lsMemcpySym sessionMemcpyRegionSpec
   memset         : HookSat H lsVerifyMemsetSym (sessionMemsetSpec pqxdhHookStack)
   blackBox       : H lsBlackBoxU8Sym = some CryptoVerification.LibsignalSession.blackBoxHook
   montToEd       : HookSat H lsVerifyMontToEdSym (dalekMontToEdStubSpec P)
-  compress       : HookSat H lsDalekCompressSym (cryptoLeafStubSpec P.compress 160 32)
-  edNeg          : HookSat H lsDalekEdNegSym (cryptoLeafStubSpec P.edNeg 160 160)
+  compress       : HookSat H lsDalekCompressSym (cryptoLeafStubSpec P.compressBytes 160 32)
+  edNeg          : HookSat H lsDalekEdNegSym (cryptoLeafStubSpec P.edNegBytes 160 160)
   sha512Compress : HookSat H lsSha512CompressSym
-                     (compressInPlaceStubSpec (sha512CompressOutBytes P) 64 128)
+                     (withLsRet (compressInPlaceStubSpec (sha512CompressOutBytes P) 64 128))
   scalarWide     : HookSat H lsDalekScalarWideSym (cryptoLeafStubSpec P.scalarFromWide 64 32)
   scalarMod      : HookSat H lsDalekScalarModSym
                      (cryptoLeafStubSpec P.scalarFromBytesModOrder 32 32)
   doubleMul      : HookSat H lsDalekDoubleMulSym (dalekDoubleMulStubSpec P)
 
-structure VerifySignaturePlacedHooks' (P : Primitives) (H : LibsignalHooks) : Prop where
+structure VerifySignaturePlacedHooks' (P : Primitives) (H : LibsignalHooks) [LibsignalPlacement] : Prop where
   memcpy         : HookSat H lsMemcpySym sessionMemcpyRegionSpec
   memset         : HookSat H lsVerifyMemsetSym (sessionMemsetSpec pqxdhHookStack)
   blackBox       : H lsBlackBoxU8Sym = some CryptoVerification.LibsignalSession.blackBoxHook
   montToEd       : HookSat H lsVerifyMontToEdSym (dalekMontToEdStubSpecPlaced P)
-  compress       : HookSat H lsDalekCompressSym (cryptoLeafStubSpec P.compress 160 32)
-  edNeg          : HookSat H lsDalekEdNegSym (cryptoLeafStubSpec P.edNeg 160 160)
+  compress       : HookSat H lsDalekCompressSym (cryptoLeafStubSpec P.compressBytes 160 32)
+  edNeg          : HookSat H lsDalekEdNegSym (cryptoLeafStubSpec P.edNegBytes 160 160)
   sha512Compress : HookSat H lsSha512CompressSym
-                     (compressInPlaceStubSpecPlaced (sha512CompressOutBytes P) 64 128)
+                     (withLsRet (compressInPlaceStubSpecPlaced (sha512CompressOutBytes P) 64 128))
   scalarWide     : HookSat H lsDalekScalarWideSym (cryptoLeafStubSpec P.scalarFromWide 64 32)
   scalarMod      : HookSat H lsDalekScalarModSym
                      (cryptoLeafStubSpec P.scalarFromBytesModOrder 32 32)
   doubleMul      : HookSat H lsDalekDoubleMulSym (dalekDoubleMulStubSpecPlaced P)
 
-theorem VerifySignaturePlacedHooks'.of_hooks {P : Primitives} {H : LibsignalHooks}
+theorem VerifySignaturePlacedHooks'.of_hooks [LibsignalPlacement] {P : Primitives} {H : LibsignalHooks}
     (h : VerifySignaturePlacedHooks P H) : VerifySignaturePlacedHooks' P H where
   memcpy         := h.memcpy
   memset         := h.memset
@@ -195,6 +223,16 @@ theorem sha512IV_placed_quad1 {pl : Obj.MultiPlacement} {m : Memory}
 
 /-! ## Block `204` Segments 2 and 3 -/
 
+theorem verifySig_strip_withLsRet_204 [LibsignalPlacement] {α : Type} {prog : Program}
+    {entry : BitVec 64} {spec : Spec α} (off : BitVec 64)
+    (hok : subroutine_ok prog entry (withLsRet spec)) (ho : off.toNat < lsLen 204 := by decide) :
+    subroutine_ok prog entry
+      { spec with pre := fun x s => ⌜s.readReg64 .lr = (blkPl_204).base + off⌝ ∗ spec.pre x s } :=
+  subroutine_ok_mono hok (fun _ _ _ hpre => by
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
+    exact satisfies_withLsRet_of_blockPlacement_base_add 204 off hpre.1 hpre.2 (by decide) ho)
+    (fun _ _ _ _ hq => hq)
+
 set_option maxHeartbeats 1600000 in
 theorem verifySig_seg2_1569_placed [LibsignalPlacement]
     (P : Primitives) (H : LibsignalHooks) (hH : VerifySignaturePlacedHooks' P H)
@@ -226,8 +264,13 @@ theorem verifySig_seg2_1569_placed [LibsignalPlacement]
         sm.readReg64 (.gpr 29#5) = s.readReg64 (.gpr 29#5) ∧
         calleeSavedVRegs sm = calleeSavedVRegs s ∧ sm.trace = s.trace) := by
   have hmemcpy := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.memcpy
-  have hsha := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.sha512Compress
-  clear hH
+  have hshaRaw := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.sha512Compress
+  have hsha1 := verifySig_strip_withLsRet_204 (prog := (blkPC_204).rebase (blkPl_204).base H)
+    456#64 hshaRaw
+  have hsha2 := verifySig_strip_withLsRet_204 (prog := (blkPC_204).rebase (blkPl_204).base H)
+    512#64 hshaRaw
+  dsimp only [compressInPlaceStubSpecPlaced, compressInPlaceStubSpec] at hsha1 hsha2
+  clear hH hshaRaw
   have hlen_m64_bv : (bytesToBv8 (m.take 64)).length = 64 := by simp [bytesToBv8, hm]
   have hlen_m1408 : ((m.drop 64).take 1408).length = 128 * 11 := by simp [hm]
   have hlen_m1408_bv : (bytesToBv8 ((m.drop 64).take 1408)).length = 1408 := by
@@ -277,13 +320,13 @@ theorem verifySig_seg2_1569_placed [LibsignalPlacement]
     rfl
   apply ProofLib.SepWP.replace_pre (hPQ := Entails.of_eq hmerge128) (by sep_frame)
   wp_steps
-  wp_call hsha ⟨fsp + 688#64, st0, fsp + 560#64, pre64 ++ m.take 64, 1⟩
+  wp_call hsha1 ⟨fsp + 688#64, st0, fsp + 560#64, pre64 ++ m.take 64, 1⟩
   rw [fitBv8_64_sha512CompressOutBytes]
   apply ProofLib.SepWP.replace_pre (hPQ := hbuf128_weaken) (by sep_frame)
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
   apply SepWP.exists_left; intro _
   wp_steps
-  wp_call hsha ⟨fsp + 688#64, sha512CompressOutBytes P st0 (pre64 ++ m.take 64), msgPtr + 64#64,
+  wp_call hsha2 ⟨fsp + 688#64, sha512CompressOutBytes P st0 (pre64 ++ m.take 64), msgPtr + 64#64,
     (m.drop 64).take 1408, 11⟩
   rw [fitBv8_64_sha512CompressOutBytes]
   wp_steps
@@ -373,7 +416,9 @@ theorem verifySig_seg3a_placed [LibsignalPlacement]
         sm.readReg64 (.gpr 23#5) = fsp + 800#64 ∧ sm.readReg64 (.gpr 29#5) = fsp + 1152#64 ∧
         calleeSavedVRegs sm = calleeSavedVRegs s ∧ sm.trace = s.trace) := by
   have hmemset := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.memset
-  have hsha := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.sha512Compress
+  have hsha := verifySig_strip_withLsRet_204 (prog := (blkPC_204).rebase (blkPl_204).base H)
+    808#64 (ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.sha512Compress)
+  dsimp only [compressInPlaceStubSpecPlaced, compressInPlaceStubSpec] at hsha
   have hwide := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.scalarWide
   clear hH
   obtain ⟨b0, b1, b2, b3, b4, b5, b6, b7, b8, b9, b10, b11, _p12, _p13, hp1, hp2, hp3⟩ :=
@@ -550,7 +595,7 @@ theorem verifySig_seg3b_placed [LibsignalPlacement]
         sm.readReg64 (.gpr 0#5) =
           (let sClamped := (sig.drop 32).take 31 ++ [(sig.drop 32).getD 31 0 &&& 0x7F]
            let sScalar := P.scalarFromBytesModOrder sClamped
-           let capRCheck := P.compress (P.doubleScalarMulBasepoint hScalar minusCapA sScalar)
+           let capRCheck := P.compressBytes (P.doubleScalarMulBasepointBytes hScalar minusCapA sScalar)
            if (capRCheck == sig.take 32) = true then 1#64 else 0#64) ∧
         calleeSavedVRegs sm = calleeSavedVRegs s ∧ sm.trace = s.trace) := by
   have hmod := ls_hook_ok_any (prog := (blkPC_204).rebase (blkPl_204).base H) hH.scalarMod
@@ -617,16 +662,16 @@ theorem verifySig_seg3b_placed [LibsignalPlacement]
   have hm32_1008 := pointsToBytes_entails_memRegion_n (fsp + 1008#64) _ hsScalar_bv_len
   apply ProofLib.SepWP.replace_pre (hPQ := hm32_1008) (by sep_frame)
   have hdmul_len :
-      (P.doubleScalarMulBasepoint hScalar minusCapA
+      (P.doubleScalarMulBasepointBytes hScalar minusCapA
         (P.scalarFromBytesModOrder (List.take 31 (List.drop 32 sig) ++
           [(List.drop 32 sig).getD 31 0 &&& 127]))).length = 160 :=
     hWF.doubleScalarMulBasepoint_len _ _ _
   wp_call hcomp ⟨fsp + 800#64,
-    P.doubleScalarMulBasepoint hScalar minusCapA
+    P.doubleScalarMulBasepointBytes hScalar minusCapA
       (P.scalarFromBytesModOrder (List.take 31 (List.drop 32 sig) ++
         [(List.drop 32 sig).getD 31 0 &&& 127])),
     fsp + 1008#64⟩
-  wp_simp_pre_fast [fitBv8_of_length_eq (hWF.compress_len _)]
+  wp_simp_pre_fast [fitBv8_of_length_eq (hWF.compressBytes_len _)]
   wp_steps
   apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
   intro hcl_call
@@ -635,13 +680,13 @@ theorem verifySig_seg3b_placed [LibsignalPlacement]
   apply ProofLib.SepWP.replace_pre (hPQ := Entails.of_eq (sig_split_32 sigPtr hsig)) (by sep_frame)
   wp_simp_pre_fast [hsp_sf_2, hsp_sf_1, hsp_sf, hsp, stackAt_hook_split_48]
   have hcapR_bv_len :
-      (bytesToBv8 (P.compress (P.doubleScalarMulBasepoint hScalar minusCapA
+      (bytesToBv8 (P.compressBytes (P.doubleScalarMulBasepointBytes hScalar minusCapA
         (P.scalarFromBytesModOrder (List.take 31 (List.drop 32 sig) ++
           [(List.drop 32 sig).getD 31 0 &&& 127]))))).length = 32 := by
-    simp [bytesToBv8, hWF.compress_len]
+    simp [bytesToBv8, hWF.compressBytes_len]
   have hsig32_bv_len : (bytesToBv8 (sig.take 32)).length = 32 := by simp [bytesToBv8, hsig]
   wp_call hcteq (fsp + 1008#64,
-    bytesToBv8 (P.compress (P.doubleScalarMulBasepoint hScalar minusCapA
+    bytesToBv8 (P.compressBytes (P.doubleScalarMulBasepointBytes hScalar minusCapA
       (P.scalarFromBytesModOrder (List.take 31 (List.drop 32 sig) ++
         [(List.drop 32 sig).getD 31 0 &&& 127])))),
     sigPtr, bytesToBv8 (sig.take 32), fsp)
@@ -651,7 +696,7 @@ theorem verifySig_seg3b_placed [LibsignalPlacement]
   apply ProofLib.SepWP.replace_pre (hPQ := Entails.of_eq (stackAt_hook_split_48 fsp).symm)
     (by sep_frame)
   have hdmul_bv_len :
-      (bytesToBv8 (P.doubleScalarMulBasepoint hScalar minusCapA
+      (bytesToBv8 (P.doubleScalarMulBasepointBytes hScalar minusCapA
         (P.scalarFromBytesModOrder (List.take 31 (List.drop 32 sig) ++
           [(List.drop 32 sig).getD 31 0 &&& 127])))).length = 160 := by
     simp [bytesToBv8, hWF.doubleScalarMulBasepoint_len]

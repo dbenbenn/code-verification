@@ -10,10 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Record.Defs
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.RatchetDecryptCodeSym
-public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.RatchetDecryptCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Seam States and Segment Specifications for CLI `try_decrypt_from_record`
@@ -22,7 +23,7 @@ Defines the `[LibsignalPlacement]` code/`.rodata` invariant `LibsignalCodeRoLoad
 checkpoint states, segment specifications, and seam composition on CLI Block `463`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,7 +43,7 @@ noncomputable abbrev lsProg_463 [LibsignalPlacement] (H : LibsignalHooks) : Prog
 
 /-- Both unmutated code blocks (`LibsignalCodeLoaded`) and `.rodata` (`LibsignalRoLoaded`) are
 loaded in `m`. Preserved across `KeepsFrozen` transitions and implied by `LibsignalFrozen`. -/
-def LibsignalCodeRoLoaded (pl : Obj.MultiPlacement) (m : Memory) : Prop :=
+@[expose] def LibsignalCodeRoLoaded (pl : Obj.MultiPlacement) (m : Memory) : Prop :=
   LibsignalCodeLoaded pl m ∧ LibsignalRoLoaded pl m
 
 theorem LibsignalCodeRoLoaded.of_keepsFrozen {pl : Obj.MultiPlacement} {m m' : Memory}
@@ -54,16 +55,16 @@ theorem LibsignalCodeRoLoaded.of_libsignalFrozen {pl : Obj.MultiPlacement} {m : 
   ⟨LibsignalCodeLoaded.of_codeLoaded h.2, h.1⟩
 
 theorem ls_externAt?_226 [LibsignalPlacement] {H : LibsignalHooks} {sym : String}
-    (hmem : sym ∈ libsignalSessionExterns := by decide) :
+    (hmem : sym ∈ libsignalHookedExterns := by decide) :
     ((blkPC_463).rebase (blkPl_463).base H).externAt? (lsmpl.ρ sym) = H sym := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
-  exact ls_externAt?_of_blockProg (k := k) (by rw [List.getElem?_eq_getElem hlt, hk])
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_externAt?_of_blockProg (k := k) (by rw [List.getElem?_eq_getElem hlt, hk]) (hhooked := hmem)
 
 theorem ls_hook_ok_226 [LibsignalPlacement] {α : Type} {H : LibsignalHooks} {sym : String}
-    {spec : Spec α} (hmem : sym ∈ libsignalSessionExterns := by decide) (h : HookSat H sym spec) :
+    {spec : Spec α} (hmem : sym ∈ libsignalHookedExterns := by decide) (h : HookSat H sym spec) :
     subroutine_ok ((blkPC_463).rebase (blkPl_463).base H) (lsmpl.ρ sym) spec := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
-  exact ls_hook_ok (k := k) (by rw [List.getElem?_eq_getElem hlt, hk]) h
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_hook_ok (k := k) (by rw [List.getElem?_eq_getElem hlt, hk]) h (hhooked := hmem)
 
 abbrev recEntryPlaced [LibsignalPlacement] : BitVec 64 := (blkPl_463).base + 0x1a8#64
 abbrev recVPCPlaced [LibsignalPlacement] : BitVec 64 := (blkPl_463).base + 0x69c#64
@@ -72,12 +73,12 @@ abbrev recFPCPlaced [LibsignalPlacement] : BitVec 64 := (blkPl_463).base + 0x850
 abbrev recJPCPlaced [LibsignalPlacement] : BitVec 64 := (blkPl_463).base + 0x1e8c#64
 abbrev recExitPlaced [LibsignalPlacement] : BitVec 64 := (blkPl_463).base + 0x1f50#64
 
-def recMetaPlaced [LibsignalPlacement] (s0 s : State) : Prop :=
+@[expose] def recMetaPlaced [LibsignalPlacement] (s0 s : State) : Prop :=
   s.status = .Running ∧ s.sp = s0.sp ∧ s.spAligned = true ∧
     s.readReg64 .x29 = s0.readReg64 .x29 ∧ s.trace = s0.trace ∧
     LibsignalCodeRoLoaded lsmpl s.mem ∧ calleeSavedVRegs s = calleeSavedVRegs s0
 
-def recFramePlaced [LibsignalPlacement] (A : RustAlloc) (x : RecordDecryptGhost) (sp : BitVec 64) :
+@[expose] def recFramePlaced [LibsignalPlacement] (A : RustAlloc) (x : RecordDecryptGhost) (sp : BitVec 64) :
     SepProp :=
   memRegion sp 0x80 ∗
   ((sp + 0x80#64) ↦₆₄ x.sret) ∗ ((sp + 0x88#64) ↦₆₄ x.locA) ∗ ((sp + 0x90#64) ↦₆₄ x.msgA) ∗
@@ -93,7 +94,7 @@ def recFramePlaced [LibsignalPlacement] (A : RustAlloc) (x : RecordDecryptGhost)
   protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
   signalMessageAt A x.msgG x.msgA x.msg ∗ FromRecordCallees.lsLogOff ∗ stackAt sp rootStack ∗ A.pool
 
-def tryDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def tryDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec TryDecryptGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.ss ∧ s.readReg64 .x2 = x.remA ∧
@@ -118,7 +119,7 @@ def tryDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl 
     ⌜((x.model C S uuidParse).1 = .error .panic ∨ S.recvPanics x.st.pqRatchetState x.msg.pqRatchet ∨
         allocFailedIn s0 sf) ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def recordDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def recordDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec RecordDecryptGhost where
   pre := fun x s =>
     ⌜LibsignalCodeRoLoaded lsmpl s.mem⌝ ∗
@@ -154,7 +155,7 @@ def recordDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (c
           S.recvPanics x.st.pqRatchetState x.msg.pqRatchet) ∨
         allocFailedIn s0 sf) ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def VStatePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64) (x : RecordDecryptGhost)
+@[expose] def VStatePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64) (x : RecordDecryptGhost)
     (G₁ : SessionGhost) (R : SepProp) (s0 s : State) : Prop :=
   let sp := s0.sp
   s.pc = recVPCPlaced ∧ recMetaPlaced s0 s ∧ recPure x ∧ CloneRel x.G G₁ ∧
@@ -163,7 +164,7 @@ def VStatePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64) (x : Rec
     sessionStateAt A (sp + 0xca0#64) G₁ x.st ∗ errsAt A (sp + 0x5d8#64) [] ∗
     memRegion (sp + 0x4b0#64) 48 ∗ cliTapeAt ctl x.cur x.rest ∗ R)
 
-def MStatePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64) (x : RecordDecryptGhost)
+@[expose] def MStatePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64) (x : RecordDecryptGhost)
     (G₁ : SessionGhost) (R : SepProp) (s0 s : State) : Prop :=
   let sp := s0.sp
   s.pc = recMPCPlaced ∧ recMetaPlaced s0 s ∧ x.st.version.toNat ≠ x.msg.messageVersion.toNat ∧
@@ -172,7 +173,7 @@ def MStatePlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64) (x : Rec
     sessionStateAt A (sp + 0xca0#64) G₁ x.st ∗ errsAt A (sp + 0x5d8#64) [] ∗
     memRegion (sp + 0x4b0#64) 48 ∗ cliTapeAt ctl x.cur x.rest ∗ R)
 
-def FStatePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def FStatePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (x : RecordDecryptGhost) (R : SepProp) (s0 s : State) : Prop :=
   let sp := s0.sp
   s.pc = recFPCPlaced ∧ recMetaPlaced s0 s ∧
@@ -182,7 +183,7 @@ def FStatePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec
     (∃∗ r : RecErr, errsAt A (sp + 0x5d8#64) [r]) ∗ memRegion (sp + 0x4b0#64) 48 ∗
     cliTapeAfter ctl x.cur x.rest (x.draws C) ∗ R)
 
-def JStatePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def JStatePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (x : RecordDecryptGhost) (R : SepProp) (s0 s : State) : Prop :=
   let sp := s0.sp
   s.pc = recJPCPlaced ∧ recMetaPlaced s0 s ∧ (x.model C S parse).1 ≠ .error .panic ∧
@@ -196,7 +197,7 @@ def JStatePlaced [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec
     (∃∗ errs : List RecErr, errsAt A (sp + 0x5d8#64) errs) ∗ memRegion (sp + 0xca0#64) 344 ∗
     cliTapeAfter ctl x.cur x.rest (x.draws C) ∗ R)
 
-def SegClonePlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def SegClonePlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (H : String → Option (State → State)) : Prop :=
   HookSat H lsRustNoAllocShimSym sessionShimSpec →
   HookSat H lsRustAllocSym (rustAllocSpec A) →
@@ -214,7 +215,7 @@ def SegClonePlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : 
         ((∃ G₁, VStatePlaced A ctl x G₁ R s0 s') ∨ (∃ G₁, MStatePlaced A ctl x G₁ R s0 s') ∨
           regionOutcome (recordDecryptPlacedSpec C A ctl parse S) recExitPlaced x R s0 s')
 
-def SegDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def SegDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (H : String → Option (State → State)) : Prop :=
   HookSat H "memcpy" sessionMemcpyRegionSpec →
   subroutine_ok ((blkPC_463).rebase (blkPl_463).base H) (lsmpl.base 434) (withLsCodeLoaded lsmpl (tryDecryptPlacedSpec C A ctl parse S)) →
@@ -229,7 +230,7 @@ def SegDecryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl 
         (JStatePlaced C A ctl parse S x R s0 s' ∨ FStatePlaced C A ctl parse S x R s0 s' ∨
           regionOutcome (recordDecryptPlacedSpec C A ctl parse S) recExitPlaced x R s0 s')
 
-def SegMismatchPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def SegMismatchPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (H : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_463).rebase (blkPl_463).base H) (lsmpl.base 42) (withLsCodeLoaded lsmpl (FromRecordCallees.growOneSpeSpec A)) →
   subroutine_ok ((blkPC_463).rebase (blkPl_463).base H) (lsmpl.base 462) (withLsCodeLoaded lsmpl FromRecordCallees.logClosurePlacedSpec) →
@@ -239,7 +240,7 @@ def SegMismatchPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl
         (FStatePlaced C A ctl parse S x R s0 s' ∨
           regionOutcome (recordDecryptPlacedSpec C A ctl parse S) recExitPlaced x R s0 s')
 
-def SegTailPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def SegTailPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (H : String → Option (State → State)) : Prop :=
   HookSat H lsRustNoAllocShimSym sessionShimSpec →
   HookSat H lsRustAllocSym (rustAllocSpec A) →
@@ -251,7 +252,7 @@ def SegTailPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : B
         (JStatePlaced C A ctl parse S x R s0 s' ∨
           regionOutcome (recordDecryptPlacedSpec C A ctl parse S) recExitPlaced x R s0 s')
 
-def SegExitPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def SegExitPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) (H : String → Option (State → State)) : Prop :=
   HookSat H lsRustDeallocSym (rustDeallocSpec A) →
     ∀ (x : RecordDecryptGhost) (R : SepProp) (s0 s : State),

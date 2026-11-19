@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed
-public import Computational.Proofs.ReductionDsl.SM.GameCosted
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.SM.GameCosted -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.Bridge
 import Computational.Proofs.ReductionDsl.Notation
 
@@ -23,7 +23,7 @@ ACD19 Theorem 1 SM simulators (`Thm1.challSim` and `ThmB.privRedB`), with evalua
 1:1 target-query bounds, and cost bounds.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.SM
 
@@ -57,7 +57,7 @@ local notation "OO" => smOps init send receive eqMsg eqCt blank injOK stOK φ
 
 /-- `Thm1.Mirror Msg C` (`GameState Unit Msg C`) as a `ReductionDsl` type in `smSig`:
 identical to `gsTy` with `.unit` in place of `.base .st` for the two party-state slots. -/
-@[reducible] def mirrorTy : Ty S :=
+@[expose, reducible] def mirrorTy : Ty S :=
   .prod (.prod .unit .unit)
     (.prod .bool
       (.prod .bool
@@ -90,45 +90,45 @@ abbrev mirrorDec (v : (@mirrorTy Key St St₂ Msg Coins RCoins C).denote) :
       (mirrorDec v) = v :=
   gsEnc_gsDec (Key := Key) (St := Unit) (St₂ := St₂) (Coins := Coins) (RCoins := RCoins) v
 
-def mSt
+@[expose] def mSt
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) :
     Expr O' Γ (.prod .unit .unit) := .fst s
-def mB
+@[expose] def mB
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) : Expr O' Γ .bool :=
   .fst (.snd s)
-def mWin
+@[expose] def mWin
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) : Expr O' Γ .bool :=
   .fst (.snd (.snd s))
-def mEpoch
+@[expose] def mEpoch
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) : Expr O' Γ (.prod .nat .nat) :=
   .fst (.snd (.snd (.snd s)))
-def mIdx
+@[expose] def mIdx
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) : Expr O' Γ (.prod .nat .nat) :=
   .fst (.snd (.snd (.snd (.snd s))))
-def mTL
+@[expose] def mTL
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) : Expr O' Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
-def mTrans
+@[expose] def mTrans
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) : Expr O' Γ (.list recTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd s))))))
-def mChall
+@[expose] def mChall
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) : Expr O' Γ (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))
-def mComp
+@[expose] def mComp
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) : Expr O' Γ (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))
-def mMaxAcc
+@[expose] def mMaxAcc
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) :
     Expr O' Γ (.prod (.tbl .nat) (.tbl .nat)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))
-def mLeaks
+@[expose] def mLeaks
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) : Expr O' Γ (.list .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))
-def mCorrs
+@[expose] def mCorrs
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) : Expr O' Γ (.list (.prod .bool .nat)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))
 
-def mMk
+@[expose] def mMk
     {O' : Ops S} {Γ}
     (st : Expr O' Γ (.prod .unit .unit))
     (b win : Expr O' Γ .bool)
@@ -151,13 +151,13 @@ def mMk
                     (.pair maxAcc
                       (.pair leaks corrs))))))))))
 
-def mSafeChE
+@[expose] def mSafeChE
     {O' : Ops S} {Γ} (Δ : ℕ) (s : Expr O' Γ mirrorTy) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   .letE (.pair s p)
     (healedByE (mTL (.fst .v0)) Δ (pGet (mEpoch (.fst .v0)) (.snd .v0)))
 
-def mLeakE
+@[expose] def mLeakE
     {O' : Ops S} {Γ} (s : Expr O' Γ mirrorTy) (l : Expr O' Γ .nat) : Expr O' Γ mirrorTy :=
   .letE (.pair s l)
     (let s0 : Expr O' _ mirrorTy := .fst .v0
@@ -166,7 +166,7 @@ def mLeakE
        (.some m) (mTrans s0) (mChall s0) (mComp s0) (mMaxAcc s0)
        (.cons m (mLeaks s0)) (mCorrs s0))
 
-def mEpMgmtE
+@[expose] def mEpMgmtE
     {O' : Ops S} {Γ} (Δ qep : ℕ) (s : Expr O' Γ mirrorTy) (p : Expr O' Γ .bool)
     (bad : Expr O' Γ .bool) : Expr O' Γ (.opt mirrorTy) :=
   .letE (.pair s (.pair p bad))
@@ -191,7 +191,7 @@ def mEpMgmtE
          .none
          (.some s0)))
 
-def mRecordE
+@[expose] def mRecordE
     {O' : Ops S} {Γ} (Δ : ℕ) (s : Expr O' Γ mirrorTy) (p : Expr O' Γ .bool)
     (r : Expr O' Γ recTy) (isChall : Expr O' Γ .bool) :
     Expr O' Γ mirrorTy :=
@@ -211,14 +211,14 @@ def mRecordE
        (.ite (mSafeChE Δ s0 p0) (mComp s0) (.cons pos (mComp s0)))
        (mMaxAcc s0) (mLeaks s0) (mCorrs s0))
 
-def mInTransitE {Γ} (K : ℕ) (s : Expr OO Γ mirrorTy) (qParty : Expr OO Γ .bool)
+@[expose] def mInTransitE {Γ} (K : ℕ) (s : Expr OO Γ mirrorTy) (qParty : Expr OO Γ .bool)
     (c : Expr OO Γ (.base .ct)) : Expr OO Γ (.opt recTy) :=
   .letE (.pair s (.pair qParty c))
     (.findB K (mTrans (.fst .v0))
       (.and (boolEq (posSender (recPos .v0)) (.fst (.snd .v1)))
         (Expr.op (O := OO) SMOp.eqCt (.pair (recCt .v0) (.snd (.snd .v1))))))
 
-def mDeleteE
+@[expose] def mDeleteE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ mirrorTy) (pos : Expr O' Γ posTy) :
     Expr O' Γ mirrorTy :=
   .letE (.pair s pos)
@@ -235,7 +235,7 @@ def mDeleteE
      mMk (mSt s0) (mB s0) (mWin s0) (mEpoch s0) (mIdx s0) (mTL s0)
        trans' chall' comp' (mMaxAcc s0) (mLeaks s0) (mCorrs s0))
 
-def mAcceptE
+@[expose] def mAcceptE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ mirrorTy) (p : Expr O' Γ .bool)
     (pos : Expr O' Γ posTy) : Expr O' Γ mirrorTy :=
   .letE (.pair (mDeleteE K s pos) (.pair p pos))
@@ -253,13 +253,13 @@ def mAcceptE
          (maxN (maxAccGet (mMaxAcc s1) p0 pEpoch) pIdx))
        (mLeaks s1) (mCorrs s1))
 
-def mChallContainsE
+@[expose] def mChallContainsE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ mirrorTy) (pos : Expr O' Γ posTy) :
     Expr O' Γ .bool :=
   .letE (.pair s pos)
     (.anyB K (mChall (.fst .v0)) (posEq .v0 (.snd .v1)))
 
-def mAfterCorrE
+@[expose] def mAfterCorrE
     {O' : Ops S} {Γ} (K : ℕ) (s : Expr O' Γ mirrorTy) (p : Expr O' Γ .bool) :
     Expr O' Γ mirrorTy :=
   .letE (.pair s p)
@@ -500,7 +500,7 @@ local notation "SCodec" => smCodec Key St St₂ Msg Coins RCoins C stSort
 local notation "SQ" => smQ Key St St₂ Msg Coins RCoins C
 local notation "SR" => smR Key St St₂ Msg Coins RCoins C stSort
 
-def simSendC (realEpoch : Option ℕ) {Γ}
+@[expose] def simSendC (realEpoch : Option ℕ) {Γ}
     (p : Expr OO Γ .bool) (ep : Expr OO Γ .nat)
     (mb : Expr OO Γ (.base .msg)) (r : Expr OO Γ (.opt (.base .coins))) :
     Comp OO SIface Γ (.opt (.base .ct)) :=
@@ -516,7 +516,7 @@ def simSendC (realEpoch : Option ℕ) {Γ}
         let mb' := if ep < nat i then Expr.op (O := OO) SMOp.blank mb else mb
         query (I := SIface) SMTag.tr (p, mb', r)
 
-def simTransmitC (Δ qep : ℕ) {Γ}
+@[expose] def simTransmitC (Δ qep : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ (.prod .bool (.prod (.base .msg) (.opt (.base .coins))))) :
     Comp OO SIface Γ (.prod (.opt (.base .ct)) mirrorTy) :=
@@ -533,7 +533,7 @@ def simTransmitC (Δ qep : ℕ) {Γ}
         let rec_ := (pos, m, c)
         return (some c, mRecordE Δ s₁ p rec_ false)
 
-def simChallC (Δ qep : ℕ) (realEpoch : Option ℕ) {Γ}
+@[expose] def simChallC (Δ qep : ℕ) (realEpoch : Option ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ
       (.prod .bool (.prod (.base .msg) (.prod (.base .msg) (.opt (.base .coins)))))) :
@@ -555,7 +555,7 @@ def simChallC (Δ qep : ℕ) (realEpoch : Option ℕ) {Γ}
           let rec_ := (pos, mb, c)
           return (some c, mRecordE Δ s₁ p rec_ true)
 
-def simDeliverC (K : ℕ) {Γ}
+@[expose] def simDeliverC (K : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ (.prod .bool (.base .ct))) :
     Comp OO SIface Γ (.prod (.opt (smRrTy Key St St₂ Msg Coins RCoins C)) mirrorTy) :=
@@ -575,7 +575,7 @@ def simDeliverC (K : ℕ) {Γ}
           let mOut := if mChallContainsE K s0 rPos then none else m
           return (some (.inr (t', i', mOut)), mAcceptE K s0 p rPos)
 
-def simInjectC (K : ℕ) {Γ}
+@[expose] def simInjectC (K : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (arg : Expr OO Γ (.prod .bool (.base .ct))) :
     Comp OO SIface Γ (.prod (.opt (smRrTy Key St St₂ Msg Coins RCoins C)) mirrorTy) :=
@@ -591,7 +591,7 @@ def simInjectC (K : ℕ) {Γ}
         let pos := (otherE p, t', i')
         return (some (.inr tim), mAcceptE K s0 p pos)
 
-def simCorrC (K : ℕ) {Γ}
+@[expose] def simCorrC (K : ℕ) {Γ}
     (s : Expr OO Γ mirrorTy)
     (p : Expr OO Γ .bool) :
     Comp OO SIface Γ (.prod (.opt (.base stSort)) mirrorTy) :=
@@ -603,7 +603,7 @@ def simCorrC (K : ℕ) {Γ}
     else
       return (res, s0)
 
-def simHandleC (K Δ qep : ℕ) (realEpoch : Option ℕ) :
+@[expose] def simHandleC (K Δ qep : ℕ) (realEpoch : Option ℕ) :
     Comp OO SIface [mirrorTy, SQ] (.prod SR mirrorTy) :=
   rdsl [st, qry] do
     match qry with
@@ -623,7 +623,7 @@ def simHandleC (K Δ qep : ℕ) (realEpoch : Option ℕ) :
       res ← simCorrC K st p
       return (.inr res.1, res.2)
 
-def simInitC : Comp OO SIface [.unit] (.prod .unit mirrorTy) :=
+@[expose] def simInitC : Comp OO SIface [.unit] (.prod .unit mirrorTy) :=
   rdsl [_] do
     b ← sample (I := SIface) SMSamp.bit ()
     return ((),
@@ -634,7 +634,7 @@ def simInitC : Comp OO SIface [.unit] (.prod .unit mirrorTy) :=
         [] [])
 
 /-- Costed `Thm1.challSim` simulator (`B1` / `B2` of ACD19 Lemmas 16 and 17). -/
-@[reducible] def challSimProg (K Δ qep : ℕ) :
+@[expose, reducible] def challSimProg (K Δ qep : ℕ) :
     CostedReduction OO SIface
       (SM.spec (SMSort.den Key St St₂ Msg Coins RCoins C stSort) Msg Coins C)
       SCodec .unit .unit .bool .bool where
@@ -644,7 +644,7 @@ def simInitC : Comp OO SIface [.unit] (.prod .unit mirrorTy) :=
   finish := rdsl [_, b'] do return b'
 
 /-- Costed `ThmB.privRedB` simulator (`B3,i` of ACD19 Lemma 18 with blanking map `SMOp.blank`). -/
-@[reducible] def privRedBProg (K Δ qep i : ℕ) :
+@[expose, reducible] def privRedBProg (K Δ qep i : ℕ) :
     CostedReduction OO SIface
       (SM.spec (SMSort.den Key St St₂ Msg Coins RCoins C stSort) Msg Coins C)
       SCodec .unit .unit .bool .bool where
@@ -1321,7 +1321,7 @@ theorem handlerImpl_simHandleC_cr (K Δ qep : ℕ) (realEpoch : Option ℕ)
 
 /-! ## Full reduction evaluation agreement -/
 
-def mirrorClearComp (s : Thm1.Mirror Msg C) : Thm1.Mirror Msg C :=
+@[expose] def mirrorClearComp (s : Thm1.Mirror Msg C) : Thm1.Mirror Msg C :=
   { s with comp := [] }
 
 @[simp] theorem mirrorClearComp_idem (s : Thm1.Mirror Msg C) :
@@ -1386,7 +1386,7 @@ theorem epMgmt_fields {St' : Type} (st s₁ : GameState St' Msg C) (Δ qep : ℕ
     subst h
     simp [GameState.leak]
 
-def clearCompImpl {κ : Type} {G : OracleSpec κ} {ι : Type} {T : OracleSpec ι}
+@[expose] def clearCompImpl {κ : Type} {G : OracleSpec κ} {ι : Type} {T : OracleSpec ι}
     (so : QueryImpl (unifSpec + G) (StateT (Thm1.Mirror Msg C) (OracleComp T))) :
     QueryImpl (unifSpec + G) (StateT (Thm1.Mirror Msg C) (OracleComp T))
   | .inl n => so (.inl n)
@@ -1469,7 +1469,7 @@ theorem simImplB_clearComp [DecidableEq C] (Δ qep i : ℕ)
 
 /-- Query-budget invariant on `mirrorTy.denote` for `K`-bounded Theorem 1 simulation:
 with `m` adversary game queries remaining, `trans` and `chall` have length at most `K - m`. -/
-def MirrorBoundInv (K m : ℕ) (v : (@mirrorTy Key St St₂ Msg Coins RCoins C).denote) : Prop :=
+@[expose] def MirrorBoundInv (K m : ℕ) (v : (@mirrorTy Key St St₂ Msg Coins RCoins C).denote) : Prop :=
   (mirrorDec v).trans.length + m ≤ K ∧ (mirrorDec v).chall.length + m ≤ K
 
 theorem MirrorBoundInv.mono {K m₁ m₂ : ℕ} {v : (@mirrorTy Key St St₂ Msg Coins RCoins C).denote}

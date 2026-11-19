@@ -9,18 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5ePlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5ePlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dBudget
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 5e Placed: Arm 7 (`States.ct1Sampled`)
@@ -30,7 +38,7 @@ verifies Arm 7 (`States.ct1Sampled`, `PolyEncoder` tag `0` or `1`, jump table in
 on Block `334` under `RustCliAllocBudget M` in plain and `withLsCodeLoaded` forms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

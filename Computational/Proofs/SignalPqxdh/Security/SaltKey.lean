@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf -- proof-setup: allow-public-import
 public import Computational.Specifications.Assumptions.KemCorrect
-public import Computational.Proofs.CryptoGames.AEAD.EffSaltProofDefs
+import Computational.Proofs.CryptoGames.AEAD.EffSaltProofDefs
+import LibsignalBinary.Proofs.SpecLemmas.HKDFProofDefs
 /-!
 # Effective 32-byte HKDF salt of `deriveMsgKeys` (DEV-LS25)
 
@@ -20,13 +21,13 @@ HMAC zero-pads its key to 64 bytes. Under `WellFormedPrimitivesδ`, every SPQR s
 bytes, so `deriveMsgKeys` agrees with `deriveMsgKeysEff`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 namespace SignalPqxdh.Security
 open SignalPqxdh
 
 /-- The salt (if any) has at most 32 bytes. -/
-def SaltOK (s? : Option Bytes) : Prop := ∀ s ∈ s?, s.length ≤ 32
+@[expose] def SaltOK (s? : Option Bytes) : Prop := ∀ s ∈ s?, s.length ≤ 32
 
 theorem fitBytesRef_append_zeros (N : Nat) (k : Bytes) (n : Nat) (h : k.length + n ≤ N) :
     fitBytesRef N (k ++ List.replicate n 0) = fitBytesRef N k := by
@@ -88,7 +89,7 @@ theorem saltOK_of_spqrInitSend {P : Primitives} (hWF : WellFormedPrimitivesδ P)
   exact saltOK_of_spqrInitRecv hWF hR
 
 /-- `deriveMsgKeys` at the 32-byte effective salt: the real `PrfMsgKeys` oracle answer. -/
-def deriveMsgKeysEff (P : Primitives) (seed : Bytes) (s? : Option Bytes) : MessageKeys :=
+@[expose] def deriveMsgKeysEff (P : Primitives) (seed : Bytes) (s? : Option Bytes) : MessageKeys :=
   P.deriveMsgKeys seed (some (effectiveHkdfSaltBytes s?).toList)
 
 theorem deriveMsgKeysEff_congr (P : Primitives) (seed : Bytes) {s₁ s₂ : Option Bytes}

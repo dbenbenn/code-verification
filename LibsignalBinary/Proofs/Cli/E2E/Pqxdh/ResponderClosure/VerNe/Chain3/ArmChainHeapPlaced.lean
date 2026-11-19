@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.ArmChainHeap
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DecInterfacePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DefsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.ArmChainHeap -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DecInterfacePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import ProofLib.FsTrace
 
 /-!
 # Placed Tag-6 (`sender_chain`) Heap Framing Lemmas
@@ -22,16 +23,10 @@ Re-exports the layout-independent `SepProp` framing identities from `ArmChainHea
 `DecInterfacePlaced` and `DefsPlaced` for `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3
-
-abbrev overDecChainFramePlaced := overDecChainFrame
-abbrev overDecChain_heap_pre_placed := @overDecChain_heap_pre
-abbrev overDecChain_heap_post_placed := @overDecChain_heap_post
-abbrev overDecChain_mem96_placed := @overDecChain_mem96
-abbrev overDecChain_bridge_placed := @overDecChain_bridge
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3

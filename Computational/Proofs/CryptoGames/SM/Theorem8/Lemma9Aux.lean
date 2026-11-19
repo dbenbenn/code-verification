@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
 import VCVio.OracleComp.EvalDist.Measure
 
 /-!
@@ -21,7 +21,7 @@ Defines the doomed-run predicate `DoomedAuth` and the synchronization invariant 
 real authenticity game, the `redCKA` engine state, and the CKA game state.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -53,22 +53,22 @@ section Doomed
 
 variable {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C] [SampleableType Coins]
 
-def Doomed1 (tL : Option ℕ) (tStar : ℕ) (s : GameState St Msg C) : Prop :=
+@[expose] def Doomed1 (tL : Option ℕ) (tStar : ℕ) (s : GameState St Msg C) : Prop :=
   s.leaks.any (fun l => ltOpt tL l && decide (l < tStar)) = true
 
-def Doomed2 (tStar : ℕ) (s : GameState St Msg C) : Prop :=
+@[expose] def Doomed2 (tStar : ℕ) (s : GameState St Msg C) : Prop :=
   s.win = false ∧ (∃ m, s.tL = some m ∧ tStar ≤ m) ∧
     ∀ r ∈ s.trans, r.pos.epoch = tStar → r.pos ∈ s.comp
 
-def Doomed3 (tL : Option ℕ) (tStar : ℕ) (s : GameState St Msg C) : Prop :=
+@[expose] def Doomed3 (tL : Option ℕ) (tStar : ℕ) (s : GameState St Msg C) : Prop :=
   s.corrs.any (fun pe => pe.1 == Party.receiverOf tStar && ltOpt tL pe.2) = true
 
-def Doomed4 (tL : Option ℕ) (s : GameState St Msg C) : Prop :=
+@[expose] def Doomed4 (tL : Option ℕ) (s : GameState St Msg C) : Prop :=
   ∃ l, tL = some l ∧ l ∉ s.leaks ∧
     l ≤ min (s.epoch .A) (s.epoch .B) ∧ l < max (s.epoch .A) (s.epoch .B)
 
 /-- States in `Config.auth tStar` from which the authenticity winning condition can never hold. -/
-def DoomedAuth (tL : Option ℕ) (tStar : ℕ) (s : GameState St Msg C) : Prop :=
+@[expose] def DoomedAuth (tL : Option ℕ) (tStar : ℕ) (s : GameState St Msg C) : Prop :=
   Doomed1 tL tStar s ∨ Doomed2 tStar s ∨ Doomed3 tL tStar s ∨ Doomed4 tL s
 
 theorem list_max?_mem {l : List ℕ} : ∀ {m : ℕ}, l.max? = some m → m ∈ l := by
@@ -483,7 +483,7 @@ variable {KC Γ CCoins T I : Type} {KR Sig K : Type} {SS RS M E : Type}
   [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
   [SampleableType K]
 
-def realVP (γc : Γ) (vp : PartyState (Option Γ) T Sig SS RS) : PartyState Γ T Sig SS RS :=
+@[expose] def realVP (γc : Γ) (vp : PartyState (Option Γ) T Sig SS RS) : PartyState Γ T Sig SS RS :=
   { id := vp.id
     root := vp.root
     vS := vp.vS
@@ -492,7 +492,7 @@ def realVP (γc : Γ) (vp : PartyState (Option Γ) T Sig SS RS) : PartyState Γ 
     curCkaMsg := vp.curCkaMsg
     tcur := vp.tcur }
 
-def realGS (sc : CKA.GameState Γ T)
+@[expose] def realGS (sc : CKA.GameState Γ T)
     (g : GameState (PartyState (Option Γ) T Sig SS RS) M (Header T × E)) :
     GameState (PartyState Γ T Sig SS RS) M (Header T × E) :=
   { st := fun P => realVP (sc.st P) (g.st P)
@@ -546,7 +546,7 @@ theorem eq_receiverOf_of_sendsIn_false {P : Party} {t : ℕ} (h : P.sendsIn t = 
   have h' : P.other.sendsIn t = true := by rw [sendsIn_other, h]; rfl
   rw [← eq_senderOf_of_sendsIn h', Party.other_other]
 
-def isLocal (tL : Option ℕ) (Δcka t : ℕ) : Bool :=
+@[expose] def isLocal (tL : Option ℕ) (Δcka t : ℕ) : Bool :=
   match tL with
   | none => true
   | some l => decide (l + 2 + Δcka ≤ t)

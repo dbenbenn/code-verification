@@ -9,20 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunOk
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureFrozenPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.JPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3aPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R3bPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.RunRel
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosureFrozenPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # `signal_session::run` Meets `runSpecPlaced` at `runRel S`
@@ -32,7 +33,7 @@ Relocatable (`[LibsignalPlacement]`) counterpart of `RunOk.lean`, composing
 into `run_ok_placed`, `run_ok_frozen_placed`, and cross-block transfers from Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

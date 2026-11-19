@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigStepBounds
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhBounds
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigEvalEq
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigSessionSplit
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeySigSigBound
-public import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigStepBounds -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDhBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigEvalEq
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigSessionSplit
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeySigSigBound
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeShCrProofs
 import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigBounds
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeySigTotals
 
 /-!
 # One-Key `Auth` `GapSigEufCma` `ReductionDsl` Adversary Wiring
@@ -27,7 +30,7 @@ equals the shallow reduction `sigReductionAuth1Key` with identical `GapSigEufCma
 block-size bounds for `sigAuth1KeyDslProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,7 +50,7 @@ structure A1gStepBounds (S : Setup) (K : Nat) : Prop where
 
 /-- The `ReductionDsl` one-key `Auth` `GapSigEufCma` adversary (definitionally `(R.eval).sig b A`
     whenever `R.sig b = sigAuth1KeyDslProg S b`). -/
-def sigAuth1KeyDslAdv (S : Setup) (b : QueryBudget)
+@[expose] def sigAuth1KeyDslAdv (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : GapSigEufCmaAdv where
   run pk := (sigAuth1KeyDslProg S b).eval (fun _ => A.1.run) pk
   q_sig := 2 * min S.N_spk_tot S.N_recv
@@ -77,19 +80,6 @@ theorem sigAuth1Key_sig_le (P : Primitives)
       GapSigEufCma P isValidDhTriple (sigAuth1KeyDslAdv S b A) :=
   (GapSigEufCma_sigAuth1KeyDslAdv P isValidDhTriple S b A).ge
 
-theorem sigAuth1KeyDslProg_totalCost_le_of (S : Setup) (b : QueryBudget)
-    (hG : A1gStepBounds S b.q_total) :
-    (sigAuth1KeyDslProg S b).totalCost b.q_total ≤
-      SignalPqxdh.LegacyCosted.stepCostBudget S b :=
-  sigAuth1KeyProg_totalCost_le_of S b hG.cost
-
-theorem sigAuth1KeyDslProg_totalSigQueries_le_of (S : Setup) (b : QueryBudget)
-    (hG : A1gStepBounds S b.q_total) :
-    (sigAuth1KeyDslProg S b).totalQueries
-      SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight
-      SignalPqxdh.LegacyCosted.samplerZeroQueryWeight b.q_total ≤ 2 * b.q_total :=
-  sigAuth1KeyProg_totalSigQueries_le_of S b hG.sig
-
 theorem sigAuth1KeyDslProg_totalDdhQueries_le_of (S : Setup) (b : QueryBudget)
     (hG : A1gStepBounds S b.q_total) :
     (sigAuth1KeyDslProg S b).totalQueries
@@ -97,108 +87,6 @@ theorem sigAuth1KeyDslProg_totalDdhQueries_le_of (S : Setup) (b : QueryBudget)
       SignalPqxdh.LegacyCosted.samplerZeroQueryWeight b.q_total ≤
         5 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot :=
   sigAuth1KeyProg_totalDdhQueries_le_of S b hG.ddh
-
-theorem sigAuth1KeyDslProg_totalPrimQueries_le_of (S : Setup) (b : QueryBudget)
-    (hG : A1gStepBounds S b.q_total) :
-    (sigAuth1KeyDslProg S b).totalQueries
-      SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-      SignalPqxdh.LegacyCosted.samplerZeroQueryWeight b.q_total ≤ primQueryBudget S b :=
-  sigAuth1KeyProg_totalPrimQueries_le_of S b hG.prim
-
-private theorem a1s_valFits_iff_fits {S : Sig} (B : ℕ) :
-    ∀ (t : Ty S) (x : t.denote), ValFits B t x ↔ t.Fits B x
-  | .base _, _ => Iff.rfl
-  | .unit, _ => Iff.rfl
-  | .bool, _ => Iff.rfl
-  | .nat, _ => Iff.rfl
-  | .opt _, none => Iff.rfl
-  | .opt t, some a => a1s_valFits_iff_fits B t a
-  | .prod t u, x => and_congr (a1s_valFits_iff_fits B t x.1) (a1s_valFits_iff_fits B u x.2)
-  | .sum t _, .inl a => a1s_valFits_iff_fits B t a
-  | .sum _ u, .inr b => a1s_valFits_iff_fits B u b
-  | .list t, _ => and_congr Iff.rfl
-      (forall_congr' fun x => imp_congr_right fun _ => a1s_valFits_iff_fits B t x)
-  | .tbl t, m => forall_congr' fun i => a1s_valFits_iff_fits B t (m i)
-
-private theorem a1s_one_le_pqSamplers_sCost (s : PSamp) : 1 ≤ pqSamplers.sCost s := by
-  cases s <;> simp [pqSamplers, PSamp.cost]
-
-private theorem a1s_one_le_pqChalIface_qCost {C : ChallengerOracle} (g : (pqChalIface C).Tag) :
-    1 ≤ (pqChalIface C).qCost g := by
-  cases g <;> simp only [pqChalIface, ChallengerOracle.qCost] <;> omega
-
-private theorem a1s_comp_nq_le_cost {ι : Type} {T : OracleSpec ι} {I : Iface pqSig T}
-    (hq : ∀ g, 1 ≤ I.qCost g) (hs : ∀ s, 1 ≤ I.smp.sCost s)
-    {Γ : List (Ty pqSig)} {t : Ty pqSig} (c : Comp pqxdhOps I Γ t) : c.nq ≤ c.cost := by
-  induction c with
-  | ret _ => simp [Comp.nq, Comp.queries, Comp.cost]
-  | bind c k ihc ihk => dsimp only [Comp.nq, Comp.queries, Comp.cost] at *; omega
-  | ite _ c d ihc ihd => dsimp only [Comp.nq, Comp.queries, Comp.cost] at *; omega
-  | caseOpt _ n s ihn ihs => dsimp only [Comp.nq, Comp.queries, Comp.cost] at *; omega
-  | caseSum _ l r ihl ihr => dsimp only [Comp.nq, Comp.queries, Comp.cost] at *; omega
-  | sample s _ => have := hs s; dsimp only [Comp.nq, Comp.queries, Comp.cost]; omega
-  | query g _ => have := hq g; dsimp only [Comp.nq, Comp.queries, Comp.cost]; omega
-  | iter n _ body ih =>
-    dsimp only [Comp.nq] at ih ⊢
-    dsimp only [Comp.queries, Comp.cost]
-    have h1 : Comp.queries (fun _ => 1) (fun _ => 1) body ≤ body.cost + 1 := by omega
-    have := Nat.mul_le_mul_left n h1
-    omega
-  | findM K _ p ih | anyM K _ p ih | mapM K _ p ih | foldM K _ _ p ih =>
-    dsimp only [Comp.nq] at ih ⊢
-    dsimp only [Comp.queries, Comp.cost]
-    have h1 : Comp.queries (fun _ => 1) (fun _ => 1) p ≤ p.cost + 1 := by omega
-    have := Nat.mul_le_mul_left K h1
-    omega
-  | consumeFirstM K _ p mk ih =>
-    dsimp only [Comp.nq] at ih ⊢
-    dsimp only [Comp.queries, Comp.cost]
-    have h1 : Comp.queries (fun _ => 1) (fun _ => 1) p ≤ p.cost + mk.cost + 1 := by omega
-    have := Nat.mul_le_mul_left K h1
-    omega
-
-private theorem a1s_gred_nq_le_totalCost {ι κ : Type} {T : OracleSpec ι} {I : Iface pqSig T}
-    {G : OracleSpec κ} {C : GameCodec pqSig G} {rIn aIn aOut out : Ty pqSig}
-    (hq : ∀ g, 1 ≤ I.qCost g) (hs : ∀ s, 1 ≤ I.smp.sCost s)
-    (R : CostedReduction pqxdhOps I G C rIn aIn aOut out) (q : ℕ) :
-    R.nq q ≤ R.totalCost q := by
-  have hI := a1s_comp_nq_le_cost hq hs R.init
-  have hH := a1s_comp_nq_le_cost hq hs R.handle
-  have hF := a1s_comp_nq_le_cost hq hs R.finish
-  have hMax : R.handle.nq ≤ max I.uCost (R.handle.cost + C.codecCost) :=
-    le_trans hH (le_trans (Nat.le_add_right _ _) (le_max_right _ _))
-  have hMul := Nat.mul_le_mul_left q hMax
-  dsimp only [CostedReduction.nq, CostedReduction.totalQueries, CostedReduction.totalCost,
-    Comp.nq] at *
-  omega
-
-theorem sigAuth1KeyDslProg_blocks_of (S : Setup) (b : QueryBudget) (ℓ : Nat)
-    (hG : A1gStepBounds S b.q_total) :
-    SignalPqxdh.LegacyCosted.GRedBlockBounded S b ℓ (sigAuth1KeyDslProg S b) := by
-  intro hq henc A hA x hx y hy
-  rw [a1s_valFits_iff_fits]
-  have hq' : ∀ g x u, (pqSigAndDdhIface.cod g).Fits ℓ (pqSigAndDdhIface.dec g x u) := fun g x u =>
-    (a1s_valFits_iff_fits ℓ _ _).1 (hq g x u)
-  have henc' : ∀ t, (authCodec S).Q.Fits ℓ ((authCodec S).qenc t) := fun t =>
-    (a1s_valFits_iff_fits ℓ _ _).1 (henc t)
-  have hx' : (B 32).Fits ℓ x := (a1s_valFits_iff_fits ℓ _ _).1 hx
-  have hA' : ∀ u, (A u).IsQueryBoundP
-      (ReductionDsl.isGameQuery (G := authSpec S)) b.q_total := by
-    intro u
-    convert hA u using 1
-    funext q; cases q <;> simp [ReductionDsl.isGameQuery, SignalPqxdh.isGameQuery]
-  have hEval := (sigAuth1KeyDslProg S b).fits_eval
-    pqO_sizeHonest SignalPqxdh.LegacyCosted.pqSamplers_sizeHonest ℓ hq' ℓ henc' 0 (fun _ => trivial)
-    A b.q_total ℓ hA' x hx' y hy
-  have hCost := sigAuth1KeyDslProg_totalCost_le_of S b hG
-  have hNq := le_trans
-    (a1s_gred_nq_le_totalCost a1s_one_le_pqChalIface_qCost a1s_one_le_pqSamplers_sCost
-      (sigAuth1KeyDslProg S b) b.q_total)
-    hCost
-  refine Ty.fits_mono ?_ (Ty.prod (B 1569) (B 64)) y hEval
-  unfold SignalPqxdh.LegacyCosted.outputSizeBudget SignalPqxdh.LegacyCosted.stepCostBudget at *
-  have hM := Nat.mul_le_mul_right ℓ hNq
-  nlinarith
 
 private theorem isQueryBoundP_sigReductionAuth1Key_ddh (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) (hG : A1gStepBounds S b.q_total) (pk : Bytes) :
@@ -228,51 +116,16 @@ theorem sigAuth1KeyDslAdv_bounded_of (S : Setup) (b : QueryBudget)
   · exact isQueryBoundP_sigReductionAuth1Key_ddh S b A hG pk
   · exact sigAuth1KeyProg_primBounded_gdhPrimQueryBudget S b.q_total b A pk
 
-theorem sigReductionAuth1Key_bounded_of (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) (hG : A1gStepBounds S b.q_total) :
-    (sigReductionAuth1Key S b A).Bounded := by
-  rw [← sigAuth1KeyDslAdv_eq]
-  exact sigAuth1KeyDslAdv_bounded_of S b A hG
-
 theorem a1gStepBounds (S : Setup) (K : Nat) : A1gStepBounds S K where
   cost := fun st q => a1gStepC_costUB_le S K st q
   sig  := fun st q => a1gStepC_queries_sig_le S K st q
   ddh  := fun st q => a1gStepC_queries_ddh_le S K st q
   prim := fun st q => a1gStepC_queries_prim_le S K st q
 
-theorem sigAuth1KeyDslProg_totalSigQueries_le (S : Setup) (b : QueryBudget) :
-    (sigAuth1KeyDslProg S b).totalQueries
-      SignalPqxdh.LegacyCosted.chalIfaceSigQueryWeight
-      SignalPqxdh.LegacyCosted.samplerZeroQueryWeight b.q_total ≤ 2 * b.q_total :=
-  sigAuth1KeyDslProg_totalSigQueries_le_of S b (a1gStepBounds S b.q_total)
-
-theorem sigAuth1KeyDslProg_totalDdhQueries_le (S : Setup) (b : QueryBudget) :
-    (sigAuth1KeyDslProg S b).totalQueries
-      SignalPqxdh.LegacyCosted.chalIfaceDdhQueryWeight
-      SignalPqxdh.LegacyCosted.samplerZeroQueryWeight b.q_total ≤
-        5 * b.q_total ^ 2 + b.q_total + S.N_dh + S.N_sess_tot :=
-  sigAuth1KeyDslProg_totalDdhQueries_le_of S b (a1gStepBounds S b.q_total)
-
-theorem sigAuth1KeyDslProg_totalPrimQueries_le (S : Setup) (b : QueryBudget) :
-    (sigAuth1KeyDslProg S b).totalQueries
-      SignalPqxdh.LegacyCosted.chalIfacePrimQueryWeight
-      SignalPqxdh.LegacyCosted.samplerZeroQueryWeight b.q_total ≤ primQueryBudget S b :=
-  sigAuth1KeyDslProg_totalPrimQueries_le_of S b (a1gStepBounds S b.q_total)
-
-/-- Legacy output block-size bound for `sigAuth1KeyDslProg`. -/
-theorem sigAuth1KeyDslProg_blocks (S : Setup) (b : QueryBudget) (ℓ : Nat) :
-    SignalPqxdh.LegacyCosted.GRedBlockBounded S b ℓ (sigAuth1KeyDslProg S b) :=
-  sigAuth1KeyDslProg_blocks_of S b ℓ (a1gStepBounds S b.q_total)
-
 /-- `sigAuth1KeyDslAdv` satisfies its declared `GapSigEufCmaAdv` query budgets. -/
 theorem sigAuth1KeyDslAdv_bounded (S : Setup) (b : QueryBudget)
     (A : BoundedAdv (AuthAdversary S) b) : (sigAuth1KeyDslAdv S b A).Bounded :=
   sigAuth1KeyDslAdv_bounded_of S b A (a1gStepBounds S b.q_total)
-
-/-- The shallow reduction `sigReductionAuth1Key` satisfies its declared query budgets. -/
-theorem sigReductionAuth1Key_bounded (S : Setup) (b : QueryBudget)
-    (A : BoundedAdv (AuthAdversary S) b) : (sigReductionAuth1Key S b A).Bounded :=
-  sigReductionAuth1Key_bounded_of S b A (a1gStepBounds S b.q_total)
 
 section ClampedStepCost
 set_option allowUnsafeReducibility true in
@@ -285,61 +138,6 @@ private theorem a1sDelegate2C_costUB_le_v2 (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ
   simp only [a1sDelegate2C, a1sCaseAPa2, bindV, letV, Comp.letC,
     a1sG, a1sMk, a1sTp, a1sTpk, a1sFg, v, Comp.costUB, Expr.costUB]
   generalize min K S.N_dh = md at hG ⊢
-  omega
-
-private theorem a1sStep2C_costUB_le_v2 (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
-    [Ext Γ₁ Δ] [Ext Γ₂ Δ] (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) :
-    (a1sStep2C S K (Δ := Δ) s q).costUB ≤ 106000 + 38000 * K + 10412 * min K S.N_dh := by
-  have hP := a1sPreC_costUB_le_tight S K (Δ := Δ) s q
-  have hD := a1sDelegate2C_costUB_le_v2 S K (Δ := .unit :: (.sum a1sRS .unit) :: Δ) s q
-  simp only [a1sStep2C, bindV, caseSumV, isSomeE, a1sFg, aNone, v, Comp.costUB, Expr.costUB]
-  generalize min K S.N_dh = md at hP hD ⊢
-  omega
-
-theorem a1s_handle_cost_le_v2 (S : Setup) (K : Nat) :
-    (sigAuth1KeyProg S K).handle.cost ≤ 106000 + 38000 * K + 10412 * min K S.N_dh :=
-  Nat.le_trans (Comp.cost_le_costUB _)
-    (a1sStep2C_costUB_le_v2 S K (Δ := [a1sStTy, authQueryTy]) _ _)
-
-/-- Step-cost bound with 3/2 headroom for `sigAuth1KeyDslProg` against `stepCostBudget`. -/
-theorem sigAuth1KeyDslProg_three_mul_totalCost_le_two_mul_stepCostBudget
-    (S : Setup) (b : QueryBudget) :
-    3 * (sigAuth1KeyDslProg S b).totalCost b.q_total + 400 * b.q_total ≤
-      2 * _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  have hH := a1s_handle_cost_le_v2 S b.q_total
-  have hF := a1s_finish_cost_le S b.q_total
-  have hI := a1s_init_cost_le_tight S b.q_total
-  change 3 * ((sigAuth1KeyProg S b.q_total).init.cost +
-      b.q_total * max 1 ((sigAuth1KeyProg S b.q_total).handle.cost + 32) +
-      (sigAuth1KeyProg S b.q_total).finish.cost) + 400 * b.q_total ≤
-    2 * _root_.SignalPqxdh.Security.stepCostBudget S b
-  generalize (sigAuth1KeyProg S b.q_total).init.cost = cI at hI ⊢
-  generalize (sigAuth1KeyProg S b.q_total).handle.cost = cH at hH ⊢
-  generalize (sigAuth1KeyProg S b.q_total).finish.cost = cF at hF ⊢
-  have hMax : max 1 (cH + 32) = cH + 32 := by omega
-  rw [hMax]
-  unfold _root_.SignalPqxdh.Security.stepCostBudget
-  dsimp only
-  generalize min b.q_total S.N_dh = md at hH ⊢
-  generalize min b.q_total S.N_sess_tot = ms at ⊢
-  generalize Nat.log 2 S.N_dh = ld at hI ⊢
-  generalize Nat.log 2 S.N_sess_tot = ls at ⊢
-  generalize b.q_total = q at *
-  have hqH : q * (cH + 32) ≤ q * (106032 + 38000 * q + 10412 * md) :=
-    Nat.mul_le_mul_left q (by omega)
-  rcases q with _ | _ | _ | _ | q'
-  · nlinarith [Nat.zero_le (md ^ 2), Nat.zero_le (md * ms)]
-  · nlinarith [Nat.zero_le (md ^ 2), Nat.zero_le (md * ms)]
-  · nlinarith [Nat.zero_le (md ^ 2), Nat.zero_le (md * ms)]
-  · nlinarith [Nat.zero_le (md ^ 2), Nat.zero_le (md * ms)]
-  · nlinarith [Nat.zero_le (q' * md), Nat.zero_le (q' * ms), Nat.zero_le (md ^ 2),
-      Nat.zero_le (md * ms), Nat.zero_le (q' * ld), Nat.zero_le (q' * ls)]
-
-/-- Step-cost bound for `sigAuth1KeyDslProg` against `SignalPqxdh.Security.stepCostBudget`. -/
-theorem sigAuth1KeyDslProg_totalCost_le_stepCostBudget (S : Setup) (b : QueryBudget) :
-    (sigAuth1KeyDslProg S b).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b := by
-  have := sigAuth1KeyDslProg_three_mul_totalCost_le_two_mul_stepCostBudget S b
   omega
 
 end ClampedStepCost
@@ -631,16 +429,6 @@ theorem sigAuth1KeyProg_size_le_v2 (S : Setup) (K : Nat) :
   have hb : bits (min K (min S.N_spk_tot S.N_recv)) ≤ bits K := bits_mono (Nat.min_le_left _ _)
   omega
 
-theorem sigAuth1KeyProg_size_le (S : Setup) (K : Nat) :
-    (sigAuth1KeyProg S K).size ≤
-      123 * bits K + 57 * bits S.N_dh + 15 * bits S.N_sess_tot + 21400 := by
-  have h := sigAuth1KeyProg_size_le_clamped S K
-  have hd : bits (min K S.N_dh) ≤ bits S.N_dh := bits_mono (Nat.min_le_right _ _)
-  have hb : bits (min K (min S.N_spk_tot S.N_recv)) ≤ bits S.N_dh :=
-    bits_mono (le_trans (Nat.min_le_right _ _)
-      (le_trans (Nat.min_le_left _ _) (by unfold Setup.N_dh; omega)))
-  omega
-
 theorem sigAuth1KeyDslProg_size_le_stepCostBudget (S : Setup) (b : QueryBudget) :
     (sigAuth1KeyDslProg S b).size ≤
       21400 + 195 * bits (_root_.SignalPqxdh.Security.stepCostBudget S b) := by
@@ -653,70 +441,6 @@ theorem sigAuth1KeyDslProg_size_le_stepCostBudget (S : Setup) (b : QueryBudget) 
       Nat.le_mul_of_pos_right _ (Nat.succ_pos _)
     omega
   omega
-
-/-- Run-local output block-size bound for `sigAuth1KeyDslProg` against
-    `SignalPqxdh.Security.outputSizeBudget`. -/
-theorem sigAuth1KeyDslProg_blocks_when_security (S : Setup) (b : QueryBudget) (ℓ : Nat)
-    (A : Unit → OracleComp (unifSpec + authSpec S) Bool)
-    (hA : ∀ u, (A u).IsQueryBoundP (fun q => SignalPqxdh.isGameQuery q = true) b.q_total)
-    (hfit : ∀ u, AllGameQueriesFit ℓ (authCodec S) (A u))
-    (x : (B 32).denote)
-    (hx : ValFits ℓ (B 32) x)
-    (y : (Ty.prod (B 1569) (B 64)).denote)
-    (hy : y ∈ supportWhen (pqSigAndDdhIface.AnswerFits ℓ)
-      ((sigAuth1KeyDslProg S b).eval A x)) :
-    ValFits (_root_.SignalPqxdh.Security.outputSizeBudget S b ℓ) (Ty.prod (B 1569) (B 64)) y := by
-  rw [a1s_valFits_iff_fits]
-  have hx' : (B 32).Fits ℓ x := (a1s_valFits_iff_fits ℓ _ _).1 hx
-  have hA' : ∀ u, (A u).IsQueryBoundP
-      (ReductionDsl.isGameQuery (G := authSpec S)) b.q_total := by
-    intro u
-    convert hA u using 1
-    funext q; cases q <;> simp [ReductionDsl.isGameQuery, SignalPqxdh.isGameQuery]
-  have hEval := (sigAuth1KeyDslProg S b).fits_eval_when
-    pqO_sizeHonest SignalPqxdh.LegacyCosted.pqSamplers_sizeHonest ℓ ℓ 0 (fun _ => trivial)
-    A b.q_total ℓ hA' hfit x hx' y hy
-  have hCost := sigAuth1KeyDslProg_totalCost_le_stepCostBudget S b
-  have hNq := le_trans
-    (a1s_gred_nq_le_totalCost a1s_one_le_pqChalIface_qCost a1s_one_le_pqSamplers_sCost
-      (sigAuth1KeyDslProg S b) b.q_total)
-    hCost
-  refine Ty.fits_mono ?_ (Ty.prod (B 1569) (B 64)) y hEval
-  unfold _root_.SignalPqxdh.Security.outputSizeBudget at *
-  have hM := Nat.mul_le_mul_right ℓ hNq
-  nlinarith
-
-/-- Run-local output block-size bound for `sigAuth1KeyDslProg` against
-    `LegacyCosted.outputSizeBudget`. -/
-theorem sigAuth1KeyDslProg_blocks_when (S : Setup) (b : QueryBudget) (ℓ : Nat)
-    (A : Unit → OracleComp (unifSpec + authSpec S) Bool)
-    (hA : ∀ u, (A u).IsQueryBoundP (fun q => SignalPqxdh.isGameQuery q = true) b.q_total)
-    (hfit : ∀ u, AllGameQueriesFit ℓ (authCodec S) (A u))
-    (x : (B 32).denote)
-    (hx : ValFits ℓ (B 32) x)
-    (y : (Ty.prod (B 1569) (B 64)).denote)
-    (hy : y ∈ supportWhen (pqSigAndDdhIface.AnswerFits ℓ)
-      ((sigAuth1KeyDslProg S b).eval A x)) :
-    ValFits (SignalPqxdh.LegacyCosted.outputSizeBudget S b ℓ) (Ty.prod (B 1569) (B 64)) y := by
-  rw [a1s_valFits_iff_fits]
-  have hx' : (B 32).Fits ℓ x := (a1s_valFits_iff_fits ℓ _ _).1 hx
-  have hA' : ∀ u, (A u).IsQueryBoundP
-      (ReductionDsl.isGameQuery (G := authSpec S)) b.q_total := by
-    intro u
-    convert hA u using 1
-    funext q; cases q <;> simp [ReductionDsl.isGameQuery, SignalPqxdh.isGameQuery]
-  have hEval := (sigAuth1KeyDslProg S b).fits_eval_when
-    pqO_sizeHonest SignalPqxdh.LegacyCosted.pqSamplers_sizeHonest ℓ ℓ 0 (fun _ => trivial)
-    A b.q_total ℓ hA' hfit x hx' y hy
-  have hCost := sigAuth1KeyDslProg_totalCost_le_of S b (a1gStepBounds S b.q_total)
-  have hNq := le_trans
-    (a1s_gred_nq_le_totalCost a1s_one_le_pqChalIface_qCost a1s_one_le_pqSamplers_sCost
-      (sigAuth1KeyDslProg S b) b.q_total)
-    hCost
-  refine Ty.fits_mono ?_ (Ty.prod (B 1569) (B 64)) y hEval
-  unfold SignalPqxdh.LegacyCosted.outputSizeBudget SignalPqxdh.LegacyCosted.stepCostBudget at *
-  have hM := Nat.mul_le_mul_right ℓ hNq
-  nlinarith
 
 end Auth1KeySigSizeAndWhen
 

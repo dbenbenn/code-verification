@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedBase
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Base
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Deliver.Base
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliver
@@ -34,7 +34,7 @@ preservation lemmas, and the base and early known-chain `deliver` cases.
 
 set_option autoImplicit false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 
@@ -63,7 +63,7 @@ section DeliverBase
 variable {PQ Pt : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [Inhabited PQ]
 
 /-- Updates the real-game `KemFailSessionTrack` on a `deliver (Q, w)` answer. -/
-def stepDeliverTrR {ℓ : ℕ} (F : ShaCompress) (K : MlKem)
+@[expose] def stepDeliverTrR {ℓ : ℕ} (F : ShaCompress) (K : MlKem)
     (stTrR : KemFailTrackBridge.KemFailSessionTrack F (List (BitVec 8)))
     (Q : Party) (w : List (BitVec 8)) (ans : Option (RecvResult (Plain ℓ))) :
     KemFailTrackBridge.KemFailSessionTrack F (List (BitVec 8)) :=
@@ -74,7 +74,7 @@ def stepDeliverTrR {ℓ : ℕ} (F : ShaCompress) (K : MlKem)
   (tr', stTrR.2)
 
 /-- Updates the simulator `KemFailTrackState` on a `deliver (Q, w)` answer. -/
-def stepDeliverTrC {ℓ : ℕ} (F : ShaCompress) (K : MlKem)
+@[expose] def stepDeliverTrC {ℓ : ℕ} (F : ShaCompress) (K : MlKem)
     (honest : List (List (BitVec 8) × Fig8C Pt))
     (trC : KemFailTrackState F) (Q : Party) (w : List (BitVec 8))
     (ans : Option (RecvResult (Plain ℓ))) : KemFailTrackState F :=

@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
 
 /-!
 # Atomic `SimFig8` Receive Programs and Static Bounds
@@ -21,7 +23,7 @@ Defines the `ReductionDsl` programs over `atomicSessionOps` and `fig8SmIface` fo
 existing-chain receive path and proves their static query, cost, and description-bit bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -155,28 +157,28 @@ local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 local notation "FIface" => fig8SmIface ℓ Pt
 
-def onAccBase {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ (simBaseT ℓ Pt) :=
+@[expose] def onAccBase {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ (simBaseT ℓ Pt) :=
   .fst x
-def onAccQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def onAccQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd x)
-def onAccW {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def onAccW {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd x))
-def onAccIsDel {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def onAccIsDel {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd (.snd (.snd x)))
-def onAccT {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ .nat :=
+@[expose] def onAccT {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ .nat :=
   .fst (.snd (.snd (.snd (.snd x))))
-def onAccI {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ .nat :=
+@[expose] def onAccI {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ .nat :=
   .fst (.snd (.snd (.snd (.snd (.snd x)))))
-def onAccM {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ PlainT :=
+@[expose] def onAccM {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ PlainT :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd x))))))
-def onAccCi? {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
+@[expose] def onAccCi? {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd x)))))))
-def onAccPk {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ PK :=
+@[expose] def onAccPk {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ PK :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd x))))))))
-def onAccPq' {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def onAccPq' {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAcceptInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd x))))))))
 
-def ssAcceptUpdate {O' : Ops ASig} {Γ}
+@[expose] def ssAcceptUpdate {O' : Ops ASig} {Γ}
     (sE : Expr O' Γ (simBaseT ℓ Pt)) (qE : Expr O' Γ .bool)
     (mirE : Expr O' Γ (simMirT ℓ Pt))
     (csE : Expr O' Γ (.list (ghostChainT ℓ Pt)))
@@ -185,7 +187,7 @@ def ssAcceptUpdate {O' : Ops ASig} {Γ}
     (ssHonest sE) (pSet (ssChains sE) qE csE) (ssAmb sE) (ssStopped sE)
 
 /-- Atomic computation implementing `onAcceptPure`. -/
-def onAcceptPureAtomicC (L qep : ℕ) {Γ : List (Ty ASig)}
+@[expose] def onAcceptPureAtomicC (L qep : ℕ) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (onAcceptInpT ℓ Pt)) :
     Comp AOps FIface Γ (.prod (.opt (recvResultT (ℓ := ℓ) (Pt := Pt))) (simBaseT ℓ Pt)) :=
   .bind (.ret inpE)
@@ -234,26 +236,26 @@ def onAcceptPureAtomicC (L qep : ℕ) {Γ : List (Ty ASig)}
                   (ssAcceptUpdate s0 q0 (mAcceptE L (ssMir s0) q0 posInj) cs0 pq'0))
                 (.pair (.some (.inl .unit)) (ssSetMirWin s0)))))))
 
-def onAnsBase {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ (simBaseT ℓ Pt) :=
+@[expose] def onAnsBase {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ (simBaseT ℓ Pt) :=
   .fst x
-def onAnsQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def onAnsQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd x)
-def onAnsW {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def onAnsW {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd x))
-def onAnsIsDel {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def onAnsIsDel {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd (.snd (.snd x)))
-def onAnsCi? {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
+@[expose] def onAnsCi? {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd (.snd x))))
-def onAnsPk {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ PK :=
+@[expose] def onAnsPk {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ PK :=
   .fst (.snd (.snd (.snd (.snd (.snd x)))))
-def onAnsPq' {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def onAnsPq' {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd x))))))
-def onAnsRes {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) :
+@[expose] def onAnsRes {O' : Ops ASig} {Γ} (x : Expr O' Γ (onAnswerInpT ℓ Pt)) :
     Expr O' Γ (.opt (smRrFullT ℓ Pt)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd x))))))
 
 /-- Atomic computation implementing `onAnswerPure`. -/
-def onAnswerPureAtomicC (L qep : ℕ) {Γ : List (Ty ASig)}
+@[expose] def onAnswerPureAtomicC (L qep : ℕ) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (onAnswerInpT ℓ Pt)) :
     Comp AOps FIface Γ (.prod (.opt (recvResultT (ℓ := ℓ) (Pt := Pt))) (simBaseT ℓ Pt)) :=
   .bind (.ret inpE)
@@ -277,7 +279,7 @@ def onAnswerPureAtomicC (L qep : ℕ) {Γ : List (Ty ASig)}
                            (.pair (onAnsPk x2) (onAnsPq' x2)))))))))))))
 
 /-- Atomic computation implementing `evalCKS`. -/
-def evalCKSAtomicC (idA idB : IdentityKey) (L B_cap T Kc : ℕ) {Γ : List (Ty ASig)}
+@[expose] def evalCKSAtomicC (idA idB : IdentityKey) (L B_cap T Kc : ℕ) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (evalCKInpT ℓ Pt)) :
     Comp AOps FIface Γ (.opt (.opt (kDecOutT ℓ Pt))) :=
   .bind (.ret inpE)
@@ -295,7 +297,7 @@ def evalCKSAtomicC (idA idB : IdentityKey) (L B_cap T Kc : ℕ) {Γ : List (Ty A
          (scSnaps sC0) q0 (.fst (.fst c0)) w0 c'0)
        (.ret (.some .v0)))
 
-def inTransitHonestE (L : ℕ) {Γ : List (Ty ASig)}
+@[expose] def inTransitHonestE (L : ℕ) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt))
     (qBE : Expr AOps Γ .bool)
     (c'E : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) : Expr AOps Γ .bool :=
@@ -306,7 +308,7 @@ def inTransitHonestE (L : ℕ) {Γ : List (Ty ASig)}
       (isSomeE (mInTransitE L (ssMir (scBase (.fst .v0)))
         (otherE (.fst (.snd .v0))) (toWireAtomicE (.snd (.snd .v0))))))
 
-def honestFindE (L : ℕ) {Γ : List (Ty ASig)}
+@[expose] def honestFindE (L : ℕ) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt))
     (qBE : Expr AOps Γ .bool)
     (wE : Expr AOps Γ (B 32)) : Expr AOps Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))) :=
@@ -318,7 +320,7 @@ def honestFindE (L : ℕ) {Γ : List (Ty ASig)}
           (boolEq (senderOfE (.fst (.fst (.snd .v0)))) (otherE (.fst (.snd .v1))))))
       (.snd .v0))
 
-def mkCE {Γ : List (Ty ASig)}
+@[expose] def mkCE {Γ : List (Ty ASig)}
     (honestCE : Expr AOps Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))))
     (tE : Expr AOps Γ .nat)
     (T?E : Expr AOps Γ (.opt PtT))
@@ -329,7 +331,7 @@ def mkCE {Γ : List (Ty ASig)}
       (.snd .v0)
       (.ite (lctSaltEqOfLctAtomicE .v0 (.snd (.snd .v1))) .v0 (.snd .v1)))
 
-def recvRefuseE (L : ℕ) {Γ : List (Ty ASig)}
+@[expose] def recvRefuseE (L : ℕ) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt))
     (qBE : Expr AOps Γ .bool)
     (wE : Expr AOps Γ (B 32))
@@ -349,34 +351,34 @@ def recvRefuseE (L : ℕ) {Γ : List (Ty ASig)}
                (orE (.not (mSafeInjE mir0))
                  (.not (injOKAtomicE w0))))))))
 
-def scUpdateKeptRecv (idA idB : IdentityKey) (T : ℕ) {Γ : List (Ty ASig)}
+@[expose] def scUpdateKeptRecv (idA idB : IdentityKey) (T : ℕ) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt))
     (qBE : Expr AOps Γ .bool)
     (cE : Expr AOps Γ (fig8CtT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ (.prod (keptT ℓ Pt) (keptT ℓ Pt)) :=
   pSet (scKept sCE) qBE (keptRecvAtomicE idA idB T (pGet (scKept sCE) qBE) cE)
 
-def rsySC {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ (simFullT ℓ Pt) :=
+@[expose] def rsySC {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ (simFullT ℓ Pt) :=
   .fst x
-def rsyQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def rsyQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd x)
-def rsyW {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def rsyW {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd x))
-def rsyCi? {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
+@[expose] def rsyCi? {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd x)))
-def rsyPk {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ PK :=
+@[expose] def rsyPk {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ PK :=
   .fst (.snd (.snd (.snd (.snd x))))
-def rsyPq' {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def rsyPq' {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd x)))))
-def rsyC {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) :
+@[expose] def rsyC {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) :
     Expr O' Γ (fig8CtT (ℓ := ℓ) (Pt := Pt)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd x))))))
-def rsyR {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) :
+@[expose] def rsyR {O' : Ops ASig} {Γ} (x : Expr O' Γ (resyncInpT ℓ Pt)) :
     Expr O' Γ (.opt (kDecOutT ℓ Pt)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd x))))))
 
 /-- Atomic computation implementing `semResyncHookS` with `fig8IdSemHook none`. -/
-def semResyncAtomicC (idA idB : IdentityKey) (L qep T : ℕ) {Γ : List (Ty ASig)}
+@[expose] def semResyncAtomicC (idA idB : IdentityKey) (L qep T : ℕ) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (resyncInpT ℓ Pt)) :
     Comp AOps FIface Γ (recvOutT ℓ Pt) :=
   .bind (.ret inpE)
@@ -405,30 +407,30 @@ def semResyncAtomicC (idA idB : IdentityKey) (L qep T : ℕ) {Γ : List (Ty ASig
                     (scSent (rsySC .v5))
                     (scSnaps (rsySC .v5))))))))))
 
-def fwaSC {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ (simFullT ℓ Pt) :=
+@[expose] def fwaSC {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ (simFullT ℓ Pt) :=
   .fst x
-def fwaQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def fwaQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd x)
-def fwaW {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def fwaW {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd x))
-def fwaIsDel {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def fwaIsDel {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd (.snd (.snd x)))
-def fwaCi? {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
+@[expose] def fwaCi? {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd (.snd x))))
-def fwaPk {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ PK :=
+@[expose] def fwaPk {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ PK :=
   .fst (.snd (.snd (.snd (.snd (.snd x)))))
-def fwaPq' {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def fwaPq' {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd x))))))
-def fwaC' {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) :
+@[expose] def fwaC' {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdAnsInpT ℓ Pt)) :
     Expr O' Γ (fig8CtT (ℓ := ℓ) (Pt := Pt)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd x))))))
 
-def isResAcceptedE {O' : Ops ASig} {Γ} (resE : Expr O' Γ (.opt (smRrFullT ℓ Pt))) :
+@[expose] def isResAcceptedE {O' : Ops ASig} {Γ} (resE : Expr O' Γ (.opt (smRrFullT ℓ Pt))) :
     Expr O' Γ .bool :=
   .caseOpt resE (.bool false) (.caseSum .v0 (.bool false) (.bool true))
 
 /-- Atomic computation implementing `semFwdAnswerHookS` with `fig8IdSemHook none`. -/
-def semFwdAnswerAtomicC (idA idB : IdentityKey) (L qep T : ℕ) {Γ : List (Ty ASig)}
+@[expose] def semFwdAnswerAtomicC (idA idB : IdentityKey) (L qep T : ℕ) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (fwdAnsInpT ℓ Pt)) :
     Comp AOps FIface Γ (recvOutT ℓ Pt) :=
   .bind (.ret inpE)
@@ -455,28 +457,28 @@ def semFwdAnswerAtomicC (idA idB : IdentityKey) (L qep T : ℕ) {Γ : List (Ty A
            .pair (.fst .v0)
              (scMk (.snd .v0) keptNew (scSent sC2) (scSnaps sC2))))))
 
-def fwhSC {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ (simFullT ℓ Pt) :=
+@[expose] def fwhSC {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ (simFullT ℓ Pt) :=
   .fst x
-def fwhQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def fwhQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd x)
-def fwhW {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def fwhW {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd x))
-def fwhIsDel {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def fwhIsDel {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd (.snd (.snd x)))
-def fwhCi? {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
+@[expose] def fwhCi? {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd (.snd x))))
-def fwhPk {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ PK :=
+@[expose] def fwhPk {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ PK :=
   .fst (.snd (.snd (.snd (.snd (.snd x)))))
-def fwhPq' {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def fwhPq' {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd x))))))
-def fwhHonest {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) :
+@[expose] def fwhHonest {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) :
     Expr O' Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd x)))))))
-def fwhC' {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) :
+@[expose] def fwhC' {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) :
     Expr O' Γ (fig8CtT (ℓ := ℓ) (Pt := Pt)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd x)))))))
 
-def fwhToAnsInp {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) :
+@[expose] def fwhToAnsInp {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) :
     Expr O' Γ (fwdAnsInpT ℓ Pt) :=
   .pair (fwhSC x)
     (.pair (fwhQ x)
@@ -487,7 +489,7 @@ def fwhToAnsInp {O' : Ops ASig} {Γ} (x : Expr O' Γ (fwdHookInpT ℓ Pt)) :
               (.pair (fwhPq' x) (fwhC' x)))))))
 
 /-- Atomic computation implementing `semFwdHookS` with `fig8IdSemHook none`. -/
-def semFwdHookAtomicC (idA idB : IdentityKey) (L qep B_cap T Kc : ℕ) {Γ : List (Ty ASig)}
+@[expose] def semFwdHookAtomicC (idA idB : IdentityKey) (L qep B_cap T Kc : ℕ) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (fwdHookInpT ℓ Pt)) :
     Comp AOps FIface Γ (recvOutT ℓ Pt) :=
   .bind (.ret inpE)
@@ -513,37 +515,37 @@ def semFwdHookAtomicC (idA idB : IdentityKey) (L qep B_cap T Kc : ℕ) {Γ : Lis
                           (.pair .v2 .v0))))))))))
         (semFwdAnswerAtomicC idA idB L qep T (fwhToAnsInp .v1))))
 
-def poPq' {O' : Ops ASig} {Γ} (p : Expr O' Γ (parseOutT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def poPq' {O' : Ops ASig} {Γ} (p : Expr O' Γ (parseOutT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst p
-def poI {O' : Ops ASig} {Γ} (p : Expr O' Γ (parseOutT ℓ Pt)) : Expr O' Γ .nat :=
+@[expose] def poI {O' : Ops ASig} {Γ} (p : Expr O' Γ (parseOutT ℓ Pt)) : Expr O' Γ .nat :=
   .fst (.snd p)
-def poPk {O' : Ops ASig} {Γ} (p : Expr O' Γ (parseOutT ℓ Pt)) : Expr O' Γ PK :=
+@[expose] def poPk {O' : Ops ASig} {Γ} (p : Expr O' Γ (parseOutT ℓ Pt)) : Expr O' Γ PK :=
   .fst (.snd (.snd p))
-def poT? {O' : Ops ASig} {Γ} (p : Expr O' Γ (parseOutT ℓ Pt)) : Expr O' Γ (.opt PtT) :=
+@[expose] def poT? {O' : Ops ASig} {Γ} (p : Expr O' Γ (parseOutT ℓ Pt)) : Expr O' Γ (.opt PtT) :=
   .fst (.snd (.snd (.snd p)))
-def poLct {O' : Ops ASig} {Γ} (p : Expr O' Γ (parseOutT ℓ Pt)) :
+@[expose] def poLct {O' : Ops ASig} {Γ} (p : Expr O' Γ (parseOutT ℓ Pt)) :
     Expr O' Γ (lctT (ℓ := ℓ) (Pt := Pt)) :=
   .snd (.snd (.snd (.snd p)))
 
-def rsmSC {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) : Expr O' Γ (simFullT ℓ Pt) :=
+@[expose] def rsmSC {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) : Expr O' Γ (simFullT ℓ Pt) :=
   .fst x
-def rsmQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def rsmQ {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd x)
-def rsmW {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) : Expr O' Γ (B 32) :=
+@[expose] def rsmW {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd x))
-def rsmIsDel {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) : Expr O' Γ .bool :=
+@[expose] def rsmIsDel {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) : Expr O' Γ .bool :=
   .fst (.snd (.snd (.snd x)))
-def rsmParsed {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) :
+@[expose] def rsmParsed {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) :
     Expr O' Γ (parseOutT ℓ Pt) :=
   .fst (.snd (.snd (.snd (.snd x))))
-def rsmHonest {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) :
+@[expose] def rsmHonest {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) :
     Expr O' Γ (.opt (fig8CtT (ℓ := ℓ) (Pt := Pt))) :=
   .fst (.snd (.snd (.snd (.snd (.snd x)))))
-def rsmCi {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) : Expr O' Γ .nat :=
+@[expose] def rsmCi {O' : Ops ASig} {Γ} (x : Expr O' Γ (recvSameInpT ℓ Pt)) : Expr O' Γ .nat :=
   .snd (.snd (.snd (.snd (.snd (.snd x)))))
 
 /-- Atomic computation implementing the existing-chain receive branch `semRecvSameBranch`. -/
-def recvSameBranchAtomicC (idA idB : IdentityKey) (L qep B_cap T Kc : ℕ) {Γ : List (Ty ASig)}
+@[expose] def recvSameBranchAtomicC (idA idB : IdentityKey) (L qep B_cap T Kc : ℕ) {Γ : List (Ty ASig)}
     (inpE : Expr AOps Γ (recvSameInpT ℓ Pt)) :
     Comp AOps FIface Γ (recvOutT ℓ Pt) :=
   .bind (.ret inpE)
@@ -569,7 +571,7 @@ abbrev recvNewSiteCtx (ℓ : ℕ) (Pt : Type) (Γ : List (Ty (atomicSig ℓ Pt))
       parseOutT ℓ Pt :: .opt (parseOutT ℓ Pt) :: Γ
 
 /-- Atomic computation implementing `semRecvHookS`, parameterized by `newBranchC` for a new chain. -/
-def recvHookOfNewAtomicC (idA idB : IdentityKey) (L qep B_cap T Kc : ℕ) {Γ : List (Ty ASig)}
+@[expose] def recvHookOfNewAtomicC (idA idB : IdentityKey) (L qep B_cap T Kc : ℕ) {Γ : List (Ty ASig)}
     (sCE : Expr AOps Γ (simFullT ℓ Pt))
     (qBE : Expr AOps Γ .bool)
     (wE : Expr AOps Γ (B 32))

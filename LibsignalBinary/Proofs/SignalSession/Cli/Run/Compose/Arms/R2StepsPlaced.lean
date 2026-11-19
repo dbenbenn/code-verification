@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2HelpersPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R2HelpersPlaced -- proof-setup: allow-public-import
 public meta import Lean
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
@@ -17,12 +17,21 @@ import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonCalleesExt
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.Disproof.Basic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.EncResBridge
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SpeOwnedBridges
+public meta import ProofLib.SepLogic.WP
+public meta import ProofLib.SepLogic.WP.ControlTactics
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `signal_session::run` Placed Arm `R2` Shared Steps
@@ -32,7 +41,7 @@ Relocatable (`[LibsignalPlacement]`) stack-frame equalities, shared cleanup tail
 and message copy/free sub-steps on Block `579` (`runProgPlaced H`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -57,7 +66,7 @@ open CryptoVerification.LibsignalProtoCodec
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero r2p_vregs_0 r2p_vregs_1 r2p_vregs_2
 
-def r2_localGaps (fsp : BitVec 64) : SepProp :=
+@[expose] def r2_localGaps (fsp : BitVec 64) : SepProp :=
   memRegion (fsp + 0x10#64) (0x1d0 - 0x10) ∗
   memRegion (fsp + 0x1e0#64) (0x208 - 0x1e0) ∗
   memRegion (fsp + 0x220#64) (0x2a0 - 0x220) ∗
@@ -252,7 +261,7 @@ theorem r2_allocFailedIn_congr_right {s0 s1 sf : State}
     (h : sf.trace = s1.trace) (ha : allocFailedIn s0 s1) : allocFailedIn s0 sf := by
   unfold allocFailedIn at ha ⊢; rw [h]; exact ha
 
-def r2_hold (P : SepProp) : SepProp := P
+@[expose] def r2_hold (P : SepProp) : SepProp := P
 theorem r2_hold_eq (P : SepProp) : r2_hold P = P := rfl
 attribute [local irreducible] r2_hold
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.Append -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
@@ -28,7 +28,7 @@ Compositional round-trip combinators for `Proto.mergeFieldsLoop`:
   to close top-level `T.decode (T.encodeRaw m) = .ok m` goals.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Codec
 
@@ -40,12 +40,12 @@ abbrev MergeFieldFn (M : Type) :=
   M → BitVec 32 → WireType → Bytes → Nat → Except DecodeErr (M × Bytes)
 
 /-- Prefix-stability predicate on a per-type `mergeField` function. -/
-def PrefixOk {M : Type} (mf : MergeFieldFn M) : Prop :=
+@[expose] def PrefixOk {M : Type} (mf : MergeFieldFn M) : Prop :=
   ∀ m tag wt depth, ProtoPrefixStep (fun bs => mf m tag wt bs depth)
 
 /-- `Proto.mergeFieldsLoop` over `bs` from `m` returns `r` for all `fuel ≥ bs.length` and
 recursion budget `depth ≥ d`. -/
-def LoopsTo {M : Type} (mf : MergeFieldFn M) (d : Nat) (m : M) (bs : Bytes) (r : M) : Prop :=
+@[expose] def LoopsTo {M : Type} (mf : MergeFieldFn M) (d : Nat) (m : M) (bs : Bytes) (r : M) : Prop :=
   ∀ fuel depth, bs.length ≤ fuel → d ≤ depth → Proto.mergeFieldsLoop mf fuel m bs depth = .ok r
 
 variable {M N : Type}
@@ -349,10 +349,6 @@ theorem LoopsTo.mono {mf : MergeFieldFn M} {d d' : Nat} {m r : M} {bs : Bytes}
     (h : LoopsTo mf d m bs r) (hd : d ≤ d') : LoopsTo mf d' m bs r := by
   intro fuel depth hfuel hdepth
   exact h fuel depth hfuel (Nat.le_trans hd hdepth)
-
-theorem LoopsTo.congr_bytes {mf : MergeFieldFn M} {d : Nat} {m r : M} {bs bs' : Bytes}
-    (h : LoopsTo mf d m bs r) (he : bs = bs') : LoopsTo mf d m bs' r := by
-  subst he; exact h
 
 theorem LoopsTo.congr_res {mf : MergeFieldFn M} {d : Nat} {m r r' : M} {bs : Bytes}
     (h : LoopsTo mf d m bs r) (he : r = r') : LoopsTo mf d m bs r' := by

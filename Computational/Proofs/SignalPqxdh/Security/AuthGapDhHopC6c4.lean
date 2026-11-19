@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c1
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c1 -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.Collisions
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open Classical SignalPqxdh SignalPqxdh.Security OracleSpec OracleComp MeasureTheory
 open scoped ENNReal BigOperators
 open Proofs.SignalPqxdh.Security.FgGapDh
 namespace Proofs.SignalPqxdh.Security
-def runAuthSendLatchedSim (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] def runAuthSendLatchedSim (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthSendLatchedState S) := do
   let secb ← $ᵗ Bool
   let initSt := AuthSendLatchedState.empty S secb
@@ -48,37 +50,6 @@ theorem map_toAuthAdvLatchedState_pqxdhAuthSendLatchedStageImpl
       (pqxdhAuthAdvLatchedStageImpl stage S P q).run s.toAuthAdvLatchedState := by
   cases q <;>
     simp [pqxdhAuthSendLatchedStageImpl, wrapSendLatched, StateT.run_mk, Prod.map]
-theorem map_toAuthAdvLatchedState_fullAuthSendLatchedStageImpl
-    (stage : AuthHybridStage) (S : Setup) (P : Primitives)
-    (q : (unifSpec + authSpec S).Domain) (s : AuthSendLatchedState S) :
-    Prod.map id AuthSendLatchedState.toAuthAdvLatchedState <$>
-      (((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (AuthSendLatchedState S) ProbComp) +
-        pqxdhAuthSendLatchedStageImpl stage S P) q).run s =
-    (((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthAdvLatchedState S) ProbComp) +
-      pqxdhAuthAdvLatchedStageImpl stage S P) q).run s.toAuthAdvLatchedState := by
-  cases q with
-  | inl uq => simp [QueryImpl.liftTarget, StateT.run_monadLift, Prod.map]
-  | inr gq => exact map_toAuthAdvLatchedState_pqxdhAuthSendLatchedStageImpl stage S P gq s
-theorem simulateQ_map_toAuthAdvLatchedState_fullAuthSendLatchedStageImpl
-    (stage : AuthHybridStage) (S : Setup) (P : Primitives)
-    {α : Type} (oa : OracleComp (unifSpec + authSpec S) α)
-    (s : AuthSendLatchedState S) :
-    let fullSend := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedStageImpl stage S P
-    let fullAdv := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthAdvLatchedState S) ProbComp) + pqxdhAuthAdvLatchedStageImpl stage S P
-    Prod.map id AuthSendLatchedState.toAuthAdvLatchedState <$> ((simulateQ fullSend oa).run s) =
-      (simulateQ fullAdv oa).run s.toAuthAdvLatchedState :=
-  _root_.Proofs.SignalPqxdh.Security.map_proj_simulateQ
-    AuthSendLatchedState.toAuthAdvLatchedState
-    ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedStageImpl stage S P)
-    ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (AuthAdvLatchedState S) ProbComp) + pqxdhAuthAdvLatchedStageImpl stage S P)
-    (map_toAuthAdvLatchedState_fullAuthSendLatchedStageImpl stage S P)
-    oa s
 theorem mem_support_toAuthAdvLatchedState_of_mem_support_pqxdhAuthSendLatchedStageImpl
     {S : Setup} (stage : AuthHybridStage) (P : Primitives)
     (q : AuthQuery S) (s : AuthSendLatchedState S) (y : AuthResponse × AuthSendLatchedState S)
@@ -87,90 +58,6 @@ theorem mem_support_toAuthAdvLatchedState_of_mem_support_pqxdhAuthSendLatchedSta
       support ((pqxdhAuthAdvLatchedStageImpl stage S P q).run s.toAuthAdvLatchedState) := by
   rw [← map_toAuthAdvLatchedState_pqxdhAuthSendLatchedStageImpl stage S P q s, support_map]
   exact ⟨y, hy, rfl⟩
-theorem advRoLog_length_pqxdhAuthSendLatchedStageImpl {S : Setup} (stage : AuthHybridStage)
-    (P : Primitives) (q : AuthQuery S) (s : AuthSendLatchedState S)
-    (y : AuthResponse × AuthSendLatchedState S)
-    (hy : y ∈ support ((pqxdhAuthSendLatchedStageImpl stage S P q).run s)) :
-    y.2.adv.advRoLog.length = s.adv.advRoLog.length + authRoStepInc q :=
-  advRoLog_length_pqxdhAuthAdvLatchedStageImpl stage P q s.toAuthAdvLatchedState
-    (y.1, y.2.toAuthAdvLatchedState)
-    (mem_support_toAuthAdvLatchedState_of_mem_support_pqxdhAuthSendLatchedStageImpl
-      stage P q s y hy)
-theorem respRecs_length_pqxdhAuthSendLatchedStageImpl {S : Setup} (stage : AuthHybridStage)
-    (P : Primitives) (q : AuthQuery S) (s : AuthSendLatchedState S)
-    (y : AuthResponse × AuthSendLatchedState S)
-    (hy : y ∈ support ((pqxdhAuthSendLatchedStageImpl stage S P q).run s)) :
-    y.2.adv.respRecs.length = s.adv.respRecs.length + authRecvStepInc q :=
-  respRecs_length_pqxdhAuthAdvLatchedStageImpl stage P q s.toAuthAdvLatchedState
-    (y.1, y.2.toAuthAdvLatchedState)
-    (mem_support_toAuthAdvLatchedState_of_mem_support_pqxdhAuthSendLatchedStageImpl
-      stage P q s y hy)
-theorem validAuthHybridRunInv_pqxdhAuthSendLatchedStageImpl {S : Setup} (stage : AuthHybridStage)
-    (P : Primitives) (q : AuthQuery S) (s : AuthSendLatchedState S)
-    (hInv : ValidAuthHybridRunInv S P s.hyb)
-    {y : AuthResponse × AuthSendLatchedState S}
-    (hy : y ∈ support ((pqxdhAuthSendLatchedStageImpl stage S P q).run s)) :
-    ValidAuthHybridRunInv S P y.2.hyb :=
-  validAuthHybridRunInv_pqxdhAuthAdvLatchedStageImpl stage P q s.toAuthAdvLatchedState hInv
-    (mem_support_toAuthAdvLatchedState_of_mem_support_pqxdhAuthSendLatchedStageImpl
-      stage P q s y hy)
-theorem isAuthG3Abort_mono_pqxdhAuthSendLatchedStageImpl {S : Setup} (stage : AuthHybridStage)
-    (P : Primitives) (q : AuthQuery S) (s : AuthSendLatchedState S)
-    (hAb : isAuthG3Abort P s.hyb = true) (y : AuthResponse × AuthSendLatchedState S)
-    (hy : y ∈ support ((pqxdhAuthSendLatchedStageImpl stage S P q).run s)) :
-    isAuthG3Abort P y.2.hyb = true :=
-  isAuthG3Abort_mono_pqxdhAuthAdvLatchedStageImpl stage P q s.toAuthAdvLatchedState hAb
-    (y.1, y.2.toAuthAdvLatchedState)
-    (mem_support_toAuthAdvLatchedState_of_mem_support_pqxdhAuthSendLatchedStageImpl
-      stage P q s y hy)
-theorem evalDist_simulateQ_sendLatchedStage_eq_uniformBool_of_isAuthG3Abort
-    (stage : AuthHybridStage) (S : Setup) (P : Primitives) (secb : Bool)
-    (oa : OracleComp (unifSpec + authSpec S) Bool) (st : AuthSendLatchedState S)
-    (hAbort : isAuthG3Abort P st.hyb = true) :
-    let full := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedStageImpl stage S P
-    𝒟[(simulateQ full oa).run st >>= fun p => finalizeAuthKosk S P secb p.1 p.2.hyb] =
-      𝒟[$ᵗ Bool] :=
-  evalDist_simulateQ_eq_uniformBool_of_bad_preserved
-    (fun s : AuthSendLatchedState S => isAuthG3Abort P s.hyb)
-    (pqxdhAuthSendLatchedStageImpl stage S P)
-    (fun q s hAb y hy => isAuthG3Abort_mono_pqxdhAuthSendLatchedStageImpl stage P q s hAb y hy)
-    (fun p => finalizeAuthKosk S P secb p.1 p.2.hyb)
-    (fun a s hAb => evalDist_finalizeAuthKosk_of_isAuthG3Abort P secb a s.hyb hAb)
-    oa st hAbort
-theorem evalDist_simulateQ_sendLatchedStage_eq_of_isAuthG3Abort_both
-    (S : Setup) (P : Primitives) (secb : Bool) (oa35 oa3 : OracleComp (unifSpec + authSpec S) Bool)
-    (s35 s3 : AuthSendLatchedState S) (hAb35 : isAuthG3Abort P s35.hyb = true)
-    (hAb3 : isAuthG3Abort P s3.hyb = true) :
-    let full35 := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedStageImpl .g3_5 S P
-    let full3 := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedStageImpl .g3 S P
-    𝒟[(simulateQ full35 oa35).run s35 >>= fun p => finalizeAuthKosk S P secb p.1 p.2.hyb] =
-      𝒟[(simulateQ full3 oa3).run s3 >>= fun p => finalizeAuthKosk S P secb p.1 p.2.hyb] := by
-  intro full35 full3
-  rw [evalDist_simulateQ_sendLatchedStage_eq_uniformBool_of_isAuthG3Abort .g3_5 S P secb oa35 s35
-        hAb35,
-      evalDist_simulateQ_sendLatchedStage_eq_uniformBool_of_isAuthG3Abort .g3 S P secb oa3 s3 hAb3]
-theorem authKoskExpAtStage_eq_sendLatchedStage (stage : AuthHybridStage) (S : Setup)
-    (P : Primitives) (A : AuthAdversary S) :
-    authKoskExpAtStage stage S P A =
-    (do
-      let secb ← $ᵗ Bool
-      let initSt := AuthSendLatchedState.empty S secb
-      let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT (AuthSendLatchedState S) ProbComp) +
-        pqxdhAuthSendLatchedStageImpl stage S P
-      let (b', finalSt) ← (simulateQ impl A.run).run initSt
-      finalizeAuthKosk S P secb b' finalSt.hyb) := by
-  rw [authKoskExpAtStage_eq_advLatchedStage stage S P A]; congr 1; funext secb
-  have hsim := congrArg
-    (· >>= fun (p : Bool × AuthAdvLatchedState S) => finalizeAuthKosk S P secb p.1 p.2.hyb)
-    (simulateQ_map_toAuthAdvLatchedState_fullAuthSendLatchedStageImpl stage S P A.run
-      (AuthSendLatchedState.empty S secb))
-  dsimp only [AuthSendLatchedState.toAuthAdvLatchedState_empty] at hsim
-  rw [← hsim, map_eq_bind_pure_comp]
-  simp [bind_assoc, Prod.map]
 theorem evalDist_sampleScalar32_ec_coll_le (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
     (targetPk : Bytes) :
     𝒟[sampleScalar32 >>= fun ekASk =>
@@ -221,7 +108,7 @@ theorem evalDist_sampleScalar32_latchRespEkCollAtSend_le_of_length_le (P : Primi
       (maxRecv : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec :=
   le_trans (evalDist_sampleScalar32_latchRespEkCollAtSend_le P hP respRecs)
     (mul_le_mul_of_nonneg_right (Nat.cast_le.mpr hLen) zero_le)
-def authSendStepInc {S : Setup} : AuthQuery S → ℕ
+@[expose] def authSendStepInc {S : Setup} : AuthQuery S → ℕ
   | .sendOPK _ _ _ _ _   => 1
   | .sendNoOPK _ _ _ _ _ => 1
   | _                    => 0
@@ -414,222 +301,6 @@ theorem evalDist_runAuthHybridSendLatched_latchRespEkCollSendStep_le {S : Setup}
                   exact latchRespEkCollSendStep_of_mem_support_finishAuthHybridSendPost
                     true P sid bundle m0 m1 uEntry ekASk ephASk spqrCoins ss kemCt s
                     drKey roCache' hpPost hLatch
-theorem evalDist_pqxdhAuthSendLatchedStageImpl_respEkCollLatched_le {S : Setup}
-    (stage : AuthHybridStage) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
-    (maxRecv : ℕ) (q : AuthQuery S) (s : AuthSendLatchedState S)
-    (hAead : stage.idealFreshAead = false := by rfl) (hRk : stage.idealRk = false := by rfl)
-    (hCk : stage.idealCk = false := by rfl) (hMk : stage.idealMsgKeys = false := by rfl)
-    (hFalse : s.respEkCollLatched = false) (hRecvLen : s.adv.respRecs.length ≤ maxRecv) :
-    𝒟[((pqxdhAuthSendLatchedStageImpl stage S P q).run s) >>=
-        fun y => pure y.2.respEkCollLatched] {true} ≤
-      (authSendStepInc q : ℝ≥0∞) * (maxRecv : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec := by
-  cases q with
-  | sendOPK u i bundle m0 m1 =>
-    simp only [authSendStepInc, Nat.cast_one, one_mul]
-    refine le_trans ?_
-      (evalDist_sampleScalar32_latchRespEkCollAtSend_le_of_length_le P hP
-        s.adv.respRecs maxRecv hRecvLen)
-    unfold pqxdhAuthSendLatchedStageImpl pqxdhAuthAdvLatchedStageImpl
-      pqxdhAuthAdvStageImpl pqxdhAuthHybridKoskImpl wrapSendLatched
-    simp only [StateT.run_mk, StateT.run_bind, StateT.run_get, bind_assoc, pure_bind, hFalse,
-      Bool.true_and]
-    by_cases hWon : s.adv.hyb.base.hasWonAuth = true
-    · simp [hWon]
-    · simp only [hWon, Bool.false_eq_true, ↓reduceIte]
-      by_cases hNone : bundle.opkB?.isNone = true
-      · simp [hNone]
-      · simp only [hNone, Bool.false_eq_true, ↓reduceIte]
-        simpa [runAuthHybridSendLatched, withLatchedHyb, AuthAdvLatchedState.hyb, bind_assoc] using
-          evalDist_runAuthHybridSendLatched_latchRespEkCollSendStep_le stage P
-            (.sendOPK u i) u bundle m0 m1 s.toAuthAdvLatchedState hAead hRk hCk hMk
-  | sendNoOPK u i bundle m0 m1 =>
-    simp only [authSendStepInc, Nat.cast_one, one_mul]
-    refine le_trans ?_
-      (evalDist_sampleScalar32_latchRespEkCollAtSend_le_of_length_le P hP
-        s.adv.respRecs maxRecv hRecvLen)
-    unfold pqxdhAuthSendLatchedStageImpl pqxdhAuthAdvLatchedStageImpl
-      pqxdhAuthAdvStageImpl pqxdhAuthHybridKoskImpl wrapSendLatched
-    simp only [StateT.run_mk, StateT.run_bind, StateT.run_get, bind_assoc, pure_bind, hFalse,
-      Bool.true_and]
-    by_cases hWon : s.adv.hyb.base.hasWonAuth = true
-    · simp [hWon]
-    · simp only [hWon, Bool.false_eq_true, ↓reduceIte]
-      by_cases hSome : bundle.opkB?.isSome = true
-      · simp [hSome]
-      · simp only [hSome, Bool.false_eq_true, ↓reduceIte]
-        simpa [runAuthHybridSendLatched, withLatchedHyb, AuthAdvLatchedState.hyb, bind_assoc] using
-          evalDist_runAuthHybridSendLatched_latchRespEkCollSendStep_le stage P
-            (.sendNoOPK u i) u bundle m0 m1 s.toAuthAdvLatchedState hAead hRk hCk hMk
-  | _ =>
-    rw [evalDist_bind_pure_eq_zero_of_support_false]
-    · exact zero_le
-    intro y hy
-    simp only [pqxdhAuthSendLatchedStageImpl, StateT.run_mk, MonadAttach.mem_support_bind,
-      support_pure, Set.mem_singleton_iff] at hy
-    rcases hy with ⟨_, _, rfl⟩; exact hFalse
-theorem evalDist_simulateQ_sendLatchedStage_respEkCollLatched_le {S : Setup} {α : Type}
-    (stage : AuthHybridStage) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P) (maxRecv : ℕ)
-    (hAead : stage.idealFreshAead = false := by rfl) (hRk : stage.idealRk = false := by rfl)
-    (hCk : stage.idealCk = false := by rfl) (hMk : stage.idealMsgKeys = false := by rfl)
-    (oa : OracleComp (unifSpec + authSpec S) α) (fuelSend fuelRecv : ℕ)
-    (hQbSend : IsQueryBoundP oa isAuthSendQuery fuelSend)
-    (hQbRecv : IsQueryBoundP oa isAuthRecvQuery fuelRecv) (s : AuthSendLatchedState S)
-    (hRecvBudget : s.adv.respRecs.length + fuelRecv ≤ maxRecv) :
-    let fullSend := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-        (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedStageImpl stage S P
-    𝒟[(simulateQ fullSend oa).run s >>= fun p => pure p.2.respEkCollLatched] {true} ≤
-      𝒟[(pure s.respEkCollLatched : ProbComp Bool)] {true} +
-      (fuelSend : ℝ≥0∞) * (maxRecv : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec := by
-  intro fullSend
-  induction oa using OracleComp.inductionOn generalizing s fuelSend fuelRecv with
-  | pure a =>
-    simp only [simulateQ_pure, StateT.run_pure, pure_bind]; exact le_self_add
-  | query_bind q mx ih =>
-    by_cases hBad : s.respEkCollLatched = true
-    · have hPureOne : 𝒟[(pure s.respEkCollLatched : ProbComp Bool)] {true} = 1 := by
-        simp [hBad]
-      rw [hPureOne]; exact le_trans MeasureTheory.prob_le_one le_self_add
-    · have hFalse : s.respEkCollLatched = false := Bool.eq_false_iff.mpr hBad
-      have hPureZero : 𝒟[(pure s.respEkCollLatched : ProbComp Bool)] {true} = 0 := by
-        simp [hFalse]
-      rw [hPureZero, zero_add]; rw [isQueryBoundP_query_bind_iff] at hQbSend hQbRecv
-      rcases q with uq | gq
-      · rcases hQbSend with ⟨_, hContSend⟩
-        rcases hQbRecv with ⟨_, hContRecv⟩
-        simp only [isAuthSendQuery, ↓reduceIte] at hContSend
-        simp only [isAuthRecvQuery, ↓reduceIte] at hContRecv; dsimp only [fullSend]
-        rw [simulateQ_run_query_inl, bind_assoc]
-        let _ : MeasurableSpace ((unifSpec + authSpec S).Range (Sum.inl uq)) := ⊤
-        have _ : DiscreteMeasurableSpace ((unifSpec + authSpec S).Range (Sum.inl uq)) :=
-          ⟨fun _ => trivial⟩
-        have hUnifEq :
-            𝒟[(liftM (unifSpec.query uq) : ProbComp _) >>= fun u =>
-              (simulateQ fullSend (mx u)).run s >>= fun p => pure p.2.respEkCollLatched]
-              {true} =
-            probExpect (liftM (unifSpec.query uq)) (fun u =>
-              𝒟[(simulateQ fullSend (mx u)).run s >>=
-                fun p => pure p.2.respEkCollLatched] {true}) := by
-          unfold probExpect
-          rw [evalDist_bind_of_discrete, MeasureTheory.Measure.bind_apply MeasurableSet.of_discrete
-                Measurable.of_discrete.aemeasurable]
-        rw [hUnifEq]
-        refine probExpect_const_le_of_support _ _ _ (fun u _ => ?_)
-        have hIH := ih u fuelSend fuelRecv (hContSend u) (hContRecv u) s hRecvBudget
-        rw [hPureZero, zero_add] at hIH; exact hIH
-      · rcases hQbSend with ⟨hSendGuard, hContSend⟩
-        rcases hQbRecv with ⟨hRecvGuard, hContRecv⟩
-        have hRecv := authRecvStepInc_le_of_queryGuard gq hRecvGuard hRecvBudget
-        have hRecvLen : s.adv.respRecs.length ≤ maxRecv := by
-          have := hRecv.1; omega
-        let fuelSend' := if isAuthSendQuery (Sum.inr gq) then fuelSend - 1 else fuelSend
-        let fuelRecv' := if isAuthRecvQuery (Sum.inr gq) then fuelRecv - 1 else fuelRecv
-        let mStep := ((pqxdhAuthSendLatchedStageImpl stage S P gq).run s)
-        dsimp only [fullSend]; rw [simulateQ_run_query_inr, bind_assoc]
-        have hBindEq :
-            𝒟[mStep >>= fun y =>
-              (simulateQ fullSend (mx y.1)).run y.2 >>= fun p => pure p.2.respEkCollLatched]
-              {true} =
-            probExpect mStep (fun y =>
-              𝒟[(simulateQ fullSend (mx y.1)).run y.2 >>=
-                fun p => pure p.2.respEkCollLatched] {true}) := by
-          let _ : MeasurableSpace (AuthResponse × AuthSendLatchedState S) := ⊤
-          have _ : DiscreteMeasurableSpace (AuthResponse × AuthSendLatchedState S) :=
-            ⟨fun _ => trivial⟩
-          unfold probExpect
-          rw [evalDist_bind_of_discrete, MeasureTheory.Measure.bind_apply MeasurableSet.of_discrete
-                Measurable.of_discrete.aemeasurable]
-        rw [hBindEq]
-        calc probExpect mStep (fun y =>
-              𝒟[(simulateQ fullSend (mx y.1)).run y.2 >>=
-                fun p => pure p.2.respEkCollLatched] {true})
-            ≤ probExpect mStep (fun y =>
-                𝒟[(pure y.2.respEkCollLatched : ProbComp Bool)] {true} +
-                (fuelSend' : ℝ≥0∞) * (maxRecv : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec) := by
-              refine probExpect_mono_of_support mStep _ _ (fun y hy => ?_)
-              have hRecvLen' := respRecs_length_pqxdhAuthSendLatchedStageImpl stage P gq s y hy
-              exact ih y.1 fuelSend' fuelRecv' (hContSend y.1) (hContRecv y.1) y.2
-                (by rw [hRecvLen']; exact hRecv.2)
-          _ ≤ probExpect mStep (fun y =>
-                𝒟[(pure y.2.respEkCollLatched : ProbComp Bool)] {true}) +
-              probExpect mStep (fun _ =>
-                (fuelSend' : ℝ≥0∞) * (maxRecv : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec) :=
-              probExpect_add_le mStep _ _ _ (fun _ => le_rfl)
-          _ = 𝒟[mStep >>= fun y => pure y.2.respEkCollLatched] {true} +
-              (fuelSend' : ℝ≥0∞) * (maxRecv : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec := by
-              rw [← evalDist_bind_true_eq_probExpect, probExpect_const]
-          _ ≤ (authSendStepInc gq : ℝ≥0∞) * (maxRecv : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec +
-              (fuelSend' : ℝ≥0∞) * (maxRecv : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec := by
-              gcongr
-              exact evalDist_pqxdhAuthSendLatchedStageImpl_respEkCollLatched_le stage P hP maxRecv
-                gq s hAead hRk hCk hMk hFalse hRecvLen
-          _ = (fuelSend : ℝ≥0∞) * (maxRecv : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec := by
-              rw [← add_mul, ← add_mul, ← Nat.cast_add,
-                  authSendStepInc_add_fuel_eq_of_queryGuard gq hSendGuard]
-theorem prob_respEkCollLatched_runAuthSendLatchedSim_le_ennreal (stage : AuthHybridStage)
-    (S : Setup) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
-    (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b)
-    (hAead : stage.idealFreshAead = false := by rfl) (hRk : stage.idealRk = false := by rfl)
-    (hCk : stage.idealCk = false := by rfl) (hMk : stage.idealMsgKeys = false := by rfl) :
-    𝒟[runAuthSendLatchedSim stage S P A.1 >>= fun x => pure x.2.2.respEkCollLatched] {true} ≤
-      (S.N_send_tot : ℝ≥0∞) * (S.N_recv_tot : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec := by
-  unfold runAuthSendLatchedSim; simp only [bind_assoc, pure_bind]
-  let fullSend := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-      (StateT (AuthSendLatchedState S) ProbComp) + pqxdhAuthSendLatchedStageImpl stage S P
-  have hSecb : ∀ secb : Bool,
-      𝒟[(simulateQ fullSend A.1.run).run (AuthSendLatchedState.empty S secb) >>=
-          fun p => pure p.2.respEkCollLatched] {true} ≤
-        (S.N_send_tot : ℝ≥0∞) * (S.N_recv_tot : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec := by
-    intro secb
-    have hSim := evalDist_simulateQ_sendLatchedStage_respEkCollLatched_le stage P hP S.N_recv_tot
-      hAead hRk hCk hMk A.1.run S.N_send_tot S.N_recv_tot
-      (QueryBounded.auth_send A.2) (QueryBounded.auth_recv A.2) (AuthSendLatchedState.empty S secb)
-      (by simp [AuthSendLatchedState.empty, AuthAdvLatchedState.empty, AuthAdvCutoffState.empty])
-    have hZero :
-        𝒟[(pure (AuthSendLatchedState.empty S secb).respEkCollLatched : ProbComp Bool)]
-          {true} = 0 := by simp
-    rw [hZero, zero_add] at hSim; exact hSim
-  let _ : MeasurableSpace Bool := ⊤
-  have _ : DiscreteMeasurableSpace Bool := ⟨fun _ => trivial⟩
-  have hOuter :
-      𝒟[($ᵗ Bool : ProbComp Bool) >>= fun secb =>
-        (simulateQ fullSend A.1.run).run (AuthSendLatchedState.empty S secb) >>=
-          fun p => pure p.2.respEkCollLatched] {true} =
-      probExpect ($ᵗ Bool) (fun secb =>
-        𝒟[(simulateQ fullSend A.1.run).run (AuthSendLatchedState.empty S secb) >>=
-          fun p => pure p.2.respEkCollLatched] {true}) := by
-    unfold probExpect
-    rw [evalDist_bind_of_discrete, MeasureTheory.Measure.bind_apply MeasurableSet.of_discrete
-          Measurable.of_discrete.aemeasurable]
-  rw [hOuter]; exact probExpect_const_le_of_support ($ᵗ Bool) _ _ (fun secb _ => hSecb secb)
-theorem prob_respEkCollLatched_runAuthSendLatchedSim_le (stage : AuthHybridStage)
-    (S : Setup) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
-    (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b)
-    (hAead : stage.idealFreshAead = false := by rfl) (hRk : stage.idealRk = false := by rfl)
-    (hCk : stage.idealCk = false := by rfl) (hMk : stage.idealMsgKeys = false := by rfl) :
-    (𝒟[runAuthSendLatchedSim stage S P A.1 >>=
-        fun x => pure x.2.2.respEkCollLatched] {true}).toReal ≤
-      (S.N_send_tot : ℝ) * (S.N_recv_tot : ℝ) / (2 : ℝ) ^ 250 := by
-  have hEnn := prob_respEkCollLatched_runAuthSendLatchedSim_le_ennreal stage S P hP b A
-    hAead hRk hCk hMk
-  have hRhs :
-      (S.N_send_tot : ℝ≥0∞) * (S.N_recv_tot : ℝ≥0∞) * ENNReal.ofReal Pfixed_pk_ec =
-      ENNReal.ofReal ((S.N_send_tot : ℝ) * (S.N_recv_tot : ℝ) / (2 : ℝ) ^ 250) := by
-    have hEqReal :
-        (S.N_send_tot : ℝ) * (S.N_recv_tot : ℝ) / (2 : ℝ) ^ 250 =
-        (S.N_send_tot : ℝ) * (S.N_recv_tot : ℝ) * Pfixed_pk_ec := by
-      unfold Pfixed_pk_ec; ring
-    rw [hEqReal, ENNReal.ofReal_mul (by positivity), ENNReal.ofReal_mul (by positivity),
-        ENNReal.ofReal_natCast, ENNReal.ofReal_natCast]
-  rw [hRhs] at hEnn
-  have hReal := (ENNReal.toReal_le_toReal (measure_ne_top _ _) ENNReal.ofReal_ne_top).mpr hEnn
-  rwa [ENNReal.toReal_ofReal (by positivity)] at hReal
-theorem prob_respEkCollLatched_runAuthSendLatchedSim_g3_le
-    (S : Setup) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
-    (b : QueryBudget) (A : BoundedAdv (AuthAdversary S) b) :
-    (𝒟[runAuthSendLatchedSim .g3 S P A.1 >>=
-        fun x => pure x.2.2.respEkCollLatched] {true}).toReal ≤
-      (S.N_send_tot : ℝ) * (S.N_recv_tot : ℝ) / (2 : ℝ) ^ 250 :=
-  prob_respEkCollLatched_runAuthSendLatchedSim_le .g3 S P hP b A
 theorem evalDist_bind_or_le_add {α : Type} (m : ProbComp α) (f g : α → Bool) :
     𝒟[m >>= fun x => pure (f x || g x)] {true} ≤
       𝒟[m >>= fun x => pure (f x)] {true} + 𝒟[m >>= fun x => pure (g x)] {true} := by
@@ -1291,55 +962,4 @@ theorem badAuthFgAnyLatchedMono_mono_advLatched_g3
     badAuthFgAnyLatchedMono P maxRo y.2.toFg = true :=
   badAuthFgAnyLatchedMono_mono_pqxdhAuthAdvLatchedStageImpl .g3 P hP maxRo q s3
     hRunInv.1 hRo hRecv hBad y hy
-theorem badAuthFgAnyLatchedMono_mono_pqxdhAuthFgLatchedImpl
-    {S : Setup} (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P) (maxRo : ℕ)
-    (q : AuthQuery S) (hst : AuthFgCutoffState S) (hKS : ValidAuthKeyStoresFull S P hst.base)
-    (hRo : hst.advRoLog.length + authRoStepInc q ≤ maxRo)
-    (hRecv : hst.respRecs.length + authRecvStepInc q ≤ S.N_recv_tot)
-    (hBad : badAuthFgAnyLatchedMono P maxRo hst = true) (y : AuthResponse × AuthFgCutoffState S)
-    (hy : y ∈ support ((pqxdhAuthFgLatchedImpl S P q).run hst)) :
-    badAuthFgAnyLatchedMono P maxRo y.2 = true := by
-  unfold pqxdhAuthFgLatchedImpl pqxdhAuthFgImpl at hy
-  cases q with
-  | corruptIK u =>
-    dsimp only [authRoStepInc, authRecvStepInc, Nat.add_zero] at hRo hRecv
-    simp only [StateT.run_mk, MonadAttach.mem_support_bind, support_pure,
-      Set.mem_singleton_iff] at hy
-    rcases hy with ⟨⟨resp, h'⟩, hh, rfl⟩
-    exact badAuthFgAnyLatchedMono_step_of_kosk P hP maxRo .g3 false (.corruptIK u)
-      hst _ (mkG3Hybrid hst.base) h' resp rfl rfl hKS hh
-      (List.Sublist.refl _) hRo (List.Sublist.refl _)
-      (by dsimp only; unfold Setup.N_sess_tot; omega) (fun h => False.elim (h u rfl))
-      (fun u' hQ => by injection hQ with hU; subst hU; rfl) hBad
-  | roQuery secrets =>
-    dsimp only [authRoStepInc, authRecvStepInc, Nat.add_zero] at hRo hRecv
-    simp only [StateT.run_mk, MonadAttach.mem_support_bind, support_pure,
-      Set.mem_singleton_iff] at hy
-    rcases hy with ⟨⟨resp, h'⟩, hh, rfl⟩
-    exact badAuthFgAnyLatchedMono_step_of_kosk P hP maxRo .g3 false (.roQuery secrets)
-      hst _ (mkG3Hybrid hst.base) h' resp rfl rfl hKS hh
-      (List.sublist_cons_self _ _) (by simpa only [List.length_cons] using hRo)
-      (List.Sublist.refl _) (by dsimp only; unfold Setup.N_sess_tot; omega)
-      (fun _ => rfl) (fun _ hQ => nomatch hQ) hBad
-  | recvOPK k j o msg | recvNoOPK k j o msg =>
-    dsimp only [authRoStepInc, authRecvStepInc, Nat.add_zero] at hRo hRecv
-    simp only [StateT.run_mk, MonadAttach.mem_support_bind, support_pure,
-      Set.mem_singleton_iff] at hy
-    rcases hy with ⟨⟨resp, h'⟩, hh, rfl⟩
-    exact badAuthFgAnyLatchedMono_step_of_kosk P hP maxRo .g3 false _
-      hst _ (mkG3Hybrid hst.base) h' resp rfl rfl hKS hh
-      (List.Sublist.refl _) hRo (List.sublist_cons_self _ _)
-      (by simp only [List.length_cons, Setup.N_sess_tot]; omega)
-      (fun _ => rfl) (fun _ hQ => nomatch hQ) hBad
-  | initPrin _ | genSPK _ _ | genOPK _ _ _ | sendOPK _ _ _ _ _ | sendNoOPK _ _ _ _ _
-  | roRootQuery _ _ | revealDhSecrets | registerKey _ =>
-    dsimp only [authRoStepInc, authRecvStepInc, Nat.add_zero] at hRo hRecv
-    simp only [StateT.run_mk, MonadAttach.mem_support_bind, support_pure,
-      Set.mem_singleton_iff] at hy
-    rcases hy with ⟨⟨resp, h'⟩, hh, rfl⟩
-    exact badAuthFgAnyLatchedMono_step_of_kosk P hP maxRo .g3 false _
-      hst _ (mkG3Hybrid hst.base) h' resp rfl rfl hKS hh
-      (List.Sublist.refl _) hRo (List.Sublist.refl _)
-      (by dsimp only; unfold Setup.N_sess_tot; omega)
-      (fun _ => rfl) (fun _ hQ => nomatch hQ) hBad
 end Proofs.SignalPqxdh.Security

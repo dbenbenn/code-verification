@@ -92,10 +92,10 @@ theorem sepWP_call_errno [MallocngMultiPlacement] {P : Program} {tgt ret_pc : Bi
   exact sepWP_pure_left fun hcl_e => sepWP_pure_left fun ⟨hproc_e, hbrk_e, hperm_e, hx0_e⟩ =>
     hk se hpc_e hrun_e hsp_e hcs_e hcl_e hproc_e hbrk_e hperm_e hx0_e
 
-private theorem mallocngEnv_focus_replaced (γ : GhostName) (A : MallocngAddrs)
+private theorem mallocngEnv_focus_replaced {ro : Bool} (γ : GhostName) (A : MallocngAddrs)
     (tp brkStart : BitVec 64) (b : MallocngBudget) (ivs : List (BitVec 64 × Nat)) (s : State) :
     ∃ RestEnv : SepProp,
-      MallocngEnv mallocngIface γ A tp brkStart b ivs s =
+      MallocngEnv (mallocngModeIface ro) γ A tp brkStart b ivs s =
         ((A.replaced ↦₃₂ 0#32) ∗ RestEnv) := by
   refine ⟨⌜s.tpidrEl0 = tp ∧ s.brkStart = brkStart⌝ ∗
     MallocngRoTablesA A ∗ MallocngRuntime A tp ∗
@@ -103,27 +103,27 @@ private theorem mallocngEnv_focus_replaced (γ : GhostName) (A : MallocngAddrs)
       ⌜MallocngCountIvsWF b ivs st⌝ ∗
       ⌜MallocngWF A.base brkStart s.brk b.liveCost b.peakCost st⌝ ∗
       MallocngLiveAuth γ st.liveMap ∗ (A.ctx ↦ₛ st.ctx.toBytes) ∗ (A.lock ↦₃₂ 0#32) ∗
-      (A.aaReplaced ↦₃₂ 0#32) ∗ ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+      (A.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗ MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
       ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
       ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
       MappedSet st.masterDom (OwnedMappedByte st), ?_⟩
-  dsimp only [MallocngEnv, mallocngIface]
-  rw [MallocngHeapImpl_eq, MallocngCoreImpl_eq]
+  dsimp only [MallocngEnv]
+  rw [mallocngModeIface_heap_eq, mallocngModeIface_core_eq]
   have hEx :
       (∃∗ st : MallocngSt, ⌜MallocngCountIvsWF b ivs st⌝ ∗
-        MallocngCoreStA γ A brkStart s.brk b.liveCost b.peakCost st) =
+        MallocngCoreStModeA ro γ A brkStart s.brk b.liveCost b.peakCost st) =
       ((A.replaced ↦₃₂ 0#32) ∗
        ∃∗ st : MallocngSt,
          ⌜MallocngCountIvsWF b ivs st⌝ ∗
          ⌜MallocngWF A.base brkStart s.brk b.liveCost b.peakCost st⌝ ∗
          MallocngLiveAuth γ st.liveMap ∗ (A.ctx ↦ₛ st.ctx.toBytes) ∗ (A.lock ↦₃₂ 0#32) ∗
-         (A.aaReplaced ↦₃₂ 0#32) ∗ ((A.libc + 8#64) ↦₆₄ st.auxvPtr) ∗ MallocngAuxvState γ st.auxvPtr st.auxvSnap ∗
+         (A.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell ro A.libc st.auxvPtr ∗ MallocngAuxvStateRo ro γ st.auxvPtr st.auxvSnap ∗
          ByteMap st.masterDom (OwnedRwByte st) st.byteVal ∗
          ProtNoneByteMap st.masterDom (OwnedProtNoneByte st) st.byteVal ∗
          MappedSet st.masterDom (OwnedMappedByte st)) := by
     rw [sepExists_sepConj_right]
     refine sepExists_congr fun st => ?_
-    dsimp only [MallocngCoreStA, MallocngCoreStInflightA, MallocngWF]
+    dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA, MallocngWF]
     ac_rfl
   rw [hEx]; ac_rfl
 
@@ -152,7 +152,7 @@ private theorem ccmp_ovf_hi_iff {align len : BitVec 64} (hMax : align.toNat ≤ 
     `errno` cell (`22#32` when `!alignedAllocAlignOk align`, else `12#32`) on `NULL` return. -/
 def alignedAllocErrnoSpec [MallocngMultiPlacement]
     (B : GhostName → BitVec 64 → Nat → Nat → SepProp) (γ : GhostName) (tp brkStart align len : BitVec 64)
-    (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)) : Spec Unit :=
+    (b : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)) (ro : Bool := false) : Spec Unit :=
   let ok := mallocngAlignedAllocOk align len
   let eff := mallocngAlignedEffSize align.toNat len.toNat
   let bf := mallocngAlignedBudget ok align.toNat len.toNat b
@@ -161,7 +161,7 @@ def alignedAllocErrnoSpec [MallocngMultiPlacement]
       ⌜s0.readReg64 .x0 = align ∧ s0.readReg64 .x1 = len ∧
        align.toNat ≤ MaxAlignedAllocAlign⌝ ∗
       stackFrame s0 736 ∗
-      MallocngEnv mallocngIface γ maddrs tp brkStart b ivs0 s0
+      MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart b ivs0 s0
     post := fun _ s0 sf =>
       ⌜MallocngCallAccounting 16
          (MallocngTightStepBound (if ok then eff else 0) b.peakCount) s0 sf⌝ ∗
@@ -170,12 +170,12 @@ def alignedAllocErrnoSpec [MallocngMultiPlacement]
         ∃∗ q : BitVec 64,
           ⌜sf.readReg64 .x0 = q ∧
            (MallocngTokBlock (B γ)).pureWf q (len.toNat, max align.toNat 16)⌝ ∗
-          MallocngPostEnv mallocngIface γ maddrs tp brkStart bf ivs0 s0 sf ∗
+          MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart bf ivs0 s0 sf ∗
           (MallocngTokBlock (B γ)).interp q (len.toNat, max align.toNat 16)
       else
         ⌜sf.readReg64 .x0 = 0#64 ∧ sf.tpidrEl0 = tp ∧ sf.brkStart = brkStart ∧
          MallocngNoOrphanMappings ivs0 ivs0 s0.mem sf.mem⌝ ∗
-        MallocngCoreImpl γ maddrs brkStart sf.brk bf ivs0 ∗
+        (mallocngModeIface ro).MallocngCore γ maddrs brkStart sf.brk bf ivs0 ∗
         ((tp - 0xa4#64) ↦₃₂ (if !alignedAllocAlignOk align then 22#32 else 12#32)) ∗
         ((maddrs.libc + 3#64) ↦₈ 0#8) ∗
         ((maddrs.libc + 48#64) ↦₆₄ 4096#64)
@@ -184,12 +184,12 @@ def alignedAllocErrnoSpec [MallocngMultiPlacement]
   }
 
 set_option maxHeartbeats 400000 in
-private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
+private theorem blk12_alignedAlloc_errno {ro : Bool} (hMalloc : LibcMallocImplPlaced24Stmt ro)
     [MallocngMultiPlacement] {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a)
     (γ : GhostName) (tp brkStart align len : BitVec 64)
     (bud : MallocngBudget) (ivs0 : List (BitVec 64 × Nat)) :
     subroutine_ok (mallocngBlockProg mmpl 12 msvc) (mbase 12)
-      (alignedAllocErrnoSpec B γ tp brkStart align len bud ivs0) := by
+      (alignedAllocErrnoSpec B γ tp brkStart align len bud ivs0 ro) := by
   refine subroutine_ok_withCL_of_cl fun m0 hcl0 => ?_
   have hfn : ∀ c, (blkPC_b12.rebase c (fun _ => none)).fnAddr "aligned_alloc" = c := fun c => by
     dsimp only [Program.fnAddr, Program.rebase, Program.fnOff, Program.findSymbol?, blkPC_b12, PlacedLib.program]
@@ -215,7 +215,7 @@ private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
     dsimp only [MallocngEnv] at hm0
     simp only [sepConj_comm (stackFrame s0 736), sepConj_assoc, satisfies_pure_sepConj] at hm0
     exact hm0.1
-  refine ⟨stackFrame s0 736 ∗ MallocngEnv mallocngIface γ maddrs tp brkStart bud ivs0 s0,
+  refine ⟨stackFrame s0 736 ∗ MallocngEnv (mallocngModeIface ro) γ maddrs tp brkStart bud ivs0 s0,
     by simpa [sepConj_assoc] using hpre, ?_⟩
   rw [stackFrame_eq_stackFrameAt s0 736, stackFrameAt_736_split s0.sp]
   cells_unfold_pre
@@ -234,8 +234,8 @@ private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
       rwa [bics_neg_eq_zero_iff_alignOk] at h0
     have hOkFalse : mallocngAlignedAllocOk align len = false := by
       simp [mallocngAlignedAllocOk, hAlignFalse]
-    conv => arg 4; dsimp only [MallocngEnv, mallocngIface]
-    conv => arg 4; rw [MallocngHeapImpl_eq, pure_sepConj_of_true ⟨htp0, hbrks0⟩]
+    conv => arg 4; dsimp only [MallocngEnv]
+    conv => arg 4; rw [mallocngModeIface_heap_eq, pure_sepConj_of_true ⟨htp0, hbrks0⟩]
     conv => arg 4; dsimp only [MallocngRuntime]
     conv => arg 4; simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     apply SepWP.exists_elim; intro ev
@@ -302,8 +302,8 @@ private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
         unfold mallocngAlignedEffSize MallocngMaxAllocSize MaxAlignedAllocAlign at *; split <;> omega
       have hOkFalse : mallocngAlignedAllocOk align len = false := by
         simp [mallocngAlignedAllocOk, hEffGt]
-      conv => arg 4; dsimp only [MallocngEnv, mallocngIface]
-      conv => arg 4; rw [MallocngHeapImpl_eq, pure_sepConj_of_true ⟨htp0, hbrks0⟩]
+      conv => arg 4; dsimp only [MallocngEnv]
+      conv => arg 4; rw [mallocngModeIface_heap_eq, pure_sepConj_of_true ⟨htp0, hbrks0⟩]
       conv => arg 4; dsimp only [MallocngRuntime]
       conv => arg 4; simp only [sepExists_sepConj_left, sepExists_sepConj_right]
       apply SepWP.exists_elim; intro ev
@@ -354,7 +354,7 @@ private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
         refine Classical.byContradiction fun hNot => hOvfHi ?_
         have hCond := (ccmp_ovf_hi_iff (len := len) hAlignMax).trans (decide_eq_true (by omega))
         simpa [arm64_norm, hx0, hx1, hNegAnd] using hCond
-      obtain ⟨RestEnv, hFocusRep⟩ := mallocngEnv_focus_replaced γ maddrs tp brkStart bud ivs0 s0
+      obtain ⟨RestEnv, hFocusRep⟩ := mallocngEnv_focus_replaced (ro := ro) γ maddrs tp brkStart bud ivs0 s0
       have _hPageRep := pageOf_add_lo12Of maddrs.replaced
       conv => arg 4; rw [hFocusRep]
       wp_step; wp_step; wp_step
@@ -435,34 +435,34 @@ private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
                 (24 ≤ g'.sc ∧ g'.sc ≤ 26 → nominalSlotCap 23 < eff) ∧
                 (g'.sc = 63 → g'.maplen * 4096 ≤ eff + 4115)⌝ ∗
             (MallocngRoTablesA maddrs ∗
-             MallocngCoreStA γ maddrs brkStart sm.brk b1.liveCost b1.peakCost st' ∗
-             MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ mallocngIface.Block γ p eff ∗
+             MallocngCoreStModeA ro γ maddrs brkStart sm.brk b1.liveCost b1.peakCost st' ∗
+             MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken γ p eff ∗
              stackFrameAt (s0.sp - 32#64) 704 ∗ AlignedSpillSlots s0.sp s0))
-            (by dsimp only [mallocngIface, b1, eff]; exact Entails.of_eq (by ac_rfl)) ?_
+            (by dsimp only [b1, eff]; exact Entails.of_eq (by ac_rfl)) ?_
           refine sepWP_pure_left fun hcl_sm => sepWP_pure_left fun ⟨hproc_sm, hmd_sm⟩ =>
             sepWP_pure_left fun ⟨hx0_sm, _htp_sm, _hbrks_sm, hBlkP, hBsLen,
               hNoOrph_sm, hCnt', g', hg', idx, hIdx, hSlot, hOff255, _, hSc24_26, hSc63⟩ => ?_
           refine sepWP_inspect (q := MallocngWF maddrs.base brkStart sm.brk b1.liveCost b1.peakCost st')
-            (by dsimp only [MallocngCoreStA, MallocngCoreStInflightA, MallocngWF]
+            (by dsimp only [MallocngCoreStModeA, MallocngCoreStInflightModeA, MallocngWF]
                 have hSw1 : (MallocngRoTablesA maddrs ∗
                     (⌜MallocngWFInflight 0 maddrs.base brkStart sm.brk b1.liveCost b1.peakCost st'⌝ ∗
                      MallocngLiveAuth γ st'.liveMap ∗ (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗ (maddrs.lock ↦₃₂ 0#32) ∗
                      (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-                     ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+                     MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
                      ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
                      ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
                      MappedSet st'.masterDom (OwnedMappedByte st')) ∗
-                    MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ mallocngIface.Block γ p eff ∗
+                    MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken γ p eff ∗
                     stackFrameAt (s0.sp - 32#64) 704 ∗ AlignedSpillSlots s0.sp s0) =
                   (⌜MallocngWFInflight 0 maddrs.base brkStart sm.brk b1.liveCost b1.peakCost st'⌝ ∗
                    (MallocngRoTablesA maddrs ∗
                     (MallocngLiveAuth γ st'.liveMap ∗ (maddrs.ctx ↦ₛ st'.ctx.toBytes) ∗ (maddrs.lock ↦₃₂ 0#32) ∗
                      (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-                     ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+                     MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
                      ByteMap st'.masterDom (OwnedRwByte st') st'.byteVal ∗
                      ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
                      MappedSet st'.masterDom (OwnedMappedByte st')) ∗
-                    MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ mallocngIface.Block γ p eff ∗
+                    MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken γ p eff ∗
                     stackFrameAt (s0.sp - 32#64) 704 ∗ AlignedSpillSlots s0.sp s0)) := by ac_rfl
                 rw [hSw1]
                 refine Entails.pure_left fun hwf => ?_
@@ -478,18 +478,18 @@ private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
             let RestGM :=
               MallocngLiveAuth γ st'.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗
               (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-              ((maddrs.libc + 8#64) ↦₆₄ st'.auxvPtr) ∗ MallocngAuxvState γ st'.auxvPtr st'.auxvSnap ∗
+              MallocngAuxvPtrCell ro maddrs.libc st'.auxvPtr ∗ MallocngAuxvStateRo ro γ st'.auxvPtr st'.auxvSnap ∗
               ProtNoneByteMap st'.masterDom (OwnedProtNoneByte st') st'.byteVal ∗
               MappedSet st'.masterDom (OwnedMappedByte st') ∗
-              MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ mallocngIface.Block γ p eff ∗
+              MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken γ p eff ∗
               stackFrameAt (s0.sp - 32#64) 704 ∗ AlignedSpillSlots s0.sp s0
             have hToGM :
                 (MallocngRoTablesA maddrs ∗
-                  MallocngCoreStA γ maddrs brkStart sm.brk b1.liveCost b1.peakCost st' ∗
-                  MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ mallocngIface.Block γ p eff ∗
+                  MallocngCoreStModeA ro γ maddrs brkStart sm.brk b1.liveCost b1.peakCost st' ∗
+                  MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken γ p eff ∗
                   stackFrameAt (s0.sp - 32#64) 704 ∗ AlignedSpillSlots s0.sp s0) ⊢
                 alignedGetMetaPre maddrs st' RestGM := by
-              dsimp only [alignedGetMetaPre, MallocngRoTablesA, MallocngCoreStA, MallocngCoreStInflightA, RestGM]
+              dsimp only [alignedGetMetaPre, MallocngRoTablesA, MallocngCoreStModeA, MallocngCoreStInflightModeA, RestGM]
               rw [pure_sepConj_of_true hwf']; sep_frame
             refine SepWP.weaken_pre hToGM ?_
             have hF := liveUserBlockFacts_of hwf' hg' hIdx hSlot
@@ -500,12 +500,12 @@ private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
             refine SepWP.weaken_pre hEnt4 ?_
             have hFromGM : alignedGetMetaPre maddrs st' RestGM ⊢
                 (MallocngRoTablesA maddrs ∗
-                  MallocngCoreStA γ maddrs brkStart s4.brk b1.liveCost b1.peakCost st' ∗
-                  MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ mallocngIface.Block γ p eff ∗
+                  MallocngCoreStModeA ro γ maddrs brkStart s4.brk b1.liveCost b1.peakCost st' ∗
+                  MallocngRuntime maddrs tp ∗ (p ↦ₛ bs) ∗ MallocngBlockToken γ p eff ∗
                   stackFrameAt (s0.sp - 32#64) 704 ∗ AlignedSpillSlots s0.sp s0) := by
               have hbrk_eq : s4.brk = sm.brk := hbrk4
               rw [hbrk_eq]
-              dsimp only [alignedGetMetaPre, MallocngRoTablesA, MallocngCoreStA, MallocngCoreStInflightA, RestGM]
+              dsimp only [alignedGetMetaPre, MallocngRoTablesA, MallocngCoreStModeA, MallocngCoreStInflightModeA, RestGM]
               rw [pure_sepConj_of_true hwf']; sep_frame
             refine SepWP.weaken_pre hFromGM ?_
             have hcl4 : VerifiedLibraries.mallocngLib.CodeLoaded mmpl s4.mem := by
@@ -557,12 +557,12 @@ private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
             refine Entails.trans ?_ (sepConj_mono_right (Entails.sepExists_intro new_p))
             rw [pure_sepConj_of_true ⟨hx0_f, hPureWf⟩]
             have hPostEnv :
-                (MallocngCoreImpl γ maddrs brkStart sf.brk b2 (dynamicRootRegions st') ∗
+                ((mallocngModeIface ro).MallocngCore γ maddrs brkStart sf.brk b2 (dynamicRootRegions st') ∗
                  MallocngRuntime maddrs tp) ⊢
-                MallocngPostEnv mallocngIface γ maddrs tp brkStart b2 ivs0 s0 sf := by
-              dsimp only [MallocngPostEnv, MallocngEnv, mallocngIface]
+                MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart b2 ivs0 s0 sf := by
+              dsimp only [MallocngPostEnv, MallocngEnv]
               refine Entails.trans ?_ (Entails.sepExists_intro (dynamicRootRegions st'))
-              rw [MallocngHeapImpl_eq, pure_sepConj_of_true hNoOrphAll, pure_sepConj_of_true ⟨htp_f, hbrks_f⟩]
+              rw [mallocngModeIface_heap_eq, pure_sepConj_of_true hNoOrphAll, pure_sepConj_of_true ⟨htp_f, hbrks_f⟩]
               sep_frame
             exact Entails.trans (by sep_frame) (sepConj_mono_right (sepConj_mono_left hPostEnv))
         ·
@@ -570,15 +570,15 @@ private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
           have hOkFalse : mallocngAlignedAllocOk align len = false := by
             simp [mallocngAlignedAllocOk, eff, hEffFit]
           let sp1 := s0.sp - 32#64
-          conv => arg 4; dsimp only [MallocngEnv, mallocngIface]
-          conv => arg 4; rw [MallocngHeapImpl_eq, pure_sepConj_of_true ⟨htp0, hbrks0⟩, stackFrameAt_704_split_80 sp1]
+          conv => arg 4; dsimp only [MallocngEnv]
+          conv => arg 4; rw [mallocngModeIface_heap_eq, pure_sepConj_of_true ⟨htp0, hbrks0⟩, stackFrameAt_704_split_80 sp1]
           conv => arg 4; dsimp only [MallocngRuntime]
           cells_unfold_pre
           apply SepWP.exists_elim; intro ev
           apply SepWP.exists_elim; intro u0; apply SepWP.exists_elim; intro u1
           let Rest3 :=
             stackFrameAt (sp1 - 80#64) 624 ∗ stackFrameAt sp1 64 ∗ AlignedSpillSlots s0.sp s0 ∗
-            MallocngCoreImpl γ maddrs brkStart s0.brk bud ivs0 ∗
+            (mallocngModeIface ro).MallocngCore γ maddrs brkStart s0.brk bud ivs0 ∗
             ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)
           have hOvfSub := placed_libcMallocImpl_overflow_errno_ok
             (P := blkPC_b12.rebase b (fun _ => none)) (externAt?_placedProgram_rebase_none _ _ _ _) rfl
@@ -645,7 +645,7 @@ private theorem blk12_alignedAlloc_errno (hMalloc : LibcMallocImplPlaced24Stmt)
               by simpa [hsc, arm64_norm] using hcs_m.readReg64_x27, by simpa [hsc, arm64_norm] using hcs_m.readReg64_x28,
               by simp [arm64_norm], by simpa [hsc, arm64_norm] using hcs_m.vregs⟩
 
-theorem placed_alignedAlloc_errno_ok (hMalloc : LibcMallocImplPlaced24Stmt)
+theorem placed_alignedAlloc_errno_ok {ro : Bool} (hMalloc : LibcMallocImplPlaced24Stmt ro)
     [MallocngMultiPlacement] {P : Program}
     {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a)
     (γ : GhostName) (tp brkStart align len : BitVec 64)
@@ -653,19 +653,19 @@ theorem placed_alignedAlloc_errno_ok (hMalloc : LibcMallocImplPlaced24Stmt)
     (hext : ∀ pc, P.externAt? pc = none := by
       intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
     (hsvc : P.svc = msvc := by rfl) :
-    subroutine_ok P (mbase 12) (alignedAllocErrnoSpec B γ tp brkStart align len b ivs0) :=
+    subroutine_ok P (mbase 12) (alignedAllocErrnoSpec B γ tp brkStart align len b ivs0 ro) :=
   subroutine_ok_block_to_block (j := 12) (by decide)
     (blk12_alignedAlloc_errno hMalloc hB γ tp brkStart align len b ivs0) hext hsvc
 
-private theorem blk12_alignedAlloc (hMalloc : LibcMallocImplPlaced24Stmt)
+private theorem blk12_alignedAlloc {ro : Bool} (hMalloc : LibcMallocImplPlaced24Stmt ro)
     [MallocngMultiPlacement] {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a)
     (γ : GhostName) :
     subroutine_ok (mallocngBlockProg mmpl 12 msvc) (mbase 12)
-      (withCL mmpl (ToBaseSpec.toSpec (mallocngAlignedAllocTokSpec B msvc γ maddrs) (mbase 12))) := by
+      (withCL mmpl (ToBaseSpec.toSpec (mallocngAlignedAllocTokModeSpec ro B msvc γ maddrs) (mbase 12))) := by
   refine subroutine_ok_withCL_of_cl fun m0 hcl0 => ?_
   apply subroutine_ok_of_sepWP_init
   rintro ⟨align, len, sp0, tp, brkStart, bud, ivs0⟩ R s0 hpc hrun hpre hspAl0
-  dsimp only [ToBaseSpec.toSpec, mallocngAlignedAllocTokSpec] at hpre ⊢
+  dsimp only [ToBaseSpec.toSpec, mallocngAlignedAllocTokModeSpec] at hpre ⊢
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
   obtain ⟨rfl, ⟨hx0, hx1, hsp_eq, _, _, hCaveat⟩, hpre⟩ := hpre
   rw [← sepConj_assoc] at hpre
@@ -697,7 +697,7 @@ private theorem blk12_alignedAlloc (hMalloc : LibcMallocImplPlaced24Stmt)
       ⌜VerifiedLibraries.mallocngLib.CodeLoaded mmpl sf.mem⌝ ∗
       ⌜MallocngCallAccounting 16 (MallocngTightStepBound (mallocngAlignedEffSize align.toNat len.toNat) bud.peakCount) s0 sf⌝ ∗
       ⌜sf.readReg64 .x0 = q ∧ q ≠ 0#64 ∧ max align.toNat 16 ∣ q.toNat ∧ len.toNat + q.toNat < 2 ^ 64⌝ ∗
-      (MallocngPostEnv mallocngIface γ maddrs tp brkStart
+      (MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart
          (mallocngAlignedBudget true align.toNat len.toNat bud) ivs0 s0 sf ∗
        (MallocngTokBlock (B γ)).interp q (len.toNat, max align.toNat 16) ∗
        stackFrame s0 736 ∗ stackFrameAt (s0.sp - 736#64) 288))
@@ -718,7 +718,7 @@ private theorem blk12_alignedAlloc (hMalloc : LibcMallocImplPlaced24Stmt)
       ⌜MallocngCallAccounting 16 (MallocngTightStepBound 0 bud.peakCount) s0 sf⌝ ∗
       ⌜sf.readReg64 .x0 = 0#64 ∧ sf.tpidrEl0 = tp ∧ sf.brkStart = brkStart ∧
        MallocngNoOrphanMappings ivs0 ivs0 s0.mem sf.mem⌝ ∗
-      (MallocngCoreImpl γ maddrs brkStart sf.brk
+      ((mallocngModeIface ro).MallocngCore γ maddrs brkStart sf.brk
          (mallocngAlignedBudget false align.toNat len.toNat bud) ivs0 ∗
        (((tp - 0xa4#64) ↦₃₂ (if !alignedAllocAlignOk align then 22#32 else 12#32)) ∗
         ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)) ∗
@@ -739,16 +739,26 @@ private theorem blk12_alignedAlloc (hMalloc : LibcMallocImplPlaced24Stmt)
       refine Entails.trans ?_ (Entails.sepExists_intro (if !alignedAllocAlignOk align then 22#32 else 12#32))
       sep_frame
     have hPostEnv0 :
-        (MallocngCoreImpl γ maddrs brkStart sf.brk
+        ((mallocngModeIface ro).MallocngCore γ maddrs brkStart sf.brk
           (mallocngAlignedBudget false align.toNat len.toNat bud) ivs0 ∗
          MallocngRuntime maddrs tp) ⊢
-        MallocngPostEnv mallocngIface γ maddrs tp brkStart
+        MallocngPostEnv (mallocngModeIface ro) γ maddrs tp brkStart
           (mallocngAlignedBudget false align.toNat len.toNat bud) ivs0 s0 sf := by
-      dsimp only [MallocngPostEnv, MallocngEnv, mallocngIface]
+      dsimp only [MallocngPostEnv, MallocngEnv]
       refine Entails.trans ?_ (Entails.sepExists_intro ivs0)
-      rw [MallocngHeapImpl_eq, pure_sepConj_of_true hNoOrph, pure_sepConj_of_true ⟨htp_f, hbrks_f⟩]
+      rw [mallocngModeIface_heap_eq, pure_sepConj_of_true hNoOrph, pure_sepConj_of_true ⟨htp_f, hbrks_f⟩]
       sep_frame
     exact Entails.trans (by sep_frame) (sepConj_mono_left (Entails.trans (sepConj_mono_right hRt) hPostEnv0))
+
+theorem placed_alignedAlloc_mode_ok {ro : Bool} (hMalloc : LibcMallocImplPlaced24Stmt ro)
+    [MallocngMultiPlacement] {P : Program}
+    {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a) (γ : GhostName)
+    (hext : ∀ pc, P.externAt? pc = none := by
+      intro pc; simp [Program.rebase, PlacedLib.program, Program.externAt?, Program.hookAtOff?])
+    (hsvc : P.svc = msvc := by rfl) :
+    subroutine_ok P (mbase 12)
+      (withCL mmpl (ToBaseSpec.toSpec (mallocngAlignedAllocTokModeSpec ro B msvc γ maddrs) (mbase 12))) :=
+  subroutine_ok_block_to_block (j := 12) (by decide) (blk12_alignedAlloc hMalloc hB γ) hext hsvc
 
 theorem placed_alignedAlloc_ok (hMalloc : LibcMallocImplPlaced24Stmt)
     [MallocngMultiPlacement] {P : Program}
@@ -758,7 +768,20 @@ theorem placed_alignedAlloc_ok (hMalloc : LibcMallocImplPlaced24Stmt)
     (hsvc : P.svc = msvc := by rfl) :
     subroutine_ok P (mbase 12)
       (withCL mmpl (ToBaseSpec.toSpec (mallocngAlignedAllocTokSpec B msvc γ maddrs) (mbase 12))) :=
-  subroutine_ok_block_to_block (j := 12) (by decide) (blk12_alignedAlloc hMalloc hB γ) hext hsvc
+  placed_alignedAlloc_mode_ok (ro := false) hMalloc hB γ hext hsvc
+
+theorem alignedAllocPlaced_entry_tok_mode_ok {ro : Bool} {B : GhostName → BitVec 64 → Nat → Nat → SepProp}
+    (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a)
+    (hMalloc : LibcMallocImplPlaced24Stmt ro)
+    (mpl : Obj.MultiPlacement) (svc : State → State)
+    (hPlace : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
+    (γ : GhostName) :
+    mallocngMultiEntryOk mpl svc "aligned_alloc"
+      (mallocngAlignedAllocTokModeSpec ro B svc γ (mallocngAddrsOfPlacement mpl)) := by
+  let _ : MallocngMultiPlacement := ⟨mpl, svc, hPlace, hSvc⟩
+  refine ⟨by decide +kernel, 12, 0, by decide +kernel, ?_⟩
+  rw [fnAddr_aligned_alloc]
+  exact withCL_to_withCodeLoaded (blk12_alignedAlloc hMalloc hB γ)
 
 theorem alignedAllocPlaced_entry_tok_ok {B : GhostName → BitVec 64 → Nat → Nat → SepProp} (hB : ∀ γ p n a, MallocngTightBlock γ p n a ⊢ B γ p n a)
     (hMalloc : LibcMallocImplPlaced24Stmt)
@@ -766,19 +789,17 @@ theorem alignedAllocPlaced_entry_tok_ok {B : GhostName → BitVec 64 → Nat →
     (hPlace : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "aligned_alloc"
-      (mallocngAlignedAllocTokSpec B svc γ (mallocngAddrsOfPlacement mpl)) := by
-  let _ : MallocngMultiPlacement := ⟨mpl, svc, hPlace, hSvc⟩
-  refine ⟨by decide +kernel, 12, 0, by decide +kernel, ?_⟩
-  rw [fnAddr_aligned_alloc]
-  exact withCL_to_withCodeLoaded (blk12_alignedAlloc hMalloc hB γ)
+      (mallocngAlignedAllocTokSpec B svc γ (mallocngAddrsOfPlacement mpl)) :=
+  alignedAllocPlaced_entry_tok_mode_ok (ro := false) hB hMalloc mpl svc hPlace hSvc γ
 
-theorem alignedAllocPlaced_entry_tight_ok (hMalloc : LibcMallocImplPlaced24Stmt)
+theorem alignedAllocPlaced_entry_tight_ok {ro : Bool} (hMalloc : LibcMallocImplPlaced24Stmt ro)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPlace : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "aligned_alloc"
-      (mallocngAlignedAllocTightSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) :=
-  alignedAllocPlaced_entry_tok_ok (B := mallocngOldTok)
+      (mallocngAlignedAllocTightSpec (mallocngModeIface ro) svc γ (mallocngAddrsOfPlacement mpl)) := by
+  have h := alignedAllocPlaced_entry_tok_mode_ok (ro := ro) (B := mallocngOldTok)
     (fun γ p n a => mallocngTightBlock_to_token γ p n a) hMalloc mpl svc hPlace hSvc γ
+  rwa [mallocngAlignedAllocTokModeSpec_oldTok] at h
 
 end VerifiedLibraries.Mallocng.Proofs

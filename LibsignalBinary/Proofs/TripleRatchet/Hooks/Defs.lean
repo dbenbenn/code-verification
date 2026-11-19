@@ -11,9 +11,8 @@ module
 
 public import ProofLib.SepLogic.WPp
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Proofs.SpecLemmas.LibsignalTripleRatchetProofDefs
-public import LibsignalBinary.Proofs.TripleRatchet.Prog
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+import LibsignalBinary.Proofs.SpecLemmas.LibsignalTripleRatchetProofDefs
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst -- proof-setup: allow-public-import
 
 /-!
 # Triple-Ratchet Extern Hook Specifications
@@ -25,7 +24,7 @@ RNG fill, public-key and service-ID parsers, and slow varint decoding, bundled i
 
 set_option warningAsError false
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet
 
@@ -47,20 +46,20 @@ abbrev handleAllocErrorName : String := "alloc::alloc::handle_alloc_error"
 
 /-- `__rustc::__rust_no_alloc_shim_is_unstable_v2`: no-op shim (`hookNoop`) preserving memory,
 registers, and trace. -/
-def sessionShimSpec : Spec Unit where
+@[expose] def sessionShimSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
 /-- Region-only `memcpy(dst = x0, src = x1, len = x2)` contract with trace preservation.
 Ghost: `(dst, src, bs)`. -/
-def sessionMemcpyRegionSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def sessionMemcpyRegionSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := memcpyRegionSpec.pre
   post := fun (dst, src, bs) s0 sf =>
     ⌜sf.readReg64 .x0 = dst ∧ sf.trace = s0.trace⌝ ∗ (dst ↦ₛ bs) ∗ (src ↦ₛ bs)
 
 /-- Stack-framed `memcpy(dst = x0, src = x1, len = x2)` contract with trace preservation.
 Ghost: `(dst, src, bs)`. -/
-def sessionMemcpySpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemcpySpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := (libcMemcpySpec hookStack).pre
   post := fun (dst, src, bs) s0 sf =>
@@ -69,7 +68,7 @@ def sessionMemcpySpec (hookStack : Nat := 4096) :
 
 /-- In-buffer overlapping `memmove(base + dst = x0, base + src = x1, len = x2)` contract with
 trace preservation. Ghost: `(base, buf, dst, src, len)`. -/
-def sessionMemmoveSpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemmoveSpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × List (BitVec 8) × Nat × Nat × Nat) where
   pre := (libcMemmoveSpec hookStack).pre
   post := fun (base, buf, dst, src, len) s0 sf =>
@@ -78,14 +77,14 @@ def sessionMemmoveSpec (hookStack : Nat := 4096) :
 
 /-- Region-only `memset(ptr = x0, c = w1, len = x2)` contract with trace preservation.
 Ghost: `(ptr, c, len)`. -/
-def sessionMemsetRegionSpec : Spec (BitVec 64 × BitVec 8 × Nat) where
+@[expose] def sessionMemsetRegionSpec : Spec (BitVec 64 × BitVec 8 × Nat) where
   pre := memsetRegionSpec.pre
   post := fun (ptr, c, len) s0 sf =>
     ⌜sf.readReg64 .x0 = ptr ∧ sf.trace = s0.trace⌝ ∗ (ptr ↦ₛ List.replicate len c)
 
 /-- Stack-framed `memset(ptr = x0, c = w1, len = x2)` contract with trace preservation.
 Ghost: `(ptr, c, len)`. -/
-def sessionMemsetSpec (hookStack : Nat := 4096) :
+@[expose] def sessionMemsetSpec (hookStack : Nat := 4096) :
     Spec (BitVec 64 × BitVec 8 × Nat) where
   pre := (libcMemsetSpec hookStack).pre
   post := fun (ptr, c, len) s0 sf =>
@@ -94,7 +93,7 @@ def sessionMemsetSpec (hookStack : Nat := 4096) :
 
 /-- `<StaticSecret>::diffie_hellman(self = x0, their_public = x1)` (sret `x8`, 32 bytes):
 writes `(X sec pub).toList` at `ret`. Ghost: `(secA, sec, pubA, pub, ret)`. -/
-def diffieHellmanSpec (X : Ratchet.X25519Fn) :
+@[expose] def diffieHellmanSpec (X : Ratchet.X25519Fn) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64) where
   pre := fun (secA, sec, pubA, pub, ret) s =>
     ⌜s.readReg64 .x0 = secA ∧ s.readReg64 .x1 = pubA ∧ s.readReg64 .x8 = ret⌝ ∗
@@ -105,7 +104,7 @@ def diffieHellmanSpec (X : Ratchet.X25519Fn) :
 
 /-- `<x25519_dalek::PublicKey as From<&StaticSecret>>::from(x0 = &secret)` (sret `x8`, 32 bytes):
 writes `(pubKey sec).toList` at `ret`. Ghost: `(secA, sec, ret)`. -/
-def pubFromSecretSpec (pubKey : PubKeyFn) :
+@[expose] def pubFromSecretSpec (pubKey : PubKeyFn) :
     Spec (BitVec 64 × List.Vector (BitVec 8) 32 × BitVec 64) where
   pre := fun (secA, sec, ret) s =>
     ⌜s.readReg64 .x0 = secA ∧ s.readReg64 .x8 = ret⌝ ∗
@@ -116,13 +115,13 @@ def pubFromSecretSpec (pubKey : PubKeyFn) :
 
 /-- `<StaticSecret as Drop>::drop` / `<SharedSecret as Drop>::drop` (`x0 = self`, 32 bytes):
 zeroes the 32 bytes at `a`. Ghost: `a`. -/
-def zeroizeSecretSpec : Spec (BitVec 64) where
+@[expose] def zeroizeSecretSpec : Spec (BitVec 64) where
   pre := fun a s => ⌜s.readReg64 .x0 = a⌝ ∗ memRegion a 32
   post := fun a s0 sf => ⌜sf.trace = s0.trace⌝ ∗ (a ↦ₛ List.replicate 32 0#8)
 
 /-- `libsignal_session_rng_fill(dst = x0, len = x1)`: writes `(rest ++ List.replicate len 0#8).take len`
 at `dst` and advances the tape at `ctl` by `min len rest.length`. Ghost: `(dst, len, cur, rest)`. -/
-def rngFillSpec (ctl : BitVec 64) : Spec (BitVec 64 × Nat × BitVec 64 × List (BitVec 8)) where
+@[expose] def rngFillSpec (ctl : BitVec 64) : Spec (BitVec 64 × Nat × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, len, cur, rest) s =>
     ⌜s.readReg64 .x0 = dst ∧ (s.readReg64 .x1).toNat = len⌝ ∗
       memRegion dst len ∗ tapeAt ctl cur rest
@@ -135,7 +134,7 @@ abbrev blackBoxName : String := "subtle::black_box::<u8>"
 
 /-- `subtle::black_box::<u8>(input = w0) -> u8`: masks `x0` to `(v.setWidth 8).zeroExtend 64`
 and preserves memory and trace. -/
-def blackBoxSpec : Spec (BitVec 64) where
+@[expose] def blackBoxSpec : Spec (BitVec 64) where
   pre := fun v s => ⌜s.readReg64 .x0 = v⌝
   post := fun v s0 sf =>
     ⌜sf.readReg64 .x0 = (v.setWidth 8).zeroExtend 64 ∧ sf.trace = s0.trace⌝
@@ -145,7 +144,7 @@ abbrev compress256Name : String := "sha2::sha256::compress256"
 /-- `sha2::sha256::compress256(state = x0, blocks.ptr = x1, blocks.len = x2)`: folds `n` 64-byte
 blocks `bs` at `blkA` into the 8-word LE SHA-256 chaining state `st` at `stA` via `F`.
 Ghost: `(stA, st, blkA, bs, n)`. -/
-def compress256Spec (F : ShaState → List (BitVec 8) → ShaState) :
+@[expose] def compress256Spec (F : ShaState → List (BitVec 8) → ShaState) :
     Spec (BitVec 64 × ShaState × BitVec 64 × List (BitVec 8) × Nat) where
   pre := fun (stA, st, blkA, bs, n) s =>
     ⌜s.readReg64 .x0 = stA ∧ s.readReg64 .x1 = blkA ∧ (s.readReg64 .x2).toNat = n ∧
@@ -160,7 +159,7 @@ def compress256Spec (F : ShaState → List (BitVec 8) → ShaState) :
 * `.error .noKeyTypeIdentifier` = tag byte `1` at `+0`, discriminant `0` at `+8`;
 * `.error (.badKeyType t)` = tag byte `1` at `+0`, discriminant `1` at `+8`, type byte `t` at `+9`;
 * `.error (.badKeyLength n)` = tag byte `1` at `+0`, discriminant `2` at `+8`, length `n` at `+16`. -/
-def pkTryFromResultAt (out : BitVec 64) : Except SignalProtocolError PublicKey → SepProp
+@[expose] def pkTryFromResultAt (out : BitVec 64) : Except SignalProtocolError PublicKey → SepProp
   | .ok k => (out ↦₈ 0#8) ∗ ((out + 1#64) ↦ₛ k.bytes.toList) ∗ memRegion (out + 33#64) 7
   | .error .noKeyTypeIdentifier =>
     (out ↦₈ 1#8) ∗ memRegion (out + 1#64) 7 ∗ ((out + 8#64) ↦₈ 0#8) ∗ memRegion (out + 9#64) 31
@@ -174,7 +173,7 @@ def pkTryFromResultAt (out : BitVec 64) : Except SignalProtocolError PublicKey �
 
 /-- `<PublicKey as TryFrom<&[u8]>>::try_from(x0 = ptr, x1 = len)` (sret `x8`, 40 bytes):
 writes `pkTryFromResultAt out (PublicKey.deserialize bs)`. Ghost: `(p, bs, out)`. -/
-def pkTryFromSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
+@[expose] def pkTryFromSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p, bs, out) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ s.readReg64 .x8 = out⌝ ∗
       (p ↦ₛ bs) ∗ memRegion out 40
@@ -185,13 +184,13 @@ def pkTryFromSpec : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
 /-- The 17-byte `Option<ServiceId>` layout at `out`:
 * `some (pni, uuid)` = tag byte `kindByte pni` at `+0`, 16 UUID bytes at `+1..+17`;
 * `none` = tag byte `2` at `+0`, 16 bytes at `+1..+17`. -/
-def parseSidResultAt (out : BitVec 64) : Option (Bool × List.Vector (BitVec 8) 16) → SepProp
+@[expose] def parseSidResultAt (out : BitVec 64) : Option (Bool × List.Vector (BitVec 8) 16) → SepProp
   | some (pni, uuid) => (out ↦₈ kindByte pni) ∗ ((out + 1#64) ↦ₛ uuid.toList)
   | none => (out ↦₈ 2#8) ∗ memRegion (out + 1#64) 16
 
 /-- `ServiceId::parse_from_service_id_string(x0 = ptr, x1 = len)` (sret `x8`, 17 bytes):
 writes `parseSidResultAt out (parse bs)`. Ghost: `(p, bs, out)`. -/
-def parseSidSpec (parse : ServiceIdParser) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
+@[expose] def parseSidSpec (parse : ServiceIdParser) : Spec (BitVec 64 × List (BitVec 8) × BitVec 64) where
   pre := fun (p, bs, out) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ s.readReg64 .x8 = out⌝ ∗
       (p ↦ₛ bs) ∗ memRegion out 17
@@ -209,7 +208,7 @@ decodes up to 10 bytes from the slice `(ptr, bs.length)` at `slot` (`*slotA = sl
 * `varintSlow bs = none`: advances the slice by `min 10 bs.length`, allocates a fresh
   `decodeErrorAtStackLen A x1 0` via `DecodeError::from`, and returns `x0 = 1`, `x1 ≠ 0`.
 Ghost: `(slotA, slot, ptr, bs)`. -/
-def decodeVarintSlowSpec (A : RustAlloc) :
+@[expose] def decodeVarintSlowSpec (A : RustAlloc) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (slotA, slot, ptr, bs) s =>
     ⌜s.readReg64 .x0 = slotA ∧ bs.length < 2 ^ 64⌝ ∗
@@ -229,39 +228,5 @@ def decodeVarintSlowSpec (A : RustAlloc) :
           (slot ↦₆₄ (ptr + BitVec.ofNat 64 (min 10 bs.length))) ∗
           ((slot + 8#64) ↦₆₄ BitVec.ofNat 64 (bs.length - min 10 bs.length))
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Predicate asserting that the 11 abstract / abs-delegated extern stubs satisfy their
-    `subroutine_ok` contracts on `contractProg b ext`, and that `ext` preserves `tpidrEl0`
-    and non-executable memory permissions. -/
-structure ExtStubsOK (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (ext : String → Option (State → State)) : Prop where
-  alloc : ∃ α, ∃ spec : Spec α,
-    subroutine_ok (contractProg b ext) (b + stubOff allocName) spec
-  dealloc : ∃ α, ∃ spec : Spec α,
-    subroutine_ok (contractProg b ext) (b + stubOff deallocName) spec
-  realloc : ∃ α, ∃ spec : Spec α,
-    subroutine_ok (contractProg b ext) (b + stubOff reallocName) spec
-  aesEnc : ∃ α, ∃ spec : Spec α,
-    subroutine_ok (contractProg b ext) (b + stubOff aesEncName) spec
-  aesDec : ∃ α, ∃ spec : Spec α,
-    subroutine_ok (contractProg b ext) (b + stubOff aesDecName) spec
-  bcmp : ∃ α, ∃ spec : Spec α,
-    subroutine_ok (contractProg b ext) (b + stubOff "bcmp") spec
-  randomKeys : ∃ α, ∃ spec : Spec α,
-    subroutine_ok (contractProg b ext) (b + stubOff "std::sys::random::linux::hashmap_random_keys") spec
-  formatInner : ∃ α, ∃ spec : Spec α,
-    subroutine_ok (contractProg b ext) (b + stubOff formatInnerName) spec
-  fmtWrite : ∃ α, ∃ spec : Spec α,
-    subroutine_ok (contractProg b ext) (b + stubOff fmtWriteName) spec
-  stringClone : ∃ α, ∃ spec : Spec α,
-    subroutine_ok (contractProg b ext) (b + stubOff "<alloc::string::String as core::clone::Clone>::clone") spec
-  tpidr_preserved : ∀ n f, ext n = some f → ∀ s, (f s).tpidrEl0 = s.tpidrEl0
-  perm_x_preserved : ∀ n f, ext n = some f → ∀ s a, ((f s).mem.perm a).x → (s.mem.perm a).x
-
-/-- Full contract hook predicate: both the 11 modelled TripleRatchet stubs and
-    the 10 abs-delegated stubs hold. -/
-def HooksOK (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (ext : String → Option (State → State)) : Prop :=
-  TRStubsOK b C ctl ext ∧ ExtStubsOK b C ctl ext
 
 end CryptoVerification.LibsignalTripleRatchet

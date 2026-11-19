@@ -9,30 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.Assembly
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecodeBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFromBudget
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserializeBudget
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowAmortizedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Bytes.DropsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Bytes.FromBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1Budget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeErrorBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.RecordCodecs.Assembly
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecodeBudget
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyPairTryFromBudget
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserializeBudget
+import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowAmortizedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
+import LibsignalBinary.Proofs.TripleRatchet.Bytes.DropsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Bytes.FromBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1Budget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeErrorBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32MergeBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldBudget
+import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.Push
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostRkSome
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
 
 /-!
 # Budget-Threaded Record Decoder Assembly
@@ -44,7 +48,7 @@ import ProofLib.SepLogic.WPp
 `IdentityKey::decode`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

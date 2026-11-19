@@ -9,20 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDropsPlacedInst
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainStatesClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.ProofPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDropsPlacedInst
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrSendCoinsPlacedInst -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Drop.ChainStatesClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbClPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlaced
+import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.ProofPlaced
 import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Placed
 import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.ProofPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.Proof
 import LibsignalBinary.Proofs.SpqrV1.Top.InitialState.StepsPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Closed Relocatable `spqr::initial_state` & Drop Instantiations
@@ -33,7 +36,7 @@ and protobuf/state drop blocks (Blocks 266, 267, 269, 270, 273, 279, 281, 282) u
 `[CliSpqrExt W ext]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -54,6 +57,7 @@ open CryptoVerification.LibsignalTripleRatchet.Getters
 open CryptoVerification.LibsignalTripleRatchetRepr
 open CryptoVerification.LibsignalSpqr
 open CryptoVerification.LibsignalAesCbc (memcpyHook memsetHook)
+open CryptoVerification.LibsignalHmac (compress256Hook)
 open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1.Alloc
 open CryptoVerification.SpqrV1.Auth
@@ -67,8 +71,8 @@ open CryptoVerification.SpqrV1.ChainProofs.NextKeyInternalFacts
 open CryptoVerification.CodeLayout
 open CryptoVerification.SignalSession (CliHooks cliExternsPlaced)
 open CryptoVerification.SignalSession.Cli
-  (CliSpqrExt cliSpqrExt_self cliSpqrExt_dealloc_sat cliSpqrExt_sessionMemcpyRegion_sat
-   cliSpqrSendAllocContractsPlacedExt
+  (CliSpqrExt cliSpqrExt_self cliSpqrExt_alloc_sat cliSpqrExt_dealloc_sat
+   cliSpqrExt_panic_handle_error cliSpqrExt_sessionMemcpyRegion_sat cliSpqrExt_shim_sat
    cliNoAllocShim_at_block cliAlloc_at_block cliFramelessMemcpy_at_block
    cliSessionMemcpy_at_block cliAuthNew_placed_ok cliEncodeToVec_placed_ok)
 open CryptoVerification.SignalSession.Cli.RunGlue
@@ -172,7 +176,6 @@ theorem cliDecoderIntoPb_cl_placed_ok [LibsignalPlacement] (W : CliHooks)
         (CryptoVerification.blkPl_377).base (Rust.withPanics ext))
       (lsmpl.base 377)
       (withLsCodeLoaded lsmpl (CryptoVerification.SpqrV1.Poly.DecoderPb.decoderIntoPbSpec A0)) := by
-  have hA := cliSpqrSendAllocContractsPlacedExt W (ext := ext)
   have hdrop264 :
       subroutine_ok
         ((CryptoVerification.blkPC_377).rebase
@@ -184,7 +187,10 @@ theorem cliDecoderIntoPb_cl_placed_ok [LibsignalPlacement] (W : CliHooks)
           (cliDealloc_withPanics_sat W (ext := ext))))
   rw [← ls_blockPlacement_base (i := 377)]
   exact CryptoVerification.SpqrV1.Poly.DecoderPb.decoder_into_pb_cl_placed_ok_ext
-    hA.handle_error hA.shim hA.alloc hdrop264
+    (cliSpqrExt_panic_handle_error W (ext := Rust.withPanics ext))
+    (cliSpqrExt_shim_sat W (ext := Rust.withPanics ext))
+    (cliSpqrExt_alloc_sat W (ext := Rust.withPanics ext))
+    hdrop264
 
 theorem cliStatesIntoPb_initV1State_cl [LibsignalPlacement] (W : CliHooks)
     {ext : String → Option (State → State)} [CliSpqrExt W ext]
@@ -293,7 +299,6 @@ theorem cliInitInner_callInv_placed_ok [LibsignalPlacement] (W : CliHooks)
     {ext : String → Option (State → State)} [CliSpqrExt W ext] :
     subroutine_ok ((blkPC_324).rebase (blkPl_324).base (Rust.withPanics ext))
       (blkPl_324).base (withLsCallInv lsmpl (initInnerPlacedSpecX A0 W.C.F)) := by
-  have hA := cliSpqrSendAllocContractsPlacedExt W (ext := ext)
   have hauth_340 : subroutine_ok
       ((CryptoVerification.blkPC_340).rebase (CryptoVerification.blkPl_340).base (Rust.withPanics ext))
       (lsmpl.base 340) (withLsCallInv lsmpl (authNewSpec W.C.F A0)) := by
@@ -331,7 +336,7 @@ theorem cliInitInner_callInv_placed_ok [LibsignalPlacement] (W : CliHooks)
         call_statesIntoPb_variant_cl_placed (cliStatesIntoPb_initV1State_cl W .b2a x.authKey)
           x.out (hcs hcode0) hpcs hruns hsps hfsp_align hlrs htrs hx8s hx0s hsplits hnext
     refine ⟨_, R, hm, sepWPp_of_init_inner_placed_wpp s0 s0 x _ R
-      (init_inner_body_placed hA.handle_error
+      (init_inner_body_placed (cliSpqrExt_panic_handle_error W (ext := Rust.withPanics ext))
         (cliNoAllocShim_at_block W (i := 324))
         (cliAlloc_at_block W (i := 324))
         (cliFramelessMemcpy_at_block W (i := 324))
@@ -688,6 +693,7 @@ theorem cliSpqrInitialState_placed_ok_closed [LibsignalPlacement]
     (hMs : gh.memset = some memsetHook)
     (hMc : gh.memcpy = some memcpyHook)
     (hMv : gh.extra.lookup "memmove" = some hookMemmove)
+    (hCp : gh.extra.lookup SignalSession.lsCompress256Sym = some (compress256Hook W.C.F))
     (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W))
       lsLibcruxHmacSymCli (libcruxHmacSpec W.C.F E2E.HooksE.A0)) :
     subroutine_ok
@@ -698,7 +704,7 @@ theorem cliSpqrInitialState_placed_ok_closed [LibsignalPlacement]
   let _ := CryptoVerification.SpqrV1.Top.Placed.instIsLsBlockProg_327
     (Rust.withPanics (cliGhostExterns gh (cliExternsPlaced mmpl W)))
   have : CliSpqrExt W (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hHmac
+    cliSpqrExt_self mmpl gh W hG hMs hMc hMv hCp hHmac
   have hv1 := initialState_v1_callInv_placed_ok (A := A0) (F := W.C.F)
     (ext := cliGhostExterns gh (cliExternsPlaced mmpl W))
     ((congrFun (withPanics_cliGhostExterns mmpl gh W) spqrHandleErrorSym).trans

@@ -9,17 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Epilogue
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly
-public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Phase
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Epilogue -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Phase -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangeComplete.Defs
 public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.NextChunkCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.NextChunkCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Proof
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangeComplete.Proof
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Proof
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed Prologue and Epilogue
@@ -28,7 +29,7 @@ Relocatable `[LibsignalPlacement]` callee bundle (`AllocContractsPlaced`), prolo
 OOM panic helpers, and shared epilogue (`+4484`) for Block `416`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -83,7 +84,7 @@ attribute [local simp, local arm64_norm, local wp_norm]
 /-- Relocatable `[LibsignalPlacement]` counterpart of `AllocContracts b A ext` for `NextChunk`
     (Block `416`) and its SPQR callees (`compute_at`, `lagrange_interpolate_prepare`,
     `lagrange_interpolate_complete`, `drop_glue::<[Poly; 16]>`). -/
-structure AllocContractsPlaced (A : RustAlloc)
+structure AllocContractsPlaced [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop where
   handle_error : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked
   shim : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym sessionShimSpec
@@ -94,6 +95,7 @@ structure AllocContractsPlaced (A : RustAlloc)
     HookSat (Rust.withPanics ext) spqrMemcpySym (sessionMemcpySpec hookStack)
   session_memset_region :
     HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec
+  once_ok : OnceCallHookOk (Rust.withPanics ext)
 
 namespace AllocContractsPlaced
 
@@ -134,22 +136,22 @@ theorem computeAt_blk_ok [LibsignalPlacement] {A : RustAlloc}
     subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (lsmpl.base 371) (withMemEq m (computeAtPlacedSpec A)) :=
   lscall_blk_cl
-    (computeAt_placed_ok A ext hA.handle_error hA.shim hA.alloc hA.realloc hA.dealloc) hcl
+    (computeAt_placed_ok A ext hA.once_ok hA.handle_error hA.shim hA.alloc hA.realloc hA.dealloc) hcl
 
 theorem lagrangePrepare_blk_ok [LibsignalPlacement] {A : RustAlloc}
     {ext : String → Option (State → State)} (hA : AllocContractsPlaced A ext)
     {m : Memory} (hcl : LibsignalCodeLoaded lsmpl m) :
     subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (lsmpl.base 372) (withMemEq m (lagrangePreparePlacedSpec A)) :=
-  lscall_blk
-    (lagrangePrepare_placed_ok_of_hookSat A ext hA.handle_error hA.shim hA.alloc hA.session_memset_region) hcl
+  lscall_blk_cl
+    (lagrangePrepare_placed_ok_of_hookSat A ext hA.handle_error hA.shim hA.alloc hA.session_memset_region hA.once_ok) hcl
 
 theorem lagrangeComplete_blk_ok [LibsignalPlacement] {A : RustAlloc}
-    {ext : String → Option (State → State)} (_hA : AllocContractsPlaced A ext)
+    {ext : String → Option (State → State)} (hA : AllocContractsPlaced A ext)
     {m : Memory} (hcl : LibsignalCodeLoaded lsmpl m) :
     subroutine_ok ((blkPC_416).rebase (blkPl_416).base (Rust.withPanics ext))
       (lsmpl.base 373) (withMemEq m lagrangeCompletePlacedSpec) :=
-  lscall_blk_cl (lagrangeComplete_placed_ok ext) hcl
+  lscall_blk_cl (lagrangeComplete_placed_ok ext hA.once_ok) hcl
 
 theorem dropGluePoly16_blk_ok [LibsignalPlacement] {A : RustAlloc}
     {ext : String → Option (State → State)} (hA : AllocContractsPlaced A ext)

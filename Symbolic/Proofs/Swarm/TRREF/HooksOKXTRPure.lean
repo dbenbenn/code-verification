@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Refinement.Statement
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
@@ -21,7 +21,7 @@ import VCVio.Prelude.Core
 Projects `IkShape` from `ExternCryptoLawsHold` and `ExternContractsHoldCli` without machine state.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

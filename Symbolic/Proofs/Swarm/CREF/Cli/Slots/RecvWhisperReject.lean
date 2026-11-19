@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
-public import Symbolic.Proofs.Swarm.CREF.OpkRelC
+import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
+import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+import Symbolic.Proofs.Swarm.CREF.OpkRelC
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvWhisperDefs
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.ReadVis
 import Symbolic.Proofs.Swarm.CREF.RecvWire.SlotPure
 import Symbolic.Proofs.Swarm.Leaves.IC12_Stage1MatchedPrefixPure
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.RecvWire.RcvByPureA
 
 /-!
 # Whisper Receive Reject Preservation
@@ -25,7 +27,7 @@ Extends `PathFaithful`, `MatchedPrefix`, and `Clean` explanations across a rejec
 event `[.recv (wireWhisperTag :: body)]` via `Move.reject []`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

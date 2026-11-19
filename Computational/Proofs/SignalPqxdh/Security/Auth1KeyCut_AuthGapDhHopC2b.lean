@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2b
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2b -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthGapDhHopC2 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyCut_AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
+import Computational.Proofs.SignalPqxdh.Security.Collisions
 
 /-!
 # One-Key `Auth` Hybrid Run-Invariant Preservation
@@ -27,7 +28,7 @@ Proves that `pqxdhAuthHybridKoskImpl1Key` and `pqxdhAuthAdvStageImpl1Key` preser
 `ValidAuthHybridRunInv` across all one-key `Auth` queries.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open SignalPqxdh SignalPqxdh.Security
 open OracleSpec OracleComp

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacDsl
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaProofs
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfHmacDsl -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaProofs -- proof-setup: allow-public-import
 
 /-!
 # Cost and Query Bounds for `prfHmacRedProg`
@@ -19,7 +19,7 @@ Proves syntactic `.cost`, primitive-query, and challenge-query bounds for `prfHm
 `stepCostBudget` and `primQueryBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -86,7 +86,7 @@ attribute [local simp] Expr.cost Comp.cost
   simp only [pqxdhOps, Ops.sum, pqBytesOps, Sum.elim_inl, PNat.val_ofNat, bits_32, bits_firstMsgHdrLen]
   omega
 
-def initSlotCost (S : Setup) : Nat :=
+@[expose] def initSlotCost (S : Setup) : Nat :=
   max (5 + bits (if S.N_id = 0 then 0 else S.N_send_opk))
     (2 + max (6 + bits S.N_send_opk_tot + bits (if S.N_id = 0 then 0 else S.N_send_no_opk))
       (bits S.N_send_tot))
@@ -114,30 +114,6 @@ theorem initSlotCost_le (S : Setup) : initSlotCost S ≤ 10 + S.N_sess_tot := by
     omega
 
 theorem bits_le_log_succ (n : Nat) : bits n ≤ Nat.log 2 n + 1 := le_rfl
-
-theorem initSlotCost_le_log (S : Setup) : initSlotCost S ≤ 10 + 2 * Nat.log 2 S.N_sess_tot := by
-  unfold initSlotCost
-  have hsess : S.N_send_tot ≤ S.N_sess_tot := by unfold Setup.N_sess_tot; omega
-  have hopk_tot : S.N_send_opk_tot ≤ S.N_sess_tot := by
-    unfold Setup.N_sess_tot Setup.N_send_tot; omega
-  have hb_tot := (bits_le_log_succ S.N_send_tot).trans (Nat.add_le_add_right (Nat.log_mono_right hsess) 1)
-  have hb_opk_tot := (bits_le_log_succ S.N_send_opk_tot).trans (Nat.add_le_add_right (Nat.log_mono_right hopk_tot) 1)
-  by_cases h : S.N_id = 0
-  · simp only [h, ite_true, bits_0]
-    omega
-  · have hpos : 1 ≤ S.N_id := by omega
-    have hopk : S.N_send_opk ≤ S.N_sess_tot := by
-      have h1 : S.N_send_opk ≤ S.N_id * S.N_send_opk := by
-        simpa using Nat.mul_le_mul_right S.N_send_opk hpos
-      unfold Setup.N_sess_tot Setup.N_send_tot Setup.N_send_opk_tot; omega
-    have hnoopk : S.N_send_no_opk ≤ S.N_sess_tot := by
-      have h2 : S.N_send_no_opk ≤ S.N_id * S.N_send_no_opk := by
-        simpa using Nat.mul_le_mul_right S.N_send_no_opk hpos
-      unfold Setup.N_sess_tot Setup.N_send_tot Setup.N_send_no_opk_tot; omega
-    have hb_opk := (bits_le_log_succ S.N_send_opk).trans (Nat.add_le_add_right (Nat.log_mono_right hopk) 1)
-    have hb_noopk := (bits_le_log_succ S.N_send_no_opk).trans (Nat.add_le_add_right (Nat.log_mono_right hnoopk) 1)
-    simp only [h, ite_false]
-    omega
 
 @[simp] theorem pendFilterE_cost (K : Nat) {Γ₁ Γ : List PT}
     (a : Var Γ₁ (.prod muPendTy (.prod .nat (B 359)))) [Ext Γ₁ Γ] :
@@ -504,22 +480,6 @@ private theorem hm_handle_cost_clamped_le (S : Setup) (K : Nat) :
     | simp (discharger := clear *- ; omega) only [Nat.max_eq_left]
   omega
 
-theorem hm_handle_cost_tight_le (S : Setup) (K : Nat) :
-    (prfHmacRedProg S K).handle.cost ≤
-      24000 + initSlotCost S + K * 7500 + min K S.N_dh * 1550 +
-        S.N_sess_tot * 7350 + Nat.log 2 S.N_sess_tot * 10 := by
-  refine le_trans (hm_handle_cost_clamped_le S K) ?_
-  have := Nat.min_le_right K S.N_sess_tot
-  omega
-
-theorem hm_handle_cost_le (S : Setup) (K : Nat) :
-    (prfHmacRedProg S K).handle.cost ≤
-      24000 + initSlotCost S + K * 7500 + S.N_dh * 1550 + S.N_sess_tot * 7500 := by
-  refine le_trans (hm_handle_cost_tight_le S K) ?_
-  have := Nat.min_le_right K S.N_dh
-  have := Nat.log_le_self 2 S.N_sess_tot
-  omega
-
 theorem hm_init_queries_prim (S : Setup) (K : Nat) :
     (prfHmacRedProg S K).init.queries chalPrimW chalWS = 0 := by
   simp [prfHmacRedProg, hmInitC, bindV, sampleChal, chalWS, Comp.queries]
@@ -594,37 +554,6 @@ theorem hm_handle_queries_prim_le (S : Setup) (K : Nat) :
 
 end
 
-theorem prfHmacRedProg_totalCost_poly_le (S : Setup) (K q : Nat) :
-    (prfHmacRedProg S K).totalCost q ≤
-      75 + bits (S.N_send_tot + S.N_recv_tot) +
-      q * (24032 + initSlotCost S + K * 7500 + S.N_dh * 1550 + S.N_sess_tot * 7500) +
-      (35 + K * 432 + K ^ 2 * 1575) := by
-  unfold CostedReduction.totalCost
-  have hU : pqPrfHmacIface.uCost = 1 := rfl
-  have hC : (authCodec S).codecCost = 32 := rfl
-  rw [hU, hC, hm_init_cost, hm_finish_cost]
-  have hH := hm_handle_cost_le S K
-  have hMax : max 1 ((prfHmacRedProg S K).handle.cost + 32) ≤
-      24032 + initSlotCost S + K * 7500 + S.N_dh * 1550 + S.N_sess_tot * 7500 := by omega
-  have hMul := Nat.mul_le_mul_left q hMax
-  omega
-
-/-- Step-cost bound for `prfHmacRedProg` against `AuthAead.stepCostBudget`. -/
-theorem prfHmacRedProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (prfHmacRedProg S b.q_total).totalCost b.q_total ≤ AuthAead.stepCostBudget S b := by
-  refine le_trans (prfHmacRedProg_totalCost_poly_le S b.q_total b.q_total) ?_
-  have hSlot := initSlotCost_le S
-  have hbSess : bits (S.N_send_tot + S.N_recv_tot) ≤ S.N_sess_tot + 1 := by
-    have := AuthAead.bits_le_succ (S.N_send_tot + S.N_recv_tot)
-    unfold Setup.N_sess_tot; omega
-  unfold AuthAead.stepCostBudget
-  generalize b.q_total = q at *
-  have h1 : q * (24032 + initSlotCost S + q * 7500 + S.N_dh * 1550 + S.N_sess_tot * 7500) ≤
-      q * (24042 + q * 7500 + S.N_dh * 1550 + S.N_sess_tot * 7501) :=
-    Nat.mul_le_mul_left q (by omega)
-  nlinarith [Nat.zero_le (q * S.N_dh), Nat.zero_le (q * S.N_sess_tot),
-    Nat.zero_le (S.N_dh * S.N_sess_tot)]
-
 /-- Twice-`totalCost` bound for `prfHmacRedProg` against `SignalPqxdh.Security.stepCostBudget`. -/
 theorem prfHmacRedProg_totalCost_two_mul_security_le (S : Setup) (b : QueryBudget) :
     2 * (prfHmacRedProg S b.q_total).totalCost b.q_total ≤
@@ -648,12 +577,6 @@ theorem prfHmacRedProg_totalCost_two_mul_security_le (S : Setup) (b : QueryBudge
   nlinarith [Nat.zero_le (q * M_dh), Nat.zero_le (q * M_sess),
     Nat.zero_le (q * L_dh), Nat.zero_le (q * L_sess),
     Nat.zero_le (M_dh ^ 2), Nat.zero_le (M_dh * M_sess)]
-
-/-- Step-cost bound for `prfHmacRedProg` against `SignalPqxdh.Security.stepCostBudget`. -/
-theorem prfHmacRedProg_totalCost_security_le (S : Setup) (b : QueryBudget) :
-    (prfHmacRedProg S b.q_total).totalCost b.q_total ≤
-      _root_.SignalPqxdh.Security.stepCostBudget S b :=
-  le_trans (by omega) (prfHmacRedProg_totalCost_two_mul_security_le S b)
 
 theorem prfHmacRedProg_totalQueries_prim_poly_le (S : Setup) (K q : Nat) :
     (prfHmacRedProg S K).totalQueries chalPrimW chalWS q ≤

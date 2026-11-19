@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -19,7 +19,7 @@ Embeds the `GapDH` challenge `(U, V)` as the ephemeral key of initiator slot `sI
 identity DH key of principal `kIdx`, and characterizes the simulator under `gapDhFullImpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +57,7 @@ theorem spkBundleFlatIdx_ne_noSpkIdx (S : Setup) (u : Fin S.N_id) (j : Fin S.N_r
   simp only [beq_eq_false_iff_ne, ne_eq]
   omega
 
-noncomputable def fgKeyIndStepPureIk (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgKeyIndStepPureIk (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (targetIdx targetPrinIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyIndSimState S) :
     ProbComp (KeyIndResponse × FgKeyIndSimState S) :=
@@ -83,7 +83,7 @@ theorem simulateQ_gapDhFullImpl_fgKeyIndStepIk (P : Primitives)
     exact simulateQ_gapDhFullImpl_fgKeyIndStep P ddh false targetIdx (noSpkIdx S) S maxLen U V _ st
 
 /-- Pure `QueryImpl` induced by simulating `fgKeyIndStepIk` under `gapDhFullImpl P ddh`. -/
-noncomputable def fgKeyIndSimImplIk (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgKeyIndSimImplIk (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (targetIdx targetPrinIdx : ℕ) (S : Setup) (maxLen : ℕ) (U V : Bytes) :
     QueryImpl (keyIndSpec S) (StateT (FgKeyIndSimState S) ProbComp) :=
   fun gq => StateT.mk (fun st =>
@@ -98,7 +98,7 @@ theorem fgKeyIndSimImplIk_run (P : Primitives) (ddh : Bytes → Bytes → Bytes 
   unfold fgKeyIndSimImplIk
   simp
 
-def pureExtractCdh2FromAdvRoLog (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def pureExtractCdh2FromAdvRoLog (ddh : Bytes → Bytes → Bytes → Bool)
     (maxLen : ℕ) (U V : Bytes) (advRoLog : List Bytes) : Bytes :=
   let cands := (advRoLog.take maxLen).map extractDh2
   match cands.find? (fun z => ddh U V z) with

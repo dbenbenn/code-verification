@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.TrapRng
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.TripleRatchet.TrapRng -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.Defs
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.Calls
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceId
@@ -23,7 +23,7 @@ Call-site transport lemmas on `trTrapProgAt` for `ServiceId::parse_from_service_
 and `<ProtocolAddress as Display>::fmt`, plus generic `[LibsignalPlacement]` cross-block lifting.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,33 +31,6 @@ namespace CryptoVerification.LibsignalTripleRatchet
 
 open Arm64 ProofLib CryptoGames.LibsignalSession CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchetRepr
-
-/-- An in-image callee's contract, moved from its entry to `fnAddr name + k` on `trTrapProgAt`. -/
-theorem inImage_ok_at_trap {α : Type} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {spec : Spec α}
-    {name callee : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff callee)
-    (h : subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr callee) spec) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) spec :=
-  inImage_ok_at_rebase hk h
-
-theorem parse_sid_ok_at_trap (b : BitVec 64) (C : Crypto)
-    (abs : String → Option (State → State)) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff parseSidName) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) (parseSidCodeSpec uuidTryParse) :=
-  inImage_ok_at_trap hk (parseSid_ok_trap b C abs)
-
-theorem addr_display_ok_at_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State))
-    (hW : HookSat abs fmtWriteName (fmtWriteSpec A)) (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff addrDisplayName) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) (addrDisplaySpec A) :=
-  inImage_ok_at_trap hk (addrDisplay_ok_trap b C A abs hW)
-
-/-! ## Relocatable Cross-Block Call-Site Lemmas (`[LibsignalPlacement]`) -/
 
 /-- Relocatable cross-block lift from block `j` to caller block `i`. -/
 theorem inImage_placed_ok_at [LibsignalPlacement] {α : Type} {prog calleeProg : Program}

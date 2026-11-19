@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
-public import LibsignalBinary.Proofs.SpqrV1.Poly.Repr
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.Repr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::Poly>::compute_at`: Definitions and Specifications
@@ -22,7 +22,7 @@ Pure totality (`computeAtPure`), binary and `[LibsignalPlacement]` specification
 (`0x61914`, Block `371`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.ComputeAt
 
@@ -42,13 +42,8 @@ set_option maxHeartbeats 400000
 abbrev computeAtName : String :=
   "<spqr::encoding::polynomial::Poly>::compute_at"
 
-theorem computeAt_fnOff : libsignalSessionCode.fnOff computeAtName = 0x5c51c :=
-  ls_lemma% fnOff "<spqr::encoding::polynomial::Poly>::compute_at"
-
-/-! ## Pure Totality & Loop Characterization -/
-
 /-- Pure total version of `Poly.computeAtPowersLoop`. -/
-def powersLoopPure : Nat → Nat → List GF16 → List GF16
+@[expose] def powersLoopPure : Nat → Nat → List GF16 → List GF16
   | _, 0, xs => xs
   | i, rem + 1, xs =>
     let a := xs[i / 2]?.getD GF16.ZERO
@@ -79,7 +74,7 @@ theorem computeAtPowersLoop_eq_ok :
     simp [hlen]
 
 /-- Pure power table `[1, x, x^2, ..., x^(max 1 (len - 1))]` built by `Poly.computeAt`. -/
-def computeAtPowersPure (len : Nat) (x : GF16) : List GF16 :=
+@[expose] def computeAtPowersPure (len : Nat) (x : GF16) : List GF16 :=
   let xs0 : List GF16 := [GF16.ONE, x]
   if len ≤ 2 then xs0 else powersLoopPure 2 (len - 2) xs0
 
@@ -99,7 +94,7 @@ theorem computeAtPowersPure_of_gt_two {len : Nat} (h : 2 < len) (x : GF16) :
   simp [computeAtPowersPure, hle]
 
 /-- Pure total version of `Poly.computeAt`. -/
-def computeAtPure (self : Poly) (x : GF16) : GF16 :=
+@[expose] def computeAtPure (self : Poly) (x : GF16) : GF16 :=
   let xs := computeAtPowersPure self.coefficients.length x
   (self.coefficients.zip xs).foldl (fun out (a, b) => GF16.add out (GF16.mul a b)) GF16.ZERO
 
@@ -113,7 +108,7 @@ theorem computeAt_eq_ok (self : Poly) (x : GF16) :
     rfl
 
 /-- Indexed tail-recursive version of the dot-product loop in `Poly.computeAt`. -/
-def dotLoopPure : Nat → Nat → List GF16 → List GF16 → GF16 → GF16
+@[expose] def dotLoopPure : Nat → Nat → List GF16 → List GF16 → GF16 → GF16
   | _, 0, _, _, acc => acc
   | k, r + 1, coeffs, xs, acc =>
     let a := coeffs[k]?.getD GF16.ZERO
@@ -187,29 +182,7 @@ structure ComputeAtArgs where
   x : GF16
   deriving DecidableEq, Repr
 
-def computeAtSpec (A : RustAlloc) (b : BitVec 64) : Spec ComputeAtArgs where
-  pre := fun args s =>
-    ⌜s.readReg64 .x0 = args.p_coeffs ∧
-      s.readReg64 .x1 = BitVec.ofNat 64 args.poly.coefficients.length ∧
-      BitVec.truncate 16 (s.readReg64 .x2) = args.x.value ∧
-      2 * args.poly.coefficients.length + 2 ≤ 2 ^ 63⌝ ∗
-    gf16SliceAt args.p_coeffs args.poly.coefficients ∗
-    tokenInitAt b ∗
-    reduceTableAt b ∗
-    A.pool ∗
-    stackAt s.sp computeAtStack
-  post := fun args s0 sf =>
-    ⌜sf.trace = s0.trace ∧
-      BitVec.truncate 16 (sf.readReg64 .x0) = (computeAtPure args.poly args.x).value⌝ ∗
-    gf16SliceAt args.p_coeffs args.poly.coefficients ∗
-    tokenInitAt b ∗
-    reduceTableAt b ∗
-    A.pool ∗
-    stackAt s0.sp computeAtStack
-  onPanic := fun _ s0 sf =>
-    ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def computeAtPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec ComputeAtArgs where
+@[expose] def computeAtPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec ComputeAtArgs where
   pre := fun args s =>
     ⌜s.readReg64 .x0 = args.p_coeffs ∧
       s.readReg64 .x1 = BitVec.ofNat 64 args.poly.coefficients.length ∧
@@ -533,23 +506,8 @@ theorem stackAt_computeAt_merge
 
 /-! ## Callee Specs (`unaccelerated::mul` and `RawVec<GF16>::grow_one`) -/
 
-theorem unacceleratedMul_at_computeAt (b : BitVec 64) (ext : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr computeAtName + BitVec.ofNat 64 9104)
-      (unacceleratedMulSpec b) :=
-  sub_ok_at_of_fnAddr (unacceleratedMul_ok b ext) computeAtName 9104
-    (by rw [computeAt_fnOff, unacceleratedMul_fnOff])
-
-theorem fnAddr_growOneGF16_eq_computeAt (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr growOneGF16Name =
-      (tripleRatchetProgAtExt b ext).fnAddr computeAtName + 18446744073709544188#64 := by
-  dsimp only [tripleRatchetProgAtExt]
-  rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      libsignalSessionCode_fnOff_0x5a818, computeAt_fnOff]
-  bv_omega
-
 /-- Specialized contract for `RawVec<GF16>::grow_one` called with `cap = 0` (`ptr = 2`). -/
-def growOneGF16ZeroSpec (A : RustAlloc) : Spec (BitVec 64) where
+@[expose] def growOneGF16ZeroSpec (A : RustAlloc) : Spec (BitVec 64) where
   pre := fun v s =>
     ⌜s.readReg64 .x0 = v⌝ ∗
     (v ↦₆₄ 0#64) ∗ ((v + 8#64) ↦₆₄ 2#64) ∗
@@ -574,38 +532,8 @@ theorem memRegion8_split_16_16_4 (p' : BitVec 64) :
       ProofLib.memRegion_two p', ProofLib.memRegion_two (p' + 2#64)]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right, BitVec.add_assoc, BitVec.reduceAdd]
 
-theorem grow_one_gf16_zero_ok_at {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr computeAtName + 18446744073709544188#64)
-      (growOneGF16ZeroSpec A) := by
-  rw [← fnAddr_growOneGF16_eq_computeAt b ext]
-  refine subroutine_ok_outcome_intro fun v R s0 hpc hrun hpre hsp => ?_
-  simp only [growOneGF16ZeroSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hx0, hmem⟩
-  have hpre' : s0.mem ⊨ (growOneGF16FullSpec A).pre (v, 0#64, 2#64, []) s0 ∗ R := by
-    simp only [growOneGF16FullSpec, growOneStrideFullSpec, ite_true, emp_sepConj,
-      sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, rfl, by decide, by decide⟩, hmem⟩
-  refine (grow_one_gf16_full_ok_ext hA).mono_outcome (v, 0#64, 2#64, []) R s0 hpc hrun hpre' hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    change sf.mem ⊨ (growOneGF16FullSpec A).post (v, 0#64, 2#64, []) s0 sf ∗ R at hq
-    dsimp only [growOneGF16FullSpec, growOneStrideFullSpec, growOneGF16ZeroSpec] at hq ⊢
-    have h4 : BitVec.ofNat 64 (max (2 * (0#64 : BitVec 64).toNat) 4) = 4#64 := rfl
-    have h8 : max (2 * (0#64 : BitVec 64).toNat) 4 * 2 = 8 := rfl
-    have h8' : (max (2 * (0#64 : BitVec 64).toNat) 4 - (0#64 : BitVec 64).toNat) * 2 = 8 := rfl
-    have h0_2 : BitVec.ofNat 64 ([] : List (BitVec 8)).length = 0#64 := rfl
-    simp only [h4, h8, h8', h0_2, pointsToBytes_nil, BitVec.add_zero, emp_sepConj,
-      memRegion8_split_16_16_4, sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc,
-      satisfies_pure_sepConj, satisfies_sepExists] at hq ⊢
-    exact hq
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact (not_satisfies_false_sepConj hq).elim
-
 /-- Specialized contract for `RawVec<GF16>::grow_one` called with `cap = 1` and `p0 ↦₁₆ 1#16`. -/
-def growOneGF16OneSpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 64) where
+@[expose] def growOneGF16OneSpec (A : RustAlloc) : Spec (BitVec 64 × BitVec 64) where
   pre := fun (v, p0) s =>
     ⌜s.readReg64 .x0 = v ∧ p0 ≠ 0#64⌝ ∗
     (v ↦₆₄ 1#64) ∗ ((v + 8#64) ↦₆₄ p0) ∗
@@ -633,38 +561,6 @@ theorem memRegion6_split_16_4 (p' : BitVec 64) :
       memRegion_split (p' + 2#64) 2 4 (by decide),
       ProofLib.memRegion_two (p' + 2#64)]
   simp only [sepExists_sepConj_left, BitVec.add_assoc, BitVec.reduceAdd]
-
-theorem grow_one_gf16_one_ok_at {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr computeAtName + 18446744073709544188#64)
-      (growOneGF16OneSpec A) := by
-  rw [← fnAddr_growOneGF16_eq_computeAt b ext]
-  refine subroutine_ok_outcome_intro fun ⟨v, p0⟩ R s0 hpc hrun hpre hsp => ?_
-  simp only [growOneGF16OneSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hp0⟩, hmem⟩
-  have hpre' : s0.mem ⊨ (growOneGF16FullSpec A).pre (v, 1#64, p0, [1#8, 0#8]) s0 ∗ R := by
-    simp only [growOneGF16FullSpec, growOneStrideFullSpec,
-      show (1#64 : BitVec 64) = 0#64 ↔ False by decide, ite_false,
-      List.length_cons, List.length_nil, ← pointsTo16_one_eq_bytes,
-      sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, rfl, hp0, by decide⟩, hmem⟩
-  refine (grow_one_gf16_full_ok_ext hA).mono_outcome (v, 1#64, p0, [1#8, 0#8]) R s0 hpc hrun hpre' hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    change sf.mem ⊨ (growOneGF16FullSpec A).post (v, 1#64, p0, [1#8, 0#8]) s0 sf ∗ R at hq
-    dsimp only [growOneGF16FullSpec, growOneStrideFullSpec, growOneGF16OneSpec] at hq ⊢
-    have h4 : BitVec.ofNat 64 (max (2 * (1#64 : BitVec 64).toNat) 4) = 4#64 := rfl
-    have h8 : max (2 * (1#64 : BitVec 64).toNat) 4 * 2 = 8 := rfl
-    have h6 : (max (2 * (1#64 : BitVec 64).toNat) 4 - (1#64 : BitVec 64).toNat) * 2 = 6 := rfl
-    have hlen2 : BitVec.ofNat 64 ([1#8, 0#8] : List (BitVec 8)).length = 2#64 := rfl
-    simp only [h4, h8, h6, hlen2, ← pointsTo16_one_eq_bytes,
-      memRegion6_split_16_4, sepExists_sepConj_left, sepExists_sepConj_right,
-      sepConj_assoc, satisfies_pure_sepConj, satisfies_sepExists] at hq ⊢
-    exact hq
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact (not_satisfies_false_sepConj hq).elim
 
 theorem grow_one_gf16_zero_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

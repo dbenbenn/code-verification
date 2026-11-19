@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneBaseBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.ChainCloneBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-threaded helpers and allocation-envelope bridge for `SessionStructure::clone`
@@ -27,7 +30,7 @@ showing that `FitsEnv M lim st (SessionCloneEnv G s)` implies `FitsEvents M lim 
 `segCloneEvents G s.state` and rules out OOM and `handle_error` branches.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -434,14 +437,6 @@ theorem sc_noPanic_of_false {F : SepProp} (sf : State) (_hpan : sf.status = .Pan
   rw [sepConj_assoc] at hm
   exact not_satisfies_false_sepConj hm
 
-theorem sc_protoChainClone_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : String → Option (State → State)}
-    (hpcc : ProtoChainCloneLocal1PlacedOk M A lim H) :
-    subroutine_ok (lsProg_80 H) (blkPl_82).base
-      (withLsCodeLoaded lsmpl (protoChainCloneSpec M A lim)) :=
-  ls_subroutine_ok_of_block (callerProg := lsProg_80 H)
-    (subroutine_ok_withLsCodeLoaded_of_plain hpcc)
-
 theorem sc_chainClone_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : String → Option (State → State)}
     (hcc : ChainCloneLocal1PlacedOk M A lim H) :
@@ -479,12 +474,6 @@ theorem scExternKit_placed_of_hooks [LibsignalPlacement] {M : AllocCostModel}
     (hmemcpy : HookSat H lsMemcpySym allocMemcpyVmSpec) :
     ScExternKit_placed A lim H :=
   ⟨ls_hook_ok_of_mem hshim, ls_hook_ok_of_mem halloc, ls_hook_ok_of_mem hmemcpy⟩
-
-theorem scExternKit_placed_of_serializeHooks [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : String → Option (State → State)}
-    (h : PlacedSerializeHooks M A H) :
-    ScExternKit_placed A lim H :=
-  scExternKit_placed_of_hooks h.shim (h.alloc lim) h.memcpy
 
 end Placed
 

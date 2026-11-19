@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.SmReachInv
-public import Computational.Proofs.E2E.Dsl.TablesHonest
-public import Computational.Proofs.E2E.Dsl.ClampsLossless
+public import Computational.Proofs.E2E.Dsl.SmReachInv -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.TablesHonest -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.ClampsLossless
+import Computational.Proofs.ReductionDsl.SM.GameCosted
 
 /-!
 # Wire Wrappers, Response Codecs, and Linear-Size SM Bookkeeping
@@ -22,7 +23,7 @@ checks, and `SM.spec` response codecs. Introduces a deduplicated, compromise-cac
 in `O(q)` static cost under `SmListBounded q s`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -69,7 +70,7 @@ local notation "S" => e2eSig ℓ
 local notation "OO" => e2eOps ℓ P C K decT encT
 local notation "AO" => e2eAdapterOps ℓ decT encT
 
-def bytesEqE {Γ : List (Ty S)} (a b : Expr OO Γ (B 32)) : Expr OO Γ .bool :=
+@[expose] def bytesEqE {Γ : List (Ty S)} (a b : Expr OO Γ (B 32)) : Expr OO Γ .bool :=
   e2ePureOp (.bytesEq 32 32) (.pair a b)
 
 @[simp] theorem eval_bytesEqE {Γ : List (Ty S)} (a b : Expr OO Γ (B 32)) (ρ : Env Γ) :
@@ -80,7 +81,7 @@ def bytesEqE {Γ : List (Ty S)} (a b : Expr OO Γ (B 32)) : Expr OO Γ .bool :=
   have h32 : ((32 : ℕ+) : ℕ) = 32 := rfl
   simp only [bytesEqE, cost_e2ePureOp, E2EPureOp.cost, Expr.cost, h32]
 
-def wrapWhisperWireE {Γ : List (Ty S)} (ct : Expr OO Γ (B 32)) : Expr OO Γ (B 32) :=
+@[expose] def wrapWhisperWireE {Γ : List (Ty S)} (ct : Expr OO Γ (B 32)) : Expr OO Γ (B 32) :=
   e2ePureOp .wrapWhisperWire ct
 
 @[simp] theorem eval_wrapWhisperWireE {Γ : List (Ty S)} (ct : Expr OO Γ (B 32)) (ρ : Env Γ) :
@@ -95,7 +96,7 @@ theorem eval_wrapWhisperWireE_lossless {Γ : List (Ty S)} (ct : Expr OO Γ (B 32
 @[simp] theorem cost_wrapWhisperWireE {Γ : List (Ty S)} (ct : Expr OO Γ (B 32)) :
     (wrapWhisperWireE ct).cost = ct.cost + (2 * (ℓ / 32) + 28) := rfl
 
-def wrapPreKeyWireE {Γ : List (Ty S)} (regIdA : Expr OO Γ U32) (hdr : Expr OO Γ hdrT)
+@[expose] def wrapPreKeyWireE {Γ : List (Ty S)} (regIdA : Expr OO Γ U32) (hdr : Expr OO Γ hdrT)
     (inner : Expr OO Γ (B 32)) : Expr OO Γ (B 32) :=
   e2ePureOp .wrapPreKeyWire (.pair regIdA (.pair hdr inner))
 
@@ -120,7 +121,7 @@ theorem eval_wrapPreKeyWireE_lossless {Γ : List (Ty S)} (regIdA : Expr OO Γ U3
   simp only [wrapPreKeyWireE, cost_e2ePureOp, E2EPureOp.cost, Expr.cost]
   omega
 
-def parsePreKeyWireE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) :
+@[expose] def parsePreKeyWireE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) :
     Expr OO Γ (.opt (.prod U32 (.prod hdrT (B 32)))) :=
   e2ePureOp .parsePreKeyWire c
 
@@ -133,7 +134,7 @@ def parsePreKeyWireE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) :
 @[simp] theorem cost_parsePreKeyWireE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) :
     (parsePreKeyWireE c).cost = c.cost + 96 := rfl
 
-def partneredInnerBytesE {Γ : List (Ty S)} (bobAcc : Expr OO Γ .bool) (regIdA : Expr OO Γ U32)
+@[expose] def partneredInnerBytesE {Γ : List (Ty S)} (bobAcc : Expr OO Γ .bool) (regIdA : Expr OO Γ U32)
     (hdr : Expr OO Γ hdrT) (c : Expr OO Γ (B 32)) : Expr OO Γ (.opt (B 32)) :=
   e2ePureOp .partneredInnerBytes (.pair bobAcc (.pair regIdA (.pair hdr c)))
 
@@ -173,7 +174,7 @@ theorem eval_partneredInnerBytesE_lossless {Γ : List (Ty S)} (bobAcc : Expr OO 
   simp only [partneredInnerBytesE, cost_e2ePureOp, E2EPureOp.cost, Expr.cost]
   omega
 
-def wireInnerBytesE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) : Expr OO Γ (.opt (B 32)) :=
+@[expose] def wireInnerBytesE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) : Expr OO Γ (.opt (B 32)) :=
   e2ePureOp .wireInnerBytes c
 
 @[simp] theorem eval_wireInnerBytesE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) (ρ : Env Γ) :
@@ -194,7 +195,7 @@ theorem eval_wireInnerBytesE_lossless {Γ : List (Ty S)} (c : Expr OO Γ (B 32))
 @[simp] theorem cost_wireInnerBytesE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) :
     (wireInnerBytesE c).cost = c.cost + 96 := rfl
 
-def decEncCheckE {Γ : List (Ty S)} (pk : Expr OO Γ PK) : Expr OO Γ .bool :=
+@[expose] def decEncCheckE {Γ : List (Ty S)} (pk : Expr OO Γ PK) : Expr OO Γ .bool :=
   e2eCurveOp .decEncCheck pk
 
 @[simp] theorem eval_decEncCheckE {Γ : List (Ty S)} (pk : Expr OO Γ PK) (ρ : Env Γ) :
@@ -207,7 +208,7 @@ def decEncCheckE {Γ : List (Ty S)} (pk : Expr OO Γ PK) : Expr OO Γ .bool :=
     (decEncCheckE (P := P) (C := C) (K := K) (decT := decT) (encT := encT) pk).cost =
       pk.cost + 8 := rfl
 
-def ratchetKeyAdmissibleE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) : Expr OO Γ .bool :=
+@[expose] def ratchetKeyAdmissibleE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) : Expr OO Γ .bool :=
   e2eCurveOp .checkRatchetKeyOnCurve c
 
 @[simp] theorem eval_ratchetKeyAdmissibleE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) (ρ : Env Γ) :
@@ -218,7 +219,7 @@ def ratchetKeyAdmissibleE {Γ : List (Ty S)} (c : Expr OO Γ (B 32)) : Expr OO �
     (ratchetKeyAdmissibleE (P := P) (C := C) (K := K) (decT := decT) (encT := encT) c).cost =
       c.cost + (ℓ / 32 + 24) := rfl
 
-def adapterWrapWhisperWireE {Γ : List (Ty S)} (ct : Expr AO Γ (B 32)) : Expr AO Γ (B 32) :=
+@[expose] def adapterWrapWhisperWireE {Γ : List (Ty S)} (ct : Expr AO Γ (B 32)) : Expr AO Γ (B 32) :=
   adapterPureOp .wrapWhisperWire ct
 
 @[simp] theorem eval_adapterWrapWhisperWireE {Γ : List (Ty S)} (ct : Expr AO Γ (B 32)) (ρ : Env Γ) :
@@ -227,7 +228,7 @@ def adapterWrapWhisperWireE {Γ : List (Ty S)} (ct : Expr AO Γ (B 32)) : Expr A
 @[simp] theorem cost_adapterWrapWhisperWireE {Γ : List (Ty S)} (ct : Expr AO Γ (B 32)) :
     (adapterWrapWhisperWireE ct).cost = ct.cost + (2 * (ℓ / 32) + 28) := rfl
 
-def adapterWrapPreKeyWireE {Γ : List (Ty S)} (regIdA : Expr AO Γ U32) (hdr : Expr AO Γ hdrT)
+@[expose] def adapterWrapPreKeyWireE {Γ : List (Ty S)} (regIdA : Expr AO Γ U32) (hdr : Expr AO Γ hdrT)
     (inner : Expr AO Γ (B 32)) : Expr AO Γ (B 32) :=
   adapterPureOp .wrapPreKeyWire (.pair regIdA (.pair hdr inner))
 
@@ -243,7 +244,7 @@ def adapterWrapPreKeyWireE {Γ : List (Ty S)} (regIdA : Expr AO Γ U32) (hdr : E
   simp only [adapterWrapPreKeyWireE, cost_adapterPureOp, E2EPureOp.cost, Expr.cost]
   omega
 
-def adapterParsePreKeyWireE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) :
+@[expose] def adapterParsePreKeyWireE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) :
     Expr AO Γ (.opt (.prod U32 (.prod hdrT (B 32)))) :=
   adapterPureOp .parsePreKeyWire c
 
@@ -256,7 +257,7 @@ def adapterParsePreKeyWireE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) :
 @[simp] theorem cost_adapterParsePreKeyWireE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) :
     (adapterParsePreKeyWireE c).cost = c.cost + 96 := rfl
 
-def adapterPartneredInnerBytesE {Γ : List (Ty S)} (bobAcc : Expr AO Γ .bool)
+@[expose] def adapterPartneredInnerBytesE {Γ : List (Ty S)} (bobAcc : Expr AO Γ .bool)
     (regIdA : Expr AO Γ U32) (hdr : Expr AO Γ hdrT) (c : Expr AO Γ (B 32)) :
     Expr AO Γ (.opt (B 32)) :=
   adapterPureOp .partneredInnerBytes (.pair bobAcc (.pair regIdA (.pair hdr c)))
@@ -274,7 +275,7 @@ def adapterPartneredInnerBytesE {Γ : List (Ty S)} (bobAcc : Expr AO Γ .bool)
   simp only [adapterPartneredInnerBytesE, cost_adapterPureOp, E2EPureOp.cost, Expr.cost]
   omega
 
-def adapterWireInnerBytesE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) : Expr AO Γ (.opt (B 32)) :=
+@[expose] def adapterWireInnerBytesE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) : Expr AO Γ (.opt (B 32)) :=
   adapterPureOp .wireInnerBytes c
 
 @[simp] theorem eval_adapterWireInnerBytesE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) (ρ : Env Γ) :
@@ -283,7 +284,7 @@ def adapterWireInnerBytesE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) : Expr AO 
 @[simp] theorem cost_adapterWireInnerBytesE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) :
     (adapterWireInnerBytesE c).cost = c.cost + 96 := rfl
 
-def adapterRatchetKeyAdmissibleE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) : Expr AO Γ .bool :=
+@[expose] def adapterRatchetKeyAdmissibleE {Γ : List (Ty S)} (c : Expr AO Γ (B 32)) : Expr AO Γ .bool :=
   adapterCurveOp .checkRatchetKeyOnCurve c
 
 @[simp] theorem eval_adapterRatchetKeyAdmissibleE {Γ : List (Ty S)} (c : Expr AO Γ (B 32))
@@ -306,7 +307,7 @@ end WireAndCurveOps
   cases b <;> rfl
 
 /-- Encode an `SM.spec` response into `smRT stT`. -/
-def smRenc {ℓ : ℕ} {St : Type} {stT : Ty (e2eSig ℓ)} (toSt : St → stT.denote) :
+@[expose] def smRenc {ℓ : ℕ} {St : Type} {stT : Ty (e2eSig ℓ)} (toSt : St → stT.denote) :
     (sq : (CryptoGames.SM.spec St (Plain ℓ) (BitVec 512) Bytes).Domain) →
     (CryptoGames.SM.spec St (Plain ℓ) (BitVec 512) Bytes).Range sq →
     (smRT (ℓ := ℓ) stT).denote
@@ -349,22 +350,22 @@ section RespExprs
 
 variable {ℓ : ℕ} {O' : Ops (e2eSig ℓ)}
 
-def recvResultRejE {Γ : List (Ty (e2eSig ℓ))} : Expr O' Γ recvResultT :=
+@[expose] def recvResultRejE {Γ : List (Ty (e2eSig ℓ))} : Expr O' Γ recvResultT :=
   .inl .unit
 
-def recvResultAccE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def recvResultAccE {Γ : List (Ty (e2eSig ℓ))}
     (t i : Expr O' Γ .nat) (m? : Expr O' Γ (.opt PlainT)) : Expr O' Γ recvResultT :=
   .inr (.pair t (.pair i m?))
 
-def smRWireE {stT : Ty (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def smRWireE {stT : Ty (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
     (w? : Expr O' Γ (.opt (B 32))) : Expr O' Γ (smRT stT) :=
   .pair w? (.pair .none .none)
 
-def smRRecvE {stT : Ty (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def smRRecvE {stT : Ty (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
     (rr? : Expr O' Γ (.opt recvResultT)) : Expr O' Γ (smRT stT) :=
   .pair .none (.pair rr? .none)
 
-def smRCorrE {stT : Ty (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def smRCorrE {stT : Ty (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
     (st? : Expr O' Γ (.opt stT)) : Expr O' Γ (smRT stT) :=
   .pair .none (.pair .none st?)
 
@@ -420,14 +421,14 @@ end RespExprs
 
 /-- `SM.Record (Plain ℓ) Bytes` paired with its cached `comp.contains pos` flag:
 `(pos, (msg, (ct, isComp)))`. -/
-@[reducible] def e2eRecTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eRecTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod posTy (.prod PlainT (.prod (B 32) .bool))
 
-def e2eRecEncWith {ℓ : ℕ} (comp : List Pos) (r : Record (Plain ℓ) Bytes) :
+@[expose] def e2eRecEncWith {ℓ : ℕ} (comp : List Pos) (r : Record (Plain ℓ) Bytes) :
     (e2eRecTy ℓ).denote :=
   (posEnc r.pos, (r.msg, (r.ct, comp.contains r.pos)))
 
-def e2eRecDec {ℓ : ℕ} (v : (e2eRecTy ℓ).denote) : Record (Plain ℓ) Bytes :=
+@[expose] def e2eRecDec {ℓ : ℕ} (v : (e2eRecTy ℓ).denote) : Record (Plain ℓ) Bytes :=
   ⟨posDec v.1, v.2.1, v.2.2.1⟩
 
 @[simp] theorem e2eRecDec_e2eRecEncWith {ℓ : ℕ} (comp : List Pos) (r : Record (Plain ℓ) Bytes) :
@@ -436,7 +437,7 @@ def e2eRecDec {ℓ : ℕ} (v : (e2eRecTy ℓ).denote) : Record (Plain ℓ) Bytes
 
 /-- `SM.GameState (GhostState Bytes) (Plain ℓ) Bytes` represented in `e2eSig ℓ` with deduplicated
 `comp` (`dedupComp s.comp`) and per-record cached compromise flags. -/
-@[reducible] def e2eGsTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eGsTy (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (.prod GhostStT GhostStT)
     (.prod .bool
       (.prod .bool
@@ -450,7 +451,7 @@ def e2eRecDec {ℓ : ℕ} (v : (e2eRecTy ℓ).denote) : Record (Plain ℓ) Bytes
                       (.prod (.list .nat)
                         (.list (.prod .bool .nat))))))))))))
 
-def e2eGsEnc {ℓ : ℕ} (s : GameState (GhostState Bytes) (Plain ℓ) Bytes) :
+@[expose] def e2eGsEnc {ℓ : ℕ} (s : GameState (GhostState Bytes) (Plain ℓ) Bytes) :
     (e2eGsTy ℓ).denote :=
   ((s.st .A, s.st .B),
    (s.b,
@@ -465,7 +466,7 @@ def e2eGsEnc {ℓ : ℕ} (s : GameState (GhostState Bytes) (Plain ℓ) Bytes) :
             (s.leaks,
              s.corrs.map (fun pe => (partyEnc pe.1, pe.2)))))))))))))
 
-def e2eGsDec {ℓ : ℕ} (v : (e2eGsTy ℓ).denote) :
+@[expose] def e2eGsDec {ℓ : ℕ} (v : (e2eGsTy ℓ).denote) :
     GameState (GhostState Bytes) (Plain ℓ) Bytes :=
   let (stAB, (b, (win, (epAB, (idxAB, (tL, (trs, (chall, (comp, (maAB, (leaks, corrs))))))))))) := v
   { st := fun | .A => stAB.1 | .B => stAB.2
@@ -487,62 +488,62 @@ variable {ℓ : ℕ} {O' : Ops (e2eSig ℓ)}
 
 local notation "S" => e2eSig ℓ
 
-def e2eRecPos {Γ : List (Ty S)} (r : Expr O' Γ (e2eRecTy ℓ)) : Expr O' Γ posTy :=
+@[expose] def e2eRecPos {Γ : List (Ty S)} (r : Expr O' Γ (e2eRecTy ℓ)) : Expr O' Γ posTy :=
   .fst r
 
-def e2eRecMsg {Γ : List (Ty S)} (r : Expr O' Γ (e2eRecTy ℓ)) : Expr O' Γ PlainT :=
+@[expose] def e2eRecMsg {Γ : List (Ty S)} (r : Expr O' Γ (e2eRecTy ℓ)) : Expr O' Γ PlainT :=
   .fst (.snd r)
 
-def e2eRecCt {Γ : List (Ty S)} (r : Expr O' Γ (e2eRecTy ℓ)) : Expr O' Γ (B 32) :=
+@[expose] def e2eRecCt {Γ : List (Ty S)} (r : Expr O' Γ (e2eRecTy ℓ)) : Expr O' Γ (B 32) :=
   .fst (.snd (.snd r))
 
-def e2eRecComp {Γ : List (Ty S)} (r : Expr O' Γ (e2eRecTy ℓ)) : Expr O' Γ .bool :=
+@[expose] def e2eRecComp {Γ : List (Ty S)} (r : Expr O' Γ (e2eRecTy ℓ)) : Expr O' Γ .bool :=
   .snd (.snd (.snd r))
 
-def e2eRecMk {Γ : List (Ty S)} (pos : Expr O' Γ posTy) (msg : Expr O' Γ PlainT)
+@[expose] def e2eRecMk {Γ : List (Ty S)} (pos : Expr O' Γ posTy) (msg : Expr O' Γ PlainT)
     (ct : Expr O' Γ (B 32)) (isComp : Expr O' Γ .bool) : Expr O' Γ (e2eRecTy ℓ) :=
   .pair pos (.pair msg (.pair ct isComp))
 
-def e2eGsSt {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) :
+@[expose] def e2eGsSt {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) :
     Expr O' Γ (.prod GhostStT GhostStT) := .fst s
 
-def e2eGsB {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ .bool :=
+@[expose] def e2eGsB {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ .bool :=
   .fst (.snd s)
 
-def e2eGsWin {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ .bool :=
+@[expose] def e2eGsWin {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ .bool :=
   .fst (.snd (.snd s))
 
-def e2eGsEpoch {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.prod .nat .nat) :=
+@[expose] def e2eGsEpoch {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.prod .nat .nat) :=
   .fst (.snd (.snd (.snd s)))
 
-def e2eGsIdx {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.prod .nat .nat) :=
+@[expose] def e2eGsIdx {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.prod .nat .nat) :=
   .fst (.snd (.snd (.snd (.snd s))))
 
-def e2eGsTL {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.opt .nat) :=
+@[expose] def e2eGsTL {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.opt .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd s)))))
 
-def e2eGsTrans {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) :
+@[expose] def e2eGsTrans {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) :
     Expr O' Γ (.list (e2eRecTy ℓ)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd s))))))
 
-def e2eGsChall {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.list posTy) :=
+@[expose] def e2eGsChall {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))
 
-def e2eGsComp {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.list posTy) :=
+@[expose] def e2eGsComp {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.list posTy) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))
 
-def e2eGsMaxAcc {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) :
+@[expose] def e2eGsMaxAcc {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) :
     Expr O' Γ (.prod (.tbl .nat) (.tbl .nat)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s)))))))))
 
-def e2eGsLeaks {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.list .nat) :=
+@[expose] def e2eGsLeaks {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ (.list .nat) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))
 
-def e2eGsCorrs {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) :
+@[expose] def e2eGsCorrs {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) :
     Expr O' Γ (.list (.prod .bool .nat)) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd s))))))))))
 
-def e2eGsMk {Γ : List (Ty S)}
+@[expose] def e2eGsMk {Γ : List (Ty S)}
     (st : Expr O' Γ (.prod GhostStT GhostStT))
     (b win : Expr O' Γ .bool)
     (epoch idx : Expr O' Γ (.prod .nat .nat))
@@ -564,7 +565,7 @@ def e2eGsMk {Γ : List (Ty S)}
                     (.pair maxAcc
                       (.pair leaks corrs))))))))))
 
-def e2eInitGsE {Γ : List (Ty S)} (stA stB : Expr O' Γ GhostStT) (b : Expr O' Γ .bool) :
+@[expose] def e2eInitGsE {Γ : List (Ty S)} (stA stB : Expr O' Γ GhostStT) (b : Expr O' Γ .bool) :
     Expr O' Γ (e2eGsTy ℓ) :=
   e2eGsMk (.pair stA stB) b (.bool false) (.pair (.nat 0) (.nat 0)) (.pair (.nat 0) (.nat 0))
     .none .nil .nil .nil (.pair (.tconst (.nat 0)) (.tconst (.nat 0))) .nil .nil
@@ -583,7 +584,7 @@ theorem cost_e2eInitGsE_le {Γ : List (Ty S)} (stA stB : Expr O' Γ GhostStT) (b
   simp only [e2eInitGsE, e2eGsMk, Expr.cost, hb0]
   omega
 
-def e2eGsSetWin {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (w : Expr O' Γ .bool) :
+@[expose] def e2eGsSetWin {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (w : Expr O' Γ .bool) :
     Expr O' Γ (e2eGsTy ℓ) :=
   .letE (.pair s w)
     (let s0 : Expr O' _ (e2eGsTy ℓ) := .fst .v0
@@ -606,7 +607,7 @@ theorem cost_e2eGsSetWin_le {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (w
     e2eGsChall, e2eGsComp, e2eGsMaxAcc, e2eGsLeaks, e2eGsCorrs, Expr.cost, Expr.v0]
   omega
 
-def e2eSafeChE {Γ : List (Ty S)} (Δ : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool) :
+@[expose] def e2eSafeChE {Γ : List (Ty S)} (Δ : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   .letE (.pair s p)
     (healedByE (e2eGsTL (.fst .v0)) Δ (pGet (e2eGsEpoch (.fst .v0)) (.snd .v0)))
@@ -626,7 +627,7 @@ theorem cost_e2eSafeChE_le {Γ : List (Ty S)} (Δ : ℕ) (s : Expr O' Γ (e2eGsT
   simp only [e2eSafeChE, healedByE, leN, e2eGsTL, e2eGsEpoch, pGet, Expr.cost, Expr.v0, Expr.v1]
   omega
 
-def e2eSafeInjE {Γ : List (Ty S)} (Δ : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ .bool :=
+@[expose] def e2eSafeInjE {Γ : List (Ty S)} (Δ : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) : Expr O' Γ .bool :=
   .letE s
     (healedByE (e2eGsTL .v0) Δ (minN (.fst (e2eGsEpoch .v0)) (.snd (e2eGsEpoch .v0))))
 
@@ -642,7 +643,7 @@ theorem cost_e2eSafeInjE_le {Γ : List (Ty S)} (Δ : ℕ) (s : Expr O' Γ (e2eGs
   simp only [e2eSafeInjE, healedByE, leN, minN, e2eGsTL, e2eGsEpoch, Expr.cost, Expr.v0, Expr.v1]
   omega
 
-def e2eLeakE {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (l : Expr O' Γ .nat) :
+@[expose] def e2eLeakE {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (l : Expr O' Γ .nat) :
     Expr O' Γ (e2eGsTy ℓ) :=
   .letE (.pair s l)
     (let s0 : Expr O' _ (e2eGsTy ℓ) := .fst .v0
@@ -670,7 +671,7 @@ theorem cost_e2eLeakE_le {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (l : 
     Expr.cost, Expr.v0, Expr.v1]
   omega
 
-def e2eEpMgmtE {Γ : List (Ty S)} (Δ qep : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool)
+@[expose] def e2eEpMgmtE {Γ : List (Ty S)} (Δ qep : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool)
     (bad : Expr O' Γ .bool) : Expr O' Γ (.opt (e2eGsTy ℓ)) :=
   .letE (.pair s (.pair p bad))
     (let s0 : Expr O' _ (e2eGsTy ℓ) := .fst .v0
@@ -778,7 +779,7 @@ theorem cost_e2eEpMgmtE_le {Γ : List (Ty S)} (Δ qep : ℕ) (s : Expr O' Γ (e2
     e2eGsCorrs, Expr.cost, Expr.v0, Expr.v1, hb0, hb1, hb2] at hsafe hleak ⊢
   omega
 
-def e2eCompContainsE {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy ℓ))
+@[expose] def e2eCompContainsE {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy ℓ))
     (pos : Expr O' Γ posTy) : Expr O' Γ .bool :=
   .letE (.pair s pos)
     (.anyB q (e2eGsComp (.fst .v0)) (posEq .v0 (.snd .v1)))
@@ -812,7 +813,7 @@ theorem cost_e2eCompContainsE_le {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e
     Expr.v0, Expr.v1, hm34]
   omega
 
-def e2eChallContainsE {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy ℓ))
+@[expose] def e2eChallContainsE {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy ℓ))
     (pos : Expr O' Γ posTy) : Expr O' Γ .bool :=
   .letE (.pair s pos)
     (.anyB q (e2eGsChall (.fst .v0)) (posEq .v0 (.snd .v1)))
@@ -881,7 +882,7 @@ private theorem pos_beq_eq_decide (x y : Pos) : (x == y) = decide (x = y) := by
 
 /-- Linear `O(q)` `SM.GameState.record s Δ P st' ⟨pos, msg, ct⟩ isChall` over `e2eGsTy ℓ`,
 maintaining both `dedupComp` on `comp` and cached compromise flags on `trans`. -/
-def e2eRecordE {Γ : List (Ty S)} (q Δ : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool)
+@[expose] def e2eRecordE {Γ : List (Ty S)} (q Δ : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool)
     (st' : Expr O' Γ GhostStT) (pos : Expr O' Γ posTy) (msg : Expr O' Γ PlainT)
     (ct : Expr O' Γ (B 32)) (isChall : Expr O' Γ .bool) : Expr O' Γ (e2eGsTy ℓ) :=
   .letE (.pair s (.pair p (.pair st' (.pair pos (.pair msg (.pair ct isChall))))))
@@ -1035,7 +1036,7 @@ theorem cost_e2eRecordE_le {Γ : List (Ty S)} (q Δ : ℕ) (s : Expr O' Γ (e2eG
     Expr.cost, Expr.v0, Expr.v1, Expr.v2, hm34, hm14] at hsafe hcomp ⊢
   omega
 
-def e2eDeleteE {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) (pos : Expr O' Γ posTy) :
+@[expose] def e2eDeleteE {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) (pos : Expr O' Γ posTy) :
     Expr O' Γ (e2eGsTy ℓ) :=
   .letE (.pair s pos)
     (let s0 : Expr O' (.prod (e2eGsTy ℓ) posTy :: Γ) (e2eGsTy ℓ) := .fst .v0
@@ -1168,7 +1169,7 @@ theorem cost_e2eDeleteE_le {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy
     posSender, posEpoch, posIdx, boolEq, Expr.cost, Expr.v0, Expr.v1, Expr.v2, hm34, hm31]
   omega
 
-def e2eAcceptE {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool)
+@[expose] def e2eAcceptE {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool)
     (st' : Expr O' Γ GhostStT) (pos : Expr O' Γ posTy) : Expr O' Γ (e2eGsTy ℓ) :=
   .letE (.pair (e2eDeleteE q s pos) (.pair p (.pair st' pos)))
     (let s1 : Expr O' _ (e2eGsTy ℓ) := .fst .v0
@@ -1245,7 +1246,7 @@ theorem cost_e2eAcceptE_le {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy
     maxAccSet, maxAccGet, maxN, leN, posEpoch, posIdx, Expr.cost, Expr.v0] at hdel ⊢
   omega
 
-def e2eTrivialE {Γ : List (Ty S)} (q Δ : ℕ) (s : Expr O' Γ (e2eGsTy ℓ))
+@[expose] def e2eTrivialE {Γ : List (Ty S)} (q Δ : ℕ) (s : Expr O' Γ (e2eGsTy ℓ))
     (pos : Expr O' Γ posTy) : Expr O' Γ .bool :=
   .letE (.pair s pos)
     (let s0 : Expr O' _ (e2eGsTy ℓ) := .fst .v0
@@ -1299,7 +1300,7 @@ theorem cost_e2eTrivialE_le {Γ : List (Ty S)} (q Δ : ℕ) (s : Expr O' Γ (e2e
   omega
 
 /-- Linear `O(q)` `SM.GameState.corrAllowed s P` over `e2eGsTy ℓ` using cached `e2eRecComp`. -/
-def e2eCorrAllowedE {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy ℓ))
+@[expose] def e2eCorrAllowedE {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2eGsTy ℓ))
     (p : Expr O' Γ .bool) : Expr O' Γ .bool :=
   .letE (.pair s p)
     (let s0 : Expr O' (.prod (e2eGsTy ℓ) .bool :: Γ) (e2eGsTy ℓ) := .fst .v0
@@ -1360,7 +1361,7 @@ theorem cost_e2eCorrAllowedE_le {Γ : List (Ty S)} (q : ℕ) (s : Expr O' Γ (e2
   omega
 
 /-- `O(1)` `SM.GameState.afterCorr s P` over `e2eGsTy ℓ` when `s.corrAllowed P = true`. -/
-def e2eAfterCorrAllowedE {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ))
+@[expose] def e2eAfterCorrAllowedE {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ))
     (p : Expr O' Γ .bool) : Expr O' Γ (e2eGsTy ℓ) :=
   .letE (.pair s p)
     (let s0 : Expr O' (.prod (e2eGsTy ℓ) .bool :: Γ) (e2eGsTy ℓ) := .fst .v0
@@ -1425,7 +1426,7 @@ theorem cost_e2eAfterCorrAllowedE_le {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy
     e2eGsCorrs, Expr.cost, Expr.v0, Expr.v1] at hleak ⊢
   omega
 
-def e2eInWindowE {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool) :
+@[expose] def e2eInWindowE {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   .letE (.pair s p)
     (.not (sendsInE (.snd .v0) (pGet (e2eGsEpoch (.fst .v0)) (.snd .v0))))
@@ -1453,7 +1454,7 @@ theorem cost_e2eInWindowE_le {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ))
   simp only [e2eInWindowE, sendsInE, pGet, e2eGsEpoch, Expr.cost, Expr.v0, hb0, hb1, hb2]
   omega
 
-def e2eSendOKE {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool) :
+@[expose] def e2eSendOKE {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   .letE (.pair s p)
     (.not (.and (.snd .v0) (.eqN (.snd (e2eGsEpoch (.fst .v0))) (.nat 0))))
@@ -1474,7 +1475,7 @@ theorem cost_e2eSendOKE_le {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (p 
   simp only [e2eSendOKE, e2eGsEpoch, Expr.cost, Expr.v0, hb0]
   omega
 
-def e2eCorrOKE {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool) :
+@[expose] def e2eCorrOKE {Γ : List (Ty S)} (s : Expr O' Γ (e2eGsTy ℓ)) (p : Expr O' Γ .bool) :
     Expr O' Γ .bool :=
   .letE (.pair s p)
     (let s0 : Expr O' _ (e2eGsTy ℓ) := .fst .v0
@@ -1514,7 +1515,7 @@ variable {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto} {K : 
 local notation "S" => e2eSig ℓ
 local notation "OO" => e2eOps ℓ P C K decT encT
 
-def e2eInTransitE {Γ : List (Ty S)} (q : ℕ) (s : Expr OO Γ (e2eGsTy ℓ))
+@[expose] def e2eInTransitE {Γ : List (Ty S)} (q : ℕ) (s : Expr OO Γ (e2eGsTy ℓ))
     (qParty : Expr OO Γ .bool) (c : Expr OO Γ (B 32)) : Expr OO Γ (.opt (e2eRecTy ℓ)) :=
   .letE (.pair s (.pair qParty c))
     (.findB q (e2eGsTrans (.fst .v0))

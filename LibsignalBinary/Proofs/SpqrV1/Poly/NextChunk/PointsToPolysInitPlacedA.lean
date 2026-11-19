@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysInit
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Placed Block A Initialization (Part A)
@@ -22,7 +23,7 @@ Relocatable `[LibsignalPlacement]` OOM panic blocks (`+4676`, `+4572`) and initi
 `Poly::zero()` allocations `0..10` (`+436 -> +704`) in Block `416`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced -- proof-setup: allow-public-import
 import all Init.Data.Nat.Bitwise.Basic
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
@@ -22,6 +22,7 @@ import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncodePlaced
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # Relocatable `spqr::send`: `V1State::encode_raw` Branches (`idx = 3, 4, 7, 9`)
@@ -31,7 +32,7 @@ and the `.ct1Sampled` (`idx = 7`), `.ekSentCt1Received` (`idx = 4`), `.ct1Acknow
 and `.ct1Received` (`idx = 3`) encoding branches in `spqr::send::<HookRng>` (Block `124`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Send
 
@@ -66,7 +67,7 @@ attribute [local arm64_norm]
   ls_resolve_blk_186 ls_resolve_blk_188 ls_resolve_blk_189 ls_resolve_blk_192
   ls_resolve_blk_193
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Game.StatementPq
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+public import Computational.Proofs.SpecLemmas.Game.StatementPq -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsB -- proof-setup: allow-public-import
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
 import Computational.Proofs.E2E.ComposedKeyIndHop
 import Computational.Proofs.GameHop.Rnd
@@ -25,7 +25,7 @@ SPK bundles, proves its stickiness across `simulateQ (cliDrvImpl ...)`, and boun
 by ML-KEM correctness (`cliBadKemProb_le_bound`, `two_mul_cliBadKemProb_modelPrims_le_kemCorrTerm`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.constructorNameAsVariable false
@@ -156,7 +156,7 @@ private theorem probExpect_tapeKemCoins_eq_sampleCoins32
 
 /-- Whether ML-KEM decapsulation on responder pre-key bundle entry `b` disagrees with
 `P.kemEncaps bnd.pqspkB (tapeKemCoins t_init)` when `bnd.pqspkB = b.pqspkPk`. -/
-def cliClause2BadKemPair (P : SignalPqxdh.Primitives)
+@[expose] def cliClause2BadKemPair (P : SignalPqxdh.Primitives)
     (bnd : SignalPqxdh.PreKeyBundleInput) (t_init : List.Vector (BitVec 8) 160)
     (b : SignalPqxdh.SpkBundleEntry) : Bool :=
   decide (bnd.pqspkB = b.pqspkPk) &&
@@ -166,7 +166,7 @@ def cliClause2BadKemPair (P : SignalPqxdh.Primitives)
 
 /-- Bad-KEM event indicator over all initiator handshake tapes in `ds.initTapes` and all
 honest responder SPK bundles in `st.spkBundles`. -/
-def cliClause2BadKemBool (S : SignalPqxdh.Setup) {ℓ : ℕ} (P : SignalPqxdh.Primitives)
+@[expose] def cliClause2BadKemBool (S : SignalPqxdh.Setup) {ℓ : ℕ} (P : SignalPqxdh.Primitives)
     (st : SignalPqxdh.KeyIndState S) (ds : ModelDriverState S ℓ) : Bool :=
   ds.initTapes.any fun (_, _, bnd, t_init) =>
     st.spkBundles.any fun (_, b) => cliClause2BadKemPair P bnd t_init b
@@ -890,7 +890,7 @@ theorem probExpect_simulateQ_cliBadKem_eq_one_of_bad (S : SignalPqxdh.Setup) (�
     _ = 1 := SignalPqxdh.Security.probExpect_const _ 1
 
 /-- Bad-KEM experiment running `runCliDriver` from the empty `KeyIndState` and `{}`. -/
-noncomputable def cliRunBadKemExp (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
+@[expose] def cliRunBadKemExp (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
     (run : CliRun) (W : PEParams) (ℓ qep : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (A : CliGameAdversary S ℓ (BitVec 512)) : ProbComp Bool := do

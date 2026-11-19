@@ -12,6 +12,7 @@ module
 public import Arm64
 public import LibsignalBinary.Specifications.SignalSession.CliProcess
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed
 public import Symbolic.BugInjection.Proofs.CliExec.RadixMemAux
 public import Symbolic.BugInjection.Proofs.CliExec.FastHooksPlaced
@@ -40,8 +41,9 @@ namespace Symbolic.BugInjection.Proofs.CliExec.ExternAtPlaced
 
 open Arm64 (Program State)
 open Arm64.Obj (MultiPlacedLib MultiPlacement PlacedLib)
-open CryptoVerification.SignalSession (CliHooks cliExternsPlacedSig libsignalSessionLib)
-open CryptoVerification.SignalSession.Placed (cliProgPlacedSig)
+open CryptoVerification.SignalSession (CliHooks libsignalSessionLib)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced (cliExternsPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliProgPlacedSig)
 open Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed (compHooks0)
 open Symbolic.BugInjection.Proofs.CliExec.RadixMemAux (BinTree btGet btGet_empty)
 open Symbolic.BugInjection.Proofs.CliExec.FastHooksPlaced (hasCliHookPlaced)
@@ -222,24 +224,10 @@ theorem hooksAgreePlaced_stubsOfMpl_unconditional (mpl mmpl : MultiPlacement) (W
     rw [cliProgPlacedSig_externAt? mpl mmpl W pc]
     exact findSome?_hookStub_none hbt
 
-theorem hooksAgreePlacedW_stubsOfMpl {mpl mmpl : MultiPlacement} {W : CliHooks}
-    (_halign : checkHooksAlignedPlacedW W mpl = true) :
-    HooksAgreePlaced mpl mmpl W (overlayHooksPlaced W (stubsOfMpl mpl) .empty) :=
-  @hooksAgreePlaced_stubsOfMpl_unconditional mpl mmpl W
-
 theorem hooksAgreePlaced_stubsOfMpl {mpl mmpl : MultiPlacement}
     (_halign : checkHooksAlignedPlaced mpl = true) :
     HooksAgreePlaced mpl mmpl compHooks0
       (overlayHooksPlaced compHooks0 (stubsOfMpl mpl) .empty) :=
   @hooksAgreePlaced_stubsOfMpl_unconditional mpl mmpl compHooks0
-
-theorem hooksAgreePlaced_extractImageHooksPlaced (mpl mmpl : MultiPlacement) :
-    HooksAgreePlaced mpl mmpl compHooks0 (extractImageHooksPlaced mpl) :=
-  @Eq.ndrec (BinTree String)
-    (overlayHooksPlaced compHooks0 (stubsOfMpl mpl) .empty)
-    (fun t => HooksAgreePlaced mpl mmpl compHooks0 t)
-    (@hooksAgreePlaced_stubsOfMpl_unconditional mpl mmpl compHooks0)
-    (extractImageHooksPlaced mpl)
-    rfl
 
 end Symbolic.BugInjection.Proofs.CliExec.ExternAtPlaced

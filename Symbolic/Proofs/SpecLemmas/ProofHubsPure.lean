@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Sem
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
-public import Symbolic.Proofs.Swarm.CREF.Initiate.InitRej
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.SpecLemmas.Model.PQXDH.StateMachine
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Initiate.InitRej -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SpecLemmas.Model.PQXDH.StateMachine -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.SHARED.SpqrX.Prost.MessageMerge.AppendX
@@ -27,7 +27,7 @@ correspondence for `rootCreateChain` (`rootCreateChain_eq_gamma_createChain_alic
 Checked by Lean.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -116,7 +116,7 @@ theorem encodeMessage_length_le {M : Type} (encodeRaw : M → Bytes) (tag : BitV
   have h1 := encodeKey_length_le tag .lengthDelimited
   have h2 := encodeVarint_length_le (BitVec.ofNat 64 (encodeRaw m).length)
   omega
-def optRaw {α : Type} (f : α → Nat) : Option α → Nat
+@[expose] def optRaw {α : Type} (f : α → Nat) : Option α → Nat
   | none => 0
   | some x => f x
 @[simp] theorem optRaw_none {α : Type} (f : α → Nat) : optRaw f none = 0 := rfl
@@ -147,48 +147,48 @@ theorem encodeRepeatedMessage_length_le {M : Type} (encodeRaw : M → Bytes) (f 
     omega
 def rawEpochDir (ed : EpochDirectionPB) : Nat := ed.next.length + ed.prev.length
 def rawChainEpoch (ep : ChainEpochPB) : Nat := optRaw rawEpochDir ep.send + optRaw rawEpochDir ep.recv
-def rawChain (ch : ChainPB) : Nat :=
+@[expose] def rawChain (ch : ChainPB) : Nat :=
   (ch.links.map (fun ep => rawChainEpoch ep + 200)).sum + ch.nextRoot.length
-def rawAuth (a : ProtoAuthenticator) : Nat := a.rootKey.length + a.macKey.length
-def rawPolyEnc (pe : PolynomialEncoder) : Nat :=
+@[expose] def rawAuth (a : ProtoAuthenticator) : Nat := a.rootKey.length + a.macKey.length
+@[expose] def rawPolyEnc (pe : PolynomialEncoder) : Nat :=
   (pe.pts.map (fun b => b.length + 22)).sum + (pe.polys.map (fun b => b.length + 22)).sum
-def rawPolyDec (pd : PolynomialDecoder) : Nat := (pd.pts.map (fun b => b.length + 22)).sum
-def rawUcKeysUnsampled (m : V1State.Unchunked.KeysUnsampled) : Nat := optRaw rawAuth m.auth
-def rawUcHeaderSent (m : V1State.Unchunked.HeaderSent) : Nat :=
+@[expose] def rawPolyDec (pd : PolynomialDecoder) : Nat := (pd.pts.map (fun b => b.length + 22)).sum
+@[expose] def rawUcKeysUnsampled (m : V1State.Unchunked.KeysUnsampled) : Nat := optRaw rawAuth m.auth
+@[expose] def rawUcHeaderSent (m : V1State.Unchunked.HeaderSent) : Nat :=
   optRaw rawAuth m.auth + m.ek.length + m.dk.length
-def rawUcEkSent (m : V1State.Unchunked.EkSent) : Nat := optRaw rawAuth m.auth + m.dk.length
-def rawUcEkSentCt1Received (m : V1State.Unchunked.EkSentCt1Received) : Nat :=
+@[expose] def rawUcEkSent (m : V1State.Unchunked.EkSent) : Nat := optRaw rawAuth m.auth + m.dk.length
+@[expose] def rawUcEkSentCt1Received (m : V1State.Unchunked.EkSentCt1Received) : Nat :=
   optRaw rawAuth m.auth + m.dk.length + m.ct1.length
-def rawUcNoHeaderReceived (m : V1State.Unchunked.NoHeaderReceived) : Nat := optRaw rawAuth m.auth
-def rawUcHeaderReceived (m : V1State.Unchunked.HeaderReceived) : Nat :=
+@[expose] def rawUcNoHeaderReceived (m : V1State.Unchunked.NoHeaderReceived) : Nat := optRaw rawAuth m.auth
+@[expose] def rawUcHeaderReceived (m : V1State.Unchunked.HeaderReceived) : Nat :=
   optRaw rawAuth m.auth + m.hdr.length
-def rawUcCt1Sent (m : V1State.Unchunked.Ct1Sent) : Nat :=
+@[expose] def rawUcCt1Sent (m : V1State.Unchunked.Ct1Sent) : Nat :=
   optRaw rawAuth m.auth + m.hdr.length + m.es.length + m.ct1.length
-def rawUcCt1SentEkReceived (m : V1State.Unchunked.Ct1SentEkReceived) : Nat :=
+@[expose] def rawUcCt1SentEkReceived (m : V1State.Unchunked.Ct1SentEkReceived) : Nat :=
   optRaw rawAuth m.auth + m.es.length + m.ek.length + m.ct1.length
-def rawUcCt2Sent (m : V1State.Unchunked.Ct2Sent) : Nat := optRaw rawAuth m.auth
-def rawChKeysUnsampled (m : V1State.Chunked.KeysUnsampled) : Nat := optRaw rawUcKeysUnsampled m.uc
-def rawChKeysSampled (m : V1State.Chunked.KeysSampled) : Nat :=
+@[expose] def rawUcCt2Sent (m : V1State.Unchunked.Ct2Sent) : Nat := optRaw rawAuth m.auth
+@[expose] def rawChKeysUnsampled (m : V1State.Chunked.KeysUnsampled) : Nat := optRaw rawUcKeysUnsampled m.uc
+@[expose] def rawChKeysSampled (m : V1State.Chunked.KeysSampled) : Nat :=
   optRaw rawUcHeaderSent m.uc + optRaw rawPolyEnc m.sendingHdr
-def rawChHeaderSent (m : V1State.Chunked.HeaderSent) : Nat :=
+@[expose] def rawChHeaderSent (m : V1State.Chunked.HeaderSent) : Nat :=
   optRaw rawUcEkSent m.uc + optRaw rawPolyEnc m.sendingEk + optRaw rawPolyDec m.receivingCt1
-def rawChCt1Received (m : V1State.Chunked.Ct1Received) : Nat :=
+@[expose] def rawChCt1Received (m : V1State.Chunked.Ct1Received) : Nat :=
   optRaw rawUcEkSentCt1Received m.uc + optRaw rawPolyEnc m.sendingEk
-def rawChEkSentCt1Received (m : V1State.Chunked.EkSentCt1Received) : Nat :=
+@[expose] def rawChEkSentCt1Received (m : V1State.Chunked.EkSentCt1Received) : Nat :=
   optRaw rawUcEkSentCt1Received m.uc + optRaw rawPolyDec m.receivingCt2
-def rawChNoHeaderReceived (m : V1State.Chunked.NoHeaderReceived) : Nat :=
+@[expose] def rawChNoHeaderReceived (m : V1State.Chunked.NoHeaderReceived) : Nat :=
   optRaw rawUcNoHeaderReceived m.uc + optRaw rawPolyDec m.receivingHdr
-def rawChHeaderReceived (m : V1State.Chunked.HeaderReceived) : Nat :=
+@[expose] def rawChHeaderReceived (m : V1State.Chunked.HeaderReceived) : Nat :=
   optRaw rawUcHeaderReceived m.uc + optRaw rawPolyDec m.receivingEk
-def rawChCt1Sampled (m : V1State.Chunked.Ct1Sampled) : Nat :=
+@[expose] def rawChCt1Sampled (m : V1State.Chunked.Ct1Sampled) : Nat :=
   optRaw rawUcCt1Sent m.uc + optRaw rawPolyEnc m.sendingCt1 + optRaw rawPolyDec m.receivingEk
-def rawChEkReceivedCt1Sampled (m : V1State.Chunked.EkReceivedCt1Sampled) : Nat :=
+@[expose] def rawChEkReceivedCt1Sampled (m : V1State.Chunked.EkReceivedCt1Sampled) : Nat :=
   optRaw rawUcCt1SentEkReceived m.uc + optRaw rawPolyEnc m.sendingCt1
-def rawChCt1Acknowledged (m : V1State.Chunked.Ct1Acknowledged) : Nat :=
+@[expose] def rawChCt1Acknowledged (m : V1State.Chunked.Ct1Acknowledged) : Nat :=
   optRaw rawUcCt1Sent m.uc + optRaw rawPolyDec m.receivingEk
-def rawChCt2Sampled (m : V1State.Chunked.Ct2Sampled) : Nat :=
+@[expose] def rawChCt2Sampled (m : V1State.Chunked.Ct2Sampled) : Nat :=
   optRaw rawUcCt2Sent m.uc + optRaw rawPolyEnc m.sendingCt2
-def rawInnerState : V1State.InnerState → Nat
+@[expose] def rawInnerState : V1State.InnerState → Nat
   | .keysUnsampled v        => rawChKeysUnsampled v
   | .keysSampled v          => rawChKeysSampled v
   | .headerSent v           => rawChHeaderSent v
@@ -200,10 +200,10 @@ def rawInnerState : V1State.InnerState → Nat
   | .ekReceivedCt1Sampled v => rawChEkReceivedCt1Sampled v
   | .ct1Acknowledged v      => rawChCt1Acknowledged v
   | .ct2Sampled v           => rawChCt2Sampled v
-def rawV1State (m : V1State) : Nat := optRaw rawInnerState m.innerState
-def rawPqInner : PqRatchetState.Inner → Nat | .v1 v => rawV1State v
-def rawVN (m : VersionNegotiationPB) : Nat := m.authKey.length
-def rawPqState (m : PqRatchetState) : Nat :=
+@[expose] def rawV1State (m : V1State) : Nat := optRaw rawInnerState m.innerState
+@[expose] def rawPqInner : PqRatchetState.Inner → Nat | .v1 v => rawV1State v
+@[expose] def rawVN (m : VersionNegotiationPB) : Nat := m.authKey.length
+@[expose] def rawPqState (m : PqRatchetState) : Nat :=
   optRaw rawVN m.versionNegotiation + optRaw rawChain m.chain + optRaw rawPqInner m.inner
 theorem chainParamsPB_encodeRaw_length_le (m : ChainParamsPB) :
     (ChainParamsPB.encodeRaw m).length ≤ 44 := by
@@ -471,7 +471,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 open CryptoGames CryptoGames.HMAC CryptoGames.HKDF
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 
-def aliceInitiatedStateV1 (ourIdentity theirIdentity : IdentityKey)
+@[expose] def aliceInitiatedStateV1 (ourIdentity theirIdentity : IdentityKey)
     (theirRatchetKey : PublicKey) (rk1 : RootKey) (ck0 : BitVec 256)
     (sendingKeyPair : CryptoGames.LibsignalSession.KeyPair) (ck1 : ChainKey)
     (pqBytes : List (BitVec 8)) : SessionState (List (BitVec 8)) :=
@@ -485,7 +485,7 @@ def aliceInitiatedStateV1 (ourIdentity theirIdentity : IdentityKey)
     pendingPreKey := true
     pqRatchetState := pqBytes }
 
-def aliceInitiatedSessionV1 (ourIdentity theirIdentity : IdentityKey)
+@[expose] def aliceInitiatedSessionV1 (ourIdentity theirIdentity : IdentityKey)
     (theirRatchetKey baseKey : PublicKey) (rk1 : RootKey) (ck0 : BitVec 256)
     (sendingKeyPair : CryptoGames.LibsignalSession.KeyPair) (ck1 : ChainKey) (opkId? : Option (BitVec 32))
     (spkId kyberPreKeyId remoteRegId localRegId : BitVec 32)
@@ -510,7 +510,7 @@ abbrev hwLit (bs : HwBytes) : DY.Bytes := compHwLit bs
     gamma i S g (hwLit bs) = bs :=
   gamma_compHwLit i S g bs
 
-def aliceLitAgreement (r : ProtocolSetup) (bundle : HwBytes) (ds : List HwBytes) :
+@[expose] def aliceLitAgreement (r : ProtocolSetup) (bundle : HwBytes) (ds : List HwBytes) :
     DY.Bytes × HandshakeKeys :=
   aliceAgreement
     (hwLit (secretBytes r 0))

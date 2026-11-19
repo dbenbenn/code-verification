@@ -9,15 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSetup
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSetupPlaced
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSetup -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysSetupPlaced
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Placed `pt_vec` Setup
@@ -27,7 +30,7 @@ Relocatable `[LibsignalPlacement]` verification of `fillPtVecLoop`, `checkPtVecL
 `SetupPtVecEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -131,10 +134,10 @@ private theorem ofNat64_sub_beq_zero_false {a b : Nat} (ha : a < 2 ^ 64) (hb : b
 
 /-- Exact allocator event sequence of `setupPtVec` (`+976..+1136`, Block `416`) for a `Point`
     of length `n`: zero events when `n = 0`, and `rustAllocEvents (4 * n) 2` when `n > 0`. -/
-def setupPtVecEvents (n : Nat) : List AllocEvent :=
+@[expose] def setupPtVecEvents (n : Nat) : List AllocEvent :=
   if n = 0 then [] else rustAllocEvents (4 * n) 2
 
-def SetupPtVecEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def SetupPtVecEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = setupPtVecEvents n
 
 theorem fitsEnv_setupPtVec_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ} (n : Nat) :

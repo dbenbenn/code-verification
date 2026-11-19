@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedBase
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Recv -- shake: keep
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedEagerCore
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedRecvBase
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
@@ -33,7 +33,7 @@ Proves `closeByStateCTrack_deliver_newChain_resync` for new-epoch deliveries whe
 returns a known outcome.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open OracleComp OracleSpec MeasureTheory

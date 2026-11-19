@@ -30,7 +30,7 @@ Defines `pksmParse b`, the functional specification of
 length `< 2 ^ 32`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,13 +43,13 @@ open CryptoVerification.E2E.Pqxdh.ResponderWire
 /-! ## prost's decoder for `proto::wire::PreKeySignalMessage` -/
 
 /-- `PreKeySignalMessage::default()`: every field `None`. -/
-def emptyProto : ProtoPreKeySignalMessage :=
+@[expose] def emptyProto : ProtoPreKeySignalMessage :=
   { registrationId := none, preKeyId := none, signedPreKeyId := none, kyberPreKeyId := none,
     kyberCiphertext := none, baseKey := none, identityKey := none, message := none }
 
 /-- `PreKeySignalMessage::merge_field(tag, wire_type, buf, ctx)` (prost-derive, `proto/wire.proto:19-28`):
 the updated message and the rest of the input. Unknown tags are skipped. -/
-def mergeProtoField (m : ProtoPreKeySignalMessage) (tag : ℕ) (wt : WireType)
+@[expose] def mergeProtoField (m : ProtoPreKeySignalMessage) (tag : ℕ) (wt : WireType)
     (bs : List (BitVec 8)) : Option (ProtoPreKeySignalMessage × List (BitVec 8)) :=
   match tag with
   | 1 => (mergeUint32 wt bs).map fun (v, r) => ({ m with preKeyId := some v }, r)
@@ -64,7 +64,7 @@ def mergeProtoField (m : ProtoPreKeySignalMessage) (tag : ℕ) (wt : WireType)
 
 /-- The `while buf.has_remaining()` loop of `Message::merge`, as `LibsignalProtoCodec.decodeLoop`.
 Fuel = the input length suffices: each round consumes at least the key byte. -/
-def decodeProtoLoop :
+@[expose] def decodeProtoLoop :
     ℕ → ProtoPreKeySignalMessage → List (BitVec 8) → Option ProtoPreKeySignalMessage
   | _, m, [] => some m
   | 0, _, _ :: _ => none
@@ -77,25 +77,25 @@ def decodeProtoLoop :
       | some (m', rest') => decodeProtoLoop fuel m' rest'
 
 /-- `<proto::wire::PreKeySignalMessage as Message>::decode(&[u8])`; `none` = `Err`. -/
-def decodeProto (bs : List (BitVec 8)) : Option ProtoPreKeySignalMessage :=
+@[expose] def decodeProto (bs : List (BitVec 8)) : Option ProtoPreKeySignalMessage :=
   decodeProtoLoop bs.length emptyProto bs
 
 /-! ## `try_from` -/
 
 /-- The Kyber fields are acceptable: both present, or both absent at version
 `PRE_KYBER_MESSAGE_VERSION` or below. -/
-def kyberOk (ver : BitVec 8) (m : ProtoPreKeySignalMessage) : Bool :=
+@[expose] def kyberOk (ver : BitVec 8) (m : ProtoPreKeySignalMessage) : Bool :=
   (m.kyberPreKeyId.isSome && m.kyberCiphertext.isSome) ||
     (m.kyberPreKeyId.isNone && m.kyberCiphertext.isNone && decide (ver ≤ preKyberVersion))
 
 /-- `kyber_payload`: `Some` iff both the Kyber id and the ciphertext are present. -/
-def kyberPayloadOf : Option (BitVec 32) → Option (List (BitVec 8)) → Option KyberPayload
+@[expose] def kyberPayloadOf : Option (BitVec 32) → Option (List (BitVec 8)) → Option KyberPayload
   | some k, some ct => some { preKeyId := k, ciphertext := ct }
   | _, _ => none
 
 /-- Functional specification of `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from(b)`
 on every input byte slice (`some m` for `Ok(m)`, `none` for `Err(_)`). -/
-def pksmParse : List (BitVec 8) → Option PreKeySignalMessage
+@[expose] def pksmParse : List (BitVec 8) → Option PreKeySignalMessage
   | [] => none
   | vb :: body =>
     let ver := vb >>> 4

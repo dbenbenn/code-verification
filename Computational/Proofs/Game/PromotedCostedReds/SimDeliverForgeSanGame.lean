@@ -9,9 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanSem
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanSem
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeCKA -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperDefs
+public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanOracle -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECell -- proof-setup: allow-public-import
 
 /-!
 # Cell-Game `simulateQ` Coupling for `simDeliverForgeClampSan`
@@ -21,7 +25,7 @@ Proves that `simDeliverForgeClampSan` agrees with `simDeliverForgeClamp` inside
 parameters satisfy `25000 * q ≤ T`, `25001 * q + 25000 ≤ Kc`, and `25000 * q ≤ Bsk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

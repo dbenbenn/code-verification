@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.DrSessionSimHooks
+public import Computational.Proofs.E2E.Dsl.DrSessionSimHooks -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.ComposedBinaryLinkV1
+public import Computational.Proofs.E2E.Dsl.SmReachInvParty -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.TablesHonest -- proof-setup: allow-public-import
+public import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables -- proof-setup: allow-public-import
 
 /-!
 # Double Ratchet + SPQR V1 Send Simulator
@@ -20,7 +23,7 @@ Constructs the `ReductionDsl` send subprogram `drSendC` over `e2eOps` (parameter
 `Params.send` and `sessionSchemeFixedSpk.send` under `PartyReachInv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,10 +69,10 @@ variable {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto} {K : 
 local notation "S" => e2eSig ℓ
 local notation "OO" => e2eOps ℓ P C K decT encT
 
-@[reducible] def drSendPreT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def drSendPreT (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .opt (.prod ghostPartsT (.prod drSenderChainT IdKey))
 
-def drSendPreE {Γ : List (Ty S)} (gE : Expr OO Γ GhostStT) : Expr OO Γ (drSendPreT ℓ) :=
+@[expose] def drSendPreE {Γ : List (Ty S)} (gE : Expr OO Γ GhostStT) : Expr OO Γ (drSendPreT ℓ) :=
   .letE (e2ePureOp .ghostStateSplit gE)
     (.caseOpt (gpSc .v0)
       .none
@@ -88,7 +91,7 @@ theorem cost_drSendPreE_le {Γ : List (Ty S)} (gE : Expr OO Γ GhostStT) :
   rw [hb]
   omega
 
-def drSendPostE {Γ : List (Ty S)}
+@[expose] def drSendPostE {Γ : List (Ty S)}
     (gE : Expr OO Γ GhostStT)
     (mE : Expr OO Γ PlainT)
     (partsE : Expr OO Γ ghostPartsT)
@@ -174,7 +177,7 @@ theorem cost_drSendPostE_le {Γ : List (Ty S)}
   omega
 
 /-- `ReductionDsl` simulator for `Params.send` and `sessionSchemeFixedSpk.send`. -/
-def drSendC (hooks : SpqrDslHooks ℓ P C K decT encT)
+@[expose] def drSendC (hooks : SpqrDslHooks ℓ P C K decT encT)
     {ι : Type} {T : OracleSpec ι} (I : Iface S T) {Γ : List (Ty S)}
     (e : Expr OO Γ (.prod GhostStT (.prod PlainT BV512))) :
     Comp OO I Γ (.prod GhostStT (B 32)) :=

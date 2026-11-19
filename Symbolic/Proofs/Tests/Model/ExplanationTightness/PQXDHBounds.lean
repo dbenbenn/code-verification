@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Specifications.Security.Model
-public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.PQXDHAuthTraces
+public import Symbolic.Proofs.Tests.Shared.ExplanationTightness.PQXDHAuthTraces -- proof-setup: allow-public-import
 
 /-!
 # Ordering-Bound Tightness for Composed PQXDH Authentication
@@ -21,7 +21,7 @@ clauses. At `gap = 0` this coincides with `Composed.Security.Authentication`, wh
 gap at the minimal witness distance `i - j` is refuted by a reachable composed trace.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

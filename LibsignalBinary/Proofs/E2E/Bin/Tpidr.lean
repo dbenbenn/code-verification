@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Bin.Hooks
-public import LibsignalBinary.Proofs.E2E.Run.NoSvcCommon
+public import LibsignalBinary.Proofs.E2E.Bin.Hooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Run.NoSvcCommon -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared `tpidr_el0` and Executable-Region Step Invariant
@@ -19,22 +20,22 @@ Defines the executable-memory bound `ExecOnlyIn` and step invariant `TpidrInv` p
 `tpidr_el0` and `ExecOnlyIn` across machine instructions and external hooks in the E2E binary.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Bin
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames
+open Arm64 ProofLib CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open ProofLib.ProgramReflection
 
 /-- Every executable byte (`(m.perm a).x = true`) lies inside `[prog.base, prog.base + prog.code.length)`. -/
-def ExecOnlyIn (prog : Program) (m : Memory) : Prop :=
+@[expose] def ExecOnlyIn (prog : Program) (m : Memory) : Prop :=
   ∀ a, (m.perm a).x → (a - prog.base).toNat < prog.code.length
 
 /-- Step invariant preserving `tpidrEl0` and `ExecOnlyIn` under `CodeLoaded`. -/
-def TpidrInv (prog : Program) : Prop :=
+@[expose] def TpidrInv (prog : Program) : Prop :=
   ∀ s1 s2, prog.CodeLoaded s1.mem → ExecOnlyIn prog s1.mem → Step prog s1 s2 →
     s2.tpidrEl0 = s1.tpidrEl0 ∧ ExecOnlyIn prog s2.mem
 
@@ -43,38 +44,6 @@ theorem execOnlyIn_congr {p1 p2 : Program} {m : Memory}
     ExecOnlyIn p1 m ↔ ExecOnlyIn p2 m := by
   unfold ExecOnlyIn
   rw [hb, hc]
-
-@[simp] theorem execOnlyIn_tripleRatchetProg (img : Obj.Image) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (m : Memory) :
-    ExecOnlyIn (tripleRatchetProg img C ctl abs) m = ExecOnlyIn (Program.ofImage img) m :=
-  rfl
-
-theorem execOnlyIn_ofImage_of_inRegion {img : Obj.Image} {m : Memory}
-    (h : ∀ a, (m.perm a).x = true → InRegion img.base img.code.length a) :
-    ExecOnlyIn (Program.ofImage img) m :=
-  h
-
-theorem execOnlyIn_tripleRatchetProgAt_iff {img : Obj.Image} (hloads : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (m : Memory) :
-    ExecOnlyIn (tripleRatchetProgAt img.base C ctl abs) m ↔ ExecOnlyIn (Program.ofImage img) m := by
-  rw [← tripleRatchetProg_eq_tripleRatchetProgAt hloads]
-  exact Iff.rfl
-
-theorem codeLoaded_tripleRatchetProg_of_frozenLoaded {img : Obj.Image} {s : State}
-    (hF : img.FrozenLoaded s) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    (tripleRatchetProg img C ctl abs).CodeLoaded s.mem := by
-  have h0 : (Program.ofImage img).CodeLoaded s.mem := (Obj.Image.frozenLoaded_iff.1 hF).1
-  rw [Program.codeLoaded_iff] at h0 ⊢; exact h0
-
-theorem codeLoaded_tripleRatchetProgAt_of_frozenLoaded {img : Obj.Image} {s : State}
-    (hloads : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s)
-    (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    (tripleRatchetProgAt img.base C ctl abs).CodeLoaded s.mem := by
-  rw [← tripleRatchetProg_eq_tripleRatchetProgAt hloads]
-  exact codeLoaded_tripleRatchetProg_of_frozenLoaded hF C ctl abs
 
 theorem Steps.tpidr_execOnly {prog : Program} (hInv : TpidrInv prog)
     {s1 s2 : State} (hL : prog.CodeLoaded s1.mem) (hEx : ExecOnlyIn prog s1.mem)
@@ -171,7 +140,7 @@ theorem msr_mask_eq_false_of_bytes {b0 b1 b2 b3 : BitVec 8}
   unfold isMsrWord
   bv_bits
 
-def noMsrTree : WordTree → Bool
+@[expose] def noMsrTree : WordTree → Bool
   | .empty => true
   | .leaf _ _ b2 b3 => !(b3 == 0xd5#8 && (b2 &&& 0xf0#8) == 0x10#8)
   | .node _ l r => noMsrTree l && noMsrTree r
@@ -224,11 +193,6 @@ theorem noMsrTree_drop_toBytesAux :
       rw [WordTree.toBytesAux, hj_eq, ← List.drop_drop,
           drop_all_toBytesAux l (r.toBytesAux acc) hl]
       exact noMsrTree_drop_toBytesAux r acc (j - lw) hr hno.2 (by omega)
-
-set_option maxRecDepth 2000000 in
-theorem libsignalSessionCode_tree_noMsr :
-    noMsrTree libsignalSessionCode_tree = true := by
-  rfl_kernel
 
 theorem readWordOff_bind_decode_noMsr {prog : Program} {t : WordTree} {n : Nat}
     (hcode : prog.code = t.toBytesAux [])
@@ -318,40 +282,6 @@ theorem fetchMem_noMsr_of_forall_readWordOff {prog : Program} {m : Memory}
         show (3#64 : BitVec 64) = BitVec.ofNat 64 3 from rfl, h3, g3]
     rw [hr]
     exact hno_inst
-
-theorem fetchMem_ne_svc0_of_loads {img : Obj.Image} (hloads : Obj.Loads libsignalSessionImage img)
-    {prog : Program} (hc : prog.code = img.code)
-    {m : Memory} (hL : prog.CodeLoaded m) (hx : ExecOnlyIn prog m) (pc : BitVec 64) :
-    prog.fetchMem m pc ≠ some Run.svc0 := by
-  have hcode_eq : prog.code = libsignalSessionCode_tree.toBytesAux [] := by
-    rw [hc, (ProofLib.ObjectLoad.Loads.canonical hloads).1]
-    exact libsignalSessionCode_code_eq
-  have hcode_len : prog.code.length = num% (ls_field% codeLen) := by
-    rw [hc, (ProofLib.ObjectLoad.Loads.canonical hloads).1]
-    exact Run.NoSvcAux.libsignalSessionImage_code_length
-  refine Run.NoSvcAux.fetchMem_ne_of_forall_readWordOff hL (by omega) hx
-    (fun off hoff hlt => ?_) pc
-  exact Run.NoSvcAux.readWordOff_bind_decode_ne_svc0 hcode_eq
-    libsignalSessionCode_tree_size Run.NoSvcAux.libsignalSessionCode_tree_noSvc0
-    off hoff (by omega)
-
-theorem fetchMem_noMsr_of_loads {img : Obj.Image} (hloads : Obj.Loads libsignalSessionImage img)
-    {prog : Program} (hc : prog.code = img.code)
-    {m : Memory} (hL : prog.CodeLoaded m) (hx : ExecOnlyIn prog m) (pc : BitVec 64) :
-    isMsrOpt (prog.fetchMem m pc) = false := by
-  have hcode_eq : prog.code = libsignalSessionCode_tree.toBytesAux [] := by
-    rw [hc, (ProofLib.ObjectLoad.Loads.canonical hloads).1]
-    exact libsignalSessionCode_code_eq
-  have hcode_len : prog.code.length = num% (ls_field% codeLen) := by
-    rw [hc, (ProofLib.ObjectLoad.Loads.canonical hloads).1]
-    exact Run.NoSvcAux.libsignalSessionImage_code_length
-  refine fetchMem_noMsr_of_forall_readWordOff hL (by omega) hx
-    (fun off hoff hlt => ?_) pc
-  exact readWordOff_bind_decode_noMsr hcode_eq
-    libsignalSessionCode_tree_size libsignalSessionCode_tree_noMsr
-    off hoff (by omega)
-
-/-! ### Hook `tpidrEl0` and `mem.perm` preservation -/
 
 @[local simp] theorem tpidrEl0_retHook (f : State → State) (s : State) :
     (retHook f s).tpidrEl0 = (f s).tpidrEl0 := by unfold retHook; cases (f s); rfl
@@ -507,74 +437,5 @@ theorem externAt?_eq_findSome? {prog : Program} (hov : prog.overrides = fun _ =>
   simp only [ite_self, hsym, Option.or_none]
 
 end TpidrAux
-
-theorem tpidrInv_binProg {C : Crypto} {A : RustAlloc} {S : SpqrModel}
-    {img : Obj.Image} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hloads : Obj.Loads libsignalSessionImage img)
-    (hHooks : BinHooks C A S abs) :
-    TpidrInv (tripleRatchetProg img C ctl abs) := by
-  intro s1 s2 hL hEx hstep
-  have hfields := Run.tripleRatchetProg_fields img C ctl abs
-  cases hstep with
-  | @exec inst _ h_fetch =>
-    have hne : inst ≠ Run.svc0 := fun heq =>
-      TpidrAux.fetchMem_ne_svc0_of_loads hloads hfields.2.1 hL hEx s1.pc
-        (h_fetch.trans (congrArg some heq))
-    have hmsr_opt : TpidrAux.isMsrOpt
-        ((tripleRatchetProg img C ctl abs).fetchMem s1.mem s1.pc) = false :=
-      TpidrAux.fetchMem_noMsr_of_loads hloads hfields.2.1 hL hEx s1.pc
-    rw [h_fetch] at hmsr_opt
-    have hperm : (execInst inst s1).mem.perm = s1.mem.perm :=
-      (Run.NoSvcAux.execInst_keepsPerm hne s1).elim
-    have hsvc : inst.isSvc0 = false := by
-      cases inst <;> simp_all [Instr.isSvc0, Run.svc0]
-    rw [evalInst_eq_execInst_of_not_isSvc0 hsvc]
-    refine ⟨TpidrAux.execInst_tpidrEl0 hmsr_opt s1, fun a hx => ?_⟩
-    rw [hperm] at hx
-    exact hEx a hx
-  | halt_unmapped _ _ _ =>
-    exact ⟨rfl, hEx⟩
-  | extern_fault _ _ _ =>
-    exact ⟨rfl, hEx⟩
-  | @extern f _ h_ext _ _ =>
-    have hf' := (TpidrAux.externAt?_eq_findSome? hfields.2.2.1 s1.pc).symm.trans h_ext
-    obtain ⟨name, hext⟩ := TpidrAux.findSome?_stubs_some _ _ _ hf'
-    rw [hfields.2.2.2.2] at hext
-    have ⟨htp, hperm_x⟩ := TpidrAux.tripleRatchetExterns_tpidrSafe hHooks name f hext s1
-    exact ⟨htp, fun a hx => hEx a (hperm_x a hx)⟩
-
-theorem tpidrInv_tripleRatchetProgAt {C : Crypto} {A : RustAlloc} {S : SpqrModel}
-    {img : Obj.Image} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hloads : Obj.Loads libsignalSessionImage img)
-    (hHooks : BinHooks C A S abs) :
-    TpidrInv (tripleRatchetProgAt img.base C ctl abs) := by
-  rw [← tripleRatchetProg_eq_tripleRatchetProgAt hloads]
-  exact tpidrInv_binProg hloads hHooks
-
-theorem tpidr_execOnly_of_steps_tripleRatchetProg {C : Crypto} {A : RustAlloc} {S : SpqrModel}
-    {img : Obj.Image} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hloads : Obj.Loads libsignalSessionImage img)
-    (hHooks : BinHooks C A S abs)
-    {s1 s2 : State} (hF : img.FrozenLoaded s1)
-    (hEx : ExecOnlyIn (Program.ofImage img) s1.mem)
-    (hst : Steps (tripleRatchetProg img C ctl abs) s1 s2) :
-    s2.tpidrEl0 = s1.tpidrEl0 ∧ ExecOnlyIn (Program.ofImage img) s2.mem :=
-  Steps.tpidr_execOnly (tpidrInv_binProg hloads hHooks)
-    (codeLoaded_tripleRatchetProg_of_frozenLoaded hF C ctl abs) hEx hst
-
-theorem tpidr_execOnly_of_steps_tripleRatchetProgAt {C : Crypto} {A : RustAlloc} {S : SpqrModel}
-    {img : Obj.Image} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hloads : Obj.Loads libsignalSessionImage img)
-    (hHooks : BinHooks C A S abs)
-    {s1 s2 : State} (hF : img.FrozenLoaded s1)
-    (hEx : ExecOnlyIn (Program.ofImage img) s1.mem)
-    (hst : Steps (tripleRatchetProgAt img.base C ctl abs) s1 s2) :
-    s2.tpidrEl0 = s1.tpidrEl0 ∧ ExecOnlyIn (Program.ofImage img) s2.mem := by
-  rw [← tripleRatchetProg_eq_tripleRatchetProgAt hloads] at hst
-  exact tpidr_execOnly_of_steps_tripleRatchetProg hloads hHooks hF hEx hst
 
 end CryptoVerification.E2E.Bin

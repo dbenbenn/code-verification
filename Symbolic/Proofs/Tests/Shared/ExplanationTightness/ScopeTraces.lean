@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.Composed.Adversary
+public import Symbolic.Proofs.Tests.Shared.Composed.Adversary -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.ALaCarte.Basic
 import DY.ALaCarte.Ordering
@@ -47,7 +47,7 @@ import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -619,7 +619,7 @@ theorem trThm7Case3_pq_no_compSPK (s : Bytes) :
 /-! ## KCI witness trace `trKCI` -/
 
 /-- `trIKA` extended with `compromiseIK "bob"` after `BobDone`. -/
-def trKCI : ExecTrace := compIkTr trIKA "bob" advIkB
+@[expose] def trKCI : ExecTrace := compIkTr trIKA "bob" advIkB
 
 theorem trKCI_reach : trKCI.Reachable reachability :=
   compIkTr_reach (idx := 9) trIKA_reach (by

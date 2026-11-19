@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Hooks2.BridgeXPure
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.LemmasPure
 
 /-!
@@ -21,7 +21,7 @@ Proves round-trip identities between byte lists and fixed-width keys and blocks 
 `rootCreateChain`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

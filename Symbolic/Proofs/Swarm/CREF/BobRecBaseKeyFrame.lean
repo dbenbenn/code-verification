@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono
-public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful
+public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyMono -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.MatchedPrefix
 
 /-!
@@ -20,7 +20,7 @@ Proves `bks_of_ext` and `bks_frame`, transporting `BobRecordBaseKeyInSession` ac
 that either preserve Bob's current session descriptor (`NewBobSinfo`) or have `NoSessionEffect`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

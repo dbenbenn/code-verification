@@ -9,9 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SM.Engine
-public import Computational.Proofs.ReductionDsl.Size
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.ReductionDsl.Notation
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
 
 /-!
 # Costed CKA reductions for SM authenticity and privacy
@@ -22,7 +25,7 @@ Implements the `ReductionDsl.CostedReduction` CKA reductions for SM authenticity
 characterizations.
 -/
 
-@[expose] public section
+public section
 
 open ReductionDsl OracleSpec OracleComp
 
@@ -457,24 +460,24 @@ local notation "rrTy" => ckaRrTy KC Γ CCoins T I KR RSt K SS RS M E
 /-! ## `CKAState` representation and `hooksCKAC` -/
 
 /-- Type of `CKAState T I` in `ckaSig`: a table `ℕ → Option (T × I)`. -/
-@[reducible] def ckaHsTy : Ty S :=
+@[expose, reducible] def ckaHsTy : Ty S :=
   .tbl (.opt (.prod (.base .t) (.base .i)))
 
-def ckaHsEnc (s : CKAState T I) :
+@[expose] def ckaHsEnc (s : CKAState T I) :
     (@ckaHsTy KC Γ CCoins T I KR RSt K SS RS M E).denote :=
   s.cache
 
-@[reducible] def ckaVpTy : Ty S :=
+@[expose, reducible] def ckaVpTy : Ty S :=
   @vpTblTy KC Γ CCoins T I KR RSt K SS RS M E
     (.opt (.base .γ)) (.base .sig) (.base .ss) (.base .rs)
 
-@[reducible] def ckaVpEnc (p : VP (Option Γ) T RSt SS RS) :
+@[expose, reducible] def ckaVpEnc (p : VP (Option Γ) T RSt SS RS) :
     (@ckaVpTy KC Γ CCoins T I KR RSt K SS RS M E).denote :=
   vpTblEnc (KC := KC) (Γ := Γ) (CCoins := CCoins) (I := I) (KR := KR) (RSt := RSt)
     (K := K) (SS := SS) (RS := RS) (M := M) (E := E)
     (γvT := .opt (.base .γ)) (svT := .base .sig) (ssvT := .base .ss) (rsvT := .base .rs) p
 
-@[reducible] def ckaEsTy : Ty S :=
+@[expose, reducible] def ckaEsTy : Ty S :=
   esTy ckaVpTy ckaHsTy
 
 section HooksCKAC
@@ -509,7 +512,7 @@ local notation "OO" =>
 local notation "II" =>
   ckaIface KC Γ CCoins T I KR RSt K SS RS M E sampKR sampKC sampCCoins sampI sampK
 
-def ckaStartSendC (Δcka : ℕ) (mo : Mode) {Γ'}
+@[expose] def ckaStartSendC (Δcka : ℕ) (mo : Mode) {Γ'}
     (hE : Expr OO Γ' ckaHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (pE : Expr OO Γ' .bool)
@@ -560,7 +563,7 @@ def ckaStartSendC (Δcka : ℕ) (mo : Mode) {Γ'}
       let ss := Expr.op (O := OO) CKAOp.fsInitSender pOut.2
       return (some (some cOut.1, tMsg, pOut.1, ss), h1)
 
-def ckaStartRecvAnsE (mo : Mode) {Γ'}
+@[expose] def ckaStartRecvAnsE (mo : Mode) {Γ'}
     (hE : Expr OO Γ' ckaHsTy)
     (tE : Expr OO Γ' .nat)
     (γvE : Expr OO Γ' (.opt (.base .γ)))
@@ -596,7 +599,7 @@ def ckaStartRecvAnsE (mo : Mode) {Γ'}
           | some γ => some (Expr.op (O := OO) CKAOp.ckaReceive (γ, tn0)).1
         some (some (γv', pOut.1, rs))
 
-def ckaStartRecvC (mo : Mode) {Γ'}
+@[expose] def ckaStartRecvC (mo : Mode) {Γ'}
     (hE : Expr OO Γ' ckaHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -610,7 +613,7 @@ def ckaStartRecvC (mo : Mode) {Γ'}
   rdsl do
     return (ckaStartRecvAnsE mo hE tE γvE σE tnE, hE)
 
-def ckaFsSendC {Γ'}
+@[expose] def ckaFsSendC {Γ'}
     (hE : Expr OO Γ' ckaHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -623,7 +626,7 @@ def ckaFsSendC {Γ'}
   rdsl do
     return (some (Expr.op (O := OO) CKAOp.fsSend (ssE, hdrE, mE)), hE)
 
-def ckaFsRecvC (B : ℕ) {Γ'}
+@[expose] def ckaFsRecvC (B : ℕ) {Γ'}
     (hE : Expr OO Γ' ckaHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (_pE : Expr OO Γ' .bool)
@@ -637,7 +640,7 @@ def ckaFsRecvC (B : ℕ) {Γ'}
   rdsl do
     return (some (Expr.op (O := OO) (CKAOp.fsReceive B) (rsE, hdrE, eE)), hE)
 
-def ckaCommitC (Δcka : ℕ) (mo : Mode) {Γ'}
+@[expose] def ckaCommitC (Δcka : ℕ) (mo : Mode) {Γ'}
     (hE : Expr OO Γ' ckaHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (pE : Expr OO Γ' .bool)
@@ -660,7 +663,7 @@ def ckaCommitC (Δcka : ℕ) (mo : Mode) {Γ'}
     else
       return (some new0, h0)
 
-def ckaRevealC {Γ'}
+@[expose] def ckaRevealC {Γ'}
     (hE : Expr OO Γ' ckaHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (pE : Expr OO Γ' .bool)
@@ -679,7 +682,7 @@ def ckaRevealC {Γ'}
       return (some (realPartyE vp0 γ (vpRoot vp0) (vpVS vp0) (vpVR vp0)), h0)
 
 /-- Costed `HooksC` bundle for `redCKA`. -/
-def hooksCKAC (B Δcka : ℕ) (mo : Mode) :
+@[expose] def hooksCKAC (B Δcka : ℕ) (mo : Mode) :
     HooksC OO II (.opt (.base .γ)) (.base .sig) (.base .ss) (.base .rs) ckaHsTy where
   startSend := ckaStartSendC Δcka mo
   startRecv := ckaStartRecvC mo
@@ -1142,7 +1145,7 @@ theorem ckaRevealC_eval [DecidableEq T] [SampleableType CCoins]
 
 /-! ## Costed CKA reductions -/
 
-def initCKAEStateC (mo : Mode) {Γ'} (bE : Expr OO Γ' .bool) : Comp OO II Γ' ckaEsTy :=
+@[expose] def initCKAEStateC (mo : Mode) {Γ'} (bE : Expr OO Γ' .bool) : Comp OO II Γ' ckaEsTy :=
   rdsl do
     b0 ← return bE
     kr ← sample (I := II) CKASamp.kr ()
@@ -1164,7 +1167,7 @@ def initCKAEStateC (mo : Mode) {Γ'} (bE : Expr OO Γ' .bool) : Comp OO II Γ' c
     let h0 := tconst none
     return (esMk g0 h0 false)
 
-def initCKARaw [SampleableType KR] [SampleableType KC]
+@[expose] def initCKARaw [SampleableType KR] [SampleableType KC]
     (cka : CKAScheme KC Γ CCoins T I)
     (prng : PRFPRNG KR RSt I K)
     (fs : FSAEADScheme K SS RS (Header T) M E)
@@ -1330,7 +1333,7 @@ theorem runCKA_eq_bind_initCKARaw
   · simp only [StateT.run_pure, pure_bind]; rfl
 
 /-- Costed `redCKAAuth` reduction (ACD19 Lemma 9) over `ckaOps`, `ckaIface`, and `ckaSMCodec`. -/
-def redCKAAuthProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redCKAAuthProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (ckaSMCodec KC Γ CCoins T I KR RSt K SS RS M E)
@@ -1345,7 +1348,7 @@ def redCKAAuthProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
   finish := rdsl [es, _] do
     return (authOutE L (raw (2 + Δcka)) (raw (⟨true, tL, t⟩ : Mode).policy) es)
 
-def ckaStartRecvBucketAnsE (Δcka : ℕ) (tL : Option ℕ) {Γ'}
+@[expose] def ckaStartRecvBucketAnsE (Δcka : ℕ) (tL : Option ℕ) {Γ'}
     (hE : Expr OO Γ' ckaHsTy)
     (tE : Expr OO Γ' .nat)
     (γvE : Expr OO Γ' (.opt (.base .γ)))
@@ -1381,7 +1384,7 @@ def ckaStartRecvBucketAnsE (Δcka : ℕ) (tL : Option ℕ) {Γ'}
           | some γ => some (Expr.op (O := OO) CKAOp.ckaReceive (γ, tn0)).1
         some (some (γv', pOut.1, rs))
 
-def hooksCKABucketC (B Δcka : ℕ) (tL : Option ℕ) :
+@[expose] def hooksCKABucketC (B Δcka : ℕ) (tL : Option ℕ) :
     HooksC OO II (.opt (.base .γ)) (.base .sig) (.base .ss) (.base .rs) ckaHsTy where
   startSend := ckaStartSendC Δcka ⟨true, tL, 0⟩
   startRecv hE _ctxE _pE tE γvE σE tnE := rdsl do
@@ -1391,16 +1394,16 @@ def hooksCKABucketC (B Δcka : ℕ) (tL : Option ℕ) :
   commit := ckaCommitC Δcka ⟨true, tL, 0⟩
   reveal := ckaRevealC
 
-def bucketAuthCfgEC (Δcka : ℕ) (tL : Option ℕ) : ConfigEC OO where
+@[expose] def bucketAuthCfgEC (Δcka : ℕ) (tL : Option ℕ) : ConfigEC OO where
   deliverWin := false
   injectFullE {_} t' := validGuessE (2 + Δcka) (optNatLit tL) t'
   challOKE {_} _ := .bool false
   challMsgE {_} _ b m0 m1 := .ite b m1 m0
 
-@[reducible] def ckaBucketEsTy : Ty S := .prod ckaEsTy (.opt .nat)
+@[expose, reducible] def ckaBucketEsTy : Ty S := .prod ckaEsTy (.opt .nat)
 
 /-- Stage-2 `canon`-bucket `redCKAAuth` reduction at leak-epoch bucket `tL`. -/
-def redCKAAuthBucketProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) :
+@[expose] def redCKAAuthBucketProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (ckaSMCodec KC Γ CCoins T I KR RSt K SS RS M E)
@@ -1459,7 +1462,7 @@ def redCKAAuthBucketProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) :
         cAuthOKE (raw L) (raw (2 + Δcka)) (optNatLit (raw tL)) tWin (esG es0))
 
 /-- Costed `redCKAPriv` reduction (ACD19 Lemma 13) over `ckaOps`, `ckaIface`, and `ckaSMCodec`. -/
-def redCKAPrivProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
+@[expose] def redCKAPrivProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (ckaSMCodec KC Γ CCoins T I KR RSt K SS RS M E)
@@ -1476,11 +1479,11 @@ def redCKAPrivProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (t : ℕ) :
     privOutC L (raw (2 + Δcka)) (raw (⟨false, tL, t⟩ : Mode).policy)
       (raw (rdsl do sample (I := II) CKASamp.bit ())) (cGsB (esG es)) guess es
 
-@[reducible] def ckaUHsTy : Ty S := .prod ckaHsTy (.opt (.base .k))
+@[expose, reducible] def ckaUHsTy : Ty S := .prod ckaHsTy (.opt (.base .k))
 
-@[reducible] def ckaUEsTy : Ty S := esTy ckaVpTy ckaUHsTy
+@[expose, reducible] def ckaUEsTy : Ty S := esTy ckaVpTy ckaUHsTy
 
-def ckaStartSendUC (Δcka : ℕ) (mo : Mode) {Γ'}
+@[expose] def ckaStartSendUC (Δcka : ℕ) (mo : Mode) {Γ'}
     (hE : Expr OO Γ' ckaUHsTy)
     (_ctxE : Expr OO Γ' (cGsTy ckaVpTy))
     (pE : Expr OO Γ' .bool)
@@ -1545,7 +1548,7 @@ def ckaStartSendUC (Δcka : ℕ) (mo : Mode) {Γ'}
       let ss := Expr.op (O := OO) CKAOp.fsInitSender kEpoch
       return (some (some cOut.1, tMsg, pOut.1, ss), (h1, kOpt1))
 
-def ckaStartRecvUAnsE (mo : Mode) {Γ'}
+@[expose] def ckaStartRecvUAnsE (mo : Mode) {Γ'}
     (hE : Expr OO Γ' ckaUHsTy)
     (tE : Expr OO Γ' .nat)
     (γvE : Expr OO Γ' (.opt (.base .γ)))
@@ -1590,7 +1593,7 @@ def ckaStartRecvUAnsE (mo : Mode) {Γ'}
           | some γ => some (Expr.op (O := OO) CKAOp.ckaReceive (γ, tn0)).1
         some (some (γv', pOut.1, rs))
 
-def hooksCKAUC (B Δcka : ℕ) (mo : Mode) :
+@[expose] def hooksCKAUC (B Δcka : ℕ) (mo : Mode) :
     HooksC OO II (.opt (.base .γ)) (.base .sig) (.base .ss) (.base .rs) ckaUHsTy where
   startSend := ckaStartSendUC Δcka mo
   startRecv hE _ctxE _pE tE γvE σE tnE := rdsl do
@@ -1628,7 +1631,7 @@ def hooksCKAUC (B Δcka : ℕ) (mo : Mode) :
       return (some (realPartyE vp0 γ (vpRoot vp0) (vpVS vp0) (vpVR vp0)), hPair)
 
 /-- Stage-2 switch-back privacy CKA reduction keeping challenge epoch `i`'s honest FS-AEAD key uniform. -/
-def redCKAPrivUProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (i : ℕ) :
+@[expose] def redCKAPrivUProg (L B Δcka qep maxSkip : ℕ) (tL : Option ℕ) (i : ℕ) :
     CostedReduction OO II
       (SM.spec (PartyState Γ T RSt SS RS) M CCoins (Header T × E))
       (ckaSMCodec KC Γ CCoins T I KR RSt K SS RS M E)

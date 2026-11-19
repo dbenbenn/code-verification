@@ -11,18 +11,23 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.ChainLenBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.MsgKeyLenBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.SpareVarintXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.SpareSeg0123XBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.SpareSeg4XBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.ChainLenBudget
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.MsgKeyLenBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.SpareVarintXBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.SpareSeg0123XBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.SpareSeg4XBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Spare-Capacity `encode::<Chain, Vec<u8>>` (Block `12`)
@@ -33,7 +38,7 @@ contracts (`encodeChainPreallocSpecX` and `encodeChainSpareSpecX`) for Block `12
 `x.bs.length + (lenField x.tag (encChainMem x.gc)).length ≤ x.cap.toNat`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -89,7 +94,7 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChain.SpareSeg4XBud
 /-- Allocator-generic zero-allocation (`VmPreserved`-preserving, fixed `(x.cap, x.ptr)`)
     specification for Block `12` (`prost::encoding::message::encode::<Chain, Vec<u8>>`, tags `6`/`7`)
     under spare capacity `x.bs.length + (lenField x.tag (encChainMem x.gc)).length ≤ x.cap.toNat`. -/
-def encodeChainPreallocSpecX (A : RustAlloc) : Spec EncodeChainGhost where
+@[expose] def encodeChainPreallocSpecX (A : RustAlloc) : Spec EncodeChainGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = BitVec.ofNat 64 x.tag ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.v ∧
       (x.tag = 6 ∨ x.tag = 7) ∧
@@ -107,7 +112,7 @@ def encodeChainPreallocSpecX (A : RustAlloc) : Spec EncodeChainGhost where
 /-- Budget-threaded zero-allocation (`evs = []`, unchanged `A.pool lim st` and `(x.cap, x.ptr)`)
     specification for Block `12` (`prost::encoding::message::encode::<Chain, Vec<u8>>`, tags `6`/`7`)
     under spare capacity `x.bs.length + (lenField x.tag (encChainMem x.gc)).length ≤ x.cap.toNat`. -/
-def encodeChainSpareSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def encodeChainSpareSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeChainGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = BitVec.ofNat 64 x.tag ∧ s.readReg64 .x1 = x.a ∧ s.readReg64 .x2 = x.v ∧
@@ -303,62 +308,5 @@ theorem encodeChainPrealloc_placed_ok_of_serContractsX [LibsignalPlacement]
     subroutine_ok (lsProg_12 H) (lsmpl.base 12)
       (withLsCodeLoaded lsmpl (encodeChainPreallocSpecX A.repAlloc)) :=
   encodeChainPrealloc_placed_ok hC.memcpy
-
-/-- Budget-threaded spare-capacity Block `12` (`encode::<Chain, Vec<u8>>`) contract preserving
-    `A.pool lim st` unchanged (`evs = []`). -/
-theorem encodeChainSpare_placed_ok_of_serContractsX [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : LibsignalHooks} (hC : SerContractsXPlaced M A lim H) :
-    subroutine_ok (lsProg_12 H) (lsmpl.base 12)
-      (withLsCodeLoaded lsmpl (encodeChainSpareSpecX M A lim)) := by
-  refine subroutine_ok_withLsCodeLoaded_map_oom'
-    (encodeChainPrealloc_placed_ok_of_serContractsX hC) ?_
-  rintro ⟨x, st⟩ R s0 hpre
-  dsimp only [encodeChainSpareSpecX, encodeChainPreallocSpecX] at hpre ⊢
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  obtain ⟨hpure, hmem⟩ := hpre
-  refine ⟨x, A.pool lim st s0 ∗ R, ?_, ?_, fun _ hoom => ?_⟩
-  · rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hpure, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem⟩
-  · intro sf hpost
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    obtain ⟨⟨htr, hvm⟩, hmemf⟩ := hpost
-    have hpool : A.pool lim st sf = A.pool lim st s0 := A.pool_of_vmPreserved hvm
-    refine ⟨htr, ?_⟩
-    rw [hpool]
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmemf
-  · exfalso
-    exact not_satisfies_false_sepConj hoom
-
-theorem encodeChainPrealloc_placed_cl [LibsignalPlacement] {A : RustAlloc}
-    {callerProg : Program} {callerBlk : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg callerBlk H]
-    (hmemcpy : ∀ {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H],
-      subroutine_ok callerProg (lsρ lsMemcpySym)
-        (withLsCl lsmpl (sessionMemcpyBudgetSpec extHookStack))) :
-    subroutine_ok callerProg (lsmpl.base 12)
-      (withLsCl lsmpl (encodeChainPreallocSpecX A)) :=
-  ls_subroutine_ok_cl_of_callee (callerProg := callerProg)
-    (encodeChainPrealloc_placed_ok hmemcpy)
-
-theorem encodeChainPrealloc_placed_cl_of_serContractsX [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {callerBlk : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg callerBlk H]
-    (hC : SerContractsXPlaced M A lim H) :
-    subroutine_ok callerProg (lsmpl.base 12)
-      (withLsCl lsmpl (encodeChainPreallocSpecX A.repAlloc)) :=
-  ls_subroutine_ok_cl_of_callee (callerProg := callerProg)
-    (encodeChainPrealloc_placed_ok_of_serContractsX hC)
-
-theorem encodeChainSpare_placed_cl_of_serContractsX [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {callerBlk : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg callerBlk H]
-    (hC : SerContractsXPlaced M A lim H) :
-    subroutine_ok callerProg (lsmpl.base 12)
-      (withLsCl lsmpl (encodeChainSpareSpecX M A lim)) :=
-  ls_subroutine_ok_cl_of_callee (callerProg := callerProg)
-    (encodeChainSpare_placed_ok_of_serContractsX hC)
 
 end LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeChainSpareXBudget

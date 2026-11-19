@@ -11,12 +11,12 @@ module
 
 import all Init.Data.String.Defs
 public import LibsignalBinary.Proofs.ConsumeMessageKey.ModelDefs
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.SHARED.SpqrBytesDefs
-import LibsignalBinary.Proofs.ConsumeMessageKey.ModelProofs.AdvanceAndFrame
+public import LibsignalBinary.Proofs.ConsumeMessageKey.ModelProofs.AdvanceAndFrame -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.LemmasPure
-import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoBPure
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewSpqr
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -29,7 +29,7 @@ Unpacks a successful `tryDecryptWithStateW` execution on a freshly initialized r
 derivation, SPQR V1 receive step, MAC verification, and AES-CBC decryption.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 cref_hide_foreign_instances

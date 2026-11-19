@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure
-public import Symbolic.Proofs.RngG.R3ModelInv
+public import Symbolic.Proofs.Swarm.CREF.TR.RecvDec -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.R3StepExistingPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.RngG.R3ModelInv -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.EquationalTheory.Literal
 import Symbolic.Specifications.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPureA
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SendRetCoinsCliPureA -- proof-setup: allow-public-import
 import Symbolic.Proofs.Refinement.X25519Covered
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.DecCryptoAPure
@@ -33,6 +33,9 @@ import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.RecvRep -- shake: keep
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.ALaCarte.Basic
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+import Symbolic.Proofs.Swarm.CREF.TR.SpqrSemDef
 
 /-!
 # DH Ratchet Step Lemmas Under Ratchet-Key Swap
@@ -41,7 +44,7 @@ Transfers `findRecvChain = none`, `x25519LowOrder = false`, and `consumeMessageK
 `gamma`-equivalent sender ratchet key `rk_c` in the DH ratchet branch.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

@@ -2,16 +2,22 @@
 #
 # Consumed only by the stock builder (`scripts/cli-elf-stock` -> `work/lib2_*.o`), never registered
 # in `lakefile.lean` so `libsignalSessionObj` / `libsignalSessionExterns` remain byte-identical.
-# Trims the 7 C2 Rust/crate runtime hook bodies (`memrchr`, `from_utf8`, `SystemTime::duration_since`,
-# `SystemTime::add`, `subtle::black_box::<u8>`, `StaticSecret::drop`, `SharedSecret::drop`) plus the
-# `MontgomeryPoint::zeroize` callee of `SharedSecret::drop` from the `aarch64-unknown-linux-gnu`
-# sysroot rlibs (`core`, `std`) and the `deps/` rlibs (`curve25519_dalek`, `x25519_dalek`) of the
-# same cargo build that produced `lib0_*.o`.
+# Trims all 40 C2 + Stage-A + Stage-B Rust/crate runtime hook & callback bodies (`memrchr`,
+# `from_utf8`, `SystemTime::duration_since`, `SystemTime::add`, `subtle::black_box::<u8>`,
+# `curve25519_dalek` / `x25519_dalek` points/scalars/X25519, `libcrux_ml_kem` ML-KEM-768 /
+# ML-KEM-1024, `sha2::sha256::compress256`, `sha2::sha512::compress512`, `libcrux_hmac::hmac`,
+# `signal_crypto::aes_cbc::aes_256_cbc_{encrypt,decrypt}`,
+# `core::fmt::*`, and `alloc::fmt::format::format_inner`) plus their internal callees
+# (including `cpufeatures::aarch64::getauxval_hwcap` and `aes::armv8::*`) from the
+# `aarch64-unknown-linux-gnu` sysroot rlibs (`core`, `alloc`, `std`) and the `deps/` rlibs
+# (`curve25519_dalek`, `x25519_dalek`, `libcrux_ml_kem`, `sha2`, `libcrux_sha2`, `libcrux_hmac`,
+# `aes`, `signal_crypto`, `cpufeatures`) of the same cargo build that produced `lib0_*.o`.
 #
 # Note: `core_memrchr` and `core_from_utf8` are two separate `[[sysroot_objects]]` entries (as in
 # `STOCK-PLAN` `part1_roots.md` §1 and `RENAME`'s `a819d0d7` trial) because in `core` `cgu.0`
 # `from_utf8` sits at an earlier ELF section index than `memrchr`, and separate `.o` trims allow
-# independent per-row inclusion while keeping `memrchr` (`0x46e5bc`) before `from_utf8` (`0x46e6e4`).
+# independent per-row inclusion while keeping `memrchr` before `from_utf8`. `core::fmt::*` shares
+# `.rodata.str1.1` string literals with `core_memrchr` in `core` `cgu.0` and is grouped into `order = 0`.
 
 crate_dir = "../.."
 crates = []
@@ -25,10 +31,11 @@ hashed_inputs = [
     "Cargo.toml",
     "Cargo.lock",
 ]
-rustflags = ["--cfg", 'aes_backend="soft"', "--cfg", 'sha2_backend="soft"']
+rustflags = ["--cfg", 'sha2_backend="soft"']
 license_header = [
-    "Machine code trimmed from Rust `core`/`std` sysroot and `curve25519-dalek` / `x25519-dalek`",
-    "crate dependencies compiled with `third_party/libsignal/libsignal-session/Cargo.lock`.",
+    "Machine code trimmed from Rust `core`/`alloc`/`std` sysroot and `curve25519-dalek` /",
+    "`x25519-dalek` / `libcrux-ml-kem` / `sha2` / `libcrux-sha2` / `libcrux-hmac` / `aes` /",
+    "`signal-crypto` / `cpufeatures` crate dependencies compiled with `third_party/libsignal/libsignal-session/Cargo.lock`.",
     "",
     "See `third_party/libsignal/README.md`.",
 ]
@@ -45,16 +52,69 @@ home_subdir = "sw/libsignal"
 
 [placed]
 multi = true
-# Ordered with `SystemTime::add` LAST so its retired stub (`__retired_6`) and `lib2_5.o` sections
+# Ordered with Stage A's 19 non-tail rows first (`0..18`), Stage B + `getauxval_hwcap` next (`19..38`),
+# and `SystemTime::add` LAST (`39`) so its retired stub (`__retired_39`) and `lib2_13.o` sections
 # sit strictly at the tail of `.text.lib2` and `.rodata.lib2`: holding `time_add` back truncates
-# only the two tails without shifting any other `lib2` code/RO address or renumbering `__retired_0..5`.
+# only the two tails without shifting any other `lib2` code/RO address or renumbering `__retired_0..38`.
 exports = [
     "_RNvNtNtCskxtBwYRO61I_4core5slice6memchr7memrchr",
     "_RNvNtNtCskxtBwYRO61I_4core3str8converts9from_utf8",
     "_RNvMs5_NtCsfr5T3GFabw_3std4timeNtB5_10SystemTime14duration_since",
     "_RINvCsdqpLrhraQXi_6subtle9black_boxhECs2wR8L9wiBdT_16curve25519_dalek",
+    "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint10to_edwards",
+    "_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint8compress",
+    "_RNvXso_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtNtNtCskxtBwYRO61I_4core3ops5arith3Neg3neg",
+    "_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint15is_torsion_free",
+    "_RNvMsw_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint35vartime_double_scalar_mul_basepoint",
+    "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar20from_bytes_mod_order",
+    "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar25from_bytes_mod_order_wide",
     "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop",
     "_RNvXse_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12SharedSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop",
+    "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk1",
+    "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk2",
+    "_RNvNtCsbvWyylYiyxg_4sha26sha25611compress256",
+    "_RNvCs65XVORQObL2_12libcrux_hmac4hmac",
+    "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_encrypt",
+    "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_decrypt",
+    "_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512",
+    "_RNvNtCskxtBwYRO61I_4core3fmt5write",
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter9write_str",
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter3pad",
+    "_RNvXsi_NtCskxtBwYRO61I_4core3fmteNtB5_7Display3fmt",
+    "_RNvXNtNtNtCskxtBwYRO61I_4core3fmt3num3imphNtB6_7Display3fmt",
+    "_RNvXs8_NtNtNtCskxtBwYRO61I_4core3fmt3num3impmNtB9_7Display3fmt",
+    "_RNvXsd_NtNtNtCskxtBwYRO61I_4core3fmt3num3impyNtB9_7Display3fmt",
+    "_RNvXsi_NtNtNtCskxtBwYRO61I_4core3fmt3num3impjNtB9_7Display3fmt",
+    "_RNvNvNtCs69KKACWg7bl_5alloc3fmt6format12format_inner",
+    "_RNvXs8_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_9PublicKeyINtNtCskxtBwYRO61I_4core7convert4FromRNtB5_12StaticSecretE4from",
+    "_RNvMs6_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecret14diffie_hellman",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11encapsulate",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate",
+    "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes9from_seed",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate1",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate2",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental26decapsulate_compressed_key",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes",
+    "_RNvNtCslWItzXo2NmA_11cpufeatures7aarch6415getauxval_hwcap",
+    "_RNvMs0_NtNtNtNtCsfr5T3GFabw_3std3sys4sync4once5futexNtB5_4Once4call",
+    "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedjjEB4_",
+    "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedyyEB4_",
+    "_RNvNtCs69KKACWg7bl_5alloc5alloc18handle_alloc_error",
+    "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error",
+    "_RNvNtCskxtBwYRO61I_4core6option13expect_failed",
+    "_RNvNtCskxtBwYRO61I_4core6option13unwrap_failed",
+    "_RNvNtCskxtBwYRO61I_4core6result13unwrap_failed",
+    "_RNvNtCskxtBwYRO61I_4core9panicking18panic_bounds_check",
+    "_RNvNtCskxtBwYRO61I_4core9panicking19assert_failed_inner",
+    "_RNvNtCskxtBwYRO61I_4core9panicking5panic",
+    "_RNvNtCskxtBwYRO61I_4core9panicking9panic_fmt",
+    "_RNvNtNtCskxtBwYRO61I_4core5slice5index16slice_index_fail",
+    "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_add_overflow",
+    "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_mul_overflow",
+    "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_shl_overflow",
+    "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_sub_overflow",
+    "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const28panic_const_async_fn_resumed",
+    "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed",
     "_RNvXs6_NtCsfr5T3GFabw_3std4timeNtB5_10SystemTimeINtNtNtCskxtBwYRO61I_4core3ops5arith3AddNtNtBR_4time8DurationE3add",
 ]
 
@@ -72,6 +132,56 @@ root = "_RNvMs5_NtCsfr5T3GFabw_3std4timeNtB5_10SystemTime14duration_since"
 [lib2_rows.black_box]
 root = "_RINvCsdqpLrhraQXi_6subtle9black_boxhECs2wR8L9wiBdT_16curve25519_dalek"
 
+[lib2_rows.mont_to_edwards]
+root = "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint10to_edwards"
+helper_roots = [
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement518to_bytes",
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement515pow2k",
+    "_RNvXs5_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldRNtB5_14FieldElement51NtNtNtCskxtBwYRO61I_4core3ops5arith3Mul3mul",
+    "_RNvMs2_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_18CompressedEdwardsY10decompress",
+]
+
+[lib2_rows.edwards_compress]
+root = "_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint8compress"
+helper_roots = [
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement515pow2k",
+    "_RNvXs5_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldRNtB5_14FieldElement51NtNtNtCskxtBwYRO61I_4core3ops5arith3Mul3mul",
+]
+
+[lib2_rows.edwards_neg]
+root = "_RNvXso_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtNtNtCskxtBwYRO61I_4core3ops5arith3Neg3neg"
+
+[lib2_rows.edwards_is_torsion_free]
+root = "_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint15is_torsion_free"
+helper_roots = [
+    "_RNvXsq_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsRNtB5_12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3MulRNtNtB7_6scalar6ScalarE3mul",
+    "_RNvXsd_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtCsdqpLrhraQXi_6subtle14ConstantTimeEq5ct_eq",
+    "_RNvXs9_NtCs2wR8L9wiBdT_16curve25519_dalek6windowINtB5_11LookupTableNtNtNtNtB7_7backend6serial12curve_models20ProjectiveNielsPointEINtNtCskxtBwYRO61I_4core7convert4FromRNtNtB7_7edwards12EdwardsPointE4from",
+    "_RNvXsb_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3AddRNtB5_20ProjectiveNielsPointE3add",
+    "_RNvXs5_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldRNtB5_14FieldElement51NtNtNtCskxtBwYRO61I_4core3ops5arith3Mul3mul",
+    "_RNvMsa_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsNtB5_15ProjectivePoint6double",
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement515pow2k",
+]
+
+[lib2_rows.edwards_dsmb]
+root = "_RNvMsw_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint35vartime_double_scalar_mul_basepoint"
+helper_roots = [
+    "_RNvXs0_NtCs2wR8L9wiBdT_16curve25519_dalek6windowINtB5_15NafLookupTable5NtNtNtNtB7_7backend6serial12curve_models20ProjectiveNielsPointEINtNtCskxtBwYRO61I_4core7convert4FromRNtNtB7_7edwards12EdwardsPointE4from",
+    "_RNvMsa_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsNtB5_15ProjectivePoint6double",
+    "_RNvXs5_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldRNtB5_14FieldElement51NtNtNtCskxtBwYRO61I_4core3ops5arith3Mul3mul",
+    "_RNvXsb_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3AddRNtB5_20ProjectiveNielsPointE3add",
+    "_RNvXsc_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3SubRNtB5_20ProjectiveNielsPointE3sub",
+    "_RNvXsd_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3AddRNtB5_16AffineNielsPointE3add",
+    "_RNvXse_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3SubRNtB5_16AffineNielsPointE3sub",
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement515pow2k",
+]
+
+[lib2_rows.scalar_from_bytes_mod_order]
+root = "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar20from_bytes_mod_order"
+
+[lib2_rows.scalar_from_bytes_mod_order_wide]
+root = "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar25from_bytes_mod_order_wide"
+
 [lib2_rows.static_secret_drop]
 root = "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop"
 
@@ -81,6 +191,242 @@ helper_roots = [
     "_RNvXs4_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPointNtCsjhEzohgaBbG_7zeroize7Zeroize7zeroize",
 ]
 
+[lib2_rows.mlkem_pk1]
+root = "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk1"
+
+[lib2_rows.mlkem_pk2]
+root = "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk2"
+
+[lib2_rows.compress256]
+root = "_RNvNtCsbvWyylYiyxg_4sha26sha25611compress256"
+
+[lib2_rows.libcrux_hmac]
+root = "_RNvCs65XVORQObL2_12libcrux_hmac4hmac"
+helper_roots = [
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl11sha256_init",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl11sha384_init",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl11sha512_init",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl13sha256_finish",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl13sha384_finish",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl13sha512_finish",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl18sha256_update_last",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl18sha384_update_last",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl18sha512_update_last",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl21sha256_update_nblocks",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl21sha384_update_nblocks",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl21sha512_update_nblocks",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl8hash_256",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl8hash_384",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl8hash_512",
+]
+
+[lib2_rows.aes_256_cbc_encrypt]
+root = "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_encrypt"
+helper_roots = [
+    "_RNvNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes8init_get10init_inner",
+    "_RNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes7STORAGE",
+    "_RNvNtCslWItzXo2NmA_11cpufeatures7aarch6415getauxval_hwcap",
+    "_RNvNtNtCseLFX6RtqVKc_3aes4soft8fixslice19aes256_key_schedule",
+    "_RNvNtNtCseLFX6RtqVKc_3aes4soft8fixslice14aes256_encrypt",
+]
+
+[lib2_rows.aes_256_cbc_decrypt]
+root = "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_decrypt"
+helper_roots = [
+    "_RNvNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes8init_get10init_inner",
+    "_RNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes7STORAGE",
+    "_RNvNtCslWItzXo2NmA_11cpufeatures7aarch6415getauxval_hwcap",
+    "_RNvNtNtCseLFX6RtqVKc_3aes4soft8fixslice19aes256_key_schedule",
+    "_RNvNtNtCseLFX6RtqVKc_3aes4soft8fixslice14aes256_decrypt",
+]
+
+[lib2_rows.compress512]
+root = "_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512"
+
+[lib2_rows.fmt_write]
+root = "_RNvNtCskxtBwYRO61I_4core3fmt5write"
+helper_roots = [
+    "_RNvXsb_NtCskxtBwYRO61I_4core3fmtNtB5_9FormatterNtB5_5Write9write_str",
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter12pad_integral",
+    "_RNvNtNtCskxtBwYRO61I_4core3str5count14do_count_chars",
+]
+
+[lib2_rows.fmt_formatter_write_str]
+root = "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter9write_str"
+
+[lib2_rows.fmt_formatter_pad]
+root = "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter3pad"
+helper_roots = [
+    "_RNvNtNtCskxtBwYRO61I_4core3str5count14do_count_chars",
+]
+
+[lib2_rows.fmt_display_str]
+root = "_RNvXsi_NtCskxtBwYRO61I_4core3fmteNtB5_7Display3fmt"
+
+[lib2_rows.fmt_display_u8]
+root = "_RNvXNtNtNtCskxtBwYRO61I_4core3fmt3num3imphNtB6_7Display3fmt"
+helper_roots = [
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter12pad_integral",
+]
+
+[lib2_rows.fmt_display_u32]
+root = "_RNvXs8_NtNtNtCskxtBwYRO61I_4core3fmt3num3impmNtB9_7Display3fmt"
+helper_roots = [
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter12pad_integral",
+]
+
+[lib2_rows.fmt_display_u64]
+root = "_RNvXsd_NtNtNtCskxtBwYRO61I_4core3fmt3num3impyNtB9_7Display3fmt"
+helper_roots = [
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter12pad_integral",
+]
+
+[lib2_rows.fmt_display_usize]
+root = "_RNvXsi_NtNtNtCskxtBwYRO61I_4core3fmt3num3impjNtB9_7Display3fmt"
+helper_roots = [
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter12pad_integral",
+]
+
+[lib2_rows.alloc_format_inner]
+root = "_RNvNvNtCs69KKACWg7bl_5alloc3fmt6format12format_inner"
+
+[lib2_rows.x25519_pub_from_secret]
+root = "_RNvXs8_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_9PublicKeyINtNtCskxtBwYRO61I_4core7convert4FromRNtB5_12StaticSecretE4from"
+helper_roots = [
+    "_RNvMss_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint16mul_base_clamped",
+    "_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint13to_montgomery",
+    "_RNvXsV_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_21EdwardsBasepointTableNtNtB7_6traits14BasepointTable8mul_base",
+    "_RNvXsl_NtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB5_6ScalarNtCsjhEzohgaBbG_7zeroize7Zeroize7zeroize",
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement518to_bytes",
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement515pow2k",
+    "_RNvXs5_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldRNtB5_14FieldElement51NtNtNtCskxtBwYRO61I_4core3ops5arith3Mul3mul",
+    "_RNvMsa_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsNtB5_15ProjectivePoint6double",
+    "_RNvXsd_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3AddRNtB5_16AffineNielsPointE3add",
+    "_RNvXse_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3SubRNtB5_16AffineNielsPointE3sub",
+    "_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint12mul_by_pow_2",
+    "_RNvNtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u649constants40ED25519_BASEPOINT_TABLE_INNER_DOC_HIDDEN",
+]
+
+[lib2_rows.x25519_diffie_hellman]
+root = "_RNvMs6_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecret14diffie_hellman"
+helper_roots = [
+    "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint11mul_clamped",
+    "_RNvXsa_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryRNtB5_15MontgomeryPointINtNtNtCskxtBwYRO61I_4core3ops5arith3MulRNtNtB7_6scalar6ScalarE3mul",
+    "_RNvNtCs2wR8L9wiBdT_16curve25519_dalek10montgomery27differential_add_and_double",
+    "_RNvMs9_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15ProjectivePoint9as_affine",
+    "_RNvXsl_NtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB5_6ScalarNtCsjhEzohgaBbG_7zeroize7Zeroize7zeroize",
+    "_RNvXs4_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPointNtCsjhEzohgaBbG_7zeroize7Zeroize7zeroize",
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement518to_bytes",
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement515pow2k",
+    "_RNvXs5_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldRNtB5_14FieldElement51NtNtNtCskxtBwYRO61I_4core3ops5arith3Mul3mul",
+]
+
+[lib2_rows.mlkem1024_encapsulate]
+root = "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11encapsulate"
+helper_roots = [
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations13deserialize_4",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations13deserialize_5",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations14deserialize_11",
+]
+
+[lib2_rows.mlkem1024_decapsulate]
+root = "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate"
+helper_roots = [
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations13deserialize_4",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations13deserialize_5",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations14deserialize_11",
+]
+
+[lib2_rows.mlkem768_from_seed]
+root = "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes9from_seed"
+
+[lib2_rows.mlkem768_encapsulate1]
+root = "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate1"
+
+[lib2_rows.mlkem768_encapsulate2]
+root = "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate2"
+helper_roots = [
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations13deserialize_4",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations13deserialize_5",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations14deserialize_11",
+]
+
+[lib2_rows.mlkem768_decapsulate]
+root = "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental26decapsulate_compressed_key"
+helper_roots = [
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations13deserialize_4",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations13deserialize_5",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations14deserialize_11",
+]
+
+[lib2_rows.mlkem768_validate_pk]
+root = "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes"
+
+[lib2_rows.getauxval_hwcap]
+root = "_RNvNtCslWItzXo2NmA_11cpufeatures7aarch6415getauxval_hwcap"
+
+[lib2_rows.std_once_call]
+root = "_RNvMs0_NtNtNtNtCsfr5T3GFabw_3std3sys4sync4once5futexNtB5_4Once4call"
+
+[lib2_rows.panic_assert_failed_usize]
+root = "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedjjEB4_"
+
+[lib2_rows.panic_assert_failed_u64]
+root = "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedyyEB4_"
+
+[lib2_rows.panic_handle_alloc_error]
+root = "_RNvNtCs69KKACWg7bl_5alloc5alloc18handle_alloc_error"
+
+[lib2_rows.panic_raw_vec_handle_error]
+root = "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error"
+helper_roots = [
+    "_RNvNtCs69KKACWg7bl_5alloc7raw_vec17capacity_overflow",
+]
+
+[lib2_rows.panic_option_expect_failed]
+root = "_RNvNtCskxtBwYRO61I_4core6option13expect_failed"
+
+[lib2_rows.panic_option_unwrap_failed]
+root = "_RNvNtCskxtBwYRO61I_4core6option13unwrap_failed"
+
+[lib2_rows.panic_result_unwrap_failed]
+root = "_RNvNtCskxtBwYRO61I_4core6result13unwrap_failed"
+
+[lib2_rows.panic_bounds_check]
+root = "_RNvNtCskxtBwYRO61I_4core9panicking18panic_bounds_check"
+
+[lib2_rows.panic_assert_failed_inner]
+root = "_RNvNtCskxtBwYRO61I_4core9panicking19assert_failed_inner"
+helper_roots = [
+    "_RNvXs8_NtCskxtBwYRO61I_4core3fmtNtB5_9ArgumentsNtB5_7Display3fmt",
+]
+
+[lib2_rows.panic_core_panic]
+root = "_RNvNtCskxtBwYRO61I_4core9panicking5panic"
+
+[lib2_rows.panic_core_panic_fmt]
+root = "_RNvNtCskxtBwYRO61I_4core9panicking9panic_fmt"
+
+[lib2_rows.panic_slice_index_fail]
+root = "_RNvNtNtCskxtBwYRO61I_4core5slice5index16slice_index_fail"
+
+[lib2_rows.panic_const_add_overflow]
+root = "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_add_overflow"
+
+[lib2_rows.panic_const_mul_overflow]
+root = "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_mul_overflow"
+
+[lib2_rows.panic_const_shl_overflow]
+root = "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_shl_overflow"
+
+[lib2_rows.panic_const_sub_overflow]
+root = "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_sub_overflow"
+
+[lib2_rows.panic_const_async_fn_resumed]
+root = "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const28panic_const_async_fn_resumed"
+
+[lib2_rows.panic_vec_remove_assert_failed]
+root = "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed"
 [lib2_rows.time_add]
 root = "_RNvXs6_NtCsfr5T3GFabw_3std4timeNtB5_10SystemTimeINtNtNtCskxtBwYRO61I_4core3ops5arith3AddNtNtBR_4time8DurationE3add"
 
@@ -88,7 +434,36 @@ root = "_RNvXs6_NtCsfr5T3GFabw_3std4timeNtB5_10SystemTimeINtNtNtCskxtBwYRO61I_4c
 order = 0
 crate = "core"
 name = "core_memrchr"
-roots = ["_RNvNtNtCskxtBwYRO61I_4core5slice6memchr7memrchr"]
+roots = [
+    "_RNvNtNtCskxtBwYRO61I_4core5slice6memchr7memrchr",
+    "_RNvNtCskxtBwYRO61I_4core3fmt5write",
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter9write_str",
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter3pad",
+    "_RNvMsa_NtCskxtBwYRO61I_4core3fmtNtB5_9Formatter12pad_integral",
+    "_RNvXsb_NtCskxtBwYRO61I_4core3fmtNtB5_9FormatterNtB5_5Write9write_str",
+    "_RNvNtNtCskxtBwYRO61I_4core3str5count14do_count_chars",
+    "_RNvXsi_NtCskxtBwYRO61I_4core3fmteNtB5_7Display3fmt",
+    "_RNvXNtNtNtCskxtBwYRO61I_4core3fmt3num3imphNtB6_7Display3fmt",
+    "_RNvXs8_NtNtNtCskxtBwYRO61I_4core3fmt3num3impmNtB9_7Display3fmt",
+    "_RNvXsd_NtNtNtCskxtBwYRO61I_4core3fmt3num3impyNtB9_7Display3fmt",
+    "_RNvXsi_NtNtNtCskxtBwYRO61I_4core3fmt3num3impjNtB9_7Display3fmt",
+    "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedjjEB4_",
+    "_RINvNtCskxtBwYRO61I_4core9panicking13assert_failedyyEB4_",
+    "_RNvNtCskxtBwYRO61I_4core6option13expect_failed",
+    "_RNvNtCskxtBwYRO61I_4core6option13unwrap_failed",
+    "_RNvNtCskxtBwYRO61I_4core6result13unwrap_failed",
+    "_RNvNtCskxtBwYRO61I_4core9panicking18panic_bounds_check",
+    "_RNvNtCskxtBwYRO61I_4core9panicking19assert_failed_inner",
+    "_RNvXs8_NtCskxtBwYRO61I_4core3fmtNtB5_9ArgumentsNtB5_7Display3fmt",
+    "_RNvNtCskxtBwYRO61I_4core9panicking5panic",
+    "_RNvNtCskxtBwYRO61I_4core9panicking9panic_fmt",
+    "_RNvNtNtCskxtBwYRO61I_4core5slice5index16slice_index_fail",
+    "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_add_overflow",
+    "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_mul_overflow",
+    "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_shl_overflow",
+    "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_sub_overflow",
+    "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const28panic_const_async_fn_resumed",
+]
 
 [[sysroot_objects]]
 order = 1
@@ -111,6 +486,36 @@ name = "dalek_rt"
 roots = [
     "_RINvCsdqpLrhraQXi_6subtle9black_boxhECs2wR8L9wiBdT_16curve25519_dalek",
     "_RNvXs4_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPointNtCsjhEzohgaBbG_7zeroize7Zeroize7zeroize",
+    "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint10to_edwards",
+    "_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint8compress",
+    "_RNvXso_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtNtNtCskxtBwYRO61I_4core3ops5arith3Neg3neg",
+    "_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint15is_torsion_free",
+    "_RNvMsw_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint35vartime_double_scalar_mul_basepoint",
+    "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar20from_bytes_mod_order",
+    "_RNvMNtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB2_6Scalar25from_bytes_mod_order_wide",
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement518to_bytes",
+    "_RNvMs8_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldNtB5_14FieldElement515pow2k",
+    "_RNvXs5_NtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u645fieldRNtB5_14FieldElement51NtNtNtCskxtBwYRO61I_4core3ops5arith3Mul3mul",
+    "_RNvMs2_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_18CompressedEdwardsY10decompress",
+    "_RNvXsq_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsRNtB5_12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3MulRNtNtB7_6scalar6ScalarE3mul",
+    "_RNvXsd_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPointNtCsdqpLrhraQXi_6subtle14ConstantTimeEq5ct_eq",
+    "_RNvXs9_NtCs2wR8L9wiBdT_16curve25519_dalek6windowINtB5_11LookupTableNtNtNtNtB7_7backend6serial12curve_models20ProjectiveNielsPointEINtNtCskxtBwYRO61I_4core7convert4FromRNtNtB7_7edwards12EdwardsPointE4from",
+    "_RNvXsb_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3AddRNtB5_20ProjectiveNielsPointE3add",
+    "_RNvMsa_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsNtB5_15ProjectivePoint6double",
+    "_RNvXs0_NtCs2wR8L9wiBdT_16curve25519_dalek6windowINtB5_15NafLookupTable5NtNtNtNtB7_7backend6serial12curve_models20ProjectiveNielsPointEINtNtCskxtBwYRO61I_4core7convert4FromRNtNtB7_7edwards12EdwardsPointE4from",
+    "_RNvXsc_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3SubRNtB5_20ProjectiveNielsPointE3sub",
+    "_RNvXsd_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3AddRNtB5_16AffineNielsPointE3add",
+    "_RNvXse_NtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial12curve_modelsRNtNtBb_7edwards12EdwardsPointINtNtNtCskxtBwYRO61I_4core3ops5arith3SubRNtB5_16AffineNielsPointE3sub",
+    "_RNvMss_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint16mul_base_clamped",
+    "_RNvMsg_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint13to_montgomery",
+    "_RNvXsV_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_21EdwardsBasepointTableNtNtB7_6traits14BasepointTable8mul_base",
+    "_RNvXsl_NtCs2wR8L9wiBdT_16curve25519_dalek6scalarNtB5_6ScalarNtCsjhEzohgaBbG_7zeroize7Zeroize7zeroize",
+    "_RNvMsx_NtCs2wR8L9wiBdT_16curve25519_dalek7edwardsNtB5_12EdwardsPoint12mul_by_pow_2",
+    "_RNvNtNtNtNtCs2wR8L9wiBdT_16curve25519_dalek7backend6serial3u649constants40ED25519_BASEPOINT_TABLE_INNER_DOC_HIDDEN",
+    "_RNvMs5_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15MontgomeryPoint11mul_clamped",
+    "_RNvXsa_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryRNtB5_15MontgomeryPointINtNtNtCskxtBwYRO61I_4core3ops5arith3MulRNtNtB7_6scalar6ScalarE3mul",
+    "_RNvNtCs2wR8L9wiBdT_16curve25519_dalek10montgomery27differential_add_and_double",
+    "_RNvMs9_NtCs2wR8L9wiBdT_16curve25519_dalek10montgomeryNtB5_15ProjectivePoint9as_affine",
 ]
 
 [[dep_objects]]
@@ -120,10 +525,119 @@ name = "x25519_rt"
 roots = [
     "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop",
     "_RNvXse_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12SharedSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop",
+    "_RNvXs8_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_9PublicKeyINtNtCskxtBwYRO61I_4core7convert4FromRNtB5_12StaticSecretE4from",
+    "_RNvMs6_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecret14diffie_hellman",
+]
+
+[[dep_objects]]
+order = 5
+crate = "libcrux_ml_kem"
+name = "mlkem_rt"
+roots = [
+    "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk1",
+    "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes3pk2",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11encapsulate",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem9mlkem10245kyber11decapsulate",
+    "_RNvMs0_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incrementalNtB5_22KeyPairCompressedBytes9from_seed",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate1",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental12encapsulate2",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental26decapsulate_compressed_key",
+    "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations13deserialize_4",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations13deserialize_5",
+    "_RNvXs_NtNtCs1mK0QScfTrZ_14libcrux_ml_kem6vector8portableNtNtB4_11vector_type14PortableVectorNtNtB6_6traits10Operations14deserialize_11",
+]
+
+[[dep_objects]]
+order = 6
+crate = "sha2"
+name = "sha2_compress256"
+roots = [
+    "_RNvNtCsbvWyylYiyxg_4sha26sha25611compress256",
+    "_RNvNtCsbvWyylYiyxg_4sha26sha51211compress512",
+]
+
+[[dep_objects]]
+order = 7
+crate = "libcrux_sha2"
+name = "libcrux_sha2_hacl"
+roots = [
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl11sha256_init",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl11sha384_init",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl11sha512_init",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl13sha256_finish",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl13sha384_finish",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl13sha512_finish",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl18sha256_update_last",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl18sha384_update_last",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl18sha512_update_last",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl21sha256_update_nblocks",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl21sha384_update_nblocks",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl21sha512_update_nblocks",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl8hash_256",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl8hash_384",
+    "_RNvNtCsfbAkLoxnnbA_12libcrux_sha24hacl8hash_512",
+]
+
+[[dep_objects]]
+order = 8
+crate = "libcrux_hmac"
+name = "libcrux_hmac_rt"
+roots = [
+    "_RNvCs65XVORQObL2_12libcrux_hmac4hmac",
+]
+
+[[dep_objects]]
+order = 9
+crate = "aes"
+name = "aes_fixslice"
+roots = [
+    "_RNvNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes8init_get10init_inner",
+    "_RNvNtNtNtCseLFX6RtqVKc_3aes5armv88features12features_aes7STORAGE",
+    "_RNvNtNtCseLFX6RtqVKc_3aes4soft8fixslice19aes256_key_schedule",
+    "_RNvNtNtCseLFX6RtqVKc_3aes4soft8fixslice14aes256_encrypt",
+    "_RNvNtNtCseLFX6RtqVKc_3aes4soft8fixslice14aes256_decrypt",
+]
+
+[[dep_objects]]
+order = 10
+crate = "signal_crypto"
+name = "signal_crypto_aes_cbc"
+roots = [
+    "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_encrypt",
+    "_RNvNtCsbKnPy0UR4Ui_13signal_crypto7aes_cbc19aes_256_cbc_decrypt",
 ]
 
 [[sysroot_objects]]
-order = 5
+order = 11
+crate = "alloc"
+name = "alloc_format_inner"
+roots = [
+    "_RNvNvNtCs69KKACWg7bl_5alloc3fmt6format12format_inner",
+    "_RNvNtCs69KKACWg7bl_5alloc5alloc18handle_alloc_error",
+    "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error",
+    "_RNvNtCs69KKACWg7bl_5alloc7raw_vec17capacity_overflow",
+    "_RNvNvMs_NtCs69KKACWg7bl_5alloc3vecINtB6_3VecppE6remove13assert_failed",
+]
+
+[[dep_objects]]
+order = 12
+crate = "cpufeatures"
+name = "cpufeatures_hwcap"
+roots = [
+    "_RNvNtCslWItzXo2NmA_11cpufeatures7aarch6415getauxval_hwcap",
+]
+
+[[sysroot_objects]]
+order = 13
+crate = "std"
+name = "std_once_call"
+roots = [
+    "_RNvMs0_NtNtNtNtCsfr5T3GFabw_3std3sys4sync4once5futexNtB5_4Once4call",
+]
+
+[[sysroot_objects]]
+order = 14
 crate = "std"
 name = "std_time_add"
 roots = [

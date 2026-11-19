@@ -11,8 +11,12 @@ module
 
 public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.Defs
 import LibsignalBinary.Proofs.Common.HookTrace
-import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDec
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.CBCDec
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import ProofLib.SepLogic.CodeLookup
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Definitions and Segment 8 Helpers for `S7Spec`, `S8Spec`, and `S9Spec`
@@ -21,7 +25,7 @@ Shared instruction-fetch macros, `SepWPp` framing/panic bridges, and Segment 8 h
 segments of `try_decrypt_with_state::<HookRng>`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegD
 
@@ -76,45 +80,6 @@ elab "code_fetches_from " codeId:ident decPrefix:ident b:term:max H:term:max hfn
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
 
-/-- Fetch hypotheses for `try_decrypt_with_state::<HookRng>` (`hfn : fnOff tryDecryptName
-  = 0x6eff8`),
-    from fn-relative offset `k0`, `len` bytes. -/
-macro "decrypt_fetches " b:term:max C:term:max ctl:term:max abs:term:max
-    hfn:ident k0:num len:num : tactic =>
-  `(tactic| code_fetches_from CryptoVerification.libsignalSessionCode libsignalTripleRatchetBin $b
-    (Rust.withPanics (tripleRatchetExterns $C $ctl $abs)) $hfn 0x6eff8 $k0 $len)
-
-/-! ## 1. Entry / PC Rewriting and Callee / Hook Wrappers -/
-
-theorem tryDecryptEntry_eq_fnAddr {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (ctl : BitVec 64) (abs : String → Option (State → State)) :
-    tryDecryptEntry img = (tripleRatchetProgAt img.base C ctl abs).fnAddr tryDecryptName :=
-  entryOf_eq_tripleRatchetProgAt himg tryDecryptName
-
-theorem segS7PC_eq {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (ctl : BitVec 64) (abs : String → Option (State → State)) :
-    segS7PC img
-      = (tripleRatchetProgAt img.base C ctl abs).fnAddr tryDecryptName + BitVec.ofNat 64 0x63c := by
-  rw [segS7PC, tryDecryptEntry_eq_fnAddr himg]
-
-theorem segS8PC_eq {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (ctl : BitVec 64) (abs : String → Option (State → State)) :
-    segS8PC img
-      = (tripleRatchetProgAt img.base C ctl abs).fnAddr tryDecryptName + BitVec.ofNat 64 0x678 := by
-  rw [segS8PC, tryDecryptEntry_eq_fnAddr himg]
-
-theorem segS9PC_eq {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (ctl : BitVec 64) (abs : String → Option (State → State)) :
-    segS9PC img
-      = (tripleRatchetProgAt img.base C ctl abs).fnAddr tryDecryptName + BitVec.ofNat 64 0x6a4 := by
-  rw [segS9PC, tryDecryptEntry_eq_fnAddr himg]
-
-theorem errTailPC_eq {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    (C : Crypto) (ctl : BitVec 64) (abs : String → Option (State → State)) :
-    errTailPC img
-      = (tripleRatchetProgAt img.base C ctl abs).fnAddr tryDecryptName + BitVec.ofNat 64 0x30c := by
-  rw [errTailPC, tryDecryptEntry_eq_fnAddr himg]
-
 theorem sessionShim_hookOk : HookOk hookNoop sessionShimSpec := by
   refine hookNoop_ok fun _ R s0 hpre => ?_
   simp only [sessionShimSpec, hookNoop, retHook, id_eq, State.trace_setPC,
@@ -153,25 +118,6 @@ theorem allocFailedIn_trans {s0 sm sf : State}
   rw [← ht, List.length_append, ← List.drop_drop] at hmf
   exact List.mem_of_mem_drop hmf
 
-theorem tryDecrypt_onPanic_of_callee (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (img : Obj.Image)
-    (x : TryDecryptGhost) (s0 sm sf : State) (F R : SepProp)
-    (h0m : s0.trace <+: sm.trace)
-    (hm : sf.mem ⊨ ((⌜allocFailedIn sm sf ∧ sm.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) ∗ R) :
-    sf.mem ⊨ (tryDecryptSpec C A ctl uuidTryParse S img).onPanic x s0 sf ∗ R := by
-  unfold tryDecryptSpec Spec.inImage
-  exact allowPanic_frame
-    (fun ⟨haf, hmf⟩ => ⟨Or.inr (Or.inr (allocFailedIn_trans h0m haf)), h0m.trans hmf⟩) hm
-
-theorem tryDecrypt_onPanic_of_direct (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (img : Obj.Image)
-    (x : TryDecryptGhost) (s0 sf : State) (P R : SepProp)
-    (haf : allocFailedIn s0 sf) (htr : s0.trace <+: sf.trace)
-    (hm : sf.mem ⊨ P ∗ R) :
-    sf.mem ⊨ (tryDecryptSpec C A ctl uuidTryParse S img).onPanic x s0 sf ∗ R := by
-  unfold tryDecryptSpec Spec.inImage
-  exact allowPanic_panicked ⟨Or.inr (Or.inr haf), htr⟩ hm
-
 theorem SepWPp.panic_at {prog : Program} {ret panic_pc : BitVec 64} {s : State}
     {P : SepProp} {Q Qp : State → SepProp → Prop}
     (hpc : s.pc = panic_pc) (hrun : s.status = .Running)
@@ -180,29 +126,7 @@ theorem SepWPp.panic_at {prog : Program} {ret panic_pc : BitVec 64} {s : State}
   rw [← hpc] at hext
   exact SepWPp.panic hrun hext hqp
 
-theorem SepWPp.panic_direct (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (img : Obj.Image)
-    (abs : String → Option (State → State))
-    (x : TryDecryptGhost) (s0 s : State) (ret panic_pc : BitVec 64)
-    (P R : SepProp) {Q : State → SepProp → Prop}
-    (hpc : s.pc = panic_pc) (hrun : s.status = .Running)
-    (hext : (tripleRatchetProgAt img.base C ctl abs).externAt? panic_pc = some Rust.panicked)
-    (htr : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAt img.base C ctl abs) ret s P Q
-      (fun sf P_f => sf.status = .Panicked → (sf.mem ⊨ P_f ∗ R) →
-        (sf.mem ⊨ (tryDecryptSpec C A ctl uuidTryParse S img).onPanic x s0 sf ∗ R)) := by
-  refine SepWPp.panic_at hpc hrun hext fun _ hm_pan => ?_
-  have htr_f : (Rust.panicked s).trace = s0.trace ++ [allocFailedEvent] := htr
-  have haf : allocFailedIn s0 (Rust.panicked s) := by
-    unfold allocFailedIn
-    rw [htr_f, List.drop_left]
-    exact List.Mem.head _
-  have hpre : s0.trace <+: (Rust.panicked s).trace := by
-    rw [htr_f]
-    exact ⟨[allocFailedEvent], rfl⟩
-  exact tryDecrypt_onPanic_of_direct C A ctl S img x s0 (Rust.panicked s) P R haf hpre hm_pan
-
-def boxU8Rest (A : RustAlloc) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def boxU8Rest (A : RustAlloc) (p : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜p ≠ 0 ∧ bs.length < 2 ^ 63⌝ ∗ (if bs = [] then emp else A.live p bs.length 1)
 
 theorem boxU8At_eq_rest (A : RustAlloc) (b p : BitVec 64) (bs : List (BitVec 8)) :
@@ -338,54 +262,6 @@ theorem sepWPp_to_steps_or_panic {prog : Program} (ret : BitVec 64) {s : State}
   · exact ⟨sf, hsteps, Or.inl (hq hpc hrun hmf)⟩
   · exact ⟨sf, hsteps, Or.inr ⟨hpan, hqp hpan hmf⟩⟩
   · exact (not_satisfies_false_sepConj hoom).elim
-
-theorem SepWPp.call_frame_frozen {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R',
-      sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ (F ∗ R')) →
-      (sf.mem ⊨ (⌜False⌝ : SepProp) ∗ R') := by wp_close_oom_default) :
-    SepWPp prog ret s P Q Qp := by
-  exact ProofLib.SepWPp.call_frame_frozen hcall hF hsym hpc hrun hsp hlr hspec hφ hP hexit hpanic
-    (fun sf hpcm hrunm hspm hcsm hFm hsymm =>
-      hnext sf hpcm hrunm hspm (by simpa [State.spAligned, hspm] using hsp) hcsm hFm hsymm)
-    hoom
-
-theorem SepWPp.call_inImage_frame {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R',
-      sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ (F ∗ R')) →
-      (sf.mem ⊨ (⌜False⌝ : SepProp) ∗ R') := by wp_close_oom_default) :
-    SepWPp prog ret s P Q Qp := by
-  exact ProofLib.SepWPp.call_inImage_frame hcall hF hsym hpc hrun hsp hlr hspec hφ hP hexit hpanic
-    (fun sf hpcm hrunm hspm hcsm hFm hsymm =>
-      hnext sf hpcm hrunm hspm (by simpa [State.spAligned, hspm] using hsp) hcsm hFm hsymm)
-    hoom
 
 theorem SepWPp.mono_pre {prog : Program} {ret : BitVec 64} {s : State}
     {P P' : SepProp} {Q Qp : State → SepProp → Prop}

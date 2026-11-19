@@ -12,6 +12,8 @@ module
 public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepDefs
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkAkSeedSepGood
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSkelLocal -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
 
 /-!
 # Chain-Root Shape Twins (`rootTwin`)
@@ -21,7 +23,7 @@ chain root (`RootX`) and an honest receive-chain root (`RecvRoot`) with equal `g
 equal unless their memo windows satisfy `KemSlotAlias`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

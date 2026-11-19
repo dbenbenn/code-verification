@@ -10,9 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
+public import LibsignalBinary.Proofs.PeakBudget.DirPeakHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # CLI `main` I/O, Callee, and M1–M6 Credit Helpers
@@ -23,7 +24,7 @@ M5 (`M5LoopAEntryEnv` with `Δlive = 0` via `sc = 63` deallocation cancellation)
 M6 (`1024`-B `LineWriter` `write_stdout`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -777,59 +778,35 @@ theorem phaseCredit_m2Collect_small64 {M : AllocCostModel} [HasFineReallocCredit
         (by omega) (by omega) (by omega) (by omega))).mono
       (by omega) (by omega) (by omega) (by omega)
 
-/-- Zero-net-live loop combinator with per-element `Δcum := c x` and uniform `(Δpeak, maxReq) := (p, r)`:
-sums `(xs.map c).sum` while keeping `Δlive = 0` and `Δpeak = p`. -/
-theorem phaseCredit_iter_sum_zero_live {α : Type} {M : AllocCostModel} [HasFineReallocCredit M]
-    {Step : α → List AllocEvent → Prop} (c : α → Nat) {p r : Nat} (xs : List α)
-    (hstep : ∀ x ∈ xs, PhaseCreditSpec M (Step x) (c x) 0 p r) :
-    PhaseCreditSpec M (IterSeqEnv Step xs) ((xs.map c).sum) 0 p r := by
-  induction xs with
-  | nil =>
-    exact (PhaseCreditSpec.nil M).mono
-      (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _) (Nat.zero_le _)
-  | cons x xs ih =>
-    have hx := hstep x List.mem_cons_self
-    have hxs := ih (fun y hy => hstep y (List.mem_cons_of_mem x hy))
-    exact (hx.seq hxs).mono
-      (by simp only [List.map_cons, List.sum_cons]; omega)
-      (by omega) (by omega) (by omega)
-
-theorem map_mul_sum_eq {α : Type} (f : α → Nat) (K : Nat) (xs : List α) :
-    (xs.map (fun x => f x * K)).sum = (xs.map f).sum * K := by
-  induction xs with
-  | nil => simp
-  | cons x xs ih =>
-    simp only [List.map_cons, List.sum_cons, ih, Nat.add_mul]
-
 /-! ## `read_stdin` Doubling Schedule and Tight `M3` Bounds -/
 
 /-- `CliIo` doubling-schedule envelope (`K = 8`, `≤ 1 MiB`) for `signal_session_io::read_stdin`. -/
-def CliIoReadStdinEnv (r : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def CliIoReadStdinEnv (r : Nat) (evs : List AllocEvent) : Prop :=
   evs = cliIoCapEvents (cliIoReadCaps 8 r)
 
 /-- `CliIo` doubling-schedule envelope (`K = 9`, `≤ 2 MiB`) for `signal_session_io::read_file`. -/
-def CliIoReadFileEnv (r : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def CliIoReadFileEnv (r : Nat) (evs : List AllocEvent) : Prop :=
   evs = cliIoCapEvents (cliIoReadCaps 9 r)
 
 /-- Tight `read_stdin` (`j = 8`) `cumSmall` bound: `cliIoTightCumBound 8 = 573,696` B. -/
-def readStdinCliIoDeltaCumTight : Nat := 573696
+@[expose] def readStdinCliIoDeltaCumTight : Nat := 573696
 
-def readStdinCliIoDeltaLive : Nat := 1056771
+@[expose] def readStdinCliIoDeltaLive : Nat := 1056771
 
 /-- `read_stdin` (`j = 8`) `peakLarge` overlap bound: `cliIoStepPeakBound 8 = 1,589,254` B. -/
-def readStdinCliIoDeltaPeak : Nat := 1589254
+@[expose] def readStdinCliIoDeltaPeak : Nat := 1589254
 
-def readStdinCliIoMaxReq : Nat := 1048576
+@[expose] def readStdinCliIoMaxReq : Nat := 1048576
 
 /-- Tight `read_file` (`j = 9`) `cumSmall` bound: `cliIoTightCumBound 9 = 573,818` B. -/
-def readFileCliIoDeltaCumTight : Nat := 573818
+@[expose] def readFileCliIoDeltaCumTight : Nat := 573818
 
-def readFileCliIoDeltaLive : Nat := 2105347
+@[expose] def readFileCliIoDeltaLive : Nat := 2105347
 
 /-- `read_file` (`j = 9`) `peakLarge` overlap bound: `cliIoStepPeakBound 9 = 3,162,118` B. -/
-def readFileCliIoDeltaPeak : Nat := 3162118
+@[expose] def readFileCliIoDeltaPeak : Nat := 3162118
 
-def readFileCliIoMaxReq : Nat := 2097152
+@[expose] def readFileCliIoMaxReq : Nat := 2097152
 
 /-- Tight `read_stdin` (`cliIoReadCaps 8 r`, `≤ 1 MiB`) credit bound when
 `131072 ≤ smallMaxReq M < 262144`. -/

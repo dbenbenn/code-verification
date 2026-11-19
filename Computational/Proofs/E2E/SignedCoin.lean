@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux
+public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.ComposedPrefixHelpers
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
 
 /-!
 # Coin FS-AEAD adversaries on mixtures
@@ -19,7 +20,7 @@ import Computational.Proofs.E2E.ComposedPrefixHelpers
 (`C o >>= fun _ => sampleT Bool`) to the expected FS-AEAD advantage across the prefix `oa`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 

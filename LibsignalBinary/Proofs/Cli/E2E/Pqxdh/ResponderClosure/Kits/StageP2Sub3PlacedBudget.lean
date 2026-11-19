@@ -12,23 +12,27 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3AuxPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesAuxBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3AuxPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesAuxBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub3Aux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Substage P2.3
@@ -37,7 +41,7 @@ Defines `P2Sub3DetPostPollEnv` and proves `RustCliAllocBudget M` / `VmPreserved`
 Substage P2.3 (`+0x1460 → +0x0d5c` on `Ok`, or `+0x0998` Arm 2) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -138,24 +142,24 @@ local macro "sep_norm" : tactic =>
 /-- Exact deterministic post-`kpkKit.getPoll` events prior to `+0x0d04` (`p2Sub3TailAllocEvents`):
 `__rust_dealloc(kpkBoxSize, 8)` on the KPK poll future box, `kemKeyPairFromPubPrivEvents`
 (`alloc 1568`, `alloc 3168`), and `p2KpkVecFreeEvents` freeing the cloned record buffers. -/
-def p2Sub3PreTailEvents (kpkBoxSize pubCap privCap sigCap : Nat) : List AllocEvent :=
+@[expose] def p2Sub3PreTailEvents (kpkBoxSize pubCap privCap sigCap : Nat) : List AllocEvent :=
   rustDeallocEvents kpkBoxSize 8 ++ kemKeyPairFromPubPrivEvents ++
     p2KpkVecFreeEvents pubCap privCap sigCap
 
 /-- Exact deterministic post-`kpkKit.getPoll` events up to `dropSpe2` (`p2Sub3PreTailEvents`
 followed by the 21-byte `"missing pq ciphertext"` allocation `p2Sub3TailAllocEvents`). -/
-def p2Sub3DetPostPollEvents (kpkBoxSize pubCap privCap sigCap : Nat) : List AllocEvent :=
+@[expose] def p2Sub3DetPostPollEvents (kpkBoxSize pubCap privCap sigCap : Nat) : List AllocEvent :=
   p2Sub3PreTailEvents kpkBoxSize pubCap privCap sigCap ++ p2Sub3TailAllocEvents
 
 /-- Full post-`kpkKit.getPoll` `.ok`-branch event list including the `FreeOnlyEvs` deallocations
 `evs_drop` performed by `dropSpe2` before reaching `+0x0d5c`. -/
-def p2Sub3OkPostPollEvents (kpkBoxSize pubCap privCap sigCap : Nat)
+@[expose] def p2Sub3OkPostPollEvents (kpkBoxSize pubCap privCap sigCap : Nat)
     (evs_drop : List AllocEvent) : List AllocEvent :=
   p2Sub3DetPostPollEvents kpkBoxSize pubCap privCap sigCap ++ evs_drop
 
 /-- Exact deterministic allocator event envelope for all post-`kpkKit.getPoll` allocations and
 deallocations prior to `dropSpe2`'s `FreeOnlyEvs` drop. -/
-def P2Sub3DetPostPollEnv (kpkBoxSize pubCap privCap sigCap : Nat)
+@[expose] def P2Sub3DetPostPollEnv (kpkBoxSize pubCap privCap sigCap : Nat)
     (evs : List AllocEvent) : Prop :=
   evs = p2Sub3DetPostPollEvents kpkBoxSize pubCap privCap sigCap
 

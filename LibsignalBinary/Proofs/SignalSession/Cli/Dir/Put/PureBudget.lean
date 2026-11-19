@@ -10,7 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Pure
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Pure
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded `growOneDirRawSpec` for `Dir::put::<String>`
@@ -18,7 +19,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.Pure
 Defines `GrowOneDirEnv` and the budget-threaded `growOneDirRawSpec` over `rawVecGrowEvents 48 4 8`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,11 +32,11 @@ open CryptoVerification.RustHeap (vecAt)
 open CryptoVerification.SignalSession.Cli (GrowOneDirGhost dirEntryAt)
 
 /-- Deterministic `AllocEvent` envelope for `RawVec<(String, Vec<u8>)>::grow_one`. -/
-def GrowOneDirEnv (x : GrowOneDirGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def GrowOneDirEnv (x : GrowOneDirGhost) (evs : List AllocEvent) : Prop :=
   evs = rawVecGrowEvents 48 4 8 x.cap
 
 /-- Budget-threaded raw `grow_one` specification (`onPanic = ⌜False⌝` under `FitsEnv`). -/
-def growOneDirRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def growOneDirRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (stk : Nat) : Spec (GrowOneDirGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.v ∧ x.cap.toNat < 2 ^ 32 ∧

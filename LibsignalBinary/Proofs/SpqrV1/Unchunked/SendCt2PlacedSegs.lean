@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Defs
@@ -18,6 +18,7 @@ import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Mid
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<Ct1SentEkReceived>::send_ct2`: Relocatable `[LibsignalPlacement]` Segments 2–5a
@@ -28,7 +29,7 @@ Proves `[LibsignalPlacement]` Segments 2, 3, 4, and 5a (`+136 → +836`) for
 `<spqr::v1::unchunked::send_ct::Ct1SentEkReceived>::send_ct2`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Unchunked
 

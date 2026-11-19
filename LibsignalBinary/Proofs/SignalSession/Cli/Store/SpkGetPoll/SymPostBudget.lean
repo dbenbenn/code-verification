@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymPost
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymPost -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.PlacedCallSym
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Postcondition and Epilogue Predicates for `SpkGetPoll`
@@ -18,7 +20,7 @@ public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.SymPost
 Defines `spkPostQ`, `spkPanicQp`, and `spkEpiPre` over `CalleesBudget.spkGetPollInnerSpec`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -32,7 +34,7 @@ open CryptoVerification.SignalSession.Cli.Store.SpkGetPoll.Helpers
 open LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
   (spkGetPollInnerSpec)
 
-def spkPostQ {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def spkPostQ {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : DirGhost → BitVec 32 → List AllocEvent → Prop)
@@ -46,7 +48,7 @@ def spkPostQ {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → 
           (x, st) s0 sf ∗ R)) ∧
     sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf
 
-def spkPanicQp {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def spkPanicQp {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : DirGhost → BitVec 32 → List AllocEvent → Prop)
@@ -59,7 +61,7 @@ def spkPanicQp {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) �
         (spkGetPollInnerSpec rd pathOk A lim DecEnv GetEnv DecodeEnv calleeStk).onPanic
           (x, st) s0 sf ∗ R)
 
-def spkEpiPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def spkEpiPre {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (calleeStk : Nat) (x : PkPollGhost) (st' : M.σ) (s0 s : State)
     (D : SepProp)
     (u0 u1 u2 u3 u4 u5 u6 u7 u8 u9 u10 : BitVec 64)

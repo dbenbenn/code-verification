@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Refinement.Composed.Cli.Model
-public import Symbolic.Proofs.Tests.Model.ExplanationTightness.CliHndlWitness.Explains
+public import Symbolic.Proofs.Refinement.Composed.Cli.Model -- proof-setup: allow-public-import
+import Symbolic.Proofs.Tests.Model.ExplanationTightness.CliHndlWitness.Explains
+public import Symbolic.Specifications.Security.Model
 
 /-!
 # CLI-Realizable Harvest-Now-Decrypt-Later Witness
@@ -22,7 +23,7 @@ handshake (`AliceDone`), subsequently logs `BrokenDH`, and satisfies `HNDLPremis
 events are allowed.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

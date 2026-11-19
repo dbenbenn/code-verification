@@ -21,7 +21,6 @@ import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 public import Symbolic.Specifications.Security.AsmSecure
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import VCVio.Prelude.Core
@@ -44,7 +43,7 @@ attacker from `setupSent r` and the `send`, `recv`, and `leak` entries of an exp
 `Explains interp r S g ss vis evs` satisfies `AttackerKnows` on `runTrace r ss`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

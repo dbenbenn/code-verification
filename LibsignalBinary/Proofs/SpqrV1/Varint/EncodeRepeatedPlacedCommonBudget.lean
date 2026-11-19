@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommon
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Call-Step Helpers for `encode_repeated`
@@ -22,7 +23,7 @@ Provides `RustCliAllocBudget`-threaded call steppers under `EncRepeatedCalleeSav
 for `memcpy`, `encode_varint`, and `do_reserve_and_handle`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

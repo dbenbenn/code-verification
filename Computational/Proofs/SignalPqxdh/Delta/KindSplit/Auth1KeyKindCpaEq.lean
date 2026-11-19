@@ -13,7 +13,7 @@ public import Computational.Specifications.Pqxdh.Security.Auth.Headline
 public import Computational.Proofs.ReductionDsl.StepSimTwoStage -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.AtomicLift -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyAeadCpa -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKArms -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKSimBase -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindProgs -- proof-setup: allow-public-import
@@ -58,10 +58,6 @@ open Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.AuthCoreKS
   (aeadCpa1KeyKindProg_twoStageForgetSim)
 
 namespace Computational.Proofs.SignalPqxdh.Delta.KindSplit.Auth1KeyKindCpaEq
-
-theorem aeadCpaOldAtomicProg_def_eq (S : Setup) (b : QueryBudget) :
-    aeadCpaOldAtomicProg S b = liftAuth2Stage tlAuthPrim S (aeadCpaRedProg1Key S b.q_total) :=
-  rfl
 
 /-- Reference `AeadIndCpaAdv` induced by `aeadCpaOldAtomicProg S b`. -/
 @[expose] def aeadCpaOldAtomicAdv (S : Setup) (b : QueryBudget)
@@ -202,42 +198,6 @@ theorem aeadIndCpaExp_auth_eq_of_twoStageForgetSim
         let ct := Prim.aeadEnc mk chOut.1 (if bit then chOut.2.2 else chOut.2.1)
         let b' ← eval2Sim (some ct)
         return (b' == bit))
-
-theorem aeadIndCpa_auth_eq_of_twoStageForgetSim
-    (Prim : Primitives) (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forgetπ : (R_new.cpa b).π.denote → (aeadCpaOldAtomicProg S b).π.denote}
-    {forgetσ : (R_new.cpa b).σ.denote → (aeadCpaOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.cpa b).σ.denote → Prop}
-    {InvPause : (Fin m → Nat) → (R_new.cpa b).π.denote → (R_new.cpa b).σ.denote → Prop}
-    (hSim : TwoStageForgetSim (R_new.cpa b) (aeadCpaOldAtomicProg S b)
-      forgetπ forgetσ P B () Inv InvPause)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    AeadIndCpa Prim (R_new.eval.cpa b A) = AeadIndCpa Prim (aeadCpaOldAtomicAdv S b A) := by
-  unfold AeadIndCpa
-  rw [aeadIndCpaExp_auth_eq_of_twoStageForgetSim Prim S b R_new hSim A hA]
-
-theorem cpa_le_of_twoStageForgetSim
-    (Prim : Primitives) (S : Setup) (b : QueryBudget)
-    (R_new : Auth1KeyCostedReductionFamily S)
-    {forgetπ : (R_new.cpa b).π.denote → (aeadCpaOldAtomicProg S b).π.denote}
-    {forgetσ : (R_new.cpa b).σ.denote → (aeadCpaOldAtomicProg S b).σ.denote}
-    {m : Nat} {P : Fin m → AuthQuery S → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → Nat}
-    {Inv : (Fin m → Nat) → (R_new.cpa b).σ.denote → Prop}
-    {InvPause : (Fin m → Nat) → (R_new.cpa b).π.denote → (R_new.cpa b).σ.denote → Prop}
-    (hSim : TwoStageForgetSim (R_new.cpa b) (aeadCpaOldAtomicProg S b)
-      forgetπ forgetσ P B () Inv InvPause)
-    (A : BoundedAdv (AuthAdversary S) b)
-    (hA : ∀ (_ : Unit) (j : Fin m), A.1.run.IsQueryBoundP (isGamePred (G := authSpec S) (P j)) (B j)) :
-    AeadIndCpa Prim (aeadCpaReductionAuthFixed1Key S b A) ≤
-      AeadIndCpa Prim (R_new.eval.cpa b A) := by
-  rw [aeadIndCpa_auth_eq_of_twoStageForgetSim Prim S b R_new hSim A hA,
-    aeadCpaOldAtomicAdv_aeadIndCpa_eq Prim S b A]
-
-theorem pqxdhAuth1KeyKind_cpa_eq (S : Setup) (b : QueryBudget) :
-    (pqxdhAuth1KeyKindCostedSims S).cpa b = aeadCpa1KeyKindProg S b := rfl
 
 theorem aeadIndCpaExp_pqxdhAuth1KeyKind_eq
     (Prim : Primitives) (S : Setup) (b : QueryBudget)

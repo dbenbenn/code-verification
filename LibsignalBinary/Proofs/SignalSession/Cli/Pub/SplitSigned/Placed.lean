@@ -10,12 +10,15 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.SplitSigned.Base
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymD -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
 import all Init.Data.String.Defs
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `signal_session::public::split_signed` (Block `592`)
@@ -24,7 +27,7 @@ Verifies `splitSignedSpecPlaced` on Block `592` under `[LibsignalPlacement]`, wi
 transfer.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -215,7 +218,7 @@ theorem speAt_invalidState_intro_p (A : RustAlloc) (bundlePtr dst buf : BitVec 6
   rw [hgroup]
   exact sepConj_mono_right (sepConj_mono hvec hstr)
 
-def ssgMalfRO_p [LibsignalPlacement] : SepProp :=
+@[expose] def ssgMalfRO_p [LibsignalPlacement] : SepProp :=
   ((lsρ ssgMalfSym) ↦₆₄ᵣ malfLo) ∗
   (((lsρ ssgMalfSym) + 8#64) ↦ᵣ malfTail6) ∗
   ((lsρ ssgMalfSym) ↦ᵣ malfHead6) ∗

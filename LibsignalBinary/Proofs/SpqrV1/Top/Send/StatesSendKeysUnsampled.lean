@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `spqr::send::<HookRng>`: Scaffolding for Inlined `States::send` `.keysUnsampled` Arm
@@ -25,7 +26,7 @@ and callee contract predicates (`AuthMacHdrPinnedOkX`, `DoReserve2OkX`) for the 
 `.keysUnsampled` arm (`0x309d0..0x31458`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.Send
 
@@ -43,10 +44,7 @@ set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
-
-
-
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 theorem chunkedStatesAt_keysUnsampled_unfold (A : RustAlloc) {F : ShaCompress}
     (a : BitVec 64) (st : Chunked.SendEk.KeysUnsampled (spqrAuthApi F)) :
     chunkedStatesAt A a (.keysUnsampled st) =
@@ -244,57 +242,15 @@ theorem send_ct1_chunk_of_encaps1_none {F : ShaCompress} (K : MlKem)
   rw [encaps1_of_le_32 K st.uc.hdr h, hencaps]
   rfl
 
-theorem subroutine_ok_inImage {α : Type} {prog : Program} {entry : BitVec 64}
-    {spec : Spec α} (img : Obj.Image) (h : subroutine_ok prog entry spec) :
-    subroutine_ok prog entry (spec.inImage img) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  dsimp only [Spec.inImage] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact h.mono_outcome x R s0 hpc hrun hpre.2 hal fun _ hout => hout
-
-/-- `<spqr::authenticator::Authenticator>::mac_hdr` (`0x5e068`) meets `(authMacHdrPinnedSpec F A).inImage img`
-on `tripleRatchetProgAtExt img.base ext`. -/
-def AuthMacHdrPinnedOkX (img : Obj.Image) (F : ShaCompress) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr authMacHdrName)
-    ((authMacHdrPinnedSpec F A).inImage img)
-
-
-theorem authMacHdrPinned_ok_ext_x {img : Obj.Image}
-    {F : ShaCompress} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hconcat3 : SliceConcat3OkX img A ext)
-    (hhmac : HookSat ext libcruxHmacName (libcruxHmacSpec F A))
-    (hA : AllocContractsX img A ext) :
-    AuthMacHdrPinnedOkX img F A ext :=
-  authMacHdrPinned_ok_of_contracts_x himg hconcat3 (libcrux_hmac_ok_x hhmac) hA.dealloc
-
-/-- `alloc::raw_vec::RawVecInner<A>::do_reserve_and_handle [local#2]` (`0x37f7c`) meets
-`(doReserve1Raw32Spec A).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-def DoReserve2OkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr doReserve2Name)
-    ((doReserve1Raw32Spec A).inImage img)
-
-theorem doReserve2_ok_ext_x (img : Obj.Image) {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts img.base A ext) :
-    DoReserve2OkX img A ext :=
-  subroutine_ok_inImage img (do_reserve_2_raw32_ok_ext hA)
-
-
-
 /-- Inline 48-byte header words of `authenticatorPinAt A g p auth`. -/
-def authInlineWordsAt (g : AuthenticatorGhost) (p : BitVec 64) (auth : Authenticator) : SepProp :=
+@[expose] def authInlineWordsAt (g : AuthenticatorGhost) (p : BitVec 64) (auth : Authenticator) : SepProp :=
   (p ↦₆₄ g.rootKey.cap) ∗ ((p + 8#64) ↦₆₄ g.rootKey.ptr) ∗
     ((p + 16#64) ↦₆₄ BitVec.ofNat 64 auth.rootKey.length) ∗
     ((p + 24#64) ↦₆₄ g.macKey.cap) ∗ ((p + 32#64) ↦₆₄ g.macKey.ptr) ∗
     ((p + 40#64) ↦₆₄ BitVec.ofNat 64 auth.macKey.length)
 
 /-- Heap buffers of `authenticatorPinAt A g p auth` (independent of `p`). -/
-def authHeapBufs (A : RustAlloc) (g : AuthenticatorGhost) (auth : Authenticator) : SepProp :=
+@[expose] def authHeapBufs (A : RustAlloc) (g : AuthenticatorGhost) (auth : Authenticator) : SepProp :=
   RustHeap.vecU8Buf A g.rootKey.cap g.rootKey.ptr auth.rootKey ∗
     RustHeap.vecU8Buf A g.macKey.cap g.macKey.ptr auth.macKey
 
@@ -324,5 +280,4 @@ theorem authInlineWordsAt_entails_memRegion (g : AuthenticatorGhost) (p : BitVec
             (ProofLib.pointsTo64_entails_memRegion _ _)))))
 
 end CryptoVerification.SpqrV1.Top.Send
-
 

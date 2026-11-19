@@ -2087,12 +2087,12 @@ def HbStage2GlobalsPost (C : HbCliLayout) (S : HbStartupLayout) (hwcap : BitVec 
 private theorem Steps.of_tidOnly_running {prog : Program} {s sf : State}
     (hext : ∀ pc, prog.externAt? pc = none) (hsvc : prog.svc = Syscall.standard)
     (hsteps : Steps (prog.withSvc tidOnlySvc) s sf) (hrun_f : sf.status = .Running) :
-    Steps prog s sf ∧ sf.sigAltStack = s.sigAltStack := by
+    Steps prog s sf ∧ sf.sigAltStack = s.sigAltStack ∧ sf.sigPending = s.sigPending := by
   induction hsteps with
-  | refl => exact ⟨.refl _, rfl⟩
+  | refl => exact ⟨.refl _, rfl, rfl⟩
   | @step s1 s2 s3 h1 hrest ih =>
     have hr2 : s2.status = .Running := by cases hrest with | refl => exact hrun_f | step h2 _ => cases h2 <;> assumption
-    rcases ih hrun_f with ⟨hsteps_rest, hsas_rest⟩
+    rcases ih hrun_f with ⟨hsteps_rest, hsas_rest, hspnd_rest⟩
     have hf_eq : (prog.withSvc tidOnlySvc).fetchMem s1.mem s1.pc = prog.fetchMem s1.mem s1.pc := rfl
     cases h1 with
     | @exec inst hr1 hfe =>
@@ -2115,17 +2115,21 @@ private theorem Steps.of_tidOnly_running {prog : Program} {s sf : State}
           have hsas1 : ((prog.withSvc tidOnlySvc).evalInst (.system false 0#16) s1).sigAltStack = s1.sigAltStack := by
             rw [evalInst_eq_execInstWithSvc svcKeepsFrozen_tidOnlySvc, execInstWithSvc_svc0, Program.withSvc_svc, hs_tid]
             rfl
-          rw [hev_eq] at hsteps_rest hsas_rest hsas1
-          exact ⟨.step (Step.exec hr1 (hf_eq ▸ hfe)) hsteps_rest, hsas_rest.trans hsas1⟩
+          have hspnd1 : ((prog.withSvc tidOnlySvc).evalInst (.system false 0#16) s1).sigPending = s1.sigPending := by
+            rw [evalInst_eq_execInstWithSvc svcKeepsFrozen_tidOnlySvc, execInstWithSvc_svc0, Program.withSvc_svc, hs_tid]
+            rfl
+          rw [hev_eq] at hsteps_rest hsas_rest hsas1 hspnd_rest hspnd1
+          exact ⟨.step (Step.exec hr1 (hf_eq ▸ hfe)) hsteps_rest, hsas_rest.trans hsas1, hspnd_rest.trans hspnd1⟩
         · have hne : (96#64 == s1.readReg64 Reg.x8) = false := beq_eq_false_iff_ne.mpr (Ne.symm hx8)
           dsimp [tidOnlySvc, Syscall.dispatch, List.find?] at hr_svc; rw [hne] at hr_svc
           cases s1; cases hr_svc
       · have hnsvc0 : inst.isSvc0 = false := Bool.eq_false_iff.mpr hsvc0
         have hev1 := evalInst_eq_execInst_of_not_isSvc0 (prog.withSvc tidOnlySvc) hnsvc0 s1
         have hev2 := evalInst_eq_execInst_of_not_isSvc0 prog hnsvc0 s1
-        rw [hev1] at hsteps_rest hsas_rest
+        rw [hev1] at hsteps_rest hsas_rest hspnd_rest
         exact ⟨.step (hev2 ▸ Step.exec hr1 (hf_eq ▸ hfe)) hsteps_rest,
-          hsas_rest.trans (execInst_sigAltStack_of_not_isSvc0 hnsvc0 s1)⟩
+          hsas_rest.trans (execInst_sigAltStack_of_not_isSvc0 hnsvc0 s1),
+          hspnd_rest.trans (execInst_sigPending_of_not_isSvc0 hnsvc0 s1)⟩
     | halt_unmapped _ _ _ => cases s1; cases hr2
     | extern _ he _ _ => rw [Program.withSvc_externAt?, hext] at he; cases he
     | extern_fault _ he _ => rw [Program.withSvc_externAt?, hext] at he; cases he
@@ -2133,14 +2137,14 @@ private theorem Steps.of_tidOnly_running {prog : Program} {s sf : State}
 private theorem SepWP.of_tidOnlySvc {prog : Program} {target : BitVec 64} {s : State} {P : SepProp}
     {post : State → SepProp → Prop}
     (hext : ∀ pc, prog.externAt? pc = none) (hsvc : prog.svc = Syscall.standard)
-    (h : SepWP (prog.withSvc tidOnlySvc) target s P (fun sf Pf => sf.sigAltStack = s.sigAltStack → post sf Pf)) :
+    (h : SepWP (prog.withSvc tidOnlySvc) target s P (fun sf Pf => sf.sigAltStack = s.sigAltStack → sf.sigPending = s.sigPending → post sf Pf)) :
     SepWP prog target s P post := by
   apply SepWP.of_reaches_pc
   intro R hm hL
   rcases SepWP.to_reaches_pc h hm ((Program.withSvc_codeLoaded ..).mpr hL) with
     ⟨sf, hsteps, ⟨hpc, hrun, Pf, hmf, hp⟩ | ⟨_, hoom⟩⟩
-  · rcases Steps.of_tidOnly_running hext hsvc hsteps hrun with ⟨hstepsP, hsas⟩
-    exact ⟨sf, hstepsP, Or.inl ⟨hpc, hrun, Pf, hmf, hp hsas⟩⟩
+  · rcases Steps.of_tidOnly_running hext hsvc hsteps hrun with ⟨hstepsP, hsas, hspnd⟩
+    exact ⟨sf, hstepsP, Or.inl ⟨hpc, hrun, Pf, hmf, hp hsas hspnd⟩⟩
   · rcases (satisfies_pure_sepConj _ _ _).mp hoom with ⟨hf, _⟩; exact False.elim hf
 
 private theorem hbStageCodeChunk_withSvc {P : Program} {svc : State → State} :
@@ -2172,7 +2176,7 @@ theorem hbStage12_to_cMain {P : Program} {C : HbCliLayout} {S : HbStartupLayout}
           sf.readReg64 .x0 = BitVec.ofNat 64 inputs.argv.length ∧
           sf.readReg64 .x1 = sl.argvTableAddr ∧ sf.readReg64 .x2 = sl.envpTableAddr ∧
           sf.tpidrEl0 = C.std.builtinTlsAddr + 0xc8#64 ∧
-          sf.sigAltStack = s0.sigAltStack ∧ StdTlsFieldsPreserved s0 sf)
+          sf.sigAltStack = s0.sigAltStack ∧ sf.sigPending = s0.sigPending ∧ StdTlsFieldsPreserved s0 sf)
         ((stackAt sl.sp0 48 ∗ memRegion (sl.sp0 - 0x220#64) 0x1f0 ∗
           Stage1GlobalsPost C.std inputs sl ∗ HbStage1Got C S ∗
           HbStage2GlobalsPost C S inputs.init.auxv.hwcap ∗
@@ -2278,8 +2282,8 @@ theorem hbStage12_to_cMain {P : Program} {C : HbCliLayout} {S : HbStartupLayout}
     fun sf hpcf hrunf hspf hsp_alf hlrf hx0f hx1f hx2f hstdf => ?_
   wp_conv_pre => dsimp only [hbInitGlobalsPost]; simp only [sepExists_sepConj_left, sepExists_sepConj_right]
   apply SepWP.exists_elim; intro v_cpu
-  apply SepWP.done hpcf hrunf; intro hsas_f
-  refine ⟨⟨hspf, hsp_alf, hlrf, hx0f, hx1f, hx2f.trans henvp_eq, hstdf.2.2.1.trans htp1, hsas_f, htls1.trans hstdf.toTlsFields⟩, ?_⟩
+  apply SepWP.done hpcf hrunf; intro hsas_f hspnd_f
+  refine ⟨⟨hspf, hsp_alf, hlrf, hx0f, hx1f, hx2f.trans henvp_eq, hstdf.2.2.1.trans htp1, hsas_f, hspnd_f, htls1.trans hstdf.toTlsFields⟩, ?_⟩
   rw [← stackAt_eq_stackFrameAt sl.sp0 0x30]
   refine Entails.trans (Q := (memRegion (sl.sp0 - 0x220#64) 0x60 ∗ memRegion (sl.sp0 - 0x1c0#64) 0x100 ∗ stackFrameAt (sl.sp0 - 0x30#64) 0x90) ∗ _)
     (by sep_frame) ?_

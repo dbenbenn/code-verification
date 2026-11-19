@@ -10,14 +10,36 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Pqxdh.Security.HeadlineDelta
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyGapDh -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyCoupling
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyGapDh
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveShallow -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveGapDhPre -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 import VCVio.CryptoFoundations.SecExp.Measure
+public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyDefs
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyCD
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSim
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.MeasurableSpace.Defs
+import PolyFun.Control.Monad.Support
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.OracleComp.OracleComp
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.QueryImpl.Basic
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
 
 /-!
 # Active Creation-Order One-Key `GapDhWithSign` `DH1` and `DH3` Bounds
@@ -175,38 +197,6 @@ theorem keyInd1KeyAdvG3_eq_keyIndAdvG3_1Key (S : Setup) (P : Primitives)
   unfold keyInd1KeyAdvG3 keyIndAdvG3_1Key keyInd1KeyExpG3 keyIndExpG3_1Key
     finalizeKeyIndG3 keyInd1KeyAllTestedClean
   rw [hRun]
-
-theorem ki1KeyActiveGapDh_of_evalEq (S : Setup)
-    (gdh0 gdh : (b : QueryBudget) → BoundedAdv (KeyIndAdversary S) b → GapDhWithSignAdv)
-    (h0 : KI1KeyActiveG3BoundStmt S gdh0)
-    (hEq : ∀ P b A,
-      GapDhWithSign P P.isValidDhTriple P.pow8 (gdh b A) =
-      GapDhWithSign P P.isValidDhTriple P.pow8 (gdh0 b A)) :
-    KI1KeyActiveG3BoundStmt S gdh := by
-  intro P hP δ hδ b A
-  have hReal :
-      GapDhWithSignReal P P.isValidDhTriple P.pow8 (gdh b A) =
-      GapDhWithSignReal P P.isValidDhTriple P.pow8 (gdh0 b A) :=
-    congrArg ENNReal.toReal (hEq P b A)
-  have hBound := h0 P hP δ hδ b A
-  dsimp only at hBound ⊢
-  rw [hReal]
-  exact hBound
-
-/-- Transfers `KI1KeyActiveG3BoundStmt S` along `GapDhWithSignReal` equality under
-    `CryptoWellFormedPrimitivesδ P`. -/
-theorem ki1KeyActiveGapDh_of_realEq (S : Setup)
-    (gdh0 gdh : (b : QueryBudget) → BoundedAdv (KeyIndAdversary S) b → GapDhWithSignAdv)
-    (h0 : KI1KeyActiveG3BoundStmt S gdh0)
-    (hEq : ∀ P, CryptoWellFormedPrimitivesδ P → ∀ b A,
-      GapDhWithSignReal P P.isValidDhTriple P.pow8 (gdh b A) =
-      GapDhWithSignReal P P.isValidDhTriple P.pow8 (gdh0 b A)) :
-    KI1KeyActiveG3BoundStmt S gdh := by
-  intro P hP δ hδ b A
-  have hBound := h0 P hP δ hδ b A
-  dsimp only at hBound ⊢
-  rw [hEq P hP b A]
-  exact hBound
 
 /-! ## Flat-index averaging decomposition -/
 
@@ -1991,7 +1981,7 @@ private theorem pqxdhKeyIndFgOrdPreImpl1Key_preserves_spkTargetRevealed {S : Set
     bIdx < S.N_spk_tot ∧ spkTargetRevealed bIdx x.2 = true := by
   unfold spkTargetRevealed at hRev
   rcases Bool.and_eq_true_iff.mp hRev with ⟨hDec, hAll⟩
-  have hFired : hasFiredSpk S bIdx hst := @of_decide_eq_true _ (Classical.propDecidable _) hDec
+  have hFired : hasFiredSpk S bIdx hst := of_decide_eq_true hDec
   have hbLt : bIdx < S.N_spk_tot := by
     rcases hFired with ⟨u0, j0, rfl, _⟩
     exact spkSlotFlatIdx_lt S u0.isLt j0.isLt
@@ -2021,8 +2011,8 @@ private theorem pqxdhKeyIndFgOrdPreImpl1Key_preserves_spkTargetRevealed {S : Set
   · unfold pqxdhKeyIndFgOrdPreImpl1Key at hx
     simp only [StateT_run_mk] at hx
     rw [pqxdhKeyIndFgPreImpl1Key_eq_of_ne_initPrin useDh1 _ _ _ _ P q hNeInit] at hx
-    have hFired' : @decide (hasFiredSpk S bIdx x.2) (Classical.propDecidable _) = true :=
-      @decide_eq_true _ (Classical.propDecidable _)
+    have hFired' : decide (hasFiredSpk S bIdx x.2) = true :=
+      decide_eq_true
         ((pqxdhKeyIndFgPreImpl_preserves_hasFired useDh1 (dynTargetIdx useDh1 tOrd q hst)
           (dynSpkIdx spkOrd q hst) (some uSk) (some vSk) P q hst x hx).1 bIdx hFired)
     unfold spkTargetRevealed
@@ -2316,8 +2306,8 @@ private theorem spkTargetRevealed_of_absent {S : Setup} (bIdx : Nat)
     rcases List.any_eq_true.mp hAny with ⟨⟨k, b⟩, hMem, hkEq⟩
     have hk : k = (u0.val, j0.val) := beq_iff_eq.mp hkEq
     exact hAbs (k, b) hMem (by simp [hk, spkBundleFlatIdxVal, spkBundleFlatIdx])
-  have hDec : @decide (hasFiredSpk S bIdx hst) (Classical.propDecidable _) = false :=
-    @decide_eq_false _ (Classical.propDecidable _) hNotFired
+  have hDec : decide (hasFiredSpk S bIdx hst) = false :=
+    decide_eq_false hNotFired
   rw [hDec, Bool.false_and]
 
 private theorem deadDh1_of_absent {S : Setup} (uIdx : Nat) (hst : KeyIndFgCutoffState S)
@@ -2375,24 +2365,6 @@ private theorem bundleSignedMessages_of_absent (uIdx : Nat)
     rintro ⟨⟨u, j⟩, b⟩ hMem
     simpa [beq_iff_eq] using hAbs ((u, j), b) hMem
   rw [hF]; rfl
-
-private theorem validOrdInv_of_validKeyIndEcFg {S : Setup} (spkOrd : Nat) (V : Bytes)
-    (hst : KeyIndFgCutoffState S)
-    (hVEc : ValidKeyIndEcFg S hst.base)
-    (hSpkV : spkTargetIsV (spkSlotAtOrd S hst.base spkOrd) V hst = true) :
-    ValidOrdInv spkOrd V hst := by
-  refine ⟨hVEc.1.1, hVEc.2.1.1, fun s hs => ?_, hSpkV⟩
-  have hSend : IsSendSessionId S s.sid :=
-    hVEc.2.2.2.1.1 s.sid (by
-      simp only [List.mem_map]
-      exact ⟨(s.sid, s.hdr.ekAPk), List.mem_map.mpr ⟨s, hs, rfl⟩, rfl⟩)
-  cases hSid : s.sid with
-  | sendOPK u i =>
-    exact Nat.lt_of_lt_of_le (initSessionSlotIdx_sendOPK_lt u i) (Nat.le_add_right _ _)
-  | sendNoOPK u i =>
-    exact initSessionSlotIdx_sendNoOPK_lt u i
-  | recvOPK _ _ _ => rw [hSid] at hSend; cases hSend
-  | recvNoOPK _ _ _ => rw [hSid] at hSend; cases hSend
 
 private theorem deadDh1Full_retarget {S : Setup} (u0 u1 b0 b1 : Nat)
     (hst : KeyIndFgCutoffState S)
@@ -2554,13 +2526,6 @@ private theorem prinSlotAtOrd_eq_ite {S : Setup} (st : KeyIndState S) (pOrd : Na
   split_ifs with h
   · rfl
   · exact (prinSlotAtOrd_of_ge st pOrd (Nat.le_of_not_lt h)).symm
-
-private theorem spkSlotAtOrd_eq_ite {S : Setup} (st : KeyIndState S) (spkOrd : Nat) :
-    (if spkOrd < st.spkBundles.length then spkSlotAtOrd S st spkOrd else S.N_spk_tot) =
-      spkSlotAtOrd S st spkOrd := by
-  split_ifs with h
-  · rfl
-  · exact (spkSlotAtOrd_of_ge st spkOrd (Nat.le_of_not_lt h)).symm
 
 private theorem sessSlotAtOrd_eq_ite {S : Setup} (st : KeyIndState S) (sOrd : Nat) :
     (if sOrd < st.sessions.length then sessSlotAtOrd S st sOrd else S.N_send_tot) =

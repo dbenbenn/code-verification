@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Auth1KeyStatements
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Auth1KeyStatements
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3 -- proof-setup: allow-public-import
 import VCVio.OracleComp.EvalDist.Measure
 
 /-!
@@ -21,7 +21,7 @@ import VCVio.OracleComp.EvalDist.Measure
 bundle provenance checks.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open scoped ENNReal
 open OracleSpec OracleComp
@@ -29,7 +29,7 @@ open SignalPqxdh SignalPqxdh.Security
 namespace Proofs.SignalPqxdh.Security
 
 /-- One-key `pqxdhAuthWithProvImpl`: `.initPrin` from `pqxdhAuthImpl1Key`. -/
-def pqxdhAuthWithProvImpl1Key (S : Setup) (P : Primitives) (provFn : ProvFnType) :
+@[expose] def pqxdhAuthWithProvImpl1Key (S : Setup) (P : Primitives) (provFn : ProvFnType) :
     QueryImpl (authSpec S) (StateT (AuthState S) ProbComp) := fun q =>
   match q with
   | .initPrin u => pqxdhAuthImpl1Key S P (.initPrin u)
@@ -87,32 +87,32 @@ theorem pqxdhAuthWithProvImpl1Key_hasWonAuth_sticky (S : Setup) (P : Primitives)
     exact pqxdhAuthWithProvImpl_hasWonAuth_sticky S P provFn q st hWon
 
 /-- Frozen one-key provenance oracle. -/
-def pqxdhAuthWithProvFrozenImpl1Key (S : Setup) (P : Primitives) (provFn : ProvFnType) :
+@[expose] def pqxdhAuthWithProvFrozenImpl1Key (S : Setup) (P : Primitives) (provFn : ProvFnType) :
     QueryImpl (authSpec S) (StateT (AuthState S) ProbComp) :=
   freezeImpl AuthState.hasWonAuth (fun _ => .noneResp) (pqxdhAuthWithProvImpl1Key S P provFn)
 
-noncomputable def runAuthWithProvFrozen1Key (prov : ProvFnType) (S : Setup) (P : Primitives)
+@[expose] def runAuthWithProvFrozen1Key (prov : ProvFnType) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp (Bool × Bool × AuthState S) := do
   let secb ← $ᵗ Bool; let initSt := AuthState.empty S secb
   let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT (AuthState S) ProbComp) +
     pqxdhAuthWithProvFrozenImpl1Key S P prov
   let (b', finalSt) ← (simulateQ impl A.run).run initSt; return (secb, b', finalSt)
 
-noncomputable def authExpG0Frozen1Key (S : Setup) (P : Primitives)
+@[expose] def authExpG0Frozen1Key (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   runAuthWithProvFrozen1Key (checkBundleProvenance P) S P A >>= contAuth S P
 
-noncomputable def authExpG0_1WithProvFrozen1Key (prov : ProvFnType) (S : Setup) (P : Primitives)
+@[expose] def authExpG0_1WithProvFrozen1Key (prov : ProvFnType) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   runAuthWithProvFrozen1Key prov S P A >>= fun a =>
     if hasEcPkCollisionAuth P a.2.2 then $ᵗ Bool else contAuth S P a
 
-noncomputable def authExpG1WithProvFrozen1Key (prov : ProvFnType) (S : Setup) (P : Primitives)
+@[expose] def authExpG1WithProvFrozen1Key (prov : ProvFnType) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   runAuthWithProvFrozen1Key prov S P A >>= fun a =>
     if hasEcPkCollisionAuth P a.2.2 || hasBadSigAuth a.2.2 then $ᵗ Bool else contAuth S P a
 
-noncomputable def authExpG2_1WithProvFrozen1Key (prov : ProvFnType) (S : Setup) (P : Primitives)
+@[expose] def authExpG2_1WithProvFrozen1Key (prov : ProvFnType) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ProbComp Bool :=
   runAuthWithProvFrozen1Key prov S P A >>= fun a =>
     if (hasEcPkCollisionAuth P a.2.2 || hasBadSigAuth a.2.2) ||

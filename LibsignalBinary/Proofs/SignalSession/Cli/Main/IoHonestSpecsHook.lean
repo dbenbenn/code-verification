@@ -10,20 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model
 import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadStdinBudgetPlaced
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTraced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
-# Exact-Hook → Honest-Spec Bridges for `write_file` and `write_stdout`
-(`LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHonestSpecsHook`)
+# Exact-Hook → Honest-Spec Bridges for `write_file` and `write_stdout` (`Cli.Main.IoHonestSpecsHook`)
 
-- **Role**: `Role::Proof` (outside the TCB). Untrusted groundwork for #1255 (HOOKS-PREP).
-- **Overview**:
-  Proves that the idealized hooks `CliRun.writeFileHook` and `CliRun.writeStdoutHook` satisfy the
-  honest contracts `writeFileHonestCore` / `writeFileSpecPlacedSat` and
-  `writeStdoutHonestCore` / `writeStdoutSpecPlacedSat` (`IoHonestSpecs.lean`), so `HookSat`-backed
-  sibling carriers can be instantiated from today's concrete hook table.
+Proves that the idealized hooks `CliRun.writeFileHook` and `CliRun.writeStdoutHook` satisfy
+`writeFileHonestCore` / `writeFileSpecPlacedSat` and
+`writeStdoutHonestCore` / `writeStdoutSpecPlacedSat` (`IoHonestSpecs.lean`), enabling
+`HookSat`-backed carriers to be instantiated from the concrete hook table.
 -/
 
 public section

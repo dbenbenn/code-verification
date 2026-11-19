@@ -29,15 +29,15 @@ set_option autoImplicit false
 namespace Symbolic.BugInjection.Disproofs.Impl.SmallSubgroup.Nodes
 
 open Symbolic.BugInjection (cliCompShape)
-open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (cliCompFitsPinned)
+open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (CliSetupMatchesPinned)
 
 #guard CryptoVerification.BugInjection.mutant == "cheval26-small-subgroup"
 
 /-- `Cheval26SmallSubgroupHighBitCli.trace` admits no valid symbolic explanation under any
-interpretation and record state permitted by `cliCompFitsPinned setup`. -/
+interpretation and record state permitted by `CliSetupMatchesPinned setup`. -/
 theorem spec_half_pinned :
     cliCompShape.SpecHalf
-      (cliCompFitsPinned Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
+      (CliSetupMatchesPinned Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.setup)
       Symbolic.BugInjection.Witnesses.Cheval26SmallSubgroupHighBitCli.trace :=
   Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupHighBitComp443.CliBridge.spec_half_pinned
 

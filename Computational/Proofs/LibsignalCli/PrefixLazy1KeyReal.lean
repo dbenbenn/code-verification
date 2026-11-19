@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.TagSync1KeyReal
-public import Computational.Proofs.LibsignalCli.PrefixCouplingWithCore
+public import Computational.Proofs.E2E.TagSync1KeyReal -- proof-setup: allow-public-import
+public import Computational.Proofs.LibsignalCli.PrefixCouplingWithCore -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.PrefixCouplingWith
 import Computational.Proofs.SignalWireRoundTrip
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.BhKindCouplingV1
 
 /-!
 # Standard-Model 1-Key Real-HKDF Prefix-Hybrid Coupling
@@ -23,7 +25,7 @@ discharging the lazy `DRKey` replacement premise via `DrvTagSyncInv1KeyReal` to 
 unconditional `qStart`-step prefix-hybrid telescope.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false

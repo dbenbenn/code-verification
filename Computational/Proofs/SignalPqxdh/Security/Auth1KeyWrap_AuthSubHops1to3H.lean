@@ -9,32 +9,32 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G3
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H3
-public import Computational.Proofs.SignalPqxdh.Security.SaltKey
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H2
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3G3
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.SaltKey
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H2
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 public import VCVio.EvalDist.Monad.Basic
 public import VCVio.OracleComp.EvalDist.Measure
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3D
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3E
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H1
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H2
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H3
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3B
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3D
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3F
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G2
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3G3
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H2
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops1to3H3 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_Collisions
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key `PrfMsgKeys` Sub-Hop (`G3.7` to `G3.8`)
@@ -43,7 +43,7 @@ Connects the single-slot `PrfMsgKeys` reduction worlds to cutoff experiments and
 single-identity-key sub-hop bound `hop_G3_7_G3_8_1Key` over `pqxdhAuthImpl1KeyG`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 set_option maxHeartbeats 400000
 open OracleSpec OracleComp MeasureTheory ENNReal BigOperators
@@ -86,230 +86,6 @@ theorem support_authCkOtherStep_props1Key {S : Setup} (P : Primitives)
   simp only [MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hy
   rcases hy with ⟨⟨resp, base'⟩, hbase, rfl⟩
   exact ⟨rfl, hPres (resp, base') hbase, rfl, rfl⟩
-
-theorem authMkStepRedProb_evalPrfMkReal1Key {S : Setup} (P : Primitives) (idx : Nat)
-    (mkSeedStar : Bytes) (q : AuthQuery S) (hWF : WellFormedPrimitivesδ P)
-    (st : (AuthHybridStateFixed S × Bool) × PrfMkCache)
-    (hInv : InvMkTrue S P idx mkSeedStar st) :
-    ((prfMkAuthImpl1Key S P idx mkSeedStar q).run (restoreAuthFixedMkAtIdx idx mkSeedStar st.1.1) =
-      Prod.map id (fun ((hst', _), _) => restoreAuthFixedMkAtIdx idx mkSeedStar hst') <$>
-        ((authMkRedProbImpl1Key S P idx (evalPrfMkReal P mkSeedStar) q).run st)) ∧
-    (∀ x ∈ support ((authMkRedProbImpl1Key S P idx (evalPrfMkReal P mkSeedStar) q).run st),
-      InvMkTrue S P idx mkSeedStar x.2) := by
-  rcases st with ⟨⟨hst, sentChal⟩, cache⟩
-  dsimp only [prfMkAuthImpl1Key, authMkRedProbImpl1Key, StateT.run_mk]
-  cases q with
-  | sendOPK u i bundle m0 m1 =>
-    unfold authMkStepWith1Key authMkStepRedProb1Key
-    dsimp only
-    split
-    · refine ⟨by simp [Prod.map], fun x hx => ?_⟩
-      simp only [support_pure, Set.mem_singleton_iff] at hx
-      subst hx; exact hInv
-    · obtain ⟨hEq, hSupp⟩ := authMkSendRedProb_evalPrfMkReal P idx mkSeedStar (.sendOPK u i)
-        trivial hWF
-        u bundle m0 m1 hst sentChal cache hInv
-      exact ⟨hEq.symm, hSupp⟩
-  | sendNoOPK u i bundle m0 m1 =>
-    unfold authMkStepWith1Key authMkStepRedProb1Key
-    dsimp only
-    split
-    · refine ⟨by simp [Prod.map], fun x hx => ?_⟩
-      simp only [support_pure, Set.mem_singleton_iff] at hx
-      subst hx; exact hInv
-    · obtain ⟨hEq, hSupp⟩ := authMkSendRedProb_evalPrfMkReal P idx mkSeedStar (.sendNoOPK u i)
-        trivial hWF
-        u bundle m0 m1 hst sentChal cache hInv
-      exact ⟨hEq.symm, hSupp⟩
-  | recvOPK k j o msg =>
-    unfold authMkStepWith1Key authMkStepRedProb1Key
-    dsimp only
-    change (authMkRecvWith S P (fun s => if s == idx then pure mkSeedStar else sampleBytes32)
-        (fun s => decide (s < idx)) msg
-        (prepareAuthHybridRecvOPK true P k j o msg (restoreAuthMkAtIdx idx mkSeedStar
-                                                     hst.toAuthHybridState))
-        (restoreAuthFixedMkAtIdx idx mkSeedStar hst) = _) ∧ _
-    rw [prepareAuthHybridRecvOPK_restoreAuthMkAtIdx]
-    obtain ⟨hEq, hSupp⟩ := authMkRecvRedProb_evalPrfMkReal P idx mkSeedStar msg
-      (hWF := hWF)
-      (prepareAuthHybridRecvOPK true P k j o msg hst.toAuthHybridState) hst sentChal cache hInv
-      (prepareAuthHybridRecvOPK_props P k j o msg hst.toAuthHybridState)
-    refine ⟨?_, fun x hx => ?_⟩
-    · rw [← hEq]
-      simp [Prod.map]
-    · simp only [MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hx
-      rcases hx with ⟨⟨⟨resp, hst'⟩, cache'⟩, hMem, rfl⟩
-      exact hSupp _ hMem
-  | recvNoOPK k j l msg =>
-    unfold authMkStepWith1Key authMkStepRedProb1Key
-    dsimp only
-    change (authMkRecvWith S P (fun s => if s == idx then pure mkSeedStar else sampleBytes32)
-        (fun s => decide (s < idx)) msg
-        (prepareAuthHybridRecvNoOPK true P k j l msg (restoreAuthMkAtIdx idx mkSeedStar
-                                                       hst.toAuthHybridState))
-        (restoreAuthFixedMkAtIdx idx mkSeedStar hst) = _) ∧ _
-    rw [prepareAuthHybridRecvNoOPK_restoreAuthMkAtIdx]
-    obtain ⟨hEq, hSupp⟩ := authMkRecvRedProb_evalPrfMkReal P idx mkSeedStar msg
-      (hWF := hWF)
-      (prepareAuthHybridRecvNoOPK true P k j l msg hst.toAuthHybridState) hst sentChal cache hInv
-      (prepareAuthHybridRecvNoOPK_props P k j l msg hst.toAuthHybridState)
-    refine ⟨?_, fun x hx => ?_⟩
-    · rw [← hEq]
-      simp [Prod.map]
-    · simp only [MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hx
-      rcases hx with ⟨⟨⟨resp, hst'⟩, cache'⟩, hMem, rfl⟩
-      exact hSupp _ hMem
-  | initPrin _ | corruptIK _ | genSPK _ _ | genOPK _ _ _ | registerKey _ | roQuery _
-          | roRootQuery _ _ | revealDhSecrets =>
-    unfold authMkStepWith1Key authMkStepRedProb1Key
-    dsimp only
-    refine ⟨?_, fun x hx => ?_⟩
-    · rw [authCkOtherStep_restoreAuthFixedMkAtIdx1Key]
-      simp [Prod.map, map_eq_bind_pure_comp]
-      rfl
-    · simp only [MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hx
-      rcases hx with ⟨⟨resp, hst'⟩, hMem, rfl⟩
-      have hOther := support_authCkOtherStep_props1Key P _ hst
-        (by intro _ _ _ _ _ h; cases h) (by intro _ _ _ _ _ h; cases h)
-        (by intro _ _ _ _ h; cases h) (by intro _ _ _ _ h; cases h)
-        (resp, hst') hMem
-      refine ⟨fun hS => ⟨(hInv.sentChal_imp hS).1, ?_⟩,
-              hOther.1 ▸ hInv.ideal_msgKeys, hOther.2.2.1 ▸ hInv.cache_msgKeys⟩
-      exact authSlotFired_of_usedSendSessions_eq_and_recvCount_le (hInv.sentChal_imp hS).2
-        hOther.2.1 (by dsimp only; rw [hOther.2.2.2])
-theorem evalDist_prfMsgKeysWorld_true_at_idx1Key (S : Setup) (P : Primitives) (idx : Nat)
-    (hWF : WellFormedPrimitivesδ P) (A : AuthAdversary S) :
-    𝒟[(do
-        let mkSeedStar ← sampleBytes32
-        let secb ← $ᵗ Bool
-        let initSt := AuthHybridStateFixed.empty S secb
-        let fullRed := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT ((AuthHybridStateFixed S × Bool) × PrfMkCache) ProbComp) +
-          authMkRedProbImpl1Key S P idx (evalPrfMkReal P mkSeedStar)
-        let (b', ((finalSt, _), _)) ← (simulateQ fullRed A.run).run ((initSt, false), [])
-        finalizeAuthFixed P secb b' finalSt.toAuthHybridState : ProbComp Bool)] =
-      𝒟[authMkCutoffExp1Key S P idx A] := by
-  rw [← evalDist_preSample_authMk_eq_cutoff1Key S P idx A]
-  refine OracleComp.evalDist_bind_congr_of_support sampleBytes32 _ _ (fun mkSeedStar _ => ?_)
-  refine OracleComp.evalDist_bind_congr_of_support ($ᵗ Bool) _ _ (fun secb _ => ?_)
-  have hInit : AuthHybridStateFixed.empty S secb =
-      restoreAuthFixedMkAtIdx idx mkSeedStar (AuthHybridStateFixed.empty S secb) := rfl
-  congr 1
-  symm
-  rw [hInit]
-  exact simulateQ_proj_inv_obs
-    (fun ((hst, _), _) => restoreAuthFixedMkAtIdx idx mkSeedStar hst) (InvMkTrue S P idx mkSeedStar)
-    (authMkRedProbImpl1Key S P idx (evalPrfMkReal P mkSeedStar)) (prfMkAuthImpl1Key S P idx mkSeedStar)
-    (fun q st hInv => authMkStepRedProb_evalPrfMkReal1Key P idx mkSeedStar q hWF st hInv)
-    A.run
-    ((AuthHybridStateFixed.empty S secb, false), []) (invMkTrue_empty S P idx mkSeedStar secb)
-    (fun (b', ((finalSt, _), _)) => finalizeAuthFixed P secb b' finalSt.toAuthHybridState)
-    (fun (b', finalSt) => finalizeAuthFixed P secb b' finalSt.toAuthHybridState) (fun _ _ => rfl)
-
-theorem authMkStepRedProb_evalPrfMkIdeal1Key {S : Setup} (P : Primitives) (idx : Nat) (q : AuthQuery S)
-    (st : (AuthHybridStateFixed S × Bool) × PrfMkCache)
-    (hInv : InvMkFalse S idx st) : ((authMkCutoffImpl1Key S P (idx + 1) q).run st.1.1 =
-      Prod.map id (fun ((hst', _), _) => hst') <$>
-        ((authMkRedProbImpl1Key S P idx evalPrfMkIdeal q).run st)) ∧
-    (∀ x ∈ support ((authMkRedProbImpl1Key S P idx evalPrfMkIdeal q).run st),
-      InvMkFalse S idx x.2) := by
-  rcases st with ⟨⟨hst, sentChal⟩, cache⟩
-  dsimp only [authMkCutoffImpl1Key, authMkRedProbImpl1Key, StateT.run_mk]
-  cases q with
-  | sendOPK u i bundle m0 m1 =>
-    unfold authMkStepWith1Key authMkStepRedProb1Key
-    dsimp only
-    split
-    · refine ⟨by simp [Prod.map], fun x hx => ?_⟩
-      simp only [support_pure, Set.mem_singleton_iff] at hx
-      subst hx; exact hInv
-    · obtain ⟨hEq, hSupp⟩ := authMkSendRedProb_evalPrfMkIdeal P idx (.sendOPK u i) trivial
-        u bundle m0 m1 hst sentChal cache hInv
-      exact ⟨hEq.symm, hSupp⟩
-  | sendNoOPK u i bundle m0 m1 =>
-    unfold authMkStepWith1Key authMkStepRedProb1Key
-    dsimp only
-    split
-    · refine ⟨by simp [Prod.map], fun x hx => ?_⟩
-      simp only [support_pure, Set.mem_singleton_iff] at hx
-      subst hx; exact hInv
-    · obtain ⟨hEq, hSupp⟩ := authMkSendRedProb_evalPrfMkIdeal P idx (.sendNoOPK u i) trivial
-        u bundle m0 m1 hst sentChal cache hInv
-      exact ⟨hEq.symm, hSupp⟩
-  | recvOPK k j o msg =>
-    unfold authMkStepWith1Key authMkStepRedProb1Key
-    dsimp only
-    obtain ⟨hEq, hSupp⟩ := authMkRecvRedProb_evalPrfMkIdeal P idx msg
-      (prepareAuthHybridRecvOPK true P k j o msg hst.toAuthHybridState) hst sentChal cache hInv
-      (prepareAuthHybridRecvOPK_props P k j o msg hst.toAuthHybridState)
-    refine ⟨?_, fun x hx => ?_⟩
-    · rw [← hEq]
-      simp [Prod.map]
-    · simp only [MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hx
-      rcases hx with ⟨⟨⟨resp, hst'⟩, cache'⟩, hMem, rfl⟩
-      exact hSupp _ hMem
-  | recvNoOPK k j l msg =>
-    unfold authMkStepWith1Key authMkStepRedProb1Key
-    dsimp only
-    obtain ⟨hEq, hSupp⟩ := authMkRecvRedProb_evalPrfMkIdeal P idx msg
-      (prepareAuthHybridRecvNoOPK true P k j l msg hst.toAuthHybridState) hst sentChal cache hInv
-      (prepareAuthHybridRecvNoOPK_props P k j l msg hst.toAuthHybridState)
-    refine ⟨?_, fun x hx => ?_⟩
-    · rw [← hEq]
-      simp [Prod.map]
-    · simp only [MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hx
-      rcases hx with ⟨⟨⟨resp, hst'⟩, cache'⟩, hMem, rfl⟩
-      exact hSupp _ hMem
-  | initPrin _ | corruptIK _ | genSPK _ _ | genOPK _ _ _ | registerKey _ | roQuery _
-          | roRootQuery _ _ | revealDhSecrets =>
-    unfold authMkStepWith1Key authMkStepRedProb1Key
-    dsimp only
-    refine ⟨?_, fun x hx => ?_⟩
-    · simp [Prod.map, map_eq_bind_pure_comp]
-    · simp only [MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hx
-      rcases hx with ⟨⟨resp, hst'⟩, hMem, rfl⟩
-      have hOther := support_authCkOtherStep_props1Key P _ hst
-        (by intro _ _ _ _ _ h; cases h) (by intro _ _ _ _ _ h; cases h)
-        (by intro _ _ _ _ h; cases h) (by intro _ _ _ _ h; cases h)
-        (resp, hst') hMem
-      have hRCEq : hst.recvCount ≤ hst'.recvCount := by
-        dsimp only at hOther; omega
-      refine ⟨fun hS => ⟨(hInv.sentChal_imp hS).1,
-                authSlotFired_of_usedSendSessions_eq_and_recvCount_le (hInv.sentChal_imp hS).2
-                  hOther.2.1 hRCEq⟩,
-              fun hNF => hInv.unfired_cache_nil
-                (authSlotFired_false_of_usedSendSessions_eq_and_recvCount_le
-                hOther.2.1 hRCEq hNF),
-              ?_, hOther.1 ▸ hInv.ideal_unique,
-              by dsimp only; rw [hOther.1, hOther.2.2.1]; exact hInv.cache_sub_mkSaltCache⟩
-      dsimp only
-      rw [hOther.1, hOther.2.1]
-      exact hInv.ideal_send
-theorem evalDist_prfMsgKeysWorld_false_at_idx1Key (S : Setup) (P : Primitives) (idx : Nat)
-    (A : AuthAdversary S) :
-    𝒟[(do
-        let _ ← sampleBytes32
-        let secb ← $ᵗ Bool
-        let initSt := AuthHybridStateFixed.empty S secb
-        let fullRed := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
-          (StateT ((AuthHybridStateFixed S × Bool) × PrfMkCache) ProbComp) +
-          authMkRedProbImpl1Key S P idx evalPrfMkIdeal
-        let (b', ((finalSt, _), _)) ← (simulateQ fullRed A.run).run ((initSt, false), [])
-        finalizeAuthFixed P secb b' finalSt.toAuthHybridState : ProbComp Bool)] =
-      𝒟[authMkCutoffExp1Key S P (idx + 1) A] := by
-  rw [evalDist_sampleBytes32_bind_const]
-  unfold authMkCutoffExp1Key
-  refine OracleComp.evalDist_bind_congr_of_support ($ᵗ Bool) _ _ (fun secb _ => ?_)
-  congr 1
-  symm
-  exact simulateQ_proj_inv_obs
-    (fun ((hst, _), _) => hst) (InvMkFalse S idx) (authMkRedProbImpl1Key S P idx evalPrfMkIdeal)
-    (authMkCutoffImpl1Key S P (idx + 1))
-    (fun q st hInv => authMkStepRedProb_evalPrfMkIdeal1Key P idx q st hInv)
-    A.run
-    ((AuthHybridStateFixed.empty S secb, false), []) (invMkFalse_empty S idx secb)
-    (fun (b', ((finalSt, _), _)) => finalizeAuthFixed P secb b' finalSt.toAuthHybridState)
-    (fun (b', finalSt) => finalizeAuthFixed P secb b' finalSt.toAuthHybridState) (fun _ _ => rfl)
 
 /-! ## Creation-order `PrfMsgKeys` hybrid -/
 
@@ -372,7 +148,7 @@ private def prfMkSlotsAuthImpl1Key (S : Setup) (P : Primitives) (idx : Nat) (mkS
     (fun s => if s == idx then pure mkSeedStar else sampleBytes32)
     (fun s => decide (s < idx)) q)
 
-private noncomputable def authMkSlotsPreSampleRun1Key (S : Setup) (P : Primitives)
+private def authMkSlotsPreSampleRun1Key (S : Setup) (P : Primitives)
     (idx : Nat) (mkSeedStar : Bytes) (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb
@@ -381,7 +157,7 @@ private noncomputable def authMkSlotsPreSampleRun1Key (S : Setup) (P : Primitive
   let (b', finalSt) ← (simulateQ fullImpl A.run).run initSt
   finalizeAuthFixed P secb b' finalSt.toAuthHybridState
 
-private noncomputable def authMkSlotsCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat)
+private def authMkSlotsCutoffExp1Key (S : Setup) (P : Primitives) (cutoff : Nat)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb

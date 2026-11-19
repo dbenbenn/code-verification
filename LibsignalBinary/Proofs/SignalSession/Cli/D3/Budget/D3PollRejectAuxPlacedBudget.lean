@@ -11,25 +11,24 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.CtEqSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V3StepsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkCliPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.LoadRec
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2TailPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V3StepsPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -37,6 +36,24 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.KitRelDet
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2StepsBBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V3StepsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
+public import ProofLib.RegChain
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegFromPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
 
 /-!
 # Shared Poll and Store Budget Helpers for Untyped `decrypt_prekey` Rejection
@@ -46,7 +63,7 @@ entry unpacking, untrusted-identity closure branch, and Stage-P1 bind helpers fo
 `PreKeySignalMessage` rejection.
 -/
 
-@[expose] public section
+public section
 
 open CryptoGames.LibsignalSession (GhostState IdentityKey PublicKey)
 open CryptoGames.LibsignalSessionApi (ApiError PreKeySignalMessage Session SessionRecord)
@@ -110,7 +127,7 @@ structure DecPkStoreOk (W : PEParams) (F : FsFiles) : Prop where
   baseKeysLt : ∀ i bs,
     CryptoVerification.SignalSession.Cli.StoresGhost.opened.kyber.lastResort.get cliIo.rd F (baseKeysName i) = .ok bs → bs.length < 2 ^ 32
 
-def DecPkStoreOkProp (W : PEParams) (F : FsFiles) : Prop :=
+@[expose] def DecPkStoreOkProp (W : PEParams) (F : FsFiles) : Prop :=
   (∀ bs, CryptoVerification.SignalSession.Cli.StoresGhost.opened.identity.own.get cliIo.rd F (utf8 "identity-key-pair") = .ok bs → bs.length < 2 ^ 32) ∧
   PreKeyFilesWf W F ∧
   (∀ i bs, CryptoVerification.SignalSession.Cli.StoresGhost.opened.kyber.lastResort.get cliIo.rd F (baseKeysName i) = .ok bs → bs.length < 2 ^ 32)
@@ -121,7 +138,7 @@ theorem DecPkStoreOk.of_prop {W : PEParams} {F : FsFiles} (h : DecPkStoreOkProp 
 theorem DecPkStoreOk.toProp {W : PEParams} {F : FsFiles} (h : DecPkStoreOk W F) :
     DecPkStoreOkProp W F := ⟨h.keyPairLt, h.preKeysWf, h.baseKeysLt⟩
 
-def MsgCondPkToENone (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def MsgCondPkToENone (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   (∃ body : List (BitVec 8), CryptoVerification.SignalSession.Cli.RunProofs.Pksm.pksmParse body = some pm) ∧
   pkToE? pm = none ∧ ¬ SameServiceId peer me ∧
@@ -158,11 +175,11 @@ theorem decPkDef_eq_some_none_of_d3b3
 theorem toRecord_currentSession_eq_pqSessionOf (x : RecordExtras) (g : GhostState (List (BitVec 8))) :
     (toRecord (extrasOf fun _ => x) g).currentSession = some (pqSessionOf x g) := rfl
 
-def DecPkOkD3Untyped (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def DecPkOkD3Untyped (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   DecPkStoreOk W F ∧ MsgCondPkToENone Scope F peer me pm
 
-def DecPkOkD3UntypedProp (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def DecPkOkD3UntypedProp (W : PEParams) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (F : FsFiles) (peer me : AddrVal) (pm : PreKeySignalMessage) : Prop :=
   DecPkStoreOkProp W F ∧ MsgCondPkToENone Scope F peer me pm
 
@@ -216,20 +233,6 @@ theorem cliKpkInvFull_of_storeOk {W : PEParams} {F : FsFiles}
     · decide
     · exact kyberRecordBytes_length_lt kid k
 
-theorem cliIdOwnInv_of_storeOkProp {W : PEParams} {F : FsFiles} (hd : DecPkStoreOkProp W F) :
-    CliIdOwnInv cliIo.rd F cliWrOk CryptoVerification.SignalSession.Cli.StoresGhost.opened.identity.own := cliIdOwnInv_of_storeOk (.of_prop hd)
-
-theorem cliPkInv_of_storeOkProp {W : PEParams} {F : FsFiles} (hd : DecPkStoreOkProp W F) (pid : BitVec 32) :
-    CliPkInv cliIo.rd F cliWrOk pid CryptoVerification.SignalSession.Cli.StoresGhost.opened.oneTime := cliPkInv_of_storeOk (.of_prop hd) pid
-
-theorem cliSpkInv_of_storeOkProp {W : PEParams} {F : FsFiles} (hd : DecPkStoreOkProp W F) (sid : BitVec 32) :
-    CliSpkInv cliIo.rd F cliWrOk sid CryptoVerification.SignalSession.Cli.StoresGhost.opened.signed := cliSpkInv_of_storeOk (.of_prop hd) sid
-
-theorem cliKpkInvFull_of_storeOkProp {W : PEParams} {F : FsFiles}
-    (hd : DecPkStoreOkProp W F) (kid ksid : BitVec 32) (kbk : PublicKey) :
-    CliKpkInvFull cliIo.rd F cliWrOk kid ksid kbk CryptoVerification.SignalSession.Cli.StoresGhost.opened.kyber :=
-  cliKpkInvFull_of_storeOk (.of_prop hd) kid ksid kbk
-
 theorem loadRec_of_cliPollSess_loadRel {A : RustAlloc} {b : BitVec 64}
     {Scope : SessionRecord (List (BitVec 8)) → Prop} {F : FsFiles} {peer : AddrGhost} {σ : DpKitStk}
     {opt : Option (SessionRecord (List (BitVec 8)))}
@@ -254,7 +257,7 @@ theorem currentSession_some_of_cliPollSessPlaced_loadRel [LibsignalPlacement] {A
 
 /-! ## 2. Budget Envelopes & Placed Stage P2 Hook/Callee Bundles on `cliExternsPlaced W` -/
 
-def StageP2V3RejectEnv : List AllocEvent → Prop :=
+@[expose] def StageP2V3RejectEnv : List AllocEvent → Prop :=
   SeqEnv (fun evs => evs = publicKeySerializeEvents)
     (SeqEnv (fun evs => evs = rustDeallocEvents 33 1)
       (SeqEnv (fun evs => evs = rustAllocEvents x3dhUnsupportedBytes.length 1) FreeOnlyEvs))
@@ -281,7 +284,7 @@ theorem fitsEnv_stageP2V3RejectEnv {M : AllocCostModel} {lim : BudgetLimits} {st
   exact ((fitsEvents_append M lim (rustDeallocEvents 33 1) _ _).mp
     (((fitsEvents_append M lim publicKeySerializeEvents _ st).mp h3).2)).2
 
-def DecPkD3UntypedPollEnv [LibsignalPlacement] {A : RustAlloc} (B : RunBudgets)
+@[expose] def DecPkD3UntypedPollEnv [LibsignalPlacement] {A : RustAlloc} (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (P2Env : DecPkGhost → Option (SessionRecord (List (BitVec 8))) → List AllocEvent → Prop)

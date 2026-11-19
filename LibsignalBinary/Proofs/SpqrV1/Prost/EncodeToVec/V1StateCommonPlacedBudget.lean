@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import ProofLib.SepLogic.WPp
 
@@ -23,7 +23,7 @@ together with `A.pool lim st`-threaded exact-capacity specifications (`etv*Budge
 and call wrappers at `s.sp = sp - 144#64`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 400000
@@ -336,7 +336,7 @@ theorem step_etv_encode_ct1Sent_call_placed {resStack : Nat}
 
 /-- Exact-capacity `A.pool lim st`-threaded contract for `encode<PolynomialEncoder>` at
 `s.sp = sp - 144#64` (`0` allocations, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def etvPolyEncoderBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def etvPolyEncoderBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EtvPolyEncoderGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -355,7 +355,7 @@ def etvPolyEncoderBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
 
 /-- Exact-capacity `A.pool lim st`-threaded contract for `encode<PolynomialDecoder>` at
 `s.sp = sp - 144#64` (`0` allocations, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def etvPolyDecoderBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def etvPolyDecoderBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EtvPolyDecoderGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -376,7 +376,7 @@ def etvPolyDecoderBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
 
 /-- Exact-capacity `A.pool lim st`-threaded contract for `encode<EkSentCt1Received>` at
 `s.sp = sp - 144#64` (`0` allocations, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def etvEkSentCt1ReceivedBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def etvEkSentCt1ReceivedBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EtvUnchunkedMsgEncodeGhost Unchunked4PBGhost V1State.Unchunked.EkSentCt1Received × M.σ) where
   pre := fun (x, st) s =>
@@ -397,7 +397,7 @@ def etvEkSentCt1ReceivedBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
 
 /-- Exact-capacity `A.pool lim st`-threaded contract for `encode<Ct1Sent>` at
 `s.sp = sp - 144#64` (`0` allocations, `onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def etvCt1SentBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def etvCt1SentBudgetExactSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (EtvUnchunkedMsgEncodeGhost Unchunked5PBGhost V1State.Unchunked.Ct1Sent × M.σ) where
   pre := fun (x, st) s =>

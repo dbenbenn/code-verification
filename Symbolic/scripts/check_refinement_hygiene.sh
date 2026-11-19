@@ -24,10 +24,12 @@ mkdir -p "$out"
 
 # `CryptoGames` primitive definitions (types, records, and reference functions, with no games,
 # advantages, or bounds) allowed in the statement closure of `compExternsSatisfiableCli` only.
-# The two `CliElfLib` headlines (`signal_session_secure_placed`, `comp_refines_cli_placed`) are
+# The two `CliElfLib` headlines (`signal_session_secure`, `comp_refines_cli`) are
 # checked separately in CI after `lake build CliElfLib`; this script passes the 12 default-build
 # headlines in `default_symbolic_headlines` below.
 cli_cryptogames=(
+  # FIPS 197 AES-256 block cipher (`aes256Enc`, `aes256Dec`).
+  LibsignalBinary/Specifications/CryptoGames/AEAD/Aes256.lean
   # AES-CBC decryption (`cbcDecRaw`, `cbcDecryptBlocks`, `chunks16`, `pkcs7Unpad`, `blockToBytesLE`).
   LibsignalBinary/Specifications/CryptoGames/AEAD/CBCDecDefs.lean
   # AES-CBC PKCS#7 encryption (`cbcPkcs7EncryptOnly`, `cbcScheme`, `cbcEncrypt`, `pkcs7Bytes`,
@@ -43,6 +45,15 @@ cli_cryptogames=(
   LibsignalBinary/Specifications/CryptoGames/Ratchet/CreateChainDefs.lean
   # `Crypto` record, `ShaCompress`, `PubKeyFn`, `aesCbcEncrypt`, and `aesCbcDecrypt`.
   LibsignalBinary/Specifications/CryptoGames/Ratchet/LibsignalSession.lean
+  # FIPS 180-4 SHA-512 compression (`sha512CompressState`, read by `realCliHooks`).
+  LibsignalBinary/Specifications/CryptoGames/Hash/Sha512.lean
+  # FIPS 202 Keccak / SHA-3 / SHAKE (called by the Kyber-1024 / ML-KEM-768 reference).
+  LibsignalBinary/Specifications/CryptoGames/Hash/Keccak.lean
+  # RFC 7748 X25519 (`x25519Ref`, `x25519PubFromSecretRef`).
+  LibsignalBinary/Specifications/CryptoGames/DH/X25519.lean
+  # Kyber-1024 round 3 and FIPS 203 ML-KEM-768 incremental (`kyber1024EncapsVec`,
+  # `kyber1024DecapsVec`, `mlkem768Incremental`).
+  LibsignalBinary/Specifications/CryptoGames/KEM/MlKem.lean
 )
 # Statement files whose source imports reach `LibsignalBinary/Specifications/` modules outside
 # the constant-level statement closure (via `ElfBinding.lean` and `CliBinaryPq.lean`). The
@@ -110,29 +121,18 @@ trusted=(
 )
 
 # Exemption 1 (`kept_theorems`): exact `file:name` allowlist of theorems in `trusted=()`
-# (`check_spec_theorems` rejects both unlisted theorems and stale entries). All 14 live in
+# (`check_spec_theorems` rejects both unlisted theorems and stale entries). All 6 live in
 # `LibsignalBinary/Specifications/` modules reached via `cli_wit` and are `sorry`-free:
 # - `MlKem.fromSeed_pk1`, `fromSeed_pk2` (used by `LibsignalSpqrV1/Hooks.lean`) and their `rfl`
 #   siblings `fromSeed_dk`, `fromSeed_hdr`, `fromSeed_ek`.
-# - `indcpaAdvantage_eq_boolDist`, `prfAdvantage_eq_boolDist` (used by `AEAD/CBC.lean` and
-#   `AEAD/EtM.lean`).
-# - `etm_correct`, the four HKDF effective-salt lemmas (DEV-LS25), and `tryDecryptFromRecord_error`
-#   / `messageEncrypt_error` in `LibsignalSession.lean`, kept alongside their definitions.
+# - `prfAdvantage_eq_boolDist` in `AEAD/EtMDefs.lean`.
 kept_theorems=(
   LibsignalBinary/Specifications/LibsignalSpqrV1/MlKem.lean:MlKem.fromSeed_dk
   LibsignalBinary/Specifications/LibsignalSpqrV1/MlKem.lean:MlKem.fromSeed_hdr
   LibsignalBinary/Specifications/LibsignalSpqrV1/MlKem.lean:MlKem.fromSeed_ek
   LibsignalBinary/Specifications/LibsignalSpqrV1/MlKem.lean:MlKem.fromSeed_pk1
   LibsignalBinary/Specifications/LibsignalSpqrV1/MlKem.lean:MlKem.fromSeed_pk2
-  LibsignalBinary/Specifications/CryptoGames/AEAD/EtMDefs.lean:indcpaAdvantage_eq_boolDist
   LibsignalBinary/Specifications/CryptoGames/AEAD/EtMDefs.lean:prfAdvantage_eq_boolDist
-  LibsignalBinary/Specifications/CryptoGames/AEAD/EtMDefs.lean:etm_correct
-  LibsignalBinary/Specifications/CryptoGames/AEAD/HKDFDefs.lean:hmacWith_append_zeros
-  LibsignalBinary/Specifications/CryptoGames/AEAD/HKDFDefs.lean:hkdfExtractRaw_eq_saltKey
-  LibsignalBinary/Specifications/CryptoGames/AEAD/HKDFDefs.lean:hkdfExtract_effSalt
-  LibsignalBinary/Specifications/CryptoGames/AEAD/HKDFDefs.lean:msgKeys_effSalt
-  LibsignalBinary/Specifications/CryptoGames/Ratchet/LibsignalSession.lean:tryDecryptFromRecord_error
-  LibsignalBinary/Specifications/CryptoGames/Ratchet/LibsignalSession.lean:messageEncrypt_error
 )
 
 # Exemption 2 (`str_allow_*`): bundle file-name literals and `"/"` in `WireFormat.parseBundleFiles`
@@ -266,10 +266,10 @@ self_test() {
   st_expect "theorems: unmodified copy" pass st_theorems
   t=${kept_theorems[0]%%:*}
   st_edit "$t" '{ print } END { print ""; print "theorem selfTestPlanted : True := trivial" }'
-  st_expect "theorems: planted 15th theorem" fail st_theorems
+  st_expect "theorems: planted 7th theorem" fail st_theorems
   st_restore "$t"
   g=${kept_theorems[-1]##*.}; g=${g##*:}; t=${kept_theorems[-1]%%:*}
-  st_edit "$t" "/^theorem.*[ .]$g[ (]/ { sub(/^theorem/, \"def\") } { print }"
+  st_edit "$t" "/^[[:space:]]*((public|private|protected|noncomputable)[[:space:]]+)*theorem.*[ .]$g[ (]/ { sub(/theorem/, \"def\") } { print }"
   cmp -s "$root/$t" "$scratch/$t" || st_expect "theorems: kept theorem gone" fail st_theorems
   cmp -s "$root/$t" "$scratch/$t" && { echo "FAIL: self-test could not demote $g"; bad=1; }
   st_restore "$t"

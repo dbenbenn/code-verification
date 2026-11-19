@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.EvictedMismatch.ProbeBound
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound
-public import Computational.Proofs.SpqrV1Sync.SendTotalExtras
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.EvictedMismatch.ProbeBound -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- proof-setup: allow-public-import
+public import Computational.Proofs.SpqrV1Sync.SendTotalExtras -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopSend
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TopRecvEqual
@@ -38,6 +38,7 @@ import ProofLib.BV.WidthNorm
 import ProofLib.SepLogic.WP.StateNorm
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.HelpersC
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.StateInv -- shake: keep
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 
 /-!
 # Hidden-Salt Coupling and SPQR V1 No-Wrong-Salt Bridge
@@ -47,7 +48,9 @@ receive-salt invariance (`spqrV1WitnessEvalSalt`), and `SpqrHistoryInv` to exclu
 `EvictedDeliverForgeEvent` on evicted honest wires under `spqrV1SessionUniformCoins`.
 -/
 
-@[expose] public section
+public section
+
+set_option autoImplicit true
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -71,7 +74,7 @@ variable {Pt PQ PQC : Type} [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [Inha
 
 /-- Invariant that any candidate pair `(s, r)` recorded in `tr.cand` satisfies
 `K.honestExchangeFails s r = true`. -/
-def KemCandValid {F : ShaCompress} (K : MlKem) (tr : KemFailTrackState F) : Prop :=
+@[expose] def KemCandValid {F : ShaCompress} (K : MlKem) (tr : KemFailTrackState F) : Prop :=
   ∀ p, tr.cand = some p → K.honestExchangeFails p.1 p.2 = true
 
 @[simp]
@@ -91,13 +94,6 @@ theorem stepKemFailSend_cand_eq (F : ShaCompress) (K : MlKem)
   dsimp only
   cases (tr.st Q).send K (coinBytes r) <;> rfl
 
-theorem stepKemFailSend_cand_some_of_some (F : ShaCompress) (K : MlKem)
-    (tr : KemFailTrackState F) (Q : Party) (r : BitVec 512)
-    (p : List.Vector (BitVec 8) 64 × List.Vector (BitVec 8) 32)
-    (hcand : tr.cand = some p) :
-    (stepKemFailSend F K tr Q r).cand = some p := by
-  rw [stepKemFailSend_cand_eq, hcand]
-
 @[simp]
 theorem stepKemFailDeliver_cand_eq (F : ShaCompress) (K : MlKem)
     (tr : KemFailTrackState F) (Q : Party) (j : ℕ) :
@@ -112,61 +108,6 @@ theorem stepKemFailDeliver_cand_eq (F : ShaCompress) (K : MlKem)
       split_ifs
       · rcases h3 : tr.c with _ | _ | ⟨s, r⟩ <;> rfl
       · rfl
-
-theorem stepKemFailSend_cand_valid (F : ShaCompress) (K : MlKem)
-    (tr : KemFailTrackState F) (Q : Party) (r : BitVec 512)
-    (hvalid : KemCandValid K tr) :
-    KemCandValid K (stepKemFailSend F K tr Q r) := by
-  intro p hp
-  rw [stepKemFailSend_cand_eq] at hp
-  cases htc : tr.cand with
-  | some p₀ =>
-    rw [htc] at hp
-    injection hp with hpeq
-    subst hpeq
-    exact hvalid p₀ htc
-  | none =>
-    rw [htc] at hp
-    dsimp only at hp
-    split at hp
-    · rcases hc : tr.c with _ | s | ⟨_, _⟩ <;> rw [hc] at hp
-      · cases hp
-      · rcases hst : tr.st Q with _ | _ | _ | hr | _ | _ | _ | _ <;> rw [hst] at hp <;>
-          try cases hp
-        dsimp only at hp
-        split at hp
-        · rename_i hfail
-          injection hp with hpeq
-          subst hpeq
-          exact hfail
-        · cases hp
-      · cases hp
-    · cases hp
-
-theorem stepKemFailDeliver_cand_valid (F : ShaCompress) (K : MlKem)
-    (tr : KemFailTrackState F) (Q : Party) (j : ℕ)
-    (hvalid : KemCandValid K tr) :
-    KemCandValid K (stepKemFailDeliver F K tr Q j) := by
-  intro p hp
-  rw [stepKemFailDeliver_cand_eq] at hp
-  exact hvalid p hp
-
-omit [Zero Pt] [SampleableType Pt] in
-private theorem probeHook_lift_corrQuery_run_flag {ℓ : ℕ}
-    (fig : SMScheme (BitVec 256 × BitVec 256) (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
-    (qepF : ℕ) (Q : Party)
-    (gh : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt) × Bool) :
-    ((probeHook fig qepF).lift
-      (SM.corrQuery (Msg := LibsignalMsgPublicPart × Plain ℓ) (Coins := BitVec 256) (C := Fig8C Pt) Q)).run gh =
-      pure ((corrPure Q gh.1).1, ((corrPure Q gh.1).2, gh.2)) := by
-  change ((simulateQ (fig8ImplH1 fig qepF)
-    (SM.corrQuery (Msg := LibsignalMsgPublicPart × Plain ℓ) (Coins := BitVec 256) (C := Fig8C Pt) Q)).run gh.1 >>=
-    fun p => pure (p.1, (p.2, gh.2))) = _
-  have hq := simulateQ_corrQuery_run fig 3 qepF SM.Config.h1 Q pure gh.1
-  rw [bind_pure] at hq
-  change (simulateQ (fig8ImplH1 fig qepF) (SM.corrQuery Q)).run gh.1 =
-    pure ((corrPure Q gh.1).1, (corrPure Q gh.1).2) at hq
-  rw [hq, pure_bind]
 
 /-! ## Multi-step SPQR receive-salt invariance -/
 
@@ -288,7 +229,7 @@ theorem topStateW_send_braid_eq (F : ShaCompress) (K : MlKem)
     exact ⟨m, key, tape', rfl⟩
 
 /-- Computes the SPQR V1 message salt of `msg` directly from a `TopWitness` without send coins. -/
-def spqrV1WitnessEvalSalt (F : ShaCompress) (w : TopWitness F) (msg : Bytes) : Salt :=
+@[expose] def spqrV1WitnessEvalSalt (F : ShaCompress) (w : TopWitness F) (msg : Bytes) : Salt :=
   match msgPreamble msg with
   | .ok pre =>
     evalSaltFromSeed F pre (seedAt F w.authKey w.secret w.dir.switch (msgChainEpoch pre))
@@ -579,27 +520,10 @@ theorem spqrV1_prior_accept_reachFrom_recv_salt_eq (F : ShaCompress) (K : MlKem)
     spqrV1_reachFrom_recv_salt_eq_of_epoch_le F K hw_acc hreach_all hpre hle_w_acc hrecv
   exact ⟨hle_w₀, hsalt₀, hsalt_acc⟩
 
-omit [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [Inhabited PQ] [SampleableType PQC] in
-private theorem step_spqrReachFrom_of_pq_eq_or_update
-    (P : Params PQ PQC) {P_party Q : Party} {pq₀ pq' : PQ}
-    {pq_fn pq_fn' : Party → PQ} {msg : List (BitVec 8)} {salt : Salt}
-    (hreach : Corr.SpqrReachFrom P.spqr pq₀ (pq_fn Q))
-    (hspqr : P.spqr.recv (pq_fn P_party) msg = .ok (pq', salt))
-    (hpq : pq_fn' = pq_fn ∨ pq_fn' = Function.update pq_fn P_party pq') :
-    Corr.SpqrReachFrom P.spqr pq₀ (pq_fn' Q) := by
-  rcases hpq with rfl | rfl
-  · exact hreach
-  · by_cases hPQ : Q = P_party
-    · subst hPQ
-      rw [Function.update_self]
-      exact .recv hreach hspqr
-    · rw [Function.update_of_ne hPQ]
-      exact hreach
-
 omit [Zero Pt] [DecidableEq Pt] [SampleableType Pt] [SampleableType PQC] in
 /-- Pre-draw candidate triples `(w, salt, epExp₀ t)` derived from an acceptance witness `w_acc`
 and honest-wire list `honest`. -/
-def evictedSpurCandList (P : Params Bytes PQC) (epExp₀ : ℕ → BitVec 256)
+@[expose] def evictedSpurCandList (P : Params Bytes PQC) (epExp₀ : ℕ → BitVec 256)
     (w_acc : TopWitness P.C.F) (honest : List (List (BitVec 8) × Fig8C Pt)) :
     List (List (BitVec 8) × Salt × BitVec 256) :=
   honest.filterMap fun wc =>
@@ -628,50 +552,6 @@ theorem mem_evictedSpurCandList_of_honest
   rw [List.mem_filterMap]
   refine ⟨(w, c), hc_mem, ?_⟩
   simp [hparse, hep_eq]
-
-omit [DecidableEq Pt] [SampleableType Pt] [Inhabited PQ] [SampleableType PQC] in
-theorem evicted_epoch_lt_pred_of_simInvC
-    {P : Params PQ PQC} {Inv : PQ → Prop} {ℓ : ℕ} {Dh : DHFun (BitVec 256) Pt}
-    {encPt : Pt → List (BitVec 8)} {encT : Pt → PublicKey} {qep q r : ℕ}
-    {x₀ : BitVec 256}
-    {s_R : SM.GameState (GhostState PQ) (Plain ℓ) (List (BitVec 8))}
-    {s : SimState PQ Pt ℓ}
-    {s_fig8 : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)}
-    {ec : Party → BitVec 256} {winBefore : ℕ → Bool} {epExp : ℕ → BitVec 256}
-    (hsim : SimInvC P Inv ℓ Dh encPt encT qep q r x₀ s_R s s_fig8 ec winBefore epExp)
-    (Q : Party) (hinw : inReceiveOnlyEpoch s.mir Q = false)
-    (w : List (BitVec 8)) (c : Fig8C Pt)
-    (hc_mem : (w, c) ∈ s.honest)
-    (hc_sender : Party.senderOf c.1.1 = Q.other)
-    (hepoch : c.1.1 ≠ s.mir.epoch Q + 1)
-    (hc_not_mem : c.1.1 ∉ (s.chains Q).map (·.epoch)) :
-    1 < s.mir.epoch Q ∧
-      s.mir.epoch Q - 1 ∈ (s.chains Q).map (·.epoch) ∧
-      c.1.1 < s.mir.epoch Q - 1 := by
-  rcases hsim.hhon (w, c) hc_mem with ⟨hc_inv, _, _, hc_le_other⟩
-  dsimp only at hc_le_other
-  rw [hc_sender] at hc_le_other
-  have hother_adj : s.mir.epoch Q.other ≤ s.mir.epoch Q + 1 := by
-    have h1 := (hsim.hep_adj Q.other).2
-    rwa [Party.other_other] at h1
-  have hc_ge1 : 1 ≤ c.1.1 := hc_inv.2.2.1
-  have hc_le_Q : c.1.1 ≤ s.mir.epoch Q := by omega
-  have hQ_sends : Q.sendsIn (s.mir.epoch Q) = true := by
-    simpa [inReceiveOnlyEpoch] using hinw
-  have hc_ne_Q : c.1.1 ≠ s.mir.epoch Q := by
-    intro heq
-    rw [heq] at hc_sender
-    cases Q <;> simp [Party.sendsIn, Party.senderOf] at hQ_sends hc_sender <;> omega
-  have hep_gt1 : 1 < s.mir.epoch Q := by omega
-  have hrecv_pred : Q.sendsIn (s.mir.epoch Q - 1) = false := by
-    cases Q <;> simp [Party.sendsIn] at hQ_sends ⊢ <;> omega
-  have hmem_pred : s.mir.epoch Q - 1 ∈ (s.chains Q).map (·.epoch) :=
-    mem_chains_epoch_of_adj Q (s.mir.epoch Q) (s.mir.epoch Q - 1) (s.chains Q)
-      (fun hA => hA ▸ hsim.hchainsA_ep)
-      (fun hB => hB ▸ hsim.hchainsB_ep)
-      (by omega) (by omega) (by omega) hrecv_pred
-  have hc_ne_pred : c.1.1 ≠ s.mir.epoch Q - 1 := fun heq => hc_not_mem (heq ▸ hmem_pred)
-  exact ⟨hep_gt1, hmem_pred, by omega⟩
 
 /-- History invariant recording `TopStateW` witnesses and `Corr.SpqrReachFrom` paths for past
 honest SPQR sends, same-sender epoch orderings, and active receiving-chain acceptances. -/
@@ -972,12 +852,12 @@ theorem spqrHistoryInv_onAcceptPure_none {ℓ : ℕ}
 
 /-- Most recent receiving-chain acceptance epoch for `Q` (`mir.epoch Q` in a receive-only epoch,
 else `mir.epoch Q - 1`). -/
-def evictAccEpoch {ℓ : ℕ} (mir : SM.GameState Unit (Plain ℓ) (List (BitVec 8))) (Q : Party) : ℕ :=
+@[expose] def evictAccEpoch {ℓ : ℕ} (mir : SM.GameState Unit (Plain ℓ) (List (BitVec 8))) (Q : Party) : ℕ :=
   if inReceiveOnlyEpoch mir Q then mir.epoch Q else mir.epoch Q - 1
 
 omit [Zero Pt] [DecidableEq Pt] [SampleableType Pt] in
 /-- Honest wires sent at DR epochs strictly before `t_bound`. -/
-def honestBeforeEpoch (honest : List (List (BitVec 8) × Fig8C Pt)) (t_bound : ℕ) :
+@[expose] def honestBeforeEpoch (honest : List (List (BitVec 8) × Fig8C Pt)) (t_bound : ℕ) :
     List (List (BitVec 8) × Fig8C Pt) :=
   honest.filter fun wc => decide (wc.2.1.1 < t_bound)
 
@@ -988,213 +868,6 @@ theorem honestBeforeEpoch_cons_of_le (honest : List (List (BitVec 8) × Fig8C Pt
   unfold honestBeforeEpoch
   have hnot : ¬ (c.1.1 < t_bound) := by omega
   simp [hnot]
-
-omit [DecidableEq Pt] [SampleableType Pt] [Inhabited PQ] [SampleableType PQC] in
-theorem mem_chains_evictAccEpoch_of_simInvC
-    {P : Params PQ PQC} {Inv : PQ → Prop} {ℓ : ℕ} {Dh : DHFun (BitVec 256) Pt}
-    {encPt : Pt → List (BitVec 8)} {encT : Pt → PublicKey} {qep q r : ℕ}
-    {x₀ : BitVec 256}
-    {s_R : SM.GameState (GhostState PQ) (Plain ℓ) (List (BitVec 8))}
-    {s : SimState PQ Pt ℓ}
-    {s_fig8 : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)}
-    {ec : Party → BitVec 256} {winBefore : ℕ → Bool} {epExp : ℕ → BitVec 256}
-    (hsim : SimInvC P Inv ℓ Dh encPt encT qep q r x₀ s_R s s_fig8 ec winBefore epExp)
-    (Q : Party) (hge : 1 ≤ evictAccEpoch s.mir Q) :
-    evictAccEpoch s.mir Q ∈ (s.chains Q).map (·.epoch) := by
-  unfold evictAccEpoch at hge ⊢
-  cases hinw : inReceiveOnlyEpoch s.mir Q <;> rw [hinw] at hge
-  · simp only [Bool.false_eq_true, ↓reduceIte] at hge ⊢
-    have hQ_sends : Q.sendsIn (s.mir.epoch Q) = true := by simpa [inReceiveOnlyEpoch] using hinw
-    have hrecv_pred : Q.sendsIn (s.mir.epoch Q - 1) = false := by
-      cases Q <;> simp [Party.sendsIn] at hQ_sends ⊢ <;> omega
-    exact mem_chains_epoch_of_adj Q (s.mir.epoch Q) (s.mir.epoch Q - 1) (s.chains Q)
-      (fun hA => hA ▸ hsim.hchainsA_ep) (fun hB => hB ▸ hsim.hchainsB_ep)
-      (by omega) (by omega) (by omega) hrecv_pred
-  · simp only [↓reduceIte] at hge ⊢
-    have hrecv_cur : Q.sendsIn (s.mir.epoch Q) = false := by simpa [inReceiveOnlyEpoch] using hinw
-    exact mem_chains_epoch_of_adj Q (s.mir.epoch Q) (s.mir.epoch Q) (s.chains Q)
-      (fun hA => hA ▸ hsim.hchainsA_ep) (fun hB => hB ▸ hsim.hchainsB_ep)
-      (by omega) (by omega) (by omega) hrecv_cur
-
-theorem not_mem_chains_epoch_of_findIdx_noneC
-    {P : Params PQ PQC} {Inv : PQ → Prop} {ℓ : ℕ} {Dh : DHFun (BitVec 256) Pt}
-    {encPt : Pt → List (BitVec 8)} {encT : Pt → PublicKey} {qep q r : ℕ}
-    {x₀ : BitVec 256}
-    {s_R : SM.GameState (GhostState PQ) (Plain ℓ) (List (BitVec 8))}
-    {s : SimState PQ Pt ℓ}
-    {s_fig8 : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)}
-    {ec : Party → BitVec 256} {winBefore : ℕ → Bool} {epExp : ℕ → BitVec 256}
-    (hsim : SimInvC P Inv ℓ Dh encPt encT qep q r x₀ s_R s s_fig8 ec winBefore epExp)
-    (Q : Party) (w : List (BitVec 8)) (c : Fig8C Pt) (h : SignalHeader) (body : List (BitVec 8))
-    (hc_mem : (w, c) ∈ s.honest)
-    (hparse : (signalWireCodec P.codec).parse (w.take (w.length - 8)) = some (h, body))
-    (hfind : (s.chains Q).findIdx? (fun ch => ch.key == some h.senderRatchetKey) = none) :
-    c.1.1 ∉ (s.chains Q).map (·.epoch) := by
-  rcases hsim.hhon (w, c) hc_mem with ⟨hc_inv, _, _, _⟩
-  have hc_ge1 : 1 ≤ c.1.1 := hc_inv.2.2.1
-  rcases honestEntryInvC_eq_raw P Inv Dh encT epExp hc_inv hparse with ⟨_, hsrk, _, _⟩
-  intro hmem_ep
-  rcases List.mem_map.mp hmem_ep with ⟨g₀, hg₀, hep_eq⟩
-  have hnone : g₀.key.isNone = false := by
-    cases Q with
-    | A =>
-      cases hn : g₀.key.isNone
-      · rfl
-      · have h0 := hsim.hchainsA.1 g₀ hg₀ hn
-        omega
-    | B => exact hsim.hchainsB_none g₀ hg₀
-  have hkey_sync := (hsim.hchains_sync Q g₀ hg₀).2.2.1
-  simp only [hnone, Bool.false_eq_true, ↓reduceIte, hep_eq, ← hsrk] at hkey_sync
-  have hnone_iff := List.findIdx?_eq_none_iff.mp hfind g₀ hg₀
-  simp [hkey_sync] at hnone_iff
-
-theorem mem_honestBeforeEpoch_of_evicted_simInvC
-    {P : Params PQ PQC} {Inv : PQ → Prop} {ℓ : ℕ} {Dh : DHFun (BitVec 256) Pt}
-    {encPt : Pt → List (BitVec 8)} {encT : Pt → PublicKey} {qep q r : ℕ}
-    {x₀ : BitVec 256}
-    {s_R : SM.GameState (GhostState PQ) (Plain ℓ) (List (BitVec 8))}
-    {s : SimState PQ Pt ℓ}
-    {s_fig8 : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt)}
-    {ec : Party → BitVec 256} {winBefore : ℕ → Bool} {epExp : ℕ → BitVec 256}
-    (hsim : SimInvC P Inv ℓ Dh encPt encT qep q r x₀ s_R s s_fig8 ec winBefore epExp)
-    (Q : Party) (hinw : inReceiveOnlyEpoch s.mir Q = false)
-    (w : List (BitVec 8)) (c : Fig8C Pt) (h : SignalHeader) (body : List (BitVec 8))
-    (hc_mem : (w, c) ∈ s.honest)
-    (hc_sender : Party.senderOf c.1.1 = Q.other)
-    (hparse : (signalWireCodec P.codec).parse (w.take (w.length - 8)) = some (h, body))
-    (hfind : (s.chains Q).findIdx? (fun ch => ch.key == some h.senderRatchetKey) = none)
-    (hepoch : c.1.1 ≠ s.mir.epoch Q + 1) :
-    1 < s.mir.epoch Q ∧
-      s.mir.epoch Q - 1 = evictAccEpoch s.mir Q ∧
-      (w, c) ∈ honestBeforeEpoch s.honest (evictAccEpoch s.mir Q) := by
-  have hc_not_mem := not_mem_chains_epoch_of_findIdx_noneC hsim Q w c h body hc_mem hparse hfind
-  obtain ⟨hgt1, _, hlt⟩ :=
-    evicted_epoch_lt_pred_of_simInvC hsim Q hinw w c hc_mem hc_sender hepoch hc_not_mem
-  have hev_eq : s.mir.epoch Q - 1 = evictAccEpoch s.mir Q := by
-    simp [evictAccEpoch, hinw]
-  exact ⟨hgt1, hev_eq, List.mem_filter.mpr ⟨hc_mem, decide_eq_true (hev_eq ▸ hlt)⟩⟩
-
-/-- Under `SimInvC` and `SpqrHistoryInv`, bounds the probability of `spurBadList` on
-`evictedSpurCandList` by `spuriousStepTerm` and excludes `EvictedDeliverForgeEvent` on evicted
-honest wires when `spurBadList` is false. -/
-theorem evictedDeliverForgeEvent_eq_false_of_simInvC_and_spqrHistoryInv {ℓ : ℕ}
-    (P : Params Bytes (BitVec 512)) (K : MlKem) {Inv : Bytes → Prop}
-    (hInv_top : ∀ pq, Inv pq → TopState P.C.F K pq)
-    (Dh : DHFun (BitVec 256) Pt)
-    (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey) (idOf : Party → IdentityKey)
-    (hid : idOf .A = P.idA ∧ idOf .B = P.idB)
-    {q qep r : ℕ} {x₀ : BitVec 256}
-    {s_R : SM.GameState (GhostState Bytes) (Plain ℓ) (List (BitVec 8))}
-    (sC : LibsignalToModularSchemeSimState Bytes Pt ℓ)
-    (s_fig8 : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
-    {ec : Party → BitVec 256} {winBefore : ℕ → Bool} {epExp₀ : ℕ → BitVec 256}
-    (Q : Party)
-    (hsim : SimInvC P Inv ℓ Dh encPt encT qep q r x₀ s_R sC.base s_fig8 ec winBefore epExp₀)
-    (hhist : SpqrHistoryInv P K sC.base) :
-    ∃ w_acc rk_base T_base,
-      (evictedSpurCandList P epExp₀ w_acc
-        (honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q))).length ≤ q ∧
-      𝒟[($ᵗ BitVec 256 : ProbComp (BitVec 256))]
-        {x_coin | spurBadList P encPt Dh Q rk_base T_base
-          (evictedSpurCandList P epExp₀ w_acc
-            (honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q))) x_coin = true} ≤
-        spuriousStepTerm P.C.F encPt Dh q qep ∧
-      (spurBadList P encPt Dh Q rk_base T_base
-          (evictedSpurCandList P epExp₀ w_acc
-            (honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q)))
-          (epExp₀ (sC.base.mir.epoch Q)) = false →
-        ∀ (w : List (BitVec 8)) (c : Fig8C Pt) (h : SignalHeader) (body : List (BitVec 8))
-          (pq' : Bytes) (salt : Salt),
-          (w, c) ∈ sC.base.honest →
-          Party.senderOf c.1.1 = Q.other →
-          (signalWireCodec P.codec).parse (w.take (w.length - 8)) = some (h, body) →
-          (spqrV1SessionUniformCoins P.C.F K).recv (sC.base.pq Q) h.pqRatchet = .ok (pq', salt) →
-          (sC.base.chains Q).findIdx? (fun ch => ch.key == some h.senderRatchetKey) = none →
-          c.1.1 ≠ sC.base.mir.epoch Q + 1 →
-          inReceiveOnlyEpoch sC.base.mir Q = false →
-          EvictedDeliverForgeEvent P Dh encPt encT idOf sC s_fig8 Q epExp₀ c w h salt = false) := by
-  obtain ⟨rk_base, T_base, -, hspur_false, -⟩ := hsim.hspur Q
-  obtain ⟨w_top, hw_top⟩ := hInv_top _ (hsim.hpqInv Q)
-  have hlen_bound : ∀ w_a,
-      (evictedSpurCandList P epExp₀ w_a
-        (honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q))).length ≤ q := by
-    intro w_a
-    have h1 := evictedSpurCandList_length_le P epExp₀ w_a
-      (honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q))
-    have h2 : (honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q)).length ≤
-        sC.base.honest.length := List.length_filter_le _ _
-    have h3 : sC.base.honest.length ≤ q := by have := hsim.hhon_len; omega
-    exact (h1.trans h2).trans h3
-  by_cases hact : 1 ≤ evictAccEpoch sC.base.mir Q
-  · have hmem_ch := mem_chains_evictAccEpoch_of_simInvC hsim Q hact
-    obtain ⟨w_acc_wire, c_acc, h_acc, body_acc, pq_acc, pq_acc', salt_acc, w_acc,
-        hc_acc_mem, hc_acc_eq, hc_acc_sender, hparse_acc, hw_acc, hrecv_acc, hreach₀⟩ :=
-      hhist.hchain_acc Q (evictAccEpoch sC.base.mir Q) hmem_ch hact
-    have hL_q := hlen_bound w_acc
-    have hep_pos : 1 ≤ sC.base.mir.epoch Q := by
-      unfold evictAccEpoch at hact
-      split at hact <;> omega
-    have hqep_pos : 0 < qep := by
-      have := hsim.hep_le Q
-      omega
-    have hL : (evictedSpurCandList P epExp₀ w_acc
-        (honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q))).length ≤
-        q * qep :=
-      hL_q.trans (Nat.le_mul_of_pos_right q hqep_pos)
-    refine ⟨w_acc, rk_base, T_base, hL_q,
-      spurBadList_prob_le_spuriousStepTerm P encPt Dh Q rk_base T_base q qep _ hL,
-      fun hno_spur w c h body pq' salt hc_mem hc_sender hparse hrecv hfind hepoch hinw => ?_⟩
-    obtain ⟨hgt1, hev_eq, hc_before⟩ :=
-      mem_honestBeforeEpoch_of_evicted_simInvC hsim Q hinw w c h body hc_mem hc_sender hparse
-        hfind hepoch
-    have hlt_ev : c.1.1 < evictAccEpoch sC.base.mir Q :=
-      of_decide_eq_true (List.mem_filter.mp hc_before).2
-    have hlt_acc : c.1.1 < c_acc.1.1 := by omega
-    obtain ⟨pq_s₀, pq_s₀', pq_s₁, pq_s₁', r₀, r₁, salt₀, salt₁, w_s₀,
-        hw_s₀, hsend₀, hreach_s, hsend₁⟩ :=
-      hhist.hhon_ord w c h body w_acc_wire c_acc h_acc body_acc hc_mem hc_acc_mem
-        (hc_sender.trans hc_acc_sender.symm) hlt_acc hparse hparse_acc
-    obtain ⟨pre, pre_acc, hpre, hpre_acc, hle_acc⟩ :=
-      spqrV1_sender_reachFrom_msgChainEpoch_le P.C.F K hw_s₀ hsend₀ hreach_s hsend₁
-    obtain ⟨-, -, hsalt_acc⟩ :=
-      spqrV1_prior_accept_reachFrom_recv_salt_eq P.C.F K hw_acc hw_top hrecv_acc hpre_acc hpre
-        hle_acc hreach₀ (.refl _) hrecv
-    have hmem_cand := mem_evictedSpurCandList_of_honest P epExp₀ epExp₀ w_acc
-      (honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q))
-      w c h body hc_before hparse rfl
-    rw [← hsalt_acc] at hmem_cand
-    have hrk : (s_fig8.st Q).root =
-        (rootKdf P.C.F rk_base (encPt (Dh.dh (epExp₀ (sC.base.mir.epoch Q)) T_base))).1 :=
-      ((hspur_false hinw).2.1 (by omega)).1
-    cases hev : EvictedDeliverForgeEvent P Dh encPt encT idOf sC s_fig8 Q epExp₀ c w h salt
-    · rfl
-    · have hsingle := evictedDeliverForgeEvent_implies_spurBadSingle P Dh encPt encT idOf hid
-        sC s_fig8 Q epExp₀ c w h body salt rk_base T_base hinw hrk hparse
-        (honestEntryInvC_len_lt (hsim.hhon (w, c) hc_mem).1) hev
-      have hbad : spurBadList P encPt Dh Q rk_base T_base
-          (evictedSpurCandList P epExp₀ w_acc
-            (honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q)))
-          (epExp₀ (sC.base.mir.epoch Q)) = true :=
-        List.any_eq_true.mpr ⟨(w, salt, epExp₀ c.1.1), hmem_cand, hsingle⟩
-      rw [hno_spur] at hbad
-      cases hbad
-  · have hL_q := hlen_bound w_top
-    have hev0 : evictAccEpoch sC.base.mir Q = 0 := by omega
-    have hnil : honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q) = [] := by
-      simp [honestBeforeEpoch, hev0]
-    have hL : (evictedSpurCandList P epExp₀ w_top
-        (honestBeforeEpoch sC.base.honest (evictAccEpoch sC.base.mir Q))).length ≤
-        q * qep := by
-      have h0 := evictedSpurCandList_length_le (Pt := Pt) P epExp₀ w_top []
-      rw [hnil]
-      exact (h0.trans (by simp)).trans (Nat.zero_le _)
-    refine ⟨w_top, rk_base, T_base, hL_q,
-      spurBadList_prob_le_spuriousStepTerm P encPt Dh Q rk_base T_base q qep _ hL,
-      fun _ w c h body _ _ hc_mem hc_sender hparse _ hfind hepoch hinw => ?_⟩
-    obtain ⟨hgt1, hev_eq, _⟩ :=
-      mem_honestBeforeEpoch_of_evicted_simInvC hsim Q hinw w c h body hc_mem hc_sender hparse
-        hfind hepoch
-    omega
 
 end SendRecvSaltEq
 

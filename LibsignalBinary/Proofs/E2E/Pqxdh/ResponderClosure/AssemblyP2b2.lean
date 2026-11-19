@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Stage P2.6 Re-Export Module for `message_decrypt_prekey::<PqxdhRng>::{closure#0}`
@@ -20,7 +20,7 @@ Compatibility import module re-exporting `AssemblyP2bAux` for Stage P2.6 of
 `message_decrypt_prekey::<PqxdhRng>::{closure#0}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,10 +46,4 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
   bobSession344WithRegIdsBv8 bobSession280MidBv8 bobSession344Bv8
 
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-
 end CryptoVerification.E2E.Pqxdh.ResponderClosure

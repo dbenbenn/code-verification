@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedA
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedA -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.SharedCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `Pqxdh::accept` (Block `79`), Part B: `opk = some` Branch and Combined Contract
@@ -22,7 +23,7 @@ under `[LibsignalFullPlacement]`, combines both branches into `pqxdhAccept_opt_f
 and lifts the combined contract to any caller block at `lsmpl.base 79`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -44,7 +45,7 @@ attribute [local simp, local arm64_norm, local wp_norm]
 attribute [-arm64_norm] List.append_assoc
 
 /-- `pqxdhAcceptOptFieldsInnerPlacedSpec` restricted to `g.inp.opkBSk?.isSome = true`. -/
-def pqxdhAcceptOptFieldsOpkSomeInnerPlacedSpec [LibsignalPlacement]
+@[expose] def pqxdhAcceptOptFieldsOpkSomeInnerPlacedSpec [LibsignalPlacement]
     (P : Primitives) (A : RustAlloc) : Spec AcceptFieldsCallGhost :=
   { pqxdhAcceptOptFieldsInnerPlacedSpec P A with
     pre := fun g s =>
@@ -52,12 +53,12 @@ def pqxdhAcceptOptFieldsOpkSomeInnerPlacedSpec [LibsignalPlacement]
 
 set_option maxHeartbeats 6000000 in
 /-- Relocatable `Pqxdh::accept` (Block `79`) on the `g.inp.opkBSk?.isSome = true` branch under
-`[LibsignalFullPlacement]`. -/
-theorem pqxdhAccept_opt_fields_opk_some_placed_ok [LibsignalFullPlacement]
+`[LibsignalFullPlacement]` from `ecPubKeyIsCanonicalDalekCallSpec` (`5120`-byte Dalek stack). -/
+theorem pqxdhAccept_opt_fields_opk_some_dalek_placed_ok [LibsignalFullPlacement]
     {P : Primitives} {A : RustAlloc} {H : LibsignalHooks}
     (hWF : StructuralPrims P)
     (h_canon : subroutine_ok (lsProg_79 H) (lsmpl.base 202)
-      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)))
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalDalekCallSpec P)))
     (h_agree : subroutine_ok (lsProg_79 H) (lsmpl.base 207)
       (withLsCodeRoLoaded lsmpl (acceptCalculateAgreementPlacedBaseSpec P A)))
     (h_vec_append : subroutine_ok (lsProg_79 H) (lsmpl.base 55)
@@ -74,10 +75,10 @@ theorem pqxdhAccept_opt_fields_opk_some_placed_ok [LibsignalFullPlacement]
     subroutine_ok (lsProg_79 H) (blkPl_79).base
       (withLsFrozen lsmpl (pqxdhAcceptOptFieldsOpkSomeInnerPlacedSpec P A)) := by
   refine subroutine_ok_withLsFrozen_of_withRoSlice
-    (roSym := "libsignal_protocol:.rodata..Lanon.393")
+    (roSym := "libsignal_protocol:.rodata..Lanon.400")
     (roBytes := incomingBaseKeyInvalidBytes) (by decide) ?_
   refine subroutine_ok_withLsFrozen_of_withRoSlice
-    (roSym := "libsignal_protocol:.rodata..Lanon.352")
+    (roSym := "libsignal_protocol:.rodata..Lanon.359")
     (roBytes := bytesToBv8 infoPqxdh) (by decide) ?_
   have hshim := hook_ok_79_of_mem h_shim (by decide)
   have halloc := hook_ok_79_of_mem h_alloc (by decide)
@@ -118,9 +119,11 @@ theorem pqxdhAccept_opt_fields_opk_some_placed_ok [LibsignalFullPlacement]
   apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
   intro hF0_1; try simp only [arm64_norm] at hF0_1
   refine SepWPp.of_sepWP_lsfull hF0_1 (mid := (blkPl_79).base + 52#64) ?_
+  refine SepWP.fold (Entails.of_eq (accept_canon_stack_to_dalek s0.sp)) (by sep_focus) ?_
   wp_call (subroutine_ok_withMemEq_of_withCodeLoaded
-    (spec := ecPubKeyIsCanonicalCallSpec P) h_canon hF0_1.code)
+    (spec := ecPubKeyIsCanonicalDalekCallSpec P) h_canon hF0_1.code)
     ⟨s0.readReg64 (.gpr 0#5) + 160#64, inp.hdr.ekAPk⟩
+  refine SepWP.fold (Entails.of_eq (accept_canon_stack_to_dalek s0.sp).symm) (by sep_focus) ?_
   apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
   intro hF1; try simp only [arm64_norm] at hF1
   cases hcanon_b : P.isCanonical inp.hdr.ekAPk
@@ -147,17 +150,17 @@ theorem pqxdhAccept_opt_fields_opk_some_placed_ok [LibsignalFullPlacement]
       refine SepWPp.fold (Entails.of_eq (incoming_alloc_split _)) (by sep_focus) ?_
       sep_elim_exists'
       refine SepWPp.fold
-        (Entails.of_eq (rodata_incoming_split1 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393")))
+        (Entails.of_eq (rodata_incoming_split1 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400")))
         (by sep_focus) ?_
       apply SepWPp.of_sepWP_ret
       wp_simp_pre_fast [bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]
       wp_steps
       refine SepWP.fold
-        (Entails.of_eq (rodata_incoming_1_to_2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393")))
+        (Entails.of_eq (rodata_incoming_1_to_2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400")))
         (by sep_focus) ?_
       wp_steps
       refine SepWP.fold
-        (Entails.of_eq (rodata_incoming_split2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393")).symm)
+        (Entails.of_eq (rodata_incoming_split2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400")).symm)
         (by sep_focus) ?_
       refine SepWP.fold (incoming_overlap_prep _ _ _) (by sep_focus) ?_
       sep_elim_exists'; wp_steps
@@ -550,7 +553,7 @@ theorem pqxdhAccept_opt_fields_opk_some_placed_ok [LibsignalFullPlacement]
                   wp_call hexp' (s0.sp - 1744#64, hkdfExtractRef P none (F_X25519 ++
                     P.x25519 inp.spkBSk inp.hdr.ikAPk ++ P.x25519 inp.ikBSk inp.hdr.ekAPk ++
                     P.x25519 inp.spkBSk inp.hdr.ekAPk ++ P.x25519 opkSk inp.hdr.ekAPk ++ ss),
-                    s0.sp - 4912#64, lsmpl.ρ "libsignal_protocol:.rodata..Lanon.352",
+                    s0.sp - 4912#64, lsmpl.ρ "libsignal_protocol:.rodata..Lanon.359",
                     INFO_PQXDH, s0.sp - 176#64, s0.sp - 4944#64); sep_elim_exists'
                   refine SepWP.fold (Entails.of_eq (stack_to_kdf s0.sp).symm) (by sep_focus) ?_
                   refine SepWP.fold (Entails.of_eq (outPtr_ok104_cells_split (s0.readReg64 (.gpr
@@ -577,6 +580,104 @@ theorem pqxdhAccept_opt_fields_opk_some_placed_ok [LibsignalFullPlacement]
                     hdecaps hpan_rawvec hpan_alloc
                   simp only [sepConj_assoc, *]; wp_done
 
+/-- Compatibility `4096`-byte stack wrapper around `pqxdhAccept_opt_fields_opk_some_dalek_placed_ok`. -/
+theorem pqxdhAccept_opt_fields_opk_some_placed_ok [LibsignalFullPlacement]
+    {P : Primitives} {A : RustAlloc} {H : LibsignalHooks}
+    (hWF : StructuralPrims P)
+    (h_canon : subroutine_ok (lsProg_79 H) (lsmpl.base 202)
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalCallSpec P)))
+    (h_agree : subroutine_ok (lsProg_79 H) (lsmpl.base 207)
+      (withLsCodeRoLoaded lsmpl (acceptCalculateAgreementPlacedBaseSpec P A)))
+    (h_vec_append : subroutine_ok (lsProg_79 H) (lsmpl.base 55)
+      (libsignalSessionLib.withCodeLoaded lsmpl pqxdhVecAppendElementsFastSpec))
+    (h_hkdf_extract : PqxdhHkdfExtractPlacedOk P (lsProg_79 H))
+    (h_hkdf_expand : PqxdhHkdfExpandMultiInfoPlacedOk P (lsProg_79 H))
+    (h_shim : HookSat H Keys.lsRustNoAllocShimSym noAllocShimSpec)
+    (h_alloc : HookSat H Keys.lsRustAllocSym (rustAllocSpec A))
+    (h_dealloc : HookSat H acceptRustDeallocSym (rustDeallocSpec A))
+    (h_memcpy : HookSat H lsMemcpySym framelessMemcpySpec)
+    (h_decaps : HookSat H acceptKyberDecapsSym (kyberDecapsStubSpec P))
+    (h_pan_rawvec : H acceptHandleRawVecErrorSym = some Rust.panicked)
+    (h_pan_alloc : H Keys.lsHandleAllocErrorSym = some Rust.panicked) :
+    subroutine_ok (lsProg_79 H) (blkPl_79).base
+      (withLsFrozen lsmpl (pqxdhAcceptOptFieldsOpkSomeInnerPlacedSpec P A)) :=
+  pqxdhAccept_opt_fields_opk_some_dalek_placed_ok hWF
+    (subroutine_ok_ecPubKeyIsCanonical_dalek_of_4k h_canon) h_agree h_vec_append
+    h_hkdf_extract h_hkdf_expand h_shim h_alloc h_dealloc h_memcpy h_decaps
+    h_pan_rawvec h_pan_alloc
+
+/-- Combined relocatable `Pqxdh::accept` (Block `79`) contract on `lsProg_79 H` under
+`[LibsignalFullPlacement]` from `ecPubKeyIsCanonicalDalekCallSpec` (`5120`-byte Dalek stack). -/
+theorem pqxdhAccept_opt_fields_dalek_placed_ok [LibsignalFullPlacement]
+    {P : Primitives} {A : RustAlloc} {H : LibsignalHooks}
+    (hWF : StructuralPrims P)
+    (h_canon : subroutine_ok (lsProg_79 H) (lsmpl.base 202)
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalDalekCallSpec P)))
+    (h_agree : subroutine_ok (lsProg_79 H) (lsmpl.base 207)
+      (withLsCodeRoLoaded lsmpl (acceptCalculateAgreementPlacedBaseSpec P A)))
+    (h_vec_append : subroutine_ok (lsProg_79 H) (lsmpl.base 55)
+      (libsignalSessionLib.withCodeLoaded lsmpl pqxdhVecAppendElementsFastSpec))
+    (h_hkdf_extract : PqxdhHkdfExtractPlacedOk P (lsProg_79 H))
+    (h_hkdf_expand : PqxdhHkdfExpandMultiInfoPlacedOk P (lsProg_79 H))
+    (h_shim : HookSat H Keys.lsRustNoAllocShimSym noAllocShimSpec)
+    (h_alloc : HookSat H Keys.lsRustAllocSym (rustAllocSpec A))
+    (h_dealloc : HookSat H acceptRustDeallocSym (rustDeallocSpec A))
+    (h_memcpy : HookSat H lsMemcpySym framelessMemcpySpec)
+    (h_decaps : HookSat H acceptKyberDecapsSym (kyberDecapsStubSpec P))
+    (h_pan_rawvec : H acceptHandleRawVecErrorSym = some Rust.panicked)
+    (h_pan_alloc : H Keys.lsHandleAllocErrorSym = some Rust.panicked) :
+    subroutine_ok (lsProg_79 H) (blkPl_79).base
+      (pqxdhAcceptOptFieldsFrozenPlacedSpec P A) := by
+  have hnone := pqxdhAccept_opt_fields_opk_none_dalek_placed_ok hWF h_canon h_agree
+    h_hkdf_extract h_hkdf_expand h_shim h_alloc h_dealloc h_memcpy h_decaps
+    h_pan_rawvec h_pan_alloc
+  have hsome := pqxdhAccept_opt_fields_opk_some_dalek_placed_ok hWF h_canon h_agree h_vec_append
+    h_hkdf_extract h_hkdf_expand h_shim h_alloc h_dealloc h_memcpy h_decaps
+    h_pan_rawvec h_pan_alloc
+  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
+  obtain ⟨hfr, hpre_inner⟩ := extract_withLsFrozen hpre
+  cases hopk : x.inp.opkBSk?
+  · refine hnone.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
+    dsimp only [withLsFrozen, pqxdhAcceptOptFieldsOpkNoneInnerPlacedSpec]
+    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
+    refine ⟨hfr, ?_⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨hopk, hpre_inner⟩
+  · refine hsome.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
+    dsimp only [withLsFrozen, pqxdhAcceptOptFieldsOpkSomeInnerPlacedSpec]
+    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
+    refine ⟨hfr, ?_⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj]
+    exact ⟨by simp [hopk], hpre_inner⟩
+
+/-- Combined relocatable `Pqxdh::accept` (Block `79`) contract lifted to any `callerProg`
+from `ecPubKeyIsCanonicalDalekCallSpec` (`5120`-byte Dalek stack). -/
+theorem pqxdhAccept_opt_fields_dalek_placed_ok_of_block [LibsignalFullPlacement]
+    {callerProg : Program} {i : Nat} {P : Primitives} {A : RustAlloc} {H : LibsignalHooks}
+    [IsLsBlockProg callerProg i H]
+    (hWF : StructuralPrims P)
+    (h_canon : subroutine_ok (lsProg_79 H) (lsmpl.base 202)
+      (libsignalSessionLib.withCodeLoaded lsmpl (ecPubKeyIsCanonicalDalekCallSpec P)))
+    (h_agree : subroutine_ok (lsProg_79 H) (lsmpl.base 207)
+      (withLsCodeRoLoaded lsmpl (acceptCalculateAgreementPlacedBaseSpec P A)))
+    (h_vec_append : subroutine_ok (lsProg_79 H) (lsmpl.base 55)
+      (libsignalSessionLib.withCodeLoaded lsmpl pqxdhVecAppendElementsFastSpec))
+    (h_hkdf_extract : PqxdhHkdfExtractPlacedOk P (lsProg_79 H))
+    (h_hkdf_expand : PqxdhHkdfExpandMultiInfoPlacedOk P (lsProg_79 H))
+    (h_shim : HookSat H Keys.lsRustNoAllocShimSym noAllocShimSpec)
+    (h_alloc : HookSat H Keys.lsRustAllocSym (rustAllocSpec A))
+    (h_dealloc : HookSat H acceptRustDeallocSym (rustDeallocSpec A))
+    (h_memcpy : HookSat H lsMemcpySym framelessMemcpySpec)
+    (h_decaps : HookSat H acceptKyberDecapsSym (kyberDecapsStubSpec P))
+    (h_pan_rawvec : H acceptHandleRawVecErrorSym = some Rust.panicked)
+    (h_pan_alloc : H Keys.lsHandleAllocErrorSym = some Rust.panicked) :
+    subroutine_ok callerProg (lsmpl.base 79)
+      (pqxdhAcceptOptFieldsFrozenPlacedSpec P A) :=
+  ls_subroutine_ok_withLsFrozen_of_block
+    (pqxdhAccept_opt_fields_dalek_placed_ok hWF h_canon h_agree h_vec_append
+      h_hkdf_extract h_hkdf_expand h_shim h_alloc h_dealloc h_memcpy h_decaps
+      h_pan_rawvec h_pan_alloc)
+
 /-- Combined relocatable `Pqxdh::accept` (Block `79`) contract on `lsProg_79 H` under
 `[LibsignalFullPlacement]`. -/
 theorem pqxdhAccept_opt_fields_placed_ok [LibsignalFullPlacement]
@@ -598,28 +699,11 @@ theorem pqxdhAccept_opt_fields_placed_ok [LibsignalFullPlacement]
     (h_pan_rawvec : H acceptHandleRawVecErrorSym = some Rust.panicked)
     (h_pan_alloc : H Keys.lsHandleAllocErrorSym = some Rust.panicked) :
     subroutine_ok (lsProg_79 H) (blkPl_79).base
-      (pqxdhAcceptOptFieldsFrozenPlacedSpec P A) := by
-  have hnone := pqxdhAccept_opt_fields_opk_none_placed_ok hWF h_canon h_agree
+      (pqxdhAcceptOptFieldsFrozenPlacedSpec P A) :=
+  pqxdhAccept_opt_fields_dalek_placed_ok hWF
+    (subroutine_ok_ecPubKeyIsCanonical_dalek_of_4k h_canon) h_agree h_vec_append
     h_hkdf_extract h_hkdf_expand h_shim h_alloc h_dealloc h_memcpy h_decaps
     h_pan_rawvec h_pan_alloc
-  have hsome := pqxdhAccept_opt_fields_opk_some_placed_ok hWF h_canon h_agree h_vec_append
-    h_hkdf_extract h_hkdf_expand h_shim h_alloc h_dealloc h_memcpy h_decaps
-    h_pan_rawvec h_pan_alloc
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  obtain ⟨hfr, hpre_inner⟩ := extract_withLsFrozen hpre
-  cases hopk : x.inp.opkBSk?
-  · refine hnone.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
-    dsimp only [withLsFrozen, pqxdhAcceptOptFieldsOpkNoneInnerPlacedSpec]
-    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hfr, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨hopk, hpre_inner⟩
-  · refine hsome.mono_outcome x R s0 hpc hrun ?_ hsp fun _ hout => hout
-    dsimp only [withLsFrozen, pqxdhAcceptOptFieldsOpkSomeInnerPlacedSpec]
-    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hfr, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨by simp [hopk], hpre_inner⟩
 
 /-- Combined relocatable `Pqxdh::accept` (Block `79`) contract lifted to any `callerProg`
 (`[IsLsBlockProg callerProg i H]`, such as `lsProg_75 H`) at `lsmpl.base 79`. -/

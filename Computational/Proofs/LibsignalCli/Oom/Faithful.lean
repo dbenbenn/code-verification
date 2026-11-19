@@ -14,7 +14,7 @@ import Computational.Proofs.SpecLemmas.Game.StatementPq
 import VCVio.OracleComp.SimSemantics.SimulateQ
 import VCVio.EvalDist.Monad.Basic
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,7 +57,7 @@ instance instLawfulMonadWriterTList {α : Type} {M : Type → Type} [Monad M] [L
 /-- The `WriterT` logging monad of `StatementPqOomGame.lean`. -/
 abbrev LogM := WriterT (List Inputs) ProbComp
 
-def forgetW {α : Type} (m : LogM α) : ProbComp α :=
+@[expose] def forgetW {α : Type} (m : LogM α) : ProbComp α :=
   Prod.fst <$> m.run
 
 @[simp] theorem forgetW_pure {α : Type} (a : α) : forgetW (pure a) = pure a := by
@@ -84,7 +84,7 @@ def forgetW {α : Type} (m : LogM α) : ProbComp α :=
     forgetW (cliRunLogged run i) = cliRunPure run i := by
   simp [forgetW, cliRunLogged, cliRunPure]
 
-def forgetS1 {σ α : Type} (m : StateT σ LogM α) : StateT σ ProbComp α :=
+@[expose] def forgetS1 {σ α : Type} (m : StateT σ LogM α) : StateT σ ProbComp α :=
   fun s => forgetW (m.run s)
 
 @[simp] theorem forgetS1_run {σ α : Type} (m : StateT σ LogM α) (s : σ) :
@@ -129,7 +129,7 @@ def forgetS1 {σ α : Type} (m : StateT σ LogM α) : StateT σ ProbComp α :=
     forgetS1 (if c then t else e) = if c then forgetS1 t else forgetS1 e := by
   split_ifs <;> rfl
 
-def forgetS2 {σ₁ σ₂ α : Type} (m : StateT σ₁ (StateT σ₂ LogM) α) :
+@[expose] def forgetS2 {σ₁ σ₂ α : Type} (m : StateT σ₁ (StateT σ₂ LogM) α) :
     StateT σ₁ (StateT σ₂ ProbComp) α :=
   fun s₁ => forgetS1 (m.run s₁)
 

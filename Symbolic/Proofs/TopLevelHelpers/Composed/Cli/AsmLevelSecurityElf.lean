@@ -9,24 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
-public import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.RefinementElf
+import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.RefinementElf
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst -- rooting-only, no decl used
-public import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.AsmLevelSecurity
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliLabelsFromObjects
+import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.AsmLevelSecurity
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KM1
-import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.AsmLevelSecurityKElf
+public import Symbolic.Proofs.TopLevelHelpers.Composed.Cli.AsmLevelSecurityKElf -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3NonCanonF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3UntypedElfF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Parity.F3.BundleInitElfF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlaced -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Refinement.ElfBinding
+public import Symbolic.Specifications.Security.Binary
+public import Symbolic.Proofs.SpecLemmas.SecurityBinaryPlaced -- proof-setup: allow-public-import
 
 /-!
-# Concrete `cliElfBytes` Relocatable Assembly-Level Security
+# Concrete `cliElfBytes` Assembly-Level Security
 
 Lifts `comp_refines_cli_placed_of_v2`, `comp_refines_cli_placed_of_main`, and
 `AsmLevelSecurityKElf.signal_session_secure_placed_proofK` to `SignalSessionSecurePlaced cliElfBytes`,
-and re-exports the `LinkedIn cliElfBytes` non-vacuity witnesses for `libsignalSessionLib` and
-`VerifiedLibraries.mallocngLib` together with `CliLabelsFromObjects`.
+then bridges via `ElfDirectBridge` to `SignalSessionSecure cliElfBytes`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +41,7 @@ open Arm64 (Memory)
 open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
 open VerifiedLibraries.Mallocng (mallocngAddrsOfPlacement)
-open CryptoVerification.SignalSession (cliElfBytes libsignalSessionLib CliLabelsFromObjects)
+open CryptoVerification.SignalSession (cliElfBytes libsignalSessionLib)
 open DY.Libsignal.Composed.Security (SignalSessionSecurePlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3 (MainOkPathBD3F3)
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3NonCanonF3
@@ -58,7 +63,7 @@ theorem signal_session_secure_placed_of_v2
       libsignalSessionLib.LinkedAt cliElfBytes mpl →
       VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl →
       ∀ elf' : ElfImage, ElfImage.parse cliElfBytes = .ok elf' →
-        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl mmpl elf') :
+        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl elf') :
     SignalSessionSecurePlaced cliElfBytes :=
   signal_session_secure_placed_of_binary_refines (comp_refines_cli_placed_of_v2 hv2 hprog)
 
@@ -101,26 +106,21 @@ theorem signal_session_secure_placed_of_main
       libsignalSessionLib.LinkedAt cliElfBytes mpl →
       VerifiedLibraries.mallocngLib.LinkedAt cliElfBytes mmpl →
       ∀ elf' : ElfImage, ElfImage.parse cliElfBytes = .ok elf' →
-        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl mmpl elf') :
+        DY.Libsignal.Composed.Refinement.Cli.CliElfProgressPlaced mpl elf') :
     SignalSessionSecurePlaced cliElfBytes :=
   signal_session_secure_placed_of_binary_refines
     (comp_refines_cli_placed_of_main
       hparse hAssump hmain hoverD3 huntyped hpathB hvalidMatch hinitSem hprog)
 
-/-- Relocatable two-placement assembly-level CLI security for `cliElfBytes`. -/
+/-- Relocatable plain-memory assembly-level CLI security for `cliElfBytes`. -/
 theorem signal_session_secure_placed_proof :
-    SignalSessionSecurePlaced cliElfBytes :=
+    AsmLevelSecurityKElf.SignalSessionSecurePlainPanPlaced cliElfBytes :=
   AsmLevelSecurityKElf.signal_session_secure_placed_proofK h2k_ghostArms_closed
 
-/-- Non-vacuity witness that `libsignalSessionLib` links into `cliElfBytes`. -/
-theorem libsignal_cli_elf_linked_in_proof :
-    libsignalSessionLib.LinkedIn cliElfBytes :=
-  LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced.cliElf_linkedIn
-
-/-- Non-vacuity witness that `VerifiedLibraries.mallocngLib` links into `cliElfBytes`. -/
-theorem libsignal_cli_elf_mallocng_linked_in_proof :
-    VerifiedLibraries.mallocngLib.LinkedIn cliElfBytes :=
-  LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced.cliElf_mallocng_linkedIn
+/-- ELF-direct assembly-level CLI security for `cliElfBytes`. -/
+theorem signal_session_secure_proof :
+    DY.Libsignal.Composed.Security.SignalSessionSecure cliElfBytes :=
+  signal_session_secure_of_binary_refines comp_refines_cli_proof
 
 /--
 info: 'Symbolic.Proofs.TopLevelHelpers.Composed.Cli.signal_session_secure_placed_of_v2' depends on axioms: [propext,
@@ -137,26 +137,5 @@ info: 'Symbolic.Proofs.TopLevelHelpers.Composed.Cli.signal_session_secure_placed
 -/
 #guard_msgs in
 #print axioms signal_session_secure_placed_of_main
-
-
-/--
-info: 'Symbolic.Proofs.TopLevelHelpers.Composed.Cli.libsignal_cli_elf_linked_in_proof' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
--/
-#guard_msgs in
-#print axioms libsignal_cli_elf_linked_in_proof
-
-/--
-info: 'Symbolic.Proofs.TopLevelHelpers.Composed.Cli.libsignal_cli_elf_mallocng_linked_in_proof' depends on axioms: [propext,
- Classical.choice,
- Quot.sound]
--/
-#guard_msgs in
-#print axioms libsignal_cli_elf_mallocng_linked_in_proof
-
-/-- Pre-link object label witness `CliLabelsFromObjects`. -/
-theorem libsignal_cli_labels_from_objects_proof : CliLabelsFromObjects :=
-  LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliLabelsFromObjects.cliLabelsFromObjects
 
 end Symbolic.Proofs.TopLevelHelpers.Composed.Cli

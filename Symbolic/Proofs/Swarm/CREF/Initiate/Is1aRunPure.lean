@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.ProofHubsPure
+public import Symbolic.Proofs.SpecLemmas.ProofHubsPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.SHARED.StateSizePure
 
 /-!
@@ -19,7 +19,7 @@ Defines `initHdrDecoder`, `initV1State`, and `is1StateRaw` for `spqr::initial_st
 the encoded byte length of `is1StateRaw`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,13 +29,13 @@ open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification.LibsignalSpqrV1
 
 /-- Initial 96-byte header+MAC `PolyDecoder` constructed by `States.init_b`. -/
-def initHdrDecoder : PolyDecoder :=
+@[expose] def initHdrDecoder : PolyDecoder :=
   { ptsNeeded := 48
     isComplete := false
     pts := List.replicate 16 (SortedSetPt.withCapacity 0) }
 
 /-- Initial V1 `States` constructed by `States.init_a` (`.a2b`) or `States.init_b` (`.b2a`). -/
-def initV1State (F : ShaCompress) (d : Direction) (authKey : List (BitVec 8)) :
+@[expose] def initV1State (F : ShaCompress) (d : Direction) (authKey : List (BitVec 8)) :
     States spqrPolyApi (spqrAuthApi F) :=
   match d with
   | .a2b =>
@@ -56,7 +56,7 @@ theorem states_init_b_eq_ok (F : ShaCompress) (authKey : List (BitVec 8)) :
       .ok (initV1State F .b2a authKey) := rfl
 
 /-- `PqRatchetState` built by `spqr::initial_state` on V1 direction `d` and `auth_key = k`. -/
-def is1StateRaw (F : ShaCompress) (d : Direction) (k : List (BitVec 8)) : PqRatchetState :=
+@[expose] def is1StateRaw (F : ShaCompress) (d : Direction) (k : List (BitVec 8)) : PqRatchetState :=
   { versionNegotiation := some
       { authKey := k
         direction := d.toI32

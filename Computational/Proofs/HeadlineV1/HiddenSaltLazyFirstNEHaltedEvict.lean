@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHalted
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHalted -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.HiddenSaltV1
 import Computational.Proofs.HeadlineV1.DeliverForgeShifted
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyWire
 import Computational.Proofs.SignalWireRoundTrip
 import ProofLib.SepLogic.WP.StateNorm
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.HeadlineV1.SendShortC
 
 /-!
 # Online-Halted Evict-Only Bound
@@ -24,7 +26,7 @@ import VCVio.EvalDist.Monad.Basic
 `kemFailFindAdvantage` error term.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,8 +45,6 @@ open CryptoVerification.LibsignalSession (signalEncodeFits32_proto signalRoundTr
 open CryptoVerification.LibsignalSession.HeadlineV1 (EvictedSpurHistSimInvLazy evalDist_bind_le_add_bool_of_support evalDist_bind_true_le_add_of_badCoin evictedSpurHistSimInvLazy_corr_step evictedSpurHistSimInvLazy_deliver_step evictedSpurHistSimInvLazy_inject_step evictedSpurHistSimInvLazy_mono_r evictedSpurHistSimInv_init f8_send_eq_some_of_sameMeta kemFailSendStep_new_epoch_preserves_evictedSpurHistSimInvLazy_of_good_coin kemFailSendStep_same_epoch_preserves_evictedSpurHistSimInvLazy kemFailSimImpl_deliver_run kemFailSimImpl_inl_state_eq kemFailSimImpl_send_flag_eq_false lengthsOk_paramsIdsWithSpqr_v1 mkPub_eq_some_of_spqrCLocal probeHook_lift_challQuery_run probeHook_lift_transmitQuery_run runProbeStep_run sendCoinCollBad sendCoinCollPts sendCoinCollPts_length simSendStep_eq_of_mkPub_some spqrCLocal_and_topState_v1 spurSlack spurSlack_le_spuriousStepTerm spurSlack_step_le)
 
 namespace Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedEvict
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec
@@ -752,7 +752,5 @@ theorem hiddenSaltTermTrackHalted_le_add_spuriousStepTerm_v1_refuseCorrB0_lazy'
     have h1_le : (1 : ℝ≥0∞) ≤ (qep + 1) * (qep + 2) * δ := by
       simpa using mul_le_mul' hpow h1δ
     exact (evalDist_apply_le_one _ _).trans (h1_le.trans (le_add_of_nonneg_left zero_le))
-
-end
 
 end Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEHaltedEvict

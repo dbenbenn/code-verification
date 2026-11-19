@@ -10,16 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueFetchBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeTags1To4
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContractsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.FinishGrowBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DoReserveBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueFetchBudget
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeTags1To4 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeVarintBase
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -27,6 +27,13 @@ import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `PreKeySignalMessage::new` Field Encoding: Tags 1–3
@@ -36,7 +43,7 @@ Zero-growth relocatable `encode_varint` contract (`blkPl_10`), budget-threaded `
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -109,7 +116,7 @@ private theorem SepWPp.of_sepWP_lscl [LibsignalPlacement] {prog : Program} {mid 
 /-- Zero-allocation relocatable contract for `prost::encoding::varint::encode_varint` when
 existing spare capacity covers `(encodeVarint x.val).length`, leaving cost-model state `st`
 unchanged. -/
-def encodeVarintNoGrowPlacedSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def encodeVarintNoGrowPlacedSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (EncodeVarintGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧
@@ -292,36 +299,6 @@ theorem step_call_encVarint_placed [LibsignalPlacement]
     val v cap ptr sp ret_pc bs st tr s_init hle hcap hcl hpc hrun hsp halign hlr htr hregs
     hx0 hx1 hP hnext
 
-theorem step_call_encVarint_placed_sessionShim [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym sessionShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (val v cap ptr sp ret_pc : BitVec 64) (bs : List (BitVec 8))
-    (st : M.σ) (tr : List TraceEvent) (s_init : State)
-    (hle : bs.length + (encodeVarint val).length ≤ cap.toNat) (hcap : cap.toNat < 2 ^ 61)
-    {ret : BitVec 64} {s0 : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcl : LibsignalCodeLoaded lsmpl s0.mem)
-    (hpc : s0.pc = (blkPl_10).base) (hrun : s0.status = .Running)
-    (hsp : s0.sp = sp) (halign : s0.spAligned = true) (hlr : s0.readReg64 .lr = ret_pc)
-    (htr : s0.trace = tr) (hregs : PreKeyMsgTagRegs s_init s0)
-    (hx0 : s0.readReg64 .x0 = val) (hx1 : s0.readReg64 .x1 = v)
-    (hP : P = ((v ↦₆₄ cap) ∗ ((v + 8#64) ↦₆₄ ptr) ∗ ((v + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
-      vecU8Buf A.repAlloc cap ptr bs ∗ A.pool lim st s0 ∗ stackAt sp preKeyMsgSubStack) ∗ F)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running → sf.sp = sp →
-      sf.trace = tr → LibsignalCodeLoaded lsmpl sf.mem → PreKeyMsgTagRegs s_init sf →
-      SepWPp (lsProg_41 H) ret sf
-        (((v ↦₆₄ cap) ∗ ((v + 8#64) ↦₆₄ ptr) ∗
-          ((v + 16#64) ↦₆₄ BitVec.ofNat 64 (bs ++ encodeVarint val).length) ∗
-          vecU8Buf A.repAlloc cap ptr (bs ++ encodeVarint val) ∗
-          A.pool lim st sf ∗ stackAt sp preKeyMsgSubStack) ∗ F)
-        Q Qp) :
-    SepWPp (lsProg_41 H) ret s0 P Q Qp :=
-  step_call_encVarint_placed_of_ok
-    (encodeVarintNoGrow_placed_ok_sessionShim hshim halloc hrealloc)
-    val v cap ptr sp ret_pc bs st tr s_init hle hcap hcl hpc hrun hsp halign hlr htr hregs
-    hx0 hx1 hP hnext
-
 theorem step_call_memcpy_placed_of_ok [LibsignalPlacement] {H : LibsignalHooks}
     (hmc : subroutine_ok (lsProg_41 H) (lsρ lsMemcpySym) framelessMemcpyBudgetSpec)
     (dst src sp ret_pc v23 v26 : BitVec 64) (payload : List (BitVec 8))
@@ -383,29 +360,6 @@ theorem step_call_memcpy_placed [LibsignalPlacement] {H : LibsignalHooks}
       SepWPp (lsProg_41 H) ret sf (((dst ↦ₛ payload) ∗ (src ↦ₛ payload)) ∗ F) Q Qp) :
     SepWPp (lsProg_41 H) ret s0 P Q Qp :=
   step_call_memcpy_placed_of_ok (ls_hook_ok_of_mem hmemcpy)
-    dst src sp ret_pc v23 v26 payload tr s_init hcl hpc hrun hsp halign hlr htr hregs
-    hx23 hx26 hx0 hx1 hx2 hP hnext
-
-theorem step_call_memcpy_placed_sessionHooks [LibsignalPlacement] {H : LibsignalHooks}
-    (hmemcpy : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec)
-    (dst src sp ret_pc v23 v26 : BitVec 64) (payload : List (BitVec 8))
-    (tr : List TraceEvent) (s_init : State)
-    {ret : BitVec 64} {s0 : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcl : LibsignalCodeLoaded lsmpl s0.mem)
-    (hpc : s0.pc = lsρ lsMemcpySym) (hrun : s0.status = .Running)
-    (hsp : s0.sp = sp) (halign : s0.spAligned = true) (hlr : s0.readReg64 .lr = ret_pc)
-    (htr : s0.trace = tr) (hregs : PreKeyMsgTagRegs s_init s0)
-    (hx23 : s0.readReg64 .x23 = v23) (hx26 : s0.readReg64 .x26 = v26)
-    (hx0 : s0.readReg64 .x0 = dst) (hx1 : s0.readReg64 .x1 = src)
-    (hx2 : (s0.readReg64 .x2).toNat = payload.length)
-    (hP : P = (memRegion dst payload.length ∗ (src ↦ₛ payload)) ∗ F)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running → sf.sp = sp →
-      sf.trace = tr → VmPreserved s0 sf → LibsignalCodeLoaded lsmpl sf.mem →
-      PreKeyMsgTagRegs s_init sf → sf.readReg64 .x23 = v23 → sf.readReg64 .x26 = v26 →
-      SepWPp (lsProg_41 H) ret sf (((dst ↦ₛ payload) ∗ (src ↦ₛ payload)) ∗ F) Q Qp) :
-    SepWPp (lsProg_41 H) ret s0 P Q Qp :=
-  step_call_memcpy_placed_of_ok
-    (subroutine_ok_framelessMemcpy_of_sessionMemcpyRegionBudget (preKeyMsg_memcpy_placed_ok hmemcpy))
     dst src sp ret_pc v23 v26 payload tr s_init hcl hpc hrun hsp halign hlr htr hregs
     hx23 hx26 hx0 hx1 hx2 hP hnext
 
@@ -550,39 +504,6 @@ theorem step_preKeyMsg_tag1_placed [LibsignalPlacement]
           A.pool lim st sm ∗ stackAt sp preKeyMsgSubStack) ∗ F) Q Qp) :
     SepWPp (lsProg_41 H) ret s P Q Qp :=
   step_preKeyMsg_tag1_placed_of_ok (encodeVarintNoGrow_placed_ok hshim halloc hrealloc)
-    x g sp st tr hwf hcl hpc hrun hsp halign htr hfp hx20 hx25 hP hnext
-
-theorem step_preKeyMsg_tag1_placed_sessionHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym sessionShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (sp : BitVec 64)
-    (st : M.σ) (tr : List TraceEvent) (hwf : PreKeyMsgGhostWf x g)
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcl : LibsignalCodeLoaded lsmpl s.mem)
-    (hpc : s.pc = (blkPl_41).base + 604#64) (hrun : s.status = .Running)
-    (hsp : s.sp = sp) (halign : s.spAligned = true) (htr : s.trace = tr)
-    (hfp : s.readReg64 .fp = sp + 272#64)
-    (hx20 : (s.readReg64 .x20).setWidth 32 = (if x.preKeyId.isSome then 1#32 else 0#32))
-    (hx25 : (s.readReg64 .x25).setWidth 32 = g.preKeyVal32)
-    (hP : P = (((sp + 224#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-      (((sp + 224#64) + 8#64) ↦₆₄ g.serPtr) ∗
-      (((sp + 224#64) + 16#64) ↦₆₄ BitVec.ofNat 64 (serPrefix0 x).length) ∗
-      vecU8Buf A.repAlloc (BitVec.ofNat 64 x.model.serialized.length) g.serPtr (serPrefix0 x) ∗
-      A.pool lim st s ∗ stackAt sp preKeyMsgSubStack) ∗ F)
-    (hnext : ∀ sm : State, sm.pc = (blkPl_41).base + 672#64 → sm.status = .Running →
-      sm.sp = sp → sm.trace = tr → LibsignalCodeLoaded lsmpl sm.mem →
-      sm.readReg64 .x1 = BitVec.ofNat 64 (serPrefix1 x).length → PreKeyMsgTagRegs s sm →
-      SepWPp (lsProg_41 H) ret sm
-        ((((sp + 224#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-          (((sp + 224#64) + 8#64) ↦₆₄ g.serPtr) ∗
-          (((sp + 224#64) + 16#64) ↦₆₄ BitVec.ofNat 64 (serPrefix1 x).length) ∗
-          vecU8Buf A.repAlloc (BitVec.ofNat 64 x.model.serialized.length) g.serPtr (serPrefix1 x) ∗
-          A.pool lim st sm ∗ stackAt sp preKeyMsgSubStack) ∗ F) Q Qp) :
-    SepWPp (lsProg_41 H) ret s P Q Qp :=
-  step_preKeyMsg_tag1_placed_of_ok
-    (encodeVarintNoGrow_placed_ok_sessionShim hshim halloc hrealloc)
     x g sp st tr hwf hcl hpc hrun hsp halign htr hfp hx20 hx25 hP hnext
 
 /-! ## Tag 2 (`base_key`, `+0x2a0..+0x300`) -/
@@ -779,46 +700,6 @@ theorem step_preKeyMsg_tag2_placed [LibsignalPlacement]
   step_preKeyMsg_tag2_placed_of_ok
     (encodeVarintNoGrow_placed_ok hshim halloc hrealloc)
     (ls_hook_ok_of_mem hmemcpy)
-    x g sp st tr hwf hcl hpc hrun hsp halign htr hfp hx1 hx24 hx28 hP hnext
-
-theorem step_preKeyMsg_tag2_placed_sessionHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym sessionShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec)
-    (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (sp : BitVec 64)
-    (st : M.σ) (tr : List TraceEvent) (hwf : PreKeyMsgGhostWf x g)
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcl : LibsignalCodeLoaded lsmpl s.mem)
-    (hpc : s.pc = (blkPl_41).base + 672#64) (hrun : s.status = .Running)
-    (hsp : s.sp = sp) (halign : s.spAligned = true) (htr : s.trace = tr)
-    (hfp : s.readReg64 .fp = sp + 272#64)
-    (hx1 : s.readReg64 .x1 = BitVec.ofNat 64 (serPrefix1 x).length)
-    (hx24 : s.readReg64 .x24 = 33#64) (hx28 : s.readReg64 .x28 = g.bkSerPtr)
-    (hP : P = (((sp + 224#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-      (((sp + 224#64) + 8#64) ↦₆₄ g.serPtr) ∗
-      (((sp + 224#64) + 16#64) ↦₆₄ BitVec.ofNat 64 (serPrefix1 x).length) ∗
-      vecU8Buf A.repAlloc (BitVec.ofNat 64 x.model.serialized.length) g.serPtr (serPrefix1 x) ∗
-      boxU8Buf A.repAlloc g.bkSerPtr x.baseKey.serialize ∗
-      A.pool lim st s ∗ stackAt sp preKeyMsgSubStack) ∗ F)
-    (hnext : ∀ sm : State, sm.pc = (blkPl_41).base + 768#64 → sm.status = .Running →
-      sm.sp = sp → sm.trace = tr → LibsignalCodeLoaded lsmpl sm.mem →
-      sm.readReg64 .x23 = BitVec.ofNat 64 (serPrefix2 x).length →
-      sm.readReg64 .x26 = BitVec.ofNat 64 x.model.serialized.length →
-      PreKeyMsgTagRegs s sm →
-      SepWPp (lsProg_41 H) ret sm
-        ((((sp + 224#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-          (((sp + 224#64) + 8#64) ↦₆₄ g.serPtr) ∗
-          (((sp + 224#64) + 16#64) ↦₆₄ BitVec.ofNat 64 (serPrefix2 x).length) ∗
-          vecU8Buf A.repAlloc (BitVec.ofNat 64 x.model.serialized.length) g.serPtr (serPrefix2 x) ∗
-          boxU8Buf A.repAlloc g.bkSerPtr x.baseKey.serialize ∗
-          A.pool lim st sm ∗ stackAt sp preKeyMsgSubStack) ∗ F)
-        Q Qp) :
-    SepWPp (lsProg_41 H) ret s P Q Qp :=
-  step_preKeyMsg_tag2_placed_of_ok
-    (encodeVarintNoGrow_placed_ok_sessionShim hshim halloc hrealloc)
-    (subroutine_ok_framelessMemcpy_of_sessionMemcpyRegionBudget (preKeyMsg_memcpy_placed_ok hmemcpy))
     x g sp st tr hwf hcl hpc hrun hsp halign htr hfp hx1 hx24 hx28 hP hnext
 
 /-! ## Tag 3 (`identity_key`, `+0x300..+0x35c`) -/
@@ -1023,49 +904,6 @@ theorem step_preKeyMsg_tag3_placed [LibsignalPlacement]
   step_preKeyMsg_tag3_placed_of_ok
     (encodeVarintNoGrow_placed_ok hshim halloc hrealloc)
     (ls_hook_ok_of_mem hmemcpy)
-    x g sp st tr hwf hcl hpc hrun hsp halign htr hfp hx22 hx23 hx26 hP hnext
-
-theorem step_preKeyMsg_tag3_placed_sessionHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym sessionShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H lsRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmemcpy : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec)
-    (x : PreKeyMsgNewCall) (g : PreKeyMsgFrameGhost) (sp : BitVec 64)
-    (st : M.σ) (tr : List TraceEvent) (hwf : PreKeyMsgGhostWf x g)
-    {ret : BitVec 64} {s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hcl : LibsignalCodeLoaded lsmpl s.mem)
-    (hpc : s.pc = (blkPl_41).base + 768#64) (hrun : s.status = .Running)
-    (hsp : s.sp = sp) (halign : s.spAligned = true) (htr : s.trace = tr)
-    (hfp : s.readReg64 .fp = sp + 272#64)
-    (hx22 : s.readReg64 .x22 = 33#64)
-    (hx23 : s.readReg64 .x23 = BitVec.ofNat 64 (serPrefix2 x).length)
-    (hx26 : s.readReg64 .x26 = BitVec.ofNat 64 x.model.serialized.length)
-    (hP : P = (((sp + 16#64) ↦₆₄ g.ikSerPtr) ∗
-      ((sp + 224#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-      (((sp + 224#64) + 8#64) ↦₆₄ g.serPtr) ∗
-      (((sp + 224#64) + 16#64) ↦₆₄ BitVec.ofNat 64 (serPrefix2 x).length) ∗
-      vecU8Buf A.repAlloc (BitVec.ofNat 64 x.model.serialized.length) g.serPtr (serPrefix2 x) ∗
-      boxU8Buf A.repAlloc g.ikSerPtr x.ik.serialize ∗
-      A.pool lim st s ∗ stackAt sp preKeyMsgSubStack) ∗ F)
-    (hnext : ∀ sm : State, sm.pc = (blkPl_41).base + 860#64 → sm.status = .Running →
-      sm.sp = sp → sm.trace = tr → LibsignalCodeLoaded lsmpl sm.mem →
-      sm.readReg64 .x23 = BitVec.ofNat 64 (serPrefix3 x).length →
-      sm.readReg64 .x26 = BitVec.ofNat 64 x.model.serialized.length →
-      PreKeyMsgTagRegs s sm →
-      SepWPp (lsProg_41 H) ret sm
-        ((((sp + 16#64) ↦₆₄ g.ikSerPtr) ∗
-          ((sp + 224#64) ↦₆₄ BitVec.ofNat 64 x.model.serialized.length) ∗
-          (((sp + 224#64) + 8#64) ↦₆₄ g.serPtr) ∗
-          (((sp + 224#64) + 16#64) ↦₆₄ BitVec.ofNat 64 (serPrefix3 x).length) ∗
-          vecU8Buf A.repAlloc (BitVec.ofNat 64 x.model.serialized.length) g.serPtr (serPrefix3 x) ∗
-          boxU8Buf A.repAlloc g.ikSerPtr x.ik.serialize ∗
-          A.pool lim st sm ∗ stackAt sp preKeyMsgSubStack) ∗ F)
-        Q Qp) :
-    SepWPp (lsProg_41 H) ret s P Q Qp :=
-  step_preKeyMsg_tag3_placed_of_ok
-    (encodeVarintNoGrow_placed_ok_sessionShim hshim halloc hrealloc)
-    (subroutine_ok_framelessMemcpy_of_sessionMemcpyRegionBudget (preKeyMsg_memcpy_placed_ok hmemcpy))
     x g sp st tr hwf hcl hpc hrun hsp halign htr hfp hx22 hx23 hx26 hP hnext
 
 end LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodeTags1To4Budget

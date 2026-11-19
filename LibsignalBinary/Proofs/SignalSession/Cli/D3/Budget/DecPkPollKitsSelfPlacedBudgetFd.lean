@@ -14,24 +14,31 @@ public import LibsignalBinary.Heap.IfaceBudgetLemmas
 import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
 public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.AssemblyBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Get.PlacedBudgetAux1a -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.PlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SelfSpecPlaced
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrustedPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPollPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPollPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.PollCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # `hRead`-Free CLI Poll Self-Identity Store Kit from Block-`589` `dirGetSpecPlaced`
@@ -623,23 +630,5 @@ theorem cliPollSelf_kitPlacedOk_of_dirGet [LibsignalPlacement] {M : AllocCostMod
   regIdFutDrop hblk := by
     change subroutine_ok _ (0#64 + lsDropOffPlaced) _
     rw [lsDropOffPlaced_eq hDropNz]; exact cliIdFutDrop_rocl_placed_ok hblk
-
-theorem cliPollSelf_kitPlacedOk_stagesHooks_of_dirGet [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
-    (hDropNz : lsmpl.base 547 ≠ 0#64)
-    (hh : LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget.RunHooksPlaced
-      A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hGet : subroutine_ok (lsProg_589 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-      (lsmpl.base 589)
-      (dirGetSpecPlaced cliIo.rd cliWrOk A lim (DirGetEnv PathEnv ReadEnv cliIo.rd) B.dirGetNeed)) :
-    IdentitySelfStoreKitPlacedOkI A lim
-      (cliPollIdKitPlaced A.repAlloc F0 peer (cliKitStk B))
-      (cliPollSelfKitPlaced A.repAlloc F0 peer (cliKitStk B))
-      (cliPollSelfBudgetEnv A.repAlloc F0 peer (cliKitStk B) ReadEnv)
-      (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
-  cliPollSelf_kitPlacedOk_of_dirGet mmpl gh W B F0 peer hDropNz (runHooks_of_stages hh) hGet
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.DecPkPollKitsSelfPlacedBudgetFd

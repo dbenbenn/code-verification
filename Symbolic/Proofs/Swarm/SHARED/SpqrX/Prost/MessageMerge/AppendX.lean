@@ -23,7 +23,7 @@ field and message decoders, relating an untruncated field-merge loop to slice-fi
 `Proto.mergeMessage` decoding.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

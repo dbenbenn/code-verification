@@ -9,18 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit
+public import LibsignalBinary.Proofs.PeakBudget.CliMainIoCredit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.CliMainPeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.DirPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit
+public import LibsignalBinary.Proofs.PeakBudget.GroupCreditKit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.VecGrowCredit
-public import LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
+import LibsignalBinary.Proofs.PeakBudget.VecGrowCredit
+import LibsignalBinary.Proofs.PeakBudget.W1EncryptPeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.W2DecryptPeakSpec
 public import LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.VecGrowCreditHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W1EncryptSegments -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.W1EncryptSlotPeak -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.GrowOneXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.GrowOne.LayoutBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
 
-@[expose] public section
+public section
 
 /-!
 # CLI Small-Allocation Group Bounds
@@ -140,6 +148,8 @@ open LibsignalBinary.Proofs.PeakBudget.W2DecryptTrialPeak
 open LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
   (W3BoxedStoreStepEnv W3InitiateSlotEnv W3InitiateSlotParams
    W3SessLoadStepEnv W3SessStoreStepEnv W3SmallStoreStepEnv W3Stage4SpqrEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+  (phaseGroupSpec_cliFormatInnerEnv)
 open LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak
   (W3BoundedEvs W3InitiateFullEnv W3InitiateFullEnvWide W3Stage1Env W3Stage1EnvWide
    W3Stage23BracketEnv W3Stage2Env W3Stage4Env W3Stage5Env)
@@ -274,7 +284,7 @@ theorem boundedNonFreeEvs_groupSpec (M : AllocCostModel) [HasFineGroupCredit M]
 
 /-- Bounded non-free event trace (`evs.length ≤ maxLen`, `nonFreeCount evs ≤ k`,
 `eventStepReq ≤ maxReq`, `eventStepAlign ≤ 16`) with no `.realloc` events. -/
-def BoundedFreshEvs (k maxLen maxReq : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def BoundedFreshEvs (k maxLen maxReq : Nat) (evs : List AllocEvent) : Prop :=
   evs.length ≤ maxLen ∧ nonFreeCount evs ≤ k ∧
     (∀ ev ∈ evs, eventStepReq ev ≤ maxReq ∧ eventStepAlign ev ≤ 16) ∧
     (∀ ev ∈ evs, ∀ al o n, ev ≠ .realloc al o n)
@@ -549,7 +559,7 @@ theorem bytesMergeEnv_groupSpec (M : AllocCostModel) [HasFineGroupCredit M]
 
 /-- Scaled group bound (`33318` = `2 × 16659`, `0.5084` grp/field) for a fresh
 (`valCap = 0`) successful `BytesMergeEnv` on a small field (`≤ 44 B`). -/
-def deserSmallFieldFineGrpS : Nat := 33318
+@[expose] def deserSmallFieldFineGrpS : Nat := 33318
 
 theorem bytesMergeEnv_fresh_ok_le_44_fine_groupSpec (x : BytesMergeGhost)
     (hcap : x.valCap = 0#64)
@@ -827,14 +837,14 @@ def deserChainFineGrpS (maxKeys maxGrows : Nat) : Nat :=
 `SessionStructure`: `3` header small fields, `≤ 5` chains (`≤ 2000` seeds, `≤ 10` grows each),
 `≤ 2` `receiverChains` `Vec` grows, `7` scalar/sender/pending small fields, and `2` large/general
 `BytesMerge` fields (`kyber`, `pqRatchetState`). -/
-def deserSessionFineGrpS : Nat :=
+@[expose] def deserSessionFineGrpS : Nat :=
   3 * deserSmallFieldFineGrpS + 5 * deserChainFineGrpS 2000 10 +
     2 * (3 * FineScale) + 7 * deserSmallFieldFineGrpS + 2 * (6 * FineScale)
 
 /-- Tight `fineCostModel` scaled group bound (`347,382,294` = `5,301` groups) for
 `SessionRecord::deserialize`: current session (`deserSessionFineGrpS`), `≤ 5` archived session
 `BytesMerge` fields, and `≤ 2` `previousSessions` `Vec` grows. -/
-def deserRecordFineGrpS : Nat :=
+@[expose] def deserRecordFineGrpS : Nat :=
   deserSessionFineGrpS + 5 * (6 * FineScale) + 2 * (3 * FineScale)
 
 theorem deserSmallFields_fine_groupSpec
@@ -945,15 +955,15 @@ theorem optTailCloneEvents_le_44_fine_groupSpec {o : Option TailVecGhost}
 
 /-- Tight `fineCostModel` scaled group bound (`33,547,926` = `512` groups) for cloning one
 receiver chain under `SessionCloneDom` (`srk ≤ 44`, `priv = 0`, `≤ 2000` `32 B` seeds). -/
-def chainCloneDomFineGrpS : Nat :=
+@[expose] def chainCloneDomFineGrpS : Nat :=
   16659 + 16659 + 3 * FineScale + 2000 * 16659
 
 /-- Tight `fineCostModel` scaled group bound (`49,977` = `< 1` group) for cloning `SenderChain`. -/
-def senderChainCloneDomFineGrpS : Nat := 3 * 16659
+@[expose] def senderChainCloneDomFineGrpS : Nat := 3 * 16659
 
 /-- Tight `fineCostModel` scaled group bound (`168,462,726` = `2,571` groups) for
 `SessionStructure::clone` (`SegCloneEnv G ses.state`) under `GhostCloneValid` + `SessionCloneDom`. -/
-def segCloneDomFineGrpS : Nat :=
+@[expose] def segCloneDomFineGrpS : Nat :=
   16659 + 16659 + 16659 + senderChainCloneDomFineGrpS +
     (3 * FineScale + 5 * chainCloneDomFineGrpS) +
     16659 + 3 * FineScale + 16659 + 3 * FineScale
@@ -1098,7 +1108,7 @@ private theorem dropClonedChainEvents_nonFreeCount (gc : ChainGhost × ReceiverC
   rw [nonFreeCount_append, nonFreeCount_append, nonFreeCount_append,
       optDealloc_nonFreeCount_zero, optDealloc_nonFreeCount_zero,
       dropClonedMessageKeysEvents_nonFreeCount]
-  cases gc.2.chainKey <;> simp [nonFreeCount_nil, nonFreeCount_rustDeallocEvents]
+  cases gc.2.chainKey <;> simp [nonFreeCount]
 
 theorem dropClonedSessionEvents_groupSpec (M : AllocCostModel) [HasFineGroupCredit M]
     (G : SessionGhost) (st : SessionState (List (BitVec 8))) :
@@ -1154,11 +1164,11 @@ theorem vecVecClone1Events_fine_groupSpec (enc : List (BitVec 8)) :
 
 /-- Tight `fineCostModel` scaled group bound (`168,659,334` = `2,574` groups) for `0`-prev
 `SessionRecord::serialize`. -/
-def recordSerializeDomFineGrpS : Nat := segCloneDomFineGrpS + 3 * FineScale
+@[expose] def recordSerializeDomFineGrpS : Nat := segCloneDomFineGrpS + 3 * FineScale
 
 /-- Tight `fineCostModel` scaled group bound (`168,866,998` = `2,577` groups) for `prev1`
 `SessionRecord::serialize`. -/
-def serializePrev1DomFineGrpS : Nat := segCloneDomFineGrpS + (11056 + 3 * FineScale) + 3 * FineScale
+@[expose] def serializePrev1DomFineGrpS : Nat := segCloneDomFineGrpS + (11056 + 3 * FineScale) + 3 * FineScale
 
 theorem serializeSomeCancelEnv_groupSpec (M : AllocCostModel) [HasFineGroupCredit M]
     {G : SessionGhost} {sess : Session (List (BitVec 8))} {g_cl : Nat}
@@ -1454,13 +1464,14 @@ theorem otrApplyEnvTight_fine_groupSpec :
 theorem otrEncryptStepEnv_groupSpec (M : AllocCostModel) [HasFineGroupCredit M]
     {E_send E_sigNew : List AllocEvent → Prop} {ptextLen g_s g_n : Nat}
     (hSend : PhaseGroupSpec M E_send g_s)
-    (hSigNew : PhaseGroupSpec M E_sigNew g_n) :
+    (hSigNew : PhaseGroupSpec M E_sigNew g_n)
+    (hg_n : 3 * FineScale ≤ g_n := by decide) :
     PhaseGroupSpec M (OtrEncryptStepEnv E_send ptextLen E_sigNew)
       (g_s + 6 * FineScale + g_n) := by
   have hok := (otrApplyEnvTight_groupSpec M).seq
     ((PhaseGroupSpec.rustAlloc_any M ((ptextLen / 16 + 1) * 16) 1).seq
       (hSigNew.seq (PhaseGroupSpec.freeOnly M)))
-  exact (hSend.seq ((PhaseGroupSpec.freeOnly M).or hok)).mono (by omega)
+  exact (hSend.seq (((PhaseGroupSpec.freeOnly M).or (phaseGroupSpec_cliFormatInnerEnv M)).or hok)).mono (by omega)
 
 theorem fromApplySegEnv_groupSpec (M : AllocCostModel) [HasFineGroupCredit M]
     {boxStore g_sp : Nat} {E_storePoll : List AllocEvent → Prop}
@@ -1749,7 +1760,7 @@ theorem cmkJumpListEvs_fine_groupSpec :
 
 /-- Scaled group bound (`35,284,080` = `539` groups) for a `≤ 2000`-step `cmkJump` loop with
 `≤ 10` `Vec<104>` doubling steps (`2000 × 16659 + 10 × 3 × FineScale`). -/
-def w2Seg4CmkFineGrpS (maxSteps : Nat) : Nat :=
+@[expose] def w2Seg4CmkFineGrpS (maxSteps : Nat) : Nat :=
   2000 * 16659 + maxSteps * (3 * FineScale)
 
 theorem cmkJumpListEvs_tower_fine_groupSpec {jumps : List (Bool × Bool)}
@@ -1764,7 +1775,7 @@ theorem cmkJumpListEvs_tower_fine_groupSpec {jumps : List (Bool × Bool)}
 
 /-- Fresh-alloc (`BoundedFreshEvs`) refinement of `W2Seg4CmkStepEnv caps` capturing that the `≤ 2000`
 `33 B` message-key allocations never emit `.realloc`. -/
-def W2Seg4CmkTightEnv (caps : List Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def W2Seg4CmkTightEnv (caps : List Nat) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
     SeqEnv (BoundedFreshEvs 2000 4000 33)
       (SeqEnv (· = doublingChain104Evs caps) FreeOnlyEvs) evs
@@ -1918,7 +1929,7 @@ theorem w2TryDecryptFailEnv_of_seg4_groupSpec (M : AllocCostModel) [HasFineGroup
 
 /-- Tight `fineCostModel` `W2TryDecrypt` envelope pairing `W2Seg4CmkTightEnv` (`16659`/jump)
 with per-size-class small-allocation weights. -/
-def W2TryDecryptTightEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
+@[expose] def W2TryDecryptTightEnv (dhCap : Nat) (needGrow : Bool) (caps : List Nat)
     (SpqrStepEnv : List AllocEvent → Prop) (withAddr errAlloc : Bool) (ctLen : Nat)
     (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
@@ -2547,7 +2558,7 @@ theorem cliMainSetupEnv_groupSpec (M : AllocCostModel) [HasFineGroupCredit M]
   omega
 
 /-- Tight `fineCostModel` setup group bound (`4,366,658` = `67` groups) when `i.argv.length ≤ 3`. -/
-def cliMainSetupFineGrpS : Nat :=
+@[expose] def cliMainSetupFineGrpS : Nat :=
   24623 + 3 * (3 * FineScale) + 16659 + 57 * FineScale
 
 theorem cliMainSetupEnv_le_3_fine_groupSpec

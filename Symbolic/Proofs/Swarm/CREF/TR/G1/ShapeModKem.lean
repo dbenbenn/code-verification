@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.G1.WireShapeInj
 import Init.Data.String
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -18,6 +18,10 @@ import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeAddr
 import Symbolic.Proofs.Swarm.CREF.TR.RecvDecStepMac
+public import Symbolic.Specifications.Concrete.ExternInterpretation
+public import Symbolic.Specifications.Model.Composed
+public import Symbolic.Specifications.Model.Instance
+public import Symbolic.Specifications.Refinement.Concretization
 
 /-!
 # Shape Injectivity Modulo KEM Leaves
@@ -27,7 +31,7 @@ Proves per-functor `.shape` injectivity and cross-family disjointness (`shape_*_
 disjointness from concatenations (`shape_kemLeaf_ne_concat`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,7 +48,7 @@ open Symbolic.Swarm.CREF.TR.G1 (ShapeId)
 
 /-- A KEM shared-secret leaf term: either the `.2` of an encapsulation or an implicit-rejection
 `kemRejKey sk ct`. -/
-def KemLeaf (ss : DY.Bytes) : Prop :=
+@[expose] def KemLeaf (ss : DY.Bytes) : Prop :=
   (∃ pk e : DY.Bytes, ss = (DY.PQKem.kemEncap pk e).2) ∨
   (∃ sk ct : DY.Bytes, ss = DY.PQKem.kemRejKey sk ct)
 

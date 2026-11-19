@@ -9,18 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4K
-public import LibsignalBinary.Proofs.SpqrV1.Auth.Repr
-public import LibsignalBinary.Proofs.SpqrV1.Auth.SpqrAuthCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4K -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Auth.SpqrAuthCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,24 +43,11 @@ open CryptoVerification.LibsignalSpqrV1
 open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.CodeLayout
 
-private gen_decodes libsignalSessionCode_tree libsignalSessionBin [0x4fe10 → 0x4fed4]
-
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_lemma% fnOff "<spqr::authenticator::Authenticator>::from_pb")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "memcpy")
-  (ls_stub% "alloc::raw_vec::handle_error")
-
-/-- Instruction-fetch tactic for `[k0, k0 + len)` inside `Authenticator::from_pb` (`0x55208`). -/
-macro "from_pb_fetches_range " b:term:max H:term:max hfn:ident k0:num len:num : tactic =>
-  `(tactic| code_fetches_range CryptoVerification.libsignalSessionCode libsignalSessionBin $b $H $hfn 0x4fe10 $k0 $len)
 
 /-- Stack budget of `Authenticator::from_pb` (`allocHookStack + 64`). -/
 abbrev authFromPbStack : Nat := allocHookStack + 64
@@ -197,7 +182,7 @@ structure AuthFromPbGhost where
 /-- Pinned specification of `<spqr::authenticator::Authenticator>::from_pb` (`0x55208`):
 clones `pb.root_key` and `pb.mac_key` into `authenticatorAt A x.out (Authenticator.fromPb x.pb)`
 while preserving `authenticatorPBPinnedAt A x.g x.pbA x.pb` (or panicking on OOM). -/
-def authFromPbPinnedSpec (A : RustAlloc) : Spec AuthFromPbPinnedGhost where
+@[expose] def authFromPbPinnedSpec (A : RustAlloc) : Spec AuthFromPbPinnedGhost where
   pre x s :=
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA⌝ ∗
       memRegion x.out 48 ∗
@@ -211,7 +196,7 @@ def authFromPbPinnedSpec (A : RustAlloc) : Spec AuthFromPbPinnedGhost where
   onPanic _ s0 sf := ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Unpinned specification of `Authenticator::from_pb`. -/
-def authFromPbSpec (A : RustAlloc) : Spec AuthFromPbGhost where
+@[expose] def authFromPbSpec (A : RustAlloc) : Spec AuthFromPbGhost where
   pre x s :=
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.pbA⌝ ∗
       memRegion x.out 48 ∗
@@ -224,344 +209,7 @@ def authFromPbSpec (A : RustAlloc) : Spec AuthFromPbGhost where
       A.pool ∗ stackAt s0.sp authFromPbStack
   onPanic _ s0 sf := ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-/-- `.inImage img` contract proposition for `authFromPbSpec A`. -/
-def AuthFromPbOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr authFromPbName)
-    ((authFromPbSpec A).inImage img)
-
-set_option maxHeartbeats 1600000 in
-private theorem auth_from_pb_pinned_ok_core {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hshim : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr authFromPbName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x4fe10)))
-      sessionShimSpec)
-    (halloc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr authFromPbName +
-        BitVec.ofNat 64 (num% (ls_off% "__rustc::__rust_alloc" - 0x4fe10)))
-      (rustAllocSpec A))
-    (hmc : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr authFromPbName +
-        BitVec.ofNat 64 (num% (ls_off% "memcpy" - 0x4fe10)))
-      (withStack sessionMemcpyRegionSpec allocHookStack)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr authFromPbName)
-      (authFromPbPinnedSpec A) := by
-  simp only [authFromPbPinnedSpec, authenticatorPBPinnedAt, authenticatorAt, Authenticator.fromPb,
-    vecU8At, vecHeader, memRegion_48_cells, stackAt_authFromPb,
-    out_add24_add8, out_add24_add16, BitVec.ofNat_eq_ofNat,
-    sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-  have hfn : libsignalSessionCode.fnOff authFromPbName = 0x4fe10 :=
-    libsignalSessionCode_fnOff_0x4fe10
-  simp only [withStack] at hmc
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := authFromPbName) (k := num% (ls_off% "alloc::raw_vec::handle_error" - 0x4fe10))
-    (by rw [hfn, (ls_stub% "alloc::raw_vec::handle_error")])
-  from_pb_fetches_range b (Rust.withPanics ext) hfn 0 200
-  dsimp only [tripleRatchetProgAtExt] at hshim halloc hmc hpanic ⊢
-  clear hfn
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr authFromPbName = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨out, pbA, ⟨⟨cap0, ptr0⟩, ⟨cap1, ptr1⟩⟩, ⟨rootKey, macKey⟩⟩ := x
-  dsimp only at *
-  have hpow1 : ∃ k, 1 = 2 ^ k := ⟨0, rfl⟩
-  have hr_le : rootKey.length ≤ cap0.toNat := ‹_›
-  have hr_cap : cap0.toNat < 2 ^ 63 := ‹_›
-  have hm_le : macKey.length ≤ cap1.toNat := ‹_›
-  have hm_cap : cap1.toNat < 2 ^ 63 := ‹_›
-  have hr_lt63 : rootKey.length < 2 ^ 63 := Nat.lt_of_le_of_lt hr_le hr_cap
-  have hm_lt63 : macKey.length < 2 ^ 63 := Nat.lt_of_le_of_lt hm_le hm_cap
-  have hr_lt64 : rootKey.length < 2 ^ 64 := by omega
-  have hm_lt64 : macKey.length < 2 ^ 64 := by omega
-  have hr_toNat : (BitVec.ofNat 64 rootKey.length).toNat = rootKey.length := by
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hr_lt64]
-  have hm_toNat : (BitVec.ofNat 64 macKey.length).toNat = macKey.length := by
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hm_lt64]
-  have hr_cases : rootKey = [] ∨ 0 < rootKey.length := by cases rootKey <;> simp
-  have hm_cases : macKey = [] ∨ 0 < macKey.length := by cases macKey <;> simp
-  rcases hr_cases with rfl | hr_pos <;>
-    rcases hm_cases with rfl | hm_pos
-  · -- Case 1: rootKey = [] ∧ macKey = []
-    simp only [List.length_nil, BitVec.ofNat_eq_ofNat] at *
-    apply SepWPp.of_sepWP_ret
-    wp_steps
-    apply SepWP.fold (vecU8_of_zero A out) (by sep_focus)
-    have h2 : ((out + 24#64) ↦₆₄ 0#64) ∗ ((out + 32#64) ↦₆₄ 1#64) ∗ ((out + 40#64) ↦₆₄ 0#64) ⊢
-        vecU8 A (out + 24#64) [] := by
-      simpa only [out_add24_add8, out_add24_add16] using vecU8_of_zero A (out + 24#64)
-    apply SepWP.fold h2 (by sep_focus)
-    wp_done
-  · -- Case 2: rootKey = [] ∧ 0 < macKey.length
-    have hcap1_ne : cap1 ≠ 0#64 := cap_ne_zero_of_pos hm_pos hm_le
-    have hm_ne0 : (BitVec.ofNat 64 macKey.length == 0#64) = false :=
-      ofNat_beq_zero_false hm_pos hm_lt64
-    have hlay1 : LayoutOk macKey.length 1 := ⟨hm_pos, hpow1, by omega⟩
-    simp only [List.length_nil, BitVec.ofNat_eq_ofNat, hcap1_ne, ↓reduceIte, sepConj_assoc] at *
-    apply SepWPp.of_sepWP (mid := entry + 104#64)
-    wp_steps
-    wp_apply
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases hoom1 : sf_1.readReg64 Reg.x0 = 0#64
-    · simp only [hoom1, ite_true]
-      rw [pull_alloc_pure]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x4fe10))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [hoom1, ite_false, sepConj_assoc]
-      have hoom1_beq : (sf_1.readReg64 Reg.x0 == 0#64) = false := beq_false_of_ne hoom1
-      rw [pull_alloc_pure]
-      refine SepWPp.pure_elim fun ⟨_, htr1⟩ => ?_
-      have htr_sf1 : sf_1.trace = s0.trace := by
-        rw [htr1]; simp only [wp_norm, arm64_norm, *]
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_apply
-      wp_steps
-      apply SepWP.fold (vecU8_of_zero A out) (by sep_focus)
-      have h2 : ((out + 24#64) ↦₆₄ BitVec.ofNat 64 macKey.length) ∗
-          ((out + 32#64) ↦₆₄ sf_1.readReg64 Reg.x0) ∗
-          ((out + 40#64) ↦₆₄ BitVec.ofNat 64 macKey.length) ∗
-          A.live (sf_1.readReg64 Reg.x0) macKey.length 1 ∗
-          (sf_1.readReg64 Reg.x0 ↦ₛ macKey) ⊢
-          vecU8 A (out + 24#64) macKey := by
-        simpa only [out_add24_add8, out_add24_add16] using
-          vecU8_of_pos A (out + 24#64) (sf_1.readReg64 Reg.x0) macKey hm_pos hm_lt63 hoom1
-      apply SepWP.fold h2 (by sep_focus)
-      wp_done
-  · -- Case 3: 0 < rootKey.length ∧ macKey = []
-    have hcap0_ne : cap0 ≠ 0#64 := cap_ne_zero_of_pos hr_pos hr_le
-    have hr_ne0 : (BitVec.ofNat 64 rootKey.length == 0#64) = false :=
-      ofNat_beq_zero_false hr_pos hr_lt64
-    have hlay0 : LayoutOk rootKey.length 1 := ⟨hr_pos, hpow1, by omega⟩
-    simp only [List.length_nil, BitVec.ofNat_eq_ofNat, hcap0_ne, ↓reduceIte, sepConj_assoc] at *
-    apply SepWPp.of_sepWP (mid := entry + 56#64)
-    wp_steps
-    wp_apply
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases hoom0 : sf_1.readReg64 Reg.x0 = 0#64
-    · simp only [hoom0, ite_true]
-      rw [pull_alloc_pure]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x4fe10))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [hoom0, ite_false, sepConj_assoc]
-      have hoom0_beq : (sf_1.readReg64 Reg.x0 == 0#64) = false := beq_false_of_ne hoom0
-      rw [pull_alloc_pure]
-      refine SepWPp.pure_elim fun ⟨_, htr1⟩ => ?_
-      have htr_sf1 : sf_1.trace = s0.trace := by
-        rw [htr1]; simp only [wp_norm, arm64_norm, *]
-      apply SepWPp.of_sepWP_ret
-      wp_steps
-      wp_apply
-      wp_steps
-      apply SepWP.fold (vecU8_of_pos A out (sf_1.readReg64 Reg.x0) rootKey hr_pos hr_lt63 hoom0) (by sep_focus)
-      have h2 : ((out + 24#64) ↦₆₄ 0#64) ∗ ((out + 32#64) ↦₆₄ 1#64) ∗ ((out + 40#64) ↦₆₄ 0#64) ⊢
-          vecU8 A (out + 24#64) [] := by
-        simpa only [out_add24_add8, out_add24_add16] using vecU8_of_zero A (out + 24#64)
-      apply SepWP.fold h2 (by sep_focus)
-      wp_done
-  · -- Case 4: 0 < rootKey.length ∧ 0 < macKey.length
-    have hcap0_ne : cap0 ≠ 0#64 := cap_ne_zero_of_pos hr_pos hr_le
-    have hcap1_ne : cap1 ≠ 0#64 := cap_ne_zero_of_pos hm_pos hm_le
-    have hr_ne0 : (BitVec.ofNat 64 rootKey.length == 0#64) = false :=
-      ofNat_beq_zero_false hr_pos hr_lt64
-    have hm_ne0 : (BitVec.ofNat 64 macKey.length == 0#64) = false :=
-      ofNat_beq_zero_false hm_pos hm_lt64
-    have hlay0 : LayoutOk rootKey.length 1 := ⟨hr_pos, hpow1, by omega⟩
-    have hlay1 : LayoutOk macKey.length 1 := ⟨hm_pos, hpow1, by omega⟩
-    simp only [hcap0_ne, hcap1_ne, ↓reduceIte, sepConj_assoc] at *
-    apply SepWPp.of_sepWP (mid := entry + 56#64)
-    wp_steps
-    wp_apply
-    wp_steps
-    wp_apply
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    by_cases hoom0 : sf_1.readReg64 Reg.x0 = 0#64
-    · simp only [hoom0, BitVec.ofNat_eq_ofNat, ite_true]
-      rw [pull_alloc_pure]
-      refine SepWPp.pure_elim fun htrace => ?_
-      apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x4fe10))
-      wp_steps
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-      simpa only [sepConj_assoc] using
-        allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-    · simp only [hoom0, BitVec.ofNat_eq_ofNat, ite_false, sepConj_assoc]
-      have hoom0_beq : (sf_1.readReg64 Reg.x0 == 0#64) = false := beq_false_of_ne hoom0
-      rw [pull_alloc_pure]
-      refine SepWPp.pure_elim fun ⟨_, htr1⟩ => ?_
-      have htr_sf1 : sf_1.trace = s0.trace := by
-        rw [htr1]; simp only [wp_norm, arm64_norm, *]
-      apply SepWPp.of_sepWP (mid := entry + 104#64)
-      wp_steps
-      wp_apply
-      wp_steps
-      wp_apply
-      wp_steps
-      wp_apply
-      apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-      by_cases hoom1 : sf_4.readReg64 Reg.x0 = 0#64
-      · simp only [hoom1, BitVec.ofNat_eq_ofNat, ite_true]
-        rw [pull_alloc_pure]
-        refine SepWPp.pure_elim fun htrace => ?_
-        apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - 0x4fe10))
-        wp_steps
-        apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-        refine SepWPp.panic (by simp only [wp_norm, arm64_norm, *]) (by wp_norm_lhs) fun hm => ?_
-        simpa only [sepConj_assoc] using
-          allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, wp_norm, arm64_norm, *])) hm
-      · simp only [hoom1, BitVec.ofNat_eq_ofNat, ite_false, sepConj_assoc]
-        have hoom1_beq : (sf_4.readReg64 Reg.x0 == 0#64) = false := beq_false_of_ne hoom1
-        rw [pull_alloc_pure]
-        refine SepWPp.pure_elim fun ⟨_, htr4⟩ => ?_
-        have htr_sf4 : sf_4.trace = s0.trace := by
-          rw [htr4]; simp only [wp_norm, arm64_norm, *]
-        apply SepWPp.of_sepWP_ret
-        wp_steps
-        wp_apply
-        wp_steps
-        apply SepWP.fold (vecU8_of_pos A out (sf_1.readReg64 Reg.x0) rootKey hr_pos hr_lt63 hoom0) (by sep_focus)
-        have h2 : ((out + 24#64) ↦₆₄ BitVec.ofNat 64 macKey.length) ∗
-            ((out + 32#64) ↦₆₄ sf_4.readReg64 Reg.x0) ∗
-            ((out + 40#64) ↦₆₄ BitVec.ofNat 64 macKey.length) ∗
-            A.live (sf_4.readReg64 Reg.x0) macKey.length 1 ∗
-            (sf_4.readReg64 Reg.x0 ↦ₛ macKey) ⊢
-            vecU8 A (out + 24#64) macKey := by
-          simpa only [out_add24_add8, out_add24_add16] using
-            vecU8_of_pos A (out + 24#64) (sf_4.readReg64 Reg.x0) macKey hm_pos hm_lt63 hoom1
-        apply SepWP.fold h2 (by sep_focus)
-        wp_done
-
-/-- `Authenticator::from_pb` meets `authFromPbPinnedSpec A` on `tripleRatchetProgAtExt`. -/
-theorem auth_from_pb_pinned_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr authFromPbName)
-      (authFromPbPinnedSpec A) :=
-  auth_from_pb_pinned_ok_core
-    (hA.shim_ok_at authFromPbName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x4fe10)))
-    (hA.alloc_ok_at authFromPbName (num% (ls_off% "__rustc::__rust_alloc" - 0x4fe10)))
-    (subroutine_ok_withStack_of_subroutine_ok
-      (hA.session_memcpy_region_ok_at authFromPbName (num% (ls_off% "memcpy" - 0x4fe10)))
-      allocHookStack)
-
-private theorem auth_from_pb_ok_of_pinned {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hpinned : subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr authFromPbName) (authFromPbPinnedSpec A)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr authFromPbName)
-      (authFromPbSpec A) := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  simp only [authFromPbSpec, authenticatorPBAt_eq_exists_pinned,
-    sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists] at hpre
-  rcases hpre with ⟨g, hpre⟩
-  refine hpinned.mono_outcome ⟨x.out, x.pbA, g, x.pb⟩ R s0 hpc hrun hpre hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan, hq⟩ | hex)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    simp only [authFromPbSpec, authenticatorPBAt_eq_exists_pinned,
-      sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists]
-    exact ⟨g, hq⟩
-  · exact Or.inr (Or.inl ⟨hpan, hq⟩)
-  · exact Or.inr (Or.inr hex)
-
-/-- `Authenticator::from_pb` meets `authFromPbSpec A` on `tripleRatchetProgAtExt`. -/
-theorem auth_from_pb_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr authFromPbName)
-      (authFromPbSpec A) :=
-  auth_from_pb_ok_of_pinned (auth_from_pb_pinned_ok_ext hA)
-
-/-- `.inImage img` contract proposition for `authFromPbPinnedSpec A`. -/
-def AuthFromPbPinnedOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr authFromPbName)
-    ((authFromPbPinnedSpec A).inImage img)
-
-theorem auth_from_pb_pinned_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts img.base A ext) :
-    AuthFromPbPinnedOkX img A ext := by
-  unfold AuthFromPbPinnedOkX
-  refine subroutine_ok_mono (auth_from_pb_pinned_ok_ext hA) (fun x R s0 hpre => ?_)
-    (fun _ _ _ _ hpost => hpost)
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hpre.2
-
-theorem auth_from_pb_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContracts img.base A ext) :
-    AuthFromPbOkX img A ext := by
-  unfold AuthFromPbOkX
-  refine subroutine_ok_mono (auth_from_pb_ok_ext hA) (fun x R s0 hpre => ?_)
-    (fun _ _ _ _ hpost => hpost)
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hpre.2
-
-theorem auth_from_pb_ok_x_tripleRatchetExterns {img : Obj.Image} (C : Crypto) {A : RustAlloc}
-    (ctl : BitVec 64) {abs : String → Option (State → State)} (hA : AllocHooks A abs) :
-    AuthFromPbOkX img A (tripleRatchetExterns C ctl abs) :=
-  auth_from_pb_ok_x (AllocContracts.of_tripleRatchetProgAt img.base C A ctl abs hA)
-
 namespace Ext4K
-
-theorem auth_from_pb_pinned_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : CryptoVerification.SpqrV1.Alloc.AllocContracts4K b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr authFromPbName)
-      (authFromPbPinnedSpec A) :=
-  auth_from_pb_pinned_ok_core
-    (hA.shim_ok_at authFromPbName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - 0x4fe10)))
-    (hA.alloc_ok_at authFromPbName (num% (ls_off% "__rustc::__rust_alloc" - 0x4fe10)))
-    (hA.session_memcpy_region_ok_at authFromPbName (num% (ls_off% "memcpy" - 0x4fe10)) allocHookStack)
-
-theorem auth_from_pb_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hA : CryptoVerification.SpqrV1.Alloc.AllocContracts4K b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr authFromPbName)
-      (authFromPbSpec A) :=
-  auth_from_pb_ok_of_pinned (auth_from_pb_pinned_ok_ext hA)
-
-theorem auth_from_pb_pinned_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : CryptoVerification.SpqrV1.Alloc.AllocContracts4K img.base A ext) :
-    AuthFromPbPinnedOkX img A ext := by
-  unfold AuthFromPbPinnedOkX
-  refine subroutine_ok_mono (auth_from_pb_pinned_ok_ext hA) (fun x R s0 hpre => ?_)
-    (fun _ _ _ _ hpost => hpost)
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hpre.2
-
-theorem auth_from_pb_ok_x {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hA : CryptoVerification.SpqrV1.Alloc.AllocContracts4K img.base A ext) :
-    AuthFromPbOkX img A ext := by
-  unfold AuthFromPbOkX
-  refine subroutine_ok_mono (auth_from_pb_ok_ext hA) (fun x R s0 hpre => ?_)
-    (fun _ _ _ _ hpost => hpost)
-  rw [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact hpre.2
 
 end Ext4K
 
@@ -1057,7 +705,7 @@ theorem authenticatorPinAt_expose_entails (A : RustAlloc) (g : AuthenticatorGhos
   refine Entails.pure_left fun hrk => Entails.pure_left fun hmk => ?_
   exact Entails.pure_right ⟨hrk, hmk⟩ (Entails.refl _)
 
-def rustAllocZeroedSpecWithStack (A : RustAlloc) (hookStack : Nat := extHookStack) :
+@[expose] def rustAllocZeroedSpecWithStack (A : RustAlloc) (hookStack : Nat := extHookStack) :
     Spec (Nat × Nat) where
   pre := fun (size, align) s =>
     ⌜(s.readReg64 Reg.x0).toNat = size ∧ (s.readReg64 Reg.x1).toNat = align ∧
@@ -1093,7 +741,7 @@ theorem rustAllocZeroedWithStack_of_rustAllocZeroed {P : Program} {addr : BitVec
   · dsimp only [rustAllocZeroedSpec] at hex; rw [satisfies_pure_sepConj] at hex; exact False.elim hex.1
   · dsimp only [rustAllocZeroedSpec] at hoom; rw [satisfies_pure_sepConj] at hoom; exact False.elim hoom.1
 
-def vecBufAt (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecBufAt (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   (ptr ↦ₛ bs) ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗
@@ -1122,32 +770,10 @@ theorem pointsToBytes_64_entails_memRegion (p : BitVec 64) {bs : List (BitVec 8)
     (p ↦ₛ bs) ⊢ memRegion p 64 :=
   h ▸ pointsToBytes_entails_memRegion p bs
 
-theorem SepWPp.seq_frame_inImage {prog : Program} {img : Obj.Image}
-    {mid_pc ret_pc : BitVec 64} {s : State} {P P_local Q_local F : SepProp}
-    {Q Qp : State → SepProp → Prop}
-    (hF : ImgCallInv img s)
-    (hframe : P = P_local ∗ F)
-    (h1 : SepWP prog mid_pc s P_local
-      (fun sm Pm => sm.sp = s.sp ∧ CalleeSavedPreserved s sm ∧ sm.trace = s.trace ∧ (Pm ⊢ Q_local)))
-    (h2 : ∀ sm : State, sm.pc = mid_pc → sm.status = .Running →
-      sm.sp = s.sp → CalleeSavedPreserved s sm → sm.trace = s.trace → ImgCallInv img sm →
-      SepWPp prog ret_pc sm (Q_local ∗ F) Q Qp) :
-    SepWPp prog ret_pc s P Q Qp := by
-  intro R hm hL
-  rw [hframe, sepConj_assoc] at hm
-  rcases h1.elim (R := F ∗ R) hm hL with
-    ⟨sm, hsteps1, ⟨hpc, hrun, Pm, hPm, hsp, hcs, htr, hent⟩ | ⟨_, hoom⟩⟩
-  · have hPm' : sm.mem ⊨ (Q_local ∗ F) ∗ R := by
-      rw [sepConj_assoc]; exact Satisfies.mono (sepConj_mono_left hent) hPm
-    obtain ⟨sf, hsteps2, hout2⟩ :=
-      h2 sm hpc hrun hsp hcs htr (hF.of_steps hsteps1) R hPm' (hsteps1.codeLoaded hL)
-    exact ⟨sf, hsteps1.trans hsteps2, hout2⟩
-  · exact False.elim (not_satisfies_false_sepConj hoom)
-
 theorem dealloc_vecBuf_cases {cap : BitVec 64} {n : Nat}
     (_hle : n ≤ cap.toNat) : cap = 0#64 ∨ cap ≠ 0#64 := Decidable.em (cap = 0#64)
 
-def ikmDeallocLocal (A : RustAlloc) {cap ptr : BitVec 64} {bs : List (BitVec 8)}
+@[expose] def ikmDeallocLocal (A : RustAlloc) {cap ptr : BitVec 64} {bs : List (BitVec 8)}
     (_hle : bs.length ≤ cap.toNat) (_hptr : ptr ≠ 0#64) (sp : BitVec 64) : SepProp :=
   vecBufAt A cap ptr bs ∗ A.pool ∗ stackAt sp extHookStack
 

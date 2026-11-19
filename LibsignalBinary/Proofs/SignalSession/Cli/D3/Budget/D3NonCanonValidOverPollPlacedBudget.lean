@@ -11,21 +11,33 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollAuxPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverPollAuxPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntryPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage4V1InstPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMain
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStmts
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverStage4PlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1Placed
 
 /-!
 # Budget-Threaded Poll Composition for Non-Matching Overwrite (`DecPkOkOverV4`)
@@ -36,7 +48,7 @@ Unpacks the `dpPollSpecStateBudget` entry precondition under `DecPkOkOverV4`, de
 `decPk_d3_validOver_poll_at_full_placedBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -267,7 +279,7 @@ theorem dpPollPre_unpack_over_d3_placed [LibsignalPlacement]
 /-! ## 2. Full Block-`518` Poll Envelope & Theorem (`decPk_d3_validOver_poll_placedBudget`) -/
 
 /-- Concrete CLI Stage P1 (`is_trusted_identity = .ok true`) allocation envelope on `StoresGhost.opened`. -/
-def CliStageP1OkEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CliStageP1OkEnv [LibsignalPlacement] {A : RustAlloc}
     (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -286,7 +298,7 @@ def CliStageP1OkEnv [LibsignalPlacement] {A : RustAlloc}
 covering untrusted rejection (`CliDpPollUntrustedEnv`), Stage P1 (`CliStageP1OkEnv`), and all
 `Path C Over` stage envelopes (`StageP2OverEnv`, `StageP3Prev1Env`, `StageP3ErrM3Env`,
 `StageP3VerNePrev1Env`, `StageP4Prev1ExitEnv`). -/
-def DecPkD3ValidOverPollEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def DecPkD3ValidOverPollEnv [LibsignalPlacement] {A : RustAlloc}
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -392,7 +404,7 @@ def DecPkD3ValidOverPollEnv [LibsignalPlacement] {A : RustAlloc}
 /-- Pointwise budget-threaded `[LibsignalPlacement]` D3 `validOver` poll contract on Block `518`
 (`dpPollEntryPlaced = lsmpl.base 518`) at fixed `(mmpl, gh, W, X, B, S, Scope)` under `decPkOverDef`
 and `DecPkOkOverV4`. -/
-def CliDpPollOkOverV4StatePlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliDpPollOkOverV4StatePlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -700,7 +712,7 @@ theorem decPk_d3_validOver_poll_placedBudget [LibsignalPlacement]
           A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
       ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs,
        hh.utf8, hh.memrchr, hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner,
-       hh.blackBox⟩
+       hh.fmtWrite, hh.blackBox⟩
     let σ := cliKitStk B
     let pid := pmPreKeyId y.g.msg
     let sid := y.g.msg.signedPreKeyId
@@ -943,7 +955,7 @@ theorem dpPollPre_unpack_over_d3_frozen_placed [LibsignalPlacement]
 /-- Pointwise `withLsFrozen`-guarded D3 `validOver` poll contract on Block `518`
 (`dpPollEntryPlaced = lsmpl.base 518`) at fixed `(mmpl, gh, W, X, B, S, Scope)` under `decPkOverDef`
 and `DecPkOkOverV4`. -/
-def CliDpPollOkOverV4StateFrozenPlacedAt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def CliDpPollOkOverV4StateFrozenPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -1026,7 +1038,7 @@ theorem decPk_d3_validOver_poll_full_placedBudget [LibsignalPlacement]
           A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
       ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs,
        hh.utf8, hh.memrchr, hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner,
-       hh.blackBox⟩
+       hh.fmtWrite, hh.blackBox⟩
     let σ := cliKitStk B
     let pid := pmPreKeyId y.g.msg
     let sid := y.g.msg.signedPreKeyId
@@ -1278,7 +1290,7 @@ theorem decPk_d3_validOver_poll_at_full_placedBudget [LibsignalPlacement]
           A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) :=
       ⟨hh.alloc, hh.allocFs, hh.panics, hh.memcpyRO, hh.bcmp, hh.fs,
        hh.utf8, hh.memrchr, hh.codecHooks, hh.allocZeroed, hh.stringClone, hh.formatInner,
-       hh.blackBox⟩
+       hh.fmtWrite, hh.blackBox⟩
     let σ := cliKitStk B
     let pid := pmPreKeyId y.g.msg
     let sid := y.g.msg.signedPreKeyId

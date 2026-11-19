@@ -9,8 +9,8 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+import Symbolic.Proofs.Swarm.CREF.TR.SrHonestVer
+import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
 /-!
@@ -20,7 +20,7 @@ Re-exports the honest-send SPQR ciphertext version bound (`SendsFit` and provena
 `Symbolic.Swarm.CREF.TR.SrHonestVer`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

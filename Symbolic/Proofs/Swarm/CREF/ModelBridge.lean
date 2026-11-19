@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.ALaCarte.Basic
@@ -20,7 +20,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
+public import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.StateFaithfulMoves
 import Symbolic.Proofs.Swarm.CREF.TRView
 import Symbolic.DYBridge.DY.Trace.Basic
@@ -42,7 +42,7 @@ Provides list-append and single-step extension lemmas for `runMoves`, `ModelRun`
 `ExplainsMoves`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -209,7 +209,7 @@ theorem b5_modelRun_snoc {r : ProtocolSetup} {ms : List Move} {m : Move} (hrun :
   · rw [b5_ownSaltsFrom_append, hos]; exact hsalt
 
 /-- Conditions under which a single move `m` validly extends a `ModelRun` at trace `tr`. -/
-def MoveOK (r : ProtocolSetup) (tr : ExecTrace) (m : Move) : Prop :=
+@[expose] def MoveOK (r : ProtocolSetup) (tr : ExecTrace) (m : Move) : Prop :=
   m.isSetup = false ∧ (m.next tr).Reachable reachability ∧ m.LogsSessionCompletion tr ∧
     compromisesCurrentFrom tr [m] = true ∧ ownSaltsFrom tr [m] = true ∧
     m.MatchesSetupPeer r ∧

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
-public import Computational.Proofs.SignalPqxdh.Security.SigHopA
+public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHopA -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhA -- shake: keep
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- shake: keep
 
@@ -22,7 +22,7 @@ Defines `PrimBaseSpec` step liftings, `cacheAuthAdvKeys` commutation lemmas, and
 combinators over `AeadIntSimSpec` for the AEAD sub-hops of `pqxdh_auth`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ open _root_.Proofs.SignalPqxdh.Security.FgGapDh
    initSessionSlotIdx_inj_of_lt RelProbUpToBad simulateQ_relProbUpToBad
    evalDist_simulateQ_eq_of_step_or_bad)
 
-def cacheAuthAdvKeys {S : Setup} (P : Primitives) (hst : AuthHybridState S) : AuthHybridState S :=
+@[expose] def cacheAuthAdvKeys {S : Setup} (P : Primitives) (hst : AuthHybridState S) : AuthHybridState S :=
   { hst with
     base := { hst.base with
       advKeys := hst.base.advKeys.map (fun (_, pk) => (P.pow8 pk, pk)) } }
@@ -245,7 +245,7 @@ theorem simulateQ_allHonestEcPksAuthPrim (S : Setup) (P : Primitives) (hst : Aut
         (fun s => P.pow8 (P.x25519Base s.ekASk)) (fun _ => rfl) hst.base.sessions,
       pure_bind]
   rfl
-def ValidRecvKemRecords (P : Primitives) (recvRecs : List RecvKemRecord) : Prop :=
+@[expose] def ValidRecvKemRecords (P : Primitives) (recvRecs : List RecvKemRecord) : Prop :=
   ∀ r ∈ recvRecs, P.kemDecaps r.pqspkSk r.kemCt = some r.kemSs
 
 theorem hasBadKemShCrRecordsPure_eq {S : Setup} (P : Primitives)

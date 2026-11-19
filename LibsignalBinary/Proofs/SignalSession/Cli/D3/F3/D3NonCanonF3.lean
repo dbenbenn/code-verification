@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BinaryOomSpec
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.PreKeyGeneralAux
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Domains
@@ -24,6 +24,9 @@ import LibsignalBinary.Proofs.SpecLemmas.FsFold
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.RunProofDefs
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `MainOkValidMatchD3F3` & `MainOkOverD3F3` Specifications and `runAns` Helpers
@@ -33,7 +36,7 @@ for arbitrary parsed wire payloads `body`, and the `NeedLocks` + `cliBudgetLimit
 `main`-level specifications `MainOkValidMatchD3F3` and `MainOkOverD3F3`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -274,7 +277,7 @@ theorem runAns_pqRecvPrekey_eq_canonical (S : RunSem) (X : UnreachedPqxdhPrimiti
 
 /-- `NeedLocks` + `cliBudgetLimits` `main`-level specification for empty-or-matching
 session pre-key `recv` on arbitrary valid wire payloads `body`. -/
-def MainOkValidMatchD3F3
+@[expose] def MainOkValidMatchD3F3
     (mpl mmpl : MultiPlacement) (CodeOk : Memory → Prop)
     (libcAddr brkStart : BitVec 64) (stk : Nat) : Prop :=
   mpl.base 547 ≠ 0#64 →
@@ -304,7 +307,7 @@ def MainOkValidMatchD3F3
 pre-key `recv` on arbitrary parsed wire payloads `body` (`validOver`) and canonical `m.bytes`
 (`canonicalNoMatch`), establishing `OutcomeMatchesModelExceptPath` outside the peer session
 file and `D3NoMatchSessionFile` on the peer session file. -/
-def MainOkOverD3F3
+@[expose] def MainOkOverD3F3
     (mpl mmpl : MultiPlacement) (CodeOk : Memory → Prop)
     (libcAddr brkStart : BitVec 64) (stk : Nat) : Prop :=
   mpl.base 547 ≠ 0#64 →
@@ -347,7 +350,7 @@ def MainOkOverD3F3
             CommitOk inp (MainResult.ofAnswer a))
 
 /-- Clause-split arbitrary-`body` half of `MainOkOverD3F3` at a fixed `RunOf`. -/
-def MainOkValidOverBodyD3F3
+@[expose] def MainOkValidOverBodyD3F3
     (mpl mmpl : MultiPlacement) (CodeOk : Memory → Prop)
     (libcAddr brkStart : BitVec 64) (stk : Nat)
     (RunOf : UnreachedPqxdhPrimitives → CliHooks → Inputs → RunAnswer → Prop) : Prop :=
@@ -379,7 +382,7 @@ def MainOkValidOverBodyD3F3
           CommitOk inp (MainResult.ofAnswer a)
 
 /-- Clause-split canonical-`m.bytes` half of `MainOkOverD3F3` at a fixed `RunOf`. -/
-def MainOkCanonNoMatchD3F3
+@[expose] def MainOkCanonNoMatchD3F3
     (mpl : MultiPlacement)
     (RunOf : UnreachedPqxdhPrimitives → CliHooks → Inputs → RunAnswer → Prop) : Prop :=
   mpl.base 547 ≠ 0#64 →
@@ -410,8 +413,6 @@ theorem mainOkOverD3F3_of_clauses
   intro hDropNz X W
   obtain ⟨hmain, hbodyCl⟩ := hbody hDropNz X W
   exact ⟨RunOf X W, hmain, hbodyCl, hcanon hDropNz X W⟩
-
-abbrev MainOkValidOverD3F3 := MainOkOverD3F3
 
 /-- Projects `MainOkOverD3F3` directly onto `L4B.CliStrictPlaced2.MainOkCliF3OverB2NeedLocksPlacedAt`
 by dropping the `D3NoMatchSessionFile` conjunct on canonical `m.bytes` inputs. -/

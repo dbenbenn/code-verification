@@ -12,33 +12,33 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BridgePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5V1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsAPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2BridgesPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6AuxPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePromoteBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BridgePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5V1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsAPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2BridgesPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub4PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub5PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6AuxPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePromoteBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -48,10 +48,12 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms2Pl
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Mid3PlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5AuxPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5AuxPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed Stage P2 Over-Path Top-Level Specification
@@ -62,7 +64,7 @@ and proves budget-threaded `[LibsignalPlacement]` Over-path Stage P2 theorems (`
 and error Arms 1–6), including `StageP2MemInv`- and `LibsignalFrozen`-guarded variants.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -239,11 +241,17 @@ open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub6Place
   stageP2_over_sub6_v1_kits_ext_placed_withEnv_ofEnv
 )
 
+theorem p2_over_bobPlaced_le_overPure :
+    initializeBobSessionV1StackPlaced ≤ stageP2OverPureAndErrStack := by decide
+
+theorem p2_over_bobExtPlaced_le_overPure :
+    initializeBobSessionV1StackExtPlaced ≤ stageP2OverPureAndErrStack := by decide
+
 /-! ## Bounded `SeqEnv` Envelopes (`+0x0868 → +0x1778` and Arms 1–6) -/
 
 /-- Bounded sequential envelope for Over-path Substage P2.6 covering `regIdShim`, `regIdPollEnv`,
 and either Arm 6 teardown (`FreeOnlyEvs`) or the `.ok` `promote_state` tail (`PromTailForSess`). -/
-def P2OverSub6EnvOf (regIdBoxSize : Nat)
+@[expose] def P2OverSub6EnvOf (regIdBoxSize : Nat)
     (regIdPollEnv PromTailForSess : List AllocEvent → Prop) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv regIdBoxSize)
     (SeqEnv regIdPollEnv (fun evs => FreeOnlyEvs evs ∨ PromTailForSess evs))
@@ -262,7 +270,7 @@ abbrev P2OverV1Arm6EnvOfBob := P2V1Arm6EnvOfBob
 
 /-- Over-path normal `+0x1778` exit event envelope across Substages P2.1–P2.6 chaining `BobForInp`
 and `PromTailForSess`. -/
-def P2OverV1OkEnvOfBobAndProm (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
+@[expose] def P2OverV1OkEnvOfBobAndProm (spkBoxSize : Nat) (spkPollEnv : List AllocEvent → Prop)
     (kpkBoxSize : Nat) (kpkPollEnv : List AllocEvent → Prop)
     (pkBoxSize : Nat) (pkPollEnv : BitVec 32 → List AllocEvent → Prop)
     (kpBoxSize : Nat) (opkId? : Option (BitVec 32))
@@ -1307,8 +1315,8 @@ theorem stageP2_over_v1_kits_placed_ofEnv [LibsignalPlacement]
     kpkKit kpkEnv hkpkVt hkpkOk
     pkKit pkEnv hpkVt hpkOk
     (p2_over_callStack_le_v1CallStack spkKit kpkKit pkKit skit)
-    (Nat.le_trans (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit)
-      (p2_over_baseV1Call_le_v1CallStack spkKit kpkKit pkKit skit))
+    (Nat.le_trans p2_over_bobPlaced_le_overPure
+      (p2_over_pure_le_v1CallStack spkKit kpkKit pkKit skit))
     stk hstk
 
 abbrev stageP2_over_v1_kits_placed [LibsignalPlacement]
@@ -1360,7 +1368,7 @@ theorem stageP2_over_v1_kits_ext_placed_ofEnv [LibsignalPlacement]
     ((stageP2OverV1CallStack4K_eq spkKit kpkKit pkKit skit).symm ▸
       p2_over_callStack_le_v1CallStack spkKit kpkKit pkKit skit)
     ((stageP2OverV1CallStack4K_eq spkKit kpkKit pkKit skit).symm ▸
-      Nat.le_trans p2_over_bobExt_le_overPure
+      Nat.le_trans p2_over_bobExtPlaced_le_overPure
         (p2_over_pure_le_v1CallStack spkKit kpkKit pkKit skit))
     stk hstk
 
@@ -2496,7 +2504,7 @@ theorem stageP2_over_v1_kits_memInv_ext_placed_ofEnv [LibsignalPlacement]
     ((stageP2OverV1CallStack4K_eq spkKit kpkKit pkKit skit).symm ▸
       p2_over_callStack_le_v1CallStack spkKit kpkKit pkKit skit)
     ((stageP2OverV1CallStack4K_eq spkKit kpkKit pkKit skit).symm ▸
-      Nat.le_trans p2_over_bobExt_le_overPure
+      Nat.le_trans p2_over_bobExtPlaced_le_overPure
         (p2_over_pure_le_v1CallStack spkKit kpkKit pkKit skit))
     stk hstk
 
@@ -2566,7 +2574,7 @@ theorem stageP2_over_v1_kits_frozen_ext_placed_ofEnv [LibsignalPlacement]
     ((stageP2OverV1CallStack4K_eq spkKit kpkKit pkKit skit).symm ▸
       p2_over_callStack_le_v1CallStack spkKit kpkKit pkKit skit)
     ((stageP2OverV1CallStack4K_eq spkKit kpkKit pkKit skit).symm ▸
-      Nat.le_trans p2_over_bobExt_le_overPure
+      Nat.le_trans p2_over_bobExtPlaced_le_overPure
         (p2_over_pure_le_v1CallStack spkKit kpkKit pkKit skit))
     stk hstk
 

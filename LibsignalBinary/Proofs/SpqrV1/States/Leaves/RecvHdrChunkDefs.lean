@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<NoHeaderReceived>::recv_hdr_chunk`: Definitions and Specifications
@@ -20,7 +20,7 @@ AArch64 separation-logic specification for `<spqr::v1::chunked::send_ct::NoHeade
 (`0x61254`, `325` instructions).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Leaves.RecvHdrChunk
 
@@ -53,12 +53,6 @@ attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 abbrev noHeaderReceivedRecvHdrChunkName : String :=
   "<spqr::v1::chunked::send_ct::NoHeaderReceived>::recv_hdr_chunk"
 
-@[simp, arm64_norm] theorem noHeaderReceivedRecvHdrChunk_fnOff :
-    libsignalSessionCode.fnOff noHeaderReceivedRecvHdrChunkName = 0x5be5c :=
-  libsignalSessionCode_fnOff_0x5be5c
-
-gen_decodes libsignalSessionCode_tree recvHdrChunkBin [0x5be5c → 0x5c370]
-
 /-- Own stack frame of `recv_hdr_chunk`: `0x60 + 0x610 = 0x670 = 1648` bytes. -/
 abbrev noHeaderReceivedRecvHdrChunkFrameBytes : Nat := 1648
 
@@ -78,7 +72,7 @@ abbrev chunkedHeaderReceivedSize : Nat := 480
       (`456`B at `+8..+464`), and `16`B trailing padding at `+464..+480`.
     - `.done s`: niche-encoded at `+0` via `s.uc.auth.rootKey.cap ≠ noneCap ∧ ≠ none2Cap`;
       layout is `chunkedHeaderReceivedAt A a s` (`480`B). -/
-def noHeaderReceivedRecvChunkAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def noHeaderReceivedRecvChunkAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     Chunked.SendCt.NoHeaderReceivedRecvChunk spqrPolyApi (spqrAuthApi F) → SepProp
   | .stillReceiving s =>
       ⌜PolyDecoderStrictSorted s.receiving_hdr⌝ ∗
@@ -94,7 +88,7 @@ def noHeaderReceivedRecvChunkAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64
     - `.error (.err e)`: discriminant `none2Cap` (`-2`) at `+0`, `spqrErrorByte e` at `+8`, and `471`B trailing
       padding at `+9..+480`.
     - `.error (.panic _)`: unreachable in normal return `post` (`False`). -/
-def noHeaderReceivedRecvChunkResultAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def noHeaderReceivedRecvChunkResultAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     StatesResult (Chunked.SendCt.NoHeaderReceivedRecvChunk spqrPolyApi (spqrAuthApi F)) → SepProp
   | .ok res =>
       noHeaderReceivedRecvChunkAt A a res
@@ -120,74 +114,16 @@ structure NoHeaderReceivedRecvHdrChunkGhost (F : ShaCompress) where
   /-- Logical chunk at `chunkA`. -/
   chunk : Chunk
 
-/-- Specification of `<spqr::v1::chunked::send_ct::NoHeaderReceived>::recv_hdr_chunk`
-    (`src/v1/chunked/send_ct.rs:82–110`, image offset `0x61254`, 325 instructions):
-    - Consumes `chunkedNoHeaderReceivedAt A x.selfA x.self` (leaving `memRegion x.selfA 456`)
-      and preserves `chunkAt x.chunkA x.chunk`.
-    - When `x.self.recv_hdr_chunk x.epoch x.chunk` returns `.ok res` or `.error (.err e)`,
-      writes `noHeaderReceivedRecvChunkResultAt A x.outA (x.self.recv_hdr_chunk x.epoch x.chunk)`.
-    - When `x.self.recv_hdr_chunk x.epoch x.chunk` returns `.error (.panic _)` (or on OOM),
-      panics via `onPanic`. -/
-def noHeaderReceivedRecvHdrChunkSpec (F : ShaCompress) (A : RustAlloc) (b : BitVec 64) :
-    Spec (NoHeaderReceivedRecvHdrChunkGhost F) where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧
-      s.readReg64 .x0 = x.outA ∧
-      s.readReg64 .x1 = x.selfA ∧
-      s.readReg64 .x2 = x.epoch ∧
-      s.readReg64 .x3 = x.chunkA ∧
-      PolyDecoderStrictSorted x.self.receiving_hdr⌝ ∗
-      memRegion x.outA chunkedHeaderReceivedSize ∗
-      chunkedNoHeaderReceivedAt A x.selfA x.self ∗
-      chunkAt x.chunkA x.chunk ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗
-      stackAt s.sp noHeaderReceivedRecvHdrChunkStackX
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      noHeaderReceivedRecvChunkResultAt A x.outA (x.self.recv_hdr_chunk x.epoch x.chunk) ∗
-      memRegion x.selfA chunkedNoHeaderReceivedSize ∗
-      chunkAt x.chunkA x.chunk ∗
-      tokenInitAt b ∗
-      reduceTableAt b ∗
-      A.pool ∗
-      stackAt s0.sp noHeaderReceivedRecvHdrChunkStackX
-  onPanic := fun x s0 sf =>
-    ⌜((x.self.recv_hdr_chunk x.epoch x.chunk).isPanic = true ∨
-        allocFailedIn s0 sf) ∧
-      s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- `<NoHeaderReceived>::recv_hdr_chunk` (`0x61254`) meets
-    `(noHeaderReceivedRecvHdrChunkSpec F A img.base).inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-def NoHeaderReceivedRecvHdrChunkOkX (img : Obj.Image) (F : ShaCompress) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr noHeaderReceivedRecvHdrChunkName)
-    ((noHeaderReceivedRecvHdrChunkSpec F A img.base).inImage img)
-
-/-- `.rodata` slice at `0x837f8` (`33` bytes): `Authenticator.hdrLabel`
-    (`"Signal_PQCKA_V1_MLKEM768:ekheader"`). -/
-theorem rodata_hdrLabel {img : Obj.Image} (himg : Obj.Loads libsignalSessionImage img)
-    {s : State} (hF : img.FrozenLoaded s) {P : SepProp} (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + bv% (ls_str% "Signal_PQCKA_V1_MLKEM768:ekheader")) ↦ᵣ Authenticator.hdrLabel) ∗ P := by
-  have hhb := loads_rodata_holdsBytes himg hF
-    (off := num% (ls_str% "Signal_PQCKA_V1_MLKEM768:ekheader")) (n := 33) (bs := Authenticator.hdrLabel)
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel)
-    (by rfl_kernel) (by decide) (by rfl_kernel)
-  have ⟨h1, h2⟩ := holdsBytes_ro hhb
-  exact Satisfies.rodata_intro h1 h2 (by decide) hP
-
 /-- Concrete value of `PolyDecoder.new 1152` (`ENCAPSULATION_KEY_SIZE = 1152`, `ptsNeeded = 576`). -/
-def polyDecoderNew1152 : PolyDecoder :=
+@[expose] def polyDecoderNew1152 : PolyDecoder :=
   { pts := List.replicate NUM_POLYS SortedSetPt.new
     ptsNeeded := 576
     isComplete := false }
 
 @[simp]
 theorem polyDecoder_new_1152 :
-    PolyDecoder.new 1152 = .ok (.ok polyDecoderNew1152) := by
-  decide
+    PolyDecoder.new 1152 = .ok (.ok polyDecoderNew1152) :=
+  rfl
 
 theorem polyDecoderStrictSorted_new1152 : PolyDecoderStrictSorted polyDecoderNew1152 := by
   intro s hs
@@ -202,7 +138,7 @@ theorem polyDecoderStrictSorted_new1152 : PolyDecoderStrictSorted polyDecoderNew
     - `[fsp + 0x390 .. fsp + 0x3e0)` (`80`B): `Result<HeaderReceived, Error>` scratch
     - `[fsp + 0x5a8 .. fsp + 0x610)` (`104`B): `[x29 - 0x68 .. x29)` (`epoch` copy, `concat` sret,
       `[&[u8]; 3]` / `hmac` sret, `ep.to_be_bytes()`, and `16`B unused padding). -/
-def hdrSomeBranchFrameAt (fsp : BitVec 64) : SepProp :=
+@[expose] def hdrSomeBranchFrameAt (fsp : BitVec 64) : SepProp :=
   memRegion (fsp + 0x200#64) 400 ∗
     memRegion (fsp + 0x390#64) 80 ∗
     memRegion (fsp + 0x5a8#64) 8 ∗
@@ -217,7 +153,7 @@ def hdrSomeBranchFrameAt (fsp : BitVec 64) : SepProp :=
     - `[fsp + 0x1e8 .. fsp + 0x200)` (`24`B): `decoded_message` sret (`Option<Vec<u8>>`)
     - `[fsp + 0x3e0 .. fsp + 0x5a8)` (`456`B): `.stillReceiving` staging buffer
     - `hdrSomeBranchFrameAt fsp` (`584`B). -/
-def hdrActiveFrameRegionsAt (fsp : BitVec 64) : SepProp :=
+@[expose] def hdrActiveFrameRegionsAt (fsp : BitVec 64) : SepProp :=
   cells fsp 11 ∗
     memRegion (fsp + 0x58#64) 400 ∗
     memRegion (fsp + 0x1e8#64) 24 ∗
@@ -276,12 +212,12 @@ theorem rejoin_stack_recvHdrChunk (s0 : State) :
 
 /-! ## `SplitBytes` Combinators for `NoHeaderReceived` -/
 
-def unchunkedNoHeaderReceivedSplit (A : RustAlloc) {F : ShaCompress}
+@[expose] def unchunkedNoHeaderReceivedSplit (A : RustAlloc) {F : ShaCompress}
     (uc : Unchunked.SendCt.NoHeaderReceived (spqrAuthApi F)) :
     SplitBytes 56 (fun a => unchunkedNoHeaderReceivedAt A a uc) :=
   (SplitBytes.authenticatorSplit A uc.auth).seq (SplitBytes.pointsTo64 uc.epoch) (by decide)
 
-noncomputable def chunkedNoHeaderReceivedSplit (A : RustAlloc) {F : ShaCompress}
+@[expose] noncomputable def chunkedNoHeaderReceivedSplit (A : RustAlloc) {F : ShaCompress}
     (st : Chunked.SendCt.NoHeaderReceived spqrPolyApi (spqrAuthApi F)) :
     SplitBytes 456 (fun a => chunkedNoHeaderReceivedAt A a st) :=
   (unchunkedNoHeaderReceivedSplit A st.uc).seq (SplitBytes.polyDecoderSplit A st.receiving_hdr) (by decide)

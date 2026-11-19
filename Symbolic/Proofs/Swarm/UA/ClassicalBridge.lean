@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
 
 /-!
 # Equivalence of Classical and Unified-Attacker Predicates on Break-Free Traces
@@ -18,7 +18,7 @@ Proves that on CLI event lists containing no break or invert event (`BreakFree`)
 `Explains`, and `CollisionAfterExplainedPrefix` coincide with their classical counterparts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +35,7 @@ open CryptoVerification.SignalSession (Inputs Outcome)
 /-! ## Break-Free Event Lists -/
 
 /-- No environment event in `evs` is a break or invert event. -/
-def BreakFree (evs : List CliEvent) : Prop :=
+@[expose] def BreakFree (evs : List CliEvent) : Prop :=
   ∀ e : EnvEvent, CliEvent.env e ∈ evs → ¬ e.IsBreakInvert
 
 theorem breakFree_nil : BreakFree [] := fun _ he => by cases he

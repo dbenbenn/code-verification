@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt2SampledUc
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedCt2SampledUc -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
@@ -25,7 +25,7 @@ Proves `[LibsignalPlacement]` decode-error exit and inner `Unchunked.Ct2Sent` lo
 `Chunked.Ct2Sampled::merge` (Block `301`) from `withLsCodeRoLoaded lsmpl` cross-block callee contracts.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

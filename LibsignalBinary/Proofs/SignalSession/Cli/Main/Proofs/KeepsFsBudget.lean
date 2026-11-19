@@ -11,8 +11,9 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Filesystem, VM, and Stack Framing for Hook Contracts
@@ -22,7 +23,7 @@ Lifts `HookOk` contracts to `withVmPreserved` and OOM-aware stack-framed allocat
 `allocHookStack ≤ stk ≤ 2 ^ 64`.
 -/
 
-@[expose] public section
+public section
 
 set_option linter.dupNamespace false
 set_option autoImplicit false
@@ -125,26 +126,6 @@ theorem hookOk_rustAllocWithStack [LibsignalPlacement] {M : AllocCostModel} {h :
     dsimp only [rustCliAllocBudgetSpec, rustCliAllocBudgetSpecWithStack] at hoom ⊢
     exact satisfies_drop_mid_entails (Entails.refl _) hoom
 
-theorem hookOk_rustAllocExternWithStack [LibsignalPlacement] {M : AllocCostModel} {h : State → State}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {zeroed : Bool} {stk : Nat}
-    (hh : HookOk h (rustCliAllocBudgetSpec M A lim zeroed))
-    (hle : allocHookStack ≤ stk := by decide) (hmax : stk ≤ 2 ^ 64 := by decide) :
-    HookOk h (rustCliAllocBudgetExternSpecWithStack M A lim zeroed stk) := by
-  refine hookOk_frame_oom' (fun _ _ => emp)
-    (hookOk_rustAllocWithStack hh hle hmax) ?_ ?_ ?_
-  · rintro ⟨size, align, st⟩ s0
-    rw [sepConj_emp]
-    exact Entails.refl _
-  · rintro ⟨size, align, st⟩ s0 sf
-    dsimp only [rustCliAllocBudgetSpecWithStack, rustCliAllocBudgetExternSpecWithStack,
-      _root_.LibsignalBinary.Heap.rustCliAllocBudgetExternSpecWithStack]
-    rw [sepConj_emp]
-    exact pure_sepConj_imp (fun hacp => hacp.2.1)
-  · rintro ⟨size, align, st⟩ R s0 sf hoom
-    dsimp only [rustCliAllocBudgetSpecWithStack, rustCliAllocBudgetExternSpecWithStack,
-      _root_.LibsignalBinary.Heap.rustCliAllocBudgetExternSpecWithStack] at hoom ⊢
-    rw [emp_sepConj] at hoom
-    exact hoom
 
 theorem hookOk_rustDeallocWithStack [LibsignalPlacement] {M : AllocCostModel} {h : State → State}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
@@ -254,86 +235,8 @@ theorem hookOk_rustReallocExternWithStack [LibsignalPlacement] {M : AllocCostMod
     rw [emp_sepConj] at hoom
     exact hoom
 
-theorem hookOk_rustAllocNoOomWithStack [LibsignalPlacement] {M : AllocCostModel} {h : State → State}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {zeroed : Bool} {stk : Nat}
-    (hh : HookOk h (rustCliAllocNoOomSpec M A lim zeroed))
-    (hle : allocHookStack ≤ stk := by decide) (hmax : stk ≤ 2 ^ 64 := by decide) :
-    HookOk h (rustCliAllocNoOomSpecWithStack M A lim zeroed stk) := by
-  refine hookOk_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) hh ?_ ?_ ?_
-  · rintro ⟨size, align, st⟩ s0
-    dsimp only [rustCliAllocNoOomSpec, rustCliAllocNoOomSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hmax]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨size, align, st⟩ s0 sf
-    dsimp only [rustCliAllocNoOomSpec, rustCliAllocNoOomSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hmax]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨size, align, st⟩ R s0 sf hoom
-    dsimp only [rustCliAllocNoOomSpec] at hoom
-    rw [satisfies_pure_sepConj] at hoom
-    exact False.elim hoom.1
 
-theorem hookOk_rustAllocNoOomExternWithStack [LibsignalPlacement] {M : AllocCostModel} {h : State → State}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {zeroed : Bool} {stk : Nat}
-    (hh : HookOk h (rustCliAllocNoOomSpec M A lim zeroed))
-    (hle : allocHookStack ≤ stk := by decide) (hmax : stk ≤ 2 ^ 64 := by decide) :
-    HookOk h (rustCliAllocNoOomExternSpecWithStack M A lim zeroed stk) := by
-  refine hookOk_frame_oom' (fun _ _ => emp)
-    (hookOk_rustAllocNoOomWithStack hh hle hmax) ?_ ?_ ?_
-  · rintro ⟨size, align, st⟩ s0
-    rw [sepConj_emp]
-    exact Entails.refl _
-  · rintro ⟨size, align, st⟩ s0 sf
-    dsimp only [rustCliAllocNoOomSpecWithStack, rustCliAllocNoOomExternSpecWithStack,
-      _root_.LibsignalBinary.Heap.rustCliAllocNoOomExternSpecWithStack]
-    rw [sepConj_emp]
-    exact pure_sepConj_imp (fun ⟨hacp, hne, hal⟩ => ⟨hacp.2.1, hne, hal⟩)
-  · rintro ⟨size, align, st⟩ R s0 sf hoom
-    dsimp only [rustCliAllocNoOomSpecWithStack] at hoom
-    rw [satisfies_pure_sepConj] at hoom
-    exact False.elim hoom.1
 
-theorem hookOk_rustReallocNoOomWithStack [LibsignalPlacement] {M : AllocCostModel} {h : State → State}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    (hh : HookOk h (rustCliReallocNoOomSpec M A lim))
-    (hle : allocHookStack ≤ stk := by decide) (hmax : stk ≤ 2 ^ 64 := by decide) :
-    HookOk h (rustCliReallocNoOomSpecWithStack M A lim stk) := by
-  refine hookOk_frame_oom'
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 stk) (stk - allocHookStack)) hh ?_ ?_ ?_
-  · rintro ⟨p, old, align, new, bs, st⟩ s0
-    dsimp only [rustCliReallocNoOomSpec, rustCliReallocNoOomSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hmax]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨p, old, align, new, bs, st⟩ s0 sf
-    dsimp only [rustCliReallocNoOomSpec, rustCliReallocNoOomSpecWithStack]
-    rw [stackAt_split_from_allocHookStack s0.sp hle hmax]
-    exact Entails.of_eq (by sep_ac_rfl)
-  · rintro ⟨p, old, align, new, bs, st⟩ R s0 sf hoom
-    dsimp only [rustCliReallocNoOomSpec] at hoom
-    rw [satisfies_pure_sepConj] at hoom
-    exact False.elim hoom.1
 
-theorem hookOk_rustReallocNoOomExternWithStack [LibsignalPlacement] {M : AllocCostModel} {h : State → State}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
-    (hh : HookOk h (rustCliReallocNoOomSpec M A lim))
-    (hle : allocHookStack ≤ stk := by decide) (hmax : stk ≤ 2 ^ 64 := by decide) :
-    HookOk h (rustCliReallocNoOomExternSpecWithStack M A lim stk) := by
-  refine hookOk_frame_oom' (fun _ _ => emp)
-    (hookOk_rustReallocNoOomWithStack hh hle hmax) ?_ ?_ ?_
-  · rintro ⟨p, old, align, new, bs, st⟩ s0
-    dsimp only [rustCliReallocNoOomSpecWithStack, rustCliReallocNoOomExternSpecWithStack,
-      _root_.LibsignalBinary.Heap.rustCliReallocNoOomExternSpecWithStack]
-    rw [sepConj_emp]
-    exact pure_sepConj_imp (by tauto)
-  · rintro ⟨p, old, align, new, bs, st⟩ s0 sf
-    dsimp only [rustCliReallocNoOomSpecWithStack, rustCliReallocNoOomExternSpecWithStack,
-      _root_.LibsignalBinary.Heap.rustCliReallocNoOomExternSpecWithStack]
-    rw [sepConj_emp]
-    exact pure_sepConj_imp (fun ⟨hacp, hne, hal⟩ => ⟨hacp.2.1, hne, hal⟩)
-  · rintro ⟨p, old, align, new, bs, st⟩ R s0 sf hoom
-    dsimp only [rustCliReallocNoOomSpecWithStack] at hoom
-    rw [satisfies_pure_sepConj] at hoom
-    exact False.elim hoom.1
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFsBudget

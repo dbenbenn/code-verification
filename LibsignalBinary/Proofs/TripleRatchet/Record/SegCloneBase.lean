@@ -11,13 +11,19 @@ module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Record.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
-import LibsignalBinary.Proofs.TripleRatchet.Record.FetchClone
+import Aesop.BuiltinRules
+import Mathlib.Tactic.Basic
+import Mathlib.Tactic.Simps
+import Mathlib.Tactic.ToAdditive
+import Mathlib.Tactic.ToDual
+import ProofLib.Sep
+meta import Lean
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Shared Definitions and Layout Helpers for `SegClone`
@@ -26,7 +32,7 @@ Callee address bridges, panic-tail lemmas, 128-byte stack spill layout (`spillSl
 344-byte destination `SessionStructure` slot decompositions (`dstSlotsAtRaw`) for `SegClone`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Record.SegCloneSteps
 
@@ -38,6 +44,14 @@ open CryptoVerification.LibsignalTripleRatchet.RawByteMove
 open CryptoVerification.LibsignalTripleRatchet.Record
 open ProofLib.ProgramReflection
 
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``RustAlloc.live, #[1]), (``stackAt, #[0]), (``vecU8At, #[1]), (``vecU8Buf, #[2]), (``vecGhostAt, #[2]), (``vecAt, #[5]), (``vecBuf, #[6]), (``arrayAt, #[3]), (``boxU8At, #[1]), (``optBoxU8At, #[1]), (``optSenderChainAt, #[1]), (``optChainKeyAt, #[3]), (``optTailVecAt, #[2]), (``chunks96_6QAt, #[0])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
+
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 set_option linter.unusedSimpArgs false
@@ -47,241 +61,11 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Extern hooks, callee address bridges, and panic tails -/
 
-theorem segClone_shim_ok_at {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr msgDecryptName + bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "session_message_decrypt_signal"))
-      sessionShimSpec :=
-  hA.shim_ok_at msgDecryptName (num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "session_message_decrypt_signal"))
-    (by fnoff_eq)
-
-theorem segClone_alloc_ok_at {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr msgDecryptName + bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "session_message_decrypt_signal"))
-      (rustAllocSpec A) :=
-  hA.alloc_ok_at msgDecryptName (num% (ls_off% "__rustc::__rust_alloc" - ls_off% "session_message_decrypt_signal"))
-    (by fnoff_eq)
-
-theorem segClone_memcpy_ok_at {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hA : AllocContracts b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr msgDecryptName + bv% (ls_off% "memcpy" - ls_off% "session_message_decrypt_signal"))
-      sessionMemcpyRegionSpec :=
-  hA.session_memcpy_region_ok_at msgDecryptName (num% (ls_off% "memcpy" - ls_off% "session_message_decrypt_signal"))
-    (by fnoff_eq)
-
-theorem segClone_panic_at_handle_error {b : BitVec 64}
-    {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).externAt?
-      ((tripleRatchetProgAtExt b ext).fnAddr msgDecryptName + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "session_message_decrypt_signal")) =
-      some Rust.panicked :=
-  panic_at_handle_error_ext b ext msgDecryptName (num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "session_message_decrypt_signal"))
-    (by fnoff_eq)
-
-theorem fnAddr_msgDecrypt_to_chainClone {b : BitVec 64}
-    {ext : String → Option (State → State)} :
-    (tripleRatchetProgAtExt b ext).fnAddr msgDecryptName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#2]") - (ls_off% "session_message_decrypt_signal")) =
-      (tripleRatchetProgAtExt b ext).fnAddr chainCloneName := by
-  change (b + BitVec.ofNat 64 (libsignalSessionCode.fnOff msgDecryptName)) + bv% (2 ^ 64 - 8252) =
-    b + BitVec.ofNat 64 (libsignalSessionCode.fnOff chainCloneName)
-  rw [libsignalSessionCode_fnOff_sym_3a4a8, (ls_lemma% fnOff "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#2]")]
-  bv_omega
-
-theorem segClone_chainClone_ok_at {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hcc : ChainCloneOkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr msgDecryptName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#2]") - (ls_off% "session_message_decrypt_signal")))
-      (chainCloneSpec A) := by
-  rwa [fnAddr_msgDecrypt_to_chainClone]
-
-theorem segClone_senderChainClone_ok_at {b : BitVec 64} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hscc : SenderChainCloneOkExt b A ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr msgDecryptName + bv% (2 ^ 64 + (ls_off% "<libsignal_protocol::proto::storage::session_structure::Chain as core::clone::Clone>::clone [local#2]") - (ls_off% "session_message_decrypt_signal")))
-      (senderChainCloneSpec A) := by
-  rwa [fnAddr_msgDecrypt_to_chainClone]
-
-abbrev clonePanicPost (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (parse : UuidParser) (S : SpqrModel) (img : Obj.Image)
-    (x : RecordDecryptGhost) (R : SepProp) (s0 : State) : State → SepProp → Prop :=
-  fun sf P_f => (sf.mem ⊨ P_f ∗ R) →
-    (sf.mem ⊨ (recordDecryptSpec C A ctl parse S img).onPanic x s0 sf ∗ R)
-
-theorem onPanic_of_allocFailed {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image}
-    {x : RecordDecryptGhost} {R P_f : SepProp} {s0 sf : State}
-    (halloc : allocFailedIn s0 sf ∧ s0.trace <+: sf.trace)
-    (hm : sf.mem ⊨ P_f ∗ R) :
-    sf.mem ⊨ (recordDecryptSpec C A ctl uuidTryParse S img).onPanic x s0 sf ∗ R := by
-  simpa only [recordDecryptSpec, Spec.inImage, sepConj_assoc] using
-    allowPanic_panicked ⟨Or.inr (Or.inr halloc.1), halloc.2⟩ hm
-
 theorem allocFailedIn_of_eq {s0 sf : State}
     (h : sf.trace = s0.trace ++ [allocFailedEvent]) :
     allocFailedIn s0 sf ∧ s0.trace <+: sf.trace := by
   refine ⟨?_, ⟨[allocFailedEvent], h.symm⟩⟩
   simp [allocFailedIn, h]
-
-theorem segClone_panic_0x25f8 {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : RecordDecryptGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr msgDecryptName + 0x25f8#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P Q
-      (clonePanicPost C A ctl uuidTryParse S img x R s0) := by
-  have hfn := libsignalSessionCode_fnOff_sym_3a4a8
-  have hpanic := segClone_panic_at_handle_error (b := img.base) (ext := ext)
-  segClone_fetches img.base (Rust.withPanics ext) hfn 0x25f8 12
-  clear hfn
-  unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr msgDecryptName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "session_message_decrypt_signal"))
-  wp_steps
-  refine SepWP.done rfl hrun ?_
-  refine SepWPp.panic hrun hpanic fun hm => ?_
-  exact onPanic_of_allocFailed (allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-theorem segClone_panic_0x2604 {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : RecordDecryptGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr msgDecryptName + 0x2604#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P Q
-      (clonePanicPost C A ctl uuidTryParse S img x R s0) := by
-  have hfn := libsignalSessionCode_fnOff_sym_3a4a8
-  have hpanic := segClone_panic_at_handle_error (b := img.base) (ext := ext)
-  segClone_fetches img.base (Rust.withPanics ext) hfn 0x2604 12
-  clear hfn
-  unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr msgDecryptName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "session_message_decrypt_signal"))
-  wp_steps
-  refine SepWP.done rfl hrun ?_
-  refine SepWPp.panic hrun hpanic fun hm => ?_
-  exact onPanic_of_allocFailed (allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-theorem segClone_panic_0x2610 {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : RecordDecryptGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr msgDecryptName + 0x2610#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P Q
-      (clonePanicPost C A ctl uuidTryParse S img x R s0) := by
-  have hfn := libsignalSessionCode_fnOff_sym_3a4a8
-  have hpanic := segClone_panic_at_handle_error (b := img.base) (ext := ext)
-  segClone_fetches img.base (Rust.withPanics ext) hfn 0x2610 12
-  clear hfn
-  unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr msgDecryptName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "session_message_decrypt_signal"))
-  wp_steps
-  refine SepWP.done rfl hrun ?_
-  refine SepWPp.panic hrun hpanic fun hm => ?_
-  exact onPanic_of_allocFailed (allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-theorem segClone_panic_0x261c {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : RecordDecryptGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr msgDecryptName + 0x261c#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P Q
-      (clonePanicPost C A ctl uuidTryParse S img x R s0) := by
-  have hfn := libsignalSessionCode_fnOff_sym_3a4a8
-  have hpanic := segClone_panic_at_handle_error (b := img.base) (ext := ext)
-  segClone_fetches img.base (Rust.withPanics ext) hfn 0x261c 12
-  clear hfn
-  unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr msgDecryptName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "session_message_decrypt_signal"))
-  wp_steps
-  refine SepWP.done rfl hrun ?_
-  refine SepWPp.panic hrun hpanic fun hm => ?_
-  exact onPanic_of_allocFailed (allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-theorem segClone_panic_0x2628 {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : RecordDecryptGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr msgDecryptName + 0x2628#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P Q
-      (clonePanicPost C A ctl uuidTryParse S img x R s0) := by
-  have hfn := libsignalSessionCode_fnOff_sym_3a4a8
-  have hpanic := segClone_panic_at_handle_error (b := img.base) (ext := ext)
-  segClone_fetches img.base (Rust.withPanics ext) hfn 0x2628 12
-  clear hfn
-  unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr msgDecryptName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "session_message_decrypt_signal"))
-  wp_steps
-  refine SepWP.done rfl hrun ?_
-  refine SepWPp.panic hrun hpanic fun hm => ?_
-  exact onPanic_of_allocFailed (allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-theorem segClone_panic_0x2634 {img : Obj.Image} {C : Crypto} {A : RustAlloc}
-    {ctl : BitVec 64} {S : SpqrModel}
-    {ext : String → Option (State → State)}
-    {ret : BitVec 64} {Q : State → SepProp → Prop}
-    (x : RecordDecryptGhost) (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt img.base ext).fnAddr msgDecryptName + 0x2634#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt img.base ext) ret s P Q
-      (clonePanicPost C A ctl uuidTryParse S img x R s0) := by
-  have hfn := libsignalSessionCode_fnOff_sym_3a4a8
-  have hpanic := segClone_panic_at_handle_error (b := img.base) (ext := ext)
-  segClone_fetches img.base (Rust.withPanics ext) hfn 0x2634 12
-  clear hfn
-  unfold tripleRatchetProgAtExt at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr msgDecryptName = entry reverting [libsignalSessionCode]
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)) = prog reverting [libsignalSessionCode]
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "session_message_decrypt_signal"))
-  wp_steps
-  refine SepWP.done rfl hrun ?_
-  refine SepWPp.panic hrun hpanic fun hm => ?_
-  exact onPanic_of_allocFailed (allocFailedIn_of_eq (by simp only [State.setPC, State.writeReg64, Rust.panicked, htrace])) hm
-
-/-! ## Arithmetic, byte-slice, and `Vec<u8>` helpers -/
 
 theorem srk_length_pos {bs : List (BitVec 8)} {pk : PublicKey}
     (h : PublicKey.deserialize bs = .ok pk) : 0 < bs.length := by
@@ -320,7 +104,7 @@ theorem sepWPp_pure_mid {prog : Program} {ret : BitVec 64} {s : State}
     {A B C : SepProp} {φ : Prop} {Q Qp : State → SepProp → Prop}
     (h : φ → SepWPp prog ret s (A ∗ B ∗ C) Q Qp) :
     SepWPp prog ret s (A ∗ B ∗ ⌜φ⌝ ∗ C) Q Qp := by
-  rw [show A ∗ B ∗ ⌜φ⌝ ∗ C = ⌜φ⌝ ∗ A ∗ B ∗ C by ac_rfl]
+  simp only [sepConj_pure_left_comm]
   exact SepWPp.pure_elim h
 
 theorem segClone_pure_eq_emp {φ : Prop} (h : φ) : (⌜φ⌝ : SepProp) = emp := by
@@ -342,16 +126,10 @@ theorem vecU8At_eq_of_nil (A : RustAlloc) (a cap ptr : BitVec 64) :
       vecU8Buf A cap ptr [] := by
   rw [vecU8At_eq_header_sep_buf]
   unfold vecHeader
-  apply ProofLib.sepProp_eq_of_entails
+  apply Entails.antisymm
   · conv => lhs; rw [vecU8Buf_pure_extract]
-    rw [sepConj_pure_left_comm]
-    apply Entails.pure_left; rintro ⟨_, hcap, hptr⟩
-    apply Entails.pure_right ⟨hcap, hptr⟩
-    simp only [List.length_nil, BitVec.ofNat_eq_ofNat, sepConj_assoc]
-    exact Entails.refl _
-  · apply Entails.pure_left; intro _
-    simp only [List.length_nil, BitVec.ofNat_eq_ofNat, sepConj_assoc]
-    exact Entails.refl _
+    bi_entail
+  · bi_entail
 
 theorem vecU8At_eq_of_pos (A : RustAlloc) (a cap ptr : BitVec 64) (bs : List (BitVec 8))
     (hpos : 0 < bs.length) :
@@ -361,37 +139,17 @@ theorem vecU8At_eq_of_pos (A : RustAlloc) (a cap ptr : BitVec 64) (bs : List (Bi
       (ptr ↦ₛ bs) ∗ A.live ptr cap.toNat 1 ∗
       memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length) := by
   unfold vecU8At vecHeader
-  apply ProofLib.sepProp_eq_of_entails
+  apply Entails.antisymm
   · rw [sepConj_pure_left_comm]
     apply Entails.pure_left; rintro ⟨hlen, hcap_lt, hptr⟩
-    have hne : cap ≠ 0 := by
-      intro h0; rw [h0] at hlen; change bs.length ≤ 0 at hlen; omega
+    have hne : cap ≠ 0 := by intro h0; rw [h0] at hlen; change bs.length ≤ 0 at hlen; omega
     simp only [hne, ↓reduceIte]
-    apply Entails.pure_right ⟨hlen, hcap_lt, hptr⟩
-    have hcomm :
-        (((a ↦₆₄ cap) ∗ ((a + 8#64) ↦₆₄ ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length)) ∗
-          (A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
-            memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length))) =
-        ((a ↦₆₄ cap) ∗ ((a + 8#64) ↦₆₄ ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
-          (ptr ↦ₛ bs) ∗ A.live ptr cap.toNat 1 ∗
-          memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)) := by
-      ac_rfl
-    rw [hcomm]; exact Entails.refl _
+    exact Entails.pure_right ⟨hlen, hcap_lt, hptr⟩ (by bi_entail)
   · apply Entails.pure_left; rintro ⟨hlen, hcap_lt, hptr⟩
-    have hne : cap ≠ 0 := by
-      intro h0; rw [h0] at hlen; change bs.length ≤ 0 at hlen; omega
+    have hne : cap ≠ 0 := by intro h0; rw [h0] at hlen; change bs.length ≤ 0 at hlen; omega
     rw [sepConj_pure_left_comm]
-    apply Entails.pure_right ⟨hlen, hcap_lt, hptr⟩
     simp only [hne, ↓reduceIte]
-    have hcomm :
-        ((a ↦₆₄ cap) ∗ ((a + 8#64) ↦₆₄ ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
-          (ptr ↦ₛ bs) ∗ A.live ptr cap.toNat 1 ∗
-          memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)) =
-        (((a ↦₆₄ cap) ∗ ((a + 8#64) ↦₆₄ ptr) ∗ ((a + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length)) ∗
-          (A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
-            memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length))) := by
-      ac_rfl
-    rw [hcomm]; exact Entails.refl _
+    exact Entails.pure_right ⟨hlen, hcap_lt, hptr⟩ (by bi_entail)
 
 theorem vecGhostAt_eq_of_nil (A : RustAlloc) (g : VecGhost) (a : BitVec 64)
     (hnil : g.bytes = []) :
@@ -465,35 +223,28 @@ theorem elim_region8 {b b' : BitVec 64} {n rem : Nat} {F Q : SepProp}
     (h : ∀ v : BitVec 64, (memRegion b' rem ∗ (b ↦₆₄ v) ∗ F) ⊢ Q) :
     (memRegion b n ∗ F) ⊢ Q := by
   rw [memRegion_split' hn hb hle, memRegion_eight, sepExists_sepConj_left, sepExists_sepConj_left]
-  apply Entails.sepExists_elim; intro v
-  rw [show ((b ↦₆₄ v) ∗ memRegion b' rem) ∗ F = memRegion b' rem ∗ (b ↦₆₄ v) ∗ F by ac_rfl]
-  exact h v
+  exact Entails.sepExists_elim fun v => Entails.trans (by bi_entail) (h v)
 
 theorem elim_region4 {b b' : BitVec 64} {n rem : Nat} {F Q : SepProp}
     (hn : n = 4 + rem) (hb : b' = b + 4#64) (hle : n ≤ 2 ^ 64)
     (h : ∀ v : BitVec 32, (memRegion b' rem ∗ (b ↦₃₂ v) ∗ F) ⊢ Q) :
     (memRegion b n ∗ F) ⊢ Q := by
   rw [memRegion_split' hn hb hle, memRegion_four, sepExists_sepConj_left, sepExists_sepConj_left]
-  apply Entails.sepExists_elim; intro v
-  rw [show ((b ↦₃₂ v) ∗ memRegion b' rem) ∗ F = memRegion b' rem ∗ (b ↦₃₂ v) ∗ F by ac_rfl]
-  exact h v
+  exact Entails.sepExists_elim fun v => Entails.trans (by bi_entail) (h v)
 
 theorem elim_region1 {b b' : BitVec 64} {n rem : Nat} {F Q : SepProp}
     (hn : n = 1 + rem) (hb : b' = b + 1#64) (hle : n ≤ 2 ^ 64)
     (h : ∀ v : BitVec 8, (memRegion b' rem ∗ (b ↦₈ v) ∗ F) ⊢ Q) :
     (memRegion b n ∗ F) ⊢ Q := by
   rw [memRegion_split' hn hb hle, memRegion_one, sepExists_sepConj_left, sepExists_sepConj_left]
-  apply Entails.sepExists_elim; intro v
-  rw [show ((b ↦₈ v) ∗ memRegion b' rem) ∗ F = memRegion b' rem ∗ (b ↦₈ v) ∗ F by ac_rfl]
-  exact h v
+  exact Entails.sepExists_elim fun v => Entails.trans (by bi_entail) (h v)
 
 theorem elim_region_skip {b b' : BitVec 64} {N n rem : Nat} {F Q : SepProp}
     (hN : N = n + rem) (hb : b' = b + BitVec.ofNat 64 n) (hle : N ≤ 2 ^ 64)
     (h : (memRegion b' rem ∗ memRegion b n ∗ F) ⊢ Q) :
     (memRegion b N ∗ F) ⊢ Q := by
   rw [memRegion_split' hN hb hle]
-  rw [show (memRegion b n ∗ memRegion b' rem) ∗ F = memRegion b' rem ∗ memRegion b n ∗ F by ac_rfl]
-  exact h
+  exact Entails.trans (by bi_entail) h
 
 theorem elim_region96_6Q {b b' : BitVec 64} {N rem : Nat} {F Q : SepProp}
     (hN : N = 96 + rem) (hb : b' = b + 96#64) (hle : N ≤ 2 ^ 64)
@@ -502,18 +253,12 @@ theorem elim_region96_6Q {b b' : BitVec 64} {N rem : Nat} {F Q : SepProp}
     (memRegion b N ∗ F) ⊢ Q := by
   rw [memRegion_split' hN hb hle, memRegion_96_eq_exists_chunks96_6QAt]
   simp only [sepExists_sepConj_left]
-  apply Entails.sepExists_elim; intro q0
-  apply Entails.sepExists_elim; intro q1
-  apply Entails.sepExists_elim; intro q2
-  apply Entails.sepExists_elim; intro q3
-  apply Entails.sepExists_elim; intro q4
-  apply Entails.sepExists_elim; intro q5
-  rw [show (chunks96_6QAt b q0 q1 q2 q3 q4 q5 ∗ memRegion b' rem) ∗ F =
-        memRegion b' rem ∗ chunks96_6QAt b q0 q1 q2 q3 q4 q5 ∗ F by ac_rfl]
-  exact h q0 q1 q2 q3 q4 q5
+  repeat (apply Entails.sepExists_elim; intro)
+  rename_i q0 q1 q2 q3 q4 q5
+  exact Entails.trans (by bi_entail) (h q0 q1 q2 q3 q4 q5)
 
 /-- Spatial layout of the 128-byte spill area `sp .. sp + 0x80`. -/
-def spillSlotsAt (sp : BitVec 64)
+@[expose] def spillSlotsAt (sp : BitVec 64)
     (v00 v08 : BitVec 64) (v14 : BitVec 32) (v18 : BitVec 64)
     (v24 v28 v2c : BitVec 32) (v30 : BitVec 64) (v3c : BitVec 32)
     (v40 v48 : BitVec 64) (v54 : BitVec 32) (v58 v60 v68 v70 v78 : BitVec 64) : SepProp :=
@@ -540,34 +285,20 @@ theorem memRegion_0x80_entails_spillSlotsAt_gen {α : Type} (sp : BitVec 64)
       P (mk v00 v08 v14 v18 v24 v28 v2c v30 v3c v40 v48 v54 v58 v60 v68 v70 v78) =
         spillSlotsAt sp v00 v08 v14 v18 v24 v28 v2c v30 v3c v40 v48 v54 v58 v60 v68 v70 v78) :
     memRegion sp 0x80 ⊢ ∃∗ sv : α, P sv := by
-  rw [← sepConj_emp (memRegion sp 0x80)]
-  refine elim_region8 (b' := sp + 0x8#64) (rem := 120) rfl rfl (by decide) fun v00 => ?_
-  refine elim_region8 (b' := sp + 0x10#64) (rem := 112) rfl (by bv_arith) (by decide) fun v08 => ?_
-  refine elim_region_skip (b' := sp + 0x14#64) (n := 4) (rem := 108) rfl (by bv_arith) (by decide) ?_
-  refine elim_region4 (b' := sp + 0x18#64) (rem := 104) rfl (by bv_arith) (by decide) fun v14 => ?_
-  refine elim_region8 (b' := sp + 0x20#64) (rem := 96) rfl (by bv_arith) (by decide) fun v18 => ?_
-  refine elim_region_skip (b' := sp + 0x24#64) (n := 4) (rem := 92) rfl (by bv_arith) (by decide) ?_
-  refine elim_region4 (b' := sp + 0x28#64) (rem := 88) rfl (by bv_arith) (by decide) fun v24 => ?_
-  refine elim_region4 (b' := sp + 0x2c#64) (rem := 84) rfl (by bv_arith) (by decide) fun v28 => ?_
-  refine elim_region4 (b' := sp + 0x30#64) (rem := 80) rfl (by bv_arith) (by decide) fun v2c => ?_
-  refine elim_region8 (b' := sp + 0x38#64) (rem := 72) rfl (by bv_arith) (by decide) fun v30 => ?_
-  refine elim_region_skip (b' := sp + 0x3c#64) (n := 4) (rem := 68) rfl (by bv_arith) (by decide) ?_
-  refine elim_region4 (b' := sp + 0x40#64) (rem := 64) rfl (by bv_arith) (by decide) fun v3c => ?_
-  refine elim_region8 (b' := sp + 0x48#64) (rem := 56) rfl (by bv_arith) (by decide) fun v40 => ?_
-  refine elim_region8 (b' := sp + 0x50#64) (rem := 48) rfl (by bv_arith) (by decide) fun v48 => ?_
-  refine elim_region_skip (b' := sp + 0x54#64) (n := 4) (rem := 44) rfl (by bv_arith) (by decide) ?_
-  refine elim_region4 (b' := sp + 0x58#64) (rem := 40) rfl (by bv_arith) (by decide) fun v54 => ?_
-  refine elim_region8 (b' := sp + 0x60#64) (rem := 32) rfl (by bv_arith) (by decide) fun v58 => ?_
-  refine elim_region8 (b' := sp + 0x68#64) (rem := 24) rfl (by bv_arith) (by decide) fun v60 => ?_
-  refine elim_region8 (b' := sp + 0x70#64) (rem := 16) rfl (by bv_arith) (by decide) fun v68 => ?_
-  refine elim_region8 (b' := sp + 0x78#64) (rem := 8) rfl (by bv_arith) (by decide) fun v70 => ?_
-  refine elim_region8 (b' := sp + 0x80#64) (rem := 0) rfl (by bv_arith) (by decide) fun v78 => ?_
-  rw [ProofLib.memRegion_zero]
-  refine Entails.sepExists_right
-    (mk v00 v08 v14 v18 v24 v28 v2c v30 v3c v40 v48 v54 v58 v60 v68 v70 v78) ?_
-  rw [hP]
-  unfold spillSlotsAt
-  exact Entails.of_eq (by ac_rfl)
+  have h : memRegion sp 0x80 ⊢
+      ∃∗ v00 : BitVec 64, ∃∗ v08 : BitVec 64, ∃∗ v14 : BitVec 32, ∃∗ v18 : BitVec 64,
+      ∃∗ v24 : BitVec 32, ∃∗ v28 : BitVec 32, ∃∗ v2c : BitVec 32, ∃∗ v30 : BitVec 64,
+      ∃∗ v3c : BitVec 32, ∃∗ v40 : BitVec 64, ∃∗ v48 : BitVec 64, ∃∗ v54 : BitVec 32,
+      ∃∗ v58 : BitVec 64, ∃∗ v60 : BitVec 64, ∃∗ v68 : BitVec 64, ∃∗ v70 : BitVec 64,
+      ∃∗ v78 : BitVec 64,
+        spillSlotsAt sp v00 v08 v14 v18 v24 v28 v2c v30 v3c v40 v48 v54 v58 v60 v68 v70 v78 := by
+    unfold spillSlotsAt; sep_interval
+  refine Entails.trans h ?_
+  repeat (apply Entails.sepExists_elim; intro)
+  rename_i v00 v08 v14 v18 v24 v28 v2c v30 v3c v40 v48 v54 v58 v60 v68 v70 v78
+  exact Entails.sepExists_right
+    (mk v00 v08 v14 v18 v24 v28 v2c v30 v3c v40 v48 v54 v58 v60 v68 v70 v78)
+    (Entails.of_eq (hP _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).symm)
 
 theorem spillSlotsAt_entails_memRegion_0x80 (sp : BitVec 64)
     (v00 v08 : BitVec 64) (v14 : BitVec 32) (v18 : BitVec 64)
@@ -576,63 +307,14 @@ theorem spillSlotsAt_entails_memRegion_0x80 (sp : BitVec 64)
     spillSlotsAt sp v00 v08 v14 v18 v24 v28 v2c v30 v3c v40 v48 v54 v58 v60 v68 v70 v78 ⊢
       memRegion sp 0x80 := by
   unfold spillSlotsAt
-  rw [memRegion_split' (b := sp) (b' := sp + 0x8#64) (n := 8) (k := 120) rfl rfl (by decide),
-      memRegion_split' (b := sp + 0x8#64) (b' := sp + 0x10#64) (n := 8) (k := 112) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x10#64) (b' := sp + 0x14#64) (n := 4) (k := 108) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x14#64) (b' := sp + 0x18#64) (n := 4) (k := 104) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x18#64) (b' := sp + 0x20#64) (n := 8) (k := 96) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x20#64) (b' := sp + 0x24#64) (n := 4) (k := 92) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x24#64) (b' := sp + 0x28#64) (n := 4) (k := 88) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x28#64) (b' := sp + 0x2c#64) (n := 4) (k := 84) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x2c#64) (b' := sp + 0x30#64) (n := 4) (k := 80) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x30#64) (b' := sp + 0x38#64) (n := 8) (k := 72) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x38#64) (b' := sp + 0x3c#64) (n := 4) (k := 68) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x3c#64) (b' := sp + 0x40#64) (n := 4) (k := 64) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x40#64) (b' := sp + 0x48#64) (n := 8) (k := 56) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x48#64) (b' := sp + 0x50#64) (n := 8) (k := 48) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x50#64) (b' := sp + 0x54#64) (n := 4) (k := 44) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x54#64) (b' := sp + 0x58#64) (n := 4) (k := 40) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x58#64) (b' := sp + 0x60#64) (n := 8) (k := 32) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x60#64) (b' := sp + 0x68#64) (n := 8) (k := 24) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x68#64) (b' := sp + 0x70#64) (n := 8) (k := 16) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x70#64) (b' := sp + 0x78#64) (n := 8) (k := 8) rfl (by bv_arith) (by decide)]
-  refine sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-    sepConj_mono (Entails.refl _) <|
-    sepConj_mono (pointsTo32_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-    sepConj_mono (Entails.refl _) <|
-    sepConj_mono (pointsTo32_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo32_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo32_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-    sepConj_mono (Entails.refl _) <|
-    sepConj_mono (pointsTo32_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-    sepConj_mono (Entails.refl _) <|
-    sepConj_mono (pointsTo32_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-    sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-    pointsTo64_entails_memRegion _ _
+  sep_interval
 
 theorem memRegion_0x80_0x20_entails (sp : BitVec 64) :
     memRegion (sp + 0x80#64) 0x20 ⊢
       ∃∗ v80 : BitVec 64, ∃∗ v88 : BitVec 64, ∃∗ v90 : BitVec 64, ∃∗ v9c : BitVec 32,
         ((sp + 0x80#64) ↦₆₄ v80) ∗ ((sp + 0x88#64) ↦₆₄ v88) ∗ ((sp + 0x90#64) ↦₆₄ v90) ∗
         memRegion (sp + 0x98#64) 4 ∗ ((sp + 0x9c#64) ↦₃₂ v9c) := by
-  rw [← sepConj_emp (memRegion (sp + 0x80#64) 0x20)]
-  refine elim_region8 (b' := sp + 0x88#64) (rem := 24) rfl (by bv_arith) (by decide) fun v80 => ?_
-  refine elim_region8 (b' := sp + 0x90#64) (rem := 16) rfl (by bv_arith) (by decide) fun v88 => ?_
-  refine elim_region8 (b' := sp + 0x98#64) (rem := 8) rfl (by bv_arith) (by decide) fun v90 => ?_
-  refine elim_region_skip (b' := sp + 0x9c#64) (n := 4) (rem := 4) rfl (by bv_arith) (by decide) ?_
-  refine elim_region4 (b' := sp + 0xa0#64) (rem := 0) rfl (by bv_arith) (by decide) fun v9c => ?_
-  rw [ProofLib.memRegion_zero]
-  refine Entails.sepExists_right v80 (Entails.sepExists_right v88
-    (Entails.sepExists_right v90 (Entails.sepExists_right v9c ?_)))
-  exact Entails.of_eq (by ac_rfl)
+  sep_interval
 
 theorem memRegion_0x5b0_0x40_entails (sp : BitVec 64) :
     memRegion (sp + 0x5b0#64) 0x40 ⊢
@@ -644,23 +326,7 @@ theorem memRegion_0x5b0_0x40_entails (sp : BitVec 64) :
         ((sp + 0x5c0#64) ↦₆₄ v5c0) ∗ ((sp + 0x5c8#64) ↦₆₄ v5c8) ∗
         ((sp + 0x5d0#64) ↦₆₄ v5d0) ∗ ((sp + 0x5d8#64) ↦₆₄ v5d8) ∗
         ((sp + 0x5e0#64) ↦₆₄ v5e0) ∗ ((sp + 0x5e8#64) ↦₆₄ v5e8) := by
-  rw [← sepConj_emp (memRegion (sp + 0x5b0#64) 0x40)]
-  refine elim_region8 (b' := sp + 0x5b8#64) (rem := 56) rfl (by bv_arith) (by decide) fun v5b0 => ?_
-  refine elim_region_skip (b' := sp + 0x5bc#64) (n := 4) (rem := 52) rfl (by bv_arith) (by decide) ?_
-  refine elim_region1 (b' := sp + 0x5bd#64) (rem := 51) rfl (by bv_arith) (by decide) fun v5bc => ?_
-  refine elim_region_skip (b' := sp + 0x5c0#64) (n := 3) (rem := 48) rfl (by bv_arith) (by decide) ?_
-  refine elim_region8 (b' := sp + 0x5c8#64) (rem := 40) rfl (by bv_arith) (by decide) fun v5c0 => ?_
-  refine elim_region8 (b' := sp + 0x5d0#64) (rem := 32) rfl (by bv_arith) (by decide) fun v5c8 => ?_
-  refine elim_region8 (b' := sp + 0x5d8#64) (rem := 24) rfl (by bv_arith) (by decide) fun v5d0 => ?_
-  refine elim_region8 (b' := sp + 0x5e0#64) (rem := 16) rfl (by bv_arith) (by decide) fun v5d8 => ?_
-  refine elim_region8 (b' := sp + 0x5e8#64) (rem := 8) rfl (by bv_arith) (by decide) fun v5e0 => ?_
-  refine elim_region8 (b' := sp + 0x5f0#64) (rem := 0) rfl (by bv_arith) (by decide) fun v5e8 => ?_
-  rw [ProofLib.memRegion_zero]
-  refine Entails.sepExists_right v5b0 (Entails.sepExists_right v5bc
-    (Entails.sepExists_right v5c0 (Entails.sepExists_right v5c8
-      (Entails.sepExists_right v5d0 (Entails.sepExists_right v5d8
-        (Entails.sepExists_right v5e0 (Entails.sepExists_right v5e8 ?_)))))))
-  exact Entails.of_eq (by ac_rfl)
+  sep_interval
 
 theorem memRegion_0x5f0_0x6b0_eq (sp : BitVec 64) :
     memRegion (sp + 0x5f0#64) 0x6b0 =
@@ -668,9 +334,7 @@ theorem memRegion_0x5f0_0x6b0_eq (sp : BitVec 64) :
       memRegion (sp + 0x658#64) 0x4e8 ∗
       memRegion (sp + 0xb40#64) 96 ∗
       memRegion (sp + 0xba0#64) 0x100 := by
-  rw [memRegion_split' (b := sp + 0x5f0#64) (b' := sp + 0x658#64) (n := 104) (k := 1608) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x658#64) (b' := sp + 0xb40#64) (n := 0x4e8) (k := 352) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0xb40#64) (b' := sp + 0xba0#64) (n := 96) (k := 0x100) rfl (by bv_arith) (by decide)]
+  sep_interval_eq
 
 theorem chunks96_6QAt_entails_memRegion (base : BitVec 64) (q0 q1 q2 q3 q4 q5 : BitVec 128) :
     chunks96_6QAt base q0 q1 q2 q3 q4 q5 ⊢ memRegion base 96 := by
@@ -731,13 +395,9 @@ theorem exists_tail24_decomp {bs : List (BitVec 8)} (h : bs.length = 24) :
   conv => lhs; rw [hbs]
   simp only [List.append_assoc, pointsToBytes_append, unpack32_length, unpack64_length,
     ← pointsTo32_eq_pointsToBytes, ← pointsTo64_eq_pointsToBytes]
-  have ha4 : a + BitVec.ofNat 64 4 = a + 4#64 := rfl
-  have ha8 : a + 4#64 + BitVec.ofNat 64 4 = a + 8#64 := by bv_arith
-  have ha16 : a + 8#64 + BitVec.ofNat 64 8 = a + 16#64 := by bv_arith
-  have ha20 : a + 16#64 + BitVec.ofNat 64 4 = a + 20#64 := by bv_arith
-  rw [ha4, ha8, ha16, ha20]
+  apply Entails.antisymm <;> bi_entail
 
-def OptPendClone (A : RustAlloc) (orig : Option TailVecGhost)
+@[expose] def OptPendClone (A : RustAlloc) (orig : Option TailVecGhost)
     (pendCap' pendPtr' : BitVec 64) : SepProp :=
   match orig with
   | none => ⌜pendCap' = noneCap⌝
@@ -745,13 +405,21 @@ def OptPendClone (A : RustAlloc) (orig : Option TailVecGhost)
     ⌜pendCap' = BitVec.ofNat 64 gp.vec.bytes.length⌝ ∗
       vecU8Buf A pendCap' pendPtr' gp.vec.bytes
 
-def OptKybClone (A : RustAlloc) (orig : Option TailVecGhost)
+@[expose] def OptKybClone (A : RustAlloc) (orig : Option TailVecGhost)
     (kybCap' kybPtr' : BitVec 64) : SepProp :=
   match orig with
   | none => ⌜kybCap' = noneCap⌝
   | some gk =>
     ⌜kybCap' = BitVec.ofNat 64 gk.vec.bytes.length⌝ ∗
       vecU8Buf A kybCap' kybPtr' gk.vec.bytes
+
+run_meta do
+  let env ← Lean.getEnv
+  for (h, ks) in #[(``OptPendClone, #[2, 3]), (``OptKybClone, #[2, 3])] do
+    let n := Lean.mkPrivateName env (((ks.foldl Lean.Name.mkNum ProofLib.Sep.sepKeyMarker).str "_TARGET_") ++ h)
+    unless env.contains n do
+      Lean.withExporting (isExporting := false) do
+        Lean.addDecl <| .defnDecl { name := n, levelParams := [], type := .const ``Unit [], value := .const ``Unit.unit [], hints := .abbrev, safety := .safe }
 
 theorem optTailVecAt_48_of_optPendClone (A : RustAlloc) (a : BitVec 64)
     (orig : Option TailVecGhost)
@@ -765,44 +433,18 @@ theorem optTailVecAt_48_of_optPendClone (A : RustAlloc) (a : BitVec 64)
   cases orig with
   | none =>
     dsimp only [OptPendClone]
-    rw [show ((a ↦₆₄ pendCap') ∗ ((a + 8#64) ↦₆₄ pendPtr') ∗ ((a + 16#64) ↦₆₄ pendCap') ∗
-          ((a + 24#64) ↦₃₂ w28) ∗ ((a + 28#64) ↦₃₂ w2c) ∗ ((a + 32#64) ↦₆₄ v08) ∗
-          ((a + 40#64) ↦₃₂ w24) ∗ memRegion (a + 44#64) 4 ∗ ⌜pendCap' = noneCap⌝) =
-        (⌜pendCap' = noneCap⌝ ∗ (a ↦₆₄ pendCap') ∗ ((a + 8#64) ↦₆₄ pendPtr') ∗
-          ((a + 16#64) ↦₆₄ pendCap') ∗ ((a + 24#64) ↦₃₂ w28) ∗ ((a + 28#64) ↦₃₂ w2c) ∗
-          ((a + 32#64) ↦₆₄ v08) ∗ ((a + 40#64) ↦₃₂ w24) ∗ memRegion (a + 44#64) 4) by ac_rfl]
+    rw [← sepConj_emp ⌜pendCap' = noneCap⌝]
+    simp only [sepConj_pure_left_comm]
     apply Entails.pure_left; rintro rfl
-    refine Entails.sepExists_right none ?_
-    apply Entails.pure_right rfl
-    unfold optTailVecAt
-    apply sepConj_mono_right
-    rw [memRegion_split' (b := a + 8#64) (b' := a + 16#64) (n := 8) (k := 32) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := a + 16#64) (b' := a + 24#64) (n := 8) (k := 24) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := a + 24#64) (b' := a + 28#64) (n := 4) (k := 20) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := a + 28#64) (b' := a + 32#64) (n := 4) (k := 16) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := a + 32#64) (b' := a + 40#64) (n := 8) (k := 8) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := a + 40#64) (b' := a + 44#64) (n := 4) (k := 4) rfl (by bv_arith) (by decide)]
-    exact sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-      sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-      sepConj_mono (pointsTo32_entails_memRegion _ _) <|
-      sepConj_mono (pointsTo32_entails_memRegion _ _) <|
-      sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-      sepConj_mono (pointsTo32_entails_memRegion _ _) (Entails.refl _)
+    refine Entails.sepExists_right none (Entails.pure_right rfl ?_)
+    dsimp only [optTailVecAt]
+    sep_interval
   | some gp =>
     dsimp only [OptPendClone]
     rw [memRegion_four (a + 44#64)]
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     apply Entails.sepExists_elim; intro w4
-    rw [show ((a ↦₆₄ pendCap') ∗ ((a + 8#64) ↦₆₄ pendPtr') ∗ ((a + 16#64) ↦₆₄ pendCap') ∗
-          ((a + 24#64) ↦₃₂ w28) ∗ ((a + 28#64) ↦₃₂ w2c) ∗ ((a + 32#64) ↦₆₄ v08) ∗
-          ((a + 40#64) ↦₃₂ w24) ∗ ((a + 44#64) ↦₃₂ w4) ∗
-          ⌜pendCap' = BitVec.ofNat 64 gp.vec.bytes.length⌝ ∗
-          vecU8Buf A pendCap' pendPtr' gp.vec.bytes) =
-        (⌜pendCap' = BitVec.ofNat 64 gp.vec.bytes.length⌝ ∗
-          (((a ↦₆₄ pendCap') ∗ ((a + 8#64) ↦₆₄ pendPtr') ∗ ((a + 16#64) ↦₆₄ pendCap')) ∗
-            vecU8Buf A pendCap' pendPtr' gp.vec.bytes) ∗
-          (((a + 24#64) ↦₃₂ w28) ∗ ((a + 28#64) ↦₃₂ w2c) ∗ ((a + 32#64) ↦₆₄ v08) ∗
-            ((a + 40#64) ↦₃₂ w24) ∗ ((a + 44#64) ↦₃₂ w4))) by ac_rfl]
+    simp only [sepConj_pure_left_comm]
     apply Entails.pure_left; rintro rfl
     set tail := unpack32 w28 ++ unpack32 w2c ++ unpack64 v08 ++ unpack32 w24 ++ unpack32 w4
     have htail_len : tail.length = 24 := by simp [tail]
@@ -813,20 +455,16 @@ theorem optTailVecAt_48_of_optPendClone (A : RustAlloc) (a : BitVec 64)
       unfold tail
       simp only [List.append_assoc, pointsToBytes_append, unpack32_length, unpack64_length,
         ← pointsTo32_eq_pointsToBytes, ← pointsTo64_eq_pointsToBytes]
-      have h28 : a + 24#64 + BitVec.ofNat 64 4 = a + 28#64 := by bv_arith
-      have h32 : a + 28#64 + BitVec.ofNat 64 4 = a + 32#64 := by bv_arith
-      have h40 : a + 32#64 + BitVec.ofNat 64 8 = a + 40#64 := by bv_arith
-      have h44 : a + 40#64 + BitVec.ofNat 64 4 = a + 44#64 := by bv_arith
-      rw [h28, h32, h40, h44]
-    rw [← htail_eq]
-    set g' : TailVecGhost := ⟨⟨BitVec.ofNat 64 gp.vec.bytes.length, pendPtr', gp.vec.bytes⟩, tail⟩
-    refine Entails.sepExists_right (some g') ?_
-    apply Entails.pure_right rfl
-    unfold optTailVecAt
-    apply Entails.pure_right htail_len
-    unfold vecGhostAt
+      apply Entails.antisymm <;> bi_entail
+    refine Entails.sepExists_right
+      (some ⟨⟨BitVec.ofNat 64 gp.vec.bytes.length, pendPtr', gp.vec.bytes⟩, tail⟩)
+      (Entails.pure_right rfl ?_)
+    dsimp only [optTailVecAt, vecGhostAt]
     rw [vecU8At_eq_header_sep_buf]
-    exact Entails.refl _
+    unfold vecHeader
+    apply Entails.pure_right htail_len
+    rw [htail_eq]
+    bi_entail
 
 theorem optTailVecAt_32_of_optKybClone (A : RustAlloc) (a : BitVec 64)
     (orig : Option TailVecGhost)
@@ -838,33 +476,18 @@ theorem optTailVecAt_32_of_optKybClone (A : RustAlloc) (a : BitVec 64)
   cases orig with
   | none =>
     dsimp only [OptKybClone]
-    rw [show ((a ↦₆₄ kybCap') ∗ ((a + 8#64) ↦₆₄ kybPtr') ∗ ((a + 16#64) ↦₆₄ kybCap') ∗
-          ((a + 24#64) ↦₃₂ w14) ∗ memRegion (a + 28#64) 4 ∗ ⌜kybCap' = noneCap⌝) =
-        (⌜kybCap' = noneCap⌝ ∗ (a ↦₆₄ kybCap') ∗ ((a + 8#64) ↦₆₄ kybPtr') ∗
-          ((a + 16#64) ↦₆₄ kybCap') ∗ ((a + 24#64) ↦₃₂ w14) ∗ memRegion (a + 28#64) 4) by ac_rfl]
+    rw [← sepConj_emp ⌜kybCap' = noneCap⌝]
+    simp only [sepConj_pure_left_comm]
     apply Entails.pure_left; rintro rfl
     refine Entails.sepExists_right none ?_
-    unfold optTailVecAt
-    apply sepConj_mono_right
-    rw [memRegion_split' (b := a + 8#64) (b' := a + 16#64) (n := 8) (k := 16) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := a + 16#64) (b' := a + 24#64) (n := 8) (k := 8) rfl (by bv_arith) (by decide),
-        memRegion_split' (b := a + 24#64) (b' := a + 28#64) (n := 4) (k := 4) rfl (by bv_arith) (by decide)]
-    exact sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-      sepConj_mono (pointsTo64_entails_memRegion _ _) <|
-      sepConj_mono (pointsTo32_entails_memRegion _ _) (Entails.refl _)
+    dsimp only [optTailVecAt]
+    sep_interval
   | some gk =>
     dsimp only [OptKybClone]
     rw [memRegion_four (a + 28#64)]
     simp only [sepExists_sepConj_left, sepExists_sepConj_right]
     apply Entails.sepExists_elim; intro w1
-    rw [show ((a ↦₆₄ kybCap') ∗ ((a + 8#64) ↦₆₄ kybPtr') ∗ ((a + 16#64) ↦₆₄ kybCap') ∗
-          ((a + 24#64) ↦₃₂ w14) ∗ ((a + 28#64) ↦₃₂ w1) ∗
-          ⌜kybCap' = BitVec.ofNat 64 gk.vec.bytes.length⌝ ∗
-          vecU8Buf A kybCap' kybPtr' gk.vec.bytes) =
-        (⌜kybCap' = BitVec.ofNat 64 gk.vec.bytes.length⌝ ∗
-          (((a ↦₆₄ kybCap') ∗ ((a + 8#64) ↦₆₄ kybPtr') ∗ ((a + 16#64) ↦₆₄ kybCap')) ∗
-            vecU8Buf A kybCap' kybPtr' gk.vec.bytes) ∗
-          (((a + 24#64) ↦₃₂ w14) ∗ ((a + 28#64) ↦₃₂ w1))) by ac_rfl]
+    simp only [sepConj_pure_left_comm]
     apply Entails.pure_left; rintro rfl
     set tail := unpack32 w14 ++ unpack32 w1
     have htail_len : tail.length = 8 := by simp [tail]
@@ -876,18 +499,18 @@ theorem optTailVecAt_32_of_optKybClone (A : RustAlloc) (a : BitVec 64)
           ← pointsTo32_eq_pointsToBytes, ← pointsTo32_eq_pointsToBytes]
       have h28 : a + 24#64 + BitVec.ofNat 64 4 = a + 28#64 := by bv_arith
       rw [h28]
-    rw [← htail_eq]
-    set g' : TailVecGhost := ⟨⟨BitVec.ofNat 64 gk.vec.bytes.length, kybPtr', gk.vec.bytes⟩, tail⟩
-    refine Entails.sepExists_right (some g') ?_
-    unfold optTailVecAt
-    apply Entails.pure_right htail_len
-    unfold vecGhostAt
+    refine Entails.sepExists_right
+      (some ⟨⟨BitVec.ofNat 64 gk.vec.bytes.length, kybPtr', gk.vec.bytes⟩, tail⟩) ?_
+    dsimp only [optTailVecAt, vecGhostAt]
     rw [vecU8At_eq_header_sep_buf]
-    exact Entails.refl _
+    unfold vecHeader
+    apply Entails.pure_right htail_len
+    rw [htail_eq]
+    bi_entail
 
 /-- Spatial layout of the 344-byte destination `SessionStructure` slot at `sp + 0xca0`,
 parameterized directly by field values. -/
-def dstSlotsAtRaw (sp : BitVec 64)
+@[expose] def dstSlotsAtRaw (sp : BitVec 64)
     (w_ca0 w_ca8 w_cb0 w_cb8 w_cc0 w_cc8 w_cd0 w_cd8 w_ce0 w_ce8 w_cf0 w_cf8
      w_d00 w_d08 w_d10 w_d18 w_d20 w_d28 w_d30 : BitVec 64)
     (q0 q1 q2 q3 q4 q5 : BitVec 128)
@@ -930,55 +553,35 @@ theorem memRegion_344_entails_dstSlotsAt_gen {α : Type} (sp : BitVec 64)
           q0 q1 q2 q3 q4 q5 w_d98 w_da0 w_da8 w_db0 w_db4 w_db8 w_dc0
           w_dc8 w_dd0 w_dd8 w_de0 w_de8 w_dec w_df0 w_df4) :
     memRegion (sp + 0xca0#64) 344 ⊢ ∃∗ dv : α, P dv := by
-  rw [← sepConj_emp (memRegion (sp + 0xca0#64) 344)]
-  refine elim_region8 (b' := sp + 0xca8#64) (rem := 336) rfl (by bv_arith) (by decide) fun w0 => ?_
-  refine elim_region8 (b' := sp + 0xcb0#64) (rem := 328) rfl (by bv_arith) (by decide) fun w1 => ?_
-  refine elim_region8 (b' := sp + 0xcb8#64) (rem := 320) rfl (by bv_arith) (by decide) fun w2 => ?_
-  refine elim_region8 (b' := sp + 0xcc0#64) (rem := 312) rfl (by bv_arith) (by decide) fun w3 => ?_
-  refine elim_region8 (b' := sp + 0xcc8#64) (rem := 304) rfl (by bv_arith) (by decide) fun w4 => ?_
-  refine elim_region8 (b' := sp + 0xcd0#64) (rem := 296) rfl (by bv_arith) (by decide) fun w5 => ?_
-  refine elim_region8 (b' := sp + 0xcd8#64) (rem := 288) rfl (by bv_arith) (by decide) fun w6 => ?_
-  refine elim_region8 (b' := sp + 0xce0#64) (rem := 280) rfl (by bv_arith) (by decide) fun w7 => ?_
-  refine elim_region8 (b' := sp + 0xce8#64) (rem := 272) rfl (by bv_arith) (by decide) fun w8 => ?_
-  refine elim_region8 (b' := sp + 0xcf0#64) (rem := 264) rfl (by bv_arith) (by decide) fun w9 => ?_
-  refine elim_region8 (b' := sp + 0xcf8#64) (rem := 256) rfl (by bv_arith) (by decide) fun w10 => ?_
-  refine elim_region8 (b' := sp + 0xd00#64) (rem := 248) rfl (by bv_arith) (by decide) fun w11 => ?_
-  refine elim_region8 (b' := sp + 0xd08#64) (rem := 240) rfl (by bv_arith) (by decide) fun w12 => ?_
-  refine elim_region8 (b' := sp + 0xd10#64) (rem := 232) rfl (by bv_arith) (by decide) fun w13 => ?_
-  refine elim_region8 (b' := sp + 0xd18#64) (rem := 224) rfl (by bv_arith) (by decide) fun w14 => ?_
-  refine elim_region8 (b' := sp + 0xd20#64) (rem := 216) rfl (by bv_arith) (by decide) fun w15 => ?_
-  refine elim_region8 (b' := sp + 0xd28#64) (rem := 208) rfl (by bv_arith) (by decide) fun w16 => ?_
-  refine elim_region8 (b' := sp + 0xd30#64) (rem := 200) rfl (by bv_arith) (by decide) fun w17 => ?_
-  refine elim_region8 (b' := sp + 0xd38#64) (rem := 192) rfl (by bv_arith) (by decide) fun w18 => ?_
-  refine elim_region96_6Q (b' := sp + 0xd98#64) (rem := 96) rfl (by bv_arith) (by decide)
-    fun q0 q1 q2 q3 q4 q5 => ?_
-  refine elim_region8 (b' := sp + 0xda0#64) (rem := 88) rfl (by bv_arith) (by decide) fun w_d98 => ?_
-  refine elim_region8 (b' := sp + 0xda8#64) (rem := 80) rfl (by bv_arith) (by decide) fun w_da0 => ?_
-  refine elim_region8 (b' := sp + 0xdb0#64) (rem := 72) rfl (by bv_arith) (by decide) fun w_da8 => ?_
-  refine elim_region4 (b' := sp + 0xdb4#64) (rem := 68) rfl (by bv_arith) (by decide) fun w_db0 => ?_
-  refine elim_region4 (b' := sp + 0xdb8#64) (rem := 64) rfl (by bv_arith) (by decide) fun w_db4 => ?_
-  refine elim_region8 (b' := sp + 0xdc0#64) (rem := 56) rfl (by bv_arith) (by decide) fun w_db8 => ?_
-  refine elim_region4 (b' := sp + 0xdc4#64) (rem := 52) rfl (by bv_arith) (by decide) fun w_dc0 => ?_
-  refine elim_region_skip (b' := sp + 0xdc8#64) (n := 4) (rem := 48) rfl (by bv_arith) (by decide) ?_
-  refine elim_region8 (b' := sp + 0xdd0#64) (rem := 40) rfl (by bv_arith) (by decide) fun w_dc8 => ?_
-  refine elim_region8 (b' := sp + 0xdd8#64) (rem := 32) rfl (by bv_arith) (by decide) fun w_dd0 => ?_
-  refine elim_region8 (b' := sp + 0xde0#64) (rem := 24) rfl (by bv_arith) (by decide) fun w_dd8 => ?_
-  refine elim_region4 (b' := sp + 0xde4#64) (rem := 20) rfl (by bv_arith) (by decide) fun w_de0 => ?_
-  refine elim_region_skip (b' := sp + 0xde8#64) (n := 4) (rem := 16) rfl (by bv_arith) (by decide) ?_
-  refine elim_region4 (b' := sp + 0xdec#64) (rem := 12) rfl (by bv_arith) (by decide) fun w_de8 => ?_
-  refine elim_region4 (b' := sp + 0xdf0#64) (rem := 8) rfl (by bv_arith) (by decide) fun w_dec => ?_
-  refine elim_region4 (b' := sp + 0xdf4#64) (rem := 4) rfl (by bv_arith) (by decide) fun w_df0 => ?_
-  rw [memRegion_four (sp + 0xdf4#64), sepExists_sepConj_left]
-  apply Entails.sepExists_elim; intro w_df4
-  refine Entails.sepExists_right
+  have h : memRegion (sp + 0xca0#64) 344 ⊢
+      ∃∗ w0 : BitVec 64, ∃∗ w1 : BitVec 64, ∃∗ w2 : BitVec 64, ∃∗ w3 : BitVec 64,
+      ∃∗ w4 : BitVec 64, ∃∗ w5 : BitVec 64, ∃∗ w6 : BitVec 64, ∃∗ w7 : BitVec 64,
+      ∃∗ w8 : BitVec 64, ∃∗ w9 : BitVec 64, ∃∗ w10 : BitVec 64, ∃∗ w11 : BitVec 64,
+      ∃∗ w12 : BitVec 64, ∃∗ w13 : BitVec 64, ∃∗ w14 : BitVec 64, ∃∗ w15 : BitVec 64,
+      ∃∗ w16 : BitVec 64, ∃∗ w17 : BitVec 64, ∃∗ w18 : BitVec 64,
+      ∃∗ q0 : BitVec 128, ∃∗ q1 : BitVec 128, ∃∗ q2 : BitVec 128,
+      ∃∗ q3 : BitVec 128, ∃∗ q4 : BitVec 128, ∃∗ q5 : BitVec 128,
+      ∃∗ w_d98 : BitVec 64, ∃∗ w_da0 : BitVec 64, ∃∗ w_da8 : BitVec 64,
+      ∃∗ w_db0 : BitVec 32, ∃∗ w_db4 : BitVec 32, ∃∗ w_db8 : BitVec 64,
+      ∃∗ w_dc0 : BitVec 32, ∃∗ w_dc8 : BitVec 64, ∃∗ w_dd0 : BitVec 64,
+      ∃∗ w_dd8 : BitVec 64, ∃∗ w_de0 : BitVec 32, ∃∗ w_de8 : BitVec 32,
+      ∃∗ w_dec : BitVec 32, ∃∗ w_df0 : BitVec 32, ∃∗ w_df4 : BitVec 32,
+        dstSlotsAtRaw sp w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 w16 w17 w18
+          q0 q1 q2 q3 q4 q5 w_d98 w_da0 w_da8 w_db0 w_db4 w_db8 w_dc0
+          w_dc8 w_dd0 w_dd8 w_de0 w_de8 w_dec w_df0 w_df4 := by
+    unfold dstSlotsAtRaw chunks96_6QAt; sep_interval
+  refine Entails.trans h ?_
+  repeat (apply Entails.sepExists_elim; intro)
+  rename_i w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 w16 w17 w18
+    q0 q1 q2 q3 q4 q5 w_d98 w_da0 w_da8 w_db0 w_db4 w_db8 w_dc0
+    w_dc8 w_dd0 w_dd8 w_de0 w_de8 w_dec w_df0 w_df4
+  exact Entails.sepExists_right
     (mk w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 w16 w17 w18
       q0 q1 q2 q3 q4 q5 w_d98 w_da0 w_da8 w_db0 w_db4 w_db8 w_dc0
-      w_dc8 w_dd0 w_dd8 w_de0 w_de8 w_dec w_df0 w_df4) ?_
-  rw [hP]
-  unfold dstSlotsAtRaw
-  exact Entails.of_eq (by ac_rfl)
+      w_dc8 w_dd0 w_dd8 w_de0 w_de8 w_dec w_df0 w_df4)
+    (Entails.of_eq (hP _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _).symm)
 
-def signalMessageRestAt (A : RustAlloc) (g : SignalMessageGhost) (a : BitVec 64)
+@[expose] def signalMessageRestAt (A : RustAlloc) (g : SignalMessageGhost) (a : BitVec 64)
     (m : SignalMessage) : SepProp :=
   ⌜macLength + 1 ≤ m.serialized.length ∧ m.serialized.length < 2 ^ 40 ∧
     m.ciphertext.length < 2 ^ 40 ∧ m.pqRatchet.length < 2 ^ 40 ∧
@@ -996,7 +599,7 @@ theorem signalMessageAt_eq_ver (A : RustAlloc) (g : SignalMessageGhost) (a : Bit
     signalMessageAt A g a m =
       (((a + 0x70#64) ↦₈ m.messageVersion) ∗ signalMessageRestAt A g a m) := by
   unfold signalMessageAt signalMessageRestAt
-  ac_rfl
+  apply Entails.antisymm <;> bi_entail
 
 /-! ## Shared helpers for sub-segments and reassembly -/
 
@@ -1021,23 +624,23 @@ theorem sepWPp_pure_2nd {prog : Program} {ret : BitVec 64} {s : State}
     {P1 P2 : SepProp} {φ : Prop} {Q Qp : State → SepProp → Prop}
     (h : φ → SepWPp prog ret s (P1 ∗ P2) Q Qp) :
     SepWPp prog ret s (P1 ∗ ⌜φ⌝ ∗ P2) Q Qp := by
-  rw [show P1 ∗ ⌜φ⌝ ∗ P2 = ⌜φ⌝ ∗ P1 ∗ P2 by ac_rfl]
+  rw [sepConj_pure_left_comm]
   exact SepWPp.pure_elim h
 
 theorem sepWPp_pure_3rd {prog : Program} {ret : BitVec 64} {s : State}
     {P1 P2 P3 : SepProp} {φ : Prop} {Q Qp : State → SepProp → Prop}
     (h : φ → SepWPp prog ret s (P1 ∗ P2 ∗ P3) Q Qp) :
     SepWPp prog ret s (P1 ∗ P2 ∗ ⌜φ⌝ ∗ P3) Q Qp := by
-  rw [show P1 ∗ P2 ∗ ⌜φ⌝ ∗ P3 = ⌜φ⌝ ∗ P1 ∗ P2 ∗ P3 by ac_rfl]
+  simp only [sepConj_pure_left_comm]
   exact SepWPp.pure_elim h
 
 theorem entails_pure_2nd {P1 P2 P3 : SepProp} {φ : Prop}
     (hφ : φ) (heq : P1 = P2 ∗ P3) :
     P1 ⊢ P2 ∗ ⌜φ⌝ ∗ P3 := by
-  rw [heq, show P2 ∗ ⌜φ⌝ ∗ P3 = ⌜φ⌝ ∗ P2 ∗ P3 by ac_rfl]
+  rw [heq, sepConj_pure_left_comm]
   exact Entails.pure_right hφ (Entails.refl _)
 
-def optSenderChainSomeRest (A : RustAlloc) (a : BitVec 64)
+@[expose] def optSenderChainSomeRest (A : RustAlloc) (a : BitVec 64)
     (sg : SenderChainGhost) (sc : SenderChain) : SepProp :=
   ⌜PublicKey.deserialize sg.srk.bytes = .ok sc.ratchetKey.publicKey ∧
     sg.priv.bytes = sc.ratchetKey.privateKey.bytes.toList ∧
@@ -1067,7 +670,7 @@ theorem optSenderChainAt_some_eq_cap (A : RustAlloc) (a : BitVec 64)
   rw [vecU8At_eq_header_sep_buf A a sg.srk.cap sg.srk.ptr sg.srk.bytes]
   conv => lhs; rw [vecU8Buf_pure_extract A sg.srk.cap sg.srk.ptr sg.srk.bytes]
   unfold vecHeader
-  ac_rfl
+  apply Entails.antisymm <;> bi_entail
 
 theorem chunks104W6QAt_entails_memRegion (a : BitVec 64) (w0 : BitVec 64)
     (q0 q1 q2 q3 q4 q5 : BitVec 128) :
@@ -1100,19 +703,6 @@ theorem chunks96_6QAt_sp_0xb40 (sp : BitVec 64) (q0 q1 q2 q3 q4 q5 : BitVec 128)
   have h5 : sp + 0xb40#64 + 0x50#64 = sp + 0xb90#64 := by bv_arith
   rw [h1, h2, h3, h4, h5]
 
-theorem onPanic_of_callee_panic {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {S : SpqrModel} {img : Obj.Image}
-    {x : RecordDecryptGhost} {F R : SepProp} {s0 s_call sf : State}
-    (htr : s_call.trace = s0.trace)
-    (hm : sf.mem ⊨ ((⌜allocFailedIn s_call sf ∧ s_call.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) ∗ R) :
-    sf.mem ⊨ (recordDecryptSpec C A ctl uuidTryParse S img).onPanic x s0 sf ∗ R := by
-  rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hm
-  obtain ⟨⟨haf, hpre⟩, hm'⟩ := hm
-  unfold allocFailedIn at haf
-  rw [htr] at haf hpre
-  rw [← sepConj_assoc] at hm'
-  exact onPanic_of_allocFailed ⟨haf, hpre⟩ hm'
-
 theorem segClone_off_add_succ_mul_104 (off : BitVec 64) (k : Nat) :
     off + BitVec.ofNat 64 (k + 1) * 104#64 =
       (off + 0x68#64) + BitVec.ofNat 64 k * 104#64 := by
@@ -1128,7 +718,7 @@ theorem segClone_bv_ofNat_mul_104_toNat {n : Nat} (hlt : n * 104 < 2 ^ 63) :
   change (n * 104) % 2 ^ 64 = n * 104
   exact Nat.mod_eq_of_lt hprod
 
-def segClone_vecBufRest {α : Type} (A : RustAlloc) (stride align : Nat)
+@[expose] def segClone_vecBufRest {α : Type} (A : RustAlloc) (stride align : Nat)
     (cap ptr : BitVec 64) (xs : List α) : SepProp :=
   ⌜xs.length ≤ cap.toNat ∧ cap.toNat * stride < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
   (if cap = 0 then emp
@@ -1162,7 +752,7 @@ theorem segClone_vecBuf_expose_arrayAt {α : Type} (A : RustAlloc) {stride : Nat
       simp only [↓reduceIte, arrayAt_nil, emp_sepConj]
       exact Entails.refl _
     · simp only [hcap, ↓reduceIte]
-      exact Entails.of_eq (by ac_rfl)
+      bi_entail
   simpa only [sepConj_assoc] using sepConj_mono_left (Q := R_tail) h
 
 theorem segClone_vecBuf_reassemble_arrayAt {α : Type} (A : RustAlloc) (stride align : Nat)
@@ -1181,7 +771,7 @@ theorem segClone_vecBuf_reassemble_arrayAt {α : Type} (A : RustAlloc) (stride a
     simp only [↓reduceIte, arrayAt_nil, emp_sepConj]
     exact Entails.refl _
   · simp only [hcap, ↓reduceIte]
-    exact Entails.of_eq (by ac_rfl)
+    bi_entail
 
 theorem segClone_vecBuf_chain_nil_eq (A : RustAlloc) :
     vecBuf A 104 8 (chainAt A) 0#64 8#64 [] = emp := by
@@ -1215,7 +805,7 @@ theorem segClone_vecBuf_chain_of_arrayAt (A : RustAlloc) (ptr' : BitVec 64)
 
 /-! ## Destination `SessionStructure` layouts and helpers -/
 
-def segClone_dstSlotsWrittenAt (sp : BitVec 64)
+@[expose] def segClone_dstSlotsWrittenAt (sp : BitVec 64)
     (localIk' remoteIk' : VecGhost) (rootPtr' : BitVec 64)
     (chainsCap' chainsPtr' : BitVec 64) (alice' : VecGhost)
     (pqCap' pqPtr' : BitVec 64)
@@ -1264,12 +854,12 @@ theorem segClone_sessionStateAt_0x138_eq (A : RustAlloc) (sp : BitVec 64)
       ((sp + 0x284#64) ↦₃₂ st.previousCounter) ∗
       ((sp + 0x288#64) ↦ₛ G.regIds) := by
   unfold sessionStateAt
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  ac_rfl
+  apply Entails.antisymm <;>
+    (apply Entails.pure_left; intro hp; exact Entails.pure_right hp (by bi_entail))
 
 theorem segClone_memRegion_0xa0_eq (sp : BitVec 64) :
-    memRegion sp 0xa0 = memRegion sp 0x80 ∗ memRegion (sp + 0x80#64) 0x20 :=
-  memRegion_split' (b := sp) (b' := sp + 0x80#64) (n := 0x80) (k := 0x20) rfl rfl (by decide)
+    memRegion sp 0xa0 = memRegion sp 0x80 ∗ memRegion (sp + 0x80#64) 0x20 := by
+  sep_interval_eq
 
 theorem segClone_memRegion_0x4b0_0x950_eq (sp : BitVec 64) :
     memRegion (sp + 0x4b0#64) 0x950 =
@@ -1279,11 +869,7 @@ theorem segClone_memRegion_0x4b0_0x950_eq (sp : BitVec 64) :
       memRegion (sp + 0x5f0#64) 0x6b0 ∗
       memRegion (sp + 0xca0#64) 344 ∗
       memRegion (sp + 0xdf8#64) 8 := by
-  rw [memRegion_split' (b := sp + 0x4b0#64) (b' := sp + 0x4e0#64) (n := 48) (k := 2336) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x4e0#64) (b' := sp + 0x5b0#64) (n := 0xd0) (k := 2128) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x5b0#64) (b' := sp + 0x5f0#64) (n := 0x40) (k := 2064) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0x5f0#64) (b' := sp + 0xca0#64) (n := 0x6b0) (k := 352) rfl (by bv_arith) (by decide),
-      memRegion_split' (b := sp + 0xca0#64) (b' := sp + 0xdf8#64) (n := 344) (k := 8) rfl (by bv_arith) (by decide)]
+  sep_interval_eq
 
 theorem segClone_vecGhostAt_0x138_eq (A : RustAlloc) (g : VecGhost) (sp : BitVec 64) :
     vecGhostAt A g (sp + 0x138#64) =
@@ -1293,10 +879,7 @@ theorem segClone_vecGhostAt_0x138_eq (A : RustAlloc) (g : VecGhost) (sp : BitVec
   unfold vecGhostAt
   rw [vecU8At_eq_header_sep_buf]
   unfold vecHeader
-  have h1 : sp + 0x138#64 + 8#64 = sp + 0x140#64 := by bv_arith
-  have h2 : sp + 0x138#64 + 16#64 = sp + 0x148#64 := by bv_arith
-  rw [h1, h2]
-  ac_rfl
+  apply Entails.antisymm <;> bi_entail
 
 theorem segClone_vecGhostAt_0x150_eq (A : RustAlloc) (g : VecGhost) (sp : BitVec 64) :
     vecGhostAt A g (sp + 0x150#64) =
@@ -1306,10 +889,7 @@ theorem segClone_vecGhostAt_0x150_eq (A : RustAlloc) (g : VecGhost) (sp : BitVec
   unfold vecGhostAt
   rw [vecU8At_eq_header_sep_buf]
   unfold vecHeader
-  have h1 : sp + 0x150#64 + 8#64 = sp + 0x158#64 := by bv_arith
-  have h2 : sp + 0x150#64 + 16#64 = sp + 0x160#64 := by bv_arith
-  rw [h1, h2]
-  ac_rfl
+  apply Entails.antisymm <;> bi_entail
 
 theorem segClone_vecU8At_0x168_root_eq (A : RustAlloc) (sp cap ptr : BitVec 64)
     (rk : BitVec 256) :
@@ -1319,11 +899,9 @@ theorem segClone_vecU8At_0x168_root_eq (A : RustAlloc) (sp cap ptr : BitVec 64)
       vecU8Buf A cap ptr (keyToBytes32 rk) := by
   rw [vecU8At_eq_header_sep_buf]
   unfold vecHeader
-  have h1 : sp + 0x168#64 + 8#64 = sp + 0x170#64 := by bv_arith
-  have h2 : sp + 0x168#64 + 16#64 = sp + 0x178#64 := by bv_arith
   have h3 : BitVec.ofNat 64 (keyToBytes32 rk).length = 32#64 := by simp [keyToBytes32]
-  rw [h1, h2, h3]
-  ac_rfl
+  rw [h3]
+  apply Entails.antisymm <;> bi_entail
 
 theorem segClone_vecAt_0x180_chains_eq (A : RustAlloc) (sp cap ptr : BitVec 64)
     (gs : List ChainGhost) (rcs : List ReceiverChain)
@@ -1333,53 +911,9 @@ theorem segClone_vecAt_0x180_chains_eq (A : RustAlloc) (sp cap ptr : BitVec 64)
       ((sp + 0x190#64) ↦₆₄ BitVec.ofNat 64 rcs.length) ∗
       vecBuf A 104 8 (chainAt A) cap ptr (gs.zip rcs) := by
   unfold vecAt vecHeader
-  have h1 : sp + 0x180#64 + 8#64 = sp + 0x188#64 := by bv_arith
-  have h2 : sp + 0x180#64 + 16#64 = sp + 0x190#64 := by bv_arith
   have h3 : (gs.zip rcs).length = rcs.length := by simp [hlen]
-  rw [h1, h2, h3]
-  ac_rfl
-
-def segClone_fixedRest (A : RustAlloc) (ctl : BitVec 64) (img : Obj.Image)
-    (x : RecordDecryptGhost) (sp : BitVec 64) : SepProp :=
-  ((sp + 0x80#64) ↦₆₄ x.sret) ∗ ((sp + 0x88#64) ↦₆₄ x.locA) ∗ ((sp + 0x90#64) ↦₆₄ x.msgA) ∗
-  memRegion (sp + 0x98#64) 4 ∗
-  ((sp + 0xe0#64) ↦₆₄ x.msgA) ∗ ((sp + 0xf0#64) ↦₆₄ x.locA) ∗
-  ((sp + 0x128#64) ↦₆₄ x.prevPtr) ∗ ((sp + 0x130#64) ↦₆₄ 0#64) ∗
-  memRegion (sp + 0x4b0#64) 48 ∗ memRegion (sp + 0x4e0#64) 0xd0 ∗
-  ((sp + 0x5b0#64) ↦₆₄ x.remA) ∗ memRegion (sp + 0x5b8#64) 4 ∗
-  ((sp + 0x5bc#64) ↦₈ msgTypeByte .whisper) ∗ memRegion (sp + 0x5bd#64) 3 ∗
-  ((sp + 0x5c0#64) ↦₆₄ (sp + 0x5bc#64)) ∗ ((sp + 0x5c8#64) ↦₆₄ x.msgA) ∗
-  ((sp + 0x5d0#64) ↦₆₄ (sp + 0x5b0#64)) ∗
-  errsAt A (sp + 0x5d8#64) [] ∗
-  memRegion (sp + 0x658#64) 0x4e8 ∗ memRegion (sp + 0xba0#64) 0x100 ∗
-  memRegion (sp + 0xdf8#64) 8 ∗
-  protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
-  signalMessageAt A x.msgG x.msgA x.msg ∗
-  tapeAt ctl x.cur x.rest ∗ logOff img ∗
-  memRegion (sp - BitVec.ofNat 64 rootStack) (rootStack - chainCloneStack)
-
-theorem segClone_fixedRest_reassemble (A : RustAlloc) (ctl : BitVec 64) (img : Obj.Image)
-    (x : RecordDecryptGhost) (sp : BitVec 64)
-    (sq0 sq1 sq2 sq3 sq4 sq5 : BitVec 128)
-    (v00 v08 : BitVec 64) (v14 : BitVec 32) (v18 : BitVec 64)
-    (v24 v28 v2c : BitVec 32) (v30 : BitVec 64) (v3c : BitVec 32)
-    (v40 v48 : BitVec 64) (v54 : BitVec 32) (v58 v60 v68 v70 v78 : BitVec 64) :
-    (spillSlotsAt sp v00 v08 v14 v18 v24 v28 v2c v30 v3c v40 v48 v54 v58 v60 v68 v70 v78 ∗
-      chunks96_6QAt (sp + 0xb40#64) sq0 sq1 sq2 sq3 sq4 sq5 ∗
-      memRegion (sp + 0x5f0#64) 104 ∗
-      ((sp + 0x9c#64) ↦₃₂ x.msg.messageVersion.setWidth 32) ∗
-      memRegion (sp - BitVec.ofNat 64 chainCloneStack) 208 ∗
-      stackAt sp allocHookStack ∗ A.pool ∗
-      segClone_fixedRest A ctl img x sp) ⊢
-      (recFrame A img x sp ∗ errsAt A (sp + 0x5d8#64) [] ∗
-        memRegion (sp + 0x4b0#64) 48 ∗ tapeAt ctl x.cur x.rest) := by
-  refine Entails.trans
-    (sepConj_mono
-      (spillSlotsAt_entails_memRegion_0x80 sp v00 v08 v14 v18 v24 v28 v2c v30 v3c v40 v48 v54 v58 v60 v68 v70 v78)
-      (sepConj_mono_left (chunks96_6QAt_entails_memRegion (sp + 0xb40#64) sq0 sq1 sq2 sq3 sq4 sq5))) ?_
-  unfold segClone_fixedRest recFrame
-  rw [memRegion_0x5f0_0x6b0_eq sp, stackAt_root_eq_chainClone sp, stackAt_chainClone_eq_alloc sp]
-  exact Entails.of_eq (by ac_rfl)
+  rw [h3]
+  apply Entails.antisymm <;> bi_entail
 
 theorem segClone_srcSessionState_reassemble (A : RustAlloc) (sp : BitVec 64)
     (x : RecordDecryptGhost) (w288 w28c : BitVec 32)
@@ -1410,9 +944,8 @@ theorem segClone_srcSessionState_reassemble (A : RustAlloc) (sp : BitVec 64)
       sessionStateAt A (sp + 0x138#64) x.G x.st := by
   rw [segClone_sessionStateAt_0x138_eq]
   apply Entails.pure_right ⟨h_loc_deser, h_rem_deser, h_chains_len, h_pend_some, h_reg_len, h_loc_len, h_rem_len⟩
-  have h28c : sp + 0x288#64 + 4#64 = sp + 0x28c#64 := by bv_arith
-  rw [h_reg_pts (sp + 0x288#64), h28c]
-  exact Entails.of_eq (by ac_rfl)
+  rw [h_reg_pts (sp + 0x288#64)]
+  bi_entail
 
 theorem segClone_version_cond_iff (sv : BitVec 32) (mv : BitVec 8) :
     ((if sv = 0 then 2#64 else BitVec.truncate 64 sv) = BitVec.zeroExtend 64 mv) ↔
@@ -1456,17 +989,8 @@ theorem memRegion_104_entails_chunks104_6QWAt (a : BitVec 64) :
       ∃∗ q3 : BitVec 128, ∃∗ q4 : BitVec 128, ∃∗ q5 : BitVec 128,
       ∃∗ w6 : BitVec 64,
         chunks104_6QWAt a q0 q1 q2 q3 q4 q5 w6 := by
-  rw [← sepConj_emp (memRegion a 104)]
-  refine elim_region96_6Q (b' := a + 0x60#64) (rem := 8) rfl rfl (by decide)
-    fun q0 q1 q2 q3 q4 q5 => ?_
-  rw [memRegion_eight (a + 0x60#64), sepExists_sepConj_left]
-  apply Entails.sepExists_elim; intro w6
-  refine Entails.sepExists_right q0 (Entails.sepExists_right q1
-    (Entails.sepExists_right q2 (Entails.sepExists_right q3
-      (Entails.sepExists_right q4 (Entails.sepExists_right q5
-        (Entails.sepExists_right w6 ?_))))))
-  unfold chunks96_6QAt chunks104_6QWAt
-  exact Entails.of_eq (by ac_rfl)
+  unfold chunks104_6QWAt
+  sep_interval
 
 theorem segClone_bv_ofNat_succ_sub_one (n : Nat) :
     BitVec.ofNat 64 (n + 1) - 1#64 = BitVec.ofNat 64 n := by
@@ -1529,87 +1053,53 @@ theorem segClone_dstSlotsWrittenAt_entails_sessionStateAt
   have hloc_hdr :
       ((sp + 0xca0#64) ↦₆₄ localIk'.cap) ∗ ((sp + 0xca8#64) ↦₆₄ localIk'.ptr) ∗
         ((sp + 0xcb0#64) ↦₆₄ localIk'.cap) ∗
-        vecU8Buf A localIk'.cap localIk'.ptr localIk'.bytes =
+        vecU8Buf A localIk'.cap localIk'.ptr localIk'.bytes ⊢
       vecGhostAt A localIk' (sp + 0xca0#64) := by
-    unfold vecGhostAt
-    rw [vecU8At_eq_header_sep_buf]
-    unfold vecHeader
-    have h1 : sp + 0xca0#64 + 8#64 = sp + 0xca8#64 := by bv_arith
-    have h2 : sp + 0xca0#64 + 16#64 = sp + 0xcb0#64 := by bv_arith
-    have h3 : BitVec.ofNat 64 localIk'.bytes.length = localIk'.cap := by
-      rw [hloc_bytes, ← hloc_cap]
-    rw [h1, h2, h3]
-    ac_rfl
+    unfold vecGhostAt; rw [vecU8At_eq_header_sep_buf]; unfold vecHeader
+    rw [show BitVec.ofNat 64 localIk'.bytes.length = localIk'.cap by rw [hloc_bytes, ← hloc_cap]]
+    bi_entail
   have hrem_hdr :
       ((sp + 0xcb8#64) ↦₆₄ remoteIk'.cap) ∗ ((sp + 0xcc0#64) ↦₆₄ remoteIk'.ptr) ∗
         ((sp + 0xcc8#64) ↦₆₄ remoteIk'.cap) ∗
-        vecU8Buf A remoteIk'.cap remoteIk'.ptr remoteIk'.bytes =
+        vecU8Buf A remoteIk'.cap remoteIk'.ptr remoteIk'.bytes ⊢
       vecGhostAt A remoteIk' (sp + 0xca0#64 + 0x18#64) := by
-    unfold vecGhostAt
-    rw [vecU8At_eq_header_sep_buf]
-    unfold vecHeader
-    have h0 : sp + 0xca0#64 + 0x18#64 = sp + 0xcb8#64 := by bv_arith
-    have h1 : sp + 0xcb8#64 + 8#64 = sp + 0xcc0#64 := by bv_arith
-    have h2 : sp + 0xcb8#64 + 16#64 = sp + 0xcc8#64 := by bv_arith
-    have h3 : BitVec.ofNat 64 remoteIk'.bytes.length = remoteIk'.cap := by
-      rw [hrem_bytes, ← hrem_cap]
-    rw [h0, h1, h2, h3]
-    ac_rfl
+    unfold vecGhostAt; rw [vecU8At_eq_header_sep_buf]; unfold vecHeader
+    rw [show BitVec.ofNat 64 remoteIk'.bytes.length = remoteIk'.cap by rw [hrem_bytes, ← hrem_cap]]
+    bi_entail
   have hroot_hdr :
       ((sp + 0xcd0#64) ↦₆₄ 32#64) ∗ ((sp + 0xcd8#64) ↦₆₄ rootPtr') ∗
         ((sp + 0xce0#64) ↦₆₄ 32#64) ∗
-        vecU8Buf A 32#64 rootPtr' (keyToBytes32 x.st.rootKey) =
+        vecU8Buf A 32#64 rootPtr' (keyToBytes32 x.st.rootKey) ⊢
       vecU8At A (sp + 0xca0#64 + 0x30#64) 32#64 rootPtr' (keyToBytes32 x.st.rootKey) := by
-    rw [vecU8At_eq_header_sep_buf]
-    unfold vecHeader
-    have h0 : sp + 0xca0#64 + 0x30#64 = sp + 0xcd0#64 := by bv_arith
-    have h1 : sp + 0xcd0#64 + 8#64 = sp + 0xcd8#64 := by bv_arith
-    have h2 : sp + 0xcd0#64 + 16#64 = sp + 0xce0#64 := by bv_arith
-    have h3 : BitVec.ofNat 64 (keyToBytes32 x.st.rootKey).length = 32#64 := by
-      simp [keyToBytes32]
-    rw [h0, h1, h2, h3]
-    ac_rfl
+    rw [vecU8At_eq_header_sep_buf]; unfold vecHeader
+    rw [show BitVec.ofNat 64 (keyToBytes32 x.st.rootKey).length = 32#64 by simp [keyToBytes32]]
+    bi_entail
   have hchains_hdr :
       ((sp + 0xce8#64) ↦₆₄ chainsCap') ∗ ((sp + 0xcf0#64) ↦₆₄ chainsPtr') ∗
         ((sp + 0xcf8#64) ↦₆₄ chainsCap') ∗
-        vecBuf A 104 8 (chainAt A) chainsCap' chainsPtr' (chains'.zip x.st.receiverChains) =
+        vecBuf A 104 8 (chainAt A) chainsCap' chainsPtr' (chains'.zip x.st.receiverChains) ⊢
       vecAt A 104 8 (chainAt A) (sp + 0xca0#64 + 0x48#64) chainsCap' chainsPtr'
         (chains'.zip x.st.receiverChains) := by
     unfold vecAt vecHeader
-    have h0 : sp + 0xca0#64 + 0x48#64 = sp + 0xce8#64 := by bv_arith
-    have h1 : sp + 0xce8#64 + 8#64 = sp + 0xcf0#64 := by bv_arith
-    have h2 : sp + 0xce8#64 + 16#64 = sp + 0xcf8#64 := by bv_arith
-    have h3 : BitVec.ofNat 64 (chains'.zip x.st.receiverChains).length = chainsCap' := by
-      simp [hchains_len, hchains_cap]
-    rw [h0, h1, h2, h3]
-    ac_rfl
+    rw [show BitVec.ofNat 64 (chains'.zip x.st.receiverChains).length = chainsCap' by
+      simp [hchains_len, hchains_cap]]
+    bi_entail
   have halice_hdr :
       ((sp + 0xd00#64) ↦₆₄ alice'.cap) ∗ ((sp + 0xd08#64) ↦₆₄ alice'.ptr) ∗
         ((sp + 0xd10#64) ↦₆₄ alice'.cap) ∗
-        vecU8Buf A alice'.cap alice'.ptr alice'.bytes =
+        vecU8Buf A alice'.cap alice'.ptr alice'.bytes ⊢
       vecGhostAt A alice' (sp + 0xca0#64 + 0x60#64) := by
-    unfold vecGhostAt
-    rw [vecU8At_eq_header_sep_buf]
-    unfold vecHeader
-    have h0 : sp + 0xca0#64 + 0x60#64 = sp + 0xd00#64 := by bv_arith
-    have h1 : sp + 0xd00#64 + 8#64 = sp + 0xd08#64 := by bv_arith
-    have h2 : sp + 0xd00#64 + 16#64 = sp + 0xd10#64 := by bv_arith
-    have h3 : BitVec.ofNat 64 alice'.bytes.length = alice'.cap := by
-      rw [halice_bytes, ← halice_cap]
-    rw [h0, h1, h2, h3]
-    ac_rfl
+    unfold vecGhostAt; rw [vecU8At_eq_header_sep_buf]; unfold vecHeader
+    rw [show BitVec.ofNat 64 alice'.bytes.length = alice'.cap by rw [halice_bytes, ← halice_cap]]
+    bi_entail
   have hpq_hdr :
       ((sp + 0xd18#64) ↦₆₄ pqCap') ∗ ((sp + 0xd20#64) ↦₆₄ pqPtr') ∗
         ((sp + 0xd28#64) ↦₆₄ pqCap') ∗
-        vecU8Buf A pqCap' pqPtr' x.st.pqRatchetState =
+        vecU8Buf A pqCap' pqPtr' x.st.pqRatchetState ⊢
       vecU8At A (sp + 0xca0#64 + 0x78#64) pqCap' pqPtr' x.st.pqRatchetState := by
-    rw [vecU8At_eq_header_sep_buf]
-    unfold vecHeader
-    have h0 : sp + 0xca0#64 + 0x78#64 = sp + 0xd18#64 := by bv_arith
-    have h1 : sp + 0xd18#64 + 8#64 = sp + 0xd20#64 := by bv_arith
-    have h2 : sp + 0xd18#64 + 16#64 = sp + 0xd28#64 := by bv_arith
-    rw [h0, h1, h2, ← hpq_cap]
-    ac_rfl
+    rw [vecU8At_eq_header_sep_buf]; unfold vecHeader
+    rw [← hpq_cap]
+    bi_entail
   have hsc_reasm :
       (((sp + 0xd30#64) ↦₆₄ scCap') ∗
         chunks96_6QAt (sp + 0xd38#64) sq0 sq1 sq2 sq3 sq4 sq5 ∗
@@ -1628,16 +1118,9 @@ theorem segClone_dstSlotsWrittenAt_entails_sessionStateAt
       ∃∗ pend' : Option TailVecGhost,
         ⌜pend'.isSome = x.G.pending.isSome⌝ ∗
           optTailVecAt A 48 (sp + 0xca0#64 + 0xf8#64) pend' := by
-    have h0 : sp + 0xca0#64 + 0xf8#64 = sp + 0xd98#64 := by bv_arith
-    have h8 : sp + 0xd98#64 + 8#64 = sp + 0xda0#64 := by bv_arith
-    have h16 : sp + 0xd98#64 + 16#64 = sp + 0xda8#64 := by bv_arith
-    have h24 : sp + 0xd98#64 + 24#64 = sp + 0xdb0#64 := by bv_arith
-    have h28 : sp + 0xd98#64 + 28#64 = sp + 0xdb4#64 := by bv_arith
-    have h32 : sp + 0xd98#64 + 32#64 = sp + 0xdb8#64 := by bv_arith
-    have h40 : sp + 0xd98#64 + 40#64 = sp + 0xdc0#64 := by bv_arith
-    have h44 : sp + 0xd98#64 + 44#64 = sp + 0xdc4#64 := by bv_arith
-    rw [h0, ← h8, ← h16, ← h24, ← h28, ← h32, ← h40, ← h44]
-    exact optTailVecAt_48_of_optPendClone A (sp + 0xd98#64) x.G.pending pendCap' pendPtr' w28 w2c v08 w24
+    rw [show sp + 0xca0#64 + 0xf8#64 = sp + 0xd98#64 by bv_arith]
+    exact Entails.trans (by bi_entail)
+      (optTailVecAt_48_of_optPendClone A (sp + 0xd98#64) x.G.pending pendCap' pendPtr' w28 w2c v08 w24)
   have hkyb_reasm :
       (((sp + 0xdc8#64) ↦₆₄ kybCap') ∗ ((sp + 0xdd0#64) ↦₆₄ kybPtr') ∗
         ((sp + 0xdd8#64) ↦₆₄ kybCap') ∗ ((sp + 0xde0#64) ↦₃₂ w14) ∗
@@ -1645,64 +1128,30 @@ theorem segClone_dstSlotsWrittenAt_entails_sessionStateAt
         OptKybClone A x.G.kyber kybCap' kybPtr') ⊢
       ∃∗ kyb' : Option TailVecGhost,
         optTailVecAt A 32 (sp + 0xca0#64 + 0x128#64) kyb' := by
-    have h0 : sp + 0xca0#64 + 0x128#64 = sp + 0xdc8#64 := by bv_arith
-    have h8 : sp + 0xdc8#64 + 8#64 = sp + 0xdd0#64 := by bv_arith
-    have h16 : sp + 0xdc8#64 + 16#64 = sp + 0xdd8#64 := by bv_arith
-    have h24 : sp + 0xdc8#64 + 24#64 = sp + 0xde0#64 := by bv_arith
-    have h28 : sp + 0xdc8#64 + 28#64 = sp + 0xde4#64 := by bv_arith
-    rw [h0, ← h8, ← h16, ← h24, ← h28]
-    exact optTailVecAt_32_of_optKybClone A (sp + 0xdc8#64) x.G.kyber kybCap' kybPtr' w14
+    rw [show sp + 0xca0#64 + 0x128#64 = sp + 0xdc8#64 by bv_arith]
+    exact Entails.trans (by bi_entail)
+      (optTailVecAt_32_of_optKybClone A (sp + 0xdc8#64) x.G.kyber kybCap' kybPtr' w14)
   have htail_eq :
       ((sp + 0xde8#64) ↦₃₂ x.st.sessionVersion) ∗
         ((sp + 0xdec#64) ↦₃₂ x.st.previousCounter) ∗
-        ((sp + 0xdf0#64) ↦₃₂ w288) ∗ ((sp + 0xdf4#64) ↦₃₂ w28c) =
+        ((sp + 0xdf0#64) ↦₃₂ w288) ∗ ((sp + 0xdf4#64) ↦₃₂ w28c) ⊢
       ((sp + 0xca0#64 + 0x148#64) ↦₃₂ x.st.sessionVersion) ∗
         ((sp + 0xca0#64 + 0x14c#64) ↦₃₂ x.st.previousCounter) ∗
         ((sp + 0xca0#64 + 0x150#64) ↦ₛ x.G.regIds) := by
-    have h148 : sp + 0xca0#64 + 0x148#64 = sp + 0xde8#64 := by bv_arith
-    have h14c : sp + 0xca0#64 + 0x14c#64 = sp + 0xdec#64 := by bv_arith
-    have h150 : sp + 0xca0#64 + 0x150#64 = sp + 0xdf0#64 := by bv_arith
-    have h154 : sp + 0xdf0#64 + 4#64 = sp + 0xdf4#64 := by bv_arith
-    rw [h148, h14c, h150, h_reg_pts (sp + 0xdf0#64), h154]
+    rw [show sp + 0xca0#64 + 0x150#64 = sp + 0xdf0#64 by bv_arith, h_reg_pts (sp + 0xdf0#64)]
+    bi_entail
+  have hcomb :=
+    sepConj_mono hpend_reasm <|
+    sepConj_mono hkyb_reasm <|
+    sepConj_mono hsc_reasm <|
+    sepConj_mono hloc_hdr <|
+    sepConj_mono hrem_hdr <|
+    sepConj_mono hroot_hdr <|
+    sepConj_mono hchains_hdr <|
+    sepConj_mono halice_hdr <|
+    sepConj_mono hpq_hdr htail_eq
   unfold segClone_dstSlotsWrittenAt
-  refine Entails.trans
-    (Q := (((sp + 0xd98#64) ↦₆₄ pendCap') ∗ ((sp + 0xda0#64) ↦₆₄ pendPtr') ∗
-            ((sp + 0xda8#64) ↦₆₄ pendCap') ∗ ((sp + 0xdb0#64) ↦₃₂ w28) ∗
-            ((sp + 0xdb4#64) ↦₃₂ w2c) ∗ ((sp + 0xdb8#64) ↦₆₄ v08) ∗
-            ((sp + 0xdc0#64) ↦₃₂ w24) ∗ memRegion (sp + 0xdc4#64) 4 ∗
-            OptPendClone A x.G.pending pendCap' pendPtr') ∗
-          (((sp + 0xdc8#64) ↦₆₄ kybCap') ∗ ((sp + 0xdd0#64) ↦₆₄ kybPtr') ∗
-            ((sp + 0xdd8#64) ↦₆₄ kybCap') ∗ ((sp + 0xde0#64) ↦₃₂ w14) ∗
-            memRegion (sp + 0xde4#64) 4 ∗
-            OptKybClone A x.G.kyber kybCap' kybPtr') ∗
-          (((sp + 0xd30#64) ↦₆₄ scCap') ∗
-            chunks96_6QAt (sp + 0xd38#64) sq0 sq1 sq2 sq3 sq4 sq5 ∗
-            optSenderChainHeap A sender' x.st.senderChain) ∗
-          (((sp + 0xca0#64) ↦₆₄ localIk'.cap) ∗ ((sp + 0xca8#64) ↦₆₄ localIk'.ptr) ∗
-            ((sp + 0xcb0#64) ↦₆₄ localIk'.cap) ∗
-            vecU8Buf A localIk'.cap localIk'.ptr localIk'.bytes) ∗
-          (((sp + 0xcb8#64) ↦₆₄ remoteIk'.cap) ∗ ((sp + 0xcc0#64) ↦₆₄ remoteIk'.ptr) ∗
-            ((sp + 0xcc8#64) ↦₆₄ remoteIk'.cap) ∗
-            vecU8Buf A remoteIk'.cap remoteIk'.ptr remoteIk'.bytes) ∗
-          (((sp + 0xcd0#64) ↦₆₄ 32#64) ∗ ((sp + 0xcd8#64) ↦₆₄ rootPtr') ∗
-            ((sp + 0xce0#64) ↦₆₄ 32#64) ∗
-            vecU8Buf A 32#64 rootPtr' (keyToBytes32 x.st.rootKey)) ∗
-          (((sp + 0xce8#64) ↦₆₄ chainsCap') ∗ ((sp + 0xcf0#64) ↦₆₄ chainsPtr') ∗
-            ((sp + 0xcf8#64) ↦₆₄ chainsCap') ∗
-            vecBuf A 104 8 (chainAt A) chainsCap' chainsPtr' (chains'.zip x.st.receiverChains)) ∗
-          (((sp + 0xd00#64) ↦₆₄ alice'.cap) ∗ ((sp + 0xd08#64) ↦₆₄ alice'.ptr) ∗
-            ((sp + 0xd10#64) ↦₆₄ alice'.cap) ∗
-            vecU8Buf A alice'.cap alice'.ptr alice'.bytes) ∗
-          (((sp + 0xd18#64) ↦₆₄ pqCap') ∗ ((sp + 0xd20#64) ↦₆₄ pqPtr') ∗
-            ((sp + 0xd28#64) ↦₆₄ pqCap') ∗
-            vecU8Buf A pqCap' pqPtr' x.st.pqRatchetState) ∗
-          (((sp + 0xde8#64) ↦₃₂ x.st.sessionVersion) ∗
-            ((sp + 0xdec#64) ↦₃₂ x.st.previousCounter) ∗
-            ((sp + 0xdf0#64) ↦₃₂ w288) ∗ ((sp + 0xdf4#64) ↦₃₂ w28c)))
-    (Entails.of_eq (by ac_rfl)) ?_
-  rw [hloc_hdr, hrem_hdr, hroot_hdr, hchains_hdr, halice_hdr, hpq_hdr, htail_eq]
-  refine Entails.trans
-    (sepConj_mono hpend_reasm (sepConj_mono hkyb_reasm (sepConj_mono_left hsc_reasm))) ?_
+  refine Entails.trans (by bi_entail) (Entails.trans hcomb ?_)
   simp only [sepExists_sepConj_left, sepExists_sepConj_right]
   apply Entails.sepExists_elim; intro kyb'
   apply Entails.sepExists_elim; intro pend'
@@ -1739,7 +1188,7 @@ theorem segClone_dstSlotsWrittenAt_entails_sessionStateAt
     exact ⟨h_loc_deser, h_rem_deser, hchains_len, h_pend_some, h_reg_len, h_loc_len, h_rem_len⟩
   apply Entails.pure_right hpure
   dsimp only [G₁]
-  exact Entails.of_eq (by ac_rfl)
+  bi_entail
 
 theorem segClone_chunks96_6QAt_sp_0xd38 (sp : BitVec 64) (q0 q1 q2 q3 q4 q5 : BitVec 128) :
     chunks96_6QAt (sp + 0xd38#64) q0 q1 q2 q3 q4 q5 =
@@ -1748,20 +1197,6 @@ theorem segClone_chunks96_6QAt_sp_0xd38 (sp : BitVec 64) (q0 q1 q2 q3 q4 q5 : Bi
       ((sp + 0xd78#64) ↦₁₂₈ q4) ∗ ((sp + 0xd88#64) ↦₁₂₈ q5) := by
   unfold chunks96_6QAt
   simp only [BitVec.add_assoc, BitVec.reduceAdd]
-
-def segClone_clonePost (A : RustAlloc) (ctl : BitVec 64) (img : Obj.Image)
-    (x : RecordDecryptGhost) (s0 sf : State) (P_f : SepProp) : Prop :=
-  sf.sp = s0.sp ∧ sf.spAligned = true ∧
-    sf.readReg64 .x29 = s0.readReg64 .x29 ∧ sf.trace = s0.trace ∧
-    sf.readReg64 .x9 = x.msg.messageVersion.setWidth 64 ∧
-    (P_f ⊢ ∃∗ G₁ : SessionGhost,
-      ⌜CloneRel x.G G₁⌝ ∗
-      recFrame A img x s0.sp ∗
-      sessionStateAt A (s0.sp + 0x138#64) x.G x.st ∗
-      sessionStateAt A (s0.sp + 0xca0#64) G₁ x.st ∗
-      errsAt A (s0.sp + 0x5d8#64) [] ∗
-      memRegion (s0.sp + 0x4b0#64) 48 ∗
-      tapeAt ctl x.cur x.rest)
 
 structure SpillVals where
   v00 : BitVec 64
@@ -1834,7 +1269,7 @@ structure DstVals where
   w_df0 : BitVec 32
   w_df4 : BitVec 32
 
-def dstSlotsAt (sp : BitVec 64) (dv : DstVals) : SepProp :=
+@[expose] def dstSlotsAt (sp : BitVec 64) (dv : DstVals) : SepProp :=
   ((sp + 0xca0#64) ↦₆₄ dv.w_ca0) ∗ ((sp + 0xca8#64) ↦₆₄ dv.w_ca8) ∗ ((sp + 0xcb0#64) ↦₆₄ dv.w_cb0) ∗
   ((sp + 0xcb8#64) ↦₆₄ dv.w_cb8) ∗ ((sp + 0xcc0#64) ↦₆₄ dv.w_cc0) ∗ ((sp + 0xcc8#64) ↦₆₄ dv.w_cc8) ∗
   ((sp + 0xcd0#64) ↦₆₄ dv.w_cd0) ∗ ((sp + 0xcd8#64) ↦₆₄ dv.w_cd8) ∗ ((sp + 0xce0#64) ↦₆₄ dv.w_ce0) ∗
@@ -1856,7 +1291,7 @@ theorem memRegion_344_entails_dstSlotsAt (sp : BitVec 64) :
   memRegion_344_entails_dstSlotsAt_gen sp DstVals.mk (dstSlotsAt sp)
     (fun _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ => rfl)
 
-def segClone_dstSlotsMidAt (sp : BitVec 64) (dv : DstVals)
+@[expose] def segClone_dstSlotsMidAt (sp : BitVec 64) (dv : DstVals)
     (localIk' remoteIk' : VecGhost) (rootPtr' : BitVec 64)
     (chainsCap' chainsPtr' : BitVec 64)
     (scCap' : BitVec 64) (sq0 sq1 sq2 sq3 sq4 sq5 : BitVec 128)

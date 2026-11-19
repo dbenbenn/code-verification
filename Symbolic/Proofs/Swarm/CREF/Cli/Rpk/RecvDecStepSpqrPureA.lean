@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
-public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
-public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure
-public import Symbolic.Proofs.Refinement.RecordBytesBridge
-public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.RecordBytesInj -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.TRREF.B3DefsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Refinement.RecordBytesBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TROpen
 
@@ -25,7 +25,7 @@ Relates `pqRatchetState` and `sessionVersion` across `StateRel`, canonical sessi
 records with optional pending pre-key fields, and `SpqrRecvStepOut`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -120,7 +120,7 @@ open DY.Libsignal.Refinement (PbValue encodeField)
 /-- `sessionToRecordRecPending` preserves `pendingPreKey` (field 9) and `pendingKyberPreKey`
 (field 14) as `(encPendingPreKey p, [])` and `(encPendingKyber p, [])` so composed `recordBytes`
 matches `encodeRecord ⟨some s⟩` without any no-pending hypothesis. -/
-def sessionToRecordRecPending (s : Session (List (BitVec 8))) : RecordRec :=
+@[expose] def sessionToRecordRecPending (s : Session (List (BitVec 8))) : RecordRec :=
   { current :=
       { (sessionToSessionRec s) with
         pendingPreKey := s.pendingPreKey.map fun p => (CryptoVerification.E2E.Record.encPendingPreKey p, []),

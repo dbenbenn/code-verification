@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExact
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommon
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExact -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedPlacedCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeated2
 import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4
 import ProofLib.SepLogic.WPp
@@ -25,7 +25,7 @@ Lifts `prost::encoding::bytes::encode_repeated::<alloc::vec::Vec<u8>, alloc::vec
 provides generic `Program` call and tailcall steppers for `encodeRepeated59SpecOf`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

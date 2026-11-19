@@ -15,10 +15,19 @@ public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.CryptoHookFds -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyEncoderClPlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Pool-Carried `FdsGe3Closed` Allocator Wrapper (`withFds`)
@@ -52,7 +61,8 @@ open CryptoVerification.RustHeap (allocHookStack)
 open CryptoVerification.SignalSession
   (CliHooks cliExternsPlaced lsAesDecSym lsAesEncSym lsRustNoAllocShimSymCli)
 open CryptoVerification.SignalSession.Cli.RunGlue
-  (CliGhostHooks cliGhostExterns cliGhostExterns_shim withPanics_cliGhostExterns)
+  (CliGhostHooks cliGhostExterns cliGhostExterns_extra_some cliGhostExterns_shim
+   withPanics_cliGhostExterns)
 open CryptoVerification.SignalSession.Cli.Slots
   (cliGhostExterns_panic_handle_error lsLibcruxHmacSymCli)
 open CryptoVerification.SpqrV1.Prost.MessageMerge (blkPC_297 blkPl_297)
@@ -77,15 +87,17 @@ open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
    libcruxHmacHookMallocng_budget_ok mallocngHookRustCliAllocBudget)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.CryptoHookFds
   (aesDecHookMallocng_budget_withFdsGe3Closed_ok aesEncHookMallocng_budget_withFdsGe3Closed_ok
-   cliGhostExterns_aesDec_withFdsGe3Closed_hookSat cliGhostExterns_aesEnc_withFdsGe3Closed_hookSat
-   cliGhostExterns_libcruxHmac_withFdsGe3Closed_hookSat fineAesDec_budget_withFdsGe3Closed_hookOk
-   fineAesEnc_budget_withFdsGe3Closed_hookOk fineLibcruxHmac_budget_withFdsGe3Closed_hookOk
-   libcruxHmacHookMallocng_budget_withFdsGe3Closed_ok)
+   fineAesDec_budget_withFdsGe3Closed_hookOk fineAesEnc_budget_withFdsGe3Closed_hookOk
+   fineLibcruxHmac_budget_withFdsGe3Closed_hookOk hookOk_withFdsGe3Closed_of_fs_eq
+   hookOk_withLsRet_withFdsGe3Closed_of_fs_eq libcruxHmacHookMallocng_budget_withFdsGe3Closed_ok)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
   (FdsGe3Closed extract_withFdsGe3Closed withFdsGe3Closed)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+  (extract_withLsRet intro_withLsRet withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
   (CliAllocHooks CliGhostAllocHooks CliGhostSpqrAllocHooks cliExternsPlaced_alloc_budget_sat
    cliExternsPlaced_realloc_budget_sat)
+open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs (ExtraSpecOk)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneRustAllocPlacedBudget (growOneVecU8_caller_cro_ok)
 open LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
   (decodeErrorPushMergeBudgetSpec)
@@ -107,10 +119,6 @@ theorem fdsGe3Closed_of_fdsHiFrame {s s' : State}
 theorem fdsGe3Closed_iff_of_fdsHiFrame {s s' : State} (hfr : FdsHiFrame s s') :
     FdsGe3Closed s'.fs ↔ FdsGe3Closed s.fs :=
   ⟨fdsGe3Closed_of_fdsHiFrame hfr.symm, fdsGe3Closed_of_fdsHiFrame hfr⟩
-
-theorem fdsGe3Closed_iff_of_vmPreserved {s s' : State} (h : VmPreserved s s') :
-    FdsGe3Closed s'.fs ↔ FdsGe3Closed s.fs :=
-  fdsGe3Closed_iff_of_fdsHiFrame h.fdsHiFrame
 
 /-! ## `withFds` Allocator Wrapper and Definitional Projections -/
 
@@ -306,22 +314,6 @@ private theorem reallocSpec_eq_unenforced [LibsignalPlacement] {M : AllocCostMod
     rustCliReallocBudgetSpec M (withFds A) lim = rustCliReallocBudgetSpec M A lim := by
   simp only [rustCliReallocBudgetSpec, withFds_pool_unenforced A henf, withFds_live]
 
-private theorem allocSpecBase_eq_unenforced {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {lim : BudgetLimits} (henf : lim.enforced = false) (zeroed : Bool) :
-    rustCliAllocBudgetSpecBase M (withFds A) lim zeroed =
-      rustCliAllocBudgetSpecBase M A lim zeroed := by
-  simp only [rustCliAllocBudgetSpecBase, withFds_pool_unenforced A henf, withFds_live]
-
-private theorem deallocSpecBase_eq_unenforced {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {lim : BudgetLimits} (henf : lim.enforced = false) :
-    rustCliDeallocBudgetSpecBase M (withFds A) lim = rustCliDeallocBudgetSpecBase M A lim := by
-  simp only [rustCliDeallocBudgetSpecBase, withFds_pool_unenforced A henf, withFds_live]
-
-private theorem reallocSpecBase_eq_unenforced {M : AllocCostModel}
-    (A : RustCliAllocBudget M) {lim : BudgetLimits} (henf : lim.enforced = false) :
-    rustCliReallocBudgetSpecBase M (withFds A) lim = rustCliReallocBudgetSpecBase M A lim := by
-  simp only [rustCliReallocBudgetSpecBase, withFds_pool_unenforced A henf, withFds_live]
-
 theorem hookOk_allocBudget_withFds [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {zeroed : Bool} {f : State → State}
     (hok : HookOk f (rustCliAllocBudgetSpec M A lim zeroed)) :
@@ -390,158 +382,6 @@ theorem subroutine_ok_deallocBudget_withFds [LibsignalPlacement] {M : AllocCostM
       dsimp only [rustCliDeallocBudgetSpec] at hpost ⊢
       exact dealloc_post_enforced henf hClosed0 hpost
 
-theorem subroutine_ok_reallocBudget_withFds [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {P : Program} {entry : BitVec 64}
-    (hok : subroutine_ok P entry (rustCliReallocBudgetSpec M A lim)) :
-    subroutine_ok P entry (rustCliReallocBudgetSpec M (withFds A) lim) := by
-  cases henf : lim.enforced
-  · rwa [reallocSpec_eq_unenforced A henf]
-  · refine subroutine_ok_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
-    · rintro ⟨p, old, align, new, bs, st⟩ R s0 hpre
-      dsimp only [rustCliReallocBudgetSpec, withFds_live] at hpre ⊢
-      exact dealloc_pre_enforced henf hpre
-    · rintro ⟨p, old, align, new, bs, st⟩ R s0 sf hClosed0 hpost
-      dsimp only [rustCliReallocBudgetSpec, withFds_live] at hpost ⊢
-      exact alloc_post_enforced henf hClosed0 hpost
-
-theorem hookOk_allocBudgetBase_withFds {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {zeroed : Bool} {f : State → State}
-    (hok : HookOk f (rustCliAllocBudgetSpecBase M A lim zeroed)) :
-    HookOk f (rustCliAllocBudgetSpecBase M (withFds A) lim zeroed) := by
-  cases henf : lim.enforced
-  · rwa [allocSpecBase_eq_unenforced A henf zeroed]
-  · refine hookOk_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
-    · rintro ⟨size, align, st⟩ R s0 hpre
-      exact alloc_pre_enforced henf hpre
-    · rintro ⟨size, align, st⟩ R s0 sf hClosed0 hpost
-      dsimp only [rustCliAllocBudgetSpecBase, withFds_live] at hpost ⊢
-      exact alloc_post_enforced henf hClosed0 hpost
-
-theorem hookOk_deallocBudgetBase_withFds {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {f : State → State}
-    (hok : HookOk f (rustCliDeallocBudgetSpecBase M A lim)) :
-    HookOk f (rustCliDeallocBudgetSpecBase M (withFds A) lim) := by
-  cases henf : lim.enforced
-  · rwa [deallocSpecBase_eq_unenforced A henf]
-  · refine hookOk_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
-    · rintro ⟨p, size, align, st⟩ R s0 hpre
-      dsimp only [rustCliDeallocBudgetSpecBase, withFds_live] at hpre ⊢
-      exact dealloc_pre_enforced henf hpre
-    · rintro ⟨p, size, align, st⟩ R s0 sf hClosed0 hpost
-      dsimp only [rustCliDeallocBudgetSpecBase] at hpost ⊢
-      exact dealloc_post_enforced henf hClosed0 hpost
-
-theorem hookOk_reallocBudgetBase_withFds {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {f : State → State}
-    (hok : HookOk f (rustCliReallocBudgetSpecBase M A lim)) :
-    HookOk f (rustCliReallocBudgetSpecBase M (withFds A) lim) := by
-  cases henf : lim.enforced
-  · rwa [reallocSpecBase_eq_unenforced A henf]
-  · refine hookOk_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
-    · rintro ⟨p, old, align, new, bs, st⟩ R s0 hpre
-      dsimp only [rustCliReallocBudgetSpecBase, withFds_live] at hpre ⊢
-      exact dealloc_pre_enforced henf hpre
-    · rintro ⟨p, old, align, new, bs, st⟩ R s0 sf hClosed0 hpost
-      dsimp only [rustCliReallocBudgetSpecBase, withFds_live] at hpost ⊢
-      exact alloc_post_enforced henf hClosed0 hpost
-
-theorem subroutine_ok_allocBudgetBase_withFds {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {zeroed : Bool} {P : Program} {entry : BitVec 64}
-    (hok : subroutine_ok P entry (rustCliAllocBudgetSpecBase M A lim zeroed)) :
-    subroutine_ok P entry (rustCliAllocBudgetSpecBase M (withFds A) lim zeroed) := by
-  cases henf : lim.enforced
-  · rwa [allocSpecBase_eq_unenforced A henf zeroed]
-  · refine subroutine_ok_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
-    · rintro ⟨size, align, st⟩ R s0 hpre
-      exact alloc_pre_enforced henf hpre
-    · rintro ⟨size, align, st⟩ R s0 sf hClosed0 hpost
-      dsimp only [rustCliAllocBudgetSpecBase, withFds_live] at hpost ⊢
-      exact alloc_post_enforced henf hClosed0 hpost
-
-theorem subroutine_ok_deallocBudgetBase_withFds {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {P : Program} {entry : BitVec 64}
-    (hok : subroutine_ok P entry (rustCliDeallocBudgetSpecBase M A lim)) :
-    subroutine_ok P entry (rustCliDeallocBudgetSpecBase M (withFds A) lim) := by
-  cases henf : lim.enforced
-  · rwa [deallocSpecBase_eq_unenforced A henf]
-  · refine subroutine_ok_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
-    · rintro ⟨p, size, align, st⟩ R s0 hpre
-      dsimp only [rustCliDeallocBudgetSpecBase, withFds_live] at hpre ⊢
-      exact dealloc_pre_enforced henf hpre
-    · rintro ⟨p, size, align, st⟩ R s0 sf hClosed0 hpost
-      dsimp only [rustCliDeallocBudgetSpecBase] at hpost ⊢
-      exact dealloc_post_enforced henf hClosed0 hpost
-
-theorem subroutine_ok_reallocBudgetBase_withFds {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {P : Program} {entry : BitVec 64}
-    (hok : subroutine_ok P entry (rustCliReallocBudgetSpecBase M A lim)) :
-    subroutine_ok P entry (rustCliReallocBudgetSpecBase M (withFds A) lim) := by
-  cases henf : lim.enforced
-  · rwa [reallocSpecBase_eq_unenforced A henf]
-  · refine subroutine_ok_of_pre_post (Q := fun _ s0 => FdsGe3Closed s0.fs) hok rfl rfl rfl ?_ ?_
-    · rintro ⟨p, old, align, new, bs, st⟩ R s0 hpre
-      dsimp only [rustCliReallocBudgetSpecBase, withFds_live] at hpre ⊢
-      exact dealloc_pre_enforced henf hpre
-    · rintro ⟨p, old, align, new, bs, st⟩ R s0 sf hClosed0 hpost
-      dsimp only [rustCliReallocBudgetSpecBase, withFds_live] at hpost ⊢
-      exact alloc_post_enforced henf hClosed0 hpost
-
-theorem rustCliAllocBudgetHooks_withFds [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {hooks : String → Option (State → State)}
-    (h : RustCliAllocBudgetHooks M A hooks) :
-    RustCliAllocBudgetHooks M (withFds A) hooks where
-  alloc lim := hookSat_of_hookOk_lift (fun _ => hookOk_allocBudget_withFds) (h.alloc lim)
-  dealloc lim := hookSat_of_hookOk_lift (fun _ => hookOk_deallocBudget_withFds) (h.dealloc lim)
-  realloc lim := hookSat_of_hookOk_lift (fun _ => hookOk_reallocBudget_withFds) (h.realloc lim)
-
-theorem rustCliAllocBudgetEntries_withFds [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (h : RustCliAllocBudgetEntries M A P addrs) :
-    RustCliAllocBudgetEntries M (withFds A) P addrs where
-  alloc lim := subroutine_ok_allocBudget_withFds (h.alloc lim)
-  dealloc lim := subroutine_ok_deallocBudget_withFds (h.dealloc lim)
-  realloc lim := subroutine_ok_reallocBudget_withFds (h.realloc lim)
-
-theorem allocHooksBudget_withFds [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {hooks : String → Option (State → State)}
-    (h : AllocHooksBudget M A lim hooks) :
-    AllocHooksBudget M (withFds A) lim hooks where
-  alloc := hookSat_of_hookOk_lift (fun _ => hookOk_allocBudget_withFds) h.alloc
-  dealloc := hookSat_of_hookOk_lift (fun _ => hookOk_deallocBudget_withFds) h.dealloc
-  realloc := hookSat_of_hookOk_lift (fun _ => hookOk_reallocBudget_withFds) h.realloc
-
-theorem rustCliAllocBudgetHooksBase_withFds {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {hooks : String → Option (State → State)}
-    (h : RustCliAllocBudgetHooksBase M A hooks) :
-    RustCliAllocBudgetHooksBase M (withFds A) hooks where
-  alloc lim := hookSat_of_hookOk_lift (fun _ => hookOk_allocBudgetBase_withFds) (h.alloc lim)
-  dealloc lim := hookSat_of_hookOk_lift (fun _ => hookOk_deallocBudgetBase_withFds) (h.dealloc lim)
-  realloc lim := hookSat_of_hookOk_lift (fun _ => hookOk_reallocBudgetBase_withFds) (h.realloc lim)
-
-theorem rustCliAllocBudgetEntriesBase_withFds {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {P : Program} {addrs : RustAllocAddrs}
-    (h : RustCliAllocBudgetEntriesBase M A P addrs) :
-    RustCliAllocBudgetEntriesBase M (withFds A) P addrs where
-  alloc lim := subroutine_ok_allocBudgetBase_withFds (h.alloc lim)
-  dealloc lim := subroutine_ok_deallocBudgetBase_withFds (h.dealloc lim)
-  realloc lim := subroutine_ok_reallocBudgetBase_withFds (h.realloc lim)
-
-theorem allocHooksBudgetBase_withFds {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {hooks : String → Option (State → State)}
-    (h : AllocHooksBudgetBase M A lim hooks) :
-    AllocHooksBudgetBase M (withFds A) lim hooks where
-  alloc := hookSat_of_hookOk_lift (fun _ => hookOk_allocBudgetBase_withFds) h.alloc
-  dealloc := hookSat_of_hookOk_lift (fun _ => hookOk_deallocBudgetBase_withFds) h.dealloc
-  realloc := hookSat_of_hookOk_lift (fun _ => hookOk_reallocBudgetBase_withFds) h.realloc
-
-theorem cliAllocHooks_withFds [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (h : CliAllocHooks M A lim) :
-    CliAllocHooks M (withFds A) lim where
-  alloc := hookOk_allocBudget_withFds h.alloc
-  dealloc := hookOk_deallocBudget_withFds h.dealloc
-  realloc := hookOk_reallocBudget_withFds h.realloc
-
 theorem cliGhostAllocHooks_withFds [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {g : CliGhostHooks}
     (h : CliGhostAllocHooks M A lim g) :
@@ -569,18 +409,22 @@ theorem cliGhostSpqrAllocHooks_withFds [LibsignalPlacement] {M : AllocCostModel}
   { cliGhostAllocHooks_withFds h.toCliGhostAllocHooks with
     allocZeroed := hookOk_allocBudget_withFds h.allocZeroed
     allocZeroed_fs := h.allocZeroed_fs
-    allocZeroed_fsT := h.allocZeroed_fsT }
+    allocZeroed_fsT := h.allocZeroed_fsT
+    onceCall := h.onceCall
+    onceCall_unique := h.onceCall_unique }
 
 /-! ## Crypto Hook and `SpqrHooksBudget` Lifts -/
 
-theorem hookOk_libcruxHmacBudget_withFds_of_enforced {F : ShaState → List (BitVec 8) → ShaState}
+theorem hookOk_withLsRet_libcruxHmacBudget_withFds_of_enforced [LibsignalPlacement]
+    {F : ShaState → List (BitVec 8) → ShaState}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (henf : lim.enforced = true) {f : State → State}
-    (hok : HookOk f (withFdsGe3Closed (libcruxHmacBudgetSpec F M A lim))) :
-    HookOk f (libcruxHmacBudgetSpec F M (withFds A) lim) := by
+    (hok : HookOk f (withLsRet (withFdsGe3Closed (libcruxHmacBudgetSpec F M A lim)))) :
+    HookOk f (withLsRet (libcruxHmacBudgetSpec F M (withFds A) lim)) := by
   refine hookOk_of_pre_post (Q := fun _ _ => True) hok rfl rfl rfl ?_ ?_
   · rintro ⟨x, st⟩ R s0 hpre
-    refine ⟨trivial, ?_⟩
+    obtain ⟨hlr, hpre⟩ := extract_withLsRet hpre
+    refine ⟨trivial, intro_withLsRet hlr ?_⟩
     dsimp only [withFdsGe3Closed, libcruxHmacBudgetSpec] at hpre ⊢
     rw [withFds_pool_enforced A henf] at hpre
     have hEq :
@@ -604,10 +448,11 @@ theorem hookOk_libcruxHmacBudget_withFds_of_enforced {F : ShaState → List (Bit
       sep_ac_rfl
     rwa [hEq] at hpre
   · rintro ⟨x, st⟩ R s0 sf _ hpost
-    dsimp only [withFdsGe3Closed] at hpost
+    dsimp only [withLsRet, withFdsGe3Closed] at hpost ⊢
     rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
     rcases hpost with ⟨hClosedF, hpost⟩
-    dsimp only [libcruxHmacBudgetSpec, withFds_repAlloc] at hpost ⊢
+    dsimp only [libcruxHmacBudgetSpec] at hpost ⊢
+    rw [withFds_repAlloc]
     rw [sepExists_sepConj_left, satisfies_sepExists] at hpost ⊢
     rcases hpost with ⟨evs, hpost⟩
     refine ⟨evs, ?_⟩
@@ -630,12 +475,24 @@ theorem hookOk_libcruxHmacBudget_withFds_of_enforced {F : ShaState → List (Bit
     rw [hEq, satisfies_pure_sepConj]
     exact ⟨hClosedF, hpost⟩
 
-theorem hookSat_libcruxHmacBudget_withFds_of_enforced {F : ShaState → List (BitVec 8) → ShaState}
+theorem hookSat_withLsRet_libcruxHmacBudget_withFds_of_extraOk [LibsignalPlacement]
+    {F : ShaState → List (BitVec 8) → ShaState}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (henf : lim.enforced = true) {abs : String → Option (State → State)} {sym : String}
-    (hsat : HookSat abs sym (withFdsGe3Closed (libcruxHmacBudgetSpec F M A lim))) :
-    HookSat abs sym (libcruxHmacBudgetSpec F M (withFds A) lim) :=
-  hookSat_of_hookOk_lift (fun _ => hookOk_libcruxHmacBudget_withFds_of_enforced henf) hsat
+    (henf : lim.enforced = true) {gh : CliGhostHooks} {baseExt : LibsignalHooks}
+    (hOk : ExtraSpecOk gh)
+    (hHmac : HookSat (cliGhostExterns gh baseExt) lsLibcruxHmacSymCli
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
+    HookSat (cliGhostExterns gh baseExt) lsLibcruxHmacSymCli
+      (withLsRet (libcruxHmacBudgetSpec F M (withFds A) lim)) := by
+  obtain ⟨gfn, hLook⟩ := Option.isSome_iff_exists.mp (hOk.lookup_isSome (sym := lsLibcruxHmacSymCli))
+  have hExt : cliGhostExterns gh baseExt lsLibcruxHmacSymCli = some gfn :=
+    CryptoVerification.SignalSession.Cli.RunGlue.cliGhostExterns_extra_some gh baseExt hLook
+  rcases hHmac with ⟨f, hf, hok⟩
+  have hfeq : gfn = f := Option.some.inj (hExt.symm.trans hf)
+  subst hfeq
+  exact ⟨gfn, hExt,
+    hookOk_withLsRet_libcruxHmacBudget_withFds_of_enforced henf
+      (hookOk_withLsRet_withFdsGe3Closed_of_fs_eq (hOk.rowOk _ gfn hLook).fs_eq hok)⟩
 
 private theorem aes_pre_enforced {M : AllocCostModel} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} (henf : lim.enforced = true)
@@ -671,161 +528,119 @@ private theorem aes_post_enforced {M : AllocCostModel} {A : RustCliAllocBudget M
   rw [hEq, satisfies_pure_sepConj]
   exact ⟨hClosedF, h⟩
 
-theorem hookOk_aesEncBudget_withFds_of_enforced {E : AesKey → Block → Block}
+theorem hookOk_withLsRet_aesEncBudget_withFds_of_enforced [LibsignalPlacement]
+    {E : AesKey → Block → Block}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (henf : lim.enforced = true) {f : State → State}
-    (hokFd : HookOk f (withFdsGe3Closed (aesEncBudgetSpec E M A lim))) :
-    HookOk f (aesEncBudgetSpec E M (withFds A) lim) := by
+    (hokFd : HookOk f (withLsRet (withFdsGe3Closed (aesEncBudgetSpec E M A lim)))) :
+    HookOk f (withLsRet (aesEncBudgetSpec E M (withFds A) lim)) := by
   refine hookOk_of_pre_post (Q := fun _ _ => True) hokFd rfl rfl rfl ?_ ?_
   · rintro ⟨x, st⟩ R s0 hpre
+    obtain ⟨hlr, hpre⟩ := extract_withLsRet hpre
+    refine ⟨trivial, intro_withLsRet hlr ?_⟩
     dsimp only [withFdsGe3Closed, aesEncBudgetSpec, aesCallPreBudget] at hpre ⊢
-    exact ⟨trivial, aes_pre_enforced henf hpre⟩
+    exact aes_pre_enforced henf hpre
   · rintro ⟨x, st⟩ R s0 sf _ hpost
-    dsimp only [withFdsGe3Closed, aesEncBudgetSpec, withFds_repAlloc] at hpost ⊢
+    dsimp only [withLsRet, withFdsGe3Closed, aesEncBudgetSpec, withFds_repAlloc] at hpost ⊢
     exact aes_post_enforced henf hpost
 
-theorem hookOk_aesDecBudget_withFds_of_enforced {D : AesKey → Block → Block}
+theorem hookOk_withLsRet_aesDecBudget_withFds_of_enforced [LibsignalPlacement]
+    {D : AesKey → Block → Block}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (henf : lim.enforced = true) {f : State → State}
-    (hokFd : HookOk f (withFdsGe3Closed (aesDecBudgetSpec D M A lim))) :
-    HookOk f (aesDecBudgetSpec D M (withFds A) lim) := by
+    (hokFd : HookOk f (withLsRet (withFdsGe3Closed (aesDecBudgetSpec D M A lim)))) :
+    HookOk f (withLsRet (aesDecBudgetSpec D M (withFds A) lim)) := by
   refine hookOk_of_pre_post (Q := fun _ _ => True) hokFd rfl rfl rfl ?_ ?_
   · rintro ⟨x, st⟩ R s0 hpre
+    obtain ⟨hlr, hpre⟩ := extract_withLsRet hpre
+    refine ⟨trivial, intro_withLsRet hlr ?_⟩
     dsimp only [withFdsGe3Closed, aesDecBudgetSpec, aesCallPreBudget] at hpre ⊢
-    exact ⟨trivial, aes_pre_enforced henf hpre⟩
+    exact aes_pre_enforced henf hpre
   · rintro ⟨x, st⟩ R s0 sf _ hpost
-    dsimp only [withFdsGe3Closed, aesDecBudgetSpec, withFds_repAlloc] at hpost ⊢
+    dsimp only [withLsRet, withFdsGe3Closed, aesDecBudgetSpec, withFds_repAlloc] at hpost ⊢
     exact aes_post_enforced henf hpost
 
-theorem hookOk_aesEncBudget_withFds {E : AesKey → Block → Block}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {f : State → State}
-    (hok : HookOk f (aesEncBudgetSpec E M A lim))
-    (hokFd : lim.enforced = true → HookOk f (withFdsGe3Closed (aesEncBudgetSpec E M A lim))) :
-    HookOk f (aesEncBudgetSpec E M (withFds A) lim) := by
-  cases henf : lim.enforced
-  · have hEq : aesEncBudgetSpec E M (withFds A) lim = aesEncBudgetSpec E M A lim := by
-      simp only [aesEncBudgetSpec, aesCallPreBudget, withFds_pool_unenforced A henf, withFds_repAlloc]
-    exact hEq ▸ hok
-  · exact hookOk_aesEncBudget_withFds_of_enforced henf (hokFd henf)
+theorem hookSat_withLsRet_aesDecBudget_withFds_of_enforced [LibsignalPlacement]
+    {D : AesKey → Block → Block}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    (henf : lim.enforced = true) {abs : String → Option (State → State)} {sym : String}
+    (hsat : HookSat abs sym (withLsRet (withFdsGe3Closed (aesDecBudgetSpec D M A lim)))) :
+    HookSat abs sym (withLsRet (aesDecBudgetSpec D M (withFds A) lim)) :=
+  hookSat_of_hookOk_lift (fun _ => hookOk_withLsRet_aesDecBudget_withFds_of_enforced henf) hsat
 
-theorem hookOk_aesDecBudget_withFds {D : AesKey → Block → Block}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {f : State → State}
-    (hok : HookOk f (aesDecBudgetSpec D M A lim))
-    (hokFd : lim.enforced = true → HookOk f (withFdsGe3Closed (aesDecBudgetSpec D M A lim))) :
-    HookOk f (aesDecBudgetSpec D M (withFds A) lim) := by
-  cases henf : lim.enforced
-  · have hEq : aesDecBudgetSpec D M (withFds A) lim = aesDecBudgetSpec D M A lim := by
-      simp only [aesDecBudgetSpec, aesCallPreBudget, withFds_pool_unenforced A henf, withFds_repAlloc]
-    exact hEq ▸ hok
-  · exact hookOk_aesDecBudget_withFds_of_enforced henf (hokFd henf)
+theorem hookSat_withLsRet_aesEncBudget_withFds_of_extraOk [LibsignalPlacement]
+    {E : AesKey → Block → Block}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    (henf : lim.enforced = true) {gh : CliGhostHooks} {baseExt : LibsignalHooks}
+    (hOk : ExtraSpecOk gh)
+    (hAesEnc : HookSat (cliGhostExterns gh baseExt) lsAesEncSym
+      (withLsRet (aesEncBudgetSpec E M A lim))) :
+    HookSat (cliGhostExterns gh baseExt) lsAesEncSym
+      (withLsRet (aesEncBudgetSpec E M (withFds A) lim)) := by
+  obtain ⟨gfn, hLook⟩ := Option.isSome_iff_exists.mp (hOk.lookup_isSome (sym := lsAesEncSym))
+  have hExt : cliGhostExterns gh baseExt lsAesEncSym = some gfn :=
+    cliGhostExterns_extra_some gh baseExt hLook
+  rcases hAesEnc with ⟨f, hf, hok⟩
+  have hfeq : gfn = f := Option.some.inj (hExt.symm.trans hf)
+  subst hfeq
+  exact ⟨gfn, hExt,
+    hookOk_withLsRet_aesEncBudget_withFds_of_enforced henf
+      (hookOk_withLsRet_withFdsGe3Closed_of_fs_eq (hOk.rowOk _ gfn hLook).fs_eq hok)⟩
 
-theorem aesDecHookMallocng_budget_withFds_ok
-    {M : AllocCostModel} {I : MallocngCostModelIface M}
-    (hS : MallocngCostModelSound M I) (γ : GhostName)
-    {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (D : AesKey → Block → Block) :
-    HookOk (aesDecHookMallocng mpl D)
-      (aesDecBudgetSpec D M
-        (withFds (mallocngHookRustCliAllocBudget M I hS γ mpl tp brkStart)) lim) :=
-  hookOk_aesDecBudget_withFds
-    (aesDecHookMallocng_budget_ok hS γ tp brkStart lim hPl D)
-    (fun _ => aesDecHookMallocng_budget_withFdsGe3Closed_ok hS γ tp brkStart lim hPl D)
+theorem hookSat_withLsRet_aesDecBudget_withFds_of_extraOk [LibsignalPlacement]
+    {D : AesKey → Block → Block}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    (henf : lim.enforced = true) {gh : CliGhostHooks} {baseExt : LibsignalHooks}
+    (hOk : ExtraSpecOk gh)
+    (hAesDec : HookSat (cliGhostExterns gh baseExt) lsAesDecSym
+      (withLsRet (aesDecBudgetSpec D M A lim))) :
+    HookSat (cliGhostExterns gh baseExt) lsAesDecSym
+      (withLsRet (aesDecBudgetSpec D M (withFds A) lim)) := by
+  obtain ⟨gfn, hLook⟩ := Option.isSome_iff_exists.mp (hOk.lookup_isSome (sym := lsAesDecSym))
+  have hExt : cliGhostExterns gh baseExt lsAesDecSym = some gfn :=
+    cliGhostExterns_extra_some gh baseExt hLook
+  rcases hAesDec with ⟨f, hf, hok⟩
+  have hfeq : gfn = f := Option.some.inj (hExt.symm.trans hf)
+  subst hfeq
+  exact ⟨gfn, hExt,
+    hookOk_withLsRet_aesDecBudget_withFds_of_enforced henf
+      (hookOk_withLsRet_withFdsGe3Closed_of_fs_eq (hOk.rowOk _ gfn hLook).fs_eq hok)⟩
 
-theorem fineAesDec_budget_withFds_hookOk (γ : GhostName)
-    {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (D : AesKey → Block → Block) :
-    HookOk (aesDecHookMallocng mpl D)
-      (aesDecBudgetSpec D fineCostModel
-        (withFds (fineHookRustCliAllocBudget γ mpl tp brkStart)) lim) :=
-  hookOk_aesDecBudget_withFds
-    (fineAesDec_budget_hookOk γ tp brkStart lim hPl D)
-    (fun _ => fineAesDec_budget_withFdsGe3Closed_hookOk γ tp brkStart lim hPl D)
-
-theorem fineAesEnc_budget_withFds_hookOk (γ : GhostName)
-    {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (E : AesKey → Block → Block) :
-    HookOk (aesEncHookMallocng mpl E)
-      (aesEncBudgetSpec E fineCostModel
-        (withFds (fineHookRustCliAllocBudget γ mpl tp brkStart)) lim) :=
-  hookOk_aesEncBudget_withFds
-    (fineAesEnc_budget_hookOk γ tp brkStart lim hPl E)
-    (fun _ => fineAesEnc_budget_withFdsGe3Closed_hookOk γ tp brkStart lim hPl E)
-
-theorem libcruxHmacHookMallocng_budget_withFds_ok
-    {M : AllocCostModel} {I : MallocngCostModelIface M}
-    (hS : MallocngCostModelSound M I) (γ : GhostName)
-    {mpl : Obj.MultiPlacement} (tp brkStart : BitVec 64) (lim : BudgetLimits)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
-    (F : ShaState → List (BitVec 8) → ShaState) :
-    HookOk (libcruxHmacHookMallocng mpl F)
-      (libcruxHmacBudgetSpec F M
-        (withFds (mallocngHookRustCliAllocBudget M I hS γ mpl tp brkStart)) lim) := by
-  cases henf : lim.enforced
-  · have hEq : libcruxHmacBudgetSpec F M
-        (withFds (mallocngHookRustCliAllocBudget M I hS γ mpl tp brkStart)) lim =
-        libcruxHmacBudgetSpec F M
-          (mallocngHookRustCliAllocBudget M I hS γ mpl tp brkStart) lim := by
-      simp only [libcruxHmacBudgetSpec,
-        withFds_pool_unenforced (mallocngHookRustCliAllocBudget M I hS γ mpl tp brkStart) henf,
-        withFds_repAlloc]
-    exact hEq ▸ libcruxHmacHookMallocng_budget_ok hS γ tp brkStart lim hPl F
-  · exact hookOk_libcruxHmacBudget_withFds_of_enforced henf
-      (libcruxHmacHookMallocng_budget_withFdsGe3Closed_ok hS γ tp brkStart lim hPl F)
-
-theorem cliGhostExterns_aesEnc_withFds_hookSat
+theorem cliGhostExterns_aesEnc_withLsRet_withFds_hookSat [LibsignalPlacement]
     (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
     {lim : BudgetLimits} (henf : lim.enforced = true) (gh : CliGhostHooks) (W : CliHooks)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
+    (hOk : ExtraSpecOk gh)
+    (hAesEnc : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesEncSym
+      (withLsRet (aesEncBudgetSpec W.C.E fineCostModel
+        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim))) :
     HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesEncSym
-      (aesEncBudgetSpec W.C.E fineCostModel
-        (withFds (fineHookRustCliAllocBudget γ mmpl tp brkStart)) lim) :=
-  hookSat_of_hookOk_lift (fun _ => hookOk_aesEncBudget_withFds_of_enforced henf)
-    (cliGhostExterns_aesEnc_withFdsGe3Closed_hookSat γ mmpl tp brkStart lim gh W hPl)
+      (withLsRet (aesEncBudgetSpec W.C.E fineCostModel
+        (withFds (fineHookRustCliAllocBudget γ mmpl tp brkStart)) lim)) :=
+  hookSat_withLsRet_aesEncBudget_withFds_of_extraOk henf hOk hAesEnc
 
-theorem cliGhostExterns_aesDec_withFds_hookSat
+theorem cliGhostExterns_aesDec_withLsRet_withFds_hookSat [LibsignalPlacement]
     (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
     {lim : BudgetLimits} (henf : lim.enforced = true) (gh : CliGhostHooks) (W : CliHooks)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
+    (hOk : ExtraSpecOk gh)
+    (hAesDec : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (aesDecBudgetSpec W.C.D fineCostModel
+        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim))) :
     HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsAesDecSym
-      (aesDecBudgetSpec W.C.D fineCostModel
-        (withFds (fineHookRustCliAllocBudget γ mmpl tp brkStart)) lim) :=
-  hookSat_of_hookOk_lift (fun _ => hookOk_aesDecBudget_withFds_of_enforced henf)
-    (cliGhostExterns_aesDec_withFdsGe3Closed_hookSat γ mmpl tp brkStart lim gh W hPl)
+      (withLsRet (aesDecBudgetSpec W.C.D fineCostModel
+        (withFds (fineHookRustCliAllocBudget γ mmpl tp brkStart)) lim)) :=
+  hookSat_withLsRet_aesDecBudget_withFds_of_extraOk henf hOk hAesDec
 
-theorem cliGhostExterns_libcruxHmac_withFds_hookSat
+theorem cliGhostExterns_libcruxHmac_withFds_hookSat [LibsignalPlacement]
     (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
     {lim : BudgetLimits} (henf : lim.enforced = true) (gh : CliGhostHooks) (W : CliHooks)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl) :
+    (hOk : ExtraSpecOk gh)
+    (hHmac : HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsLibcruxHmacSymCli
+      (withLsRet (libcruxHmacBudgetSpec W.C.F fineCostModel
+        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim))) :
     HookSat (cliGhostExterns gh (cliExternsPlaced mmpl W)) lsLibcruxHmacSymCli
-      (libcruxHmacBudgetSpec W.C.F fineCostModel
-        (withFds (fineHookRustCliAllocBudget γ mmpl tp brkStart)) lim) :=
-  hookSat_libcruxHmacBudget_withFds_of_enforced henf
-    (cliGhostExterns_libcruxHmac_withFdsGe3Closed_hookSat γ mmpl tp brkStart lim gh W hPl)
-
-/-- Lift `SpqrHooksBudget C M A lim K abs` to `withFds A` using a `withFdsGe3Closed` HMAC hook
-    contract when `lim.enforced = true`. -/
-theorem spqrHooksBudget_withFds {C : Crypto} {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {K : MlKem}
-    {abs : String → Option (State → State)}
-    (h : SpqrHooksBudget C M A lim K abs)
-    (hHmacFd : lim.enforced = true →
-      HookSat abs libcruxHmacName (withFdsGe3Closed (libcruxHmacBudgetSpec C.F M A lim))) :
-    SpqrHooksBudget C M (withFds A) lim K abs := by
-  refine
-    { fromSeed := h.fromSeed
-      pk1 := h.pk1
-      pk2 := h.pk2
-      encaps1 := h.encaps1
-      encaps2 := h.encaps2
-      decaps := h.decaps
-      validatePk := h.validatePk
-      hmac := ?_ }
-  cases henf : lim.enforced
-  · have hEq : libcruxHmacBudgetSpec C.F M (withFds A) lim = libcruxHmacBudgetSpec C.F M A lim := by
-      simp only [libcruxHmacBudgetSpec, withFds_pool_unenforced A henf, withFds_repAlloc]
-    rw [hEq]
-    exact h.hmac
-  · exact hookSat_libcruxHmacBudget_withFds_of_enforced henf (hHmacFd henf)
+      (withLsRet (libcruxHmacBudgetSpec W.C.F fineCostModel
+        (withFds (fineHookRustCliAllocBudget γ mmpl tp brkStart)) lim)) :=
+  hookSat_withLsRet_libcruxHmacBudget_withFds_of_extraOk henf hOk hHmac
 
 /-! ## `grow_one` and `PolynomialEncoder::merge` `withFdsGe3Closed` Corollaries -/
 
@@ -859,169 +674,5 @@ private theorem cliGhost_noAllocShimBudget_sat
       LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.noAllocShimSpec :=
   ⟨hookNoop, (cliGhostExterns_shim gh _).trans (congrArg some hShim),
     LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.noAllocShim_hookOk⟩
-
-private theorem cro6_pre_enforced {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} (henf : lim.enforced = true)
-    {P1 P2 P3 P4 Tail Cro R : SepProp} {st : M.σ} {s0 : State}
-    (hClosed0 : FdsGe3Closed s0.fs)
-    (h : s0.mem ⊨ ((P1 ∗ P2 ∗ P3 ∗ P4 ∗ A.pool lim st s0 ∗ Tail) ∗ Cro) ∗ R) :
-    s0.mem ⊨ ((P1 ∗ P2 ∗ P3 ∗ P4 ∗ (withFds A).pool lim st s0 ∗ Tail) ∗ Cro) ∗ R := by
-  rw [withFds_pool_enforced A henf]
-  have hEq :
-      ((P1 ∗ P2 ∗ P3 ∗ P4 ∗ (⌜FdsGe3Closed s0.fs⌝ ∗ A.pool lim st s0) ∗ Tail) ∗ Cro) ∗ R =
-      ⌜FdsGe3Closed s0.fs⌝ ∗ (((P1 ∗ P2 ∗ P3 ∗ P4 ∗ A.pool lim st s0 ∗ Tail) ∗ Cro) ∗ R) := by
-    sep_ac_rfl
-  rw [hEq, satisfies_pure_sepConj]
-  exact ⟨hClosed0, h⟩
-
-private theorem grow_post_enforced {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} (henf : lim.enforced = true)
-    {P1 : List AllocEvent → SepProp} {P2 Tail R : SepProp}
-    {st : M.σ} {sf : State}
-    (h : sf.mem ⊨ (∃∗ evs : List AllocEvent,
-        P1 evs ∗ P2 ∗ (withFds A).pool lim (M.stepEvents evs st) sf ∗ Tail) ∗ R) :
-    sf.mem ⊨ (⌜FdsGe3Closed sf.fs⌝ ∗
-        (∃∗ evs : List AllocEvent,
-          P1 evs ∗ P2 ∗ A.pool lim (M.stepEvents evs st) sf ∗ Tail)) ∗ R := by
-  rw [sepExists_sepConj_left, satisfies_sepExists] at h
-  rcases h with ⟨evs, h⟩
-  rw [withFds_pool_enforced A henf] at h
-  have hEq :
-      (P1 evs ∗ P2 ∗ (⌜FdsGe3Closed sf.fs⌝ ∗ A.pool lim (M.stepEvents evs st) sf) ∗ Tail) ∗ R =
-      ⌜FdsGe3Closed sf.fs⌝ ∗ ((P1 evs ∗ P2 ∗ A.pool lim (M.stepEvents evs st) sf ∗ Tail) ∗ R) := by
-    sep_ac_rfl
-  rw [hEq, satisfies_pure_sepConj] at h
-  rcases h with ⟨hClosedF, h⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨hClosedF, ?_⟩
-  rw [sepExists_sepConj_left, satisfies_sepExists]
-  exact ⟨evs, h⟩
-
-private theorem poly_post_enforced {M : AllocCostModel} {A : RustCliAllocBudget M}
-    {lim : BudgetLimits} (henf : lim.enforced = true)
-    {P1 P2 Tail R : SepProp} {Q : List AllocEvent → SepProp}
-    {st : M.σ} {sf : State}
-    (h : sf.mem ⊨ (P1 ∗ P2 ∗
-        (∃∗ evs : List AllocEvent, Q evs ∗ (withFds A).pool lim (M.stepEvents evs st) sf) ∗
-        Tail) ∗ R) :
-    sf.mem ⊨ (⌜FdsGe3Closed sf.fs⌝ ∗
-        (P1 ∗ P2 ∗
-          (∃∗ evs : List AllocEvent, Q evs ∗ A.pool lim (M.stepEvents evs st) sf) ∗
-          Tail)) ∗ R := by
-  have hEq1 :
-      (P1 ∗ P2 ∗
-        (∃∗ evs : List AllocEvent, Q evs ∗ (withFds A).pool lim (M.stepEvents evs st) sf) ∗
-        Tail) ∗ R =
-      (∃∗ evs : List AllocEvent, Q evs ∗ (withFds A).pool lim (M.stepEvents evs st) sf) ∗
-        (P1 ∗ P2 ∗ Tail ∗ R) := by
-    sep_ac_rfl
-  rw [hEq1, sepExists_sepConj_left, satisfies_sepExists] at h
-  rcases h with ⟨evs, h⟩
-  rw [withFds_pool_enforced A henf] at h
-  have hEq2 :
-      (Q evs ∗ (⌜FdsGe3Closed sf.fs⌝ ∗ A.pool lim (M.stepEvents evs st) sf)) ∗
-        (P1 ∗ P2 ∗ Tail ∗ R) =
-      ⌜FdsGe3Closed sf.fs⌝ ∗
-        ((Q evs ∗ A.pool lim (M.stepEvents evs st) sf) ∗ (P1 ∗ P2 ∗ Tail ∗ R)) := by
-    sep_ac_rfl
-  rw [hEq2, satisfies_pure_sepConj] at h
-  rcases h with ⟨hClosedF, h⟩
-  rw [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨hClosedF, ?_⟩
-  have hEq3 :
-      (P1 ∗ P2 ∗
-        (∃∗ evs : List AllocEvent, Q evs ∗ A.pool lim (M.stepEvents evs st) sf) ∗
-        Tail) ∗ R =
-      (∃∗ evs : List AllocEvent, Q evs ∗ A.pool lim (M.stepEvents evs st) sf) ∗
-        (P1 ∗ P2 ∗ Tail ∗ R) := by
-    sep_ac_rfl
-  rw [hEq3, sepExists_sepConj_left, satisfies_sepExists]
-  exact ⟨evs, h⟩
-
-/-- Extract `withFdsGe3Closed (withLsCodeRoLoaded lsmpl (growOneVecU8BudgetSpec M A lim))` from
-`growOneVecU8BudgetSpec M (withFds A) lim` when `lim.enforced = true`. -/
-theorem subroutine_ok_growOneVecU8_withFdsGe3Closed_of_withFds [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (henf : lim.enforced = true) {P : Program} {entry : BitVec 64}
-    (hok : subroutine_ok P entry
-      (withLsCodeRoLoaded lsmpl (growOneVecU8BudgetSpec M (withFds A) lim))) :
-    subroutine_ok P entry
-      (withFdsGe3Closed (withLsCodeRoLoaded lsmpl (growOneVecU8BudgetSpec M A lim))) := by
-  refine subroutine_ok_of_pre_post (Q := fun _ _ => True) hok rfl rfl rfl ?_ ?_
-  · rintro ⟨x, st⟩ R s0 hpre
-    obtain ⟨hClosed0, hpreA⟩ := extract_withFdsGe3Closed hpre
-    dsimp only [withLsCodeRoLoaded, growOneVecU8BudgetSpec, rawVecGrowBudgetSpec,
-      withFds_live] at hpreA ⊢
-    exact ⟨trivial, cro6_pre_enforced henf hClosed0 hpreA⟩
-  · rintro ⟨x, st⟩ R s0 sf _ hpost
-    dsimp only [withFdsGe3Closed, withLsCodeRoLoaded, growOneVecU8BudgetSpec,
-      rawVecGrowBudgetSpec, withFds_live] at hpost ⊢
-    exact grow_post_enforced henf hpost
-
-/-- Closed `cliGhostExterns` instantiation of `grow_one` (block 621) at `withFdsGe3Closed`
-when `lim.enforced = true`. -/
-theorem cliGrowOneVecU8_at_block_withFdsGe3Closed [LibsignalPlacement]
-    {callerProg : Program} {i : Nat}
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (henf : lim.enforced = true)
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym)
-    [IsLsBlockProg callerProg i (Rust.withPanics ext)]
-    {bi : Nat} [LsBlockBound bi] (hi : i < bi := by decide) :
-    subroutine_ok callerProg (lsmpl.base 621)
-      (withFdsGe3Closed (withLsCodeRoLoaded lsmpl (growOneVecU8BudgetSpec M A lim))) :=
-  subroutine_ok_growOneVecU8_withFdsGe3Closed_of_withFds henf
-    (growOneVecU8_caller_cro_ok (A := withFds A)
-      ((hExt_withPanics mmpl gh W hExt).trans (cliGhostExterns_panic_handle_error mmpl gh W))
-      (hookSat_withPanics_hExt mmpl gh W hExt (cliGhost_noAllocShimBudget_sat mmpl gh W hA.shim_eq))
-      (hookSat_withPanics_hExt mmpl gh W hExt
-        (cliExternsPlaced_alloc_budget_sat mmpl gh W (cliGhostAllocHooks_withFds hA)))
-      (hookSat_withPanics_hExt mmpl gh W hExt
-        (cliExternsPlaced_realloc_budget_sat mmpl gh W (cliGhostAllocHooks_withFds hA)))
-      hi)
-
-theorem subroutine_ok_polyEncoderMerge_withFdsGe3Closed_of_withFds [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (henf : lim.enforced = true) {P : Program} {entry : BitVec 64}
-    (hok : subroutine_ok P entry (withLsCodeRoLoaded lsmpl (polyEncoderMergeSpec (withFds A) lim))) :
-    subroutine_ok P entry
-      (withFdsGe3Closed (withLsCodeRoLoaded lsmpl (polyEncoderMergeSpec A lim))) := by
-  refine subroutine_ok_of_pre_post (Q := fun _ _ => True) hok rfl rfl rfl ?_ ?_
-  · rintro ⟨x, st⟩ R s0 hpre
-    obtain ⟨hClosed0, hpreA⟩ := extract_withFdsGe3Closed hpre
-    dsimp only [withLsCodeRoLoaded, polyEncoderMergeSpec, polyEncoderMergeSpecOfEnv,
-      withFds_repAlloc] at hpreA ⊢
-    exact ⟨trivial, cro6_pre_enforced henf hClosed0 hpreA⟩
-  · rintro ⟨x, st⟩ R s0 sf _ hpost
-    dsimp only [withFdsGe3Closed, withLsCodeRoLoaded, polyEncoderMergeSpec,
-      polyEncoderMergeSpecOfEnv, withFds_repAlloc] at hpost ⊢
-    exact poly_post_enforced henf hpost
-
-/-- Derive `withFdsGe3Closed (withLsCodeRoLoaded lsmpl (polyEncoderMergeSpec A lim))` on block 297
-(`PolynomialEncoder::merge`) by instantiating `polyEncoderMerge_cro_placed_ok_of_contracts` at
-`withFds A`. -/
-theorem polyEncoderMerge_cro_placed_ok_withFdsGe3Closed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (henf : lim.enforced = true)
-    (hFromCall : subroutine_ok ((blkPC_297).rebase (blkPl_297).base H) (lsmpl.base 261)
-      (withLsCodeRoLoaded lsmpl (decodeErrorFromBudgetSpec M (withFds A) lim)))
-    (hPushCall : subroutine_ok ((blkPC_297).rebase (blkPl_297).base H) (lsmpl.base 257)
-      (withLsCodeRoLoaded lsmpl (decodeErrorPushMergeBudgetSpec M (withFds A) lim)))
-    (hVarintCall : subroutine_ok ((blkPC_297).rebase (blkPl_297).base H) (lsmpl.base 291)
-      (withLsCodeRoLoaded lsmpl (decodeVarint2Spec (withFds A) lim)))
-    (hSkipCall : subroutine_ok ((blkPC_297).rebase (blkPl_297).base H) (lsmpl.base 263)
-      (withLsCodeRoLoaded lsmpl (skipField3Spec (withFds A) lim)))
-    (hBytesCall : subroutine_ok ((blkPC_297).rebase (blkPl_297).base H) (lsmpl.base 290)
-      (withLsCodeRoLoaded lsmpl (bytesMerge3RawBudgetSpec (withFds A) lim)))
-    (hGrowCall : subroutine_ok ((blkPC_297).rebase (blkPl_297).base H) (lsmpl.base 621)
-      (withLsCodeRoLoaded lsmpl (growOneVecU8BudgetSpec M (withFds A) lim))) :
-    subroutine_ok ((blkPC_297).rebase (blkPl_297).base H) (blkPl_297).base
-      (withFdsGe3Closed (withLsCodeRoLoaded lsmpl (polyEncoderMergeSpec A lim))) :=
-  subroutine_ok_polyEncoderMerge_withFdsGe3Closed_of_withFds henf
-    (polyEncoderMerge_cro_placed_ok_of_contracts
-      hFromCall hPushCall hVarintCall hSkipCall hBytesCall hGrowCall)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds

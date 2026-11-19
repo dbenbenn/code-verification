@@ -23,7 +23,7 @@ Round-trip and XOR lemmas for `LibsignalAesCbc` byte/block/key encodings (`toLEB
 `Memory.writeBytes` slicing, disjointness, and 8/32/64/128-bit load/store bridges.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalAesCbc.Run.Bytes
 

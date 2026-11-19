@@ -19,7 +19,7 @@ import Computational.Proofs.SignalPqxdh.Delta.KeyInd.Stop
 single-scalar `.initPrin` in `pqxdhKeyIndImpl1KeyRo` preserves `ValidKeyStores`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,38 +29,6 @@ open Proofs.SignalPqxdh.Security
 open Proofs.SignalPqxdh.Security.FgGapDh
 
 namespace Proofs.SignalPqxdh.Security.PqxdhDelta
-
-theorem validKeyStores_initPrin1Key (S : Setup) (P : Primitives)
-    (u : Fin S.N_id) (st : KeyIndState S) (hKS : ValidKeyStores S P st) :
-    ∀ y ∈ support ((pqxdhKeyIndImpl1KeyRo S P (.initPrin u)).run st),
-      ValidKeyStores S P y.2 := by
-  rcases hKS with ⟨hVP, hVS, hVO, hPrins, hSpks, hOpks, hAdv⟩
-  intro y hy
-  unfold pqxdhKeyIndImpl1KeyRo pqxdhKeyIndImpl1KeyReal at hy
-  dsimp only at hy
-  simp only [StateT.run_bind, StateT.run_get, pure_bind] at hy
-  revert hy
-  cases hFresh : st.principals.any (fun (idx, _) => idx == u.val) with
-  | true =>
-    intro hy
-    simp only [↓reduceIte, StateT.run_pure, support_pure, Set.mem_singleton_iff] at hy
-    subst hy
-    exact ⟨hVP, hVS, hVO, hPrins, hSpks, hOpks, hAdv⟩
-  | false =>
-    intro hy
-    simp only [Bool.false_eq_true, ↓reduceIte, StateT.run_bind, StateT.run_monadLift,
-      monadLift_self, StateT.run_set, StateT.run_pure, bind_assoc, pure_bind,
-      MonadAttach.mem_support_bind, support_pure, Set.mem_singleton_iff] at hy
-    rcases hy with ⟨secIKA0, hSec, rfl⟩
-    have hLen : secIKA0.length = 32 := length_of_mem_support_sampleScalar32 hSec
-    refine ⟨(validPrincipals_cons S u _ st.principals hVP hFresh).1, hVS, hVO, ?_, ?_, hOpks, hAdv⟩
-    · intro kv hkv
-      rcases List.mem_cons.mp hkv with rfl | hMem
-      · exact ⟨hLen, rfl⟩
-      · exact hPrins kv hMem
-    · intro kv hkv
-      rcases hSpks kv hkv with ⟨h1, h2, ⟨uEntry, huMem⟩, h4⟩
-      exact ⟨h1, h2, ⟨uEntry, List.mem_cons_of_mem _ huMem⟩, h4⟩
 
 theorem ki1KeyStop (S : Setup) : KI1KeyStopStmt S :=
   kiStop S

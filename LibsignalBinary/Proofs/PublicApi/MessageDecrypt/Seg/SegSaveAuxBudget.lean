@@ -10,15 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux -- proof-setup: allow-public-import
 public meta import ProofLib
 public meta import Lean
+public meta import ProofLib.SepLogic.WP
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Helpers for `SegSave`
@@ -28,7 +30,7 @@ for `onPanic = ⌜False⌝` budget contracts, and `A.atState` VM-preservation tr
 (`atState_eq_of_vmPreserved`, `sepWP_with_vm`, `panic_outcome_of_onPanicVPlaced`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

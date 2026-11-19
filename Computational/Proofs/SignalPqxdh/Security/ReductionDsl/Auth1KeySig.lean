@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDh
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSig
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.Auth1KeyGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSig -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionsAuth1KeySig
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndCore
 
 /-!
 # One-Key `Auth` `GapSigEufCma` `ReductionDsl` Program
@@ -22,7 +23,7 @@ for bundle forgeries via `extractC`, and non-forging queries delegate to the one
 `GapDhWithSign` handler.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,26 +44,26 @@ abbrev a1sStTy : Ty pqSig := .prod a1gStTy (.prod .nat (.prod (B 32) a1sFgTy))
 
 abbrev a1sRS : Ty pqSig := .prod authRespTy a1sStTy
 
-@[reducible] def a1sG {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ a1sStTy) :
+@[expose, reducible] def a1sG {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ a1sStTy) :
     Expr pqxdhOps Γ a1gStTy := .fst e
-@[reducible] def a1sTp {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ a1sStTy) :
+@[expose, reducible] def a1sTp {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ a1sStTy) :
     Expr pqxdhOps Γ .nat := .fst (.snd e)
-@[reducible] def a1sTpk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ a1sStTy) :
+@[expose, reducible] def a1sTpk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ a1sStTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.snd (.snd e))
-@[reducible] def a1sFg {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ a1sStTy) :
+@[expose, reducible] def a1sFg {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ a1sStTy) :
     Expr pqxdhOps Γ a1sFgTy := .snd (.snd (.snd e))
-@[reducible] def a1sMk {Γ : List (Ty pqSig)} (g : Expr pqxdhOps Γ a1gStTy)
+@[expose, reducible] def a1sMk {Γ : List (Ty pqSig)} (g : Expr pqxdhOps Γ a1gStTy)
     (tp : Expr pqxdhOps Γ .nat) (tpk : Expr pqxdhOps Γ (B 32)) (fg : Expr pqxdhOps Γ a1sFgTy) :
     Expr pqxdhOps Γ a1sStTy :=
   .pair g (.pair tp (.pair tpk fg))
-@[reducible] def a1sBase {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ a1sStTy) :
+@[expose, reducible] def a1sBase {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ a1sStTy) :
     Expr pqxdhOps Γ authStateTy := fsBase (.snd (.fst (a1sG e)))
 
-@[reducible] def a1sDummyPa {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 32))
+@[expose, reducible] def a1sDummyPa {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 32))
     (tp : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ paramsTy :=
   .pair pk (.pair pk (.pair (.litBool true) (.pair tp (.litNat 0))))
 
-@[reducible] def a1sCaseAPa2 {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 32))
+@[expose, reducible] def a1sCaseAPa2 {Γ : List (Ty pqSig)} (pk : Expr pqxdhOps Γ (B 32))
     (tp : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ a1gParams2Ty :=
   .pair pk (.pair pk (.pair (.inl tp) .noneE))
 
@@ -70,7 +71,7 @@ section Branches
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
 
-def a1sSendCheckC (s : Var Γ₁ a1sStTy) (x : Var Γ₂ sendQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def a1sSendCheckC (s : Var Γ₁ a1sStTy) (x : Var Γ₂ sendQTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CS Δ (.sum a1sRS .unit) :=
   letV (a1sTp (v s)) fun tp =>
   letV (a1sTpk (v s)) fun tpk =>
@@ -81,7 +82,7 @@ def a1sSendCheckC (s : Var Γ₁ a1sStTy) (x : Var Γ₂ sendQTy) [Ext Γ₁ Δ]
     (.ret (.inl (.pair aNone (a1sMk (a1sG (v s)) (a1sTp (v s)) (a1sTpk (v s)) (v fg)))))
     (.ret (.inr .litUnit))
 
-def a1sPreC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def a1sPreC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CS Δ (.sum a1sRS .unit) :=
   caseSumV (v q) (fun _ => .ret (.inr .litUnit)) fun q =>
   caseSumV (v q) (fun _ => .ret (.inr .litUnit)) fun q =>
@@ -91,20 +92,20 @@ def a1sPreC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [
   caseSumV (v q) (fun x => a1sSendCheckC S K s x) fun _ =>
   .ret (.inr .litUnit)
 
-def a1sDelegateC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def a1sDelegateC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CS Δ a1sRS :=
   letV (a1sG (v s)) fun g =>
   bindV (a1gStepC S K g q) fun r =>
   .ret (.pair (.fst (v r)) (a1sMk (.snd (v r)) (a1sTp (v s)) (a1sTpk (v s)) (a1sFg (v s))))
 
-def a1sStepC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def a1sStepC (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CS Δ a1sRS :=
   .iteC (isSomeE (a1sFg (v s))) (.ret (.pair aNone (v s))) <|
   bindV (a1sPreC S K s q) fun pre =>
   caseSumV (v pre) (fun r => .ret (v r)) fun _ =>
   a1sDelegateC S K s q
 
-def a1sDelegate2C (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def a1sDelegate2C (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CS Δ a1sRS :=
   letV (.pair (.pair (a1sCaseAPa2 (a1sTpk (v s)) (a1sTp (v s))) (.snd (.fst (a1sG (v s)))))
       (.snd (a1sG (v s)))) fun g2 =>
@@ -114,7 +115,7 @@ def a1sDelegate2C (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁
         (.snd (.snd (v r))))
       (a1sTp (v s)) (a1sTpk (v s)) (a1sFg (v s))))
 
-def a1sStep2C (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
+@[expose] def a1sStep2C (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     CS Δ a1sRS :=
   .iteC (isSomeE (a1sFg (v s))) (.ret (.pair aNone (v s))) <|
   bindV (a1sPreC S K s q) fun pre =>
@@ -123,15 +124,15 @@ def a1sStep2C (s : Var Γ₁ a1sStTy) (q : Var Γ₂ authQueryTy) [Ext Γ₁ Δ]
 
 end Branches
 
-def a1sHandleDsl (S : Setup) (K : Nat) : CS [a1sStTy, authQueryTy] a1sRS :=
+@[expose] def a1sHandleDsl (S : Setup) (K : Nat) : CS [a1sStTy, authQueryTy] a1sRS :=
   a1sStepC S K (.vz : Var [a1sStTy, authQueryTy] a1sStTy)
     (.vs .vz : Var [a1sStTy, authQueryTy] authQueryTy)
 
-def a1sHandle2Dsl (S : Setup) (K : Nat) : CS [a1sStTy, authQueryTy] a1sRS :=
+@[expose] def a1sHandle2Dsl (S : Setup) (K : Nat) : CS [a1sStTy, authQueryTy] a1sRS :=
   a1sStep2C S K (.vz : Var [a1sStTy, authQueryTy] a1sStTy)
     (.vs .vz : Var [a1sStTy, authQueryTy] authQueryTy)
 
-def a1sInitDsl (S : Setup) : CS [B 32] (.prod .unit a1sStTy) :=
+@[expose] def a1sInitDsl (S : Setup) : CS [B 32] (.prod .unit a1sStTy) :=
   bindV (.sampleIndexC S.N_id) fun k => bindV .sampleBoolC fun b =>
   letV (.var (.vs (.vs .vz)) : Expr pqxdhOps [.bool, .nat, B 32] (B 32)) fun pk =>
   .ret (.pair .litUnit (a1sMk
@@ -140,7 +141,7 @@ def a1sInitDsl (S : Setup) : CS [B 32] (.prod .unit a1sStTy) :=
       (.litNat (min S.N_spk_tot S.N_recv)))
     (v k) (v pk) .noneE))
 
-def a1sInit2Dsl (S : Setup) (K : Nat) : CS [B 32] (.prod .unit a1sStTy) :=
+@[expose] def a1sInit2Dsl (S : Setup) (K : Nat) : CS [B 32] (.prod .unit a1sStTy) :=
   bindV (.sampleIndexC S.N_id) fun k => bindV .sampleBoolC fun b =>
   letV (.var (.vs (.vs .vz)) : Expr pqxdhOps [.bool, .nat, B 32] (B 32)) fun pk =>
   .ret (.pair .litUnit (a1sMk
@@ -148,11 +149,11 @@ def a1sInit2Dsl (S : Setup) (K : Nat) : CS [B 32] (.prod .unit a1sStTy) :=
       (.litNat (min K (min S.N_spk_tot S.N_recv))))
     (v k) (v pk) .noneE))
 
-def a1sFinishDsl : CS [a1sStTy, .bool] (.prod (B 1569) (B 64)) :=
+@[expose] def a1sFinishDsl : CS [a1sStTy, .bool] (.prod (B 1569) (B 64)) :=
   .ret (eCaseOpt (a1sFg (.var .vz)) (.pair (.litBytes 1569 []) (.litBytes 64 [])) fun f => v f)
 
 /-- `ReductionDsl` program for `sigReductionAuth1Key S b` (with list bound `K`). -/
-def sigAuth1KeyProg (S : Setup) (K : Nat) :
+@[expose] def sigAuth1KeyProg (S : Setup) (K : Nat) :
     CostedReduction pqxdhOps pqSigAndDdhIface (authSpec S) (authCodec S)
       (B 32) .unit .bool (.prod (B 1569) (B 64)) where
   σ      := a1sStTy

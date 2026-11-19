@@ -19,11 +19,9 @@ Stack-offset specialization lemmas (`chunks104W6QAt_sp_0x3e0_eq`, `chunks104W6QA
 splitting 104-byte `Chain` scratch slots into `8 + 6×16` byte chunks for Stage P3.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderClosure.P3P4
 
@@ -76,4 +74,3 @@ theorem chunks104W6QAt_sp_0xb20_eq (sp : BitVec 64) (w0 : BitVec 64)
 
 end CryptoVerification.E2E.Pqxdh.ResponderClosure.P3P4
 
-end

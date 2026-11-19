@@ -11,20 +11,19 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwindPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProofPlaced
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1LoadTrustTailsXExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwindPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProofPlaced
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4ErrUnwind
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwind
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSession
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
@@ -32,6 +31,17 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP4
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4StoreSession -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4StorePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsErrUnwindPlaced
 
 /-!
 # Budget-Threaded Relocatable Stage P4.4 Dispatch Proof: `store_session`
@@ -41,7 +51,7 @@ and `store_session` dispatch proofs (`+0x3cc → s0.readReg64 .x30`) on Block `5
 (`lsProg_518 ext`) under `StageP4StoreExitEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -181,7 +191,7 @@ abbrev StageP4StoreExitEnv {A : RustAlloc} {b : BitVec 64}
 
 /-- Resources shared unchanged across Placed Substage P4.4 (`store_session`), separating the
 stack-frame anchor `s` from the pool state `s_pool`. -/
-def stageP4StoreSessionSharedPlaced {M : AllocCostModel}
+@[expose] def stageP4StoreSessionSharedPlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (kit : SessionStoreSpec A.repAlloc 0#64)
     (s0 s s_pool : State)
@@ -202,7 +212,7 @@ def stageP4StoreSessionSharedPlaced {M : AllocCostModel}
   stackAt s.sp (storeSessionCallStack kit)
 
 /-- Spatial precondition of Placed Substage P4.4 at `(blkPl_518).base + 0x3cc`. -/
-def stageP4StoreSessionPrePlaced {M : AllocCostModel}
+@[expose] def stageP4StoreSessionPrePlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ)
     (kit : SessionStoreSpec A.repAlloc 0#64)
     (s0 s : State)
@@ -226,7 +236,7 @@ def stageP4StoreSessionPrePlaced {M : AllocCostModel}
   kit.storeAt sessionStorePtr sst0
 
 /-- Spatial postcondition of Placed Substage P4.4 on `Ok(())` at `s0.readReg64 .x30`. -/
-def stageP4StoreSessionOkPostPlaced {M : AllocCostModel}
+@[expose] def stageP4StoreSessionOkPostPlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ)
     (kit : SessionStoreSpec A.repAlloc 0#64)
     (s0 s sf : State)
@@ -245,7 +255,7 @@ def stageP4StoreSessionOkPostPlaced {M : AllocCostModel}
   kit.storeAt sessionStorePtr (kit.storeUpdate sst0 peer.val ⟨some ss⟩ (.ok ()))
 
 /-- Spatial postcondition of Placed Substage P4.4 on `Err(())` at `s0.readReg64 .x30`. -/
-def stageP4StoreSessionErrPostPlaced {M : AllocCostModel}
+@[expose] def stageP4StoreSessionErrPostPlaced {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stf : M.σ)
     (kit : SessionStoreSpec A.repAlloc 0#64)
     (s0 s sf : State)

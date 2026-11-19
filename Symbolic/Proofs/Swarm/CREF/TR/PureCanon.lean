@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.CliPureBytes
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Grow.Defs
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
 public import Symbolic.Specifications.Refinement.ModelTraces
@@ -22,7 +22,7 @@ Defines ghost-free and machine-free counterparts of `RecordRepr`, `BinCanonSessi
 `TRRecordCanon`, and `RecPending` over the canonical protobuf encoder `encSession` / `encodeRecord`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -43,7 +43,7 @@ theorem identityKey_serialize_length (ik : IdentityKey) : ik.serialize.length = 
   publicKey_serialize_length ik.publicKey
 
 /-- Pure session-record layout side conditions (`RecordRepr` without binary environment imports). -/
-def PureRecordRepr (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def PureRecordRepr (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ s, r.currentSession = some s →
     (∀ c ∈ s.state.receiverChains, c.messageKeys.length ≤ maxMessageKeys) ∧
       (∀ sc, s.state.senderChain = some sc →
@@ -51,7 +51,7 @@ def PureRecordRepr (r : SessionRecord (List (BitVec 8))) : Prop :=
       s.Wf ∧ s.aliceBaseKey.length < 2 ^ 32
 
 /-- Pure ghost-free session canonicity invariant (`Session`-only content of `BinCanonSession`). -/
-def PureBinCanonSession (s : Session (List (BitVec 8))) : Prop :=
+@[expose] def PureBinCanonSession (s : Session (List (BitVec 8))) : Prop :=
   s.Wf ∧
   s.state.receiverChains.length ≤ maxReceiverChains ∧
   (∀ rc ∈ s.state.receiverChains, rc.messageKeys.length ≤ maxMessageKeys ∧
@@ -99,7 +99,7 @@ abbrev slots_RecordCanonical_Q (Q : List (BitVec 8) → Prop)
   PureBinCanonSession s
 
 /-- Ghost-free post-wire canonical record predicate. -/
-def WireRecCanon (bs : List (BitVec 8)) : Prop :=
+@[expose] def WireRecCanon (bs : List (BitVec 8)) : Prop :=
   ∃ sess : Session (List (BitVec 8)),
     slots_RecordCanonical_Q slots_NonEmptyV1Q bs sess ∧
     slots_RecordInScopeP ⟨some sess⟩ ∧
@@ -109,7 +109,7 @@ def WireRecCanon (bs : List (BitVec 8)) : Prop :=
     sess.pendingPreKey = none
 
 /-- Ghost-free Triple Ratchet canonical stored record predicate. -/
-def TRRecordCanon (_r₀ : ProtocolSetup) (_p : Participant) (bs : HwBytes) : Prop :=
+@[expose] def TRRecordCanon (_r₀ : ProtocolSetup) (_p : Participant) (bs : HwBytes) : Prop :=
   ∃ sess : Session (List (BitVec 8)),
     slots_RecordCanonical_Q slots_NonEmptyV1Q bs sess ∧
     slots_RecordInScopeP ⟨some sess⟩ ∧
@@ -121,7 +121,7 @@ def TRRecordCanon (_r₀ : ProtocolSetup) (_p : Participant) (bs : HwBytes) : Pr
     SpqrOooBounded sess.state.pqRatchetState
 
 /-- Ghost-free pending-prekey canonical record predicate. -/
-def RecPending (b : HwBytes) : Prop :=
+@[expose] def RecPending (b : HwBytes) : Prop :=
   ∃ sess : Session (List (BitVec 8)),
     slots_RecordCanonical_Q slots_NonEmptyV1Q b sess ∧
     sess.pendingPreKey.isSome = true

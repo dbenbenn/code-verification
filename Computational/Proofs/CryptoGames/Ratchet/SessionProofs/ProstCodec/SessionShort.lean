@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort.SimAndSM
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort.FSAEADRed
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort.SimAndSM -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort.FSAEADRed
 
 /-!
 # Short public-part and wire bounds for the session FS-AEAD reductions
@@ -23,7 +23,7 @@ in `fig8H1Bound` on `simRun` satisfies `FSAEAD.EncMsgsOk` and `GuardedFSInjectSh
 `LengthsOk` and `SignalEncodeFits32`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -36,12 +36,12 @@ section Defs
 
 variable {St Msg Coins C : Type}
 
-def badSendMsg (ok : Msg → Bool) : (unifSpec + SM.spec St Msg Coins C).Domain → Bool
+@[expose] def badSendMsg (ok : Msg → Bool) : (unifSpec + SM.spec St Msg Coins C).Domain → Bool
   | .inr (.inl (.inl (.inl (.inl ⟨_, m, _⟩)))) => !ok m
   | .inr (.inl (.inl (.inl (.inr ⟨_, m₀, m₁, _⟩)))) => !ok m₀ || !ok m₁
   | _ => false
 
-def SendMsgsOk (ok : Msg → Bool) (A : SM.Adversary St Msg Coins C) : Prop :=
+@[expose] def SendMsgsOk (ok : Msg → Bool) (A : SM.Adversary St Msg Coins C) : Prop :=
   A.IsQueryBoundP (fun t => badSendMsg (St := St) (Coins := Coins) (C := C) ok t = true) 0
 
 end Defs

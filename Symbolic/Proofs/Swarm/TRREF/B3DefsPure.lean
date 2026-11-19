@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.SpecLemmas.CliPureBytes
+public import Symbolic.Proofs.SpecLemmas.CliPureBytes -- proof-setup: allow-public-import
 
 /-!
 # Receive-Wire Ghost Bundle
@@ -18,7 +18,7 @@ Defines `RecvWireGhost` for tracking the in-memory and wire-serialized session r
 the binary's receive path, and re-exports `encodeRecord`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

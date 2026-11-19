@@ -19,7 +19,7 @@ Pure list and `BitVec` lemmas relating the `MacEnv` intermediates (`innerMsg`, `
 `innerPadded`, `innerHash`, `outerMsg`) to `sha256With` and `hmacSha256Trunc8` for 32-byte keys.
 -/
 
-@[expose] public section
+public section
 
 
 namespace CryptoVerification

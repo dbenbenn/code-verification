@@ -9,13 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Existing
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.StorePollCliPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Existing -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.StorePollCliPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollXPlacedBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.Layout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePoll.LayoutBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` `SessionFiles::store_session::{closure#0}`
@@ -25,7 +34,7 @@ Allocation-budget (`RustCliAllocBudget M`) proof of `SessionFiles::store_session
 `stk - cliInitiateFrame`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -88,16 +97,6 @@ theorem addrText_cells_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlacedBudget.addrText_cells_placed_ok
     hAddr hle hhi
 
-theorem addrText_cells_rocl_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {AddrEnv : AddrGhost → List AllocEvent → Prop}
-    {prog : Program} {addrStk calleeStk : Nat}
-    (hAddr : subroutine_ok prog (lsmpl.base 594) (addrTextSpecPlaced A lim AddrEnv addrStk))
-    (hle : addrStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 594)
-      (withLsRoCl lsmpl (addrTextCellsSpec A lim AddrEnv calleeStk)) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (addrText_cells_placed_ok hAddr hle hhi)
-
 theorem serialize_cells_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {prog : Program} {calleeStk : Nat}
@@ -107,16 +106,6 @@ theorem serialize_cells_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
     subroutine_ok prog (lsmpl.base 52)
       (withLsCodeRoLoaded lsmpl (serializeCellsSpec A lim SerializeEnvX calleeStk)) :=
   serialize_cells_placed_okX hSer hle hhi
-
-theorem serialize_cells_rocl_placed_ok_x [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {prog : Program} {calleeStk : Nat}
-    (hSer : subroutine_ok prog (lsmpl.base 52)
-      (withLsCodeRoLoaded lsmpl (serializeCanonSpecX M A lim)))
-    (hle : serializeStackX ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 52)
-      (withLsRoCl lsmpl (serializeCellsSpec A lim SerializeEnvX calleeStk)) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (serialize_cells_placed_ok_x hSer hle hhi)
 
 theorem dirPut_cells_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -128,16 +117,6 @@ theorem dirPut_cells_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       (withLsCodeRoLoaded lsmpl (dirPutCellsSpec A lim PutEnv calleeStk)) :=
   LibsignalBinary.Proofs.SignalSession.Cli.Store.StorePollPlacedBudget.dirPut_cells_placed_ok
     hPut hle hhi
-
-theorem dirPut_cells_rocl_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
-    {prog : Program} {putStk calleeStk : Nat}
-    (hPut : subroutine_ok prog (lsmpl.base 542) (dirPutSpecPlaced A lim PutEnv putStk))
-    (hle : putStk ≤ calleeStk) (hhi : calleeStk ≤ 2 ^ 64) :
-    subroutine_ok prog (lsmpl.base 542)
-      (withLsRoCl lsmpl (dirPutCellsSpec A lim PutEnv calleeStk)) :=
-  subroutine_ok_rocl_of_withLsCodeRoLoaded (dirPut_cells_placed_ok hPut hle hhi)
 
 /-! ## 3. Block `570` (`lsProg_570 H`) Inner, Outer, & CLI Instantiations -/
 
@@ -175,30 +154,6 @@ theorem sessStorePoll_of_inner_placed [LibsignalPlacement] {M : AllocCostModel}
     subroutine_ok prog entry
       (sessStorePollSpecPlaced A lim (CliStorePollEnv AddrEnv SerializeEnvX PutEnv) stk) :=
   sessStorePoll_placed_of_inner hInner hstk
-
-/-- Block-570 `SessionFiles::store_session::{closure#0}` contract from `RunHooksPlaced`,
-polymorphic in `addrStk`, `putStk`, and `stk`. -/
-theorem sessStorePoll_placed_ok_of_hooks [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {W : CliHooks} {H : LibsignalHooks}
-    {AddrEnv : AddrGhost → List AllocEvent → Prop}
-    {PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
-    {addrProg putProg : Program} {addrBlk putBlk : Nat}
-    [IsLsBlockProg addrProg addrBlk H] [IsLsBlockProg putProg putBlk H]
-    {addrStk putStk stk : Nat}
-    (hh : RunHooksPlaced W A lim H)
-    (hAddr : subroutine_ok addrProg (lsmpl.base 594)
-      (addrTextSpecPlaced A lim AddrEnv addrStk))
-    (hPut : subroutine_ok putProg (lsmpl.base 542)
-      (dirPutSpecPlaced A lim PutEnv putStk))
-    (hstk : 0xd0 + max (max addrStk serializeStackX) (max putStk extHookStack) ≤ stk)
-    (hAddrBlk : addrBlk < 619 := by decide)
-    (hAddrUnmut : (addrBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hPutBlk : putBlk < 619 := by decide)
-    (hPutUnmut : (putBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok (lsProg_570 H) (lsmpl.base 570)
-      (sessStorePollSpecPlaced A lim (CliStorePollEnv AddrEnv SerializeEnvX PutEnv) stk) :=
-  sessStorePoll_placed_ok_of_depsX hh.alloc hAddr (serializeCanon_placed_ok_x hh.ser) hPut hstk
-    hAddrBlk hAddrUnmut (by decide) (by decide) hPutBlk hPutUnmut
 
 /-- CLI instantiation of `SessionFiles::store_session::{closure#0}` (Block `570`) transferred onto
 any caller block program `prog` (e.g. `initProgPlaced W`) at residual stack

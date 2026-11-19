@@ -13,7 +13,7 @@ public import Arm64.Trusted.ISA.Semantics
 import Std.Tactic.BVDecide.Normalize.Prop
 import LibsignalBinary.Proofs.SpecLemmas.SyscallReadWritev
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -53,6 +53,10 @@ private theorem st_setSigAction (s : State) (sig : BitVec 32) (act : SigAction) 
     (s.setSigAction sig act).status = s.status := rfl
 private theorem st_setSigAltStack (s : State) (sas : SigAltStack) :
     (s.setSigAltStack sas).status = s.status := rfl
+private theorem st_setSigMask (s : State) (mask : BitVec 64) :
+    (s.setSigMask mask).status = s.status := rfl
+private theorem st_setSigPending (s : State) (pending : BitVec 64) :
+    (s.setSigPending pending).status = s.status := rfl
 private theorem st_appendTrace (s : State) (x : List TraceEvent) :
     (s.appendTrace x).status = s.status := rfl
 private theorem st_nextOracle (s : State) : s.nextOracle.status = s.status := rfl
@@ -130,6 +134,7 @@ set_option linter.unusedSimpArgs false
 macro "status_norm" : tactic => `(tactic|
   simp only [st_advancePC, st_setPC, st_setPState, st_setMem, st_setFpsr, st_orFpsr,
     st_setBrk, st_setPhysMemAvail, st_setFs, st_setSigAction, st_setSigAltStack,
+    st_setSigMask, st_setSigPending,
     st_nextOracle, st_stepExclOracle,
     st_appendTrace, st_writeReg64, st_writeReg32, st_writeReg, st_writeVReg128, st_writeVReg64,
     st_writeVReg32, st_setStatus])
@@ -343,14 +348,20 @@ private theorem execPpoll_not_panicked {s : State} (hs : s.status ≠ .Panicked)
   refine ite_status_ne_panicked (advancePC_ne_panicked (writeReg64_ne_panicked hs)) ?_
   refine ite_status_ne_panicked setStatus_exception_ne_panicked ?_
   refine ite_status_ne_panicked (advancePC_ne_panicked (writeReg64_ne_panicked hs)) ?_
-  refine ite_status_ne_panicked (advancePC_ne_panicked (writeReg64_ne_panicked hs)) ?_
+  refine ite_status_ne_panicked
+    (ite_status_ne_panicked
+      (advancePC_ne_panicked (writeReg64_ne_panicked hs))
+      (advancePC_ne_panicked (writeReg64_ne_panicked hs))) ?_
   refine ite_status_ne_panicked (advancePC_ne_panicked (writeReg64_ne_panicked hs)) ?_
   refine ite_status_ne_panicked setStatus_exception_ne_panicked ?_
   cases evalPpollEntries s.fs s.mem (s.readReg64 Reg.x0) (s.readReg32 Reg.x1).toNat 0 0 with
   | none => exact setStatus_exception_ne_panicked
   | some mc =>
     rcases mc with ⟨m', count⟩; dsimp only
-    exact ite_status_ne_panicked (advancePC_ne_panicked (writeReg64_ne_panicked hs))
+    exact ite_status_ne_panicked
+      (ite_status_ne_panicked
+        (advancePC_ne_panicked (writeReg64_ne_panicked hs))
+        setStatus_exception_ne_panicked)
       (advancePC_ne_panicked (writeReg64_ne_panicked (setMem_ne_panicked hs)))
 
 private theorem execBrk_not_panicked {s : State} (hs : s.status ≠ .Panicked) :
@@ -363,7 +374,15 @@ private theorem execMunmap_not_panicked {s : State} (hs : s.status ≠ .Panicked
 
 private theorem execMremap_not_panicked {s : State} (hs : s.status ≠ .Panicked) :
     (execMremap s).status ≠ .Panicked := by
-  dsimp (config := { zetaHave := true }) only [execMremap]; not_panicked_close hs
+  unfold execMremap; dsimp only
+  repeat' apply ite_status_ne_panicked
+  all_goals first
+    | not_panicked_close hs
+    | (cases sanitizeMmapAddr
+         (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0)) (pageAlignUp (s.readReg64 Reg.x1).toNat))
+         (s.oracle.mmap s.oracleIdx)
+         (pageAlignUp (s.readReg64 Reg.x2).toNat) <;>
+       (dsimp only; repeat' apply ite_status_ne_panicked; all_goals not_panicked_close hs))
 
 private theorem execMmap_not_panicked {s : State} (hs : s.status ≠ .Panicked) :
     (execMmap s).status ≠ .Panicked := by
@@ -391,11 +410,24 @@ private theorem execSigaltstack_not_panicked {s : State} (hs : s.status ≠ .Pan
 
 private theorem execRtSigaction_not_panicked {s : State} (hs : s.status ≠ .Panicked) :
     (execRtSigaction s).status ≠ .Panicked := by
-  dsimp (config := { zetaHave := true }) only [execRtSigaction]; not_panicked_close hs
+  unfold execRtSigaction
+  by_cases h1 : (s.readReg64 Reg.x1 == 0#64) = true <;>
+  by_cases h2 : (s.readReg32 Reg.x0 == LINUX_SIGABRT &&
+      s.mem.read64 (s.readReg64 Reg.x1) == SIG_IGN) = true <;>
+    (simp only [h1, h2, ↓reduceIte, Bool.false_eq_true]
+     not_panicked_close hs)
 
 private theorem execRtSigprocmask_not_panicked {s : State} (hs : s.status ≠ .Panicked) :
     (execRtSigprocmask s).status ≠ .Panicked := by
-  dsimp (config := { zetaHave := true }) only [execRtSigprocmask]; not_panicked_close hs
+  unfold execRtSigprocmask
+  dsimp only
+  repeat' apply ite_status_ne_panicked
+  all_goals ((try status_norm); first
+    | exact hs
+    | exact exception_ne_panicked _
+    | exact signaled_ne_panicked _
+    | (repeat' apply ite_status_ne_panicked; all_goals ((try status_norm); first
+        | exact hs | exact exception_ne_panicked _ | exact signaled_ne_panicked _)))
 
 private theorem execClockGettime_not_panicked {s : State} (hs : s.status ≠ .Panicked) :
     (execClockGettime s).status ≠ .Panicked := by
@@ -408,6 +440,10 @@ private theorem execGetrandom_not_panicked {s : State} (hs : s.status ≠ .Panic
 private theorem execSetTidAddress_not_panicked {s : State} (hs : s.status ≠ .Panicked) :
     (execSetTidAddress s).status ≠ .Panicked := by
   dsimp (config := { zetaHave := true }) only [execSetTidAddress]; not_panicked_close hs
+
+private theorem execFutex_not_panicked {s : State} (hs : s.status ≠ .Panicked) :
+    (execFutex s).status ≠ .Panicked := by
+  dsimp (config := { zetaHave := true }) only [execFutex]; not_panicked_close hs
 
 private theorem execSchedGetaffinity_not_panicked {s : State} (hs : s.status ≠ .Panicked) :
     (execSchedGetaffinity s).status ≠ .Panicked := by
@@ -426,7 +462,7 @@ private theorem standardEntry_not_panicked {s : State} (hs : s.status ≠ .Panic
     List.mem_cons, List.not_mem_nil, or_false]
   rintro _ (rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
             rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl |
-            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
+            rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl)
   · exact execRead_not_panicked hs
   · exact execWrite_not_panicked hs
   · exact LibsignalBinary.Proofs.SpecLemmas.SyscallReadWritev.execReadv_status_ne_panicked
@@ -457,6 +493,7 @@ private theorem standardEntry_not_panicked {s : State} (hs : s.status ≠ .Panic
   · exact execClockGettime_not_panicked hs
   · exact execGetrandom_not_panicked hs
   · exact execSetTidAddress_not_panicked hs
+  · exact execFutex_not_panicked hs
   · exact execSchedGetaffinity_not_panicked hs
   · exact execGetpid_not_panicked hs
   · exact execGetpid_not_panicked hs
@@ -513,36 +550,36 @@ private theorem exec_ldrSimd_not_panicked {svc : State → State}
     (execInstWithSvc svc (.ldrSimd sz vt addr) s).status ≠ .Panicked := by
   apply ite_status_ne_panicked
   · exact setStatus_exception_ne_panicked
-  · cases addr <;>
-      (try dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only
-       peel_step hs hs)
+  · dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only [execInstWithSvc]
+    peel_step hs hs
+    split <;> peel_step hs hs
 
 private theorem exec_strSimd_not_panicked {svc : State → State}
     {sz : SimdMemSize} {vt : VReg} {addr : AddrMode} {s : State} (hs : s.status ≠ .Panicked) :
     (execInstWithSvc svc (.strSimd sz vt addr) s).status ≠ .Panicked := by
   apply ite_status_ne_panicked
   · exact setStatus_exception_ne_panicked
-  · cases addr <;>
-      (try dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only
-       peel_step hs hs)
+  · dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only [execInstWithSvc]
+    peel_step hs hs
+    split <;> peel_step hs hs
 
 private theorem exec_ldpSimd_not_panicked {svc : State → State}
     {sz : SimdMemSize} {vt1 vt2 : VReg} {addr : AddrMode} {s : State} (hs : s.status ≠ .Panicked) :
     (execInstWithSvc svc (.ldpSimd sz vt1 vt2 addr) s).status ≠ .Panicked := by
   apply ite_status_ne_panicked
   · exact setStatus_exception_ne_panicked
-  · cases addr <;>
-      (try dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only
-       peel_step hs hs)
+  · dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only [execInstWithSvc]
+    peel_step hs hs
+    split <;> peel_step hs hs
 
 private theorem exec_stpSimd_not_panicked {svc : State → State}
     {sz : SimdMemSize} {vt1 vt2 : VReg} {addr : AddrMode} {s : State} (hs : s.status ≠ .Panicked) :
     (execInstWithSvc svc (.stpSimd sz vt1 vt2 addr) s).status ≠ .Panicked := by
   apply ite_status_ne_panicked
   · exact setStatus_exception_ne_panicked
-  · cases addr <;>
-      (try dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only
-       peel_step hs hs)
+  · dsimp (config := { beta := true, iota := true, zeta := true, zetaHave := true }) only [execInstWithSvc]
+    peel_step hs hs
+    split <;> peel_step hs hs
 
 private theorem exec_st1SinglePost_not_panicked {svc : State → State}
     {q : Bool} {rm : VReg} {opcode : BitVec 3} {sBit : Bool} {size : BitVec 2}

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.HooksNames
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit
+public import LibsignalBinary.Proofs.E2E.HooksNames -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
-public import LibsignalBinary.Proofs.E2E.Record.Support.Hooks
+public import LibsignalBinary.Proofs.E2E.Record.Support.Hooks -- proof-setup: allow-public-import
 
 /-!
 # Shared Hook Contracts for the E2E Wrapper Binary
@@ -22,7 +22,7 @@ Extends `PublicApiHooksNoStores` and `HashbrownBinHooks` with the external hooks
 `bcmp` (`0x51b50`) and `hashmap_random_keys` (`0x51b3c`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Bin
 
@@ -42,7 +42,7 @@ structure BcmpCall where
 
 /-- `bcmp(a = x0, b = x1, n = x2) -> w0`: compares `n` bytes at `a` and `b` without modifying them;
     returns `w0 = 0` iff `bsA = bsB`. -/
-def e2eBcmpSpec : Spec BcmpCall where
+@[expose] def e2eBcmpSpec : Spec BcmpCall where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ s.readReg64 .x1 = x.b ∧
       (s.readReg64 .x2).toNat = x.bsA.length ∧ x.bsB.length = x.bsA.length⌝ ∗
@@ -53,7 +53,7 @@ def e2eBcmpSpec : Spec BcmpCall where
 
 /-- `RandomState::new` key-generation hook (`x0, x1` returned as two `u64` SipHash keys;
     no constraint on `x0`/`x1` in the postcondition so any deterministic hook satisfies `HookOk`). -/
-def randomKeysSpec : Spec Unit where
+@[expose] def randomKeysSpec : Spec Unit where
   pre := fun _ s => stackAt s.sp extHookStack
   post := fun _ s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ stackAt s0.sp extHookStack
@@ -69,30 +69,6 @@ theorem randomKeysSpec_nonvac : HookOk hookNoop randomKeysSpec := by
   refine hookNoop_ok fun _ R s0 hpre => ?_
   simp only [randomKeysSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
   exact ⟨rfl, hpre⟩
-
-theorem e2eBcmpSpec_nonvac : HookOk witnessBcmpHook e2eBcmpSpec := by
-  refine retHook_ok fun x R s0 hrun hpre _hsp => ?_
-  simp only [e2eBcmpSpec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hlen⟩, hmem⟩
-  have hrA : s0.mem.readBytes x.a x.bsA.length = x.bsA :=
-    ((IsBlock.pointsToBytes x.a x.bsA).read hmem).2
-  have hmemB : s0.mem ⊨ (x.b ↦ₛ x.bsB) ∗ ((x.a ↦ₛ x.bsA) ∗ (stackAt s0.sp extHookStack ∗ R)) := by
-    have heq :
-        ((x.a ↦ₛ x.bsA) ∗ ((x.b ↦ₛ x.bsB) ∗ (stackAt s0.sp extHookStack ∗ R))) =
-        ((x.b ↦ₛ x.bsB) ∗ ((x.a ↦ₛ x.bsA) ∗ (stackAt s0.sp extHookStack ∗ R))) := by ac_rfl
-    exact heq ▸ hmem
-  have hrB : s0.mem.readBytes x.b x.bsA.length = x.bsB := by
-    rw [← hlen]
-    exact ((IsBlock.pointsToBytes x.b x.bsB).read hmemB).2
-  unfold retHook
-  dsimp only
-  refine ⟨Memory.KeepsFrozen.refl s0.mem, rfl, hrun,
-    ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩, ?_⟩
-  dsimp only [e2eBcmpSpec]
-  simp only [sepConj_assoc, satisfies_pure_sepConj]
-  refine ⟨⟨?_, rfl⟩, hmem⟩
-  rw [hx0, hx1, hx2, hrA, hrB]
-  by_cases h : x.bsA = x.bsB <;> simp [h, State.setPC, State.writeReg64, State.readReg64]
 
 /-- Shared hook bundle for the E2E wrapper binary: `PublicApiHooksNoStores` extended with `bcmp`,
 `randomKeys`, `HashbrownBinHooks`, `S.SendEmptyOk`, `A = Record.A0`, and `tpidrSafe`. -/

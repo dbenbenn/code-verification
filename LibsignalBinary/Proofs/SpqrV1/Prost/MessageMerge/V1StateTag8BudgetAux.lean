@@ -10,18 +10,18 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1Budget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoPolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag1Budget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateTag8 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
@@ -29,6 +29,51 @@ import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Hoare.SubroutineHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.Layout
+public import ProofLib.StdStartup.MemOps
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Mallocng.Spec.Cost
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
 
 /-!
 # Budget-Threaded Stepping Helpers for `V1State::merge` Tag Arm 8 (`Ct1Sampled`)
@@ -37,7 +82,7 @@ import ProofLib.SepLogic.WPp
 cleanup, and stack-copy stepping helpers for tag arm 8 (`Ct1Sampled`, Block `298`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -155,7 +200,7 @@ attribute [local simp, local arm64_norm] bv64_sub_zero bv64_add_zero
 
 /-! ## 1. Private Budget `SepWP` Combinators -/
 
-def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def deallocFreeOnlySpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (BitVec 64 × Nat × Nat × M.σ) where
   pre := (rustCliDeallocBudgetSpec M A lim).pre
@@ -660,73 +705,6 @@ theorem v1Tag8_err_enc_1384_placed [LibsignalPlacement]
       ?_ (fun _ _ _ _ ⟨hp, hq⟩ => ⟨w, hevs_w, hp, hq⟩)
     rcases htr_c with ⟨htr_cs, hvregs_cs⟩
     wp_done
-
-theorem v1Tag8_err_1364_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {H : String → Option (State → State)}
-    (hDropUc : subroutine_ok ((blkPC_298).rebase (blkPl_298).base H)
-      (lsmpl.base 286)
-      (dropProtoUnchunkedCt1SentEkReceivedSpec M A lim))
-    (hDropEnc : subroutine_ok ((blkPC_298).rebase (blkPl_298).base H)
-      (lsmpl.base 271) (dropProtoPolyEncoderSpec M A lim))
-    (hDealloc : subroutine_ok ((blkPC_298).rebase (blkPl_298).base H)
-      (lsρ "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc") (rustCliDeallocBudgetSpec M A lim))
-    {st : M.σ} {s : State} {fsp : BitVec 64} {cs : V1State.Chunked.Ct1Sampled} {Frame : SepProp}
-    (hsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = (blkPl_298).base + 1364#64)
-    (hrun : s.status = .Running) (hsp : s.sp = fsp) (hx25 : s.readReg64 (Reg.gpr 25#5) = fsp + 240#64) :
-    SepWP ((blkPC_298).rebase (blkPl_298).base H)
-      ((blkPl_298).base + 2700#64) s
-      (protoChunkedCt1SampledAt A.repAlloc (fsp + 240#64) cs ∗
-        A.pool lim st s ∗ stackAt fsp chunkedInlStack ∗ Frame)
-      (fun sm Pm =>
-        ∃ evs, FreeOnlyEvs evs ∧
-        (Pm ⊢ memRegion (fsp + 240#64) 224 ∗ A.pool lim (M.stepEvents evs st) sm ∗
-          stackAt fsp chunkedInlStack ∗ Frame) ∧
-        sm.sp = s.sp ∧ sm.v1TraceEq s ∧
-        sm.readReg64 (Reg.gpr 21#5) = s.readReg64 (Reg.gpr 21#5)) := by
-  dsimp only [protoChunkedCt1SampledAt]
-  have h368 : (fsp + 240#64) + 128#64 = fsp + 368#64 := by bv_lin
-  have h424 : (fsp + 240#64) + 184#64 = fsp + 424#64 := by bv_lin
-  have hjoin224 : memRegion (fsp + 240#64) 128 ∗ memRegion (fsp + 368#64) 56 ∗ memRegion (fsp + 424#64) 40 ⊢
-      memRegion (fsp + 240#64) 224 := by
-    rw [memRegion_split' (b := fsp + 240#64) (b' := fsp + 368#64) (n := 128) (k := 96) (N := 224) rfl (by bv_lin) (by decide),
-      memRegion_split' (b := fsp + 368#64) (b' := fsp + 424#64) (n := 56) (k := 40) (N := 96) rfl (by bv_lin) (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  refine SepWP.weaken_pre (P' :=
-    optProtoUnchunkedCt1SentEkReceivedAt A.repAlloc (fsp + 240#64) (cs.uc.map ct1SentToCt1SentEkReceived) ∗
-      A.pool lim st s ∗ stackAt fsp dropStack32 ∗
-      (optProtoPolynomialEncoderAt A.repAlloc (fsp + 368#64) (cs.sendingCt1.map pbToProtoPolyEncoder) ∗
-        optProtoPolynomialDecoderAt A.repAlloc (fsp + 424#64) (cs.receivingEk.map pbToProtoPolyDecoder) ∗
-        v1StateBelowRest fsp dropStack32 ∗ Frame))
-    (Entails.of_eq (by rw [v1Tag8_optProtoUnchunkedCt1SentAt_eq, h368, h424, v1StateBelow_dropStack32 fsp]; ac_rfl)) ?_
-  refine SepWP.seq (v1Tag8_err_uc_1364_placed hDropUc hsp_align hpc hrun hsp) ?_
-  rintro s1 P1 hpc1 hrun1 ⟨evs1, hevs1, hP1, hsp1, htr1, hx21_1, hx25_1⟩
-  apply SepWP.weaken_pre hP1; apply SepWP.fold (v1StateBelow_dropStack32_entails fsp) (by sep_focus)
-  refine SepWP.weaken_pre (P' :=
-    optProtoPolynomialEncoderAt A.repAlloc (fsp + 368#64) (cs.sendingCt1.map pbToProtoPolyEncoder) ∗
-      A.pool lim (M.stepEvents evs1 st) s1 ∗ stackAt fsp dropStack48 ∗
-      (memRegion (fsp + 240#64) 128 ∗
-        optProtoPolynomialDecoderAt A.repAlloc (fsp + 424#64) (cs.receivingEk.map pbToProtoPolyDecoder) ∗
-        v1StateBelowRest fsp dropStack48 ∗ Frame))
-    (Entails.of_eq (by rw [v1StateBelow_dropStack48 fsp]; ac_rfl)) ?_
-  refine SepWP.seq (v1Tag8_err_enc_1384_placed hDropEnc hsp_align hpc1 hrun1 (hsp1.trans hsp) (hx25_1.trans hx25)) ?_
-  rintro s2 P2 hpc2 hrun2 ⟨evs2, hevs2, hP2, hsp2, htr2, hx21_2⟩
-  apply SepWP.weaken_pre hP2; apply SepWP.fold (v1StateBelow_dropStack48_entails fsp) (by sep_focus)
-  refine SepWP.weaken_pre (P' :=
-    optProtoPolynomialDecoderAt A.repAlloc (fsp + 424#64) (cs.receivingEk.map pbToProtoPolyDecoder) ∗
-      A.pool lim (M.stepEvents evs2 (M.stepEvents evs1 st)) s2 ∗ stackAt fsp allocHookStack ∗
-      (memRegion (fsp + 240#64) 128 ∗ memRegion (fsp + 368#64) 56 ∗ v1StateBelowRest fsp allocHookStack ∗ Frame))
-    (Entails.of_eq (by rw [v1StateBelow_allocHook fsp]; ac_rfl)) ?_
-  refine SepWP.seq (v1Tag8_err_dec_1404_placed hDealloc hsp_align hpc2 hrun2 (hsp2.trans (hsp1.trans hsp))) ?_
-  rintro s3 P3 hpc3 hrun3 ⟨evs3, hevs3, hP3, hsp3, htr3, hx21_3⟩
-  apply SepWP.weaken_pre hP3; apply SepWP.fold (v1StateBelow_allocHook_entails fsp) (by sep_focus)
-  apply SepWP.fold hjoin224 (by sep_focus)
-  refine SepWP.done hpc3 hrun3
-    ⟨evs1 ++ evs2 ++ evs3, (hevs1.append hevs2).append hevs3, ?_,
-      hsp3.trans (hsp2.trans hsp1), htr3.trans (htr2.trans htr1), hx21_3.trans (hx21_2.trans hx21_1)⟩
-  simp only [LibsignalBinary.Heap.AllocCostModel.stepEvents_append]
-  exact Entails.of_eq (by ac_rfl)
 
 theorem v1Tag8_setup_1272_placed [LibsignalPlacement]
     {A : CryptoVerification.RustHeap.RustAlloc} {H : String → Option (State → State)}

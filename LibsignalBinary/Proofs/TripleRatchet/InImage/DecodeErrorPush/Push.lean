@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.TrapRng
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.TrapRng -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.GrowOne
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.InImage.DecodeErrorPush.Core -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Verification of In-Image `<DecodeError>::push`
@@ -23,7 +24,7 @@ Verifies `<prost::error::DecodeError>::push`, dispatching to `grow_one` when
 `len = cap` and appending a `(description, field)` entry.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.InImage.DecodeErrorPush
 
@@ -40,7 +41,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Stack and `Vec` buffer lemmas for `<prost::error::DecodeError>::push` -/
 
-def pushStackPad (sp : BitVec 64) : SepProp :=
+@[expose] def pushStackPad (sp : BitVec 64) : SepProp :=
   memRegion (sp - 8192#64) 3920
 
 theorem stackAt_push (sp : BitVec 64) :
@@ -161,122 +162,5 @@ theorem bv_sub_64_sub (sp : BitVec 64) :
   ⟨by bv_omega, by bv_omega, by bv_omega⟩
 
 /-! ## Verification of `<prost::error::DecodeError>::push` -/
-
-theorem decodeErrorPush_ok'_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr decodeErrorPushName)
-      (decodeErrorPushSpec A) := by
-  unfold decodeErrorPushSpec decodeErrorAtStackLen vecOf vecAt vecHeader vecBuf
-  simp only [List.length_replicate, sepExists_sepConj_left, sepExists_sepConj_right]
-  simp only [stackAt_push]
-  have hfn := (ls_lemma% fnOff "<prost::error::DecodeError>::push")
-  have hgrow := grow_one_str_pair_ok_trap (b := b) (C := C) hA
-  rw [Program.fnAddr_rel (name := "<prost::error::DecodeError>::push")
-    hfn (ls_lemma% fnOff "<alloc::raw_vec::RawVec<(&str, &str)>>::grow_one") (k := 128) (by decide)] at hgrow
-  code_fetches CryptoVerification.libsignalSessionCode libsignalSessionBin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn (num% (ls_off% "<prost::error::DecodeError>::push")) 128
-  dsimp only [trTrapProgAt, decodeErrorPushName, growOneStrPairName] at hgrow ⊢
-  clear hfn hA
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr
-    "<prost::error::DecodeError>::push" = entry
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))) = prog
-    reverting [Program.fetch, Program.externAt?, subroutine_ok]
-  examples_hide_fetches
-  wpp_init x s0
-  obtain ⟨d, e, n⟩ := x
-  dsimp only at *
-  rcases h with ⟨hkind1, hkind2⟩
-  have hn_toNat : (BitVec.ofNat 64 n).toNat = n := by
-    rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-  have hptr_ne0 : v_stk_2 ≠ 0#64 := h_3
-  conv =>
-    arg 4
-    simp only [BitVec.ofNat_eq_ofNat,
-      vecBuf_stackEntryAt_memRegion A n v_stk_1 v_stk_2 (by omega) (by omega)]
-  by_cases heq : BitVec.ofNat 64 n = v_stk_1
-  · -- Slow path (`BitVec.ofNat 64 n = v_stk_1`): branch taken to `0x4aafc` (`entry + 84#64`), calls `grow_one`
-    subst v_stk_1
-    have hcap_lt : (BitVec.ofNat 64 n).toNat < 2 ^ 32 := by rw [hn_toNat]; exact h_1
-    have hnew_toNat : (newCap (BitVec.ofNat 64 n)).toNat = max (2 * n) 4 := by
-      rw [newCap_toNat hcap_lt, hn_toNat]
-    have hn_lt_new : n < (newCap (BitVec.ofNat 64 n)).toNat := by omega
-    have hn1_le_new : n + 1 ≤ (newCap (BitVec.ofNat 64 n)).toNat := by omega
-    have hnew_bound : (newCap (BitVec.ofNat 64 n)).toNat * 32 < 2 ^ 63 := by omega
-    have hnew_ne0 : newCap (BitVec.ofNat 64 n) ≠ 0#64 := by
-      intro h0
-      have ht := congrArg BitVec.toNat h0
-      change (newCap (BitVec.ofNat 64 n)).toNat = 0 at ht
-      omega
-    apply SepWPp.of_sepWP (mid := entry + bv% (128))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.call_frame (ret_pc := entry + bv% (108)) (x := (e, BitVec.ofNat 64 n, v_stk_2, s0.sp - 64#64))
-      hgrow (by wp_norm_goal) (by wp_norm_goal) (by wp_norm_goal) (by wp_norm_goal) rfl
-      ⟨by wp_norm_goal, by wp_norm_goal, hcap_lt, hptr_ne0⟩
-      (by
-        simp only [bv_sub_64_sub]
-        sep_focus)
-      (fun _ _ _ _ hm => allowPanic_not_exited hm)
-      (fun sf _ hm => allowPanic_frame id hm)
-      (fun sf hpc_sf hrun_sf hsp_sf hcs_sf => ?_)
-    rcases hcs_sf with ⟨hx19, hx20, hx21, hx22, hx23, hx24, hx25, hx26, hx27, hx28, hx29⟩
-    simp only [wp_norm, arm64_norm] at hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 hx29 hsp_sf
-    conv => arg 4; simp only [sepExists_sepConj_left, sepConj_assoc, bv_sub_64_sub]
-    apply SepWPp.exists_elim; intro p'
-    refine SepWPp.pure_elim fun ⟨hp', htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    wp_simp_pre [memRegion_split_entry p' n (newCap (BitVec.ofNat 64 n)).toNat hn_lt_new hnew_bound,
-      sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    apply SepWP.exists_elim; intro c0
-    apply SepWP.exists_elim; intro c1
-    apply SepWP.exists_elim; intro c2
-    apply SepWP.exists_elim; intro c3
-    wp_steps
-    apply SepWP.instantiate_post_exists v_stk
-    apply SepWP.instantiate_post_exists (newCap (BitVec.ofNat 64 n))
-    apply SepWP.instantiate_post_exists p'
-    simp only [BitVec.ofNat_eq_ofNat, hnew_ne0, ite_false,
-      vecBuf_stackEntryAt_memRegion A (n + 1) (newCap (BitVec.ofNat 64 n)) p' hn1_le_new hnew_bound,
-      memRegion_split_entry p' n (newCap (BitVec.ofNat 64 n)).toNat hn_lt_new hnew_bound]
-    wp_done
-  · -- Fast path (`BitVec.ofNat 64 n ≠ v_stk_1`): branch not taken, falls through to `0x4aad0`
-    have hbeq : (BitVec.ofNat 64 n == v_stk_1) = false := beq_eq_false_iff_ne.mpr heq
-    have hne_nat : n ≠ v_stk_1.toNat := by
-      intro hnat
-      apply heq
-      apply BitVec.eq_of_toNat_eq
-      rw [hn_toNat, hnat]
-    have hn_lt_cap : n < v_stk_1.toNat := by omega
-    have hn1_le_cap : n + 1 ≤ v_stk_1.toNat := by omega
-    have hcap_ne0 : v_stk_1 ≠ 0#64 := by
-      intro h0
-      subst h0
-      change n < 0 at hn_lt_cap
-      omega
-    apply SepWPp.of_sepWP_ret
-    wp_simp_pre [hcap_ne0, ite_false,
-      memRegion_split_entry v_stk_2 n v_stk_1.toNat hn_lt_cap (by omega),
-      sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    apply SepWP.exists_elim; intro c0
-    apply SepWP.exists_elim; intro c1
-    apply SepWP.exists_elim; intro c2
-    apply SepWP.exists_elim; intro c3
-    wp_steps
-    apply SepWP.instantiate_post_exists v_stk
-    apply SepWP.instantiate_post_exists v_stk_1
-    apply SepWP.instantiate_post_exists v_stk_2
-    simp only [BitVec.ofNat_eq_ofNat, hcap_ne0, ite_false,
-      vecBuf_stackEntryAt_memRegion A (n + 1) v_stk_1 v_stk_2 hn1_le_cap (by omega),
-      memRegion_split_entry v_stk_2 n v_stk_1.toNat hn_lt_cap (by omega)]
-    wp_done
-
-theorem decodeErrorPush_ok' (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr decodeErrorPushName)
-      (decodeErrorPushSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr decodeErrorPushName]
-  exact subroutine_ok_kit_of_trTrap (decodeErrorPush_ok'_trap b C A abs hA)
 
 end CryptoVerification.LibsignalTripleRatchet.InImage.DecodeErrorPush

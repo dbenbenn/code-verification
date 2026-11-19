@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -20,6 +22,12 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SpqrV1.Unchunked.UnchunkedCodeSym
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`): Budget Allocation & Decapsulation
@@ -28,7 +36,7 @@ Relocatable `[LibsignalPlacement]` `RustCliAllocBudget` proof of `mac`/`ct2_128`
 (`+224 .. +292`, OOM-free under `FitsEvents`) and `decapsulate_compressed_key` (`+292 .. +480`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -69,10 +77,14 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Heap.IfaceBudgetLemmas (rustCliAllocNoOomSpecWithStack)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (mlkemDecapsAtSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget (
-  RecvCt2ChunkEnv RecvCt2PlacedAlloc allowPanic_isPanic_budget_recvCt2 mlkem_decaps_placed_lscro
-  recvCt2MacCt2AllocEvents recvCt2PlacedPostQ recvCt2PlacedPostQOfEnv
-  recvCt2PlacedPostQOfPrePostEnv recvCt2PlacedPostQp sepWPp_of_sepWP_lscro
+  RecvCt2ChunkEnv RecvCt2PlacedAlloc allowPanic_isPanic_budget_recvCt2
+  mlkemDecaps36864At350_480Spec mlkem_decaps_placed_lscro
+  recvCt2MacCt2AllocEvents recvCt2PlacedPostQExt recvCt2PlacedPostQExtOfEnv
+  recvCt2PlacedPostQExtOfPrePostEnv recvCt2PlacedPostQp sepWPp_of_sepWP_lscro
+  stackAt_decaps36864_eq_extHook
 )
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (
   session2MemcpyBudgetSpecX session2ShimBudgetSpecX
@@ -147,7 +159,7 @@ theorem recv_ct2_chunk_alloc_mac_ct2_placed_wpp_ofPrePostEnv [LibsignalPlacement
           A.pool lim (M.stepEvents (recvCt2MacCt2AllocEvents ct2Full.length) st_cur) st' ∗
           stackAt (s0.sp - 2496#64) extHookStack ∗
           F_frame)
-        (recvCt2PlacedPostQOfPrePostEnv K F M A lim PreEnv PostEnv x st0 s0 R)
+        (recvCt2PlacedPostQExtOfPrePostEnv K F M A lim PreEnv PostEnv x st0 s0 R)
         (recvCt2PlacedPostQp K x s0 R)) :
     SepWPp (lsProg_350 (Rust.withPanics ext)) (s0.readReg64 .x30) st
       (((s0.sp - 2448#64) ↦₆₄ c6) ∗
@@ -156,7 +168,7 @@ theorem recv_ct2_chunk_alloc_mac_ct2_placed_wpp_ofPrePostEnv [LibsignalPlacement
         A.pool lim st_cur st ∗
         stackAt (s0.sp - 2496#64) extHookStack ∗
         F_frame)
-      (recvCt2PlacedPostQOfPrePostEnv K F M A lim PreEnv PostEnv x st0 s0 R)
+      (recvCt2PlacedPostQExtOfPrePostEnv K F M A lim PreEnv PostEnv x st0 s0 R)
       (recvCt2PlacedPostQp K x s0 R) := by
   have h_shim := hA.shim_lscro
   have h_alloc := hA.allocNoOom_lscro
@@ -394,7 +406,7 @@ theorem recv_ct2_chunk_alloc_mac_ct2_placed_wpp_ofEnv [LibsignalPlacement]
           A.pool lim (M.stepEvents (recvCt2MacCt2AllocEvents ct2Full.length) st_cur) st' ∗
           stackAt (s0.sp - 2496#64) extHookStack ∗
           F_frame)
-        (recvCt2PlacedPostQOfEnv K F M A lim Env x st0 s0 R)
+        (recvCt2PlacedPostQExtOfEnv K F M A lim Env x st0 s0 R)
         (recvCt2PlacedPostQp K x s0 R)) :
     SepWPp (lsProg_350 (Rust.withPanics ext)) (s0.readReg64 .x30) st
       (((s0.sp - 2448#64) ↦₆₄ c6) ∗
@@ -403,7 +415,7 @@ theorem recv_ct2_chunk_alloc_mac_ct2_placed_wpp_ofEnv [LibsignalPlacement]
         A.pool lim st_cur st ∗
         stackAt (s0.sp - 2496#64) extHookStack ∗
         F_frame)
-      (recvCt2PlacedPostQOfEnv K F M A lim Env x st0 s0 R)
+      (recvCt2PlacedPostQExtOfEnv K F M A lim Env x st0 s0 R)
       (recvCt2PlacedPostQp K x s0 R) :=
   recv_ct2_chunk_alloc_mac_ct2_placed_wpp_ofPrePostEnv hA x ct2Full cap_ct2 ptr_ct2 c6 st0 st_cur
     s0 st F_frame R hfits hge128 hlt_max hpc hrun hsp hsp_s0 htr hvregs hinv
@@ -462,7 +474,7 @@ theorem recv_ct2_chunk_alloc_mac_ct2_placed_wpp [LibsignalPlacement]
           A.pool lim (M.stepEvents (recvCt2MacCt2AllocEvents ct2Full.length) st_cur) st' ∗
           stackAt (s0.sp - 2496#64) extHookStack ∗
           F_frame)
-        (recvCt2PlacedPostQ K F M A lim x st0 s0 R)
+        (recvCt2PlacedPostQExt K F M A lim x st0 s0 R)
         (recvCt2PlacedPostQp K x s0 R)) :
     SepWPp (lsProg_350 (Rust.withPanics ext)) (s0.readReg64 .x30) st
       (((s0.sp - 2448#64) ↦₆₄ c6) ∗
@@ -471,7 +483,7 @@ theorem recv_ct2_chunk_alloc_mac_ct2_placed_wpp [LibsignalPlacement]
         A.pool lim st_cur st ∗
         stackAt (s0.sp - 2496#64) extHookStack ∗
         F_frame)
-      (recvCt2PlacedPostQ K F M A lim x st0 s0 R)
+      (recvCt2PlacedPostQExt K F M A lim x st0 s0 R)
       (recvCt2PlacedPostQp K x s0 R) :=
   recv_ct2_chunk_alloc_mac_ct2_placed_wpp_ofEnv hA x ct2Full cap_ct2 ptr_ct2 c6 st0 st_cur
     s0 st F_frame R hfits hge128 hlt_max hpc hrun hsp hsp_s0 htr hvregs hinv
@@ -487,7 +499,7 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp_ofPrePostEnv [LibsignalPlacement]
     {ext : String → Option (State → State)}
     (hA : RecvCt2PlacedAlloc M A lim ext)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (x : RecvCt2ChunkGhost F) (receivingCt2 : PolyDecoder) (ct2Full : Bytes)
     (cap_ct2 ptr_ct2 ptr_mac ptr_ct2_128 : BitVec 64)
     (c0 c1 c2 c3 c4 c5 c7 c8 : BitVec 64)
@@ -567,9 +579,9 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp_ofPrePostEnv [LibsignalPlacement]
           ((s0.sp - 2440#64) ↦₆₄ ptr_ct1) ∗
           ((s0.sp - 2432#64) ↦₆₄ c8) ∗
           A.pool lim st_cur st2 ∗
-          stackAt (s0.sp - 2496#64) extHookStack ∗
+          stackAt (s0.sp - 2496#64) 36864 ∗
           F_frame)
-        (recvCt2PlacedPostQOfPrePostEnv K F M A lim PreEnv PostEnv x st0 s0 R)
+        (recvCt2PlacedPostQExtOfPrePostEnv K F M A lim PreEnv PostEnv x st0 s0 R)
         (recvCt2PlacedPostQp K x s0 R)) :
     SepWPp (lsProg_350 (Rust.withPanics ext)) (s0.readReg64 .x30) st
       (ekSentCt1ReceivedUcAt A.repAlloc x.selfA x.self.uc ∗
@@ -592,9 +604,9 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp_ofPrePostEnv [LibsignalPlacement]
         ((s0.sp - 2432#64) ↦₆₄ c8) ∗
         someBranchFrameAt (s0.sp - 2496#64) ∗
         A.pool lim st_cur st ∗
-        stackAt (s0.sp - 2496#64) extHookStack ∗
+        stackAt (s0.sp - 2496#64) 36864 ∗
         F_frame)
-      (recvCt2PlacedPostQOfPrePostEnv K F M A lim PreEnv PostEnv x st0 s0 R)
+      (recvCt2PlacedPostQExtOfPrePostEnv K F M A lim PreEnv PostEnv x st0 s0 R)
       (recvCt2PlacedPostQp K x s0 R) := by
   have h_mc := hA.memcpy_lscro
   have h_decaps := mlkem_decaps_placed_lscro hdecaps
@@ -602,7 +614,7 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp_ofPrePostEnv [LibsignalPlacement]
   have hsp_norm : st.readReg64 .sp = s0.sp - 2496#64 := hsp
   simp only [wp_norm, arm64_norm] at hsp_norm hx0 hx19 hx20 hx21 hx22 hx23 hx26 hx27 hx29
   clear hA hdecaps
-  simp only [lsProg_350, session2MemcpyBudgetSpecX, mlkemDecapsSpec, withVmPreserved]
+  simp only [lsProg_350, session2MemcpyBudgetSpecX, mlkemDecaps36864At350_480Spec, withVmPreserved]
     at h_mc h_decaps h_pan_unwrap hcont ⊢
   have htake128_len : (ct2Full.take 128).length = 128 := by
     rw [List.length_take]; omega
@@ -612,7 +624,8 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp_ofPrePostEnv [LibsignalPlacement]
     rw [ha_ct2 ptr_ct2, memRegion_128_cells ptr_ct2_128,
         someBranchFrameAt_expose_decaps s0.sp,
         memRegion_48_sp_1328 s0.sp,
-        memRegion_24_sp_1280 s0.sp]) ?_
+        memRegion_24_sp_1280 s0.sp,
+        stackAt_decaps36864_eq_extHook s0.sp]) ?_
   sep_elim_exists
   refine SepWPp.fold (ekSentCt1ReceivedUcAt_expose_entails A.repAlloc x.selfA x.self.uc)
     (by sep_focus) ?_
@@ -699,8 +712,10 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp_ofPrePostEnv [LibsignalPlacement]
           hle_ct1 hmax_ct1 hptr_ct1 hcap_ct1
       rw [RustCliAllocBudget.repAlloc_live_norm] at hfold_ct1_vec
       refine SepWP.fold hfold_ct1_vec (by sep_focus) ?_
-      have hstack_sf : stackAt st.sp extHookStack = stackAt sf.sp extHookStack := by
-        rw [hsp_sf]
+      have hstack_sf :
+          memRegion (s0.sp - 39360#64) 20480 ∗ stackAt st.sp extHookStack =
+            stackAt sf.sp 36864 := by
+        rw [hsp_sf, hsp, ← stackAt_decaps36864_eq_extHook s0.sp]
       refine SepWP.fold (Entails.of_eq hstack_sf) (by sep_focus) ?_
       apply SepWP.done (by wp_norm_goal) (by wp_norm_goal)
       intro hinv2
@@ -722,8 +737,8 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp_ofPrePostEnv [LibsignalPlacement]
       have hfold_ct1_buf :
           ((s0.sp - 1248#64) ↦ₛ x.self.uc.ct1) ⊢ memRegion (s0.sp - 1248#64) 960 :=
         hct1_len ▸ pointsToBytes_entails_memRegion (s0.sp - 1248#64) x.self.uc.ct1
-      have hstack_sf1 : stackAt sf.sp extHookStack = stackAt (s0.sp - 2496#64) extHookStack := by
-        rw [← hstack_sf, hsp]
+      have hstack_sf1 : stackAt sf.sp 36864 = stackAt (s0.sp - 2496#64) 36864 := by
+        rw [hsp_sf, hsp]
       refine SepWPp.fold hfold_dk (by sep_focus) ?_
       refine SepWPp.fold hfold_ct1_buf (by sep_focus) ?_
       refine SepWPp.fold (Entails.of_eq hstack_sf1) (by sep_focus) ?_
@@ -779,7 +794,7 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp_ofEnv [LibsignalPlacement]
     {ext : String → Option (State → State)}
     (hA : RecvCt2PlacedAlloc M A lim ext)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (x : RecvCt2ChunkGhost F) (receivingCt2 : PolyDecoder) (ct2Full : Bytes)
     (cap_ct2 ptr_ct2 ptr_mac ptr_ct2_128 : BitVec 64)
     (c0 c1 c2 c3 c4 c5 c7 c8 : BitVec 64)
@@ -859,9 +874,9 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp_ofEnv [LibsignalPlacement]
           ((s0.sp - 2440#64) ↦₆₄ ptr_ct1) ∗
           ((s0.sp - 2432#64) ↦₆₄ c8) ∗
           A.pool lim st_cur st2 ∗
-          stackAt (s0.sp - 2496#64) extHookStack ∗
+          stackAt (s0.sp - 2496#64) 36864 ∗
           F_frame)
-        (recvCt2PlacedPostQOfEnv K F M A lim Env x st0 s0 R)
+        (recvCt2PlacedPostQExtOfEnv K F M A lim Env x st0 s0 R)
         (recvCt2PlacedPostQp K x s0 R)) :
     SepWPp (lsProg_350 (Rust.withPanics ext)) (s0.readReg64 .x30) st
       (ekSentCt1ReceivedUcAt A.repAlloc x.selfA x.self.uc ∗
@@ -884,9 +899,9 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp_ofEnv [LibsignalPlacement]
         ((s0.sp - 2432#64) ↦₆₄ c8) ∗
         someBranchFrameAt (s0.sp - 2496#64) ∗
         A.pool lim st_cur st ∗
-        stackAt (s0.sp - 2496#64) extHookStack ∗
+        stackAt (s0.sp - 2496#64) 36864 ∗
         F_frame)
-      (recvCt2PlacedPostQOfEnv K F M A lim Env x st0 s0 R)
+      (recvCt2PlacedPostQExtOfEnv K F M A lim Env x st0 s0 R)
       (recvCt2PlacedPostQp K x s0 R) :=
   recv_ct2_chunk_to_decaps_placed_wpp_ofPrePostEnv hA hdecaps x receivingCt2 ct2Full
     cap_ct2 ptr_ct2 ptr_mac ptr_ct2_128 c0 c1 c2 c3 c4 c5 c7 c8 st0 st_cur s0 st R F_frame
@@ -899,7 +914,7 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp [LibsignalPlacement]
     {ext : String → Option (State → State)}
     (hA : RecvCt2PlacedAlloc M A lim ext)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (x : RecvCt2ChunkGhost F) (receivingCt2 : PolyDecoder) (ct2Full : Bytes)
     (cap_ct2 ptr_ct2 ptr_mac ptr_ct2_128 : BitVec 64)
     (c0 c1 c2 c3 c4 c5 c7 c8 : BitVec 64)
@@ -979,9 +994,9 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp [LibsignalPlacement]
           ((s0.sp - 2440#64) ↦₆₄ ptr_ct1) ∗
           ((s0.sp - 2432#64) ↦₆₄ c8) ∗
           A.pool lim st_cur st2 ∗
-          stackAt (s0.sp - 2496#64) extHookStack ∗
+          stackAt (s0.sp - 2496#64) 36864 ∗
           F_frame)
-        (recvCt2PlacedPostQ K F M A lim x st0 s0 R)
+        (recvCt2PlacedPostQExt K F M A lim x st0 s0 R)
         (recvCt2PlacedPostQp K x s0 R)) :
     SepWPp (lsProg_350 (Rust.withPanics ext)) (s0.readReg64 .x30) st
       (ekSentCt1ReceivedUcAt A.repAlloc x.selfA x.self.uc ∗
@@ -1004,9 +1019,9 @@ theorem recv_ct2_chunk_to_decaps_placed_wpp [LibsignalPlacement]
         ((s0.sp - 2432#64) ↦₆₄ c8) ∗
         someBranchFrameAt (s0.sp - 2496#64) ∗
         A.pool lim st_cur st ∗
-        stackAt (s0.sp - 2496#64) extHookStack ∗
+        stackAt (s0.sp - 2496#64) 36864 ∗
         F_frame)
-      (recvCt2PlacedPostQ K F M A lim x st0 s0 R)
+      (recvCt2PlacedPostQExt K F M A lim x st0 s0 R)
       (recvCt2PlacedPostQp K x s0 R) :=
   recv_ct2_chunk_to_decaps_placed_wpp_ofEnv hA hdecaps x receivingCt2 ct2Full
     cap_ct2 ptr_ct2 ptr_mac ptr_ct2_128 c0 c1 c2 c3 c4 c5 c7 c8 st0 st_cur s0 st R F_frame

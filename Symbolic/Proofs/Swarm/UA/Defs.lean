@@ -10,7 +10,18 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.Coinsplit.Lift.Defs
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
+public import LibsignalBinary.Specifications.SignalSession.Run
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
+public import Symbolic.Specifications.Refinement.CliSetup
+public import Symbolic.Specifications.Refinement.Statement
+import Symbolic.Proofs.Refinement.Composed.Cli.Model
+public import Symbolic.Proofs.Refinement.Composed.Cli.ParD3RpkSlot -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.HooksBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Classical CLI Refinement Invariant and Slot Contracts
@@ -20,7 +31,7 @@ invariant (`UAInv`), per-slot contracts (`UALeakSpec`, `UASlot*Spec`, `UAInitWSp
 and translation contracts (`XlateInvSpec`, `XlateExcWSpec`, `XlateExcPSpec`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,19 +57,19 @@ open Symbolic.Swarm.Coinsplit.Lift (CliLiveAtCli)
 /-! ## Event Flattening and Schedules -/
 
 /-- Whether a CLI run event exited with code `0`. -/
-def runOk (ev : RunEvent) : Bool :=
+@[expose] def runOk (ev : RunEvent) : Bool :=
   match ev.exit with
   | some (0, _) => true
   | _ => false
 
 /-- Entry `MachineEvent`s of a run: its input followed by `.rng ev.coins`. -/
-def flatEntry (ev : RunEvent) : List MachineEvent :=
+@[expose] def flatEntry (ev : RunEvent) : List MachineEvent :=
   (match ev.cmd with
    | .send _ => [.pt ev.input]
    | _ => [.recv ev.input]) ++ [.rng ev.coins]
 
 /-- Exit `MachineEvent`s of a run: `.send out` or `.accept out` on exit `0`, empty otherwise. -/
-def flatExit (ev : RunEvent) : List MachineEvent :=
+@[expose] def flatExit (ev : RunEvent) : List MachineEvent :=
   match ev.exit, ev.cmd with
   | some (0, out), .send _ => [.send out]
   | some (0, out), .recv _ => [.accept out]
@@ -66,29 +77,29 @@ def flatExit (ev : RunEvent) : List MachineEvent :=
 
 /-- Whether `ev` is a `send` run that did not exit with code `0`; such runs flatten to `[]` and
 make no call in `callsOf`. -/
-def failedSend (ev : RunEvent) : Bool :=
+@[expose] def failedSend (ev : RunEvent) : Bool :=
   match ev.cmd with
   | .send _ => !runOk ev
   | _ => false
 
 /-- Flattened `MachineEvent`s of a single CLI event. -/
-def flatEvent : CliEvent → List MachineEvent
+@[expose] def flatEvent : CliEvent → List MachineEvent
   | .run ev => if failedSend ev then [] else flatEntry ev ++ flatExit ev
   | .env (.leak _ k) => [.leak k]
   | .env _ => []
 
 /-- Flattened `MachineEvent`s of a list of CLI events. -/
-def flatEvents (evs : List CliEvent) : List MachineEvent := evs.flatMap flatEvent
+@[expose] def flatEvents (evs : List CliEvent) : List MachineEvent := evs.flatMap flatEvent
 
 /-- Caller and exit-`0` status for each non-failed-`send` run event in `evs`. -/
-def callsOf : List CliEvent → List (Participant × Bool)
+@[expose] def callsOf : List CliEvent → List (Participant × Bool)
   | [] => []
   | .run ev :: evs => if failedSend ev then callsOf evs else (ev.party, runOk ev) :: callsOf evs
   | .env _ :: evs => callsOf evs
 
 /-- The schedule `(who, ok)` extends the caller sequence of `calls` and agrees with every call's
 exit-`0` status. -/
-def SchedFits (calls : List (Participant × Bool)) (who : List Participant) (ok : Nat → Bool) :
+@[expose] def SchedFits (calls : List (Participant × Bool)) (who : List Participant) (ok : Nat → Bool) :
     Prop :=
   calls.map Prod.fst <+: who ∧ ∀ k p b, calls[k]? = some (p, b) → ok k = b
 
@@ -96,7 +107,7 @@ def SchedFits (calls : List (Participant × Bool)) (who : List Participant) (ok 
 
 /-- Every current `alice` snapshot on `tr` has `pendingPreKey` items `(ek, ct)` with serialized
 base key `bk` and Kyber ciphertext `kct`. -/
-def AlicePendingKeysOn (interp' : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (alice : Participant)
+@[expose] def AlicePendingKeysOn (interp' : ExternInterpretation) (S : OpaqueSymbolSemantics) (g : Ghost) (alice : Participant)
     (tr : ExecTrace) (bk kct : HwBytes) : Prop :=
   ∀ (stateIdx : Nat) (st : _root_.DY.Libsignal.TripleRatchet.TRState),
     ((_root_.DY.PersistentLocalState.getLocalState alice stateIdx :
@@ -106,7 +117,7 @@ def AlicePendingKeysOn (interp' : ExternInterpretation) (S : OpaqueSymbolSemanti
       bk = ecKey (gamma interp' S g ek) ∧ kct = kyberKey (gamma interp' S g ct)
 
 /-- Every current `alice` snapshot on `tr` has `pendingPreKey tr stateIdx = none`. -/
-def AliceNotPendingOn (alice : Participant) (tr : ExecTrace) : Prop :=
+@[expose] def AliceNotPendingOn (alice : Participant) (tr : ExecTrace) : Prop :=
   ∀ (stateIdx : Nat) (st : _root_.DY.Libsignal.TripleRatchet.TRState),
     ((_root_.DY.PersistentLocalState.getLocalState alice stateIdx :
         _root_.DY.Traceful _root_.DY.Libsignal.TripleRatchet.TRState).run tr).1 = some st →
@@ -115,7 +126,7 @@ def AliceNotPendingOn (alice : Participant) (tr : ExecTrace) : Prop :=
 
 /-- Alice's leaked session record in `records` agrees with `initIds` and the `pendingPreKey` state
 of every current Alice snapshot on `tr`. -/
-def AliceRecordPendingInSession (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def AliceRecordPendingInSession (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (g : Ghost) (tr : ExecTrace) (records : Participant → Option HwBytes)
     (initIds : Option BundlePreKeyIds := none) : Prop :=
   ∀ (rec : HwBytes) (sess : Session (List (BitVec 8))),
@@ -131,7 +142,7 @@ def AliceRecordPendingInSession (interp' : ExternInterpretation) (r : ProtocolSe
 /-- Combined CLI invariant after `evs`: either `CollisionAfterExplainedPrefixClassical` holds, or
 `CliLiveAtCli` holds on `flatEvents evs`, every clean `ExplainsClassical` witness satisfies
 `AliceRecordPendingInSession`, and at least one clean `ExplainsClassical` witness exists. -/
-def UAInv (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (who : List Participant)
+@[expose] def UAInv (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (who : List Participant)
     (ok : Nat → Bool) (t_clean : CliTurn) (accepted : List HwBytes) (evs : List CliEvent) : Prop :=
   CollisionAfterExplainedPrefixClassical interp' r S evs ∨
     (CliLiveAtCli interp' r S who ok t_clean accepted (flatEvents evs) ∧
@@ -140,7 +151,7 @@ def UAInv (interp' : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbol
       ∃ g ss vis, ExplainsClassical interp' r S g ss vis evs ∧ ¬ ReadCollisionCliClassical interp' r S g ss evs)
 
 /-- Per-call postcondition preserving `PqTurnSim1A` and advancing `UAInv` across a single CLI call. -/
-def UASlotPost (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
+@[expose] def UASlotPost (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
     (t t_clean : CliTurn) (c : CliCall) (code : Nat) (out : HwBytes) (files : DirectorySnapshot)
     (accepted : List HwBytes) (evs_pre : List CliEvent) : Prop :=
   let interp' := interpOfParams interp P
@@ -156,7 +167,7 @@ def UASlotPost (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup
 /-! ## Slot Contracts -/
 
 /-- Environment leak events (`LeaksFrom`) preserve `UAInv`. -/
-def UALeakSpec : Prop :=
+@[expose] def UALeakSpec : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {accepted : List HwBytes} {evs leaks : List CliEvent}
@@ -170,7 +181,7 @@ def UALeakSpec : Prop :=
         t_clean accepted (evs ++ leaks)
 
 /-- Contract for Alice's `init` CLI slot. -/
-def UASlotInitSpec : Prop :=
+@[expose] def UASlotInitSpec : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {c : CliCall} {i : Inputs}
@@ -189,7 +200,7 @@ def UASlotInitSpec : Prop :=
       UASlotPost interp P r t t_clean c code out files accepted evs_pre
 
 /-- Contract for the `send` CLI slot. -/
-def UASlotSendSpec : Prop :=
+@[expose] def UASlotSendSpec : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {c : CliCall} {i : Inputs}
@@ -210,7 +221,7 @@ def UASlotSendSpec : Prop :=
       UASlotPost interp P r t t_clean c code out files accepted evs_pre
 
 /-- Contract for the whisper `recv` CLI slot. -/
-def UASlotRecvWSpec : Prop :=
+@[expose] def UASlotRecvWSpec : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {c : CliCall} {i : Inputs} {body : HwBytes}
@@ -232,7 +243,7 @@ def UASlotRecvWSpec : Prop :=
       UASlotPost interp P r t t_clean c code out files accepted evs_pre
 
 /-- Contract for Bob's non-promote `recv` CLI slot. -/
-def UASlotRpkNOSpec : Prop :=
+@[expose] def UASlotRpkNOSpec : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {c : CliCall} {i : Inputs}
@@ -255,7 +266,7 @@ def UASlotRpkNOSpec : Prop :=
       UASlotPost interp P r t t_clean c code out files accepted evs_pre
 
 /-- Contract for Bob's session-promotion `recv` CLI slot. -/
-def UASlotRpkPromSpec : Prop :=
+@[expose] def UASlotRpkPromSpec : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup),
     ExternContractsHoldCli interp → ModelAgree interp P → ProtocolSetupWF r →
     ∀ {t t_clean : CliTurn} {c : CliCall} {i : Inputs} {rec_ : HwBytes} {q : PreKeyFields}
@@ -278,14 +289,14 @@ def UASlotRpkPromSpec : Prop :=
       UASlotPost interp P r t t_clean c code out files accepted evs_pre
 
 /-- Clean explanation existence for the empty CLI event list. -/
-def UAInitWSpec : Prop :=
+@[expose] def UAInitWSpec : Prop :=
   ∀ {interp' : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics},
     ProtocolSetupWF r → SemReady interp' r S →
     ∃ g ss vis, ExplainsClassical interp' r S g ss vis [] ∧ ¬ ReadCollisionCliClassical interp' r S g ss []
 
 /-- Invariance of `ExplainsClassical` and `CollisionAfterExplainedPrefixClassical` under
 `interpOfParams`. -/
-def UAXportSpec : Prop :=
+@[expose] def UAXportSpec : Prop :=
   ∀ (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup) (S : OpaqueSymbolSemantics),
     (∀ g ss vis evs, ExplainsClassical (interpOfParams interp P) r S g ss vis evs ↔
       ExplainsClassical interp r S g ss vis evs) ∧
@@ -294,7 +305,7 @@ def UAXportSpec : Prop :=
 /-! ## Translation Contracts -/
 
 /-- Flattened-event per-call postcondition for `CliLiveAtCli` under side condition `NC`. -/
-def CliSlotPostW (NC : List Participant → (Nat → Bool) → Prop)
+@[expose] def CliSlotPostW (NC : List Participant → (Nat → Bool) → Prop)
     (interp : ExternInterpretation) (P : PEParams) (r : ProtocolSetup)
     (t t_clean : CliTurn) (c : CliCall) (code : Nat) (out : HwBytes) (files : DirectorySnapshot)
     (accepted : List HwBytes) (σ_pre : List MachineEvent) : Prop :=
@@ -312,7 +323,7 @@ def CliSlotPostW (NC : List Participant → (Nat → Bool) → Prop)
 
 /-- Every clean `ExplainsClassical` witness on `evs` translates to a clean `ExplainsCli` move run on
 `flatEvents evs` with matching trace, candidate salts, `prefixTerms`, and `plaintextTerms`. -/
-def XlateInvSpec : Prop :=
+@[expose] def XlateInvSpec : Prop :=
   ∀ {interp' : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics} {who : List Participant}
     {ok : Nat → Bool} {evs : List CliEvent} {g : Ghost} {ss : List Step} {vis : List VisEntry},
     ProtocolSetupWF r → SemReady interp' r S →
@@ -327,7 +338,7 @@ def XlateInvSpec : Prop :=
 /-- Absence of `CollisionAfterExplainedPrefixClassical` at an accepted whisper or known-base-key
 pre-key `recv` run refutes `SignalMsgAcceptedOnlyViaCollisionMoves` on every clean move explanation
 of `flatEvents evs`. -/
-def XlateExcWSpec : Prop :=
+@[expose] def XlateExcWSpec : Prop :=
   ∀ {interp' : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics} {who : List Participant}
     {ok : Nat → Bool} {evs : List CliEvent} {ev : RunEvent} {g₀ : Ghost} {ss₀ : List Step}
     {vis₀ : List VisEntry} {peer : Address} {out b : HwBytes}
@@ -352,7 +363,7 @@ def XlateExcWSpec : Prop :=
 /-- Absence of `CollisionAfterExplainedPrefixClassical` at an accepted pre-key `recv` run on an
 unknown base key refutes `PreKeyStartCollidesOrRejectsMoves` on every clean move explanation of
 `flatEvents evs`. -/
-def XlateExcPSpec : Prop :=
+@[expose] def XlateExcPSpec : Prop :=
   ∀ {interp' : ExternInterpretation} {r : ProtocolSetup} {S : OpaqueSymbolSemantics} {who : List Participant}
     {ok : Nat → Bool} {evs : List CliEvent} {ev : RunEvent} {g₀ : Ghost} {ss₀ : List Step}
     {vis₀ : List VisEntry} {peer : Address} {out : HwBytes} {p : PreKeyFields}

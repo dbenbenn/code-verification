@@ -10,13 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewPrologue -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<SignalMessage>::new` Prologue & Address/Key Serialization
@@ -26,7 +27,7 @@ call/sequencing helpers, and budget-threaded proofs for the prologue (`+0x000 �
 `serialize_addresses` + `PublicKey::serialize` (`+0x054 → +0x07c / +0x0f0`) on Block `63`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -85,23 +86,23 @@ private theorem branch_pos_beq_zero_ite {α : Type} (v : BitVec 64) (a b : α) :
 /-! ## Prologue event prefixes and `FitsEvents` splitting lemmas -/
 
 /-- Events of Segment 2 (`serialize_addresses` + `PublicKey::serialize`) in `<SignalMessage>::new`. -/
-def newAddrAndRkEvents (parse : UuidParser) (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newAddrAndRkEvents (parse : UuidParser) (x : SignalMessageNewGhost) : List AllocEvent :=
   (if (x.addresses parse).isSome then rustAllocEvents 36 1 else []) ++ publicKeySerializeEvents
 
 /-- Events of Segment 3 (temporary `ciphertext` copy) in `<SignalMessage>::new`. -/
-def newCtCopyEvents (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newCtCopyEvents (x : SignalMessageNewGhost) : List AllocEvent :=
   if x.ciphertext.isEmpty then [] else rustAllocEvents x.ciphertext.length 1
 
 /-- Events of Segment 4 (temporary `pq_ratchet` copy) in `<SignalMessage>::new`. -/
-def newPqCopyEvents (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newPqCopyEvents (x : SignalMessageNewGhost) : List AllocEvent :=
   if x.pqRatchet.isEmpty then [] else rustAllocEvents x.pqRatchet.length 1
 
 /-- Combined event prefix of Segments 1–4 (`+0x000..+0x100`) in `<SignalMessage>::new`. -/
-def newPrologueEvents (parse : UuidParser) (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newPrologueEvents (parse : UuidParser) (x : SignalMessageNewGhost) : List AllocEvent :=
   newAddrAndRkEvents parse x ++ newCtCopyEvents x ++ newPqCopyEvents x
 
 /-- Remaining events of `<SignalMessage>::new` after `+0x100` (Phase 2 + epilogue). -/
-def newPostPrologueEvents (parse : UuidParser) (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def newPostPrologueEvents (parse : UuidParser) (x : SignalMessageNewGhost) : List AllocEvent :=
   rustAllocEvents ((encode (x.protoMsg parse)).length + 9) 1 ++
     computeMacEvents ++
     (if x.ciphertext.isEmpty then [] else rustAllocEvents x.ciphertext.length 1) ++
@@ -197,31 +198,6 @@ theorem call_noPanic_placed [LibsignalPlacement] {α : Type} {prog : Program}
     exact (hexit sm code (F ∗ R) hex hpost).elim
   · dsimp only [withLsCodeLoaded] at hpost
     exact (hoom sm (F ∗ R) hoom_s hpost).elim
-
-/-- Sequence a panic-free `SepWPp` segment (`Qp = fun _ _ => False`) into an arbitrary `SepWPp`
-continuation while preserving `LibsignalCodeLoaded`. -/
-theorem signalMessageNew_seq_noPanic_placed [LibsignalPlacement] {prog : Program}
-    {mid ret : BitVec 64} {s : State}
-    {P P1 F P2 : SepProp} {φ : State → Prop} {Q Qp : State → SepProp → Prop}
-    (hcl : LibsignalCodeLoaded lsmpl s.mem)
-    (h1 : SepWPp prog mid s P1 (fun sm P_m => φ sm ∧ (P_m ⊢ P2)) (fun _ _ => False))
-    (hfocus : P = P1 ∗ F := by sep_focus)
-    (h2 : ∀ sm, LibsignalCodeLoaded lsmpl sm.mem →
-      sm.pc = mid → sm.status = .Running → φ sm →
-      SepWPp prog ret sm (P2 ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  rw [hfocus, sepConj_assoc] at hm
-  obtain ⟨sm, hsteps, ⟨hpcm, hrunm, P_m, hmm, hφ, hent⟩ | ⟨_, _, _, hfalse⟩ | ⟨_, hfoom⟩⟩ :=
-    h1 (F ∗ R) hm hL
-  · have hmm' : sm.mem ⊨ (P2 ∗ F) ∗ R := by
-      rw [sepConj_assoc]
-      exact Satisfies.mono (sepConj_mono_left hent) hmm
-    obtain ⟨sf, hsteps', hout⟩ :=
-      h2 sm (hcl.of_keepsFrozen hsteps.keepsFrozen) hpcm hrunm hφ R hmm' (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact False.elim hfalse
-  · exact (not_satisfies_false_sepConj hfoom).elim
 
 theorem stackAt_split_ge {sub total : Nat} (hle : sub ≤ total) (hbnd : total ≤ 2 ^ 64)
     (sp : BitVec 64) :

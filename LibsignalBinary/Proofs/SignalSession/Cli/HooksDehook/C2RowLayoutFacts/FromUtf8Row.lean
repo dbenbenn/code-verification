@@ -10,9 +10,21 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeSubslice -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.FromUtf8 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.FromUtf8
 import ProofLib.ProgramReflection
 meta import ProofLib.ProgramReflection
+public import LibsignalBinary.Heap.Fine.F3LayoutData
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.ExtraGhostReplay -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.FromUtf8GhostReplays -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Lib2LayoutFacts -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesDataRefl3
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Cutover-2 (`C2`) Full `GhostRowOk` Discharge for `core::str::converts::from_utf8` (`C2RowLayoutFacts.FromUtf8Row`)
@@ -79,7 +91,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.CodeS
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.FromUtf8
   (c2FromUtf8EntryGuard_of_resolve c2_fromUtf8Block_placeable_unrelaxed
    c2_fromUtf8_hRo_of_f3CodeInv f3FromUtf8EntryGuard_of_startupLr
-   keepR_fromUtf8Mpl_sub_keepLib2Text)
+   keepR_fromUtf8Mpl_noPanic keepR_fromUtf8Mpl_sub_keepLib2Text)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfCodeMatchesData
   (lsPlacedStubPairs lsPlacedStubPairs_eq ls_idsOk ls_sharedExterns_lt)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfPlaced
@@ -213,8 +225,9 @@ theorem c2_fromUtf8_hRealHullNoExt {mpl mmpl : Obj.MultiPlacement}
     ∀ (W : CliHooks) {pc : BitVec 64},
       keepR_fromUtf8Mpl mpl pc = true →
       (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = none :=
-  fun W {_} hkeep =>
-    f3RxSeg_realProg617_externAt_none hExt W (keepR_fromUtf8Mpl_sub_rxProg hLs hRes _ hkeep)
+  fun W {pc} hkeep =>
+    f3RxSeg_realProg617_externAt_none hExt W (keepR_fromUtf8Mpl_sub_rxProg hLs hRes pc hkeep)
+      (keepR_fromUtf8Mpl_noPanic hRes pc hkeep)
 
 /-- Standalone `hGhostNoExtNe` discharge for `fromUtf8MplGhost_rowOk` (`cliElf_linkedAt_unique` +
     `rfl_kernel` over generated `c2RxDehookedSyms`; `0` extra `C2ResolveFacts` premises). -/
@@ -319,54 +332,5 @@ theorem c2_fromUtf8MplGhost_rowOk_guardOf [LibsignalPlacement]
   have hRow := c2_fromUtf8MplGhost_rowOk mpl mmpl PredFs g extra hLook
     hRoSlice hExt hRxUtf8 hRes hLs
   exact ⟨hRow.1, ghostRowReplayOn_of_guard_imp hRow.2 hGuard⟩
-
-/-- `guardOf`-adapted `GhostRowOk` discharging `fromUtf8EntryGuard mpl` directly via
-    `FromUtf8.c2FromUtf8EntryGuard_of_resolve` from `s0.readReg64 .lr = f3StartupLrVal`
-    (`= f3StdLayout.libcStartMainStage2Addr + 56#64`, definitionally equal to
-    `StdMainEntryLr f3StdLayout s0`). -/
-theorem c2_fromUtf8MplGhost_rowOk_startupLr [LibsignalPlacement]
-    (mpl mmpl : Obj.MultiPlacement)
-    (PredFs : FsState → Prop)
-    (guardOf : String → State → Prop)
-    (g : CliGhostHooks) (extra : ExtraGhostTable)
-    (hLook : extra.lookup lsFromUtf8Sym =
-      some (fromUtf8MplGhost mpl mmpl c2FromUtf8TableAddr))
-    (hGuardLr : ∀ s0 : State, guardOf lsFromUtf8Sym s0 → s0.readReg64 .lr = f3StartupLrVal)
-    (hRoSlice : C2RoSliceFacts)
-    (hExt : C2ExternTableFacts mpl)
-    (hRxUtf8 : checkProgCodeSubslice f3TrialRxProg
-      (fromUtf8SubProg (fromUtf8Placement c2FromUtf8Addr c2FromUtf8TableAddr)) = true)
-    (hRes : libsignalSessionLib.resolve mpl lsFromUtf8Sym = c2FromUtf8Addr)
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl) :
-    GhostRowOk mpl mmpl
-      (fun u => F3CodeInv mpl mmpl u.mem ∧ PredFs u.fs)
-      (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
-      lsFromUtf8Sym
-      (guardOf lsFromUtf8Sym)
-      (fromUtf8MplGhost mpl mmpl c2FromUtf8TableAddr) :=
-  c2_fromUtf8MplGhost_rowOk_guardOf mpl mmpl PredFs guardOf g extra hLook
-    (fun s0 hg => c2FromUtf8EntryGuard_of_resolve hLs hRes (hGuardLr s0 hg))
-    hRoSlice hExt hRxUtf8 hRes hLs
-
-/-- Block-`617` startup `stage2 + 56` (`StdMainEntryLr f3StdLayout s0`) discharge of
-    `fromUtf8EntryGuard mpl s0` routing directly through `FromUtf8.c2FromUtf8EntryGuard_of_resolve`
-    without importing `CliStrictPlaced2`. -/
-theorem c2FromUtf8EntryGuard_of_stage2Lr {mpl : Obj.MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsFromUtf8Sym = c2FromUtf8Addr)
-    {s0 : State} (hlr : s0.readReg64 .lr = f3StdLayout.libcStartMainStage2Addr + 56#64) :
-    fromUtf8EntryGuard mpl s0 :=
-  c2FromUtf8EntryGuard_of_resolve hLs hRes hlr
-
-/-- Block-`617` startup `stage2 + 56` (`StdMainEntryLr f3StdLayout s0`) discharge of
-    `fromUtf8EntryGuard mpl s0` routing through `FromUtf8.f3FromUtf8EntryGuard_of_startupLr`
-    without importing `CliStrictPlaced2`. -/
-theorem f3FromUtf8EntryGuard_of_stage2Lr {mpl : Obj.MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hExt : C2ExternTableFacts mpl)
-    (hRes : libsignalSessionLib.resolve mpl lsFromUtf8Sym = c2FromUtf8Addr)
-    {s0 : State} (hlr : s0.readReg64 .lr = f3StdLayout.libcStartMainStage2Addr + 56#64) :
-    fromUtf8EntryGuard mpl s0 :=
-  f3FromUtf8EntryGuard_of_startupLr hLs hExt hRes hlr
 
 end LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.C2RowLayoutFacts.FromUtf8Row

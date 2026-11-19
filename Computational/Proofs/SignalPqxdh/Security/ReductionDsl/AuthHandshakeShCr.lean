@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshake -- proof-setup: allow-public-import
 
 /-!
 # `ReductionDsl` Program for the `Auth` `KemShCr` Reduction
@@ -18,7 +18,7 @@ Defines `shcrReductionAuthProg`, the two-stage `ReductionDsl` witness for the `A
 reduction (`shcrReductionAuthCore`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,26 +39,26 @@ abbrev shcrStTy : Ty pqSig :=
   .prod authStateTy (.prod (.opt (.prod .nat .nat)) (.prod (B 1568) (.prod (B 3168) (.prod .nat
     (.prod (.list initRecTy) (.prod (.list recvRecTy) (.prod .nat (B 1568))))))))
 
-@[reducible] def scBase {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
+@[expose, reducible] def scBase {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
     Expr pqxdhOps Γ authStateTy := .fst e
-@[reducible] def scTB {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
+@[expose, reducible] def scTB {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
     Expr pqxdhOps Γ (.opt (.prod .nat .nat)) := .fst (.snd e)
-@[reducible] def scTPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
+@[expose, reducible] def scTPk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
     Expr pqxdhOps Γ (B 1568) := .fst (.snd (.snd e))
-@[reducible] def scTSk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
+@[expose, reducible] def scTSk {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
     Expr pqxdhOps Γ (B 3168) := .fst (.snd (.snd (.snd e)))
-@[reducible] def scCnt {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
+@[expose, reducible] def scCnt {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
     Expr pqxdhOps Γ .nat := .fst (.snd (.snd (.snd (.snd e))))
-@[reducible] def scIR {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
+@[expose, reducible] def scIR {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
     Expr pqxdhOps Γ (.list initRecTy) := .fst (.snd (.snd (.snd (.snd (.snd e)))))
-@[reducible] def scRR {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
+@[expose, reducible] def scRR {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
     Expr pqxdhOps Γ (.list recvRecTy) := .fst (.snd (.snd (.snd (.snd (.snd (.snd e))))))
-@[reducible] def scSIdx {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
+@[expose, reducible] def scSIdx {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
     Expr pqxdhOps Γ .nat := .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
-@[reducible] def scChosen {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
+@[expose, reducible] def scChosen {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy) :
     Expr pqxdhOps Γ (B 1568) := .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd e)))))))
 
-@[reducible] def scMk {Γ : List (Ty pqSig)} (base : Expr pqxdhOps Γ authStateTy)
+@[expose, reducible] def scMk {Γ : List (Ty pqSig)} (base : Expr pqxdhOps Γ authStateTy)
     (tB : Expr pqxdhOps Γ (.opt (.prod .nat .nat))) (tPk : Expr pqxdhOps Γ (B 1568)) (tSk : Expr pqxdhOps Γ (B 3168))
     (cnt : Expr pqxdhOps Γ .nat) (iR : Expr pqxdhOps Γ (.list initRecTy))
     (rR : Expr pqxdhOps Γ (.list recvRecTy)) (sIdx : Expr pqxdhOps Γ .nat)
@@ -66,13 +66,13 @@ abbrev shcrStTy : Ty pqSig :=
   .pair base (.pair tB (.pair tPk (.pair tSk
     (.pair cnt (.pair iR (.pair rR (.pair sIdx chosen)))))))
 
-@[reducible] def scUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy)
+@[expose, reducible] def scUpd {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ shcrStTy)
     (base : Expr pqxdhOps Γ authStateTy := scBase e) (cnt : Expr pqxdhOps Γ .nat := scCnt e)
     (iR : Expr pqxdhOps Γ (.list initRecTy) := scIR e) (rR : Expr pqxdhOps Γ (.list recvRecTy) := scRR e)
     (chosen : Expr pqxdhOps Γ (B 1568) := scChosen e) : Expr pqxdhOps Γ shcrStTy :=
   scMk base (scTB e) (scTPk e) (scTSk e) cnt iR rR (scSIdx e) chosen
 
-@[reducible] def rrCt {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ recvRecTy) :
+@[expose, reducible] def rrCt {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ recvRecTy) :
     Expr pqxdhOps Γ (B 1568) := .fst (.snd (.snd (.snd (.snd e))))
 
 abbrev uInfoTy : Ty pqSig :=
@@ -82,15 +82,15 @@ abbrev uInfoTy : Ty pqSig :=
 abbrev pauseTy : Ty pqSig :=
   .prod sessionIdTy (.prod preKeyBundleTy (.prod (.prod (B 32) (B 32)) uInfoTy))
 
-@[reducible] def pdSid {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ pauseTy) :
+@[expose, reducible] def pdSid {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ pauseTy) :
     Expr pqxdhOps Γ sessionIdTy := .fst e
-@[reducible] def pdBu {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ pauseTy) :
+@[expose, reducible] def pdBu {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ pauseTy) :
     Expr pqxdhOps Γ preKeyBundleTy := .fst (.snd e)
-@[reducible] def pdM0 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ pauseTy) :
+@[expose, reducible] def pdM0 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ pauseTy) :
     Expr pqxdhOps Γ (B 32) := .fst (.fst (.snd (.snd e)))
-@[reducible] def pdM1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ pauseTy) :
+@[expose, reducible] def pdM1 {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ pauseTy) :
     Expr pqxdhOps Γ (B 32) := .snd (.fst (.snd (.snd e)))
-@[reducible] def pdUI {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ pauseTy) :
+@[expose, reducible] def pdUI {Γ : List (Ty pqSig)} (e : Expr pqxdhOps Γ pauseTy) :
     Expr pqxdhOps Γ uInfoTy := .snd (.snd (.snd e))
 
 abbrev SCS : Ty pqSig := .prod authRespTy shcrStTy
@@ -101,7 +101,7 @@ section ShCrHelpers
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List (Ty pqSig)}
 
-def preCheckC (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ sendQTy)
+@[expose] def preCheckC (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ (.opt pauseTy) :=
   letV (.fst (.snd (.snd (v x)))) fun bu =>
   letV (.fst (.snd (.snd (.snd (v x))))) fun m0 =>
@@ -122,7 +122,7 @@ def preCheckC (opk : Bool) (st : Var Γ₁ authStateTy) (x : Var Γ₂ sendQTy)
     (.pair (.snd (v uE)) (.pair (v pp)
       (.ite (v fresh) (.ite (stSecb (v st)) (v m1) (v m0)) (v m0))))))))
 
-def checkSigsC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy)
+@[expose] def checkSigsC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ .bool :=
   bindV (resolveSigPkC S K st (buIkB (v bu))) fun spk =>
   bindV (.queryPrim (.sigVerify 33)
@@ -133,7 +133,7 @@ def checkSigsC (st : Var Γ₁ authStateTy) (bu : Var Γ₂ preKeyBundleTy)
     fun v2 =>
   .ret (.boolAnd (v v1) (v v2))
 
-def finishC (st : Var Γ₁ authStateTy) (d : Var Γ₂ pauseTy)
+@[expose] def finishC (st : Var Γ₁ authStateTy) (d : Var Γ₂ pauseTy)
     (ks : Var Γ₃ (.prod (B 32) (.prod (B 32) (B 32))))
     (sc : Var Γ₄ (.prod (B 32) (B 1568))) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
     Comp pqxdhOps pqPrimIface Δ FinTy :=
@@ -185,7 +185,7 @@ section ShCrBranches
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List (Ty pqSig)}
 
-def shcrFinC (s : Var Γ₁ shcrStTy) (sid : Expr pqxdhOps Δ sessionIdTy)
+@[expose] def shcrFinC (s : Var Γ₁ shcrStTy) (sid : Expr pqxdhOps Δ sessionIdTy)
     (pqspkPk : Expr pqxdhOps Δ (B 1568)) (sc : Var Γ₂ (.prod (B 32) (B 1568)))
     (out : Var Γ₃ FinTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : Comp pqxdhOps pqPrimIface Δ SCS :=
   letV (.pair sid pqspkPk) fun sp =>
@@ -196,20 +196,20 @@ def shcrFinC (s : Var Γ₁ shcrStTy) (sid : Expr pqxdhOps Δ sessionIdTy)
         (iR := .listCons (.pair (scCnt (v s)) (.pair (.fst (v sp)) (.pair (.snd (v sp))
           (.pair (.snd (v sc)) (.fst (v sc)))))) (scIR (v s)))))
 
-def onBase (s : Var Γ₁ shcrStTy) [Ext Γ₁ Δ]
+@[expose] def onBase (s : Var Γ₁ shcrStTy) [Ext Γ₁ Δ]
     (br : (g : Var (authStateTy :: Δ) authStateTy) → Comp pqxdhOps pqPrimIface (authStateTy :: Δ) RS) :
     Comp pqxdhOps pqPrimIface Δ SCS :=
   bindV (letV (scBase (v s)) fun g => br g) fun r =>
   .ret (.pair (.fst (v r)) (scUpd (v s) (base := .snd (v r))))
 
 /-- Effective `N_recv` multiplier (`0` when `N_id = 0`, `N_recv` otherwise). -/
-def nRecvEff (S : Setup) : Nat :=
+@[expose] def nRecvEff (S : Setup) : Nat :=
   if S.N_id = 0 then 0 else S.N_recv
 
 end ShCrBranches
 
 set_option linter.unusedVariables false in
-def shcrGenSpkB (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
+@[expose] def shcrGenSpkB (S : Setup) (K : Nat) {Γ₁ Γ₂ Δ : List (Ty pqSig)}
     (s : Var Γ₁ shcrStTy) (x : Var Γ₂ (.prod .nat .nat))
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ SCS :=
   caseOptV (scTB (v s)) (onBase s fun g => genSpkB K g x) fun bPair =>
@@ -239,11 +239,11 @@ section ShCrBranches
 
 variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Δ : List (Ty pqSig)}
 
-def sendGuardE {Γ : List (Ty pqSig)} (opk : Bool) (x : Expr pqxdhOps Γ sendQTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def sendGuardE {Γ : List (Ty pqSig)} (opk : Bool) (x : Expr pqxdhOps Γ sendQTy) : Expr pqxdhOps Γ .bool :=
   if opk then .boolNot (isSomeE (buOpkB (.fst (.snd (.snd x)))))
   else isSomeE (buOpkB (.fst (.snd (.snd x))))
 
-def shcrSendC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ sendQTy)
+@[expose] def shcrSendC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ SCS :=
   .iteC (sendGuardE opk (v x)) (.ret (.pair aNone (v s))) <|
   letV (scBase (v s)) fun st =>
@@ -263,7 +263,7 @@ def shcrSendC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ sendQTy)
   bindV (finishC K st d ks sc) fun out =>
   shcrFinC s (pdSid (v d)) (buPqspkB (v bu)) sc out
 
-def shcrAcceptB (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ recvQTy)
+@[expose] def shcrAcceptB (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ recvQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ SCS :=
   bindV (onBase s fun g => recvB S K opk g x) fun r =>
   letV (pmHdr (.snd (.snd (.snd (v x))))) fun hdr =>
@@ -278,7 +278,7 @@ def shcrAcceptB (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ recvQTy)
     (scRR (.snd (v r))))))
 
 /-- Full `Auth` `KemShCr` post-pause simulator handler. -/
-def shcrPostC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
+@[expose] def shcrPostC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ SCS :=
   caseSumV (v q) (fun u => onBase s fun g => initPrinB K g u) fun q =>
   caseSumV (v q) (fun u => onBase s fun g => corruptB K g u) fun q =>
@@ -293,7 +293,7 @@ def shcrPostC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
   caseSumV (v q) (fun _ => .ret (.pair aNone (v s))) fun sk =>
   onBase s fun g => registerB g sk
 
-def tryPauseC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ sendQTy)
+@[expose] def tryPauseC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ (.opt pauseTy) :=
   .iteC (sendGuardE opk (v x)) (.ret .noneE) <|
   letV (scBase (v s)) fun st =>
@@ -304,7 +304,7 @@ def tryPauseC (opk : Bool) (s : Var Γ₁ shcrStTy) (x : Var Γ₂ sendQTy)
   .ret (.ite (.boolNot (v ok)) .noneE
     (.ite (natEq (scCnt (v s)) (scSIdx (v s))) (.someE (v d)) .noneE))
 
-def pauseCheckC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
+@[expose] def pauseCheckC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ (.opt pauseTy) :=
   caseSumV (v q) (fun _ => .ret .noneE) fun q =>
   caseSumV (v q) (fun _ => .ret .noneE) fun q =>
@@ -314,14 +314,14 @@ def pauseCheckC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
   caseSumV (v q) (fun x => tryPauseC S K false s x) fun _ =>
   .ret .noneE
 
-def shcrPreC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
+@[expose] def shcrPreC (s : Var Γ₁ shcrStTy) (q : Var Γ₂ authQueryTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] :
     Comp pqxdhOps pqPrimIface Δ (.sum SCS (.prod (B 1568) (.prod pauseTy shcrStTy))) :=
   bindV (pauseCheckC S K s q) fun p =>
   caseOptV (v p) (bindV (shcrPostC S K s q) fun r => .ret (.inl (v r))) fun d =>
   .ret (.inr (.pair (buPqspkB (pdBu (v d))) (.pair (v d) (v s))))
 
-def shcrResumeC (sc : Var Γ₁ (.prod (B 32) (B 1568))) (d : Var Γ₂ pauseTy) (s : Var Γ₃ shcrStTy)
+@[expose] def shcrResumeC (sc : Var Γ₁ (.prod (B 32) (B 1568))) (d : Var Γ₂ pauseTy) (s : Var Γ₃ shcrStTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] : Comp pqxdhOps pqPrimIface Δ SCS :=
   letV (scBase (v s)) fun st =>
   bindV .sampleBytes32 fun ekSk =>
@@ -332,7 +332,7 @@ def shcrResumeC (sc : Var Γ₁ (.prod (B 32) (B 1568))) (d : Var Γ₂ pauseTy)
   bindV (shcrFinC s (pdSid (v d)) (buPqspkB (pdBu (v d))) sc out) fun r =>
   .ret (.pair (.fst (v r)) (scUpd (.snd (v r)) (chosen := buPqspkB (pdBu (v d)))))
 
-def shcrExtractC (Q : Nat) (sc : Var Γ₁ (.prod (B 32) (B 1568))) (s : Var Γ₃ shcrStTy)
+@[expose] def shcrExtractC (Q : Nat) (sc : Var Γ₁ (.prod (B 32) (B 1568))) (s : Var Γ₃ shcrStTy)
     [Ext Γ₁ Δ] [Ext Γ₃ Δ] : Comp pqxdhOps pqPrimIface Δ (B 1568) :=
   bindV (findMV Q (scRR (v s)) fun r =>
     bindV (.queryPrim .kemDecaps (.pair (scTSk (v s)) (rrCt (v r)))) fun dec =>
@@ -345,7 +345,7 @@ end ShCrBranches
 
 /-- Two-stage `ReductionDsl` witness for `shcrReductionAuthCore` with extraction bound `Q` and
     state-list bound `K`. -/
-def shcrReductionAuthProg (S : Setup) (Q K : Nat) :
+@[expose] def shcrReductionAuthProg (S : Setup) (Q K : Nat) :
     TwoStageCostedReduction pqxdhOps pqPrimIface (authSpec S) (authCodec S)
       (.prod (B 1568) (B 3168)) .unit .bool (B 1568) (.prod (B 32) (B 1568)) (B 1568) where
   σ := shcrStTy

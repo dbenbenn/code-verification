@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked59_71
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked59_71 -- proof-setup: allow-public-import
 
 /-!
 # `VmPreserved` Placed Verification of 59- and 71-Instruction Unchunked `encoded_len` Leaves
@@ -19,7 +19,7 @@ Unpinning bridges and `[LibsignalPlacement]` `subroutine_ok` theorems with `VmPr
 `KeysUnsampled`, `NoHeaderReceived`, `Ct2Sent`, `EkSent`, and `HeaderReceived` (`[local#1, #2]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -94,45 +94,45 @@ theorem unchunked2EncodedLen_ok_of_pinned {prog : Program} {entry : BitVec 64} {
 
 /-! ### `KeysUnsampled` (Blocks `172`, `400`) -/
 
-def KeysUnsampledEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def KeysUnsampledEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_172).rebase (blkPl_172).base (Rust.withPanics ext))
     (blkPl_172).base (keysUnsampledEncodedLenPinnedSpec A)
 
-def KeysUnsampledEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def KeysUnsampledEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_172).rebase (blkPl_172).base (Rust.withPanics ext))
     (blkPl_172).base (keysUnsampledEncodedLenSpec A)
 
-def KeysUnsampledEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def KeysUnsampledEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_172).rebase (blkPl_172).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_172).base (keysUnsampledEncodedLenPinnedSpec A)
 
-def KeysUnsampledEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def KeysUnsampledEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_172).rebase (blkPl_172).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_172).base (keysUnsampledEncodedLenSpec A)
 
-def KeysUnsampledEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def KeysUnsampledEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_400).rebase (blkPl_400).base (Rust.withPanics ext))
     (blkPl_400).base (keysUnsampledEncodedLenPinnedSpec A)
 
-def KeysUnsampledEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def KeysUnsampledEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_400).rebase (blkPl_400).base (Rust.withPanics ext))
     (blkPl_400).base (keysUnsampledEncodedLenSpec A)
 
-def KeysUnsampledEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def KeysUnsampledEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_400).rebase (blkPl_400).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_400).base (keysUnsampledEncodedLenPinnedSpec A)
 
-def KeysUnsampledEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def KeysUnsampledEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_400).rebase (blkPl_400).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
@@ -222,45 +222,45 @@ theorem keysUnsampledEncodedLen_local2_placed_ok [LibsignalPlacement]
 
 /-! ### `NoHeaderReceived` (Blocks `193`, `424`) -/
 
-def NoHeaderReceivedEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def NoHeaderReceivedEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_193).rebase (blkPl_193).base (Rust.withPanics ext))
     (blkPl_193).base (noHeaderReceivedEncodedLenPinnedSpec A)
 
-def NoHeaderReceivedEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def NoHeaderReceivedEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_193).rebase (blkPl_193).base (Rust.withPanics ext))
     (blkPl_193).base (noHeaderReceivedEncodedLenSpec A)
 
-def NoHeaderReceivedEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def NoHeaderReceivedEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_193).rebase (blkPl_193).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_193).base (noHeaderReceivedEncodedLenPinnedSpec A)
 
-def NoHeaderReceivedEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def NoHeaderReceivedEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_193).rebase (blkPl_193).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_193).base (noHeaderReceivedEncodedLenSpec A)
 
-def NoHeaderReceivedEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def NoHeaderReceivedEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_424).rebase (blkPl_424).base (Rust.withPanics ext))
     (blkPl_424).base (noHeaderReceivedEncodedLenPinnedSpec A)
 
-def NoHeaderReceivedEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def NoHeaderReceivedEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_424).rebase (blkPl_424).base (Rust.withPanics ext))
     (blkPl_424).base (noHeaderReceivedEncodedLenSpec A)
 
-def NoHeaderReceivedEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def NoHeaderReceivedEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_424).rebase (blkPl_424).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_424).base (noHeaderReceivedEncodedLenPinnedSpec A)
 
-def NoHeaderReceivedEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def NoHeaderReceivedEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_424).rebase (blkPl_424).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
@@ -350,45 +350,45 @@ theorem noHeaderReceivedEncodedLen_local2_placed_ok [LibsignalPlacement]
 
 /-! ### `Ct2Sent` (Blocks `163`, `389`) -/
 
-def Ct2SentEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct2SentEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_163).rebase (blkPl_163).base (Rust.withPanics ext))
     (blkPl_163).base (ct2SentEncodedLenPinnedSpec A)
 
-def Ct2SentEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct2SentEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_163).rebase (blkPl_163).base (Rust.withPanics ext))
     (blkPl_163).base (ct2SentEncodedLenSpec A)
 
-def Ct2SentEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def Ct2SentEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_163).rebase (blkPl_163).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_163).base (ct2SentEncodedLenPinnedSpec A)
 
-def Ct2SentEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def Ct2SentEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_163).rebase (blkPl_163).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_163).base (ct2SentEncodedLenSpec A)
 
-def Ct2SentEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct2SentEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_389).rebase (blkPl_389).base (Rust.withPanics ext))
     (blkPl_389).base (ct2SentEncodedLenPinnedSpec A)
 
-def Ct2SentEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def Ct2SentEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_389).rebase (blkPl_389).base (Rust.withPanics ext))
     (blkPl_389).base (ct2SentEncodedLenSpec A)
 
-def Ct2SentEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def Ct2SentEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_389).rebase (blkPl_389).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_389).base (ct2SentEncodedLenPinnedSpec A)
 
-def Ct2SentEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def Ct2SentEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_389).rebase (blkPl_389).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
@@ -506,45 +506,45 @@ theorem unchunked3EncodedLen_ok_of_pinned {prog : Program} {entry : BitVec 64} {
 
 /-! ### `EkSent` (Blocks `189`, `415`) -/
 
-def EkSentEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_189).rebase (blkPl_189).base (Rust.withPanics ext))
     (blkPl_189).base (ekSentEncodedLenPinnedSpec A)
 
-def EkSentEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_189).rebase (blkPl_189).base (Rust.withPanics ext))
     (blkPl_189).base (ekSentEncodedLenSpec A)
 
-def EkSentEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EkSentEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_189).rebase (blkPl_189).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_189).base (ekSentEncodedLenPinnedSpec A)
 
-def EkSentEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EkSentEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_189).rebase (blkPl_189).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_189).base (ekSentEncodedLenSpec A)
 
-def EkSentEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_415).rebase (blkPl_415).base (Rust.withPanics ext))
     (blkPl_415).base (ekSentEncodedLenPinnedSpec A)
 
-def EkSentEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EkSentEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_415).rebase (blkPl_415).base (Rust.withPanics ext))
     (blkPl_415).base (ekSentEncodedLenSpec A)
 
-def EkSentEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EkSentEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_415).rebase (blkPl_415).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_415).base (ekSentEncodedLenPinnedSpec A)
 
-def EkSentEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def EkSentEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_415).rebase (blkPl_415).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
@@ -634,45 +634,45 @@ theorem ekSentEncodedLen_local2_placed_ok [LibsignalPlacement]
 
 /-! ### `HeaderReceived` (Blocks `175`, `404`) -/
 
-def HeaderReceivedEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def HeaderReceivedEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_175).rebase (blkPl_175).base (Rust.withPanics ext))
     (blkPl_175).base (headerReceivedEncodedLenPinnedSpec A)
 
-def HeaderReceivedEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def HeaderReceivedEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_175).rebase (blkPl_175).base (Rust.withPanics ext))
     (blkPl_175).base (headerReceivedEncodedLenSpec A)
 
-def HeaderReceivedEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def HeaderReceivedEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_175).rebase (blkPl_175).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_175).base (headerReceivedEncodedLenPinnedSpec A)
 
-def HeaderReceivedEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def HeaderReceivedEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_175).rebase (blkPl_175).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_175).base (headerReceivedEncodedLenSpec A)
 
-def HeaderReceivedEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def HeaderReceivedEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_404).rebase (blkPl_404).base (Rust.withPanics ext))
     (blkPl_404).base (headerReceivedEncodedLenPinnedSpec A)
 
-def HeaderReceivedEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def HeaderReceivedEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_404).rebase (blkPl_404).base (Rust.withPanics ext))
     (blkPl_404).base (headerReceivedEncodedLenSpec A)
 
-def HeaderReceivedEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def HeaderReceivedEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_404).rebase (blkPl_404).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))
     (blkPl_404).base (headerReceivedEncodedLenPinnedSpec A)
 
-def HeaderReceivedEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def HeaderReceivedEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_404).rebase (blkPl_404).base
     (Rust.withPanics (tripleRatchetExterns C ctl abs)))

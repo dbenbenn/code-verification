@@ -9,14 +9,28 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlacedBudgetAux
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlacedBudgetAux
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateHeader
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.V1StateHelpers
 import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesVnEncode
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsV1StateBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.DefsPlacedBudget
+public import ProofLib.SepLogic.WP.SyscallsMmap
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlaced
 
 /-!
 # Budget-Threaded Relocatable Phase 3d Header & Jump-Table Dispatch (Block `427`)
@@ -25,7 +39,7 @@ Threads `RustCliAllocBudget` and `VmPreserved` through the `PqRatchetState.inner
 and jump-table dispatch steps (`+6140..+6616`), re-exporting callee bridges from `Aux`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -36,9 +50,9 @@ set_option linter.unusedSectionVars false
 
 namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesInnerHeaderPlacedBudget
 
-open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection SepProp
+open Arm64 ProofLib ProofLib.ProgramReflection SepProp
 open CryptoVerification
-  (LibsignalPlacement libsignalSessionCode lsmpl lsρ)
+  (LibsignalPlacement lsmpl lsρ)
 open CryptoVerification.RustHeap (RustAlloc vecU8At)
 open CryptoVerification.LibsignalSpqrV1
   (ChainPB PqRatchetState V1State VersionNegotiationPB)
@@ -131,7 +145,7 @@ private theorem sepWPp_extract_vecU8At_bounds {A : RustAlloc} {v cap ptr : BitVe
   rw [satisfies_pure_sepConj] at hhm
   exact h hhm.1.1 hhm.1.2.1 hhm.1.2.2 R hm hL
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero spqrSendPlacedEntry
   zeroExtend64_beq_zero32
   ofNat_countLeadingZeros_64 ofNat_countLeadingZeros_32
@@ -448,7 +462,7 @@ theorem step_send_inner_to_6616_pool_placed
 /-- Budget-threaded unified stepping obligation from `spqrSendPlacedEntry + 6616#64` (jump-table
 dispatch) to `spqrSendPlacedEntry + 6216#64` (post-encode join) for a `V1State.InnerState` value `is`,
 preserving `A.pool lim st0`. -/
-def StepSendInnerStateAt6616Placed (resStack : Nat) {M : AllocCostModel}
+@[expose] def StepSendInnerStateAt6616Placed (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st0 : M.σ)
     (ext : String → Option (State → State)) (roBase : BitVec 64)
     (s0 : State) (is : V1State.InnerState) : Prop :=

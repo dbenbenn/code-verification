@@ -73,12 +73,6 @@ theorem call0RngEvents_drop_33_gt_9 : ∀ e ∈ call0RngEvents.drop 33, 9 < (Com
   show 9 < rngDhsBytes.length
   rw [rngDhsBytes_length]
   decide
-theorem ptDeadHB_of (hinv : ∀ (r : Records) (S : Sem) (g : Ghost) (ms : List Move), compFitsPinned setup compI0 r → Common443.CompSetupSecrecy.NoBrk r ms → ExplainsMoves compI0 r S who ok g ms (.recv bundleBytes :: call0RngEvents) → IniPrefixStateSecretsInv r S g ms bundleBytes call0RngEvents) : PtDeadHB := by
-  intro r S g ms hfits hnb hexp hem hcol; have hwf : RecordsWF r := hfits.1.1; rw [trace_take_35_eq] at hexp hcol; refine not_pt_prefixGhosts_collision_of_ne_bytes hexp.1 ?_ ⟨hem, hcol⟩; intro t ht x hx hinj hval_eq
-  have hgt : 9 < x.2.2.length := memoInjGt_prefixTerms_of_matchedPrefix_ini_of hwf hexp.1 (hinv r S g ms hfits hnb hexp)
-      (by decide) call0RngEvents_kind call0RngEvents_take_1_gt_9 call0RngEvents_drop_33_gt_9
-      t ht x hx hinj
-  rw [hval_eq, ptMsg35_length] at hgt; exact Nat.lt_irrefl 9 hgt
 theorem not_ptSplitCollisionAt_torsionComp_35_of {r : Records} {S : Sem} {who₀ : List Participant} {ok₀ : Nat → Bool} (hwf : RecordsWF r) (hinv : ∀ (g : Ghost) (ms : List Move), ExplainsMoves compI0 r S who₀ ok₀ g ms (.recv bundleBytes :: call0RngEvents) → IniPrefixStateSecretsInv r S g ms bundleBytes call0RngEvents) : ¬ PtSplitCollisionAt compI0 r S who₀ ok₀ Witnesses.Cheval26SmallSubgroupTorsionComp.trace 35 := by
   refine not_ptSplitCollisionAt_of_ne_bytes torsionComp_trace_getElem?_35 ?_; intro g ms hexp t ht x hx hinj hval_eq; rw [torsionComp_trace_take_35_eq] at hexp
   have hgt : 9 < x.2.2.length := memoInjGt_prefixTerms_of_matchedPrefix_ini_of hwf hexp.1 (hinv g ms hexp)
@@ -99,8 +93,6 @@ theorem ptDead35_self {r : Records} {S : Sem} {who₀ : List Participant} {ok₀
       (by decide) call0RngEvents_kind call0RngEvents_take_1_gt_9 call0RngEvents_drop_33_gt_9
       t ht x hx hinj
   rw [hval_eq, ptMsg35_length] at hgt; exact Nat.lt_irrefl 9 hgt
-theorem ptDeadHB : PtDeadHB :=
-  ptDeadHB_of fun _ _ _ _ hfits hnb hexp => iniPrefixStateSecretsInv_call0 hfits.1.1 hnb hexp
 theorem not_ptSplitCollisionAt_torsionComp_35 {r : Records} {S : Sem} {who₀ : List Participant} {ok₀ : Nat → Bool} (hwf : RecordsWF r) (hnb : ∀ ms, Common443.CompSetupSecrecy.NoBrk r ms) : ¬ PtSplitCollisionAt compI0 r S who₀ ok₀ Witnesses.Cheval26SmallSubgroupTorsionComp.trace 35 :=
   not_ptSplitCollisionAt_torsionComp_35_of hwf fun _ ms hexp =>
     iniPrefixStateSecretsInv_call0 hwf (hnb ms) hexp

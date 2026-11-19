@@ -11,6 +11,7 @@ module
 
 public import Computational.Proofs.E2E.SpkLeakRedModel -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SessionProgCommon -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SessionCostExactDefs -- proof-setup: allow-public-import
 public import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Bookkeeping -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.Dsl.ClampsLossless
 import Computational.Proofs.E2E.Dsl.DrSessionSimHooks
@@ -22,6 +23,10 @@ import Computational.Proofs.Game.PromotedCostedReds.DrSessionSimSize
 import Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingProofs
 import Computational.Proofs.Game.PromotedCostedReds.SpkTier2Lift
 import Computational.Proofs.ReductionDsl.SpkLeakRed
+public import Computational.Proofs.E2E.Dsl.StartAndExtSmAux -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.ReductionDsl.Bridge
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 
 /-!
 # Tier-2 `CostedReduction` Witness for `spkLeakRed`
@@ -130,352 +135,8 @@ open Computational.Proofs.Game.PromotedCostedReds.SpkTier2BookkeepingProofs (tie
 open Computational.Proofs.Game.PromotedCostedReds.SpkTier2Lift (OracleCompRel
   eval_eq_simulateQ_of_rel)
 
-/-! ## Exact static cost preservation -/
+open Computational.Proofs.Game.PromotedCostedReds.SessionCostExactDefs (BoxEq box_le exprAllOps compAllOps exprAllOps_renExpr exprAllOps_wk1Expr compAllOps_renComp compAllOps_wk1Comp sessionCostExactCryptoOp sessionCostExactOp NoKemKeyGenExpr NoKemKeyGenComp liftExpr_cost_exact liftCompEmpty_cost_exact liftCompCoins_cost_exact noKemKeyGenExpr_renExpr noKemKeyGenExpr_wk1Expr noKemKeyGenComp_renComp noKemKeyGenComp_wk1Comp noKemKeyGenComp_ret noKemKeyGenComp_bind noKemKeyGenComp_ite noKemKeyGenComp_caseOpt noKemKeyGenComp_caseSum noKemKeyGenComp_sample noKemKeyGenComp_query noKemKeyGenComp_iter noKemKeyGenComp_findM noKemKeyGenComp_anyM noKemKeyGenComp_mapM noKemKeyGenComp_consumeFirstM noKemKeyGenComp_foldM noKemKeyGenExpr_optBytes32LitE noKemKeyGenExpr_var noKemKeyGenExpr_v0 noKemKeyGenExpr_v1 noKemKeyGenExpr_v2 noKemKeyGenExpr_v3 noKemKeyGenExpr_v4 noKemKeyGenExpr_v5 noKemKeyGenExpr_v6 noKemKeyGenExpr_unit noKemKeyGenExpr_bool noKemKeyGenExpr_nat noKemKeyGenExpr_none noKemKeyGenExpr_nil noKemKeyGenExpr_add noKemKeyGenExpr_sub noKemKeyGenExpr_mulK noKemKeyGenExpr_divK noKemKeyGenExpr_modK noKemKeyGenExpr_lt noKemKeyGenExpr_eqN noKemKeyGenExpr_not noKemKeyGenExpr_and noKemKeyGenExpr_ite noKemKeyGenExpr_pair noKemKeyGenExpr_fst noKemKeyGenExpr_snd noKemKeyGenExpr_inl noKemKeyGenExpr_inr noKemKeyGenExpr_some noKemKeyGenExpr_caseOpt noKemKeyGenExpr_caseSum noKemKeyGenExpr_letE noKemKeyGenExpr_cons noKemKeyGenExpr_len noKemKeyGenExpr_take noKemKeyGenExpr_appendL noKemKeyGenExpr_findB noKemKeyGenExpr_anyB noKemKeyGenExpr_mapB noKemKeyGenExpr_foldrB noKemKeyGenExpr_tconst noKemKeyGenExpr_tget noKemKeyGenExpr_tset noKemKeyGenExpr_e2ePureOp noKemKeyGenExpr_e2eCurveOp noKemKeyGenExpr_e2eCryptoOp noKemKeyGenExpr_orE noKemKeyGenExpr_boolEq noKemKeyGenExpr_isSomeE noKemKeyGenExpr_otherE noKemKeyGenExpr_pGet noKemKeyGenExpr_sendAddrsE noKemKeyGenExpr_expectedAddrsE noKemKeyGenComp_spqrSendComp noKemKeyGenComp_spqrRecvComp noKemKeyGenExpr_drSendPostE noKemKeyGenComp_drSendC noKemKeyGenExpr_drRecvFinishE noKemKeyGenComp_drReceiveC noKemKeyGenComp_drTrArmC noKemKeyGenComp_drChArmC noKemKeyGenComp_drCrArmC drSendAtomicC_cost_exact drReceiveAtomicC_cost_exact)
 
-section ExactCostHelpers
-
-@[expose] def exprAllOps {S0 : _root_.ReductionDsl.Sig} {O0 : Ops S0} (p : O0.Op → Bool) :
-    {Γ : List (Ty S0)} → {t : Ty S0} → Expr O0 Γ t → Bool
-  | _, _, .var _ => true
-  | _, _, .unit => true
-  | _, _, .bool _ => true
-  | _, _, .nat _ => true
-  | _, _, .add a b => exprAllOps p a && exprAllOps p b
-  | _, _, .sub a b => exprAllOps p a && exprAllOps p b
-  | _, _, .mulK _ a => exprAllOps p a
-  | _, _, .divK _ a => exprAllOps p a
-  | _, _, .modK _ a => exprAllOps p a
-  | _, _, .lt a b => exprAllOps p a && exprAllOps p b
-  | _, _, .eqN a b => exprAllOps p a && exprAllOps p b
-  | _, _, .not a => exprAllOps p a
-  | _, _, .and a b => exprAllOps p a && exprAllOps p b
-  | _, _, .ite c a b => exprAllOps p c && exprAllOps p a && exprAllOps p b
-  | _, _, .pair a b => exprAllOps p a && exprAllOps p b
-  | _, _, .fst a => exprAllOps p a
-  | _, _, .snd a => exprAllOps p a
-  | _, _, .inl a => exprAllOps p a
-  | _, _, .inr a => exprAllOps p a
-  | _, _, .none => true
-  | _, _, .some a => exprAllOps p a
-  | _, _, .caseOpt c a b => exprAllOps p c && exprAllOps p a && exprAllOps p b
-  | _, _, .caseSum c a b => exprAllOps p c && exprAllOps p a && exprAllOps p b
-  | _, _, .letE a b => exprAllOps p a && exprAllOps p b
-  | _, _, .op o a => p o && exprAllOps p a
-  | _, _, .nil => true
-  | _, _, .cons a b => exprAllOps p a && exprAllOps p b
-  | _, _, .len a => exprAllOps p a
-  | _, _, .take a b => exprAllOps p a && exprAllOps p b
-  | _, _, .appendL _ a b => exprAllOps p a && exprAllOps p b
-  | _, _, .findB _ a b => exprAllOps p a && exprAllOps p b
-  | _, _, .anyB _ a b => exprAllOps p a && exprAllOps p b
-  | _, _, .mapB _ a b => exprAllOps p a && exprAllOps p b
-  | _, _, .foldrB _ c a b => exprAllOps p c && exprAllOps p a && exprAllOps p b
-  | _, _, .tconst a => exprAllOps p a
-  | _, _, .tget a b => exprAllOps p a && exprAllOps p b
-  | _, _, .tset c a b => exprAllOps p c && exprAllOps p a && exprAllOps p b
-
-private def compAllOps {S0 : _root_.ReductionDsl.Sig} {O0 : Ops S0}
-    {ι : Type} {T : OracleSpec ι} {I0 : Iface S0 T} (p : O0.Op → Bool) :
-    {Γ : List (Ty S0)} → {t : Ty S0} → Comp O0 I0 Γ t → Bool
-  | _, _, .ret e => exprAllOps p e
-  | _, _, .bind c k => compAllOps p c && compAllOps p k
-  | _, _, .ite b c d => exprAllOps p b && compAllOps p c && compAllOps p d
-  | _, _, .caseOpt b c d => exprAllOps p b && compAllOps p c && compAllOps p d
-  | _, _, .caseSum b c d => exprAllOps p b && compAllOps p c && compAllOps p d
-  | _, _, .sample _ e => exprAllOps p e
-  | _, _, .query _ e => exprAllOps p e
-  | _, _, .iter _ e body => exprAllOps p e && compAllOps p body
-  | _, _, .findM _ e body => exprAllOps p e && compAllOps p body
-  | _, _, .anyM _ e body => exprAllOps p e && compAllOps p body
-  | _, _, .mapM _ e body => exprAllOps p e && compAllOps p body
-  | _, _, .consumeFirstM _ l body mk =>
-    exprAllOps p l && compAllOps p body && exprAllOps p mk
-  | _, _, .foldM _ l z body =>
-    exprAllOps p l && exprAllOps p z && compAllOps p body
-
-@[expose] def sessionCostExactCryptoOp : E2ECryptoOp → Bool
-  | .x25519 => false
-  | .x25519Base => false
-  | .pow8 => false
-  | .sigSign => false
-  | .kemKeyGen => false
-  | .hkdfDerive96 => false
-  | _ => true
-
-@[expose] def sessionCostExactOp :
-    E2EPureOp ⊕ (CryptoVerification.E2E.Costed.E2ECurveCheckOp ⊕ E2ECryptoOp) → Bool
-  | .inl _ => true
-  | .inr (.inl _) => true
-  | .inr (.inr c) => sessionCostExactCryptoOp c
-
-/-- Predicate on `e2eOps` expressions excluding PQXDH crypto stubs whose lifted cost exceeds `1×`. -/
-abbrev NoKemKeyGenExpr {ℓ : ℕ} {Pt : Type} {P : _}
-    {C : Crypto} {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {Γ : List (Ty (e2eSig ℓ))} {t : Ty (e2eSig ℓ)}
-    (e : Expr (e2eOps ℓ P C K decT encT) Γ t) : Bool :=
-  exprAllOps sessionCostExactOp e
-
-private abbrev NoKemKeyGenComp {ℓ : ℕ} {Pt : Type} {P : _}
-    {C : Crypto} {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
-    {ι : Type} {T : OracleSpec ι} {I0 : Iface (e2eSig ℓ) T}
-    {Γ : List (Ty (e2eSig ℓ))} {t : Ty (e2eSig ℓ)}
-    (c : Comp (e2eOps ℓ P C K decT encT) I0 Γ t) : Bool :=
-  compAllOps sessionCostExactOp c
-
-private theorem liftPureOpExpr_cost_exact {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
-    {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
-    {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
-    {Γ : List (Ty (atomicSig ℓ Pt))} (o : E2EPureOp)
-    (a : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ (liftTy (Pt := Pt) (o.dom ℓ))) :
-    (Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge.liftPureOpExpr
-      (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
-      (decT := decT) (lam := lam) o a).cost = a.cost + o.cost ℓ := by
-  cases o <;>
-    (dsimp only [Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge.liftPureOpExpr]
-     rw [cost_sessPureOp]; rfl)
-
-private theorem liftCurveOpExpr_cost_exact {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
-    {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
-    {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
-    {Γ : List (Ty (atomicSig ℓ Pt))} (cc : CryptoVerification.E2E.Costed.E2ECurveCheckOp)
-    (a : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ
-      (liftTy (Pt := Pt) ((CryptoVerification.E2E.Costed.e2eCurveCheckOps ℓ decT encT).dom cc))) :
-    (Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge.liftCurveOpExpr
-      (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
-      (decT := decT) (lam := lam) cc a).cost =
-      a.cost + (CryptoVerification.E2E.Costed.e2eCurveCheckOps ℓ decT encT).cost cc := by
-  cases cc <;>
-    (dsimp only [Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge.liftCurveOpExpr]
-     rw [cost_sessCurveOp])
-
-private theorem liftCryptoOpExpr_cost_exact {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
-    {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
-    {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
-    {Γ : List (Ty (atomicSig ℓ Pt))} (c : E2ECryptoOp) (hc : sessionCostExactCryptoOp c = true)
-    (a : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ (liftTy (Pt := Pt) (c.dom ℓ))) :
-    (Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge.liftCryptoOpExpr
-      (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
-      (decT := decT) (lam := lam) c a).cost ≤ a.cost + c.cost ℓ := by
-  match c with
-  | .x25519 | .x25519Base | .pow8 | .sigSign | .kemKeyGen | .hkdfDerive96 =>
-    simp [sessionCostExactCryptoOp] at hc
-  | .isCanonical | .sigVerify | .kemEncaps | .kemDecaps =>
-    dsimp only [Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge.liftCryptoOpExpr,
-      Expr.cost, E2ECryptoOp.cost]
-    omega
-  | .sessionKeyPairGen | .sessionRootCreateChain | .chainStep | .deriveMsgKeys
-  | .aes256CbcEnc | .aes256CbcDec | .signalMsgEncode | .signalMsgVerifyMac =>
-    dsimp only [Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge.liftCryptoOpExpr]
-    rw [cost_sessSymOp]
-    dsimp only [AtomicSymOp.cost, E2ECryptoOp.cost]
-    omega
-  | .spqrV1InitOp | .spqrNegotiateInit | .spqrBraidSend | .spqrBraidRecv
-  | .spqrChainFromVn | .spqrChainAddEpoch | .spqrChainNextKey =>
-    dsimp only [Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge.liftCryptoOpExpr]
-    rw [Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge.cost_sessSpqrKemOp]
-    dsimp only [_root_.ReductionDsl.AtomicSpqrKemOp.cost, E2ECryptoOp.cost]
-    omega
-
-private theorem liftOpExpr_cost_exact {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
-    {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
-    {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (o : (e2eOps ℓ zeroPqxdhPrims C K decT encT).Op) (ho : sessionCostExactOp o = true)
-    (a : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ
-      (liftTy (Pt := Pt) ((e2eOps ℓ zeroPqxdhPrims C K decT encT).dom o))) :
-    (liftOpExpr (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
-      (decT := decT) (lam := lam) o a).cost ≤
-      a.cost + (e2eOps ℓ zeroPqxdhPrims C K decT encT).cost o := by
-  rcases o with o | (cc | c)
-  · exact le_of_eq (liftPureOpExpr_cost_exact o a)
-  · exact le_of_eq (liftCurveOpExpr_cost_exact cc a)
-  · exact liftCryptoOpExpr_cost_exact c ho a
-
-private theorem mul_cost_step_exact (Kb x y : ℕ) (h : x ≤ y) :
-    Kb * (x + 1) ≤ Kb * (y + 1) :=
-  Nat.mul_le_mul_left Kb (by omega)
-
-private theorem mul_cost_step2_exact (Kb x1 x2 y1 y2 : ℕ) (h1 : x1 ≤ y1) (h2 : x2 ≤ y2) :
-    Kb * (x1 + x2 + 1) ≤ Kb * (y1 + y2 + 1) :=
-  Nat.mul_le_mul_left Kb (by omega)
-
-private theorem liftExpr_cost_exact {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
-    {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
-    {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
-    {Γ : List (Ty (e2eSig ℓ))} {t : Ty (e2eSig ℓ)}
-    (e : Expr (e2eOps ℓ zeroPqxdhPrims C K decT encT) Γ t)
-    (he : NoKemKeyGenExpr e = true) :
-    (liftExpr (Pt := Pt) (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
-      (decT := decT) (lam := lam) e).cost ≤ e.cost := by
-  induction e with
-  | var _ | unit | bool _ | nat _ | none | nil =>
-    dsimp only [liftExpr, Expr.cost]; omega
-  | add a b ha hb | sub a b ha hb | lt a b ha hb | eqN a b ha hb | and a b ha hb
-  | pair a b ha hb | cons a b ha hb | take a b ha hb | appendL _ a b ha hb
-  | letE a b ha hb | tget a b ha hb =>
-    dsimp only [NoKemKeyGenExpr, exprAllOps] at he
-    rw [Bool.and_eq_true] at he; rcases he with ⟨he1, he2⟩
-    have h1 := ha he1; have h2 := hb he2
-    dsimp only [liftExpr, Expr.cost]; omega
-  | mulK _ a ha | divK _ a ha | modK _ a ha | not a ha | fst a ha | snd a ha
-  | inl a ha | inr a ha | some a ha | len a ha | tconst a ha =>
-    dsimp only [NoKemKeyGenExpr, exprAllOps] at he
-    have h1 := ha he
-    dsimp only [liftExpr, Expr.cost]; omega
-  | ite c a b hc ha hb | caseOpt c a b hc ha hb | caseSum c a b hc ha hb
-  | tset c a b hc ha hb =>
-    dsimp only [NoKemKeyGenExpr, exprAllOps] at he
-    rw [Bool.and_eq_true, Bool.and_eq_true] at he; rcases he with ⟨⟨he0, he1⟩, he2⟩
-    have h0 := hc he0; have h1 := ha he1; have h2 := hb he2
-    dsimp only [liftExpr, Expr.cost]; omega
-  | op o a ha =>
-    dsimp only [NoKemKeyGenExpr, exprAllOps] at he
-    rw [Bool.and_eq_true] at he; rcases he with ⟨he1, he2⟩
-    have h1 := ha he2
-    have ho := liftOpExpr_cost_exact (C := C) (K := K) (Dh := Dh) (encPt := encPt)
-      (encT := encT) (decT := decT) (lam := lam) o he1 (liftExpr a)
-    dsimp only [liftExpr, Expr.cost] at ho ⊢
-    omega
-  | findB Kb l p hl hp | anyB Kb l p hl hp | mapB Kb l p hl hp =>
-    dsimp only [NoKemKeyGenExpr, exprAllOps] at he
-    rw [Bool.and_eq_true] at he; rcases he with ⟨he1, he2⟩
-    have h1 := hl he1; have hm := mul_cost_step_exact Kb _ _ (hp he2)
-    dsimp only [liftExpr, Expr.cost]; omega
-  | foldrB Kb l z f hl hz hf =>
-    dsimp only [NoKemKeyGenExpr, exprAllOps] at he
-    rw [Bool.and_eq_true, Bool.and_eq_true] at he; rcases he with ⟨⟨he0, he1⟩, he2⟩
-    have h0 := hl he0; have h1 := hz he1; have hm := mul_cost_step_exact Kb _ _ (hf he2)
-    dsimp only [liftExpr, Expr.cost]; omega
-
-private theorem liftCompEmpty_cost_exact {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
-    {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
-    {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
-    {ι : Type} {T : OracleSpec ι} {I' : Iface (atomicSig ℓ Pt) T}
-    {Γ : List (Ty (e2eSig ℓ))} {t : Ty (e2eSig ℓ)}
-    (c : Comp (e2eOps ℓ zeroPqxdhPrims C K decT encT) (emptyE2EIface I') Γ t)
-    (hc : NoKemKeyGenComp c = true) :
-    (liftCompEmpty (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
-      (decT := decT) (lam := lam) (I' := I') c).cost ≤ c.cost := by
-  induction c with
-  | ret e =>
-    have he := liftExpr_cost_exact (Pt := Pt) (C := C) (K := K) (Dh := Dh)
-      (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) e hc
-    dsimp only [liftCompEmpty, Comp.cost]; omega
-  | bind _ _ ih1 ih2 =>
-    dsimp only [NoKemKeyGenComp, compAllOps] at hc
-    rw [Bool.and_eq_true] at hc; rcases hc with ⟨hc1, hc2⟩
-    have h1 := ih1 hc1; have h2 := ih2 hc2
-    dsimp only [liftCompEmpty, Comp.cost]; omega
-  | ite b _ _ ih1 ih2 | caseOpt b _ _ ih1 ih2 | caseSum b _ _ ih1 ih2 =>
-    dsimp only [NoKemKeyGenComp, compAllOps] at hc
-    rw [Bool.and_eq_true, Bool.and_eq_true] at hc; rcases hc with ⟨⟨hc0, hc1⟩, hc2⟩
-    have hb := liftExpr_cost_exact (Pt := Pt) (C := C) (K := K) (Dh := Dh)
-      (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) b hc0
-    have h1 := ih1 hc1; have h2 := ih2 hc2
-    dsimp only [liftCompEmpty, Comp.cost]; omega
-  | sample s _ => exact s.elim
-  | query g _ => exact g.elim
-  | iter n e _ ih | findM n e _ ih | anyM n e _ ih | mapM n e _ ih =>
-    dsimp only [NoKemKeyGenComp, compAllOps] at hc
-    rw [Bool.and_eq_true] at hc; rcases hc with ⟨hc1, hc2⟩
-    have he := liftExpr_cost_exact (Pt := Pt) (C := C) (K := K) (Dh := Dh)
-      (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) e hc1
-    have hm := mul_cost_step_exact n _ _ (ih hc2)
-    dsimp only [liftCompEmpty, Comp.cost]; omega
-  | consumeFirstM Kb l _ mk ih =>
-    dsimp only [NoKemKeyGenComp, compAllOps] at hc
-    rw [Bool.and_eq_true, Bool.and_eq_true] at hc; rcases hc with ⟨⟨hc0, hc1⟩, hc2⟩
-    have hl := liftExpr_cost_exact (Pt := Pt) (C := C) (K := K) (Dh := Dh)
-      (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) l hc0
-    have hmk := liftExpr_cost_exact (Pt := Pt) (C := C) (K := K) (Dh := Dh)
-      (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) mk hc2
-    have hm := mul_cost_step2_exact Kb _ _ _ _ (ih hc1) hmk
-    dsimp only [liftCompEmpty, Comp.cost]; omega
-  | foldM Kb l z _ ih =>
-    dsimp only [NoKemKeyGenComp, compAllOps] at hc
-    rw [Bool.and_eq_true, Bool.and_eq_true] at hc; rcases hc with ⟨⟨hc0, hc1⟩, hc2⟩
-    have hl := liftExpr_cost_exact (Pt := Pt) (C := C) (K := K) (Dh := Dh)
-      (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) l hc0
-    have hz := liftExpr_cost_exact (Pt := Pt) (C := C) (K := K) (Dh := Dh)
-      (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) z hc1
-    have hm := mul_cost_step_exact Kb _ _ (ih hc2)
-    dsimp only [liftCompEmpty, Comp.cost]; omega
-
-private theorem drSendAtomicC_cost_exact {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
-    {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
-    {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
-    {ι : Type} {T : OracleSpec ι} (I' : Iface (atomicSig ℓ Pt) T)
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (inpE : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ
-      (.prod GhostStT (.prod PlainT BV512))) :
-    (drSendAtomicC (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
-      (decT := decT) (lam := lam) I' inpE).cost ≤
-      inpE.cost + 67815 + 10 * (ℓ / 32 + 1) := by
-  let tInp : Ty (e2eSig ℓ) :=
-    .prod CryptoVerification.E2E.Costed.GhostStT
-      (.prod CryptoVerification.E2E.Costed.PlainT CryptoVerification.E2E.Costed.BV512)
-  let cE2E := Computational.Proofs.E2E.Dsl.DrSessionSimSend.drSendC
-    (Computational.Proofs.E2E.Dsl.SpqrSim.spqrDslHooks ℓ zeroPqxdhPrims C K decT encT)
-    (emptyE2EIface I') (Γ := [tInp]) .v0
-  have hno : NoKemKeyGenComp cE2E = true := by
-    dsimp only [cE2E, Computational.Proofs.E2E.Dsl.DrSessionSimSend.drSendC,
-      Computational.Proofs.E2E.Dsl.SpqrSim.spqrDslHooks,
-      Computational.Proofs.E2E.Dsl.DrSessionSimSend.drSendPostE,
-      Computational.Proofs.E2E.Dsl.DrSessionSimHooks.sendAddrsE]
-    cases CryptoVerification.E2E.serializedPartyAddresses
-      CryptoVerification.LibsignalTripleRatchetRepr.uuidTryParse .B .A <;>
-    cases CryptoVerification.E2E.serializedPartyAddresses
-      CryptoVerification.LibsignalTripleRatchetRepr.uuidTryParse .A .B <;>
-    rfl
-  have h1 := liftCompEmpty_cost_exact (Pt := Pt) (C := C) (K := K) (Dh := Dh)
-    (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) (I' := I') cE2E hno
-  have h2 := Computational.Proofs.E2E.Dsl.DrSessionSimSend.drSendC_cost
-    (Computational.Proofs.E2E.Dsl.SpqrSim.spqrDslHooks ℓ zeroPqxdhPrims C K decT encT)
-    (emptyE2EIface I')
-    (.v0 : Expr (e2eOps ℓ zeroPqxdhPrims C K decT encT) [tInp] tInp)
-  dsimp only [cE2E] at h1
-  simp only [Expr.cost, Expr.v0] at h2
-  simp only [drSendAtomicC, Comp.cost, wk1Comp_cost, Expr.v0] at h1 h2 ⊢
-  omega
-
-private theorem drReceiveAtomicC_cost_exact {ℓ : ℕ} {Pt : Type} [DecidableEq Pt] [Zero Pt]
-    {C : Crypto} {K : MlKem} {Dh : DHFun (BitVec 256) Pt} {encPt : Pt → Bytes}
-    {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
-    {ι : Type} {T : OracleSpec ι} (I' : Iface (atomicSig ℓ Pt) T)
-    {Γ : List (Ty (atomicSig ℓ Pt))}
-    (inpE : Expr (atomicSessionOps ℓ Pt C K Dh encPt encT decT lam) Γ
-      (.prod GhostStT (.prod (B 32) BV256))) :
-    (drReceiveAtomicC (C := C) (K := K) (Dh := Dh) (encPt := encPt) (encT := encT)
-      (decT := decT) (lam := lam) I' inpE).cost ≤
-      inpE.cost + 5104015 + 8 * (ℓ / 32 + 1) := by
-  let tInp : Ty (e2eSig ℓ) :=
-    .prod CryptoVerification.E2E.Costed.GhostStT
-      (.prod (CryptoVerification.E2E.Costed.B 32) CryptoVerification.E2E.Costed.BV256)
-  let cE2E := Computational.Proofs.E2E.Dsl.DrSessionSimRecv.drReceiveC
-    (Computational.Proofs.E2E.Dsl.SpqrSim.spqrDslHooks ℓ zeroPqxdhPrims C K decT encT)
-    (emptyE2EIface I') (Γ := [tInp]) .v0
-  have hno : NoKemKeyGenComp cE2E = true := by
-    dsimp only [cE2E, Computational.Proofs.E2E.Dsl.DrSessionSimRecv.drReceiveC,
-      Computational.Proofs.E2E.Dsl.SpqrSim.spqrDslHooks,
-      Computational.Proofs.E2E.Dsl.DrSessionSimRecv.drRecvFinishE,
-      Computational.Proofs.E2E.Dsl.DrSessionSimHooks.expectedAddrsE]
-    cases CryptoVerification.E2E.serializedPartyAddresses
-      CryptoVerification.LibsignalTripleRatchetRepr.uuidTryParse .A .B <;>
-    cases CryptoVerification.E2E.serializedPartyAddresses
-      CryptoVerification.LibsignalTripleRatchetRepr.uuidTryParse .B .A <;>
-    rfl
-  have h1 := liftCompEmpty_cost_exact (Pt := Pt) (C := C) (K := K) (Dh := Dh)
-    (encPt := encPt) (encT := encT) (decT := decT) (lam := lam) (I' := I') cE2E hno
-  have h2 := Computational.Proofs.E2E.Dsl.DrSessionSimRecv.drReceiveC_cost
-    (Computational.Proofs.E2E.Dsl.SpqrSim.spqrDslHooks ℓ zeroPqxdhPrims C K decT encT)
-    (emptyE2EIface I')
-    (.v0 : Expr (e2eOps ℓ zeroPqxdhPrims C K decT encT) [tInp] tInp)
-  dsimp only [cE2E] at h1
-  simp only [Expr.cost, Expr.v0] at h2
-  simp only [drReceiveAtomicC, Comp.cost, wk1Comp_cost, Expr.v0] at h1 h2 ⊢
-  omega
-
-end ExactCostHelpers
 
 /-! ## Initial-state pair expressions -/
 
@@ -640,7 +301,7 @@ theorem cost_spkInitPairE2EE (idA idB : IdentityKey) :
 omit [DecidableEq Pt] [Zero Pt] [SampleableType Pt] in
 theorem noKemKeyGenExpr_spkInitPairE2EE (idA idB : IdentityKey) :
     NoKemKeyGenExpr
-      (spkInitPairE2EE (ℓ := ℓ) (C := C) (K := K) (decT := decT) (encT := encT) idA idB) := rfl
+      (spkInitPairE2EE (ℓ := ℓ) (C := C) (K := K) (decT := decT) (encT := encT) idA idB) = true := rfl
 
 omit [DecidableEq Pt] [Zero Pt] [SampleableType Pt] in
 private theorem size_e2ePureOp {Γ : List (Ty ESig)} (o : E2EPureOp)
@@ -1016,10 +677,10 @@ theorem receiveSpkTier2C_cost {Γ : List (Ty ASig)}
     (encT := encT) (decT := decT) (lam := lam) (Γ := Γ₂)
     (.pair (.fst (.snd .v2)) (.pair (.fst .v1) (.pair (.snd (.snd (.snd .v2))) .v0)))
   have hdr1 := drReceiveAtomicC_cost_exact (C := C) (K := K) (Dh := Dh) (encPt := encPt)
-    (encT := encT) (decT := decT) (lam := lam) (Γ := Γ₃) PrfI
+    (encT := encT) (decT := decT) (lam := lam) PrfI (Γ := Γ₃)
     (.pair .v0 (.pair (.fst (.snd (.snd .v3))) (.snd (.snd (.snd .v3)))))
   have hdr2 := drReceiveAtomicC_cost_exact (C := C) (K := K) (Dh := Dh) (encPt := encPt)
-    (encT := encT) (decT := decT) (lam := lam) (Γ := Γ₀) PrfI
+    (encT := encT) (decT := decT) (lam := lam) PrfI (Γ := Γ₀)
     (.pair (.fst (.snd .v0)) (.pair (.fst (.snd (.snd .v0))) (.snd (.snd (.snd .v0)))))
   have hb0 : bits 0 = 1 := by decide
   simp only [receiveSpkTier2C, Comp.cost, Expr.cost, Expr.v0, Expr.v1, Expr.v2, Expr.v3,
@@ -3503,3 +3164,10 @@ theorem spkLeakRedTier2_eval_paramsV1 (ℓ q qep : ℕ) (s : BitVec 256)
 end SpkLeakRedTier2
 
 end Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedTier2Prog
+-- AUTO-BRIDGE BEGIN
+namespace Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedTier2Prog
+export Computational.Proofs.Game.PromotedCostedReds.SessionCostExactDefs (
+  exprAllOps sessionCostExactCryptoOp sessionCostExactOp NoKemKeyGenExpr
+)
+end Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedTier2Prog
+-- AUTO-BRIDGE END

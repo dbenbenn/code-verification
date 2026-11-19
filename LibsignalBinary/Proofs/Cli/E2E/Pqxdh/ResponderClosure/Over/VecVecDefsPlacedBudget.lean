@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsPlaced
-public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsPlaced
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymF -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed `<Vec<Vec<u8>> as Clone>::clone` Contract Statement on 1 Element
@@ -22,7 +24,7 @@ Defines `VecVecClone1PlacedOkStmt` at `lsmpl.base 117` and its caller-block tran
 `vecVecClone1_placed_ok_cl` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,7 +43,7 @@ open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsBudget
 
 /-- Budget-threaded `[LibsignalPlacement]` subroutine contract for `<Vec<Vec<u8>> as Clone>::clone`
 on `len = 1` at `lsmpl.base 117`. -/
-def VecVecClone1PlacedOkStmt [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def VecVecClone1PlacedOkStmt [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop :=
   subroutine_ok ((blkPC_117).rebase (blkPl_117).base H) (lsmpl.base 117)
     (withLsCodeLoaded lsmpl (vecVecClone1SpecX M A lim))

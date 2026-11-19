@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptRecRelT1PureA
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptRecRelT1PureA -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
@@ -21,7 +21,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -46,7 +46,7 @@ Instantiates `RpkT1Glue` from an `XplBlock` explanation and a `preKeyRepresentat
 an accepting `session_recv_prekey` call.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

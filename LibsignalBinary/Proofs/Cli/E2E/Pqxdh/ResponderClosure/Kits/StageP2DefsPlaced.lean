@@ -9,17 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Defs
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobCutPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.DropSpe2Placed
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerialize
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Defs
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegSaveAux
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegTrustAux
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegUntrusted
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.SessionOnlyKitE
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # Relocatable Stage P2 Shared Definitions and Callee Bundles
@@ -28,13 +37,13 @@ Defines placed Stage P2 closure hooks (`StageP2ClosureHooksPlaced`), SPQR V1
 `InitializeBobV1*Placed` contracts, and `StageP2PureCalleesPlaced{,4K}` on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSessionRepr
@@ -50,7 +59,7 @@ open CryptoVerification.E2E.Pqxdh.ResponderClosure hiding PanicOomProp
 open CryptoVerification.E2E.Pqxdh.ResponderClosure.P3P4
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure
 open CryptoVerification.CliHandshake.RespClosurePlaced
-open CryptoVerification.SpqrV1.Top.InitialState (InitialStateOkX initialStateValue)
+open CryptoVerification.SpqrV1.Top.InitialState (initialStateValue)
 open CryptoVerification.LibsignalPublicApi CryptoVerification.LibsignalPublicApiRepr
 open CryptoVerification.LibsignalPublicApi.StoreSession
 open CryptoVerification.LibsignalPublicApi.StoreKit
@@ -79,7 +88,7 @@ theorem p2_call_frame_oom_prefix_placed {α : Type} {prog : Program}
       Steps prog s sf →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q (PanicOomProp s0))
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro sf; first | rfl | simp only [Spec.inImage]) :
+      intro sf; rfl) :
     SepWPp prog ret s P Q (PanicOomProp s0) := by
   intro R hm hL
   have hm' : s.mem ⊨ spec.pre x s ∗ (F ∗ R) := by
@@ -119,7 +128,7 @@ theorem p2_call_frame_cro_oom_prefix_placed [LibsignalPlacement] {α : Type} {pr
       Steps prog s sf →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q (PanicOomProp s0))
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro sf; first | rfl | simp only [Spec.inImage]) :
+      intro sf; rfl) :
     SepWPp prog ret s P Q (PanicOomProp s0) := by
   refine p2_call_frame_oom_prefix_placed htr hcall hpc hrun hsp hlr hspec hφ hP hpan_eq hexit_false
     (fun sf hpcm hrunm hspm hsp_alm hcsm hsteps =>
@@ -206,7 +215,7 @@ theorem StageP2MemInv.frozen [LibsignalPlacement] :
 
 /-- Stack- and memory-invariant-parameterized SPQR V1 `initialize_bob_session` success contract
 under `[LibsignalPlacement]` on `stageP1ProgPlaced ext` (`lsProg_518 ext`). -/
-def InitializeBobV1MemInvOkAtPlaced [LibsignalPlacement] (Φ : Memory → Prop)
+@[expose] def InitializeBobV1MemInvOkAtPlaced [LibsignalPlacement] (Φ : Memory → Prop)
     (P : Primitives) (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) (bobV1Stk : Nat) : Prop :=
   ∀ (s0 : State) (inp : AcceptKeysInput) (ikBPk spkBPk : SignalPqxdh.Bytes)
@@ -258,12 +267,12 @@ def InitializeBobV1MemInvOkAtPlaced [LibsignalPlacement] (Φ : Memory → Prop)
           CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace)
       (BobPanicOom s0)
 
-def InitializeBobV1MemInvOkPlaced [LibsignalPlacement] (Φ : Memory → Prop)
+@[expose] def InitializeBobV1MemInvOkPlaced [LibsignalPlacement] (Φ : Memory → Prop)
     (P : Primitives) (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   InitializeBobV1MemInvOkAtPlaced Φ P A F ext (stageP2bStack + 0x700)
 
-def InitializeBobV1MemInvOkPlaced4K [LibsignalPlacement] (Φ : Memory → Prop)
+@[expose] def InitializeBobV1MemInvOkPlaced4K [LibsignalPlacement] (Φ : Memory → Prop)
     (P : Primitives) (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   InitializeBobV1MemInvOkAtPlaced Φ P A F ext (768 + Initiator.pqxdhEntryStackExt)
@@ -299,15 +308,15 @@ theorem InitializeBobV1MemInvOkPlaced.to_4K [LibsignalPlacement] {Φ : Memory �
 
 /-- Stack-parameterized SPQR V1 `initialize_bob_session` success contract under `[LibsignalPlacement]`
 on `stageP1ProgPlaced ext` (`lsProg_518 ext`). -/
-def InitializeBobV1OkAtPlaced [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitializeBobV1OkAtPlaced [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) (bobV1Stk : Nat) : Prop :=
   InitializeBobV1MemInvOkAtPlaced (StoreKit.LibsignalCodeRoLoaded lsmpl) P A F ext bobV1Stk
 
-def InitializeBobV1OkPlaced [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitializeBobV1OkPlaced [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   InitializeBobV1OkAtPlaced P A F ext (stageP2bStack + 0x700)
 
-def InitializeBobV1OkPlaced4K [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitializeBobV1OkPlaced4K [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   InitializeBobV1OkAtPlaced P A F ext (768 + Initiator.pqxdhEntryStackExt)
 
@@ -318,15 +327,15 @@ theorem InitializeBobV1OkPlaced.to_4K [LibsignalPlacement] {P : Primitives} {A :
   InitializeBobV1MemInvOkPlaced.to_4K h
 
 /-- `LibsignalFrozen`-guarded SPQR V1 `initialize_bob_session` success contracts on `stageP1ProgPlaced ext`. -/
-def InitializeBobV1FrozenOkAtPlaced [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitializeBobV1FrozenOkAtPlaced [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) (bobV1Stk : Nat) : Prop :=
   InitializeBobV1MemInvOkAtPlaced (LibsignalFrozen lsmpl) P A F ext bobV1Stk
 
-def InitializeBobV1FrozenOkPlaced [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitializeBobV1FrozenOkPlaced [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   InitializeBobV1FrozenOkAtPlaced P A F ext (stageP2bStack + 0x700)
 
-def InitializeBobV1FrozenOkPlaced4K [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
+@[expose] def InitializeBobV1FrozenOkPlaced4K [LibsignalPlacement] (P : Primitives) (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) : Prop :=
   InitializeBobV1FrozenOkAtPlaced P A F ext (768 + Initiator.pqxdhEntryStackExt)
 
@@ -337,7 +346,7 @@ theorem InitializeBobV1FrozenOkPlaced.to_4K [LibsignalPlacement] {P : Primitives
   InitializeBobV1MemInvOkPlaced.to_4K h
 
 /-- 4K/`Ext` variant of `initializeBobSessionErrInnerPlacedSpec` at `768 + Initiator.pqxdhEntryStackExt`. -/
-def initializeBobSessionErr4KInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def initializeBobSessionErr4KInnerPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec InitBobCallGhost where
   pre := fun (g : InitBobCallGhost) s =>
     ⌜s.readReg64 .x0 = g.argPtr ∧ s.readReg64 .x1 = g.ratchetKeyPairPtr ∧
@@ -356,7 +365,7 @@ def initializeBobSessionErr4KInnerPlacedSpec [LibsignalPlacement] (P : Primitive
     stackAt s0.sp (768 + Initiator.pqxdhEntryStackExt) ∗ A.pool
   onPanic := rustPanicOnOomPlaced
 
-def initializeBobSessionErr4KPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
+@[expose] def initializeBobSessionErr4KPlacedSpec [LibsignalPlacement] (P : Primitives) (A : RustAlloc) :
     Spec InitBobCallGhost :=
   StoreKit.withLsCodeRoLoaded lsmpl (initializeBobSessionErr4KInnerPlacedSpec P A)
 

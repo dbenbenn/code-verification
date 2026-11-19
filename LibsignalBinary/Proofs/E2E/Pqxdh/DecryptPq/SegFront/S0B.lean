@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegFront.S0Sym
+public import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegFront.S0Sym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Pqxdh.DecryptPq.SegFront.S0A
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.DecryptPq.SegA
 

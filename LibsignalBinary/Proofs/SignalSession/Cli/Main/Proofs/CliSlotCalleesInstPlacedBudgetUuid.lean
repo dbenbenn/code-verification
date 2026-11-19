@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
@@ -22,6 +22,13 @@ import LibsignalBinary.Proofs.TripleRatchet.InImage.UuidTryParse.ParserTryParse
 import ProofLib.Placed.OpcodeExclusion
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImage.UuidTryParse.DecodeHex32 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImage.UuidTryParse.ParserHyphenated -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsDecodeHex32Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # Budget-Threaded Relocatable `<uuid::Uuid>::try_parse`
@@ -30,7 +37,7 @@ Relocatable `VmPreserved` and `.keepsFs` contracts for `decode_hex_32` (Block `2
 `Parser::try_parse` (Block `255`), and `<uuid::Uuid>::try_parse` (Block `252`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false

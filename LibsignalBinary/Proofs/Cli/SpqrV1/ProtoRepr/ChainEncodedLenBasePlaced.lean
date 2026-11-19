@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLenBase
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.FetchPlaced
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.FetchPlaced -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -20,7 +20,7 @@ Defines `IsChainEncLenPlacedEntry` and proves prologue and `links: Vec<Epoch>` l
 Block `485` (calling Block `478` at `+0x7c`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -54,35 +54,35 @@ attribute [local simp, local arm64_norm]
   CryptoVerification.SpqrV1.ProtoRepr.sext64_truncate32
   CryptoVerification.SpqrV1.ProtoRepr.signExtend64_beq_zero64
 
-def ChainEncodedLenLocal1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_485 H) (blkPl_485).base (withLsCodeLoaded lsmpl (chainEncodedLenPinnedSpec A))
 
-def ChainEncodedLenLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_485 H) (blkPl_485).base (withLsCodeLoaded lsmpl (chainEncodedLenSpec A))
 
-def ChainEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_485 (Rust.withPanics ext))
     (blkPl_485).base (withLsCodeLoaded lsmpl (chainEncodedLenPinnedSpec A))
 
-def ChainEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_485 (Rust.withPanics ext))
     (blkPl_485).base (withLsCodeLoaded lsmpl (chainEncodedLenSpec A))
 
-def ChainEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChainEncodedLenLocal1PinnedPlacedOkExt A (tripleRatchetExterns C ctl abs)
 
-def ChainEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
+@[expose] def ChainEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc)
     (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   ChainEncodedLenLocal1PlacedOkExt A (tripleRatchetExterns C ctl abs)
 
 /-- Entry address pair predicate for placed Block `485` (`Chain::encoded_len [local#3]`)
     calling Block `478` (`Epoch::encoded_len [local#3]`). -/
-def IsChainEncLenPlacedEntry (prog : Program) (entry epochEntry : BitVec 64) : Prop :=
+@[expose] def IsChainEncLenPlacedEntry (prog : Program) (entry epochEntry : BitVec 64) : Prop :=
   ∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
     prog = @lsProg_485 inst H ∧
     entry = (@blkPl_485 inst).base ∧

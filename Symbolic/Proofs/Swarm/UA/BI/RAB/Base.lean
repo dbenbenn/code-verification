@@ -19,7 +19,7 @@ Basic list-extension lemmas for `CollisionAfterExplainedPrefix`, `MatchesEvents`
 rejected runs, and `ReadCollisionCli`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

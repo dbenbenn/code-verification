@@ -105,16 +105,6 @@ def prebuildElfPlaced (W : CliHooks) (elf : ElfImage)
   prebuildElfPlacedWithLens W elf (mapRegionsWithLen elf.segments)
     tokStorageAddr tokOnceAddr addrs stubs
 
-theorem prebuildElfPlacedWithLens_eq_prebuildElfPlaced (W : CliHooks) (elf : ElfImage)
-    {regsWithLen : List (Snapshot.Region × Nat)}
-    (hlens : regsWithLen = elf.segments.map (fun r => (r, r.bytes.length)))
-    (tokStorageAddr tokOnceAddr : BitVec 64)
-    (addrs : MallocngCallAddrs)
-    (stubs : List (String × Nat)) :
-    prebuildElfPlacedWithLens W elf regsWithLen tokStorageAddr tokOnceAddr addrs stubs =
-      prebuildElfPlaced W elf tokStorageAddr tokOnceAddr addrs stubs := by
-  rw [prebuildElfPlaced, mapRegionsWithLen_eq, hlens]
-
 abbrev prebuildElfPlaced0 :
     ElfImage → BitVec 64 → BitVec 64 → MallocngCallAddrs → List (String × Nat) →
       Option PrebuiltElfPlaced :=

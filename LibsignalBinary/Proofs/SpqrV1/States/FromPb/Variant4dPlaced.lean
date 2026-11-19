@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4a
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4b
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4b -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4aPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4bPlaced
@@ -21,6 +21,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4c0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4cPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant4d
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 4 (`EkSentCt1Received`, `+248`) — Part D
@@ -29,7 +30,7 @@ Relocatable Block-`333` early `ptsNeeded ≠ 80` error path and `+2228` / `+2308
 continuations for `InnerState.ekSentCt1Received`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

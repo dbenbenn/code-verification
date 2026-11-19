@@ -11,17 +11,22 @@ module
 
 public import LibsignalBinary.Heap.Fine.ElfInitFine
 public import LibsignalBinary.Heap.Fine.SpecBudgetFine
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliBinaryTokenPatch
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top
-public import LibsignalBinary.Proofs.SignalSession.Cli.ProcessBridgeExec
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliBinaryTokenPatch -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top
+import LibsignalBinary.Proofs.SignalSession.Cli.ProcessBridgeExec
+public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.CliPlainPanPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetBase
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Two-Placement `mallocng` Harness, Token Patch, and `cliRunExtOnInputsSigAt` Bridges
@@ -33,7 +38,7 @@ relocatable `CliRunsToExtOnInputsAt` / `cliRunExtOnInputsSigAt` bridges, and exp
 writable statics (`cliStaticsPlacedAt mpl`, `mallocngRwBssAt mmpl`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,7 +56,9 @@ open CryptoVerification.SignalSession
    processExitsWith_of_exited processExitsWith_of_signaled processInputs segSlice_addrInElf
    sigAbrt toOutcome)
 open CryptoVerification.SignalSession.Placed
-  (CliRunsToPlaced cliProgPlacedSig cliRunPlacedSig cliTokenPatchPlaced)
+  (cliTokenPatchPlaced)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (CliRunsToPlaced cliProgPlacedSig cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliPlainPanPlaced (CliRunsToPlainPanPlaced cliRunPlainPanPlacedSig)
 open CryptoVerification.SignalSession.Cli
   (ElfStaticOk MainResult RunAnswer cliInputs)
 open CryptoVerification.SignalSession.Coins (coinsLeftSym coinsNextSym)
@@ -61,12 +68,13 @@ open LibsignalBinary.Heap
   (BudgetLimits RustAllocAddrs RustCliAllocNoOomEntriesBase mallocngBudgetPoolInv
    rustCliAllocNoOomSpecBase subroutine_ok_allocNoOom_of_budgetBase)
 open LibsignalBinary.Heap.Fine
-  (CliElfMallocngLayout MallocngInitResources StartupVmPreserved allocMemsetVmSpec
+  (CliElfMallocngLayout MallocngInitResources MallocngInitResourcesRo StartupVmPreserved
+   aesStorageCell allocMemsetVmSpec
    buildInitialStack_sub_stack cliElfStaticIvs elfLoadState_fields elfLoadState_poolInv
-   elfStaticIvs fineBudgetPool_of_initResources fineCostModel fineHookBudgetPool_of_codeLoaded
-   fineHookRustCliAllocBudget fineHookRustCliAllocBudgetEntries_thunks
-   fineHookRustCliAllocZeroedBudget_thunk_ok mallocngBrkStartWf_of_elf
-   mallocngBudgetPoolInv_of_startupVmPreserved rdlAllocZeroedInstrs)
+   elfStaticIvs fineBudgetPool_of_initResources fineBudgetPool_of_initResources_ro fineCostModel
+   fineHookBudgetPool_of_codeLoaded fineHookRustCliAllocBudget
+   fineHookRustCliAllocBudgetEntries_thunks fineHookRustCliAllocZeroedBudget_thunk_ok
+   mallocngBrkStartWf_of_elf mallocngBudgetPoolInv_of_startupVmPreserved rdlAllocZeroedInstrs)
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (allocMemcpyVmSpec)
 open ProofLib.StdStartup (hasInstrs)
 open VerifiedLibraries (mallocngLib)
@@ -74,7 +82,7 @@ open VerifiedLibraries.Mallocng
   (MallocngAuxvAt MallocngBrkStartWf MallocngRoTablesAt MallocngRuntime
    mallocngAddrsOfPlacement mallocngDebruijn32Table mallocngMedCntTabBytes mallocngSizeClassBytes
    mallocngSmallCntTabBytes)
-open VerifiedLibraries.Mallocng.Proofs (ProgContainsMallocng mallocngLib_dataInit_eq)
+open VerifiedLibraries.Mallocng.Proofs (MallocngAuxvRoAt ProgContainsMallocng mallocngLib_dataInit_eq)
 open VerifiedLibraries.RustStd
   (RustStdRdlShimCode RustStdThunkCode mallocngPlacedCAddrs)
 
@@ -92,7 +100,7 @@ structure CliElfTokenCellsPlacedAt (mpl : Obj.MultiPlacement) (elf : ElfImage) :
 /-- Ghost `ElfImage` with spqr's 5 CPU-probe `.data` bytes pre-set to `0` (`DEV-CLI10`) at an
 explicit placement `mpl`, so `(patchElfTokensPlacedAt mpl elf).loadState inputs =
 (elf.loadState inputs).map (Placed.cliTokenPatchPlaced mpl)`. -/
-def patchElfTokensPlacedAt (mpl : Obj.MultiPlacement) (elf : ElfImage) : ElfImage :=
+@[expose] def patchElfTokensPlacedAt (mpl : Obj.MultiPlacement) (elf : ElfImage) : ElfImage :=
   let sAddr := mpl.ρ CryptoVerification.LibsignalSpqrV1.tokenStorageName
   let oAddr := mpl.ρ CryptoVerification.LibsignalSpqrV1.tokenName + 8#64
   patchElfByte (oAddr + 3#64) 0#8 (patchElfByte (oAddr + 2#64) 0#8
@@ -173,7 +181,7 @@ theorem cliElfMallocngLayout_iff_patchElfTokensPlacedAt {mpl : Obj.MultiPlacemen
 
 /-- Common `InitConfig` stack/RAM parameters shared by `cliProcessInputs i`, `cliInputs i`, and
 `hwcap = 0x3#64` inputs. -/
-def CliStackShape (pi : ProcessInputs) : Prop :=
+@[expose] def CliStackShape (pi : ProcessInputs) : Prop :=
   pi.init.stackTop = defaultStackTop ∧
   pi.init.stackSize = cliStackSize ∧
   pi.init.physMemAvail = 2 ^ 30
@@ -256,7 +264,7 @@ theorem fineHookBudgetPool_of_inputs
       mallocngLib.dataInit mmpl ∗
         MallocngRuntime (mallocngAddrsOfPlacement mmpl) sm.tpidrEl0 ∗
         (((mallocngAddrsOfPlacement mmpl).libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
+        MallocngAuxvAt auxvPtr ∗ aesStorageCell elf.brkStart ∗ R) :
     ∃ γ : GhostName,
       sm.mem ⊨
         (fineHookRustCliAllocBudget γ mmpl sm.tpidrEl0 elf.brkStart).pool
@@ -264,7 +272,12 @@ theorem fineHookBudgetPool_of_inputs
   obtain ⟨hInit, hbs0⟩ :=
     mallocngInitResources_of_inputs hsh hLayout hLoad hVm htpLo htpHi hmem
   obtain ⟨γ, hPool⟩ := fineBudgetPool_of_initResources hInit
-  have hHook := fineHookBudgetPool_of_codeLoaded hCL hPool
+  have hPool' :
+      sm.mem ⊨
+        (LibsignalBinary.Heap.Fine.fineRustCliAllocBudget γ mmpl sm.tpidrEl0 sm.brkStart).pool
+          lim fineCostModel.init sm ∗ aesStorageCell sm.brkStart ∗ R := by
+    simpa only [hbs0] using hPool
+  have hHook := fineHookBudgetPool_of_codeLoaded hCL hPool'
   rw [hbs0] at hHook
   exact ⟨γ, hHook⟩
 
@@ -293,7 +306,7 @@ theorem fineHookNoOomInit_of_inputs
       mallocngLib.dataInit mmpl ∗
         MallocngRuntime (mallocngAddrsOfPlacement mmpl) sm.tpidrEl0 ∗
         (((mallocngAddrsOfPlacement mmpl).libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
+        MallocngAuxvAt auxvPtr ∗ aesStorageCell elf.brkStart ∗ R) :
     ∃ γ : GhostName,
       let A := fineHookRustCliAllocBudget γ mmpl sm.tpidrEl0 elf.brkStart
       (sm.mem ⊨ A.pool lim fineCostModel.init sm ∗ R) ∧
@@ -309,8 +322,9 @@ theorem fineHookNoOomInit_of_inputs
         allocZeroedThunkAddr allocZeroedRdlAddr memsetAddr lim hZeroThunk hZeroCode hMemset)⟩
 
 /-- Package `(libcAddr + 3) ↦₈ 0`, `(sm.tpidrEl0 - 0xa4) ↦₃₂ errnoVal`, `(libcAddr + 8) ↦₆₄ auxvPtr`,
-`(libcAddr + 48) ↦₆₄ 4096`, `MallocngAuxvAt auxvPtr`, and `VerifiedLibraries.mallocngLib.dataInit mmpl`
-into `∃ γ, sm.mem ⊨ (fineHookRustCliAllocBudget γ mmpl sm.tpidrEl0 elf.brkStart).pool lim fineCostModel.init sm ∗ R`. -/
+`(libcAddr + 48) ↦₆₄ 4096`, `MallocngAuxvAt auxvPtr`, `aesStorageCell elf.brkStart`, and
+`VerifiedLibraries.mallocngLib.dataInit mmpl` into
+`∃ γ, sm.mem ⊨ (fineHookRustCliAllocBudget γ mmpl sm.tpidrEl0 elf.brkStart).pool lim fineCostModel.init sm ∗ R`. -/
 theorem b2FineHookPool_of_needLocks
     {elf : ElfImage} {inputs : ProcessInputs} {s0 sm : State}
     {mmpl : Obj.MultiPlacement} {lim : BudgetLimits} {R : SepProp}
@@ -329,7 +343,7 @@ theorem b2FineHookPool_of_needLocks
         ((libcAddr + 3#64) ↦₈ 0#8) ∗
         ((libcAddr + 48#64) ↦₆₄ 4096#64) ∗
         ((libcAddr + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
+        MallocngAuxvAt auxvPtr ∗ aesStorageCell elf.brkStart ∗ R) :
     ∃ γ : GhostName,
       sm.mem ⊨
         (fineHookRustCliAllocBudget γ mmpl sm.tpidrEl0 elf.brkStart).pool
@@ -343,13 +357,132 @@ theorem b2FineHookPool_of_needLocks
         ((libcAddr + 3#64) ↦₈ 0#8) ∗
         ((libcAddr + 48#64) ↦₆₄ 4096#64) ∗
         ((libcAddr + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) =
+        MallocngAuxvAt auxvPtr ∗ aesStorageCell elf.brkStart ∗ R) =
       (mallocngLib.dataInit mmpl ∗
         (((sm.tpidrEl0 - 0xa4#64) ↦₃₂ errnoVal) ∗
           ((libcAddr + 3#64) ↦₈ 0#8) ∗
           ((libcAddr + 48#64) ↦₆₄ 4096#64)) ∗
         ((libcAddr + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) := by sep_ac_rfl
+        MallocngAuxvAt auxvPtr ∗ aesStorageCell elf.brkStart ∗ R) := by sep_ac_rfl
+  rw [hassoc] at hmem
+  exact Satisfies.mono
+    (sepConj_mono_right (sepConj_mono_left (sepConj_mono_left (Entails.sepExists_intro errnoVal))))
+    hmem
+
+theorem mallocngInitResourcesRo_of_inputs
+    {elf : ElfImage} {mmpl : Obj.MultiPlacement} {lim : BudgetLimits}
+    {inputs : ProcessInputs} {sLoad sm : State} {auxvPtr : BitVec 64} {R : SepProp}
+    (hsh : CliStackShape inputs)
+    (hLayout : CliElfMallocngLayout elf lim)
+    (hLoad : elf.loadState inputs = .ok sLoad)
+    (hVm : StartupVmPreserved sLoad sm)
+    (htpLo : 0xa4 ≤ sm.tpidrEl0.toNat)
+    (htpHi : sm.tpidrEl0.toNat ≤ 2 ^ 48)
+    (hmem : sm.mem ⊨
+      mallocngLib.dataInit mmpl ∗
+        MallocngRuntime (mallocngAddrsOfPlacement mmpl) sm.tpidrEl0 ∗
+        (((mallocngAddrsOfPlacement mmpl).libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+        MallocngAuxvRoAt auxvPtr ∗ R) :
+    MallocngInitResourcesRo mmpl lim (cliElfStaticIvs elf) R sm ∧ sm.brkStart = elf.brkStart := by
+  obtain ⟨hwf, hbsLoad, hbrkLoad, _, _, _, hb, _, _⟩ := elfLoadState_fields hLoad
+  have htopLt : inputs.init.stackTop.toNat < 2 ^ 64 := by
+    rw [hsh.1]; decide
+  have htopLe : inputs.init.stackTop.toNat ≤ Arm64.USER_VA_LIMIT := by
+    rw [hsh.1]; decide
+  obtain ⟨hbrkLeSb, _⟩ := buildInitialStack_sub_stack hb htopLt
+  have hsbLe48 : inputs.init.stackTop.toNat - inputs.init.stackSize ≤ 2 ^ 48 := by
+    rw [hsh.1, hsh.2.1]; decide
+  have hBrkWfElf : MallocngBrkStartWf elf.brkStart :=
+    mallocngBrkStartWf_of_elf hwf hLayout.brkStart_min (Nat.le_trans hbrkLeSb hsbLe48)
+  have hInvLoad : mallocngBudgetPoolInv lim (cliElfStaticIvs elf) [] sLoad := by
+    rw [← elfStaticIvs_of_cliStackShape hsh]
+    exact elfLoadState_poolInv hLoad htopLe hLayout.staticCount_le
+      (fun henf => by rw [hsh.2.1]; exact hLayout.staticBytes_le henf)
+      (fun henf => by rw [hsh.2.2]; exact hLayout.physCap_le henf)
+  have hbs0 : sm.brkStart = elf.brkStart := hVm.1.trans hbsLoad
+  have hbrk0 : sm.brk = sm.brkStart := (hVm.2.1.trans hbrkLoad).trans hbs0.symm
+  exact
+    ⟨{ tp_lo := htpLo
+       tp_hi := htpHi
+       brk_eq := hbrk0
+       brkStart_wf := hbs0 ▸ hBrkWfElf
+       poolInv := mallocngBudgetPoolInv_of_startupVmPreserved hVm hInvLoad
+       startup := ⟨auxvPtr, hmem⟩ },
+     hbs0⟩
+
+/-- Read-only-`auxv` counterpart of `fineHookBudgetPool_of_inputs`. -/
+theorem fineHookBudgetPool_of_inputs_ro
+    {elf : ElfImage} {mmpl : Obj.MultiPlacement} {lim : BudgetLimits}
+    {inputs : ProcessInputs} {sLoad sm : State} {auxvPtr : BitVec 64} {R : SepProp}
+    (hCL : mallocngLib.CodeLoaded mmpl sm.mem)
+    (hsh : CliStackShape inputs)
+    (hLayout : CliElfMallocngLayout elf lim)
+    (hLoad : elf.loadState inputs = .ok sLoad)
+    (hVm : StartupVmPreserved sLoad sm)
+    (htpLo : 0xa4 ≤ sm.tpidrEl0.toNat)
+    (htpHi : sm.tpidrEl0.toNat ≤ 2 ^ 48)
+    (hmem : sm.mem ⊨
+      mallocngLib.dataInit mmpl ∗
+        MallocngRuntime (mallocngAddrsOfPlacement mmpl) sm.tpidrEl0 ∗
+        (((mallocngAddrsOfPlacement mmpl).libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+        MallocngAuxvRoAt auxvPtr ∗ aesStorageCell elf.brkStart ∗ R) :
+    ∃ γ : GhostName,
+      sm.mem ⊨
+        (fineHookRustCliAllocBudget γ mmpl sm.tpidrEl0 elf.brkStart).pool
+          lim fineCostModel.init sm ∗ R := by
+  obtain ⟨hInit, hbs0⟩ :=
+    mallocngInitResourcesRo_of_inputs hsh hLayout hLoad hVm htpLo htpHi hmem
+  obtain ⟨γ, hPool⟩ := fineBudgetPool_of_initResources_ro hInit
+  have hPool' :
+      sm.mem ⊨
+        (LibsignalBinary.Heap.Fine.fineRustCliAllocBudget γ mmpl sm.tpidrEl0 sm.brkStart).pool
+          lim fineCostModel.init sm ∗ aesStorageCell sm.brkStart ∗ R := by
+    simpa only [hbs0] using hPool
+  have hHook := fineHookBudgetPool_of_codeLoaded hCL hPool'
+  rw [hbs0] at hHook
+  exact ⟨γ, hHook⟩
+
+/-- Read-only-`auxv` counterpart of `b2FineHookPool_of_needLocks`. -/
+theorem b2FineHookPool_of_needLocks_ro
+    {elf : ElfImage} {inputs : ProcessInputs} {s0 sm : State}
+    {mmpl : Obj.MultiPlacement} {lim : BudgetLimits} {R : SepProp}
+    {libcAddr auxvPtr : BitVec 64} {errnoVal : BitVec 32}
+    (hCode : mallocngLib.CodeLoaded mmpl sm.mem)
+    (hsh : CliStackShape inputs)
+    (hLayout : CliElfMallocngLayout elf lim)
+    (hload : elf.loadState inputs = .ok s0)
+    (hVm : StartupVmPreserved s0 sm)
+    (htpLo : 0xa4 ≤ sm.tpidrEl0.toNat)
+    (htpHi : sm.tpidrEl0.toNat ≤ 2 ^ 48)
+    (hlibc : (mallocngAddrsOfPlacement mmpl).libc = libcAddr)
+    (hmem : sm.mem ⊨
+      mallocngLib.dataInit mmpl ∗
+        ((sm.tpidrEl0 - 0xa4#64) ↦₃₂ errnoVal) ∗
+        ((libcAddr + 3#64) ↦₈ 0#8) ∗
+        ((libcAddr + 48#64) ↦₆₄ 4096#64) ∗
+        ((libcAddr + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+        MallocngAuxvRoAt auxvPtr ∗ aesStorageCell elf.brkStart ∗ R) :
+    ∃ γ : GhostName,
+      sm.mem ⊨
+        (fineHookRustCliAllocBudget γ mmpl sm.tpidrEl0 elf.brkStart).pool
+          lim fineCostModel.init sm ∗ R := by
+  refine fineHookBudgetPool_of_inputs_ro hCode hsh hLayout hload hVm htpLo htpHi
+    (auxvPtr := auxvPtr) ?_
+  unfold MallocngRuntime
+  rw [hlibc]
+  have hassoc :
+      (mallocngLib.dataInit mmpl ∗
+        ((sm.tpidrEl0 - 0xa4#64) ↦₃₂ errnoVal) ∗
+        ((libcAddr + 3#64) ↦₈ 0#8) ∗
+        ((libcAddr + 48#64) ↦₆₄ 4096#64) ∗
+        ((libcAddr + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+        MallocngAuxvRoAt auxvPtr ∗ aesStorageCell elf.brkStart ∗ R) =
+      (mallocngLib.dataInit mmpl ∗
+        (((sm.tpidrEl0 - 0xa4#64) ↦₃₂ errnoVal) ∗
+          ((libcAddr + 3#64) ↦₈ 0#8) ∗
+          ((libcAddr + 48#64) ↦₆₄ 4096#64)) ∗
+        ((libcAddr + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+        MallocngAuxvRoAt auxvPtr ∗ aesStorageCell elf.brkStart ∗ R) := by sep_ac_rfl
   rw [hassoc] at hmem
   exact Satisfies.mono
     (sepConj_mono_right (sepConj_mono_left (sepConj_mono_left (Entails.sepExists_intro errnoVal))))
@@ -358,17 +491,17 @@ theorem b2FineHookPool_of_needLocks
 /-! ## Generic `CliRunsToExtOnInputsAt` and Two-Placement Specializations -/
 
 /-- Relocatable `libsignalSessionLib` program at block `idx` under extern family `ext`. -/
-noncomputable def cliProgExtPlacedAt (mpl : Obj.MultiPlacement)
+@[expose] def cliProgExtPlacedAt (mpl : Obj.MultiPlacement)
     (ext : CliHooks → String → Option (State → State)) (idx : Nat) (W : CliHooks) : Program :=
   libsignalSessionLib.blockProgram mpl idx (ext W)
 
 /-- `abortOnPanic`-wrapped relocatable `libsignalSessionLib` program at block `idx`. -/
-noncomputable def cliProgExtPlacedSigAt (mpl : Obj.MultiPlacement)
+@[expose] def cliProgExtPlacedSigAt (mpl : Obj.MultiPlacement)
     (ext : CliHooks → String → Option (State → State)) (idx : Nat) (W : CliHooks) : Program :=
   libsignalSessionLib.blockProgram mpl idx (fun name => (ext W name).map abortOnPanic)
 
 /-- Relocatable `CliRunsTo` parameterized by `ext`, `idx`, and `inputsOf : Inputs → ProcessInputs`. -/
-def CliRunsToExtOnInputsAt (mpl : Obj.MultiPlacement)
+@[expose] def CliRunsToExtOnInputsAt (mpl : Obj.MultiPlacement)
     (ext : CliHooks → String → Option (State → State)) (idx : Nat)
     (inputsOf : Inputs → ProcessInputs)
     (elf : ElfImage) (W : CliHooks) (i : Inputs) (o : Outcome) : Prop :=
@@ -383,7 +516,7 @@ abbrev CliRunsToExtPlacedAt (mpl : Obj.MultiPlacement)
 
 open Classical in
 /-- Relocatable `CliRun` parameterized by `ext`, `idx`, and `inputsOf : Inputs → ProcessInputs`. -/
-noncomputable def cliRunExtOnInputsSigAt (mpl : Obj.MultiPlacement)
+@[expose] noncomputable def cliRunExtOnInputsSigAt (mpl : Obj.MultiPlacement)
     (ext : CliHooks → String → Option (State → State)) (idx : Nat)
     (inputsOf : Inputs → ProcessInputs)
     (elf : ElfImage) (W : CliHooks) : CliRun := fun i =>
@@ -691,6 +824,137 @@ theorem cliRunsToExtOnInputsAt_of_outcomeOf_usage {mpl : Obj.MultiPlacement}
   rw [← MainResult.observed_usage i.files res hobs]
   exact cliRunsToExtOnInputsAt_of_outcomeOf hpatch hout
 
+/-! ### Plain-Memory `CliRunsToPlainExtOnInputsAt` Counterparts (No `.data` Patch) -/
+
+/-- Plain-memory `CliRunsTo` starting directly from `elf.loadState (inputsOf i)` (without
+`cliTokenPatchPlaced`). -/
+@[expose] def CliRunsToPlainExtOnInputsAt (mpl : Obj.MultiPlacement)
+    (ext : CliHooks → String → Option (State → State)) (idx : Nat)
+    (inputsOf : Inputs → ProcessInputs)
+    (elf : ElfImage) (W : CliHooks) (i : Inputs) (o : Outcome) : Prop :=
+  ∃ s0, elf.loadState (inputsOf i) = .ok s0 ∧
+    ProcessRunsTo (cliProgExtPlacedSigAt mpl ext idx W) s0 (OutcomeMatchesProcess o)
+
+abbrev CliRunsToPlainExtPlacedAt (mpl : Obj.MultiPlacement)
+    (ext : CliHooks → String → Option (State → State)) (idx : Nat)
+    (elf : ElfImage) (W : CliHooks) (i : Inputs) (o : Outcome) : Prop :=
+  CliRunsToPlainExtOnInputsAt mpl ext idx cliProcessInputs elf W i o
+
+open Classical in
+/-- Plain-memory `CliRun` starting directly from `elf.loadState (inputsOf i)`. -/
+@[expose] noncomputable def cliRunPlainExtOnInputsSigAt (mpl : Obj.MultiPlacement)
+    (ext : CliHooks → String → Option (State → State)) (idx : Nat)
+    (inputsOf : Inputs → ProcessInputs)
+    (elf : ElfImage) (W : CliHooks) : CliRun := fun i =>
+  if h : ∃ o, CliRunsToPlainExtOnInputsAt mpl ext idx inputsOf elf W i o then
+    some (Classical.choose h)
+  else none
+
+noncomputable abbrev cliRunPlainExtPlacedSigAt (mpl : Obj.MultiPlacement)
+    (ext : CliHooks → String → Option (State → State)) (idx : Nat)
+    (elf : ElfImage) (W : CliHooks) : CliRun :=
+  cliRunPlainExtOnInputsSigAt mpl ext idx cliProcessInputs elf W
+
+theorem cliRunsToPlainExtPlacedAt_cliExternsPlaced_eq
+    (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) (W : CliHooks) (i : Inputs) (o : Outcome) :
+    CliRunsToPlainExtPlacedAt mpl (cliExternsPlaced mmpl) 617 elf W i o =
+      CliRunsToPlainPanPlaced mpl mmpl elf W i o :=
+  rfl
+
+theorem cliRunPlainExtPlacedSigAt_cliExternsPlaced_eq
+    (mpl mmpl : Obj.MultiPlacement) (elf : ElfImage) (W : CliHooks) :
+    cliRunPlainExtPlacedSigAt mpl (cliExternsPlaced mmpl) 617 elf W =
+      cliRunPlainPanPlacedSig mpl mmpl elf W :=
+  rfl
+
+theorem cliRunsToPlainExtOnInputsAt_unique {mpl : Obj.MultiPlacement}
+    {ext : CliHooks → String → Option (State → State)} {idx : Nat}
+    {inputsOf : Inputs → ProcessInputs}
+    {elf : ElfImage} {W : CliHooks} {i : Inputs} {o₁ o₂ : Outcome}
+    (h₁ : CliRunsToPlainExtOnInputsAt mpl ext idx inputsOf elf W i o₁)
+    (h₂ : CliRunsToPlainExtOnInputsAt mpl ext idx inputsOf elf W i o₂) :
+    o₁ = o₂ := by
+  rcases h₁ with ⟨s0, hLoad₁, ⟨out₁, ⟨sf, hSteps, hTerm₁⟩, hObs₁⟩ | ⟨_, _, _, hOom₁⟩, _⟩
+  · rcases h₂ with ⟨s0', hLoad₂, _, hSafe₂⟩
+    rw [hLoad₁] at hLoad₂
+    cases hLoad₂
+    rcases hSafe₂ sf hSteps with ⟨out₂, hTerm₂, hObs₂⟩ | ⟨_, hOom⟩ | ⟨hRun, _⟩
+    · cases processTerminatedOutcome_unique_ext hTerm₁ hTerm₂
+      exact outcomeObserved_unique_ext hObs₁ hObs₂
+    · exact False.elim hOom
+    · exact absurd hRun (processTerminatedOutcome_not_running_ext hTerm₁)
+  · exact False.elim hOom₁
+
+theorem cliRunPlainExtOnInputsSigAt_eq_some {mpl : Obj.MultiPlacement}
+    {ext : CliHooks → String → Option (State → State)} {idx : Nat}
+    {inputsOf : Inputs → ProcessInputs}
+    {elf : ElfImage} {W : CliHooks} {i : Inputs} {o : Outcome}
+    (h : CliRunsToPlainExtOnInputsAt mpl ext idx inputsOf elf W i o) :
+    cliRunPlainExtOnInputsSigAt mpl ext idx inputsOf elf W i = some o := by
+  unfold cliRunPlainExtOnInputsSigAt
+  split
+  · next hex => exact congrArg some (cliRunsToPlainExtOnInputsAt_unique (Classical.choose_spec hex) h)
+  · next hne => exact absurd ⟨o, h⟩ hne
+
+theorem cliRunsToPlainExtOnInputsAt_of_eq_some {mpl : Obj.MultiPlacement}
+    {ext : CliHooks → String → Option (State → State)} {idx : Nat}
+    {inputsOf : Inputs → ProcessInputs}
+    {elf : ElfImage} {W : CliHooks} {i : Inputs} {o : Outcome}
+    (h : cliRunPlainExtOnInputsSigAt mpl ext idx inputsOf elf W i = some o) :
+    CliRunsToPlainExtOnInputsAt mpl ext idx inputsOf elf W i o := by
+  unfold cliRunPlainExtOnInputsSigAt at h
+  split at h
+  · next hex =>
+    injection h with hEq
+    rw [← hEq]
+    exact Classical.choose_spec hex
+  · cases h
+
+/-- Lift `outcomeOf elf (cliProgExtPlacedAt mpl ext idx W) (inputsOf i) = some res` directly on
+plain `elf.loadState (inputsOf i)` to `CliRunsToPlainExtOnInputsAt`. -/
+theorem cliRunsToPlainExtOnInputsAt_of_outcomeOf {mpl : Obj.MultiPlacement}
+    {ext : CliHooks → String → Option (State → State)} {idx : Nat}
+    {inputsOf : Inputs → ProcessInputs}
+    {elf : ElfImage} {W : CliHooks} {i : Inputs} {res : ProcessResult}
+    (hout : outcomeOf elf (cliProgExtPlacedAt mpl ext idx W) (inputsOf i) = some res) :
+    CliRunsToPlainExtOnInputsAt mpl ext idx inputsOf elf W i (toOutcome res) := by
+  obtain ⟨s0, hload, _, sf, hsteps, hres⟩ := outcomeOf_eq_some_iff.mp hout
+  have hsteps_sig := steps_cliProgExtPlacedAt_to_sig (loadState_status_running hload) hsteps
+  have hraw : ElfImageRunsTo elf (inputsOf i) (OutcomeMatchesProcess (toOutcome res))
+      (oom := fun _ => False) (prog := cliProgExtPlacedSigAt mpl ext idx W) := by
+    cases hst : sf.status <;> simp only [ProcessResult.ofState?, hst] at hres <;> cases hres
+    · have heq : toSigState_ext sf = sf :=
+        toSigState_of_ne_panicked_ext (by rw [hst]; intro hc; cases hc)
+      rw [heq] at hsteps_sig
+      exact ElfImageRunsTo.of_exitsWith hload
+        (processExitsWith_of_exited hsteps_sig hst) ⟨rfl, rfl, rfl, rfl⟩
+    · have hsig : (toSigState_ext sf).status = .Signaled sigAbrt := by
+        simp [toSigState_ext, hst, State.status_setStatus]
+      exact ElfImageRunsTo.of_exitsWith hload
+        (processExitsWith_of_signaled hsteps_sig hsig) ⟨rfl, rfl⟩
+  rcases hraw with ⟨s0', hload', hRuns⟩
+  exact ⟨s0', hload', hRuns⟩
+
+theorem cliRunsToPlainExtOnInputsAt_of_outcomeOf_observed {mpl : Obj.MultiPlacement}
+    {ext : CliHooks → String → Option (State → State)} {idx : Nat}
+    {inputsOf : Inputs → ProcessInputs}
+    {elf : ElfImage} {W : CliHooks} {i : Inputs} {a : RunAnswer} {res : ProcessResult}
+    (hout : outcomeOf elf (cliProgExtPlacedAt mpl ext idx W) (inputsOf i) = some res)
+    (hobs : MainResult.Observed i.files (MainResult.ofAnswer a) res) :
+    CliRunsToPlainExtOnInputsAt mpl ext idx inputsOf elf W i (observe i.files a) := by
+  rw [← MainResult.observed_ofAnswer i.files a res hobs]
+  exact cliRunsToPlainExtOnInputsAt_of_outcomeOf hout
+
+theorem cliRunsToPlainExtOnInputsAt_of_outcomeOf_usage {mpl : Obj.MultiPlacement}
+    {ext : CliHooks → String → Option (State → State)} {idx : Nat}
+    {inputsOf : Inputs → ProcessInputs}
+    {elf : ElfImage} {W : CliHooks} {i : Inputs} {res : ProcessResult}
+    (hout : outcomeOf elf (cliProgExtPlacedAt mpl ext idx W) (inputsOf i) = some res)
+    (hobs : MainResult.Observed i.files (.ret 2 [] []) res) :
+    CliRunsToPlainExtOnInputsAt mpl ext idx inputsOf elf W i (.exited 2 [] (filesOf i.files)) := by
+  rw [← MainResult.observed_usage i.files res hobs]
+  exact cliRunsToPlainExtOnInputsAt_of_outcomeOf hout
+
 theorem codeLoaded_cliProgExtPlacedAt_of_inElf
     {mpl : Obj.MultiPlacement} {ext : CliHooks → String → Option (State → State)}
     {idx : Nat} {elf : ElfImage} {inputs : ProcessInputs} {s0 : State} {m : Memory}
@@ -712,27 +976,26 @@ theorem codeLoaded_cliProgExtPlaced_of_codeRoLoaded
 /-! ## Explicit-`mpl` `cliStaticsPlacedAt` and `mallocng` `.bss` / `.rodata` Helpers -/
 
 /-- Explicit-`mpl` coin-tape globals (`COINS_NEXT`, `COINS_LEFT`). -/
-def coinsStaticsPlacedAt (mpl : Obj.MultiPlacement) : SepProp :=
+@[expose] def coinsStaticsPlacedAt (mpl : Obj.MultiPlacement) : SepProp :=
   (∃∗ v : BitVec 64, mpl.ρ coinsNextSym ↦₆₄ v) ∗
   (∃∗ v : BitVec 64, mpl.ρ coinsLeftSym ↦₆₄ v)
 
-/-- Explicit-`mpl` SPQR CPU-probe token cells (`STORAGE.0 = 0`, `TOKEN.state = 0`). -/
-def tokenInitPlacedAtMpl (mpl : Obj.MultiPlacement) : SepProp :=
-  (mpl.ρ CryptoVerification.LibsignalSpqrV1.tokenStorageName ↦₈ 0#8) ∗
-  ((mpl.ρ CryptoVerification.LibsignalSpqrV1.tokenName + 8#64) ↦₃₂ 0#32)
+/-- Explicit-`mpl` SPQR CPU-probe token cells and read-only probe environment. -/
+@[expose] def tokenInitPlacedAtMpl (mpl : Obj.MultiPlacement) : SepProp :=
+  CryptoVerification.SpqrV1.GF.Mul2U16.tokenInitPlacedAtMpl mpl
 
 /-- Explicit-`mpl` `libsignal` log-filter cell (`MAX_LOG_LEVEL_FILTER = 0`). -/
-def lsLogOffAt (mpl : Obj.MultiPlacement) : SepProp :=
+@[expose] def lsLogOffAt (mpl : Obj.MultiPlacement) : SepProp :=
   mpl.ρ lsLogFilterSym ↦₆₄ 0#64
 
 /-- Explicit-`mpl` writable statics bundle for `main`. -/
-def cliStaticsPlacedAt (mpl : Obj.MultiPlacement) : SepProp :=
+@[expose] def cliStaticsPlacedAt (mpl : Obj.MultiPlacement) : SepProp :=
   coinsStaticsPlacedAt mpl ∗ tokenInitPlacedAtMpl mpl ∗ lsLogOffAt mpl
 
 /-- Writable `.bss` portion of `VerifiedLibraries.mallocngLib.dataInit mmpl` (the 4 mutable globals
 `__malloc_context` `928` B, `__malloc_lock` `4` B, `__malloc_replaced` `4` B, and
 `__aligned_alloc_replaced` `4` B), separated from the read-only `.rodata` tables `MallocngRoTablesAt`. -/
-def mallocngRwBssAt (mmpl : Obj.MultiPlacement) : SepProp :=
+@[expose] def mallocngRwBssAt (mmpl : Obj.MultiPlacement) : SepProp :=
   let A := mallocngAddrsOfPlacement mmpl
   (A.ctx ↦ₛ List.replicate 928 0#8) ∗
     (A.lock ↦₃₂ 0#32) ∗
@@ -745,12 +1008,12 @@ theorem mallocngLib_dataInit_eq_ro_rw (mmpl : Obj.MultiPlacement) :
   simpa only [mallocngRwBssAt] using mallocngLib_dataInit_eq mmpl
 
 /-- Read-only slice witness `(m.RO base bs.length ∧ m.readBytes base bs.length = bs)` in `m`. -/
-def MallocngRoSlice (m : Memory) (base : BitVec 64) (bs : List (BitVec 8)) : Prop :=
+@[expose] def MallocngRoSlice (m : Memory) (base : BitVec 64) (bs : List (BitVec 8)) : Prop :=
   m.RO base bs.length ∧ m.readBytes base bs.length = bs
 
 /-- All 5 read-only `.rodata` lookup tables of `VerifiedLibraries.mallocngLib` at `mmpl` hold in
 `m` with `Perm.ro`. -/
-def MallocngRoTablesInMem (mmpl : Obj.MultiPlacement) (m : Memory) : Prop :=
+@[expose] def MallocngRoTablesInMem (mmpl : Obj.MultiPlacement) (m : Memory) : Prop :=
   let A := mallocngAddrsOfPlacement mmpl
   MallocngRoSlice m A.sizeClasses mallocngSizeClassBytes ∧
     MallocngRoSlice m A.debruijnFree mallocngDebruijn32Table ∧

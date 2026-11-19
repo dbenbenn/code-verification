@@ -9,12 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollaries
+import LibsignalBinary.Proofs.E2E.Pqxdh.FullPlacementCorollaries
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlaced
 import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChain
 import all Init.Data.String.Defs
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.Accept -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptPlacedA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Bad-KEM Error Ownership for `Pqxdh::accept` and `initialize_bob_session`
@@ -26,7 +35,7 @@ the 28-byte heap `String` buffer on `InvalidMessage` (`speWord 24`) or a plain `
 witness (`7`, `10`, `31`, `34`) with no leaked heap allocations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -58,20 +67,20 @@ attribute [-arm64_norm] List.append_assoc
 
 /-! ## 1. Owned Error Payload Definitions, Field Layouts, and Relocatable Bad-KEM Specs -/
 
-def plainSpeTags : List Nat :=
+@[expose] def plainSpeTags : List Nat :=
   [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 14, 15, 16, 17, 20, 21, 23, 28, 29, 30, 31, 32, 33, 34]
 
-def PlainSpeTag (i : Nat) : Prop := i ∈ plainSpeTags
+@[expose] def PlainSpeTag (i : Nat) : Prop := i ∈ plainSpeTags
 
 instance (i : Nat) : Decidable (PlainSpeTag i) := inferInstanceAs (Decidable (i ∈ plainSpeTags))
 
-def strSpeTags : List Nat := [0, 1, 12, 18, 22, 24, 25, 27]
+@[expose] def strSpeTags : List Nat := [0, 1, 12, 18, 22, 24, 25, 27]
 
-def StrSpeTag (i : Nat) : Prop := i ∈ strSpeTags
+@[expose] def StrSpeTag (i : Nat) : Prop := i ∈ strSpeTags
 
 instance (i : Nat) : Decidable (StrSpeTag i) := inferInstanceAs (Decidable (i ∈ strSpeTags))
 
-def pkVecTag? (tag : BitVec 8) (n : Nat) (l : List (BitVec 8)) :
+@[expose] def pkVecTag? (tag : BitVec 8) (n : Nat) (l : List (BitVec 8)) :
     Option (List.Vector (BitVec 8) n) :=
   match l with
   | t :: rest => if h : t = tag ∧ rest.length = n then some ⟨rest, h.2⟩ else none
@@ -80,7 +89,7 @@ def pkVecTag? (tag : BitVec 8) (n : Nat) (l : List (BitVec 8)) :
 def pkVec? (n : Nat) (l : List (BitVec 8)) : Option (List.Vector (BitVec 8) n) :=
   if h : l.length = n then some ⟨l, h⟩ else none
 
-def pqxdhBadKemErrPayloadAt (A : RustAlloc) (errTag w2 w3 w4 : BitVec 64) : SepProp :=
+@[expose] def pqxdhBadKemErrPayloadAt (A : RustAlloc) (errTag w2 w3 w4 : BitVec 64) : SepProp :=
   ∃∗ isStr : Bool,
     if isStr then
       ⌜errTag = speWord 24⌝ ∗
@@ -92,7 +101,7 @@ def pqxdhBadKemErrPayloadAt (A : RustAlloc) (errTag w2 w3 w4 : BitVec 64) : SepP
     else
       ∃∗ i : Nat, ⌜PlainSpeTag i ∧ errTag = speWord i⌝
 
-def pqxdhAcceptBadKemErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
+@[expose] def pqxdhAcceptBadKemErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
   (outPtr ↦₃₂ 1#32) ∗
   memRegion (outPtr + 4#64) 4 ∗
   ∃∗ errTag : BitVec 64, ∃∗ w2 : BitVec 64, ∃∗ w3 : BitVec 64,
@@ -102,7 +111,7 @@ def pqxdhAcceptBadKemErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :
     pqxdhBadKemErrPayloadAt A errTag w2 w3 w4 ∗
     memRegion (outPtr + 56#64) 48
 
-def initBobBadKemErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
+@[expose] def initBobBadKemErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
   (outPtr ↦₆₄ -1#64) ∗
   ∃∗ errTag : BitVec 64, ∃∗ w2 : BitVec 64, ∃∗ w3 : BitVec 64,
   ∃∗ w4 : BitVec 64, ∃∗ w5 : BitVec 64, ∃∗ w6 : BitVec 64,
@@ -111,7 +120,7 @@ def initBobBadKemErrOwnedAt (A : RustAlloc) (outPtr : BitVec 64) : SepProp :=
     pqxdhBadKemErrPayloadAt A errTag w2 w3 w4 ∗
     memRegion (outPtr + 56#64) 288
 
-def pqxdhAcceptBadKemFieldsAt (basePtr pqskPtr ctSlicePtr ctBufPtr : BitVec 64)
+@[expose] def pqxdhAcceptBadKemFieldsAt (basePtr pqskPtr ctSlicePtr ctBufPtr : BitVec 64)
     (inp : AcceptKeysInput) (ctBytes : List (BitVec 8)) : SepProp :=
   ((basePtr + 32#64) ↦ₛ bytesToBv8 inp.ikBSk) ∗
   ((basePtr + 96#64) ↦ₛ bytesToBv8 inp.spkBSk) ∗
@@ -131,7 +140,7 @@ def pqxdhAcceptBadKemFieldsAt (basePtr pqskPtr ctSlicePtr ctBufPtr : BitVec 64)
   ((ctSlicePtr + 8#64) ↦₆₄ BitVec.ofNat 64 ctBytes.length) ∗
   (ctBufPtr ↦ₛ ctBytes)
 
-def bobParamsBadKemFieldsAt (argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr : BitVec 64)
+@[expose] def bobParamsBadKemFieldsAt (argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr : BitVec 64)
     (inp : AcceptKeysInput) (ctBytes : List (BitVec 8))
     (ikBPk spkBPk : Bytes) (sameAccountByte : BitVec 8) : SepProp :=
   (argPtr ↦ₛ bytesToBv8 ikBPk) ∗
@@ -164,7 +173,7 @@ structure InitBobBadKemGhost where
 
 /-- Inner specification of `Pqxdh::accept` (Block `79`) when
 `pkVecTag? 8 1568 g.ctBytes = none`. -/
-def pqxdhAcceptBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def pqxdhAcceptBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec AcceptBadKemGhost where
   pre := fun (g : AcceptBadKemGhost) s =>
     ⌜s.readReg64 .x0 = g.argPtr ∧
@@ -189,17 +198,17 @@ def pqxdhAcceptBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] (A : RustAlloc
     A.pool
   onPanic := rustPanicOnOomPlaced
 
-def pqxdhAcceptBadKemErrOwnedPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def pqxdhAcceptBadKemErrOwnedPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec AcceptBadKemGhost :=
   withLsCodeRoLoaded lsmpl (pqxdhAcceptBadKemErrOwnedInnerPlacedSpec A)
 
-def pqxdhAcceptBadKemErrOwnedFrozenPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def pqxdhAcceptBadKemErrOwnedFrozenPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec AcceptBadKemGhost :=
   withLsFrozen lsmpl (pqxdhAcceptBadKemErrOwnedInnerPlacedSpec A)
 
 /-- Inner specification of `initialize_bob_session` (Block `75`) when
 `pkVecTag? 8 1568 g.ctBytes = none`. -/
-def initializeBobSessionBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def initializeBobSessionBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec InitBobBadKemGhost where
   pre := fun (g : InitBobBadKemGhost) s =>
     ⌜s.readReg64 .x0 = g.argPtr ∧
@@ -229,11 +238,11 @@ def initializeBobSessionBadKemErrOwnedInnerPlacedSpec [LibsignalPlacement] (A : 
     A.pool
   onPanic := rustPanicOnOomPlaced
 
-def initializeBobSessionBadKemErrOwnedPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def initializeBobSessionBadKemErrOwnedPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec InitBobBadKemGhost :=
   withLsCodeRoLoaded lsmpl (initializeBobSessionBadKemErrOwnedInnerPlacedSpec A)
 
-def initializeBobSessionBadKemErrOwnedFrozenPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
+@[expose] def initializeBobSessionBadKemErrOwnedFrozenPlacedSpec [LibsignalPlacement] (A : RustAlloc) :
     Spec InitBobBadKemGhost :=
   withLsFrozen lsmpl (initializeBobSessionBadKemErrOwnedInnerPlacedSpec A)
 
@@ -517,7 +526,7 @@ theorem pqxdhAccept_badKem_err_owned_placed_ok [LibsignalFullPlacement]
       (pqxdhAcceptBadKemErrOwnedFrozenPlacedSpec A) := by
   unfold pqxdhAcceptBadKemErrOwnedFrozenPlacedSpec
   refine subroutine_ok_withLsFrozen_of_withRoSlice
-    (roSym := "libsignal_protocol:.rodata..Lanon.393")
+    (roSym := "libsignal_protocol:.rodata..Lanon.400")
     (roBytes := incomingBaseKeyInvalidBytes) (by decide) ?_
   have hshim := hook_ok_79_of_mem h_shim (by decide)
   have halloc := hook_ok_79_of_mem h_alloc (by decide)
@@ -565,12 +574,12 @@ theorem pqxdhAccept_badKem_err_owned_placed_ok [LibsignalFullPlacement]
     · refine SepWPp.fold (Entails.of_eq (outPtr_err104_split (s0.readReg64 (.gpr 8#5)))) (by sep_focus) ?_
       sep_elim_exists'; refine SepWPp.fold (Entails.of_eq (incoming_alloc_split _)) (by sep_focus) ?_
       sep_elim_exists'; refine SepWPp.fold
-        (Entails.of_eq (rodata_incoming_split1 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393"))) (by sep_focus) ?_
+        (Entails.of_eq (rodata_incoming_split1 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400"))) (by sep_focus) ?_
       apply SepWPp.of_sepWP_ret; wp_simp_pre_fast [Initiator.bv_sub_add_lit', BitVec.reduceSub, sepConj_assoc]
       wp_steps; refine SepWP.fold
-        (Entails.of_eq (rodata_incoming_1_to_2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393"))) (by sep_focus) ?_
+        (Entails.of_eq (rodata_incoming_1_to_2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400"))) (by sep_focus) ?_
       wp_steps; refine SepWP.fold
-        (Entails.of_eq (rodata_incoming_split2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.393")).symm) (by sep_focus) ?_
+        (Entails.of_eq (rodata_incoming_split2 (lsmpl.ρ "libsignal_protocol:.rodata..Lanon.400")).symm) (by sep_focus) ?_
       refine SepWP.fold (incoming_overlap_prep _ _ _) (by sep_focus) ?_; sep_elim_exists'; wp_steps
       refine SepWP.fold (err28_badKem_payload_intro_placed A _ _ _ halloc0) (by sep_focus) ?_
       refine SepWP.fold (outPtr_badKem_err104_owned_merge_placed A (s0.readReg64 (.gpr 8#5))

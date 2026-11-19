@@ -10,16 +10,24 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244Placed
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244Placed -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.GettersCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Decode -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Frame -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step10c -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Step `+0x244..+0x0e8` of `TripleRatchet::from_session_state`
@@ -28,7 +36,7 @@ Relocatable `RustCliAllocBudget`-threaded verification of segment `+0x244..+0x0e
 `<TripleRatchet>::from_session_state` (block 57, `FreeOnlyEvs`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -150,7 +158,7 @@ theorem call_dropSpe_placed [LibsignalPlacement] {M : AllocCostModel}
   · intro R' sf _ hoom_mem; unfold withMemEq dropSpeSpec at hoom_mem
     dsimp only at hoom_mem; rw [satisfies_pure_sepConj] at hoom_mem; exact False.elim hoom_mem.1
 
-def pkTryFromOkPlacedBudgetSpec_from [LibsignalPlacement] :
+@[expose] def pkTryFromOkPlacedBudgetSpec_from [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64 × BitVec 64 × BitVec 64) :=
   withVmPreserved pkTryFromOkPlacedSpec_from
 
@@ -936,7 +944,7 @@ theorem trFrom_step_10c_to_244_placed [LibsignalPlacement]
       (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *]) (by simp only [arm64_norm, *])
       (by simp only [arm64_norm, *]))
 
-def trFromRawPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def trFromRawPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (TrFromGhost × M.σ) where
   pre := fun (x, stB) s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = 0#32 ∧ s.readReg64 .x8 = x.ret⌝ ∗
@@ -949,7 +957,7 @@ def trFromRawPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
         trResultAt A.repAlloc x.ret x.G x.model.1 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
         stackAt s0.sp trFromStack ∗ A.pool lim (M.stepEvents evs stB) sf
 
-def trFromPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
+@[expose] def trFromPlacedSpec [LibsignalPlacement] (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (TrFromGhost × M.σ) :=
   withLsCodeLoaded lsmpl (withLsRoLoaded lsmpl (trFromRawPlacedSpec M A lim))
 

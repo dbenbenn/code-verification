@@ -14,14 +14,14 @@ public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
 public import Computational.Proofs.Game.PromotedCostedReds.AtomicSessionBridge -- proof-setup: allow-public-import
 public import Computational.Proofs.ReductionDsl.MacroLift -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
-public import Computational.Proofs.E2E.Dsl.ClampsLossless -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.ClampsLossless
 public import Computational.Proofs.E2E.Dsl.M3Interfaces -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.E2EStateRepr -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.FreshnessSim -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.Dsl.StartAndExtSmAux -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.StartAndExtSm -- proof-setup: allow-public-import
-public import Computational.Proofs.E2E.Dsl.M3Subprograms -- proof-setup: allow-public-import
-public import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.StartAndExtSm
+import Computational.Proofs.E2E.Dsl.M3Subprograms
+import Computational.Proofs.LibsignalCli.MainHaltedPrefixCore
 public import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
 public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync

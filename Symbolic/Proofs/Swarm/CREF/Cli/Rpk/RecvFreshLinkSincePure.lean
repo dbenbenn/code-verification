@@ -23,7 +23,7 @@ Shows `receiverKeyUsedB tr s seed n r = false` when no `TREvent.MessageKey` even
 with direction `.receiver` and seed `seed` appears on `tr`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.Common
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.Common -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.Agree.Commit
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PqValid
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +52,7 @@ private theorem maxAge_lt_unixEpoch_pq :
       SystemTime.unixEpoch = false := by decide
 
 /-- The `Session` built by `toRecord (extrasOf fun _ => x) g`. -/
-def pqSessionOf (x : RecordExtras) (g : GhostState (List (BitVec 8))) : Session (List (BitVec 8)) :=
+@[expose] def pqSessionOf (x : RecordExtras) (g : GhostState (List (BitVec 8))) : Session (List (BitVec 8)) :=
   { state := g.session
     pendingPreKey := if g.session.pendingPreKey then some x.pending else none
     pendingKyberPreKey := if g.session.pendingPreKey then x.kyber else none

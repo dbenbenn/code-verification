@@ -10,7 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.StepsPrefix
+import LibsignalBinary.Proofs.SignalSession.Cli.Dir.AddressText.StepsPrefix
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Specs
+public import ProofLib.GenPlacedFetches
 
 /-!
 # Budget-Threaded `decimalInnerSpec` for `address_text`
@@ -19,7 +22,7 @@ Defines the budget-threaded `decimalInnerSpec` wrapper consumed by `address_text
 `decimal`'s `AllocEvent` envelope.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,7 +33,7 @@ open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits RustCliAllocBu
 open CryptoVerification.RustHeap (vecU8)
 open CryptoVerification.SignalSession.Cli (DecimalGhost decimalText)
 
-def decimalInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def decimalInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (DecEnv : BitVec 32 → List AllocEvent → Prop) (stk : Nat) :
     Spec (DecimalGhost × M.σ) where
   pre := fun (x, st) s =>

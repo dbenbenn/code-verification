@@ -9,15 +9,16 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
+public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
-public import Symbolic.Proofs.Swarm.CREF.OpkRelC
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.BinPendPure
-public import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.BinPendPure -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.TRREF.GrowthRecvPure.BranchesBPure
 import Symbolic.Proofs.RngG.R3Canon
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.RecvWire.RcvByPure
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 
 /-!
 # Whisper Receive Preconditions and Record Canonicality
@@ -27,7 +28,7 @@ Defines the entry bundle `WhisperSlotPre`, `CoinSplit` helpers over CLI call eve
 `recv` on whisper wire messages.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -57,11 +58,11 @@ open Symbolic.Swarm.CREF.Cli
 /-! ## CLI Call Events, `CoinSplit` Helpers, and `WhisperSlotPre` -/
 
 /-- Events appended to the CLI trace by outcome `o` of call `c`. -/
-def cliOutcomeEvents (c : CliCall) : Option Outcome → List MachineEvent
+@[expose] def cliOutcomeEvents (c : CliCall) : Option Outcome → List MachineEvent
   | some (.exited code out _) => cliEntryEvents c ++ cliExitEvents c code out
   | _ => cliEntryEvents c
 
-def cliRecvWhisperCall (p : Participant) (st : PqParty) (body : HwBytes) (rc : BitVec 256) :
+@[expose] def cliRecvWhisperCall (p : Participant) (st : PqParty) (body : HwBytes) (rc : BitVec 256) :
     CliCall where
   party  := p
   cmd    := .recv (partyAddress st.party.other)

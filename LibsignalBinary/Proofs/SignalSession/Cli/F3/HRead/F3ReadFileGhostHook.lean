@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.FsTracedPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
 
 /-!
 # `(γ, tp)`-Independent `read_file` Ghost Hooks and `mallocng` Fallback
@@ -27,7 +32,7 @@ hooks for `ReadFileRuleEnv cliIo.rd` (`f3ReadFileGhostHook`) and `ReadFileRuleEn
 (`f3ReadFileFixedGhostHook`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -59,7 +64,7 @@ open LibsignalBinary.Heap.Fine
   (fineCostModel fineCostModelIface fineCostModelSound)
 open LibsignalBinary.Heap.SpecBudget (allocBytes1Events)
 open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
-  (CodeBlocksPermRX CodeBlocksPermRXMem allocCallPreserved_refl
+  (CodeBlocksPermRX CodeBlocksPermRXMem aesStorageCell allocCallPreserved_refl
    cc_retHook_setMem_sameRegs fineHookRustCliAllocBudget
    mallocngHookBudgetPool mallocngHookBudgetPool_transport mallocngHookRustCliAllocBudget
    vmPreserved_retHook_setMem)
@@ -146,7 +151,7 @@ private theorem subroutineOutcome_to_stop {α : Type} {spec : Spec α} {x : α} 
   · exact Or.inr (Or.inr (Or.inr ho))
 
 /-- Path byte slice read from `(x0, x1)` at an `lsReadFileSym` call boundary (`(γ, tp)`-free). -/
-def callPathBytes (s : State) : List (BitVec 8) :=
+@[expose] def callPathBytes (s : State) : List (BitVec 8) :=
   s.mem.readBytes (s.readReg64 .x0) (s.readReg64 .x1).toNat
 
 @[simp]
@@ -251,10 +256,12 @@ theorem fineHookRustCliAllocBudget_pool_stripS
   change VerifiedLibraries.mallocngLib.codeRO mmpl ∗
       mallocngBudgetPoolAt fineCostModel fineCostModelIface γ (mallocngAddrsOfPlacement mmpl)
         tp brkStart lim st (stripS keep s) ∗
+      aesStorageCell brkStart ∗
       ⌜lim.enforced = true → CodeBlocksPermRX mmpl (stripS keep s)⌝ =
     VerifiedLibraries.mallocngLib.codeRO mmpl ∗
       mallocngBudgetPoolAt fineCostModel fineCostModelIface γ (mallocngAddrsOfPlacement mmpl)
         tp brkStart lim st s ∗
+      aesStorageCell brkStart ∗
       ⌜lim.enforced = true → CodeBlocksPermRX mmpl s⌝
   rw [hpool, hPermRX]
 
@@ -262,7 +269,7 @@ theorem fineHookRustCliAllocBudget_pool_stripS
 
 /-- Unified (`ro : Bool`) `read_file` specification at stack budget `stk`, covering both
 `ro = false` (`↦ₛ`, `readFileSpecPlaced`) and `ro = true` (`↦ᵣ`, `readFileLitSpecPlaced`). -/
-def readFileAnySpecPlaced {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def readFileAnySpecPlaced {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop := ReadFileRuleEnv cliIo.rd) :
     Spec (ReadFileCall × M.σ) where
@@ -282,7 +289,7 @@ def readFileAnySpecPlaced {M : AllocCostModel} (A : RustCliAllocBudget M)
 /-- Conditional-OOM budget-threaded contract for compiled `signal_session_io::read_file`
     parameterized by `x : ReadFileCall` (`ro = false` for `↦ₛ`, `ro = true` for `.rodata` `↦ᵣ`)
     under `cliIo.pathOk x.path` and `s.fs.allocFd ≠ none`. -/
-def readFileAnyBudgetCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def readFileAnyBudgetCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (ReadFileCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
@@ -302,7 +309,7 @@ def readFileAnyBudgetCondSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
       CliIoFilesOomPreserved s0 sf⌝
 
 /-- Deterministic-event `NoOom` specialization of `readFileAnyBudgetCondSpec` under `FitsEvents`. -/
-def readFileAnyBudgetNoOomSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def readFileAnyBudgetNoOomSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (ReadFileCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
@@ -394,38 +401,6 @@ theorem subroutine_ok_readFileAnyNoOom_of_cond {M : AllocCostModel}
     rw [satisfies_pure_sepConj] at hoom
     exact hoom.1.1 hFit
 
-/-- Frame an invariant `Extra : SepProp` onto `readFileAnyBudgetCondSpec`'s pool when
-    `A1.repAlloc = A0.repAlloc` and `A1.pool lim st s = Extra ∗ A0.pool lim st s`. -/
-theorem subroutine_ok_readFileAnyBudgetCondSpec_frame_extra {M : AllocCostModel}
-    {A0 A1 : RustCliAllocBudget M} (Extra : SepProp)
-    (hpool : ∀ lim st s, A1.pool lim st s = Extra ∗ A0.pool lim st s)
-    (hrep : A1.repAlloc = A0.repAlloc)
-    {lim : BudgetLimits} {stk : Nat} {P : Program} {entry : BitVec 64}
-    (h0 : subroutine_ok P entry (readFileAnyBudgetCondSpec A0 lim stk)) :
-    subroutine_ok P entry (readFileAnyBudgetCondSpec A1 lim stk) :=
-  subroutine_ok_frame_extra Extra h0
-    (fun ⟨_, _⟩ _ => Entails.of_eq (by
-      dsimp only [readFileAnyBudgetCondSpec]; rw [hpool]; sep_ac_rfl))
-    (fun ⟨_, _⟩ _ _ => Entails.of_eq (by
-      dsimp only [readFileAnyBudgetCondSpec]; rw [hpool, hrep]; sep_ac_rfl))
-    (fun _ _ _ => Entails.refl _)
-    (fun _ _ _ _ => Entails.refl _)
-    (fun _ _ _ => Entails.refl _)
-
-theorem linkedGhostReadFileAny_subroutine_ok
-    (allocLib : Obj.MultiPlacedLib) (allocMpl : Obj.MultiPlacement)
-    (γ : GhostName) (mmpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
-    {lim : BudgetLimits} {stk : Nat} {P : Program} {entry : BitVec 64}
-    (h0 : subroutine_ok P entry
-      (readFileAnyBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim stk)) :
-    subroutine_ok P entry
-      (readFileAnyBudgetCondSpec
-        (linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart) lim stk) :=
-  subroutine_ok_readFileAnyBudgetCondSpec_frame_extra
-    (A0 := fineHookRustCliAllocBudget γ mmpl tp brkStart)
-    (A1 := linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart)
-    (allocLib.codeRO allocMpl) (fun _ _ _ => rfl) rfl h0
-
 theorem hookOk_readFileSpecPlaced_of_any {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {stk : Nat}
     {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
@@ -492,7 +467,7 @@ theorem hookOk_readFileLitSpecPlaced_of_any {M : AllocCostModel}
 /-- Raw `(γ, tp)`-independent `mallocng` `read_file` fallback: writes `errTag` on `.error ()`,
 empty `(0, 1, 0)` on `.ok []`, or allocates `bs.length` bytes via `stepRustAlloc1` on non-empty
 `.ok bs`. -/
-noncomputable def f3ReadFileFallbackRaw (mmpl : Obj.MultiPlacement) (s0 : State) : State :=
+@[expose] noncomputable def f3ReadFileFallbackRaw (mmpl : Obj.MultiPlacement) (s0 : State) : State :=
   match cliIo.rd s0.fs.files (callPathBytes s0) with
   | .error () =>
     retHook (fun s => s.setMem (s.mem.write64 (s.readReg64 .x8) 0xFFFFFFFFFFFFFFFF#64)) s0
@@ -509,7 +484,7 @@ noncomputable def f3ReadFileFallbackRaw (mmpl : Obj.MultiPlacement) (s0 : State)
 
 /-- Closed `(γ, tp)`-independent `read_file` fallback wrapped with `keepFsTrace` so `.fs` and `.trace`
     are preserved definitionally on every state. -/
-noncomputable def f3ReadFileFallback (mmpl : Obj.MultiPlacement) (s0 : State) : State :=
+@[expose] noncomputable def f3ReadFileFallback (mmpl : Obj.MultiPlacement) (s0 : State) : State :=
   keepFsTrace (f3ReadFileFallbackRaw mmpl) s0
 
 @[simp]
@@ -521,10 +496,6 @@ theorem f3ReadFileFallback_fs (mmpl : Obj.MultiPlacement) (s0 : State) :
 theorem f3ReadFileFallback_trace (mmpl : Obj.MultiPlacement) (s0 : State) :
     (f3ReadFileFallback mmpl s0).trace = s0.trace :=
   keepFsTrace_trace (f3ReadFileFallbackRaw mmpl) s0
-
-theorem f3ReadFileFallback_fsT (mmpl : Obj.MultiPlacement) :
-    HookFsTraced IsFsC (f3ReadFileFallback mmpl) :=
-  keepFsTrace_fsT (f3ReadFileFallbackRaw mmpl)
 
 private theorem write_ioVecErr_at_ret {m : Memory} {ret : BitVec 64} {Frame : SepProp}
     (hmem : m ⊨ memRegion ret 24 ∗ Frame) :
@@ -760,16 +731,6 @@ theorem f3ReadFileFallback_ok_of_env
   rw [heq]
   exact ⟨hkf, hsym, hout⟩
 
-theorem f3ReadFileFallback_ok_fine
-    (γ : GhostName) {mmpl : Obj.MultiPlacement} (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) {stk : Nat}
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (hstk : extHookStack ≤ stk) :
-    HookOk (f3ReadFileFallback mmpl)
-      (readFileAnySpecPlaced (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim stk
-        (ReadFileRuleEnv cliIo.rd)) :=
-  f3ReadFileFallback_ok_of_env γ tp brkStart lim hPl hstk (fun _ _ _ h => h)
-
 theorem f3ReadFileFallback_ok_fine_fixed
     (γ : GhostName) {mmpl : Obj.MultiPlacement} (tp brkStart : BitVec 64)
     (lim : BudgetLimits) {stk : Nat}
@@ -780,73 +741,20 @@ theorem f3ReadFileFallback_ok_fine_fixed
         (ReadFileRuleEnvFixed cliIo.rd)) :=
   f3ReadFileFallback_ok_of_env γ tp brkStart lim hPl hstk (fun _ _ _ h => Or.inl h)
 
-theorem hookOk_readFileAnySpecPlaced_frame_extra {M : AllocCostModel}
-    {A0 A1 : RustCliAllocBudget M} (Extra : SepProp)
-    (hpool : ∀ lim st s, A1.pool lim st s = Extra ∗ A0.pool lim st s)
-    (hrep : A1.repAlloc = A0.repAlloc)
-    {lim : BudgetLimits} {stk : Nat}
-    {ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop}
-    {f : State → State}
-    (h0 : HookOk f (readFileAnySpecPlaced A0 lim stk ReadEnv)) :
-    HookOk f (readFileAnySpecPlaced A1 lim stk ReadEnv) := by
-  refine hookOk_frame_extra Extra h0
-    (fun ⟨_, _⟩ _ => Entails.of_eq (by
-      dsimp only [readFileAnySpecPlaced]; rw [hpool]; sep_ac_rfl))
-    (fun ⟨_, _⟩ _ _ => ?_)
-    (fun _ _ _ => Entails.refl _)
-    (fun _ _ _ _ => Entails.refl _)
-    (fun _ _ _ => Entails.refl _)
-  dsimp only [readFileAnySpecPlaced]
-  rw [sepExists_sepConj_left]
-  refine Entails.sepExists_elim fun evs => ?_
-  refine Entails.trans ?_ (Entails.sepExists_intro evs)
-  rw [hpool, hrep]
-  exact Entails.of_eq (by sep_ac_rfl)
-
-theorem f3ReadFileFallback_ok_linked
-    (allocLib : Obj.MultiPlacedLib) (allocMpl : Obj.MultiPlacement)
-    (γ : GhostName) {mmpl : Obj.MultiPlacement} (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) {stk : Nat}
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (hstk : extHookStack ≤ stk) :
-    HookOk (f3ReadFileFallback mmpl)
-      (readFileAnySpecPlaced (linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart) lim stk
-        (ReadFileRuleEnv cliIo.rd)) :=
-  hookOk_readFileAnySpecPlaced_frame_extra
-    (A0 := fineHookRustCliAllocBudget γ mmpl tp brkStart)
-    (A1 := linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart)
-    (allocLib.codeRO allocMpl) (fun _ _ _ => rfl) rfl
-    (f3ReadFileFallback_ok_fine γ tp brkStart lim hPl hstk)
-
-theorem f3ReadFileFallback_ok_linked_fixed
-    (allocLib : Obj.MultiPlacedLib) (allocMpl : Obj.MultiPlacement)
-    (γ : GhostName) {mmpl : Obj.MultiPlacement} (tp brkStart : BitVec 64)
-    (lim : BudgetLimits) {stk : Nat}
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (hstk : extHookStack ≤ stk) :
-    HookOk (f3ReadFileFallback mmpl)
-      (readFileAnySpecPlaced (linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart) lim stk
-        (ReadFileRuleEnvFixed cliIo.rd)) :=
-  hookOk_readFileAnySpecPlaced_frame_extra
-    (A0 := fineHookRustCliAllocBudget γ mmpl tp brkStart)
-    (A1 := linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart)
-    (allocLib.codeRO allocMpl) (fun _ _ _ => rfl) rfl
-    (f3ReadFileFallback_ok_fine_fixed γ tp brkStart lim hPl hstk)
-
 /-! ## `(γ, tp)`-Independent Linked `read_file` Ghost Hooks -/
 
 /-- Per-call guard for `ReadFileRuleEnv cliIo.rd`: `FdsGe3Closed s0.fs` and `callPathBytes s0` is
 not an over-cap regular file (`> 2 MiB`). -/
-def F3ReadFileCallGuard (s0 : State) : Prop :=
+@[expose] def F3ReadFileCallGuard (s0 : State) : Prop :=
   FdsGe3Closed s0.fs ∧ ¬ OverCapFile s0.fs.files (callPathBytes s0)
 
 /-- Call guard for `ReadFileRuleEnvFixed cliIo.rd`: `FdsGe3Closed s0.fs`. -/
-def F3ReadFileFixedCallGuard (s0 : State) : Prop :=
+@[expose] def F3ReadFileFixedCallGuard (s0 : State) : Prop :=
   FdsGe3Closed s0.fs
 
 /-- `(γ, tp)`-quantified precondition witness at an `lsReadFileSym` call boundary: `s0` satisfies
     `(readFileAnySpecPlaced (AOf γ tp) lim stk ReadEnv).pre` for some `(γ, tp, y, R)`. -/
-def ActiveF3ReadFilePre {M : AllocCostModel}
+@[expose] def ActiveF3ReadFilePre {M : AllocCostModel}
     (AOf : GhostName → BitVec 64 → RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
@@ -856,7 +764,7 @@ def ActiveF3ReadFilePre {M : AllocCostModel}
       s0.mem ⊨ (readFileAnySpecPlaced (AOf γ tp) lim stk ReadEnv).pre y s0 ∗ R
 
 /-- `(γ, tp)`-independent active real-ELF execution witness for `lsReadFileSym`. -/
-def ActiveF3ReadFileRun (keep : BitVec 64 → Bool) (P_real P_sub : Program)
+@[expose] def ActiveF3ReadFileRun (keep : BitVec 64 → Bool) (P_real P_sub : Program)
     (entry_io : BitVec 64) (Guard : State → Prop) (s0 : State) : Prop :=
   ExecFrozen s0.mem ∧ keep (s0.readReg64 .lr) = false ∧
     Guard s0 ∧
@@ -871,7 +779,7 @@ def ActiveF3ReadFileRun (keep : BitVec 64 → Bool) (P_real P_sub : Program)
 open Classical in
 /-- Unified `(γ, tp)`-independent linked ghost-hook schema for `lsReadFileSym` parameterized by
     `(ReadEnv, Guard)` and `fallback`. -/
-noncomputable def f3ReadFileLinkedHook {M : AllocCostModel}
+@[expose] noncomputable def f3ReadFileLinkedHook {M : AllocCostModel}
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entry_io : BitVec 64)
     (AOf : GhostName → BitVec 64 → RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat)
@@ -936,7 +844,7 @@ noncomputable def f3ReadFileGhostHook {M : AllocCostModel}
 
 /-- `(γ, tp)`-independent real-ELF ghost hook for `ReadFileRuleEnvFixed cliIo.rd`, guarded by
 `FdsGe3Closed s0.fs`. -/
-noncomputable def f3ReadFileFixedGhostHook {M : AllocCostModel}
+@[expose] noncomputable def f3ReadFileFixedGhostHook {M : AllocCostModel}
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entry_io : BitVec 64)
     (AOf : GhostName → BitVec 64 → RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat)
@@ -952,7 +860,7 @@ noncomputable def f3ReadFileGhostHookFine
     (fun γ tp => fineHookRustCliAllocBudget γ mmpl tp brkStart)
     lim stk (f3ReadFileFallback mmpl)
 
-noncomputable def f3ReadFileFixedGhostHookFine
+@[expose] noncomputable def f3ReadFileFixedGhostHookFine
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entry_io : BitVec 64)
     (mmpl : Obj.MultiPlacement) (brkStart : BitVec 64)
     (lim : BudgetLimits) (stk : Nat) : State → State :=
@@ -965,14 +873,6 @@ noncomputable def f3ReadFileGhostHookLinked
     (allocLib : Obj.MultiPlacedLib) (allocMpl mmpl : Obj.MultiPlacement) (brkStart : BitVec 64)
     (lim : BudgetLimits) (stk : Nat) : State → State :=
   f3ReadFileGhostHook keep P_real P_sub entry_io
-    (fun γ tp => linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart)
-    lim stk (f3ReadFileFallback mmpl)
-
-noncomputable def f3ReadFileFixedGhostHookLinked
-    (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entry_io : BitVec 64)
-    (allocLib : Obj.MultiPlacedLib) (allocMpl mmpl : Obj.MultiPlacement) (brkStart : BitVec 64)
-    (lim : BudgetLimits) (stk : Nat) : State → State :=
-  f3ReadFileFixedGhostHook keep P_real P_sub entry_io
     (fun γ tp => linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart)
     lim stk (f3ReadFileFallback mmpl)
 
@@ -1014,7 +914,7 @@ noncomputable def f3ReadFileGhostHookSub {M : AllocCostModel}
   ⟨f3ReadFileGhostHook keep P_real P_sub entry_io AOf lim stk fallback,
    f3ReadFileGhostHook_fsT keep P_real P_sub entry_io AOf lim stk fallback⟩
 
-noncomputable def f3ReadFileFixedGhostHookSub {M : AllocCostModel}
+@[expose] noncomputable def f3ReadFileFixedGhostHookSub {M : AllocCostModel}
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entry_io : BitVec 64)
     (AOf : GhostName → BitVec 64 → RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) (fallback : State → State) :
@@ -1031,7 +931,7 @@ noncomputable def f3ReadFileGhostHookFineSub
     (fun γ tp => fineHookRustCliAllocBudget γ mmpl tp brkStart)
     lim stk (f3ReadFileFallback mmpl)
 
-noncomputable def f3ReadFileFixedGhostHookFineSub
+@[expose] noncomputable def f3ReadFileFixedGhostHookFineSub
     (keep : BitVec 64 → Bool) (P_real P_sub : Program) (entry_io : BitVec 64)
     (mmpl : Obj.MultiPlacement) (brkStart : BitVec 64)
     (lim : BudgetLimits) (stk : Nat) :
@@ -1234,44 +1134,6 @@ theorem real_f3ReadFileFixed_run_of_stripS {M : AllocCostModel}
   · dsimp only [readFileAnyBudgetNoOomSpec] at hoom'
     rw [satisfies_pure_sepConj] at hoom'; exact False.elim hoom'.1
 
-theorem f3ReadFileGhostHook_ok_any {M : AllocCostModel}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entry_io : BitVec 64}
-    {AOf : GhostName → BitVec 64 → RustCliAllocBudget M}
-    {lim : BudgetLimits} {stk : Nat} {fallback : State → State}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hPoolStrip : ∀ γ tp st s, (AOf γ tp).pool lim st (stripS keep s) = (AOf γ tp).pool lim st s)
-    (hCond : ∀ γ tp, subroutine_ok P_sub entry_io (readFileAnyBudgetCondSpec (AOf γ tp) lim stk))
-    (hFallback : ∀ γ tp, HookOk (keepFsTrace fallback)
-      (readFileAnySpecPlaced (AOf γ tp) lim stk (ReadFileRuleEnv cliIo.rd))) :
-    ∀ (γ : GhostName) (tp : BitVec 64),
-      HookOk (f3ReadFileGhostHook keep P_real P_sub entry_io AOf lim stk fallback)
-        (readFileAnySpecPlaced (AOf γ tp) lim stk (ReadFileRuleEnv cliIo.rd)) := by
-  classical
-  rintro γ tp ⟨x, st⟩ R s0 hrun hpre hsp
-  have hActPre : ActiveF3ReadFilePre AOf lim stk (ReadFileRuleEnv cliIo.rd) s0 :=
-    ⟨hrun, hsp, γ, tp, (x, st), R, hpre⟩
-  unfold f3ReadFileGhostHook f3ReadFileLinkedHook
-  simp only [hActPre, ↓reduceDIte]
-  by_cases hReal : ActiveF3ReadFileRun keep P_real P_sub entry_io F3ReadFileCallGuard s0
-  · simp only [hReal, ↓reduceDIte]
-    obtain ⟨sf, huntil, hstop, hout, _, _, _⟩ :=
-      real_f3ReadFile_run_of_stripS hsvc_real hsvc_sub hreal_no hsub_no (hPoolStrip γ tp)
-        (hCond γ tp) hrun hsp hpre hReal.1 hReal.2.1 hReal.2.2.1 hReal.2.2.2.1
-    have hchoose := Classical.choose_spec hReal.2.2.2.2
-    have hdet : Classical.choose hReal.2.2.2.2 = sf :=
-      StepsUntil.deterministic hchoose.1 hchoose.2.1 huntil hstop
-    rw [hdet]
-    have hkf : s0.mem.KeepsFrozen sf.mem := by
-      simpa only [setPC_mem] using huntil.toSteps.keepsFrozen
-    have hsym : sf.symtab = s0.symtab := by
-      simpa only [setPC_symtab] using huntil.toSteps.symtab_eq
-    exact ⟨hkf, hsym, hout⟩
-  · simp only [hReal, ↓reduceDIte]
-    exact hFallback γ tp (x, st) R s0 hrun hpre hsp
-
 theorem f3ReadFileFixedGhostHook_ok_any {M : AllocCostModel}
     {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entry_io : BitVec 64}
     {AOf : GhostName → BitVec 64 → RustCliAllocBudget M}
@@ -1315,75 +1177,6 @@ private theorem keepFsTrace_f3ReadFileFallback_eq (mmpl : Obj.MultiPlacement) :
   funext s0
   unfold f3ReadFileFallback keepFsTrace
   rfl
-
-/-- Closed `∀ γ tp, HookOk` for `f3ReadFileGhostHookFine` at `readFileAnySpecPlaced`
-(`ReadFileRuleEnv cliIo.rd`). -/
-theorem f3ReadFileGhostHookFine_ok_any
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entry_io : BitVec 64}
-    {mmpl : Obj.MultiPlacement} {brkStart : BitVec 64}
-    {lim : BudgetLimits} {stk : Nat}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (hKeepMallocng : ∀ a : BitVec 64,
-      (VerifiedLibraries.mallocngLib.findCodeBlock mmpl a).isSome = true → keep a = true)
-    (hstk : extHookStack ≤ stk)
-    (hCond : ∀ γ tp, subroutine_ok P_sub entry_io
-      (readFileAnyBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack)) :
-    ∀ (γ : GhostName) (tp : BitVec 64),
-      HookOk (f3ReadFileGhostHookFine keep P_real P_sub entry_io mmpl brkStart lim stk)
-        (readFileAnySpecPlaced (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim stk
-          (ReadFileRuleEnv cliIo.rd)) :=
-  f3ReadFileGhostHook_ok_any hsvc_real hsvc_sub hreal_no hsub_no
-    (fun γ tp st s => fineHookRustCliAllocBudget_pool_stripS γ mmpl tp brkStart hKeepMallocng lim st s)
-    (fun γ tp => subroutine_ok_readFileAnyBudgetCondSpec_of_extHookStack hstk (hCond γ tp))
-    (fun γ tp => by
-      rw [keepFsTrace_f3ReadFileFallback_eq]
-      exact f3ReadFileFallback_ok_fine γ tp brkStart lim hPl hstk)
-
-theorem f3ReadFileGhostHookFine_ok_placed
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entry_io : BitVec 64}
-    {mmpl : Obj.MultiPlacement} {brkStart : BitVec 64}
-    {lim : BudgetLimits} {stk : Nat}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (hKeepMallocng : ∀ a : BitVec 64,
-      (VerifiedLibraries.mallocngLib.findCodeBlock mmpl a).isSome = true → keep a = true)
-    (hstk : extHookStack ≤ stk)
-    (hCond : ∀ γ tp, subroutine_ok P_sub entry_io
-      (readFileAnyBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack)) :
-    ∀ (γ : GhostName) (tp : BitVec 64),
-      HookOk (f3ReadFileGhostHookFine keep P_real P_sub entry_io mmpl brkStart lim stk)
-        (readFileSpecPlaced cliIo.rd cliWrOk
-          (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  fun γ tp => hookOk_readFileSpecPlaced_of_any
-    (f3ReadFileGhostHookFine_ok_any hsvc_real hsvc_sub hreal_no hsub_no hPl hKeepMallocng hstk hCond γ tp)
-
-theorem f3ReadFileGhostHookFine_ok_lit
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entry_io : BitVec 64}
-    {mmpl : Obj.MultiPlacement} {brkStart : BitVec 64}
-    {lim : BudgetLimits} {stk : Nat}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (hKeepMallocng : ∀ a : BitVec 64,
-      (VerifiedLibraries.mallocngLib.findCodeBlock mmpl a).isSome = true → keep a = true)
-    (hstk : extHookStack ≤ stk)
-    (hCond : ∀ γ tp, subroutine_ok P_sub entry_io
-      (readFileAnyBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack)) :
-    ∀ (γ : GhostName) (tp : BitVec 64),
-      HookOk (f3ReadFileGhostHookFine keep P_real P_sub entry_io mmpl brkStart lim stk)
-        (readFileLitSpecPlaced cliIo
-          (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  fun γ tp => hookOk_readFileLitSpecPlaced_of_any
-    (f3ReadFileGhostHookFine_ok_any hsvc_real hsvc_sub hreal_no hsub_no hPl hKeepMallocng hstk hCond γ tp)
 
 /-- Closed `∀ γ tp, HookOk` for `f3ReadFileFixedGhostHookFine` at `readFileAnySpecPlaced`
 (`ReadFileRuleEnvFixed cliIo.rd`). -/
@@ -1454,118 +1247,6 @@ theorem f3ReadFileFixedGhostHookFine_ok_lit
   fun γ tp => hookOk_readFileLitSpecPlaced_of_any
     (f3ReadFileFixedGhostHookFine_ok_any hsvc_real hsvc_sub hreal_no hsub_no hPl hKeepMallocng hstk hCond γ tp)
 
-theorem f3ReadFileGhostHookLinked_ok_any
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entry_io : BitVec 64}
-    {allocLib : Obj.MultiPlacedLib} {allocMpl mmpl : Obj.MultiPlacement} {brkStart : BitVec 64}
-    {lim : BudgetLimits} {stk : Nat}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (hKeepMallocng : ∀ a : BitVec 64,
-      (VerifiedLibraries.mallocngLib.findCodeBlock mmpl a).isSome = true → keep a = true)
-    (hstk : extHookStack ≤ stk)
-    (hCond : ∀ γ tp, subroutine_ok P_sub entry_io
-      (readFileAnyBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack)) :
-    ∀ (γ : GhostName) (tp : BitVec 64),
-      HookOk (f3ReadFileGhostHookLinked keep P_real P_sub entry_io allocLib allocMpl mmpl brkStart lim stk)
-        (readFileAnySpecPlaced (linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart) lim stk
-          (ReadFileRuleEnv cliIo.rd)) :=
-  f3ReadFileGhostHook_ok_any hsvc_real hsvc_sub hreal_no hsub_no
-    (fun γ tp st s => linkedGhostBudget_pool_stripS allocLib allocMpl γ mmpl tp brkStart hKeepMallocng lim st s)
-    (fun γ tp => linkedGhostReadFileAny_subroutine_ok allocLib allocMpl γ mmpl tp brkStart
-      (subroutine_ok_readFileAnyBudgetCondSpec_of_extHookStack hstk (hCond γ tp)))
-    (fun γ tp => by
-      rw [keepFsTrace_f3ReadFileFallback_eq]
-      exact f3ReadFileFallback_ok_linked allocLib allocMpl γ tp brkStart lim hPl hstk)
-
-theorem f3ReadFileFixedGhostHookLinked_ok_any
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entry_io : BitVec 64}
-    {allocLib : Obj.MultiPlacedLib} {allocMpl mmpl : Obj.MultiPlacement} {brkStart : BitVec 64}
-    {lim : BudgetLimits} {stk : Nat}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (hKeepMallocng : ∀ a : BitVec 64,
-      (VerifiedLibraries.mallocngLib.findCodeBlock mmpl a).isSome = true → keep a = true)
-    (hstk : extHookStack ≤ stk)
-    (hCond : ∀ γ tp, subroutine_ok P_sub entry_io
-      (readFileAnyBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack)) :
-    ∀ (γ : GhostName) (tp : BitVec 64),
-      HookOk (f3ReadFileFixedGhostHookLinked keep P_real P_sub entry_io allocLib allocMpl mmpl brkStart lim stk)
-        (readFileAnySpecPlaced (linkedGhostBudget allocLib allocMpl γ mmpl tp brkStart) lim stk
-          (ReadFileRuleEnvFixed cliIo.rd)) :=
-  f3ReadFileFixedGhostHook_ok_any hsvc_real hsvc_sub hreal_no hsub_no
-    (fun γ tp st s => linkedGhostBudget_pool_stripS allocLib allocMpl γ mmpl tp brkStart hKeepMallocng lim st s)
-    (fun γ tp => linkedGhostReadFileAny_subroutine_ok allocLib allocMpl γ mmpl tp brkStart
-      (subroutine_ok_readFileAnyBudgetCondSpec_of_extHookStack hstk (hCond γ tp)))
-    (fun γ tp => by
-      rw [keepFsTrace_f3ReadFileFallback_eq]
-      exact f3ReadFileFallback_ok_linked_fixed allocLib allocMpl γ tp brkStart lim hPl hstk)
-
-theorem hRead_of_f3ReadFileGhostHookFine [LibsignalPlacement]
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entry_io : BitVec 64}
-    {mmpl : Obj.MultiPlacement} {brkStart : BitVec 64}
-    {lim : BudgetLimits} {stk : Nat}
-    {ext : LibsignalHooks} {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i ext] [LsBlockBound bi]
-    (hlookup : ext lsReadFileSym =
-      some (f3ReadFileGhostHookFine keep P_real P_sub entry_io mmpl brkStart lim stk))
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (hKeepMallocng : ∀ a : BitVec 64,
-      (VerifiedLibraries.mallocngLib.findCodeBlock mmpl a).isSome = true → keep a = true)
-    (hstk : extHookStack ≤ stk)
-    (hCond : ∀ γ tp, subroutine_ok P_sub entry_io
-      (readFileAnyBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack))
-    (γ : GhostName) (tp : BitVec 64)
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  hRead_of_hookSat
-    (hookSat_readFile_of_hookOk hlookup
-      (f3ReadFileGhostHookFine_ok_placed hsvc_real hsvc_sub hreal_no hsub_no
-        hPl hKeepMallocng hstk hCond γ tp))
-    hi hunmut
-
-theorem hRead_withPanics_of_f3ReadFileGhostHookFine [LibsignalPlacement]
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entry_io : BitVec 64}
-    {mmpl : Obj.MultiPlacement} {brkStart : BitVec 64}
-    {lim : BudgetLimits} {stk : Nat}
-    {ext : LibsignalHooks} {callerProg : Program} {i bi : Nat}
-    [IsLsBlockProg callerProg i (Rust.withPanics ext)] [LsBlockBound bi]
-    (hlookup : ext lsReadFileSym =
-      some (f3ReadFileGhostHookFine keep P_real P_sub entry_io mmpl brkStart lim stk))
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hPl : VerifiedLibraries.mallocngLib.Placeable mmpl)
-    (hKeepMallocng : ∀ a : BitVec 64,
-      (VerifiedLibraries.mallocngLib.findCodeBlock mmpl a).isSome = true → keep a = true)
-    (hstk : extHookStack ≤ stk)
-    (hCond : ∀ γ tp, subroutine_ok P_sub entry_io
-      (readFileAnyBudgetCondSpec (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim extHookStack))
-    (γ : GhostName) (tp : BitVec 64)
-    (hi : i < bi := by decide)
-    (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsρ lsReadFileSym)
-      (readFileSpecPlaced cliIo.rd cliWrOk
-        (fineHookRustCliAllocBudget γ mmpl tp brkStart) lim stk (ReadFileRuleEnv cliIo.rd)) :=
-  hRead_of_hookSat
-    (hookSat_withPanics_readFile_of_hookOk hlookup
-      (f3ReadFileGhostHookFine_ok_placed hsvc_real hsvc_sub hreal_no hsub_no
-        hPl hKeepMallocng hstk hCond γ tp))
-    hi hunmut
-
 theorem hRead_of_f3ReadFileFixedGhostHookFine [LibsignalPlacement]
     {keep : BitVec 64 → Bool} {P_real P_sub : Program} {entry_io : BitVec 64}
     {mmpl : Obj.MultiPlacement} {brkStart : BitVec 64}
@@ -1625,59 +1306,6 @@ theorem hRead_withPanics_of_f3ReadFileFixedGhostHookFine [LibsignalPlacement]
       (f3ReadFileFixedGhostHookFine_ok_placed hsvc_real hsvc_sub hreal_no hsub_no
         hPl hKeepMallocng hstk hCond γ tp))
     hi hunmut
-
-/-- Real-ELF step replay for `f3ReadFileGhostHook`: along any non-`.Exception` call step at
-`u.pc = stubPc` under `ExecFrozen u.mem`, `keep (u.readReg64 .lr) = false`,
-`P_sub.CodeLoaded (stripExecOutside keep u.mem)`, and `F3ReadFileCallGuard u`, replays as
-`Steps P_real u (rfh u)` preserving `ExecFrozen` and `.fs`. -/
-theorem f3ReadFileGhostHook_steps_of_call {M : AllocCostModel}
-    {keep : BitVec 64 → Bool} {P_real P_sub : Program} {stubPc entry_io : BitVec 64}
-    {AOf : GhostName → BitVec 64 → RustCliAllocBudget M}
-    {lim : BudgetLimits} {stk : Nat} {fallback : State → State}
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hsvc_sub : P_sub.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keep pc = true → P_real.externAt? pc = none)
-    (hsub_no : ∀ pc, P_sub.externAt? pc = none)
-    (hStub : StubReachesTarget P_real stubPc entry_io)
-    (hPoolStrip : ∀ γ tp st s, (AOf γ tp).pool lim st (stripS keep s) = (AOf γ tp).pool lim st s)
-    (hCond : ∀ γ tp, subroutine_ok P_sub entry_io (readFileAnyBudgetCondSpec (AOf γ tp) lim stk))
-    {u : State}
-    (hpc : u.pc = stubPc)
-    (hrun : u.status = .Running)
-    (hnoex : ∀ msg,
-      (f3ReadFileGhostHook keep P_real P_sub entry_io AOf lim stk fallback u).status ≠
-        .Exception msg)
-    (hfr : ExecFrozen u.mem)
-    (hlr : keep (u.readReg64 .lr) = false)
-    (hGuard : F3ReadFileCallGuard u)
-    (hCodeSub : P_sub.CodeLoaded (stripExecOutside keep u.mem)) :
-    Steps P_real u (f3ReadFileGhostHook keep P_real P_sub entry_io AOf lim stk fallback u) ∧
-      ExecFrozen (f3ReadFileGhostHook keep P_real P_sub entry_io AOf lim stk fallback u).mem ∧
-      (f3ReadFileGhostHook keep P_real P_sub entry_io AOf lim stk fallback u).fs = u.fs := by
-  classical
-  have hActPre : ActiveF3ReadFilePre AOf lim stk (ReadFileRuleEnv cliIo.rd) u := by
-    by_contra hnPre
-    have hex :
-        (f3ReadFileGhostHook keep P_real P_sub entry_io AOf lim stk fallback u).status =
-          .Exception "read_file ghost-hook precondition violated" := by
-      unfold f3ReadFileGhostHook f3ReadFileLinkedHook
-      simp [hnPre]
-    exact hnoex _ hex
-  obtain ⟨_, hsp, γ, tp, ⟨x, st⟩, R, hpre⟩ := id hActPre
-  obtain ⟨sf, huntil, hstop, _, hfs, htr, hfr_sf⟩ :=
-    real_f3ReadFile_run_of_stripS hsvc_real hsvc_sub hreal_no hsub_no (hPoolStrip γ tp)
-      (hCond γ tp) hrun hsp hpre hfr hlr hGuard hCodeSub
-  have hReal : ActiveF3ReadFileRun keep P_real P_sub entry_io F3ReadFileCallGuard u :=
-    ⟨hfr, hlr, hGuard, hCodeSub, sf, huntil, hstop, hfs, htr, hfr_sf⟩
-  have heq :
-      f3ReadFileGhostHook keep P_real P_sub entry_io AOf lim stk fallback u =
-        Classical.choose hReal.2.2.2.2 := by
-    unfold f3ReadFileGhostHook f3ReadFileLinkedHook
-    simp [hActPre, hReal]
-  rw [heq]
-  have hchoose := Classical.choose_spec hReal.2.2.2.2
-  have hStubSteps : Steps P_real u (u.setPC entry_io) := hStub u hpc hrun hfr
-  exact ⟨hStubSteps.trans hchoose.1.toSteps, hchoose.2.2.2.2, hchoose.2.2.1⟩
 
 /-- Real-ELF step replay for `f3ReadFileFixedGhostHook` under `FdsGe3Closed u.fs`. -/
 theorem f3ReadFileFixedGhostHook_steps_of_call {M : AllocCostModel}

@@ -11,9 +11,10 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Record.Serialization.DefsBudget
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `recordDeserializeOpenSpec_Q` and `RecordDeserializeEnv`
@@ -24,7 +25,7 @@ Defines the input-length-bounded deserialization allocation envelope `RecordDese
 `recordDeserializeOpenEnvSpec_Q` and canonical-envelope `recordDeserializeOpenSpec_Q`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -73,61 +74,61 @@ theorem fineCostModel_deserTinyHyps : DeserTinyHyps fineCostModel where
   tinyAlloc_le_738 := smallAllocCost_le_738_of_le_44
 
 /-- Indicator (`0` or `1`) for a tiny (`req ≤ 44`) fresh allocation event. -/
-def tinyAllocStep : AllocEvent → Nat
+@[expose] def tinyAllocStep : AllocEvent → Nat
   | .alloc req => if req ≤ 44 then 1 else 0
   | .aligned _ req => if req ≤ 44 then 1 else 0
   | .free _ _ => 0
   | .realloc _ _ _ => 0
 
 /-- Indicator (`0` or `1`) for a non-tiny (`44 < req`) fresh allocation event. -/
-def otherAllocStep : AllocEvent → Nat
+@[expose] def otherAllocStep : AllocEvent → Nat
   | .alloc req => if 44 < req then 1 else 0
   | .aligned _ req => if 44 < req then 1 else 0
   | .free _ _ => 0
   | .realloc _ _ _ => 0
 
 /-- Indicator (`0` or `1`) for a `.realloc` event. -/
-def reallocStep : AllocEvent → Nat
+@[expose] def reallocStep : AllocEvent → Nat
   | .realloc _ _ _ => 1
   | _ => 0
 
 /-- Count of tiny (`req ≤ 44`) fresh allocations in `evs`. -/
-def tinyAllocCount : List AllocEvent → Nat
+@[expose] def tinyAllocCount : List AllocEvent → Nat
   | [] => 0
   | ev :: evs => tinyAllocStep ev + tinyAllocCount evs
 
 /-- Count of non-tiny (`44 < req`) fresh allocations in `evs`. -/
-def otherAllocCount : List AllocEvent → Nat
+@[expose] def otherAllocCount : List AllocEvent → Nat
   | [] => 0
   | ev :: evs => otherAllocStep ev + otherAllocCount evs
 
 /-- Count of `.realloc` events in `evs`. -/
-def reallocCount : List AllocEvent → Nat
+@[expose] def reallocCount : List AllocEvent → Nat
   | [] => 0
   | ev :: evs => reallocStep ev + reallocCount evs
 
 /-- Per-event small-class byte payload entering the `2 * r` slope of `cumSmall` (`0` on `req ≤ 44`
     fresh allocations covered by `tinyAlloc_le_738`, and `0` on `sc = 63` `> 135167` requests). -/
-def deserSmallStepReq : AllocEvent → Nat
+@[expose] def deserSmallStepReq : AllocEvent → Nat
   | .alloc req => if 44 < req ∧ req ≤ 135167 then req else 0
   | .aligned _ req => if 44 < req ∧ req ≤ 135167 then req else 0
   | .free _ _ => 0
   | .realloc _ _ newSz => if newSz ≤ 135167 then newSz else 0
 
 /-- Cumulative non-tiny small-class payload across `evs`. -/
-def deserSmallTotalReq : List AllocEvent → Nat
+@[expose] def deserSmallTotalReq : List AllocEvent → Nat
   | [] => 0
   | ev :: evs => deserSmallStepReq ev + deserSmallTotalReq evs
 
 /-- Cumulative step-request payload across `evs`. -/
-def totalStepReq : List AllocEvent → Nat
+@[expose] def totalStepReq : List AllocEvent → Nat
   | [] => 0
   | ev :: evs => eventStepReq ev + totalStepReq evs
 
 /-- Bounded deserialization allocation envelope tracking tiny (`≤ 44` B) key/seed allocations,
     larger fresh allocations, `.realloc` steps, small-class non-tiny bytes, total requested bytes,
     and per-step request/alignment bounds (`≤ maxReq`, `≤ 16`). -/
-def DeserBoundedTotalEvs
+@[expose] def DeserBoundedTotalEvs
     (maxTinyAllocs maxOtherAllocs maxReallocs maxSmallReq totalReq maxReq : Nat)
     (evs : List AllocEvent) : Prop :=
   tinyAllocCount evs ≤ maxTinyAllocs ∧
@@ -139,7 +140,7 @@ def DeserBoundedTotalEvs
 
 /-- Input-length-bounded allocation envelope for `<SessionRecord>::deserialize` on canonical bytes
     `bs` (fitting under `1 GiB` RAM on `fineCostModel` for every `bs.length ≤ 2 MiB`). -/
-def RecordDeserializeEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def RecordDeserializeEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   DeserBoundedTotalEvs
     (min 12000 (bs.length / 24 + 64))
     64
@@ -327,42 +328,11 @@ theorem recordDeserializeEnv_fitsEnv_of_len_le (bs : List (BitVec 8))
       fineMaxGroupsOfCum pageAlignUp MMAP_MIN_ADDR PAGE_SIZE
     decide
 
-/-- Non-empty 3-event trace exercising tiny key allocation (`33` B), `Vec<Chain>` initial
-    allocation (`416` B), and `Vec<Chain>` reallocation (`416 → 832` B) inside
-    `RecordDeserializeEnv bs` for every `bs`. -/
-theorem recordDeserializeEnv_inhabited (bs : List (BitVec 8)) :
-    RecordDeserializeEnv bs
-      (rustAllocEvents 33 1 ++ rustAllocEvents 416 8 ++ rustReallocEvents 416 832 8) := by
-  have hevs :
-      rustAllocEvents 33 1 ++ rustAllocEvents 416 8 ++ rustReallocEvents 416 832 8 =
-        [.alloc 33, .alloc 416, .realloc 8 416 832] := by
-    decide
-  rw [hevs]
-  unfold RecordDeserializeEnv DeserBoundedTotalEvs
-  have h1 : tinyAllocCount [.alloc 33, .alloc 416, .realloc 8 416 832] = 1 := by decide
-  have h2 : otherAllocCount [.alloc 33, .alloc 416, .realloc 8 416 832] = 1 := by decide
-  have h3 : reallocCount [.alloc 33, .alloc 416, .realloc 8 416 832] = 1 := by decide
-  have h4 : deserSmallTotalReq [.alloc 33, .alloc 416, .realloc 8 416 832] = 1248 := by decide
-  have h5 : totalStepReq [.alloc 33, .alloc 416, .realloc 8 416 832] = 1281 := by decide
-  rw [h1, h2, h3, h4, h5]
-  refine ⟨by omega, by omega, by omega, by omega, by omega, ?_⟩
-  intro ev hev
-  simp only [List.mem_cons, List.not_mem_nil, or_false] at hev
-  rcases hev with rfl | rfl | rfl <;> simp only [eventStepReq, eventStepAlign] <;> omega
-
-/-- Non-vacuity witness for `RecordDeserializeEnv` on a concrete non-empty `128`-byte input slice
-under `nonVacLimits` (`1 GiB` RAM cap, `enforced = true`). -/
-theorem recordDeserializeEnv_fitsEnv_witness :
-    FitsEnv fineCostModel nonVacLimits fineCostModel.init
-      (RecordDeserializeEnv (List.replicate 128 0#8)) :=
-  recordDeserializeEnv_fitsEnv_of_len_le (List.replicate 128 0#8)
-    (by rw [List.length_replicate]; decide)
-
 /-! ## Parametric-envelope and canonical-envelope `recordDeserializeOpenSpec_Q` -/
 
 /-- Parametric-envelope budget-threaded `recordDeserializeOpenSpec_Q` (`onPanic = ⌜False⌝`,
     `onOom = ⌜False⌝`). -/
-def recordDeserializeOpenEnvSpec_Q (Q : List (BitVec 8) → Prop)
+@[expose] def recordDeserializeOpenEnvSpec_Q (Q : List (BitVec 8) → Prop)
     (Env : List (BitVec 8) → Session (List (BitVec 8)) → List AllocEvent → Prop)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × List (BitVec 8) × BitVec 64 × Session (List (BitVec 8))) × M.σ) where

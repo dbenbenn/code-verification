@@ -10,14 +10,17 @@ limitations under the License.
 module
 
 public import ProofLib.StdStartup.Layout
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliElfMallocngHarness
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliElfMallocngHarness
+import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `M24` (SWAR-Padded) ↔ `F3.L4B` `NeedLocks` Specification Equivalences
@@ -30,7 +33,7 @@ SWAR-padded `NeedLocks`, `argvAtROPad`, `MuslHarnessFineNeedLocks{,Guarded}PadPe
 unpadded).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -49,11 +52,6 @@ theorem cStrAtRO_eq (p : BitVec 64) (s : List (BitVec 8)) :
       LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.cStrAtRO p s :=
   rfl
 
-theorem cStrAtRO_fun_eq :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad.cStrAtROPad =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.cStrAtRO :=
-  rfl
-
 theorem argvAtRO_eq : ∀ (a : BitVec 64) (ss : List (List (BitVec 8))),
     LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad.argvAtROPad a ss =
       LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.argvAtRO a ss
@@ -63,25 +61,9 @@ theorem argvAtRO_eq : ∀ (a : BitVec 64) (ss : List (List (BitVec 8))),
       LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.argvAtRO,
       cStrAtRO_eq, argvAtRO_eq (a + 8#64) ss]
 
-theorem argvAtRO_fun_eq :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad.argvAtROPad =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.argvAtRO := by
-  funext a ss
-  exact argvAtRO_eq a ss
-
 theorem B2MainEntryFacts_eq (inputsOf : Inputs → ProcessInputs) (i : Inputs) (s : State) :
     LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced.B2MainEntryFacts inputsOf i s =
       LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.B2MainEntryFacts inputsOf i s :=
-  rfl
-
-theorem B2MainEntryFacts_iff (inputsOf : Inputs → ProcessInputs) (i : Inputs) (s : State) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced.B2MainEntryFacts inputsOf i s ↔
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.B2MainEntryFacts inputsOf i s :=
-  Iff.rfl
-
-theorem B2MainEntryFacts_fun_eq :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced.B2MainEntryFacts =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.B2MainEntryFacts :=
   rfl
 
 theorem b2MainFrameFine_eq {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
@@ -93,17 +75,6 @@ theorem b2MainFrameFine_eq {M : AllocCostModel} (A : RustCliAllocBudget M) (lim 
   simp only [LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad.b2MainFrameFinePad,
     LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.b2MainFrameFine,
     argvAtRO_eq]
-
-theorem b2MainEntryPreFine_eq (CodeOk : Memory → Prop) {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (stk : Nat)
-    (Statics : SepProp) (i : Inputs) (s : State) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad.b2MainEntryPreFinePad
-        CodeOk A lim st stk Statics i s =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.b2MainEntryPreFine
-        CodeOk A lim st stk Statics i s := by
-  simp only [LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad.b2MainEntryPreFinePad,
-    LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.b2MainEntryPreFine,
-    b2MainFrameFine_eq]
 
 theorem b2MainSpecTightNeedLocksFineAt_eq (libcAddr : BitVec 64) (CodeOk : Memory → Prop)
     {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
@@ -127,67 +98,6 @@ theorem cliProgExtPlacedAt_eq (mpl : Obj.MultiPlacement)
         mpl ext idx W =
       LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced.cliProgExtPlacedAt
         mpl ext idx W :=
-  rfl
-
-theorem cliProgExtPlacedSigAt_eq (mpl : Obj.MultiPlacement)
-    (ext : CliHooks → String → Option (State → State)) (idx : Nat) (W : CliHooks) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliElfMallocngHarness.cliProgExtPlacedSigAt
-        mpl ext idx W =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced.cliProgExtPlacedSigAt
-        mpl ext idx W :=
-  rfl
-
-theorem cliRunsToExtOnInputsAt_eq (mpl : Obj.MultiPlacement)
-    (ext : CliHooks → String → Option (State → State)) (idx : Nat)
-    (inputsOf : Inputs → ProcessInputs)
-    (elf : ElfImage) (W : CliHooks) (i : Inputs) (o : Outcome) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliElfMallocngHarness.CliRunsToExtOnInputsAt
-        mpl ext idx inputsOf elf W i o =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced.CliRunsToExtOnInputsAt
-        mpl ext idx inputsOf elf W i o :=
-  rfl
-
-theorem cliRunsToExtPlacedAt_eq (mpl : Obj.MultiPlacement)
-    (ext : CliHooks → String → Option (State → State)) (idx : Nat)
-    (elf : ElfImage) (W : CliHooks) (i : Inputs) (o : Outcome) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliElfMallocngHarness.CliRunsToExtPlacedAt
-        mpl ext idx elf W i o =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced.CliRunsToExtPlacedAt
-        mpl ext idx elf W i o :=
-  rfl
-
-theorem cliRunExtOnInputsSigAt_eq (mpl : Obj.MultiPlacement)
-    (ext : CliHooks → String → Option (State → State)) (idx : Nat)
-    (inputsOf : Inputs → ProcessInputs)
-    (elf : ElfImage) (W : CliHooks) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliElfMallocngHarness.cliRunExtOnInputsSigAt
-        mpl ext idx inputsOf elf W =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced.cliRunExtOnInputsSigAt
-        mpl ext idx inputsOf elf W :=
-  rfl
-
-theorem cliRunExtPlacedSigAt_eq (mpl : Obj.MultiPlacement)
-    (ext : CliHooks → String → Option (State → State)) (idx : Nat)
-    (elf : ElfImage) (W : CliHooks) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliElfMallocngHarness.cliRunExtPlacedSigAt
-        mpl ext idx elf W =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced.cliRunExtPlacedSigAt
-        mpl ext idx elf W :=
-  rfl
-
-theorem coinsStaticsPlacedAt_eq (mpl : Obj.MultiPlacement) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced.coinsStaticsPlacedAt mpl =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced.coinsStaticsPlacedAt mpl :=
-  rfl
-
-theorem tokenInitPlacedAtMpl_eq (mpl : Obj.MultiPlacement) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced.tokenInitPlacedAtMpl mpl =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced.tokenInitPlacedAtMpl mpl :=
-  rfl
-
-theorem lsLogOffAt_eq (mpl : Obj.MultiPlacement) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced.lsLogOffAt mpl =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced.lsLogOffAt mpl :=
   rfl
 
 theorem cliStaticsPlacedAt_eq (mpl : Obj.MultiPlacement) :
@@ -239,74 +149,6 @@ theorem subroutine_ok_b2MainSpecTightNeedLocksFineAt_iff
           libcAddr CodeOk A lim st stk Statics Run inputsOf) := by
   rw [subroutine_ok_b2MainSpecTightNeedLocksFineAt_eq]
 
-theorem muslHarnessFineNeedLocksPerInput_eq
-    (exitStk : Nat) (libcAddr : BitVec 64) (elf : ElfImage) (P : Program) (mainPc : BitVec 64)
-    (inputsOf : Inputs → ProcessInputs) (mmpl : Obj.MultiPlacement)
-    (lim : BudgetLimits) (st : FineBudget) (stk : Nat)
-    (CodeOk : Memory → Prop) (Statics : SepProp) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat.MuslHarnessFineNeedLocksPadPerInput
-        exitStk libcAddr elf P mainPc inputsOf mmpl lim st stk CodeOk Statics =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.MuslHarnessFineNeedLocksPerInput
-        exitStk libcAddr elf P mainPc inputsOf mmpl lim st stk CodeOk Statics := by
-  unfold
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat.MuslHarnessFineNeedLocksPadPerInput
-    LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.MuslHarnessFineNeedLocksPerInput
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad.b2MainEntryPreFinePad
-    LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.b2MainEntryPreFine
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad.b2MainFrameFinePad
-    LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.b2MainFrameFine
-  simp only [argvAtRO_eq]
-
-theorem muslHarnessFineNeedLocksPerInput_iff
-    (exitStk : Nat) (libcAddr : BitVec 64) (elf : ElfImage) (P : Program) (mainPc : BitVec 64)
-    (inputsOf : Inputs → ProcessInputs) (mmpl : Obj.MultiPlacement)
-    (lim : BudgetLimits) (st : FineBudget) (stk : Nat)
-    (CodeOk : Memory → Prop) (Statics : SepProp) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat.MuslHarnessFineNeedLocksPadPerInput
-        exitStk libcAddr elf P mainPc inputsOf mmpl lim st stk CodeOk Statics ↔
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.MuslHarnessFineNeedLocksPerInput
-        exitStk libcAddr elf P mainPc inputsOf mmpl lim st stk CodeOk Statics := by
-  rw [muslHarnessFineNeedLocksPerInput_eq]
-
-theorem stdMainEntryLr_eq (L : ProofLib.StdStartup.StdBinaryLayout) (sm : State) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced.StdMainEntryLr L sm =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.StdMainEntryLr L sm :=
-  rfl
-
-theorem stdMainEntryLr_fun_eq :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlaced.StdMainEntryLr =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.StdMainEntryLr :=
-  rfl
-
-theorem muslHarnessFineNeedLocksGuardedPerInput_eq
-    (exitStk : Nat) (libcAddr : BitVec 64) (elf : ElfImage) (P : Program) (mainPc : BitVec 64)
-    (inputsOf : Inputs → ProcessInputs) (mmpl : Obj.MultiPlacement)
-    (lim : BudgetLimits) (st : FineBudget) (stk : Nat)
-    (CodeOk : Memory → Prop) (Statics : SepProp) (EntryGuard : State → Prop) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat.MuslHarnessFineNeedLocksGuardedPadPerInput
-        exitStk libcAddr elf P mainPc inputsOf mmpl lim st stk CodeOk Statics EntryGuard =
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.MuslHarnessFineNeedLocksGuardedPerInput
-        exitStk libcAddr elf P mainPc inputsOf mmpl lim st stk CodeOk Statics EntryGuard := by
-  unfold
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat.MuslHarnessFineNeedLocksGuardedPadPerInput
-    LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.MuslHarnessFineNeedLocksGuardedPerInput
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad.b2MainEntryPreFinePad
-    LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.b2MainEntryPreFine
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.ArgvPad.b2MainFrameFinePad
-    LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.b2MainFrameFine
-  simp only [argvAtRO_eq]
-
-theorem muslHarnessFineNeedLocksGuardedPerInput_iff
-    (exitStk : Nat) (libcAddr : BitVec 64) (elf : ElfImage) (P : Program) (mainPc : BitVec 64)
-    (inputsOf : Inputs → ProcessInputs) (mmpl : Obj.MultiPlacement)
-    (lim : BudgetLimits) (st : FineBudget) (stk : Nat)
-    (CodeOk : Memory → Prop) (Statics : SepProp) (EntryGuard : State → Prop) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat.MuslHarnessFineNeedLocksGuardedPadPerInput
-        exitStk libcAddr elf P mainPc inputsOf mmpl lim st stk CodeOk Statics EntryGuard ↔
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.MuslHarnessFineNeedLocksGuardedPerInput
-        exitStk libcAddr elf P mainPc inputsOf mmpl lim st stk CodeOk Statics EntryGuard := by
-  rw [muslHarnessFineNeedLocksGuardedPerInput_eq]
-
 theorem mainOkCliExtPqB2NeedLocksPlacedAt_eq
     (mpl mmpl : Obj.MultiPlacement)
     (ext : CliHooks → String → Option (State → State))
@@ -354,29 +196,5 @@ theorem mainOkCliExtOverB2NeedLocksPlacedAt_iff
       LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.MainOkCliExtOverB2NeedLocksPlacedAt
         mpl mmpl ext mainIdx inputsOf CodeOk libcAddr brkStart stk lim := by
   rw [mainOkCliExtOverB2NeedLocksPlacedAt_eq]
-
-theorem mainOkCliF3PqB2NeedLocksPlacedAt_iff
-    (mpl mmpl : Obj.MultiPlacement) (CodeOk : Memory → Prop)
-    (libcAddr brkStart : BitVec 64) (stk : Nat) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat.MainOkCliExtPqB2NeedLocksPadPlacedAt
-        mpl mmpl (cliExternsPlaced mmpl) 617 cliProcessInputs CodeOk libcAddr brkStart stk
-        LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.cliBudgetLimits ↔
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.MainOkCliF3PqB2NeedLocksPlacedAt
-        mpl mmpl CodeOk libcAddr brkStart stk :=
-  mainOkCliExtPqB2NeedLocksPlacedAt_iff mpl mmpl (cliExternsPlaced mmpl) 617 cliProcessInputs
-    CodeOk libcAddr brkStart stk
-    LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.cliBudgetLimits
-
-theorem mainOkCliF3OverB2NeedLocksPlacedAt_iff
-    (mpl mmpl : Obj.MultiPlacement) (CodeOk : Memory → Prop)
-    (libcAddr brkStart : BitVec 64) (stk : Nat) :
-    LibsignalBinary.Proofs.SignalSession.Cli.M24.CliStrictPlacedPadSat.MainOkCliExtOverB2NeedLocksPadPlacedAt
-        mpl mmpl (cliExternsPlaced mmpl) 617 cliProcessInputs CodeOk libcAddr brkStart stk
-        LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.cliBudgetLimits ↔
-      LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.MainOkCliF3OverB2NeedLocksPlacedAt
-        mpl mmpl CodeOk libcAddr brkStart stk :=
-  mainOkCliExtOverB2NeedLocksPlacedAt_iff mpl mmpl (cliExternsPlaced mmpl) 617 cliProcessInputs
-    CodeOk libcAddr brkStart stk
-    LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.CliStrictPlaced2.cliBudgetLimits
 
 end LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.M24L4BEquiv

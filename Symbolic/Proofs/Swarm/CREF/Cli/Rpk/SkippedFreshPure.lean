@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTie
-public import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyNew.AcceptTie -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -21,7 +21,6 @@ import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.COMPOSED.CompInv
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvFreshLinkSincePure
@@ -47,7 +46,7 @@ pre-key receive block `[.recv b, .rng d, .accept pt]`, every skipped-key seed on
 `bobRatchetedChain` satisfies `receiverKeyUsedB = false` on `runTraceMoves r (ms₀ ++ pre)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

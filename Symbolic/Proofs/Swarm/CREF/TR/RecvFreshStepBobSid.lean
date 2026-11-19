@@ -44,7 +44,7 @@ Equal root keys imply equal PQXDH DH2 and DH3 shared secrets, pinning `ek` on sy
 since an identity secret never coincides with a signed-prekey secret of the same participant.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -184,7 +184,7 @@ theorem bobDone_ek_eq_of_rk_eq_out {T : ExecTrace} {b a₁ : Participant}
 
 /-- Every responder `HandshakeSession s d` on `tr` corresponds to a `BobDone` event at `d`
 whose root key `keys.rk` is the second component of `s.sid`. -/
-def BobSidLink (tr : ExecTrace) : Prop :=
+@[expose] def BobSidLink (tr : ExecTrace) : Prop :=
   ∀ (s : SessionInfo) (d : Nat), tr.EventLogged (ComposedEvent.HandshakeSession s d) →
     s.initiator = false → ∃ (pk : Bytes) (a : Participant) (ikB ikA spk pqpk ek ct : Bytes)
       (opk : Option Bytes) (keys : HandshakeKeys),

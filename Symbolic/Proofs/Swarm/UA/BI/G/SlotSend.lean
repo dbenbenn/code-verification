@@ -20,7 +20,7 @@ preserves the turn simulation `PqTurnSim1A` and the trace invariant `UAInvB` acr
 containing break and invert steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

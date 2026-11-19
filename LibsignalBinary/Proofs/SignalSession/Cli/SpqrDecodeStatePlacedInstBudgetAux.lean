@@ -9,23 +9,37 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDecodeStatePlacedInst
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DecodeErrorPushMergePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirectionClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3ClPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpqrDecodeStatePlacedInst
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOneBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunkedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.ProofClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.DecodeErrorPushMergePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirectionClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Recv.DropChunkedClPlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3ClPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Prost.VarintSliceBudget
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked1Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChainParamsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirection -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirectionBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.EpochDirectionBudget
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.UnchunkedFromPbClPlaced
 
 /-!
 # Auxiliary Extern, Drop, & Protobuf Callee Discharges for `decode_state`
@@ -36,7 +50,7 @@ protobuf drop callees (Blocks 267, 270, 271, 281..286), and protobuf utility/mer
 `CliGhostAllocHooks M A lim gh`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -335,36 +349,6 @@ theorem cliDrop_286_cl [LibsignalPlacement]
   drop_proto_unchunked_ct1_sent_ek_received_cl_blockProgram
     (hookSat_of_hExt (hExt_withPanics hExt) (cliExternsPlaced_dealloc_budget_sat mmpl gh W hA))
 
-/-- `dropOptProtoInnerState_ok` field of `SpqrRecvPlacedContracts` (`Block 267`) on
-`spqrRecvPlacedProg ext`. -/
-theorem cliSpqrRecv_dropOptProtoInnerState_ok [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    subroutine_ok (spqrRecvPlacedProg ext)
-      (lsmpl.base 267)
-      (withLsCodeLoaded lsmpl (dropOptProtoInnerStatePlacedSpec M A lim)) :=
-  drop_opt_proto_inner_state_cl_on
-    (hookSat_of_hExt (hExt_withPanics hExt) (cliExternsPlaced_dealloc_budget_sat mmpl gh W hA))
-
-/-- `dropPqRatchetState_ok` field of `SpqrRecvPlacedContracts` (`Block 270`) on
-`spqrRecvPlacedProg ext`. -/
-theorem cliSpqrRecv_dropPqRatchetState_ok [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    subroutine_ok (spqrRecvPlacedProg ext)
-      (lsmpl.base 270)
-      (withLsCodeLoaded lsmpl (dropProtoPqRatchetStatePlacedSpec M A lim)) :=
-  drop_proto_pq_ratchet_state_cl_on
-    (hookSat_of_hExt (hExt_withPanics hExt) (cliExternsPlaced_dealloc_budget_sat mmpl gh W hA))
-
 /-!
 ## 3. Envelope & Specification Bridges + Protobuf Utility & Merge Callees (`257, 261, 263, 290, 291, 294, 299`)
 -/
@@ -433,19 +417,6 @@ theorem cliPushMerge_257_cl [LibsignalPlacement]
       (cliExternsPlaced_noAllocShim_budget_sat mmpl gh W hA.shim_eq))
     (hookSat_of_hExt (hExt_withPanics hExt) (cliExternsPlaced_alloc_budget_sat mmpl gh W hA))
     (hookSat_of_hExt (hExt_withPanics hExt) (cliExternsPlaced_realloc_budget_sat mmpl gh W hA)))
-
-/-- Unconditional `Block 257` `<DecodeError>::push` `SpecBudget` contract under `[CliSpqrExt W ext]`. -/
-theorem cliPush_257_cl [LibsignalPlacement]
-    (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    (hA : CliGhostAllocHooks M A lim gh)
-    {ext : String → Option (State → State)}
-    (hExt : ∀ sym : String, sym ≠ "libsignal_session_rng_fill" →
-      ext sym = cliGhostExterns gh (cliExternsPlaced mmpl W) sym) :
-    subroutine_ok (libsignalSessionLib.blockProgram lsmpl 257 (Rust.withPanics ext))
-      (lsmpl.base 257)
-      (withLsCodeLoaded lsmpl (decodeErrorPushBudgetSpec M A lim)) :=
-  decodeErrorPush_of_merge (cliPushMerge_257_cl mmpl gh W hA hExt)
 
 /-- Unconditional `Block 261` `<DecodeError>::from` contract under `[CliSpqrExt W ext]`. -/
 theorem cliFrom_261_cl [LibsignalPlacement]

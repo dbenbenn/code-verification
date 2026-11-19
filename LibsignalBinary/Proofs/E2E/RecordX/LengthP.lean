@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.RecordX.ScopeP
+public import LibsignalBinary.Proofs.E2E.RecordX.ScopeP -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.Record.DeserializeGeneral.Fields
 import LibsignalBinary.Proofs.E2E.RecordX.Length
 
@@ -21,7 +21,7 @@ import LibsignalBinary.Proofs.E2E.RecordX.Length
 projecting out PQXDH-specific fields to `DeserializeGeneral.DeserializeScope`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.RecordX
 
@@ -76,8 +76,6 @@ def stripP (s : Session Bytes) : Session Bytes :=
     pendingPreKey := s.pendingPreKey.map fun p =>
       { p with preKeyId := none, signedPreKeyId := 0 } }
 
-abbrev stripBounded (s : Session Bytes) : Session Bytes := stripP s
-
 theorem deserializeScope_stripBounded {s : Session Bytes} (h : DeserializeScopeBounded ⟨some s⟩) :
     DeserializeGeneral.DeserializeScope ⟨some (stripP s)⟩ := by
   obtain ⟨⟨hin, hpq, hrep⟩, s', hs', hsc⟩ := h
@@ -107,10 +105,6 @@ theorem deserializeScope_stripBounded {s : Session Bytes} (h : DeserializeScopeB
     simp only [stripP, Option.map_eq_some_iff] at hp'
     obtain ⟨q, hq, rfl⟩ := hp'
     exact ⟨rfl, rfl, hp q hq⟩
-
-theorem deserializeScope_stripP {s : Session Bytes} (h : DeserializeScopeP ⟨some s⟩) :
-    DeserializeGeneral.DeserializeScope ⟨some (stripP s)⟩ :=
-  deserializeScope_stripBounded (deserializeScopeBounded_of_deserializeScopeP h)
 
 private def sessionExtraLen (s : Session Bytes) : Nat :=
   (Record.msgField 9 (s.pendingPreKey.map Record.encPendingPreKey)).length +
@@ -197,18 +191,6 @@ theorem encodeRecord_length_lt_21_of_bounded {s : Session Bytes} (h : Deserializ
     (encSession_stripBounded_length s)
     (sessionExtraLen_le s hsc.2.2.2 hsc.2.2.1)
 
-theorem encodeRecord_length_lt_32_of_bounded {s : Session Bytes} (h : DeserializeScopeBounded ⟨some s⟩) :
-    (Record.encodeRecord ⟨some s⟩).length < 2 ^ 32 :=
-  Nat.lt_trans (encodeRecord_length_lt_21_of_bounded h) (by decide)
-
-theorem encodeRecord_length_lt_21_of_deserializeScopeX {s : Session Bytes} (h : DeserializeScopeX ⟨some s⟩) :
-    (Record.encodeRecord ⟨some s⟩).length < 2 ^ 21 :=
-  encodeRecord_length_lt_21_of_bounded (deserializeScopeBounded_of_deserializeScopeX h)
-
-theorem encodeRecord_length_lt_32_of_deserializeScopeX {s : Session Bytes} (h : DeserializeScopeX ⟨some s⟩) :
-    (Record.encodeRecord ⟨some s⟩).length < 2 ^ 32 :=
-  encodeRecord_length_lt_32_of_bounded (deserializeScopeBounded_of_deserializeScopeX h)
-
 theorem encodeRecord_length_lt_21_of_deserializeScopeP {s : Session Bytes} (h : DeserializeScopeP ⟨some s⟩) :
     (Record.encodeRecord ⟨some s⟩).length < 2 ^ 21 :=
   encodeRecord_length_lt_21_of_bounded (deserializeScopeBounded_of_deserializeScopeP h)
@@ -216,9 +198,5 @@ theorem encodeRecord_length_lt_21_of_deserializeScopeP {s : Session Bytes} (h : 
 abbrev encodeRecord_length_lt_P {s : Session Bytes} (h : DeserializeScopeP ⟨some s⟩) :
     (Record.encodeRecord ⟨some s⟩).length < 2 ^ 21 :=
   encodeRecord_length_lt_21_of_deserializeScopeP h
-
-theorem encodeRecord_length_lt_32_of_deserializeScopeP {s : Session Bytes} (h : DeserializeScopeP ⟨some s⟩) :
-    (Record.encodeRecord ⟨some s⟩).length < 2 ^ 32 :=
-  encodeRecord_length_lt_32_of_bounded (deserializeScopeBounded_of_deserializeScopeP h)
 
 end CryptoVerification.E2E.RecordX

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSig
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthHandshakeSig -- proof-setup: allow-public-import
 
 /-!
 # Cost and Query Bounds for the `Auth` Handshake Reductions
@@ -19,7 +19,7 @@ primitive-query bounds and a potential-based challenger signing-query bound for
 `sigReductionAuthProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 namespace SignalPqxdh.Security.ReductionDsl.AuthHs
@@ -31,7 +31,7 @@ open OracleSpec OracleComp
 attribute [local simp] Expr.cost Comp.cost Expr.costUB Comp.costUB
 
 /-- Polynomial step-cost budget granted to black-box reductions in `ReductionDsl`. -/
-def stepCostBudget (S : Setup) (b : QueryBudget) : Nat :=
+@[expose] def stepCostBudget (S : Setup) (b : QueryBudget) : Nat :=
   2 ^ 16 * (b.q_total + 1) * (b.q_total + S.N_dh + S.N_sess_tot + 1) +
     2 ^ 11 * S.N_dh ^ 2 + 2 ^ 8 * S.N_dh * S.N_sess_tot
 
@@ -500,57 +500,20 @@ theorem sigHandleDsl_cost_le (S : Setup) (K : Nat) :
   have := Nat.min_le_right K S.N_dh
   omega
 
-theorem sigInitDsl_cost (S : Setup) :
-    (sigInitDsl S).cost = 49 + bits S.N_id + bits S.N_spk_tot := by
-  simp only [sigInitDsl, emptyAuthStE, stMk, bindV,
-    cost_sampleIndexC, cost_sampleBoolC, cost_v, Comp.cost, Expr.cost]
-  omega
-
-theorem sigFinishDsl_cost (S : Setup) :
-    (sigFinishDsl S).cost = 1644 + bits S.N_id := by
-  simp only [sigFinishDsl, eCaseOpt, natEq, cost_litBytes, cost_v,
-    Comp.cost, Expr.cost, PNat.val_ofNat, List.length_nil, bits_0]
-  omega
-
-theorem sigReductionAuthProg_totalCost_le (S : Setup) (b : QueryBudget) :
-    (sigReductionAuthProg S b.q_total).totalCost b.q_total ≤ stepCostBudget S b := by
-  dsimp only [CostedReduction.totalCost, sigReductionAuthProg, authCodec]
-  simp only [pqChalIface_uCost, sigInitDsl_cost, sigFinishDsl_cost]
-  have hH := sigHandleDsl_cost_le S b.q_total
-  generalize (sigHandleDsl S b.q_total).cost = hc at hH ⊢
-  have hMax : max 1 (hc + 32) = hc + 32 := by omega
-  rw [hMax]
-  have hbId : bits S.N_id ≤ S.N_id + 1 := by
-    rcases Nat.eq_zero_or_pos S.N_id with h0 | hpos
-    · simp [h0]
-    · have := bits_le_self hpos; omega
-  have hbSpk : bits S.N_spk_tot ≤ S.N_spk_tot + 1 := by
-    rcases Nat.eq_zero_or_pos S.N_spk_tot with h0 | hpos
-    · simp [h0]
-    · have := bits_le_self hpos; omega
-  have hIdDh : S.N_id + S.N_spk_tot ≤ S.N_dh := by
-    unfold Setup.N_dh; omega
-  unfold stepCostBudget
-  generalize b.q_total = q at *
-  have hqhc : q * (hc + 32) ≤ q * (76387 + 16915 * q + 3296 * S.N_dh) :=
-    Nat.mul_le_mul_left q (by omega)
-  nlinarith [Nat.zero_le (q * S.N_dh), Nat.zero_le (q * S.N_sess_tot),
-    Nat.zero_le (S.N_dh * S.N_sess_tot)]
-
 /-! ## Shared query weights and bounds -/
 
-def primW : pqPrimIface.Tag → ℕ := fun _ => 1
-def primWS : pqPrimIface.smp.Samp → ℕ := fun _ => 0
+@[expose] def primW : pqPrimIface.Tag → ℕ := fun _ => 1
+@[expose] def primWS : pqPrimIface.smp.Samp → ℕ := fun _ => 0
 
-def sigPrimW : pqxdhEufCmaIface.Tag → ℕ
+@[expose] def sigPrimW : pqxdhEufCmaIface.Tag → ℕ
   | .inl _ => 1
   | .inr _ => 0
 
-def sigChalW : pqxdhEufCmaIface.Tag → ℕ
+@[expose] def sigChalW : pqxdhEufCmaIface.Tag → ℕ
   | .inl _ => 0
   | .inr _ => 1
 
-def sigWS : pqxdhEufCmaIface.smp.Samp → ℕ := fun _ => 0
+@[expose] def sigWS : pqxdhEufCmaIface.smp.Samp → ℕ := fun _ => 0
 
 @[simp] theorem queries_liftChal_sigPrimW
     {Γ : List (Ty pqSig)} {t : Ty pqSig} (c : Comp pqxdhOps pqPrimIface Γ t) :
@@ -739,7 +702,7 @@ theorem sigReductionAuthProg_totalQueries_prim_le (S : Setup) (K q : Nat) :
 
 /-! ## Challenger signing-query bound -/
 
-@[reducible] def isSigChalQ : (PrimBaseSpec + eufCmaSignOracle.spec).Domain → Prop :=
+@[expose, reducible] def isSigChalQ : (PrimBaseSpec + eufCmaSignOracle.spec).Domain → Prop :=
   fun q => q.isRight = true
 
 instance : DecidablePred isSigChalQ :=
@@ -765,7 +728,7 @@ theorem potAux1 (n : ℕ) (_h : n ≠ 0) : 1 + (2 * n - 1) ≤ 2 * n := by omega
 theorem potAux2 (n : ℕ) (_h : n ≠ 0) : 1 + (2 * n - 2) ≤ 2 * n - 1 := by omega
 
 /-- Potential of the sig-reduction state: twice the remaining signing budget. -/
-def sigPot (st : sigStTy.denote) : Nat := 2 * st.1
+@[expose] def sigPot (st : sigStTy.denote) : Nat := 2 * st.1
 
 theorem sigHandle_potOK (S : Setup) (K : Nat) (st : sigStTy.denote) (q : authQueryTy.denote) :
     PotOK isSigChalQ (fun r : (Ty.prod authRespTy sigStTy).denote => sigPot r.2)

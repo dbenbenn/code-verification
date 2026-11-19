@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveBudget
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable `prost::encoding::varint::encode_varint [local#4]`
@@ -26,7 +27,7 @@ Proves `[LibsignalPlacement]` continuation-byte stages 4..8 and top-level
 `encodeVarintSpec*`) on `lsProg_292 H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -83,16 +84,16 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Deterministic Capacity Step Helpers -/
 
-def encodeVarintSpec {M : AllocCostModel}
+@[expose] def encodeVarintSpec {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (EncodeVarintGhost × M.σ) :=
   encodeVarintSpecOf doReserveStack A lim
 
-def encodeVarintSpecX {M : AllocCostModel}
+@[expose] def encodeVarintSpecX {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (EncodeVarintGhost × M.σ) :=
   encodeVarintSpecOf doReserveStackX A lim
 
 /-- Deterministic post-capacity invariant across remaining byte pushes of `encode_varint`. -/
-def VecCapStepInv (x : EncodeVarintGhost) (curCap : BitVec 64)
+@[expose] def VecCapStepInv (x : EncodeVarintGhost) (curCap : BitVec 64)
     (curBs : List (BitVec 8)) (remLen : Nat) : Prop :=
   (pushBytesStep (encodeVarint x.val).length x.cap.toNat x.bs.length).1 =
     (pushBytesStep remLen curCap.toNat curBs.length).1

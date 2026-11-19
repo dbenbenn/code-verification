@@ -14,7 +14,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.Chain
 public import ProofLib.Lemmas
 import Symbolic.Proofs.Swarm.SHARED.SpqrX.Prost.MessageMerge.AppendX
 import Symbolic.Proofs.Swarm.SHARED.StateSizePure
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- shake: keep
+import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- shake: keep
 
 /-!
 # SPQR V1 Protobuf Wire Lower Bounds and Chain Weight Lemmas
@@ -24,7 +24,7 @@ advance growth bounds for `ChainEpochDirection`, and weight bounds for `ChainPB`
 `VersionNegotiationPB`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -795,7 +795,7 @@ theorem mergeRepeatedMessage_chainEpoch_length_le (wt : Proto.WireType)
       rw [encodeRepeatedMessage_append, List.length_append]
       simp only [Proto.encodeMessage, List.length_append, hkey]; omega
 
-def optWeight {M : Type} (w : M → Nat) : Option M → Nat
+@[expose] def optWeight {M : Type} (w : M → Nat) : Option M → Nat
   | none => 0
   | some m => w m
 
@@ -869,10 +869,10 @@ theorem mergeMessage_weight_le {M : Type}
 abbrev linkToPb (link : ChainEpoch) : ChainEpochPB :=
   { send := some link.send.intoPb, recv := some link.recv.intoPb }
 
-def chainWeight (c : ChainPB) : Nat :=
+@[expose] def chainWeight (c : ChainPB) : Nat :=
   (Proto.encodeRepeatedMessage ChainEpochPB.encodeRaw 3#32 c.links).length + c.nextRoot.length
 
-def optChainWeight : Option ChainPB → Nat := optWeight chainWeight
+@[expose] def optChainWeight : Option ChainPB → Nat := optWeight chainWeight
 
 theorem chainPB_mergeField_weight_le (d : Nat) (m : ChainPB) (tag : BitVec 32) (wt : Proto.WireType)
     (rest : Bytes) (m' : ChainPB) (rest' : Bytes)
@@ -901,8 +901,8 @@ theorem chainPB_mergeField_weight_le (d : Nat) (m : ChainPB) (tag : BitVec 32) (
             · rcases except_bind_eq_ok h with ⟨bs', hs, h⟩; rcases Prod.mk.inj (Except.ok.inj h) with ⟨rfl, rfl⟩
               have := skipField_length_le hs; simp only [chainWeight]; omega
 
-def vnWeight (v : VersionNegotiationPB) : Nat := v.authKey.length
-def optVnWeight : Option VersionNegotiationPB → Nat := optWeight vnWeight
+@[expose] def vnWeight (v : VersionNegotiationPB) : Nat := v.authKey.length
+@[expose] def optVnWeight : Option VersionNegotiationPB → Nat := optWeight vnWeight
 
 theorem vnPB_mergeField_weight_le (d : Nat) (m : VersionNegotiationPB) (tag : BitVec 32) (wt : Proto.WireType)
     (rest : Bytes) (m' : VersionNegotiationPB) (rest' : Bytes)

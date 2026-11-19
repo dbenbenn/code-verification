@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
 
 /-!
 # File-Descriptor-Carrying StoreKit Contexts (`FsCtxFds`, `FsAtFds`)
@@ -18,7 +18,7 @@ Variants of `FsCtx` and `FsAt` whose `.inr` branch additionally threads a pointw
 invariant `fdsOk s.fs` (such as `FdsGe3Closed` for CLI file-backed store kits).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -29,7 +29,7 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
   (FsAt FsCtx FsFiles KitFsOk NoFsEv TraceFsSound)
 
 /-- Entry-to-current file-system and file-descriptor context threading `fdsOk s.fs` in `.inr`. -/
-def FsCtxFds (envOk : FsFiles → Prop) (fdsOk : FsState → Prop) (Q : Prop) (P : Program)
+@[expose] def FsCtxFds (envOk : FsFiles → Prop) (fdsOk : FsState → Prop) (Q : Prop) (P : Program)
     (s0 s : State) : Prop :=
   (∀ f, envOk f) ∨ (Q ∧ TraceFsSound P ∧ envOk s0.fs.files ∧ Steps P s0 s ∧ fdsOk s.fs)
 
@@ -70,14 +70,6 @@ theorem FsCtxFds.envOk_at {envOk : FsFiles → Prop} {fdsOk : FsState → Prop} 
     (hq : Q → NoFsEv evs) : envOk s.fs.files :=
   h.toFsCtx.envOk_at htr hq
 
-theorem FsCtxFds.fdsOk_at {envOk : FsFiles → Prop} {fdsOk : FsState → Prop} {Q : Prop}
-    {P : Program} {s0 s : State}
-    (h : FsCtxFds envOk fdsOk Q P s0 s)
-    (htriv : (∀ f, envOk f) → fdsOk s.fs) : fdsOk s.fs := by
-  rcases h with h | ⟨-, -, -, -, hfds⟩
-  · exact htriv h
-  · exact hfds
-
 theorem FsCtxFds.rebase {envOk : FsFiles → Prop} {fdsOk : FsState → Prop} {Q : Prop}
     {P : Program} {s0 s : State}
     (h : FsCtxFds envOk fdsOk Q P s0 s) {evs : List TraceEvent} (htr : s.trace = s0.trace ++ evs)
@@ -96,7 +88,7 @@ theorem FsCtxFds.mono {e₁ e₂ : FsFiles → Prop} {f₁ f₂ : FsState → Pr
   · exact .inr ⟨hQ hq, hP, he _ h0, hr, hfds _ hf⟩
 
 /-- Pointwise file-system and file-descriptor carrier threading `fdsOk s.fs` in `.inr`. -/
-def FsAtFds (envOk : FsFiles → Prop) (fdsOk : FsState → Prop) (Q : Prop) (P : Program)
+@[expose] def FsAtFds (envOk : FsFiles → Prop) (fdsOk : FsState → Prop) (Q : Prop) (P : Program)
     (s : State) : Prop :=
   (∀ f, envOk f) ∨ (Q ∧ TraceFsSound P ∧ envOk s.fs.files ∧ fdsOk s.fs)
 
@@ -109,13 +101,6 @@ theorem FsAtFds.toFsAt {envOk : FsFiles → Prop} {fdsOk : FsState → Prop} {Q 
 theorem FsAtFds.envOk_here {envOk : FsFiles → Prop} {fdsOk : FsState → Prop} {Q : Prop}
     {P : Program} {s : State} (h : FsAtFds envOk fdsOk Q P s) : envOk s.fs.files :=
   h.toFsAt.envOk_here
-
-theorem FsAtFds.fdsOk_here {envOk : FsFiles → Prop} {fdsOk : FsState → Prop} {Q : Prop}
-    {P : Program} {s : State} (h : FsAtFds envOk fdsOk Q P s)
-    (htriv : (∀ f, envOk f) → fdsOk s.fs) : fdsOk s.fs := by
-  rcases h with h | ⟨-, -, -, hfds⟩
-  · exact htriv h
-  · exact hfds
 
 theorem FsAtFds.of_files_eq {envOk : FsFiles → Prop} {fdsOk : FsState → Prop} {Q : Prop}
     {P : Program} {s s' : State}

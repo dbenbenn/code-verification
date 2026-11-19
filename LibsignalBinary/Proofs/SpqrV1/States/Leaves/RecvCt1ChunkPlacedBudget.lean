@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
@@ -23,6 +23,9 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt1Chunk
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlacedBudget
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.AsmConstants -- shake: keep
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<spqr::v1::chunked::send_ek::HeaderSent>::recv_ct1_chunk` (Block `337`, `RustCliAllocBudget`)
@@ -32,7 +35,7 @@ Relocatable `[LibsignalPlacement]` verification of `<HeaderSent>::recv_ct1_chunk
 (`HeaderSentRecvCt1ChunkPlacedOkX`) in two-envelope, single-envelope, and canonical forms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -1050,33 +1053,6 @@ theorem header_sent_recv_ct1_chunk_placed_cl_ext_of_drop_ofPrePostEnv [Libsignal
       hcl3 hsp0_align hfsp_align hpc3 hrun3 hsp3 hx19_3 hx20_3 hx21_3 hx22_3 hx23_3
       hx24_3 hx25_3 hx26_3 hx27_3 hx28_3 hfp_3 hvregs_3 htr3 ?_
     ac_rfl
-
-/-- Single-envelope (`Env`) relocatable `<HeaderSent>::recv_ct1_chunk` (Block `337`)
-    parameterized by `add_chunk` (Block `419`), `decoded_message` (Block `418`), and
-    `drop_glue::<[SortedSet<Pt>; 16]>` (Block `264`). -/
-theorem header_sent_recv_ct1_chunk_placed_cl_ext_of_drop_ofEnv [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    {Env : HeaderSentRecvCt1ChunkGhost F → List AllocEvent → Prop}
-    (hPre : ∀ x evs1 evs2,
-      AddChunkSlotsEnv x.st.receiving_ct1.pts evs1 →
-      DecodedMessageEnv (addChunkTotal x.st.receiving_ct1 x.chunk) evs2 →
-      Env x (evs1 ++ evs2))
-    (hPost : ∀ x evs1 evs2 evs_free,
-      AddChunkSlotsEnv x.st.receiving_ct1.pts evs1 →
-      DecodedMessageEnv (addChunkTotal x.st.receiving_ct1 x.chunk) evs2 →
-      FreeOnlyEvs evs_free →
-      Env x ((evs1 ++ evs2) ++ evs_free))
-    (hmemcpy_sat : HookSat (Rust.withPanics ext) "memcpy" sessionMemcpyRegionBudgetSpec)
-    (hadd : subroutine_ok (lsProg_337 (Rust.withPanics ext))
-      (lsmpl.base 419) (withLsCodeLoaded lsmpl (addChunkSpec M A lim)))
-    (hdec : subroutine_ok (lsProg_337 (Rust.withPanics ext))
-      (lsmpl.base 418) (withLsCodeRoLoaded lsmpl (polyDecoderDecodedMessagePlacedSpec M A lim)))
-    (hpt16 : subroutine_ok (lsProg_337 (Rust.withPanics ext))
-      (lsmpl.base 264) (withLsCodeLoaded lsmpl (dropGlueSortedSetPt16Spec M A lim))) :
-    HeaderSentRecvCt1ChunkPlacedOkXOfEnv M A lim F Env ext :=
-  header_sent_recv_ct1_chunk_placed_cl_ext_of_drop_ofPrePostEnv
-    hPre hPost hmemcpy_sat hadd hdec hpt16
 
 /-- Canonical relocatable `<HeaderSent>::recv_ct1_chunk` (Block `337`)
     parameterized by `add_chunk` (Block `419`), `decoded_message` (Block `418`), and

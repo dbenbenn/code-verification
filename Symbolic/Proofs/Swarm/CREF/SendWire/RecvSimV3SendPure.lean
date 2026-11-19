@@ -22,7 +22,7 @@ import DY.Actions.ProtocolEvent
 import DY.Actions.Random
 import Symbolic.Specifications.Model.EquationalTheory.Spqr
 import Symbolic.Specifications.Model.EquationalTheory.SymEnc
-public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPure
+public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.Spqr
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -47,7 +47,7 @@ Proves `spqrInitA2BKdf_of_getLocalState`: every stored `TRState` snapshot retrie
 `runTraceMoves r₀ ms` satisfies `SpqrInitA2BKdf st.spqr`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

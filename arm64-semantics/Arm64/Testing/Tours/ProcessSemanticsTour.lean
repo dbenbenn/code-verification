@@ -34,9 +34,9 @@ meta import ProofLib.TestFiles
 ## End-to-End Architecture
 
 Whereas library contracts (`subroutine_ok`, audited in [`SpecAdequacyTour.lean`](SpecAdequacyTour.lean))
-start at a function symbol inside a relocatable `Obj.LinkedImage` and return to `X30`, whole-process
-specifications verify an entire static Linux AArch64 executable (`ET_EXEC`) from raw ELF64 bytes at
-`_start` (`crt1.o`) all the way to process exit (`SYS_exit` / `SYS_exit_group`):
+start at a function symbol inside a relocatable `Obj.PlacedLib` / `Obj.MultiPlacedLib` and return
+to `X30`, whole-process specifications verify an entire static Linux AArch64 executable (`ET_EXEC`)
+from raw ELF64 bytes at `_start` (`crt1.o`) all the way to process exit (`SYS_exit` / `SYS_exit_group`):
 
 ```text
   elfBytes : List (BitVec 8)              -- raw static AArch64 ELF64 binary (`ET_EXEC`)
@@ -158,8 +158,10 @@ number of parameters: 0
 fields:
   Arm64.Oracle.mmap : Nat → BitVec 64 :=
     fun x => 0#64
-  Arm64.Oracle.mremapFail : Nat → Bool :=
-    fun x => false
+  Arm64.Oracle.mremapRefusal : Nat → Option MremapRefusal :=
+    fun x => none
+  Arm64.Oracle.schedGetaffinity : Nat → SchedAffinityResult :=
+    fun x => SchedAffinityResult.singleCpu0
   Arm64.Oracle.getrandom : Nat → Nat → BitVec 8 :=
     fun x x_1 => 0#8
   Arm64.Oracle.clockGettime : Nat → Timespec :=
@@ -213,7 +215,7 @@ quantifying over selected fields under stack-fit preconditions) covers a whole f
 | `stdin : List (BitVec 8)` | Bytes readable from `fd = 0` | Covers all standard-input payloads and EOF positions |
 | `files`, `dirs` | Initial in-memory VFS entries in `State.fs.files` | Covers arbitrary pre-existing input files and directories |
 | `stackTop`, `stackSize` | User stack region `[stackTop - stackSize, stackTop)` | Covers any page-aligned stack placement/size for which `img.loadState inputs = .ok s0` |
-| `oracle : Oracle` | Kernel nondeterminism (`mmap`, `getrandom`, `mremapFail`, `clockGettime`) | Covers every valid anonymous `mmap` address choice, `getrandom` byte sequence, `mremap` refusal, and monotonic/realtime clock reading while keeping `Step` deterministic |
+| `oracle : Oracle` | Kernel nondeterminism (`mmap`, `mremapRefusal`, `schedGetaffinity`, `getrandom`, `clockGettime`) | Covers every valid anonymous `mmap` address choice, `mremap` refusal, host CPU affinity mask, `getrandom` byte sequence, and monotonic/realtime clock reading while keeping `Step` deterministic |
 | `oracle.exclFails : List Bool` | Hardware spurious failures on `STXR*`/`STLXR*`/`STXP`/`STLXP` | Copied into `State.exclFails` at load time. Under `defaultOracle`, `exclFails = []` so store-exclusives *never* spuriously fail; quantifying over `oracle` verifies atomic retry loops under arbitrary finite spurious-failure sequences (see §3.3) |
 
 ### 1.4 Inspecting `loadState` on `echo_stdin.elf` across arbitrary `stdin`, `files`, `dirs`, and `oracle`
@@ -415,11 +417,13 @@ theorem openat_stdin_enoent_on_default_fs (stdin : List (BitVec 8)) :
   have hcis : ((0#32 &&& O_CREAT_W32 != 0#32) && trailingNormSlash "<stdin>") = false := by decide
   have hlast : (((splitSlash "<stdin>").filter (!·.isEmpty)).getLast?.any (·.length > NAME_MAX)) = false := by
     decide
+  have halloc : s.fs.allocFd = some 3 := rfl
   have hent : s.fs.getEntry ["<stdin>"] = none := rfl
   have hexec : execOpenat s = (s.writeReg64 Reg.x0 (-ENOENT)).advancePC := by
     unfold execOpenat checkOpenFlags openatPure applyOpenVerdict
     dsimp only []
     rw [hx0, hx1, hx2, ite_ff _ _ hflags, ite_ff _ _ hcd, hpath]; dsimp only []
+    rw [halloc]; dsimp only []
     rw [hres]; dsimp only []
     rw [hanc]; dsimp only []
     rw [ite_ff _ _ hcis, ite_ff _ _ hlast, hent]; dsimp only []
@@ -1366,7 +1370,7 @@ private theorem atomicEcho_run_from_base
         { sBase with fs := mkEtaFs stdin files dirs, oracle := ora, exclFails := ora.exclFails } out ∧
       out.exitCode = 0#64 ∧
       (out.stdout = 1#8 :: stdin.take 1 ∧ out.stderr = []) := by
-  rcases sBase with ⟨rf0, vregs, sp0, pc0, ps0, m0, tp0, fpsr0, brkS0, brk0, fsB, oraB, idx0, exclB, trB, stB, sym0, sig0, sas0, physB⟩
+  rcases sBase with ⟨rf0, vregs, sp0, pc0, ps0, m0, tp0, fpsr0, brkS0, brk0, fsB, oraB, idx0, exclB, trB, stB, sym0, sig0, sas0, sm0, spnd0, physB⟩
   rcases hf with ⟨hst, hpc, hsp, htr, _, hcr, hcw, hinit, hcr1, hcwBuf, hcrBuf,
     f80, f84, f88, f8c, f90, f94, f98, f9c, fa0, fa4, fa8, fac, fb0, fb4,
     fb8, fbc, fc0, fc4, fc8, fcc, fd0⟩
@@ -1375,7 +1379,7 @@ private theorem atomicEcho_run_from_base
   subst hst hpc hsp htr
   let mk (rf : RegFile) (pc : BitVec 64) (m : Memory) (fs : FsState)
       (excl : List Bool) (tr : List TraceEvent) (st : ExecStatus) : State :=
-    State.mk rf vregs 0x3e80#64 pc ps0 m tp0 fpsr0 brkS0 brk0 fs ora idx0 excl tr st sym0 sig0 sas0 physB
+    State.mk rf vregs 0x3e80#64 pc ps0 m tp0 fpsr0 brkS0 brk0 fs ora idx0 excl tr st sym0 sig0 sas0 sm0 spnd0 physB
   let fs0 := mkEtaFs stdin files dirs
   have hfd0 : fs0.fds 0#64 = some { path := "", accMode := .rdonly, append := false, offset := 0, kind := .stdio } := rfl
   have hfl0 : fs0.stdin = stdin := rfl
@@ -1816,9 +1820,10 @@ theorem mmap_mapFixed_fails_closed (s : State) :
 /-! ### Gap 3: Software trap convention (`BRK #1` $\to$ `.Exited 101#64`) vs. `abort()` signal death
 - Direct `tkill` / `tgkill(1, 1, SIGABRT)` transitions to
   `ExecStatus.Signaled 6#7`, projecting via `ProcessOutcome.ofSignal` to shell / `qemu-aarch64`
-  status `exitCode = 134#64` with `signal = some 6` (whereas stock musl `raise(SIGABRT)` inside
-  `abort()` first issues `rt_sigprocmask(SIG_BLOCK, &app_mask, ...)` with a non-zero mask, which
-  fails closed with `.Exception`).
+  status `exitCode = 134#64` with `signal = some 6`. Stock musl `raise(SIGABRT)` inside
+  `abort()` blocks signals via `rt_sigprocmask(SIG_BLOCK, &app_mask, ...)`, queues `SIGABRT` in
+  `sigPending` via `tkill`, and delivers it synchronously as `ExecStatus.Signaled 6#7` when
+  `rt_sigprocmask(SIG_SETMASK, ...)` unblocks it.
 - However, in [`Eval.lean`](../../Trusted/ISA/Eval.lean) (Divergence `D1`), `BRK #1` (emitted by
   `rustc` on abort-on-panic targets) sets `status := .Exited 101#64` (`signal = none`) rather than
   fatal `SIGTRAP`, whereas `BRK #0` / `UDF #0` transition to `.Halted`
@@ -1876,9 +1881,11 @@ end_requires_test_files
 #guard_msgs in
 #print axioms step_pureMem_iff
 
-/-- info: 'Arm64.Testing.ProcessSemanticsTour.exited_is_terminal' depends on axioms: [propext, Quot.sound] -/
 #guard_msgs in
-#print axioms exited_is_terminal
+#eval show Lean.CoreM Unit from do
+  let axs ← Lean.collectAxioms ``exited_is_terminal
+  unless axs.all ([``propext, ``Classical.choice, ``Quot.sound].contains ·) do
+    throwError "unexpected axioms: {axs.toList}"
 
 /--
 info: 'Arm64.Testing.ProcessSemanticsTour.elfCorrect_iff_operational' depends on axioms: [propext,

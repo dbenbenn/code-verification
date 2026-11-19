@@ -12,18 +12,18 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.LoopDefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DecDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopMovesDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopSegsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopMovesDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopSegsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 meta import Lean -- shake: keep
@@ -31,6 +31,7 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopPeelDefs
 
 /-!
 # Budget-Threaded Version-Mismatch Envelopes, Bridges, and Block-`518` Segments
@@ -41,7 +42,7 @@ and allocator-shim contract adapters, and budget-synchronized Block-`518` proofs
 (`+0x1e78 → +0x1ee8`) and `memcpy` chain (`+0x2620 → +0x1fd4`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -131,13 +132,13 @@ local macro "wp_steps_sync_518 " ext:term:max mid:term : tactic => `(tactic| (
 /-- Allocation envelope of the 1-element `previous_sessions` loop (`+0x1e78 → +0x2cfc`):
 inlined `SessionStructure::decode` on `enc` (`OverPrevDecodeEnv enc`) followed by free-only
 decoded-session drop (`FreeOnlyEvs`). -/
-def VerNeLoopEnv (enc : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def VerNeLoopEnv (enc : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv (OverPrevDecodeEnv enc) FreeOnlyEvs
 
 /-- End-to-end allocation envelope of Stage P3/P4 `VerNe` (`+0x1e04 → s0.readReg64 .x30`):
 `VerNeS1Env` (`+0x1e04 → +0x1e78`) followed by `VerNeLoopEnv enc` (`+0x1e78 → +0x2cfc`) followed
 by `VerNeTailEnv` (`+0x2cfc → s0.readReg64 .x30`). -/
-def VerNeTopEnv (enc : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def VerNeTopEnv (enc : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv VerNeS1Env (SeqEnv (VerNeLoopEnv enc) VerNeTailEnv)
 
 theorem verNeLoopEnv_of_parts {enc : List (BitVec 8)} {evs_dec evs_err : List AllocEvent}
@@ -334,7 +335,7 @@ theorem stack_bottom_join_top_pl (sp : BitVec 64) :
 
 /-- Stack-framed `memcpy` contract with a single pure postcondition atom carrying `VmPreserved`
 for `wp_call` + `SepWP.transport_budgetPool`. -/
-def verNeMemcpyStackSpec (hookStack : Nat := allocHookStack) :
+@[expose] def verNeMemcpyStackSpec (hookStack : Nat := allocHookStack) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := (sessionMemcpySpec hookStack).pre
   post := fun (dst, src, bs) s0 sf =>

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Loop
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFullPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.LoopPlaced
@@ -17,6 +17,7 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.MainLoop
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Proof -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message`: Relocatable Main Loop
@@ -25,7 +26,7 @@ Relocatable `[LibsignalPlacement]` proof of the evaluation and interpolation loo
 on Block `418` (`decodedMessageLoop_placed_wpp`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,10 +38,7 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalS
 open CryptoVerification.SpqrV1.Poly CryptoVerification.SpqrV1.Alloc CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.Poly.AddChunk CryptoVerification.SpqrV1.Poly.AddChunk.AddChunkNorm
 open CryptoVerification.SpqrV1.Poly.ComputeAt
-open CryptoVerification.SpqrV1.Poly.LagrangePrepare
-  (lagrangePrepareName lagrangePrepare_fnOff LagrangePrepareArgs lagrangePrepareSpec
-   lagrangePreparePlacedSpec lagrangePreparePure lagrangePreparePure_length
-   lagrangePrepareStack lagrangePrepare_ok lagrangePrepare_placed_ok polyOf_eq)
+open CryptoVerification.SpqrV1.Poly.LagrangePrepare (lagrangePrepareName LagrangePrepareArgs lagrangePreparePlacedSpec lagrangePreparePure lagrangePreparePure_length lagrangePrepareStack lagrangePrepare_placed_ok polyOf_eq)
 open CryptoVerification.SpqrV1.Poly.LagrangeComplete
 open CryptoVerification.SpqrV1.GF.UnacceleratedMul CryptoVerification.SpqrV1.GF.Mul2U16
 

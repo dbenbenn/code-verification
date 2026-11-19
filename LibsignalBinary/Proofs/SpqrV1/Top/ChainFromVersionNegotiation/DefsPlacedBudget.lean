@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Specifications for `spqr::chain_from_version_negotiation` (Block `328`)
@@ -18,7 +21,7 @@ public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Defs
 Relocatable `RustCliAllocBudget` contract `ChainFromVersionNegotiationPlacedOkX` for Block `328`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +38,7 @@ open CryptoVerification.SpqrV1.Top.Placed (blkPC_328 blkPl_328)
 
 /-- Relocatable budget-threaded callee-contract predicate for
 `spqr::chain_from_version_negotiation` (Block `328`). -/
-def ChainFromVersionNegotiationPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn)
+@[expose] def ChainFromVersionNegotiationPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_328).rebase (blkPl_328).base (Rust.withPanics ext))

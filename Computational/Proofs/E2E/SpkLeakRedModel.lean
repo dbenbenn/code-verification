@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Session.StatementIdsModel
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
-public import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalBound
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
+import Computational.Proofs.CryptoGames.SM.LibsignalGameProofDefs
 
 /-!
 # Shallow PRF Reduction `spkLeakRed` for Leaked Signed Pre-Keys
@@ -22,7 +22,7 @@ Defines the shallow `OracleComp` PRF reduction `spkLeakRed` against `extractPRF`
 uniform-scalar wrapper `spkLeakRedU` (Hop 3) for the leaked signed pre-key session game.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -40,7 +40,7 @@ abbrev SpkLeakRed (Pt : Type) (ℓ : ℕ) (PQC : Type := Unit) : Type :=
     MACScheme.PRFAdversary Pt (BitVec 256)
 
 /-- Hop 3 wrapper running a `SpkLeakRed` reduction on a freshly sampled uniform scalar. -/
-def spkLeakRedU {Pt : Type} {ℓ : ℕ} {PQC : Type} (D : SpkLeakRed Pt ℓ PQC) (P : Params Bytes PQC)
+@[expose] def spkLeakRedU {Pt : Type} {ℓ : ℕ} {PQC : Type} (D : SpkLeakRed Pt ℓ PQC) (P : Params Bytes PQC)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (qep : ℕ)
     (A : SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) :
@@ -54,7 +54,7 @@ section SpkLeakRedDef
 
 variable {Pt : Type} [Zero Pt] [DecidableEq Pt] {ℓ : ℕ} {PQC : Type} [SampleableType PQC]
 
-def liftSpkGameM {α : Type}
+@[expose] def liftSpkGameM {α : Type}
     (m : StateT (SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes) ProbComp α) :
     StateT (SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes)
       (OracleComp (unifSpec + prfSpec Pt (BitVec 256))) α :=
@@ -64,7 +64,7 @@ def liftSpkGameM {α : Type}
         (α × SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes))
 
 /-- Initializes Alice's session state by querying the `extractPRF` oracle for the epoch-0 root key. -/
-def initAOracle (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def initAOracle (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
     (ck0 s alice pqr : BitVec 256) :
     OracleComp (unifSpec + prfSpec Pt (BitVec 256)) (GhostState Bytes) := do
   let prk ← evalQuery (Input := Pt) (Tag := BitVec 256) (Dh.dh s (Dh.dh alice Dh.base))
@@ -77,7 +77,7 @@ def initAOracle (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
   return ⟨.A, sess.setUnacknowledgedPreKeyMessage, 0, [0]⟩
 
 /-- Handles Bob's epoch-0 receive by querying the `extractPRF` oracle at `Dh.dh s T` for admissible sender keys. -/
-def receiveB0 (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def receiveB0 (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (s : BitVec 256)
     (g : GhostState Bytes) (c : Bytes) (rc : BitVec 256) :
     OracleComp (unifSpec + prfSpec Pt (BitVec 256))
@@ -110,7 +110,7 @@ def receiveB0 (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
             return some ({ g with session := s_out, epoch := 1, chainEpochs := epochs },
               1, msg.counter.toNat + 1, padOrTruncatePlain ℓ m)
 
-def receiveSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def receiveSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (s : BitVec 256)
     (g : GhostState Bytes) (c : Bytes) (rc : BitVec 256) :
     OracleComp (unifSpec + prfSpec Pt (BitVec 256))
@@ -120,7 +120,7 @@ def receiveSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
   else
     pure ((sessionSchemeU P ℓ).receive g c rc)
 
-def deliverSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def deliverSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (s : BitVec 256) :
     QueryImpl ((Party × Bytes) →ₒ Option (SM.RecvResult (CBC.Plain ℓ)))
       (StateT (SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes)
@@ -138,7 +138,7 @@ def deliverSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
         set (st.accept Q st' r.pos)
         return some (.accepted t' i' (if st.chall.contains r.pos then none else some m'))
 
-def injectSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def injectSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) :
     QueryImpl ((Party × Bytes) →ₒ Option (SM.RecvResult (CBC.Plain ℓ)))
       (StateT (SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes)
@@ -161,7 +161,7 @@ def injectSpk (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
         set { st with win := true }
         return some .rejected
 
-def spkOracleImpl (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def spkOracleImpl (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) :
     QueryImpl (unifSpec + SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes)
       (StateT (SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes)
@@ -179,7 +179,7 @@ def spkOracleImpl (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt
     liftSpkGameM (SM.corrR (configRefuseEarlyBobCorr decT encT) x)
 
 /-- Shallow PRF reduction simulating `configRefuseEarlyBobCorr` with epoch-0 root-key derivations answered by `extractPRF`. -/
-def spkLeakRed : SpkLeakRed Pt ℓ PQC :=
+@[expose] def spkLeakRed : SpkLeakRed Pt ℓ PQC :=
   fun P Dh _encPt encT decT qep s A =>
     show OracleComp (unifSpec + prfSpec Pt (BitVec 256)) Bool from do
     let b ← (liftM ($ᵗ Bool : ProbComp Bool) :

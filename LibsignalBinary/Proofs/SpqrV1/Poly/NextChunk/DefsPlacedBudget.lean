@@ -9,8 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsPlaced
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk`: Budget-Threaded Relocatable Contracts and Bridges
@@ -21,7 +22,7 @@ Re-exports canonical `PolyNextChunkEnv` budget specifications from `DefsBudget` 
 Block `416`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -93,7 +94,7 @@ export LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.DefsBudget (
 /-- Parametric-envelope relocatable `[LibsignalPlacement]` contract for Block `416` with explicit
     `completePointsPolysPlacedAt` wrapped with `withLsCodeLoaded lsmpl` (matching
     `RodataPlaced.PolyNextChunkRodataPlacedOkExt`). -/
-def PolyNextChunkRodataCodeLoadedOkExtOfEnv [LibsignalPlacement]
+@[expose] def PolyNextChunkRodataCodeLoadedOkExtOfEnv [LibsignalPlacement]
     (Env : PolyNextChunkGhost → List AllocEvent → Prop)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
@@ -109,7 +110,7 @@ abbrev PolyNextChunkRodataCodeLoadedOkExt [LibsignalPlacement]
 
 /-- Parametric-envelope relocatable `[LibsignalPlacement]` contract on
     `libsignalSessionLib.blockProgram lsmpl 416 (Rust.withPanics ext)` at `lsmpl.base 416`. -/
-def PolyNextChunkBlockOkXOfEnv [LibsignalPlacement]
+@[expose] def PolyNextChunkBlockOkXOfEnv [LibsignalPlacement]
     (Env : PolyNextChunkGhost → List AllocEvent → Prop)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
@@ -125,7 +126,7 @@ abbrev PolyNextChunkBlockOkX [LibsignalPlacement]
 
 /-- Parametric-envelope cross-block caller contract for Block `416` (`lsmpl.base 416`) on an
     arbitrary caller program `callerProg` (e.g. `spqrSendPlacedProg ext`). -/
-def PolyNextChunkCallerOkXOfEnv [LibsignalPlacement]
+@[expose] def PolyNextChunkCallerOkXOfEnv [LibsignalPlacement]
     (callerProg : Program)
     (Env : PolyNextChunkGhost → List AllocEvent → Prop)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) : Prop :=

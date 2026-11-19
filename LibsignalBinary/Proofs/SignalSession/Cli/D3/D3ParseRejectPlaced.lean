@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.GamePaths
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.GamePaths
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Domains
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
-public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Bounds
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.EncOk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Proofs
+public import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
@@ -25,6 +25,10 @@ import Init.Data.Repr
 import Init.Data.String.Basic
 import Init.Data.String.Defs
 import Init.Data.ToString.Basic
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Whole-Process Pre-Key `recv` Combinators & Unparseable Payload Rejection
@@ -33,7 +37,7 @@ Generic `OutcomeOrExcusedAbort` combinators for `pqRecvInputs` from `mainSpecTig
 contracts, plus whole-process rejection when `Pksm.pksmParse body = none`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -107,58 +111,6 @@ theorem runFilesOk_pqRecv_cli_placed {S : RunSem}
       (Slots.pqSessBytes_le_fileCapBytes hwf),
       Slots.distinctSid_party st.party, trivial⟩)
 
-theorem inputsLoadable_pqRecvInputs_placed (W : PEParams) (st : PqParty) (c : List (BitVec 8))
-    (rc : BitVec 256) (hst : PqxdhPartyInSpecDomain W st) :
-    Cli.InputsLoadable (pqRecvInputs W st c rc) := by
-  refine ⟨(loadable_pqRecvInputs W st c rc).1, fun f hf =>
-    ⟨(loadable_pqRecvInputs W st c rc).2 f hf, ?_⟩⟩
-  simp only [pqRecvInputs, pqInputs, List.append_nil, List.mem_append, List.mem_cons,
-    List.not_mem_nil, or_false] at hf
-  rcases hf with h | rfl
-  · have hlt := hst.2.1 f h; unfold MAX_LFS_FILESIZE; omega
-  · simp [HMAC.keyToBytes32, MAX_LFS_FILESIZE]
-
-theorem coinsReadable_pqRecvInputs_placed (W : PEParams) (st : PqParty) (c : List (BitVec 8))
-    (rc : BitVec 256) :
-    Cli.CoinsReadable (pqRecvInputs W st c rc) :=
-  Cli.coinsReadable_pqInputs W st _ _ _ _ (Or.inl rfl)
-
-private theorem partyAddress_text_toList_placed (P : Party) :
-    (partyAddress P).text.toList = (partyAddressName P).toList ++ ".".toList ++ ['1'] := by
-  have ht1 : toString (1 : Nat) = String.singleton (Nat.digitChar 1) := Nat.repr_of_lt (by omega)
-  have hd1 : Nat.digitChar 1 = '1' := Nat.digitChar_eq_one.mpr rfl
-  simp [partyAddress, Address.text, ht1, hd1, String.toList_append]
-
-private theorem partyAddress_text_printable_placed (P : Party) :
-    PrintableAsciiArg (partyAddress P).text := by
-  have ht1 : toString (1 : Nat) = String.singleton (Nat.digitChar 1) := Nat.repr_of_lt (by omega)
-  refine ⟨?_, ?_⟩
-  · intro h
-    have hl := congrArg String.utf8ByteSize h
-    simp [partyAddress, Address.text, ht1, String.utf8ByteSize_append] at hl
-  · intro ch hch
-    rw [partyAddress_text_toList_placed] at hch
-    cases P <;> revert ch hch <;> decide
-
-private theorem partyAddress_text_length_placed (P : Party) :
-    (partyAddress P).text.length = 38 := by
-  rw [← String.length_toList, partyAddress_text_toList_placed]
-  cases P <;> decide
-
-theorem cliInputsOk_pqRecvInputs_placed (W : PEParams) (st : PqParty) (c : List (BitVec 8))
-    (rc : BitVec 256) :
-    Cli.CliInputsOk (pqRecvInputs W st c rc) := by
-  refine ⟨?_, ?_⟩
-  · intro a ha
-    simp only [pqRecvInputs, pqInputs, Cmd.argv, List.mem_cons, List.not_mem_nil, or_false] at ha
-    rcases ha with rfl | rfl
-    · unfold PrintableAsciiArg; decide
-    · exact partyAddress_text_printable_placed st.party.other
-  · unfold ArgvFitsInitialStack pqRecvInputs pqInputs Cmd.argv
-    simp only [List.map_cons, List.map_nil, List.sum_cons, List.sum_nil,
-      partyAddress_text_length_placed]
-    decide
-
 def defaultModelExtras_placed : UnreachedPqxdhPrimitives where
   sigPkGen _ := []
   sigSign _ _ _ := []
@@ -168,7 +120,7 @@ def defaultModelExtras_placed : UnreachedPqxdhPrimitives where
   pow8 _ := []
   isValidDhTriple _ _ _ := false
 
-noncomputable def cliRunSem_placed (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] def cliRunSem_placed (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (decPk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → List (BitVec 8) →
       SlotAns (List (BitVec 8)))
     (decPkOk : FsFiles → AddrVal → AddrVal → PreKeySignalMessage → Prop)
@@ -212,7 +164,7 @@ theorem runHsOk_pqRecvPrekey_of_decPkOk_any {S : RunSem}
 /-! ## 2. Unparseable Pre-Key Wire Payload Rejection (`Pksm.pksmParse body = none`) -/
 
 /-- `RunSem` bundle for `Pksm.pksmParse body = none` with vacuous `decPkOk`. -/
-noncomputable abbrev cliRunSemParseNone (W : CliHooks) : RunSem :=
+abbrev cliRunSemParseNone (W : CliHooks) : RunSem :=
   cliRunSem_placed defaultModelExtras_placed W (fun _ _ _ _ _ => some none) (fun _ _ _ _ => False) Pksm.pksmParse
 
 end LibsignalBinary.Proofs.SignalSession.Cli.D3

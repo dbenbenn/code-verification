@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On
+public import Computational.Proofs.CryptoGames.FSAEAD.Theorem5On -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.WireHop
-public import Computational.Proofs.CryptoGames.SM.ReductionsQueries
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.IndexRestrictions
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.WireHop -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.SM.ReductionsQueries -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.IndexRestrictions
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.MsgAeadCorrect
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.PubToAD
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.WireHop.Helpers
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SaltHop
 import Std.Tactic.BVDecide.Normalize.BitVec
+public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
 
 /-!
 # Composed FS-AEAD bound for short public parts
@@ -30,7 +33,7 @@ ACD19 Theorem 5 (`theorem5With_on_multi`), per-slot salt-PRF and wire OT-CCA hop
 MAC-forgery hop per chain.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -346,7 +349,7 @@ theorem multiRedWith_guardedOTDecShort [DecidableEq Pt]
 
 /-! ## Multi-slot wire-OT-CCA hybrid -/
 
-def wireHyb [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
+@[expose] def wireHyb [DecidableEq Pt] (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
     (encT : Pt → PublicKey) (idOf : Party → IdentityKey) (k : ℕ)
     (B : OTCCAAdversary (ℕ × (Header Pt × LibsignalMsgPublicPart)) (Plain ℓ) LibsignalCiphertextWithSalt32) :
     ProbComp Bool :=

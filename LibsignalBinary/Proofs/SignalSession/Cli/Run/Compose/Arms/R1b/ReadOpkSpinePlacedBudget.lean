@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlaced
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkSpinePlaced
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
 import Arm64.Trusted.Spec.Hoare
@@ -20,7 +20,25 @@ import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
-import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSites
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.PublicSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpk -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadOpkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.HopsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CallHelpersParsePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CallHelpersPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadKpkPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ReadRegSpkPlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Common.InImageKit
 
 /-!
 # Budget-Threaded Stage 3 (`one-time-pre-key`) Spine of Arm `R1b` (`0x12dc → 0x24ec`)
@@ -30,7 +48,7 @@ Defines the Stage 3 allocation-event envelopes (`R1bStepOpkOkEnv`, `R1bStepOpkEr
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -238,7 +256,7 @@ private theorem r1b_h4d0_vec_region (fsp v0 v1 v2 v3 : BitVec 64) :
   simpa only [BitVec.add_assoc, BitVec.reduceAdd] using r1b_cell64_cons (a := fsp + 0x4d0#64) v0 (n := 40) (by decide)
 
 /-- Success-path allocation-event envelope of `r1b_step_opk_placed`: `bundleRead` for `"one-time-pre-key"`, optional `split_id` when `opkBs` is non-empty, and `FreeOnlyEvs` deallocation of `opkBs`. -/
-def R1bStepOpkOkEnv (cEnvs : RunCalleesEnvs) (files : FsFiles)
+@[expose] def R1bStepOpkOkEnv (cEnvs : RunCalleesEnvs) (files : FsFiles)
     (dir opkBs : List (BitVec 8)) : List AllocEvent → Prop :=
   if opkBs.isEmpty then
     SeqEnv (cEnvs.bundleRead files dir (utf8 "one-time-pre-key")) FreeOnlyEvs
@@ -254,7 +272,7 @@ example (files : FsFiles) :
   Or.inl rfl
 
 /-- Error-path allocation-event envelope of `r1b_step_opk_placed`: `bundleRead` failure followed by `FreeOnlyEvs`, or non-empty `bundleRead` followed by `splitId` or `<PublicKey>::deserialize` failure and `FreeOnlyEvs`. -/
-def R1bStepOpkErrEnv (cEnvs : RunCalleesEnvs) (files : FsFiles)
+@[expose] def R1bStepOpkErrEnv (cEnvs : RunCalleesEnvs) (files : FsFiles)
     (dir : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   match cliIo.rd files (dir ++ [0x2f#8] ++ utf8 "one-time-pre-key") with
   | .error () => SeqEnv (cEnvs.bundleRead files dir (utf8 "one-time-pre-key")) FreeOnlyEvs evs

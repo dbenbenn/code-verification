@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` `do_reserve_and_handle` Call Helpers
@@ -20,7 +21,7 @@ Provides stack-parametric budget specifications (`doReserveSpecOf`, `doReserve2S
 and `EncVarintCalleeSavedPlaced` call steppers advancing `pushByteStep`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -45,7 +46,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Prost.EncodeVarintBaseBudget
 
 /-- Stack-parametric budget specification of `do_reserve_and_handle` (`align = 1, elem_size = 1`
 passed in `x3, x4`). -/
-def doReserveSpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def doReserveSpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
@@ -108,7 +109,7 @@ theorem step_doReserve_call_gen_placed {prog : Program} {resTarget : BitVec 64} 
 
 /-- Stack-parametric budget specification of `do_reserve_and_handle [local#2]`, which hardcodes
 `align = 1, elem_size = 1` and does not read `x3` or `x4`. -/
-def doReserve2SpecOf (resStack : Nat) {M : AllocCostModel}
+@[expose] def doReserve2SpecOf (resStack : Nat) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     let newCap := reserveCap x.cap.toNat x.bs.length x.additional
@@ -119,15 +120,15 @@ def doReserve2SpecOf (resStack : Nat) {M : AllocCostModel}
     vecU8At A.repAlloc x.v x.cap x.ptr x.bs ∗ A.pool lim st s ∗ stackAt s.sp resStack
   post := (doReserveSpecOf resStack A lim).post
 
-def doReserve2Spec {M : AllocCostModel}
+@[expose] def doReserve2Spec {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) :=
   doReserve2SpecOf doReserveStack A lim
 
-def doReserve2SpecX {M : AllocCostModel}
+@[expose] def doReserve2SpecX {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) :=
   doReserve2SpecOf doReserveStackX A lim
 
-def doReserve2SpecWithPlaced (resStack : Nat) (s0 : State) {M : AllocCostModel}
+@[expose] def doReserve2SpecWithPlaced (resStack : Nat) (s0 : State) {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) : Spec (DoReserveCall × M.σ) where
   pre := fun (x, st) s =>
     ⌜EncVarintCalleeSavedPlaced s0 s ∧ s.readReg64 .x0 = x.v ∧ (s.readReg64 .x1).toNat = x.bs.length ∧

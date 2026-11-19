@@ -12,16 +12,16 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA3PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4AuxPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesAuxBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA3PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4AuxPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesAuxBudget
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.KeyPairCalleesBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
@@ -30,6 +30,11 @@ meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub4Aux
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub2
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA3Placed
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.OptContracts
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Substage P2.4 Helpers, `None` Branch, and Post-Drop Tail
@@ -38,7 +43,7 @@ Defines `P2Sub4NoneEnv` and `P2Sub4SomeTailEnv`, and proves budget-threaded plac
 P2.4-None (`+0x0d5c → +0x36ac`) and post-`futDrop` tail (`+0x0e40 → +0x36ac`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -193,11 +198,11 @@ theorem p2_kpShim_pre_intro_placed {M : AllocCostModel} {A : RustCliAllocBudget 
 
 /-- Exact deterministic allocator event list of Substage P2.4-None (`+0x0d5c -> +0x36ac`):
 `skit.kpShim` (`boxAllocEvents kpBoxSize`). -/
-def p2Sub4NoneEvents (kpBoxSize : Nat) : List AllocEvent :=
+@[expose] def p2Sub4NoneEvents (kpBoxSize : Nat) : List AllocEvent :=
   boxAllocEvents kpBoxSize
 
 /-- Exact allocator event envelope of Substage P2.4-None (`+0x0d5c -> +0x36ac`). -/
-def P2Sub4NoneEnv (kpBoxSize : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def P2Sub4NoneEnv (kpBoxSize : Nat) (evs : List AllocEvent) : Prop :=
   evs = p2Sub4NoneEvents kpBoxSize
 
 theorem fitsEnv_p2Sub4NoneEnv_iff {M : AllocCostModel} {lim : BudgetLimits} {st : M.σ}
@@ -227,7 +232,7 @@ example :
 Substage P2.4 (`+0x0e40 -> skit.kpShim`):
 `__rust_dealloc(opkBoxSize, 8)` on the OPK poll future box followed by freeing the cloned
 `publicKey` and `privateKey` `Vec<u8>` buffers. -/
-def p2OpkRecFreeEvents (opkBoxSize pubCap privCap : Nat) : List AllocEvent :=
+@[expose] def p2OpkRecFreeEvents (opkBoxSize pubCap privCap : Nat) : List AllocEvent :=
   rustDeallocEvents opkBoxSize 8 ++
     rustDeallocEvents pubCap 1 ++
     rustDeallocEvents privCap 1
@@ -242,12 +247,12 @@ theorem p2OpkRecFreeEvents_freeOnly (opkBoxSize pubCap privCap : Nat) :
 /-- Exact deterministic allocator event list of the post-`futDrop` tail of Substage P2.4-Some
 (`+0x0e40 -> +0x36ac`): `p2OpkRecFreeEvents` followed by `skit.kpShim`'s
 `boxAllocEvents kpBoxSize`. -/
-def p2Sub4SomeTailEvents (opkBoxSize pubCap privCap kpBoxSize : Nat) : List AllocEvent :=
+@[expose] def p2Sub4SomeTailEvents (opkBoxSize pubCap privCap kpBoxSize : Nat) : List AllocEvent :=
   p2OpkRecFreeEvents opkBoxSize pubCap privCap ++ boxAllocEvents kpBoxSize
 
 /-- Exact allocator event envelope for the post-`futDrop` tail of Substage P2.4-Some
 (`+0x0e40 -> +0x36ac`). -/
-def P2Sub4SomeTailEnv (opkBoxSize pubCap privCap kpBoxSize : Nat)
+@[expose] def P2Sub4SomeTailEnv (opkBoxSize pubCap privCap kpBoxSize : Nat)
     (evs : List AllocEvent) : Prop :=
   evs = p2Sub4SomeTailEvents opkBoxSize pubCap privCap kpBoxSize
 

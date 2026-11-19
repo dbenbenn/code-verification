@@ -11,7 +11,6 @@ module
 
 public import Symbolic.Specifications.Refinement.Statement
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
 
@@ -22,7 +21,7 @@ Proves that a 32-byte coin list is non-empty, discharging the `CoinSplit` guard
 on an accepting fresh pre-key `recv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

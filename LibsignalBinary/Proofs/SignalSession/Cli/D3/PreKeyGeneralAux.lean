@@ -9,8 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Auxiliary `PreKeySignalMessage` Lemmas for `decrypt_prekey`
@@ -19,7 +22,7 @@ Characterizes outputs `pm` of `Pksm.pksmParse`: invariance of `SessMatchesPm`, `
 `decPkDef` under changes to `pm.serialized`, and the version-3/version-4 Kyber-payload trichotomy.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +41,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-- Reconstructs the `Session (List (BitVec 8))` stored on disk for a PQXDH domain session
 `(x, g)` (`Record.toRecord (RecordX.extrasOf fun _ => x) g`'s `currentSession`). -/
-def pqSessionOf (x : RecordExtras) (g : GhostState (List (BitVec 8))) :
+@[expose] def pqSessionOf (x : RecordExtras) (g : GhostState (List (BitVec 8))) :
     Session (List (BitVec 8)) where
   state := g.session
   pendingPreKey := if g.session.pendingPreKey then some x.pending else none

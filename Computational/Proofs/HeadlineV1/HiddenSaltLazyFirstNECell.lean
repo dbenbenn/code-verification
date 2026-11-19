@@ -9,11 +9,52 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECoupleT
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECoupleT -- proof-setup: allow-public-import
 public import Computational.Specifications.Pqxdh.Game
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple3
 import ProofLib.SepLogic.WP.StateNorm
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSessionStatementsShort
+import Computational.Proofs.CryptoGames.SM.GameProofDefs
+import LibsignalBinary.Proofs.SpqrV1Sync.InSyncEpoch
+import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+import LibsignalBinary.Specifications.CryptoGames.Party
+import LibsignalBinary.Specifications.CryptoGames.SM.Game
+import Mathlib.Algebra.BigOperators.Group.Finset.Defs
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.Data.Finset.Defs
+import Mathlib.Data.List.Dedup
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.MeasureTheory.Integral.Lebesgue.Add
+import Mathlib.Order.Disjoint
+import Mathlib.Order.SetNotation
+import Mathlib.Tactic.Attr.Register
+import PolyFun.Control.Monad.Support
+import Std.Tactic.BVDecide.Normalize.BitVec
+import Std.Tactic.BVDecide.Normalize.Bool
+import Std.Tactic.BVDecide.Normalize.Prop
+import ToMathlib.Control.StateT
+import VCVio.CryptoFoundations.SecExp
+import VCVio.CryptoFoundations.SecExp.Measure
+import VCVio.EvalDist.Defs.Measure.Core
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.MeasureTVDist.Event
+import VCVio.EvalDist.Monad.Bool
+import VCVio.EvalDist.ProbabilityBounds
+import VCVio.EvalDist.ProbabilityNotation
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.EvalDist.Measure
+import VCVio.OracleComp.OracleSpec
+import VCVio.OracleComp.QueryTracking.QueryBound
+import VCVio.OracleComp.QueryTracking.QueryBound.Simulation
+import VCVio.OracleComp.QueryTracking.SubSpec
+import VCVio.OracleComp.SimSemantics.Append
+import VCVio.OracleComp.SimSemantics.StateT.Basic
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Relational.SimulateQ.UntilBad
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Per-Cell Paper-Engine Reductions and Runner
@@ -22,11 +63,9 @@ Defines the 3-way per-cell paper `DeliverForge` advantage `forgeGuessedAdvantage
 per-cell reductions, and the unified runner `runBaseDFCellTPaper`, and proves their equivalence.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal MeasureTheory
@@ -37,7 +76,7 @@ open CryptoGames CryptoGames.SM CryptoGames.SM.Construction
 
 /-- Three-way per-cell paper `DeliverForge` advantage dispatching between `Dir2` (`tL = some (t - 2)`),
 shifted (`tL = some (t - 3)`), and unshifted cells. -/
-noncomputable def forgeGuessedAdvantageCellPaper {Key St Msg Coins C : Type}
+@[expose] noncomputable def forgeGuessedAdvantageCellPaper {Key St Msg Coins C : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (sameHdr : C → C → Bool)
     (tL : Option ℕ) (t : ℕ) (B : DeliverForge.AdversaryDF St Msg Coins C) : ℝ≥0∞ :=
@@ -86,7 +125,7 @@ theorem authOKDir2_eq_refinement_authOKDir2 {St Msg C : Type} (tL : Option ℕ) 
     congr 1
     cases p <;> cases Party.senderOf tStar <;> simp [BEq.beq, eq_comm]
 
-def injectImplCellT {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def injectImplCellT {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (tL : Option ℕ) (tStar : ℕ)
     (cfg : SM.Config Msg) :
     QueryImpl ((Party × C) →ₒ Option (SM.RecvResult Msg))
@@ -104,7 +143,7 @@ def injectImplCellT {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C
       if cfg.injectFull t' then set { s with win := true }
       return some .rejected
 
-def deliverForgeBaseImplCellT {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def deliverForgeBaseImplCellT {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (tL : Option ℕ) (tStar : ℕ)
     (sameHdr : C → C → Bool) (cfg : SM.Config Msg) :
     QueryImpl ((Party × C × C) →ₒ Option (SM.RecvResult Msg))
@@ -126,7 +165,7 @@ def deliverForgeBaseImplCellT {Key St Msg Coins C : Type} [DecidableEq Msg] [Dec
         if cfg.injectFull t' then set { s with win := true }
         return some .rejected
 
-def oracleImplCellTPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def oracleImplCellTPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Coins] (sm : SMScheme Key St Msg Coins C) (qep : ℕ)
     (tL : Option ℕ) (tStar : ℕ) (cfg : SM.Config Msg) :
     QueryImpl (SM.spec St Msg Coins C) (StateT (SM.GameState St Msg C) ProbComp) :=
@@ -134,7 +173,7 @@ def oracleImplCellTPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [Decidabl
     SM.deliverImpl sm cfg + injectImplCellT sm qep tL tStar cfg +
     DeliverForge.corrImplShiftedPaper (St := St) (Msg := Msg) (C := C) (cellShift tL tStar)
 
-def oracleImplBaseDFCellTPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def oracleImplBaseDFCellTPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Coins] (sm : SMScheme Key St Msg Coins C) (qep : ℕ)
     (tL : Option ℕ) (tStar : ℕ) (sameHdr : C → C → Bool) (cfg : SM.Config Msg) :
     QueryImpl (DeliverForge.specDF St Msg Coins C) (StateT (SM.GameState St Msg C) ProbComp) :=
@@ -151,7 +190,7 @@ abbrev fullImplBaseDFCellTPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [D
     oracleImplBaseDFCellTPaper sm qep tL tStar sameHdr cfg
 
 /-- Unified per-cell `DeliverForge` runner parameterized by `cellDelta`, `cellTrivialT`, and `cellShift`. -/
-def runBaseDFCellTPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
+@[expose] def runBaseDFCellTPaper {Key St Msg Coins C : Type} [DecidableEq Msg] [DecidableEq C]
     [SampleableType Key] [SampleableType Coins]
     (sm : SMScheme Key St Msg Coins C) (qep : ℕ) (tL : Option ℕ) (tStar : ℕ)
     (sameHdr : C → C → Bool) (cfg : SM.Config Msg) (b : Bool)
@@ -384,4 +423,3 @@ theorem forgeGuessedAdvantageCellPaperT_eq_runBaseDFCellTPaper
 
 end CryptoVerification.LibsignalSession.HeadlineV1
 
-end

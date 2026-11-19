@@ -13,7 +13,7 @@ public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import Computational.Specifications.Game.ModelIface
 public import Computational.Proofs.SpecLemmas.Game.BhShallowHelpers -- proof-setup: allow-public-import
 public import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1 -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.AtomicTablesHonest -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
 import Computational.Proofs.ReductionDsl.Soundness
 
 /-!
@@ -338,17 +338,6 @@ theorem oneStage_eval_eq
   rcases hSimInv (b_out, σ_out) hout with ⟨qKi1, qSt1, qDr1, hInvOut⟩
   dsimp only [Prod.map, id_eq]
   exact spec.finish_eq hInvOut b_out
-
-/-- Handshake experiment distribution equality between `spec.R` and `spec.R_ref` for any `KeyInd` handler `ki`. -/
-theorem evalDist_pqxdhKeyIndExp_oneStage_eq
-    (spec : OneStageAtomicSimSpec S Pt ℓ O b qStart qDR DrvSt)
-    (P : SignalPqxdh.Primitives)
-    (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
-    (B_A : OracleComp (unifSpec + bhTargetGameSpec S ℓ (BitVec 512)) Bool)
-    (hB : OneStageTargetBounded S B_A b qStart qDR) :
-    𝒟[pqxdhKeyIndExpForHandshake S P ki ⟨spec.R.eval (fun _ => B_A) ()⟩] =
-      𝒟[pqxdhKeyIndExpForHandshake S P ki ⟨spec.R_ref.eval (fun _ => B_A) ()⟩] := by
-  rw [oneStage_eval_eq spec B_A hB]
 
 end SimProofs
 

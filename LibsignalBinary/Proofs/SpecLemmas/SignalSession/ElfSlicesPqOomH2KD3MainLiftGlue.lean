@@ -10,9 +10,24 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MainLiftGlueF3
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMainEntryFits
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MainLiftGlueF3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMainEntryFits
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMainEntryFitsSat
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudgetFdSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KIfaces -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.M24L4BEquiv
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Arbitrary-Domain D3 Block-`579 → 617 → Real Externs` Lift (`ElfSlicesPqOomH2KD3MainLiftGlue`)
@@ -24,7 +39,7 @@ Lifts any Block-`579` `runSpecTightPlacedPreFd` contract and `MainEntryBudgetFit
 `Block617TransferFixedHyp` to `cliExternsPlaced mmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.haveILetI false
@@ -34,8 +49,7 @@ namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KD3Mai
 
 open Arm64 (GhostName Memory subroutine_ok)
 open Arm64.Obj (MultiPlacement)
-open CryptoVerification
-  (LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns)
+open CryptoVerification (ExternsDistinctOnHooked LibsignalPlacement libsignalMutatedBlocks)
 open CryptoVerification.LibsignalPublicApi.StoreKit (FsFiles)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
@@ -60,14 +74,14 @@ open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainIoBoundedPlaced (ReadStdinBoundedEnv)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainOkCliExtB2NeedLocksInst
   (initFsState_cliProcessInputs_eq)
-open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudgetFd (MainIoOfPlacedFd)
+open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3PlacedBudgetFdSat (MainIoOfPlacedFdSat)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
   (CliGhostAllocHooks allocContractsFsPlaced_of_hooks
    cliGhostExterns_fromUtf8RO_budget_sat cliGhostExterns_fromUtf8_budget_sat
    cliGhostExterns_memrchrRO_budget_sat cliGhostExterns_memrchr_budget_sat
    cliGhostExterns_strlenRO_budget_sat)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KIfaces
-  (runSpecTightPlacedPreFd)
+  (runSpecTightPlacedFd)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMainEntryFitsSat
   (b2MainSpecTightNeedLocksFineAt_of_domScopedRunSem_and_budgetFitsCapOf_placed_preFd_sat)
 open VerifiedLibraries.Mallocng (mallocngAddrsOfPlacement)
@@ -78,7 +92,7 @@ theorem ghostMainSubroutineD3_of_domScopedRunTight_preFd
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_ghost : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk_ghost)
@@ -91,7 +105,7 @@ theorem ghostMainSubroutineD3_of_domScopedRunTight_preFd
       @CliGhostAllocHooks (libsignalPlacementOf mpl hblk hext_nodup) fineCostModel
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits ghFixed)
     (hioOf : ∀ (γ : GhostName) (tp : BitVec 64),
-      @MainIoOfPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
+      @MainIoOfPlacedFdSat (libsignalPlacementOf mpl hblk hext_nodup) _
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits
         (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) cliIo hookStack
         ReadStdinBoundedEnv ReadEnv)
@@ -104,7 +118,7 @@ theorem ghostMainSubroutineD3_of_domScopedRunTight_preFd
         (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup)
           (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)))
         (mpl.base 579)
-        (@runSpecTightPlacedPreFd (libsignalPlacementOf mpl hblk hext_nodup) _
+        (@runSpecTightPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
           CodeOk_ghost
           (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits
           (RunEnvOf γ tp) uuidTryParse (runRel S) cliWrOk cliResStack)) :
@@ -154,7 +168,7 @@ theorem mainSubroutineD3F3_of_domScopedRunTight_preFd
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks)
     {CodeOk_ghost CodeOk_real : Memory → Prop}
     (hCI : @LsCodeInv (libsignalPlacementOf mpl hblk hext_nodup) CodeOk_ghost)
@@ -169,7 +183,7 @@ theorem mainSubroutineD3F3_of_domScopedRunTight_preFd
       @CliGhostAllocHooks (libsignalPlacementOf mpl hblk hext_nodup) fineCostModel
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits ghFixed)
     (hioOf : ∀ (γ : GhostName) (tp : BitVec 64),
-      @MainIoOfPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
+      @MainIoOfPlacedFdSat (libsignalPlacementOf mpl hblk hext_nodup) _
         (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits
         (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)) cliIo hookStack
         ReadStdinBoundedEnv ReadEnv)
@@ -182,7 +196,7 @@ theorem mainSubroutineD3F3_of_domScopedRunTight_preFd
         (@mProgPlaced (libsignalPlacementOf mpl hblk hext_nodup)
           (cliGhostExterns ghFixed (cliExternsPlaced mmpl W)))
         (mpl.base 579)
-        (@runSpecTightPlacedPreFd (libsignalPlacementOf mpl hblk hext_nodup) _
+        (@runSpecTightPlacedFd (libsignalPlacementOf mpl hblk hext_nodup) _
           CodeOk_ghost
           (fineHookRustCliAllocBudget γ mmpl tp brkStart) cliBudgetLimits
           (RunEnvOf γ tp) uuidTryParse (runRel S) cliWrOk cliResStack)) :

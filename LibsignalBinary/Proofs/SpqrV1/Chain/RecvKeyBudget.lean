@@ -9,26 +9,26 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKey
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyAddBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyAdvanceBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyGetBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyGetLoopBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternalBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKey
+public import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyAddBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyAdvanceBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyGetBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyGetLoopBudget
+import LibsignalBinary.Proofs.SpqrV1.Chain.RecvKeyHelpersBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Proof of `<spqr::chain::Chain>::recv_key` (Block `366`)
@@ -38,7 +38,7 @@ Proves `recvKey_from_64_placed`, `chainRecvKey_placed_ok_of_contracts`, and
 `chainRecvKeySpecX M A lim hkdf`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

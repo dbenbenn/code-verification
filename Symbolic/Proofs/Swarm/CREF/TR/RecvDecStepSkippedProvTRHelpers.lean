@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -43,7 +43,7 @@ Defines `ProvEvTR`, `InstallWitnessTR`, and `IkShapeTR` and proves their preserv
 reachable composed protocol traces.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -111,7 +111,7 @@ theorem prov_consumeMessageKey_rIdx {c c' : RecvChain} {n : UInt32} {seed : DY.B
   unfold consumeMessageKey at h; repeat (split at h; · cases h)
   cases h; rfl
 
-def ProvEvTR (tr : ExecTrace) : Prop :=
+@[expose] def ProvEvTR (tr : ExecTrace) : Prop :=
   ∀ s pk n seed rIdx src i,
     tr.EventLoggedAt (TREvent.SkippedKeyStored s pk n seed rIdx src) i →
     pk.AttackerKnows tr ∧

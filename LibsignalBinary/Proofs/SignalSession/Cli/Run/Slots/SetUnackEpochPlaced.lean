@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees
-public import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionInitiateACommon
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees
+public import LibsignalBinary.Proofs.E2E.Pqxdh.TopLevel.SessionInitiateACommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSat -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
 
 /-!
 # Relocatable `SessionState::set_unacknowledged_pre_key_message` at `UNIX_EPOCH`
@@ -28,7 +29,7 @@ Verifies Block `33` (`<SessionState>::set_unacknowledged_pre_key_message`) at `n
 `[LibsignalPlacement]`, with cross-block (`i < 619`) and `cliGhostExterns` specializations.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -38,7 +39,7 @@ set_option linter.unusedTactic false
 
 namespace CryptoVerification.SignalSession.Cli.Slots
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoGames CryptoGames.HMAC CryptoGames.HKDF
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
@@ -56,7 +57,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 private abbrev allocHookStack : Nat := 4096
 
 /-- Image-free inner `Spec` of Block `33` (`<SessionState>::set_unacknowledged_pre_key_message`) at `now = UNIX_EPOCH` (`x5 = 0`, `w6 = 0`). -/
-def setUnackPreKeyMsgEpochInnerSpec (A : RustAlloc) :
+@[expose] def setUnackPreKeyMsgEpochInnerSpec (A : RustAlloc) :
     Spec Pqxdh.TopLevel.SetUnackExactGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x5 = 0#64 ∧ (s.readReg64 .x6).setWidth 32 = 0#32⌝ ∗

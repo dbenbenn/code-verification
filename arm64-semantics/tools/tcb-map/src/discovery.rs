@@ -500,10 +500,9 @@ pub fn is_testing_module(module: &str) -> bool {
 ///   `Equivalence.Testing[.*]`, `VerifiedLibraries.Testing[.*]`, `VerifiedLibraries.<Pkg>.Testing[.*]`, and
 ///   `CaseStudies.<Pkg>.Testing[.*]` form the `Testing` library: `<Root>.Testing.*.Fixtures`
 ///   (last component `Fixtures`, at depth >= 4) is `Fixture`, the rest is `Test`.
-/// - `Arm64.Legacy[.*]` is `Proof` (`[OUTSIDE TCB]` deprecated `LinkedImage` compatibility
-///   modules); all other non-testing `Arm64` modules (`Arm64`, `Arm64.Trusted[.*]`) are `Spec`;
-///   all non-testing `ProofLib` modules are `Proof` (so a trusted spec can never import
-///   `Arm64.Legacy` or `ProofLib`).
+/// - All non-testing `Arm64` modules (`Arm64`, `Arm64.Trusted[.*]`, or any unclassified
+///   `Arm64.*` module caught downstream by `core-tcb-init-only`) are `Spec`; all non-testing
+///   `ProofLib` modules are `Proof` (so a trusted spec can never import `ProofLib`).
 /// - `Equivalence.Spec[.*]` is `Spec` and `Equivalence.Proofs[.*]` is `Proof`; any other
 ///   `Equivalence[.*]` module (including a repository-root `Equivalence` umbrella) returns `None`.
 /// - Outside per-implementation packages, `FormalRfcs.<Rfc>.Spec[.*]` (including
@@ -524,8 +523,7 @@ pub fn is_testing_module(module: &str) -> bool {
 ///     an opt-in build target compiles)
 ///   - `<Root>.<Pkg>.Generated` -> `Proof`; `<Root>.<Pkg>.Generated.{*PlacedObj,*ExtractedObj,*ElfObj}`
 ///     and placed code shards `<Root>.<Pkg>.Generated.*PlacedObjShard<k>` -> `Spec`; all other
-///     `<Root>.<Pkg>.Generated.*` (including legacy `<Name>Obj` `LinkedImage` proof-cache
-///     modules) -> `Proof`
+///     `<Root>.<Pkg>.Generated.*` -> `Proof`
 ///   - Any other `<Root>.<Pkg>.<Other>[.*]` returns `None`.
 pub fn classify(module: &str) -> Option<ModuleClass> {
     if module.is_empty() || module.split('.').any(str::is_empty) {
@@ -556,14 +554,9 @@ pub fn classify(module: &str) -> Option<ModuleClass> {
     }
     match parts[0] {
         "Arm64" => {
-            let role = if parts.get(1) == Some(&"Legacy") {
-                Role::Proof
-            } else {
-                Role::Spec
-            };
             return Some(ModuleClass {
                 lib: Lib::Arm64,
-                role,
+                role: Role::Spec,
             });
         }
         "ProofLib" => {
@@ -635,10 +628,8 @@ pub fn classify(module: &str) -> Option<ModuleClass> {
 /// Is the last component of `module` a generated trusted object or ELF image name:
 /// `<Name>PlacedObj`, `<Name>ExtractedObj`, `<Name>ElfObj`, or a code shard
 /// `<Name>PlacedObjShard<k>` (decimal `k`) of a `rust-obj2lean` placed library split with
-/// `[placed] placed_shards`?
-///
-/// Legacy `<Name>Obj` (`Arm64.Obj.LinkedImage`) exports are `[OUTSIDE TCB]` proof-cache modules
-/// (`Role::Proof`) and intentionally return `false`.
+/// `[placed] placed_shards`? Other `Generated.*` modules (decode/placement proof modules and
+/// parsed ELF facts) return `false` (`Role::Proof`).
 pub fn is_generated_obj_name(module: &str) -> bool {
     let last = module.rsplit('.').next().unwrap_or(module);
     if (last.ends_with("PlacedObj") && last.len() > "PlacedObj".len())

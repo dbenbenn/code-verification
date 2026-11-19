@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsA
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsB
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub3Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2ArmsB
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub3Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
 
 /-!
 # Placed Stage P2 Over-Path Normal-Exit (`+0x1778`) Postcondition
@@ -22,11 +23,9 @@ Defines `prevArchived1AtPlaced` and the `[LibsignalPlacement]` normal-exit postc
 `p2OverOkPostAtPlaced` at `+0x1778`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -72,7 +71,7 @@ theorem prevArchived1At_placed_eq [LibsignalPlacement] (A : RustAlloc) (coroPtr 
   prevArchived1At_eq A coroPtr recG sess
 
 /-- Placed Stage P2 Over-path normal-exit postcondition at `+0x1778`. -/
-def p2OverOkPostAtPlaced [LibsignalPlacement] (A : RustAlloc) (b : BitVec 64)
+@[expose] def p2OverOkPostAtPlaced [LibsignalPlacement] (A : RustAlloc) (b : BitVec 64)
     (spkKit : SignedPreKeyStoreSpec A b)
     (kpkKit : KyberPreKeyStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b)
@@ -151,4 +150,3 @@ def p2OverOkPostAtPlaced [LibsignalPlacement] (A : RustAlloc) (b : BitVec 64)
   Frame
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

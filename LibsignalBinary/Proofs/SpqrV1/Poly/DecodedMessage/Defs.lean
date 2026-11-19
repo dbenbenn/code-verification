@@ -12,42 +12,13 @@ module
 public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Defs
 public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Defs
 public import LibsignalBinary.Proofs.SpqrV1.Poly.ComputeAt.Defs
-public meta import LibsignalBinary.Proofs.CodeLayout -- shake: keep
+public meta import LibsignalBinary.Proofs.CodeLayout -- shake: keep -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangeComplete.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-
-/-!
-# `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message`: Definitions and Specifications
-
-Total pure characterizations (`collectPointsVecsTotal`, `lagrangeInterpolateTotal`,
-`decodedMessageTotal`), `Option<Poly>` cache layout (`optPolyCacheSlotAt`), and separation-logic
-contracts (`decodedMessageSpec`, `decodedMessagePlacedSpec`) for `decoded_message` (`0x6bb80`,
-Block `418`).
--/
-
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Layout.L31
 open Lean Meta Elab Command Arm64 CryptoVerification.CodeLayout
 scoped syntax (name := genFnDecodesL31) "gen_fn_decodes " ident ident " [" str,* "]" : command
-@[command_elab genFnDecodesL31] meta def elabGenFnDecodesL31 : CommandElab := fun stx => do
-  match stx with
-  | `(gen_fn_decodes $tree:ident $pfx:ident [$syms:str,*]) =>
-    let codeName := `CryptoVerification.libsignalSessionCode
-    let fnEntries ← liftTermElabM <| ProofLib.CodeLookup.entries codeName .fnOff
-    let stubEntries ← liftTermElabM <| ProofLib.CodeLookup.entries codeName .stubOff
-    let allOffs := (fnEntries ++ stubEntries).map (·.val)
-    let mut ranges : Array (TSyntax `decodeRange) := #[]
-    for sym in syms.getElems do
-      let e ← liftTermElabM <| ProofLib.CodeLookup.lookupOff codeName sym.getString
-      let a := e.val
-      let greater := allOffs.filter (· > a)
-      let some nextOff := greater.foldl (fun acc x => match acc with | none => some x | some m => some (min m x)) none
-        | throwErrorAt sym "gen_fn_decodes: no symbol after {sym}"
-      let (aLit, bLit) := (Syntax.mkNumLit (toString a), Syntax.mkNumLit (toString nextOff))
-      ranges := ranges.push (← `(decodeRange| $aLit:num → $bLit:num))
-    elabCommand (← `(gen_decodes $tree $pfx [$ranges,*]))
-  | _ => throwUnsupportedSyntax
 end CryptoVerification.SpqrV1.Layout.L31
 
 namespace CryptoVerification.SpqrV1.Poly.DecodedMessage
@@ -77,22 +48,13 @@ abbrev decodedMessageName : String :=
 abbrev spqrRustDeallocSym : String :=
   "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc"
 
-theorem decodedMessage_fnOff :
-    libsignalSessionCode.fnOff decodedMessageName =
-      num% (ls_off% "<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message") :=
-  ls_lemma% fnOff "<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message"
-
-gen_fn_decodes libsignalSessionCode_tree decodedMessageBin [
-  "<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message"
-]
-
 /-- Own stack frame of `decoded_message` (`672` bytes) + `extHookStack` (`16384` bytes). -/
 abbrev decodedMessageStack : Nat := 672 + extHookStack
 
 /-! ## Total Pure Characterization of `collectPointsVecs` -/
 
 /-- Total version of `PolyDecoder.collectPointsVecs` when `self.pts.length = 16`. -/
-def collectPointsVecsTotal (self : PolyDecoder) :
+@[expose] def collectPointsVecsTotal (self : PolyDecoder) :
     Nat → Nat → Bool → List (List Pt) → Bool × List (List Pt)
   | _, 0, retNone, pointsVecs => (retNone, pointsVecs)
   | i, rem + 1, retNone, pointsVecs =>
@@ -187,7 +149,7 @@ theorem collectPointsVecsTotal_elem_length_le (self : PolyDecoder) :
         omega
 
 /-- Total pure version of `Poly.lagrangeAccumulateCoeffs`. -/
-def lagrangeAccumulateCoeffsTotal : Nat → Nat → List GF16 → List GF16 → List GF16
+@[expose] def lagrangeAccumulateCoeffsTotal : Nat → Nat → List GF16 → List GF16 → List GF16
   | _, 0, outCoeffs, _ => outCoeffs
   | j, rem + 1, outCoeffs, workingCoeffs =>
     let o := outCoeffs[j]?.getD GF16.ZERO
@@ -228,7 +190,7 @@ theorem lagrangeAccumulateCoeffs_eq_ok :
       (by simp [List.length_set]; omega)
 
 /-- Total pure version of `Poly.lagrangeInterpolateLoop`. -/
-def lagrangeInterpolateLoopTotal (template : Poly) (pts : List Pt) :
+@[expose] def lagrangeInterpolateLoopTotal (template : Poly) (pts : List Pt) :
     Nat → Nat → List GF16 → List GF16
   | _, 0, outCoeffs => outCoeffs
   | i, rem + 1, outCoeffs =>
@@ -273,7 +235,7 @@ theorem lagrangeInterpolateLoop_eq_ok (template : Poly) (pts : List Pt) :
       (by rw [lagrangeAccumulateCoeffsTotal_length]; exact husize)
 
 /-- Total pure version of `Poly.lagrangeInterpolate`. -/
-def lagrangeInterpolateTotal (pts : List Pt) : Poly :=
+@[expose] def lagrangeInterpolateTotal (pts : List Pt) : Poly :=
   if pts.isEmpty then
     Poly.zero pts.length
   else
@@ -356,7 +318,7 @@ theorem binarySearch_ok_lt (s : SortedSetPt) (target : Pt) (found : Nat)
   omega
 
 /-- Total pure version of `PolyDecoder.decodedMessageLoop`. -/
-def decodedMessageLoopTotal (self : PolyDecoder) (pointsVecs : List (List Pt)) :
+@[expose] def decodedMessageLoopTotal (self : PolyDecoder) (pointsVecs : List (List Pt)) :
     Nat → Nat → List (Option Poly) → List (BitVec 8) →
       List (Option Poly) × List (BitVec 8)
   | _, 0, polys, out => (polys, out)
@@ -444,7 +406,7 @@ theorem decodedMessageLoop_eq_ok (self : PolyDecoder) (pointsVecs : List (List P
           (by simp [List.length_set, hpolys_len])
 
 /-- Total pure version of `PolyDecoder.decodedMessage`. -/
-def decodedMessageTotal (self : PolyDecoder) : Option (List (BitVec 8)) :=
+@[expose] def decodedMessageTotal (self : PolyDecoder) : Option (List (BitVec 8)) :=
   if self.isComplete then
     none
   else
@@ -619,7 +581,7 @@ theorem decodedMessage_eq_ok (self : PolyDecoder)
 /-- Unpinned `Option<Vec<u8>>` at `a` (`24` bytes, align `8`):
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 16` (`cap = usize::MAX` niche)
     * `some bs`: `vecU8 A a bs` -/
-def optVecU8Of (A : RustAlloc) (a : BitVec 64) : Option (List (BitVec 8)) → SepProp
+@[expose] def optVecU8Of (A : RustAlloc) (a : BitVec 64) : Option (List (BitVec 8)) → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 16
   | some bs => vecU8 A a bs
 
@@ -627,7 +589,7 @@ def optVecU8Of (A : RustAlloc) (a : BitVec 64) : Option (List (BitVec 8)) → Se
     `decoded_message`:
     * `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 16`
     * `some p`: `1 ≤ p.coefficients.length ≤ 65536` and exact-capacity `Poly` header + buffer at `a` -/
-def optPolyCacheSlotAt (A : RustAlloc) (a : BitVec 64) : Option Poly → SepProp
+@[expose] def optPolyCacheSlotAt (A : RustAlloc) (a : BitVec 64) : Option Poly → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 16
   | some p =>
     ∃∗ ptr : BitVec 64,
@@ -639,7 +601,7 @@ def optPolyCacheSlotAt (A : RustAlloc) (a : BitVec 64) : Option Poly → SepProp
         gf16SliceAt ptr p.coefficients
 
 /-- Contiguous array of `Option<Poly>` cache slots at `base` with stride `24` bytes. -/
-def optPolyCacheListAt (A : RustAlloc) : BitVec 64 → List (Option Poly) → SepProp :=
+@[expose] def optPolyCacheListAt (A : RustAlloc) : BitVec 64 → List (Option Poly) → SepProp :=
   arrayAt (fun opt a => optPolyCacheSlotAt A a opt) vecHeaderBytes
 
 structure DecodedMessageGhost where
@@ -647,25 +609,7 @@ structure DecodedMessageGhost where
   decA : BitVec 64
   dec : PolyDecoder
 
-def decodedMessageSpec (A : RustAlloc) (b : BitVec 64) : Spec DecodedMessageGhost where
-  pre := fun x s =>
-    ⌜b &&& 0xfff#64 = 0#64 ∧ s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.decA ∧
-      PolyDecoderStrictSorted x.dec⌝ ∗
-      memRegion x.out vecHeaderBytes ∗ polyDecoderAt A x.decA x.dec ∗
-      tokenInitAt b ∗ reduceTableAt b ∗ A.pool ∗ stackAt s.sp decodedMessageStack
-  post := fun x s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗ optVecU8Of A x.out (decodedMessageTotal x.dec) ∗
-      polyDecoderAt A x.decA x.dec ∗ tokenInitAt b ∗ reduceTableAt b ∗
-      A.pool ∗ stackAt s0.sp decodedMessageStack
-  onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-def DecodedMessageOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr decodedMessageName)
-    (decodedMessageSpec A b)
-
-def decodedMessagePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec DecodedMessageGhost where
+@[expose] def decodedMessagePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec DecodedMessageGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧ s.readReg64 .x0 = x.decA ∧ PolyDecoderStrictSorted x.dec⌝ ∗
       memRegion x.out vecHeaderBytes ∗ polyDecoderAt A x.decA x.dec ∗
@@ -676,7 +620,7 @@ def decodedMessagePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec Decoded
       A.pool ∗ stackAt s0.sp decodedMessageStack
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def DecodedMessagePlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def DecodedMessagePlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_418).rebase (blkPl_418).base (Rust.withPanics ext))
     (lsmpl.base 418)
@@ -686,7 +630,7 @@ def DecodedMessagePlacedOkExt [LibsignalPlacement] (A : RustAlloc)
 
 /-- The list of `rem` point slices `[ (dec.pts[i]).vec.take (dec.necessaryPoints i), ... ]`
     collected by `collectPointsVecsTotal` when all `pts[k].len ≥ necessaryPoints k`. -/
-def collectedSlices (dec : PolyDecoder) : Nat → Nat → List (List Pt)
+@[expose] def collectedSlices (dec : PolyDecoder) : Nat → Nat → List (List Pt)
   | _, 0 => []
   | i, rem + 1 =>
     let pts := dec.pts[i]?.getD SortedSetPt.new
@@ -842,11 +786,11 @@ theorem lagrangeInterpolateTotal_of_pos {pts : List Pt} (hpos : 1 ≤ pts.length
     rfl
 
 /-- Little-endian 2-byte encoding of a `GF16` element in memory. -/
-def gf16LeBytes (g : GF16) : List (BitVec 8) :=
+@[expose] def gf16LeBytes (g : GF16) : List (BitVec 8) :=
   [g.value.extractLsb' 0 8, g.value.extractLsb' 8 8]
 
 /-- Little-endian byte list of a `List GF16` in memory. -/
-def gf16ListBytes (cs : List GF16) : List (BitVec 8) :=
+@[expose] def gf16ListBytes (cs : List GF16) : List (BitVec 8) :=
   cs.flatMap gf16LeBytes
 
 @[simp] theorem gf16LeBytes_length (g : GF16) : (gf16LeBytes g).length = 2 := rfl
@@ -1010,7 +954,7 @@ theorem sortedSetPtListPinAt_focus (A : RustAlloc)
   rw [haddr, ← sepConj_assoc]
 
 /-- Remainder of `sortedSetPtPinAt A pin s v` after exposing the 24-byte header and `ptSliceAt pin.ptr s.vec`. -/
-def sortedSetPtPinRest (A : RustAlloc) (pin : VecPin) (s : SortedSetPt) : SepProp :=
+@[expose] def sortedSetPtPinRest (A : RustAlloc) (pin : VecPin) (s : SortedSetPt) : SepProp :=
   ⌜s.vec.length ≤ pin.cap.toNat ∧ pin.cap.toNat * 4 < 2 ^ 63 ∧ pin.ptr ≠ 0#64⌝ ∗
     if pin.cap = 0#64 then emp
     else A.live pin.ptr (pin.cap.toNat * 4) 2 ∗
@@ -1057,12 +1001,12 @@ theorem sortedSetPtPinAt_eq_slice (A : RustAlloc) (pin : VecPin) (s : SortedSetP
     ac_rfl
 
 /-- A single 16-byte `&[Pt]` fat-pointer element `(ptr, len)` at `a`. -/
-def ptSliceRefAt (a ptr : BitVec 64) (len : Nat) : SepProp :=
+@[expose] def ptSliceRefAt (a ptr : BitVec 64) (len : Nat) : SepProp :=
   (a ↦₆₄ ptr) ∗ ((a + 8#64) ↦₆₄ BitVec.ofNat 64 len)
 
 /-- Contiguous array of `&[Pt]` fat pointers `(pins[k].ptr, dec.necessaryPoints (start + k))`
     at `base` with stride `16` bytes. -/
-def ptSliceRefListAt (dec : PolyDecoder) : Nat → BitVec 64 → List VecPin → SepProp
+@[expose] def ptSliceRefListAt (dec : PolyDecoder) : Nat → BitVec 64 → List VecPin → SepProp
   | _, _, [] => emp
   | start, base, pin :: pins =>
     ptSliceRefAt base pin.ptr (dec.necessaryPoints start) ∗

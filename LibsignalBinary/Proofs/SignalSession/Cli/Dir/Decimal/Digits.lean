@@ -11,10 +11,10 @@ module
 
 import all Init.Data.String.Defs
 import all Init.Data.Repr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Kits
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommon
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommon -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -166,12 +166,6 @@ theorem div10_trunc32 (n : BitVec 32) :
   apply BitVec.eq_of_toNat_eq
   rw [BitVec.toNat_setWidth, div10_shift_toNat, BitVec.toNat_ofNat]
 
-theorem div10_trunc32_toNat (n : BitVec 32) :
-    (BitVec.truncate 32 ((BitVec.zeroExtend 64 n * 3435973837#64) >>> 35)).toNat =
-      n.toNat / 10 := by
-  have hn : n.toNat < 2 ^ 32 := n.isLt
-  rw [div10_trunc32, BitVec.toNat_ofNat, Nat.mod_eq_of_lt (by omega)]
-
 private theorem digit_orr_of_lt10 (r : Nat) (hr : r < 10) :
     BitVec.zeroExtend 8 (BitVec.zeroExtend 64 (BitVec.ofNat 32 r) ||| 206158430256#64) =
       BitVec.ofNat 8 (0x30 + r) := by
@@ -232,14 +226,6 @@ theorem memRegion_24_cells (a : BitVec 64) :
       (by omega) (by bv_omega) (by omega),
     ProofLib.memRegion_eight, ProofLib.memRegion_eight, ProofLib.memRegion_eight]
   simp only [sepExists_sepConj_left, sepExists_sepConj_right]
-
-theorem stack_slot_memRegion24 (sp v1 v2 v3 : BitVec 64) :
-    ((sp - 72#64) ↦₆₄ v1 ∗ (sp - 64#64) ↦₆₄ v2 ∗ (sp - 56#64) ↦₆₄ v3) ⊢
-      memRegion (sp - 72#64) 24 := by
-  have hv8 : sp - 72#64 + 8#64 = sp - 64#64 := by bv_omega
-  have hv16 : sp - 72#64 + 16#64 = sp - 56#64 := by bv_omega
-  rw [memRegion_24_cells (sp - 72#64), hv8, hv16]
-  exact Entails.sepExists_right v3 (Entails.sepExists_right v2 (Entails.sepExists_right v1 (Entails.refl _)))
 
 theorem stack_slot_empty_vecU8At (A : RustAlloc) (sp : BitVec 64) :
     (((sp - 72#64) ↦₆₄ 0#64) ∗ ((sp - 64#64) ↦₆₄ 1#64) ∗ ((sp - 56#64) ↦₆₄ 0#64)) =

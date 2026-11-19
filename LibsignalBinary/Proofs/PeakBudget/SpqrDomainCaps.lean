@@ -9,14 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PqValid
-public import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
+public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.PqValid
+public import LibsignalBinary.Proofs.SpqrV1.Top.StateSize -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.V1.ReachSteps
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhSessionModel
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -70,7 +80,7 @@ export LibsignalBinary.Proofs.PeakBudget.SpqrDomainCapsAux
 
 /-- Serialized SPQR state that is either empty (`V0`) or the canonical encoding of a `ValidPqPts`
 state. -/
-def ValidStatePts (s : Bytes) : Prop :=
+@[expose] def ValidStatePts (s : Bytes) : Prop :=
   s = [] ∨ ∃ st : PqRatchetState, s = encodeState st ∧ ValidPqPts st
 
 private theorem validStatePts_exists_encodeState {s : Bytes} (h : ValidStatePts s) :
@@ -170,13 +180,6 @@ theorem validStatePts_spqrV1Init (F : ShaCompress) (K : MlKem)
       dsimp only [spqrDeps]
       omega
   · exact ⟨Or.inl rfl, by decide⟩
-
-/-- Initial SPQR V1 state satisfies `ValidEncoderPts`. -/
-theorem validEncoderPts_spqrV1Init (F : ShaCompress) (K : MlKem)
-    (dir : SpqrDirection) (k : BitVec 256) :
-    ValidEncoderPts (spqrV1Init F K dir k) := by
-  obtain ⟨hv, h32⟩ := validStatePts_spqrV1Init F K dir k
-  exact validEncoderPts_of_validStatePts (Nat.lt_trans h32 (by decide)) hv
 
 private theorem if_error_eq_ok_l {ε α : Type} {c : Prop} [Decidable c] {e : ε}
     {rest : Except ε α} {v : α}
@@ -495,7 +498,7 @@ theorem validEncoderPts_of_reachPq {W : PEParams} {me : LocalIdentity} {x : Reco
 
 /-- Upper bounds on `ptsNeeded` across every `PolyDecoder`-bearing constructor of `States`,
 established by `States.from_pb`. -/
-def StatesDecPtsNeededBound {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
+@[expose] def StatesDecPtsNeededBound {F : ShaCompress} : States spqrPolyApi (spqrAuthApi F) → Prop
   | .headerSent s => s.receiving_ct1.ptsNeeded ≤ 480
   | .ekSentCt1Received s => s.receiving_ct2.ptsNeeded ≤ 80
   | .noHeaderReceived s => s.receiving_hdr.ptsNeeded ≤ 48

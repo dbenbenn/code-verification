@@ -10,8 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
 
 /-!
 # Budget-Threaded Relocatable Definitions for `initiate`
@@ -21,13 +24,11 @@ Defines `RustCliAllocBudget M` counterparts of `slotFramePlaced`, `initSlotSpecP
 `stage{2,3,4,5}MemPlaced` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
 set_option linter.dupNamespace false
-
-noncomputable section
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
 
@@ -51,7 +52,7 @@ open LibsignalBinary.Heap
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (sessDeserializeSpecPlaced)
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` counterpart of `RunProofs.slotFramePlaced`. -/
-def slotFramePlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def slotFramePlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s : State) (x : SlotCtx) : SepProp :=
   ⌜x.coins.length < 2 ^ 63⌝ ∗
   storesAt A.repAlloc x.stores StoresGhost.opened ∗
@@ -62,7 +63,7 @@ def slotFramePlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocB
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` counterpart of `RunProofs.initSlotSpecPlaced`
 parameterized by `InitEnv : InitGhost → List AllocEvent → Prop`. -/
-def initSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def initSlotSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (InitEnv : InitGhost → List AllocEvent → Prop)
     (S : RunSem) (stk : Nat) : Spec (InitGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl
@@ -103,7 +104,7 @@ theorem sessDeserialize_false_placed_ok [LibsignalPlacement] {M : AllocCostModel
   exact False.elim hmem.1.2.2.2.1
 
 /-- Shared budget-threaded postcondition predicate for any completed exit path reaching `lr`. -/
-def InitExitPostPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def InitExitPostPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (InitEnv : InitGhost → List AllocEvent → Prop)
     (S : RunSem) (x : InitGhost) (st0 : M.σ) (stk : Nat) (s0 : State) :
     State → SepProp → Prop :=
@@ -112,7 +113,7 @@ def InitExitPostPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAll
       (Pf ⊢ (initSlotSpecPlaced A lim InitEnv S stk).post (x, st0) s0 sf)
 
 /-- Shared budget-threaded panic predicate matching `initSlotSpecPlaced`. -/
-def InitPanicPostPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def InitPanicPostPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (InitEnv : InitGhost → List AllocEvent → Prop)
     (S : RunSem) (x : InitGhost) (st0 : M.σ) (stk : Nat) (s0 : State) :
     State → SepProp → Prop :=
@@ -150,7 +151,7 @@ theorem initPanicPostPlaced_of_panicked [LibsignalPlacement] {M : AllocCostModel
   exact Entails.pure_right (Or.inr hfail') (entails_anyHeap P)
 
 /-- Budget-threaded `stage2MemPlaced` (`BB038`, offset `0x0390`). -/
-def stage2MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def stage2MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (x : InitGhost) (stk : Nat)
     (s0 s : State) : SepProp :=
   let fsp := s0.sp - BitVec.ofNat 64 cliInitiateFrame
@@ -168,7 +169,7 @@ def stage2MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocB
     stackAt fsp (stk - cliInitiateFrame)
 
 /-- Budget-threaded `stage3MemPlaced` (`BB064b`, offset `0x0760`). -/
-def stage3MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def stage3MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (x : InitGhost)
     (kp : CryptoVerification.RecordCodecs.IdentityKeyPair)
     (ekASk ekAPk : List (BitVec 8)) (pqspkPtr : BitVec 64) (opkId : BitVec 32)
@@ -193,7 +194,7 @@ def stage3MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocB
     stackAt fsp (stk - cliInitiateFrame)
 
 /-- Budget-threaded `stage4MemPlaced` (`BB129`, offset `0x10a4`). -/
-def stage4MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def stage4MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (x : InitGhost)
     (kp : CryptoVerification.RecordCodecs.IdentityKeyPair)
     (ekASk ekAPk kemCtBytes hkSlotBytes : List (BitVec 8))
@@ -226,7 +227,7 @@ def stage4MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocB
     stackAt fsp (stk - cliInitiateFrame)
 
 /-- Budget-threaded `stage5MemPlaced` (`BB143`, offset `0x1484`). -/
-def stage5MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def stage5MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (x : InitGhost)
     (kp : CryptoVerification.RecordCodecs.IdentityKeyPair)
     (ekASk ekAPk : List (BitVec 8)) (pqspkPtr : BitVec 64) (opkId : BitVec 32)
@@ -252,4 +253,3 @@ def stage5MemPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocB
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
 
-end

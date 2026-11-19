@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Budget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Placed
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Budget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Placed
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `<States>::into_pb` (Block `334`) — Part 1 Placed: Arm 0 (`keysUnsampled`) & Call Helpers
@@ -28,7 +29,7 @@ Relocatable (`[LibsignalPlacement]`) `RustCliAllocBudget M` proofs for Arm 0 (`S
 (Block `375`) and `<PolyDecoder>::into_pb` (Block `377`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,8 +42,7 @@ namespace LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement extract_withLsCodeLoaded
-   libsignalSessionCode lsmpl subroutine_ok_withLsCodeLoaded_of_plain
+  (LibsignalCodeLoaded LibsignalPlacement extract_withLsCodeLoaded lsmpl subroutine_ok_withLsCodeLoaded_of_plain
    withLsCodeLoaded)
 open CryptoVerification.LibsignalSpqrV1
   (PolyDecoder PolyEncoder States V1State spqrAuthApi spqrPolyApi)
@@ -82,7 +82,7 @@ open LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
 open LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1Budget
   (KeysUnsampledEnv StatesIntoPbNoPanic)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   sp_sub_96_sub_208 sp_sub_96_sub_192 sp_sub_96_sub_176 sp_sub_96_sub_168
   sp_sub_480_add_200
@@ -511,7 +511,7 @@ theorem states_into_pb_keysUnsampled_cl_placed [LibsignalPlacement]
 
 /-- Envelope-parametric return postcondition of relocatable `<States>::into_pb` (Block `334`)
     for `SepWPp`. -/
-def StatesIntoPbPlacedPostOfEnv [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StatesIntoPbPlacedPostOfEnv [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) {F : ShaCompress}
     (st : M.σ) (s0 : State) (out stA : BitVec 64)
     (stateVal : States spqrPolyApi (spqrAuthApi F))

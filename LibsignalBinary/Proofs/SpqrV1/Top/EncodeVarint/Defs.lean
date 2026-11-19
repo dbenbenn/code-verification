@@ -21,7 +21,7 @@ Defines the separation-logic specification `spqrEncodeVarintSpecX` for `spqr::en
 (`0x54040`, 164 instructions) against the pure LEB128 varint encoder `encode_varint`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.EncodeVarint
 
@@ -80,14 +80,6 @@ theorem spqr_encode_varint_eq (a : BitVec 64) (into : Bytes) :
 
 /-! ## Callee Hypothesis & Specification of `spqr::encode_varint` (`0x54040`) -/
 
-/-- `<alloc::raw_vec::RawVec<u8>>::grow_one` (`0x78b98`) meets `growOneU8Spec A` on
-`tripleRatchetProgAtExt b ext`. -/
-def GrowOneU8OkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr growOneU8Name)
-    (growOneU8Spec A)
-
 /-- Specification of `spqr::encode_varint` (`0x54040`, 164 instructions):
 * `x0 = x.val` (`mut a: u64`), `x1 = x.v` (`into: &mut SerializedMessage = &mut Vec<u8>`).
 * Appends the 1..10 LEB128 varint bytes of `x.val` (`encodeVarintLoop 10 x.val`) to `into`,
@@ -95,7 +87,7 @@ def GrowOneU8OkExt (b : BitVec 64) (A : RustAlloc)
 * Preserves `cap' = x.cap ∧ ptr' = x.ptr` whenever `x.bs.length + (encodeVarintLoop 10 x.val).length ≤ x.cap.toNat`,
   and never shrinks capacity (`x.cap.toNat ≤ cap'.toNat`).
 * Panics only on OOM inside `<RawVec<u8>>::grow_one`. -/
-def spqrEncodeVarintSpecX (A : RustAlloc) : Spec EncodeVarintGhost where
+@[expose] def spqrEncodeVarintSpecX (A : RustAlloc) : Spec EncodeVarintGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.val ∧ s.readReg64 .x1 = x.v ∧
       (x.bs.length + 10 ≤ x.cap.toNat ∨ x.bs.length + 10 < 2 ^ 62)⌝ ∗
@@ -109,25 +101,5 @@ def spqrEncodeVarintSpecX (A : RustAlloc) : Spec EncodeVarintGhost where
           vecU8At A x.v cap' ptr' (CryptoVerification.LibsignalSpqrV1.encode_varint x.val x.bs)) ∗
       A.pool ∗ stackAt s0.sp spqrEncodeVarintStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- `spqr::encode_varint` (`0x54040`) meets `spqrEncodeVarintSpecX A` on
-`tripleRatchetProgAtExt b ext`. -/
-def SpqrEncodeVarintOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr spqrEncodeVarintName)
-    (spqrEncodeVarintSpecX A)
-
-/-- `spqr::encode_varint` (`0x54040`) meets `(spqrEncodeVarintSpecX A).inImage img` on
-`tripleRatchetProgAtExt img.base ext`. -/
-def SpqrEncodeVarintOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr spqrEncodeVarintName)
-    ((spqrEncodeVarintSpecX A).inImage img)
-
-abbrev EncodeVarintOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  SpqrEncodeVarintOkX img A ext
 
 end CryptoVerification.SpqrV1.Top.EncodeVarint

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Iface
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Sites -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Iface -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Sites -- shake: keep
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommon
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeRepeatedCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
 import LibsignalBinary.Specifications.AsmConstants
 
@@ -23,7 +23,7 @@ Layout-independent M5 instruction decodes (`m5Dec`), 128-bit pair and stride-48 
 borrow/unborrow lemmas, `dirAt` unpacking, and `pathOf` / `commitFiles` stepping lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -44,25 +44,6 @@ open CryptoVerification.SpqrV1.Alloc CryptoVerification.SpqrV1.Varint DoReserveN
 open CryptoVerification.SignalSession.Cli.Path.Helpers
 
 /-! ## 1. Layout-Independent Instruction Decodes (`m5Dec`) -/
-
-gen_decodes CryptoVerification.libsignalSessionCode_tree m5Dec
-  [(ls_off% "main" + 0x820) → (ls_off% "main" + 0xa4c),
-   (ls_off% "main" + 0xad8) → (ls_off% "main" + 0xae4),
-   (ls_off% "main" + 0xb74) → (ls_off% "main" + 0xb80),
-   (ls_off% "main" + 0xc20) → (ls_off% "main" + 0xc24),
-   (ls_off% "main" + 0xf34) → (ls_off% "main" + 0xf34)]
-
-theorem mFetch (img : Obj.Image) (ext : String → Option (State → State))
-    (k : Nat) {ins}
-    (hbound : k < 0x1000 := by decide)
-    (hdec : CryptoVerification.libsignalSessionCode_tree.fetchDecodeAt
-      (num% (ls_off% "main") + k) = some ins) :
-    (mProg img ext).fetch (mPc img ext k) = some ins :=
-  CryptoVerification.libsignalSessionCode_fetch_fnAddr
-    (b := img.base) (H := Rust.withPanics ext) (k := k) main_fnOff
-    (by omega) hdec (hoff := by omega)
-
-/-! ## 2. 128-Bit Pair Access, Address Arithmetic & Memory Helpers -/
 
 @[simp, arm64_norm]
 theorem concat64_lo (hi lo : BitVec 64) : (hi ++ lo).extractLsb' 0 64 = lo := by bv_kernel
@@ -148,7 +129,7 @@ theorem vecU8At_entails_dealloc (A : RustAlloc) (v c p : BitVec 64) (bs : List (
     exact sepConj_mono_left (bytes_entails_memRegion p bs)
 
 /-- Residual ownership of `ownedBytes A cap ptr len bs` when `(ptr ↦ₛ bs)` is borrowed out. -/
-def m5OwnedBytesRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def m5OwnedBytesRest (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if cap = 0 then emp
   else A.live ptr cap.toNat 1 ∗
     memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
@@ -243,7 +224,7 @@ theorem arrayAt_focus {α : Type} (elem : α → BitVec 64 → SepProp) (stride 
 
 /-- Frame left behind when entry `e` at `done.length * 48` is borrowed from
 `vecBuf A 48 8 (dirEntryAt A) curCap curPtr (done ++ e :: rest)`. -/
-def entryBorrowRest (A : RustAlloc) (curCap curPtr : BitVec 64)
+@[expose] def entryBorrowRest (A : RustAlloc) (curCap curPtr : BitVec 64)
     (done : List (List (BitVec 8) × List (BitVec 8)))
     (e : List (BitVec 8) × List (BitVec 8))
     (rest : List (List (BitVec 8) × List (BitVec 8)))

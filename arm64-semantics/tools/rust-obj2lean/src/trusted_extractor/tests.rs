@@ -8,7 +8,7 @@
 //! Unit tests for [`super`] (`trusted_extractor`) (`Role::Test`, `[TEST ONLY]`; not part of the TCB).
 //!
 //! Covers ELF section classification, relocation-type mapping, alignment and doc comments,
-//! extern resolution and collision checks, rendering of `<ObjName>Obj.lean` literals, and
+//! extern resolution and collision checks, rendering of `<ObjName>ExtractedObj.lean` literals, and
 //! `SHT_GROUP` / COMDAT parsing, trimming, rejection, and `ExtractedObj.groups` emission.
 
 use std::path::PathBuf;
@@ -336,54 +336,6 @@ fn needed_externs_and_collisions() {
         origin: String::new(),
     };
     assert!(check_extern_collisions(std::slice::from_ref(&o), &[clash]).is_err());
-}
-
-#[test]
-fn renders_object_literal() {
-    let meta = ObjModuleMeta {
-        obj_name: "demo".into(),
-        obj_file: PathBuf::from("/out/G/DemoObj.lean"),
-        namespace_prefix: "Ns".into(),
-        title: "demo".into(),
-        license_header: vec![],
-    };
-    let ex = Extraction {
-        objects: vec![tiny_object()],
-        externs: vec![ExternDecl {
-            name: "g".into(),
-            raw_name: "raw_g".into(),
-            kind: ExternKind::Func,
-            size: 0,
-            align: 1,
-            origin: "none".into(),
-        }],
-        provenance: vec![("K".into(), "v -/".into())],
-    };
-    let li = crate::untrusted_legacy_linker::link(&ex.objects, &ex.externs).unwrap();
-    let ((obj_path, out), (code_bin_path, code_bytes), (data_bin_path, data_bytes)) =
-        crate::untrusted_legacy_linker::emit_obj_lean_module(&meta, &ex, &li);
-    assert_eq!(obj_path, PathBuf::from("/out/G/DemoObj.lean"));
-    assert_eq!(code_bin_path, PathBuf::from("/out/G/DemoObj.code.bin"));
-    assert_eq!(data_bin_path, PathBuf::from("/out/G/DemoObj.data.bin"));
-    assert_eq!(code_bytes.len(), 12);
-    assert_eq!(data_bytes.len(), 0);
-    assert!(out.contains("* **K**: v - /"));
-    assert!(out.contains("* `g` (func, 0 bytes): none"));
-    assert!(out.contains("set_option maxHeartbeats 10000000"));
-    assert!(out.contains("set_option maxRecDepth 2000000"));
-    assert!(out.contains(
-        "noncomputable def demoObj : Obj.ObjectInfo where\n  name := \"demo\"\n  fns := []"
-    ));
-    assert!(out.contains("noncomputable def demoImage : Obj.LinkedImage where"));
-    assert!(out.contains("  code := include_bytes% \"DemoObj.code.bin\" 0 12\n"));
-    assert!(out.contains("  dataOff := 0x1000\n"));
-    assert!(out.contains("  data := include_bytes% \"DemoObj.data.bin\" 0 0\n  bss := 16\n"));
-    assert!(out.contains("  gotOff := 0x1010\n"));
-    assert!(out.contains("  symbols := [\n    (\"f\", 0)]"));
-    assert!(out.contains("  objSymbols := [\n    (\"demo\", [(\"f\", 0)])]"));
-    assert!(out.contains("  stubs := [\n    (\"g\", 8)]"));
-    assert!(out.contains("  objects := [\n    demoObj]"));
-    assert!(out.trim_end().ends_with("end Ns"));
 }
 
 #[test]
@@ -768,42 +720,6 @@ fn extracted_obj_emits_raw_names_sections_relocs_and_nobits() {
         lean_src
             .contains("def sampleExtractedObjs : List Obj.ExtractedObj := [sampleExtractedObj0]")
     );
-}
-
-#[test]
-fn extracted_obj_emitter_has_zero_legacy_linker_edges() {
-    let manifest_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let emitter_src =
-        std::fs::read_to_string(manifest_dir.join("src/trusted_extractor/extracted_obj.rs"))
-            .unwrap();
-    for forbidden in [
-        "untrusted_legacy_linker",
-        "trusted_linker",
-        "legacy_linked_image",
-        "link_with_layout",
-    ] {
-        assert!(
-            !emitter_src.contains(forbidden),
-            "extracted_obj.rs must not reference `{forbidden}` anywhere"
-        );
-    }
-    let common_src =
-        std::fs::read_to_string(manifest_dir.join("src/trusted_common/mod.rs")).unwrap();
-    for (idx, line) in common_src.lines().enumerate() {
-        let code = line.split("//").next().unwrap_or("");
-        for forbidden in [
-            "untrusted_legacy_linker",
-            "trusted_linker",
-            "legacy_linked_image",
-            "link_with_layout",
-        ] {
-            assert!(
-                !code.contains(forbidden),
-                "trusted_common/mod.rs:{} references `{forbidden}`: {line}",
-                idx + 1
-            );
-        }
-    }
 }
 
 // ---------------------------------------------------------------------------

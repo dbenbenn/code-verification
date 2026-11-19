@@ -11,18 +11,24 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PureBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.TopBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Put.PureBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.CalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.TopBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable CLI Specifications and Process Composition
@@ -32,7 +38,7 @@ store shim/poll, `main` entry/process composition, PQXDH `IdentityFiles`, and `M
 specifications, parameterized by `BudgetLimits` and callee `AllocEvent` envelopes.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -87,7 +93,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Hooks2Budget
 
 /-- `ReadRule`-parameterized `read_file` allocator event envelope covering both hook
 `allocBytes1Events` and the compiled doubling schedule `cliIoReadScheduleCaps 9`. -/
-def ReadFileRuleEnv (rd : ReadRule) (files : FsFiles) (path : List (BitVec 8))
+@[expose] def ReadFileRuleEnv (rd : ReadRule) (files : FsFiles) (path : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   match rd files path with
   | .ok bs =>
@@ -102,7 +108,7 @@ theorem readFileRuleEnv_eq_readFileEnv :
     ReadFileRuleEnv CryptoVerification.SignalSession.CliExt.readFileResult = ReadFileEnv :=
   rfl
 
-def pathSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def pathSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PathEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (stk : Nat) : Spec (PathGhost × M.σ) :=
@@ -124,7 +130,7 @@ def pathSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBu
             CryptoVerification.SpqrV1.ChainProofs.bytesAt x.nameRo x.nameA x.name ∗
             stackAt s0.sp stk ∗ A.pool lim (M.stepEvents evs st) sf }
 
-def decimalSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decimalSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (stk : Nat) : Spec (DecimalGhost × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
@@ -141,7 +147,7 @@ def decimalSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllo
 /-! ## 2. Directory helpers (`read_file`, `address_text`, `grow_one`, `Dir::put`, `Dir::get`) -/
 
 /-- Budget-threaded hook-level `read_file` specification (without `inImage` or `withLsCodeRoLoaded`). -/
-def readFileSpecPlaced {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def readFileSpecPlaced {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop := ReadFileRuleEnv rd) :
     Spec (ReadFileGhost × M.σ) where
@@ -157,7 +163,7 @@ def readFileSpecPlaced {M : AllocCostModel} (rd : ReadRule) (pathOk : List (BitV
           ⌜r = rd s0.fs.files x.path ∧ sf.trace = s0.trace⌝ ∗ ioVecAt A.repAlloc x.ret r) ∗
         (x.pathA ↦ₛ x.path) ∗ stackAt s0.sp stk ∗ A.pool lim (M.stepEvents evs st) sf
 
-def addrTextSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def addrTextSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (AddrEnv : AddrGhost → List AllocEvent → Prop)
     (stk : Nat) : Spec (AddrTextGhost × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
@@ -174,11 +180,11 @@ def addrTextSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAll
             stackAt s0.sp stk ∗ A.pool lim (M.stepEvents evs st) sf }
 
 /-- Relocatable `RawVec<(String, Vec<u8>)>::grow_one` specification wrapped in `withLsCodeRoLoaded lsmpl`. -/
-def growOneDirSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def growOneDirSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (GrowOneDirGhost × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (growOneDirRawSpec A lim stk)
 
-def dirPutSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def dirPutSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (stk : Nat) : Spec (DirPutGhost × M.σ) :=
@@ -198,7 +204,7 @@ def dirPutSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAlloc
             memRegion x.nameV 24 ∗ memRegion x.bytesV 24 ∗
             stackAt s0.sp stk ∗ A.pool lim (M.stepEvents evs st) sf }
 
-def dirPutStrSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def dirPutStrSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PutStrEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (stk : Nat) : Spec (DirPutStrGhost × M.σ) :=
@@ -218,7 +224,7 @@ def dirPutStrSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAl
             CryptoVerification.SpqrV1.ChainProofs.bytesAt x.nameRo x.nameA x.name ∗ memRegion x.bytesV 24 ∗
             stackAt s0.sp stk ∗ A.pool lim (M.stepEvents evs st) sf }
 
-def dirGetSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def dirGetSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (stk : Nat) : Spec (DirGetGhost × M.σ) :=
@@ -241,7 +247,7 @@ def dirGetSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
 
 /-! ## 3. Bundle helpers (`split_id`, `split_signed`, `read_bundle::{closure#0}`) -/
 
-def splitIdSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def splitIdSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (SplitEnv : List (BitVec 8) → List AllocEvent → Prop)
     (stk : Nat) : Spec (SplitGhost × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
@@ -258,7 +264,7 @@ def splitIdSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllo
             CryptoVerification.SpqrV1.ChainProofs.bytesAt x.ro x.fp x.file ∗
             stackAt s0.sp stk ∗ A.pool lim (M.stepEvents evs st) sf }
 
-def splitSignedSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def splitSignedSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (SplitEnv : List (BitVec 8) → List AllocEvent → Prop)
     (stk : Nat) : Spec (SplitGhost × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
@@ -275,7 +281,7 @@ def splitSignedSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCli
             CryptoVerification.SpqrV1.ChainProofs.bytesAt x.ro x.fp x.file ∗
             stackAt s0.sp stk ∗ A.pool lim (M.stepEvents evs st) sf }
 
-def bundleReadSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def bundleReadSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (BundleEnv : FsFiles → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (stk : Nat) : Spec (BundleReadGhost × M.σ) :=
@@ -301,7 +307,7 @@ def bundleReadSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRul
 
 /-! ## 4. Store shim and poll specifications -/
 
-def sessLoadShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def sessLoadShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (LoadShimCall × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun (x, st) s =>
@@ -317,7 +323,7 @@ def sessLoadShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCl
             sessLoadBoxAt (sf.readReg64 .x0) x.self x.addrA 0#8 ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def sessStoreShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def sessStoreShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (StoreShimCall × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun (x, st) s =>
@@ -333,7 +339,7 @@ def sessStoreShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustC
             sessStoreBoxAt (sf.readReg64 .x0) x.self x.addrA x.recA 0#8 ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-noncomputable def sessDeserializeSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def sessDeserializeSpecPlaced [LibsignalPlacement] {M : AllocCostModel}
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop) :
@@ -355,7 +361,7 @@ noncomputable def sessDeserializeSpecPlaced [LibsignalPlacement] {M : AllocCostM
             A.pool lim (M.stepEvents evs st) sf ∗
             stackAt s0.sp recDeserializeStack }
 
-def sessLoadPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def sessLoadPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (LoadEnv : FsFiles → SessLoadPollGhost → List AllocEvent → Prop)
@@ -383,7 +389,7 @@ def sessLoadPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadR
             protocolAddressAt A.repAlloc x.call.addr x.call.addrA ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def sessStorePollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def sessStorePollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (StoreEnv : SessStorePollGhost → List AllocEvent → Prop)
     (stk : Nat) : Spec (SessStorePollGhost × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
@@ -409,7 +415,7 @@ def sessStorePollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustC
             sessionRecordAt A.repAlloc x.call.call.recA x.call.call.g x.call.call.record ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def idSaveShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def idSaveShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (IdentityShimCall × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun (x, st) s =>
@@ -425,7 +431,7 @@ def idSaveShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliA
             idSaveBoxAt (sf.readReg64 .x0) x.self x.addrA x.keyA 0#8 ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def idTrustShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def idTrustShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec ((IdentityShimCall × BitVec 8) × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun ((x, d), st) s =>
@@ -442,7 +448,7 @@ def idTrustShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCli
             idTrustBoxAt (sf.readReg64 .x0) x.self x.addrA x.keyA 0#8 d ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def idTrustPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def idTrustPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (TrustEnv : FsFiles → IdPollGhost → List AllocEvent → Prop)
     (stk : Nat) : Spec ((IdPollGhost × BitVec 8) × M.σ) :=
@@ -471,7 +477,7 @@ def idTrustPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRu
             (x.call.call.keyA ↦ₛ x.call.call.key.publicKey.bytes.toList) ∗
             lsLogOff ∗ A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def idSavePollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def idSavePollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (SaveEnv : FsFiles → IdPollGhost → List AllocEvent → Prop)
     (stk : Nat) : Spec (IdPollGhost × M.σ) :=
@@ -502,7 +508,7 @@ def idSavePollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRul
             (x.call.call.keyA ↦ₛ x.call.call.key.publicKey.bytes.toList) ∗
             lsLogOff ∗ A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def pkShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (vtSym : String)
+@[expose] def pkShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (vtSym : String)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) : Spec (PkShimCall × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun (x, st) s =>
@@ -517,7 +523,7 @@ def pkShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (vtSym : String)
             A.live (sf.readReg64 .x0) 16 8 ∗ pkBoxAt (sf.readReg64 .x0) x.self x.id 0#8 ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def kpkMarkShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def kpkMarkShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (KpkMarkShimCall × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun (x, st) s =>
@@ -534,7 +540,7 @@ def kpkMarkShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCli
             kpkMarkBoxAt (sf.readReg64 .x0) x.self x.baseKeyA x.id x.signedId 0#8 ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def pkGetPollSpecOfPlaced [LibsignalPlacement] {α : Type} {M : AllocCostModel}
+@[expose] def pkGetPollSpecOfPlaced [LibsignalPlacement] {α : Type} {M : AllocCostModel}
     (dec : List (BitVec 8) → Except SignalProtocolError α)
     (resAt : CryptoVerification.RustHeap.RustAlloc → BitVec 64 →
       Except SignalProtocolError α → SepProp) (size w : Nat)
@@ -571,7 +577,7 @@ abbrev pkGetPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadR
     (stk : Nat) : Spec (PkPollGhost × M.σ) :=
   pkGetPollSpecOfPlaced CryptoVerification.RecordCodecs.PreKeyRecord.deserialize preKeyResultAt 56 13 rd pathOk A lim PollEnv stk
 
-def pkRemovePollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def pkRemovePollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (RemEnv : FsFiles → PkPollGhost → List AllocEvent → Prop)
     (stk : Nat) : Spec (PkPollGhost × M.σ) :=
@@ -591,7 +597,7 @@ def pkRemovePollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadR
             pkBoxAt x.fut x.self x.id 1#8 ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def kpkGetPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def kpkGetPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PollEnv : FsFiles → KpkPollGhost → List AllocEvent → Prop)
     (stk : Nat) : Spec (KpkPollGhost × M.σ) :=
@@ -618,7 +624,7 @@ def kpkGetPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRul
             dirAt A.repAlloc (x.self + 0x28#64) x.kg.lastResort ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def dropSpeWordSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def dropSpeWordSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DropSpeWordGhost × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun (x, st) s =>
@@ -629,7 +635,7 @@ def dropSpeWordSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (A : RustCli
         ⌜sf.trace = s0.trace⌝ ∗ memRegion x.a 48 ∗ A.pool lim st sf ∗
           stackAt s0.sp dropSpeStackX }
 
-def kpkMarkPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def kpkMarkPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (MarkEnv : FsFiles → KpkMarkPollGhost → List AllocEvent → Prop)
     (stk : Nat) : Spec (KpkMarkPollGhost × M.σ) :=
@@ -659,12 +665,12 @@ def kpkMarkPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRu
 
 /-! ## 5. `main` entry precondition and process composition -/
 
-def mainEntryPrePlaced (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def mainEntryPrePlaced (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (stk : Nat) (Statics : SepProp)
     (i : Inputs) (s : State) : SepProp :=
   ⌜CodeOk s.mem ∧ stk ≤ s.sp.toNat⌝ ∗ mainFrame A lim st stk Statics i s
 
-def mainSpecPlaced (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def mainSpecPlaced (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) (Statics : SepProp)
     (Run : Inputs → RunAnswer → Prop) : Spec (MainGhost × M.σ) where
   pre := fun (g, st) s =>
@@ -677,7 +683,7 @@ def mainSpecPlaced (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliA
   onExit := fun _ _ s0 sf => ⌜allocFailedIn s0 sf⌝ ∗ anyHeap
   onOom := fun _ s0 sf => ⌜allocFailedIn s0 sf⌝ ∗ anyHeap
 
-def mainSpecPlacedAt (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def mainSpecPlacedAt (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (stk : Nat) (Statics : SepProp)
     (Run : Inputs → RunAnswer → Prop) : Spec MainGhost where
   pre := fun g s =>
@@ -690,7 +696,7 @@ def mainSpecPlacedAt (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCl
   onExit := fun _ _ s0 sf => ⌜allocFailedIn s0 sf⌝ ∗ anyHeap
   onOom := fun _ s0 sf => ⌜allocFailedIn s0 sf⌝ ∗ anyHeap
 
-def mainSpecTightPlaced (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def mainSpecTightPlaced (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) (Statics : SepProp)
     (Run : Inputs → RunAnswer → Prop) : Spec (MainGhost × M.σ) where
   pre := fun (g, st) s =>
@@ -702,7 +708,7 @@ def mainSpecTightPlaced (CodeOk : Memory → Prop) {M : AllocCostModel} (A : Rus
   onExit := fun _ _ _ _ => ⌜False⌝
   onOom := fun _ _ _ => ⌜False⌝
 
-def mainSpecTightPlacedAt (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def mainSpecTightPlacedAt (CodeOk : Memory → Prop) {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (stk : Nat) (Statics : SepProp)
     (Run : Inputs → RunAnswer → Prop) : Spec MainGhost where
   pre := fun g s =>
@@ -829,7 +835,7 @@ theorem outcome_of_main_or_oom_placed {elf : ElfImage} {P : Program} {mainPc : B
 
 /-! ## 6. Relocatable PQXDH `IdentityFiles` specifications -/
 
-def idOwnShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (vtSym : String)
+@[expose] def idOwnShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (vtSym : String)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) : Spec (BitVec 64 × M.σ) :=
   CryptoVerification.LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun (self, st) s =>
@@ -844,7 +850,7 @@ def idOwnShimSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (vtSym : Strin
             idOwnFutBoxAtPlaced (sf.readReg64 .x0) self 0#8 ∗
             A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def idKeyPairPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def idKeyPairPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PollEnv : FsFiles → IdOwnPollGhostPlaced → List AllocEvent → Prop)
     (stk : Nat) : Spec (IdOwnPollGhostPlaced × M.σ) :=
@@ -867,7 +873,7 @@ def idKeyPairPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : Read
             idOwnFutBoxAtPlaced x.fut x.self 1#8 ∗ dirAt A.repAlloc x.self x.own ∗
             lsLogOff ∗ A.pool lim (M.stepEvents evs st) sf ∗ stackAt s0.sp stk }
 
-def idRegIdPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
+@[expose] def idRegIdPollSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (rd : ReadRule)
     (pathOk : List (BitVec 8) → Prop) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PollEnv : FsFiles → IdOwnPollGhostPlaced → List AllocEvent → Prop)
     (stk : Nat) : Spec (IdOwnPollGhostPlaced × M.σ) :=
@@ -987,7 +993,7 @@ structure MainCalleesPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
-def readStdinSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (io : IoModel)
+@[expose] def readStdinSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (io : IoModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stk : Nat) :
     Spec (ReadStdinGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -1002,7 +1008,7 @@ def readStdinSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (io : IoModel)
             ioVecAt A.repAlloc x.ret r) ∗
         stackAt s0.sp stk ∗ A.pool lim (M.stepEvents evs st) sf
 
-def readFileLitSpecPlaced {M : AllocCostModel} (io : IoModel) (A : RustCliAllocBudget M)
+@[expose] def readFileLitSpecPlaced {M : AllocCostModel} (io : IoModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop := ReadFileRuleEnv io.rd) :
     Spec (ReadFileLitGhost × M.σ) where
@@ -1019,7 +1025,7 @@ def readFileLitSpecPlaced {M : AllocCostModel} (io : IoModel) (A : RustCliAllocB
             ioVecAt A.repAlloc x.ret r) ∗
         (x.pathA ↦ᵣ x.path) ∗ stackAt s0.sp stk ∗ A.pool lim (M.stepEvents evs st) sf
 
-def writeFileSpecPlaced {M : AllocCostModel} (io : IoModel) (A : RustCliAllocBudget M)
+@[expose] def writeFileSpecPlaced {M : AllocCostModel} (io : IoModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (WriteFileGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
@@ -1039,7 +1045,7 @@ def writeFileSpecPlaced {M : AllocCostModel} (io : IoModel) (A : RustCliAllocBud
         (x.pathA ↦ₛ x.path) ∗ (x.buf ↦ₛ x.bs) ∗ stackAt s0.sp stk ∗
         A.pool lim (M.stepEvents evs st) sf
 
-def writeStdoutSpecPlaced {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def writeStdoutSpecPlaced {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (WriteStdoutGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.buf ∧ (s.readReg64 .x1).toNat = x.bs.length ∧
@@ -1066,7 +1072,7 @@ structure MainIoPlaced [LibsignalPlacement] {M : AllocCostModel}
     (withLsRoCl lsmpl (writeStdoutSpecPlaced A lim hookStack))
 
 /-- Budget-threaded `signal_session::run` (Block `579`) specification parameterized by `RunEnv : RunCall → List AllocEvent → Prop`. -/
-def runSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (CodeOk : Memory → Prop)
+@[expose] def runSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (CodeOk : Memory → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (RunEnv : RunCall → List AllocEvent → Prop)
     (uuidParse : UuidParser) (Run : Inputs → RunAnswer → Prop)
@@ -1096,7 +1102,7 @@ def runSpecPlaced [LibsignalPlacement] {M : AllocCostModel} (CodeOk : Memory →
   onPanic := fun (g, _) s0 sf => ⌜g.a = none ∨ allocFailedIn s0 sf⌝ ∗ anyHeap
 
 /-- Envelope-erased `signal_session::run` specification with existential post-`run` cost-model state `st' : M.σ`. -/
-def runSpecAnyPlaced [LibsignalPlacement] {M : AllocCostModel} (CodeOk : Memory → Prop)
+@[expose] def runSpecAnyPlaced [LibsignalPlacement] {M : AllocCostModel} (CodeOk : Memory → Prop)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (uuidParse : UuidParser) (Run : Inputs → RunAnswer → Prop)
     (wrOk : List (BitVec 8) → Prop) (resStack : Nat) : Spec (RunCall × M.σ) where

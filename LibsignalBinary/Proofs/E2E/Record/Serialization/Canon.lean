@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Agreement of memory-level and canonical protobuf encodings
@@ -19,7 +21,7 @@ in-memory ghost byte slices match the model's canonical serializations (`CanonSe
 `CanonRecord`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.Serialization
 

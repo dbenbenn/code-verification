@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.GenBlock427Ultra
+meta import GeneratedLean.LibsignalSessionPlacedObjShard21
 
 /-!
 # Relocatable Per-Block Fetches for `spqr::send::<signal_session_ratchet::Coins>` (Block `427`)

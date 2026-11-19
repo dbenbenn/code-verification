@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed
+public import Computational.Proofs.CryptoGames.SM.BlankedPrivRed -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.PubDefs
-public import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma18
+public import Computational.Proofs.CryptoGames.SM.Theorem1.Lemma18 -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem1
 import VCVio.CryptoFoundations.SecExp.Measure
 public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
@@ -23,7 +23,7 @@ public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
 `blank : Msg → Msg` so `ThmB.privRedB` preserves public message parts (DEV-LS13).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 open CryptoGames.SM CryptoGames.SM.Thm1 CryptoGames.SM.Thm1.L18
@@ -38,7 +38,7 @@ section Defs
 
 variable (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
 
-def challMsgB (i : ℕ) (blank : Msg → Msg) : ℕ → Option (Msg → Msg) :=
+@[expose] def challMsgB (i : ℕ) (blank : Msg → Msg) : ℕ → Option (Msg → Msg) :=
   fun t => if t < i then some blank else none
 
 lemma challMsgB_zero (blank : Msg → Msg) :
@@ -46,7 +46,7 @@ lemma challMsgB_zero (blank : Msg → Msg) :
   funext t
   simp [challMsgB]
 
-def challImplB (challMsg : ℕ → Option (Msg → Msg)) [SampleableType Coins] :
+@[expose] def challImplB (challMsg : ℕ → Option (Msg → Msg)) [SampleableType Coins] :
     QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C)
       (StateT (GameState St Msg C) ProbComp) :=
   fun ⟨P, m₀, m₁, r⟩ => do
@@ -63,7 +63,7 @@ def challImplB (challMsg : ℕ → Option (Msg → Msg)) [SampleableType Coins] 
       set (s₁.record Δ P out.1 ⟨⟨P, s₁.epoch P, s₁.idx P + 1⟩, m, out.2⟩ true)
       return some out.2
 
-def oracleImplB (challMsg : ℕ → Option (Msg → Msg))
+@[expose] def oracleImplB (challMsg : ℕ → Option (Msg → Msg))
     [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] :
     QueryImpl (spec St Msg Coins C) (StateT (GameState St Msg C) ProbComp) :=
   transmitImpl sm Δ qep + challImplB sm Δ qep challMsg + deliverImpl sm Config.h2
@@ -75,19 +75,19 @@ abbrev runImplB [DecidableEq Msg] [DecidableEq C] [SampleableType Coins]
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget
     (StateT (GameState St Msg C) ProbComp) + oracleImplB sm Δ qep challMsg
 
-def runB [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
+@[expose] def runB [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     (challMsg : ℕ → Option (Msg → Msg)) (b : Bool) (A : Adversary St Msg Coins C) :
     ProbComp (Bool × GameState St Msg C) := do
   let k ← $ᵗ Key
   (simulateQ (runImplB sm Δ qep challMsg) A).run (initState sm k b)
 
-def gameB [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
+@[expose] def gameB [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     (challMsg : ℕ → Option (Msg → Msg)) (A : Adversary St Msg Coins C) : ProbComp Bool := do
   let b ← $ᵗ Bool
   let (b', s) ← runB sm Δ qep challMsg b A
   return (b == b' || s.win)
 
-noncomputable def hybridAdvantageB
+@[expose] noncomputable def hybridAdvantageB
     [DecidableEq Msg] [DecidableEq C] [SampleableType Key] [SampleableType Coins]
     (challMsg : ℕ → Option (Msg → Msg)) (A : Adversary St Msg Coins C) : ℝ≥0∞ :=
   𝒟[gameB sm Δ qep challMsg A].boolBias
@@ -292,7 +292,7 @@ section SimRelB
 
 variable (sm : SMScheme Key St Msg Coins C) (Δ qep : ℕ)
 
-def challMsgHybB (i : ℕ) (blank : Msg → Msg) (b_priv : Bool) : ℕ → Option (Msg → Msg) :=
+@[expose] def challMsgHybB (i : ℕ) (blank : Msg → Msg) (b_priv : Bool) : ℕ → Option (Msg → Msg) :=
   if b_priv then challMsgB i blank else challMsgB (i + 1) blank
 
 lemma challMsgHybB_eq (i : ℕ) (blank : Msg → Msg) (b_priv : Bool) {t : ℕ} (hm : t = i) (mb : Msg) :
@@ -566,7 +566,7 @@ lemma simulateQ_privRedB (i : ℕ) (blank : Msg → Msg) (b_priv : Bool)
 
 variable [SampleableType Key]
 
-def hybBranchB (tL : Option ℕ) (i : ℕ) (challMsg : ℕ → Option (Msg → Msg))
+@[expose] def hybBranchB (tL : Option ℕ) (i : ℕ) (challMsg : ℕ → Option (Msg → Msg))
     (A : Adversary St Msg Coins C) : ProbComp Bool := do
   let b ← $ᵗ Bool
   let (b', h) ← runB sm Δ qep challMsg b A
@@ -608,20 +608,6 @@ lemma evalDist_privRedB_run (tL : Option ℕ) (i : ℕ) (blank : Msg → Msg) (b
     cases b_priv
     · simpa using (ProbComp.evalDist_bind_not_uniformBool (pure : Bool → ProbComp Bool)).symm
     · simp
-
-theorem privAdvantage_privRedB_eq (tL : Option ℕ) (i : ℕ) (blank : Msg → Msg)
-    (A : Adversary St Msg Coins C) :
-    privAdvantage sm Δ qep tL i (ThmB.privRedB Δ qep i blank A) =
-      𝒟[hybBranchB sm Δ qep tL i (challMsgB i blank) A].boolDist
-        𝒟[hybBranchB sm Δ qep tL i (challMsgB (i + 1) blank) A] := by
-  rw [← evalDist_boolBias_bind_uniformBool
-    (hybBranchB sm Δ qep tL i (challMsgB i blank) A)
-    (hybBranchB sm Δ qep tL i (challMsgB (i + 1) blank) A)]
-  unfold privAdvantage privGame
-  congr 1
-  refine evalDist_bind_congr ($ᵗ Bool) _ _ fun b_priv => ?_
-  rw [evalDist_privRedB_run sm Δ qep tL i blank b_priv A]
-  cases b_priv <;> rfl
 
 end SimRelB
 
@@ -954,7 +940,7 @@ lemma simulateQ_h3B_pre (hΔ : 0 < Δ) (i : ℕ) (blank : Msg → Msg)
 
 variable [SampleableType Key]
 
-def gameKillB (i : ℕ) (S : Finset (Option ℕ)) (challMsg : ℕ → Option (Msg → Msg))
+@[expose] def gameKillB (i : ℕ) (S : Finset (Option ℕ)) (challMsg : ℕ → Option (Msg → Msg))
     (A : Adversary St Msg Coins C) : ProbComp Bool := do
   let b ← $ᵗ Bool
   let (b', h) ← runB sm Δ qep challMsg b A
@@ -1026,102 +1012,6 @@ lemma evalDist_select_gameKillB_insert (i : ℕ) (S : Finset (Option ℕ)) (tL :
       simp [Finset.mem_insert, hcan]
     have hbeq : (canon i p.2 == tL) = false := beq_false_of_ne hcan
     simp [hmem_iff, hbeq]
-
-lemma gameKillB_boolDist_insert (i : ℕ) (blank : Msg → Msg) (A : Adversary St Msg Coins C)
-    (S : Finset (Option ℕ)) (tL : Option ℕ) (htL_not : tL ∉ S)
-    (hval : lastLeakGuessAdmissible Δ tL i = true) :
-    𝒟[gameKillB sm Δ qep i S (challMsgB i blank) A].boolDist
-        𝒟[gameKillB sm Δ qep i S (challMsgB (i + 1) blank) A] ≤
-      𝒟[gameKillB sm Δ qep i (insert tL S) (challMsgB i blank) A].boolDist
-          𝒟[gameKillB sm Δ qep i (insert tL S) (challMsgB (i + 1) blank) A] +
-        privAdvantage sm Δ qep tL i (ThmB.privRedB Δ qep i blank A) := by
-  rw [privAdvantage_privRedB_eq]
-  exact boolDist_le_of_select_eq _ _ _ _ _ _
-    (evalDist_select_gameKillB_insert sm Δ qep i S tL htL_not hval (challMsgB i blank) A)
-    (evalDist_select_gameKillB_insert sm Δ qep i S tL htL_not hval (challMsgB (i + 1) blank) A)
-
-lemma gameKillB_boolDist_union_le (i : ℕ) (blank : Msg → Msg) (A : Adversary St Msg Coins C)
-    (T : Finset (Option ℕ)) (hval : ∀ tL ∈ T, lastLeakGuessAdmissible Δ tL i = true) :
-    ∀ S : Finset (Option ℕ), Disjoint S T →
-      𝒟[gameKillB sm Δ qep i S (challMsgB i blank) A].boolDist
-          𝒟[gameKillB sm Δ qep i S (challMsgB (i + 1) blank) A] ≤
-        𝒟[gameKillB sm Δ qep i (S ∪ T) (challMsgB i blank) A].boolDist
-            𝒟[gameKillB sm Δ qep i (S ∪ T) (challMsgB (i + 1) blank) A] +
-          ∑ tL ∈ T, privAdvantage sm Δ qep tL i (ThmB.privRedB Δ qep i blank A) := by
-  induction T using Finset.induction_on with
-  | empty =>
-    intro S _
-    simp
-  | @insert tL T htL_not_T ih =>
-    intro S hdisj
-    have htL_not_S : tL ∉ S := Finset.disjoint_insert_right.mp hdisj |>.1
-    have hdisj' : Disjoint (insert tL S) T := by
-      rw [Finset.disjoint_insert_left]
-      exact ⟨htL_not_T, Finset.disjoint_insert_right.mp hdisj |>.2⟩
-    have hstep := gameKillB_boolDist_insert sm Δ qep i blank A S tL htL_not_S
-      (hval tL (Finset.mem_insert_self tL T))
-    have hih := ih (fun x hx => hval x (Finset.mem_insert_of_mem hx)) (insert tL S) hdisj'
-    have hunion : insert tL S ∪ T = S ∪ insert tL T := by
-      ext x; simp
-    rw [hunion] at hih
-    rw [Finset.sum_insert htL_not_T]
-    calc _ ≤ _ := hstep
-      _ ≤ (𝒟[gameKillB sm Δ qep i (S ∪ insert tL T) (challMsgB i blank) A].boolDist
-            𝒟[gameKillB sm Δ qep i (S ∪ insert tL T) (challMsgB (i + 1) blank) A] +
-          ∑ x ∈ T, privAdvantage sm Δ qep x i (ThmB.privRedB Δ qep i blank A)) +
-          privAdvantage sm Δ qep tL i (ThmB.privRedB Δ qep i blank A) := add_le_add hih le_rfl
-      _ = _ := by ring
-
-theorem lemma18B_proof (hΔ : 0 < Δ) (blank : Msg → Msg) (i : ℕ) (A : Adversary St Msg Coins C) :
-    hybridAdvantageB sm Δ qep (challMsgB i blank) A ≤
-      hybridAdvantageB sm Δ qep (challMsgB (i + 1) blank) A +
-        2 * ∑ tL ∈ admissibleLastLeakGuesses Δ i, privAdvantage sm Δ qep tL i (ThmB.privRedB Δ qep i blank A) := by
-  unfold hybridAdvantageB
-  refine (boolBias_le_add_two_mul_boolDist
-    𝒟[gameB sm Δ qep (challMsgB i blank) A]
-    𝒟[gameB sm Δ qep (challMsgB (i + 1) blank) A]).trans ?_
-  gcongr
-  have hunion := gameKillB_boolDist_union_le sm Δ qep i blank A (admissibleLastLeakGuesses Δ i)
-    (fun tL htL => validGuess_of_mem_targetsL Δ hΔ htL) ∅ (Finset.disjoint_empty_left _)
-  rw [Finset.empty_union, gameKillB_empty, gameKillB_empty,
-    evalDist_gameKillB_targetsL_eq sm Δ qep hΔ i blank A,
-    Measure.boolDist_self, zero_add] at hunion
-  exact hunion
-
-theorem h3B_telescope (hΔ : 0 < Δ) (blank : Msg → Msg) (A : Adversary St Msg Coins C) (n : ℕ) :
-    hybridAdvantage sm Δ qep Config.h2 A ≤
-      hybridAdvantageB sm Δ qep (challMsgB n blank) A +
-        2 * ∑ i ∈ Finset.range n, ∑ tL ∈ admissibleLastLeakGuesses Δ i,
-          privAdvantage sm Δ qep tL i (ThmB.privRedB Δ qep i blank A) := by
-  induction n with
-  | zero => simp [hybridAdvantageB_zero]
-  | succ n ih =>
-    refine ih.trans ?_
-    have h := lemma18B_proof sm Δ qep hΔ blank n A
-    rw [Finset.sum_range_succ, mul_add]
-    calc _ ≤ (hybridAdvantageB sm Δ qep (challMsgB (n + 1) blank) A +
-            2 * ∑ tL ∈ admissibleLastLeakGuesses Δ n,
-              privAdvantage sm Δ qep tL n (ThmB.privRedB Δ qep n blank A)) +
-          2 * ∑ i ∈ Finset.range n, ∑ tL ∈ admissibleLastLeakGuesses Δ i,
-            privAdvantage sm Δ qep tL i (ThmB.privRedB Δ qep i blank A) := add_le_add h le_rfl
-      _ = _ := by ring
-
-theorem theorem1_h1_blank_proof [DecidableEq Pub] (hΔ : 0 < Δ)
-    (pubOf : Msg → Pub) (blank : Msg → Msg)
-    (hblank : ∀ m₀ m₁, pubOf m₀ = pubOf m₁ → blank m₀ = blank m₁)
-    (A : Adversary St Msg Coins C) (heq : EqualPubChalls pubOf A) :
-    hybridAdvantage sm Δ qep Config.h1 A ≤
-      2 * ∑ t ∈ Finset.range (qep + 2), ∑ tL ∈ admissibleLastLeakGuesses Δ t,
-            authAdvantage sm Δ qep tL t (Thm1.challSim Δ qep A)
-        + 2 * ∑ i ∈ Finset.range (qep + 1), ∑ tL ∈ admissibleLastLeakGuesses Δ i,
-            privAdvantage sm Δ qep tL i (ThmB.privRedB Δ qep i blank A) := by
-  have h17 := Thm1.lemma17 sm Δ qep hΔ A
-  have h18 := h3B_telescope sm Δ qep hΔ blank A (qep + 1)
-  rw [h3B_final_proof sm Δ qep pubOf blank hblank A heq, zero_add] at h18
-  calc hybridAdvantage sm Δ qep Config.h1 A
-      ≤ hybridAdvantage sm Δ qep Config.h2 A + _ := h17
-    _ ≤ _ + _ := add_le_add h18 le_rfl
-    _ = _ := by ring
 
 end InvAndMaskB
 

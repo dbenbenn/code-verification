@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Iface
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalPublicApiRepr
-public import LibsignalBinary.Specifications.RecordCodecsBinary.SignedPreKey
+public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeySpec
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Statements
 
 /-!

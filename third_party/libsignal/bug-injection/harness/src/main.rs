@@ -864,17 +864,24 @@ fn main() {
         }
     }
     let kyber_pk = s.kpk.public_key.serialize();
+    let mut setup_json = json!({
+        "alice_id": hex(&s.alice.private_key().serialize()),
+        "bob_id": hex(&s.bob.private_key().serialize()),
+        "spk": hex(&s.spk.private_key.serialize()),
+        "spk_sig": hex(&s.spk_sig),
+        "kyber_pk": hex(&kyber_pk[1..]),
+        "kyber_pk_sig": hex(&s.kpk_sig),
+        "kyber_sec": hex(&s.kpk.secret_key.serialize()),
+        "reg_id_a": s.reg_a, "reg_id_b": s.reg_b, "spk_id": s.spk_id, "kpk_id": s.kpk_id,
+    });
+    if let Some((opk_id, ref opk)) = s.opk {
+        let obj = setup_json.as_object_mut().unwrap();
+        obj.insert("with_opk".to_owned(), json!(true));
+        obj.insert("opk_id".to_owned(), json!(opk_id));
+        obj.insert("opk".to_owned(), json!(hex(&opk.private_key.serialize())));
+    }
     let out = json!({
-        "setup": {
-            "alice_id": hex(&s.alice.private_key().serialize()),
-            "bob_id": hex(&s.bob.private_key().serialize()),
-            "spk": hex(&s.spk.private_key.serialize()),
-            "spk_sig": hex(&s.spk_sig),
-            "kyber_pk": hex(&kyber_pk[1..]),
-            "kyber_pk_sig": hex(&s.kpk_sig),
-            "kyber_sec": hex(&s.kpk.secret_key.serialize()),
-            "reg_id_a": s.reg_a, "reg_id_b": s.reg_b, "spk_id": s.spk_id, "kpk_id": s.kpk_id,
-        },
+        "setup": setup_json,
         "kyber_cts": kyber_cts.iter().map(|c| hex(c)).collect::<Vec<_>>(),
         "events": events,
         "calls": calls,

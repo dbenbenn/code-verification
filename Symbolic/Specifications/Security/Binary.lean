@@ -17,9 +17,9 @@ public import Symbolic.Specifications.Security.AsmSecure
 
 **Trusted: the statement.**
 
-States the top-level security theorem `SignalSessionSecurePlaced bytes` (and placement-indexed
-`SignalSessionSecurePlacedAt mpl mmpl bytes`) for the ARM64 ELF binary implementing PQXDH, SPQR,
-and the Triple Ratchet, via the run-parametric property `SignalSessionSecureFor Agree R`.
+States the top-level security theorem `SignalSessionSecure bytes` for the ARM64 ELF binary
+implementing PQXDH, SPQR, and the Triple Ratchet, via the run-parametric property
+`SignalSessionSecureFor Agree R`.
 -/
 
 @[expose] public section
@@ -28,7 +28,6 @@ set_option autoImplicit false
 
 namespace DY.Libsignal.Composed.Security
 
-open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
 open CryptoProofLib.Refinement (ExternInterpretation)
 open DY.Libsignal.HwEvents (CliEvent RunEvent)
@@ -36,10 +35,10 @@ open DY.Libsignal.Composed.Refinement
   (AllSecurityQueriesHoldOnHwTrace Explains OpaqueSymbolSemantics
    ProtocolSetup ProtocolSetupWF)
 open DY.Libsignal.Composed.Refinement.Cli
-  (CliElfProgressPlaced CliTraces CliTurn CoinsFresh ExternContractsHoldCli
-   HooksMatchInterpretation InvertsGuarded NextEventCollides elfRelPlaced initDirs)
-open CryptoVerification.SignalSession (Inputs Outcome libsignalSessionLib)
-open CryptoVerification.SignalSession.Placed (CliElfCodeMatchesPlaced)
+  (CliElfProgress CliElfProgressReal CliTraces CliTurn CoinsFresh ExternContractsHoldCli
+   HooksMatchPlaced InvertsGuarded NextEventCollides RealPrimsAdmissible RealPrimsMatch elfRel
+   elfRelReal initDirs)
+open CryptoVerification.SignalSession (CliElfAddrs Inputs Outcome resolveCliElfAddrs)
 
 /-- Protocol security over run relation `R` and primitive-agreement predicate `Agree` from
 `initDirs`: for every valid `interp`, agreeing `W`, and well-formed `r`, there exist opaque
@@ -66,20 +65,29 @@ def SignalSessionSecureFor {ω : Type} (Agree : ExternInterpretation → ω → 
           NextEventCollides interp r S g ss vis evs₁ ev) ∧
         AllSecurityQueriesHoldOnHwTrace interp r S evs₁)
 
-/-- Security and no-fault progress of ELF image `bytes` at placements `(mpl, mmpl)`: parses `bytes`,
-verifies `CliElfCodeMatchesPlaced mpl mmpl elf` and `CliElfProgressPlaced mpl mmpl elf`, and asserts
-`SignalSessionSecureFor HooksMatchInterpretation (elfRelPlaced mpl mmpl elf)`. -/
-def SignalSessionSecurePlacedAt (mpl mmpl : MultiPlacement) (bytes : List (BitVec 8)) : Prop :=
-  ∃ elf : ElfImage, ElfImage.parse bytes = .ok elf ∧ CliElfCodeMatchesPlaced mpl mmpl elf ∧
-    CliElfProgressPlaced mpl mmpl elf ∧
-    SignalSessionSecureFor HooksMatchInterpretation (elfRelPlaced mpl mmpl elf)
+/-- Binary security and no-fault progress of ELF image `bytes`: parses `bytes`, resolves the 18
+panic and 5 `SampleNTT` addresses from `.symtab` (`resolveCliElfAddrs`), and asserts
+`CliElfProgress elf addrs` and `SignalSessionSecureFor HooksMatchPlaced (elfRel elf addrs)`. -/
+def SignalSessionSecure (bytes : List (BitVec 8)) : Prop :=
+  ∃ (elf : ElfImage) (addrs : CliElfAddrs),
+    ElfImage.parse bytes = .ok elf ∧
+    resolveCliElfAddrs bytes elf = .ok addrs ∧
+    CliElfProgress elf addrs ∧
+    SignalSessionSecureFor HooksMatchPlaced (elfRel elf addrs)
 
-/-- Relocatable binary security quantified over all valid placements `(mpl, mmpl)` of
-`libsignalSessionLib` and `mallocngLib` in `bytes`. -/
-def SignalSessionSecurePlaced (bytes : List (BitVec 8)) : Prop :=
-  ∀ mpl mmpl : MultiPlacement,
-    libsignalSessionLib.LinkedAt bytes mpl →
-    VerifiedLibraries.mallocngLib.LinkedAt bytes mmpl →
-    SignalSessionSecurePlacedAt mpl mmpl bytes
+/-- Binary security and no-fault progress of ELF image `bytes` at the real primitives: the real
+primitives obey the symbolic laws (`RealPrimsAdmissible`); `bytes` parses and its 18 panic and 5
+`SampleNTT` addresses resolve from `.symtab` (`resolveCliElfAddrs`); progress holds
+(`CliElfProgressReal`); and `SignalSessionSecureFor` holds on guarded, coin-fresh traces
+(`CliTraces` with `ValidCall` / `InputsFor` / `LeaksFrom`, `InvertsGuarded`, and `CoinsFresh`) over
+`elfRelReal elf addrs` (no `RealHooksAgreeOnInput` filter) for every extern interpretation agreeing
+with `realCliHooks` (`RealPrimsMatch`). -/
+def SignalSessionSecureReal (bytes : List (BitVec 8)) : Prop :=
+  RealPrimsAdmissible ∧
+  ∃ (elf : ElfImage) (addrs : CliElfAddrs),
+    ElfImage.parse bytes = .ok elf ∧
+    resolveCliElfAddrs bytes elf = .ok addrs ∧
+    CliElfProgressReal elf addrs ∧
+    SignalSessionSecureFor (fun interp (_ : Unit) => RealPrimsMatch interp) (elfRelReal elf addrs)
 
 end DY.Libsignal.Composed.Security

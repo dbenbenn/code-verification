@@ -9,18 +9,25 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrCPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsCPlaced
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrCPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsCPlaced
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3Ext
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSessionStructure3
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsC
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksErrCPlaced
 
 /-!
 # Budget-Threaded Relocatable Stage P2 Rejection and Store-Error Unwind Arms 5–6
@@ -29,7 +36,7 @@ Defines `FreeOnlyEvs` event lists and proves `RustCliAllocBudget M` / `VmPreserv
 to `s0.readReg64 .x30` on Block `518` for Arms 5 (`+0x125c`) and 6 (`+0x09f4`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -117,13 +124,13 @@ local macro "sep_norm" : tactic =>
 
 /-- Exact deallocation event list for Arm 5 (`initialize_bob_session` `Err` unwind:
 `pkBuf` `1568` B, `skBuf` `3168` B, plus error funnel). -/
-def p2Arm5ErrEvents (prevCap : BitVec 64) : List AllocEvent :=
+@[expose] def p2Arm5ErrEvents (prevCap : BitVec 64) : List AllocEvent :=
   (rustDeallocEvents 1568 1 ++ rustDeallocEvents 3168 1) ++ p2ErrFunnelEvents prevCap
 
 /-- Exact deallocation event list for Arm 6 (`get_local_registration_id` `.error` unwind:
 `regIdFutPtr`, `evs_ss` from `drop_session_structure3`, `pkBuf` `1568` B, `skBuf` `3168` B, plus
 error funnel). -/
-def p2Arm6ErrEvents (regIdBoxSize : Nat) (evs_ss : List AllocEvent) (prevCap : BitVec 64) :
+@[expose] def p2Arm6ErrEvents (regIdBoxSize : Nat) (evs_ss : List AllocEvent) (prevCap : BitVec 64) :
     List AllocEvent :=
   ((rustDeallocEvents regIdBoxSize 8 ++ evs_ss) ++
     (rustDeallocEvents 1568 1 ++ rustDeallocEvents 3168 1)) ++

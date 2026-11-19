@@ -15,7 +15,7 @@ public import Arm64.Trusted.Spec.Hoare
 import ProofLib.CoreLemmas
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ProcessProofDefs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -153,15 +153,6 @@ theorem outcomeOf_eq_some_iff {img : ElfImage} {prog : Program} {inputs : Proces
     · intro hr; cases hr
     · intro hr; exact absurd ⟨r, hr⟩ h
 
-/-- `outcomeOf` is `none` exactly when no result is reached safely. -/
-theorem outcomeOf_eq_none_iff {img : ElfImage} {prog : Program} {inputs : ProcessInputs} :
-    outcomeOf img prog inputs = none ↔ ¬ ∃ r, ElfRunsTo img prog inputs r := by
-  unfold outcomeOf
-  split
-  · rename_i h
-    exact ⟨(fun hr => by cases hr), fun hn => absurd h hn⟩
-  · rename_i h
-    exact ⟨fun _ => h, fun _ => rfl⟩
 
 /-- If `loadState` succeeds and `Steps` reaches a state with result `r`, then `outcomeOf` is `some r`. -/
 theorem outcomeOf_eq_some {img : ElfImage} {prog : Program} {inputs : ProcessInputs}
@@ -191,46 +182,8 @@ theorem outcomeOf_eq_aborted {img : ElfImage} {prog : Program} {inputs : Process
     outcomeOf img prog inputs = some .aborted :=
   outcomeOf_eq_some h_load h_steps (ProcessResult.ofState?_panicked h_status)
 
-/-- A run that reaches a state with no result that is not running (`.Halted`, `.OutOfMemory`,
-    `.Exception`) has no outcome. -/
-theorem outcomeOf_eq_none_of_stuck {img : ElfImage} {prog : Program} {inputs : ProcessInputs}
-    {s0 sf : State}
-    (h_load : img.loadState inputs = .ok s0)
-    (h_steps : Steps prog s0 sf)
-    (h_none : ProcessResult.ofState? sf = none)
-    (h_stop : sf.status ≠ .Running) :
-    outcomeOf img prog inputs = none := by
-  refine outcomeOf_eq_none_iff.mpr ?_
-  rintro ⟨r, s0', h_load', h_safe, _⟩
-  rw [h_load] at h_load'
-  cases h_load'
-  rcases h_safe sf h_steps with h | ⟨h, _⟩
-  · rw [h_none] at h; cases h
-  · exact h_stop h
 
-/-- Loading failure gives no outcome. -/
-theorem outcomeOf_eq_none_of_load_error {img : ElfImage} {prog : Program}
-    {inputs : ProcessInputs} {e : String}
-    (h_load : img.loadState inputs = .error e) :
-    outcomeOf img prog inputs = none := by
-  refine outcomeOf_eq_none_iff.mpr ?_
-  rintro ⟨r, s0, h_load', _⟩
-  rw [h_load] at h_load'
-  cases h_load'
 
-/-- From a Hoare `exits_with` contract (no out-of-memory case) on the loaded state: the outcome
-    is `exited code` with the stdout and file system of some final state satisfying `post`. -/
-theorem outcomeOf_of_exits_with {img : ElfImage} {prog : Program} {inputs : ProcessInputs}
-    {s0 : State} {code : BitVec 64} {post : State → Prop}
-    (h_load : img.loadState inputs = .ok s0)
-    (h_code_loaded : prog.CodeLoaded s0.mem)
-    (h_exits : exits_with prog code s0 post) :
-    ∃ sf, post sf ∧ outcomeOf img prog inputs =
-      some (.exited code (ProcessOutcome.traceStreamBytes .stdout sf.trace) sf.fs) := by
-  obtain ⟨sf, h_steps, h⟩ := h_exits h_code_loaded
-  rcases h with ⟨h_status, h_post⟩ | ⟨_, h_oom⟩
-  · exact ⟨sf, h_post, outcomeOf_eq_exited h_load h_steps h_status⟩
-  · exact h_oom.elim
 
 /-! ## `ProcessExitsWith` and `loadState` Helpers -/
 

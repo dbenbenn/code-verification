@@ -106,9 +106,9 @@ theorem cliEventsIR_eq : cliEventsIR = Witnesses.ImplicitRejectMacCli.trace := b
     CompRX0SS38.sentWireBytes_eq_hex, rngMsg39_eq_hex, nil_eq_hexBytes]
 
 theorem compFits_hb_of_ir {i : ExternInterpretation} {r : Records}
-    (h : compFits Witnesses.ImplicitRejectMacCli.setup i r) :
-    compFits Witnesses.Cheval26SmallSubgroupHighBitComp.setup i r := by
-  simpa [compFits, Witnesses.ImplicitRejectMacCli.setup,
+    (h : SetupMatches Witnesses.ImplicitRejectMacCli.setup i r) :
+    SetupMatches Witnesses.Cheval26SmallSubgroupHighBitComp.setup i r := by
+  simpa [SetupMatches, Witnesses.ImplicitRejectMacCli.setup,
     Witnesses.Cheval26SmallSubgroupHighBitComp.setup,
     Witnesses.Cheval26SmallSubgroupHighBitCli.setup] using h
 

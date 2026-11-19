@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompPcsClosed
-public import Symbolic.Proofs.Swarm.COMPOSED.CompPcsEngine
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPcsClosed -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompPcsEngine -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.Misc.Fixpoint
@@ -68,7 +68,7 @@ instantiates `CompPcsEngine.PcsKdfClosureInv` and `CompPcsEngine.PcsWitnessClosu
 `CompTrClosed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -106,7 +106,7 @@ private theorem attackerKnows_mono_pcs {tr tr' : ExecTrace} (hle : tr ≤ tr') {
 
 /-- Monotone witness that `r` was stored as SPQR send coins in a `TRState` or sent as a
 `SymEnc.symEnc` plaintext inside a `TrWireMsg` on `tr` (`messageEncrypt`). -/
-def MsgEncWitnessAt (tr : ExecTrace) (r : Bytes) : Prop :=
+@[expose] def MsgEncWitnessAt (tr : ExecTrace) (r : Bytes) : Prop :=
   (∃ me st idx s, StateStoredAt me st idx tr ∧ st.spqr = (Spqr.spqrSend s r).1) ∨
   (∃ v rk c pc k iv pq ev mac,
     tr.BaseAttackerKnows (Concat.concat

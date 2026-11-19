@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge
+public import Symbolic.Proofs.Swarm.CREF.Cli.DirInvBridge -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Slots.RecvPrekeyNewFs -- shake: keep
 
 /-!
@@ -19,7 +19,7 @@ Re-exports `DirInvBridge` directory invariants and specializes identity-secret l
 one-time pre-key usage characterizations at `r.bob`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

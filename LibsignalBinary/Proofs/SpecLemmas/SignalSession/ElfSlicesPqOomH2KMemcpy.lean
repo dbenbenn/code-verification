@@ -9,12 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostExact -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostExact
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostReplaysOn -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMemset -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2FirstStopGeneric
 import ProofLib.SepLogic.WP.StepsProcess
 import ProofLib.StdStartup.MemOps
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookOn
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemcpyGhostK
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2StepsLiftR2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonBudgetAux
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # K-Route `W`-Independent `memcpy` Ghost Hook Instance (`ElfSlicesPqOomH2KMemcpy`)
@@ -202,23 +217,13 @@ open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMemset (
   hole2_keepSub_eq_keepRange_f3Rx
 )
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2StepsLiftR2 (
-  h2sl_steps_realW_of_visitedIn_keepSub
+  h2sl_keepLoSub h2sl_steps_realW_of_visitedIn_keepLoSub
 )
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst (
   hole2_emptyProg hole2_keepSub
 )
 
 /-! ## 1. K-Convention `W`-Independent Definitions & Definitional (`rfl`) Bridges (`rev_c7.md` NIT 3b) -/
-
-/-- `MemcpyCode.memcpySpecK` is definitionally identical (`rfl`) to
-    `ElfSlicesPqOomH2KHooks.h2k_withKeepLrFalse`. -/
-theorem memcpySpecK_eq_h2k_withKeepLrFalse {α : Type} (keep : BitVec 64 → Bool) (spec : Spec α) :
-    memcpySpecK keep spec = h2k_withKeepLrFalse keep spec := rfl
-
-/-- Concrete `hole2_keepSub` + `masterMemcpySpec` definitional pin (`rev_c7.md` NIT 3b). -/
-theorem memcpySpecK_hole2_master_eq_h2k_withKeepLrFalse :
-    memcpySpecK hole2_keepSub masterMemcpySpec =
-      h2k_withKeepLrFalse hole2_keepSub masterMemcpySpec := rfl
 
 /-- Plain `W`-independent K-convention `memcpy` ghost hook (`h2k_memcpyGhostHook`). -/
 @[expose] noncomputable def h2k_memcpyGhostHook (mmpl : MultiPlacement) : State → State :=
@@ -235,623 +240,19 @@ theorem h2k_memcpyGhostHook_eq_f3Empty (mmpl : MultiPlacement) :
     h2k_memcpyGhostHook mmpl =
       f3EmptyMemcpyGhostHook hole2_keepSub f3TrialRxProg (mmpl.base 20) := rfl
 
-theorem h2k_memcpyGhostHookK_eq_f3EmptyK (mmpl : MultiPlacement) :
-    h2k_memcpyGhostHookK mmpl =
-      f3EmptyMemcpyGhostHookK hole2_keepSub f3TrialRxProg (mmpl.base 20) := rfl
-
-theorem h2k_memcpyGhostHook_eq (mmpl : MultiPlacement) :
-    h2k_memcpyGhostHook mmpl =
-      memcpyGhostHook hole2_keepSub emptyStdProg f3TrialRxProg (mmpl.base 20) :=
-  f3EmptyMemcpyGhostHook_eq hole2_keepSub f3TrialRxProg (mmpl.base 20)
-
-theorem h2k_memcpyGhostHookK_eq (mmpl : MultiPlacement) :
-    h2k_memcpyGhostHookK mmpl =
-      memcpyGhostHookK hole2_keepSub emptyStdProg f3TrialRxProg (mmpl.base 20) :=
-  f3EmptyMemcpyGhostHookK_eq hole2_keepSub f3TrialRxProg (mmpl.base 20)
-
 /-! ## 2. Kernel-Checked `f3TrialRxProg.hasWords (mmpl.base 20) memcpySymWords` -/
 
 private theorem memcpySymWords_len_le : memcpySymWords.length ≤ 1024 :=
   Nat.le_of_ble_eq_true (by rfl_kernel : Nat.ble memcpySymWords.length 1024 = true)
 
-set_option maxRecDepth 4000000 in
-private theorem h2k_f3Trial_blk20_chk :
-    checkWordsAt f3TrialRxWordTree
-      (f3MallocngMpl.base 20 - f3RxSegBase).toNat memcpySymWords = true := by
-  rfl_kernel
-
-/-- Unconditional kernel-checked `hasWords` for `memcpySymWords` at `f3MallocngMpl.base 20` inside
-    `f3TrialRxProg`. -/
-theorem h2k_f3TrialRxProg_hasWords_blk20_f3 :
-    f3TrialRxProg.hasWords (f3MallocngMpl.base 20) memcpySymWords := by
-  have hoff_lt : (f3MallocngMpl.base 20 - f3RxSegBase).toNat < 2 ^ 32 := by decide
-  have hlen := memcpySymWords_len_le
-  exact hasWords_of_wordTree f3RxWordCount
-    f3TrialRxWordTree_eq f3TrialRxWordTree_size
-    (by rw [f3TrialRxProg_base]) (by omega)
-    f3TrialRxProg_stubs f3TrialRxProg_symbols h2k_f3Trial_blk20_chk
-
-/-- `f3TrialRxProg` holds `memcpySymWords` at `mmpl.base 20` for every `mmpl` satisfying
-    `mallocngLib.LinkedAt cliElfBytes mmpl`. -/
-theorem h2k_f3TrialRxProg_hasWords_blk20 {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    f3TrialRxProg.hasWords (mmpl.base 20) memcpySymWords := by
-  have h20 : (20 : Nat) < mallocngLib.blocks.length := by decide
-  have hbase : mmpl.base 20 = f3MallocngMpl.base 20 :=
-    (f3CliElf_mallocng_linkedAt_unique hMm).1 20 h20
-  rw [hbase]
-  exact h2k_f3TrialRxProg_hasWords_blk20_f3
-
 /-! ## 3. State / Frame / Shared Consumer `HookOk` Suite (`hMm` Only, `W`-Independent) -/
-
-theorem h2k_memcpyGhostHook_fs (mmpl : MultiPlacement) (s0 : State) :
-    (h2k_memcpyGhostHook mmpl s0).fs = s0.fs :=
-  f3EmptyMemcpyGhostHook_fs hole2_keepSub f3TrialRxProg (mmpl.base 20) s0
-
-theorem h2k_memcpyGhostHookK_fs (mmpl : MultiPlacement) (s0 : State) :
-    (h2k_memcpyGhostHookK mmpl s0).fs = s0.fs :=
-  f3EmptyMemcpyGhostHookK_fs hole2_keepSub f3TrialRxProg (mmpl.base 20) s0
-
-theorem h2k_memcpyGhostHook_fsT (mmpl : MultiPlacement) :
-    HookFsTraced IsFsC (h2k_memcpyGhostHook mmpl) :=
-  f3EmptyMemcpyGhostHook_fsT hole2_keepSub f3TrialRxProg (mmpl.base 20)
-
-theorem h2k_memcpyGhostHookK_fsT (mmpl : MultiPlacement) :
-    HookFsTraced IsFsC (h2k_memcpyGhostHookK mmpl) :=
-  f3EmptyMemcpyGhostHookK_fsT hole2_keepSub f3TrialRxProg (mmpl.base 20)
-
-theorem h2k_memcpyGhostHookK_keepLr_false_of_noException
-    {mmpl : MultiPlacement} {u : State}
-    (hnoex : ∀ msg, (h2k_memcpyGhostHookK mmpl u).status ≠ .Exception msg) :
-    hole2_keepSub (u.readReg64 .lr) = false :=
-  f3EmptyMemcpyGhostHookK_keepLr_false_of_noException hnoex
 
 section ConsumerContracts
 
 variable {mmpl : MultiPlacement} (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
 include hMm
 
-theorem h2k_memcpyGhostHook_trace (s0 : State) :
-    (h2k_memcpyGhostHook mmpl s0).trace = s0.trace := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_trace rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) s0
-theorem h2k_memcpyGhostHookK_trace (s0 : State) :
-    (h2k_memcpyGhostHookK mmpl s0).trace = s0.trace := by
-  rw [h2k_memcpyGhostHookK_eq]; exact memcpyGhostHookK_trace rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) s0
-theorem h2k_memcpyGhostHook_vmPreserved (s0 : State) :
-    VmPreserved s0 (h2k_memcpyGhostHook mmpl s0) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_vmPreserved rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) s0
-theorem h2k_memcpyGhostHookK_vmPreserved (s0 : State) :
-    VmPreserved s0 (h2k_memcpyGhostHookK mmpl s0) := by
-  rw [h2k_memcpyGhostHookK_eq]; exact memcpyGhostHookK_vmPreserved rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) s0
-theorem h2k_memcpyGhostHook_oomPoolPreserved (s0 : State) :
-    OomPreserved s0 (h2k_memcpyGhostHook mmpl s0) ∧
-    PoolPreserved s0 (h2k_memcpyGhostHook mmpl s0) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_oomPoolPreserved rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) s0
-theorem h2k_memcpyGhostHookK_oomPoolPreserved (s0 : State) :
-    OomPreserved s0 (h2k_memcpyGhostHookK mmpl s0) ∧
-    PoolPreserved s0 (h2k_memcpyGhostHookK mmpl s0) := by
-  rw [h2k_memcpyGhostHookK_eq]; exact memcpyGhostHookK_oomPoolPreserved rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) s0
-theorem h2k_memcpyGhostHook_oracle (s0 : State) :
-    (h2k_memcpyGhostHook mmpl s0).oracle = s0.oracle := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_oracle rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) s0
-theorem h2k_memcpyGhostHookK_oracle (s0 : State) :
-    (h2k_memcpyGhostHookK mmpl s0).oracle = s0.oracle := by
-  rw [h2k_memcpyGhostHookK_eq]; exact memcpyGhostHookK_oracle rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) s0
-
-theorem h2k_memcpyGhostHook_master_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) masterMemcpySpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_master_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_masterK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub masterMemcpySpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_masterK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext
-    (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-
-theorem h2k_memcpyGhostHook_libcMemcpy_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (libcMemcpySpec stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_libcMemcpy_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_sessionMemcpy_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (sessionMemcpySpec stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpy_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_cliMemcpy_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) memcpySpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_cliMemcpy_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_memcpyRegion_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) memcpyRegionSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyRegion_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRegion_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) sessionMemcpyRegionSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegion_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_framelessMemcpy_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) framelessMemcpySpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_framelessMemcpy_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionRO_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegionRO_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_memcpyROExt_ok (stk : Nat := 16384) :
-    HookOk (h2k_memcpyGhostHook mmpl) (memcpyROExtSpec stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyROExt_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_cliMemcpyRO_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) memcpyROSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_cliMemcpyRO_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRO4K_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) CryptoVerification.SpqrV1.Alloc.sessionMemcpyROSpec4K := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRO4K_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_libcMemcpy_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (libcMemcpySpec stk).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_libcMemcpy_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_sessionMemcpy_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (sessionMemcpySpec stk).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpy_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_cliMemcpy_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) memcpySpec.keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_cliMemcpy_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_memcpyRegion_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) memcpyRegionSpec.keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyRegion_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_memcpyRegion_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withStack memcpyRegionSpec stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyRegion_withStack_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_memcpyRegion_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withStack memcpyRegionSpec stk).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyRegion_withStack_keepsFs_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_sessionMemcpyRegion_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) sessionMemcpyRegionSpec.keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegion_keepsFs_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRegion_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withStack sessionMemcpyRegionSpec stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegion_withStack_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_sessionMemcpyRegion_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withStack sessionMemcpyRegionSpec stk).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegion_withStack_keepsFs_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_framelessMemcpy_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) framelessMemcpySpec.keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_framelessMemcpy_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionRO_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHook mmpl)
-      CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec.keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegionRO_keepsFs_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionRO_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl)
-      (withStack CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegionRO_withStack_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionRO_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl)
-      (withStack CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec stk).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegionRO_withStack_keepsFs_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_memcpyROExt_keepsFs_ok (stk : Nat := 16384) :
-    HookOk (h2k_memcpyGhostHook mmpl) (memcpyROExtSpec stk).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyROExt_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_cliMemcpyRO_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) memcpyROSpec.keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_cliMemcpyRO_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_libcMemcpy_budget_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withVmPreserved (libcMemcpySpec stk)) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_libcMemcpy_budget_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_libcMemcpy_budget_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withVmPreserved (libcMemcpySpec stk)).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_libcMemcpy_budget_keepsFs_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_sessionMemcpyBudget_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (sessionMemcpyBudgetSpec stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyBudget_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_sessionMemcpyBudget_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (sessionMemcpyBudgetSpec stk).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyBudget_keepsFs_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_cliMemcpy_budget_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) (withVmPreserved memcpySpec) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_cliMemcpy_budget_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_memcpyRegion_budget_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) (withVmPreserved memcpyRegionSpec) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyRegion_budget_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_memcpyRegion_budget_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withStack (withVmPreserved memcpyRegionSpec) stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyRegion_budget_withStack_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_memcpyRegion_budget_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withStack (withVmPreserved memcpyRegionSpec) stk).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyRegion_budget_withStack_keepsFs_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionBudget_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) sessionMemcpyRegionBudgetSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegionBudget_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionBudget_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withStack sessionMemcpyRegionBudgetSpec stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegionBudget_withStack_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionBudget_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withStack sessionMemcpyRegionBudgetSpec stk).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegionBudget_withStack_keepsFs_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_framelessMemcpyBudget_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) framelessMemcpyBudgetSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_framelessMemcpyBudget_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_framelessMemcpyBudget_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) framelessMemcpyBudgetSpec.keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_framelessMemcpyBudget_keepsFs_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_framelessMemcpyBudgetFlat_ok :
-    HookOk (h2k_memcpyGhostHook mmpl)
-      LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.framelessMemcpyBudgetSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_framelessMemcpyBudgetFlat_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionRO_budget_ok :
-    HookOk (h2k_memcpyGhostHook mmpl)
-      (withVmPreserved CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegionRO_budget_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionRO_budget_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl)
-      (withStack (withVmPreserved CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec) stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegionRO_budget_withStack_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionRO_budget_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl)
-      (withStack
-        (withVmPreserved CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec) stk).keepsFs := by
-  rw [h2k_memcpyGhostHook_eq]
-  exact memcpyGhostHook_sessionMemcpyRegionRO_budget_withStack_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_memcpyROExt_budget_ok (stk : Nat := 16384) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withVmPreserved (memcpyROExtSpec stk)) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyROExt_budget_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHook_cliMemcpyRO_budget_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) (withVmPreserved memcpyROSpec) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_cliMemcpyRO_budget_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRO4KBudget_ok :
-    HookOk (h2k_memcpyGhostHook mmpl)
-      LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget.sessionMemcpyROSpec4K := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRO4KBudget_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_framelessMemcpyAcp_ok :
-    HookOk (h2k_memcpyGhostHook mmpl)
-      LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux.framelessMemcpyAcpSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_framelessMemcpyAcp_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_sessionMemcpyRegionROAcp_ok :
-    HookOk (h2k_memcpyGhostHook mmpl)
-      LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux.sessionMemcpyRegionROSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_sessionMemcpyRegionROAcp_ok rfl
-    f3TrialRxProg_svc (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_allocMemcpyVm_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) allocMemcpyVmSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_allocMemcpyVm_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_memcpyRegionCli_ok :
-    HookOk (h2k_memcpyGhostHook mmpl) memcpyRegionCliSpec := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_memcpyRegionCli_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHook_libcMemcpyCli_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHook mmpl) (libcMemcpyCliSpec stk) := by
-  rw [h2k_memcpyGhostHook_eq]; exact memcpyGhostHook_libcMemcpyCli_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-
-omit hMm in
-theorem h2k_memcpyGhostHook_any_execFrozen_ok {α : Type} {spec : Spec α}
-    (hok : HookOk (h2k_memcpyGhostHook mmpl) spec) :
-    HookOk (h2k_memcpyGhostHook mmpl) (withExecFrozen spec) := by
-  rw [h2k_memcpyGhostHook_eq] at hok ⊢
-  exact memcpyGhostHook_any_execFrozen_ok hok
-
-omit hMm in
-theorem h2k_memcpyGhostHook_any_withKeepLrFalse_ok {α : Type} {spec : Spec α}
-    (hok : HookOk (h2k_memcpyGhostHook mmpl) spec) :
-    HookOk (h2k_memcpyGhostHook mmpl) (h2k_withKeepLrFalse hole2_keepSub spec) := by
-  rw [h2k_memcpyGhostHook_eq] at hok ⊢
-  rw [← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHook_any_memcpySpecK_ok hok
-
 -- `h2k_withKeepLrFalse hole2_keepSub`-narrowed consumer contracts on `h2k_memcpyGhostHookK`:
-
-theorem h2k_memcpyGhostHookK_libcMemcpyK_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub (libcMemcpySpec stk)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_libcMemcpyK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_sessionMemcpyK_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (sessionMemcpySpec stk)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_cliMemcpyK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub memcpySpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_cliMemcpyK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_memcpyRegionK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub memcpyRegionSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_memcpyRegionK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub sessionMemcpyRegionSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_framelessMemcpyK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub framelessMemcpySpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_framelessMemcpyK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionROK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionROK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_memcpyROExtK_ok (stk : Nat := 16384) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (memcpyROExtSpec stk)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_memcpyROExtK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_cliMemcpyROK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub memcpyROSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_cliMemcpyROK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_sessionMemcpyRO4KK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        CryptoVerification.SpqrV1.Alloc.sessionMemcpyROSpec4K) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRO4KK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_libcMemcpyK_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (libcMemcpySpec stk).keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_libcMemcpyK_keepsFs_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_sessionMemcpyK_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (sessionMemcpySpec stk).keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyK_keepsFs_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_cliMemcpyK_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub memcpySpec.keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_cliMemcpyK_keepsFs_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_memcpyRegionK_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub memcpyRegionSpec.keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_memcpyRegionK_keepsFs_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionK_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub sessionMemcpyRegionSpec.keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionK_keepsFs_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_framelessMemcpyK_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub framelessMemcpySpec.keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_framelessMemcpyK_keepsFs_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionROK_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec.keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionROK_keepsFs_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_libcMemcpyK_budget_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved (libcMemcpySpec stk))) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_libcMemcpyK_budget_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_libcMemcpyK_budget_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved (libcMemcpySpec stk)).keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_libcMemcpyK_budget_keepsFs_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_sessionMemcpyBudgetK_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (sessionMemcpyBudgetSpec stk)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyBudgetK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_sessionMemcpyBudgetK_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (sessionMemcpyBudgetSpec stk).keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyBudgetK_keepsFs_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_cliMemcpyK_budget_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved memcpySpec)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_cliMemcpyK_budget_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_memcpyRegionK_budget_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved memcpyRegionSpec)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_memcpyRegionK_budget_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_memcpyRegionK_budget_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (withStack (withVmPreserved memcpyRegionSpec) stk)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_memcpyRegionK_budget_withStack_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_memcpyRegionK_budget_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        (withStack (withVmPreserved memcpyRegionSpec) stk).keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_memcpyRegionK_budget_withStack_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionBudgetK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub sessionMemcpyRegionBudgetSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionBudgetK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionBudgetK_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (withStack sessionMemcpyRegionBudgetSpec stk)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionBudgetK_withStack_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionBudgetK_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        (withStack sessionMemcpyRegionBudgetSpec stk).keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionBudgetK_withStack_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_framelessMemcpyBudgetK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub framelessMemcpyBudgetSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_framelessMemcpyBudgetK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_framelessMemcpyBudgetK_keepsFs_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub framelessMemcpyBudgetSpec.keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_framelessMemcpyBudgetK_keepsFs_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_framelessMemcpyBudgetFlatK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.framelessMemcpyBudgetSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_framelessMemcpyBudgetFlatK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionROK_budget_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        (withVmPreserved CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionROK_budget_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionROK_budget_withStack_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        (withStack (withVmPreserved CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec) stk)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionROK_budget_withStack_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionROK_budget_withStack_keepsFs_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        (withStack
-          (withVmPreserved CryptoVerification.SpqrV1.Alloc.sessionMemcpyRegionROSpec) stk).keepsFs) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionROK_budget_withStack_keepsFs_ok rfl f3TrialRxProg_svc
-    (fun _ _ => rfl) f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_memcpyROExtK_budget_ok (stk : Nat := 16384) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved (memcpyROExtSpec stk))) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_memcpyROExtK_budget_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-theorem h2k_memcpyGhostHookK_cliMemcpyROK_budget_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (withVmPreserved memcpyROSpec)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_cliMemcpyROK_budget_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_sessionMemcpyRO4KBudgetK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        LibsignalBinary.Proofs.SpqrV1.Alloc.Hooks4KBudget.sessionMemcpyROSpec4K) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRO4KBudgetK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_framelessMemcpyAcpK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux.framelessMemcpyAcpSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_framelessMemcpyAcpK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_sessionMemcpyRegionROAcpK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub
-        LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux.sessionMemcpyRegionROSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_sessionMemcpyRegionROAcpK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_allocMemcpyVmK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl) (h2k_withKeepLrFalse hole2_keepSub allocMemcpyVmSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_allocMemcpyVmK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_memcpyRegionCliK_ok :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub memcpyRegionCliSpec) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_memcpyRegionCliK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-theorem h2k_memcpyGhostHookK_libcMemcpyCliK_ok (stk : Nat := 4096) :
-    HookOk (h2k_memcpyGhostHookK mmpl)
-      (h2k_withKeepLrFalse hole2_keepSub (libcMemcpyCliSpec stk)) := by
-  rw [h2k_memcpyGhostHookK_eq, ← memcpySpecK_eq_h2k_withKeepLrFalse]
-  exact memcpyGhostHookK_libcMemcpyCliK_ok rfl f3TrialRxProg_svc (fun _ _ => rfl)
-    f3TrialRxProg_no_ext (h2k_f3TrialRxProg_hasWords_blk20 hMm) stk
-
-omit hMm in
-theorem h2k_memcpyGhostHookK_any_execFrozen_ok {α : Type} {spec : Spec α}
-    (hok : HookOk (h2k_memcpyGhostHookK mmpl) spec) :
-    HookOk (h2k_memcpyGhostHookK mmpl) (withExecFrozen spec) := by
-  rw [h2k_memcpyGhostHookK_eq] at hok ⊢
-  exact memcpyGhostHookK_any_execFrozen_ok hok
 
 end ConsumerContracts
 
@@ -900,168 +301,6 @@ private theorem f3LinkedCallHook_empty_visitedIn {α : Type}
     exact h2fsgen_stepsUntil_det hchoose.1 hchoose.2.1 huntil hstop
   dsimp only; rw [heq]; exact ⟨hvis, hfr_sf, hfs⟩
 
-/-- Target-entry `W`-polymorphic replay for `h2k_memcpyGhostHook`. -/
-theorem h2k_memcpyGhostHook_target_replay
-    {mpl mmpl : MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (W : CliHooks)
-    {u : State}
-    (hrun : u.status = .Running)
-    (hnoex : ∀ msg, (h2k_memcpyGhostHook mmpl u).status ≠ .Exception msg)
-    (hFr : ExecFrozen u.mem)
-    (hlr_out : hole2_keepSub (u.readReg64 .lr) = false)
-    (hInv : F3CodeInv mpl mmpl u.mem) :
-    Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (u.setPC (mmpl.base 20)) (h2k_memcpyGhostHook mmpl u) ∧
-      ExecFrozen (h2k_memcpyGhostHook mmpl u).mem ∧
-      F3CodeInv mpl mmpl (h2k_memcpyGhostHook mmpl u).mem ∧
-      (h2k_memcpyGhostHook mmpl u).fs = u.fs := by
-  obtain ⟨hvis, hfr_sf, hfs_sf⟩ :=
-    f3LinkedCallHook_empty_visitedIn f3TrialRxProg_svc f3TrialRxProg_no_ext
-      (subroutine_ok_masterMemcpy_of_hasWords f3TrialRxProg_no_ext
-        (h2k_f3TrialRxProg_hasWords_blk20 hMm))
-      (specStripSInvariant_masterMemcpy hole2_keepSub) specPreservesFsTrace_masterMemcpy
-      masterMemcpy_pre_setPC masterMemcpy_outcome_setPC hrun hnoex hFr hlr_out
-      (h2k_f3CodeInv_rxProg_keepSub hInv)
-  have hSteps := h2sl_steps_realW_of_visitedIn_keepSub hLs mmpl W hvis
-  exact ⟨hSteps, hfr_sf, hInv.of_keepsFrozen hSteps.keepsFrozen, hfs_sf⟩
-
-/-- Target-entry `W`-polymorphic replay for `h2k_memcpyGhostHookK` (zero caller `lr` hypothesis). -/
-theorem h2k_memcpyGhostHookK_target_replay
-    {mpl mmpl : MultiPlacement}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (W : CliHooks)
-    {u : State}
-    (hrun : u.status = .Running)
-    (hnoex : ∀ msg, (h2k_memcpyGhostHookK mmpl u).status ≠ .Exception msg)
-    (hFr : ExecFrozen u.mem)
-    (hInv : F3CodeInv mpl mmpl u.mem) :
-    Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W)
-        (u.setPC (mmpl.base 20)) (h2k_memcpyGhostHookK mmpl u) ∧
-      ExecFrozen (h2k_memcpyGhostHookK mmpl u).mem ∧
-      F3CodeInv mpl mmpl (h2k_memcpyGhostHookK mmpl u).mem ∧
-      (h2k_memcpyGhostHookK mmpl u).fs = u.fs := by
-  obtain ⟨hvis, hfr_sf, hfs_sf⟩ :=
-    f3LinkedCallHook_empty_visitedIn f3TrialRxProg_svc f3TrialRxProg_no_ext
-      (subroutine_ok_masterMemcpyK_of_hasWords hole2_keepSub f3TrialRxProg_no_ext
-        (h2k_f3TrialRxProg_hasWords_blk20 hMm))
-      (specStripSInvariant_masterMemcpyK hole2_keepSub)
-      (specPreservesFsTrace_masterMemcpyK hole2_keepSub)
-      (masterMemcpyK_pre_setPC hole2_keepSub) (masterMemcpyK_outcome_setPC hole2_keepSub)
-      hrun hnoex hFr (f3EmptyMemcpyGhostHookK_keepLr_false_of_noException hnoex)
-      (h2k_f3CodeInv_rxProg_keepSub hInv)
-  have hSteps := h2sl_steps_realW_of_visitedIn_keepSub hLs mmpl W hvis
-  exact ⟨hSteps, hfr_sf, hInv.of_keepsFrozen hSteps.keepsFrozen, hfs_sf⟩
-
-/-- Behind-stub `W`-polymorphic guarded `On` replay for `h2k_memcpyGhostHook`. -/
-theorem h2k_memcpyGhostHook_stub_replayOn
-    {mpl mmpl : MultiPlacement} {stubPc : BitVec 64}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (W : CliHooks)
-    (hreal_stub_none : (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc =
-      none)
-    (hStub : StubReachesTargetOn (F3CodeInv mpl mmpl)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc (mmpl.base 20)) :
-    (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc = none ∧
-    ∀ u : State,
-      u.pc = stubPc →
-      u.status = .Running →
-      (∀ msg, (h2k_memcpyGhostHook mmpl u).status ≠ .Exception msg) →
-      ExecFrozen u.mem →
-      hole2_keepSub (u.readReg64 .lr) = false →
-      F3CodeInv mpl mmpl u.mem →
-      Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) u
-          (h2k_memcpyGhostHook mmpl u) ∧
-        ExecFrozen (h2k_memcpyGhostHook mmpl u).mem ∧
-        F3CodeInv mpl mmpl (h2k_memcpyGhostHook mmpl u).mem ∧
-        (h2k_memcpyGhostHook mmpl u).fs = u.fs := by
-  refine ⟨hreal_stub_none, fun u hpc hrun hnoex hfr hlr hInv => ?_⟩
-  obtain ⟨hBody, hfr_sf, hInv_sf, hfs_sf⟩ :=
-    h2k_memcpyGhostHook_target_replay hLs hMm W hrun hnoex hfr hlr hInv
-  exact ⟨(hStub u hpc hrun hfr hInv).trans hBody, hfr_sf, hInv_sf, hfs_sf⟩
-
-/-- Behind-stub `W`-polymorphic guarded `On` replay for `h2k_memcpyGhostHookK` (zero caller `lr`
-    hypothesis). -/
-theorem h2k_memcpyGhostHookK_stub_replayOn
-    {mpl mmpl : MultiPlacement} {stubPc : BitVec 64}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (W : CliHooks)
-    (hreal_stub_none : (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc =
-      none)
-    (hStub : StubReachesTargetOn (F3CodeInv mpl mmpl)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc (mmpl.base 20)) :
-    (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc = none ∧
-    ∀ u : State,
-      u.pc = stubPc →
-      u.status = .Running →
-      (∀ msg, (h2k_memcpyGhostHookK mmpl u).status ≠ .Exception msg) →
-      ExecFrozen u.mem →
-      F3CodeInv mpl mmpl u.mem →
-      Steps (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) u
-          (h2k_memcpyGhostHookK mmpl u) ∧
-        ExecFrozen (h2k_memcpyGhostHookK mmpl u).mem ∧
-        F3CodeInv mpl mmpl (h2k_memcpyGhostHookK mmpl u).mem ∧
-        (h2k_memcpyGhostHookK mmpl u).fs = u.fs := by
-  refine ⟨hreal_stub_none, fun u hpc hrun hnoex hfr hInv => ?_⟩
-  obtain ⟨hBody, hfr_sf, hInv_sf, hfs_sf⟩ :=
-    h2k_memcpyGhostHookK_target_replay hLs hMm W hrun hnoex hfr hInv
-  exact ⟨(hStub u hpc hrun hfr hInv).trans hBody, hfr_sf, hInv_sf, hfs_sf⟩
-
-/-- Single-row `GhostExternReplaysS` for `h2k_memcpyGhostHook`. -/
-theorem h2k_memcpyGhostHook_replaysS
-    {P_ghost : Program} {mpl mmpl : MultiPlacement} {stubPc : BitVec 64}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (W : CliHooks)
-    (hghost_stub : P_ghost.externAt? stubPc = some (h2k_memcpyGhostHook mmpl))
-    (hother : ∀ pc, pc ≠ stubPc →
-      P_ghost.externAt? pc = (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc)
-    (hreal_fr : ∀ pc f,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = some f →
-      ∀ u : State, u.status = .Running → ExecFrozen u.mem → ExecFrozen (f u).mem)
-    (hreal_stub_none : (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc =
-      none)
-    (hStub : StubReachesTargetOn (F3CodeInv mpl mmpl)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc (mmpl.base 20)) :
-    GhostExternReplaysS hole2_keepSub (fun u => F3CodeInv mpl mmpl u.mem) P_ghost
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) := by
-  have hRep := h2k_memcpyGhostHook_stub_replayOn hLs hMm W hreal_stub_none hStub
-  exact ghostExternReplaysS_of_single_stub hghost_stub hother
-    (fun pc f hr u hrun hkf hfr hInv => ⟨hreal_fr pc f hr u hrun hfr, hInv.of_keepsFrozen hkf⟩)
-    ⟨hRep.1, fun u hpc hrun hnoex hfr hlr hInv =>
-      let ⟨hs, hfr', hInv', _⟩ := hRep.2 u hpc hrun hnoex hfr hlr hInv
-      ⟨hs, hfr', hInv'⟩⟩
-
-/-- Single-row `GhostExternReplaysS` for `h2k_memcpyGhostHookK` (polymorphic in `keep_any`). -/
-theorem h2k_memcpyGhostHookK_replaysS
-    (keep_any : BitVec 64 → Bool)
-    {P_ghost : Program} {mpl mmpl : MultiPlacement} {stubPc : BitVec 64}
-    (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (W : CliHooks)
-    (hghost_stub : P_ghost.externAt? stubPc = some (h2k_memcpyGhostHookK mmpl))
-    (hother : ∀ pc, pc ≠ stubPc →
-      P_ghost.externAt? pc = (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc)
-    (hreal_fr : ∀ pc f,
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = some f →
-      ∀ u : State, u.status = .Running → ExecFrozen u.mem → ExecFrozen (f u).mem)
-    (hreal_stub_none : (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? stubPc =
-      none)
-    (hStub : StubReachesTargetOn (F3CodeInv mpl mmpl)
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) stubPc (mmpl.base 20)) :
-    GhostExternReplaysS keep_any (fun u => F3CodeInv mpl mmpl u.mem) P_ghost
-      (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W) := by
-  have hRep := h2k_memcpyGhostHookK_stub_replayOn hLs hMm W hreal_stub_none hStub
-  exact ghostExternReplaysS_of_single_stub hghost_stub hother
-    (fun pc f hr u hrun hkf hfr hInv => ⟨hreal_fr pc f hr u hrun hfr, hInv.of_keepsFrozen hkf⟩)
-    ⟨hRep.1, fun u hpc hrun hnoex hfr _ hInv =>
-      let ⟨hs, hfr', hInv', _⟩ := hRep.2 u hpc hrun hnoex hfr hInv
-      ⟨hs, hfr', hInv'⟩⟩
-
 /-! ## 5. `(A2)` `Blk20TrapHook` & Cross `Blk21TrapHook` Coverage (`rev_c7.md` NIT 4c) -/
 
 /-- `hole2_keepSub` covers `keepMemcpyBlk20 mmpl` (`396` B at `mmpl.base 20`) for every `mmpl`
@@ -1085,6 +324,25 @@ theorem h2k_keepSub_covers_blk20 {mmpl : MultiPlacement}
   rw [ha_eq]
   exact hcov_f3 _ hoff_lt
 
+/-- `h2sl_keepLoSub` (`[0x474000, 0x479798)`) covers `keepMemcpyBlk20 mmpl` (`396` B at `mmpl.base 20`). -/
+theorem h2k_keepLoSub_covers_blk20 {mmpl : MultiPlacement}
+    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
+    ∀ a : BitVec 64, keepMemcpyBlk20 mmpl a = true → h2sl_keepLoSub a = true := by
+  have h20 : (20 : Nat) < mallocngLib.blocks.length := by decide
+  have hbase : mmpl.base 20 = f3MallocngMpl.base 20 :=
+    (f3CliElf_mallocng_linkedAt_unique hMm).1 20 h20
+  have hcov_f3 : ∀ off : Nat, off < 396 →
+      h2sl_keepLoSub (f3MallocngMpl.base 20 + BitVec.ofNat 64 off) = true := by
+    unfold h2sl_keepLoSub
+    exact keepCoversBlk20_keepRange 0x474000 0x479798 (by decide) (by decide) (by decide)
+  intro a hka
+  have hoff_lt : (a - mmpl.base 20).toNat < 396 := of_decide_eq_true hka
+  have ha_eq : a = f3MallocngMpl.base 20 + BitVec.ofNat 64 (a - mmpl.base 20).toNat := by
+    rw [← hbase, BitVec.ofNat_toNat, BitVec.setWidth_eq, BitVec.add_comm (mmpl.base 20),
+      BitVec.sub_add_cancel]
+  rw [ha_eq]
+  exact hcov_f3 _ hoff_lt
+
 private theorem exception_of_keepLr_false_of_noException
     {keep : BitVec 64 → Bool} {f : State → State} {w : State}
     (hnoex_imp : (∀ msg, (f w).status ≠ .Exception msg) → keep (w.readReg64 .lr) = false)
@@ -1096,67 +354,6 @@ private theorem exception_of_keepLr_false_of_noException
     hnoex_imp fun msg hst => hnone ⟨msg, hst⟩
   rw [hkw] at hfalse
   exact Bool.noConfusion hfalse
-
-/-- Plain `h2k_memcpyGhostHook mmpl` satisfies `Blk20TrapHook L` for every `L ∈ blk20`. -/
-theorem h2k_memcpyGhostHook_blk20TrapHook {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    ∀ L : BitVec 64, keepMemcpyBlk20 mmpl L = true →
-      Blk20TrapHook L (h2k_memcpyGhostHook mmpl) := by
-  intro L hL
-  rw [h2k_memcpyGhostHook_eq]
-  exact blk20TrapHook_memcpyGhostHook emptyStdProg f3TrialRxProg (mmpl.base 20)
-    (h2k_keepSub_covers_blk20 hMm L hL)
-
-/-- `K`-narrowed `h2k_memcpyGhostHookK mmpl` satisfies `Blk20TrapHook L` for every `L ∈ blk20`. -/
-theorem h2k_memcpyGhostHookK_blk20TrapHook {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    ∀ L : BitVec 64, keepMemcpyBlk20 mmpl L = true →
-      Blk20TrapHook L (h2k_memcpyGhostHookK mmpl) :=
-  fun L hL =>
-    blk20TrapHook_of_exception_on_keepLr (h2k_keepSub_covers_blk20 hMm L hL) fun _ hkw =>
-      exception_of_keepLr_false_of_noException h2k_memcpyGhostHookK_keepLr_false_of_noException hkw
-
-/-- **Cross trap-hook (`memcpy` → `blk21`):** plain `h2k_memcpyGhostHook mmpl` satisfies
-    `Blk21TrapHook L` for every `L ∈ blk21`. -/
-theorem h2k_memcpyGhostHook_blk21TrapHook {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    ∀ L : BitVec 64, keepMemsetBlk21 mmpl L = true →
-      Blk21TrapHook L (h2k_memcpyGhostHook mmpl) := by
-  intro L hL
-  rw [h2k_memcpyGhostHook_eq]
-  exact blk21TrapHook_memcpyGhostHook emptyStdProg f3TrialRxProg (mmpl.base 20)
-    (h2k_keepSub_covers_blk21 hMm L hL)
-
-/-- **Cross trap-hook (`memcpyK` → `blk21`):** `K`-narrowed `h2k_memcpyGhostHookK mmpl` satisfies
-    `Blk21TrapHook L` for every `L ∈ blk21`. -/
-theorem h2k_memcpyGhostHookK_blk21TrapHook {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    ∀ L : BitVec 64, keepMemsetBlk21 mmpl L = true →
-      Blk21TrapHook L (h2k_memcpyGhostHookK mmpl) :=
-  fun L hL =>
-    blk21TrapHook_of_exception_on_keepLr (h2k_keepSub_covers_blk21 hMm L hL) fun _ hkw =>
-      exception_of_keepLr_false_of_noException h2k_memcpyGhostHookK_keepLr_false_of_noException hkw
-
-/-- **Cross trap-hook (`memset` → `blk20`):** plain `h2k_memsetGhostHook mmpl` satisfies
-    `Blk20TrapHook L` for every `L ∈ blk20`. -/
-theorem h2k_memsetGhostHook_blk20TrapHook {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    ∀ L : BitVec 64, keepMemcpyBlk20 mmpl L = true →
-      Blk20TrapHook L (h2k_memsetGhostHook mmpl) := by
-  intro L hL
-  rw [h2k_memsetGhostHook_eq_f3Empty, f3EmptyMemsetGhostHook_eq]
-  exact blk20TrapHook_memsetGhostHook emptyStdProg f3TrialRxProg (mmpl.base 21)
-    (h2k_keepSub_covers_blk20 hMm L hL)
-
-/-- **Cross trap-hook (`memsetK` → `blk20`):** `K`-narrowed `h2k_memsetGhostHookK mmpl` satisfies
-    `Blk20TrapHook L` for every `L ∈ blk20`. -/
-theorem h2k_memsetGhostHookK_blk20TrapHook {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    ∀ L : BitVec 64, keepMemcpyBlk20 mmpl L = true →
-      Blk20TrapHook L (h2k_memsetGhostHookK mmpl) :=
-  fun L hL =>
-    blk20TrapHook_of_exception_on_keepLr (h2k_keepSub_covers_blk20 hMm L hL) fun _ hkw =>
-      exception_of_keepLr_false_of_noException h2k_memsetGhostHookK_keepLr_false_of_noException hkw
 
 private theorem keep_true_of_fetchMem_stripExecOutside
     {P : Program} {keep : BitVec 64 → Bool} {m wmem : Memory} {pc : BitVec 64} {inst : Instr}
@@ -1776,54 +973,11 @@ theorem h2k_memcpyGhostHookNarrow_stub_replayOn_of_trap_ret
       hrun hnoex hfr hlr_false
       (codeLoaded_stripExecOutside_blk20 (keepCoversBlk20_keepMemcpyBlk20 mmpl) hcl20)
   have hBody :=
-    h2sl_steps_realW_of_visitedIn_keepSub hLs mmpl W
-      (stepsVisitedIn_mono (h2k_keepSub_covers_blk20 hMm) hvis)
+    h2sl_steps_realW_of_visitedIn_keepLoSub hLs mmpl W
+      (stepsVisitedIn_mono (h2k_keepLoSub_covers_blk20 hMm) hvis)
   have hSteps := (hStub u hpc hrun hfr hInv).trans hBody
   exact ⟨hSteps, hfr_sf, hInv.of_keepsFrozen hSteps.keepsFrozen, hfs_sf⟩
 
 /-! ## 5. Exact Clobber Endpoint (`HookExactMemcpy`) for `h2k_memcpyGhostHook*` -/
-
-/-- Unconditional `HookExactMemcpy` for `h2k_memcpyGhostHookNarrow mmpl` (route (i) narrow ghost
-    `memcpy` hook). -/
-theorem h2k_memcpyGhostHookNarrow_exact (mmpl : MultiPlacement) :
-    HookExactMemcpy (h2k_memcpyGhostHookNarrow mmpl) := by
-  change HookExactMemcpy
-    (f3EmptyMemcpyGhostHook (keepMemcpyBlk20 mmpl)
-      (mallocngBlockProg mmpl 20 Syscall.standard) (mmpl.base 20))
-  exact f3EmptyMemcpyGhostHook_exact (keepMemcpyBlk20 mmpl)
-    (mallocngBlockProg20_svc_eq mmpl)
-    (mallocngBlockProg20_externAt_none mmpl Syscall.standard)
-    (mallocngBlockProg20_hasWords mmpl Syscall.standard)
-
-/-- `HookExactMemcpy` for `h2k_memcpyGhostHook mmpl` under `mallocngLib.LinkedAt cliElfBytes mmpl`. -/
-theorem h2k_memcpyGhostHook_exact {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl) :
-    HookExactMemcpy (h2k_memcpyGhostHook mmpl) := by
-  rw [h2k_memcpyGhostHook_eq_f3Empty]
-  exact f3EmptyMemcpyGhostHook_exact hole2_keepSub f3TrialRxProg_svc f3TrialRxProg_no_ext
-    (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-
-/-- `K`-narrowed (`hole2_keepSub (u.readReg64 .lr) = false`) exactness for `h2k_memcpyGhostHookK mmpl`
-    (route (ii) `K`-assembly `memcpy` ghost hook). -/
-theorem h2k_memcpyGhostHookK_exact_of_keepLr_false {mmpl : MultiPlacement}
-    (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    {u : State} {dst src lr : BitVec 64} {len : Nat} {bs : List (BitVec 8)}
-    (hlr_false : hole2_keepSub (u.readReg64 .lr) = false)
-    (hrun : u.status = .Running)
-    (hsp : u.spAligned = true)
-    (hx0 : u.readReg64 .x0 = dst)
-    (hx1 : u.readReg64 .x1 = src)
-    (hx2 : (u.readReg64 .x2).toNat = len)
-    (hlr : u.readReg64 .lr = lr)
-    (hread : u.mem.readBytes src len = bs)
-    (hrw : u.mem.RW dst len)
-    (hreadable : u.mem.Readable src len)
-    (hdisj : len = 0 ∨ DisjointRegions dst len src len) :
-    ∃ c : MemcpyClobber,
-      h2k_memcpyGhostHookK mmpl u = applyMemcpyClobber u (u.mem.writeBytes dst bs) lr c := by
-  rw [h2k_memcpyGhostHookK_eq_f3EmptyK]
-  exact f3EmptyMemcpyGhostHookK_exact_of_keepLr_false f3TrialRxProg_svc f3TrialRxProg_no_ext
-    (h2k_f3TrialRxProg_hasWords_blk20 hMm)
-    hlr_false hrun hsp hx0 hx1 hx2 hlr hread hrw hreadable hdisj
 
 end LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KMemcpy

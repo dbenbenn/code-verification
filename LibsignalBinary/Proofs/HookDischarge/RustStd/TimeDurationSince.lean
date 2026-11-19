@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import VerifiedLibraries.RustStd.Proofs.Wave1.TimeDurationSince
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
-public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.HookDischarge.RustStd.Common -- proof-setup: allow-public-import
 
 /-!
 # `<std::time::SystemTime>::duration_since` CLI hook discharge
@@ -22,7 +22,7 @@ contract `durationSinceBoundedSpec` (`tv_nsec < 10 ^ 9`), under `withRoData` / `
 the 16-byte `.rodata` constant `timePlacedData0`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -39,7 +39,7 @@ open LibsignalBinary.Proofs.HookDischarge.RustStd.Common (withRoData withRoDataS
   subroutine_ok_withRoData_of_sep SpecSimulates keepsFs_withRoData)
 
 /-- Stack-parameterized `UNIX_EPOCH` `duration_since` contract (`durationSinceEpochAtSpec extHookStack = durationSinceEpochSpec`). -/
-def durationSinceEpochAtSpec (hookStack : Nat := extHookStack) :
+@[expose] def durationSinceEpochAtSpec (hookStack : Nat := extHookStack) :
     Spec (BitVec 64 × BitVec 64) where
   pre := fun (p, ret) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret ∧
@@ -62,7 +62,7 @@ private theorem timePlacedData0_length_le : timePlacedData0.length ≤ 2 ^ 64 :=
   decide
 
 /-- Stack-parameterized bounded `duration_since` contract for valid `SystemTime` inputs (`tv_nsec < 10 ^ 9`). -/
-def durationSinceBoundedAtSpec (hookStack : Nat := extHookStack) :
+@[expose] def durationSinceBoundedAtSpec (hookStack : Nat := extHookStack) :
     Spec (BitVec 64 × BitVec 64) where
   pre := fun (p, ret) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret ∧

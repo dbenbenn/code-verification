@@ -9,16 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cStepsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cProofPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cStepsPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1cHelpersPlacedBudget
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded `signal_session::run` Arm `R1c` Placed Proof
@@ -28,7 +33,7 @@ budget-threaded Arm `R1c` hop theorems `run_hop_init3_placed_ok_of_env` and `run
 on Block `579` (`runProgPlaced H`) over `R1cInit3Env`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -582,7 +587,7 @@ theorem r1c_err_tail_any [LibsignalPlacement] {M : AllocCostModel}
 /-! ## 2. Arm `R1c` Sub-Hop 3 Envelope & `run_hop_init3_placed_ok` (`R+0x28f0` → Join/Reject) -/
 
 /-- `InitGhost` passed to `sEnvs.initiate` at `signal_session::run` frame stack pointer `fsp`. -/
-def r1cInitGhost (g : RunCall) (d2 : Init2Data) (fsp : BitVec 64) : InitGhost where
+@[expose] def r1cInitGhost (g : RunCall) (d2 : Init2Data) (fsp : BitVec 64) : InitGhost where
   peer := d2.peerG
   peerA := fsp + 0x2a0#64
   me := d2.meG
@@ -601,7 +606,7 @@ def r1cInitGhost (g : RunCall) (d2 : Init2Data) (fsp : BitVec 64) : InitGhost wh
 /-- Canonical Arm `R1c` Sub-Hop 3 event envelope: composes `sEnvs.initiate (r1cInitGhost g d2 0#64)`
 with either `r1cOkTailEvs d2` (`.ok ()` path) or `drop_glue<SignalProtocolError>` (`FreeOnlyEvs`)
 followed by `r1cOkTailEvs d2` (`.error _` path). -/
-def R1cInit3Env (sEnvs : RunSlotEnvs) (g : RunCall) (d2 : Init2Data)
+@[expose] def R1cInit3Env (sEnvs : RunSlotEnvs) (g : RunCall) (d2 : Init2Data)
     (evs : List AllocEvent) : Prop :=
   SeqEnv (sEnvs.initiate (r1cInitGhost g d2 0#64))
     (fun evs_tail =>

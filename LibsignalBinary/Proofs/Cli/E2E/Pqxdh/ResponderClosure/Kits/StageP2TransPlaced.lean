@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Trans
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Trans
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms2Placed -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Arms -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5Defs
 
 /-!
 # Relocatable Stage P2 Precondition and Inter-Substage Spatial Transitions
@@ -22,7 +25,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `StageP2Trans`, defining `stag
 proving `p2_entry_to_sub1To4_placed`, `p2_sub4_to_sub5_placed`, and `p2_sub5_to_sub6_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -69,7 +72,7 @@ private theorem lsLogOff_eq_pl_trans [LibsignalPlacement] :
 
 /-- Relocatable `[LibsignalPlacement]` spatial precondition at `+0x0868` for fresh Bob session
 initialization in Stage P2. -/
-def stageP2PreAtPlaced (A : RustAlloc) [LibsignalPlacement]
+@[expose] def stageP2PreAtPlaced (A : RustAlloc) [LibsignalPlacement]
     (spkKit : SignedPreKeyStoreSpec A 0#64)
     (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (pkKit : PreKeyStoreSpec A 0#64)

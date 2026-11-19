@@ -9,10 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Sites
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.CallSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Sites
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WPp
+public import VerifiedLibraries.Mallocng.Spec
 
 /-!
 # Relocatable Non-I/O Call-Site Helpers for `main` Hop M5 (Block `617`)
@@ -20,6 +31,6 @@ import Arm64.Trusted.Spec.SepLogic
 Relocatable `[LibsignalPlacement]` counterpart of `M5Sites.lean` on Block `617`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false

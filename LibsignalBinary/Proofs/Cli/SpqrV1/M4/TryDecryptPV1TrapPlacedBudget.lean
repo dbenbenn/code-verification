@@ -9,15 +9,37 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.DecryptFrontTrapPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudget
+public import LibsignalBinary.Heap.AesDecErrRoBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Heap.SpecBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyTrapPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.DecryptTailTrapPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS1ErrPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DeriveKeysBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetCore -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegTrustCommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.DecryptFrontTrapPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupPlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhCommit433PlacedBudget
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DhStep433PlacedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Root
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.Model
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.RootBudget
+meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 
 /-!
 # Budget-Threaded Relocatable `try_decrypt_with_state` Assembly on CLI Block `433`
@@ -27,7 +49,7 @@ assembles the 11 budget-threaded Block-`433` segment seams into `tryDecrypt_plac
 `tryDecryptV1_placed_ok_PTight_cli` under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,9 +64,8 @@ open CryptoGames.LibsignalSession (
 open CryptoVerification (
   LibsignalPlacement lsmpl
 )
-open CryptoVerification.E2E (aesDecHookMallocng)
 open CryptoVerification.LibsignalSessionRepr (ChainGhost)
-open CryptoVerification.LibsignalSpqrV1 (spqrV1)
+open CryptoVerification.LibsignalSpqrV1 (sha256Compress spqrV1)
 open CryptoVerification.LibsignalTripleRatchet (
   LibsignalCodeRoLoaded SeedsLen32 SendCall SpqrModel TrGhost TryDecryptGhost rootStack
   withLsCodeRoLoaded
@@ -61,7 +82,7 @@ open CryptoVerification.LibsignalTripleRatchetRepr (
   coinsOf decryptDraws serializeAddresses serviceIdParse uuidTryParse
 )
 open CryptoVerification.SignalSession (
-  CliHooks cliExternsPlaced lsFmtWriteSym lsFormatInnerSym
+  CliHooks cliExternsPlaced lsAesDecSym lsFmtWriteSym lsFormatInnerSym
 )
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks cliGhostExterns)
 open CryptoVerification.SpqrV1.GF.Mul2U16 (tokenInitPlacedAt)
@@ -70,15 +91,15 @@ open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits FitsEnv FreeOnlyEvs RustCliAllocBudget SeqEnv
   rustAllocEvents
 )
-open LibsignalBinary.Heap.SpecBudget (
-  FmtWriteEnv FormatInnerEnv aesDecBudgetSpec fmtWriteBudgetEnvSpec formatInnerBudgetEnvSpec
+open LibsignalBinary.Heap.AesDecErrRoBudget (
+  cliAesDecBudgetSpecErrRo
 )
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TightPTrapPlacedBudget (
   fitsEnv_of_pre_P_placed onPanicTight_drop_frame onPanicTight_of_cmk_panic
   reaches_outcome_of_panicQF_PTight_placed reaches_outcome_tryDecryptSpecQF_PTight_of_afterCmk_placed
-  reaches_outcome_tryDecryptSpecQF_PTight_of_tight_placed restLen_of_pre_P_placed
-  seedsLen32_of_pre_P_placed tryDecryptPlacedSpecP tryDecryptPlacedSpecQF_PTight
-  tryDecryptPlacedTightSpec tryDecrypt_onPanicTight_of_afterCmk_placed
+  reaches_outcome_tryDecryptSpecQF_PTight_of_tight_placed remNameLen_of_pre_P_placed
+  restLen_of_pre_P_placed seedsLen32_of_pre_P_placed tryDecryptPlacedSpecP
+  tryDecryptPlacedSpecQF_PTight tryDecryptPlacedTightSpec tryDecrypt_onPanicTight_of_afterCmk_placed
 )
 open LibsignalBinary.Proofs.Cli.SpqrV1.M4.ConsumeMsgKeyTrapPlacedBudget (
   CmkSeg4Env CmkStepEnv s4DefaultEnv
@@ -103,6 +124,7 @@ open LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget (
 open LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudget (
   cmkLoopAdvanceEvs_nonempty
 )
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget (CliGhostAllocHooks)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpqrV1PlacedSeamsBudget (
   SpqrRecvBytesEnv SpqrV1PlacedSeams SpqrV1PlacedSeamsOfEnv spqrRecvBytesEnv_nonempty
@@ -126,12 +148,18 @@ open LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.DefsBudget (trApplyEnv_
 open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (
   SeamBudget TryDecryptEnvArgs tryDecryptEnvArgs
 )
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs (
+  fmtWriteProtoAddrCliLsSpec formatInnerCallCliLsSpec
+)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (
+  CliFmtWriteEnv CliFormatInnerEnv cliFmtWriteEnv_nil cliFormatInnerEnv_nil
+)
 
 /-! ## 1. Deterministic Pointer-Free `TryDecryptCliEnv` (`TryDecryptEnvArgs → List AllocEvent → Prop`) -/
 
 /-- Canonical zero-pointer lift of `TryDecryptEnvArgs` to `TryDecryptGhost`
     (`tryDecryptEnvArgs (envArgsToGhost a) = a` definitionally). -/
-def envArgsToGhost (a : TryDecryptEnvArgs) : TryDecryptGhost where
+@[expose] def envArgsToGhost (a : TryDecryptEnvArgs) : TryDecryptGhost where
   ret := 0#64
   ss := 0#64
   G := a.G
@@ -154,7 +182,7 @@ theorem tryDecryptEnvArgs_envArgsToGhost (a : TryDecryptEnvArgs) :
     `TryDecryptEnvArgs`, parameterized by `(fmtWriteEnv, RecvBytesEnv, fmtEnv)`.
     Uses `FreeOnlyEvs` on both `S1` outcomes (`fromSessionState = .error _` and `.ok _`), matching
     `ChainLookupS1ErrPlacedBudget.S1TightSeamPinnedFreePlaced` with zero existential witnesses. -/
-def TryDecryptCliEnvOf (C : Crypto) (S : SpqrModel)
+@[expose] def TryDecryptCliEnvOf (C : Crypto) (S : SpqrModel)
     (fmtWriteEnv : List AllocEvent → Prop)
     (RecvBytesEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (fmtEnv : List AllocEvent → Prop)
@@ -169,10 +197,10 @@ def TryDecryptCliEnvOf (C : Crypto) (S : SpqrModel)
         (envArgsToGhost a) (s1InitTrGhost a.G) tr0 st1)
 
 /-- Default CLI `try_decrypt_with_state` allocation-event envelope at
-    `(FmtWriteEnv, SpqrRecvBytesEnv, FormatInnerEnv)`. -/
+    `(CliFmtWriteEnv, SpqrRecvBytesEnv, CliFormatInnerEnv)`. -/
 abbrev TryDecryptCliEnv (C : Crypto) (S : SpqrModel) :
     TryDecryptEnvArgs → List AllocEvent → Prop :=
-  TryDecryptCliEnvOf C S FmtWriteEnv SpqrRecvBytesEnv FormatInnerEnv
+  TryDecryptCliEnvOf C S CliFmtWriteEnv SpqrRecvBytesEnv CliFormatInnerEnv
 
 example (C : Crypto) (S : SpqrModel) (a : TryDecryptEnvArgs)
     (herr : (Mut.exec TripleRatchet.fromSessionState a.st).1.isOk = false) :
@@ -390,6 +418,7 @@ private theorem tdp_reaches_outcome_of_s4_placed [LibsignalPlacement] {M : Alloc
     {x : TryDecryptGhost} {st_init st4 : M.σ} {trG : TrGhost}
     {tr0 : TripleRatchet (List (BitVec 8))} {st1 : SessionState (List (BitVec 8))}
     {ck : ChainKey} {r1 : RatchetState} {draws : Nat} {R : SepProp} {s0 s4 : State}
+    (hlen : x.rem.name.bytes.length ≤ 40)
     (hseeds : SeedsLen32 x.st)
     (hQ : x.st.pqRatchetState.length < 2 ^ 32)
     (hstk : rootStack ≤ s0.sp.toNat)
@@ -419,7 +448,7 @@ private theorem tdp_reaches_outcome_of_s4_placed [LibsignalPlacement] {M : Alloc
       have hfits4 : FitsEnv M lim st4 (s4Env x trG { tr0 with ratchet := r1 } ck) :=
         hb4'.fitsSeg (fun _ _ => seqEnv_append) ⟨[], freeOnlyEvs_nil⟩
       have hs4_step := hs4 x st4 trG { tr0 with ratchet := r1 } st1 ck draws (F0 ∗ R) s0 s4
-        hfits4 hs4_state hL4
+        hlen hfits4 hs4_state hL4
       dsimp only at hs4_step
       rw [hcmk] at hs4_step
       have hmodel := model_of_cmk_error (S := S) htr herc hcmk
@@ -444,7 +473,7 @@ private theorem tdp_reaches_outcome_of_s4_placed [LibsignalPlacement] {M : Alloc
       have hfits4 : FitsEnv M lim st4 (s4Env x trG { tr0 with ratchet := r1 } ck) :=
         hb4'.fitsSeg (fun _ _ => seqEnv_append) hne5
       have hs4_step := hs4 x st4 trG { tr0 with ratchet := r1 } st1 ck draws (F0 ∗ R) s0 s4
-        hfits4 hs4_state hL4
+        hlen hfits4 hs4_state hL4
       dsimp only at hs4_step
       rw [hcmk] at hs4_step
       rcases hs4_step with ⟨s5, hsteps5, ⟨evs4, trG5, hevs4, hs5_state⟩ | ⟨hpan, hq⟩⟩
@@ -580,6 +609,8 @@ theorem tryDecrypt_placed_ok_of_seams [LibsignalPlacement] {M : AllocCostModel}
     rwa [sepConj_assoc] at hpreP
   have hfits0 : FitsEnv M lim st_init (tdEnv (tryDecryptEnvArgs x)) :=
     fitsEnv_of_pre_P_placed hpre_raw
+  have hlen : x.rem.name.bytes.length ≤ 40 :=
+    remNameLen_of_pre_P_placed hpre_raw
   obtain ⟨hseeds, hchains, hstk⟩ := seedsLen32_of_pre_P_placed hpre_raw
   have hrest : x.rest.length < 2 ^ 63 := restLen_of_pre_P_placed hpre_raw
   refine reaches_outcome.of_codeLoaded fun hL => ?_
@@ -677,7 +708,7 @@ theorem tryDecrypt_placed_ok_of_seams [LibsignalPlacement] {M : AllocCostModel}
                 x trG2 { tr0 with ratchet := tr0.ratchet } st1 ck) := by
             rw [htr0_eta]; exact hb2
           exact tdp_reaches_outcome_of_s4_placed hne.toFromS4EnvsInhabited
-            herr hs4 hs5 hs6 hs7 hs8 hs9 hseeds hQ hstk htr herc hdraws hb4 hs4_state' hL4
+            herr hs4 hs5 hs6 hs7 hs8 hs9 hlen hseeds hQ hstk htr herc hdraws hb4 hs4_state' hL4
         | none =>
           unfold FromS2GenEnv at hb2
           rw [hf] at hs2_step hb2
@@ -751,7 +782,7 @@ theorem tryDecrypt_placed_ok_of_seams [LibsignalPlacement] {M : AllocCostModel}
                   (hb2.step (fun _ _ => seqEnv_append) hevs3).weaken
                     (fun _ he => fromS4GenEnv_caps hne.toFromS4EnvsInhabited hcaps4' he)
                 exact tdp_reaches_outcome_of_s4_placed hne.toFromS4EnvsInhabited
-                  herr hs4 hs5 hs6 hs7 hs8 hs9 hseeds hQ hstk htr herc rfl hb4 hs4_state hL4
+                  herr hs4 hs5 hs6 hs7 hs8 hs9 hlen hseeds hQ hstk htr herc rfl hb4 hs4_state hL4
               · exact reaches_outcome_of_panicQF_PTight_placed hsteps4 hpan
                   (onPanicTight_drop_frame hq)
 
@@ -797,7 +828,7 @@ private theorem cliSeamEnvs_inhabited (C : Crypto) (S : SpqrModel)
       Or.inl (seqEnv_append rfl rfl)⟩
   s8 x _ _ := by
     unfold s8Env
-    refine seqEnv_ne ?_ ⟨[], freeOnlyEvs_nil⟩
+    refine seqEnv_ne ?_ (seqEnv_ne ⟨[], cliFormatInnerEnv_nil⟩ ⟨[], freeOnlyEvs_nil⟩)
     unfold AesDecCtEnv
     by_cases h : x.msg.ciphertext.length = 0 ∨ x.msg.ciphertext.length % 16 ≠ 0
     · simp only [h, ↓reduceIte]; exact ⟨[], rfl⟩
@@ -868,28 +899,30 @@ private theorem fromS2_envArgsToGhost_eq (C : Crypto) (S : SpqrModel)
       x (s1InitTrGhost x.G) tr0 st1 := rfl
 
 /-- Envelope-monotonic CLI Block-`433` `tryDecryptSpecTPTightAt` for any `tdEnv` containing
-    `TryDecryptCliEnvOf`. -/
+    `TryDecryptCliEnvOf` at `(CliFmtWriteEnv, RecvBytesEnv, CliFormatInnerEnv)`. -/
 theorem tryDecryptV1_placed_ok_PTight_cli_of_tdEnv [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {InitEnv : InitialStateGhost → List AllocEvent → Prop}
     {RecvBytesEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
     {SendEnv : SendCall → List AllocEvent → Prop}
-    {fmtWriteEnv fmtEnv : List AllocEvent → Prop}
     {tdEnv : TryDecryptEnvArgs → List AllocEvent → Prop}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (ctl : BitVec 64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hAesDec : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeamsOfEnv M A lim mmpl g W InitEnv
       (fun st msg => RecvBytesEnv st.bytes msg.bytes) SendEnv)
     (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
-      (fmtWriteBudgetEnvSpec M A lim fmtWriteEnv))
+      (fmtWriteProtoAddrCliLsSpec M A lim))
     (hFmtInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
-      (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (formatInnerCallCliLsSpec M A lim))
     (hRecv_ne : ∀ stBs msgBs, ∃ evs, RecvBytesEnv stBs msgBs evs)
-    (hFmtWrite_ne : ∃ evs, fmtWriteEnv evs)
-    (hFmtInner_ne : ∃ evs, fmtEnv evs)
+    (hFmtWrite_ne : ∃ evs, CliFmtWriteEnv evs)
+    (hFmtInner_ne : ∃ evs, CliFormatInnerEnv evs)
     (htd : ∀ a evs,
-      TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) fmtWriteEnv RecvBytesEnv fmtEnv a evs →
+      TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) CliFmtWriteEnv RecvBytesEnv CliFormatInnerEnv a evs →
       tdEnv a evs) :
     subroutine_ok
       ((blkPC_434).rebase (blkPl_434).base (cliGhostExterns g (cliExternsPlaced mmpl W)))
@@ -918,12 +951,12 @@ theorem tryDecryptV1_placed_ok_PTight_cli_of_tdEnv [LibsignalPlacement] {M : All
     (s0_433_cli mmpl g W hG.extraOk ctl (spqrV1 W.C.F W.Q.K) tdEnv)
     (s1_pinned_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K) tdEnv)
     (s2_433_cli mmpl g W hG.extraOk ctl)
-    (dhStep_pinned_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K))
-    (s4_433_cli_ofEnv mmpl g W hG hFmtWrite ctl (spqrV1 W.C.F W.Q.K))
-    (pqRecv_433_cli_ofEnv mmpl g W hG hSpqr hFmtInner ctl)
-    (s6_433_cli mmpl g W hG ctl)
-    (s7_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K))
-    (aesDecrypt_433_cli mmpl g W hG hAesDec ctl (spqrV1 W.C.F W.Q.K))
+    (dhStep_pinned_433_cli mmpl g W hG hF hX hPub ctl (spqrV1 W.C.F W.Q.K))
+    (s4_433_cli_ofEnv mmpl g W hG hF hFmtWrite ctl (spqrV1 W.C.F W.Q.K) (fun _ h => h))
+    (pqRecv_433_cli_ofEnv mmpl g W hG hSpqr hFmtInner ctl (fun _ h => h))
+    (s6_433_cli mmpl g W hG hF ctl)
+    (s7_433_cli mmpl g W hG hF ctl (spqrV1 W.C.F W.Q.K))
+    (aesDecrypt_433_cli mmpl g W hG hAesDec ctl (spqrV1 W.C.F W.Q.K) hFmtInner)
     (s9_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K) tdEnv)
     (errTail_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K) tdEnv)
 
@@ -933,35 +966,44 @@ theorem tryDecryptV1_placed_ok_PTight_cli_ofEnv [LibsignalPlacement] {M : AllocC
     {InitEnv : InitialStateGhost → List AllocEvent → Prop}
     {RecvBytesEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
     {SendEnv : SendCall → List AllocEvent → Prop}
-    {fmtWriteEnv fmtEnv : List AllocEvent → Prop}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (ctl : BitVec 64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hAesDec : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
     (hSpqr : SpqrV1PlacedSeamsOfEnv M A lim mmpl g W InitEnv
       (fun st msg => RecvBytesEnv st.bytes msg.bytes) SendEnv)
     (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
-      (fmtWriteBudgetEnvSpec M A lim fmtWriteEnv))
+      (fmtWriteProtoAddrCliLsSpec M A lim))
     (hFmtInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
-      (formatInnerBudgetEnvSpec M A lim fmtEnv))
+      (formatInnerCallCliLsSpec M A lim))
     (hRecv_ne : ∀ stBs msgBs, ∃ evs, RecvBytesEnv stBs msgBs evs)
-    (hFmtWrite_ne : ∃ evs, fmtWriteEnv evs)
-    (hFmtInner_ne : ∃ evs, fmtEnv evs) :
+    (hFmtWrite_ne : ∃ evs, CliFmtWriteEnv evs)
+    (hFmtInner_ne : ∃ evs, CliFormatInnerEnv evs) :
     subroutine_ok
       ((blkPC_434).rebase (blkPl_434).base (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsmpl.base 434)
       (tryDecryptSpecTPTightAt W.C A lim ctl uuidTryParse (spqrV1 W.C.F W.Q.K)
-        (TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) fmtWriteEnv RecvBytesEnv fmtEnv)) :=
-  tryDecryptV1_placed_ok_PTight_cli_of_tdEnv mmpl g W ctl hG hAesDec hSpqr hFmtWrite hFmtInner
-    hRecv_ne hFmtWrite_ne hFmtInner_ne (fun _ _ h => h)
+        (TryDecryptCliEnvOf W.C (spqrV1 W.C.F W.Q.K) CliFmtWriteEnv RecvBytesEnv CliFormatInnerEnv)) :=
+  tryDecryptV1_placed_ok_PTight_cli_of_tdEnv mmpl g W ctl hG hF hX hPub hAesDec hSpqr
+    hFmtWrite hFmtInner hRecv_ne hFmtWrite_ne hFmtInner_ne (fun _ _ h => h)
 
 /-- Concrete placed CLI `subroutine_ok` for `tryDecryptSpecTPTightAt` on Block `433` at
     `S := spqrV1 W.C.F W.Q.K` and `tdEnv := TryDecryptCliEnv W.C (spqrV1 W.C.F W.Q.K)`. -/
 theorem tryDecryptV1_placed_ok_PTight_cli [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     (mmpl : Obj.MultiPlacement) (g : CliGhostHooks) (W : CliHooks) (ctl : BitVec 64)
-    (hG : CliGhostAllocHooks M A lim g)
-    (hAesDec : HookOk (aesDecHookMallocng mmpl W.C.D) (aesDecBudgetSpec W.C.D M A lim))
-    (hSpqr : SpqrV1PlacedSeams M A lim mmpl g W) :
+    (hG : CliGhostAllocHooks M A lim g) (hF : W.C.F = sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hAesDec : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsAesDecSym
+      (withLsRet (cliAesDecBudgetSpecErrRo W.C.D M A lim)))
+    (hSpqr : SpqrV1PlacedSeams M A lim mmpl g W)
+    (hFmtWrite : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFmtWriteSym
+      (fmtWriteProtoAddrCliLsSpec M A lim))
+    (hFmtInner : HookSat (cliGhostExterns g (cliExternsPlaced mmpl W)) lsFormatInnerSym
+      (formatInnerCallCliLsSpec M A lim)) :
     subroutine_ok
       ((blkPC_434).rebase (blkPl_434).base (cliGhostExterns g (cliExternsPlaced mmpl W)))
       (lsmpl.base 434)
@@ -986,19 +1028,19 @@ theorem tryDecryptV1_placed_ok_PTight_cli [LibsignalPlacement] {M : AllocCostMod
       dsimp only
       rw [fromS2_envArgsToGhost_eq]
       exact hseq)
-    (cliSeamEnvs_inhabited (fmtWriteEnv := FmtWriteEnv) (fmtEnv := FormatInnerEnv)
+    (cliSeamEnvs_inhabited (fmtWriteEnv := CliFmtWriteEnv) (fmtEnv := CliFormatInnerEnv)
       W.C (spqrV1 W.C.F W.Q.K)
-      spqrRecvBytesEnv_nonempty ⟨[], rfl⟩ ⟨[], rfl⟩)
+      spqrRecvBytesEnv_nonempty ⟨[], cliFmtWriteEnv_nil⟩ ⟨[], cliFormatInnerEnv_nil⟩)
     (s0_433_cli mmpl g W hG.extraOk ctl (spqrV1 W.C.F W.Q.K) (TryDecryptCliEnv W.C (spqrV1 W.C.F W.Q.K)))
     (s1_pinned_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K)
       (TryDecryptCliEnv W.C (spqrV1 W.C.F W.Q.K)))
     (s2_433_cli mmpl g W hG.extraOk ctl)
-    (dhStep_pinned_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K))
-    (s4_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K))
-    (pqRecv_433_cli mmpl g W hG hSpqr ctl)
-    (s6_433_cli mmpl g W hG ctl)
-    (s7_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K))
-    (aesDecrypt_433_cli mmpl g W hG hAesDec ctl (spqrV1 W.C.F W.Q.K))
+    (dhStep_pinned_433_cli mmpl g W hG hF hX hPub ctl (spqrV1 W.C.F W.Q.K))
+    (s4_433_cli mmpl g W hG hF ctl (spqrV1 W.C.F W.Q.K) hFmtWrite)
+    (pqRecv_433_cli mmpl g W hG hSpqr ctl hFmtInner)
+    (s6_433_cli mmpl g W hG hF ctl)
+    (s7_433_cli mmpl g W hG hF ctl (spqrV1 W.C.F W.Q.K))
+    (aesDecrypt_433_cli mmpl g W hG hAesDec ctl (spqrV1 W.C.F W.Q.K) hFmtInner)
     (s9_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K) (TryDecryptCliEnv W.C (spqrV1 W.C.F W.Q.K)))
     (errTail_433_cli mmpl g W hG ctl (spqrV1 W.C.F W.Q.K) (TryDecryptCliEnv W.C (spqrV1 W.C.F W.Q.K)))
 

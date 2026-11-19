@@ -9,16 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CommonBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Remove
-import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.CommonBudget
+import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Remove
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import ProofLib.RegChain
+import ProofLib.Sep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.ConsumeCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.Common -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `remove(p)` and `Ok(mk)` Return Block (Block 24, `+1508 .. +1916`)
@@ -27,7 +32,34 @@ Threads `A.pool lim st s`, `FreeOnlyEvs`, and `VmPreserved` across `memmove` and
 `Vec<u8>` deallocations (`cipher`, `mac`, `iv`).
 -/
 
-@[expose] public section
+section RemoveBudgetSepHelpers
+
+set_option autoImplicit false
+
+open Arm64 ProofLib
+open CryptoGames.LibsignalSession (MessageKeyGenerator)
+open CryptoVerification.RustHeap (RustAlloc vecHeader)
+open CryptoVerification.LibsignalSessionRepr (
+  MessageKeyGhost messageKeyAt messageKeyAt_eq_headers_sep_heap messageKeyHeap
+)
+
+@[sep_footprint]
+theorem stackAt_footprint (sp : BitVec 64) (n : Nat) :
+    ProofLib.Sep.HasFootprint (stackAt sp n) true (sp - BitVec.ofNat 64 n) n := by
+  unfold stackAt; infer_instance
+
+@[sep_footprint]
+theorem messageKeyAt_footprint (A : RustAlloc)
+    (gk : MessageKeyGhost × MessageKeyGenerator) (a : BitVec 64) :
+    ProofLib.Sep.HasFootprint (messageKeyAt A gk a) true a 104 where
+  owns_at x hx := by
+    have hent : messageKeyAt A gk a ⊢ memRegion a 104 ∗ messageKeyHeap A gk := by
+      rw [messageKeyAt_eq_headers_sep_heap]; unfold vecHeader; sep_interval
+    simpa using OwnsRW.of_entails hent (ownsRW_sepConj_left (ownsRW_memRegion a 104 x hx))
+
+end RemoveBudgetSepHelpers
+
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -100,10 +132,6 @@ private theorem vmPreserved_trans {s₁ s₂ s₃ : State}
 private theorem vmPreserved_hookMemmove (s : State) : VmPreserved s (hookMemmove s) := by
   dsimp only [hookMemmove, hookMemcpy, retHook]
   simp only [vmPreserved_setPC, vmPreserved_setMem_writeBytes, vmPreserved_refl_iff]
-
-private theorem pool_dealloc_reassoc (pool live mem stk slot : SepProp) :
-    (pool ∗ live ∗ mem ∗ stk ∗ slot) = ((pool ∗ live ∗ mem ∗ stk) ∗ slot) := by
-  sep_ac_rfl
 
 @[irreducible] def DeallocPlacedAt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
@@ -268,6 +296,7 @@ theorem cmk_remove_pre_memmove_placed_wp [LibsignalPlacement] {M : AllocCostMode
           ((s0.sp - 368#64) ↦₆₄ ret) ∗
           ((s0.sp - 224#64) ↦₆₄ gk.1.seed.cap) ∗
           ((s0.sp - 216#64) ↦₆₄ gk.1.seed.ptr))) := by
+  wp_disjoint _hdisj_mk_sp : DisjointRegions elemAddr 104 (s0.sp - 424#64) 8
   apply sepWP_seg_ls_vm (Q := (blkPC_24).rebase (blkPl_24).base (hooksException H))
     blkLib_eq_24 blk24_noSvc0 (mid := (blkPl_24).base + 1580#64)
   intro _m_strip
@@ -507,9 +536,10 @@ theorem cmk_dealloc_cipher_placed_wp [LibsignalPlacement] {M : AllocCostModel}
       (by simp only [wp_norm, arm64_norm, hrun]) fun _m_real _hnsp => ?_
     refine SepWP.transport_budgetPool (_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]))
       (hnext := ?_)
-    rw [pool_dealloc_reassoc]
-    refine call_dealloc_placed_wp hdealloc ptr cap.toNat 1 st
-      (s0.sp - 480#64) ((blkPl_24).base + 1668#64) ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
+    refine SepWP.weaken_pre ?_
+      (call_dealloc_placed_wp (Frame := (s0.sp - 400#64) ↦₆₄ ptr) hdealloc ptr cap.toNat 1 st
+        (s0.sp - 480#64) ((blkPl_24).base + 1668#64) ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_)
+    · bi_entail
     · simp only [wp_norm, arm64_norm]
     · simp only [wp_norm, arm64_norm, hx26]
     · simp only [wp_norm, arm64_norm]
@@ -579,9 +609,10 @@ theorem cmk_dealloc_mac_placed_wp [LibsignalPlacement] {M : AllocCostModel}
       (by simp only [wp_norm, arm64_norm, hrun]) fun _m_real _hnsp => ?_
     refine SepWP.transport_budgetPool (_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]))
       (hnext := ?_)
-    rw [pool_dealloc_reassoc]
-    refine call_dealloc_placed_wp hdealloc ptr cap.toNat 1 st
-      (s0.sp - 480#64) ((blkPl_24).base + 1704#64) ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
+    refine SepWP.weaken_pre ?_
+      (call_dealloc_placed_wp (Frame := (s0.sp - 416#64) ↦₆₄ ptr) hdealloc ptr cap.toNat 1 st
+        (s0.sp - 480#64) ((blkPl_24).base + 1704#64) ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_)
+    · bi_entail
     · simp only [wp_norm, arm64_norm]
     · simp only [wp_norm, arm64_norm, hx1]
     · simp only [wp_norm, arm64_norm]
@@ -670,9 +701,10 @@ theorem cmk_dealloc_iv_placed_wp [LibsignalPlacement] {M : AllocCostModel}
       (by simp only [wp_norm, arm64_norm, hrun]) fun _m_real _hnsp => ?_
     refine SepWP.transport_budgetPool (_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]))
       (hnext := ?_)
-    rw [pool_dealloc_reassoc]
-    refine call_dealloc_placed_wp hdealloc ptr cap.toNat 1 st
-      (s0.sp - 480#64) ((blkPl_24).base + 1752#64) ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_
+    refine SepWP.weaken_pre ?_
+      (call_dealloc_placed_wp (Frame := (s0.sp - 408#64) ↦₆₄ ptr) hdealloc ptr cap.toNat 1 st
+        (s0.sp - 480#64) ((blkPl_24).base + 1752#64) ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_)
+    · bi_entail
     · simp only [wp_norm, arm64_norm]
     · simp only [wp_norm, arm64_norm, hx1]
     · simp only [wp_norm, arm64_norm]
@@ -895,10 +927,11 @@ theorem cmk_remove_deallocVecs_placed_wp [LibsignalPlacement] {M : AllocCostMode
   rw [hevs_eq]
   refine ⟨hsp5, halign5, h19_5, h22_5, h23_5, h25_5, h26_5, h27_5, h29_5, by reg_chain,
     evs1 ++ evs3 ++ evs5, FreeOnlyEvs.append (FreeOnlyEvs.append hf1 hf3) hf5, ?_⟩
-  exact entails_of_eq (by sep_ac_rfl)
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (deallocVecs_slots_entails_memRegion_56 s0.sp gk.1.mac.ptr gk.1.iv.ptr gk.1.cipher.ptr
-        gk.1.mac.cap gk.1.iv.cap ret gk.2.counter))))
+  refine' Entails.trans (Entails.trans ?_
+    (sepConj_mono_left (deallocVecs_slots_entails_memRegion_56 s0.sp gk.1.mac.ptr gk.1.iv.ptr
+      gk.1.cipher.ptr gk.1.mac.cap gk.1.iv.cap ret gk.2.counter))) ?_
+  · bi_frame
+  · bi_entail
 
 theorem cmk_remove_write_ok_placed_wp [LibsignalPlacement] {M : AllocCostModel}
     {H : String → Option (State → State)} {A : RustCliAllocBudget M}
@@ -958,24 +991,14 @@ theorem cmk_remove_write_ok_placed_wp [LibsignalPlacement] {M : AllocCostModel}
   wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
   wp_step; wp_step; wp_step; wp_step
   wp_simp_pre only [arm64_norm]
-  refine SepWP.weaken_pre
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_right (shift_sp_256 s0.sp))))))))))) ?_
+  generalize hv : vecU8Buf A.repAlloc gk.1.seed.cap gk.1.seed.ptr gk.2.seed = vBuf
+  refine' SepWP.weaken_pre (Entails.trans ?_ (shift_sp_256 s0.sp)) ?_
+  · bi_frame
   wp_pull_exists
   wp_step; wp_step; wp_step; wp_step
   wp_simp_pre only [arm64_norm]
-  refine SepWP.weaken_pre
-    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-        (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-          (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-            (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-              (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-                (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-                  (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-                    (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right
-                      (shift_ret_68 ret))))))))))))))))))))))))))))))))))))) ?_
+  refine' SepWP.weaken_pre (Entails.trans ?_ (shift_ret_68 ret)) ?_
+  · bi_frame
   wp_pull_exists
   wp_steps
   refine SepWP.done (by simp only [wp_norm, arm64_norm, hpc])
@@ -989,7 +1012,8 @@ theorem cmk_remove_write_ok_placed_wp [LibsignalPlacement] {M : AllocCostModel}
     ⟨by simp only [wp_norm, arm64_norm], by simp only [wp_norm, arm64_norm]⟩, hvm, ?_⟩
   simp only [arm64_norm, seed_ptr_reassemble, seed_len_lo16_eq, seed_len_b2_eq, seed_len_b2_eq',
     seed_len_b3456_eq, seed_len_b7_eq]
-  exact write_ok_post_entails s0.sp ret gk
+  subst hv
+  exact entails_of_eq (by ac_rfl) (write_ok_post_entails (A := A.repAlloc) s0.sp ret gk)
 
 theorem cmk_remove_0x5e4_placed_wp [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -1030,6 +1054,7 @@ theorem cmk_remove_0x5e4_placed_wp [LibsignalPlacement] {M : AllocCostModel}
             consumeMessageKeyResultAt A.repAlloc ret (.ok gks[p].2) ∗
             ((chAddr + 64#64) ↦₆₄ BitVec.ofNat 64 (gks.length - 1)) ∗
             vecBuf A.repAlloc 104 8 (messageKeyAt A.repAlloc) mkCap mkPtr (gks.eraseIdx p))) := by
+  wp_disjoint _hdisj_sp_ret : DisjointRegions (s0.sp - 480#64) 384 ret 88
   refine SepWP.weaken_pre
     (sepConj_mono_right (sepConj_mono_right
       (sepConj_mono (memRegion_384_entails_pre_memmove_slots s0.sp)
@@ -1045,63 +1070,18 @@ theorem cmk_remove_0x5e4_placed_wp [LibsignalPlacement] {M : AllocCostModel}
     hx23_1, hx24_1, hx25_1, hx26_1, hx29_1, htr1, hvm1, hP1⟩
   refine sepWP_weaken_left hP1 ?_
   rw [← A.pool_of_vmPreserved hvm1]
-  have hre1 :
-      ((messageKeyAt A.repAlloc gks[p] (mkPtr + BitVec.ofNat 64 (p * 104)) ∗
-         ((s0.sp - 424#64) ↦₆₄ 0#64) ∗
-         ((s0.sp - 416#64) ↦₆₄ gks[p].1.mac.ptr) ∗
-         ((s0.sp - 408#64) ↦₆₄ gks[p].1.iv.ptr) ∗
-         ((s0.sp - 400#64) ↦₆₄ gks[p].1.cipher.ptr) ∗
-         ((s0.sp - 388#64) ↦₃₂ gks[p].2.counter) ∗
-         ((s0.sp - 384#64) ↦₆₄ gks[p].1.mac.cap) ∗
-         ((s0.sp - 376#64) ↦₆₄ gks[p].1.iv.cap) ∗
-         ((s0.sp - 368#64) ↦₆₄ ret) ∗
-         ((s0.sp - 224#64) ↦₆₄ gks[p].1.seed.cap) ∗
-         ((s0.sp - 216#64) ↦₆₄ gks[p].1.seed.ptr)) ∗
-       (A.pool lim st s1 ∗
-        stackAt (s0.sp - 480#64) allocHookStack ∗
-        memRegion (s0.sp - 480#64) 56 ∗
-        memRegion (s0.sp - 392#64) 4 ∗
-        memRegion (s0.sp - 360#64) 136 ∗
-        memRegion (s0.sp - 208#64) 112 ∗
-        memRegion ret 88 ∗
-        ((chAddr + 64#64) ↦₆₄ BitVec.ofNat 64 gks.length) ∗
-        ⌜gks.length ≤ mkCap.toNat ∧ mkCap.toNat * 104 < 2 ^ 63 ∧ mkPtr ≠ 0 ∧ mkCap ≠ 0⌝ ∗
-        A.repAlloc.live mkPtr (mkCap.toNat * 104) 8 ∗
-        arrayAt (messageKeyAt A.repAlloc) 104 mkPtr (gks.take p) ∗
-        arrayAt (messageKeyAt A.repAlloc) 104 (mkPtr + BitVec.ofNat 64 ((p + 1) * 104)) (gks.drop (p + 1)) ∗
-        memRegion (mkPtr + BitVec.ofNat 64 (gks.length * 104)) ((mkCap.toNat - gks.length) * 104))) =
-      ((messageKeyAt A.repAlloc gks[p] (mkPtr + BitVec.ofNat 64 (p * 104)) ∗
-        (⌜gks.length ≤ mkCap.toNat ∧ mkCap.toNat * 104 < 2 ^ 63 ∧ mkPtr ≠ 0 ∧ mkCap ≠ 0⌝ ∗
-          A.repAlloc.live mkPtr (mkCap.toNat * 104) 8 ∗
-          (arrayAt (messageKeyAt A.repAlloc) 104 mkPtr (gks.take p) ∗
-           arrayAt (messageKeyAt A.repAlloc) 104 (mkPtr + BitVec.ofNat 64 ((p + 1) * 104)) (gks.drop (p + 1))) ∗
-          memRegion (mkPtr + BitVec.ofNat 64 (gks.length * 104)) ((mkCap.toNat - gks.length) * 104))) ∗
-       memRegion (s0.sp - 360#64) 136 ∗
-       A.pool lim st s1 ∗
-       stackAt (s0.sp - 480#64) allocHookStack ∗
-       memRegion (s0.sp - 480#64) 56 ∗
-       ((s0.sp - 424#64) ↦₆₄ 0#64) ∗
-       ((s0.sp - 416#64) ↦₆₄ gks[p].1.mac.ptr) ∗
-       ((s0.sp - 408#64) ↦₆₄ gks[p].1.iv.ptr) ∗
-       ((s0.sp - 400#64) ↦₆₄ gks[p].1.cipher.ptr) ∗
-       memRegion (s0.sp - 392#64) 4 ∗
-       ((s0.sp - 388#64) ↦₃₂ gks[p].2.counter) ∗
-       ((s0.sp - 384#64) ↦₆₄ gks[p].1.mac.cap) ∗
-       ((s0.sp - 376#64) ↦₆₄ gks[p].1.iv.cap) ∗
-       ((s0.sp - 368#64) ↦₆₄ ret) ∗
-       ((s0.sp - 224#64) ↦₆₄ gks[p].1.seed.cap) ∗
-       ((s0.sp - 216#64) ↦₆₄ gks[p].1.seed.ptr) ∗
-       memRegion (s0.sp - 208#64) 112 ∗
-       memRegion ret 88 ∗
-       ((chAddr + 64#64) ↦₆₄ BitVec.ofNat 64 gks.length)) := by
-    sep_ac_rfl
-  rw [hre1]
-  refine SepWP.weaken_pre
-    (sepConj_mono (vecBuf_split_entails_remove_ready A.repAlloc mkCap mkPtr gks hp)
-      (sepConj_mono_left (memRegion_136_entails_post_memmove_slots s0.sp))) ?_
+  refine' SepWP.weaken_pre
+    (Entails.trans ?_
+      (sepConj_mono_left (vecBuf_split_entails_remove_ready A.repAlloc mkCap mkPtr gks hp))) ?_
+  · bi_frame
   wp_pull_exists
   refine SepWP.pure_elim ?_
   rintro ⟨hbs, hbs_len, hlen_le, hcap_lt, hptr_ne, hseed_ne, hcipher_lt, hseed_le, hseed_lt⟩
+  generalize hv : vecU8Buf A.repAlloc gks[p].1.seed.cap gks[p].1.seed.ptr gks[p].2.seed = vBuf
+  refine' SepWP.weaken_pre
+    (Entails.trans ?_ (sepConj_mono_left (memRegion_136_entails_post_memmove_slots s0.sp))) ?_
+  · bi_frame
+  wp_pull_exists
   have hx1_1' : s1.readReg64 .x1 = mkPtr + BitVec.ofNat 64 ((p + 1) * 104) := by
     rw [hx1_1, elemAddr_add_104]
   have hx2_1' : (s1.readReg64 .x2).toNat = (gks.length - 1 - p) * 104 := by
@@ -1130,10 +1110,12 @@ theorem cmk_remove_0x5e4_placed_wp [LibsignalPlacement] {M : AllocCostModel}
   rintro s4 P4 hpc4 hrun4
     ⟨hsp4, halign4, hx19_4, hx22_4, hx23_4, hx25_4, hx26_4, hx27_4, hx29_4, htr4, evs, hfree, hP4⟩
   refine sepWP_weaken_left hP4 ?_
+  subst hv
   wp_seq_frame
     (cmk_remove_write_ok_placed_wp (A := A) gks[p] ret s0 s4
       hpc4 hrun4 hsp4 halign4 hx19_4 hx22_4 hx23_4 hx25_4 hx26_4 hx27_4 hx29_4)
   rintro s5 P5 hpc5 hrun5 ⟨hsp5, halign5, hx29_5, htr5, hvm5, hP5⟩
+  generalize hres : consumeMessageKeyResultAt A.repAlloc ret (.ok gks[p].2) = vRes at hP5 ⊢
   refine sepWP_weaken_left hP5 ?_
   rw [← A.pool_of_vmPreserved hvm5]
   refine SepWP.done hpc5 hrun5 ?_
@@ -1141,10 +1123,13 @@ theorem cmk_remove_0x5e4_placed_wp [LibsignalPlacement] {M : AllocCostModel}
   rw [ofNat_mkLen_sub_one hp]
   have hof_rem := vecBuf_messageKeyAt_of_remove A.repAlloc mkCap mkPtr hbs hp hlen_le hcap_lt hptr_ne
   simp only [RustCliAllocBudget.repAlloc_live] at hof_rem ⊢
-  exact entails_of_eq (by sep_ac_rfl)
-    (sepConj_mono_right (sepConj_mono_right
-      (sepConj_mono (remove_final_stack_entails_memRegion_384 s0.sp
-        gks[p].1.seed.cap gks[p].1.seed.ptr gks[p].1.seed.ptr)
-        (sepConj_mono_right (sepConj_mono_right hof_rem)))))
+  generalize hvb : vecBuf A.repAlloc 104 8 (messageKeyAt A.repAlloc) mkCap mkPtr (gks.eraseIdx p) = vVecBuf at hof_rem ⊢
+  refine' Entails.trans (Entails.trans ?_
+    (sepConj_mono_left (remove_final_stack_entails_memRegion_384 s0.sp
+      gks[p].1.seed.cap gks[p].1.seed.ptr gks[p].1.seed.ptr))) ?_
+  · bi_frame
+  refine' Entails.trans (Entails.trans ?_ (sepConj_mono_left hof_rem)) ?_
+  · bi_frame
+  · bi_entail
 
 end LibsignalBinary.Proofs.ConsumeMessageKey.TakePathProofs.RemoveBudget

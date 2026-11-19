@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Fetch
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Fetch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M1Raw
 import LibsignalBinary.Specifications.AsmConstants
 import ProofLib.SepLogic.WPp
@@ -24,7 +24,7 @@ Proves `promote_matching_session_match_ok` on `tripleRatchetProgAtExt b ext` whe
 `s.aliceBaseKey = serBytes`, `serBytes.length = 33`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,6 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 open CryptoVerification.LibsignalPublicApiRepr
 open CryptoVerification.LibsignalSession
 
-attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Stack budget of `<SessionRecord>::promote_matching_session` on the matched `current_session`
@@ -81,7 +80,7 @@ structure PromoteMatchGhost where
 when `r.currentSession = some s`, `s.state.version = msgVer.zeroExtend 32`,
 `s.aliceBaseKey = serBytes`, and `serBytes.length = 33`, returns `Ok(true)`
 (`outPtr ↦₆₄ 0#64 ∗ (outPtr + 8#64) ↦₈ 1#8`) with `sessionRecordAt A recPtr g r` unchanged. -/
-def promoteMatchingSessionMatchSpec (A : RustAlloc) : Spec PromoteMatchGhost where
+@[expose] def promoteMatchingSessionMatchSpec (A : RustAlloc) : Spec PromoteMatchGhost where
   pre := fun x st =>
     ⌜st.readReg64 .x0 = x.recPtr ∧
      st.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -319,60 +318,6 @@ private theorem promoteMatch_post_entails (A : RustAlloc) (x : PromoteMatchGhost
     BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
   exact Entails.of_eq (by ac_rfl)
 
-theorem promote_matching_session_match_ok {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (h_bb : ext "subtle::black_box::<u8>" = some blackBoxHook) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr promoteMatchingSessionName)
-      (promoteMatchingSessionMatchSpec A) := by
-  refine subroutine_ok_refine_frame (promote_matching_session_raw_ok (b := b) (ext := ext) h_bb) ?_
-  intro x R s0 hpre
-  have hpre' : s0.mem ⊨
-      ⌜s0.readReg64 .x0 = x.recPtr ∧
-       s0.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
-       s0.readReg64 .x2 = x.serPtr ∧
-       s0.readReg64 .x3 = 33#64 ∧
-       s0.readReg64 .x8 = x.outPtr ∧
-       x.r.currentSession = some x.s ∧
-       x.s.state.version = x.msgVer.zeroExtend 32 ∧
-       x.s.aliceBaseKey = x.serBytes ∧
-       x.serBytes.length = 33⌝ ∗
-      ((sessionRecordAt A x.recPtr x.g x.r ∗
-        (x.serPtr ↦ₛ x.serBytes) ∗
-        memRegion x.outPtr 16 ∗
-        stackAt s0.sp promoteMatchingSessionMatchStack) ∗ R) := by
-    dsimp only [promoteMatchingSessionMatchSpec] at hpre
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre
-  rw [satisfies_pure_sepConj] at hpre'
-  obtain ⟨⟨hx0, hx1, hx2, hx3, hx8, hcur, hver, halice, hlen⟩, hpre_sp⟩ := hpre'
-  cases hgc : x.g.cur with
-  | none =>
-    exfalso
-    have hfalse : s0.mem ⊨ ⌜False⌝ ∗
-        (vecAt A 24 8 (fun (_ : Unit) _ => emp) x.recPtr x.g.prevCap x.g.prevPtr [] ∗
-         (x.serPtr ↦ₛ x.serBytes) ∗ memRegion x.outPtr 16 ∗
-         stackAt s0.sp promoteMatchingSessionMatchStack ∗ R) := by
-      simp only [sessionRecordAt, hgc, hcur] at hpre_sp
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre_sp
-    rw [satisfies_pure_sepConj] at hfalse
-    exact hfalse.1
-  | some G =>
-    refine ⟨⟨x.recPtr, G.localIk.cap, G.alice.ptr, x.s.state.sessionVersion,
-             x.msgVer, x.serPtr, x.serBytes, x.outPtr⟩,
-            promoteMatchFrame A x.recPtr x.outPtr s0.sp x.g G x.s, ?_, ?_⟩
-    · rw [← sepConj_assoc]
-      exact Satisfies.mono
-        (sepConj_mono_left
-          (promoteMatch_pre_entails A x G s0 hgc hx0 hx1 hx2 hx3 hx8 hcur hver halice hlen))
-        hpre_sp
-    · intro sf hpost
-      rw [← sepConj_assoc] at hpost
-      exact Satisfies.mono
-        (sepConj_mono_left (promoteMatch_post_entails A x G s0 sf hgc hcur halice hlen))
-        hpost
-
-/-! ## 32-bit stacked `CliExt.blackBoxSpec` generalization -/
-
 abbrev promoteMatchingSessionMatchStackExt : Nat :=
   promoteMatchingSessionMatchStack + extHookStack
 
@@ -387,7 +332,7 @@ private theorem stackAt_promoteMatchExt_split (sp : BitVec 64) :
     show (sp - 1184#64) - 16384#64 = sp - 17568#64 by bv_omega,
     show sp - 17568#64 + 16384#64 = sp - 1184#64 by bv_omega]
 
-def promoteMatchingSessionMatchSpecExt (A : RustAlloc) : Spec PromoteMatchGhost where
+@[expose] def promoteMatchingSessionMatchSpecExt (A : RustAlloc) : Spec PromoteMatchGhost where
   pre := fun x st =>
     ⌜st.readReg64 .x0 = x.recPtr ∧
      st.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
@@ -479,59 +424,5 @@ private theorem promoteMatch_post_entails_ext32 (A : RustAlloc) (x : PromoteMatc
     (sepConj_mono_left (promoteMatch_post_entails A x G s0 sf hgc hcur halice hlen)) ?_
   dsimp only [promoteMatchingSessionMatchSpec]
   exact Entails.of_eq (by ac_rfl)
-
-theorem promote_matching_session_match_ok_ext32 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (h_bb : HookSat ext "subtle::black_box::<u8>"
-      CryptoVerification.SignalSession.CliExt.blackBoxSpec) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr promoteMatchingSessionName)
-      (promoteMatchingSessionMatchSpecExt A) := by
-  refine subroutine_ok_refine_frame
-    (promote_matching_session_raw_ok_ext32 (b := b) (ext := ext) h_bb) ?_
-  intro x R s0 hpre
-  have hpre' : s0.mem ⊨
-      ⌜s0.readReg64 .x0 = x.recPtr ∧
-       s0.readReg64 .x1 = x.msgVer.zeroExtend 64 ∧
-       s0.readReg64 .x2 = x.serPtr ∧
-       s0.readReg64 .x3 = 33#64 ∧
-       s0.readReg64 .x8 = x.outPtr ∧
-       x.r.currentSession = some x.s ∧
-       x.s.state.version = x.msgVer.zeroExtend 32 ∧
-       x.s.aliceBaseKey = x.serBytes ∧
-       x.serBytes.length = 33⌝ ∗
-      ((sessionRecordAt A x.recPtr x.g x.r ∗
-        (x.serPtr ↦ₛ x.serBytes) ∗
-        memRegion x.outPtr 16 ∗
-        stackAt s0.sp promoteMatchingSessionMatchStackExt) ∗ R) := by
-    dsimp only [promoteMatchingSessionMatchSpecExt] at hpre
-    exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre
-  rw [satisfies_pure_sepConj] at hpre'
-  obtain ⟨⟨hx0, hx1, hx2, hx3, hx8, hcur, hver, halice, hlen⟩, hpre_sp⟩ := hpre'
-  cases hgc : x.g.cur with
-  | none =>
-    exfalso
-    have hfalse : s0.mem ⊨ ⌜False⌝ ∗
-        (vecAt A 24 8 (fun (_ : Unit) _ => emp) x.recPtr x.g.prevCap x.g.prevPtr [] ∗
-         (x.serPtr ↦ₛ x.serBytes) ∗ memRegion x.outPtr 16 ∗
-         stackAt s0.sp promoteMatchingSessionMatchStackExt ∗ R) := by
-      simp only [sessionRecordAt, hgc, hcur] at hpre_sp
-      exact Satisfies.mono (Entails.of_eq (by ac_rfl)) hpre_sp
-    rw [satisfies_pure_sepConj] at hfalse
-    exact hfalse.1
-  | some G =>
-    refine ⟨⟨x.recPtr, G.localIk.cap, G.alice.ptr, x.s.state.sessionVersion,
-             x.msgVer, x.serPtr, x.serBytes, x.outPtr⟩,
-            promoteMatchFrame A x.recPtr x.outPtr s0.sp x.g G x.s, ?_, ?_⟩
-    · rw [← sepConj_assoc]
-      exact Satisfies.mono
-        (sepConj_mono_left
-          (promoteMatch_pre_entails_ext32 A x G s0 hgc hx0 hx1 hx2 hx3 hx8 hcur hver halice hlen))
-        hpre_sp
-    · intro sf hpost
-      rw [← sepConj_assoc] at hpost
-      exact Satisfies.mono
-        (sepConj_mono_left (promoteMatch_post_entails_ext32 A x G s0 sf hgc hcur halice hlen))
-        hpost
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Matched

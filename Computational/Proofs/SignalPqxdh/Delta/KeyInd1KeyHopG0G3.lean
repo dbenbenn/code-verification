@@ -18,7 +18,7 @@ public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyDefs
 which assumes `CryptoWellFormedPrimitivesδ` without perfect KEM correctness.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

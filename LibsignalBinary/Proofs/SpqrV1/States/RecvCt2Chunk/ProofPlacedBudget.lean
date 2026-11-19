@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Auth.MacHdr
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceOk
 import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part1cPlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part2PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part2bPlacedBudget
@@ -21,6 +23,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part3PlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part3cPlacedBudget
 import LibsignalBinary.Proofs.TripleRatchet.Keys.Agree
 import ProofLib.SepLogic.WPp
+meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 
 /-!
 # `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`): Top-Level Budget Relocatable Verification
@@ -29,7 +32,7 @@ Composes all `RustCliAllocBudget` relocatable segments of `<EkSentCt1Received>::
 (Block `350`, `514` instructions) to prove `RecvCt2ChunkPlacedOkExt` and `RecvCt2ChunkPlacedOkX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -85,6 +88,8 @@ open LibsignalBinary.Heap (
 )
 open LibsignalBinary.Heap.RustStdAllocBudgetBridge (rustAllocShimVmSpec)
 open LibsignalBinary.Heap.SpecBudget (libcruxHmacBudgetSpec withVmPreserved)
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (mlkemDecapsAtSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SpqrV1.Alloc.ConcatBudgetAux (
   framelessMemcpyAcpSpec sessionMemcpyRegionROSpec
 )
@@ -93,19 +98,18 @@ open LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget (addChunkSpecX)
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlacedBudget (
   OptSecret32AllocEnv PolyDecodedMessagePlacedOkX RecvCt2ChunkEnv
   RecvCt2ChunkPlacedOkExt RecvCt2ChunkPlacedOkExtOfEnv
-  RecvCt2ChunkPlacedOkExtOfPrePostEnv RecvCt2ChunkPlacedOkX
-  RecvCt2ChunkPlacedOkXOfEnv RecvCt2ChunkPlacedOkXOfPrePostEnv
+  RecvCt2ChunkPlacedOkExtOfPrePostEnv
   RecvCt2PlacedAlloc RecvCt2PostDecapsEnv RecvCt2ReserveCt1Env ctLabelSym
   fitsEnv_authUpdate_of_postDecaps fitsEnv_optSecret32_of_postDecaps
   fitsEnv_reserveCt1_of_postDecaps fitsEvents_hmac_of_postDecaps
   fitsEvents_preAuth_of_postDecaps hkdfToSlice_placed_ok_of_hooks
   optSecret32AllocEnv_alloc32 optSecret32AllocEnv_nil
-  recvCt2ChunkBudgetOnPanic recvCt2ChunkEnv_of_postDecaps
-  recvCt2ChunkPlacedOkExtOfEnv_of_okX recvCt2ChunkPlacedOkExtOfPrePostEnv_of_okX
-  recvCt2ChunkPlacedOkExt_of_okX recvCt2ChunkPlacedSpecOfPrePostEnv
-  recvCt2HmacEvents recvCt2MacCt2AllocEvents recvCt2PlacedPostQOfPrePostEnv
+  recvCt2ChunkBudgetOnPanic recvCt2ChunkEnv_of_postDecaps recvCt2ChunkPlacedStack
+  recvCt2ChunkPlacedSpecExtOfPrePostEnv
+  recvCt2HmacEvents recvCt2MacCt2AllocEvents recvCt2PlacedPostQExtOfPrePostEnv
   recvCt2PlacedPostQp recvCt2PostDecapsEnv_mk recvCt2PreAuthUpdateEvents
-  sckaKeyInfoPrefixSym subroutine_ok_withLsCodeRoLoaded_rodata3_keep zeros32Sym
+  sckaKeyInfoPrefixSym sepWPp_frame_recvCt2_placed_budget_ext
+  subroutine_ok_withLsCodeRoLoaded_rodata3_keep zeros32Sym
 )
 open LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.Part1cPlacedBudget (
   recv_ct2_chunk_part1_placed_wpp_ofPrePostEnv
@@ -159,14 +163,14 @@ private theorem lt_128_of_compare_prefix_drop_bne_placed {ct2Full tag : List (Bi
   change (isNonZero 0#8 != 0#8) = true at hcmp
   revert hcmp; decide
 
-/-! ## Top-Level Composition (`recvCt2ChunkStackX = 19552`B) -/
+/-! ## Top-Level Composition (`recvCt2ChunkPlacedStack = 39360`B) -/
 
 set_option maxHeartbeats 1600000 in
 /-- Two-envelope (`PreEnv` / `PostEnv`) top-level relocatable `[LibsignalPlacement]` proof of
-    `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`, stack `recvCt2ChunkStackX`) parameterized
+    `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`, stack `recvCt2ChunkPlacedStack`) parameterized
     by `RecvCt2PlacedAlloc` and explicit callee contracts for Block `419` (`add_chunk`),
     Block `418` (`decoded_message`), and Block `379` (`hkdf_to_slice`). -/
-theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
+theorem recv_ct2_chunk_placed_ok_ext_of_contracts_ofPrePostEnv [LibsignalPlacement]
     {K : MlKem} {F : ShaCompress}
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {PreEnv PostEnv : RecvCt2ChunkGhost F → List AllocEvent → Prop}
@@ -180,36 +184,34 @@ theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
       (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
     (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhkdf : subroutine_ok ((blkPC_379).rebase (blkPl_379).base (Rust.withPanics ext))
       (blkPl_379).base
       (withLsCodeRoLoaded lsmpl (withVmPreserved (hkdfToSliceSpqrSpec (spqrHkdfWith F)))))
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkXOfPrePostEnv K F M A lim PreEnv PostEnv ext := by
-  unfold RecvCt2ChunkPlacedOkXOfPrePostEnv DefsPlacedBudget.RecvCt2ChunkPlacedOkXOfPrePostEnv
-    DefsBudget.RecvCt2ChunkPlacedOkXOfPrePostEnv
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
+    RecvCt2ChunkPlacedOkExtOfPrePostEnv K F M A lim PreEnv PostEnv ext := by
+  unfold RecvCt2ChunkPlacedOkExtOfPrePostEnv DefsPlacedBudget.RecvCt2ChunkPlacedOkExtOfPrePostEnv
   refine subroutine_ok_withLsCodeRoLoaded_rodata3_keep
     (s1 := sckaKeyInfoPrefixSym) (b1 := sckaKeyInfoPrefix)
     (s2 := zeros32Sym) (b2 := List.replicate 32 0#8)
     (s3 := ctLabelSym) (b3 := Authenticator.ctLabel)
     (by decide +kernel) (by decide +kernel) (by decide +kernel) ?_
   let roSpec : Spec (RecvCt2ChunkGhost F × M.σ) :=
-    { DefsPlacedBudget.recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim PreEnv PostEnv with
+    { DefsPlacedBudget.recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim PreEnv PostEnv with
       pre := fun (x, st) s =>
         ⌜LibsignalCodeRoLoaded lsmpl s.mem⌝ ∗
           recvCt2RoPlacedAt ∗
-          (DefsPlacedBudget.recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim PreEnv PostEnv).pre
+          (DefsPlacedBudget.recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim PreEnv PostEnv).pre
             (x, st) s
       post := fun (x, st) s0 sf =>
         recvCt2RoPlacedAt ∗
-          (DefsPlacedBudget.recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim PreEnv PostEnv).post
+          (DefsPlacedBudget.recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim PreEnv PostEnv).post
             (x, st) s0 sf }
   have hro_ok : subroutine_ok (lsProg_350 (Rust.withPanics ext)) (blkPl_350).base roSpec := by
     refine subroutine_ok_of_sepWPp_init fun ⟨x, st0⟩ R s0 hpc hrun hpre hsp => ?_
     have hsp_s0 : (s0.sp &&& 15#64 == 0#64) = true := hsp
-    dsimp only [roSpec, DefsPlacedBudget.recvCt2ChunkPlacedSpecOfPrePostEnv,
-      DefsBudget.recvCt2ChunkPlacedSpecOfPrePostEnv] at hpre
+    dsimp only [roSpec, DefsPlacedBudget.recvCt2ChunkPlacedSpecExtOfPrePostEnv] at hpre
     have hpre' : s0.mem ⊨
         ⌜LibsignalCodeRoLoaded lsmpl s0.mem⌝ ∗
           (⌜s0.readReg64 .x0 = x.outA ∧
@@ -226,7 +228,7 @@ theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
             tokenInitPlacedAt ∗
             reduceTablePlacedAt ∗
             A.pool lim st0 s0 ∗
-            stackAt s0.sp recvCt2ChunkStackX) ∗ R)) :=
+            stackAt s0.sp recvCt2ChunkPlacedStack) ∗ R)) :=
       Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpre
     rw [satisfies_pure_sepConj] at hpre'
     rcases hpre' with ⟨hinv, hpre'⟩
@@ -236,7 +238,7 @@ theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
       fun evs hevs => hfits_pre evs (hsub_pre x hevs)
     refine ⟨_, hm, ?_⟩
     change SepWPp (lsProg_350 (Rust.withPanics ext)) (s0.readReg64 .x30) s0 _
-      (recvCt2PlacedPostQOfPrePostEnv K F M A lim PreEnv PostEnv x st0 s0 R)
+      (recvCt2PlacedPostQExtOfPrePostEnv K F M A lim PreEnv PostEnv x st0 s0 R)
       (recvCt2PlacedPostQp K x s0 R)
     exact recv_ct2_chunk_part1_placed_wpp_ofPrePostEnv
       hA hadd_ok hdec_ok hdecaps x st0 s0 R
@@ -266,43 +268,45 @@ theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
         have h := fitsEnv_authUpdate_of_postDecaps hfit_post
         dsimp only [σ_dec, st_dec0]
         rwa [M.stepEvents_append] at h
+      let R' : SepProp := memRegion (s0.sp - 39360#64) 19808 ∗ R
       refine SepWPp.rw_pre ?_
-        (recv_ct2_chunk_ss_hkdf_update_placed_wpp_ofPrePostEnv hA hhkdf
-          x ss_raw ct2Full ptr_ct2 ptr_dk ptr_ct2_128 cap_ct2 c3 g_auth
-          st0 σ_dec s0 st2
-          (memRegion x.outA chunkedEkSentCt1ReceivedSize ∗
-            memRegion x.selfA chunkedEkSentCt1ReceivedSize ∗
-            ct2DeallocAt A.repAlloc cap_ct2 ptr_ct2 ∗
-            ct2DeallocAt A.repAlloc cap_dk ptr_dk ∗
-            (ptr_ct2_128 ↦ₛ ct2Full.take 128) ∗
-            A.live ptr_ct2_128 128 1 ∗
-            vecBufAt A.repAlloc (BitVec.ofNat 64 (ct2Full.length - 128)) ptr_mac (ct2Full.drop 128) ∗
-            vecU8At A.repAlloc (s0.sp - 1280#64) cap_ct1 ptr_ct1 x.self.uc.ct1 ∗
-            memRegion (s0.sp - 2000#64) 144 ∗
-            memRegion (s0.sp - 1344#64) 16 ∗
-            unusedFrameAt (s0.sp - 2496#64) ∗
-            ((s0.sp - 2496#64) ↦₆₄ 0#64) ∗
-            ((s0.sp - 2488#64) ↦₆₄ ptr_dk) ∗
-            ((s0.sp - 2480#64) ↦₆₄ BitVec.ofNat 64 ct2Full.length) ∗
-            ((s0.sp - 2464#64) ↦₆₄ cap_ct2) ∗
-            ((s0.sp - 2456#64) ↦₆₄ cap_dk) ∗
-            ((s0.sp - 2448#64) ↦₆₄ ptr_mac) ∗
-            ((s0.sp - 2440#64) ↦₆₄ ptr_ct1) ∗
-            ((s0.sp - 2432#64) ↦₆₄ x.epoch) ∗
-            polyDecoderAt A.repAlloc (s0.sp - 2424#64) receivingCt2 ∗
-            memRegion (s0.sp - 2024#64) 24 ∗
-            memRegion (s0.sp - 1856#64) 504 ∗
-            chunkAt x.chunkA x.chunk ∗
-            tokenInitPlacedAt ∗
-            reduceTablePlacedAt ∗
-            savedRegsAt s0)
-          R hss_raw_len htake128_len hroot_lt hfit_pre hfit_upd
-          hpc2 hrun2 hsp2 hsp_s0 htr2 hvregs2 hinv2
-          hx19_2 hx20_2 hx21_2 hx22_2 hx23_2 hx24_2 hx25_2 hx26_2 hx27_2 hx29_2
-          (fun st3 cap_info ptr_info ptr_ss_raw ptr_ss g_auth' evs_upd hevs_upd
-            _hptr_ss_raw_ne _hptr_ss_ne
-            hpc3 hrun3 hsp3 htr3 hvregs3 hinv3
-            hx19_3 _hx20_3 hx21_3 hx22_3 hx23_3 hx24_3 hx25_3 _hx26_3 hx27_3 hx28_3 hx29_3 => ?_))
+        (sepWPp_frame_recvCt2_placed_budget_ext
+          (recv_ct2_chunk_ss_hkdf_update_placed_wpp_ofPrePostEnv hA hhkdf
+            x ss_raw ct2Full ptr_ct2 ptr_dk ptr_ct2_128 cap_ct2 c3 g_auth
+            st0 σ_dec s0 st2
+            (memRegion x.outA chunkedEkSentCt1ReceivedSize ∗
+              memRegion x.selfA chunkedEkSentCt1ReceivedSize ∗
+              ct2DeallocAt A.repAlloc cap_ct2 ptr_ct2 ∗
+              ct2DeallocAt A.repAlloc cap_dk ptr_dk ∗
+              (ptr_ct2_128 ↦ₛ ct2Full.take 128) ∗
+              A.live ptr_ct2_128 128 1 ∗
+              vecBufAt A.repAlloc (BitVec.ofNat 64 (ct2Full.length - 128)) ptr_mac (ct2Full.drop 128) ∗
+              vecU8At A.repAlloc (s0.sp - 1280#64) cap_ct1 ptr_ct1 x.self.uc.ct1 ∗
+              memRegion (s0.sp - 2000#64) 144 ∗
+              memRegion (s0.sp - 1344#64) 16 ∗
+              unusedFrameAt (s0.sp - 2496#64) ∗
+              ((s0.sp - 2496#64) ↦₆₄ 0#64) ∗
+              ((s0.sp - 2488#64) ↦₆₄ ptr_dk) ∗
+              ((s0.sp - 2480#64) ↦₆₄ BitVec.ofNat 64 ct2Full.length) ∗
+              ((s0.sp - 2464#64) ↦₆₄ cap_ct2) ∗
+              ((s0.sp - 2456#64) ↦₆₄ cap_dk) ∗
+              ((s0.sp - 2448#64) ↦₆₄ ptr_mac) ∗
+              ((s0.sp - 2440#64) ↦₆₄ ptr_ct1) ∗
+              ((s0.sp - 2432#64) ↦₆₄ x.epoch) ∗
+              polyDecoderAt A.repAlloc (s0.sp - 2424#64) receivingCt2 ∗
+              memRegion (s0.sp - 2024#64) 24 ∗
+              memRegion (s0.sp - 1856#64) 504 ∗
+              chunkAt x.chunkA x.chunk ∗
+              tokenInitPlacedAt ∗
+              reduceTablePlacedAt ∗
+              savedRegsAt s0)
+            R' hss_raw_len htake128_len hroot_lt hfit_pre hfit_upd
+            hpc2 hrun2 hsp2 hsp_s0 htr2 hvregs2 hinv2
+            hx19_2 hx20_2 hx21_2 hx22_2 hx23_2 hx24_2 hx25_2 hx26_2 hx27_2 hx29_2
+            (fun st3 cap_info ptr_info ptr_ss_raw ptr_ss g_auth' evs_upd hevs_upd
+              _hptr_ss_raw_ne _hptr_ss_ne
+              hpc3 hrun3 hsp3 htr3 hvregs3 hinv3
+              hx19_3 _hx20_3 hx21_3 hx22_3 hx23_3 hx24_3 hx25_3 _hx26_3 hx27_3 hx28_3 hx29_3 => ?_)))
       · dsimp only [ss_raw, σ_dec, st_dec0]; sep_ac_rfl
       have hexp_ct1 :
           vecU8At A.repAlloc (s0.sp - 1280#64) cap_ct1 ptr_ct1 x.self.uc.ct1 ⊢
@@ -371,7 +375,7 @@ theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
             tokenInitPlacedAt ∗
             reduceTablePlacedAt ∗
             savedRegsAt s0)
-          R hfit_res hct1_len hcap_ct1 hle_ct1 hmax_ct1 hptr_ct1
+          R' hfit_res hct1_len hcap_ct1 hle_ct1 hmax_ct1 hptr_ct1
           hpc3 hrun3 hsp3 hsp_s0 htr3 hvregs3 hinv3
           (fun st4 cap_ct1' ptr_ct1' eRes heRes
             hcap_ct1'_ne hge1088 hmax_ct1' hptr_ct1'_ne
@@ -429,7 +433,7 @@ theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
             reduceTablePlacedAt ∗
             memRegion (s0.sp - 19552#64) 672 ∗
             savedRegsAt s0)
-          R hfit_hmac hct1_len htake128_len hmk_len hcap_ct1'_ne hge1088 hmax_ct1' hptr_ct1'_ne
+          R' hfit_hmac hct1_len htake128_len hmk_len hcap_ct1'_ne hge1088 hmax_ct1' hptr_ct1'_ne
           hpc4 hrun4 hsp4 hsp_s0 htr4 hvregs4 hinv4
           hx8_4 (by rw [hx25_4, hx25_3]) (by rw [hx28_4, hx28_3]) (by rw [hx29_4, hx29_3])
           (fun st5 eMdFree heMdFree hmk_cap_ne hmk_le hmk_max hmk_ptr_ne
@@ -488,7 +492,7 @@ theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
             reduceTablePlacedAt ∗
             memRegion (s0.sp - 19552#64) 672 ∗
             savedRegsAt s0)
-          R hepoch hadd hdec hge_not_lt hlt_max hct1_len hdk_len
+          R' hepoch hadd hdec hge_not_lt hlt_max hct1_len hdk_len
           hpc5 hrun5 hsp5 hsp_s0 htr5 hvregs5 hinv5
           (by rw [hx23_5, hx23_4, hx23_3])
           (fun st_err eTagFree heTagFree hm_le32 hcmp_err
@@ -538,7 +542,7 @@ theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
           (recv_ct2_chunk_err_placed_wpp hA x st0 σ_err receivingCt2 ct2Full ss_raw ss auth' g_auth'
             cap_ct2 ptr_ct2 cap_dk ptr_dk cap_ct1' ptr_ct1'
             cap_info ptr_info ptr_ss_raw ptr_ss ptr_mac ptr_ct2_128
-            s0 st_err R
+            s0 st_err R'
             hpost_env_err hres_err hgt128 hlt_max hss_raw_len hss_len htake128_len hrk_len hmk_len
             hmk_cap_ne hmk_le hmk_max hmk_ptr_ne
             hpc_err hrun_err hsp_err hsp_s0 htr_err hvregs_err hinv_err
@@ -602,7 +606,7 @@ theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
         refine SepWPp.rw_pre ?_
           (recv_ct2_chunk_ok_done_dealloc_placed_wpp hA x st0 σ_ok receivingCt2 ct2Full
             cap_ct2 ptr_ct2 ptr_ct2_128 ptr_mac cap_dk ptr_dk cap_ct1' ptr_ct1'
-            ptr_ss_raw cap_info ptr_info ptr_ss ss_raw ss auth' g_auth' s0 st_ok R
+            ptr_ss_raw cap_info ptr_info ptr_ss ss_raw ss auth' g_auth' s0 st_ok R'
             hfit_sec hpost_env_ok hepoch hadd hdec hge128 hlt_max hct1_len hdk_len hm_le32 hcmp_ok'
             hss_eq hauth'_eq hss_len hss_raw_len htake128_len hrk_len hmk_len
             hmk_cap_ne hmk_le hmk_max hmk_ptr_ne
@@ -623,208 +627,18 @@ theorem recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv [LibsignalPlacement]
       (lsρ sckaKeyInfoPrefixSym ↦ᵣ sckaKeyInfoPrefix)
       (lsρ zeros32Sym ↦ᵣ List.replicate 32 0#8)
       (lsρ ctLabelSym ↦ᵣ Authenticator.ctLabel)
-      ((DefsPlacedBudget.recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim PreEnv PostEnv).pre
+      ((DefsPlacedBudget.recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim PreEnv PostEnv).pre
         (x, st0) s0)
       R)) hp
   · exact Satisfies.mono (Entails.of_eq (ro3_post_assoc
       (lsρ sckaKeyInfoPrefixSym ↦ᵣ sckaKeyInfoPrefix)
       (lsρ zeros32Sym ↦ᵣ List.replicate 32 0#8)
       (lsρ ctLabelSym ↦ᵣ Authenticator.ctLabel)
-      ((DefsPlacedBudget.recvCt2ChunkPlacedSpecOfPrePostEnv K F M A lim PreEnv PostEnv).post
+      ((DefsPlacedBudget.recvCt2ChunkPlacedSpecExtOfPrePostEnv K F M A lim PreEnv PostEnv).post
         (x, st0) s0 sf)
       R)) hq
 
-/-- Single-envelope (`Env = PreEnv = PostEnv`) specialization of
-    `recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv`. -/
-theorem recv_ct2_chunk_placed_ok_of_contracts_ofEnv [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Env : RecvCt2ChunkGhost F → List AllocEvent → Prop}
-    {ext : String → Option (State → State)}
-    (hsub : ∀ (x : RecvCt2ChunkGhost F) {evs : List AllocEvent},
-      RecvCt2ChunkEnv x evs → Env x evs)
-    (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hadd_ok : subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
-      (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
-    (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
-    (hhkdf : subroutine_ok ((blkPC_379).rebase (blkPl_379).base (Rust.withPanics ext))
-      (blkPl_379).base
-      (withLsCodeRoLoaded lsmpl (withVmPreserved (hkdfToSliceSpqrSpec (spqrHkdfWith F)))))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkXOfEnv K F M A lim Env ext :=
-  recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv hsub hsub hA hadd_ok hdec_ok hdecaps hhkdf
-    hhmac
-
-/-- Canonical (`RecvCt2ChunkEnv`) top-level relocatable `[LibsignalPlacement]` proof of
-    `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`, stack `recvCt2ChunkStackX`) parameterized
-    by `RecvCt2PlacedAlloc` and explicit callee contracts. -/
-theorem recv_ct2_chunk_placed_ok_of_contracts [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hadd_ok : subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
-      (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
-    (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
-    (hhkdf : subroutine_ok ((blkPC_379).rebase (blkPl_379).base (Rust.withPanics ext))
-      (blkPl_379).base
-      (withLsCodeRoLoaded lsmpl (withVmPreserved (hkdfToSliceSpqrSpec (spqrHkdfWith F)))))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkX K F M A lim ext :=
-  recv_ct2_chunk_placed_ok_of_contracts_ofEnv (fun _ {_} h => h) hA hadd_ok hdec_ok hdecaps hhkdf
-    hhmac
-
-/-- Two-envelope (`PreEnv` / `PostEnv`) top-level relocatable `[LibsignalPlacement]` contract for
-    `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`, stack `recvCt2ChunkStackX`), discharging
-    `hkdf_to_slice` via `[HkdfPlacedHooks F (Rust.withPanics ext)]`. -/
-theorem recv_ct2_chunk_placed_ok_x_ofPrePostEnv [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {PreEnv PostEnv : RecvCt2ChunkGhost F → List AllocEvent → Prop}
-    {ext : String → Option (State → State)}
-    [HkdfPlacedHooks F (Rust.withPanics ext)]
-    (hsub_pre : ∀ (x : RecvCt2ChunkGhost F) {evs : List AllocEvent},
-      RecvCt2ChunkEnv x evs → PreEnv x evs)
-    (hsub_post : ∀ (x : RecvCt2ChunkGhost F) {evs : List AllocEvent},
-      RecvCt2ChunkEnv x evs → PostEnv x evs)
-    (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hadd_ok : subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
-      (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
-    (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkXOfPrePostEnv K F M A lim PreEnv PostEnv ext :=
-  recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv hsub_pre hsub_post hA hadd_ok hdec_ok hdecaps
-    (hkdfToSlice_placed_ok_of_hooks F) hhmac
-
-/-- Single-envelope (`Env`) top-level relocatable `[LibsignalPlacement]` contract for
-    `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`, stack `recvCt2ChunkStackX`), discharging
-    `hkdf_to_slice` via `[HkdfPlacedHooks F (Rust.withPanics ext)]`. -/
-theorem recv_ct2_chunk_placed_ok_x_ofEnv [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {Env : RecvCt2ChunkGhost F → List AllocEvent → Prop}
-    {ext : String → Option (State → State)}
-    [HkdfPlacedHooks F (Rust.withPanics ext)]
-    (hsub : ∀ (x : RecvCt2ChunkGhost F) {evs : List AllocEvent},
-      RecvCt2ChunkEnv x evs → Env x evs)
-    (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hadd_ok : subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
-      (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
-    (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkXOfEnv K F M A lim Env ext :=
-  recv_ct2_chunk_placed_ok_of_contracts_ofEnv hsub hA hadd_ok hdec_ok hdecaps
-    (hkdfToSlice_placed_ok_of_hooks F) hhmac
-
-/-- Canonical top-level relocatable `[LibsignalPlacement]` budget contract for
-    `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`, stack `recvCt2ChunkStackX`), discharging
-    `hkdf_to_slice` via `[HkdfPlacedHooks F (Rust.withPanics ext)]`. -/
-theorem recv_ct2_chunk_placed_ok_x [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    [HkdfPlacedHooks F (Rust.withPanics ext)]
-    (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hadd_ok : subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
-      (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
-    (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkX K F M A lim ext :=
-  recv_ct2_chunk_placed_ok_of_contracts hA hadd_ok hdec_ok hdecaps
-    (hkdfToSlice_placed_ok_of_hooks F) hhmac
-
-/-- Top-level relocatable `[LibsignalPlacement]` budget contract for
-    `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`, stack `recvCt2ChunkStackX`) taking
-    individual external hook and panic hypotheses directly. -/
-theorem recv_ct2_chunk_placed_ok_x_of_hooks [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    [HkdfPlacedHooks F (Rust.withPanics ext)]
-    (hadd_ok : subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
-      (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
-    (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
-    (hshim : HookSat (Rust.withPanics ext) spqrRustNoAllocShimSym rustAllocShimVmSpec)
-    (halloc : HookSat (Rust.withPanics ext) spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hallocZeroed :
-      HookSat (Rust.withPanics ext) spqrRustAllocZeroedSym (rustCliAllocBudgetSpec M A lim true))
-    (hdealloc : HookSat (Rust.withPanics ext) spqrRustDeallocSym' (rustCliDeallocBudgetSpec M A lim))
-    (hrealloc : HookSat (Rust.withPanics ext) spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmemcpy : HookSat (Rust.withPanics ext) spqrMemcpySym framelessMemcpyAcpSpec)
-    (hRO : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionROSpec)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim))
-    (h_handle_error : Rust.withPanics ext spqrHandleErrorSym = some Rust.panicked)
-    (h_assert_failed_u64 : Rust.withPanics ext spqrAssertFailedU64Sym = some Rust.panicked)
-    (h_slice_index_fail : Rust.withPanics ext spqrSliceIndexFailSym = some Rust.panicked)
-    (h_unwrap_failed : Rust.withPanics ext spqrUnwrapFailedSym = some Rust.panicked)
-    (h_panic_bounds_check : Rust.withPanics ext spqrPanicBoundsCheckSym = some Rust.panicked)
-    (h_panic_add_overflow : Rust.withPanics ext spqrPanicConstAddOverflowSym = some Rust.panicked) :
-    RecvCt2ChunkPlacedOkX K F M A lim ext :=
-  recv_ct2_chunk_placed_ok_x
-    { handleError := h_handle_error
-      assertFailedU64 := h_assert_failed_u64
-      sliceIndexFail := h_slice_index_fail
-      unwrapFailed := h_unwrap_failed
-      panicBoundsCheck := h_panic_bounds_check
-      panicConstAddOverflow := h_panic_add_overflow
-      shim := hshim
-      alloc := halloc
-      allocZeroed := hallocZeroed
-      dealloc := hdealloc
-      realloc := hrealloc
-      memcpy := hmemcpy
-      memcpyRO := hRO }
-    hadd_ok hdec_ok hdecaps hhmac
-
-/-! ## Contract-Backed Stack Lifts (`recvCt2ChunkStackExt = 20272`B) -/
-
-/-- Two-envelope (`PreEnv` / `PostEnv`) contract-backed (`recvCt2ChunkStackExt`) top-level
-    relocatable `[LibsignalPlacement]` proof of `<EkSentCt1Received>::recv_ct2_chunk`
-    (Block `350`) from explicit callee contracts. -/
-theorem recv_ct2_chunk_placed_ok_ext_of_contracts_ofPrePostEnv [LibsignalPlacement]
-    {K : MlKem} {F : ShaCompress}
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {PreEnv PostEnv : RecvCt2ChunkGhost F → List AllocEvent → Prop}
-    {ext : String → Option (State → State)}
-    (hsub_pre : ∀ (x : RecvCt2ChunkGhost F) {evs : List AllocEvent},
-      RecvCt2ChunkEnv x evs → PreEnv x evs)
-    (hsub_post : ∀ (x : RecvCt2ChunkGhost F) {evs : List AllocEvent},
-      RecvCt2ChunkEnv x evs → PostEnv x evs)
-    (hA : RecvCt2PlacedAlloc M A lim ext)
-    (hadd_ok : subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
-      (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
-    (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
-    (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
-    (hhkdf : subroutine_ok ((blkPC_379).rebase (blkPl_379).base (Rust.withPanics ext))
-      (blkPl_379).base
-      (withLsCodeRoLoaded lsmpl (withVmPreserved (hkdfToSliceSpqrSpec (spqrHkdfWith F)))))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
-    RecvCt2ChunkPlacedOkExtOfPrePostEnv K F M A lim PreEnv PostEnv ext :=
-  recvCt2ChunkPlacedOkExtOfPrePostEnv_of_okX
-    (recv_ct2_chunk_placed_ok_of_contracts_ofPrePostEnv hsub_pre hsub_post hA hadd_ok hdec_ok
-      hdecaps hhkdf hhmac)
-
-/-- Single-envelope (`Env`) contract-backed (`recvCt2ChunkStackExt`) top-level relocatable
+/-- Single-envelope (`Env`) contract-backed (`recvCt2ChunkPlacedStack`) top-level relocatable
     `[LibsignalPlacement]` proof of `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`). -/
 theorem recv_ct2_chunk_placed_ok_ext_of_contracts_ofEnv [LibsignalPlacement]
     {K : MlKem} {F : ShaCompress}
@@ -838,17 +652,17 @@ theorem recv_ct2_chunk_placed_ok_ext_of_contracts_ofEnv [LibsignalPlacement]
       (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
     (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhkdf : subroutine_ok ((blkPC_379).rebase (blkPl_379).base (Rust.withPanics ext))
       (blkPl_379).base
       (withLsCodeRoLoaded lsmpl (withVmPreserved (hkdfToSliceSpqrSpec (spqrHkdfWith F)))))
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     RecvCt2ChunkPlacedOkExtOfEnv K F M A lim Env ext :=
-  recvCt2ChunkPlacedOkExtOfEnv_of_okX
-    (recv_ct2_chunk_placed_ok_of_contracts_ofEnv hsub hA hadd_ok hdec_ok hdecaps hhkdf hhmac)
+  recv_ct2_chunk_placed_ok_ext_of_contracts_ofPrePostEnv hsub hsub hA hadd_ok hdec_ok hdecaps hhkdf
+    hhmac
 
-/-- Canonical contract-backed (`recvCt2ChunkStackExt`) top-level relocatable
+/-- Canonical contract-backed (`recvCt2ChunkPlacedStack`) top-level relocatable
     `[LibsignalPlacement]` proof of `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`). -/
 theorem recv_ct2_chunk_placed_ok_ext_of_contracts [LibsignalPlacement]
     {K : MlKem} {F : ShaCompress}
@@ -859,17 +673,17 @@ theorem recv_ct2_chunk_placed_ok_ext_of_contracts [LibsignalPlacement]
       (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
     (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhkdf : subroutine_ok ((blkPC_379).rebase (blkPl_379).base (Rust.withPanics ext))
       (blkPl_379).base
       (withLsCodeRoLoaded lsmpl (withVmPreserved (hkdfToSliceSpqrSpec (spqrHkdfWith F)))))
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     RecvCt2ChunkPlacedOkExt K F M A lim ext :=
-  recvCt2ChunkPlacedOkExt_of_okX
-    (recv_ct2_chunk_placed_ok_of_contracts hA hadd_ok hdec_ok hdecaps hhkdf hhmac)
+  recv_ct2_chunk_placed_ok_ext_of_contracts_ofEnv (fun _ {_} h => h) hA hadd_ok hdec_ok hdecaps
+    hhkdf hhmac
 
-/-- Two-envelope (`PreEnv` / `PostEnv`) contract-backed (`recvCt2ChunkStackExt`) top-level
+/-- Two-envelope (`PreEnv` / `PostEnv`) contract-backed (`recvCt2ChunkPlacedStack`) top-level
     relocatable `[LibsignalPlacement]` contract for `<EkSentCt1Received>::recv_ct2_chunk`
     (Block `350`), discharging `hkdf_to_slice` via `[HkdfPlacedHooks F (Rust.withPanics ext)]`. -/
 theorem recv_ct2_chunk_placed_ok_ext_ofPrePostEnv [LibsignalPlacement]
@@ -887,14 +701,14 @@ theorem recv_ct2_chunk_placed_ok_ext_ofPrePostEnv [LibsignalPlacement]
       (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
     (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     RecvCt2ChunkPlacedOkExtOfPrePostEnv K F M A lim PreEnv PostEnv ext :=
-  recvCt2ChunkPlacedOkExtOfPrePostEnv_of_okX
-    (recv_ct2_chunk_placed_ok_x_ofPrePostEnv hsub_pre hsub_post hA hadd_ok hdec_ok hdecaps hhmac)
+  recv_ct2_chunk_placed_ok_ext_of_contracts_ofPrePostEnv hsub_pre hsub_post hA hadd_ok hdec_ok
+    hdecaps (hkdfToSlice_placed_ok_of_hooks F) hhmac
 
-/-- Single-envelope (`Env`) contract-backed (`recvCt2ChunkStackExt`) top-level relocatable
+/-- Single-envelope (`Env`) contract-backed (`recvCt2ChunkPlacedStack`) top-level relocatable
     `[LibsignalPlacement]` contract for `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`),
     discharging `hkdf_to_slice` via `[HkdfPlacedHooks F (Rust.withPanics ext)]`. -/
 theorem recv_ct2_chunk_placed_ok_ext_ofEnv [LibsignalPlacement]
@@ -910,14 +724,14 @@ theorem recv_ct2_chunk_placed_ok_ext_ofEnv [LibsignalPlacement]
       (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
     (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     RecvCt2ChunkPlacedOkExtOfEnv K F M A lim Env ext :=
-  recvCt2ChunkPlacedOkExtOfEnv_of_okX
-    (recv_ct2_chunk_placed_ok_x_ofEnv hsub hA hadd_ok hdec_ok hdecaps hhmac)
+  recv_ct2_chunk_placed_ok_ext_of_contracts_ofEnv hsub hA hadd_ok hdec_ok hdecaps
+    (hkdfToSlice_placed_ok_of_hooks F) hhmac
 
-/-- Canonical contract-backed (`recvCt2ChunkStackExt`) top-level relocatable
+/-- Canonical contract-backed (`recvCt2ChunkPlacedStack`) top-level relocatable
     `[LibsignalPlacement]` budget contract for `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`),
     discharging `hkdf_to_slice` via `[HkdfPlacedHooks F (Rust.withPanics ext)]`. -/
 theorem recv_ct2_chunk_placed_ok_ext [LibsignalPlacement]
@@ -930,14 +744,14 @@ theorem recv_ct2_chunk_placed_ok_ext [LibsignalPlacement]
       (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)))
     (hdec_ok : PolyDecodedMessagePlacedOkX M A lim ext)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim))) :
     RecvCt2ChunkPlacedOkExt K F M A lim ext :=
-  recvCt2ChunkPlacedOkExt_of_okX
-    (recv_ct2_chunk_placed_ok_x hA hadd_ok hdec_ok hdecaps hhmac)
+  recv_ct2_chunk_placed_ok_ext_of_contracts hA hadd_ok hdec_ok hdecaps
+    (hkdfToSlice_placed_ok_of_hooks F) hhmac
 
-/-- Contract-backed (`recvCt2ChunkStackExt`) top-level relocatable `[LibsignalPlacement]` budget
+/-- Contract-backed (`recvCt2ChunkPlacedStack`) top-level relocatable `[LibsignalPlacement]` budget
     contract for `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`) taking individual external
     hook and panic hypotheses directly. -/
 theorem recv_ct2_chunk_placed_ok_ext_of_hooks [LibsignalPlacement]
@@ -957,9 +771,9 @@ theorem recv_ct2_chunk_placed_ok_ext_of_hooks [LibsignalPlacement]
     (hmemcpy : HookSat (Rust.withPanics ext) spqrMemcpySym framelessMemcpyAcpSpec)
     (hRO : HookSat (Rust.withPanics ext) spqrMemcpySym sessionMemcpyRegionROSpec)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym'
-      (libcruxHmacBudgetSpec F M A lim))
+      (withLsRet (libcruxHmacBudgetSpec F M A lim)))
     (h_handle_error : Rust.withPanics ext spqrHandleErrorSym = some Rust.panicked)
     (h_assert_failed_u64 : Rust.withPanics ext spqrAssertFailedU64Sym = some Rust.panicked)
     (h_slice_index_fail : Rust.withPanics ext spqrSliceIndexFailSym = some Rust.panicked)
@@ -967,9 +781,20 @@ theorem recv_ct2_chunk_placed_ok_ext_of_hooks [LibsignalPlacement]
     (h_panic_bounds_check : Rust.withPanics ext spqrPanicBoundsCheckSym = some Rust.panicked)
     (h_panic_add_overflow : Rust.withPanics ext spqrPanicConstAddOverflowSym = some Rust.panicked) :
     RecvCt2ChunkPlacedOkExt K F M A lim ext :=
-  recvCt2ChunkPlacedOkExt_of_okX
-    (recv_ct2_chunk_placed_ok_x_of_hooks hadd_ok hdec_ok hshim halloc hallocZeroed hdealloc
-      hrealloc hmemcpy hRO hdecaps hhmac h_handle_error h_assert_failed_u64 h_slice_index_fail
-      h_unwrap_failed h_panic_bounds_check h_panic_add_overflow)
+  recv_ct2_chunk_placed_ok_ext
+    { handleError := h_handle_error
+      assertFailedU64 := h_assert_failed_u64
+      sliceIndexFail := h_slice_index_fail
+      unwrapFailed := h_unwrap_failed
+      panicBoundsCheck := h_panic_bounds_check
+      panicConstAddOverflow := h_panic_add_overflow
+      shim := hshim
+      alloc := halloc
+      allocZeroed := hallocZeroed
+      dealloc := hdealloc
+      realloc := hrealloc
+      memcpy := hmemcpy
+      memcpyRO := hRO }
+    hadd_ok hdec_ok hdecaps hhmac
 
 end LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.ProofPlacedBudget

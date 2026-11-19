@@ -10,14 +10,14 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States1aBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.States2
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.SortedSetPtBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States1aBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.States2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Drop.Chunked
@@ -25,6 +25,7 @@ import LibsignalBinary.Proofs.SpqrV1.Drop.PolyDecoder
 import LibsignalBinary.Proofs.SpqrV1.Drop.PolyEncoder
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Specifications and Inline-Dealloc Variants for `States [local#2]` (Block `273`)
@@ -34,7 +35,7 @@ Defines `dropChunkedStatesLocal2PlacedSpec` and `dropChunkedStatesLocal2PlacedVa
 variant proofs (`keysUnsampled`, `noHeaderReceived`, `headerReceived`, `ct1Sampled`, `ct2Sampled`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -99,7 +100,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Budget-Threaded Specifications (Block `273`) -/
 
-def dropChunkedStatesLocal2PlacedSpec [LibsignalPlacement]
+@[expose] def dropChunkedStatesLocal2PlacedSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress) :
     Spec (DropChunkedStatesGhost F × M.σ) where
   pre := fun (x, st) s =>
@@ -116,7 +117,7 @@ def dropChunkedStatesLocal2PlacedSpec [LibsignalPlacement]
 
 /-- Per-variant budget-threaded specification of
 `core::ptr::drop_glue::<spqr::v1::chunked::states::States> [local#2]` (Block `273`). -/
-def dropChunkedStatesLocal2PlacedVariantSpec [LibsignalPlacement]
+@[expose] def dropChunkedStatesLocal2PlacedVariantSpec [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) {F : ShaCompress}
     (st_v : States spqrPolyApi (spqrAuthApi F)) : Spec (BitVec 64 × M.σ) where
   pre := fun (a, st) s =>

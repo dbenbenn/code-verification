@@ -9,10 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub2Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub2Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Defs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
 
 /-!
 # Placed Stage P2 Over-Path Pure Stack Floor Inequality
@@ -20,11 +23,9 @@ import Arm64.Trusted.Spec.SepLogic
 Lifts `stageP2PureAndErrStack ≤ stageP2OverPureAndErrStack` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -39,9 +40,4 @@ open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Kits
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.OverP2
 
-theorem p2_over_basePure_le_overPure_placed [LibsignalPlacement] :
-    stageP2PureAndErrStack ≤ stageP2OverPureAndErrStack :=
-  p2_over_basePure_le_overPure
-
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

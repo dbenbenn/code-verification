@@ -9,21 +9,24 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SignedAdv
-public import Computational.Proofs.E2E.SpkHop2Red
-public import Computational.Proofs.E2E.SpkLeakRedModel
+public import Computational.Proofs.E2E.SignedAdv -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop2Red -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkLeakRedModel -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.HeadlineSpkSession
 import Computational.Proofs.E2E.SpkHop1InitBridge
+import Computational.Proofs.E2E.SpkHop2
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 
 /-!
 # Leaked-SPK session chain on mixtures
 
 **Checked by Lean.** Bounds the bias of a prefix-indexed mixture of `sessionSchemeFixedSpk`
 games by that of `sessionSchemeU` plus single prefix-averaged PRF and PRG reduction advantages
-across Hops 1–3.
--/
+across Hops 1–3.-/
 
-@[expose] public section
+set_option linter.unusedSectionVars false
+
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 
@@ -33,73 +36,6 @@ open CryptoGames CryptoGames.SM CryptoGames.Ratchet CryptoGames.Ratchet.Libsigna
 open CryptoGames.LibsignalSM.Proofs CryptoVerification.E2E CryptoVerification.E2E.SpkHop2
 open CryptoGames.LibsignalSession CryptoGames.CKA LibsignalProtoCodec
 
-/-! ## Prefix integration helpers -/
-
-section Integrate
-
-theorem evalDist_bind_apply_lintegral {α : Type} (oa : ProbComp α) (f : α → ProbComp Bool)
-    (v : Bool) :
-    letI : MeasurableSpace α := ⊤
-    𝒟[oa >>= f] {v} = ∫⁻ a, 𝒟[f a] {v} ∂𝒟[oa] := by
-  let _ : MeasurableSpace α := ⊤
-  have _ : DiscreteMeasurableSpace α := ⟨fun _ => trivial⟩
-  rw [evalDist_bind_of_discrete,
-    Measure.bind_apply MeasurableSet.of_discrete Measurable.of_discrete.aemeasurable]
-
-theorem evalDist_bind_apply_le_add {α : Type} (oa : ProbComp α) (f g h : α → ProbComp Bool)
-    (c : ℝ≥0∞) (v w : Bool) (H : ∀ a, 𝒟[f a] {v} ≤ 𝒟[g a] {v} + (c + 𝒟[h a] {w})) :
-    𝒟[oa >>= f] {v} ≤ 𝒟[oa >>= g] {v} + (c + 𝒟[oa >>= h] {w}) := by
-  let _ : MeasurableSpace α := ⊤
-  have _ : DiscreteMeasurableSpace α := ⟨fun _ => trivial⟩
-  rw [evalDist_bind_apply_lintegral, evalDist_bind_apply_lintegral,
-    evalDist_bind_apply_lintegral]
-  calc ∫⁻ a, 𝒟[f a] {v} ∂𝒟[oa]
-      ≤ ∫⁻ a, (𝒟[g a] {v} + (c + 𝒟[h a] {w})) ∂𝒟[oa] := lintegral_mono H
-    _ = ∫⁻ a, 𝒟[g a] {v} ∂𝒟[oa] + (c + ∫⁻ a, 𝒟[h a] {w} ∂𝒟[oa]) := by
-      rw [lintegral_add_left Measurable.of_discrete, lintegral_add_left measurable_const,
-        lintegral_const, evalDist_apply_univ_eq_one, mul_one]
-
-theorem evalDist_bind_apply_le_add_const {α : Type} (oa : ProbComp α) (f g : α → ProbComp Bool)
-    (c : ℝ≥0∞) (v : Bool) (H : ∀ a, 𝒟[f a] {v} ≤ 𝒟[g a] {v} + c) :
-    𝒟[oa >>= f] {v} ≤ 𝒟[oa >>= g] {v} + c := by
-  let _ : MeasurableSpace α := ⊤
-  have _ : DiscreteMeasurableSpace α := ⟨fun _ => trivial⟩
-  rw [evalDist_bind_apply_lintegral, evalDist_bind_apply_lintegral]
-  calc ∫⁻ a, 𝒟[f a] {v} ∂𝒟[oa]
-      ≤ ∫⁻ a, (𝒟[g a] {v} + c) ∂𝒟[oa] := lintegral_mono H
-    _ = ∫⁻ a, 𝒟[g a] {v} ∂𝒟[oa] + c := by
-      rw [lintegral_add_right _ measurable_const, lintegral_const, evalDist_apply_univ_eq_one,
-        mul_one]
-
-theorem evalDist_bind_apply_le_const {α : Type} (oa : ProbComp α) (f : α → ProbComp Bool)
-    (c : ℝ≥0∞) (v : Bool) (H : ∀ a, 𝒟[f a] {v} ≤ c) : 𝒟[oa >>= f] {v} ≤ c := by
-  let _ : MeasurableSpace α := ⊤
-  rw [evalDist_bind_apply_lintegral]
-  calc ∫⁻ a, 𝒟[f a] {v} ∂𝒟[oa] ≤ ∫⁻ _a, c ∂𝒟[oa] := lintegral_mono H
-    _ = c := by rw [lintegral_const, evalDist_apply_univ_eq_one, mul_one]
-
-theorem hybrid_chain_le (R T a : ℕ → ℝ≥0∞) (ε : ℝ≥0∞) (n : ℕ) (h1 : ∀ k, R k ≤ a k + T k)
-    (h2 : ∀ k < n, T k ≤ R (k + 1) + ε) :
-    R 0 ≤ (∑ k ∈ Finset.range (n + 1), a k) + (n : ℝ≥0∞) * ε + T n := by
-  have hm : ∀ m ≤ n, R 0 ≤ (∑ k ∈ Finset.range m, a k) + (m : ℝ≥0∞) * ε + R m := by
-    intro m
-    induction m with
-    | zero => intro _; simp
-    | succ m ih =>
-      intro hmn
-      calc R 0 ≤ (∑ k ∈ Finset.range m, a k) + (m : ℝ≥0∞) * ε + R m := ih (by omega)
-        _ ≤ (∑ k ∈ Finset.range m, a k) + (m : ℝ≥0∞) * ε + (a m + (R (m + 1) + ε)) := by
-          gcongr
-          exact (h1 m).trans (add_le_add le_rfl (h2 m (by omega)))
-        _ = (∑ k ∈ Finset.range (m + 1), a k) + ((m + 1 : ℕ) : ℝ≥0∞) * ε + R (m + 1) := by
-          rw [Finset.sum_range_succ]; push_cast; ring
-  calc R 0 ≤ (∑ k ∈ Finset.range n, a k) + (n : ℝ≥0∞) * ε + R n := hm n le_rfl
-    _ ≤ (∑ k ∈ Finset.range n, a k) + (n : ℝ≥0∞) * ε + (a n + T n) := by gcongr; exact h1 n
-    _ = (∑ k ∈ Finset.range (n + 1), a k) + (n : ℝ≥0∞) * ε + T n := by
-      rw [Finset.sum_range_succ]; ring
-
-end Integrate
-
 /-! ## SPQR-parametric session chain on mixtures -/
 
 section MixWithSpqr
@@ -107,7 +43,7 @@ section MixWithSpqr
 variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {ℓ : ℕ}
   {PQC : Type} [SampleableType PQC]
 
-def leakAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def leakAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
     (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)
     (A : α → SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) :
@@ -115,7 +51,7 @@ def leakAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (Dh : DHFun
   prfAvg oa fun o =>
     spkLeakRed (paramsIdsWithSpqr C spqr (ida o) (idb o)) Dh encPt encT decT qep (s o) (A o)
 
-def leakUAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def leakUAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (Dh : DHFun (BitVec 256) Pt)
     (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
     (oa : ProbComp α) (ida idb : α → IdentityKey)
     (A : α → SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) :
@@ -123,7 +59,7 @@ def leakUAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (Dh : DHFu
   prfAvg oa fun o =>
     spkLeakRedU spkLeakRed (paramsIdsWithSpqr C spqr (ida o) (idb o)) Dh encPt encT decT qep (A o)
 
-def hop2PrgAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (ℓ : ℕ)
+@[expose] def hop2PrgAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (qep : ℕ) (oa : ProbComp α) (ida idb : α → IdentityKey)
     (s : α → BitVec 256) (k : ℕ)
@@ -131,7 +67,7 @@ def hop2PrgAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (ℓ : �
   prgAvg oa fun o =>
     hop2PrgRedK (paramsIdsWithSpqr C spqr (ida o) (idb o)) ℓ Dh encPt encT decT qep (s o) k (A o)
 
-def hop2PrfAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (ℓ : ℕ)
+@[expose] def hop2PrfAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ)
     (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256) (k : ℕ)
     (A : α → SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) :
@@ -140,7 +76,7 @@ def hop2PrfAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (ℓ : �
     hop2PrfRedK (paramsIdsWithSpqr C spqr (ida o) (idb o)) ℓ Dh encT decT qep (s o) k (A o)
 
 /-- Hop-2 mixture error bound using prefix-averaged PRG and PRF reductions. -/
-noncomputable def hop2TermAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (ℓ : ℕ)
+@[expose] noncomputable def hop2TermAvgWithSpqr {α : Type} (C : Crypto) (spqr : Spqr Bytes PQC) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (qep q : ℕ) (oa : ProbComp α) (ida idb : α → IdentityKey)
     (s : α → BitVec 256)
@@ -517,18 +453,5 @@ theorem boolBias_mixSpkWithSpqr_le_of_support
   exact hle
 
 end MixWithSpqr
-
-section Mix
-
-variable {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {ℓ : ℕ}
-
-variable {α : Type} (C : Crypto) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
-  (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-  (hℓ : ℓ < 2 ^ 31) (hDh : Dh.Commutes) (hX : X25519RealizesDh C Dh encPt encT)
-  (hdec : ∀ T, decT (encT T) = some T) (hz : ∀ x, Dh.dh x 0 = 0)
-  (qep q : ℕ) (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)
-  (A : α → SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) Unit Bytes)
-
-end Mix
 
 end CryptoVerification.E2E.Signed

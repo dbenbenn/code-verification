@@ -11,16 +11,20 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.HelpersBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefsBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.BaseBudget
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.HelpersBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersXBudget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `SessionRecord::serialize` (`Prev1`) Body Specs and Helpers
@@ -30,7 +34,7 @@ Budget-threaded (`RustCliAllocBudget M`) body contract `serializePrev1BodySpecX`
 `SessionRecord::serialize` on a record with one previous session.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -107,7 +111,7 @@ theorem rustLayoutOk_24_8_ser : RustLayoutOk 24 8 :=
 
 /-- Budget-threaded body contract for `SessionRecord::serialize` on a record with current session
 `x.sess` (ghost `x.G`) and `previous_sessions = [x.enc]` under `SerializePrev1Env`. -/
-def serializePrev1BodySpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def serializePrev1BodySpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SerializePrev1BodyGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧
@@ -127,7 +131,7 @@ def serializePrev1BodySpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-! ## Lifted Callee Contracts at `serializeSubStackX` -/
 
-def vecVecClone1SubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def vecVecClone1SubSpecX (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (VecVecClone1Ghost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧ s.readReg64 .x2 = 1#64 ∧

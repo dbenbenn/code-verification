@@ -9,11 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathCPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PollPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PathCPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonStage2PollPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
 
 /-!
 # Budget-Threaded Stage P2 Umbrella and `decPkOverDef` Lift for Non-Canonical Wire Encodings
@@ -23,7 +31,7 @@ instantiation, and lifts `StageP2PathCOverQpanCliD3PlacedBudgetStmt` onto `decPk
 (`stageP2Over_qpan_cli_d3_placed_of_pathC` and its `[LibsignalFullPlacement]` variants).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -168,7 +176,7 @@ inductive StageP2OverErrD3Placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded general-`Qpan` CPS Stage P2 (`+0x0868 → +0x1778`) statement for `decPkOverDef`
 under `DecPkOkD3` and `[LibsignalPlacement]`. -/
-def StageP2OverQpanCliD3PlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2OverQpanCliD3PlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (P2OverErrEnv P2OverOkEnv :
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop) : Prop :=
@@ -328,12 +336,16 @@ abbrev stageP2_pathC_over_qpan_cli_d3_full_placedBudget :=
 
 /-- `LibsignalFrozen`-guarded general-`Qpan` CPS Stage P2 (`+0x0868 → +0x1778`) statement for
 `decPkOverDef` under `DecPkOkD3` and `[LibsignalPlacement]`. -/
-def StageP2OverQpanCliD3FrozenPlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2OverQpanCliD3FrozenPlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (P2OverErrEnv P2OverOkEnv :
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop) : Prop :=
   ∀ (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
-    (W : CliHooks) (B : RunBudgets) (S : RunSem)
+    (W : CliHooks),
+    W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+    ∀ (B : RunBudgets) (S : RunSem)
     {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A lim DecPkEnv B S))
@@ -462,12 +474,12 @@ theorem stageP2Over_qpan_cli_d3_full_placed_of_pathC [LibsignalPlacement] {M : A
       RunHooksPlaced A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)) →
       PromoteOverGenPlacedWithEnvProp M A lim PromEnv (cliGhostExterns gh (cliExternsPlaced mmpl W))) :
     StageP2OverQpanCliD3FrozenPlacedBudgetStmt A lim P2OverErrEnv P2OverOkEnv := by
-  intro X mmpl gh W B S DecPkEnv Scope y st_b r s_old g1 s0 s1 sp rngPtr v_a8 v_b8 v_d0 Q Qpan
+  intro X mmpl gh W hF hX hDecaps B S DecPkEnv Scope y st_b r s_old g1 s0 s1 sp rngPtr v_a8 v_b8 v_d0 Q Qpan
     hh hfits hcoins hd3False hsub hfPeer hload hcur hnot htrust hg1
     hfs hCode1 htr01 hsp1 hsp0 hsp_sub hpc1 hrun1 halign1 hregs1 herr hok
   have hr_scope : scopeIn r :=
     hsub r (scope_of_loadRec_some hfPeer hload)
-  exact hPathC X mmpl gh W B S Scope y st_b g1 r s_old s0 s1 sp rngPtr v_a8 v_b8 v_d0 Q Qpan
+  exact hPathC X mmpl gh W hF hX hDecaps B S Scope y st_b g1 r s_old s0 s1 sp rngPtr v_a8 v_b8 v_d0 Q Qpan
     (hPromMiss mmpl gh W) (hPromOver mmpl gh W hh) hh hfits hcoins hd3False
     hsub hfPeer hcur hr_scope hnot htrust hg1
     hfs hCode1 htr01 hsp1 hsp0 hsp_sub hpc1 hrun1 halign1 hregs1
@@ -490,7 +502,7 @@ abbrev stageP2_pathC_over_qpan_cli_d3_at_full_placedBudget :=
 
 /-- Pointwise `(X, mmpl, gh, W)` `LibsignalFrozen`-guarded general-`Qpan` CPS Stage P2
 (`+0x0868 → +0x1778`) statement for `decPkOverDef` under `DecPkOkD3` and `[LibsignalPlacement]`. -/
-def StageP2OverQpanCliD3FrozenAtPlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2OverQpanCliD3FrozenAtPlacedBudgetStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (X : UnreachedPqxdhPrimitives) (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
     (W : CliHooks)

@@ -9,27 +9,48 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3PollRejectAuxPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3V3RejectPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2ArmsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2KitsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemRejectPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.ResponderCanonicalPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Agree
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemEnvAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2KitsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemRejectPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.ResponderCanonicalPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Agree -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2PurePlacedBudgetSat
-import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.Open
+import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.OpenDeserId
+import LibsignalBinary.Proofs.E2E.Seed.Defs
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPathAPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3PollRejectAuxPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3V3PathAKitsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3V3RejectPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2ArmsPlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInstPlacedBudgetAux
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.StagesOverCliPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMain
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1AgreePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Base
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlacedBudget
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1KitsPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.TripleRatchet.ChainKey.MessageKeys
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import ProofLib.SepLogic.WPp
 
 /-!
 # Budget-Threaded Stage-P2 and Poll Bad-KEM Rejection
@@ -39,7 +60,7 @@ contract on `stageP1ProgPlaced`, and `[LibsignalFullPlacement]` Stage-P2 and pol
 rejection theorems for `MsgCondBadKem`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -149,7 +170,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget (sessionMemcpyBudgetS
 
 /-- Spatial inner frame preserved across Stage-P2 bad-KEM Path-A and Over-Path-C runs under
 `A.repAlloc`. -/
-def badKemInnerFramePlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def badKemInnerFramePlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) {lim : BudgetLimits}
     {DecPkEnv : DecPkGhost → List AllocEvent → Prop} {B : RunBudgets} {S : RunSem}
     (y : DpPollGhostStateBudget (dpSlotPollKStatePlaced A lim DecPkEnv B S))
@@ -227,15 +248,14 @@ theorem cliInitBob_badKem_errOwned_full_placed_ok_on_stageP1 [LibsignalFullPlace
       (lsmpl.base 75)
       (LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudget.initializeBobSessionBadKemErrOwnedFrozenPlacedSpec
         A lim (fun _ => PqxdhAcceptBadKemErrEnv)) := by
-  let ext := cliGhostExterns gh (cliExternsPlaced mmpl W)
-  have hWF := CryptoVerification.SignalSession.Cli.RunProofs.Poll.cliModelPrims_structural X W
-  have hP := CryptoVerification.SignalSession.Cli.RunProofs.Poll.cliModelPrims_matchCrypto X W
-  have hH :=
-    LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlacedBudget.cliResponderPqxdhHookContractsPlaced
-      X mmpl gh W hG
+  let WRef : CliHooks := { W with C := { W.C with X := CryptoGames.RFC7748.x25519Ref } }
+  have hext_eq : cliExternsPlaced mmpl W = cliExternsPlaced mmpl WRef := rfl
+  rw [hext_eq]
+  let ext := cliGhostExterns gh (cliExternsPlaced mmpl WRef)
+  have hWF := CryptoVerification.SignalSession.Cli.RunProofs.Poll.cliModelPrims_structural X WRef
   have h_memcpy : HookSat ext lsMemcpySym
       LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.framelessMemcpySpec := by
-    have hvm := cliExternsPlaced_framelessMemcpy_budget_sat mmpl gh W hG
+    have hvm := cliExternsPlaced_framelessMemcpy_budget_sat mmpl gh WRef hG
     rcases hvm with ⟨f, hf, hok⟩
     refine ⟨f, hf, fun x R s0 hrun hpre hsp => ?_⟩
     rcases hok x R s0 hrun hpre hsp with ⟨hkf, hsym, ⟨hret, hcc, hpost⟩ | hrest⟩
@@ -251,15 +271,28 @@ theorem cliInitBob_badKem_errOwned_full_placed_ok_on_stageP1 [LibsignalFullPlace
       exact ⟨⟨hpost.2.1.1, hpost.2.1.2, hpost.1⟩, hpost.2.2⟩
     · exact ⟨hkf, hsym, Or.inr hrest⟩
   have h79 :=
-    LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudget.pqxdhAccept_badKem_err_owned_placed_ok_of_block
+    LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudget.pqxdhAccept_badKem_err_owned_dalek_placed_ok_of_block
       (callerProg := CryptoVerification.lsProg_75 ext) (i := 75)
       hWF
       (LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.ResponderCanonicalPlacedBudget.ecPubKeyIsCanonical_responder_placed_ok_cl
-        hWF hH.dalekMontToEd hH.dalekTorsionFree)
-      (hH.calculateAgreement_ok hP)
+        hWF
+        (LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlacedBudget.cliModelPrims_curveSound
+          X WRef)
+        (LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget.cliGhostExterns_toEdwards_budget_sat
+          gh (cliExternsPlaced mmpl WRef) hG.extraOk)
+        (LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget.cliGhostExterns_torsionFree_budget_sat
+          gh (cliExternsPlaced mmpl WRef) hG.extraOk))
+      (LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlacedBudget.cliPqxdhCalculateAgreement_placed_ok
+        X mmpl gh WRef hG rfl)
       (LibsignalBinary.Proofs.E2E.Pqxdh.Shared.AllocAndVecPlacedBudget.vecAppendElements_fast_placed_ok_cl
         h_memcpy)
-      hH.noAllocShim hH.alloc hH.dealloc h_memcpy
+      (LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1BasePlacedBudget.cliExternsPlaced_noAllocShimBudget_sat
+        mmpl gh WRef hG.shim_eq)
+      (LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget.cliExternsPlaced_alloc_budget_sat
+        mmpl gh WRef hG)
+      (LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget.cliExternsPlaced_dealloc_budget_sat
+        mmpl gh WRef hG)
+      h_memcpy
   have h75 :=
     LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudget.initializeBobSession_badKem_errOwned_frozen_placed_ok_of_accept
       h79
@@ -270,7 +303,7 @@ theorem cliInitBob_badKem_errOwned_full_placed_ok_on_stageP1 [LibsignalFullPlace
   refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
   have hsub : ∀ evs,
       LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudget.AcceptBadKemEnv
-        (ofSignalPqxdhPrimitives (modelPrims X ⟨W.C, W.Q⟩)) x.1.inp evs →
+        (ofSignalPqxdhPrimitives (modelPrims X ⟨WRef.C, WRef.Q⟩)) x.1.inp evs →
       PqxdhAcceptBadKemErrEnv evs := by
     rintro _ rfl
     exact acceptBadKemEvents_mem_pqxdhAcceptBadKemErrEnv _ x.1.inp
@@ -865,7 +898,7 @@ private theorem r20f_toSkeletonRunHooksPlaced [LibsignalPlacement] {M : AllocCos
   { alloc := hh.alloc, allocFs := hh.allocFs, panics := hh.panics, memcpyRO := hh.memcpyRO,
     bcmp := hh.bcmp, fs := hh.fs, utf8 := hh.utf8, memrchr := hh.memrchr,
     codecHooks := hh.codecHooks, allocZeroed := hh.allocZeroed, stringClone := hh.stringClone,
-    formatInner := hh.formatInner, blackBox := hh.blackBox }
+    formatInner := hh.formatInner, fmtWrite := hh.fmtWrite, blackBox := hh.blackBox }
 
 private def r20a6w_dummyExtras : UnreachedPqxdhPrimitives :=
   ⟨fun _ => [], fun _ _ _ => [], fun _ _ => [], fun _ _ => [], fun _ => ([], []),
@@ -890,11 +923,13 @@ private theorem r20a6w_acceptKeys_ne_none (W : CliHooks) (inp : AcceptKeysInput)
     try (unfold WellSizedAcceptKeysInput at hwell)
     try (cases hwell)
     tauto
+  unfold r20a6w_alwaysSomePrims
+  generalize ofSignalPqxdhPrimitives (modelPrims r20a6w_dummyExtras ⟨W.C, W.Q⟩) = base
   cases hopk1 : inp.hdr.opkId? <;> cases hopk2 : inp.opkBSk?
-  · simp [acceptKeys, r20a6w_alwaysSomePrims, dhOptNonZero, htrust, hrep, hik, hek, hopk1, hopk2]
+  · simp [acceptKeys, dhOptNonZero, htrust, hrep, hik, hek, hopk1, hopk2]
   · simp [hopk1, hopk2] at hopk
   · simp [hopk1, hopk2] at hopk
-  · simp [acceptKeys, r20a6w_alwaysSomePrims, dhOptNonZero, htrust, hrep, hik, hek, hopk1, hopk2]
+  · simp [acceptKeys, dhOptNonZero, htrust, hrep, hik, hek, hopk1, hopk2]
 
 private theorem r20a6w_hookSat_noAllocShimBudget {H : String → Option (State → State)}
     (hsat : HookSat H lsRustNoAllocShimSym (withVmPreserved noAllocShimSpec)) :
@@ -1412,7 +1447,7 @@ private theorem r20a6w_stageP2_badKem_reject_body [LibsignalFullPlacement]
       (Nat.le_trans (p2_callStack_le_v1CallStack _ _ _ _) hstk)
       hsame_le
       (Nat.le_trans LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopSub5PlacedBudget.p2_badKem_entry_le_stageP2bStack
-        (Nat.le_trans LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget.p2_stageP2bStack_le_bobV1
+        (Nat.le_trans (Nat.le_add_right _ 1792)
           (Nat.le_trans (p2_bobStack_le_v1CallStack _ _ _ _) hstk)))
       st1 s0 s1 (badKemInnerFramePlacedBudget A y kp rngPtr sp ∗ Fr_p2) _
       sp fp y.fut y.cx y.out y.g.msgA y.g.msgG.kyberPtr y.g.peerA y.g.meA
@@ -1627,7 +1662,7 @@ private theorem r20a6w_stageP2_badKem_reject_body [LibsignalFullPlacement]
         (Nat.le_trans (p2_over_pure_le_v1CallStack _ _ _ _) hstk))
       hsame_le
       (Nat.le_trans LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopSub5PlacedBudget.p2_badKem_entry_le_stageP2bStack
-        (Nat.le_trans LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget.p2_stageP2bStack_le_bobV1
+        (Nat.le_trans (Nat.le_add_right _ 1792)
           (Nat.le_trans (p2_bobStack_le_v1CallStack _ _ _ _)
             (Nat.le_trans (p2_over_baseV1Call_le_v1CallStack _ _ _ _) hstk))))
       st1 s0 s1 (badKemInnerFramePlacedBudget A y kp rngPtr sp ∗ Fr_p2) _

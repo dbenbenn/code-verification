@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsgPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsgPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hse2Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hse3Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsePlaced
@@ -19,6 +19,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsh
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hshPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsiPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 2 (`HeaderSent`, `+508`) — Part J
@@ -27,7 +28,7 @@ Relocatable Block-`333` `+9036 -> ret` continuation (`sendingEk = some pbEnc`) f
 `InnerState.headerSent`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,7 +67,7 @@ set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
 
 attribute [local irreducible]
-  Program.fetch Program.externAt? Program.fnOff libsignalSessionCode
+  Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_333
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append

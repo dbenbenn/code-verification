@@ -9,14 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Mark
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1RemovePlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1Mark
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP4Prev1RemovePlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Bin.Hooks
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyber
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.HeapDefs
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveId
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4SaveIdPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4UnwindPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34Defs
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Placed Stage P4.2 (`mark_kyber_pre_key_used`) on 1-Element `previous_sessions`
@@ -25,7 +34,7 @@ Proves `[LibsignalPlacement]` Substage P4.2 (`mark_kyber_pre_key_used`) over a 1
 `previous_sessions` vector `prevVecAt [enc]` on `lsProg_518 ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -62,7 +71,7 @@ attribute [-arm64_norm]
   CryptoVerification.SpqrV1.Kdf.HkdfToSliceProof.sp_add_neg96_eq_hsp_592
 
 /-- Spatial resources preserved across placed Substage P4.2 over `prevVecAt [enc]`. -/
-def stageP4MarkKyberPrev1SharedPlaced {A : RustAlloc}
+@[expose] def stageP4MarkKyberPrev1SharedPlaced {A : RustAlloc}
     (kpkKit : KyberPreKeyStoreSpec A 0#64) (s0 s : State)
     (msgPtr : BitVec 64) (baseKey : PublicKey) : SepProp :=
   ((msgPtr + 0xa8#64) ↦ₛ baseKey.bytes.toList) ∗
@@ -74,7 +83,7 @@ def stageP4MarkKyberPrev1SharedPlaced {A : RustAlloc}
   stackAt s.sp (markKyberCallStack kpkKit)
 
 /-- Precondition of placed Substage P4.2 at `0#64 + kpkKit.markShimOff` over `prevVecAt [enc]`. -/
-def stageP4MarkKyberPrev1PrePlaced {A : RustAlloc}
+@[expose] def stageP4MarkKyberPrev1PrePlaced {A : RustAlloc}
     (kpkKit : KyberPreKeyStoreSpec A 0#64) (s0 s : State)
     (coroPtr msgPtr outPtr kyberStorePtr prevCap prevPtr ptCap ptPtr : BitVec 64)
     (b_2c0 : BitVec 8) (pt enc : List (BitVec 8))
@@ -96,7 +105,7 @@ def stageP4MarkKyberPrev1PrePlaced {A : RustAlloc}
   kpkKit.storeAt kyberStorePtr kst0
 
 /-- Postcondition of placed Substage P4.2 after `Ok(())` and future deallocation. -/
-def stageP4MarkKyberPrev1OkPostPlaced {A : RustAlloc}
+@[expose] def stageP4MarkKyberPrev1OkPostPlaced {A : RustAlloc}
     (kpkKit : KyberPreKeyStoreSpec A 0#64) (s0 s : State)
     (coroPtr msgPtr outPtr kyberStorePtr prevCap prevPtr ptCap ptPtr : BitVec 64)
     (kyberPreKeyId signedPreKeyId : BitVec 32)
@@ -120,7 +129,7 @@ def stageP4MarkKyberPrev1OkPostPlaced {A : RustAlloc}
   kpkKit.storeAt kyberStorePtr (kpkKit.markUpdate kst0 kyberPreKeyId signedPreKeyId baseKey (.ok ()))
 
 /-- Postcondition of placed Substage P4.2 on `Err(e)` at `s0.readReg64 .x30`. -/
-def stageP4MarkKyberPrev1ErrPostPlaced {A : RustAlloc}
+@[expose] def stageP4MarkKyberPrev1ErrPostPlaced {A : RustAlloc}
     (kpkKit : KyberPreKeyStoreSpec A 0#64) (s0 s : State)
     (coroPtr msgPtr outPtr kyberStorePtr : BitVec 64)
     (kyberPreKeyId signedPreKeyId : BitVec 32)

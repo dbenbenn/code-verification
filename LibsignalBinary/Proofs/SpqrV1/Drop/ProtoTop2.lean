@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChain -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoChunked2
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 /-!
 # Drop Glue for `Option<v1_state::InnerState>` (Loop Variants) and `PqRatchetState`
@@ -63,7 +63,7 @@ attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_t
 
 /-! ## Layout Coincidence of `Ct1Sent` and `Ct1SentEkReceived` (`128` B) -/
 
-def ct1SentToCt1SentEkReceived (st : V1State.Unchunked.Ct1Sent) :
+@[expose] def ct1SentToCt1SentEkReceived (st : V1State.Unchunked.Ct1Sent) :
     V1State.Unchunked.Ct1SentEkReceived :=
   { es := st.hdr, ek := st.es, ct1 := st.ct1, auth := st.auth, epoch := st.epoch }
 
@@ -131,122 +131,6 @@ local macro "opt_proto_loop_steps " entry:term:max bodyOff:term:max hdrOff:term:
           rw [← hsplit]; exact Nat.le_of_lt (Nat.lt_trans hlen (by decide))
         rw [sep_rejoin_loop, hsplit, ProofLib.memRegion_split cur 24 ((bs2 :: tl2).length * 24) hbound]
         exact Entails.refl _))
-
-private theorem drop_opt_proto_inner_state_body_192 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (bs : List (BitVec 8)) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + 204#64 →
-      s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap →
-      s.readReg64 .x21 = cnt → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext)
-        ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + 192#64) s
-        (vecU8 A cur bs ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm =>
-          (Pm ⊢ memRegion cur 24 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap ∧
-          sm.readReg64 .x21 = cnt ∧ sm.readReg64 .x22 = cur + 8#64) := by
-  simp only [rustDeallocSpec] at hdealloc
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, BitVec.ofNat_eq_ofNat] at *
-  code_fetches_sym_top libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext)
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" 692
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches
-  opt_proto_body_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry 192#64
-
-private theorem drop_opt_proto_inner_state_loop_192 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List (List (BitVec 8))) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 24 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + 204#64 →
-      s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap →
-      s.readReg64 .x21 = BitVec.ofNat 64 rest.length → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext)
-        ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + 444#64) s
-        (arrayAt (fun bs addr => vecU8 A addr bs) 24 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm =>
-          (Pm ⊢ memRegion cur (rest.length * 24) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap) := by
-  have hbody := drop_opt_proto_inner_state_body_192 (b := b) (ext := ext) hdealloc s0 fsp ptsPtr ptsCap hfsp_align
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, BitVec.ofNat_eq_ofNat] at *
-  code_fetches_sym_top libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext)
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" 692
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches
-  opt_proto_loop_steps entry 192#64 204#64
-
-private theorem drop_opt_proto_inner_state_body_408 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (cur cnt : BitVec 64) (bs : List (BitVec 8)) (s : State) (Frame : SepProp),
-      s.pc = (dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + 420#64 →
-      s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap →
-      s.readReg64 .x21 = cnt → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext)
-        ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + 408#64) s
-        (vecU8 A cur bs ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm =>
-          (Pm ⊢ memRegion cur 24 ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap ∧
-          sm.readReg64 .x21 = cnt ∧ sm.readReg64 .x22 = cur + 8#64) := by
-  simp only [rustDeallocSpec] at hdealloc
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, BitVec.ofNat_eq_ofNat] at *
-  code_fetches_sym_top libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext)
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" 692
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches
-  opt_proto_body_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry 408#64
-
-private theorem drop_opt_proto_inner_state_loop_408 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp ptsPtr ptsCap : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true) :
-    ∀ (rest : List (List (BitVec 8))) (cur : BitVec 64) (s : State) (Frame : SepProp),
-      rest ≠ [] → rest.length * 24 < 2 ^ 63 →
-      s.pc = (dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + 420#64 →
-      s.status = .Running → Saved48Preserved s0 s fsp →
-      s.readReg64 .x19 = ptsPtr → s.readReg64 .x20 = ptsCap →
-      s.readReg64 .x21 = BitVec.ofNat 64 rest.length → s.readReg64 .x22 = cur + 8#64 →
-      SepWP (dropProgAtExt b ext)
-        ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName + 444#64) s
-        (arrayAt (fun bs addr => vecU8 A addr bs) 24 cur rest ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame)
-        (fun sm Pm =>
-          (Pm ⊢ memRegion cur (rest.length * 24) ∗ A.pool ∗ stackAt fsp allocHookStack ∗ Frame) ∧
-          Saved48Preserved s0 sm fsp ∧ sm.readReg64 .x19 = ptsPtr ∧ sm.readReg64 .x20 = ptsCap) := by
-  have hbody := drop_opt_proto_inner_state_body_408 (b := b) (ext := ext) hdealloc s0 fsp ptsPtr ptsCap hfsp_align
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, BitVec.ofNat_eq_ofNat] at *
-  code_fetches_sym_top libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext)
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" 692
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches
-  opt_proto_loop_steps entry 408#64 420#64
 
 section PlacedLoops
 variable [LibsignalPlacement] {A : RustAlloc} {H : String → Option (State → State)}
@@ -459,41 +343,6 @@ local macro "opt_proto_ct1Acknowledged_steps " entry:term:max jtExp:term:max : t
           wp_call hdealloc_raw (g.ptr, g.cap.toNat * 24, 8)
           refine SepWP.focus_weaken (Entails.of_eq (stackAt_dropStack96_split_bottom s0.sp).symm) (by sep_focus) ?_; wp_done))
 
-theorem drop_opt_proto_inner_state_ct1Acknowledged {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext)
-    (st : V1State.Chunked.Ct1Acknowledged) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.ct1Acknowledged st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_stub% "__rustc::__rust_dealloc") (by decide)) hdealloc
-  have hct1_sent : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>"))
-      (dropProtoUnchunkedCt1SentEkReceivedSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>")) (b := b) (X := Rust.withPanics ext)
-      dropOptProtoInnerState_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>") (by decide))
-    (drop_proto_unchunked_ct1_sent_ek_received_ok_ext hdealloc)
-  have hloop := drop_opt_proto_inner_state_loop_192 (b := b) (ext := ext) hdealloc_raw
-  simp only [rustDeallocSpec] at hdealloc_raw
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropOptProtoInnerStateName + 68#64) &&&
-        0xfffffffffffff000#64) = b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := fnAddr_adrp_4c118
-  code_fetches_sym_top libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext)
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" 692
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt,
-    protoInnerStateAt, protoChunkedCt1AcknowledgedAt, optProtoInnerStateJumpTableAt,
-    optProtoInnerStateJumpTableBytes, optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hdealloc_raw hct1_sent hloop hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  opt_proto_ct1Acknowledged_steps entry (optProtoInnerStateJumpTableExpanded b)
-
 theorem drop_opt_proto_inner_state_ct1Acknowledged_placed [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
     (hdealloc : subroutine_ok ((blkPC_267).rebase (blkPl_267).base H)
@@ -682,50 +531,6 @@ local macro "opt_proto_ct1Sampled_steps " entry:term:max jtExp:term:max : tactic
             wp_call hdealloc_raw (g.ptr, g.cap.toNat * 24, 8)
             refine SepWP.focus_weaken (Entails.of_eq (stackAt_dropStack96_split_bottom s0.sp).symm) (by sep_focus) ?_; wp_done))
 
-theorem drop_opt_proto_inner_state_ct1Sampled {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext)
-    (st : V1State.Chunked.Ct1Sampled) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateVariantSpec A b (some (.ct1Sampled st))) := by
-  simp only [dropOptProtoInnerStateVariantSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext) dropOptProtoInnerState_fnOff (ls_stub% "__rustc::__rust_dealloc") (by decide)) hdealloc
-  have hct1_sent : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>"))
-      (dropProtoUnchunkedCt1SentEkReceivedSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>"))
-      (b := b) (X := Rust.withPanics ext) dropOptProtoInnerState_fnOff
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>") (by decide))
-    (drop_proto_unchunked_ct1_sent_ek_received_ok_ext hdealloc)
-  have hpoly_enc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>"))
-      (dropProtoPolyEncoderSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>"))
-      (b := b) (X := Rust.withPanics ext) dropOptProtoInnerState_fnOff
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PolynomialEncoder>") (by decide))
-    (drop_glue_proto_poly_encoder_ok_ext hdealloc)
-  have hloop := drop_opt_proto_inner_state_loop_408 (b := b) (ext := ext) hdealloc_raw
-  simp only [rustDeallocSpec] at hdealloc_raw
-  have hadrp : ∀ (hb : b &&& 0xfff#64 = 0#64),
-      (((libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr dropOptProtoInnerStateName + 68#64) &&&
-        0xfffffffffffff000#64) = b + bv% (page% ((ls_off% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>") + 68)) := fnAddr_adrp_4c118
-  code_fetches_sym_top libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext)
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" 692
-  dsimp only [dropProgAtExt, dropOptProtoInnerStateName, optProtoInnerStateAt,
-    protoInnerStateAt, protoChunkedCt1SampledAt, optProtoInnerStateJumpTableAt,
-    optProtoInnerStateJumpTableBytes, optProtoInnerStateSize, BitVec.ofNat_eq_ofNat] at hdealloc_raw hct1_sent hpoly_enc hloop hadrp ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" = entry
-  examples_hide_fetches; wp_init a s0; have hadrp' := hadrp h
-  opt_proto_ct1Sampled_steps entry (optProtoInnerStateJumpTableExpanded b)
-
 theorem drop_opt_proto_inner_state_ct1Sampled_placed [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
     (hdealloc : subroutine_ok ((blkPC_267).rebase (blkPl_267).base H)
@@ -746,40 +551,6 @@ theorem drop_opt_proto_inner_state_ct1Sampled_placed [LibsignalPlacement] {A : R
   opt_proto_ct1Sampled_steps (blkPl_267).base optProtoInnerStateJumpTablePlacedExpanded
 
 /-! ## Top-Level `0x4c0d4` Proof (`drop_opt_proto_inner_state_ok_ext`) -/
-
-theorem drop_opt_proto_inner_state_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName)
-      (dropOptProtoInnerStateSpec A b) := by
-  refine subroutine_ok_outcome_intro fun ⟨a, optSt⟩ R s0 hpc hrun hpre hsp => ?_
-  cases optSt with
-  | none =>
-    exact drop_opt_proto_inner_state_none.mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-  | some st =>
-    cases st with
-    | keysUnsampled s =>
-      exact (drop_opt_proto_inner_state_keysUnsampled hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-    | keysSampled s =>
-      exact (drop_opt_proto_inner_state_keysSampled hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-    | headerSent s =>
-      exact (drop_opt_proto_inner_state_headerSent hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-    | ct1Received s =>
-      exact (drop_opt_proto_inner_state_ct1Received hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-    | ekSentCt1Received s =>
-      exact (drop_opt_proto_inner_state_ekSentCt1Received hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-    | noHeaderReceived s =>
-      exact (drop_opt_proto_inner_state_noHeaderReceived hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-    | headerReceived s =>
-      exact (drop_opt_proto_inner_state_headerReceived hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-    | ct1Sampled s =>
-      exact (drop_opt_proto_inner_state_ct1Sampled hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-    | ekReceivedCt1Sampled s =>
-      exact (drop_opt_proto_inner_state_ekReceivedCt1Sampled hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-    | ct1Acknowledged s =>
-      exact (drop_opt_proto_inner_state_ct1Acknowledged hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
-    | ct2Sampled s =>
-      exact (drop_opt_proto_inner_state_ct2Sampled hdealloc s).mono_outcome a R s0 hpc hrun hpre hsp fun _ hout => hout
 
 theorem drop_opt_proto_inner_state_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
@@ -846,7 +617,7 @@ theorem cap_ne_zero_lt_one_false {cap : BitVec 64}
     ¬(ConditionHolds .LT (subsPState64 cap 1#64) = true) := by
   rw [conditionHolds_lt_subsPState64, cap_ne_zero_slt_one_false hlt hne0]; decide
 
-def optProtoInnerStateTaggedRest (A : RustAlloc) (d w : BitVec 64)
+@[expose] def optProtoInnerStateTaggedRest (A : RustAlloc) (d w : BitVec 64)
     (optSt : Option V1State.InnerState) : SepProp :=
   ∃∗ P : SepProp, ⌜(d ↦₆₄ w) ∗ P ⊢ optProtoInnerStateAt A d optSt⌝ ∗ P
 
@@ -1143,49 +914,6 @@ local macro "proto_pq_ratchet_state_steps " entry:term:max jtTerm:term:max : tac
           wp_call hinner_raw ⟨a + 128#64, v1.innerState⟩
           refine SepWP.focus_weaken hjoin352 (by sep_focus) ?_
           wp_done))
-
-theorem drop_proto_pq_ratchet_state_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoPqRatchetStateName)
-      (dropProtoPqRatchetStateSpec A b) := by
-  simp only [dropProtoPqRatchetStateSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoPqRatchetStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext) dropProtoPqRatchetState_fnOff (ls_stub% "__rustc::__rust_dealloc") (by decide)) hdealloc
-  have hslice_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoPqRatchetStateName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>" "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>"))
-      (dropProtoEpochSliceSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>" "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>"))
-      (b := b) (X := Rust.withPanics ext) dropProtoPqRatchetState_fnOff
-      (ls_lemma% fnOff "core::ptr::drop_glue::<[spqr::proto::pq_ratchet::chain::Epoch]>") (by decide))
-    (drop_proto_epoch_slice_ok_ext hdealloc)
-  have hinner_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoPqRatchetStateName +
-        bv% (2 ^ 64 - (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>")))
-      (dropOptProtoInnerStateSpec A b) := by
-    have hrel : (dropProgAtExt b ext).fnAddr dropProtoPqRatchetStateName =
-        (dropProgAtExt b ext).fnAddr dropOptProtoInnerStateName +
-          BitVec.ofNat 64 (num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>")) :=
-      Program.fnAddr_rel (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::InnerState>>" "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>"))
-        (b := b) (X := Rust.withPanics ext) dropOptProtoInnerState_fnOff dropProtoPqRatchetState_fnOff (by decide)
-    refine sub_ok_of_addr_eq ?_ (drop_opt_proto_inner_state_ok_ext hdealloc)
-    rw [hrel, BitVec.add_assoc]; simp
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym_top libsignalSessionCode spqrDropTopBin b (Rust.withPanics ext)
-    "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>" 160
-  dsimp only [dropProgAtExt, dropProtoPqRatchetStateName, dropProtoEpochSliceSpec,
-    dropOptProtoInnerStateSpec, protoPqRatchetStateAt,
-    protoPqRatchetStateSize, optProtoInnerStateSize, chainEpochPBSize,
-    BitVec.ofNat_eq_ofNat] at hdealloc_raw hslice_raw hinner_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::proto::pq_ratchet::PqRatchetState>" = entry
-  examples_hide_fetches; wp_init x s0
-  proto_pq_ratchet_state_steps entry (optProtoInnerStateJumpTableAt b)
 
 theorem drop_proto_pq_ratchet_state_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

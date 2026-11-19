@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -45,7 +45,7 @@ Proves `SkippedPkLineageInv` on all reachable traces (`skippedPkLineageInv_reach
 `st_post` holding the advanced chain `c'` and a source-index witness `st` at `src`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -194,11 +194,11 @@ private theorem at?_trEntry_logSkippedKeysTr_add (s : SessionInfo) (pk : DY.Byte
       rw [hn]; rfl
 
 /-- The receive chain created by `dhRatchetStep st pk`. -/
-def freshRecvChain (st : TRState) (pk : DY.Bytes) : RecvChain :=
+@[expose] def freshRecvChain (st : TRState) (pk : DY.Bytes) : RecvChain :=
   { ratchetKey := pk, chainKey := (createChain st.rk pk st.dhs).2, index := 0, rIdx := st.rIdx + 2 }
 
 /-- Lineage witness for a `TREvent.SkippedKeyStored s pk n seed rIdx src` entry on `tr`. -/
-def SkippedPkLineageAt (tr : ExecTrace) (s : SessionInfo) (pk : DY.Bytes) (n : UInt32)
+@[expose] def SkippedPkLineageAt (tr : ExecTrace) (s : SessionInfo) (pk : DY.Bytes) (n : UInt32)
     (seed : DY.Bytes) (rIdx src : Nat) : Prop :=
   ∃ (p : Participant) (k_post : Nat) (st_post st : TRState) (c c' : RecvChain)
     (cnt : UInt32) (seed_m : DY.Bytes),
@@ -216,7 +216,7 @@ def SkippedPkLineageAt (tr : ExecTrace) (s : SessionInfo) (pk : DY.Bytes) (n : U
       (k_post = src ∧ st = st_post ∧ rIdx = 2 ∧ c.index = 0))
 
 /-- Trace invariant: every `SkippedKeyStored` event on `tr` satisfies `SkippedPkLineageAt`. -/
-def SkippedPkLineageInv (tr : ExecTrace) : Prop :=
+@[expose] def SkippedPkLineageInv (tr : ExecTrace) : Prop :=
   ∀ (i : Nat) (s : SessionInfo) (pk : DY.Bytes) (n : UInt32) (seed : DY.Bytes) (rIdx src : Nat),
     (tr.at? i : Option CompTrace.TREntry) =
       some ⟨TREvent.SkippedKeyStored s pk n seed rIdx src⟩ →
@@ -1100,7 +1100,7 @@ export Symbolic.Swarm.CREF.TR.G1 (
 )
 
 /-- Every `SkippedKeyStored` entry on `runTraceMoves r₀ ms` satisfies `SkippedPkLineageAt`. -/
-def SkippedPkLineage (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
+@[expose] def SkippedPkLineage (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
   SkippedPkLineageInv (runTraceMoves r₀ ms)
 
 theorem skippedPkLineage_of_reachable {r₀ : ProtocolSetup} {ms : List Move}

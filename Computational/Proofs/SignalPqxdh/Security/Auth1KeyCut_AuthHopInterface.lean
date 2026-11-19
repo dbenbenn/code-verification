@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsA
-public import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthPrf
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 public import VCVio.CryptoFoundations.SecExp.Measure
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdSim
 
 /-!
 # One-Key `Auth` KOSK Stage Advantage
@@ -27,7 +27,7 @@ Real-valued boolean bias advantage `authKoskAdvAtStage1Key` at a one-key `Auth` 
 its equality with `authFixedAdvAtStage1Key` when `stage.idealMsgKeys = false`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +37,7 @@ namespace SignalPqxdh.Security
 
 open SignalPqxdh
 
-noncomputable def authKoskAdvAtStage1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives)
+@[expose] noncomputable def authKoskAdvAtStage1Key (stage : AuthHybridStage) (S : Setup) (P : Primitives)
     (A : AuthAdversary S) : ℝ :=
   (𝒟[authKoskExpAtStage1Key stage S P A].boolBias).toReal
 

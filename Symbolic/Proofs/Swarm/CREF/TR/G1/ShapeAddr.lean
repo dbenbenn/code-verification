@@ -59,7 +59,7 @@ have equal `g.addr`, scalar fields, and child shapes) and `gamma_eq_of_shape_eq`
 terms with equal `.shape` under `gamma'` evaluate to the same `gamma` byte sequence via `evalShape`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

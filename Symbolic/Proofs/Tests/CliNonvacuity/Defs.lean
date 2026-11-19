@@ -23,7 +23,7 @@ Provides `cliSpecPq_satisfiable_proof`, the proof-side mirror `CliTraceReachable
 `InvertsGuarded`, `MatchesEvents`, and prefix-restriction combinators.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -54,7 +54,7 @@ theorem cliSpecPq_satisfiable_proof (X : UnreachedPqxdhPrimitives) (W : CliHooks
 /-- Proof-side mirror of `Symbolic.Tests.CliNonvacuity.CliTraceReachable` with an identical body so
 `Symbolic/Tests/CliNonvacuity.lean` delegates its theorem term definitionally without `by` blocks
 or circular imports. -/
-def CliTraceReachableProof (target : ExecTrace) : Prop :=
+@[expose] def CliTraceReachableProof (target : ExecTrace) : Prop :=
   ∃ (interp : ExternInterpretation) (W : CliHooks)
     (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (evs : List CliEvent)
@@ -91,7 +91,7 @@ theorem modelRunWF_nil (r : ProtocolSetup) (hwf : ProtocolSetupWF r) : ModelRunW
   ⟨setupRandoms_length r hwf.1, setupTrace_reachable r, trivial,
     fun _ _ _ _ _ _ _ _ hi => by simp at hi⟩
 
-def noInvertEvent : CliEvent → Bool
+@[expose] def noInvertEvent : CliEvent → Bool
   | .env (.invertDH ..) | .env (.invertKEM ..) => false
   | _ => true
 

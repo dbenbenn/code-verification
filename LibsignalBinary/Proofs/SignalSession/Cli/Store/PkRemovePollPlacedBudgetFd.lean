@@ -9,10 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePollPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.SymPlacedBudgetFd
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePollPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.SymPlacedBudgetFd
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `FdsGe3Closed`-Threaded Relocatable `<OneTimePreKeyFiles as PreKeyStore>::remove_pre_key::{closure#0}`
@@ -22,7 +35,7 @@ import Arm64.Trusted.Spec.SepLogic
 transfer.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -91,43 +104,6 @@ theorem pkRemovePoll_placed_ok_of_deps_fd [LibsignalPlacement] {M : AllocCostMod
   have hPut' := ls_transfer_withFdsGe3Closed_lscro
     (callerProg := lsProg_575 H) hPut (by decide) hPutBlk hPutUnmut
   exact pkRemovePoll_placed_ok_fd hFsAlloc hDecimal' hGet' hPut' hFs hstk
-
-/-- Caller-block-polymorphic form of `pkRemovePoll_placed_ok_of_deps_fd`. -/
-theorem pkRemovePoll_placed_caller_ok_of_deps_fd [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {DecEnv : BitVec 32 → List AllocEvent → Prop}
-    {GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop}
-    {PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop}
-    {callerProg decProg getProg putProg : Program}
-    {callerBlk decBlk getBlk putBlk : Nat}
-    [IsLsBlockProg callerProg callerBlk H]
-    [IsLsBlockProg decProg decBlk H]
-    [IsLsBlockProg getProg getBlk H]
-    [IsLsBlockProg putProg putBlk H]
-    {rd : ReadRule} {pathOk : List (BitVec 8) → Prop} {decStk getStk putStk stk : Nat}
-    (hFsAlloc : AllocContractsFsPlaced A lim H)
-    (hDecimal : subroutine_ok decProg (lsmpl.base 597)
-      (withFdsGe3Closed (decimalSpecPlaced A lim DecEnv decStk)))
-    (hGet : subroutine_ok getProg (lsmpl.base 589)
-      (withFdsGe3Closed (dirGetSpecPlaced rd pathOk A lim GetEnv getStk)))
-    (hPut : subroutine_ok putProg (lsmpl.base 542)
-      (withFdsGe3Closed (dirPutSpecPlaced A lim PutEnv putStk)))
-    (hFs : TraceFsSound (lsProg_575 H))
-    (hstk : 0xc0 + max (max decStk getStk) (max putStk extHookStack) ≤ stk)
-    (hCallerBlk : callerBlk < 619 := by decide)
-    (hDecBlk : decBlk < 619 := by decide)
-    (hDecUnmut : (decBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hGetBlk : getBlk < 619 := by decide)
-    (hGetUnmut : (getBlk ∈ libsignalMutatedBlocks) = false := by decide)
-    (hPutBlk : putBlk < 619 := by decide)
-    (hPutUnmut : (putBlk ∈ libsignalMutatedBlocks) = false := by decide) :
-    subroutine_ok callerProg (lsmpl.base 575)
-      (withFdsGe3Closed
-        (pkRemovePollSpecPlaced rd pathOk A lim
-          (CliPkRemovePollEnv rd DecEnv GetEnv PutEnv) stk)) :=
-  ls_transfer_withFdsGe3Closed_lscro (callerProg := callerProg) (j := 575)
-    (pkRemovePoll_placed_ok_of_deps_fd hFsAlloc hDecimal hGet hPut hFs hstk
-      hDecBlk hDecUnmut hGetBlk hGetUnmut hPutBlk hPutUnmut) hCallerBlk
 
 end Placed
 

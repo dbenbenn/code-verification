@@ -10,15 +10,16 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.GrowOneSpecs
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrow -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.GrowOne -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
 import LibsignalBinary.Proofs.Placed.BridgeReloc
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+meta import GeneratedLean.LibsignalSessionPlacedObjShard31
 
 /-!
 # Relocatable `RustAlloc` Proofs for Sysroot `RawVec::grow_one` (Blocks 619..622)
@@ -31,7 +32,7 @@ against parametric `RustAlloc A` contracts:
   (`RawVec<Vec<u8>>::grow_one`, including `MergeFunctions` symbol aliases).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -169,22 +170,22 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 theorem spqr_externAt?_of_mem_623 [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
-    {sym : String} (hmem : sym ∈ libsignalSessionExterns := by decide)
+    {sym : String} (hmem : sym ∈ libsignalHookedExterns := by decide)
     {bi : Nat} [LsBlockBound bi]
     (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     prog.externAt? (lsρ sym) = H sym := by
-  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem hmem
-  exact ls_externAt?_of_blockProg (k := k) (by simp [hk, hget]) hi hunmut
+  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_externAt?_of_blockProg (k := k) (by simp [hk, hget]) hi hunmut (hhooked := hmem)
 
 theorem spqr_hook_ok_of_mem_623 [LibsignalPlacement] {α : Type} {prog : Program} {i : Nat}
     {H : LibsignalHooks} [hprog : IsLsBlockProg prog i H]
     {sym : String} {spec : Spec α} (hsat : HookSat H sym spec)
-    (hmem : sym ∈ libsignalSessionExterns := by decide)
+    (hmem : sym ∈ libsignalHookedExterns := by decide)
     {bi : Nat} [LsBlockBound bi]
     (hi : i < bi := by decide) (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     subroutine_ok prog (lsρ sym) spec := by
-  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem hmem
-  exact ls_hook_ok (k := k) (by simp [hk, hget]) hsat hi hunmut
+  obtain ⟨k, hk, hget⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
+  exact ls_hook_ok (k := k) (by simp [hk, hget]) hsat hi hunmut (hhooked := hmem)
 
 /-- Weakens `withLsCodeLoaded` to `LibsignalTripleRatchet.withLsCodeRoLoaded`. -/
 theorem subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded_alloc {α : Type} {prog : Program}
@@ -708,7 +709,7 @@ theorem finish_grow_622_placed_ok_x [LibsignalPlacement] {A : RustAlloc}
 abbrev growOneU8SmallStack : Nat := (allocHookStack + 32) + 64
 
 /-- Prefix-preserving contract (`bs.length ≤ cap.toNat`) for `RawVec<u8>::grow_one` at `growOneU8SmallStack`. -/
-def growOneU8BsSpec (A : RustAlloc) : Spec GrowGhost where
+@[expose] def growOneU8BsSpec (A : RustAlloc) : Spec GrowGhost where
   pre := fun (v, cap, ptr, bs) s =>
     ⌜s.readReg64 .x0 = v ∧ bs.length ≤ cap.toNat ∧ ptr ≠ 0#64 ∧
       max (2 * cap.toNat) 8 < 2 ^ 63⌝ ∗

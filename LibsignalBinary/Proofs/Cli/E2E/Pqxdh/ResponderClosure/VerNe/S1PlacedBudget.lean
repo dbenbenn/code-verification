@@ -11,16 +11,16 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenSub5Budget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3GenSub5Budget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.DefsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopErrPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.S1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TailPlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 meta import Lean -- shake: keep
@@ -31,6 +31,8 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3b
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommon
+import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 
 /-!
 # Budget-Threaded Relocatable Version-Mismatch Entry Segment (`+0x1e04 → +0x1e78`)
@@ -40,7 +42,7 @@ Block `518` (`lsProg_518`) under `FitsEnv M lim st0 VerNeS1Env`, threading `Libs
 plain `CodeLoaded`, and `LibsignalFrozen` memory invariants.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -117,7 +119,7 @@ local macro "wp_steps_sync_518 " ext:term:max mid:term : tactic => `(tactic| (
 /-- Allocation event envelope for `VerNe/S1PlacedBudget` (`+0x1e04 → +0x1e78`):
 192-byte initial `Vec<SignalProtocolError>` growth (`growOneSpe` from `cap = 0`) followed by
 free-only `SessionStructure` drop (`dropSessionStructureLocal2`). -/
-def VerNeS1Env : List AllocEvent → Prop :=
+@[expose] def VerNeS1Env : List AllocEvent → Prop :=
   SeqEnv (· = rustAllocEvents 192 8) FreeOnlyEvs
 
 theorem fitsGrowZero_of_fitsS1 {M : AllocCostModel} {lim : BudgetLimits} {st0 : M.σ}
@@ -600,7 +602,7 @@ theorem overVerNe_1e04_to_1e78_cro_placed_at [LibsignalPlacement]
 
 /-- Budget-threaded `[LibsignalPlacement]` Stage P3 `VerNe` entry segment statement
 (`(blkPl_518).base + 0x1e04 → (blkPl_518).base + 0x1e78`) on `lsProg_518 ext`. -/
-def OverVerNe1e04To1e78CliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverVerNe1e04To1e78CliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     {Qp : State → SepProp → Prop}
     (ext : String → Option (State → State))

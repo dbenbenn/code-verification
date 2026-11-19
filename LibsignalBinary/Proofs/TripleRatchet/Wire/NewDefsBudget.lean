@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Mac.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefsBudget
 public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefs
 
 /-!
@@ -22,7 +22,7 @@ and budget-threaded specifications `signalMessageNewSpecWithStack`, `signalMessa
 `signalMessageNewSpecX` for `<libsignal_protocol::protocol::SignalMessage>::new` (Block `63`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -63,7 +63,7 @@ abbrev SignalMessageNewGhost := CryptoVerification.LibsignalTripleRatchet.Signal
 7. Final `ciphertext: Box<[u8]>` clone (`rustAllocEvents x.ciphertext.length 1` when non-empty);
 8. Final `pq_ratchet: Vec<u8>` clone (`rustAllocEvents x.pqRatchet.length 1` when non-empty);
 9. Deallocations of temporary `ratchet_key` (`33` B), `ciphertext`, and `pq_ratchet` buffers. -/
-def signalMessageNewEvents (parse : UuidParser) (x : SignalMessageNewGhost) : List AllocEvent :=
+@[expose] def signalMessageNewEvents (parse : UuidParser) (x : SignalMessageNewGhost) : List AllocEvent :=
   (if (x.addresses parse).isSome then rustAllocEvents 36 1 else []) ++
     publicKeySerializeEvents ++
     (if x.ciphertext.isEmpty then [] else rustAllocEvents x.ciphertext.length 1) ++
@@ -77,7 +77,7 @@ def signalMessageNewEvents (parse : UuidParser) (x : SignalMessageNewGhost) : Li
     (if x.pqRatchet.isEmpty then [] else rustDeallocEvents x.pqRatchet.length 1)
 
 /-- Allocator event envelope of `<SignalMessage>::new`. -/
-def SignalMessageNewEnv (parse : UuidParser) (x : SignalMessageNewGhost)
+@[expose] def SignalMessageNewEnv (parse : UuidParser) (x : SignalMessageNewGhost)
     (evs : List AllocEvent) : Prop :=
   evs = signalMessageNewEvents parse x
 
@@ -93,7 +93,7 @@ theorem fitsEnv_signalMessageNew_iff {M : AllocCostModel} {lim : BudgetLimits} {
 (`totalStack = signalMessageNewStack` or `signalMessageNewStackX`).
 Under `FitsEnv M lim st (SignalMessageNewEnv parse x)`, `onPanic = ⌜False⌝` and
 `onOom = ⌜False⌝`. -/
-def signalMessageNewSpecWithStack [LibsignalPlacement]
+@[expose] def signalMessageNewSpecWithStack [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (F : ShaCompress) (parse : UuidParser) (totalStack : Nat) :
     Spec (SignalMessageNewGhost × M.σ) where
@@ -129,21 +129,5 @@ abbrev signalMessageNewSpecX [LibsignalPlacement] (M : AllocCostModel) (A : Rust
     (lim : BudgetLimits) (F : ShaCompress) (parse : UuidParser) :
     Spec (SignalMessageNewGhost × M.σ) :=
   signalMessageNewSpecWithStack M A lim F parse signalMessageNewStackX
-
-abbrev signalMessageNewBudgetSpecWithStack [LibsignalPlacement]
-    (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (F : ShaCompress) (parse : UuidParser) (totalStack : Nat) :
-    Spec (SignalMessageNewGhost × M.σ) :=
-  signalMessageNewSpecWithStack M A lim F parse totalStack
-
-abbrev signalMessageNewBudgetSpec [LibsignalPlacement] (M : AllocCostModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress) (parse : UuidParser) :
-    Spec (SignalMessageNewGhost × M.σ) :=
-  signalMessageNewSpec M A lim F parse
-
-abbrev signalMessageNewBudgetSpecX [LibsignalPlacement] (M : AllocCostModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (F : ShaCompress) (parse : UuidParser) :
-    Spec (SignalMessageNewGhost × M.σ) :=
-  signalMessageNewSpecX M A lim F parse
 
 end LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget

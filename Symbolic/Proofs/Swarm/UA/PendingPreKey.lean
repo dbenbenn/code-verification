@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyTR
-public import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35Pure
+public import Symbolic.Proofs.Swarm.CREF.BobRecBaseKeyTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Initiate.InitOk35Pure -- proof-setup: allow-public-import
 import all DY.Trace.Basic
 import all DY.Trace.Monad
 import all DY.Trace.Manipulation
@@ -21,7 +21,10 @@ import all DY.Actions.ProtocolEvent
 import all DY.Actions.Random
 public import Symbolic.Proofs.Swarm.UA.Defs
 import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
-import Symbolic.Proofs.Swarm.UA.Base
+public import Symbolic.Proofs.Swarm.UA.Base
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
 
 /-!
 # Pending Pre-Key Monotonicity and Transport
@@ -31,7 +34,7 @@ Establishes `HandshakeSessionValid` on reachable composed traces, proves monoton
 non-initiating steps, and establishes `AlicePendingKeysOn` immediately after `Step.aliceStart`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -801,7 +804,7 @@ theorem modelRunWF_reachable {r : ProtocolSetup} {ss : List Step} (h : ModelRunW
 /-! ## `ppkOf` and `pendingPreKey` Monotonicity -/
 
 /-- Session-descriptor form of `pendingPreKey`. -/
-def ppkOf (tr : ExecTrace) (s : SessionInfo) : Option (_root_.DY.Bytes × _root_.DY.Bytes) :=
+@[expose] def ppkOf (tr : ExecTrace) (s : SessionInfo) : Option (_root_.DY.Bytes × _root_.DY.Bytes) :=
   (List.range tr.length).findSome? fun i =>
     match tr.getEventAt ComposedEvent i with
     | some (.HandshakeSession s' d) =>
@@ -813,13 +816,13 @@ def ppkOf (tr : ExecTrace) (s : SessionInfo) : Option (_root_.DY.Bytes × _root_
     | none => none
 
 /-- No `ComposedEvent.HandshakeSession s _` with `s.me = alice` is logged at indices `≥ n₀`. -/
-def NoNewHsFrom (alice : Participant) (n₀ : Nat) (tr : ExecTrace) : Prop :=
+@[expose] def NoNewHsFrom (alice : Participant) (n₀ : Nat) (tr : ExecTrace) : Prop :=
   n₀ ≤ tr.length ∧
   ∀ m, n₀ ≤ m → m < tr.length → ∀ s d,
     tr.getEventAt ComposedEvent m = some (.HandshakeSession s d) → s.me ≠ alice
 
 /-- No `TREvent.MessageKey s .receiver ..` with `s.me = alice` is logged at indices `≥ n₀`. -/
-def NoNewRecvMKFrom (alice : Participant) (n₀ : Nat) (tr : ExecTrace) : Prop :=
+@[expose] def NoNewRecvMKFrom (alice : Participant) (n₀ : Nat) (tr : ExecTrace) : Prop :=
   n₀ ≤ tr.length ∧
   ∀ m, n₀ ≤ m → m < tr.length → ∀ s seed salt n rIdx par,
     tr.getEventAt TREvent m = some (.MessageKey s .receiver seed salt n rIdx par) →
@@ -1300,12 +1303,12 @@ theorem bkNew_step {alice : Participant} {tr : ExecTrace} {s : Step}
         Preserves.monadLiftErr _ (Inv := fun t' => t' = t) t rfl))) fun _ => bkt_net _)
 
 /-- `s` is neither `aliceStart alice ..` nor `bobStart alice ..`. -/
-def StepNoStartFor (alice : Participant) (s : Step) : Prop :=
+@[expose] def StepNoStartFor (alice : Participant) (s : Step) : Prop :=
   (∀ b idIdx regB bh, s ≠ .aliceStart alice b idIdx regB bh) ∧
   (∀ a kh regA mh pqIdx spqrIdx, s ≠ .bobStart alice a kh regA mh pqIdx spqrIdx)
 
 /-- `s` is neither an `alice` session start nor an `alice` message decrypt. -/
-def StepNoAliceInitOrRecv (alice : Participant) (s : Step) : Prop :=
+@[expose] def StepNoAliceInitOrRecv (alice : Participant) (s : Step) : Prop :=
   StepNoStartFor alice s ∧
   (∀ stateIdx msgIdx pqIdx spqrIdx, s ≠ .messageDecrypt alice stateIdx msgIdx pqIdx spqrIdx) ∧
   (∀ stateIdx msgIdx k pqIdx spqrIdx, s ≠ .messageDecryptSkipped alice stateIdx msgIdx k pqIdx spqrIdx)

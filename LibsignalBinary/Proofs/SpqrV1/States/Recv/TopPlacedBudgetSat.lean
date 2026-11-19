@@ -9,11 +9,28 @@ limitations under the License.
 
 module
 
+public import LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesTopPlacedBudgetSat -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
+import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserveExtBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.KeysSampledRecvCt1ChunkPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesTopPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesTopPlacedBudgetSat
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpochBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpochPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2MidBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegsBudget
+import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2StepsBudgetAux
 
 /-!
 # `HookSat` Sibling of `States.Recv.TopPlacedBudget` (`TopPlacedBudgetSat`)
@@ -38,8 +55,11 @@ open CryptoVerification.LibsignalSpqrV1 (
 open CryptoVerification.LibsignalTripleRatchet (
   keys_ls_subroutine_ok_of_block_cro memsetName
 )
+open LibsignalBinary.Proofs.HookDischarge.CryptoMlKem.ConsumerBridgesBase (mlkemDecapsAtSpec)
 open LibsignalBinary.Proofs.HookDischarge.Libc.Memmove (sessionMemmoveBoundedSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open CryptoVerification.SpqrV1.Alloc (growOneStack spqrMemmoveSym)
+open CryptoVerification.SpqrV1.GF.Mul2U16 (OnceCallHookOk)
 open CryptoVerification.SpqrV1.States.RecvCt2Chunk (spqrMlkemDecapsSym)
 open CryptoVerification.SpqrV1.Unchunked (spqrLibcruxHmacSym spqrMlkemEncaps2Sym)
 open LibsignalBinary.Heap (AllocCostModel BudgetLimits RustCliAllocBudget)
@@ -50,9 +70,7 @@ open LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2PlacedBudget (
   polyDecoderDecodedMessage_cro_placed_ok_x
 )
 open LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesTopPlacedBudget (
-  ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x
   ct1_received_recv_ct2_chunk_placed_ok_x
-  ek_received_ct1_sampled_recv_ct1_ack_placed_ok_x
   header_sent_recv_ct1_chunk_placed_ok_x
   hookSat_sessionMemcpyBudget_of_framelessAcp
   hookSat_sessionMemcpyRegionBudget_of_framelessAcp
@@ -62,16 +80,18 @@ open LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesTopPlacedBudget (
   keys_sampled_recv_ct1_chunk_placed_ok_x
   noHeaderReceived_recv_hdr_chunk_placed_closed_okX
   send_ct2_encoder_placed_ok_x_of_rustAllocShimVm
-  unchunked_ct1_sent_recv_ek_placed_cl_twoEnv_ok_x
 )
 open LibsignalBinary.Proofs.SpqrV1.States.Leaves.LeavesTopPlacedBudgetSat (
-  ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x_sat
+  ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x_sat
+  ek_received_ct1_sampled_recv_ct1_ack_placed_ok_x_sat
+  ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext_sat
+  unchunked_ct1_sent_recv_ek_placed_cl_twoEnv_ok_x_sat
 )
 open LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvNextEpochPlacedBudget (
   ct2_sampled_recv_next_epoch_placed_ok_x
 )
 open LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlacedBudget (
-  unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok
+  unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_withLsRet
 )
 open LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudget (
   StatesRecvExactEnv states_recv_placed_ok_x
@@ -92,13 +112,14 @@ theorem statesRecvPlacedContracts_of_ro_leaves_sat [LibsignalPlacement]
     (hmemset_sat : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
     (hval_pk_sat : HookSat (Rust.withPanics ext)
       "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes"
-      (withVmPreserved (mlkemValidatePkSpec K)))
+      (withLsRet (withVmPreserved (mlkemValidatePkSpec K))))
     (hencaps2_sat : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym
-      (withVmPreserved (mlkemEncaps2Spec K)))
+      (withLsRet (withVmPreserved (mlkemEncaps2Spec K))))
     (hdecaps_sat : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhmac_sat : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     DefsPlacedBudget.StatesRecvPlacedContracts M A lim F K ext :=
   let hmemcpy_reg_sat :=
     hookSat_sessionMemcpyRegionBudget_of_framelessAcp hA.memcpy
@@ -111,43 +132,43 @@ theorem statesRecvPlacedContracts_of_ro_leaves_sat [LibsignalPlacement]
     (keys_ls_subroutine_ok_of_block_cro (i := 332) (j := 337)
       (header_sent_recv_ct1_chunk_placed_ok_x
         hA.handleError hA.shim hA.alloc hA.realloc hA.dealloc
-        hmemcpy_reg_sat hmemmove_sat hmemset_sat))
+        hmemcpy_reg_sat hmemmove_sat hmemset_sat hOnce))
     (ls_subroutine_ok_of_block (i := 332) (j := 346)
       (ct1_received_recv_ct2_chunk_placed_ok_x
         hA.handleError hA.shim hA.alloc hA.realloc hA.dealloc hmemcpy_reg_sat hmemmove_sat))
     (keys_ls_subroutine_ok_of_block_cro (i := 332) (j := 350)
-      (ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x_sat
-        hA hmemcpy_reg_sat hmemmove_sat hmemset_sat hdecaps_sat hhmac_sat))
+      (ek_sent_ct1_received_recv_ct2_chunk_placed_ok_ext_sat
+        hA hmemcpy_reg_sat hmemmove_sat hmemset_sat hdecaps_sat hhmac_sat hOnce))
     (keys_ls_subroutine_ok_of_block_cro (i := 332) (j := 369)
       (noHeaderReceived_recv_hdr_chunk_placed_closed_okX
         hA.shim hA.alloc hA.realloc hA.dealloc hA.memcpy hmemcpy_reg_sat hA.memcpyRO
         hmemmove_sat hmemset_sat hhmac_sat
-        hA.handleError hA.assertFailedU64 hA.sliceIndexFail hA.panicBoundsCheck))
+        hA.handleError hA.assertFailedU64 hA.sliceIndexFail hA.panicBoundsCheck hOnce))
     (ls_subroutine_ok_of_block (i := 332) (j := 419)
       (add_chunk_cl_placed_ok_x
         hA.handleError hA.shim hA.alloc hA.realloc hmemmove_sat))
     (keys_ls_subroutine_ok_of_block_cro (i := 332) (j := 418)
       (polyDecoderDecodedMessage_cro_placed_ok_x
-        hA.handleError hshim_sess hA.alloc hA.realloc hA.dealloc hmemcpy_reg_sat hmemset_sat))
+        hA.handleError hshim_sess hA.alloc hA.realloc hA.dealloc hmemcpy_reg_sat hmemset_sat hOnce))
     (ls_subroutine_ok_of_block (i := 332) (j := 338)
-      (unchunked_ct1_sent_recv_ek_placed_cl_twoEnv_ok_x
+      (unchunked_ct1_sent_recv_ek_placed_cl_twoEnv_ok_x_sat
         (F := F) hA.dealloc hval_pk_sat))
     (ls_subroutine_ok_of_block (i := 332) (j := 347)
-      (unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok
+      (unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok_withLsRet
         hA.handleError hA.shim hA.alloc hA.realloc hA.dealloc
         hA.memcpy hA.memcpyRO hencaps2_sat hhmac_sat))
     (ls_subroutine_ok_of_block (i := 332) (j := 382)
       (send_ct2_encoder_placed_ok_x_of_rustAllocShimVm
         hA.handleError hA.shim hA.alloc hA.realloc hA.dealloc hmemcpy_reg_sat))
     (ls_subroutine_ok_of_block (i := 332) (j := 343)
-      (ek_received_ct1_sampled_recv_ct1_ack_placed_ok_x
+      (ek_received_ct1_sampled_recv_ct1_ack_placed_ok_x_sat
         hA.handleError hA.shim hA.alloc hA.realloc hA.dealloc
         hA.memcpy hmemcpy_reg_sat hA.memcpyRO hencaps2_sat hhmac_sat))
     (keys_ls_subroutine_ok_of_block_cro (i := 332) (j := 349)
-      (ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x
+      (ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x_sat
         hA.handleError hA.shim hA.alloc hA.realloc hA.dealloc
         hA.memcpy hmemcpy_reg_sat hA.memcpyRO hmemmove_sat hmemset_sat
-        hval_pk_sat hencaps2_sat hhmac_sat))
+        hval_pk_sat hencaps2_sat hhmac_sat hOnce))
     (ls_subroutine_ok_of_block (i := 332) (j := 355)
       (ct2_sampled_recv_next_epoch_placed_ok_x hA.dealloc))
     (hookSat_withVmPreserved_noAllocShim_of_rustAllocShimVm hA.shim)
@@ -167,16 +188,17 @@ theorem states_recv_placed_ok_x_closed_sat [LibsignalPlacement]
     (hmemset_sat : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionBudgetSpec)
     (hval_pk_sat : HookSat (Rust.withPanics ext)
       "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes"
-      (withVmPreserved (mlkemValidatePkSpec K)))
+      (withLsRet (withVmPreserved (mlkemValidatePkSpec K))))
     (hencaps2_sat : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym
-      (withVmPreserved (mlkemEncaps2Spec K)))
+      (withLsRet (withVmPreserved (mlkemEncaps2Spec K))))
     (hdecaps_sat : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym
-      (withVmPreserved (mlkemDecapsSpec K)))
+      (withLsRet (withVmPreserved (mlkemDecapsAtSpec 36864 K))))
     (hhmac_sat : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym
-      (libcruxHmacBudgetSpec F M A lim)) :
+      (withLsRet (libcruxHmacBudgetSpec F M A lim)))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     StatesRecvPlacedOkXOfEnv M A lim F K ext (StatesRecvExactEnv K) :=
   states_recv_placed_ok_x A lim F K ext
     (statesRecvPlacedContracts_of_ro_leaves_sat
-      hA hmemmove_sat hmemset_sat hval_pk_sat hencaps2_sat hdecaps_sat hhmac_sat)
+      hA hmemmove_sat hmemset_sat hval_pk_sat hencaps2_sat hdecaps_sat hhmac_sat hOnce)
 
 end LibsignalBinary.Proofs.SpqrV1.States.Recv.TopPlacedBudgetSat

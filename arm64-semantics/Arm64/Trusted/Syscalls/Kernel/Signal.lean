@@ -60,10 +60,13 @@ def SIG_DFL : BitVec 64 := 0#64
 /-- Ignore signal disposition constant (`SIG_IGN = 1`, `include/uapi/asm-generic/signal-defs.h:23`). -/
 def SIG_IGN : BitVec 64 := 1#64
 
-/-- Bitmask of signals stripped from `sa_mask` by `do_sigaction`
-    (`sigmask(SIGKILL) | sigmask(SIGSTOP) = (1 << 8) | (1 << 18) = 0x40100`,
-    `SIG_KERNEL_ONLY_MASK` in `include/linux/signal.h:403`). -/
+/-- Bitmask of signals stripped from `sa_mask` and `sigMask` (`sigmask(SIGKILL) | sigmask(SIGSTOP)
+    = (1 << 8) | (1 << 18) = 0x40100`, `SIG_KERNEL_ONLY_MASK` in `include/linux/signal.h:403`). -/
 def SIG_UNBLOCKABLE_MASK : BitVec 64 := 0x40100#64
+
+/-- Bitmask bit for `SIGABRT` (`sigmask(6) = 1 << 5 = 0x20`, `sigmask` in
+    `include/linux/signal.h:340`, `SIGABRT = 6` in `include/uapi/asm-generic/signal.h:20`). -/
+def SIGABRT_MASK : BitVec 64 := 0x20#64
 
 /-- AArch64 `sa_flags` bits kept by `do_sigaction` (`act->sa.sa_flags &= UAPI_SA_FLAGS` in
     `kernel/signal.c:4401-4404`): `UAPI_SA_FLAGS = SA_NOCLDSTOP | SA_NOCLDWAIT | SA_SIGINFO |
@@ -123,18 +126,24 @@ def SigAltStack.toBytes (sas : SigAltStack) (sp : BitVec 64) : List (BitVec 8) :
 
 /-- `rt_sigprocmask(how, set, oldset, sigsetsize)` (`__NR_rt_sigprocmask = 135`,
     `kernel/signal.c:3247` `SYSCALL_DEFINE4(rt_sigprocmask)`):
-    validates `sigsetsize == 8` (`sizeof(sigset_t)` on 64-bit Linux), user-memory readability and
-    non-wrapping 8-byte range of `set` (when non-null),
-    `how ∈ {SIG_BLOCK(0), SIG_UNBLOCK(1), SIG_SETMASK(2)}` when `set ≠ 0`, and writability and
-    non-wrapping 8-byte range of `oldset` (8 bytes when non-null).
-    - `[INTENTIONAL_SCOPE]`: Non-zero blocked signal masks are out of scope. Because a process
-      starts with an empty blocked mask (`0`), `set == 0`, `how == SIG_UNBLOCK(1)`, and
-      `SIG_BLOCK(0)` / `SIG_SETMASK(2)` with `(read64 set &&& ~~~SIG_UNBLOCKABLE_MASK) == 0`
-      (`SIGKILL` / `SIGSTOP` stripped per `sigdelsetmask` in `kernel/signal.c:3262`) all preserve an
-      empty blocked mask (`oldset` receives 8 zero bytes when non-null), whereas `SIG_BLOCK` or
-      `SIG_SETMASK` with any blockable signal bit set fails closed with `.Exception`.
-    - `[OVERPINNED_BEHAVIOR]`: Validates `sigsetsize` -> `copy_from_user(set)` -> `how` /
-      empty-mask scope check -> `copy_to_user(oldset)`, matching `kernel/signal.c:3254-3281`. -/
+    tracks the per-thread 64-bit blocked signal mask (`State.sigMask`) and delivers unblocked
+    pending signals (`State.sigPending &&& ~~~State.sigMask`) synchronously on syscall return:
+    - validates `sigsetsize == 8` (`sizeof(sigset_t)` on 64-bit Linux, `-EINVAL`), non-wrapping
+      8-byte readability of `set` when non-null (`-EFAULT`, or `.Exception` on lazy-free memory),
+      and `how ∈ {SIG_BLOCK(0), SIG_UNBLOCK(1), SIG_SETMASK(2)}` when `set ≠ 0` (`-EINVAL`);
+    - updates `State.sigMask` according to `how`, stripping `SIG_UNBLOCKABLE_MASK` (`SIGKILL` /
+      `SIGSTOP`) per `sigdelsetmask` in `set_current_blocked` (`kernel/signal.c:3204,3262`);
+    - when `oldset ≠ 0`, writes `leBytes64 oldMask` to `oldset` (returning `-EFAULT` if `oldset`
+      wraps modulo `2 ^ 64` or is not 8-byte writable, matching `copy_to_user` after
+      `sigprocmask` in `kernel/signal.c:3278-3281`);
+    - `[INTENTIONAL_SCOPE]`: on return, checks `deliverable := s2.sigPending &&& ~~~s2.sigMask`.
+      When `deliverable == SIGABRT_MASK`, clears `SIGABRT_MASK` from `sigPending` and delivers
+      `SIGABRT` (`.Signaled 6#7` under `SIG_DFL`, discarded under `SIG_IGN`, or fail-closed
+      `.Exception` for custom handlers); any other non-zero `deliverable` fails closed with
+      `.Exception`;
+    - `[OVERPINNED_BEHAVIOR]`: validates `sigsetsize` -> `copy_from_user(set)` -> `how` /
+      `sigprocmask` -> `copy_to_user(oldset)` -> synchronous pending-signal check, matching
+      `kernel/signal.c:3254-3281`. -/
 def execRtSigprocmask (s : State) : State :=
   let how        := s.readReg32 Reg.x0
   let set        := s.readReg64 Reg.x1
@@ -150,17 +159,38 @@ def execRtSigprocmask (s : State) : State :=
     s.setStatus (.Exception "rt_sigprocmask set in lazy-free memory")
   else if set != 0#64 && how != 0#32 && how != 1#32 && how != 2#32 then
     (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
-  else if set != 0#64 && (how == 0#32 || how == 2#32) &&
-      (s.mem.read64 set &&& ~~~SIG_UNBLOCKABLE_MASK) != 0#64 then
-    s.setStatus (.Exception "unmodeled non-zero signal mask in rt_sigprocmask")
-  else if oldset == 0#64 then
-    (s.writeReg64 Reg.x0 0#64).advancePC
-  else if !decide (oldset.toNat + 8 ≤ 2 ^ 64) then
-    (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
-  else if !s.mem.canWrite oldset 8 then
-    (s.writeReg64 Reg.x0 EFAULT_RET).advancePC
   else
-    ((s.setMem (s.mem.writeBytes oldset (List.replicate 8 0#8))).writeReg64 Reg.x0 0#64).advancePC
+    let oldMask := s.sigMask
+    let s1 :=
+      if set == 0#64 then s
+      else
+        let m := s.mem.read64 set
+        let newMask :=
+          (if how == 0#32 then oldMask ||| m
+           else if how == 1#32 then oldMask &&& ~~~m
+           else m) &&& ~~~SIG_UNBLOCKABLE_MASK
+        s.setSigMask newMask
+    let s2 :=
+      if oldset == 0#64 then
+        (s1.writeReg64 Reg.x0 0#64).advancePC
+      else if !decide (oldset.toNat + 8 ≤ 2 ^ 64) || !s1.mem.canWrite oldset 8 then
+        (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+      else
+        ((s1.setMem (s1.mem.writeBytes oldset (leBytes64 oldMask))).writeReg64 Reg.x0 0#64).advancePC
+    let deliverable := s2.sigPending &&& ~~~s2.sigMask
+    if deliverable == 0#64 then
+      s2
+    else if deliverable == SIGABRT_MASK then
+      let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+      let disp := (s3.getSigAction LINUX_SIGABRT).handler
+      if disp == SIG_DFL then
+        s3.setStatus (.Signaled 6#7)
+      else if disp == SIG_IGN then
+        s3
+      else
+        s3.setStatus (.Exception "unmodeled signal handler delivery")
+    else
+      s2.setStatus (.Exception "unmodeled pending signal delivery")
 
 /-- `sigaltstack(uss, uoss)` (`__NR_sigaltstack = 132`, `SYSCALL_DEFINE2(sigaltstack)` and
     `do_sigaltstack` in `kernel/signal.c:4458-4527`):
@@ -243,7 +273,9 @@ def execSigaltstack (s : State) : State :=
     - when `act ≠ 0`, records `{ handler, flags &&& UAPI_SA_FLAGS, restorer,
       mask &&& ~~~SIG_UNBLOCKABLE_MASK }` in `State.sigActions signum` (`sa_flags &= UAPI_SA_FLAGS`
       and `sigdelsetmask` in `do_sigaction`); recorded flags are thus already masked, so `oldact`
-      matches Linux's `oact->sa.sa_flags &= UAPI_SA_FLAGS`;
+      matches Linux's `oact->sa.sa_flags &= UAPI_SA_FLAGS`. When setting `SIGABRT` to `SIG_IGN`,
+      also clears `SIGABRT_MASK` from `State.sigPending` (`flush_sigqueue_mask` in
+      `kernel/signal.c:4425-4437`);
     - when `oldact ≠ 0`, writes the previous 32-byte `k_sigaction` to `oldact` (returning `-EFAULT`
       if `oldact` wraps modulo `2 ^ 64` or is not 32-byte writable, matching `copy_to_user` after
       `do_sigaction`);
@@ -272,11 +304,16 @@ def execRtSigaction (s : State) : State :=
     let s1 :=
       if act == 0#64 then s
       else
-        s.setSigAction signum
-          { handler  := s.mem.read64 act
+        let handler := s.mem.read64 act
+        let sAct := s.setSigAction signum
+          { handler  := handler
             flags    := s.mem.read64 (act + 8#64) &&& UAPI_SA_FLAGS
             restorer := s.mem.read64 (act + 16#64)
             mask     := s.mem.read64 (act + 24#64) &&& ~~~SIG_UNBLOCKABLE_MASK }
+        if signum == LINUX_SIGABRT && handler == SIG_IGN then
+          sAct.setSigPending (sAct.sigPending &&& ~~~SIGABRT_MASK)
+        else
+          sAct
     if oldact == 0#64 then
       (s1.writeReg64 Reg.x0 0#64).advancePC
     else if !decide (oldact.toNat + 32 ≤ 2 ^ 64) || !s1.mem.canWrite oldact 32 then
@@ -284,11 +321,25 @@ def execRtSigaction (s : State) : State :=
     else
       ((s1.setMem (s1.mem.writeBytes oldact (SigAction.toBytes old))).writeReg64 Reg.x0 0#64).advancePC
 
-/-- `tkill(tid, sig)` (`__NR_tkill = 130`, `do_tkill` in `kernel/signal.c:4038`):
-    - if `tid ≤ 0`, `sig < 0`, or `sig > 64` (`_NSIG`), returns `-EINVAL`;
+/-- Maximum Linux PID ceiling (`PID_MAX_LIMIT = 4 * 1024 * 1024 = 0x400000`,
+    `include/linux/threads.h:35`), above which `find_task_by_vpid` always returns `NULL` (`-ESRCH`). -/
+def PID_MAX_LIMIT : Nat := 0x400000
+
+/-- `tkill(tid, sig)` (`__NR_tkill = 130`, `SYSCALL_DEFINE2(tkill)` -> `do_tkill` ->
+    `do_send_specific` in `kernel/signal.c:4194-4265`):
+    - if `tid ≤ 0`, returns `-EINVAL` (`kernel/signal.c:4261`);
+    - `do_send_specific` looks up `find_task_by_vpid(tid)` before validating `sig`
+      (`kernel/signal.c:4200-4202`): returns `-ESRCH` when `tid > PID_MAX_LIMIT` (`0x400000`), and
+      `[INTENTIONAL_SCOPE]` fails closed with `.Exception "unmodeled tkill"` for `2 ≤ tid ≤ PID_MAX_LIMIT`;
+    - on `tid == 1` (`SIM_TID`), if `sig < 0` or `sig > 64` (`_NSIG`), returns `-EINVAL`
+      (`valid_signal` in `check_kill_permission`);
+    - if `tid == 1` and `sig == 0` (existence/permission probe), returns `0`;
     - `[INTENTIONAL_SCOPE]`: if `tid == 1` (`SIM_TID`) and `sig == SIGABRT` (`6`):
-      - when `SIGABRT`'s disposition is `SIG_DFL` (`0`), terminates the process with fatal signal
-        status `.Signaled 6#7` (shell / `qemu-aarch64` exit code `128 + 6 = 134`);
+      - when `SIGABRT` is blocked in `State.sigMask` (`(s.sigMask &&& SIGABRT_MASK) != 0`), queues
+        `SIGABRT_MASK` in `State.sigPending` and returns `0` (`sig_ignored` returns `false` while
+        blocked in `kernel/signal.c:103-116`);
+      - otherwise, when `SIGABRT`'s disposition is `SIG_DFL` (`0`), terminates the process with
+        fatal signal status `.Signaled 6#7` (shell / `qemu-aarch64` exit code `128 + 6 = 134`);
       - when `SIGABRT`'s disposition is `SIG_IGN` (`1`), drops the ignored signal (`sig_ignored` in
         `kernel/signal.c`) and returns `0`;
       - otherwise fails closed with `.Exception "unmodeled tkill"`;
@@ -296,24 +347,47 @@ def execRtSigaction (s : State) : State :=
 def execTkill (s : State) : State :=
   let tid := s.readReg32 Reg.x0
   let sig := s.readReg32 Reg.x1
-  if tid.sle 0#32 || sig.slt 0#32 || sig.toNat > 64 then
+  if tid.sle 0#32 then
     (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
-  else if tid == 1#32 && sig == LINUX_SIGABRT then
-    let disp := (s.getSigAction LINUX_SIGABRT).handler
-    if disp == SIG_DFL then
-      s.setStatus (.Signaled 6#7)
-    else if disp == SIG_IGN then
-      (s.writeReg64 Reg.x0 0#64).advancePC
+  else if tid != 1#32 then
+    if tid.toNat > PID_MAX_LIMIT then
+      (s.writeReg64 Reg.x0 (-ESRCH)).advancePC
     else
       s.setStatus (.Exception "unmodeled tkill")
+  else if sig.slt 0#32 || sig.toNat > 64 then
+    (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
+  else if sig == 0#32 then
+    (s.writeReg64 Reg.x0 0#64).advancePC
+  else if sig == LINUX_SIGABRT then
+    if (s.sigMask &&& SIGABRT_MASK) != 0#64 then
+      ((s.setSigPending (s.sigPending ||| SIGABRT_MASK)).writeReg64 Reg.x0 0#64).advancePC
+    else
+      let disp := (s.getSigAction LINUX_SIGABRT).handler
+      if disp == SIG_DFL then
+        s.setStatus (.Signaled 6#7)
+      else if disp == SIG_IGN then
+        (s.writeReg64 Reg.x0 0#64).advancePC
+      else
+        s.setStatus (.Exception "unmodeled tkill")
   else
     s.setStatus (.Exception "unmodeled tkill")
 
-/-- `tgkill(tgid, tid, sig)` (`__NR_tgkill = 131`, `do_tkill` in `kernel/signal.c:4024`):
-    - if `tid ≤ 0`, `tgid ≤ 0`, `sig < 0`, or `sig > 64` (`_NSIG`), returns `-EINVAL`;
+/-- `tgkill(tgid, tid, sig)` (`__NR_tgkill = 131`, `SYSCALL_DEFINE3(tgkill)` -> `do_tkill` ->
+    `do_send_specific` in `kernel/signal.c:4194-4250`):
+    - if `tid ≤ 0` or `tgid ≤ 0`, returns `-EINVAL` (`kernel/signal.c:4246`);
+    - `do_send_specific` looks up `find_task_by_vpid(tid)` and checks `task_tgid_vnr(p) == tgid`
+      before validating `sig` (`kernel/signal.c:4200-4202`): returns `-ESRCH` when `tid == 1` and
+      `tgid != 1` or when `tid > PID_MAX_LIMIT`, and `[INTENTIONAL_SCOPE]` fails closed with
+      `.Exception "unmodeled tgkill"` for `2 ≤ tid ≤ PID_MAX_LIMIT`;
+    - on `tgid == 1` and `tid == 1` (`SIM_TID`), if `sig < 0` or `sig > 64` (`_NSIG`), returns
+      `-EINVAL`;
+    - if `tgid == 1`, `tid == 1`, and `sig == 0` (existence/permission probe), returns `0`;
     - `[INTENTIONAL_SCOPE]`: if `tgid == 1`, `tid == 1` (`SIM_TID`), and `sig == SIGABRT` (`6`):
-      - when `SIGABRT`'s disposition is `SIG_DFL` (`0`), terminates the process with fatal signal
-        status `.Signaled 6#7` (shell / `qemu-aarch64` exit code `128 + 6 = 134`);
+      - when `SIGABRT` is blocked in `State.sigMask` (`(s.sigMask &&& SIGABRT_MASK) != 0`), queues
+        `SIGABRT_MASK` in `State.sigPending` and returns `0` (`sig_ignored` returns `false` while
+        blocked in `kernel/signal.c:103-116`);
+      - otherwise, when `SIGABRT`'s disposition is `SIG_DFL` (`0`), terminates the process with
+        fatal signal status `.Signaled 6#7` (shell / `qemu-aarch64` exit code `128 + 6 = 134`);
       - when `SIGABRT`'s disposition is `SIG_IGN` (`1`), drops the ignored signal (`sig_ignored` in
         `kernel/signal.c`) and returns `0`;
       - otherwise fails closed with `.Exception "unmodeled tgkill"`;
@@ -322,16 +396,30 @@ def execTgkill (s : State) : State :=
   let tgid := s.readReg32 Reg.x0
   let tid  := s.readReg32 Reg.x1
   let sig  := s.readReg32 Reg.x2
-  if tid.sle 0#32 || tgid.sle 0#32 || sig.slt 0#32 || sig.toNat > 64 then
+  if tid.sle 0#32 || tgid.sle 0#32 then
     (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
-  else if tgid == 1#32 && tid == 1#32 && sig == LINUX_SIGABRT then
-    let disp := (s.getSigAction LINUX_SIGABRT).handler
-    if disp == SIG_DFL then
-      s.setStatus (.Signaled 6#7)
-    else if disp == SIG_IGN then
-      (s.writeReg64 Reg.x0 0#64).advancePC
+  else if tid != 1#32 then
+    if tid.toNat > PID_MAX_LIMIT then
+      (s.writeReg64 Reg.x0 (-ESRCH)).advancePC
     else
       s.setStatus (.Exception "unmodeled tgkill")
+  else if tgid != 1#32 then
+    (s.writeReg64 Reg.x0 (-ESRCH)).advancePC
+  else if sig.slt 0#32 || sig.toNat > 64 then
+    (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
+  else if sig == 0#32 then
+    (s.writeReg64 Reg.x0 0#64).advancePC
+  else if sig == LINUX_SIGABRT then
+    if (s.sigMask &&& SIGABRT_MASK) != 0#64 then
+      ((s.setSigPending (s.sigPending ||| SIGABRT_MASK)).writeReg64 Reg.x0 0#64).advancePC
+    else
+      let disp := (s.getSigAction LINUX_SIGABRT).handler
+      if disp == SIG_DFL then
+        s.setStatus (.Signaled 6#7)
+      else if disp == SIG_IGN then
+        (s.writeReg64 Reg.x0 0#64).advancePC
+      else
+        s.setStatus (.Exception "unmodeled tgkill")
   else
     s.setStatus (.Exception "unmodeled tgkill")
 

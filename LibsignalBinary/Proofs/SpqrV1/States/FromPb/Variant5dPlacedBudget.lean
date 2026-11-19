@@ -10,20 +10,32 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5cPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5dPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Auth.FromPbBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlacedBudgetAux2
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5cPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5dPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10b
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5a -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5b
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5d
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5aPlaced
 
 /-!
 # Budget-Threaded Placed Variant 5 (`NoHeaderReceived`, `+1344`, Block `333`) — Part D
@@ -32,7 +44,7 @@ Budget-threaded relocatable error cleanup paths (`+6420`, `+1396`, `+6520 -> s0.
 `FreeOnlyEvs` and `Authenticator` key-buffer cloning (`+3744 -> +6064`) under `AuthFromPbEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -851,106 +863,5 @@ theorem v5_auth_some_3744_to_6064_placed [LibsignalPlacement]
     out ptsPtr ptsCap ptsLen d32_64 w48 w56 w64 w72 w80 w88 w96 ep authPb Rest
     hfits hsp0_align hpc1 hrun1 hsp1 hx8_1 hx9_1 hx10_1 hx19_1 hx20_1
     hx21_1 hx22_1 hx23_1 hx24_1 hx25_1 hx26_1 hx28_1 htr1
-
-theorem v5_auth_some_3744_to_6064_of_env_placedHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext)
-    (st : M.σ) (s0 s1 : State)
-    (out ptsPtr ptsCap ptsLen d32_64 w48 w56 w64 w72 w80 w88 w96 ep : BitVec 64)
-    (authPb : ProtoAuthenticator) (Rest : SepProp)
-    (hfits : FitsEnv M lim st (AuthFromPbEnv authPb))
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 3744#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx8_1 : s1.readReg64 .x8 = w88) (hx9_1 : s1.readReg64 .x9 = w96)
-    (hx10_1 : s1.readReg64 .x10 = w80) (hx19_1 : s1.readReg64 .x19 = out)
-    (hx20_1 : s1.readReg64 .x20 = w64) (hx21_1 : s1.readReg64 .x21 = w72)
-    (hx22_1 : s1.readReg64 .x22 = ptsPtr) (hx23_1 : s1.readReg64 .x23 = ptsCap)
-    (hx24_1 : s1.readReg64 .x24 = w48) (hx25_1 : s1.readReg64 .x25 = d32_64)
-    (hx26_1 : s1.readReg64 .x26 = w56) (hx28_1 : s1.readReg64 .x28 = ptsLen)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWP (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 6064#64) s1
-      (v5a_optProtoUcHeap A.repAlloc (some { auth := some authPb, epoch := ep })
-          w48 w56 w64 w72 w80 w88 w96 ∗
-        stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        memRegion (s0.sp - 2400#64) 224 ∗ A.pool lim st s1 ∗ Rest)
-      (fun sm Pm =>
-        ∃ (evs_free : List AllocEvent) (p1_new p2_new : BitVec 64),
-          FreeOnlyEvs evs_free ∧
-          authPb.rootKey.length < 2 ^ 63 ∧ authPb.macKey.length < 2 ^ 63 ∧
-          (BitVec.ofNat 64 authPb.rootKey.length).toNat < 2 ^ 63 ∧
-          (Pm ⊢
-            stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-            memRegion (s0.sp - 2400#64) 136 ∗ (((s0.sp - 2400#64) + 136#64) ↦₆₄ p2_new) ∗
-            memRegion ((s0.sp - 2400#64) + 144#64) 8 ∗ (((s0.sp - 2400#64) + 152#64) ↦₆₄ ep) ∗
-            memRegion ((s0.sp - 2400#64) + 160#64) 40 ∗ (((s0.sp - 2400#64) + 200#64) ↦₆₄ w80) ∗
-            (((s0.sp - 2400#64) + 208#64) ↦₆₄ p1_new) ∗
-            (((s0.sp - 2400#64) + 216#64) ↦₆₄ BitVec.ofNat 64 authPb.macKey.length) ∗
-            vecU8Payload A.repAlloc (BitVec.ofNat 64 authPb.rootKey.length) p1_new authPb.rootKey ∗
-            vecU8Payload A.repAlloc (BitVec.ofNat 64 authPb.macKey.length) p2_new authPb.macKey ∗
-            A.pool lim (M.stepEvents (authFromPbEvents authPb ++ evs_free) st) sm ∗ Rest) ∧
-          sm.sp = s0.sp - 2400#64 ∧ sm.readReg64 .x19 = out ∧
-          sm.readReg64 .x20 = BitVec.ofNat 64 authPb.rootKey.length ∧
-          sm.readReg64 .x22 = ptsPtr ∧ sm.readReg64 .x23 = ptsCap ∧
-          sm.readReg64 .x25 = d32_64 ∧ sm.readReg64 .x27 = p1_new ∧
-          sm.readReg64 .x28 = ptsLen ∧ TraceCalleeSaved sm s0) :=
-  v5_auth_some_3744_to_6064_of_placedHooks hA st s0 s1
-    out ptsPtr ptsCap ptsLen d32_64 w48 w56 w64 w72 w80 w88 w96 ep authPb Rest
-    (fitsEvents_of_fitsEnv_authFromPbEnv hfits) hsp0_align hpc1 hrun1 hsp1
-    hx8_1 hx9_1 hx10_1 hx19_1 hx20_1 hx21_1 hx22_1 hx23_1 hx24_1 hx25_1 hx26_1 hx28_1 htr1
-
-theorem v5_auth_some_3744_to_6064_wpp_of_placedHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksPlacedBudget M A lim ext)
-    (st : M.σ) (s0 s1 : State)
-    (out ptsPtr ptsCap ptsLen d32_64 w48 w56 w64 w72 w80 w88 w96 ep : BitVec 64)
-    (authPb : ProtoAuthenticator) (Rest R : SepProp)
-    (hfits : FitsEvents M lim st (authFromPbEvents authPb))
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc1 : s1.pc = lsmpl.base 333 + 3744#64)
-    (hrun1 : s1.status = .Running)
-    (hsp1 : s1.sp = s0.sp - 2400#64)
-    (hx8_1 : s1.readReg64 .x8 = w88) (hx9_1 : s1.readReg64 .x9 = w96)
-    (hx10_1 : s1.readReg64 .x10 = w80) (hx19_1 : s1.readReg64 .x19 = out)
-    (hx20_1 : s1.readReg64 .x20 = w64) (hx21_1 : s1.readReg64 .x21 = w72)
-    (hx22_1 : s1.readReg64 .x22 = ptsPtr) (hx23_1 : s1.readReg64 .x23 = ptsCap)
-    (hx24_1 : s1.readReg64 .x24 = w48) (hx25_1 : s1.readReg64 .x25 = d32_64)
-    (hx26_1 : s1.readReg64 .x26 = w56) (hx28_1 : s1.readReg64 .x28 = ptsLen)
-    (htr1 : TraceCalleeSaved s1 s0) :
-    SepWPp (lsProg_333 (Rust.withPanics ext))
-      (lsmpl.base 333 + 6064#64) s1
-      (v5a_optProtoUcHeap A.repAlloc (some { auth := some authPb, epoch := ep })
-          w48 w56 w64 w72 w80 w88 w96 ∗
-        stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        memRegion (s0.sp - 2400#64) 224 ∗ A.pool lim st s1 ∗ Rest)
-      (fun sm Pm =>
-        ∃ (evs_free : List AllocEvent) (p1_new p2_new : BitVec 64),
-          FreeOnlyEvs evs_free ∧
-          authPb.rootKey.length < 2 ^ 63 ∧ authPb.macKey.length < 2 ^ 63 ∧
-          (BitVec.ofNat 64 authPb.rootKey.length).toNat < 2 ^ 63 ∧
-          (Pm ⊢
-            stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-            memRegion (s0.sp - 2400#64) 136 ∗ (((s0.sp - 2400#64) + 136#64) ↦₆₄ p2_new) ∗
-            memRegion ((s0.sp - 2400#64) + 144#64) 8 ∗ (((s0.sp - 2400#64) + 152#64) ↦₆₄ ep) ∗
-            memRegion ((s0.sp - 2400#64) + 160#64) 40 ∗ (((s0.sp - 2400#64) + 200#64) ↦₆₄ w80) ∗
-            (((s0.sp - 2400#64) + 208#64) ↦₆₄ p1_new) ∗
-            (((s0.sp - 2400#64) + 216#64) ↦₆₄ BitVec.ofNat 64 authPb.macKey.length) ∗
-            vecU8Payload A.repAlloc (BitVec.ofNat 64 authPb.rootKey.length) p1_new authPb.rootKey ∗
-            vecU8Payload A.repAlloc (BitVec.ofNat 64 authPb.macKey.length) p2_new authPb.macKey ∗
-            A.pool lim (M.stepEvents (authFromPbEvents authPb ++ evs_free) st) sm ∗ Rest) ∧
-          sm.sp = s0.sp - 2400#64 ∧ sm.readReg64 .x19 = out ∧
-          sm.readReg64 .x20 = BitVec.ofNat 64 authPb.rootKey.length ∧
-          sm.readReg64 .x22 = ptsPtr ∧ sm.readReg64 .x23 = ptsCap ∧
-          sm.readReg64 .x25 = d32_64 ∧ sm.readReg64 .x27 = p1_new ∧
-          sm.readReg64 .x28 = ptsLen ∧ TraceCalleeSaved sm s0)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ statesFromPbOnPanic s0 sf ∗ R)) :=
-  SepWPp.of_sepWP_ret (v5_auth_some_3744_to_6064_of_placedHooks hA st s0 s1
-    out ptsPtr ptsCap ptsLen d32_64 w48 w56 w64 w72 w80 w88 w96 ep authPb Rest
-    hfits hsp0_align hpc1 hrun1 hsp1 hx8_1 hx9_1 hx10_1 hx19_1 hx20_1
-    hx21_1 hx22_1 hx23_1 hx24_1 hx25_1 hx26_1 hx28_1 htr1)
 
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant5dPlacedBudget

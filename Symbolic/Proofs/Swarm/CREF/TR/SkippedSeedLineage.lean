@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.COMPOSED.CompSchedule
 import Symbolic.Proofs.Swarm.CREF.TR.FreshSigma
@@ -26,7 +26,7 @@ and a chain seed derived from a receiver chain `c ∈ st.recv` of a stored `TRSt
 collide only when they belong to the same ratchet epoch and message counter.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -113,7 +113,7 @@ theorem rIdx_and_counter_eq_of_skippedSeed_eq_consumeMessageKey
 
 /-- On `runTraceMoves r₀ ms`, any `SkippedKeyStored` seed equal to a `consumeMessageKey` seed from
 `c ∈ st.recv` shares the same ratchet epoch (`rIdx_s = c.rIdx`). -/
-def SkippedSeedNeChainSeed (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
+@[expose] def SkippedSeedNeChainSeed (r₀ : ProtocolSetup) (ms : List Move) : Prop :=
   ∀ p stateIdx st c n seed_c c' skIdx pk ctr seed_s rIdx_s srcIdx,
     ((PersistentLocalState.getLocalState p stateIdx : Traceful TRState).run (runTraceMoves r₀ ms)).1 = some st →
     c ∈ st.recv → consumeMessageKey c n = some (seed_c, c') →

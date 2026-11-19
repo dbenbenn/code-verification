@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliRun
 import ProofLib.SepLogic.WP.StateNorm
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -79,18 +79,6 @@ theorem cli_hookSat_bcmp (W : CliHooks) : HookSat (cliExterns W) cliBcmpName cli
 
 /-! ## Contract-backed `bcmp` (`CliExternsOk`) -/
 
-/-- Any non-panic symbol resolves in `cliExternsWith ext` to its entry in `ext`. -/
-theorem cliExternsWith_of_not_panic (ext : String → Option (State → State)) {n : String}
-    (hn : E2E.isImagePanicSymbol n = false) : cliExternsWith ext n = ext n := by
-  simp [cliExternsWith, hn]
-
-/-- Lift `HookSat ext n spec` to `cliExternsWith ext` when `n` is not a panic symbol. -/
-theorem hookSat_cliExternsWith {α : Type} {ext : String → Option (State → State)} {n : String}
-    {spec : Spec α} (hn : E2E.isImagePanicSymbol n = false) (h : HookSat ext n spec) :
-    HookSat (cliExternsWith ext) n spec := by
-  obtain ⟨f, hf, hok⟩ := h
-  exact ⟨f, (cliExternsWith_of_not_panic ext hn).trans hf, hok⟩
-
 /-- `HookOk f CliExt.bcmpSpec` gives `HookOk f cliBcmpSpec` (repackaging the ghost struct). -/
 theorem hookOk_cliBcmpSpec_of_bcmpSpec {f : State → State} (h : HookOk f CliExt.bcmpSpec) :
     HookOk f cliBcmpSpec :=
@@ -109,18 +97,5 @@ theorem hookSat_bcmp_ext {P : E2E.PEParams} {A : RustHeap.RustAlloc}
     {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
     HookSat ext cliBcmpName cliBcmpSpec :=
   hookSat_bcmp_of_bcmpSpec hOk.bcmp
-
-/-- `HookSat (cliExternsWith ext) cliBcmpName cliBcmpSpec` from `hOk.bcmp`. -/
-theorem hookSat_bcmp_cliExternsWith {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    HookSat (cliExternsWith ext) cliBcmpName cliBcmpSpec :=
-  hookSat_cliExternsWith
-    (by simp [E2E.isImagePanicSymbol, E2E.extraImagePanicNames, Rust.isPanicSymbol, cliBcmpName])
-    (hookSat_bcmp_ext hOk)
-
-theorem hookSat_bcmp_of_externsOk {P : E2E.PEParams} {A : RustHeap.RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) :
-    HookSat (cliExternsWith ext) cliBcmpName cliBcmpSpec :=
-  hookSat_bcmp_cliExternsWith hOk
 
 end CryptoVerification.SignalSession.Cli.RunGlue

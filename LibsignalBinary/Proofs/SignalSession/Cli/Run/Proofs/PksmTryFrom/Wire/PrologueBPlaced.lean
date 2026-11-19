@@ -9,14 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.PrologueB
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ProloguePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.PrologueB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ProloguePlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodePure
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPost
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromPostPlacedA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrAt -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.Prologue
+import LibsignalBinary.Proofs.TripleRatchet.Prost.DropDecodeError
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
 
 /-!
 # Relocatable `[LibsignalPlacement]` Empty-Body and Loop-Entry Prologue Segments
@@ -25,7 +32,7 @@ Proves the `+0x0bc → +0x524 → +0x504` empty-body error path, `+0x0bc → +0x
 step, and `preKey_init_to_460_placed_wpW` on `preKeyPlacedProg H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -57,7 +64,6 @@ open RunProofs.Pksm
 
 private abbrev SepWPp := @Wire.SepWPp
 private abbrev SepWP.done := @Wire.SepWP.done
-private abbrev SepWPp.of_sepWP_end := @Wire.SepWPp.of_sepWP_end
 private abbrev SepWPp.frame_tryFrom := @Wire.SepWPp.frame_tryFrom
 private abbrev SepWPp.bind := @Wire.SepWPp.bind
 private abbrev SepWPp.exists_pre := @Wire.SepWPp.exists_pre

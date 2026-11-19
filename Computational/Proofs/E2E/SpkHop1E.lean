@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkHop1D
-public import Computational.Proofs.E2E.SpkHop2A
+public import Computational.Proofs.E2E.SpkHop1D -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop2A -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import Computational.Proofs.GameHop.Fel
+import Computational.Proofs.SpecLemmas.Session.ACD19.SM.CostedTables
 
 /-!
 # Hop 2 Game-State Invariant
@@ -22,7 +23,7 @@ oracle steps, and introduces parity-indexed root-key patching (`partyOfParity`,
 `patchGamePartyIdx`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -80,10 +81,10 @@ theorem dh_lookup_isSome_prob_le_hop2CreateCollUnit
   · rcases List.mem_map.mp hx with ⟨p, hp, rfl⟩; exact hle p hp
   · simp only [List.length_map, nsmul_eq_mul, le_rfl]
 
-def pureStepHyb (k' : ℕ) (rc : Ratchet.RootKey × BitVec 256) (f : Pt → BitVec 256) : Hop2Hyb Pt :=
+@[expose] def pureStepHyb (k' : ℕ) (rc : Ratchet.RootKey × BitVec 256) (f : Pt → BitVec 256) : Hop2Hyb Pt :=
   ⟨k', rc, fun I => pure (f I)⟩
 
-def pureStepImpl (f : Pt → BitVec 256) : QueryImpl (unifSpec + prfSpec Pt (BitVec 256)) ProbComp :=
+@[expose] def pureStepImpl (f : Pt → BitVec 256) : QueryImpl (unifSpec + prfSpec Pt (BitVec 256)) ProbComp :=
   QueryImpl.ofLift unifSpec ProbComp +
     (fun I => (pure (f I) : ProbComp (BitVec 256)) : QueryImpl (prfSpec Pt (BitVec 256)) ProbComp)
 
@@ -970,7 +971,7 @@ theorem hop2InjectPost_preserves_hop2GameInv {ℓ : ℕ} (P : Params Bytes PQC)
       intro R hR; dsimp only [] at hR ⊢; rw [hst1, hcoins]; exact hinv.coins_sc R (hidx ▸ hR)
 
 /-- The party whose chain indices have parity `t % 2` (`0 ↦ .B`, `1 ↦ .A`). -/
-def partyOfParity (t : ℕ) : Party :=
+@[expose] def partyOfParity (t : ℕ) : Party :=
   if t % 2 = 0 then .B else .A
 
 @[simp] theorem partyOfParity_zero : partyOfParity 0 = .B := rfl
@@ -992,7 +993,7 @@ theorem partyOfParity_succ_ne (t : ℕ) : partyOfParity (t + 1) ≠ partyOfParit
   rw [partyOfParity_succ]
   cases partyOfParity t <;> decide
 
-def patchGamePartyIdx {ℓ : ℕ} (m : ℕ) (rk : Ratchet.RootKey) (idx : Party → Option ℕ)
+@[expose] def patchGamePartyIdx {ℓ : ℕ} (m : ℕ) (rk : Ratchet.RootKey) (idx : Party → Option ℕ)
     (s : SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes) :
     SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes :=
   { s with st := fun Q => patchPartyIdx m rk (idx Q) (s.st Q) }
@@ -1180,10 +1181,10 @@ theorem hop2InjectPost_patchPartyIdx {ℓ : ℕ} (P : Params Bytes PQC) (qep : �
   unfold hop2InjectPost
   cases o <;> simp [hop2BadAt_patchPartyIdx]
 
-def hop2HybPrf (k : ℕ) (rc : Ratchet.RootKey × BitVec 256) : Hop2Hyb Pt :=
+@[expose] def hop2HybPrf (k : ℕ) (rc : Ratchet.RootKey × BitVec 256) : Hop2Hyb Pt :=
   ⟨k, rc, fun I => evalQuery (Input := Pt) (Tag := BitVec 256) I⟩
 
-def hop2HybPrg (P : Params Bytes PQC) (encPt : Pt → Bytes) (k' : ℕ)
+@[expose] def hop2HybPrg (P : Params Bytes PQC) (encPt : Pt → Bytes) (k' : ℕ)
     (u_chall : BitVec 256) : Hop2Hyb Pt :=
   let rc := Ratchet.rootExpand P.C.F (keyToBytes32 u_chall)
   pureStepHyb k' rc ((extractPRF P.C.F encPt).tag rc.1)
@@ -1364,7 +1365,7 @@ theorem hop2Recv_run_of_idx_none {ℓ : ℕ} (P : Params Bytes PQC)
   | error _ => simp [StateT.run_pure, sessionSchemeU, Params.receive, htry]
   | ok msg => simp [StateT.run_bind, StateT.run_get, hidx, StateT.run_pure]
 
-def hop2NonDhOut (P : Params Bytes PQC) (ℓ : ℕ) (g : GhostState Bytes) (c : Bytes)
+@[expose] def hop2NonDhOut (P : Params Bytes PQC) (ℓ : ℕ) (g : GhostState Bytes) (c : Bytes)
     (rc : BitVec 256) : Hop2Out Pt ℓ :=
   match SignalMessage.tryFrom P.codec c with
   | .error _ => none
@@ -1438,7 +1439,7 @@ theorem hop2Recv_run_of_idx_some_non_dh {ℓ : ℕ} (P : Params Bytes PQC)
               exact hnot ⟨msg, T, sc, htry, hfind, hdec, hT, hsc, hQ0⟩
     · simp [hfind, StateT.run_pure]
 
-def IsDeliverOrInjectPost {ℓ : ℕ} (P : Params Bytes PQC) (qep : ℕ) (s : BitVec 256)
+@[expose] def IsDeliverOrInjectPost {ℓ : ℕ} (P : Params Bytes PQC) (qep : ℕ) (s : BitVec 256)
     (Q : Party) (c : Bytes) (g₀ : GhostState Bytes)
     (post : Hop2Out Pt ℓ → Hop2State Pt ℓ →
         Option (SM.RecvResult (CBC.Plain ℓ)) × Hop2State Pt ℓ) : Prop :=

@@ -9,13 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.BlocksPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.BlocksPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-public import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.Blocks
-public import LibsignalBinary.Proofs.RecordCodecs.Deps
+import LibsignalBinary.Proofs.RecordCodecs.PreKeyDeserialize.Defs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkGetPoll.Blocks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.Deps -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Ok/Missing Branch and Symbolic Execution of `get_pre_key::{closure#0}`
@@ -24,7 +31,7 @@ Proves the `.missing` / `.found` branch helper (`step_ok_240_placed`) and full s
 `pkGetPollInner_placed_ok` on Block `573` (`lsProg_573 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

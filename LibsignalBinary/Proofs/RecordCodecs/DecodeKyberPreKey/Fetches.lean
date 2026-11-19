@@ -9,10 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.Deps
 
 /-!
@@ -22,7 +21,7 @@ Instruction-fetch lemmas and `[LibsignalPlacement]` cross-block call combinators
 `signal_session::stores::decode_kyber_pre_key` (Block `595`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,64 +29,6 @@ namespace CryptoVerification.RecordCodecsBinary.DecodeKyberPreKey.Helpers
 
 open Arm64 ProofLib CryptoVerification.RustHeap CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.RecordCodecsBinary
-
-abbrev kpkDecOff : Nat :=
-  num% (ls_off% "libsignal_cli::stores::decode_kyber_pre_key")
-
-theorem kpkDec_fnOff :
-    libsignalSessionCode.fnOff decodeKyberPreKeyName = kpkDecOff :=
-  ls_lemma% fnOff "libsignal_cli::stores::decode_kyber_pre_key"
-
-gen_decodes CryptoVerification.libsignalSessionCode_tree kpkDec
-  [(num% (ls_off% "libsignal_cli::stores::decode_kyber_pre_key")) →
-   (num% (ls_off% "libsignal_cli::stores::decode_kyber_pre_key" + 128))]
-
-abbrev signedDecodeRelOff : BitVec 64 :=
-  bv% (2 ^ 64 +
-    (ls_off% "<libsignal_protocol::proto::storage::SignedPreKeyRecordStructure as prost::message::Message>::decode::<&[u8]>") -
-    ls_off% "libsignal_cli::stores::decode_kyber_pre_key")
-
-abbrev dropDecodeError3RelOff : BitVec 64 :=
-  bv% (2 ^ 64 +
-    (ls_off% "core::ptr::drop_glue::<prost::error::DecodeError> [local#3]") -
-    ls_off% "libsignal_cli::stores::decode_kyber_pre_key")
-
-theorem signedDecode_call_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hDecode : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr signedDecodeName) (signedDecodeSpec A img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr decodeKyberPreKeyName + signedDecodeRelOff)
-      (signedDecodeSpec A img) := by
-  have heq :
-      (tripleRatchetProgAtExt img.base ext).fnAddr decodeKyberPreKeyName + signedDecodeRelOff =
-      (tripleRatchetProgAtExt img.base ext).fnAddr signedDecodeName := by
-    dsimp only [signedDecodeRelOff]
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "libsignal_cli::stores::decode_kyber_pre_key"),
-      (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SignedPreKeyRecordStructure as prost::message::Message>::decode::<&[u8]>")]
-    bv_omega
-  rw [heq]; exact hDecode
-
-theorem dropDecodeError3_call_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hDrop : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dropDecodeError3Name)
-      (Prost.dropDecodeErrorSpec A)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr decodeKyberPreKeyName + dropDecodeError3RelOff)
-      ((Prost.dropDecodeErrorSpec A).inImage img) := by
-  have heq :
-      (tripleRatchetProgAtExt img.base ext).fnAddr decodeKyberPreKeyName + dropDecodeError3RelOff =
-      (tripleRatchetProgAtExt img.base ext).fnAddr dropDecodeError3Name := by
-    dsimp only [dropDecodeError3RelOff]
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "libsignal_cli::stores::decode_kyber_pre_key"),
-      (ls_lemma% fnOff "core::ptr::drop_glue::<prost::error::DecodeError> [local#3]")]
-    bv_omega
-  rw [heq]; exact subroutine_ok_inImage_of_subroutine_ok img hDrop
-
-/-! ## Relocatable `[LibsignalPlacement]` Call Transfer (Block `595`) -/
 
 section Placed
 

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local2
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Getters.Drops.ChainPlaced
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local2
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Getters.Drops.ChainPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
@@ -21,6 +21,20 @@ import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Common
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Defs
+import Arm64.Trusted.ISA.Semantics
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.Chain.ProtoExt
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import ProofLib.BV.WidthNorm
+import ProofLib.Hoare.Hooks
+import ProofLib.Hoare.SubroutineHook
+import ProofLib.SepLogic.CodeLookup
+import ProofLib.SepLogic.WP.Structural
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.Prelude.Core
 
 /-!
 # Relocatable `drop_glue<SessionStructure> [local#2]` Contract
@@ -29,7 +43,7 @@ Proves that `core::ptr::drop_glue::<SessionStructure> [local#2]` satisfies
 `dropSessionStructureLocal2Spec A` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.Cli.LibsignalTripleRatchet.FromRecordCallees
 

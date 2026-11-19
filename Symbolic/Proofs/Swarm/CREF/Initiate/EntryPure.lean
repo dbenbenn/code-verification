@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Swarm.CREF.Initiate.PostBridgePure
-public import Symbolic.Proofs.Swarm.CREF.OpkRelC
-public import Symbolic.Proofs.Swarm.CREF.Xpl.InvIni
+public import Symbolic.Proofs.Swarm.CREF.Initiate.PostBridgePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.InvIni -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPureB
 import Symbolic.Proofs.Swarm.CREF.Initiate.EntryPureC
 import Symbolic.Proofs.Swarm.CREF.Initiate.ModelPure
@@ -31,7 +31,7 @@ into the 34 hardware RNG draws `initiateDrawsOfCoins`, proves `ini_ok_pure_step`
 `InitiatePureOutcome`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -330,7 +330,7 @@ private theorem ini_matchedPrefix_mid_aliceStart_35 {interpretation : ExternInte
     exact hm_shown.2.2.2.2.2
 
 /-- Canonical 34-piece hardware RNG draw list extracted from a 192-byte CLI `coins` buffer. -/
-def initiateDrawsOfCoins (coins : HwBytes) : List HwBytes :=
+@[expose] def initiateDrawsOfCoins (coins : HwBytes) : List HwBytes :=
   [coins.take 32] ++ (List.range 32).map (fun i => (coins.drop (32 + 4 * i)).take 4) ++
     [(coins.drop 160).take 32]
 
@@ -515,7 +515,7 @@ export IniPure (initiateDrawsOfCoins initiateDrawsOfCoins_lengths initiateDrawsO
 
 /-- Postcondition relating CLI `initiate` inputs `(bundle, coins)` to optional new session record
 `outRec` and consumed RNG draws `ds`. -/
-def InitiatePureOutcome (interpretation : ExternInterpretation) (r : ProtocolSetup)
+@[expose] def InitiatePureOutcome (interpretation : ExternInterpretation) (r : ProtocolSetup)
     (bundle coins : HwBytes) (outRec : Option HwBytes) (ds : List HwBytes) : Prop :=
   match outRec with
   | none =>

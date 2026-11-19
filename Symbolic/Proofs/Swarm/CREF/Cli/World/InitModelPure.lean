@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Sem
+public import Symbolic.Proofs.Swarm.CREF.Sem -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Trace.Manipulation
@@ -19,7 +19,7 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.Cli.World.RelCliPure
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
@@ -34,6 +34,11 @@ import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.CREF.RoleSnapshots
+import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2
+import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure
 
 /-!
 # Initial Empty-Trace Model Invariants
@@ -42,7 +47,7 @@ Proves `MatchedPrefix`, `Clean`, and `PureCRel` on the empty hardware trace `[]`
 records, `sent = []`, and `accepted = []`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

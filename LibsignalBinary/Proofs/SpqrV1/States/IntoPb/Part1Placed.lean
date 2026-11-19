@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.IdentityKeyStoreFutures.SaveIdentity
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 1 Placed: Arm 0 (`States.keysUnsampled`) & Call Helpers
@@ -23,7 +25,7 @@ Relocatable (`[LibsignalPlacement]`) proof of Arm 0 (`States.keysUnsampled`) and
 helpers for `<PolyEncoder>::into_pb` (Block `375`) and `<PolyDecoder>::into_pb` (Block `377`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -50,7 +52,7 @@ open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.CodeLayout
 open CryptoVerification.SpqrV1.States.IntoPb.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero
 attribute [local arm64_norm, local wp_norm]
@@ -266,7 +268,7 @@ theorem states_into_pb_keysUnsampled_placed [LibsignalPlacement] {A : RustAlloc}
 /-! ## 2. Shared `SepWPp` Sequencing and `encoderIntoPb` / `decoderIntoPb` Call Helpers -/
 
 /-- Return postcondition of `<States>::into_pb` (Block `334`) for `SepWPp`. -/
-def StatesIntoPbPlacedPost [LibsignalPlacement] (A : RustAlloc) {F : ShaCompress}
+@[expose] def StatesIntoPbPlacedPost [LibsignalPlacement] (A : RustAlloc) {F : ShaCompress}
     (s0 : State) (out stA : BitVec 64)
     (st : States spqrPolyApi (spqrAuthApi F)) : State → SepProp → Prop :=
   fun sf Pf =>

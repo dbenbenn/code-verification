@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.EpochDirectionBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.Defs
 import ProofLib.SepLogic.WPp
 
@@ -20,7 +20,7 @@ import ProofLib.SepLogic.WPp
 Proves `[LibsignalPlacement]` basic-block step lemmas for CLI Block `457`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -54,31 +54,31 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.ule_zero_64 EncodedLen.ult_zero_64 EncodedLen.ule_self_64 EncodedLen.ult_self_64
   zext64_trunc32_orr_1 zext64_trunc32_orr_100000001 zext64_orr_1_32
 
-def EncodeEpochDirection1PinnedPlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeEpochDirection1PinnedPlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_457 H) (blkPl_457).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedSpec A))
 
-def EncodeEpochDirection1PlacedOk [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeEpochDirection1PlacedOk [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_457 H) (blkPl_457).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionSpec A))
 
-def EncodeEpochDirection1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeEpochDirection1PinnedPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_457 H) (blkPl_457).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionPinnedSpecX A))
 
-def EncodeEpochDirection1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeEpochDirection1PlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (H : String → Option (State → State)) : Prop :=
   subroutine_ok (lsProg_457 H) (blkPl_457).base
     (withLsCodeLoaded lsmpl (encodeEpochDirectionSpecX A))
 
-def EncodeEpochDirection1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeEpochDirection1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection1PinnedPlacedOk A (Rust.withPanics ext)
 
-def EncodeEpochDirection1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncodeEpochDirection1PlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   EncodeEpochDirection1PlacedOk A (Rust.withPanics ext)
 

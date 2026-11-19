@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import ProofLib.Lemmas
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import Symbolic.Proofs.Swarm.CREF.Cli.World.CallCountPure
 import VCVio.Prelude.Core
@@ -22,7 +21,7 @@ Head-inversion lemmas for `CoinSplit` on kept and `.rng` events, together with t
 predicate on `List MachineEvent`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,7 +36,7 @@ open _root_.DY.Libsignal.Composed.Refinement.Cli
 open CryptoVerification.SignalSession (Inputs Outcome)
 
 /-- No two consecutive events in `σ` are `.rng` events. -/
-def NoAdjRng : List MachineEvent → Prop
+@[expose] def NoAdjRng : List MachineEvent → Prop
   | [] => True
   | [_] => True
   | e₁ :: e₂ :: es => (eventKind e₁ ≠ .rng ∨ eventKind e₂ ≠ .rng) ∧ NoAdjRng (e₂ :: es)

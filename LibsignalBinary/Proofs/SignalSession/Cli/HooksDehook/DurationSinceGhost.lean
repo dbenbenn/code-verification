@@ -10,58 +10,59 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceCode -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookG -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookLs -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookG
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.LinkedCallHookLs
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
 public import LibsignalBinary.Heap.IfaceBudget
 import ProofLib.Process.OracleEq
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
-# Ghost `SystemTime::duration_since` Hook & Route-β′ Consumer `HookOk` Suite (`HooksDehook.DurationSinceGhost`)
+# Ghost `SystemTime::duration_since` Hook and `withLsRet` Consumer `HookOk` Suite (`HooksDehook.DurationSinceGhost`)
 
-Card **R3-b** (part 1 of 2; companion replay & `W`-independent `emptyStdProg` module:
-`HooksDehook.DurationSinceGhostLs`):
+Companion replay and `W`-independent `emptyStdProg` proofs live in
+`HooksDehook.DurationSinceGhostLs`.
 
-1. **Instruction & `.rodata.cst16` source (`timeMultiLib` blocks):**
-   All verified instruction words and `.rodata.cst16` bytes originate from the engine's
-   `VerifiedLibraries.RustStd.timeMultiLib`:
+1. Instruction and `.rodata.cst16` source (`VerifiedLibraries.RustStd.timeMultiLib`):
    - block `0`: `Timespec::sub_timespec` (`60` words = `240` B = `subTimespecByteLen`);
    - block `1`: `<std::time::SystemTime>::duration_since` (`20` words = `80` B);
-   - `.rodata.cst16`: `16`-byte constant `timePlacedData0` at `mpl.ρ timeRodataCst16Sym`, placed on
-     the run-side state guard `roTableGuard cst16Addr timePlacedData0` of `linkedCallHookG`
-     (never in consumer `.pre`).
-   (STOCK-PLAN verified `[M]` that the GNU and musl `core`/`std` copies of `sub_timespec` (`60` w),
-   `duration_since` (`20` w), and the `cst16` entry are byte-identical.)
-2. **Why `duration_since` needs zero panic-stub externs (`P_sub.externAt? = none`):**
+   - `.rodata.cst16`: `16`-byte constant `timePlacedData0` at `mpl.ρ timeRodataCst16Sym`, checked
+     in the run-side guard `roTableGuard cst16Addr timePlacedData0` of `linkedCallHookG` (not in
+     consumer `.pre`).
+2. No panic-stub externs (`P_sub.externAt? = none`):
    Although `timeMultiLib` block `0` ends with a cold `bl core::option::expect_failed` at
    `sub_timespec + 236` (word `59`), `masterDurationSinceSpec` and every CLI consumer
    `durationSince{Bounded,Epoch}*` contract require valid `Timespec` nanoseconds (`tv_nsec < 10^9`)
    in `.pre` and have `onPanic = ⌜False⌝`. Under `tv_nsec < 10^9`, `|t1 - t2| / 10^9 < 2^64`, so
-   word `59` is never executed on any `ActiveRealPre` state (`DurationSinceHullAux`). Consequently,
-   the hook-free `80`-word hull `durationSinceHullProg mpl` (`externAt? = none`) satisfies
-   `subroutine_ok` directly with zero `#1344` panic-stub extern plumbing.
-3. **Ghost hooks (`durationSinceGhostFn`, Route-β′ `durationSinceGhostFnLs`):**
+   word `59` is unreachable on any `ActiveRealPre` state (`DurationSinceHullAux`), and the
+   hook-free `80`-word hull `durationSinceHullProg mpl` (`externAt? = none`) satisfies
+   `subroutine_ok` directly.
+3. Ghost hooks (`durationSinceGhostFn` and `withLsRet` variant `durationSinceGhostFnLs`):
    - `durationSinceGhostFn cst16Addr keepR P_real P_sub entry`: wraps `masterDurationSinceSpec` via
      `linkedCallHookG (roTableGuard cst16Addr timePlacedData0)` with `W`-independent fallback
      `durationSinceExactHook`.
-   - `durationSinceGhostFnLs cst16Addr keepR P_real P_sub entry`: Route-β′ `[LibsignalPlacement]`
-     sibling wrapping `WithLsRet.withLsRet masterDurationSinceSpec`, so any non-`.Exception`
-     evaluation witnesses `LsRetAddr624 (u.readReg64 .lr)` (discharging `keepR (u.lr) = false` via
-     K3's `∀ lr, LsRetAddr624 lr → keepR lr = false`).
-4. **C11 §8.1 State / VM / Trace Bundle & Consumer `HookOk` Suite:**
+   - `durationSinceGhostFnLs cst16Addr keepR P_real P_sub entry`: `[LibsignalPlacement]` sibling
+     wrapping `WithLsRet.withLsRet masterDurationSinceSpec`, so any non-`.Exception` evaluation
+     witnesses `LsRetAddr624 (u.readReg64 .lr)` (discharging `keepR (u.lr) = false` whenever
+     `∀ lr, LsRetAddr624 lr → keepR lr = false`).
+4. State / VM / trace preservation and consumer `HookOk` lemmas:
    - Unconditional `.fs = s.fs` and `HookFsTraced IsFsC`;
    - Over patched `sub_timespec` + `duration_since` words (and specialized to the `80`-word
      contiguous hull at `hullBase + subTimespecByteLen`): pointwise `VmPreserved` (recovered across
      `stripS keepR` via `DurationSinceCode.stdDurationSinceSpec`), `OomPreserved ∧ PoolPreserved`,
      `.oracle = s.oracle`, and `.trace = s.trace`;
-   - Complete plain and Route-β′ (`withLsRet`) consumer `HookOk` suite across all bounded and epoch
-     contracts (bare, `.keepsFs`, `withVmPreserved` budget, `.inImage`, `withAlloc A lim`,
-     `withOomPoolPreserved`, and `withExecFrozen`).
+   - Plain and `withLsRet` consumer `HookOk` lifts across bounded and epoch contracts (bare,
+     `.keepsFs`, `withVmPreserved`, `.inImage`, `withAlloc A lim`, `withOomPoolPreserved`, and
+     `withExecFrozen`).
 -/
 
 set_option autoImplicit false
@@ -123,31 +124,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc (withAlloc)
 open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost (
   withExecFrozen hookOk_withExecFrozen_of_plain
 )
-open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceCode (
-  DurationSinceGhost masterDurationSinceSpec stdDurationSinceSpec
-  stdDurationSince_pre_eq
-  specStripSInvariant_masterDurationSince specPreservesFsTrace_masterDurationSince
-  masterDurationSince_pre_setPC masterDurationSince_outcome_setPC
-  subTimespecPatchedWords durationSincePatchedWords durationSinceHullProg
-  durationSinceHullProg_hasWords_subTimespec durationSinceHullProg_hasWords_durationSince
-  durationSinceHullProg_externAt_none durationSinceHullProg_svc
-  subroutine_ok_stdDurationSince_of_hasWords subroutine_ok_masterDurationSince_of_hasWords
-  durationSinceExactHook_vm durationSinceExactHook_master_ok
-  keepFsTrace_durationSinceExactHook_eq keepFsTrace_durationSinceExactHook_master_ok
-  hookOk_linkedCallHookG_durationSince
-  hookOk_durationSinceBoundedAt_keepsFs_of_master hookOk_durationSinceBoundedAt_of_master
-  hookOk_durationSinceEpochAt_keepsFs_of_master hookOk_durationSinceEpochAt_of_master
-  hookOk_durationSinceBounded_of_master hookOk_durationSinceBounded_keepsFs_of_master
-  hookOk_durationSinceBoundedAlloc_of_master hookOk_durationSinceBoundedBudgetAt_of_master
-  hookOk_durationSinceBoundedBudget_of_master hookOk_durationSinceBoundedBudget_keepsFs_of_master
-  hookOk_durationSinceBoundedAllocBudget_of_master
-  hookOk_durationSinceBounded_inImage_of_master hookOk_durationSinceBoundedBudget_inImage_of_master
-  hookOk_durationSinceEpoch_of_master hookOk_durationSinceEpoch_keepsFs_of_master
-  hookOk_durationSinceEpochAlloc_of_master hookOk_durationSinceEpochBudgetAt_of_master
-  hookOk_durationSinceEpochBudget_of_master hookOk_durationSinceEpochBudget_keepsFs_of_master
-  hookOk_durationSinceEpochAllocBudget_of_master
-  hookOk_durationSinceEpoch_inImage_of_master hookOk_durationSinceEpochBudget_inImage_of_master
-)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceCode (DurationSinceGhost masterDurationSinceSpec stdDurationSinceSpec stdDurationSince_pre_eq specStripSInvariant_masterDurationSince specPreservesFsTrace_masterDurationSince masterDurationSince_pre_setPC masterDurationSince_outcome_setPC subTimespecPatchedWords durationSincePatchedWords durationSinceHullProg durationSinceHullProg_hasWords_subTimespec durationSinceHullProg_hasWords_durationSince durationSinceHullProg_externAt_none durationSinceHullProg_svc subroutine_ok_stdDurationSince_of_hasWords subroutine_ok_masterDurationSince_of_hasWords durationSinceExactHook_vm durationSinceExactHook_master_ok keepFsTrace_durationSinceExactHook_eq keepFsTrace_durationSinceExactHook_master_ok hookOk_linkedCallHookG_durationSince hookOk_durationSinceBoundedAt_keepsFs_of_master hookOk_durationSinceBoundedAt_of_master hookOk_durationSinceEpochAt_keepsFs_of_master hookOk_durationSinceEpochAt_of_master hookOk_durationSinceBounded_of_master hookOk_durationSinceBounded_keepsFs_of_master hookOk_durationSinceBoundedAlloc_of_master hookOk_durationSinceBoundedBudgetAt_of_master hookOk_durationSinceBoundedBudget_of_master hookOk_durationSinceBoundedBudget_keepsFs_of_master hookOk_durationSinceBoundedAllocBudget_of_master hookOk_durationSinceEpoch_of_master hookOk_durationSinceEpoch_keepsFs_of_master hookOk_durationSinceEpochAlloc_of_master hookOk_durationSinceEpochBudgetAt_of_master hookOk_durationSinceEpochBudget_of_master hookOk_durationSinceEpochBudget_keepsFs_of_master hookOk_durationSinceEpochAllocBudget_of_master)
 
 /-! ## 0. Named Hull Offset, `hookOk_congr`, & `withLsRet` Wrapper Commutations -/
 
@@ -156,7 +133,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.DurationSinceCode (
     inside the contiguous `80`-word (`320` B) `.text.lib2` hull `sub_timespec ++ duration_since`. -/
 @[expose] def subTimespecByteLen : BitVec 64 := 240#64
 
-/-- Transport `HookOk f` across a `Spec` equality (`REV-PILOT` N1 helper). -/
+/-- Transport `HookOk f` across a `Spec` equality. -/
 theorem hookOk_congr {α : Type} {f : State → State} {spec₁ spec₂ : Spec α}
     (heq : spec₁ = spec₂) (hh : HookOk f spec₁) :
     HookOk f spec₂ :=
@@ -188,7 +165,7 @@ theorem withLsRet_withExecFrozen [LibsignalPlacement] {α : Type} (spec : Spec �
   linkedCallHookG (roTableGuard cst16Addr timePlacedData0)
     keepR P_real P_sub entry masterDurationSinceSpec durationSinceExactHook
 
-/-- Route-β′ (`[LibsignalPlacement]`) ghost `SystemTime::duration_since` hook wrapping
+/-- `[LibsignalPlacement]` ghost `SystemTime::duration_since` hook wrapping
     `withLsRet masterDurationSinceSpec` via `linkedCallHookG (roTableGuard cst16Addr timePlacedData0)`
     with `W`-independent fallback `durationSinceExactHook`. Outside `LsRetAddr624 (s.readReg64 .lr)`
     (or when `masterDurationSinceSpec.pre` fails), transitions to `.Exception`, so any
@@ -215,7 +192,7 @@ noncomputable abbrev durationSinceHullGhostFnLs [LibsignalPlacement]
   durationSinceGhostFnLs (mpl.ρ timeRodataCst16Sym) keepR P_real
     (durationSinceHullProg mpl) (hullBase + subTimespecByteLen)
 
-/-! ## 2. Route-β′ (`withLsRet`) Side Obligations, Master `HookOk`, & `LsRetAddr624` Extractors -/
+/-! ## 2. `withLsRet` Side Obligations, Master `HookOk`, & `LsRetAddr624` Extractors -/
 
 theorem specStripSInvariant_masterDurationSinceLs [LibsignalPlacement]
     (keepR : BitVec 64 → Bool) :
@@ -286,7 +263,7 @@ theorem durationSinceGhostFn_master_ok
       masterDurationSinceSpec :=
   hookOk_linkedCallHookG_durationSince hpl hsvc_real hsvc_sub hreal_no hsub_no hw0 hw1
 
-/-- Route-β′ master `HookOk` of `durationSinceGhostFnLs` for `withLsRet masterDurationSinceSpec`
+/-- Master `HookOk` of `durationSinceGhostFnLs` for `withLsRet masterDurationSinceSpec`
     over any hook-free `P_sub` holding the relocation-patched `timeMultiLib` block `0` and `1`
     words. -/
 theorem durationSinceGhostFnLs_masterLs_ok [LibsignalPlacement]
@@ -325,7 +302,7 @@ theorem durationSinceHullGhostFn_master_ok
   rw [hb1, ← hb0]
   exact durationSinceHullProg_hasWords_durationSince mpl
 
-/-- Concrete `80`-word contiguous hull Route-β′ master `HookOk` for `durationSinceHullGhostFnLs`. -/
+/-- Concrete `80`-word contiguous hull `withLsRet` master `HookOk` for `durationSinceHullGhostFnLs`. -/
 theorem durationSinceHullGhostFnLs_masterLs_ok [LibsignalPlacement]
     {keepR : BitVec 64 → Bool} {P_real : Program} {mpl : MultiPlacement} (hullBase : BitVec 64)
     (hpl : timeMultiLib.Placeable mpl)
@@ -354,8 +331,8 @@ theorem durationSinceGhostFnLs_lsRetAddr624_of_noException [LibsignalPlacement]
   lsRetAddr624_of_noException_via_activeRealPre
     linkedCallHookG_activeRealPre_of_noException hnoex
 
-/-- K3-chained `noException ⇒ keepR (u.readReg64 .lr) = false` extractor for
-    `durationSinceGhostFnLs` given `hKeep : ∀ lr, LsRetAddr624 lr → keepR lr = false`. -/
+/-- Derives `keepR (u.readReg64 .lr) = false` on non-`.Exception` calls of
+    `durationSinceGhostFnLs` from `hKeep : ∀ lr, LsRetAddr624 lr → keepR lr = false`. -/
 theorem durationSinceGhostFnLs_keepLr_false_of_noException [LibsignalPlacement]
     {cst16Addr : BitVec 64} {keepR : BitVec 64 → Bool} {P_real P_sub : Program}
     {entry : BitVec 64} {u : State}
@@ -418,9 +395,9 @@ theorem durationSinceGhostFnLs_of_keepLr_true [LibsignalPlacement]
   · simp only [hAct, ↓reduceDIte, keepFsTrace_durationSinceExactHook_eq]
   · simp only [hAct, ↓reduceDIte]
 
-/-! ## 3. C11 §8.1 State / VM / Trace Preservation Bundle (`fs`, `fsT`, `VmPreserved`, `OomPool`, `oracle`) -/
+/-! ## 3. State / VM / Trace Preservation Bundle (`fs`, `fsT`, `VmPreserved`, `OomPool`, `oracle`) -/
 
-/-- C11 §8.1 obligation (1): `durationSinceGhostFn` preserves `State.fs` unconditionally. -/
+/-- `durationSinceGhostFn` preserves `State.fs` unconditionally. -/
 theorem durationSinceGhostFn_fs
     (cst16Addr : BitVec 64) (keepR : BitVec 64 → Bool) (P_real P_sub : Program)
     (entry : BitVec 64) (s0 : State) :
@@ -428,7 +405,7 @@ theorem durationSinceGhostFn_fs
   linkedCallHookG_fs (roTableGuard cst16Addr timePlacedData0)
     keepR P_real P_sub entry masterDurationSinceSpec durationSinceExactHook s0
 
-/-- Route-β′ C11 §8.1 obligation (1): `durationSinceGhostFnLs` preserves `State.fs` unconditionally. -/
+/-- `durationSinceGhostFnLs` preserves `State.fs` unconditionally. -/
 theorem durationSinceGhostFnLs_fs [LibsignalPlacement]
     (cst16Addr : BitVec 64) (keepR : BitVec 64 → Bool) (P_real P_sub : Program)
     (entry : BitVec 64) (s0 : State) :
@@ -436,7 +413,7 @@ theorem durationSinceGhostFnLs_fs [LibsignalPlacement]
   linkedCallHookG_fs (roTableGuard cst16Addr timePlacedData0)
     keepR P_real P_sub entry (withLsRet masterDurationSinceSpec) durationSinceExactHook s0
 
-/-- C11 §8.1 obligation (2): `durationSinceGhostFn` satisfies `HookFsTraced IsFsC` unconditionally. -/
+/-- `durationSinceGhostFn` satisfies `HookFsTraced IsFsC` unconditionally. -/
 theorem durationSinceGhostFn_fsT
     (cst16Addr : BitVec 64) (keepR : BitVec 64 → Bool) (P_real P_sub : Program)
     (entry : BitVec 64) :
@@ -444,8 +421,7 @@ theorem durationSinceGhostFn_fsT
   linkedCallHookG_fsT (roTableGuard cst16Addr timePlacedData0)
     keepR P_real P_sub entry masterDurationSinceSpec durationSinceExactHook
 
-/-- Route-β′ C11 §8.1 obligation (2): `durationSinceGhostFnLs` satisfies `HookFsTraced IsFsC`
-    unconditionally. -/
+/-- `durationSinceGhostFnLs` satisfies `HookFsTraced IsFsC` unconditionally. -/
 theorem durationSinceGhostFnLs_fsT [LibsignalPlacement]
     (cst16Addr : BitVec 64) (keepR : BitVec 64 → Bool) (P_real P_sub : Program)
     (entry : BitVec 64) :
@@ -631,7 +607,7 @@ theorem durationSinceGhostFn_vmPreserved
       exact durationSinceExactHook_vm s0
     · exact LibsignalBinary.Heap.Fine.VmPreserved.of_eq rfl rfl rfl rfl rfl
 
-/-- Pointwise `VmPreserved` for Route-β′ `durationSinceGhostFnLs` across all branches. -/
+/-- Pointwise `VmPreserved` for `durationSinceGhostFnLs` across all branches. -/
 theorem durationSinceGhostFnLs_vmPreserved [LibsignalPlacement]
     {keepR : BitVec 64 → Bool} {P_real P_sub : Program} {mpl : MultiPlacement}
     (hpl : timeMultiLib.Placeable mpl)
@@ -703,7 +679,7 @@ theorem durationSinceGhostFn_oomPoolPreserved
       exact (durationSinceExactHook_oomPool_oracle s0).1
     · exact ⟨⟨rfl, rfl, rfl⟩, ⟨rfl, rfl, rfl⟩⟩
 
-/-- Pointwise `OomPreserved ∧ PoolPreserved` for Route-β′ `durationSinceGhostFnLs`. -/
+/-- Pointwise `OomPreserved ∧ PoolPreserved` for `durationSinceGhostFnLs`. -/
 theorem durationSinceGhostFnLs_oomPoolPreserved [LibsignalPlacement]
     {keepR : BitVec 64 → Bool} {P_real P_sub : Program} {mpl : MultiPlacement}
     (hpl : timeMultiLib.Placeable mpl)
@@ -774,7 +750,7 @@ theorem durationSinceGhostFn_oracle
       exact (durationSinceExactHook_oomPool_oracle s0).2
     · rfl
 
-/-- Pointwise `.oracle = s0.oracle` for Route-β′ `durationSinceGhostFnLs`. -/
+/-- Pointwise `.oracle = s0.oracle` for `durationSinceGhostFnLs`. -/
 theorem durationSinceGhostFnLs_oracle [LibsignalPlacement]
     {keepR : BitVec 64 → Bool} {P_real P_sub : Program} {mpl : MultiPlacement}
     (hpl : timeMultiLib.Placeable mpl)
@@ -824,7 +800,7 @@ theorem durationSinceGhostFn_trace
   (durationSinceGhostFn_oomPoolPreserved
     hpl hsvc_real hsvc_sub hreal_no hsub_no hw0 hw1 s0).1.2.1
 
-/-- Pointwise `.trace = s0.trace` for Route-β′ `durationSinceGhostFnLs`. -/
+/-- Pointwise `.trace = s0.trace` for `durationSinceGhostFnLs`. -/
 theorem durationSinceGhostFnLs_trace [LibsignalPlacement]
     {keepR : BitVec 64 → Bool} {P_real P_sub : Program} {mpl : MultiPlacement}
     (hpl : timeMultiLib.Placeable mpl)
@@ -840,9 +816,9 @@ theorem durationSinceGhostFnLs_trace [LibsignalPlacement]
   (durationSinceGhostFnLs_oomPoolPreserved
     hpl hsvc_real hsvc_sub hreal_no hsub_no hw0 hw1 s0).1.2.1
 
-/-! ## 4. Generic Route-β′ (`withLsRet`) Consumer Lift Combinators & Complete `HookOk` Suite -/
+/-! ## 4. Generic `withLsRet` Consumer Lift Combinators & `HookOk` Suite -/
 
-/-- Generic Route-β′ (`withLsRet`) lift from `masterDurationSinceSpec`:
+/-- Generic `withLsRet` lift from `masterDurationSinceSpec`:
     any `masterDurationSinceSpec ⇒ consumer` `HookOk` lift transfers automatically to
     `withLsRet masterDurationSinceSpec ⇒ withLsRet consumer` by routing states outside
     `LsRetAddr624` through `durationSinceExactHook` (`durationSinceExactHook_master_ok`) and
@@ -870,7 +846,7 @@ theorem hookOk_withLsRet_of_master_lift [LibsignalPlacement] {β : Type}
   have hg0 : g s0 = f s0 := by simp only [g, hlr0, ↓reduceIte]
   simpa only [withLsRet_outcome_eq, hg0] using hg_cons y R s0 hrun hpre0 hsp
 
-/-- `VmPreserved`-aware Route-β′ (`withLsRet`) lift from `masterDurationSinceSpec`:
+/-- `VmPreserved`-aware `withLsRet` lift from `masterDurationSinceSpec`:
     transfers any `(HookOk g masterDurationSinceSpec → (∀ s, VmPreserved s (g s)) → HookOk g consumer)`
     lift to `withLsRet` using `durationSinceExactHook_vm` outside `LsRetAddr624`. -/
 theorem hookOk_withLsRet_of_master_vm_lift [LibsignalPlacement] {β : Type}
@@ -905,7 +881,7 @@ theorem hookOk_withLsRet_of_master_vm_lift [LibsignalPlacement] {β : Type}
   have hg0 : g s0 = f s0 := by simp only [g, hlr0, ↓reduceIte]
   simpa only [withLsRet_outcome_eq, hg0] using hg_cons y R s0 hrun hpre0 hsp
 
-/-! ### 4a. Route-β′ `withLsRet` Consumer Lifts (Generic in `f : State → State`) -/
+/-! ### 4a. `withLsRet` Consumer Lifts (Generic in `f : State → State`) -/
 
 theorem hookOk_withLsRet_durationSinceBoundedAt_keepsFs_of_master [LibsignalPlacement]
     {f : State → State} (hh : HookOk f (withLsRet masterDurationSinceSpec))
@@ -964,19 +940,6 @@ theorem hookOk_withLsRet_durationSinceBoundedAllocBudget_of_master [LibsignalPla
   hookOk_withLsRet_of_master_vm_lift
     (fun _ hg hgv => hookOk_durationSinceBoundedAllocBudget_of_master hg hgv) hh hvm
 
-theorem hookOk_withLsRet_durationSinceBounded_inImage_of_master [LibsignalPlacement]
-    {f : State → State} (img : Image) (hh : HookOk f (withLsRet masterDurationSinceSpec)) :
-    HookOk f (withLsRet (durationSinceBoundedSpec.inImage img)) :=
-  hookOk_withLsRet_of_master_lift
-    (fun _ hg => hookOk_durationSinceBounded_inImage_of_master img hg) hh
-
-theorem hookOk_withLsRet_durationSinceBoundedBudget_inImage_of_master [LibsignalPlacement]
-    {f : State → State} (img : Image) (hh : HookOk f (withLsRet masterDurationSinceSpec))
-    (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (withLsRet (durationSinceBoundedBudgetSpec.inImage img)) :=
-  hookOk_withLsRet_of_master_vm_lift
-    (fun _ hg hgv => hookOk_durationSinceBoundedBudget_inImage_of_master img hg hgv) hh hvm
-
 theorem hookOk_withLsRet_durationSinceEpochAt_keepsFs_of_master [LibsignalPlacement]
     {f : State → State} (hh : HookOk f (withLsRet masterDurationSinceSpec))
     {stk : Nat} (hstk : 208 ≤ stk ∧ stk ≤ 2 ^ 64) :
@@ -1033,21 +996,6 @@ theorem hookOk_withLsRet_durationSinceEpochAllocBudget_of_master [LibsignalPlace
     HookOk f (withLsRet durationSinceEpochAllocBudgetSpec) :=
   hookOk_withLsRet_of_master_vm_lift
     (fun _ hg hgv => hookOk_durationSinceEpochAllocBudget_of_master hg hgv) hh hvm
-
-theorem hookOk_withLsRet_durationSinceEpoch_inImage_of_master [LibsignalPlacement]
-    {f : State → State} (img : Image) (hh : HookOk f (withLsRet masterDurationSinceSpec)) :
-    HookOk f (withLsRet (durationSinceEpochSpec.inImage img)) :=
-  hookOk_withLsRet_of_master_lift
-    (fun _ hg => hookOk_durationSinceEpoch_inImage_of_master img hg) hh
-
-theorem hookOk_withLsRet_durationSinceEpochBudget_inImage_of_master [LibsignalPlacement]
-    {f : State → State} (img : Image) (hh : HookOk f (withLsRet masterDurationSinceSpec))
-    (hvm : ∀ s, VmPreserved s (f s)) :
-    HookOk f (withLsRet (durationSinceEpochBudgetSpec.inImage img)) :=
-  hookOk_withLsRet_of_master_vm_lift
-    (fun _ hg hgv => hookOk_durationSinceEpochBudget_inImage_of_master img hg hgv) hh hvm
-
-/-! ### 4b. Generic Wrapper Combinators (`keepsFs`, `withOomPoolPreserved`, `withExecFrozen`) -/
 
 theorem durationSinceGhostFn_any_keepsFs_ok {α : Type}
     {cst16Addr : BitVec 64} {keepR : BitVec 64 → Bool} {P_real P_sub : Program}

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaShallow
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpaShallow -- proof-setup: allow-public-import
 
 /-!
 # Leaf Invariants of the Shallow `AeadIndCpa` Steps
@@ -19,7 +19,7 @@ of the `Auth` `AeadIndCpa` simulator, and `stepAuthOtherPrim_cpa_eq` relating th
 other-query step to `AuthSubHops1to3.stepAuthOtherPrim` when `hasWonAuth = false`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

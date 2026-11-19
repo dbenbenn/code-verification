@@ -9,12 +9,33 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.FsAtomicBoundsBase -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.FsAtomicBoundsBase
 import Computational.Proofs.ReductionDsl.AtomicTablesHonest
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.SizeBudgetBridge
 import Mathlib.Tactic.Linarith
 import Mathlib.Tactic.Ring
+public import Computational.Proofs.ReductionDsl.FsAtomicBundles -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.FsAtomicMacrosCost
+import Computational.Proofs.SessionCostedBase
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
+import Init.Data.List.Control
+import Init.Data.Range.Basic
+import Init.Data.String.Defs
+import Init.Data.String.Pattern.Basic
+import Init.Data.String.Pattern.String
+import Init.Data.String.Slice
+import Init.Data.String.TakeDrop
+import Lean
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-! # Salt, wire, and fallback bounds for `FsAtomicBounds` -/
 
@@ -466,7 +487,8 @@ theorem fsCostedRedsBoundedWitness_bounds (qR qep : ℕ) :
   have hmax22 : max 1 22 = 22 := rfl
   have hOps := atomicFsOps_sizeHonest ℓ Pt C encT
   have hSamp := atomicBaseSamplers_sizeHonest ℓ Pt
-  refine ⟨?_, fun _ _ => ?_, fun _ => ?_, fun _ _ => ?_, ?_, fun _ _ => ?_, ?_⟩
+  refine ⟨?_, fun _ _ => ?_, fun _ => ?_, fun _ _ => ?_, ?_, fun _ _ => ?_, ?_,
+    fun _ _ => ?_, fun _ => ?_⟩
   · refine CryptoVerification.E2E.Costed.gRedBounded_of_bounds_const _ _ _ _ _ _ ?_ ?_ ?_ hOps hSamp
     · simp only [CostedReduction.totalCost, fsCostedRedsBoundedWitness, Comp.cost, Expr.cost,
         fsaeadPubTargetIface, fsaeadPubCodec, Nat.reduceAdd, hmax21]; omega
@@ -522,6 +544,31 @@ theorem fsCostedRedsBoundedWitness_bounds (qR qep : ℕ) :
     · simp only [CostedReduction.size, fsCostedRedsBoundedWitness, Comp.size, Expr.size,
         reductionSizeBudget_eq]; omega
     · simp only [CostedReduction.totalQueries, fsCostedRedsBoundedWitness, Comp.queries]; omega
+  · refine Computational.Proofs.ReductionDsl.MacroLift.gTwoStageBounded_of_bounds
+        _ _ _ _ _ _ ?_ ?_ ?_ hOps hSamp
+    · dsimp only [fsCostedRedsBoundedWitness]
+      rw [Computational.Proofs.ReductionDsl.MacroLift.dummyTwoStageRed_totalCost]
+      dsimp only [coinOnlyBaseIface, fsaeadRatchetCodec]
+      simp only [Expr.cost, Nat.reduceAdd, hmax22]; omega
+    · refine Nat.le_trans ?_ (Nat.le_add_right reductionSizeBudget _)
+      dsimp only [fsCostedRedsBoundedWitness]
+      rw [Computational.Proofs.ReductionDsl.MacroLift.dummyTwoStageRed_size]
+      simp only [Expr.size, reductionSizeBudget_eq]; omega
+    · dsimp only [fsCostedRedsBoundedWitness]
+      rw [Computational.Proofs.ReductionDsl.MacroLift.dummyTwoStageRed_totalQueries]
+  · refine Computational.Proofs.ReductionDsl.MacroLift.gTwoStageBounded_of_bounds
+        _ _ _ _ _ _ ?_ ?_ ?_ hOps hSamp
+    · dsimp only [fsCostedRedsBoundedWitness]
+      rw [Computational.Proofs.ReductionDsl.MacroLift.dummyTwoStageRed_totalCost]
+      dsimp only [slotOtccaTargetIface, fsaeadRatchetCodec]
+      simp only [Expr.cost, Nat.reduceAdd, hmax22]; omega
+    · refine Nat.le_trans ?_ (Nat.le_add_right reductionSizeBudget _)
+      dsimp only [fsCostedRedsBoundedWitness]
+      rw [Computational.Proofs.ReductionDsl.MacroLift.dummyTwoStageRed_size]
+      simp only [Expr.size, reductionSizeBudget_eq]; omega
+    · dsimp only [fsCostedRedsBoundedWitness]
+      rw [Computational.Proofs.ReductionDsl.MacroLift.dummyTwoStageRed_totalQueries]
+      exact Nat.zero_le _
 
 end WireAndInstBounds
 

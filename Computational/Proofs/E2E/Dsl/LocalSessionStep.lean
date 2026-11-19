@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.LocalSessionStepAux
+public import Computational.Proofs.E2E.Dsl.LocalSessionStepAux -- proof-setup: allow-public-import
 
 /-!
 # Local Double Ratchet Session-Step `ReductionDsl` Handlers
@@ -20,7 +20,7 @@ zero-target-query lemmas, exact `Comp.eval` equivalence, and `SmReachBounded` / 
 preservation.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -100,7 +100,7 @@ private theorem foldr_corrTbl_eval :
     · simp only [hj, ↓reduceIte, decide_true, Bool.true_or]
     · simp only [hj, ↓reduceIte, decide_false, Bool.false_or, foldr_corrTbl_eval rest j]
 
-def corrTblOfListE (nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def corrTblOfListE (nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (corrPrinsE : Expr Ops' Γ (.list (FinT S.N_id))) : Expr Ops' Γ (.tbl .bool) :=
   .foldrB nCorr corrPrinsE (.tconst (.bool false))
     (.tset .v1 (e2ePureOp (.finVal S.N_id) .v0) (.bool true))
@@ -126,7 +126,7 @@ theorem cost_corrTblOfListE (nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (corrTblOfListE nCorr corrPrinsE).cost ≤ corrPrinsE.cost + 136 * nCorr + 4 := by
   dsimp only [corrTblOfListE, Expr.v0, Expr.v1, Expr.cost, cost_e2ePureOp, E2EPureOp.cost]; omega
 
-def instIkACorrTblE (nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def instIkACorrTblE (nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (sidE : Expr Ops' Γ (sidT S)) (ikAPkE : Expr Ops' Γ (PB 32))
     (corrTblE : Expr Ops' Γ (.tbl .bool))
     (prinsE : Expr Ops' Γ (.list (e2eMirrorPrinEntryTy S))) : Expr Ops' Γ .bool :=
@@ -169,7 +169,7 @@ theorem cost_instIkACorrTblE (nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
       PNat.val_ofNat]; omega
   · simp only [Expr.cost]; omega
 
-def instIkACorrListE (nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def instIkACorrListE (nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (sidE : Expr Ops' Γ (sidT S)) (ikAPkE : Expr Ops' Γ (PB 32))
     (corrPrinsE : Expr Ops' Γ (.list (FinT S.N_id)))
     (prinsE : Expr Ops' Γ (.list (e2eMirrorPrinEntryTy S))) : Expr Ops' Γ .bool :=
@@ -199,7 +199,7 @@ theorem cost_instIkACorrListE (nCorr nPrins : ℕ) {Γ : List (Ty (e2eSig ℓ))}
   omega
 
 /-- Evaluates per-instance cleanliness `bhE2EDrvInstClean σ i` (`DEV-C17`) over `e2eDrvStateTy`. -/
-def drvInstCleanDrvStateE (qStart nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def drvInstCleanDrvStateE (qStart nCorr : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (revE : Expr Ops' Γ (.list (.prod (FinT S.N_id) (FinT S.N_recv))))
     (instsE : Expr Ops' Γ (.list (e2eModelInstTy S ℓ)))
     (instMetaE : Expr Ops' Γ (.list (e2eInstMetaTy S ℓ))) (ixE : Expr Ops' Γ .nat) :
@@ -295,7 +295,7 @@ private theorem cost_tblSetSlotE {Γ : List (Ty (e2eSig ℓ))}
     (tblSetSlotE tblE idxE valE).cost ≤ tblE.cost + idxE.cost + valE.cost + 128 :=
   Nat.le_refl _
 
-def modelInstToHmE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def modelInstToHmE {Γ : List (Ty (e2eSig ℓ))}
     (dE : Expr Ops' Γ (e2eModelInstTy S ℓ)) (imE : Expr Ops' Γ (e2eInstMetaTy S ℓ)) :
     Expr Ops' Γ (e2eInstHdrMetaTy S ℓ) :=
   .letE (.pair dE imE) (.pair (.fst (.fst .v0)) (.pair (.fst (.snd (.fst .v0))) (.snd .v0)))
@@ -312,7 +312,7 @@ private theorem cost_modelInstToHmE {Γ : List (Ty (e2eSig ℓ))}
     (modelInstToHmE dE imE).cost ≤ dE.cost + imE.cost + 15 := by
   dsimp only [modelInstToHmE, Expr.v0, Expr.cost]; omega
 
-def modelInstToSlotE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def modelInstToSlotE {Γ : List (Ty (e2eSig ℓ))}
     (dE : Expr Ops' Γ (e2eModelInstTy S ℓ)) : Expr Ops' Γ (instSlotTy ℓ) :=
   .letE dE
     (let r2 := Expr.snd (.snd .v0)
@@ -335,7 +335,7 @@ private theorem cost_modelInstToSlotE {Γ : List (Ty (e2eSig ℓ))}
     (Γ := e2eModelInstTy S ℓ :: Γ)
   omega
 
-def slotHmToModelInstE {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def slotHmToModelInstE {Γ : List (Ty (e2eSig ℓ))}
     (hmE : Expr Ops' Γ (e2eInstHdrMetaTy S ℓ)) (slE : Expr Ops' Γ (instSlotTy ℓ)) :
     Expr Ops' Γ (e2eModelInstTy S ℓ) :=
   .letE (.pair hmE slE)
@@ -466,7 +466,7 @@ private theorem map_set_eq {α β : Type} (f : α → β) :
   | a :: as, i + 1, x => congrArg (f a :: ·) (map_set_eq f as i x)
 
 /-- Steps an unpromoted `instSlotTy ℓ` entry via `sim.oracleStepC`, or returns `emptySmRespE`. -/
-def stepInstSlotC (sim : DrSessionSimIface ℓ P C K decT encT)
+@[expose] def stepInstSlotC (sim : DrSessionSimIface ℓ P C K decT encT)
     {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) (qBound qep : ℕ)
     {Γ : List (Ty (e2eSig ℓ))} (slotE : Expr Ops' Γ (instSlotTy ℓ)) (qE : Expr Ops' Γ smQT) :
     Comp Ops' (stepAIface ℓ I₀) Γ (.prod (smRT GhostStT) (instSlotTy ℓ)) :=
@@ -656,7 +656,7 @@ theorem bhE2EStepLocalSm_eq_singleInst (C : Crypto) (K : MlKem) (qep : ℕ)
             | some q' => simp [map_eq_bind_pure_comp, LawfulMonad.bind_assoc]
 
 /-- Single-instance `ReductionDsl` step handler implementing `bhStepSingleInst`. -/
-def stepSingleInstC (sim : DrSessionSimIface ℓ P C K decT encT)
+@[expose] def stepSingleInstC (sim : DrSessionSimIface ℓ P C K decT encT)
     {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) (qBound qep : ℕ)
     {Γ : List (Ty (e2eSig ℓ))} (hmE : Expr Ops' Γ (e2eInstHdrMetaTy S ℓ))
     (slotE : Expr Ops' Γ (instSlotTy ℓ)) (ikACorrE : Expr Ops' Γ .bool) (qE : Expr Ops' Γ smQT) :
@@ -766,7 +766,7 @@ theorem stepSingleInstC_eval (sim : DrSessionSimIface ℓ P C K decT encT)
 attribute [local irreducible] stepSingleInstC
 
 /-- Driver-level `bhE2EStepLocalSm` handler over `e2eDrvStateTy S ℓ`. -/
-def stepLocalSmC {S : Setup} (sim : DrSessionSimIface ℓ P C K decT encT)
+@[expose] def stepLocalSmC {S : Setup} (sim : DrSessionSimIface ℓ P C K decT encT)
     {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T)
     (qStart nCorr nPrins qBound qep : ℕ) {Γ : List (Ty (e2eSig ℓ))}
     (σE : Expr Ops' Γ (e2eDrvStateTy S ℓ)) (idxE : Expr Ops' Γ .nat) (qE : Expr Ops' Γ smQT) :
@@ -799,7 +799,7 @@ def stepLocalSmC {S : Setup} (sim : DrSessionSimIface ℓ P C K decT encT)
                       .ret (.pair (.fst (v res)) (.pair (v base) (.pair (v cp) (.pair (v adv)
                         (.pair (v insts') (.pair (v metas') (v tail))))))))))
 
-def stepLocalSmCost (sim : DrSessionSimIface ℓ P C K decT encT)
+@[expose] def stepLocalSmCost (sim : DrSessionSimIface ℓ P C K decT encT)
     (qStart nCorr nPrins qBound qep : ℕ) : ℕ :=
   sim.oracleStepCost qBound qep + 190 * qStart + 160 * nCorr + 160 * nPrins + 9500
 
@@ -905,7 +905,7 @@ theorem stepLocalSmC_eval {S : Setup} (sim : DrSessionSimIface ℓ P C K decT en
 attribute [local irreducible] stepLocalSmC
 
 /-- Concrete `LocalSessionStepIface` bundle constructed from any `DrSessionSimIface`. -/
-def localSessionStepIface (sim : DrSessionSimIface ℓ P C K decT encT) :
+@[expose] def localSessionStepIface (sim : DrSessionSimIface ℓ P C K decT encT) :
     LocalSessionStepIface ℓ S P C K decT encT where
   stepLocalSmC := stepLocalSmC (S := S) sim
   stepLocalSmCost := stepLocalSmCost sim

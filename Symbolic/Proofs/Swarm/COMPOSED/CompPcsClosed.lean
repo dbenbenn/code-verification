@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace
-public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed
+public import Symbolic.Proofs.Swarm.COMPOSED.CompTrace -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.COMPOSED.CompClosed -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.ALaCarte.Basic
@@ -31,12 +31,12 @@ import DY.EquationalTheory.KdfExtract
 import DY.EquationalTheory.Sign
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
-import Symbolic.DYBridge.DY.Trace.Basic
+public import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.BaseAttackerKnowledge
 import Symbolic.DYBridge.DY.Trace.Monad
-import Symbolic.DYBridge.DY.Trace.Manipulation
+public import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
-import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.EquationalTheory.Literal
 import Symbolic.DYBridge.DY.EquationalTheory.Concat
@@ -61,7 +61,7 @@ traces that every session DH ratchet secret is a fresh 32-byte random draw uniqu
 session and ratchet index, and that stored states and network messages lie in `CompPcsClosed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -84,7 +84,7 @@ open Symbolic.Swarm.COMPOSED.CompTrace
 /-- A secret DH ratchet share `dhs` belongs to session `s` at sending ratchet index `rIdx` on `tr`
 if it is stored in a `TRState` snapshot of `s`, logged in `HonestDH s dhs prevRIdx` with
 `rIdx = prevRIdx + 2`, or logged in `ExposedDHs s dhs rIdx`. -/
-def IsCompDhsOf (tr : ExecTrace) (dhs : Bytes) (s : SessionInfo) (rIdx : Nat) : Prop :=
+@[expose] def IsCompDhsOf (tr : ExecTrace) (dhs : Bytes) (s : SessionInfo) (rIdx : Nat) : Prop :=
   (∃ st idx, StateStoredAt s.me st idx tr ∧ st.sessionInfo s.me = s ∧ st.dhs = dhs ∧ st.rIdx = rIdx) ∨
   (∃ prevRIdx, tr.EventLogged (TREvent.HonestDH s dhs prevRIdx) ∧ rIdx = prevRIdx + 2) ∨
   tr.EventLogged (TREvent.ExposedDHs s dhs rIdx)
@@ -167,7 +167,7 @@ theorem isCompDhsOf_append_exposedDHs {tr : ExecTrace} {s₀ : SessionInfo} {dhs
 /-- A random value `mkRand t sz` is allowed to be known by the attacker on `tr` only if it is
 not a session DH ratchet secret (`¬ IsCompDhsOf`), or `ExposedDHs` was logged for it, or
 `PQXDHEvent.BrokenDH` was logged. -/
-def AllowedRand (tr : ExecTrace) (t sz : Nat) : Prop :=
+@[expose] def AllowedRand (tr : ExecTrace) (t sz : Nat) : Prop :=
   RandAt tr t sz ∧
   ((∀ s rIdx, ¬ IsCompDhsOf tr (mkRand t sz) s rIdx) ∨
    (∃ s rIdx, tr.EventLogged (TREvent.ExposedDHs s (mkRand t sz) rIdx)) ∨
@@ -674,7 +674,7 @@ theorem CompPcsClosed.parseTrSignalMsg_fields {tr : ExecTrace}
       exact ⟨hwire, hmac, hrk, hct, hpq⟩
 
 /-- Structural closure of a stored `TRState` snapshot under `CompPcsClosed`. -/
-def TRStateClosed (tr : ExecTrace) (st : TRState) : Prop :=
+@[expose] def TRStateClosed (tr : ExecTrace) (st : TRState) : Prop :=
   1 ≤ st.rIdx ∧
   CompPcsClosed tr st.rk ∧
   CompPcsClosed tr st.cks ∧

@@ -56,10 +56,10 @@ theorem mallocngIfaceWf_ok : MallocngIfaceWfStmt :=
 theorem mallocngMetaCountInv_reachable : MallocngMetaCountInv :=
   mallocngMetaCountInv_holds
 
-private theorem placed_libcMallocImpl24_ok : LibcMallocImplPlaced24Stmt := by
+private theorem placed_libcMallocImpl24_ok {ro : Bool} : LibcMallocImplPlaced24Stmt ro := by
   intro _ γ tp brkStart b ivs0 req
   have hB2 :=
-    placed_libcMallocImpl24B2_uncond_ok
+    placed_libcMallocImpl24B2_uncond_ok (ro := ro)
       placed_allocMeta_full_ok
       (placed_allocSlot_full_ok placed_allocMeta_full_ok)
       γ tp brkStart b ivs0 req
@@ -89,12 +89,12 @@ private theorem placed_libcMallocImpl24_ok : LibcMallocImplPlaced24Stmt := by
   · dsimp only [libcMallocImplPlacedSpec24B2, libcMallocImplPlacedSpec24, withCL] at ho ⊢
     exact ho
 
-private theorem alignedAllocPlaced_entry_ok (hMalloc : LibcMallocImplPlaced24Stmt)
+private theorem alignedAllocPlaced_entry_ok {ro : Bool} (hMalloc : LibcMallocImplPlaced24Stmt ro)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "aligned_alloc"
-      (mallocngAlignedAllocSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) := by
+      (mallocngAlignedAllocSpec (mallocngModeIface ro) svc γ (mallocngAddrsOfPlacement mpl)) := by
   obtain ⟨hexp, i, off, hlk, hsub⟩ := alignedAllocPlaced_entry_tight_ok hMalloc mpl svc hPl hSvc γ
   refine ⟨hexp, i, off, hlk, subroutine_ok_mono hsub (fun _ _ _ hp => hp) (fun _ _ _ _ hq => ?_)
     (hoom := fun _ _ _ _ ho => ?_)⟩
@@ -108,12 +108,12 @@ private theorem alignedAllocPlaced_entry_ok (hMalloc : LibcMallocImplPlaced24Stm
     rw [satisfies_pure_sepConj] at ho ⊢
     exact ⟨ho.1.to_oomCond (Nat.le_refl _), ho.2⟩
 
-private theorem posixMemalignPlaced_entry_ok (hMalloc : LibcMallocImplPlaced24Stmt)
+private theorem posixMemalignPlaced_entry_ok {ro : Bool} (hMalloc : LibcMallocImplPlaced24Stmt ro)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "posix_memalign"
-      (mallocngPosixMemalignSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) := by
+      (mallocngPosixMemalignSpec (mallocngModeIface ro) svc γ (mallocngAddrsOfPlacement mpl)) := by
   obtain ⟨hexp, i, off, hlk, hsub⟩ := posixMemalignPlaced_entry_tight_ok hMalloc mpl svc hPl hSvc γ
   refine ⟨hexp, i, off, hlk, subroutine_ok_mono hsub (fun _ _ _ hp => hp) (fun _ _ _ _ hq => ?_)
     (hoom := fun _ _ _ _ ho => ?_)⟩
@@ -127,12 +127,12 @@ private theorem posixMemalignPlaced_entry_ok (hMalloc : LibcMallocImplPlaced24St
     rw [satisfies_pure_sepConj] at ho ⊢
     exact ⟨ho.1.to_oomCond (Nat.le_refl _), ho.2⟩
 
-private theorem callocPlaced_entry_ok (hDefMalloc : DefaultMallocPlacedTightStmt)
+private theorem callocPlaced_entry_ok {ro : Bool} (hDefMalloc : DefaultMallocPlacedTightStmt ro)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPl : VerifiedLibraries.mallocngLib.Placeable mpl) (hSvc : MallocngSvcValid svc)
     (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "calloc"
-      (mallocngCallocSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) := by
+      (mallocngCallocSpec (mallocngModeIface ro) svc γ (mallocngAddrsOfPlacement mpl)) := by
   obtain ⟨hexp, i, off, hlk, hsub⟩ := callocPlaced_entry_tight_ok hDefMalloc mpl svc hPl hSvc γ
   refine ⟨hexp, i, off, hlk, subroutine_ok_mono hsub (fun _ _ _ hp => hp) (fun _ _ _ _ hq => ?_)
     (hoom := fun _ _ _ _ ho => ?_)⟩
@@ -148,20 +148,21 @@ private theorem callocPlaced_entry_ok (hDefMalloc : DefaultMallocPlacedTightStmt
 
 /-- Hookless multi-block placed contracts (`MallocngPlacedEntryContracts`) for all 6 C exports of
     `VerifiedLibraries.mallocngLib` (`malloc`, `free`, `calloc`, `realloc`, `aligned_alloc`,
-    `posix_memalign`). -/
-theorem mallocngPlacedEntries_ok
+    `posix_memalign`) parameterized over `ro` (`false` = RW `auxv`, `true` = RO `auxv`). -/
+private theorem mallocngModePlacedEntries_ok (ro : Bool)
     (mpl : Obj.MultiPlacement) (svc : State → State)
     (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
     (hSvc : MallocngSvcValid svc) :
-    MallocngPlacedEntryContracts mallocngIface mpl svc :=
-  let hSlot : AllocSlotPlacedFullStmt := placed_allocSlot_full_ok placed_allocMeta_full_ok
-  let hImpl : LibcMallocImplPlacedTightStmt := placed_libcMallocImpl_tight_uncond_ok placed_allocMeta_full_ok hSlot
-  let hImplK : LibcMallocImplPlacedTightKStmt :=
-    placed_libcMallocImpl_tightK_uncond_ok placed_allocMeta_full_ok hSlot
-  let hDefMalloc : DefaultMallocPlacedTightStmt := placed_defaultMalloc_tight_of_impl hImpl
-  let hFree : LibcFreePlacedStmt := placed_libcFree_ok placed_nontrivialFree_ok
+    MallocngPlacedEntryContracts (mallocngModeIface ro) mpl svc :=
+  let hMeta : AllocMetaPlacedFullStmt ro := placed_allocMeta_full_ok (ro := ro)
+  let hSlot : AllocSlotPlacedFullStmt ro := placed_allocSlot_full_ok hMeta
+  let hImpl : LibcMallocImplPlacedTightStmt ro := placed_libcMallocImpl_tight_uncond_ok hMeta hSlot
+  let hImplK : LibcMallocImplPlacedTightKStmt ro :=
+    placed_libcMallocImpl_tightK_uncond_ok hMeta hSlot
+  let hDefMalloc : DefaultMallocPlacedTightStmt ro := placed_defaultMalloc_tight_of_impl hImpl
+  let hFree : LibcFreePlacedStmt ro := placed_libcFree_ok placed_nontrivialFree_ok
   { malloc_ok :=
-      mallocPlaced_entry_uncond_ok placed_allocMeta_full_ok hSlot mpl svc hPl hSvc
+      mallocPlaced_entry_uncond_ok hMeta hSlot mpl svc hPl hSvc
     free_ok :=
       freePlaced_entry_ok placed_nontrivialFree_ok mpl svc hPl hSvc
     calloc_ok :=
@@ -169,9 +170,19 @@ theorem mallocngPlacedEntries_ok
     realloc_ok :=
       reallocPlaced_entry_ok hImplK hFree mpl svc hPl hSvc
     alignedAlloc_ok :=
-      alignedAllocPlaced_entry_ok placed_libcMallocImpl24_ok mpl svc hPl hSvc
+      alignedAllocPlaced_entry_ok (placed_libcMallocImpl24_ok (ro := ro)) mpl svc hPl hSvc
     posixMemalign_ok :=
-      posixMemalignPlaced_entry_ok placed_libcMallocImpl24_ok mpl svc hPl hSvc }
+      posixMemalignPlaced_entry_ok (placed_libcMallocImpl24_ok (ro := ro)) mpl svc hPl hSvc }
+
+/-- Hookless multi-block placed contracts (`MallocngPlacedEntryContracts`) for all 6 C exports of
+    `VerifiedLibraries.mallocngLib` (`malloc`, `free`, `calloc`, `realloc`, `aligned_alloc`,
+    `posix_memalign`). -/
+theorem mallocngPlacedEntries_ok
+    (mpl : Obj.MultiPlacement) (svc : State → State)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
+    (hSvc : MallocngSvcValid svc) :
+    MallocngPlacedEntryContracts mallocngIface mpl svc :=
+  mallocngModePlacedEntries_ok false mpl svc hPl hSvc
 
 /-- Complete verified `MallocngTopFacts` bundle for the concrete `mallocngIface`. -/
 theorem mallocngTopFacts_ok : MallocngTopFacts mallocngIface :=
@@ -182,6 +193,31 @@ theorem mallocngTopFacts_ok : MallocngTopFacts mallocngIface :=
 theorem mallocngTop_ok : MallocngTopStmt :=
   ⟨mallocngIface, mallocngTopFacts_ok⟩
 
+/-- Verified `MallocngIfaceFacts` bundle for the duplicable-RO-`auxv` `mallocngRoIface`. -/
+theorem mallocngRoIfaceWf_ok : MallocngIfaceFacts mallocngRoIface where
+  init                 := mallocngRoInit_ok
+  init_resources       := mallocngRoInit_resources
+  heap_split_runtime   := mallocngHeapRo_split_runtime
+  heap_roSplit         := mallocngHeapRo_roSplit
+  block_noRO           := mallocngBlock_noRO
+  block_nonnull        := mallocngBlock_nonnull
+  block_exclusive      := mallocngBlock_exclusive
+  heap_footprint_bound := mallocngHeapRo_footprint_bound
+
+/-- Hookless multi-block placed contracts for all 6 C exports of `VerifiedLibraries.mallocngLib`
+    under the duplicable-RO-`auxv` `mallocngRoIface`. -/
+theorem mallocngRoPlacedEntries_ok
+    (mpl : Obj.MultiPlacement) (svc : State → State)
+    (hPl : VerifiedLibraries.mallocngLib.Placeable mpl)
+    (hSvc : MallocngSvcValid svc) :
+    MallocngPlacedEntryContracts mallocngRoIface mpl svc :=
+  mallocngModePlacedEntries_ok true mpl svc hPl hSvc
+
+/-- Complete verified `MallocngTopFacts` bundle for the duplicable-RO-`auxv` `mallocngRoIface`. -/
+theorem mallocngRoTop_ok : MallocngTopFacts mallocngRoIface :=
+  { mallocngRoIfaceWf_ok with
+    entries_ok := mallocngRoPlacedEntries_ok }
+
 end VerifiedLibraries.Mallocng
 
 namespace VerifiedLibraries.Mallocng
@@ -191,6 +227,51 @@ open Arm64 ProofLib ProofLib.SepLogic
 /-- Concrete `MallocngIface` witness re-exported at `VerifiedLibraries.Mallocng.mallocngIface`. -/
 abbrev mallocngIface : MallocngIface :=
   Proofs.mallocngIface
+
+/-- Duplicable-RO-`auxv` `MallocngIface` witness re-exported at
+    `VerifiedLibraries.Mallocng.mallocngRoIface`. -/
+abbrev mallocngRoIface : MallocngIface :=
+  Proofs.mallocngRoIface
+
+/-- Read-only counterpart of `MallocngAuxvAt`. -/
+abbrev MallocngAuxvRoAt (auxvPtr : BitVec 64) : SepProp :=
+  Proofs.MallocngAuxvRoAt auxvPtr
+
+/-- Combined read-only `__libc.auxv` pointer and `auxv` table predicate. -/
+abbrev MallocngLibcAuxvRoAt (A : MallocngAddrs) : SepProp :=
+  Proofs.MallocngLibcAuxvRoAt A
+
+/-- Freeze `MallocngAuxvAt` to `MallocngAuxvRoAt`. -/
+theorem mallocngAuxvAt_freeze_ro (auxvPtr : BitVec 64) :
+    MallocngAuxvAt auxvPtr ⊢ |==> MallocngAuxvRoAt auxvPtr :=
+  Proofs.mallocngAuxvAt_freeze_ro auxvPtr
+
+/-- Freeze `((A.libc + 8#64) ↦₆₄ auxvPtr) ∗ MallocngAuxvAt auxvPtr` to `MallocngLibcAuxvRoAt A`. -/
+theorem mallocngLibcAuxv_freeze_ro (A : MallocngAddrs) (auxvPtr : BitVec 64) :
+    ((A.libc + 8#64) ↦₆₄ auxvPtr) ∗ MallocngAuxvAt auxvPtr ⊢ |==> MallocngLibcAuxvRoAt A :=
+  Proofs.mallocngLibcAuxv_freeze_ro A auxvPtr
+
+/-- Duplicability of `MallocngLibcAuxvRoAt A`. -/
+theorem mallocngLibcAuxvRoAt_dup (A : MallocngAddrs) :
+    (MallocngLibcAuxvRoAt A ∗ MallocngLibcAuxvRoAt A) = MallocngLibcAuxvRoAt A :=
+  Proofs.mallocngLibcAuxvRoAt_dup A
+
+/-- Direct RO startup initialization for `mallocngRoIface` from already-frozen
+    `((A.libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗ MallocngAuxvRoAt auxvPtr`. -/
+theorem mallocngRoInit_ro
+    (mpl : Obj.MultiPlacement) (tp brkStart auxvPtr : BitVec 64) (R : SepProp) (m : Memory)
+    (hTpGe : 0xa4 ≤ tp.toNat)
+    (hTpLe : tp.toNat ≤ 2 ^ 48)
+    (hBrkWf : MallocngBrkStartWf brkStart)
+    (hSat : m ⊨
+      VerifiedLibraries.mallocngLib.dataInit mpl ∗
+      MallocngRuntime (mallocngAddrsOfPlacement mpl) tp ∗
+      (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ᵣ auxvPtr) ∗
+      MallocngAuxvRoAt auxvPtr ∗ R) :
+    ∃ γ : GhostName,
+      m ⊨ |==> (mallocngRoIface.MallocngHeap γ (mallocngAddrsOfPlacement mpl) tp brkStart brkStart
+        mallocngZeroBudget [] ∗ R) :=
+  Proofs.mallocngRoInit_ro mpl tp brkStart auxvPtr R m hTpGe hTpLe hBrkWf hSat
 
 /-- Concrete startup `auxv` + `AT_RANDOM` secret snapshot
     `(preEntries, randPtr, sufEntries, nullVal, sec)`. -/
@@ -280,7 +361,7 @@ theorem mallocngPlacedMallocTight_ok
     (hSvc : MallocngSvcValid svc) (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "malloc"
       (mallocngMallocTightSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) :=
-  Proofs.mallocPlaced_entry_tight_uncond_ok
+  Proofs.mallocPlaced_entry_tight_uncond_ok (ro := false)
     Proofs.placed_allocMeta_full_ok
     (Proofs.placed_allocSlot_full_ok Proofs.placed_allocMeta_full_ok)
     mpl svc hPl hSvc γ
@@ -292,7 +373,7 @@ theorem mallocngPlacedReallocTight_ok
     (hSvc : MallocngSvcValid svc) (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "realloc"
       (mallocngReallocTightSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) :=
-  Proofs.reallocPlaced_entry_tight_ok
+  Proofs.reallocPlaced_entry_tight_ok (ro := false)
     (Proofs.placed_libcMallocImpl_tightK_uncond_ok
       Proofs.placed_allocMeta_full_ok
       (Proofs.placed_allocSlot_full_ok Proofs.placed_allocMeta_full_ok))
@@ -325,7 +406,7 @@ theorem mallocngPlacedCallocTight_ok
     (hSvc : MallocngSvcValid svc) (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "calloc"
       (mallocngCallocTightSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) :=
-  Proofs.callocPlaced_entry_tight_ok
+  Proofs.callocPlaced_entry_tight_ok (ro := false)
     (Proofs.placed_defaultMalloc_tight_of_impl
       (Proofs.placed_libcMallocImpl_tight_uncond_ok
         Proofs.placed_allocMeta_full_ok
@@ -340,7 +421,7 @@ theorem mallocngPlacedFreeTight_ok
     (hSvc : MallocngSvcValid svc) (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "free"
       (mallocngFreeSpec mallocngIface γ (mallocngAddrsOfPlacement mpl)) :=
-  Proofs.freePlaced_entry_ok Proofs.placed_nontrivialFree_ok mpl svc hPl hSvc γ
+  Proofs.freePlaced_entry_ok (ro := false) Proofs.placed_nontrivialFree_ok mpl svc hPl hSvc γ
 
 abbrev mallocngAlignedAllocTightSpec := Proofs.mallocngAlignedAllocTightSpec
 
@@ -354,7 +435,7 @@ theorem mallocngPlacedAlignedAllocTight_ok
     (hSvc : MallocngSvcValid svc) (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "aligned_alloc"
       (mallocngAlignedAllocTightSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) :=
-  Proofs.alignedAllocPlaced_entry_tight_ok placed_libcMallocImpl24_ok mpl svc hPl hSvc γ
+  Proofs.alignedAllocPlaced_entry_tight_ok (ro := false) placed_libcMallocImpl24_ok mpl svc hPl hSvc γ
 
 /-- Tight placed `posix_memalign` entry contract for `mallocngIface`: success delta
     `≤ MallocngTightStepBound eff` and `MallocngTightOomCond` at `eff = mallocngAlignedEffSize`. -/
@@ -364,6 +445,6 @@ theorem mallocngPlacedPosixMemalignTight_ok
     (hSvc : MallocngSvcValid svc) (γ : GhostName) :
     mallocngMultiEntryOk mpl svc "posix_memalign"
       (mallocngPosixMemalignTightSpec mallocngIface svc γ (mallocngAddrsOfPlacement mpl)) :=
-  Proofs.posixMemalignPlaced_entry_tight_ok placed_libcMallocImpl24_ok mpl svc hPl hSvc γ
+  Proofs.posixMemalignPlaced_entry_tight_ok (ro := false) placed_libcMallocImpl24_ok mpl svc hPl hSvc γ
 
 end VerifiedLibraries.Mallocng

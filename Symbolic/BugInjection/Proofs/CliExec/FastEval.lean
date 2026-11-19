@@ -894,9 +894,27 @@ theorem fastExecSimdPmull_sound {fs fs' : FastState} {s : State} (h : fs.Agrees 
   simp only [execInstWithSvc, FastState.readVReg128_eq h rn, FastState.readVReg128_eq h rm]
   exact FastState.advancePC_agrees (FastState.writeVReg128_agrees h rd _)
 
+def fastExecAddSubCarry (w : Width) (op : AddSubOp) (rd rn rm : Reg) (fs : FastState) :
+    Option FastState :=
+  let x := fs.readReg w rn
+  let y := fs.readReg w rm
+  let (res, optPs) := evalAddSub w op x y (some fs.pstate.c)
+  some (applyOptPState (fs.writeReg w rd res) optPs).advancePC
+
+theorem fastExecAddSubCarry_sound {fs fs' : FastState} {s : State} (h : fs.Agrees s)
+    (svc : State → State) {w : Width} {op : AddSubOp} {rd rn rm : Reg}
+    (heval : fastExecAddSubCarry w op rd rn rm fs = some fs') :
+    fs'.Agrees (execInstWithSvc svc (.addSubCarry w op rd rn rm) s) := by
+  simp only [fastExecAddSubCarry, Option.some.injEq] at heval
+  subst heval
+  simp only [execInstWithSvc, execAddSubCarry, FastState.readReg_eq h, h.pstate]
+  exact FastState.advancePC_agrees (applyOptPState_agrees (FastState.writeReg_agrees h w rd _) _)
+
 /-- Evaluates a single AArch64 instruction on `FastState` without closure allocation. -/
 def fastEvalInst (inst : Arm64.Instr) (fs : FastState) : Option FastState :=
   match inst with
+  | .addSubCarry w op rd rn rm =>
+    fastExecAddSubCarry w op rd rn rm fs
   | .fmovGprVec sf ftype rmode opcode rn rd =>
     fastExecFmovGprVec sf ftype rmode opcode rn rd fs
   | .fpCompare ftype rm op rn opcode2 =>
@@ -923,6 +941,8 @@ theorem fastEvalInst_sound {prog : Arm64.Program}
     (heval : fastEvalInst inst fs = some fs') :
     fs'.Agrees (prog.evalInst inst s) := by
   cases inst with
+  | addSubCarry w op rd rn rm =>
+    exact fastExecAddSubCarry_sound hag (evalSvc prog.svc) heval
   | fmovGprVec sf ftype rmode opcode rn rd =>
     exact fastExecFmovGprVec_sound hag (evalSvc prog.svc) heval
   | fpCompare ftype rm op rn opcode2 =>

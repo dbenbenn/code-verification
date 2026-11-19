@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalSim
 public import ProofLib.Lemmas
 public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option relaxedAutoImplicit false
@@ -50,11 +50,11 @@ structure SimState (PQ Pt : Type) (ℓ : ℕ) where
 
 variable {PQ PQC Pt : Type} [Inhabited PQ] [DecidableEq Pt] [Zero Pt] [SampleableType PQC] {ℓ : ℕ}
 
-def pushChain (cs : List GhostChain) (g : GhostChain) : List GhostChain :=
+@[expose] def pushChain (cs : List GhostChain) (g : GhostChain) : List GhostChain :=
   let cs' := cs ++ [g]
   cs'.drop (cs'.length - 5)
 
-def inReceiveOnlyEpoch (s : GameState Unit (Plain ℓ) (List (BitVec 8))) (P : Party) : Bool :=
+@[expose] def inReceiveOnlyEpoch (s : GameState Unit (Plain ℓ) (List (BitVec 8))) (P : Party) : Bool :=
   !(P.sendsIn (s.epoch P))
 
 section Impl
@@ -64,19 +64,19 @@ variable (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicK
 
 local notation "SimM" => StateT (SimState PQ Pt ℓ) (Fig8Comp Pt ℓ)
 
-def putS (s : SimState PQ Pt ℓ) : SimM Unit := set s
+@[expose] def putS (s : SimState PQ Pt ℓ) : SimM Unit := set s
 
-def liftQ {α : Type} (x : Fig8Comp Pt ℓ α) : SimM α := StateT.lift x
+@[expose] def liftQ {α : Type} (x : Fig8Comp Pt ℓ α) : SimM α := StateT.lift x
 
-def coin (α : Type) [SampleableType α] : SimM α :=
+@[expose] def coin (α : Type) [SampleableType α] : SimM α :=
   liftQ (liftM ($ᵗ α : ProbComp α))
 
-def mkPub (s : SimState PQ Pt ℓ) (Q : Party) (r : PQC) (pn : BitVec 32) : Option (PQ × LibsignalMsgPublicPart) :=
+@[expose] def mkPub (s : SimState PQ Pt ℓ) (Q : Party) (r : PQC) (pn : BitVec 32) : Option (PQ × LibsignalMsgPublicPart) :=
   (P.spqr.send (s.pq Q) r).map fun x =>
     (x.1, ⟨pn, x.2.2, effectiveHkdfSalt32 x.2.1, if Q == Party.A && s.unackA then P.addrAB else none⟩)
 
 /-- Simulated `transmit` and `chall` oracle. -/
-def simSend (Q : Party) (m₀ : Plain ℓ) (chal : Option (Plain ℓ)) (r : Option PQC) :
+@[expose] def simSend (Q : Party) (m₀ : Plain ℓ) (chal : Option (Plain ℓ)) (r : Option PQC) :
     SimM (Option (List (BitVec 8))) := do
   let s ← get
   if s.mir.win || !(noBobSendInEpoch0 s.mir Q) then return none
@@ -108,14 +108,14 @@ def simSend (Q : Party) (m₀ : Plain ℓ) (chal : Option (Plain ℓ)) (r : Opti
         return some w
 
 /-- Forward `c` as `deliver` if it is an honest record in transit, and as `inject` otherwise. -/
-def fwd (Q : Party) (c : Fig8C Pt) : SimM (Option (RecvResult (LibsignalMsgPublicPart × Plain ℓ))) := do
+@[expose] def fwd (Q : Party) (c : Fig8C Pt) : SimM (Option (RecvResult (LibsignalMsgPublicPart × Plain ℓ))) := do
   let s ← get
   let inT := s.honest.any fun wc => decide (wc.2 = c) && (s.mir.inTransit Q.other wc.1).isSome
   if inT then liftQ (SM.deliverQuery (St := Fig8St Pt) Q c)
   else liftQ (SM.injectQuery (St := Fig8St Pt) Q c)
 
 /-- Update ghost chains, SPQR state, and game mirror after Fig. 8 accepts a message. -/
-def onAccept (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (t i : ℕ) (m : Plain ℓ)
+@[expose] def onAccept (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (t i : ℕ) (m : Plain ℓ)
     (ci? : Option ℕ) (T : PublicKey) (pq' : PQ) : SimM (Option (RecvResult (Plain ℓ))) := do
   let s ← get
   let cs := match ci? with
@@ -139,7 +139,7 @@ def onAccept (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (t i : ℕ) (m : P
       putS { s with mir := { s.mir with win := true } }
       return some .rejected
 
-def onAnswer (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ) (T : PublicKey)
+@[expose] def onAnswer (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ) (T : PublicKey)
     (pq' : PQ) (res : Option (RecvResult (LibsignalMsgPublicPart × Plain ℓ))) :
     SimM (Option (RecvResult (Plain ℓ))) :=
   match res with
@@ -148,7 +148,7 @@ def onAnswer (Q : Party) (w : List (BitVec 8)) (isDel : Bool) (ci? : Option ℕ)
   | _ => return some .rejected
 
 /-- Reconstruct a libsignal `GhostState` from a Fig. 8 party state and simulator bookkeeping. -/
-def toGhost (s : SimState PQ Pt ℓ) (Q : Party) (st : Fig8St Pt) : GhostState PQ :=
+@[expose] def toGhost (s : SimState PQ Pt ℓ) (Q : Party) (st : Fig8St Pt) : GhostState PQ :=
   let idOf : Party → IdentityKey := fun R => if R == Party.A then P.idA else P.idB
   let sender : Option SenderChain :=
     match st.γ, st.vS with
@@ -169,7 +169,7 @@ def toGhost (s : SimState PQ Pt ℓ) (Q : Party) (st : Fig8St Pt) : GhostState P
 
 end Impl
 
-def initSim (pqA pqB : PQ) : SimState PQ Pt ℓ :=
+@[expose] def initSim (pqA pqB : PQ) : SimState PQ Pt ℓ :=
   { mir := { st := fun _ => (), b := false }, pq := fun Q => if Q == Party.A then pqA else pqB,
     pn := fun _ => 0, unackA := true, honest := [],
     chains := fun Q => if Q == Party.A then [⟨none, 0, 0, []⟩] else [], amb := 0, stopped := false }
@@ -200,7 +200,7 @@ variable (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicK
 local notation "SimM" => StateT (SimState PQ Pt ℓ) (Fig8Comp Pt ℓ)
 
 /-- Simulated `deliver` (`isDel = true`) and `inject` (`isDel = false`) oracle. -/
-def simRecv (Q : Party) (w : List (BitVec 8)) (isDel : Bool) :
+@[expose] def simRecv (Q : Party) (w : List (BitVec 8)) (isDel : Bool) :
     SimM (Option (RecvResult (Plain ℓ))) := do
   let s ← get
   if s.mir.win then return none
@@ -262,7 +262,7 @@ def simRecv (Q : Party) (w : List (BitVec 8)) (isDel : Bool) :
             onAnswer (qep := qep) Q w isDel none h.senderRatchetKey pq' res
 
 /-- Simulated `corr` oracle. -/
-def simCorr (Q : Party) : SimM (Option (GhostState PQ)) := do
+@[expose] def simCorr (Q : Party) : SimM (Option (GhostState PQ)) := do
   let s ← get
   if s.mir.win || !(s.mir.corrAllowed Q) || inReceiveOnlyEpoch s.mir Q || !(noAliceCorrWhileAliceBelowEpoch10 s.mir Q) then return none
   let res ← liftQ (SM.corrQuery (Msg := LibsignalMsgPublicPart × Plain ℓ) (Coins := BitVec 256) (C := Fig8C Pt) Q)
@@ -278,11 +278,11 @@ def simCorr (Q : Party) : SimM (Option (GhostState PQ)) := do
     putS { s with mir := s.mir.afterCorr Q, chains }
     return some (toGhost (P := P) { s with chains } Q st)
 
-def «guard» {α : Type} (x : SimM (Option α)) : SimM (Option α) := do
+@[expose] def «guard» {α : Type} (x : SimM (Option α)) : SimM (Option α) := do
   if (← get).stopped then return none
   x
 
-def simImpl :
+@[expose] def simImpl :
     QueryImpl (unifSpec + SM.spec (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) SimM :=
   let c : QueryImpl unifSpec SimM := fun n =>
     liftQ (query (spec := unifSpec + SM.spec (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (Fig8C Pt))
@@ -304,7 +304,7 @@ def simImpl :
 end Impl
 
 /-- Run adversary `A` against `simImpl` (`k = none` for `sim`, `k = some k` for `simWin k`). -/
-def simRun (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
+@[expose] def simRun (P : Params PQ PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (qep : ℕ) (k : Option ℕ)
     (A : SM.Adversary (GhostState PQ) (Plain ℓ) PQC (List (BitVec 8))) : Fig8Comp Pt ℓ Bool := do
   let pqrKey ← (liftM ($ᵗ BitVec 256 : ProbComp (BitVec 256)) : Fig8Comp Pt ℓ (BitVec 256))
@@ -324,7 +324,7 @@ open Ratchet LibsignalInst LibsignalSession CKA
 variable {Pt PQ PQC : Type} [DecidableEq Pt] [Zero Pt] [Inhabited PQ] [SampleableType PQC]
 
 /-- Shallow reduction from the libsignal session game to `lFig8`. -/
-def sim (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
+@[expose] def sim (P : Params PQ PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (qep : ℕ) (A : LibAdv PQ PQC ℓ) : Fig8Adv Pt ℓ :=
   LibsignalSim.simRun P Dh encT decT qep none A
 

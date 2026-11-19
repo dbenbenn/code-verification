@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables
+public import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTables -- proof-setup: allow-public-import
 
 /-!
 # PRF-PRNG and Fig. 8 FS-AEAD reduction tables
@@ -19,7 +19,7 @@ public import Computational.Proofs.SpecLemmas.Reductions.Primitives.CKA.CostedTa
 ACD19 Fig. 8 PRF-PRNG and FS-AEAD reductions.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.PRFPRNG
 
@@ -53,7 +53,7 @@ inductive PRNGTag
 
 /-- Target oracle interface for `unifSpec + PRFPRNG.spec RSt I K` with unit query cost and
 `prngSamplers`. -/
-@[reducible] def prngIface (KC Γ CCoins T I KR RSt K SS RS M E : Type)
+@[expose, reducible] def prngIface (KC Γ CCoins T I KR RSt K SS RS M E : Type)
     (sampKR : ProbComp KR)
     (sampKC : ProbComp KC)
     (sampCCoins : ProbComp CCoins)
@@ -99,11 +99,11 @@ abbrev prngSMCodecDF (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
         (SM.Construction.Header T × E)) :=
   CKA.ckaSMCodecDF KC Γ CCoins T I KR RSt K SS RS M E
 
-@[reducible] def fsHdrRrTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
+@[expose, reducible] def fsHdrRrTy (KC Γ CCoins T I KR RSt K SS RS M E : Type) :
     Ty (prngSig KC Γ CCoins T I KR RSt K SS RS M E) :=
   .sum .unit (.prod .nat (.opt (.base .msg)))
 
-def fsHdrRrEnc {M : Type} : FSAEAD.ReceiveResult M → Unit ⊕ (ℕ × Option M)
+@[expose] def fsHdrRrEnc {M : Type} : FSAEAD.ReceiveResult M → Unit ⊕ (ℕ × Option M)
   | .rejected => .inl ()
   | .accepted i m => .inr (i, m)
 
@@ -113,7 +113,7 @@ inductive FSHdrTag
 
 /-- Target oracle interface for `unifSpec + FSAEAD.spec SS RS (SM.Construction.Header T) M E` over
 `prngSig`. -/
-@[reducible] def fsaeadHeaderAdIface (KC Γ CCoins T I KR RSt K SS RS M E : Type)
+@[expose, reducible] def fsaeadHeaderAdIface (KC Γ CCoins T I KR RSt K SS RS M E : Type)
     (sampKR : ProbComp KR)
     (sampKC : ProbComp KC)
     (sampCCoins : ProbComp CCoins)

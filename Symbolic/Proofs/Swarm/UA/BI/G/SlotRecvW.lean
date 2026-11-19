@@ -51,6 +51,8 @@ import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 
 /-!
 # Whisper Receive Slot Refinement under Break and Invert Events
@@ -60,7 +62,7 @@ Proves `uab_slot_recvw_of : XlateInvSpecB -> XlateExcWSpecB -> UASlotRecvWSpecB`
 uniqueness across environment steps with raw decrypt witness lifting.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

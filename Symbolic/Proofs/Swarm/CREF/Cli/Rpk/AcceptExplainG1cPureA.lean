@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.MacInv
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkSpine
+public import Symbolic.Proofs.Swarm.CREF.MacInv -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.RkSpine -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.HonestSpineRk
 import Symbolic.Proofs.Swarm.CREF.TR.G1.OneSidedPeel
@@ -25,7 +25,7 @@ Proves `gamma'` shape injectivity and disjointness for `hkdfBlock1`, `hkdfBlock2
 for Bob's pre-key receive chain.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +48,7 @@ attribute [local instance 2000]
   DY.Libsignal.Composed.instHasExecBytes
   DY.Libsignal.Composed.instHasExecTrace
 
-def ckOut : Bool → DY.Bytes → DY.Bytes
+@[expose] def ckOut : Bool → DY.Bytes → DY.Bytes
   | false, x => x
   | true, x => (kdfCk x).2
 
@@ -377,7 +377,7 @@ theorem ckOut_hkdfBlock2_split_of_ak {T : ExecTrace} {prk : DY.Bytes} (hp : prk.
 
 /-- Predicate characterizing values on Bob's pre-key receive spine: chain-key outputs from
 `(createChain keys'.rk msg'.ratchetKey (setupSecret r 2)).2` or the handshake root key `keys'.rk`. -/
-def BobQ (r : ProtocolSetup) (keys' : HandshakeKeys) (msg' : TRSignalMsg) (v : DY.Bytes) : Prop :=
+@[expose] def BobQ (r : ProtocolSetup) (keys' : HandshakeKeys) (msg' : TRSignalMsg) (v : DY.Bytes) : Prop :=
   (∃ (j : Nat) (b : Bool),
     v = ckOut b (chainKeyAt (createChain keys'.rk msg'.ratchetKey (setupSecret r 2)).2 j)) ∨
   v = keys'.rk

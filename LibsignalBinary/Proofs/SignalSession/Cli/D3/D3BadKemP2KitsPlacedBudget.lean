@@ -12,15 +12,108 @@ module
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2KitsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2DefsPlaced
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SignedPreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemBobAuxPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2KitsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.FramePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverFolds
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.Stage2OverInst
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathACore
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathAKeys
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePathB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.AgreePreKeyWf
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntry
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitFold
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyBase
+import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.SessionOnlyKitE
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKit
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP3ExitFold
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmt
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrace
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureVtablesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitCodecsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KitStk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.KyberKitOkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.PreKeyKitOkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOk
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.SelfKitOkPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.MatchedPre
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Folds
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Msg
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StoresAt
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCoins
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Spec
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.SpecState
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsg
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsg.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropPreKeyMsgPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessage
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessage.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSignalMessagePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned.Common
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned.SessionNotFound
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwned.WithStr
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropSpeOwnedPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStores
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStores.Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DropStoresPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecDefs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Existing
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdKeyPairPoll
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IdRegIdPoll
+import LibsignalBinary.Proofs.RecordCodecs.Deps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IkpTryFrom.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IkpTryFrom.Loop
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.IkpTryFrom.LoopError
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.SerializeExt.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.Shims
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.ShimsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees.StorePollCli
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.KemDeserialize.Spec
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.Callees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrAt
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTail
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCleanup
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.PrologueB
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W0Spec
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssembly
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFromPlaced
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFrom.DecodeErrorFrom
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFrom.DecodeErrorPush
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFrom.VarintSlow
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFromPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Budget-Threaded Stage P2 Bad-KEM Callee & Store-Kit Bridges
@@ -30,7 +123,7 @@ contracts, together with budget-threaded Stage-P2 Bad-KEM spatial frames and `A.
 bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -188,7 +281,7 @@ theorem initializeBobSession_badKem_errOwned_full_placed_ok_of_block_std [Libsig
 
 /-- `4K`/`Ext` (`768 + pqxdhEntryStackExt`) stack variant of
 `initializeBobSessionBadKemErrOwnedInnerPlacedSpec`. -/
-def initializeBobSessionBadKemErrOwned4KInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionBadKemErrOwned4KInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobBadKemGhost × M.σ) where
@@ -221,7 +314,7 @@ def initializeBobSessionBadKemErrOwned4KInnerPlacedSpec [LibsignalPlacement] {M 
       stackAt s0.sp (768 + pqxdhEntryStackExt) ∗
       A.pool lim (M.stepEvents evs st) sf
 
-def initializeBobSessionBadKemErrOwned4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionBadKemErrOwned4KPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobBadKemGhost × M.σ) :=
@@ -233,7 +326,7 @@ abbrev initializeBobSessionBadKemErrOwnedExtPlacedSpec [LibsignalPlacement] {M :
     Spec (InitBobBadKemGhost × M.σ) :=
   initializeBobSessionBadKemErrOwned4KPlacedSpec A lim AcceptErrEnv
 
-def initializeBobSessionBadKemErrOwned4KFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionBadKemErrOwned4KFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobBadKemGhost × M.σ) :=
@@ -355,7 +448,7 @@ export LibsignalBinary.Proofs.SignalSession.Cli.D3 (
 
 /-- Empty `previous_sessions` `Vec<SessionStructure>` header at `coroPtr + 0xe0` over
 `A.repAlloc`. -/
-def prevSessionsEmptyAt {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def prevSessionsEmptyAt {M : AllocCostModel} (A : RustCliAllocBudget M)
     (coroPtr : BitVec 64) (g : RecordGhost) : SepProp :=
   vecAt A.repAlloc 24 8 (fun (_ : Unit) _ => emp) (coroPtr + 0xe0#64) g.prevCap g.prevPtr []
 
@@ -375,7 +468,7 @@ theorem prevSessionsEmptyAt_eq_atState {M : AllocCostModel} (A : RustCliAllocBud
 
 /-- Frame held constant across `stageP2_sub1_to_4_kits` and `Over.stageP2_over_sub1_to_4_kits`
 when the Kyber ciphertext slice is `(ctBufPtr, ctBytes)`, indexed over `A.repAlloc`. -/
-def p2BadKemSub1To4Frame {M : AllocCostModel} (A : RustCliAllocBudget M) {b : BitVec 64}
+@[expose] def p2BadKemSub1To4Frame {M : AllocCostModel} (A : RustCliAllocBudget M) {b : BitVec 64}
     (ikit : IdentityStoreSpec A.repAlloc b)
     (sp fp coroPtr msgPtr ctBufPtr remoteAddrPtr localAddrPtr idStorePtr
      v_330 v_388 u_80 u_88 : BitVec 64)
@@ -448,7 +541,7 @@ theorem p2BadKemSub1To4Frame_eq_atState {M : AllocCostModel} (A : RustCliAllocBu
 /-- Budget-threaded common coroutine, stack, message, address, and allocator spatial frame
 delivered uniformly at `s0.readReg64 .x30` on all 5 Stage-P2 Bad-KEM error exits (Arms 1–5) under
 `[LibsignalPlacement]`, carrying `A.pool lim st sf`. -/
-def p2BadKemErrFrameAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def p2BadKemErrFrameAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (s0 sf : State)
     (sp fp coroPtr msgPtr ctBufPtr remoteAddrPtr localAddrPtr
      idStorePtr idVt preKeyStorePtr pkVt kyberStorePtr kpkVt v_330 v_388 : BitVec 64)
@@ -518,7 +611,7 @@ theorem p2BadKemErrFrameAtPlaced_eq_atState [LibsignalPlacement] {M : AllocCostM
 
 /-- Budget-threaded spatial precondition at `+2152` for `stageP2_pathA_badKem_kits_placed` (Path A)
 under `[LibsignalPlacement]`, carrying `A.pool lim st s` and `A.repAlloc`-indexed store kits. -/
-def stageP2BadKemPreAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP2BadKemPreAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) {b : BitVec 64}
     (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
@@ -618,7 +711,7 @@ theorem stageP2BadKemPreAtPlaced_eq_atState [LibsignalPlacement] {M : AllocCostM
 /-- Budget-threaded spatial precondition at `+2152` for `stageP2_over_badKem_kits_placed`
 (Over-Path C) under `[LibsignalPlacement]`, carrying `A.pool lim st s` and `A.repAlloc`-indexed
 store kits. -/
-def stageP2OverBadKemPreAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP2OverBadKemPreAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) {b : BitVec 64}
     (spkKit : SignedPreKeyStoreSpec A.repAlloc b)
     (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)

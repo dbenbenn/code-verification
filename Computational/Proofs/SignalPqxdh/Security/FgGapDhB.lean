@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
-public import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhA -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsB -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
-@[expose] public section
+public section
 
 /-!
 # Soundness of the Fiedler–Günther `GapDH` Reduction Helpers
@@ -348,7 +348,7 @@ theorem simulateQ_primBaseImpl_isHonestUncorruptedPeerPrim (S : Setup) (P : Prim
   rw [simulateQ_bind, simulateQ_primBaseImpl_findHonestPrincipalPrim, pure_bind]
   cases findHonestPrincipal P (principals.take S.N_dh) ikB <;> simp
 
-def checkBundleProvenanceTake (S : Setup) (P : Primitives)
+@[expose] def checkBundleProvenanceTake (S : Setup) (P : Primitives)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
@@ -426,7 +426,7 @@ theorem simulateQ_primBaseImpl_checkBundleProvenancePrim (S : Setup) (P : Primit
       rw [simulateQ_bind, h2, pure_bind]
       rfl
 
-def koskSenderOkTake (S : Setup) (P : Primitives)
+@[expose] def koskSenderOkTake (S : Setup) (P : Primitives)
     (principals : List (Nat × PrincipalEntry))
     (advKeyPows : List (Bytes × Bytes))
     (ikAPk : Bytes) : Bool :=
@@ -471,7 +471,7 @@ theorem simulateQ_primBaseImpl_isGameOpkPrim (S : Setup) (P : Primitives)
   rintro ⟨_, e⟩
   simp [primQ, primBaseImpl, primImpl]
 
-def koskBundleOkTake (S : Setup) (P : Primitives)
+@[expose] def koskBundleOkTake (S : Setup) (P : Primitives)
     (principals : List (Nat × PrincipalEntry))
     (spkBundles : List ((Nat × Nat) × SpkBundleEntry))
     (opkEntries : List ((Nat × Nat × Nat) × OpkEntry))
@@ -560,7 +560,7 @@ theorem simulateQ_primBaseImpl_keyIndPartnerPrim {S : Setup} (P : Primitives)
     cases s.peerOpkPk? <;> cases r.opkPk? <;> rfl
   rw [hOpt]
 
-def choosePartnerDrKeyRandPure {S : Setup} (P : Primitives)
+@[expose] def choosePartnerDrKeyRandPure {S : Setup} (P : Primitives)
     (sessions : List (KeyIndInitiatorEntry S)) (r : KeyIndRespEntry S) : ProbComp DRKey :=
   match (sessions.take S.N_dh).find? (fun s => keyIndPartner P s r) with
   | some s => pure s.drKeyRand
@@ -579,7 +579,7 @@ theorem simulateQ_gapDhFullImpl_choosePartnerDrKeyRandGdh {S : Setup} (P : Primi
       pure_bind]
   cases (sessions.take S.N_dh).find? (fun s => keyIndPartner P s r) <;> simp
 
-def chooseInitPartnerDrKeyRandPure {S : Setup} (P : Primitives)
+@[expose] def chooseInitPartnerDrKeyRandPure {S : Setup} (P : Primitives)
     (respSessions : List (KeyIndRespEntry S)) (s : KeyIndInitiatorEntry S) : ProbComp DRKey :=
   match (respSessions.take S.N_sess_tot).find? (fun r => keyIndPartner P s r) with
   | some r => pure r.drKeyRand
@@ -598,13 +598,13 @@ theorem simulateQ_gapDhFullImpl_chooseInitPartnerDrKeyRandGdh {S : Setup} (P : P
       pure_bind]
   cases (respSessions.take S.N_sess_tot).find? (fun r => keyIndPartner P s r) <;> simp
 
-def mkSecretPosPure (P : Primitives) (z : Bytes) : FgPoS :=
+@[expose] def mkSecretPosPure (P : Primitives) (z : Bytes) : FgPoS :=
   FgPoS.secret z (P.isCanonical z)
 
-def mkPairPosPure (P : Primitives) (pk1 pk2 : Bytes) : FgPoS :=
+@[expose] def mkPairPosPure (P : Primitives) (pk1 pk2 : Bytes) : FgPoS :=
   FgPoS.pair pk1 pk2 (P.pow8 pk1) (P.pow8 pk2)
 
-def computeTwoSideOrPairPosPure (P : Primitives) (sk1 sk2 pk1 pk2 : Bytes) : FgPoS :=
+@[expose] def computeTwoSideOrPairPosPure (P : Primitives) (sk1 sk2 pk1 pk2 : Bytes) : FgPoS :=
   if !sk1.isEmpty then
     mkSecretPosPure P (P.x25519 sk1 pk2)
   else if !sk2.isEmpty then
@@ -612,7 +612,7 @@ def computeTwoSideOrPairPosPure (P : Primitives) (sk1 sk2 pk1 pk2 : Bytes) : FgP
   else
     mkPairPosPure P pk1 pk2
 
-def computeOptPosPure (P : Primitives) (sk1 pk1 : Bytes) :
+@[expose] def computeOptPosPure (P : Primitives) (sk1 pk1 : Bytes) :
     Option (Bytes × Bytes) → Option FgPoS
   | none => none
   | some (sk2, pk2) => some (computeTwoSideOrPairPosPure P sk1 sk2 pk1 pk2)
@@ -702,7 +702,7 @@ theorem simulateQ_gapDhFullImpl_computeOptPos (P : Primitives)
       pure (computeOptPosPure P sk1 pk1 opt) := by
   cases opt <;> simp [computeOptPos, computeOptPosPure]
 
-noncomputable def fgRoQueryPure {S : Setup} (P : Primitives)
+@[expose] def fgRoQueryPure {S : Setup} (P : Primitives)
     (ddh : Bytes → Bytes → Bytes → Bool) (maxLen : ℕ) (secrets : Bytes)
     (st : FgKeyIndSimState S) : ProbComp (KeyIndResponse × FgKeyIndSimState S) := do
   let advRoLog' := secrets :: st.advRoLog
@@ -737,7 +737,7 @@ theorem simulateQ_gapDhFullImpl_fgRoQueryGdh {S : Setup} (P : Primitives)
     rcases tup with ⟨dh1, dh2, dh3, dh4?, ss⟩
     cases dh4? <;> simp
 
-noncomputable def fgRunInitiatePure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgRunInitiatePure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (useDh1 : Bool) (targetIdx : ℕ) (S : Setup) (maxLen : ℕ) (U : Bytes)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput)
     (st : FgKeyIndSimState S) : ProbComp (KeyIndResponse × FgKeyIndSimState S) := do
@@ -856,7 +856,7 @@ theorem simulateQ_gapDhFullImpl_fgRunInitiateGdh (P : Primitives)
             congr 1; ext drKeyRand
             cases findHonestPrincipal P (st.base.principals.take S.N_dh) bundle.ikB <;> simp
 
-noncomputable def fgRunAcceptOPKPure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgRunAcceptOPKPure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (S : Setup) (maxLen : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv) (o : Fin S.N_opk)
     (hdr : HandshakeHdr) (st : FgKeyIndSimState S) :
     ProbComp (KeyIndResponse × FgKeyIndSimState S) := do
@@ -993,7 +993,7 @@ theorem simulateQ_gapDhFullImpl_fgRunAcceptOPKGdh (P : Primitives)
                   congr 1; ext drKeyRand
                   cases findHonestPrincipal P (st.base.principals.take S.N_dh) hdr.ikAPk <;> simp
 
-noncomputable def fgRunAcceptNoOPKPure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgRunAcceptNoOPKPure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (S : Setup) (maxLen : ℕ) (k : Fin S.N_id) (j : Fin S.N_recv) (l : Fin S.N_no_opk)
     (hdr : HandshakeHdr) (st : FgKeyIndSimState S) :
     ProbComp (KeyIndResponse × FgKeyIndSimState S) := do
@@ -1111,7 +1111,7 @@ theorem simulateQ_gapDhFullImpl_fgRunAcceptNoOPKGdh (P : Primitives)
               cases findHonestPrincipal P (st.base.principals.take S.N_dh) hdr.ikAPk <;> simp
 
 /-- Pure `ProbComp` version of `fgKeyIndStep`. -/
-noncomputable def fgKeyIndStepPure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
+@[expose] def fgKeyIndStepPure (P : Primitives) (ddh : Bytes → Bytes → Bytes → Bool)
     (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ) (S : Setup) (maxLen : ℕ)
     (U V : Bytes) (q : KeyIndQuery S) (st : FgKeyIndSimState S) :
     ProbComp (KeyIndResponse × FgKeyIndSimState S) := do
@@ -1363,7 +1363,7 @@ theorem probExpect_eq_zero_of_support {α : Type} (mx : ProbComp α) (f : α →
     probExpect mx f = 0 :=
   le_antisymm (probExpect_const_le_of_support mx f 0 (fun x hx => le_of_eq (h x hx))) bot_le
 
-def spkBundleFlatIdxVal (S : Setup) (k : Nat × Nat) : Nat :=
+@[expose] def spkBundleFlatIdxVal (S : Setup) (k : Nat × Nat) : Nat :=
   k.1 * S.N_recv + k.2
 
 theorem toReal_any_double_range_le_sum2 {α : Type} (mx : ProbComp α) (n1 n2 : Nat)
@@ -1419,7 +1419,7 @@ theorem probExpect_eq_const_of_support {α : Type} (mx : ProbComp α) (f : α �
     (probExpect_const_le_of_support mx f c (fun x hx => le_of_eq (h x hx)))
     (le_probExpect_const_of_support mx f c (fun x hx => le_of_eq (h x hx).symm))
 
-def RelProbUpToBad {α : Type} (R : α → α → Prop) (bad : α → Bool)
+@[expose] def RelProbUpToBad {α : Type} (R : α → α → Prop) (bad : α → Bool)
     (m5 m6 : ProbComp α) : Prop :=
   (∀ (w5 w6 : α → ℝ≥0∞),
     (∀ y5, w5 y5 ≤ 1) →

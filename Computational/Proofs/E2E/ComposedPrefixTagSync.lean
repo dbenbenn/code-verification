@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.ComposedPrefixHelpers
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCoupling
+import Computational.Proofs.E2E.ComposedPrefixHelpers
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCoupling
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -21,7 +21,7 @@ import VCVio.EvalDist.Monad.Basic
 List lookup and `StateT` lifting lemmas used by `ComposedPrefixSlot`.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open OracleComp OracleSpec MeasureTheory

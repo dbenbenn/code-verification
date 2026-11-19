@@ -10,20 +10,24 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize
+import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsBudget
 import ProofLib.SepLogic.WPp
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
 
 /-!
 # Budget-Threaded Call Helpers for `<Message>::deserialize`
 
-Framed `SepWP` / `SepWPp` call wrappers for `format_inner` (`FormatInnerEnv`) and `__rust_dealloc`
-used by `<spqr::v1::chunked::states::Message>::deserialize` under `RustCliAllocBudget`.
+Framed `SepWP` / `SepWPp` call wrappers for `format_inner` (`FormatInnerEnv` / `formatInnerLsEnvSpec`)
+and `__rust_dealloc` used by `<spqr::v1::chunked::states::Message>::deserialize` under
+`RustCliAllocBudget`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,6 +39,12 @@ open LibsignalBinary.Heap
    rustCliDeallocBudgetSpec rustDeallocEvents)
 open LibsignalBinary.Heap.SpecBudget
   (FormatInnerEnv formatInnerBudgetEnvSpec formatInnerBudgetSpec)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtGhostSpecs
+  (CliFormatInnerLsCall LsRetAddrFormatInner cliFormatInnerLsCallSpec formatInnerCallLsEnvSpec
+   intro_withLsRetFormatInner withLsRetFormatInner)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
+  (formatInnerLsEnvSpec intro_withLsRet624 withLsRet624)
+open VerifiedLibraries.RustStd (fmtArgumentsAt)
 open CryptoVerification (LibsignalPlacement)
 open CryptoVerification.RustHeap (vecHeader vecU8 vecU8At)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
@@ -180,6 +190,236 @@ theorem call_formatInner_then_sepWP {prog : Program} {M : AllocCostModel}
     SepWPp prog target_pc s P post panicPost :=
   SepWPp.of_sepWP_ret
     (call_formatInner hcall ret sp_cur st hpc hrun hsp hsp_align hlr htr hx8 hP hnext)
+
+/-- Envelope-parametric framed call rule for `formatInnerLsEnvSpec M A lim Env` (`withLsRet624`)
+    inside `SepWP`. -/
+theorem call_formatInnerLsEnv [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {Env : List AllocEvent → Prop}
+    {entry ret_pc target_pc : BitVec 64}
+    (hcall : subroutine_ok prog entry (formatInnerLsEnvSpec M A lim Env))
+    (ret sp_cur : BitVec 64) (st : M.σ) {s0 s : State} {P F : SepProp}
+    {post : State → SepProp → Prop}
+    (hpc : s.pc = entry)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = sp_cur)
+    (hsp_align : (sp_cur &&& 15#64 == 0#64) = true)
+    (hlr : s.readReg64 Reg.lr = ret_pc)
+    (hlr624 : LsRetAddr624 ret_pc)
+    (htr : s.trace = s0.trace)
+    (hx8 : s.readReg64 .x8 = ret)
+    (hfit : FitsEnv M lim st Env)
+    (hP : P = (memRegion ret 24 ∗ A.pool lim st s ∗ stackAt sp_cur extHookStack) ∗ F)
+    (hnext : ∀ (sf : State) (evs : List AllocEvent) (bs : List (BitVec 8)) (cap ptr : BitVec 64),
+      sf.pc = ret_pc → sf.status = .Running →
+      sf.sp = sp_cur → sf.trace = s0.trace → CalleeSavedPreserved s sf →
+      Env evs → bs.length ≤ cap.toNat → cap.toNat < 2 ^ 63 → ptr ≠ 0#64 →
+      SepWP prog target_pc sf
+        (((ret ↦₆₄ cap) ∗ ((ret + 8#64) ↦₆₄ ptr) ∗ ((ret + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
+          (if cap = 0#64 then emp
+           else A.repAlloc.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
+             memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)) ∗
+          A.pool lim (M.stepEvents evs st) sf ∗ stackAt sp_cur extHookStack) ∗ F) post) :
+    SepWP prog target_pc s P post := by
+  have halign : s.spAligned = true := by dsimp only [State.spAligned]; rw [hsp]; exact hsp_align
+  refine SepWP.call_subroutine_frame (x := (ret, st)) (F := F) hcall hpc hrun halign hlr ?_ ?_ ?_ ?_ ?_
+  · intro R' hm
+    dsimp only [formatInnerLsEnvSpec]
+    refine intro_withLsRet624 (by rw [hlr]; exact hlr624) ?_
+    dsimp only [formatInnerBudgetEnvSpec]
+    rw [hsp, sepConj_assoc, satisfies_pure_sepConj]
+    refine ⟨⟨hx8, hfit⟩, ?_⟩
+    rwa [← sepConj_assoc, ← hP]
+  · intro R' sm _ hpost
+    dsimp only [formatInnerLsEnvSpec, withLsRet624, formatInnerBudgetEnvSpec] at hpost
+    exact not_satisfies_false_sepConj hpost
+  · intro R' code sm _ hpost
+    dsimp only [formatInnerLsEnvSpec, withLsRet624, formatInnerBudgetEnvSpec] at hpost
+    exact not_satisfies_false_sepConj hpost
+  · intro sm hpcm hrunm hspm hcsm
+    unfold SepWP
+    intro R' hpost hL
+    rw [sepConj_assoc] at hpost
+    dsimp only [formatInnerLsEnvSpec, withLsRet624, formatInnerBudgetEnvSpec] at hpost
+    rw [hsp] at hpost hspm
+    simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost
+    rcases hpost with ⟨evs, hpost⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
+    rcases hpost with ⟨⟨htrm, hevs⟩, hpost⟩
+    rw [htr] at htrm
+    dsimp only [vecU8, vecU8At, vecHeader] at hpost
+    simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost
+    rcases hpost with ⟨bs, cap, ptr, hpost⟩
+    have hpost' : sm.mem ⊨
+        ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0#64⌝ ∗
+        ((((ret ↦₆₄ cap) ∗ ((ret + 8#64) ↦₆₄ ptr) ∗ ((ret + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
+          (if cap = 0#64 then emp
+           else A.repAlloc.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
+             memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)) ∗
+          A.pool lim (M.stepEvents evs st) sm ∗ stackAt sp_cur extHookStack) ∗ F) ∗ R') := by
+      refine Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
+    rw [satisfies_pure_sepConj] at hpost'
+    rcases hpost' with ⟨⟨hle, hlt, hptr⟩, hpost'⟩
+    have hnext' := hnext sm evs bs cap ptr hpcm hrunm hspm htrm hcsm hevs hle hlt hptr
+    unfold SepWP at hnext'
+    exact hnext' R' hpost' hL
+  · intro R' sm _ hpost
+    dsimp only [formatInnerLsEnvSpec, withLsRet624, formatInnerBudgetEnvSpec] at hpost
+    exact False.elim (not_satisfies_false_sepConj hpost)
+
+/-- `SepWPp` convenience wrapper for `call_formatInnerLsEnv` when the caller goal uses `SepWPp`. -/
+theorem call_formatInnerLsEnv_then_sepWP [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {Env : List AllocEvent → Prop}
+    {entry ret_pc target_pc : BitVec 64}
+    (hcall : subroutine_ok prog entry (formatInnerLsEnvSpec M A lim Env))
+    (ret sp_cur : BitVec 64) (st : M.σ) {s0 s : State} {P F : SepProp}
+    {post panicPost : State → SepProp → Prop}
+    (hpc : s.pc = entry)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = sp_cur)
+    (hsp_align : (sp_cur &&& 15#64 == 0#64) = true)
+    (hlr : s.readReg64 Reg.lr = ret_pc)
+    (hlr624 : LsRetAddr624 ret_pc)
+    (htr : s.trace = s0.trace)
+    (hx8 : s.readReg64 .x8 = ret)
+    (hfit : FitsEnv M lim st Env)
+    (hP : P = (memRegion ret 24 ∗ A.pool lim st s ∗ stackAt sp_cur extHookStack) ∗ F)
+    (hnext : ∀ (sf : State) (evs : List AllocEvent) (bs : List (BitVec 8)) (cap ptr : BitVec 64),
+      sf.pc = ret_pc → sf.status = .Running →
+      sf.sp = sp_cur → sf.trace = s0.trace → CalleeSavedPreserved s sf →
+      Env evs → bs.length ≤ cap.toNat → cap.toNat < 2 ^ 63 → ptr ≠ 0#64 →
+      SepWP prog target_pc sf
+        (((ret ↦₆₄ cap) ∗ ((ret + 8#64) ↦₆₄ ptr) ∗ ((ret + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
+          (if cap = 0#64 then emp
+           else A.repAlloc.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
+             memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)) ∗
+          A.pool lim (M.stepEvents evs st) sf ∗ stackAt sp_cur extHookStack) ∗ F) post) :
+    SepWPp prog target_pc s P post panicPost :=
+  SepWPp.of_sepWP_ret
+    (call_formatInnerLsEnv hcall ret sp_cur st hpc hrun hsp hsp_align hlr hlr624 htr hx8 hfit hP hnext)
+
+/-- Envelope-parametric framed call rule for `formatInnerCallLsEnvSpec M A lim Env`
+    (`withLsRetFormatInner`-wrapped `cliFormatInnerLsCallSpec`) inside `SepWP`. -/
+theorem call_formatInnerCallLsEnv [LibsignalPlacement] {prog : Program} {M : AllocCostModel}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {Env : List AllocEvent → Prop}
+    {entry ret_pc target_pc : BitVec 64}
+    (hcall : subroutine_ok prog entry (formatInnerCallLsEnvSpec M A lim Env))
+    (c : CliFormatInnerLsCall) (sp_cur : BitVec 64) (st : M.σ) {s0 s : State} {P F : SepProp}
+    {post : State → SepProp → Prop}
+    (hpc : s.pc = entry)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = sp_cur)
+    (hsp_align : (sp_cur &&& 15#64 == 0#64) = true)
+    (hlr : s.readReg64 Reg.lr = ret_pc)
+    (hlr_fi : LsRetAddrFormatInner ret_pc)
+    (htr : s.trace = s0.trace)
+    (hx8 : s.readReg64 .x8 = c.ret)
+    (hx0 : s.readReg64 .x0 = c.x0)
+    (hx1 : s.readReg64 .x1 = c.x1)
+    (hshape : c.shapePreOk)
+    (hfit : FitsEnv M lim st Env)
+    (hexact : Env c.exactEvs)
+    (hP : P = (fmtArgumentsAt c.argsRo c.x0 c.x1 c.tpl c.args ∗
+      memRegion c.ret 24 ∗ c.clientSep ∗ A.pool lim st s ∗ stackAt sp_cur extHookStack) ∗ F)
+    (hnext : ∀ (sf : State) (evs : List AllocEvent) (bs : List (BitVec 8)) (cap ptr : BitVec 64),
+      sf.pc = ret_pc → sf.status = .Running →
+      sf.sp = sp_cur → sf.trace = s0.trace → CalleeSavedPreserved s sf →
+      Env evs → bs.length ≤ cap.toNat → cap.toNat < 2 ^ 63 → ptr ≠ 0#64 →
+      SepWP prog target_pc sf
+        (((c.ret ↦₆₄ cap) ∗ ((c.ret + 8#64) ↦₆₄ ptr) ∗
+          ((c.ret + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
+          (if cap = 0#64 then emp
+           else A.repAlloc.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
+             memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)) ∗
+          fmtArgumentsAt c.argsRo c.x0 c.x1 c.tpl c.args ∗ c.clientSep ∗
+          A.pool lim (M.stepEvents evs st) sf ∗ stackAt sp_cur extHookStack) ∗ F) post) :
+    SepWP prog target_pc s P post := by
+  have halign : s.spAligned = true := by dsimp only [State.spAligned]; rw [hsp]; exact hsp_align
+  refine SepWP.call_subroutine_frame (x := (c, st)) (F := F) hcall hpc hrun halign hlr ?_ ?_ ?_ ?_ ?_
+  · intro R' hm
+    dsimp only [formatInnerCallLsEnvSpec]
+    refine intro_withLsRetFormatInner (by rw [hlr]; exact hlr_fi) ?_
+    dsimp only [cliFormatInnerLsCallSpec]
+    rw [hsp, sepConj_assoc, satisfies_pure_sepConj]
+    refine ⟨⟨hx8, hx0, hx1, hshape, hfit, hexact⟩, ?_⟩
+    rwa [← sepConj_assoc, ← hP]
+  · intro R' sm _ hpost
+    dsimp only [formatInnerCallLsEnvSpec, withLsRetFormatInner, cliFormatInnerLsCallSpec] at hpost
+    exact not_satisfies_false_sepConj hpost
+  · intro R' code sm _ hpost
+    dsimp only [formatInnerCallLsEnvSpec, withLsRetFormatInner, cliFormatInnerLsCallSpec] at hpost
+    exact not_satisfies_false_sepConj hpost
+  · intro sm hpcm hrunm hspm hcsm
+    unfold SepWP
+    intro R' hpost hL
+    rw [sepConj_assoc] at hpost
+    dsimp only [formatInnerCallLsEnvSpec, withLsRetFormatInner, cliFormatInnerLsCallSpec] at hpost
+    rw [hsp] at hpost hspm
+    simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost
+    rcases hpost with ⟨evs, bs, hpost⟩
+    rw [sepConj_assoc, satisfies_pure_sepConj] at hpost
+    rcases hpost with ⟨⟨_hacp, _hfs, htrm, hevs⟩, hpost⟩
+    rw [htr] at htrm
+    dsimp only [vecU8, vecU8At, vecHeader] at hpost
+    simp only [sepExists_sepConj_left, satisfies_sepExists] at hpost
+    rcases hpost with ⟨cap, ptr, hpost⟩
+    have hpost' : sm.mem ⊨
+        ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0#64⌝ ∗
+        ((((c.ret ↦₆₄ cap) ∗ ((c.ret + 8#64) ↦₆₄ ptr) ∗
+          ((c.ret + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
+          (if cap = 0#64 then emp
+           else A.repAlloc.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
+             memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)) ∗
+          fmtArgumentsAt c.argsRo c.x0 c.x1 c.tpl c.args ∗ c.clientSep ∗
+          A.pool lim (M.stepEvents evs st) sm ∗ stackAt sp_cur extHookStack) ∗ F) ∗ R') := by
+      refine Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hpost
+    rw [satisfies_pure_sepConj] at hpost'
+    rcases hpost' with ⟨⟨hle, hlt, hptr⟩, hpost'⟩
+    have hnext' := hnext sm evs bs cap ptr hpcm hrunm hspm htrm hcsm hevs hle hlt hptr
+    unfold SepWP at hnext'
+    exact hnext' R' hpost' hL
+  · intro R' sm _ hpost
+    dsimp only [formatInnerCallLsEnvSpec, withLsRetFormatInner, cliFormatInnerLsCallSpec] at hpost
+    exact False.elim (not_satisfies_false_sepConj hpost)
+
+/-- `SepWPp` convenience wrapper for `call_formatInnerCallLsEnv` when the caller goal uses
+    `SepWPp`. -/
+theorem call_formatInnerCallLsEnv_then_sepWP [LibsignalPlacement] {prog : Program}
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
+    {Env : List AllocEvent → Prop} {entry ret_pc target_pc : BitVec 64}
+    (hcall : subroutine_ok prog entry (formatInnerCallLsEnvSpec M A lim Env))
+    (c : CliFormatInnerLsCall) (sp_cur : BitVec 64) (st : M.σ) {s0 s : State} {P F : SepProp}
+    {post panicPost : State → SepProp → Prop}
+    (hpc : s.pc = entry)
+    (hrun : s.status = .Running)
+    (hsp : s.sp = sp_cur)
+    (hsp_align : (sp_cur &&& 15#64 == 0#64) = true)
+    (hlr : s.readReg64 Reg.lr = ret_pc)
+    (hlr_fi : LsRetAddrFormatInner ret_pc)
+    (htr : s.trace = s0.trace)
+    (hx8 : s.readReg64 .x8 = c.ret)
+    (hx0 : s.readReg64 .x0 = c.x0)
+    (hx1 : s.readReg64 .x1 = c.x1)
+    (hshape : c.shapePreOk)
+    (hfit : FitsEnv M lim st Env)
+    (hexact : Env c.exactEvs)
+    (hP : P = (fmtArgumentsAt c.argsRo c.x0 c.x1 c.tpl c.args ∗
+      memRegion c.ret 24 ∗ c.clientSep ∗ A.pool lim st s ∗ stackAt sp_cur extHookStack) ∗ F)
+    (hnext : ∀ (sf : State) (evs : List AllocEvent) (bs : List (BitVec 8)) (cap ptr : BitVec 64),
+      sf.pc = ret_pc → sf.status = .Running →
+      sf.sp = sp_cur → sf.trace = s0.trace → CalleeSavedPreserved s sf →
+      Env evs → bs.length ≤ cap.toNat → cap.toNat < 2 ^ 63 → ptr ≠ 0#64 →
+      SepWP prog target_pc sf
+        (((c.ret ↦₆₄ cap) ∗ ((c.ret + 8#64) ↦₆₄ ptr) ∗
+          ((c.ret + 16#64) ↦₆₄ BitVec.ofNat 64 bs.length) ∗
+          (if cap = 0#64 then emp
+           else A.repAlloc.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
+             memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)) ∗
+          fmtArgumentsAt c.argsRo c.x0 c.x1 c.tpl c.args ∗ c.clientSep ∗
+          A.pool lim (M.stepEvents evs st) sf ∗ stackAt sp_cur extHookStack) ∗ F) post) :
+    SepWPp prog target_pc s P post panicPost :=
+  SepWPp.of_sepWP_ret
+    (call_formatInnerCallLsEnv hcall c sp_cur st hpc hrun hsp hsp_align hlr hlr_fi htr
+      hx8 hx0 hx1 hshape hfit hexact hP hnext)
 
 /-- Framed call rule for `rustCliDeallocBudgetSpec M A lim` inside `SepWP` using `extHookStack`. -/
 theorem call_dealloc [LibsignalPlacement] {prog : Program} {M : AllocCostModel}

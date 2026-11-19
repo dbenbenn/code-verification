@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChunked
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbChunked
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop
+public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop -- proof-setup: allow-public-import
 public import ProofLib
 
 /-!
@@ -21,7 +21,7 @@ public import ProofLib
 `Proto.decodeState`, `Proto.spqrDecodeState`, and `Top.decodeState (spqrDeps F K)`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Codec
 

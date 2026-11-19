@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerialize
-public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageSerialize -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
 import LibsignalBinary.Proofs.SpqrV1.Top.EncodeVarint.Base
 import ProofLib.SepLogic.WP.Apply
@@ -23,7 +23,7 @@ Proves `MessageSerializePlacedOkX` for `<spqr::v1::chunked::states::Message>::se
 (Block `352`, 110 instructions) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -45,14 +45,14 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-- `<spqr::v1::chunked::states::Message>::serialize` (Block `352`) meets `withLsCodeLoaded
     lsmpl (messageSerializeSpecX P A)` on `libsignalSessionLib.blockProgram lsmpl 352
     (Rust.withPanics ext)`. -/
-def MessageSerializePlacedOkX [LibsignalPlacement] (P : PolyApi) (A : RustAlloc)
+@[expose] def MessageSerializePlacedOkX [LibsignalPlacement] (P : PolyApi) (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 352 (Rust.withPanics ext))
     (lsmpl.base 352)
     (withLsCodeLoaded lsmpl (messageSerializeSpecX P A))
 
 /-- Wrap a spec with `⌜StepInvPlaced s0 s⌝` in the precondition. -/
-def withStepInvPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
+@[expose] def withStepInvPlaced {α : Type} (s0 : State) (spec : Spec α) : Spec α :=
   { spec with pre := fun x s => ⌜StepInvPlaced s0 s⌝ ∗ spec.pre x s }
 
 theorem subroutine_ok_withStepInvPlaced_of_block [LibsignalPlacement] {α : Type}
@@ -75,7 +75,7 @@ theorem subroutine_ok_withStepInvPlaced_of_block [LibsignalPlacement] {α : Type
 
 /-- Callee-saved registers `x23..x28`, `calleeSavedVRegs`, + `StepInvPlaced` preserved across
     `<Message>::serialize`. -/
-def MsgSerializeCalleeSavedPlaced (s0 s : State) : Prop :=
+@[expose] def MsgSerializeCalleeSavedPlaced (s0 s : State) : Prop :=
   s.readReg64 .x23 = s0.readReg64 .x23 ∧ s.readReg64 .x24 = s0.readReg64 .x24 ∧
   s.readReg64 .x25 = s0.readReg64 .x25 ∧ s.readReg64 .x26 = s0.readReg64 .x26 ∧
   s.readReg64 .x27 = s0.readReg64 .x27 ∧ s.readReg64 .x28 = s0.readReg64 .x28 ∧

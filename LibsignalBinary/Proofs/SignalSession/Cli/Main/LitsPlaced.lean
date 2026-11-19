@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Lits
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Lits
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import all Init.Data.String.Defs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -82,7 +82,7 @@ theorem lsro_intro_prefix {pl : MultiPlacement} {m : Memory} (hro : LibsignalRoL
     exact Satisfies.of_holdsBytes_ro hhb h64 hP
 
 /-- Block-`617` `.rodata` symbol names and strings for the 7 nonempty `Stores::open()` directory paths. -/
-def dirLitsBlk617 : List (String × String) :=
+@[expose] def dirLitsBlk617 : List (String × String) :=
   [("libsignal_cli:.rodata..Lanon.51", "identities"),
    ("libsignal_cli:.rodata..Lanon.46", "signed-pre-keys"),
    ("libsignal_cli:.rodata..Lanon.48", "one-time-kyber-pre-keys"),
@@ -91,7 +91,7 @@ def dirLitsBlk617 : List (String × String) :=
    ("libsignal_cli:.rodata.cst8+0x0", "sessions"),
    ("libsignal_cli:.rodata..Lanon.53", "public")]
 
-def mainLitsBlk617 [LibsignalPlacement] : SepProp :=
+@[expose] def mainLitsBlk617 [LibsignalPlacement] : SepProp :=
   (lsρ coinsLitSym ↦ᵣ utf8 "coins") ∗
     (dirLitsBlk617.foldr (fun l P => (lsρ l.1 ↦ᵣ utf8 l.2) ∗ P) emp)
 

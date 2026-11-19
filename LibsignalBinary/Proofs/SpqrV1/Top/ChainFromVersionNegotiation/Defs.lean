@@ -19,7 +19,7 @@ and contracts (`chainFromVersionNegotiationSpecX`, `chainFromVersionNegotiationS
 `spqr::chain_from_version_negotiation` (`0x545e4`, 18 instructions).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
 
@@ -48,7 +48,7 @@ abbrev chainFromVersionNegotiationStackX : Nat := chainNewStackX
 /-- `Option<spqr::proto::pq_ratchet::ChainParams>` at `a` (12 bytes, align 4):
 - `none`: `(a ↦₃₂ 0#32) ∗ memRegion (a + 4#64) 8`
 - `some cp`: `(a ↦₃₂ 1#32) ∗ ((a + 4#64) ↦₃₂ cp.maxJump) ∗ ((a + 8#64) ↦₃₂ cp.maxOooKeys)` -/
-def optChainParamsPBAt (a : BitVec 64) : Option ChainParamsPB → SepProp
+@[expose] def optChainParamsPBAt (a : BitVec 64) : Option ChainParamsPB → SepProp
   | none => (a ↦₃₂ 0#32) ∗ memRegion (a + 4#64) 8
   | some cp =>
     (a ↦₃₂ 1#32) ∗ ((a + 4#64) ↦₃₂ cp.maxJump) ∗ ((a + 8#64) ↦₃₂ cp.maxOooKeys)
@@ -59,7 +59,7 @@ def optChainParamsPBAt (a : BitVec 64) : Option ChainParamsPB → SepProp
 - `+0x24..+0x28` (4B): `direction: i32` (`(a + 0x24#64) ↦₃₂ v.direction`)
 - `+0x28..+0x2c` (4B): `min_version: i32` (`(a + 0x28#64) ↦₃₂ v.minVersion`)
 - `+0x2c..+0x30` (4B): trailing padding (`memRegion (a + 0x2c#64) 4`) -/
-def versionNegotiationPBAt (A : RustAlloc) (pin : VecPin) (a : BitVec 64)
+@[expose] def versionNegotiationPBAt (A : RustAlloc) (pin : VecPin) (a : BitVec 64)
     (v : VersionNegotiationPB) : SepProp :=
   vecU8At A a pin.cap pin.ptr v.authKey ∗
     optChainParamsPBAt (a + 0x18#64) v.chainParams ∗
@@ -73,7 +73,7 @@ def versionNegotiationPBAt (A : RustAlloc) (pin : VecPin) (a : BitVec 64)
 (`src/lib.rs:96–130`):
 - `0#8` = `Error::StateDecode`
 - `15#8` = `Error::ChainNotAvailable` -/
-def spqrErrorTag : Error → BitVec 8
+@[expose] def spqrErrorTag : Error → BitVec 8
   | .stateDecode => 0#8
   | .notImplemented => 1#8
   | .msgDecode => 2#8
@@ -96,7 +96,7 @@ def spqrErrorTag : Error → BitVec 8
 - `+0x08..+0x20` (24B): `spqr::Error` payload (`q0 : BitVec 128` at `+0x08` whose low byte
   `BitVec.truncate 8 q0` is `spqrErrorTag err`, followed by `w2 : BitVec 64` at `+0x18`)
 - `+0x20..+0x58` (56B): remaining uninitialized bytes (`memRegion (out + 0x20#64) 56`) -/
-def chainErrorAt (out : BitVec 64) (err : Error) : SepProp :=
+@[expose] def chainErrorAt (out : BitVec 64) (err : Error) : SepProp :=
   ∃∗ q0 : BitVec 128, ∃∗ w2 : BitVec 64,
     ⌜BitVec.truncate 8 q0 = spqrErrorTag err⌝ ∗
     (out ↦₆₄ noneCap) ∗
@@ -107,7 +107,7 @@ def chainErrorAt (out : BitVec 64) (err : Error) : SepProp :=
 /-- Representation of `Except Error Chain` (`Result<Chain, spqr::Error>`, 88 bytes) at `out`:
 - `.ok ch`: `chainRepr A out ch` (where `[out + 0x00] = g.linksCap < 2^63`, hence `≠ noneCap`)
 - `.error err`: `chainErrorAt out err` (where `[out + 0x00] = noneCap = 0xFFFFFFFFFFFFFFFF#64`) -/
-def chainResultAt (A : RustAlloc) (out : BitVec 64) : Except Error Chain → SepProp
+@[expose] def chainResultAt (A : RustAlloc) (out : BitVec 64) : Except Error Chain → SepProp
   | .ok ch => chainRepr A out ch
   | .error err => chainErrorAt out err
 
@@ -126,7 +126,7 @@ structure ChainFromVersionNegotiationCall where
 
 /-- Contract of `spqr::chain_from_version_negotiation` (`0x545e4`, 18 instructions) at
 `chainFromVersionNegotiationStackX`, related to `chainFromVersionNegotiation hkdf x.v`. -/
-def chainFromVersionNegotiationSpecX (hkdf : HkdfFn) (A : RustAlloc) :
+@[expose] def chainFromVersionNegotiationSpecX (hkdf : HkdfFn) (A : RustAlloc) :
     Spec ChainFromVersionNegotiationCall where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧
@@ -144,22 +144,13 @@ def chainFromVersionNegotiationSpecX (hkdf : HkdfFn) (A : RustAlloc) :
   onPanic := fun _ s0 sf =>
     ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-/-- Callee-contract predicate for `spqr::chain_from_version_negotiation` (`0x545e4`). -/
-def ChainFromVersionNegotiationOkX (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainFromVersionNegotiationName)
-    ((chainFromVersionNegotiationSpecX hkdf A).inImage img)
-
-/-! ## Contract-Backed (`*Ext`) Specifications (`chainFromVersionNegotiationStackExt = 17840` B) -/
-
 /-- Stack budget for `spqr::chain_from_version_negotiation` under `CliExternsOk` (`chainNewStackExt = 17840` B). -/
 abbrev chainFromVersionNegotiationStackExt : Nat := chainNewStackExt
 
 /-- Contract-backed spec of `spqr::chain_from_version_negotiation` (`0x545e4`, 18 instructions) at
 `chainFromVersionNegotiationStackExt` (`17840` B). No extra `ikmRO` precondition is needed since
 `v.authKey` is a RW `Vec<u8>`. -/
-def chainFromVersionNegotiationSpecExt (hkdf : HkdfFn) (A : RustAlloc) :
+@[expose] def chainFromVersionNegotiationSpecExt (hkdf : HkdfFn) (A : RustAlloc) :
     Spec ChainFromVersionNegotiationCall where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.out ∧
@@ -176,12 +167,5 @@ def chainFromVersionNegotiationSpecExt (hkdf : HkdfFn) (A : RustAlloc) :
     stackAt s0.sp chainFromVersionNegotiationStackExt
   onPanic := fun _ s0 sf =>
     ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Contract-backed callee-contract predicate for `spqr::chain_from_version_negotiation` (`0x545e4`). -/
-def ChainFromVersionNegotiationOkExt (img : Obj.Image) (hkdf : HkdfFn) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainFromVersionNegotiationName)
-    ((chainFromVersionNegotiationSpecExt hkdf A).inImage img)
 
 end CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation

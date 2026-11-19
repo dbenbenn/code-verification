@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA1Placed
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Qpan
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksA1Placed
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ErrArmsAPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Qpan
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub1
@@ -26,7 +26,7 @@ P2.1 (`stageP2_sub1_kits_ext_placed` / `stageP2_sub1_kits_placed`, `+0x0868 → 
 Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -124,9 +124,9 @@ theorem p2_call_oom_rocl_steps_frame_qpan [LibsignalPlacement] {α : Type} {prog
       StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
     (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by
-      intro _ _; first | rfl | dsimp only [StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl)
+      intro _ _; first | rfl | dsimp only [StoreKit.withLsLogOff, withEnvPre]; rfl)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro _; first | rfl | dsimp only [StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl) :
+      intro _; first | rfl | dsimp only [StoreKit.withLsLogOff, withEnvPre]; rfl) :
     SepWPp prog ret s P Q Qp := by
   intro R hm hL
   rw [hP, sepConj_assoc] at hm
@@ -180,9 +180,9 @@ theorem p2_call_oom_rocl_steps_frame_placed [LibsignalPlacement] {α : Type} {pr
       StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q (PanicOomProp s0))
     (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by
-      intro _ _; first | rfl | dsimp only [StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl)
+      intro _ _; first | rfl | dsimp only [StoreKit.withLsLogOff, withEnvPre]; rfl)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro _; first | rfl | dsimp only [StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl) :
+      intro _; first | rfl | dsimp only [StoreKit.withLsLogOff, withEnvPre]; rfl) :
     SepWPp prog ret s P Q (PanicOomProp s0) :=
   p2_call_oom_rocl_steps_frame_qpan (fun _ _ h => h) hcrl htr hcall hpc hrun hsp hlr hpre hP hpan
     hnext hexit_false hoom_false
@@ -204,9 +204,9 @@ theorem p2_call_oom_lscl_steps_frame_qpan [LibsignalPlacement] {α : Type} {prog
       StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
     (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by
-      intro _ _; first | rfl | dsimp only [StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl)
+      intro _ _; first | rfl | dsimp only [StoreKit.withLsLogOff, withEnvPre]; rfl)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro _; first | rfl | dsimp only [StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl) :
+      intro _; first | rfl | dsimp only [StoreKit.withLsLogOff, withEnvPre]; rfl) :
     SepWPp prog ret s P Q Qp :=
   p2_call_oom_rocl_steps_frame_qpan hpan_qp hcrl htr
     (StoreKit.subroutine_ok_rocl_of_withLsCodeRoLoaded
@@ -229,9 +229,9 @@ theorem p2_call_oom_lscl_steps_frame_placed [LibsignalPlacement] {α : Type} {pr
       StoreKit.LibsignalCodeRoLoaded lsmpl sf.mem →
       SepWPp prog ret sf (spec.post x s sf ∗ F) Q (PanicOomProp s0))
     (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by
-      intro _ _; first | rfl | dsimp only [StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl)
+      intro _ _; first | rfl | dsimp only [StoreKit.withLsLogOff, withEnvPre]; rfl)
     (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by
-      intro _; first | rfl | dsimp only [StoreKit.withLsLogOff, withLogOff, withEnvPre]; rfl) :
+      intro _; first | rfl | dsimp only [StoreKit.withLsLogOff, withEnvPre]; rfl) :
     SepWPp prog ret s P Q (PanicOomProp s0) :=
   p2_call_oom_lscl_steps_frame_qpan (fun _ _ h => h) hcrl htr hcall hpc hrun hsp hlr hpre hP hpan
     hnext hexit_false hoom_false

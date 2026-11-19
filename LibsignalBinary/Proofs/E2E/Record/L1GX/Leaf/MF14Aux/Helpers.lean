@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MF14Aux.Pure
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.Common.CallInv
+public import LibsignalBinary.Proofs.E2E.Record.L1GX.Leaf.MF14Aux.Pure -- proof-setup: allow-public-import
+import ProofLib
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Stepping, call, and layout helpers for `merge_field` tag 14
@@ -21,7 +21,7 @@ Supporting lemmas for the `pending_kyber_pre_key` arm of `SessionStructure::merg
 subroutine framing, stack-budget splits, and input slice cursor unfolding.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX.Leaf.MF14Aux
 
@@ -35,21 +35,6 @@ open CryptoVerification.E2E.Record.Serialization (allocPanic)
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
-
-theorem mergeField_fnOff_mf14 :
-    CryptoVerification.libsignalSessionCode.fnOff mergeFieldName = 0x581c :=
-  CryptoVerification.libsignalSessionCode_fnOff_0x581c
-
-/-! ## Jump-table byte at `.rodata + 0x79029` -/
-
-theorem rodata_jump_tag14_mf14 {s : State} (hF : sessionImg0.FrozenLoaded s) :
-    s.mem.read8 (sessionImg0.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 13)) = 0x4c#8 ∧
-      s.mem.canRead (sessionImg0.base + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 13)) 1 = true := by
-  have hhb := loads_rodata_holdsBytes E2E.Record.loads_sessionImg0 hF
-    (off := num% (ls_bytes% "0082775f19328d6db5d6cb6d" + 13)) (n := 1) (bs := [0x4c#8])
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel) rfl (by
-      rfl_kernel)
-  exact ⟨(holdsBytes_cons_iff.mp hhb).1.1, (memSlice_of_holdsBytes_ro hhb).1⟩
 
 set_option allowUnsafeReducibility true in
 attribute [local semireducible] SepWP in
@@ -79,105 +64,6 @@ theorem step_ldr8_ro_mf14 {prog : Program} {target_pc : BitVec 64}
   rw [Program.evalInst_of_isSvc0Instr_false _ _ _ rfl, hstep]
   apply hnext R
   exact hm
-
-theorem adrp_rodata_mf14 (b : BitVec 64) (hb : b &&& 4095#64 = 0#64) :
-    (b + 0x581c#64 + 40#64 &&& 18446744073709547520#64) + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" - 0x5000) = b + bv% (ls_bytes% "0082775f19328d6db5d6cb6d") := by
-  simp only [hb, arm64_norm]
-
-/-! ## Subroutine entry lemmas -/
-
-theorem decodeVarintSlice_ok_sub_mf14 {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : Prost.DecodeVarintSliceOk sessionImg0.base C A0 ctl abs) :
-    subroutine_ok (tripleRatchetProgAt sessionImg0.base C ctl abs)
-      ((tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName + 118436#64)
-      (Prost.decodeVarintSliceSpec A0) := by
-  have heq : (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName + 118436#64 =
-      (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr Prost.decodeVarintSliceName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      CryptoVerification.libsignalSessionCode_fnOff_0x581c,
-      CryptoVerification.libsignalSessionCode_fnOff_0x226c0]
-    bv_omega
-  rw [heq]; exact h
-
-theorem int32Merge_ok_sub_mf14 {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : Prost.Int32MergeOk sessionImg0.base C A0 ctl abs) :
-    subroutine_ok (tripleRatchetProgAt sessionImg0.base C ctl abs)
-      ((tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName +
-        18446744073709540264#64)
-      (Prost.int32MergeSpec A0) := by
-  have heq : (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName +
-      18446744073709540264#64 =
-      (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr Prost.int32MergeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      CryptoVerification.libsignalSessionCode_fnOff_0x581c,
-      CryptoVerification.libsignalSessionCode_fnOff_0x2bc4]
-    bv_omega
-  rw [heq]; exact h
-
-theorem bytesMerge_ok_sub_mf14 {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : Prost.BytesMergeOk sessionImg0 C A0 ctl abs) :
-    subroutine_ok (tripleRatchetProgAt sessionImg0.base C ctl abs)
-      ((tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName +
-        18446744073709539180#64)
-      (Prost.bytesMergeSpec A0 sessionImg0) := by
-  have heq : (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr mergeFieldName +
-      18446744073709539180#64 =
-      (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr Prost.bytesMergeName := by
-    rw [Program.fnAddr_rebase, Program.fnAddr_rebase,
-      CryptoVerification.libsignalSessionCode_fnOff_0x581c,
-      CryptoVerification.libsignalSessionCode_fnOff_0x2788]
-    bv_omega
-  rw [heq]; exact h
-
-/-! ## Allocation-panic call framing -/
-
-theorem of_sepWP_frozen_mf14 {prog : Program} {img : Obj.Image} {mid ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P (fun sm Pm =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab → SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp :=
-  SepWPp.of_sepWP_frozen hfl hsym h
-
-/-- Frames a subroutine call whose error path triggers `allocPanic`, threading `FrozenLoaded` and `symtab`. -/
-theorem call_alloc_mf14 {α β : Type} {prog : Program} {img : Obj.Image}
-    {entry ret_pc ret : BitVec 64} {spec : Spec α} {x : α} {φ : Prop}
-    {T F : SepProp} {s s0 : State} {P R : SepProp} {Q : State → SepProp → Prop} {y : β}
-    (hcall : subroutine_ok prog entry spec)
-    (hfl : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code, spec.onExit x code s sf = ⌜False⌝)
-    (hpan : ∀ sf, spec.onPanic x s sf = (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap))
-    (htr : s.trace = s0.trace)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q
-        (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ allocPanic y s0 sf ∗ R)))
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intros; rfl) :
-    SepWPp prog ret s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ allocPanic y s0 sf ∗ R)) := by
-  refine SepWPp.call_wpp_frozen hcall (x := x) (F := F) hfl hsym hpc hrun hsp hlr
-    (fun R' hm => ?_)
-    (fun sf code R' _ hpost => by rw [hexit] at hpost; exact not_satisfies_false_sepConj hpost)
-    (fun sm _ _ hm' => ?_)
-    hnext
-    (hoom := fun sf R' _ hpost => by rw [hoom] at hpost; exact (not_satisfies_false_sepConj hpost).elim)
-  · rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-    exact ⟨hφ, hm⟩
-  · rw [hpan] at hm'
-    dsimp only [allocPanic]
-    rw [sepConj_assoc] at hm'
-    have h2 : sm.mem ⊨ ((⌜allocFailedIn s sm ∧ s.trace <+: sm.trace⌝ ∗ anyHeap) ∗ F) ∗ R := by
-      rw [sepConj_assoc]; exact hm'
-    exact allowPanic_frame (fun h => by simpa only [allocFailedIn, htr] using h) h2
-
-/-! ## Stack-region splits -/
 
 abbrev mergeFieldSubStack_mf14 : Nat := 16144
 
@@ -430,7 +316,7 @@ theorem decode_kyber_result_mf14 {ct : List (BitVec 8)} (_hct : ct.length = 1569
 /-! ## Payload slice cursors (`i ≠ 0`) -/
 
 /-- Slice pointer to the inner tag-2 key `0x12` after `int32::merge` consumes `pre_key_id`. -/
-def kyberPtr2 (ptr : BitVec 64) (i : BitVec 32) : BitVec 64 :=
+@[expose] def kyberPtr2 (ptr : BitVec 64) (i : BitVec 32) : BitVec 64 :=
   ptr + 3#64 + BitVec.ofNat 64 (encodeVarint (i.setWidth 64)).length
 
 theorem sliceCursorAt_kyber_ne_unfold_mf14 (slot ptr : BitVec 64) {i : BitVec 32} (hi : i ≠ 0#32)

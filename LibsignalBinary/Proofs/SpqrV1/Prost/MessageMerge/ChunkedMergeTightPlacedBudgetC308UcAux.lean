@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedBudget
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightLeafBridges -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedNoHeaderReceivedBudget
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -28,6 +27,10 @@ import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase1
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedMergeBudgetKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hkdf.ExpandCommon
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.SpqrH.DecodeVarint5
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Canonical Inner `Unchunked.NoHeaderReceived` Tight Budget Step for Block `308`
@@ -37,7 +40,7 @@ transfer lemmas, and the canonical Tag `1` (`uc : Option V1State.Unchunked.NoHea
 for `Chunked.NoHeaderReceived::merge` on Block `308`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -114,7 +117,7 @@ private theorem stackAt_decodeVarint2_raw_eq (sp : BitVec 64) :
 
 /-- Canonical-domain restriction of `chunkedNoHeaderReceivedMergeSpecOfEnv` at `maxOps`:
 identical `.post`, with `⌜tlb_ChunkedNoHeaderReceivedDom x⌝` conjoined in `.pre`. -/
-noncomputable def e2kc_chunkedNoHeaderReceivedDomSpec {M : AllocCostModel}
+@[expose] def e2kc_chunkedNoHeaderReceivedDomSpec {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat) :
     Spec (ChunkedNoHeaderReceivedMergeGhost × M.σ) where
   pre := fun (x, st) s =>
@@ -127,7 +130,7 @@ noncomputable def e2kc_chunkedNoHeaderReceivedDomSpec {M : AllocCostModel}
     (tlb_ChunkedNoHeaderReceivedGuardedEnvOf maxOps)).post
 
 /-- Tight event-pool invariant carrying `SpqrTightEvs ops cum req evs`. -/
-def e2kc_tightPoolAt {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def e2kc_tightPoolAt {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (ops cum req : Nat) (s : State) : SepProp :=
   ∃∗ evs : List AllocEvent, ⌜SpqrTightEvs ops cum req evs⌝ ∗ A.pool lim (M.stepEvents evs st) s
 
@@ -176,7 +179,7 @@ theorem e2kc_pool_entails_tightPoolAt_append {M : AllocCostModel} (A : RustCliAl
     (Entails.pure_right ((h1.append h2).mono ho hc hr) (Entails.refl _))
 
 /-- Tight outer loop-header bundle at `entry + 168#64`. -/
-def e2kc_loopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def e2kc_loopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (m : V1State.Chunked.NoHeaderReceived) (bs cur : List (BitVec 8))
@@ -187,7 +190,7 @@ def e2kc_loopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     chunkedInlSavedRegs10 s0.sp s0 ∗ (bufRef ↦₆₄ slot) ∗ sliceCursorAfter slot ptr bs cur
 
 /-- Tight inner `uc` loop-header bundle at `entry + 408#64`. -/
-def e2kc_ucLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def e2kc_ucLoopPre {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (s0 s : State)
     (msgPtr bufRef slot ptr : BitVec 64)
     (hdr : Option PolynomialDecoder) (uc : V1State.Unchunked.NoHeaderReceived)

@@ -26,7 +26,7 @@ Proves `closeByStateC_deliver_newChain_saltMismatch_safe`, closing a new-epoch `
 steered SPQR salt when `safeInj 3` holds.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

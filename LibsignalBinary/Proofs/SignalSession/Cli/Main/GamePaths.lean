@@ -9,16 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Top -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.PqDir
-public import LibsignalBinary.Specifications.SignalSession.SmScheme
+public import LibsignalBinary.Proofs.SignalSession.SmScheme
 import all Init.Data.List.SplitOn.Basic
 import all Init.Data.Repr
 import all Init.Data.String.Defs
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Run
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -660,32 +660,6 @@ theorem coinsReadable_pqInputs (W : PEParams) (st : PqParty) (cmd : Cmd)
     CoinsReadable (pqInputs W st cmd extra coins stdin) :=
   coinsReadable_of_last _ (encodeDir W st ++ extra) coins rfl hcap
 
-/-- Every write in `smWrites s.party rec` satisfies `WriteOk` on `binInputs`. -/
-theorem writeOk_binInputs (s : BinState) (cmd : Cmd) (coins stdin rec : List (BitVec 8)) :
-    ∀ pw ∈ smWrites s.party rec, WriteOk (binInputs s cmd coins stdin) pw.1 := by
-  have hfinv : FsDirInv (filesFold (binInputs s cmd coins stdin).files
-      (dirsFold (binInputs s cmd coins stdin).dirs {})) := by
-    apply fsDirInv_filesFold fsDirInv_dirsFold_partyDirs
-    intro f hf
-    simp only [binInputs, dirOfE, List.mem_append, List.mem_cons, List.not_mem_nil,
-      or_false] at hf
-    rcases hf with (rfl | rfl | rfl) | rfl
-    · exact target_addressFile.2.2.1
-    · exact (target_identityFile _).2.2.1
-    · exact (target_sessionFile _).2.2.1
-    · exact inputPath_coinsFile
-  intro pw hpw
-  simp only [smWrites, List.mem_cons, List.not_mem_nil, or_false] at hpw
-  rcases hpw with rfl | rfl
-  · exact writeOk_of_inv hfinv (target_identityFile _)
-  · exact writeOk_of_inv hfinv (target_sessionFile _)
-
-theorem coinsReadable_binInputs (s : BinState) (cmd : Cmd) (coins stdin : List (BitVec 8))
-    (hcap : coins.length ≤ fileCapBytes := by
-      first | decide | simp [HMAC.keyToBytes32, List.Vector.toList_length, initiateTapeLen, fileCapBytes]) :
-    CoinsReadable (binInputs s cmd coins stdin) :=
-  coinsReadable_of_last _ (dirOfE s.party s.bytes) coins rfl hcap
-
 theorem writeOk_smInputs (g : GhostState Bytes) (cmd : Cmd) (coins stdin rec : List (BitVec 8)) :
     ∀ pw ∈ smWrites g.party rec, WriteOk (smInputs g cmd coins stdin) pw.1 := by
   have hfinv : FsDirInv (filesFold (smInputs g cmd coins stdin).files
@@ -716,21 +690,5 @@ private theorem loadable_partyDirs : ∀ d ∈ partyDirs, LoadablePath d := by
   simp only [partyDirs, List.mem_cons, List.not_mem_nil, or_false] at hd
   rcases hd with rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl | rfl <;>
     exact ⟨by decide, by decide⟩
-
-/-- `binInputs` satisfies `InputsLoadable` whenever the session record and coins fit `MAX_LFS_FILESIZE`. -/
-theorem loadable_binInputs (s : BinState) (cmd : Cmd) (coins stdin : List (BitVec 8))
-    (hrec : s.bytes.length ≤ MAX_LFS_FILESIZE) (hcoins : coins.length ≤ MAX_LFS_FILESIZE) :
-    InputsLoadable (binInputs s cmd coins stdin) := by
-  refine ⟨loadable_partyDirs, ?_⟩
-  intro f hf
-  simp only [binInputs, List.mem_append, List.mem_cons, List.not_mem_nil, or_false] at hf
-  rcases hf with h | h
-  · refine ⟨loadable_dirOfE _ _ f h, ?_⟩
-    simp only [dirOfE, List.mem_cons, List.not_mem_nil, or_false] at h
-    rcases h with rfl | rfl | rfl
-    · cases s.party <;> decide +kernel
-    · simp [IdentityKey.serialize, PublicKey.serialize, MAX_LFS_FILESIZE]
-    · exact hrec
-  · subst h; exact ⟨loadable_coinsFile, hcoins⟩
 
 end CryptoVerification.SignalSession.Cli

@@ -10,15 +10,17 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.Defs
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
-public import LibsignalBinary.Proofs.TripleRatchet.Prog
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Prog -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
-import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.Fetch
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Specifications.LibsignalTripleRatchet
+public import ProofLib.ProgramReflection.SortedFresh
+meta import GeneratedLean.LibsignalSessionPlacedObjShard19
+meta import GeneratedLean.LibsignalSessionPlacedObjShard8
 
 /-!
 # Verification of `Epoch::encoded_len` (`0x38abc`, `0x664fc`)
@@ -29,7 +31,7 @@ lengths and `subroutine_ok` proofs for both copies of
 `0x38abc` / Block `171`, `[local#2]` at `0x664fc` / Block `399`).
 -/
 
-@[expose] public section
+public section
 
 
 namespace CryptoVerification
@@ -76,87 +78,55 @@ theorem hwVarintLen_bvShift_eq_ofNat_varintLen_norm (v : BitVec 64) :
       BitVec.ofNat 64 (varintLen v) :=
   hwVarintLen_bvShift_eq_ofNat_varintLen v
 
-/-- The contract program rebased at address `b` with hooks `Rust.withPanics ext`. -/
-noncomputable abbrev tripleRatchetProgAtExt (b : BitVec 64)
-    (ext : String → Option (State → State)) : Program :=
-  libsignalSessionCode.rebase b (Rust.withPanics ext)
+/-- Placeholder preserved for downstream `open ... hiding tripleRatchetProgAtExt`. -/
+abbrev tripleRatchetProgAtExt : Unit := ()
 
-def EpochEncodedLenLocal1PinnedOkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr epochEncodedLenLocal1Name) (epochEncodedLenPinnedSpec A)
-def EpochEncodedLenLocal1OkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr epochEncodedLenLocal1Name) (epochEncodedLenSpec A)
-def EpochEncodedLenLocal1PinnedOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr epochEncodedLenLocal1Name) (epochEncodedLenPinnedSpec A)
-def EpochEncodedLenLocal1Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr epochEncodedLenLocal1Name) (epochEncodedLenSpec A)
-
-def EpochEncodedLenLocal2PinnedOkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr epochEncodedLenLocal2Name) (epochEncodedLenPinnedSpec A)
-def EpochEncodedLenLocal2OkExt (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr epochEncodedLenLocal2Name) (epochEncodedLenSpec A)
-def EpochEncodedLenLocal2PinnedOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr epochEncodedLenLocal2Name) (epochEncodedLenPinnedSpec A)
-def EpochEncodedLenLocal2Ok (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr epochEncodedLenLocal2Name) (epochEncodedLenSpec A)
-
-def EpochEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def EpochEncodedLenLocal1PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_171).rebase (blkPl_171).base (Rust.withPanics ext)) (blkPl_171).base (epochEncodedLenPinnedSpec A)
-def EpochEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def EpochEncodedLenLocal1PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_171).rebase (blkPl_171).base (Rust.withPanics ext)) (blkPl_171).base (epochEncodedLenSpec A)
-def EpochEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
+@[expose] def EpochEncodedLenLocal1PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_171).rebase (blkPl_171).base (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_171).base (epochEncodedLenPinnedSpec A)
-def EpochEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
+@[expose] def EpochEncodedLenLocal1PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_171).rebase (blkPl_171).base (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_171).base (epochEncodedLenSpec A)
 
-def EpochEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def EpochEncodedLenLocal2PinnedPlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_399).rebase (blkPl_399).base (Rust.withPanics ext)) (blkPl_399).base (epochEncodedLenPinnedSpec A)
-def EpochEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
+@[expose] def EpochEncodedLenLocal2PlacedOkExt [LibsignalPlacement] (A : RustAlloc) (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_399).rebase (blkPl_399).base (Rust.withPanics ext)) (blkPl_399).base (epochEncodedLenSpec A)
-def EpochEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
+@[expose] def EpochEncodedLenLocal2PinnedPlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_399).rebase (blkPl_399).base (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_399).base (epochEncodedLenPinnedSpec A)
-def EpochEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
+@[expose] def EpochEncodedLenLocal2PlacedOk [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_399).rebase (blkPl_399).base (Rust.withPanics (tripleRatchetExterns C ctl abs))) (blkPl_399).base (epochEncodedLenSpec A)
 
 /-- Entry address predicate for `[local#1]` (`0x38abc` / block `171`) or `[local#2]` (`0x664fc` / block `399`). -/
-def IsEpochEncLenEntry (prog : Program) (entry : BitVec 64) : Prop :=
-  (∃ b abs, prog = tripleRatchetProgAtExt b abs ∧
-    ((tripleRatchetProgAtExt b abs).fnAddr epochEncodedLenLocal1Name = entry ∨
-     (tripleRatchetProgAtExt b abs).fnAddr epochEncodedLenLocal2Name = entry)) ∨
+@[expose] def IsEpochEncLenEntry (prog : Program) (entry : BitVec 64) : Prop :=
+  False ∨
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
     (prog = (@blkPC_171).rebase (@blkPl_171 inst).base H ∧ entry = (@blkPl_171 inst).base) ∨
     (prog = (@blkPC_399).rebase (@blkPl_399 inst).base H ∧ entry = (@blkPl_399 inst).base))
 
 theorem epochEncLen_fetch_entry {prog : Program} {entry : BitVec 64}
     (hfn : IsEpochEncLenEntry prog entry) {ins : Instr}
-    (h1 : ∀ b H, (libsignalSessionCode.rebase b H).fetch
-      ((libsignalSessionCode.rebase b H).fnAddr epochEncodedLenLocal1Name) = some ins)
-    (h2 : ∀ b H, (libsignalSessionCode.rebase b H).fetch
-      ((libsignalSessionCode.rebase b H).fnAddr epochEncodedLenLocal2Name) = some ins)
     (h3 : ∀ [LibsignalPlacement] H,
       ((blkPC_171).rebase (blkPl_171).base H).fetch ((blkPl_171).base + 0#64) = some ins)
     (h4 : ∀ [LibsignalPlacement] H,
       ((blkPC_399).rebase (blkPl_399).base H).fetch ((blkPl_399).base + 0#64) = some ins) :
     prog.fetch entry = some ins := by
-  rcases hfn with ⟨b, abs, rfl, rfl | rfl⟩ | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
-  · exact h1 b _
-  · exact h2 b _
+  rcases hfn with hfalse | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
+  · exact hfalse.elim
   · simpa using @h3 inst H
   · simpa using @h4 inst H
 
 theorem epochEncLen_fetch_add {prog : Program} {entry : BitVec 64}
     (hfn : IsEpochEncLenEntry prog entry) {k : Nat} {ins : Instr}
-    (h1 : ∀ b H, (libsignalSessionCode.rebase b H).fetch
-      ((libsignalSessionCode.rebase b H).fnAddr epochEncodedLenLocal1Name + BitVec.ofNat 64 k) = some ins)
-    (h2 : ∀ b H, (libsignalSessionCode.rebase b H).fetch
-      ((libsignalSessionCode.rebase b H).fnAddr epochEncodedLenLocal2Name + BitVec.ofNat 64 k) = some ins)
     (h3 : ∀ [LibsignalPlacement] H,
       ((blkPC_171).rebase (blkPl_171).base H).fetch ((blkPl_171).base + BitVec.ofNat 64 k) = some ins)
     (h4 : ∀ [LibsignalPlacement] H,
       ((blkPC_399).rebase (blkPl_399).base H).fetch ((blkPl_399).base + BitVec.ofNat 64 k) = some ins) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some ins := by
-  rcases hfn with ⟨b, abs, rfl, rfl | rfl⟩ | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
-  · exact h1 b _
-  · exact h2 b _
+  rcases hfn with hfalse | ⟨inst, H, ⟨rfl, rfl⟩ | ⟨rfl, rfl⟩⟩
+  · exact hfalse.elim
   · exact @h3 inst H
   · exact @h4 inst H
 
@@ -164,36 +134,22 @@ open Lean Elab Tactic in
 /-- Fetch instructions in `[kStart, kEnd)` (byte offsets from function entry `entry`) when
     `hfn : IsEpochEncLenEntry prog entry`. -/
 elab "epoch_fetches_range " hfn:ident kStart:num kEnd:num : tactic => do
-  let off1 := 0x38ba0
-  let off2 := 0x61104
   let kStart := kStart.getNat
   let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let fnOff1 := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x38ba0
-  let fnOff2 := mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x61104
   for i in [kStart / 4 : kEnd / 4] do
     let k := 4 * i
     let hexK := String.ofList (Nat.toDigits 16 k)
-    let dec1 := mkIdent (`CryptoVerification.SpqrV1.ProtoRepr |>.str
-      s!"spqrEpochEncLenBin_decode_0x{String.ofList (Nat.toDigits 16 (off1 + k))}")
-    let dec2 := mkIdent (`CryptoVerification.SpqrV1.ProtoRepr |>.str
-      s!"spqrEpochEncLenBin_decode_0x{String.ofList (Nat.toDigits 16 (off2 + k))}")
     let blk1 := mkIdent (Name.mkSimple s!"blkPC_171_rebase_fetch_0x{hexK}")
     let blk2 := mkIdent (Name.mkSimple s!"blkPC_399_rebase_fetch_0x{hexK}")
     let kq := Syntax.mkNumLit (toString k)
     if k == 0 then
       evalTactic (← `(tactic|
         have := epochEncLen_fetch_entry $hfn
-          (fun b H => $fetchEntry (b := b) (H := H) $fnOff1 (by decide) $dec1)
-          (fun b H => $fetchEntry (b := b) (H := H) $fnOff2 (by decide) $dec2)
           (fun [LibsignalPlacement] H => $blk1 _ H)
           (fun [LibsignalPlacement] H => $blk2 _ H)))
     else
       evalTactic (← `(tactic|
         have := epochEncLen_fetch_add $hfn (k := $kq)
-          (fun b H => $fetchAdd (b := b) (H := H) (k := $kq) $fnOff1 (by decide) $dec1)
-          (fun b H => $fetchAdd (b := b) (H := H) (k := $kq) $fnOff2 (by decide) $dec2)
           (fun [LibsignalPlacement] H => $blk1 _ H)
           (fun [LibsignalPlacement] H => $blk2 _ H)))
 
@@ -209,7 +165,7 @@ macro "epochEncLen_cc_close" : tactic => `(tactic| (
 /-! ## Field layout decomposition for `chainEpochPBPinnedAt` -/
 
 /-- The heap buffer of a `Vec<u8>` detached from its 24-byte `vecHeader`. -/
-def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Buf (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗ (ptr ↦ₛ bs) ∗
@@ -221,12 +177,12 @@ theorem vecU8At_eq_header_sep_buf (A : RustAlloc) (v cap ptr : BitVec 64) (bs : 
   ac_rfl
 
 /-- First 64-bit word of `optEpochDirectionPBPinnedAt`: `noneCap` when `none`, `g.next.cap` when `some`. -/
-def optEpochDirCap (g : EpochDirectionPBGhost) : Option EpochDirectionPB → BitVec 64
+@[expose] def optEpochDirCap (g : EpochDirectionPBGhost) : Option EpochDirectionPB → BitVec 64
   | none => noneCap
   | some _ => g.next.cap
 
 /-- Remaining 48 bytes + heap buffers of `optEpochDirectionPBPinnedAt`. -/
-def optEpochDirPayload (A : RustAlloc) (g : EpochDirectionPBGhost) (p : BitVec 64) :
+@[expose] def optEpochDirPayload (A : RustAlloc) (g : EpochDirectionPBGhost) (p : BitVec 64) :
     Option EpochDirectionPB → SepProp
   | none => memRegion (p + 8#64) 48
   | some d =>
@@ -248,7 +204,7 @@ theorem optEpochDirectionPBPinnedAt_eq (A : RustAlloc) (g : EpochDirectionPBGhos
     simp only [optEpochDirectionPBPinnedAt, epochDirectionPBPinnedAt, optEpochDirCap,
       optEpochDirPayload, vecU8At_eq_header_sep_buf, vecHeader, sepConj_assoc, arm64_norm]
 
-def epochUnpacked (A : RustAlloc) (g : ChainEpochPBGhost) (a : BitVec 64)
+@[expose] def epochUnpacked (A : RustAlloc) (g : ChainEpochPBGhost) (a : BitVec 64)
     (ep : ChainEpochPB) : SepProp :=
   (a ↦₆₄ optEpochDirCap g.send ep.send) ∗ optEpochDirPayload A g.send a ep.send ∗
     ((a + 56#64) ↦₆₄ optEpochDirCap g.recv ep.recv) ∗ optEpochDirPayload A g.recv (a + 56#64) ep.recv
@@ -296,7 +252,7 @@ theorem ofNat_length_beq_zero_of_lt {bs : List (BitVec 8)} (hlt : bs.length < 2 
     exact ⟨beq_eq_false_iff_ne.mpr hne, bne_iff_ne.mpr hne⟩
 
 /-- Bounds extracted from `optEpochDirPayload` in memory. -/
-def OptEpochDirBounds (g : EpochDirectionPBGhost) (opt : Option EpochDirectionPB) : Prop :=
+@[expose] def OptEpochDirBounds (g : EpochDirectionPBGhost) (opt : Option EpochDirectionPB) : Prop :=
   (optEpochDirCap g opt + 1#64 == 0#64) = !opt.isSome ∧
   (optEpochDirCap g opt + 1#64 != 0#64) = opt.isSome ∧
   ∀ d, opt = some d →
@@ -472,7 +428,7 @@ theorem cmp_ls_false_of_lt {vlen tot : Nat} (hlt : vlen < tot) (htot : tot < 2 ^
 
 /-! ## Callee-Saved Preservation Helper -/
 
-def EpochEncLenCalleeSaved (s0 s : State) : Prop :=
+@[expose] def EpochEncLenCalleeSaved (s0 s : State) : Prop :=
   s.readReg64 .x19 = s0.readReg64 .x19 ∧ s.readReg64 .x20 = s0.readReg64 .x20 ∧
   s.readReg64 .x21 = s0.readReg64 .x21 ∧ s.readReg64 .x22 = s0.readReg64 .x22 ∧
   s.readReg64 .x23 = s0.readReg64 .x23 ∧ s.readReg64 .x24 = s0.readReg64 .x24 ∧
@@ -1135,13 +1091,6 @@ theorem epochEncodedLen_entry_pinned_ok (prog : Program) (A : RustAlloc) (entry 
     refine ⟨s0.readReg64 .fp, s0.readReg64 .lr, ⟨hx0_f, by rw [htrf, htr3, htr2, htr1]⟩, ?_⟩
     convert hm_f using 1; ac_rfl
 
-theorem epochEncodedLen_entry_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) (entry : BitVec 64)
-    (hfn : (tripleRatchetProgAtExt b ext).fnAddr epochEncodedLenLocal1Name = entry ∨
-      (tripleRatchetProgAtExt b ext).fnAddr epochEncodedLenLocal2Name = entry) :
-    subroutine_ok (tripleRatchetProgAtExt b ext) entry (epochEncodedLenPinnedSpec A) :=
-  epochEncodedLen_entry_pinned_ok _ A entry (Or.inl ⟨b, ext, rfl, hfn⟩)
-
 /-- Bridge from `epochEncodedLenPinnedSpec A` to unpinned `epochEncodedLenSpec A`. -/
 theorem epochEncodedLen_ok_of_pinned {prog : Program} {entry : BitVec 64} {A : RustAlloc}
     (hpinned : subroutine_ok prog entry (epochEncodedLenPinnedSpec A)) :
@@ -1160,32 +1109,6 @@ theorem epochEncodedLen_ok_of_pinned {prog : Program} {entry : BitVec 64} {A : R
   · exact Or.inr (Or.inr hex)
 
 /-! ### `[local#1]` (`0x38abc` / Block `171`) and `[local#2]` (`0x664fc` / Block `399`) Corollaries -/
-
-theorem epochEncodedLen_local1_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : EpochEncodedLenLocal1PinnedOkExt b A ext :=
-  epochEncodedLen_entry_pinned_ok_ext b A ext _ (Or.inl rfl)
-theorem epochEncodedLen_local1_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : EpochEncodedLenLocal1OkExt b A ext :=
-  epochEncodedLen_ok_of_pinned (epochEncodedLen_local1_pinned_ok_ext b A ext)
-theorem epochEncodedLen_local1_pinned_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) : EpochEncodedLenLocal1PinnedOk b C A ctl abs :=
-  epochEncodedLen_local1_pinned_ok_ext b A (tripleRatchetExterns C ctl abs)
-theorem epochEncodedLen_local1_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) : EpochEncodedLenLocal1Ok b C A ctl abs :=
-  epochEncodedLen_local1_ok_ext b A (tripleRatchetExterns C ctl abs)
-
-theorem epochEncodedLen_local2_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : EpochEncodedLenLocal2PinnedOkExt b A ext :=
-  epochEncodedLen_entry_pinned_ok_ext b A ext _ (Or.inr rfl)
-theorem epochEncodedLen_local2_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : EpochEncodedLenLocal2OkExt b A ext :=
-  epochEncodedLen_ok_of_pinned (epochEncodedLen_local2_pinned_ok_ext b A ext)
-theorem epochEncodedLen_local2_pinned_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) : EpochEncodedLenLocal2PinnedOk b C A ctl abs :=
-  epochEncodedLen_local2_pinned_ok_ext b A (tripleRatchetExterns C ctl abs)
-theorem epochEncodedLen_local2_ok (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) : EpochEncodedLenLocal2Ok b C A ctl abs :=
-  epochEncodedLen_local2_ok_ext b A (tripleRatchetExterns C ctl abs)
 
 theorem epochEncodedLen_local1_pinned_placed_ok_ext [inst : LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : EpochEncodedLenLocal1PinnedPlacedOkExt A ext :=

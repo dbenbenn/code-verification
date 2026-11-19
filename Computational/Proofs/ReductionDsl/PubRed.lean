@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.FSAEAD.PubCosted
-public import Computational.Proofs.ReductionDsl.Soundness
+public import Computational.Proofs.ReductionDsl.FSAEAD.PubCosted -- proof-setup: allow-public-import
+public import Computational.Proofs.ReductionDsl.Soundness -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.PubDefs
+import Computational.Proofs.SpecLemmas.Reductions.ReductionDsl.Core
+import Lean
 
 /-!
 # Costed `pubRed` Soundness, Cost, and Query Bounds
@@ -20,7 +22,7 @@ Proves evaluation agreement (`pubRedProg_eval`), static step-cost (`pubRedProg_t
 target query bounds (`pubRedProg_queries`) for `pubRedProg`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames.FSAEAD.Costed
 
@@ -64,20 +66,6 @@ theorem pubRedProg_eval (A : Adversary SS RS AD (Pub × M) C) :
   simp only [CostedReduction.eval, pubRedProg, Comp.eval, Expr.eval, Expr.v1, pubRed, StateT.run'] at h ⊢
   rw [h, pure_bind, map_eq_bind_pure_comp]
   rfl
-
-theorem pubHandle_cost :
-    (pubHandle (SS := SS) (RS := RS) (AD := AD) (M := M) pubOf k).cost = k + 44 := by
-  simp [pubHandle, Comp.cost, Expr.cost, Expr.v0, Expr.v1, Expr.v2, Expr.v3, Expr.v4, Expr.v5,
-    Expr.v7, withPubE, fsaeadIface, fsOps]
-  omega
-
-theorem pubRedProg_totalCost (q : ℕ) :
-    (pubRedProg (SS := SS) (RS := RS) (AD := AD) (M := M) pubOf k).totalCost q =
-      q * (k + 50) + 6 := by
-  have h := pubHandle_cost (SS := SS) (RS := RS) (AD := AD) (M := M) pubOf k
-  simp only [CostedReduction.totalCost, pubRedProg, pubCodec, fsaeadIface, Comp.cost, Expr.cost,
-    Expr.v1] at h ⊢
-  rw [h, max_eq_right (by omega), show k + 44 + 6 = k + 50 by omega]; omega
 
 theorem pubRedProg_queries (A : Adversary SS RS AD (Pub × M) C) (q : ℕ)
     (hA : A.IsQueryBoundP (isGameQuery (G := spec SS RS AD (Pub × M) C)) q) :

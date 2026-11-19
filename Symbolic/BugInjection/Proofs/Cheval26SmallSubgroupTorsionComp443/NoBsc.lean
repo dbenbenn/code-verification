@@ -23,10 +23,5 @@ attribute [local irreducible] Symbolic.BugInjection.hexBytes
 theorem census_torsionWireBytes_eq_trace : Census443Defs.torsionWireBytes = CompSmallSubgroupTrace.torsionWireBytes := by
   unfold Census443Defs.torsionWireBytes CompSmallSubgroupTrace.torsionWireBytes; generalize (Witnesses.Cheval26SmallSubgroupTorsionComp.trace.drop 38).headD (.recv []) = ev
   cases ev <;> rfl
-theorem recvMsg38_eq_torsionWireBytes : recvMsg38 = Census443Defs.torsionWireBytes := by rw [census_torsionWireBytes_eq_trace, CompSmallSubgroupTrace.torsionWireBytes_eq_hex]; exact recvMsg38_eq_hex
-theorem noBsc38TC_of_census (h : CompRX0SS38.NoBsc38TC') : NoBsc38TC := by intro r S g ms p hfits hnb hex hp; rw [recvMsg38_eq_torsionWireBytes] at hp ⊢; exact h r S g ms p hfits hnb hex hp
-theorem noBobDone38TC : NoBobDone38TC :=
-  fun _ _ _ _ _ hex =>
-    Cheval26SmallSubgroupHighBitComp443.bobDone_nil_torsionComp_trace_take38 hex
 theorem noFullMatchTC : NoFullMatchTC := Cheval26SmallSubgroupHighBitComp443.noFullMatchTC
 end Symbolic.BugInjection.Proofs.Cheval26SmallSubgroupTorsionComp443

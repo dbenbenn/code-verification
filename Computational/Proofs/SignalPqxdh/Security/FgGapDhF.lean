@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhE -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
-@[expose] public section
+public section
 
 open SignalPqxdh
 open OracleSpec OracleComp
@@ -583,7 +584,7 @@ theorem prob_badKeyIndFgDh3At_le_gapDh (S : Setup) (b : QueryBudget) (P : Primit
 
 /-! ## Case A (`DH1`) invariant, step coupling, and union bound -/
 
-def FgSlotReps.ofDh1 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
+@[expose] def FgSlotReps.ofDh1 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
     (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32) : FgSlotReps P where
   Rep1 := FgPosRightRep P vSk
   Rep2 := FgPosRightRep P uSk
@@ -646,7 +647,7 @@ theorem checkBundleProvenanceTake_erasePrin_eraseSpk_eq (S : Setup) (P : Primiti
     (by rw [eraseSpkBundlesFg_length]; exact hS) hO]
   rw [checkBundleProvenance_erasePrincipalsFg, checkBundleProvenance_eraseSpkBundlesFg]
 
-def deadDh1 {S : Setup} (uIdx : ℕ) (hst : KeyIndFgCutoffState S) : Bool :=
+@[expose] def deadDh1 {S : Setup} (uIdx : ℕ) (hst : KeyIndFgCutoffState S) : Bool :=
   match hst.base.principals.find? (fun (u, _) => u == uIdx) with
   | some (_, uEntry) => uEntry.corrupted
   | none => false
@@ -796,7 +797,7 @@ theorem pqxdhKeyIndFgPreImpl_preserves_deadDh1 {S : Setup} (P : Primitives)
         rw [deadDh1_map_corrupted_of_ne u0 u.val hNeU hst]
         unfold deadDh1; rw [hFP]; exact hDead
 
-noncomputable def deadDh1Full {S : Setup} (uIdx bIdx : ℕ)
+@[expose] def deadDh1Full {S : Setup} (uIdx bIdx : ℕ)
     (hst : KeyIndFgCutoffState S) : Bool :=
   deadDh1 uIdx hst || spkTargetRevealed bIdx hst
 
@@ -823,7 +824,7 @@ theorem pqxdhKeyIndFgPreImpl_preserves_deadDh1Full {S : Setup} (P : Primitives)
       (pqxdhKeyIndFgPreImpl_preserves_spkTargetRevealed true uIdx bIdx (some uSk) (some vSk) P q hst
         hR x hx))
 
-def FgSimInvDh1 (S : Setup) (b : QueryBudget) (P : Primitives) (R : FgSlotReps P)
+@[expose] def FgSimInvDh1 (S : Setup) (b : QueryBudget) (P : Primitives) (R : FgSlotReps P)
     (uIdx bIdx : ℕ) (uSk vSk : Bytes)
     (rem : ℕ) (hst : KeyIndFgCutoffState S) (st : FgKeyIndSimState S) : Prop :=
   st.base = eraseStateFg true uIdx bIdx hst.base ∧

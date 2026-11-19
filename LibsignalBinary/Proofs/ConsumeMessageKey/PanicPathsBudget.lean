@@ -9,13 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPathsProofs.CoreBudget
+import LibsignalBinary.Proofs.ConsumeMessageKey.PanicPathsProofs.CoreBudget
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded Relocatable Panic-Path Entrypoints for `consume_message_key`
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

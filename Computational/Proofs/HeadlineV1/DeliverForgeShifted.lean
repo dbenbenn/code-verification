@@ -10,14 +10,18 @@ limitations under the License.
 module
 
 import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma9 -- shake: keep
-public import Computational.Proofs.HeadlineV1.HiddenSaltV1
-public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeFS
-public import Computational.Proofs.HeadlineV1.DeliverForgeDir2
-public import Computational.Proofs.HeadlineV1.SendShortC
-public import Computational.Proofs.HeadlineV1.SignedRefineC
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgeFS
+public import Computational.Proofs.HeadlineV1.DeliverForgeDir2 -- proof-setup: allow-public-import
+import Computational.Proofs.HeadlineV1.SendShortC
+import Computational.Proofs.HeadlineV1.SignedRefineC
 import Computational.Proofs.SpqrV1Sync.SendTotal
 import ProofLib.SepLogic.WP.StateNorm
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Correctness.StateInv -- shake: keep
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
+public import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma11Aux -- proof-setup: allow-public-import
+public import Computational.Proofs.SpqrV1Sync.SendTotalExtras -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
 
 /-!
 # Shifted-Cell `DeliverForge` CKA Reduction
@@ -28,7 +32,7 @@ challenge epoch `t_CKA = l + 1` with `Δ_CKA = 1`, proves step preservation of `
 `DoomedAuthShifted`, and establishes `LeakCorrInv` and `spqrCLocal_and_topState_v1`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 
@@ -54,19 +58,19 @@ structure CKAStateShifted (Γ T I : Type) where
 local notation "CSpec" => CKA.spec Γ CCoins T I
 local notation "CHMShifted" => HM CSpec (CKAStateShifted Γ T I)
 
-def liftCShifted {α : Type} (x : CKA.AdversaryComp Γ CCoins T I α) : CHMShifted α :=
+@[expose] def liftCShifted {α : Type} (x : CKA.AdversaryComp Γ CCoins T I α) : CHMShifted α :=
   StateT.lift x
 
-def cacheCShifted (t : ℕ) (x : T × I) : CHMShifted Unit :=
+@[expose] def cacheCShifted (t : ℕ) (x : T × I) : CHMShifted Unit :=
   modify fun s =>
     { s with base := { s.base with cache := Function.update s.base.cache t (some x) } }
 
-def setγPreShifted (P : Party) (γ? : Option Γ) : CHMShifted Unit :=
+@[expose] def setγPreShifted (P : Party) (γ? : Option Γ) : CHMShifted Unit :=
   modify fun s => { s with γPre := Function.update s.γPre P γ? }
 
 /-- Shifted CKA hooks at challenge epoch `l + 1` (`Δ_CKA = 1`), eagerly caching `CKA.corrQuery` in
 `γPre` for `t ≤ l - 1` and populating `vp.γ` for `t ≥ l + 2`. -/
-def hooksCKAShifted (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def hooksCKAShifted (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (l tStar : ℕ) :
     Hooks CSpec (CKAStateShifted Γ T I) Γ T Sig SS RS M E CCoins (Option Γ) Sig SS RS where
   startSend _ P t γv σ r := do
@@ -149,7 +153,7 @@ def hooksCKAShifted (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I 
     | some γ => return some (realParty vp γ vp.root vp.vS vp.vR)
 
 /-- Initializer for `hooksCKAShifted`, eagerly populating `γPre` at epoch `0` when `1 ≤ l`. -/
-def initCKAShifted (_cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def initCKAShifted (_cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (l : ℕ) :
     CHMShifted (Option (PartyState (Option Γ) T Sig SS RS × PartyState (Option Γ) T Sig SS RS)) :=
   do
@@ -165,7 +169,7 @@ def initCKAShifted (_cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I 
 
 /-- Own-epoch leak transition at boundary `l`, recording the leak at `s.epoch P` instead of
 `max (s.epoch .A) (s.epoch .B)` when `P` lags below `l`. -/
-def afterCorrShifted {St Msg C : Type} (l : ℕ) (s : GameState St Msg C) (P : Party) :
+@[expose] def afterCorrShifted {St Msg C : Type} (l : ℕ) (s : GameState St Msg C) (P : Party) :
     GameState St Msg C :=
   let s₁ : GameState St Msg C :=
     { s with comp := (s.trans.filter (fun r : Record Msg C => r.pos.sender == P.other)).map
@@ -175,7 +179,7 @@ def afterCorrShifted {St Msg C : Type} (l : ℕ) (s : GameState St Msg C) (P : P
     else max (s.epoch .A) (s.epoch .B)
   { s₁.leak e_leak with corrs := (P, s.epoch P) :: s.corrs }
 
-def corrEShifted {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
+@[expose] def corrEShifted {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
     (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv) (π : Policy) :
     QueryImpl (Party →ₒ Option (PartyState Γ T Sig SS RS))
       (EM tspec Γv T Sv SSv RSv M E HS) := fun P => do
@@ -193,7 +197,7 @@ def corrEShifted {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv :
     modify fun es => { es with g := s₁ }
     return some st
 
-def implEShifted {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
+@[expose] def implEShifted {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
     (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy) :
     QueryImpl (unifSpec + spec (PartyState Γ T Sig SS RS) M CCoins (Header T × E))
@@ -209,7 +213,7 @@ def implEShifted {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv :
       (corrEShifted l hk π)
   HAdd.hAdd i₀ i₁
 
-def implEDFShifted {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
+@[expose] def implEDFShifted {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
     (l : ℕ) (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy) :
     QueryImpl (unifSpec + specDF (PartyState Γ T Sig SS RS) M CCoins (Header T × E))
@@ -328,20 +332,20 @@ theorem sync9Shifted_init (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR 
 omit [DecidableEq T] [DecidableEq M] [DecidableEq E] [DecidableEq I] [Inhabited E]
   [SampleableType KR] [SampleableType KC] [SampleableType CCoins] [SampleableType I]
   [SampleableType K] in
-def HasUncompTransAt {St Msg C : Type} (l : ℕ) (s : GameState St Msg C) : Prop :=
+@[expose] def HasUncompTransAt {St Msg C : Type} (l : ℕ) (s : GameState St Msg C) : Prop :=
   healedBy s.tL (2 + 1) (l - 1) = true ∧
     ∃ r ∈ s.trans, r.pos.epoch = l ∧ s.epoch r.pos.sender = l ∧ r.pos ∉ s.comp
 
 /-- Shifted-cell Condition 4 refining `Doomed4 (some (l - 1))` with `HasUncompTransAt l s` when
 epochs straddle `l`. -/
-def Doomed4Shifted {St Msg C : Type} (l tStar : ℕ) (s : GameState St Msg C) : Prop :=
+@[expose] def Doomed4Shifted {St Msg C : Type} (l tStar : ℕ) (s : GameState St Msg C) : Prop :=
   1 ≤ l ∧ l < tStar ∧ l - 1 ∉ s.leaks ∧
     l - 1 ≤ min (s.epoch .A) (s.epoch .B) ∧
     l - 1 < max (s.epoch .A) (s.epoch .B) ∧
     (min (s.epoch .A) (s.epoch .B) < l ∧ max (s.epoch .A) (s.epoch .B) = l →
       HasUncompTransAt l s)
 
-def DoomedAuthShifted {St Msg C : Type} (l tStar : ℕ) (s : GameState St Msg C) : Prop :=
+@[expose] def DoomedAuthShifted {St Msg C : Type} (l tStar : ℕ) (s : GameState St Msg C) : Prop :=
   Doomed1 (some (l - 1)) tStar s ∨ Doomed2 tStar s ∨
     Doomed3 (some (l - 1)) tStar s ∨ Doomed4Shifted l tStar s
 
@@ -1133,7 +1137,7 @@ end RedCKAShifted
 section ShiftCoupling
 
 /-- Reachable-state invariant relating `s.tL` and every `m ∈ s.leaks` to a corruption in `s.corrs`. -/
-def LeakCorrInv {St Msg C : Type} (s : GameState St Msg C) : Prop :=
+@[expose] def LeakCorrInv {St Msg C : Type} (s : GameState St Msg C) : Prop :=
   (s.tL = none → s.leaks = []) ∧
   (∀ m, s.tL = some m → m ∈ s.leaks ∧ ∀ x ∈ s.leaks, x ≤ m) ∧
   (∀ m ∈ s.leaks, ∃ R e, (R, e) ∈ s.corrs ∧ e ≤ m ∧ m ≤ e + 1 ∧

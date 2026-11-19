@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.AllocWitness
+public import LibsignalBinary.Proofs.ConsumeMessageKey.NonVacProofs.AllocWitness -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
 
@@ -20,7 +20,7 @@ Token-free `RustAlloc` alias `A0` (`NonVacuityWitness.A₀`) parameterizing the 
 `AllocHooks A0 abs`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record
 

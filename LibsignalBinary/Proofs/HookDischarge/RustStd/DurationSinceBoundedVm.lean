@@ -12,12 +12,12 @@ module
 public import VerifiedLibraries.RustStd.Proofs.Wave1.TimeDurationSince
 public import ProofLib.Placed.OpcodeExclusion
 public import LibsignalBinary.Proofs.HookDischarge.RustStd.TimeDurationSince -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.HookDischarge.RustStd.DurationSinceVm -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.HookDischarge.RustStd.DurationSinceVm
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.Bridge
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
-import ProofLib.ObjectLoad
+import ProofLib.CoreLemmas
 
 /-!
 # Bounded-Path `VmPreserved` & Explicit `.rodata` Real-Code Bridges for `<std::time::SystemTime>::duration_since`
@@ -27,7 +27,7 @@ Real-bytes de-hook bridges (D2) for `<std::time::SystemTime>::duration_since`
 prebuilt bytes pinned in the engine) against every bounded consumer contract
 (`durationSinceBoundedAtSpec`, `durationSinceBoundedSpec`, `durationSinceBoundedBudgetAtSpec`,
 `durationSinceBoundedBudgetSpec`, plus `allocHookStack`, `keepsFs`, separating `withRoDataSep`,
-`withRoOk`, and fixed-`Obj.Image` `.inImage` variants).
+and `withRoOk` variants).
 
 ## Honest Premise Audit vs. Consumer Specs (`durationSinceBounded{,Budget}Spec`)
 
@@ -71,7 +71,7 @@ set_option autoImplicit false
 namespace LibsignalBinary.Proofs.HookDischarge.RustStd.DurationSinceBoundedVm
 
 open Arm64 ProofLib
-open Arm64.Obj (HoldsBytes Image MultiPlacement)
+open Arm64.Obj (HoldsBytes MultiPlacement)
 open VerifiedLibraries.RustStd
   (timeDurationSinceSpec timeDurationSinceSym timeMultiLib timePlacedData0 timeRodataCst16Sym)
 open CryptoVerification.RustHeap (allocHookStack)
@@ -177,19 +177,51 @@ theorem specSimulates_withRoOk_of_spec {α : Type} (RoOk : Memory → Prop) (spe
   rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
   exact ⟨x, R, hpre.2, fun _ hout => hout⟩
 
+private theorem readBytes_getElem?_aux (m : Memory) (p : BitVec 64) (n : Nat) (k : Nat) (hk : k < n) :
+    (m.readBytes p n)[k]? = some (m.read8 (p + BitVec.ofNat 64 k)) := by
+  induction n generalizing p k with
+  | zero => omega
+  | succ n ih =>
+    cases k with
+    | zero => simp [Memory.readBytes_succ]
+    | succ k =>
+      simp only [Memory.readBytes_succ, List.getElem?_cons_succ]
+      rw [ih (p + 1#64) k (by omega)]
+      have hadd : p + 1#64 + BitVec.ofNat 64 k = p + BitVec.ofNat 64 (k + 1) := by bv_omega
+      rw [hadd]
+
 /-- Discharge `RoDataAt` directly from `Obj.HoldsBytes m addr bytes (fun _ => Perm.ro)`. -/
 theorem roDataAt_of_holdsBytes_ro {m : Memory} {addr : BitVec 64} {bytes : List (BitVec 8)}
     (h : HoldsBytes m addr bytes (fun _ => Perm.ro)) :
-    RoDataAt m addr bytes :=
-  ProofLib.ObjectLoad.holdsBytes_ro h
+    RoDataAt m addr bytes := by
+  refine ⟨fun a ha => ?_, ?_⟩
+  · unfold InRegion at ha
+    have hk : (a - addr).toNat < bytes.length := ha
+    have hp := (h (a - addr).toNat hk).2
+    have heq : addr + BitVec.ofNat 64 (a - addr).toNat = a := by
+      rw [BitVec.ofNat_toNat, BitVec.setWidth_eq]; bv_omega
+    rwa [heq] at hp
+  · apply List.ext_getElem?
+    intro k
+    by_cases hk : k < bytes.length
+    · rw [readBytes_getElem?_aux _ _ _ _ hk, List.getElem?_eq_getElem hk]
+      exact congrArg some (h k hk).1
+    · have h1 : ¬ k < (m.readBytes addr bytes.length).length := by
+        rw [Memory.readBytes_length]; exact hk
+      rw [List.getElem?_eq_none (Nat.le_of_not_lt h1), List.getElem?_eq_none (Nat.le_of_not_lt hk)]
 
 /-- Discharge `RoDataAt` at runtime state `m` from load-time `Obj.HoldsBytes m₀ addr bytes (fun _ => Perm.ro)`
     and `m₀.KeepsFrozen m` (`fromLoad` + `KeepsFrozen` ghost-dispatch bridge). -/
 theorem roDataAt_of_holdsBytes_ro_keepsFrozen {m₀ m : Memory} {addr : BitVec 64}
     {bytes : List (BitVec 8)}
     (h : HoldsBytes m₀ addr bytes (fun _ => Perm.ro)) (hkf : m₀.KeepsFrozen m) :
-    RoDataAt m addr bytes :=
-  ProofLib.ObjectLoad.holdsBytes_ro (ProofLib.ObjectLoad.holdsBytes_ro_of_keepsFrozen h hkf)
+    RoDataAt m addr bytes := by
+  refine roDataAt_of_holdsBytes_ro (fun i hi => ?_)
+  obtain ⟨hb, hp, hlf⟩ := h i hi
+  have hf : m₀.Frozen (addr + BitVec.ofNat 64 i) := by
+    unfold Memory.Frozen; rw [hp]; rfl
+  obtain ⟨hb', hp', hlf', _⟩ := hkf _ hf
+  exact ⟨hb'.trans hb, hp'.trans hp, hlf'.trans hlf⟩
 
 /-- `RoDataAt` is preserved across `Memory.KeepsFrozen` transitions whenever `bytes.length ≤ 2 ^ 64`. -/
 theorem roDataAt_of_keepsFrozen {m₀ m : Memory} {addr : BitVec 64} {bytes : List (BitVec 8)}
@@ -206,7 +238,7 @@ theorem roDataAt_of_keepsFrozen {m₀ m : Memory} {addr : BitVec 64} {bytes : Li
       exact hk
     have hp := hperm0 (addr + BitVec.ofNat 64 k) hin
     have hb : m₀.read8 (addr + BitVec.ofNat 64 k) = bytes[k] := by
-      have hget := ProofLib.ObjectLoad.readBytes_getElem? m₀ addr bytes.length k hk
+      have hget := readBytes_getElem?_aux m₀ addr bytes.length k hk
       rw [hread0, List.getElem?_eq_getElem hk] at hget
       exact Option.some.inj hget.symm
     exact ⟨hb, hp.1, hp.2⟩
@@ -549,37 +581,5 @@ theorem timeDurationSince_boundedBudgetSpec_roSep_subroutineOk
       (timeDurationSince_simulates_bounded_vm_roSep_keepsFs (mpl.ρ timeRodataCst16Sym)
         (by decide)).trans SpecSimulates.drop_keepsFs)
     (timeDurationSince_vm_subroutineOk externs)
-
-/-- Any proof of `spec` also satisfies `spec.inImage img` (weakening `pre` with `img.CodeLoaded`). -/
-theorem specSimulates_inImage {α : Type} (img : Image) (spec : Spec α) :
-    SpecSimulates spec (spec.inImage img) := by
-  intro x R s0 hpre
-  dsimp only [Spec.inImage] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  exact ⟨x, R, hpre.2, fun _ hout => hout⟩
-
-/-- Real-code `MultiPlacedLib.subroutineOk` for
-    `(withRoData (mpl.ρ timeRodataCst16Sym) timePlacedData0 durationSinceBoundedBudgetSpec).inImage img`. -/
-theorem timeDurationSince_boundedBudgetSpec_inImage_subroutineOk (img : Image)
-    (externs : String → Option (State → State) := fun _ => none) :
-    timeMultiLib.subroutineOk timeDurationSinceSym
-      (fun mpl => (withRoData (mpl.ρ timeRodataCst16Sym) timePlacedData0
-        durationSinceBoundedBudgetSpec).inImage img)
-      externs :=
-  SpecSimulates.multiSubroutineOk
-    (fun _ => specSimulates_inImage img _)
-    (timeDurationSince_boundedBudgetSpec_subroutineOk externs)
-
-/-- Real-code `MultiPlacedLib.subroutineOk` for
-    `(withRoData (mpl.ρ timeRodataCst16Sym) timePlacedData0 durationSinceBoundedSpec).inImage img`. -/
-theorem timeDurationSince_boundedSpec_inImage_subroutineOk (img : Image)
-    (externs : String → Option (State → State) := fun _ => none) :
-    timeMultiLib.subroutineOk timeDurationSinceSym
-      (fun mpl => (withRoData (mpl.ρ timeRodataCst16Sym) timePlacedData0
-        durationSinceBoundedSpec).inImage img)
-      externs :=
-  SpecSimulates.multiSubroutineOk
-    (fun _ => specSimulates_inImage img _)
-    (timeDurationSince_boundedSpec_subroutineOk externs)
 
 end LibsignalBinary.Proofs.HookDischarge.RustStd.DurationSinceBoundedVm

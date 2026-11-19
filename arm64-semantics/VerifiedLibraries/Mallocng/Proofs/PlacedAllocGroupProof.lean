@@ -69,7 +69,7 @@ private theorem wp_root_size_select_req [MallocngMultiPlacement]
       rw [← hmr .x2 (by decide) (by decide) (by decide)]; exact hLen _
 
 set_option maxHeartbeats 800000 in
-private theorem wp_allocGroup_root [MallocngMultiPlacement]
+private theorem wp_allocGroup_root [MallocngMultiPlacement] {ro : Bool}
     (sc req inflight cnt' : Nat) (hsc : sc < 48) (hReq : req ≤ nominalSlotCap sc) (hlo : 1 ≤ cnt') (hhi : cnt' ≤ 32)
     (hgt2048 : 2048 < cnt' * slotStride sc + 16) (hprod : cnt' * slotStride sc ≤ 1048575) (h25 : sc ≤ 25 → cnt' * slotStride sc + 20 ≤ 65536)
     (use : BitVec 64) (hcnt' : cnt' = Cost.cntSel sc use.toNat)
@@ -97,11 +97,11 @@ private theorem wp_allocGroup_root [MallocngMultiPlacement]
       (AllocSlotSaved12 s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30) (s0.readReg64 .x19) (s0.readReg64 .x20) (s0.readReg64 .x21)
         (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24) (s0.readReg64 .x25) (s0.readReg64 .x26) (s0.readReg64 .x27) (s0.readReg64 .x28) ∗
        stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗ MallocngRoTablesA maddrs ∗ (m ↦ₛ List.replicate 40 0#8) ∗
-       MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sr.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp)
-      (AllocSlotFullPost sc req inflight γ tp brkStart liveCost peakCost peakCount st0 s0)
+       MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sr.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp)
+      (AllocSlotFullPost (ro := ro) sc req inflight γ tp brkStart liveCost peakCost peakCount st0 s0)
       (fun sf => ⌜MallocngPlacedOomCond msvc (2 * (allocSlotDepthBound sc + 1)) (allocSlotPlacedByteBound sc peakCount) s0 sf⌝) := by
   have hsc_pos : 0 < sc := root_sc_pos hhi hgt2048
-  unfold MallocngCoreStInflightA MallocngRuntime; simp only [sepConj_assoc, sepExists_sepConj_left, sepExists_sepConj_right]
+  unfold MallocngCoreStInflightModeA MallocngRuntime; simp only [sepConj_assoc, sepExists_sepConj_left, sepExists_sepConj_right]
   apply SepWP.exists_elim; intro errnoVal
   simp only [show ∀ (P : SepProp) (φ : Prop) (Q : SepProp), P ∗ (⌜φ⌝ ∗ Q) = ⌜φ⌝ ∗ (P ∗ Q) from fun P _ _ => by rw [← sepConj_assoc, sepConj_comm P, sepConj_assoc]]
   apply SepWP.pure_elim; intro hwf1; obtain ⟨hActL, hUseL, hUnmL, hBncL, _, hLstL⟩ := hwf1.ctx_lens
@@ -109,7 +109,7 @@ private theorem wp_allocGroup_root [MallocngMultiPlacement]
   let Saved := AllocSlotSaved12 s0.sp (s0.readReg64 .x29) (s0.readReg64 .x30) (s0.readReg64 .x19) (s0.readReg64 .x20) (s0.readReg64 .x21)
     (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24) (s0.readReg64 .x25) (s0.readReg64 .x26) (s0.readReg64 .x27) (s0.readReg64 .x28)
   let RestCore := MallocngLiveAuth γ st1.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-    ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗ MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗ ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
+    MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr ∗ MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap ∗ ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
     ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗ MappedSet st1.masterDom (OwnedMappedByte st1) ∗
     ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)
   let BaseF := Saved ∗ stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗ MallocngRoTablesA maddrs ∗
@@ -311,7 +311,7 @@ private theorem wp_allocGroup_root [MallocngMultiPlacement]
         ((maddrs.ctx + 848#64) ↦ₛ unmapSeq') ∗ ((maddrs.ctx + 880#64) ↦ₛ bounces') ∗ ((maddrs.ctx + 912#64) ↦₈ seq') ∗ CtxRest) =
         (maddrs.ctx ↦ₛ ctx'.toBytes) := by
       rw [hActUp, hUseUp]; exact hCtxFd _ _ _ _ _ _ (by simp [hActL]) (by simp [hUseL]) hUnmL' hBncL'
-    unfold MallocngCoreStInflightA MallocngRuntime; rw [pure_sepConj_of_true hwf']
+    unfold MallocngCoreStInflightModeA MallocngRuntime; rw [pure_sepConj_of_true hwf']
     refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left
       (sepConj_mono_left (Entails.sepExists_intro (P := fun v => (tp - 0xa4#64) ↦₃₂ v) errnoVal)))))
     have hJoin := saved12_rejoin_stackFrame s0 sc (s0.readReg64 .x29) (s0.readReg64 .x30) (s0.readReg64 .x19) (s0.readReg64 .x20)
@@ -394,9 +394,9 @@ private theorem enframe_slot_bytes_wf (val : BitVec 64 → BitVec 8) (pg : Group
 /-! ## Nested `alloc_slot` and `enframe` Path -/
 
 set_option maxHeartbeats 800000 in
-private theorem wp_allocGroup_nested [MallocngMultiPlacement]
+private theorem wp_allocGroup_nested [MallocngMultiPlacement] {ro : Bool}
     (sc req inflight cnt' : Nat) (hsc : sc < 48) (hReq : req ≤ nominalSlotCap sc) (hInflight : inflight + allocSlotDepthBound sc ≤ 6)
-    (hRec : ∀ pSc, pSc < 48 → allocSlotDepthBound pSc < allocSlotDepthBound sc → AllocSlotAtDepthFullStmt pSc)
+    (hRec : ∀ pSc, pSc < 48 → allocSlotDepthBound pSc < allocSlotDepthBound sc → AllocSlotAtDepthFullStmt pSc ro)
     (hv : ValidNestedCnt sc cnt') (γ : GhostName) (tp brkStart m : BitVec 64) (liveCost peakCost peakCount : Nat)
     (st0 st1 : MallocngSt) (s0 sn : State) (hw564 : Blk08HasWords564 mallocngFaultSvc) (hw768 : Blk08HasWords768 mallocngFaultSvc)
     (hr768 : Blk08Range768) (hCount1 : totalLiveCount st1 ≤ peakCount) (hActL1 : st1.ctx.active.length = 48)
@@ -422,8 +422,8 @@ private theorem wp_allocGroup_nested [MallocngMultiPlacement]
         (s0.readReg64 .x21) (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24) (s0.readReg64 .x25)
         (s0.readReg64 .x26) (s0.readReg64 .x27) (s0.readReg64 .x28) ∗
        stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗ MallocngRoTablesA maddrs ∗ (m ↦ₛ List.replicate 40 0#8) ∗
-       MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sn.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp)
-      (AllocSlotFullPost sc req inflight γ tp brkStart liveCost peakCost peakCount st0 s0)
+       MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sn.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp)
+      (AllocSlotFullPost (ro := ro) sc req inflight γ tp brkStart liveCost peakCost peakCount st0 s0)
       (fun sf => ⌜MallocngPlacedOomCond msvc (2 * (allocSlotDepthBound sc + 1)) (allocSlotPlacedByteBound sc peakCount) s0 sf⌝) := by
   let u := cnt' * sizeClass sc; let pSc := sizeToClassUnits u; let needed := cnt' * slotStride sc + 12
   have hNps : sc ≤ 19 ∧ (needed + 3) / 16 = u ∧ sc < pSc ∧ pSc ≤ 24 ∧
@@ -439,7 +439,7 @@ private theorem wp_allocGroup_nested [MallocngMultiPlacement]
   have hRoSplit : MallocngRoTablesA maddrs = ((maddrs.sizeClasses ↦ᵣ sizeClassBytes) ∗ (maddrs.debruijnFree ↦ᵣ debruijn32Table) ∗ RoRest) := by
     unfold MallocngRoTablesA MallocngRoTablesAt; dsimp only [RoRest]
   let PrepF := RoRest ∗ Saved ∗ stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗ (m ↦ₛ List.replicate 40 0#8) ∗
-    MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sn.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp
+    MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sn.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp
   refine SepWP.weaken_pre (P' := (maddrs.sizeClasses ↦ᵣ sizeClassBytes) ∗ (maddrs.debruijnFree ↦ᵣ debruijn32Table) ∗ PrepF)
     (Entails.of_eq (by rw [hRoSplit]; dsimp only [PrepF, Saved]; ac_rfl)) ?_
   refine sepWP_seq_noSyscalls_cl (mid_pc := mbase 8) hcl (SepWP.mono (wp_nested_call_prep sn sc cnt' PrepF hw768 hr768 hsc hv hpc hrun hx0 hx26) ?_)
@@ -459,7 +459,7 @@ private theorem wp_allocGroup_nested [MallocngMultiPlacement]
   have h19c := (hregs_c0 .x19 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans hx19; have h20c := (hregs_c0 .x20 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans hx20; have h21c := (hregs_c0 .x21 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans hx21; have h22c := (hregs_c0 .x22 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans hx22
   have h23c := (hregs_c0 .x23 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans hx23; have h24c := (hregs_c0 .x24 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans hx24; have h26c := (hregs_c0 .x26 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans hx26; have h28c := (hregs_c0 .x28 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans hx28
   have hPreFold : ((maddrs.sizeClasses ↦ᵣ sizeClassBytes) ∗ (maddrs.debruijnFree ↦ᵣ debruijn32Table) ∗ PrepF) =
-      (stackFrame sc0 subFr ∗ MallocngRoTablesA maddrs ∗ MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sc0.brk liveCost peakCost st1 ∗
+      (stackFrame sc0 subFr ∗ MallocngRoTablesA maddrs ∗ MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sc0.brk liveCost peakCost st1 ∗
        MallocngRuntime maddrs tp ∗ Saved ∗ stackFrameAt (s0.sp - 96#64 - BitVec.ofNat 64 subFr) remFr ∗ (m ↦ₛ List.replicate 40 0#8)) := by
     dsimp only [PrepF]; rw [hStkSp, ← hpspc0.2.1, hRoSplit]; ac_rfl
   refine call_withCL_frame_auto (x := ())
@@ -478,7 +478,7 @@ private theorem wp_allocGroup_nested [MallocngMultiPlacement]
   have hw25_r : s_ret.readReg32 .x25 = BitVec.ofNat 32 pSc := by simp only [State.readReg32, hcs_r.2.2.2.2.2.2.1]; exact hw25_c0
   have h19r := hcs_r.1.trans h19c; have h20r := hcs_r.2.1.trans h20c; have h21r := hcs_r.2.2.1.trans h21c; have h22r := hcs_r.2.2.2.1.trans h22c
   have h23r := hcs_r.2.2.2.2.1.trans h23c; have h24r := hcs_r.2.2.2.2.2.1.trans h24c; have h26r := hcs_r.2.2.2.2.2.2.2.1.trans h26c; have h28r := hcs_r.2.2.2.2.2.2.2.2.2.1.trans h28c
-  unfold MallocngCoreStInflightA MallocngRuntime
+  unfold MallocngCoreStInflightModeA MallocngRuntime
   simp only [sepConj_assoc, sepExists_sepConj_left, sepExists_sepConj_right]; apply SepWP.exists_elim; intro errnoVal
   simp only [show ∀ (P : SepProp) (φ : Prop) (Q : SepProp), P ∗ (⌜φ⌝ ∗ Q) = ⌜φ⌝ ∗ (P ∗ Q) from
     fun P _ _ => by rw [← sepConj_assoc, sepConj_comm P, sepConj_assoc]]
@@ -491,7 +491,7 @@ private theorem wp_allocGroup_nested [MallocngMultiPlacement]
   let slotBase := pg.slotStart pIdx - 4#64; let bs := readBytesFromMap st2.byteVal slotBase (pg.stride + 1)
   obtain ⟨ActPRest, hActPSp, hActPUp⟩ := words64_focus_set (maddrs.ctx + 80#64) st2.ctx.active pSc hpScA
   let RestCore := MallocngLiveAuth γ st2.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗
-    (maddrs.aaReplaced ↦₃₂ 0#32) ∗ ((maddrs.libc + 8#64) ↦₆₄ st2.auxvPtr) ∗ MallocngAuxvState γ st2.auxvPtr st2.auxvSnap ∗
+    (maddrs.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell ro maddrs.libc st2.auxvPtr ∗ MallocngAuxvStateRo ro γ st2.auxvPtr st2.auxvSnap ∗
     ProtNoneByteMap st2.masterDom (OwnedProtNoneByte st2) st2.byteVal ∗ MappedSet st2.masterDom (OwnedMappedByte st2) ∗
     ((tp - 0xa4#64) ↦₃₂ errnoVal) ∗ ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.libc + 48#64) ↦₆₄ 4096#64)
   let MHead := (m ↦₆₄ 0#64) ∗ ((m + 8#64) ↦₆₄ 0#64) ∗ ((m + 16#64) ↦₆₄ 0#64) ∗ ((m + 24#64) ↦₃₂ 0#32) ∗ ((m + 28#64) ↦₃₂ 0#32)
@@ -623,7 +623,7 @@ private theorem wp_allocGroup_nested [MallocngMultiPlacement]
     rw [hActUp, hUseUp]; exact hCtxFd _ _ _ _ _ _ (by simp [hActL2]) (by simp [hUseL2]) hUnmL2 hBncL2
   have hHdrEq : ((mb ↦₆₄ m) ∗ ((mb + 8#64) ↦₈ actB) ∗ (slotBase ↦ₛ bs'.take (16 * off + 4)) ∗ ((slotBase + BitVec.ofNat 64 (16 * off + 4 + 9)) ↦ₛ bs'.drop (16 * off + 4 + 9))) = (slotBase ↦ₛ slotBs') := by
     have h := fold_slot_hdr9 slotBase bs' hHdrFit m actB; rwa [hSbMb4] at h
-  unfold MallocngCoreStInflightA MallocngRuntime; rw [pure_sepConj_of_true hwf']
+  unfold MallocngCoreStInflightModeA MallocngRuntime; rw [pure_sepConj_of_true hwf']
   refine Entails.trans ?_ (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left (sepConj_mono_left (Entails.sepExists_intro (P := fun v => (tp - 0xa4#64) ↦₃₂ v) errnoVal)))))
   have hJoin := saved12_rejoin_stackFrame s0 sc (s0.readReg64 .x29) (s0.readReg64 .x30) (s0.readReg64 .x19) (s0.readReg64 .x20) (s0.readReg64 .x21) (s0.readReg64 .x22) (s0.readReg64 .x23) (s0.readReg64 .x24) (s0.readReg64 .x25) (s0.readReg64 .x26) (s0.readReg64 .x27) (s0.readReg64 .x28)
   dsimp only [AllocSlotSaved12] at hJoin; refine Entails.trans (Entails.of_eq ?_) (sepConj_mono_left hJoin)
@@ -633,7 +633,7 @@ private theorem wp_allocGroup_nested [MallocngMultiPlacement]
 set_option maxHeartbeats 800000 in
 /-- Composes `__malloc_alloc_meta` (`blk07`), count selection, and root or nested group
 initialization for placed `alloc_group` (`blk08`, `+0x280`). -/
-theorem wp_placed_allocGroup (hMeta : AllocMetaPlacedFullStmt) : AllocGroupAtOffFullStmt := by
+theorem wp_placed_allocGroup {ro : Bool} (hMeta : AllocMetaPlacedFullStmt ro) : AllocGroupAtOffFullStmt ro := by
   intro _ sc req inflight hsc hReq hInflight hRec γ tp brkStart liveCost peakCost peakCount st0 st
     hCount hAct0 hStRel s0 s hcl hpc hrun hsp hsAl htp hbrkS hpsp hperm hx22 hx23 hx21 hx25
   obtain ⟨hRes0, hLive0, hCost0, hCnt0, hMa0, hDyn0, hActLow0, hGM0, hClaim0⟩ := hStRel
@@ -647,7 +647,7 @@ theorem wp_placed_allocGroup (hMeta : AllocMetaPlacedFullStmt) : AllocGroupAtOff
   have hRoEq : MallocngRoTablesA maddrs = ((maddrs.sizeClasses ↦ᵣ sizeClassBytes) ∗ RoTail) := by
     unfold MallocngRoTablesA MallocngRoTablesAt; dsimp only [RoTail]; ac_rfl
   let EntryF := RoTail ∗ Saved ∗ stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗
-    MallocngCoreStInflightA inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp
+    MallocngCoreStInflightModeA ro inflight γ maddrs brkStart s.brk liveCost peakCost st ∗ MallocngRuntime maddrs tp
   refine SepWP.weaken_pre (P' := (maddrs.sizeClasses ↦ᵣ sizeClassBytes) ∗ EntryF)
     (Entails.of_eq (by rw [hRoEq]; dsimp only [EntryF, Saved]; ac_rfl)) ?_
   refine sepWP_seq_noSyscalls_cl (mid_pc := mbase 7) hcl (SepWP.mono (wp_ag_entry s sc EntryF hw564 hr564 hsc hpc hrun hx23) ?_)
@@ -663,7 +663,7 @@ theorem wp_placed_allocGroup (hMeta : AllocMetaPlacedFullStmt) : AllocGroupAtOff
     rw [stackFrameAt_split_top (s0.sp - 96#64) 224 _ (by omega) (by omega), solver_stackFrameAt_eq_memRegion (s0.sp - 96#64) 224 (by omega)]
     unfold stackFrame; rw [hsp_cm, show allocSlotDepthBound sc * 96 + 224 - 224 = allocSlotDepthBound sc * 96 by omega]
   have hMeta8 := subroutine_ok_block_to_block (j := 7) (by decide) (hMeta inflight (by omega) γ tp brkStart liveCost peakCost peakCount st hCount) (P := mallocngBlockProg mmpl 8 msvc) (by intro pc; simp) rfl
-  have hPreMeta : ((maddrs.sizeClasses ↦ᵣ sizeClassBytes) ∗ EntryF) = (stackFrame scm 224 ∗ MallocngCoreStInflightA inflight γ maddrs brkStart scm.brk liveCost peakCost st ∗
+  have hPreMeta : ((maddrs.sizeClasses ↦ᵣ sizeClassBytes) ∗ EntryF) = (stackFrame scm 224 ∗ MallocngCoreStInflightModeA ro inflight γ maddrs brkStart scm.brk liveCost peakCost st ∗
       MallocngRuntime maddrs tp ∗ MallocngRoTablesA maddrs ∗ Saved ∗ stackFrameAt (s0.sp - 96#64 - 224#64) (allocSlotDepthBound sc * 96)) := by
     dsimp only [EntryF]; rw [hStkSp, ← hpspcm.2.1, hRoEq]; ac_rfl
   refine call_withCL_frame_auto (x := ()) hMeta8 hclcm hpccm hrcm hal_cm hlrcm (fun _ _ _ h => not_satisfies_false_sepConj h) (fun _ _ _ _ h => not_satisfies_false_sepConj h)
@@ -687,7 +687,7 @@ theorem wp_placed_allocGroup (hMeta : AllocMetaPlacedFullStmt) : AllocGroupAtOff
     fun k hk hk1 hk0 => by have hk' : k < st.ctx.active.length := hAct1_st ▸ hk1; simpa [hAct1_st] using hActLow0 k hk hk' hk0
   have hOrph_am0 : MallocngNoOrphanMappings (dynamicRootRegions st0) (dynamicRootRegions st1) s0.mem sam.mem := fun a ha hsrc => hOrph_am a ha (by rw [hDyn0, hperm_cm0]; exact hsrc)
   have hDelta_am0 : MallocngMappedDelta 1 (allocMetaPlacedByteBound peakCount) s0.mem sam.mem := mappedDelta_perm_left hperm_cm0 hDelta_am
-  unfold MallocngCoreStInflightA
+  unfold MallocngCoreStInflightModeA
   simp only [sepConj_assoc, show ∀ (P : SepProp) (φ : Prop) (Q : SepProp), P ∗ (⌜φ⌝ ∗ Q) = ⌜φ⌝ ∗ (P ∗ Q) from fun P _ _ => by rw [← sepConj_assoc, sepConj_comm P, sepConj_assoc]]
   apply SepWP.pure_elim; intro hwf1; obtain ⟨hActL1, hUseL1, hUnmL1, hBncL1, _, _⟩ := hwf1.ctx_lens; have hscU1 : sc < st1.ctx.usageByClass.length := by omega
   have hClaim1st : totalClaimedSlots st1 = totalClaimedSlots st := by unfold totalClaimedSlots; rw [hGrp1_st]
@@ -702,7 +702,7 @@ theorem wp_placed_allocGroup (hMeta : AllocMetaPlacedFullStmt) : AllocGroupAtOff
   obtain ⟨CtxRest1, hCtxSp1, _⟩ := ctx_split_fields maddrs.ctx st1.ctx hActL1 hUseL1 hUnmL1 hBncL1
   obtain ⟨UseRest1, hUseSp1, _⟩ := words64_focus_set (maddrs.ctx + 464#64) st1.ctx.usageByClass sc hscU1
   let CoreRest1 := MallocngLiveAuth γ st1.liveMap ∗ (maddrs.lock ↦₃₂ 0#32) ∗ (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗
-    ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗ MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗ ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
+    MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr ∗ MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap ∗ ByteMap st1.masterDom (OwnedRwByte st1) st1.byteVal ∗
     ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗ MappedSet st1.masterDom (OwnedMappedByte st1)
   let CntF := (∃∗ v : BitVec 32, (tp - 0xa4#64) ↦₃₂ v) ∗ ((maddrs.libc + 3#64) ↦₈ 0#8) ∗ ((maddrs.ctx + 12#64) ↦₃₂ st1.ctx.mmapCounter) ∗
     ((maddrs.ctx + 80#64) ↦₆₄* st1.ctx.active) ∗ UseRest1 ∗ ((maddrs.ctx + 848#64) ↦ₛ st1.ctx.unmapSeq) ∗ ((maddrs.ctx + 880#64) ↦ₛ st1.ctx.bounces) ∗
@@ -720,13 +720,13 @@ theorem wp_placed_allocGroup (hMeta : AllocMetaPlacedFullStmt) : AllocGroupAtOff
   have hx26cj := (hregcj .x26 (by decide) (by decide) (by decide) (by decide) (by decide) (by decide) (by decide)).trans hx26_am
   have hwf1_cj : MallocngWFInflight (inflight + 1) maddrs.base brkStart scj.brk liveCost peakCost st1 := hpspcj.2.1.symm ▸ hwf1
   let JoinP := Saved ∗ stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗ MallocngRoTablesA maddrs ∗
-    (m ↦ₛ List.replicate 40 0#8) ∗ MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart scj.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp
+    (m ↦ₛ List.replicate 40 0#8) ∗ MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart scj.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp
   refine SepWP.weaken_pre (P' := JoinP) (Entails.of_eq (by
-      dsimp only [JoinP, CntF, CoreRest1, Saved]; unfold MallocngCoreStInflightA MallocngRuntime MallocngRoTablesA MallocngRoTablesAt; rw [pure_sepConj_of_true hwf1_cj, hCtxSp1, hUseSp1]; ac_rfl)) ?_
+      dsimp only [JoinP, CntF, CoreRest1, Saved]; unfold MallocngCoreStInflightModeA MallocngRuntime MallocngRoTablesA MallocngRoTablesAt; rw [pure_sepConj_of_true hwf1_cj, hCtxSp1, hUseSp1]; ac_rfl)) ?_
   refine wp_cnt_dispatch_mem (s0.readReg64 .x30) scj sc cnt JoinP hw768_msvc hsc hlo hhi hprod h25 hsm hc1 hpccj hrcj hx20cj hx24cj hx4cj ?_ ?_
   · intro cnt' sn hp_n hr_n hm_n hsp_n hal_n hpsp_n hv hx0_n hx20_n hx28_n hrg_n; have hperm_n : sn.mem.perm = sam.mem.perm := (congrArg Memory.perm hm_n).trans hpermcj
     have hP_eq : JoinP = (Saved ∗ stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗ MallocngRoTablesA maddrs ∗
-        (m ↦ₛ List.replicate 40 0#8) ∗ MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sn.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp) := by dsimp only [JoinP]; rw [hpsp_n.2.1]
+        (m ↦ₛ List.replicate 40 0#8) ∗ MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sn.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp) := by dsimp only [JoinP]; rw [hpsp_n.2.1]
     rw [hP_eq]; exact wp_allocGroup_nested sc req inflight cnt' hsc hReq hInflight hRec hv γ tp brkStart m liveCost peakCost peakCount st0 st1 s0 sn
       hw564 hw768 hr768 hCount1 hActL1 hAct0_1 hActLow1 hRes1 hRel1 (fun a ha hsrc => hOrph_am0 a (hperm_n ▸ ha) hsrc) (mappedDelta_perm_right hDelta_am0 hperm_n) hGrpCl1 hClaim1
       (hm_n ▸ hclcj) hp_n hr_n (hsp_n.trans (hspcj.trans hsp_am0)) (hal_n.trans (halcj.trans hal_am)) htp hbrkS
@@ -737,7 +737,7 @@ theorem wp_placed_allocGroup (hMeta : AllocMetaPlacedFullStmt) : AllocGroupAtOff
       ((hrg_n .x26 (by decide) (by decide) (by decide) (by decide) (by decide)).trans hx26cj) hx28_n
   · intro cnt' sr hp_r hr_r hm_r hsp_r hal_r hpsp_r hbump hlo_r hhi_r hgt_r hpr_r h25_r hx0_r hx6_r hx20_r _ hrg_r; have hperm_r : sr.mem.perm = sam.mem.perm := (congrArg Memory.perm hm_r).trans hpermcj
     have hP_eq : JoinP = (Saved ∗ stackFrameAt (s0.sp - 96#64) (allocSlotDepthBound sc * 96 + 224) ∗ MallocngRoTablesA maddrs ∗
-        (m ↦ₛ List.replicate 40 0#8) ∗ MallocngCoreStInflightA (inflight + 1) γ maddrs brkStart sr.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp) := by dsimp only [JoinP]; rw [hpsp_r.2.1]
+        (m ↦ₛ List.replicate 40 0#8) ∗ MallocngCoreStInflightModeA ro (inflight + 1) γ maddrs brkStart sr.brk liveCost peakCost st1 ∗ MallocngRuntime maddrs tp) := by dsimp only [JoinP]; rw [hpsp_r.2.1]
     rw [hP_eq]; exact wp_allocGroup_root sc req inflight cnt' hsc hReq hlo_r hhi_r hgt_r hpr_r h25_r
       (st1.ctx.usageByClass[sc]'hscU1) (by rw [hbump, hcntRaw]; rfl) γ tp brkStart m liveCost peakCost peakCount st0 st1 s0 sr
       hw564 hw768 hr768 hAct0_1 hActLow1 hRes1 hRel1 (fun a ha hsrc => hOrph_am0 a (hperm_r ▸ ha) hsrc) (mappedDelta_perm_right hDelta_am0 hperm_r) hGrpCl1 hUse1 hUse6

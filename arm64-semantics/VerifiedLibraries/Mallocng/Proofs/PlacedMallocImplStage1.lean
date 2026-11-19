@@ -344,7 +344,7 @@ private theorem at_bl_target_b09 [MallocngMultiPlacement] {b : BitVec 64}
     mbase j = b + off + (mbase j - b - off) := by bv_arith
 
 set_option maxHeartbeats 400000 in
-theorem mallocImpl_join_epilogue [MallocngMultiPlacement]
+theorem mallocImpl_join_epilogue [MallocngMultiPlacement] {ro : Bool}
     {γ : GhostName} {tp brkStart : BitVec 64} {bud : MallocngBudget}
     {ivs0 : List (BitVec 64 × Nat)} {req idx : Nat} {cycVal : BitVec 64}
     {st0 st1 : MallocngSt} {g : GroupDesc} {s0 s : State} {oom : State → SepProp}
@@ -378,10 +378,10 @@ theorem mallocImpl_join_epilogue [MallocngMultiPlacement]
     SepWP (mallocngBlockProg mmpl 9 msvc) (s0.readReg64 (.gpr 30#5)) s
       (MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
        MallocngRoTablesA maddrs ∗
-       MallocngCoreStInflightA 1 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st1 ∗
+       MallocngCoreStInflightModeA ro 1 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st1 ∗
        MallocngRuntime maddrs tp)
       (fun sf P_f =>
-        (P_f ⊢ mallocImplSuccessPost24 γ tp brkStart bud ivs0 req s0 sf) ∧
+        (P_f ⊢ mallocImplSuccessPost24 γ tp brkStart bud ivs0 req s0 sf ro) ∧
         sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
       oom := by
   rw [mallocngBlockProg_eq_b09]
@@ -390,7 +390,7 @@ theorem mallocImpl_join_epilogue [MallocngMultiPlacement]
   refine SepWP.mono (oom := fun _ => ⌜False⌝) (post := fun sf P_f =>
     sf.sp = s0.sp ∧ sf.brk = s.brk ∧ sf.mem.perm = s.mem.perm ∧
     MallocngProcPreserved s0 sf ∧ CalleeSavedPreserved s0 sf ∧
-    (P_f ⊢ mallocImplSuccessBody24 γ tp brkStart bud ivs0 req s0 sf)) ?_ ?_
+    (P_f ⊢ mallocImplSuccessBody24 γ tp brkStart bud ivs0 req s0 sf ro)) ?_ ?_
   · have hgw := hwf1.groups_wf g hg
     obtain ⟨hStrPos, _⟩ := group_stride_pos_and_align hgw
     obtain ⟨hTst0, hZ, hNZ⟩ := getStride_props hgw
@@ -413,8 +413,8 @@ theorem mallocImpl_join_epilogue [MallocngMultiPlacement]
       (maddrs.smallCntTab ↦ᵣ mallocngSmallCntTabBytes) ∗
       (maddrs.debruijnAlloc ↦ᵣ mallocngDebruijn32Table)
     let coreRest := MallocngLiveAuth γ st1.liveMap ∗ (maddrs.ctx ↦ₛ st1.ctx.toBytes) ∗
-      (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗ ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) ∗
-      MallocngAuxvState γ st1.auxvPtr st1.auxvSnap ∗ rwTail ∗
+      (maddrs.replaced ↦₃₂ 0#32) ∗ (maddrs.aaReplaced ↦₃₂ 0#32) ∗ MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr ∗
+      MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap ∗ rwTail ∗
       ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal ∗
       MappedSet st1.masterDom (OwnedMappedByte st1)
     let unlockFrame := MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
@@ -423,10 +423,10 @@ theorem mallocImpl_join_epilogue [MallocngMultiPlacement]
     have hRoSplit : MallocngRoTablesA maddrs = ((maddrs.sizeClasses ↦ᵣ sizeClassBytes) ∗ roTail) := rfl
     have hPreInit : (MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
         MallocngRoTablesA maddrs ∗
-        MallocngCoreStInflightA 1 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st1 ∗
+        MallocngCoreStInflightModeA ro 1 γ maddrs brkStart s.brk bud.liveCost bud.peakCost st1 ∗
         MallocngRuntime maddrs tp) = ((maddrs.lock ↦₃₂ 0#32) ∗ unlockFrame) := by
       rw [hRoSplit]
-      dsimp only [MallocngCoreStInflightA, unlockFrame, coreRest, start, slotBs, rwTail]
+      dsimp only [MallocngCoreStInflightModeA, unlockFrame, coreRest, start, slotBs, rwTail]
       rw [propext ⟨fun _ => trivial, fun _ => hwf1⟩, pure_true, emp_sepConj, hExtSlot, hExtMeta]
       generalize ((g.slotStart idx - 4#64) ↦ₛ readBytesFromMap st1.byteVal (g.slotStart idx - 4#64) g.stride) = pS,
         (g.metaPtr ↦ₛ g.metaBytes) = pM,
@@ -435,9 +435,9 @@ theorem mallocImpl_join_epilogue [MallocngMultiPlacement]
         (maddrs.lock ↦₃₂ 0#32) = pLk,
         (maddrs.replaced ↦₃₂ 0#32) = pRp,
         (maddrs.aaReplaced ↦₃₂ 0#32) = pAa,
-        ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) = pLb,
+        MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr = pLb,
         (maddrs.sizeClasses ↦ᵣ sizeClassBytes) = pSc,
-        roTail = pRo, MallocngLiveAuth γ st1.liveMap = pGm, MallocngAuxvState γ st1.auxvPtr st1.auxvSnap = pAx,
+        roTail = pRo, MallocngLiveAuth γ st1.liveMap = pGm, MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap = pAx,
         stackFrameAt (s0.sp - 80#64) 624 = pSf,
         ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal = pPn,
         MappedSet st1.masterDom (OwnedMappedByte st1) = pMp,
@@ -526,10 +526,10 @@ theorem mallocImpl_join_epilogue [MallocngMultiPlacement]
          stackFrameAt (s0.sp - 80#64) 624 ∗ roTail ∗ coreRest ∗ MallocngRuntime maddrs tp)) =
         (MallocImplSavedRegs s0 (s0.sp - 80#64) ∗ stackFrameAt (s0.sp - 80#64) 624 ∗
          MallocngRoTablesA maddrs ∗
-         MallocngCoreStInflightA 1 γ maddrs brkStart s3.brk bud.liveCost bud.peakCost st1 ∗
+         MallocngCoreStInflightModeA ro 1 γ maddrs brkStart s3.brk bud.liveCost bud.peakCost st1 ∗
          MallocngRuntime maddrs tp) := by
       rw [hRoSplit]
-      dsimp only [MallocngCoreStInflightA, coreRest, start, slotBs, rwTail]
+      dsimp only [MallocngCoreStInflightModeA, coreRest, start, slotBs, rwTail]
       rw [propext ⟨fun _ => trivial, fun _ => hwf3⟩, pure_true, emp_sepConj, hExtSlot, hExtMeta]
       generalize ((g.slotStart idx - 4#64) ↦ₛ readBytesFromMap st1.byteVal (g.slotStart idx - 4#64) g.stride) = pS,
         (g.metaPtr ↦ₛ g.metaBytes) = pM,
@@ -538,9 +538,9 @@ theorem mallocImpl_join_epilogue [MallocngMultiPlacement]
         (maddrs.lock ↦₃₂ 0#32) = pLk,
         (maddrs.replaced ↦₃₂ 0#32) = pRp,
         (maddrs.aaReplaced ↦₃₂ 0#32) = pAa,
-        ((maddrs.libc + 8#64) ↦₆₄ st1.auxvPtr) = pLb,
+        MallocngAuxvPtrCell ro maddrs.libc st1.auxvPtr = pLb,
         (maddrs.sizeClasses ↦ᵣ sizeClassBytes) = pSc,
-        roTail = pRo, MallocngLiveAuth γ st1.liveMap = pGm, MallocngAuxvState γ st1.auxvPtr st1.auxvSnap = pAx,
+        roTail = pRo, MallocngLiveAuth γ st1.liveMap = pGm, MallocngAuxvStateRo ro γ st1.auxvPtr st1.auxvSnap = pAx,
         stackFrameAt (s0.sp - 80#64) 624 = pSf,
         ProtNoneByteMap st1.masterDom (OwnedProtNoneByte st1) st1.byteVal = pPn,
         MappedSet st1.masterDom (OwnedMappedByte st1) = pMp,

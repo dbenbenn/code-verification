@@ -11,13 +11,12 @@ module
 
 public import LibsignalBinary.Heap.Fine.CreditInst
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromDefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBody -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
 import LibsignalBinary.Proofs.TripleRatchet.Wire.WireCodeSym
 import ProofLib.SepLogic.WPp
@@ -31,7 +30,7 @@ Defines the slice- and capacity-indexed decode loop envelope `SigTryFromLoopBoun
 non-vacuity witnesses for Block `85`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -112,12 +111,12 @@ structure SigTryFromCaps where
   pq : Nat
   ad : Nat
 
-def SigTryFromCaps.zero : SigTryFromCaps := ⟨0, 0, 0, 0⟩
+@[expose] def SigTryFromCaps.zero : SigTryFromCaps := ⟨0, 0, 0, 0⟩
 
-def SigTryFromCaps.get (c : SigTryFromCaps) : SigTryFromField → Nat
+@[expose] def SigTryFromCaps.get (c : SigTryFromCaps) : SigTryFromField → Nat
   | .rk => c.rk | .ct => c.ct | .pq => c.pq | .ad => c.ad
 
-def SigTryFromCaps.set (c : SigTryFromCaps) : SigTryFromField → Nat → SigTryFromCaps
+@[expose] def SigTryFromCaps.set (c : SigTryFromCaps) : SigTryFromField → Nat → SigTryFromCaps
   | .rk, v => { c with rk := v }
   | .ct, v => { c with ct := v }
   | .pq, v => { c with pq := v }
@@ -290,7 +289,7 @@ theorem fitsEnv_sigLoop_mono_rem {M : AllocCostModel} {lim : BudgetLimits} {st :
 
 /-! ### Ghost Capacity Match Invariant (`WireGhostCapsMatch`, `wireSignalMessageLoopCapsOf`) -/
 
-def optFieldCapMatch (u : Option (List (BitVec 8))) (pin : VecPin) (c : Nat) : Prop :=
+@[expose] def optFieldCapMatch (u : Option (List (BitVec 8))) (pin : VecPin) (c : Nat) : Prop :=
   c < 2 ^ 63 ∧
   match u with
   | none => c = 0
@@ -332,7 +331,7 @@ structure WireGhostCapsMatch (g : WireSignalMessageGhost) (m : ProtoSignalMessag
   pq : optFieldCapMatch m.pqRatchet g.pq caps.pq
   ad : optFieldCapMatch m.addresses g.addr caps.ad
 
-def wireSignalMessageLoopCapsOf (A : RustAlloc) (a : BitVec 64) (n : Nat)
+@[expose] def wireSignalMessageLoopCapsOf (A : RustAlloc) (a : BitVec 64) (n : Nat)
     (caps : SigTryFromCaps) (m : ProtoSignalMessage) : SepProp :=
   ∃∗ g : WireSignalMessageGhost,
     ⌜WireGhostCapOk g n ∧ WireGhostCapsMatch g m caps⌝ ∗ wireSignalMessageAt A g a m
@@ -497,7 +496,7 @@ structure TryFromDepsPlaced [LibsignalPlacement] {M : AllocCostModel}
   dropSpe : DropSpeOkWPlaced A lim H
 
 /-- Total-correctness panic postcondition (`False`) for `FitsEnv`-guarded `SepWPp` proofs. -/
-def noPanicQp (_s0 : State) : State → SepProp → Prop :=
+@[expose] def noPanicQp (_s0 : State) : State → SepProp → Prop :=
   fun _ _ => False
 
 theorem sepWPp_to_tryFromQp {prog : Program} {ret : BitVec 64} {s0 s : State}
@@ -598,7 +597,7 @@ theorem sepWPp_call_noPanic_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Budget-threaded `loopExitPostPlaced` and shared error tails (Block `85`) -/
 
-def loopExitPostPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def loopExitPostPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ)
     (rem : Nat) (caps : SigTryFromCaps)
     (s0 : State) (sp' x19 x20 x21 x23 ptr : BitVec 64) (bs : List (BitVec 8))

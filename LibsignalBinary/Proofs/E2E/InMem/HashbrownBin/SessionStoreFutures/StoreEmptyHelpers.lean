@@ -9,10 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.Common
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
+public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # `InMemSessionStore::store_session::{closure#0}` (`0x08ee4`) on an Empty Table
@@ -20,7 +22,7 @@ import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCo
 Proves `storeSessionEmpty_ok'` against `storeSessionEmptySpec A`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.InMem.HashbrownBin.SessionStoreFutures
 
@@ -47,18 +49,6 @@ set_option linter.unusedVariables false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff CanonSession
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-
-theorem emptyTableAt_eq (base mp k0 k1 : BitVec 64) :
-    emptyTableAt base mp k0 k1 =
-      (mp ↦₆₄ (base + BitVec.ofNat 64 emptyCtrlGroupOff)) ∗
-      ((mp + 8#64) ↦₆₄ 0#64) ∗
-      ((mp + 16#64) ↦₆₄ 0#64) ∗
-      ((mp + 24#64) ↦₆₄ 0#64) ∗
-      ((mp + 32#64) ↦₆₄ k0) ∗
-      ((mp + 40#64) ↦₆₄ k1) := by
-  have hadd : mp + 32#64 + 8#64 = mp + 40#64 := by bv_omega
-  dsimp only [emptyTableAt]
-  rw [hadd]
 
 theorem table4EmptyAt_eq (A : RustAlloc) (stride : Nat) (mp k0 k1 : BitVec 64) :
     table4EmptyAt A stride mp k0 k1 =
@@ -101,7 +91,7 @@ theorem loadGroupAt_emptyCtrl4 (k : Nat) (hk : k < 4) :
   rcases (by omega : k = 0 ∨ k = 1 ∨ k = 2 ∨ k = 3) with rfl | rfl | rfl | rfl <;>
     decide +kernel
 
-def emptyCtrl4RestAt (ctrl : BitVec 64) (k : Nat) : SepProp :=
+@[expose] def emptyCtrl4RestAt (ctrl : BitVec 64) (k : Nat) : SepProp :=
   (ctrl ↦ₛ emptyCtrl4.take k) ∗
   ((ctrl + BitVec.ofNat 64 (k + 1)) ↦ₛ (emptyCtrl4.drop (k + 1)).take 7) ∗
   ((ctrl + BitVec.ofNat 64 (k + 9)) ↦ₛ emptyCtrl4.drop (k + 9))

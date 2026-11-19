@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M1Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RetPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Parse-Failure Composition for `main` (Block `617`)
@@ -23,7 +25,7 @@ Composes the relocatable contracts for `main_m1`, `main_m2`, and `main_ret` on i
 `parseArgs` returns `none`, yielding `exit 2` with unchanged files and trace.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -148,23 +150,5 @@ theorem main_parseFail_placed_of_hops [LibsignalPlacement] {CodeOk : Memory → 
       hm2 (p0 := p0) hc hstk hstk64 hok hne hps hs1 hpanic
         (fun s' code hs' ⟨hcode, _, htr, hfs⟩ => hexit s' code hs' ⟨hcode, htr, hfs⟩)
         (fun _ _ _ hparse _ => (nomatch hfail.symm.trans hparse)))
-
-theorem main_parseFail_placed_proof [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
-    {H : LibsignalHooks} {A : RustAlloc}
-    {uuidParse : UuidParser} {i : Inputs} {s0 : State} {stk hookStack resStack : Nat}
-    {Statics : SepProp} {Qp : State → SepProp → Prop}
-    (hc : MainCalleesBlk617 A H uuidParse hookStack resStack)
-    (hstk : mainFrameSize + max (max extHookStack hookStack) resStack ≤ stk)
-    (hstk64 : stk ≤ 2 ^ 63)
-    (hs0 : AtEntryPlaced CodeOk i s0) (hok : CliInputsOk i)
-    (hfail : parseArgs uuidParse (i.argv.map bytesOfString) = none)
-    (hpanic : ∀ sf Pf, allocFailedIn s0 sf → Qp sf Pf) :
-    ProofLib.SepWPp (mProgPlaced H) (s0.readReg64 .lr) s0 (mainFrame A stk Statics i s0)
-      (fun sf Pf => sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧
-        (sf.readReg64 .x0).setWidth 32 = BitVec.ofNat 32 2 ∧ sf.trace = s0.trace ∧
-        sf.fs = s0.fs ∧ (Pf ⊢ stackAt s0.sp stk ∗ A.pool ∗ anyHeap))
-      Qp (mainOom s0) :=
-  main_parseFail_placed_of_hops (fun hc => main_m1_placed_proof hc) (fun hc => main_m2_placed_proof hc)
-    (fun hstk_ret hs => main_ret_placed_proof hstk_ret hs) hc hstk hstk64 hs0 hok hfail hpanic
 
 end CryptoVerification.SignalSession.Cli.MainHops

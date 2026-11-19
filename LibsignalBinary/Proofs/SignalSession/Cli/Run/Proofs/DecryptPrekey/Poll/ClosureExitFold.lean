@@ -9,11 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.StageP3Stmt -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureDefs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureEntry -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Poll Stage P2/P3/P4 Spatial Folding and Account-Distinctness Helpers
@@ -23,7 +26,7 @@ version-mismatch exits, and Stage P4 exits back into `dpFutDoneAt` and `memRegio
 together with `distinctSid_of_decPkOk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -67,7 +70,7 @@ attribute [-arm64_norm]
 
 /-- Coroutine sub-regions outside Stage P1 that remain untouched after Stage P2 splits
 `memRegion (fut + 0x280#64) 64` and `memRegion (fut + 0x468#64) 40`. -/
-def coroPostP2UnusedAt (fut : BitVec 64) : SepProp :=
+@[expose] def coroPostP2UnusedAt (fut : BitVec 64) : SepProp :=
   memRegion (fut + 0x2c1#64) 7 ∗
   memRegion (fut + 0x391#64) 7 ∗
   memRegion (fut + 0x3a8#64) 128 ∗
@@ -178,14 +181,14 @@ theorem words3_entails_memRegion24 (a w0 w1 w2 : BitVec 64) :
 
 /-- Untouched gap bytes inside `[sp + 0x08.. sp + 0x98)` (`[+0x20..0x24)`, `[+0x58..0x5c)`,
 `[+0x78..0x7c)`). -/
-def spLowGapsAt (sp : BitVec 64) : SepProp :=
+@[expose] def spLowGapsAt (sp : BitVec 64) : SepProp :=
   memRegion (sp + 0x20#64) 4 ∗
   memRegion (sp + 0x58#64) 4 ∗
   memRegion (sp + 0x78#64) 4
 
 /-- Untouched gap regions inside `[sp + 0x550.. sp + 0xc70)` around `[+0x930..0x990)` and
 `[+0xa90..0xbe8)`. -/
-def spHighGapsAt (sp : BitVec 64) : SepProp :=
+@[expose] def spHighGapsAt (sp : BitVec 64) : SepProp :=
   memRegion (sp + 0x550#64) 992 ∗
   memRegion (sp + 0x990#64) 256 ∗
   memRegion (sp + 0xbe8#64) 136
@@ -320,7 +323,7 @@ theorem genP3S5SpillRem_fold (sp : BitVec 64) (v80 v88 v90 : BitVec 64) :
 /-! ## 3. Universal Stack Frame (`memRegion sp 3280`) Splits & Exit Folding -/
 
 /-- Untouched gap sub-regions inside `[sp + 0x234.. sp + 0x3e0)` (`428` bytes). -/
-def spMidGapsAt (sp : BitVec 64) : SepProp :=
+@[expose] def spMidGapsAt (sp : BitVec 64) : SepProp :=
   memRegion (sp + 0x234#64) 28 ∗
   memRegion (sp + 0x264#64) 12 ∗
   memRegion (sp + 0x2a0#64) 16 ∗

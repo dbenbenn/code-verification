@@ -9,8 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Specifications.LibsignalSessionRepr
+import LibsignalBinary.Specifications.LibsignalTripleRatchet
+import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
+import LibsignalBinary.Specifications.RustHeap.Alloc
+import LibsignalBinary.Specifications.RustHeap.Vec
 
 /-!
 # Proof of `parseArgs_none_of_shape`
@@ -18,7 +25,7 @@ import all Init.Data.String.Defs
 Proves that any ASCII `argv` with `ArgvShapeOk argv = false` maps to `none` under `parseArgs`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

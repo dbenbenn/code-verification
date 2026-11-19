@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead
-public import Computational.Proofs.SignalPqxdh.Security.SigHopA
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHopA -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C2
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # Multi-Key `INT-CTXT` Reduction Query Bounds
@@ -21,7 +22,7 @@ Proves encryption, forgery, and primitive-oracle query bounds (`MuBounded`) for
 `aeadMuIntReductionAuth`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -34,7 +35,7 @@ open _root_.Proofs.SignalPqxdh.Security
 open _root_.Proofs.SignalPqxdh.Security.FgGapDh
 
 /-- Encryption, forgery and primitive query bounds of an `AeadMuIntSimSpec` computation. -/
-def MuBounded {α : Type} (mx : OracleComp AeadMuIntSimSpec α) (E D P : Nat) : Prop :=
+@[expose] def MuBounded {α : Type} (mx : OracleComp AeadMuIntSimSpec α) (E D P : Nat) : Prop :=
   IsQueryBoundP mx isMuEncQuery E ∧
   IsQueryBoundP mx isMuForgeQuery D ∧
   IsQueryBoundP mx (fun q => isPrimQuery q = true) P

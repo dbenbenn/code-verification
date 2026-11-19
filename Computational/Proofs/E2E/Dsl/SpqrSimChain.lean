@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables
-public import Computational.Proofs.E2E.Dsl.TablesHonest
-public import Computational.Proofs.E2E.Dsl.ClampsLossless
-public import Computational.Proofs.SpqrV1Sync.TopStateTight
+public import Computational.Proofs.SpecLemmas.Reductions.E2E.CompositionCostedTables -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.TablesHonest -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.ClampsLossless
+public import Computational.Proofs.SpqrV1Sync.TopStateTight -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
 import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
@@ -27,7 +27,7 @@ and chain round-trip bridges, bounded list combinators (`listDropExpr`, `listGet
 `listSetExpr`), and `ReductionDsl` programs for chain resolution, `addEpoch`, and `Chain.sendKey`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -66,14 +66,14 @@ open CryptoVerification.SpqrV1Sync.SendTotal (BOkTight RecvSmallTight TopWitness
 
 /-! ## SPQR primitive wrappers -/
 
-def spqrNegotiateInitC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrNegotiateInitC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (a : Expr (e2eOps ℓ P C K decT encT) Γ (.prod U8 (.prod U32 (B 32)))) :
     Comp (e2eOps ℓ P C K decT encT) I Γ (.prod .bool (.opt (.opt (B 32)))) :=
   .ret (e2eCryptoOp .spqrNegotiateInit a)
 
-def spqrBraidSendC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrBraidSendC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (a : Expr (e2eOps ℓ P C K decT encT) Γ (.prod (B 32) BV512)) :
@@ -81,7 +81,7 @@ def spqrBraidSendC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Cry
       (.prod .bool (.opt (.prod (B 32) (.prod U64 (.prod (.opt (.prod U64 BV256)) (B 64)))))) :=
   .ret (e2eCryptoOp .spqrBraidSend a)
 
-def spqrBraidRecvC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrBraidRecvC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (a : Expr (e2eOps ℓ P C K decT encT) Γ (.prod (B 32) (.prod U64 (B 32)))) :
@@ -89,21 +89,21 @@ def spqrBraidRecvC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Cry
       (.prod .bool (.prod .bool (.opt (.prod (.opt (.prod U64 BV256)) (B 32))))) :=
   .ret (e2eCryptoOp .spqrBraidRecv a)
 
-def spqrChainFromVnC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrChainFromVnC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (a : Expr (e2eOps ℓ P C K decT encT) Γ spqrVnT) :
     Comp (e2eOps ℓ P C K decT encT) I Γ (.opt spqrChainT) :=
   .ret (e2eCryptoOp .spqrChainFromVn a)
 
-def spqrChainAddEpochC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrChainAddEpochC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (a : Expr (e2eOps ℓ P C K decT encT) Γ (.prod spqrChainT (.prod U64 BV256))) :
     Comp (e2eOps ℓ P C K decT encT) I Γ (.prod .bool (.opt spqrChainT)) :=
   .ret (e2eCryptoOp .spqrChainAddEpoch a)
 
-def spqrChainNextKeyC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrChainNextKeyC {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (a : Expr (e2eOps ℓ P C K decT encT) Γ (.prod (B 32) U32)) :
@@ -693,7 +693,7 @@ private theorem foldr_set_aux {α : Type} (idx : ℕ) (val : α) :
         simp [heq, hle, hle']
 
 /-- Computes `l.drop n` in `Expr` on lists of length at most `K`. -/
-def listDropExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def listDropExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
     {t : Ty (e2eSig ℓ)} (K : ℕ) (n : Expr O Γ .nat) (l : Expr O Γ (.list t)) :
     Expr O Γ (.list t) :=
   .letE (.pair n l)
@@ -727,7 +727,7 @@ theorem eval_listDropExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2e
   rw [hcongr, h]
 
 /-- Computes `l[idx]?` in `Expr` on lists of length at most `K`. -/
-def listGetExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def listGetExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
     {t : Ty (e2eSig ℓ)} (K : ℕ) (idx : Expr O Γ .nat) (l : Expr O Γ (.list t)) :
     Expr O Γ (.opt t) :=
   .letE (.pair idx l)
@@ -759,7 +759,7 @@ theorem eval_listGetExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eS
   rw [hcongr, h]
 
 /-- Computes `l.set idx val` in `Expr` on lists of length at most `K`. -/
-def listSetExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
+@[expose] def listSetExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
     {t : Ty (e2eSig ℓ)} (K : ℕ) (idx : Expr O Γ .nat) (val : Expr O Γ t)
     (l : Expr O Γ (.list t)) : Expr O Γ (.list t) :=
   .letE (.pair idx (.pair val l))
@@ -794,7 +794,7 @@ theorem eval_listSetExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eS
 
 /-! ## Chain resolution, `addEpoch`, and `Chain.sendKey` -/
 
-def spqrEpochIdxExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrEpochIdxExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))}
     (curEp : Expr (e2eOps ℓ P C K decT encT) Γ U64)
@@ -831,7 +831,7 @@ theorem eval_spqrEpochIdxExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitive
     · have hge : (ch.currentEpoch - epoch.eval ρ).toNat ≥ ch.links.length := by omega
       simp only [hlt, decide_false, Bool.false_eq_true, ↓reduceIte, hge, Except.toOption]
 
-def spqrResolveChainComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrResolveChainComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (vn? : Expr (e2eOps ℓ P C K decT encT) Γ (.opt spqrVnT))
@@ -871,7 +871,7 @@ theorem eval_spqrResolveChainComp_topStateTightW {ℓ : ℕ} {Pt : Type}
       simp [vnOf, hw.hauth]
     rw [hrt, hcf]
 
-def spqrAddEpochOptComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrAddEpochOptComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (ch : Expr (e2eOps ℓ P C K decT encT) Γ spqrChainT)
@@ -928,11 +928,11 @@ theorem eval_spqrAddEpochOptComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primit
     cases es
     cases chE.addEpoch (spqrHkdfWith C.F) _ <;> rfl
 
-def clearLinkSendNext {ℓ : ℕ} (lk : (spqrEpochLinkT (ℓ := ℓ)).denote) :
+@[expose] def clearLinkSendNext {ℓ : ℕ} (lk : (spqrEpochLinkT (ℓ := ℓ)).denote) :
     (spqrEpochLinkT (ℓ := ℓ)).denote :=
   (lk.1.map (fun s => (s.1, ([], s.2.2))), lk.2)
 
-def clearLinkSendNextExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
+@[expose] def clearLinkSendNextExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
     {C : Crypto} {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))}
     (lk : Expr (e2eOps ℓ P C K decT encT) Γ spqrEpochLinkT) :
@@ -953,7 +953,7 @@ theorem eval_clearLinkSendNextExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Prim
   cases s? <;> simp [clearLinkSendNextExpr, clearLinkSendNext, h, Expr.eval, eval_e2ePureOp,
     E2EPureOp.eval, Expr.v0, Env.get]
 
-def clearSendPrefixV {ℓ : ℕ} :
+@[expose] def clearSendPrefixV {ℓ : ℕ} :
     ℕ → List (spqrEpochLinkT (ℓ := ℓ)).denote → List (spqrEpochLinkT (ℓ := ℓ)).denote
   | 0, xs => xs
   | _ + 1, [] => []
@@ -980,7 +980,7 @@ private theorem foldr_clearSendPrefix_aux {ℓ : ℕ} (n : ℕ) :
       have hn0' : n - (off + 1) = 0 := by omega
       simp [hlt, hn0, hn0', clearSendPrefixV]
 
-def linksClearSendPrefixExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
+@[expose] def linksClearSendPrefixExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives}
     {C : Crypto} {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {Γ : List (Ty (e2eSig ℓ))}
     (n : Expr (e2eOps ℓ P C K decT encT) Γ .nat)
@@ -1037,7 +1037,7 @@ theorem eval_linksClearSendPrefixExpr {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.P
   rw [hcongr, h]
 
 /-- Simulates `Chain.sendKey` on `(ch, epoch)` in `ReductionDsl`. -/
-def spqrChainSendKeyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
+@[expose] def spqrChainSendKeyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primitives} {C : Crypto}
     {K : MlKem} {decT : PublicKey → Option Pt} {encT : Pt → PublicKey}
     {ι : Type} {T : OracleSpec ι} (I : Iface (e2eSig ℓ) T) {Γ : List (Ty (e2eSig ℓ))}
     (ch : Expr (e2eOps ℓ P C K decT encT) Γ spqrChainT)
@@ -1428,15 +1428,6 @@ theorem eval_spqrChainSendKeyComp {ℓ : ℕ} {Pt : Type} {P : SignalPqxdh.Primi
           · exact hpar_eq.trans (congrArg (fun p => some (spqrParamsToV p)) hpar1.symm)
 
 /-! ## Cost bounds -/
-
-theorem cost_listDropExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
-    {t : Ty (e2eSig ℓ)} (K : ℕ) (n : Expr O Γ .nat) (l : Expr O Γ (.list t)) :
-    (listDropExpr K n l).cost ≤ n.cost + l.cost + 24 * K + bits K + 15 := by
-  have hb1 : bits 1 = 1 := by decide
-  have hm : max 4 2 = 4 := rfl
-  simp only [listDropExpr, Expr.cost, Expr.v0, Expr.v1, Expr.v2, Expr.v3, hb1,
-    Nat.reduceAdd, hm]
-  omega
 
 theorem cost_listGetExpr {ℓ : ℕ} {O : Ops (e2eSig ℓ)} {Γ : List (Ty (e2eSig ℓ))}
     {t : Ty (e2eSig ℓ)} (K : ℕ) (idx : Expr O Γ .nat) (l : Expr O Γ (.list t)) :

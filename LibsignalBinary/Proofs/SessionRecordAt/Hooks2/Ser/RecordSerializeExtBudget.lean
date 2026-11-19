@@ -9,14 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExt
-public import LibsignalBinary.Proofs.E2E.Bin.RecordBudget
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsXBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.CommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.RecordSerializeExt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Bin.RecordBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
 import LibsignalBinary.Proofs.SessionRecordAt.TripleRatchet.HooksX
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DefsBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Bridge from `serializeSpecX` to `recordSerializeSpecX` (Block `52`)
@@ -26,7 +29,7 @@ Bridges the budget-threaded `SessionRecord::serialize` body contract (`serialize
 `recordSerializeSpecX M A lim` (`Env := SerializeEnvX`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -123,27 +126,11 @@ theorem serializeCanonX_of_serialize_placedX {pl : Obj.MultiPlacement}
       rw [henc]
     rwa [hpost_eq] at hq
 
-theorem serializeCanonX_placed_ok_of_serializeX [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (h : SerializePlacedOkX M A lim H) :
-    SerializeCanonPlacedOkX M A lim H :=
-  serializeCanonX_of_serialize_placedX h
-
-theorem serializeCanonX_placed_cl_of_serializeX [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    {callerProg : Program} {callerBlk : Nat} [IsLsBlockProg callerProg callerBlk H]
-    (h : subroutine_ok (lsProg_52 H) (blkPl_52).base
-      (withLsCodeLoaded lsmpl (serializeSpecX M A lim))) :
-    subroutine_ok callerProg (lsmpl.base 52)
-      (withLsCl lsmpl (serializeCanonSpecX M A lim)) :=
-  ls_subroutine_ok_cl_of_callee (callerProg := callerProg)
-    (serializeCanonX_of_serialize_placedX h)
-
 /-! ## Parametric-envelope and canonical-envelope `recordSerialize` contracts -/
 
 /-- Parametric-envelope budget-threaded `SessionRecord::serialize` contract (`onPanic = ⌜False⌝`,
 `onOom = ⌜False⌝`). -/
-def recordSerializeEnvSpecX
+@[expose] def recordSerializeEnvSpecX
     (Env : RecordGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (RecordSerializeGhost × M.σ) where
@@ -160,12 +147,6 @@ def recordSerializeEnvSpecX
 abbrev recordSerializeSpecX (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (RecordSerializeGhost × M.σ) :=
   recordSerializeEnvSpecX SerializeEnvX M A lim
-
-theorem recordSerializeSpecX_eq_recordBudget (M : AllocCostModel)
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) :
-    recordSerializeSpecX M A lim =
-      LibsignalBinary.Proofs.E2E.Bin.RecordBudget.recordSerializeSpec M A lim :=
-  rfl
 
 /-- Relocatable `withLsCodeLoaded` bridge from `serializeSpecX M A lim` to
 `recordSerializeEnvSpecX Env M A lim` for any envelope `Env` containing `SerializeEnvX`. -/

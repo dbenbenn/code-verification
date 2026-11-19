@@ -11,9 +11,9 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.DecryptPrekeySlotPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathB
@@ -24,6 +24,14 @@ import LibsignalBinary.Proofs.E2E.RecordX.LengthP
 import LibsignalBinary.Proofs.E2E.V1.ReachSteps
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathAP4Cont
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathA
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTracePlaced
 
 /-!
 # Budget-Threaded Placed CLI Poll Overwrite-Path (`Path C`) Stage P4 Spatial Bridges
@@ -33,7 +41,7 @@ Extends `PollOverP4SpatialPlaced` to `RustCliAllocBudget M`, proving budget-thre
 `stageP3MidPathC_entails_p4_placed`, and `stageP4PathCExit_entails_exit_placed`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -111,7 +119,7 @@ abbrev overStackAt_poll_exit_join :=
 
 /-- Budget-threaded `overGenP3Pre_placed` over `A.atState lim st_b s` (`A.repAlloc` +
 `A.pool lim st_b s`). -/
-def overGenP3Pre_placed {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def overGenP3Pre_placed {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st_b : M.σ) [LibsignalPlacement] (sp fp coroPtr ctxPtr
     remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64) (msgVer : BitVec 32)
     (rest : List (BitVec 8)) (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
@@ -122,7 +130,7 @@ def overGenP3Pre_placed {M : AllocCostModel} (A : RustCliAllocBudget M)
     msgVer rest recG st rem loc msgG msg s
 
 /-- Budget-threaded `overStageP3ErrPostPrevEmpty_placed` over `A.atState lim st_b s`. -/
-def overStageP3ErrPostPrevEmpty_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def overStageP3ErrPostPrevEmpty_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s : State)
     (coroPtr outPtr : BitVec 64) (e : SignalProtocolError) : SepProp :=
   CryptoVerification.SignalSession.Cli.RunProofs.Poll.overStageP3ErrPostPrevEmpty_placed
@@ -130,7 +138,7 @@ def overStageP3ErrPostPrevEmpty_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded `overPathAP4RemAtPlaced` parameterized by `A_r : RustAlloc` (`A.repAlloc` /
 `A.atState lim st_b s`, independent of `.pool`) and `DpPollGhostStateBudget`. -/
-def overPathAP4RemAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def overPathAP4RemAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {DecPkEnv : DecPkGhost → List AllocEvent → Prop}
     (A_r : RustAlloc) (B : RunBudgets) {S : RunSem}

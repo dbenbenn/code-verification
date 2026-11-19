@@ -1945,10 +1945,7 @@ mod tests {
     }
 
     #[test]
-    fn page_separate_data_config_parses_defaults_false_and_selects_layout() {
-        use crate::untrusted_driver::pipeline::generate_config_with;
-        use crate::untrusted_legacy_linker::{self, DataLayout};
-
+    fn page_separate_data_config_parses_and_defaults_false() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
         fs::write(
@@ -1971,7 +1968,6 @@ mod tests {
                      code_file = \"Generated/LayoutSampleCode.lean\"\n\
                      namespace_prefix = \"LayoutSample\"\n\
                      title = \"Layout sample\"\n\
-                     legacy_linked_image = true\n\
                      c_sources = [\"sample.c\"]\n\
                      {extra}\
                      [[externs]]\n\
@@ -2009,60 +2005,6 @@ mod tests {
             msg.contains("invalid type") || msg.contains("page_separate_data"),
             "unexpected error for non-bool `page_separate_data`: {msg}"
         );
-
-        // 2. End-to-end export check when zig is available: default vs explicit false vs true.
-        if find_zig_binary("test").is_err() {
-            eprintln!("skipping end-to-end C page_separate_data test: zig not available");
-            return;
-        }
-        let mut tc = Toolchain::new(root.to_path_buf()).unwrap();
-        let ex = extract(&cfg_default, &mut tc).unwrap();
-        let li_interleaved = untrusted_legacy_linker::link_with_layout(
-            &ex.objects,
-            &ex.externs,
-            0,
-            DataLayout::Interleaved,
-        )
-        .unwrap();
-        let li_separated = untrusted_legacy_linker::link_with_layout(
-            &ex.objects,
-            &ex.externs,
-            0,
-            DataLayout::PageSeparated,
-        )
-        .unwrap();
-        assert_ne!(li_interleaved.got_off, li_separated.got_off);
-
-        let files_def = generate_config_with(&cfg_default, &mut tc, false).unwrap();
-        let files_false = generate_config_with(&cfg_false, &mut tc, false).unwrap();
-        let files_true = generate_config_with(&cfg_true, &mut tc, false).unwrap();
-
-        let find_bytes = |files: &[crate::untrusted_driver::pipeline::GeneratedFile], sfx: &str| {
-            files
-                .iter()
-                .find(|f| f.path.to_string_lossy().ends_with(sfx))
-                .unwrap()
-                .contents
-                .clone()
-        };
-        assert_eq!(
-            find_bytes(&files_def, ".code.bin"),
-            li_interleaved.code
-        );
-        assert_eq!(
-            find_bytes(&files_def, ".data.bin"),
-            li_interleaved.data
-        );
-        assert_eq!(
-            find_bytes(&files_false, ".code.bin"),
-            find_bytes(&files_def, ".code.bin")
-        );
-        assert_eq!(
-            find_bytes(&files_false, ".data.bin"),
-            find_bytes(&files_def, ".data.bin")
-        );
-        assert_eq!(find_bytes(&files_true, ".code.bin"), li_separated.code);
-        assert_eq!(find_bytes(&files_true, ".data.bin"), li_separated.data);
     }
 
     #[test]

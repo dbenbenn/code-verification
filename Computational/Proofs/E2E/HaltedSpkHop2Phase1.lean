@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.HaltedSpkHop2Core
-public import Computational.Proofs.E2E.SpkHop1Phases01A
+public import Computational.Proofs.E2E.HaltedSpkHop2Core -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkHop1Phases01A -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 
 /-!
@@ -20,7 +20,7 @@ Lifts Phase 1 of the Hop-2 `k → k + 1` hybrid step onto `runHop2Track`, coupli
 `hop2HybPrg (k + 1)` across shared `KemFailSessionTrack` state under `Hop2TrackPhase2Bound`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

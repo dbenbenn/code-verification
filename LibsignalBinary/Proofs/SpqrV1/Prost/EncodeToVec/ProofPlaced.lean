@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateHeaderPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateHeaderPlaced -- proof-setup: allow-public-import
 import all Init.Data.Nat.Bitwise.Basic
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.EncodedLenCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.AllocReservePhasePlaced
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridgesPlaced
@@ -30,6 +30,9 @@ import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.LeavesUnchunked82_93
 import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire -- shake: keep
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
 
 /-!
 # Relocatable `[LibsignalPlacement]` Phase 2d & Master Composition for `PqRatchetState::encode_to_vec` (`Block 426`)
@@ -39,7 +42,7 @@ and the 4 `V1StateChunked1Placed` variant bridges, and composes Phases 1–2d in
 `pqRatchetStateEncodeToVec_gen_placed_ok` and `.rodata`-explicit / `LibsignalRoLoaded` `subroutine_ok` wrappers.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.EncodeToVec
 
@@ -61,7 +64,7 @@ set_option autoImplicit false
 set_option linter.unusedVariables false
 set_option linter.unusedSimpArgs false
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Obj.lookup
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   EncodedLen.zeroExtend64_beq_zero32
   EncodedLen.ofNat_countLeadingZeros_64 EncodedLen.ofNat_countLeadingZeros_32
@@ -87,7 +90,7 @@ macro "step_etv_jump16_to_placed " off:num s1:term:max idx:term:max hx8:term:max
 
 /-- Unified stepping obligation from `(blkPl_426).base + 1880#64` (jump-table dispatch)
 to `(blkPl_426).base + 1808#64` (epilogue) for a `V1State.InnerState` value `is`. -/
-def StepInnerStateAt1880Placed [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
+@[expose] def StepInnerStateAt1880Placed [LibsignalPlacement] (resStack : Nat) (A : RustAlloc)
     (H : String → Option (State → State)) (s0 : State) (is : V1State.InnerState) : Prop :=
   ∀ (a sp cap ptr : BitVec 64) (g : V1StatePBGhost) (bs : List (BitVec 8)),
     v1StatePBEncodedLen ⟨some is⟩ < 2 ^ 64 →
@@ -470,7 +473,7 @@ theorem step_encodeToVec_phase2d_placed [LibsignalPlacement] {resStack : Nat} (h
 /-! ## Master End-to-End Composition (`Block 426`) -/
 
 /-- `.rodata`-explicit pinned `Spec` of `PqRatchetState::encode_to_vec` (`Block 426`) under `[LibsignalPlacement]`. -/
-def pqRatchetStateEncodeToVecRoPinnedPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
+@[expose] def pqRatchetStateEncodeToVecRoPinnedPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
     (A : RustAlloc) : Spec PqRatchetStateEncodeToVecPinnedGhost where
   pre x s0 :=
     ⌜s0.readReg64 .x0 = x.sret ∧
@@ -493,7 +496,7 @@ def pqRatchetStateEncodeToVecRoPinnedPlacedSpecOf [LibsignalPlacement] (resStack
   onPanic _ s0 sf := encodeToVecOnPanic s0 sf
 
 /-- `.rodata`-explicit existential `Spec` of `PqRatchetState::encode_to_vec` (`Block 426`) under `[LibsignalPlacement]`. -/
-def pqRatchetStateEncodeToVecRoPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
+@[expose] def pqRatchetStateEncodeToVecRoPlacedSpecOf [LibsignalPlacement] (resStack : Nat)
     (A : RustAlloc) : Spec PqRatchetStateEncodeToVecGhost where
   pre x s0 :=
     ⌜s0.readReg64 .x0 = x.sret ∧

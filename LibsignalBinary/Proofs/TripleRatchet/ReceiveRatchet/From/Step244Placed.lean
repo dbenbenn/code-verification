@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step10c
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Decode
-public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step10c -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Decode -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.HmacProofs.HmacCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Step244
 import ProofLib.SepLogic.WP.Apply
@@ -26,7 +26,7 @@ Per-block verification of the identity-key extraction and result-assembly segmen
 of `<TripleRatchet>::from_session_state` (block 57) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -116,7 +116,7 @@ theorem SepWP.call_dropSpe_placed [LibsignalPlacement] {prog : Program}
     rw [satisfies_pure_sepConj] at hoom_mem
     exact False.elim hoom_mem.1
 
-def pkTryFromOkPlacedSpec_from [LibsignalPlacement] :
+@[expose] def pkTryFromOkPlacedSpec_from [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64 × BitVec 64 × BitVec 64) where
   pre := fun (p, bs, pk, out, out33, out34) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧ s.readReg64 .x8 = out ∧
@@ -1029,7 +1029,7 @@ theorem trFrom_step_10c_to_244_placed [LibsignalPlacement]
       (by simp only [arm64_norm, *])
       (by simp only [arm64_norm, *]))
 
-def trFromRawPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec TrFromGhost where
+@[expose] def trFromRawPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec TrFromGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ss ∧ (s.readReg64 .x1).setWidth 32 = 0#32 ∧
       s.readReg64 .x8 = x.ret⌝ ∗
@@ -1041,7 +1041,7 @@ def trFromRawPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec TrFromGhost 
       trResultAt A x.ret x.G x.model.1 ∗ (lsLogFilterAddr ↦₆₄ 0#64) ∗
       stackAt s0.sp trFromStack ∗ A.pool
 
-def trFromPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec TrFromGhost :=
+@[expose] def trFromPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec TrFromGhost :=
   withLsCodeLoaded lsmpl (withLsRoLoaded lsmpl (trFromRawPlacedSpec A))
 
 theorem trFrom_step_244_to_ret_placed [LibsignalPlacement]

@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 public import LibsignalBinary.Specifications.LibsignalPublicApi
 import ProofLib.GenDecodes
+public import ProofLib.ProgramReflection.SortedFresh
 
 /-!
 # Instruction Decode and Fetch Lemmas for `segPreKey_ok`
@@ -20,18 +20,13 @@ Kernel-checked decode lemmas and fetch tactics across the `segPreKey` code range
 `+0x680..+0x730`, `+0x78c..+0x7ec`, and `+0x880..+0xa70`) of `session_message_encrypt_with_stores`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegPreKey
 
 open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalPublicApi
-
-set_option maxRecDepth 200000 in
-theorem libsignalSessionCode_fnOff_0x3cbd8 :
-    libsignalSessionCode.fnOff encryptWithStoresName = 248792 := by
-  exact CryptoVerification.libsignalSessionCode_fnOff_0x3cbd8
 
 open Lean Elab Tactic in
 elab "messageEncryptPreKey_code_fetches_from " codeId:ident decPrefix:ident b:term:max H:term:max hfn:ident
@@ -53,37 +48,5 @@ elab "messageEncryptPreKey_code_fetches_from " codeId:ident decPrefix:ident b:te
     else
       evalTactic (← `(tactic|
         have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
-macro "messageEncryptPreKey_fetches " b:term:max H:term:max hfn:ident k0:num len:num : tactic =>
-  `(tactic| messageEncryptPreKey_code_fetches_from CryptoVerification.libsignalSessionCode messageEncryptPreKeyBin $b $H
-    $hfn 0x3cbd8 $k0 $len)
-
-/-! ## Unacknowledged Items Check (`+0x344..+0x390`) -/
-
-gen_decodes libsignalSessionCode_tree messageEncryptPreKeyBin [0x3cf1c → 0x3cf64]
-
-/-! ## Staleness Check (`+0x680..+0x730`) -/
-
-gen_decodes libsignalSessionCode_tree messageEncryptPreKeyBin [0x3d258 → 0x3d304]
-
-/-! ## Stale `SessionNotFound` Builder (`+0x78c..+0x7d0`) -/
-
-gen_decodes libsignalSessionCode_tree messageEncryptPreKeyBin [0x3d364 → 0x3d3a4]
-
-/-! ## Registration ID Load (`+0x7d0..+0x7ec`) -/
-
-gen_decodes libsignalSessionCode_tree messageEncryptPreKeyBin [0x3d3a8 → 0x3d3c0]
-
-/-! ## Kyber Closure and `OTR::encrypt` (`+0x880..+0x8f0`) -/
-
-gen_decodes libsignalSessionCode_tree messageEncryptPreKeyBin [0x3d458 → 0x3d4c4]
-
-/-! ## `PreKeySignalMessage::new` Call (`+0x8f0..+0x9b8`) -/
-
-gen_decodes libsignalSessionCode_tree messageEncryptPreKeyBin [0x3d4c8 → 0x3d58c]
-
-/-! ## 248-Byte Result Copy (`+0x9b8..+0xa70`) -/
-
-gen_decodes libsignalSessionCode_tree messageEncryptPreKeyBin [0x3d590 → 0x3d644]
 
 end CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.SegPreKey

@@ -11,13 +11,12 @@ module
 
 public meta import Lean -- shake: keep
 public meta import ProofLib -- shake: keep
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public meta import LibsignalBinary.Proofs.Placed.BridgeReloc
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.MergeFieldChainsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session
-public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BridgeReloc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.MergeFieldChainsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session
+import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -27,6 +26,10 @@ import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Fields
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.ReprMove
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.LoopWPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ProstVarintVm
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
 
 /-!
 # Budget-Threaded `SessionRecord::deserialize` Proof
@@ -38,7 +41,7 @@ Proves `sessDeserialize_budget_placed_ok` for `libsignal_protocol::SessionRecord
 the capacity-preserving `prostSSGQAtCap` → `sessionRecordAt` representation bridge.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -174,12 +177,12 @@ open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.MergeFieldChainsB
 Block `23`, `stride = 24, align = 8, initCap = 4`, `previous_sessions` outer `Vec<Vec<u8>>`):
 unused on `DeserializeScopeP_Q NonEmptyV1Q` (`r.prev = []` has no tag-`2` `SessionRecord` fields)
 and ready for `Prev1` (`r.prev.length ≤ 1`) without modifying `DeserBudget`. -/
-def GrowOneVecU8BudgetPlacedOk [LibsignalPlacement]
+@[expose] def GrowOneVecU8BudgetPlacedOk [LibsignalPlacement]
     (M : AllocCostModel) (_A : RustCliAllocBudget M) (_lim : BudgetLimits) (_H : LibsignalHooks) : Prop :=
   ∀ (_x : GrowGhost) (_st : M.σ), True
 
 /-- Number of tag-`7` (`receiver_chains`) fields in a `GenFieldQ` list. -/
-def recvCount : List GenFieldQ → Nat
+@[expose] def recvCount : List GenFieldQ → Nat
   | [] => 0
   | .base (.recv _) :: rest => 1 + recvCount rest
   | _ :: rest => recvCount rest
@@ -215,7 +218,7 @@ theorem ssgqAfter_recv_length (r : SessionRecord (List (BitVec 8))) (k : Nat) :
   simp [SSGQ.empty, SSG.empty]
 
 /-- Sequence of `capRecv` updates across a list of `GenFieldQ` fields. -/
-def stepCapRecvList (capRecv curRecvLen : Nat) : List GenFieldQ → Nat × Nat
+@[expose] def stepCapRecvList (capRecv curRecvLen : Nat) : List GenFieldQ → Nat × Nat
   | [] => (capRecv, curRecvLen)
   | fl :: rest =>
     let capRecv' := nextCapRecv capRecv curRecvLen fl
@@ -258,7 +261,7 @@ theorem nextCapRecv_eq_vecCap4Of (n : Nat) (fl : GenFieldQ) :
 
 /-- Complete `AllocEvent` trace emitted across `SessionStructure::merge_field` on `flds`,
 starting from `(capRecv, curRecvLen)`. -/
-def fieldsEventsAux (capRecv curRecvLen : Nat) : List GenFieldQ → List AllocEvent
+@[expose] def fieldsEventsAux (capRecv curRecvLen : Nat) : List GenFieldQ → List AllocEvent
   | [] => []
   | fl :: rest =>
     let capRecv' := nextCapRecv capRecv curRecvLen fl
@@ -266,11 +269,11 @@ def fieldsEventsAux (capRecv curRecvLen : Nat) : List GenFieldQ → List AllocEv
     mergeFieldQEvents capRecv curRecvLen fl ++ fieldsEventsAux capRecv' curRecvLen' rest
 
 /-- Complete `AllocEvent` trace of `SessionRecord::deserialize` on `r` (`DeserializeScopeP_Q`). -/
-def sessDeserEvents (r : SessionRecord (List (BitVec 8))) : List AllocEvent :=
+@[expose] def sessDeserEvents (r : SessionRecord (List (BitVec 8))) : List AllocEvent :=
   fieldsEventsAux 0 0 (recFieldsQ r)
 
 /-- Prefix `AllocEvent` trace after merging the first `k` fields of `recFieldsQ r`. -/
-def sessDeserEventsPrefix (r : SessionRecord (List (BitVec 8))) (k : Nat) : List AllocEvent :=
+@[expose] def sessDeserEventsPrefix (r : SessionRecord (List (BitVec 8))) (k : Nat) : List AllocEvent :=
   fieldsEventsAux 0 0 ((recFieldsQ r).take k)
 
 theorem fieldsEventsAux_append (n : Nat) (xs ys : List GenFieldQ) :
@@ -321,22 +324,22 @@ theorem sessDeserEventsPrefix_succ (r : SessionRecord (List (BitVec 8))) {k : Na
 
 /-- Final `receiver_chains` capacity `vecCap4Of (recvCount (recFieldsQ r))` produced by
 `SessionRecord::deserialize` on `r`. -/
-def sessDeserRecvCap (r : SessionRecord (List (BitVec 8))) : Nat :=
+@[expose] def sessDeserRecvCap (r : SessionRecord (List (BitVec 8))) : Nat :=
   vecCap4Of (recvCount (recFieldsQ r))
 
 /-- Total symbolic small-slot cost of `SessionRecord::deserialize` on `r`. -/
-def sessDeserSmallCost (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def sessDeserSmallCost (M : AllocCostModel) [HasFineReallocCredit M]
     (r : SessionRecord (List (BitVec 8))) : Nat :=
   ((recFieldsQ r).map (fieldQSmallCost M)).sum + vec104CumOfCap M (sessDeserRecvCap r)
 
 /-- Total symbolic post-deserialize direct-`mmap` live cost of `r`
 (equals `ssLargeLive M G` for the canonical output `SessionGhost`). -/
-def sessDeserLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def sessDeserLargeLive (M : AllocCostModel) [HasFineReallocCredit M]
     (r : SessionRecord (List (BitVec 8))) : Nat :=
   ((recFieldsQ r).map (fieldQLargeLive M)).sum + vec104LargeLive M (sessDeserRecvCap r)
 
 /-- Prefix-aware symbolic transient direct-`mmap` peak across `flds` under `capMaxRecv`. -/
-def fieldsPeakAux (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def fieldsPeakAux (M : AllocCostModel) [HasFineReallocCredit M]
     (capMaxRecv capRecv curRecvLen L_acc : Nat) : List GenFieldQ → Nat
   | [] => L_acc + vec104LargeLive M capRecv
   | fl :: rest =>
@@ -348,7 +351,7 @@ def fieldsPeakAux (M : AllocCostModel) [HasFineReallocCredit M]
       (fieldsPeakAux M capMaxRecv capRecv' curRecvLen' (L_acc + fieldQLargeLive M fl) rest)
 
 /-- Total symbolic transient direct-`mmap` peak of `SessionRecord::deserialize` on `r`. -/
-def sessDeserPeakLarge (M : AllocCostModel) [HasFineReallocCredit M]
+@[expose] def sessDeserPeakLarge (M : AllocCostModel) [HasFineReallocCredit M]
     (r : SessionRecord (List (BitVec 8))) : Nat :=
   fieldsPeakAux M (sessDeserRecvCap r) 0 0 0 (recFieldsQ r)
 
@@ -1348,7 +1351,6 @@ theorem sessDeserPeakLarge_le_universal_envelope
     sessDeserPeakLarge M r ≤ 2 ^ 20 * 104 + 2 ^ 19 * 104 + 2 * cLarge := by
   have h := sessDeserPeakLarge_le_of_encode_le_2MiB M hc hsplit hlarge hr hlen
   omega
-
 
 /-! ## 3. Capacity-Preserving `prostSSGQAtCap_move` & Representation Bridge `deserReprCapQA_ok` -/
 
@@ -2663,11 +2665,10 @@ theorem deserReprCapQA_ok (M : AllocCostModel) [HasFineReallocCredit M] (A : Rus
     rw [vecAt_prev_zero_eq_cap A]
     exact Entails.refl _
 
-
 /-! ## 4. Capacity-Aware Loop Invariant, Entry, & Iteration -/
 
 /-- Outer field-loop budget invariant for `SessionRecord::deserialize` (Block `46`, `lsProg_46 H`). -/
-def DeserLoopBudgetInv [LibsignalPlacement]
+@[expose] def DeserLoopBudgetInv [LibsignalPlacement]
     (M : AllocCostModel) [HasFineReallocCredit M]
     (_A : RustCliAllocBudget M) (lim : BudgetLimits)
     (r : SessionRecord (List (BitVec 8))) (st₀ : M.σ) (k : Nat) (st : M.σ) : Prop :=
@@ -2675,7 +2676,7 @@ def DeserLoopBudgetInv [LibsignalPlacement]
     FitsEvents M lim st₀ (sessDeserEvents r)
 
 /-- Capacity-explicit counterpart of `deserLocalsQ` at `L = deserSpL s0.sp`. -/
-def deserLocalsQCap (A : RustAlloc) (L p : BitVec 64)
+@[expose] def deserLocalsQCap (A : RustAlloc) (L p : BitVec 64)
     (bs rest : List (BitVec 8)) (capRecv : Nat) (v : SSGQ) : SepProp :=
   memRegion L 0x3f8 ∗
     sliceCursorAfter (L + 0x3f8#64) p bs rest ∗
@@ -3849,7 +3850,6 @@ private theorem keyByte_sdb_bounds (fl : GenFieldQ) :
   rcases fl with f | _ | _ | _ | _ | _ | _ | _ <;> (try cases f) <;>
     simp [keyByte_sdb, GenFieldQ.tag, GenFieldQ.wt, GenField.tag, GenField.wt, WireType.toNat]
 
-
 open Proofs.libsignal.Hooks2 (subroutine_ok_withLsCl_map')
 open Proofs.libsignal.Stage1X (lscall_of_withLsCl)
 
@@ -4313,7 +4313,7 @@ end LoopBody
 `onPanic := ⌜False⌝`, `onOom := ⌜False⌝`, **zero changes to `sessionRecordAt`**, and explicit output
 ghost bounds `ssStateLargeLive M G s_sess.state = ssLargeLive M G` and
 `33 ≤ smallMaxReq M → ssLargeLive M G = sessDeserLargeLive M x.r`. -/
-def sessDeserializeBudgetRawSpec (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def sessDeserializeBudgetRawSpec (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (M : AllocCostModel) [HasFineReallocCredit M]
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (DeserializeGenGhost × M.σ) where
@@ -4341,7 +4341,7 @@ def sessDeserializeBudgetRawSpec (Scope : SessionRecord (List (BitVec 8)) → Pr
 (Block `46`, `lsProg_46 H`, `recDeserializeStack`), refining `sessDeserializeExtSpec Scope A.repAlloc`
 with `A.pool lim st s`, `onOom := ⌜False⌝`, `onPanic := ⌜False⌝`, **zero changes to `sessionRecordAt`**,
 and explicit output ghost bound `ssLargeLive M G = sessDeserLargeLive M x.r`. -/
-def sessDeserializeBudgetPlacedSpec [LibsignalPlacement]
+@[expose] def sessDeserializeBudgetPlacedSpec [LibsignalPlacement]
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (M : AllocCostModel) [HasFineReallocCredit M]
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :

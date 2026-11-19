@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.PlacedCallSym
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
 public import ProofLib.GenPlacedFetches
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.Placed.GenLsBlock
+meta import GeneratedLean.LibsignalSessionPlacedObjShard17
 
 /-!
 # Relocatable Per-Block Fetches for `<spqr::v1::chunked::states::States>::into_pb` (Block `334`)
@@ -21,7 +22,7 @@ Generates relocatable instruction-fetch lemmas (`gen_ls_blk 334`) for the 615 in
 `<spqr::v1::chunked::states::States>::into_pb`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

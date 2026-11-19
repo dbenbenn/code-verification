@@ -12,21 +12,25 @@ module
 public import LibsignalBinary.Heap.Fine.ClientBounds
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesBudget
-public import LibsignalBinary.Proofs.PeakBudget.CallSiteFacts
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit
-public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateAffinePeak
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateHelpers
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CallSiteFacts -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+import LibsignalBinary.Proofs.PeakBudget.SerCloneStorePeakSpec
+public import LibsignalBinary.Proofs.PeakBudget.SessionCloneCredit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SessionSerializeCredit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateAffinePeak
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateHelpers
 public import LibsignalBinary.Proofs.PeakBudget.W3InitiatePeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
+import LibsignalBinary.Proofs.PeakBudget.W3InitiateStagesPeak
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentitySelfStoreKitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Envelope Bridges for W3 `process_prekey_bundle`
@@ -37,7 +41,7 @@ envelopes, `SpqrInitParamEnv`, and `0`-prev `SessionRecord` serialization — to
 and `FitsEnv fineCostModel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -111,7 +115,7 @@ open LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget (BoxAllocEnv
 open LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
   (LoadStepEnv SessionStoreBudgetEnv StoreStepEnv)
 open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit (HasFineReallocCredit)
-open LibsignalBinary.Proofs.PeakBudget.CallSiteFacts (InitCallSite initCallSite_bounds)
+
 open LibsignalBinary.Proofs.SpqrV1.Top.InitialState.DefsPlacedBudget (InitialStateEnv)
 open LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget
   (senderChainAsProtoGhost)
@@ -399,7 +403,7 @@ theorem storeStep_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-- `Params`-indexed wrapper around `InitialStateEnv` (`SpqrInitParamEnv F x.p = InitialStateEnv F x`).
 -/
-def SpqrInitParamEnv (F : ShaCompress) (p : Params) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrInitParamEnv (F : ShaCompress) (p : Params) (evs : List AllocEvent) : Prop :=
   InitialStateEnv F { pA := 0#64, ret := 0#64, akPtr := 0#64, p := p } evs
 
 theorem spqrInitParamEnv_eq (F : ShaCompress) (x : InitialStateGhost) :
@@ -535,7 +539,7 @@ theorem recordSerializePeak_eq_zero_of_maxReq_le (M : AllocCostModel) [HasFineRe
 /-! ## 4. `InitCallSite` and `fineCostModel` `FitsEnv` Instantiation -/
 
 /-- Constructs `W3InitiateSlotParams` at `StoresGhost.opened` for a W3 `InitGhost` call. -/
-def mkW3InitiateSlotParams
+@[expose] def mkW3InitiateSlotParams
     (rd : ReadRule) (x : InitGhost)
     (ownKeyName ownRegName : List (BitVec 8))
     (F : ShaCompress) (x_spqr : InitialStateGhost)
@@ -555,66 +559,8 @@ def mkW3InitiateSlotParams
   g_rec := g_rec
   r_rec := r_rec
 
-theorem peer_name_length_le_of_initCallSite {img : Obj.Image} {S : RunSem}
-    {g : RunCall} {x : InitGhost} (hsite : InitCallSite img S g x) :
-    x.peer.name.bytes.length ≤ 40 := by
-  have h := (initCallSite_bounds hsite).1
-  rwa [show x.peer.val.name = x.peer.name.bytes from rfl] at h
-
-/-- Regime-free `PhaseCreditSpec M` at an `InitCallSite` (`StoresGhost.opened`). -/
-theorem w3InitiateSlot_at_initCallSite_phaseCredit {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) {img : Obj.Image} {S : RunSem} {g : RunCall} {x : InitGhost}
-    (hsite : InitCallSite img S g x)
-    {rd : ReadRule} {ownKeyName ownRegName : List (BitVec 8)}
-    {F : ShaCompress} {x_spqr : InitialStateGhost}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))}
-    {fileCap : Nat}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ fileCap) :
-    let P := mkW3InitiateSlotParams rd x ownKeyName ownRegName F x_spqr g_rec r_rec
-    PhaseCreditSpec M (W3InitiateSlotEnv P)
-      (w3InitiateSlotDeltaCum fileCap 0 0 (recordSerializeCum g_rec r_rec))
-      (w3InitiateSlotDeltaLive fileCap 0 0 (recordSerializeOutLarge M g_rec r_rec))
-      (w3InitiateSlotDeltaPeak fileCap 0 0 0 (recordSerializePeak M g_rec r_rec))
-      (w3InitiateSlotMaxReq fileCap 0 0 (recordSerializeMaxReq g_rec r_rec)) :=
-  w3InitiateSlot_opened_phaseCredit hM
-    (mkW3InitiateSlotParams rd x ownKeyName ownRegName F x_spqr g_rec r_rec)
-    rfl rfl rfl (fun _ => rfl)
-    (peer_name_length_le_of_initCallSite hsite)
-    hkeyName hregName hspqrKey hfileCap
-
 /-- Small-regime (`1569 ≤ smallMaxReq M`) `PhaseCreditSpec M` at an `InitCallSite` (`StoresGhost.opened`).
 -/
-theorem w3InitiateSlot_at_initCallSite_small_phaseCredit
-    {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hsmall : 1569 ≤ HasFineReallocCredit.smallMaxReq M)
-    {img : Obj.Image} {S : RunSem} {g : RunCall} {x : InitGhost}
-    (hsite : InitCallSite img S g x)
-    {rd : ReadRule} {ownKeyName ownRegName : List (BitVec 8)}
-    {F : ShaCompress} {x_spqr : InitialStateGhost}
-    {g_rec : RecordGhost} {r_rec : SessionRecord (List (BitVec 8))}
-    {fileCap : Nat}
-    (hkeyName : ownKeyName.length ≤ 64)
-    (hregName : ownRegName.length ≤ 64)
-    (hspqrKey : x_spqr.p.authKey.length ≤ 32)
-    (hfileCap : ∀ p bs, rd x.F p = .ok bs → bs.length ≤ fileCap) :
-    let P := mkW3InitiateSlotParams rd x ownKeyName ownRegName F x_spqr g_rec r_rec
-    PhaseCreditSpec M (W3InitiateSlotEnv P)
-      (w3InitiateSlotDeltaCum fileCap 0 0 (recordSerializeCum g_rec r_rec))
-      (w3InitiateSlotSmallDeltaLive fileCap 0 0 (recordSerializeOutLarge M g_rec r_rec))
-      (w3InitiateSlotSmallDeltaPeak fileCap 0 0 0 (recordSerializePeak M g_rec r_rec))
-      (w3InitiateSlotMaxReq fileCap 0 0 (recordSerializeMaxReq g_rec r_rec)) := by
-  intro P
-  have hdeser : ∀ bs, bs.length ≤ 2097152 → PhaseCreditSpec M (P.DeserEnv bs) 0 0 0 0 :=
-    fun _ _ => PhaseCreditSpec.nil M
-  have h := w3InitiateSlot_small_phaseCredit hM hsmall P
-    dirDomainCaps_opened_own dirDomainCaps_opened_peers dirDomainCaps_opened_sess
-    (by decide) (peer_name_length_le_of_initCallSite hsite)
-    hkeyName hregName hspqrKey hfileCap hdeser
-  exact Nat.zero_max fileCap ▸ h
-
 private theorem boxedStepLive_le_peak_of_le (boxSz : Nat) {l p : Nat} (h : l ≤ p) :
     w3BoxedStepLive boxSz l ≤ w3BoxedStepPeak boxSz p :=
   Nat.add_le_add_left h _

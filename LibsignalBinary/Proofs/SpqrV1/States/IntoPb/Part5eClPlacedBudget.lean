@@ -9,19 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dClPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5eClPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5ePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.NoHeaderReceivedClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1ClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dClPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5eClPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5ePlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.IntoPbDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dPlacedBudget
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5dBudget
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 5e `withLsCodeLoaded`: Arm 7 (`States.ct1Sampled`)
@@ -32,7 +43,7 @@ taking `withLsCodeLoaded` contracts on `<PolyEncoder>::into_pb` (Block `375`) an
 `<PolyDecoder>::into_pb` (Block `377`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -45,8 +56,7 @@ namespace LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5eClPlacedBudget
 open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement extract_withLsCodeLoaded
-   libsignalSessionCode lsmpl withLsCodeLoaded)
+  (LibsignalCodeLoaded LibsignalPlacement extract_withLsCodeLoaded lsmpl withLsCodeLoaded)
 open CryptoVerification.LibsignalSpqrV1
   (States V1State spqrAuthApi spqrPolyApi)
 open CryptoVerification.LibsignalSpqrV1.Chunked.SendCt (Ct1Sampled)
@@ -99,7 +109,7 @@ open LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5ePlacedBudget
   (ct1SampledEnv_imp_spqrBoundedEvs decoderIntoPbEnv_imp_spqrBoundedEvs)
 open VerifiedLibraries.Mallocng (MallocngMaxAllocSize)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   bv_sub_sub_lit' bv_add_add_lit'
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero

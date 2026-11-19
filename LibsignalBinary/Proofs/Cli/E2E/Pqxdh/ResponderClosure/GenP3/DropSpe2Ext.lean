@@ -9,14 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSpe2
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderStore.SessionRecordCallees
-public import LibsignalBinary.Proofs.CodeLayout
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropSpe2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderStore.SessionRecordCallees -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP4a
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderStore.Fetch
-import LibsignalBinary.Proofs.Cli.ShardFill.DropGlueErrorSignalProtocolErrorL3
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
@@ -26,6 +25,7 @@ import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Common
 import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
 import ProofLib.SepLogic.Entry
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
 
 /-!
 # `ext`-Parameterized `drop_spe2`, `drop_spe2_ver`, and `pqxdh_log_closure`
@@ -34,7 +34,7 @@ Lifts `drop_spe2_ok`, `drop_spe2_ver_ok`, and `pqxdh_log_closure_ok` to
 `tripleRatchetProgAtExt img.base ext` under `AllocContracts img.base A ext`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -44,13 +44,7 @@ open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
-open CryptoVerification.LibsignalTripleRatchet.Getters hiding
-  tail_stack_32_from_bottom cells4_entails_stack_bottom SatEntails
-  rodata_0x3f000_eq rodata_speJumpTable_intro speJumpTable_byte
-  strRefAt_entails_memRegion16 spe_u64_at_8_entails_40 spe_u8_at_8_entails_40
-  spe_u8_at_32_entails_16 spe_u32x2_at_8_entails_40 spe_strRef_at_8_entails_40
-  vecU8_at_8_expose spe_str_words_entails_48 spe_tail_dealloc_pre_weaken
-  speAt_invalidState_expose invalidMessageStrAt_entails_vecU8
+open CryptoVerification.LibsignalTripleRatchet.Getters hiding tail_stack_32_from_bottom cells4_entails_stack_bottom SatEntails strRefAt_entails_memRegion16 spe_u64_at_8_entails_40 spe_u8_at_8_entails_40 spe_u8_at_32_entails_16 spe_u32x2_at_8_entails_40 spe_strRef_at_8_entails_40 vecU8_at_8_expose spe_str_words_entails_48 spe_tail_dealloc_pre_weaken speAt_invalidState_expose invalidMessageStrAt_entails_vecU8
 open CryptoVerification.E2E.Pqxdh.ResponderStore
 open CryptoVerification.E2E.Pqxdh.ResponderClosure
 open CryptoVerification.E2E.Pqxdh.ResponderClosure.P3P4
@@ -143,50 +137,6 @@ private theorem weaken_pre_sat {prog : Program} {target_pc : BitVec 64} {s : Sta
   unfold SepWP at h ⊢
   intro R hm
   exact h R (himp s.mem R hm)
-
-private theorem rodata_0x3f000_eq :
-    (libsignalSessionImage.data.drop
-      (num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44)) - num% (ls_xref% 0x2440 0x2444))).take 28 = speJumpTable := by
-  rfl_kernel
-
-private theorem rodata_speJumpTable_intro {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {m : Memory} {P : SepProp} (hro : img.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((img.base + bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44))) ↦ᵣ speJumpTable) ∗ P := by
-  have h := ProofLib.Satisfies.of_rodata_loads himg
-    (secOff := num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44))) (secLen := 28) (dataOff := num% (ls_xref% 0x2440 0x2444))
-    rfl (List.mem_of_elem_eq_true (by rfl_kernel)) (by decide) (by decide)
-    (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) hro hP
-  rwa [rodata_0x3f000_eq] at h
-
-private theorem intro_rodata_speJumpTable {img : Obj.Image}
-    (himg : Obj.Loads libsignalSessionImage img)
-    {prog : Program} {target_pc : BitVec 64} {s : State} {P : SepProp}
-    {post : State → SepProp → Prop}
-    (hro : img.RoDataLoaded s.mem)
-    (h : SepWP prog target_pc s
-      (((img.base + bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44))) ↦ᵣ speJumpTable) ∗ P) post) :
-    SepWP prog target_pc s P post := by
-  unfold SepWP at h ⊢
-  intro R hm
-  have hR := h R
-  rw [sepConj_assoc] at hR
-  exact hR (rodata_speJumpTable_intro himg hro hm)
-
-private theorem speJumpTable_byte (base : BitVec 64) (i : Nat) (off : BitVec 64) (b : BitVec 8)
-    (hoff : bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44)) + BitVec.ofNat 64 i = off)
-    (heq : speJumpTable = speJumpTable.take i ++ (b :: speJumpTable.drop (i + 1)))
-    (hlen : (speJumpTable.take i).length = i) :
-    SatEntails ((base + bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44))) ↦ᵣ speJumpTable) ((base + off) ↦₈ᵣ b) := by
-  have h : ((base + bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44))) ↦ᵣ speJumpTable) =
-      ((base + bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44))) ↦ᵣ speJumpTable.take i) ∗
-        ((((base + bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44))) + BitVec.ofNat 64 i) ↦₈ᵣ b) ∗
-         (((base + bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44))) + BitVec.ofNat 64 i + 1#64) ↦ᵣ
-           speJumpTable.drop (i + 1))) := by
-    conv_lhs => rw [heq]
-    rw [pointsToBytesRO_append, pointsToBytesRO_cons, hlen]
-  rw [h, BitVec.add_assoc base (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44))) (BitVec.ofNat 64 i), hoff]
-  exact SatEntails.trans (SatEntails.drop_left _ _) (SatEntails.drop_right _ _)
 
 private theorem strRefAt_entails_memRegion16 (a : BitVec 64) (lit : List (BitVec 8)) :
     SatEntails (strRefAt a lit) (memRegion a 16) := by
@@ -420,297 +370,9 @@ private theorem sepWP_false_elim {prog : Program} {target_pc : BitVec 64} {s : S
   rw [heq, satisfies_pure_sepConj] at hm
   exact False.elim hm.1
 
-set_option maxHeartbeats 800000 in
-theorem drop_spe2_of_dealloc_ext {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hdealloc_fn : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr deallocName) (rustDeallocSpec A)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr CryptoVerification.Cli.dropSpe2Name)
-      ((dropSpeSpec A).inImage img) := by
-  simp only [Spec.inImage, dropSpeSpec, pure_sepConj_pure_assoc]
-  have hdealloc := sub_ok_at_of_fnAddr (b := img.base) (ext := ext) (sym := deallocName)
-    hdealloc_fn CryptoVerification.Cli.dropSpe2Name
-    (num% (ls_off% "__rustc::__rust_dealloc" - (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]")))
-    (by fnoff_eq)
-  clear hdealloc_fn
-  simp only [rustDeallocSpec] at hdealloc
-  code_fetches libsignalSessionCode
-    CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBinCli img.base
-    (Rust.withPanics ext) (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]") (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]") 184
-  have hb : img.base &&& 0xfff#64 = 0#64 := ProofLib.ObjectLoad.base_aligned_of_loads himg
-  have hadp : (
-      ((libsignalSessionCode.rebase img.base
-        (Rust.withPanics ext)).fnAddr
-        "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" +
-        40#64) &&&
-      18446744073709547520#64) = img.base + (bv% (page% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40))) :=
-    CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.P3P4.speJumpTable_adrp_eq hb
-      (fnAddr_rebase_eq_add_of_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]"))
-  dsimp only [tripleRatchetProgAtExt, CryptoVerification.Cli.dropSpe2Name, BitVec.ofNat_eq_ofNat] at hdealloc ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" = entry
-  examples_hide_fetches
-  wp_init x s0
-  obtain ⟨a, fnName, e⟩ := x
-  dsimp only at *
-  subst h
-  have hro : img.RoDataLoaded s0.mem := (Obj.Image.frozenLoaded_iff.mp h_2).2.1
-  refine intro_rodata_speJumpTable himg hro ?_
-  nth_rw 1 [stackAt_dropSpe_split s0.sp]
-  cells_unfold
-  wp_pull_exists
-  cases e with
-  | panic =>
-    simp only [speAt]
-    exact sepWP_false_elim
-  | invalidState =>
-    refine weaken_pre_sat
-      (spe_str_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) .invalidState
-        1 0x8000000000000001#64 rfl
-        (speJumpTable_byte img.base 1 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 1)) 0x00#8 rfl rfl rfl)
-        (speAt_invalidState_expose A fnName (s0.readReg64 (Reg.gpr 0#5))) _) ?_
-    wp_pull_exists
-    rename_i cap ptr
-    by_cases hcap : cap = 0#64
-    · simp only [hcap, beq_self_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-      wp_steps
-      refine weaken_pre_sat
-        (DropGlueFacts.spe_str_cap0_pre_weaken_full _ _ _ _ s0.sp _ _ _ _ _ _) ?_
-      wp_done
-    · have hcap_beq : (cap == 0#64) = false := beq_eq_false_iff_ne.mpr hcap
-      simp only [hcap_beq, Bool.false_eq_true, ↓reduceIte]
-      wp_steps
-      refine weaken_pre_sat
-        (spe_tail_dealloc_pre_weaken (s0.readReg64 (Reg.gpr 0#5)) _ cap ptr s0.sp
-          _ _ _ _ _ _ _) ?_
-      wp_call hdealloc (ptr, cap.toNat, 1)
-      refine SepWP.weaken_pre
-        (DropGlueFacts.spe_tail_dealloc_post (s0.readReg64 (Reg.gpr 0#5)) A.pool s0.sp) ?_
-      wp_done
-  | invalidMessage t r =>
-    refine weaken_pre_sat
-      (spe_str_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) (.invalidMessage t r)
-        24 0x8000000000000018#64 rfl
-        (speJumpTable_byte img.base 24 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 24)) 0x00#8 rfl rfl rfl)
-        (speAt_invalidMessage_expose A fnName (s0.readReg64 (Reg.gpr 0#5)) t r) _) ?_
-    wp_pull_exists
-    rename_i cap ptr
-    by_cases hcap : cap = 0#64
-    · simp only [hcap, beq_self_eq_true, ↓reduceIte, sepConj_emp, emp_sepConj]
-      wp_steps
-      refine weaken_pre_sat
-        (DropGlueFacts.spe_str_cap0_pre_weaken_full _ _ _ _ s0.sp _ _ _ _ _ _) ?_
-      wp_done
-    · have hcap_beq : (cap == 0#64) = false := beq_eq_false_iff_ne.mpr hcap
-      simp only [hcap_beq, Bool.false_eq_true, ↓reduceIte]
-      wp_steps
-      refine weaken_pre_sat
-        (spe_tail_dealloc_pre_weaken (s0.readReg64 (Reg.gpr 0#5)) _ cap ptr s0.sp
-          _ _ _ _ _ _ _) ?_
-      wp_call hdealloc (ptr, cap.toNat, 1)
-      refine SepWP.weaken_pre
-        (DropGlueFacts.spe_tail_dealloc_post (s0.readReg64 (Reg.gpr 0#5)) A.pool s0.sp) ?_
-      wp_done
-  | invalidProtobufEncoding =>
-    refine weaken_pre_sat
-      (spe_unit_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) .invalidProtobufEncoding
-        2 0x8000000000000002#64 rfl
-        (speJumpTable_byte img.base 2 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 2)) 0x1b#8 rfl rfl rfl)
-        (SatEntails.refl _) _) ?_
-    wp_steps
-    refine weaken_pre_sat (DropGlueFacts.spe_noop_pre_weaken_full _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-  | ciphertextMessageTooShort n =>
-    refine weaken_pre_sat
-      (spe_unit_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) (.ciphertextMessageTooShort n)
-        3 0x8000000000000003#64 rfl
-        (speJumpTable_byte img.base 3 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 3)) 0x1b#8 rfl rfl rfl)
-        (SatEntails.of_entails
-          (by simp only [speAt]; exact sepConj_mono_right (spe_u64_at_8_entails_40 _ _))) _) ?_
-    wp_steps
-    refine weaken_pre_sat (DropGlueFacts.spe_noop_pre_weaken_full _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-  | legacyCiphertextVersion v =>
-    refine weaken_pre_sat
-      (spe_unit_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) (.legacyCiphertextVersion v)
-        4 0x8000000000000004#64 rfl
-        (speJumpTable_byte img.base 4 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 4)) 0x1b#8 rfl rfl rfl)
-        (SatEntails.of_entails
-          (by simp only [speAt]; exact sepConj_mono_right (spe_u8_at_8_entails_40 _ _))) _) ?_
-    wp_steps
-    refine weaken_pre_sat (DropGlueFacts.spe_noop_pre_weaken_full _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-  | unrecognizedCiphertextVersion v =>
-    refine weaken_pre_sat
-      (spe_unit_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) (.unrecognizedCiphertextVersion v)
-        5 0x8000000000000005#64 rfl
-        (speJumpTable_byte img.base 5 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 5)) 0x1b#8 rfl rfl rfl)
-        (SatEntails.of_entails
-          (by simp only [speAt]; exact sepConj_mono_right (spe_u8_at_8_entails_40 _ _))) _) ?_
-    wp_steps
-    refine weaken_pre_sat (DropGlueFacts.spe_noop_pre_weaken_full _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-  | noKeyTypeIdentifier =>
-    refine weaken_pre_sat
-      (spe_unit_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) .noKeyTypeIdentifier
-        7 0x8000000000000007#64 rfl
-        (speJumpTable_byte img.base 7 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 7)) 0x1b#8 rfl rfl rfl)
-        (SatEntails.refl _) _) ?_
-    wp_steps
-    refine weaken_pre_sat (DropGlueFacts.spe_noop_pre_weaken_full _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-  | badKeyType t =>
-    refine weaken_pre_sat
-      (spe_unit_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) (.badKeyType t)
-        8 0x8000000000000008#64 rfl
-        (speJumpTable_byte img.base 8 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 8)) 0x1b#8 rfl rfl rfl)
-        (SatEntails.of_entails
-          (by simp only [speAt]; exact sepConj_mono_right (spe_u8_at_8_entails_40 _ _))) _) ?_
-    wp_steps
-    refine weaken_pre_sat (DropGlueFacts.spe_noop_pre_weaken_full _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-  | badKeyLength n =>
-    refine weaken_pre_sat
-      (spe_unit_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) (.badKeyLength n)
-        9 0x8000000000000009#64 rfl
-        (speJumpTable_byte img.base 9 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 9)) 0x1b#8 rfl rfl rfl)
-        (SatEntails.of_entails
-          (by simp only [speAt]; exact sepConj_mono_right (spe_u64_at_8_entails_40 _ _))) _) ?_
-    wp_steps
-    refine weaken_pre_sat (DropGlueFacts.spe_noop_pre_weaken_full _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-  | invalidKeyAgreement =>
-    refine weaken_pre_sat
-      (spe_unit_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) .invalidKeyAgreement
-        10 0x800000000000000a#64 rfl
-        (speJumpTable_byte img.base 10 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 10)) 0x1b#8 rfl rfl rfl)
-        (SatEntails.refl _) _) ?_
-    wp_steps
-    refine weaken_pre_sat (DropGlueFacts.spe_noop_pre_weaken_full _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-  | invalidSessionStructure r =>
-    refine weaken_pre_sat
-      (spe_unit_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) (.invalidSessionStructure r)
-        20 0x8000000000000014#64 rfl
-        (speJumpTable_byte img.base 20 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 20)) 0x1b#8 rfl rfl rfl)
-        (by simp only [speAt]
-            exact SatEntails.sepConj_mono_right (spe_strRef_at_8_entails_40 _ _)) _) ?_
-    wp_steps
-    refine weaken_pre_sat (DropGlueFacts.spe_noop_pre_weaken_full _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-  | duplicatedMessage idx c =>
-    refine weaken_pre_sat
-      (spe_unit_pre_weaken A fnName (s0.readReg64 (Reg.gpr 0#5)) (.duplicatedMessage idx c)
-        23 0x8000000000000017#64 rfl
-        (speJumpTable_byte img.base 23 (bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 23)) 0x1b#8 rfl rfl rfl)
-        (SatEntails.of_entails
-          (by simp only [speAt]; exact sepConj_mono_right (spe_u32x2_at_8_entails_40 _ _ _))) _) ?_
-    wp_steps
-    refine weaken_pre_sat (DropGlueFacts.spe_noop_pre_weaken_full _ _ s0.sp _ _ _ _ _ _) ?_
-    wp_done
-
-theorem drop_spe2_of_allocHooks_ext {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) (hAlloc : AllocHooks A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr CryptoVerification.Cli.dropSpe2Name)
-      ((dropSpeSpec A).inImage img) :=
-  drop_spe2_of_dealloc_ext himg
-    (by simpa only [BitVec.ofNat_eq_ofNat, BitVec.add_zero] using
-      dealloc_ok_at_ext img.base A ext hAlloc deallocName 0 (Nat.add_zero _))
-
-theorem drop_spe2_ok_ext {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) (hA : AllocContracts img.base A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr CryptoVerification.Cli.dropSpe2Name)
-      ((dropSpeSpec A).inImage img) :=
-  drop_spe2_of_dealloc_ext himg hA.dealloc
-
 section VerAndLogClosure
 
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-
-set_option maxHeartbeats 800000 in
-theorem drop_spe2_ver_ok_ext {A : RustAlloc} {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      (img.base + (bv% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]")))
-      ((dropSpeVerSpec A).inImage img) := by
-  simp only [Spec.inImage, dropSpeVerSpec, pure_sepConj_pure_assoc]
-  have hfn_eq :
-      (tripleRatchetProgAtExt img.base ext).fnAddr CryptoVerification.Cli.dropSpe2Name = img.base + (bv% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]")) := by
-    simp only [tripleRatchetProgAtExt, CryptoVerification.Cli.dropSpe2Name, Program.fnAddr_rebase,
-      (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]")]
-  rw [← hfn_eq]
-  clear hfn_eq
-  code_fetches libsignalSessionCode
-    CryptoVerification.LibsignalTripleRatchet.libsignalTripleRatchetBinCli img.base
-    (Rust.withPanics ext) (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]") (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]") 184
-  have hb : img.base &&& 0xfff#64 = 0#64 := ProofLib.ObjectLoad.base_aligned_of_loads himg
-  have hadp : (
-      ((libsignalSessionCode.rebase img.base
-        (Rust.withPanics ext)).fnAddr
-        "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" +
-        40#64) &&&
-      18446744073709547520#64) = img.base + (bv% (page% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40))) :=
-    CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.P3P4.speJumpTable_adrp_eq hb
-      (fnAddr_rebase_eq_add_of_fnOff (ls_lemma% fnOff "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]"))
-  dsimp only [tripleRatchetProgAtExt, CryptoVerification.Cli.dropSpe2Name, BitVec.ofNat_eq_ofNat] at *
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" = entry
-  examples_hide_fetches
-  wp_init x s0
-  obtain ⟨a, msgVer⟩ := x
-  dsimp only at *
-  subst h
-  have hro : img.RoDataLoaded s0.mem := (Obj.Image.frozenLoaded_iff.mp h_2).2.1
-  refine CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.P3P4.SepWP.intro_rodata_5a526 himg hro ?_
-  nth_rw 1 [stackAt_dropSpe_split s0.sp]
-  cells_unfold
-  wp_pull_exists
-  rename_i fp lr x20 x19
-  wp_steps
-  refine SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) ?_
-  refine ⟨fun hm => ?_, by simp_all [arm64_norm], by simp_all [CalleeSavedPreserved, arm64_norm]⟩
-  rw [satisfies_pure_sepConj]
-  refine ⟨by simp_all [arm64_norm], ?_⟩
-  have ha := spe_ver_entails_48 (s0.readReg64 (Reg.gpr 0#5)) msgVer
-  have hst := cells4_entails_dropSpeStack s0.sp
-    (s0.readReg64 (Reg.gpr 29#5)) (s0.readReg64 (Reg.gpr 30#5))
-    (s0.readReg64 (Reg.gpr 20#5)) (s0.readReg64 (Reg.gpr 19#5))
-  rw [sepConj_assoc ((img.base + bv% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#2]" + 44) + 6)) ↦₈ᵣ 27#8)] at hm
-  have hm1 := Satisfies.of_sep_right hm
-  have hent :
-      (s0.readReg64 (Reg.gpr 0#5) ↦₆₄ 9223372036854775814#64 ∗
-        (s0.readReg64 (Reg.gpr 0#5) + 8#64) ↦₃₂ msgVer ∗
-          memRegion (s0.readReg64 (Reg.gpr 0#5) + 12#64) 36 ∗
-            A.pool ∗
-              stackAt (s0.sp - 32#64) allocHookStack ∗
-                (s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5) ∗
-                  (s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5) ∗
-                    (s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 20#5) ∗
-                      (s0.sp - 8#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5)) ⊢
-      memRegion (s0.readReg64 (Reg.gpr 0#5)) 48 ∗ A.pool ∗ stackAt s0.sp dropSpeStack :=
-    Entails.trans
-      (Q := (((s0.readReg64 (Reg.gpr 0#5)) ↦₆₄ 0x8000000000000006#64) ∗
-             ((s0.readReg64 (Reg.gpr 0#5) + 8#64) ↦₃₂ msgVer) ∗
-             memRegion (s0.readReg64 (Reg.gpr 0#5) + 12#64) 36) ∗
-            A.pool ∗
-            (stackAt (s0.sp - 32#64) allocHookStack ∗
-             ((s0.sp - 32#64) ↦₆₄ s0.readReg64 (Reg.gpr 29#5)) ∗
-             ((s0.sp - 24#64) ↦₆₄ s0.readReg64 (Reg.gpr 30#5)) ∗
-             ((s0.sp - 16#64) ↦₆₄ s0.readReg64 (Reg.gpr 20#5)) ∗
-             ((s0.sp - 8#64) ↦₆₄ s0.readReg64 (Reg.gpr 19#5))))
-      (Entails.of_eq (by ac_rfl))
-      (sepConj_mono ha (sepConj_mono (Entails.refl A.pool) hst))
-  have hm2 := Satisfies.mono (sepConj_mono_left hent) hm1
-  simpa only [sepConj_assoc] using hm2
 
 private theorem stackAt_pqxdhClosure (sp : BitVec 64) :
     stackAt sp pqxdhClosureStack =
@@ -747,47 +409,6 @@ private theorem stackAt_pqxdhClosure (sp : BitVec 64) :
         ((sp - 24#64) ↦₆₄ w9) ∗ ((sp - 16#64) ↦₆₄ w10) ∗ ((sp - 8#64) ↦₆₄ w11)) := by
     cells_unfold
   rw [h1, h2, hc4, hc12, sepConj_assoc]
-
-private theorem pqxdhLogClosure_adrp_addr_eq {base entry : BitVec 64}
-    (hb : base &&& 0xfff#64 = 0#64) (he : entry = base + (bv% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}"))) :
-    (((entry + 36#64) &&& 18446744073709547520#64) + bv% (page% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) - (page% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}" + 36)))) + bv% ((ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) % 4096) = base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) := by
-  subst he; bv_arith
-
-set_option maxHeartbeats 800000 in
-theorem pqxdh_log_closure_ok_ext {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName)
-      ((pqxdhLogClosureSpec img).inImage img) := by
-  simp only [Spec.inImage, pqxdhLogClosureSpec, logOff, CryptoVerification.LibsignalSession.logFilterAddr, stackAt_pqxdhClosure,
-    sepExists_sepConj_left, sepExists_sepConj_right]
-  unfold tripleRatchetProgAtExt
-  have hfn : libsignalSessionCode.fnOff CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName =
-      (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}") :=
-    (ls_lemma% fnOff "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}")
-  have hb : img.base &&& 0xfff#64 = 0#64 := ProofLib.ObjectLoad.base_aligned_of_loads himg
-  have hentry : (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-      CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName =
-      img.base + (bv% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}")) := by
-    rw [Program.fnAddr_rebase, hfn]
-  have hadrp : (((((libsignalSessionCode.rebase img.base
-      (Rust.withPanics ext)).fnAddr
-      CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName + 36#64) &&&
-      18446744073709547520#64) + bv% (ls_xref% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}" + 36) - (page% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}" + 36)))) + bv% ((ls_xref% (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}" + 36) (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}" + 44)) % 4096)) = img.base + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256) :=
-    pqxdhLogClosure_adrp_addr_eq hb hentry
-  clear hentry
-  responder_fetches_from_cli img.base
-    (Rust.withPanics ext) hfn (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}") 0 56
-  responder_fetches_from_cli img.base
-    (Rust.withPanics ext) hfn (ls_off% "libsignal_protocol::session_management::try_decrypt_from_record::<libsignal_cli_handshake::Coins>::{closure#0}") 0x310 32
-  clear hfn himg
-  generalize_entry (libsignalSessionCode.rebase img.base (Rust.withPanics ext)).fnAddr
-      CryptoVerification.Cli.E2E.Pqxdh.ResponderStore.pqxdhLogClosureName = entry
-  wp_init x s0
-  examples_hide_fetches
-  wp_steps
-  wp_done
 
 end VerAndLogClosure
 

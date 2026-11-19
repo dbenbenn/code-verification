@@ -22,7 +22,7 @@ public import ProofLib.SepLogic.Frame
 public import ProofLib.Abi.Aapcs
 public import ProofLib.SepLogic
 public import ProofLib.SepLogic.Bytes
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Hoare.Safety
 public import ProofLib.Hoare.SubroutineOk
 public import ProofLib.VCGen
@@ -870,10 +870,24 @@ elab "wp_frame_split" : tactic => do
         evalTactic (← `(tactic| sep_frame))
       catch _ => throw e
   else
-    try
-      SepSolver.closeSat proveWpSepSide?
-    catch e =>
-      unless ← SepFrameInfer.closeSatBacktrack? proveWpSepSide? do throw e
+    let saved ← saveState
+    let savedMsgs ← Core.getMessageLog
+    let solverErr? : Option Exception ←
+      try
+        MonadRuntimeException.tryCatchRuntimeEx
+          (do SepSolver.closeSat proveWpSepSide?; return none)
+          (fun ex => return some ex)
+      catch e =>
+        Pure.pure (some e)
+    if let some e := solverErr? then
+      restoreState saved
+      Core.setMessageLog savedMsgs
+      if e.isMaxHeartbeat || (← outerHeartbeatsExhausted) then
+        throw e
+      unless ← SepFrameInfer.closeSatBacktrack? proveWpSepSide? do
+        match e with
+        | .error _ _ => throw e
+        | .internal _ _ => throwError "{e.toMessageData}"
 
 private def formatGhostContext (ghostMVars : Array (Name × MVarId)) (e : Expr) :
     MetaM (Array Name × Array MessageData) := do
@@ -1079,13 +1093,20 @@ def betaReduceTarget : TacticM Unit := do
     `SepWPp prog ret s P Q Qp oom` goal (unfolding stack frames, rewriting with the equation `hEq`
     (e.g. `sf.sp = ...`), floating `∃∗` and `⌜_⌝` outwards), then eliminate leading existentials into
     fresh variables and leading pure assertions into (split, normalized) hypotheses. -/
+elab "wp_simp_in_image" loc:(Lean.Parser.Tactic.location)? : tactic => do
+  if (← getEnv).contains `Arm64.Spec.inImage then
+    let id := mkCIdent `Arm64.Spec.inImage
+    let _ ← tryTactic (evalTactic (← `(tactic| simp only [$id:ident] $[$loc]?)))
+
 def wpElimSpatialContext (hEq : Ident) (forWppCall : Bool := false) : TacticM Unit := do
+  if (← getEnv).contains `Arm64.Spec.inImage then
+    let inImgId := mkCIdent `Arm64.Spec.inImage
+    let _ ← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| conv => arg 4; simp only [$inImgId:ident])))
   if forWppCall then
     let _ ← tryTacticCatchRuntimeBool (evalTactic (← `(tactic| (
       conv =>
         arg 4
         simp (config := { decide := true }) only [
-          Spec.inImage,
           stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
           sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc,
           emp_sepConj, sepConj_emp,
@@ -1097,7 +1118,6 @@ def wpElimSpatialContext (hEq : Ident) (forWppCall : Bool := false) : TacticM Un
       conv =>
         arg 4
         simp (config := { decide := true }) only [
-          Spec.inImage,
           stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
           sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc,
           wp_norm, arm64_norm, $hEq:ident]))))
@@ -1180,20 +1200,12 @@ def isBlockedEntryUnfoldHead (env : Environment) (nm : Name) : MetaM Bool := do
   return nm == ``Arm64.Program.mk ||
     nm == ``Arm64.Program.fnOff ||
     nm == ``Arm64.Program.findSymbol? ||
-    nm == ``Arm64.Program.ofImage ||
-    nm == ``Arm64.Program.ofImageWithSvc ||
     nm == ``Arm64.Program.ofWords ||
     nm == ``Arm64.Obj.lookup ||
     nm == ``Arm64.Obj.lookupUnique ||
     nm == ``Arm64.Obj.lookupBlockSym ||
     nm == ``Arm64.Obj.lookupBlockSymAux ||
     nm == `Arm64.Obj.lookupSymInLists ||
-    nm == ``Arm64.Obj.LinkedImage.toProgram ||
-    nm == ``Arm64.Obj.LinkedImage.toProgramWithSvc ||
-    nm == ``Arm64.Obj.LinkedImage.fnAddr ||
-    nm == ``Arm64.Obj.LinkedImage.resolveSym ||
-    nm == ``Arm64.Obj.LinkedImage.resolveObjSym ||
-    nm == ``Arm64.Obj.Image.symtab ||
     nm == ``Arm64.Obj.CodeBlock.patched ||
     nm == ``Arm64.Obj.CodeBlock.resolve ||
     nm == ``Arm64.Obj.CodeBlock.relocAt? ||
@@ -1592,28 +1604,13 @@ private def buildCallDiagContext (progExpr : Expr) : TacticM CallDiagContext := 
   let g ← getMainGoal
   g.withContext do
     let env ← getEnv
-    let imageConstToCodeConst? (imgConst : Name) : Option Name :=
-      let s := imgConst.getString!
-      if s.endsWith "Image" && s.length > 5 then
-        let stem := (s.take (s.length - 5)).toString
-        let cand := imgConst.getPrefix.str (stem ++ "Code")
-        if env.contains cand then some cand else none
-      else none
     let mut codeConst? : Option Name := none
     let mut bExpr? : Option Expr := none
     if let some (cConst, bExpr, _, _) ← extractRebase? progExpr then
       bExpr? := some bExpr
-      if cConst != ``Obj.LinkedImage.toProgram then
-        codeConst? := some cConst
-      else
-        let progUnw ← unwrapRebasedProgExpr progExpr
-        if progUnw.isAppOfArity ``Program.rebase 4 then
-          let codeExpr := (progUnw.getArg! 0).consumeMData
-          if codeExpr.isAppOfArity ``Obj.LinkedImage.toProgram 1 then
-            if let some imgConst := (codeExpr.getArg! 0).consumeMData.getAppFn.constName? then
-              codeConst? := imageConstToCodeConst? imgConst
+      codeConst? := some cConst
     else if let some c := progExpr.consumeMData.getAppFn.constName? then
-      if env.contains c && c != ``Obj.LinkedImage.toProgram then
+      if env.contains c then
         codeConst? := some c
     let mut callerEntry? : Option (ProofLib.ProgramReflection.FnEntryInfo × Option Expr) := none
     let mut callerSymAndInit? : Option (String × Expr) := none
@@ -1622,10 +1619,6 @@ private def buildCallDiagContext (progExpr : Expr) : TacticM CallDiagContext := 
     let mut rawFnWords : Array (Option String × Option Expr × Option Nat × Array Nat) := #[]
     for decl in (← getLCtx) do
       let ty ← instantiateMVars decl.type
-      if codeConst?.isNone && ty.isAppOfArity ``Obj.Loads 2 then
-        if let some imgConst := (ty.getArg! 0).consumeMData.getAppFn.constName? then
-          if let some cand := imageConstToCodeConst? imgConst then
-            codeConst? := some cand
       if let some (_, lhs, rhs) := ty.eq? then
         if let some sym ← extractFnAddrSym? lhs then
           lctxFnAddrs := lctxFnAddrs.push (sym, rhs)
@@ -2399,7 +2392,7 @@ private def throwCallTargetMismatchError (progExpr : Expr) (hcallStx? : Option T
       s!"{hcallLabel} is the wrong contract (expected entry {expShort} / got {gotShort})"
   let defaultCallerOrSiteHint :=
     if rhsHasMVar then
-      s!"\nhint: the callee contract's entry address contains an unresolved metavariable (`{rhsRawStr}`); pass the entry address argument explicitly to `{hcallLabel}` (e.g. `wp_call ({hcallLabel} <entry_addr>)`) or supply a local `prog.fnAddr \"<callee>\" = ...` / `Obj.Loads` hypothesis{matchSuffix}"
+      s!"\nhint: the callee contract's entry address contains an unresolved metavariable (`{rhsRawStr}`); pass the entry address argument explicitly to `{hcallLabel}` (e.g. `wp_call ({hcallLabel} <entry_addr>)`) or supply a local `prog.fnAddr \"<callee>\" = ...` hypothesis{matchSuffix}"
     else
       match callerInsnHint? with
       | some h => h
@@ -2673,21 +2666,17 @@ private def parseWppCallOpts (opts : Array (TSyntax ``wppCallOpt)) :
 
 private def isContinuationInvHypType (e : Expr) : Bool :=
   let e := e.consumeMData
-  if e.isAppOfArity ``Obj.Image.FrozenLoaded 2 ||
-     e.isAppOfArity ``Obj.Image.CallInv 2 ||
-     e.isAppOfArity ``Memory.KeepsFrozen 2 then
+  if e.isAppOfArity ``Memory.KeepsFrozen 2 then
     true
   else if let some (_, lhs, rhs) := e.eq? then
-    lhs.isAppOfArity ``State.symtab 1 || rhs.isAppOfArity ``State.symtab 1 ||
-    lhs.isAppOfArity ``Obj.Image.symtab 1 || rhs.isAppOfArity ``Obj.Image.symtab 1
+    lhs.isAppOfArity ``State.symtab 1 || rhs.isAppOfArity ``State.symtab 1
   else
     false
 
-/-- If the current goal is a `SepWP prog mid s P post oom` segment produced by `SepWPp.of_sepWP`,
-    `SepWPp.of_sepWP_frozen`, or `SepWP.of_sepWP_frozen` whose continuation `post` enters `SepWPp`
-    (or `SepWP` with frozen invariants) and `s.pc` has reached `mid` (or `mid` is an unassigned
-    metavariable), automatically transition to the continuation via `SepWP.done` and introduce any
-    leading `FrozenLoaded` / `symtab` / `CallInv` hypotheses. -/
+/-- If the current goal is a `SepWP prog mid s P post oom` segment produced by `SepWPp.of_sepWP`
+    whose continuation `post` enters `SepWPp` (or `SepWP` with frozen invariants) and `s.pc` has
+    reached `mid` (or `mid` is an unassigned metavariable), automatically transition to the
+    continuation via `SepWP.done` and introduce any leading `KeepsFrozen` / `symtab` hypotheses. -/
 def transitionToContinuationGoalIfReady (forWppCall : Bool := false) : TacticM Unit := do
   if (← getGoals).isEmpty then return
   let g ← getMainGoal
@@ -2730,11 +2719,7 @@ def transitionToContinuationGoalIfReady (forWppCall : Bool := false) : TacticM U
       if let .forallE _ dom body _ := ty then
         if !body.hasLooseBVars && isContinuationInvHypType dom then
           let dom := dom.consumeMData
-          if dom.isAppOfArity ``Obj.Image.FrozenLoaded 2 then
-            return some `hfz_m
-          else if dom.isAppOfArity ``Obj.Image.CallInv 2 then
-            return some `hinv_m
-          else if dom.isAppOfArity ``Memory.KeepsFrozen 2 then
+          if dom.isAppOfArity ``Memory.KeepsFrozen 2 then
             return some `hkeep_m
           else
             return some `hsym_m
@@ -2945,107 +2930,6 @@ private def resolveCallContractTerm (hcall : Term) (progExpr pcExpr : Expr) : Ta
   | some app => g.withContext (Term.exprToSyntax app)
   | none => return hcall
 
-private partial def extractSpecImage? (specExpr : Expr) (fuel : Nat := 4) : MetaM (Option Expr) := do
-  let e ← instantiateMVars specExpr
-  if let some sub := e.find? (fun t =>
-      t.isAppOfArity ``Spec.inImage 3 ||
-      t.isAppOfArity ``Obj.Image.FrozenLoaded 2 ||
-      t.isAppOfArity ``Obj.Image.CallInv 2) then
-    if sub.isAppOfArity ``Spec.inImage 3 then
-      return some (sub.getArg! 2)
-    else
-      return some (sub.getArg! 0)
-  if fuel == 0 then return none
-  let fn := e.getAppFn
-  if fn.isConst then
-    let nm := fn.constName!
-    if nm != ``Arm64.Spec.mk then
-      if let some e' ← unfoldDefinition? e then
-        return ← extractSpecImage? e' (fuel - 1)
-  return none
-
-private def findFrozenProofs? (sExpr : Expr) (imgHint? : Option Expr := none) :
-    TacticM (Option (Expr × Expr × Expr × Bool)) := do
-  let g ← getMainGoal
-  g.withContext do
-    let mut candImgs : Array (Expr × Bool) := #[]
-    let addCand (arr : Array (Expr × Bool)) (img : Expr) (isCallInv : Bool) : MetaM (Array (Expr × Bool)) := do
-      if let some hint := imgHint? then
-        if !(img == hint || (← withReducible (isDefEq img hint))) then
-          return arr
-      for (existing, oldInv) in arr do
-        if existing == img || (← withReducible (isDefEq existing img)) then
-          if isCallInv && !oldInv then
-            return arr.map fun (e, b) => if e == existing then (e, true) else (e, b)
-          return arr
-      return arr.push (img, isCallInv)
-    for decl in (← getLCtx).decls.toList.reverse do
-      let some decl := decl | continue
-      if decl.isImplementationDetail || decl.isAuxDecl then continue
-      let ty := (← instantiateMVars decl.type).consumeMData
-      if ty.isAppOfArity ``Obj.Image.CallInv 2 then
-        candImgs ← addCand candImgs (ty.getArg! 0) true
-      else if ty.isAppOfArity ``Obj.Image.FrozenLoaded 2 then
-        candImgs ← addCand candImgs (ty.getArg! 0) false
-    if let some hint := imgHint? then
-      if candImgs.isEmpty then
-        candImgs := #[(hint, false)]
-    for (img, hasCallInv) in candImgs do
-      let fzGoalTy := mkApp2 (mkConst ``Obj.Image.FrozenLoaded) img sExpr
-      let symGoalTy ← mkEq (mkApp (mkConst ``State.symtab) sExpr) (mkApp (mkConst ``Obj.Image.symtab) img)
-      let mut fzPrf? : Option Expr := none
-      for decl in (← getLCtx).decls.toList.reverse do
-        let some decl := decl | continue
-        if decl.isImplementationDetail || decl.isAuxDecl then continue
-        let ty := (← instantiateMVars decl.type).consumeMData
-        if ty.isAppOfArity ``Obj.Image.FrozenLoaded 2 then
-          let dImg := ty.getArg! 0
-          let s0 := ty.getArg! 1
-          if dImg == img || (← withReducible (isDefEq dImg img)) then
-            if s0 == sExpr then
-              fzPrf? := some decl.toExpr
-              break
-            else if let some hmem ← proveMemEq? sExpr s0 then
-              fzPrf? := some (mkApp5 (mkConst ``Obj.Image.FrozenLoaded.of_mem_eq) img s0 sExpr decl.toExpr hmem)
-              break
-        else if ty.isAppOfArity ``Obj.Image.CallInv 2 then
-          let dImg := ty.getArg! 0
-          let s0 := ty.getArg! 1
-          if dImg == img || (← withReducible (isDefEq dImg img)) then
-            let p1 := mkApp2 (mkConst ``Obj.Image.FrozenLoaded) img s0
-            let p2 ← mkEq (mkApp (mkConst ``State.symtab) s0) (mkApp (mkConst ``Obj.Image.symtab) img)
-            let hfz0 := mkApp3 (mkConst ``And.left) p1 p2 decl.toExpr
-            if s0 == sExpr then
-              fzPrf? := some hfz0
-              break
-            else if let some hmem ← proveMemEq? sExpr s0 then
-              fzPrf? := some (mkApp5 (mkConst ``Obj.Image.FrozenLoaded.of_mem_eq) img s0 sExpr hfz0 hmem)
-              break
-      if fzPrf?.isNone then
-        fzPrf? ← proveWpSepSide? fzGoalTy
-      let some fzPrf := fzPrf? | continue
-      let mut symPrf? : Option Expr := none
-      for decl in (← getLCtx).decls.toList.reverse do
-        let some decl := decl | continue
-        if decl.isImplementationDetail || decl.isAuxDecl then continue
-        let ty := (← instantiateMVars decl.type).consumeMData
-        if ty == symGoalTy then
-          symPrf? := some decl.toExpr
-          break
-        else if ty.isAppOfArity ``Obj.Image.CallInv 2 then
-          let dImg := ty.getArg! 0
-          let s0 := ty.getArg! 1
-          if (dImg == img || (← withReducible (isDefEq dImg img))) && s0 == sExpr then
-            let p1 := mkApp2 (mkConst ``Obj.Image.FrozenLoaded) img s0
-            let p2 ← mkEq (mkApp (mkConst ``State.symtab) s0) (mkApp (mkConst ``Obj.Image.symtab) img)
-            symPrf? := some (mkApp3 (mkConst ``And.right) p1 p2 decl.toExpr)
-            break
-      if symPrf?.isNone then
-        symPrf? ← proveWpSepSide? symGoalTy
-      let some symPrf := symPrf? | continue
-      return some (img, fzPrf, symPrf, hasCallInv)
-    return none
-
 private def dischargeWppPanicSubgoal (gPanic : MVarId) (onPanic? : Option Term) :
     TacticM (List MVarId) := do
   let tryCloseClean (tac : TacticM Unit) : TacticM Bool :=
@@ -3059,7 +2943,8 @@ private def dischargeWppPanicSubgoal (gPanic : MVarId) (onPanic? : Option Term) 
         wp_unfold_specs
         intro _sf _hpan _hpan_ex _hm
         try dsimp only at _hm ⊢
-        try simp only [Spec.inImage, Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom] at _hm ⊢
+        wp_simp_in_image at _hm ⊢
+        try simp only [Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom] at _hm ⊢
         refine allowPanic_frame ($hpan) _hm)))
     if c1 then return []
     let c2 ← tryCloseClean do
@@ -3067,7 +2952,8 @@ private def dischargeWppPanicSubgoal (gPanic : MVarId) (onPanic? : Option Term) 
         wp_unfold_specs
         intro _sf _hpan _hpan_ex _hm
         try dsimp only at _hm ⊢
-        try simp only [Spec.inImage, Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom] at _hm ⊢
+        wp_simp_in_image at _hm ⊢
+        try simp only [Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom] at _hm ⊢
         refine allowPanic_frame (fun _hφ => ($hpan) _sf _hpan _hφ) _hm)))
     if c2 then return []
     let c3 ← tryCloseClean do
@@ -3075,7 +2961,8 @@ private def dischargeWppPanicSubgoal (gPanic : MVarId) (onPanic? : Option Term) 
         wp_unfold_specs
         intro _sf _hpan _hpan_ex _hm
         try dsimp only at _hm ⊢
-        try simp only [Spec.inImage, Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom] at _hm ⊢
+        wp_simp_in_image at _hm ⊢
+        try simp only [Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom] at _hm ⊢
         exact ($hpan) _sf _hpan _hm)))
     if c3 then return []
     let c4 ← tryCloseClean do
@@ -3093,7 +2980,8 @@ private def dischargeWppPanicSubgoal (gPanic : MVarId) (onPanic? : Option Term) 
       wp_unfold_specs
       intro _sf _hpan ⟨_R', _hpan_sat⟩
       try dsimp only at _hpan_sat
-      try simp only [Spec.inImage, satisfies_pure_sepConj, sepConj_assoc] at _hpan_sat
+      wp_simp_in_image at _hpan_sat
+      try simp only [satisfies_pure_sepConj, sepConj_assoc] at _hpan_sat
       first
         | exact False.elim (not_satisfies_false_sepConj _hpan_sat)
         | exact False.elim _hpan_sat.1
@@ -3107,7 +2995,8 @@ private def dischargeWppPanicSubgoal (gPanic : MVarId) (onPanic? : Option Term) 
         wp_unfold_specs
         intro _sf _hpan _hpan_ex _hm
         try dsimp only at _hm ⊢
-        try simp only [Spec.inImage, Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom] at _hm ⊢
+        wp_simp_in_image at _hm ⊢
+        try simp only [Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom] at _hm ⊢
         refine allowPanic_frame ?_ _hm
         intro _hφ
         first
@@ -3140,7 +3029,8 @@ private def dischargeWppPanicSubgoal (gPanic : MVarId) (onPanic? : Option Term) 
       wp_unfold_specs
       intro _sf _hpan _hpan_ex _hm
       try dsimp only at _hm ⊢
-      try simp only [Spec.inImage, Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom] at _hm ⊢
+      wp_simp_in_image at _hm ⊢
+      try simp only [Spec.allowPanicWhen, Spec.allowOomWhen, Spec.allowOom] at _hm ⊢
       refine allowPanic_frame ?_ _hm
       intro _hφ
       try simp (config := { decide := true }) only [wp_norm, arm64_norm, *] at _hφ ⊢
@@ -3174,20 +3064,13 @@ def wppCallCore (hcallOrig : Term) (arg? : Option Term) (onPanic? : Option Term)
     let pcStr ← (← getMainGoal).withContext (formatShortHexAddr pcExpr)
     throwError "wpp_call: current PC `{pcStr}` is already at `target_pc`; use `SepWPp.done` or `wp_done` instead of `wpp_call`"
   let hcall ← resolveCallContractTerm hcallOrig progExpr pcExpr
-  let g ← getMainGoal
-  let sExpr ← g.withContext do
-    let ty := (← instantiateMVars (← g.getType)).consumeMData
-    Pure.pure (ty.getArg! 2)
-  let (isSep, specImgHint?) ← g.withContext do
+  let isSep ← (← getMainGoal).withContext do
     let hcallExpr ← elabTerm hcall none
     let hcallTy ← whnfR (← instantiateMVars (← inferType hcallExpr))
     if hcallTy.isAppOfArity ``Arm64.subroutine_ok 4 then
-      let specE := hcallTy.getArg! 3
-      let isS ← specIsSplit specE
-      let img? ← extractSpecImage? specE
-      return (isS, img?)
+      specIsSplit (hcallTy.getArg! 3)
     else
-      return (false, none)
+      return false
   let sfId ← freshIdent `sf
   let hpcId ← freshIdent `hpc_sf
   let hrunId ← freshIdent `hrun_sf
@@ -3225,103 +3108,49 @@ def wppCallCore (hcallOrig : Term) (arg? : Option Term) (onPanic? : Option Term)
     foldStructEtaTarget
     wpNormAndSplitHyp hpostId
     return
-  let frozenInfo? ← findFrozenProofs? sExpr specImgHint?
-  if (requireFrozen || specImgHint?.isSome) && frozenInfo?.isNone then
+  if requireFrozen then
     throwError "wpp_call_frozen: could not prove `img.FrozenLoaded s` and `s.symtab = img.symtab` from the local context"
   let hspId ← freshIdent `hsp_sf
   let hcsId ← freshIdent `hcs_sf
-  match frozenInfo? with
-  | some (imgExpr, hfzPrf, hsymPrf, hasCallInv) =>
-    let hfzStx ← g.withContext (Term.exprToSyntax hfzPrf)
-    let hsymStx ← g.withContext (Term.exprToSyntax hsymPrf)
-    let hfzSfId ← freshIdent `hfz_sf
-    let hsymSfId ← freshIdent `hsym_sf
-    let applyFrozenStx ← match arg? with
-      | some a => `(tactic| apply (SepWPp.call_wpp_frozen $hcall (x := $a) $hfzStx $hsymStx))
-      | none => `(tactic| apply (SepWPp.call_wpp_frozen $hcall $hfzStx $hsymStx))
-    evalTactic applyFrozenStx
-    closeCallSiteSetupSubgoals progExpr (some hcallOrig)
-    let gsAfterSetup ← getGoals
-    let gPre :: gExit :: gPanic :: gCont :: rest := gsAfterSetup
-      | throwError "wpp_call: unexpected subgoals after `SepWPp.call_wpp_frozen`"
-    setGoals [gPre]
-    evalTactic (← `(tactic| intro _R' _hmR'))
-    let ghostMVars ← etaExpandGoalProdMVarsWithNames
-    evalTactic (← `(tactic| (
-      wp_unfold_specs
-      try dsimp only
-      try simp (config := { decide := true }) only [
-        Spec.inImage,
-        stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
-        sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-        satisfies_pure_sepConj, satisfies_sepConj_pure, satisfies_sepConj_pure_assoc,
-        satisfies_pure, satisfies_emp, sepConj_assoc, emp_sepConj, sepConj_emp,
-        List.length_nil, List.length_cons, List.length_singleton,
-        Nat.mul_zero, memRegion_zero, pointsToWords64_nil, BitVec.sub_self,
-        wp_norm, arm64_norm] at _hmR' ⊢
-    )))
-    destructureSatHyps
-    evalTactic (← `(tactic| repeat' (first | apply And.intro | arm64_instantiate_sep_exists)))
-    wpDischargeCallSubgoalsCore ghostMVars (some hcallOrig)
-    setGoals [gExit]
-    evalTactic (← `(tactic|
-      wp_focus_close (wp_unfold_specs; intro _ _ _ _ _he; (try simp only [Spec.inImage] at _he); exact not_satisfies_false_sepConj _he)))
-    let panicRem ← dischargeWppPanicSubgoal gPanic onPanic?
-    setGoals (gCont :: rest)
-    evalTactic (← `(tactic| intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident $hfzSfId:ident $hsymSfId:ident))
-    if hasCallInv then
-      let gContNow ← getMainGoal
-      let imgStx ← gContNow.withContext do Term.exprToSyntax (← instantiateMVars imgExpr)
-      let hinvSfId ← freshIdent `hinv_sf
-      let _ ← tryTacticCatchRuntimeBool (evalTactic (← `(tactic|
-        have $hinvSfId:ident : Obj.Image.CallInv $imgStx $sfId:ident := ⟨$hfzSfId:ident, $hsymSfId:ident⟩)))
-      (← getGoals).forM instantiateMVarDeclMVars
-    foldStructEtaTarget
-    wpNormAndSplitHyp hspId
-    wpNormAndSplitHyp hcsId
-    wpElimSpatialContext hspId (forWppCall := true)
-    let contGoals ← getGoals
-    setGoals (contGoals ++ panicRem)
-  | none =>
-    let applyWppStx ← match arg? with
-      | some a => `(tactic| apply (SepWPp.call_wpp $hcall (x := $a)))
-      | none => `(tactic| apply (SepWPp.call_wpp $hcall))
-    evalTactic applyWppStx
-    closeCallSiteSetupSubgoals progExpr (some hcallOrig)
-    let gsAfterSetup ← getGoals
-    let gPre :: gExit :: gPanic :: gCont :: rest := gsAfterSetup
-      | throwError "wpp_call: unexpected subgoals after `SepWPp.call_wpp`"
-    setGoals [gPre]
-    evalTactic (← `(tactic| intro _R' _hmR'))
-    let ghostMVars ← etaExpandGoalProdMVarsWithNames
-    evalTactic (← `(tactic| (
-      wp_unfold_specs
-      try dsimp only
-      try simp (config := { decide := true }) only [
-        Spec.inImage,
-        stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
-        sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-        satisfies_pure_sepConj, satisfies_sepConj_pure, satisfies_sepConj_pure_assoc,
-        satisfies_pure, satisfies_emp, sepConj_assoc, emp_sepConj, sepConj_emp,
-        List.length_nil, List.length_cons, List.length_singleton,
-        Nat.mul_zero, memRegion_zero, pointsToWords64_nil, BitVec.sub_self,
-        wp_norm, arm64_norm] at _hmR' ⊢
-    )))
-    destructureSatHyps
-    evalTactic (← `(tactic| repeat' (first | apply And.intro | arm64_instantiate_sep_exists)))
-    wpDischargeCallSubgoalsCore ghostMVars (some hcallOrig)
-    setGoals [gExit]
-    evalTactic (← `(tactic|
-      wp_focus_close (wp_unfold_specs; intro _ _ _ _ _he; (try simp only [Spec.inImage] at _he); exact not_satisfies_false_sepConj _he)))
-    let panicRem ← dischargeWppPanicSubgoal gPanic onPanic?
-    setGoals (gCont :: rest)
-    evalTactic (← `(tactic| intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident))
-    foldStructEtaTarget
-    wpNormAndSplitHyp hspId
-    wpNormAndSplitHyp hcsId
-    wpElimSpatialContext hspId (forWppCall := true)
-    let contGoals ← getGoals
-    setGoals (contGoals ++ panicRem)
+  let applyWppStx ← match arg? with
+    | some a => `(tactic| apply (SepWPp.call_wpp $hcall (x := $a)))
+    | none => `(tactic| apply (SepWPp.call_wpp $hcall))
+  evalTactic applyWppStx
+  closeCallSiteSetupSubgoals progExpr (some hcallOrig)
+  let gsAfterSetup ← getGoals
+  let gPre :: gExit :: gPanic :: gCont :: rest := gsAfterSetup
+    | throwError "wpp_call: unexpected subgoals after `SepWPp.call_wpp`"
+  setGoals [gPre]
+  evalTactic (← `(tactic| intro _R' _hmR'))
+  let ghostMVars ← etaExpandGoalProdMVarsWithNames
+  evalTactic (← `(tactic| (
+    wp_unfold_specs
+    try dsimp only
+    wp_simp_in_image at _hmR' ⊢
+    try simp (config := { decide := true }) only [
+      stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
+      sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
+      satisfies_pure_sepConj, satisfies_sepConj_pure, satisfies_sepConj_pure_assoc,
+      satisfies_pure, satisfies_emp, sepConj_assoc, emp_sepConj, sepConj_emp,
+      List.length_nil, List.length_cons, List.length_singleton,
+      Nat.mul_zero, memRegion_zero, pointsToWords64_nil, BitVec.sub_self,
+      wp_norm, arm64_norm] at _hmR' ⊢
+  )))
+  destructureSatHyps
+  evalTactic (← `(tactic| repeat' (first | apply And.intro | arm64_instantiate_sep_exists)))
+  wpDischargeCallSubgoalsCore ghostMVars (some hcallOrig)
+  setGoals [gExit]
+  evalTactic (← `(tactic|
+    wp_focus_close (wp_unfold_specs; intro _ _ _ _ _he; wp_simp_in_image at _he; exact not_satisfies_false_sepConj _he)))
+  let panicRem ← dischargeWppPanicSubgoal gPanic onPanic?
+  setGoals (gCont :: rest)
+  evalTactic (← `(tactic| intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident))
+  foldStructEtaTarget
+  wpNormAndSplitHyp hspId
+  wpNormAndSplitHyp hcsId
+  wpElimSpatialContext hspId (forWppCall := true)
+  let contGoals ← getGoals
+  setGoals (contGoals ++ panicRem)
 
 private def classifyOomBody? (e : Expr) : MetaM (Option Bool) := do
   let e ← whnfR (← instantiateMVars e)
@@ -3391,14 +3220,12 @@ private def withCallFailureDiagnostics (tac : String) (hcall : Term) (k : Tactic
       unprovable call-rule side condition such as `h_oom`)"
 
 /-- Apply a `subroutine_ok` (or `Program.subroutineOk`, `Program.relocSubroutineOk`, `HookOk`,
-    `HookSat`, or `Spec.inImage`) contract at a `SepWPp` call site (`bl`):
-    - Automatically transitions a preceding `SepWPp.of_sepWP` / `SepWPp.of_sepWP_frozen` segment
+    or `HookSat`) contract at a `SepWPp` call site (`bl`):
+    - Automatically transitions a preceding `SepWPp.of_sepWP` segment
       when `wp_steps` has stopped at the callee entry (no manual `apply SepWP.done` or `intro` needed).
     - Automatically infers `ret_pc` from `s.readReg64 .lr` and discharges `s.pc = entry`,
       `s.status = .Running`, `s.spAligned = true`, and `s.readReg64 .lr = ret_pc` (no `(ret_pc := ...)` needed).
     - Automatically infers the spatial frame `F` via `wp_frame_split` / `sep_frame` (no `(T := ...)` needed).
-    - Automatically preserves `img.FrozenLoaded` and `symtab = img.symtab` across the call when
-      present in the local context.
     - Automatically discharges the panic obligation for non-panicking callees (`Spec.noPanic`) and
       panic-propagating callees (`Spec.allowPanic`, `Spec.panicsOr`, `Spec.allowPanicWhen`), or uses
       `(on_panic := term)` if supplied.
@@ -3465,16 +3292,13 @@ private def wpCallCoreDirect (hcallOrig : Term) (arg? : Option Term) (onPanic? :
     let applySubStx ← match arg? with
       | some a => `(tactic| apply (SepWP.call_subroutine $hcall (x := $a)))
       | none => `(tactic| apply (SepWP.call_subroutine $hcall))
-    let (isSep, specImgHint?, sExpr) ← (← getMainGoal).withContext do
-      let ty := (← instantiateMVars (← (← getMainGoal).getType)).consumeMData
-      let sE := ty.getArg! 2
+    let isSep ← (← getMainGoal).withContext do
       let hcallExpr ← elabTerm hcall none
       let hcallTy ← whnfR (← instantiateMVars (← inferType hcallExpr))
       if hcallTy.isAppOfArity ``Arm64.subroutine_ok 4 then
-        let specE := hcallTy.getArg! 3
-        return (← specIsSplit specE, ← extractSpecImage? specE, sE)
+        specIsSplit (hcallTy.getArg! 3)
       else
-        return (false, none, sE)
+        return false
     if isSep then
       evalTactic applySepStx
       closeCallSiteSetupSubgoals progExpr (some hcallOrig)
@@ -3505,124 +3329,73 @@ private def wpCallCoreDirect (hcallOrig : Term) (arg? : Option Term) (onPanic? :
       foldStructEtaTarget
       wpNormAndSplitHyp hpostId
     else
-      let frozenInfo? ← findFrozenProofs? sExpr specImgHint?
-      if frozenInfo?.isNone then
-        let okPure ← tryTacticCatchRuntimeBool do
-          evalTactic applySubStx
-          closeCallSiteSetupSubgoals progExpr (some hcallOrig)
-          let gsAfterSetup ← getGoals
-          let gPre :: gPanic :: gErr :: gCont :: rest := gsAfterSetup
-            | throwError "wp_call: unexpected subgoals after `SepWP.call_subroutine`"
-          setGoals [gPre]
-          evalTactic (← `(tactic| (
-            intro _R' _hmR'
-            try simp only [satisfies_pure_sepConj, satisfies_sepConj_pure, satisfies_sepConj_pure_assoc, satisfies_pure, satisfies_emp, sepConj_assoc, emp_sepConj, sepConj_emp] at _hmR'
-          )))
-          let ghostMVars ← etaExpandGoalProdMVarsWithNames
-          evalTactic (← `(tactic| (
-            wp_unfold_specs
-            try dsimp only
-            try simp only [Spec.inImage, satisfies_pure_sepConj, satisfies_sepConj_pure, satisfies_sepConj_pure_assoc, satisfies_pure, satisfies_emp, sepConj_assoc, emp_sepConj, sepConj_emp]
-            repeat' (apply And.intro)
-          )))
-          wpDischargeCallSubgoalsCore ghostMVars (some hcallOrig)
-          setGoals ([gPanic, gErr, gCont] ++ rest)
-          evalTactic (← `(tactic| (
-            wp_focus_close (wp_unfold_specs; intro _ _ _ _hp; exact not_satisfies_false_sepConj _hp)
-            wp_focus_close (wp_unfold_specs; intro _ _ _ _ _he; exact not_satisfies_false_sepConj _he)
-            intro $sfId:ident $hpcId:ident $hrunId:ident $hpostId:ident
-          )))
-          foldStructEtaTarget
-          wpNormAndSplitHyp hpostId
-        if okPure then return
-      -- Framed call: the callee's precondition owns part of the current spatial context (or carries FrozenLoaded).
-      let hspId ← freshIdent `hsp_sf
-      let hcsId ← freshIdent `hcs_sf
-      match frozenInfo? with
-      | some (imgExpr, hfzPrf, hsymPrf, hasCallInv) =>
-        let gCur ← getMainGoal
-        let hfzStx ← gCur.withContext (Term.exprToSyntax hfzPrf)
-        let hsymStx ← gCur.withContext (Term.exprToSyntax hsymPrf)
-        let hfzSfId ← freshIdent `hfz_sf
-        let hsymSfId ← freshIdent `hsym_sf
-        let applyFrameFrozenStx ← match arg? with
-          | some a => `(tactic| apply (SepWP.call_subroutine_frame_frozen $hcall (x := $a) $hfzStx $hsymStx))
-          | none => `(tactic| apply (SepWP.call_subroutine_frame_frozen $hcall $hfzStx $hsymStx))
-        evalTactic applyFrameFrozenStx
+      let okPure ← tryTacticCatchRuntimeBool do
+        evalTactic applySubStx
         closeCallSiteSetupSubgoals progExpr (some hcallOrig)
         let gsAfterSetup ← getGoals
         let gPre :: gPanic :: gErr :: gCont :: rest := gsAfterSetup
-          | throwError "wp_call: unexpected subgoals after `SepWP.call_subroutine_frame_frozen`"
+          | throwError "wp_call: unexpected subgoals after `SepWP.call_subroutine`"
         setGoals [gPre]
-        evalTactic (← `(tactic| intro _R' _hmR'))
+        evalTactic (← `(tactic| (
+          intro _R' _hmR'
+          try simp only [satisfies_pure_sepConj, satisfies_sepConj_pure, satisfies_sepConj_pure_assoc, satisfies_pure, satisfies_emp, sepConj_assoc, emp_sepConj, sepConj_emp] at _hmR'
+        )))
         let ghostMVars ← etaExpandGoalProdMVarsWithNames
         evalTactic (← `(tactic| (
           wp_unfold_specs
           try dsimp only
-          try simp (config := { decide := true }) only [
-            Spec.inImage,
-            stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
-            sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-            satisfies_pure_sepConj, satisfies_sepConj_pure, satisfies_sepConj_pure_assoc,
-            satisfies_pure, satisfies_emp, sepConj_assoc, emp_sepConj, sepConj_emp,
-            wp_norm, arm64_norm] at _hmR' ⊢
+          wp_simp_in_image
+          try simp only [satisfies_pure_sepConj, satisfies_sepConj_pure, satisfies_sepConj_pure_assoc, satisfies_pure, satisfies_emp, sepConj_assoc, emp_sepConj, sepConj_emp]
+          repeat' (apply And.intro)
         )))
-        destructureSatHyps
-        evalTactic (← `(tactic| repeat' (first | apply And.intro | arm64_instantiate_sep_exists)))
         wpDischargeCallSubgoalsCore ghostMVars (some hcallOrig)
-        setGoals (gPanic :: gErr :: gCont :: rest)
-        evalTactic (← `(tactic| (
-          wp_focus_close (wp_unfold_specs; intro _ _ _ _hp; (try simp only [Spec.inImage] at _hp); exact not_satisfies_false_sepConj _hp)
-          wp_focus_close (wp_unfold_specs; intro _ _ _ _ _he; (try simp only [Spec.inImage] at _he); exact not_satisfies_false_sepConj _he)
-          intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident $hfzSfId:ident $hsymSfId:ident
-        )))
-        if hasCallInv then
-          let gContNow ← getMainGoal
-          let imgStx ← gContNow.withContext do Term.exprToSyntax (← instantiateMVars imgExpr)
-          let hinvSfId ← freshIdent `hinv_sf
-          let _ ← tryTacticCatchRuntimeBool (evalTactic (← `(tactic|
-            have $hinvSfId:ident : Obj.Image.CallInv $imgStx $sfId:ident := ⟨$hfzSfId:ident, $hsymSfId:ident⟩)))
-          (← getGoals).forM instantiateMVarDeclMVars
-        foldStructEtaTarget
-        wpNormAndSplitHyp hspId
-        wpNormAndSplitHyp hcsId
-        wpElimSpatialContext hspId
-      | none =>
-        let applyFrameStx ← match arg? with
-          | some a => `(tactic| apply (SepWP.call_subroutine_frame $hcall (x := $a)))
-          | none => `(tactic| apply (SepWP.call_subroutine_frame $hcall))
-        evalTactic applyFrameStx
-        closeCallSiteSetupSubgoals progExpr (some hcallOrig)
-        let gsAfterSetup ← getGoals
-        let gPre :: gPanic :: gErr :: gCont :: rest := gsAfterSetup
-          | throwError "wp_call: unexpected subgoals after `SepWP.call_subroutine_frame`"
-        setGoals [gPre]
-        evalTactic (← `(tactic| intro _R' _hmR'))
-        let ghostMVars ← etaExpandGoalProdMVarsWithNames
-        evalTactic (← `(tactic| (
-          wp_unfold_specs
-          try dsimp only
-          try simp (config := { decide := true }) only [
-            Spec.inImage,
-            stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
-            sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
-            satisfies_pure_sepConj, satisfies_sepConj_pure, satisfies_sepConj_pure_assoc,
-            satisfies_pure, satisfies_emp, sepConj_assoc, emp_sepConj, sepConj_emp,
-            wp_norm, arm64_norm] at _hmR' ⊢
-        )))
-        destructureSatHyps
-        evalTactic (← `(tactic| repeat' (first | apply And.intro | arm64_instantiate_sep_exists)))
-        wpDischargeCallSubgoalsCore ghostMVars (some hcallOrig)
-        setGoals (gPanic :: gErr :: gCont :: rest)
+        setGoals ([gPanic, gErr, gCont] ++ rest)
         evalTactic (← `(tactic| (
           wp_focus_close (wp_unfold_specs; intro _ _ _ _hp; exact not_satisfies_false_sepConj _hp)
           wp_focus_close (wp_unfold_specs; intro _ _ _ _ _he; exact not_satisfies_false_sepConj _he)
-          intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident
+          intro $sfId:ident $hpcId:ident $hrunId:ident $hpostId:ident
         )))
         foldStructEtaTarget
-        wpNormAndSplitHyp hspId
-        wpNormAndSplitHyp hcsId
-        wpElimSpatialContext hspId
+        wpNormAndSplitHyp hpostId
+      if okPure then return
+      -- Framed call: the callee's precondition owns part of the current spatial context.
+      let hspId ← freshIdent `hsp_sf
+      let hcsId ← freshIdent `hcs_sf
+      let applyFrameStx ← match arg? with
+        | some a => `(tactic| apply (SepWP.call_subroutine_frame $hcall (x := $a)))
+        | none => `(tactic| apply (SepWP.call_subroutine_frame $hcall))
+      evalTactic applyFrameStx
+      closeCallSiteSetupSubgoals progExpr (some hcallOrig)
+      let gsAfterSetup ← getGoals
+      let gPre :: gPanic :: gErr :: gCont :: rest := gsAfterSetup
+        | throwError "wp_call: unexpected subgoals after `SepWP.call_subroutine_frame`"
+      setGoals [gPre]
+      evalTactic (← `(tactic| intro _R' _hmR'))
+      let ghostMVars ← etaExpandGoalProdMVarsWithNames
+      evalTactic (← `(tactic| (
+        wp_unfold_specs
+        try dsimp only
+        wp_simp_in_image at _hmR' ⊢
+        try simp (config := { decide := true }) only [
+          stackFrame16, stackFrame32, stackFrame16At_def, stackFrame32At_def,
+          sepExists_sepConj_left, sepExists_sepConj_right, satisfies_sepExists,
+          satisfies_pure_sepConj, satisfies_sepConj_pure, satisfies_sepConj_pure_assoc,
+          satisfies_pure, satisfies_emp, sepConj_assoc, emp_sepConj, sepConj_emp,
+          wp_norm, arm64_norm] at _hmR' ⊢
+      )))
+      destructureSatHyps
+      evalTactic (← `(tactic| repeat' (first | apply And.intro | arm64_instantiate_sep_exists)))
+      wpDischargeCallSubgoalsCore ghostMVars (some hcallOrig)
+      setGoals (gPanic :: gErr :: gCont :: rest)
+      evalTactic (← `(tactic| (
+        wp_focus_close (wp_unfold_specs; intro _ _ _ _hp; exact not_satisfies_false_sepConj _hp)
+        wp_focus_close (wp_unfold_specs; intro _ _ _ _ _he; exact not_satisfies_false_sepConj _he)
+        intro $sfId:ident $hpcId:ident $hrunId:ident $hspId:ident $hcsId:ident
+      )))
+      foldStructEtaTarget
+      wpNormAndSplitHyp hspId
+      wpNormAndSplitHyp hcsId
+      wpElimSpatialContext hspId
 
 private def wpCallCoreAuto (hcallOrig : Term) (arg? : Option Term) (onPanic? : Option Term) :
     TacticM Unit := do
@@ -4581,30 +4354,48 @@ private def closeWpDonePureSubgoal (preNormTyOpt : Option Expr := none) : Tactic
       replaceMainGoal []
       return
     if !ty0.hasMVar then
+      let hasTable0 ← g0.withContext (hasGroundGuardedTableProp ty0)
       let closedTrivial ← tryTacticTrackHeartbeatBool hbRef "pure/register postcondition trivial check" <|
-        withHeartbeatCap 20000 (evalTactic (← `(tactic|
-          first | exact True.intro | with_reducible rfl | wp_assumption | with_reducible assumption | exact CalleeSavedPreserved.rfl _ | decide)))
+        withHeartbeatCap 20000 (evalTactic (←
+          if hasTable0 then
+            `(tactic| first | exact True.intro | wp_assumption | with_reducible assumption | exact CalleeSavedPreserved.rfl _ | with_reducible rfl)
+          else
+            `(tactic| first | exact True.intro | wp_assumption | with_reducible assumption | with_reducible rfl | exact CalleeSavedPreserved.rfl _ | decide)))
       if closedTrivial then return
     else
       let closedRfl ← tryTacticTrackHeartbeatBool hbRef "pure/register postcondition reflexivity check" <|
         withHeartbeatCap 20000 (evalTactic (← `(tactic|
-          first | exact True.intro | with_reducible rfl | exact CalleeSavedPreserved.rfl _)))
+          first | exact True.intro | wp_assumption | with_reducible assumption | with_reducible rfl | exact CalleeSavedPreserved.rfl _)))
       if closedRfl then return
     if ← outerHeartbeatsExhausted then
       throwHeartbeatPhaseError "wp_done" ((← hbRef.get).getD "pure/register postcondition fast check") pureRemedy (some g0)
     let ty0' ← g0.withContext (instantiateMVars (← g0.getType))
+    let hasTable ← g0.withContext (hasGroundGuardedTableProp ty0')
     let (_, hypIds) ← g0.withContext getLightweightSimpHyps
     let _ ← tryTacticTrackHeartbeatBool hbRef "pure/register postcondition simplification (`wp_norm` / `arm64_norm`)" <|
-      withHeartbeatCap 30000 (evalTactic (← `(tactic| (
-        try simp (config := { decide := true }) only [
-          ite_prop_eq, List.length_cons, List.length_nil,
-          pure, bind, Functor.map, Seq.seq,
-          Option.map, Option.bind, Option.getD, Option.isSome, Option.isNone,
-          Option.some.injEq, Except.ok.injEq, Prod.mk.injEq, List.foldlM,
-          Arm64.CalleeSavedPreserved, Arm64.CallingConventionPreserved,
-          wp_norm, arm64_norm, $[$hypIds:ident],*]
-        try repeat' (first | apply And.intro | intro _)
-      ))))
+      withHeartbeatCap 30000 do
+        if hasTable then
+          evalTactic (← `(tactic| (
+            try simp (config := { decide := false }) only [
+              ite_prop_eq, List.length_cons, List.length_nil,
+              pure, bind, Functor.map, Seq.seq,
+              Option.map, Option.bind, Option.getD, Option.isSome, Option.isNone,
+              Option.some.injEq, Except.ok.injEq, Prod.mk.injEq, List.foldlM,
+              Arm64.CalleeSavedPreserved, Arm64.CallingConventionPreserved,
+              wp_norm, arm64_norm, wp_proj_guard, $[$hypIds:ident],*]
+            try repeat' (first | apply And.intro | intro _)
+          )))
+        else
+          evalTactic (← `(tactic| (
+            try simp (config := { decide := true }) only [
+              ite_prop_eq, List.length_cons, List.length_nil,
+              pure, bind, Functor.map, Seq.seq,
+              Option.map, Option.bind, Option.getD, Option.isSome, Option.isNone,
+              Option.some.injEq, Except.ok.injEq, Prod.mk.injEq, List.foldlM,
+              Arm64.CalleeSavedPreserved, Arm64.CallingConventionPreserved,
+              wp_norm, arm64_norm, $[$hypIds:ident],*]
+            try repeat' (first | apply And.intro | intro _)
+          )))
     if (← getGoals).isEmpty then return
     if ← outerHeartbeatsExhausted then
       throwHeartbeatPhaseError "wp_done" ((← hbRef.get).getD "pure/register postcondition simplification (`wp_norm` / `arm64_norm`)") pureRemedy (some g0)
@@ -4615,9 +4406,9 @@ private def closeWpDonePureSubgoal (preNormTyOpt : Option Expr := none) : Tactic
             first
               | done
               | exact True.intro
-              | with_reducible rfl
               | wp_assumption
               | with_reducible assumption
+              | with_reducible rfl
               | decide
               | (bv_omega_fast; done)
               | (wp_omega_bounded; done))))
@@ -4635,26 +4426,47 @@ private def closeWpDonePureSubgoal (preNormTyOpt : Option Expr := none) : Tactic
     let closedMain ← tryTacticTrackHeartbeatBool hbRef "pure/register postcondition arithmetic (`wp_omega_bounded` / `bv_fallback`)" <|
       withHeartbeatCap 50000 do
         let gCur ← getMainGoal
+        let hasTableCur ← gCur.withContext (hasGroundGuardedTableProp (← instantiateMVars (← gCur.getType)))
         let (_, curHypIds) ← gCur.withContext getLightweightSimpHyps
-        evalTactic (← `(tactic|
-          all_goals (
-            try simp (config := { decide := true }) only [
-              ite_prop_eq, List.length_cons, List.length_nil,
-              pure, bind, Functor.map, Seq.seq,
-              Option.map, Option.bind, Option.getD, Option.isSome, Option.isNone,
-              Option.some.injEq, Except.ok.injEq, Prod.mk.injEq, List.foldlM,
-              Arm64.CalleeSavedPreserved, Arm64.CallingConventionPreserved,
-              wp_norm, arm64_norm, $[$curHypIds:ident],*]
-            first
-              | done
-              | exact True.intro
-              | with_reducible rfl
-              | wp_assumption
-              | with_reducible assumption
-              | decide
-              | (bv_omega_fast; done)
-              | (wp_omega_bounded; done)
-              | (bv_fallback; done))))
+        if hasTableCur then
+          evalTactic (← `(tactic|
+            all_goals (
+              try simp (config := { decide := false }) only [
+                ite_prop_eq, List.length_cons, List.length_nil,
+                pure, bind, Functor.map, Seq.seq,
+                Option.map, Option.bind, Option.getD, Option.isSome, Option.isNone,
+                Option.some.injEq, Except.ok.injEq, Prod.mk.injEq, List.foldlM,
+                Arm64.CalleeSavedPreserved, Arm64.CallingConventionPreserved,
+                wp_norm, arm64_norm, wp_proj_guard, $[$curHypIds:ident],*]
+              first
+                | done
+                | exact True.intro
+                | wp_assumption
+                | with_reducible assumption
+                | with_reducible rfl
+                | (bv_omega_fast; done)
+                | (wp_omega_bounded; done)
+                | (bv_fallback; done))))
+        else
+          evalTactic (← `(tactic|
+            all_goals (
+              try simp (config := { decide := true }) only [
+                ite_prop_eq, List.length_cons, List.length_nil,
+                pure, bind, Functor.map, Seq.seq,
+                Option.map, Option.bind, Option.getD, Option.isSome, Option.isNone,
+                Option.some.injEq, Except.ok.injEq, Prod.mk.injEq, List.foldlM,
+                Arm64.CalleeSavedPreserved, Arm64.CallingConventionPreserved,
+                wp_norm, arm64_norm, $[$curHypIds:ident],*]
+              first
+                | done
+                | exact True.intro
+                | wp_assumption
+                | with_reducible assumption
+                | with_reducible rfl
+                | decide
+                | (bv_omega_fast; done)
+                | (wp_omega_bounded; done)
+                | (bv_fallback; done))))
         unless (← getGoals).isEmpty do throwError "unsolved"
     if closedMain then return
     if ← outerHeartbeatsExhausted then

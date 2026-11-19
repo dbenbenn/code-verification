@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Exit -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.ExitPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PolysLoopPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PolysOuterPlaced
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoop
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.PtsLoopPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyEncoder>::from_pb`: Relocatable Top-Level Proof
@@ -25,7 +26,7 @@ Relocatable `[LibsignalPlacement]` proof of `encoder_from_pb_placed_ok_ext` and
 `encoder_from_pb_placed_ok_x` on Block `374`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.EncoderFromPb
 

@@ -70,7 +70,7 @@ theorem recvAt_kyberCt_eq {n : Nat} (hn : n = 40 ∨ n = 81) : ∀ p, parsePreKe
     unfold recvCt; rcases hn with rfl | rfl <;> [rw [recvAt40_eq_fast]; rw [recvAt81_eq_fast]] <;> decide +kernel
   intro p hp; simpa [hp] using eq_of_beq h
 theorem recvCt_mem_kyberCts {n : Nat} (hn : n = 40 ∨ n = 81) : recvCt n ∈ setup.kyberCts := by unfold recvCt; rcases hn with rfl | rfl <;> [rw [recvAt40_eq_fast]; rw [recvAt81_eq_fast]] <;> decide +kernel
-theorem not_kyberMismatch_at {n : Nat} (hn : n = 40 ∨ n = 81) {i : ExternInterpretation} {r : Records} (hfits : compFits setup i r) : ∀ p, parsePreKeyWire (recvAt n) = some p → ¬ KyberMismatch i r p := by
+theorem not_kyberMismatch_at {n : Nat} (hn : n = 40 ∨ n = 81) {i : ExternInterpretation} {r : Records} (hfits : SetupMatches setup i r) : ∀ p, parsePreKeyWire (recvAt n) = some p → ¬ KyberMismatch i r p := by
   rintro p hp ⟨e, ct, ss, helen, hpct, henc, hdec⟩
   rw [recvAt_kyberCt_eq hn p hp] at hpct; injection hpct with hkk; unfold kyberKey at hkk; injection hkk with _ hct_eq; subst hct_eq
   exact hdec (hfits.2.2.2.2.2.2.2.2.2.2.2.2.2.2.2 _ (recvCt_mem_kyberCts hn) e ss helen henc)

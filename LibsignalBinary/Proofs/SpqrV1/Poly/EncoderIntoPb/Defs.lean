@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks2
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym
-public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Poly -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.PolyPart1CodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.ConsumeMessageKey.Heap -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
-import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder>::into_pb`: Definitions and Specifications
@@ -27,7 +28,7 @@ AArch64 separation-logic specifications for `<spqr::encoding::polynomial::PolyEn
 `ProtoPolynomialEncoder` (`enc.intoPb`) at `x0` (sret), or panics on OOM.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.EncoderIntoPb
 
@@ -74,7 +75,7 @@ structure EncoderIntoPbGhost where
     * Registers: `x0 = out` (56-byte `ProtoPolynomialEncoder` sret), `x1 = encA` (400-byte `PolyEncoder`).
     * Consumes `polyEncoderAt A encA enc` (deallocating its 16 `Vec<GF16>` buffers and leaving
       `memRegion encA 400`) and writes `protoPolynomialEncoderAt A out enc.intoPb`, or panics on OOM. -/
-def encoderIntoPbSpec (A : RustAlloc) : Spec EncoderIntoPbGhost where
+@[expose] def encoderIntoPbSpec (A : RustAlloc) : Spec EncoderIntoPbGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.encA⌝ ∗
       memRegion x.out protoPolynomialEncoderSize ∗
@@ -88,7 +89,7 @@ def encoderIntoPbSpec (A : RustAlloc) : Spec EncoderIntoPbGhost where
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
 /-- Extended-stack variant of `encoderIntoPbSpec` (`encoderIntoPbStackX = 224 + extHookStack`). -/
-def encoderIntoPbSpecX (A : RustAlloc) : Spec EncoderIntoPbGhost where
+@[expose] def encoderIntoPbSpecX (A : RustAlloc) : Spec EncoderIntoPbGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.out ∧ s.readReg64 .x1 = x.encA⌝ ∗
       memRegion x.out protoPolynomialEncoderSize ∗
@@ -101,24 +102,9 @@ def encoderIntoPbSpecX (A : RustAlloc) : Spec EncoderIntoPbGhost where
       A.pool ∗ stackAt s0.sp encoderIntoPbStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-/-- `<PolyEncoder>::into_pb` meets `encoderIntoPbSpec A` on `tripleRatchetProgAtExt b ext`. -/
-def EncoderIntoPbOkExt (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt b ext)
-    ((tripleRatchetProgAtExt b ext).fnAddr encoderIntoPbName)
-    (encoderIntoPbSpec A)
-
-/-- `<PolyEncoder>::into_pb` meets `(encoderIntoPbSpecX A).inImage img` on
-    `tripleRatchetProgAtExt img.base ext`. -/
-def EncoderIntoPbOkX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr encoderIntoPbName)
-    ((encoderIntoPbSpecX A).inImage img)
-
 /-- `<PolyEncoder>::into_pb` (Block `375`) meets `encoderIntoPbSpec A` on
     `(blkPC_375).rebase (blkPl_375).base (Rust.withPanics ext)` under `[LibsignalPlacement]`. -/
-def EncoderIntoPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncoderIntoPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_375).rebase (blkPl_375).base (Rust.withPanics ext))
     (blkPl_375).base
@@ -126,7 +112,7 @@ def EncoderIntoPbPlacedOkExt [LibsignalPlacement] (A : RustAlloc)
 
 /-- `<PolyEncoder>::into_pb` (Block `375`) meets `encoderIntoPbSpecX A` on
     `(blkPC_375).rebase (blkPl_375).base (Rust.withPanics ext)` under `[LibsignalPlacement]`. -/
-def EncoderIntoPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def EncoderIntoPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_375).rebase (blkPl_375).base (Rust.withPanics ext))
     (blkPl_375).base
@@ -135,7 +121,7 @@ def EncoderIntoPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
 /-! ## Shared Memory, Stack, and Representation Lemmas -/
 
 /-- Serialize a list of `GF16` elements into big-endian byte pairs. -/
-def serializeGF16List (cs : List GF16) : List (BitVec 8) :=
+@[expose] def serializeGF16List (cs : List GF16) : List (BitVec 8) :=
   cs.flatMap (fun g => u16ToBeBytes g.value)
 
 @[simp] theorem serializeGF16List_nil :
@@ -350,7 +336,7 @@ theorem vecU8_slot_intro (A : RustAlloc) (el cap ptr : BitVec 64) (bs : List (Bi
   exact vecU8At_entails_vecU8 A el cap ptr bs
 
 /-- Remaining buffer and allocator block of a `Vec<GF16>` after splitting out `arrayAt gf16At 2 ptr cs`. -/
-def vecGF16Tail (A : RustAlloc) (cap ptr : BitVec 64) (len : Nat) : SepProp :=
+@[expose] def vecGF16Tail (A : RustAlloc) (cap ptr : BitVec 64) (len : Nat) : SepProp :=
   ⌜len ≤ cap.toNat ∧ cap.toNat * 2 < 2 ^ 63 ∧ len * 2 < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr (cap.toNat * 2) 2 ∗
@@ -803,7 +789,7 @@ theorem truncate_32_zeroExtend_64 (x : BitVec 32) :
 theorem setWidth_32_setWidth_64 (x : BitVec 32) :
     BitVec.setWidth 32 (BitVec.setWidth 64 x) = x := by bv_omega
 
-def withSaved19_20 (s0 : State) (encA out : BitVec 64) : State :=
+@[expose] def withSaved19_20 (s0 : State) (encA out : BitVec 64) : State :=
   (s0.writeReg64 .x19 encA).writeReg64 .x20 out
 
 @[simp] theorem withSaved19_20_lr (s0 : State) (encA out : BitVec 64) :

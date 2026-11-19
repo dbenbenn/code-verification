@@ -9,9 +9,27 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Corrupt Branch of the Concrete Atomic `simFig8` Step
@@ -21,7 +39,7 @@ implementing the `.corrupt` branch of `simFig8OracleSan`, with cost, description
 proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -60,11 +78,11 @@ variable {encPt : Pt → Bytes} {encT : Pt → PublicKey} {decT : PublicKey → 
 local notation "ASig" => atomicSig ℓ Pt
 local notation "AOps" => atomicSessionOps ℓ Pt C K Dh encPt encT decT lam
 
-def corrNoneReplyE {O' : Ops ASig} {Γ : List (Ty ASig)} :
+@[expose] def corrNoneReplyE {O' : Ops ASig} {Γ : List (Ty ASig)} :
     Expr O' Γ (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) :=
   .pair .none (.pair .none .none)
 
-def corrBlockedE {Γ : List (Ty ASig)} (q : ℕ)
+@[expose] def corrBlockedE {Γ : List (Ty ASig)} (q : ℕ)
     (sE : Expr AOps Γ (simFullT ℓ Pt)) (qE : Expr AOps Γ .bool) :
     Expr AOps Γ .bool :=
   eLet (.pair sE qE)
@@ -77,7 +95,7 @@ def corrBlockedE {Γ : List (Ty ASig)} (q : ℕ)
            (orE (mInWinE mir0 q0)
              (.not (mNoSpkCorrE mir0 q0))))))
 
-def corrChainsUpdE {Γ : List (Ty ASig)}
+@[expose] def corrChainsUpdE {Γ : List (Ty ASig)}
     (sE : Expr AOps Γ (simFullT ℓ Pt)) (qE : Expr AOps Γ .bool)
     (stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ (.prod (.list (ghostChainT ℓ Pt)) (.list (ghostChainT ℓ Pt))) :=
@@ -101,7 +119,7 @@ def corrChainsUpdE {Γ : List (Ty ASig)}
           .pair (revealSpkChainsE (.fst cs0) pkE) (.snd cs0)))
        (ssChains base0))
 
-def corrSomeOutE {Γ : List (Ty ASig)} (idA idB : IdentityKey) (q : ℕ)
+@[expose] def corrSomeOutE {Γ : List (Ty ASig)} (idA idB : IdentityKey) (q : ℕ)
     (sE : Expr AOps Γ (simFullT ℓ Pt)) (qE : Expr AOps Γ .bool)
     (stE : Expr AOps Γ (fig8StT (ℓ := ℓ) (Pt := Pt))) :
     Expr AOps Γ (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (simFullT ℓ Pt)) :=
@@ -136,7 +154,7 @@ def corrSomeOutE {Γ : List (Ty ASig)} (idA idB : IdentityKey) (q : ℕ)
 
 /-- Context-polymorphic atomic `Comp` implementing the `.corrupt Q` branch of `simFig8OracleSan`
 at `(L, Bsk) = (q, 25000 * q)`. -/
-def simFig8StepCorrBody {Γ : List (Ty ASig)} (idA idB : IdentityKey) (q : ℕ)
+@[expose] def simFig8StepCorrBody {Γ : List (Ty ASig)} (idA idB : IdentityKey) (q : ℕ)
     (sE : Expr AOps Γ (simFullT ℓ Pt)) (qE : Expr AOps Γ .bool) :
     Comp AOps (fig8SmIface ℓ Pt) Γ
       (.prod (smRT (ℓ := ℓ) (Pt := Pt) GhostStT) (simFullT ℓ Pt)) :=

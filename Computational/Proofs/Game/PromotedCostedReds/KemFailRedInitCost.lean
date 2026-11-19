@@ -9,7 +9,9 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit
+public import Computational.Proofs.Game.PromotedCostedReds.KemFailRedInit -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
 
 /-!
 # Cost and Description-Size Bounds for `KemFailRedInit`
@@ -18,7 +20,7 @@ Proves static `.queries`, `.cost`, and `descBits` bounds for `kemFailStateT`, `k
 `kemFailInitC`, and `kemFailFinishOptE`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

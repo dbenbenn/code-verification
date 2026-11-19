@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cPlaced
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5PlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5bPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cPlaced
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`) — Part 5c Placed: Arm 9 (`States.ct1Acknowledged`)
@@ -28,7 +30,7 @@ jump table index `9` -> `+360`) on Block `334` under `RustCliAllocBudget M` in p
 `withLsCodeLoaded` forms.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,7 +43,7 @@ namespace LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part5cPlacedBudget
 open Arm64 ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (LibsignalPlacement libsignalSessionCode lsmpl lsρ
+  (LibsignalPlacement lsmpl lsρ
    subroutine_ok_withLsCodeLoaded_of_plain withLsCodeLoaded)
 open CryptoVerification.LibsignalSpqrV1
   (PolyDecoder States V1State spqrAuthApi spqrPolyApi)
@@ -98,7 +100,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
   (sessionMemcpyRegionBudgetSpec)
 open VerifiedLibraries.Mallocng (MallocngMaxAllocSize)
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
   bv_sub_sub_lit' bv_add_add_lit'
 attribute [local simp, local arm64_norm] none2Cap_add_two_beq_zero noneCap_add_two_beq_zero

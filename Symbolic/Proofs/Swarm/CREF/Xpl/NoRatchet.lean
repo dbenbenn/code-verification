@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -44,7 +44,7 @@ Proves `noRatchet_of_rngFree` and `noRatchet_of_matched`: an accepting `Move.dec
 (`recvChainFor st.toDRState msg.ratchetKey = some (c, false)`) without running `dhRatchetStep`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA -- proof-setup: allow-public-import
 import VCVio.CryptoFoundations.SecExp.Measure
 import VCVio.EvalDist.Monad.Basic
 
@@ -20,7 +20,7 @@ Relational `simulateQ` coupling combinators (`RelProbUpToBad`, `RelCoupled`), la
 with cache-invariance lenses (`CacheLens`, `IsInvariant`), and the lazy `KeyInd` state.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,14 +35,14 @@ open Proofs.SignalPqxdh.Security.FgGapDh.Opk
 
 namespace Proofs.SignalPqxdh.Security
 
-def withBaseRoCache {S : Setup} (c : List (Bytes × DRKey)) (st : KeyIndState S) : KeyIndState S :=
+@[expose] def withBaseRoCache {S : Setup} (c : List (Bytes × DRKey)) (st : KeyIndState S) : KeyIndState S :=
   { st with roCache := c }
 
-def withShCrRoCache {S : Setup} (c : List (Bytes × DRKey)) (hst : KeyIndShCrState S) :
+@[expose] def withShCrRoCache {S : Setup} (c : List (Bytes × DRKey)) (hst : KeyIndShCrState S) :
   KeyIndShCrState S :=
   { hst with base := withBaseRoCache c hst.base }
 
-def withAdvRoCache {S : Setup} (c : List (Bytes × DRKey)) (hst : KeyIndAdvCutoffState S) :
+@[expose] def withAdvRoCache {S : Setup} (c : List (Bytes × DRKey)) (hst : KeyIndAdvCutoffState S) :
     KeyIndAdvCutoffState S :=
   { hst with shCr := withShCrRoCache c hst.shCr }
 
@@ -317,28 +317,6 @@ theorem two_mul_toReal_uniformBool_bind_eq_add_fg (f : Bool → ProbComp Bool) :
   norm_num
   ring
 
-theorem evalDist_keyIndExpG3_eq_branch (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
-    𝒟[keyIndExpG3 S P A] =
-    𝒟[do
-      let secb ← $ᵗ Bool
-      let z ← if secb then keyIndAdvG3Branch true S P A else keyIndAdvG3Branch false S P A
-      return (secb == z)] := by
-  rw [keyIndExpG3_eq_advG3Sim]
-  unfold runKeyIndAdvG3Sim keyIndAdvG3Branch
-  rw [bind_assoc]
-  refine OracleComp.evalDist_bind_congr_of_support _ _ _ fun secb _ => ?_
-  cases secb <;>
-  · simp only [Bool.false_eq_true, ↓reduceIte, bind_assoc, pure_bind]
-    refine OracleComp.evalDist_bind_congr_of_support _ _ _ fun ⟨b', finalHst⟩ _ => ?_
-    exact evalDist_finalizeKeyIndG3_eq_post_beq S P _ b' finalHst.shCr
-
-theorem keyIndAdvG3_eq_abs_sub_branch (S : Setup) (P : Primitives) (A : KeyIndAdversary S) :
-    keyIndAdvG3 S P A =
-      |(𝒟[keyIndAdvG3Branch true S P A] {true}).toReal -
-       (𝒟[keyIndAdvG3Branch false S P A] {true}).toReal| := by
-  unfold keyIndAdvG3
-  rw [evalDist_keyIndExpG3_eq_branch, evalDist_boolBias_bind_uniformBool, Measure.toReal_boolDist]
-
 @[simp]
 theorem finalizeKeyIndG3Post_eq_finalizeKeyIndG3_true (S : Setup) (P : Primitives)
     (b' : Bool) (finalHst : KeyIndShCrState S) :
@@ -348,7 +326,7 @@ theorem finalizeKeyIndG3Post_eq_finalizeKeyIndG3_true (S : Setup) (P : Primitive
 
 /-! ## Lazy caches and cache lenses -/
 
-def evalCache {K : Type} [BEq K] (cache : List (K × DRKey)) (k : K) :
+@[expose] def evalCache {K : Type} [BEq K] (cache : List (K × DRKey)) (k : K) :
     ProbComp (DRKey × List (K × DRKey)) :=
   match cache.find? (fun (x, _) => x == k) with
   | some (_, dk) => pure (dk, cache)
@@ -357,7 +335,7 @@ def evalCache {K : Type} [BEq K] (cache : List (K × DRKey)) (k : K) :
     return (dk, (k, dk) :: cache)
 
 /-- Two caches are lookup-equivalent if `find?` returns the same `DRKey` for every key `k`. -/
-def CacheEquiv {K : Type} [BEq K] (c1 c2 : List (K × DRKey)) : Prop :=
+@[expose] def CacheEquiv {K : Type} [BEq K] (c1 c2 : List (K × DRKey)) : Prop :=
   ∀ k : K, (c1.find? (fun (x, _) => x == k)).map Prod.snd =
            (c2.find? (fun (x, _) => x == k)).map Prod.snd
 
@@ -503,7 +481,7 @@ namespace CacheLens
 
 variable {St K : Type} [BEq K]
 
-def Equiv (L : CacheLens St K) (st1 st2 : St) : Prop :=
+@[expose] def Equiv (L : CacheLens St K) (st1 st2 : St) : Prop :=
   L.set st1 [] = L.set st2 [] ∧ CacheEquiv (L.get st1) (L.get st2)
 
 theorem Equiv.refl (L : CacheLens St K) (st : St) : L.Equiv st st :=
@@ -517,13 +495,13 @@ theorem Equiv.set {L : CacheLens St K} {st1 st2 : St} (h : L.Equiv st1 st2)
   · rw [L.get_set, L.get_set]
     exact hc
 
-def eval (L : CacheLens St K) (st : St) (k : K) : ProbComp (DRKey × St) := do
+@[expose] def eval (L : CacheLens St K) (st : St) (k : K) : ProbComp (DRKey × St) := do
   let (dk, c') ← evalCache (L.get st) k
   return (dk, L.set st c')
 
 /-- A continuation `f : α × St → ProbComp Bool` is cache-invariant with respect to `L`
 if it respects `L.Equiv` and absorbs any discarded pre-warming `L.eval st k`. -/
-def IsInvariant (L : CacheLens St K) {α : Type} (f : α × St → ProbComp Bool) : Prop :=
+@[expose] def IsInvariant (L : CacheLens St K) {α : Type} (f : α × St → ProbComp Bool) : Prop :=
   (∀ a st1 st2, L.Equiv st1 st2 → 𝒟[f (a, st1)] = 𝒟[f (a, st2)]) ∧
   (∀ a st k, 𝒟[L.eval st k >>= fun (_, st') => f (a, st')] = 𝒟[f (a, st)])
 
@@ -840,13 +818,13 @@ theorem IsInvariant.ite_branch (L : CacheLens St K) {α : Type}
 
 end CacheLens
 
-def tagDRKey (b : Bytes) : DRKey :=
+@[expose] def tagDRKey (b : Bytes) : DRKey :=
   { rootKey := b, chainKey := [], pqrKey := [] }
 
 @[simp]
 theorem tagDRKey_rootKey (b : Bytes) : (tagDRKey b).rootKey = b := rfl
 
-def freshPidBytes {S : Setup} (st : KeyIndState S) : Bytes :=
+@[expose] def freshPidBytes {S : Setup} (st : KeyIndState S) : Bytes :=
   List.replicate (st.sessions.length + st.respSessions.length) 0
 
 @[simp]
@@ -862,17 +840,17 @@ structure KeyIndLazyState (S : Setup) where
   adv       : KeyIndAdvCutoffState S
   randCache : List (Bytes × DRKey) := []
 
-def KeyIndLazyState.empty (S : Setup) : KeyIndLazyState S :=
+@[expose] def KeyIndLazyState.empty (S : Setup) : KeyIndLazyState S :=
   { adv := { shCr := { base := KeyIndState.empty S true }, advRoLog := [] }, randCache := [] }
 
-def roLens (S : Setup) : CacheLens (KeyIndLazyState S) Bytes where
+@[expose] def roLens (S : Setup) : CacheLens (KeyIndLazyState S) Bytes where
   get lst := lst.adv.shCr.base.roCache
   set lst c := { lst with adv := withAdvRoCache c lst.adv }
   get_set _ _ := rfl
   set_set _ _ _ := rfl
   set_get _ := rfl
 
-def randLens (S : Setup) : CacheLens (KeyIndLazyState S) Bytes where
+@[expose] def randLens (S : Setup) : CacheLens (KeyIndLazyState S) Bytes where
   get lst := lst.randCache
   set lst c := { lst with randCache := c }
   get_set _ _ := rfl
@@ -985,7 +963,7 @@ theorem pqxdhKeyIndAdvG3Impl_withAdvRoCache_of_simple (S : Setup) (P : Primitive
         (pqxdhKeyIndImpl_withBaseRoCache_of_simple c S P (.revealSpkSk u j) (Or.inr (Or.inr (Or.inr
           (Or.inr (Or.inr (Or.inr ⟨u, j, rfl⟩)))))) adv.shCr.base))
 
-def evalRandIf {S : Setup} (eagerRand : Bool) (pid : KeyIndLazyState S → Bytes)
+@[expose] def evalRandIf {S : Setup} (eagerRand : Bool) (pid : KeyIndLazyState S → Bytes)
     (lst : KeyIndLazyState S)
     (cont : KeyIndLazyState S → ProbComp (KeyIndResponse × KeyIndLazyState S)) :
     ProbComp (KeyIndResponse × KeyIndLazyState S) :=
@@ -994,7 +972,7 @@ def evalRandIf {S : Setup} (eagerRand : Bool) (pid : KeyIndLazyState S → Bytes
   else
     cont lst
 
-def evalRoIf {S : Setup} (eagerRoHonest : Bool)
+@[expose] def evalRoIf {S : Setup} (eagerRoHonest : Bool)
     (isHonest : KeyIndLazyState S → Bool) (secrets : KeyIndLazyState S → Bytes)
     (lst : KeyIndLazyState S)
     (cont : DRKey → KeyIndLazyState S → ProbComp (KeyIndResponse × KeyIndLazyState S)) :
@@ -1113,14 +1091,14 @@ theorem evalDist_evalRoIf_true_eq_false {S : Setup} {α : Type}
     rw [hEq]
     exact hCont.2 a lst (secrets a lst)
 
-def getLazyView {S : Setup} (lst : KeyIndLazyState S) : KeyIndAdvCutoffState S :=
+@[expose] def getLazyView {S : Setup} (lst : KeyIndLazyState S) : KeyIndAdvCutoffState S :=
   withAdvRoCache [] lst.adv
 
-def setLazyView {S : Setup} (adv' : KeyIndAdvCutoffState S) (lst : KeyIndLazyState S) :
+@[expose] def setLazyView {S : Setup} (adv' : KeyIndAdvCutoffState S) (lst : KeyIndLazyState S) :
   KeyIndLazyState S :=
   { lst with adv := withAdvRoCache lst.adv.shCr.base.roCache adv' }
 
-def liftTagView {S : Setup} {β : Type}
+@[expose] def liftTagView {S : Setup} {β : Type}
     (m : KeyIndAdvCutoffState S → ProbComp (β × KeyIndAdvCutoffState S))
     (lst : KeyIndLazyState S) : ProbComp (β × KeyIndLazyState S) := do
   let (b, adv') ← m (getLazyView lst)
@@ -1178,7 +1156,7 @@ inductive LazyPost where
               (unfreshResp : DRKey → KeyIndResponse)
               (secrets : Bytes) (pid? : Option Bytes)
 
-def runLazyPost (eagerRoHonest eagerRand : Bool) (S : Setup)
+@[expose] def runLazyPost (eagerRoHonest eagerRand : Bool) (S : Setup)
     (post : LazyPost) (lst : KeyIndLazyState S) :
     ProbComp (KeyIndResponse × KeyIndLazyState S) :=
   match post with

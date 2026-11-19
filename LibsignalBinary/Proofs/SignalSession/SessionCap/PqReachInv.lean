@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.PqStep
+public import LibsignalBinary.Proofs.SignalSession.PqStep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeGrow
 
 /-!
@@ -20,7 +20,7 @@ Proves that every `ReachablePqxdhSession W me x g` satisfies `ReachPqInvCli` and
 `923,135` bytes (`encodeRecordX_length_le_pq_add_923135`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

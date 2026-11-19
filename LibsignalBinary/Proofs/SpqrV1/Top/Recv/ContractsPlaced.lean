@@ -9,14 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5Placed
-public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.Recv.Part5Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.StatesPlacedSeams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.FinalPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.InnerReloc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.MessageDeserialize.DefsPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.ProofPlaced
 import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState
@@ -32,7 +32,7 @@ combinators, `SpqrRecvPlacedContracts` assembly, and top-level composition (`spq
 for `spqr::recv` (Block `329`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -79,7 +79,7 @@ open CryptoVerification.SpqrV1.ChainProofs.NextKeyInternalFacts
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## 1. `.rodata` Extraction and Restoration for `spqrRecvRoPlacedAt` -/
@@ -348,7 +348,7 @@ theorem spqrRecvPlacedContracts_of_okX
 
 /-- Relocatable raw specification of `spqr::recv` (`Block 329`) with `recvResultExactKeyAt`
     (without `withLsCodeRoLoaded`). -/
-def spqrRecvPlacedRawSpecX (A : RustAlloc) (M : SpqrRecvModel) :
+@[expose] def spqrRecvPlacedRawSpecX (A : RustAlloc) (M : SpqrRecvModel) :
     Spec (VecArg × VecArg × BitVec 64) where
   pre := fun (st, msg, ret) s =>
     ⌜s.readReg64 .x0 = st.v ∧ s.readReg64 .x1 = msg.v ∧ s.readReg64 .x8 = ret⌝ ∗
@@ -363,14 +363,14 @@ def spqrRecvPlacedRawSpecX (A : RustAlloc) (M : SpqrRecvModel) :
       anyHeap
 
 /-- Relocatable specification of `spqr::recv` (`Block 329`) with `withLsCodeRoLoaded lsmpl`. -/
-def spqrRecvPlacedSpecX (A : RustAlloc) (M : SpqrRecvModel) :
+@[expose] def spqrRecvPlacedSpecX (A : RustAlloc) (M : SpqrRecvModel) :
     Spec (VecArg × VecArg × BitVec 64) :=
   withLsCodeRoLoaded lsmpl (spqrRecvPlacedRawSpecX A M)
 
 /-- Relocatable raw specification of `spqr::recv` (`Block 329`) enriched with
     `GF.Mul2U16.tokenInitPlacedAt` and input bounds (`st.bytes.length < 2 ^ 32 ∧
     msg.bytes.length < 2 ^ 40 ∧ spqrRecvStack ≤ s.sp.toNat`). -/
-def spqrRecvPlacedRawSpecXT (A : RustAlloc) (M : SpqrRecvModel) :
+@[expose] def spqrRecvPlacedRawSpecXT (A : RustAlloc) (M : SpqrRecvModel) :
     Spec (VecArg × VecArg × BitVec 64) :=
   { spqrRecvPlacedRawSpecX A M with
     pre := fun x s =>
@@ -381,7 +381,7 @@ def spqrRecvPlacedRawSpecXT (A : RustAlloc) (M : SpqrRecvModel) :
 /-- Relocatable specification of `spqr::recv` (`Block 329`) enriched with
     `GF.Mul2U16.tokenInitPlacedAt`, input bounds, and `withLsCodeRoLoaded lsmpl` (relocatable
     counterpart of `spqrRecvSpecExactKeyBounded`). -/
-def spqrRecvPlacedSpecXT (A : RustAlloc) (M : SpqrRecvModel) :
+@[expose] def spqrRecvPlacedSpecXT (A : RustAlloc) (M : SpqrRecvModel) :
     Spec (VecArg × VecArg × BitVec 64) :=
   { spqrRecvPlacedSpecX A M with
     pre := fun x s =>

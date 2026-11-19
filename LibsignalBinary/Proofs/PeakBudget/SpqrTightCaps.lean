@@ -9,15 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux
+public import LibsignalBinary.Proofs.PeakBudget.CliDomainCaps -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.V1.ReachSteps
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Plumbing
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
 import LibsignalBinary.Proofs.SpqrV1.Top.StateSizeStep
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.PbState
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.RunInst.ScopeAndCommit
+import LibsignalBinary.Proofs.SpqrV1.Top.StateSize
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -105,7 +109,7 @@ export LibsignalBinary.Proofs.PeakBudget.SpqrTightCapsAux
 
 /-- Serialized SPQR state that is either empty (`V0`) or the canonical encoding of a `ValidPqPtsAt K` state.
 -/
-def ValidStatePtsAt (K : Nat) (s : Bytes) : Prop :=
+@[expose] def ValidStatePtsAt (K : Nat) (s : Bytes) : Prop :=
   s = [] ∨ ∃ st : PqRatchetState, s = encodeState st ∧ ValidPqPtsAt K st
 
 private theorem validStatePtsAt_exists_encodeState {K : Nat} {s : Bytes} (h : ValidStatePtsAt K s) :
@@ -539,7 +543,7 @@ theorem validChainParamsPB_libsignal_false :
 
 /-- Serialized SPQR state that is either empty (`V0`) or the canonical encoding of a `ValidPqChainParams` state.
 -/
-def ValidStateChainParams (s : Bytes) : Prop :=
+@[expose] def ValidStateChainParams (s : Bytes) : Prop :=
   s = [] ∨ ∃ st : PqRatchetState, s = encodeState st ∧ ValidPqChainParams st
 
 private theorem validStateChainParams_exists_encodeState {s : Bytes} (h : ValidStateChainParams s) :
@@ -977,14 +981,14 @@ theorem validChainParams_of_reachPq {W : PEParams} {me : LocalIdentity} {x : Rec
 
 /-- SPQR validity on a `SessionRecord` (`ValidEncoderPtsAt K`, `ValidChainParams`, and `< 2 ^ 31` byte length on every active session's `pqRatchetState`).
 -/
-def RecordSpqrTightValid (K : Nat) (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def RecordSpqrTightValid (K : Nat) (r : SessionRecord (List (BitVec 8))) : Prop :=
   ∀ sess, r.currentSession = some sess →
     ValidEncoderPtsAt K sess.state.pqRatchetState ∧
     ValidChainParams sess.state.pqRatchetState ∧
     sess.state.pqRatchetState.length < 2 ^ 31
 
 /-- SPQR validity on the session record stored for `rem` in `F` under `scopeKit`. -/
-def PeerSpqrTightValidAt (K : Nat) (F : FsFiles) (rem : AddrVal) : Prop :=
+@[expose] def PeerSpqrTightValidAt (K : Nat) (F : FsFiles) (rem : AddrVal) : Prop :=
   match loadRec scopeKit F rem with
   | .ok (some r) => RecordSpqrTightValid K r
   | _ => True
@@ -1055,17 +1059,6 @@ theorem peerSpqrTightValidAt_of_cliSessionStoreSpec {A : RustAlloc} {b : BitVec 
     ValidEncoderPtsAt K otrPqr ∧ ValidChainParams otrPqr ∧ otrPqr.length < 2 ^ 31 := by
   have hrec := recordSpqrTightValid_of_cliSessionStoreSpec hScAt hValid sess hcur
   simpa [hpqr] using hrec
-
-theorem peerSpqrTightValidAt_of_w1ScopeAt {B : RunBudgets} {img : Arm64.Obj.Image}
-    {F : FsFiles} {peer : AddrGhost} {rem : AddrVal}
-    {r : SessionRecord (List (BitVec 8))} {sess : Session (List (BitVec 8))}
-    {otrPqr : List (BitVec 8)} {K : Nat}
-    (hScAt : (w1SessKit B img F peer).ScopeAt scopeKit StoresGhost.opened.sessions rem r)
-    (hcur : r.currentSession = some sess)
-    (hpqr : otrPqr = sess.state.pqRatchetState)
-    (hValid : PeerSpqrTightValidAt K F rem) :
-    ValidEncoderPtsAt K otrPqr ∧ ValidChainParams otrPqr ∧ otrPqr.length < 2 ^ 31 :=
-  peerSpqrTightValidAt_of_cliSessionStoreSpec hScAt hcur hpqr hValid
 
 private theorem recordSpqrTightValid_of_wfSession {K : Nat} (hK : 576 ≤ K)
     {W : PEParams} {st : PqParty} (hwf : PqxdhPartyInSpecDomain W st)

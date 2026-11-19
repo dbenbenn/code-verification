@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacC
-public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
+public import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmacC -- proof-setup: allow-public-import
+import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
 
 /-!
 # PQXDH authentication: hybrid probabilities and assembly
@@ -19,7 +19,7 @@ Defines the generic hybrid acceptance probability `gProb` and assembles the mult
 `PrfHmac` bound from the four hybrid steps.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,7 +31,7 @@ open SignalPqxdh
 open RoKem
 
 /-- Probability that the generic hybrid outputs `true` against `PrfHmac` oracle `b`. -/
-noncomputable def gProb (P : Primitives) (b : Bool) (defer : ℕ → Prop) [DecidablePred defer]
+@[expose] noncomputable def gProb (P : Primitives) (b : Bool) (defer : ℕ → Prop) [DecidablePred defer]
     (tag : ℕ → Bytes → OracleComp PrfHmacSimSpec Bytes) (B : AeadMuIntCtxtAdv) : ℝ :=
   (𝒟[do
     let k ← sampleBytes32

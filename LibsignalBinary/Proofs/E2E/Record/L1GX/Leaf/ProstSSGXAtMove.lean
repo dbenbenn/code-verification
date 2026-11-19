@@ -19,7 +19,7 @@ Establishes `prostSSGXAt_move`, showing that the 344-byte in-memory `SessionStru
 address-independent heap assertion so `memcpy` relocates it to any 8-byte-aligned destination.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX.Leaf.ProstSSGXAtMove
 

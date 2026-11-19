@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.LibsignalCli.HeadlinePqCliMixEq
-public import Computational.Proofs.LibsignalCli.PrefixCouplingWithCore
+public import Computational.Proofs.LibsignalCli.HeadlinePqCliMixEq -- proof-setup: allow-public-import
+public import Computational.Proofs.LibsignalCli.PrefixCouplingWithCore -- proof-setup: allow-public-import
 import Computational.Proofs.LibsignalCli.PrefixLazy1KeyReal
 
 /-!
@@ -20,7 +20,7 @@ import Computational.Proofs.LibsignalCli.PrefixLazy1KeyReal
 `boolBias_bhE2EExpWithKi_1KeyReal_false_le_sum_prefix_steps`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

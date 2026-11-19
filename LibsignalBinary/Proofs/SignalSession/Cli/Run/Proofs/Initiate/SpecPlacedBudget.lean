@@ -9,15 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.AssemblyPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.SemPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.AssemblyPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.RunCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.MallocngBridge
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable Contract for `signal_session_handshake::initiate`
@@ -28,14 +33,12 @@ and caller blocks `i < 619` over `RustCliAllocBudget M`, proving both
 contract (`cliInitiate_slotOk_placed`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlacedBudget
-
-noncomputable section
 
 open Arm64 Arm64.Process ProofLib SepProp
 open CryptoVerification (IsLsBlockProg LibsignalPlacement lsmpl)
@@ -75,40 +78,6 @@ open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
 
 /-! ## `DefsPlacedBudget.initSlotSpecPlaced` entrypoints -/
 
-/-- Budget-threaded `initSlotSpecPlaced` on block `521`, parameterized over `Stage2PlacedOk` and `Stage3PlacedOk`. -/
-theorem cliInitiate_placed_ok_of_stage2 [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {eEnvs : ExistingStoreCalleesEnvs}
-    {InitStateEnv : Params → List AllocEvent → Prop}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {Stage3Fit : InitGhost → PreKeyBundleFields → IdentityKeyPair →
-      List (BitVec 8) → List (BitVec 8) → BitVec 64 → BitVec 32 → State → M.σ → M.σ → Prop}
-    {Stage3Out : InitGhost → PreKeyBundleFields → IdentityKeyPair →
-      SignalPqxdh.DRKey → SignalPqxdh.HandshakeHdr → List AllocEvent → Prop}
-    (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hExist : ExistingStoreCalleesPlaced A lim eEnvs (cliGhostExterns gh (cliExternsPlaced mmpl W)) B)
-    (ha4 : SubsetA4InitCalleesPlaced A lim InitStateEnv mmpl gh W)
-    (hStage2 : Stage2PlacedOk A lim eEnvs InitStateEnv InitEnv mmpl gh W X B S)
-    (hStage3 : Stage3PlacedOk A lim InitStateEnv InitEnv Stage3Fit Stage3Out mmpl gh W X B S)
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hok : ∀ F peer me, S.filesOk F peer me → S.initOk F peer me → InitOk₀ ⟨W.C, W.Q⟩ F peer me)
-    (stk : Nat) (hstk : cliInitiateNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63)
-    (hFits : ∀ (x : InitGhost) (st0 : M.σ) (s0 : State),
-      AtInitEntryPlaced x s0 →
-      S.filesOk x.F x.peer.val x.me.val →
-      S.initOk x.F x.peer.val x.me.val →
-      InitOk₀ ⟨W.C, W.Q⟩ x.F x.peer.val x.me.val →
-      x.coins.length < 2 ^ 63 →
-      stk ≤ s0.sp.toNat →
-      FitsEnv M lim st0 (InitEnv x) →
-      CliInitiateBudgetFits M lim eEnvs InitStateEnv InitEnv Stage3Fit Stage3Out W X x s0 st0) :
-    subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 521)
-      (LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget.initSlotSpecPlaced
-        A lim InitEnv S stk) :=
-  cliInitiate_placed_ok_proof_of_stage2 mmpl gh W X B S hh hExist ha4 hStage2 hStage3 hS hok stk hstk hstk64
-    hFits
-
 /-- Budget-threaded `initSlotSpecPlaced` on block `521`, with Stage 2 discharged via `Stage2PlacedBudget.stage2Placed_ok`. -/
 theorem cliInitiate_placed_ok [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -140,44 +109,6 @@ theorem cliInitiate_placed_ok [LibsignalPlacement] {M : AllocCostModel}
       (LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget.initSlotSpecPlaced
         A lim InitEnv S stk) :=
   cliInitiate_placed_ok_proof mmpl gh W X B S hh hExist ha4 hStage3 hS hok stk hstk hstk64 hFits
-
-/-- Transfers `cliInitiate_placed_ok_of_stage2` to any caller block `i < 619`. -/
-theorem cliInitiate_caller_placed_ok_of_stage2 [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {eEnvs : ExistingStoreCalleesEnvs}
-    {InitStateEnv : Params → List AllocEvent → Prop}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {Stage3Fit : InitGhost → PreKeyBundleFields → IdentityKeyPair →
-      List (BitVec 8) → List (BitVec 8) → BitVec 64 → BitVec 32 → State → M.σ → M.σ → Prop}
-    {Stage3Out : InitGhost → PreKeyBundleFields → IdentityKeyPair →
-      SignalPqxdh.DRKey → SignalPqxdh.HandshakeHdr → List AllocEvent → Prop}
-    {callerProg : Program} {i : Nat}
-    (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) [IsLsBlockProg callerProg i (cliGhostExterns gh (cliExternsPlaced mmpl W))]
-    (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hExist : ExistingStoreCalleesPlaced A lim eEnvs (cliGhostExterns gh (cliExternsPlaced mmpl W)) B)
-    (ha4 : SubsetA4InitCalleesPlaced A lim InitStateEnv mmpl gh W)
-    (hStage2 : Stage2PlacedOk A lim eEnvs InitStateEnv InitEnv mmpl gh W X B S)
-    (hStage3 : Stage3PlacedOk A lim InitStateEnv InitEnv Stage3Fit Stage3Out mmpl gh W X B S)
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hok : ∀ F peer me, S.filesOk F peer me → S.initOk F peer me → InitOk₀ ⟨W.C, W.Q⟩ F peer me)
-    (stk : Nat) (hstk : cliInitiateNeed B ≤ stk) (hstk64 : stk ≤ 2 ^ 63)
-    (hFits : ∀ (x : InitGhost) (st0 : M.σ) (s0 : State),
-      AtInitEntryPlaced x s0 →
-      S.filesOk x.F x.peer.val x.me.val →
-      S.initOk x.F x.peer.val x.me.val →
-      InitOk₀ ⟨W.C, W.Q⟩ x.F x.peer.val x.me.val →
-      x.coins.length < 2 ^ 63 →
-      stk ≤ s0.sp.toNat →
-      FitsEnv M lim st0 (InitEnv x) →
-      CliInitiateBudgetFits M lim eEnvs InitStateEnv InitEnv Stage3Fit Stage3Out W X x s0 st0)
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 521)
-      (LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget.initSlotSpecPlaced
-        A lim InitEnv S stk) :=
-  transfer_withLsCodeRoLoaded (callerProg := callerProg) (hi := hi)
-    (cliInitiate_placed_ok_of_stage2 mmpl gh W X B S hh hExist ha4 hStage2 hStage3 hS hok stk hstk hstk64
-      hFits)
 
 /-- Transfers `cliInitiate_placed_ok` to any caller block `i < 619`. -/
 theorem cliInitiate_caller_placed_ok [LibsignalPlacement] {M : AllocCostModel}
@@ -214,47 +145,6 @@ theorem cliInitiate_caller_placed_ok [LibsignalPlacement] {M : AllocCostModel}
         A lim InitEnv S stk) :=
   AssemblyPlacedBudget.cliInitiate_caller_placed_ok mmpl gh W X B S hh hExist ha4 hStage3 hS hok stk hstk
     hstk64 hFits hi
-
-/-- Instantiates `cliInitiate_caller_placed_ok` on block `579` (`lsProg_579`) for `DefsPlacedBudget.initSlotSpecPlaced`. -/
-theorem cliInitiate_slotOk_defs_placed [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {eEnvs : ExistingStoreCalleesEnvs}
-    {InitStateEnv : Params → List AllocEvent → Prop}
-    {InitEnv : InitGhost → List AllocEvent → Prop}
-    {Stage3Fit : InitGhost → PreKeyBundleFields → IdentityKeyPair →
-      List (BitVec 8) → List (BitVec 8) → BitVec 64 → BitVec 32 → State → M.σ → M.σ → Prop}
-    {Stage3Out : InitGhost → PreKeyBundleFields → IdentityKeyPair →
-      SignalPqxdh.DRKey → SignalPqxdh.HandshakeHdr → List AllocEvent → Prop}
-    (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
-    (envs : RunSlotEnvs) (needs : RunNeeds)
-    (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (hExist : ExistingStoreCalleesPlaced A lim eEnvs (cliGhostExterns gh (cliExternsPlaced mmpl W)) B)
-    (ha4 : SubsetA4InitCalleesPlaced A lim InitStateEnv mmpl gh W)
-    (hStage3 : Stage3PlacedOk A lim InitStateEnv InitEnv Stage3Fit Stage3Out mmpl gh W X B S)
-    (hS : S.initiate = initDef X ⟨W.C, W.Q⟩)
-    (hok : ∀ F peer me, S.filesOk F peer me → S.initOk F peer me → InitOk₀ ⟨W.C, W.Q⟩ F peer me)
-    (hFits : ∀ {stk : Nat}, cliInitiateNeed B ≤ stk → stk ≤ 2 ^ 63 →
-      ∀ (x : InitGhost) (st0 : M.σ) (s0 : State),
-        AtInitEntryPlaced x s0 →
-        S.filesOk x.F x.peer.val x.me.val →
-        S.initOk x.F x.peer.val x.me.val →
-        InitOk₀ ⟨W.C, W.Q⟩ x.F x.peer.val x.me.val →
-        x.coins.length < 2 ^ 63 →
-        stk ≤ s0.sp.toNat →
-        FitsEnv M lim st0 (InitEnv x) →
-        CliInitiateBudgetFits M lim eEnvs InitStateEnv InitEnv Stage3Fit Stage3Out W X x s0 st0)
-    (henv : envs.initiate = InitEnv)
-    (hneed : needs.initiate = cliInitiateNeed B) :
-    ∀ stk, (slotsOfPlaced A lim envs S needs).initiate.need ≤ stk → stk ≤ 2 ^ 63 →
-      subroutine_ok (lsProg_579 (cliGhostExterns gh (cliExternsPlaced mmpl W))) (lsmpl.base 521)
-        (LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget.initSlotSpecPlaced
-          A lim envs.initiate S stk) := by
-  intro stk h1 h2
-  dsimp only [slotsOfPlaced, mkSlot] at h1
-  have hstk : cliInitiateNeed B ≤ stk := hneed ▸ h1
-  rw [henv]
-  exact cliInitiate_caller_placed_ok (i := 579) mmpl gh W X B S hh hExist ha4 hStage3 hS hok stk hstk h2
-    (hFits hstk h2)
 
 /-! ## Bridge to `Compose.SemPlacedBudget.initSlotSpecPlaced` and `slotsOfPlaced` -/
 
@@ -478,7 +368,5 @@ theorem initOk₀_pqInit_placed (W : PEParams) (st : PqParty) (b : PreKeyBundleF
 theorem pqInitiateAgrees_initDef_placed (S : RunSem) (X : UnreachedPqxdhPrimitives) (W : PEParams)
     (hS : S.initiate = initDef X W) : PqInitiateAgrees S X W :=
   CryptoVerification.SignalSession.Cli.RunProofs.pqInitiateAgrees_initDef_placed S X W hS
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecPlacedBudget

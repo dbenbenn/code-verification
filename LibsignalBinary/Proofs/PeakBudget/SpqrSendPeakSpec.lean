@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.PeakBudget.SpqrBoundedCredit -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendRodataCaps
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightBuckets
-public import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightHelpers
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
-public import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.SpqrDomainCaps
+public import LibsignalBinary.Proofs.PeakBudget.SpqrSendRodataCaps -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightBuckets
+import LibsignalBinary.Proofs.PeakBudget.SpqrSendTightHelpers
+import LibsignalBinary.Proofs.PeakBudget.SpqrTightCaps
+import LibsignalBinary.Proofs.SpqrV1.Top.InitInner.DefsPlacedBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Peak Live-Heap Specification for SPQR `spqr::send::<Coins>`
@@ -30,7 +32,7 @@ Establishes `PhaseCreditSpec M` and affine `fineCredit M` bounds for `spqr::send
 `nonFreeCount ≤ 1,432`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -122,25 +124,18 @@ private theorem seqEnv_mono {A₁ A₂ B₁ B₂ : List AllocEvent → Prop} {ev
 
 /-- Coarse bounded-allocation envelope for `spqr::send::<Coins>` (`≤ 512` non-free events, `maxReq = 4 * |st| + 4 * |pt| + 16,384`).
 -/
-def SpqrSendBoundedEnv (stBytes ptext : Bytes) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendBoundedEnv (stBytes ptext : Bytes) (evs : List AllocEvent) : Prop :=
   SpqrBoundedEvs 512 (4 * stBytes.length + 4 * ptext.length + 16384) evs
 
 theorem spqrSendBoundedEnv_nil (stBytes ptext : Bytes) :
     SpqrSendBoundedEnv stBytes ptext [] :=
   ⟨Nat.zero_le 512, fun _ h => nomatch h⟩
 
-theorem spqrSendBoundedEnv_phaseCreditSpec {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (stBytes ptext : Bytes) :
-    let R := 4 * stBytes.length + 4 * ptext.length + 16384
-    PhaseCreditSpec M (SpqrSendBoundedEnv stBytes ptext)
-      (512 * (2 * R + 9539)) (512 * (R + 8195)) (512 * (R + 8195)) R :=
-  spqrBoundedEvs_phaseCreditSpec hM 512 (4 * stBytes.length + 4 * ptext.length + 16384)
-
 /-! ## `spqr::send::<Coins>` Parts Envelopes and Credit Formulas -/
 
 /-- Post-`decode_state` send-ratchet tail envelope parameterized by decoded raw-state cap `rawCap`, `ptextCap`, and point cap `K`.
 -/
-def SpqrSendRawTailEnv (rawCap ptextCap K : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendRawTailEnv (rawCap ptextCap K : Nat) (evs : List AllocEvent) : Prop :=
   SpqrBoundedTotalEvs
     (rawCap + 16 * K + 512)
     192
@@ -148,18 +143,18 @@ def SpqrSendRawTailEnv (rawCap ptextCap K : Nat) (evs : List AllocEvent) : Prop 
     (4 * (rawCap + ptextCap) + 32 * K + 16384)
     evs
 
-def SpqrSendTailBoundedEnv (bsCap ptextCap K : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendTailBoundedEnv (bsCap ptextCap K : Nat) (evs : List AllocEvent) : Prop :=
   SpqrSendRawTailEnv (201 * bsCap) ptextCap K evs
 
 /-- Capped `spqr::send::<Coins>` envelope composing `DecodeStateLinearBoundedEnv bsCap`, `SpqrSendTailBoundedEnv`, and `FreeOnlyEvs`.
 -/
-def SpqrSendCappedEnv (bsCap ptextCap K : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendCappedEnv (bsCap ptextCap K : Nat) (evs : List AllocEvent) : Prop :=
   FreeOnlyEvs evs ∨
     SeqEnv (DecodeStateLinearBoundedEnv bsCap)
       (SeqEnv (SpqrSendTailBoundedEnv bsCap ptextCap K) FreeOnlyEvs) evs
 
 /-- Input-exact `spqr::send::<Coins>` parts envelope parameterized by encoder point cap `K`. -/
-def SpqrSendPartsBoundedEnv (K : Nat) (stBytes ptext : Bytes) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendPartsBoundedEnv (K : Nat) (stBytes ptext : Bytes) (evs : List AllocEvent) : Prop :=
   SpqrSendCappedEnv stBytes.length ptext.length K evs
 
 /-- Tight (`K = 640`, `ValidEncoderPts640`) `spqr::send::<Coins>` parts envelope. -/
@@ -169,14 +164,6 @@ abbrev SpqrSendTightEnv (stBytes ptext : Bytes) (evs : List AllocEvent) : Prop :
 /-- General (`K = 524,288`, `ValidEncoderPts`) `spqr::send::<Coins>` parts envelope. -/
 abbrev SpqrSendEnv (stBytes ptext : Bytes) (evs : List AllocEvent) : Prop :=
   SpqrSendPartsBoundedEnv 524288 stBytes ptext evs
-
-theorem spqrSendCappedEnv_nil (bsCap ptextCap K : Nat) :
-    SpqrSendCappedEnv bsCap ptextCap K [] :=
-  Or.inl fun _ h => nomatch h
-
-theorem spqrSendPartsBoundedEnv_nil (K : Nat) (stBytes ptext : Bytes) :
-    SpqrSendPartsBoundedEnv K stBytes ptext [] :=
-  spqrSendCappedEnv_nil stBytes.length ptext.length K
 
 theorem spqrSendCappedEnv_mono {bs₁ bs₂ pt₁ pt₂ K₁ K₂ : Nat} {evs : List AllocEvent}
     (hbs : bs₁ ≤ bs₂) (hpt : pt₁ ≤ pt₂) (hK : K₁ ≤ K₂)
@@ -189,36 +176,33 @@ theorem spqrSendCappedEnv_mono {bs₁ bs₂ pt₁ pt₂ K₁ K₂ : Nat} {evs : 
       (fun _ ht => spqrBoundedTotalEvs_mono (by omega) (Nat.le_refl 192) (by omega) (by omega) ht)
       (fun _ hf => hf)
 
-def spqrSendRawTailDeltaCum (rawCap ptextCap K : Nat) : Nat :=
+@[expose] def spqrSendRawTailDeltaCum (rawCap ptextCap K : Nat) : Nat :=
   77 * (12 * (rawCap + ptextCap) + 64 * K + 65536) +
     188 * (rawCap + 16 * K + 512) + 9539 * 192
 
-def spqrSendRawTailDeltaLive (rawCap ptextCap K : Nat) : Nat :=
+@[expose] def spqrSendRawTailDeltaLive (rawCap ptextCap K : Nat) : Nat :=
   2 * (12 * (rawCap + ptextCap) + 64 * K + 65536)
 
-def spqrSendRawTailDeltaPeak (rawCap ptextCap K : Nat) : Nat :=
+@[expose] def spqrSendRawTailDeltaPeak (rawCap ptextCap K : Nat) : Nat :=
   2 * (12 * (rawCap + ptextCap) + 64 * K + 65536)
 
-def spqrSendRawTailMaxReq (rawCap ptextCap K : Nat) : Nat :=
+@[expose] def spqrSendRawTailMaxReq (rawCap ptextCap K : Nat) : Nat :=
   4 * (rawCap + ptextCap) + 32 * K + 16384
 
-def spqrSendDeltaCum (bsCap ptextCap K : Nat) : Nat :=
+@[expose] def spqrSendDeltaCum (bsCap ptextCap K : Nat) : Nat :=
   decodeStateLinearDeltaCum bsCap + spqrSendRawTailDeltaCum (201 * bsCap) ptextCap K
 
-def spqrSendDeltaLive (bsCap ptextCap K : Nat) : Nat :=
+@[expose] def spqrSendDeltaLive (bsCap ptextCap K : Nat) : Nat :=
   decodeStateDeltaLive bsCap + spqrSendRawTailDeltaLive (201 * bsCap) ptextCap K
 
-def spqrSendDeltaPeak (bsCap ptextCap K : Nat) : Nat :=
+@[expose] def spqrSendDeltaPeak (bsCap ptextCap K : Nat) : Nat :=
   max (decodeStateDeltaPeak bsCap)
     (decodeStateDeltaLive bsCap + spqrSendRawTailDeltaPeak (201 * bsCap) ptextCap K)
 
-def spqrSendMaxReq (bsCap ptextCap K : Nat) : Nat :=
+@[expose] def spqrSendMaxReq (bsCap ptextCap K : Nat) : Nat :=
   max (decodeStateMaxReq bsCap) (spqrSendRawTailMaxReq (201 * bsCap) ptextCap K)
 
 abbrev spqrSendCum := spqrSendDeltaCum
-abbrev spqrSendLive := spqrSendDeltaLive
-abbrev spqrSendPeak := spqrSendDeltaPeak
-
 theorem spqrSendDeltaLive_le_spqrSendDeltaPeak (bsCap ptextCap K : Nat) :
     spqrSendDeltaLive bsCap ptextCap K ≤ spqrSendDeltaPeak bsCap ptextCap K :=
   Nat.le_max_right (decodeStateDeltaPeak bsCap)
@@ -288,18 +272,6 @@ theorem spqrSend_phaseCreditSpec_capped {M : AllocCostModel} [HasFineReallocCred
   (spqrSendCapped_phaseCreditSpec hM hLow bsCap ptextCap K).of_imp
     fun _ => spqrSendCappedEnv_mono hbs hpt hK
 
-theorem spqrSend_phaseCreditSpec_of_ptsCap {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    {K bsCap ptextCap : Nat} {stBytes ptext : Bytes}
-    (_hPts : ValidEncoderPtsAt K stBytes)
-    (hbs : stBytes.length ≤ bsCap) (hpt : ptext.length ≤ ptextCap) :
-    PhaseCreditSpec M (SpqrSendPartsBoundedEnv K stBytes ptext)
-      (spqrSendDeltaCum bsCap ptextCap K)
-      (spqrSendDeltaLive bsCap ptextCap K)
-      (spqrSendDeltaPeak bsCap ptextCap K)
-      (spqrSendMaxReq bsCap ptextCap K) :=
-  spqrSend_phaseCreditSpec_capped hM hLow hbs hpt (Nat.le_refl K)
-
 theorem spqrSend_phaseCreditSpec_tight640 {M : AllocCostModel} [HasFineReallocCredit M]
     (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
     {bsCap ptextCap : Nat} {stBytes ptext : Bytes}
@@ -325,7 +297,7 @@ theorem spqrSend_phaseCreditSpec_valid {M : AllocCostModel} [HasFineReallocCredi
       (spqrSendMaxReq 2147483647 ptext.length 524288) :=
   spqrSend_phaseCreditSpec_capped hM hLow (by omega) (Nat.le_refl ptext.length) (Nat.le_refl 524288)
 
-def fineCredit (M : AllocCostModel) [HasFineReallocCredit M] (s : M.σ) : Nat :=
+@[expose] def fineCredit (M : AllocCostModel) [HasFineReallocCredit M] (s : M.σ) : Nat :=
   HasFineReallocCredit.cumSmall s +
     max (HasFineReallocCredit.liveLarge s) (HasFineReallocCredit.peakLarge s)
 
@@ -342,17 +314,6 @@ theorem spqrSend_fineCredit_le {M : AllocCostModel} [HasFineReallocCredit M]
     (spqrSendPartsBounded_phaseCreditSpec hM hLow K stBytes ptext).credit_le s0 hevs
   have hlp := spqrSendDeltaLive_le_spqrSendDeltaPeak stBytes.length ptext.length K
   omega
-
-theorem spqrSend_evalLog_footprint_le {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hLow : SpqrLowInterceptHyps M)
-    (K : Nat) (stBytes ptext : Bytes) {evs : List AllocEvent}
-    (hevs : SpqrSendPartsBoundedEnv K stBytes ptext evs) :
-    M.footprint (M.evalLog evs) ≤
-      HasFineReallocCredit.baseFine (M := M) +
-        spqrSendDeltaCum stBytes.length ptext.length K +
-        spqrSendDeltaPeak stBytes.length ptext.length K :=
-  (spqrSendPartsBounded_phaseCreditSpec hM hLow K stBytes ptext).evalLog_footprint_le_of_live_le_peak
-    (spqrSendDeltaLive_le_spqrSendDeltaPeak stBytes.length ptext.length K) hevs
 
 /-! ## Tight `fineCostModel` Envelopes and Codec-Instantiated Credit Specs -/
 
@@ -395,7 +356,7 @@ theorem c07TightCreditSpec_inst (F : ShaCompress) :
 
 /-- Ghost-parameterized binary-order `spqr::send` envelope parametric in the three codec envelopes and `PqEncodeEnv`.
 -/
-def SpqrSendPartsTightParamEnv (F : ShaCompress)
+@[expose] def SpqrSendPartsTightParamEnv (F : ShaCompress)
     (DecodeStateEnv : Bytes → List AllocEvent → Prop)
     (StatesFromPbEnv : V1State → List AllocEvent → Prop)
     (StatesIntoPbEnv' : StatesIntoPbGhost F → List AllocEvent → Prop)
@@ -448,7 +409,7 @@ abbrev SpqrSendC07TightEnv (F : ShaCompress)
     stBytes pb st0 chainPb vn xAdd xSk xCInto xSInto postSt evs
 
 /-- Witness-free tight `spqr::send` envelope (`links ≤ 4`, `0 ≤ stLen' ≤ 286,196`). -/
-def SpqrSendTightCapEnv (_stBytes _ptext : Bytes) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendTightCapEnv (_stBytes _ptext : Bytes) (evs : List AllocEvent) : Prop :=
   SpqrSendPartsTightGenEnv
     DecodeStateTightEnv
     StatesFromPbTightEnv
@@ -464,7 +425,7 @@ def SpqrSendTightCapEnv (_stBytes _ptext : Bytes) (evs : List AllocEvent) : Prop
 
 /-- Witness-free tight `spqr::send` envelope for large post-send states (`links ≤ 4`, `135,167 < stLen' ≤ 286,196`).
 -/
-def SpqrSendTightLargeEnv (_stBytes _ptext : Bytes) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendTightLargeEnv (_stBytes _ptext : Bytes) (evs : List AllocEvent) : Prop :=
   SpqrSendPartsTightGenEnv
     DecodeStateTightEnv
     StatesFromPbTightEnv
@@ -480,7 +441,7 @@ def SpqrSendTightLargeEnv (_stBytes _ptext : Bytes) (evs : List AllocEvent) : Pr
 
 /-- Witness-free tight `spqr::send` envelope for `links ≤ 707` (`ChainIntoPbTight79236Env`) and `0 ≤ stLen' ≤ 286,196`.
 -/
-def SpqrSendTightCap79236Env (_stBytes _ptext : Bytes) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendTightCap79236Env (_stBytes _ptext : Bytes) (evs : List AllocEvent) : Prop :=
   SpqrSendPartsTightGenEnv
     DecodeStateTightEnv
     StatesFromPbTightEnv
@@ -494,7 +455,7 @@ def SpqrSendTightCap79236Env (_stBytes _ptext : Bytes) (evs : List AllocEvent) :
     (PqEncodeCapTightEnv 286196)
     evs
 
-def SpqrSendTightLarge79236Env (_stBytes _ptext : Bytes) (evs : List AllocEvent) : Prop :=
+@[expose] def SpqrSendTightLarge79236Env (_stBytes _ptext : Bytes) (evs : List AllocEvent) : Prop :=
   SpqrSendPartsTightGenEnv
     DecodeStateTightEnv
     StatesFromPbTightEnv
@@ -512,29 +473,25 @@ theorem spqrSendTightCapEnv_nil (stBytes ptext : Bytes) :
     SpqrSendTightCapEnv stBytes ptext [] :=
   spqrSendPartsTightGenEnv_nil _ _ _ _ _ _ _ _ _ _
 
-theorem spqrSendTightLargeEnv_nil (stBytes ptext : Bytes) :
-    SpqrSendTightLargeEnv stBytes ptext [] :=
-  spqrSendPartsTightGenEnv_nil _ _ _ _ _ _ _ _ _ _
-
-def spqrSendTightDeltaLive : Nat := 294391
-def spqrSendTightDeltaPeak : Nat := 294391
-def spqrSendTightMaxReq : Nat := 286196
+@[expose] def spqrSendTightDeltaLive : Nat := 294391
+@[expose] def spqrSendTightDeltaPeak : Nat := 294391
+@[expose] def spqrSendTightMaxReq : Nat := 286196
 
 /-- Tight `Δcum` (`4,211,749` bytes) at `links ≤ 4` when `135,167 < stLen' ≤ 286,196`. -/
-def spqrSendTightLargeDeltaCum : Nat := 4211749
+@[expose] def spqrSendTightLargeDeltaCum : Nat := 4211749
 
 /-- Tight `Δcum` (`4,355,111` bytes) at `links ≤ 4` across all `0 ≤ stLen' ≤ 286,196`. -/
-def spqrSendTightDeltaCum : Nat := 4355111
+@[expose] def spqrSendTightDeltaCum : Nat := 4355111
 
-def spqrSendTightLarge79236DeltaCum : Nat := 4293797
+@[expose] def spqrSendTightLarge79236DeltaCum : Nat := 4293797
 
-def spqrSendTight79236DeltaCum : Nat := 4437159
+@[expose] def spqrSendTight79236DeltaCum : Nat := 4437159
 
 /-- Single-branch `fineCredit` increment (`4,506,140` bytes) on `SpqrSendTightCapEnv` (`links ≤ 4`).
 -/
-def spqrSendTightFineCreditCap : Nat := 4506140
+@[expose] def spqrSendTightFineCreditCap : Nat := 4506140
 
-def spqrSendTight79236FineCreditCap : Nat := 4588188
+@[expose] def spqrSendTight79236FineCreditCap : Nat := 4588188
 
 private theorem sum_ten_reorder
     (cDec cFrom cInto cSend cCfrom cAdd cSk cCinto cMsg cPq cap : Nat)
@@ -753,50 +710,6 @@ theorem spqrSend_phaseCreditSpec_tight_largeEncode
     chainAddEpochTight4_fine_phaseCreditSpec
     chainSendKeyTight_fine_phaseCreditSpec
     chainIntoPbTight4_fine_phaseCreditSpec
-    messageSerializeTight_fine_phaseCreditSpec
-    statesIntoPb_fine_phaseCreditSpec_tight
-    (pqEncodeLargeTight_fine_phaseCreditSpec 286196)
-    (Nat.le_refl spqrSendTightDeltaLive)).mono
-    (by decide) (Nat.le_refl _) (Nat.le_refl _) (by decide)
-
-/-- Witness-free tight `PhaseCreditSpec` for `spqr::send` at `links ≤ 707` (`Δcum = 4,437,159`, `Δlive = Δpeak = 294,391`).
--/
-theorem spqrSend_phaseCreditSpec_tight_79236
-    {stBytes ptext : Bytes}
-    (_hPts : ValidEncoderPts640 stBytes)
-    (_hChain : ValidChainParams stBytes) :
-    PhaseCreditSpec fineCostModel (SpqrSendTightCap79236Env stBytes ptext)
-      spqrSendTight79236DeltaCum spqrSendTightDeltaLive spqrSendTightDeltaPeak
-      spqrSendTightMaxReq :=
-  (spqrSendPartsTightGen_phaseCreditSpec
-    decodeState_fine_phaseCreditSpec_tight
-    statesFromPb_fine_phaseCreditSpec_tight
-    statesSendRodataTight_fine_phaseCreditSpec
-    chainFromTight_fine_phaseCreditSpec
-    chainAddEpochTight4_fine_phaseCreditSpec
-    chainSendKeyTight_fine_phaseCreditSpec
-    chainIntoPbTight79236_fine_phaseCreditSpec
-    messageSerializeTight_fine_phaseCreditSpec
-    statesIntoPb_fine_phaseCreditSpec_tight
-    (pqEncodeCapTight_fine_phaseCreditSpec 286196)
-    (Nat.le_refl spqrSendTightDeltaLive)).mono
-    (by decide) (Nat.le_refl _) (Nat.le_refl _) (by decide)
-
-theorem spqrSend_phaseCreditSpec_tight_largeEncode_79236
-    {stBytes ptext : Bytes}
-    (_hPts : ValidEncoderPts640 stBytes)
-    (_hChain : ValidChainParams stBytes) :
-    PhaseCreditSpec fineCostModel (SpqrSendTightLarge79236Env stBytes ptext)
-      spqrSendTightLarge79236DeltaCum spqrSendTightDeltaLive spqrSendTightDeltaPeak
-      spqrSendTightMaxReq :=
-  (spqrSendPartsTightGen_phaseCreditSpec
-    decodeState_fine_phaseCreditSpec_tight
-    statesFromPb_fine_phaseCreditSpec_tight
-    statesSendRodataTight_fine_phaseCreditSpec
-    chainFromTight_fine_phaseCreditSpec
-    chainAddEpochTight4_fine_phaseCreditSpec
-    chainSendKeyTight_fine_phaseCreditSpec
-    chainIntoPbTight79236_fine_phaseCreditSpec
     messageSerializeTight_fine_phaseCreditSpec
     statesIntoPb_fine_phaseCreditSpec_tight
     (pqEncodeLargeTight_fine_phaseCreditSpec 286196)

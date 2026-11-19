@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnown
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.LitKeyKnown -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -26,12 +26,12 @@ import Symbolic.Proofs.Swarm.COMPOSED.CompTermAlgebra
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.DYBridge.DY.ALaCarte.Basic
 import Symbolic.DYBridge.DY.Trace.Basic
-import Symbolic.DYBridge.DY.Trace.Monad
-import Symbolic.DYBridge.DY.Trace.Manipulation
+public import Symbolic.DYBridge.DY.Trace.Monad
+public import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
-import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 
 /-!
@@ -41,7 +41,7 @@ Proves `sinvTR_messageDecrypt`: on a reachable composed trace satisfying `CkKnow
 `DepthTR`, executing `TripleRatchet.messageDecrypt` preserves `SInvTR`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

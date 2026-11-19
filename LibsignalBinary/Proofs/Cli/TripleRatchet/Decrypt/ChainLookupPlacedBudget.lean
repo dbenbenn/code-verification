@@ -9,14 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS0PlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS1ErrPlacedBudget
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS2SymPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupPlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS0PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS1ErrPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS2SymPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainStack
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainSym
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.ChainKeyCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.FindReceiverChainKeyBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS1ErrPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `ChainLookup` Proof on Block `433`
@@ -26,7 +31,7 @@ for `try_decrypt_with_state::<Coins>` (block `433`) and re-exports the budget-th
 and `ErrTail` seams.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -716,13 +721,5 @@ theorem findChain_433_placed_ok [LibsignalPlacement]
     rw [hres] at hcall
     refine reaches_pc_seq hcall (fun s_ret hpc_ret _ ⟨hmeta_ret, hro_ret, hx19_ret, hx20_ret, _, _, _, _, hx25_ret, _, _, hm_ret⟩ => ?_)
     exact findChain_after_call_error_433_placed hpc_ret hmeta_ret hro_ret hx19_ret hx20_ret hx25_ret hm_ret
-
-/-- Specialization of `findChain_433_placed_ok` discharging the callee from `blackBoxHook`. -/
-theorem findChain_433_placed_ok_of_bb [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64}
-    {H : String → Option (State → State)}
-    (h_bb : H lsBlackBoxU8Sym = some blackBoxHook) :
-    S2SeamPlaced ((blkPC_434).rebase (blkPl_434).base H) (blkPl_434).base A lim ctl :=
-  findChain_433_placed_ok (find_receiver_chain_key_placed_ok h_bb)
 
 end LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupPlacedBudget

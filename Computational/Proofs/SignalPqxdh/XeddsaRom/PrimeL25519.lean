@@ -12,6 +12,7 @@ module
 public import Mathlib.NumberTheory.LucasPrimality
 public import LibsignalBinary.Specifications.SignalPqxdh.Model
 import LibsignalBinary.Proofs.SpecLemmas.SignalPqxdh.Model
+import Mathlib.Algebra.Field.ZMod
 import Mathlib.Tactic.NormNum.Prime
 
 /-!
@@ -22,7 +23,7 @@ little-endian scalar encoding, XEdDSA `H_1` prefix domain separation, and RFC 77
 `±` recovery in `ZMod l25519`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 4096
@@ -43,9 +44,6 @@ theorem two_pow_252_lt_l25519 : 2 ^ 252 < l25519 := by
 
 theorem l25519_lt_two_pow_253 : l25519 < 2 ^ 253 := by
   unfold l25519; omega
-
-theorem l25519_lt_p25519 : l25519 < p25519 := by
-  unfold l25519 p25519; omega
 
 theorem l25519_pos : 0 < l25519 := by
   unfold l25519; omega
@@ -355,12 +353,12 @@ theorem eight_ne_zero_zmod_l25519 : (8 : ZMod l25519) ≠ 0 := by
 /-! ## Little-endian scalar encodings -/
 
 /-- Little-endian natural number decoded from a byte list. -/
-def natOfBytesLE : Bytes → ℕ
+@[expose] def natOfBytesLE : Bytes → ℕ
   | [] => 0
   | b :: bs => b.toNat + 256 * natOfBytesLE bs
 
 /-- `k`-byte little-endian encoding of `n mod 256 ^ k`. -/
-def bytesOfNatLE : ℕ → ℕ → Bytes
+@[expose] def bytesOfNatLE : ℕ → ℕ → Bytes
   | 0, _ => []
   | k + 1, n => UInt8.ofNat (n % 256) :: bytesOfNatLE k (n / 256)
 
@@ -454,11 +452,11 @@ theorem getD_toNat_eq_div_mod (bs : Bytes) (i : ℕ) :
       rw [hdiv]
 
 /-- Canonical 32-byte little-endian encoding of a scalar in `ZMod l25519`. -/
-def encodeScalarBytes (x : ZMod l25519) : Bytes :=
+@[expose] def encodeScalarBytes (x : ZMod l25519) : Bytes :=
   bytesOfNatLE 32 x.val
 
 /-- Decode a byte list into `ZMod l25519` as a little-endian natural number modulo `l25519`. -/
-def decodeScalarBytes (bs : Bytes) : ZMod l25519 :=
+@[expose] def decodeScalarBytes (bs : Bytes) : ZMod l25519 :=
   (natOfBytesLE bs : ZMod l25519)
 
 @[simp]
@@ -485,11 +483,6 @@ theorem decodeScalarBytes_encodeScalarBytes (x : ZMod l25519) :
   unfold decodeScalarBytes
   rw [natOfBytesLE_encodeScalarBytes, ZMod.natCast_zmod_val]
 
-theorem encodeScalarBytes_injective : Function.Injective encodeScalarBytes := by
-  intro x y h
-  have := congrArg decodeScalarBytes h
-  simpa using this
-
 theorem encodeScalarBytes_byte31_lt_32 (x : ZMod l25519) :
     ((encodeScalarBytes x).getD 31 0).toNat < 32 := by
   rw [getD_toNat_eq_div_mod, natOfBytesLE_encodeScalarBytes]
@@ -503,32 +496,10 @@ theorem encodeScalarBytes_byte31_lt_32 (x : ZMod l25519) :
 private theorem uint8_ofNat_toNat_eq (b : UInt8) : UInt8.ofNat b.toNat = b :=
   UInt8.toNat_inj.mp (UInt8.toNat_ofNat_of_lt' b.toBitVec.isLt)
 
-theorem encodeScalarBytes_byte31_and_e0 (x : ZMod l25519) :
-    ((encodeScalarBytes x).getD 31 0 &&& 0xE0) = 0 := by
-  have hlt := encodeScalarBytes_byte31_lt_32 x
-  have hcheck : ∀ i : Fin 256, i.val < 32 → UInt8.ofNat i.val &&& 0xE0 = 0 := by decide
-  set b := (encodeScalarBytes x).getD 31 0
-  simpa [uint8_ofNat_toNat_eq b] using hcheck ⟨b.toNat, b.toBitVec.isLt⟩ hlt
-
-theorem encodeScalarBytes_byte31_and_60 (x : ZMod l25519) :
-    ((encodeScalarBytes x).getD 31 0 &&& 0x60) = 0 := by
-  have hlt := encodeScalarBytes_byte31_lt_32 x
-  have hcheck : ∀ i : Fin 256, i.val < 32 → UInt8.ofNat i.val &&& 0x60 = 0 := by decide
-  set b := (encodeScalarBytes x).getD 31 0
-  simpa [uint8_ofNat_toNat_eq b] using hcheck ⟨b.toNat, b.toBitVec.isLt⟩ hlt
-
-theorem encodeScalarBytes_byte31_and_7f (x : ZMod l25519) :
-    ((encodeScalarBytes x).getD 31 0 &&& 0x7F) = (encodeScalarBytes x).getD 31 0 := by
-  have hlt := encodeScalarBytes_byte31_lt_32 x
-  have hcheck : ∀ i : Fin 256, i.val < 32 → UInt8.ofNat i.val &&& 0x7F = UInt8.ofNat i.val := by
-    decide
-  set b := (encodeScalarBytes x).getD 31 0
-  simpa [uint8_ofNat_toNat_eq b] using hcheck ⟨b.toNat, b.toBitVec.isLt⟩ hlt
-
 /-! ## XEdDSA hash-prefix domain separation -/
 
 /-- 32-byte domain-separation prefix `0xFE || 0xFF^31` of XEdDSA's nonce hash `H_1`. -/
-def xeddsaHashPrefix : Bytes :=
+@[expose] def xeddsaHashPrefix : Bytes :=
   [0xFE] ++ List.replicate 31 0xFF
 
 @[simp]
@@ -536,7 +507,7 @@ theorem xeddsaHashPrefix_length : xeddsaHashPrefix.length = 32 := by
   simp [xeddsaHashPrefix]
 
 /-- Clears bit 7 of byte 31 of a 32-byte buffer. -/
-def clearSignBit32 (bs : Bytes) : Bytes :=
+@[expose] def clearSignBit32 (bs : Bytes) : Bytes :=
   bs.take 31 ++ [bs.getD 31 0 &&& 0x7F]
 
 @[simp]
@@ -547,19 +518,6 @@ theorem clearSignBit32_length {bs : Bytes} (h : bs.length = 32) :
 theorem scalarIsInRange_clearSignBit32_xeddsaHashPrefix :
     scalarIsInRange (clearSignBit32 xeddsaHashPrefix) = false := by
   decide
-
-theorem natOfBytesLE_clearSignBit32_xeddsaHashPrefix :
-    natOfBytesLE (clearSignBit32 xeddsaHashPrefix) = 2 ^ 255 - 2 := by
-  decide
-
-theorem ne_xeddsaHashPrefix_of_lt_p25519 {capR : Bytes}
-    (hy : natOfBytesLE (clearSignBit32 capR) < p25519) :
-    capR ≠ xeddsaHashPrefix := by
-  intro heq
-  subst heq
-  rw [natOfBytesLE_clearSignBit32_xeddsaHashPrefix] at hy
-  unfold p25519 at hy
-  omega
 
 /-- Compressed Edwards points in canonical range cannot collide with `xeddsaHashPrefix`-prefixed
 inputs. -/
@@ -702,7 +660,7 @@ theorem clampScalar25519_idem (sk : Bytes) :
   exact clampScalar25519_bytesOfNatLE_eight_mul hk_lo hk_hi
 
 /-- Clamped X25519 private key `sk` decoded into `ZMod l25519`. -/
-def clampedScalarZMod (sk : Bytes) : ZMod l25519 :=
+@[expose] def clampedScalarZMod (sk : Bytes) : ZMod l25519 :=
   decodeScalarBytes (clampScalar25519 sk)
 
 theorem clampedScalarZMod_clamp (sk : Bytes) :
@@ -721,7 +679,7 @@ theorem clampedScalarZMod_ne_zero (sk : Bytes) : clampedScalarZMod sk ≠ 0 := b
   omega
 
 /-- Recovers the unique 32-byte RFC 7748 clamped scalar matching `±aExt` in `ZMod l25519`. -/
-noncomputable def recoverClampedScalar (aExt : ZMod l25519) : Bytes :=
+def recoverClampedScalar (aExt : ZMod l25519) : Bytes :=
   let k0 : ℕ := ((8 : ZMod l25519)⁻¹ * aExt).val
   let kCand : ℕ := if 2 ^ 251 ≤ k0 ∧ k0 < 2 ^ 252 then k0 else (l25519 - k0) % l25519
   bytesOfNatLE 32 (8 * kCand)

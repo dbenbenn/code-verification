@@ -9,17 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Common
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.Common
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPFrozen
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Drop.PolyBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Shared Relocatable `RustCliAllocBudget` Call Helpers for `recv_ct1_ack` and `recv_ct2_chunk`
@@ -30,7 +34,7 @@ framed relocatable `RustCliAllocBudget M` call rules for `<unchunked::Ct1SentEkR
 and `drop_glue::<[Poly; 16]>` (Block `265`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -321,36 +325,6 @@ theorem call_sendCt2_placed [LibsignalPlacement]
   call_sendCt2_placed_ofEnv hcall outA stA st outUc ct2 mac st_b hsc hfit
     hpc hrun hsp hsp_align hlr htrace hx0 hx1 hsplit hnext
 
-theorem call_sendCt2_placed_tight [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {K : MlKem} {prog : Program} {entry ret_pc next_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry
-      (LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedBudget.unchunkedCt1SentEkReceivedSendCt2PlacedSpec
-        M A lim F K))
-    (outA stA : BitVec 64) (st : UcSendCt1SentEkReceived F) (outUc : UcSendCt2Sent F)
-    (ct2 : Bytes) (mac : Mac) (st_b : M.σ)
-    (hsc : st.send_ct2 K = .ok (outUc, ct2, mac))
-    (hfit : FitsEnv M lim st_b (UnchunkedSendCt2PreEnv ⟨outA, stA, st, outUc, ct2, mac⟩))
-    {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp} {post Qp : State → SepProp → Prop}
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true) (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htrace : s.trace = s0.trace) (hx0 : s.readReg64 Reg.x0 = outA) (hx1 : s.readReg64 Reg.x1 = stA)
-    (hsplit : P = (memRegion outA 104 ∗ unchunkedCt1SentEkReceivedAt A.repAlloc stA st ∗
-      unchunkedSendCt2PlacedRoAt ∗ A.pool lim st_b s ∗ stackAt sp_call unchunkedSendCt2Stack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running → sf.sp = sp_call →
-      CalleeSavedPreserved s sf → sf.trace = s0.trace →
-      UnchunkedSendCt2PostEnv ⟨outA, stA, st, outUc, ct2, mac⟩ evs →
-      SepWP prog next_pc sf
-        ((unchunkedCt2SentAt A.repAlloc outA outUc ∗ vecU8 A.repAlloc (outA + 56#64) ct2 ∗
-          vecU8 A.repAlloc (outA + 80#64) mac ∗ memRegion stA 128 ∗
-          unchunkedSendCt2PlacedRoAt ∗ A.pool lim (M.stepEvents evs st_b) sf ∗
-          stackAt sp_call unchunkedSendCt2Stack) ∗ Frame)
-        (fun sm Pm => SepWPp prog (s0.readReg64 Reg.lr) sm Pm post Qp)) :
-    SepWP prog entry s P (fun sm Pm => SepWPp prog (s0.readReg64 Reg.lr) sm Pm post Qp) :=
-  call_sendCt2_placed_ofPrePostEnv hcall outA stA st outUc ct2 mac st_b hsc hfit
-    hpc hrun hsp hsp_align hlr htrace hx0 hx1 hsplit hnext
-
 /-- Two-envelope (`PreEnv` / `PostEnv`) framed relocatable `withLsCodeLoaded lsmpl` call rule
     for Block `347`, threading `LibsignalCodeLoaded lsmpl` to the next cross-block call `next_pc`. -/
 theorem call_sendCt2_cl_ofPrePostEnv [LibsignalPlacement]
@@ -524,72 +498,6 @@ theorem call_sendCt2_cl_tight [LibsignalPlacement]
         SepWPp prog (s0.readReg64 Reg.lr) sm Pm post Qp) :=
   call_sendCt2_cl_ofPrePostEnv hcall outA stA st outUc ct2 mac st_b hsc hfit
     hpc hrun hsp hsp_align hlr htrace hx0 hx1 hsplit hnext
-
-theorem call_sendCt2_cl_sepWP_ofPrePostEnv [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {K : MlKem}
-    {PreEnv PostEnv : UnchunkedSendCt2Ghost F → List AllocEvent → Prop}
-    {prog : Program} {entry ret_pc next_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry
-      (withLsCodeLoaded lsmpl
-        (unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv M A lim F K PreEnv PostEnv)))
-    (outA stA : BitVec 64) (st : UcSendCt1SentEkReceived F) (outUc : UcSendCt2Sent F)
-    (ct2 : Bytes) (mac : Mac) (st_b : M.σ)
-    (hsc : st.send_ct2 K = .ok (outUc, ct2, mac))
-    (hfit : FitsEnv M lim st_b (PreEnv ⟨outA, stA, st, outUc, ct2, mac⟩))
-    {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp} {post : State → SepProp → Prop}
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true) (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htrace : s.trace = s0.trace) (hx0 : s.readReg64 Reg.x0 = outA) (hx1 : s.readReg64 Reg.x1 = stA)
-    (hsplit : P = (memRegion outA 104 ∗ unchunkedCt1SentEkReceivedAt A.repAlloc stA st ∗
-      unchunkedSendCt2PlacedRoAt ∗ A.pool lim st_b s ∗ stackAt sp_call unchunkedSendCt2Stack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running → sf.sp = sp_call →
-      CalleeSavedPreserved s sf → sf.trace = s0.trace →
-      PostEnv ⟨outA, stA, st, outUc, ct2, mac⟩ evs →
-      SepWP prog next_pc sf
-        ((unchunkedCt2SentAt A.repAlloc outA outUc ∗ vecU8 A.repAlloc (outA + 56#64) ct2 ∗
-          vecU8 A.repAlloc (outA + 80#64) mac ∗ memRegion stA 128 ∗
-          unchunkedSendCt2PlacedRoAt ∗ A.pool lim (M.stepEvents evs st_b) sf ∗
-          stackAt sp_call unchunkedSendCt2Stack) ∗ Frame)
-        (fun sm Pm => LibsignalCodeLoaded lsmpl sm.mem →
-          SepWP prog (s0.readReg64 Reg.lr) sm Pm post)) :
-    SepWP prog entry s P
-      (fun sm Pm => LibsignalCodeLoaded lsmpl sm.mem →
-        SepWP prog (s0.readReg64 Reg.lr) sm Pm post) := by
-  apply SepWP.done hpc hrun
-  intro hcl
-  refine sepWP_call_frozen_noPanic (fun _ _ h hkf => h.of_keepsFrozen hkf) hcl
-    hcall (x := (⟨outA, stA, st, outUc, ct2, mac⟩, st_b)) (F := Frame)
-    (by intros; rfl) (by intros; rfl) (by intros; rfl)
-    hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
-    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf hcl_sf => ?_)
-  · intro R' hm; rw [hsplit] at hm
-    dsimp only [withLsCodeLoaded, unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv]
-    rw [hsp, sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hcl, ?_⟩
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hm ⊢
-    exact ⟨⟨hx0, hx1, hsc, hfit⟩, hm⟩
-  · dsimp only [withLsCodeLoaded, unchunkedCt1SentEkReceivedSendCt2PlacedSpecOfPrePostEnv]
-    rw [hsp, sepExists_sepConj_left]
-    apply SepWP.exists_left; intro evs
-    rw [sepConj_assoc]
-    refine SepWP.pure_elim fun ⟨htr, hevs⟩ => ?_
-    apply sepWP_seq_lscl hcl_sf (mid := next_pc)
-    have hassoc :
-        (unchunkedCt2SentAt A.repAlloc outA outUc ∗ vecU8 A.repAlloc (outA + 56#64) ct2 ∗
-          vecU8 A.repAlloc (outA + 80#64) mac ∗ memRegion stA 128 ∗
-          unchunkedSendCt2PlacedRoAt ∗ A.pool lim (M.stepEvents evs st_b) sf ∗
-          stackAt sp_call unchunkedSendCt2Stack) ∗ Frame =
-        (unchunkedCt2SentAt A.repAlloc outA outUc ∗
-          (vecU8 A.repAlloc (outA + 56#64) ct2 ∗
-            (vecU8 A.repAlloc (outA + 80#64) mac ∗
-              (memRegion stA 128 ∗
-                (unchunkedSendCt2PlacedRoAt ∗
-                  (A.pool lim (M.stepEvents evs st_b) sf ∗
-                    stackAt sp_call unchunkedSendCt2Stack)))))) ∗ Frame := by sep_ac_rfl
-    rw [← hassoc]
-    exact hnext sf evs hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf (htr.trans htrace) hevs
 
 /-! ## 4. Framed Call Rules for `send_ct2_encoder` (Block `382`) -/
 
@@ -934,113 +842,6 @@ theorem call_addChunk_cl [LibsignalPlacement]
     exact hnext sf evs hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf (htr.trans htrace) hacp hevs hsorted'
       hcl_sf
 
-theorem call_addChunk_cl_sepWP [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {prog : Program} {entry ret_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry (withLsCodeLoaded lsmpl (addChunkSpec M A lim)))
-    (decA chunkA : BitVec 64) (dec : PolyDecoder) (chunk : Chunk) (st_b : M.σ)
-    (hsorted : PolyDecoderStrictSorted dec)
-    (hfit : FitsEnv M lim st_b (AddChunkEnv ⟨decA, chunkA, dec, chunk⟩))
-    {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp} {post : State → SepProp → Prop}
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true) (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htrace : s.trace = s0.trace) (hx0 : s.readReg64 Reg.x0 = decA) (hx1 : s.readReg64 Reg.x1 = chunkA)
-    (hsplit : P = (polyDecoderAt A.repAlloc decA dec ∗ chunkAt chunkA chunk ∗
-      A.pool lim st_b s ∗ stackAt sp_call addChunkStack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running → sf.sp = sp_call →
-      CalleeSavedPreserved s sf → sf.trace = s0.trace →
-      AllocCallPreserved s sf → AddChunkEnv ⟨decA, chunkA, dec, chunk⟩ evs →
-      PolyDecoderStrictSorted (addChunkTotal dec chunk) →
-      LibsignalCodeLoaded lsmpl sf.mem →
-      SepWP prog (s0.readReg64 Reg.lr) sf
-        ((polyDecoderAt A.repAlloc decA (addChunkTotal dec chunk) ∗ chunkAt chunkA chunk ∗
-          A.pool lim (M.stepEvents evs st_b) sf ∗ stackAt sp_call addChunkStack) ∗ Frame) post) :
-    SepWP prog entry s P
-      (fun sm Pm => LibsignalCodeLoaded lsmpl sm.mem →
-        SepWP prog (s0.readReg64 Reg.lr) sm Pm post) := by
-  apply SepWP.done hpc hrun
-  intro hcl
-  refine sepWP_call_frozen_noPanic (fun _ _ h hkf => h.of_keepsFrozen hkf) hcl
-    hcall (x := (⟨decA, chunkA, dec, chunk⟩, st_b)) (F := Frame)
-    (by intros; rfl) (by intros; rfl) (by intros; rfl)
-    hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
-    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf hcl_sf => ?_)
-  · intro R' hm; rw [hsplit] at hm
-    dsimp only [withLsCodeLoaded, addChunkSpec]
-    rw [hsp, sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hcl, ?_⟩
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hm ⊢
-    exact ⟨⟨hx0, hx1, hsorted, hfit⟩, hm⟩
-  · dsimp only [withLsCodeLoaded, addChunkSpec]
-    rw [hsp, sepExists_sepConj_left]
-    apply SepWP.exists_left; intro evs
-    rw [sepConj_assoc]
-    refine SepWP.pure_elim fun ⟨htr, hacp, hevs, hsorted'⟩ => ?_
-    have hassoc :
-        (polyDecoderAt A.repAlloc decA (addChunkTotal dec chunk) ∗ chunkAt chunkA chunk ∗
-          A.pool lim (M.stepEvents evs st_b) sf ∗ stackAt sp_call addChunkStack) ∗ Frame =
-        (polyDecoderAt A.repAlloc decA (addChunkTotal dec chunk) ∗
-          (chunkAt chunkA chunk ∗
-            (A.pool lim (M.stepEvents evs st_b) sf ∗ stackAt sp_call addChunkStack))) ∗ Frame := by
-      sep_ac_rfl
-    rw [← hassoc]
-    exact hnext sf evs hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf (htr.trans htrace) hacp hevs hsorted'
-      hcl_sf
-
 /-! ## 6. `SepWPp` Relocatable Call Rule for `drop_glue::<[Poly; 16]>` (Block `265`) -/
-
-/-- `SepWP` → `SepWPp` framed relocatable call rule for
-    `withLsCodeLoaded lsmpl (dropGluePoly16Spec M A lim)` (Block `265`). -/
-theorem call_dropGluePoly16_wpp_cl [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {prog : Program} {entry ret_pc : BitVec 64}
-    (hcall : subroutine_ok prog entry (withLsCodeLoaded lsmpl (dropGluePoly16Spec M A lim)))
-    (arrA : BitVec 64) (vecs : List (List GF16)) (st_b : M.σ)
-    {s0 s : State} {sp_call : BitVec 64} {P Frame : SepProp} {post Qp : State → SepProp → Prop}
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.sp = sp_call)
-    (hsp_align : (sp_call &&& 15#64 == 0#64) = true) (hlr : s.readReg64 Reg.lr = ret_pc)
-    (htrace : s.trace = s0.trace) (hx0 : s.readReg64 Reg.x0 = arrA) (hlen : vecs.length = NUM_POLYS)
-    (hsplit : P = (vecGF16ListOf A.repAlloc arrA vecs ∗ A.pool lim st_b s ∗
-      stackAt sp_call dropGluePoly16Stack) ∗ Frame)
-    (hnext : ∀ (sf : State) (evs : List AllocEvent),
-      sf.pc = ret_pc → sf.status = .Running → sf.sp = sp_call →
-      CalleeSavedPreserved s sf → sf.trace = s0.trace →
-      AllocCallPreserved s sf → FreeOnlyEvs evs →
-      LibsignalCodeLoaded lsmpl sf.mem →
-      SepWPp prog (s0.readReg64 Reg.lr) sf
-        ((memRegion arrA polyArrayBytes ∗ A.pool lim (M.stepEvents evs st_b) sf ∗
-          stackAt sp_call dropGluePoly16Stack) ∗ Frame) post Qp)
-    (hlr_ls : LsRetAddr624 ret_pc := by
-      first | assumption | simp (config := { decide := true }) only [arm64_norm, wp_norm]) :
-    SepWP prog entry s P
-      (fun sm Pm => LibsignalCodeLoaded lsmpl sm.mem →
-        SepWPp prog (s0.readReg64 Reg.lr) sm Pm post Qp) := by
-  apply SepWP.done hpc hrun
-  intro hcl
-  refine sepWPp_call_frozen_noPanic (fun _ _ h hkf => h.of_keepsFrozen hkf) hcl
-    hcall (x := (⟨arrA, vecs⟩, st_b)) (F := Frame)
-    (by intros; rfl) (by intros; rfl) (by intros; rfl)
-    hpc hrun (by rw [State.spAligned, hsp]; exact hsp_align) hlr ?_
-    (fun sf hpc_sf hrun_sf hsp_sf hcs_sf hcl_sf => ?_)
-  · intro R' hm; rw [hsplit, sepConj_assoc] at hm
-    dsimp only [withLsCodeLoaded, dropGluePoly16Spec]
-    rw [hsp, sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hcl, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hlen, by rw [Reg.lr] at hlr; rw [hlr]; exact hlr_ls⟩, hm⟩
-  · dsimp only [withLsCodeLoaded, dropGluePoly16Spec]
-    rw [hsp, sepExists_sepConj_left]
-    apply sepWPp_exists_left; intro evs
-    rw [sepConj_assoc]
-    refine SepWPp.pure_left fun ⟨htr, hacp, hevs⟩ => ?_
-    have hassoc :
-        (memRegion arrA polyArrayBytes ∗ A.pool lim (M.stepEvents evs st_b) sf ∗
-          stackAt sp_call dropGluePoly16Stack) ∗ Frame =
-        (memRegion arrA polyArrayBytes ∗
-          (A.pool lim (M.stepEvents evs st_b) sf ∗ stackAt sp_call dropGluePoly16Stack)) ∗ Frame := by
-      sep_ac_rfl
-    rw [← hassoc]
-    exact hnext sf evs hpc_sf hrun_sf (hsp_sf.trans hsp) hcs_sf (htr.trans htrace) hacp hevs hcl_sf
 
 end LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2Chunk.CommonPlacedBudget

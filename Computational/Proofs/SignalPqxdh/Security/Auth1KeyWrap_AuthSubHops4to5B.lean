@@ -9,18 +9,18 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
+public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
 public import VCVio.EvalDist.Monad.Basic
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5B -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyHybrid -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_AuthSubHops4to5
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrap_TwoKeyAndAuthStatements
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyWrapBase
+import Computational.Proofs.SignalPqxdh.Security.Auth1KeyShallowSims
 
 /-!
 # One-Key Split-Stage `Auth` Hybrid Oracles (`G3.8` to `G5`)
@@ -29,7 +29,7 @@ Defines split send/receive stage `Auth` hybrid implementations (`authSplitFixedE
 `pqxdhAuthImpl1KeyG` and proves receive-step unfolding and `resetWonAuth` commutation lemmas.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open OracleSpec OracleComp MeasureTheory ENNReal BigOperators
 namespace SignalPqxdh.Security
@@ -41,7 +41,7 @@ open _root_.Proofs.SignalPqxdh.Security.FgGapDh (initSessionSlotIdx initSessionS
                                                       simulateQ_relProbUpToBad
                                                         evalDist_simulateQ_eq_of_step_or_bad)
 
-def pqxdhAuthHybridSplitKoskImpl1Key (sendStage recvStage : AuthHybridStage) (useRo checkAuth : Bool)
+@[expose] def pqxdhAuthHybridSplitKoskImpl1Key (sendStage recvStage : AuthHybridStage) (useRo checkAuth : Bool)
     (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridState S) ProbComp) := fun q => do
   let hst ← get
@@ -205,7 +205,7 @@ def pqxdhAuthHybridSplitKoskImpl1Key (sendStage recvStage : AuthHybridStage) (us
           rootRoCache      := rootRoCache' } }
       return .recvUnfreshResp drKey rk1 ck1_1 pt
   | q => liftAuthBase (pqxdhAuthImpl1KeyG useRo checkAuth S P q)
-def pqxdhAuthHybridSplitFixedImpl1Key (sendStage recvStage : AuthHybridStage) (useRo checkAuth : Bool)
+@[expose] def pqxdhAuthHybridSplitFixedImpl1Key (sendStage recvStage : AuthHybridStage) (useRo checkAuth : Bool)
     (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) := fun q => do
   let hst ← get
@@ -244,7 +244,7 @@ theorem pqxdhAuthHybridSplitFixedImpl_same1Key (stage : AuthHybridStage) (useRo 
   funext q; apply StateT.ext; intro hst
   unfold pqxdhAuthHybridSplitFixedImpl1Key pqxdhAuthHybridFixedImpl1Key
   cases stage.idealMsgKeys <;> cases q <;> simp
-noncomputable def authSplitFixedExp1Key (sendStage recvStage : AuthHybridStage) (checkAuth : Bool)
+@[expose] def authSplitFixedExp1Key (sendStage recvStage : AuthHybridStage) (checkAuth : Bool)
     (S : Setup) (P : Primitives) (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let initSt := AuthHybridStateFixed.empty S secb

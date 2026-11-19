@@ -11,9 +11,9 @@ module
 
 public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedBase
 public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedSanGame -- proof-setup: allow-public-import
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanCoupling -- proof-setup: allow-public-import
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp -- proof-setup: allow-public-import
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2 -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeSanCoupling
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp
+import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNEClamp2
 public import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePaperCKA -- proof-setup: allow-public-import
 import Computational.Proofs.GameHop.CompDedup
 import Computational.Proofs.Game.PromotedCostedReds.SimFig8LoopAndCost
@@ -27,8 +27,7 @@ import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeProg
 # Sanitized-to-Unclamped Advantage Coupling for `SimDeliverForgeHalted`
 
 Couples `simDeliverForgeClampSanQTrackHalted` to `simDeliverForgeTrackHalted` inside
-`forgeGuessedAdvantageCellPaper` and `forgeBucketAdvantagePaper`.
--/
+`forgeGuessedAdvantageCellPaper` and `forgeBucketAdvantagePaper`.-/
 
 public section
 
@@ -39,41 +38,41 @@ namespace Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedCoup
 open OracleSpec OracleComp
 open _root_.ReductionDsl (isGameQuery)
 open _root_.CryptoGames (Party)
-open CryptoGames.CBC (Plain)
-open CryptoGames.CKA (DHFun)
-open CryptoGames.Ratchet (RootKey)
-open CryptoGames.SM (GameState Config RecvResult partyEnc initState noBobSendInEpoch0
+open _root_.CryptoGames.CBC (Plain)
+open _root_.CryptoGames.CKA (DHFun)
+open _root_.CryptoGames.Ratchet (RootKey)
+open _root_.CryptoGames.SM (GameState Config RecvResult partyEnc initState noBobSendInEpoch0
   noAliceCorrWhileAliceBelowEpoch10)
-open CryptoGames.SM.Thm1 (Mirror)
-open CryptoGames.SM.Construction.DeliverForge (AdversaryDF AdversaryCompDF specDF
+open _root_.CryptoGames.SM.Thm1 (Mirror)
+open _root_.CryptoGames.SM.Construction.DeliverForge (AdversaryDF AdversaryCompDF specDF
   simOraclesDF'Paper simImplDF'Paper challSimDF'Paper simTransmitDF'Paper simChallDF'Paper
   simDeliverDF simInjectDF simDeliverForgeDF simCorrDFPaper sameHdrScheme
   forgeGuessedAdvantageCellPaper forgeGameBucketPaper forgeBucketAdvantagePaper
   transmitQueryDF challQueryDF deliverQueryDF injectQueryDF deliverForgeQuery corrQueryDF)
-open CryptoGames.LibsignalSession (IdentityKey PublicKey GhostState Params ShaCompress)
-open CryptoGames.Ratchet.LibsignalInst
+open _root_.CryptoGames.LibsignalSession (IdentityKey PublicKey GhostState Params ShaCompress)
+open _root_.CryptoGames.Ratchet.LibsignalInst
   (LibsignalMsgPublicPart lFig8 lFS ratchetKeyAdmissible)
-open CryptoGames.Ratchet.LibsignalSim
+open _root_.CryptoGames.Ratchet.LibsignalSim
   (Fig8St Fig8C SimFig8St SimFig8C SimState SimBaseClampInv SemHook deliverForgeSemHook
    inReceiveOnlyEpoch simParseRecvC evalCKClamp scPostSendPure mkPub toWire
    semFwdAnswerHook semResyncHook semFwdEvictHook semFwdHook semRecvHook semCorrHook
    semHandleHook semHandleHookDedup simDeliverForgeOracleDedup makesAtMostQueries_iff_isGameQuery
    simStateCanon simStateCCanon simStateCCanon_idem stateT_lift_run
    runDFM semHandleHook_deliverForge_eq)
-open CryptoGames.Ratchet.LibsignalSimC
+open _root_.CryptoGames.Ratchet.LibsignalSimC
   (LibsignalToModularSchemeSimState initSimC liftC guardC runOnBaseState simSendC
    simRecvC simCorrC simImplC)
-open CryptoGames.LibsignalSM.Proofs.Refinement
+open _root_.CryptoGames.LibsignalSM.Proofs.Refinement
   (KemFailTrackState initKemFailTrack stepKemFailSend stepKemFailDeliver sameWireFig8
    DeliverForgeM fig8ToDFImpl deliverForgeHook simSendCTrackHalted simImplCTrackHalted
    simRunCTrackHaltedWith simDeliverForgeTrackHalted)
-open CryptoVerification.LibsignalSpqrV1 (MlKem)
-open CryptoVerification.E2E
+open _root_.CryptoVerification.LibsignalSpqrV1 (MlKem)
+open _root_.CryptoVerification.E2E
   (Bytes CellGameClampInv SemHookClampInv simBaseClampInv_init cellGameClampInv_init
    cellGameClampInv_transmitImpl cellGameClampInv_deliverImpl cellGameClampInv_injectImplCellT
    cellGameClampInv_deliverForgeBaseImplCellT cellGameClampInv_corrImplShiftedPaper
    scPostSendPure_clampInv semRecvHook_preserves_clampInv semCorrHook_preserves_clampInv)
-open CryptoVerification.LibsignalSession.HeadlineV1
+open _root_.CryptoVerification.LibsignalSession.HeadlineV1
   (cellDelta cellShift oracleImplCellTPaper oracleImplBaseDFCellTPaper fullImplBaseDFCellTPaper
    runBaseDFCellTPaper forgeGuessedAdvantageCellPaperT_eq_runBaseDFCellTPaper)
 open Computational.Proofs.GameHop.CompDedup
@@ -102,8 +101,6 @@ open Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedSanGame
    runBaseDFCellTPaper_challSimDF'Paper_eq_runCellDF
    simDeliverForgeOracleDedupTrackHalted simDeliverForgeClampDedupTrackHalted
    runBaseDFCellTPaper_challSimDF'Paper_simDeliverForgeClampSanTrackHalted_eq_dedup)
-
-noncomputable section
 
 /-- Non-dedup `B`-clamped tracker-halted `DeliverForge` semantic oracle (couples directly to
 `simImplCTrackHalted` via `semHandleHook_deliverForge_eq`). -/
@@ -1175,7 +1172,5 @@ theorem forgeBucketAdvantagePaper_challSimDF'Paper_simDeliverForgeClampSanQTrack
       P K Dh encPt encT decT lam qep tL par idOf hid A q hq hq32]
 
 end BucketTrackHalted
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeHaltedCoupling

@@ -16,6 +16,41 @@ public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.A
 import Computational.Proofs.ReductionDsl.KindedCost
 import Computational.Proofs.ReductionDsl.Size
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.AvlRoTableCost
+import Computational.Proofs.GameHop.Swap
+import Computational.Proofs.ReductionDsl.AtomicSizeHonest
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC1
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b
+import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3E
+import Computational.Proofs.SignalPqxdh.Security.CollisionsA
+import Computational.Proofs.SignalPqxdh.Security.CollisionsB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
+import Computational.Proofs.SignalPqxdh.Security.SigHopA
+import Computational.Proofs.SignalPqxdh.Security.SigHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHopC
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Kind-1 Random-Oracle Arm Cost, Query, and Size Bounds
@@ -83,8 +118,6 @@ open _root_.Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.Aut
 theorem authKind1RoRootArmCostBound_le (F : AuthKindFuels) :
     authKind1RoRootArmCostBound F ≤ authKind1ArmCostBound F := by
   dsimp only [authKind1RoRootArmCostBound, authKind1ArmCostBound]; omega
-
-theorem auth_g_pair_gate : max 1359 389 + 5 + 1350 + 380 = 3094 ∧ 3094 ≤ 8192 := by omega
 
 private theorem bits_avlHeightCap_le (cap : ℕ) : bits (avlHeightCap cap) ≤ bits cap + 3 := by
   have hm := bits_mul 2 (bits cap); have hb2 : bits 2 = 2 := rfl; have hs := bits_le_succ (bits cap)
@@ -188,27 +221,6 @@ private theorem simPrependRootE_size_le {Γ : List (Ty pqAtomicSig)}
   rw [simPrependRootE, liftExpr2_size_eq]
   simp only [fsUpd, fsBase, fsL, fsRootL, fsRaw, fsLog, fsResp, fsPows, Expr.listCons, mapExpr_size,
     Expr.size, exprLitSize]; omega
-
-theorem sampleDrKey96C_unsupported_eq :
-    (liftGdhComp (Comp.sampleDrKey96C (Γ := []))).queries tlAuthSigDdh.unsupportedW (fun _ => 0) = 0 := by
-  simp [liftGdhComp, Comp.sampleDrKey96C, tlAuthSigDdh, Comp.queries]
-theorem sampleRootPair64LegC_unsupported_eq :
-    (liftGdhComp sampleRootPair64LegC).queries tlAuthSigDdh.unsupportedW (fun _ => 0) = 0 := by
-  simp [sampleRootPair64LegC, liftGdhComp, bindV, Comp.sampleBytes32C, tlAuthSigDdh, Comp.queries]
-theorem mkSecretPosC_unsupported_eq :
-    (liftGdhComp (mkSecretPosC (Δ := [B 32]) (.var .vz))).queries tlAuthSigDdh.unsupportedW (fun _ => 0) = 0 := by
-  simp [mkSecretPosC, liftGdhComp, bindV, letV, Comp.letC, Comp.queryPrimC, tlAuthSigDdh, Comp.queries]
-theorem roParsedPrePosC_unsupported_eq :
-    (liftGdhComp roParsedPrePosC).queries tlAuthSigDdh.unsupportedW (fun _ => 0) = 0 := by
-  simp [roParsedPrePosC, mkSecretPosC, liftGdhComp, bindV, letV, Comp.iteC, Comp.letC, Comp.queryPrimC, tlAuthSigDdh, Comp.queries]
-theorem fgSessScanC_unsupported_eq (K_on : ℕ) :
-    (liftGdhComp (fgSessScanC K_on)).queries tlAuthSigDdh.unsupportedW (fun _ => 0) = 0 := by
-  simp [fgSessScanC, entryMatchesC, ddhEqOptC, ddhEqC, liftGdhComp, findMV, letV, bindV, caseOptV,
-    caseSumV, Comp.iteC, Comp.letC, Comp.caseOptC, Comp.findBoundedM, queryDdh, Comp.queryChal, tlAuthSigDdh, Comp.queries]
-theorem rootSessScanC_unsupported_eq (K_on : ℕ) :
-    (liftGdhComp (rootSessScanC K_on)).queries tlAuthSigDdh.unsupportedW (fun _ => 0) = 0 := by
-  simp [rootSessScanC, ddhEqC, liftGdhComp, findMV, letV, caseSumV, Comp.iteC, Comp.letC,
-    Comp.findBoundedM, queryDdh, Comp.queryChal, tlAuthSigDdh, Comp.queries]
 
 private theorem liftCs0_cost {out : Ty pqSig} {Γ : List (Ty pqAtomicSig)}
     (c : Comp pqxdhOps pqSigAndDdhIface [] out) :

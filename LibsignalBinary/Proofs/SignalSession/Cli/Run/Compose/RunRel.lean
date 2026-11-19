@@ -9,8 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Domains
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Domains -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Abstract Semantics and Input Relation for `signal_session::run` (`runAns`, `runRel`)
@@ -30,7 +32,7 @@ Defines `runAns S i` case-by-case along `cli/src/lib.rs::run`:
 wrapper-slot domain preconditions (`RunFilesOk S`, `RunEncOk S`, `RunHsOk S`).
 -/
 
-@[expose] public section
+public section
 
 set_option warningAsError false
 
@@ -48,35 +50,35 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton
 open CryptoVerification.RecordCodecs
 open CryptoVerification.LibsignalProtoCodec
 
-def exceptOpt {ε α : Type} : Except ε α → Option α
+@[expose] def exceptOpt {ε α : Type} : Except ε α → Option α
   | .ok a => some a
   | .error _ => none
 
 /-- A little-endian `u32` of exactly 4 bytes (`registration-id`). -/
-def readU32LE : Bytes → Option (BitVec 32)
+@[expose] def readU32LE : Bytes → Option (BitVec 32)
   | [b0, b1, b2, b3] => some (ofLe32 b0 b1 b2 b3)
   | _ => none
 
 /-- The run-entry file system of input `i`. -/
-def runFiles (i : Inputs) : FsFiles := (initFsState (cliInputs i)).files
+@[expose] def runFiles (i : Inputs) : FsFiles := (initFsState (cliInputs i)).files
 
 /-- The path `read_bundle` reads for `name` in the bundle directory `dir` (`bundleReadSpec`'s
 `dir ++ "/" ++ name`). -/
-def bundlePath (dir : Bytes) (name : String) : Bytes := dir ++ [0x2f#8] ++ utf8 name
+@[expose] def bundlePath (dir : Bytes) (name : String) : Bytes := dir ++ [0x2f#8] ++ utf8 name
 
 /-- The five bundle files `read_bundle` reads. -/
-def bundleNames : List String :=
+@[expose] def bundleNames : List String :=
   ["identity-key", "registration-id", "signed-pre-key", "kyber-pre-key", "one-time-pre-key"]
 
 /-- A bundle file's bytes (`read_file`; a read error is `none`). -/
-def bundleFile (F : FsFiles) (dir : Bytes) (name : String) : Option Bytes :=
+@[expose] def bundleFile (F : FsFiles) (dir : Bytes) (name : String) : Option Bytes :=
   exceptOpt (cliIo.rd F (bundlePath dir name))
 
 /-- Parses `read_bundle(dir, device)` (`public.rs:93`): decodes `identity-key` (`IdentityKey::decode`),
 the 4-byte little-endian `registration-id`, the signed and Kyber pre-keys (`split_signed` followed
 by `PublicKey::deserialize` / `RunProofs.kemPkDeserialize`), and the optional `pre-key` (empty file
 → `none`, else `split_id` and `PublicKey::deserialize`). Any read or decode error returns `none`. -/
-def readBundleV (F : FsFiles) (dir : Bytes) (device : BitVec 8) : Option BundleV := do
+@[expose] def readBundleV (F : FsFiles) (dir : Bytes) (device : BitVec 8) : Option BundleV := do
   let ikB ← bundleFile F dir "identity-key"
   let idKey ← exceptOpt (decodeIdentityKey ikB)
   let regB ← bundleFile F dir "registration-id"
@@ -97,23 +99,23 @@ def readBundleV (F : FsFiles) (dir : Bytes) (device : BitVec 8) : Option BundleV
   some { idKey, regId, device, spkId, spk, spkSig, kpkId, kpk, kpkSig, opk }
 
 /-- The bytes `send` prints: the wire type byte (`2` Whisper, `3` PreKey) and `serialize()`. -/
-def ctWire : CiphertextMessage → Bytes
+@[expose] def ctWire : CiphertextMessage → Bytes
   | .signalMessage m => 2#8 :: m.serialized
   | .preKeySignalMessage m => 3#8 :: m.serialized
 
 /-- `accepted(_)` and the `Ok((stores, output))` of `run`: panic stays panic, reject stays reject,
 accept commits the stores' writes and prints `out v`. -/
-def finish {α : Type} (ans : SlotAns α) (out : α → Bytes) : RunAnswer :=
+@[expose] def finish {α : Type} (ans : SlotAns α) (out : α → Bytes) : RunAnswer :=
   match ans with
   | none => none
   | some none => some none
   | some (some (g', v)) => some (some (namedWrites g'.writes, out v))
 
 /-- An `AddrV` (the parser's) as an `AddrVal` (the session API's). -/
-def addrValOf (a : AddrV) : AddrVal := ⟨a.name, a.device⟩
+@[expose] def addrValOf (a : AddrV) : AddrVal := ⟨a.name, a.device⟩
 
 /-- Abstract answer of `signal_session::run` on input `i` under callee semantics `S`. -/
-def runAns (S : RunSem) (i : Inputs) : RunAnswer :=
+@[expose] def runAns (S : RunSem) (i : Inputs) : RunAnswer :=
   match parseArgs uuidTryParse (i.argv.map bytesOfString) with
   | none => none
   | some c =>
@@ -151,7 +153,7 @@ def runAns (S : RunSem) (i : Inputs) : RunAnswer :=
 `< 2 ^ 32` (`encSlotSpec`), `recv` payload length after the wire tag byte `< 2 ^ 32`
 (`tryFromSpec` / `pksmSlotSpec`), ASCII own-address file bytes (`fromUtf8AsciiSpec`), `cliWrOk`
 bundle file paths on `init` (`bundleReadSpec`), and `coins.length < 2 ^ 63` (`slotFrame`). -/
-def RunBounds (i : Inputs) : Prop :=
+@[expose] def RunBounds (i : Inputs) : Prop :=
   (MainHops.coinsOf i).length < 2 ^ 63 ∧
   (∀ peer, parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.send peer) →
       i.stdin.length < 2 ^ 32) ∧
@@ -163,7 +165,7 @@ def RunBounds (i : Inputs) : Prop :=
       ∀ name ∈ bundleNames, cliWrOk (bundlePath dir name))
 
 /-- The peer of a wrapper command (`init` / `send` / `recv`); `none` for `keygen`. -/
-def callPeer : CallV → Option AddrV
+@[expose] def callPeer : CallV → Option AddrV
   | .keygen .. => none
   | .init p _ => some p
   | .send p => some p
@@ -171,7 +173,7 @@ def callPeer : CallV → Option AddrV
 
 /-- Store-file well-formedness precondition `S.filesOk` at run-entry files, the command's peer,
 and the own address whenever the own-address check succeeds. -/
-def RunFilesOk (S : RunSem) (i : Inputs) : Prop :=
+@[expose] def RunFilesOk (S : RunSem) (i : Inputs) : Prop :=
   ∀ c peer ownB meV, parseArgs uuidTryParse (i.argv.map bytesOfString) = some c →
     callPeer c = some peer →
     StoresGhost.opened.identity.own.get cliIo.rd (runFiles i) (utf8 "address") = .ok ownB →
@@ -180,7 +182,7 @@ def RunFilesOk (S : RunSem) (i : Inputs) : Prop :=
 
 /-- Encrypt-slot domain precondition `S.encOk` at run-entry files, the `send` peer, and installed
 coins whenever the own-address check succeeds. -/
-def RunEncOk (S : RunSem) (i : Inputs) : Prop :=
+@[expose] def RunEncOk (S : RunSem) (i : Inputs) : Prop :=
   ∀ peer ownB meV, parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.send peer) →
     StoresGhost.opened.identity.own.get cliIo.rd (runFiles i) (utf8 "address") = .ok ownB →
     addrParse uuidTryParse ownB = some meV →
@@ -188,7 +190,7 @@ def RunEncOk (S : RunSem) (i : Inputs) : Prop :=
 
 /-- Handshake-slot domain preconditions (`S.initOk` on `init`; `S.decPkOk` on `recv` with wire tag
 `3` that parses) whenever the own-address check succeeds. -/
-def RunHsOk (S : RunSem) (i : Inputs) : Prop :=
+@[expose] def RunHsOk (S : RunSem) (i : Inputs) : Prop :=
   (∀ peer dir ownB meV,
     parseArgs uuidTryParse (i.argv.map bytesOfString) = some (.init peer dir) →
     StoresGhost.opened.identity.own.get cliIo.rd (runFiles i) (utf8 "address") = .ok ownB →
@@ -203,7 +205,7 @@ def RunHsOk (S : RunSem) (i : Inputs) : Prop :=
 
 /-- Top-level input-output relation for `run_ok'`: conjoins `DomainArgv`, `RunBounds`,
 `RunFilesOk S`, `RunEncOk S`, `RunHsOk S`, and `ans = runAns S i`. -/
-def runRel (S : RunSem) (i : Inputs) (a : RunAnswer) : Prop :=
+@[expose] def runRel (S : RunSem) (i : Inputs) (a : RunAnswer) : Prop :=
   DomainArgv i ∧ RunBounds i ∧ RunFilesOk S i ∧ RunEncOk S i ∧ RunHsOk S i ∧ a = runAns S i
 
 /-- `runRel` is contained in the domains (the trusted chain's `hdom`). -/

@@ -1997,6 +1997,7 @@ private theorem shcrSendC_wk_eval (S : Setup) (K : ℕ) (opk : Bool)
       (Γ₁ := [shcrStTy]) (Γ₂ := [_root_.SignalPqxdh.Security.ReductionDsl.AuthHs.sendQTy, shcrStTy])
       .vz .vz) (Γs₁ := Γs) (Γs₂ := Γs) .vz .vz env₁ env₂ rfl rfl hx hs
 
+set_option maxRecDepth 4096 in
 private theorem shcrAcceptB_wk_eval (S : Setup) (K : ℕ) (opk : Bool)
     {Δ₁ Δ₂ : List (Ty pqSig)}
     [Ext [shcrStTy, _root_.SignalPqxdh.Security.ReductionDsl.authQueryTy]
@@ -3351,6 +3352,7 @@ private theorem shcrSendC_env_eq (S : Setup) (K : ℕ) (opk : Bool)
         (Env.cons (t := shcrStTy) (env.get (h₁.wk s)) .nil))
       rfl rfl rfl rfl
 
+set_option maxRecDepth 4096 in
 private theorem shcrAcceptB_env_eq (S : Setup) (K : ℕ) (opk : Bool)
     {Γ₁ Δ : List (Ty pqSig)}
     (s : Var Γ₁ shcrStTy)

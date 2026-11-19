@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
-public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.PreKeyStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.SessionStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.IdentityStoreKitBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # W1 `message_encrypt` Segment and `OutgoingTripleRatchet::encrypt` Bounds
@@ -25,7 +28,7 @@ boxed-future store steps, `OutgoingTripleRatchet::apply_to_session_state`,
 `OutgoingTripleRatchet::encrypt`, and the `WithStoresEnc` segment chain.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,11 +53,15 @@ open LibsignalBinary.Proofs.PeakBudget.SeqCreditKit
   (DeallocCreditSpec ModelHyps PhaseCreditSpec)
 open LibsignalBinary.Proofs.PeakBudget.WirePksmTryFromHelpers
   (tryCloneLargeDelta tryCloneSmallDelta)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs
+  (CliFormatInnerEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+  (phaseCreditSpec_cliFormatInnerEnv_any phaseCreditSpec_cliFormatInnerEnv_small)
 
 /-! ## 1. Atomic W1 Envelopes -/
 
 /-- Allocation envelope for `Option<(KyberPreKeyId, &[u8])>::map(KyberPayload::new)`. -/
-def KyberOptStepEnv (ct : Option (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
+@[expose] def KyberOptStepEnv (ct : Option (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   match ct with
   | none => evs = []
   | some bs =>
@@ -268,7 +275,7 @@ theorem saveStep_creditSpec_aff {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-- Allocation envelope of `OutgoingTripleRatchet::apply_to_session_state` (`32` B `ChainKey::to_pb` + chain drops).
 -/
-def OtrApplyEnvTight : List AllocEvent → Prop :=
+@[expose] def OtrApplyEnvTight : List AllocEvent → Prop :=
   SeqEnv (· = rustAllocEvents 32 1) FreeOnlyEvs
 
 theorem otrApply_creditSpec_aff {M : AllocCostModel} [HasFineReallocCredit M]
@@ -290,13 +297,13 @@ theorem otrApply_creditSpec_small {M : AllocCostModel} [HasFineReallocCredit M]
 /-- Binary call-order allocation envelope of `OutgoingTripleRatchet::encrypt::<Coins>`:
 `E_send` (`spqr::send`), followed on `Ok` by `OtrApplyEnvTight` (`32` B seed + drop),
 AES-256-CBC PKCS#7 ciphertext `Vec<u8>`, `E_sigNew` (`SignalMessage::new`), and trailing drops. -/
-def OtrEncryptStepEnv
+@[expose] def OtrEncryptStepEnv
     (E_send : List AllocEvent → Prop)
     (ptextLen : Nat)
     (E_sigNew : List AllocEvent → Prop) : List AllocEvent → Prop :=
   SeqEnv E_send
     (fun evs =>
-      FreeOnlyEvs evs ∨
+      (FreeOnlyEvs evs ∨ CliFormatInnerEnv evs) ∨
       SeqEnv OtrApplyEnvTight
         (SeqEnv (· = rustAllocEvents ((ptextLen / 16 + 1) * 16) 1)
           (SeqEnv E_sigNew FreeOnlyEvs)) evs)
@@ -309,18 +316,19 @@ theorem otrEncryptStep_creditSpec {M : AllocCostModel} [HasFineReallocCredit M]
     (hSigNew : PhaseCreditSpec M E_sigNew c_n l_n p_n r_n) :
     let ctLen := (ptextLen / 16 + 1) * 16
     PhaseCreditSpec M (OtrEncryptStepEnv E_send ptextLen E_sigNew)
-      (c_s + (2 * 32 + 9539) + (2 * ctLen + 9539) + c_n)
-      (l_s + (32 + 8195) + (ctLen + 8195) + l_n)
-      (max p_s (l_s + (32 + 8195) + (ctLen + 8195) + p_n))
-      (max r_s (max 32 (max ctLen r_n))) := by
+      (c_s + max 30537 ((2 * 32 + 9539) + (2 * ctLen + 9539) + c_n))
+      (l_s + max 25545 ((32 + 8195) + (ctLen + 8195) + l_n))
+      (max p_s (l_s + max 25545 ((32 + 8195) + (ctLen + 8195) + p_n)))
+      (max r_s (max 320 (max ctLen r_n))) := by
   intro ctLen
   have hFree := PhaseCreditSpec.freeOnly hM.freeNonInc
+  have hFmt := phaseCreditSpec_cliFormatInnerEnv_any hM
   have hMkg := otrApply_creditSpec_aff hM
   have hCt := PhaseCreditSpec.rustAlloc_aff hM (req := ctLen) (al := 1) (by decide)
   have hTail1 := seq_freeOnly hM hSigNew (fun _ h => h)
   have hTail2 := hCt.seq hTail1
   have hOk := hMkg.seq hTail2
-  have hBranch := PhaseCreditSpec.or hFree hOk
+  have hBranch := PhaseCreditSpec.or (PhaseCreditSpec.or hFree hFmt) hOk
   have hAll := hSend.seq hBranch
   exact hAll.mono (by omega) (by omega) (by omega) (by omega)
 
@@ -341,7 +349,7 @@ theorem phaseCreditSpec_exists {α : Type} {M : AllocCostModel} [HasFineReallocC
 
 /-- Parametric `FromApply` segment envelope (`OtrApplyEnvTight` + `store_session` step + exit drops).
 -/
-def FromApplySegEnv (boxStore : Nat) (E_storePoll : List AllocEvent → Prop) :
+@[expose] def FromApplySegEnv (boxStore : Nat) (E_storePoll : List AllocEvent → Prop) :
     List AllocEvent → Prop :=
   SeqEnv OtrApplyEnvTight
     (SeqEnv (BoxAllocEnv boxStore)
@@ -368,7 +376,7 @@ theorem fromApplySeg_creditSpec_aff {M : AllocCostModel} [HasFineReallocCredit M
   exact hAll.mono (by omega) (by omega) (by omega) (by omega)
 
 /-- Parametric `FromSave` segment envelope (`SaveStepEnv` + `(FreeOnlyEvs ∨ E_apply)`). -/
-def FromSaveSegEnv (boxSave : Nat) (E_savePoll E_apply : List AllocEvent → Prop) :
+@[expose] def FromSaveSegEnv (boxSave : Nat) (E_savePoll E_apply : List AllocEvent → Prop) :
     List AllocEvent → Prop :=
   SeqEnv (SeqEnv (BoxAllocEnv boxSave) (SeqEnv E_savePoll (· = rustDeallocEvents boxSave 8)))
     (fun evs => FreeOnlyEvs evs ∨ E_apply evs)
@@ -389,7 +397,7 @@ theorem fromSaveSeg_creditSpec_aff {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-- Parametric `FromCm` segment envelope (`TrustStepEnv` + `(FreeOnlyEvs ∨ StringClone ∨ E_save)`).
 -/
-def FromCmSegEnv (boxTrust : Nat) (E_trustPoll : List AllocEvent → Prop)
+@[expose] def FromCmSegEnv (boxTrust : Nat) (E_trustPoll : List AllocEvent → Prop)
     (remName : VecGhost) (E_save : List AllocEvent → Prop) :
     List AllocEvent → Prop :=
   SeqEnv (SeqEnv (BoxAllocEnv boxTrust) (SeqEnv E_trustPoll (· = rustDeallocEvents boxTrust 8)))
@@ -419,7 +427,7 @@ theorem fromCmSeg_creditSpec_aff {M : AllocCostModel} [HasFineReallocCredit M]
 
 /-- Parametric `FromKey` segment envelope covering both Signal (`none`) and PreKey (`some`) branches.
 -/
-def FromKeySegEnv {α : Type} (pendingPreKey : Option α)
+@[expose] def FromKeySegEnv {α : Type} (pendingPreKey : Option α)
     (remName : VecGhost) (kyberCt : Option (List (BitVec 8)))
     (E_otrNone E_cmNone E_otrSome E_pksmNew E_cmSome : List AllocEvent → Prop)
     (evs : List AllocEvent) : Prop :=
@@ -468,7 +476,7 @@ theorem fromKeySeg_creditSpec_aff {α : Type} {M : AllocCostModel} [HasFineReall
     hNonePath hSomePath).mono (by omega) (by omega) (by omega) (by omega)
 
 /-- Parametric top-level `WithStoresEnc` segment envelope. -/
-def WithStoresEncSegEnv (boxLoad : Nat) (E_loadPoll : List AllocEvent → Prop)
+@[expose] def WithStoresEncSegEnv (boxLoad : Nat) (E_loadPoll : List AllocEvent → Prop)
     (remName : VecGhost) (E_fromOtr : List AllocEvent → Prop) :
     List AllocEvent → Prop :=
   SeqEnv (SeqEnv (BoxAllocEnv boxLoad) (SeqEnv E_loadPoll (· = rustDeallocEvents boxLoad 8)))
@@ -500,23 +508,25 @@ theorem withStoresEncSeg_creditSpec_aff {M : AllocCostModel} [HasFineReallocCred
 /-! ## 5. Small-Box and Small-Name Specializations -/
 
 theorem otrEncryptStep_creditSpec_small32 {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hle32 : 32 ≤ HasFineReallocCredit.smallMaxReq M)
+    (hM : ModelHyps M) (hle320 : 320 ≤ HasFineReallocCredit.smallMaxReq M)
     {E_send E_sigNew : List AllocEvent → Prop} {ptextLen : Nat}
     {c_s l_s p_s r_s c_n l_n p_n r_n : Nat}
     (hSend : PhaseCreditSpec M E_send c_s l_s p_s r_s)
     (hSigNew : PhaseCreditSpec M E_sigNew c_n l_n p_n r_n) :
     let ctLen := (ptextLen / 16 + 1) * 16
     PhaseCreditSpec M (OtrEncryptStepEnv E_send ptextLen E_sigNew)
-      (c_s + (2 * 32 + 9539) + (2 * ctLen + 9539) + c_n)
+      (c_s + max 30537 ((2 * 32 + 9539) + (2 * ctLen + 9539) + c_n))
       (l_s + (ctLen + 8195) + l_n)
       (max p_s (l_s + (ctLen + 8195) + p_n))
-      (max r_s (max 32 (max ctLen r_n))) := by
+      (max r_s (max 320 (max ctLen r_n))) := by
   intro ctLen
+  have hle32 : 32 ≤ HasFineReallocCredit.smallMaxReq M := Nat.le_trans (by decide) hle320
   have hFree := PhaseCreditSpec.freeOnly hM.freeNonInc
+  have hFmt := phaseCreditSpec_cliFormatInnerEnv_small hM hle320
   have hMkg := otrApply_creditSpec_small hM hle32
   have hCt := PhaseCreditSpec.rustAlloc_aff hM (req := ctLen) (al := 1) (by decide)
   have hOk := hMkg.seq (hCt.seq (seq_freeOnly hM hSigNew (fun _ h => h)))
-  have hAll := hSend.seq (PhaseCreditSpec.or hFree hOk)
+  have hAll := hSend.seq (PhaseCreditSpec.or (PhaseCreditSpec.or hFree hFmt) hOk)
   exact hAll.mono (by omega) (by omega) (by omega) (by omega)
 
 theorem fromApplySeg_creditSpec_small {M : AllocCostModel} [HasFineReallocCredit M]
@@ -707,24 +717,26 @@ theorem otrApply_creditSpec_tight {M : AllocCostModel} [HasFineReallocCredit M]
 /-- Tight `PhaseCreditSpec` for `OtrEncryptStepEnv` using `smallAllocCost M 32` and `tryCloneSmallDelta` / `tryCloneLargeDelta`.
 -/
 theorem otrEncryptStep_creditSpec_tight {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hle32 : 32 ≤ HasFineReallocCredit.smallMaxReq M)
+    (hM : ModelHyps M) (hle320 : 320 ≤ HasFineReallocCredit.smallMaxReq M)
     {E_send E_sigNew : List AllocEvent → Prop} {ptextLen : Nat}
     {c_s l_s p_s r_s c_n l_n p_n r_n : Nat}
     (hSend : PhaseCreditSpec M E_send c_s l_s p_s r_s)
     (hSigNew : PhaseCreditSpec M E_sigNew c_n l_n p_n r_n) :
     let ctLen := (ptextLen / 16 + 1) * 16
     PhaseCreditSpec M (OtrEncryptStepEnv E_send ptextLen E_sigNew)
-      (c_s + HasFineReallocCredit.smallAllocCost M 32 + tryCloneSmallDelta M ctLen + c_n)
+      (c_s + max 30537 (HasFineReallocCredit.smallAllocCost M 32 + tryCloneSmallDelta M ctLen + c_n))
       (l_s + tryCloneLargeDelta M ctLen + l_n)
       (max p_s (l_s + tryCloneLargeDelta M ctLen + p_n))
-      (max r_s (max 32 (max ctLen r_n))) := by
+      (max r_s (max 320 (max ctLen r_n))) := by
   intro ctLen
+  have hle32 : 32 ≤ HasFineReallocCredit.smallMaxReq M := Nat.le_trans (by decide) hle320
   have hct_pos : 0 < ctLen := by dsimp only [ctLen]; omega
   have hFree := PhaseCreditSpec.freeOnly hM.freeNonInc
+  have hFmt := phaseCreditSpec_cliFormatInnerEnv_small hM hle320
   have hMkg := otrApply_creditSpec_tight hM hle32
   have hCt := rustAlloc_pos_creditSpec_tight M (req := ctLen) (al := 1) (by decide) hct_pos
   have hOk := hMkg.seq (hCt.seq (seq_freeOnly hM hSigNew (fun _ h => h)))
-  have hAll := hSend.seq (PhaseCreditSpec.or hFree hOk)
+  have hAll := hSend.seq (PhaseCreditSpec.or (PhaseCreditSpec.or hFree hFmt) hOk)
   exact hAll.mono (by omega) (by omega) (by omega) (by omega)
 
 theorem fromApplySeg_creditSpec_tight {M : AllocCostModel} [HasFineReallocCredit M]

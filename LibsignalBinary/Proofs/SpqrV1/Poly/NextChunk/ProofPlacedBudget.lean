@@ -9,19 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
-public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsFastPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsSlowPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoopPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysTailPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.ProofPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget
+public meta import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.Block416SegBudget -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsFastPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsSlowPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoopPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysTailPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.ProofPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.RodataPlacedBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.Loop
@@ -29,6 +29,8 @@ import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsSlow
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoop
 import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PolysLoopPlaced
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.PointsToPolysProof -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<PolyEncoder as Encoder>::next_chunk` (Block `416`): Budget-Threaded Placed Top-Level Proof
@@ -38,7 +40,7 @@ Composes all branches of `<PolyEncoder as Encoder>::next_chunk` under `[Libsigna
 `PointsToPolysLoopPlacedProp M A lim ext` (`+976 -> +4424`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -307,7 +309,7 @@ private theorem pack_post_of_evs [LibsignalPlacement]
 /-- Envelope-parametric relocatable `[LibsignalPlacement]` contract for the 16-iteration
     `points_to_polys` conversion loop (`+976 -> +4424` in Block `416`), threading `RustCliAllocBudget M`
     and `LoopEnv pts`. -/
-def PointsToPolysLoopPlacedPropOfEnv [LibsignalPlacement]
+@[expose] def PointsToPolysLoopPlacedPropOfEnv [LibsignalPlacement]
     (LoopEnv : List Point → List AllocEvent → Prop)
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (ext : String → Option (State → State)) : Prop :=
@@ -341,6 +343,7 @@ def PointsToPolysLoopPlacedPropOfEnv [LibsignalPlacement]
          ((fsp + 640#64) ↦₆₄ u640') ∗ ((fsp + 648#64) ↦₆₄ u648') ∗ memRegion (fsp + 656#64) 24 ∗
          ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
          ((fsp + 1056#64) ↦₆₄ u1056') ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          stackAt fsp lagrangePrepareStack ∗ Frame)
         Q Q_panic) →
@@ -354,6 +357,7 @@ def PointsToPolysLoopPlacedPropOfEnv [LibsignalPlacement]
        ((fsp + 88#64) ↦₆₄ ptsBase) ∗ ((fsp + 96#64) ↦₆₄ u96) ∗ memRegion (fsp + 112#64) 120 ∗
        ((fsp + 640#64) ↦₆₄ u640) ∗ ((fsp + 648#64) ↦₆₄ u648) ∗ memRegion (fsp + 656#64) 24 ∗
        ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗ ((fsp + 1056#64) ↦₆₄ u1056) ∗
+       memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
        completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
        stackAt fsp lagrangePrepareStack ∗ Frame)
       Q Q_panic
@@ -419,6 +423,7 @@ private theorem pointsToPolysLoop_lscl_of_prop [LibsignalPlacement]
          ((fsp + 640#64) ↦₆₄ u640') ∗ ((fsp + 648#64) ↦₆₄ u648') ∗ memRegion (fsp + 656#64) 24 ∗
          ((fsp + 1040#64) ↦₆₄ u1040') ∗ ((fsp + 1048#64) ↦₆₄ u1048') ∗
          ((fsp + 1056#64) ↦₆₄ u1056') ∗
+         memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
          completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
          stackAt fsp lagrangePrepareStack ∗ Frame)
         Q Q_panic) :
@@ -432,6 +437,7 @@ private theorem pointsToPolysLoop_lscl_of_prop [LibsignalPlacement]
        ((fsp + 88#64) ↦₆₄ ptsBase) ∗ ((fsp + 96#64) ↦₆₄ u96) ∗ memRegion (fsp + 112#64) 120 ∗
        ((fsp + 640#64) ↦₆₄ u640) ∗ ((fsp + 648#64) ↦₆₄ u648) ∗ memRegion (fsp + 656#64) 24 ∗
        ((fsp + 1040#64) ↦₆₄ u1040) ∗ ((fsp + 1048#64) ↦₆₄ u1048) ∗ ((fsp + 1056#64) ↦₆₄ u1056) ∗
+       memRegion fsp 8 ∗ memRegion (fsp + 1064#64) 40 ∗
        completePointsPolysPlacedAt ∗ reduceTablePlacedAt ∗ tokenInitPlacedAt ∗
        stackAt fsp lagrangePrepareStack ∗ Frame)
       Q Q_panic := by
@@ -812,8 +818,8 @@ theorem nextChunk_points_slow_placed_sepWPp [LibsignalPlacement]
        A.live out_ptr 32 1 ∗ memRegion x.outA chunkSize ∗ (x.encA ↦₆₄ polyEncoderPointsTag) ∗
        ((x.encA + polyEncoderIdxOff) ↦₃₂ x.enc.idx) ∗
        memRegion (x.encA + polyEncoderPadOff) polyEncoderPadSize ∗
-       (((s0.sp - 1200#64) + 56#64) ↦₆₄ x.outA) ∗ memRegion (s0.sp - 1200#64) 8 ∗
-       memRegion ((s0.sp - 1200#64) + 680#64) 360 ∗ memRegion ((s0.sp - 1200#64) + 1064#64) 40 ∗
+       (((s0.sp - 1200#64) + 56#64) ↦₆₄ x.outA) ∗
+       memRegion ((s0.sp - 1200#64) + 680#64) 360 ∗
        savedCells s0 ∗ memRegion ((s0.sp - 1200#64) - 17232#64) 12928)
       R hpc4 hrun4 hsp4 htr4 hx19_4 hx20_4 hx28_4 hx29_4 hfit_p2p ?_)
   intro s5 evs_p2p u16' u24' u32' u40' u64' u72' u80' u96' u640' u648' u1040' u1048' u1056'

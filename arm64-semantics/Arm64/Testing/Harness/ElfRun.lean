@@ -341,7 +341,7 @@ def load (img : ElfImage) (inputs : ProcessInputs) :
 inductive Sys
   | ioctl | openat | close | lseek | read | write | readv | writev | pread64 | ppoll | fstat
   | clockGettime | brk | munmap | mremap | mmap | mprotect | madvise | getrandom
-  | exit | exitGroup | setTidAddress | schedGetaffinity
+  | exit | exitGroup | setTidAddress | futex | schedGetaffinity
   | getpid | gettid | sigaltstack | rtSigprocmask | rtSigaction | tkill | tgkill | fcntl
   deriving DecidableEq, Repr
 
@@ -369,6 +369,7 @@ def Sys.ofNr? (nr : BitVec 64) : Option Sys :=
   else if nr == SYS_EXIT then some .exit
   else if nr == SYS_EXIT_GROUP then some .exitGroup
   else if nr == SYS_SET_TID_ADDRESS then some .setTidAddress
+  else if nr == SYS_FUTEX then some .futex
   else if nr == SYS_SCHED_GETAFFINITY then some .schedGetaffinity
   else if nr == SYS_GETPID then some .getpid
   else if nr == SYS_GETTID then some .gettid
@@ -410,7 +411,7 @@ def syscallWriteRanges (sc : Sys) (s s' : State) : List (BitVec 64 × Nat) :=
   | .ppoll => if failed then [] else [(s.readReg64 .x0, (s.readReg32 .x1).toNat * 8)]
   | .fstat => if failed then [] else [(s.readReg64 .x1, 128)]
   | .clockGettime => if failed then [] else [(s.readReg64 .x1, 16)]
-  | .schedGetaffinity => if failed then [] else [(s.readReg64 .x2, 8)]
+  | .schedGetaffinity => if failed then [] else [(s.readReg64 .x2, ret.toNat)]
   | .getrandom => if failed then [] else [(s.readReg64 .x0, ret.toNat)]
   | .sigaltstack =>
     if failed || s.readReg64 .x1 == 0#64 then [] else [(s.readReg64 .x1, 24)]
@@ -427,13 +428,14 @@ def syscallWriteRanges (sc : Sys) (s s' : State) : List (BitVec 64 × Nat) :=
   | .mmap => if failed then [] else [(ret, Arm64.pageAlignUp (s.readReg64 .x1).toNat)]
   | .mremap =>
     if failed then []
-    else [(s.readReg64 .x0, Arm64.pageAlignUp (s.readReg64 .x1).toNat),
+    else [(untaggedAddr (s.readReg64 .x0), Arm64.pageAlignUp (s.readReg64 .x1).toNat),
           (ret, Arm64.pageAlignUp (s.readReg64 .x2).toNat)]
   | .munmap | .mprotect | .madvise =>
-    if failed then [] else [(s.readReg64 .x0, Arm64.pageAlignUp (s.readReg64 .x1).toNat)]
+    if failed then []
+    else [(untaggedAddr (s.readReg64 .x0), Arm64.pageAlignUp (s.readReg64 .x1).toNat)]
   | .ioctl =>
     if failed || s.readReg32 .x1 != FIONREAD_W32 then [] else [(s.readReg64 .x2, 4)]
-  | .openat | .close | .lseek | .write | .writev | .exit | .exitGroup | .setTidAddress
+  | .openat | .close | .lseek | .write | .writev | .exit | .exitGroup | .setTidAddress | .futex
   | .getpid | .gettid | .tkill | .tgkill | .fcntl => []
 
 /-- Ranges `execInst inst s = s'` may have written in `s'.mem` (when `s'` is `.Running`):
@@ -1213,8 +1215,9 @@ def sysNrs : List (BitVec 64) :=
   [SYS_IOCTL, SYS_OPENAT, SYS_CLOSE, SYS_LSEEK, SYS_READ, SYS_WRITE, SYS_READV, SYS_WRITEV,
    SYS_PREAD64, SYS_PPOLL,
    SYS_FSTAT, SYS_CLOCK_GETTIME, SYS_BRK, SYS_MUNMAP, SYS_MREMAP, SYS_MMAP, SYS_MPROTECT,
-   SYS_MADVISE, SYS_GETRANDOM, SYS_SET_TID_ADDRESS, SYS_SCHED_GETAFFINITY, SYS_GETPID, SYS_GETTID,
-   SYS_SIGALTSTACK, SYS_RT_SIGPROCMASK, SYS_RT_SIGACTION, SYS_TKILL, SYS_TGKILL, SYS_FCNTL]
+   SYS_MADVISE, SYS_GETRANDOM, SYS_SET_TID_ADDRESS, SYS_FUTEX, SYS_SCHED_GETAFFINITY, SYS_GETPID,
+   SYS_GETTID, SYS_SIGALTSTACK, SYS_RT_SIGPROCMASK, SYS_RT_SIGACTION, SYS_TKILL, SYS_TGKILL,
+   SYS_FCNTL]
 
 /-- A random instruction word: uniform, forced into the load/store class (`op0 = x1x0`), a
     syscall `svc #0`, or `dc zva`. -/

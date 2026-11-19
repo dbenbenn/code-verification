@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEval
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhGrow
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEval -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhGrow -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
 import VCVio.EvalDist.Monad.Basic
 
 /-!
@@ -23,7 +23,7 @@ equals the shallow reduction `(fgKeyInd1KeyGapDhAdv4 S b A).run U V` for every b
 adversary `A`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +46,7 @@ end
 /-! ## Evaluation of `renameExpr` and `renameComp` -/
 
 /-- Pulls back an environment along a variable renaming `ρ : Ren Γ Δ`. -/
-def pullEnv : {Γ : List PT} → {Δ : List PT} → Ren Γ Δ → Env Δ → Env Γ
+@[expose] def pullEnv : {Γ : List PT} → {Δ : List PT} → Ren Γ Δ → Env Δ → Env Γ
   | [], _, _, _ => .nil
   | _ :: _, _, ρ, env => .cons (env.get (ρ .zero)) (pullEnv (fun x => ρ (.succ x)) env)
 
@@ -668,7 +668,7 @@ set_option allowUnsafeReducibility true in
 attribute [local semireducible] Env.get Ext.wk
 end
 
-def params1KeyIkVal (S : Setup) (tIdx pIdx : Nat) (U V : Bytes) : paramsTy.denote :=
+@[expose] def params1KeyIkVal (S : Setup) (tIdx pIdx : Nat) (U V : Bytes) : paramsTy.denote :=
   (V, (U, (U, (true, (pIdx, (false, (tIdx, (S.N_spk_tot, (false, (S.N_opk_tot, 2))))))))))
 
 @[simp] theorem initParams1KeyIk_eval (S : Setup) {Γ : List PT}
@@ -893,7 +893,7 @@ theorem simulateQ_handlerImpl_bind_eq_runWithGdhSignStep_bind {ιI : Type}
       refine bind_congr_of_forall_mem_support _ (fun x hx => ?_)
       exact ih x.1 n (hCont x.1) x.2 (hPres n gq s hs x hx)
 
-def runFrom1Key (S : Setup) (K : Nat) (A : OracleComp (unifSpec + keyIndSpec S) Bool)
+@[expose] def runFrom1Key (S : Setup) (K : Nat) (A : OracleComp (unifSpec + keyIndSpec S) Bool)
     (x0 : gdh1KeyStateTy.denote) : OracleComp GdhSignSimSpec Bytes := do
   let (b, s') ← (simulateQ (handlerImpl (C := keyIndCodec S) (gdh1KeyHandle S K)) A).run x0
   (gdh1KeyFinish S K).eval (.cons s' (.cons b .nil))
@@ -930,7 +930,7 @@ theorem runFrom1Key_eq (S : Setup) (K : Nat) (pa : paramsTy.denote)
   simp only [encGdh1KeyRS, keyIndRespToVal, keyIndRdec_keyIndRenc,
     map_eq_bind_pure_comp, bind_assoc, Function.comp_def, pure_bind]
 
-def params1KeyFlatVal (S : Setup) (U V : Bytes) (idx : Nat) : paramsTy.denote :=
+@[expose] def params1KeyFlatVal (S : Setup) (U V : Bytes) (idx : Nat) : paramsTy.denote :=
   let nA := S.N_id * S.N_spk_tot
   let nC := S.N_send_tot * S.N_spk_tot
   let nB := S.N_send_tot * S.N_id
@@ -973,7 +973,7 @@ theorem fgKeyInd1KeyGapDhProg_eval_runFrom1Key (S : Setup) (K : Nat)
     bind_assoc, pure_bind]
   rfl
 
-def fgKeyInd1KeyGapDhRunAtFlatComp (S : Setup) (K idx : Nat)
+@[expose] def fgKeyInd1KeyGapDhRunAtFlatComp (S : Setup) (K idx : Nat)
     (A : OracleComp (unifSpec + keyIndSpec S) Bool) (U V : Bytes) :
     OracleComp GdhSignSimSpec Bytes :=
   let nA := S.N_id * S.N_spk_tot

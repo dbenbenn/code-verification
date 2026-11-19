@@ -746,26 +746,6 @@ theorem handle_ddh_le_five_q_total (S : Setup) (b : QueryBudget) {q : ℕ}
     q ≤ 5 * b.q_total := by
   have h1 := AuthKindFuels.K_on_le_q_total S b; have h2 := AuthKindFuels.K_ro_le_q_total S b; omega
 
-theorem handle_size_le_of_sum (S : Setup) (b : QueryBudget) {sz : ℕ}
-    (hsz : sz ≤ let F := AuthKindFuels.ofBudget S b
-      15000000 + 600 * bits F.K_on + 600 * bits F.K_ro +
-        200 * bits F.K_cap + 300 * bits (min F.K_on S.N_dh)) :
-    sz ≤ 16000000 + 1700 * bits (stepCostBudget S b) := by
-  let F := AuthKindFuels.ofBudget S b
-  have hBudget := bits_three_q_add_one_le_stepCostBudget S b
-  have hKon : bits F.K_on ≤ bits (3 * b.q_total + 1) :=
-    bits_mono (le_trans (AuthKindFuels.K_on_le_q_total S b) (by omega))
-  have hKro : bits F.K_ro ≤ bits (3 * b.q_total + 1) :=
-    bits_mono (le_trans (AuthKindFuels.K_ro_le_q_total S b) (by omega))
-  have hCap : F.K_cap ≤ 3 * b.q_total + 1 := by
-    change F.M_off + 2 * F.M_on + 1 ≤ 3 * b.q_total + 1
-    have h1 : F.M_off ≤ b.q_total := Nat.min_le_right _ _
-    have h2 : F.M_on ≤ b.q_total := Nat.min_le_right _ _; omega
-  have hKcap : bits F.K_cap ≤ bits (3 * b.q_total + 1) := bits_mono hCap
-  have hMdh : bits (min F.K_on S.N_dh) ≤ bits F.K_on := bits_mono (Nat.min_le_left _ _)
-  change sz ≤ 15000000 + 600 * bits F.K_on + 600 * bits F.K_ro +
-      200 * bits F.K_cap + 300 * bits (min F.K_on S.N_dh) at hsz; omega
-
 theorem a1g2KindProg_blockBounded_of_cost_size (S : Setup) (b : QueryBudget) (ℓ : ℕ)
     (hCost : (a1g2KindProg S b).totalCost b.q_total ≤ stepCostBudget S b)
     (hSize : (a1g2KindProg S b).size ≤

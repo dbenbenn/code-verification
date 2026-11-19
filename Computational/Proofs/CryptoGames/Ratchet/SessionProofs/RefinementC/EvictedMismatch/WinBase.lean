@@ -20,7 +20,7 @@ import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject
 Shared stopping-run and `CloseByStateC` combinators for an evicted salt mismatch inside the receive-only window (`evictCaseC`), used by both `DeliverWin` and `InjectWin`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

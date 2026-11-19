@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop
+public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Loop -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Proto
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
@@ -22,7 +22,7 @@ public import ProofLib
 `V1State.Chunked.*` protobuf message types when the encoded byte length fits in 64 bits.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.Codec
 
@@ -542,10 +542,6 @@ theorem loopsTo_ch_keysUnsampled (m : V1State.Chunked.KeysUnsampled) (h : (V1Sta
     (fun n hn => ⟨loopsTo_uc_keysUnsampled n (len_encodeOptMessage h n hn), len_encodeOptMessage h n hn⟩)
     (fun _ _ _ => rfl)).congr_res (by cases m; rfl)
 
-theorem decode_ch_keysUnsampled (m : V1State.Chunked.KeysUnsampled) (h : (V1State.Chunked.KeysUnsampled.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.KeysUnsampled.decode (V1State.Chunked.KeysUnsampled.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.KeysUnsampled.mergeField 2 _ m (by decide) (loopsTo_ch_keysUnsampled m h)
-
 theorem loopsTo_ch_keysSampled (m : V1State.Chunked.KeysSampled) (h : (V1State.Chunked.KeysSampled.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Chunked.KeysSampled.mergeField 2 default (V1State.Chunked.KeysSampled.encodeRaw m) m := by
   have hpre : PrefixOk V1State.Chunked.KeysSampled.mergeField := by
@@ -569,10 +565,6 @@ theorem loopsTo_ch_keysSampled (m : V1State.Chunked.KeysSampled) (h : (V1State.C
     (fun n hn => ⟨loopsTo_polyEncoder n (len_encodeOptMessage h2 n hn), len_encodeOptMessage h2 n hn⟩)
     (fun _ _ _ => rfl)
   exact (LoopsTo.append hpre s1 s2).congr_res (by cases m; rfl)
-
-theorem decode_ch_keysSampled (m : V1State.Chunked.KeysSampled) (h : (V1State.Chunked.KeysSampled.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.KeysSampled.decode (V1State.Chunked.KeysSampled.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.KeysSampled.mergeField 2 _ m (by decide) (loopsTo_ch_keysSampled m h)
 
 private theorem prefixOk_polyDecoder : PrefixOk PolynomialDecoder.mergeField := by
   intro m tag wt depth; unfold PolynomialDecoder.mergeField
@@ -849,10 +841,6 @@ theorem loopsTo_ch_headerSent (m : V1State.Chunked.HeaderSent) (h : (V1State.Chu
     (fun _ _ _ => rfl)
   exact (LoopsTo.append hpre (LoopsTo.append hpre s1 s2) s3).congr_res (by cases m; rfl)
 
-theorem decode_ch_headerSent (m : V1State.Chunked.HeaderSent) (h : (V1State.Chunked.HeaderSent.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.HeaderSent.decode (V1State.Chunked.HeaderSent.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.HeaderSent.mergeField 2 _ m (by decide) (loopsTo_ch_headerSent m h)
-
 theorem loopsTo_ch_ct1Received (m : V1State.Chunked.Ct1Received) (h : (V1State.Chunked.Ct1Received.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Chunked.Ct1Received.mergeField 2 default (V1State.Chunked.Ct1Received.encodeRaw m) m := by
   have hpre : PrefixOk V1State.Chunked.Ct1Received.mergeField := by
@@ -876,10 +864,6 @@ theorem loopsTo_ch_ct1Received (m : V1State.Chunked.Ct1Received) (h : (V1State.C
     (fun n hn => ⟨loopsTo_polyEncoder n (len_encodeOptMessage h2 n hn), len_encodeOptMessage h2 n hn⟩)
     (fun _ _ _ => rfl)
   exact (LoopsTo.append hpre s1 s2).congr_res (by cases m; rfl)
-
-theorem decode_ch_ct1Received (m : V1State.Chunked.Ct1Received) (h : (V1State.Chunked.Ct1Received.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.Ct1Received.decode (V1State.Chunked.Ct1Received.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.Ct1Received.mergeField 2 _ m (by decide) (loopsTo_ch_ct1Received m h)
 
 theorem loopsTo_ch_ekSentCt1Received (m : V1State.Chunked.EkSentCt1Received) (h : (V1State.Chunked.EkSentCt1Received.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Chunked.EkSentCt1Received.mergeField 2 default (V1State.Chunked.EkSentCt1Received.encodeRaw m) m := by
@@ -905,10 +889,6 @@ theorem loopsTo_ch_ekSentCt1Received (m : V1State.Chunked.EkSentCt1Received) (h 
     (fun _ _ _ => rfl)
   exact (LoopsTo.append hpre s1 s2).congr_res (by cases m; rfl)
 
-theorem decode_ch_ekSentCt1Received (m : V1State.Chunked.EkSentCt1Received) (h : (V1State.Chunked.EkSentCt1Received.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.EkSentCt1Received.decode (V1State.Chunked.EkSentCt1Received.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.EkSentCt1Received.mergeField 2 _ m (by decide) (loopsTo_ch_ekSentCt1Received m h)
-
 theorem loopsTo_ch_noHeaderReceived (m : V1State.Chunked.NoHeaderReceived) (h : (V1State.Chunked.NoHeaderReceived.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Chunked.NoHeaderReceived.mergeField 2 default (V1State.Chunked.NoHeaderReceived.encodeRaw m) m := by
   have hpre : PrefixOk V1State.Chunked.NoHeaderReceived.mergeField := by
@@ -933,10 +913,6 @@ theorem loopsTo_ch_noHeaderReceived (m : V1State.Chunked.NoHeaderReceived) (h : 
     (fun _ _ _ => rfl)
   exact (LoopsTo.append hpre s1 s2).congr_res (by cases m; rfl)
 
-theorem decode_ch_noHeaderReceived (m : V1State.Chunked.NoHeaderReceived) (h : (V1State.Chunked.NoHeaderReceived.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.NoHeaderReceived.decode (V1State.Chunked.NoHeaderReceived.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.NoHeaderReceived.mergeField 2 _ m (by decide) (loopsTo_ch_noHeaderReceived m h)
-
 theorem loopsTo_ch_headerReceived (m : V1State.Chunked.HeaderReceived) (h : (V1State.Chunked.HeaderReceived.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Chunked.HeaderReceived.mergeField 2 default (V1State.Chunked.HeaderReceived.encodeRaw m) m := by
   have hpre : PrefixOk V1State.Chunked.HeaderReceived.mergeField := by
@@ -960,10 +936,6 @@ theorem loopsTo_ch_headerReceived (m : V1State.Chunked.HeaderReceived) (h : (V1S
     (fun n hn => ⟨loopsTo_polyDecoder n (len_encodeOptMessage h2 n hn), len_encodeOptMessage h2 n hn⟩)
     (fun _ _ _ => rfl)
   exact (LoopsTo.append hpre s1 s2).congr_res (by cases m; rfl)
-
-theorem decode_ch_headerReceived (m : V1State.Chunked.HeaderReceived) (h : (V1State.Chunked.HeaderReceived.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.HeaderReceived.decode (V1State.Chunked.HeaderReceived.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.HeaderReceived.mergeField 2 _ m (by decide) (loopsTo_ch_headerReceived m h)
 
 theorem loopsTo_ch_ct1Sampled (m : V1State.Chunked.Ct1Sampled) (h : (V1State.Chunked.Ct1Sampled.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Chunked.Ct1Sampled.mergeField 2 default (V1State.Chunked.Ct1Sampled.encodeRaw m) m := by
@@ -999,10 +971,6 @@ theorem loopsTo_ch_ct1Sampled (m : V1State.Chunked.Ct1Sampled) (h : (V1State.Chu
     (fun _ _ _ => rfl)
   exact (LoopsTo.append hpre (LoopsTo.append hpre s1 s2) s3).congr_res (by cases m; rfl)
 
-theorem decode_ch_ct1Sampled (m : V1State.Chunked.Ct1Sampled) (h : (V1State.Chunked.Ct1Sampled.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.Ct1Sampled.decode (V1State.Chunked.Ct1Sampled.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.Ct1Sampled.mergeField 2 _ m (by decide) (loopsTo_ch_ct1Sampled m h)
-
 theorem loopsTo_ch_ekReceivedCt1Sampled (m : V1State.Chunked.EkReceivedCt1Sampled) (h : (V1State.Chunked.EkReceivedCt1Sampled.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Chunked.EkReceivedCt1Sampled.mergeField 2 default (V1State.Chunked.EkReceivedCt1Sampled.encodeRaw m) m := by
   have hpre : PrefixOk V1State.Chunked.EkReceivedCt1Sampled.mergeField := by
@@ -1026,10 +994,6 @@ theorem loopsTo_ch_ekReceivedCt1Sampled (m : V1State.Chunked.EkReceivedCt1Sample
     (fun n hn => ⟨loopsTo_polyEncoder n (len_encodeOptMessage h2 n hn), len_encodeOptMessage h2 n hn⟩)
     (fun _ _ _ => rfl)
   exact (LoopsTo.append hpre s1 s2).congr_res (by cases m; rfl)
-
-theorem decode_ch_ekReceivedCt1Sampled (m : V1State.Chunked.EkReceivedCt1Sampled) (h : (V1State.Chunked.EkReceivedCt1Sampled.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.EkReceivedCt1Sampled.decode (V1State.Chunked.EkReceivedCt1Sampled.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.EkReceivedCt1Sampled.mergeField 2 _ m (by decide) (loopsTo_ch_ekReceivedCt1Sampled m h)
 
 theorem loopsTo_ch_ct1Acknowledged (m : V1State.Chunked.Ct1Acknowledged) (h : (V1State.Chunked.Ct1Acknowledged.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Chunked.Ct1Acknowledged.mergeField 2 default (V1State.Chunked.Ct1Acknowledged.encodeRaw m) m := by
@@ -1055,10 +1019,6 @@ theorem loopsTo_ch_ct1Acknowledged (m : V1State.Chunked.Ct1Acknowledged) (h : (V
     (fun _ _ _ => rfl)
   exact (LoopsTo.append hpre s1 s2).congr_res (by cases m; rfl)
 
-theorem decode_ch_ct1Acknowledged (m : V1State.Chunked.Ct1Acknowledged) (h : (V1State.Chunked.Ct1Acknowledged.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.Ct1Acknowledged.decode (V1State.Chunked.Ct1Acknowledged.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.Ct1Acknowledged.mergeField 2 _ m (by decide) (loopsTo_ch_ct1Acknowledged m h)
-
 theorem loopsTo_ch_ct2Sampled (m : V1State.Chunked.Ct2Sampled) (h : (V1State.Chunked.Ct2Sampled.encodeRaw m).length < 2 ^ 64) :
     LoopsTo V1State.Chunked.Ct2Sampled.mergeField 2 default (V1State.Chunked.Ct2Sampled.encodeRaw m) m := by
   have hpre : PrefixOk V1State.Chunked.Ct2Sampled.mergeField := by
@@ -1082,9 +1042,5 @@ theorem loopsTo_ch_ct2Sampled (m : V1State.Chunked.Ct2Sampled) (h : (V1State.Chu
     (fun n hn => ⟨loopsTo_polyEncoder n (len_encodeOptMessage h2 n hn), len_encodeOptMessage h2 n hn⟩)
     (fun _ _ _ => rfl)
   exact (LoopsTo.append hpre s1 s2).congr_res (by cases m; rfl)
-
-theorem decode_ch_ct2Sampled (m : V1State.Chunked.Ct2Sampled) (h : (V1State.Chunked.Ct2Sampled.encodeRaw m).length < 2 ^ 64) :
-    V1State.Chunked.Ct2Sampled.decode (V1State.Chunked.Ct2Sampled.encodeRaw m) = .ok m :=
-  decodeTop_of_loopsTo V1State.Chunked.Ct2Sampled.mergeField 2 _ m (by decide) (loopsTo_ch_ct2Sampled m h)
 
 end CryptoVerification.SpqrV1Sync.Codec

@@ -9,10 +9,22 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdA
-public import Computational.Proofs.SignalPqxdh.Security.SigHop1KeyA
+public import Computational.Proofs.SignalPqxdh.Security.Auth1KeyGapDhIdA -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHop1KeyA -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhF
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHop
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopA
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB2
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopB3
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv
+import Computational.Proofs.SignalPqxdh.Security.RoKemHop
+import Computational.Proofs.SignalPqxdh.Security.RoKemHopB
+import Computational.Proofs.SignalPqxdh.Security.SigHop
 
 /-!
 # One-key `Auth` step coupling for the bad-signature hop
@@ -22,7 +34,7 @@ import VCVio.OracleComp.EvalDist.Measure
 coupling `fgAuthStepCoupling_sig1Key` and invariant projections for the bad-signature hop.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

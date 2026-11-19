@@ -12,7 +12,7 @@ module
 public import Computational.Specifications.LibsignalCli.StatementPqElf
 public import Computational.Specifications.Session.StatementSession
 public import Computational.Specifications.Game.ModelIface
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
+import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
 import VCVio.EvalDist.Monad.Basic
 import VCVio.EvalDist.MeasureTVDist.Event
 import VCVio.EvalDist.ProbabilityBounds
@@ -25,7 +25,7 @@ Defines `SessionHaltTracker`, `ValidSessionHaltTracker`, `AgreeInv`, and the cou
 coin-logged and session-tracked R-game and E2E oracles for `MainHaltedOnline`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -106,20 +106,6 @@ def coinLogSessionTracker {St Msg Coins C Key : Type} (badLog : List Coins → B
   commitSend _ _ coins _ log := log ++ [coins]
   onDeliver _ _ _ _ log := log
 
-theorem validSessionHaltTracker_kemFailBadLog {St Msg C Key : Type} (K : MlKem) :
-    ValidSessionHaltTracker (kemFailBadLog K)
-      (coinLogSessionTracker (St := St) (Msg := Msg) (C := C) (Key := Key) (kemFailBadLog K))
-      (fun log gLog => ∀ x ∈ log, x ∈ gLog) where
-  inv_init _ _ _ hx := nomatch hx
-  inv_mono {_} {_} c hinv x hx := List.mem_append_left [c] (hinv x hx)
-  inv_deliver _ _ _ _ {_} {_} hinv := hinv
-  send_good _ _ coins {tr} {gLog} hinv := by
-    have hsub : ∀ x ∈ tr ++ [coins], x ∈ gLog ++ [coins] := fun x hx => by
-      rcases List.mem_append.mp hx with h | h
-      · exact List.mem_append_left [coins] (hinv x h)
-      · exact List.mem_append_right _ h
-    exact ⟨kemFailBadLog_eq_false_of_subset K hsub, hsub, fun _ => hsub⟩
-
 def smSchemeTrackState {τ Key St Msg Coins RCoins C : Type}
     (sm : SMSchemeR Key St Msg Coins RCoins C) :
     SMSchemeRM (StateT τ ProbComp) Key St Msg Coins RCoins C where
@@ -129,7 +115,7 @@ def smSchemeTrackState {τ Key St Msg Coins RCoins C : Type}
   receive st c rc := pure (sm.receive st c rc)
 
 /-- Online-halted `transmit` oracle driven by `T : SessionHaltTracker`. -/
-def transmitRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
+@[expose] def transmitRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Option Coins) →ₒ Option C)
@@ -154,7 +140,7 @@ def transmitRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableTyp
         return some out.2
 
 /-- Online-halted `chall` oracle driven by `T : SessionHaltTracker`. -/
-def challRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
+@[expose] def challRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C)
@@ -181,7 +167,7 @@ def challRSessionTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType C
         return some out.2
 
 /-- `deliver` oracle driven by `T : SessionHaltTracker`: runs `deliverR` and passively updates `τ`. -/
-def deliverRSessionTracked {Key St Msg Coins RCoins C τ : Type}
+@[expose] def deliverRSessionTracked {Key St Msg Coins RCoins C τ : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType RCoins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (cfg : ConfigR St Msg C) :
@@ -195,7 +181,7 @@ def deliverRSessionTracked {Key St Msg Coins RCoins C τ : Type}
     return res
 
 /-- Full R-game oracle handler driven by `T : SessionHaltTracker`. -/
-def oracleImplRSessionTracked {Key St Msg Coins RCoins C τ : Type}
+@[expose] def oracleImplRSessionTracked {Key St Msg Coins RCoins C τ : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] [SampleableType RCoins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
@@ -227,7 +213,7 @@ def gameRSessionTracked {Key St Msg Coins RCoins C τ : Type}
     return (b == b' || s.win)
 
 /-- Promotion step on `BHE2EDrvState S ℓ × List τ` initializing `initTrack kS` on success. -/
-def bhE2ELocalStartSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhE2ELocalStartSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (initTrack : SampledSessionKey → τ)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (bMode? : Option Bool)
@@ -247,7 +233,7 @@ def bhE2ELocalStartSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ
     return (idx?, (σ', tracks'))
 
 /-- Pure wire-query unwrapping shared by `bhE2EStepLocalSm` variants. -/
-def bhDecodeSmWireQuery {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def bhDecodeSmWireQuery {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (im : ModelDriverInstanceMeta S) (d : BHModelInst S ℓ)
     (q : (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain) :
     Option (CryptoGames.SM.spec (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes).Domain :=
@@ -285,7 +271,7 @@ def bhDecodeSmWireQuery {S : SignalPqxdh.Setup} {ℓ : ℕ}
   | _ => some q
 
 /-- Per-session SM step on `BHE2EDrvState S ℓ × List τ` driven by `T : SessionHaltTracker`. -/
-def bhE2EStepLocalSmSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EStepLocalSmSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
@@ -327,7 +313,7 @@ def bhE2EStepLocalSmSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : �
     | _, _ => return ((none, none, none), σH)
 
 /-- Per-session `SessionHaltTracker`-driven E2E model query implementation. -/
-def bhE2EDrvImplWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EDrvImplWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -360,7 +346,7 @@ def bhE2EDrvImplWithSessionTracked {τ : Type} {S : SignalPqxdh.Setup} {ℓ : �
     return bhUnpackSmResp sq sr
 
 /-- Per-session `SessionHaltTracker`-driven E2E model experiment. -/
-def bhE2EExpWithKiSessionTracked {τ : Type} {ℓ : ℕ}
+@[expose] def bhE2EExpWithKiSessionTracked {τ : Type} {ℓ : ℕ}
     (T : SessionHaltTracker (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes SampledSessionKey τ)
     (secb : Bool) (S : SignalPqxdh.Setup) (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
@@ -377,7 +363,7 @@ def bhE2EExpWithKiSessionTracked {τ : Type} {ℓ : ℕ}
 
 abbrev CoinLogM : Type → Type := WriterT (List (BitVec 512)) ProbComp
 
-def bhE2EStepLocalSmCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def bhE2EStepLocalSmCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (C : Crypto) (K : MlKem) (qep : ℕ)
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (σ : BHE2EDrvState S ℓ) (i : ℕ)
@@ -444,7 +430,7 @@ def bhE2EStepLocalSmCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
           | _ => runStd q σ
     | _, _ => return ((none, none, none), σ)
 
-def cliE2EDrvImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def cliE2EDrvImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (qep : ℕ)
@@ -475,7 +461,7 @@ def cliE2EDrvImplWithCoinLogged {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     return bhUnpackSmResp sq sr
 
 /-- Send-coin-logged E2E model experiment. -/
-def cliE2EExpWithKiCoinLogged (secb : Bool) (S : SignalPqxdh.Setup)
+@[expose] def cliE2EExpWithKiCoinLogged (secb : Bool) (S : SignalPqxdh.Setup)
     (P : SignalPqxdh.Primitives)
     (ki : QueryImpl (SignalPqxdh.keyIndSpec S) (StateT (SignalPqxdh.KeyIndState S) ProbComp))
     (C : Crypto) (K : MlKem) (ℓ qep : ℕ) {Pt : Type}
@@ -625,7 +611,7 @@ theorem AgreeInv.simulateQ {σ Coins ι : Type} {ospec : OracleSpec ι}
     rw [simulateQ_bind, simulateQ_spec_query, simulateQ_bind, simulateQ_spec_query]
     exact AgreeInv.bind (himpl t) ih
 
-def ProjectsToLogged {σ τ Coins α : Type}
+@[expose] def ProjectsToLogged {σ τ Coins α : Type}
     (m₁ : StateT (σ × List τ) (StateT (List Coins) ProbComp) α)
     (m₀ : StateT σ (WriterT (List Coins) ProbComp) α) : Prop :=
   ∀ (s : σ) (tracks : List τ) (gLog : List Coins),
@@ -675,7 +661,7 @@ theorem ProjectsToLogged.simulateQ {σ τ Coins ι : Type} {ospec : OracleSpec �
     rw [simulateQ_bind, simulateQ_spec_query, simulateQ_bind, simulateQ_spec_query]
     exact ProjectsToLogged.bind (himpl t) ih
 
-def ProjectsToHalted {σH Coins α : Type}
+@[expose] def ProjectsToHalted {σH Coins α : Type}
     (m₂ : StateT σH (StateT (List Coins) ProbComp) α) (mH : StateT σH ProbComp α) : Prop :=
   ∀ (s : σH) (gLog : List Coins), Prod.fst <$> ((m₂.run s).run gLog) = mH.run s
 
@@ -897,7 +883,7 @@ private theorem injectRM_smSchemeCoinState_eq {Key St Msg Coins RCoins C : Type}
       simp [StateT.run_map, StateT.run_set, StateT.run_pure, Function.comp_def]
   · simp
 
-def transmitLoggedTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
+@[expose] def transmitLoggedTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Option Coins) →ₒ Option C)
@@ -916,7 +902,7 @@ def transmitLoggedTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType 
       StateT.lift (set (T.commitSend s₁ P coins out.2 tg.1, tg.2 ++ [coins]))
       return some out.2
 
-def challLoggedTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
+@[expose] def challLoggedTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C)
@@ -937,7 +923,7 @@ def challLoggedTracked {Key St Msg Coins RCoins C τ : Type} [SampleableType Coi
       StateT.lift (set (T.commitSend s₁ P coins out.2 tg.1, tg.2 ++ [coins]))
       return some out.2
 
-def transmitHaltedLogged {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
+@[expose] def transmitHaltedLogged {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Option Coins) →ₒ Option C)
@@ -961,7 +947,7 @@ def transmitHaltedLogged {Key St Msg Coins RCoins C τ : Type} [SampleableType C
         StateT.lift (set (T.commitSend s₁ P coins out.2 tg.1, tg.2 ++ [coins]))
         return some out.2
 
-def challHaltedLogged {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
+@[expose] def challHaltedLogged {Key St Msg Coins RCoins C τ : Type} [SampleableType Coins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
     QueryImpl ((Party × Msg × Msg × Option Coins) →ₒ Option C)
@@ -987,7 +973,7 @@ def challHaltedLogged {Key St Msg Coins RCoins C τ : Type} [SampleableType Coin
         StateT.lift (set (T.commitSend s₁ P coins out.2 tg.1, tg.2 ++ [coins]))
         return some out.2
 
-def deliverBothLogged {Key St Msg Coins RCoins C τ : Type}
+@[expose] def deliverBothLogged {Key St Msg Coins RCoins C τ : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType RCoins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (cfg : ConfigR St Msg C) :
@@ -999,7 +985,7 @@ def deliverBothLogged {Key St Msg Coins RCoins C τ : Type}
     StateT.lift (set (T.onDeliver s₀ P c res tg.1, tg.2))
     return res
 
-def oracleLoggedTracked {Key St Msg Coins RCoins C τ : Type}
+@[expose] def oracleLoggedTracked {Key St Msg Coins RCoins C τ : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] [SampleableType RCoins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :
@@ -1014,7 +1000,7 @@ def oracleLoggedTracked {Key St Msg Coins RCoins C τ : Type}
       QueryImpl (Party →ₒ Option St)
         (StateT (GameState St Msg C) (StateT (τ × List Coins) ProbComp)))
 
-def oracleHaltedLogged {Key St Msg Coins RCoins C τ : Type}
+@[expose] def oracleHaltedLogged {Key St Msg Coins RCoins C τ : Type}
     [DecidableEq Msg] [DecidableEq C] [SampleableType Coins] [SampleableType RCoins]
     (T : SessionHaltTracker St Msg Coins C Key τ)
     (sm : SMSchemeR Key St Msg Coins RCoins C) (Δ qep : ℕ) (cfg : ConfigR St Msg C) :

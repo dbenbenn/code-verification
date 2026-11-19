@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.Defs
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget
-public import LibsignalBinary.Proofs.ConsumeMessageKey.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.FetchBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget
 import LibsignalBinary.Proofs.ConsumeMessageKey.Model
 import ProofLib.SepLogic.WPp
 
@@ -24,7 +24,7 @@ Defines per-iteration `AllocEvent` envelopes (`ConcatEnv`, `CmkAfterSeedEvs`, `C
 `storeLoop_iter_placed_of_parts`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -65,15 +65,15 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (SeamBudget)
 /-! ## Per-Iteration Capacity, Length, and `AllocEvent` Envelopes -/
 
 /-- Exact sequential concatenation of two `AllocEvent` predicates (without prefix truncation). -/
-def ConcatEnv (E₁ E₂ : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
+@[expose] def ConcatEnv (E₁ E₂ : List AllocEvent → Prop) (evs : List AllocEvent) : Prop :=
   ∃ evs₁ evs₂, evs = evs₁ ++ evs₂ ∧ E₁ evs₁ ∧ E₂ evs₂
 
 /-- Deterministic `mkCap` after one `InsertKey` step (`grow_one` iff `len = cap.toNat`). -/
-def cmkNextCap (cap : BitVec 64) (len : Nat) : BitVec 64 :=
+@[expose] def cmkNextCap (cap : BitVec 64) (len : Nat) : BitVec 64 :=
   if len = cap.toNat then BitVec.ofNat 64 (max (2 * cap.toNat) 4) else cap
 
 /-- Deterministic `messageKeys.length` after inserting one key and capping at `maxMessageKeys`. -/
-def cmkNextLen (len : Nat) : Nat :=
+@[expose] def cmkNextLen (len : Nat) : Nat :=
   if maxMessageKeys ≤ len then maxMessageKeys else len + 1
 
 theorem cmkNextLen_eq_take {α : Type} (a : α) (l : List α) :
@@ -85,22 +85,22 @@ theorem cmkNextLen_eq_take {α : Type} (a : α) (l : List α) :
   · simp only [h, ↓reduceIte]; omega
 
 /-- Events emitted by the optional `RawVec<MessageKey>::grow_one` inside `InsertKey`. -/
-def CmkGrowOptEvs (cap : BitVec 64) (len : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def CmkGrowOptEvs (cap : BitVec 64) (len : Nat) (evs : List AllocEvent) : Prop :=
   if len = cap.toNat then GrowOneEnv cap evs else evs = []
 
 /-- Events emitted by the optional 2001st-key eviction inside `EvictOldestKey`. -/
-def CmkPopOptEvs (len : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def CmkPopOptEvs (len : Nat) (evs : List AllocEvent) : Prop :=
   if maxMessageKeys ≤ len then FreeOnlyEvs evs else evs = []
 
-def CmkIterPostEvs (k : Nat) (cap : BitVec 64) (len : Nat) (isPanic : Bool) :
+@[expose] def CmkIterPostEvs (k : Nat) (cap : BitVec 64) (len : Nat) (isPanic : Bool) :
     List AllocEvent → Prop :=
   CmkLoopAdvanceEvs k (cmkNextCap cap len) (cmkNextLen len) isPanic
 
-def CmkAfterGrowEvs (k : Nat) (cap : BitVec 64) (len : Nat) (isPanic : Bool) :
+@[expose] def CmkAfterGrowEvs (k : Nat) (cap : BitVec 64) (len : Nat) (isPanic : Bool) :
     List AllocEvent → Prop :=
   ConcatEnv (CmkPopOptEvs len) (CmkIterPostEvs k cap len isPanic)
 
-def CmkAfterSeedEvs (k : Nat) (cap : BitVec 64) (len : Nat) (isPanic : Bool) :
+@[expose] def CmkAfterSeedEvs (k : Nat) (cap : BitVec 64) (len : Nat) (isPanic : Bool) :
     List AllocEvent → Prop :=
   ConcatEnv (CmkGrowOptEvs cap len) (CmkAfterGrowEvs k cap len isPanic)
 
@@ -182,7 +182,7 @@ theorem cmkEnv_advance_chain_iff {x : ConsumeMessageKeyGhost} {ci : Nat} {chc : 
 
 /-! ## `VmPreserved`-Lifted Callee Wrappers -/
 
-def hmacAtStateSpec (F : ShaState → List (BitVec 8) → ShaState) (s : State) :
+@[expose] def hmacAtStateSpec (F : ShaState → List (BitVec 8) → ShaState) (s : State) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8) × BitVec 64 × List (BitVec 8)) where
   pre := fun (out, ka, key, ia, inp) s' =>
     ⌜s'.mem = s.mem ∧
@@ -254,7 +254,7 @@ theorem findIndex_placed_ok_at_state [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Budget-Threaded Seam States -/
 
-def InsertKeyState_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InsertKeyState_placed [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ConsumeMessageKeyGhost) (st_init st : M.σ)
@@ -266,7 +266,7 @@ def InsertKeyState_placed [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.LibsignalSession.StoreLoop.InsertKeyState_placed
     F (A.atState lim st s) x Gc stc ckc ci seedPtr R s0 s
 
-def EvictOldestKeyState_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EvictOldestKeyState_placed [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ConsumeMessageKeyGhost) (st_init st : M.σ)
@@ -279,7 +279,7 @@ def EvictOldestKeyState_placed [LibsignalPlacement] {M : AllocCostModel}
   CryptoVerification.LibsignalSession.StoreLoop.EvictOldestKeyState_placed
     F (A.atState lim st s) x Gc stc ckc ci chc cg mkCap1 mkPtr1 seedPtr R s0 s
 
-def AdvanceChainKeyState_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AdvanceChainKeyState_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (x : ConsumeMessageKeyGhost) (st_init st : M.σ)
     (remEnv : List AllocEvent → Prop)
@@ -291,7 +291,7 @@ def AdvanceChainKeyState_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## Budget-Threaded Sub-Segment and Loop Specifications -/
 
-def DeriveSeedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DeriveSeedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -315,7 +315,7 @@ def DeriveSeedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
             InsertKeyState_placed F A lim x st_init stA remPost Gc stc ckc ci seedPtr R s0 sA) ∨
          (sA.status = .Panicked ∧ (sA.mem ⊨ (cmkPlacedSpec F A lim).onPanic (x, st_init) s0 sA ∗ R)))
 
-def DeriveSeedPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def DeriveSeedPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -340,7 +340,7 @@ def DeriveSeedPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
             InsertKeyState_placed F A lim x st_init stA remPost Gc stc ckc ci seedPtr R s0 sA) ∨
          (sA.status = .Panicked ∧ (sA.mem ⊨ (cmkPlacedSpec F A lim).onPanic (x, st_init) s0 sA ∗ R)))
 
-def InsertKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def InsertKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -369,7 +369,7 @@ def InsertKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
               Gc stc ckc ci chc cg cap1 (sB.readReg64 .x24) seedPtr R s0 sB) ∨
          (sB.status = .Panicked ∧ (sB.mem ⊨ (cmkPlacedSpec F A lim).onPanic (x, st_init) s0 sB ∗ R)))
 
-def EvictOldestKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def EvictOldestKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -390,7 +390,7 @@ def EvictOldestKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
           AdvanceChainKeyState_placed A lim x st_init stC remPost
             G' (updatedRatchetState F stc ci chc ckc) ckc R s0 sC
 
-def AdvanceChainKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AdvanceChainKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -407,7 +407,7 @@ def AdvanceChainKeyPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
       ∃ s', Steps ((blkPC_24).rebase (blkPl_24).base H) sD s' ∧
         CmkLoopState_placed A lim x st_init stD remPost G' st' ck' R nextPC s0 s'
 
-def AdvanceChainKeyPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def AdvanceChainKeyPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -425,7 +425,7 @@ def AdvanceChainKeyPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
       ∃ s', Steps ((blkPC_24).rebase (blkPl_24).base H) sD s' ∧
         CmkLoopState_placed A lim x st_init stD remPost G' st' ck' R nextPC s0 s'
 
-def StoreLoopIterPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StoreLoopIterPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -458,7 +458,7 @@ def StoreLoopIterPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
               G' st' ck' R nextPC s0 s') ∨
          (s'.status = .Panicked ∧ (s'.mem ⊨ (cmkPlacedSpec F A lim).onPanic (x, st_init) s0 s' ∗ R)))
 
-def StoreLoopIterPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StoreLoopIterPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -492,7 +492,7 @@ def StoreLoopIterPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
               G' st' ck' R nextPC s0 s') ∨
          (s'.status = .Panicked ∧ (s'.mem ⊨ (cmkPlacedSpec F A lim).onPanic (x, st_init) s0 s' ∗ R)))
 
-def StoreLoopPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StoreLoopPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=
@@ -522,7 +522,7 @@ def StoreLoopPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
               G' st_end ck_end R cmkEpiloguePC_placed s0 s') ∨
          (s'.status = .Panicked ∧ (s'.mem ⊨ (cmkPlacedSpec F A lim).onPanic (x, st_init) s0 s' ∗ R)))
 
-def StoreLoopPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StoreLoopPlacedRoSpec [LibsignalPlacement] {M : AllocCostModel}
     (F : ShaState → List (BitVec 8) → ShaState)
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (H : String → Option (State → State)) : Prop :=

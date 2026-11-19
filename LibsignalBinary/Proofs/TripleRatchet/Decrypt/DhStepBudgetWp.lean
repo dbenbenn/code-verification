@@ -9,16 +9,29 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepMain
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepTightTargets
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym130 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DecryptCodeSym433 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepMain -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepTightTargets -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib.ProgramReflection -- shake: keep
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBlocks
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepRecvChain
+public import LibsignalBinary.Heap.IfaceBudget
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.WP.StepsProcess
+public import ProofLib.StdStartup.MemOps
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
 
 /-!
 # `VmPreserved` Basic-Block `SepWP` Bundle for `DhStep`
@@ -27,7 +40,7 @@ Defines `DhStepBlockVmWp` and proves `dhStepBlockVmWp_159` (block `130`) and `dh
 (block `433`) via `sepWP_seg_ls_vm` and `hooksException`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -53,6 +66,8 @@ open VerifiedLibraries.RustStd (checkBlockNoSvc0)
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
+attribute [local irreducible] Program.fetch Program.externAt?
+attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Bundle of relocatable basic-block `SepWP` obligations for `DhStep` (`+0x500 → +0x8ac / +0x30c`). -/
 structure DhStepBlockVmWp [LibsignalPlacement] (prog : Program)
@@ -372,12 +387,85 @@ structure DhStepBlockVmWp [LibsignalPlacement] (prog : Program)
           (∀ m R, (m ⊨ P' ∗ R) → (m ⊨ R)))
 
 
-private theorem hchk_130 : checkBlockNoSvc0 blkLib_131.text = true := by rfl_kernel
+private theorem sepWP_vm_step_pre {prog : Program} {target : BitVec 64} {s s' : State}
+    {P : SepProp} {Q : State → SepProp → Prop} (hvm : VmPreserved s s')
+    (h : SepWP prog target s' P (fun sm Pm => VmPreserved s' sm ∧ Q sm Pm)) :
+    SepWP prog target s' P (fun sm Pm => VmPreserved s sm ∧ Q sm Pm) :=
+  SepWP.mono h fun _ _ _ _ ⟨h1, h2⟩ => ⟨hvm.trans h1, h2⟩
 
-private theorem hchk_433 : checkBlockNoSvc0 blkLib_434.text = true := by rfl_kernel
+private theorem reassoc_2dc (sp : BitVec 64) (u2d0 : BitVec 32) (u2b0 u2b8 : BitVec 64) :
+    ((sp + 832#64) ↦₃₂ u2d0 ∗ (sp + 836#64) ↦₆₄ u2b0 ∗ (sp + 844#64) ↦₆₄ u2b8 ∗ memRegion (sp + 852#64) 556) =
+      ((sp + 832#64) ↦₆₄ (u2b0.extractLsb' 0 32 ++ u2d0) ∗
+       (sp + 840#64) ↦₆₄ (u2b8.extractLsb' 0 32 ++ u2b0.extractLsb' 32 32) ∗
+       (sp + 848#64) ↦₃₂ u2b8.extractLsb' 32 32 ∗
+       memRegion (sp + 852#64) 556) := by
+  have := congrArg (· ∗ memRegion (sp + 852#64) 556) (reassoc_4_8_8_to_8_8_4 (sp + 832#64) u2d0 u2b0 u2b8)
+  have h1 : sp + 832#64 + 4#64 = sp + 836#64 := by bv_arith
+  have h2 : sp + 832#64 + 12#64 = sp + 844#64 := by bv_arith
+  have h3 : sp + 832#64 + 8#64 = sp + 840#64 := by bv_arith
+  have h4 : sp + 832#64 + 16#64 = sp + 848#64 := by bv_arith
+  rw [h1, h2, h3, h4] at this
+  exact Eq.trans (by sep_ac_rfl) (Eq.trans this (by sep_ac_rfl))
 
-set_option maxHeartbeats 1600000 in
-def dhStepBlockVmWp_159 [LibsignalPlacement] (H : String → Option (State → State)) :
+private theorem fold_178_2dc (sp : BitVec 64) :
+    memRegion (sp + 0x178#64) 24 =
+      memRegion (sp + 376#64) 8 ∗ memRegion (sp + 384#64) 8 ∗
+      memRegion (sp + 392#64) 4 ∗ memRegion (sp + 396#64) 4 := by
+  rw [show sp + 0x178#64 = sp + 376#64 from rfl,
+      memRegion_split' (b := sp + 376#64) (b' := sp + 384#64) (n := 8) (k := 16) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 384#64) (b' := sp + 392#64) (n := 8) (k := 8) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 392#64) (b' := sp + 396#64) (n := 4) (k := 4) rfl (by bv_arith) (by decide)]
+
+private theorem fold_190_2dc (sp : BitVec 64) :
+    memRegion (sp + 0x190#64) 0x3f0 =
+      memRegion (sp + 400#64) 288 ∗ memRegion (sp + 688#64) 8 ∗ memRegion (sp + 696#64) 8 ∗
+      memRegion (sp + 704#64) 8 ∗ memRegion (sp + 712#64) 8 ∗ memRegion (sp + 720#64) 4 ∗
+      memRegion (sp + 724#64) 92 ∗ memRegion (sp + 816#64) 8 ∗ memRegion (sp + 824#64) 8 ∗
+      memRegion (sp + 832#64) 8 ∗ memRegion (sp + 840#64) 8 ∗ memRegion (sp + 848#64) 4 ∗
+      memRegion (sp + 852#64) 556 := by
+  rw [show sp + 0x190#64 = sp + 400#64 from rfl,
+      memRegion_split' (b := sp + 400#64) (b' := sp + 688#64) (n := 288) (k := 720) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 688#64) (b' := sp + 696#64) (n := 8) (k := 712) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 696#64) (b' := sp + 704#64) (n := 8) (k := 704) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 704#64) (b' := sp + 712#64) (n := 8) (k := 696) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 712#64) (b' := sp + 720#64) (n := 8) (k := 688) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 720#64) (b' := sp + 724#64) (n := 4) (k := 684) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 724#64) (b' := sp + 816#64) (n := 92) (k := 592) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 816#64) (b' := sp + 824#64) (n := 8) (k := 584) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 824#64) (b' := sp + 832#64) (n := 8) (k := 576) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 832#64) (b' := sp + 840#64) (n := 8) (k := 568) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 840#64) (b' := sp + 848#64) (n := 8) (k := 560) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 848#64) (b' := sp + 852#64) (n := 4) (k := 556) rfl (by bv_arith) (by decide)]
+
+private theorem fold_140_7f8 (sp : BitVec 64) :
+    memRegion (sp + 0x140#64) 0x440 =
+      memRegion (sp + 320#64) 88 ∗ memRegion (sp + 408#64) 8 ∗ memRegion (sp + 416#64) 272 ∗
+      memRegion (sp + 688#64) 8 ∗ memRegion (sp + 696#64) 8 ∗ memRegion (sp + 704#64) 8 ∗
+      memRegion (sp + 712#64) 8 ∗ memRegion (sp + 720#64) 4 ∗ memRegion (sp + 724#64) 556 ∗
+      memRegion (sp + 1280#64) 8 ∗ memRegion (sp + 1288#64) 8 ∗ memRegion (sp + 1296#64) 112 := by
+  rw [show sp + 0x140#64 = sp + 320#64 from rfl,
+      memRegion_split' (b := sp + 320#64) (b' := sp + 408#64) (n := 88) (k := 1000) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 408#64) (b' := sp + 416#64) (n := 8) (k := 992) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 416#64) (b' := sp + 688#64) (n := 272) (k := 720) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 688#64) (b' := sp + 696#64) (n := 8) (k := 712) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 696#64) (b' := sp + 704#64) (n := 8) (k := 704) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 704#64) (b' := sp + 712#64) (n := 8) (k := 696) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 712#64) (b' := sp + 720#64) (n := 8) (k := 688) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 720#64) (b' := sp + 724#64) (n := 4) (k := 684) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 724#64) (b' := sp + 1280#64) (n := 556) (k := 128) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 1280#64) (b' := sp + 1288#64) (n := 8) (k := 120) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 1288#64) (b' := sp + 1296#64) (n := 8) (k := 112) rfl (by bv_arith) (by decide)]
+
+private theorem fold_sp38_missing_sc (sp : BitVec 64) :
+    memRegion sp 0x38 =
+      memRegion sp 0x20 ∗ memRegion (sp + 0x20#64) 8 ∗ memRegion (sp + 0x28#64) 4 ∗
+      memRegion (sp + 0x2c#64) 4 ∗ memRegion (sp + 0x30#64) 8 := by
+  rw [memRegion_split' (b := sp) (b' := sp + 0x20#64) (n := 0x20) (k := 0x18) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 0x20#64) (b' := sp + 0x28#64) (n := 0x8) (k := 0x10) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 0x28#64) (b' := sp + 0x2c#64) (n := 0x4) (k := 0xc) rfl (by bv_arith) (by decide),
+      memRegion_split' (b := sp + 0x2c#64) (b' := sp + 0x30#64) (n := 0x4) (k := 0x8) rfl (by bv_arith) (by decide)]
+
+@[expose] def dhStepBlockVmWp_159 [LibsignalPlacement] (H : String → Option (State → State)) :
     DhStepBlockVmWp ((blkPC_131).rebase (blkPl_131).base H) (blkPl_131).base
       (lsmpl.ρ "libsignal_session_rng_fill") where
   missingScAddr := (dhStepBlockWp_159 H).missingScAddr
@@ -385,259 +473,144 @@ def dhStepBlockVmWp_159 [LibsignalPlacement] (H : String → Option (State → S
   wpp_2dc_to_30c := by
     intro s0 s w2c0 w2c8 u34c u344 u338 u330 u2b8 u2b0 u180 u178 u170 u168 u340 u2d0 u18c u188
       sp hpc hrun hsp hsp_al hx29 hx12 hx20 hx25 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := (blkPl_131).base + 780#64)
-    intro _m_strip
-    wp_steps
-    have hre : ((sp + 832#64) ↦₃₂ u2d0 ∗ (sp + 836#64) ↦₆₄ u2b0 ∗ (sp + 844#64) ↦₆₄ u2b8 ∗ memRegion (sp + 852#64) 556) =
-        ((sp + 832#64) ↦₆₄ (u2b0.extractLsb' 0 32 ++ u2d0) ∗
-         (sp + 840#64) ↦₆₄ (u2b8.extractLsb' 0 32 ++ u2b0.extractLsb' 32 32) ∗
-         (sp + 848#64) ↦₃₂ u2b8.extractLsb' 32 32 ∗
-         memRegion (sp + 852#64) 556) := by
-      have := congrArg (· ∗ memRegion (sp + 852#64) 556) (reassoc_4_8_8_to_8_8_4 (sp + 832#64) u2d0 u2b0 u2b8)
-      have h1 : sp + 832#64 + 4#64 = sp + 836#64 := by bv_arith
-      have h2 : sp + 832#64 + 12#64 = sp + 844#64 := by bv_arith
-      have h3 : sp + 832#64 + 8#64 = sp + 840#64 := by bv_arith
-      have h4 : sp + 832#64 + 16#64 = sp + 848#64 := by bv_arith
-      rw [h1, h2, h3, h4] at this
-      exact Eq.trans (by sep_ac_rfl) (Eq.trans this (by sep_ac_rfl))
-    rw [hre]
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx29], by simp, by simp [hx20, sp], by simp, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have h178_fold : memRegion (sp + 0x178#64) 24 =
-        memRegion (sp + 376#64) 8 ∗ memRegion (sp + 384#64) 8 ∗
-        memRegion (sp + 392#64) 4 ∗ memRegion (sp + 396#64) 4 := by
-      rw [show sp + 0x178#64 = sp + 376#64 from rfl,
-          memRegion_split' (b := sp + 376#64) (b' := sp + 384#64) (n := 8) (k := 16) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 384#64) (b' := sp + 392#64) (n := 8) (k := 8) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 392#64) (b' := sp + 396#64) (n := 4) (k := 4) rfl (by bv_arith) (by decide)]
-    have h190_fold : memRegion (sp + 0x190#64) 0x3f0 =
-        memRegion (sp + 400#64) 288 ∗ memRegion (sp + 688#64) 8 ∗ memRegion (sp + 696#64) 8 ∗
-        memRegion (sp + 704#64) 8 ∗ memRegion (sp + 712#64) 8 ∗ memRegion (sp + 720#64) 4 ∗
-        memRegion (sp + 724#64) 92 ∗ memRegion (sp + 816#64) 8 ∗ memRegion (sp + 824#64) 8 ∗
-        memRegion (sp + 832#64) 8 ∗ memRegion (sp + 840#64) 8 ∗ memRegion (sp + 848#64) 4 ∗
-        memRegion (sp + 852#64) 556 := by
-      rw [show sp + 0x190#64 = sp + 400#64 from rfl,
-          memRegion_split' (b := sp + 400#64) (b' := sp + 688#64) (n := 288) (k := 720) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 688#64) (b' := sp + 696#64) (n := 8) (k := 712) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 696#64) (b' := sp + 704#64) (n := 8) (k := 704) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 704#64) (b' := sp + 712#64) (n := 8) (k := 696) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 712#64) (b' := sp + 720#64) (n := 8) (k := 688) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 720#64) (b' := sp + 724#64) (n := 4) (k := 684) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 724#64) (b' := sp + 816#64) (n := 92) (k := 592) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 816#64) (b' := sp + 824#64) (n := 8) (k := 584) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 824#64) (b' := sp + 832#64) (n := 8) (k := 576) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 832#64) (b' := sp + 840#64) (n := 8) (k := 568) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 840#64) (b' := sp + 848#64) (n := 8) (k := 560) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 848#64) (b' := sp + 852#64) (n := 4) (k := 556) rfl (by bv_arith) (by decide)]
-    rw [h178_fold, h190_fold]
-    change m ⊨ _
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps; rw [reassoc_2dc sp u2d0 u2b0 u2b8]; wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx29], by simp,
+         by simp [hx20, sp], by simp, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      rw [fold_178_2dc sp, fold_190_2dc sp]; change m ⊨ _; arm64_sep_close)
   wpp_7f8_to_2dc := by
     intro s0 s u508 u500 u2c8 u2c0 u2b8 u2b0 u2d0 sp hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := (blkPl_131).base + 732#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx29], by simp [sp], by simp, by simp [hx20, sp],
-       by simp [hx25, sp], rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have h140_fold : memRegion (sp + 0x140#64) 0x440 =
-        memRegion (sp + 320#64) 88 ∗ memRegion (sp + 408#64) 8 ∗ memRegion (sp + 416#64) 272 ∗
-        memRegion (sp + 688#64) 8 ∗ memRegion (sp + 696#64) 8 ∗ memRegion (sp + 704#64) 8 ∗
-        memRegion (sp + 712#64) 8 ∗ memRegion (sp + 720#64) 4 ∗ memRegion (sp + 724#64) 556 ∗
-        memRegion (sp + 1280#64) 8 ∗ memRegion (sp + 1288#64) 8 ∗ memRegion (sp + 1296#64) 112 := by
-      rw [show sp + 0x140#64 = sp + 320#64 from rfl,
-          memRegion_split' (b := sp + 320#64) (b' := sp + 408#64) (n := 88) (k := 1000) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 408#64) (b' := sp + 416#64) (n := 8) (k := 992) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 416#64) (b' := sp + 688#64) (n := 272) (k := 720) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 688#64) (b' := sp + 696#64) (n := 8) (k := 712) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 696#64) (b' := sp + 704#64) (n := 8) (k := 704) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 704#64) (b' := sp + 712#64) (n := 8) (k := 696) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 712#64) (b' := sp + 720#64) (n := 8) (k := 688) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 720#64) (b' := sp + 724#64) (n := 4) (k := 684) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 724#64) (b' := sp + 1280#64) (n := 556) (k := 128) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 1280#64) (b' := sp + 1288#64) (n := 8) (k := 120) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 1288#64) (b' := sp + 1296#64) (n := 8) (k := 112) rfl (by bv_arith) (by decide)]
-    rw [h140_fold]
-    change m ⊨ _
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx29], by simp [sp],
+         by simp, by simp [hx20, sp], by simp [hx25, sp], rfl, by simp [htrace],
+         by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      rw [fold_140_7f8 sp]; change m ⊨ _; arm64_sep_close)
   wpp_missing_sc := by
     intro s0 s x u2c0 u2c8 sp hpc hrun hsp hsp_al hx29 hx12 hx19 hx20 hx25 hx27 hx28 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := (blkPl_131).base + 732#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx29], by simp [hx12, sp], by simp [hx19], by simp [hx20, sp],
-       by simp [hx25, sp], rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have hsp38_fold : memRegion sp 0x38 =
-        memRegion sp 0x20 ∗ memRegion (sp + 0x20#64) 8 ∗ memRegion (sp + 0x28#64) 4 ∗
-        memRegion (sp + 0x2c#64) 4 ∗ memRegion (sp + 0x30#64) 8 := by
-      rw [memRegion_split' (b := sp) (b' := sp + 0x20#64) (n := 0x20) (k := 0x18) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x20#64) (b' := sp + 0x28#64) (n := 0x8) (k := 0x10) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x28#64) (b' := sp + 0x2c#64) (n := 0x4) (k := 0xc) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x2c#64) (b' := sp + 0x30#64) (n := 0x4) (k := 0x8) rfl (by bv_arith) (by decide)]
-    rw [hsp38_fold]
-    change m ⊨ _
-    arm64_sep_close
+    wp_steps 3
+    apply CryptoVerification.LibsignalTripleRatchet.Decrypt.blkPC_131_pairStep_0x6f4 _ _ rfl
+      (by simp only [wp_norm, arm64_norm]) (by simp only [wp_norm, arm64_norm, hrun])
+    apply sepWP_vm_step_pre (by simp only [wp_norm, arm64_norm])
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx29], by simp [hx12, sp],
+         by simp [hx19], by simp [hx20, sp], by simp [hx25, sp], rfl, by simp [htrace],
+         by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      rw [fold_sp38_missing_sc sp]; arm64_sep_close)
   wpp_cc1_err := by
     intro s0 s u1bc u1b4 u1a8 u1a0 u1c4 u1b0 sp hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := (blkPl_131).base + 2040#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx29], rfl, by simp [hx20, sp], by simp [hx23, sp],
-       by simp [hx25, sp], by simp [hx26, sp], by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx29], rfl,
+         by simp [hx20, sp], by simp [hx23, sp], by simp [hx25, sp], by simp [hx26, sp],
+         by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_cc1_ok := by
     intro s0 s sp hpc hrun hsp hsp_al hx25 htrace
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := (blkPl_131).base + 1804#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp],
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_pre_cc1 := by
     intro s0 s x p0 p1 p2 p3 k0 k1 k2 k3 u390 u398 u3a0 u3a8 u3b0 u3b8 u3c0 u3c8
       sp hpc hrun hsp hsp_al hx29 hx12 hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx27 hx28 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := lsmpl.base 40)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [sp], by simp, by simp [sp], by simp [sp],
-       by simp [hx19], by simp [hx20, sp], by simp [hx21], by simp [hx22], by simp [hx23, sp],
-       by simp [hx24], by simp [hx25, sp], by simp [sp], by simp [hx27, sp],
-       by simp [hx28, sp], by simp [hx29], rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [sp], by simp,
+         by simp [sp], by simp [sp], by simp [hx19], by simp [hx20, sp], by simp [hx21],
+         by simp [hx22], by simp [hx23, sp], by simp [hx24], by simp [hx25, sp], by simp [sp],
+         by simp [hx27, sp], by simp [hx28, sp], by simp [hx29], rfl, by simp [htrace],
+         by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_cc2_ok := by
     intro s0 s sp hpc hrun hsp hsp_al hx25 htrace
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := (blkPl_131).base + 2220#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp],
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_cc2_err := by
     intro s0 s msgW u1bc u1b4 u1a8 u1a0 u1c4 u1b0 sp hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := (blkPl_131).base + 2040#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx29], rfl, by simp [hx20, sp], by simp [hx23, sp],
-       by simp [hx25, sp], by simp [hx26, sp], by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx29], rfl,
+         by simp [hx20, sp], by simp [hx23, sp], by simp [hx25, sp], by simp [hx26, sp],
+         by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_70c_to_778 := by
     intro s0 s r0 r4 c2 u10 u1c u3e0 u4a0 u4bc u510
       r1 r2 r3 c0 c1 c3 c4 u3d0 u3d8 u3e4 u3ec u400 u408 u440 u448
       u4a4 u4ac u4b4 u4c0 u4c8 u4d0 u4d8 u500 u508
       sp hpc hrun hsp hsp_al hx29 hx23 hx25 hx26 htrace hvregs
     rw [show s0.sp - 96#64 = sp + 0x580#64 by dsimp only [sp]; bv_arith] at hx29
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := (blkPl_131).base + 1912#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [sp], rfl, rfl, rfl, rfl, rfl,
-       by simp [hx23, sp], by simp [hx25, sp], rfl, rfl, by simp [sp],
-       by simp [hx29, sp]; bv_arith, rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [sp], rfl, rfl, rfl, rfl, rfl,
+         by simp [hx23, sp], by simp [hx25, sp], rfl, rfl, by simp [sp],
+         by simp [hx29, sp]; bv_arith, rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_778_to_rng := by
     intro s0 s u0 u1 u2 u3 sp hpc hrun hsp hsp_al hx0 hx1 hx25 hv0 htrace
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := lsmpl.ρ "libsignal_session_rng_fill")
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx0, sp], by simp [hx1], rfl,
-       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx0, sp], by simp [hx1], rfl,
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_780_to_7a8 := by
     intro s0 s b0 b31 sp hpc hrun hsp hsp_al hx29 hx23 hx25 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := (blkPl_131).base + 1960#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [sp]; bv_arith, by simp [sp],
-       rfl, rfl, rfl, rfl, rfl, by simp [sp], rfl, rfl, rfl, rfl,
-       by simp [hx29], by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    rw [clamp_byte0 b0, clamp_byte31 b31] at hm
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [sp]; bv_arith, by simp [sp],
+         rfl, rfl, rfl, rfl, rfl, by simp [sp], rfl, rfl, rfl, rfl,
+         by simp [hx29], by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      rw [clamp_byte0 b0, clamp_byte31 b31] at hm
+      arm64_sep_close)
   wpp_7a8_to_dpk := by
     intro s0 s p0 p1 p2 p3 u0 u1 u2 u3 sp hpc hrun hsp hsp_al hx0 hx8 hx23 hx25 htrace
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := lsmpl.base 200)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx0, sp], by simp [hx8, sp], rfl,
-       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx0, sp], by simp [hx8, sp], rfl,
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_7b4_to_sd := by
     intro s0 s p0 p1 p2 p3 u0 u1 u2 u3 sp hpc hrun hsp hsp_al hx29 hx23 hx28 htrace
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := lsmpl.ρ "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop")
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [sp]; bv_arith, rfl,
-       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [sp]; bv_arith, rfl,
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_7c4_to_cc2 := by
     intro s0 s2 msgA sp hpc2 hrun2 hsp2 hsp_al2 hx22_2 hx24_2 hx29_2 htrace2
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_131).rebase (blkPl_131).base (hooksException H))
-      blkLib_eq_131 hchk_130 (mid := lsmpl.base 40)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun2]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun2])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp2], by simp [sp]; bv_arith, by simp,
-       by simp [sp], by simp [sp], rfl,
-       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace2], fun m R hm => ?_⟩
-    simpa [emp_sepConj] using hm
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun2])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp2], by simp [sp]; bv_arith, by simp,
+         by simp [sp], by simp [sp], rfl,
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace2], fun m R hm => ?_⟩
+      simpa [emp_sepConj] using hm)
 
-set_option maxHeartbeats 1600000 in
-def dhStepBlockVmWp_549 [LibsignalPlacement] (H : String → Option (State → State)) :
+@[expose] def dhStepBlockVmWp_549 [LibsignalPlacement] (H : String → Option (State → State)) :
     DhStepBlockVmWp ((blkPC_434).rebase (blkPl_434).base H) (blkPl_434).base
       (lsmpl.base 618) where
   missingScAddr := (dhStepBlockWp_549 H).missingScAddr
@@ -645,254 +618,140 @@ def dhStepBlockVmWp_549 [LibsignalPlacement] (H : String → Option (State → S
   wpp_2dc_to_30c := by
     intro s0 s w2c0 w2c8 u34c u344 u338 u330 u2b8 u2b0 u180 u178 u170 u168 u340 u2d0 u18c u188
       sp hpc hrun hsp hsp_al hx29 hx12 hx20 hx25 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := (blkPl_434).base + 780#64)
-    intro _m_strip
-    wp_steps
-    have hre : ((sp + 832#64) ↦₃₂ u2d0 ∗ (sp + 836#64) ↦₆₄ u2b0 ∗ (sp + 844#64) ↦₆₄ u2b8 ∗ memRegion (sp + 852#64) 556) =
-        ((sp + 832#64) ↦₆₄ (u2b0.extractLsb' 0 32 ++ u2d0) ∗
-         (sp + 840#64) ↦₆₄ (u2b8.extractLsb' 0 32 ++ u2b0.extractLsb' 32 32) ∗
-         (sp + 848#64) ↦₃₂ u2b8.extractLsb' 32 32 ∗
-         memRegion (sp + 852#64) 556) := by
-      have := congrArg (· ∗ memRegion (sp + 852#64) 556) (reassoc_4_8_8_to_8_8_4 (sp + 832#64) u2d0 u2b0 u2b8)
-      have h1 : sp + 832#64 + 4#64 = sp + 836#64 := by bv_arith
-      have h2 : sp + 832#64 + 12#64 = sp + 844#64 := by bv_arith
-      have h3 : sp + 832#64 + 8#64 = sp + 840#64 := by bv_arith
-      have h4 : sp + 832#64 + 16#64 = sp + 848#64 := by bv_arith
-      rw [h1, h2, h3, h4] at this
-      exact Eq.trans (by sep_ac_rfl) (Eq.trans this (by sep_ac_rfl))
-    rw [hre]
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx29], by simp, by simp [hx20, sp], by simp, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have h178_fold : memRegion (sp + 0x178#64) 24 =
-        memRegion (sp + 376#64) 8 ∗ memRegion (sp + 384#64) 8 ∗
-        memRegion (sp + 392#64) 4 ∗ memRegion (sp + 396#64) 4 := by
-      rw [show sp + 0x178#64 = sp + 376#64 from rfl,
-          memRegion_split' (b := sp + 376#64) (b' := sp + 384#64) (n := 8) (k := 16) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 384#64) (b' := sp + 392#64) (n := 8) (k := 8) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 392#64) (b' := sp + 396#64) (n := 4) (k := 4) rfl (by bv_arith) (by decide)]
-    have h190_fold : memRegion (sp + 0x190#64) 0x3f0 =
-        memRegion (sp + 400#64) 288 ∗ memRegion (sp + 688#64) 8 ∗ memRegion (sp + 696#64) 8 ∗
-        memRegion (sp + 704#64) 8 ∗ memRegion (sp + 712#64) 8 ∗ memRegion (sp + 720#64) 4 ∗
-        memRegion (sp + 724#64) 92 ∗ memRegion (sp + 816#64) 8 ∗ memRegion (sp + 824#64) 8 ∗
-        memRegion (sp + 832#64) 8 ∗ memRegion (sp + 840#64) 8 ∗ memRegion (sp + 848#64) 4 ∗
-        memRegion (sp + 852#64) 556 := by
-      rw [show sp + 0x190#64 = sp + 400#64 from rfl,
-          memRegion_split' (b := sp + 400#64) (b' := sp + 688#64) (n := 288) (k := 720) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 688#64) (b' := sp + 696#64) (n := 8) (k := 712) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 696#64) (b' := sp + 704#64) (n := 8) (k := 704) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 704#64) (b' := sp + 712#64) (n := 8) (k := 696) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 712#64) (b' := sp + 720#64) (n := 8) (k := 688) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 720#64) (b' := sp + 724#64) (n := 4) (k := 684) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 724#64) (b' := sp + 816#64) (n := 92) (k := 592) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 816#64) (b' := sp + 824#64) (n := 8) (k := 584) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 824#64) (b' := sp + 832#64) (n := 8) (k := 576) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 832#64) (b' := sp + 840#64) (n := 8) (k := 568) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 840#64) (b' := sp + 848#64) (n := 8) (k := 560) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 848#64) (b' := sp + 852#64) (n := 4) (k := 556) rfl (by bv_arith) (by decide)]
-    rw [h178_fold, h190_fold]
-    change m ⊨ _
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps; rw [reassoc_2dc sp u2d0 u2b0 u2b8]; wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx29], by simp,
+         by simp [hx20, sp], by simp, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      rw [fold_178_2dc sp, fold_190_2dc sp]; change m ⊨ _; arm64_sep_close)
   wpp_7f8_to_2dc := by
     intro s0 s u508 u500 u2c8 u2c0 u2b8 u2b0 u2d0 sp hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := (blkPl_434).base + 732#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx29], by simp [sp], by simp, by simp [hx20, sp],
-       by simp [hx25, sp], rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have h140_fold : memRegion (sp + 0x140#64) 0x440 =
-        memRegion (sp + 320#64) 88 ∗ memRegion (sp + 408#64) 8 ∗ memRegion (sp + 416#64) 272 ∗
-        memRegion (sp + 688#64) 8 ∗ memRegion (sp + 696#64) 8 ∗ memRegion (sp + 704#64) 8 ∗
-        memRegion (sp + 712#64) 8 ∗ memRegion (sp + 720#64) 4 ∗ memRegion (sp + 724#64) 556 ∗
-        memRegion (sp + 1280#64) 8 ∗ memRegion (sp + 1288#64) 8 ∗ memRegion (sp + 1296#64) 112 := by
-      rw [show sp + 0x140#64 = sp + 320#64 from rfl,
-          memRegion_split' (b := sp + 320#64) (b' := sp + 408#64) (n := 88) (k := 1000) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 408#64) (b' := sp + 416#64) (n := 8) (k := 992) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 416#64) (b' := sp + 688#64) (n := 272) (k := 720) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 688#64) (b' := sp + 696#64) (n := 8) (k := 712) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 696#64) (b' := sp + 704#64) (n := 8) (k := 704) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 704#64) (b' := sp + 712#64) (n := 8) (k := 696) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 712#64) (b' := sp + 720#64) (n := 8) (k := 688) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 720#64) (b' := sp + 724#64) (n := 4) (k := 684) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 724#64) (b' := sp + 1280#64) (n := 556) (k := 128) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 1280#64) (b' := sp + 1288#64) (n := 8) (k := 120) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 1288#64) (b' := sp + 1296#64) (n := 8) (k := 112) rfl (by bv_arith) (by decide)]
-    rw [h140_fold]
-    change m ⊨ _
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx29], by simp [sp],
+         by simp, by simp [hx20, sp], by simp [hx25, sp], rfl, by simp [htrace],
+         by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      rw [fold_140_7f8 sp]; change m ⊨ _; arm64_sep_close)
   wpp_missing_sc := by
     intro s0 s x u2c0 u2c8 sp hpc hrun hsp hsp_al hx29 hx12 hx19 hx20 hx25 hx27 hx28 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := (blkPl_434).base + 732#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx29], by simp [hx12, sp], by simp [hx19], by simp [hx20, sp],
-       by simp [hx25, sp], rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    have hsp38_fold : memRegion sp 0x38 =
-        memRegion sp 0x20 ∗ memRegion (sp + 0x20#64) 8 ∗ memRegion (sp + 0x28#64) 4 ∗
-        memRegion (sp + 0x2c#64) 4 ∗ memRegion (sp + 0x30#64) 8 := by
-      rw [memRegion_split' (b := sp) (b' := sp + 0x20#64) (n := 0x20) (k := 0x18) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x20#64) (b' := sp + 0x28#64) (n := 0x8) (k := 0x10) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x28#64) (b' := sp + 0x2c#64) (n := 0x4) (k := 0xc) rfl (by bv_arith) (by decide),
-          memRegion_split' (b := sp + 0x2c#64) (b' := sp + 0x30#64) (n := 0x4) (k := 0x8) rfl (by bv_arith) (by decide)]
-    rw [hsp38_fold]
-    change m ⊨ _
-    arm64_sep_close
+    wp_steps 3
+    apply CryptoVerification.LibsignalTripleRatchet.Decrypt.blkPC_434_pairStep_0x6f4 _ _ rfl
+      (by simp only [wp_norm, arm64_norm]) (by simp only [wp_norm, arm64_norm, hrun])
+    apply sepWP_vm_step_pre (by simp only [wp_norm, arm64_norm])
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx29], by simp [hx12, sp],
+         by simp [hx19], by simp [hx20, sp], by simp [hx25, sp], rfl, by simp [htrace],
+         by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      rw [fold_sp38_missing_sc sp]; arm64_sep_close)
   wpp_cc1_err := by
     intro s0 s u1bc u1b4 u1a8 u1a0 u1c4 u1b0 sp hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := (blkPl_434).base + 2040#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx29], rfl, by simp [hx20, sp], by simp [hx23, sp],
-       by simp [hx25, sp], by simp [hx26, sp], by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx29], rfl,
+         by simp [hx20, sp], by simp [hx23, sp], by simp [hx25, sp], by simp [hx26, sp],
+         by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_cc1_ok := by
     intro s0 s sp hpc hrun hsp hsp_al hx25 htrace
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := (blkPl_434).base + 1804#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp],
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_pre_cc1 := by
     intro s0 s x p0 p1 p2 p3 k0 k1 k2 k3 u390 u398 u3a0 u3a8 u3b0 u3b8 u3c0 u3c8
       sp hpc hrun hsp hsp_al hx29 hx12 hx19 hx20 hx21 hx22 hx23 hx24 hx25 hx27 hx28 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := lsmpl.base 40)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [sp], by simp, by simp [sp], by simp [sp],
-       by simp [hx19], by simp [hx20, sp], by simp [hx21], by simp [hx22], by simp [hx23, sp],
-       by simp [hx24], by simp [hx25, sp], by simp [sp], by simp [hx27, sp],
-       by simp [hx28, sp], by simp [hx29], rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [sp], by simp,
+         by simp [sp], by simp [sp], by simp [hx19], by simp [hx20, sp], by simp [hx21],
+         by simp [hx22], by simp [hx23, sp], by simp [hx24], by simp [hx25, sp], by simp [sp],
+         by simp [hx27, sp], by simp [hx28, sp], by simp [hx29], rfl, by simp [htrace],
+         by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_cc2_ok := by
     intro s0 s sp hpc hrun hsp hsp_al hx25 htrace
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := (blkPl_434).base + 2220#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp],
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_cc2_err := by
     intro s0 s msgW u1bc u1b4 u1a8 u1a0 u1c4 u1b0 sp hpc hrun hsp hsp_al hx29 hx20 hx23 hx25 hx26 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := (blkPl_434).base + 2040#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx29], rfl, by simp [hx20, sp], by simp [hx23, sp],
-       by simp [hx25, sp], by simp [hx26, sp], by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx29], rfl,
+         by simp [hx20, sp], by simp [hx23, sp], by simp [hx25, sp], by simp [hx26, sp],
+         by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_70c_to_778 := by
     intro s0 s r0 r4 c2 u10 u1c u3e0 u4a0 u4bc u510
       r1 r2 r3 c0 c1 c3 c4 u3d0 u3d8 u3e4 u3ec u400 u408 u440 u448
       u4a4 u4ac u4b4 u4c0 u4c8 u4d0 u4d8 u500 u508
       sp hpc hrun hsp hsp_al hx29 hx23 hx25 hx26 htrace hvregs
     rw [show s0.sp - 96#64 = sp + 0x580#64 by dsimp only [sp]; bv_arith] at hx29
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := (blkPl_434).base + 1912#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [sp], rfl, rfl, rfl, rfl, rfl,
-       by simp [hx23, sp], by simp [hx25, sp], rfl, rfl, by simp [sp],
-       by simp [hx29, sp]; bv_arith, rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [sp], rfl, rfl, rfl, rfl, rfl,
+         by simp [hx23, sp], by simp [hx25, sp], rfl, rfl, by simp [sp],
+         by simp [hx29, sp]; bv_arith, rfl, by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_778_to_rng := by
     intro s0 s u0 u1 u2 u3 sp hpc hrun hsp hsp_al hx0 hx1 hx25 hv0 htrace
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := lsmpl.base 618)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx0, sp], by simp [hx1], rfl,
-       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx0, sp], by simp [hx1], rfl,
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_780_to_7a8 := by
     intro s0 s b0 b31 sp hpc hrun hsp hsp_al hx29 hx23 hx25 htrace hvregs
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := (blkPl_434).base + 1960#64)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [sp]; bv_arith, by simp [sp],
-       rfl, rfl, rfl, rfl, rfl, by simp [sp], rfl, rfl, rfl, rfl,
-       by simp [hx29], by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
-    rw [clamp_byte0 b0, clamp_byte31 b31] at hm
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [sp]; bv_arith, by simp [sp],
+         rfl, rfl, rfl, rfl, rfl, by simp [sp], rfl, rfl, rfl, rfl,
+         by simp [hx29], by simp [htrace], by simp [arm64_norm, hvregs], fun m R hm => ?_⟩
+      rw [clamp_byte0 b0, clamp_byte31 b31] at hm
+      arm64_sep_close)
   wpp_7a8_to_dpk := by
     intro s0 s p0 p1 p2 p3 u0 u1 u2 u3 sp hpc hrun hsp hsp_al hx0 hx8 hx23 hx25 htrace
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := lsmpl.base 200)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [hx0, sp], by simp [hx8, sp], rfl,
-       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [hx0, sp], by simp [hx8, sp], rfl,
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_7b4_to_sd := by
     intro s0 s p0 p1 p2 p3 u0 u1 u2 u3 sp hpc hrun hsp hsp_al hx29 hx23 hx28 htrace
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := lsmpl.ρ "_RNvXsa_NtCscSWoUTnaXmu_12x25519_dalek6x25519NtB5_12StaticSecretNtNtNtCskxtBwYRO61I_4core3ops4drop4Drop4drop")
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp, sp], by simp [sp]; bv_arith, rfl,
-       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace], fun m R hm => ?_⟩
-    arm64_sep_close
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp, sp], by simp [sp]; bv_arith, rfl,
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace], fun m R hm => ?_⟩
+      arm64_sep_close)
   wpp_7c4_to_cc2 := by
     intro s0 s2 msgA sp hpc2 hrun2 hsp2 hsp_al2 hx22_2 hx24_2 hx29_2 htrace2
-    apply sepWP_seg_ls_vm
-      (Q := (blkPC_434).rebase (blkPl_434).base (hooksException H))
-      blkLib_eq_434 hchk_433 (mid := lsmpl.base 40)
-    intro _m_strip
-    wp_steps
-    refine SepWP.done rfl (by simp [hrun2]) fun _m_real _hnsp => ?_
-    refine SepWP.done rfl (by simp [hrun2])
-      ⟨_hnsp.toVmPreserved (by simp only [wp_norm, arm64_norm]), by simp [hsp2], by simp [sp]; bv_arith, by simp,
-       by simp [sp], by simp [sp], rfl,
-       ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
-       by simp [htrace2], fun m R hm => ?_⟩
-    simpa [emp_sepConj] using hm
+    by_vm_steps (
+      wp_steps
+      refine SepWP.done rfl (by simp [hrun2])
+        ⟨by simp only [wp_norm, arm64_norm], by simp [hsp2], by simp [sp]; bv_arith, by simp,
+         by simp [sp], by simp [sp], rfl,
+         ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩,
+         by simp [htrace2], fun m R hm => ?_⟩
+      simpa [emp_sepConj] using hm)
 end LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhStepBudgetWp

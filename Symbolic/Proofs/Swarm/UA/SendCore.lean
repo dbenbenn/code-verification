@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
+import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
 public import Symbolic.Proofs.Swarm.UA.Defs
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepAux
 import Symbolic.Proofs.Swarm.CREF.Cli.DirStepBridge
@@ -32,6 +32,9 @@ import Symbolic.Proofs.Swarm.UA.PendingPreKey
 import Symbolic.Proofs.Swarm.UA.SendTransfer
 import Symbolic.Proofs.Swarm.UA.SendW
 import Symbolic.Proofs.Swarm.UA.SlotInitTransfer
+import Symbolic.Proofs.Swarm.CREF.Cli.Slots.SendWhisperSlot
+import Symbolic.Proofs.Swarm.CREF.Cli.TopDispatch
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
 
 /-!
 # `send` Slot Invariant Preservation
@@ -41,7 +44,7 @@ across failed `send` calls (`code = 1`), whisper `send` calls (`¬ PureRecPendin
 pending-prekey `send` calls (`PureRecPending`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -11,21 +11,24 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingStepsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingStepsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M2ErrStepsBPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.Defs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M3PrevCapPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ClonePendingSteps
 
 /-!
 # Budget-Threaded Placed Segment 3: `pending_pre_key` & `pending_kyber_pre_key` (Block `518`)
@@ -35,7 +38,7 @@ budget-threaded (`RustCliAllocBudget M`) Segment 3 proofs (`clonePending_vregs_p
 `+0x1a5c → +0x1b20`, `genP3J2PlacedBudget → genP3J3PlacedBudget`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -121,7 +124,7 @@ attribute [local wp_norm]
 /-- Exact allocator event sequence emitted while cloning `pending_kyber_pre_key : Option TailVecGhost`
 (`+0x1ac8 → +0x1b20`): `[]` when `kyber = none` or `gk.vec.bytes = []`, else
 `rustAllocEvents gk.vec.bytes.length 1`. -/
-def clonePendingKyberEvents (kyber : Option TailVecGhost) : List AllocEvent :=
+@[expose] def clonePendingKyberEvents (kyber : Option TailVecGhost) : List AllocEvent :=
   match kyber with
   | none => []
   | some gk =>
@@ -129,7 +132,7 @@ def clonePendingKyberEvents (kyber : Option TailVecGhost) : List AllocEvent :=
     else rustAllocEvents gk.vec.bytes.length 1
 
 /-- Exact allocator event envelope for `clonePendingKyber_placed_ok`. -/
-def ClonePendingKyberEnv (kyber : Option TailVecGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ClonePendingKyberEnv (kyber : Option TailVecGhost) (evs : List AllocEvent) : Prop :=
   evs = clonePendingKyberEvents kyber
 
 @[simp]
@@ -141,11 +144,11 @@ theorem fitsEnv_clonePendingKyber_iff {M : AllocCostModel} {lim : BudgetLimits} 
 
 /-- Exact allocator event sequence emitted across Stage P3 Segment 3 (`+0x1a5c → +0x1b20`):
 `pending_pre_key` followed by `pending_kyber_pre_key`. -/
-def clonePendingEvents (recG : SessionGhost) : List AllocEvent :=
+@[expose] def clonePendingEvents (recG : SessionGhost) : List AllocEvent :=
   clonePendingPreKeyEvents recG.pending ++ clonePendingKyberEvents recG.kyber
 
 /-- Exact allocator event envelope for Stage P3 Segment 3 (`clonePending_vregs_placed_ok`). -/
-def ClonePendingEnv (recG : SessionGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def ClonePendingEnv (recG : SessionGhost) (evs : List AllocEvent) : Prop :=
   evs = clonePendingEvents recG
 
 theorem clonePendingEnv_events (recG : SessionGhost) :
@@ -167,7 +170,7 @@ theorem fitsEvents_clonePending_of_fitsEnv (M : AllocCostModel) (lim : BudgetLim
 /-! ## 2. Budget-Threaded Relocatable Junction Predicates (`genP3J2PlacedBudget`, `genP3J3PlacedBudget`) -/
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` Junction 2 predicate at `+0x1a5c`. -/
-def genP3J2PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3J2PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -213,7 +216,7 @@ def genP3J2PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
       genP3SenderInlineWords sp w.sq0 w.sq1 w.sq2 w.sq3 w.sq4 w.sq5
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` Junction 3 predicate at `+0x1b20`. -/
-def genP3J3PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3J3PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))

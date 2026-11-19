@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3C -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3B
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3D
 import Computational.Proofs.SignalPqxdh.Security.RoKemHopA
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
 
 /-!
 # PQXDH Authentication Sub-Hop `G3.6 → G3.7` (`PrfChainKey`)
@@ -23,7 +24,7 @@ Proves `ValidAuthHybrid` preservation under `authCkStepWith` and establishes the
 `PrfChainKey` hybrid bound `hop_G3_6_G3_7 : AuthHopG3_6G3_7Stmt S (prfCkReductionAuthFixed S)`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -787,7 +788,7 @@ private def authCkSlotsStepSlot (S : Setup) (P : Primitives) (idx : Nat)
     authCkSlotsRecvSlot S P idx samp msg (prepareAuthHybridRecvNoOPK true P k j l msg hst.toAuthHybridState) hst
   | qOther => liftM (authCkOtherStep S P qOther hst)
 
-private noncomputable def authCkSlotsPreSampleRun (S : Setup) (P : Primitives) (idx : Nat)
+private def authCkSlotsPreSampleRun (S : Setup) (P : Primitives) (idx : Nat)
     (p : Bytes × Bytes) (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let stepImpl : QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) :=
@@ -798,7 +799,7 @@ private noncomputable def authCkSlotsPreSampleRun (S : Setup) (P : Primitives) (
   let (b', finalSt) ← (simulateQ fullImpl A.run).run (AuthHybridStateFixed.empty S secb)
   finalizeAuthFixed P secb b' finalSt.toAuthHybridState
 
-private noncomputable def authCkSlotsCutoffExp (S : Setup) (P : Primitives) (cutoff : Nat)
+private def authCkSlotsCutoffExp (S : Setup) (P : Primitives) (cutoff : Nat)
     (A : AuthAdversary S) : ProbComp Bool := do
   let secb ← $ᵗ Bool
   let stepImpl : QueryImpl (authSpec S) (StateT (AuthHybridStateFixed S) ProbComp) :=

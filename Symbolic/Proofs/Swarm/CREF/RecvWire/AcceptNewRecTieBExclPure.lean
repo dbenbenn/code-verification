@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.SkippedSeedLineage
+public import Symbolic.Proofs.Swarm.CREF.TR.SkippedSeedLineage -- proof-setup: allow-public-import
 import Batteries.Data.UInt
 import DY.Actions.ProtocolEvent
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.SR.SendSpecWPure
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.SendSpecWPure -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure
-public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure
-public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvAtFactsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvWire.AcceptNewRecBasePure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.PureRecvEval -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.RecvDecStepCommonPure
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.PureRecvStepBridge
@@ -28,6 +28,7 @@ import Symbolic.Proofs.Swarm.CREF.Xpl.SkippedHit
 import Symbolic.Proofs.Swarm.CREF.TR.Leaks -- shake: keep
 import Symbolic.Proofs.Swarm.CREF.TR.PQModelRunNil -- shake: keep
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
 
 /-!
 # Whisper Decrypt Branch-Mismatch Exclusions
@@ -38,7 +39,7 @@ cached-skipped-key evaluation against a no-RNG `Move.decrypt`, existing-chain ev
 `Move.decryptSkipped`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 set_option autoImplicit false
@@ -200,7 +201,7 @@ theorem a2b_not_decryptSkipped_of_rng
 
 /-- Seed-equality obligation between a cached skipped seed `seed_s` read by `Move.decryptSkipped`
 and the existing receiver chain's consumed seed at `msg.counter`. -/
-def A2bSkStepSeedEq (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def A2bSkStepSeedEq (interpretation : ExternInterpretation) (r₀ : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (acc : List MachineEvent) : Prop :=
   ∀ (p : Participant) (stateIdx : Nat) (st : TRState) (c : RecvChain) (t : DY.Bytes)
     (msg : TRSignalMsg) (skIdx rIdx_s srcIdx : Nat) (seed_s pqSalt : DY.Bytes) (body : HwBytes)

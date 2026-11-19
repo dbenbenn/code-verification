@@ -22,7 +22,7 @@ Union bound (`dh_mem_list_prob_le`) on the probability that an honest ratchet pu
 `Dh.dh x Dh.base` collides with a list of points (DEV-LS18).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

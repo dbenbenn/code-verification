@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
-public import Computational.Proofs.E2E.SignedPrims
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SignedPrims -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.SM.Theorem12.Lemma13
 import Computational.Proofs.CryptoGames.SM.Theorem12.Lemma14
 import Computational.Proofs.CryptoGames.SM.Theorem12.Lemma15
 import Computational.Proofs.E2E.SignedRefine
-import Computational.Proofs.E2E.SignedSession
+import Computational.Proofs.E2E.SignedAdv
 
 /-!
 # ACD19 Theorem 12 on mixtures
@@ -24,7 +24,7 @@ Bounds the bias of a prefix-indexed mixture of SM privacy games (`theorem12_mix`
 averaged CKA and PRF-PRNG reductions and FS-AEAD mixture terms.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 

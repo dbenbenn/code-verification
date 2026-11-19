@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommon
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.LoopCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.ErrorExitSubPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 
 /-!
 # Relocatable `[LibsignalPlacement]` Verification of `spqr::decode_state` (Block `325`) — Shared Loop Frame & Call Wrappers
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +48,7 @@ open CryptoVerification.SpqrV1.Top.DecodeState.Placed
 
 /-- `SepWPp` enriched with `LibsignalCodeRoLoaded lsmpl s.mem`, automatically preserved across `Steps`
     (`SepWPpIPlaced.of_sepWP`) and available to `withLsCodeRoLoaded lsmpl` callee contracts. -/
-def SepWPpIPlaced [LibsignalPlacement] (prog : Program) (ret : BitVec 64) (s : State) (P : SepProp)
+@[expose] def SepWPpIPlaced [LibsignalPlacement] (prog : Program) (ret : BitVec 64) (s : State) (P : SepProp)
     (Q Q_err : State → SepProp → Prop) : Prop :=
   LibsignalCodeRoLoaded lsmpl s.mem → SepWPp prog ret s P Q Q_err
 

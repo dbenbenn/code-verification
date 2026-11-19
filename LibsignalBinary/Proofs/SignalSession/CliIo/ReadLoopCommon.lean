@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.CliIo.Sym
-public import LibsignalBinary.Proofs.SignalSession.CliIo.FinishGrow
+import LibsignalBinary.Proofs.SignalSession.CliIo.Sym
+import LibsignalBinary.Proofs.SignalSession.CliIo.FinishGrow
 public import VerifiedLibraries.RustStd.Proofs.StdinCapSeq
 public import ProofLib.Process.OracleEq
+public import VerifiedLibraries.RustStd.Proofs.Wave2.AllocRawVecGrow
 
 /-!
 # Shared Doubling-Capacity, Stack-Probe, and Frame Infrastructure
@@ -23,7 +24,7 @@ Shared capacity-doubling arithmetic (`cliIoCap`, `cliIoReadCaps`), allocator-poo
 (`FILE_CAP = 2^21`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -42,7 +43,7 @@ open VerifiedLibraries.RustStd (
 /-- Every extern hook installed in `prog` preserves `State.oracle` and `State.symtab`.
     Holds vacuously when `∀ pc, prog.externAt? pc = none`, and also holds when `prog`
     installs allocator hooks (`allocHook0` / `RustStdAllocHooks`). -/
-def ExternPreservesOracleSymtab (prog : Program) : Prop :=
+@[expose] def ExternPreservesOracleSymtab (prog : Program) : Prop :=
   ∀ pc fn, prog.externAt? pc = some fn → ∀ s, (fn s).oracle = s.oracle ∧ (fn s).symtab = s.symtab
 
 theorem ExternPreservesOracleSymtab.of_no_extern {prog : Program}
@@ -91,16 +92,9 @@ theorem poolPreserved_of_stdState {s s' : State} (h : StdStatePreserved s s') :
     PoolPreserved s s' :=
   ⟨h.2.2.2.2.2.1, h.2.2.2.2.1, h.2.2.1⟩
 
-theorem poolPreserved_of_allocCall {s s' : State} (h : AllocCallPreserved s s')
-    (hbrk : s'.brk = s.brk) : PoolPreserved s s' :=
-  ⟨h.2.2.2.2.1, hbrk, h.2.2.2.1⟩
-
 theorem ioFrame_trans {s0 s1 s2 : State} (h01 : IoFrame s0 s1) (h12 : IoFrame s1 s2) :
     IoFrame s0 s2 :=
   ⟨h12.1.trans h01.1, h12.2.trans h01.2⟩
-
-theorem ioFrame_of_stdState {s s' : State} (h : StdStatePreserved s s') : IoFrame s s' :=
-  ⟨h.2.1, h.2.2.2.1⟩
 
 theorem ioFrame_of_allocCall {s s' : State} (h : AllocCallPreserved s s') : IoFrame s s' :=
   ⟨h.2.1, h.2.2.1⟩
@@ -113,14 +107,11 @@ abbrev cliIoStdinCapExp : Nat := 8
 /-- Byte cap `STDIN_CAP = 1,048,576` (`1 MiB`) of `signal_session_io::read_stdin`. -/
 abbrev cliIoStdinCap : Nat := 1048576
 
-/-- Exponent `9` (`4096 * 2^9 = 2,097,152 = 2^21`) for `signal_session_io::read_file`. -/
-abbrev cliIoFileCapExp : Nat := 9
-
 /-- Byte cap `FILE_CAP = 2,097,152` (`2 MiB`) of `signal_session_io::read_file`. -/
 abbrev cliIoFileCap : Nat := 2097152
 
 /-- The `j`-th `Vec<u8>` buffer capacity (`4096 * 2^j`) in `signal_session_io`'s doubling schedule. -/
-def cliIoCap (j : Nat) : Nat := 4096 * 2 ^ j
+@[expose] def cliIoCap (j : Nat) : Nat := 4096 * 2 ^ j
 
 theorem cliIoCap_zero : cliIoCap 0 = 4096 := rfl
 
@@ -130,8 +121,6 @@ theorem cliIoCap_succ (j : Nat) : cliIoCap (j + 1) = 2 * cliIoCap j := by
   omega
 
 theorem cliIoStdinCap_eq : cliIoCap cliIoStdinCapExp = cliIoStdinCap := rfl
-
-theorem cliIoFileCap_eq : cliIoCap cliIoFileCapExp = cliIoFileCap := rfl
 
 theorem cliIoCap_ge_4096 : ∀ j : Nat, 4096 ≤ cliIoCap j
   | 0 => Nat.le_refl 4096
@@ -182,7 +171,7 @@ theorem not_nullAllowed_cliIoCap {j : Nat} (hj : j ≤ 9) : ¬ NullAllowed (cliI
 
 /-- Index `j ∈ [0, K]` of the final doubling capacity `4096 * 2^j` reached on `r > 0` input bytes
     under cap `4096 * 2^K`. -/
-def cliIoCapIdx : Nat → Nat → Nat
+@[expose] def cliIoCapIdx : Nat → Nat → Nat
   | 0, _ => 0
   | K + 1, r => if r ≤ cliIoCap K then cliIoCapIdx K r else K + 1
 
@@ -256,13 +245,13 @@ theorem cliIoCapIdx_cap_self (K : Nat) : cliIoCapIdx K (cliIoCap K) = K := by
 /-- Ordered list of buffer capacities requested by `read_stdin` (`K = 8`) or `read_file` (`K = 9`)
     on an input of `r` bytes: `[]` when `r = 0`, otherwise `[4096, 8192, ..., 4096 * 2^m]` where
     `m = cliIoCapIdx K r`. -/
-def cliIoReadCaps (K r : Nat) : List Nat :=
+@[expose] def cliIoReadCaps (K r : Nat) : List Nat :=
   if r = 0 then []
   else (List.range (cliIoCapIdx K r + 1)).map cliIoCap
 
 /-- Final `Vec<u8>` capacity on `Ok` return (`r ≤ cliIoCap K`): `0` when `r = 0`, otherwise
     `cliIoCap (cliIoCapIdx K r)`. -/
-def cliIoFinalCap (K r : Nat) : Nat :=
+@[expose] def cliIoFinalCap (K r : Nat) : Nat :=
   if r = 0 then 0 else cliIoCap (cliIoCapIdx K r)
 
 theorem cliIoFinalCap_zero (K : Nat) : cliIoFinalCap K 0 = 0 := rfl
@@ -382,20 +371,10 @@ theorem AllocSeqFits_canAlloc_succ {oom : State → State → Prop} {A : RustStd
     AllocSeqFits] at hf
   simpa using allocSeqFits_go_canAlloc A lb (lk + 1) 0 (cliIoCapIdx K r) j hj hf.2
 
-theorem AllocSeqFits_of_true {oom : State → State → Prop} (A : RustStdAlloc oom)
-    (hcan : ∀ b k sz al, A.CanAlloc b k sz al) (align lb lk : Nat) :
-    ∀ cs : List Nat, AllocSeqFits A align lb lk cs
-  | [] => trivial
-  | c :: cs => ⟨hcan _ _ _ _, go (lb + A.cost c align) (lk + 1) c cs⟩
-where
-  go (b k prev : Nat) : ∀ cs : List Nat, AllocSeqFits.go A align b k prev cs
-    | [] => trivial
-    | c :: cs => ⟨hcan _ _ _ _, go (b + A.cost c align - A.cost prev align) k c cs⟩
-
 /-! ## 4. Loop-Step Chunk Arithmetic & `BitVec` Branch Reductions -/
 
 /-- Bytes requested per `read` call: `min (capMax + 1 - len) 4096`. -/
-def wantBytes (capMax len : Nat) : Nat := min (capMax + 1 - len) 4096
+@[expose] def wantBytes (capMax len : Nat) : Nat := min (capMax + 1 - len) 4096
 
 theorem wantBytes_pos {capMax len : Nat} (hlen : len ≤ capMax) :
     0 < wantBytes capMax len := by
@@ -403,9 +382,6 @@ theorem wantBytes_pos {capMax len : Nat} (hlen : len ≤ capMax) :
 
 theorem wantBytes_le_4096 (capMax len : Nat) : wantBytes capMax len ≤ 4096 :=
   Nat.min_le_right _ _
-
-theorem wantBytes_le_sub (capMax len : Nat) : wantBytes capMax len ≤ capMax + 1 - len :=
-  Nat.min_le_left _ _
 
 theorem wantBytes_at_max (capMax : Nat) : wantBytes capMax capMax = 1 := by
   unfold wantBytes; omega
@@ -580,7 +556,7 @@ arm64_proof_prelude
 
 /-- 12 callee-saved register slots (`[s0.sp - 96, s0.sp)`) shared by `read_stdin` (`block[0]`)
     and `read_file` (`block[3]`). -/
-def cliIoSavedRegs12 (s0 : State) : SepProp :=
+@[expose] def cliIoSavedRegs12 (s0 : State) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 (.gpr 29#5)) ∗
   ((s0.sp - 88#64) ↦₆₄ s0.readReg64 (.gpr 30#5)) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 (.gpr 28#5)) ∗

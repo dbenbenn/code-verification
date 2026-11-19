@@ -10,11 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.Record.DeserializeSeed.Defs
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.VarintBridge
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Seed `SessionStructure::merge_field` on Identity and Root Keys (Tags `2`, `3`, `4`)
@@ -25,7 +27,7 @@ to tags `2` (`local_identity_public` at `+0x00`), `3` (`remote_identity_public` 
 `4` (`root_key` at `+0x30`), dispatching via the `.rodata` byte jump table to `bytes::merge`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeSeed
 
@@ -39,7 +41,7 @@ open CryptoVerification.E2E.Record
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-attribute [local irreducible] Program.fetch Program.externAt? sessionImg0
+attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 namespace IdentityRootKeysStateSimp
@@ -94,56 +96,9 @@ section Fetch
 
 open Lean Meta Elab Command Tactic
 
-gen_decodes libsignalSessionCode_tree mf234 [(ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>") → (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 60), (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 444) → (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 460), (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 540) → (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 556),
-    (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 584) → (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 600), (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1880) → (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" + 1904)]
-
-elab "mf234_fetches " b:term:max H:term:max : tactic => do
-  let off := num% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")
-  let ranges := [(0, 64), (444, 20), (540, 20), (584, 20), (1880, 28)]
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
-  let hfn ← `(ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")
-  for (start, len) in ranges do
-    for i in [0 : len / 4] do
-      let k := start + 4 * i
-      let dec := mkIdent (.str `CryptoVerification.E2E.Record.DeserializeSeed.IdentityRootKeysStateSimp
-        s!"mf234_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-      let kq := Syntax.mkNumLit (toString k)
-      if k == 0 then
-        evalTactic (← `(tactic|
-          have := $fetchEntry (b := $b) (H := $H) $hfn (by decide) $dec))
-      else
-        evalTactic (← `(tactic|
-          have := $fetchAdd (b := $b) (H := $H) (k := $kq) $hfn (by decide) $dec))
-
 end Fetch
 
 /-! ## Entry Address and `adrp` Normalization -/
-
-@[irreducible] def mfEntry_identityRootKeys : BitVec 64 := bv% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")
-
-theorem fnAddr_mergeField_eq_mfEntry_identityRootKeys (H : String → Option (State → State)) :
-    (libsignalSessionCode.rebase sessionImg0.base H).fnAddr
-      "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>" =
-      mfEntry_identityRootKeys := by
-  unfold mfEntry_identityRootKeys
-  rw [Program.fnAddr_rebase, EntryAux.sessionImg0_base, (ls_lemma% fnOff "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")]
-  rfl
-
-@[local arm64_norm ↓, local wp_norm ↓]
-theorem mfEntry_adrp_identityRootKeys :
-    ((mfEntry_identityRootKeys + 40#64) &&& bv% (2 ^ 64 - 4096)) = 20480#64 := by
-  unfold mfEntry_identityRootKeys; rfl
-
-theorem bytesMerge_fnAddr_eq_identityRootKeys (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)} :
-    mfEntry_identityRootKeys + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")) =
-      (tripleRatchetProgAt sessionImg0.base C ctl abs).fnAddr Prost.bytesMergeName := by
-  unfold mfEntry_identityRootKeys
-  rw [tripleRatchetProgAt, Program.fnAddr_rebase, EntryAux.sessionImg0_base, (ls_lemma% fnOff "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]")]
-  rfl
-
-/-! ## Pure Codec and Seed Field Helpers -/
 
 theorem seedSlice_length_le_identityRootKeys (f : List (BitVec 8)) (off n : Nat) :
     (seedSlice f off n).length ≤ n := by
@@ -225,50 +180,7 @@ theorem mergeBytes_lengthDelimited_of_lt_128_identityRootKeys {b tail : List (Bi
 
 /-! ## `.rodata` Jump Table (`0x4901c`, Tags `1..15`) -/
 
-noncomputable abbrev mfJumpTable_identityRootKeys : List (BitVec 8) :=
-  (libsignalSessionImage.data.drop (num% (ls_bytes% "0082775f19328d6db5d6cb6d") - num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)))).take 15
-
-theorem rodata_mfJumpTable_intro_identityRootKeys {m : Memory} {P : SepProp}
-    (hro : sessionImg0.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ ((bv% (ls_bytes% "0082775f19328d6db5d6cb6d") : BitVec 64) ↦ᵣ mfJumpTable_identityRootKeys) ∗ P := by
-  have h := ProofLib.Satisfies.of_rodata_loads loads_sessionImg0
-    (secOff := num% (ls_bytes% "0082775f19328d6db5d6cb6d")) (secLen := 15) (dataOff := num% (ls_xref% (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 40) (ls_off% "core::ptr::drop_glue::<libsignal_protocol::error::SignalProtocolError> [local#1]" + 44)))
-    rfl (List.mem_of_elem_eq_true (by rfl_kernel)) (by decide) (by decide)
-    (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) hro hP
-  have hbase : sessionImg0.base + BitVec.ofNat 64 (num% (ls_bytes% "0082775f19328d6db5d6cb6d")) = bv% (ls_bytes% "0082775f19328d6db5d6cb6d") := by
-    rw [EntryAux.sessionImg0_base]; rfl
-  rwa [hbase] at h
-
-theorem mfJumpTable_split4_identityRootKeys :
-    mfJumpTable_identityRootKeys = 0x00#8 :: 0x82#8 :: 0x77#8 :: 0x5f#8 :: mfJumpTable_identityRootKeys.drop 4 := by
-  rfl_kernel
-
-def mfRoBytes_identityRootKeys : SepProp :=
-  (((mfEntry_identityRootKeys + 40#64 &&& bv% (2 ^ 64 - 4096)) + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 1 - page% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>" + 712))) ↦₈ᵣ 0x82#8) ∗
-  (((mfEntry_identityRootKeys + 40#64 &&& bv% (2 ^ 64 - 4096)) + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 2 - page% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>" + 712))) ↦₈ᵣ 0x77#8) ∗
-  (((mfEntry_identityRootKeys + 40#64 &&& bv% (2 ^ 64 - 4096)) + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 3 - page% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>" + 712))) ↦₈ᵣ 0x5f#8)
-
-theorem rodata_intro_identityRootKeys {m : Memory} {P : SepProp}
-    (hro : sessionImg0.RoDataLoaded m) (hP : m ⊨ P) :
-    m ⊨ mfRoBytes_identityRootKeys ∗ P := by
-  have h := rodata_mfJumpTable_intro_identityRootKeys hro hP
-  rw [mfJumpTable_split4_identityRootKeys, pointsToBytesRO_cons, pointsToBytesRO_cons,
-    pointsToBytesRO_cons, pointsToBytesRO_cons] at h
-  have h1 : (mfEntry_identityRootKeys + 40#64 &&& bv% (2 ^ 64 - 4096)) + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 1 - page% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>" + 712)) = bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 1) := by
-    unfold mfEntry_identityRootKeys; rfl
-  have h2 : (mfEntry_identityRootKeys + 40#64 &&& bv% (2 ^ 64 - 4096)) + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 2 - page% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>" + 712)) = bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 2) := by
-    unfold mfEntry_identityRootKeys; rfl
-  have h3 : (mfEntry_identityRootKeys + 40#64 &&& bv% (2 ^ 64 - 4096)) + bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 3 - page% (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::encode_raw::<alloc::vec::Vec<u8>>" + 712)) = bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 3) := by
-    unfold mfEntry_identityRootKeys; rfl
-  have h' : m ⊨ ((bv% (ls_bytes% "0082775f19328d6db5d6cb6d") ↦₈ᵣ 0x00#8) ∗ ((bv% (ls_bytes% "0082775f19328d6db5d6cb6d" + 4) ↦ᵣ mfJumpTable_identityRootKeys.drop 4))) ∗ (mfRoBytes_identityRootKeys ∗ P) := by
-    dsimp only [mfRoBytes_identityRootKeys]
-    rw [h1, h2, h3]
-    convert h using 1; ac_rfl
-  exact Satisfies.of_sep_right h'
-
-/-! ## Stack Frame and `prostSSAt` Decomposition -/
-
-def mfSavedRegs_identityRootKeys (sp0 : BitVec 64) (s0 : State) (w56 : BitVec 64) : SepProp :=
+@[expose] def mfSavedRegs_identityRootKeys (sp0 : BitVec 64) (s0 : State) (w56 : BitVec 64) : SepProp :=
   ((sp0 - 80#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp0 - 72#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp0 - 64#64) ↦₆₄ s0.readReg64 .x25) ∗
@@ -280,7 +192,7 @@ def mfSavedRegs_identityRootKeys (sp0 : BitVec 64) (s0 : State) (w56 : BitVec 64
   ((sp0 - 16#64) ↦₆₄ s0.readReg64 .x20) ∗
   ((sp0 - 8#64) ↦₆₄ s0.readReg64 .x19)
 
-def mfUnusedStack_identityRootKeys (sp0 : BitVec 64) : SepProp :=
+@[expose] def mfUnusedStack_identityRootKeys (sp0 : BitVec 64) : SepProp :=
   memRegion (sp0 - 16384#64) 7648 ∗ memRegion (sp0 - 240#64) 160
 
 theorem stackAt_mergeField_split_identityRootKeys (sp0 : BitVec 64) :
@@ -334,7 +246,7 @@ theorem sp_sub_240_aligned_identityRootKeys {sp0 : BitVec 64} (h : sp0 &&& 15#64
   have hlt := sp0.isLt
   omega
 
-def prostSSRest_identityRootKeys (ss : BitVec 64) (v : SSV) : SepProp :=
+@[expose] def prostSSRest_identityRootKeys (ss : BitVec 64) (v : SSV) : SepProp :=
   vecOf A0 104 8 (fun c a => prostChainAt A0 a c) (ss + 0x48#64) v.recv ∗
     vecU8 A0 (ss + 0x60#64) [] ∗ vecU8 A0 (ss + 0x78#64) [] ∗
     (match v.sender with
@@ -354,57 +266,6 @@ theorem prostSSAt_eq_split_identityRootKeys (ss : BitVec 64) (v : SSV) :
         prostSSRest_identityRootKeys ss v := by
   unfold prostSSAt prostSSRest_identityRootKeys
   ac_rfl
-
-theorem of_sepWP_inImage_identityRootKeys {prog : Program} {img : Obj.Image} {ret mid : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (h : SepWP prog mid s P
-      (fun sm Pm => img.FrozenLoaded sm → sm.symtab = img.symtab →
-        SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp :=
-  SepWPp.of_sepWP_frozen hF hsym h
-
-theorem step_epilogue_758_identityRootKeys (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (w56 : BitVec 64)
-    {s0 s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hpc : s.pc = mfEntry_identityRootKeys + 1880#64)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 240#64)
-    (halign : s0.sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace)
-    (hx0 : s.readReg64 .x0 = 0#64)
-    (hx26 : s.readReg64 .x26 = s0.readReg64 .x26)
-    (hx27 : s.readReg64 .x27 = s0.readReg64 .x27)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hP : P = mfSavedRegs_identityRootKeys s0.sp s0 w56 ∗ F)
-    (hnext : ∀ sf : State,
-      sf.pc = s0.readReg64 .lr →
-      sf.status = .Running →
-      sf.sp = s0.sp →
-      sf.trace = s0.trace →
-      sf.readReg64 .x0 = 0#64 →
-      CalleeSavedPreserved s0 sf →
-      Q sf (mfSavedRegs_identityRootKeys s0.sp s0 w56 ∗ F)) :
-    SepWPp (tripleRatchetProgAt sessionImg0.base C ctl abs) (s0.readReg64 .lr) s P Q Qp := by
-  let H := Rust.withPanics (tripleRatchetExterns C ctl abs)
-  mf234_fetches sessionImg0.base H
-  change SepWPp (libsignalSessionCode.rebase sessionImg0.base H) (s0.readReg64 .lr) s P Q Qp
-  rw [fnAddr_mergeField_eq_mfEntry_identityRootKeys H] at *
-  examples_hide_fetches
-  subst hP
-  unfold mfSavedRegs_identityRootKeys
-  have hsp_align240 := sp_sub_240_aligned_identityRootKeys halign
-  apply SepWPp.of_sepWP_ret
-  wp_step; wp_step; wp_step; wp_step; wp_step; wp_step; wp_step
-  apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-  exact hnext _ (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    ⟨by simp_all [arm64_norm], by simp_all [arm64_norm], by simp_all [arm64_norm],
-      by simp_all [arm64_norm], by simp_all [arm64_norm], by simp_all [arm64_norm],
-      by simp_all [arm64_norm], by simp_all [arm64_norm], by simp_all [arm64_norm],
-      by simp_all [arm64_norm], by simp_all [arm64_norm], by simp_all [arm64_norm]⟩
 
 @[local arm64_norm]
 theorem setWidth8_setWidth64_setWidth32_identityRootKeys (w : BitVec 64) :
@@ -434,341 +295,13 @@ theorem stackAt_mergeField_unsplit_identityRootKeys (sp0 : BitVec 64) (s0 : Stat
   refine Entails.trans ?_ (Entails.sepExists_intro (s0.readReg64 .x19))
   exact Entails.refl _
 
-theorem step_cbz_epilogue_identityRootKeys (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (retOff w56 : BitVec 64)
-    {s0 s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hret : retOff = 600#64 ∨ retOff = 556#64 ∨ retOff = 460#64)
-    (hpc : s.pc = mfEntry_identityRootKeys + retOff)
-    (hrun : s.status = .Running)
-    (hsp : s.sp = s0.sp - 240#64)
-    (halign : s0.sp &&& 15#64 = 0#64)
-    (htr : s.trace = s0.trace)
-    (hx0 : s.readReg64 .x0 = 0#64)
-    (hx26 : s.readReg64 .x26 = s0.readReg64 .x26)
-    (hx27 : s.readReg64 .x27 = s0.readReg64 .x27)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0)
-    (hP : P = mfSavedRegs_identityRootKeys s0.sp s0 w56 ∗ F)
-    (hnext : ∀ sf : State,
-      sf.pc = s0.readReg64 .lr →
-      sf.status = .Running →
-      sf.sp = s0.sp →
-      sf.trace = s0.trace →
-      sf.readReg64 .x0 = 0#64 →
-      CalleeSavedPreserved s0 sf →
-      Q sf (mfSavedRegs_identityRootKeys s0.sp s0 w56 ∗ F)) :
-    SepWPp (tripleRatchetProgAt sessionImg0.base C ctl abs) (s0.readReg64 .lr) s P Q Qp := by
-  let H := Rust.withPanics (tripleRatchetExterns C ctl abs)
-  mf234_fetches sessionImg0.base H
-  change SepWPp (libsignalSessionCode.rebase sessionImg0.base H) (s0.readReg64 .lr) s P Q Qp
-  rw [fnAddr_mergeField_eq_mfEntry_identityRootKeys H] at *
-  examples_hide_fetches
-  apply SepWPp.of_sepWP (mid := mfEntry_identityRootKeys + 1880#64)
-  rcases hret with rfl | rfl | rfl
-  · wp_step
-    apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    exact step_epilogue_758_identityRootKeys C ctl w56
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      halign (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm])
-      hP hnext
-  · wp_step
-    apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    exact step_epilogue_758_identityRootKeys C ctl w56
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      halign (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm])
-      hP hnext
-  · wp_step
-    apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    exact step_epilogue_758_identityRootKeys C ctl w56
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      halign (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-      (by simp_all [arm64_norm])
-      hP hnext
-
-theorem finish_post_identityRootKeys (P : SeedField → Prop) (x : MergeFieldGhost)
-    (valPtr w56 : BitVec 64) (b : List (BitVec 8))
-    {s0 sf : State} {F_ss R : SepProp}
-    (htrf : sf.trace = s0.trace)
-    (hx0f : sf.readReg64 .x0 = 0#64)
-    (hpay : x.fld.payload = [BitVec.ofNat 8 b.length] ++ b)
-    (hss : vecU8 A0 valPtr b ∗ F_ss = prostSSAt A0 x.ss (x.v.apply x.fld))
-    (hmf : sf.mem ⊨
-      (mfSavedRegs_identityRootKeys s0.sp s0 w56 ∗
-        ((x.bufRef ↦₆₄ x.slot) ∗
-          stackAt (s0.sp - 240#64) Prost.bytesMergeStack ∗
-          vecU8 A0 valPtr b ∗
-          Prost.sliceCursorAfter x.slot x.ptr ([BitVec.ofNat 8 b.length] ++ b ++ x.tail) x.tail ∗
-          (F_ss ∗ mfUnusedStack_identityRootKeys s0.sp ∗ mfRoBytes_identityRootKeys))) ∗ R) :
-    sf.mem ⊨ (mergeFieldSeedSpec P).post x s0 sf ∗ R := by
-  have h1 : sf.mem ⊨ mfRoBytes_identityRootKeys ∗
-      ((mfUnusedStack_identityRootKeys s0.sp ∗ stackAt (s0.sp - 240#64) Prost.bytesMergeStack ∗
-          mfSavedRegs_identityRootKeys s0.sp s0 w56) ∗
-        ((vecU8 A0 valPtr b ∗ F_ss) ∗
-          (x.bufRef ↦₆₄ x.slot) ∗
-          Prost.sliceCursorAfter x.slot x.ptr ([BitVec.ofNat 8 b.length] ++ b ++ x.tail) x.tail ∗
-          R)) := by
-    convert hmf using 1; ac_rfl
-  have h2 := Satisfies.of_sep_right h1
-  have h3 := Satisfies.mono (sepConj_mono_left (stackAt_mergeField_unsplit_identityRootKeys s0.sp s0 w56)) h2
-  rw [hss, ← hpay] at h3
-  dsimp only [mergeFieldSeedSpec]
-  rw [pure_true_emp_identityRootKeys ⟨htrf, hx0f⟩, emp_sepConj]
-  convert h3 using 1; ac_rfl
-
-theorem step_call_and_ret_identityRootKeys (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (P : SeedField → Prop)
-    (hbytes : Prost.BytesMergeOk sessionImg0 C A0 ctl abs)
-    (x : MergeFieldGhost) (retOff valPtr w56 : BitVec 64)
-    (valBs b : List (BitVec 8))
-    {s0 sm : State} {F_ss R : SepProp}
-    (hret : retOff = 600#64 ∨ retOff = 556#64 ∨ retOff = 460#64)
-    (hpcm : sm.pc = mfEntry_identityRootKeys + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>")))
-    (hrunm : sm.status = .Running)
-    (hspm : sm.sp = s0.sp - 240#64)
-    (halign : s0.sp &&& 15#64 = 0#64)
-    (hFm : sessionImg0.FrozenLoaded sm)
-    (hsymm : sm.symtab = sessionImg0.symtab)
-    (htrm : sm.trace = s0.trace)
-    (hlrm : sm.readReg64 .lr = mfEntry_identityRootKeys + retOff)
-    (hx0m : (sm.readReg64 .x0).setWidth 8 = 2#8)
-    (hx1m : sm.readReg64 .x1 = valPtr)
-    (hx2m : sm.readReg64 .x2 = x.bufRef)
-    (hx26m : sm.readReg64 .x26 = s0.readReg64 .x26)
-    (hx27m : sm.readReg64 .x27 = s0.readReg64 .x27)
-    (hx28m : sm.readReg64 .x28 = s0.readReg64 .x28)
-    (hvregs_m : calleeSavedVRegs sm = calleeSavedVRegs s0)
-    (hb_lt : b.length < 128)
-    (htail_lt : ([BitVec.ofNat 8 b.length] ++ b ++ x.tail).length < 2 ^ 32)
-    (hpay : x.fld.payload = [BitVec.ofNat 8 b.length] ++ b)
-    (hss : vecU8 A0 valPtr b ∗ F_ss = prostSSAt A0 x.ss (x.v.apply x.fld)) :
-    SepWPp (tripleRatchetProgAt sessionImg0.base C ctl abs) (s0.readReg64 .lr) sm
-      (vecU8 A0 valPtr valBs ∗
-        (x.bufRef ↦₆₄ x.slot) ∗
-        Prost.sliceCursorAt x.slot x.ptr ([BitVec.ofNat 8 b.length] ++ b ++ x.tail) ∗
-        stackAt (s0.sp - 240#64) Prost.bytesMergeStack ∗
-        mfSavedRegs_identityRootKeys s0.sp s0 w56 ∗
-        (F_ss ∗ mfUnusedStack_identityRootKeys s0.sp ∗ mfRoBytes_identityRootKeys))
-      (fun sf P_f =>
-        ((sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ (mergeFieldSeedSpec P).post x s0 sf ∗ R)) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ Serialization.allocPanic x s0 sf ∗ R)) := by
-  have hcall : subroutine_ok (tripleRatchetProgAt sessionImg0.base C ctl abs)
-      (mfEntry_identityRootKeys + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"))) (Prost.bytesMergeSpec A0 sessionImg0) := by
-    rw [bytesMerge_fnAddr_eq_identityRootKeys C ctl]
-    exact hbytes
-  have hspm_align : sm.spAligned = true := by
-    simp only [State.spAligned, hspm, sp_sub_240_aligned_identityRootKeys halign, beq_self_eq_true]
-  unfold vecU8
-  simp only [sepExists_sepConj_left]
-  refine SepWPp.exists_elim (fun cap0 => SepWPp.exists_elim (fun ptr0 => ?_))
-  let g : Prost.BytesMergeGhost :=
-    ⟨.lengthDelimited, valPtr, cap0, ptr0, valBs, x.bufRef, x.slot, x.ptr,
-     [BitVec.ofNat 8 b.length] ++ b ++ x.tail⟩
-  refine SepWPp.call (x := g)
-    (F := mfSavedRegs_identityRootKeys s0.sp s0 w56 ∗ (F_ss ∗ mfUnusedStack_identityRootKeys s0.sp ∗ mfRoBytes_identityRootKeys))
-    hcall hpcm hrunm hspm_align hlrm ?_ ?_ ?_ ?_
-  · intro R' hm
-    dsimp only [Prost.bytesMergeSpec, Spec.inImage, Prost.bytesMergeRawSpec, A0, g]
-    have hp1 : sessionImg0.FrozenLoaded sm ∧ sm.symtab = sessionImg0.symtab := ⟨hFm, hsymm⟩
-    have hp2 : (sm.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 WireType.lengthDelimited.toNat ∧
-        sm.readReg64 .x1 = valPtr ∧ sm.readReg64 .x2 = x.bufRef ∧
-        ([BitVec.ofNat 8 b.length] ++ b ++ x.tail).length < 2 ^ 63 ∧
-        Prost.BytesMergeCapOk cap0 ([BitVec.ofNat 8 b.length] ++ b ++ x.tail).length :=
-      ⟨hx0m, hx1m, hx2m, Nat.lt_of_lt_of_le htail_lt (by decide),
-        Prost.bytesMergeCapOk_of_len_lt32 htail_lt⟩
-    rw [hspm, pure_true_emp_identityRootKeys hp1, pure_true_emp_identityRootKeys hp2, emp_sepConj, emp_sepConj]
-    convert hm using 1; ac_rfl
-  · intro sf code R' _ hex
-    exact allowPanic_not_exited hex
-  · intro sf _ hm
-    dsimp only [Prost.bytesMergeSpec, Spec.inImage, Prost.bytesMergeRawSpec, Serialization.allocPanic] at hm ⊢
-    refine allowPanic_frame (fun ⟨ha, hp⟩ => ?_) hm
-    rw [allocFailedIn, htrm] at ha
-    rw [htrm] at hp
-    exact ⟨ha, hp⟩
-  · intro s2 hpc2 hrun2 hsp2 hcs2
-    dsimp only [Prost.bytesMergeSpec, Spec.inImage, Prost.bytesMergeRawSpec, g]
-    rw [mergeBytes_lengthDelimited_of_lt_128_identityRootKeys hb_lt]
-    dsimp only
-    rw [sepConj_assoc]
-    refine SepWPp.pure_left (fun htr2 => ?_)
-    have hpool : A0.pool = emp := rfl
-    rw [hpool, hspm]
-    simp only [emp_sepConj, sepConj_assoc, sepConj_pure_left_comm]
-    refine SepWPp.pure_left (fun hx0_2 => ?_)
-    have hvec : (∃∗ cap' : BitVec 64, ∃∗ ptr' : BitVec 64,
-        ⌜Prost.BytesMergeCapOk cap' x.tail.length⌝ ∗ vecU8At A0 valPtr cap' ptr' b) ⊢
-        vecU8 A0 valPtr b :=
-      Entails.sepExists_elim fun cap' => Entails.sepExists_elim fun ptr' =>
-        Entails.pure_left fun _ =>
-          Entails.sepExists_right cap' (Entails.sepExists_right ptr' (Entails.refl _))
-    refine SepWPp.weaken_pre
-      (sepConj_mono_right (sepConj_mono_right (sepConj_mono_left hvec))) ?_
-    refine step_cbz_epilogue_identityRootKeys C ctl retOff w56
-      (F := (x.bufRef ↦₆₄ x.slot) ∗
-        stackAt (s0.sp - 240#64) Prost.bytesMergeStack ∗
-        vecU8 A0 valPtr b ∗
-        Prost.sliceCursorAfter x.slot x.ptr ([BitVec.ofNat 8 b.length] ++ b ++ x.tail) x.tail ∗
-        (F_ss ∗ mfUnusedStack_identityRootKeys s0.sp ∗ mfRoBytes_identityRootKeys))
-      hret hpc2 hrun2
-      (hsp2.trans hspm) halign (htr2.trans htrm) hx0_2 (by reg_chain) (by reg_chain) (by reg_chain)
-      (hcs2.2.2.2.2.2.2.2.2.2.2.2.trans hvregs_m)
-      (by ac_rfl) ?_
-    intro sf _ _ hspf htrf hx0f hcsf
-    exact ⟨finish_post_identityRootKeys P x valPtr w56 b htrf hx0f hpay hss, hspf, hcsf⟩
-
 end IdentityRootKeysStateSimp
-
-open IdentityRootKeysStateSimp in
-/-- `SessionStructure::merge_field` (`0x581c`) satisfies `mergeFieldSeedSpec` on tags `2`, `3`, and `4`
-(`local_identity_public`, `remote_identity_public`, `root_key`) via `bytes::merge`. -/
-theorem mergeFieldSeed234_ok (C : Crypto) (ctl : BitVec 64)
-    {abs : String → Option (State → State)}
-    (hC : DeserializeCallees C ctl abs) :
-    MergeFieldSeedOk C ctl
-      (fun fl => (∃ b, fl = .lik b) ∨ (∃ b, fl = .rik b) ∨ (∃ b, fl = .root b)) abs := by
-  let P234 : SeedField → Prop :=
-    fun fl => (∃ b, fl = .lik b) ∨ (∃ b, fl = .rik b) ∨ (∃ b, fl = .root b)
-  unfold MergeFieldSeedOk Serialization.OkAt
-  apply subroutine_ok_of_sepWPp
-  intro x R s0 hpc hrun hpre hsp_align
-  dsimp only [mergeFieldSeedSpec] at hpre
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx2, hx3, _, hP, _, hfl, -, -, -, hlen, hF, hsym⟩, hmem⟩
-  have hmem_ro : s0.mem ⊨
-      (mfRoBytes_identityRootKeys ∗ prostSSAt A0 x.ss x.v ∗ (x.bufRef ↦₆₄ x.slot) ∗
-        Prost.sliceCursorAt x.slot x.ptr (x.fld.payload ++ x.tail) ∗
-        stackAt s0.sp mergeFieldStack) ∗ R := by
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc]
-    exact rodata_intro_identityRootKeys hF.roData (by convert hmem using 1; ac_rfl)
-  refine ⟨mfRoBytes_identityRootKeys ∗ prostSSAt A0 x.ss x.v ∗ (x.bufRef ↦₆₄ x.slot) ∗
-    Prost.sliceCursorAt x.slot x.ptr (x.fld.payload ++ x.tail) ∗ stackAt s0.sp mergeFieldStack,
-    R, hmem_ro, ?_⟩
-  rw [stackAt_mergeField_split_identityRootKeys s0.sp, prostSSAt_eq_split_identityRootKeys x.ss x.v]
-  unfold mfRoBytes_identityRootKeys
-  simp only [sepExists_sepConj_right, sepConj_assoc]
-  refine SepWPp.exists_elim (fun w80 => SepWPp.exists_elim (fun w72 =>
-    SepWPp.exists_elim (fun w64 => SepWPp.exists_elim (fun w56 =>
-      SepWPp.exists_elim (fun w48 => SepWPp.exists_elim (fun w40 =>
-        SepWPp.exists_elim (fun w32 => SepWPp.exists_elim (fun w24 =>
-          SepWPp.exists_elim (fun w16 => SepWPp.exists_elim (fun w8 => ?_))))))))))
-  have halign : s0.sp &&& 15#64 = 0#64 := by
-    simpa [State.spAligned] using hsp_align
-  have hsp_align240 := sp_sub_240_aligned_identityRootKeys halign
-  let H := Rust.withPanics (tripleRatchetExterns C ctl abs)
-  mf234_fetches sessionImg0.base H
-  dsimp only [tripleRatchetProgAt] at hpc
-  rw [fnAddr_mergeField_eq_mfEntry_identityRootKeys H] at *
-  examples_hide_fetches
-  rcases hP with ⟨b, hfl_eq⟩ | ⟨b, hfl_eq⟩ | ⟨b, hfl_eq⟩
-  · have hb_lt : b.length < 128 := fld_234_length_lt_128_identityRootKeys (Or.inl (hfl_eq ▸ hfl))
-    have hpay : x.fld.payload = [BitVec.ofNat 8 b.length] ++ b := by rw [hfl_eq]; rfl
-    have htag : x.fld.tag = 2 := by rw [hfl_eq]; rfl
-    have hwt : x.fld.wt = .lengthDelimited := by rw [hfl_eq]; rfl
-    rw [htag] at hx1
-    rw [hwt] at hx2
-    rw [hpay] at hlen ⊢
-    simp only [arm64_norm] at hx0 hx1 hx2 hx3
-    change SepWPp (libsignalSessionCode.rebase sessionImg0.base H) _ _ _ _ _
-    refine of_sepWP_inImage_identityRootKeys hF hsym (mid := mfEntry_identityRootKeys + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"))) ?_
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    intro hFm hsymm
-    refine SepWPp.congr_pre ?_
-      (step_call_and_ret_identityRootKeys C ctl P234 hC.2.2.1 x 600#64 x.ss w56 x.v.lik b
-        (F_ss := vecU8 A0 (x.ss + 0x18#64) x.v.rik ∗ vecU8 A0 (x.ss + 0x30#64) x.v.root ∗
-          prostSSRest_identityRootKeys x.ss x.v)
-        (Or.inl rfl)
-        (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        halign hFm hsymm (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        (by simp_all [arm64_norm])
-        hb_lt hlen hpay
-        (by rw [hfl_eq, prostSSAt_eq_split_identityRootKeys]; rfl))
-    unfold mfSavedRegs_identityRootKeys mfRoBytes_identityRootKeys
-    simp only [Reg.x29, Reg.x30, Reg.x25, Reg.x24, Reg.x23, Reg.x22, Reg.x21, Reg.x20, Reg.x19]
-    ac_rfl
-  · have hb_lt : b.length < 128 := fld_234_length_lt_128_identityRootKeys (Or.inr (Or.inl (hfl_eq ▸ hfl)))
-    have hpay : x.fld.payload = [BitVec.ofNat 8 b.length] ++ b := by rw [hfl_eq]; rfl
-    have htag : x.fld.tag = 3 := by rw [hfl_eq]; rfl
-    have hwt : x.fld.wt = .lengthDelimited := by rw [hfl_eq]; rfl
-    rw [htag] at hx1
-    rw [hwt] at hx2
-    rw [hpay] at hlen ⊢
-    simp only [arm64_norm] at hx0 hx1 hx2 hx3
-    change SepWPp (libsignalSessionCode.rebase sessionImg0.base H) _ _ _ _ _
-    refine of_sepWP_inImage_identityRootKeys hF hsym (mid := mfEntry_identityRootKeys + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"))) ?_
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    intro hFm hsymm
-    refine SepWPp.congr_pre ?_
-      (step_call_and_ret_identityRootKeys C ctl P234 hC.2.2.1 x 556#64 (x.ss + 0x18#64) w56 x.v.rik b
-        (F_ss := vecU8 A0 x.ss x.v.lik ∗ vecU8 A0 (x.ss + 0x30#64) x.v.root ∗
-          prostSSRest_identityRootKeys x.ss x.v)
-        (Or.inr (Or.inl rfl))
-        (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        halign hFm hsymm (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        (by simp_all [arm64_norm])
-        hb_lt hlen hpay
-        (by rw [hfl_eq, prostSSAt_eq_split_identityRootKeys]; dsimp only [SSV.apply, prostSSRest_identityRootKeys]; ac_rfl))
-    unfold mfSavedRegs_identityRootKeys mfRoBytes_identityRootKeys
-    simp only [Reg.x29, Reg.x30, Reg.x25, Reg.x24, Reg.x23, Reg.x22, Reg.x21, Reg.x20, Reg.x19]
-    ac_rfl
-  · have hb_lt : b.length < 128 := fld_234_length_lt_128_identityRootKeys (Or.inr (Or.inr (hfl_eq ▸ hfl)))
-    have hpay : x.fld.payload = [BitVec.ofNat 8 b.length] ++ b := by rw [hfl_eq]; rfl
-    have htag : x.fld.tag = 4 := by rw [hfl_eq]; rfl
-    have hwt : x.fld.wt = .lengthDelimited := by rw [hfl_eq]; rfl
-    rw [htag] at hx1
-    rw [hwt] at hx2
-    rw [hpay] at hlen ⊢
-    simp only [arm64_norm] at hx0 hx1 hx2 hx3
-    change SepWPp (libsignalSessionCode.rebase sessionImg0.base H) _ _ _ _ _
-    refine of_sepWP_inImage_identityRootKeys hF hsym (mid := mfEntry_identityRootKeys + bv% (2 ^ 64 + (ls_off% "prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]") - (ls_off% "<libsignal_protocol::proto::storage::SessionStructure as prost::message::Message>::merge_field::<&mut &[u8]>"))) ?_
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    wp_step; wp_step; wp_step; wp_step; wp_step
-    apply SepWP.done (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-    intro hFm hsymm
-    refine SepWPp.congr_pre ?_
-      (step_call_and_ret_identityRootKeys C ctl P234 hC.2.2.1 x 460#64 (x.ss + 0x30#64) w56 x.v.root b
-        (F_ss := vecU8 A0 x.ss x.v.lik ∗ vecU8 A0 (x.ss + 0x18#64) x.v.rik ∗
-          prostSSRest_identityRootKeys x.ss x.v)
-        (Or.inr (Or.inr rfl))
-        (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        halign hFm hsymm (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        (by simp_all [arm64_norm]) (by simp_all [arm64_norm]) (by simp_all [arm64_norm])
-        (by simp_all [arm64_norm])
-        hb_lt hlen hpay
-        (by rw [hfl_eq, prostSSAt_eq_split_identityRootKeys]; dsimp only [SSV.apply, prostSSRest_identityRootKeys]; ac_rfl))
-    unfold mfSavedRegs_identityRootKeys mfRoBytes_identityRootKeys
-    simp only [Reg.x29, Reg.x30, Reg.x25, Reg.x24, Reg.x23, Reg.x22, Reg.x21, Reg.x20, Reg.x19]
-    ac_rfl
-
-/-! ## Relocatable `[LibsignalPlacement]` Proof (`lsProg_15 H`) -/
 
 namespace IdentityRootKeysStateSimp
 
 open Arm64.Obj CryptoVerification CryptoVerification.E2E.Record.Placed
 
-def mfRoBytes_placed_identityRootKeys [LibsignalPlacement] : SepProp :=
+@[expose] def mfRoBytes_placed_identityRootKeys [LibsignalPlacement] : SepProp :=
   ((lsmpl.ρ mergeFieldRodataSym + 1#64) ↦₈ᵣ 0x82#8) ∗
   ((lsmpl.ρ mergeFieldRodataSym + 2#64) ↦₈ᵣ 0x77#8) ∗
   ((lsmpl.ρ mergeFieldRodataSym + 3#64) ↦₈ᵣ 0x5f#8)

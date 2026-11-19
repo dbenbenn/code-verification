@@ -9,20 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.RecordCodecs.SignedDeps -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.Fine.CreditInst
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Specifications.RecordCodecsBinary.SignedPreKey
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymC
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeySpec
+import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3
+import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymC
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
 import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
 
@@ -35,7 +34,7 @@ envelopes (`SpkLoopBoundedEnv`, `SpkDecodeEnv`, `KyberDecodeEnv`), relocatable
 `drop_glue::<DecodeError>` verification, and `FitsEnv fineCostModel` non-vacuity witnesses.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -50,7 +49,7 @@ open CryptoVerification.LibsignalTripleRatchet.Prost
 open LibsignalBinary.Heap
 open LibsignalBinary.Heap.IfaceBudgetLemmas (subroutine_ok_rustCliDeallocBudget_externWithStack)
 open LibsignalBinary.Proofs.Placed.BudgetPoolSync
-open CryptoVerification.RecordCodecsBinary (DecodeGhost SignedHooks SignedPortDeps kyberPreKeyResultAt signedDecodeResultAt signedDecodeStack signedPreKeyResultAt)
+open CryptoVerification.RecordCodecsBinary (DecodeGhost kyberPreKeyResultAt signedDecodeResultAt signedDecodeStack signedPreKeyResultAt)
 open CryptoVerification.LibsignalProtoCodec (WireType decodeVarint mergeBytes)
 open LibsignalBinary.Heap.Fine (fineCostModel)
 open LibsignalBinary.Proofs.TripleRatchet.Prost.MergeDefsBudget
@@ -63,13 +62,13 @@ export LibsignalBinary.Heap.SpecBudget (
 )
 
 /-- Bounded `<DecodeError>::push` envelope matching `SpqrV1.Alloc.newCap32` (`max (2 * n) 4`). -/
-def DecodeErrorPushBoundedEnv (n : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeErrorPushBoundedEnv (n : Nat) (evs : List AllocEvent) : Prop :=
   evs = [] ∨
   (n = 0 ∧ evs = rustAllocEvents 128 8) ∨
   (0 < n ∧ evs = rustReallocEvents (n * 32) (max (2 * n) 4 * 32) 8)
 
 /-- Bounded budget-threaded counterpart of `decodeErrorPushSpec`. -/
-def decodeErrorPushBoundedSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def decodeErrorPushBoundedSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BitVec 64 × BitVec 64 × Nat × M.σ) where
   pre := fun (d, e, n, st) s =>
     ⌜s.readReg64 .x0 = d ∧ n < 2 ^ 32 ∧ FitsEnv M lim st (DecodeErrorPushBoundedEnv n)⌝ ∗
@@ -84,17 +83,17 @@ def decodeErrorPushBoundedSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Deterministic allocator events of `decode_varint::<&mut &[u8]>` (`[]` on `Ok`,
 `rustAllocEvents 72 8` via `DecodeError::from` on `Err`). -/
-def decodeVarint2Events (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def decodeVarint2Events (bs : List (BitVec 8)) : List AllocEvent :=
   match CryptoVerification.LibsignalProtoCodec.decodeVarint bs with
   | some _ => []
   | none => rustAllocEvents 72 8
 
 /-- Callee-fixed event envelope of `decode_varint::<&mut &[u8]>`. -/
-def DecodeVarint2Env (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def DecodeVarint2Env (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = decodeVarint2Events bs
 
 /-- Budget-threaded counterpart of `CryptoVerification.SpqrV1.Varint.decodeVarint2Spec`. -/
-def decodeVarint2BudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def decodeVarint2BudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeVarintSlowGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -119,18 +118,18 @@ def decodeVarint2BudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Deterministic allocator events of `skip_field::<&mut &[u8]>` (`[]` on `Ok`,
 `rustAllocEvents 72 8` via `DecodeError::from` on `Err`). -/
-def skipField3EventsCore (depth tag : Nat) (wt : CryptoVerification.LibsignalProtoCodec.WireType)
+@[expose] def skipField3EventsCore (depth tag : Nat) (wt : CryptoVerification.LibsignalProtoCodec.WireType)
     (bs : List (BitVec 8)) : List AllocEvent :=
   match CryptoVerification.LibsignalProtoCodec.skipField (2 * bs.length + 2) depth tag wt bs with
   | some _ => []
   | none => rustAllocEvents 72 8
 
 /-- Callee-fixed event envelope of `skip_field::<&mut &[u8]>`. -/
-def SkipField3Env (x : SkipFieldGhost) (evs : List AllocEvent) : Prop :=
+@[expose] def SkipField3Env (x : SkipFieldGhost) (evs : List AllocEvent) : Prop :=
   evs = skipField3EventsCore x.depth x.tag x.wt x.bs
 
 /-- Budget-threaded counterpart of `CryptoVerification.SpqrV1.Varint.skipField3Spec`. -/
-def skipField3BudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def skipField3BudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (SkipFieldGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
@@ -156,11 +155,11 @@ def skipField3BudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 /-- Deterministic `Vec<u8>` post-capacity after `prost::encoding::bytes::merge::<Vec<u8>, _>`
 succeeds with slice `v` (`v.length ≤ cap` overwrites in place; `cap < v.length` reserves
 `reserveCap cap 0 v.length`). -/
-def bmNextCap (cap vLen : Nat) : Nat :=
+@[expose] def bmNextCap (cap vLen : Nat) : Nat :=
   if vLen ≤ cap then cap else reserveCap cap 0 vLen
 
 /-- Pointer-independent event envelope of `prost::encoding::bytes::merge::<Vec<u8>, &mut &[u8]>`. -/
-def BytesMerge3EnvCore (wt : CryptoVerification.LibsignalProtoCodec.WireType)
+@[expose] def BytesMerge3EnvCore (wt : CryptoVerification.LibsignalProtoCodec.WireType)
     (valCap : BitVec 64) (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = bytesMergeEventsCore wt valCap bs
 
@@ -169,7 +168,7 @@ abbrev BytesMerge3Env (x : BytesMergeGhost) : List AllocEvent → Prop :=
   BytesMerge3EnvCore x.wt x.valCap x.bs
 
 /-- Budget-threaded counterpart of `CryptoVerification.SpqrV1.Prost.BytesMerge.bytesMerge3RawSpec`. -/
-def bytesMerge3RawBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def bytesMerge3RawBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (BytesMergeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
@@ -197,7 +196,7 @@ def bytesMerge3RawBudgetSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 
 /-- Callee-fixed event envelope of `drop_glue::<prost::error::DecodeError>`:
 frees optional stack buffer `(cap * 32, 8)` then box `(72, 8)`. -/
-def DropDecodeErrorEnv (evs : List AllocEvent) : Prop :=
+@[expose] def DropDecodeErrorEnv (evs : List AllocEvent) : Prop :=
   evs = rustDeallocEvents 72 8 ∨
   ∃ c : Nat, 0 < c ∧ c * 32 < 2 ^ 63 ∧
     evs = rustDeallocEvents (c * 32) 8 ++ rustDeallocEvents 72 8
@@ -205,7 +204,7 @@ def DropDecodeErrorEnv (evs : List AllocEvent) : Prop :=
 open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
 
 /-- Budget-threaded counterpart of `dropDecodeErrorSpecGen`. -/
-def dropDecodeErrorBudgetSpecGenBase (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def dropDecodeErrorBudgetSpecGenBase (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (dStack : Nat) : Spec (BitVec 64 × M.σ) where
   pre := fun (e, st) s =>
     ⌜s.readReg64 .x0 = e⌝ ∗ decodeErrorAt A.repAlloc e ∗ A.pool lim st s ∗
@@ -216,7 +215,7 @@ def dropDecodeErrorBudgetSpecGenBase (M : AllocCostModel) (A : RustCliAllocBudge
         A.pool lim (M.stepEvents evs st) sf) ∗
       stackAt s0.sp (0x20 + dStack)
 
-def dropDecodeErrorBudgetSpecGen [CryptoVerification.LibsignalPlacement]
+@[expose] def dropDecodeErrorBudgetSpecGen [CryptoVerification.LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (dStack : Nat) : Spec (BitVec 64 × M.σ) where
   pre := fun (e, st) s =>
@@ -250,12 +249,12 @@ structure SpkCaps where
   priv : Nat
   sig : Nat
 
-def SpkCaps.zero : SpkCaps := ⟨0, 0, 0⟩
+@[expose] def SpkCaps.zero : SpkCaps := ⟨0, 0, 0⟩
 
-def SpkCaps.get (c : SpkCaps) : SpkField → Nat
+@[expose] def SpkCaps.get (c : SpkCaps) : SpkField → Nat
   | .pub => c.pub | .priv => c.priv | .sig => c.sig
 
-def SpkCaps.set (c : SpkCaps) : SpkField → Nat → SpkCaps
+@[expose] def SpkCaps.set (c : SpkCaps) : SpkField → Nat → SpkCaps
   | .pub, v => { c with pub := v }
   | .priv, v => { c with priv := v }
   | .sig, v => { c with sig := v }
@@ -427,23 +426,23 @@ theorem fitsEnv_spkLoop_mono_rem {M : AllocCostModel} {lim : BudgetLimits} {st :
   fun evs h => hFit evs (h.mono_rem hle)
 
 /-- Optional `Vec<u8>` buffer deallocation in the `Err` epilogue (`cap = 0` or `dealloc(ptr, cap, 1)`). -/
-def OptByteFreeEnv (evs : List AllocEvent) : Prop :=
+@[expose] def OptByteFreeEnv (evs : List AllocEvent) : Prop :=
   evs = [] ∨ ∃ cap : Nat, 0 < cap ∧ cap + 1 ≤ 2 ^ 63 ∧ evs = rustDeallocEvents cap 1
 
 /-- Up to three `Vec<u8>` buffer deallocations (`public_key`, `private_key`, `signature`) on `Err`. -/
-def SpkEpilogueFreeEnv (evs : List AllocEvent) : Prop :=
+@[expose] def SpkEpilogueFreeEnv (evs : List AllocEvent) : Prop :=
   ∃ e1 e2 e3 : List AllocEvent,
     OptByteFreeEnv e1 ∧ OptByteFreeEnv e2 ∧ OptByteFreeEnv e3 ∧ evs = e1 ++ e2 ++ e3
 
 /-- Callee-fixed event envelope of `<SignedPreKeyRecordStructure as Message>::decode::<&[u8]>`. -/
-def SpkDecodeEnv (len : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def SpkDecodeEnv (len : Nat) (evs : List AllocEvent) : Prop :=
   SpkLoopEnv (2 * len + 3) len evs ∨
   ∃ evsL evsF : List AllocEvent,
     SpkLoopEnv (2 * len + 3) len evsL ∧ SpkEpilogueFreeEnv evsF ∧ evs = evsL ++ evsF
 
 /-- Callee-fixed event envelope of `decode_kyber_pre_key` / `decode_signed_pre_key`
 (`signedDecode` followed on `Err` by `drop_glue::<DecodeError>`). -/
-def KyberDecodeEnv (len : Nat) (evs : List AllocEvent) : Prop :=
+@[expose] def KyberDecodeEnv (len : Nat) (evs : List AllocEvent) : Prop :=
   SpkDecodeEnv len evs ∨
   ∃ evs₁ evs₂ : List AllocEvent,
     SpkDecodeEnv len evs₁ ∧ DropDecodeErrorEnv evs₂ ∧ evs = evs₁ ++ evs₂
@@ -451,7 +450,7 @@ def KyberDecodeEnv (len : Nat) (evs : List AllocEvent) : Prop :=
 /-! ## 3. Relocatable `[LibsignalPlacement]` Decoder Contracts -/
 
 /-- Image-free raw budget-threaded contract of `<SignedPreKeyRecordStructure as Message>::decode::<&[u8]>`. -/
-def signedDecodeRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def signedDecodeRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.bytesA ∧
@@ -474,7 +473,7 @@ abbrev signedDecodePlacedSpec [CryptoVerification.LibsignalPlacement] {M : Alloc
   CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (signedDecodeRawSpec A lim)
 
 /-- Image-free raw budget-threaded contract of `signal_session::stores::decode_kyber_pre_key`. -/
-def decodeKyberPreKeyRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeKyberPreKeyRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.bytesA ∧
@@ -496,7 +495,7 @@ abbrev decodeKyberPreKeyPlacedSpec [CryptoVerification.LibsignalPlacement] {M : 
   CryptoVerification.LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (decodeKyberPreKeyRawSpec A lim)
 
 /-- Image-free raw budget-threaded contract of `decode_kyber_pre_key` called as `decode_signed_pre_key`. -/
-def decodeSignedPreKeyRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def decodeSignedPreKeyRawSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (DecodeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.bytesA ∧

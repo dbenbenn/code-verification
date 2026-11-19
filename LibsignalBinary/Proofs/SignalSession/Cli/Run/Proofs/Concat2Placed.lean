@@ -9,15 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSym
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Concat2 -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymE -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
 
 /-!
 # Relocatable `[LibsignalPlacement]` `<[&[u8]] as Concat<u8>>::concat` (Block `598`)
@@ -26,7 +32,7 @@ Defines `cliConcat2SpecPlaced` and proves `cliConcat2_placed_ok` and its cross-b
 `cliConcat2_placed_at_block` on Block `598` under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,7 +54,7 @@ abbrev lsRawVecHandleErrorSymCli : String :=
   "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error"
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `cliConcat2Spec` (Block `598`). -/
-def cliConcat2SpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def cliConcat2SpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec SpqrV1.ChainProofs.SliceConcat2Ghost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl (cliConcat2Spec A stk)
 
@@ -165,9 +171,6 @@ private theorem ofNat_ult_of_le_placed {a b : Nat} (hle : a ≤ b) (hb : b < 2 ^
 
 private theorem pull_alloc_pure_concat_placed (P1 P2 R : SepProp) (φ : Prop) :
     P1 ∗ P2 ∗ ⌜φ⌝ ∗ R = ⌜φ⌝ ∗ (P1 ∗ P2 ∗ R) := by ac_rfl
-
-private theorem pull_first_pure_concat_placed (P1 R : SepProp) (φ : Prop) :
-    P1 ∗ ⌜φ⌝ ∗ R = ⌜φ⌝ ∗ (P1 ∗ R) := by ac_rfl
 
 private def cliMemcpyBytesAtConcatSpecPlaced (ro : Bool) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where

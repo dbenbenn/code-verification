@@ -21,18 +21,19 @@ import DY.Actions.Random
 public import Symbolic.Proofs.Tests.CliNonvacuity.PtNoCollisionAuxBase
 public import Symbolic.Specifications.Refinement.TraceExplanation
 import Symbolic.Proofs.Swarm.UA.HwKnows
-import Symbolic.Proofs.Swarm.UA.XlateSteps
+public import Symbolic.Proofs.Swarm.UA.XlateSteps -- proof-setup: allow-public-import
 import Symbolic.Proofs.Tests.CliNonvacuity.PtNoCollisionAux
 import Symbolic.Proofs.Tests.CliNonvacuity.Witness -- shake: keep
 import Symbolic.DYBridge.DY.Misc.Fixpoint
 import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
-import Symbolic.DYBridge.DY.Trace.Manipulation
-import Symbolic.DYBridge.DY.Actions.Network
+public import Symbolic.DYBridge.DY.Trace.Manipulation
+public import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
+import Symbolic.Proofs.Swarm.Leaves.IC13_Stage1Kyber
 
 /-!
 # Plaintext Draw Non-Collision Base Helpers
@@ -41,7 +42,7 @@ Provides `RandAt`, `runSteps`, `prefixTerms_termRandAt`, and non-random transiti
 lemmas (`noRandAt_*`, `randAt_invisible`) supporting `PtNoCollision`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

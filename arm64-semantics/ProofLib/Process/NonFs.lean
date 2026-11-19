@@ -69,8 +69,46 @@ open ProofLib
     (s.setFs f).sigActions = s.sigActions := by cases s; rfl
 @[simp] private theorem sigAltStack_setFs' (s : State) (f : FsState) :
     (s.setFs f).sigAltStack = s.sigAltStack := by cases s; rfl
+@[simp] private theorem sigMask_setFs' (s : State) (f : FsState) :
+    (s.setFs f).sigMask = s.sigMask := by cases s; rfl
+@[simp] private theorem sigPending_setFs' (s : State) (f : FsState) :
+    (s.setFs f).sigPending = s.sigPending := by cases s; rfl
 @[simp] private theorem mem_setSigAltStack' (s : State) (sas : SigAltStack) :
     (s.setSigAltStack sas).mem = s.mem := by cases s; rfl
+@[simp] private theorem mem_setSigMask' (s : State) (m : BitVec 64) :
+    (s.setSigMask m).mem = s.mem := by cases s; rfl
+@[simp] private theorem mem_setSigPending' (s : State) (p : BitVec 64) :
+    (s.setSigPending p).mem = s.mem := by cases s; rfl
+@[simp] private theorem sigMask_setSigMask' (s : State) (m : BitVec 64) :
+    (s.setSigMask m).sigMask = m := by cases s; rfl
+@[simp] private theorem sigPending_setSigMask' (s : State) (m : BitVec 64) :
+    (s.setSigMask m).sigPending = s.sigPending := by cases s; rfl
+@[simp] private theorem sigPending_setSigPending' (s : State) (p : BitVec 64) :
+    (s.setSigPending p).sigPending = p := by cases s; rfl
+@[simp] private theorem sigMask_writeReg64' (s : State) (r : Reg) (v : BitVec 64) :
+    (s.writeReg64 r v).sigMask = s.sigMask := by cases s; cases r <;> rfl
+@[simp] private theorem sigPending_writeReg64' (s : State) (r : Reg) (v : BitVec 64) :
+    (s.writeReg64 r v).sigPending = s.sigPending := by cases s; cases r <;> rfl
+@[simp] private theorem sigMask_advancePC' (s : State) :
+    s.advancePC.sigMask = s.sigMask := by cases s; rfl
+@[simp] private theorem sigPending_advancePC' (s : State) :
+    s.advancePC.sigPending = s.sigPending := by cases s; rfl
+@[simp] private theorem sigMask_setMem' (s : State) (m : Memory) :
+    (s.setMem m).sigMask = s.sigMask := by cases s; rfl
+@[simp] private theorem sigPending_setMem' (s : State) (m : Memory) :
+    (s.setMem m).sigPending = s.sigPending := by cases s; rfl
+@[simp] private theorem sigPending_setSigAction' (s : State) (sig : BitVec 32) (act : SigAction) :
+    (s.setSigAction sig act).sigPending = s.sigPending := by cases s; rfl
+@[simp] private theorem getSigAction_setSigMask' (s : State) (m : BitVec 64) (sig : BitVec 32) :
+    (s.setSigMask m).getSigAction sig = s.getSigAction sig := by cases s; rfl
+@[simp] private theorem getSigAction_setSigPending' (s : State) (p : BitVec 64) (sig : BitVec 32) :
+    (s.setSigPending p).getSigAction sig = s.getSigAction sig := by cases s; rfl
+@[simp] private theorem getSigAction_writeReg64' (s : State) (r : Reg) (v : BitVec 64) (sig : BitVec 32) :
+    (s.writeReg64 r v).getSigAction sig = s.getSigAction sig := by cases s; cases r <;> rfl
+@[simp] private theorem getSigAction_advancePC' (s : State) (sig : BitVec 32) :
+    s.advancePC.getSigAction sig = s.getSigAction sig := by cases s; rfl
+@[simp] private theorem getSigAction_setMem' (s : State) (m : Memory) (sig : BitVec 32) :
+    (s.setMem m).getSigAction sig = s.getSigAction sig := by cases s; rfl
 @[simp] private theorem physMemAvail_setFs' (s : State) (f : FsState) :
     (s.setFs f).physMemAvail = s.physMemAvail := by cases s; rfl
 @[simp] private theorem getSigAction_setFs' (s : State) (f : FsState) (signum : BitVec 32) :
@@ -130,6 +168,12 @@ open ProofLib
 @[local simp] theorem _root_.Arm64.State.setSigAltStack_setFs (s : State) (f : FsState)
     (sas : SigAltStack) :
     (s.setFs f).setSigAltStack sas = (s.setSigAltStack sas).setFs f := by cases s; rfl
+@[local simp] theorem _root_.Arm64.State.setSigMask_setFs (s : State) (f : FsState)
+    (m : BitVec 64) :
+    (s.setFs f).setSigMask m = (s.setSigMask m).setFs f := by cases s; rfl
+@[local simp] theorem _root_.Arm64.State.setSigPending_setFs (s : State) (f : FsState)
+    (p : BitVec 64) :
+    (s.setFs f).setSigPending p = (s.setSigPending p).setFs f := by cases s; rfl
 @[local simp] theorem _root_.Arm64.State.setPhysMemAvail_setFs (s : State) (f : FsState) (n : Nat) :
     (s.setFs f).setPhysMemAvail n = (s.setPhysMemAvail n).setFs f := by cases s; rfl
 
@@ -222,9 +266,13 @@ def _root_.Arm64.Instr.isNonFs (inst : Instr) (s : State) : Bool :=
     execMremap (s.setFs f) = (execMremap s).setFs f := by
   dsimp (config := { zetaHave := true }) only [execMremap]
   simp only [readReg64_setFs', mem_setFs', oracle_setFs', oracleIdx_setFs', physMemAvail_setFs']
-  cases hsan : sanitizeMmapAddr
-      (s.mem.unmapNonFrozen (s.readReg64 Reg.x0) (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat))
-      (s.oracle.mmap s.oracleIdx) (Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat) <;> simp
+  by_cases hf0 : s.readReg64 Reg.x3 == 0#64
+  · simp [hf0]
+  · simp only [hf0, Bool.false_eq_true, ↓reduceIte]
+    cases hsan : sanitizeMmapAddr
+        (s.mem.unmapNonFrozen (untaggedAddr (s.readReg64 Reg.x0))
+          (Arm64.pageAlignUp (s.readReg64 Reg.x1).toNat))
+        (s.oracle.mmap s.oracleIdx) (Arm64.pageAlignUp (s.readReg64 Reg.x2).toNat) <;> simp
 
 @[simp] theorem _root_.Arm64.execMprotect_setFs (s : State) (f : FsState) :
     execMprotect (s.setFs f) = (execMprotect s).setFs f := by
@@ -238,9 +286,15 @@ def _root_.Arm64.Instr.isNonFs (inst : Instr) (s : State) : Bool :=
     execSetTidAddress (s.setFs f) = (execSetTidAddress s).setFs f := by
   unfold execSetTidAddress; simp
 
+@[simp] theorem _root_.Arm64.execFutex_setFs (s : State) (f : FsState) :
+    execFutex (s.setFs f) = (execFutex s).setFs f := by
+  unfold execFutex; simp
+
 @[simp] theorem _root_.Arm64.execSchedGetaffinity_setFs (s : State) (f : FsState) :
     execSchedGetaffinity (s.setFs f) = (execSchedGetaffinity s).setFs f := by
-  unfold execSchedGetaffinity; simp
+  dsimp (config := { zetaHave := true }) only [execSchedGetaffinity]
+  simp only [readReg32_setFs', readReg64_setFs', mem_setFs', oracle_setFs', oracleIdx_setFs']
+  cases s.oracle.schedGetaffinity s.oracleIdx <;> simp
 
 @[simp] theorem _root_.Arm64.execTkill_setFs (s : State) (f : FsState) :
     execTkill (s.setFs f) = (execTkill s).setFs f := by
@@ -260,11 +314,102 @@ def _root_.Arm64.Instr.isNonFs (inst : Instr) (s : State) : Bool :=
 @[simp] theorem _root_.Arm64.execRtSigaction_setFs (s : State) (f : FsState) :
     execRtSigaction (s.setFs f) = (execRtSigaction s).setFs f := by
   dsimp (config := { zetaHave := true }) only [execRtSigaction]
-  by_cases hact : s.readReg64 Reg.x1 == 0#64 <;> simp [hact]
+  by_cases hact : s.readReg64 Reg.x1 == 0#64 <;>
+    by_cases hign : (s.readReg32 Reg.x0 == LINUX_SIGABRT && s.mem.read64 (s.readReg64 Reg.x1) == SIG_IGN) <;>
+    simp [hact, hign]
 
 @[simp] theorem _root_.Arm64.execRtSigprocmask_setFs (s : State) (f : FsState) :
     execRtSigprocmask (s.setFs f) = (execRtSigprocmask s).setFs f := by
-  unfold execRtSigprocmask; simp
+  have hite : ∀ (c : Bool) (a₁ a₂ b₁ b₂ : State),
+      a₁ = a₂.setFs f → b₁ = b₂.setFs f →
+      (if c = true then a₁ else b₁) = (if c = true then a₂ else b₂).setFs f := by
+    intro c a₁ a₂ b₁ b₂ ha hb; cases c <;> simp [ha, hb]
+  unfold execRtSigprocmask
+  dsimp only
+  simp only [readReg64_setFs', readReg32_setFs', mem_setFs', sigMask_setFs']
+  refine hite _ _ _ _ _ (by simp) <|
+    hite _ _ _ _ _ (by simp) <|
+    hite _ _ _ _ _ (by simp) <|
+    hite _ _ _ _ _ (by simp) <|
+    hite _ _ _ _ _ (by simp) ?_
+  have hs1 : ∀ s1 : State,
+      (if (s.readReg64 Reg.x2 == 0#64) = true then ((s1.setFs f).writeReg64 Reg.x0 0#64).advancePC
+       else if (!decide ((s.readReg64 Reg.x2).toNat + 8 ≤ 2 ^ 64) || !(s1.setFs f).mem.canWrite (s.readReg64 Reg.x2) 8) = true then
+         ((s1.setFs f).writeReg64 Reg.x0 EFAULT_RET).advancePC
+       else
+         (((s1.setFs f).setMem ((s1.setFs f).mem.writeBytes (s.readReg64 Reg.x2) (leBytes64 s.sigMask))).writeReg64 Reg.x0 0#64).advancePC) =
+      (if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+       else if (!decide ((s.readReg64 Reg.x2).toNat + 8 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 8) = true then
+         (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+       else
+         ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (leBytes64 s.sigMask))).writeReg64 Reg.x0 0#64).advancePC).setFs f := by
+    intro s1
+    simp only [mem_setFs']
+    refine hite _ _ _ _ _ (by simp) (hite _ _ _ _ _ (by simp) (by simp))
+  have hs2 : ∀ s2 : State,
+      (let deliverable := (s2.setFs f).sigPending &&& ~~~(s2.setFs f).sigMask
+       if (deliverable == 0#64) = true then s2.setFs f
+       else if (deliverable == SIGABRT_MASK) = true then
+         let s3 := (s2.setFs f).setSigPending ((s2.setFs f).sigPending &&& ~~~SIGABRT_MASK)
+         let disp := (s3.getSigAction LINUX_SIGABRT).handler
+         if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+         else if (disp == SIG_IGN) = true then s3
+         else s3.setStatus (.Exception "unmodeled signal handler delivery")
+       else (s2.setFs f).setStatus (.Exception "unmodeled pending signal delivery")) =
+      (let deliverable := s2.sigPending &&& ~~~s2.sigMask
+       if (deliverable == 0#64) = true then s2
+       else if (deliverable == SIGABRT_MASK) = true then
+         let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+         let disp := (s3.getSigAction LINUX_SIGABRT).handler
+         if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+         else if (disp == SIG_IGN) = true then s3
+         else s3.setStatus (.Exception "unmodeled signal handler delivery")
+       else s2.setStatus (.Exception "unmodeled pending signal delivery")).setFs f := by
+    intro s2
+    dsimp only
+    simp only [sigMask_setFs', sigPending_setFs', getSigAction_setFs', State.setSigPending_setFs]
+    refine hite _ _ _ _ _ rfl (hite _ _ _ _ _ ?_ (by simp))
+    exact hite _ _ _ _ _ (by simp) (hite _ _ _ _ _ rfl (by simp))
+  have hcomb : ∀ s1 : State,
+      (let s2 :=
+         if (s.readReg64 Reg.x2 == 0#64) = true then ((s1.setFs f).writeReg64 Reg.x0 0#64).advancePC
+         else if (!decide ((s.readReg64 Reg.x2).toNat + 8 ≤ 2 ^ 64) || !(s1.setFs f).mem.canWrite (s.readReg64 Reg.x2) 8) = true then
+           ((s1.setFs f).writeReg64 Reg.x0 EFAULT_RET).advancePC
+         else
+           (((s1.setFs f).setMem ((s1.setFs f).mem.writeBytes (s.readReg64 Reg.x2) (leBytes64 s.sigMask))).writeReg64 Reg.x0 0#64).advancePC
+       let deliverable := s2.sigPending &&& ~~~s2.sigMask
+       if (deliverable == 0#64) = true then s2
+       else if (deliverable == SIGABRT_MASK) = true then
+         let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+         let disp := (s3.getSigAction LINUX_SIGABRT).handler
+         if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+         else if (disp == SIG_IGN) = true then s3
+         else s3.setStatus (.Exception "unmodeled signal handler delivery")
+       else s2.setStatus (.Exception "unmodeled pending signal delivery")) =
+      (let s2 :=
+         if (s.readReg64 Reg.x2 == 0#64) = true then (s1.writeReg64 Reg.x0 0#64).advancePC
+         else if (!decide ((s.readReg64 Reg.x2).toNat + 8 ≤ 2 ^ 64) || !s1.mem.canWrite (s.readReg64 Reg.x2) 8) = true then
+           (s1.writeReg64 Reg.x0 EFAULT_RET).advancePC
+         else
+           ((s1.setMem (s1.mem.writeBytes (s.readReg64 Reg.x2) (leBytes64 s.sigMask))).writeReg64 Reg.x0 0#64).advancePC
+       let deliverable := s2.sigPending &&& ~~~s2.sigMask
+       if (deliverable == 0#64) = true then s2
+       else if (deliverable == SIGABRT_MASK) = true then
+         let s3 := s2.setSigPending (s2.sigPending &&& ~~~SIGABRT_MASK)
+         let disp := (s3.getSigAction LINUX_SIGABRT).handler
+         if (disp == SIG_DFL) = true then s3.setStatus (.Signaled 6#7)
+         else if (disp == SIG_IGN) = true then s3
+         else s3.setStatus (.Exception "unmodeled signal handler delivery")
+       else s2.setStatus (.Exception "unmodeled pending signal delivery")).setFs f := by
+    intro s1
+    dsimp only
+    rw [hs1 s1]
+    exact hs2 _
+  by_cases hset : (s.readReg64 Reg.x1 == 0#64) = true
+  · simp only [hset, ↓reduceIte]
+    exact hcomb s
+  · simp only [hset, State.setSigMask_setFs]
+    exact hcomb _
 
 @[simp] theorem _root_.Arm64.execGetpid_setFs (s : State) (f : FsState) :
     execGetpid (s.setFs f) = (execGetpid s).setFs f := by
@@ -355,7 +500,7 @@ private theorem miscEntry_nonFs : ∀ p ∈ Syscall.miscTable,
     isFsSyscallNr p.1 = true ∨ ∀ s f, p.2 (s.setFs f) = (p.2 s).setFs f := by
   intro p hp
   simp only [Syscall.miscTable, List.mem_cons, List.not_mem_nil, or_false] at hp
-  rcases hp with rfl | rfl | rfl | rfl <;> exact Or.inr fun s f => by simp
+  rcases hp with rfl | rfl | rfl | rfl | rfl <;> exact Or.inr fun s f => by simp
 
 instance : SvcNonFsSetFs Syscall.stdioWrite where
   setFs_of_nonFs := dispatch_setFs_of_nonFs _ fun p hp => by
@@ -538,9 +683,9 @@ instance : SvcNonFsSetFs Program.alloc.svc :=
     (pstate : PState) (mem : Memory) (tpidrEl0 : BitVec 64) (fpsr : BitVec 32) (brkStart brk : BitVec 64) (fs0 f : FsState)
     (oracle : Oracle) (oracleIdx : Nat) (exclFails : List Bool) (trace : List TraceEvent) (status : ExecStatus)
     (symtab : String → String → Option (BitVec 64)) (sigActions : BitVec 32 → SigAction)
-    (sigAltStack : SigAltStack) (physMemAvail : Nat) :
-    (State.mk regs vregs sp pc pstate mem tpidrEl0 fpsr brkStart brk fs0 oracle oracleIdx exclFails trace status symtab sigActions sigAltStack physMemAvail).setFs f =
-    State.mk regs vregs sp pc pstate mem tpidrEl0 fpsr brkStart brk f oracle oracleIdx exclFails trace status symtab sigActions sigAltStack physMemAvail := rfl
+    (sigAltStack : SigAltStack) (sigMask sigPending : BitVec 64) (physMemAvail : Nat) :
+    (State.mk regs vregs sp pc pstate mem tpidrEl0 fpsr brkStart brk fs0 oracle oracleIdx exclFails trace status symtab sigActions sigAltStack sigMask sigPending physMemAvail).setFs f =
+    State.mk regs vregs sp pc pstate mem tpidrEl0 fpsr brkStart brk f oracle oracleIdx exclFails trace status symtab sigActions sigAltStack sigMask sigPending physMemAvail := rfl
 
 @[simp] private theorem readVReg128_eta_setFs (s : State) (f : FsState) :
     (s.setFs f).readVReg128 = s.readVReg128 := by

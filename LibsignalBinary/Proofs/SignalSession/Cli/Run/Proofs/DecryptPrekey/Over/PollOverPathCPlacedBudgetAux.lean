@@ -11,14 +11,14 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCErrPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.PlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4ContPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCErrPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathAP4Cont
@@ -27,8 +27,20 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStmts
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatExt
-import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXCli
+import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SerDefsX
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.CliExternsFixed
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4Cont
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPathCErr
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCallees
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathA
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureCalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
 
 /-!
 # Budget-Threaded Placed CLI Poll Overwrite-Path (`Path C`) Stage P2/P3/P4 Helpers
@@ -38,7 +50,7 @@ exit folds, budget-threaded `Prev1` Stage P4 allocation envelopes and interfaces
 (`StageP4Prev1VRegsPlacedStmt`), and the Path C Stage P2 interface (`StageP2OverQpanCliPlacedStmt`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -250,7 +262,7 @@ theorem storesAt_opened_entails_cliPollStoresKitsAtPlaced_d2c [LibsignalPlacemen
 
 /-- 3-state `stageP3DispatchOkMidPrev1Placed`, evaluating `A.pool` at the post-Step5 state `s'`
 while indexing stack slots at `s.sp`. -/
-def stageP3DispatchOkMidPrev1At_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP3DispatchOkMidPrev1At_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s s' : State)
     (coroPtr outPtr initErrsPtr prevCap prevPtr ptCap ptPtr : BitVec 64)
     (enc pt : List (BitVec 8)) (b_2c0 : BitVec 8)
@@ -260,7 +272,7 @@ def stageP3DispatchOkMidPrev1At_placed [LibsignalPlacement] {M : AllocCostModel}
 
 /-- 3-state `overStageP3ErrPostPrevEmpty_placed`, evaluating `A.pool` at the exit state `sf`
 while indexing stack slots at `s.sp`. -/
-def overStageP3ErrPostPrevEmptyAt_placed [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def overStageP3ErrPostPrevEmptyAt_placed [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st_b : M.σ) (s0 s sf : State)
     (coroPtr outPtr : BitVec 64) (e : SignalProtocolError) : SepProp :=
   CryptoVerification.SignalSession.Cli.RunProofs.Poll.overStageP3ErrPostPrevEmpty_placed
@@ -553,7 +565,7 @@ structure StorePrev1BudgetEnv {A : RustAlloc} {b : BitVec 64}
       List AllocEvent → Prop
 
 /-- `store_session` shim + poll + `Box` dealloc step envelope on `Prev1`. -/
-def StorePrev1StepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
+@[expose] def StorePrev1StepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A b)
     (opsEnv : StorePrev1BudgetEnv kit) (sst0 : kit.StoreState)
     (rem : AddrVal) (G : SessionGhost) (ss : Session (List (BitVec 8))) (enc : List (BitVec 8)) :
     List AllocEvent → Prop :=
@@ -562,7 +574,7 @@ def StorePrev1StepEnv {A : RustAlloc} {b : BitVec 64} (kit : SessionStoreSpec A 
       (· = rustDeallocEvents kit.storeBoxSize 8))
 
 /-- `mark_kyber_pre_key_used` shim + poll + `Box` dealloc step envelope. -/
-def MarkStepEnv {A : RustAlloc} {b : BitVec 64} (kpkKit : KyberPreKeyStoreSpec A b)
+@[expose] def MarkStepEnv {A : RustAlloc} {b : BitVec 64} (kpkKit : KyberPreKeyStoreSpec A b)
     (kpkKitEnv : KyberPreKeyStoreBudgetEnv kpkKit) (kst0 : kpkKit.KpkState)
     (id signedId : BitVec 32) (baseKey : PublicKey) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv kpkKit.markBoxSize)
@@ -570,7 +582,7 @@ def MarkStepEnv {A : RustAlloc} {b : BitVec 64} (kpkKit : KyberPreKeyStoreSpec A
       (· = rustDeallocEvents kpkKit.markBoxSize 8))
 
 /-- `remove_pre_key` shim + poll + `Box` dealloc step envelope. -/
-def RemoveStepEnv {A : RustAlloc} {b : BitVec 64} (pkKit : PreKeyStoreSpec A b)
+@[expose] def RemoveStepEnv {A : RustAlloc} {b : BitVec 64} (pkKit : PreKeyStoreSpec A b)
     (pkKitEnv : PreKeyStoreBudgetEnv pkKit) (pst0 : pkKit.PkState)
     (opkId : BitVec 32) : List AllocEvent → Prop :=
   SeqEnv (BoxAllocEnv pkKit.removeBoxSize)
@@ -578,20 +590,20 @@ def RemoveStepEnv {A : RustAlloc} {b : BitVec 64} (pkKit : PreKeyStoreSpec A b)
       (· = rustDeallocEvents pkKit.removeBoxSize 8))
 
 /-- Optional `remove_pre_key` step envelope (`none` emits `[]`). -/
-def OptRemoveStepEnv {A : RustAlloc} {b : BitVec 64} (pkKit : PreKeyStoreSpec A b)
+@[expose] def OptRemoveStepEnv {A : RustAlloc} {b : BitVec 64} (pkKit : PreKeyStoreSpec A b)
     (pkKitEnv : PreKeyStoreBudgetEnv pkKit) (pst0 : pkKit.PkState) :
     Option (BitVec 32) → List AllocEvent → Prop
   | none => (· = [])
   | some opkId => RemoveStepEnv pkKit pkKitEnv pst0 opkId
 
 /-- Stage P4 `Prev1` `save_identity` error branch envelope (`SaveStepEnv` followed by drop cleanup). -/
-def StageP4Prev1SaveErrEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4Prev1SaveErrEnv {A : RustAlloc} {b : BitVec 64}
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (ist0 : ikit.IdState) (rem : AddrVal) (remoteIk : IdentityKey) : List AllocEvent → Prop :=
   SeqEnv (SaveStepEnv ikit ikitEnv ist0 rem remoteIk) FreeOnlyEvs
 
 /-- Stage P4 `Prev1` `mark_kyber_pre_key_used` error branch envelope. -/
-def StageP4Prev1MarkErrEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4Prev1MarkErrEnv {A : RustAlloc} {b : BitVec 64}
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (kpkKit : KyberPreKeyStoreSpec A b) (kpkKitEnv : KyberPreKeyStoreBudgetEnv kpkKit)
     (ist0 : ikit.IdState) (kst0 : kpkKit.KpkState)
@@ -601,7 +613,7 @@ def StageP4Prev1MarkErrEnv {A : RustAlloc} {b : BitVec 64}
     (SeqEnv (MarkStepEnv kpkKit kpkKitEnv kst0 kyberPreKeyId signedPreKeyId baseKey) FreeOnlyEvs)
 
 /-- Stage P4 `Prev1` `remove_pre_key` error branch envelope (`opkId? = some opkId`). -/
-def StageP4Prev1RemoveErrEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4Prev1RemoveErrEnv {A : RustAlloc} {b : BitVec 64}
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (kpkKit : KyberPreKeyStoreSpec A b) (kpkKitEnv : KyberPreKeyStoreBudgetEnv kpkKit)
     (pkKit : PreKeyStoreSpec A b) (pkKitEnv : PreKeyStoreBudgetEnv pkKit)
@@ -614,7 +626,7 @@ def StageP4Prev1RemoveErrEnv {A : RustAlloc} {b : BitVec 64}
       (SeqEnv (RemoveStepEnv pkKit pkKitEnv pst0 opkId) FreeOnlyEvs))
 
 /-- Stage P4 `Prev1` `store_session` branch envelope (`ok` and `storeErr`). -/
-def StageP4Prev1StoreStepEnv {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4Prev1StoreStepEnv {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (opsEnv : StorePrev1BudgetEnv kit)
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (pkKit : PreKeyStoreSpec A b) (pkKitEnv : PreKeyStoreBudgetEnv pkKit)
@@ -632,7 +644,7 @@ def StageP4Prev1StoreStepEnv {A : RustAlloc} {b : BitVec 64}
         (SeqEnv (StorePrev1StepEnv kit opsEnv sst0 rem G ss enc) FreeOnlyEvs)))
 
 /-- Combined Stage P4 `Prev1` allocation envelope covering all 5 outcomes without existentials. -/
-def StageP4Prev1Env {A : RustAlloc} {b : BitVec 64}
+@[expose] def StageP4Prev1Env {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (opsEnv : StorePrev1BudgetEnv kit)
     (ikit : IdentityStoreSpec A b) (ikitEnv : IdentityStoreBudgetEnv ikit)
     (pkKit : PreKeyStoreSpec A b) (pkKitEnv : PreKeyStoreBudgetEnv pkKit)
@@ -656,7 +668,7 @@ def StageP4Prev1Env {A : RustAlloc} {b : BitVec 64}
     sst0 ist0 pst0 kst0 rem remoteIk kyberPreKeyId signedPreKeyId baseKey opkId? G ss enc evs
 
 /-- 3-state `stageP4Prev1SharedPlaced` over `A.atState lim st s_pool`. -/
-def stageP4Prev1SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4Prev1SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (b : BitVec 64)
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b) (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
@@ -676,7 +688,7 @@ def stageP4Prev1SharedPlaced [LibsignalPlacement] {M : AllocCostModel}
     kyberPreKeyId signedPreKeyId pt peer remoteIk baseKey
 
 /-- Budget-threaded `stageP4Prev1PrePlaced` at `dpPollEntryPlaced + 0x34dc#64`. -/
-def stageP4Prev1PrePlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4Prev1PrePlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (b : BitVec 64)
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b) (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
@@ -700,7 +712,7 @@ def stageP4Prev1PrePlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- 3-state `stageP4Prev1ExitAtPlaced`, evaluating `A.pool` at exit state `sf` while indexing
 stack slots at `s.sp`. -/
-def stageP4Prev1ExitAtPlaced [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def stageP4Prev1ExitAtPlaced [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (b : BitVec 64)
     (kit : SessionStoreSpec A.repAlloc b) (ikit : IdentityStoreSpec A.repAlloc b)
     (pkKit : PreKeyStoreSpec A.repAlloc b) (kpkKit : KyberPreKeyStoreSpec A.repAlloc b)
@@ -858,7 +870,7 @@ structure CliStageP4Prev1Envs [LibsignalPlacement] {A : RustAlloc}
 /-- Budget-threaded placed Stage P4 (`+0x34dc → s0.readReg64 .x30`) contract over 1-element
 `previous_sessions` on `dpPollProgPlaced (cliGhostExterns g (cliExternsPlaced mmpl W))`, eliminating `PanicOomProp`
 (`onPanic := fun _ _ => False`). -/
-def StageP4Prev1VRegsPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP4Prev1VRegsPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (p4Envs : ∀ (B : RunBudgets) (F0 : FsFiles) (peer : AddrGhost)
       (pid kpkId spkId : BitVec 32) (kbk : PublicKey),
@@ -1153,7 +1165,7 @@ theorem stageP4PathCExitAt_entails_exit_placed [LibsignalPlacement] {M : AllocCo
 /-! ## 4. Budget-Threaded Path C Stage P2 Interface (`StageP2OverQpanCliPlacedStmt`) -/
 
 /-- Combined Path C Stage P2 (`+0x0868 → +0x1778` or early reject) allocation envelope. -/
-def StageP2OverEnv
+@[expose] def StageP2OverEnv
     (P2OverErrEnv P2OverOkEnv : DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
     (g : DecPkGhost) (r : SessionRecord (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   P2OverErrEnv g r evs ∨ P2OverOkEnv g r evs
@@ -1190,7 +1202,7 @@ inductive StageP2OverErrPlaced [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded general-`Qpan` CPS Stage P2 (`+0x0868 → +0x1778`) statement for Path C
 under `[LibsignalPlacement]`, eliminating `PanicOomProp`. -/
-def StageP2OverQpanCliPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2OverQpanCliPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (P2OverErrEnv P2OverOkEnv :
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop) : Prop :=
@@ -1311,7 +1323,7 @@ def StageP2OverQpanCliPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
 
 /-! ## `LibsignalFrozen` Counterparts -/
 
-def StageP2OverQpanCliFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def StageP2OverQpanCliFrozenPlacedStmt [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (P2OverErrEnv P2OverOkEnv :
       DecPkGhost → SessionRecord (List (BitVec 8)) → List AllocEvent → Prop) : Prop :=

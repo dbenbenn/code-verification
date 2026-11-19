@@ -9,16 +9,17 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.Fig8Atomic
-public import Computational.Proofs.ReductionDsl.PureAuxMacroLift
-public import Computational.Proofs.ReductionDsl.SM.Theorem1
-public import Computational.Proofs.ReductionDsl.SM.RedCKA
-public import Computational.Proofs.ReductionDsl.SM.RedPRNG
-public import Computational.Proofs.ReductionDsl.SM.RedFS
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.PrivRedQueries
+public import Computational.Proofs.ReductionDsl.Fig8Atomic -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.PureAuxMacroLift
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.RedFS
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.SessionShort -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.PrivRedQueries
+public import Computational.Proofs.ReductionDsl.SM.Engine -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -46,7 +47,7 @@ lemma sendsIn_other (P : Party) (t : ℕ) : P.other.sendsIn t = !P.sendsIn t := 
 
 /-- Ping-pong role invariant on `DDH.State`: when `P` sends next (`P.sendsIn (t + 1)`), `γ` holds
 a public point `.pub T`; otherwise `γ` holds a secret scalar `.exp x`. -/
-def DdhRoleOk {Sc Pt : Type} (P : Party) (t : ℕ) (γ : CKA.DDH.State Sc Pt) : Prop :=
+@[expose] def DdhRoleOk {Sc Pt : Type} (P : Party) (t : ℕ) (γ : CKA.DDH.State Sc Pt) : Prop :=
   if P.sendsIn (t + 1) then ∃ T, γ = .pub T else ∃ x, γ = .exp x
 
 lemma ddhRoleOk_initA {Pt : Type} [Zero Pt] (Dh : DHFun (BitVec 256) Pt) (k : BitVec 256) :
@@ -88,7 +89,7 @@ section CkaGameBridge
 variable {Pt : Type} [Zero Pt]
 
 /-- Ping-pong state invariant for `CKA.GameState` on `dhScheme Dh`. -/
-def CkaStateInv (s : CKA.GameState (CKA.DDH.State (BitVec 256) Pt) Pt) : Prop :=
+@[expose] def CkaStateInv (s : CKA.GameState (CKA.DDH.State (BitVec 256) Pt) Pt) : Prop :=
   (∀ P, DdhRoleOk P (s.epoch P) (s.st P)) ∧
   (s.epoch .A = s.epoch .B ∨
     (s.epoch .A = s.epoch .B + 1 ∧ Party.A.sendsIn (s.epoch .A) = true) ∨
@@ -319,7 +320,7 @@ end CkaGameBridge
 section RSReachCapBridge
 
 /-- Step-capped `RSReachB` invariant: for `k ≤ qMax`, `rs` satisfies `RSReachB maxSkip k rs`. -/
-def RSReachCap {CK MK : Type} (maxSkip qMax k : ℕ)
+@[expose] def RSReachCap {CK MK : Type} (maxSkip qMax k : ℕ)
     (v : FSAEAD.RatchetReceiverState CK MK) : Prop :=
   k ≤ qMax → RSReachB maxSkip k v
 
@@ -474,7 +475,7 @@ lemma badSendMsg_chall_false {St Msg Coins C : Type} {ok : Msg → Bool}
   simpa [SessionShort.badSendMsg, Bool.or_eq_false_iff] using h
 
 /-- Local party-role invariant for `hooksPRNG` and `hooksFS` (where virtual CKA state is `Γ`). -/
-def LocalPartyInv {Pt σV ssV rsV : Type} (P : Party)
+@[expose] def LocalPartyInv {Pt σV ssV rsV : Type} (P : Party)
     (vp : VP (CKA.DDH.State (BitVec 256) Pt) Pt σV ssV rsV) : Prop :=
   vp.id = P ∧ DdhRoleOk P vp.tcur vp.γ
 
@@ -633,7 +634,7 @@ lemma vRecv_localCKA_eq
           subst hmem2 <;> cases hEq
         exact hs₁
 
-def AllPartiesInv (es : EState (VP (CKA.DDH.State (BitVec 256) Pt) Pt σV ssV rsV) M (Header Pt × E) HS) :
+@[expose] def AllPartiesInv (es : EState (VP (CKA.DDH.State (BitVec 256) Pt) Pt σV ssV rsV) M (Header Pt × E) HS) :
     Prop :=
   ∀ P : Party, LocalPartyInv P (es.g.st P)
 
@@ -1148,14 +1149,14 @@ abbrev ckaFullImpl [SampleableType Pt]
     (StateT (CKA.GameState (CKA.DDH.State (BitVec 256) Pt) Pt) ProbComp) +
   CKA.oracleImpl cka Δ tStar
 
-def OptPartySync (sc : CKA.GameState (CKA.DDH.State (BitVec 256) Pt) Pt) (P : Party)
+@[expose] def OptPartySync (sc : CKA.GameState (CKA.DDH.State (BitVec 256) Pt) Pt) (P : Party)
     (vp : VP (Option (CKA.DDH.State (BitVec 256) Pt)) Pt RSt SS RS) : Prop :=
   vp.id = P ∧
   match vp.γ with
   | some γ => DdhRoleOk P vp.tcur γ
   | none => vp.tcur = sc.epoch P
 
-def OptCKASync {HS : Type}
+@[expose] def OptCKASync {HS : Type}
     (es : EState (VP (Option (CKA.DDH.State (BitVec 256) Pt)) Pt RSt SS RS) M (Header Pt × E) HS)
     (sc : CKA.GameState (CKA.DDH.State (BitVec 256) Pt) Pt) : Prop :=
   CkaStateInv sc ∧ (es.abort = false → ∀ P : Party, OptPartySync sc P (es.g.st P))

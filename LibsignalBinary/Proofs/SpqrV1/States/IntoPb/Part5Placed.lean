@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Defs
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.IntoPbCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.IntoPbCodeSym -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.StoreCommon
+import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.SessionStoreFutures.LoadHelpers
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb` (Block `334`): Shared Helpers for Arms 7, 8, and 9
@@ -23,7 +25,7 @@ Relocatable `[LibsignalPlacement]` counterparts of the OOM panic helpers at `+17
 Block `334`, re-exporting pure and separation-logic `vecU8` / `Ct1Sent` helpers from `Part5.lean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -52,7 +54,7 @@ set_option linter.unusedSimpArgs false
 
 open CryptoVerification.SpqrV1.States.IntoPb.Placed
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnOff
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm, local wp_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-- Relocatable (`[LibsignalPlacement]`) bundle of the four allocation/memory hook

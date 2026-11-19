@@ -9,22 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExactBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedABudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Budget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.EncodeToVecCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExactBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlaced
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedABudget
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCSBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBasePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4Budget
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.CalleeBridges
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.MsgEncPlacedCS -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncoderBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarint4BaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedA
 
 /-!
 # Budget-Threaded `[LibsignalPlacement]` Exact-Capacity `PolynomialEncoder::encode [local#2]` (`Block 316`)
@@ -34,7 +39,7 @@ contracts for `PolynomialEncoder::encode [local#2]` on `lsProg_316 H`, together 
 for discharging unreachable reallocation paths and the `Block 426` callee bridges.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -135,7 +140,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-- Enforced `BudgetLimits` (`staticBytes = 1 > physCap = 0`) under which every allocation event
     is uninhabited (`¬ FitsEvent`), discharging unreachable `do_reserve_and_handle` calls along
     proven `0`-allocation paths without requiring allocator hooks. -/
-def impossibleEnforcedLimits : BudgetLimits :=
+@[expose] def impossibleEnforcedLimits : BudgetLimits :=
   { staticCount := 0, staticBytes := 1, physCap := 0, enforced := true }
 
 theorem not_fitsEvent_impossible {M : AllocCostModel} (st : M.σ) (ev : AllocEvent) :
@@ -174,7 +179,7 @@ private theorem vmPreserved_symm {s s' : State} (h : VmPreserved s s') :
 /-- `VmPreserved`-recording `RustCliAllocBudget M` wrapper sharing `A.live` and `A.block_valid`
     (`(vmTrackBudget A s_init).repAlloc = A.repAlloc`): at `impossibleEnforcedLimits` its `pool` is
     `⌜VmPreserved s_init s⌝`, and at `zeroBudgetLimits` its `pool` is `⌜PoolPreserved s_init s⌝`. -/
-def vmTrackBudget {M : AllocCostModel} (A : RustCliAllocBudget M) (s_init : State) :
+@[expose] def vmTrackBudget {M : AllocCostModel} (A : RustCliAllocBudget M) (s_init : State) :
     RustCliAllocBudget M where
   pool := fun lim _ s =>
     if lim.enforced then ⌜VmPreserved s_init s⌝ else ⌜PoolPreserved s_init s⌝

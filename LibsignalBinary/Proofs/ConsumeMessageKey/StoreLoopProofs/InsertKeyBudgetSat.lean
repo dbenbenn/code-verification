@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.DefsBudgetSat -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.InsertKeyBudget -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.InsertKeyBudget
+import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove
 import LibsignalBinary.Proofs.Common.HookTrace
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
@@ -21,6 +21,8 @@ meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.StoreLoopProofs.InsertKey -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
 /-!
 # `HookSat` Sibling of `InsertKeyBudget` (`SegS3`, Block `24`)
@@ -163,7 +165,7 @@ private theorem vecBuf_messageKeyAt_bounds (A : RustAlloc) (cap ptr : BitVec 64)
     apply Entails.pure_right ⟨hlen, hcap_lt, hptr⟩
     exact Entails.pure_right ⟨hlen, hcap_lt, hptr⟩ (Entails.refl _)
 
-private def insertKeyFrame (A : RustAlloc) (img : Obj.Image) (x : ConsumeMessageKeyGhost)
+private def insertKeyFrame [LibsignalPlacement] (A : RustAlloc) (img : Unit) (x : ConsumeMessageKeyGhost)
     (Gc : RatchetGhost) (stc : RatchetState) (ckc : ChainKey)
     (ci : Nat) (chc : ReceiverChain) (cg : ChainGhost) (s0 : State) : SepProp :=
   let chainPtr := Gc.chainsPtr + BitVec.ofNat 64 (ci * 104)
@@ -179,8 +181,8 @@ private def insertKeyFrame (A : RustAlloc) (img : Obj.Image) (x : ConsumeMessage
   cmkLoopFrame s0.sp x.ret x.counter ∗
   cmkSavedRegs s0.sp s0
 
-private theorem insertKeyState_chains_len (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (img : Obj.Image) (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
+private theorem insertKeyState_chains_len [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+    (img : Unit) (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
     (ckc : ChainKey) (seedPtr : BitVec 64) (s0 : State) :
     (cmkLoopHeap A img x Gc stc ckc s0 ∗ vecU8Buf A 32#64 seedPtr (ckc.messageKeys F).seed) ⊢
       ⌜Gc.chains.length = stc.receiverChains.length⌝ ∗
@@ -191,8 +193,8 @@ private theorem insertKeyState_chains_len (F : ShaState → List (BitVec 8) → 
   rintro ⟨h1, h2, h3⟩
   exact Entails.pure_right h1 (Entails.pure_right ⟨h1, h2, h3⟩ (Entails.refl _))
 
-private theorem insertKeyState_split_active (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
-    (img : Obj.Image) (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
+private theorem insertKeyState_split_active [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState) (A : RustAlloc)
+    (img : Unit) (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost) (stc : RatchetState)
     (ckc : ChainKey) (ci : Nat) (chc : ReceiverChain)
     (seedPtr : BitVec 64) (s0 : State)
     (hchc : stc.receiverChains[ci]? = some chc)
@@ -356,8 +358,8 @@ private theorem insertKeyState_split_active (F : ShaState → List (BitVec 8) �
   apply sepConj_mono_left
   exact Entails.pure_right ⟨h1, h2, h3, h4, h5, h6, h7⟩ (by rw [emp_sepConj]; exact Entails.refl _)
 
-private theorem insertKeyPost_entails_evictOldestKeyHeap (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustAlloc) (img : Obj.Image) (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost)
+private theorem insertKeyPost_entails_evictOldestKeyHeap [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+    (A : RustAlloc) (img : Unit) (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost)
     (stc : RatchetState) (ckc : ChainKey) (ci : Nat) (chc : ReceiverChain)
     (cg : ChainGhost) (mkCap1 mkPtr1 seedPtr : BitVec 64) (s0 : State)
     (hlen2000 : chc.messageKeys.length = 2000) :
@@ -369,8 +371,8 @@ private theorem insertKeyPost_entails_evictOldestKeyHeap (F : ShaState → List 
   rw [hlen2000]
   exact Entails.of_eq (by sep_ac_rfl)
 
-private theorem insertKeyPost_entails_cmkLoopHeap_D (F : ShaState → List (BitVec 8) → ShaState)
-    (A : RustAlloc) (img : Obj.Image) (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost)
+private theorem insertKeyPost_entails_cmkLoopHeap_D [LibsignalPlacement] (F : ShaState → List (BitVec 8) → ShaState)
+    (A : RustAlloc) (img : Unit) (x : ConsumeMessageKeyGhost) (Gc : RatchetGhost)
     (stc : RatchetState) (ckc : ChainKey) (ci : Nat) (chc : ReceiverChain)
     (cg : ChainGhost) (mkCap1 mkPtr1 seedPtr : BitVec 64) (s0 : State)
     (hci_st : ci < stc.receiverChains.length)

@@ -29,15 +29,15 @@ set_option autoImplicit false
 namespace Symbolic.BugInjection.Disproofs.Impl.WeakState.Nodes
 
 open Symbolic.BugInjection (cliCompShape)
-open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (cliCompFitsPinned)
+open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (CliSetupMatchesPinned)
 
 #guard CryptoVerification.BugInjection.mutant == "cheval26-weak-state"
 
 /-- No symbolic execution explains the `Cheval26WeakStateIdx1Cli` trace under any interpretation
-and setup records admitted by `cliCompFitsPinned setup`. -/
+and setup records admitted by `CliSetupMatchesPinned setup`. -/
 theorem spec_half_pinned :
     cliCompShape.SpecHalf
-      (cliCompFitsPinned Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.setup)
+      (CliSetupMatchesPinned Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.setup)
       Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.trace :=
   Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.CliBridge.spec_half_pinned
 

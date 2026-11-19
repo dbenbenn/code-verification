@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 
 /-!
@@ -20,7 +20,7 @@ Proves ghost-free length bounds for protobuf field encodings (`encSession`, `enc
 deserialization scope predicates (`pureBinCanonSession_of_deserializeScopeP`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

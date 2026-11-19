@@ -9,15 +9,30 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5AfterPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5BufDeallocPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopDropPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5AfterPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5BufDeallocPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopDropPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
 meta import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.SignalSession.Cli.Dir.Path.Common
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Iface -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5IfacePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Post-Entries Convergence & M5 Completion Hop (Block `617`)
@@ -27,7 +42,7 @@ advancing `A.pool` by `FreeOnlyEvs`) and `m5_done_placed` (`M+0xadc → M+0xf70`
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -59,7 +74,7 @@ open LibsignalBinary.Heap
   (AllocCostModel AllocEvent BudgetLimits FreeOnlyEvs RustCliAllocBudget)
 open LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget (AllocContractsFsPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5BufDeallocPlacedBudget
-  (m5BufDeallocEnv_freeOnly m5_buf_dealloc_placed)
+  (m5BufDeallocEnv_freeOnly m5_buf_dealloc_placed m5_buf_dealloc_placed_fs)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5LoopDropPlacedBudget
   (m5_entry_drop_loop_placed)
 open LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5WorkPlacedBudget
@@ -79,8 +94,8 @@ namespace LoopDrop
 set_option maxHeartbeats 1600000 in
 /-- Budget-threaded shared convergence tail (`M+0xa6c .. M+0xa80 -> M+0xa90 -> M+0xabc -> AtM5LoopPlaced (k + 1)`)
 entered once Loop A or Loop B has committed all `curEntries ≠ []` of `Dir k`, advancing `A.pool` by
-`FreeOnlyEvs`. -/
-theorem m5_after_entries_placed [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
+`FreeOnlyEvs` and exposing `sf.fs = s.fs`. -/
+theorem m5_after_entries_placed_fs [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
     {H : LibsignalHooks} {io : IoModel}
     {F0 : FsFiles} {tr0 : List TraceEvent} {g : StoresGhost}
@@ -117,6 +132,7 @@ theorem m5_after_entries_placed [LibsignalPlacement] {CodeOk : Memory → Prop} 
     (hnext : ∀ (sf : State) (evs : List AllocEvent),
       FreeOnlyEvs evs →
       AtM5LoopPlaced CodeOk io F0 tr0 g s0 sf n buf (k + 1) →
+      sf.fs = s.fs →
       SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) sf
         (m5LoopMemPlaced (A.atState lim (M.stepEvents evs st) sf)
           s0 stk n outCap outPtr inCap inPtr buf out inp ps g (k + 1))
@@ -200,7 +216,7 @@ theorem m5_after_entries_placed [LibsignalPlacement] {CodeOk : Memory → Prop} 
   have hexit := m5Work_exit_to_next_placed A.repAlloc fsp outCap outPtr (BitVec.ofNat 64 out.length)
     inCap inPtr g hk curCap curPtr (fsp + 0x1c8#64) (BitVec.ofNat 64 (k + 1))
     v40 v48 v58 v458 v460 v468
-  refine m5_buf_dealloc_placed (st := M.stepEvents evs1 st)
+  refine m5_buf_dealloc_placed_fs (st := M.stepEvents evs1 st)
     (io := io) (F0 := F0) (tr0 := tr0) (g := g) (stk := stk) (n := n)
     (outCap := outCap) (outPtr := outPtr) (inCap := inCap) (inPtr := inPtr)
     (buf := buf) (curCap := curCap) (curPtr := curPtr)
@@ -249,9 +265,58 @@ theorem m5_after_entries_placed [LibsignalPlacement] {CodeOk : Memory → Prop} 
     rw [hreord, hmerge_buf]
     refine Entails.trans (sepConj_mono_left hexit) ?_
     exact Entails.of_eq (by sep_ac_rfl)
-  · intro sf evs2 hevs2 hat
+  · intro sf evs2 hevs2 hat hfsf
     rw [← M.stepEvents_append evs1 evs2 st]
     exact hnext sf (evs1 ++ evs2) (hf1.append (m5BufDeallocEnv_freeOnly curCap hevs2)) hat
+      (hfsf.trans (by simp only [hfsm, arm64_norm]))
+
+/-- Budget-threaded shared convergence tail (`M+0xa6c .. M+0xa80 -> M+0xa90 -> M+0xabc -> AtM5LoopPlaced (k + 1)`)
+entered once Loop A or Loop B has committed all `curEntries ≠ []` of `Dir k`, advancing `A.pool` by
+`FreeOnlyEvs`. -/
+theorem m5_after_entries_placed [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCodeInv CodeOk]
+    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
+    {H : LibsignalHooks} {io : IoModel}
+    {F0 : FsFiles} {tr0 : List TraceEvent} {g : StoresGhost}
+    {s0 s : State} {stk n k : Nat}
+    {outCap outPtr inCap inPtr buf curCap curPtr v40 v48 v58 v458 v460 v468 : BitVec 64}
+    {out inp : List (BitVec 8)} {ps : List (BitVec 64 × List (BitVec 8))}
+    {curEntries : List (List (BitVec 8) × List (BitVec 8))}
+    {P : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
+    (hA : AllocContractsFsPlaced A lim H)
+    (hstk : mainFrameSize + extHookStack ≤ stk)
+    (hstk64 : stk ≤ 2 ^ 63)
+    (hk : k < 8)
+    (hne : curEntries ≠ [])
+    (hs : InMainPlaced CodeOk s0 s 0xa6c)
+    (hx19 : s.readReg64 (.gpr 19#5) = buf)
+    (hx20 : s.readReg64 (.gpr 20#5) = BitVec.ofNat 64 curEntries.length)
+    (hx24 : s.readReg64 (.gpr 24#5) = BitVec.ofNat 64 n)
+    (hfiles : commitFiles io.wr F0 (writesBefore g (k + 1)) = some s.fs.files)
+    (htr0 : tr0 <+: s.trace)
+    (hstdout : ProcessOutcome.traceStreamBytes .stdout s.trace =
+      ProcessOutcome.traceStreamBytes .stdout tr0)
+    (hP : P ⊢ vecBuf A.repAlloc 48 8 (dirEntryAt A.repAlloc) curCap curPtr curEntries ∗
+      m5ScratchPlaced (s0.sp - BitVec.ofNat 64 mainFrameSize)
+        curCap curPtr (s0.sp - BitVec.ofNat 64 mainFrameSize + 0x1c8#64) (BitVec.ofNat 64 (k + 1))
+        v40 v48 v58 v458 v460 v468 ∗
+      m5WorkRestPlaced A.repAlloc (s0.sp - BitVec.ofNat 64 mainFrameSize)
+        outCap outPtr (BitVec.ofNat 64 out.length) inCap inPtr g k ∗
+      ownedBytes A.repAlloc outCap outPtr (BitVec.ofNat 64 out.length) out ∗
+      ownedBytes A.repAlloc inCap inPtr (BitVec.ofNat 64 inp.length) inp ∗
+      argsBuf A.repAlloc (BitVec.ofNat 64 n) buf ps ∗
+      mainSaved s0 ∗
+      stackAt (s0.sp - BitVec.ofNat 64 mainFrameSize) (stk - mainFrameSize) ∗
+      A.pool lim st s ∗ anyHeap)
+    (hnext : ∀ (sf : State) (evs : List AllocEvent),
+      FreeOnlyEvs evs →
+      AtM5LoopPlaced CodeOk io F0 tr0 g s0 sf n buf (k + 1) →
+      SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) sf
+        (m5LoopMemPlaced (A.atState lim (M.stepEvents evs st) sf)
+          s0 stk n outCap outPtr inCap inPtr buf out inp ps g (k + 1))
+        Q Qp oom) :
+    SepWPp ((blkPC_617).rebase (blkPl_617).base H) (s0.readReg64 .lr) s P Q Qp oom :=
+  m5_after_entries_placed_fs hA hstk hstk64 hk hne hs hx19 hx20 hx24 hfiles htr0 hstdout hP
+    (fun sf evs hf hat _ => hnext sf evs hf hat)
 
 set_option maxHeartbeats 1600000 in
 /-- Budget-threaded completion hop: after all 8 `Dir`s succeed (`AtM5LoopPlaced … 8` at `M+0xadc`),
@@ -323,6 +388,6 @@ theorem m5_done_placed [LibsignalPlacement] {CodeOk : Memory → Prop} [LsCodeIn
 
 end LoopDrop
 
-export LoopDrop (m5_after_entries_placed m5_done_placed)
+export LoopDrop (m5_after_entries_placed m5_after_entries_placed_fs m5_done_placed)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5AfterPlacedBudget

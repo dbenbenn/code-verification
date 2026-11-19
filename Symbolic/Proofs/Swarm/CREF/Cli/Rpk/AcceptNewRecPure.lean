@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.CBad
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.QuietTransferPure
+public import Symbolic.Proofs.Swarm.CREF.CBad -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.QuietTransferPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 
 /-!
@@ -21,7 +21,7 @@ session snapshot and a valid representation of `body`, and shows that `Invisible
 prefixes and suffixes induce `QuietExt` trace extensions.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +35,7 @@ open CryptoProofLib.Refinement (ExternInterpretation)
 
 /-- Asserts that a `decrypt` or `decryptSkipped` move reads a current snapshot (`isCurrentSnapshot`)
 and a message term in `recvRepresentations` for `body`; holds trivially for other moves. -/
-def RcvCurrentRead (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
+@[expose] def RcvCurrentRead (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics) (g : Ghost)
     (ms : List Move) (body : HwBytes) : Move → Prop
   | m@(.decrypt _ stateIdx ..) => TripleRatchet.isCurrentSnapshot (runTraceMoves r ms) stateIdx = true ∧
       ∀ t, rcvMoveTerm (runTraceMoves r ms) m = some t → t ∈ recvRepresentations interpretation r S g ms body

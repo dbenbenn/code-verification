@@ -9,19 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 public meta import ProofLib -- shake: keep
 public meta import Lean -- shake: keep
-public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget
-public import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
+public import LibsignalBinary.Proofs.RecordCodecs.DepsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M3Helpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M4Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R0ProofPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.CommonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.TripleRatchet.Getters.IdentityBudget
 public import ProofLib.SepLogic.Bytes
 public import ProofLib.SepLogic.WP.Apply
 public import ProofLib.SepLogic.WPp
@@ -29,6 +29,20 @@ import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import Init.Data.String.Defs
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Kits -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.IoHooks -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.WritePaths -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Hops -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.StatesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.SkeletonPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.IdentityKeyDecode.Layout
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1b.ErrCleanupPlacedBudget
 
 /-!
 # Helpers and VM-Preserving `IdentityKey::decode` for Budget-Threaded Arm `R1a`
@@ -37,7 +51,7 @@ Proves VM-preserving `identityKeyDecode_vm_placed_ok` (Block `18`) and provides 
 `setMem` rewrites, `.rodata` string witnesses, and post-dispatch error sub-hops on Block `579`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -370,9 +384,9 @@ theorem identityKeyDecode_vm_placed_ok [LibsignalPlacement] {callerProg : Progra
 
 abbrev r1a_CodeOk [LibsignalPlacement] : Memory → Prop := LibsignalCodeRoLoaded lsmpl
 
-def r1a_idKeySym : String := "libsignal_cli:.rodata..Lanon.50"
-def r1a_unreadSym : String := "libsignal_cli:.rodata..Lanon.65"
-def r1a_herrSym : String := "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error"
+@[expose] def r1a_idKeySym : String := "libsignal_cli:.rodata..Lanon.50"
+@[expose] def r1a_unreadSym : String := "libsignal_cli:.rodata..Lanon.65"
+@[expose] def r1a_herrSym : String := "_RNvNtCs69KKACWg7bl_5alloc7raw_vec12handle_error"
 
 theorem r1a_utf8_idkey :
     utf8 "identity-key" =
@@ -587,7 +601,7 @@ theorem r1a_addrUpperAt_close (a : BitVec 64) (meG : AddrGhost) (w1 : BitVec 64)
   rw [ProofLib.pointsTo64_eq_pointsToBytes (a + 8#64) w1, hlist, pointsToBytes_cons (a + 8#64), ha9]
   exact sepConj_mono_right (sepConj_mono_right (htl ▸ pointsToBytes_to_memRegion (a + 9#64) tail))
 
-def r1a_peerGhostOf (peerV : AddrV) (w : CallW) : AddrGhost :=
+@[expose] def r1a_peerGhostOf (peerV : AddrV) (w : CallW) : AddrGhost :=
   { name := { cap := w.w0, ptr := w.w1, bytes := peerV.name }, device := peerV.device }
 
 theorem r1a_pack_peer (A : RustAlloc) (a : BitVec 64) (peerV : AddrV) (w : CallW) :
@@ -689,15 +703,15 @@ theorem r1a_decode_err_unified (A : RustAlloc) (a : BitVec 64) (ikB : Bytes)
     exact Entails.trans (sepConj_mono_right (sepConj_mono_left (pointsTo64_entails_memRegion _ _)))
       (Entails.of_eq (by rw [hm]))
 
-def r1a_localsBound : List (Nat × Nat × SepProp) → Nat
+@[expose] def r1a_localsBound : List (Nat × Nat × SepProp) → Nat
   | [] => runLocalBytes
   | (o, _, _) :: _ => o
 
-def r1a_localsEnd (off : Nat) : List (Nat × Nat × SepProp) → Nat
+@[expose] def r1a_localsEnd (off : Nat) : List (Nat × Nat × SepProp) → Nat
   | [] => off
   | (o, n, _) :: cs => r1a_localsEnd (o + n) cs
 
-def r1a_localsCtx (fsp : BitVec 64) :
+@[expose] def r1a_localsCtx (fsp : BitVec 64) :
     Nat → List (Nat × Nat × SepProp) → Nat → Nat → List (Nat × Nat × SepProp) → SepProp
   | off, [], o, n, cs₂ =>
       memRegion (fsp + BitVec.ofNat 64 off) (o - off) ∗ runLocalsFrom fsp (o + n) cs₂
@@ -918,7 +932,7 @@ theorem r1a_buf22_merge (buf d2 : BitVec 64) :
   rw [show (22 : Nat) = 14 + 8 from rfl, ProofLib.memRegion_split buf 14 8 (by decide)]
   exact sepConj_mono_right (pointsTo64_entails_memRegion (buf + 14#64) d2)
 
-def r1a_ownedSlack (A : RustAlloc) (cap ptr : BitVec 64) (bs : Bytes) : SepProp :=
+@[expose] def r1a_ownedSlack (A : RustAlloc) (cap ptr : BitVec 64) (bs : Bytes) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     if cap = 0 then emp else A.live ptr cap.toNat 1 ∗ memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
 
@@ -1030,7 +1044,7 @@ theorem r1a_call_run [LibsignalPlacement] {α : Type} {H : LibsignalHooks} {g : 
           hcsm.2.2.2.2.2.2.2.2.2.2.2.trans hv_eq, hsp0_al⟩ hcsm htr hf)
 
 /-- Post-dispatch rejection continuation closed under trailing `FreeOnlyEvs` suffixes. -/
-def FreeRejK [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def FreeRejK [LibsignalPlacement] {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (H : LibsignalHooks) (g : RunCall) (s0 : State)
     (resStack : Nat) (Q Qp : State → SepProp → Prop) : Prop :=
   ∀ (s2 : State) (evs : List AllocEvent),

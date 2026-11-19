@@ -164,12 +164,6 @@ def encodeRecord (g : GhostState Bytes) : Bytes :=
 
 /-! ## The map to binary states, and the injection filter -/
 
-/-- **`binStateOf`**: the binary state of a session-model state: the same party, `encodeRecord`,
-the epoch bookkeeping. Used for the CLI scheme's initial states (`cliScheme`) and to relabel
-adversaries (`Adversary.relabel`). -/
-def binStateOf (g : GhostState Bytes) : BinState :=
-  ⟨g.party, encodeRecord g, EpochGhost.ofGhost g⟩
-
 /-- **`shortCiphertext`**: the injections the CLI games admit: shorter than `2^32` bytes
 (`cliPqLenOk`, `Computational/Specifications/Game/StatementPq.lean`). The relabelled adversary
 answers the others `none`, as the games do.

@@ -20,7 +20,7 @@ Defines `dropPreKeyMsgExactSpec` over `RustCliAllocBudget M` with a deallocation
 `AllocEvent` postcondition.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.dupNamespace false
@@ -35,7 +35,7 @@ open CryptoVerification.LibsignalPublicApiRepr (PreKeyMsgGhost preKeyMsgAt)
 
 /-- Exact-stack budget-threaded specification for `drop_glue::<PreKeySignalMessage>` recording
 only `.free` allocation events. -/
-def dropPreKeyMsgExactSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
+@[expose] def dropPreKeyMsgExactSpec (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec ((BitVec 64 × PreKeyMsgGhost × PreKeySignalMessage) × M.σ) where
   pre := fun ((a, g, m), st) s =>
     ⌜s.readReg64 .x0 = a⌝ ∗ preKeyMsgAt A.repAlloc g a m ∗

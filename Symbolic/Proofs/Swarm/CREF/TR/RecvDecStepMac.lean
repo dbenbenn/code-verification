@@ -55,7 +55,7 @@ Unfolds `(gamma' interpretation S g t).shape` across all composed `DY.BytesF` co
 proves that `Trunc.trunc8` is the unique term constructor producing a `Trunc8`-headed shape.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

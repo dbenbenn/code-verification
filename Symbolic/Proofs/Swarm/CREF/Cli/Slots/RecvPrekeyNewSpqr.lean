@@ -23,7 +23,7 @@ Proves the protobuf merge-loop roundtrip (`decodeState_spqrInitB_b2a_eq`) for Bo
 `spqrInitB` state in direction `b2a`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -145,7 +145,7 @@ private theorem unchunked_noHeaderReceived_mergeFieldsLoop_encodeRaw
   dsimp only [Bind.bind, Except.bind]
   rw [Symbolic.Swarm.TRREF.GrowthOoo.mergeFieldsLoop_nil]
 
-def b0HdrDecoderPb : CryptoVerification.LibsignalSpqrV1.PolynomialDecoder :=
+@[expose] def b0HdrDecoderPb : CryptoVerification.LibsignalSpqrV1.PolynomialDecoder :=
   { ptsNeeded := 48#32, polys := 16#32, pts := List.replicate 16 [], isComplete := false }
 
 private theorem b0HdrDecoderPb_mergeFieldsLoop (d : Nat) :
@@ -272,13 +272,13 @@ private theorem v1State_noHeaderReceived_mergeFieldsLoop_encodeRaw
   dsimp only [Bind.bind, Except.bind]
   rw [Symbolic.Swarm.TRREF.GrowthOoo.mergeFieldsLoop_nil]
 
-def b0VnPb (k : HwBytes) : CryptoVerification.LibsignalSpqrV1.VersionNegotiationPB :=
+@[expose] def b0VnPb (k : HwBytes) : CryptoVerification.LibsignalSpqrV1.VersionNegotiationPB :=
   { authKey := k
     direction := CryptoVerification.LibsignalSpqrV1.Direction.b2a.toI32
     minVersion := CryptoVerification.LibsignalSpqrV1.Version.v1.toI32
     chainParams := some CryptoVerification.LibsignalSpqrV1.DEFAULT_CHAIN_PARAMS.intoPb }
 
-def b0V1StatePb (F : ShaCompress) (k : HwBytes) : CryptoVerification.LibsignalSpqrV1.V1State :=
+@[expose] def b0V1StatePb (F : ShaCompress) (k : HwBytes) : CryptoVerification.LibsignalSpqrV1.V1State :=
   let a := (CryptoVerification.LibsignalSpqrV1.Authenticator.new F k 1#64).intoPb
   { innerState := some (.noHeaderReceived
       { uc := some { epoch := 1#64, auth := some a }, receivingHdr := some b0HdrDecoderPb }) }

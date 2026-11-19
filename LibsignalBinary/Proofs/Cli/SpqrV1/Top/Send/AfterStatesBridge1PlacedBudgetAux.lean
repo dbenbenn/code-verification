@@ -10,22 +10,26 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesBridge1Placed
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainPlacedBudget
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget
-public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesBridge1
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Drop.States1aPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesBridge1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SpqrV1.Chain.AddEpochHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ChainEpochBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Top.Send.AfterStatesBridge1
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainResolvePlacedBudget
 import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainStepPlacedBudget
 import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSlice
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.DefsPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
 
 /-!
 # Budget-Threaded `spqr::send` Phase 3b–3c Auxiliary Combinators and Envelopes
@@ -34,7 +38,7 @@ Defines the Phase 3b–3c allocator event envelopes, error cleanup steps, and `+
 chain step composition for `spqr::send::<signal_session_ratchet::Coins>`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -48,15 +52,16 @@ namespace LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesBridge1PlacedBud
 open Arm64 Arm64.Obj ProofLib ProofLib.ProgramReflection
 open CryptoGames.LibsignalSession (ShaCompress)
 open CryptoVerification
-  (LibsignalCodeLoaded LibsignalPlacement libsignalSessionCode lsmpl lsρ sepWP_seq_lscl
+  (LibsignalCodeLoaded LibsignalPlacement lsmpl lsρ sepWP_seq_lscl
    withLsCodeLoaded)
 open CryptoVerification.RustHeap (RustAlloc)
 open CryptoVerification.LibsignalTripleRatchet
   (LibsignalCodeRoLoaded spqrSendResultAt spqrSendStack withLsCodeRoLoaded)
 open CryptoVerification.LibsignalTripleRatchetRepr (noneCap)
 open CryptoVerification.LibsignalSpqrV1
-  (Bytes Chain ChainPB Epoch EpochSecret Error HkdfFn SpqrApiResult States Version
-   VersionNegotiationPB chainFromVersionNegotiation spqrAuthApi spqrPolyApi)
+  (Bytes Chain ChainError ChainPB ChainPanic ChainResult Epoch EpochSecret Error HkdfFn
+   SpqrApiResult States Version VersionNegotiationPB chainFromVersionNegotiation spqrAuthApi
+   spqrPolyApi)
 open CryptoVerification.SpqrV1.ProtoRepr (optChainPBAt optVersionNegotiationPBAt)
 open CryptoVerification.SpqrV1.ProtoRepr renaming chainPBAt → protoChainPBAt
 open CryptoVerification.SpqrV1.Drop (chunkedStatesAt)
@@ -64,7 +69,7 @@ open CryptoVerification.SpqrV1.ChainProofs
   (ChainAddEpochGhost ChainIntoPbCall ChainSendKeyGhost chainAddEpochStackX chainAt chainEpochSize
    chainIntoPbStackX chainRepr chainSendKeyStackX epochSecretAt sendKeyErrAt sendKeyPostAt)
 open CryptoVerification.SpqrV1.Top.DecodeState (vecU8Heap)
-open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation (chainErrorAt)
+open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation (chainErrorAt spqrErrorTag)
 open CryptoVerification.Cli.SpqrV1.Drop (chunkedStatesLocal1JumpTablePlacedAt)
 open CryptoVerification.Cli.SpqrV1.Top.Send
   (call_lscro_calleeStack_anyPanic of_sepWP_lscro_b1 panic_lscro_calleeStack_anyPanic
@@ -84,20 +89,26 @@ open LibsignalBinary.Proofs.SpqrV1.Chain.SendKeyHelpersBudget (ChainSendKeyAlloc
 open LibsignalBinary.Proofs.SpqrV1.Chain.IntoPbHelpersBudget
   (ChainIntoPbAllocEnv ChainIntoPbEnv chainIntoPbSpecX fitsEnv_chainIntoPbAllocEnv_of_chainIntoPbEnv)
 open LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget (ChainFromVersionNegotiationEnv)
+open LibsignalBinary.Proofs.SpqrV1.ErrorDisplayTag
+  (SpqrErrorValidTag spqrErrorTagCanonical spqrErrorTagCanonical_valid_of_ne_invalidParams
+   spqrSendResultDispAt spqrSendResultDispAt_entails_spqrSendResultAt)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainPlacedBudget
-  (DeallocOkPlaced step_drop_key_31784_placed step_err_31764_placed step_err_31794_placed)
+  (DeallocOkPlaced step_drop_key_31784_placed step_err_31764_disp_placed step_err_31764_placed
+   step_err_31794_disp_placed step_err_31794_placed)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainResolvePlacedBudget
   (step_branch_key_none_315b8_placed step_branch_key_some_315b8_placed
-   step_from_vn_none_3164c_placed step_post_from_pb_err_31510_placed
-   step_post_from_vn_err_31674_placed step_post_send_key_err_315f4_placed
-   step_post_send_key_ok_315f4_placed step_pre_add_epoch_315bc_placed
-   step_pre_send_key_315dc_placed)
+   step_from_vn_none_3164c_placed step_post_from_pb_err_31510_disp_placed
+   step_post_from_pb_err_31510_placed step_post_from_vn_err_31674_disp_placed
+   step_post_from_vn_err_31674_placed step_post_send_key_err_315f4_disp_placed
+   step_post_send_key_err_315f4_placed step_post_send_key_ok_315f4_placed
+   step_pre_add_epoch_315bc_placed step_pre_send_key_315dc_placed)
 open LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesChainStepPlacedBudget
-  (step_err_31600_placed step_post_chain_into_pb_31734_placed step_pre_chain_into_pb_316dc_placed)
+  (step_err_31600_disp_placed step_err_31600_placed step_post_chain_into_pb_31734_placed
+   step_pre_chain_into_pb_316dc_placed)
 
 variable [LibsignalPlacement]
 
-attribute [local irreducible] libsignalSessionCode Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
+attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff Obj.lookup
 
 /-- Definitional equality bridge between `States1aPlacedBudget.dropChunkedStatesLocal1PlacedSpec` and
     `AfterStatesChainPlacedBudget.dropChunkedStatesLocal1PlacedSpec`. -/
@@ -368,16 +379,227 @@ theorem step_send_key_err_315f4_to_31a3c_placed {M : AllocCostModel} {A : RustCl
   exact ⟨evs, hevs, hrunf, htrf.trans htr1, hspf, hx23f, hvregsf.trans hvregs1,
     Entails.trans hQ (Entails.of_eq (by sep_ac_rfl))⟩
 
+theorem step_from_pb_err_31510_to_31a3c_disp_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {F : ShaCompress} {ext : String → Option (State → State)}
+    (hdealloc : DeallocOkPlaced M A lim ext)
+    (hdrop_states : subroutine_ok (spqrSendPlacedProg ext)
+      (lsmpl.base 443) (withLsCodeLoaded lsmpl (dropChunkedStatesLocal1PlacedSpec M A lim F)))
+    (s : State) (st : M.σ) (ret x21 x27 x23 : BitVec 64) (err : Error)
+    (st1 : States spqrPolyApi (spqrAuthApi F)) (key : Option EpochSecret) (Frame : SepProp)
+    (htag : SpqrErrorValidTag (spqrErrorTag err))
+    (hcl : LibsignalCodeLoaded lsmpl s.mem) (hpc : s.pc = spqrSendPlacedEntry + 3252#64)
+    (hrun : s.status = .Running) (hx19 : s.readReg64 .x19 = ret)
+    (hx21 : s.readReg64 .x21 = x21) (hx23 : s.readReg64 .x23 = x23)
+    (hx26 : s.readReg64 .x26 = s.sp + 0x1260#64) (hx27 : s.readReg64 .x27 = x27)
+    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) :
+    SepWP (spqrSendPlacedProg ext) (spqrSendPlacedEntry + 4576#64) s
+      (chainErrorAt (s.sp + 0x1260#64) err ∗ memRegion (s.sp + 0x1060#64) 24 ∗ memRegion ret 72 ∗
+        chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗ optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
+        chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+      (fun sf Q => ∃ evs : List AllocEvent, FreeOnlyEvs evs ∧
+        sf.status = .Running ∧ sf.trace = s.trace ∧ sf.sp = s.sp ∧ sf.readReg64 .x23 = x23 ∧
+        calleeSavedVRegs sf = calleeSavedVRegs s ∧
+        (Q ⊢ spqrSendResultDispAt A.repAlloc ret none ∗ memRegion (s.sp + 0x1260#64) 88 ∗
+          memRegion (s.sp + 0x1060#64) 24 ∗ memRegion (s.sp + 0x190#64) 928 ∗ memRegion (s.sp + 0x1bc0#64) 16 ∗
+          chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim (M.stepEvents evs st) sf ∗
+          stackAt s.sp spqrSendCalleeStack ∗ Frame)) := by
+  have hstep1 := step_post_from_pb_err_31510_disp_placed (ext := ext) s err
+    (memRegion ret 72 ∗ chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗
+      optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
+      chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+    hpc hrun hx26 hsp_align
+  refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (sepWP_seq_lscl hcl (SepWP.mono hstep1 ?_))
+  intro s1 P1 hpc1 _ ⟨hvm1, hrun1, htr1, hsp1, hx19_1, hx21_1, hx23_1, hx27_1, hvregs1, hP1⟩ hcl1
+  have hsp1_align : (s1.sp &&& 15#64 == 0#64) = true := by rw [hsp1]; exact hsp_align
+  refine SepWP.weaken_pre hP1 ?_; wp_pull_exists; rename_i w1 w2 w3
+  wp_focus_pure; intro hw1_tag
+  wp_conv_pre => rw [← A.pool_of_vmPreserved hvm1, ← hsp1]
+  have hstep2 := step_err_31764_disp_placed hdealloc hdrop_states s1 st ret x21 x27 x23 w1 w2 w3 st1 key
+    (memRegion (s1.sp + 0x1260#64) 88 ∗ Frame)
+    (by dsimp only [BitVec.truncate] at hw1_tag ⊢; rw [hw1_tag]; exact htag)
+    hcl1 hpc1 hrun1 (hx19_1.trans hx19) (hx21_1.trans hx21) (hx27_1.trans hx27) (hx23_1.trans hx23) hsp1_align
+  refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (SepWP.mono hstep2 ?_)
+  intro sf Q _ _ ⟨evs, hevs, _, hrunf, htrf, hspf, hx23f, hvregsf, hQ⟩
+  rw [hsp1] at hspf hQ
+  exact ⟨evs, hevs, hrunf, htrf.trans htr1, hspf, hx23f, hvregsf.trans hvregs1,
+    Entails.trans hQ (Entails.of_eq (by sep_ac_rfl))⟩
+
+theorem step_from_vn_err_31674_to_31a3c_disp_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {F : ShaCompress} {ext : String → Option (State → State)}
+    (hdealloc : DeallocOkPlaced M A lim ext)
+    (hdrop_states : subroutine_ok (spqrSendPlacedProg ext)
+      (lsmpl.base 443) (withLsCodeLoaded lsmpl (dropChunkedStatesLocal1PlacedSpec M A lim F)))
+    (s : State) (st : M.σ) (ret x21 x27 x23 : BitVec 64) (err : Error)
+    (st1 : States spqrPolyApi (spqrAuthApi F)) (key : Option EpochSecret) (Frame : SepProp)
+    (htag : SpqrErrorValidTag (spqrErrorTag err))
+    (hcl : LibsignalCodeLoaded lsmpl s.mem) (hpc : s.pc = spqrSendPlacedEntry + 3608#64)
+    (hrun : s.status = .Running) (hx19 : s.readReg64 .x19 = ret)
+    (hx21 : s.readReg64 .x21 = x21) (hx23 : s.readReg64 .x23 = x23)
+    (hx26 : s.readReg64 .x26 = s.sp + 0x1260#64) (hx27 : s.readReg64 .x27 = x27)
+    (hsp_align : (s.sp &&& 15#64 == 0#64) = true) :
+    SepWP (spqrSendPlacedProg ext) (spqrSendPlacedEntry + 4576#64) s
+      (chainErrorAt (s.sp + 0x1260#64) err ∗ memRegion (s.sp + 0x590#64) 24 ∗ memRegion ret 72 ∗
+        chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗ optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
+        chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+      (fun sf Q => ∃ evs : List AllocEvent, FreeOnlyEvs evs ∧
+        sf.status = .Running ∧ sf.trace = s.trace ∧ sf.sp = s.sp ∧ sf.readReg64 .x23 = x23 ∧
+        calleeSavedVRegs sf = calleeSavedVRegs s ∧
+        (Q ⊢ spqrSendResultDispAt A.repAlloc ret none ∗ memRegion (s.sp + 0x1260#64) 88 ∗
+          memRegion (s.sp + 0x590#64) 24 ∗ memRegion (s.sp + 0x190#64) 928 ∗ memRegion (s.sp + 0x1bc0#64) 16 ∗
+          chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim (M.stepEvents evs st) sf ∗
+          stackAt s.sp spqrSendCalleeStack ∗ Frame)) := by
+  have hstep1 := step_post_from_vn_err_31674_disp_placed hdrop_states s st ret err st1
+    (optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗ Frame) htag hcl hpc hrun hx19 hx26 hsp_align
+  refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (SepWP.seq hstep1 ?_)
+  intro s1 P1 hpc1 _ ⟨evs₁, hevs₁, _, hrun1, htr1, hsp1, hx21_1, hx23_1, hx27_1, hvregs1, hP1⟩
+  have hsp1_align : (s1.sp &&& 15#64 == 0#64) = true := by rw [hsp1]; exact hsp_align
+  refine SepWP.weaken_pre hP1 ?_; wp_conv_pre => rw [← hsp1]
+  have hstep2 := step_drop_key_31784_placed hdealloc s1 (M.stepEvents evs₁ st) x21 x27 x23 key
+    (spqrSendResultDispAt A.repAlloc ret none ∗ memRegion (s1.sp + 0x1260#64) 88 ∗
+      memRegion (s1.sp + 0x590#64) 24 ∗ memRegion (s1.sp + 0x190#64) 928 ∗ chunkedStatesLocal1JumpTablePlacedAt ∗ Frame)
+    hpc1 hrun1 (hx21_1.trans hx21) (hx27_1.trans hx27) (hx23_1.trans hx23) hsp1_align
+  refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (SepWP.mono hstep2 ?_)
+  intro sf Q _ _ ⟨evs₂, hevs₂, _, hrunf, htrf, hspf, hx23f, hvregsf, hQ⟩
+  rw [hsp1] at hspf hQ
+  refine ⟨evs₁ ++ evs₂, FreeOnlyEvs.append hevs₁ hevs₂, hrunf, htrf.trans htr1, hspf, hx23f,
+    hvregsf.trans hvregs1, ?_⟩
+  rw [M.stepEvents_append]; exact Entails.trans hQ (Entails.of_eq (by sep_ac_rfl))
+
+theorem step_vn_none_3164c_to_31a3c_disp_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {F : ShaCompress} {ext : String → Option (State → State)}
+    (hdealloc : DeallocOkPlaced M A lim ext)
+    (hdrop_states : subroutine_ok (spqrSendPlacedProg ext)
+      (lsmpl.base 443) (withLsCodeLoaded lsmpl (dropChunkedStatesLocal1PlacedSpec M A lim F)))
+    (s : State) (st : M.σ) (ret x21 x27 x23 : BitVec 64)
+    (st1 : States spqrPolyApi (spqrAuthApi F)) (key : Option EpochSecret) (Frame : SepProp)
+    (hcl : LibsignalCodeLoaded lsmpl s.mem) (hpc : s.pc = spqrSendPlacedEntry + 3568#64)
+    (hrun : s.status = .Running) (hx19 : s.readReg64 .x19 = ret)
+    (hx21 : s.readReg64 .x21 = x21) (hx23 : s.readReg64 .x23 = x23)
+    (hx27 : s.readReg64 .x27 = x27) (hsp_align : (s.sp &&& 15#64 == 0#64) = true) :
+    SepWP (spqrSendPlacedProg ext) (spqrSendPlacedEntry + 4576#64) s
+      (optVersionNegotiationPBAt A.repAlloc (s.sp + 0x30#64) none ∗ memRegion ret 72 ∗
+        chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗ optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
+        chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+      (fun sf Q => ∃ evs : List AllocEvent, FreeOnlyEvs evs ∧
+        sf.status = .Running ∧ sf.trace = s.trace ∧ sf.sp = s.sp ∧ sf.readReg64 .x23 = x23 ∧
+        calleeSavedVRegs sf = calleeSavedVRegs s ∧
+        (Q ⊢ spqrSendResultDispAt A.repAlloc ret none ∗ optVersionNegotiationPBAt A.repAlloc (s.sp + 0x30#64) none ∗
+          memRegion (s.sp + 0x190#64) 928 ∗ memRegion (s.sp + 0x1bc0#64) 16 ∗
+          chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim (M.stepEvents evs st) sf ∗
+          stackAt s.sp spqrSendCalleeStack ∗ Frame)) := by
+  have hstep1 := step_from_vn_none_3164c_placed (M := M) (A := A) (ext := ext) s
+    (memRegion ret 72 ∗ chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗
+      optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗
+      chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+    hpc hrun hsp_align
+  refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (sepWP_seq_lscl hcl (SepWP.mono hstep1 ?_))
+  intro s1 P1 hpc1 _ ⟨hvm1, hrun1, htr1, hsp1, hx19_1, hx21_1, hx23_1, hx27_1, hvregs1, hP1⟩ hcl1
+  have hsp1_align : (s1.sp &&& 15#64 == 0#64) = true := by rw [hsp1]; exact hsp_align
+  refine SepWP.weaken_pre hP1 ?_; wp_conv_pre => rw [← A.pool_of_vmPreserved hvm1, ← hsp1]
+  have hstep2 := step_err_31794_disp_placed hdealloc hdrop_states s1 st ret x21 x27 x23 st1 key
+    (optVersionNegotiationPBAt A.repAlloc (s1.sp + 0x30#64) none ∗ Frame)
+    hcl1 hpc1 hrun1 (hx19_1.trans hx19) (hx21_1.trans hx21) (hx27_1.trans hx27) (hx23_1.trans hx23) hsp1_align
+  refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (SepWP.mono hstep2 ?_)
+  intro sf Q _ _ ⟨evs, hevs, _, hrunf, htrf, hspf, hx23f, hvregsf, hQ⟩
+  rw [hsp1] at hspf hQ
+  exact ⟨evs, hevs, hrunf, htrf.trans htr1, hspf, hx23f, hvregsf.trans hvregs1,
+    Entails.trans hQ (Entails.of_eq (by sep_ac_rfl))⟩
+
+theorem step_send_key_err_315f4_to_31a3c_disp_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {F : ShaCompress} {ext : String → Option (State → State)}
+    (hdealloc : DeallocOkPlaced M A lim ext)
+    (hdrop_slice : subroutine_ok (spqrSendPlacedProg ext)
+      (lsmpl.base 446) (withLsCodeLoaded lsmpl (dropChainEpochSliceSpec M A lim)))
+    (hdrop_states : subroutine_ok (spqrSendPlacedProg ext)
+      (lsmpl.base 443) (withLsCodeLoaded lsmpl (dropChunkedStatesLocal1PlacedSpec M A lim F)))
+    (s : State) (st : M.σ) (ret x23 : BitVec 64) (err : Error)
+    (c : Chain) (st1 : States spqrPolyApi (spqrAuthApi F)) (Frame : SepProp)
+    (htag : SpqrErrorValidTag (spqrErrorTag err))
+    (hcl : LibsignalCodeLoaded lsmpl s.mem) (hpc : s.pc = spqrSendPlacedEntry + 3480#64)
+    (hrun : s.status = .Running) (hx19 : s.readReg64 .x19 = ret)
+    (hx23 : s.readReg64 .x23 = x23) (hsp_align : (s.sp &&& 15#64 == 0#64) = true) :
+    SepWP (spqrSendPlacedProg ext) (spqrSendPlacedEntry + 4576#64) s
+      (sendKeyErrAt (s.sp + 0x1260#64) err ∗ memRegion ret 72 ∗ chainRepr A.repAlloc (s.sp + 0x590#64) c ∗
+        chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗ chunkedStatesLocal1JumpTablePlacedAt ∗
+        A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+      (fun sf Q => ∃ evs : List AllocEvent, FreeOnlyEvs evs ∧
+        sf.status = .Running ∧ sf.trace = s.trace ∧ sf.sp = s.sp ∧ sf.readReg64 .x23 = x23 ∧
+        calleeSavedVRegs sf = calleeSavedVRegs s ∧
+        (Q ⊢ spqrSendResultDispAt A.repAlloc ret none ∗ memRegion (s.sp + 0x1260#64) 40 ∗
+          memRegion (s.sp + 0x590#64) 88 ∗ memRegion (s.sp + 0x190#64) 928 ∗
+          chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim (M.stepEvents evs st) sf ∗
+          stackAt s.sp spqrSendCalleeStack ∗ Frame)) := by
+  have hstep1 := step_post_send_key_err_315f4_disp_placed (ext := ext) s err
+    (memRegion ret 72 ∗ chainRepr A.repAlloc (s.sp + 0x590#64) c ∗
+      chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗
+      chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+    hpc hrun hsp_align
+  refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (sepWP_seq_lscl hcl (SepWP.mono hstep1 ?_))
+  intro s1 P1 hpc1 _ ⟨hvm1, hrun1, htr1, hsp1, hx24_tag, hx19_1, _, _, _, hx23_1, _, _, _, _, hvregs1, hP1⟩ hcl1
+  have hsp1_align : (s1.sp &&& 15#64 == 0#64) = true := by rw [hsp1]; exact hsp_align
+  refine SepWP.weaken_pre hP1 ?_; wp_pull_exists; rename_i d0 d1 w2 w3
+  wp_conv_pre => rw [← A.pool_of_vmPreserved hvm1, ← hsp1]
+  have hstep2 := step_err_31600_disp_placed hdealloc hdrop_slice hdrop_states s1 st ret x23 1#64 d0 d1 w2 w3 c st1 Frame
+    (by dsimp only [BitVec.truncate] at hx24_tag ⊢; rw [hx24_tag]; exact htag)
+    hcl1 hpc1 hrun1 (hx19_1.trans hx19) (hx23_1.trans hx23) hsp1_align
+  refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (SepWP.mono hstep2 ?_)
+  intro sf Q _ _ ⟨evs, hevs, _, hrunf, htrf, hspf, hx23f, hvregsf, hQ⟩
+  rw [hsp1] at hspf hQ
+  exact ⟨evs, hevs, hrunf, htrf.trans htr1, hspf, hx23f, hvregsf.trans hvregs1,
+    Entails.trans hQ (Entails.of_eq (by sep_ac_rfl))⟩
+
+omit [LibsignalPlacement] in
+theorem spqrErrorTag_eq_canonical (e : Error) :
+    spqrErrorTag e = spqrErrorTagCanonical e := by
+  cases e <;> rfl
+
+omit [LibsignalPlacement] in
+private theorem chain_epochIdx_ne_invalidParams {c : Chain} {ep : Epoch} {e : Error}
+    (h : c.epochIdx ep = .error e) (s : String) : e ≠ .invalidParams s := by
+  unfold Chain.epochIdx at h
+  split at h
+  · injection h with he; subst he; exact nofun
+  · dsimp only at h
+    split at h
+    · injection h with he; subst he; exact nofun
+    · exact nomatch h
+
+omit [LibsignalPlacement] in
+theorem chain_sendKey_err_validTag {hkdf : HkdfFn} {c : Chain} {ep : Epoch} {err : Error}
+    (h : c.sendKey hkdf ep = .error (.err err)) :
+    SpqrErrorValidTag (spqrErrorTag err) := by
+  rw [spqrErrorTag_eq_canonical]
+  refine spqrErrorTagCanonical_valid_of_ne_invalidParams fun s => ?_
+  unfold Chain.sendKey at h
+  split at h
+  · injection h with he; injection he with he'; subst he'; exact nofun
+  · dsimp only [Bind.bind, Except.bind, ChainResult.ofError] at h
+    cases hidx : c.epochIdx ep with
+    | error e0 =>
+      rw [hidx] at h; dsimp only at h
+      injection h with he; injection he with he'; subst he'
+      exact chain_epochIdx_ne_invalidParams hidx s
+    | ok epochIndex0 =>
+      rw [hidx] at h; dsimp only at h
+      split at h
+      · exact nomatch h
+      · split at h
+        · rename_i heq
+          unfold ChainResult.ofPanic at heq
+          split at heq <;> cases heq
+          cases h
+        · exact nomatch h
+
 /-! ## 3. Phase 3b–3c Envelopes & Chain Step Composition (`+3420 -> +4000 / +4576 / panic`) -/
 
 /-- Event envelope of the `<spqr::chain::Chain>::send_key` call inside `sendKeyIntoPbChain`. -/
-def SendKeyFirstEnv (hkdf : HkdfFn) (c1 : Chain) (msgEpoch : Epoch)
+@[expose] def SendKeyFirstEnv (hkdf : HkdfFn) (c1 : Chain) (msgEpoch : Epoch)
     (evs : List AllocEvent) : Prop :=
   ∃ x : ChainSendKeyGhost,
     x.self = c1 ∧ x.epoch = msgEpoch - 1#64 ∧ ChainSendKeyAllocEnv hkdf x evs
 
 /-- Event envelope of the `<spqr::chain::Chain>::into_pb` call on `c2`. -/
-def ChainIntoPbForEnv (c2 : Chain) (evs : List AllocEvent) : Prop :=
+@[expose] def ChainIntoPbForEnv (c2 : Chain) (evs : List AllocEvent) : Prop :=
   if c2.links = [] then
     FreeOnlyEvs evs
   else
@@ -385,7 +607,7 @@ def ChainIntoPbForEnv (c2 : Chain) (evs : List AllocEvent) : Prop :=
       evs = rustAllocEvents (c2.links.length * 112) 8 ++ evs_free
 
 /-- Relational allocator event envelope of `sendKeyIntoPbChain hkdf c1 msgEpoch`. -/
-def SendKeyIntoPbEnv (hkdf : HkdfFn) (c1 : Chain) (msgEpoch : Epoch)
+@[expose] def SendKeyIntoPbEnv (hkdf : HkdfFn) (c1 : Chain) (msgEpoch : Epoch)
     (evs : List AllocEvent) : Prop :=
   if msgEpoch = 0#64 then
     evs = []
@@ -395,7 +617,7 @@ def SendKeyIntoPbEnv (hkdf : HkdfFn) (c1 : Chain) (msgEpoch : Epoch)
     | .ok (c2, _, _) => SeqEnv (SendKeyFirstEnv hkdf c1 msgEpoch) (ChainIntoPbForEnv c2) evs
 
 /-- Event envelope of the `<spqr::chain::Chain>::add_epoch` call inside `sendStepChain`. -/
-def AddEpochFirstEnv (hkdf : HkdfFn) (c0 : Chain) (es : EpochSecret)
+@[expose] def AddEpochFirstEnv (hkdf : HkdfFn) (c0 : Chain) (es : EpochSecret)
     (evs : List AllocEvent) : Prop :=
   ∃ x : ChainAddEpochGhost,
     x.self = c0 ∧ x.epochSecret = es ∧
@@ -404,7 +626,7 @@ def AddEpochFirstEnv (hkdf : HkdfFn) (c0 : Chain) (es : EpochSecret)
     ChainAddEpochEnv hkdf x evs
 
 /-- Relational allocator event envelope of `sendStepChain hkdf cOpt key msgEpoch`. -/
-def SendStepChainEnv (hkdf : HkdfFn) (cOpt : Option Chain) (key : Option EpochSecret)
+@[expose] def SendStepChainEnv (hkdf : HkdfFn) (cOpt : Option Chain) (key : Option EpochSecret)
     (msgEpoch : Epoch) (evs : List AllocEvent) : Prop :=
   match cOpt, key with
   | none, none => evs = []
@@ -416,7 +638,7 @@ def SendStepChainEnv (hkdf : HkdfFn) (cOpt : Option Chain) (key : Option EpochSe
     | .ok c1 => SeqEnv (AddEpochFirstEnv hkdf c0 es) (SendKeyIntoPbEnv hkdf c1 msgEpoch) evs
 
 /-- Relational allocator event envelope of `sendChainPhase hkdf chain vn key msgEpoch`. -/
-def SendChainPhaseEnv (hkdf : HkdfFn) (chain : Option ChainPB)
+@[expose] def SendChainPhaseEnv (hkdf : HkdfFn) (chain : Option ChainPB)
     (vn : Option VersionNegotiationPB) (key : Option EpochSecret) (msgEpoch : Epoch)
     (evs : List AllocEvent) : Prop :=
   match chain with
@@ -439,7 +661,7 @@ def SendChainPhaseEnv (hkdf : HkdfFn) (chain : Option ChainPB)
 
 /-- Budget-threaded postcondition of `sendChainPhase` / `sendStepChain` / `sendKeyIntoPbChain`
     at `+4000` (`.ok`) or `+4576` (`.error (.err _)`), parameterized by event envelope `Env`. -/
-def sendChainPostPlaced {M : AllocCostModel} {F : ShaCompress}
+@[expose] def sendChainPostPlaced {M : AllocCostModel} {F : ShaCompress}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (Env : List AllocEvent → Prop)
     (s0 : State) (sp ret x23 : BitVec 64) (st1 : States spqrPolyApi (spqrAuthApi F)) (Frame : SepProp)
     (res : SpqrApiResult (BitVec 32 × Bytes × Option ChainPB)) (sf : State) (Q : SepProp) : Prop :=
@@ -502,6 +724,88 @@ theorem sendChainPostPlaced_step {M : AllocCostModel} {F : ShaCompress}
       refine ⟨evs₁ ++ evs₂, SeqEnv.append h1 h2, hrun, htr, hsp, hinv, hx23, hvr, ?_⟩; rwa [M.stepEvents_append]
     | panic _ => exact False.elim h
 
+/-- Display-tag-strengthened budget-threaded postcondition of `sendChainPhase` / `sendStepChain` /
+    `sendKeyIntoPbChain` at `+4000` (`.ok`) or `+4576` (`.error (.err _)`), writing
+    `spqrSendResultDispAt A.repAlloc ret none` on `.error (.err _)`. -/
+@[expose] def sendChainPostDispPlaced {M : AllocCostModel} {F : ShaCompress}
+    (A : RustCliAllocBudget M) (lim : BudgetLimits) (st : M.σ) (Env : List AllocEvent → Prop)
+    (s0 : State) (sp ret x23 : BitVec 64) (st1 : States spqrPolyApi (spqrAuthApi F)) (Frame : SepProp)
+    (res : SpqrApiResult (BitVec 32 × Bytes × Option ChainPB)) (sf : State) (Q : SepProp) : Prop :=
+  match res with
+  | .ok (idx, msgKey, chainPb) =>
+    ∃ evs : List AllocEvent, Env evs ∧
+      sf.status = .Running ∧ sf.trace = s0.trace ∧ sf.sp = sp ∧ LibsignalCodeRoLoaded lsmpl sf.mem ∧
+      sf.readReg64 .x19 = ret ∧ sf.readReg64 .x22 = BitVec.ofNat 64 msgKey.length ∧
+      sf.readReg64 .x23 = x23 ∧ sf.readReg32 .x24 = idx ∧ sf.readReg64 .x26 = sp + 0x1260#64 ∧
+      sf.readReg64 .x28 = sp + 0x1060#64 ∧ (sf.readReg64 .x21 = noneCap ∨ sf.readReg32 .x20 = 0#32) ∧
+      calleeSavedVRegs sf = calleeSavedVRegs s0 ∧
+      (Q ⊢ optChainPBRegSlotAt A.repAlloc (sp + 0xd90#64) (sf.readReg64 .x25) chainPb ∗
+        (∃∗ mkCap : BitVec 64, ∃∗ mkPtr : BitVec 64,
+          ((sp + 0x28#64) ↦₆₄ mkCap) ∗ ((sp + 0x8#64) ↦₆₄ mkPtr) ∗ vecU8Heap A.repAlloc mkCap mkPtr msgKey) ∗
+        memRegion (sp + 0x590#64) 88 ∗ memRegion (sp + 0x1260#64) 88 ∗ memRegion (sp + 0x1060#64) 80 ∗
+        memRegion ret 72 ∗ chunkedStatesAt A.repAlloc (sp + 0x190#64) st1 ∗ chunkedStatesLocal1JumpTablePlacedAt ∗
+        A.pool lim (M.stepEvents evs st) sf ∗ stackAt sp spqrSendCalleeStack ∗ Frame)
+  | .error (.err _) =>
+    ∃ evs : List AllocEvent, Env evs ∧
+      sf.status = .Running ∧ sf.trace = s0.trace ∧ sf.sp = sp ∧ LibsignalCodeRoLoaded lsmpl sf.mem ∧
+      sf.readReg64 .x23 = x23 ∧ calleeSavedVRegs sf = calleeSavedVRegs s0 ∧
+      (Q ⊢ spqrSendResultDispAt A.repAlloc ret none ∗ memRegion (sp + 0x590#64) 88 ∗
+        memRegion (sp + 0x1260#64) 88 ∗ memRegion (sp + 0x1060#64) 80 ∗ memRegion (sp + 0xd90#64) 72 ∗
+        memRegion (sp + 0x28#64) 8 ∗ memRegion (sp + 0x8#64) 8 ∗ memRegion (sp + 0x190#64) 928 ∗
+        chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim (M.stepEvents evs st) sf ∗
+        stackAt sp spqrSendCalleeStack ∗ Frame)
+  | .error (.panic _) => False
+
+theorem sendChainPostDispPlaced_entails_placed {M : AllocCostModel} {F : ShaCompress}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ} {Env : List AllocEvent → Prop}
+    {s0 : State} {sp ret x23 : BitVec 64} {st1 : States spqrPolyApi (spqrAuthApi F)}
+    {Frame : SepProp} {res : SpqrApiResult (BitVec 32 × Bytes × Option ChainPB)} {sf : State} {Q : SepProp}
+    (h : sendChainPostDispPlaced A lim st Env s0 sp ret x23 st1 Frame res sf Q) :
+    sendChainPostPlaced A lim st Env s0 sp ret x23 st1 Frame res sf Q := by
+  cases res with
+  | ok _ => exact h
+  | error e =>
+    cases e with
+    | err _ =>
+      rcases h with ⟨evs, hevs, hrun, htr, hsp, hinv, hx23, hvr, hQ⟩
+      exact ⟨evs, hevs, hrun, htr, hsp, hinv, hx23, hvr,
+        Entails.trans hQ (sepConj_mono_left (spqrSendResultDispAt_entails_spqrSendResultAt A.repAlloc ret none))⟩
+    | panic _ => exact False.elim h
+
+theorem sendChainPostDispPlaced_mono {M : AllocCostModel} {F : ShaCompress}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
+    {Env₁ Env₂ : List AllocEvent → Prop} (himp : ∀ evs, Env₁ evs → Env₂ evs)
+    {s0 : State} {sp ret x23 : BitVec 64} {st1 : States spqrPolyApi (spqrAuthApi F)}
+    {Frame : SepProp} {res : SpqrApiResult (BitVec 32 × Bytes × Option ChainPB)} {sf : State} {Q : SepProp}
+    (h : sendChainPostDispPlaced A lim st Env₁ s0 sp ret x23 st1 Frame res sf Q) :
+    sendChainPostDispPlaced A lim st Env₂ s0 sp ret x23 st1 Frame res sf Q := by
+  cases res with
+  | ok val => rcases val with ⟨idx, msgKey, chainPb⟩; rcases h with ⟨evs, hevs, hrest⟩; exact ⟨evs, himp evs hevs, hrest⟩
+  | error e =>
+    cases e with
+    | err _ => rcases h with ⟨evs, hevs, hrest⟩; exact ⟨evs, himp evs hevs, hrest⟩
+    | panic _ => exact False.elim h
+
+theorem sendChainPostDispPlaced_step {M : AllocCostModel} {F : ShaCompress}
+    {A : RustCliAllocBudget M} {lim : BudgetLimits} {st : M.σ}
+    {E₁ E₂ : List AllocEvent → Prop} {evs₁ : List AllocEvent} (h1 : E₁ evs₁)
+    {s0 : State} {sp ret x23 : BitVec 64} {st1 : States spqrPolyApi (spqrAuthApi F)}
+    {Frame : SepProp} {res : SpqrApiResult (BitVec 32 × Bytes × Option ChainPB)} {sf : State} {Q : SepProp}
+    (h : sendChainPostDispPlaced A lim (M.stepEvents evs₁ st) E₂ s0 sp ret x23 st1 Frame res sf Q) :
+    sendChainPostDispPlaced A lim st (SeqEnv E₁ E₂) s0 sp ret x23 st1 Frame res sf Q := by
+  cases res with
+  | ok val =>
+    rcases val with ⟨idx, msgKey, chainPb⟩
+    rcases h with ⟨evs₂, h2, hrun, htr, hsp, hinv, hx19, hx22, hx23, hx24, hx26, hx28, hfl, hvr, hQ⟩
+    refine ⟨evs₁ ++ evs₂, SeqEnv.append h1 h2, hrun, htr, hsp, hinv, hx19, hx22, hx23, hx24, hx26, hx28, hfl, hvr, ?_⟩
+    rwa [M.stepEvents_append]
+  | error e =>
+    cases e with
+    | err _ =>
+      rcases h with ⟨evs₂, h2, hrun, htr, hsp, hinv, hx23, hvr, hQ⟩
+      refine ⟨evs₁ ++ evs₂, SeqEnv.append h1 h2, hrun, htr, hsp, hinv, hx23, hvr, ?_⟩; rwa [M.stepEvents_append]
+    | panic _ => exact False.elim h
+
 theorem sepWPp_mono_post {prog : Program} {ret : BitVec 64} {s : State} {P : SepProp}
     {Q₁ Q₂ Qp : State → SepProp → Prop} (himp : ∀ sf Pf, Q₁ sf Pf → Q₂ sf Pf)
     (h : SepWPp prog ret s P Q₁ Qp) : SepWPp prog ret s P Q₂ Qp := by
@@ -547,7 +851,7 @@ theorem memRegion_1060_80_eq_24_56 (sp : BitVec 64) :
     memRegion (sp + 0x1060#64) 80 = memRegion (sp + 0x1060#64) 24 ∗ memRegion (sp + 0x1078#64) 56 :=
   ProofLib.memRegion_split' (b := sp + 0x1060#64) (n := 24) (k := 56) (b' := sp + 0x1078#64) rfl (by bv_omega) (by decide)
 
-theorem step_chain_5dc_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+theorem step_chain_5dc_to_7fc_disp_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {F : ShaCompress} (hkdf : HkdfFn) {ext : String → Option (State → State)}
     (hpanic_sub : ext "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_sub_overflow" = some Rust.panicked)
     (hdealloc : DeallocOkPlaced M A lim ext)
@@ -572,7 +876,7 @@ theorem step_chain_5dc_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudge
         memRegion (s.sp + 0x1060#64) 80 ∗ memRegion (s.sp + 0xd90#64) 72 ∗ memRegion (s.sp + 0x28#64) 8 ∗
         memRegion (s.sp + 0x8#64) 8 ∗ memRegion ret 72 ∗ chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗
         chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
-      (sendChainPostPlaced A lim st (SendKeyIntoPbEnv hkdf c1 msgEpoch) s0 s.sp ret x23 st1 Frame
+      (sendChainPostDispPlaced A lim st (SendKeyIntoPbEnv hkdf c1 msgEpoch) s0 s.sp ret x23 st1 Frame
         (sendKeyIntoPbChain hkdf c1 msgEpoch))
       (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (⌜φ_out sf⌝ ∗ anyHeap) ∗ Fr)) := by
   by_cases hep0 : msgEpoch = 0#64
@@ -639,12 +943,13 @@ theorem step_chain_5dc_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudge
         subst hevs1_nil; simp only [M.stepEvents_nil]
         have hres : sendKeyIntoPbChain hkdf c1 msgEpoch = .error (.err err) := by
           unfold sendKeyIntoPbChain; simp [hep0_beq, hsk]; rfl
-        rw [hres]; dsimp only [sendChainTargetPCPlaced, sendChainPostPlaced, sendKeyPostAt]
+        rw [hres]; dsimp only [sendChainTargetPCPlaced, sendChainPostDispPlaced, sendKeyPostAt]
         apply of_sepWP_lscro_b1 (mid := spqrSendPlacedEntry + 4576#64) hinv2
-        have herr_step := step_send_key_err_315f4_to_31a3c_placed hdealloc hdrop_slice hdrop_states
+        have herr_step := step_send_key_err_315f4_to_31a3c_disp_placed hdealloc hdrop_slice hdrop_states
           s2 st ret x23 err c1 st1
           (memRegion (s.sp + 0x1288#64) 48 ∗ memRegion (s.sp + 0x1060#64) 80 ∗ memRegion (s.sp + 0xd90#64) 72 ∗
             memRegion (s.sp + 0x28#64) 8 ∗ memRegion (s.sp + 0x8#64) 8 ∗ Frame)
+          (chain_sendKey_err_validTag hsk)
           hinv2.1 hpc2 hrun2 hx19_20 hx23_20 hsp2_align
         rw [hsp2] at herr_step
         refine SepWP.weaken_pre (Entails.of_eq (by sep_ac_rfl)) (SepWP.mono herr_step ?_)
@@ -661,7 +966,7 @@ theorem step_chain_5dc_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudge
       have h1_env : SendKeyFirstEnv hkdf c1 msgEpoch evs₁ := ⟨x_sk, rfl, rfl, h_sk1⟩
       have hFit_ipb_for : FitsEnv M lim (M.stepEvents evs₁ st) (ChainIntoPbForEnv c2) :=
         (FitsEnv.mono (fun evs he => by unfold SendKeyIntoPbEnv; simp only [hep0, ↓reduceIte, hsk]; exact he) hFit).seq_right h1_env
-      rw [hres]; dsimp only [sendChainTargetPCPlaced, sendChainPostPlaced, sendKeyPostAt]
+      rw [hres]; dsimp only [sendChainTargetPCPlaced, sendChainPostDispPlaced, sendKeyPostAt]
       have hok1 := step_post_send_key_ok_315f4_placed (M := M) (A := A) (ext := ext) s2 idx msgKey
         (chainRepr A.repAlloc (s.sp + 0x590#64) c2 ∗ memRegion (s.sp + 0x1288#64) 48 ∗
           memRegion (s.sp + 0x1060#64) 80 ∗ memRegion (s.sp + 0xd90#64) 72 ∗ memRegion (s.sp + 0x28#64) 8 ∗
@@ -751,6 +1056,39 @@ theorem step_chain_5dc_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudge
         Entails.sepExists_right mkCap (Entails.sepExists_right mkPtr (Entails.refl _))
       exact Entails.trans (sepConj_mono_left hex_mk) (Entails.of_eq (by dsimp only [Tail]; sep_ac_rfl))
 
+theorem step_chain_5dc_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {F : ShaCompress} (hkdf : HkdfFn) {ext : String → Option (State → State)}
+    (hpanic_sub : ext "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_sub_overflow" = some Rust.panicked)
+    (hdealloc : DeallocOkPlaced M A lim ext)
+    (hdrop_slice : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 446) (withLsCodeLoaded lsmpl (dropChainEpochSliceSpec M A lim)))
+    (hdrop_states : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 443) (withLsCodeLoaded lsmpl (dropChunkedStatesLocal1PlacedSpec M A lim F)))
+    (hsend_key : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 367) (withLsCodeRoLoaded lsmpl (chainSendKeySpecX hkdf M A lim)))
+    (hinto_pb : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 365) (withLsCodeRoLoaded lsmpl (chainIntoPbSpecX M A lim)))
+    (s0 s : State) (st : M.σ) (ret x23 : BitVec 64) (c1 : Chain) (msgEpoch : Epoch)
+    (st1 : States spqrPolyApi (spqrAuthApi F)) (Frame Fr : SepProp) (φ_out : State → Prop)
+    (hFit : FitsEnv M lim st (SendKeyIntoPbEnv hkdf c1 msgEpoch))
+    (hinv : LibsignalCodeRoLoaded lsmpl s.mem) (hpc : s.pc = spqrSendPlacedEntry + 3456#64)
+    (hrun : s.status = .Running) (htr : s.trace = s0.trace)
+    (hx19 : s.readReg64 .x19 = ret) (hx22 : s.readReg64 .x22 = msgEpoch)
+    (hx23 : s.readReg64 .x23 = x23) (hx26 : s.readReg64 .x26 = s.sp + 0x1260#64)
+    (hx28 : s.readReg64 .x28 = s.sp + 0x1060#64)
+    (hflag : s.readReg64 .x21 = noneCap ∨ s.readReg32 .x20 = 0#32)
+    (hsp_align : (s.sp &&& 15#64 == 0#64) = true)
+    (hφ : ∀ sf : State, (sendKeyIntoPbChain hkdf c1 msgEpoch).isPanic = true ∧ sf.trace = s0.trace → φ_out sf)
+    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0 := by simp only [wp_norm, arm64_norm, *]) :
+    SepWPp (spqrSendPlacedProg ext) (sendChainTargetPCPlaced (sendKeyIntoPbChain hkdf c1 msgEpoch)) s
+      (chainRepr A.repAlloc (s.sp + 0x590#64) c1 ∗ memRegion (s.sp + 0x1260#64) 88 ∗
+        memRegion (s.sp + 0x1060#64) 80 ∗ memRegion (s.sp + 0xd90#64) 72 ∗ memRegion (s.sp + 0x28#64) 8 ∗
+        memRegion (s.sp + 0x8#64) 8 ∗ memRegion ret 72 ∗ chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗
+        chunkedStatesLocal1JumpTablePlacedAt ∗ A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+      (sendChainPostPlaced A lim st (SendKeyIntoPbEnv hkdf c1 msgEpoch) s0 s.sp ret x23 st1 Frame
+        (sendKeyIntoPbChain hkdf c1 msgEpoch))
+      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (⌜φ_out sf⌝ ∗ anyHeap) ∗ Fr)) :=
+  sepWPp_mono_post (fun _ _ => sendChainPostDispPlaced_entails_placed)
+    (step_chain_5dc_to_7fc_disp_placed hkdf hpanic_sub hdealloc hdrop_slice hdrop_states hsend_key hinto_pb
+      s0 s st ret x23 c1 msgEpoch st1 Frame Fr φ_out hFit hinv hpc hrun htr
+      hx19 hx22 hx23 hx26 hx28 hflag hsp_align hφ hvregs)
+
 theorem addsPState64_noneCap_z : (addsPState64 noneCap 1#64).z = true := by
   unfold addsPState64 AddWithCarry64 noneCap; decide
 
@@ -763,7 +1101,7 @@ theorem setPC_preserves {s1 s : State} {pc : BitVec 64} (h : s1 = s.setPC pc) :
     s1.sp = s.sp ∧ s1.trace = s.trace ∧ calleeSavedVRegs s1 = calleeSavedVRegs s ∧ (∀ r, s1.readReg64 r = s.readReg64 r) := by
   subst h; exact ⟨rfl, rfl, rfl, fun _ => rfl⟩
 
-theorem step_chain_5b8_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+theorem step_chain_5b8_to_7fc_disp_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
     {lim : BudgetLimits} {F : ShaCompress} (hkdf : HkdfFn) {ext : String → Option (State → State)}
     (hpanic_sub : ext "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_sub_overflow" = some Rust.panicked)
     (hdealloc : DeallocOkPlaced M A lim ext)
@@ -793,7 +1131,7 @@ theorem step_chain_5b8_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudge
         memRegion (s.sp + 0x28#64) 8 ∗ memRegion (s.sp + 0x8#64) 8 ∗ memRegion ret 72 ∗
         chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗ chunkedStatesLocal1JumpTablePlacedAt ∗
         A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
-      (sendChainPostPlaced A lim st (SendStepChainEnv hkdf (some c0) key msgEpoch) s0 s.sp ret x23 st1
+      (sendChainPostDispPlaced A lim st (SendStepChainEnv hkdf (some c0) key msgEpoch) s0 s.sp ret x23 st1
         (memRegion (s.sp + 0x1bc0#64) 16 ∗ Frame) (sendStepChain hkdf (some c0) key msgEpoch))
       (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (⌜φ_out sf⌝ ∗ anyHeap) ∗ Fr)) := by
   cases key with
@@ -806,7 +1144,7 @@ theorem step_chain_5b8_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudge
     refine SepWP.mono (step_branch_key_none_315b8_placed s _ hpc hrun hz) ?_
     rintro s1 P1 hpc1 hrun1 ⟨hvm1, hs1, rfl⟩ hinv1
     rcases setPC_preserves hs1 with ⟨hsp1, htr1, hvregs1, hreg1⟩; rw [← A.pool_of_vmPreserved hvm1]
-    have hstep := step_chain_5dc_to_7fc_placed hkdf hpanic_sub hdealloc hdrop_slice hdrop_states hsend_key hinto_pb
+    have hstep := step_chain_5dc_to_7fc_disp_placed hkdf hpanic_sub hdealloc hdrop_slice hdrop_states hsend_key hinto_pb
       s0 s1 st ret x23 c0 msgEpoch st1 (memRegion (s.sp + 0x1bc0#64) 16 ∗ Frame) Fr φ_out
       hFit hinv1 hpc1 hrun1 (htr1.trans htr)
       ((hreg1 .x19).trans hx19) ((hreg1 .x22).trans hx22) ((hreg1 .x23).trans hx23)
@@ -918,14 +1256,53 @@ theorem step_chain_5b8_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudge
       have hx26_30 : s3.readReg64 .x26 = s3.sp + 0x1260#64 := by rw [hsp3]; exact hx26_3.trans (hx26_2.trans hx26_1)
       have hx28_30 : s3.readReg64 .x28 = s3.sp + 0x1060#64 := by rw [hsp3]; exact hx28_3.trans (hx28_2.trans hx28_1)
       have hflag3 := flag_preserve (flag_preserve (flag_preserve hflag (hreg1 .x20) (hreg1 .x21)) hx20_2 (hx21_2.trans hx21_1.symm)) hx20_3 hx21_3
-      have hstep := step_chain_5dc_to_7fc_placed hkdf hpanic_sub hdealloc hdrop_slice hdrop_states hsend_key hinto_pb
+      have hstep := step_chain_5dc_to_7fc_disp_placed hkdf hpanic_sub hdealloc hdrop_slice hdrop_states hsend_key hinto_pb
         s0 s3 (M.stepEvents (chainAddEpochEvents x_ae) st) ret x23 c1 msgEpoch st1
         (memRegion (s.sp + 0x1bc0#64) 16 ∗ Frame) Fr φ_out hFit_sk hinv3 hpc3 hrun3 (htr3.trans htr2_0)
         hx19_30 hx22_30 hx23_30 hx26_30 hx28_30 hflag3 hsp3_align (by rwa [heq_step] at hφ)
         (hvregs3.trans (hvregs2.trans (hvregs1.trans hvregs)))
       rw [hsp3, memRegion_1260_88_eq_32_56 s.sp] at hstep
       refine sepWPp_mono_post (fun sf Pf hQ => ?_) (SepWPp.weaken_pre (Entails.of_eq (by sep_ac_rfl)) hstep)
-      refine sendChainPostPlaced_mono (fun evs he => ?_) (sendChainPostPlaced_step h1_ae hQ)
+      refine sendChainPostDispPlaced_mono (fun evs he => ?_) (sendChainPostDispPlaced_step h1_ae hQ)
       unfold SendStepChainEnv; simp only [hae]; exact he
+
+theorem step_chain_5b8_to_7fc_placed {M : AllocCostModel} {A : RustCliAllocBudget M}
+    {lim : BudgetLimits} {F : ShaCompress} (hkdf : HkdfFn) {ext : String → Option (State → State)}
+    (hpanic_sub : ext "_RNvNtNtCskxtBwYRO61I_4core9panicking11panic_const24panic_const_sub_overflow" = some Rust.panicked)
+    (hdealloc : DeallocOkPlaced M A lim ext)
+    (hdrop_slice : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 446) (withLsCodeLoaded lsmpl (dropChainEpochSliceSpec M A lim)))
+    (hdrop_states : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 443) (withLsCodeLoaded lsmpl (dropChunkedStatesLocal1PlacedSpec M A lim F)))
+    (hadd_epoch : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 368) (withLsCodeRoLoaded lsmpl (chainAddEpochSpecX hkdf M A lim)))
+    (hsend_key : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 367) (withLsCodeRoLoaded lsmpl (chainSendKeySpecX hkdf M A lim)))
+    (hinto_pb : subroutine_ok (spqrSendPlacedProg ext) (lsmpl.base 365) (withLsCodeRoLoaded lsmpl (chainIntoPbSpecX M A lim)))
+    (s0 s : State) (st : M.σ) (ret x21 x27 x23 : BitVec 64)
+    (c0 : Chain) (hc0_len : c0.links.length ≤ 2 ^ 54)
+    (key : Option EpochSecret) (msgEpoch : Epoch) (st1 : States spqrPolyApi (spqrAuthApi F))
+    (Frame Fr : SepProp) (φ_out : State → Prop)
+    (hFit : FitsEnv M lim st (SendStepChainEnv hkdf (some c0) key msgEpoch))
+    (hinv : LibsignalCodeRoLoaded lsmpl s.mem) (hpc : s.pc = spqrSendPlacedEntry + 3420#64)
+    (hrun : s.status = .Running) (htr : s.trace = s0.trace) (hpstate : s.pstate = addsPState64 x21 1#64)
+    (hx19 : s.readReg64 .x19 = ret) (hx21 : s.readReg64 .x21 = x21)
+    (hx22 : s.readReg64 .x22 = msgEpoch) (hx23 : s.readReg64 .x23 = x23)
+    (hx26 : s.readReg64 .x26 = s.sp + 0x1260#64) (hx27 : s.readReg64 .x27 = x27)
+    (hx28 : s.readReg64 .x28 = s.sp + 0x1060#64)
+    (hflag : s.readReg64 .x21 = noneCap ∨ s.readReg32 .x20 = 0#32)
+    (hsp_align : (s.sp &&& 15#64 == 0#64) = true)
+    (hφ : ∀ sf : State, (sendStepChain hkdf (some c0) key msgEpoch).isPanic = true ∧ sf.trace = s0.trace → φ_out sf)
+    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0 := by simp only [wp_norm, arm64_norm, *]) :
+    SepWPp (spqrSendPlacedProg ext) (sendChainTargetPCPlaced (sendStepChain hkdf (some c0) key msgEpoch)) s
+      (optEpochSecretRegSlotAt A.repAlloc s.sp x21 x27 key ∗ chainRepr A.repAlloc (s.sp + 0x590#64) c0 ∗
+        memRegion (s.sp + 0x1260#64) 88 ∗ memRegion (s.sp + 0x1060#64) 80 ∗ memRegion (s.sp + 0xd90#64) 72 ∗
+        memRegion (s.sp + 0x28#64) 8 ∗ memRegion (s.sp + 0x8#64) 8 ∗ memRegion ret 72 ∗
+        chunkedStatesAt A.repAlloc (s.sp + 0x190#64) st1 ∗ chunkedStatesLocal1JumpTablePlacedAt ∗
+        A.pool lim st s ∗ stackAt s.sp spqrSendCalleeStack ∗ Frame)
+      (sendChainPostPlaced A lim st (SendStepChainEnv hkdf (some c0) key msgEpoch) s0 s.sp ret x23 st1
+        (memRegion (s.sp + 0x1bc0#64) 16 ∗ Frame) (sendStepChain hkdf (some c0) key msgEpoch))
+      (fun sf P_f => (sf.mem ⊨ P_f ∗ Fr) → (sf.mem ⊨ (⌜φ_out sf⌝ ∗ anyHeap) ∗ Fr)) :=
+  sepWPp_mono_post (fun _ _ => sendChainPostDispPlaced_entails_placed)
+    (step_chain_5b8_to_7fc_disp_placed hkdf hpanic_sub hdealloc hdrop_slice hdrop_states
+      hadd_epoch hsend_key hinto_pb s0 s st ret x21 x27 x23 c0 hc0_len key msgEpoch st1
+      Frame Fr φ_out hFit hinv hpc hrun htr hpstate hx19 hx21 hx22 hx23 hx26 hx27 hx28
+      hflag hsp_align hφ hvregs)
 
 end LibsignalBinary.Proofs.Cli.SpqrV1.Top.Send.AfterStatesBridge1PlacedBudgetAux

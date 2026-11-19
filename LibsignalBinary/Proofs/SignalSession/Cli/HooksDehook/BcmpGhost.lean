@@ -12,11 +12,15 @@ module
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.BcmpCode -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithAlloc -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.MemsetGhost -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.KeepsFs
 public import LibsignalBinary.Heap.Fine.SpecBudgetHelpersFine
 public import LibsignalBinary.Heap.IfaceBudget
 import ProofLib.Process.OracleEq
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Ghost `bcmp` Hook & Consumer `HookOk` Suite (`HooksDehook.BcmpGhost`)
@@ -235,18 +239,6 @@ theorem bcmpGhostFnK_fs
     (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) (s0 : State) :
     (bcmpGhostFnK keepR P_real P_sub entry s0).fs = s0.fs :=
   linkedCallHook_fs keepR P_real P_sub entry (bcmpSpecK keepR masterBcmpSpec) hookBcmpFallback s0
-
-/-- C11 §8.1 obligation (2): `bcmpGhostFn` satisfies `HookFsTraced IsFsC` unconditionally. -/
-theorem bcmpGhostFn_fsT
-    (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) :
-    HookFsTraced IsFsC (bcmpGhostFn keepR P_real P_sub entry) :=
-  linkedCallHook_fsT keepR P_real P_sub entry masterBcmpSpec hookBcmpFallback
-
-/-- `K`-form C11 §8.1 obligation (2): `bcmpGhostFnK` satisfies `HookFsTraced IsFsC` unconditionally. -/
-theorem bcmpGhostFnK_fsT
-    (keepR : BitVec 64 → Bool) (P_real P_sub : Program) (entry : BitVec 64) :
-    HookFsTraced IsFsC (bcmpGhostFnK keepR P_real P_sub entry) :=
-  linkedCallHook_fsT keepR P_real P_sub entry (bcmpSpecK keepR masterBcmpSpec) hookBcmpFallback
 
 /-- Master `HookOk` of `bcmpGhostFn` for `masterBcmpSpec`, over a single hook-free `P_sub` holding
     the contiguous 56 B `memcmp ++ bcmp` hull `bcmpHullWords m resolve` at `m`, entered at
@@ -1020,29 +1012,6 @@ theorem bcmpGhostFnK_any_execFrozen_ok {α : Type} {entry : BitVec 64} {spec : S
   hookOk_withExecFrozen_of_plain hh
 
 end GenericHookOkSuite
-
-/-- Concrete `pureWordsProg m (bcmpHullWords m)` instantiation of `bcmpGhostFn_master_ok`
-    witnessing joint satisfiability of all `P_sub` hull premises. -/
-theorem bcmpGhostFn_pureHull_master_ok
-    {keepR : BitVec 64 → Bool} {P_real : Program} (m : BitVec 64)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none) :
-    HookOk (bcmpGhostFn keepR P_real (pureWordsProg m (bcmpHullWords m)) (m + memcmpByteLen))
-      masterBcmpSpec :=
-  bcmpGhostFn_master_ok hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none m (bcmpHullWords m))
-    (pureWordsProg_bcmpHull_hasWords m) rfl
-
-/-- Concrete `pureWordsProg m (bcmpHullWords m)` instantiation of `bcmpGhostFnK_masterK_ok`. -/
-theorem bcmpGhostFnK_pureHull_masterK_ok
-    {keepR : BitVec 64 → Bool} {P_real : Program} (m : BitVec 64)
-    (hsvc_real : P_real.svc = Syscall.standard)
-    (hreal_no : ∀ pc, keepR pc = true → P_real.externAt? pc = none) :
-    HookOk (bcmpGhostFnK keepR P_real (pureWordsProg m (bcmpHullWords m)) (m + memcmpByteLen))
-      (bcmpSpecK keepR masterBcmpSpec) :=
-  bcmpGhostFnK_masterK_ok hsvc_real rfl hreal_no
-    (pureWordsProg_externAt_none m (bcmpHullWords m))
-    (pureWordsProg_bcmpHull_hasWords m) rfl
 
 /-! ## 5. C11 Module A (`GhostRowSpecOk`) Bundling Preview
 

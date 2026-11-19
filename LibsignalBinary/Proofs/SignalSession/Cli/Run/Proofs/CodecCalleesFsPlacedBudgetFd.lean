@@ -10,12 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.Fine.SpecBudgetFine
-public import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
+import LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
 import LibsignalBinary.Proofs.E2E.Run.NoSvcCommon
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.Hoare.LibcHooks
 import Arm64.Trusted.Spec.RustRuntime
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Pure-`fs` Dischargers for `SignalMessage::try_from` (Block `85`) and `PreKeySignalMessage::try_from` (Block `111`)
@@ -350,10 +351,12 @@ private theorem sc_ite (p : BitVec 64 → Bool) (c : Prop) [Decidable c] (a b : 
 @[simp] theorem sc_sym (p : BitVec 64 → Bool) (s : State) : (stripCodecS p s).symtab = s.symtab := by cases s; rfl
 @[simp] theorem sc_sig (p : BitVec 64 → Bool) (s : State) : (stripCodecS p s).sigActions = s.sigActions := by cases s; rfl
 @[simp] theorem sc_sas (p : BitVec 64 → Bool) (s : State) : (stripCodecS p s).sigAltStack = s.sigAltStack := by cases s; rfl
+@[simp] theorem sc_sm (p : BitVec 64 → Bool) (s : State) : (stripCodecS p s).sigMask = s.sigMask := by cases s; rfl
+@[simp] theorem sc_spnd (p : BitVec 64 → Bool) (s : State) : (stripCodecS p s).sigPending = s.sigPending := by cases s; rfl
 @[simp] theorem sc_pma (p : BitVec 64 → Bool) (s : State) : (stripCodecS p s).physMemAvail = s.physMemAvail := by cases s; rfl
-private theorem sc_mk (p : BitVec 64 → Bool) {rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas pma} :
-    State.mk rg vr sp pc ps (stripCodecMem p m) tp fp bs b fs o oi ef tr st sym sig sas pma =
-      stripCodecS p (State.mk rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas pma) := rfl
+private theorem sc_mk (p : BitVec 64 → Bool) {rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma} :
+    State.mk rg vr sp pc ps (stripCodecMem p m) tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma =
+      stripCodecS p (State.mk rg vr sp pc ps m tp fp bs b fs o oi ef tr st sym sig sas sm spnd pma) := rfl
 
 private theorem sc_cw1 (p : BitVec 64 → Bool) (m : Memory) (ea : BitVec 64) (n : Nat)
     (s t : State) :
@@ -445,14 +448,14 @@ theorem execInst_stripCodec_of_noException {inst : Instr} (h : inst.isSvc0 = fal
          split <;> simp only [sc_wv128, sc_adv, sc_ass])
     · dsimp only [execInst, execInstWithSvc]
       simp only [hop, Bool.false_eq_true, ↓reduceIte, sc_rv128, sc_regs, sc_vregs, sc_sp, sc_pc, sc_ps,
-        sc_mem, sc_tp, sc_fp, sc_bs, sc_brk, sc_fs, sc_orc, sc_oi, sc_ef, sc_tr, sc_st, sc_sym, sc_sig, sc_sas, sc_pma,
+        sc_mem, sc_tp, sc_fp, sc_bs, sc_brk, sc_fs, sc_orc, sc_oi, sc_ef, sc_tr, sc_st, sc_sym, sc_sig, sc_sas, sc_sm, sc_spnd, sc_pma,
         sc_mk, sc_adv, sc_wv128, sc_sst, sc_wst, sc_as, sc_ass, sc_ite]
   case st1SinglePost q rm opcode sBit size rn vt =>
     dsimp only [execInst, execInstWithSvc]
     by_cases h0 : opcode.extractLsb' 1 2 == 0#2 <;> by_cases h1 : opcode.extractLsb' 1 2 == 1#2 <;>
       by_cases hs0 : size.extractLsb' 0 1 == 0#1 <;>
       (simp only [h0, h1, hs0, Bool.false_eq_true, ↓reduceIte, sc_mem, sc_regs, sc_vregs, sc_sp, sc_pc,
-         sc_ps, sc_tp, sc_fp, sc_bs, sc_brk, sc_fs, sc_orc, sc_oi, sc_ef, sc_tr, sc_st, sc_sym, sc_sig, sc_sas, sc_pma,
+         sc_ps, sc_tp, sc_fp, sc_bs, sc_brk, sc_fs, sc_orc, sc_oi, sc_ef, sc_tr, sc_st, sc_sym, sc_sig, sc_sas, sc_sm, sc_spnd, sc_pma,
          sc_mk, sc_r64, sc_rv128, sc_csp,
          stripCodec_write8, stripCodec_write16, stripCodec_write32, stripCodec_write64,
          sc_smem, sc_w64, sc_adv, sc_sst, sc_wst, sc_ite];
@@ -465,7 +468,7 @@ theorem execInst_stripCodec_of_noException {inst : Instr} (h : inst.isSvc0 = fal
     by_cases hbad : (size == 3#2 && !q || !(selem == 2 || selem == 3 || selem == 4)) = true
     · left
       simp only [hbad, ↓reduceIte, sc_regs, sc_vregs, sc_sp, sc_pc, sc_ps, sc_mem, sc_tp, sc_fp,
-        sc_bs, sc_brk, sc_fs, sc_orc, sc_oi, sc_ef, sc_tr, sc_st, sc_sym, sc_sig, sc_sas, sc_pma, sc_mk, sc_wst]
+        sc_bs, sc_brk, sc_fs, sc_orc, sc_oi, sc_ef, sc_tr, sc_st, sc_sym, sc_sig, sc_sas, sc_sm, sc_spnd, sc_pma, sc_mk, sc_wst]
     · cases isLoad
       · by_cases h3 : selem ≥ 3 <;> by_cases h4 : selem ≥ 4 <;>
           (simp only [hbad, h3, h4, Bool.false_eq_true, ↓reduceIte, sc_r64, sc_rv128_eta, sc_mem, sc_csp,
@@ -510,7 +513,7 @@ theorem execInst_stripCodec_of_noException {inst : Instr} (h : inst.isSvc0 = fal
   all_goals
     dsimp only [execInst, execInstWithSvc, execLdrLit, execLdp, execStp, evalAddrMode]
     simp only [sc_mem, sc_regs, sc_vregs, sc_bs, sc_brk, sc_fs, sc_orc, sc_oi, sc_ef, sc_tr, sc_st,
-      sc_sym, sc_sig, sc_sas, sc_pma, sc_mk, sc_r64, sc_r32, sc_rr, sc_rv128, sc_rv128_eta, sc_rv64, sc_rv32,
+      sc_sym, sc_sig, sc_sas, sc_sm, sc_spnd, sc_pma, sc_mk, sc_r64, sc_r32, sc_rr, sc_rv128, sc_rv128_eta, sc_rv64, sc_rv32,
       sc_pc, sc_sp, sc_ps, sc_fp, sc_tp, sc_ewf, sc_csp, sc_casp, sc_eam,
       stripCodec_canRead, stripCodec_readSized, stripCodec_readSimdSized,
       stripCodec_write8, stripCodec_write16, stripCodec_write32, stripCodec_write64,
@@ -539,7 +542,7 @@ open LibsignalBinary.Heap (
   StaticMappedCover zeroBudgetLimits
 )
 open LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase (
-  CodeBlocksPermRX CodeBlocksPermRXMem codeBlocksPermRX_of_keepsFrozen
+  CodeBlocksPermRX CodeBlocksPermRXMem aesStorageCell codeBlocksPermRX_of_keepsFrozen
   mallocngHookBudgetPool mallocngHookBudgetPool_transport
   mallocngHookBudgetPool_zero_transport mallocngHookRustCliAllocBudget
 )
@@ -610,6 +613,7 @@ private theorem stripCodec_mallocngBudgetPool (keep : BitVec 64 → Bool)
   if lim.enforced then
     VerifiedLibraries.mallocngLib.codeRO mpl ∗
       mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗
+      aesStorageCell brkStart ∗
       ⌜lim.enforced = true → CodeBlocksPermStripped keep mpl s⌝
   else
     mallocngHookBudgetPool M I γ mpl tp brkStart lim st s
@@ -669,14 +673,17 @@ theorem pool_rx_of_satisfies_mallocng
     lim.enforced = true → CodeBlocksPermRX mpl s := by
   change s.mem ⊨ (VerifiedLibraries.mallocngLib.codeRO mpl ∗
       mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗
+      aesStorageCell brkStart ∗
       ⌜lim.enforced = true → CodeBlocksPermRX mpl s⌝) ∗ R at hsat
   have hEq :
       ((VerifiedLibraries.mallocngLib.codeRO mpl ∗
           mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗
+          aesStorageCell brkStart ∗
           ⌜lim.enforced = true → CodeBlocksPermRX mpl s⌝) ∗ R) =
       (⌜lim.enforced = true → CodeBlocksPermRX mpl s⌝ ∗
         (VerifiedLibraries.mallocngLib.codeRO mpl ∗
-          mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗ R)) := by ac_rfl
+          mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗
+          aesStorageCell brkStart ∗ R)) := by ac_rfl
   rw [hEq, ProofLib.satisfies_pure_sepConj] at hsat
   exact hsat.1
 
@@ -694,10 +701,12 @@ theorem pool_stripped_of_satisfies
   have hEq :
       ((VerifiedLibraries.mallocngLib.codeRO mpl ∗
           mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗
+          aesStorageCell brkStart ∗
           ⌜True → CodeBlocksPermStripped keep mpl s⌝) ∗ R) =
       (⌜True → CodeBlocksPermStripped keep mpl s⌝ ∗
         (VerifiedLibraries.mallocngLib.codeRO mpl ∗
-          mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗ R)) := by ac_rfl
+          mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗
+          aesStorageCell brkStart ∗ R)) := by ac_rfl
   rw [hEq, ProofLib.satisfies_pure_sepConj] at hsat
   exact hsat.1 trivial
 
@@ -930,6 +939,7 @@ theorem satisfies_mallocngPool_restoreRx
     simp only [henf, ↓reduceIte] at hsat
     change s.mem ⊨ (VerifiedLibraries.mallocngLib.codeRO mpl ∗
         mallocngBudgetPool M I γ mpl tp brkStart lim st (restoreMallocngRXS mpl s) ∗
+        aesStorageCell brkStart ∗
         ⌜lim.enforced = true → CodeBlocksPermRX mpl (restoreMallocngRXS mpl s)⌝) ∗ R
     have hEq : (lim.enforced = true → CodeBlocksPermRX mpl (restoreMallocngRXS mpl s)) =
         (True → CodeBlocksPermStripped keep mpl s) :=
@@ -1007,8 +1017,5 @@ theorem hookMemcpy_stripCodec (keep : BitVec 64 → Bool) (s : State) :
   unfold ProofLib.hookMemcpy ProofLib.retHook
   simp only [sc_r64, sc_mem, stripCodec_readBytes, stripCodec_writeBytes, sc_smem, sc_spc]
 
-theorem rustPanicked_stripCodec (keep : BitVec 64 → Bool) (s : State) :
-    Rust.panicked (stripCodecS keep s) = stripCodecS keep (Rust.panicked s) := by
-  cases s; rfl
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.CodecCalleesFsPlacedBudgetFd

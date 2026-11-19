@@ -122,14 +122,16 @@ pub struct VectorCase {
 
 /// Map QEMU `-strace` AArch64 syscall names to `(aarch64_nr, modeled_in_lean_eval)`.
 ///
-/// Matches `Arm64/Trusted/Syscalls.lean` (`execSyscall` / `ModeledSyscall` — 31 modeled syscalls).
+/// Matches `Arm64/Trusted/Syscalls.lean` (`execSyscall` / `ModeledSyscall` — 32 modeled syscalls).
 /// Note that `mmap` (`222`; anonymous private `PROT_READ | PROT_WRITE` or `PROT_NONE` with
-/// optional `MAP_STACK = 0x20022`, plus `MAP_FIXED` (`0x32`) with `PROT_NONE` only), `mremap`
-/// (`216`; `MREMAP_MAYMOVE` on uniform `PROT_READ | PROT_WRITE` ranges), `mprotect` (`226`),
-/// `madvise` (`233`), `ppoll` (`73`; zero-timeout `events = 0` probes on `fd ∈ {0, 1, 2}`),
-/// `sigaltstack` (`132`; `MINSIGSTKSZ = 5120`), `rt_sigaction` (`134`; `SIG_DFL` / `SIG_IGN` plus
-/// custom `sa_handler` strictly for `SIGSEGV` and `SIGBUS`), and `fcntl` (`25`; `F_GETFD` and
-/// `F_SETFD` only) model concrete subsets and fail closed with `.Exception` on other flags/commands.
+/// optional `MAP_STACK = 0x20022`, plus `MAP_FIXED` (`0x32`) with `PROT_NONE` or `PROT_READ |
+/// PROT_WRITE`), `mremap` (`216`; `flags = 0` in-place resize and `MREMAP_MAYMOVE` on uniform
+/// `PROT_READ | PROT_WRITE` anonymous ranges), `mprotect` (`226`), `madvise` (`233`), `ppoll`
+/// (`73`; zero-timeout `events = 0` probes on `fd ∈ {0, 1, 2}`), `futex` (`98`; `FUTEX_WAKE` and
+/// `FUTEX_WAKE_PRIVATE` returning `0` in single-threaded execution), `sigaltstack` (`132`;
+/// `MINSIGSTKSZ = 5120`), `rt_sigaction` (`134`; `SIG_DFL` / `SIG_IGN` plus custom `sa_handler`
+/// strictly for `SIGSEGV` and `SIGBUS`), and `fcntl` (`25`; `F_GETFD` and `F_SETFD` only) model
+/// concrete subsets and fail closed with `.Exception` on other flags/commands.
 pub fn aarch64_syscall_info(name: &str) -> (Option<u32>, bool) {
     match name {
         "getcwd" => (Some(17), false),
@@ -180,7 +182,7 @@ pub fn aarch64_syscall_info(name: &str) -> (Option<u32>, bool) {
         "exit_group" => (Some(94), true),
         "waitid" => (Some(95), false),
         "set_tid_address" => (Some(96), true),
-        "futex" => (Some(98), false),
+        "futex" => (Some(98), true),
         "set_robust_list" => (Some(99), false),
         "get_robust_list" => (Some(100), false),
         "nanosleep" => (Some(101), false),

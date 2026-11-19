@@ -9,12 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SignedAdv
+public import Computational.Proofs.E2E.SignedAdv -- proof-setup: allow-public-import
 public import Computational.Proofs.CryptoGames.Ratchet.LibsignalShortDefs
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SaltHop
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.SaltHop -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.FSAEADBound
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.ProstCodec.WireHop.Helpers
 import Computational.Proofs.E2E.ComposedPrefixHelpers
+public import Computational.Proofs.CryptoGames.FSAEAD.PubProofDefs
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSMInstanceProofDefs
 
 /-!
 # Signed FS-AEAD stages 2–4 on mixtures
@@ -23,7 +25,7 @@ Bounds the `multiOtBranch` mixture distance from `SignedThm5Gen.theorem5_mix_mul
 averaged salt-PRF and wire OT-CCA reductions per slot plus the integrated MAC forgery slack.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec MeasureTheory ENNReal
 
@@ -45,7 +47,7 @@ section Wire
 variable {K AD H M M' C T : Type} [SampleableType K] [SampleableType C] [SampleableType T]
   [DecidableEq AD] [DecidableEq T]
 
-def wBranch (ae : WireAEAD K AD H M M' C T) (b : Bool) (A : WireAEAD.WireAdversary AD H M M' T) :
+@[expose] def wBranch (ae : WireAEAD K AD H M M' C T) (b : Bool) (A : WireAEAD.WireAdversary AD H M M' T) :
     ProbComp Bool := do
   let key ← $ᵗ K
   (simulateQ ((QueryImpl.ofLift unifSpec ProbComp).liftTarget
@@ -64,7 +66,7 @@ theorem wireOtccaAdvantage_eq_boolDist_wBranch (ae : WireAEAD K AD H M M' C T)
   cases b <;> simp [wBranch]
 
 /-- Averaged wire OT-CCA adversary that samples `o ← oa` and runs `A o`. -/
-def wireAvg {α : Type} (oa : ProbComp α) (A : α → WireAEAD.WireAdversary AD H M M' T) :
+@[expose] def wireAvg {α : Type} (oa : ProbComp α) (A : α → WireAEAD.WireAdversary AD H M M' T) :
     WireAEAD.WireAdversary AD H M M' T :=
   bind (m := OracleComp (unifSpec + WireAEAD.wireSpec AD H M M' T))
     (liftM oa : OracleComp (unifSpec + WireAEAD.wireSpec AD H M M' T) α) A

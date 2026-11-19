@@ -20,7 +20,7 @@ the pure protobuf codec model `mergeBytes`, tracking capacity monotonicity (`Byt
 the two-level slice cursor `&mut &mut &[u8]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Prost
 
@@ -64,7 +64,7 @@ structure BytesMergeGhost where
 /-- Capacity-vs-remaining-slice invariant for `prost::encoding::bytes::merge` on `< 2 ^ 63`-byte
 slices: holds at `cap = 0` or whenever `bsLen < 2 ^ 32`, is monotone as `bs` shrinks, and ensures
 `reserveCap cap.toNat 0 v.length < 2 ^ 63` whenever `cap.toNat < v.length`. -/
-def BytesMergeCapOk (cap : BitVec 64) (bsLen : Nat) : Prop :=
+@[expose] def BytesMergeCapOk (cap : BitVec 64) (bsLen : Nat) : Prop :=
   cap.toNat = 0 ∨
   (cap.toNat = 8 ∧ bsLen ≤ 2 ^ 63 - 3) ∨
   (cap.toNat = 16 ∧ bsLen ≤ 2 ^ 63 - 13) ∨
@@ -113,7 +113,7 @@ theorem bytesMergeCapOk_after_reserve {cap : BitVec 64} {vLen restLen bsLen : Na
 
 /-- Raw contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]`
 (image offset `0x2788`, 271 instructions; `prost-0.14.4/src/encoding.rs:670–724`). -/
-def bytesMergeRawSpec (A : RustAlloc) : Spec BytesMergeGhost where
+@[expose] def bytesMergeRawSpec (A : RustAlloc) : Spec BytesMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -135,28 +135,12 @@ def bytesMergeRawSpec (A : RustAlloc) : Spec BytesMergeGhost where
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-/-- Specification of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]`
-(`0x2788`) in a loaded image `img` (`Spec.inImage` supplies `.rodata` vtable access and `Bytes` callees). -/
-def bytesMergeSpec (A : RustAlloc) (img : Obj.Image) : Spec BytesMergeGhost :=
-  (bytesMergeRawSpec A).inImage img
-
-/-! ## Target `subroutine_ok` proposition -/
-
-/-- `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]` meets
-`bytesMergeSpec A img` on `tripleRatchetProgAt img.base`. -/
-def BytesMergeOk (img : Obj.Image) (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-    ((tripleRatchetProgAt img.base C ctl abs).fnAddr bytesMergeName) (bytesMergeSpec A img)
-
-/-! ## Extended-stack variant (`bytesMergeSpecX`) -/
-
 /-- Stack budget for `prost::encoding::bytes::merge::<Vec<u8>, &mut &[u8]> [local#1]` with `decodeVarintSliceStackX`. -/
 abbrev bytesMergeStackX : Nat := 0xe0 + decodeVarintSliceStackX
 
 /-- Raw contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]`
 with `bytesMergeStackX`. -/
-def bytesMergeRawSpecX (A : RustAlloc) : Spec BytesMergeGhost where
+@[expose] def bytesMergeRawSpecX (A : RustAlloc) : Spec BytesMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -177,10 +161,5 @@ def bytesMergeRawSpecX (A : RustAlloc) : Spec BytesMergeGhost where
           vecU8At A x.valPtr x.valCap x.valBuf x.valBs ∗
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
-
-/-- Contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]> [local#1]`
-(`0x2788`) in a loaded image `img` with `bytesMergeStackX`. -/
-def bytesMergeSpecX (A : RustAlloc) (img : Obj.Image) : Spec BytesMergeGhost :=
-  (bytesMergeRawSpecX A).inImage img
 
 end CryptoVerification.LibsignalTripleRatchet.Prost

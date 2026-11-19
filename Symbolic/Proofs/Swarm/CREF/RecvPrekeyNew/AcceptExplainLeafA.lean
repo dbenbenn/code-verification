@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma -- proof-setup: allow-public-import
 import Batteries.Data.UInt
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -35,7 +35,7 @@ import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.SpqrRkForgedMac
 import Symbolic.Proofs.Swarm.CREF.TR.RecvRep
 import Symbolic.Proofs.Swarm.CREF.TR.StoredRk
-public import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
 import Symbolic.Proofs.Refinement.EncodeWithCovered -- shake: keep
 import Symbolic.DYBridge.DY.Bytes.Basic
 import Symbolic.DYBridge.DY.ALaCarte.Basic
@@ -56,7 +56,7 @@ Proves canonical X25519 key equivalence under `gamma` and constructs forged atta
 wire representations from an attacker-known receive seed.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -123,7 +123,7 @@ theorem leaf_gamma_x25519Key_eq (i : ExternInterpretation) (S : OpaqueSymbolSema
     (ek sk : DY.Bytes)
     (hkey : DY.X25519.normalizeX25519Key ek = DY.DiffieHellman.dhPk sk)
     (hek_canon : DY.X25519.leValue ((gamma i S g ek).map BitVec.toNat) < DY.X25519.p25519)
-    (hek_tf : DY.Libsignal.PQXDH.Refinement.X25519TorsionFree i (gamma i S g ek)) :
+    (hek_tf : DY.Libsignal.PQXDH.Refinement.X25519TorsionFree (gamma i S g ek)) :
     gamma i S g (DY.X25519.normalizeX25519Key ek) = gamma i S g ek := by
   unfold DY.X25519.normalizeX25519Key at hkey ⊢
   cases hview : ek.view? DY.X25519.Variant.SubF with

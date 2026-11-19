@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC3b -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2b
 import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC5
 import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
@@ -23,9 +23,7 @@ query commutation on `AuthAdvCutoffState` and `AuthAdvLatchedState`, and bounds 
 `respRecs` lengths under `QueryBounded`.
 -/
 
-@[expose] public section
-
-noncomputable section
+public section
 
 set_option autoImplicit false
 open SignalPqxdh SignalPqxdh.Security
@@ -147,14 +145,14 @@ theorem RelProbUpToBad.evalDist_bind_step_le {α : Type}
 
 /-! ## Off-`roCache` state agreement and step couplings -/
 
-def withAuthBaseRoCache {S : Setup} (c : List (Bytes × DRKey)) (st : AuthState S) : AuthState S :=
+@[expose] def withAuthBaseRoCache {S : Setup} (c : List (Bytes × DRKey)) (st : AuthState S) : AuthState S :=
   { st with roCache := c }
 
-def withAuthHybRoCache {S : Setup} (c : List (Bytes × DRKey)) (hst : AuthHybridState S) :
+@[expose] def withAuthHybRoCache {S : Setup} (c : List (Bytes × DRKey)) (hst : AuthHybridState S) :
     AuthHybridState S :=
   { hst with base := withAuthBaseRoCache c hst.base }
 
-def withAuthAdvRoCache {S : Setup} (c : List (Bytes × DRKey)) (s : AuthAdvCutoffState S) :
+@[expose] def withAuthAdvRoCache {S : Setup} (c : List (Bytes × DRKey)) (s : AuthAdvCutoffState S) :
     AuthAdvCutoffState S :=
   { s with hyb := withAuthHybRoCache c s.hyb }
 
@@ -439,11 +437,11 @@ theorem prob_badAuthFgAnyLatched_runAuthFgLatchedSim_le_gapDh_of_dh1 (S : Setup)
     (fun sIdx hsIdx bIdx hbIdx =>
       prob_badAuthFgDh3At_runAuthFgLatchedSim_le_gapDh S b P hP A sIdx hsIdx bIdx hbIdx)
 
-def authRoStepInc {S : Setup} : AuthQuery S → ℕ
+@[expose] def authRoStepInc {S : Setup} : AuthQuery S → ℕ
   | .roQuery _ => 1
   | _          => 0
 
-def authRecvStepInc {S : Setup} : AuthQuery S → ℕ
+@[expose] def authRecvStepInc {S : Setup} : AuthQuery S → ℕ
   | .recvOPK _ _ _ _   => 1
   | .recvNoOPK _ _ _ _ => 1
   | _                  => 0
@@ -639,16 +637,7 @@ theorem respRecs_length_pqxdhAuthAdvLatchedStageImpl {S : Setup} (stage : AuthHy
   respRecs_length_pqxdhAuthAdvStageImpl stage P q s.adv (y.1, y.2.adv)
     (mem_support_adv_of_mem_support_pqxdhAuthAdvLatchedStageImpl stage P q s y hy)
 
-theorem isAuthG3Abort_mono_pqxdhAuthAdvLatchedStageImpl {S : Setup} (stage : AuthHybridStage)
-    (P : Primitives) (q : AuthQuery S) (s : AuthAdvLatchedState S)
-    (hAbort : isAuthG3Abort P s.hyb = true)
-    (y : AuthResponse × AuthAdvLatchedState S)
-    (hy : y ∈ support ((pqxdhAuthAdvLatchedStageImpl stage S P q).run s)) :
-    isAuthG3Abort P y.2.hyb = true :=
-  isAuthG3Abort_mono_pqxdhAuthAdvStageImpl stage P q s.adv hAbort (y.1, y.2.adv)
-    (mem_support_adv_of_mem_support_pqxdhAuthAdvLatchedStageImpl stage P q s y hy)
-
-def withAuthAdvLatchedRoCache {S : Setup} (c : List (Bytes × DRKey))
+@[expose] def withAuthAdvLatchedRoCache {S : Setup} (c : List (Bytes × DRKey))
     (s : AuthAdvLatchedState S) : AuthAdvLatchedState S :=
   { s with adv := withAuthAdvRoCache c s.adv }
 
@@ -663,7 +652,7 @@ theorem withAuthAdvLatchedRoCache_withAuthAdvLatchedRoCache {S : Setup}
       withAuthAdvLatchedRoCache c1 s := rfl
 
 /-- Two `AuthAdvLatchedState S` states agree on all fields (including `latchedDh1`) except `adv.hyb.base.roCache`. -/
-def AuthAdvLatchedAgreeOffRo {S : Setup} (s1 s2 : AuthAdvLatchedState S) : Prop :=
+@[expose] def AuthAdvLatchedAgreeOffRo {S : Setup} (s1 s2 : AuthAdvLatchedState S) : Prop :=
   s1 = withAuthAdvLatchedRoCache s1.adv.hyb.base.roCache s2
 
 theorem AuthAdvLatchedAgreeOffRo.refl {S : Setup} (s : AuthAdvLatchedState S) :

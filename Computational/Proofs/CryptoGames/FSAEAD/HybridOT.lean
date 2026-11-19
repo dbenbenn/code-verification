@@ -10,9 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.HybridWith
-public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Lazy
-public import Computational.Proofs.CryptoGames.FSAEAD.HybridProofDefs
-public import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
+public import Computational.Proofs.CryptoGames.FSAEAD.Lazy -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.FSAEAD.HybridProofDefs
+import Computational.Proofs.CryptoGames.FSAEAD.HybridWithProofDefs
 import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
 
 /-!
@@ -23,7 +23,7 @@ import Computational.Proofs.CryptoGames.FSAEAD.HybridLazy
 Defines the joint hybrid and indexed OT-CCA state `JSt` and support-guarded `DEq` bind congruence.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec CryptoGames.Lazy
 

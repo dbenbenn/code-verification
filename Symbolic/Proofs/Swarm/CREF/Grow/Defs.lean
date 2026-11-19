@@ -18,7 +18,7 @@ Defines `SpqrOooBounded`, asserting that every chain-parameter block in a decoda
 `PqRatchetState` caps out-of-order message keys at `2000`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -28,7 +28,7 @@ open CryptoVerification.LibsignalSpqrV1
 
 /-- Every chain-parameter block in a decodable SPQR state caps `maxOooKeysOrDefault` at `2000`
 (`DEV-TR-OOO`). -/
-def SpqrOooBounded (bs : List (BitVec 8)) : Prop :=
+@[expose] def SpqrOooBounded (bs : List (BitVec 8)) : Prop :=
   ∀ st, PqRatchetState.decode bs = .ok st →
     (∀ c ∈ st.chain, ∀ p ∈ c.params, p.maxOooKeysOrDefault.toNat ≤ 2000) ∧
     (∀ v ∈ st.versionNegotiation, ∀ p ∈ v.chainParams, p.maxOooKeysOrDefault.toNat ≤ 2000)

@@ -10,11 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.HookDischarge.Libc.Memmove -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1PlacedBudgetAux
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1PlacedBudgetAux -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.ProofPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1Placed
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::add_chunk` (Block `419`, `RustCliAllocBudget`)
@@ -24,7 +32,7 @@ under `RustCliAllocBudget M` with `withLsCodeLoaded lsmpl` and `withLsCodeRoLoad
 discharging `RawVec<Pt>::grow_one` (Block `357`) from `HookSat` hypotheses.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -703,20 +711,6 @@ theorem addChunkSpecX_cl_of_addChunkSpec_cl [LibsignalPlacement]
   · exact (not_satisfies_false_sepConj hpost).elim
   · exact (not_satisfies_false_sepConj hex).elim
   · exact (not_satisfies_false_sepConj hoom).elim
-
-theorem add_chunk_cl_placed_ok_x_ext [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {ext : String → Option (State → State)}
-    (hmemmove_sat : HookSat (Rust.withPanics ext) spqrMemmoveSym
-      (withAllocVmPreserved (sessionMemmoveBoundedSpec growOneStack)))
-    (hgrow_full : subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
-      (lsmpl.base 357) (withLsCodeLoaded lsmpl (withAllocCallPreserved (growOnePtFullSpec M A lim))))
-    (hgrow_empty : subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
-      (lsmpl.base 357) (withLsCodeLoaded lsmpl (withAllocCallPreserved (growOnePtSpec M A lim)))) :
-    subroutine_ok ((blkPC_419).rebase (blkPl_419).base (Rust.withPanics ext))
-      (blkPl_419).base (withLsCodeLoaded lsmpl (addChunkSpecX M A lim)) :=
-  addChunkSpecX_cl_of_addChunkSpec_cl
-    (add_chunk_cl_placed_ok_ext hmemmove_sat hgrow_full hgrow_empty)
 
 /-! ## 3. Closed `[LibsignalPlacement]` `HookSat` Corollaries (`withLsCodeLoaded` & `withLsCodeRoLoaded`) -/
 

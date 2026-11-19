@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge
-public import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA
-public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureA
+public import Symbolic.Proofs.Swarm.CREF.Cli.RecordBridge -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.SendWire.WhisperPureA -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.SendRetCoinsCliPureA -- proof-setup: allow-public-import
 
 /-!
 # Send Coin-Prefix and Pending-Flag Bridges
@@ -21,7 +21,7 @@ Relates the 64-byte CLI randomness of a `send` call to the variable-length hardw
 `SingleSession` on `encodeRecordUnderExtras` under `PqxdhPartyInSpecDomain`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -98,7 +98,7 @@ open CryptoVerification.LibsignalSpqrV1
 open DY.Libsignal.Refinement (sha256CompressFunction)
 
 /-- Draw size of `States.send`: `64` on `keysUnsampled`, `32` on `headerReceived`, and `0` otherwise. -/
-def statesDrawSize {P : PolyApi} {Au : AuthApi} : States P Au → Nat
+@[expose] def statesDrawSize {P : PolyApi} {Au : AuthApi} : States P Au → Nat
   | .keysUnsampled _ => 64
   | .headerReceived _ => 32
   | .keysSampled _ | .headerSent _ | .ct1Received _ | .ekSentCt1Received _
@@ -106,7 +106,7 @@ def statesDrawSize {P : PolyApi} {Au : AuthApi} : States P Au → Nat
   | .ct2Sampled _ => 0
 
 /-- State-only draw size of `spqr::send`. -/
-def trSendDrawSize (F : ShaCompress) (K : MlKem) (mac : HmacFn) (st : List (BitVec 8)) : Nat :=
+@[expose] def trSendDrawSize (F : ShaCompress) (K : MlKem) (mac : HmacFn) (st : List (BitVec 8)) : Nat :=
   match decodeState (spqrDepsWithMac F K mac) st with
   | .error _ => 0
   | .ok pb =>
@@ -363,11 +363,11 @@ end SpqrDraw
 /-! ## Drawn Coin Prefix (`sendCoinsOf`) -/
 
 /-- Exact prefix (`0`, `32`, or `64` bytes) of `r_coins` consumed by SPQR `send` on `pq`. -/
-def sendCoinsOf (interp : ExternInterpretation) (pq r_coins : HwBytes) : HwBytes :=
+@[expose] def sendCoinsOf (interp : ExternInterpretation) (pq r_coins : HwBytes) : HwBytes :=
   r_coins.take (trSendDrawSizeOf interp pq)
 
 /-- Hardware RNG event list corresponding to `coins` (`[]` when empty, `[.rng coins]` otherwise). -/
-def sendMidOf (coins : HwBytes) : List MachineEvent :=
+@[expose] def sendMidOf (coins : HwBytes) : List MachineEvent :=
   if coins = [] then [] else [.rng coins]
 
 theorem trSendDrawSizeOf_le_64 (interp : ExternInterpretation) (pq : HwBytes) :

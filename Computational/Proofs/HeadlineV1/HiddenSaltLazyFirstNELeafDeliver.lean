@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple7
+public import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple7 -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Honest
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNECouple8
 import Computational.Proofs.HeadlineV1.HiddenSaltLazyFirstNELeaves1
@@ -20,19 +20,16 @@ import ProofLib.SepLogic.WP.StateNorm
 /-!
 # Non-Probe `deliver` Query Step Lemmas
 
-Proves the `resyncC` and `fwdAnswerC` branch lemmas for `firstNECoupledInvD_deliver_query_step`.
--/
+Proves the `resyncC` and `fwdAnswerC` branch lemmas for `firstNECoupledInvD_deliver_query_step`.-/
 
-@[expose] public section
+namespace CryptoVerification.LibsignalSession.HeadlineV1
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 open scoped ENNReal BigOperators
 open OracleComp OracleSpec ENNReal
 
-namespace CryptoVerification.LibsignalSession.HeadlineV1
 
 open CryptoVerification.LibsignalSpqrV1 (MlKem spqrV1SessionUniformCoins)
 open CryptoVerification.LibsignalProtoCodec
@@ -264,24 +261,25 @@ theorem firstNECoupledInvD_deliver_resync_step {α : Type} {ℓ : ℕ}
       𝒟[(simulateQ (firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q) (u u₁)).run
           (sC₁, (g₁, fl₁, dead₁), tr₁) >>=
         fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-        𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL (u u₁) sC₁ sent₁ m₁'
-            (s_cell₁ t tL) >>=
-          fun z => pure (cellWinPred tL t z.2)] {true}) :
+      stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep (u u₁) sC₁ sent₁ m₁' s_cell₁) :
     𝒟[(simulateQ (firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q)
         (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
           (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)).run
         (sC, (g, false, false), tr) >>=
       fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL
-          (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
-            (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
-          sC sent m' (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
+    stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep
+      (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
+      sC sent m' s_cell := by
   let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
   let fs := lFS P.C P.codec ℓ encT idOf 25000
   let sC₀ := updAmbSimStateC Pt b sC
+  let q_del : OracleComp (unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (Option (RecvResult (Plain ℓ))) :=
+    liftM (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))))
+  have ht0 : 0 ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (by omega)
+  have hwin0 : (s_cell 0 none).win = false := (hbody.2 0 ht0).1.win_df_false
   have hsync₀ : SyncInv P Dh encPt encT idOf lam qep sC₀ sent m' g (s_cell 0 none) :=
     syncInv_updAmbSimStateC Pt P Dh encPt encT idOf lam qep b sC sent m' g (s_cell 0 none) hsync
   have horig₀ : FirstNEInTransOriginInv qep sC₀.snaps g s_cell :=
@@ -302,22 +300,28 @@ theorem firstNECoupledInvD_deliver_resync_step {α : Type} {ℓ : ℕ}
     have hinv₁ : FirstNECoupledInvD P Dh encPt encT idOf lam qep false false sC₀ sent m' g s_cell :=
       Or.inr (Or.inr ⟨rfl, rfl, hbody, horig₀, hsync₀⟩)
     refine le_trans (hih (some RecvResult.rejected) sC₀ g false false tr' sent m' s_cell hinv₁) ?_
-    refine sum_cellSimRun_le_of_post_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-      _ (u (some RecvResult.rejected)) sC sC₀ sent sent m' m' g s_cell s_cell fun t _ tL _ =>
-      Or.inr ?_
-    rw [cellSimRun_deliver_query_bind,
-      runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
-        (hres (deliverForgeHook Pt ℓ)),
-      (resyncC_none_lockstep Pt qep t tL fig fs Q w ci? T pq' c sC₀ sent m' g
-        (s_cell t tL) false).2,
-      pure_bind]
+    refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+      q_del u (some RecvResult.rejected) sC sC₀ sent sent m' m' g s_cell s_cell hwin0 hwin0
+      (fun t _ => ?_) (fun t _ tL _ => Or.inr ?_)
+    · rw [← bind_pure q_del, cellSimRun_deliver_query_bind,
+        runCellStep_congr_run fig qep t none _ _ sC sC₀ sent m' (s_cell 0 none)
+          (hres (deliverForgeHook Pt ℓ)),
+        (resyncC_none_lockstep Pt qep t none fig fs Q w ci? T pq' c sC₀ sent m' g
+          (s_cell 0 none) false).2,
+        pure_bind]
+      simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+    · rw [cellSimRun_deliver_query_bind,
+        runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+          (hres (deliverForgeHook Pt ℓ)),
+        (resyncC_none_lockstep Pt qep t tL fig fs Q w ci? T pq' c sC₀ sent m' g
+          (s_cell t tL) false).2,
+        pure_bind]
   · obtain ⟨r_m, hr_m⟩ := Option.isSome_iff_exists.mp hinT
     obtain ⟨c_hon, r, hhonC_eq, _, _, hr_g, hpos_eq, hpos_ep, hpos_le, hpos_qep, _⟩ :=
       inTransit_sync_of_evictedSpurHistSimInvLazy Pt P K InvPQ Dh encPt encT hinj idOf lam qep q Q w
         hlazy hsync.2.2.2.2.2.2.2.1.htcur hsync.2.2.2.2.1 hr_m
     have hc_eq : c_hon = c := Option.some.inj (hhonC_eq.symm.trans hhonC)
     subst c_hon
-    have ht0 : 0 ∈ Finset.range ((qep + 1) + 2) := Finset.mem_range.mpr (by omega)
     have hrel0 : PPrimePaperRelShifted (s_cell 0 none) m' g := (hbody.2 0 ht0).1.toShifted
     cases hrcv : fig.receive (g.st Q) c with
     | none =>
@@ -335,18 +339,25 @@ theorem firstNECoupledInvD_deliver_resync_step {α : Type} {ℓ : ℕ}
           s_cell :=
         Or.inr (Or.inr ⟨rfl, rfl, hbody, horig₀, hsync₀⟩)
       refine le_trans (hih (some RecvResult.rejected) sC₀ g false false tr' sent m' s_cell hinv₁) ?_
-      refine sum_cellSimRun_le_of_post_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-        _ (u (some RecvResult.rejected)) sC sC₀ sent sent m' m' g s_cell s_cell
-        fun t ht tL htL => ?_
-      rcases (hbody.2 t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
-      · exact Or.inl hdoomed
-      · right
-        rw [cellSimRun_deliver_query_bind,
-          runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+      refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+        q_del u (some RecvResult.rejected) sC sC₀ sent sent m' m' g s_cell s_cell hwin0 hwin0
+        (fun t _ => ?_) (fun t ht tL htL => ?_)
+      · rw [← bind_pure q_del, cellSimRun_deliver_query_bind,
+          runCellStep_congr_run fig qep t none _ _ sC sC₀ sent m' (s_cell 0 none)
             (hres (deliverForgeHook Pt ℓ)),
-          (resyncC_some_of_receive_none Pt fig fs qep t tL Q w ci? T pq' c t_v i_v pm_v
-            sC₀ sent false hrel_sh hsync.2.1 hr_g hrcv).2,
+          (resyncC_some_of_receive_none Pt fig fs qep t none Q w ci? T pq' c t_v i_v pm_v
+            sC₀ sent false hrel0 hsync.2.1 hr_g hrcv).2,
           pure_bind]
+        simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+      · rcases (hbody.2 t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
+        · exact Or.inl hdoomed
+        · right
+          rw [cellSimRun_deliver_query_bind,
+            runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+              (hres (deliverForgeHook Pt ℓ)),
+            (resyncC_some_of_receive_none Pt fig fs qep t tL Q w ci? T pq' c t_v i_v pm_v
+              sC₀ sent false hrel_sh hsync.2.1 hr_g hrcv).2,
+            pure_bind]
     | some v_out =>
       rcases v_out with ⟨st', t', i', m_out⟩
       have hr_m₀ : sC₀.base.mir.inTransit Q.other w = some r_m :=
@@ -390,8 +401,10 @@ theorem firstNECoupledInvD_deliver_resync_step {α : Type} {ℓ : ℕ}
         exact firstNEInTransOriginInv_accept_step qep Q st' r.pos sC₀.snaps horig₀
       have h0_eq : s_cell₁ 0 none = (s_cell 0 none).accept Q st' r.pos := by
         dsimp only [s_cell₁]
-        rw [(hbody.2 0 ht0).1.win_df_false]
+        rw [hwin0]
         rfl
+      have hwin0_post : (s_cell₁ 0 none).win = false := by
+        rw [h0_eq]; simpa [SM.GameState.accept, SM.GameState.delete] using hwin0
       have hsync₁' : SyncInv P Dh encPt encT idOf lam qep sC₁ sent m₁' g₁ (s_cell₁ 0 none) := by
         rw [h0_eq]
         exact hsync₁
@@ -399,17 +412,126 @@ theorem firstNECoupledInvD_deliver_resync_step {α : Type} {ℓ : ℕ}
           sC₁ sent m₁' g₁ s_cell₁ :=
         Or.inr (Or.inr ⟨rfl, rfl, hbody₁, horig₁, hsync₁'⟩)
       refine le_trans (hih ans sC₁ g₁ false false tr' sent m₁' s_cell₁ hinv₁) ?_
-      refine sum_cellSimRun_le_of_post_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-        _ (u ans) sC sC₁ sent sent m' m₁' g₁ s_cell s_cell₁ fun t ht tL htL => ?_
-      rcases hcells₁ t ht tL htL with hdoomed | ⟨hrel_sh, hacc⟩
-      · exact Or.inl hdoomed
-      · right
-        rw [cellSimRun_deliver_query_bind,
-          runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+      refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+        q_del u ans sC sC₁ sent sent m' m₁' g₁ s_cell s_cell₁ hwin0 hwin0_post
+        (fun t _ => ?_) (fun t ht tL htL => ?_)
+      · rw [← bind_pure q_del, cellSimRun_deliver_query_bind,
+          runCellStep_congr_run fig qep t none _ _ sC sC₀ sent m' (s_cell 0 none)
             (hres (deliverForgeHook Pt ℓ)),
-          (resyncC_some_of_accept Pt fig fs qep t tL Q w ci? T pq' c t_v i_v pm_v
-            sC₀ sent false hrel_sh hsync.2.1 hr_g hrcv ans b' hrun_acc).2,
-          pure_bind, ← hacc]
+          (resyncC_some_of_accept Pt fig fs qep t none Q w ci? T pq' c t_v i_v pm_v
+            sC₀ sent false hrel0 hsync.2.1 hr_g hrcv ans b' hrun_acc).2,
+          pure_bind, ← h0_eq]
+        simp only [cellSimRun, simulateQ_pure, StateT.run_pure]
+        rfl
+      · rcases hcells₁ t ht tL htL with hdoomed | ⟨hrel_sh, hacc⟩
+        · exact Or.inl hdoomed
+        · right
+          rw [cellSimRun_deliver_query_bind,
+            runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+              (hres (deliverForgeHook Pt ℓ)),
+            (resyncC_some_of_accept Pt fig fs qep t tL Q w ci? T pq' c t_v i_v pm_v
+              sC₀ sent false hrel_sh hsync.2.1 hr_g hrcv ans b' hrun_acc).2,
+            pure_bind, ← hacc]
+
+private theorem bucketSimRun_deliver_fwd_win_eq {ℓ : ℕ}
+    (P : Params (List (BitVec 8)) (BitVec 512))
+    (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → List (BitVec 8)) (encT : Pt → PublicKey)
+    (decT : PublicKey → Option Pt) (idOf : Party → IdentityKey) (lam : Pt)
+    (qep : ℕ) (tL : Option ℕ) (par : Bool) (Q : Party) (w : List (BitVec 8))
+    (ci? : Option ℕ) (T : PublicKey) (pq' : List (BitVec 8)) (c' : Fig8C Pt)
+    (st' : Fig8St Pt) (t₀ i' : ℕ) (m_out : LibsignalMsgPublicPart × Plain ℓ)
+    (sC sC₀ : LibsignalToModularSchemeSimState (List (BitVec 8)) Pt ℓ) (sent : List (Fig8C Pt))
+    (m' : Mirror (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (s₀ : SM.GameState (Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (Fig8C Pt))
+    (ans : Option (RecvResult (Plain ℓ))) (b' : SimState (List (BitVec 8)) Pt ℓ)
+    (hfwd : (LibsignalSimC.guardC (LibsignalSimC.simRecvC P encT decT qep
+        (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
+        (lFS P.C P.codec ℓ encT idOf 25000) (deliverForgeHook Pt ℓ) Q w true)).run sC =
+      (LibsignalSimC.fwdAnswerC qep
+        (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
+        (lFS P.C P.codec ℓ encT idOf 25000) (deliverForgeHook Pt ℓ) Q w true ci? T pq' c').run sC₀)
+    (hInT : (sC₀.base.honest.any fun wc =>
+      decide (wc.2 = c') && (sC₀.base.mir.inTransit Q.other wc.1).isSome) = false)
+    (hwin₀ : s₀.win = false)
+    (hinT₀ : (s₀.inTransit Q.other c').isSome = false)
+    (hsafe₀ : s₀.safeInj (2 + 1) = true)
+    (hrcv₀ : (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam).receive (s₀.st Q) c' =
+      some (st', t₀, i', m_out))
+    (hq : ¬((qep + 1) + 1 < t₀))
+    (htriv₀ : s₀.trivial (2 + 1) ⟨Q.other, t₀, i'⟩ = false)
+    (hinB : DeliverForge.inStage2Bucket 1 tL par t₀ = true)
+    (hep_c' : c'.1.1 = t₀)
+    (hrun : (onAnswer (PQ := List (BitVec 8)) (Pt := Pt) (ℓ := ℓ) (qep := qep)
+      Q w true ci? T pq' (some .rejected)).run
+        (updKeptOnRes (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
+          (lFS P.C P.codec ℓ encT idOf 25000) Q c' (some .rejected) sC₀).base = pure (ans, b')) :
+    bucketSimRun P ℓ Dh encPt encT decT idOf lam qep tL par
+      (liftM (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w)))))))
+      sC sent m' (s₀, none) =
+      pure ((((ans, { updKeptOnRes (lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam)
+          (lFS P.C P.codec ℓ encT idOf 25000) Q c' (some .rejected) sC₀ with base := b' }),
+        sent), m'), ({ s₀ with win := true }, some t₀)) := by
+  let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
+  let fs := lFS P.C P.codec ℓ encT idOf 25000
+  have hbase_step :
+      (DeliverForge.fullImplBaseDFPaperBucket fig 1 (qep + 1) DeliverForge.sameHdrScheme
+        tL par (.inr (.inl (.inl (.inr (Q, c')))))).run (s₀, none) =
+      pure (some .rejected, ({ s₀ with win := true }, some t₀)) := by
+    change fig.receive (s₀.st Q) c' = some (st', t₀, i', m_out) at hrcv₀
+    simp only [DeliverForge.fullImplBaseDFPaperBucket, DeliverForge.withWinEpDF, StateT.run_mk,
+      DeliverForge.fullImplBaseDFPaper, DeliverForge.oracleImplBaseDFPaper,
+      DeliverForge.oracleImplPaper, QueryImpl.add_apply_inr, QueryImpl.add_apply_inl]
+    unfold SM.injectImpl
+    simp only [StateT.run_bind, StateT.run_get, pure_bind, hwin₀, hinT₀, hsafe₀,
+      Bool.not_true, Bool.false_or, Bool.false_eq_true, ↓reduceIte, hrcv₀, hq, htriv₀,
+      DeliverForge.bucketAuthCfg, hinB, StateT.run_set, StateT.run_pure,
+      DeliverForge.dfQueryTargetEpoch, hep_c']
+    rfl
+  unfold bucketSimRun
+  dsimp only
+  simp only [simulateQ_query]
+  dsimp only [liftM, monadLift, MonadLift.monadLift, StateT.lift, OracleSpec.query,
+    OracleQuery.input, OracleQuery.cont, OracleQuery.mk, PFunctor.Obj.fst, PFunctor.Obj.snd,
+    PFunctor.Obj.mk, id]
+  simp only [id_map]
+  change (simulateQ (DeliverForge.fullImplBaseDFPaperBucket fig 1 (qep + 1)
+      DeliverForge.sameHdrScheme tL par)
+    ((simulateQ (DeliverForge.simImplDF'Paper (2 + 1) (qep + 1))
+      (((LibsignalSimC.guardC (LibsignalSimC.simRecvC P encT decT qep fig fs
+        (deliverForgeHook Pt ℓ) Q w true)).run sC).run sent)).run m')).run (s₀, none) = _
+  rw [hfwd, fwdAnswerC_run]
+  simp only [StateT.run_bind, simulateQ_bind]
+  rw [zoomB_deliverForgeHook_run]
+  unfold fwd
+  simp only [StateT.run_bind, StateT.run_get, pure_bind, hInT, Bool.false_eq_true, ↓reduceIte]
+  unfold liftQ SM.injectQuery
+  simp only [StateT_run_lift, deliverForgeHook, StateT.run_bind, StateT.run_pure,
+    simulateQ_bind, simulateQ_HasQuery_query, simulateQ_pure, bind_assoc, pure_bind]
+  rw [fig8ToDFImpl_inject_run]
+  unfold DeliverForge.injectQueryDF
+  simp only [bind_assoc, pure_bind, simulateQ_bind, simulateQ_HasQuery_query, simulateQ_pure,
+    StateT.run_bind, StateT.run_pure]
+  change ((simulateQ (DeliverForge.fullImplBaseDFPaperBucket fig 1 (qep + 1)
+      DeliverForge.sameHdrScheme tL par)
+    ((DeliverForge.simInjectDF (Q, c')).run m')).run (s₀, none) >>= _) = _
+  unfold DeliverForge.simInjectDF DeliverForge.injectQueryDF
+  simp only [StateT.run_bind, StateT.run_get, pure_bind, StateT_run_lift,
+    simulateQ_bind, simulateQ_HasQuery_query, bind_assoc]
+  change ((DeliverForge.fullImplBaseDFPaperBucket fig 1 (qep + 1) DeliverForge.sameHdrScheme
+      tL par (.inr (.inl (.inl (.inr (Q, c')))))).run (s₀, none) >>= _) = _
+  rw [hbase_step, pure_bind]
+  simp only [StateT.run_pure, simulateQ_pure, pure_bind]
+  change (simulateQ (DeliverForge.fullImplBaseDFPaperBucket fig 1 (qep + 1)
+      DeliverForge.sameHdrScheme tL par)
+    ((simulateQ (DeliverForge.simImplDF'Paper (2 + 1) (qep + 1))
+      (((LibsignalSimC.runOnBaseState (deliverForgeHook Pt ℓ)
+          (onAnswer (qep := qep) Q w true ci? T pq' (some .rejected))).run
+        (updKeptOnRes fig fs Q c' (some .rejected) sC₀)).run sent)).run m')).run
+    ({ s₀ with win := true }, some t₀) = _
+  rw [zoomB_deliverForgeHook_run, hrun]
+  simp only [deliverForgeHook, simulateQ_pure, StateT.run_pure, pure_bind]
+  rfl
 
 theorem firstNECoupledInvD_deliver_fwdAnswer_step {α : Type} {ℓ : ℕ}
     (P : Params (List (BitVec 8)) (BitVec 512)) (K : MlKem)
@@ -465,24 +587,23 @@ theorem firstNECoupledInvD_deliver_fwdAnswer_step {α : Type} {ℓ : ℕ}
       𝒟[(simulateQ (firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q) (u u₁)).run
           (sC₁, (g₁, fl₁, dead₁), tr₁) >>=
         fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-      ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-        𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL (u u₁) sC₁ sent₁ m₁'
-            (s_cell₁ t tL) >>=
-          fun z => pure (cellWinPred tL t z.2)] {true}) :
+      stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep (u u₁) sC₁ sent₁ m₁' s_cell₁) :
     𝒟[(simulateQ (firstNESimImpl' P K InvPQ ℓ Dh encPt encT decT idOf lam qep q)
         (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
           (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)).run
         (sC, (g, false, false), tr) >>=
       fun z => pure (z.2.2.1.2.1 && !z.2.2.2.cand.isSome)] {true} ≤
-    ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ SM.admissibleLastLeakGuesses 2 t,
-      𝒟[cellSimRun P ℓ Dh encPt encT decT idOf lam qep t tL
-          (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
-            (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
-          sC sent m' (s_cell t tL) >>=
-        fun z => pure (cellWinPred tL t z.2)] {true} := by
+    stage2CellBucketSumRun P ℓ Dh encPt encT decT idOf lam qep
+      (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+        (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))) >>= u)
+      sC sent m' s_cell := by
   let fig := lFig8 Dh encPt P.C P.codec ℓ encT idOf 25000 lam
   let fs := lFS P.C P.codec ℓ encT idOf 25000
   let sC₀ := updAmbSimStateC Pt b sC
+  let q_del : OracleComp (unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (Option (RecvResult (Plain ℓ))) :=
+    liftM (OracleSpec.query (spec := unifSpec + SM.spec (GhostState (List (BitVec 8))) (Plain ℓ)
+      (BitVec 512) (List (BitVec 8))) (.inr (.inl (.inl (.inr (Q, w))))))
   have hsync₀ : SyncInv P Dh encPt encT idOf lam qep sC₀ sent m' g (s_cell 0 none) :=
     syncInv_updAmbSimStateC Pt P Dh encPt encT idOf lam qep b sC sent m' g (s_cell 0 none) hsync
   have horig₀ : FirstNEInTransOriginInv qep sC₀.snaps g s_cell :=
@@ -501,6 +622,7 @@ theorem firstNECoupledInvD_deliver_fwdAnswer_step {α : Type} {ℓ : ℕ}
     rcases (hbody.2 0 ht0).2.2 none hnone0 with hdoomed | ⟨hrel_sh, _, _, _⟩
     · exact False.elim (nomatch hdoomed.1)
     · exact hrel_sh
+  have hwin0 : (s_cell 0 none).win = false := hrel0.win_df_false
   rcases hc'_cases with hhonC' | ⟨hsafe_g, hc'_not_hon, hinT_g, hc'_ep⟩
   · have hc_eq : c_hon = c' := Option.some.inj (hhonC.symm.trans hhonC')
     subst hc_eq
@@ -528,20 +650,29 @@ theorem firstNECoupledInvD_deliver_fwdAnswer_step {α : Type} {ℓ : ℕ}
           sC₀ sent m' g s_cell :=
         Or.inr (Or.inr ⟨rfl, rfl, hbody, horig₀, hsync₀⟩)
       refine le_trans (hih (some RecvResult.rejected) sC₀ g false false tr' sent m' s_cell hinv₁) ?_
-      refine sum_cellSimRun_le_of_post_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-        _ (u (some RecvResult.rejected)) sC sC₀ sent sent m' m' g s_cell s_cell
-        fun t ht tL htL => ?_
-      rcases (hbody.2 t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
-      · exact Or.inl hdoomed
-      · right
-        have hlock_t := fwdAnswerC_deliver_lockstep Pt fig fs qep t tL Q w true ci? T pq' c_hon
-          sC₀ sent false hrel_sh hsync.2.1 hInT₀ (some RecvResult.rejected) sC₀.base
+      refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+        q_del u (some RecvResult.rejected) sC sC₀ sent sent m' m' g s_cell s_cell hwin0 hwin0
+        (fun t _ => ?_) (fun t ht tL htL => ?_)
+      · have hlock_0 := fwdAnswerC_deliver_lockstep Pt fig fs qep t none Q w true ci? T pq' c_hon
+          sC₀ sent false hrel0 hsync.2.1 hInT₀ (some RecvResult.rejected) sC₀.base
           (by simpa [hr_g, hrcv] using hrej_ans)
-        simp only [hr_g, hrcv, hrej_kept] at hlock_t
-        rw [cellSimRun_deliver_query_bind,
-          runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+        simp only [hr_g, hrcv, hrej_kept] at hlock_0
+        rw [← bind_pure q_del, cellSimRun_deliver_query_bind,
+          runCellStep_congr_run fig qep t none _ _ sC sC₀ sent m' (s_cell 0 none)
             (hfa (deliverForgeHook Pt ℓ)),
-          hlock_t.2, pure_bind]
+          hlock_0.2, pure_bind]
+        simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+      · rcases (hbody.2 t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
+        · exact Or.inl hdoomed
+        · right
+          have hlock_t := fwdAnswerC_deliver_lockstep Pt fig fs qep t tL Q w true ci? T pq' c_hon
+            sC₀ sent false hrel_sh hsync.2.1 hInT₀ (some RecvResult.rejected) sC₀.base
+            (by simpa [hr_g, hrcv] using hrej_ans)
+          simp only [hr_g, hrcv, hrej_kept] at hlock_t
+          rw [cellSimRun_deliver_query_bind,
+            runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+              (hfa (deliverForgeHook Pt ℓ)),
+            hlock_t.2, pure_bind]
     | some val =>
       rcases val with ⟨st', t', i', m_out⟩
       let pm : Option (LibsignalMsgPublicPart × Plain ℓ) := if r.pos ∈ g.chall then none else some m_out
@@ -586,27 +717,40 @@ theorem firstNECoupledInvD_deliver_fwdAnswer_step {α : Type} {ℓ : ℕ}
         exact firstNEInTransOriginInv_accept_step qep Q st' r.pos sC₀.snaps horig₀
       have h0_eq : s_cell₁ 0 none = (s_cell 0 none).accept Q st' r.pos := by
         dsimp only [s_cell₁]
-        rw [(hbody.2 0 ht0).1.win_df_false]
+        rw [hwin0]
         rfl
+      have hwin0_post : (s_cell₁ 0 none).win = false := by
+        rw [h0_eq]; simpa [SM.GameState.accept, SM.GameState.delete] using hwin0
       have hsync₁' : SyncInv P Dh encPt encT idOf lam qep sC₁ sent m₁' g₁ (s_cell₁ 0 none) := by
         rw [h0_eq]; exact hsync₁
       have hinv₁ : FirstNECoupledInvD P Dh encPt encT idOf lam qep false false
           sC₁ sent m₁' g₁ s_cell₁ :=
         Or.inr (Or.inr ⟨rfl, rfl, hbody₁, horig₁, hsync₁'⟩)
       refine le_trans (hih ans sC₁ g₁ false false tr' sent m₁' s_cell₁ hinv₁) ?_
-      refine sum_cellSimRun_le_of_post_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-        _ (u ans) sC sC₁ sent sent m' m₁' g₁ s_cell s_cell₁ fun t ht tL htL => ?_
-      rcases hcells₁ t ht tL htL with hdoomed | ⟨hrel_sh, hacc⟩
-      · exact Or.inl hdoomed
-      · right
-        have hlock_t := fwdAnswerC_deliver_lockstep Pt fig fs qep t tL Q w true ci? T pq' c_hon
-          sC₀ sent false hrel_sh hsync.2.1 hInT₀ ans b'
+      refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+        q_del u ans sC sC₁ sent sent m' m₁' g₁ s_cell s_cell₁ hwin0 hwin0_post
+        (fun t _ => ?_) (fun t ht tL htL => ?_)
+      · have hlock_0 := fwdAnswerC_deliver_lockstep Pt fig fs qep t none Q w true ci? T pq' c_hon
+          sC₀ sent false hrel0 hsync.2.1 hInT₀ ans b'
           (by simpa [hr_g, hrcv, res_acc, pm] using hrun_ans)
-        simp only [hr_g, hrcv] at hlock_t
-        rw [cellSimRun_deliver_query_bind,
-          runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+        simp only [hr_g, hrcv] at hlock_0
+        rw [← bind_pure q_del, cellSimRun_deliver_query_bind,
+          runCellStep_congr_run fig qep t none _ _ sC sC₀ sent m' (s_cell 0 none)
             (hfa (deliverForgeHook Pt ℓ)),
-          hlock_t.2, pure_bind, ← hacc]
+          hlock_0.2, pure_bind, ← h0_eq]
+        simp only [cellSimRun, simulateQ_pure, StateT.run_pure]
+        rfl
+      · rcases hcells₁ t ht tL htL with hdoomed | ⟨hrel_sh, hacc⟩
+        · exact Or.inl hdoomed
+        · right
+          have hlock_t := fwdAnswerC_deliver_lockstep Pt fig fs qep t tL Q w true ci? T pq' c_hon
+            sC₀ sent false hrel_sh hsync.2.1 hInT₀ ans b'
+            (by simpa [hr_g, hrcv, res_acc, pm] using hrun_ans)
+          simp only [hr_g, hrcv] at hlock_t
+          rw [cellSimRun_deliver_query_bind,
+            runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+              (hfa (deliverForgeHook Pt ℓ)),
+            hlock_t.2, pure_bind, ← hacc]
   · have hInT_sC₀ : (sC₀.base.honest.any fun wc =>
         decide (wc.2 = c') && (sC₀.base.mir.inTransit Q.other wc.1).isSome) = false := by
       rw [List.any_eq_false]
@@ -637,34 +781,59 @@ theorem firstNECoupledInvD_deliver_fwdAnswer_step {α : Type} {ℓ : ℕ}
         lam qep q Q w sC sC₀ g g (some RecvResult.rejected) tr hlazy hprobe_run
       rw [simulateQ_firstNESimImpl'_deliver_query_bind, hrun, pure_bind]
       refine le_trans (hih (some .rejected) sC₀ g false false tr' sent m' s_cell hinv₀) ?_
-      refine sum_cellSimRun_le_of_post_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-        _ (u (some .rejected)) sC sC₀ sent sent m' m' g s_cell s_cell fun t ht tL htL => ?_
-      rcases (hbody.2 t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
-      · exact Or.inl hdoomed
-      · right
-        have hinj_c : (injectImplCell fig (qep + 1) tL t (SM.Config.auth t) (Q, c')).run
-            (s_cell t tL) = pure (some .rejected, s_cell t tL) := by
-          rw [injectImplCell_run fig qep tL t Q c' (s_cell t tL) hrel_sh.win_df_false]
-          have hinT_c : ((s_cell t tL).inTransit Q.other c').isSome = false := by
-            rw [hrel_sh.inTransit_eq]; exact hinT_g
-          have hsafe_c : (s_cell t tL).safeInj (cellDelta tL t) = true :=
-            hrel_sh.safeInj_df_of_safeInj_mir (cellDelta_le_three tL t) hsafe_g
-          have hrcv_c : fig.receive ((s_cell t tL).st Q) c' = none := by
-            rw [congrFun hrel_sh.st_eq Q]; exact hrcv
+      refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+        q_del u (some .rejected) sC sC₀ sent sent m' m' g s_cell s_cell hwin0 hwin0
+        (fun t _ => ?_) (fun t ht tL htL => ?_)
+      · have hinj_0 : (injectImplCell fig (qep + 1) none t (SM.Config.auth t) (Q, c')).run
+            (s_cell 0 none) = pure (some .rejected, s_cell 0 none) := by
+          rw [injectImplCell_run fig qep none t Q c' (s_cell 0 none) hwin0]
+          have hinT_c : ((s_cell 0 none).inTransit Q.other c').isSome = false := by
+            rw [hrel0.inTransit_eq]; exact hinT_g
+          have hsafe_c : (s_cell 0 none).safeInj (cellDelta none t) = true :=
+            hrel0.safeInj_df_of_safeInj_mir (cellDelta_le_three none t) hsafe_g
+          have hrcv_c : fig.receive ((s_cell 0 none).st Q) c' = none := by
+            rw [congrFun hrel0.st_eq Q]; exact hrcv
           simp [hinT_c, hsafe_c, hrcv_c]
-        have hcell_step :
-            runCellStep fig qep t tL
+        have hcell_0 :
+            runCellStep fig qep t none
               (LibsignalSimC.fwdAnswerC qep fig fs (deliverForgeHook Pt ℓ) Q w true ci? T pq' c')
-              sC₀ sent m' (s_cell t tL) =
-            pure ((((some .rejected, sC₀), sent), m'), s_cell t tL) := by
+              sC₀ sent m' (s_cell 0 none) =
+            pure ((((some .rejected, sC₀), sent), m'), s_cell 0 none) := by
           simpa [hrej_kept, updMirOnRes] using
-            runCellStep_fwdAnswerC_inject_of_eq fig fs qep t tL Q w true ci? T pq' c' sC₀ sent m'
-              (s_cell t tL) (s_cell t tL) (some .rejected) (some .rejected) sC₀.base
-              hInT_sC₀ hinj_c (by simpa [hrej_kept] using hrun_ans)
-        rw [cellSimRun_deliver_query_bind,
-          runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+            runCellStep_fwdAnswerC_inject_of_eq fig fs qep t none Q w true ci? T pq' c' sC₀ sent m'
+              (s_cell 0 none) (s_cell 0 none) (some .rejected) (some .rejected) sC₀.base
+              hInT_sC₀ hinj_0 (by simpa [hrej_kept] using hrun_ans)
+        rw [← bind_pure q_del, cellSimRun_deliver_query_bind,
+          runCellStep_congr_run fig qep t none _ _ sC sC₀ sent m' (s_cell 0 none)
             (hfa (deliverForgeHook Pt ℓ)),
-          hcell_step, pure_bind]
+          hcell_0, pure_bind]
+        simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+      · rcases (hbody.2 t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
+        · exact Or.inl hdoomed
+        · right
+          have hinj_c : (injectImplCell fig (qep + 1) tL t (SM.Config.auth t) (Q, c')).run
+              (s_cell t tL) = pure (some .rejected, s_cell t tL) := by
+            rw [injectImplCell_run fig qep tL t Q c' (s_cell t tL) hrel_sh.win_df_false]
+            have hinT_c : ((s_cell t tL).inTransit Q.other c').isSome = false := by
+              rw [hrel_sh.inTransit_eq]; exact hinT_g
+            have hsafe_c : (s_cell t tL).safeInj (cellDelta tL t) = true :=
+              hrel_sh.safeInj_df_of_safeInj_mir (cellDelta_le_three tL t) hsafe_g
+            have hrcv_c : fig.receive ((s_cell t tL).st Q) c' = none := by
+              rw [congrFun hrel_sh.st_eq Q]; exact hrcv
+            simp [hinT_c, hsafe_c, hrcv_c]
+          have hcell_step :
+              runCellStep fig qep t tL
+                (LibsignalSimC.fwdAnswerC qep fig fs (deliverForgeHook Pt ℓ) Q w true ci? T pq' c')
+                sC₀ sent m' (s_cell t tL) =
+              pure ((((some .rejected, sC₀), sent), m'), s_cell t tL) := by
+            simpa [hrej_kept, updMirOnRes] using
+              runCellStep_fwdAnswerC_inject_of_eq fig fs qep t tL Q w true ci? T pq' c' sC₀ sent m'
+                (s_cell t tL) (s_cell t tL) (some .rejected) (some .rejected) sC₀.base
+                hInT_sC₀ hinj_c (by simpa [hrej_kept] using hrun_ans)
+          rw [cellSimRun_deliver_query_bind,
+            runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+              (hfa (deliverForgeHook Pt ℓ)),
+            hcell_step, pure_bind]
     | some v =>
       rcases v with ⟨st', t', i', m_out⟩
       by_cases hq : (qep + 1) + 1 < t'
@@ -687,34 +856,59 @@ theorem firstNECoupledInvD_deliver_fwdAnswer_step {α : Type} {ℓ : ℕ}
           idOf lam qep q Q w sC sC₀ g g (some RecvResult.rejected) tr hlazy hprobe_run
         rw [simulateQ_firstNESimImpl'_deliver_query_bind, hrun, pure_bind]
         refine le_trans (hih (some .rejected) sC₀ g false false tr' sent m' s_cell hinv₀) ?_
-        refine sum_cellSimRun_le_of_post_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-          _ (u (some .rejected)) sC sC₀ sent sent m' m' g s_cell s_cell fun t ht tL htL => ?_
-        rcases (hbody.2 t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
-        · exact Or.inl hdoomed
-        · right
-          have hinj_c : (injectImplCell fig (qep + 1) tL t (SM.Config.auth t) (Q, c')).run
-              (s_cell t tL) = pure (some .rejected, s_cell t tL) := by
-            rw [injectImplCell_run fig qep tL t Q c' (s_cell t tL) hrel_sh.win_df_false]
-            have hinT_c : ((s_cell t tL).inTransit Q.other c').isSome = false := by
-              rw [hrel_sh.inTransit_eq]; exact hinT_g
-            have hsafe_c : (s_cell t tL).safeInj (cellDelta tL t) = true :=
-              hrel_sh.safeInj_df_of_safeInj_mir (cellDelta_le_three tL t) hsafe_g
-            have hrcv_c : fig.receive ((s_cell t tL).st Q) c' = some (st', t', i', m_out) := by
-              rw [congrFun hrel_sh.st_eq Q]; exact hrcv
+        refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+          q_del u (some .rejected) sC sC₀ sent sent m' m' g s_cell s_cell hwin0 hwin0
+          (fun t _ => ?_) (fun t ht tL htL => ?_)
+        · have hinj_0 : (injectImplCell fig (qep + 1) none t (SM.Config.auth t) (Q, c')).run
+              (s_cell 0 none) = pure (some .rejected, s_cell 0 none) := by
+            rw [injectImplCell_run fig qep none t Q c' (s_cell 0 none) hwin0]
+            have hinT_c : ((s_cell 0 none).inTransit Q.other c').isSome = false := by
+              rw [hrel0.inTransit_eq]; exact hinT_g
+            have hsafe_c : (s_cell 0 none).safeInj (cellDelta none t) = true :=
+              hrel0.safeInj_df_of_safeInj_mir (cellDelta_le_three none t) hsafe_g
+            have hrcv_c : fig.receive ((s_cell 0 none).st Q) c' = some (st', t', i', m_out) := by
+              rw [congrFun hrel0.st_eq Q]; exact hrcv
             simp [hinT_c, hsafe_c, hrcv_c, hq]
-          have hcell_step :
-              runCellStep fig qep t tL
+          have hcell_0 :
+              runCellStep fig qep t none
                 (LibsignalSimC.fwdAnswerC qep fig fs (deliverForgeHook Pt ℓ) Q w true ci? T pq' c')
-                sC₀ sent m' (s_cell t tL) =
-              pure ((((some .rejected, sC₀), sent), m'), s_cell t tL) := by
+                sC₀ sent m' (s_cell 0 none) =
+              pure ((((some .rejected, sC₀), sent), m'), s_cell 0 none) := by
             simpa [hrej_kept, updMirOnRes] using
-              runCellStep_fwdAnswerC_inject_of_eq fig fs qep t tL Q w true ci? T pq' c' sC₀ sent m'
-                (s_cell t tL) (s_cell t tL) (some .rejected) (some .rejected) sC₀.base
-                hInT_sC₀ hinj_c (by simpa [hrej_kept] using hrun_ans)
-          rw [cellSimRun_deliver_query_bind,
-            runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+              runCellStep_fwdAnswerC_inject_of_eq fig fs qep t none Q w true ci? T pq' c' sC₀ sent m'
+                (s_cell 0 none) (s_cell 0 none) (some .rejected) (some .rejected) sC₀.base
+                hInT_sC₀ hinj_0 (by simpa [hrej_kept] using hrun_ans)
+          rw [← bind_pure q_del, cellSimRun_deliver_query_bind,
+            runCellStep_congr_run fig qep t none _ _ sC sC₀ sent m' (s_cell 0 none)
               (hfa (deliverForgeHook Pt ℓ)),
-            hcell_step, pure_bind]
+            hcell_0, pure_bind]
+          simp [cellSimRun, simulateQ_pure, StateT.run_pure]
+        · rcases (hbody.2 t ht).2.2 tL htL with hdoomed | ⟨hrel_sh, _, _, _⟩
+          · exact Or.inl hdoomed
+          · right
+            have hinj_c : (injectImplCell fig (qep + 1) tL t (SM.Config.auth t) (Q, c')).run
+                (s_cell t tL) = pure (some .rejected, s_cell t tL) := by
+              rw [injectImplCell_run fig qep tL t Q c' (s_cell t tL) hrel_sh.win_df_false]
+              have hinT_c : ((s_cell t tL).inTransit Q.other c').isSome = false := by
+                rw [hrel_sh.inTransit_eq]; exact hinT_g
+              have hsafe_c : (s_cell t tL).safeInj (cellDelta tL t) = true :=
+                hrel_sh.safeInj_df_of_safeInj_mir (cellDelta_le_three tL t) hsafe_g
+              have hrcv_c : fig.receive ((s_cell t tL).st Q) c' = some (st', t', i', m_out) := by
+                rw [congrFun hrel_sh.st_eq Q]; exact hrcv
+              simp [hinT_c, hsafe_c, hrcv_c, hq]
+            have hcell_step :
+                runCellStep fig qep t tL
+                  (LibsignalSimC.fwdAnswerC qep fig fs (deliverForgeHook Pt ℓ) Q w true ci? T pq' c')
+                  sC₀ sent m' (s_cell t tL) =
+                pure ((((some .rejected, sC₀), sent), m'), s_cell t tL) := by
+              simpa [hrej_kept, updMirOnRes] using
+                runCellStep_fwdAnswerC_inject_of_eq fig fs qep t tL Q w true ci? T pq' c' sC₀ sent m'
+                  (s_cell t tL) (s_cell t tL) (some .rejected) (some .rejected) sC₀.base
+                  hInT_sC₀ hinj_c (by simpa [hrej_kept] using hrun_ans)
+            rw [cellSimRun_deliver_query_bind,
+              runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+                (hfa (deliverForgeHook Pt ℓ)),
+              hcell_step, pure_bind]
       · have ht'_le : t' ≤ (qep + 1) + 1 := Nat.le_of_not_lt hq
         let res_acc : Option (RecvResult (LibsignalMsgPublicPart × Plain ℓ)) :=
           some (.accepted t' i' (some m_out))
@@ -742,17 +936,50 @@ theorem firstNECoupledInvD_deliver_fwdAnswer_step {α : Type} {ℓ : ℕ}
             have hrcv_c : fig.receive ((s_cell t₀ tL₀).st Q) c' = some (st', t', i', m_out) := by
               rw [congrFun hrel_sh₀.st_eq Q]; exact hrcv
             simp [hinT_c, hsafe_c, hrcv_c, hq, htriv₀, ht_eq₀]
-          refine evalDist_le_sum_cellSimRun_of_cell_step_win P ℓ Dh encPt encT decT idOf lam qep
+          refine evalDist_le_stage2_of_cell_step_win P ℓ Dh encPt encT decT idOf lam qep
             _ _ (u ans) sC { updKeptOnRes fig fs Q c' (some .rejected) sC₀ with base := b' }
             sent sent m' m' s_cell t₀ ht₀ tL₀ htL₀ { s_cell t₀ tL₀ with win := true } ?_ hwin₀
-          rw [cellSimRun_deliver_query_bind,
-            runCellStep_congr_run fig qep t₀ tL₀ _ _ sC sC₀ sent m' (s_cell t₀ tL₀)
-              (hfa (deliverForgeHook Pt ℓ)),
-            runCellStep_fwdAnswerC_inject_of_eq fig fs qep t₀ tL₀ Q w true ci? T pq' c' sC₀
-              sent m' (s_cell t₀ tL₀) { s_cell t₀ tL₀ with win := true } (some .rejected) ans b'
-              hInT_sC₀ hinj_c₀ hrun_ans,
-            pure_bind]
-          rfl
+            fun hnotB1 hnotB2 par hinB => ?_
+          · rw [cellSimRun_deliver_query_bind,
+              runCellStep_congr_run fig qep t₀ tL₀ _ _ sC sC₀ sent m' (s_cell t₀ tL₀)
+                (hfa (deliverForgeHook Pt ℓ)),
+              runCellStep_fwdAnswerC_inject_of_eq fig fs qep t₀ tL₀ Q w true ci? T pq' c' sC₀
+                sent m' (s_cell t₀ tL₀) { s_cell t₀ tL₀ with win := true } (some .rejected) ans b'
+                hInT_sC₀ hinj_c₀ hrun_ans,
+              pure_bind]
+            rfl
+          · have ht'_eq : t' = t₀ := beq_iff_eq.mp ht_eq₀
+            have hs0_eq : s_cell t₀ tL₀ = s_cell 0 none := by
+              rcases (hbody.2 t₀ ht₀).2.2 tL₀ htL₀ with hdoomed | ⟨_, _, _, hcomp₀⟩
+              · exfalso
+                exact Bool.false_ne_true (hrel_sh₀.win_df_false.symm.trans hdoomed.2.2.2)
+              · exact (hcomp₀.eq_of_not_B1_not_B2 hnotB1 hnotB2).trans (hbody.1 t₀ ht₀ 0 ht0)
+            have hep_c' : c'.1.1 = t₀ :=
+              (lFig8_receive_spec Pt P Dh encPt encT idOf lam hrcv).2.1.symm.trans ht'_eq
+            have hinT₀ : ((s_cell 0 none).inTransit Q.other c').isSome = false := by
+              rw [hrel0.inTransit_eq]; exact hinT_g
+            have hsafe₀ : (s_cell 0 none).safeInj (2 + 1) = true :=
+              hrel0.safeInj_df_of_safeInj_mir (by omega) hsafe_g
+            have hrcv₀ : fig.receive ((s_cell 0 none).st Q) c' = some (st', t₀, i', m_out) := by
+              rw [congrFun hrel0.st_eq Q, ← ht'_eq]; exact hrcv
+            have htriv₀' : (s_cell 0 none).trivial (2 + 1) ⟨Q.other, t₀, i'⟩ = false := by
+              have h := htriv₀
+              rw [cellTrivialT_of_not_B1 hnotB1, hs0_eq, ht'_eq] at h
+              exact h
+            refine ⟨({ s_cell 0 none with win := true }, some t₀), ?_, ?_⟩
+            · rw [bucketSimRun_bind,
+                bucketSimRun_deliver_fwd_win_eq Pt P Dh encPt encT decT idOf lam qep tL₀ par Q w
+                  ci? T pq' c' st' t₀ i' m_out sC sC₀ sent m' (s_cell 0 none) ans b'
+                  (hfa (deliverForgeHook Pt ℓ)) hInT_sC₀ hwin0 hinT₀ hsafe₀ hrcv₀
+                  (ht'_eq ▸ hq) htriv₀' hinB hep_c' hrun_ans,
+                pure_bind]
+            · unfold bucketWinPred
+              dsimp only
+              have hw_eq : cellWinPred tL₀ t₀ { s_cell 0 none with win := true } = true :=
+                hs0_eq ▸ hwin₀
+              unfold cellWinPred at hw_eq
+              simp only [hnotB1, ↓reduceIte] at hw_eq
+              exact hw_eq
         · have hpos_lt : (⟨Q.other, t', i'⟩ : SM.Pos).epoch < min (g.epoch .A) (g.epoch .B) :=
             pos_epoch_lt_min_of_trivial hsync.2.2.1 hsafe_g htriv_g
           have hlt_Q : t' < g.epoch Q := by
@@ -807,51 +1034,95 @@ theorem firstNECoupledInvD_deliver_fwdAnswer_step {α : Type} {ℓ : ℕ}
             idOf lam qep q Q w sC sC₁ g (g.accept Q st' ⟨Q.other, t', i'⟩) ans tr hlazy hprobe_run
           rw [simulateQ_firstNESimImpl'_deliver_query_bind, hrun, pure_bind]
           rw [hg'_eq] at hinv' hcells'
+          have hbody' : FirstNECellFamilyInvT_body qep (g.accept Q st' ⟨Q.other, t', i'⟩)
+              (updMirOnRes Q res_acc m') s_cell' := by
+            rcases hinv' with ⟨t, ht, tL, htL, hwin_cell⟩ | ⟨_, hcol', hrel_all'⟩
+            · exfalso
+              rcases hcells' t ht tL htL with hdoomed' | ⟨hrel_sh, _, hs_eq⟩
+              · rw [hdoomed'.cellWinPred_eq_false] at hwin_cell
+                cases hwin_cell
+              · have hw := s_win_of_cellWinPred hwin_cell
+                dsimp only [s_cell'] at hs_eq hw
+                rw [hs_eq] at hw
+                simp only [SM.GameState.accept, SM.GameState.delete, hrel_sh.win_df_false,
+                  Bool.false_eq_true] at hw
+            · exact ⟨hcol', hrel_all'⟩
+          have hs0_acc :
+              PPrimePaperRelShifted (s_cell 0 none) m' g ∧
+                cellTrivialT none 0 (s_cell 0 none) ⟨Q.other, t', i'⟩ = true ∧
+                s_cell' 0 none = (s_cell 0 none).accept Q st' ⟨Q.other, t', i'⟩ := by
+            rcases hcells' 0 ht0 none (Finset.mem_insert_self none _) with hdoomed0 | h0
+            · exfalso
+              have hw0 := hdoomed0.2.2.2
+              rw [(hbody'.2 0 ht0).1.win_df_false] at hw0
+              nomatch hw0
+            · exact h0
           have hinvD' : FirstNECoupledInvD P Dh encPt encT idOf lam qep false false
               sC₁ sent (updMirOnRes Q res_acc m') (g.accept Q st' ⟨Q.other, t', i'⟩) s_cell' := by
-            rcases hinv' with hwin' | ⟨_, hcol', hrel_all'⟩
-            · exact Or.inl hwin'
-            · refine Or.inr (Or.inr ⟨rfl, rfl, ⟨hcol', hrel_all'⟩, ?_, ?_⟩)
-              · have hsnaps₁ : sC₁.snaps = sC₀.snaps :=
-                  (updKeptOnRes_base_sent_snaps_eq Pt fig fs Q c' res_acc sC₀).2.2
-                rw [hsnaps₁]
-                exact hg'_eq ▸ firstNEInTransOriginInv_inject_step qep Q st' t' i' sC₀.snaps horig₀
-              · have hsync' := syncInv_inject_accept_step P Dh encPt encT idOf lam qep Q hsync₀
-                  hstop₀ hsafe_g htriv_g hrcv hhon_b' hstop_b' hmir_b'
-                rcases hcells' 0 ht0 none (Finset.mem_insert_self none _) with
-                  hdoomed0 | ⟨_, _, hs0_eq⟩
-                · have hw0 := hdoomed0.2.2.2
-                  rw [(hrel_all' 0 ht0).1.win_df_false] at hw0; nomatch hw0
-                · dsimp only [updMirOnRes, res_acc, s_cell'] at hs0_eq ⊢
-                  rwa [hs0_eq]
+            refine Or.inr (Or.inr ⟨rfl, rfl, hbody', ?_, ?_⟩)
+            · have hsnaps₁ : sC₁.snaps = sC₀.snaps :=
+                (updKeptOnRes_base_sent_snaps_eq Pt fig fs Q c' res_acc sC₀).2.2
+              rw [hsnaps₁]
+              exact hg'_eq ▸ firstNEInTransOriginInv_inject_step qep Q st' t' i' sC₀.snaps horig₀
+            · have hsync' := syncInv_inject_accept_step P Dh encPt encT idOf lam qep Q hsync₀
+                hstop₀ hsafe_g htriv_g hrcv hhon_b' hstop_b' hmir_b'
+              have hs0_eq := hs0_acc.2.2
+              dsimp only [updMirOnRes, res_acc, s_cell'] at hs0_eq ⊢
+              rwa [hs0_eq]
+          have hwin₁ : (s_cell' 0 none).win = false := (hbody'.2 0 ht0).1.win_df_false
           refine le_trans (hih ans sC₁ (g.accept Q st' ⟨Q.other, t', i'⟩) false false tr' sent
             (updMirOnRes Q res_acc m') s_cell' hinvD') ?_
-          refine sum_cellSimRun_le_of_post_doomed_or_eq P ℓ Dh encPt encT decT idOf lam qep
-            _ (u ans) sC sC₁ sent sent m' (updMirOnRes Q res_acc m')
-            (g.accept Q st' ⟨Q.other, t', i'⟩) s_cell s_cell' fun t ht tL htL => ?_
-          rcases hcells' t ht tL htL with hdoomed' | ⟨hrel_sh, htriv_sh, hs_eq⟩
-          · exact Or.inl hdoomed'
-          · right
-            dsimp only [s_cell'] at hs_eq ⊢
-            rw [hs_eq]
-            have hinj_c : (injectImplCell fig (qep + 1) tL t (SM.Config.auth t) (Q, c')).run
-                (s_cell t tL) = pure (res_acc, (s_cell t tL).accept Q st' ⟨Q.other, t', i'⟩) := by
-              rw [injectImplCell_run fig qep tL t Q c' (s_cell t tL) hrel_sh.win_df_false]
-              have hinT_c : ((s_cell t tL).inTransit Q.other c').isSome = false := by
-                rw [hrel_sh.inTransit_eq]; exact hinT_g
-              have hsafe_c : (s_cell t tL).safeInj (cellDelta tL t) = true :=
-                hrel_sh.safeInj_df_of_safeInj_mir (cellDelta_le_three tL t) hsafe_g
-              have hrcv_c : fig.receive ((s_cell t tL).st Q) c' = some (st', t', i', m_out) := by
-                rw [congrFun hrel_sh.st_eq Q]; exact hrcv
-              simp [hinT_c, hsafe_c, hrcv_c, hq, htriv_sh, res_acc]
-            rw [cellSimRun_deliver_query_bind,
-              runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+          refine sum_stage2_le_of_cell0_pure_step P ℓ Dh encPt encT decT idOf lam qep
+            q_del u ans sC sC₁ sent sent m' (updMirOnRes Q res_acc m')
+            (g.accept Q st' ⟨Q.other, t', i'⟩) s_cell s_cell' hwin0 hwin₁
+            (fun t _ => ?_) (fun t ht tL htL => ?_)
+          · have hinj_0 : (injectImplCell fig (qep + 1) none t (SM.Config.auth t) (Q, c')).run
+                (s_cell 0 none) = pure (res_acc, s_cell' 0 none) := by
+              have hs0_eq := hs0_acc.2.2
+              dsimp only [s_cell'] at hs0_eq ⊢
+              rw [hs0_eq, injectImplCell_run fig qep none t Q c' (s_cell 0 none) hwin0]
+              have hinT_c : ((s_cell 0 none).inTransit Q.other c').isSome = false := by
+                rw [hrel0.inTransit_eq]; exact hinT_g
+              have hsafe_c : (s_cell 0 none).safeInj (cellDelta none t) = true :=
+                hrel0.safeInj_df_of_safeInj_mir (cellDelta_le_three none t) hsafe_g
+              have hrcv_c : fig.receive ((s_cell 0 none).st Q) c' = some (st', t', i', m_out) := by
+                rw [congrFun hrel0.st_eq Q]; exact hrcv
+              have htriv_none : cellTrivialT none t (s_cell 0 none) ⟨Q.other, t', i'⟩ = true := by
+                simpa [cellTrivialT_none] using hs0_acc.2.1
+              simp [hinT_c, hsafe_c, hrcv_c, hq, htriv_none, res_acc]
+            rw [← bind_pure q_del, cellSimRun_deliver_query_bind,
+              runCellStep_congr_run fig qep t none _ _ sC sC₀ sent m' (s_cell 0 none)
                 (hfa (deliverForgeHook Pt ℓ)),
-              runCellStep_fwdAnswerC_inject_of_eq fig fs qep t tL Q w true ci? T pq' c' sC₀
-                sent m' (s_cell t tL) ((s_cell t tL).accept Q st' ⟨Q.other, t', i'⟩) res_acc ans b'
-                hInT_sC₀ hinj_c hrun_ans,
+              runCellStep_fwdAnswerC_inject_of_eq fig fs qep t none Q w true ci? T pq' c' sC₀
+                sent m' (s_cell 0 none) (s_cell' 0 none) res_acc ans b'
+                hInT_sC₀ hinj_0 hrun_ans,
               pure_bind]
+            simp only [cellSimRun, simulateQ_pure, StateT.run_pure]
+            rfl
+          · rcases hcells' t ht tL htL with hdoomed' | ⟨hrel_sh, htriv_sh, hs_eq⟩
+            · exact Or.inl hdoomed'
+            · right
+              dsimp only [s_cell'] at hs_eq ⊢
+              rw [hs_eq]
+              have hinj_c : (injectImplCell fig (qep + 1) tL t (SM.Config.auth t) (Q, c')).run
+                  (s_cell t tL) = pure (res_acc, (s_cell t tL).accept Q st' ⟨Q.other, t', i'⟩) := by
+                rw [injectImplCell_run fig qep tL t Q c' (s_cell t tL) hrel_sh.win_df_false]
+                have hinT_c : ((s_cell t tL).inTransit Q.other c').isSome = false := by
+                  rw [hrel_sh.inTransit_eq]; exact hinT_g
+                have hsafe_c : (s_cell t tL).safeInj (cellDelta tL t) = true :=
+                  hrel_sh.safeInj_df_of_safeInj_mir (cellDelta_le_three tL t) hsafe_g
+                have hrcv_c : fig.receive ((s_cell t tL).st Q) c' = some (st', t', i', m_out) := by
+                  rw [congrFun hrel_sh.st_eq Q]; exact hrcv
+                simp [hinT_c, hsafe_c, hrcv_c, hq, htriv_sh, res_acc]
+              rw [cellSimRun_deliver_query_bind,
+                runCellStep_congr_run fig qep t tL _ _ sC sC₀ sent m' (s_cell t tL)
+                  (hfa (deliverForgeHook Pt ℓ)),
+                runCellStep_fwdAnswerC_inject_of_eq fig fs qep t tL Q w true ci? T pq' c' sC₀
+                  sent m' (s_cell t tL) ((s_cell t tL).accept Q st' ⟨Q.other, t', i'⟩) res_acc ans b'
+                  hInT_sC₀ hinj_c hrun_ans,
+                pure_bind]
 
-end CryptoVerification.LibsignalSession.HeadlineV1
 
 end
+
+end CryptoVerification.LibsignalSession.HeadlineV1

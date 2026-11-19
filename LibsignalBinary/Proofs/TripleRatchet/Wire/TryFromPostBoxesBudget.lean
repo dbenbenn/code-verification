@@ -9,15 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanupBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDeserBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxes
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanupBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDeserBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostBoxes -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 meta import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostDefs -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Wire.WireCodeSym
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromPostCleanup
 
 /-!
 # Budget-Threaded Post-Loop Box Conversion & Packing for `<SignalMessage>::try_from`
@@ -27,7 +29,7 @@ Defines capacity- and slice-indexed allocator event envelopes (`IntoBoxedCapEnv`
 box-conversion and `SignalMessage` packing lemmas on Block `85`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -103,17 +105,17 @@ local macro "wp_steps_sync_boxes85 " mid:term : tactic => `(tactic| (
 
 /-- Capacity-and-slice allocator event list of `<Vec<u8>>::into_boxed_slice`
 (`intoBoxedSliceEvents x = intoBoxedCapEvents x.cap x.bytes`). -/
-def intoBoxedCapEvents (cap : BitVec 64) (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def intoBoxedCapEvents (cap : BitVec 64) (bs : List (BitVec 8)) : List AllocEvent :=
   if cap.toNat ≤ bs.length then []
   else if bs = [] then rustDeallocEvents cap.toNat 1
   else rustReallocEvents cap.toNat bs.length 1
 
 /-- Capacity-and-slice allocator event envelope of `<Vec<u8>>::into_boxed_slice`. -/
-def IntoBoxedCapEnv (cap : BitVec 64) (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def IntoBoxedCapEnv (cap : BitVec 64) (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = intoBoxedCapEvents cap bs
 
 /-- Optional-slice allocator event envelope for `m'.addresses` in `post_ct_some_boxes_wp_placed`. -/
-def IntoBoxedOptCapEnv (adCap : BitVec 64) :
+@[expose] def IntoBoxedOptCapEnv (adCap : BitVec 64) :
     Option (List (BitVec 8)) → List AllocEvent → Prop
   | none => (· = [])
   | some ad => IntoBoxedCapEnv adCap ad
@@ -121,14 +123,14 @@ def IntoBoxedOptCapEnv (adCap : BitVec 64) :
 /-- Precondition budget envelope of `post_ct_some_boxes_wp_placed`:
 a `FreeOnlyEvs` prefix (`drop_in_place::<SignalProtocolError>`) followed by `into_boxed_slice`
 on `ciphertext` and (when `some`) `addresses`. -/
-def PostCtBoxesEnv (ctCap adCap : BitVec 64) (ct : List (BitVec 8))
+@[expose] def PostCtBoxesEnv (ctCap adCap : BitVec 64) (ct : List (BitVec 8))
     (adOpt : Option (List (BitVec 8))) : List AllocEvent → Prop :=
   SeqEnv FreeOnlyEvs (SeqEnv (IntoBoxedCapEnv ctCap ct) (IntoBoxedOptCapEnv adCap adOpt))
 
 /-- Postcondition event relation of `post_ct_some_boxes_wp_placed` recording the three
 sequential event segments (`FreeOnlyEvs`, `IntoBoxedCapEnv ctCap ct`, `IntoBoxedOptCapEnv adCap adOpt`)
 so callers can project `FitsEnv` for subsequent allocations via `FitsEnv.seq_right`. -/
-def PostCtBoxesPost (ctCap adCap : BitVec 64) (ct : List (BitVec 8))
+@[expose] def PostCtBoxesPost (ctCap adCap : BitVec 64) (ct : List (BitVec 8))
     (adOpt : Option (List (BitVec 8))) (evs : List AllocEvent) : Prop :=
   ∃ evs₀ evs₁ evs₂ : List AllocEvent,
     evs = evs₀ ++ evs₁ ++ evs₂ ∧
@@ -138,16 +140,16 @@ def PostCtBoxesPost (ctCap adCap : BitVec 64) (ct : List (BitVec 8))
 
 /-- Slice-only allocator event list of `<Box<[u8]>>::try_clone_from_ref_in`
 (`tryCloneFromRefEvents x = tryCloneBytesEvents x.bs`). -/
-def tryCloneBytesEvents (bs : List (BitVec 8)) : List AllocEvent :=
+@[expose] def tryCloneBytesEvents (bs : List (BitVec 8)) : List AllocEvent :=
   if bs = [] then [] else rustAllocEvents bs.length 1
 
 /-- Slice-only allocator event envelope of `<Box<[u8]>>::try_clone_from_ref_in`. -/
-def TryCloneBytesEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
+@[expose] def TryCloneBytesEnv (bs : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   evs = tryCloneBytesEvents bs
 
 /-- Postcondition event envelope of `post_clone_and_pack_wp_placed`:
 `try_clone_from_ref_in` on `msg.serialized` followed by `FreeOnlyEvs` (`rk` buffer dealloc). -/
-def PostClonePackEnv (bs : List (BitVec 8)) : List AllocEvent → Prop :=
+@[expose] def PostClonePackEnv (bs : List (BitVec 8)) : List AllocEvent → Prop :=
   SeqEnv (TryCloneBytesEnv bs) FreeOnlyEvs
 
 /-! ## Relocatable `[LibsignalPlacement]` box conversion and packing lemmas (Block `85`) -/

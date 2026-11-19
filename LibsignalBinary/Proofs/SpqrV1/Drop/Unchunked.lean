@@ -9,13 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedRepr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.UnchunkedRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Drop Glue for Unchunked and Protobuf Unchunked States
@@ -30,7 +33,7 @@ Proves subroutine contracts for:
 - `core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>` (`0x4ce90`, Block `286`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Layout.L15
 
@@ -72,7 +75,7 @@ structure DropUnchunkedCt1SentGhost (F : ShaCompress) where
   a : BitVec 64
   st : Unchunked.SendCt.Ct1Sent (spqrAuthApi F)
 
-def dropUnchunkedCt1SentSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def dropUnchunkedCt1SentSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (DropUnchunkedCt1SentGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -88,7 +91,7 @@ structure DropUnchunkedEkSentGhost (F : ShaCompress) where
   a : BitVec 64
   st : Unchunked.SendEk.EkSent (spqrAuthApi F)
 
-def dropUnchunkedEkSentSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def dropUnchunkedEkSentSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (DropUnchunkedEkSentGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -104,7 +107,7 @@ structure DropOptProtoUnchunkedCt1SentGhost where
   a : BitVec 64
   optSt : Option V1State.Unchunked.Ct1Sent
 
-def dropOptProtoUnchunkedCt1SentSpec (A : RustAlloc) :
+@[expose] def dropOptProtoUnchunkedCt1SentSpec (A : RustAlloc) :
     Spec DropOptProtoUnchunkedCt1SentGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -120,7 +123,7 @@ structure DropProtoUnchunkedCt1SentEkReceivedGhost where
   a : BitVec 64
   st : V1State.Unchunked.Ct1SentEkReceived
 
-def dropProtoUnchunkedCt1SentEkReceivedSpec (A : RustAlloc) :
+@[expose] def dropProtoUnchunkedCt1SentEkReceivedSpec (A : RustAlloc) :
     Spec DropProtoUnchunkedCt1SentEkReceivedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a⌝ ∗
@@ -225,32 +228,6 @@ local macro "unchunked_ct1_sent_steps " entry:term : tactic => `(tactic| (
             refine SepWP.weaken_pre (tail_dealloc_unchunked_post a 128 A.pool s0.sp) ?_
             wp_done))
 
-theorem drop_unchunked_ct1_sent_local1_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropUnchunkedCt1SentLocal1Name)
-      (dropUnchunkedCt1SentSpec A F) := by
-  simp only [dropUnchunkedCt1SentSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropUnchunkedCt1SentLocal1Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#1]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#1]" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#1]")
-      (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#1]" 136
-  dsimp only [dropProgAtExt, dropUnchunkedCt1SentLocal1Name, unchunkedCt1SentSize,
-    BitVec.ofNat_eq_ofNat] at hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#1]" = entry
-  examples_hide_fetches
-  unchunked_ct1_sent_steps entry
-
 theorem drop_unchunked_ct1_sent_local1_placed_ok [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}
     (hdealloc : subroutine_ok ((blkPC_141).rebase (blkPl_141).base H)
@@ -263,32 +240,6 @@ theorem drop_unchunked_ct1_sent_local1_placed_ok [LibsignalPlacement] {A : RustA
   unchunked_ct1_sent_steps (blkPl_141).base
 
 /-! ## `drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#2]` (`0x4c99c`) -/
-
-theorem drop_unchunked_ct1_sent_local2_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropUnchunkedCt1SentLocal2Name)
-      (dropUnchunkedCt1SentSpec A F) := by
-  simp only [dropUnchunkedCt1SentSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropUnchunkedCt1SentLocal2Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#2]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#2]" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#2]")
-      (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#2]" 136
-  dsimp only [dropProgAtExt, dropUnchunkedCt1SentLocal2Name, unchunkedCt1SentSize,
-    BitVec.ofNat_eq_ofNat] at hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::unchunked::send_ct::Ct1Sent> [local#2]" = entry
-  examples_hide_fetches
-  unchunked_ct1_sent_steps entry
 
 theorem drop_unchunked_ct1_sent_local2_placed_ok [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}
@@ -362,32 +313,6 @@ local macro "unchunked_ek_sent_steps " entry:term : tactic => `(tactic| (
         refine SepWP.weaken_pre (tail_dealloc_unchunked_post a 80 A.pool s0.sp) ?_
         wp_done))
 
-theorem drop_unchunked_ek_sent_ok_ext {A : RustAlloc} {F : ShaCompress} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropUnchunkedEkSentName)
-      (dropUnchunkedEkSentSpec A F) := by
-  simp only [dropUnchunkedEkSentSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropUnchunkedEkSentName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::v1::unchunked::send_ek::EkSent>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::v1::unchunked::send_ek::EkSent>" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::v1::unchunked::send_ek::EkSent>")
-      (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::v1::unchunked::send_ek::EkSent>" 96
-  dsimp only [dropProgAtExt, dropUnchunkedEkSentName, unchunkedEkSentSize,
-    BitVec.ofNat_eq_ofNat] at hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::v1::unchunked::send_ek::EkSent>" = entry
-  examples_hide_fetches
-  unchunked_ek_sent_steps entry
-
 theorem drop_unchunked_ek_sent_placed_ok [LibsignalPlacement] {A : RustAlloc} {F : ShaCompress}
     {H : String → Option (State → State)}
     (hdealloc : subroutine_ok ((blkPC_280).rebase (blkPl_280).base H)
@@ -401,7 +326,7 @@ theorem drop_unchunked_ek_sent_placed_ok [LibsignalPlacement] {A : RustAlloc} {F
 
 /-! ## `drop_glue::<proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>` (`0x4ce90`) -/
 
-def auth72HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
+@[expose] def auth72HeadersAt (a : BitVec 64) (ga : TwoVecGhost) : SepProp :=
   ((a + 72#64) ↦₆₄ ga.v1.cap) ∗ ((a + 80#64) ↦₆₄ ga.v1.ptr) ∗ memRegion (a + 88#64) 8 ∗
   ((a + 96#64) ↦₆₄ ga.v2.cap) ∗ ((a + 104#64) ↦₆₄ ga.v2.ptr) ∗ memRegion (a + 112#64) 8
 
@@ -635,32 +560,6 @@ local macro "proto_unchunked_ct1_sent_ek_received_steps " prog:term:max entry:te
           refine SepWP.weaken_pre (tail_dealloc_unchunked_post a 128 A.pool s0.sp) ?_
           wp_done))
 
-theorem drop_proto_unchunked_ct1_sent_ek_received_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoUnchunkedCt1SentEkReceivedName)
-      (dropProtoUnchunkedCt1SentEkReceivedSpec A) := by
-  simp only [dropProtoUnchunkedCt1SentEkReceivedSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropProtoUnchunkedCt1SentEkReceivedName +
-        bv% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := num% (ls_rel% "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>")
-      (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>" 144
-  dsimp only [dropProgAtExt, dropProtoUnchunkedCt1SentEkReceivedName,
-    protoUnchunkedCt1SentEkReceivedSize, BitVec.ofNat_eq_ofNat] at hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1SentEkReceived>" = entry
-  examples_hide_fetches
-  proto_unchunked_ct1_sent_ek_received_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
-
 theorem drop_proto_unchunked_ct1_sent_ek_received_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}
     (hdealloc : subroutine_ok ((blkPC_286).rebase (blkPl_286).base H)
@@ -855,32 +754,6 @@ local macro "opt_proto_unchunked_ct1_sent_steps " prog:term:max entry:term:max :
             wp_apply
             refine SepWP.weaken_pre (tail_dealloc_unchunked_post a 128 A.pool s0.sp) ?_
             wp_done))
-
-theorem drop_opt_proto_unchunked_ct1_sent_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoUnchunkedCt1SentName)
-      (dropOptProtoUnchunkedCt1SentSpec A) := by
-  simp only [dropOptProtoUnchunkedCt1SentSpec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropOptProtoUnchunkedCt1SentName +
-        bv% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent>> [local#1]" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := num% (ls_rel% "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent>> [local#1]" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      (ls_lemma% fnOff "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent>> [local#1]")
-      (ls_stub% "__rustc::__rust_dealloc") (by decide))
-    hdealloc
-  simp only [rustDeallocSpec] at hdealloc_raw
-  code_fetches_sym libsignalSessionCode spqrDropChainEpochBin b
-    (Rust.withPanics ext) "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent>> [local#1]" 156
-  dsimp only [dropProgAtExt, dropOptProtoUnchunkedCt1SentName,
-    protoUnchunkedCt1SentSize, BitVec.ofNat_eq_ofNat] at hdealloc_raw ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<core::option::Option<spqr::proto::pq_ratchet::v1_state::unchunked::Ct1Sent>> [local#1]" = entry
-  examples_hide_fetches
-  opt_proto_unchunked_ct1_sent_steps (libsignalSessionCode.rebase b (Rust.withPanics ext)) entry
 
 theorem drop_opt_proto_unchunked_ct1_sent_placed_ok [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

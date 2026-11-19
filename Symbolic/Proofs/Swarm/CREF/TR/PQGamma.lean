@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+import Symbolic.Proofs.Swarm.CREF.Stage1Kyber -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.Trace.Basic
 import DY.Trace.Monad
 import DY.Bytes.Basic
@@ -64,7 +64,7 @@ Double Ratchet KDFs, KEM decapsulation, and Bob's initial pre-key salt/seed and 
 (`bobSaltSeed_gamma`, `accept_macSound_of_post`).
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 
@@ -87,75 +87,75 @@ open DY.Libsignal.TripleRatchet (TRSignalMsg parseTrSignalMsg trMsgKeys spqrB2A)
 open DY.Libsignal.PQXDH.Refinement (kyberEncapsSymbol)
 /-! ## Pure Byte-Level KDF, MAC, and Cipher Helpers -/
 
-def dhAgreeBytes (interpretation : ExternInterpretation) (sk pk : HwBytes) : HwBytes :=
+@[expose] def dhAgreeBytes (interpretation : ExternInterpretation) (sk pk : HwBytes) : HwBytes :=
   (interpretation x25519AgreementSymbol [clamp sk, pk]).getD []
 
-def discontinuityBytes : HwBytes := List.replicate 32 0xFF#8
+@[expose] def discontinuityBytes : HwBytes := List.replicate 32 0xFF#8
 
-def pqxdhLabelBytes : HwBytes :=
+@[expose] def pqxdhLabelBytes : HwBytes :=
   ofByteArray "WhisperText_X25519_SHA-256_CRYSTALS-KYBER-1024".toUTF8
 
-def whisperRatchetBytes : HwBytes := ofByteArray "WhisperRatchet".toUTF8
+@[expose] def whisperRatchetBytes : HwBytes := ofByteArray "WhisperRatchet".toUTF8
 
-def whisperMessageKeysBytes : HwBytes := ofByteArray "WhisperMessageKeys".toUTF8
+@[expose] def whisperMessageKeysBytes : HwBytes := ofByteArray "WhisperMessageKeys".toUTF8
 
-def pqxdhIkmBytes (dh1 dh2 dh3 : HwBytes) (dh4 : Option HwBytes) (ss : HwBytes) : HwBytes :=
+@[expose] def pqxdhIkmBytes (dh1 dh2 dh3 : HwBytes) (dh4 : Option HwBytes) (ss : HwBytes) : HwBytes :=
   discontinuityBytes ++ (dh1 ++ (dh2 ++ (dh3 ++ match dh4 with | some d => d ++ ss | none => ss)))
 
-def hkdfBlock1Bytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
+@[expose] def hkdfBlock1Bytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
     (prk info : HwBytes) : HwBytes :=
   hmacWith F prk (info ++ [1#8])
 
-def hkdfBlock2Bytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
+@[expose] def hkdfBlock2Bytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
     (prk info : HwBytes) : HwBytes :=
   hmacWith F prk (hkdfBlock1Bytes F prk info ++ (info ++ [2#8]))
 
-def hkdfBlock3Bytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
+@[expose] def hkdfBlock3Bytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
     (prk info : HwBytes) : HwBytes :=
   hmacWith F prk (hkdfBlock2Bytes F prk info ++ (info ++ [3#8]))
 
-def pqxdhKdfBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
+@[expose] def pqxdhKdfBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
     (ikm : HwBytes) : HwBytes × HwBytes × HwBytes :=
   let prk := hmacWith F (List.replicate 32 0#8) ikm
   (hkdfBlock1Bytes F prk pqxdhLabelBytes,
    hkdfBlock2Bytes F prk pqxdhLabelBytes,
    hkdfBlock3Bytes F prk pqxdhLabelBytes)
 
-def createChainKeyBytes (interpretation : ExternInterpretation)
+@[expose] def createChainKeyBytes (interpretation : ExternInterpretation)
     (rk theirPk ourSk : HwBytes) : HwBytes :=
   let F := sha256CompressFunction interpretation
   hkdfBlock2Bytes F (hmacWith F rk (dhAgreeBytes interpretation ourSk theirPk)) whisperRatchetBytes
 
-def chainKeyAtBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
+@[expose] def chainKeyAtBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
     (ck : HwBytes) : Nat → HwBytes
   | 0 => ck
   | n + 1 => chainKeyAtBytes F (hmacWith F ck [0x02#8]) n
 
-def recvSeedBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
+@[expose] def recvSeedBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
     (ck : HwBytes) (n : Nat) : HwBytes :=
   hmacWith F (chainKeyAtBytes F ck n) [0x01#8]
 
-def spqrIdxBytes (idx : UInt32) : HwBytes :=
+@[expose] def spqrIdxBytes (idx : UInt32) : HwBytes :=
   ofByteArray ⟨#[idx.toUInt8, (idx >>> 8).toUInt8, (idx >>> 16).toUInt8, (idx >>> 24).toUInt8]⟩
 
-def trMacKeyBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
+@[expose] def trMacKeyBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
     (salt seed : HwBytes) : HwBytes :=
   hkdfBlock2Bytes F (hmacWith F salt seed) whisperMessageKeysBytes
 
-def computeMacBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
+@[expose] def computeMacBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
     (macKey ikA ikB wire : HwBytes) : HwBytes :=
   (hmacWith F macKey (ikA ++ (ikB ++ wire))).take 8
 
-def trCipherKeyBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
+@[expose] def trCipherKeyBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
     (salt seed : HwBytes) : HwBytes :=
   hkdfBlock1Bytes F (hmacWith F salt seed) whisperMessageKeysBytes
 
-def trIvBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
+@[expose] def trIvBytes (F : ByteSpecs.ShaState → HwBytes → ByteSpecs.ShaState)
     (salt seed : HwBytes) : HwBytes :=
   hkdfBlock3Bytes F (hmacWith F salt seed) whisperMessageKeysBytes
 
 /-- Bob's PQXDH handshake keys for pre-key message `p` and representation `x`. -/
-def bobKeys (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) : Option HandshakeKeys := do
+@[expose] def bobKeys (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) : Option HandshakeKeys := do
   let opk ← match p.preKeyId with
     | none => some none
     | some id => if r.withOpk && id == r.opkId then some (some (setupSecret r 6)) else none
@@ -169,7 +169,7 @@ def bobKeys (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) : Option Hand
     (opk.map (agree x.ek ·)) ss))
 
 /-- Bob's initial receiving chain for `msg` under handshake keys `keys`. -/
-def bobChain (r : ProtocolSetup) (keys : HandshakeKeys) (msg : TRSignalMsg) : RecvChain :=
+@[expose] def bobChain (r : ProtocolSetup) (keys : HandshakeKeys) (msg : TRSignalMsg) : RecvChain :=
   { ratchetKey := msg.ratchetKey, chainKey := (createChain keys.rk msg.ratchetKey
       (setupSecret r 2)).2, index := 0, rIdx := 2 }
 
@@ -781,7 +781,7 @@ theorem gamma_spqrIdx (interpretation : ExternInterpretation) (S : OpaqueSymbolS
     gamma interpretation S g (DY.Spqr.encodeSpqrIndexTerm idx) = spqrIdxBytes idx := by
   unfold DY.Spqr.encodeSpqrIndexTerm spqrIdxBytes; rw [gamma_lit]
 
-def spqrSaltBytes (S : OpaqueSymbolSemantics) (pqr : HwBytes) (idx : UInt32) : HwBytes :=
+@[expose] def spqrSaltBytes (S : OpaqueSymbolSemantics) (pqr : HwBytes) (idx : UInt32) : HwBytes :=
   if idx = 0 then List.replicate 32 0#8
   else spqrKeyBytes (S.chainKey pqr [0#8] (spqrIdxBytes idx))
 
@@ -873,9 +873,9 @@ theorem gamma_kemSS_of_not_implicitReject
 
 /-! ## Bob Pre-Key Salt, Seed, and MAC Soundness -/
 
-def ekBytes (p : PreKeyFields) : HwBytes := (p.baseKey.drop 1).take 32
+@[expose] def ekBytes (p : PreKeyFields) : HwBytes := (p.baseKey.drop 1).take 32
 
-def bobExpectedMacBytes (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def bobExpectedMacBytes (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (p : PreKeyFields) (ct_wire : HwBytes) : HwBytes :=
   let F := sha256CompressFunction interpretation
   let ikABytes := pubBytes interpretation (secretBytes r 0)
@@ -896,7 +896,7 @@ def bobExpectedMacBytes (interpretation : ExternInterpretation) (r : ProtocolSet
   let wire := p.message.take (p.message.length - 8)
   computeMacBytes F macKey (ecKey ikABytes) (ecKey ikBBytes) wire
 
-def bobSaltSeedBytes (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def bobSaltSeedBytes (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (p : PreKeyFields) (ct_wire : HwBytes) : HwBytes × HwBytes :=
   let F := sha256CompressFunction interpretation
   let ikABytes := pubBytes interpretation (secretBytes r 0)
@@ -914,7 +914,7 @@ def bobSaltSeedBytes (interpretation : ExternInterpretation) (r : ProtocolSetup)
 
 /-- Bob's SPQR salt and message seed for the representation `x` of the pre-key message `p`
 over composed types (`bobKeys`, `parseTrSignalMsg`, `bobChain`). -/
-def bobSaltSeed (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) :
+@[expose] def bobSaltSeed (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) :
     Option (DY.Bytes × DY.Bytes) := do
   let keys ← bobKeys r p x
   let msg ← parseTrSignalMsg x.msg
@@ -925,7 +925,7 @@ def bobSaltSeed (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) :
 
 /-- Bob's expected MAC term for the representation `x` of the pre-key message `p`
 over composed types (`bobKeys`, `parseTrSignalMsg`, `bobChain`). -/
-def bobMac (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) : Option DY.Bytes := do
+@[expose] def bobMac (r : ProtocolSetup) (p : PreKeyFields) (x : PreKeyRep) : Option DY.Bytes := do
   let keys ← bobKeys r p x
   let msg ← parseTrSignalMsg x.msg
   let c := bobChain r keys msg

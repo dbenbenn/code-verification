@@ -9,17 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS2SymPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.FindReceiverChainKeyBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS2SymPlaced
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ChainKey.FindReceiverChainKeyBudget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainStack
-import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainSym
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ChainLookup.FindChainSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatchBudget
 import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.ChainLookupS1ErrPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.TripleRatchet.Record.SegMismatch
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Budget-Threaded Relocatable Segment `S2` Symbolic Execution on Block `433`
@@ -28,7 +32,7 @@ import ProofLib.SepLogic.WPp
 reachability under `RustCliAllocBudget M` for segment `S2` (block `433`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

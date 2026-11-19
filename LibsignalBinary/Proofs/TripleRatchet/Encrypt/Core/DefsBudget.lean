@@ -10,9 +10,19 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
+import LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core.Defs
+public import LibsignalBinary.Heap.Fine.CreditInst
+public import LibsignalBinary.Proofs.PeakBudget.SeqCreditKit -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
 
 /-!
 # Budget-Threaded Relocatable `OTR::encrypt` Specifications
@@ -22,7 +32,7 @@ budget-threaded `[LibsignalPlacement]` contracts (`otrEncryptPlacedSpecF`, `otrE
 and `PhaseCreditSpec` bounds and non-vacuity witnesses over `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,6 +51,9 @@ open LibsignalBinary.Proofs.PeakBudget.SeqCreditKitLemmas
 open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.FineCredit (HasFineReallocCredit)
 open CryptoVerification.LibsignalProtoCodec (encode)
 open LibsignalBinary.Heap.SpecBudget (FormatInnerEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (CliFormatInnerEnv)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtPeakCreditBridges
+  (phaseCreditSpec_cliFormatInnerEnv_any)
 open CryptoGames.HKDF (Salt)
 open CryptoGames.LibsignalSession
   (Crypto OutgoingTripleRatchet KeyPair PublicKey PrivateKey IdentityKey ChainKey aesCbcEncrypt)
@@ -54,7 +67,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Wire.NewDefsBudget
   (SignalMessageNewGhost SignalMessageNewEnv signalMessageNewEvents)
 
 /-- Non-vacuous well-formedness predicate for Rust global-allocator events. -/
-def ValidRustAllocEv (ev : AllocEvent) : Prop :=
+@[expose] def ValidRustAllocEv (ev : AllocEvent) : Prop :=
   ev.withinMaxAlloc ∧
   match ev with
   | .alloc sz => 0 < sz
@@ -69,7 +82,7 @@ abbrev SpqrSendBudgetEnv : Type :=
 /-- Pointer-erased `SignalMessageNewGhost` carrying the exact value fields passed to
     `<SignalMessage>::new` inside `OTR::encrypt` when `S.send` returns `some (_, pqrKey, pqrMsg)`
     (`signalMessageNewEvents` does not depend on any `*A` or `ret` pointer field). -/
-def otrSignalMsgGhost (C : Crypto) (ot : OutgoingTripleRatchet (List (BitVec 8)))
+@[expose] def otrSignalMsgGhost (C : Crypto) (ot : OutgoingTripleRatchet (List (BitVec 8)))
     (pqrKey : Salt) (pqrMsg ptext : List (BitVec 8))
     (loc : Option AddrGhost) (rem : AddrGhost) : SignalMessageNewGhost :=
   let mk := (ot.senderChainKey.messageKeys C.F).generateKeys C.F pqrKey
@@ -119,7 +132,7 @@ theorem signalMessageNewEvents_eq_otrSignalMsgGhost (parse : UuidParser)
     `some (_, pqrKey, pqrMsg)` by `ChainKey::message_keys` + `MessageKeyGenerator::generate_keys`
     (`SeqEnv (· = rustAllocEvents 32 1) FreeOnlyEvs`), `aes_256_cbc_encrypt`, `<SignalMessage>::new`,
     and trailing temporary/old-pq deallocations (`FreeOnlyEvs`). -/
-def OtrEncryptCoreEnv (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
+@[expose] def OtrEncryptCoreEnv (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
     (uuidParse : UuidParser)
     (ot : OutgoingTripleRatchet (List (BitVec 8)))
     (ptext : List (BitVec 8)) (loc : Option AddrGhost)
@@ -127,7 +140,7 @@ def OtrEncryptCoreEnv (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
   SeqEnv (sendEnv ot.pqrState rest)
     (fun evs' =>
       match S.send ot.pqrState rest with
-      | none => FormatInnerEnv evs'
+      | none => CliFormatInnerEnv evs'
       | some (_, pqrKey, pqrMsg) =>
         SeqEnv (SeqEnv (· = rustAllocEvents 32 1) FreeOnlyEvs)
           (SeqEnv (· = rustAllocEvents ((ptext.length / 16 + 1) * 16) 1)
@@ -135,13 +148,13 @@ def OtrEncryptCoreEnv (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
               FreeOnlyEvs)) evs') evs
 
 /-- Concrete allocation envelope of `OTR::encrypt` on `OtrEncryptGhost`. -/
-def OtrEncryptEnv (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
+@[expose] def OtrEncryptEnv (C : Crypto) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv)
     (uuidParse : UuidParser) (x : OtrEncryptGhost) (evs : List AllocEvent) : Prop :=
   OtrEncryptCoreEnv C S sendEnv uuidParse x.ot x.ptext x.loc x.rem x.rest evs
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` specification of `OTR::encrypt`
     with arbitrary spatial frame `F` (`onOom = ⌜False⌝`, `allocFailedIn` dropped from `onPanic`). -/
-def otrEncryptPlacedSpecF [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def otrEncryptPlacedSpecF [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) (F : SepProp) :
     Spec (OtrEncryptGhost × M.σ) where
@@ -161,7 +174,7 @@ def otrEncryptPlacedSpecF [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` specification of `OTR::encrypt`
     (`onOom = ⌜False⌝`, `allocFailedIn` dropped from `onPanic`). -/
-def otrEncryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
+@[expose] def otrEncryptPlacedSpec [LibsignalPlacement] {M : AllocCostModel} (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) (sendEnv : SpqrSendBudgetEnv) :
     Spec (OtrEncryptGhost × M.σ) where
@@ -299,22 +312,22 @@ theorem otrEncryptCoreEnv_phaseCreditSpec_bounded {M : AllocCostModel} [HasFineR
       (cs + 12 * bound + 105263)
       (ls + 6 * bound + 90312)
       (max ps (ls + 6 * bound + 90312))
-      (max rs (max 36 bound)) := by
+      (max rs (max 320 bound)) := by
   have hfr := PhaseCreditSpec.freeOnly_of_hyps hM
   have htail : PhaseCreditSpec M
       (fun evs' =>
         match S.send ot.pqrState rest with
-        | none => FormatInnerEnv evs'
+        | none => CliFormatInnerEnv evs'
         | some (_, pqrKey, pqrMsg) =>
           SeqEnv (SeqEnv (· = rustAllocEvents 32 1) FreeOnlyEvs)
             (SeqEnv (· = rustAllocEvents ((ptext.length / 16 + 1) * 16) 1)
               (SeqEnv (SignalMessageNewEnv uuidParse (otrSignalMsgGhost C ot pqrKey pqrMsg ptext loc rem))
                 FreeOnlyEvs)) evs')
-      (12 * bound + 105263) (6 * bound + 90312) (6 * bound + 90312) (max 36 bound) := by
+      (12 * bound + 105263) (6 * bound + 90312) (6 * bound + 90312) (max 320 bound) := by
     cases hS : S.send ot.pqrState rest with
     | none =>
-      dsimp only [FormatInnerEnv]
-      exact (PhaseCreditSpec.nil M).mono (by omega) (by omega) (by omega) (by omega)
+      dsimp only
+      exact (phaseCreditSpec_cliFormatInnerEnv_any hM).mono (by omega) (by omega) (by omega) (by omega)
     | some val =>
       rcases val with ⟨st', pqrKey, pqrMsg⟩
       dsimp only
@@ -327,15 +340,15 @@ theorem otrEncryptCoreEnv_phaseCreditSpec_bounded {M : AllocCostModel} [HasFineR
       exact (hmk.seq (haes.seq hsm)).mono (by omega) (by omega) (by omega) (by omega)
   exact (hsend.seq htail).mono (by omega) (by omega) (by omega) (by omega)
 
-def witnessPublicKey : PublicKey := ⟨⟨List.replicate 32 0#8, by decide⟩⟩
+@[expose] def witnessPublicKey : PublicKey := ⟨⟨List.replicate 32 0#8, by decide⟩⟩
 
-def witnessPrivateKey : PrivateKey := ⟨⟨List.replicate 32 0#8, by decide⟩⟩
+@[expose] def witnessPrivateKey : PrivateKey := ⟨⟨List.replicate 32 0#8, by decide⟩⟩
 
-def witnessKeyPair : KeyPair := ⟨witnessPublicKey, witnessPrivateKey⟩
+@[expose] def witnessKeyPair : KeyPair := ⟨witnessPublicKey, witnessPrivateKey⟩
 
-def witnessIdentityKey : IdentityKey := ⟨witnessPublicKey⟩
+@[expose] def witnessIdentityKey : IdentityKey := ⟨witnessPublicKey⟩
 
-def witnessCrypto : Crypto where
+@[expose] def witnessCrypto : Crypto where
   F := fun s _ => s
   E := fun _ b => b
   D := fun _ b => b
@@ -344,7 +357,7 @@ def witnessCrypto : Crypto where
 
 /-- Concrete witness `SpqrModel` whose `send` returns `some ([1#8], none, [2#8])` (reaching the
     allocating `some` branch of `OtrEncryptCoreEnv` with non-empty `pqrMsg`). -/
-def witnessSpqrModel : SpqrModel where
+@[expose] def witnessSpqrModel : SpqrModel where
   send := fun _ _ => some ([1#8], none, [2#8])
   draws := fun _ _ => 0
   recv := fun _ _ => .ok ([], none)
@@ -352,15 +365,15 @@ def witnessSpqrModel : SpqrModel where
   sendPanics := fun _ _ => false
 
 /-- Concrete allocating `SpqrSendBudgetEnv` (`rustAllocEvents 16 1`). -/
-def witnessSendEnv : SpqrSendBudgetEnv :=
+@[expose] def witnessSendEnv : SpqrSendBudgetEnv :=
   fun _ _ evs => evs = rustAllocEvents 16 1
 
-def witnessUuidParse : UuidParser := fun _ => none
+@[expose] def witnessUuidParse : UuidParser := fun _ => none
 
-def witnessAddrGhost : AddrGhost :=
+@[expose] def witnessAddrGhost : AddrGhost :=
   ⟨⟨8#64, 8#64, [0x61#8]⟩, 1#8⟩
 
-def witnessOtr : OutgoingTripleRatchet (List (BitVec 8)) where
+@[expose] def witnessOtr : OutgoingTripleRatchet (List (BitVec 8)) where
   senderRatchetKey := witnessKeyPair
   senderChainKey := ⟨0#256, 0#32⟩
   previousCounter := 0#32
@@ -413,7 +426,7 @@ theorem otrEncryptCoreEnv_fitsEnv_witness :
     (req := 16) (al := 1) (by decide)
   have hSpec := otrEncryptCoreEnv_phaseCreditSpec_bounded fineCostModel_modelHyps
     witnessCrypto witnessSpqrModel witnessSendEnv witnessUuidParse
-    witnessOtr [0x41#8] none witnessAddrGhost [0x42#8] 256 hsend (by decide)
+    witnessOtr [0x41#8] none witnessAddrGhost [0x42#8] 320 hsend (by decide)
     (fun st' pqrKey pqrMsg hS => by
       change some ([1#8], none, [2#8]) = some (st', pqrKey, pqrMsg) at hS
       injection hS with htuple

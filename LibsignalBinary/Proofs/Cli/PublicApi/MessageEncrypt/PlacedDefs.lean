@@ -9,29 +9,35 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.RatchetEncryptCodeSym
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
-public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.CalleeProofs.KyberMapPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.CalleeProofs.CmDropPlaced
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.DropsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Callees
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Segs
-public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Root
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.Identity
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.UnackItems
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Compose
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.KyberMap
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.CmDrop
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops
-public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.RatchetEncryptCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.CalleeProofs.KyberMapPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.CalleeProofs.CmDropPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.DropsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordCallees.Defs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seams -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Segs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Root
+import LibsignalBinary.Proofs.TripleRatchet.Getters.Identity
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.UnackItems -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Compose
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.KyberMap -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleeProofs.CmDrop
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops
+import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.SignalProtocolError.Ext
 import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From
+public import LibsignalBinary.Proofs.Cli.Specifications.LibsignalTripleRatchet -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.Apply -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.OutgoingRatchet.From.Frame -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable Foundation Definitions for CLI `MessageEncrypt`
@@ -40,7 +46,7 @@ Seam PCs, frame predicates, hook/callee bundles, and the nine segment specificat
 `session_message_encrypt_with_stores` (`blkPl_464`, `lsProg_464 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -78,7 +84,7 @@ abbrev storedPCPlaced [LibsignalPlacement] : BitVec 64 := encEntryPlaced + 0xe88
 /-! ## 2. Store-Extra Frame & Stack Split/Join Lemmas (`b := 0#64`) -/
 
 /-- Relocatable counterpart of `encStoreExtra` (`kit : SessionStoreSpec A 0#64`, `ikit : IdentityStoreSpec A 0#64`). -/
-def encStoreExtraPlaced {A : RustAlloc}
+@[expose] def encStoreExtraPlaced {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist : ikit.IdState)
     (x : WithStoresEncGhost) (s0 : State) : SepProp :=
@@ -207,7 +213,7 @@ theorem encSubStack_split_extra_placed {A : RustAlloc}
 
 /-- Relocatable `session_message_encrypt_with_stores` (`blkPl_464`) contract parameterized by
     `kit : SessionStoreSpec A 0#64` and `ikit : IdentityStoreSpec A 0#64`. -/
-def withStoresEncPlacedSpecV [LibsignalPlacement] {A : RustAlloc}
+@[expose] def withStoresEncPlacedSpecV [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (C : Crypto) (ctl : BitVec 64)
@@ -264,20 +270,20 @@ theorem withStoresEncPlacedSpecV_pre_addrOk [LibsignalPlacement] {A : RustAlloc}
 /-! ## 4. Seam Metadata, Common Frame, and Seam States -/
 
 /-- Relocatable machine invariants at every seam of `blkPl_464`. -/
-def encMidMetaPlaced [LibsignalPlacement] (x : WithStoresEncGhost) (s0 s : State) : Prop :=
+@[expose] def encMidMetaPlaced [LibsignalPlacement] (x : WithStoresEncGhost) (s0 s : State) : Prop :=
   s.status = .Running ∧ s.sp = s0.sp - 0xbe0#64 ∧ s0.spAligned = true ∧ s.spAligned = true ∧
     s.readReg64 .x29 = s0.sp - 0x60#64 ∧ s.readReg64 .x19 = x.ret ∧
     StoreKit.LibsignalCodeRoLoaded lsmpl s.mem ∧ calleeSavedVRegs s = calleeSavedVRegs s0
 
 /-- Relocatable borrowed inputs and environment unchanged across seams. -/
-def encCommonPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def encCommonPlaced [LibsignalPlacement] (A : RustAlloc) (ctl : BitVec 64)
     (x : WithStoresEncGhost) (draws : Nat) (s0 : State) : SepProp :=
   (x.ptA ↦ₛ x.ptext) ∗ protocolAddressAt A x.rem x.remA ∗ protocolAddressAt A x.loc x.locA ∗
     nowAt s0.sp x.now ∗ cliTapeAfter ctl x.cur x.rest draws ∗ FromRecordCallees.lsLogOff ∗
     stackAt (s0.sp - 0xbe0#64) encSubStack ∗ encSavedRegs s0.sp s0 ∗ A.pool
 
 /-- Generic seam state on `blkPl_464` under `[LibsignalPlacement]`. -/
-def EncSeamVPlaced [LibsignalPlacement] (ss_vt id_vt : BitVec 64) (A : RustAlloc) (ctl : BitVec 64)
+@[expose] def EncSeamVPlaced [LibsignalPlacement] (ss_vt id_vt : BitVec 64) (A : RustAlloc) (ctl : BitVec 64)
     (x : WithStoresEncGhost) (pc : BitVec 64) (evs : List TraceEvent) (draws : Nat)
     (regs : BitVec 64 → State → Prop) (slots scratch : BitVec 64 → SepProp) (R : SepProp)
     (s0 s : State) : Prop :=
@@ -289,7 +295,7 @@ def EncSeamVPlaced [LibsignalPlacement] (ss_vt id_vt : BitVec 64) (A : RustAlloc
       memRegion (sp + 0x46a#64) 0x716 ∗ memRegion x.ret 248 ∗ encCommonPlaced A ctl x draws s0 ∗ R)
 
 /-- **Cur** (`+0x20c`) under `[LibsignalPlacement]`. -/
-def CurStateVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CurStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
@@ -309,7 +315,7 @@ def CurStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (encStoreExtraPlaced kit st0 ikit ist0 x s0 ∗ R) s0 s
 
 /-- **Otr** (`+0x2c8`) under `[LibsignalPlacement]`. -/
-def OtrStateVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def OtrStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
@@ -333,7 +339,7 @@ def OtrStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (encStoreExtraPlaced kit st0 ikit ist0 x s0 ∗ R) s0 s
 
 /-- **Key** (`+0x344`) under `[LibsignalPlacement]`. -/
-def KeyStateVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def KeyStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
@@ -358,7 +364,7 @@ def KeyStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (encStoreExtraPlaced kit st0 ikit ist0 x s0 ∗ R) s0 s
 
 /-- **Cm** (`+0xa70`) under `[LibsignalPlacement]`. -/
-def CmStateVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CmStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (C : Crypto)
@@ -378,7 +384,7 @@ def CmStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (encStoreExtraPlaced kit st0 ikit ist0 x s0 ∗ R) s0 s
 
 /-- **Save** (`+0xbd4`) under `[LibsignalPlacement]`. -/
-def SaveStateVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SaveStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
@@ -404,7 +410,7 @@ def SaveStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     s0 s
 
 /-- **Apply** (`+0xd9c`) under `[LibsignalPlacement]`. -/
-def ApplyStateVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def ApplyStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
@@ -432,7 +438,7 @@ def ApplyStateVPlaced [LibsignalPlacement] {A : RustAlloc}
       x s0 ∗ R) s0 s
 
 /-- **Stored** (`+0xe88`) under `[LibsignalPlacement]`. -/
-def StoredStateVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def StoredStateVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
@@ -486,7 +492,7 @@ abbrev lsExpectFailedSym : String :=
 abbrev lsHandleAllocErrorSym : String := CryptoVerification.LibsignalPublicApi.MessageEncrypt.Pf.KyberMap.lsHandleAllocErrorSym
 
 /-- Bounded `std::time::SystemTime::duration_since` contract (`x2.w32 < 10^9` and `self.tvNsec < 10^9`). -/
-def durationSinceBoundedSpec : Spec (BitVec 64 × BitVec 64) where
+@[expose] def durationSinceBoundedSpec : Spec (BitVec 64 × BitVec 64) where
   pre := fun (p, ret) s =>
     ⌜s.readReg64 .x0 = p ∧ s.readReg64 .x8 = ret ∧
       ((s.readReg64 .x2).setWidth 32).toNat < 1000000000⌝ ∗
@@ -515,8 +521,8 @@ structure PublicApiEncHooksPlaced [LibsignalPlacement] (A : RustAlloc) (H : Libs
   handleAllocError : H lsHandleAllocErrorSym = some Rust.panicked
   expectFailed : H lsExpectFailedSym = some Rust.panicked
 
-/-- Relocatable `OTR::encrypt::<HookRng>` raw spec (with `FromRecordCallees.lsLogOff` and without `Spec.inImage`). -/
-def otrEncryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
+/-- Relocatable `OTR::encrypt::<HookRng>` raw spec (with `FromRecordCallees.lsLogOff`). -/
+@[expose] def otrEncryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (uuidParse : UuidParser) (S : SpqrModel) : Spec OtrEncryptGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.o ∧ s.readReg64 .x2 = x.ptA ∧
@@ -540,14 +546,14 @@ def otrEncryptPlacedSpec [LibsignalPlacement] (C : Crypto) (A : RustAlloc) (ctl 
       anyHeap
 
 /-- Relocatable `OTR::encrypt::<HookRng>` spec restricted to OTRs whose SPQR state satisfies `Q`. -/
-def otrEncryptPlacedSpecQ [LibsignalPlacement] (Q : List (BitVec 8) → Prop)
+@[expose] def otrEncryptPlacedSpecQ [LibsignalPlacement] (Q : List (BitVec 8) → Prop)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) : Spec OtrEncryptGhost :=
   { otrEncryptPlacedSpec C A ctl parse S with
     pre := fun x s => ⌜Q x.ot.pqrState⌝ ∗ (otrEncryptPlacedSpec C A ctl parse S).pre x s }
 
 /-- Relocatable `OTR::encrypt::<HookRng>` spec for OTRs whose `(pqrState, rest)` satisfies `Q`, with `F` framed. -/
-def otrEncryptPlacedSpecQF [LibsignalPlacement] (Q : List (BitVec 8) → List (BitVec 8) → Prop) (F : SepProp)
+@[expose] def otrEncryptPlacedSpecQF [LibsignalPlacement] (Q : List (BitVec 8) → List (BitVec 8) → Prop) (F : SepProp)
     (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
     (parse : UuidParser) (S : SpqrModel) : Spec OtrEncryptGhost :=
   { otrEncryptPlacedSpec C A ctl parse S with
@@ -684,7 +690,7 @@ theorem EncEnvPlaced.q_otr [LibsignalPlacement] {A : RustAlloc}
   fromSessionState_pqrState hfrom ▸ env.scopeQ r sess hsc hcur
 
 /-- Segment exit relation on `lsProg_464 H` under `[LibsignalPlacement]`. -/
-def SegExitPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegExitPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (C : Crypto) (ctl : BitVec 64) (parse : UuidParser)
@@ -703,7 +709,7 @@ abbrev EncFsCtxPlaced [LibsignalPlacement] {A : RustAlloc}
     (lsProg_464 H) s0 s
 
 /-- **segLoad** (entry → Cur) under `[LibsignalPlacement]`. -/
-def SegLoadSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegLoadSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
@@ -720,7 +726,7 @@ def SegLoadSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
         (fun s => ∃ r g sess, CurStateVPlaced kit st0 ikit ist0 Scope ctl encRecord x r g sess R s0 s)
 
 /-- **segFrom** (Cur → Otr) under `[LibsignalPlacement]`. -/
-def SegFromSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegFromSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
@@ -737,7 +743,7 @@ def SegFromSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
           OtrStateVPlaced kit st0 ikit ist0 Scope ctl encRecord x r sess otr taken pqCap pqPtr R s0 s')
 
 /-- **segIdentity** (Otr → Key) under `[LibsignalPlacement]`. -/
-def SegIdentitySpecVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegIdentitySpecVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
@@ -756,7 +762,7 @@ def SegIdentitySpecVPlaced [LibsignalPlacement] {A : RustAlloc}
           KeyStateVPlaced kit st0 ikit ist0 Scope ctl encRecord x r sess otr taken pqCap pqPtr k R s0 s')
 
 /-- **segSignal** (Key → Cm, `pendingPreKey = none`) under `[LibsignalPlacement]`. -/
-def SegSignalSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegSignalSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
@@ -777,7 +783,7 @@ def SegSignalSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
             pqCap' pqPtr' R s0 s')
 
 /-- **segPreKey** (Key → Cm, `pendingPreKey.isSome`) under `[LibsignalPlacement]`. -/
-def SegPreKeySpecVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegPreKeySpecVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
@@ -798,7 +804,7 @@ def SegPreKeySpecVPlaced [LibsignalPlacement] {A : RustAlloc}
             pqCap' pqPtr' R s0 s')
 
 /-- **segTrust** (Cm → Save) under `[LibsignalPlacement]`. -/
-def SegTrustSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegTrustSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
@@ -821,7 +827,7 @@ def SegTrustSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
           m otr' pqCap' pqPtr' R s0 s')
 
 /-- **segSave** (Save → Apply) under `[LibsignalPlacement]`. -/
-def SegSaveSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegSaveSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
@@ -844,7 +850,7 @@ def SegSaveSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
           taken k m otr' pqCap' pqPtr' c R s0 s')
 
 /-- **segApplyStore** (Apply → Stored) under `[LibsignalPlacement]`. -/
-def SegApplyStoreSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegApplyStoreSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)
@@ -867,7 +873,7 @@ def SegApplyStoreSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
           k m otr' c R s0 s')
 
 /-- **segFinish** (Stored → outcome) under `[LibsignalPlacement]`. -/
-def SegFinishSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def SegFinishSpecVPlaced [LibsignalPlacement] {A : RustAlloc}
     (kit : SessionStoreSpec A 0#64) (st0 : kit.StoreState)
     (ikit : IdentityStoreSpec A 0#64) (ist0 : ikit.IdState)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (Q : List (BitVec 8) → Prop)

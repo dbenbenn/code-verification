@@ -9,7 +9,26 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdCost
+public import Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdCost -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
+import Computational.Proofs.CryptoGames.SM.Theorem8.DeliverForgePRNG
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.Game.PromotedCostedReds.AtomicOpsHonest
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SpqrDesc
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.LibsignalBoundDDHChain
+import Computational.Proofs.ReductionDsl.SM.DeliverForge
+import Computational.Proofs.ReductionDsl.SM.RedCKA
+import Computational.Proofs.ReductionDsl.SM.RedFS
+import Computational.Proofs.ReductionDsl.SM.RedPRNG
+import Computational.Proofs.ReductionDsl.SM.Theorem1
+import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.EtM
+import VCVio.EvalDist.EvalDistEq
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Guard, Probe, and Resync Evaluation Lemmas for `SimDeliverForge`
@@ -18,7 +37,7 @@ Proves semantic `.eval` lemmas for the pure expression helpers, probe/resync com
 early-reject guard branches of `fwdRecvNewC`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -76,8 +95,6 @@ open Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdCost
    fwdInTE fwdScAcceptUpdateE fwdMkCE fwdEvictedE fwdSaltEqE
    fwdAmbCondE fwdScAmbE fwdNewGuardRejectE fwdRefuseE fwdHonestCE
    fwdOnAcceptC fwdProbeC fwdEvalCKSC fwdResyncC)
-
-noncomputable section
 
 section Codecs
 
@@ -1071,7 +1088,5 @@ theorem fwdResyncC_eval (qep Lq T : ℕ) (hℓ : ℓ < 10 ^ 6) {Γ : List (Ty AS
         simp [List.map_map, Function.comp_def, fig8CtOfV_fig8CtV]
 
 end SkipAndGuardEval
-
-end
 
 end Computational.Proofs.Game.PromotedCostedReds.SimDeliverForgeStepRecvFwdSkip

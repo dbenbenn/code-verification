@@ -9,17 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudgetAux
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrustedPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP3PlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverUntrustedPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
-meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathATopPlacedBudgetAux
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathBMainPlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Steps
@@ -33,6 +32,19 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage1InstPlacedBudget
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureTrustedP1Placed
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.CoreBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Matched.M4PlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.TopPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.PreKeySpecsPlaced
 
 /-!
 # Budget-Threaded Placed D2(c) Poll Full Composition (`PollOverPlacedBudget`)
@@ -43,7 +55,7 @@ Combines Path A (`opt = none`), Path B (`opt = some`, `prev = []`), Path C (`opt
 `CliDpPollOkD2cStatePlacedStmt` on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -166,7 +178,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Record.DefsBudget (TryDecryptEnvArgs)
 /-- Complete D2(c) allocation-event envelope combining `CliDpPollTrustedEnv` (untrusted, Stage P1,
 Path A, Path B) with all Path C (`¬ SessMatchesPm s_old g.msg`) stage envelopes consumed by
 `PollOverPathCPlacedBudget.closure_pathC_placed_ok`. -/
-def CliDpPollD2cEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CliDpPollD2cEnv [LibsignalPlacement] {A : RustAlloc}
     (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -268,7 +280,11 @@ theorem closure_trusted_d2c_placed_ok [LibsignalPlacement]
     (hTry : OverCliTryDecryptPqV1PlacedStmt A lim tdEnv)
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
     (hG : CliGhostAllocHooks M A lim gh)
-    (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
+    (W : CliHooks)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (hEnv : ∀ g evs,
       CliDpPollD2cEnv (A := A.repAlloc) W X B ReadEnv DeserEnv
@@ -485,7 +501,7 @@ theorem closure_trusted_d2c_placed_ok [LibsignalPlacement]
             ⟨hload_rel, Or.inl (SeqEnv.append hevs_p1 (Or.inl he2))⟩))))
       refine closure_pathA_placed_ok_at mmpl gh W X B S0 Scope
         (fun {_DecPkEnv _DeserEnv _st_b} => hBase.stageP2PathA (ReadEnv := ReadEnv) mmpl gh X W B)
-        hBase.stageP3PathA hBase.stageP4PathA hh hReadFile hDeser (hTry mmpl gh W 0#64 hG)
+        hBase.stageP3PathA hBase.stageP4PathA hh hReadFile hDeser (hTry mmpl gh W 0#64 hG hF hX hPub)
         hinjK hsub rfl stk' hneed' hstk63 y0 kitEnv ikitEnv pkKitEnv kpkKitEnv evs_p1 s0 s1 coins
         v_a8 v_b8 v_d0 R hpure.files_eq hpure.filesOkPeer hdecOk0 hpure.coins_lt htrusted
         hload_rel hfits_p2 hevs_p2_err
@@ -563,7 +579,7 @@ theorem closure_trusted_d2c_placed_ok [LibsignalPlacement]
             Or.inl (Or.inr (Or.inr (Or.inr ⟨r, sess, hload_rel, hcur, Or.inl h⟩)))).seq_right
             hevs_p1
         refine closure_pathB_placed_ok hBase.stageP2PathB hBase.stageP3PathB hBase.stageP4PathB
-          mmpl gh W X B S0 Scope hh hReadFile hDeser (hTry mmpl gh W 0#64 hG) hinjK hsub rfl
+          mmpl gh W X B S0 Scope hh hReadFile hDeser (hTry mmpl gh W 0#64 hG hF hX hPub) hinjK hsub rfl
           stk' hneed' hstk63 y0 kitEnv ikitEnv evs_p1 r sess s0 s1 coins v_a8 v_b8 v_d0 R
           hpure.files_eq hpure.filesOkPeer hdecOk0 hpure.coins_lt htrusted hload_rel hcur hfits_p2
           ?_ ?_ ?_ ?_ ?_ ?_
@@ -611,7 +627,7 @@ theorem closure_trusted_d2c_placed_ok [LibsignalPlacement]
               Or.inl (SeqEnv.append (SeqEnv.append hevs_p1 he2) he3_env)⟩⟩))))
       · refine closure_pathC_placed_ok A lim DecPkEnv
           hD2c.stageP2Over hD2c.stageP3Prev1 hD2c.stageP4Prev1 hTry
-          mmpl gh W hG X B S Scope hh_skel hinjK hsub hS stk' hneed' hstk63 y evs_p1 r sess
+          mmpl gh W hG hF hX hPub X B S Scope hh_skel hinjK hsub hS stk' hneed' hstk63 y evs_p1 r sess
           s0 s1 coins v_a8 v_b8 v_d0 R
           ((hfits_all.mono fun _ h =>
             Or.inr ⟨r, sess, hload_rel, hcur, hnot_match, Or.inl h⟩).seq_right hevs_p1)
@@ -681,10 +697,13 @@ theorem cliDpPollOk_d2c_placed_of_stages [LibsignalPlacement]
       (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
       (Scope : SessionRecord (List (BitVec 8)) → Prop),
       CliGhostAllocHooks M A lim gh →
+      W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
       CliDpPollOkD2cStatePlacedAt A lim ReadEnv DeserEnv (DecPkEnv W X B Scope)
         mmpl gh W X B S Scope :=
-  fun mmpl gh W X B S Scope hG =>
-    closure_trusted_d2c_placed_ok hDropNz hBase hD2c hTry mmpl gh hG W X B S Scope
+  fun mmpl gh W X B S Scope hG hF hX hPub =>
+    closure_trusted_d2c_placed_ok hDropNz hBase hD2c hTry mmpl gh hG W hF hX hPub X B S Scope
       (hEnv W X B Scope)
 
 
@@ -737,7 +756,11 @@ theorem closure_trusted_d2c_frozen_placed_ok [CryptoVerification.LibsignalFullPl
     (hTry : OverCliTryDecryptPqV1PlacedStmt A lim tdEnv)
     (mmpl : Obj.MultiPlacement) (gh : CliGhostHooks)
     (hG : CliGhostAllocHooks M A lim gh)
-    (W : CliHooks) (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
+    (W : CliHooks)
+    (hF : W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
     (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (hEnv : ∀ g evs,
       CliDpPollD2cEnv (A := A.repAlloc) W X B ReadEnv DeserEnv
@@ -956,7 +979,7 @@ theorem closure_trusted_d2c_frozen_placed_ok [CryptoVerification.LibsignalFullPl
             ⟨hload_rel, Or.inl (SeqEnv.append hevs_p1 (Or.inl he2))⟩))))
       refine LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosurePathATopPlacedBudgetAux.closure_pathA_frozen_placed_ok_at mmpl gh W X B S0 Scope
         (fun {_DecPkEnv _DeserEnv _st_b} => hBase.stageP2PathA (ReadEnv := ReadEnv) mmpl gh X W B)
-        hBase.stageP3PathA hBase.stageP4PathA hh hReadFile hDeser (hTry mmpl gh W 0#64 hG)
+        hBase.stageP3PathA hBase.stageP4PathA hh hReadFile hDeser (hTry mmpl gh W 0#64 hG hF hX hPub)
         hinjK hsub rfl stk' hneed' hstk63 y0 kitEnv ikitEnv pkKitEnv kpkKitEnv evs_p1 s0 s1 coins
         v_a8 v_b8 v_d0 R hpure.files_eq hpure.filesOkPeer hdecOk0 hpure.coins_lt htrusted
         hload_rel hfits_p2 hevs_p2_err
@@ -1034,7 +1057,7 @@ theorem closure_trusted_d2c_frozen_placed_ok [CryptoVerification.LibsignalFullPl
             Or.inl (Or.inr (Or.inr (Or.inr ⟨r, sess, hload_rel, hcur, Or.inl h⟩)))).seq_right
             hevs_p1
         refine closure_pathB_frozen_placed_ok hBase.stageP2PathB hBase.stageP3PathB hBase.stageP4PathB
-          mmpl gh W X B S0 Scope hh hReadFile hDeser (hTry mmpl gh W 0#64 hG) hinjK hsub rfl
+          mmpl gh W X B S0 Scope hh hReadFile hDeser (hTry mmpl gh W 0#64 hG hF hX hPub) hinjK hsub rfl
           stk' hneed' hstk63 y0 kitEnv ikitEnv evs_p1 r sess s0 s1 coins v_a8 v_b8 v_d0 R
           hpure.files_eq hpure.filesOkPeer hdecOk0 hpure.coins_lt htrusted hload_rel hcur hfits_p2
           ?_ ?_ ?_ ?_ ?_ ?_
@@ -1082,7 +1105,7 @@ theorem closure_trusted_d2c_frozen_placed_ok [CryptoVerification.LibsignalFullPl
               Or.inl (SeqEnv.append (SeqEnv.append hevs_p1 he2) he3_env)⟩⟩))))
       · refine closure_pathC_frozen_placed_ok A lim DecPkEnv
           hD2c.stageP2Over hD2c.stageP3Prev1 hD2c.stageP4Prev1 hTry
-          mmpl gh W hG X B S Scope hh_skel hinjK hsub hS stk' hneed' hstk63 y evs_p1 r sess
+          mmpl gh W hG hF hX hPub X B S Scope hh_skel hinjK hsub hS stk' hneed' hstk63 y evs_p1 r sess
           s0 s1 coins v_a8 v_b8 v_d0 R
           ((hfits_all.mono fun _ h =>
             Or.inr ⟨r, sess, hload_rel, hcur, hnot_match, Or.inl h⟩).seq_right hevs_p1)
@@ -1150,10 +1173,13 @@ theorem cliDpPollOk_d2c_frozen_placed_of_stages [CryptoVerification.LibsignalFul
       (X : UnreachedPqxdhPrimitives) (B : RunBudgets) (S : RunSem)
       (Scope : SessionRecord (List (BitVec 8)) → Prop),
       CliGhostAllocHooks M A lim gh →
+      W.C.F = CryptoVerification.LibsignalSpqrV1.sha256Compress →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
       CliDpPollOkD2cStateFrozenPlacedAt A lim ReadEnv DeserEnv (DecPkEnv W X B Scope)
         mmpl gh W X B S Scope :=
-  fun mmpl gh W X B S Scope hG =>
-    closure_trusted_d2c_frozen_placed_ok hDropNz hBase hD2c hTry mmpl gh hG W X B S Scope
+  fun mmpl gh W X B S Scope hG hF hX hPub =>
+    closure_trusted_d2c_frozen_placed_ok hDropNz hBase hD2c hTry mmpl gh hG W hF hX hPub X B S Scope
       (hEnv W X B Scope)
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverPlacedBudget

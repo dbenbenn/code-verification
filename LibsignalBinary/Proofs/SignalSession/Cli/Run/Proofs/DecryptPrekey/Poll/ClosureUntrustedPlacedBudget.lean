@@ -11,23 +11,24 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedOkTrapPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrusted
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CoinsBridge
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.DropSs3ExtPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1UntrustedOkTrapPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.IdentityKitOkPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.KitInst.SessionKitOkCliPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Over.PollOverP4SpatialPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExitPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStageDefsPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStagesStmtPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureUntrusted
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.PollStmtPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.CliHookSatPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Coins.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Layout
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.SerGlueXPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
@@ -40,6 +41,17 @@ import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.Cl
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureStmts
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Common.StringClonePlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.Trap.SameAccount
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
 
 /-!
 # Budget-Threaded Relocatable `[LibsignalPlacement]` Poll Untrusted-Identity Branch
@@ -49,7 +61,7 @@ Constructs budget-threaded `SessionOnlyKitPlacedOkSE` and `IdentityStoreKitPlace
 Block `623`, and discharges `closure_untrusted_placed_ok` on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -171,6 +183,7 @@ theorem runHooks_to_stages [LibsignalPlacement] {M : AllocCostModel}
   allocZeroed := hh.allocZeroed
   stringClone := hh.stringClone
   formatInner := hh.formatInner
+  fmtWrite := hh.fmtWrite
   blackBox := hh.blackBox
 
 /-- Convert `ClosureStagesStmtPlacedBudget.RunHooksPlaced` to
@@ -192,6 +205,7 @@ theorem runHooks_of_stages [LibsignalPlacement] {M : AllocCostModel}
   allocZeroed := hh.allocZeroed
   stringClone := hh.stringClone
   formatInner := hh.formatInner
+  fmtWrite := hh.fmtWrite
   blackBox := hh.blackBox
 
 /-! ## 2. Budget-Threaded Trace, `FsAt`, & Exit Postcondition Packagers -/
@@ -277,7 +291,7 @@ private theorem saveUpd_own_placed (rd : ReadRule) (F0 : FsFiles) (g : IdGhost)
 
 /-- Lift an `IdentityStoreBudgetEnv` from `cliIdentityKitSpecPlaced` (`IdState = IdGhost`) to
 `cliIdStoreSpecFullPlaced` (`IdState = IdGhost`). -/
-def cliIdStoreFullBudgetEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def cliIdStoreFullBudgetEnv [LibsignalPlacement] {A : RustAlloc}
     {rd : ReadRule} {F0 : FsFiles} {pathOk : List (BitVec 8) → Prop}
     {peer : AddrGhost} {t1 t2 t3 t4 : Nat}
     (ikitEnv : IdentityStoreBudgetEnv
@@ -491,7 +505,7 @@ theorem cliPollId_kitPlacedOkI [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
       (by decide) (by decide))
 
 /-- Exact untrusted-path Stage-P1 allocation envelope on `(W, B, ReadEnv, DeserEnv)` at `g : DecPkGhost`. -/
-def CliDpPollUntrustedEnv [LibsignalPlacement] {A : RustAlloc}
+@[expose] def CliDpPollUntrustedEnv [LibsignalPlacement] {A : RustAlloc}
     (B : RunBudgets)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop)
     (DeserEnv : SessionRecord (List (BitVec 8)) → List AllocEvent → Prop)
@@ -560,7 +574,7 @@ discharges `<String as Clone>::clone` at `(lsmpl.base 623)` from `lsRustNoAllocS
 `lsRustAllocPlacedSym`, and `"memcpy"`, plus `HookSat ext lsRustDeallocSymCli
 (rustCliDeallocBudgetSpec M A lim)` and `SessionOnlyVtablesPlacedOk kit` +
 `IdentityVtablesPlacedOk ikit`. -/
-def StageP1UntrustedMangledPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def StageP1UntrustedMangledPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {ext : LibsignalHooks}
     {Scope : SessionRecord (List (BitVec 8)) → Prop}

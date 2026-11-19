@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed
+public import LibsignalBinary.Proofs.SpqrV1.States.Recv.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2Placed -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Recv.CodeSymBasePlaced
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<States>::recv` (Block `332`): Relocatable Decodes & `.rodata`
@@ -20,7 +21,7 @@ Consolidates the 6 placed fetch shards (`0..19532`), seals `blkPC_332`, and defi
 `statesRecvJumpTablePlacedAt` and `statesRecvRoPlacedAt`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -41,11 +42,11 @@ abbrev statesRecvJumpTableSym : String :=
   "spqr:.rodata.<spqr::v1::chunked::states::States>::recv"
 
 /-- Relocatable `.rodata` jump table for `<States>::recv` (Block `332`, `22` bytes). -/
-def statesRecvJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def statesRecvJumpTablePlacedAt [LibsignalPlacement] : SepProp :=
   (lsρ statesRecvJumpTableSym) ↦ᵣ statesRecvJumpTableBytes
 
 /-- Expanded 22-byte jump table at `lsρ statesRecvJumpTableSym`. -/
-def statesRecvJumpTablePlacedExpanded [LibsignalPlacement] : SepProp :=
+@[expose] def statesRecvJumpTablePlacedExpanded [LibsignalPlacement] : SepProp :=
   let jt := lsρ statesRecvJumpTableSym
   (jt ↦₈ᵣ 0#8) ∗ ((jt + 1#64) ↦₈ᵣ 0#8) ∗
   ((jt + 2#64) ↦₈ᵣ 169#8) ∗ ((jt + 3#64) ↦₈ᵣ 1#8) ∗
@@ -60,7 +61,7 @@ def statesRecvJumpTablePlacedExpanded [LibsignalPlacement] : SepProp :=
   ((jt + 20#64) ↦₈ᵣ 63#8) ∗ ((jt + 21#64) ↦₈ᵣ 2#8)
 
 /-- Relocatable `.rodata` + global bundle required by `<States>::recv` (Block `332`). -/
-def statesRecvRoPlacedAt [LibsignalPlacement] : SepProp :=
+@[expose] def statesRecvRoPlacedAt [LibsignalPlacement] : SepProp :=
   statesRecvJumpTablePlacedAt ∗
     unchunkedSendCt2PlacedRoAt ∗
     tokenInitPlacedAt ∗

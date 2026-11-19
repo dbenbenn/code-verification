@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Statements
 import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
 import LibsignalBinary.Proofs.TripleRatchet.SpqrSendEmpty.Core
@@ -23,135 +23,13 @@ Instantiates `otrEncrypt_body_ok` and its relocatable `[LibsignalPlacement]` cou
 - `otrEncryptV1_run`: SPQR v1 state via `SpqrSendV1Stmt`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.Encrypt
 
 open Arm64 ProofLib CryptoGames.LibsignalSession CryptoVerification.RustHeap
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalSpqrV1
-
-/-- Under `SpqrSendOk` and the four chain/message-key callee contracts,
-`OTR::encrypt::<HookRng>` (`0x33e0c`) meets `otrEncryptSpec` (`OtrEncryptRunStmt`). -/
-theorem otrEncrypt_run (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (abs : String → Option (State → State))
-    (img : Obj.Image)
-    (hMK : MessageKeysOk img C A ctl abs)
-    (hGK : GenerateKeysOk img C A ctl abs)
-    (hNew : SignalMessageNewOk img C A ctl uuidTryParse abs)
-    (hNCK : NextChainKeyOk img C ctl abs) :
-    OtrEncryptRunStmt C A ctl S abs img := by
-  intro hHooks hSend himg
-  apply root_of_tripleRatchetProgAt himg
-  rw [← spec_pre_true (otrEncryptSpec C A ctl uuidTryParse S img)]
-  refine otrEncrypt_body_ok (fun _ => True) C A ctl S abs img hHooks himg ?_ hMK hGK hNew hNCK
-  rw [spec_pre_true]
-  unfold SpqrSendOk at hSend
-  rwa [tripleRatchetProg_eq_tripleRatchetProgAt himg,
-    entryOf_eq_tripleRatchetProgAt (C := C) (ctl := ctl) (abs := abs) himg spqrSendName] at hSend
-
-/-- Under the four chain/message-key callee contracts, `OTR::encrypt::<HookRng>` (`0x33e0c`)
-meets `otrEncryptSpec` restricted to `x.ot.pqrState = []` (`OtrEncryptEmptyRunStmt`) via
-`SpqrSendEmpty.spqrSendEmpty_run'`. -/
-theorem otrEncryptEmpty_run (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (abs : String → Option (State → State))
-    (img : Obj.Image)
-    (hMK : MessageKeysOk img C A ctl abs)
-    (hGK : GenerateKeysOk img C A ctl abs)
-    (hNew : SignalMessageNewOk img C A ctl uuidTryParse abs)
-    (hNCK : NextChainKeyOk img C ctl abs) :
-    OtrEncryptEmptyRunStmt C A ctl S abs img := by
-  intro hHooks hEmpty himg
-  apply root_of_tripleRatchetProgAt himg
-  refine otrEncrypt_body_ok (· = []) C A ctl S abs img hHooks himg ?_ hMK hGK hNew hNCK
-  have hSendEmpty := SpqrSendEmpty.spqrSendEmpty_run' C A ctl S abs img hHooks hEmpty himg
-  rwa [tripleRatchetProg_eq_tripleRatchetProgAt himg,
-    entryOf_eq_tripleRatchetProgAt (C := C) (ctl := ctl) (abs := abs) himg spqrSendName] at hSendEmpty
-
-/-- Under the four chain/message-key callee contracts and `SpqrSendV1Stmt`,
-`OTR::encrypt::<HookRng>` (`0x33e0c`) meets `otrEncryptSpecT` (`OtrEncryptV1RunStmt`). -/
-theorem otrEncryptV1_run (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (K : MlKem) (abs : String → Option (State → State))
-    (img : Obj.Image)
-    (hSendV1 : SpqrSendV1Stmt C A ctl K abs img)
-    (hMK : MessageKeysOk img C A ctl abs)
-    (hGK : GenerateKeysOk img C A ctl abs)
-    (hNew : SignalMessageNewOk img C A ctl uuidTryParse abs)
-    (hNCK : NextChainKeyOk img C ctl abs) :
-    OtrEncryptV1RunStmt C A ctl K abs img := by
-  intro hHooks hSpqr himg
-  apply root_of_tripleRatchetProgAt himg
-  refine otrEncrypt_body_ok_frame (fun st rest => st.length < 2 ^ 32 ∧ 64 ≤ rest.length)
-    (TokenInit img) C A ctl (spqrV1 C.F K) abs img hHooks himg ?_ hMK hGK hNew hNCK
-  have hSend := hSendV1 hHooks hSpqr himg
-  rwa [tripleRatchetProg_eq_tripleRatchetProgAt himg,
-    entryOf_eq_tripleRatchetProgAt (C := C) (ctl := ctl) (abs := abs) himg spqrSendName] at hSend
-
-theorem otrEncrypt_ext_ok (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (ext : String → Option (State → State))
-    (img : Obj.Image)
-    (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext)
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hSend : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName) (spqrSendSpec A ctl S img))
-    (hMK : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName) (messageKeysSpec C.F A img))
-    (hGK : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr generateKeysName) ((generateKeysSpec C.F A).inImage img))
-    (hNew : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr signalMessageNewName) ((signalMessageNewSpec C.F A uuidTryParse).inImage img))
-    (hNCK : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr nextChainKeyName) (nextChainKeySpec C.F img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr otrEncryptName) (otrEncryptSpec C A ctl uuidTryParse S img) := by
-  rw [← spec_pre_true (otrEncryptSpec C A ctl uuidTryParse S img)]
-  refine otrEncrypt_body_ok_ext (fun _ => True) C A ctl S ext img hC himg ?_ hMK hGK hNew hNCK
-  rw [spec_pre_true]
-  exact hSend
-
-theorem otrEncryptEmpty_ext_ok (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (ext : String → Option (State → State))
-    (img : Obj.Image)
-    (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext)
-    (hEmpty : S.SendEmptyOk)
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hMK : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName) (messageKeysSpec C.F A img))
-    (hGK : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr generateKeysName) ((generateKeysSpec C.F A).inImage img))
-    (hNew : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr signalMessageNewName) ((signalMessageNewSpec C.F A uuidTryParse).inImage img))
-    (hNCK : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr nextChainKeyName) (nextChainKeySpec C.F img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr otrEncryptName)
-      { otrEncryptSpec C A ctl uuidTryParse S img with
-        pre := fun x s => ⌜x.ot.pqrState = []⌝ ∗ (otrEncryptSpec C A ctl uuidTryParse S img).pre x s } :=
-  otrEncrypt_body_ok_ext (· = []) C A ctl S ext img hC himg
-    (SpqrSendEmpty.spqrSendEmpty_base_ext C A ctl S ext img hC hEmpty) hMK hGK hNew hNCK
-
-theorem otrEncryptV1_ext_ok (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (S : SpqrModel) (ext : String → Option (State → State))
-    (img : Obj.Image)
-    (hC : Stage2Contracts img.base C A ctl uuidTryParse S ext)
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hSend : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr spqrSendName) (spqrSendSpecT A ctl S img))
-    (hMK : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr messageKeysName) (messageKeysSpec C.F A img))
-    (hGK : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr generateKeysName) ((generateKeysSpec C.F A).inImage img))
-    (hNew : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr signalMessageNewName) ((signalMessageNewSpec C.F A uuidTryParse).inImage img))
-    (hNCK : subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr nextChainKeyName) (nextChainKeySpec C.F img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr otrEncryptName)
-      (otrEncryptSpecT C A ctl uuidTryParse S img) :=
-  otrEncrypt_body_ok_ext_frame (fun st rest => st.length < 2 ^ 32 ∧ 64 ≤ rest.length)
-    (TokenInit img) C A ctl S ext img hC himg hSend hMK hGK hNew hNCK
-
-/-! ## Relocatable `[LibsignalPlacement]` Root Theorems (Blocks `125` and `544`) -/
 
 open CryptoVerification
 

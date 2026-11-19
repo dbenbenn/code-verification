@@ -18,13 +18,13 @@ public import Mathlib.Data.Nat.Notation
 Defines `Party.receiverOf`, the receiving party of epoch `t`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoGames
 namespace Party
 
 /-- The receiving party of epoch `t`. -/
-def receiverOf (t : ℕ) : Party := (senderOf t).other
+@[expose] def receiverOf (t : ℕ) : Party := (senderOf t).other
 
 end Party
 end CryptoGames

@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Bin.OpenSegs
+public import LibsignalBinary.Proofs.E2E.Bin.OpenSegs -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.HookTrace
 import LibsignalBinary.Proofs.E2E.Bin.SegCommon
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import ProofLib.SepLogic.WPp
 import LibsignalBinary.Proofs.E2E.Bin.OpenSegsKeysAddressesWp -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Bin
 
@@ -24,64 +25,12 @@ set_option warningAsError false
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames
+open Arm64 ProofLib CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
 open CryptoVerification.LibsignalProtoCodec
 open CryptoVerification.HookTrace
-
-variable {C : Crypto} {A : RustAlloc} {S : SpqrModel} {img : Obj.Image} {ctl : BitVec 64}
-  {abs : String → Option (State → State)}
-
-/-! ## `SegExit` and `OpenSeam` Combinators -/
-
-theorem openSpec_panic_of_allocFailed (A : RustAlloc) (img : Obj.Image)
-    (g : OpenGhost) (R : SepProp) {s0 s1 sf : State}
-    (htr : s1.trace = s0.trace) (hpan : sf.status = .Panicked)
-    (hm : sf.mem ⊨ anyHeap ∗ R) (halloc : allocFailedIn s1 sf ∧ s1.trace <+: sf.trace) :
-    SubroutineOutcome (openSpec A img) g R s0 sf := by
-  refine Or.inr (Or.inl ⟨hpan, ?_⟩)
-  dsimp only [openSpec, Spec.inImage]
-  have ⟨ha0, hpref⟩ := allocFailedIn_of_trace_eq htr halloc
-  have h1 : (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R =
-    ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ (anyHeap ∗ R) := by ac_rfl
-  rw [h1, satisfies_pure_sepConj]
-  exact ⟨⟨ha0, hpref⟩, hm⟩
-
-theorem openSpec_panic_of_callee_onPanic (A : RustAlloc) (img : Obj.Image)
-    (g : OpenGhost) (R R_extra : SepProp) {s0 s1 sf : State}
-    (htr : s1.trace = s0.trace) (hpan : sf.status = .Panicked)
-    (hm : sf.mem ⊨ (⌜allocFailedIn s1 sf ∧ s1.trace <+: sf.trace⌝ ∗ anyHeap) ∗ (R_extra ∗ R)) :
-    SubroutineOutcome (openSpec A img) g R s0 sf := by
-  have hm' : sf.mem ⊨ ⌜allocFailedIn s1 sf ∧ s1.trace <+: sf.trace⌝ ∗ ((anyHeap ∗ R_extra) ∗ R) :=
-    Satisfies.of_eq hm (by ac_rfl)
-  rw [satisfies_pure_sepConj] at hm'
-  exact openSpec_panic_of_allocFailed A img g R htr hpan
-    (Satisfies.mono (sepConj_mono_left (anyHeap_absorb_right R_extra)) hm'.2) hm'.1
-
-theorem sepWP_bind_segExit_open (C : Crypto) (A : RustAlloc)
-    (ctl : BitVec 64) (img : Obj.Image)
-    (abs : String → Option (State → State))
-    (g : OpenGhost) (R : SepProp) {s0 s : State} {next : State → Prop}
-    {target_pc : BitVec 64} {P F : SepProp} {post : State → SepProp → Prop}
-    (hloads : Obj.Loads libsignalSessionImage img)
-    (hpre : s.mem ⊨ P ∗ F)
-    (hwp : SepWP (tripleRatchetProgAt img.base C ctl abs) target_pc s P post)
-    (hnext : ∀ s1 P_f, Steps (tripleRatchetProgAt img.base C ctl abs) s s1 →
-      s1.pc = target_pc → s1.status = .Running →
-      s1.mem ⊨ P_f ∗ F → post s1 P_f →
-      SegExit (binProg img C ctl abs) (openSpec A img) g R s0 s1 next) :
-    SegExit (binProg img C ctl abs) (openSpec A img) g R s0 s next := by
-  refine segExit_trans
-    (mid := fun s1 => ∃ P_f, Steps (tripleRatchetProgAt img.base C ctl abs) s s1 ∧
-      s1.pc = target_pc ∧ s1.status = .Running ∧
-      s1.mem ⊨ P_f ∗ F ∧ post s1 P_f)
-    ?_ ?_
-  · exact sepWP_to_segExit_tripleRatchetProgAt hloads hpre hwp
-      (fun s1 P_f hst1 hpc1 hrun1 hm1 hp1 => Or.inl ⟨P_f, hst1, hpc1, hrun1, hm1, hp1⟩)
-  · intro s1 ⟨P_f, hst1, hpc1, hrun1, hm1, hp1⟩
-    exact hnext s1 P_f hst1 hpc1 hrun1 hm1 hp1
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -114,49 +63,11 @@ theorem memRegion_bottom_open_split (sp0 sp1 : BitVec 64) (k : Nat)
 
 /-! ## Segment 2: `open_seg_deserialize` (`+0x054..+0x080`) -/
 
-theorem sessionRecordAt_eq_bytes368_sep_heap (A : RustAlloc) (r : BitVec 64)
-    (G : SessionGhost) (sess : Session (List (BitVec 8))) :
-    sessionRecordAt A r ⟨0#64, 8#64, some G⟩ ⟨some sess⟩ =
-      ∃∗ bs : List (BitVec 8),
-        ⌜bs.length = 344 ∧ RawByteMove.SessionInline G sess.state bs⌝ ∗
-        (r ↦ₛ (unpack64 0#64 ++ unpack64 8#64 ++ unpack64 0#64 ++ bs)) ∗
-        sessionRecordHeap A G sess := by
-  rw [sessionRecordAt_eq_word0_sep_tail_sep_heap A r G sess]
-  apply RawByteMove.sepExists_congr; intro bs
-  have h0_8 : r + BitVec.ofNat 64 (unpack64 0#64).length = r + 8#64 := by
-    rw [unpack64_length]
-  rw [pointsTo64_eq_pointsToBytes r 0#64,
-      List.append_assoc (unpack64 0#64), List.append_assoc (unpack64 0#64),
-      pointsToBytes_append r (unpack64 0#64), h0_8]
-  ac_rfl
-
 theorem sessionRecordBytes368_length {bs : List (BitVec 8)} (h : bs.length = 344) :
     (unpack64 0#64 ++ unpack64 8#64 ++ unpack64 0#64 ++ bs).length = 0x170 := by
   simp [unpack64_length, h]
 
-theorem sessionRecordAt_move_368 (A : RustAlloc) (src dst : BitVec 64)
-    (G : SessionGhost) (sess : Session (List (BitVec 8)))
-    {bs : List (BitVec 8)} (hlen : bs.length = 344) (hinl : RawByteMove.SessionInline G sess.state bs) :
-    ((dst ↦ₛ (unpack64 0#64 ++ unpack64 8#64 ++ unpack64 0#64 ++ bs)) ∗
-     (src ↦ₛ (unpack64 0#64 ++ unpack64 8#64 ++ unpack64 0#64 ++ bs)) ∗
-     sessionRecordHeap A G sess) ⊢
-      sessionRecordAt A dst ⟨0#64, 8#64, some G⟩ ⟨some sess⟩ ∗ memRegion src 0x170 := by
-  have hpull :
-      ((dst ↦ₛ (unpack64 0#64 ++ unpack64 8#64 ++ unpack64 0#64 ++ bs)) ∗
-       (src ↦ₛ (unpack64 0#64 ++ unpack64 8#64 ++ unpack64 0#64 ++ bs)) ∗
-       sessionRecordHeap A G sess) =
-      (((dst ↦ₛ (unpack64 0#64 ++ unpack64 8#64 ++ unpack64 0#64 ++ bs)) ∗
-        sessionRecordHeap A G sess) ∗
-       (src ↦ₛ (unpack64 0#64 ++ unpack64 8#64 ++ unpack64 0#64 ++ bs))) := by ac_rfl
-  rw [hpull]
-  refine sepConj_mono ?_ ?_
-  · rw [sessionRecordAt_eq_bytes368_sep_heap A dst G sess]
-    exact Entails.sepExists_right bs (Entails.pure_right ⟨hlen, hinl⟩ (Entails.refl _))
-  · have hreg := ProofLib.pointsToBytes_entails_memRegion src
-      (unpack64 0#64 ++ unpack64 8#64 ++ unpack64 0#64 ++ bs)
-    rwa [sessionRecordBytes368_length hlen] at hreg
-
-def openMemcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def openMemcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧
      s0.readReg64 .x1 = src ∧
@@ -236,7 +147,6 @@ theorem memRegion_bottom_open_pollC00 (sp0 sp1 : BitVec 64)
       stackAt sp1 (0xc00 + extHookStack) :=
   memRegion_bottom_open_split sp0 sp1 (0xc00 + extHookStack) hsp (by decide) (by decide)
 
-
 theorem pointsTo64_append_sessionTail (r : BitVec 64) (bs : List (BitVec 8)) :
     (r ↦₆₄ 0#64) ∗ ((r + 8#64) ↦ₛ (unpack64 8#64 ++ unpack64 0#64 ++ bs)) =
       (r ↦ₛ (unpack64 0#64 ++ unpack64 8#64 ++ unpack64 0#64 ++ bs)) := by
@@ -245,11 +155,6 @@ theorem pointsTo64_append_sessionTail (r : BitVec 64) (bs : List (BitVec 8)) :
   rw [pointsTo64_eq_pointsToBytes r 0#64,
       List.append_assoc (unpack64 0#64), List.append_assoc (unpack64 0#64),
       pointsToBytes_append r (unpack64 0#64), h0_8]
-
-theorem recordDeserialize_fnAddr_eq (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    (tripleRatchetProgAt b C ctl abs).fnAddr recordDeserializeName = b + deserializeOff := by
-  simp only [tripleRatchetProgAt, Program.fnAddr_rebase, deserialize_fnOff]
 
 theorem memRegion_bottom_open_split_0x60 (sp0 sp1 : BitVec 64)
     (hsp : sp1 = sp0 - 0x3f0#64) :

@@ -75,14 +75,14 @@ theorem ws81Idx1Fresh_of_enumOn {r : Records} {S : Sem} {g : Ghost} {ms' : List 
   rw [take_eq_self_of_forall2_length hvis₀ (by rw [aliceVis_iniAliceStartTr_length]; decide), seg0_eq] at hvis₀
   have hd₀_f := freshSafeTerm_draws_of_aliceVis hvis₀ seg0_tail_ne_fillFresh64; have hd₀_u := randUntaggedTerm_draws_of_aliceVis hvis₀ seg0_tail_untagged4 (randUntaggedTerm_randTerm_of_gamma_eq hpre.hent₁ compKyberE1_untagged4); rw [CompRX0NBSC38Parts.encrypt_vis_eq, hnext₁] at hvis₁
   have hc1' : DY.Libsignal.Composed.Refinement.Cli.CoinSplit [.pt (ptAt 35), .rng (rngAt 36), .send (sendAt 37)] b1 := seg35_eq ▸ hc1
-  obtain ⟨hm₁_f, hm₁_u, hm₁_len, hcoins₁_f, hcoins₁_u⟩ := draws_of_encVis_coinSplit hc1' hvis₁ ptAt35_len_ne_64 ptAt35_untagged4 (fun c hc => rngAt36_inits_safe c hc)
+  obtain ⟨hm₁_f, hm₁_u, hm₁_len, hcoins₁_f, hcoins₁_u⟩ := draws_of_encVis_coinSplit hc1' hvis₁ ptAt35_len_lt_48 ptAt35_untagged4 (fun c hc => rngAt36_inits_safe c hc)
   rw [CompRX0NBSC38Parts.encrypt_vis_eq, hnext₂] at hvis₂
-  obtain ⟨hm₂_f, hm₂_u, hm₂_len, hcoins₂_f, hcoins₂_u⟩ := draws_of_encVis_coinSplit hc2 hvis₂ ptAt38_len_ne_64 ptAt38_untagged4 (fun c hc => cliCoins2Fast_inits_safe c hc)
+  obtain ⟨hm₂_f, hm₂_u, hm₂_len, hcoins₂_f, hcoins₂_u⟩ := draws_of_encVis_coinSplit hc2 hvis₂ ptAt38_len_lt_48 ptAt38_untagged4 (fun c hc => cliCoins2Fast_inits_safe c hc)
   rw [CompRX0NBSC38Parts.aliceStart_vis_eq, hnext₄] at hvis₄
   rw [take_eq_self_of_forall2_length hvis₄ (by rw [aliceVis_iniAliceStartTr_length]; decide), seg43_eq] at hvis₄
   have hd₄_f := freshSafeTerm_draws_of_aliceVis hvis₄ seg43_tail_ne_fillFresh64; have hd₄_u := randUntaggedTerm_draws_of_aliceVis hvis₄ seg43_tail_untagged4 (randUntaggedTerm_randTerm_of_gamma_eq hpre.hent₂ compKyberE2_untagged4)
   have hc5' : DY.Libsignal.Composed.Refinement.Cli.CoinSplit [.pt (ptAt 78), .rng (rngAt 79), .send (sendAt 80)] b5 := hc5
-  obtain ⟨hm₅_f, hm₅_u, hm₅_len, hcoins₅_f, hcoins₅_u⟩ := draws_of_encVis_coinSplit hc5' hvis₅ ptAt78_len_ne_64 ptAt78_untagged4 (fun c hc => rngAt79_inits_safe c hc)
+  obtain ⟨hm₅_f, hm₅_u, hm₅_len, hcoins₅_f, hcoins₅_u⟩ := draws_of_encVis_coinSplit hc5' hvis₅ ptAt78_len_lt_48 ptAt78_untagged4 (fun c hc => rngAt79_inits_safe c hc)
   have hsec_f := freshSafeTerm_setupSecret hpre.compat hwf hsec3_eq hsec4_eq hsec5_eq; have hpub_f := freshSafeTerm_setupPublic hpre.compat hwf hsec3_eq hsec4_eq hsec5_eq
   have hpub2_key_f : CompFreshDistinct.FreshSafeTerm compI0 S g (DY.X25519.x25519Key (setupPublic r 2)) := by rw [x25519Key_setupPublic_2 hwf.1]; exact hpub_f 2
   have hpub4_key_f : CompFreshDistinct.FreshSafeTerm compI0 S g (DY.X25519.x25519Key (setupPublic r 4)) := by rw [x25519Key_setupPublic_4 hwf.1]; exact hpub_f 4

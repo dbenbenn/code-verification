@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3b
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3a
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3b -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3a -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1
 
 /-!
 # Multi-Key `INT-CTXT` Invariant and Send Coupling
@@ -22,7 +23,7 @@ Defines the coupling invariant `MuInv` between `pqxdhAuthForgeAllImpl` and
 `aeadMuIntReductionAuth` and proves the initiator send coupling.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -55,7 +56,7 @@ theorem lookup_cons_self {β : Type} (i : Nat) (b : β) (l : List (Nat × β)) :
 
 /-- Receive-side invariant mapping cached `(sid, salt)` keys to slots `N_send_tot + r0` with
     `r0 < recvCount` and leaving slots `≥ N_send_tot + recvCount` unfilled. -/
-def MuRecvInv (S : Setup) (recvCount : Nat) (mkSaltCache : AuthMkSaltCache S)
+@[expose] def MuRecvInv (S : Setup) (recvCount : Nat) (mkSaltCache : AuthMkSaltCache S)
     (keys : List (Nat × MessageKeys)) : Prop :=
   (∀ k r0 mk, (k, (r0, mk)) ∈ mkSaltCache →
     r0 < recvCount ∧ keys.lookup (S.N_send_tot + r0) = some mk) ∧

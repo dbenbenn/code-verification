@@ -19,7 +19,7 @@ Proves that `Refinement.setupTrace r` (both with and without a one-time prekey) 
 `DY.Libsignal.Composed.reachability` for every protocol setup `r : Refinement.ProtocolSetup`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

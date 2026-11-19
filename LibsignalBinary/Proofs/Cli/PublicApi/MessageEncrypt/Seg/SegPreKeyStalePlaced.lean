@@ -9,11 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStalenessPlaced
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyStale
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyUnackStalenessPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Seg.SegPreKeyStale
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import all Init.Data.String.Defs
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Seg.SegPreKeyCommonPlaced
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.TailsPlaced
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `segPreKey` Stale Session Error Path (`+0x6fc..+0x7cc`)
@@ -22,7 +28,7 @@ Proves `segPreKey_stale_placed_ok` on Block `464` (`lsProg_464 Hk`) under `[Libs
 handling the `expiry.lt x.now = true` branch into `tailWriteErr_placed_ok` at `+0x46c`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -113,7 +119,7 @@ theorem segPreKey_stale_placed_ok [LibsignalPlacement]
       (preKeyScratch_stale_weaken sp kyLen items.signedPreKeyId kyIdVal pkVal sess.pendingKyberPreKey)
       (by sep_focus) ?_
     refine SepWPp.fold (pollWithBaseKey_stale_weaken sp items) (by sep_focus) ?_
-    dsimp only [encSpillsAt, encSpillsAtV, encCommonPlaced, protocolAddressAt, lsLogOff_eq]
+    dsimp only [encSpillsAtV, encCommonPlaced, protocolAddressAt, lsLogOff_eq]
     rw [poll_stale_split sp, encSubStack_split_ext hsp]
     refine SepWPp.fold (memRegion_16_unpack_598 sp) (by sep_focus) ?_
     refine sepWPp_elim_ex fun w5a0 => sepWPp_elim_ex fun w598 => ?_
@@ -174,7 +180,7 @@ theorem segPreKey_stale_placed_ok [LibsignalPlacement]
       rw [congrArg Prod.snd hmod]
       rfl
     dsimp only [EncTailVPlaced, Pf.TailCommon.EncTailVPlaced, encEntryPlaced, encStoreExtraPlaced,
-      tailRegs, dropRecordSlots, otrSlotAt, encSpillsAt, encSpillsAtV, encCommonPlaced,
+      tailRegs, dropRecordSlots, otrSlotAt, encSpillsAtV, encCommonPlaced,
       protocolAddressAt, lsLogOff_eq, sp]
       at hsp1 hx19_1 hx25_1 hx26_1 hx28_1 hx29_1 hvregs_1 hmf ⊢
     refine ⟨cap, ptr, (w598 &&& 0xffffffffffffff00#64) ||| BitVec.zeroExtend 64 x.rem.device,

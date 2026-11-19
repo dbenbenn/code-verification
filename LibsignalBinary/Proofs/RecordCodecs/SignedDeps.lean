@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Specifications.RecordCodecsBinary.SignedPreKey
-public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3
-public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymC
+public import LibsignalBinary.Proofs.RecordCodecs.SignedPreKeySpec
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.BytesMerge.Proof -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymC -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFrom.DecodeErrorFrom
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.SigTryFrom.DecodeErrorPush
 import ProofLib.SepLogic.WPp
@@ -28,7 +28,7 @@ decoder contracts (`signedDecodeSpec`, `signedDecodePlacedSpec` on Block `562`,
 relocatable proof of `drop_glue::<prost::error::DecodeError> [local#3]` (Block `555`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.RecordCodecsBinary
 
@@ -61,52 +61,6 @@ abbrev dropDecodeError3Name : String :=
 
 /-! ## Contracts -/
 
-/-- Prost callee contracts: the CLI-local prost instances meet the specs of the proved instances
-they copy, on `tripleRatchetProgAtExt img.base ext`. -/
-structure SignedPortDeps (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  /-- `decode_varint [local#6]` (copy of `[local#2]`, `decodeVarint2_ok_of_contracts`). -/
-  decodeVarint6 :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr decodeVarint6Name)
-      (SpqrV1.Varint.decodeVarint2Spec A)
-  /-- `skip_field [local#7]` (copy of `[local#3]`, `skipField3_ok_of_contracts`). -/
-  skipField7 :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr skipField7Name)
-      (SpqrV1.Varint.skipField3Spec A)
-  /-- `bytes::merge [local#7]` (copy of `[local#3]`, `bytes_merge_3_ok_of_contracts`). -/
-  bytesMerge7 :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr bytesMerge7Name)
-      (SpqrV1.Prost.BytesMerge.bytesMerge3Spec A img)
-  /-- `drop_glue::<DecodeError> [local#3]` (copy of `[local#1]`, `dropDecodeError_ok_of_contract`). -/
-  dropDecodeError3 :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dropDecodeError3Name)
-      (Prost.dropDecodeErrorSpec A)
-
-/-- The hooks the decode loop calls directly: the allocator bundle (for `__rust_dealloc` of
-the partial `Vec`s on the error path), `DecodeError::from` and `DecodeError::push`. These are
-fields of `Stage2Contracts` (`SignedHooks.of_stage2`). -/
-structure SignedHooks (b : BitVec 64) (A : RustAlloc) (ext : String → Option (State → State)) :
-    Prop where
-  alloc : AllocContracts b A ext
-  decodeErrorFrom :
-    subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr decodeErrorFromName)
-      (decodeErrorFromSpec A)
-  decodeErrorPush :
-    subroutine_ok (tripleRatchetProgAtExt b ext) ((tripleRatchetProgAtExt b ext).fnAddr decodeErrorPushName)
-      (decodeErrorPushSpec A)
-
-/-- `Stage2Contracts` gives `SignedHooks`. -/
-theorem SignedHooks.of_stage2 {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {parse : UuidParser} {S : SpqrModel} {ext : String → Option (State → State)}
-    (hC : Stage2Contracts b C A ctl parse S ext) : SignedHooks b A ext :=
-  ⟨hC.toAllocContracts, hC.decode_error_from, hC.decode_error_push⟩
-
-/-! ## The inner decoder's contract -/
-
 /-- Stack budget of the inner decoder: its frame (`sub sp, sp, #0xe0`) plus its deepest callee,
 `skip_field` with recursion budget `100` (`+0x130: mov w3, #100`), whose budget covers
 `bytes::merge` (`bytesMerge3Stack`), `decode_varint`, `from` / `push` and `__rust_dealloc`. -/
@@ -125,36 +79,12 @@ example : 0x80 + signedDecodeStack ≤ smallRootStack := by decide
 `+0x2f8..+0x31c`); `none` = `errTag` (`-1`) @0, an owned `DecodeError` box @8, 72 bytes
 unspecified (`+0x2a0..+0x2a4: mov x9, #-1; stp x9, x1, [x19]`, after the three partial `Vec`s are
 freed, `+0x2a8..+0x2dc`). -/
-def signedDecodeResultAt (A : RustAlloc) (r : BitVec 64) :
+@[expose] def signedDecodeResultAt (A : RustAlloc) (r : BitVec 64) :
     Option SignedPreKeyRecordStructure → SepProp
   | some m => signedPreKeyStructAt A r m
   | none =>
     (r ↦₆₄ errTag) ∗ (∃∗ e : BitVec 64, ((r + 8#64) ↦₆₄ e) ∗ decodeErrorAt A e) ∗
       memRegion (r + 16#64) 72
-
-/-- Contract of the inner decoder `<SignedPreKeyRecordStructure as Message>::decode::<&[u8]>`
-(`x0` = out, `x1` = ptr, `x2` = len): the 88 bytes at `x0` hold
-`SignedPreKeyRecordStructure.decode bytes` for nonempty `bytes` (`0 < x.bytes.length`: every
-CLI caller passes a nonempty slice, and on `[]` the compiled code returns `Err`, see
-`SignedPreKeyDecode.signedDecode_empty_disproof`), the input is given back, every partial
-allocation is freed or moved into the result; the only panic is an allocation failure. Not a
-statement of the CLI theorem (only `decodeKyberPreKeySpec` is); it is the interface between the
-two hops. -/
-def signedDecodeSpec (A : RustAlloc) (img : Obj.Image) : Spec DecodeGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.bytesA ∧
-          (s.readReg64 .x2).toNat = x.bytes.length ∧
-          0 < x.bytes.length ∧ x.bytes.length < 2 ^ 32⌝ ∗
-          (x.bytesA ↦ₛ x.bytes) ∗ memRegion x.ret 88 ∗ stackAt s.sp signedDecodeStack ∗ A.pool
-      post := fun x s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗
-          signedDecodeResultAt A x.ret (SignedPreKeyRecordStructure.decode x.bytes) ∗
-          (x.bytesA ↦ₛ x.bytes) ∗ stackAt s0.sp signedDecodeStack ∗ A.pool
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
-/-! ## X-form (`AllocContractsX`) hooks, callee contracts, and inner decoder spec -/
 
 /-- Stack budget of `prost::encoding::skip_field::<&mut &[u8]>` at recursion budget `depth`
 under `AllocContractsX` (`decodeVarint2StackX`). -/
@@ -162,7 +92,7 @@ abbrev skipField3StackX (depth : Nat) : Nat :=
   (depth + 1) * 0x60 + SpqrV1.Varint.decodeVarint2StackX
 
 /-- X-form contract of `prost::encoding::skip_field::<&mut &[u8]>` (`skipField3StackX`). -/
-def skipField3SpecX (A : RustAlloc) : Spec Prost.SkipFieldGhost where
+@[expose] def skipField3SpecX (A : RustAlloc) : Spec Prost.SkipFieldGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       (s.readReg64 .x1).setWidth 32 = BitVec.ofNat 32 x.tag ∧ x.tag < 2 ^ 32 ∧
@@ -187,7 +117,7 @@ def skipField3SpecX (A : RustAlloc) : Spec Prost.SkipFieldGhost where
 abbrev bytesMerge3StackX : Nat := 0xe0 + SpqrV1.Varint.decodeVarint2StackX
 
 /-- Raw X-form contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]>`. -/
-def bytesMerge3RawSpecX (A : RustAlloc) : Spec Prost.BytesMergeGhost where
+@[expose] def bytesMerge3RawSpecX (A : RustAlloc) : Spec Prost.BytesMergeGhost where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = BitVec.ofNat 8 x.wt.toNat ∧
       s.readReg64 .x1 = x.valPtr ∧ s.readReg64 .x2 = x.bufRef ∧ x.bs.length < 2 ^ 63 ∧
@@ -209,59 +139,6 @@ def bytesMerge3RawSpecX (A : RustAlloc) : Spec Prost.BytesMergeGhost where
           memRegion x.slot 16 ∗ (x.ptr ↦ₛ x.bs)
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-/-- In-image X-form contract of `prost::encoding::bytes::merge::<alloc::vec::Vec<u8>, &mut &[u8]>`. -/
-def bytesMerge3SpecX (A : RustAlloc) (img : Obj.Image) : Spec Prost.BytesMergeGhost :=
-  (bytesMerge3RawSpecX A).inImage img
-
-/-- X-form hooks (`AllocContractsX` + `.inImage img`, `2 * extHookStack`) for the signed /
-Kyber pre-key record decoder, eliminating `trTrapExterns` and zero-stack `AllocContracts`. -/
-structure SignedHooksX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  alloc : AllocContractsX img A ext
-  decodeErrorFrom :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr decodeErrorFromName)
-      ((decodeErrorFromSpecWithStack A (2 * extHookStack)).inImage img)
-  decodeErrorPush :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr decodeErrorPushName)
-      ((decodeErrorPushExternSpecWithStack A (2 * extHookStack)).inImage img)
-
-/-- `AllocContractsX` directly discharges `SignedHooksX` (no `trTrapExterns` needed). -/
-theorem SignedHooksX.of_alloc {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hA : AllocContractsX img A ext) :
-    SignedHooksX img A ext where
-  alloc := hA
-  decodeErrorFrom :=
-    CryptoVerification.SignalSession.Cli.RunProofs.SigTryFromHelpers.decodeErrorFrom_ok_ext_x hA
-  decodeErrorPush :=
-    CryptoVerification.SignalSession.Cli.RunProofs.SigTryFromHelpers.decodeErrorPush_ok_ext_x hA
-
-/-- X-form prost callee contracts: the CLI-local prost instances at `AllocContractsX` stack budgets and
-`.inImage img` on `tripleRatchetProgAtExt img.base ext`. -/
-structure SignedPortDepsX (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  /-- `decode_varint [local#6]` (`decodeVarint2_ok_of_contracts_x`). -/
-  decodeVarint6 :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr decodeVarint6Name)
-      ((SpqrV1.Varint.decodeVarint2SpecX A).inImage img)
-  /-- `skip_field [local#7]` at `skipField3SpecX`. -/
-  skipField7 :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr skipField7Name)
-      ((skipField3SpecX A).inImage img)
-  /-- `bytes::merge [local#7]` at `bytesMerge3SpecX`. -/
-  bytesMerge7 :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr bytesMerge7Name)
-      (bytesMerge3SpecX A img)
-  /-- `drop_glue::<DecodeError> [local#3]` (`dropDecodeError_ok_ext_x`). -/
-  dropDecodeError3 :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr dropDecodeError3Name)
-      ((Prost.dropDecodeErrorSpecX A).inImage img)
-
 /-- X-form stack budget of the inner decoder: own frame `0xe0` plus `skipField3StackX 100`. -/
 abbrev signedDecodeStackX : Nat := 0xe0 + skipField3StackX 100
 
@@ -272,31 +149,13 @@ example : bytesMerge3StackX ≤ skipField3StackX 100 ∧
     Prost.dropDecodeErrorStackX ≤ signedDecodeStackX ∧
     0x80 + signedDecodeStackX ≤ smallRootStack := by decide
 
-/-- X-form contract of the inner decoder `<SignedPreKeyRecordStructure as Message>::decode::<&[u8]>`
-at stack budget `signedDecodeStackX` (`≤ smallRootStack - 0x80`). -/
-def signedDecodeSpecX (A : RustAlloc) (img : Obj.Image) : Spec DecodeGhost :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.bytesA ∧
-          (s.readReg64 .x2).toNat = x.bytes.length ∧
-          0 < x.bytes.length ∧ x.bytes.length < 2 ^ 32⌝ ∗
-          (x.bytesA ↦ₛ x.bytes) ∗ memRegion x.ret 88 ∗ stackAt s.sp signedDecodeStackX ∗ A.pool
-      post := fun x s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗
-          signedDecodeResultAt A x.ret (SignedPreKeyRecordStructure.decode x.bytes) ∗
-          (x.bytesA ↦ₛ x.bytes) ∗ stackAt s0.sp signedDecodeStackX ∗ A.pool
-      onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
-/-! ## Relocatable `[LibsignalPlacement]` Contracts -/
-
 section Placed
 
 open CryptoVerification.RecordCodecs.Placed
 open CryptoVerification.LibsignalTripleRatchet.Prost
 
 /-- Image-free raw contract of `<SignedPreKeyRecordStructure as Message>::decode::<&[u8]>`. -/
-def signedDecodeRawSpec (A : RustAlloc) : Spec DecodeGhost where
+@[expose] def signedDecodeRawSpec (A : RustAlloc) : Spec DecodeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.bytesA ∧
       (s.readReg64 .x2).toNat = x.bytes.length ∧
@@ -314,7 +173,7 @@ abbrev signedDecodePlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec Decode
   LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (signedDecodeRawSpec A)
 
 /-- Image-free raw contract of `signal_session::stores::decode_kyber_pre_key`. -/
-def decodeKyberPreKeyRawSpec (A : RustAlloc) : Spec DecodeGhost where
+@[expose] def decodeKyberPreKeyRawSpec (A : RustAlloc) : Spec DecodeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.bytesA ∧
       (s.readReg64 .x2).toNat = x.bytes.length ∧
@@ -330,7 +189,7 @@ abbrev decodeKyberPreKeyPlacedSpec [LibsignalPlacement] (A : RustAlloc) : Spec D
   LibsignalTripleRatchet.withLsCodeRoLoaded lsmpl (decodeKyberPreKeyRawSpec A)
 
 /-- Image-free raw contract of `decode_kyber_pre_key` called as `decode_signed_pre_key`. -/
-def decodeSignedPreKeyRawSpec (A : RustAlloc) : Spec DecodeGhost where
+@[expose] def decodeSignedPreKeyRawSpec (A : RustAlloc) : Spec DecodeGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.bytesA ∧
       (s.readReg64 .x2).toNat = x.bytes.length ∧

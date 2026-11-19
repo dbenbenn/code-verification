@@ -11,14 +11,13 @@ module
 
 public meta import Lean -- shake: keep
 public meta import ProofLib -- shake: keep
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
-public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
-public meta import LibsignalBinary.Proofs.Placed.BridgeReloc
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ChainBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExt
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BridgeReloc -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ChainBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DoReserveExt
 public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.Defs
-public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MF14AuxW
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MF14AuxW -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
@@ -33,6 +32,8 @@ import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MergeField9PW
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MergeField9PWPlaced
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MergeField14WPlaced
 import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3DeserQ.MergeField10_11_13_15W
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.ProstVarintVm
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
 
 /-!
 # Budget-Threaded `SessionStructure::merge_field` on Basic Fields
@@ -43,7 +44,7 @@ all 11 non-chain `GenFieldQ` tags (`IsBasicFieldQ`: `u32` varints `1, 5, 10, 11`
 `[HasFineReallocCredit M]`, tracking capacity-explicit `prostSSGQAtCap` and symbolic cost bounds.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -269,7 +270,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 /-! ## 1. Capacity-Explicit `prostSSGQAtCap` Layout, Erasure & Field Events -/
 
 /-- Capacity-explicit `pending_pre_key: Option<PendingPreKey>` at `ss + 0xf8` (48 bytes). -/
-def pendingAt9PCap (A : RustAlloc) (ss : BitVec 64) (v : SSGX) : SepProp :=
+@[expose] def pendingAt9PCap (A : RustAlloc) (ss : BitVec 64) (v : SSGX) : SepProp :=
   match v.base.pending with
   | none => ((ss + 0xf8#64) ↦₆₄ noneCap) ∗ memRegion (ss + 0x100#64) 40
   | some k => vecU8FreshCap A (ss + 0xf8#64) k ∗
@@ -278,7 +279,7 @@ def pendingAt9PCap (A : RustAlloc) (ss : BitVec 64) (v : SSGX) : SepProp :=
 
 /-- Capacity-explicit `pending_kyber_pre_key: Option<PendingKyberPreKey>` at `ss + 0x128`
 (32 bytes), followed by trailing scalar fields `R`. -/
-def kyberAtCap (A : RustAlloc) (ss : BitVec 64) (kyber : Option (BitVec 32 × List (BitVec 8)))
+@[expose] def kyberAtCap (A : RustAlloc) (ss : BitVec 64) (kyber : Option (BitVec 32 × List (BitVec 8)))
     (R : SepProp) : SepProp :=
   match kyber with
   | none => ((ss + 0x128#64) ↦₆₄ noneCap) ∗ memRegion (ss + 0x130#64) 24 ∗ R
@@ -286,7 +287,7 @@ def kyberAtCap (A : RustAlloc) (ss : BitVec 64) (kyber : Option (BitVec 32 × Li
       memRegion (ss + 0x144#64) 4 ∗ R
 
 /-- Standalone 32-byte capacity-explicit `pending_kyber_pre_key` layout at `ss + 0x128`. -/
-def kyberAt14Cap (A : RustAlloc) (ss : BitVec 64)
+@[expose] def kyberAt14Cap (A : RustAlloc) (ss : BitVec 64)
     (kyber : Option (BitVec 32 × List (BitVec 8))) : SepProp :=
   match kyber with
   | none => ((ss + 0x128#64) ↦₆₄ noneCap) ∗ memRegion (ss + 0x130#64) 24
@@ -330,7 +331,7 @@ theorem arrayAt_prostChainGAtCap_entails (A : RustAlloc) (cs : List ChainG) (ptr
 
 /-- Capacity-explicit `SessionStructure` layout (`prostSSGQAtCap`, 344 bytes) tracking
 `capRecv : Nat` (`ss + 0x48`) while preserving exact `prostSSGQAt A ss v` on existential erasure. -/
-def prostSSGQAtCap (A : RustAlloc) (ss : BitVec 64) (capRecv : Nat) (v : SSGQ) : SepProp :=
+@[expose] def prostSSGQAtCap (A : RustAlloc) (ss : BitVec 64) (capRecv : Nat) (v : SSGQ) : SepProp :=
   vecU8FreshCap A ss v.base.lik ∗
     vecU8FreshCap A (ss + 0x18#64) v.base.rik ∗
     vecU8FreshCap A (ss + 0x30#64) v.base.root ∗
@@ -528,11 +529,11 @@ theorem prostSSGQAtCap_entails_prostSSGQAt (A : RustAlloc) (ss : BitVec 64)
       | some k => exact sepConj_mono_left (vecU8FreshCap_entails_vecU8 A (ss + 0xf8#64) k)
 
 /-- Predicate selecting non-chain `GenFieldQ` tags (`1, 2, 3, 4, 5, 9, 10, 11, 13, 14, 15`). -/
-def IsBasicFieldQ (fl : GenFieldQ) : Prop :=
+@[expose] def IsBasicFieldQ (fl : GenFieldQ) : Prop :=
   fl.tag ≠ 6 ∧ fl.tag ≠ 7
 
 /-- Byte length of the single `Vec<u8>` allocated by a basic `GenFieldQ` (`0` for varints and chains). -/
-def basicFieldByteLen : GenFieldQ → Nat
+@[expose] def basicFieldByteLen : GenFieldQ → Nat
   | .base (.lik b) | .base (.rik b) | .base (.root b) => b.length
   | .base (.pending k) | .pendingId _ k | .pendingSpk _ k _ => k.length
   | .abk b | .pq b => b.length
@@ -540,12 +541,12 @@ def basicFieldByteLen : GenFieldQ → Nat
   | _ => 0
 
 /-- Next `receiver_chains` capacity after merging `fl : GenFieldQ` at current `(capRecv, curRecvLen)`. -/
-def nextCapRecv (capRecv curRecvLen : Nat) : GenFieldQ → Nat
+@[expose] def nextCapRecv (capRecv curRecvLen : Nat) : GenFieldQ → Nat
   | .base (.recv _) => if curRecvLen = capRecv then vecCap4Next capRecv else capRecv
   | _ => capRecv
 
 /-- Complete `AllocEvent` list stepped on `M.σ` across `SessionStructure::merge_field` on `fl`. -/
-def mergeFieldQEvents (capRecv curRecvLen : Nat) : GenFieldQ → List AllocEvent
+@[expose] def mergeFieldQEvents (capRecv curRecvLen : Nat) : GenFieldQ → List AllocEvent
   | .base (.sender c) => chainMergeEvents c
   | .base (.recv c) =>
       chainMergeEvents c ++ (if curRecvLen = capRecv then vec104GrowEvents capRecv else [])
@@ -554,7 +555,7 @@ def mergeFieldQEvents (capRecv curRecvLen : Nat) : GenFieldQ → List AllocEvent
 /-- Precondition `FitsEvents` list required to enter `SessionStructure::merge_field` on `fl` without OOM:
 for basic byte fields, `bytes::merge` checks OOM on the two `alloc` steps before the infallible
 scratch `dealloc`, i.e., `bytesMergeAllocEvents 0 (basicFieldByteLen fl)`. -/
-def mergeFieldQFitsEvents (capRecv curRecvLen : Nat) : GenFieldQ → List AllocEvent
+@[expose] def mergeFieldQFitsEvents (capRecv curRecvLen : Nat) : GenFieldQ → List AllocEvent
   | .base (.sender c) => chainMergeEvents c
   | .base (.recv c) =>
       chainMergeEvents c ++ (if curRecvLen = capRecv then vec104GrowEvents capRecv else [])
@@ -581,7 +582,7 @@ theorem fitsEvents_mergeFieldQFits_of_events {M : AllocCostModel} {lim : BudgetL
 
 /-- Symbolic small-slot cost of a basic `GenFieldQ` (`0` for varints `1, 5, 10, 11`;
 two small allocs `n` and `max n 8` when `n ≤ smallMaxReq M`; `2 * largeMetaCost M` when `n > smallMaxReq M`). -/
-def basicFieldSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
+@[expose] def basicFieldSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
   let n := basicFieldByteLen fl
   if n = 0 then 0
   else if n ≤ HasFineReallocCredit.smallMaxReq M then
@@ -590,14 +591,14 @@ def basicFieldSmallCost (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenF
 
 /-- Symbolic post-merge direct-`mmap` live cost of a basic `GenFieldQ` (`0` when `n ≤ smallMaxReq M`,
 else `largeCost M n`, e.g. for large `pq_ratchet_state` on tag `15`). -/
-def basicFieldLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
+@[expose] def basicFieldLargeLive (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
   let n := basicFieldByteLen fl
   if n ≤ HasFineReallocCredit.smallMaxReq M then 0
   else HasFineReallocCredit.largeCost M n
 
 /-- Symbolic transient direct-`mmap` peak of a basic `GenFieldQ` (`0` when `n ≤ smallMaxReq M`,
 else `2 * largeCost M n` during `Bytes -> Vec<u8>` conversion in `prost::encoding::bytes::merge`). -/
-def basicFieldPeakLarge (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
+@[expose] def basicFieldPeakLarge (M : AllocCostModel) [HasFineReallocCredit M] (fl : GenFieldQ) : Nat :=
   let n := basicFieldByteLen fl
   if n ≤ HasFineReallocCredit.smallMaxReq M then 0
   else 2 * HasFineReallocCredit.largeCost M n
@@ -645,7 +646,7 @@ theorem stepEvents_mergeFieldBasic_bounds (M : AllocCostModel) [HasFineReallocCr
 /-- Fresh-`Vec<u8>` precondition for base identity/root key tags (`2, 3, 4`), complementing
 `GenFieldQ.Fresh` (which already enforces `abk = []`, `kyber = none`, `pq = []`, `pending = none`,
 `sender = none`, and `recv.length < maxReceiverChains`). -/
-def GenFieldQ.FreshBytes (v : SSGQ) : GenFieldQ → Prop
+@[expose] def GenFieldQ.FreshBytes (v : SSGQ) : GenFieldQ → Prop
   | .base (.lik _) => v.base.lik = []
   | .base (.rik _) => v.base.rik = []
   | .base (.root _) => v.base.root = []
@@ -653,7 +654,7 @@ def GenFieldQ.FreshBytes (v : SSGQ) : GenFieldQ → Prop
 
 /-- Image-free base contract of budget-threaded `SessionStructure::merge_field` (Block `15`,
 `mergeFieldStackX`) restricted to `P : GenFieldQ → Prop`. -/
-def mergeFieldQBudgetRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def mergeFieldQBudgetRawSpecW (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (P : GenFieldQ → Prop) :
     Spec (MergeFieldQGhost × Nat × M.σ) where
   pre := fun (x, capRecv, st) s =>
@@ -687,7 +688,6 @@ abbrev mergeFieldQBudgetSpecW [LibsignalPlacement]
     (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (P : GenFieldQ → Prop) : Spec (MergeFieldQGhost × Nat × M.σ) :=
   withLsCodeRoLoaded lsmpl (mergeFieldQBudgetRawSpecW M A lim P)
-
 
 open LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget (
   sepWP_ret_vmPreserved
@@ -3144,7 +3144,6 @@ private theorem step_tag9_spk_some_mfb [LibsignalPlacement]
   refine Entails.trans (Entails.of_eq ?_)
     (sepConj_mono hp_post (sepConj_mono_right (sepConj_mono_right (sepConj_mono_right hstk))))
   sep_ac_rfl
-
 
 theorem mergeFieldBasic_tag9_ok [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}

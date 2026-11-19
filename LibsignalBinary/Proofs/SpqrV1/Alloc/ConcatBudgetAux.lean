@@ -9,23 +9,23 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
-public import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
-public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget
+import LibsignalBinary.Proofs.SpqrV1.Alloc.Concat
+import LibsignalBinary.Proofs.SpqrV1.Alloc.FinishGrowBudget
+public import LibsignalBinary.Proofs.SpqrV1.Chain.DefsBudget -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Placed.GenLsBlock
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlock
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Alloc.Fetch
-import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Alloc.SpqrAllocCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.MallocngBridgeBudget
 
 /-!
 # Budget-Threaded 2-Slice Concatenation and `memcpy` Helpers (Block 386)
@@ -34,7 +34,7 @@ Provides `AllocCallPreserved ∧ VmPreserved` `shim`/`memcpy` contracts and 2-sl
 `Concat<u8>::concat [local#2]` proofs for block 386.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -224,7 +224,7 @@ theorem hookNoop_rustAllocShimVm_ok : HookOk hookNoop rustAllocShimVmSpec := by
        fun _ _ _ => by cases s0; rfl⟩⟩, hpre⟩
 
 /-- Stack-equipped `AllocCallPreserved ∧ VmPreserved` no-op shim specification. -/
-def session2ShimAcpSpecWithStack (hookStack : Nat) : Spec Unit where
+@[expose] def session2ShimAcpSpecWithStack (hookStack : Nat) : Spec Unit where
   pre := fun _ s => stackAt s.sp hookStack
   post := fun _ s0 sf =>
     ⌜AllocCallPreserved s0 sf ∧ VmPreserved s0 sf⌝ ∗ stackAt s0.sp hookStack
@@ -240,7 +240,7 @@ theorem session2ShimAcpWithStack_of_rustAllocShimVm {prog : Program} {addr : Bit
   exact h'.mono_outcome x R s0 hpc hrun hpre' hal fun _ hout => hout
 
 /-- Frameless `AllocCallPreserved ∧ VmPreserved` `memcpy` specification. -/
-def framelessMemcpyAcpSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def framelessMemcpyAcpSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
       memRegion dst bs.length ∗ (src ↦ₛ bs)
@@ -286,7 +286,7 @@ theorem framelessMemcpyAcp_of_allocMemcpyVm {prog : Program} {addr : BitVec 64}
     dsimp only [allocMemcpyVmSpec, framelessMemcpyAcpSpec] at hq ⊢
     simpa only [sepConj_assoc] using hq
 
-def session2MemcpyAcpSpecWithStack (hookStack : Nat) :
+@[expose] def session2MemcpyAcpSpecWithStack (hookStack : Nat) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length⌝ ∗
@@ -312,7 +312,7 @@ theorem session2MemcpyAcpWithStack_of_frameless {prog : Program} {addr : BitVec 
   · exact Or.inr (Or.inr hex)
 
 /-- Read-only `AllocCallPreserved ∧ VmPreserved` `memcpy` region contract. -/
-def sessionMemcpyRegionROSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def sessionMemcpyRegionROSpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length ∧
       bs.length ≤ 2 ^ 64⌝ ∗
@@ -342,7 +342,7 @@ theorem hookMemcpy_region_ro_trace_ok : HookOk hookMemcpy sessionMemcpyRegionROS
     exact ⟨rfl, rfl, rfl, rfl, rfl, rfl, rfl⟩
   · exact Or.inr hrest
 
-def sessionMemcpyRegionROSpecWithStack (hookStack : Nat) :
+@[expose] def sessionMemcpyRegionROSpecWithStack (hookStack : Nat) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length ∧
@@ -352,11 +352,11 @@ def sessionMemcpyRegionROSpecWithStack (hookStack : Nat) :
     ⌜sf.readReg64 .x0 = dst ∧ AllocCallPreserved s0 sf ∧ VmPreserved s0 sf⌝ ∗
       (dst ↦ₛ bs) ∗ (src ↦ᵣ bs) ∗ stackAt s0.sp hookStack
 
-def sessionMemcpyRegionROSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
+@[expose] def sessionMemcpyRegionROSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) :=
   sessionMemcpyRegionROSpecWithStack extHookStack
 
 /-- `AllocCallPreserved ∧ VmPreserved` `ChainProofs.bytesAt` `memcpy` specification. -/
-def sessionMemcpyBytesAtSpec (ro : Bool) : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def sessionMemcpyBytesAtSpec (ro : Bool) : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length ∧
       bs.length ≤ 2 ^ 64⌝ ∗
@@ -365,7 +365,7 @@ def sessionMemcpyBytesAtSpec (ro : Bool) : Spec (BitVec 64 × BitVec 64 × List 
     ⌜sf.readReg64 .x0 = dst ∧ AllocCallPreserved s0 sf ∧ VmPreserved s0 sf⌝ ∗
       (dst ↦ₛ bs) ∗ bytesAt ro src bs
 
-def sessionMemcpyBytesAtSpecWithStack (hookStack : Nat) (ro : Bool) :
+@[expose] def sessionMemcpyBytesAtSpecWithStack (hookStack : Nat) (ro : Bool) :
     Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧ s0.readReg64 .x1 = src ∧ (s0.readReg64 .x2).toNat = bs.length ∧
@@ -429,7 +429,7 @@ theorem fitsEnv_sliceConcat2_iff {M : AllocCostModel} {lim : BudgetLimits} {st :
     exact h
 
 /-- Budget-threaded 2-slice concatenation specification parameterized by callee `hookStack`. -/
-def sliceConcat2SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def sliceConcat2SpecWithStack (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (hookStack : Nat) : Spec (SliceConcat2Ghost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.outVec ∧ s.readReg64 .x1 = x.slicesA ∧ s.readReg64 .x2 = 2#64 ∧

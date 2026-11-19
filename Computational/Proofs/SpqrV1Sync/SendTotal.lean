@@ -20,7 +20,7 @@ Proves `Corr.SpqrSendCorrectQ` for `spqrV1SessionUniformCoins` with send budget 
 `Encaps1Total`, packaging the invariant reduction from `SendTotal.Defs` and `SendTotal.Assembly`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

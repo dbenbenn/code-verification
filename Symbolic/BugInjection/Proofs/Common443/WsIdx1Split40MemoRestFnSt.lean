@@ -54,8 +54,9 @@ theorem mem_t8_mac1 : Census443Defs.encMac tr₂ (stA1_40 r tr₁) cl₁ (tr₂.
 theorem mem_t8_mac2 : Census443Defs.encMac tr₃ (stA40 r tr₁ tr₂ cl₁) cl₂ (tr₃.length + 2) ∈ t8Terms40 r tr₁ tr₂ tr₃ cl₁ cl₂ := .tail _ (.head _)
 end TableMems
 export Symbolic.BugInjection.Proofs.Common443.WsIdx1Split81MemoRestFnStAb ( TRStateNRC nrcensusW_mem_trStatePrefixes nrcensusW_serialize_local_tr)
-theorem nrcensusW_storedSecrets_of_mem {allT rT : List DY.Bytes} {w : PQXDHSpqrSetup} {r : Records} {ms : List Move} (hfitsP : compFitsPinned w compI0 r) (hc : Compat compI0 r S g) (hns : ∀ m ∈ ms, m.isSetup = false) (hreach : (runTraceMoves r ms).Reachable DY.Libsignal.Composed.reachability) (hr_sub : ∀ u ∈ rT, u ∈ allT) (h0 : randTerm 0 32 ∈ rT) (h5 : randTerm 5 32 ∈ rT) (h10 : randTerm 10 32 ∈ rT) (h16 : randTerm 16 64 ∈ rT) : ∀ u ∈ storedSecrets (runTraceMoves r ms), FnCensusW allT rT S g u := by
-  have hfits : compFits w compI0 r := CompFitsNames.compFits_base hfitsP; have hNe : r.alice ≠ r.bob := hfits.1.1; have hwf : RecordsWF r := hfits.1; have hA : r.alice = "alice" := CompFitsNames.compFits_alice hfitsP; have hB : r.bob = "bob" := CompFitsNames.compFits_bob hfitsP; have hinv := CompInv.spqrInv_of_reachable (runTraceMoves r ms) hreach; intro u hu; obtain ⟨j, _, ⟨part, kind, sk⟩, hat, rfl⟩ := CompRX0NBSC38Parts.mem_storedSecrets_iff.mp hu
+instance : Symbolic.BugInjection.Proofs.Common443.CompC3Pre38HB.NoOpk setup.withOpk := ⟨rfl⟩
+theorem nrcensusW_storedSecrets_of_mem {allT rT : List DY.Bytes} {w : PQXDHSpqrSetup} [hw : Symbolic.BugInjection.Proofs.Common443.CompC3Pre38HB.NoOpk w.withOpk] {r : Records} {ms : List Move} (hfitsP : compFitsPinned w compI0 r) (hc : Compat compI0 r S g) (hns : ∀ m ∈ ms, m.isSetup = false) (hreach : (runTraceMoves r ms).Reachable DY.Libsignal.Composed.reachability) (hr_sub : ∀ u ∈ rT, u ∈ allT) (h0 : randTerm 0 32 ∈ rT) (h5 : randTerm 5 32 ∈ rT) (h10 : randTerm 10 32 ∈ rT) (h16 : randTerm 16 64 ∈ rT) : ∀ u ∈ storedSecrets (runTraceMoves r ms), FnCensusW allT rT S g u := by
+  have hfits : SetupMatches w compI0 r := CompFitsNames.compFits_base hfitsP; have hNe : r.alice ≠ r.bob := hfits.1.1; have hwf : RecordsWF r := hfits.1; have hA : r.alice = "alice" := CompFitsNames.compFits_alice hfitsP; have hB : r.bob = "bob" := CompFitsNames.compFits_bob hfitsP; have hinv := CompInv.spqrInv_of_reachable (runTraceMoves r ms) hreach; intro u hu; obtain ⟨j, _, ⟨part, kind, sk⟩, hat, rfl⟩ := CompRX0NBSC38Parts.mem_storedSecrets_iff.mp hu
   have hkind : CompInv.KindOK (runTraceMoves r ms) part ⟨kind, sk⟩ := hinv.stOK part ⟨kind, sk⟩ j hat; dsimp only [CompInv.KindOK] at hkind
   have h32 {idx : Nat} (hr : randTerm idx 32 ∈ rT) (hs : (idx, 32) ∈ setupRandomsAt r) : FnCensusW allT rT S g (randTerm idx 32) ∧
         ((gamma compI0 S g (randTerm idx 32)).length = 32 ∨ (gamma compI0 S g (randTerm idx 32)).length = 64) :=
@@ -87,8 +88,9 @@ theorem nrcensusW_storedSecrets_of_mem {allT rT : List DY.Bytes} {w : PQXDHSpqrS
     · cases heq
     · cases heq
     · cases heq
-    · rw [hfits.2.1] at hopk_true; cases hopk_true
-theorem nrcensusW_storedSecrets_40 {w : PQXDHSpqrSetup} {r : Records} {ms : List Move} {tr₁ tr₂ tr₃ : ExecTrace} {cl₁ cl₂ : Nat} (hfitsP : compFitsPinned w compI0 r) (hc : Compat compI0 r S g) (hns : ∀ m ∈ ms, m.isSetup = false) (hreach : (runTraceMoves r ms).Reachable DY.Libsignal.Composed.reachability) : ∀ u ∈ storedSecrets (runTraceMoves r ms), FnC40 r S g tr₁ tr₂ tr₃ cl₁ cl₂ u := nrcensusW_storedSecrets_of_mem hfitsP hc hns hreach (fun _ => mem_allTerms40_of_r) mem_r40_0 mem_r40_5 mem_r40_10 mem_r40_16
+    · have hopk : r.withOpk = false := by have h := hfits.2.1; rw [hw.out] at h; exact h
+      rw [hopk] at hopk_true; cases hopk_true
+theorem nrcensusW_storedSecrets_40 {w : PQXDHSpqrSetup} [Symbolic.BugInjection.Proofs.Common443.CompC3Pre38HB.NoOpk w.withOpk] {r : Records} {ms : List Move} {tr₁ tr₂ tr₃ : ExecTrace} {cl₁ cl₂ : Nat} (hfitsP : compFitsPinned w compI0 r) (hc : Compat compI0 r S g) (hns : ∀ m ∈ ms, m.isSetup = false) (hreach : (runTraceMoves r ms).Reachable DY.Libsignal.Composed.reachability) : ∀ u ∈ storedSecrets (runTraceMoves r ms), FnC40 r S g tr₁ tr₂ tr₃ cl₁ cl₂ u := nrcensusW_storedSecrets_of_mem hfitsP hc hns hreach (fun _ => mem_allTerms40_of_r) mem_r40_0 mem_r40_5 mem_r40_10 mem_r40_16
 theorem nrcensusW_aliceOut_of_mem {allT rT : List DY.Bytes} {r : Records} (hNe : r.alice ≠ r.bob) {tr_a : ExecTrace}
     (hent : (gamma compI0 S g (randTerm (tr_a.length + 1) 32)).length = 32) (hr_sub : ∀ u ∈ rT, u ∈ allT)
     (h0 : randTerm 0 32 ∈ rT) (h5 : randTerm 5 32 ∈ rT) (h10 : randTerm 10 32 ∈ rT) (h16 : randTerm 16 64 ∈ rT)

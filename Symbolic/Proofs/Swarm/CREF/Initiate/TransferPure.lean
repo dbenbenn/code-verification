@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel
+public import Symbolic.Proofs.Swarm.CREF.Cli.PureCRel -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -27,6 +27,15 @@ import Symbolic.DYBridge.DY.Actions.Network
 import Symbolic.DYBridge.DY.Actions.PersistentLocalState
 import Symbolic.DYBridge.DY.Actions.PersistentGlobalState
 import Symbolic.DYBridge.DY.Actions.ProtocolEvent
+public import Symbolic.Proofs.Swarm.CREF.TR.GhostsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Xpl.Faithful -- proof-setup: allow-public-import
+import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionApi
+import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR
+import Symbolic.Proofs.Swarm.CREF.TR.RecvHistStepTR2
+import Symbolic.Proofs.Swarm.CREF.TR.SlotsZ6Pure
 
 /-!
 # Quiet Trace Extension Transfer Lemmas
@@ -36,7 +45,7 @@ or composed events, and proves invariance of `PureAliceInitPending`, `PureCRecRe
 `availableStates`, and `CHist`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -58,7 +67,7 @@ abbrev QTrE := ProtocolEvent.ExecEntryT TREvent
 abbrev QCE := ProtocolEvent.ExecEntryT ComposedEvent
 
 /-- `tr'` extends `tr` without adding session state, session PQXDH, Triple Ratchet, or composed events. -/
-def QuietExt (tr tr' : ExecTrace) : Prop :=
+@[expose] def QuietExt (tr tr' : ExecTrace) : Prop :=
   tr ≤ tr' ∧ ∀ i, tr.length ≤ i → i < tr'.length →
     (tr'.at? i : Option QStE) = none ∧ Symbolic.Proofs.Swarm.CREF.Cli.MoveBrkLemmas.NonSessionPQAt tr' i ∧
       (tr'.at? i : Option QTrE) = none ∧ (tr'.at? i : Option QCE) = none

@@ -9,19 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DropSessionStructureLocal5Placed
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSym
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Getters.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DropSessionStructureLocal5Placed
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.DropChain2PlacedBudget
 import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Common
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.Reloc.CliHandshakeCodeSymA -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.Drops.Local2
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable Proof of `drop_glue::<SessionStructure> [local#4]`
@@ -31,7 +34,7 @@ Proves the `RustCliAllocBudget M` contract `dropSessionStructureLocal2Spec M A l
 and transfers it to caller blocks.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -1111,29 +1114,5 @@ theorem drop_session_structure5_placed_ok [LibsignalPlacement] {M : AllocCostMod
     (subroutine_ok_withLsCodeLoaded_of_plain hc0)
   exact drop_session_structure5_placed_ok_of_dealloc_and_chain
     (ls_hook_ok_rustDealloc h_dealloc) hp hc
-
-/-- Transfers `drop_session_structure5_placed_ok` (`withLsCodeLoaded`) to `callerProg`. -/
-theorem drop_session_structure5_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {i : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H]
-    (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 512)
-      (withLsCodeLoaded lsmpl (dropSessionStructureLocal2Spec M A lim)) :=
-  ls_subroutine_ok_of_block (callerProg := callerProg)
-    (drop_session_structure5_placed_ok h_dealloc) hi
-
-/-- Transfers `drop_session_structure5_placed_ok` (`withLsCl`) to `callerProg`. -/
-theorem drop_session_structure5_placed_cl_ok_at [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {callerProg : Program} {i : Nat} {H : LibsignalHooks}
-    [IsLsBlockProg callerProg i H]
-    (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim))
-    (hi : i < 619 := by decide) :
-    subroutine_ok callerProg (lsmpl.base 512)
-      (withLsCl lsmpl (dropSessionStructureLocal2Spec M A lim)) :=
-  ls_subroutine_ok_cl_of_block (callerProg := callerProg)
-    (drop_session_structure5_placed_ok h_dealloc) hi
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DropSessionStructureLocal5PlacedBudget

@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SessionCostedFig8
-public import Computational.Proofs.SessionCostedFig8.BundlesEval
-public import Computational.Proofs.SessionCostedFig8.FsAtomicBSwap
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim
-public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds2
+public import Computational.Proofs.SessionCostedFig8 -- proof-setup: allow-public-import
+import Computational.Proofs.SessionCostedFig8.BundlesEval
+import Computational.Proofs.SessionCostedFig8.FsAtomicBSwap
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperChallSim -- proof-setup: allow-public-import
+public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds2 -- proof-setup: allow-public-import
+import Computational.Proofs.CryptoGames.SM.Theorem8.Lemma10Aux
+import Computational.Proofs.Fig8SchemeBridge
 
 /-!
 # Atomic Compiler, `FsAtomicBSwap`, and `FsOk` Bridges for Shifted Paper `DeliverForge` Reductions
@@ -36,7 +38,7 @@ open CryptoVerification.LibsignalSession (FsOk ckaAdvantage_dhSchemeFb_eq encMsg
 open CryptoVerification.LibsignalSession.HeadlineV1 (EqualPubChallsDF GuardedSMDFShort SendMsgsOkDF badSendMsgDF guardedFSInjectShort_redFSAuthDFShiftedPaperGen safePost_redFSAuthDFShiftedPaperGen_restricted safePost_redFSAuthDFShiftedPaperGen_short)
 open ReductionDsl (CostedReduction ckaTargetIface fsaeadHeaderIface prngTargetIface)
 
-@[expose] public section
+public section
 
 namespace Computational.Proofs.SessionCostedFig8.DFFsAtomicBSwapShifted
 

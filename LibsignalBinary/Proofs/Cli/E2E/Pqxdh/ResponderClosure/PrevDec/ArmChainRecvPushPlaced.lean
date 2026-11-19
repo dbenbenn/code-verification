@@ -9,13 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPush
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushAPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.SpecsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DecInterfacePlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPush
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushAPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.SpecsPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.Chain3.DecInterfacePlaced -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvPushA
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.TripleRatchet.SpecRestrict
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.PrevDec.ArmChainRecvDefs
 
 /-!
 # Relocatable Tag-7 (`receiver_chains`) Push Segment (`+0x2310 → +0x2160`)
@@ -25,14 +30,14 @@ decode arm on Block `518` (`lsProg_518`), pushing the decoded `Chain` onto `rece
 calling `RawVec<Chain>::grow_one` (Block `43`) when at capacity.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.PrevDec
 
-open Std Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection CryptoVerification.CodeLayout
+open Std Arm64 ProofLib ProofLib.ProgramReflection CryptoVerification.CodeLayout
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr
 open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalTripleRatchet
@@ -765,7 +770,7 @@ theorem overDecRecv_segB_placed_of_grow [LibsignalPlacement]
       hlt hcap_lt hptr hmov_c hregs1 hx22s1
 
 /-- `LibsignalCodeLoaded`-backed Segment B (`(blkPl_518).base + 0x2310 → +0x2160`) of the tag-7 (`receiver_chains`) arm on `lsProg_518 (Rust.withPanics ext)` under `Stage1X.AllocContractsPlaced`. -/
-def OverDecRecvSegBLsclPlacedStmtExt [LibsignalPlacement] (A : RustAlloc) : Prop :=
+@[expose] def OverDecRecvSegBLsclPlacedStmtExt [LibsignalPlacement] (A : RustAlloc) : Prop :=
   ∀ (ext : String → Option (State → State)),
     Stage1X.AllocContractsPlaced A (Rust.withPanics ext) →
     ∀ (s0 s : State) (g : VerNe.Chain3.OverDecG) (v : SSGQ) (c : ChainG) (rest : List (BitVec 8)),

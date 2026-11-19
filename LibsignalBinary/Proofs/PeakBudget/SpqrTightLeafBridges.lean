@@ -10,13 +10,27 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.PeakBudget.SpqrCodecPeakSpec
-public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
-public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget
-public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
+import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLift
+public import LibsignalBinary.Proofs.SpqrV1.Auth.MergeBaseBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.ChunkedInlinedCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.PolyCommonBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageMerge.V1StateDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsPlacedBudget
+public import LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.DecodeStateCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.Specs
+public import LibsignalBinary.Proofs.SpqrV1.Top.DecodeState.SpecsBudget -- proof-setup: allow-public-import
+public import ProofLib.Disproof.Basic
+public import ProofLib.Placed.OpcodeExclusion
+public import ProofLib.StdStartup.MuslStage1Init
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Guarded-Tight Leaf Merge Contracts and Bridges for `spqr::decode_state` (`Block 325`)
@@ -29,7 +43,7 @@ inputs satisfy the tight small-class envelopes (`1,294,333 ≤ 1,307,216` cumula
 1–3, `maxReq = 79,236`), while malformed inputs fall back to the untightened `*MergePostEnv` specs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -113,7 +127,7 @@ open LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget (bytesMerge3RawBudgetS
 
 /-- Guarded envelope combinator enforcing `Tight evs` when `Dom x` holds and `Fallback x evs` otherwise.
 -/
-def tlb_GuardedEnv {α : Type} (Dom : α → Prop)
+@[expose] def tlb_GuardedEnv {α : Type} (Dom : α → Prop)
     (Tight : List AllocEvent → Prop) (Fallback : α → List AllocEvent → Prop)
     (x : α) (evs : List AllocEvent) : Prop :=
   (Dom x ∧ Tight evs) ∨ (¬ Dom x ∧ Fallback x evs)
@@ -142,99 +156,99 @@ theorem tlb_fitsEnv_fallback_of_not_dom {M : AllocCostModel} {lim : BudgetLimits
   fun evs hf => hFit evs (Or.inr ⟨hNot, hf⟩)
 
 /-- Length-prefixed wire slice passed to `prost::encoding::message::merge` after `decode_key`. -/
-def tlb_lenPrefixed (raw rest : Bytes) : Bytes :=
+@[expose] def tlb_lenPrefixed (raw rest : Bytes) : Bytes :=
   encodeVarint (BitVec.ofNat 64 raw.length) ++ raw ++ rest
 
 /-! ## Canonical Field-Size Predicates on Protobuf Structures -/
 
-def tlb_ValidAuthPB (m : ProtoAuthenticator) : Prop :=
+@[expose] def tlb_ValidAuthPB (m : ProtoAuthenticator) : Prop :=
   m.rootKey.length ≤ 32 ∧ m.macKey.length ≤ 32
 
-def tlb_ValidOptAuthPB (a : Option ProtoAuthenticator) : Prop :=
+@[expose] def tlb_ValidOptAuthPB (a : Option ProtoAuthenticator) : Prop :=
   ∀ v, a = some v → tlb_ValidAuthPB v
 
-def tlb_ValidPolyDecoderPB (m : PolynomialDecoder) : Prop :=
+@[expose] def tlb_ValidPolyDecoderPB (m : PolynomialDecoder) : Prop :=
   m.pts.length ≤ 16 ∧ ∀ s ∈ m.pts, s.length ≤ 2560
 
-def tlb_ValidPolyEncoderPB (m : PolynomialEncoder) : Prop :=
+@[expose] def tlb_ValidPolyEncoderPB (m : PolynomialEncoder) : Prop :=
   (m.pts = [] ∨ m.polys = []) ∧
   m.pts.length + m.polys.length ≤ 16 ∧
   (∀ s ∈ m.pts, s.length ≤ 2560) ∧
   (∀ s ∈ m.polys, s.length ≤ 2560)
 
-def tlb_ValidUcKeysUnsampledPB (m : V1State.Unchunked.KeysUnsampled) : Prop :=
+@[expose] def tlb_ValidUcKeysUnsampledPB (m : V1State.Unchunked.KeysUnsampled) : Prop :=
   tlb_ValidOptAuthPB m.auth
 
-def tlb_ValidUcHeaderSentPB (m : V1State.Unchunked.HeaderSent) : Prop :=
+@[expose] def tlb_ValidUcHeaderSentPB (m : V1State.Unchunked.HeaderSent) : Prop :=
   tlb_ValidOptAuthPB m.auth ∧ m.ek.length ≤ 1152 ∧ m.dk.length ≤ 2400
 
-def tlb_ValidUcEkSentPB (m : V1State.Unchunked.EkSent) : Prop :=
+@[expose] def tlb_ValidUcEkSentPB (m : V1State.Unchunked.EkSent) : Prop :=
   tlb_ValidOptAuthPB m.auth ∧ m.dk.length ≤ 2400
 
-def tlb_ValidUcEkSentCt1ReceivedPB (m : V1State.Unchunked.EkSentCt1Received) : Prop :=
+@[expose] def tlb_ValidUcEkSentCt1ReceivedPB (m : V1State.Unchunked.EkSentCt1Received) : Prop :=
   tlb_ValidOptAuthPB m.auth ∧ m.dk.length ≤ 2400 ∧ m.ct1.length ≤ 960
 
-def tlb_ValidUcNoHeaderReceivedPB (m : V1State.Unchunked.NoHeaderReceived) : Prop :=
+@[expose] def tlb_ValidUcNoHeaderReceivedPB (m : V1State.Unchunked.NoHeaderReceived) : Prop :=
   tlb_ValidOptAuthPB m.auth
 
-def tlb_ValidUcHeaderReceivedPB (m : V1State.Unchunked.HeaderReceived) : Prop :=
+@[expose] def tlb_ValidUcHeaderReceivedPB (m : V1State.Unchunked.HeaderReceived) : Prop :=
   tlb_ValidOptAuthPB m.auth ∧ m.hdr.length ≤ 64
 
-def tlb_ValidUcCt1SentPB (m : V1State.Unchunked.Ct1Sent) : Prop :=
+@[expose] def tlb_ValidUcCt1SentPB (m : V1State.Unchunked.Ct1Sent) : Prop :=
   tlb_ValidOptAuthPB m.auth ∧ m.hdr.length ≤ 64 ∧ m.es.length ≤ 2080 ∧ m.ct1.length ≤ 960
 
-def tlb_ValidUcCt1SentEkReceivedPB (m : V1State.Unchunked.Ct1SentEkReceived) : Prop :=
+@[expose] def tlb_ValidUcCt1SentEkReceivedPB (m : V1State.Unchunked.Ct1SentEkReceived) : Prop :=
   tlb_ValidOptAuthPB m.auth ∧ m.es.length ≤ 2080 ∧ m.ek.length ≤ 1152 ∧ m.ct1.length ≤ 960
 
-def tlb_ValidUcCt2SentPB (m : V1State.Unchunked.Ct2Sent) : Prop :=
+@[expose] def tlb_ValidUcCt2SentPB (m : V1State.Unchunked.Ct2Sent) : Prop :=
   tlb_ValidOptAuthPB m.auth
 
-def tlb_ValidChunkedKeysUnsampledPB (m : V1State.Chunked.KeysUnsampled) : Prop :=
+@[expose] def tlb_ValidChunkedKeysUnsampledPB (m : V1State.Chunked.KeysUnsampled) : Prop :=
   ∀ u, m.uc = some u → tlb_ValidUcKeysUnsampledPB u
 
-def tlb_ValidChunkedKeysSampledPB (m : V1State.Chunked.KeysSampled) : Prop :=
+@[expose] def tlb_ValidChunkedKeysSampledPB (m : V1State.Chunked.KeysSampled) : Prop :=
   (∀ u, m.uc = some u → tlb_ValidUcHeaderSentPB u) ∧
   (∀ e, m.sendingHdr = some e → tlb_ValidPolyEncoderPB e)
 
-def tlb_ValidChunkedHeaderSentPB (m : V1State.Chunked.HeaderSent) : Prop :=
+@[expose] def tlb_ValidChunkedHeaderSentPB (m : V1State.Chunked.HeaderSent) : Prop :=
   (∀ u, m.uc = some u → tlb_ValidUcEkSentPB u) ∧
   (∀ e, m.sendingEk = some e → tlb_ValidPolyEncoderPB e) ∧
   (∀ d, m.receivingCt1 = some d → tlb_ValidPolyDecoderPB d)
 
-def tlb_ValidChunkedCt1ReceivedPB (m : V1State.Chunked.Ct1Received) : Prop :=
+@[expose] def tlb_ValidChunkedCt1ReceivedPB (m : V1State.Chunked.Ct1Received) : Prop :=
   (∀ u, m.uc = some u → tlb_ValidUcEkSentCt1ReceivedPB u) ∧
   (∀ e, m.sendingEk = some e → tlb_ValidPolyEncoderPB e)
 
-def tlb_ValidChunkedEkSentCt1ReceivedPB (m : V1State.Chunked.EkSentCt1Received) : Prop :=
+@[expose] def tlb_ValidChunkedEkSentCt1ReceivedPB (m : V1State.Chunked.EkSentCt1Received) : Prop :=
   (∀ u, m.uc = some u → tlb_ValidUcEkSentCt1ReceivedPB u) ∧
   (∀ d, m.receivingCt2 = some d → tlb_ValidPolyDecoderPB d)
 
-def tlb_ValidChunkedNoHeaderReceivedPB (m : V1State.Chunked.NoHeaderReceived) : Prop :=
+@[expose] def tlb_ValidChunkedNoHeaderReceivedPB (m : V1State.Chunked.NoHeaderReceived) : Prop :=
   (∀ u, m.uc = some u → tlb_ValidUcNoHeaderReceivedPB u) ∧
   (∀ d, m.receivingHdr = some d → tlb_ValidPolyDecoderPB d)
 
-def tlb_ValidChunkedHeaderReceivedPB (m : V1State.Chunked.HeaderReceived) : Prop :=
+@[expose] def tlb_ValidChunkedHeaderReceivedPB (m : V1State.Chunked.HeaderReceived) : Prop :=
   (∀ u, m.uc = some u → tlb_ValidUcHeaderReceivedPB u) ∧
   (∀ d, m.receivingEk = some d → tlb_ValidPolyDecoderPB d)
 
-def tlb_ValidChunkedCt1SampledPB (m : V1State.Chunked.Ct1Sampled) : Prop :=
+@[expose] def tlb_ValidChunkedCt1SampledPB (m : V1State.Chunked.Ct1Sampled) : Prop :=
   (∀ u, m.uc = some u → tlb_ValidUcCt1SentPB u) ∧
   (∀ e, m.sendingCt1 = some e → tlb_ValidPolyEncoderPB e) ∧
   (∀ d, m.receivingEk = some d → tlb_ValidPolyDecoderPB d)
 
-def tlb_ValidChunkedEkReceivedCt1SampledPB (m : V1State.Chunked.EkReceivedCt1Sampled) : Prop :=
+@[expose] def tlb_ValidChunkedEkReceivedCt1SampledPB (m : V1State.Chunked.EkReceivedCt1Sampled) : Prop :=
   (∀ u, m.uc = some u → tlb_ValidUcCt1SentEkReceivedPB u) ∧
   (∀ e, m.sendingCt1 = some e → tlb_ValidPolyEncoderPB e)
 
-def tlb_ValidChunkedCt1AcknowledgedPB (m : V1State.Chunked.Ct1Acknowledged) : Prop :=
+@[expose] def tlb_ValidChunkedCt1AcknowledgedPB (m : V1State.Chunked.Ct1Acknowledged) : Prop :=
   (∀ u, m.uc = some u → tlb_ValidUcCt1SentPB u) ∧
   (∀ d, m.receivingEk = some d → tlb_ValidPolyDecoderPB d)
 
-def tlb_ValidChunkedCt2SampledPB (m : V1State.Chunked.Ct2Sampled) : Prop :=
+@[expose] def tlb_ValidChunkedCt2SampledPB (m : V1State.Chunked.Ct2Sampled) : Prop :=
   (∀ u, m.uc = some u → tlb_ValidUcCt2SentPB u) ∧
   (∀ e, m.sendingCt2 = some e → tlb_ValidPolyEncoderPB e)
 
-def tlb_ValidInnerStatePB : V1State.InnerState → Prop
+@[expose] def tlb_ValidInnerStatePB : V1State.InnerState → Prop
   | .keysUnsampled v        => tlb_ValidChunkedKeysUnsampledPB v
   | .keysSampled v          => tlb_ValidChunkedKeysSampledPB v
   | .headerSent v           => tlb_ValidChunkedHeaderSentPB v
@@ -247,25 +261,25 @@ def tlb_ValidInnerStatePB : V1State.InnerState → Prop
   | .ct1Acknowledged v      => tlb_ValidChunkedCt1AcknowledgedPB v
   | .ct2Sampled v           => tlb_ValidChunkedCt2SampledPB v
 
-def tlb_ValidV1StatePB (m : V1State) : Prop :=
+@[expose] def tlb_ValidV1StatePB (m : V1State) : Prop :=
   ∀ is, m.innerState = some is → tlb_ValidInnerStatePB is
 
-def tlb_ValidEpochDirPB (maxPrev : Nat) (m : EpochDirectionPB) : Prop :=
+@[expose] def tlb_ValidEpochDirPB (maxPrev : Nat) (m : EpochDirectionPB) : Prop :=
   m.next.length ≤ 32 ∧ m.prev.length ≤ maxPrev
 
-def tlb_ValidChainEpochPB (m : ChainEpochPB) : Prop :=
+@[expose] def tlb_ValidChainEpochPB (m : ChainEpochPB) : Prop :=
   (∀ d, m.send = some d → tlb_ValidEpochDirPB 0 d) ∧
   (∀ d, m.recv = some d → tlb_ValidEpochDirPB 79236 d)
 
-def tlb_ValidChainPB (m : ChainPB) : Prop :=
+@[expose] def tlb_ValidChainPB (m : ChainPB) : Prop :=
   m.links.length ≤ 3 ∧
   m.nextRoot.length ≤ 32 ∧
   ∀ ep ∈ m.links, tlb_ValidChainEpochPB ep
 
-def tlb_ValidVersionNegotiationPB (m : VersionNegotiationPB) : Prop :=
+@[expose] def tlb_ValidVersionNegotiationPB (m : VersionNegotiationPB) : Prop :=
   m.authKey.length ≤ 32
 
-def tlb_ValidPqRatchetStatePB (m : PqRatchetState) : Prop :=
+@[expose] def tlb_ValidPqRatchetStatePB (m : PqRatchetState) : Prop :=
   (∀ vn, m.versionNegotiation = some vn → tlb_ValidVersionNegotiationPB vn) ∧
   (∀ ch, m.chain = some ch → tlb_ValidChainPB ch) ∧
   (∀ v1, m.inner = some (.v1 v1) → tlb_ValidV1StatePB v1)
@@ -273,345 +287,324 @@ def tlb_ValidPqRatchetStatePB (m : PqRatchetState) : Prop :=
 /-! ## Per-Block `maxOps`-Parametric Tight Envelopes -/
 
 /-- Tight envelope for Block `295` (`ProtoAuthenticator::merge`: `2,952` bytes, `maxReq = 32`). -/
-def tlb_AuthTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_AuthTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 2952 32
 abbrev tlb_AuthTightEnv : List AllocEvent → Prop := tlb_AuthTightEnvOf 4
 
 /-- Tight envelope for Block `296` (`PolynomialDecoder::merge`: `342,615` bytes, `maxReq = 2,560`).
 -/
-def tlb_PolyDecoderTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_PolyDecoderTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 342615 2560
 abbrev tlb_PolyDecoderTightEnv : List AllocEvent → Prop := tlb_PolyDecoderTightEnvOf 35
 
 /-- Tight envelope for Block `297` (`PolynomialEncoder::merge`: `342,615` bytes, `maxReq = 2,560`).
 -/
-def tlb_PolyEncoderTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_PolyEncoderTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 342615 2560
 abbrev tlb_PolyEncoderTightEnv : List AllocEvent → Prop := tlb_PolyEncoderTightEnvOf 35
 
 /-- Tight envelope for Block `299` (`EpochDirectionPB::merge`, send direction: `1,476` bytes, `maxReq = 32`).
 -/
-def tlb_EpochDirSendTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_EpochDirSendTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 1476 32
 abbrev tlb_EpochDirSendTightEnv : List AllocEvent → Prop := tlb_EpochDirSendTightEnvOf 2
 
 /-- Tight envelope for Block `299` (`EpochDirectionPB::merge`, recv direction: `181,944` bytes, `maxReq = 79,236`).
 -/
-def tlb_EpochDirRecvTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_EpochDirRecvTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 181944 79236
 abbrev tlb_EpochDirRecvTightEnv : List AllocEvent → Prop := tlb_EpochDirRecvTightEnvOf 4
 
 /-- Tight envelope for Block `311` (`Unchunked.EkSentCt1Received::merge`: `42,108` bytes, `maxReq = 2,560`).
 -/
-def tlb_UcEkSentCt1ReceivedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_UcEkSentCt1ReceivedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 42108 2560
 abbrev tlb_UcEkSentCt1ReceivedTightEnv : List AllocEvent → Prop := tlb_UcEkSentCt1ReceivedTightEnvOf 8
 
 /-- Tight envelope for Block `312` (`Unchunked.Ct1Sent::merge`: `46,102` bytes, `maxReq = 2,560`).
 -/
-def tlb_UcCt1SentTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_UcCt1SentTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 46102 2560
 abbrev tlb_UcCt1SentTightEnv : List AllocEvent → Prop := tlb_UcCt1SentTightEnvOf 10
 
 /-- Tight envelope for Block `300` (`Chunked.Ct1Sampled::merge`: `731,332` bytes, `maxReq = 2,560`).
 -/
-def tlb_ChunkedCt1SampledTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedCt1SampledTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 731332 2560
 abbrev tlb_ChunkedCt1SampledTightEnv : List AllocEvent → Prop := tlb_ChunkedCt1SampledTightEnvOf 80
 
 /-- Tight envelope for Block `301` (`Chunked.Ct2Sampled::merge`: `345,567` bytes, `maxReq = 2,560`).
 -/
-def tlb_ChunkedCt2SampledTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedCt2SampledTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 345567 2560
 abbrev tlb_ChunkedCt2SampledTightEnv : List AllocEvent → Prop := tlb_ChunkedCt2SampledTightEnvOf 39
 
 /-- Tight envelope for Block `302` (`Chunked.HeaderSent::merge`: `707,760` bytes, `maxReq = 2,560`).
 -/
-def tlb_ChunkedHeaderSentTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedHeaderSentTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 707760 2560
 abbrev tlb_ChunkedHeaderSentTightEnv : List AllocEvent → Prop := tlb_ChunkedHeaderSentTightEnvOf 76
 
 /-- Tight envelope for Block `303` (`Chunked.Ct1Received::merge`: `384,723` bytes, `maxReq = 2,560`).
 -/
-def tlb_ChunkedCt1ReceivedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedCt1ReceivedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 384723 2560
 abbrev tlb_ChunkedCt1ReceivedTightEnv : List AllocEvent → Prop := tlb_ChunkedCt1ReceivedTightEnvOf 43
 
 /-- Tight envelope for Block `304` (`Chunked.KeysSampled::merge`: `384,723` bytes, `maxReq = 2,560`).
 -/
-def tlb_ChunkedKeysSampledTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedKeysSampledTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 384723 2560
 abbrev tlb_ChunkedKeysSampledTightEnv : List AllocEvent → Prop := tlb_ChunkedKeysSampledTightEnvOf 43
 
 /-- Tight envelope for Block `305` (`Chunked.KeysUnsampled::merge`: `2,952` bytes, `maxReq = 32`).
 -/
-def tlb_ChunkedKeysUnsampledTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedKeysUnsampledTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 2952 32
 abbrev tlb_ChunkedKeysUnsampledTightEnv : List AllocEvent → Prop := tlb_ChunkedKeysUnsampledTightEnvOf 4
 
 /-- Tight envelope for Block `306` (`Chunked.HeaderReceived::merge`: `349,561` bytes, `maxReq = 2,560`).
 -/
-def tlb_ChunkedHeaderReceivedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedHeaderReceivedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 349561 2560
 abbrev tlb_ChunkedHeaderReceivedTightEnv : List AllocEvent → Prop := tlb_ChunkedHeaderReceivedTightEnvOf 41
 
 /-- Tight envelope for Block `307` (`Chunked.Ct1Acknowledged::merge`: `388,717` bytes, `maxReq = 2,560`).
 -/
-def tlb_ChunkedCt1AcknowledgedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedCt1AcknowledgedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 388717 2560
 abbrev tlb_ChunkedCt1AcknowledgedTightEnv : List AllocEvent → Prop := tlb_ChunkedCt1AcknowledgedTightEnvOf 45
 
 /-- Tight envelope for Block `308` (`Chunked.NoHeaderReceived::merge`: `345,567` bytes, `maxReq = 2,560`).
 -/
-def tlb_ChunkedNoHeaderReceivedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedNoHeaderReceivedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 345567 2560
 abbrev tlb_ChunkedNoHeaderReceivedTightEnv : List AllocEvent → Prop := tlb_ChunkedNoHeaderReceivedTightEnvOf 39
 
 /-- Tight envelope for Block `309` (`Chunked.EkSentCt1Received::merge`: `384,723` bytes, `maxReq = 2,560`).
 -/
-def tlb_ChunkedEkSentCt1ReceivedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedEkSentCt1ReceivedTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 384723 2560
 abbrev tlb_ChunkedEkSentCt1ReceivedTightEnv : List AllocEvent → Prop := tlb_ChunkedEkSentCt1ReceivedTightEnvOf 43
 
 /-- Tight envelope for Block `310` (`Chunked.EkReceivedCt1Sampled::merge`: `404,301` bytes, `maxReq = 2,560`).
 -/
-def tlb_ChunkedEkReceivedCt1SampledTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_ChunkedEkReceivedCt1SampledTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 404301 2560
 abbrev tlb_ChunkedEkReceivedCt1SampledTightEnv : List AllocEvent → Prop := tlb_ChunkedEkReceivedCt1SampledTightEnvOf 45
 
 /-- Tight envelope for Block `298` (`V1State::merge`: `731,332` bytes, `maxReq = 2,560`). -/
-def tlb_V1StateMergeTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_V1StateMergeTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 731332 2560
 abbrev tlb_V1StateMergeTightEnv : List AllocEvent → Prop := tlb_V1StateMergeTightEnvOf 80
 
 /-- Tight envelope for Block `325` (`spqr::decode_state`: `SpqrTightEvs maxOps 1307216 79236`). -/
-def tlb_DecodeStateTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_DecodeStateTightEnvOf (maxOps : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs maxOps 1307216 79236
 abbrev tlb_DecodeStateTightEnv : List AllocEvent → Prop := tlb_DecodeStateTightEnvOf 109
 
 /-- Tight envelope for Block `325` Tag 1 (`VersionNegotiationPB`: `1,476` bytes, `maxReq = 32`). -/
-def tlb_DecodeStateTag1TightEnvOf (tag1Ops : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_DecodeStateTag1TightEnvOf (tag1Ops : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs tag1Ops 1476 32
 abbrev tlb_DecodeStateTag1TightEnv : List AllocEvent → Prop := tlb_DecodeStateTag1TightEnvOf 2
 
 /-- Tight envelope for Block `325` Tag 2 (`ChainPB`: `561,525` bytes, `maxReq = 79,236`). -/
-def tlb_DecodeStateTag2TightEnvOf (tag2Ops : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_DecodeStateTag2TightEnvOf (tag2Ops : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs tag2Ops 561525 79236
 abbrev tlb_DecodeStateTag2TightEnv : List AllocEvent → Prop := tlb_DecodeStateTag2TightEnvOf 21
 
 /-- Tight envelope for Block `325` Tag 3 (`PqRatchetInner::V1`: `731,332` bytes, `maxReq = 2,560`).
 -/
-def tlb_DecodeStateTag3TightEnvOf (v1Ops : Nat) : List AllocEvent → Prop :=
+@[expose] def tlb_DecodeStateTag3TightEnvOf (v1Ops : Nat) : List AllocEvent → Prop :=
   SpqrTightEvs v1Ops 731332 2560
 abbrev tlb_DecodeStateTag3TightEnv : List AllocEvent → Prop := tlb_DecodeStateTag3TightEnvOf 80
 
-/-- Arithmetic reconciliation of Tag 1–3 cumulative bytes (`1,294,333 ≤ 1,307,216`) and operation counts (`103 ≤ 109 ≤ 128`).
--/
-theorem tlb_decodeState_budget_reconcile_arith :
-    1476 + 561525 + 731332 ≤ 1307216 ∧
-    9789 + 1476 + 3 * (1476 + 181944) = 561525 ∧
-    1 + 2 + 3 * (2 + 4) = 21 ∧
-    2 + 21 + 80 = 103 ∧
-    103 ≤ 109 ∧
-    109 ≤ 128 := by
-  decide
-
-/-- Composes Tag 1–3 `SpqrTightEvs` bounds into `tlb_DecodeStateTightEnvOf maxOps`. -/
-theorem tlb_decodeState_tags_compose {t1 t2 v1Ops maxOps : Nat}
-    {evs1 evs2 evs3 : List AllocEvent}
-    (hOps : t1 + t2 + v1Ops ≤ maxOps)
-    (h1 : tlb_DecodeStateTag1TightEnvOf t1 evs1)
-    (h2 : tlb_DecodeStateTag2TightEnvOf t2 evs2)
-    (h3 : tlb_DecodeStateTag3TightEnvOf v1Ops evs3) :
-    tlb_DecodeStateTightEnvOf maxOps (evs1 ++ evs2 ++ evs3) :=
-  ((SpqrTightEvs.append h1 h2).append h3).mono hOps (by decide) (by decide)
-
 /-! ## Per-Block Canonical Input Guards (`tlb_*Dom`) and Guarded Envelopes -/
 
-def tlb_AuthDom (x : AuthMergeGhost) : Prop :=
+@[expose] def tlb_AuthDom (x : AuthMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidAuthPB pb ∧ x.bs = tlb_lenPrefixed (ProtoAuthenticator.encodeRaw pb) rest
 
-def tlb_AuthGuardedEnvOf (maxOps : Nat) : AuthMergeGhost → List AllocEvent → Prop :=
+@[expose] def tlb_AuthGuardedEnvOf (maxOps : Nat) : AuthMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_AuthDom (tlb_AuthTightEnvOf maxOps) AuthMergeEnv
 abbrev tlb_AuthGuardedEnv := tlb_AuthGuardedEnvOf 4
 
-def tlb_PolyDecoderDom (x : PolyDecoderMergeGhost) : Prop :=
+@[expose] def tlb_PolyDecoderDom (x : PolyDecoderMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidPolyDecoderPB pb ∧ x.bs = tlb_lenPrefixed (PolynomialDecoder.encodeRaw pb) rest
 
-def tlb_PolyDecoderGuardedEnvOf (maxOps : Nat) : PolyDecoderMergeGhost → List AllocEvent → Prop :=
+@[expose] def tlb_PolyDecoderGuardedEnvOf (maxOps : Nat) : PolyDecoderMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_PolyDecoderDom (tlb_PolyDecoderTightEnvOf maxOps) PolyDecoderMergeEnv
 abbrev tlb_PolyDecoderGuardedEnv := tlb_PolyDecoderGuardedEnvOf 35
 
-def tlb_PolyEncoderDom (x : PolyEncoderMergeGhost) : Prop :=
+@[expose] def tlb_PolyEncoderDom (x : PolyEncoderMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidPolyEncoderPB pb ∧ x.bs = tlb_lenPrefixed (PolynomialEncoder.encodeRaw pb) rest
 
-def tlb_PolyEncoderGuardedEnvOf (maxOps : Nat) : PolyEncoderMergeGhost → List AllocEvent → Prop :=
+@[expose] def tlb_PolyEncoderGuardedEnvOf (maxOps : Nat) : PolyEncoderMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_PolyEncoderDom (tlb_PolyEncoderTightEnvOf maxOps) PolyEncoderMergeEnv
 abbrev tlb_PolyEncoderGuardedEnv := tlb_PolyEncoderGuardedEnvOf 35
 
-def tlb_EpochDirDom (maxPrev : Nat) (x : EpochDirectionMergeGhost) : Prop :=
+@[expose] def tlb_EpochDirDom (maxPrev : Nat) (x : EpochDirectionMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidEpochDirPB maxPrev pb ∧ x.bs = tlb_lenPrefixed (EpochDirectionPB.encodeRaw pb) rest
 
 /-- Unified guarded envelope for Block `299` (`EpochDirectionPB::merge`) covering both send (`maxPrev = 0`) and recv (`maxPrev = 79,236`) directions.
 -/
-def tlb_EpochDirectionGuardedEnvOf (sendOps recvOps : Nat)
+@[expose] def tlb_EpochDirectionGuardedEnvOf (sendOps recvOps : Nat)
     (x : EpochDirectionMergeGhost) (evs : List AllocEvent) : Prop :=
   (tlb_EpochDirDom 0 x ∧ tlb_EpochDirSendTightEnvOf sendOps evs) ∨
   (¬ tlb_EpochDirDom 0 x ∧ tlb_EpochDirDom 79236 x ∧ tlb_EpochDirRecvTightEnvOf recvOps evs) ∨
   (¬ tlb_EpochDirDom 79236 x ∧ EpochDirectionMergeEnv x evs)
 abbrev tlb_EpochDirectionGuardedEnv := tlb_EpochDirectionGuardedEnvOf 2 4
 
-def tlb_UcEkSentCt1ReceivedDom (x : UnchunkedEkSentCt1ReceivedMergeGhost) : Prop :=
+@[expose] def tlb_UcEkSentCt1ReceivedDom (x : UnchunkedEkSentCt1ReceivedMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidUcEkSentCt1ReceivedPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Unchunked.EkSentCt1Received.encodeRaw pb) rest
 
-def tlb_UcEkSentCt1ReceivedGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_UcEkSentCt1ReceivedGuardedEnvOf (maxOps : Nat) :
     UnchunkedEkSentCt1ReceivedMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_UcEkSentCt1ReceivedDom
     (tlb_UcEkSentCt1ReceivedTightEnvOf maxOps) UnchunkedEkSentCt1ReceivedMergeEnv
 abbrev tlb_UcEkSentCt1ReceivedGuardedEnv := tlb_UcEkSentCt1ReceivedGuardedEnvOf 8
 
-def tlb_UcCt1SentDom (x : UnchunkedCt1SentMergeGhost) : Prop :=
+@[expose] def tlb_UcCt1SentDom (x : UnchunkedCt1SentMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidUcCt1SentPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Unchunked.Ct1Sent.encodeRaw pb) rest
 
-def tlb_UcCt1SentGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_UcCt1SentGuardedEnvOf (maxOps : Nat) :
     UnchunkedCt1SentMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_UcCt1SentDom (tlb_UcCt1SentTightEnvOf maxOps) UnchunkedCt1SentMergeEnv
 abbrev tlb_UcCt1SentGuardedEnv := tlb_UcCt1SentGuardedEnvOf 10
 
-def tlb_ChunkedCt1SampledDom (x : ChunkedCt1SampledMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedCt1SampledDom (x : ChunkedCt1SampledMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedCt1SampledPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.Ct1Sampled.encodeRaw pb) rest
 
-def tlb_ChunkedCt1SampledGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedCt1SampledGuardedEnvOf (maxOps : Nat) :
     ChunkedCt1SampledMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedCt1SampledDom
     (tlb_ChunkedCt1SampledTightEnvOf maxOps) ChunkedCt1SampledMergeEnv
 abbrev tlb_ChunkedCt1SampledGuardedEnv := tlb_ChunkedCt1SampledGuardedEnvOf 80
 
-def tlb_ChunkedCt2SampledDom (x : ChunkedCt2SampledMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedCt2SampledDom (x : ChunkedCt2SampledMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedCt2SampledPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.Ct2Sampled.encodeRaw pb) rest
 
-def tlb_ChunkedCt2SampledGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedCt2SampledGuardedEnvOf (maxOps : Nat) :
     ChunkedCt2SampledMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedCt2SampledDom
     (tlb_ChunkedCt2SampledTightEnvOf maxOps) ChunkedCt2SampledMergeEnv
 abbrev tlb_ChunkedCt2SampledGuardedEnv := tlb_ChunkedCt2SampledGuardedEnvOf 39
 
-def tlb_ChunkedHeaderSentDom (x : ChunkedHeaderSentMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedHeaderSentDom (x : ChunkedHeaderSentMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedHeaderSentPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.HeaderSent.encodeRaw pb) rest
 
-def tlb_ChunkedHeaderSentGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedHeaderSentGuardedEnvOf (maxOps : Nat) :
     ChunkedHeaderSentMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedHeaderSentDom
     (tlb_ChunkedHeaderSentTightEnvOf maxOps) ChunkedHeaderSentMergeEnv
 abbrev tlb_ChunkedHeaderSentGuardedEnv := tlb_ChunkedHeaderSentGuardedEnvOf 76
 
-def tlb_ChunkedCt1ReceivedDom (x : ChunkedCt1ReceivedMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedCt1ReceivedDom (x : ChunkedCt1ReceivedMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedCt1ReceivedPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.Ct1Received.encodeRaw pb) rest
 
-def tlb_ChunkedCt1ReceivedGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedCt1ReceivedGuardedEnvOf (maxOps : Nat) :
     ChunkedCt1ReceivedMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedCt1ReceivedDom
     (tlb_ChunkedCt1ReceivedTightEnvOf maxOps) ChunkedCt1ReceivedMergeEnv
 abbrev tlb_ChunkedCt1ReceivedGuardedEnv := tlb_ChunkedCt1ReceivedGuardedEnvOf 43
 
-def tlb_ChunkedKeysSampledDom (x : ChunkedKeysSampledMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedKeysSampledDom (x : ChunkedKeysSampledMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedKeysSampledPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.KeysSampled.encodeRaw pb) rest
 
-def tlb_ChunkedKeysSampledGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedKeysSampledGuardedEnvOf (maxOps : Nat) :
     ChunkedKeysSampledMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedKeysSampledDom
     (tlb_ChunkedKeysSampledTightEnvOf maxOps) ChunkedKeysSampledMergeEnv
 abbrev tlb_ChunkedKeysSampledGuardedEnv := tlb_ChunkedKeysSampledGuardedEnvOf 43
 
-def tlb_ChunkedKeysUnsampledDom (x : ChunkedKeysUnsampledMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedKeysUnsampledDom (x : ChunkedKeysUnsampledMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedKeysUnsampledPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.KeysUnsampled.encodeRaw pb) rest
 
-def tlb_ChunkedKeysUnsampledGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedKeysUnsampledGuardedEnvOf (maxOps : Nat) :
     ChunkedKeysUnsampledMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedKeysUnsampledDom
     (tlb_ChunkedKeysUnsampledTightEnvOf maxOps) ChunkedKeysUnsampledMergeEnv
 abbrev tlb_ChunkedKeysUnsampledGuardedEnv := tlb_ChunkedKeysUnsampledGuardedEnvOf 4
 
-def tlb_ChunkedHeaderReceivedDom (x : ChunkedHeaderReceivedMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedHeaderReceivedDom (x : ChunkedHeaderReceivedMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedHeaderReceivedPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.HeaderReceived.encodeRaw pb) rest
 
-def tlb_ChunkedHeaderReceivedGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedHeaderReceivedGuardedEnvOf (maxOps : Nat) :
     ChunkedHeaderReceivedMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedHeaderReceivedDom
     (tlb_ChunkedHeaderReceivedTightEnvOf maxOps) ChunkedHeaderReceivedMergeEnv
 abbrev tlb_ChunkedHeaderReceivedGuardedEnv := tlb_ChunkedHeaderReceivedGuardedEnvOf 41
 
-def tlb_ChunkedCt1AcknowledgedDom (x : ChunkedCt1AcknowledgedMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedCt1AcknowledgedDom (x : ChunkedCt1AcknowledgedMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedCt1AcknowledgedPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.Ct1Acknowledged.encodeRaw pb) rest
 
-def tlb_ChunkedCt1AcknowledgedGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedCt1AcknowledgedGuardedEnvOf (maxOps : Nat) :
     ChunkedCt1AcknowledgedMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedCt1AcknowledgedDom
     (tlb_ChunkedCt1AcknowledgedTightEnvOf maxOps) ChunkedCt1AcknowledgedMergeEnv
 abbrev tlb_ChunkedCt1AcknowledgedGuardedEnv := tlb_ChunkedCt1AcknowledgedGuardedEnvOf 45
 
-def tlb_ChunkedNoHeaderReceivedDom (x : ChunkedNoHeaderReceivedMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedNoHeaderReceivedDom (x : ChunkedNoHeaderReceivedMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedNoHeaderReceivedPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.NoHeaderReceived.encodeRaw pb) rest
 
-def tlb_ChunkedNoHeaderReceivedGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedNoHeaderReceivedGuardedEnvOf (maxOps : Nat) :
     ChunkedNoHeaderReceivedMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedNoHeaderReceivedDom
     (tlb_ChunkedNoHeaderReceivedTightEnvOf maxOps) ChunkedNoHeaderReceivedMergeEnv
 abbrev tlb_ChunkedNoHeaderReceivedGuardedEnv := tlb_ChunkedNoHeaderReceivedGuardedEnvOf 39
 
-def tlb_ChunkedEkSentCt1ReceivedDom (x : ChunkedEkSentCt1ReceivedMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedEkSentCt1ReceivedDom (x : ChunkedEkSentCt1ReceivedMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedEkSentCt1ReceivedPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.EkSentCt1Received.encodeRaw pb) rest
 
-def tlb_ChunkedEkSentCt1ReceivedGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedEkSentCt1ReceivedGuardedEnvOf (maxOps : Nat) :
     ChunkedEkSentCt1ReceivedMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedEkSentCt1ReceivedDom
     (tlb_ChunkedEkSentCt1ReceivedTightEnvOf maxOps) ChunkedEkSentCt1ReceivedMergeEnv
 abbrev tlb_ChunkedEkSentCt1ReceivedGuardedEnv := tlb_ChunkedEkSentCt1ReceivedGuardedEnvOf 43
 
-def tlb_ChunkedEkReceivedCt1SampledDom (x : ChunkedEkReceivedCt1SampledMergeGhost) : Prop :=
+@[expose] def tlb_ChunkedEkReceivedCt1SampledDom (x : ChunkedEkReceivedCt1SampledMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg = default ∧
     ∃ pb rest, tlb_ValidChunkedEkReceivedCt1SampledPB pb ∧
       x.bs = tlb_lenPrefixed (V1State.Chunked.EkReceivedCt1Sampled.encodeRaw pb) rest
 
-def tlb_ChunkedEkReceivedCt1SampledGuardedEnvOf (maxOps : Nat) :
+@[expose] def tlb_ChunkedEkReceivedCt1SampledGuardedEnvOf (maxOps : Nat) :
     ChunkedEkReceivedCt1SampledMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_ChunkedEkReceivedCt1SampledDom
     (tlb_ChunkedEkReceivedCt1SampledTightEnvOf maxOps) ChunkedEkReceivedCt1SampledMergeEnv
 abbrev tlb_ChunkedEkReceivedCt1SampledGuardedEnv := tlb_ChunkedEkReceivedCt1SampledGuardedEnvOf 45
 
-def tlb_V1StateMergeDom (x : V1StateMergeGhost) : Prop :=
+@[expose] def tlb_V1StateMergeDom (x : V1StateMergeGhost) : Prop :=
   codecWireTypeToProto x.wt = .lengthDelimited ∧ x.msg.innerState = none ∧
     ∃ pb rest, tlb_ValidV1StatePB pb ∧ x.bs = tlb_lenPrefixed (V1State.encodeRaw pb) rest
 
-def tlb_V1StateMergeGuardedEnvOf (maxOps : Nat) : V1StateMergeGhost → List AllocEvent → Prop :=
+@[expose] def tlb_V1StateMergeGuardedEnvOf (maxOps : Nat) : V1StateMergeGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv tlb_V1StateMergeDom (tlb_V1StateMergeTightEnvOf maxOps) V1StateMergeEnv
 abbrev tlb_V1StateMergeGuardedEnv := tlb_V1StateMergeGuardedEnvOf 80
 
@@ -626,20 +619,28 @@ call sites), while falling back to unpinned representations under `¬ Dom x`.
 
 /-- Guarded precondition heap combinator selecting `ZeroAt x` under `Dom x` and `CapAt x` otherwise.
 -/
-noncomputable def tlb_domHeap {α : Type} (Dom : α → Prop)
+@[expose] def tlb_domHeap {α : Type} (Dom : α → Prop)
     (ZeroAt CapAt : α → SepProp) (x : α) : SepProp :=
-  open Classical in
-  if Dom x then ZeroAt x else CapAt x
+  ⟨fun h => (Dom x ∧ (ZeroAt x).holds h) ∨ (¬ Dom x ∧ (CapAt x).holds h)⟩
 
 @[simp] theorem tlb_domHeap_of_dom {α : Type} {Dom : α → Prop} {ZeroAt CapAt : α → SepProp}
     {x : α} (h : Dom x) :
     tlb_domHeap Dom ZeroAt CapAt x = ZeroAt x := by
+  ext hp
   simp [tlb_domHeap, h]
 
 @[simp] theorem tlb_domHeap_of_not_dom {α : Type} {Dom : α → Prop} {ZeroAt CapAt : α → SepProp}
     {x : α} (h : ¬ Dom x) :
     tlb_domHeap Dom ZeroAt CapAt x = CapAt x := by
+  ext hp
   simp [tlb_domHeap, h]
+
+/-- `tlb_domHeap` agrees pointwise with the `Classical.propDecidable` `ite` definition. -/
+theorem tlb_domHeap_eq_classical {α : Type} (Dom : α → Prop) (ZeroAt CapAt : α → SepProp)
+    (x : α) :
+    tlb_domHeap Dom ZeroAt CapAt x =
+      @ite _ (Dom x) (Classical.propDecidable (Dom x)) (ZeroAt x) (CapAt x) := by
+  by_cases h : Dom x <;> simp [h]
 
 theorem tlb_domHeap_entails_cap {α : Type} {Dom : α → Prop} {ZeroAt CapAt : α → SepProp}
     (x : α) (hZero : ZeroAt x ⊢ CapAt x) :
@@ -658,7 +659,7 @@ theorem tlb_epochDirDom_zero_imp_79236 {x : EpochDirectionMergeGhost}
   exact ⟨hwt, hmsg, pb, rest, ⟨hnext, Nat.le_trans hprev (Nat.zero_le _)⟩, hbs⟩
 
 /-- Zero-capacity `Vec<u8>` at `v` (`cap = 0#64`). -/
-def tlb_vecU8ZeroCapAt (A : RustAlloc) (v : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def tlb_vecU8ZeroCapAt (A : RustAlloc) (v : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ∃∗ ptr : BitVec 64, vecU8At A v 0#64 ptr bs
 
 theorem tlb_vecU8ZeroCapAt_of_ptr (A : RustAlloc) (v ptr : BitVec 64) (bs : List (BitVec 8)) :
@@ -679,7 +680,7 @@ theorem tlb_vecU8ZeroCapAt_entails_vecU8CapOkAt (A : RustAlloc) (v : BitVec 64) 
     tlb_vecU8ZeroCapAt A v bs ⊢ vecU8CapOkAt A v remLen bs :=
   tlb_vecU8ZeroCapAt_entails_cap A v remLen bs
 
-def tlb_authenticatorZeroCapAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def tlb_authenticatorZeroCapAt (A : RustAlloc) (a : BitVec 64)
     (auth : ProtoAuthenticator) : SepProp :=
   tlb_vecU8ZeroCapAt A a auth.rootKey ∗
   tlb_vecU8ZeroCapAt A (a + 0x18#64) auth.macKey
@@ -690,7 +691,7 @@ theorem tlb_authenticatorZeroCapAt_entails_cap (A : RustAlloc) (a : BitVec 64) (
   sepConj_mono (tlb_vecU8ZeroCapAt_entails_cap A a bsLen auth.rootKey)
     (tlb_vecU8ZeroCapAt_entails_cap A (a + 0x18#64) bsLen auth.macKey)
 
-def tlb_optAuthZeroCapAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def tlb_optAuthZeroCapAt (A : RustAlloc) (a : BitVec 64) :
     Option ProtoAuthenticator → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 40
   | some auth => tlb_authenticatorZeroCapAt A a auth
@@ -707,7 +708,7 @@ theorem tlb_vecVecU8ZeroPin_entails_unpinned (A : RustAlloc) (ptr v : BitVec 64)
   unfold vecVecU8PinnedAt vecVecU8At CryptoVerification.RustHeap.vecOf
   exact Entails.sepExists_right 0#64 (Entails.sepExists_right ptr (Entails.refl _))
 
-def tlb_polyDecoderZeroCapAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def tlb_polyDecoderZeroCapAt (A : RustAlloc) (a : BitVec 64)
     (pb : ProtoPolynomialDecoder) : SepProp :=
   ∃∗ ptr : BitVec 64, protoPolynomialDecoderPinnedAt A ⟨⟨0#64, ptr⟩⟩ a pb
 
@@ -716,14 +717,7 @@ theorem tlb_polyDecoderZeroCapAt_of_ptr (A : RustAlloc) (ptr a : BitVec 64)
     protoPolynomialDecoderPinnedAt A ⟨⟨0#64, ptr⟩⟩ a pb ⊢ tlb_polyDecoderZeroCapAt A a pb :=
   Entails.sepExists_right ptr (Entails.refl _)
 
-theorem tlb_polyDecoderZeroCapAt_entails_unpinned (A : RustAlloc) (a : BitVec 64)
-    (pb : ProtoPolynomialDecoder) :
-    tlb_polyDecoderZeroCapAt A a pb ⊢ protoPolynomialDecoderAt A a pb := by
-  refine Entails.sepExists_elim fun ptr => ?_
-  unfold protoPolynomialDecoderPinnedAt protoPolynomialDecoderAt
-  exact sepConj_mono (tlb_vecVecU8ZeroPin_entails_unpinned A ptr a pb.pts) (Entails.refl _)
-
-def tlb_polyEncoderZeroCapAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def tlb_polyEncoderZeroCapAt (A : RustAlloc) (a : BitVec 64)
     (pb : ProtoPolynomialEncoder) : SepProp :=
   ∃∗ ptrPts : BitVec 64, ∃∗ ptrPolys : BitVec 64,
     protoPolynomialEncoderPinnedAt A ⟨⟨0#64, ptrPts⟩, ⟨0#64, ptrPolys⟩⟩ a pb
@@ -744,7 +738,7 @@ theorem tlb_polyEncoderZeroCapAt_entails_unpinned (A : RustAlloc) (a : BitVec 64
       (tlb_vecVecU8ZeroPin_entails_unpinned A ptrPolys (a + protoPolynomialEncoderPolysOff) pb.polys)
       (Entails.refl _))
 
-def tlb_epochDirectionZeroCapAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def tlb_epochDirectionZeroCapAt (A : RustAlloc) (a : BitVec 64)
     (d : EpochDirectionPB) : SepProp :=
   tlb_vecU8ZeroCapAt A a d.next ∗
   tlb_vecU8ZeroCapAt A (a + 0x18#64) d.prev ∗
@@ -758,7 +752,7 @@ theorem tlb_epochDirectionZeroCapAt_entails_capOk (A : RustAlloc) (a : BitVec 64
     (sepConj_mono (tlb_vecU8ZeroCapAt_entails_vecU8CapOkAt A (a + 0x18#64) remLen d.prev)
       (Entails.refl _))
 
-def tlb_ucEkSentCt1ReceivedZeroCapAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def tlb_ucEkSentCt1ReceivedZeroCapAt (A : RustAlloc) (a : BitVec 64)
     (u : V1State.Unchunked.EkSentCt1Received) : SepProp :=
   tlb_vecU8ZeroCapAt A a u.dk ∗
   tlb_vecU8ZeroCapAt A (a + 0x18#64) u.ct1 ∗
@@ -774,7 +768,7 @@ theorem tlb_ucEkSentCt1ReceivedZeroCapAt_entails_cap (A : RustAlloc) (a : BitVec
       (sepConj_mono (tlb_optAuthZeroCapAt_entails_cap A (a + 0x30#64) bsLen u.auth)
         (Entails.refl _)))
 
-def tlb_ucCt1SentZeroCapAt (A : RustAlloc) (a : BitVec 64)
+@[expose] def tlb_ucCt1SentZeroCapAt (A : RustAlloc) (a : BitVec 64)
     (u : V1State.Unchunked.Ct1Sent) : SepProp :=
   tlb_vecU8ZeroCapAt A a u.hdr ∗
   tlb_vecU8ZeroCapAt A (a + 0x18#64) u.es ∗
@@ -791,7 +785,7 @@ theorem tlb_ucCt1SentZeroCapAt_entails_cap (A : RustAlloc) (a : BitVec 64)
         (sepConj_mono (tlb_optAuthZeroCapAt_entails_cap A (a + 0x48#64) bsLen u.auth)
           (Entails.refl _))))
 
-noncomputable def tlb_authMergeTightSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] noncomputable def tlb_authMergeTightSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : AuthMergeGhost → List AllocEvent → Prop) :
     Spec (AuthMergeGhost × M.σ) where
@@ -808,7 +802,7 @@ noncomputable def tlb_authMergeTightSpecOfEnv {M : AllocCostModel} (A : RustCliA
       A.pool lim st s ∗ stackAt s.sp authMergeStack
   post := (authMergeSpecOfEnv A lim PreEnv PostEnv).post
 
-noncomputable def tlb_polyDecoderMergeTightSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] noncomputable def tlb_polyDecoderMergeTightSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : PolyDecoderMergeGhost → List AllocEvent → Prop) :
     Spec (PolyDecoderMergeGhost × M.σ) where
@@ -825,7 +819,7 @@ noncomputable def tlb_polyDecoderMergeTightSpecOfEnv {M : AllocCostModel} (A : R
       A.pool lim st s ∗ stackAt s.sp polyMergeStack
   post := (polyDecoderMergeSpecOfEnv A lim PreEnv PostEnv).post
 
-noncomputable def tlb_polyEncoderMergeTightSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] noncomputable def tlb_polyEncoderMergeTightSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : PolyEncoderMergeGhost → List AllocEvent → Prop) :
     Spec (PolyEncoderMergeGhost × M.σ) where
@@ -843,7 +837,7 @@ noncomputable def tlb_polyEncoderMergeTightSpecOfEnv {M : AllocCostModel} (A : R
       A.pool lim st s ∗ stackAt s.sp polyMergeStack
   post := (polyEncoderMergeSpecOfEnv A lim PreEnv PostEnv).post
 
-noncomputable def tlb_ucEkSentCt1ReceivedMergeTightSpecOfEnv {M : AllocCostModel}
+@[expose] noncomputable def tlb_ucEkSentCt1ReceivedMergeTightSpecOfEnv {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv PostEnv : UnchunkedEkSentCt1ReceivedMergeGhost → List AllocEvent → Prop) :
     Spec (UnchunkedEkSentCt1ReceivedMergeGhost × M.σ) where
@@ -860,7 +854,7 @@ noncomputable def tlb_ucEkSentCt1ReceivedMergeTightSpecOfEnv {M : AllocCostModel
       A.pool lim st s ∗ stackAt s.sp unchunkedMergeStack
   post := (unchunkedEkSentCt1ReceivedMergeSpecOfEnv A lim PreEnv PostEnv).post
 
-noncomputable def tlb_ucCt1SentMergeTightSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] noncomputable def tlb_ucCt1SentMergeTightSpecOfEnv {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits)
     (PreEnv PostEnv : UnchunkedCt1SentMergeGhost → List AllocEvent → Prop) :
     Spec (UnchunkedCt1SentMergeGhost × M.σ) where
@@ -877,7 +871,7 @@ noncomputable def tlb_ucCt1SentMergeTightSpecOfEnv {M : AllocCostModel} (A : Rus
       A.pool lim st s ∗ stackAt s.sp unchunkedMergeStack
   post := (unchunkedCt1SentMergeSpecOfEnv A lim PreEnv PostEnv).post
 
-noncomputable def tlb_epochDirectionMergeTightSpecOfEnv {M : AllocCostModel}
+@[expose] noncomputable def tlb_epochDirectionMergeTightSpecOfEnv {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (PreEnv PostEnv : EpochDirectionMergeGhost → List AllocEvent → Prop) :
     Spec (EpochDirectionMergeGhost × M.σ) where
@@ -894,7 +888,7 @@ noncomputable def tlb_epochDirectionMergeTightSpecOfEnv {M : AllocCostModel}
       A.pool lim st s ∗ stackAt s.sp epochDirectionMergeStack
   post := (epochDirectionMergeSpecOfEnv A lim PreEnv PostEnv).post
 
-def tlb_AuthMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_AuthMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 295 (Rust.withPanics ext))
@@ -906,7 +900,7 @@ abbrev tlb_AuthMergePlacedTightOk [LibsignalPlacement] {M : AllocCostModel}
   tlb_AuthMergePlacedTightOkOf A lim 4 ext
 
 /-- Placed tight subroutine contract for Block `296` (`PolynomialDecoder::merge`). -/
-def tlb_PolyDecoderMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_PolyDecoderMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 296 (Rust.withPanics ext))
@@ -919,7 +913,7 @@ abbrev tlb_PolyDecoderMergePlacedTightOk [LibsignalPlacement] {M : AllocCostMode
   tlb_PolyDecoderMergePlacedTightOkOf A lim 35 ext
 
 /-- Placed tight subroutine contract for Block `297` (`PolynomialEncoder::merge`). -/
-def tlb_PolyEncoderMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_PolyEncoderMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 297 (Rust.withPanics ext))
@@ -932,7 +926,7 @@ abbrev tlb_PolyEncoderMergePlacedTightOk [LibsignalPlacement] {M : AllocCostMode
   tlb_PolyEncoderMergePlacedTightOkOf A lim 35 ext
 
 /-- Placed tight subroutine contract for Block `311` (`Unchunked.EkSentCt1Received::merge`). -/
-def tlb_UcEkSentCt1ReceivedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_UcEkSentCt1ReceivedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 311 (Rust.withPanics ext))
@@ -945,7 +939,7 @@ abbrev tlb_UcEkSentCt1ReceivedMergePlacedTightOk [LibsignalPlacement] {M : Alloc
   tlb_UcEkSentCt1ReceivedMergePlacedTightOkOf A lim 8 ext
 
 /-- Placed tight subroutine contract for Block `312` (`Unchunked.Ct1Sent::merge`). -/
-def tlb_UcCt1SentMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_UcCt1SentMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 312 (Rust.withPanics ext))
@@ -958,7 +952,7 @@ abbrev tlb_UcCt1SentMergePlacedTightOk [LibsignalPlacement] {M : AllocCostModel}
   tlb_UcCt1SentMergePlacedTightOkOf A lim 10 ext
 
 /-- Placed tight subroutine contract for Block `300` (`Chunked.Ct1Sampled::merge`). -/
-def tlb_ChunkedCt1SampledMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedCt1SampledMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 300 (Rust.withPanics ext))
@@ -971,7 +965,7 @@ abbrev tlb_ChunkedCt1SampledMergePlacedTightOk [LibsignalPlacement] {M : AllocCo
   tlb_ChunkedCt1SampledMergePlacedTightOkOf A lim 80 ext
 
 /-- Placed tight subroutine contract for Block `301` (`Chunked.Ct2Sampled::merge`). -/
-def tlb_ChunkedCt2SampledMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedCt2SampledMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 301 (Rust.withPanics ext))
@@ -984,7 +978,7 @@ abbrev tlb_ChunkedCt2SampledMergePlacedTightOk [LibsignalPlacement] {M : AllocCo
   tlb_ChunkedCt2SampledMergePlacedTightOkOf A lim 39 ext
 
 /-- Placed tight subroutine contract for Block `302` (`Chunked.HeaderSent::merge`). -/
-def tlb_ChunkedHeaderSentMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedHeaderSentMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 302 (Rust.withPanics ext))
@@ -997,7 +991,7 @@ abbrev tlb_ChunkedHeaderSentMergePlacedTightOk [LibsignalPlacement] {M : AllocCo
   tlb_ChunkedHeaderSentMergePlacedTightOkOf A lim 76 ext
 
 /-- Placed tight subroutine contract for Block `303` (`Chunked.Ct1Received::merge`). -/
-def tlb_ChunkedCt1ReceivedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedCt1ReceivedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 303 (Rust.withPanics ext))
@@ -1010,7 +1004,7 @@ abbrev tlb_ChunkedCt1ReceivedMergePlacedTightOk [LibsignalPlacement] {M : AllocC
   tlb_ChunkedCt1ReceivedMergePlacedTightOkOf A lim 43 ext
 
 /-- Placed tight subroutine contract for Block `304` (`Chunked.KeysSampled::merge`). -/
-def tlb_ChunkedKeysSampledMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedKeysSampledMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 304 (Rust.withPanics ext))
@@ -1023,7 +1017,7 @@ abbrev tlb_ChunkedKeysSampledMergePlacedTightOk [LibsignalPlacement] {M : AllocC
   tlb_ChunkedKeysSampledMergePlacedTightOkOf A lim 43 ext
 
 /-- Placed tight subroutine contract for Block `305` (`Chunked.KeysUnsampled::merge`). -/
-def tlb_ChunkedKeysUnsampledMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedKeysUnsampledMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 305 (Rust.withPanics ext))
@@ -1036,7 +1030,7 @@ abbrev tlb_ChunkedKeysUnsampledMergePlacedTightOk [LibsignalPlacement] {M : Allo
   tlb_ChunkedKeysUnsampledMergePlacedTightOkOf A lim 4 ext
 
 /-- Placed tight subroutine contract for Block `306` (`Chunked.HeaderReceived::merge`). -/
-def tlb_ChunkedHeaderReceivedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedHeaderReceivedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 306 (Rust.withPanics ext))
@@ -1049,7 +1043,7 @@ abbrev tlb_ChunkedHeaderReceivedMergePlacedTightOk [LibsignalPlacement] {M : All
   tlb_ChunkedHeaderReceivedMergePlacedTightOkOf A lim 41 ext
 
 /-- Placed tight subroutine contract for Block `307` (`Chunked.Ct1Acknowledged::merge`). -/
-def tlb_ChunkedCt1AcknowledgedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedCt1AcknowledgedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 307 (Rust.withPanics ext))
@@ -1062,7 +1056,7 @@ abbrev tlb_ChunkedCt1AcknowledgedMergePlacedTightOk [LibsignalPlacement] {M : Al
   tlb_ChunkedCt1AcknowledgedMergePlacedTightOkOf A lim 45 ext
 
 /-- Placed tight subroutine contract for Block `308` (`Chunked.NoHeaderReceived::merge`). -/
-def tlb_ChunkedNoHeaderReceivedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedNoHeaderReceivedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 308 (Rust.withPanics ext))
@@ -1075,7 +1069,7 @@ abbrev tlb_ChunkedNoHeaderReceivedMergePlacedTightOk [LibsignalPlacement] {M : A
   tlb_ChunkedNoHeaderReceivedMergePlacedTightOkOf A lim 39 ext
 
 /-- Placed tight subroutine contract for Block `309` (`Chunked.EkSentCt1Received::merge`). -/
-def tlb_ChunkedEkSentCt1ReceivedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedEkSentCt1ReceivedMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 309 (Rust.withPanics ext))
@@ -1088,7 +1082,7 @@ abbrev tlb_ChunkedEkSentCt1ReceivedMergePlacedTightOk [LibsignalPlacement] {M : 
   tlb_ChunkedEkSentCt1ReceivedMergePlacedTightOkOf A lim 43 ext
 
 /-- Placed tight subroutine contract for Block `310` (`Chunked.EkReceivedCt1Sampled::merge`). -/
-def tlb_ChunkedEkReceivedCt1SampledMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_ChunkedEkReceivedCt1SampledMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 310 (Rust.withPanics ext))
@@ -1102,7 +1096,7 @@ abbrev tlb_ChunkedEkReceivedCt1SampledMergePlacedTightOk [LibsignalPlacement] {M
   tlb_ChunkedEkReceivedCt1SampledMergePlacedTightOkOf A lim 45 ext
 
 /-- Placed tight subroutine contract for Block `298` (`V1State::merge`). -/
-def tlb_V1StateMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_V1StateMergePlacedTightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok (libsignalSessionLib.blockProgram lsmpl 298 (Rust.withPanics ext))
@@ -1116,7 +1110,7 @@ abbrev tlb_V1StateMergePlacedTightOk [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Tight subroutine contract for Block `299` (`EpochDirectionPB::merge`) on the `blkPC_325` program.
 -/
-def tlb_EpochDirectionMergeBlk325TightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_EpochDirectionMergeBlk325TightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (sendOps recvOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_325).rebase (blkPl_325).base (Rust.withPanics ext))
@@ -1127,7 +1121,7 @@ def tlb_EpochDirectionMergeBlk325TightOkOf [LibsignalPlacement] {M : AllocCostMo
         (tlb_EpochDirectionGuardedEnvOf sendOps recvOps)))
 
 /-- Tight subroutine contract for Block `298` (`V1State::merge`) on the `blkPC_325` program. -/
-def tlb_V1StateMergeBlk325TightOkOf [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def tlb_V1StateMergeBlk325TightOkOf [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (maxOps : Nat)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_325).rebase (blkPl_325).base (Rust.withPanics ext))
@@ -1143,30 +1137,12 @@ theorem tlb_decodeStateTightEnv_nonFreeCount_le {maxOps : Nat} {evs : List Alloc
     nonFreeCount evs ≤ maxOps :=
   h.1
 
-theorem tlb_decodeStateTightEnv_nonFreeCount_le_128 {maxOps : Nat} (hle : maxOps ≤ 128)
-    {evs : List AllocEvent} (h : tlb_DecodeStateTightEnvOf maxOps evs) :
-    nonFreeCount evs ≤ 128 :=
-  Nat.le_trans h.1 hle
-
-theorem tlb_decodeState_phaseCreditSpec_tight {M : AllocCostModel} [HasFineReallocCredit M]
-    (hM : ModelHyps M) (hT : SpqrTightHyps M) (maxOps : Nat) :
-    PhaseCreditSpec M (tlb_DecodeStateTightEnvOf maxOps)
-      decodeStateTightDeltaCum decodeStateTightDeltaLive
-      decodeStateTightDeltaPeak decodeStateTightMaxReq :=
-  spqrTightEvs_phaseCreditSpec hM hT maxOps 1307216 (Nat.le_refl 79236)
-
-theorem tlb_decodeState_fine_phaseCreditSpec_tight (maxOps : Nat) :
-    PhaseCreditSpec fineCostModel (tlb_DecodeStateTightEnvOf maxOps)
-      decodeStateTightDeltaCum decodeStateTightDeltaLive
-      decodeStateTightDeltaPeak decodeStateTightMaxReq :=
-  spqrTightEvs_fine_phaseCreditSpec maxOps 1307216 (Nat.le_refl 79236)
-
 /-- Input-state guard for `spqr::decode_state`: either empty (`[]`) or `TopStateTight F K x.st.bytes`.
 -/
-def tlb_DecodeStateDom (F : ShaCompress) (K : MlKem) (x : DecodeStateGhost) : Prop :=
+@[expose] def tlb_DecodeStateDom (F : ShaCompress) (K : MlKem) (x : DecodeStateGhost) : Prop :=
   SpqrStateTight640 F K x.st.bytes
 
-def tlb_DecodeStateGuardedEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat) :
+@[expose] def tlb_DecodeStateGuardedEnvOf (F : ShaCompress) (K : MlKem) (maxOps : Nat) :
     DecodeStateGhost → List AllocEvent → Prop :=
   tlb_GuardedEnv (tlb_DecodeStateDom F K) (tlb_DecodeStateTightEnvOf maxOps) DecodeStateEnv
 abbrev tlb_DecodeStateGuardedEnv (F : ShaCompress) (K : MlKem) :
@@ -1186,32 +1162,6 @@ theorem tlb_decodeStateGuardedEnv_sub_tight_of_topStateTight
     (h : tlb_DecodeStateGuardedEnvOf F K maxOps x evs) :
     tlb_DecodeStateTightEnvOf maxOps evs :=
   tlb_guardedEnv_tight_of_dom (Dom := tlb_DecodeStateDom F K) (Or.inr hTop) h
-
-theorem tlb_decodeStateGuardedEnv_sub_tight_nil
-    {F : ShaCompress} {K : MlKem} {maxOps : Nat} {x : DecodeStateGhost} {evs : List AllocEvent}
-    (hNil : x.st.bytes = [])
-    (h : tlb_DecodeStateGuardedEnvOf F K maxOps x evs) :
-    tlb_DecodeStateTightEnvOf maxOps evs :=
-  tlb_guardedEnv_tight_of_dom (Dom := tlb_DecodeStateDom F K) (Or.inl hNil) h
-
-theorem tlb_decodeStateGuardedEnv_nonvacuous (F : ShaCompress) (K : MlKem)
-    {maxOps : Nat} (hOps : 1 ≤ maxOps) :
-    ∃ (bs : Bytes) (evs : List AllocEvent),
-      evs ≠ [] ∧
-      LibsignalBinary.Proofs.PeakBudget.SpqrTrialDomainLiftAux.TopStateTight F K bs ∧
-      tlb_DecodeStateTightEnvOf maxOps evs := by
-  refine ⟨spqrV1Init F K .a2b 0#256, [AllocEvent.alloc 32], by simp,
-    topStateTight_spqrV1Init F K .a2b 0#256, ?_⟩
-  refine ⟨?_, ?_, ?_, ?_⟩
-  · change 0 + 1 ≤ maxOps
-    omega
-  · decide
-  · intro _ _ _ hm
-    simp at hm
-  · intro ev hev
-    simp only [List.mem_singleton] at hev
-    subst hev
-    decide
 
 theorem tlb_decodeStateGuardedEnv_mono {F : ShaCompress} {K : MlKem} {n₁ n₂ : Nat}
     (hle : n₁ ≤ n₂) {x : DecodeStateGhost} {evs : List AllocEvent}

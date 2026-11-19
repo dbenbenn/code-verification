@@ -9,7 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.CallAndFrame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M2Dispatch.CallAndFrame
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.HopsPlaced -- proof-setup: allow-public-import
 
 /-!
 # Stack, Heap, and Slice Helpers for `main_m2` Dispatch
@@ -18,7 +19,7 @@ Stack `locals` split/merge lemmas, heap/layout unpackers, `CliInputsOk` argument
 tail arithmetic helpers for `main_m2` subcommand dispatch.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
@@ -37,7 +38,7 @@ open CryptoVerification.SignalSession.Cli.MainHops
 /-! ## 1. Stack `locals` Split and Merge Lemmas -/
 
 /-- Untouched part of `main`'s `0x480`-byte locals outside `[0x40..0x50)`, `[0x58..0x60)`, and `[0x1b8..0x1d8)`. -/
-def m2LocalsRest (fsp : BitVec 64) : SepProp :=
+@[expose] def m2LocalsRest (fsp : BitVec 64) : SepProp :=
   memRegion fsp 0x40 ∗ memRegion (fsp + 0x50#64) 8 ∗
     memRegion (fsp + 0x60#64) 0x158 ∗ memRegion (fsp + 0x1d8#64) 0x2a8
 
@@ -379,7 +380,7 @@ theorem bytes6_eq_pointsTo32_16 (a : BitVec 64) (b0 b1 b2 b3 b4 b5 : BitVec 8) :
     ProofLib.pointsToBytes_append, show ([b0, b1, b2, b3] : List (BitVec 8)).length = 4 from rfl,
     ProofLib.pointsToBytes4_eq_pointsTo32, ProofLib.pointsToBytes2_eq_pointsTo16]
 
-def argsBufTail (A : RustAlloc) (cap ptr : BitVec 64)
+@[expose] def argsBufTail (A : RustAlloc) (cap ptr : BitVec 64)
     (ps : List (BitVec 64 × List (BitVec 8))) : SepProp :=
   ⌜ps.length ≤ cap.toNat ∧ cap.toNat * 16 < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     A.live ptr (cap.toNat * 16) 8 ∗

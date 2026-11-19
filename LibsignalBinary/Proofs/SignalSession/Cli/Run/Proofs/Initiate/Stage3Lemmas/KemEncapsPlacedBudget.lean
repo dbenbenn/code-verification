@@ -9,14 +9,34 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemEncapsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsHelpersPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemEncapsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsHelpersPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Sem -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Glue.BcmpHookPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFill -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhHelpersPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsHelpers -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Collapse
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.EarlyExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Stage 3 KEM Seed Packing and `kyber::encapsulate` (`[LibsignalPlacement]`, `+0x0ee8 → +0x0fb4`)
@@ -26,7 +46,7 @@ splits the `1600`-byte output into `ct` (`1568` B) and `ss` (`32` B), and transp
 across `+0x0ee8 → +0x0fb4` (`0` heap events).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -43,10 +63,10 @@ open CryptoVerification.CliHandshake.InitiatePlaced (blkPl_521 lsProg_521)
 open CryptoVerification.E2E
   (PreKeyBundleFields UnreachedPqxdhPrimitives initiateKemCoins initiateTapeLen toU8)
 open CryptoVerification.E2E.Pqxdh.Initiator
-  (KyberEncapsCall bytesToBv8 initiatorModelPrims kyberEncapsStubSpec)
+  (KyberEncapsCall bytesToBv8 initiatorModelPrims)
 open CryptoVerification.E2E.Pqxdh.ResponderCore
   (and_ff32_hi56_3 and_ff_hi56_3 extractLsb_hi56_3 zext64_trunc32_hi56_3_and_ff)
-open CryptoVerification.E2E.Pqxdh.Shared (pqxdhEntryStack pqxdhHookStack)
+open CryptoVerification.E2E.Pqxdh.Shared (pqxdhEntryStack)
 open CryptoVerification.RecordCodecs (IdentityKeyPair)
 open CryptoVerification.SignalSession (CliHooks cliExternsPlaced)
 open CryptoVerification.SignalSession.Cli.RunCompose (InitGhost RunSem)
@@ -62,11 +82,10 @@ open CryptoVerification.SignalSession.Cli.RunSkeleton (RunBudgets)
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemEncapsPlacedBudget
 
-noncomputable section
-
 open Arm64 Arm64.Obj Arm64.Process ProofLib SepProp
 open LibsignalBinary.Heap (AllocCostModel AllocEvent BudgetLimits RustCliAllocBudget VmPreserved)
 open LibsignalBinary.Heap.SpecBudget (withVmPreserved)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet (withLsRet)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
   (InitPanicPostPlaced)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
@@ -74,7 +93,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBud
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlacedBudget
   (s3_block_in_vm_placed s3_block_to_call_vm_placed s3_done_call_vm s3_done_in_vm)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DefsPlacedBudget
-  (kyberEncaps_ok_at_init_placed s3_call_placed)
+  (kyberEncapsStubAtSpec kyberEncaps_ok_at_init_placed s3_call_placed)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhHelpersPlacedBudget
   (S3InvPrefixPlaced)
 open Arm64.Obj (MultiPlacement)
@@ -335,6 +354,8 @@ theorem kem_encaps_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
   obtain ⟨_, _, _, _, _, _, hkpk_eq, _⟩ := bundleEOf_props hs3.bundleEq
   have hsub_pq : pqxdhEntryStack ≤ stk - cliInitiateFrame :=
     Nat.le_trans (by decide) (stk_sub_ge_base hstk)
+  have hsub_64k : 65536 ≤ stk - cliInitiateFrame :=
+    Nat.le_trans (by decide) (stk_sub_ge_base hstk)
   have hstk_le64 := stk_sub_le_2pow64 hstk64
   have hfe0_split : memRegion (fsp + 0xfe0#64) 32 =
       memRegion (fsp + 0xfe0#64) 4 ∗ memRegion (fsp + 0xfe4#64) 4 ∗
@@ -415,15 +436,11 @@ theorem kem_encaps_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
             memRegion (fsp - BitVec.ofNat 64 (stk - cliInitiateFrame))
               (stk - cliInitiateFrame - cfStk) =
           memRegion (fsp - BitVec.ofNat 64 (stk - cliInitiateFrame))
-            (stk - cliInitiateFrame - pqxdhEntryStack) ∗
-          memRegion (fsp - BitVec.ofNat 64 pqxdhEntryStack)
-            (pqxdhEntryStack - pqxdhHookStack) ∗
-          stackAt fsp pqxdhHookStack := by
+            (stk - cliInitiateFrame - 65536) ∗
+          stackAt fsp 65536 := by
         rw [sepConj_comm (stackAt fsp cfStk),
             ← stackAt_sub_split_init fsp hcfStk hstk_le64,
-            stackAt_sub_split_init fsp hsub_pq hstk_le64,
-            stackAt_sub_split_init fsp (by decide : pqxdhHookStack ≤ pqxdhEntryStack) (by decide),
-            ← sepConj_assoc]
+            stackAt_sub_split_init fsp hsub_64k hstk_le64]
       have hout1600 :
           ((fsp + 0x1600#64) ↦₃₂ coinWord t 31 (by decide)) ∗
             memRegion (fsp + 0x1604#64) 20 ∗ memRegion (fsp + 0x1618#64) 0x648 ⊢
@@ -461,8 +478,10 @@ theorem kem_encaps_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
       refine s3_call_placed hh (kyberEncaps_ok_at_init_placed mmpl gh W X hh) g _
         hc2 htr2 hp2 hl2 hpanic
         (by
-          simp only [withVmPreserved, kyberEncapsStubSpec, hpk_bv, hcoins_bv, hc2.sp, sepConj_assoc]
+          simp only [withLsRet, withVmPreserved, kyberEncapsStubAtSpec, hpk_bv, hcoins_bv, hc2.sp,
+            sepConj_assoc]
           dsimp only [g, fsp] at hx0_2 hx1_2 hx8_2 ⊢
+          refine Entails.pure_right ⟨521, by decide, 0xfb4, by decide, hl2⟩ ?_
           refine Entails.pure_right ⟨hx0_2, hx1_2, hx8_2, hpk_len, hcoins_len, h_some⟩ ?_
           have hkem := kemCoins32_pointsTo_eq (s0.sp - BitVec.ofNat 64 cliInitiateFrame) t
           dsimp only [t, fsp] at hkem hcollapse_pre hout1600 hstk_merge ⊢
@@ -472,12 +491,12 @@ theorem kem_encaps_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
           refine sep_replace (Entails.of_eq hstk_merge) (by sep_frame) ?_
           simp only [sepConj_assoc]
           sep_frame) ?_ ?_ ?_ ?_
-      · intro _ _ h; simp [withVmPreserved, kyberEncapsStubSpec, Spec.onPanic] at h
-      · intro _ _ _ h; simp [withVmPreserved, kyberEncapsStubSpec, Spec.onExit] at h
-      · intro _ _ h; simp [withVmPreserved, kyberEncapsStubSpec, Spec.onOom] at h
+      · intro _ _ h; simp [withLsRet, withVmPreserved, kyberEncapsStubAtSpec, Spec.onPanic] at h
+      · intro _ _ _ h; simp [withLsRet, withVmPreserved, kyberEncapsStubAtSpec, Spec.onExit] at h
+      · intro _ _ h; simp [withLsRet, withVmPreserved, kyberEncapsStubAtSpec, Spec.onOom] at h
       · intro sf _ _ _ hcs_f _ hof
-        simp only [withVmPreserved, kyberEncapsStubSpec, hpk_bv, hcoins_bv, h_out, hc2.sp,
-          sepConj_assoc]
+        simp only [withLsRet, withVmPreserved, kyberEncapsStubAtSpec, hpk_bv, hcoins_bv, h_out,
+          hc2.sp, sepConj_assoc]
         refine sepWPp_pure_elim_oom fun hvm_f => sepWPp_pure_elim_oom fun htr_f => ?_
         have hpool_f : A.pool lim st se = A.pool lim st sf :=
           ((A.pool_transport lim st se sm1 hvm1).symm.trans
@@ -491,10 +510,14 @@ theorem kem_encaps_placed_ok_at [LibsignalPlacement] {M : AllocCostModel}
           rw [pointsToBytes_append, ct.toList_length]
           simp only [BitVec.ofNat_eq_ofNat, BitVec.add_assoc, BitVec.reduceAdd]
         have hstk_back :
-            memRegion (fsp - BitVec.ofNat 64 pqxdhEntryStack)
-                (pqxdhEntryStack - pqxdhHookStack) ∗ stackAt fsp pqxdhHookStack =
-              stackAt fsp pqxdhEntryStack :=
-          (stackAt_sub_split_init fsp (by decide : pqxdhHookStack ≤ pqxdhEntryStack) (by decide)).symm
+            memRegion (fsp - BitVec.ofNat 64 (stk - cliInitiateFrame))
+                (stk - cliInitiateFrame - 65536) ∗ stackAt fsp 65536 =
+              stackAt fsp pqxdhEntryStack ∗
+                memRegion (fsp - BitVec.ofNat 64 (stk - cliInitiateFrame))
+                  (stk - cliInitiateFrame - pqxdhEntryStack) := by
+          rw [← stackAt_sub_split_init fsp hsub_64k hstk_le64,
+              stackAt_sub_split_init fsp hsub_pq hstk_le64,
+              sepConj_comm]
         refine sepWPp_conseq_oom ?_
           (hnext sf (hof htr_f) (htr_f.trans htr2)
             (hcs_f.2.1.trans hx20_2) (hcs_f.2.2.1.trans hx21_2))
@@ -679,7 +702,5 @@ theorem kem_encaps_hooks_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   kem_encaps_placed_ok_at cliCoinsFillStackPlaced
     (Nat.le_trans (by decide) (stk_sub_ge_base hstk))
     hh hstk hstk64 hs3 hpanic hctrl htr hx20 hx21 hx25 hx22 hx26 hx23 hx27 hx28 hx24 hnext
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemEncapsPlacedBudget

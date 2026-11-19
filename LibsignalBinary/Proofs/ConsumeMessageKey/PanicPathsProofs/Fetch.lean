@@ -9,44 +9,21 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch
+public import LibsignalBinary.Proofs.ConsumeMessageKey.AdvanceEpilogueProofs.Fetch -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Instruction Decodes and Placed Call Combinators for `consume_message_key` Panic Paths
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalSession.PanicPaths
 
 open Arm64 ProofLib.ProgramReflection
 
 /-! ## Store-Loop Missing-Chain Path (`+0x334 .. +0x388`) -/
-
-@[scoped simp, arm64_norm] gen_decodes libsignalSessionCode_tree libsignalSessionBin [
-    (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 820) → (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 904)]
-
-/-! ## Epilogue Panic Paths (`+0x4dc .. +0x524`) -/
-
-@[scoped simp, arm64_norm] gen_decodes libsignalSessionCode_tree libsignalSessionBin [
-    (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 1244) → (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 1316)]
-
-/-! ## Cold Panic Blocks -/
-
-@[scoped simp, arm64_norm] gen_decodes libsignalSessionCode_tree libsignalSessionBin [
-    (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 2420) → (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 2440)]
-
-@[scoped simp, arm64_norm] gen_decodes libsignalSessionCode_tree libsignalSessionBin [
-    (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 2460) → (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 2480)]
-
-@[scoped simp, arm64_norm] gen_decodes libsignalSessionCode_tree libsignalSessionBin [
-    (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 2484) → (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 2492)]
-
-@[scoped simp, arm64_norm] gen_decodes libsignalSessionCode_tree libsignalSessionBin [
-    (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 2496) → (ls_off% "<libsignal_protocol::double_ratchet::RatchetState>::consume_message_key" + 2504)]
-
-/-! ## Relocatable `[LibsignalPlacement]` Call Combinators -/
 
 open ProofLib CryptoGames CryptoGames.HMAC CryptoGames.LibsignalSession
 open CryptoVerification.RustHeap CryptoVerification.LibsignalSessionRepr

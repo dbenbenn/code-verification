@@ -9,10 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhF
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhF -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+import Computational.Proofs.SpecLemmas.SignalPqxdh.Game
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhA -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhC -- proof-setup: allow-public-import
 
-@[expose] public section
+public section
 
 /-!
 # Fiedler–Günther Cases A and C: `GapDH` Bounds

@@ -10,13 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueFetchBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueClonesBudget
-public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Prologue
+public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.CalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.SplitBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueFetchBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueClonesBudget
+import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.Prologue
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetVmSteps
@@ -24,6 +24,8 @@ meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.PrologueFetch -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded `PreKeySignalMessage::new` Prologue Composition
@@ -33,7 +35,7 @@ buffer allocation, and full prologue composition (`+0x000..+0x25c` to `SeamA_pla
 under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -556,63 +558,6 @@ theorem preKeyMsg_alloc_ser_wpp_placed [LibsignalPlacement]
       (fun _ _ => False) :=
   preKeyMsg_alloc_ser_wpp_placed_of_ok
     (ls_hook_ok_of_mem hshim)
-    (preKeyMsg_alloc_placed_ok halloc)
-    hEncLen x sp0 kyberCap kyberCopyPtr bkSerPtr ikSerPtr msgCopyPtr
-    w368 w144 w136 w128 ver32 pkId32 st hkyCap hky_len hmsg_len hver hfit hfits
-    s hcl hpc hrun hsp hsp_align hx0 hx19 hx20 hx21 hx22 hx24 hx25 hx26 hx27 hx28 hx29
-
-theorem preKeyMsg_alloc_ser_wpp_placed_sessionHooks [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hshim : HookSat H lsRustNoAllocShimSym sessionShimBudgetSpec)
-    (halloc : HookSat H lsRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hEncLen : PreKeyMsgEncodedLenPlacedOk A.repAlloc H)
-    (x : PreKeyMsgNewCall) (sp0 kyberCap kyberCopyPtr bkSerPtr ikSerPtr msgCopyPtr
-      w368 w144 w136 w128 : BitVec 64) (ver32 pkId32 : BitVec 32)
-    (st : M.σ)
-    (hkyCap : kyberCap = match x.kp with | none => noneCap | some k => BitVec.ofNat 64 k.ciphertext.length)
-    (hky_len : ∀ k, x.kp = some k → k.ciphertext.length < 2 ^ 63)
-    (hmsg_len : x.msg.serialized.length < 2 ^ 63)
-    (hver : ver32.setWidth 8 = x.ver) (hfit : x.model.serialized.length < 2 ^ 42)
-    (hfits : FitsEvents M lim st (serAllocEvs x))
-    (s : State) (hcl : LibsignalCodeLoaded lsmpl s.mem)
-    (hpc : s.pc = (blkPl_41).base + 496#64) (hrun : s.status = .Running)
-    (hsp : s.sp = sp0 - 368#64) (hsp_align : s.spAligned = true)
-    (hx0 : s.readReg64 .x0 = sp0 - 272#64) (hx19 : s.readReg64 .x19 = kyberCap)
-    (hx20 : s.readReg64 .x20 = (if x.preKeyId.isSome then 1#32 else 0#32).zeroExtend 64)
-    (hx21 : s.readReg64 .x21 = x.spk.zeroExtend 64) (hx22 : s.readReg64 .x22 = 33#64)
-    (hx24 : s.readReg64 .x24 = 33#64) (hx25 : s.readReg64 .x25 = pkId32.zeroExtend 64)
-    (hx26 : s.readReg64 .x26 = msgCopyPtr)
-    (hx27 : s.readReg64 .x27 = BitVec.ofNat 64 x.msg.serialized.length)
-    (hx28 : s.readReg64 .x28 = bkSerPtr) (hx29 : s.readReg64 .x29 = sp0 - 96#64) :
-    SepWPp (lsProg_41 H) ((blkPl_41).base + 604#64) s
-      (((sp0 - 368#64) ↦₆₄ w368) ∗ ((sp0 - 332#64) ↦₃₂ ver32) ∗
-       wirePreKeySignalMessageAt A.repAlloc
-         (x.mkWirePins kyberCap kyberCopyPtr bkSerPtr ikSerPtr msgCopyPtr)
-         (sp0 - 272#64) x.protoMsg ∗
-       ((sp0 - 144#64) ↦₆₄ w144) ∗ ((sp0 - 136#64) ↦₆₄ w136) ∗ ((sp0 - 128#64) ↦₆₄ w128) ∗
-       A.pool lim st s ∗ stackAt (sp0 - 368#64) preKeyMsgSubStack)
-      (fun sm Pm =>
-        (sm.sp = sp0 - 368#64 ∧ sm.spAligned = true ∧ sm.readReg64 .x19 = kyberCap ∧
-         sm.readReg64 .x20 = (if x.preKeyId.isSome then 1#32 else 0#32).zeroExtend 64 ∧
-         sm.readReg64 .x21 = x.spk.zeroExtend 64 ∧ sm.readReg64 .x22 = 33#64 ∧
-         sm.readReg64 .x24 = 33#64 ∧ sm.readReg64 .x25 = pkId32.zeroExtend 64 ∧
-         sm.readReg64 .x27 = BitVec.ofNat 64 x.msg.serialized.length ∧
-         sm.readReg64 .x28 = bkSerPtr ∧ sm.readReg64 .x29 = sp0 - 96#64 ∧
-         sm.trace = s.trace ∧ calleeSavedVRegs sm = calleeSavedVRegs s) ∧
-        (Pm ⊢ ∃∗ serPtr : BitVec 64,
-          ((sp0 - 368#64) ↦₆₄ msgCopyPtr) ∗ ((sp0 - 332#64) ↦₃₂ ver32) ∗
-          memRegion (sp0 - 272#64) 128 ∗
-          vecU8At A.repAlloc (sp0 - 144#64) (BitVec.ofNat 64 x.model.serialized.length)
-            serPtr [versionByte x.ver] ∗
-          optKyberCopyBuf A.repAlloc kyberCopyPtr x.kp ∗
-          boxU8Buf A.repAlloc bkSerPtr x.baseKey.serialize ∗
-          boxU8Buf A.repAlloc ikSerPtr x.ik.serialize ∗
-          boxU8Buf A.repAlloc msgCopyPtr x.msg.serialized ∗
-          A.pool lim (M.stepEvents (serAllocEvs x) st) sm ∗
-          stackAt (sp0 - 368#64) preKeyMsgSubStack))
-      (fun _ _ => False) :=
-  preKeyMsg_alloc_ser_wpp_placed_of_ok
-    (subroutine_ok_noAllocShim_of_sessionShimBudget (preKeyMsg_shim_placed_ok hshim))
     (preKeyMsg_alloc_placed_ok halloc)
     hEncLen x sp0 kyberCap kyberCopyPtr bkSerPtr ikSerPtr msgCopyPtr
     w368 w144 w136 w128 ver32 pkId32 st hkyCap hky_len hmsg_len hver hfit hfits

@@ -9,22 +9,31 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
-public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.KpkMark
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecDefs
-public import LibsignalBinary.Proofs.SignalSession.Cli.CliTokenPatchPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosure
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Coins.CoinsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Session -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.KpkMark -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.SpecDefs
+import LibsignalBinary.Proofs.SignalSession.Cli.CliTokenPatchPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.MainCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.LogClosure
 public import LibsignalBinary.Specifications.SignalSession.CliBinaryPq
+public import LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.SignalSession.CliProcess
+-- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.PqxdhHooksLegacy
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
+public import LibsignalBinary.Proofs.SignalSession.Cli.PublicSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Specs.SpeOwned -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Specs
+public import ProofLib.FsTrace
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable CLI Hook Table, Function Specifications, and Process Composition
@@ -38,7 +47,7 @@ specs, `mainSpecPlaced`, `outcome_of_main_placed`), and `MainHops` callee/I/O bu
 `runSpecPlaced`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -51,32 +60,26 @@ open Arm64 Arm64.Obj Arm64.Process ProofLib
 open CryptoGames CryptoGames.LibsignalSession
 
 /-- Block `617` (`main`) program under `[LibsignalPlacement]` with `cliExternsPlaced mmpl W`. -/
-noncomputable def cliProgPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement) (W : CliHooks) :
+@[expose] noncomputable def cliProgPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     Program :=
   libsignalSessionLib.blockProgram lsmpl 617 (cliExternsPlaced mmpl W)
 
-/-- Block `617` (`main`) program under `[LibsignalPlacement]` with `cliExternsPlacedSig mmpl W`. -/
-noncomputable abbrev cliProgPlacedSig [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
-    (W : CliHooks) : Program :=
-  Placed.cliProgPlacedSig lsmpl mmpl W
+/-- Block `617` (`main`) program under `[LibsignalPlacement]` with `cliExternsPlacedSig`. -/
+noncomputable abbrev cliProgPlacedSig [LibsignalPlacement] (_mmpl : Obj.MultiPlacement)
+    (_W : CliHooks) : Program :=
+  Placed.cliProgPlacedSig lsmpl
 
-abbrev CliRunsToPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement) (elf : ElfImage)
-    (W : CliHooks) (i : Inputs) (o : Outcome) : Prop :=
-  Placed.CliRunsToPlaced lsmpl mmpl elf W i o
+abbrev CliRunsToPlaced [LibsignalPlacement] (_mmpl : Obj.MultiPlacement) (elf : ElfImage)
+    (_W : CliHooks) (i : Inputs) (o : Outcome) : Prop :=
+  Placed.CliRunsToPlaced lsmpl elf i o
 
-noncomputable abbrev cliRunPlacedSig [LibsignalPlacement] (mmpl : Obj.MultiPlacement)
-    (elf : ElfImage) (W : CliHooks) : CliRun :=
-  Placed.cliRunPlacedSig lsmpl mmpl elf W
-
-noncomputable def cliRunOfPlaced [LibsignalPlacement] (mmpl : Obj.MultiPlacement) (elf : ElfImage)
-    (W : CliHooks) : CliRun :=
-  fun i =>
-    (outcomeOf elf (cliProgPlaced mmpl W)
-      (processInputs ("libsignal-cli" :: i.argv) i.stdin i.files i.dirs)).map toOutcome
+noncomputable abbrev cliRunPlacedSig [LibsignalPlacement] (_mmpl : Obj.MultiPlacement)
+    (elf : ElfImage) (_W : CliHooks) : CliRun :=
+  Placed.cliRunPlacedSig lsmpl elf
 
 /-- Non-null placed `futDrop` address: `lsmpl.base 547` when non-zero (all well-formed ELFs load at
 `≥ 4096`), falling back to `1#64` at `0#64`. -/
-def lsDropOffPlaced [LibsignalPlacement] : BitVec 64 :=
+@[expose] def lsDropOffPlaced [LibsignalPlacement] : BitVec 64 :=
   if lsmpl.base 547 == 0#64 then 1#64 else lsmpl.base 547
 
 theorem lsDropOffPlaced_eq [LibsignalPlacement] (h : lsmpl.base 547 ≠ 0#64) :
@@ -112,7 +115,7 @@ open CryptoVerification.RecordCodecs CryptoVerification.RecordCodecsBinary
 
 /-! ### `path` and `decimal` -/
 
-def pathSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec PathGhost :=
+@[expose] def pathSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec PathGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.dirA ∧
@@ -128,7 +131,7 @@ def pathSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec PathG
           SpqrV1.ChainProofs.bytesAt x.nameRo x.nameA x.name ∗ stackAt s0.sp stk ∗ A.pool
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def decimalSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec DecimalGhost :=
+@[expose] def decimalSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec DecimalGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.ret ∧ s.readReg32 .x1 = x.n⌝ ∗ memRegion x.ret 24 ∗
@@ -141,7 +144,7 @@ def decimalSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec De
 /-! ### Directory helpers (`read_file`, `address_text`, `grow_one`, `Dir::put`, `Dir::get`) -/
 
 /-- Hook-level `read_file` specification (without `inImage` or `withLsCodeRoLoaded`, suitable for `HookSat`). -/
-def readFileSpecPlaced (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
+@[expose] def readFileSpecPlaced (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
     (stk : Nat) : Spec ReadFileGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
@@ -153,7 +156,7 @@ def readFileSpecPlaced (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : 
       (x.pathA ↦ₛ x.path) ∗ stackAt s0.sp stk ∗ A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def addrTextSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec AddrTextGhost :=
+@[expose] def addrTextSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec AddrTextGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.addr ∧ x.g.name.bytes.length < 2 ^ 32⌝ ∗
@@ -163,7 +166,7 @@ def addrTextSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec A
           protocolAddressAt A x.g x.addr ∗ stackAt s0.sp stk ∗ A.pool
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def growOneDirSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec GrowOneDirGhost :=
+@[expose] def growOneDirSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec GrowOneDirGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.v ∧ x.cap.toNat < 2 ^ 32⌝ ∗
@@ -175,7 +178,7 @@ def growOneDirSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec
           stackAt s0.sp stk ∗ A.pool
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def dirPutSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec DirPutGhost :=
+@[expose] def dirPutSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec DirPutGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x1 = x.nameV ∧ s.readReg64 .x2 = x.bytesV ∧
@@ -187,7 +190,7 @@ def dirPutSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec Dir
           memRegion x.nameV 24 ∗ memRegion x.bytesV 24 ∗ stackAt s0.sp stk ∗ A.pool
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def dirPutStrSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec DirPutStrGhost :=
+@[expose] def dirPutStrSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec DirPutStrGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x1 = x.nameA ∧
@@ -201,7 +204,7 @@ def dirPutStrSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec 
           stackAt s0.sp stk ∗ A.pool
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def dirGetSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def dirGetSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) : Spec DirGetGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -220,7 +223,7 @@ def dirGetSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec
 
 /-! ### Bundle helpers (`split_id`, `split_signed`, `read_bundle::{closure#0}`) -/
 
-def splitIdSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec SplitGhost :=
+@[expose] def splitIdSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec SplitGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.fp ∧
@@ -232,7 +235,7 @@ def splitIdSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec Sp
           SpqrV1.ChainProofs.bytesAt x.ro x.fp x.file ∗ stackAt s0.sp stk ∗ A.pool
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def splitSignedSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec SplitGhost :=
+@[expose] def splitSignedSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec SplitGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.ret ∧ s.readReg64 .x1 = x.fp ∧
@@ -244,7 +247,7 @@ def splitSignedSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spe
           SpqrV1.ChainProofs.bytesAt x.ro x.fp x.file ∗ stackAt s0.sp stk ∗ A.pool
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def bundleReadSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def bundleReadSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) : Spec BundleReadGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -284,7 +287,7 @@ abbrev cliPreKeyVtSym : String := "libsignal_cli:.rodata..Lanon.36"
 abbrev cliSignedPreKeyVtSym : String := "libsignal_cli:.rodata..Lanon.37"
 abbrev cliKyberPreKeyVtSym : String := "libsignal_cli:.rodata..Lanon.38"
 
-def sessLoadShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec LoadShimCall :=
+@[expose] def sessLoadShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec LoadShimCall :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x1 = x.addrA⌝ ∗ A.pool ∗ stackAt s.sp stk
@@ -295,7 +298,7 @@ def sessLoadShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Sp
           A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def sessStoreShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec StoreShimCall :=
+@[expose] def sessStoreShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : Spec StoreShimCall :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x1 = x.addrA ∧ s.readReg64 .x2 = x.recA⌝ ∗
@@ -308,7 +311,7 @@ def sessStoreShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) : S
           A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-noncomputable def sessDeserializeSpecPlaced [LibsignalPlacement]
+@[expose] def sessDeserializeSpecPlaced [LibsignalPlacement]
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (A : RustAlloc) :
     Spec E2E.Record.DeserializeGeneral.DeserializeGenGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
@@ -325,7 +328,7 @@ noncomputable def sessDeserializeSpecPlaced [LibsignalPlacement]
           stackAt s0.sp E2E.Record.recDeserializeStack
       onPanic := E2E.Record.Serialization.allocPanic }
 
-def sessLoadPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def sessLoadPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (Scope : SessionRecord (List (BitVec 8)) → Prop) (A : RustAlloc)
     (stk : Nat) : Spec SessLoadPollGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
@@ -349,7 +352,7 @@ def sessLoadPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (
           protocolAddressAt A x.call.addr x.call.addrA ∗ A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def sessStorePollSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def sessStorePollSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec SessStorePollGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -373,7 +376,7 @@ def sessStorePollSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
           A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def idSaveShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def idSaveShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec IdentityShimCall :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -387,7 +390,7 @@ def idSaveShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
           A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def idTrustShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def idTrustShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec (IdentityShimCall × BitVec 8) :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun (x, d) s =>
@@ -401,7 +404,7 @@ def idTrustShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
           A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def idTrustPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def idTrustPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) : Spec (IdPollGhost × BitVec 8) :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun (x, d) s =>
@@ -427,7 +430,7 @@ def idTrustPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (B
           FromRecordCallees.lsLogOff ∗ A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def idSavePollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def idSavePollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) : Spec IdPollGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -455,7 +458,7 @@ def idSavePollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (Bi
           FromRecordCallees.lsLogOff ∗ A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def pkShimSpecPlaced [LibsignalPlacement] (vtSym : String) (A : RustAlloc) (stk : Nat) :
+@[expose] def pkShimSpecPlaced [LibsignalPlacement] (vtSym : String) (A : RustAlloc) (stk : Nat) :
     Spec PkShimCall :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -467,7 +470,7 @@ def pkShimSpecPlaced [LibsignalPlacement] (vtSym : String) (A : RustAlloc) (stk 
           A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def kpkMarkShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
+@[expose] def kpkMarkShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
     Spec KpkMarkShimCall :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -481,7 +484,7 @@ def kpkMarkShimSpecPlaced [LibsignalPlacement] (A : RustAlloc) (stk : Nat) :
           A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def pkGetPollSpecOfPlaced [LibsignalPlacement] {α : Type}
+@[expose] def pkGetPollSpecOfPlaced [LibsignalPlacement] {α : Type}
     (dec : List (BitVec 8) → Except SignalProtocolError α)
     (resAt : RustAlloc → BitVec 64 → Except SignalProtocolError α → SepProp) (size w : Nat)
     (rd : ReadRule) (pathOk : List (BitVec 8) → Prop) (A : RustAlloc)
@@ -507,7 +510,7 @@ abbrev pkGetPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (
     (A : RustAlloc) (stk : Nat) : Spec PkPollGhost :=
   pkGetPollSpecOfPlaced PreKeyRecord.deserialize preKeyResultAt 56 13 rd pathOk A stk
 
-def pkRemovePollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def pkRemovePollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) : Spec PkPollGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -523,7 +526,7 @@ def pkRemovePollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (
           pkBoxAt x.fut x.self x.id 1#8 ∗ A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def kpkGetPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def kpkGetPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) : Spec KpkPollGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -546,7 +549,7 @@ def kpkGetPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (Bi
           dirAt A (x.self + 0x28#64) x.kg.lastResort ∗ A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def dropSpeWordSpecPlaced [LibsignalPlacement] (A : RustAlloc) : Spec DropSpeWordGhost :=
+@[expose] def dropSpeWordSpecPlaced [LibsignalPlacement] (A : RustAlloc) : Spec DropSpeWordGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.a ∧ (x.w = 13 ∨ x.w = 14)⌝ ∗
@@ -555,7 +558,7 @@ def dropSpeWordSpecPlaced [LibsignalPlacement] (A : RustAlloc) : Spec DropSpeWor
       post := fun x s0 sf =>
         ⌜sf.trace = s0.trace⌝ ∗ memRegion x.a 48 ∗ A.pool ∗ stackAt s0.sp Getters.dropSpeStackX }
 
-def kpkMarkPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def kpkMarkPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) : Spec KpkMarkPollGhost :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -579,19 +582,19 @@ def kpkMarkPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (B
 
 /-! ### `main` statics, entry precondition, and process composition -/
 
-def coinsStaticsPlaced [LibsignalPlacement] : SepProp :=
+@[expose] def coinsStaticsPlaced [LibsignalPlacement] : SepProp :=
   (∃∗ v : BitVec 64, Coins.coinsNextPlaced ↦₆₄ v) ∗
     (∃∗ v : BitVec 64, Coins.coinsLeftPlaced ↦₆₄ v)
 
-def cliStaticsPlaced [LibsignalPlacement] : SepProp :=
+@[expose] def cliStaticsPlaced [LibsignalPlacement] : SepProp :=
   coinsStaticsPlaced ∗ SpqrV1.GF.Mul2U16.tokenInitPlacedAt ∗ FromRecordCallees.lsLogOff
 
 /-- Entry memory predicate of `main` parameterized by `CodeOk : Memory → Prop`. -/
-def mainEntryPrePlaced (CodeOk : Memory → Prop) (A : RustAlloc) (stk : Nat) (Statics : SepProp)
+@[expose] def mainEntryPrePlaced (CodeOk : Memory → Prop) (A : RustAlloc) (stk : Nat) (Statics : SepProp)
     (i : Inputs) (s : State) : SepProp :=
   ⌜CodeOk s.mem ∧ stk ≤ s.sp.toNat⌝ ∗ mainFrame A stk Statics i s
 
-def mainSpecPlaced (CodeOk : Memory → Prop) (A : RustAlloc) (stk : Nat) (Statics : SepProp)
+@[expose] def mainSpecPlaced (CodeOk : Memory → Prop) (A : RustAlloc) (stk : Nat) (Statics : SepProp)
     (Run : Inputs → RunAnswer → Prop) : Spec MainGhost where
   pre := fun g s =>
     ⌜CodeOk s.mem ∧ MainCaseB2 Run IsSendOverCap IsStdinOverCap g.i g.r ∧ CliInputsOk g.i ∧
@@ -602,7 +605,7 @@ def mainSpecPlaced (CodeOk : Memory → Prop) (A : RustAlloc) (stk : Nat) (Stati
   onExit := fun _ _ s0 sf => ⌜allocFailedIn s0 sf⌝ ∗ anyHeap
   onOom := fun _ s0 sf => ⌜allocFailedIn s0 sf⌝ ∗ anyHeap
 
-def mainSpecTightPlaced (CodeOk : Memory → Prop) (A : RustAlloc) (stk : Nat) (Statics : SepProp)
+@[expose] def mainSpecTightPlaced (CodeOk : Memory → Prop) (A : RustAlloc) (stk : Nat) (Statics : SepProp)
     (Run : Inputs → RunAnswer → Prop) : Spec MainGhost where
   pre := fun g s =>
     ⌜CodeOk s.mem ∧ MainCaseB2 Run IsSendOverCap IsStdinOverCap g.i g.r ∧ CliInputsOk g.i ∧
@@ -738,10 +741,10 @@ open CryptoVerification.LibsignalTripleRatchetRepr CryptoVerification.LibsignalT
 open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.SignalSession CryptoVerification.SignalSession.Cli
 
-def idOwnFutBoxAtPlaced (box self : BitVec 64) (st : BitVec 8) : SepProp :=
+@[expose] def idOwnFutBoxAtPlaced (box self : BitVec 64) (st : BitVec 8) : SepProp :=
   (box ↦₆₄ self) ∗ ((box + 8#64) ↦₈ st) ∗ memRegion (box + 9#64) 7
 
-def idOwnShimSpecPlaced [LibsignalPlacement] (vtSym : String) (A : RustAlloc) (stk : Nat) :
+@[expose] def idOwnShimSpecPlaced [LibsignalPlacement] (vtSym : String) (A : RustAlloc) (stk : Nat) :
     Spec (BitVec 64) :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun self s =>
@@ -760,7 +763,7 @@ structure IdOwnPollGhostPlaced where
   self : BitVec 64
   own : DirGhost
 
-def idKeyPairOutAtPlaced (A : RustAlloc) (out : BitVec 64) :
+@[expose] def idKeyPairOutAtPlaced (A : RustAlloc) (out : BitVec 64) :
     Except Unit IdentityKeyPair → SepProp
   | .ok kp =>
     (out ↦₈ 0#8) ∗ ((out + 1#64) ↦ₛ kp.identityKey.publicKey.bytes.toList) ∗
@@ -770,7 +773,7 @@ def idKeyPairOutAtPlaced (A : RustAlloc) (out : BitVec 64) :
       (∃∗ k : RunDrop.SpeOwned, RunDrop.speOwnedAt A (out + 8#64) k) ∗
       memRegion (out + 0x38#64) 16
 
-def idKeyPairPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def idKeyPairPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) : Spec IdOwnPollGhostPlaced :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -789,12 +792,12 @@ def idKeyPairPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List 
           FromRecordCallees.lsLogOff ∗ A.pool ∗ stackAt s0.sp stk
       onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
 
-def idRegIdOutAtPlaced (A : RustAlloc) (out : BitVec 64) : Except Unit (BitVec 32) → SepProp
+@[expose] def idRegIdOutAtPlaced (A : RustAlloc) (out : BitVec 64) : Except Unit (BitVec 32) → SepProp
   | .ok reg =>
     (out ↦₆₄ 0xFFFFFFFFFFFFFFFE#64) ∗ ((out + 8#64) ↦₃₂ reg) ∗ memRegion (out + 12#64) 36
   | .error () => ∃∗ k : RunDrop.SpeOwned, RunDrop.speOwnedAt A out k
 
-def idRegIdPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
+@[expose] def idRegIdPollSpecPlaced [LibsignalPlacement] (rd : ReadRule) (pathOk : List (BitVec 8) → Prop)
     (A : RustAlloc) (stk : Nat) : Spec IdOwnPollGhostPlaced :=
   LibsignalPublicApi.StoreKit.withLsCodeRoLoaded lsmpl
     { pre := fun x s =>
@@ -829,16 +832,16 @@ open CryptoVerification.SignalSession.Cli.Main.Placed
 noncomputable abbrev mProgPlaced [LibsignalPlacement] (H : LibsignalHooks) : Program :=
   lsProg_617 H
 
-noncomputable abbrev mPcPlaced [LibsignalPlacement] (k : Nat) : BitVec 64 :=
+abbrev mPcPlaced [LibsignalPlacement] (k : Nat) : BitVec 64 :=
   lsmpl.base 617 + BitVec.ofNat 64 k
 
-def coinsInstalledPlaced [LibsignalPlacement] (p : BitVec 64) (coins : List (BitVec 8)) : SepProp :=
+@[expose] def coinsInstalledPlaced [LibsignalPlacement] (p : BitVec 64) (coins : List (BitVec 8)) : SepProp :=
   (Coins.coinsNextPlaced ↦₆₄ p) ∗
     (Coins.coinsLeftPlaced ↦₆₄ BitVec.ofNat 64 coins.length) ∗ (p ↦ₛ coins)
 
 abbrev coinsLitSym : String := "libsignal_cli:.rodata..Lanon.97"
 
-def dirLitsPlaced : List (String × String) :=
+@[expose] def dirLitsPlaced : List (String × String) :=
   [("libsignal_cli:.rodata..Lanon.51", "identities"),
    ("libsignal_cli:.rodata..Lanon.46", "signed-pre-keys"),
    ("libsignal_cli:.rodata..Lanon.48", "one-time-kyber-pre-keys"),
@@ -847,7 +850,7 @@ def dirLitsPlaced : List (String × String) :=
    ("libsignal_cli:.rodata.cst8", "sessions"),
    ("libsignal_cli:.rodata..Lanon.53", "public")]
 
-def mainLitsPlaced [LibsignalPlacement] : SepProp :=
+@[expose] def mainLitsPlaced [LibsignalPlacement] : SepProp :=
   (lsρ coinsLitSym ↦ᵣ utf8 "coins") ∗
     (dirLitsPlaced.foldr (fun l P => (lsρ l.1 ↦ᵣ utf8 l.2) ∗ P) emp)
 
@@ -948,7 +951,7 @@ structure MainCalleesPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalH
   tryAllocateIn3 : subroutine_ok (lsProg_617 H) (lsmpl.base 561)
     (withLsRoCl lsmpl (tryAllocateInSpecOf resStack A).keepsFs)
 
-def readStdinSpecPlaced (io : IoModel) (A : RustAlloc) (stk : Nat) : Spec ReadStdinGhost where
+@[expose] def readStdinSpecPlaced (io : IoModel) (A : RustAlloc) (stk : Nat) : Spec ReadStdinGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x8 = x.ret ∧ io.stdin s.fs = some x.bs⌝ ∗
       memRegion x.ret 24 ∗ stackAt s.sp stk ∗ A.pool
@@ -959,7 +962,7 @@ def readStdinSpecPlaced (io : IoModel) (A : RustAlloc) (stk : Nat) : Spec ReadSt
       stackAt s0.sp stk ∗ A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def readFileLitSpecPlaced (io : IoModel) (A : RustAlloc) (stk : Nat) : Spec ReadFileLitGhost where
+@[expose] def readFileLitSpecPlaced (io : IoModel) (A : RustAlloc) (stk : Nat) : Spec ReadFileLitGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
       s.readReg64 .x8 = x.ret ∧ x.path.length < 2 ^ 32 ∧ io.pathOk x.path⌝ ∗
@@ -971,7 +974,7 @@ def readFileLitSpecPlaced (io : IoModel) (A : RustAlloc) (stk : Nat) : Spec Read
       (x.pathA ↦ᵣ x.path) ∗ stackAt s0.sp stk ∗ A.pool
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def writeFileSpecPlaced (io : IoModel) (stk : Nat) : Spec WriteFileGhost where
+@[expose] def writeFileSpecPlaced (io : IoModel) (stk : Nat) : Spec WriteFileGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.pathA ∧ (s.readReg64 .x1).toNat = x.path.length ∧
       s.readReg64 .x2 = x.buf ∧ (s.readReg64 .x3).toNat = x.bs.length ∧
@@ -986,7 +989,7 @@ def writeFileSpecPlaced (io : IoModel) (stk : Nat) : Spec WriteFileGhost where
         ProcessOutcome.traceStreamBytes .stdout s0.trace⌝ ∗
       (x.pathA ↦ₛ x.path) ∗ (x.buf ↦ₛ x.bs) ∗ stackAt s0.sp stk
 
-def writeStdoutSpecPlaced (stk : Nat) : Spec WriteStdoutGhost where
+@[expose] def writeStdoutSpecPlaced (stk : Nat) : Spec WriteStdoutGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.buf ∧ (s.readReg64 .x1).toNat = x.bs.length⌝ ∗
       (x.buf ↦ₛ x.bs) ∗ stackAt s.sp stk
@@ -1009,7 +1012,7 @@ structure MainIoPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks)
     (withLsRoCl lsmpl (writeStdoutSpecPlaced hookStack))
 
 /-- Relocatable `signal_session::run` (Block `579`) specification parameterized by `CodeOk : Memory → Prop`. -/
-def runSpecPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
+@[expose] def runSpecPlaced [LibsignalPlacement] (CodeOk : Memory → Prop) (A : RustAlloc)
     (uuidParse : UuidParser) (Run : Inputs → RunAnswer → Prop)
     (wrOk : List (BitVec 8) → Prop) (resStack : Nat) : Spec RunCall where
   pre := fun g s0 =>

@@ -96,4 +96,41 @@ example (P : SepProp) (Q : Prop) (s : Arm64.State) (_h1 : (memoSpec P).pre () s 
   guard_hyp _h2 : P = P
   exact hq
 
+/-! ## Constant-collection memo of `wp_unfold_specs` -/
+
+/- Each pass scans the goal and the five local types (`SepProp`, `Prop`, `_h1`, `hq`; `Prop`
+occurs twice, so it is memoized within the first pass). The first call unfolds `memoSpec` in
+`_h1` and rescans: only the new `_h1` is scanned again. A second call reuses every collection. -/
+/--
+trace: [proofLib.unfoldSpecsMemo] 1/5 types memoized
+[proofLib.unfoldSpecsMemo] 4/5 types memoized
+---
+trace: [proofLib.unfoldSpecsMemo] 5/5 types memoized
+-/
+#guard_msgs in
+set_option trace.proofLib.unfoldSpecsMemo true in
+theorem unfold_memo_hit (P : SepProp) (Q : Prop) (_h1 : (memoSpec P).pre () = fun _ => P)
+    (hq : Q) : Q := by
+  wp_unfold_specs
+  wp_unfold_specs
+  exact hq
+
+/- The memo starts empty in a new declaration. A hypothesis introduced after an earlier call is
+not memoized: it is scanned and its `Spec` is unfolded, while the types already seen are not
+rescanned. -/
+/--
+trace: [proofLib.unfoldSpecsMemo] 1/4 types memoized
+---
+trace: [proofLib.unfoldSpecsMemo] 3/5 types memoized
+[proofLib.unfoldSpecsMemo] 4/5 types memoized
+-/
+#guard_msgs in
+set_option trace.proofLib.unfoldSpecsMemo true in
+theorem unfold_memo_miss (P : SepProp) (Q : Prop) (hq : Q) : Q := by
+  wp_unfold_specs
+  have _h2 : (memoSpec P).post () = fun _ _ => P := rfl
+  wp_unfold_specs
+  guard_hyp _h2 : (fun _ _ => P) = fun _ _ => P
+  exact hq
+
 end ProofLib.Testing.DsimpMemo

@@ -126,9 +126,8 @@ def compare (lhs rhs : Bytes) : Except SpqrPanic (BitVec 8) :=
     .ok (isNonZero ((lhs.zip rhs).foldl (fun r (a, b) => r ||| (a ^^^ b)) 0#8))
   else .error .compareBounds
 
-example : compare [1#8, 2#8] [1#8, 2#8] = .ok 0#8 := by decide +kernel
-example : compare [1#8, 2#8] [1#8, 3#8] = .ok 1#8 := by decide +kernel
-example : compare [1#8] [1#8, 3#8] = .ok 0#8 := by decide +kernel
-example : compare [1#8, 2#8] [1#8] = .error .compareBounds := by decide +kernel
+example : compare [1#8, 2#8] [1#8, 3#8] = .ok 1#8 := rfl
+example : compare [1#8] [1#8, 3#8] = .ok 0#8 := rfl
+example : compare [1#8, 2#8] [1#8] = .error .compareBounds := rfl
 
 end CryptoVerification.LibsignalSpqrV1

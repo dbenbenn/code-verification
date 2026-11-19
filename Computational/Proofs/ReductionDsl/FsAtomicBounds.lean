@@ -9,16 +9,39 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.FsAtomicBoundsBase -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.FsAtomicBoundsStage -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.FsAtomicBoundsSaltWire -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.FsAtomicBoundsBase
+import Computational.Proofs.ReductionDsl.FsAtomicBoundsStage
+import Computational.Proofs.ReductionDsl.FsAtomicBoundsSaltWire
+public import Computational.Proofs.ReductionDsl.FsAtomicBundles -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.AtomicTablesHonest
+import Computational.Proofs.ReductionDsl.FsAtomicMacrosCost
+import Computational.Proofs.SessionCostedBase
+import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.CostedTables
+import Init.Data.List.Control
+import Init.Data.Range.Basic
+import Init.Data.String.Defs
+import Init.Data.String.Pattern.Basic
+import Init.Data.String.Pattern.String
+import Init.Data.String.Slice
+import Init.Data.String.TakeDrop
+import Lean
+import Mathlib.Algebra.Order.Ring.Star
+import Mathlib.MeasureTheory.Integral.Bochner.Basic
+import Mathlib.Tactic.Linarith
+import Mathlib.Tactic.Ring
+import VCVio.EvalDist.EvalDistEq
+import VCVio.EvalDist.Monad.Bool
+import VCVio.OracleComp.Constructions.SampleableType.Measure
+import VCVio.OracleComp.EvalDist.AnswerMeasure
+import VCVio.OracleComp.SimSemantics.StateT.StateProjection
+import VCVio.Prelude.Core
+import VCVio.ProgramLogic.Unary.HoareTriple
 
 /-!
 # Cost, query, and `fsCostedBounds` certificates
 
 Re-exports `FsAtomicBoundsBase`, `FsAtomicBoundsStage`, and `FsAtomicBoundsSaltWire`, and
-assembles `fsCostedRedsInst_bounds`.
--/
+assembles `fsCostedRedsInst_bounds`.-/
 
 public section
 
@@ -35,16 +58,16 @@ open ReductionDsl (Sig Ty Var Env Expr Comp Samplers Ops Iface GameCodec CostedR
 namespace Computational.Proofs.ReductionDsl.FsAtomicBounds
 
 open OracleSpec OracleComp
-open CryptoGames (Party AEADScheme MACScheme WireAEAD)
-open CryptoGames.CBC (Plain nBlocks)
-open CryptoGames.Ratchet.LibsignalInst (Salt32 LibsignalCiphertextWithSalt32 LibsignalMsgPublicPart
+open _root_.CryptoGames (Party AEADScheme MACScheme WireAEAD)
+open _root_.CryptoGames.CBC (Plain nBlocks)
+open _root_.CryptoGames.Ratchet.LibsignalInst (Salt32 LibsignalCiphertextWithSalt32 LibsignalMsgPublicPart
   lPubOf lChainPRG lAeadR lIdeal)
-open CryptoGames.SM.Construction (Header)
-open CryptoGames.LibsignalSession (Crypto PublicKey IdentityKey SignalHeader
+open _root_.CryptoGames.SM.Construction (Header)
+open _root_.CryptoGames.LibsignalSession (Crypto PublicKey IdentityKey SignalHeader
   SignalMessageProtoCodec maxForwardJumps)
-open CryptoGames.FSAEAD (RatchetSenderState RatchetReceiverState)
-open CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
-open CryptoVerification.LibsignalSession (LCt fsSlotCount ratchetCostBudget
+open _root_.CryptoGames.FSAEAD (RatchetSenderState RatchetReceiverState)
+open _root_.CryptoVerification.LibsignalProtoCodec (protoSignalCodec)
+open _root_.CryptoVerification.LibsignalSession (LCt fsSlotCount ratchetCostBudget
   ratchetFsAdapterBudget fsRatchetCostBudget GRedBounded GTwoStageBounded
   FsCostedReds fsCostedBounds gredBounded_of_bounds)
 open Computational.Proofs.ReductionDsl.MacroLift (mapTy gTwoStageBounded_of_bounds
@@ -73,7 +96,7 @@ scoped macro "unfold_vars" : tactic =>
 
 section WireAndInstBounds
 
-open CryptoGames.Ratchet.LibsignalInst.Costed
+open _root_.CryptoGames.Ratchet.LibsignalInst.Costed
 
 variable {Pt : Type} [DecidableEq Pt]
   (C : Crypto) (codec : SignalMessageProtoCodec) (ℓ : ℕ)
@@ -83,8 +106,9 @@ variable {Pt : Type} [DecidableEq Pt]
 theorem fsCostedRedsInst_bounds (qR qep : ℕ) :
     fsCostedBounds qR qep (fsCostedRedsInst (Pt := Pt) C codec ℓ encT idOf qR) := by
   have hfb := fsCostedRedsBoundedWitness_bounds (Pt := Pt) C codec ℓ encT idOf qR qep
-  rcases hfb with ⟨hb1, hb2, hb3, hb4, hb5, hb6, hb7⟩
-  refine ⟨?_, fun j hj => ?_, fun la => ?_, fun j hj => ?_, ?_, fun j hj => ?_, ?_⟩
+  rcases hfb with ⟨hb1, hb2, hb3, hb4, hb5, hb6, hb7, hb8, hb9⟩
+  refine ⟨?_, fun j hj => ?_, fun la => ?_, fun j hj => ?_, ?_, fun j hj => ?_, ?_,
+    fun j hj => ?_, fun la => ?_⟩
   · dsimp only [fsCostedRedsInst]
     by_cases hℓ : ℓ < 10 ^ 6
     · simp only [hℓ, ↓reduceIte]; exact fsPubRedAtomic_bounds C ℓ encT hℓ qR qep
@@ -113,6 +137,14 @@ theorem fsCostedRedsInst_bounds (qR qep : ℕ) :
     by_cases hℓ : ℓ < 10 ^ 6
     · simp only [hℓ, ↓reduceIte]; exact fsLWireRedAtomic_bounds C ℓ encT idOf hℓ qR qep
     · simp only [hℓ, ↓reduceIte]; exact hb7
+  · dsimp only [fsCostedRedsInst, guardTwoStageRed]
+    by_cases hc : ℓ < 10 ^ 6 ∧ CryptoGames.FSAEAD.Thm5.slotToHybridHopIndex qR j ≤ 2 * (qR + maxForwardJumps + 1)
+    · simp only [hc, and_self, ↓reduceIte]; exact fsPrgRedAuthAtomic_bounds C ℓ encT idOf hc.1 qR qep _ hc.2
+    · simp only [hc, ↓reduceIte]; exact hb8 j hj
+  · dsimp only [fsCostedRedsInst, guardTwoStageRed]
+    by_cases hℓ : ℓ < 10 ^ 6
+    · simp only [hℓ, ↓reduceIte]; exact fsMultiRedAuthAtomic_bounds C ℓ encT idOf hℓ qR qep la
+    · simp only [hℓ, ↓reduceIte]; exact hb9 la
 
 end WireAndInstBounds
 

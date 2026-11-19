@@ -18,7 +18,7 @@ public import Computational.Specifications.Assumptions.KeyInd1KeyRo
 bounds on `KeyInd1KeyRoAdvantage` to bound `KeyInd1KeyRealAdvantage`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Epilogue
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Layout
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Fetches
-public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.FetchesBudget
+import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Epilogue
+public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Layout -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymD -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.Fetches
+public import LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.FetchesBudget -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.Deps
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
@@ -28,7 +28,7 @@ import ProofLib.SepLogic.WPp
 (Block `595`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,11 +48,11 @@ open LibsignalBinary.Proofs.RecordCodecs.DecodeKyberPreKey.FetchesBudget (dropDe
 open LibsignalBinary.Proofs.RecordCodecs.SignedDepsBudget (DropDecodeErrorEnv KyberDecodeEnv SpkDecodeEnv decodeKyberPreKeyRawSpec dropDecodeErrorBudgetSpec dropDecodeErrorBudgetSpecGen)
 attribute [local irreducible] Program.fetch Program.externAt?
 
-def kpkOff_retDec : BitVec 64 := 28#64
+@[expose] def kpkOff_retDec : BitVec 64 := 28#64
 def kpkOff_retDrop : BitVec 64 := 104#64
 attribute [local arm64_norm] kpkOff_retDec kpkOff_retDrop
 
-def kpkPostPlaced {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
+@[expose] def kpkPostPlaced {M : AllocCostModel} (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (st : M.σ) (x : DecodeGhost) (s0 : State) :
     State → SepProp → Prop :=
   fun sf Pf =>

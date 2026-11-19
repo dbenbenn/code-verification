@@ -13,6 +13,11 @@ public import Computational.Proofs.E2E.Dsl.DrSessionSim -- proof-setup: allow-pu
 public import Computational.Proofs.E2E.Dsl.SpqrSim -- proof-setup: allow-public-import
 import Computational.Proofs.E2E.Dsl.SpqrSimChain
 import Computational.Proofs.E2E.Dsl.SpqrSimHist
+public import Computational.Proofs.E2E.Dsl.SpqrSimRecv -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.SpqrSimSend -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.ReductionDsl.SM.GameCosted
+import Computational.Proofs.ReductionDsl.Soundness
 
 /-!
 # Compositional Size Bounds for `SpqrSim` and `DrSessionSim`
@@ -325,14 +330,6 @@ theorem size_optBytes32LitE_le {Γ : List (Ty (e2eSig ℓ))} (opt : Option Bytes
     have hbs := h bs rfl
     simp [optBytes32LitE]
     omega
-
-private theorem esize_optBytes32LitE {Γ : List (Ty (e2eSig ℓ))}
-    (opt : Option Bytes) (h : ∀ bs ∈ opt, bs.length ≤ 128) :
-    (optBytes32LitE (ℓ := ℓ) (P := P) (C := C) (K := K) (decT := decT) (encT := encT)
-      (Γ := Γ) opt).size =
-      esizeHide (optBytes32LitE (ℓ := ℓ) (P := P) (C := C) (K := K) (decT := decT)
-        (encT := encT) (Γ := Γ) opt) 132 :=
-  esize_eq_hide (size_optBytes32LitE_le opt h)
 
 @[local simp] private theorem esize_sendAddrsE {Γ : List (Ty (e2eSig ℓ))}
     (isB : Expr (e2eOps ℓ P C K decT encT) Γ .bool) :
@@ -926,46 +923,6 @@ theorem drCrArmC_size_le {ι : Type} {T : OracleSpec ι} {I : Iface (e2eSig ℓ)
     (drCrArmC (I := I) q gsE crArg).size ≤ gsE.size + crArg.size + 2 * bits q + 900 := by
   simp [drCrArmC, orE, e2eGsWin, smRCorrE, pGet, e2eGsSt]
   simp only [esizeHide_def]; omega
-
-theorem drOracleStepC_spqr_size_le {ι : Type} {T : OracleSpec ι} {I : Iface (e2eSig ℓ) T}
-    (coins : E2ECoinSamplers ℓ P C K decT encT I)
-    (h256 : ∀ {Γ}, (coins.draw256 (Γ := Γ)).size ≤ 4)
-    (h512 : ∀ {Γ}, (coins.draw512 (Γ := Γ)).size ≤ 4)
-    (q Δ qep : ℕ) {Γ}
-    (gsE : Expr (e2eOps ℓ P C K decT encT) Γ (e2eGsTy ℓ))
-    (qryE : Expr (e2eOps ℓ P C K decT encT) Γ smQT) :
-    (drOracleStepC (spqrDslHooks ℓ P C K decT encT) coins q Δ qep gsE qryE).size ≤
-      gsE.size + qryE.size + 17 * bits q + 7 * bits Δ + 4 * bits qep +
-        bits (qep + 1) + 200000 := by
-  let tTop : Ty (e2eSig ℓ) := .prod (e2eGsTy ℓ) smQT
-  let r1T : Ty (e2eSig ℓ) :=
-    .sum (.prod .bool (.prod PlainT (.prod PlainT (.opt BV512))))
-      (.sum (.prod .bool (B 32)) (.sum (.prod .bool (B 32)) .bool))
-  let r2T : Ty (e2eSig ℓ) := .sum (.prod .bool (B 32)) (.sum (.prod .bool (B 32)) .bool)
-  let r3T : Ty (e2eSig ℓ) := .sum (.prod .bool (B 32)) .bool
-  have htr := drTrArmC_spqr_size_le (ℓ := ℓ) (P := P) (C := C) (K := K) (decT := decT)
-    (encT := encT) coins h512 q Δ qep
-    (.fst .v1 : Expr (e2eOps ℓ P C K decT encT)
-      (.prod .bool (.prod PlainT (.opt BV512)) :: tTop :: Γ) (e2eGsTy ℓ)) .v0
-  have hch := drChArmC_spqr_size_le (ℓ := ℓ) (P := P) (C := C) (K := K) (decT := decT)
-    (encT := encT) coins h512 q Δ qep
-    (.fst .v2 : Expr (e2eOps ℓ P C K decT encT)
-      (.prod .bool (.prod PlainT (.prod PlainT (.opt BV512))) :: r1T :: tTop :: Γ) (e2eGsTy ℓ)) .v0
-  have hdl := drDlArmC_spqr_size_le (ℓ := ℓ) (P := P) (C := C) (K := K) (decT := decT)
-    (encT := encT) coins h256 q
-    (.fst .v3 : Expr (e2eOps ℓ P C K decT encT)
-      (.prod .bool (B 32) :: r2T :: r1T :: tTop :: Γ) (e2eGsTy ℓ)) .v0
-  have hij := drIjArmC_spqr_size_le (ℓ := ℓ) (P := P) (C := C) (K := K) (decT := decT)
-    (encT := encT) coins h256 q Δ qep
-    (.fst .v4 : Expr (e2eOps ℓ P C K decT encT)
-      (.prod .bool (B 32) :: r3T :: r2T :: r1T :: tTop :: Γ) (e2eGsTy ℓ)) .v0
-  have hcr := drCrArmC_size_le (ℓ := ℓ) (P := P) (C := C) (K := K) (decT := decT)
-    (encT := encT) (I := I) q
-    (.fst .v4 : Expr (e2eOps ℓ P C K decT encT)
-      (.bool :: r3T :: r2T :: r1T :: tTop :: Γ) (e2eGsTy ℓ)) .v0
-  simp only [drOracleStepC, Comp.size, Expr.size, Expr.v0, Expr.v1, Expr.v2, Expr.v3,
-    Expr.v4] at htr hch hdl hij hcr ⊢
-  omega
 
 end DrSimSize
 end SizeBounds

@@ -10,27 +10,31 @@ limitations under the License.
 module
 
 public import Arm64.Trusted.Spec.Hoare
-public import LibsignalBinary.Proofs.PeakBudget.CliDpPollTrustedWideBridge
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactAsm
 public import LibsignalBinary.Proofs.PeakBudget.CliSlotFineSpec
-public import LibsignalBinary.Proofs.PeakBudget.D3MainEntryBudgetFitsCapDom0
-public import LibsignalBinary.Proofs.PeakBudget.D3MatchingPathBSeqFreeR
-public import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
-public import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H9PathBAssemblyHonestR2
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignalPlacedBudget
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2Asm
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KD3JoinValidMatch
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KD3MainLiftGlue
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KIfaces
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSpineA
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KWitness
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole2FitsEnvParts
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkWireStep2
+public import LibsignalBinary.Proofs.PeakBudget.D3MatchingPathBSeqFreeR -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3MatchingPathBF3 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H9PathBAssemblyHonestR2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2Asm -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KD3JoinValidMatch -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Hole3W4DecPkWireStep2 -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.PeakBudget.CliDpPollTrustedWideBridge
+import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactAsm
+import LibsignalBinary.Proofs.PeakBudget.D3MainEntryBudgetFitsCapDom0
+import LibsignalBinary.Proofs.PeakBudget.RealCliRunEnvMemSlots
+import LibsignalBinary.Proofs.PeakBudget.W4RecvPrekeyCmkDom0
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3NonCanonValidOverEnvPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.InitInv
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignalPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.Oblig.EncSessionInj
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KBridges
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KD3MainLiftGlue
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KIfaces
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSpineA
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KWitness
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole2FitsEnvParts
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomHole3Cut
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -44,7 +48,7 @@ Defines the unguarded and `PeerSpqrStateTight640`-guarded Slot-`520` (`decryptPr
 and lifts Block `579` to Block `617` to close `h2asm_GhostMainOkPathBK mpl mmpl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.style.haveILetI false
@@ -53,13 +57,13 @@ set_option maxRecDepth 200000
 namespace LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KD3JoinPathB
 
 open Arm64 ProofLib SepProp
-open Arm64.Obj (Image MultiPlacement)
+open Arm64.Obj (MultiPlacement)
 open Arm64.Process (bytesOfString)
 open CryptoGames.LibsignalSessionApi (PreKeySignalMessage)
-open CryptoVerification
-  (LibsignalPlacement libsignalMutatedBlocks libsignalSessionExterns)
+open CryptoVerification (ExternsDistinctOnHooked LibsignalPlacement libsignalMutatedBlocks)
 open CryptoVerification.E2E (UnreachedPqxdhPrimitives)
 open CryptoVerification.LibsignalPublicApi.StoreKit (withLsCodeRoLoaded)
+open CryptoVerification.LibsignalSpqrV1 (sha256Compress)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
 open CryptoVerification.RustHeap (RustAlloc)
 open CryptoVerification.SignalSession
@@ -124,6 +128,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.D3ParseRejectF3
 open LibsignalBinary.Proofs.SignalSession.Cli.D3.F3.H9PathBAssemblyHonestR2
   (h9r2_fitsCap_pathB_of_dom0_singleSlot h9r2_honestD3RunSlotEnvs h9r2_initEnv_r1c_congr)
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.ReadFileBudgetPlaced (ReadFileRuleEnvFixed)
+open LibsignalBinary.Proofs.SignalSession.Cli.Heap.AllocWithFds (withFds)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.B2MainFrameComposeBudget (libsignalPlacementOf)
 open LibsignalBinary.Proofs.SignalSession.Cli.M24.MainEntryBudgetFitsInst (MainEntryBudgetFitsCapOf)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.AllPlacedBudget (cliRunArmEnvs)
@@ -140,15 +145,17 @@ open LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Ratchet.DecryptSignalPl
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2Asm (h2asm_GhostMainOkPathBK)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KBridges (h2kb_hole2_hG)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KD3JoinValidMatch
-  (h2kd3_SpineBD3SlotsRunTightK h2kd3_decSigFrozenSlotWithPreFd_congr
-   h2kd3_encSlotWithPreFd_congr h2kd3_runProofs_encDef_eq_agree h2kd3_witnessK)
+  (h2kd3_SpineBD3SlotsRunTightFdK h2kd3_SpineBD3SlotsRunTightK
+   h2kd3_decSigFrozenSlotWithPreFd_congr h2kd3_encSlotWithPreFd_congr
+   h2kd3_runProofs_encDef_eq_agree h2kd3_witnessK)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KD3MainLiftGlue
   (ghostMainSubroutineD3_of_domScopedRunTight_preFd)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KHooks (h2k_ghFixedK)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KIfaces
-  (extract_withPreFdsGe3Closed h2ki_RunTightAt579PreFd h2ki_W1EncryptSlot464OkK
-   h2ki_W2DecryptSignalSlot463OkK h2ki_W3InitSlot521OkK slotWithPreFdsGe3Closed
-   withPreFdsGe3Closed)
+  (extract_withPreFdsGe3Closed h2ki_RunTightAt579Fd h2ki_RunTightAt579PreFd
+   h2ki_W1EncryptSlot464OkK h2ki_W1EncryptSlot464OkWfK h2ki_W2DecryptSignalSlot463OkK
+   h2ki_W2DecryptSignalSlot463OkWfK h2ki_W3InitSlot521OkK h2ki_W3InitSlot521OkWfK
+   slotWithPreFdsGe3Closed withPreFdsGe3Closed)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KSpineA (h2k_hole2_hioOfFd)
 open LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomH2KWitness
   (F3CliElfGhostWitnessK)
@@ -168,7 +175,7 @@ open VerifiedLibraries (mallocngLib)
 /-! ## `PathB` `RunSlotEnvs` and Slot-`520` Interfaces -/
 
 /-- D3 `RunSlotEnvs` bundle for `pathB` at `realCliDecPkBinaryWideSlotEnvCmkDom0GuardedFixed'`. -/
-noncomputable abbrev h2kd3_pathBSlotEnvs [LibsignalPlacement] {M : AllocCostModel}
+abbrev h2kd3_pathBSlotEnvs [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (X : UnreachedPqxdhPrimitives) (W : CliHooks) :
     RunSlotEnvs :=
   h9r2_honestD3RunSlotEnvs
@@ -178,15 +185,21 @@ noncomputable abbrev h2kd3_pathBSlotEnvs [LibsignalPlacement] {M : AllocCostMode
 
 /-- Explicit-argument Slot-`520` (`decryptPrekey`, D3 `pathB` unguarded) pre-only
 `FdsGe3Closed` interface at `DecPkD3MatchingPathBGvSeqFreeOfReadEnv … (w4s2_TryDecryptTopStateGuardedEnv W)`. -/
-def h2kd3_W4PathBSlot520OkAt
+@[expose] def h2kd3_W4PathBSlot520OkAt
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks) : Prop :=
   letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
   mpl.base 547 ≠ 0#64 →
-  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
     let A := fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart
     let sEnvs := h2kd3_pathBSlotEnvs A X W
     let DecPkEnv₀ := DecPkD3MatchingPathBGvSeqFreeOfReadEnv A.repAlloc W cliRunBudgets_placed
@@ -203,15 +216,21 @@ abbrev h2kd3_W4PathBSlot520OkK {mpl mmpl : MultiPlacement}
 
 /-- Explicit-argument Slot-`520` (`decryptPrekey`, D3 `pathB` guarded) pre-only `FdsGe3Closed`
 interface at `realCliDecPkBinaryWideSlotEnvCmkDom0GuardedFixed'`. -/
-def h2kd3_W4PathBGuardedSlot520OkAt
+@[expose] def h2kd3_W4PathBGuardedSlot520OkAt
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (ghFixed : CliGhostHooks) : Prop :=
   letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
   mpl.base 547 ≠ 0#64 →
-  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
     let A := fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart
     let sEnvs := h2kd3_pathBSlotEnvs A X W
     let needs := cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)
@@ -223,6 +242,64 @@ def h2kd3_W4PathBGuardedSlot520OkAt
 abbrev h2kd3_W4PathBGuardedSlot520OkK {mpl mmpl : MultiPlacement}
     (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
   h2kd3_W4PathBGuardedSlot520OkAt (mmpl := mmpl) w.hblk w.hext_nodup w.ghFixed
+
+/-- Explicit-argument Slot-`520` (`decryptPrekey`, D3 `pathB` unguarded) interface at `withFds`. -/
+@[expose] def h2kd3_W4PathBSlot520OkWfAt
+    {mpl mmpl : MultiPlacement}
+    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
+      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
+    (ghFixed : CliGhostHooks) : Prop :=
+  letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+  mpl.base 547 ≠ 0#64 →
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+    let A := fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart
+    let sEnvs := h2kd3_pathBSlotEnvs (withFds A) X W
+    let DecPkEnv₀ := DecPkD3MatchingPathBGvSeqFreeOfReadEnv A.repAlloc W cliRunBudgets_placed
+      (ReadFileRuleEnvFixed cliIo.rd) (w4s2_TryDecryptTopStateGuardedEnv W)
+    let needs := cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)
+    (slotWithPreFdsGe3Closed
+      (slotsOfSigPkFrozenPlaced (withFds A) cliBudgetLimits { sEnvs with decryptPrekey := DecPkEnv₀ }
+        (cliRunSemPathB X W) needs).decryptPrekey).OkPlaced
+      (lsProg_579 (cliGhostExterns ghFixed (cliExternsPlaced mmpl W))) (mpl.base 520)
+
+abbrev h2kd3_W4PathBSlot520OkWfK {mpl mmpl : MultiPlacement}
+    (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
+  h2kd3_W4PathBSlot520OkWfAt (mmpl := mmpl) w.hblk w.hext_nodup w.ghFixed
+
+/-- Explicit-argument Slot-`520` (`decryptPrekey`, D3 `pathB` guarded) interface at `withFds`. -/
+@[expose] def h2kd3_W4PathBGuardedSlot520OkWfAt
+    {mpl mmpl : MultiPlacement}
+    (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
+      (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
+    (ghFixed : CliGhostHooks) : Prop :=
+  letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
+  mpl.base 547 ≠ 0#64 →
+  ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+    W.C.F = sha256Compress →
+    W.C.D = CryptoGames.AES256.aes256Dec →
+    W.C.X = CryptoGames.RFC7748.x25519Ref →
+    W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+    W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+    ∀ (γ : GhostName) (tp : BitVec 64),
+    let A := fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart
+    let sEnvs := h2kd3_pathBSlotEnvs (withFds A) X W
+    let needs := cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)
+    (slotWithPreFdsGe3Closed
+      (slotsOfSigPkFrozenPlaced (withFds A) cliBudgetLimits sEnvs
+        (cliRunSemPathB X W) needs).decryptPrekey).OkPlaced
+      (lsProg_579 (cliGhostExterns ghFixed (cliExternsPlaced mmpl W))) (mpl.base 520)
+
+abbrev h2kd3_W4PathBGuardedSlot520OkWfK {mpl mmpl : MultiPlacement}
+    (w : F3CliElfGhostWitnessK mpl mmpl) : Prop :=
+  h2kd3_W4PathBGuardedSlot520OkWfAt (mmpl := mmpl) w.hblk w.hext_nodup w.ghFixed
 
 /-! ## `TopStateTight` Collapse and Guarded-of-Unguarded Adapter -/
 
@@ -393,11 +470,11 @@ theorem h2kd3_slotOk_preFd_guarded_of_unguarded [LibsignalPlacement]
 /-! ## `Dom0` `SingleSlotFineSpec` and `MainEntryBudgetFitsCapOf` for `PathB` -/
 
 /-- `PathB` `RunEnv` family at `[LibsignalPlacement]`, matching `H9PathBAssemblyHonestR2`. -/
-noncomputable abbrev h2kd3_pathBRunEnvAt
+abbrev h2kd3_pathBRunEnvAt
     {mpl mmpl : MultiPlacement}
     (hblk : ∀ i, i < libsignalSessionLib.blocks.length → (i ∈ libsignalMutatedBlocks) = false →
       (libsignalSessionLib.blockLib i).Placeable (libsignalSessionLib.blockPlacement mpl i))
-    (hext_nodup : (libsignalSessionExterns.map mpl.ρ).Nodup)
+    (hext_nodup : ExternsDistinctOnHooked mpl.ρ)
     (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64) :
     RunCall → List AllocEvent → Prop :=
   letI : LibsignalPlacement := libsignalPlacementOf mpl hblk hext_nodup
@@ -408,7 +485,7 @@ noncomputable abbrev h2kd3_pathBRunEnvAt
       PksmTryFromEnv (cliRunSemPathB X W))
 
 /-- `Dom0` `SingleSlotFineSpec` witness at `realCliDecPkBinaryWideSlotEnvCmkDom0GuardedFixed'`. -/
-def h2kd3_decPkDom0_singleSlot [LibsignalPlacement]
+@[expose] def h2kd3_decPkDom0_singleSlot [LibsignalPlacement]
     (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (g : RunCall) (meV peerV : AddrV) (rest : List (BitVec 8)) (pm : PreKeySignalMessage)
     (hi_g : CliPqOrD3RecvInputs ⟨W.C, W.Q⟩ g.i)
@@ -463,7 +540,7 @@ def h2kd3_decPkDom0_singleSlot [LibsignalPlacement]
 /-- `MainEntryBudgetFitsCapOf` for D3 `pathB` (`cliRunSemPathB X W` + `h2kd3_pathBSlotEnvs`),
 closed via `H9PathBAssemblyHonestR2.h9r2_fitsCap_pathB_of_dom0_singleSlot`. -/
 theorem h2kd3_fitsCap_pathB [LibsignalPlacement]
-    (img : Image) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+    (img : Unit) (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (A : RustCliAllocBudget fineCostModel) :
     MainEntryBudgetFitsCapOf fineCostModel cliBudgetLimits fineCostModel.init cliIo
       (ReadFileRuleEnvFixed cliIo.rd) uuidTryParse
@@ -543,18 +620,26 @@ theorem h2kd3_fitsCap_pathB [LibsignalPlacement]
 /-! ## Block-`579` to Block-`617` `PathB` Top-Join Assemblers -/
 
 /-- Plugs W1 (`464`), W2 (`463`), W3 (`521`), and guarded `pathB` W4 (`520`) into
-`h2kd3_SpineBD3SlotsRunTightK` to discharge Block `579` for `cliRunSemPathB X W`. -/
+`h2kd3_SpineBD3SlotsRunTightFdK` to discharge Block `579` for `cliRunSemPathB X W`. -/
 theorem h2kd3_runTight_pathB_of_guardedIfaces
     {mpl mmpl : MultiPlacement}
     (w : F3CliElfGhostWitnessK mpl mmpl)
-    (hSpineB : h2kd3_SpineBD3SlotsRunTightK w)
-    (hW1 : h2ki_W1EncryptSlot464OkK w)
-    (hW2 : h2ki_W2DecryptSignalSlot463OkK w)
-    (hW3 : h2ki_W3InitSlot521OkK w)
-    (hW4Guarded : h2kd3_W4PathBGuardedSlot520OkK w)
+    (hSpineB : h2kd3_SpineBD3SlotsRunTightFdK w)
+    (hW1 : h2ki_W1EncryptSlot464OkWfK w)
+    (hW2 : h2ki_W2DecryptSignalSlot463OkWfK w)
+    (hW3 : h2ki_W3InitSlot521OkWfK w)
+    (hW4Guarded : h2kd3_W4PathBGuardedSlot520OkWfK w)
     (h547 : mpl.base 547 ≠ 0#64)
-    (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64) :
-    h2ki_RunTightAt579PreFd w.hblk w.hext_nodup
+    (X : UnreachedPqxdhPrimitives) (W : CliHooks) (hF : W.C.F = sha256Compress)
+    (hE : W.C.E = CryptoGames.AES256.aes256Enc) (hD : W.C.D = CryptoGames.AES256.aes256Dec)
+    (hX : W.C.X = CryptoGames.RFC7748.x25519Ref)
+    (hPub : W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef)
+    (hF512 : W.Q.F512 = CryptoGames.SHA512.sha512CompressState)
+    (hEnc : W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec)
+    (_hDec : W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec)
+    (hK : W.Q.K = CryptoGames.MLKEM.mlkem768Incremental)
+    (γ : GhostName) (tp : BitVec 64) :
+    h2ki_RunTightAt579Fd w.hblk w.hext_nodup
       (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))
       (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
       (h2kd3_pathBRunEnvAt (mmpl := mmpl) w.hblk w.hext_nodup X W γ tp)
@@ -563,90 +648,110 @@ theorem h2kd3_runTight_pathB_of_guardedIfaces
   let A := fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart
   let sEnvs := h2kd3_pathBSlotEnvs A X W
   let needs := cliRunNeeds (cliDecryptPrekeyNeed cliRunBudgets)
-  have hEnc :
+  have hEncSlot :
       (slotWithPreFdsGe3Closed
-        (slotsOfSigPkFrozenPlaced A cliBudgetLimits sEnvs
+        (slotsOfSigPkFrozenPlaced (withFds A) cliBudgetLimits sEnvs
           (cliRunSemPathB X W) needs).encrypt).OkPlaced
         (lsProg_579 (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))) (mpl.base 464) := by
     dsimp only [slotsOfSigPkFrozenPlaced, slotsOfSigFrozenPlaced, slotsOfPlaced,
       sEnvs, h2kd3_pathBSlotEnvs, h9r2_honestD3RunSlotEnvs]
     exact h2kd3_encSlotWithPreFd_congr rfl rfl rfl
       (h2kd3_runProofs_encDef_eq_agree ⟨W.C, W.Q⟩ scopeIn).symm
-      (hW1 h547 X W γ tp)
+      (hW1 h547 X W hF hE hK γ tp)
   have hDecSig :
       (slotWithPreFdsGe3Closed
-        (slotsOfSigPkFrozenPlaced A cliBudgetLimits sEnvs
+        (slotsOfSigPkFrozenPlaced (withFds A) cliBudgetLimits sEnvs
           (cliRunSemPathB X W) needs).decryptSignal).OkPlaced
         (lsProg_579 (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))) (mpl.base 463) := by
     dsimp only [slotsOfSigPkFrozenPlaced, slotsOfSigFrozenPlaced,
       sEnvs, h2kd3_pathBSlotEnvs, h9r2_honestD3RunSlotEnvs]
     exact h2kd3_decSigFrozenSlotWithPreFd_congr rfl rfl
       (decSigDef_eq_runProofs ⟨W.C, W.Q⟩ scopeIn).symm
-      (hW2 h547 X W γ tp)
+      (hW2 h547 X W hF hD hX hPub hK γ tp)
   have hInit :
       (slotWithPreFdsGe3Closed
-        (slotsOfSigPkFrozenPlaced A cliBudgetLimits sEnvs
+        (slotsOfSigPkFrozenPlaced (withFds A) cliBudgetLimits sEnvs
           (cliRunSemPathB X W) needs).initiate).OkPlaced
         (lsProg_579 (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))) (mpl.base 521) :=
-    hW3 h547 X W γ tp (cliRunSemPathB X W) sEnvs needs rfl rfl rfl rfl rfl
+    hW3 h547 X W hF hX hPub hF512 hEnc γ tp (cliRunSemPathB X W) sEnvs needs rfl rfl rfl rfl rfl
   exact hSpineB h547 (cliRunSemPathB X W) W γ tp sEnvs rfl
     (h9r2_initEnv_r1c_congr W)
     (hole3_encEnv_r2_congr W A)
     (hole3_decSigEnv_r3a_congr W A)
     (realCliDecPkBinaryWideSlotEnvCmkDom0GuardedFixed_ghost_congr
       w4c_repairedStatesRecvEnvFam X W)
-    hEnc hDecSig hInit (hW4Guarded h547 X W γ tp)
+    hEncSlot hDecSig hInit (hW4Guarded h547 X W hF hD hX hPub hK γ tp)
 
 /-- Plugs `464`, `463`, `521`, and unguarded `pathB` Slot `520` into
-`h2kd3_SpineBD3SlotsRunTightK` via `h2kd3_slotOk_preFd_guarded_of_unguarded` and
+`h2kd3_SpineBD3SlotsRunTightFdK` via `h2kd3_slotOk_preFd_guarded_of_unguarded` and
 `h2kd3_gvSeqFree_sub_cmkDom0'`. -/
 theorem h2kd3_runTight_pathB_of_ifaces
     {mpl mmpl : MultiPlacement}
     (w : F3CliElfGhostWitnessK mpl mmpl)
-    (hSpineB : h2kd3_SpineBD3SlotsRunTightK w)
-    (hW1 : h2ki_W1EncryptSlot464OkK w)
-    (hW2 : h2ki_W2DecryptSignalSlot463OkK w)
-    (hW3 : h2ki_W3InitSlot521OkK w)
-    (hW4 : h2kd3_W4PathBSlot520OkK w) :
+    (hSpineB : h2kd3_SpineBD3SlotsRunTightFdK w)
+    (hW1 : h2ki_W1EncryptSlot464OkWfK w)
+    (hW2 : h2ki_W2DecryptSignalSlot463OkWfK w)
+    (hW3 : h2ki_W3InitSlot521OkWfK w)
+    (hW4 : h2kd3_W4PathBSlot520OkWfK w) :
     mpl.base 547 ≠ 0#64 →
-    ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-      h2ki_RunTightAt579PreFd w.hblk w.hext_nodup
-        (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))
-        (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
-        (h2kd3_pathBRunEnvAt (mmpl := mmpl) w.hblk w.hext_nodup X W γ tp)
-        (cliRunSemPathB X W) :=
+    ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+      W.C.F = sha256Compress →
+      W.C.E = CryptoGames.AES256.aes256Enc →
+      W.C.D = CryptoGames.AES256.aes256Dec →
+      W.C.X = CryptoGames.RFC7748.x25519Ref →
+      W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+      W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+      W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+      W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+      W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+      ∀ (γ : GhostName) (tp : BitVec 64),
+        h2ki_RunTightAt579Fd w.hblk w.hext_nodup
+          (cliGhostExterns w.ghFixed (cliExternsPlaced mmpl W))
+          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+          (h2kd3_pathBRunEnvAt (mmpl := mmpl) w.hblk w.hext_nodup X W γ tp)
+          (cliRunSemPathB X W) :=
   h2kd3_runTight_pathB_of_guardedIfaces w hSpineB hW1 hW2 hW3
-    (fun h547 X W γ tp => by
+    (fun h547 X W hF hD hX hPub hK γ tp => by
       letI : LibsignalPlacement := libsignalPlacementOf mpl w.hblk w.hext_nodup
       let A := fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart
-      exact h2kd3_slotOk_preFd_guarded_of_unguarded rfl (hW4 h547 X W γ tp)
+      exact h2kd3_slotOk_preFd_guarded_of_unguarded (A := withFds A) rfl (hW4 h547 X W hF hD hX hPub hK γ tp)
         (fun x evs hfPeer hdecOk hTight hevs0 =>
           h2kd3_gvSeqFree_sub_cmkDom0' A.repAlloc X W hfPeer hdecOk hTight hevs0))
 
 /-- Pre-`hTrFrozen` `pathB` Block-`579 → 617` lift at `h2k_ghFixedK mpl mmpl` directly from
-post-slot `h2ki_RunTightAt579PreFd`. -/
+post-slot `h2ki_RunTightAt579Fd`. -/
 theorem h2kd3_ghostMainOkPathBK_of_runTight
     (mpl mmpl : MultiPlacement)
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
     (hRun :
       mpl.base 547 ≠ 0#64 →
-      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks) (γ : GhostName) (tp : BitVec 64),
-        h2ki_RunTightAt579PreFd (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
-          (letI : LibsignalPlacement :=
-            libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
-           cliGhostExterns (h2k_ghFixedK mpl mmpl) (cliExternsPlaced mmpl W))
-          (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
-          (h2kd3_pathBRunEnvAt (mmpl := mmpl)
-            (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs) X W γ tp)
-          (cliRunSemPathB X W)) :
+      ∀ (X : UnreachedPqxdhPrimitives) (W : CliHooks),
+        W.C.F = sha256Compress →
+        W.C.E = CryptoGames.AES256.aes256Enc →
+        W.C.D = CryptoGames.AES256.aes256Dec →
+        W.C.X = CryptoGames.RFC7748.x25519Ref →
+        W.C.pubKey = CryptoGames.RFC7748.x25519PubFromSecretRef →
+        W.Q.F512 = CryptoGames.SHA512.sha512CompressState →
+        W.Q.encaps = CryptoGames.MLKEM.kyber1024EncapsVec →
+        W.Q.decaps = CryptoGames.MLKEM.kyber1024DecapsVec →
+        W.Q.K = CryptoGames.MLKEM.mlkem768Incremental →
+        ∀ (γ : GhostName) (tp : BitVec 64),
+          h2ki_RunTightAt579Fd (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+            (letI : LibsignalPlacement :=
+              libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
+             cliGhostExterns (h2k_ghFixedK mpl mmpl) (cliExternsPlaced mmpl W))
+            (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart) cliBudgetLimits
+            (h2kd3_pathBRunEnvAt (mmpl := mmpl)
+              (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs) X W γ tp)
+            (cliRunSemPathB X W)) :
     letI : LibsignalPlacement :=
       libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
     h2asm_GhostMainOkPathBK mpl mmpl := by
   letI : LibsignalPlacement :=
     libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
   have hG := h2kb_hole2_hG mpl mmpl hLs hMm
-  intro h547 X W
+  intro h547 X W hF hE hD hX hPub hF512 hEnc hDec hK
   exact ghostMainSubroutineD3_of_domScopedRunTight_preFd
     (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs) (h2k_ghFixedK mpl mmpl)
     (@instLsCodeInvFrozen
@@ -657,21 +762,21 @@ theorem h2kd3_ghostMainOkPathBK_of_runTight
     (fun γ tp =>
       @h2kd3_fitsCap_pathB
         (libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs))
-        (default : Image) X W
+        (default : Unit) X W
         (fineHookRustCliAllocBudget γ mmpl tp cliElfImage.brkStart))
-    (fun γ tp => hRun h547 X W γ tp)
+    (fun γ tp => hRun h547 X W hF hE hD hX hPub hF512 hEnc hDec hK γ tp)
 
 /-- Guarded-interface variant of `h2kd3_ghostMainOkPathBK_of_ifaces` (taking
-`h2kd3_W4PathBGuardedSlot520OkK` directly). -/
+`h2kd3_W4PathBGuardedSlot520OkWfK` directly). -/
 theorem h2kd3_ghostMainOkPathBK_of_guardedIfaces
     (mpl mmpl : MultiPlacement)
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (hSpineB : h2kd3_SpineBD3SlotsRunTightK (h2kd3_witnessK mpl mmpl hLs hMm))
-    (hW1 : h2ki_W1EncryptSlot464OkK (h2kd3_witnessK mpl mmpl hLs hMm))
-    (hW2 : h2ki_W2DecryptSignalSlot463OkK (h2kd3_witnessK mpl mmpl hLs hMm))
-    (hW3 : h2ki_W3InitSlot521OkK (h2kd3_witnessK mpl mmpl hLs hMm))
-    (hW4Guarded : h2kd3_W4PathBGuardedSlot520OkK (h2kd3_witnessK mpl mmpl hLs hMm)) :
+    (hSpineB : h2kd3_SpineBD3SlotsRunTightFdK (h2kd3_witnessK mpl mmpl hLs hMm))
+    (hW1 : h2ki_W1EncryptSlot464OkWfK (h2kd3_witnessK mpl mmpl hLs hMm))
+    (hW2 : h2ki_W2DecryptSignalSlot463OkWfK (h2kd3_witnessK mpl mmpl hLs hMm))
+    (hW3 : h2ki_W3InitSlot521OkWfK (h2kd3_witnessK mpl mmpl hLs hMm))
+    (hW4Guarded : h2kd3_W4PathBGuardedSlot520OkWfK (h2kd3_witnessK mpl mmpl hLs hMm)) :
     letI : LibsignalPlacement :=
       libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
     h2asm_GhostMainOkPathBK mpl mmpl :=
@@ -679,17 +784,17 @@ theorem h2kd3_ghostMainOkPathBK_of_guardedIfaces
     (h2kd3_runTight_pathB_of_guardedIfaces (h2kd3_witnessK mpl mmpl hLs hMm)
       hSpineB hW1 hW2 hW3 hW4Guarded)
 
-/-- Closes `h2asm_GhostMainOkPathBK mpl mmpl` from `h2kd3_SpineBD3SlotsRunTightK`, shared slot
-contracts `464` / `463` / `521`, and `h2kd3_W4PathBSlot520OkK`. -/
+/-- Closes `h2asm_GhostMainOkPathBK mpl mmpl` from `h2kd3_SpineBD3SlotsRunTightFdK`, shared slot
+contracts `464` / `463` / `521`, and `h2kd3_W4PathBSlot520OkWfK`. -/
 theorem h2kd3_ghostMainOkPathBK_of_ifaces
     (mpl mmpl : MultiPlacement)
     (hLs : libsignalSessionLib.LinkedAt cliElfBytes mpl)
     (hMm : mallocngLib.LinkedAt cliElfBytes mmpl)
-    (hSpineB : h2kd3_SpineBD3SlotsRunTightK (h2kd3_witnessK mpl mmpl hLs hMm))
-    (hW1 : h2ki_W1EncryptSlot464OkK (h2kd3_witnessK mpl mmpl hLs hMm))
-    (hW2 : h2ki_W2DecryptSignalSlot463OkK (h2kd3_witnessK mpl mmpl hLs hMm))
-    (hW3 : h2ki_W3InitSlot521OkK (h2kd3_witnessK mpl mmpl hLs hMm))
-    (hW4 : h2kd3_W4PathBSlot520OkK (h2kd3_witnessK mpl mmpl hLs hMm)) :
+    (hSpineB : h2kd3_SpineBD3SlotsRunTightFdK (h2kd3_witnessK mpl mmpl hLs hMm))
+    (hW1 : h2ki_W1EncryptSlot464OkWfK (h2kd3_witnessK mpl mmpl hLs hMm))
+    (hW2 : h2ki_W2DecryptSignalSlot463OkWfK (h2kd3_witnessK mpl mmpl hLs hMm))
+    (hW3 : h2ki_W3InitSlot521OkWfK (h2kd3_witnessK mpl mmpl hLs hMm))
+    (hW4 : h2kd3_W4PathBSlot520OkWfK (h2kd3_witnessK mpl mmpl hLs hMm)) :
     letI : LibsignalPlacement :=
       libsignalPlacementOf mpl (hole2_hblk mpl hLs) (hole2_hext_nodup mpl hLs)
     h2asm_GhostMainOkPathBK mpl mmpl :=

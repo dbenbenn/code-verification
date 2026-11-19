@@ -183,68 +183,9 @@ theorem forall2_append_inv' {α β : Type} {R : α → β → Prop} :
 theorem encVis_encNextTr_length_le_three' (tr₂ : ExecTrace) (me : Participant) (sIdx : Nat) (stA : DY.Libsignal.TripleRatchet.TRState) (cl pq : Nat) (wrap : Option (Nat × Nat)) : (encVis tr₂ (encNextTr tr₂ me sIdx stA cl pq) wrap true).length ≤ 3 := by
   unfold encVis encDraws encSend; rw [CompPrefixInvFresh.newRandoms_encNextTr, lastSent_encNextTr]
   cases wrap <;> by_cases hcl : (cl != 0) = true <;> simp [hcl]
-theorem split38_forall2_vis_inv_gen
-    {i : ExternInterpretation} {r : Records} {S : Sem} {g : Ghost} (hNe : r.alice ≠ r.bob)
-    {a : Participant} {idS : Nat} {pre mid post : List Move} {hb : DY.Libsignal.PQXDH.BundleHandles}
-    {shown cl e c' : Nat} {o : DY.Libsignal.PQXDH.AliceHandshakeOut}
-    (hpre : MovesFrom InvisibleNoEffect (setupTrace r) pre)
-    (hmid : MovesFrom InvisibleNoEffect ((Move.aliceStart a r.bob idS 6 hb shown).next (runMoves pre (setupTrace r)).1) mid)
-    (hpost : MovesFrom InvisibleNoEffect ((Move.encrypt a ((runMoves pre (setupTrace r)).1.length + 8) cl
-      ((runMoves mid ((Move.aliceStart a r.bob idS 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2)
-      (some (e, c'))).next (runMoves mid ((Move.aliceStart a r.bob idS 6 hb shown).next (runMoves pre (setupTrace r)).1)).1) post)
-    (hm₀ : (Move.aliceStart a r.bob idS 6 hb shown).next (runMoves pre (setupTrace r)).1 =
-      iniAliceStartTr (runMoves pre (setupTrace r)).1 a r.bob o)
-    {bun pt c w : HwBytes} {rs : List MachineEvent} (hrs : rs.length = 34)
-    (hvis : List.Forall₂ (EventMatchesEntry i r S g) ((.recv bun :: rs) ++ [.pt pt, .rng c, .send w]) (runVis r (pre ++ Move.aliceStart a r.bob idS 6 hb shown :: mid ++ Move.encrypt a ((runMoves pre (setupTrace r)).1.length + 8) cl
-          ((runMoves mid ((Move.aliceStart a r.bob idS 6 hb shown).next (runMoves pre (setupTrace r)).1)).1.length + 2)
-          (some (e, c')) :: post))) :
-    let tr₁ := (runMoves pre (setupTrace r)).1
-    let m₀ := Move.aliceStart a r.bob idS 6 hb shown
-    let tr₂ := (runMoves mid (m₀.next tr₁)).1
-    let stA := iniAliceStartState tr₁ r.bob o
-    List.Forall₂ (EventMatchesEntry i r S g) (.recv bun :: rs) (aliceVis tr₁ (iniAliceStartTr tr₁ a r.bob o) hb) ∧
-    List.Forall₂ (EventMatchesEntry i r S g) [.pt pt, .rng c, .send w]
-      (encVis tr₂ (encNextTr tr₂ a (tr₁.length + 8) stA cl (tr₂.length + 2)) (some (e, c')) true) := by
-  let tr₁ := (runMoves pre (setupTrace r)).1
-  let m₀ := Move.aliceStart a r.bob idS 6 hb shown
-  let tr₂ := (runMoves mid (m₀.next tr₁)).1
-  let stA := iniAliceStartState tr₁ r.bob o
-  let m₁ := Move.encrypt a (tr₁.length + 8) cl (tr₂.length + 2) (some (e, c'))
-  change List.Forall₂ (EventMatchesEntry i r S g) ((.recv bun :: rs) ++ [.pt pt, .rng c, .send w]) (runVis r (pre ++ m₀ :: mid ++ m₁ :: post)) at hvis; have henc := encrypt_next_split38_eq_gen (cl := cl) (some (e, c')) hm₀ hmid rfl
-  have halice : m₀.vis tr₁ = (aliceVis tr₁ (iniAliceStartTr tr₁ a r.bob o) hb).take shown := by rw [aliceStart_vis_eq, hm₀]
-  rw [runVis_split38_eq_gen hNe hpre hmid hpost, halice, encrypt_vis_eq, henc] at hvis
-  have halice_len : (aliceVis tr₁ (iniAliceStartTr tr₁ a r.bob o) hb).length = 35 := by rw [CompPrefixInvAlice.aliceVis_iniAliceStartTr]; simp [kyberCoinEntries]
-  have htake_le : ((aliceVis tr₁ (iniAliceStartTr tr₁ a r.bob o) hb).take shown).length ≤ 35 := by rw [List.length_take, halice_len]; exact Nat.min_le_right shown 35
-  have henc_le := encVis_encNextTr_length_le_three' tr₂ a (tr₁.length + 8) stA cl (tr₂.length + 2) (some (e, c')); have htot := hvis.length_eq; rw [List.length_append, List.length_append] at htot
-  have hlhs_len : (.recv bun :: rs : List MachineEvent).length = 35 := by simp [hrs]
-  have hrhs_len : ([.pt pt, .rng c, .send w] : List MachineEvent).length = 3 := rfl; rw [hlhs_len, hrhs_len] at htot
-  have htake_len : ((aliceVis tr₁ (iniAliceStartTr tr₁ a r.bob o) hb).take shown).length = 35 := by dsimp only [stA, tr₂, m₀, tr₁] at henc_le htake_le htot ⊢; omega
-  have hshown : 35 ≤ shown := by rw [List.length_take, halice_len] at htake_len; omega
-  have htake_eq : (aliceVis tr₁ (iniAliceStartTr tr₁ a r.bob o) hb).take shown = aliceVis tr₁ (iniAliceStartTr tr₁ a r.bob o) hb :=
-    List.take_of_length_le (by omega)
-  rw [htake_eq] at hvis; exact forall2_append_inv' (by rw [hlhs_len, halice_len]) hvis
 theorem gamma_of_single {i : ExternInterpretation} {r : Records} {S : Sem} {g : Ghost} {ev : MachineEvent} {v : VisEntry} {t : DY.Bytes} (hl : v.layout = .single) (ht : v.terms = [t]) (hem : EventMatchesEntry i r S g ev v) : gamma i S g t = eventBytes ev := by
   obtain ⟨_, hmap⟩ := hem; rcases v with ⟨k, ts, lay, anc⟩; dsimp only at hl ht hmap; subst hl ht
   simp only [List.map_cons, List.map_nil, List.cons.injEq, and_true] at hmap; exact hmap
-theorem encVis_coin_pin {i : ExternInterpretation} {r : Records} {S : Sem} {g : Ghost} {tr₂ : ExecTrace} {me : Participant} {sIdx : Nat} {stA : DY.Libsignal.TripleRatchet.TRState} {cl pq e c' : Nat} {pt c w : HwBytes} (hm₁ : List.Forall₂ (EventMatchesEntry i r S g) [.pt pt, .rng c, .send w] (encVis tr₂ (encNextTr tr₂ me sIdx stA cl pq) (some (e, c')) true)) : cl ≠ 0 ∧ [gamma i S g (randTerm (tr₂.length + 1) cl)] = [c] := by
-  unfold encVis encDraws encSend at hm₁; rw [CompPrefixInvFresh.newRandoms_encNextTr, lastSent_encNextTr] at hm₁
-  by_cases hcl : (cl != 0) = true
-  · simp only [List.filter_cons, hcl, ↓reduceIte, List.filter_nil, List.map_cons, List.map_nil, List.cons_append, List.nil_append] at hm₁
-    obtain ⟨_, hm₂⟩ := List.forall₂_cons.mp hm₁; obtain ⟨hc, _⟩ := List.forall₂_cons.mp hm₂; exact ⟨bne_iff_ne.mp hcl, hc.2⟩
-  · have hcl' : (cl != 0) = false := Bool.eq_false_iff.mpr hcl
-    have hlen_eq := hm₁.length_eq; simp [hcl'] at hlen_eq
-theorem encVis_pt_pin {i : ExternInterpretation} {r : Records} {S : Sem} {g : Ghost} {tr₂ : ExecTrace} {me : Participant} {sIdx : Nat} {stA : DY.Libsignal.TripleRatchet.TRState} {cl pq e c' : Nat} {pt c w : HwBytes} (hm₁ : List.Forall₂ (EventMatchesEntry i r S g) [.pt pt, .rng c, .send w] (encVis tr₂ (encNextTr tr₂ me sIdx stA cl pq) (some (e, c')) true)) : gamma i S g (randTerm tr₂.length 32) = pt := by unfold encVis encDraws at hm₁; rw [CompPrefixInvFresh.newRandoms_encNextTr] at hm₁; obtain ⟨hem, -⟩ := List.forall₂_cons.mp hm₁; exact gamma_of_single rfl rfl hem
-theorem newRandoms_attackerSend (t : DY.Bytes) (tr : ExecTrace) : newRandoms tr ((Move.attackerSend t).next tr) = [] := by
-  have hn : (Move.attackerSend t).next tr = tr.append (⟨t⟩ : Network.ExecEntryT) := by
-    unfold Move.next Move.act; rw [XplSteps.xrun_bind_unit]; exact (TR.Runs.sendMessage tr t).2
-  rw [hn]
-  have hlen : (tr.append (⟨t⟩ : Network.ExecEntryT)).length - tr.length = 1 := by
-    rw [Symbolic.Proofs.Tests.CliNonvacuity.HandshakeCollisionsFalse.length_append_entry_eq]; omega
-  unfold newRandoms newIndices; rw [hlen]; simp only [List.range'_one, List.filterMap_cons, List.filterMap_nil, Symbolic.Swarm.CREF.at?_append_length]; rfl
-theorem newRandoms_nil_of_leak {m : Move} {tr : ExecTrace} (hk : LeakKind m) (hex : exposures tr (m.next tr) = []) : newRandoms tr (m.next tr) = [] := by
-  rcases XplSteps.xpl_leak_shape hk tr with h | h
-  · rw [h]; exact XplSteps.xpl_newRandoms_self tr
-  · exact absurd hex (XplSteps.xpl_exposures_ne_nil h)
 theorem newRandoms_nil_of_vis_nil {m : Move} {tr : ExecTrace} (hs : m.isSetup = false) (ha : m.Anchored tr) (hv : m.vis tr = []) : newRandoms tr (m.next tr) = [] := by
   rcases CompPrefixInvBundle.next_of_isSetup_false_vis_nil hs ha hv with h | ⟨t, h⟩ | ⟨ev, h⟩
   · rw [h]; exact XplSteps.xpl_newRandoms_self tr
@@ -340,11 +281,6 @@ theorem aliceDraws_aesSafe {i : ExternInterpretation} {r : Records} {S : Sem} {g
           ({ rngEntry (randTerm (tr₁.length + 2) 32) with anchor := some (tr₁.length + 5) } : VisEntry) (List.mem_singleton_self _)
         have hkl : (kyberCoinEntries (randTerm (tr₁.length + 1) 32)).length = 32 := by unfold kyberCoinEntries; simp
         rw [hkl] at hev_dhs_mem; rw [gamma_of_single rfl rfl hem_dhs]; exact hrs_dhs ev_dhs (by simpa using hev_dhs_mem)
-theorem encDraws_aesSafe {i : ExternInterpretation} {r : Records} {S : Sem} {g : Ghost} {tr₂ : ExecTrace} {me : Participant} {sIdx : Nat} {stA : DY.Libsignal.TripleRatchet.TRState} {cl pq e c' : Nat} {pt c w b : HwBytes} (hm₁ : List.Forall₂ (EventMatchesEntry i r S g) [.pt pt, .rng c, .send w] (encVis tr₂ (encNextTr tr₂ me sIdx stA cl pq) (some (e, c')) true)) (hpt : AesSafe b pt) (hc : AesSafe b c) : ∀ p ∈ newRandoms tr₂ (encNextTr tr₂ me sIdx stA cl pq), p.2 ≠ 0 → AesSafe b (gamma i S g p.1) := by
-  obtain ⟨-, hcpin⟩ := encVis_coin_pin hm₁; have hptγ := encVis_pt_pin hm₁; rw [CompPrefixInvFresh.newRandoms_encNextTr]; intro p hp _; simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
-  rcases hp with rfl | rfl
-  · rw [hptγ]; exact hpt
-  · rw [(List.cons.inj hcpin).1]; exact hc
 theorem movesAnchored_append' :
     ∀ (ms₁ ms₂ : List Move) (tr : ExecTrace), MovesAnchored (ms₁ ++ ms₂) tr → MovesAnchored ms₁ tr ∧ MovesAnchored ms₂ (runMoves ms₁ tr).1
   | [], _, _, h => ⟨trivial, h⟩
@@ -363,8 +299,6 @@ theorem call0Rng_take_1_ne_16 : ∀ e ∈ call0Rng.take 1, (eventBytes e).length
   intro e he; rw [call0Rng_take_1_eq, List.mem_singleton] at he; subst he; show (rngAt 1).length ≠ 16; rw [rngAt1_length]; decide
 theorem call0Rng_drop_33_ne_16 : ∀ e ∈ call0Rng.drop 33, (eventBytes e).length ≠ 16 := by
   intro e he; rw [call0Rng_drop_33_eq, List.mem_singleton] at he; subst he; show (rngAt 34).length ≠ 16; rw [rngAt34_length]; decide
-theorem rngAt36_gt_6 : 6 < (rngAt 36).length := by rw [rngAt36_length]; decide
-theorem rngAt36_ne_16 : (rngAt 36).length ≠ 16 := by rw [rngAt36_length]; decide
 theorem eventBytes_eq_census443 (e : MachineEvent) : eventBytes e = Census443Defs.eventBytes e := by cases e <;> rfl
 attribute [local irreducible] bundle0 call0Rng ptAt rngAt sendAt setupPublic setupSecret
 theorem ptAvoidFull_prefixTerms_of_pre38PrefixInv_cref {r : Records} {S : Sem} {g : Ghost} {ms : List Move} {b : HwBytes} (hcompat : Compat compI0 r S g) (hwf : RecordsWF r) (hb : b = ptAt 38 ∨ b = ptAt 78) (hinv : Pre38PrefixInv r S g ms b) : ∀ u ∈ prefixTerms r (runTraceMoves r ms) (runVis r ms), PtAvoidFull compI0 r S g ms b u := by
@@ -566,14 +500,4 @@ theorem take38_inv_cref_rs {r : Records} {S : Sem} {g : Ghost} {ms : List Move} 
       · exact .inr ⟨_, _, a, ikA, hb_h, cl, hid, hvA, hpt_pin, hcpin, he⟩
     · intro v hv hk u hu; subst htr₁ htr₂ hms; exact ⟨_, 32, pt_terms_split38_mem_gen hNe hpre hmid hpost hm₀ hv hk hu⟩
   exact ⟨hrs, hsks, hinv, hnoleak, hbase, ptAvoidFull_prefixTerms_of_pre38PrefixInv_cref hc hwf hb hinv⟩
-theorem self_mem_inits {α : Type} : ∀ l : List α, l ∈ l.inits
-  | [] => List.mem_singleton_self []
-  | _ :: l => List.mem_cons_of_mem _ (List.mem_map.mpr ⟨l, self_mem_inits l, rfl⟩)
-theorem take38_inv_cref {r : Records} {S : Sem} {g : Ghost} {ms : List Move} {b : HwBytes} (hwf : RecordsWF r) (hnb : CompSetupSecrecy.NoBrk r ms) (hmp : Symbolic.Swarm.CREF.MatchedPrefix compI0 r S g ms (trace.take 38)) (hb : b = ptAt 38 ∨ b = ptAt 78) : RunRandSafe g b (runTraceMoves r ms) ∧ NoSKS (runTraceMoves r ms) ∧ Pre38PrefixInv r S g ms b ∧ (∀ v ∈ runVis r ms, v.kind ≠ .leak) ∧ (∀ u : DY.Bytes, (runTraceMoves r ms).BaseAttackerKnows u → PtAvoidFull compI0 r S g ms b u) ∧ (∀ u ∈ prefixTerms r (runTraceMoves r ms) (runVis r ms), PtAvoidFull compI0 r S g ms b u) := by
-  rw [trace_take_38_eq] at hmp
-  exact take38_inv_cref_rs (rs₁ := [.rng (rngAt 36)]) hwf hnb
-    (fun e he => by simp at he; subst he; rfl)
-    (fun c hc => by simp at hc; subst hc; exact self_mem_inits _) hmp hb
-theorem pre38PrefixInv_ws {r : Records} {S : Sem} {who₀ : List Participant} {g : Ghost} {ms : List Move} {b : HwBytes} (hwf : RecordsWF r) (hnb : CompSetupSecrecy.NoBrk r ms) (hmp : MatchedPrefix compI0 r S who₀ g ms (trace.take 38)) (hb : b = ptAt 38 ∨ b = ptAt 78) : Pre38PrefixInv r S g ms b := (take38_inv_cref hwf hnb (Symbolic.Swarm.CREF.MatchedPrefix.of_composed hmp) hb).2.2.1
-theorem ptDeadAt38 : PtDeadAt 38 := ptDeadAt38_of (fun _ _ _ _ hfits hexp hnb => pre38PrefixInv_ws hfits.1.1 hnb hexp.1 (.inl rfl))
 end Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.PtPrefixInv38

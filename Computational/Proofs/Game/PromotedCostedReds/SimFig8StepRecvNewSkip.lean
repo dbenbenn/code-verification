@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling
-public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewCost
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8State
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8Kept
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8Crypto -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanOracle
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8SanCoupling -- proof-setup: allow-public-import
+public import Computational.Proofs.Game.PromotedCostedReds.SimFig8StepRecvNewCost -- proof-setup: allow-public-import
 
 /-!
 # Prefix and Early-Reject Lemmas for `simFig8` New-Epoch Receive
@@ -23,7 +23,7 @@ Proves `.eval` specifications for the pure wire and guard helpers, early-rejecti
 `recvNewOfFwdC`, and the refusal and parse-error prefix of `recvHookOfBranchesC`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

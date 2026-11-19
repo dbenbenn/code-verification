@@ -9,10 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid2
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub1Placed
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Sub1Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import ProofLib
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym
 
 /-!
 # Placed Stage P2 Over-Path Scratch-Region Split Helper
@@ -20,11 +28,9 @@ import Arm64.Trusted.Spec.SepLogic
 Lifts the 88-byte `sp + 0x3e0` scratch-region split (`16 + 72` bytes) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
-
-noncomputable section
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
@@ -38,10 +44,4 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure
 open CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.OverP2
 
-theorem p2_memRegion_3e0_split_16_72_placed [LibsignalPlacement] (sp : BitVec 64) :
-    memRegion (sp + 0x3e0#64) 88 =
-      (memRegion (sp + 0x3e0#64) 16 ∗ memRegion (sp + 0x3f0#64) 72) :=
-  p2_memRegion_3e0_split_16_72 sp
-
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
-end

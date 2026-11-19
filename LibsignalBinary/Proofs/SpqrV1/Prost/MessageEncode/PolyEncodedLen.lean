@@ -10,9 +10,7 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.PolyEncodedLenBase
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Prost.MessageEncode.Decodes
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ProtoReprCodeSym -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -23,7 +21,7 @@ Shared parametric proofs and specializations (`[local#1]` and `[local#2]`) for:
 - `<spqr::proto::pq_ratchet::PolynomialEncoder as prost::message::Message>::encoded_len` (`0x38d8c`, `0x669ec`)
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Prost.MessageEncode
 
@@ -51,49 +49,27 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 
 /-! ## Part 1: `PolynomialDecoder::encoded_len` (`0x39e98`, `0x696f4`) -/
 
-def IsPolyDecEntry (b : BitVec 64) (abs : String → Option (State → State))
-    (entry : BitVec 64) : Prop :=
-  (tripleRatchetProgAtExt b abs).fnAddr polynomialDecoderEncodedLenLocal1Name = entry ∨
-  (tripleRatchetProgAtExt b abs).fnAddr polynomialDecoderEncodedLenLocal2Name = entry
-
-def IsPolyDecEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
-  (∃ b abs, prog = tripleRatchetProgAtExt b abs ∧ IsPolyDecEntry b abs entry) ∨
+@[expose] def IsPolyDecEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
+  False ∨
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
     prog = @lsProg_186 inst H ∧ entry = (@blkPl_186 inst).base) ∨
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
     prog = @lsProg_413 inst H ∧ entry = (@blkPl_413 inst).base)
 
-theorem pair_fetch_entry {f : BitVec 64 → Option Instr}
-    {a1 a2 entry : BitVec 64} (hfn : a1 = entry ∨ a2 = entry) {ins : Instr}
-    (h1 : f a1 = some ins) (h2 : f a2 = some ins) :
-    f entry = some ins := by
-  rcases hfn with rfl | rfl <;> assumption
-
-theorem pair_fetch_add {f : BitVec 64 → Option Instr}
-    {a1 a2 entry : BitVec 64} (hfn : a1 = entry ∨ a2 = entry) {k : Nat} {ins : Instr}
-    (h1 : f (a1 + BitVec.ofNat 64 k) = some ins)
-    (h2 : f (a2 + BitVec.ofNat 64 k) = some ins) :
-    f (entry + BitVec.ofNat 64 k) = some ins := by
-  rcases hfn with rfl | rfl <;> assumption
-
 theorem polyDecProg_fetch_entry {prog : Program} {entry : BitVec 64}
     (hfn : IsPolyDecEntryProg prog entry) {ins : Instr}
-    (h_ext : ∀ b abs, IsPolyDecEntry b abs entry →
-      (tripleRatchetProgAtExt b abs).fetch entry = some ins)
     (h_215 : ∀ [LibsignalPlacement] H,
       (lsProg_186 H).fetch ((blkPl_186).base + 0#64) = some ins)
     (h_463 : ∀ [LibsignalPlacement] H,
       (lsProg_413 H).fetch ((blkPl_413).base + 0#64) = some ins) :
     prog.fetch entry = some ins := by
-  rcases hfn with ⟨b, abs, rfl, h⟩ | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
-  · exact h_ext b abs h
+  rcases hfn with h | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
+  · nomatch h
   · simpa only [BitVec.add_zero] using @h_215 inst H
   · simpa only [BitVec.add_zero] using @h_463 inst H
 
 theorem polyDecProg_fetch_add {prog : Program} {entry : BitVec 64}
     (hfn : IsPolyDecEntryProg prog entry) {k : Nat} {ins : Instr}
-    (h_ext : ∀ b abs, IsPolyDecEntry b abs entry →
-      (tripleRatchetProgAtExt b abs).fetch (entry + BitVec.ofNat 64 k) = some ins)
     (h_215 : ∀ [LibsignalPlacement] H,
       (lsProg_186 H).fetch
         ((blkPl_186).base + BitVec.ofNat 64 k) = some ins)
@@ -101,30 +77,18 @@ theorem polyDecProg_fetch_add {prog : Program} {entry : BitVec 64}
       (lsProg_413 H).fetch
         ((blkPl_413).base + BitVec.ofNat 64 k) = some ins) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some ins := by
-  rcases hfn with ⟨b, abs, rfl, h⟩ | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
-  · exact h_ext b abs h
+  rcases hfn with h | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
+  · nomatch h
   · exact @h_215 inst H
   · exact @h_463 inst H
 
 open Lean Elab Tactic in
 elab "polyDec_fetches_range " _entry:term:max hfn:ident
     kStart:num kEnd:num : tactic => do
-  let offs := #[0x39f7c, 0x642fc]
-  let fnOffs := #[
-    mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x39f7c,
-    mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x642fc
-  ]
   let kStart := kStart.getNat
   let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
   for i in [kStart / 4 : kEnd / 4] do
     let k := 4 * i
-    let decs := offs.map fun off =>
-      mkIdent (`CryptoVerification.SpqrV1.Prost.MessageEncode |>.str
-        s!"spqrPolyDecBin_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-    let d0 := decs[0]!; let d1 := decs[1]!
-    let f0 := fnOffs[0]!; let f1 := fnOffs[1]!
     let kHex := String.ofList (Nat.toDigits 16 k)
     let p215 := mkIdent (`CryptoVerification |>.str s!"blkPC_186_rebase_fetch_0x{kHex}")
     let p463 := mkIdent (`CryptoVerification |>.str s!"blkPC_413_rebase_fetch_0x{kHex}")
@@ -132,17 +96,11 @@ elab "polyDec_fetches_range " _entry:term:max hfn:ident
     if k == 0 then
       evalTactic (← `(tactic|
         have := polyDecProg_fetch_entry $hfn
-          (fun b abs h => pair_fetch_entry h
-            ($fetchEntry (b := b) (H := Rust.withPanics abs) $f0 (by decide) $d0)
-            ($fetchEntry (b := b) (H := Rust.withPanics abs) $f1 (by decide) $d1))
           (fun [LibsignalPlacement] H => $p215 (blkPl_186).base H)
           (fun [LibsignalPlacement] H => $p463 (blkPl_413).base H)))
     else
       evalTactic (← `(tactic|
         have := polyDecProg_fetch_add $hfn (k := $kq)
-          (fun b abs h => pair_fetch_add h (k := $kq)
-            ($fetchAdd (b := b) (H := Rust.withPanics abs) (k := $kq) $f0 (by decide) $d0)
-            ($fetchAdd (b := b) (H := Rust.withPanics abs) (k := $kq) $f1 (by decide) $d1))
           (fun [LibsignalPlacement] H => $p215 (blkPl_186).base H)
           (fun [LibsignalPlacement] H => $p463 (blkPl_413).base H)))
 
@@ -507,13 +465,6 @@ theorem polyDec_entry_pinned_prog_ok {prog : Program} (A : RustAlloc)
   refine ⟨s0.readReg64 .fp, s0.readReg64 .lr, ⟨hx0_f, by rw [htrf, htr2, htr1]⟩, ?_⟩
   convert hm_f using 1; ac_rfl
 
-/-- Any entry satisfying `IsPolyDecEntry` satisfies `polynomialDecoderEncodedLenPinnedSpec`. -/
-theorem polyDec_entry_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) (entry : BitVec 64)
-    (hfn : IsPolyDecEntry b ext entry) :
-    subroutine_ok (tripleRatchetProgAtExt b ext) entry (polynomialDecoderEncodedLenPinnedSpec A) :=
-  polyDec_entry_pinned_prog_ok A entry (Or.inl ⟨b, ext, rfl, hfn⟩)
-
 theorem polynomialDecoderEncodedLen_ok_of_pinned {prog : Program} {entry : BitVec 64} {A : RustAlloc}
     (hpinned : subroutine_ok prog entry (polynomialDecoderEncodedLenPinnedSpec A)) :
     subroutine_ok prog entry (polynomialDecoderEncodedLenSpec A) := by
@@ -530,20 +481,6 @@ theorem polynomialDecoderEncodedLen_ok_of_pinned {prog : Program} {entry : BitVe
     exact ⟨g, hpost⟩
   · exact Or.inr (Or.inl hpan)
   · exact Or.inr (Or.inr hex)
-
-theorem polynomialDecoderEncodedLen_local1_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr polynomialDecoderEncodedLenLocal1Name)
-      (polynomialDecoderEncodedLenPinnedSpec A) :=
-  polyDec_entry_pinned_ok_ext b A ext _ (Or.inl rfl)
-
-theorem polynomialDecoderEncodedLen_local2_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr polynomialDecoderEncodedLenLocal2Name)
-      (polynomialDecoderEncodedLenPinnedSpec A) :=
-  polyDec_entry_pinned_ok_ext b A ext _ (Or.inr rfl)
 
 section PlacedDec
 variable [LibsignalPlacement]
@@ -578,13 +515,8 @@ end PlacedDec
 
 /-! ## Part 2: `PolynomialEncoder::encoded_len` (`0x38d8c`, `0x669ec`) -/
 
-def IsPolyEncEntry (b : BitVec 64) (abs : String → Option (State → State))
-    (entry : BitVec 64) : Prop :=
-  (tripleRatchetProgAtExt b abs).fnAddr polynomialEncoderEncodedLenLocal1Name = entry ∨
-  (tripleRatchetProgAtExt b abs).fnAddr polynomialEncoderEncodedLenLocal2Name = entry
-
-def IsPolyEncEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
-  (∃ b abs, prog = tripleRatchetProgAtExt b abs ∧ IsPolyEncEntry b abs entry) ∨
+@[expose] def IsPolyEncEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
+  False ∨
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
     prog = @lsProg_173 inst H ∧ entry = (@blkPl_173 inst).base) ∨
   (∃ (inst : LibsignalPlacement) (H : String → Option (State → State)),
@@ -592,22 +524,18 @@ def IsPolyEncEntryProg (prog : Program) (entry : BitVec 64) : Prop :=
 
 theorem polyEncProg_fetch_entry {prog : Program} {entry : BitVec 64}
     (hfn : IsPolyEncEntryProg prog entry) {ins : Instr}
-    (h_ext : ∀ b abs, IsPolyEncEntry b abs entry →
-      (tripleRatchetProgAtExt b abs).fetch entry = some ins)
     (h_202 : ∀ [LibsignalPlacement] H,
       (lsProg_173 H).fetch ((blkPl_173).base + 0#64) = some ins)
     (h_451 : ∀ [LibsignalPlacement] H,
       (lsProg_401 H).fetch ((blkPl_401).base + 0#64) = some ins) :
     prog.fetch entry = some ins := by
-  rcases hfn with ⟨b, abs, rfl, h⟩ | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
-  · exact h_ext b abs h
+  rcases hfn with h | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
+  · nomatch h
   · simpa only [BitVec.add_zero] using @h_202 inst H
   · simpa only [BitVec.add_zero] using @h_451 inst H
 
 theorem polyEncProg_fetch_add {prog : Program} {entry : BitVec 64}
     (hfn : IsPolyEncEntryProg prog entry) {k : Nat} {ins : Instr}
-    (h_ext : ∀ b abs, IsPolyEncEntry b abs entry →
-      (tripleRatchetProgAtExt b abs).fetch (entry + BitVec.ofNat 64 k) = some ins)
     (h_202 : ∀ [LibsignalPlacement] H,
       (lsProg_173 H).fetch
         ((blkPl_173).base + BitVec.ofNat 64 k) = some ins)
@@ -615,30 +543,18 @@ theorem polyEncProg_fetch_add {prog : Program} {entry : BitVec 64}
       (lsProg_401 H).fetch
         ((blkPl_401).base + BitVec.ofNat 64 k) = some ins) :
     prog.fetch (entry + BitVec.ofNat 64 k) = some ins := by
-  rcases hfn with ⟨b, abs, rfl, h⟩ | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
-  · exact h_ext b abs h
+  rcases hfn with h | ⟨inst, H, rfl, rfl⟩ | ⟨inst, H, rfl, rfl⟩
+  · nomatch h
   · exact @h_202 inst H
   · exact @h_451 inst H
 
 open Lean Elab Tactic in
 elab "polyEnc_fetches_range " _entry:term:max hfn:ident
     kStart:num kEnd:num : tactic => do
-  let offs := #[0x38e70, 0x615f4]
-  let fnOffs := #[
-    mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x38e70,
-    mkIdent `CryptoVerification.libsignalSessionCode_fnOff_0x615f4
-  ]
   let kStart := kStart.getNat
   let kEnd := kEnd.getNat
-  let fetchEntry := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr_entry
-  let fetchAdd := mkIdent `CryptoVerification.libsignalSessionCode_fetch_fnAddr
   for i in [kStart / 4 : kEnd / 4] do
     let k := 4 * i
-    let decs := offs.map fun off =>
-      mkIdent (`CryptoVerification.SpqrV1.Prost.MessageEncode |>.str
-        s!"spqrPolyEncBin_decode_0x{String.ofList (Nat.toDigits 16 (off + k))}")
-    let d0 := decs[0]!; let d1 := decs[1]!
-    let f0 := fnOffs[0]!; let f1 := fnOffs[1]!
     let kHex := String.ofList (Nat.toDigits 16 k)
     let p202 := mkIdent (`CryptoVerification |>.str s!"blkPC_173_rebase_fetch_0x{kHex}")
     let p451 := mkIdent (`CryptoVerification |>.str s!"blkPC_401_rebase_fetch_0x{kHex}")
@@ -646,17 +562,11 @@ elab "polyEnc_fetches_range " _entry:term:max hfn:ident
     if k == 0 then
       evalTactic (← `(tactic|
         have := polyEncProg_fetch_entry $hfn
-          (fun b abs h => pair_fetch_entry h
-            ($fetchEntry (b := b) (H := Rust.withPanics abs) $f0 (by decide) $d0)
-            ($fetchEntry (b := b) (H := Rust.withPanics abs) $f1 (by decide) $d1))
           (fun [LibsignalPlacement] H => $p202 (blkPl_173).base H)
           (fun [LibsignalPlacement] H => $p451 (blkPl_401).base H)))
     else
       evalTactic (← `(tactic|
         have := polyEncProg_fetch_add $hfn (k := $kq)
-          (fun b abs h => pair_fetch_add h (k := $kq)
-            ($fetchAdd (b := b) (H := Rust.withPanics abs) (k := $kq) $f0 (by decide) $d0)
-            ($fetchAdd (b := b) (H := Rust.withPanics abs) (k := $kq) $f1 (by decide) $d1))
           (fun [LibsignalPlacement] H => $p202 (blkPl_173).base H)
           (fun [LibsignalPlacement] H => $p451 (blkPl_401).base H)))
 
@@ -1062,12 +972,6 @@ theorem polyEnc_entry_pinned_prog_ok {prog : Program} (A : RustAlloc)
   refine ⟨s0.readReg64 .fp, s0.readReg64 .lr, ⟨hx0_f, by rw [htrf, htr2, htr1]⟩, ?_⟩
   convert hm_f using 1; ac_rfl
 
-/-- Any entry satisfying `IsPolyEncEntry` satisfies `polynomialEncoderEncodedLenPinnedSpec`. -/
-theorem polyEnc_entry_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) (entry : BitVec 64) (hfn : IsPolyEncEntry b ext entry) :
-    subroutine_ok (tripleRatchetProgAtExt b ext) entry (polynomialEncoderEncodedLenPinnedSpec A) :=
-  polyEnc_entry_pinned_prog_ok A entry (Or.inl ⟨b, ext, rfl, hfn⟩)
-
 theorem polynomialEncoderEncodedLen_ok_of_pinned {prog : Program} {entry : BitVec 64} {A : RustAlloc}
     (hpinned : subroutine_ok prog entry (polynomialEncoderEncodedLenPinnedSpec A)) :
     subroutine_ok prog entry (polynomialEncoderEncodedLenSpec A) := by
@@ -1084,20 +988,6 @@ theorem polynomialEncoderEncodedLen_ok_of_pinned {prog : Program} {entry : BitVe
     exact ⟨g, hpost⟩
   · exact Or.inr (Or.inl hpan)
   · exact Or.inr (Or.inr hex)
-
-theorem polynomialEncoderEncodedLen_local1_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr polynomialEncoderEncodedLenLocal1Name)
-      (polynomialEncoderEncodedLenPinnedSpec A) :=
-  polyEnc_entry_pinned_ok_ext b A ext _ (Or.inl rfl)
-
-theorem polynomialEncoderEncodedLen_local2_pinned_ok_ext (b : BitVec 64) (A : RustAlloc)
-    (ext : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr polynomialEncoderEncodedLenLocal2Name)
-      (polynomialEncoderEncodedLenPinnedSpec A) :=
-  polyEnc_entry_pinned_ok_ext b A ext _ (Or.inr rfl)
 
 section PlacedEnc
 variable [LibsignalPlacement]

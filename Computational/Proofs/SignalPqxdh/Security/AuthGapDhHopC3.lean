@@ -9,12 +9,15 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC1
-public import Computational.Proofs.SignalPqxdh.Security.Collisions
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhD
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC1 -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Collisions -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhD -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
+public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHopC -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDhCouplingA
 
 /-!
 # `Auth` hop `G3 → G3.5`: lazy root-KDF coupling and target pre-sampling
@@ -23,7 +26,7 @@ Defines the `.g3` cutoff simulation `runAuthFgSim`, couples the lazy root-KDF ca
 and proves equivalence with the target-pre-sampled `.g3` oracle `pqxdhAuthFgPreImpl` for `DH1` and `DH3`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open SignalPqxdh SignalPqxdh.Security
 open OracleSpec OracleComp
@@ -36,7 +39,7 @@ namespace Proofs.SignalPqxdh.Security
 abbrev mkG3Hybrid {S : Setup} (base : AuthState S) : AuthHybridState S :=
   { base := base, initKemRecs := [], recvKemRecs := [], idealSessions := [] }
 /-- `.g3` `Auth` oracle on `AuthFgCutoffState S` logging `.roQuery` inputs and responder handshakes. -/
-def pqxdhAuthFgImpl (S : Setup) (P : Primitives) :
+@[expose] def pqxdhAuthFgImpl (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthFgCutoffState S) ProbComp)
   | .roQuery secrets => StateT.mk (fun hst => do
     let (resp, h') ←
@@ -57,7 +60,7 @@ def pqxdhAuthFgImpl (S : Setup) (P : Primitives) :
   | q => StateT.mk (fun hst => do
     let (resp, h') ← (pqxdhAuthHybridKoskImpl .g3 true false S P q).run (mkG3Hybrid hst.base)
     return (resp, { hst with base := h'.base }))
-noncomputable def runAuthFgSim (S : Setup) (P : Primitives) (A : AuthAdversary S) :
+@[expose] def runAuthFgSim (S : Setup) (P : Primitives) (A : AuthAdversary S) :
     ProbComp (Bool × Bool × AuthFgCutoffState S) := do
   let secb ← $ᵗ Bool
   let initSt := AuthFgCutoffState.empty S secb
@@ -66,7 +69,7 @@ noncomputable def runAuthFgSim (S : Setup) (P : Primitives) (A : AuthAdversary S
   let (b', finalHst) ← (simulateQ impl A.run).run initSt
   return (secb, b', finalHst)
 /-- `DH3` per-index bad event at `(sIdx, bIdx)` without gating on `s.spkHonest`. -/
-def badAuthFgDh3AtCore {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
+@[expose] def badAuthFgDh3AtCore {S : Setup} (P : Primitives) (maxLen sIdx bIdx : ℕ)
     (st : AuthState S) (advRoLog : List Bytes) (respRecs : List AuthRespRecord) : Bool :=
   match st.sessions.find? (fun s => initSessionSlotIdx s.sid == sIdx),
         st.spkBundles.find? (fun (k, _) => spkBundleFlatIdxVal S k == bIdx) with
@@ -85,7 +88,7 @@ theorem badAuthFgDh3At_imp_core {S : Setup} (P : Primitives) (maxLen sIdx bIdx :
     (h : badAuthFgDh3At P maxLen sIdx bIdx st advRoLog respRecs = true) :
     badAuthFgDh3AtCore P maxLen sIdx bIdx st advRoLog respRecs = true := h
 /-- Relates a symbolic `FgPoS` entry in `fgRootL` to a concrete DH byte string against right secret `vSk`. -/
-def FgRootPosRep (P : Primitives) (vSk : Bytes) (pos : FgPoS) (dh : Bytes) : Prop :=
+@[expose] def FgRootPosRep (P : Primitives) (vSk : Bytes) (pos : FgPoS) (dh : Bytes) : Prop :=
   pos = mkSecretPosPure P dh ∨
   ∃ pk1 pk2,
     pos = mkPairPosPure P pk1 pk2 ∧
@@ -127,14 +130,14 @@ theorem ddhEqPure_of_fgRootPosRep (P : Primitives) (hP : CryptoWellFormedPrimiti
   · exact ddhEqPure_pair_pair_same_right_iff P hP vSk pk1 pk2 pk3 pk4 hv
       (onCurveKeyLocal_length_eq_32 P hP hpk1) (onCurveKeyLocal_length_eq_32 P hP hpk3)
       hpow2 hpow4
-def FgRootEntryRel (P : Primitives) (vSk : Bytes)
+@[expose] def FgRootEntryRel (P : Primitives) (vSk : Bytes)
     (e : FgRootEntry) (kv : (Bytes × Bytes) × (Bytes × Bytes)) : Prop :=
   e.rk = kv.1.1 ∧
   FgRootPosRep P vSk e.dhPos kv.1.2 ∧
   e.rk1 = kv.2.1 ∧
   e.ck1_0 = kv.2.2
 /-- Coupling relation between the symbolic `fgRootL` cache and `rootRoCache` up to `maxLen`. -/
-def FgRootCacheRel (P : Primitives) (vSk : Bytes) (maxLen : ℕ)
+@[expose] def FgRootCacheRel (P : Primitives) (vSk : Bytes) (maxLen : ℕ)
     (fgRootL : List FgRootEntry)
     (rootRoCache : List ((Bytes × Bytes) × (Bytes × Bytes))) : Prop :=
   fgRootL.length ≤ maxLen ∧
@@ -210,7 +213,7 @@ theorem fgRootPatchPure_eq_or_sample (P : Primitives) (hP : CryptoWellFormedPrim
   · rename_i e kv; rw [hF1, hF2] at hMapEq
     simp only [Option.map_some, Option.some.injEq] at hMapEq
     left; refine ⟨e.rk1, e.ck1_0, ?_, rfl⟩; rw [hMapEq]
-noncomputable def fgRoQueryAuthPure {S : Setup} (P : Primitives)
+@[expose] def fgRoQueryAuthPure {S : Setup} (P : Primitives)
     (ddh : Bytes → Bytes → Bytes → Bool) (maxLen : ℕ) (secrets : Bytes)
     (st : FgAuthSimState S) : ProbComp (AuthResponse × FgAuthSimState S) := do
   let advRoLog' := secrets :: st.advRoLog
@@ -294,7 +297,7 @@ theorem fgRoQueryAuthPure_eq_or_sample {S : Setup} {P : Primitives} (R : FgSlotR
         hEval, ?_, ?_⟩
       · dsimp only; rw [hFg, bind_assoc]; simp only [pure_bind]
       · intro dk hLt; exact ⟨by simp, hCache' dk hLt⟩
-noncomputable def fgRoRootQueryAuthPure {S : Setup} (P : Primitives)
+@[expose] def fgRoRootQueryAuthPure {S : Setup} (P : Primitives)
     (ddh : Bytes → Bytes → Bytes → Bool) (maxLen : ℕ) (rk dh : Bytes)
     (st : FgAuthSimState S) : ProbComp (AuthResponse × FgAuthSimState S) := do
   let pos := mkSecretPosPure P dh
@@ -340,7 +343,7 @@ theorem fgRoRootQueryAuthPure_eq_or_sample {S : Setup} {P : Primitives}
     simp only [bind_assoc, pure_bind]
 
 /-! ## State erasure and `FgAuthBaseRel` -/
-def ValidAuthEcFg (S : Setup) (P : Primitives) (st : AuthState S) : Prop :=
+@[expose] def ValidAuthEcFg (S : Setup) (P : Primitives) (st : AuthState S) : Prop :=
   ValidPrincipals S st.principals ∧ ValidSpkBundles S st.spkBundles ∧
   ValidOpkEntries S st.opkEntries ∧
   ValidSessionIds S ((sessPksAuth S P st).map Prod.fst) ∧
@@ -372,15 +375,15 @@ theorem validAuthEcFg_of_fields_eq {S : Setup} {P : Primitives} {st1 st2 : AuthS
   refine ⟨by rw [hP]; exact hVP, by rw [hS]; exact hVS, by rw [hO]; exact hVO, ?_, ?_⟩
   · unfold sessPksAuth at hVSess ⊢; rw [hSess]; exact hVSess
   · unfold sessPksAuth at hUsed1 ⊢; rw [hUsed, hSess]; exact hUsed1
-def erasePrincipalsOptFg (useDh1 : Bool) (targetIdx : ℕ)
+@[expose] def erasePrincipalsOptFg (useDh1 : Bool) (targetIdx : ℕ)
     (principals : List (Nat × PrincipalEntry)) : List (Nat × PrincipalEntry) :=
   if useDh1 then erasePrincipalsFg targetIdx principals else principals
-def eraseAuthSessionEntryOptFg {S : Setup} (useDh1 : Bool) (targetIdx : ℕ)
+@[expose] def eraseAuthSessionEntryOptFg {S : Setup} (useDh1 : Bool) (targetIdx : ℕ)
     (s : AuthInitiatorEntry S) : AuthInitiatorEntry S :=
   { s with
     opkHonest := false
     ekASk     := if !useDh1 && (initSessionSlotIdx s.sid == targetIdx) then [] else s.ekASk }
-def eraseAuthSessionsOptFg {S : Setup} (useDh1 : Bool) (targetIdx : ℕ)
+@[expose] def eraseAuthSessionsOptFg {S : Setup} (useDh1 : Bool) (targetIdx : ℕ)
     (sessions : List (AuthInitiatorEntry S)) : List (AuthInitiatorEntry S) :=
   sessions.map (eraseAuthSessionEntryOptFg useDh1 targetIdx)
 /-- State-erasure relation between simulator state `stBase` and cutoff game state `hstBase`. -/
@@ -436,7 +439,7 @@ theorem lookupSenderIkPk_erasePrincipalsFg (uIdx u0 : ℕ)
     split_ifs <;> rfl
 
 /-! ## Target pre-sampling for `.g3` -/
-def hasFiredAuthSpk (S : Setup) (bIdx : ℕ) (hst : AuthFgCutoffState S) : Prop :=
+@[expose] def hasFiredAuthSpk (S : Setup) (bIdx : ℕ) (hst : AuthFgCutoffState S) : Prop :=
   ∃ (u₀ : Fin S.N_id) (j₀ : Fin S.N_recv),
     spkBundleFlatIdx S u₀ j₀ = bIdx ∧
     hst.base.spkBundles.any (fun (k, _) => k == (u₀.val, j₀.val)) = true
@@ -449,9 +452,9 @@ theorem spkBundles_any_of_hasFiredAuthSpk (S : Setup) (bIdx : ℕ) (hst : AuthFg
     (beq_iff_eq.mp hb).trans hidx₀.symm
   rcases FgGapDh.spkBundleFlatIdx_inj S u u₀ j j₀ heq with ⟨rfl, rfl⟩
   exact hany₀
-def hasFiredAuthPrin (S : Setup) (uIdx : ℕ) (hst : AuthFgCutoffState S) : Prop :=
+@[expose] def hasFiredAuthPrin (S : Setup) (uIdx : ℕ) (hst : AuthFgCutoffState S) : Prop :=
   hst.base.principals.any (fun (idx, _) => idx == uIdx) = true
-def hasFiredAuthSess (S : Setup) (sIdx : ℕ) (hst : AuthFgCutoffState S) : Prop :=
+@[expose] def hasFiredAuthSess (S : Setup) (sIdx : ℕ) (hst : AuthFgCutoffState S) : Prop :=
   hst.base.usedSendSessions.any (fun sid => initSessionSlotIdx sid == sIdx) = true
 theorem usedSendSessions_contains_of_hasFiredAuthSess {S : Setup} (sIdx : ℕ)
     (hst : AuthFgCutoffState S) (hFired : hasFiredAuthSess S sIdx hst) (sid : SessionId S)
@@ -463,12 +466,12 @@ theorem usedSendSessions_contains_of_hasFiredAuthSess {S : Setup} (sIdx : ℕ)
   have heq : sid0 = sid :=
     initSessionSlotIdx_inj_of_lt ((beq_iff_eq.mp hidx).trans (beq_iff_eq.mp hs).symm) hlt
   exact ⟨sid0, hmem, beq_iff_eq.mpr heq.symm⟩
-def liftAuthFgBase {S : Setup} (m : StateT (AuthState S) ProbComp AuthResponse) :
+@[expose] def liftAuthFgBase {S : Setup} (m : StateT (AuthState S) ProbComp AuthResponse) :
     StateT (AuthFgCutoffState S) ProbComp AuthResponse :=
   StateT.mk (fun hst => do
     let (r, b') ← m.run hst.base
     return (r, { hst with base := b' }))
-def liftAuthFgHybrid {S : Setup} (m : StateT (AuthHybridState S) ProbComp AuthResponse) :
+@[expose] def liftAuthFgHybrid {S : Setup} (m : StateT (AuthHybridState S) ProbComp AuthResponse) :
     StateT (AuthFgCutoffState S) ProbComp AuthResponse :=
   StateT.mk (fun hst => do
     let (resp, h') ← m.run (mkG3Hybrid hst.base)
@@ -482,7 +485,7 @@ theorem liftAuthFgHybrid_liftAuthBase_eq {S : Setup}
   unfold liftAuthFgHybrid liftAuthFgBase liftAuthBase mkG3Hybrid
   simp [StateT.run_bind, StateT.run_get, StateT.run_monadLift,
     monadLift_self, StateT.run_set, StateT.run_pure, bind_assoc, pure_bind, map_eq_bind_pure_comp]
-noncomputable def fgPreAuthInitPrin (useDh1 : Bool) (targetIdx : ℕ) (optUsk : Option Bytes)
+@[expose] def fgPreAuthInitPrin (useDh1 : Bool) (targetIdx : ℕ) (optUsk : Option Bytes)
     (S : Setup) (P : Primitives) (u : Fin S.N_id) :
     StateT (AuthState S) ProbComp AuthResponse := do
   let st ← get
@@ -498,7 +501,7 @@ noncomputable def fgPreAuthInitPrin (useDh1 : Bool) (targetIdx : ℕ) (optUsk : 
       ikSignPk := ikSignPk, corrupted := false }
   set { st with principals := (u.val, entry) :: st.principals }
   return .initPrinResp ikAPk ikSignPk
-noncomputable def fgPreAuthGenSPK (targetSpkIdx : ℕ) (optVsk : Option Bytes)
+@[expose] def fgPreAuthGenSPK (targetSpkIdx : ℕ) (optVsk : Option Bytes)
     (S : Setup) (P : Primitives) (u : Fin S.N_id) (j : Fin S.N_recv) :
     StateT (AuthState S) ProbComp AuthResponse := do
   let st ← get
@@ -521,7 +524,7 @@ noncomputable def fgPreAuthGenSPK (targetSpkIdx : ℕ) (optVsk : Option Bytes)
     { ikB := uEntry.ikAPk, spkId := UInt32.ofNat j.val, spkB := spkPk, spkSig := spkSig,
       opkB? := none, pqspkId := UInt32.ofNat j.val, pqspkB := pqspkPk, pqspkSig := pqspkSig }
   return .bundleResp bundleOut
-noncomputable def fgPreAuthSendHybrid (stage : AuthHybridStage) (useRo : Bool)
+@[expose] def fgPreAuthSendHybrid (stage : AuthHybridStage) (useRo : Bool)
     (useDh1 : Bool) (targetIdx : ℕ) (optUsk : Option Bytes)
     (S : Setup) (P : Primitives)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes) :
@@ -638,7 +641,7 @@ noncomputable def fgPreAuthSendHybrid (stage : AuthHybridStage) (useRo : Bool)
     return .sendFreshResp wireMsg
   else
     return .sendUnfreshResp drKey rk1 ck1_1 wireMsg
-noncomputable def pqxdhAuthFgPreImpl (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
+@[expose] def pqxdhAuthFgPreImpl (useDh1 : Bool) (targetIdx targetSpkIdx : ℕ)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (authSpec S) (StateT (AuthFgCutoffState S) ProbComp)
   | .initPrin u => liftAuthFgHybrid (do
@@ -663,11 +666,11 @@ theorem pqxdhAuthFgPreImpl_none_none_eq {S : Setup} (useDh1 : Bool) (targetIdx t
     pqxdhAuthFgPreImpl useDh1 targetIdx targetSpkIdx none none S P =
       pqxdhAuthFgImpl S P := by
   funext q; cases q <;> rfl
-def sampleAuthSendCoins : ProbComp (Bytes × Bytes × Bytes) := do
+@[expose] def sampleAuthSendCoins : ProbComp (Bytes × Bytes × Bytes) := do
   let kemCoins ← sampleCoins32; let ephASk ← sampleScalar32
   let spqrCoins ← sampleCoins32
   return (kemCoins, ephASk, spqrCoins)
-noncomputable def fgPreAuthSendAfterCoins {S : Setup} (P : Primitives)
+@[expose] def fgPreAuthSendAfterCoins {S : Setup} (P : Primitives)
     (sid : SessionId S) (uEntry : PrincipalEntry) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthFgCutoffState S) (ekASk : Bytes) (coins : Bytes × Bytes × Bytes) :
     ProbComp (AuthResponse × AuthFgCutoffState S) := do
@@ -1545,10 +1548,10 @@ theorem evalDist_runAuthFgSim_eq_preSample_dh3 {S : Setup}
   simp only [pure_bind]
 
 /-! ## Target abort flags -/
-def spkTargetIsVAuth {S : Setup} (bIdx : ℕ) (V : Bytes) (hst : AuthFgCutoffState S) : Bool :=
+@[expose] def spkTargetIsVAuth {S : Setup} (bIdx : ℕ) (V : Bytes) (hst : AuthFgCutoffState S) : Bool :=
   hst.base.spkBundles.all (fun (k, bEntry) =>
     !(spkBundleFlatIdxVal S k == bIdx) || (bEntry.spkPk == V))
-def deadAuthDh3 {S : Setup} (P : Primitives) (sIdx bIdx : ℕ) (V : Bytes)
+@[expose] def deadAuthDh3 {S : Setup} (P : Primitives) (sIdx bIdx : ℕ) (V : Bytes)
     (hst : AuthFgCutoffState S) : Bool :=
   spkTargetIsVAuth bIdx V hst &&
   hst.base.usedSendSessions.any (fun sid => initSessionSlotIdx sid == sIdx) &&

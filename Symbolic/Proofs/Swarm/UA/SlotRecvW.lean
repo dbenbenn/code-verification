@@ -51,6 +51,8 @@ import Symbolic.DYBridge.DY.Trace.Basic
 import Symbolic.DYBridge.DY.Trace.Monad
 import Symbolic.DYBridge.DY.Trace.Manipulation
 import Symbolic.DYBridge.DY.Actions.Network
+import Symbolic.Proofs.Swarm.Leaves.IC14_Stage1Trials
+import Symbolic.Proofs.Swarm.CREF.Stage1Trials
 
 /-!
 # Whisper `recv` Slot Invariant Preservation
@@ -60,7 +62,7 @@ a Whisper `recv` call, combining non-colliding `RecvWireRawWitness` lifting on e
 rejection transfer on exit `1`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

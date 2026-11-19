@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.Composed.Adversary
+public import Symbolic.Proofs.Tests.Shared.Composed.Adversary -- proof-setup: allow-public-import
 import Init.Data.String.Defs
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
@@ -59,7 +59,7 @@ Constructs execution traces and event-absence lemmas for PQXDH `Authentication` 
 compromise), together with event-filter facts on shared compromise traces.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -403,10 +403,10 @@ abbrev spkVar : Bytes := X25519.x25519TorsionVariant (dhPk spkB) 1 0
 
 abbrev spkVarSig : Bytes := Signature.sign ikB advSpkNonce (encodeEC spkVar)
 
-def r3aTr1 : ExecTrace := compIkTr t4 "bob" ikB
-def r3aTr2 : ExecTrace := (r3aTr1.append (NetE spkVar)).append (NetE spkVarSig)
+@[expose] def r3aTr1 : ExecTrace := compIkTr t4 "bob" ikB
+@[expose] def r3aTr2 : ExecTrace := (r3aTr1.append (NetE spkVar)).append (NetE spkVarSig)
 def r3aBh : BundleHandles := { spk := 24, spkSig := 25, pqpk := 20, pqpkSig := 21, opk := none }
-def r3aTr3 : ExecTrace := aliceTr r3aTr2 "alice" "bob" ikA (dhPk ikB) spkVar (kemPk pqskB)
+@[expose] def r3aTr3 : ExecTrace := aliceTr r3aTr2 "alice" "bob" ikA (dhPk ikB) spkVar (kemPk pqskB)
 
 abbrev r3a_out : AliceHandshakeOut := aliceOut r3aTr2 ikA (dhPk ikB) spkVar (kemPk pqskB)
 abbrev r3a_keys : HandshakeKeys := r3a_out.keys
@@ -415,24 +415,24 @@ def r3a_stA0 : TRState := aliceSt "bob" r3a_out r3a_dhsA
 
 abbrev r3a_m0 : Bytes := rnd 35 32
 abbrev r3a_coins0 : Bytes := rnd 36 32
-def r3a_key0 : Bytes := (Spqr.spqrSend r3a_stA0.spqr r3a_coins0).2.1
+@[expose] def r3a_key0 : Bytes := (Spqr.spqrSend r3a_stA0.spqr r3a_coins0).2.1
 def r3a_pqm0 : Bytes := (Spqr.spqrSend r3a_stA0.spqr r3a_coins0).2.2
-def r3aTr4 : ExecTrace := encTr r3aTr3 "alice" 34 r3a_stA0 r3a_key0
+@[expose] def r3aTr4 : ExecTrace := encTr r3aTr3 "alice" 34 r3a_stA0 r3a_key0
 
 def r3a_mh : PreKeyMsgHandles := { ek := 29, ct := 30, msg := 41 }
 abbrev r3a_dhsB1 : Bytes := rnd 42 32
 def r3a_stB00 : TRState :=
   bobSt0 "alice" ikB spkB (dhPk ikA) r3a_keys
     (encSig r3a_stA0 r3a_coins0 r3a_key0 r3a_m0)
-def r3a_stB0' : TRState := (ratchetState r3a_stB00 (dhPk r3a_dhsA) r3a_dhsB1).1
+@[expose] def r3a_stB0' : TRState := (ratchetState r3a_stB00 (dhPk r3a_dhsA) r3a_dhsB1).1
 def r3a_cB : RecvChain := (ratchetState r3a_stB00 (dhPk r3a_dhsA) r3a_dhsB1).2
 def r3a_cB' : RecvChain := { r3a_cB with chainKey := (kdfCk r3a_cB.chainKey).1, index := 1 }
-def r3a_seedB0 : Bytes := (kdfCk r3a_cB.chainKey).2
-def r3a_stB1 : TRState :=
+@[expose] def r3a_seedB0 : Bytes := (kdfCk r3a_cB.chainKey).2
+@[expose] def r3a_stB1 : TRState :=
   { r3a_stB0' with
     recv := [r3a_cB'], spqr := recvSt (Spqr.spqrInit r3a_keys.pqr spqrB2A) r3a_pqm0 }
 
-def r3aTrace : ExecTrace :=
+@[expose] def r3aTrace : ExecTrace :=
   let tr1 := (r3aTr4.append (RndE 32)).append (NetE r3a_key0)
   let tr5 := (((tr1.append (EvP (.BobDone "bob" "alice" (dhPk ikB) (dhPk ikA) (dhPk spkB)
       (kemPk pqskB) none r3a_out.ek r3a_out.ct r3a_keys))).append
@@ -702,37 +702,37 @@ theorem r3aTrace_aliceDone_spk_eq {a b' : Participant} {ikA' ikB' spk' pqpk' : B
 
 abbrev opkVar : Bytes := X25519.x25519TorsionVariant (dhPk opkB) 1 0
 
-def r3bTr1 : ExecTrace := t4Opk.append (NetE opkVar)
-def r3bBh : BundleHandles := { spk := 14, spkSig := 15, pqpk := 20, pqpkSig := 21, opk := some 26 }
-def r3bTr2 : ExecTrace :=
+@[expose] def r3bTr1 : ExecTrace := t4Opk.append (NetE opkVar)
+@[expose] def r3bBh : BundleHandles := { spk := 14, spkSig := 15, pqpk := 20, pqpkSig := 21, opk := some 26 }
+@[expose] def r3bTr2 : ExecTrace :=
   aliceTrOpk r3bTr1 "alice" "bob" ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB) opkVar
 
 abbrev r3b_out : AliceHandshakeOut :=
   aliceOutOpk r3bTr1 ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB) opkVar
 abbrev r3b_keys : HandshakeKeys := r3b_out.keys
 abbrev r3b_dhsA : Bytes := rnd 29 32
-def r3b_stA0 : TRState := aliceSt "bob" r3b_out r3b_dhsA
+@[expose] def r3b_stA0 : TRState := aliceSt "bob" r3b_out r3b_dhsA
 
 abbrev r3b_m0 : Bytes := rnd 36 32
 abbrev r3b_coins0 : Bytes := rnd 37 32
-def r3b_key0 : Bytes := (Spqr.spqrSend r3b_stA0.spqr r3b_coins0).2.1
-def r3b_pqm0 : Bytes := (Spqr.spqrSend r3b_stA0.spqr r3b_coins0).2.2
-def r3bTr3 : ExecTrace := encTr r3bTr2 "alice" 35 r3b_stA0 r3b_key0
+@[expose] def r3b_key0 : Bytes := (Spqr.spqrSend r3b_stA0.spqr r3b_coins0).2.1
+@[expose] def r3b_pqm0 : Bytes := (Spqr.spqrSend r3b_stA0.spqr r3b_coins0).2.2
+@[expose] def r3bTr3 : ExecTrace := encTr r3bTr2 "alice" 35 r3b_stA0 r3b_key0
 
 def r3b_mh : PreKeyMsgHandles := { ek := 30, ct := 31, msg := 42 }
 abbrev r3b_dhsB1 : Bytes := rnd 43 32
 def r3b_stB00 : TRState :=
   bobSt0 "alice" ikB spkB (dhPk ikA) r3b_keys
     (encSig r3b_stA0 r3b_coins0 r3b_key0 r3b_m0)
-def r3b_stB0' : TRState := (ratchetState r3b_stB00 (dhPk r3b_dhsA) r3b_dhsB1).1
+@[expose] def r3b_stB0' : TRState := (ratchetState r3b_stB00 (dhPk r3b_dhsA) r3b_dhsB1).1
 def r3b_cB : RecvChain := (ratchetState r3b_stB00 (dhPk r3b_dhsA) r3b_dhsB1).2
 def r3b_cB' : RecvChain := { r3b_cB with chainKey := (kdfCk r3b_cB.chainKey).1, index := 1 }
-def r3b_seedB0 : Bytes := (kdfCk r3b_cB.chainKey).2
-def r3b_stB1 : TRState :=
+@[expose] def r3b_seedB0 : Bytes := (kdfCk r3b_cB.chainKey).2
+@[expose] def r3b_stB1 : TRState :=
   { r3b_stB0' with
     recv := [r3b_cB'], spqr := recvSt (Spqr.spqrInit r3b_keys.pqr spqrB2A) r3b_pqm0 }
 
-def r3bTrace : ExecTrace :=
+@[expose] def r3bTrace : ExecTrace :=
   let tr1 := ((r3bTr3.append (RndE 32)).append (NetE r3b_key0)).append
     (EvP (.OPKUsed "bob" (dhPk opkB)))
   let tr5 := (((tr1.append (EvP (.BobDone "bob" "alice" (dhPk ikB) (dhPk ikA) (dhPk spkB)
@@ -1056,7 +1056,7 @@ theorem trBrokenDHB_no_compSPK : evIdx trBrokenDHB isCompSPK = [] := by
     evIdx_t4_false_local _ (fun _ _ _ _ => rfl) (fun _ _ => rfl) (fun _ _ => rfl)]
 
 /-- Case-indexed form of `PQXDH.HandshakeAuthWasCompromised` indexed by `Fin 3`. -/
-def Thm8Case (b a : Participant) (ikA spk : Bytes) (i : Nat) (tr : ExecTrace) : Fin 3 → Prop
+@[expose] def Thm8Case (b a : Participant) (ikA spk : Bytes) (i : Nat) (tr : ExecTrace) : Fin 3 → Prop
   | 0 => PQXDH.LoggedBefore (PQXDHEvent.CompromisedIK a ikA) i tr
   | 1 => PQXDH.LoggedBefore (PQXDHEvent.CompromisedSPK b spk) i tr
   | 2 => PQXDH.LoggedBefore PQXDHEvent.BrokenDH i tr

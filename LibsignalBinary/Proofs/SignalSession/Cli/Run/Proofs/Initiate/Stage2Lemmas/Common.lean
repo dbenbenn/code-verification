@@ -9,16 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Fetch
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Fetch -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Pattern.Basic
 import all Init.Data.String.Pattern.String
 import all Init.Data.String.Slice
 import all Init.Data.String.TakeDrop
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCallees
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.RoDataReloc
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCallees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.StoreCallees -- proof-setup: allow-public-import
+import ProofLib.SepLogic.WP
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.DerivePublicKeyBytes
 import LibsignalBinary.Proofs.TripleRatchet.Hooks
 
@@ -30,12 +29,10 @@ combinators, `StaticSecret::drop` and panic extern contracts, `.rodata` vtable l
 clamping lemmas, and the `Stage2CalleesExt` bundle for Stage 2 of `initiate`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
-
-noncomputable section
 
 namespace CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage2Lemmas
 
@@ -199,11 +196,6 @@ end CliStage2Norm
 
 /-! ## `SepWPp` and `TraceFsSound` combinators -/
 
-theorem imgCallInv_of_keepsFrozen {img : Obj.Image} {s sm : State}
-    (hinv : ImgCallInv img s) (hkf : s.mem.KeepsFrozen sm.mem) (hsym : sm.symtab = s.symtab) :
-    ImgCallInv img sm :=
-  ⟨hinv.1.of_keepsFrozen hkf, hsym.trans hinv.2⟩
-
 theorem sepWPp_of_sepWP_fs {prog : Program} {mid ret : BitVec 64} {s : State} {P : SepProp}
     {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
     (hFs : TraceFsSound prog)
@@ -265,145 +257,11 @@ theorem sepWPp_call_fs {α : Type} {prog : Program}
   · exact ⟨sm, hsteps, Or.inr (Or.inl hpan_out)⟩
   · exact ⟨sm, hsteps, Or.inr (Or.inr hoom_out)⟩
 
-theorem initPanicPost_of_allocFailed (A : RustAlloc) (img : Obj.Image) (S : RunSem)
-    (x : InitGhost) (stk : Nat) {s0 s sf : State} (htr : s.trace = s0.trace) (F : SepProp) :
-    InitPanicPost A img S x stk s0 sf
-      ((⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) ∗ F) := by
-  dsimp only [InitPanicPost, initSlotSpec, Spec.inImage]
-  rw [sepConj_assoc]
-  refine Entails.pure_left fun ⟨hfail, _⟩ => ?_
-  have hfail0 : allocFailedIn s0 sf := by simpa [allocFailedIn, htr] using hfail
-  exact Entails.pure_right (Or.inr hfail0) (entails_anyHeap _)
-
-theorem initPanicPost_of_panicked (A : RustAlloc) (img : Obj.Image) (S : RunSem)
-    (x : InitGhost) (stk : Nat) {s0 s : State} (hfail : allocFailedIn s0 s) (P : SepProp) :
-    InitPanicPost A img S x stk s0 (Rust.panicked s) P := by
-  dsimp only [InitPanicPost, initSlotSpec, Spec.inImage]
-  have hfail' : allocFailedIn s0 (Rust.panicked s) := by
-    simpa [Rust.panicked, allocFailedIn] using hfail
-  exact Entails.pure_right (Or.inr hfail') (entails_anyHeap P)
-
-/-! ## Panic extern and `StaticSecret::drop` hook contracts -/
-
-set_option maxRecDepth 2000000 in
-theorem handleError_externAt (img : Obj.Image) (W : CliHooks) :
-    (initProg img W).externAt? ((initProg img W).fnAddr handleErrorName) = some Rust.panicked := by
-  have hp := panic_at_panicSymbol (P := libsignalSessionCode) (b := img.base)
-    (hooks := cliExterns W) (hname := handleErrorName) (k := 0) handleError_stub
-    (Nat.add_zero _) (by decide) (ls_hook% "alloc::raw_vec::handle_error") (by rfl_kernel)
-  simpa only [initProg, tripleRatchetProgAtExt, Program.fnAddr_rebase, handleError_stub,
-    BitVec.ofNat_eq_ofNat, BitVec.add_zero] using hp
-
 theorem staticSecretDrop_row (W : CliHooks) :
     (staticSecretDropName, zeroizeSecretHook) ∈ cliHookTable W := by
   simp [cliHookTable, staticSecretDropName]
 
-set_option maxRecDepth 2000000 in
-theorem staticSecretDrop_cli_ok (W : CliHooks) (img : Obj.Image) :
-    subroutine_ok (initProg img W)
-      ((initProg img W).fnAddr staticSecretDropName)
-      zeroizeSecretSpec :=
-  cli_stub_ok W img staticSecretDrop_stub (by decide)
-    (ls_hook% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop")
-    (by rfl_kernel) (staticSecretDrop_row W) zeroizeSecretHook_ok
-
-/-! ## Layout-independent vtable `.rodata` lemmas -/
-
-set_option maxRecDepth 2000000 in
-private theorem rodata_idKeyPairFutSize_eq :
-    (libsignalSessionImage.data.drop
-      (num% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 16) -
-        libsignalSessionImage.dataOff)).take 8 =
-      unpack64 16#64 := by rfl_kernel
-
-set_option maxRecDepth 2000000 in
-private theorem rodata_idKeyPairFutAlign_eq :
-    (libsignalSessionImage.data.drop
-      (num% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 8) -
-        libsignalSessionImage.dataOff)).take 8 =
-      unpack64 8#64 := by rfl_kernel
-
-theorem idVt_eq_cliIdVtOff (img : Obj.Image) :
-    idVt img = img.base + KitInst.cliIdVtOff := rfl
-
-theorem rodata_idVt_getKeyPairShim {img : Obj.Image} (W : CliHooks) {s : State} {P : SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((idVt img + 0x18#64) ↦₆₄ᵣ (initProg img W).fnAddr idKeyPairShimName) ∗ P := by
-  have hfn : (initProg img W).fnAddr idKeyPairShimName =
-      img.base + bv% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair") := by
-    simp only [initProg, tripleRatchetProgAtExt, Program.fnAddr_rebase, idKeyPairShim_fnOff]
-  rw [idVt_eq_cliIdVtOff, hfn]
-  dsimp only [KitInst.cliIdVtOff]
-  rw [show img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity") - 0x28) + 0x18#64 =
-      img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity") - 0x10) by bv_omega]
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF
-    (off := num% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity") - 0x10))
-    (target := num% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"))
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-theorem rodata_idKeyPairFutDrop {img : Obj.Image} (W : CliHooks) {s : State} {P : SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + idKeyPairFutVtOff) ↦₆₄ᵣ
-      (initProg img W).fnAddr KitInst.cliIdFutDropName) ∗ P := by
-  have hfn : (initProg img W).fnAddr KitInst.cliIdFutDropName =
-      img.base + KitInst.cliIdFutDropOff := by
-    simp only [initProg, tripleRatchetProgAtExt, Program.fnAddr_rebase, KitInst.cliIdFutDrop_fnOff]
-  rw [hfn]
-  dsimp only [idKeyPairFutVtOff, KitInst.cliIdFutDropOff]
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF
-    (off := num% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 0x18))
-    (target := num% (ls_off% "core::ptr::drop_glue::<<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity::{closure#0}>"))
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-theorem rodata_idKeyPairFutSize {img : Obj.Image} {s : State} {P : SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + idKeyPairFutVtOff + 8#64) ↦₆₄ᵣ 16#64) ∗ P := by
-  dsimp only [idKeyPairFutVtOff]
-  rw [show img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 0x18) + 8#64 =
-      img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 16) by bv_omega]
-  have hh := loads_rodata_holdsBytes himg hF
-    (off := num% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 16))
-    (n := 8) (bs := unpack64 16#64)
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel)
-    (unpack64_length _) rodata_idKeyPairFutSize_eq
-  obtain ⟨hRO, hread⟩ := holdsBytes_ro hh
-  rw [unpack64_length] at hRO hread
-  exact Satisfies.rodata64_intro hRO (Memory.read64_of_readBytes_eq_unpack64 _ _ _ hread) hP
-
-theorem rodata_idKeyPairFutAlign {img : Obj.Image} {s : State} {P : SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + idKeyPairFutVtOff + 0x10#64) ↦₆₄ᵣ 8#64) ∗ P := by
-  dsimp only [idKeyPairFutVtOff]
-  rw [show img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 0x18) + 0x10#64 =
-      img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 8) by bv_omega]
-  have hh := loads_rodata_holdsBytes himg hF
-    (off := num% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 8))
-    (n := 8) (bs := unpack64 8#64)
-    (by decide) (Nat.le_of_ble_eq_true (by rfl_kernel)) (by rfl_kernel) (by rfl_kernel)
-    (unpack64_length _) rodata_idKeyPairFutAlign_eq
-  obtain ⟨hRO, hread⟩ := holdsBytes_ro hh
-  rw [unpack64_length] at hRO hread
-  exact Satisfies.rodata64_intro hRO (Memory.read64_of_readBytes_eq_unpack64 _ _ _ hread) hP
-
-theorem rodata_idKeyPairFutPoll {img : Obj.Image} (W : CliHooks) {s : State} {P : SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + idKeyPairFutVtOff + 0x18#64) ↦₆₄ᵣ
-      (initProg img W).fnAddr idKeyPairPollName) ∗ P := by
-  have hfn : (initProg img W).fnAddr idKeyPairPollName =
-      img.base + bv% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") := by
-    simp only [initProg, tripleRatchetProgAtExt, Program.fnAddr_rebase, idKeyPairPoll_fnOff]
-  rw [hfn]
-  dsimp only [idKeyPairFutVtOff]
-  rw [show img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 0x18) + 0x18#64 =
-      img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}")) by bv_omega]
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF
-    (off := num% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}")))
-    (target := num% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}"))
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-/-! ## Pure model, `storesAt`, and `InitOk₀` lemmas -/
-
-def storesRestAt (A : RustAlloc) (a : BitVec 64) (g : StoresGhost) : SepProp :=
+@[expose] def storesRestAt (A : RustAlloc) (a : BitVec 64) (g : StoresGhost) : SepProp :=
   dirAt A (a + 0x28#64) g.identity.peers ∗
     dirAt A (a + 0x50#64) g.signed ∗ dirAt A (a + 0x78#64) g.kyber.oneTime ∗
     dirAt A (a + 0xa0#64) g.kyber.lastResort ∗ dirAt A (a + 0xc8#64) g.oneTime ∗
@@ -521,153 +379,8 @@ theorem clampScalar_split (v : List.Vector (BitVec 8) 32) :
 
 /-! ## Extern-parameterized hooks, `.rodata`, and `Stage2CalleesExt` -/
 
-set_option maxRecDepth 2000000 in
-theorem handleError_externAt_ext (img : Obj.Image) (ext : String → Option (State → State)) :
-    (initProgExt img ext).externAt? ((initProgExt img ext).fnAddr handleErrorName) =
-      some Rust.panicked := by
-  have hp := panic_at_panicSymbol (P := libsignalSessionCode) (b := img.base)
-    (hooks := cliExternsWith ext) (hname := handleErrorName) (k := 0) handleError_stub
-    (Nat.add_zero _) (by decide) (ls_hook% "alloc::raw_vec::handle_error") (by rfl_kernel)
-  simpa only [initProgExt, tripleRatchetProgAtExt, Program.fnAddr_rebase, handleError_stub,
-    BitVec.ofNat_eq_ofNat, BitVec.add_zero] using hp
-
-set_option maxRecDepth 2000000 in
-theorem staticSecretDrop_ext_ok {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) (img : Obj.Image) :
-    subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr staticSecretDropName)
-      ((LibsignalTripleRatchet.withStack zeroizeSecretSpec extHookStack).inImage img) := by
-  have hraw : subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr staticSecretDropName) CliExt.zeroizeSpec :=
-    ext_stub_ok img staticSecretDrop_stub (by decide)
-      (ls_hook% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop")
-      (by rfl_kernel) hOk.staticDrop
-  exact subroutine_ok_inImage_of_subroutine_ok img hraw
-
-set_option maxRecDepth 2000000 in
-theorem staticSecretDrop_ext_stack_ok {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) (img : Obj.Image)
-    {hookStack : Nat} (hstack : extHookStack ≤ hookStack) (hstack_le : hookStack ≤ 2 ^ 64) :
-    subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr staticSecretDropName)
-      ((LibsignalTripleRatchet.withStack zeroizeSecretSpec hookStack).inImage img) := by
-  have hraw : subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr staticSecretDropName) CliExt.zeroizeSpec :=
-    ext_stub_ok img staticSecretDrop_stub (by decide)
-      (ls_hook% "<x25519_dalek::x25519::StaticSecret as core::ops::drop::Drop>::drop")
-      (by rfl_kernel) hOk.staticDrop
-  refine subroutine_ok_inImage_of_subroutine_ok img ?_
-  apply subroutine_ok_outcome_intro
-  intro a R s0 hpc hrun hpre hal
-  have hsplit : stackAt s0.sp hookStack =
-      memRegion (s0.sp - BitVec.ofNat 64 hookStack) (hookStack - extHookStack) ∗
-        stackAt s0.sp extHookStack := by
-    have h1 := stackAt_split_bottom s0.sp extHookStack (hookStack - extHookStack) (by omega)
-    rwa [Nat.add_sub_of_le hstack] at h1
-  let R' : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 hookStack) (hookStack - extHookStack) ∗ R
-  have hpre' : s0.mem ⊨ CliExt.zeroizeSpec.pre a s0 ∗ R' := by
-    dsimp only [LibsignalTripleRatchet.withStack, zeroizeSecretSpec,
-      CliExt.zeroizeSpec, CliExt.withStack, R'] at hpre ⊢
-    rw [hsplit] at hpre
-    ac_nf at hpre ⊢
-  refine subroutine_ok.mono_outcome hraw a R' s0 hpc hrun hpre' hal ?_
-  rintro sf (⟨hret, hcc, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [LibsignalTripleRatchet.withStack, zeroizeSecretSpec,
-      CliExt.zeroizeSpec, CliExt.withStack, R'] at hpost ⊢
-    rw [hsplit]
-    ac_nf at hpost ⊢
-  · dsimp only [CliExt.zeroizeSpec, CliExt.withStack] at hpan
-    rw [satisfies_pure_sepConj] at hpan; exact False.elim hpan.1
-  · dsimp only [CliExt.zeroizeSpec, CliExt.withStack] at hex
-    rw [satisfies_pure_sepConj] at hex; exact False.elim hex.1
-  · dsimp only [CliExt.zeroizeSpec, CliExt.withStack] at hoom
-    rw [satisfies_pure_sepConj] at hoom; exact False.elim hoom.1
-
-set_option maxRecDepth 2000000 in
-theorem derivePubKeyBytes_ext_ok {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hOk : CliExternsOk P A ext) (img : Obj.Image) :
-    subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr cliDerivePubKeyBytesName)
-      ((derivePublicKeyBytesStackSpec P.C.pubKey extHookStack).inImage img) := by
-  have hpub_fnOff : libsignalSessionCode.fnOff pubFromSecretName =
-      num% (ls_off% "<x25519_dalek::x25519::PublicKey as core::convert::From<&x25519_dalek::x25519::StaticSecret>>::from") :=
-    ls_stub% "<x25519_dalek::x25519::PublicKey as core::convert::From<&x25519_dalek::x25519::StaticSecret>>::from"
-  have hpub_raw : subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr pubFromSecretName) (CliExt.pubFromSecretSpec P.C) :=
-    ext_stub_ok img hpub_fnOff (by decide)
-      (ls_hook% "<x25519_dalek::x25519::PublicKey as core::convert::From<&x25519_dalek::x25519::StaticSecret>>::from")
-      (by rfl_kernel) hOk.pubFromSecret
-  have hpub_img := subroutine_ok_inImage_of_subroutine_ok img hpub_raw
-  refine derive_public_key_bytes_ok_of_contract_stack_inImage extHookStack ?_
-  apply subroutine_ok_outcome_intro
-  intro x R s0 hpc hrun hpre hsp
-  have hpre' : s0.mem ⊨ ((CliExt.pubFromSecretSpec P.C).inImage img).pre
-      (x.secret, x.sec, x.out) s0 ∗ R := by
-    dsimp only [Spec.inImage, CliExt.pubFromSecretSpec, CliExt.withStack,
-      derivePublicKeyBytesStackSpec] at hpre ⊢
-    simpa only [sepConj_assoc] using hpre
-  refine subroutine_ok.mono_outcome hpub_img (x.secret, x.sec, x.out) R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hpost⟩ | hpan | hex)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, CliExt.pubFromSecretSpec, CliExt.withStack,
-      derivePublicKeyBytesStackSpec] at hpost ⊢
-    simpa only [sepConj_assoc] using hpost
-  · exact Or.inr (Or.inl hpan)
-  · exact Or.inr (Or.inr hex)
-
-theorem rodata_idVt_getKeyPairShim_ext {img : Obj.Image}
-    (ext : String → Option (State → State)) {s : State} {P : SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((idVt img + 0x18#64) ↦₆₄ᵣ (initProgExt img ext).fnAddr idKeyPairShimName) ∗ P := by
-  have hfn : (initProgExt img ext).fnAddr idKeyPairShimName =
-      img.base + bv% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair") := by
-    simp only [initProgExt, tripleRatchetProgAtExt, Program.fnAddr_rebase, idKeyPairShim_fnOff]
-  rw [idVt_eq_cliIdVtOff, hfn]
-  dsimp only [KitInst.cliIdVtOff]
-  rw [show img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity") - 0x28) + 0x18#64 =
-      img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity") - 0x10) by bv_omega]
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF
-    (off := num% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity") - 0x10))
-    (target := num% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair"))
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-theorem rodata_idKeyPairFutDrop_ext {img : Obj.Image}
-    (ext : String → Option (State → State)) {s : State} {P : SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + idKeyPairFutVtOff) ↦₆₄ᵣ
-      (initProgExt img ext).fnAddr KitInst.cliIdFutDropName) ∗ P := by
-  have hfn : (initProgExt img ext).fnAddr KitInst.cliIdFutDropName =
-      img.base + KitInst.cliIdFutDropOff := by
-    simp only [initProgExt, tripleRatchetProgAtExt, Program.fnAddr_rebase,
-      KitInst.cliIdFutDrop_fnOff]
-  rw [hfn]
-  dsimp only [idKeyPairFutVtOff, KitInst.cliIdFutDropOff]
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF
-    (off := num% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 0x18))
-    (target := num% (ls_off% "core::ptr::drop_glue::<<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity::{closure#0}>"))
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
-theorem rodata_idKeyPairFutPoll_ext {img : Obj.Image}
-    (ext : String → Option (State → State)) {s : State} {P : SepProp}
-    (himg : Obj.Loads libsignalSessionImage img) (hF : img.FrozenLoaded s) (hP : s.mem ⊨ P) :
-    s.mem ⊨ ((img.base + idKeyPairFutVtOff + 0x18#64) ↦₆₄ᵣ
-      (initProgExt img ext).fnAddr idKeyPairPollName) ∗ P := by
-  have hfn : (initProgExt img ext).fnAddr idKeyPairPollName =
-      img.base + bv% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") := by
-    simp only [initProgExt, tripleRatchetProgAtExt, Program.fnAddr_rebase, idKeyPairPoll_fnOff]
-  rw [hfn]
-  dsimp only [idKeyPairFutVtOff]
-  rw [show img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}") - 0x18) + 0x18#64 =
-      img.base + bv% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}")) by bv_omega]
-  exact CryptoProofLib.RoDataReloc.Satisfies.of_reloc64 himg hF
-    (off := num% (ls_reloc% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}")))
-    (target := num% (ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::get_identity_key_pair::{closure#0}"))
-    (by decide) (by rfl_kernel) (by rfl_kernel) hP
-
 /-- Stack-parameterized `<IdentityKey>::is_same_account` distinct-account specification. -/
-def isSameAccountDistinctAtSpec (A : RustAlloc) (parse : UuidParser) (isaStk : Nat) :
+@[expose] def isSameAccountDistinctAtSpec (A : RustAlloc) (parse : UuidParser) (isaStk : Nat) :
     Spec Pqxdh.WireEntries.IsSameAccountDistinctGhost where
   pre := fun g s =>
     ⌜s.readReg64 .x0 = g.localIkA ∧
@@ -688,119 +401,5 @@ def isSameAccountDistinctAtSpec (A : RustAlloc) (parse : UuidParser) (isaStk : N
     (g.remoteIkA ↦ₛ g.remoteIk.publicKey.bytes.toList) ∗
     protocolAddressAt A g.rem g.remA ∗
     stackAt s0.sp isaStk
-
-/-- Stage 2 callee bundle on `initProgExt img ext` (`StaticSecret::drop`, `derive_public_key_bytes`, and `is_same_account`). -/
-structure Stage2CalleesExt (img : Obj.Image) (P : PEParams) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop where
-  staticSecretDrop : ∀ {hookStack : Nat}, extHookStack ≤ hookStack → hookStack ≤ 2 ^ 64 →
-    subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr staticSecretDropName)
-      ((LibsignalTripleRatchet.withStack zeroizeSecretSpec hookStack).inImage img)
-  derivePubKeyBytes :
-    subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr cliDerivePubKeyBytesName)
-      ((derivePublicKeyBytesStackSpec P.C.pubKey extHookStack).inImage img)
-  isSameAccount : ∃ isaStk ≤ 516880,
-    subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr cliIsSameAccountName)
-      ((isSameAccountDistinctAtSpec A uuidTryParse isaStk).inImage img)
-
-/-- Builds `Stage2CalleesExt` from `CliExternsOk P A ext` and `<IdentityKey>::is_same_account` at `isaStk ≤ 516880`. -/
-theorem stage2CalleesExt_of_externsOk {img : Obj.Image} {P : PEParams} {A : RustAlloc}
-    {ext : String → Option (State → State)} {isaStk : Nat}
-    (hOk : CliExternsOk P A ext)
-    (hisa : isaStk ≤ 516880)
-    (hSameAcct : subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr cliIsSameAccountName)
-      ((isSameAccountDistinctAtSpec A uuidTryParse isaStk).inImage img)) :
-    Stage2CalleesExt img P A ext :=
-  { staticSecretDrop := fun hs1 hs2 => staticSecretDrop_ext_stack_ok hOk img hs1 hs2
-    derivePubKeyBytes := derivePubKeyBytes_ext_ok hOk img
-    isSameAccount := ⟨isaStk, hisa, hSameAcct⟩ }
-
-/-- Instantiates `Stage2CalleesExt` at `cliHookExterns W` from `InitLocalCallees`. -/
-theorem stage2CalleesExt_of_localCallees {img : Obj.Image} {A : RustAlloc} {W : CliHooks}
-    {stk : Nat} (hLocal : InitLocalCallees img A W stk) :
-    Stage2CalleesExt img ⟨W.C, W.Q⟩ A (cliHookExterns W) :=
-  { staticSecretDrop := fun {hookStack} _ _ =>
-      subroutine_ok_inImage_of_subroutine_ok img
-        (subroutine_ok_withStack_of_subroutine_ok (staticSecretDrop_cli_ok W img) hookStack)
-    derivePubKeyBytes :=
-      subroutine_ok_inImage_of_subroutine_ok img
-        (derivePublicKeyBytesStack_of_spec extHookStack hLocal.derivePubKeyBytes)
-    isSameAccount := ⟨Pqxdh.WireEntries.isSameAccountDistinctStack, by decide,
-      subroutine_ok_inImage_of_subroutine_ok img hLocal.isSameAccount⟩ }
-
-/-- Lifts `Stage2CalleesExt.derivePubKeyBytes` to any residual stack `extHookStack ≤ hookStack ≤ 2 ^ 64`. -/
-theorem Stage2CalleesExt.derivePubKeyBytes_withStack {img : Obj.Image} {P : PEParams}
-    {A : RustAlloc} {ext : String → Option (State → State)}
-    (hLocal : Stage2CalleesExt img P A ext)
-    {hookStack : Nat} (hstack : extHookStack ≤ hookStack) (hstack_le : hookStack ≤ 2 ^ 64) :
-    subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr cliDerivePubKeyBytesName)
-      ((derivePublicKeyBytesStackSpec P.C.pubKey hookStack).inImage img) := by
-  apply subroutine_ok_outcome_intro
-  intro x R s0 hpc hrun hpre hal
-  have hsplit : stackAt s0.sp hookStack =
-      memRegion (s0.sp - BitVec.ofNat 64 hookStack) (hookStack - extHookStack) ∗
-        stackAt s0.sp extHookStack := by
-    have h1 := stackAt_split_bottom s0.sp extHookStack (hookStack - extHookStack) (by omega)
-    rwa [Nat.add_sub_of_le hstack] at h1
-  let R' : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 hookStack) (hookStack - extHookStack) ∗ R
-  have hpre' : s0.mem ⊨ ((derivePublicKeyBytesStackSpec P.C.pubKey extHookStack).inImage img).pre
-      x s0 ∗ R' := by
-    dsimp only [Spec.inImage, derivePublicKeyBytesStackSpec, R'] at hpre ⊢
-    rw [hsplit] at hpre
-    ac_nf at hpre ⊢
-  refine subroutine_ok.mono_outcome hLocal.derivePubKeyBytes x R' s0 hpc hrun hpre' hal ?_
-  rintro sf (⟨hret, hcc, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, derivePublicKeyBytesStackSpec, R'] at hpost ⊢
-    rw [hsplit]
-    ac_nf at hpost ⊢
-  · dsimp only [Spec.inImage, derivePublicKeyBytesStackSpec] at hpan
-    rw [satisfies_pure_sepConj] at hpan; exact False.elim hpan.1
-  · dsimp only [Spec.inImage, derivePublicKeyBytesStackSpec] at hex
-    rw [satisfies_pure_sepConj] at hex; exact False.elim hex.1
-  · dsimp only [Spec.inImage, derivePublicKeyBytesStackSpec] at hoom
-    rw [satisfies_pure_sepConj] at hoom; exact False.elim hoom.1
-
-/-- Lifts `Stage2CalleesExt.isSameAccount` to any residual stack `516880 ≤ hookStack ≤ 2 ^ 64`. -/
-theorem Stage2CalleesExt.isSameAccount_withStack {img : Obj.Image} {P : PEParams}
-    {A : RustAlloc} {ext : String → Option (State → State)}
-    (hLocal : Stage2CalleesExt img P A ext)
-    {hookStack : Nat} (hstack : 516880 ≤ hookStack) (hstack_le : hookStack ≤ 2 ^ 64) :
-    subroutine_ok (initProgExt img ext)
-      ((initProgExt img ext).fnAddr cliIsSameAccountName)
-      ((isSameAccountDistinctAtSpec A uuidTryParse hookStack).inImage img) := by
-  obtain ⟨isaStk, hisa, hraw⟩ := hLocal.isSameAccount
-  have hle : isaStk ≤ hookStack := by omega
-  apply subroutine_ok_outcome_intro
-  intro g R s0 hpc hrun hpre hal
-  have hsplit : stackAt s0.sp hookStack =
-      memRegion (s0.sp - BitVec.ofNat 64 hookStack) (hookStack - isaStk) ∗
-        stackAt s0.sp isaStk := by
-    have h1 := stackAt_split_bottom s0.sp isaStk (hookStack - isaStk) (by omega)
-    rwa [Nat.add_sub_of_le hle] at h1
-  let R' : SepProp :=
-    memRegion (s0.sp - BitVec.ofNat 64 hookStack) (hookStack - isaStk) ∗ R
-  have hpre' : s0.mem ⊨ ((isSameAccountDistinctAtSpec A uuidTryParse isaStk).inImage img).pre
-      g s0 ∗ R' := by
-    dsimp only [Spec.inImage, isSameAccountDistinctAtSpec, R'] at hpre ⊢
-    rw [hsplit] at hpre
-    ac_nf at hpre ⊢
-  refine subroutine_ok.mono_outcome hraw g R' s0 hpc hrun hpre' hal ?_
-  rintro sf (⟨hret, hcc, hpost⟩ | ⟨_, hpan⟩ | ⟨_, _, hex⟩ | ⟨_, hoom⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, isSameAccountDistinctAtSpec, R'] at hpost ⊢
-    rw [hsplit]
-    ac_nf at hpost ⊢
-  · dsimp only [Spec.inImage, isSameAccountDistinctAtSpec] at hpan
-    rw [satisfies_pure_sepConj] at hpan; exact False.elim hpan.1
-  · dsimp only [Spec.inImage, isSameAccountDistinctAtSpec] at hex
-    rw [satisfies_pure_sepConj] at hex; exact False.elim hex.1
-  · dsimp only [Spec.inImage, isSameAccountDistinctAtSpec] at hoom
-    rw [satisfies_pure_sepConj] at hoom; exact False.elim hoom.1
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage2Lemmas

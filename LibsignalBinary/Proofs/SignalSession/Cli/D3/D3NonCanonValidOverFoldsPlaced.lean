@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3StageP3Prev1Placed
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3NonCanonValidOverAuxPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3StageP3Prev1Placed
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive
@@ -20,6 +20,61 @@ import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP34ErrStepsA
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureExit
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.ClosureSpeOwned
+public import LibsignalBinary.Proofs.E2E.Record.Support.Phi -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Swarm.TRREF.B3Defs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ScopeIn -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.BV
+public import ProofLib.Disproof.Basic
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.MallocngBridge
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.SepLogic.LoopTactics
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import ProofLib.StdStartup.MuslStage1Init
+public import ProofLib.StdStartup.OutlineAtomics
+public import ProofLib.StdStartup.Strlen
+public import VerifiedLibraries.Mallocng.Spec
+public import VerifiedLibraries.Musl.Spec
+public import VerifiedLibraries.Musl.Spec.Top
+public import VerifiedLibraries.RustStd.Spec
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInner
+public import VerifiedLibraries.RustStd.Spec.AllocFormatInnerBudget
+public import VerifiedLibraries.RustStd.Spec.AllocStringClone
+public import VerifiedLibraries.RustStd.Spec.CoreFmtDisplay
+public import VerifiedLibraries.RustStd.Spec.CoreFmtWrite
+public import VerifiedLibraries.RustStd.Spec.CoreFromUtf8
+public import VerifiedLibraries.RustStd.Spec.CoreMemrchr
+public import VerifiedLibraries.RustStd.Spec.FsRead
+public import VerifiedLibraries.RustStd.Spec.FsWrite
+public import VerifiedLibraries.RustStd.Spec.Stdio
+public import VerifiedLibraries.RustStd.Spec.TimeAdd
+public import VerifiedLibraries.RustStd.Spec.TimeDurationSince
+import LibsignalBinary.Proofs.CryptoGames.Ratchet.LibsignalSessionApiFacts
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedCallocProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.PlacedMallocEntryProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedPosixMemalignProof
+public import VerifiedLibraries.Mallocng.Proofs.PlacedReallocProof
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+public import VerifiedLibraries.Musl.Proofs.CryptoHooks
+public import VerifiedLibraries.Musl.Proofs.MemmoveProof
+public import VerifiedLibraries.Musl.Proofs.MemsetProof
+public import VerifiedLibraries.RustStd.Proofs.MallocngBridgeCommon
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveDefs
 
 /-!
 # Spatial Folds & Archived-Payload Scope Bridge for Non-Matching Overwrite
@@ -29,14 +84,14 @@ Stage P3 / `Prev1` Stage P4 stack spatial splits (`stageP3OverStackRemAt`,
 archived-session validation bridge.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.D3
 
-open Arm64 Arm64.Process ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection ProofLib.Variant
+open Arm64 Arm64.Process ProofLib ProofLib.ProgramReflection ProofLib.Variant
 open CryptoGames CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSession CryptoVerification.LibsignalSessionRepr
@@ -78,16 +133,16 @@ attribute [-arm64_norm]
 
 /-- `Slots.scopeIn` strengthened with `s.state.sessionVersion = 4#32` (guaranteed on every
 `PqxdhPartyInSpecDomain`-reachable session via `reachPq_sessionVersion_placed`). -/
-def ScopeOverIn (r : SessionRecord (List (BitVec 8))) : Prop :=
+@[expose] def ScopeOverIn (r : SessionRecord (List (BitVec 8))) : Prop :=
   Slots.scopeIn r ∧ ∀ s, r.currentSession = some s → s.state.sessionVersion = 4#32
 
 /-- Archived session payloads `enc` produced when promoting over a `ScopeOverIn` record. -/
-def OverPrevEncInScopeV4 (enc : List (BitVec 8)) : Prop :=
+@[expose] def OverPrevEncInScopeV4 (enc : List (BitVec 8)) : Prop :=
   ∃ r sess, ScopeOverIn r ∧ r.currentSession = some sess ∧
     enc = E2E.Record.encSession (Over.clearPending sess)
 
 /-- Validated archived session payload invariant for `Prev1` Stage P3 / P4. -/
-def OverPrevEncOK (enc : List (BitVec 8)) : Prop :=
+@[expose] def OverPrevEncOK (enc : List (BitVec 8)) : Prop :=
   ∃ sess : Session (List (BitVec 8)),
     enc = E2E.Record.encSession sess ∧
     Symbolic.Swarm.TRREF.B3Defs.DeserializeScopeP_Q Symbolic.Swarm.TRREF.B3Defs.NonEmptyV1Q
@@ -117,20 +172,20 @@ theorem overPrevEncOK_of_inScopeV4 {enc : List (BitVec 8)}
       fun k hk => by simp [Over.clearPending] at hk, hss.2.2.2⟩
 
 /-- Untouched gap bytes inside `[sp + 8 .. sp + 152)` (`[+32..36)`, `[+88..92)`, `[+120..124)`). -/
-def spLowGapsAt (sp : BitVec 64) : SepProp :=
+@[expose] def spLowGapsAt (sp : BitVec 64) : SepProp :=
   memRegion (sp + 32#64) 4 ∗
   memRegion (sp + 88#64) 4 ∗
   memRegion (sp + 120#64) 4
 
 /-- Untouched gap regions inside `[sp + 1360 .. sp + 3184)` around `[+2352..2448)` and
 `[+2704..3048)`. -/
-def spHighGapsAt (sp : BitVec 64) : SepProp :=
+@[expose] def spHighGapsAt (sp : BitVec 64) : SepProp :=
   memRegion (sp + 1360#64) 992 ∗
   memRegion (sp + 2448#64) 256 ∗
   memRegion (sp + 3048#64) 136
 
 /-- Stack slots in `[sp .. sp + 3184)` framed untouched across Stage P3. -/
-def stageP3StackFrameAt (sp remoteIkPtr remAddrPtr : BitVec 64) : SepProp :=
+@[expose] def stageP3StackFrameAt (sp remoteIkPtr remAddrPtr : BitVec 64) : SepProp :=
   (sp ↦₆₄ 0#64) ∗
   spLowGapsAt sp ∗
   ((sp + 144#64) ↦₆₄ remoteIkPtr) ∗
@@ -148,13 +203,13 @@ def stageP3StackFrameAt (sp remoteIkPtr remAddrPtr : BitVec 64) : SepProp :=
 
 /-- Closure-frame scratch slots `[+1336..+2352)`, `[+2448..+2704)`, `[+3048..+3184)` used by
 the inlined `SessionStructure::decode` on the `VerNe` previous-session loop (`+7800`). -/
-def overScratch (sp : BitVec 64) : SepProp :=
+@[expose] def overScratch (sp : BitVec 64) : SepProp :=
   memRegion (sp + 1336#64) 1016 ∗
   memRegion (sp + 2448#64) 256 ∗
   memRegion (sp + 3048#64) 136
 
 /-- Caller stack slots of `stageP3StackFrameAt` outside `overScratch sp`. -/
-def stageP3OverStackRemAt (sp remoteIkPtr remAddrPtr : BitVec 64) : SepProp :=
+@[expose] def stageP3OverStackRemAt (sp remoteIkPtr remAddrPtr : BitVec 64) : SepProp :=
   (sp ↦₆₄ 0#64) ∗ spLowGapsAt sp ∗ ((sp + 144#64) ↦₆₄ remoteIkPtr) ∗
   ((sp + 168#64) ↦₆₄ remAddrPtr) ∗ memRegion (sp + 188#64) 4 ∗
   memRegion (sp + 216#64) 376 ∗ memRegion (sp + 612#64) 12 ∗

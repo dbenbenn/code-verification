@@ -10,9 +10,10 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Pqxdh.Game
-public import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames
+import Computational.Proofs.SignalPqxdh.TwoKeyAndAuthGames
+public import Computational.Specifications.Pqxdh.Security.Auth.Game
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,7 +31,7 @@ namespace SignalPqxdh
 open OracleComp OracleSpec ENNReal
 
 /-- Convert a 96-byte word triple `(BitVec 256 × BitVec 256 × BitVec 256)` to a `DRKey`. -/
-def wordsToDRKey (w : BitVec 256 × BitVec 256 × BitVec 256) : DRKey :=
+@[expose] def wordsToDRKey (w : BitVec 256 × BitVec 256 × BitVec 256) : DRKey :=
   { rootKey  := word256ToBytes w.1
     chainKey := word256ToBytes w.2.1
     pqrKey   := word256ToBytes w.2.2 }
@@ -45,10 +46,6 @@ theorem QueryBounded.keyInd_total {S : Setup} {A : KeyIndAdversary S} {b : Query
     (h : QueryBounded A b) :
     OracleComp.IsQueryBoundP A.run (fun q => isGameQuery q = true) b.q_total := h.2.2.2.1
 
-theorem QueryBounded.keyInd_on {S : Setup} {A : KeyIndAdversary S} {b : QueryBudget}
-    (h : QueryBounded A b) :
-    OracleComp.IsQueryBoundP A.run isKeyIndOnlineQuery b.q_on := h.2.2.2.2
-
 theorem QueryBounded.auth_ro {S : Setup} {A : AuthAdversary S} {b : QueryBudget}
     (h : QueryBounded A b) : OracleComp.IsQueryBoundP A.run isAuthRoQuery b.q_ro := h.1
 
@@ -57,10 +54,6 @@ theorem QueryBounded.auth_send {S : Setup} {A : AuthAdversary S} {b : QueryBudge
 
 theorem QueryBounded.auth_recv {S : Setup} {A : AuthAdversary S} {b : QueryBudget}
     (h : QueryBounded A b) : OracleComp.IsQueryBoundP A.run isAuthRecvQuery S.N_recv_tot := h.2.2.1
-
-theorem QueryBounded.auth_roRoot {S : Setup} {A : AuthAdversary S} {b : QueryBudget}
-    (h : QueryBounded A b) :
-    OracleComp.IsQueryBoundP A.run isAuthRoRootQuery b.q_roRoot := h.2.2.2.1
 
 theorem QueryBounded.auth_total {S : Setup} {A : AuthAdversary S} {b : QueryBudget}
     (h : QueryBounded A b) :

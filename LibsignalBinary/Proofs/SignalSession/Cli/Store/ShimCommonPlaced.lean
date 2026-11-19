@@ -9,14 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced
-public import LibsignalBinary.Proofs.Common.InImageKit
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
 public import ProofLib.SepLogic.WP.Apply
 public meta import ProofLib
-public meta import LibsignalBinary.Proofs.Common.InImageKit
+public meta import LibsignalBinary.Proofs.Common.InImageKit -- proof-setup: allow-public-import
 public meta import Lean
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Shared `[LibsignalPlacement]` Infrastructure for CLI Store Proofs
@@ -26,7 +27,7 @@ Mangled CLI panic-symbol contracts (`CliPanicHooksPlaced`), stack-bound extracti
 call tactic.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -41,9 +42,9 @@ open CryptoVerification.SignalSession.Cli.MainHops
 
 /-! ## 1. Mangled CLI Panic Hooks -/
 
-/-- All 18 mangled panic symbols in `cliPanicSymbolsPlaced` map to `some Rust.panicked`. -/
-def CliPanicHooksPlaced (H : LibsignalHooks) : Prop :=
-  ∀ sym ∈ cliPanicSymbolsPlaced, H sym = some Rust.panicked
+/-- All 18 mangled panic symbols in `cliCratePanicSyms` map to `some Rust.panicked`. -/
+@[expose] def CliPanicHooksPlaced (H : LibsignalHooks) : Prop :=
+  ∀ sym ∈ cliCratePanicSyms, H sym = some Rust.panicked
 
 theorem cliPanicHooksPlaced_cli (mmpl : Obj.MultiPlacement) (W : CliHooks) :
     CliPanicHooksPlaced (cliExternsPlaced mmpl W) := by
@@ -53,8 +54,8 @@ theorem cliPanicHooksPlaced_cli (mmpl : Obj.MultiPlacement) (W : CliHooks) :
 theorem ls_panicAt_of_cliPanic [LibsignalPlacement] {prog : Program} {i : Nat}
     {H : LibsignalHooks} [IsLsBlockProg prog i H] {sym : String}
     (hpan : CliPanicHooksPlaced H)
-    (hcli : sym ∈ cliPanicSymbolsPlaced := by decide)
-    (hmem : sym ∈ libsignalSessionExterns := by decide)
+    (hcli : sym ∈ cliCratePanicSyms := by decide)
+    (hmem : sym ∈ libsignalHookedExterns := by decide)
     (hi : i < 619 := by decide)
     (hunmut : (i ∈ libsignalMutatedBlocks) = false := by decide) :
     prog.externAt? (lsρ sym) = some Rust.panicked :=

@@ -9,7 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Frame
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Hops -- proof-setup: allow-public-import
 
 /-!
 # Loop Invariant, Error-Exit Interface, and `commitFiles` Algebra for `main` Hop M5
@@ -19,7 +23,7 @@ Defines the ordered `storesDirs` / `commitFiles` algebra, the outer M5 loop inva
 `m5ErrCells`, `m5ErrMem`) connecting M5's payload moves, 8-`Dir` commit loop, and error cleanup.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -36,7 +40,7 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 /-! ## 1. Ordered `DirGhost` List and `commitFiles` Algebra -/
 
 /-- The eight `DirGhost`s of `g : StoresGhost`, in `Stores::commit` / `storesAt` order (`0 .. 7`). -/
-def storesDirs (g : StoresGhost) : List DirGhost :=
+@[expose] def storesDirs (g : StoresGhost) : List DirGhost :=
   [g.identity.own, g.identity.peers, g.signed, g.kyber.oneTime,
     g.kyber.lastResort, g.oneTime, g.sessions, g.pub]
 
@@ -44,11 +48,11 @@ def storesDirs (g : StoresGhost) : List DirGhost :=
 theorem storesDirs_length (g : StoresGhost) : (storesDirs g).length = 8 := rfl
 
 /-- Writes of the first `k` directories (`0 .. k - 1`) of `g`. -/
-def writesBefore (g : StoresGhost) (k : Nat) : List (List (BitVec 8) × List (BitVec 8)) :=
+@[expose] def writesBefore (g : StoresGhost) (k : Nat) : List (List (BitVec 8) × List (BitVec 8)) :=
   ((storesDirs g).take k).flatMap DirGhost.writes
 
 /-- Writes of the remaining directories (`k .. 7`) of `g`. -/
-def writesFrom (g : StoresGhost) (k : Nat) : List (List (BitVec 8) × List (BitVec 8)) :=
+@[expose] def writesFrom (g : StoresGhost) (k : Nat) : List (List (BitVec 8) × List (BitVec 8)) :=
   ((storesDirs g).drop k).flatMap DirGhost.writes
 
 @[simp]
@@ -220,7 +224,7 @@ theorem allocFailedIn_of_prefix {s0 s1 s2 : State}
 /-! ## 2. Spatial `Dir` Tail Predicates and `locals` Frames -/
 
 /-- Contiguous array of `Dir` structs (`40 = 0x28` bytes each) starting at `a`. -/
-def dirsAt (A : RustAlloc) (a : BitVec 64) : List DirGhost → SepProp
+@[expose] def dirsAt (A : RustAlloc) (a : BitVec 64) : List DirGhost → SepProp
   | [] => emp
   | d :: ds => dirAt A a d ∗ dirsAt A (a + 0x28#64) ds
 
@@ -256,7 +260,7 @@ theorem dirsAt_drop_cons (A : RustAlloc) (fsp : BitVec 64) (g : StoresGhost)
 /-- Owned pieces inside `locals fsp` at `AtM5Loop` after `k` `Dir`s (`k ≤ 8`):
 `m6Cells` (`0x08 .. 0x28`, `0x58 .. 0x60`) plus the remaining `8 - k` `Dir`s at
 `0x1c8 + 0x28 * k .. 0x308`. -/
-def m5LoopCells (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : BitVec 64)
+@[expose] def m5LoopCells (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr : BitVec 64)
     (g : StoresGhost) (k : Nat) : List (Nat × Nat × SepProp) :=
   m6Cells fsp outCap outPtr outLen inCap inPtr ++
     [(0x1c8 + 0x28 * k, 0x28 * (8 - k),
@@ -315,7 +319,7 @@ theorem locals_m5LoopCells_step (A : RustAlloc)
   ac_rfl
 
 /-- Full separation-logic memory at `AtM5Loop` after `k` `Dir`s (`k ≤ 8`). -/
-def m5LoopMem (A : RustAlloc) (s0 : State) (stk n : Nat)
+@[expose] def m5LoopMem (A : RustAlloc) (s0 : State) (stk n : Nat)
     (outCap outPtr inCap inPtr buf : BitVec 64)
     (out inp : List (BitVec 8))
     (ps : List (BitVec 64 × List (BitVec 8)))
@@ -332,53 +336,6 @@ def m5LoopMem (A : RustAlloc) (s0 : State) (stk n : Nat)
 
 /-! ## 3. Loop Invariant `AtM5Loop` (`M+0x824` for `k < 8`, `M+0xa48` for `k = 8`) -/
 
-/-- State invariant of `main`'s M5 commit loop after `k` `Dir`s (`k ≤ 8`):
-- For `k < 8`: `pc = M+0x824` (outer loop header);
-- For `k = 8`: `pc = M+0xa48` (`0xa40: cmp x22, #8; b.ne 0x824` falls through directly to `M+0xa48`
-  when `Dir 7` finishes with `x22 = 8`);
-- `x19 = buf`, `x22 = k`, `x23 = fsp + 0x1c8`, `x24 = n`, `x28 = 40` (`0x28`);
-- `commitFiles io.wr F0 (writesBefore g k) = some s.fs.files`, `tr0 <+: s.trace`, and `stdout`
-  bytes unchanged from `tr0`. -/
-structure AtM5Loop (img : Obj.Image) (ext : String → Option (State → State))
-    (io : IoModel) (F0 : FsFiles) (tr0 : List TraceEvent)
-    (g : StoresGhost) (s0 s : State) (n : Nat) (buf : BitVec 64) (k : Nat) : Prop where
-  hk : k ≤ 8
-  base : InMain img ext s0 s (if k < 8 then 0x824 else 0xa48)
-  x19 : s.readReg64 (.gpr 19#5) = buf
-  x22 : s.readReg64 (.gpr 22#5) = BitVec.ofNat 64 k
-  x23 : s.readReg64 (.gpr 23#5) = s0.sp - BitVec.ofNat 64 mainFrameSize + 0x1c8#64
-  x24 : s.readReg64 (.gpr 24#5) = BitVec.ofNat 64 n
-  x28 : s.readReg64 (.gpr 28#5) = 0x28#64
-  files : commitFiles io.wr F0 (writesBefore g k) = some s.fs.files
-  trace : tr0 <+: s.trace
-  stdout : ProcessOutcome.traceStreamBytes .stdout s.trace =
-    ProcessOutcome.traceStreamBytes .stdout tr0
-
-/-- Constructor at `k = 0` after `m5_moves`, when `s'.fs = s.fs` and `s'.trace = s.trace`. -/
-theorem AtM5Loop.of_zero {img : Obj.Image} {ext : String → Option (State → State)}
-    {io : IoModel} {g : StoresGhost} {s0 s s' : State} {n : Nat} {buf : BitVec 64}
-    (hbase : InMain img ext s0 s' 0x824)
-    (hx19 : s'.readReg64 (.gpr 19#5) = buf)
-    (hx22 : s'.readReg64 (.gpr 22#5) = 0#64)
-    (hx23 : s'.readReg64 (.gpr 23#5) = s0.sp - BitVec.ofNat 64 mainFrameSize + 0x1c8#64)
-    (hx24 : s'.readReg64 (.gpr 24#5) = BitVec.ofNat 64 n)
-    (hx28 : s'.readReg64 (.gpr 28#5) = 0x28#64)
-    (hfs : s'.fs.files = s.fs.files)
-    (htr : s'.trace = s.trace) :
-    AtM5Loop img ext io s.fs.files s.trace g s0 s' n buf 0 where
-  hk := by decide
-  base := hbase
-  x19 := hx19
-  x22 := hx22
-  x23 := hx23
-  x24 := hx24
-  x28 := hx28
-  files := by simp [writesBefore_zero, commitFiles_nil, hfs]
-  trace := htr ▸ List.prefix_refl _
-  stdout := by rw [htr]
-
-/-! ## 4. Write-Error Exit Interface `M5LoopErr` (`M+0xb90` / `M+0xba0` / `M+0xbb8`) -/
-
 /-- Which of the three `write_file` error exits in `main` was entered on `Err`. -/
 inductive M5ErrEntry where
   /-- `M+0xb90` (Loop A, non-empty `Dir.path`): temporary `String` in `(x23 = pathCap, x22 = pathPtr)`. -/
@@ -390,19 +347,19 @@ inductive M5ErrEntry where
   | bb8
 
 /-- `main`-relative byte offset of an `M5ErrEntry`. -/
-def M5ErrEntry.pcOff : M5ErrEntry → Nat
+@[expose] def M5ErrEntry.pcOff : M5ErrEntry → Nat
   | .b90 .. => 0xb90
   | .ba0 .. => 0xba0
   | .bb8 => 0xbb8
 
 /-- Entry register facts for `M5ErrEntry` (`x22 = ptr`, `x23 = cap`, plus `cap ≠ 0` at `0xba0`). -/
-def M5ErrEntry.regs : M5ErrEntry → State → Prop
+@[expose] def M5ErrEntry.regs : M5ErrEntry → State → Prop
   | .b90 cap ptr _, s => s.readReg64 (.gpr 22#5) = ptr ∧ s.readReg64 (.gpr 23#5) = cap
   | .ba0 cap ptr _, s => s.readReg64 (.gpr 22#5) = ptr ∧ s.readReg64 (.gpr 23#5) = cap ∧ cap ≠ 0#64
   | .bb8, _ => True
 
 /-- Heap ownership of the temporary path `String` (if any) at `M5ErrEntry`. -/
-def M5ErrEntry.heap (A : RustAlloc) : M5ErrEntry → SepProp
+@[expose] def M5ErrEntry.heap (A : RustAlloc) : M5ErrEntry → SepProp
   | .b90 cap ptr bs => ownedBytes A cap ptr (BitVec.ofNat 64 bs.length) bs
   | .ba0 cap ptr bs => ownedBytes A cap ptr (BitVec.ofNat 64 bs.length) bs
   | .bb8 => emp
@@ -412,7 +369,7 @@ def M5ErrEntry.heap (A : RustAlloc) : M5ErrEntry → SepProp
 `0x48` (`curCap`), and remaining `Dir`s `k + 1 .. 7` at `0x1c8 + 0x28 * (k + 1) .. 0x308`.
 Note that `0x1b8 .. 0x1c0` sits cleanly inside the uninitialized `memRegion` gap
 `0x60 .. 0x1c8 + 0x28 * (k + 1)` for every `k`. -/
-def m5ErrCells (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr curCap curPtr : BitVec 64)
+@[expose] def m5ErrCells (A : RustAlloc) (fsp outCap outPtr outLen inCap inPtr curCap curPtr : BitVec 64)
     (g : StoresGhost) (k : Nat) : List (Nat × Nat × SepProp) :=
   [cell fsp 0x8 outLen,
    cell fsp 0x10 outPtr,
@@ -481,7 +438,7 @@ theorem locals_m5ErrCells_forget_to_m6Cells
   exact Entails.trans h1 (Entails.trans h2 (Entails.trans h3 (Entails.trans h4 (Entails.of_eq h5))))
 
 /-- Full separation-logic memory at `M5LoopErr` (`M+0xb90` / `M+0xba0` / `M+0xbb8`). -/
-def m5ErrMem (A : RustAlloc) (s0 : State) (stk n : Nat)
+@[expose] def m5ErrMem (A : RustAlloc) (s0 : State) (stk n : Nat)
     (outCap outPtr inCap inPtr buf curCap curPtr : BitVec 64)
     (out inp : List (BitVec 8))
     (ps : List (BitVec 64 × List (BitVec 8)))
@@ -499,27 +456,5 @@ def m5ErrMem (A : RustAlloc) (s0 : State) (stk n : Nat)
       (m5ErrCells A fsp outCap outPtr (BitVec.ofNat 64 out.length) inCap inPtr curCap curPtr g k) ∗
     stackAt fsp (stk - mainFrameSize) ∗
     A.pool ∗ anyHeap
-
-/-- Error-exit state at `M+0xb90` / `M+0xba0` / `M+0xbb8` when a `write_file` call in `Dir k`
-(`k < 8`) returned `Err`:
-- `curEntries ≠ []` with `x25 = curEntries.length` (the counter consumed by `M+0xbcc`);
-- `x19 = buf`, `x24 = n`, and `e.regs s` (`x22 = pathPtr`, `x23 = pathCap`);
-- `commitFiles io.wr F0 g.writes = none`, `tr0 <+: s.trace`, and `stdout` unchanged from `tr0`. -/
-structure M5LoopErr (img : Obj.Image) (ext : String → Option (State → State))
-    (io : IoModel) (F0 : FsFiles) (tr0 : List TraceEvent)
-    (g : StoresGhost) (s0 s : State) (n : Nat) (buf : BitVec 64)
-    (k : Nat) (curEntries : List (List (BitVec 8) × List (BitVec 8)))
-    (e : M5ErrEntry) : Prop where
-  hk : k < 8
-  hne : curEntries ≠ []
-  errRegs : e.regs s
-  base : InMain img ext s0 s e.pcOff
-  x19 : s.readReg64 (.gpr 19#5) = buf
-  x24 : s.readReg64 (.gpr 24#5) = BitVec.ofNat 64 n
-  x25 : s.readReg64 (.gpr 25#5) = BitVec.ofNat 64 curEntries.length
-  commitNone : commitFiles io.wr F0 g.writes = none
-  trace : tr0 <+: s.trace
-  stdout : ProcessOutcome.traceStreamBytes .stdout s.trace =
-    ProcessOutcome.traceStreamBytes .stdout tr0
 
 end CryptoVerification.SignalSession.Cli.MainHops

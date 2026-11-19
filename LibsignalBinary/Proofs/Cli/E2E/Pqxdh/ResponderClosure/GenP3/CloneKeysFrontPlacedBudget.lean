@@ -11,10 +11,10 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudgetAux
-public import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.ChainClone3ExtPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Hooks.DefsBudget
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
@@ -22,6 +22,9 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
 import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysBase
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Placed Segment 1: Keys & Sender Chain (Block `518`)
@@ -31,7 +34,7 @@ junction predicates (`genP3PrePlacedBudget`, `genP3J1PlacedBudget`..`genP3J4Plac
 Segment 1 proofs (`cloneKeysFront_vregs_placed_ok`, `+0x1778 → +0x19b0`) on Block `518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -82,7 +85,7 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## 1. Deterministic `AllocEvent` Trace & Envelope for `CloneKeysFront` -/
 
 /-- Exact allocator envelope for optional sender-chain clone (`optSenderChainCloneEvents`). -/
-def OptSenderChainCloneEnv (scG : Option CryptoVerification.LibsignalTripleRatchetRepr.SenderChainGhost)
+@[expose] def OptSenderChainCloneEnv (scG : Option CryptoVerification.LibsignalTripleRatchetRepr.SenderChainGhost)
     (scM : Option SenderChain) (evs : List AllocEvent) : Prop :=
   evs = optSenderChainCloneEvents scG scM
 
@@ -92,7 +95,7 @@ def OptSenderChainCloneEnv (scG : Option CryptoVerification.LibsignalTripleRatch
     2. `remote_identity_public` (`len = 0` → `[]`, else `rustAllocEvents len 1`);
     3. `root_key` (`rustAllocEvents 32 1`);
     4. `sender_chain` (`optSenderChainCloneEvents recG.sender st.senderChain`). -/
-def cloneKeysFrontEvents (recG : SessionGhost) (st : SessionState (List (BitVec 8))) :
+@[expose] def cloneKeysFrontEvents (recG : SessionGhost) (st : SessionState (List (BitVec 8))) :
     List AllocEvent :=
   rustAllocEvents recG.localIk.bytes.length 1 ++
   (if recG.remoteIk.bytes.length = 0 then [] else rustAllocEvents recG.remoteIk.bytes.length 1) ++
@@ -100,7 +103,7 @@ def cloneKeysFrontEvents (recG : SessionGhost) (st : SessionState (List (BitVec 
   optSenderChainCloneEvents recG.sender st.senderChain
 
 /-- Exact allocation envelope for Segment 1 (`+0x1778 → +0x19b0`) of Stage P3 `SessionState::clone`. -/
-def CloneKeysFrontEnv (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
+@[expose] def CloneKeysFrontEnv (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
     (evs : List AllocEvent) : Prop :=
   evs = cloneKeysFrontEvents recG st
 
@@ -117,7 +120,7 @@ theorem fitsEvents_cloneKeysFront_of_fitsEnv (M : AllocCostModel) (lim : BudgetL
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` `genP3Pre` at
     `dpClosureEntryM3Placed + 0x1778#64`. -/
-def genP3PrePlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3PrePlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -135,7 +138,7 @@ def genP3PrePlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     genP3SpillAll sp
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` Junction 1 predicate at `+0x19b0`. -/
-def genP3J1PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3J1PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -176,7 +179,7 @@ def genP3J1PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
       genP3SenderInlineWords sp w.sq0 w.sq1 w.sq2 w.sq3 w.sq4 w.sq5
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` Junction 2 predicate at `+0x1a5c`. -/
-def genP3J2PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3J2PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -222,7 +225,7 @@ def genP3J2PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
       genP3SenderInlineWords sp w.sq0 w.sq1 w.sq2 w.sq3 w.sq4 w.sq5
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` Junction 3 predicate at `+0x1b20`. -/
-def genP3J3PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3J3PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -277,7 +280,7 @@ def genP3J3PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
       genP3SenderInlineWords sp w.sq0 w.sq1 w.sq2 w.sq3 w.sq4 w.sq5
 
 /-- Budget-threaded relocatable `[LibsignalPlacement]` Junction 4 predicate at `+0x1bac`. -/
-def genP3J4PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def genP3J4PlacedBudget [LibsignalPlacement] {M : AllocCostModel}
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
     (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
     (msgVer : BitVec 32) (rest : List (BitVec 8))
@@ -349,45 +352,6 @@ theorem genP3PrePlacedBudget_eq_atState [LibsignalPlacement] {M : AllocCostModel
     genP3PrePlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
       msgVer rest recG st rem loc msgG msg s =
     genP3PrePlaced (A.atState lim stB s) sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr
-      cur msgVer rest recG st rem loc msgG msg s :=
-  rfl
-
-theorem genP3J1PlacedBudget_eq_atState [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
-    (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-    (msgVer : BitVec 32) (rest : List (BitVec 8))
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-    (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-    (s : State) :
-    genP3J1PlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-      msgVer rest recG st rem loc msgG msg s =
-    genP3J1Placed (A.atState lim stB s) sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr
-      cur msgVer rest recG st rem loc msgG msg s :=
-  rfl
-
-theorem genP3J2PlacedBudget_eq_atState [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
-    (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-    (msgVer : BitVec 32) (rest : List (BitVec 8))
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-    (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-    (s : State) :
-    genP3J2PlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-      msgVer rest recG st rem loc msgG msg s =
-    genP3J2Placed (A.atState lim stB s) sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr
-      cur msgVer rest recG st rem loc msgG msg s :=
-  rfl
-
-theorem genP3J3PlacedBudget_eq_atState [LibsignalPlacement] {M : AllocCostModel}
-    (A : RustCliAllocBudget M) (lim : BudgetLimits) (stB : M.σ)
-    (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-    (msgVer : BitVec 32) (rest : List (BitVec 8))
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-    (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-    (s : State) :
-    genP3J3PlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-      msgVer rest recG st rem loc msgG msg s =
-    genP3J3Placed (A.atState lim stB s) sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr
       cur msgVer rest recG st rem loc msgG msg s :=
   rfl
 
@@ -632,49 +596,5 @@ theorem cloneKeysFront_vregs_placed_ok [LibsignalPlacement] {M : AllocCostModel}
   refine sepWPp_bind_frame_any hstep (sepConj_emp _).symm fun s1 P_f hpc1 hrun1 ⟨hent1, htr1, hcro1, hv1⟩ => ?_
   rw [sepConj_emp]
   exact sepWPp_done_any hpc1 hrun1 ⟨cloneKeysFrontEvents recG st, rfl, hent1, htr1, hcro1, hv1⟩
-
-/-- VM-hook entry variant accepting `rustAllocShimVmSpec` and `allocMemcpyVmSpec` directly. -/
-theorem cloneKeysFront_vregs_vmHooks_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {stB : M.σ}
-    {Qp : State → SepProp → Prop}
-    (ext : String → Option (State → State))
-    (hshim : subroutine_ok (lsProg_518 ext) (lsρ CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.GenP3.M3a1.lsShimSym) rustAllocShimVmSpec)
-    (halloc : subroutine_ok (lsProg_518 ext) (lsρ CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.GenP3.M3a1.lsAllocSym)
-      (rustCliAllocBudgetSpec M A lim false))
-    (hmemcpy : subroutine_ok (lsProg_518 ext) (lsρ lsMemcpySym) allocMemcpyVmSpec)
-    (hscc : SenderChainClone3OkPlaced A lim ext)
-    (s0 s : State)
-    (sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur : BitVec 64)
-    (msgVer : BitVec 32) (rest : List (BitVec 8))
-    (recG : SessionGhost) (st : SessionState (List (BitVec 8)))
-    (rem loc : AddrGhost) (msgG : SignalMessageGhost) (msg : SignalMessage)
-    (hrc : st.receiverChains.length < 2 ^ 32)
-    (hsp_align : (sp &&& 15#64 == 0#64) = true)
-    (hsp_root : rootStack ≤ sp.toNat)
-    (hfits : FitsEnv M lim stB (CloneKeysFrontEnv recG st))
-    (hcro : LibsignalCodeRoLoaded lsmpl s.mem)
-    (hpc : s.pc = dpClosureEntryM3Placed + 0x1778#64)
-    (hrun : s.status = .Running)
-    (htr : s.trace = s0.trace) :
-    SepWPp (lsProg_518 ext)
-      (dpClosureEntryM3Placed + 0x19b0#64) s
-      (genP3PrePlacedBudget A lim stB sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur
-        msgVer rest recG st rem loc msgG msg s)
-      (fun s1 P_f =>
-        ∃ evs : List AllocEvent,
-          CloneKeysFrontEnv recG st evs ∧
-          (P_f ⊢ genP3J1PlacedBudget A lim (M.stepEvents evs stB)
-            sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
-            recG st rem loc msgG msg s1) ∧
-          s1.trace = s0.trace ∧
-          LibsignalCodeRoLoaded lsmpl s1.mem ∧
-          calleeSavedVRegs s1 = calleeSavedVRegs s)
-      Qp :=
-  cloneKeysFront_vregs_placed_ok ext
-    (subroutine_ok_sessionShimBudget_of_rustAllocShimVm hshim)
-    halloc
-    (subroutine_ok_sessionMemcpyRegionBudget_of_allocMemcpyVm hmemcpy)
-    hscc s0 s sp fp coroPtr ctxPtr remAddrPtr locAddrPtr whisperMsgPtr cur msgVer rest
-    recG st rem loc msgG msg hrc hsp_align hsp_root hfits hcro hpc hrun htr
 
 end LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.GenP3.CloneKeysFrontPlacedBudget

@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Pure
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Pure -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
 import LibsignalBinary.Specifications.AsmConstants
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -31,17 +31,17 @@ open CryptoVerification.CodeLayout
 
 /-! ## Return Offsets and `.fs` Normalization Lemmas -/
 
-def memrchrRetOff : BitVec 64 := 68#64
-def parseSidRetOff : BitVec 64 := 116#64
-def joinPlusOff : BitVec 64 := 180#64
+@[expose] def memrchrRetOff : BitVec 64 := 68#64
+@[expose] def parseSidRetOff : BitVec 64 := 116#64
+@[expose] def joinPlusOff : BitVec 64 := 180#64
 def loopEntryOff : BitVec 64 := 288#64
-def loopHeadOff : BitVec 64 := 292#64
-def sxtbCheckOff : BitVec 64 := 256#64
-def noneExitOff : BitVec 64 := 352#64
+@[expose] def loopHeadOff : BitVec 64 := 292#64
+@[expose] def sxtbCheckOff : BitVec 64 := 256#64
+@[expose] def noneExitOff : BitVec 64 := 352#64
 def allocEntryOff : BitVec 64 := 384#64
-def shimRetOff : BitVec 64 := 392#64
-def allocRetOff : BitVec 64 := 408#64
-def memcpyRetOff : BitVec 64 := 428#64
+@[expose] def shimRetOff : BitVec 64 := 392#64
+@[expose] def allocRetOff : BitVec 64 := 408#64
+@[expose] def memcpyRetOff : BitVec 64 := 428#64
 
 @[simp, arm64_norm]
 theorem addr_fs_writeReg (s : State) (w : Width) (r : Reg) (v : BitVec 64) :
@@ -105,113 +105,9 @@ theorem sbfm_sxtb32_norm (x : BitVec 64) :
 
 /-! ## Call-Site Callee Wrappers -/
 
-theorem addr_fnOff :
-    libsignalSessionCode.fnOff addressName = num% (ls_off% "libsignal_cli::address") :=
-  ls_lemma% fnOff "libsignal_cli::address"
-
-theorem addr_fnAddr_rel {b : BitVec 64} {ext : String → Option (State → State)}
-    {target : String} {off : BitVec 64}
-    (h : BitVec.ofNat 64 (libsignalSessionCode.fnOff addressName) + off =
-      BitVec.ofNat 64 (libsignalSessionCode.fnOff target)) :
-    (tripleRatchetProgAtExt b ext).fnAddr addressName + off =
-      (tripleRatchetProgAtExt b ext).fnAddr target := by
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, BitVec.add_assoc, h]
-
-theorem addr_memrchr_ok {img : Obj.Image} {ext : String → Option (State → State)}
-    (hmemrchr : subroutine_ok (mProg img ext)
-      ((mProg img ext).fnAddr "core::slice::memchr::memrchr")
-      ((memrchrSpec extHookStack).inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressName +
-        bv% (ls_off% "core::slice::memchr::memrchr" - ls_off% "libsignal_cli::address"))
-      ((memrchrSpec extHookStack).inImage img) := by
-  rw [addr_fnAddr_rel (target := "core::slice::memchr::memrchr")
-    (by rw [addr_fnOff, ls_stub% "core::slice::memchr::memrchr"]; decide)]
-  exact hmemrchr
-
-theorem addr_parseSid_ok {img : Obj.Image} {ext : String → Option (State → State)}
-    (hpsid : subroutine_ok (mProg img ext) ((mProg img ext).fnAddr parseSidName)
-      ((parseSidCodeStackSpec extHookStack).keepsFs.inImage img)) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressName +
-        bv% ((2 ^ 64 + ls_off% parseSidName - ls_off% "libsignal_cli::address") % 2 ^ 64))
-      ((parseSidCodeStackSpec extHookStack).keepsFs.inImage img) := by
-  rw [addr_fnAddr_rel (target := parseSidName)
-    (by rw [addr_fnOff, ls_lemma% fnOff parseSidName]; decide)]
-  exact hpsid
-
-theorem addr_shim_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hFs : AllocContractsFs img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressName +
-        bv% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" -
-          ls_off% "libsignal_cli::address"))
-      (session2ShimSpecX.keepsFs.inImage img) := by
-  rw [addr_fnAddr_rel (target := "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-    (by rw [addr_fnOff, ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2"]; decide)]
-  have h := hFs.shim extHookStack (Nat.le_refl _) (by unfold extHookStack; decide)
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  dsimp only [Spec.inImage, Spec.keepsFs, session2ShimSpecX] at hpre
-  have hpre' :
-      s0.mem ⊨ ((withStack sessionShimSpec extHookStack).keepsFs.inImage img).pre x s0 ∗ R := by
-    dsimp only [Spec.inImage, Spec.keepsFs, withStack, sessionShimSpec]
-    rw [emp_sepConj]
-    exact hpre
-  refine subroutine_ok.mono_outcome h x R s0 hpc hrun hpre' hal fun _ hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | hpan | hrest
-  · exact Or.inl ⟨hret, hcc, hpost⟩
-  · exact Or.inr (Or.inl hpan)
-  · exact Or.inr (Or.inr hrest)
-
-theorem addr_alloc_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hFs : AllocContractsFs img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressName +
-        bv% (ls_off% "__rustc::__rust_alloc" - ls_off% "libsignal_cli::address"))
-      ((rustAllocSpecWithStack A extHookStack).keepsFs.inImage img) := by
-  rw [addr_fnAddr_rel (target := "__rustc::__rust_alloc")
-    (by rw [addr_fnOff, ls_stub% "__rustc::__rust_alloc"]; decide)]
-  exact hFs.alloc
-
-theorem addr_memcpy_ok {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hFs : AllocContractsFs img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressName +
-        bv% (ls_off% "memcpy" - ls_off% "libsignal_cli::address"))
-      (session2MemcpySpecX.keepsFs.inImage img) := by
-  rw [addr_fnAddr_rel (target := "memcpy")
-    (by rw [addr_fnOff, ls_stub% "memcpy"]; decide)]
-  have h := hFs.session_memcpy_region extHookStack (Nat.le_refl _) (by unfold extHookStack; decide)
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hal => ?_
-  have hpre' :
-      s0.mem ⊨
-        ((withStack sessionMemcpyRegionSpec extHookStack).keepsFs.inImage img).pre x s0 ∗ R := by
-    dsimp only [Spec.inImage, Spec.keepsFs, withStack, sessionMemcpyRegionSpec,
-      memcpyRegionSpec, session2MemcpySpecX] at hpre ⊢
-    simpa only [sepConj_assoc] using hpre
-  refine subroutine_ok.mono_outcome h x R s0 hpc hrun hpre' hal fun _ hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | hpan | hrest
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [Spec.inImage, Spec.keepsFs, withStack, sessionMemcpyRegionSpec,
-      memcpyRegionSpec, session2MemcpySpecX] at hpost ⊢
-    simpa only [sepConj_assoc] using hpost
-  · exact Or.inr (Or.inl hpan)
-  · exact Or.inr (Or.inr hrest)
-
-theorem addr_panic_handle_error (img : Obj.Image) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt img.base ext).externAt?
-      ((tripleRatchetProgAtExt img.base ext).fnAddr addressName +
-        bv% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "libsignal_cli::address")) =
-      some Rust.panicked :=
-  panic_at_handle_error_norm_ext (b := img.base) (ext := ext) (name := addressName)
-    (k := num% (ls_off% "alloc::raw_vec::handle_error" - ls_off% "libsignal_cli::address"))
-    (by rw [addr_fnOff, ls_stub% "alloc::raw_vec::handle_error"])
-
-/-! ## Stack Frame, `sret` Scratch, and `protocolAddressAt` Folding -/
-
 abbrev subStackSize : Nat := 0x50 + extHookStack
 
-def addrSavedRegs (sp0 : BitVec 64) (s0 : State) : SepProp :=
+@[expose] def addrSavedRegs (sp0 : BitVec 64) (s0 : State) : SepProp :=
   ((sp0 - 64#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((sp0 - 56#64) ↦₆₄ s0.readReg64 .x30) ∗
   ((sp0 - 48#64) ↦₆₄ s0.readReg64 .x24) ∗
@@ -398,7 +294,7 @@ theorem addrSavedRegs_at_frame {sp0 sp : BitVec 64} (hsp : sp = sp0 - 96#64) (s0
   rcases h1 with ⟨e1, e2, e3, e4, e5, e6, e7, e8⟩
   rw [e1, e2, e3, e4, e5, e6, e7, e8]
 
-def AddrUpperSaved (s0 s : State) : Prop :=
+@[expose] def AddrUpperSaved (s0 s : State) : Prop :=
   s.readReg64 .x25 = s0.readReg64 .x25 ∧
   s.readReg64 .x26 = s0.readReg64 .x26 ∧
   s.readReg64 .x27 = s0.readReg64 .x27 ∧
@@ -418,7 +314,7 @@ theorem sp_sub_96_spAligned {s0 s : State} (hal0 : s0.spAligned = true)
   simp only [State.spAligned, hsp] at hal0 ⊢
   revert hal0; generalize s0.sp = p; bv_bits
 
-def AddrPanicAllow (s0 : State) : State → SepProp → Prop :=
+@[expose] def AddrPanicAllow (s0 : State) : State → SepProp → Prop :=
   fun sf P_f => ∀ R, (sf.mem ⊨ P_f ∗ R) →
     sf.mem ⊨ (⌜allocFailedIn s0 sf⌝ ∗ anyHeap) ∗ R
 
@@ -426,49 +322,5 @@ theorem addrPanicAllow_of_eq {s0 sf : State} {P_f : SepProp}
     (h : allocFailedIn s0 sf) : AddrPanicAllow s0 sf P_f :=
   fun _ hm =>
     Satisfies.mono (sepConj_mono_left (Entails.pure_right h (entails_anyHeap P_f))) hm
-
-theorem addr_call_inImage {prog : Program} {img : Obj.Image}
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q : State → SepProp → Prop}
-    {α : Type} {callee_pc ret_pc : BitVec 64} {spec : Spec α} (x : α)
-    (hcall : subroutine_ok prog callee_pc (spec.inImage img))
-    (hinv : ImgCallInv img s)
-    (htr : s.trace = s0.trace)
-    (hpc : s.pc = callee_pc)
-    (hrun : s.status = .Running)
-    (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hP : P ⊢ spec.pre x s ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code →
-      (sf.mem ⊨ spec.onExit x code s sf ∗ R') → False := by
-      intro _ _ _ _ he; exact not_satisfies_false_sepConj he)
-    (hoom : ∀ sf R', sf.status = .OutOfMemory →
-      (sf.mem ⊨ spec.onOom x s sf ∗ R') → False := by
-      intro _ _ _ ho; exact not_satisfies_false_sepConj ho)
-    (hpanic : ∀ sf R', sf.status = .Panicked →
-      (sf.mem ⊨ spec.onPanic x s sf ∗ R') →
-      allocFailedIn s sf := by
-      intro _ _ _ hp; exact (not_satisfies_false_sepConj hp).elim)
-    (hnext : ∀ sf : State,
-      ImgCallInv img sf →
-      sf.pc = ret_pc →
-      sf.status = .Running →
-      sf.sp = s.sp →
-      CalleeSavedPreserved s sf →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (AddrPanicAllow s0)) :
-    SepWPp prog ret s P Q (AddrPanicAllow s0) := by
-  exact ProofLib.SepWPp.call_wpp_frozen (x := x) (F := F) hcall hinv.1 hinv.2 hpc hrun hsp hlr
-    (fun R hm => by
-      have hm_pre : s.mem ⊨ (spec.pre x s ∗ F) ∗ R :=
-        Satisfies.mono (sepConj_mono_left hP) hm
-      dsimp only [Spec.inImage]
-      rw [sepConj_assoc, satisfies_pure_sepConj]
-      exact ⟨hinv, by simpa only [sepConj_assoc] using hm_pre⟩)
-    (fun sf code R' hex hpost => hexit sf code R' hex hpost)
-    (fun sf hpan ⟨R', hpost⟩ => by
-      have halloc := hpanic sf R' hpan hpost
-      have halloc0 : allocFailedIn s0 sf := by simpa [allocFailedIn, htr] using halloc
-      exact addrPanicAllow_of_eq halloc0)
-    (fun sf hpcm hrunm hspm hcsm hfz hsym => hnext sf ⟨hfz, hsym⟩ hpcm hrunm hspm hcsm)
-    (fun sf R' hoom_s hpost => (hoom sf (F ∗ R') hoom_s hpost).elim)
 
 end CryptoVerification.SignalSession.Cli.MainHops.Address.Helpers

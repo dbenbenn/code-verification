@@ -9,27 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.KemPubSerializeLocal2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DropSessionStructureLocal5PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSpqrPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCallsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.SetUnackEpochPlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCalleesBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DerivePublicKeyBytesBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.HooksPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.KemPubSerializeLocal2PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.DropSessionStructureLocal5PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.StepSpqrPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage5Lemmas.ScratchAndStoreCallsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.SetUnackEpochPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDeriveBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.LeavesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCalleesBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DerivePublicKeyBytesBudget
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.ModelBridge
@@ -38,7 +38,13 @@ import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetB
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.SessionRecordCallees
 import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudgetSat
 import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat
+import LibsignalBinary.Proofs.TripleRatchet.Keys.KeysSat
 import ProofLib.SepLogic.WP.Apply
+public import LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Address.Base
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
 
 /-!
 # Budget-Threaded Relocatable Local and E2E Callees for `initiate`
@@ -49,15 +55,13 @@ and bundled into `InitLocalCalleesPlaced`. Includes `VmPreserved` block proofs f
 (block `74`) and empty-archive `promote_state` (blocks `51` and `47`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
 set_option linter.dupNamespace false
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget
-
-noncomputable section
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib SepProp
 open CryptoVerification
@@ -83,8 +87,8 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
    subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded withLsCodeRoLoaded)
 open CryptoVerification.LibsignalSpqrV1 (Params)
 open CryptoVerification.LibsignalTripleRatchet
-  (HkdfPlacedHooks extHookStack framelessMemcpySpec keys_ls_hook_ok_of_mem
-   keys_ls_subroutine_ok_of_block_cro noAllocShimSpec uuidTryParseCodeSpec)
+  (HkdfPlacedHooks extHookStack extractSpec extractStack framelessMemcpySpec keys_ls_hook_ok_of_mem
+   keys_ls_subroutine_ok_of_block_cro newFromSliceStack noAllocShimSpec uuidTryParseCodeSpec)
 open CryptoVerification.LibsignalTripleRatchetRepr (uuidTryParse)
 open CryptoVerification.SignalSession (CliHooks cliExternsPlaced)
 open CryptoVerification.SignalSession.Cli.RunProofs (cliInitiateFrame cliInitiateNeed)
@@ -113,8 +117,10 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetAuxS
   (expand_multi_info_placed_vm_ok_sat)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetBbSat
   (calculateAgreement_placed_ok_unconditional_sat pqxdhCalculateAgreement_placed_ok_of_block_sat)
-open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat (HkdfPlacedHooksExactBudgetSat)
-open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat (HkdfPlacedHooksExactSat)
+open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat
+  (HkdfPlacedHooksExactBudgetSat expandMultiInfoBudgetSpecSat extractBudgetSpecSat)
+open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
+  (HkdfPlacedHooksExactSat extractSpecSat extractStackSat)
 open LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountBudget
   (isSameAccountDistinctSpec)
 open LibsignalBinary.Proofs.E2E.Pqxdh.WireEntries.RecvWireSameAccountPlacedBudgetSat
@@ -144,6 +150,7 @@ open LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget
   (createChain_placed_ok_of_contracts expandMultiInfoBudgetSpec extractBudgetSpec
    subroutine_ok_createChainSpecX_of_createChainSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget (createChainSpec createChainSpecX)
+open LibsignalBinary.Proofs.TripleRatchet.Keys.KeysSat (createChain_placed_ok_of_contracts_budget_sat)
 open Arm64.Obj (MultiPlacement)
 open LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
   (CliGhostHooks cliGhostExterns)
@@ -158,7 +165,7 @@ export LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.SetUnackEpochPlacedBud
 /-! ## Budget-threaded and `VmPreserved` inner specifications -/
 
 /-- Budget-threaded inner specification of `<kem::Key<Public>>::serialize [local#1]` (block `523`). -/
-def kemPubSerializeInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
+@[expose] def kemPubSerializeInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (stk : Nat) : Spec (KemPubSerializeGhost × M.σ) where
   pre := fun (x, st) s =>
     ⌜s.readReg64 .x0 = x.kpkPtr ∧ s.readReg64 .x1 = 1568#64 ∧ x.kpk.length = 1568 ∧
@@ -174,7 +181,7 @@ def kemPubSerializeInnerSpec {M : AllocCostModel} (A : RustCliAllocBudget M)
       A.pool lim (M.stepEvents (rustAllocEvents 1569 1) st) sf ∗ stackAt s0.sp stk
 
 /-- `VmPreserved`-strengthened inner specification of `<PublicKey>::verify_signature` (block `203`). -/
-def verifySignatureInnerSpec (P : SignalPqxdh.Primitives) : Spec VerifySignatureGhost :=
+@[expose] def verifySignatureInnerSpec (P : SignalPqxdh.Primitives) : Spec VerifySignatureGhost :=
   withVmPreserved (CryptoVerification.SignalSession.Cli.RunProofs.Initiate.verifySignatureInnerSpec P)
 
 /-- Budget-threaded inner specification of `<PrivateKey>::calculate_agreement` (block `207`). -/
@@ -184,7 +191,7 @@ abbrev pqxdhCalculateAgreementPlacedInnerSpec {M : AllocCostModel} (P : SignalPq
   pqxdhCalculateAgreementPlacedBaseSpec M (ofSignalPqxdhPrimitives P) A lim
 
 /-- `VmPreserved`-strengthened contract for `spqr_chain_params` (block `74`). -/
-def spqrChainParamsBudgetSpec : Spec (BitVec 32) :=
+@[expose] def spqrChainParamsBudgetSpec : Spec (BitVec 32) :=
   withVmPreserved spqrChainParamsSpec
 
 /-! ## `VmPreserved` block proofs for `spqr_chain_params` and `promote_state` -/
@@ -497,12 +504,14 @@ theorem derivePubKeyBytes_cli_placed_ok [LibsignalPlacement]
     (mmpl : MultiPlacement) (gh : CliGhostHooks) (W : CliHooks)
     (hh : RunHooksPlaced W A lim (cliGhostExterns gh (cliExternsPlaced mmpl W))) :
     subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 200)
-      (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesSpec W.C.pubKey)) :=
+      (withLsCodeRoLoaded lsmpl
+        (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+          (LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.derivePublicKeyBytesStackBudgetSpec
+            W.C.pubKey 1904))) :=
   transfer_plain_block
     (calleeProg := lsProg_200 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (derive_public_key_bytes_placed_ok_of_contract
-      (subroutine_ok_derivePublicKeyBytes_of_withVmPreserved
-        (ls_hook_ok_of_mem (prog := lsProg_200 (cliGhostExterns gh (cliExternsPlaced mmpl W))) hh.pubFromSecret)))
+    (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.X25519CallerBridges.derive_public_key_bytes_placed_withLsRet_stackBudget_ok_of_hookSat
+      1904 hh.pubFromSecret)
 
 /-- `<HandshakeKeys>::derive` (block `59`) on `initProgPlaced`. -/
 theorem handshakeDerive_cli_placed_ok [LibsignalPlacement]
@@ -545,6 +554,62 @@ private theorem hookSat_of_keepsFs {α : Type} {H : LibsignalHooks} {sym : Strin
     exact hpost.2
   · exact Or.inr hrest
 
+private theorem stackAt_extractSat_split (sp : BitVec 64) :
+    stackAt sp extractStackSat =
+      memRegion (sp - 1152#64) 176 ∗ stackAt sp extractStack := by
+  simp only [stackAt, extractStackSat, extractStack, newFromSliceStack]
+  exact ProofLib.memRegion_split' rfl (by bv_omega) (by decide)
+
+private theorem subroutine_ok_extractBudgetSat_of_budget
+    {prog : Program} {pl : Obj.MultiPlacement} {F : CryptoGames.LibsignalSession.ShaCompress}
+    {addr : BitVec 64}
+    (h : subroutine_ok prog addr (withLsCodeRoLoaded pl (extractBudgetSpec F))) :
+    subroutine_ok prog addr (withLsCodeRoLoaded pl (extractBudgetSpecSat F)) := by
+  refine subroutine_ok_map h ?_
+  intro x R s0 hpre
+  dsimp only [withLsCodeRoLoaded, extractBudgetSpecSat, withVmPreserved, extractSpecSat] at hpre
+  rw [stackAt_extractSat_split s0.sp] at hpre
+  refine ⟨x, memRegion (s0.sp - 1152#64) 176 ∗ R, ?_, fun sf hpost => ?_⟩
+  · dsimp only [withLsCodeRoLoaded, extractBudgetSpec, withVmPreserved, extractSpec]
+    have hEq :
+        ((⌜s0.readReg64 .x0 = x.ret ∧ s0.readReg64 .x1 = x.saltA ∧
+            (x.salt.isSome = true → s0.readReg64 .x2 = 32#64) ∧
+            (x.salt = none → x.saltA = 0#64 ∨ s0.readReg64 .x2 = 0#64) ∧
+            s0.readReg64 .x3 = x.ikmA ∧ s0.readReg64 .x4 = 32#64 ∧
+            x.ikm.length = 32⌝ ∗
+          memRegion x.ret 176 ∗ CryptoVerification.LibsignalTripleRatchet.optSaltAt x.saltA x.salt ∗
+          (x.ikmA ↦ₛ x.ikm) ∗
+          (memRegion (s0.sp - 1152#64) 176 ∗ stackAt s0.sp extractStack)) ∗
+          ⌜CryptoVerification.LibsignalPublicApi.StoreKit.LibsignalCodeRoLoaded pl s0.mem⌝) ∗ R =
+        ((⌜s0.readReg64 .x0 = x.ret ∧ s0.readReg64 .x1 = x.saltA ∧
+            (x.salt.isSome = true → s0.readReg64 .x2 = 32#64) ∧
+            (x.salt = none → x.saltA = 0#64 ∨ s0.readReg64 .x2 = 0#64) ∧
+            s0.readReg64 .x3 = x.ikmA ∧ s0.readReg64 .x4 = 32#64 ∧
+            x.ikm.length = 32⌝ ∗
+          memRegion x.ret 176 ∗ CryptoVerification.LibsignalTripleRatchet.optSaltAt x.saltA x.salt ∗
+          (x.ikmA ↦ₛ x.ikm) ∗ stackAt s0.sp extractStack) ∗
+          ⌜CryptoVerification.LibsignalPublicApi.StoreKit.LibsignalCodeRoLoaded pl s0.mem⌝) ∗
+          (memRegion (s0.sp - 1152#64) 176 ∗ R) := by sep_ac_rfl
+    rwa [← hEq]
+  · dsimp only [withLsCodeRoLoaded, extractBudgetSpec, extractBudgetSpecSat,
+      withVmPreserved, extractSpec, extractSpecSat] at hpost ⊢
+    rw [stackAt_extractSat_split s0.sp]
+    have hEq :
+        (⌜VmPreserved s0 sf⌝ ∗ ⌜sf.trace = s0.trace⌝ ∗
+          (x.ret ↦ₛ x.prk F) ∗
+          CryptoVerification.LibsignalTripleRatchet.hmacCoreAt F (x.ret + 32#64) (x.prk F) [] ∗
+          CryptoVerification.LibsignalTripleRatchet.optSaltAt x.saltA x.salt ∗
+          (x.ikmA ↦ₛ x.ikm) ∗ stackAt s0.sp extractStack) ∗
+          (memRegion (s0.sp - 1152#64) 176 ∗ R) =
+        (⌜VmPreserved s0 sf⌝ ∗ ⌜sf.trace = s0.trace⌝ ∗
+          (x.ret ↦ₛ x.prk F) ∗
+          CryptoVerification.LibsignalTripleRatchet.hmacCoreAt F (x.ret + 32#64) (x.prk F) [] ∗
+          CryptoVerification.LibsignalTripleRatchet.optSaltAt x.saltA x.salt ∗
+          (x.ikmA ↦ₛ x.ikm) ∗
+          (memRegion (s0.sp - 1152#64) 176 ∗ stackAt s0.sp extractStack)) ∗ R := by
+      sep_ac_rfl
+    rwa [← hEq]
+
 /-- `<RootKey>::create_chain` (block `40`) at `createChainStack` on `initProgPlaced`. -/
 theorem rootKeyCreateChain_cli_placed_ok [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
@@ -564,12 +629,12 @@ theorem rootKeyCreateChain_cli_placed_ok [LibsignalPlacement]
   have hexp53 : subroutine_ok
       (CryptoVerification.LibsignalTripleRatchet.lsProg_53 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 53)
-      (withLsCodeLoaded lsmpl (expandMultiInfoBudgetSpec W.C.F)) :=
+      (withLsCodeLoaded lsmpl (expandMultiInfoBudgetSpecSat W.C.F)) :=
     expand_multi_info_placed_vm_ok_sat W.C (cliGhostExterns gh (cliExternsPlaced mmpl W))
   have hexp40 : subroutine_ok
       ((blkPC_40).rebase (blkPl_40).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 53)
-      (withLsCodeLoaded lsmpl (expandMultiInfoBudgetSpec W.C.F)) :=
+      (withLsCodeLoaded lsmpl (expandMultiInfoBudgetSpecSat W.C.F)) :=
     ls_subroutine_ok_of_block (callerProg := lsProg_40 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       hexp53 (by decide) (by decide) (by decide)
   have hdealloc40 := keys_ls_hook_ok_of_mem
@@ -577,9 +642,10 @@ theorem rootKeyCreateChain_cli_placed_ok [LibsignalPlacement]
     (i := 40) hh.rawDealloc
   exact transfer_tr_codeRoLoaded
     (calleeProg := lsProg_40 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
-    (createChain_placed_ok_of_contracts (C := W.C) hag40
-      (CryptoVerification.LibsignalTripleRatchet.subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-        ha4.hkdfExtract40)
+    (createChain_placed_ok_of_contracts_budget_sat (C := W.C) hag40
+      (subroutine_ok_extractBudgetSat_of_budget
+        (CryptoVerification.LibsignalTripleRatchet.subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
+          ha4.hkdfExtract40))
       (CryptoVerification.LibsignalTripleRatchet.subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
         hexp40)
       hdealloc40)
@@ -603,12 +669,12 @@ theorem rootKeyCreateChainX_cli_placed_ok [LibsignalPlacement]
   have hexp53 : subroutine_ok
       (CryptoVerification.LibsignalTripleRatchet.lsProg_53 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 53)
-      (withLsCodeLoaded lsmpl (expandMultiInfoBudgetSpec W.C.F)) :=
+      (withLsCodeLoaded lsmpl (expandMultiInfoBudgetSpecSat W.C.F)) :=
     expand_multi_info_placed_vm_ok_sat W.C (cliGhostExterns gh (cliExternsPlaced mmpl W))
   have hexp40 : subroutine_ok
       ((blkPC_40).rebase (blkPl_40).base (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       (lsmpl.base 53)
-      (withLsCodeLoaded lsmpl (expandMultiInfoBudgetSpec W.C.F)) :=
+      (withLsCodeLoaded lsmpl (expandMultiInfoBudgetSpecSat W.C.F)) :=
     ls_subroutine_ok_of_block (callerProg := lsProg_40 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
       hexp53 (by decide) (by decide) (by decide)
   have hdealloc40 := keys_ls_hook_ok_of_mem
@@ -617,9 +683,10 @@ theorem rootKeyCreateChainX_cli_placed_ok [LibsignalPlacement]
   exact transfer_tr_codeRoLoaded
     (calleeProg := lsProg_40 (cliGhostExterns gh (cliExternsPlaced mmpl W)))
     (subroutine_ok_createChainSpecX_of_createChainSpec
-      (createChain_placed_ok_of_contracts (C := W.C) hag40
-        (CryptoVerification.LibsignalTripleRatchet.subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-          ha4.hkdfExtract40)
+      (createChain_placed_ok_of_contracts_budget_sat (C := W.C) hag40
+        (subroutine_ok_extractBudgetSat_of_budget
+          (CryptoVerification.LibsignalTripleRatchet.subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
+            ha4.hkdfExtract40))
         (CryptoVerification.LibsignalTripleRatchet.subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
           hexp40)
         hdealloc40))
@@ -724,7 +791,10 @@ structure InitLocalCalleesPlaced [LibsignalPlacement] {M : AllocCostModel}
       (withLsCodeRoLoaded lsmpl
         (pqxdhCalculateAgreementPlacedInnerSpec (modelPrims X ⟨W.C, W.Q⟩) A lim))
   derivePubKeyBytes : subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 200)
-    (withLsCodeRoLoaded lsmpl (derivePublicKeyBytesSpec W.C.pubKey))
+    (withLsCodeRoLoaded lsmpl
+      (LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet.withLsRet
+        (LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget.derivePublicKeyBytesStackBudgetSpec
+          W.C.pubKey 1904)))
   handshakeDerive : ∀ (X : UnreachedPqxdhPrimitives),
     subroutine_ok (initProgPlaced mmpl gh W) (lsmpl.base 59)
       (withLsCodeRoLoaded lsmpl
@@ -787,7 +857,5 @@ theorem initLocalCallees_placed_ok [LibsignalPlacement]
       setUnackPreKeyMsg := setUnackPreKeyMsg_cli_placed_ok mmpl gh W hh
       setUnackKyberId := setUnackKyberId_cli_placed_ok mmpl gh W
       promoteState := promoteState_cli_placed_ok mmpl gh W hh }
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.LocalCalleesPlacedBudget

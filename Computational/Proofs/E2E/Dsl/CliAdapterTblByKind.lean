@@ -11,8 +11,9 @@ module
 
 public import Computational.Specifications.Game.StatementBinaryHarnessCore
 public import Computational.Specifications.Session.ACD19.Ratchet.LibsignalBound
-public import Computational.Proofs.E2E.Dsl.CliAdapterCosted -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Dsl.CliAdapterCostedDefs -- proof-setup: allow-public-import
 import Computational.Proofs.ReductionDsl.KindedCost
+import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 
 /-!
 # Per-Kind Costed `Ty.tbl` Binary-Harness Adapter
@@ -38,7 +39,7 @@ open CryptoVerification.E2E.Costed (e2eSig PB B sidT keyIndQT keyIndQenc keyIndR
   E2EPureOp e2ePureOps e2eAdapterOps E2EAdapterTag e2eAdapterIface e2eAdapterCodec)
 open Computational.Proofs.E2E.Dsl.TablesHonest (adapterPureOp cost_adapterPureOp
   adapterNoneSmRespExpr adapterCrArm adapterCrArm_cost)
-open Computational.Proofs.E2E.Dsl.CliAdapterCosted (bhCtlUnStart e2eBhAdapterIface
+open Computational.Proofs.E2E.Dsl.CliAdapterCostedDefs (bhCtlUnStart e2eBhAdapterIface
   e2eBhAdapterCodec CliToModelAdapterProgHonest drvMirrorTblTy cliAdapterTblStateTy
   cliQuery isEmptyBytesExpr capOkBytesExpr initRegIdExpr natListLitE byte1ToNatE
   pack8BytesE pack32PbytesE pack56BytesE pack392BytesE pack1568Key4E
@@ -49,7 +50,7 @@ open Computational.Proofs.E2E.Dsl.CliAdapterCosted (bhCtlUnStart e2eBhAdapterIfa
   size_cliToModelAdapterProgTbl_le_reductionSizeBudget)
 
 /-- Pure `ReductionDsl` classifier returning `true` iff `e : keyIndQT S` encodes `.roQuery`. -/
-def isRoQueryExpr {S : SignalPqxdh.Setup} {ℓ : ℕ} {O : Ops (e2eSig ℓ)}
+@[expose] def isRoQueryExpr {S : SignalPqxdh.Setup} {ℓ : ℕ} {O : Ops (e2eSig ℓ)}
     {Γ : List (Ty (e2eSig ℓ))} (e : Expr O Γ (keyIndQT S)) : Expr O Γ .bool :=
   .caseSum e (.bool false)
     (.caseSum .v0 (.bool false)
@@ -62,7 +63,7 @@ def isRoQueryExpr {S : SignalPqxdh.Setup} {ℓ : ℕ} {O : Ops (e2eSig ℓ)}
                   (.caseSum .v0 (.bool false)
                     (.caseSum .v0 (.bool true) (.bool false))))))))))
 
-def cliAdapterKiOrCtlArmTblRo (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
+@[expose] def cliAdapterKiOrCtlArmTblRo (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     Comp (e2eAdapterOps ℓ decT encT) (e2eBhAdapterIface S ℓ)
       [.sum (keyIndQT S) (sidT S), cliAdapterTblStateTy S ℓ, (e2eBhAdapterCodec S ℓ).Q]
@@ -84,7 +85,7 @@ def cliAdapterKiOrCtlArmTblRo (S : SignalPqxdh.Setup) (ℓ : ℕ) {Pt : Type}
           (.ret (.pair (.inl (.inr (.some .v1)))
             (.pair (.tset (.fst .v5) .v1 (.some .v0)) (.snd .v5)))))))
 
-def cliAdapterHandleTblRo {Pt : Type} (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
+@[expose] def cliAdapterHandleTblRo {Pt : Type} (decT : PublicKey → Option Pt) (encT : Pt → PublicKey)
     (S : SignalPqxdh.Setup) (ℓ : ℕ) :
     Comp (e2eAdapterOps ℓ decT encT) (e2eBhAdapterIface S ℓ)
       [cliAdapterTblStateTy S ℓ, (e2eBhAdapterCodec S ℓ).Q]
@@ -103,7 +104,7 @@ def cliAdapterHandleTblRo {Pt : Type} (decT : PublicKey → Option Pt) (encT : P
               (drvMirrorTblTy S ℓ))))))
 
 /-- `Ty.tbl`-backed `CostedReduction` adapter with a `.roQuery` fast path. -/
-def cliToModelAdapterProgTblRo {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
+@[expose] def cliToModelAdapterProgTblRo {S : SignalPqxdh.Setup} {ℓ : ℕ} {Pt : Type}
     (decT : PublicKey → Option Pt) (encT : Pt → PublicKey) :
     CliToModelAdapterProgHonest S ℓ decT encT where
   σ := cliAdapterTblStateTy S ℓ

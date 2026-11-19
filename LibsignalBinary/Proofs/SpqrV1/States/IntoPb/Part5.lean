@@ -9,12 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Layout.Stubs
+public import LibsignalBinary.Proofs.SpqrV1.States.IntoPb.Part1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::into_pb`: Shared Helpers for Arms 7, 8, and 9
@@ -26,7 +25,7 @@ OOM panic helpers at `+1700` (`0x5d4c4..0x5d4cc`) and `+884` (`0x5d194..0x5d19c`
 shared across Arms 7 (`ct1Sampled`), 8 (`ekReceivedCt1Sampled`), and 9 (`ct1Acknowledged`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.IntoPb
 
@@ -44,7 +43,6 @@ open CryptoVerification.SpqrV1.Poly.DecoderPb
 open CryptoVerification.SpqrV1.Drop
 open CryptoVerification.SpqrV1.ProtoRepr
 open CryptoVerification.CodeLayout
-open CryptoVerification.SpqrV1.Layout.Stubs
 
 set_option maxRecDepth 200000
 set_option maxHeartbeats 400000
@@ -78,7 +76,7 @@ theorem ofNat_lt_2pow63_lsr63_zero {n : Nat} (h : n < 2 ^ 63) :
   revert hlt; bv_bits
 
 /-- Remaining heap ownership of a `Vec<u8>` after splitting out `(ptr ↦ₛ bs)`. -/
-def vecU8CloneTail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8CloneTail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   ⌜bs.length ≤ cap.toNat ∧ cap.toNat < 2 ^ 63 ∧ ptr ≠ 0⌝ ∗
     (if cap = 0 then emp
      else A.live ptr cap.toNat 1 ∗
@@ -198,32 +196,6 @@ theorem vecU8CloneTail_entails_dealloc (A : RustAlloc) (cap ptr : BitVec 64) (bs
 
 /-! ## 2. OOM Panic Blocks at `+1700` (`0x5d4c4`) and `+884` (`0x5d194`) -/
 
-/-- OOM panic block at `+1700` (`0x5d4c4..0x5d4cc`: `mov x0, x25; mov x1, x21; bl handle_error`). -/
-theorem states_into_pb_panic_1700 {b : BitVec 64} {ext : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesIntoPbName + 1700#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ statesIntoPbOnPanic s0 sf ∗ R)) := by
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := statesIntoPbName)
-    (k := num% (ls_rel% "<spqr::v1::chunked::states::States>::into_pb" "alloc::raw_vec::handle_error"))
-  states_into_pb_fetches_range b (Rust.withPanics ext) 1700 12
-  dsimp only [tripleRatchetProgAtExt, statesIntoPbName, BitVec.ofNat_eq_ofNat] at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::into_pb" = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP
-    (mid := entry + bv% (ls_rel% "<spqr::v1::chunked::states::States>::into_pb" "alloc::raw_vec::handle_error"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  simpa only [statesIntoPbOnPanic, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
-
 namespace DecoderPb
 
 theorem sepWPp_pure_mid {prog : Program} {ret : BitVec 64} {s : State}
@@ -310,32 +282,6 @@ theorem ofNat_ne_zero_true {n : Nat} (hpos : 0 < n) (hlt : n < 2 ^ 64) :
   rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hlt] at ht
   change n = 0 at ht
   omega
-
-/-- OOM panic block at `+884` (`0x5d194..0x5d19c`: `mov x0, x25; mov x1, x22; bl handle_error`). -/
-theorem states_into_pb_panic_884 {b : BitVec 64} {ext : String → Option (State → State)}
-    {Q : State → SepProp → Prop}
-    (s0 s : State) (P R : SepProp)
-    (hpc : s.pc = (tripleRatchetProgAtExt b ext).fnAddr statesIntoPbName + 884#64)
-    (hrun : s.status = .Running)
-    (htrace : s.trace = s0.trace ++ [allocFailedEvent]) :
-    SepWPp (tripleRatchetProgAtExt b ext) (s0.readReg64 (Reg.gpr 30#5)) s P Q
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ statesIntoPbOnPanic s0 sf ∗ R)) := by
-  have hpanic := panic_at_handle_error_norm_ext (b := b) (ext := ext)
-    (name := statesIntoPbName)
-    (k := num% (ls_rel% "<spqr::v1::chunked::states::States>::into_pb" "alloc::raw_vec::handle_error"))
-  states_into_pb_fetches_range b (Rust.withPanics ext) 884 12
-  dsimp only [tripleRatchetProgAtExt, statesIntoPbName, BitVec.ofNat_eq_ofNat] at hpc hpanic ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr
-    "<spqr::v1::chunked::states::States>::into_pb" = entry
-  examples_hide_fetches
-  apply SepWPp.of_sepWP
-    (mid := entry + bv% (ls_rel% "<spqr::v1::chunked::states::States>::into_pb" "alloc::raw_vec::handle_error"))
-  wp_steps
-  apply SepWP.done (by simp only [wp_norm]) (by simp only [wp_norm, hrun])
-  refine SepWPp.panic (by simp only [wp_norm, hrun]) (by simp only [wp_norm]; exact hpanic) fun hm => ?_
-  simpa only [statesIntoPbOnPanic, sepConj_assoc] using
-    allowPanic_panicked (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace])) hm
 
 theorem vecU8Heap_nil_intro (A : RustAlloc) (Rest : SepProp) :
     Rest ⊢ vecU8Heap A (BitVec.ofNat 64 ([] : List (BitVec 8)).length) 1#64
@@ -592,7 +538,7 @@ theorem stA_ekReceivedCt1Sampled_entails_928 (stA : BitVec 64)
   exact sepConj_mono h1 (sepConj_mono (Entails.refl _) (sepConj_mono hc16 (Entails.refl _)))
 
 /-- Scratch stack cells used in Arm 8 (`ekReceivedCt1Sampled`) outside `epilogueStagingCells`. -/
-def ekReceivedScratchCells (sp : BitVec 64)
+@[expose] def ekReceivedScratchCells (sp : BitVec 64)
     (t0 t1 t2 t3 t4 t5 t6 t7 t8 t9 t10 t11 t12 t13 t14 t15 : BitVec 64)
     (u0 u1 u2 u3 u4 u5 : BitVec 64)
     (v0 v1 v2 v3 v4 v5 : BitVec 64) : SepProp :=

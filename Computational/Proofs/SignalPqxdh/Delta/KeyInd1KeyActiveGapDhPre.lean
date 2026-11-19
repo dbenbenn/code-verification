@@ -9,7 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.FgGapDh1Key
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDh1KeyPre -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhIkInv -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkInv -- proof-setup: allow-public-import
 
 /-!
 # Active Creation-Order `GapDhWithSign` Slot Maps and Pre-Sampling
@@ -223,21 +226,21 @@ theorem opkSessions_of_sessions_map {S : Setup} {st1 st2 : KeyIndState S}
     if (opkSessions hst.base).length == sOpkOrd then initSessionSlotIdx (.sendOPK u i) else S.N_send_tot
   | _ => S.N_send_tot
 
-@[expose] noncomputable def pqxdhKeyIndFgPreImpl1KeyOrd (useDh1 : Bool) (uOrd spkOrd : Nat)
+@[expose] def pqxdhKeyIndFgPreImpl1KeyOrd (useDh1 : Bool) (uOrd spkOrd : Nat)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp) :=
   fun q => StateT.mk fun hst =>
     let uSlot := if useDh1 then curPrinSlot uOrd q hst else curSessSlot uOrd q hst
     (pqxdhKeyIndFgPreImpl1Key useDh1 uSlot (curSpkSlot spkOrd q hst) optUsk optVsk S P q).run hst
 
-@[expose] noncomputable def pqxdhKeyIndFgPreImpl1KeyOrdIk (sOrd pOrd : Nat)
+@[expose] def pqxdhKeyIndFgPreImpl1KeyOrdIk (sOrd pOrd : Nat)
     (optIkSk optEkSk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp) :=
   fun q => StateT.mk fun hst =>
     (pqxdhKeyIndFgPreImpl1KeyIk (curSessSlot sOrd q hst) (curPrinSlot pOrd q hst)
       optIkSk optEkSk S P q).run hst
 
-@[expose] noncomputable def pqxdhKeyIndFgPreImpl1KeyOrdOpk (sOpkOrd opkOrd : Nat)
+@[expose] def pqxdhKeyIndFgPreImpl1KeyOrdOpk (sOpkOrd opkOrd : Nat)
     (optUsk optVsk : Option Bytes) (S : Setup) (P : Primitives) :
     QueryImpl (keyIndSpec S) (StateT (KeyIndFgCutoffState S) ProbComp) :=
   fun q => StateT.mk fun hst =>

@@ -10,26 +10,29 @@ limitations under the License.
 module
 
 public import Computational.Specifications.Session.StatementSession
-public import Computational.Proofs.E2E.SpkHop2Red
-public import Computational.Proofs.E2E.SpkLeakRedModel
-public import Computational.Proofs.E2E.SpkCostedEval
-public import Computational.Proofs.E2E.HeadlineSpkSession
-public import Computational.Proofs.E2E.SignedSession
-public import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg
-public import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg
+public import Computational.Proofs.E2E.SpkHop2Red -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SpkLeakRedModel -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.SpkCostedEval
+public import Computational.Proofs.E2E.HeadlineSpkSession -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.SignedSession -- proof-setup: allow-public-import
+import Computational.Proofs.Game.PromotedCostedReds.SpkLeakRedRInProg
+import Computational.Proofs.Game.PromotedCostedReds.SpkHop2RInProg
 import Computational.Proofs.SpqrV1Sync.SendTotalExtras
 import Computational.Proofs.E2E.ComposedPrefixHelpers
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
+import Computational.Proofs.E2E.SpkHop2
+import Computational.Proofs.E2E.SpkHop2A
+import Computational.Proofs.GameHop.Advantage
+import Computational.Proofs.GameHop.GlobalHybrid
 
 /-!
 # Costed SPK Reductions and Headline Session SPK Slice
 
 Packages the costed SPK reduction bundle `spkCostedRedsInst` over `atomicSessionOps`, proves its
 `spkCostedBounds` and `.eval` agreement bridges, and establishes the costed leaked-SPK mixture
-advantage rewrites and 3-hop bias bound `boolBias_mixSpkV1_costed_le`.
--/
+advantage rewrites and 3-hop bias bound `boolBias_mixSpkV1_costed_le`.-/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -67,7 +70,7 @@ open CryptoVerification.E2E.Signed (leakAvgWithSpqr leakUAvgWithSpqr
 /-! ## Canonical `SpkCostedReds` instance and bounds -/
 
 /-- Canonical `SpkCostedReds` bundle over `atomicSessionOps`. -/
-def spkCostedRedsInst {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] def spkCostedRedsInst {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (ℓ : ℕ) (C : Crypto) (K : MlKem) (idA idB : IdentityKey)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (lam : Pt) (q qep : ℕ) :
@@ -250,7 +253,7 @@ theorem spkCostedRedsInst_evalHop2PrfRedK
 
 /-- The leaked-SPK Hop-1, Hop-3, and Hop-2 mixture advantage terms evaluated on a per-context
 family `Rspk` of `SpkCostedReds` witnesses. -/
-noncomputable def spkMixCostedTerm {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
+@[expose] noncomputable def spkMixCostedTerm {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {α : Type} (ℓ : ℕ) (C : Crypto) (K : MlKem)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     {encT : Pt → PublicKey} {decT : PublicKey → Option Pt} {lam : Pt}
@@ -467,43 +470,5 @@ theorem prefixFullBoundMix_generic_eq
   sessBound_eq_signed ℓ D C K Dh encPt encT decT qep q δ oa ida idb s Ak hdec hℓ hq hspk
 
 /-! ## Standalone costed 3-hop leaked-SPK mixture bound -/
-
-/-- Costed 3-hop leaked-SPK mixture bias bound from `sessionSchemeFixedSpk` to `sessionSchemeU`
-via `spkCostedRedsInst`. -/
-theorem boolBias_mixSpkV1_costed_le
-    {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt] {α : Type}
-    (C : Crypto) (K : MlKem) {ℓ : ℕ} (hℓ : ℓ < 10 ^ 6)
-    (Dh : DHFun (BitVec 256) Pt) (hDh : Dh.Commutes)
-    (encPt : Pt → Bytes) (encT : Pt → PublicKey) (decT : PublicKey → Option Pt)
-    (hX : X25519RealizesDh C Dh encPt encT)
-    (hdec : ∀ T, decT (encT T) = some T)
-    (hz : ∀ x, Dh.dh x 0 = 0)
-    (lam : Pt) (qep q : ℕ)
-    (oa : ProbComp α) (ida idb : α → IdentityKey) (s : α → BitVec 256)
-    (A : α → Adversary (GhostState Bytes) (Plain ℓ) (BitVec 512) Bytes)
-    (hker : ∀ o (x : BitVec 256) (P₁ P₂ : Pt),
-      Dh.dh x P₁ = Dh.dh x P₂ ↔ Dh.dh (s o) P₁ = Dh.dh (s o) P₂)
-    (hq : ∀ o ∈ support oa, MakesAtMostQueries (A o) q) :
-    let spqr := spqrV1SessionUniformCoins C.F K
-    let Rspk := fun o => spkCostedRedsInst ℓ C K (ida o) (idb o) Dh encPt encT decT lam q qep
-    𝒟[oa >>= fun o =>
-        gameR (sessionSchemeFixedSpk (paramsIdsWithSpqr C spqr (ida o) (idb o)) ℓ (s o)) 3 qep
-          (configRefuseEarlyBobCorr decT encT) (A o)].boolBias ≤
-      𝒟[oa >>= fun o =>
-          gameR (sessionSchemeU (paramsIdsWithSpqr C spqr (ida o) (idb o)) ℓ) 3 qep
-            (configRefuseEarlyBobCorr decT encT) (A o)].boolBias
-        + spkMixCostedTerm ℓ C K Dh encPt (encT := encT) (decT := decT) (lam := lam)
-            q oa s Rspk A := by
-  intro spqr Rspk
-  have hSpk := boolBias_mixSpkWithSpqr_le_of_support C spqr Dh encPt encT decT
-    (by omega) (fun st rq st' salt msg h =>
-      Nat.lt_of_le_of_lt (spqrV1Send_msg_len_le C.F K st rq st' salt msg h) (by decide))
-    hDh hX hdec hz qep q oa ida idb s A hker hq
-  have hCosted := spkMixCostedTerm_eq_signed_of_dec ℓ C K Dh encPt encT decT lam qep q oa ida idb s
-    Rspk A hdec hℓ hq (fun _ _ => rfl)
-  refine hSpk.trans_eq ?_
-  rw [hCosted]
-  dsimp only [spqr]
-  ac_rfl
 
 end Computational.Proofs.E2E.SpkCostedAndHeadlineSlice

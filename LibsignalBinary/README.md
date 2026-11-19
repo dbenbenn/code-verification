@@ -16,18 +16,17 @@ in them is now under `Computational/Specifications/`, `Computational/Proofs/` an
 |---|---|---|
 | [`Specifications/`](Specifications/) | the `Libsignal*.lean` hook models, layouts and session programs (`LibsignalTripleRatchet.lean`, `LibsignalSession.lean`, `LibsignalHmac.lean`, ...) and [`LibsignalSignalMessage.lean`](Specifications/LibsignalSignalMessage.lean) | `Specifications/Libsignal*.lean` |
 | [`Specifications/CryptoGames/`](Specifications/CryptoGames/) | the definitions both sides use: `Primitives.lean`, `PRNG/Defs.lean`, `FSAEAD/{Defs,Construction,Security}.lean`, the `AEAD/*Defs.lean` files and `AEAD/LibsignalAead.lean`, and the session model `Ratchet/LibsignalSession.lean` with `Ratchet/{RootKdfDefs,ChainDefs,CreateChainDefs}.lean` | `CryptoGames/` |
-| [`Proofs/`](Proofs/) | the per-function contracts of the binary and their proofs: `TripleRatchet/` (the five session entry points, `Statements.lean`), `ConsumeMessageKey/`, `AesCbc/`, `Hmac/`, `Common/`, `CodeLayout.lean`, `VarintBridge.lean`, `ProtoCodecRoundTrip.lean` | `Proofs/libsignal/` |
-| [`Proofs/CryptoGames/`](Proofs/CryptoGames/) | `Ratchet/RootStepProof.lean` | `CryptoGames/Ratchet/` |
-| [`Specifications/RustHeap/`](Specifications/RustHeap/), [`Proofs/RoDataReloc.lean`](Proofs/RoDataReloc.lean) | the Rust heap vocabulary (`Alloc.lean`: the global allocator contracts; `Vec.lean`: the `Vec<T>` layout) and the relocated `.rodata` pointer slots | `CryptoProofLib/` |
+| [`Proofs/`](Proofs/) | the per-function contracts of the binary and their proofs: `TripleRatchet/` (the five session entry points, `Statements.lean`), `ConsumeMessageKey/`, `AesCbc/`, `Hmac/`, `HookDischarge/` (machine-code proofs for linked cryptographic, I/O, and formatting crates, plus committed object bundles described in their respective READMEs), `Common/`, `CodeLayout.lean`, `VarintBridge.lean`, `ProtoCodecRoundTrip.lean` | `Proofs/libsignal/` |
+| [`Proofs/CryptoGames/`](Proofs/CryptoGames/) | `AEAD/CBCProof/` (`CBCDec.lean`, `EtM.lean`, `MacPrecompDefs.lean`) and `Ratchet/` (`CreateChainProofDefs.lean`, `LibsignalSessionApiFacts.lean`, `LibsignalSessionProofDefs.lean`, `LibsignalSessionSMProofDefs.lean`, `RootKdfProofDefs.lean`) | `CryptoGames/` |
+| [`Specifications/RustHeap/`](Specifications/RustHeap/) | the Rust heap vocabulary (`Alloc.lean`: the global allocator contracts; `Vec.lean`: the `Vec<T>` layout) | `CryptoProofLib/` |
 | [`Specifications/LibsignalSpqrV1/`](Specifications/LibsignalSpqrV1/), [`SpecAudit/SpqrV1.lean`](SpecAudit/SpqrV1.lean), [`Proofs/SpqrV1/Vectors/`](Proofs/SpqrV1/Vectors/) | the SPQR V1 model and binary statements, their spec audit, and differential vectors from real `spqr` | new, not moved |
 | [`Heap/`](Heap/) | the untrusted state-indexed Rust global-allocator interface (`RustCliAlloc`) and its stock `musl` `mallocng` instance ([`Heap/README.md`](Heap/README.md)) | new, not moved |
 
 Module names follow the paths: `Specifications.LibsignalX` → `LibsignalBinary.Specifications.LibsignalX`,
-`CryptoGames.X` → `LibsignalBinary.Specifications.CryptoGames.X` (`CryptoGames.Ratchet.RootStepProof` →
-`LibsignalBinary.Proofs.CryptoGames.Ratchet.RootStepProof`), `Proofs.libsignal.X` → `LibsignalBinary.Proofs.X`,
-`CryptoProofLib.RustHeap.X` → `LibsignalBinary.Specifications.RustHeap.X` and `CryptoProofLib.RoDataReloc` →
-`LibsignalBinary.Proofs.RoDataReloc` (their namespaces, `CryptoVerification.RustHeap` and
-`CryptoProofLib.RoDataReloc`, did not change).
+`CryptoGames.X` → `LibsignalBinary.Specifications.CryptoGames.X`, `Proofs.libsignal.X` →
+`LibsignalBinary.Proofs.X`, and `CryptoProofLib.RustHeap.X` →
+`LibsignalBinary.Specifications.RustHeap.X` (its namespace, `CryptoVerification.RustHeap`, did not
+change).
 Comments in the moved files still cite the old code paths (only references to the moved symbolic
 docs were updated); use this table to map them.
 
@@ -43,17 +42,19 @@ computational statement and the symbolic refinement statement parse received byt
 This file imports only Mathlib's `List.Vector`, so the symbolic statement depends on no
 CryptoGames module and not on VCVio. The session model
 [`Specifications/CryptoGames/Ratchet/LibsignalSession.lean`](Specifications/CryptoGames/Ratchet/LibsignalSession.lean)
-and [`Specifications/LibsignalProtoCodec.lean`](Specifications/LibsignalProtoCodec.lean) (both in
-this folder) import it, so their importers see the same declarations. `LibsignalProtoCodec.lean`
+and [`Proofs/ProtoCodecKat.lean`](Proofs/ProtoCodecKat.lean) (both in
+this folder) import it, so their importers see the same declarations. `Proofs/ProtoCodecKat.lean`
 holds only kernel-checked `decide` guards on the codec.
 
 ## Trust
 
-- `Specifications/`: each file's module docstring starts with a trust banner (**Trusted: definitions
-  used by the statement**, **Trusted in part**, or **Checked by Lean**) that says which of its
-  definitions the computational statement uses; see
-  `Computational/docs/TRUSTED_BASE.md` §3. The symbolic
-  statement trusts only `LibsignalSignalMessage.lean` from this folder.
+- `Specifications/`: each file's module docstring starts with a trust banner (**Trusted: the
+  statement**, **Trusted: definitions used by the statement**, **Trusted in part**, or **Checked by
+  Lean**) computed across the computational and ELF-direct symbolic binary headlines; see
+  [`Computational/docs/TRUSTED_BASE.md`](../Computational/docs/TRUSTED_BASE.md) §3. The pure
+  symbolic model and machine-free refinement statements trust only `LibsignalSignalMessage.lean`
+  from this folder, whereas the ELF-direct binary headlines (`Symbolic/Theorems/{Refinement,Security}.lean`)
+  also share the CLI and closed primitive specifications listed in `TRUSTED_BASE.md` §3.
 - `Proofs/`: nothing here is trusted. Neither statement uses a module under `Proofs/`; Lean checks
   every proof.
 - `LibsignalBinary/Heap/`: untrusted proof library; denied by module (group 5) to the symbolic statement's machine-free check.
@@ -62,10 +63,10 @@ holds only kernel-checked `decide` guards on the codec.
 
 - `LibsignalBinary` (default target): root is the umbrella `LibsignalBinary.lean`, which imports
   the maximal modules; everything else is reached transitively. Plain `lake build` builds it.
-- `LibsignalSpqrV1Spec` (default target): roots `Specifications/LibsignalSpqrV1/Guards.lean`,
-  `SpecAudit/SpqrV1.lean` and the `Proofs/SpqrV1/Vectors/*Check.lean` modules, so CI builds the
-  whole SPQR V1 model, its spec audit and its differential checks; the umbrella does not import
-  them.
+- `LibsignalSpqrV1Spec` (default target): roots `Specifications/LibsignalSpqrV1/{MlKemCorrect,Init}.lean`,
+  `Proofs/SpqrV1/{MlKemCorrectFacts,InitFacts}.lean`, `SpecAudit/SpqrV1.lean` and the
+  `Proofs/SpqrV1/Vectors/*Check.lean` modules, so CI builds the whole SPQR V1 model, its spec audit
+  and its differential checks; the umbrella does not import them.
 - `LibsignalBinaryCryptoGames` (no roots, not a default target): only gives the modules under
   `LibsignalBinary/{Specifications,Proofs}/CryptoGames/` and `LibsignalSignalMessage` the same strict
   options as the `ComputationalCryptoGames` library (`autoImplicit false`, `relaxedAutoImplicit false`,

@@ -9,15 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveNoneBudget
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePromote
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveNoneBudget
+import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePromote
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DropSsLocal1ExtBudget
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.GrowOneSpecs
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveAuxBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded `SessionRecord::promote_state` Proofs
@@ -28,7 +35,7 @@ import ProofLib.SepLogic.WPp
 (`prevCap = 0#64`) alongside `VmPreserved`-preserving `memcpy` at `promoteStackX`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000
@@ -97,7 +104,7 @@ open LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchiveNoneBudget (
 
 /-- `VmPreserved`-augmented `memcpyPromSpecX` with the full `promote_state` stack budget
 (`promoteStackX`), used for the tail call `b memcpy` in `SessionRecord::promote_state`. -/
-def memcpyPromBudgetSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def memcpyPromBudgetSpecX : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s =>
     ⌜s.readReg64 .x0 = dst ∧ s.readReg64 .x1 = src ∧ (s.readReg64 .x2).toNat = bs.length⌝ ∗
       memRegion dst bs.length ∗ (src ↦ₛ bs) ∗ stackAt s.sp promoteStackX

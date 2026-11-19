@@ -677,7 +677,7 @@ def packByteExprsLE (byteExprs : Array Expr) : MetaM (Array UInt32) := do
   return out
 
 /-- Extract 32-bit instruction words (`Array UInt32`) from a `List (BitVec 32)`,
-    `Array (BitVec 32)`, `FnCode`, `WordTree` (`CodeTree`), `Program`, `Obj.LinkedImage`,
+    `Array (BitVec 32)`, `FnCode`, `WordTree` (`CodeTree`), `Program`,
     `Obj.SymCodeInfo`, `List (BitVec 8)`, or `Array (BitVec 8)`. -/
 partial def extractWordsFromExpr (e : Expr) : MetaM (Array UInt32) := do
   let e := e.consumeMData
@@ -690,8 +690,6 @@ partial def extractWordsFromExpr (e : Expr) : MetaM (Array UInt32) := do
     return ← extractWordsFromExpr (mkApp (mkConst ``Arm64.Obj.SymCodeInfo.code) e)
   if ty.isConstOf ``Arm64.Program then
     return ← extractWordsFromExpr (mkApp (mkConst ``Arm64.Program.code) e)
-  if ty.isConstOf `Arm64.Obj.LinkedImage then
-    return ← extractWordsFromExpr (mkApp (mkConst `Arm64.Obj.LinkedImage.code) e)
   if ty.isAppOfArity ``List 1 || ty.isAppOfArity ``Array 1 then
     let elemTy ← withTransparency .all (whnf (ty.getArg! 0))
     let elems ← extractListOrArrayElems e
@@ -708,7 +706,7 @@ partial def extractWordsFromExpr (e : Expr) : MetaM (Array UInt32) := do
       else if w == 8 then
         return ← packByteExprsLE elems
   throwError "extractWordsFromExpr: expected `List/Array (BitVec 32)`, `CodeTree`/`WordTree`, \
-    `FnCode`, `Program`, or `Obj.LinkedImage`, got term of type `{ty}`"
+    `FnCode`, or `Program`, got term of type `{ty}`"
 
 /-- True when `w` is an ARM64 `RET` (`RET Rn`, `0xd65f03c0` for `X30`). -/
 def isRetUInt32 (w : UInt32) : Bool :=
@@ -864,7 +862,7 @@ def findSymbolInAssocExpr? (listExpr : Expr) (sym : String) : MetaM (Option Nat)
             return some off
   return none
 
-/-- Look up symbol `sym`'s byte offset in `codeExpr` (`Program`, `Obj.LinkedImage`, `FnCode`,
+/-- Look up symbol `sym`'s byte offset in `codeExpr` (`Program`, `FnCode`,
     `CodeBundle`, or generated `*Code` / `*Code_tree` constant). -/
 partial def lookupSymOffInCode? (codeExpr : Expr) (sym : String) : MetaM (Option Nat) := do
   let e := codeExpr.consumeMData
@@ -886,11 +884,6 @@ partial def lookupSymOffInCode? (codeExpr : Expr) (sym : String) : MetaM (Option
     if let some off ← findSymbolInAssocExpr? (mkApp (mkConst ``Arm64.Program.symbols) e) sym then
       return some off
     if let some off ← findSymbolInAssocExpr? (mkApp (mkConst ``Arm64.Program.stubs) e) sym then
-      return some off
-  if ty.isConstOf `Arm64.Obj.LinkedImage then
-    if let some off ← findSymbolInAssocExpr? (mkApp (mkConst `Arm64.Obj.LinkedImage.symbols) e) sym then
-      return some off
-    if let some off ← findSymbolInAssocExpr? (mkApp (mkConst `Arm64.Obj.LinkedImage.stubs) e) sym then
       return some off
   if ty.isConstOf ``Arm64.FnCode then
     let fnNameExpr := mkApp (mkConst ``Arm64.FnCode.fnName) e
@@ -947,15 +940,6 @@ partial def resolveAddrOrSymOff? (codeExpr : Expr) (e : Expr) :
         else
           let bNorm ← withTransparency .default (whnf baseExpr)
           return some (some bNorm, off.toUInt64, some sym)
-  if e.isAppOfArity `Arm64.Obj.LinkedImage.fnAddr 3 then
-    let liExpr := e.getArg! 0
-    let bExpr := e.getArg! 1
-    if let some sym ← evalStringExpr? (e.getArg! 2) then
-      if let some off ← lookupSymOffInCode? liExpr sym then
-        if let some (64, bVal) ← evalBitVecExpr? bExpr then
-          return some (none, bVal.toUInt64 + off.toUInt64, some sym)
-        else
-          return some (some bExpr, off.toUInt64, some sym)
   if let some (64, v) ← evalBitVecExpr? e then
     return some (none, v.toUInt64, none)
   if let some v ← evalNatExpr? e then
@@ -1042,12 +1026,10 @@ def lookupCodeCallOff (codeExpr entryExpr targetExpr : Expr) (k : Nat := 0) : Me
   let effTy ← withTransparency .all (whnf (← inferType effectiveCode))
   let mut startWordIdx : Nat := 0
   let mut endWordIdx : Nat := words.size
-  if effTy.isConstOf ``Arm64.Program || effTy.isConstOf `Arm64.Obj.LinkedImage then
+  if effTy.isConstOf ``Arm64.Program then
+    let bExpr := mkApp (mkConst ``Arm64.Program.base) effectiveCode
     let progBaseOff : UInt64 ←
-      if effTy.isConstOf ``Arm64.Program then
-        let bExpr := mkApp (mkConst ``Arm64.Program.base) effectiveCode
-        if let some (64, bv) ← evalBitVecExpr? bExpr then pure bv.toUInt64 else pure 0
-      else pure 0
+      if let some (64, bv) ← evalBitVecExpr? bExpr then pure bv.toUInt64 else pure 0
     let relEntryByte := (entryOff - progBaseOff).toNat
     if relEntryByte / 4 < words.size then
       startWordIdx := relEntryByte / 4

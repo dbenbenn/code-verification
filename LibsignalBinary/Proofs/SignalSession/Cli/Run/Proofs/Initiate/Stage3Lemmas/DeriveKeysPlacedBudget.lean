@@ -9,23 +9,37 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DeriveKeysAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DeriveKeysNonePlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DeriveKeysPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsB2PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsBPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsCPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsBPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsCPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemEncapsPlacedBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DeriveKeysAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DeriveKeysNonePlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DeriveKeysPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsAPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsB2PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsBPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhStepsCPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsAPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsBPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemCoinsCPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.KemEncapsPlacedBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.CoinsFillPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Collapse
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.CollapsePlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DefsPlacedBudget
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DhHelpers
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.EarlyExit
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.Model
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.Cells
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage4Lemmas.ErrExit
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Stage 3 `HandshakeKeys::derive` and Full Composition (`[LibsignalPlacement]`)
@@ -35,7 +49,7 @@ Stage 3 PQXDH + KEM pipeline (`+0x0760 → +0x10a4` and zero-DH unwind exits) un
 `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -76,8 +90,6 @@ open CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage3Lemmas
 open CryptoVerification.SignalSession.Cli.RunSkeleton (RunBudgets)
 
 namespace LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DeriveKeysPlacedBudget
-
-noncomputable section
 
 open Arm64 Arm64.Obj Arm64.Process ProofLib SepProp
 open LibsignalBinary.Heap
@@ -143,7 +155,7 @@ theorem stepEvents_deriveKeysEvents (M : AllocCostModel) (st : M.σ) :
   stepEvents_deriveKeysNoneEvents M st
 
 /-- Model-level optional `DH4` shared secret computed by `initiateInput`. -/
-def stage3Dh4Opt (X : UnreachedPqxdhPrimitives) (W : CliHooks)
+@[expose] def stage3Dh4Opt (X : UnreachedPqxdhPrimitives) (W : CliHooks)
     (kp : IdentityKeyPair) (be : PreKeyBundleFields) (coins : List (BitVec 8)) :
     Option SignalPqxdh.Bytes :=
   ((initiateInput ⟨W.C, W.Q⟩ ⟨kp.privateKey.bytes, 0#32⟩ be (padCoins coins)).bundle.opkB?.map
@@ -155,32 +167,32 @@ def stage3Dh4Opt (X : UnreachedPqxdhPrimitives) (W : CliHooks)
 abbrev stage3Dh1UnwindEvents : List AllocEvent :=
   dh1UnwindEvents
 
-def stage3AfterDh1Events : List AllocEvent :=
+@[expose] def stage3AfterDh1Events : List AllocEvent :=
   dh1OkEvents
 
-def stage3Dh2UnwindEvents : List AllocEvent :=
+@[expose] def stage3Dh2UnwindEvents : List AllocEvent :=
   stage3AfterDh1Events ++ unwind1548Events
 
-def stage3AfterDh2Events : List AllocEvent :=
+@[expose] def stage3AfterDh2Events : List AllocEvent :=
   stage3AfterDh1Events ++ dh2OkEvents
 
-def stage3Dh3UnwindEvents : List AllocEvent :=
+@[expose] def stage3Dh3UnwindEvents : List AllocEvent :=
   stage3AfterDh2Events ++ unwind1548Events
 
-def stage3AfterDh3Events : List AllocEvent :=
+@[expose] def stage3AfterDh3Events : List AllocEvent :=
   stage3AfterDh2Events ++ dh3StepOkEvents
 
-def stage3Dh4UnwindEvents : List AllocEvent :=
+@[expose] def stage3Dh4UnwindEvents : List AllocEvent :=
   stage3AfterDh3Events ++ unwind1548Events
 
-def stage3AfterDh4Events (dh4? : Option SignalPqxdh.Bytes) : List AllocEvent :=
+@[expose] def stage3AfterDh4Events (dh4? : Option SignalPqxdh.Bytes) : List AllocEvent :=
   stage3AfterDh3Events ++ dh4OptEvents dh4?
 
-def stage3AfterKemBoxEvents (dh4? : Option SignalPqxdh.Bytes) : List AllocEvent :=
+@[expose] def stage3AfterKemBoxEvents (dh4? : Option SignalPqxdh.Bytes) : List AllocEvent :=
   stage3AfterDh4Events dh4? ++ deriveKeysAEvents
 
 /-- Cumulative allocator events across Stage 3 (`+0x0760 → +0x10a4`) on the `Ok` path. -/
-def stage3OkEvents (dh4? : Option SignalPqxdh.Bytes) : List AllocEvent :=
+@[expose] def stage3OkEvents (dh4? : Option SignalPqxdh.Bytes) : List AllocEvent :=
   stage3AfterKemBoxEvents dh4? ++ deriveKeysEvents
 
 /-- Splits `FitsEvents` for `stage3OkEvents` into the six per-step `FitsEvents` obligations. -/
@@ -1288,7 +1300,5 @@ theorem stage3_all_okEvents_evs_placed_ok [LibsignalPlacement] {M : AllocCostMod
     fun s4 dk hdr kemCtBytes hkSlotBytes kemCtPtr hs4 => ?_
   rw [← M.stepEvents_append evs_pre (stage3OkEvents (stage3Dh4Opt X W kp be x.coins)) st0]
   exact hnext s4 dk hdr kemCtBytes hkSlotBytes kemCtPtr hs4
-
-end
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage3Lemmas.DeriveKeysPlacedBudget

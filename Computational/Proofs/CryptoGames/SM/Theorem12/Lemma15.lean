@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.SM.Reductions
-public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Lazy
+public import Computational.Proofs.CryptoGames.SM.Reductions -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.FSAEAD.Lazy -- proof-setup: allow-public-import
 import VCVio.OracleComp.Constructions.SampleableType.Measure
 
 /-!
@@ -21,7 +21,7 @@ PRF-PRNG world (`b = true`), the privacy bias of `redPRNGPriv` is at most
 `FSAEAD.advantage fs redFSPriv + 2 * FSAEAD.advantage fs redFSPrivCoin` (`DEV-SM25`).
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory CryptoGames.Lazy
 
@@ -63,7 +63,7 @@ theorem boolBias_uniformBool : 𝒟[($ᵗ Bool : ProbComp Bool)].boolBias = 0 :=
   rw [Measure.boolBias_eq_two_mul_absDiff_half_of_isProbabilityMeasure]
   simp
 
-def CloseBy (cR cM cL : ProbComp Bool) : Prop :=
+@[expose] def CloseBy (cR cM cL : ProbComp Bool) : Prop :=
   ∀ s : Set Bool,
     𝒟[cR] s ≤ 𝒟[cM] s + 𝒟[cL] {true} ∧
     𝒟[cM] s ≤ 𝒟[cR] s + 𝒟[cL] {true}
@@ -289,31 +289,31 @@ section GenericEngine
 variable {ι : Type} {tspec : OracleSpec.{0, 0} ι} {OS : Type}
   {Γ T Sig SS RS M E CCoins : Type} {Γv Sv SSv RSv HS : Type}
 
-def outerFull (oimpl : QueryImpl tspec (StateT OS ProbComp)) :
+@[expose] def outerFull (oimpl : QueryImpl tspec (StateT OS ProbComp)) :
     QueryImpl (unifSpec + tspec) (StateT OS ProbComp) :=
   (QueryImpl.ofLift unifSpec ProbComp).liftTarget (StateT OS ProbComp) + oimpl
 
-def runHM (oimpl : QueryImpl tspec (StateT OS ProbComp)) {α : Type}
+@[expose] def runHM (oimpl : QueryImpl tspec (StateT OS ProbComp)) {α : Type}
     (x : HM tspec HS α) (h : HS) (os : OS) : ProbComp ((α × HS) × OS) :=
   (simulateQ (outerFull oimpl) (x.run h)).run os
 
-def runEM (oimpl : QueryImpl tspec (StateT OS ProbComp)) {α : Type}
+@[expose] def runEM (oimpl : QueryImpl tspec (StateT OS ProbComp)) {α : Type}
     (x : EM tspec Γv T Sv SSv RSv M E HS α)
     (s : EState (VP Γv T Sv SSv RSv) M (Header T × E) HS × OS) :
     ProbComp (α × (EState (VP Γv T Sv SSv RSv) M (Header T × E) HS × OS)) :=
   (fun r => (r.1.1, (r.1.2, r.2))) <$>
     (simulateQ (outerFull oimpl) (x.run s.1)).run s.2
 
-def privOutP [DecidableEq M] {VPt C HS : Type} (Δ : ℕ) (π : Policy) (b b' : Bool)
+@[expose] def privOutP [DecidableEq M] {VPt C HS : Type} (Δ : ℕ) (π : Policy) (b b' : Bool)
     (es : EState VPt M C HS) : ProbComp Bool :=
   if !es.abort && lastLeakGuessAdmissible Δ π.tL π.tStar && canon π.tStar es.g == π.tL then pure (b == b')
   else ($ᵗ Bool : ProbComp Bool)
 
-def fsPrivOut [DecidableEq M] {VPt C HS : Type} (Δ : ℕ) (π : Policy) (b b' : Bool)
+@[expose] def fsPrivOut [DecidableEq M] {VPt C HS : Type} (Δ : ℕ) (π : Policy) (b b' : Bool)
     (es : EState VPt M C HS) (win : Bool) : ProbComp Bool :=
   if win then pure true else privOutP Δ π b b' es
 
-def evalEng [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E]
+@[expose] def evalEng [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E]
     (oimpl : QueryImpl tspec (StateT OS ProbComp))
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy) (b : Bool)
@@ -322,7 +322,7 @@ def evalEng [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E]
   runEM oimpl (simulateQ (implE hk Δ qep maxSkip cfg π) oa) s >>=
     fun r => privOutP Δ π b r.1 r.2.1
 
-def evalEngM [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E] {K : Type}
+@[expose] def evalEngM [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E] {K : Type}
     (fs : FSAEADScheme K SS RS (Header T) M E)
     (hk : Hooks (FSAEAD.spec SS RS (Header T) M E) HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy) (b : Bool)
@@ -332,7 +332,7 @@ def evalEngM [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E] {K : 
   runEM (FSAEAD.oracleImpl fs) (simulateQ (implE hk Δ qep maxSkip cfg π) oa) s >>=
     fun r => fsPrivOut Δ π b r.1 r.2.1 r.2.2.win
 
-def evalEngL [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E] {K : Type}
+@[expose] def evalEngL [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E] {K : Type}
     (fs : FSAEADScheme K SS RS (Header T) M E)
     (hk : Hooks (FSAEAD.spec SS RS (Header T) M E) HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy)
@@ -392,7 +392,7 @@ theorem simulateQ_outerFull_privOut [DecidableEq M] {VPt C HS : Type}
   unfold privOut privOutP
   split <;> simp [outerFull, QueryImpl.simulateQ_add_liftM_left, simulateQ_liftTarget]
 
-def evalAfterInitL [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E]
+@[expose] def evalAfterInitL [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E]
     (oimpl : QueryImpl tspec (StateT OS ProbComp))
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy) (b : Bool)
@@ -405,7 +405,7 @@ def evalAfterInitL [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E]
       ({ g := { st := fun P => match P with | .A => vA | .B => vB, b },
          h := r.1.2 }, r.2)
 
-def evalAfterInitM [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E] {K : Type}
+@[expose] def evalAfterInitM [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E] {K : Type}
     (fs : FSAEADScheme K SS RS (Header T) M E)
     (hk : Hooks (FSAEAD.spec SS RS (Header T) M E) HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy) (b b₀ : Bool)
@@ -419,7 +419,7 @@ def evalAfterInitM [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E]
       ({ g := { st := fun P => match P with | .A => vA | .B => vB, b := b₀ },
          h := r.1.2 }, r.2)
 
-def evalAfterInitCoin [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E] {K : Type}
+@[expose] def evalAfterInitCoin [DecidableEq M] [DecidableEq T] [DecidableEq E] [Inhabited E] {K : Type}
     (fs : FSAEADScheme K SS RS (Header T) M E)
     (hk : Hooks (FSAEAD.spec SS RS (Header T) M E) HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ qep maxSkip : ℕ) (cfg : Config M) (π : Policy) (b₀ : Bool)
@@ -547,12 +547,12 @@ inductive KeySlot (K : Type) where
   | ready : K → KeySlot K
   | done : KeySlot K
 
-def fillKey [SampleableType K] (_ : PRFPRNG.GameState Sig I K) :
+@[expose] def fillKey [SampleableType K] (_ : PRFPRNG.GameState Sig I K) :
     KeySlot K → ProbComp (KeySlot K)
   | .unknown => KeySlot.ready <$> ($ᵗ K)
   | sl => pure sl
 
-def consumeKey [SampleableType K] : KeySlot K → ProbComp (K × KeySlot K)
+@[expose] def consumeKey [SampleableType K] : KeySlot K → ProbComp (K × KeySlot K)
   | .unknown => (·, .done) <$> ($ᵗ K)
   | .ready k => pure (k, .done)
   | .done => (·, .done) <$> ($ᵗ K)
@@ -560,10 +560,10 @@ def consumeKey [SampleableType K] : KeySlot K → ProbComp (K × KeySlot K)
 abbrev EagerState (Sig I K : Type) := PRFPRNG.GameState Sig I K × KeySlot K
 abbrev EagerM (Sig I K : Type) := StateT (EagerState Sig I K) ProbComp
 
-def liftPG {α : Type} (x : StateT (PRFPRNG.GameState Sig I K) ProbComp α) : EagerM Sig I K α :=
+@[expose] def liftPG {α : Type} (x : StateT (PRFPRNG.GameState Sig I K) ProbComp α) : EagerM Sig I K α :=
   StateT.mk fun s => (fun r => (r.1, (r.2, s.2))) <$> x.run s.1
 
-def drawKey [SampleableType K] : EagerM Sig I K K :=
+@[expose] def drawKey [SampleableType K] : EagerM Sig I K K :=
   StateT.mk fun s => (fun r => (r.1, (s.1, r.2))) <$> consumeKey s.2
 
 theorem fillKey_idem [SampleableType K] : Idem (fillKey (Sig := Sig) (I := I) (K := K)) := by
@@ -597,7 +597,7 @@ theorem comm_drawKey [SampleableType K] :
       map_eq_bind_pure_comp, bind_assoc, Function.comp_apply, pure_bind] <;>
     exact DEq.refl _
 
-def NonReady : KeySlot K → Prop
+@[expose] def NonReady : KeySlot K → Prop
   | .ready _ => False
   | _ => True
 
@@ -608,7 +608,7 @@ theorem consumeKey_of_nonReady [SampleableType K] {sl : KeySlot K} (h : NonReady
   · cases h
   · rfl
 
-def StepNR {α : Type} (m₁ : EagerM Sig I K α)
+@[expose] def StepNR {α : Type} (m₁ : EagerM Sig I K α)
     (m₂ : StateT (PRFPRNG.GameState Sig I K) ProbComp α) : Prop :=
   ∀ g sl, NonReady sl →
     Prod.map id Prod.fst <$> m₁.run (g, sl) = m₂.run g ∧
@@ -658,10 +658,10 @@ theorem stepNR_drawKey [SampleableType K] :
 variable [DecidableEq I] [SampleableType I] [SampleableType K]
   (prng : PRFPRNG KR Sig I K)
 
-def eagerProcess : QueryImpl (Option I →ₒ Option K) (EagerM Sig I K) := fun inp =>
+@[expose] def eagerProcess : QueryImpl (Option I →ₒ Option K) (EagerM Sig I K) := fun inp =>
   liftPG (PRFPRNG.processImpl prng inp)
 
-def eagerChallPrng : QueryImpl (Option I →ₒ Option K) (EagerM Sig I K) := fun inp => do
+@[expose] def eagerChallPrng : QueryImpl (Option I →ₒ Option K) (EagerM Sig I K) := fun inp => do
   let s ← liftPG get
   let (inp', fresh) ← liftPG (PRFPRNG.samIfNec inp : ProbComp (I × Bool))
   if (s.corr && !fresh) || s.prf then return none
@@ -673,7 +673,7 @@ def eagerChallPrng : QueryImpl (Option I →ₒ Option K) (EagerM Sig I K) := fu
   else
     return some R
 
-def eagerChallPrf : QueryImpl (I →ₒ Option (Sig × K)) (EagerM Sig I K) := fun inp => do
+@[expose] def eagerChallPrf : QueryImpl (I →ₒ Option (Sig × K)) (EagerM Sig I K) := fun inp => do
   let s ← liftPG get
   if s.corr || s.prng then return none
   let (σ', R) := prng.up s.σ inp
@@ -688,10 +688,10 @@ def eagerChallPrf : QueryImpl (I →ₒ Option (Sig × K)) (EagerM Sig I K) := f
   else
     return some (σ', R)
 
-def eagerCorr : QueryImpl (Unit →ₒ Option Sig) (EagerM Sig I K) := fun u =>
+@[expose] def eagerCorr : QueryImpl (Unit →ₒ Option Sig) (EagerM Sig I K) := fun u =>
   liftPG (PRFPRNG.corrImpl u)
 
-def eagerOracleImpl : QueryImpl (PRFPRNG.spec Sig I K) (EagerM Sig I K) :=
+@[expose] def eagerOracleImpl : QueryImpl (PRFPRNG.spec Sig I K) (EagerM Sig I K) :=
   eagerProcess prng + eagerChallPrng prng + eagerChallPrf prng
     + (eagerCorr : QueryImpl _ (EagerM Sig I K))
 
@@ -900,12 +900,12 @@ theorem canon_eq_of_leaks_eq {St₁ St₂ Msg C₁ C₂ : Type} (t : ℕ)
     canon t g₁ = canon t g₂ := by
   simp only [canon, h]
 
-def curSS (h : FSState T Sig K I SS RS E) (st : FSAEAD.State SS RS (Header T) M E) : SS :=
+@[expose] def curSS (h : FSState T Sig K I SS RS E) (st : FSAEAD.State SS RS (Header T) M E) : SS :=
   match h.ext with
   | some (ss, _) => ss
   | none => st.senderState
 
-def curRS (h : FSState T Sig K I SS RS E) (st : FSAEAD.State SS RS (Header T) M E) : RS :=
+@[expose] def curRS (h : FSState T Sig K I SS RS E) (st : FSAEAD.State SS RS (Header T) M E) : RS :=
   match h.ext with
   | some (_, rs) => rs
   | none => st.receiverState
@@ -917,7 +917,7 @@ abbrev StateR (Γ T Sig K I SS RS M E : Type) :=
   EState (VP Γ T Sig (Option SS) (Option RS)) M (Header T × E) (FSState T Sig K I SS RS E) ×
     FSAEAD.State SS RS (Header T) M E
 
-def AbortInv (b : Bool) (sL : StateL Γ T Sig SS RS M E K I)
+@[expose] def AbortInv (b : Bool) (sL : StateL Γ T Sig SS RS M E K I)
     (sR : StateR Γ T Sig K I SS RS M E) : Prop :=
   sL.1.abort = true ∧ sR.1.abort = true ∧ sR.2.win = false ∧ sR.2.b = b
 
@@ -1029,7 +1029,7 @@ structure ActiveInv (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep : ℕ)
         (∀ j, sR.2.senderCorruptedAt = some j → j ≤ sR.2.lastSentIdx))
 
 /-- Full invariant: either both simulations have aborted, or `ActiveInv` holds. -/
-def Inv15 (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep : ℕ)
+@[expose] def Inv15 (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep : ℕ)
     (tL : Option ℕ) (t : ℕ) (b : Bool)
     (sL : StateL Γ T Sig SS RS M E K I)
     (sR : StateR Γ T Sig K I SS RS M E) : Prop :=
@@ -1038,7 +1038,7 @@ def Inv15 (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep : ℕ)
 abbrev AdvSpec (Γ T Sig SS RS M CCoins E : Type) :=
   unifSpec + spec (PartyState Γ T Sig SS RS) M CCoins (Header T × E)
 
-def CloseByEng (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def CloseByEng (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (Δcka qep : ℕ) (tL : Option ℕ) (t : ℕ) (b : Bool)
     (oa : OracleComp (AdvSpec Γ T Sig SS RS M CCoins E) Bool)
     (sL : StateL Γ T Sig SS RS M E K I) (sR : StateR Γ T Sig K I SS RS M E) : Prop :=
@@ -1391,7 +1391,7 @@ theorem afterCorr_mem_comp_iff {St Msg C : Type} {s : GameState St Msg C} {P : P
   · intro hmem
     exact Or.inr hmem
 
-def realSt (sR : StateR Γ T Sig K I SS RS M E) (P : Party) : PartyState Γ T Sig SS RS :=
+@[expose] def realSt (sR : StateR Γ T Sig K I SS RS M E) (P : Party) : PartyState Γ T Sig SS RS :=
   realParty (sR.1.g.st P) (sR.1.g.st P).γ (sR.1.g.st P).root
     (((sR.1.g.st P).vS).map (·.getD (curSS sR.1.h sR.2)))
     (fun t' => ((sR.1.g.st P).vR t').map (·.getD (curRS sR.1.h sR.2)))
@@ -3731,7 +3731,7 @@ theorem ActiveInv.record_t_ext_none
           simp only [Option.getD_some]
           omega
 
-def vSendRecord {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
+@[expose] def vSendRecord {ι : Type} {tspec : OracleSpec.{0, 0} ι} {HS Γv Sv SSv RSv : Type}
     (hk : Hooks tspec HS Γ T Sig SS RS M E CCoins Γv Sv SSv RSv)
     (Δ : ℕ) (s₁ : Ctx Γv T Sv SSv RSv M E) (P : Party) (m : M) (pair : Option (M × M))
     (r : Option CCoins) (bad : Bool) :
@@ -4387,7 +4387,7 @@ theorem runEM_vSend_advance {ι : Type} {tspec : OracleSpec.{0, 0} ι} {OS HS Γ
   · simp [runEM, StateT_run_liftH, abortE]
   · simp only [record_update_st_self]
 
-def optSample (α : Type) [SampleableType α] : Option α → ProbComp α
+@[expose] def optSample (α : Type) [SampleableType α] : Option α → ProbComp α
   | some a => pure a
   | none => $ᵗ α
 
@@ -5329,7 +5329,7 @@ def initPRNGBody (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     return some (mkParties (T := T) (cka.initA kc) (cka.initB kc) σ
       (fs.initSender k) (fs.initReceiver k))
 
-def initFSBody (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
+@[expose] def initFSBody (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
     (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (mo : Mode) (j : ℕ)
     (kr : KR) (kc : KC) :
     HM (FSAEAD.spec SS RS (Header T) M E) (FSState T Sig K I SS RS E)
@@ -5604,58 +5604,6 @@ theorem evalDist_swap_three [SampleableType KR]
   refine (DEq.swap ($ᵗ KR) ($ᵗ Bool) (fun kr b => do let k_fs ← $ᵗ K; f kr k_fs b)).trans ?_
   exact DEq.bind_right ($ᵗ Bool) fun b =>
     DEq.swap ($ᵗ KR) ($ᵗ K) (fun kr k_fs => f kr k_fs b)
-
-variable [SampleableType KR] [SampleableType KC]
-  (cka : CKAScheme KC Γ CCoins T I) (prng : PRFPRNG KR Sig I K)
-  (fs : FSAEADScheme K SS RS (Header T) M E) (lam : I) (Δcka qep : ℕ) in
-/-- Lemma 15: ideal PRF-PRNG privacy bias bounded by `redFSPriv` plus twice `redFSPrivCoin`. -/
-theorem lemma15_proof (tL : Option ℕ) (t : ℕ) (A : SchemeAdversary Γ T Sig SS RS M CCoins E) :
-    𝒟[PRFPRNG.branch prng true (redPRNGPriv cka prng fs lam Δcka qep tL t A)].boolBias ≤
-      FSAEAD.advantage fs (redFSPriv cka prng fs lam Δcka qep tL t A)
-        + 2 * FSAEAD.advantage fs (redFSPrivCoin cka prng fs lam Δcka qep tL t A) := by
-  cases hvalid : lastLeakGuessAdmissible (2 + Δcka) tL t
-  · have hdeq :
-        DEq
-          (do
-            let kr ← $ᵗ KR
-            let k_fs ← $ᵗ K
-            (simulateQ (outerFull (eagerOracleImpl prng))
-              (redPRNGPriv cka prng fs lam Δcka qep tL t A)).run'
-              ({ σ := prng.init kr, b := true }, .ready k_fs))
-          ($ᵗ Bool : ProbComp Bool) := by
-      refine (DEq.bind_right ($ᵗ KR) fun kr => ?_).trans (DEq.bind_const ($ᵗ KR) _)
-      refine (DEq.bind_right ($ᵗ K) fun k_fs => ?_).trans (DEq.bind_const ($ᵗ K) _)
-      rw [simulateQ_redPRNGPriv]
-      refine (DEq.bind_right ($ᵗ Bool) fun b => ?_).trans (DEq.bind_const ($ᵗ Bool) _)
-      refine (DEq.bind_right _ fun ⟨⟨vs, h⟩, os₁⟩ => ?_).trans (DEq.bind_const _ _)
-      cases vs with
-      | none => exact DEq.refl _
-      | some vAvB =>
-        rcases vAvB with ⟨vA, vB⟩
-        exact DEq.of_evalDist_eq
-          (evalEng_invalid (eagerOracleImpl prng) (hooksPRNG cka prng fs ⟨false, tL, t⟩)
-            (2 + Δcka) qep fs.maxSkip (Config.priv t) ⟨false, tL, t⟩ b hvalid A _)
-    rw [branch_true_eq_eager, hdeq.evalDist_eq, boolBias_uniformBool]
-    exact zero_le
-  · refine (boolBias_le_add_two_mul_boolDist
-      𝒟[PRFPRNG.branch prng true (redPRNGPriv cka prng fs lam Δcka qep tL t A)]
-      𝒟[FSAEAD.game fs (redFSPriv cka prng fs lam Δcka qep tL t A)]).trans ?_
-    have hdist :
-        𝒟[PRFPRNG.branch prng true (redPRNGPriv cka prng fs lam Δcka qep tL t A)].boolDist
-          𝒟[FSAEAD.game fs (redFSPriv cka prng fs lam Δcka qep tL t A)] ≤
-        FSAEAD.advantage fs (redFSPrivCoin cka prng fs lam Δcka qep tL t A) := by
-      rw [branch_true_eq_eager]
-      simp only [simulateQ_redPRNGPriv]
-      rw [evalDist_swap_three, evalDist_game_redFSPriv, advantage_redFSPrivCoin]
-      refine boolDist_le_of_closeBy ?_
-      refine closeBy_bind ($ᵗ Bool) fun b => ?_
-      refine closeBy_bind ($ᵗ K) fun k_fs => ?_
-      simp only [runHM_initPRNG_eq, runHM_initFS_eq, bind_assoc]
-      refine closeBy_bind ($ᵗ KR) fun kr => ?_
-      refine closeBy_bind ($ᵗ KC) fun kc => ?_
-      exact closeBy_init_after_keys cka prng fs lam Δcka qep tL t A hvalid b k_fs kr kc
-    rw [two_mul, two_mul]
-    exact add_le_add le_rfl (add_le_add hdist hdist)
 
 end Invariant
 

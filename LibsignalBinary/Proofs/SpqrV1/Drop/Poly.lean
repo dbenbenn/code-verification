@@ -9,16 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr
-public import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes
-public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym
-public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Repr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.Decodes -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.DropCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderRepr -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.Heap
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+public meta import ProofLib.GenDecodes
+public meta import ProofLib.SepLogic.CodeLookup
+public meta import ProofLib.VCGen
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Drop Glue for `[spqr::encoding::polynomial::Poly; 16]`
@@ -30,19 +33,9 @@ Proves fixed-image (`drop_glue_poly16_ok_ext`) and relocatable `[LibsignalPlacem
 `core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>` (105 instructions).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Layout.L12
-
-open Lean Elab Tactic ProofLib CryptoVerification.SpqrV1.Drop in
-/-- Add instruction-fetch hypotheses for `drop_glue::<[Poly; 16]>` (`105 * 4 = 420` B). -/
-elab "drop_poly16_fetches " b:term:max H:term:max : tactic => do
-  let eOff ← ProofLib.CodeLookup.lookup ``CryptoVerification.libsignalSessionCode .fnOff
-    "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>"
-  let hfn := mkCIdent eOff.decl
-  let offLit := Syntax.mkNumLit (toString eOff.val)
-  evalTactic (← `(tactic|
-    code_fetches CryptoVerification.libsignalSessionCode spqrDropChainEpochBin $b $H $hfn $offLit 420))
 
 end CryptoVerification.SpqrV1.Layout.L12
 
@@ -74,11 +67,11 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 abbrev dropGluePoly16Stack : Nat := dropStack32
 
 /-- A `Vec<GF16>` at `v` holding `cs : List GF16` (capacity and buffer pointer existentially quantified). -/
-def vecGF16Of (A : RustAlloc) (v : BitVec 64) (cs : List GF16) : SepProp :=
+@[expose] def vecGF16Of (A : RustAlloc) (v : BitVec 64) (cs : List GF16) : SepProp :=
   vecOf A gf16Stride gf16Align gf16At v cs
 
 /-- Contiguous array of `Vec<GF16>` headers at `base` with stride `24` bytes. -/
-def vecGF16ListOf (A : RustAlloc) : BitVec 64 → List (List GF16) → SepProp :=
+@[expose] def vecGF16ListOf (A : RustAlloc) : BitVec 64 → List (List GF16) → SepProp :=
   arrayAt (fun cs addr => vecGF16Of A addr cs) vecHeaderBytes
 
 theorem pointOf_eq_vecGF16Of (A : RustAlloc) (v : BitVec 64) (pt : Point) :
@@ -115,7 +108,7 @@ structure DropGluePoly16Ghost where
 /-- Spec of `core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>` (105 instructions):
     deallocates all non-zero-capacity `Vec<GF16>` buffers in the 16-element array at `x0 = arrA`
     and leaves `memRegion arrA 384`. -/
-def dropGluePoly16Spec (A : RustAlloc) : Spec DropGluePoly16Ghost where
+@[expose] def dropGluePoly16Spec (A : RustAlloc) : Spec DropGluePoly16Ghost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.arrA ∧ x.vecs.length = NUM_POLYS⌝ ∗
       vecGF16ListOf A x.arrA x.vecs ∗
@@ -128,12 +121,12 @@ def dropGluePoly16Spec (A : RustAlloc) : Spec DropGluePoly16Ghost where
 /-! ## Deallocation Helpers for `Vec<GF16>` -/
 
 /-- Conditional deallocation resource for a `Vec<GF16>` buffer (`sz = 2`, `align = 2`). -/
-def vecGF16Dealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
+@[expose] def vecGF16Dealloc (A : RustAlloc) (cap ptr : BitVec 64) : SepProp :=
   if (cap == 0#64) = true then emp
   else A.live ptr (cap <<< 1#64).toNat 2 ∗ memRegion ptr (cap <<< 1#64).toNat
 
 /-- Deallocatable 24-byte `Vec<GF16>` header at `a` plus its conditional heap buffer. -/
-def vecGF16SlotDealloc (A : RustAlloc) (a cap ptr : BitVec 64) : SepProp :=
+@[expose] def vecGF16SlotDealloc (A : RustAlloc) (a cap ptr : BitVec 64) : SepProp :=
   (a ↦₆₄ cap) ∗ ((a + 8#64) ↦₆₄ ptr) ∗ memRegion (a + 16#64) 8 ∗
     vecGF16Dealloc A cap ptr
 
@@ -218,7 +211,7 @@ theorem cells4_entails_stack_bottom (sp fp lr x19 w3 : BitVec 64) :
   rw [tail_stack_32_from_bottom sp]
   exact sepConj_mono_right (cells4_sub32_entails sp fp lr x19 w3)
 
-def Saved32Preserved (s0 s : State) (fsp arrA : BitVec 64) : Prop :=
+@[expose] def Saved32Preserved (s0 s : State) (fsp arrA : BitVec 64) : Prop :=
   s.readReg64 .x19 = arrA ∧
   s.readReg64 .x20 = s0.readReg64 .x20 ∧
   s.readReg64 .x21 = s0.readReg64 .x21 ∧
@@ -693,81 +686,6 @@ local macro "poly16_main_steps " entry:term : tactic => `(tactic| (
       wp_done
 ))
 
-private theorem drop_glue_poly16_first8 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropPoly16Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp arrA : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (c0 c1 c2 c3 c4 c5 c6 c7 : List GF16) (rest : List (List GF16))
-    (s : State) (Frame : SepProp)
-    (hpc : s.pc = (dropProgAtExt b ext).fnAddr dropPoly16Name + 12#64)
-    (hrun : s.status = .Running)
-    (hx0 : s.readReg64 .x0 = arrA)
-    (hx20 : s.readReg64 .x20 = s0.readReg64 .x20)
-    (hx21 : s.readReg64 .x21 = s0.readReg64 .x21)
-    (hx22 : s.readReg64 .x22 = s0.readReg64 .x22)
-    (hx23 : s.readReg64 .x23 = s0.readReg64 .x23)
-    (hx24 : s.readReg64 .x24 = s0.readReg64 .x24)
-    (hx25 : s.readReg64 .x25 = s0.readReg64 .x25)
-    (hx26 : s.readReg64 .x26 = s0.readReg64 .x26)
-    (hx27 : s.readReg64 .x27 = s0.readReg64 .x27)
-    (hx28 : s.readReg64 .x28 = s0.readReg64 .x28)
-    (hx29 : s.readReg64 .x29 = fsp)
-    (hsp : s.sp = fsp)
-    (htrace : s.trace = s0.trace)
-    (hvregs : calleeSavedVRegs s = calleeSavedVRegs s0) :
-    SepWP (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropPoly16Name + 208#64)
-      s
-      (vecGF16ListOf A arrA (c0 :: c1 :: c2 :: c3 :: c4 :: c5 :: c6 :: c7 :: rest) ∗
-        (A.pool ∗ stackAt fsp allocHookStack ∗ Frame))
-      (fun sm Pm =>
-        (Pm ⊢ vecGF16ListOf A (arrA + 192#64) rest ∗
-          (memRegion arrA 192 ∗ (A.pool ∗ stackAt fsp allocHookStack ∗ Frame))) ∧
-        Saved32Preserved s0 sm fsp arrA) := by
-  simp only [rustDeallocSpec] at hdealloc
-  dsimp only [dropProgAtExt, dropPoly16Name, BitVec.ofNat_eq_ofNat] at *
-  drop_poly16_fetches b (Rust.withPanics ext)
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" = entry
-  examples_hide_fetches
-  poly16_first8_steps entry
-
-private theorem drop_glue_poly16_mid7 {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)}
-    (hdealloc : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropPoly16Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A))
-    (s0 : State) (fsp arrA : BitVec 64)
-    (hfsp_align : (fsp &&& 15#64 == 0#64) = true)
-    (c8 c9 c10 c11 c12 c13 c14 : List GF16) (rest : List (List GF16))
-    (s : State) (Frame : SepProp)
-    (hpc : s.pc = (dropProgAtExt b ext).fnAddr dropPoly16Name + 208#64)
-    (hrun : s.status = .Running)
-    (hpres : Saved32Preserved s0 s fsp arrA) :
-    SepWP (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropPoly16Name + 376#64)
-      s
-      (vecGF16ListOf A (arrA + 192#64) (c8 :: c9 :: c10 :: c11 :: c12 :: c13 :: c14 :: rest) ∗
-        (memRegion arrA 192 ∗ (A.pool ∗ stackAt fsp allocHookStack ∗ Frame)))
-      (fun sm Pm =>
-        (Pm ⊢ vecGF16ListOf A (arrA + 360#64) rest ∗
-          (memRegion arrA 360 ∗ (A.pool ∗ stackAt fsp allocHookStack ∗ Frame))) ∧
-        Saved32Preserved s0 sm fsp arrA) := by
-  simp only [rustDeallocSpec] at hdealloc
-  dsimp only [dropProgAtExt, dropPoly16Name, BitVec.ofNat_eq_ofNat] at *
-  drop_poly16_fetches b (Rust.withPanics ext)
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" = entry
-  examples_hide_fetches
-  poly16_mid7_steps entry
-
 theorem list_length_16_elim {α : Type} {xs : List α} (h : xs.length = 16) :
     ∃ x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15,
       xs = [x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15] := by
@@ -775,37 +693,6 @@ theorem list_length_16_elim {α : Type} {xs : List α} (h : xs.length = 16) :
     _ | ⟨x8, _ | ⟨x9, _ | ⟨x10, _ | ⟨x11, _ | ⟨x12, _ | ⟨x13, _ | ⟨x14, _ | ⟨x15, _ | ⟨_, _⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩⟩
   all_goals try (simp only [List.length_cons, List.length_nil] at h; omega)
   exact ⟨x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, rfl⟩
-
-/-- `core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>` (105 instructions)
-    satisfies `dropGluePoly16Spec A`. -/
-theorem drop_glue_poly16_ok_ext {A : RustAlloc} {b : BitVec 64}
-    {ext : String → Option (State → State)} (hdealloc_base : DeallocOkExt b A ext) :
-    subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropPoly16Name)
-      (dropGluePoly16Spec A) := by
-  simp only [dropGluePoly16Spec]
-  have hdealloc_raw : subroutine_ok (dropProgAtExt b ext)
-      ((dropProgAtExt b ext).fnAddr dropPoly16Name +
-        bv% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "__rustc::__rust_dealloc"))
-      (rustDeallocSpec A) := sub_ok_of_addr_eq
-    (Program.fnAddr_rel
-      (k := num% (ls_rel% "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" "__rustc::__rust_dealloc"))
-      (b := b) (X := Rust.withPanics ext)
-      dropPoly16_fnOff dealloc_fnOff_drop (by decide))
-    hdealloc_base
-  have hdealloc := hdealloc_raw
-  simp only [rustDeallocSpec] at hdealloc
-  have hfirst8 := drop_glue_poly16_first8 (b := b) (ext := ext) hdealloc_raw
-  have hmid7 := drop_glue_poly16_mid7 (b := b) (ext := ext) hdealloc_raw
-  drop_poly16_fetches b (Rust.withPanics ext)
-  dsimp only [dropProgAtExt, dropPoly16Name, BitVec.ofNat_eq_ofNat] at hdealloc hfirst8 hmid7 ⊢
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics ext)).fnAddr
-    "core::ptr::drop_glue::<[spqr::encoding::polynomial::Poly; 16]>" = entry
-  examples_hide_fetches
-  poly16_main_steps entry
-
-/-! ## Relocatable `[LibsignalPlacement]` Proof (Block `265`) -/
 
 private theorem drop_glue_poly16_placed_first8 [LibsignalPlacement] {A : RustAlloc}
     {H : String → Option (State → State)}

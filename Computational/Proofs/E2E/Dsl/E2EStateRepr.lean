@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.Dsl.M2Interfaces
-public import Computational.Proofs.E2E.Dsl.PqxdhSimTypes
+public import Computational.Proofs.E2E.Dsl.M2Interfaces -- proof-setup: allow-public-import
+import Computational.Proofs.E2E.Dsl.PqxdhSimTypes
 import Computational.Proofs.E2E.Dsl.ClampsLossless
 
 /-!
@@ -20,7 +20,7 @@ Defines the `ReductionDsl` representation `e2eDrvStateTy` of `BHE2EDrvState`, bo
 indexing and update combinators, `KeyInd` mirror updates, and admissibility/promotion guards.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedSimpArgs false
@@ -63,24 +63,24 @@ open Computational.Proofs.E2E.Dsl.M2Interfaces (e2eGsTy e2eGsEnc e2eGsDec)
 
 section StateTypes
 
-@[reducible] def e2eMirrorPrinEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eMirrorPrinEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
   .prod (FinT S.N_id) (PB 32)
 
-@[reducible] def e2eMirrorBundleEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eMirrorBundleEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
   .prod (.prod (FinT S.N_id) (FinT S.N_recv)) (.prod (PB 32) (PB 1568))
 
-@[reducible] def e2eMirrorOpkEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eMirrorOpkEntryTy {ℓ : ℕ} (S : SignalPqxdh.Setup) : Ty (e2eSig ℓ) :=
   .prod (.prod (FinT S.N_id) (.prod (FinT S.N_recv) (FinT S.N_opk))) (PB 32)
 
-@[reducible] def e2eMirrorSendEntryTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eMirrorSendEntryTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (sidT S) (.prod bundleT hdrT)
 
-def e2eMirrorSendEnc {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eMirrorSendEnc {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (x : SignalPqxdh.SessionId S × SignalPqxdh.PreKeyBundleInput × SignalPqxdh.HandshakeHdr) :
     (e2eMirrorSendEntryTy S ℓ).denote :=
   (sidV x.1, (bundleV x.2.1, hdrV x.2.2))
 
-def e2eMirrorSendDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eMirrorSendDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (v : (e2eMirrorSendEntryTy S ℓ).denote) :
     SignalPqxdh.SessionId S × SignalPqxdh.PreKeyBundleInput × SignalPqxdh.HandshakeHdr :=
   (sidOfV v.1, (bundleOfV v.2.1, hdrOfV v.2.2))
@@ -95,17 +95,17 @@ def e2eMirrorSendDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     e2eMirrorSendEnc (e2eMirrorSendDec v) = v := by
   rcases v with ⟨sv, bv, hv⟩; simp [e2eMirrorSendEnc, e2eMirrorSendDec]
 
-@[reducible] def e2eMirrorBaseTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eMirrorBaseTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (.list (e2eMirrorPrinEntryTy S))
     (.prod (.list (e2eMirrorBundleEntryTy S))
       (.prod (.list (e2eMirrorOpkEntryTy S))
         (.list (e2eMirrorSendEntryTy S ℓ))))
 
-def e2eMirrorBaseEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (ds : ModelDriverBase S) :
+@[expose] def e2eMirrorBaseEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (ds : ModelDriverBase S) :
     (e2eMirrorBaseTy S ℓ).denote :=
   (ds.prins, (ds.bundles, (ds.opks, ds.sends.map e2eMirrorSendEnc)))
 
-def e2eMirrorBaseDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eMirrorBaseDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (v : (e2eMirrorBaseTy S ℓ).denote) : ModelDriverBase S :=
   { prins := v.1, bundles := v.2.1, opks := v.2.2.1, sends := v.2.2.2.map e2eMirrorSendDec }
 
@@ -119,14 +119,14 @@ def e2eMirrorBaseDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     e2eMirrorBaseEnc (e2eMirrorBaseDec v) = v := by
   rcases v with ⟨_, _, _, _⟩; simp [e2eMirrorBaseEnc, e2eMirrorBaseDec, Function.comp_def]
 
-@[reducible] def e2eInstMetaTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eInstMetaTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod .bool (.prod .bool (.prod (.opt (FinT S.N_id)) (.prod (.opt (FinT S.N_recv)) (.opt PU32))))
 
-def e2eInstMetaEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (im : ModelDriverInstanceMeta S) :
+@[expose] def e2eInstMetaEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (im : ModelDriverInstanceMeta S) :
     (e2eInstMetaTy S ℓ).denote :=
   (im.bobAccepted, (im.ikACorrAtAccept, (im.respPrin, (im.respSpkIdx, im.instOpkId?))))
 
-def e2eInstMetaDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eInstMetaDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (v : (e2eInstMetaTy S ℓ).denote) : ModelDriverInstanceMeta S :=
   { bobAccepted := v.1, ikACorrAtAccept := v.2.1, respPrin := v.2.2.1,
     respSpkIdx := v.2.2.2.1, instOpkId? := v.2.2.2.2 }
@@ -141,14 +141,14 @@ def e2eInstMetaDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     e2eInstMetaEnc (e2eInstMetaDec v) = v := by
   rcases v with ⟨_, _, _, _, _⟩; rfl
 
-@[reducible] def e2eModelInstTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eModelInstTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (sidT S) (.prod hdrT (.prod IdKey (.prod IdKey (.prod BV256 (.opt (e2eGsTy ℓ))))))
 
-def e2eModelInstEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (d : BHModelInst S ℓ) :
+@[expose] def e2eModelInstEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (d : BHModelInst S ℓ) :
     (e2eModelInstTy S ℓ).denote :=
   (sidV d.sid, (hdrV d.hdr, (d.idA, (d.idB, (d.spkCoins, d.gs.map e2eGsEnc)))))
 
-def e2eModelInstDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eModelInstDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (v : (e2eModelInstTy S ℓ).denote) : BHModelInst S ℓ :=
   { sid := sidOfV v.1, hdr := hdrOfV v.2.1, idA := v.2.2.1, idB := v.2.2.2.1,
     spkCoins := v.2.2.2.2.1, gs := v.2.2.2.2.2.map e2eGsDec }
@@ -188,7 +188,7 @@ theorem e2eModelInstDec_e2eModelInstEnc_of_gs {S : SignalPqxdh.Setup} {ℓ : ℕ
     | some g => simp [e2eModelInstEnc, e2eModelInstDec, hgs g rfl]
 
 /-- `ReductionDsl` representation of `BHE2EDrvState S ℓ`. -/
-@[reducible] def e2eDrvStateTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
+@[expose, reducible] def e2eDrvStateTy (S : SignalPqxdh.Setup) (ℓ : ℕ) : Ty (e2eSig ℓ) :=
   .prod (e2eMirrorBaseTy S ℓ)
     (.prod (.list (FinT S.N_id))
       (.prod (.list (.prod (FinT S.N_id) (FinT S.N_recv)))
@@ -197,7 +197,7 @@ theorem e2eModelInstDec_e2eModelInstEnc_of_gs {S : SignalPqxdh.Setup} {ℓ : ℕ
             (.prod (e2eKeyIndStateTy ℓ S)
               (.prod .bool .bool))))))
 
-def e2eDrvStateEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ) :
+@[expose] def e2eDrvStateEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ) :
     (e2eDrvStateTy S ℓ).denote :=
   (e2eMirrorBaseEnc σ.toModelDriverBase,
    (σ.corrPrins,
@@ -207,7 +207,7 @@ def e2eDrvStateEnc {S : SignalPqxdh.Setup} {ℓ : ℕ} (σ : BHE2EDrvState S ℓ
        (e2eKeyIndStateToVal σ.st,
         (σ.b, σ.paused)))))))
 
-def e2eDrvStateDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
+@[expose] def e2eDrvStateDec {S : SignalPqxdh.Setup} {ℓ : ℕ}
     (v : (e2eDrvStateTy S ℓ).denote) : BHE2EDrvState S ℓ :=
   { toModelDriverBase := e2eMirrorBaseDec v.1
     corrPrins := v.2.1
@@ -347,70 +347,70 @@ section ProjectionsAndLists
 
 variable {ℓ : ℕ} {S : SignalPqxdh.Setup} {O : Ops (e2eSig ℓ)}
 
-def mbPrins {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
+@[expose] def mbPrins {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
     Expr O Γ (.list (e2eMirrorPrinEntryTy S)) := .fst ds
-def mbBundles {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
+@[expose] def mbBundles {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
     Expr O Γ (.list (e2eMirrorBundleEntryTy S)) := .fst (.snd ds)
-def mbOpks {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
+@[expose] def mbOpks {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
     Expr O Γ (.list (e2eMirrorOpkEntryTy S)) := .fst (.snd (.snd ds))
-def mbSends {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
+@[expose] def mbSends {Γ} (ds : Expr O Γ (e2eMirrorBaseTy S ℓ)) :
     Expr O Γ (.list (e2eMirrorSendEntryTy S ℓ)) := .snd (.snd (.snd ds))
 
-def imBobAccepted {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) : Expr O Γ .bool := .fst im
-def imIkACorr {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) : Expr O Γ .bool := .fst (.snd im)
-def imRespPrin {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) :
+@[expose] def imBobAccepted {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) : Expr O Γ .bool := .fst im
+@[expose] def imIkACorr {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) : Expr O Γ .bool := .fst (.snd im)
+@[expose] def imRespPrin {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) :
     Expr O Γ (.opt (FinT S.N_id)) := .fst (.snd (.snd im))
-def imRespSpkIdx {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) :
+@[expose] def imRespSpkIdx {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) :
     Expr O Γ (.opt (FinT S.N_recv)) := .fst (.snd (.snd (.snd im)))
-def imOpkId {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) :
+@[expose] def imOpkId {Γ} (im : Expr O Γ (e2eInstMetaTy S ℓ)) :
     Expr O Γ (.opt PU32) := .snd (.snd (.snd (.snd im)))
 
-def miSid {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) : Expr O Γ (sidT S) := .fst d
-def miHdr {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) : Expr O Γ hdrT := .fst (.snd d)
-def miIdA {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) : Expr O Γ IdKey := .fst (.snd (.snd d))
-def miIdB {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) : Expr O Γ IdKey := .fst (.snd (.snd (.snd d)))
-def miSpkCoins {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
+@[expose] def miSid {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) : Expr O Γ (sidT S) := .fst d
+@[expose] def miHdr {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) : Expr O Γ hdrT := .fst (.snd d)
+@[expose] def miIdA {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) : Expr O Γ IdKey := .fst (.snd (.snd d))
+@[expose] def miIdB {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) : Expr O Γ IdKey := .fst (.snd (.snd (.snd d)))
+@[expose] def miSpkCoins {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
     Expr O Γ BV256 := .fst (.snd (.snd (.snd (.snd d))))
-def miGs {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
+@[expose] def miGs {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) :
     Expr O Γ (.opt (e2eGsTy ℓ)) := .snd (.snd (.snd (.snd (.snd d))))
 
-def miSetGsE {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) (gs? : Expr O Γ (.opt (e2eGsTy ℓ))) :
+@[expose] def miSetGsE {Γ} (d : Expr O Γ (e2eModelInstTy S ℓ)) (gs? : Expr O Γ (.opt (e2eGsTy ℓ))) :
     Expr O Γ (e2eModelInstTy S ℓ) :=
   eLet (.pair d gs?) fun p =>
     .pair (miSid (.fst (v p))) (.pair (miHdr (.fst (v p))) (.pair (miIdA (.fst (v p)))
       (.pair (miIdB (.fst (v p))) (.pair (miSpkCoins (.fst (v p))) (.snd (v p))))))
 
-def drvBase {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) : Expr O Γ (e2eMirrorBaseTy S ℓ) := .fst σ
-def drvCorrPrins {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvBase {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) : Expr O Γ (e2eMirrorBaseTy S ℓ) := .fst σ
+@[expose] def drvCorrPrins {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (.list (FinT S.N_id)) := .fst (.snd σ)
-def drvRevSpks {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvRevSpks {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (.list (.prod (FinT S.N_id) (FinT S.N_recv))) := .fst (.snd (.snd σ))
-def drvInsts {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvInsts {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (.list (e2eModelInstTy S ℓ)) := .fst (.snd (.snd (.snd σ)))
-def drvInstMeta {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvInstMeta {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (.list (e2eInstMetaTy S ℓ)) := .fst (.snd (.snd (.snd (.snd σ))))
-def drvSt {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvSt {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ (e2eKeyIndStateTy ℓ S) := .fst (.snd (.snd (.snd (.snd (.snd σ)))))
-def drvB {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvB {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ .bool := .fst (.snd (.snd (.snd (.snd (.snd (.snd σ))))))
-def drvPaused {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
+@[expose] def drvPaused {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) :
     Expr O Γ .bool := .snd (.snd (.snd (.snd (.snd (.snd (.snd σ))))))
 
-def drvSetInstsE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
+@[expose] def drvSetInstsE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
     (insts : Expr O Γ (.list (e2eModelInstTy S ℓ))) : Expr O Γ (e2eDrvStateTy S ℓ) :=
   eLet (.pair σ insts) fun p =>
     .pair (drvBase (.fst (v p))) (.pair (drvCorrPrins (.fst (v p)))
       (.pair (drvRevSpks (.fst (v p)))
         (.pair (.snd (v p)) (.snd (.snd (.snd (.snd (.fst (v p)))))))))
 
-def drvSetInstMetaE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
+@[expose] def drvSetInstMetaE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
     (metaL : Expr O Γ (.list (e2eInstMetaTy S ℓ))) : Expr O Γ (e2eDrvStateTy S ℓ) :=
   eLet (.pair σ metaL) fun p =>
     .pair (drvBase (.fst (v p))) (.pair (drvCorrPrins (.fst (v p)))
       (.pair (drvRevSpks (.fst (v p))) (.pair (drvInsts (.fst (v p)))
         (.pair (.snd (v p)) (.snd (.snd (.snd (.snd (.snd (.fst (v p)))))))))))
 
-def drvSetStE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
+@[expose] def drvSetStE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
     (st : Expr O Γ (e2eKeyIndStateTy ℓ S)) : Expr O Γ (e2eDrvStateTy S ℓ) :=
   eLet (.pair σ st) fun p =>
     .pair (drvBase (.fst (v p))) (.pair (drvCorrPrins (.fst (v p)))
@@ -418,7 +418,7 @@ def drvSetStE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ))
         (.pair (drvInstMeta (.fst (v p)))
           (.pair (.snd (v p)) (.snd (.snd (.snd (.snd (.snd (.snd (.fst (v p)))))))))))))
 
-def drvSetBE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) (bE : Expr O Γ .bool) :
+@[expose] def drvSetBE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) (bE : Expr O Γ .bool) :
     Expr O Γ (e2eDrvStateTy S ℓ) :=
   eLet (.pair σ bE) fun p =>
     .pair (drvBase (.fst (v p))) (.pair (drvCorrPrins (.fst (v p)))
@@ -426,7 +426,7 @@ def drvSetBE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) (bE : Expr O Γ .bool) 
         (.pair (drvInstMeta (.fst (v p))) (.pair (drvSt (.fst (v p)))
           (.pair (.snd (v p)) (drvPaused (.fst (v p)))))))))
 
-def drvSetPausedE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) (pE : Expr O Γ .bool) :
+@[expose] def drvSetPausedE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) (pE : Expr O Γ .bool) :
     Expr O Γ (e2eDrvStateTy S ℓ) :=
   eLet (.pair σ pE) fun p =>
     .pair (drvBase (.fst (v p))) (.pair (drvCorrPrins (.fst (v p)))
@@ -434,7 +434,7 @@ def drvSetPausedE {Γ} (σ : Expr O Γ (e2eDrvStateTy S ℓ)) (pE : Expr O Γ .b
         (.pair (drvInstMeta (.fst (v p))) (.pair (drvSt (.fst (v p)))
           (.pair (drvB (.fst (v p))) (.snd (v p))))))))
 
-def emptyDrvStateE {Γ} (bE : Expr O Γ .bool) : Expr O Γ (e2eDrvStateTy S ℓ) :=
+@[expose] def emptyDrvStateE {Γ} (bE : Expr O Γ .bool) : Expr O Γ (e2eDrvStateTy S ℓ) :=
   .pair (.pair .nil (.pair .nil (.pair .nil .nil)))
     (.pair .nil (.pair .nil (.pair .nil (.pair .nil
       (.pair (.pair (.bool false) (.pair .nil (.pair .nil (.pair .nil (.pair .nil
@@ -503,11 +503,11 @@ theorem eval_drvSetPausedE {Γ} (σE : Expr O Γ (e2eDrvStateTy S ℓ))
   simp [drvSetPausedE, drvBase, drvCorrPrins, drvRevSpks, drvInsts, drvInstMeta, drvSt, drvB,
     e2eDrvStateEnc, eLet, v, Ext.wk, Ext.refl, Expr.eval, Env.get, hσ]
 
-def sumL? {α β : Type} : α ⊕ β → Option α
+@[expose] def sumL? {α β : Type} : α ⊕ β → Option α
   | .inl x => some x
   | .inr _ => none
 
-def sumR? {α β : Type} : α ⊕ β → Option β
+@[expose] def sumR? {α β : Type} : α ⊕ β → Option β
   | .inl _ => none
   | .inr y => some y
 
@@ -516,19 +516,19 @@ def sumR? {α β : Type} : α ⊕ β → Option β
 @[simp] theorem sumR?_inl {α β : Type} (x : α) : sumR? (.inl x : α ⊕ β) = none := rfl
 @[simp] theorem sumR?_inr {α β : Type} (y : β) : sumR? (.inr y : α ⊕ β) = some y := rfl
 
-def sumLeft? {Γ} {α β : Ty (e2eSig ℓ)} (e : Expr O Γ (.sum α β)) : Expr O Γ (.opt α) :=
+@[expose] def sumLeft? {Γ} {α β : Ty (e2eSig ℓ)} (e : Expr O Γ (.sum α β)) : Expr O Γ (.opt α) :=
   .caseSum e (.some .v0) .none
 
-def sumRight? {Γ} {α β : Ty (e2eSig ℓ)} (e : Expr O Γ (.sum α β)) : Expr O Γ (.opt β) :=
+@[expose] def sumRight? {Γ} {α β : Ty (e2eSig ℓ)} (e : Expr O Γ (.sum α β)) : Expr O Γ (.opt β) :=
   .caseSum e .none (.some .v0)
 
-def optSumLeft? {Γ} {α β : Ty (e2eSig ℓ)} (e : Expr O Γ (.opt (.sum α β))) : Expr O Γ (.opt α) :=
+@[expose] def optSumLeft? {Γ} {α β : Ty (e2eSig ℓ)} (e : Expr O Γ (.opt (.sum α β))) : Expr O Γ (.opt α) :=
   .caseOpt e .none (.caseSum .v0 (.some .v0) .none)
 
-def optSumRight? {Γ} {α β : Ty (e2eSig ℓ)} (e : Expr O Γ (.opt (.sum α β))) : Expr O Γ (.opt β) :=
+@[expose] def optSumRight? {Γ} {α β : Ty (e2eSig ℓ)} (e : Expr O Γ (.opt (.sum α β))) : Expr O Γ (.opt β) :=
   .caseOpt e .none (.caseSum .v0 .none (.some .v0))
 
-def optZipE {Γ} {α β : Ty (e2eSig ℓ)}
+@[expose] def optZipE {Γ} {α β : Ty (e2eSig ℓ)}
     (a : Expr O Γ (.opt α)) (b : Expr O Γ (.opt β)) : Expr O Γ (.opt (.prod α β)) :=
   eLet (.pair a b) fun ab =>
     eCaseOpt (.fst (v ab)) .none fun x =>
@@ -633,7 +633,7 @@ def optZipE {Γ} {α β : Ty (e2eSig ℓ)}
 
 attribute [local irreducible] sumLeft? sumRight? optSumLeft? optSumRight? optZipE
 
-def listSnocE (K : ℕ) {Γ} {τ : Ty (e2eSig ℓ)}
+@[expose] def listSnocE (K : ℕ) {Γ} {τ : Ty (e2eSig ℓ)}
     (l : Expr O Γ (.list τ)) (x : Expr O Γ τ) : Expr O Γ (.list τ) :=
   .appendL (K + 1) l (.cons x .nil)
 
@@ -681,7 +681,7 @@ private theorem foldr_foldGetStep_snd {α : Type} :
         show xs.length + 1 + off = xs.length + (off + 1) by omega]
     exact foldr_foldGetStep_snd xs idx (off + 1)
 
-def listGetOptE (K : ℕ) {Γ} {τ : Ty (e2eSig ℓ)}
+@[expose] def listGetOptE (K : ℕ) {Γ} {τ : Ty (e2eSig ℓ)}
     (l : Expr O Γ (.list τ)) (idx : Expr O Γ .nat) : Expr O Γ (.opt τ) :=
   eLet (.pair l (.pair idx (.len l))) fun p =>
     .snd (.foldrB K (.fst (v p)) (.pair (.nat 0) .none)
@@ -766,7 +766,7 @@ private theorem foldr_foldSetStep_snd {α : Type} (val : α) :
         show xs.length + 1 + off = xs.length + (off + 1) by omega]
     exact foldr_foldSetStep_snd val xs idx (off + 1)
 
-def listSetE (K : ℕ) {Γ} {τ : Ty (e2eSig ℓ)}
+@[expose] def listSetE (K : ℕ) {Γ} {τ : Ty (e2eSig ℓ)}
     (l : Expr O Γ (.list τ)) (idx : Expr O Γ .nat) (val : Expr O Γ τ) : Expr O Γ (.list τ) :=
   eLet (.pair l (.pair idx (.pair val (.len l)))) fun p =>
     .snd (.foldrB K (.fst (v p)) (.pair (.nat 0) .nil)
@@ -828,7 +828,7 @@ local notation "E2EExpr" => Expr (e2eOps ℓ P C K decT encT)
 @[simp] private theorem pnat32_val : (32 : ℕ+).val = 32 := rfl
 @[simp] private theorem pnat1568_val : (1568 : ℕ+).val = 1568 := rfl
 
-def initKindC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) {Γ} :
+@[expose] def initKindC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ) T) {Γ} :
     Comp (e2eOps ℓ P C K decT encT) (stepAIface ℓ I₀) Γ (e2eDrvStateTy S ℓ) :=
   .bind (.sample (I := stepAIface ℓ I₀) UniformSamplerTag.bool .unit)
     (.ret (emptyDrvStateE .v0))
@@ -874,7 +874,7 @@ theorem size_initKindC {ι : Type} {T : OracleSpec ι} (I₀ : Iface (e2eSig ℓ
 
 attribute [local irreducible] initKindC
 
-def e2eSidEqE {Γ} (a b : E2EExpr Γ (sidT S)) : E2EExpr Γ .bool :=
+@[expose] def e2eSidEqE {Γ} (a b : E2EExpr Γ (sidT S)) : E2EExpr Γ .bool :=
   eLet (.pair a b) fun ab =>
     sidEqE (mkStepAPqxdhHooks ℓ P C K decT encT (e2eSessionTargetIface ℓ))
       (.fst (v ab)) (.snd (v ab))
@@ -913,47 +913,47 @@ theorem size_e2eSidEqE {Γ} (a b : E2EExpr Γ (sidT S)) :
 
 attribute [local irreducible] e2eSidEqE
 
-def kqR1 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := sumRight? kq
-def kqR2 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR1 kq)
-def kqR3 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR2 kq)
-def kqR4 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR3 kq)
-def kqR5 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR4 kq)
-def kqR6 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR5 kq)
-def kqR7 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR6 kq)
-def kqR8 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR7 kq)
-def kqR9 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR8 kq)
-def kqR10 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR9 kq)
-def kqR11 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR10 kq)
-def kqR12 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR11 kq)
+@[expose] def kqR1 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := sumRight? kq
+@[expose] def kqR2 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR1 kq)
+@[expose] def kqR3 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR2 kq)
+@[expose] def kqR4 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR3 kq)
+@[expose] def kqR5 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR4 kq)
+@[expose] def kqR6 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR5 kq)
+@[expose] def kqR7 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR6 kq)
+@[expose] def kqR8 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR7 kq)
+@[expose] def kqR9 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR8 kq)
+@[expose] def kqR10 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR9 kq)
+@[expose] def kqR11 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR10 kq)
+@[expose] def kqR12 {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR11 kq)
 
-def kqAsInitPrin? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := sumLeft? kq
-def kqAsCorruptIK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR1 kq)
-def kqAsGenSPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR2 kq)
-def kqAsGenOPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR3 kq)
-def kqAsInitiateOPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR4 kq)
-def kqAsInitiateNoOPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR5 kq)
-def kqAsAcceptOPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR6 kq)
-def kqAsAcceptNoOPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR7 kq)
-def kqAsTestSession? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR8 kq)
-def kqAsRevealDhSecrets? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR10 kq)
-def kqAsRevealSpkSk? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR12 kq)
+@[expose] def kqAsInitPrin? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := sumLeft? kq
+@[expose] def kqAsCorruptIK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR1 kq)
+@[expose] def kqAsGenSPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR2 kq)
+@[expose] def kqAsGenOPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR3 kq)
+@[expose] def kqAsInitiateOPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR4 kq)
+@[expose] def kqAsInitiateNoOPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR5 kq)
+@[expose] def kqAsAcceptOPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR6 kq)
+@[expose] def kqAsAcceptNoOPK? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR7 kq)
+@[expose] def kqAsTestSession? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR8 kq)
+@[expose] def kqAsRevealDhSecrets? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumLeft? (kqR10 kq)
+@[expose] def kqAsRevealSpkSk? {Γ} (kq : E2EExpr Γ (keyIndQT S)) := optSumRight? (kqR12 kq)
 
-def krR1 {Γ} (kr : E2EExpr Γ keyIndRT) := sumRight? kr
-def krR2 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR1 kr)
-def krR3 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR2 kr)
-def krR4 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR3 kr)
-def krR5 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR4 kr)
-def krR6 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR5 kr)
-def krR7 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR6 kr)
-def krR8 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR7 kr)
-def krR9 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR8 kr)
+@[expose] def krR1 {Γ} (kr : E2EExpr Γ keyIndRT) := sumRight? kr
+@[expose] def krR2 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR1 kr)
+@[expose] def krR3 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR2 kr)
+@[expose] def krR4 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR3 kr)
+@[expose] def krR5 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR4 kr)
+@[expose] def krR6 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR5 kr)
+@[expose] def krR7 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR6 kr)
+@[expose] def krR8 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR7 kr)
+@[expose] def krR9 {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR8 kr)
 
-def krAsInitPrinResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumLeft? (krR1 kr)
-def krAsPkResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumLeft? (krR2 kr)
-def krAsCorrResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumLeft? (krR3 kr)
-def krAsBundleResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumLeft? (krR4 kr)
-def krAsHdrResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumLeft? (krR5 kr)
-def krAsSpkSkResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR9 kr)
+@[expose] def krAsInitPrinResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumLeft? (krR1 kr)
+@[expose] def krAsPkResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumLeft? (krR2 kr)
+@[expose] def krAsCorrResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumLeft? (krR3 kr)
+@[expose] def krAsBundleResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumLeft? (krR4 kr)
+@[expose] def krAsHdrResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumLeft? (krR5 kr)
+@[expose] def krAsSpkSkResp? {Γ} (kr : E2EExpr Γ keyIndRT) := optSumRight? (krR9 kr)
 
 private theorem eval_kqAsInitPrin? {Γ} (kqE : E2EExpr Γ (keyIndQT S)) (ρ : Env Γ) :
     (kqAsInitPrin? kqE).eval ρ =
@@ -1112,7 +1112,7 @@ private theorem eval_krAsSpkSkResp? {Γ} (krE : E2EExpr Γ keyIndRT) (ρ : Env �
     eval_optSumRight?, eval_sumRight?, hr, keyIndRdec_keyIndRenc]
   cases r <;> rfl
 
-def bhDrvAcceptIkOkE (nPrins : ℕ) {Γ}
+@[expose] def bhDrvAcceptIkOkE (nPrins : ℕ) {Γ}
     (dsE : E2EExpr Γ (e2eMirrorBaseTy S ℓ)) (hdrE : E2EExpr Γ hdrT) : E2EExpr Γ .bool :=
   eLet (.pair (mbPrins dsE) (hdrIkA hdrE)) fun p =>
     eAny nPrins (.fst (v p)) fun e =>
@@ -1154,7 +1154,7 @@ theorem size_bhDrvAcceptIkOkE (nPrins : ℕ) {Γ}
 
 attribute [local irreducible] bhDrvAcceptIkOkE
 
-def bhDrvInitiateIkOkE (nPrins : ℕ) {Γ}
+@[expose] def bhDrvInitiateIkOkE (nPrins : ℕ) {Γ}
     (dsE : E2EExpr Γ (e2eMirrorBaseTy S ℓ)) (bndE : E2EExpr Γ bundleT) : E2EExpr Γ .bool :=
   eLet (.pair (mbPrins dsE) (.pair (bndIkB bndE) (e2eCryptoOp .pow8 (bndIkB bndE)))) fun p =>
     .not (eAny nPrins (.fst (v p)) fun e =>
@@ -1213,7 +1213,7 @@ theorem size_bhDrvInitiateIkOkE (nPrins : ℕ) {Γ}
 
 attribute [local irreducible] bhDrvInitiateIkOkE
 
-def kqAcceptHdr? {Γ} (kq : E2EExpr Γ (keyIndQT S)) : E2EExpr Γ (.opt hdrT) :=
+@[expose] def kqAcceptHdr? {Γ} (kq : E2EExpr Γ (keyIndQT S)) : E2EExpr Γ (.opt hdrT) :=
   eLet kq fun q =>
     eCaseOpt (kqAsAcceptOPK? (v q))
       (optMapE (kqAsAcceptNoOPK? (v q)) fun x => .snd (.snd (.snd (v x))))
@@ -1232,7 +1232,7 @@ private theorem eval_kqAcceptHdr? {Γ} (kqE : E2EExpr Γ (keyIndQT S)) (ρ : Env
   rw [hv]
   cases keyIndQdec (kqE.eval ρ) <;> simp [v, Ext.wk, Ext.refl, Expr.eval, Env.get]
 
-def bhDrvKiQueryOkE (nPrins : ℕ) {Γ}
+@[expose] def bhDrvKiQueryOkE (nPrins : ℕ) {Γ}
     (dsE : E2EExpr Γ (e2eMirrorBaseTy S ℓ)) (kqE : E2EExpr Γ (keyIndQT S)) : E2EExpr Γ .bool :=
   eLet (.pair dsE kqE) fun dq =>
     .ite (orE (isSomeE (kqAsTestSession? (.snd (v dq))))
@@ -1368,7 +1368,7 @@ theorem size_bhDrvKiQueryOkE (nPrins : ℕ) {Γ}
 
 attribute [local irreducible] bhDrvKiQueryOkE
 
-def bhNoOpkRespPromotedE (qStart : ℕ) {Γ}
+@[expose] def bhNoOpkRespPromotedE (qStart : ℕ) {Γ}
     (metaE : E2EExpr Γ (.list (e2eInstMetaTy S ℓ)))
     (uE : E2EExpr Γ (FinT S.N_id)) : E2EExpr Γ .bool :=
   eLet (.pair metaE uE) fun p =>
@@ -1432,7 +1432,7 @@ theorem size_bhNoOpkRespPromotedE (qStart : ℕ) {Γ}
 attribute [local irreducible] bhNoOpkRespPromotedE
 
 /-- Driver-state `KeyIndQuery` admissibility filter over `e2eDrvStateTy S ℓ`. -/
-def kiQueryOkE (nPrins qStart : ℕ) {Γ}
+@[expose] def kiQueryOkE (nPrins qStart : ℕ) {Γ}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) (kqE : E2EExpr Γ (keyIndQT S)) : E2EExpr Γ .bool :=
   eLet (.pair σE kqE) fun p =>
     .and
@@ -1519,7 +1519,7 @@ theorem size_kiQueryOkE (nPrins qStart : ℕ) {Γ}
 
 attribute [local irreducible] kiQueryOkE
 
-def kqInitSend? {Γ} (kq : E2EExpr Γ (keyIndQT S)) :
+@[expose] def kqInitSend? {Γ} (kq : E2EExpr Γ (keyIndQT S)) :
     E2EExpr Γ (.opt (.prod (sidT S) bundleT)) :=
   eLet kq fun q =>
     eCaseOpt (kqAsInitiateOPK? (v q))
@@ -1543,7 +1543,7 @@ private theorem eval_kqInitSend? {Γ} (kqE : E2EExpr Γ (keyIndQT S)) (ρ : Env 
   rw [hv]
   cases keyIndQdec (kqE.eval ρ) <;> simp [sidV, v, Ext.wk, Ext.refl, Expr.eval, Env.get]
 
-def bhBaseMirrorE {Γ} (dsE : E2EExpr Γ (e2eMirrorBaseTy S ℓ))
+@[expose] def bhBaseMirrorE {Γ} (dsE : E2EExpr Γ (e2eMirrorBaseTy S ℓ))
     (kqE : E2EExpr Γ (keyIndQT S)) (krE : E2EExpr Γ keyIndRT) :
     E2EExpr Γ (e2eMirrorBaseTy S ℓ) :=
   eLet (.pair dsE (.pair kqE krE)) fun p =>
@@ -1653,7 +1653,7 @@ theorem size_bhBaseMirrorE {Γ} (dsE : E2EExpr Γ (e2eMirrorBaseTy S ℓ))
 attribute [local irreducible] bhBaseMirrorE
 
 /-- Mirrors a `(KeyIndQuery S, KeyIndResponse)` pair into `e2eDrvStateTy S ℓ`. -/
-def bhE2EMirrorE {Γ} (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
+@[expose] def bhE2EMirrorE {Γ} (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
     (kqE : E2EExpr Γ (keyIndQT S)) (krE : E2EExpr Γ keyIndRT) :
     E2EExpr Γ (e2eDrvStateTy S ℓ) :=
   eLet (.pair σE (.pair kqE krE)) fun p =>
@@ -1764,7 +1764,7 @@ theorem size_bhE2EMirrorE {Γ} (σE : E2EExpr Γ (e2eDrvStateTy S ℓ))
 
 attribute [local irreducible] bhE2EMirrorE
 
-def bhBaseOpkOkE (nOpks : ℕ) {Γ}
+@[expose] def bhBaseOpkOkE (nOpks : ℕ) {Γ}
     (dsE : E2EExpr Γ (e2eMirrorBaseTy S ℓ)) (uE : E2EExpr Γ (FinT S.N_id))
     (jE : E2EExpr Γ (FinT S.N_recv)) (bndE : E2EExpr Γ bundleT) : E2EExpr Γ .bool :=
   eLet (.pair (mbOpks dsE) (.pair uE (.pair jE (bndOpkB bndE)))) fun p =>
@@ -1837,7 +1837,7 @@ theorem size_bhBaseOpkOkE (nOpks : ℕ) {Γ}
 
 attribute [local irreducible] bhBaseOpkOkE
 
-def guardFindBundleE (nBundles : ℕ) {Γ}
+@[expose] def guardFindBundleE (nBundles : ℕ) {Γ}
     (bundlesE : E2EExpr Γ (.list (e2eMirrorBundleEntryTy S)))
     (bndE : E2EExpr Γ bundleT) (hdrE : E2EExpr Γ hdrT) :
     E2EExpr Γ (.opt (.prod (FinT S.N_id) (FinT S.N_recv))) :=
@@ -1878,7 +1878,7 @@ private theorem eval_guardFindBundleE (nBundles : ℕ) {Γ}
     Expr.eval, eval_e2ePureOp, E2EPureOp.eval, Env.get, hB, hbnd, hhdr]
   rw [List.take_of_length_le hlen]
 
-def guardCheckPrinOpkE (nPrins nOpks : ℕ) {Γ}
+@[expose] def guardCheckPrinOpkE (nPrins nOpks : ℕ) {Γ}
     (baseE : E2EExpr Γ (e2eMirrorBaseTy S ℓ))
     (ujE : E2EExpr Γ (.prod (FinT S.N_id) (FinT S.N_recv)))
     (bndE : E2EExpr Γ bundleT) : E2EExpr Γ .bool :=
@@ -1912,7 +1912,7 @@ private theorem eval_guardCheckPrinOpkE (nPrins nOpks : ℕ) {Γ}
   rw [List.take_of_length_le hPrins]
   cases bnd; rfl
 
-def guardCorrOkE (nCorr : ℕ) {Γ}
+@[expose] def guardCorrOkE (nCorr : ℕ) {Γ}
     (corrE : E2EExpr Γ (.list (FinT S.N_id))) (uE : E2EExpr Γ (FinT S.N_id))
     (bndE : E2EExpr Γ bundleT) : E2EExpr Γ .bool :=
   eLet (.pair corrE (.pair uE (bndOpkB bndE))) fun p =>
@@ -1940,7 +1940,7 @@ private theorem eval_and_eq {Γ : List (Ty (e2eSig ℓ))} (a b : E2EExpr Γ .boo
 attribute [local irreducible] guardFindBundleE guardCheckPrinOpkE guardCorrOkE
 
 /-- Session-promotion guard `bhE2EGuard` over `e2eDrvStateTy S ℓ`. -/
-def bhE2EGuardE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
+@[expose] def bhE2EGuardE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) (sidE : E2EExpr Γ (sidT S)) :
     E2EExpr Γ (.opt (.prod hdrT (.prod bundleT (.prod (FinT S.N_id) (FinT S.N_recv))))) :=
   eLet (.pair σE sidE) fun ps =>
@@ -2219,7 +2219,7 @@ theorem size_bhE2EGuardE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
 
 attribute [local irreducible] bhE2EGuardE
 
-def prepStartSpkE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
+@[expose] def prepStartSpkE (qStart nPrins nBundles nOpks nSends : ℕ) {Γ}
     (σE : E2EExpr Γ (e2eDrvStateTy S ℓ)) (sidE : E2EExpr Γ (sidT S)) :
     E2EExpr Γ (.opt (.prod (FinT S.N_id) (FinT S.N_recv))) :=
   optMapE (bhE2EGuardE qStart nPrins nBundles nOpks nSends σE sidE)

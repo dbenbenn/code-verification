@@ -9,15 +9,22 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds
-public import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.SR.SendSpecWPure
-public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
-public import Symbolic.Proofs.Swarm.CREF.Sem
+import Symbolic.Proofs.Swarm.CREF.TR.PureSessionBounds
+import Symbolic.Proofs.Swarm.CREF.TR.PQGamma
+import Symbolic.Proofs.Hooks2.BridgeXPure
+import Symbolic.Proofs.SR.SendSpecWPure
+public import Symbolic.Proofs.Swarm.TRREF.SpqrSemOf -- proof-setup: allow-public-import
+import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
+import Symbolic.Proofs.Swarm.CREF.Sem
 import Symbolic.Proofs.Swarm.CREF.Prelude
-public import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+import Symbolic.Proofs.Refinement.LemmasPure -- shake: keep
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSession
+public import LibsignalBinary.Specifications.CryptoGames.Ratchet.LibsignalSessionSM
+public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhInputs
+public import LibsignalBinary.Specifications.LibsignalE2E.StateXModel
+public import LibsignalBinary.Specifications.SignalSession.PqDir
+public import Symbolic.Specifications.Concrete.ExternInterpretation
+public import Symbolic.Specifications.Concrete.MachineEvents
 
 /-!
 # Session-Clearing Domain Preservation and Pure SPQR Adapter
@@ -26,7 +33,7 @@ Proves that clearing `session := none` preserves `PqxdhPartyInSpecDomain` (`wfPq
 and defines the pure `Spqr` record `pureSpqrOf` induced by `spqrModelOf`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -61,7 +68,7 @@ theorem wfPq_clear_session (P : PEParams) {st : PqParty} (hwf : PqxdhPartyInSpec
   tauto
 
 /-- Pure `Spqr` record induced by `spqrModelOf`. -/
-def pureSpqrOf (interpretation : ExternInterpretation) : Spqr HwBytes HwBytes :=
+@[expose] def pureSpqrOf (interpretation : ExternInterpretation) : Spqr HwBytes HwBytes :=
   let M := spqrModelOf interpretation
   ⟨fun _ _ => [], M.send, M.recv, M.sendPanics, M.recvPanics⟩
 

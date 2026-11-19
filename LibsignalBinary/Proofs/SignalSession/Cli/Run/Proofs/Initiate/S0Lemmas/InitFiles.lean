@@ -9,13 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Lemmas.InitPaths
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.S0Lemmas.InitPaths -- proof-setup: allow-public-import
 import all Init.Data.String.Defs
 import all Init.Data.String.Basic
 import all Init.Data.Repr
 import all Init.Data.ToString.Basic
 import all Init.Data.List.SplitOn.Basic
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpecLemmas.FsFold
 import LibsignalBinary.Proofs.SpecLemmas.SignalSession.Process
 import LibsignalBinary.Proofs.SignalSession.SessionCap.PqSessionCap
@@ -28,7 +28,7 @@ Proves file-system lookup facts on `runFiles (pqInitInputs W st b t)` for `initO
 `st.session = none`) by pruning `filesFold` entries across disjoint canonical head segments.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

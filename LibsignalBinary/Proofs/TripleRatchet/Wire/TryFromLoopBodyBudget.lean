@@ -9,13 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBodyBudgetAux1
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBodyBudgetAux2
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBodyBudgetAux3
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBodyBudgetAux1
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBodyBudgetAux2
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBodyBudgetAux3
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.TripleRatchet.Wire.WireCodeSym
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Proofs.TripleRatchet.Keys.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.Defs
+public import LibsignalBinary.Proofs.TripleRatchet.Prost.EncDefs
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromDefs
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromDefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoopBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget-Threaded `<SignalMessage>::try_from` Decode Loop Induction
@@ -25,7 +34,7 @@ fuel-inductive protobuf decode loop theorems (`decodeLoop_e0_wp_placed`, `decode
 on Block `85` under `TryFromLoopEnv`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

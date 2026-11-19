@@ -9,9 +9,10 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
+public import LibsignalBinary.Proofs.TripleRatchet.Encrypt.Core -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `OTR::encrypt` over SPQR V1
@@ -20,7 +21,7 @@ Relocatable `[LibsignalPlacement]` specifications and proofs for `OTR::encrypt::
 (Block `125`) and `OTR::encrypt::<CoinsRng>` (Block `428`) with `tokenInitPlacedAt` framed.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -45,7 +46,7 @@ variable [LibsignalPlacement]
 
 /-- Relocatable `spqrSendPlacedSpec` with `tokenInitPlacedAt` framed (DEV-SPQR1), the state shorter
     than `2^32` bytes (DEV-SPQR3), and at least 64 random-tape bytes left (DEV-SPQR5). -/
-def spqrSendPlacedSpecT (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) : Spec SendCall :=
+@[expose] def spqrSendPlacedSpecT (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) : Spec SendCall :=
   { spqrSendPlacedSpec A ctl S with
     pre := fun x s =>
       ⌜x.st.bytes.length < 2 ^ 32 ∧ 64 ≤ x.rest.length⌝ ∗ tokenInitPlacedAt ∗
@@ -54,7 +55,7 @@ def spqrSendPlacedSpecT (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel) : Spec
 
 /-- Relocatable `otrEncryptPlacedSpec` with `tokenInitPlacedAt` framed (DEV-SPQR1), the SPQR send
     state shorter than `2^32` bytes (DEV-SPQR3), and at least 64 bytes on the random tape (DEV-SPQR5). -/
-def otrEncryptPlacedSpecT (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser)
+@[expose] def otrEncryptPlacedSpecT (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (uuidParse : UuidParser)
     (S : SpqrModel) : Spec OtrEncryptGhost :=
   { otrEncryptPlacedSpec C A ctl uuidParse S with
     pre := fun x s =>
@@ -121,53 +122,5 @@ theorem otrEncrypt_coins_placed_body_ok_frame
           post := fun x s0 sf => F ∗ (otrEncryptPlacedSpec C A ctl uuidTryParse S).post x s0 sf }) :=
   CryptoVerification.LibsignalTripleRatchet.Encrypt.otrEncrypt_coins_placed_body_ok_frame
     Q F C A ctl S H h_aes h_fmt h_dealloc hSend hMK hGK hNew hNCK
-
-/-- Relocatable `OTR::encrypt::<HookRng>` (`Block 125`) meets `withLsCodeRoLoaded lsmpl (otrEncryptPlacedSpecT C A ctl uuidTryParse S)`
-    from `spqr::send` (`Block 124`) meeting `withLsCodeRoLoaded lsmpl (spqrSendPlacedSpecT A ctl S)`
-    and the 4 callee contracts. -/
-theorem otrEncryptT_placed_ok_of_send
-    (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel)
-    (H : String → Option (State → State))
-    (h_aes : HookSat H lsAesEncSym (aesEncSpec C.E A))
-    (h_fmt : HookSat H lsFormatInnerSym (formatInnerSpec A))
-    (h_dealloc : HookSat H lsRustDeallocSym (rustDeallocSpec A))
-    (hSend : subroutine_ok ((blkPC_125).rebase (blkPl_125).base H)
-      (lsmpl.base 124) (withLsCodeRoLoaded lsmpl (spqrSendPlacedSpecT A ctl S)))
-    (hMK : subroutine_ok ((blkPC_125).rebase (blkPl_125).base H)
-      (lsmpl.base 38) (withLsCodeRoLoaded lsmpl (messageKeysPlacedSpec C.F A)))
-    (hGK : subroutine_ok ((blkPC_125).rebase (blkPl_125).base H)
-      (lsmpl.base 69) (withLsCodeRoLoaded lsmpl (generateKeysSpec C.F A)))
-    (hNew : subroutine_ok ((blkPC_125).rebase (blkPl_125).base H)
-      (lsmpl.base 63) (withLsCodeRoLoaded lsmpl (signalMessageNewSpec C.F A uuidTryParse)))
-    (hNCK : subroutine_ok ((blkPC_125).rebase (blkPl_125).base H)
-      (lsmpl.base 39) (withLsCodeRoLoaded lsmpl (nextChainKeyPlacedSpec C.F))) :
-    subroutine_ok ((blkPC_125).rebase (blkPl_125).base H) (blkPl_125).base
-      (withLsCodeRoLoaded lsmpl (otrEncryptPlacedSpecT C A ctl uuidTryParse S)) :=
-  otrEncrypt_placed_body_ok_frame (fun pq rest => pq.length < 2 ^ 32 ∧ 64 ≤ rest.length)
-    tokenInitPlacedAt C A ctl S H h_aes h_fmt h_dealloc hSend hMK hGK hNew hNCK
-
-/-- Relocatable `OTR::encrypt::<CoinsRng>` (`Block 428`) meets `withLsCodeRoLoaded lsmpl (otrEncryptPlacedSpecT C A ctl uuidTryParse S)`
-    from `spqr::send` (`Block 427`) meeting `withLsCodeRoLoaded lsmpl (spqrSendPlacedSpecT A ctl S)`
-    and the 4 callee contracts. -/
-theorem otrEncryptT_coins_placed_ok_of_send
-    (C : Crypto) (A : RustAlloc) (ctl : BitVec 64) (S : SpqrModel)
-    (H : String → Option (State → State))
-    (h_aes : HookSat H lsAesEncSym (aesEncSpec C.E A))
-    (h_fmt : HookSat H lsFormatInnerSym (formatInnerSpec A))
-    (h_dealloc : HookSat H lsRustDeallocSym (rustDeallocSpec A))
-    (hSend : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
-      (lsmpl.base 427) (withLsCodeRoLoaded lsmpl (spqrSendPlacedSpecT A ctl S)))
-    (hMK : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
-      (lsmpl.base 38) (withLsCodeRoLoaded lsmpl (messageKeysPlacedSpec C.F A)))
-    (hGK : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
-      (lsmpl.base 69) (withLsCodeRoLoaded lsmpl (generateKeysSpec C.F A)))
-    (hNew : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
-      (lsmpl.base 63) (withLsCodeRoLoaded lsmpl (signalMessageNewSpec C.F A uuidTryParse)))
-    (hNCK : subroutine_ok ((blkPC_428).rebase (blkPl_428).base H)
-      (lsmpl.base 39) (withLsCodeRoLoaded lsmpl (nextChainKeyPlacedSpec C.F))) :
-    subroutine_ok ((blkPC_428).rebase (blkPl_428).base H) (blkPl_428).base
-      (withLsCodeRoLoaded lsmpl (otrEncryptPlacedSpecT C A ctl uuidTryParse S)) :=
-  otrEncrypt_coins_placed_body_ok_frame (fun pq rest => pq.length < 2 ^ 32 ∧ 64 ≤ rest.length)
-    tokenInitPlacedAt C A ctl S H h_aes h_fmt h_dealloc hSend hMK hGK hNew hNCK
 
 end CryptoVerification.LibsignalSpqrV1.M4

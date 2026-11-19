@@ -20,20 +20,23 @@ public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
 # Session-level bound terms, adversary wrapper and reduction bundles shared by the statements
 
 **Trusted in part.** The theorems of `Computational/Theorems/` use every definition in this file
-except `paramsV1`, which is checked by Lean; the ones they use are part of what you must read to
-trust the result. See `Computational/docs/TRUSTED_BASE.md`.
+except `fsAeadSlotSumBound` and `paramsV1`, which are checked by Lean; the ones they use are part of
+what you must read to trust the result. See `Computational/docs/TRUSTED_BASE.md`.
 
 Assembles the single-session security bound (`uniformStartMixtureBound`) for the Double Ratchet with
-SPQR V1 (`paramsV1`) from the ACD19 (Alwen, Coretti, Dodis, EUROCRYPT 2019) Fig. 8 authenticity and
-privacy bounds (`fig8MixShortAuthV1`, `fig8MixShortPrivV1`, `fsAeadMixtureBound`), the
-session-to-Fig. 8 refinement slack (`refineConst`, `hiddenSaltMixtureBound`; DEV-LS36), and the
-epoch-0 and uniform-start root-KDF PRG switches (`eps0IdealUnit`). Also defines the early-corruption
-refusal wrapper `RefuseB0.refuseCorrB0` (DEV-LS33, DEV-LS34), ML-KEM encapsulation totality
-(`Encaps1Total`), and scalar-independent DH equality fibers (`DhKerUniform`).
+SPQR V1 (`paramsV1`) from the bucket-partitioned ACD19 (Alwen, Coretti, Dodis, EUROCRYPT 2019)
+Fig. 8 authenticity and switch-back privacy bounds (`fig8MixShortAuthV1`, `fig8MixShortPrivV1`,
+`fsAeadMixtureBound`, `fsAeadAuthMixtureCompBound`; formally incomparable with the earlier per-cell
+bound, see DEV-LS31 and DEV-C14), the session-to-Fig. 8 refinement slack (`refineConst`,
+`hiddenSaltMixtureBound`, `fsAeadAuthSlotSumBound`; DEV-LS36), and the epoch-0 and uniform-start
+root-KDF PRG switches (`eps0IdealUnit`). Also defines the early-corruption refusal wrapper
+`RefuseB0.refuseCorrB0` (DEV-LS33, DEV-LS34), ML-KEM encapsulation totality (`Encaps1Total`), and
+scalar-independent DH equality fibers (`DhKerUniform`).
 
 Bounds are stated over a context mixture `oa : ProbComp α` via `prefixPrgAvg`, `prefixPrfAvg`,
 `prefixWireAvg`, and `prefixAdvAvg`, and evaluated on first-order `ReductionDsl.CostedReduction`
-bundles (`SessionCostedReductions`, `sessionCostedReductionsBounded`; see
+bundles (`SessionCostedReductions`, `sessionCostedReductionsBounded`,
+`SessionCostedReductionFamily`, `SessionCostedReductionFamilyBounded`; see
 `Computational/docs/REDUCTION_DSL_TUTORIAL.md`).
 -/
 
@@ -206,9 +209,11 @@ def prefixAdvAvg {ι : Type} {spec : OracleSpec ι} {α β : Type} (oa : ProbCom
 /-- Bundle of first-order `ReductionDsl.CostedReduction` programs for a single Double Ratchet +
 SPQR V1 session at send coins `BitVec 512`. Combines the SPK (`spk`), ACD19 Fig. 8 (`fig8`), and
 FS-AEAD (`fs`) reduction bundles with the session-to-Fig. 8 simulators, root-KDF PRG
-distinguishers, and `DeliverForge` authenticity reductions. ML-KEM encapsulation and decapsulation
-failures are excluded here and charged via `MlKem.KemFailBad` on the universally quantified
-adversary, since an existentially quantified reduction could hard-code a failing seed pair. -/
+distinguishers, and `DeliverForge` authenticity reductions (`challSimDF`, shifted boundary cells
+`B_cka`, `B_prng`, `B_fs`, and unshifted `(tL, par)` buckets `B_cka_u`, `B_prng_u`, `B_fs_u`).
+ML-KEM encapsulation and decapsulation failures are excluded here and charged via
+`MlKem.KemFailBad` on the universally quantified adversary, since an existentially quantified
+reduction could hard-code a failing seed pair (DEV-KFF1). -/
 structure SessionCostedReductions (Pt : Type) [DecidableEq Pt] [Zero Pt] [SampleableType Pt] (ℓ : ℕ)
     (C : Crypto) (K : LibsignalSpqrV1.MlKem) (idA idB : IdentityKey)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
@@ -257,7 +262,8 @@ structure SessionCostedReductions (Pt : Type) [DecidableEq Pt] [Zero Pt] [Sample
       (SM.specDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
       (ReductionDsl.fig8SmCodecDF ℓ Pt)
       .unit .unit .bool .bool
-  /-- `DeliverForge` CKA authenticity reduction at leak guess `tL` and epoch `t`. -/
+  /-- `DeliverForge` CKA authenticity reduction at shifted boundary cell `(tL, t)`
+  (`tL = some (t - 2)` for `2 ≤ t`, or `tL = some (t - 3)` for `3 ≤ t`). -/
   B_cka : (tL : Option ℕ) → (t : ℕ) →
     ReductionDsl.CostedReduction
       (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
@@ -265,7 +271,7 @@ structure SessionCostedReductions (Pt : Type) [DecidableEq Pt] [Zero Pt] [Sample
       (SM.specDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
       (ReductionDsl.fig8SmCodecDF ℓ Pt)
       .unit .unit .bool .bool
-  /-- `DeliverForge` PRF-PRNG authenticity reduction at leak guess `tL` and epoch `t`. -/
+  /-- `DeliverForge` PRF-PRNG authenticity reduction at shifted boundary cell `(tL, t)`. -/
   B_prng : (tL : Option ℕ) → (t : ℕ) →
     ReductionDsl.CostedReduction
       (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
@@ -273,8 +279,36 @@ structure SessionCostedReductions (Pt : Type) [DecidableEq Pt] [Zero Pt] [Sample
       (SM.specDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
       (ReductionDsl.fig8SmCodecDF ℓ Pt)
       .unit .unit .bool .bool
-  /-- `DeliverForge` FS-AEAD authenticity reduction at query index `j`, leak guess `tL`, and epoch `t`. -/
-  B_fs : (j : ℕ) → (tL : Option ℕ) → (t : ℕ) →
+  /-- `DeliverForge` computational FS-AEAD authenticity reduction at `(stage, la, j, tL, t)` for
+  shifted boundary cells (`tL = some (t - 2)` or `tL = some (t - 3)`): `stage = false` is the
+  chain-PRG and salt-PRF hop; `stage = true` is the wire OT-CCA hop. -/
+  B_fs : (stage : Bool) → (la : Bool) → (j : ℕ) → (tL : Option ℕ) → (t : ℕ) →
+    ReductionDsl.CostedReduction
+      (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
+      (ReductionDsl.fsaeadHeaderIface ℓ Pt)
+      (SM.specDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
+      (ReductionDsl.fig8SmCodecDF ℓ Pt)
+      .unit .unit .bool .bool
+  /-- Unshifted `DeliverForge` CKA authenticity reduction for `(tL, par)` bucket. -/
+  B_cka_u : (tL : Option ℕ) → (par : Bool) →
+    ReductionDsl.CostedReduction
+      (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
+      (ReductionDsl.ckaTargetIface ℓ Pt)
+      (SM.specDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
+      (ReductionDsl.fig8SmCodecDF ℓ Pt)
+      .unit .unit .bool .bool
+  /-- Unshifted `DeliverForge` PRF-PRNG authenticity reduction at `(tL, par, t)`. -/
+  B_prng_u : (tL : Option ℕ) → (par : Bool) → (t : ℕ) →
+    ReductionDsl.CostedReduction
+      (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
+      (ReductionDsl.prngTargetIface ℓ Pt)
+      (SM.specDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256) (LibsignalSim.Fig8C Pt))
+      (ReductionDsl.fig8SmCodecDF ℓ Pt)
+      .unit .unit .bool .bool
+  /-- Unshifted `DeliverForge` computational FS-AEAD authenticity reduction at
+  `(stage, la, j, tL, par, t)`: `stage = false` is the chain-PRG and salt-PRF hop;
+  `stage = true` is the wire OT-CCA hop. -/
+  B_fs_u : (stage : Bool) → (la : Bool) → (j : ℕ) → (tL : Option ℕ) → (par : Bool) → (t : ℕ) →
     ReductionDsl.CostedReduction
       (ReductionDsl.atomicFig8Ops ℓ Pt C Dh encPt encT lam)
       (ReductionDsl.fsaeadHeaderIface ℓ Pt)
@@ -283,8 +317,9 @@ structure SessionCostedReductions (Pt : Type) [DecidableEq Pt] [Zero Pt] [Sample
       .unit .unit .bool .bool
 
 /-- Step-cost, program-size, and oracle-query bounds for all reductions in `R` at query budget `q`,
-epoch bound `qep`, and cost budget `ratchetCostBudget q (qep + 1)`. Also imposes semantic query
-bounds `min (2 + 2 * q) (q + 3)` on `R.B_prng` and `min (2 * q) (q + 2)` on `R.B_fs`. -/
+epoch bound `qep`, FS-AEAD query bound `min (2 * q) (q + 2)`, and cost budget
+`ratchetCostBudget q (qep + 1)`. Also imposes semantic query bounds `min (2 + 2 * q) (q + 3)` on
+`R.B_prng` / `R.B_prng_u` and `min (2 * q) (q + 2)` on `R.B_fs` / `R.B_fs_u`. -/
 def sessionCostedReductionsBounded {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     (ℓ : ℕ) (C : Crypto) (K : LibsignalSpqrV1.MlKem) (idA idB : IdentityKey)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
@@ -300,30 +335,59 @@ def sessionCostedReductionsBounded {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sampl
   GRedBounded R.epoch0Red Empty.elim (fun _ => 0) q 0 B ∧
   GRedBounded R.uniformStartRed Empty.elim (fun _ => 0) q 0 B ∧
   GRedBounded R.challSimDF (fun _ => 1) (fun _ => 0) q q B ∧
-  (∀ t < (qep + 1) + 2, ∀ tL ∈ admissibleLastLeakGuesses 2 t,
-    GRedBounded (R.B_cka tL t) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B) ∧
-  (∀ t < (qep + 1) + 2, ∀ tL ∈ admissibleLastLeakGuesses 2 t,
-    GRedBounded (R.B_prng tL t) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B) ∧
-  (∀ t < (qep + 1) + 2, ∀ tL ∈ admissibleLastLeakGuesses 2 t, ∀ j < q,
-    GRedBounded (R.B_fs j tL t) (fun _ => 1) (fun _ => 0) q (2 * q) B) ∧
-  (∀ t < (qep + 1) + 2, ∀ tL ∈ admissibleLastLeakGuesses 2 t,
+  (∀ t ∈ Finset.Ico 2 ((qep + 1) + 2),
+    GRedBounded (R.B_cka (some (t - 2)) t) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B ∧
+    GRedBounded (R.B_prng (some (t - 2)) t) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B ∧
+    (∀ j < q, ∀ stage la : Bool,
+      GRedBounded (R.B_fs stage la j (some (t - 2)) t) (fun _ => 1) (fun _ => 0) q (2 * q) B)) ∧
+  (∀ t ∈ Finset.Ico 3 ((qep + 1) + 2),
+    GRedBounded (R.B_cka (some (t - 3)) t) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B ∧
+    GRedBounded (R.B_prng (some (t - 3)) t) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B ∧
+    (∀ j < q, ∀ stage la : Bool,
+      GRedBounded (R.B_fs stage la j (some (t - 3)) t) (fun _ => 1) (fun _ => 0) q (2 * q) B)) ∧
+  (∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+    GRedBounded (R.B_cka_u tL par) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B ∧
+    (∀ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+      GRedBounded (R.B_prng_u tL par t) (fun _ => 1) (fun _ => 0) q (2 + 2 * q) B ∧
+      (∀ j < q, ∀ stage la : Bool,
+        GRedBounded (R.B_fs_u stage la j tL par t) (fun _ => 1) (fun _ => 0) q (2 * q) B))) ∧
+  (∀ t ∈ Finset.Ico 2 ((qep + 1) + 2),
     ∀ A : OracleComp
         (unifSpec +
           SM.specDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
             (LibsignalSim.Fig8C Pt))
         Bool,
       A.IsQueryBoundP (· matches .inr _) q →
-        PRFPRNG.MakesAtMostQueries ((R.B_prng tL t).eval (fun _ => A) ())
-          (min (2 + 2 * q) (q + 3))) ∧
-  (∀ t < (qep + 1) + 2, ∀ tL ∈ admissibleLastLeakGuesses 2 t, ∀ j < q,
+        PRFPRNG.MakesAtMostQueries ((R.B_prng (some (t - 2)) t).eval (fun _ => A) ())
+          (min (2 + 2 * q) (q + 3)) ∧
+        (∀ j < q, ∀ stage la : Bool,
+          FSAEAD.MakesAtMostQueries ((R.B_fs stage la j (some (t - 2)) t).eval (fun _ => A) ())
+            (min (2 * q) (q + 2)))) ∧
+  (∀ t ∈ Finset.Ico 3 ((qep + 1) + 2),
     ∀ A : OracleComp
         (unifSpec +
           SM.specDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
             (LibsignalSim.Fig8C Pt))
         Bool,
       A.IsQueryBoundP (· matches .inr _) q →
-        FSAEAD.MakesAtMostQueries ((R.B_fs j tL t).eval (fun _ => A) ())
-          (min (2 * q) (q + 2)))
+        PRFPRNG.MakesAtMostQueries ((R.B_prng (some (t - 3)) t).eval (fun _ => A) ())
+          (min (2 + 2 * q) (q + 3)) ∧
+        (∀ j < q, ∀ stage la : Bool,
+          FSAEAD.MakesAtMostQueries ((R.B_fs stage la j (some (t - 3)) t).eval (fun _ => A) ())
+            (min (2 * q) (q + 2)))) ∧
+  (∀ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∀ par : Bool,
+    ∀ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+      ∀ A : OracleComp
+          (unifSpec +
+            SM.specDF (LibsignalSim.Fig8St Pt) (LibsignalMsgPublicPart × Plain ℓ) (BitVec 256)
+              (LibsignalSim.Fig8C Pt))
+          Bool,
+        A.IsQueryBoundP (· matches .inr _) q →
+          PRFPRNG.MakesAtMostQueries ((R.B_prng_u tL par t).eval (fun _ => A) ())
+            (min (2 + 2 * q) (q + 3)) ∧
+          (∀ j < q, ∀ stage la : Bool,
+            FSAEAD.MakesAtMostQueries ((R.B_fs_u stage la j tL par t).eval (fun _ => A) ())
+              (min (2 * q) (q + 2))))
 
 /-- Per-session computational FS-AEAD deliver-forgery bound on `R` across the `fsSlotCount qR`
 active slots (chain-PRG, twice salt-PRF, and wire OT-CCA). -/
@@ -335,6 +399,20 @@ noncomputable def fsAeadSlotSumBound {Pt : Type} [DecidableEq Pt]
     (chainPRGTermCosted C qR R A (FSAEAD.Thm5.slotToHybridHopIndex qR k) +
       2 * saltPRFTermCosted C qR R A (FSAEAD.Thm5.slotToHybridHopIndex qR k) +
       wireOtccaTermCosted C codec ℓ qR R A (FSAEAD.Thm5.slotToHybridHopIndex qR k))
+
+/-- Computational multi-session FS-AEAD step bound at one session: chain-PRG and salt-PRF hops
+on `A false la`, plus wire OT-CCA hops on `A true la`, evaluated via the two-stage direct-output
+reductions `R.prgRedAuth` and `R.multiRedAuth` at query fuel `qR`. -/
+noncomputable def fsAeadAuthSlotSumBound {Pt : Type} [DecidableEq Pt]
+    (C : Crypto) {codec : SignalMessageProtoCodec} {ℓ : ℕ} {encT : Pt → PublicKey}
+    {idOf : Party → IdentityKey} (qR : ℕ)
+    (R : FsCostedReds C codec ℓ encT idOf) (A : Bool → Bool → FsAdv Pt ℓ) : ℝ≥0∞ :=
+  2 * ∑ k ∈ Finset.range (fsSlotCount qR),
+    let m := FSAEAD.Thm5.slotToHybridHopIndex qR k
+    let la := FSAEAD.Thm5.isLookaheadHop m
+    (chainPRGTermAuthCosted C qR R (A false la) m +
+      2 * saltPRFTermAuthCosted C qR R (A false la) m +
+      wireOtccaTermAuthCosted C codec ℓ qR R (A true la) m)
 
 /-- Mixture-averaged chain-PRG advantage at hybrid hop `m` and query fuel `qR`. -/
 noncomputable def fsChainPrgMixtureTerm {Pt : Type} [DecidableEq Pt] {α : Type} (C : Crypto)
@@ -377,6 +455,34 @@ noncomputable def fsAeadMixtureBound {Pt : Type} [DecidableEq Pt] {α : Type} (C
         fsSaltWireMixtureTerm C codec ℓ oa q R A (FSAEAD.Thm5.slotToHybridHopIndex q j)) +
     4 * ((qd : ℝ≥0∞) * macForgeryProb C.F)
 
+/-- Mixture-averaged direct-output chain-PRG and salt-PRF (`A false la`) and wire OT-CCA
+(`A true la`) bound at one session of a multi-session authenticity telescope at query fuel `qR`
+(zero MAC term; `4 * macForgeryTerm` is charged once per last-leak `tL` bucket outside the
+`(t, j)` sum). -/
+noncomputable def fsAeadAuthMixtureCompBound {Pt : Type} [DecidableEq Pt] {α : Type} (C : Crypto)
+    (codec : SignalMessageProtoCodec) (ℓ : ℕ) {encT : Pt → PublicKey} (oa : ProbComp α)
+    {idOf : α → Party → IdentityKey} (qR : ℕ)
+    (R : ∀ o, FsCostedReds C codec ℓ encT (idOf o))
+    (A : Bool → Bool → α → FsAdv Pt ℓ) : ℝ≥0∞ :=
+  2 * ∑ j ∈ Finset.range (fsSlotCount qR),
+    let m := FSAEAD.Thm5.slotToHybridHopIndex qR j
+    let la := FSAEAD.Thm5.isLookaheadHop m
+    ((lChainPRG C.F (m / 2)).prgAdvantage
+        (prefixPrgAvg oa fun o =>
+          fun mt =>
+            evalTwoStage1 ((R o).prgRedAuth m) qR false
+              (fun _ => pubToADCosted (R o) (A false la o)) mt) +
+      2 * (lSaltPRF32 C.F).prfAdvantage
+        (prefixPrfAvg oa fun o =>
+          (R o).lSaltRed.eval
+            (fun _ => ((R o).slotSaltRed m).eval
+              (fun _ => multiSlotAdvAuthCosted qR (R o) la (A false la o)) ()) ()) +
+      (lWire C codec ℓ).wireOtccaAdvantage
+        (prefixWireAvg oa fun o =>
+          (R o).lWireRed.eval
+            (fun _ => ((R o).slotWireRed m).eval
+              (fun _ => multiSlotAdvAuthCosted qR (R o) la (A true la o)) ()) ()))
+
 /-- Session parameters for identity keys `idA`, `idB` with SPQR V1 (`spqrV1SessionUniformCoins Z.F K`). -/
 abbrev paramsV1 (Z : Crypto) (K : LibsignalSpqrV1.MlKem)
     (idA idB : IdentityKey) : LibsignalSession.Params Bytes (BitVec 512) :=
@@ -397,11 +503,15 @@ noncomputable def eps0IdealUnit (F : ShaState → List (BitVec 8) → ShaState) 
     𝒟[PRGScheme.prgIdealExperiment (wireMacVerifiesTest F c salt ids ser tag)] {true}
 
 /-- Mixture upper bound on the hidden-salt refinement probe game when SPQR lacks salt binding
-(DEV-LS36). Integrates the `DeliverForge` CKA, PRF-PRNG, FS-AEAD, and MAC-forgery bounds over
-`o ← oa`, plus `spuriousStepTerm` (for forward-evicted honest wires probed after sender
-corruption) and `(qep + 1) * (qep + 2) * δ`. Excludes ML-KEM failure probabilities, which are
-charged at top level via the real-game bad event `MlKem.KemFailBad` on the universally
-quantified adversary. -/
+(DEV-LS36). Integrates the `DeliverForge` CKA, PRF-PRNG, computational FS-AEAD
+(`fsAeadAuthSlotSumBound` at `qR := min (2 * q) (q + 2)`), and hoisted MAC-forgery bounds over
+`o ← oa` across shifted boundary cells (`tL = some (t - 2)` and `tL = some (t - 3)`) and
+unshifted `(tL, par)` parity buckets (`B_cka_u`, `B_prng_u`, `B_fs_u`), charging
+`4 * macForgeryTerm Z q` once per boundary cell and once per `(tL, par)` bucket
+(`O(qep · q · macForgeryProb)` total), plus `spuriousStepTerm` (for forward-evicted honest wires
+probed after sender corruption) and `(qep + 1) * (qep + 2) * δ`. Excludes ML-KEM failure
+probabilities, which are charged at top level via the real-game bad event `MlKem.KemFailBad` on
+the universally quantified adversary (DEV-KFF1). -/
 noncomputable def hiddenSaltMixtureBound {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {α : Type} (Z : Crypto) (K : LibsignalSpqrV1.MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
@@ -410,6 +520,7 @@ noncomputable def hiddenSaltMixtureBound {Pt : Type} [DecidableEq Pt] [Zero Pt] 
     (R : ∀ o, SessionCostedReductions Pt ℓ Z K (ida o) (idb o) Dh encPt encT decT lam)
     (A : α → SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) (BitVec 512) Bytes) : ℝ≥0∞ :=
   letI : MeasurableSpace α := ⊤
+  let qR := min (2 * q) (q + 2)
   let dfAdv : α →
       OracleComp
         (unifSpec +
@@ -424,20 +535,44 @@ noncomputable def hiddenSaltMixtureBound {Pt : Type} [DecidableEq Pt] [Zero Pt] 
             (LibsignalSim.Fig8C Pt))
         Bool :=
     fun o => (R o).challSimDF.eval (fun _ => dfAdv o) ()
-  ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses 2 t,
+  (∑ t ∈ Finset.Ico 2 ((qep + 1) + 2),
+    let tL : Option ℕ := some (t - 2)
     ((∫⁻ o, CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
         (((R o).B_cka tL t).eval (fun _ => challAdvDF o) ()) ∂𝒟[oa]) +
       (∫⁻ o, PRFPRNG.advantage (rootPRNG Z.F encPt)
         (((R o).B_prng tL t).eval (fun _ => challAdvDF o) ()) ∂𝒟[oa]) +
       (∑ j ∈ Finset.range q,
-        ∫⁻ o, fsAeadSlotSumBound Z (min (2 * q) (q + 2)) (R o).fs
-          (((R o).B_fs j tL t).eval (fun _ => challAdvDF o) ()) ∂𝒟[oa]) +
-      4 * (q : ℝ≥0∞) * CryptoVerification.LibsignalSession.macForgeryTerm Z q) +
+        ∫⁻ o, fsAeadAuthSlotSumBound Z qR (R o).fs
+          (fun stage la => ((R o).B_fs stage la j tL t).eval (fun _ => challAdvDF o) ()) ∂𝒟[oa]) +
+      4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) +
+    (∑ t ∈ Finset.Ico 3 ((qep + 1) + 2),
+      let tL : Option ℕ := some (t - 3)
+      ((∫⁻ o, CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+          (((R o).B_cka tL t).eval (fun _ => challAdvDF o) ()) ∂𝒟[oa]) +
+        (∫⁻ o, PRFPRNG.advantage (rootPRNG Z.F encPt)
+          (((R o).B_prng tL t).eval (fun _ => challAdvDF o) ()) ∂𝒟[oa]) +
+        (∑ j ∈ Finset.range q,
+          ∫⁻ o, fsAeadAuthSlotSumBound Z qR (R o).fs
+            (fun stage la => ((R o).B_fs stage la j tL t).eval (fun _ => challAdvDF o) ()) ∂𝒟[oa]) +
+        4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) +
+    (∑ tL ∈ admissibleLastLeakGuesses 4 ((qep + 1) + 1), ∑ par ∈ ({false, true} : Finset Bool),
+      ((∫⁻ o, CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+          (((R o).B_cka_u tL par).eval (fun _ => challAdvDF o) ()) ∂𝒟[oa]) +
+        (∑ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+          ((∫⁻ o, PRFPRNG.advantage (rootPRNG Z.F encPt)
+              (((R o).B_prng_u tL par t).eval (fun _ => challAdvDF o) ()) ∂𝒟[oa]) +
+            (∑ j ∈ Finset.range q,
+              ∫⁻ o, fsAeadAuthSlotSumBound Z qR (R o).fs
+                (fun stage la => ((R o).B_fs_u stage la j tL par t).eval (fun _ => challAdvDF o) ())
+                ∂𝒟[oa]))) +
+        4 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)) +
     spuriousStepTerm Z.F encPt Dh q qep +
     (qep + 1) * (qep + 2) * δ
 
-/-- Mixture-averaged ACD19 Fig. 8 authenticity bound for `(R o).simFig8` on SPQR V1, with
-FS-AEAD terms expanded via `fsAeadMixtureBound`. -/
+/-- Mixture-averaged bucket-partitioned ACD19 Fig. 8 authenticity bound for `(R o).simFig8` on
+SPQR V1, with computational FS-AEAD terms expanded via `fsAeadAuthMixtureCompBound` at
+`qR := min (2 * q) (q + 2)` and `8 * macForgeryTerm Z q` charged once per last-leak `tL` bucket
+(`4 * macForgeryTerm Z q` each for honest-header and forged-header modes; DEV-LS31, DEV-C14). -/
 noncomputable def fig8MixShortAuthV1 {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {α : Type} (Z : Crypto) (K : LibsignalSpqrV1.MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
@@ -445,21 +580,27 @@ noncomputable def fig8MixShortAuthV1 {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sam
     (ida idb : α → IdentityKey)
     (R : ∀ o, SessionCostedReductions Pt ℓ Z K (ida o) (idb o) Dh encPt encT decT lam)
     (A : α → SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) (BitVec 512) Bytes) : ℝ≥0∞ :=
+  let qR := min (2 * q) (q + 2)
   let simAdv : α → Fig8Adv Pt ℓ :=
     fun o => (R o).simFig8.eval (fun _ => A o) ()
   let challAdv : α → Fig8Adv Pt ℓ :=
     fun o => (R o).fig8.challSim.eval (fun _ => simAdv o) ()
-  2 * ∑ t ∈ Finset.range ((qep + 1) + 2), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) t,
+  2 * ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) ((qep + 1) + 1),
     (CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
-        (prefixAdvAvg oa fun o => ((R o).fig8.redCKAAuth tL t).eval (fun _ => challAdv o) ())
-      + PRFPRNG.advantage (rootPRNG Z.F encPt)
-        (prefixAdvAvg oa fun o => ((R o).fig8.redPRNGAuth tL t).eval (fun _ => challAdv o) ())
-      + ∑ j ∈ Finset.range q,
-          fsAeadMixtureBound Z protoSignalCodec ℓ oa (min (2 * q) (q + 2)) q (fun o => (R o).fs)
-            (fun o => ((R o).fig8.redFSAuth j tL t).eval (fun _ => challAdv o) ()))
+        (prefixAdvAvg oa fun o => ((R o).fig8.redCKAAuth tL).eval (fun _ => challAdv o) ())
+      + (∑ t ∈ Finset.Ico (healEpoch tL) ((qep + 1) + 2),
+          (2 * PRFPRNG.advantage (rootPRNG Z.F encPt)
+              (prefixAdvAvg oa fun o => ((R o).fig8.redPRNGAuth tL t).eval (fun _ => challAdv o) ())
+            + ∑ j ∈ Finset.range (q + 1),
+                fsAeadAuthMixtureCompBound Z protoSignalCodec ℓ oa qR (fun o => (R o).fs)
+                  (fun stage la o =>
+                    ((R o).fig8.redFSAuth stage la j tL t).eval (fun _ => challAdv o) ())))
+      + 8 * CryptoVerification.LibsignalSession.macForgeryTerm Z q)
 
-/-- Mixture-averaged ACD19 Fig. 8 privacy bound for `(R o).simFig8` on SPQR V1, with FS-AEAD
-terms expanded via `fsAeadMixtureBound`. -/
+/-- Mixture-averaged switch-back ACD19 Fig. 8 privacy bound for `(R o).simFig8` on SPQR
+V1, summing `redCKAPriv`, `redCKAPrivU`, and `redPRNGPriv` over `tL` and charging the `tL`-free
+`fsAeadMixtureBound` terms (`redFSPriv` and `2 * redFSPrivCoin`, at `qR := min (2 * q) (q + 2)`)
+once per challenge epoch `i`. -/
 noncomputable def fig8MixShortPrivV1 {Pt : Type} [DecidableEq Pt] [Zero Pt] [SampleableType Pt]
     {α : Type} (Z : Crypto) (K : LibsignalSpqrV1.MlKem) (ℓ : ℕ)
     (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes) (encT : Pt → PublicKey)
@@ -467,19 +608,23 @@ noncomputable def fig8MixShortPrivV1 {Pt : Type} [DecidableEq Pt] [Zero Pt] [Sam
     (ida idb : α → IdentityKey)
     (R : ∀ o, SessionCostedReductions Pt ℓ Z K (ida o) (idb o) Dh encPt encT decT lam)
     (A : α → SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) (BitVec 512) Bytes) : ℝ≥0∞ :=
+  let qR := min (2 * q) (q + 2)
   let simAdv : α → Fig8Adv Pt ℓ :=
     fun o => (R o).simFig8.eval (fun _ => A o) ()
-  2 * ∑ i ∈ Finset.range ((qep + 1) + 1), ∑ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
+  2 * ∑ i ∈ Finset.range ((qep + 1) + 1),
     let privAdv : α → Fig8Adv Pt ℓ :=
       fun o => ((R o).fig8.privRedB i).eval (fun _ => simAdv o) ()
-    (2 * CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
-        (prefixAdvAvg oa fun o => ((R o).fig8.redCKAPriv tL i).eval (fun _ => privAdv o) ())
-      + 2 * PRFPRNG.advantage (rootPRNG Z.F encPt)
-        (prefixAdvAvg oa fun o => ((R o).fig8.redPRNGPriv tL i).eval (fun _ => privAdv o) ())
-      + fsAeadMixtureBound Z protoSignalCodec ℓ oa (min (2 * q) (q + 2)) q (fun o => (R o).fs)
-          (fun o => ((R o).fig8.redFSPriv tL i).eval (fun _ => privAdv o) ())
-      + 2 * fsAeadMixtureBound Z protoSignalCodec ℓ oa (min (2 * q) (q + 2)) q (fun o => (R o).fs)
-          (fun o => ((R o).fig8.redFSPrivCoin tL i).eval (fun _ => privAdv o) ()))
+    ((∑ tL ∈ admissibleLastLeakGuesses (2 + 1) i,
+        (2 * CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+            (prefixAdvAvg oa fun o => ((R o).fig8.redCKAPriv tL i).eval (fun _ => privAdv o) ())
+          + 2 * CKA.advantage (dhScheme Dh) 1 (healEpoch tL)
+            (prefixAdvAvg oa fun o => ((R o).fig8.redCKAPrivU tL i).eval (fun _ => privAdv o) ())
+          + 2 * PRFPRNG.advantage (rootPRNG Z.F encPt)
+            (prefixAdvAvg oa fun o => ((R o).fig8.redPRNGPriv tL i).eval (fun _ => privAdv o) ())))
+      + fsAeadMixtureBound Z protoSignalCodec ℓ oa qR q (fun o => (R o).fs)
+          (fun o => ((R o).fig8.redFSPriv i).eval (fun _ => privAdv o) ())
+      + 2 * fsAeadMixtureBound Z protoSignalCodec ℓ oa qR q (fun o => (R o).fs)
+          (fun o => ((R o).fig8.redFSPrivCoin i).eval (fun _ => privAdv o) ()))
 
 /-- Upper bound on the mixture-averaged `sessionSchemeU` game bias with SPQR V1 on
 `RefuseB0.refuseCorrB0`-wrapped adversaries: sums the ACD19 Fig. 8 authenticity and privacy

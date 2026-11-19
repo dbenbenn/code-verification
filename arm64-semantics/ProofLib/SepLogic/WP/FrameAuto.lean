@@ -9,20 +9,24 @@ limitations under the License.
 
 module
 
+public meta import Lean
 public import ProofLib.SepLogic.WP.Structural
 public import ProofLib.SepLogic.WP.TacticCore
+public meta import ProofLib.SepLogic.WP.TacticCore
 public import ProofLib.SepLogic.FrameInfer
+public meta import ProofLib.SepLogic.FrameInfer
 public import ProofLib.SepLogic.ByteRegion
 public import ProofLib.SepLogic.Stack
 import Arm64.Trusted.Spec.SepLogic
 
 /-!
-# Frame-Inferring `SepWP` Rules
+# Frame-Inferring `SepWP` Rules and Precondition Reframing
 
 Structural `SepWP` rules (`SepWP.frame_post_entails`, `SepWP.frame_auto`,
 `SepWP.call_subroutine_frame_auto`) whose residual frame `F` and callee ghost arguments are
-inferred automatically by `sep_frame`, together with framed precondition view-shifts on memory
-regions, cells, and byte slices.
+inferred automatically by `sep_frame`, the `wp_reframe` / `stack_frame` precondition reframing
+tactic for `SepWP` and `SepWPp`, and framed precondition view-shifts on memory regions, cells, and
+byte slices.
 -/
 
 @[expose] public section
@@ -555,4 +559,208 @@ theorem SepWP.from_offset2 {prog : Program} {target : BitVec 64} {s : State}
     SepWP prog target s P post oom := by
   rw [hf, hu0, hu1, offset2_to_triple]; exact h
 
+/-! ## `wp_reframe` / `stack_frame` Precondition Reframing Tactic -/
+
+theorem sepWPp_congr_pre_explicit {prog : Program} {ret : BitVec 64} {s : State}
+    {P1 P2 : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
+    (heq : P1 = P2) (h : SepWPp prog ret s P1 Q Qp oom) :
+    SepWPp prog ret s P2 Q Qp oom :=
+  heq ▸ h
+
+theorem sepWPp_weaken_pre_explicit {prog : Program} {ret : BitVec 64} {s : State}
+    {P P' : SepProp} {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
+    (hent : P ⊢ P') (h : SepWPp prog ret s P' Q Qp oom) :
+    SepWPp prog ret s P Q Qp oom :=
+  SepWPp.weaken_pre hent h
+
 end ProofLib
+
+end
+
+public meta section
+
+namespace ProofLib
+open Arm64 Lean Elab Tactic Meta
+
+private inductive WpGoalShape where
+  | sepWP (prog target s P post oom : Expr)
+  | sepWPp (prog ret s P Q Qp oom : Expr)
+
+private def parseWpGoalShape? (ty : Expr) : Option WpGoalShape :=
+  let ty := ty.consumeMData
+  if ty.isAppOfArity ``SepWP 6 then
+    some (.sepWP (ty.getArg! 0) (ty.getArg! 1) (ty.getArg! 2)
+      (SepSolver.stripMData (ty.getArg! 3)) (ty.getArg! 4) (ty.getArg! 5))
+  else if ty.isAppOfArity ``SepWPp 7 then
+    some (.sepWPp (ty.getArg! 0) (ty.getArg! 1) (ty.getArg! 2)
+      (SepSolver.stripMData (ty.getArg! 3)) (ty.getArg! 4) (ty.getArg! 5) (ty.getArg! 6))
+  else
+    none
+
+private def WpGoalShape.pre : WpGoalShape → Expr
+  | .sepWP _ _ _ P _ _ => P
+  | .sepWPp _ _ _ P _ _ _ => P
+
+private def applyWpCongrPre (g : MVarId) (shape : WpGoalShape) (P' hEq : Expr) : MetaM MVarId := do
+  let hSymm ← mkEqSymm hEq
+  match shape with
+  | .sepWP prog target s P post oom =>
+    let gNext ← mkFreshExprMVar (mkApp6 (mkConst ``SepWP) prog target s P' post oom)
+    g.assign (mkAppN (mkConst ``SepWP.congr_pre) #[prog, target, s, P', P, post, oom, hSymm, gNext])
+    return gNext.mvarId!
+  | .sepWPp prog ret s P Q Qp oom =>
+    let gNext ← mkFreshExprMVar (mkApp7 (mkConst ``SepWPp) prog ret s P' Q Qp oom)
+    g.assign (mkAppN (mkConst ``sepWPp_congr_pre_explicit) #[prog, ret, s, P', P, Q, Qp, oom, hSymm, gNext])
+    return gNext.mvarId!
+
+private def applyWpWeakenPre (g : MVarId) (shape : WpGoalShape) (P' hEnt : Expr) : MetaM MVarId := do
+  match shape with
+  | .sepWP prog target s P post oom =>
+    let gNext ← mkFreshExprMVar (mkApp6 (mkConst ``SepWP) prog target s P' post oom)
+    g.assign (mkAppN (mkConst ``SepWP.weaken_pre) #[prog, target, s, P, P', post, oom, hEnt, gNext])
+    return gNext.mvarId!
+  | .sepWPp prog ret s P Q Qp oom =>
+    let gNext ← mkFreshExprMVar (mkApp7 (mkConst ``SepWPp) prog ret s P' Q Qp oom)
+    g.assign (mkAppN (mkConst ``sepWPp_weaken_pre_explicit) #[prog, ret, s, P, P', Q, Qp, oom, hEnt, gNext])
+    return gNext.mvarId!
+
+private def atomSortKey (idx : Nat) (a : Expr) : MetaM (Nat × String × Nat × Nat × Expr) := do
+  if a.isAppOfArity ``SepProp.pure 1 then
+    return (2, "", 0, idx, a)
+  if let some addr := SepSolver.spatialAtomAddr? a then
+    let (aNorm, _) ← SepSolver.normAddrMeta addr 16 (peelLets := true)
+    let (b, o) ← sepAddrBaseOff aNorm
+    return (0, toString b, o, idx, a)
+  let baseStr := match a.getAppArgs[0]? with
+    | some arg => toString arg
+    | none => ""
+  return (1, baseStr, 0, idx, a)
+
+private def buildRightSep (xs : Array Expr) : Expr := Id.run do
+  if h : 0 < xs.size then
+    let mut acc := xs[xs.size - 1]
+    let mut i := xs.size - 1
+    while i > 0 do
+      i := i - 1
+      acc := SepSolver.mkSep xs[i]! acc
+    return acc
+  else
+    return mkConst ``SepProp.emp
+
+private def canonicalizeWpPre (g : MVarId) (shape : WpGoalShape) : TacticM Unit := do
+  g.withContext do
+    let P := shape.pre
+    let (P1, h1?) ← SepSolver.normSepPropMeta P (peelLets := true)
+    let as1 := SepSolver.atoms P1
+    let mut finalP := P1
+    let mut finalEq? := h1?
+    if as1.size > 1 then
+      let mut keyed : Array (Nat × String × Nat × Nat × Expr) := Array.mkEmpty as1.size
+      for h : idx in [0:as1.size] do
+        keyed := keyed.push (← atomSortKey idx as1[idx])
+      let sorted := keyed.qsort fun (k1, b1, o1, i1, _) (k2, b2, o2, i2, _) =>
+        if k1 != k2 then k1 < k2
+        else if b1 != b2 then b1 < b2
+        else if o1 != o2 then o1 < o2
+        else i1 < i2
+      let P2 := buildRightSep (sorted.map fun (_, _, _, _, e) => e)
+      if P2 != P1 then
+        let reflP1 := mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Arm64.SepProp) P1
+        if let some hPerm ← SepFrameInfer.Judg.ac? (.eq P1) P1 P2 reflP1 then
+          finalP := P2
+          finalEq? ← match h1? with
+            | some h1 => pure (some (← mkEqTrans h1 hPerm))
+            | none => pure (some hPerm)
+    if let some hEq := finalEq? then
+      let gNext ← applyWpCongrPre g shape finalP hEq
+      replaceMainGoal [gNext]
+    else
+      replaceMainGoal [g]
+
+private def runWpReframe (tacName : String) (argStx? : Option (TSyntax `term)) : TacticM Unit :=
+  withMainContext do
+    let g0 ← getMainGoal
+    let g ← SepSolver.introLeadingLets g0
+    replaceMainGoal [g]
+    g.withContext do
+      let ty ← instantiateMVars (← g.getType)
+      let some shape := parseWpGoalShape? ty
+        | throwError "{tacName}: expected a `SepWP` or `SepWPp` goal, got:{indentExpr ty}"
+      let P := shape.pre
+      match argStx? with
+      | none => canonicalizeWpPre g shape
+      | some argStx =>
+        let bracketElems? : Option (Array (TSyntax `term)) :=
+          match argStx with
+          | `([ $ts,* ]) => some ts.getElems
+          | _ => none
+        if let some elems := bracketElems? then
+          if elems.isEmpty then
+            canonicalizeWpPre g shape
+          else
+            let mut focusExprs : Array Expr := Array.mkEmpty elems.size
+            for tStx in elems do
+              focusExprs := focusExprs.push (← elabTermEnsuringType tStx (some (mkConst ``SepProp)))
+            let QFocus := buildRightSep focusExprs
+            let fMVar ← mkFreshExprMVar (mkConst ``SepProp) (userName := `F)
+            let target := SepSolver.mkSep QFocus fMVar
+            let disch ← SepFrameInfer.defaultDisch
+            let res ← try
+              SepFrameInfer.solve disch (.ent P) P (mkApp (mkConst ``Entails.refl) P) target
+            catch ex =>
+              throwError "{tacName}: failed to derive focused spatial prefix{indentExpr QFocus}\nfrom precondition:{indentExpr P}\n({ex.toMessageData})"
+            let hEnt := res.proof
+            let QFocus' ← instantiateMVars QFocus
+            let mut F' ← instantiateMVars fMVar
+            if F'.isMVar then
+              F'.mvarId!.assign (mkConst ``SepProp.emp)
+              F' := mkConst ``SepProp.emp
+            let (P', hEntFinal) :=
+              if F'.isConstOf ``SepProp.emp then
+                let qEmp := SepSolver.mkSep QFocus' F'
+                let hStrip := mkAppN (mkConst ``Entails.of_eq) #[qEmp, QFocus', mkApp (mkConst ``sepConj_emp) QFocus']
+                (QFocus', mkAppN (mkConst ``Entails.trans) #[P, qEmp, QFocus', hEnt, hStrip])
+              else
+                (SepSolver.mkSep QFocus' F', hEnt)
+            let extraGoals := res.sideGoals.toList ++ ((← getMVarsNoDelayed P').toList.filter (!res.sideGoals.contains ·))
+            let gNext ← applyWpWeakenPre g shape P' hEntFinal
+            replaceMainGoal (gNext :: extraGoals)
+        else
+          let Q ← elabTermEnsuringType argStx (some (mkConst ``SepProp))
+          let disch ← SepFrameInfer.defaultDisch
+          let (hEnt, sideGoals) ← try
+            let res ← SepFrameInfer.solve disch (.ent P) P (mkApp (mkConst ``Entails.refl) P) Q
+            pure (res.proof, res.sideGoals.toList)
+          catch ex =>
+            if !Q.hasMVar then
+              if let some prf ← SepSolver.closeEntails? disch P Q then
+                pure (prf, [])
+              else
+                throwError "{tacName}: failed to weaken precondition{indentExpr P}\nto:{indentExpr Q}\n({ex.toMessageData})"
+            else
+              throwError "{tacName}: failed to weaken precondition{indentExpr P}\nto:{indentExpr Q}\n({ex.toMessageData})"
+          let Q' ← instantiateMVars Q
+          let extraGoals := sideGoals ++ ((← getMVarsNoDelayed Q').toList.filter (!sideGoals.contains ·))
+          let gNext ← applyWpWeakenPre g shape Q' hEnt
+          replaceMainGoal (gNext :: extraGoals)
+
+/-- Reframe or canonicalize the spatial precondition `P` of a `SepWP` or `SepWPp` goal in
+    $O(N \log N)$ time without `ac_rfl`:
+    - `wp_reframe`: normalize addresses, drop `emp`, flatten `∗`, and sort spatial atoms by
+      `(base, offset)`.
+    - `wp_reframe [Q₁, Q₂, ...]`: focus/fold/coalesce `[Q₁, Q₂, ...]` at the front of `P` via
+      `SepFrameInfer` (unfolding `@[sep_unfold]` / `@[expose] def` / `abbrev` bundles, carving or
+      coalescing `memRegion`s, and synthesizing `∃∗` witnesses), leaving untouched frame atoms in
+      `F`.
+    - `wp_reframe Q`: weaken the full precondition `P` to `Q` via `P ⊢ Q`. -/
+elab "wp_reframe" arg:(ppSpace colGt term)? : tactic =>
+  runWpReframe "wp_reframe" arg
+
+/-- Alias for `wp_reframe` for stack-frame and spatial precondition reframing on `SepWP` / `SepWPp`
+    goals (`stack_frame`, `stack_frame [Q₁, ...]`, or `stack_frame Q`). -/
+elab "stack_frame" arg:(ppSpace colGt term)? : tactic =>
+  runWpReframe "stack_frame" arg
+
+end ProofLib
+
+end

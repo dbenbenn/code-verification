@@ -9,11 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopMovesDefs
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopPeelDefsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Fetch
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.ConstsPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopPeelDefsPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.VerNe.LoopPeelDefs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable Previous-Session `memcpy` Chain Statement
@@ -22,7 +26,7 @@ Relocatable (`[LibsignalPlacement]`) statement `OverPrevMovesCliPlacedStmt`
 (`(blkPl_518).base + 0x2620 → (blkPl_518).base + 0x1fd4`) on `lsProg_518`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,7 +40,7 @@ open CryptoVerification.CliHandshake.RespClosurePlaced
 
 /-- Relocatable `[LibsignalPlacement]` `memcpy` chain & version load
 (`(blkPl_518).base + 0x2620 → (blkPl_518).base + 0x1fd4`) on `lsProg_518 ext`. -/
-def OverPrevMovesCliPlacedStmt [LibsignalPlacement] : Prop :=
+@[expose] def OverPrevMovesCliPlacedStmt [LibsignalPlacement] : Prop :=
   ∀ (ext : String → Option (State → State)),
     subroutine_ok (lsProg_518 ext) (lsρ "memcpy") (sessionMemcpySpec allocHookStack) →
     ∀ (s : State) (w0 w1 w2 u920 : BitVec 64) (r1 r2 : List (BitVec 8)),

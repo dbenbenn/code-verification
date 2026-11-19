@@ -9,14 +9,21 @@ limitations under the License.
 
 module -- shake: keep-all
 
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitChain
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitPack
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvict
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep3
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep5
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMain
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitChain
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitPack
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitWp
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitEvict
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep3
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep12
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitStep5
+import LibsignalBinary.Proofs.TripleRatchet.Decrypt.DhCommitMain
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WPp
 
 /-!
 # Decrypt DH Step Commit Sub-Segment (`DhCommitSpec`)
@@ -32,4 +39,4 @@ Umbrella module re-exporting the DH commit submodules:
 - `DhCommitMain`: top-level `dhCommit_spec` and relocatable seams
 -/
 
-@[expose] public section
+public section

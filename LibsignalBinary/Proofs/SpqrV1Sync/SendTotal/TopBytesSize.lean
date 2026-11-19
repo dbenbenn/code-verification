@@ -21,7 +21,7 @@ combining at most `n + 1` chain links (each bounded via `RecvSmall` and `SendPre
 (`rawV1State ≤ 2 ^ 40`), and protobuf framing bounds.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

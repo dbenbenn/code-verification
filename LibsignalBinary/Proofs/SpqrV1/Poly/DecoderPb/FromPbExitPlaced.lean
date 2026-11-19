@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExit
-import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbOuterPlaced
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbExit -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecoderPb.FromPbOuterPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 import LibsignalBinary.Proofs.TripleRatchet.Getters.Drops.MessageKey.Common
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::encoding::polynomial::PolyDecoder>::from_pb`: Relocatable Outer Loop Induction and Error Exits
@@ -23,7 +24,7 @@ Relocatable `[LibsignalPlacement]` proofs of outer-loop induction, epilogue tail
 drop loop, and error exits A (`+712`) and B (`+740`) on Block `376`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.Poly.DecoderPb
 

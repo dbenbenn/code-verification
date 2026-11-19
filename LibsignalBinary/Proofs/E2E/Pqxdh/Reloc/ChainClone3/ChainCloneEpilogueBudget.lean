@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneBaseBudget
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneEpilogue
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneBaseBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneEpilogue
+public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
 /-!
@@ -24,7 +24,7 @@ Lifts `protoChainCloneSpec` to `chainCloneSpec` and `senderChainCloneSpec` under
 `VmPreserved`-strengthened `sessionShimSpec` and `sessionMemcpySpec` hook lemmas.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -58,9 +58,7 @@ open LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.DefsBudget (
   senderChainAsProtoGhost senderChainCloneSpec
 )
 open LibsignalBinary.Proofs.E2E.Pqxdh.Reloc.ChainClone3.ChainCloneBaseBudget (
-  ChainClone3Ok ChainClone3Ok_trap
-  ProtoChainClone3Ok ProtoChainClone3Ok_trap
-  SenderChainClone3Ok SenderChainClone3Ok_trap
+  ChainClone3Ok_trap ProtoChainClone3Ok_trap SenderChainClone3Ok_trap
   protoChainCloneSpec
 )
 
@@ -164,14 +162,6 @@ theorem chainClone_of_protoChainClone_trap
     {abs : String → Option (State → State)}
     (hclone : ProtoChainClone3Ok_trap M b C A lim abs) :
     ChainClone3Ok_trap M b C A lim abs :=
-  chainClone_of_protoChainClone_gen hclone
-
-theorem chainClone_of_protoChainClone
-    {M : AllocCostModel} {b : BitVec 64} {C : Crypto}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hclone : ProtoChainClone3Ok M b C A lim ctl abs) :
-    ChainClone3Ok M b C A lim ctl abs :=
   chainClone_of_protoChainClone_gen hclone
 
 theorem senderChainClone_of_chainClone_gen_of_bridge
@@ -299,16 +289,6 @@ theorem senderChainClone_of_chainClone_trap
     (hclone : ProtoChainClone3Ok_trap M b C A lim abs) :
     SenderChainClone3Ok_trap M b C A lim abs :=
   senderChainClone_of_chainClone_gen hclone
-
-theorem senderChainClone_of_chainClone
-    {M : AllocCostModel} {b : BitVec 64} {C : Crypto}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hclone : ProtoChainClone3Ok M b C A lim ctl abs) :
-    SenderChainClone3Ok M b C A lim ctl abs :=
-  senderChainClone_of_chainClone_gen hclone
-
-/-! ## 2. Budget-Threaded `epilogue_post_entails` -/
 
 theorem epilogue_post_entails_of_env {M : AllocCostModel} (A : RustCliAllocBudget M)
     (lim : BudgetLimits) (st : M.σ) (evs : List AllocEvent) (x : ChainCloneGhost) (s0 sf : State)

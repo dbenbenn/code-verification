@@ -11,6 +11,10 @@ module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.M24.CalleesRO -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.WithLsRet -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.GenLsBlockUltra
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.Placed.GenLsBlockFast
 
 /-!
 # `HookSat` Sibling of `CalleesRO` (`from_utf8` & `memrchr` RO Discharges) (`CalleesROSat`)
@@ -56,34 +60,6 @@ private theorem subroutine_ok_rocl_of_plain [LibsignalPlacement] {α : Type}
     (h : subroutine_ok prog entry spec) :
     subroutine_ok prog entry (withLsRoCl lsmpl spec) :=
   subroutine_ok_rocl_of_withLsCodeRoLoaded (subroutine_ok_withLsCodeRoLoaded_of_plain h)
-
-/-- Coercion from `H lsFromUtf8Sym = some (fromUtf8Hook err)` to
-    `HookSat H lsFromUtf8Sym (withVmPreserved (fromUtf8AsciiSpecRO hookStack))`. -/
-theorem hookSat_fromUtf8ROVm_of_eq {H : LibsignalHooks} (hookStack : Nat)
-    {err : List (BitVec 8) → BitVec 64 × BitVec 16}
-    (hext : H lsFromUtf8Sym = some (fromUtf8Hook err)) :
-    HookSat H lsFromUtf8Sym (withVmPreserved (fromUtf8AsciiSpecRO hookStack)) :=
-  hookSat_withVmPreserved ⟨fromUtf8Hook err, hext, fromUtf8Hook_ro_ok hookStack err⟩
-    (fun _ hf s => by
-      cases hext.symm.trans hf
-      exact fromUtf8Hook_vmPreserved err s)
-
-/-- Coercion from `H lsMemrchrSym = some memrchrHook` to
-    `HookSat H lsMemrchrSym (withVmPreserved (memrchrSpecRO stk))`. -/
-theorem hookSat_memrchrROVm_of_eq {H : LibsignalHooks} (stk : Nat)
-    (hext : H lsMemrchrSym = some memrchrHook) :
-    HookSat H lsMemrchrSym (withVmPreserved (memrchrSpecRO stk)) :=
-  hookSat_withVmPreserved ⟨memrchrHook, hext, memrchrHook_ro_ok stk⟩
-    (fun _ hf s => by
-      cases hext.symm.trans hf
-      exact memrchrHook_vmPreserved s)
-
-/-- Coercion from `H lsMemrchrSym = some memrchrHook` to
-    `HookSat H lsMemrchrSym (withLsRet (withVmPreserved (memrchrSpecRO stk)))`. -/
-theorem hookSat_memrchrROVm_ls_of_eq [LibsignalPlacement] {H : LibsignalHooks} (stk : Nat)
-    (hext : H lsMemrchrSym = some memrchrHook) :
-    HookSat H lsMemrchrSym (withLsRet (withVmPreserved (memrchrSpecRO stk))) :=
-  hookSat_withLsRet (hookSat_memrchrROVm_of_eq stk hext)
 
 /-- `HookSat` sibling of `fromUtf8Ascii_ro_placed_ok_of_hooks` (`CalleesRO.lean:607`), dropping
     the unused `err` parameter. -/

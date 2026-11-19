@@ -11,6 +11,7 @@ module
 
 public import LibsignalBinary.Heap.SpecBudget
 public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `HashbrownBin` Hook Contracts
@@ -20,7 +21,7 @@ public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Defs
 `hashbrown` proofs.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,18 +43,18 @@ open LibsignalBinary.Heap.SpecBudget
   (withVmPreserved AllocHooksBudget)
 
 /-- Budget-compatible `bcmp` contract (`VmPreserved`-carrying `Defs.e2eBcmpSpec`, 0 allocations). -/
-def e2eBcmpSpec : Spec BcmpCall :=
+@[expose] def e2eBcmpSpec : Spec BcmpCall :=
   withVmPreserved CryptoVerification.E2E.InMem.HashbrownBin.e2eBcmpSpec
 
 /-- Budget-compatible `hashmap_random_keys` contract (`VmPreserved`-carrying `Defs.randomKeysSpec`,
     0 allocations). -/
-def randomKeysSpec : Spec Unit :=
+@[expose] def randomKeysSpec : Spec Unit :=
   withVmPreserved CryptoVerification.E2E.InMem.HashbrownBin.randomKeysSpec
 
 /-- Conditional-OOM budget-threaded `__rust_alloc(size = x0, align = x1)` contract strengthening
     `rustCliAllocBudgetSpec M A lim false` with `(sf.readReg64 .x0).toNat + size < 2 ^ 64` on
     non-null return. -/
-def rustAllocNWSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def rustAllocNWSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (Nat × Nat × M.σ) where
   pre := (rustCliAllocBudgetSpec M A lim false).pre
   post := fun (size, align, st) s0 sf =>
@@ -67,7 +68,7 @@ def rustAllocNWSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocB
 
 /-- Total-correctness (`FitsEvents`) `__rust_alloc` contract with non-wrapping upper bound
     `(sf.readReg64 .x0).toNat + size < 2 ^ 64`. -/
-def rustAllocNoOomNWSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
+@[expose] def rustAllocNoOomNWSpec [LibsignalPlacement] (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) : Spec (Nat × Nat × M.σ) where
   pre := (rustCliAllocNoOomSpec M A lim false).pre
   post := fun (size, align, st) s0 sf =>

@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.EntryPureB
-public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2AdapterPure
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.EntryPureB -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.HxplG2AdapterPure -- proof-setup: allow-public-import
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.ModelTraces
 import Symbolic.Proofs.Swarm.CREF.Cli.World.RelCliPure
 import Symbolic.Proofs.Swarm.CREF.ModelBridge
@@ -25,7 +25,9 @@ import Symbolic.Proofs.Swarm.CREF.RecvPrekeyProm.PromDecTieResidPureA
 import Symbolic.Proofs.Swarm.CREF.TROpen
 import Symbolic.Proofs.Swarm.CREF.Xpl.PrefixReach
 import Symbolic.Proofs.Swarm.CREF.RecvWire.By2SupplyA -- shake: keep
-public import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+import Symbolic.Proofs.Swarm.CREF.TR.RecvCol -- shake: keep
+public import Symbolic.Proofs.Swarm.CREF.OpkRelC -- proof-setup: allow-public-import
+import Symbolic.Proofs.SpecLemmas.Model.PQXDH.StateMachine
 
 /-!
 # Accepting Promote Step under `CReadyPure`
@@ -34,7 +36,7 @@ Discharges `PromNewRecByOK₂` (`prom_newRecByOK₂_of_noDraw`) and `PromOpkOK` 
 and assembles `cEntry_recvPrekey_prom_of_noDraw_and_ver` from `PromNoDrawOK` and `PromVersionOK`.
 -/
 
-@[expose] public section
+public section
 
 cref_hide_foreign_instances
 

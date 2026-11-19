@@ -9,15 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailWriteResultPlaced
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.PlacedDefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.CommonPlacedBudget
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailWriteResultPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.Common -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.Tail.TailWriteResult -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Budget-Threaded Relocatable T2 Writer and Epilogue (`+0x5f8..+0x660`)
@@ -26,7 +31,7 @@ Proves `writeResult_placed_sepWP` and `tailWriteResult_placed_ok` on Block `464`
 under `RustCliAllocBudget M` and `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -443,35 +448,5 @@ theorem tailWriteResult_placed_ok [LibsignalPlacement]
   rw [encTailVPlaced_eq_tempTwins] at hs
   rw [segExitPlaced_eq_tempTwins]
   exact tailWriteResultBudget_placed_ok x st_init st R s0 s answers res w0 w1 w2 w3 bs H hm hst hs
-
-theorem tailWriteResult_placed_ok_of_env [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {kit : SessionStoreSpec A.repAlloc 0#64} {kitEnv : SessionStoreBudgetEnv kit}
-    {st0 : kit.StoreState}
-    {ikit : IdentityStoreSpec A.repAlloc 0#64} {ikitEnv : IdentityStoreBudgetEnv ikit}
-    {ist0 : ikit.IdState}
-    {Scope : SessionRecord (List (BitVec 8)) → Prop} {Q : List (BitVec 8) → Prop}
-    {C : Crypto} {ctl : BitVec 64} {parse : UuidParser} {S : SpqrModel}
-    {sendEnv : SpqrSendBudgetEnv}
-    {encRecord : SessionRecord (List (BitVec 8)) → List (BitVec 8)}
-    {Hk : LibsignalHooks}
-    (_env : EncEnvPlaced A lim kit kitEnv st0 ikit ikitEnv ist0 Scope Q C ctl parse S
-      sendEnv encRecord Hk)
-    (x : WithStoresEncGhost) (st_init st : M.σ) (R : SepProp) (s0 s : State)
-    (answers : StoreAnswers (List (BitVec 8)) Unit)
-    (res : Except (ApiError AddrVal Unit) CiphertextMessage) (w0 w1 w2 w3 : BitVec 64)
-    (bs : List (BitVec 8)) (H : SepProp)
-    (hm : TailModel kit st0 ikit ist0 C S parse encRecord x answers res s0 s)
-    (hst : ResStaged A.repAlloc x.ret res [w0, w1, w2, w3] bs H)
-    (hs : EncTailVPlaced A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv
-      x st_init st answers (encEntryPlaced + 0x5f8#64)
-      (fun sp s => s.readReg64 .x28 = sp + 0x4a0#64 ∧ s.readReg64 .x22 = w0 ∧
-        s.readReg64 .x27 = w1 ∧ s.readReg64 .x21 = w2 ∧ s.readReg64 .x23 = w3)
-      (fun sp => memRegion sp 0x58 ∗ memRegion (sp + 0x110#64) 0x390 ∗ ((sp + 0x4a0#64) ↦ₛ bs) ∗
-        memRegion (sp + 0x578#64) 0x608 ∗ H)
-      R s0 s) :
-    SegExitPlaced A lim kit kitEnv st0 ikit ikitEnv ist0 Scope C ctl parse S sendEnv encRecord Hk
-      x st_init R s0 s (fun _ => False) :=
-  tailWriteResult_placed_ok x st_init st R s0 s answers res w0 w1 w2 w3 bs H hm hst hs
 
 end LibsignalBinary.Proofs.Cli.PublicApi.MessageEncrypt.Tail.TailWriteResultPlacedBudget

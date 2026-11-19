@@ -21,7 +21,7 @@ Proves `prostSSGX_repr` and `deserReprX_ok`: the decoded PQXDH-scope `SessionStr
 and `deserOutRecordX out r` entails `sessionRecordAt` with `CanonRecord`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.L1GX.Leaf.ProstSSGXRepr
 

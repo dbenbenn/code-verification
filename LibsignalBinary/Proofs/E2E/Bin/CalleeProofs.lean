@@ -9,14 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Bin.SpecsCommon -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.E2E.StoreNew.Proof
 import LibsignalBinary.Proofs.TripleRatchet.Bytes.From
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.Calls
 import LibsignalBinary.Proofs.TripleRatchet.Prost.BytesMerge.Phase23
-import LibsignalBinary.Proofs.TripleRatchet.RunAssembly.TryFromAssembly
+import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromLoop
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
 
@@ -28,7 +27,7 @@ Proves the `libsignal_e2e` wrapper-layer direct callee contracts:
 `<InMemSignedPreKeyStore>::new` (`0x127d8`), and `<InMemIdentityKeyStore>::new` (`0x0c238`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Bin
 
@@ -44,71 +43,7 @@ attribute [local irreducible] Program.fetch Program.externAt?
 
 /-! ## `session_signal_message_parse` (`0x3dab8`) -/
 
-gen_decodes libsignalSessionCode_tree parseSignalMessage [raw (ls_off% "session_signal_message_parse")]
-
-theorem session_signal_message_parse_tryFrom_ok (C : Crypto) (A : RustAlloc) (S : SpqrModel)
-    (img : Obj.Image) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hH : TripleRatchetHooks C A S abs) (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProg img C ctl abs)
-      (img.base + parseSignalMessageOff)
-      (tryFromSpec A img) := by
-  have hfetch :=
-    libsignalSessionCode_fetch_fnAddr_entry (b := img.base)
-      (H := Rust.withPanics (tripleRatchetExterns C ctl abs))
-      parseSignalMessage_fnOff (by decide) (ls_decode% parseSignalMessage (ls_off% "session_signal_message_parse"))
-  have hfn :
-      (tripleRatchetProgAt img.base C ctl abs).fnAddr parseSignalMessageName =
-        img.base + parseSignalMessageOff := by
-    rw [tripleRatchetProgAt, Program.fnAddr_rebase, parseSignalMessage_fnOff]
-  rw [hfn] at hfetch
-  have htarget :
-      img.base + parseSignalMessageOff + 0xfffffffffffe7d80#64 =
-        (tripleRatchetProgAt img.base C ctl abs).fnAddr tryFromName := by
-    dsimp only [tripleRatchetProgAt, parseSignalMessageOff]
-    rw [Program.fnAddr_rebase, (ls_lemma% fnOff "<libsignal_protocol::protocol::SignalMessage as core::convert::TryFrom<&[u8]>>::try_from")]
-    bv_lin
-  have htry := TryFromAssembly.tryFrom_run_closed C A ctl S abs img hH himg
-  rw [tripleRatchetProg_eq_tripleRatchetProgAt himg,
-      entryOf_eq_tripleRatchetProgAt (C := C) (ctl := ctl) (abs := abs) himg tryFromName]
-    at htry
-  rw [tripleRatchetProg_eq_tripleRatchetProgAt himg]
-  exact subroutine_ok_of_b hfetch htarget rfl
-    (by intro x s pc; cases s; simp only [tryFromSpec, Spec.inImage, Obj.Image.FrozenLoaded, State.setPC]; rfl)
-    htry
-
-theorem session_signal_message_parse_ok (C : Crypto) (A : RustAlloc) (S : SpqrModel)
-    (img : Obj.Image) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (hH : TripleRatchetHooks C A S abs) (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProg img C ctl abs)
-      (img.base + parseSignalMessageOff)
-      (parseSignalMessageSpec A img) := by
-  have htry := session_signal_message_parse_tryFrom_ok C A S img ctl abs hH himg
-  refine subroutine_ok_outcome_intro ?_
-  intro ⟨ret, ctPtr, ctext⟩ R s0 hpc hrun hpre hal
-  have hpre' : s0.mem ⊨ (tryFromSpec A img).pre ⟨ctPtr, ctext, ret⟩ s0 ∗ R := by
-    dsimp only [parseSignalMessageSpec, tryFromSpec, Spec.inImage, tryFromStack] at hpre ⊢
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨hF, ⟨hx8, hx0, hx1, hlen⟩, hmem⟩
-    refine ⟨hF, ⟨hx0, hx1, hlen, hx8⟩, ?_⟩
-    convert hmem using 1; ac_rfl
-  refine htry.mono_outcome ⟨ctPtr, ctext, ret⟩ R s0 hpc hrun hpre' hal fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hex, hpost⟩ | ⟨hoom, hpost⟩
-  · left
-    refine ⟨hret, hcc, ?_⟩
-    dsimp only [tryFromSpec, parseSignalMessageSpec, Spec.inImage, tryFromStack] at hpost ⊢
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    refine ⟨htr, ?_⟩
-    convert hpost using 1; ac_rfl
-  · right; left; exact ⟨hpan, hpost⟩
-  · right; right; left; exact ⟨code, hex, hpost⟩
-  · right; right; right; exact ⟨hoom, hpost⟩
-
-/-! ## `PublicKey::try_from` on 33-Byte `Role.idPubWire` -/
-
-def pkTryFromLen33Spec : Spec (BitVec 64 × BitVec 64 × Role) where
+@[expose] def pkTryFromLen33Spec : Spec (BitVec 64 × BitVec 64 × Role) where
   pre := fun (out, keyPtr, r) s =>
     ⌜s.readReg64 .x8 = out ∧ s.readReg64 .x0 = keyPtr ∧ s.readReg64 .x1 = 33#64⌝ ∗
       (keyPtr ↦ₛ r.idPubWire) ∗ memRegion out 40
@@ -125,48 +60,6 @@ theorem role_idPubWire_eq (r : Role) :
 theorem role_idKey_bytes_length (r : Role) :
     r.idKey.publicKey.bytes.toList.length = 32 := by
   cases r <;> decide
-
-theorem pkTryFrom_len33_ok (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr pkTryFromName) pkTryFromLen33Spec := by
-  simp only [pkTryFromLen33Spec]
-  code_fetches_range libsignalSessionCode CryptoVerification.LibsignalTripleRatchet.PublicKeyTryFrom.pkTryFrom b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from") (num% (ls_off% "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from")) 0 48
-  code_fetches_range libsignalSessionCode CryptoVerification.LibsignalTripleRatchet.PublicKeyTryFrom.pkTryFrom b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from") (num% (ls_off% "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from")) 196 76
-  wp_init g s0
-  examples_generalize_entry
-  examples_hide_fetches
-  obtain ⟨out, keyPtr, r⟩ := g
-  dsimp only at *
-  subst out keyPtr
-  obtain ⟨w0, w1, w2, w3, _, hpk_cells⟩ :=
-    exists_unpack64_of_length_32 (bs := r.idKey.publicKey.bytes.toList)
-      (role_idKey_bytes_length r)
-  rw [role_idPubWire_eq r, pointsToBytes_cons,
-      hpk_cells (s0.readReg64 (Reg.gpr 0#5) + 1#64),
-      PublicKeyTryFrom.memRegion_40_split_ok (s0.readReg64 (Reg.gpr 8#5))]
-  wp_pull_exists
-  simp only [BitVec.add_assoc, BitVec.reduceAdd]
-  wp_steps
-  rw [hpk_cells (s0.readReg64 (Reg.gpr 8#5) + 1#64)]
-  simp only [BitVec.add_assoc, BitVec.reduceAdd, sepConj_assoc]
-  wp_done
-
-/-! ## `<IdentityKey>::decode` (`0x0ae58`) -/
-
-theorem pk_try_from_len33_ok_at (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (name : String) (k : Nat)
-    (hk : libsignalSessionCode.fnOff name + k = libsignalSessionCode.fnOff pkTryFromName) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) pkTryFromLen33Spec :=
-  inImage_ok_at hk (pkTryFrom_len33_ok b C ctl abs)
-
-gen_decodes libsignalSessionCode_tree identityKeyDecode [(ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode") → (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode" + 36), (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode" + 64) → (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode" + 168)]
 
 private def remoteKeyChunks (a : BitVec 64)
     (b0 b1 b2 b3 b4 b5 b6 : BitVec 8)
@@ -437,70 +330,6 @@ private theorem memRegion_sp_88_40_split (sp : BitVec 64) :
       memRegion_two (sp - 80#64), memRegion_four (sp - 78#64), memRegion_two (sp - 74#64),
       ProofLib.memRegion_eight (sp - 72#64), ProofLib.memRegion_eight (sp - 64#64), memRegion_one (sp - 56#64)]
 
-set_option maxHeartbeats 800000 in
-theorem identityKey_decode_tripleRatchetProgAt_ok (b : BitVec 64) (C : Crypto) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr identityKeyDecodeName)
-      identityKeyDecodeSpec := by
-  simp only [identityKeyDecodeSpec]
-  have htry := pk_try_from_len33_ok_at b C ctl abs
-    identityKeyDecodeName (k := num% (ls_off% "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from" - ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode"))
-    (by rw [identityKeyDecode_fnOff, (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::convert::TryFrom<&[u8]>>::try_from")])
-  simp only [pkTryFromLen33Spec] at htry
-  code_fetches_range libsignalSessionCode CryptoVerification.E2E.Bin.identityKeyDecode b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::decode") (num% (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode")) 0 40
-  code_fetches_range libsignalSessionCode CryptoVerification.E2E.Bin.identityKeyDecode b
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))
-    (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::decode") (num% (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode")) 64 108
-  dsimp only [tripleRatchetProgAt, identityKeyDecodeName, BitVec.ofNat_eq_ofNat] at htry ⊢
-  generalize_entry (libsignalSessionCode.rebase b (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr "<libsignal_protocol::identity_key::IdentityKey>::decode" = entry
-  wp_init x s0
-  examples_hide_fetches
-  obtain ⟨ret, keyPtr, r⟩ := x
-  dsimp only at *
-  subst ret keyPtr
-  obtain ⟨b0, b1, b2, b3, b4, b5, b6, v7, v9, v13, v15, v23, v31, hchunks⟩ :=
-    exists_remoteKeyChunks_of_length_32 (role_idKey_bytes_length r)
-  rw [memRegion_40_identityKeyDecode_split (s0.readReg64 (Reg.gpr 8#5)),
-      hchunks (s0.readReg64 (Reg.gpr 8#5) + 8#64),
-      remoteKeyChunks_ret_8 (s0.readReg64 (Reg.gpr 8#5)),
-      stackAt_identityKeyDecode_split s0.sp]
-  cells_unfold
-  wp_pull_exists
-  wp_steps
-  wp_apply
-  rw [hchunks (s0.sp - 87#64), remoteKeyChunks_sp_87 s0.sp]
-  wp_steps
-  rw [sevenLo_sp_87 s0.sp]
-  wp_steps
-  simp only [sepConj_assoc]
-  rw [sevenLo_ret_8 (s0.readReg64 (Reg.gpr 8#5)),
-      sp_88_four_bytes s0.sp,
-      sp_84_split_16 s0.sp]
-  wp_steps
-  try rw [truncate16_zeroExtend32]
-  try rw [truncate16_zeroExtend32]
-  try rw [← sevenLo_ret_8 (s0.readReg64 (Reg.gpr 8#5))]
-  try rw [memRegion_sp_88_40_split s0.sp]
-  wp_done
-
-theorem identityKey_decode_ok (C : Crypto) (img : Obj.Image) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProg img C ctl abs)
-      (img.base + identityKeyDecodeOff)
-      (identityKeyDecodeSpec.inImage img) := by
-  have hfn : (tripleRatchetProgAt img.base C ctl abs).fnAddr identityKeyDecodeName =
-      img.base + identityKeyDecodeOff := by
-    rw [tripleRatchetProgAt, Program.fnAddr_rebase, identityKeyDecode_fnOff]
-  rw [tripleRatchetProg_eq_tripleRatchetProgAt himg, ← hfn]
-  exact LibsignalTripleRatchet.subroutine_ok_inImage img
-    (identityKey_decode_tripleRatchetProgAt_ok img.base C ctl abs)
-
-/-! ## `<InMemSignedPreKeyStore>::new` (`0x127d8`) and `<InMemIdentityKeyStore>::new` (`0x0c238`) -/
-
 private theorem storeNew_tlsKeysInitAt_eq (t k0 k1 : BitVec 64) :
     StoreNew.tlsKeysInitAt t k0 k1 = tlsKeysInitAt t k0 k1 := rfl
 
@@ -520,69 +349,5 @@ private theorem role_keyPairBytes_length (r : Role) :
     r.keyPairBytes.length = 64 := by
   cases r <;> decide
 
-theorem inMemSessionStore_new_ok (C : Crypto) (img : Obj.Image) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hRk : HookSat abs randomKeysName randomKeysSpec) :
-    subroutine_ok (tripleRatchetProg img C ctl abs)
-      (img.base + inMemSessionStoreNewOff)
-      (sessionStoreNewSpec img) := by
-  have hrs := StoreNew.sessionStore_new_ok (C := C) (ctl := ctl) himg hRk
-  rw [StoreNew.inMemSignedPreKeyStoreNew_addr_eq himg] at hrs
-  refine subroutine_ok_refine hrs fun ⟨out, st⟩ R s0 hpre => ?_
-  refine ⟨⟨out, st⟩, ?_, fun sf hpost => ?_⟩
-  · simpa only [sessionStoreNewSpec, StoreNew.sessionStoreNewSpec, Spec.inImage,
-      storeNew_tlsKeysAt_eq, StoreNew.tlsKeysTpoff, StoreNew.inMemSessionStoreNewStack,
-      StoreNew.inMemSessionStoreNewFrame] using hpre
-  · simp only [StoreNew.sessionStoreNewSpec, sessionStoreNewSpec, Spec.inImage,
-      storeNew_tlsKeysInitAt_eq, StoreNew.tlsKeysTpoff, StoreNew.emptyCtrlOff,
-      StoreNew.inMemSessionStoreNewStack, StoreNew.inMemSessionStoreNewFrame,
-      sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    refine ⟨htr, ?_⟩
-    cases st with
-    | none =>
-      simp only [storeNew_emptyHashMapAt_eq] at hpost
-      exact hpost
-    | some ks =>
-      rcases ks with ⟨k0, k1⟩
-      simp only [sepExists_sepConj_left, satisfies_sepExists]
-      refine ⟨k0, k1, ?_⟩
-      simpa only [storeNew_emptyHashMapAt_eq, sepConj_assoc] using hpost
-
-theorem inMemIdentityKeyStore_new_ok (C : Crypto) (img : Obj.Image) (ctl : BitVec 64)
-    (abs : String → Option (State → State))
-    (himg : Obj.Loads libsignalSessionImage img)
-    (hRk : HookSat abs randomKeysName randomKeysSpec) :
-    subroutine_ok (tripleRatchetProg img C ctl abs)
-      (img.base + inMemIdentityStoreNewOff)
-      (identityStoreNewSpec img) := by
-  have hrs := StoreNew.identityStore_new_ok (C := C) (ctl := ctl) himg hRk
-  rw [StoreNew.inMemIdentityKeyStoreNew_addr_eq himg] at hrs
-  refine subroutine_ok_refine hrs fun ⟨out, kpPtr, me, st⟩ R s0 hpre => ?_
-  refine ⟨⟨out, kpPtr, me.keyPairBytes, 0#32, st⟩, ?_, fun sf hpost => ?_⟩
-  · simp only [identityStoreNewSpec, StoreNew.identityStoreNewSpec, Spec.inImage,
-      storeNew_tlsKeysAt_eq, StoreNew.tlsKeysTpoff, StoreNew.inMemIdentityStoreNewStack,
-      StoreNew.inMemIdentityStoreNewFrame, sepConj_assoc, satisfies_pure_sepConj] at hpre ⊢
-    rcases hpre with ⟨hF, ⟨hx8, hx0, hx1⟩, hmem⟩
-    exact ⟨hF, ⟨hx8, hx0, hx1, role_keyPairBytes_length me⟩, hmem⟩
-  · simp only [StoreNew.identityStoreNewSpec, identityStoreNewSpec, Spec.inImage,
-      storeNew_tlsKeysInitAt_eq, StoreNew.tlsKeysTpoff, StoreNew.emptyCtrlOff,
-      StoreNew.inMemIdentityStoreNewStack, StoreNew.inMemIdentityStoreNewFrame,
-      sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨htr, hpost⟩
-    refine ⟨htr, ?_⟩
-    cases st with
-    | none =>
-      simp only [storeNew_emptyIdentityKeyStoreAt_eq] at hpost
-      exact hpost
-    | some ks =>
-      rcases ks with ⟨k0, k1⟩
-      simp only [sepExists_sepConj_left, satisfies_sepExists]
-      refine ⟨k0, k1, ?_⟩
-      simpa only [storeNew_emptyIdentityKeyStoreAt_eq, sepConj_assoc] using hpost
-
 end CryptoVerification.E2E.Bin
-
-
 

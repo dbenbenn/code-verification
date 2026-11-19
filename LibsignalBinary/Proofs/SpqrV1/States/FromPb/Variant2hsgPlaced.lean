@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsg
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsg -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1bPlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsaPlaced
@@ -18,6 +18,7 @@ import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsb0Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hsbPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2hscPlaced
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Placed Variant 2 (`HeaderSent`, `+508`) — Part G
@@ -25,7 +26,7 @@ import ProofLib.SepLogic.WPp
 Relocatable Block-`333` error-branch exits (`+9152`, `+3348`) and `+9036` continuation interface.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -65,7 +66,7 @@ set_option linter.unusedSimpArgs false
 set_option linter.unusedVariables false
 
 attribute [local irreducible]
-  Program.fetch Program.externAt? Program.fnOff libsignalSessionCode
+  Program.fetch Program.externAt? Program.fnOff
   CryptoVerification.blkPC_333
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
   extractLsb'_0_64_append extractLsb'_64_64_append
@@ -567,7 +568,7 @@ theorem v2hstop_branch_auth_none_3348_placed [LibsignalPlacement]
     hcl2 hsp0_align hpc2 hrun2 hsp2 hx19_2 hx22_2 hx23_2 htr2
 
 /-- Interface hypothesis for the `+9036 -> s0.x30` (`sendingEk = some pbEnc`) continuation of Variant 2 (`HeaderSent`). -/
-def v2hstop_SomeEnc9036HypPlaced [LibsignalPlacement]
+@[expose] def v2hstop_SomeEnc9036HypPlaced [LibsignalPlacement]
     (A : RustAlloc) (F : ShaCompress)
     (ext : String → Option (State → State)) (s : V1State.Chunked.HeaderSent) : Prop :=
   ∀ (s0 sm : State) (out pbA : BitVec 64) (R : SepProp)

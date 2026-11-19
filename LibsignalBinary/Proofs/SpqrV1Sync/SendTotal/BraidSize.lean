@@ -26,7 +26,7 @@ message lengths (`≤ 1152`) and strictly `x`-sorted `GF16` point sets (`≤ 2 ^
 polynomial).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

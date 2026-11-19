@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.SpkLeakRed
+public import Computational.Proofs.ReductionDsl.SpkLeakRed -- proof-setup: allow-public-import
 public import Computational.Specifications.Session.StatementSpkModel
 import Computational.Proofs.ReductionDsl.GRedBoundedOfBounds
 import Computational.Proofs.ReductionDsl.Bridge
 import Computational.Proofs.ReductionDsl.Notation
 import Computational.Proofs.GameHop.ReductionDsl.CostUB
 import Computational.Proofs.GameHop.ReductionDsl.MapIface
+import Computational.Proofs.GameHop.ReductionDsl.CostAttr
 
 /-!
 # Costed `hop2PrgRedK` and `hop2PrfRedK` Reductions
@@ -25,7 +26,7 @@ hop-2 PRG and PRF reductions, with evaluation bridges, query and cost bounds, an
 combinators.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Costed
 
@@ -52,7 +53,7 @@ variable {Pt : Type} {PQC : Type} [SampleableType PQC] {ℓ : ℕ}
 
 local notation "S" => spkLeakSessionSig Pt ℓ PQC
 
-def _root_.ReductionDsl.Comp.toPrf
+@[expose] def _root_.ReductionDsl.Comp.toPrf
     {O' : Ops S} :
     {Γ : List (Ty S)} → {t : Ty S} →
     Comp O' (e2ePrgIface Pt ℓ PQC) Γ t → Comp O' (e2ePrfIface Pt ℓ PQC) Γ t
@@ -70,7 +71,7 @@ def _root_.ReductionDsl.Comp.toPrf
   | _, _, .consumeFirstM K l p mark => .consumeFirstM K l p.toPrf mark
   | _, _, .foldM K l z f => .foldM K l z f.toPrf
 
-@[reducible] def _root_.ReductionDsl.CostedReduction.toPrf
+@[expose, reducible] def _root_.ReductionDsl.CostedReduction.toPrf
     {O' : Ops S} {κ : Type} {G : OracleSpec κ}
     {C : GameCodec S G} {rIn aIn aOut out : Ty S}
     (R : CostedReduction O' (e2ePrgIface Pt ℓ PQC) G C rIn aIn aOut out) :
@@ -186,38 +187,38 @@ variable {Pt : Type} [DecidableEq Pt] [Zero Pt] {PQC : Type} {ℓ : ℕ}
 local notation "S" => spkLeakSessionSig Pt ℓ PQC
 local notation "GS" => @gsTy Pt (GhostState Bytes) Unit (CBC.Plain ℓ) PQC (BitVec 256) Bytes
 
-@[reducible] def hop2EntryTy : Ty S :=
+@[expose, reducible] def hop2EntryTy : Ty S :=
   .prod (.prod .nat (.base .key)) (.base .rcoins)
 
-@[reducible] def hop2AuxTy : Ty S :=
+@[expose, reducible] def hop2AuxTy : Ty S :=
   .prod (.list hop2EntryTy)
     (.prod (.list hop2EntryTy)
       (.prod (.prod (.opt .nat) (.opt .nat))
         (.prod (.prod (.base .rcoins) (.base .rcoins)) .bool)))
 
-@[reducible] def hop2ChallTy : Ty S :=
+@[expose, reducible] def hop2ChallTy : Ty S :=
   .prod (.base .rcoins) (.base .rcoins)
 
-@[reducible] def hop2StTy : Ty S :=
+@[expose, reducible] def hop2StTy : Ty S :=
   .prod GS (.prod hop2AuxTy hop2ChallTy)
 
-@[reducible] def hop2UpdTy : Ty S :=
+@[expose, reducible] def hop2UpdTy : Ty S :=
   .prod (.opt .nat) (.prod (.base .rcoins) (.opt hop2EntryTy))
 
-@[reducible] def hop2RecvResTy : Ty S :=
+@[expose, reducible] def hop2RecvResTy : Ty S :=
   .prod (.base .st) (.prod .nat (.prod .nat (.base .msg)))
 
-@[reducible] def hop2OutTy : Ty S :=
+@[expose, reducible] def hop2OutTy : Ty S :=
   .opt (.prod hop2RecvResTy (.opt hop2UpdTy))
 
-@[reducible] def hop2SendHalfResTy : Ty S :=
+@[expose, reducible] def hop2SendHalfResTy : Ty S :=
   .opt (.prod (.opt .nat)
     (.prod (.base .rcoins) (.prod (.base .rcoins) (.opt hop2EntryTy))))
 
-def hop2AuxEnc (a : Hop2Aux Pt) : (hop2AuxTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote :=
+@[expose] def hop2AuxEnc (a : Hop2Aux Pt) : (hop2AuxTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote :=
   (a.lazy, a.made, (a.idx .A, a.idx .B), (a.coins .A, a.coins .B), a.bad)
 
-def hop2AuxDec (v : (hop2AuxTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote) : Hop2Aux Pt where
+@[expose] def hop2AuxDec (v : (hop2AuxTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote) : Hop2Aux Pt where
   lazy := v.1
   made := v.2.1
   idx := fun | .A => v.2.2.1.1 | .B => v.2.2.1.2
@@ -235,11 +236,11 @@ omit [DecidableEq Pt] [Zero Pt] in
 @[simp] theorem hop2AuxEnc_hop2AuxDec (v : (hop2AuxTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote) :
     hop2AuxEnc (PQC := PQC) (ℓ := ℓ) (hop2AuxDec (PQC := PQC) (ℓ := ℓ) v) = v := rfl
 
-def hop2StDec (v : (hop2StTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote) :
+@[expose] def hop2StDec (v : (hop2StTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote) :
     SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes × Hop2Aux Pt :=
   (gsDec v.1, hop2AuxDec (PQC := PQC) (ℓ := ℓ) v.2.1)
 
-def hop2StEnc (st : SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes × Hop2Aux Pt)
+@[expose] def hop2StEnc (st : SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes × Hop2Aux Pt)
     (chall : Ratchet.RootKey × BitVec 256) : (hop2StTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote :=
   (gsEnc st.1, hop2AuxEnc (PQC := PQC) (ℓ := ℓ) st.2, chall)
 
@@ -257,29 +258,29 @@ theorem hop2StEnc_hop2StDec (v : (hop2StTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ))
   rcases v with ⟨g, a, c⟩
   simp [hop2StDec, hop2StEnc]
 
-def hop2UpdDec (v : (hop2UpdTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote) : Hop2Upd Pt :=
+@[expose] def hop2UpdDec (v : (hop2UpdTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote) : Hop2Upd Pt :=
   ⟨v.1, v.2.1, v.2.2⟩
 
-def hop2OutDec (v : (hop2OutTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote) : Hop2Out Pt ℓ :=
+@[expose] def hop2OutDec (v : (hop2OutTy (Pt := Pt) (PQC := PQC) (ℓ := ℓ)).denote) : Hop2Out Pt ℓ :=
   v.map fun (r, u) => (r, u.map (hop2UpdDec (PQC := PQC) (ℓ := ℓ)))
 
-def auxLazy
+@[expose] def auxLazy
     {O' : Ops S} {Γ : List (Ty S)} (a : Expr O' Γ hop2AuxTy) :
     Expr O' Γ (.list hop2EntryTy) := .fst a
-def auxMade
+@[expose] def auxMade
     {O' : Ops S} {Γ : List (Ty S)} (a : Expr O' Γ hop2AuxTy) :
     Expr O' Γ (.list hop2EntryTy) := .fst (.snd a)
-def auxIdx
+@[expose] def auxIdx
     {O' : Ops S} {Γ : List (Ty S)} (a : Expr O' Γ hop2AuxTy) :
     Expr O' Γ (.prod (.opt .nat) (.opt .nat)) := .fst (.snd (.snd a))
-def auxCoins
+@[expose] def auxCoins
     {O' : Ops S} {Γ : List (Ty S)} (a : Expr O' Γ hop2AuxTy) :
     Expr O' Γ (.prod (.base .rcoins) (.base .rcoins)) := .fst (.snd (.snd (.snd a)))
-def auxBad
+@[expose] def auxBad
     {O' : Ops S} {Γ : List (Ty S)} (a : Expr O' Γ hop2AuxTy) :
     Expr O' Γ .bool := .snd (.snd (.snd (.snd a)))
 
-def auxMk
+@[expose] def auxMk
     {O' : Ops S} {Γ : List (Ty S)}
     (lazy made : Expr O' Γ (.list hop2EntryTy))
     (idx : Expr O' Γ (.prod (.opt .nat) (.opt .nat)))
@@ -287,21 +288,21 @@ def auxMk
     (bad : Expr O' Γ .bool) : Expr O' Γ hop2AuxTy :=
   .pair lazy (.pair made (.pair idx (.pair coins bad)))
 
-def auxSetBad
+@[expose] def auxSetBad
     {O' : Ops S} {Γ : List (Ty S)} (auxE : Expr O' Γ hop2AuxTy)
     (badE : Expr O' Γ .bool) : Expr O' Γ hop2AuxTy :=
   .letE (.pair auxE badE)
     (auxMk (auxLazy (.fst .v0)) (auxMade (.fst .v0)) (auxIdx (.fst .v0)) (auxCoins (.fst .v0))
       (.snd .v0))
 
-def auxConsLazy
+@[expose] def auxConsLazy
     {O' : Ops S} {Γ : List (Ty S)} (auxE : Expr O' Γ hop2AuxTy)
     (eE : Expr O' Γ hop2EntryTy) : Expr O' Γ hop2AuxTy :=
   .letE (.pair auxE eE)
     (auxMk (.cons (.snd .v0) (auxLazy (.fst .v0))) (auxMade (.fst .v0))
       (auxIdx (.fst .v0)) (auxCoins (.fst .v0)) (auxBad (.fst .v0)))
 
-def hop2CommitE
+@[expose] def hop2CommitE
     {O' : Ops S} {Γ : List (Ty S)}
     (auxE : Expr O' Γ hop2AuxTy) (qE : Expr O' Γ .bool)
     (updOptE : Expr O' Γ (.opt hop2UpdTy)) : Expr O' Γ hop2AuxTy :=
@@ -335,19 +336,19 @@ local notation "IPRG" => e2ePrgIface Pt ℓ PQC
 local notation "GS" => @gsTy Pt (GhostState Bytes) Unit (CBC.Plain ℓ) PQC (BitVec 256) Bytes
 local notation "RR" => @smRrTy Pt (GhostState Bytes) Unit (CBC.Plain ℓ) PQC (BitVec 256) Bytes
 
-def prgDrawBool {Γ : List (Ty S)} : Comp OO IPRG Γ .bool :=
+@[expose] def prgDrawBool {Γ : List (Ty S)} : Comp OO IPRG Γ .bool :=
   rdsl do sample (I := IPRG) (Sum.inr .bool) ()
 
-def prgDrawBv {Γ : List (Ty S)} : Comp OO IPRG Γ (.base .rcoins) :=
+@[expose] def prgDrawBv {Γ : List (Ty S)} : Comp OO IPRG Γ (.base .rcoins) :=
   rdsl do sample (I := IPRG) (Sum.inr (.base true)) ()
 
-def prgDrawCoins
+@[expose] def prgDrawCoins
     {O' : Ops S} {Γ : List (Ty S)} : Comp O' IPRG Γ (.opt (.base .coins)) :=
   rdsl do
     r ← sample (I := IPRG) (Sum.inr (.base false)) ()
     return some r
 
-def hop2LookupE {Γ : List (Ty S)} (L : ℕ)
+@[expose] def hop2LookupE {Γ : List (Ty S)} (L : ℕ)
     (l : Expr OO Γ (.list hop2EntryTy))
     (tE : Expr OO Γ .nat) (qE : Expr OO Γ (.base .key)) :
     Expr OO Γ (.opt (.base .rcoins)) :=
@@ -359,7 +360,7 @@ def hop2LookupE {Γ : List (Ty S)} (L : ℕ)
         else
           acc))
 
-def hop2LazyC
+@[expose] def hop2LazyC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (drawBv : ∀ {Γ}, Comp OO I Γ (.base .rcoins))
     {Γ : List (Ty S)}
@@ -374,7 +375,7 @@ def hop2LazyC
     | some u =>
       return (u, aux0)
 
-def hop2FinishNoneC
+@[expose] def hop2FinishNoneC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     {Γ : List (Ty S)}
     (aux1E : Expr OO Γ hop2AuxTy)
@@ -391,7 +392,7 @@ def hop2FinishNoneC
       | some res =>
         return (some (res, some (none, (rc0, none))), aux1)
 
-def hop2SendHalfC
+@[expose] def hop2SendHalfC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (k : ℕ)
     (drawBv : ∀ {Γ}, Comp OO I Γ (.base .rcoins))
@@ -425,7 +426,7 @@ def hop2SendHalfC
         return some (none, (rkck.1, (rkck.2, none)))
 
 /-- Costed `hop2DH` handler, fusing the `idx1 = none` branch into `hop2FinishNoneC` so each branch makes at most one `stepC` query. -/
-def hop2DHC
+@[expose] def hop2DHC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (k : ℕ)
     (drawBv : ∀ {Γ}, Comp OO I Γ (.base .rcoins))
@@ -471,7 +472,7 @@ def hop2DHC
         let rkck := opRootExpand P ℓ Dh encPt encT decT s u
         hop2FinishNoneC P ℓ Dh encPt encT decT s B aux0 g0 c0 rc0 rkck
 
-def hop2RecvC
+@[expose] def hop2RecvC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (k : ℕ)
     (drawBv : ∀ {Γ}, Comp OO I Γ (.base .rcoins))
@@ -501,7 +502,7 @@ def hop2RecvC
     else
       return (none, aux0)
 
-def hop2DeliverC
+@[expose] def hop2DeliverC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (k : ℕ)
     (drawBv : ∀ {Γ}, Comp OO I Γ (.base .rcoins))
@@ -535,7 +536,7 @@ def hop2DeliverC
           let msgOut := if challContainsE K gs0 (recPos rec0) then none else some m'
           return (some (.inr (t', i', msgOut)), (gsFinal, (auxFinal, chall0)))
 
-def hop2InjectC
+@[expose] def hop2InjectC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (k : ℕ)
     (drawBv : ∀ {Γ}, Comp OO I Γ (.base .rcoins))
@@ -577,7 +578,7 @@ def hop2InjectC
         else
           return (some (.inl ()), (gsSetWin gs0 true, (auxBadUpd, chall0)))
 
-def hop2ImplC
+@[expose] def hop2ImplC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (k : ℕ)
     (drawCoins : ∀ {Γ}, Comp OSM I Γ (.opt (.base .coins)))
@@ -606,7 +607,7 @@ def hop2ImplC
       res ← ((corrRC (I := I) K (ConfigRC.spkS OSM) gs0 pCorr).liftL)
       return (.inr res.1, (res.2, restSt))
 
-def hop2InitAfterChallC
+@[expose] def hop2InitAfterChallC
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (k : ℕ)
     (drawBool : ∀ {Γ}, Comp OO I Γ .bool)
@@ -644,7 +645,7 @@ def hop2InitAfterChallC
 
 /-- Parameterized `CostedReduction` for `hop2Game`: takes `initChall` producing `chall` and `stepC` computing
 table `k + 1`'s PRK. -/
-def hop2GameRedProg
+@[expose] def hop2GameRedProg
     {ι : Type} {T : OracleSpec ι} {I : Iface S T}
     (k : ℕ) {rIn : Ty S}
     (drawBool : ∀ {Γ}, Comp OO I Γ .bool)
@@ -666,7 +667,7 @@ def hop2GameRedProg
   finish := rdsl [(_, aux0, _), _] do return auxBad aux0
 
 /-- Costed `hop2PrgRedK` PRG reduction for hybrid `k`. -/
-def hop2PrgRedKProg (k : ℕ) :
+@[expose] def hop2PrgRedKProg (k : ℕ) :
     CostedReduction (spkLeakSessionOps P ℓ Dh encPt encT decT s) (e2ePrgIface Pt ℓ PQC)
       (SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) (e2eCodec Pt ℓ PQC)
       (.prod (.base .rcoins) (.base .rcoins)) .unit .bool .bool :=
@@ -678,7 +679,7 @@ def hop2PrgRedKProg (k : ℕ) :
     (fun c1E qE => rdsl do return opExtractTag P ℓ Dh encPt encT decT s c1E qE)
 
 /-- Costed `hop2PrfRedK` PRF reduction for hybrid `k`. -/
-def hop2PrfRedKProg (k : ℕ) :
+@[expose] def hop2PrfRedKProg (k : ℕ) :
     CostedReduction (spkLeakSessionOps P ℓ Dh encPt encT decT s) (e2ePrfIface Pt ℓ PQC)
       (SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) (e2eCodec Pt ℓ PQC)
       .unit .unit .bool .bool :=

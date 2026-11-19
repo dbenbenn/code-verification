@@ -9,13 +9,14 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyA
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerDefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseSerBodyA
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.EncodeRaw.BaseX
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.PrologueVersionLocalIdentity -- proof-setup: allow-public-import
 
 /-!
 # Relocatable `SessionRecord::serialize` with One Previous Session: Field-2 Proof
@@ -24,7 +25,7 @@ Relocatable `[LibsignalPlacement]` proof of `serField2_placed_step : SerField2Pl
 on Block `52` (`lsProg_52 H`, `+444 .. +692`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option relaxedAutoImplicit false
@@ -34,7 +35,7 @@ set_option maxRecDepth 2000000
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
-open Arm64 ProofLib ProofLib.ObjectLoad ProofLib.ProgramReflection CryptoGames
+open Arm64 ProofLib ProofLib.ProgramReflection CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification
 open CryptoVerification.RustHeap hiding vecU8Buf vecU8At_eq_header_sep_buf

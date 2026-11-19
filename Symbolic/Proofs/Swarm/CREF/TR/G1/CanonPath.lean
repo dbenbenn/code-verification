@@ -9,9 +9,8 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import VCVio.Prelude.Core
 
@@ -22,7 +21,7 @@ Proves `not_bobStart_of_bobDone`: under `PathFaithful`, a call on a pre-key mess
 matches an earlier `BobDone` event cannot take Bob's session-start path.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

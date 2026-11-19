@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.CliC.SpqrV1.Varint.SkipField3BranchesPlaced
-public import LibsignalBinary.Proofs.CliC.SpqrV1.Varint.DecodeVarint2Placed
+import LibsignalBinary.Proofs.CliC.SpqrV1.Varint.SkipField3BranchesPlaced
+import LibsignalBinary.Proofs.CliC.SpqrV1.Varint.DecodeVarint2Placed
 import LibsignalBinary.Proofs.ProtoCodecRoundTrip
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.ConsumeMessageKey.GrowOneProofs.GrowOneCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.GenLsBlock -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymB -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Varint.SkipField3 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.SkipFieldLemmas
 
 /-!
 # Relocatable Proof of `CliC` `skip_field [local#6]`
@@ -23,7 +30,7 @@ Proves the recursive `startGroup` loop and combines all wire-type branches by in
 to establish `withLsCodeLoaded lsmpl (skipField3Spec A)` on Block `546`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

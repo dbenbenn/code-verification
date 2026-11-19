@@ -9,14 +9,16 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCallees
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SmallCallees -- proof-setup: allow-public-import
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.AllocCodeSym
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
+public import LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs -- proof-setup: allow-public-import
 
 /-!
 # Budget-Threaded and `VmPreserved` Placed Contracts for Small Initiator Callees
@@ -28,7 +30,7 @@ Proves `VmPreserved`-strengthened `[LibsignalPlacement]` contracts for
 `<KyberPreKeyId as Display>::fmt` (Block `81`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -48,7 +50,11 @@ open CryptoVerification.E2E.Pqxdh (
 open LibsignalBinary.Heap (
   AllocCostModel AllocEvent BudgetLimits FitsEnv RustCliAllocBudget VmPreserved
 )
-open LibsignalBinary.Heap.SpecBudget (FmtWriteEnv fmtWriteBudgetEnvSpec withVmPreserved)
+open LibsignalBinary.Heap.SpecBudget (fmtWriteBudgetEnvSpec withVmPreserved)
+open LibsignalBinary.Proofs.Placed.ElfLsRetAddr (LsRetAddr624)
+open LibsignalBinary.Proofs.SignalSession.Cli.HooksDehook.CliFmtLsPlacedSpecs (
+  CliFmtWriteEnv fmtWriteLsEnvSpec withLsRet624
+)
 
 /-! ## 1. `VmPreserved` Leaf Contracts (Blocks `110`, `34`, `31`) -/
 
@@ -69,7 +75,7 @@ private theorem subroutine_ok_withVmPreserved_intro {α : Type} {prog : Program}
   rw [sepConj_assoc, satisfies_pure_sepConj]
   exact ⟨hvm, hq hm⟩
 
-def kemPublicKeyLengthBudgetSpec : Spec Unit :=
+@[expose] def kemPublicKeyLengthBudgetSpec : Spec Unit :=
   withVmPreserved kemPublicKeyLengthSpec
 
 theorem kemPublicKeyLength_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
@@ -80,7 +86,7 @@ theorem kemPublicKeyLength_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
   dsimp only [kemPublicKeyLengthSpec] at *
   by_vm_steps (wp_steps; wp_done)
 
-def setUnackKyberPreKeyIdBudgetSpec : Spec (BitVec 64 × BitVec 64 × BitVec 32) :=
+@[expose] def setUnackKyberPreKeyIdBudgetSpec : Spec (BitVec 64 × BitVec 64 × BitVec 32) :=
   withVmPreserved setUnackKyberPreKeyIdSpec
 
 private theorem cond_eq_adds_1_false {cap : BitVec 64} (hne : cap + 1#64 ≠ 0#64) :
@@ -104,7 +110,7 @@ theorem setUnackKyberPreKeyId_placed_ok [LibsignalPlacement] (H : LibsignalHooks
     wp_done
   )
 
-def setKyberCiphertextNoneBudgetSpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) :=
+@[expose] def setKyberCiphertextNoneBudgetSpec : Spec (BitVec 64 × BitVec 64 × BitVec 64) :=
   withVmPreserved setKyberCiphertextNoneSpec
 
 theorem setKyberCiphertext_none_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
@@ -131,7 +137,7 @@ private theorem stackAt_kyberPreKeyIdDisplay (sp : BitVec 64) :
   ProofLib.stackAt_split_cells sp extHookStack 4 (by decide)
 
 def kyberPreKeyIdDisplayEnvSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
-    (lim : BudgetLimits) (Env : List AllocEvent → Prop := FmtWriteEnv) :
+    (lim : BudgetLimits) (Env : List AllocEvent → Prop := CliFmtWriteEnv) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8) × M.σ) where
   pre := fun (f, v, vt, bs, st) s =>
     ⌜s.readReg64 .x1 = f ∧ FitsEnv M lim st Env⌝ ∗
@@ -147,17 +153,33 @@ def kyberPreKeyIdDisplayEnvSpec (M : AllocCostModel) (A : RustCliAllocBudget M)
 abbrev kyberPreKeyIdDisplaySpec (M : AllocCostModel) (A : RustCliAllocBudget M)
     (lim : BudgetLimits) :
     Spec (BitVec 64 × BitVec 64 × BitVec 64 × List (BitVec 8) × M.σ) :=
-  kyberPreKeyIdDisplayEnvSpec M A lim FmtWriteEnv
+  kyberPreKeyIdDisplayEnvSpec M A lim CliFmtWriteEnv
+
+private def fmtWriteLsExternSpec [LibsignalPlacement] (M : AllocCostModel)
+    (A : RustCliAllocBudget M) (lim : BudgetLimits) (Env : List AllocEvent → Prop) :
+    Spec (BitVec 64 × List (BitVec 8) × M.σ) where
+  pre := fun (v, bs, st) s =>
+    ⌜LsRetAddr624 (s.readReg64 .lr) ∧ s.readReg64 .x0 = v ∧ FitsEnv M lim st Env⌝ ∗
+      vecU8 A.repAlloc v bs ∗ A.pool lim st s ∗ stackAt s.sp extHookStack
+  post := (fmtWriteBudgetEnvSpec M A lim Env).post
+
+private theorem fmtWriteLsEnvSpec_eq_extern [LibsignalPlacement] (M : AllocCostModel)
+    (A : RustCliAllocBudget M) (lim : BudgetLimits) (Env : List AllocEvent → Prop) :
+    fmtWriteLsEnvSpec M A lim Env = fmtWriteLsExternSpec M A lim Env := by
+  dsimp only [fmtWriteLsEnvSpec, withLsRet624, fmtWriteBudgetEnvSpec, fmtWriteLsExternSpec]
+  congr 1; funext ⟨v, bs, st⟩ s
+  rw [pure_sepConj_pure_assoc]
 
 theorem kyberPreKeyIdDisplay_placed_ok_of_contract [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {Env : List AllocEvent → Prop} {H : LibsignalHooks}
     (hwrite : subroutine_ok ((blkPC_81).rebase (blkPl_81).base H)
-      (lsρ lsFmtWriteSym) (fmtWriteBudgetEnvSpec M A lim Env)) :
+      (lsρ lsFmtWriteSym) (fmtWriteLsEnvSpec M A lim Env)) :
     subroutine_ok ((blkPC_81).rebase (blkPl_81).base H) (blkPl_81).base
       (kyberPreKeyIdDisplayEnvSpec M A lim Env) := by
   simp only [kyberPreKeyIdDisplayEnvSpec, stackAt_kyberPreKeyIdDisplay]
-  simp only [fmtWriteBudgetEnvSpec] at hwrite
+  rw [fmtWriteLsEnvSpec_eq_extern] at hwrite
+  dsimp only [fmtWriteLsExternSpec, fmtWriteBudgetEnvSpec] at hwrite
   cells_unfold
   wp_init x s0
   rcases x with ⟨f, v, vt, bs, st⟩
@@ -173,7 +195,7 @@ theorem kyberPreKeyIdDisplay_placed_ok_of_contract [LibsignalPlacement]
 theorem kyberPreKeyIdDisplay_placed_ok [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {Env : List AllocEvent → Prop} {H : LibsignalHooks}
-    (hW : HookSat H lsFmtWriteSym (fmtWriteBudgetEnvSpec M A lim Env)) :
+    (hW : HookSat H lsFmtWriteSym (fmtWriteLsEnvSpec M A lim Env)) :
     subroutine_ok ((blkPC_81).rebase (blkPl_81).base H) (blkPl_81).base
       (kyberPreKeyIdDisplayEnvSpec M A lim Env) :=
   kyberPreKeyIdDisplay_placed_ok_of_contract (ls_hook_ok_of_mem hW)

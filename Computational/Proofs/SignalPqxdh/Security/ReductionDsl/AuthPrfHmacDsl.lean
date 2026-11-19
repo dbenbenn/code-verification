@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa -- proof-setup: allow-public-import
 
 /-!
 # `ReductionDsl` Program for the `Auth` `PrfHmac` Reduction
@@ -18,7 +18,7 @@ Defines `prfHmacRedProg`, the single-stage `ReductionDsl` witness over `pqPrfHma
 for the fused `Auth` `PrfHmac` reduction (`prfHmacReductionAuth`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -102,37 +102,37 @@ section ExprHelpers
 
 variable {Γ : List PT}
 
-def bytesTake (w : ℕ+) (n : Expr pqxdhOps Γ .nat) (x : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ (B w) :=
+@[expose] def bytesTake (w : ℕ+) (n : Expr pqxdhOps Γ .nat) (x : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ (B w) :=
   Expr.op (O := pqxdhOps) (Sum.inl (.take w)) (.pair n x)
 
-def bytesDrop (w : ℕ+) (n : Expr pqxdhOps Γ .nat) (x : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ (B w) :=
+@[expose] def bytesDrop (w : ℕ+) (n : Expr pqxdhOps Γ .nat) (x : Expr pqxdhOps Γ (B w)) : Expr pqxdhOps Γ (B w) :=
   Expr.op (O := pqxdhOps) (Sum.inl (.drop w)) (.pair n x)
 
-def queryHmacEval (x : Expr pqxdhOps Γ (B 359)) : Comp pqxdhOps pqPrfHmacIface Γ (B 32) :=
+@[expose] def queryHmacEval (x : Expr pqxdhOps Γ (B 359)) : Comp pqxdhOps pqPrfHmacIface Γ (B 32) :=
   Comp.query (I := pqPrfHmacIface) (Sum.inr (359 : ℕ+)) x
 
-def natLe (a b : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .bool := .not (.lt b a)
+@[expose] def natLe (a b : Expr pqxdhOps Γ .nat) : Expr pqxdhOps Γ .bool := .not (.lt b a)
 
-def muKeys (s : Expr pqxdhOps Γ muStTy) : Expr pqxdhOps Γ muKeysTy := .fst s
-def muChal (s : Expr pqxdhOps Γ muStTy) : Expr pqxdhOps Γ muChalTy := .fst (.snd s)
-def muPend (s : Expr pqxdhOps Γ muStTy) : Expr pqxdhOps Γ muPendTy := .fst (.snd (.snd s))
-def muBad (s : Expr pqxdhOps Γ muStTy) : Expr pqxdhOps Γ .bool := .snd (.snd (.snd s))
-@[reducible] def muMk (k : Expr pqxdhOps Γ muKeysTy) (c : Expr pqxdhOps Γ muChalTy)
+@[expose] def muKeys (s : Expr pqxdhOps Γ muStTy) : Expr pqxdhOps Γ muKeysTy := .fst s
+@[expose] def muChal (s : Expr pqxdhOps Γ muStTy) : Expr pqxdhOps Γ muChalTy := .fst (.snd s)
+@[expose] def muPend (s : Expr pqxdhOps Γ muStTy) : Expr pqxdhOps Γ muPendTy := .fst (.snd (.snd s))
+@[expose] def muBad (s : Expr pqxdhOps Γ muStTy) : Expr pqxdhOps Γ .bool := .snd (.snd (.snd s))
+@[expose, reducible] def muMk (k : Expr pqxdhOps Γ muKeysTy) (c : Expr pqxdhOps Γ muChalTy)
     (p : Expr pqxdhOps Γ muPendTy) (b : Expr pqxdhOps Γ .bool) : Expr pqxdhOps Γ muStTy :=
   .pair k (.pair c (.pair p b))
 
-def emptyMuE : Expr pqxdhOps Γ muStTy := muMk .nil .nil .nil (.bool false)
+@[expose] def emptyMuE : Expr pqxdhOps Γ muStTy := muMk .nil .nil .nil (.bool false)
 
-def etmBodyE (ct : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def etmBodyE (ct : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 32) :=
   bytesTake 32 (.sub (bytesLen 32 ct) (.nat 8)) ct
 
-def etmBody24E (ct : Expr pqxdhOps Γ (B 24)) : Expr pqxdhOps Γ (B 24) :=
+@[expose] def etmBody24E (ct : Expr pqxdhOps Γ (B 24)) : Expr pqxdhOps Γ (B 24) :=
   bytesTake 24 (.sub (bytesLen 24 ct) (.nat 8)) ct
 
-def etmTagE (ct : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def etmTagE (ct : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 32) :=
   bytesDrop 32 (.sub (bytesLen 32 ct) (.nat 8)) ct
 
-def macInputE (ad : Expr pqxdhOps Γ (B 158)) (ct : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 359) :=
+@[expose] def macInputE (ad : Expr pqxdhOps Γ (B 158)) (ct : Expr pqxdhOps Γ (B 32)) : Expr pqxdhOps Γ (B 359) :=
   catB 201 158
     (catB 158 43
       (bytesTake 158 (.nat firstMsgHdrLen) ad)
@@ -140,7 +140,7 @@ def macInputE (ad : Expr pqxdhOps Γ (B 158)) (ct : Expr pqxdhOps Γ (B 32)) : E
         (catB 10 32 (bytesVarint (bytesLen 32 ct)) ct)))
     (bytesDrop 158 (.nat firstMsgHdrLen) ad)
 
-def initSlotE (S : Setup) (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .nat :=
+@[expose] def initSlotE (S : Setup) (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ .nat :=
   eCaseSum sid
     (fun ui => .add (.mulK (if S.N_id = 0 then 0 else S.N_send_opk) (.fst (v ui))) (.snd (v ui)))
     fun r1 => eCaseSum (v r1)
@@ -148,19 +148,19 @@ def initSlotE (S : Setup) (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps �
         (.add (.mulK (if S.N_id = 0 then 0 else S.N_send_no_opk) (.fst (v ui))) (.snd (v ui))))
       fun _ => .nat S.N_send_tot
 
-def muKeyIdEq {Γ : List PT} (a b : Expr pqxdhOps Γ muKeyIdTy) : Expr pqxdhOps Γ .bool :=
+@[expose] def muKeyIdEq {Γ : List PT} (a b : Expr pqxdhOps Γ muKeyIdTy) : Expr pqxdhOps Γ .bool :=
   eLet2 a b fun a b => eCaseSum (v a)
     (fun x => eCaseSum (v b) (fun y => sidEq (v x) (v y)) fun _ => .bool false)
     (fun x => eCaseSum (v b) (fun _ => .bool false) fun y => natEq (v x) (v y))
 
-def initKeyIdE (_ : Setup) (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ muKeyIdTy :=
+@[expose] def initKeyIdE (_ : Setup) (sid : Expr pqxdhOps Γ sessionIdTy) : Expr pqxdhOps Γ muKeyIdTy :=
   eCaseSum sid
     (fun ui => .inl (.inl (v ui)))
     fun r1 => eCaseSum (v r1)
       (fun ui => .inl (.inr (.inl (v ui))))
       fun _ => .inr (.nat 0)
 
-def pendFilterE (K : Nat) {Γ₁ : List PT}
+@[expose] def pendFilterE (K : Nat) {Γ₁ : List PT}
     (a : Var Γ₁ (.prod muPendTy (.prod .nat (B 359)))) [Ext Γ₁ Γ] : Expr pqxdhOps Γ muPendTy :=
   .foldrB K (.fst (v a)) .nil
     (.ite (.and (natEq (.fst (.var .zero)) (.fst (.snd (v a))))
@@ -168,7 +168,7 @@ def pendFilterE (K : Nat) {Γ₁ : List PT}
       (.var (.succ .zero))
       (.cons (.var .zero) (.var (.succ .zero))))
 
-def pendHitE (K : Nat) {Γ₁ : List PT}
+@[expose] def pendHitE (K : Nat) {Γ₁ : List PT}
     (a : Var Γ₁ (.prod muPendTy (.prod .nat (.prod (B 359) (B 32))))) [Ext Γ₁ Γ] :
     Expr pqxdhOps Γ .bool :=
   eAny K (.fst (v a)) fun e =>
@@ -177,7 +177,7 @@ def pendHitE (K : Nat) {Γ₁ : List PT}
       (bytesBeq 32 (.snd (.snd (v e)))
         (bytesTake 32 (.nat 8) (.snd (.snd (.snd (v a))))))
 
-def dedupE (K : Nat) {Γ₁ : List PT} (xs : Var Γ₁ (.list (.prod .nat (B 359)))) [Ext Γ₁ Γ] :
+@[expose] def dedupE (K : Nat) {Γ₁ : List PT} (xs : Var Γ₁ (.list (.prod .nat (B 359)))) [Ext Γ₁ Γ] :
     Expr pqxdhOps Γ (.list (.prod .nat (B 359))) :=
   .foldrB K (v xs) .nil
     (.ite (.anyB K (.var (.succ .zero))
@@ -186,35 +186,35 @@ def dedupE (K : Nat) {Γ₁ : List PT} (xs : Var Γ₁ (.list (.prod .nat (B 359
       (.var (.succ .zero))
       (.cons (.var .zero) (.var (.succ .zero))))
 
-def ipUEntry (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ principalEntryTy := .fst p
-def ipPeer (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (.opt (.prod .nat principalEntryTy)) :=
+@[expose] def ipUEntry (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ principalEntryTy := .fst p
+@[expose] def ipPeer (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (.opt (.prod .nat principalEntryTy)) :=
   .fst (.snd p)
-def ipFim (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (.prod .bool (.prod .bool (B 32))) :=
+@[expose] def ipFim (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (.prod .bool (.prod .bool (B 32))) :=
   .fst (.snd (.snd p))
-def ipFresh (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ .bool := .fst (ipFim p)
-def ipIdeal (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ .bool := .fst (.snd (ipFim p))
-def ipMsgPlain (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (B 32) := .snd (.snd (ipFim p))
-def ipT3 (p : Expr pqxdhOps Γ intPrepTy) := Expr.snd (.snd (.snd p))
-def ipKeys6 (p : Expr pqxdhOps Γ intPrepTy) := Expr.fst (ipT3 p)
-def ipDrKey (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ drKeyTy := .fst (.snd (ipT3 p))
-def ipRks4 (p : Expr pqxdhOps Γ intPrepTy) := Expr.fst (.snd (.snd (ipT3 p)))
-def ipSalt (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (.opt (B 32)) :=
+@[expose] def ipFresh (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ .bool := .fst (ipFim p)
+@[expose] def ipIdeal (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ .bool := .fst (.snd (ipFim p))
+@[expose] def ipMsgPlain (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (B 32) := .snd (.snd (ipFim p))
+@[expose] def ipT3 (p : Expr pqxdhOps Γ intPrepTy) := Expr.snd (.snd (.snd p))
+@[expose] def ipKeys6 (p : Expr pqxdhOps Γ intPrepTy) := Expr.fst (ipT3 p)
+@[expose] def ipDrKey (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ drKeyTy := .fst (.snd (ipT3 p))
+@[expose] def ipRks4 (p : Expr pqxdhOps Γ intPrepTy) := Expr.fst (.snd (.snd (ipT3 p)))
+@[expose] def ipSalt (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (.opt (B 32)) :=
   .fst (.snd (.snd (.snd (ipT3 p))))
-def ipPqMsg (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (B 32) :=
+@[expose] def ipPqMsg (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (B 32) :=
   .fst (.snd (.snd (.snd (.snd (ipT3 p)))))
-def ipAd (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (B 158) :=
+@[expose] def ipAd (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (B 158) :=
   .fst (.snd (.snd (.snd (.snd (.snd (ipT3 p))))))
-def ipProv (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ provTy :=
+@[expose] def ipProv (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ provTy :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (ipT3 p)))))))
-def ipRoC (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (.list (.prod (B 192) drKeyTy)) :=
+@[expose] def ipRoC (p : Expr pqxdhOps Γ intPrepTy) : Expr pqxdhOps Γ (.list (.prod (B 192) drKeyTy)) :=
   .fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (ipT3 p))))))))
-def ipRootC (p : Expr pqxdhOps Γ intPrepTy) :
+@[expose] def ipRootC (p : Expr pqxdhOps Γ intPrepTy) :
     Expr pqxdhOps Γ (.list (.prod (.prod (B 32) (B 32)) (.prod (B 32) (B 32)))) :=
   .snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd (ipT3 p))))))))
 
 end ExprHelpers
 
-def mapMV {ι : Type} {T : OracleSpec ι}
+@[expose] def mapMV {ι : Type} {T : OracleSpec ι}
     {I : Iface pqSig T} {Γ : List PT} {τ₁ τ₂ : PT}
     (K : Nat) (xs : Expr pqxdhOps Γ (.list τ₁))
     (f : Var (τ₁ :: Γ) τ₁ → Comp pqxdhOps I (τ₁ :: Γ) τ₂) : Comp pqxdhOps I Γ (.list τ₂) :=
@@ -226,7 +226,7 @@ variable (S : Setup) (K : Nat) {Γ₁ Γ₂ Γ₃ Γ₄ Γ₅ Δ : List PT}
 
 /-! ## Multi-Key Game Steps -/
 
-def hmKeyIdC (a : Expr pqxdhOps Δ (.prod muKeyIdTy muStTy)) :
+@[expose] def hmKeyIdC (a : Expr pqxdhOps Δ (.prod muKeyIdTy muStTy)) :
     Comp pqxdhOps pqPrimIface Δ (.prod (.prod .nat msgKeysTy) muStTy) :=
   letV a fun a =>
   letV (.fst (v a)) fun i =>
@@ -239,11 +239,11 @@ def hmKeyIdC (a : Expr pqxdhOps Δ (.prod muKeyIdTy muStTy)) :
           (muBad (v st)))))
     fun e => .ret (.pair (.snd (v e)) (v st))
 
-def hmKeyC (a : Expr pqxdhOps Δ (.prod .nat muStTy)) :
+@[expose] def hmKeyC (a : Expr pqxdhOps Δ (.prod .nat muStTy)) :
     Comp pqxdhOps pqPrimIface Δ (.prod (.prod .nat msgKeysTy) muStTy) :=
   letV a fun a => hmKeyIdC K (.pair (.inr (.fst (v a))) (.snd (v a)))
 
-def encPostC (a : Expr pqxdhOps Δ (.prod encContTy (B 32))) :
+@[expose] def encPostC (a : Expr pqxdhOps Δ (.prod encContTy (B 32))) :
     Comp pqxdhOps pqPrimIface Δ (.prod (.opt (B 32)) muStTy) :=
   letV a fun a =>
   letV (.fst (v a)) fun c =>
@@ -261,7 +261,7 @@ def encPostC (a : Expr pqxdhOps Δ (.prod encContTy (B 32))) :
     (muMk (muKeys (v st)) (.cons (.pair (v i) (.pair (v ad) (v ct'))) (muChal (v st)))
       (pendFilterE K fa) (boolOr (muBad (v st)) (pendHitE K ha))))
 
-def hmEncPreIdC (a : Expr pqxdhOps Δ (.prod .nat (.prod muKeyIdTy (.prod (B 158) (.prod (B 32) muStTy))))) :
+@[expose] def hmEncPreIdC (a : Expr pqxdhOps Δ (.prod .nat (.prod muKeyIdTy (.prod (B 158) (.prod (B 32) muStTy))))) :
     Comp pqxdhOps pqPrimIface Δ encPreTy :=
   letV a fun a =>
   letV (.fst (v a)) fun jt =>
@@ -288,12 +288,12 @@ def hmEncPreIdC (a : Expr pqxdhOps Δ (.prod .nat (.prod muKeyIdTy (.prod (B 158
              (muPend (v st)) (muBad (v st))))))))
     fun _ => .ret (.inl (.pair .none (v st0)))
 
-def hmEncPreC (a : Expr pqxdhOps Δ (.prod .nat (.prod .nat (.prod (B 158) (.prod (B 32) muStTy))))) :
+@[expose] def hmEncPreC (a : Expr pqxdhOps Δ (.prod .nat (.prod .nat (.prod (B 158) (.prod (B 32) muStTy))))) :
     Comp pqxdhOps pqPrimIface Δ encPreTy :=
   letV a fun a =>
   hmEncPreIdC K (.pair (.fst (v a)) (.pair (.inr (.fst (.snd (v a)))) (.snd (.snd (v a)))))
 
-def hmForgeIdC (a : Expr pqxdhOps Δ (.prod .nat (.prod muKeyIdTy (.prod (B 158) (.prod (B 32) muStTy))))) :
+@[expose] def hmForgeIdC (a : Expr pqxdhOps Δ (.prod .nat (.prod muKeyIdTy (.prod (B 158) (.prod (B 32) muStTy))))) :
     Comp pqxdhOps pqPrimIface Δ muStTy :=
   letV a fun a =>
   letV (.fst (v a)) fun jt =>
@@ -322,14 +322,14 @@ def hmForgeIdC (a : Expr pqxdhOps Δ (.prod .nat (.prod muKeyIdTy (.prod (B 158)
           (boolOr (muBad (v st)) (isSomeE (v res))))))
     (.ret (v st))
 
-def hmForgeC (a : Expr pqxdhOps Δ (.prod .nat (.prod .nat (.prod (B 158) (.prod (B 32) muStTy))))) :
+@[expose] def hmForgeC (a : Expr pqxdhOps Δ (.prod .nat (.prod .nat (.prod (B 158) (.prod (B 32) muStTy))))) :
     Comp pqxdhOps pqPrimIface Δ muStTy :=
   letV a fun a =>
   hmForgeIdC K (.pair (.fst (v a)) (.pair (.inr (.fst (.snd (v a)))) (.snd (.snd (v a)))))
 
 /-! ## Initiator Send Branches -/
 
-def finishIntC (a : Expr pqxdhOps Δ intFinArgsTy) : Comp pqxdhOps pqPrimIface Δ RSF :=
+@[expose] def finishIntC (a : Expr pqxdhOps Δ intFinArgsTy) : Comp pqxdhOps pqPrimIface Δ RSF :=
   letV a fun a =>
   letV (.fst (v a)) fun fhst =>
   letV (.fst (.snd (v a))) fun sid =>
@@ -389,7 +389,7 @@ def finishIntC (a : Expr pqxdhOps Δ intFinArgsTy) : Comp pqxdhOps pqPrimIface �
       (aSendUnfresh (v drKey) (v rk1) (v ck1_1) (v wireMsg))) fun resp =>
   .ret (.pair (v resp) (ahsfUpd (v fhst) (hst := v hst')))
 
-def intSendPrepC (opk : Bool) (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ sendQTy)
+@[expose] def intSendPrepC (opk : Bool) (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ (.opt intPrepTy) :=
   letV (ahsfHybrid (v fhst)) fun hst =>
   letV (ahsBase (v hst)) fun st =>
@@ -472,11 +472,11 @@ def intSendPrepC (opk : Bool) (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var
         (.pair (v spqrSalt?) (.pair (v pqMsg) (.pair (v ad) (.pair (v prov)
           (.pair (v roC') (v rootC')))))))))))))
 
-def sendSidE (opk : Bool) {Γ : List PT} (x : Expr pqxdhOps Γ sendQTy) : Expr pqxdhOps Γ sessionIdTy :=
+@[expose] def sendSidE (opk : Bool) {Γ : List PT} (x : Expr pqxdhOps Γ sendQTy) : Expr pqxdhOps Γ sessionIdTy :=
   if opk then .inl (.pair (.fst x) (.fst (.snd x)))
   else .inr (.inl (.pair (.fst x) (.fst (.snd x))))
 
-def hmSendTailC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
+@[expose] def hmSendTailC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
     (mst : Var Γ₃ muStTy) (x : Var Γ₄ sendQTy) (p : Var Γ₅ intPrepTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ] : Comp pqxdhOps pqPrimIface Δ hmPreTy :=
   letV (sendSidE opk (v x)) fun sid =>
@@ -502,7 +502,7 @@ def hmSendTailC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridS
          (.pair (v p) (.pair (v mk) (v ct)))))))) fun r =>
      .ret (.inl (.pair (v r) (v mst))))
 
-def hmSendC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
+@[expose] def hmSendC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
     (mst : Var Γ₃ muStTy) (x : Var Γ₄ sendQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] : Comp pqxdhOps pqPrimIface Δ hmPreTy :=
   .ite (sendGuardE opk (v x)) (.ret (.inl (.pair (.pair aNone (v fhst)) (v mst)))) <|
@@ -512,7 +512,7 @@ def hmSendC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridState
 
 /-! ## Responder Receive Branches -/
 
-def hmRecvPrepC (opk : Bool) (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ recvQTy)
+@[expose] def hmRecvPrepC (opk : Bool) (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var Γ₂ recvQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] : Comp pqxdhOps pqPrimIface Δ (.opt hmRecvDataTy) :=
   letV (ahsfHybrid (v fhst)) fun hst =>
   letV (ahsBase (v hst)) fun st =>
@@ -570,7 +570,7 @@ def hmRecvPrepC (opk : Bool) (fhst : Var Γ₁ authHybridStateFixedTy) (x : Var 
     (.pair (eCaseOpt (v oE?) .none fun oE => .some (oeOpkPk (v oE)))
       (.pair (v secrets) (.pair (v hstDec) (.pair (.snd (v kc)) (isSomeE (v snd?)))))))))
 
-def hmSchedPrepC (a : Expr pqxdhOps Δ schedPrepArgsTy) : Comp pqxdhOps pqPrimIface Δ (.opt schedPrepTy) :=
+@[expose] def hmSchedPrepC (a : Expr pqxdhOps Δ schedPrepArgsTy) : Comp pqxdhOps pqPrimIface Δ (.opt schedPrepTy) :=
   letV a fun a =>
   letV (.fst (v a)) fun hstDec =>
   letV (.fst (.snd (v a))) fun kE =>
@@ -633,19 +633,19 @@ def hmSchedPrepC (a : Expr pqxdhOps Δ schedPrepArgsTy) : Comp pqxdhOps pqPrimIf
     (.pair (v roC') (.pair (v sameEph) (.pair (v rk1) (.pair (v ck1_0) (.pair (v rootC')
       (.pair (v mkSeed) (.pair (v ck1_1) (.snd (v sp))))))))))))))
 
-def forgeRetIdC (fc : Var Γ₁ (.prod .nat (.prod (B 158) (.prod (B 32) muStTy)))) [Ext Γ₁ Δ]
+@[expose] def forgeRetIdC (fc : Var Γ₁ (.prod .nat (.prod (B 158) (.prod (B 32) muStTy)))) [Ext Γ₁ Δ]
     (idx : Expr pqxdhOps Δ muKeyIdTy) (cache' : Expr pqxdhOps Δ authMkSaltCacheTy) :
     Comp pqxdhOps pqPrimIface Δ schedResTy :=
   letV (.pair idx cache') fun ic =>
   bindV (hmForgeIdC K (.pair (.fst (v fc)) (.pair (.fst (v ic)) (.snd (v fc))))) fun mst' =>
   .ret (.pair (.pair .none (.snd (v ic))) (v mst'))
 
-def forgeRetC (fc : Var Γ₁ (.prod .nat (.prod (B 158) (.prod (B 32) muStTy)))) [Ext Γ₁ Δ]
+@[expose] def forgeRetC (fc : Var Γ₁ (.prod .nat (.prod (B 158) (.prod (B 32) muStTy)))) [Ext Γ₁ Δ]
     (idx : Expr pqxdhOps Δ .nat) (cache' : Expr pqxdhOps Δ authMkSaltCacheTy) :
     Comp pqxdhOps pqPrimIface Δ schedResTy :=
   forgeRetIdC K fc (.inr idx) cache'
 
-def hmSchedFinC (a : Expr pqxdhOps Δ schedFinArgsTy) : Comp pqxdhOps pqPrimIface Δ schedResTy :=
+@[expose] def hmSchedFinC (a : Expr pqxdhOps Δ schedFinArgsTy) : Comp pqxdhOps pqPrimIface Δ schedResTy :=
   letV a fun a =>
   letV (.fst (v a)) fun jt =>
   letV (.fst (.snd (v a))) fun kE =>
@@ -700,7 +700,7 @@ def hmSchedFinC (a : Expr pqxdhOps Δ schedFinArgsTy) : Comp pqxdhOps pqPrimIfac
          (.pair (v pt) (.pair (v roC') (v rootC')))))))
        (v cache)) (v mst)))
 
-def hmSchedC (a : Expr pqxdhOps Δ schedArgsTy) : Comp pqxdhOps pqPrimIface Δ schedResTy :=
+@[expose] def hmSchedC (a : Expr pqxdhOps Δ schedArgsTy) : Comp pqxdhOps pqPrimIface Δ schedResTy :=
   letV a fun a =>
   letV (.fst (v a)) fun jt =>
   letV (.fst (.snd (v a))) fun rc =>
@@ -713,7 +713,7 @@ def hmSchedC (a : Expr pqxdhOps Δ schedArgsTy) : Comp pqxdhOps pqPrimIface Δ s
     (.pair (.snd (.snd (.snd (.snd (.snd (v pa))))))
       (.pair (v rc) (.pair (v cache) (.pair (v sp) (v mst)))))))
 
-def finErasedE (opk : Bool) {Γ : List PT} (kjo : Var Γ₁ (.prod .nat (.prod .nat .nat)))
+@[expose] def finErasedE (opk : Bool) {Γ : List PT} (kjo : Var Γ₁ (.prod .nat (.prod .nat .nat)))
     (usedT' : Var Γ₂ (.list (.prod .nat (.prod U32 (.prod U32 (B 32))))))
     (sndHon : Var Γ₃ .bool) (hstDec : Var Γ₄ authHybridStateTy) (res? : Var Γ₅ schedOutTy)
     [Ext Γ₁ Γ] [Ext Γ₂ Γ] [Ext Γ₃ Γ] [Ext Γ₄ Γ] [Ext Γ₅ Γ] : Expr pqxdhOps Γ RSH :=
@@ -737,7 +737,7 @@ def finErasedE (opk : Bool) {Γ : List PT} (kjo : Var Γ₁ (.prod .nat (.prod .
             (kyb := v usedT') (ro := .fst (.snd (.snd (.snd (.snd (v r))))))
             (root := .snd (.snd (.snd (.snd (.snd (v r))))))))
 
-def hmRecvTailC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
+@[expose] def hmRecvTailC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
     (mst : Var Γ₃ muStTy) (x : Var Γ₄ recvQTy) (d : Var Γ₅ hmRecvDataTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] [Ext Γ₅ Δ] : Comp pqxdhOps pqPrimIface Δ hmResTy :=
   letV (.snd (.snd (.snd (v x)))) fun msg =>
@@ -761,7 +761,7 @@ def hmRecvTailC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridS
       (ahsfMk (.snd (v fin)) (.add (ahsfRecvCount (v fhst)) (.nat 1)) (v cache')))
     (v mst'))
 
-def hmRecvC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
+@[expose] def hmRecvC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy)
     (mst : Var Γ₃ muStTy) (x : Var Γ₄ recvQTy)
     [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] : Comp pqxdhOps pqPrimIface Δ hmPreTy :=
   bindV (hmRecvPrepC S K opk fhst x) fun d? =>
@@ -773,11 +773,11 @@ def hmRecvC (opk : Bool) (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridState
 
 /-! ## Query Dispatch and Reduction Program -/
 
-def hmOther (mst : Var Γ₁ muStTy) [Ext Γ₁ Δ] (m : Comp pqxdhOps pqPrimIface Δ RSF) :
+@[expose] def hmOther (mst : Var Γ₁ muStTy) [Ext Γ₁ Δ] (m : Comp pqxdhOps pqPrimIface Δ RSF) :
     Comp pqxdhOps pqPrimIface Δ hmPreTy :=
   bindV m fun r => .ret (.inl (.pair (v r) (v mst)))
 
-def hmDispatchC (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy) (mst : Var Γ₃ muStTy)
+@[expose] def hmDispatchC (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy) (mst : Var Γ₃ muStTy)
     (q : Var Γ₄ authQueryTy) [Ext Γ₁ Δ] [Ext Γ₂ Δ] [Ext Γ₃ Δ] [Ext Γ₄ Δ] :
     Comp pqxdhOps pqPrimIface Δ hmPreTy :=
   caseSumV (v q) (fun u => hmOther mst (initPrinFixedB K fhst u)) fun q =>
@@ -793,7 +793,7 @@ def hmDispatchC (jt : Var Γ₁ .nat) (fhst : Var Γ₂ authHybridStateFixedTy) 
   caseSumV (v q) (fun _ => .ret (.inl (.pair (.pair aNone (v fhst)) (v mst)))) fun sk =>
   hmOther mst (registerFixedB fhst sk)
 
-def hmPostC (a : Expr pqxdhOps Δ (.prod hmSendContTy (B 32))) : Comp pqxdhOps pqPrimIface Δ hmResTy :=
+@[expose] def hmPostC (a : Expr pqxdhOps Δ (.prod hmSendContTy (B 32))) : Comp pqxdhOps pqPrimIface Δ hmResTy :=
   letV a fun a =>
   letV (.fst (v a)) fun c =>
   letV (.snd (v a)) fun t =>
@@ -814,7 +814,7 @@ section Prog
 
 variable (S : Setup) (K : Nat)
 
-def hmPreC : Comp pqxdhOps pqPrimIface [hmStTy, authQueryTy] hmPreTy :=
+@[expose] def hmPreC : Comp pqxdhOps pqPrimIface [hmStTy, authQueryTy] hmPreTy :=
   letV (.var .zero : Expr pqxdhOps [hmStTy, authQueryTy] hmStTy) fun s =>
   letV (.fst (v s)) fun jt =>
   letV (.fst (.snd (v s))) fun fhst =>
@@ -823,16 +823,16 @@ def hmPreC : Comp pqxdhOps pqPrimIface [hmStTy, authQueryTy] hmPreTy :=
     (.succ (.succ (.succ (.succ (.succ .zero)))) :
       Var [muStTy, authHybridStateFixedTy, .nat, hmStTy, hmStTy, authQueryTy] authQueryTy)
 
-def hmContX0E {Γ : List PT} (c : Expr pqxdhOps Γ hmSendContTy) : Expr pqxdhOps Γ (B 359) :=
+@[expose] def hmContX0E {Γ : List PT} (c : Expr pqxdhOps Γ hmSendContTy) : Expr pqxdhOps Γ (B 359) :=
   macInputE (.fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd c))))))))
     (etmBodyE (widenB 24 8 (.fst (.snd (.snd (.snd (.snd (.snd (.snd (.snd (.snd c)))))))))))
 
-def hmInitC : Comp pqxdhOps pqPrfHmacIface [.unit] (.prod .unit hmStTy) :=
+@[expose] def hmInitC : Comp pqxdhOps pqPrfHmacIface [.unit] (.prod .unit hmStTy) :=
   bindV (sampleChal (.index (S.N_send_tot + S.N_recv_tot))) fun jt =>
   bindV (sampleChal .bool) fun secb =>
   .ret (.pair .unit (.pair (v jt) (.pair (emptyAuthHybridStFixedE (v secb)) emptyMuE)))
 
-def hmHandleC : Comp pqxdhOps pqPrfHmacIface [hmStTy, authQueryTy] (.prod authRespTy hmStTy) :=
+@[expose] def hmHandleC : Comp pqxdhOps pqPrfHmacIface [hmStTy, authQueryTy] (.prod authRespTy hmStTy) :=
   bindV (liftPrimComp (hmPreC S K)) fun pre =>
   letV (.fst (.var (.succ .zero)) : Expr pqxdhOps [hmPreTy, hmStTy, authQueryTy] .nat) fun jt =>
   caseSumV (v pre)
@@ -844,7 +844,7 @@ def hmHandleC : Comp pqxdhOps pqPrfHmacIface [hmStTy, authQueryTy] (.prod authRe
       .ret (.pair (.fst (.fst (v r)))
         (.pair (v jt) (.pair (.snd (.fst (v r))) (.snd (v r)))))
 
-def hmFinishC : Comp pqxdhOps pqPrfHmacIface [hmStTy, .bool] .bool :=
+@[expose] def hmFinishC : Comp pqxdhOps pqPrfHmacIface [hmStTy, .bool] .bool :=
   letV (.snd (.snd (.var .zero)) : Expr pqxdhOps [hmStTy, .bool] muStTy) fun mst =>
   letV (.fst (.var (.succ .zero)) : Expr pqxdhOps [muStTy, hmStTy, .bool] .nat) fun jt =>
   letV (muPend (v mst)) fun pend =>
@@ -858,7 +858,7 @@ def hmFinishC : Comp pqxdhOps pqPrfHmacIface [hmStTy, .bool] .bool :=
   .ret (boolOr (muBad (v mst)) (eAny K (v hits) fun h => v h))
 
 /-- `ReductionDsl` witness for `prfHmacReductionAuth` with list-traversal bound `K`. -/
-def prfHmacRedProg :
+@[expose] def prfHmacRedProg :
     CostedReduction pqxdhOps pqPrfHmacIface (authSpec S) (authCodec S) .unit .unit .bool .bool where
   σ      := hmStTy
   init   := hmInitC S

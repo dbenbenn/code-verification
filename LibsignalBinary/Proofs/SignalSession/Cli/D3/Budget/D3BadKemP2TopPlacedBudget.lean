@@ -9,20 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopArmsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopSub5PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPathAPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2ArmsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1PlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Msg
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopArmsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopSub5PlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopPathAPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.D3.D3BadKemP2ArmsPlacedBudget
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1PlacedBudget
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2DefsPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2V1PlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.Poll.StagesInst.Stage2V1Msg
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordCallees.DefsBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP1Comb
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlacedBudget
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2BlocksB5PlacedBudget
@@ -48,6 +48,11 @@ import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.StageP2Mid3Pla
 import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.InitializeAliceStage1Common
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.AssemblyP2bAux
 import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Fetch
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Trans
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.E2E.Seed.Defs
 
 /-!
 # Budget-Threaded Stage P2 Overwrite-Path Bad-KEM Composition
@@ -56,7 +61,7 @@ Proves the Stage P2 overwrite-path (`Path C`) `SepWPp` composition (`+0x0868 →
 for `v4` `PreKeySignalMessage`s with bad KEM payloads under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -105,7 +110,7 @@ open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2ArmsPlace
 )
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget (
   p2_entails_frame_v1 p2_call_nopanic_rocl_sub5 p2_bind_sepWP_steps_cro_sub5_state
-  isSameAccountDistinctSpec_to_at_placed p2_stageP2bStack_le_bobV1 p2_isSameAccount_le_bobV1
+  isSameAccountDistinctSpec_to_at_placed
 )
 open LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2V1PlacedBudget (
   P2V1Arm4Env P2V1Arm5EnvOfAcceptErr
@@ -620,11 +625,11 @@ abbrev stageP2_over_badKem_kits_placed [LibsignalPlacement]
     (Nat.le_trans (p2_sub56Stack_le_v1CallStack spkKit kpkKit pkKit skit)
       (Nat.le_trans (p2_over_baseV1Call_le_v1CallStack spkKit kpkKit pkKit skit) hstk))
     (Nat.le_trans p2_over_dropSS3_le_overPure (Nat.le_trans (p2_over_pure_le_v1CallStack spkKit kpkKit pkKit skit) hstk))
-    (Nat.le_trans LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget.p2_isSameAccount_le_bobV1
+    (Nat.le_trans (by decide)
       (Nat.le_trans (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit)
         (Nat.le_trans (p2_over_baseV1Call_le_v1CallStack spkKit kpkKit pkKit skit) hstk)))
     (Nat.le_trans LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopSub5PlacedBudget.p2_badKem_entry_le_stageP2bStack
-      (Nat.le_trans LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget.p2_stageP2bStack_le_bobV1
+      (Nat.le_trans (Nat.le_add_right _ 1792)
         (Nat.le_trans (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit)
           (Nat.le_trans (p2_over_baseV1Call_le_v1CallStack spkKit kpkKit pkKit skit) hstk))))
 
@@ -660,11 +665,11 @@ abbrev stageP2_over_badKem_kits_full_placed [LibsignalPlacement]
     (Nat.le_trans (p2_sub56Stack_le_v1CallStack spkKit kpkKit pkKit skit)
       (Nat.le_trans (p2_over_baseV1Call_le_v1CallStack spkKit kpkKit pkKit skit) hstk))
     (Nat.le_trans p2_over_dropSS3_le_overPure (Nat.le_trans (p2_over_pure_le_v1CallStack spkKit kpkKit pkKit skit) hstk))
-    (Nat.le_trans LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget.p2_isSameAccount_le_bobV1
+    (Nat.le_trans (by decide)
       (Nat.le_trans (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit)
         (Nat.le_trans (p2_over_baseV1Call_le_v1CallStack spkKit kpkKit pkKit skit) hstk)))
     (Nat.le_trans LibsignalBinary.Proofs.SignalSession.Cli.D3.Budget.D3BadKemP2TopSub5PlacedBudget.p2_badKem_entry_le_stageP2bStack
-      (Nat.le_trans LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP2Sub5DefsPlacedBudget.p2_stageP2bStack_le_bobV1
+      (Nat.le_trans (Nat.le_add_right _ 1792)
         (Nat.le_trans (p2_bobStack_le_v1CallStack spkKit kpkKit pkKit skit)
           (Nat.le_trans (p2_over_baseV1Call_le_v1CallStack spkKit kpkKit pkKit skit) hstk))))
 

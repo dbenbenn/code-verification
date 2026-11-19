@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.SpkLeakRedModel
-public import Computational.Proofs.E2E.Relabel.GameEq
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip
-import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events
+public import Computational.Proofs.E2E.SpkLeakRedModel -- proof-setup: allow-public-import
+public import Computational.Proofs.E2E.Relabel.GameEq -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalWireRoundTrip -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Epoch0Events -- proof-setup: allow-public-import
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.GhostStep
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.RecvCoins
 import Computational.Proofs.SignalWireRoundTrip
@@ -26,7 +26,7 @@ Proves pure-PRF simulation of `initAOracle` and `receiveB0`, wire-header agreeme
 `ratchetKeyAdmissible`, and preservation of the state invariant `SpkStateInv` for `spkLeakRed`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -51,7 +51,7 @@ variable {PQC : Type} [SampleableType PQC] {ℓ : ℕ}
 /-! ## Pure PRF simulation -/
 
 /-- Stateless query implementation for the real (`b = false`) branch of `extractPRF F encPt`. -/
-def purePrfImpl (F : ShaCompress) (encPt : Pt → Bytes) (rk0 : BitVec 256) :
+@[expose] def purePrfImpl (F : ShaCompress) (encPt : Pt → Bytes) (rk0 : BitVec 256) :
     QueryImpl (unifSpec + prfSpec Pt (BitVec 256)) ProbComp
   | .inl u => QueryImpl.ofLift unifSpec ProbComp u
   | .inr T => pure ((extractPRF F encPt).tag rk0 T)
@@ -629,7 +629,7 @@ theorem receiveB0_purePrfImpl_eq (P : Params Bytes PQC) (hcodec : P.codec = prot
         cases r_tr <;> { dsimp only; rw [simulateQ_pure]; rfl }
 
 /-- Sender-side session invariant: current session version and generated sender ratchet key. -/
-def SessionSenderInv (P : Params Bytes PQC) (s : SessionState Bytes) : Prop :=
+@[expose] def SessionSenderInv (P : Params Bytes PQC) (s : SessionState Bytes) : Prop :=
   s.sessionVersion = BitVec.ofNat 32 currentVersion.toNat ∧
   ∀ sc ∈ s.senderChain, ∃ x, sc.ratchetKey = KeyPair.generate P.C x
 
@@ -965,7 +965,7 @@ theorem sessionSenderInv_receive (P : Params Bytes PQC) (g : GhostState Bytes)
         simp [hrc]
 
 /-- Patch Bob's root key at epoch 0 to `rk0`, leaving all other party states unchanged. -/
-def patchPartySpk (rk0 : BitVec 256) (g : GhostState Bytes) : GhostState Bytes :=
+@[expose] def patchPartySpk (rk0 : BitVec 256) (g : GhostState Bytes) : GhostState Bytes :=
   if g.party == .B && g.epoch == 0 then
     { g with session := { g.session with rootKey := rk0 } }
   else

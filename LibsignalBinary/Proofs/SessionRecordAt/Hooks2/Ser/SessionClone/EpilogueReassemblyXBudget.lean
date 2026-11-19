@@ -9,8 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.EpilogueReassemblyBudget
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.EpilogueReassemblyX
+import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.EpilogueReassemblyBudget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.EpilogueReassemblyX
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Proofs.E2E.Record.RecordPlacedCodeSymD -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.Defs
+public import LibsignalBinary.Proofs.E2E.Record.Serialization.SessionCloneAux.Base
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.SepWPpIn -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SessionClone.BaseX -- proof-setup: allow-public-import
+public import ProofLib.SepLogic.WP.StepsProcess
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded `SessionStructure::clone` Epilogue (Block `80`)
@@ -19,7 +28,7 @@ Verifies the relocatable `VmPreserved` epilogue (`+924 → ret`) of Block `80`
 (`SessionStructure::clone`) in `SepWPpLsCl`, transporting `A.pool lim st` to the return state.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

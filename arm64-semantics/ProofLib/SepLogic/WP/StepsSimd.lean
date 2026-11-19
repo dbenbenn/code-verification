@@ -20,7 +20,7 @@ public import ProofLib.Abi.Aapcs
 public import ProofLib.SepLogic
 public import ProofLib.SepLogic.Bytes
 public import ProofLib.SepLogic.ByteRegion
-public import ProofLib.ObjectLoad
+public import ProofLib.PlacedHelpers
 public import ProofLib.Hoare.Safety
 public import ProofLib.VCGen
 public import ProofLib.LitNorm
@@ -36,8 +36,8 @@ public import ProofLib.SepLogic.WP.StepsCore
 # Unscaled 64-Bit, SIMD, and `DC ZVA` `SepWP` Load/Store Steps
 
 `SepWP` step lemmas for unscaled 64-bit loads/stores (`SepWP.step_ldur64`, `SepWP.step_stur64`),
-32/64/128-bit SIMD scalar and pair loads/stores, and 64-byte cache-line zeroing (`SepWP.step_dcZva`,
-`SepWP.step_dcZva_bytes`).
+8/16/32/64/128-bit SIMD scalar and 32/64/128-bit SIMD pair loads/stores, and 64-byte cache-line
+zeroing (`SepWP.step_dcZva`, `SepWP.step_dcZva_bytes`).
 -/
 
 @[expose] public section
@@ -390,6 +390,132 @@ theorem SepWP.step_strSimd32 {prog : Program} {target_pc : BitVec 64}
   rw [hstep]
   exact hnext m' R hm'
 
+/-- 16-bit SIMD load (`LDR Ht, [addr]`, any `AddrMode`) step rule for `SepWP`: loads `v` at `ea`
+    via `SepLoad16` and writes `v.zeroExtend 128` into `Vt`. -/
+theorem SepWP.step_ldrSimd16 {prog : Program} {target_pc : BitVec 64}
+    {s s' : State} {P : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
+    {pc : BitVec 64} {vt : BitVec 5} {addr : AddrMode}
+    {ea : BitVec 64} {wb : Option (Reg × BitVec 64)} {v : BitVec 16}
+    (hpc : s.pc = pc)
+    (hrun : s.status = .Running)
+    (hfetch : prog.fetch pc = some (.ldrSimd .H16 vt addr))
+    (hsp : checkAddrSPAligned s addr = true)
+    (haddr : evalAddrMode s addr = (ea, wb))
+    (hload : SepLoad16 ea P v)
+    (hexec : ((applyWriteback s wb).writeVReg128 vt (v.zeroExtend 128)).setPC (pc + 4#64) = s')
+    (hnext : SepWP prog target_pc s' P post oom) :
+    SepWP prog target_pc s P post oom := by
+  intro R hm
+  have hfetch' : prog.fetch s.pc = some (.ldrSimd .H16 vt addr) := hpc.symm ▸ hfetch
+  have hread : s.mem.read16 ea = v := hload.load hm
+  have hcan : s.mem.canRead ea 2 = true := hload.readable hm
+  apply reaches_pc_step hrun hfetch'
+  have hstep : prog.evalInst (.ldrSimd .H16 vt addr) s = s' := by
+    rw [← hexec]
+    cases wb <;> simp [Program.evalInst, execInstWithSvc, Memory.readSimdSized, applyWriteback,
+      State.advancePC, State.setPC, hsp, haddr, hread, hcan, SimdMemSize.bytes, hpc]
+  rw [hstep]
+  have hmem : s'.mem = s.mem := by
+    rw [← hexec]
+    cases wb <;> rfl
+  apply hnext R
+  rwa [hmem]
+
+/-- 16-bit SIMD store (`STR Ht, [addr]`, any `AddrMode`) step rule for `SepWP`: stores the low
+    16 bits of `Vt` at `ea` via `SepStore16`. -/
+theorem SepWP.step_strSimd16 {prog : Program} {target_pc : BitVec 64}
+    {s s' : State} {P P' : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
+    {pc : BitVec 64} {vt : BitVec 5} {addr : AddrMode}
+    {ea : BitVec 64} {wb : Option (Reg × BitVec 64)} {v : BitVec 16}
+    (hpc : s.pc = pc)
+    (hrun : s.status = .Running)
+    (hfetch : prog.fetch pc = some (.strSimd .H16 vt addr))
+    (hsp : checkAddrSPAligned s addr = true)
+    (haddr : evalAddrMode s addr = (ea, wb))
+    (hv : (s.readVReg128 vt).extractLsb' 0 16 = v)
+    (hstore : SepStore16 ea v P P')
+    (hexec : (applyWriteback s wb).setPC (pc + 4#64) = s')
+    (hnext : ∀ m' : Memory, SepWP prog target_pc (s'.setMem m') P' post oom) :
+    SepWP prog target_pc s P post oom := by
+  intro R hm
+  have hfetch' : prog.fetch s.pc = some (.strSimd .H16 vt addr) := hpc.symm ▸ hfetch
+  let m' := s.mem.write16 ea v
+  have hm' : m' ⊨ P' ∗ R := hstore.store hm
+  have hcan : s.mem.canWrite ea 2 = true := hstore.writable hm
+  have htr : (s.readVReg128 vt).truncate 16 = v := by
+    rw [← hv]; ext i hi; simp
+  apply reaches_pc_step hrun hfetch'
+  have hstep : prog.evalInst (.strSimd .H16 vt addr) s = s'.setMem m' := by
+    rw [← hexec]
+    cases wb <;> simp [Program.evalInst, execInstWithSvc, Memory.writeSimdSized, applyWriteback,
+      State.advancePC, State.setPC, State.setMem, State.writeReg64,
+      hsp, haddr, htr, hcan, SimdMemSize.bytes, hpc, m']
+  rw [hstep]
+  exact hnext m' R hm'
+
+/-- 8-bit SIMD load (`LDR Bt, [addr]`, any `AddrMode`) step rule for `SepWP`: loads `v` at `ea`
+    via `SepLoad8` and writes `v.zeroExtend 128` into `Vt`. -/
+theorem SepWP.step_ldrSimd8 {prog : Program} {target_pc : BitVec 64}
+    {s s' : State} {P : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
+    {pc : BitVec 64} {vt : BitVec 5} {addr : AddrMode}
+    {ea : BitVec 64} {wb : Option (Reg × BitVec 64)} {v : BitVec 8}
+    (hpc : s.pc = pc)
+    (hrun : s.status = .Running)
+    (hfetch : prog.fetch pc = some (.ldrSimd .B8 vt addr))
+    (hsp : checkAddrSPAligned s addr = true)
+    (haddr : evalAddrMode s addr = (ea, wb))
+    (hload : SepLoad8 ea P v)
+    (hexec : ((applyWriteback s wb).writeVReg128 vt (v.zeroExtend 128)).setPC (pc + 4#64) = s')
+    (hnext : SepWP prog target_pc s' P post oom) :
+    SepWP prog target_pc s P post oom := by
+  intro R hm
+  have hfetch' : prog.fetch s.pc = some (.ldrSimd .B8 vt addr) := hpc.symm ▸ hfetch
+  have hread : s.mem.read8 ea = v := hload.load hm
+  have hcan : s.mem.canRead ea 1 = true := hload.readable hm
+  apply reaches_pc_step hrun hfetch'
+  have hstep : prog.evalInst (.ldrSimd .B8 vt addr) s = s' := by
+    rw [← hexec]
+    cases wb <;> simp [Program.evalInst, execInstWithSvc, Memory.readSimdSized, applyWriteback,
+      State.advancePC, State.setPC, hsp, haddr, hread, hcan, SimdMemSize.bytes, hpc]
+  rw [hstep]
+  have hmem : s'.mem = s.mem := by
+    rw [← hexec]
+    cases wb <;> rfl
+  apply hnext R
+  rwa [hmem]
+
+/-- 8-bit SIMD store (`STR Bt, [addr]`, any `AddrMode`) step rule for `SepWP`: stores the low
+    8 bits of `Vt` at `ea` via `SepStore8`. -/
+theorem SepWP.step_strSimd8 {prog : Program} {target_pc : BitVec 64}
+    {s s' : State} {P P' : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
+    {pc : BitVec 64} {vt : BitVec 5} {addr : AddrMode}
+    {ea : BitVec 64} {wb : Option (Reg × BitVec 64)} {v : BitVec 8}
+    (hpc : s.pc = pc)
+    (hrun : s.status = .Running)
+    (hfetch : prog.fetch pc = some (.strSimd .B8 vt addr))
+    (hsp : checkAddrSPAligned s addr = true)
+    (haddr : evalAddrMode s addr = (ea, wb))
+    (hv : (s.readVReg128 vt).extractLsb' 0 8 = v)
+    (hstore : SepStore8 ea v P P')
+    (hexec : (applyWriteback s wb).setPC (pc + 4#64) = s')
+    (hnext : ∀ m' : Memory, SepWP prog target_pc (s'.setMem m') P' post oom) :
+    SepWP prog target_pc s P post oom := by
+  intro R hm
+  have hfetch' : prog.fetch s.pc = some (.strSimd .B8 vt addr) := hpc.symm ▸ hfetch
+  let m' := s.mem.write8 ea v
+  have hm' : m' ⊨ P' ∗ R := hstore.store hm
+  have hcan : s.mem.canWrite ea 1 = true := hstore.writable hm
+  have htr : (s.readVReg128 vt).truncate 8 = v := by
+    rw [← hv]; ext i hi; simp
+  apply reaches_pc_step hrun hfetch'
+  have hstep : prog.evalInst (.strSimd .B8 vt addr) s = s'.setMem m' := by
+    rw [← hexec]
+    cases wb <;> simp [Program.evalInst, execInstWithSvc, Memory.writeSimdSized, applyWriteback,
+      State.advancePC, State.setPC, State.setMem, State.writeReg64,
+      hsp, haddr, htr, hcan, SimdMemSize.bytes, hpc, m']
+  rw [hstep]
+  exact hnext m' R hm'
+
 /-- 64-bit SIMD load pair (`LDP Dt1, Dt2, [addr]`, any `AddrMode`) step rule for `SepWP`: looks up
     `ea` and `ea + 8` via `SepLoad64`, zero-extending each into `Vt1` / `Vt2`. -/
 theorem SepWP.step_ldpSimd64 {prog : Program} {target_pc : BitVec 64}
@@ -461,6 +587,84 @@ theorem SepWP.step_stpSimd64 {prog : Program} {target_pc : BitVec 64}
     rw [← hv2]; ext i hi; simp
   apply reaches_pc_step hrun hfetch'
   have hstep : prog.evalInst (.stpSimd .D64 vt1 vt2 addr) s = s'.setMem m2 := by
+    rw [← hexec]
+    cases wb <;> simp [Program.evalInst, execInstWithSvc, Memory.writeSimdSized, applyWriteback,
+      State.advancePC, State.setPC, State.setMem, State.writeReg64,
+      hsp, haddr, hea2, htr1, htr2, hcan1, hcan2, SimdMemSize.bytes, hpc, m1, m2]
+  rw [hstep]
+  exact hnext m2 R hm2
+
+/-- 32-bit SIMD load pair (`LDP St1, St2, [addr]`, any `AddrMode`) step rule for `SepWP`: looks up
+    `ea` and `ea + 4` via `SepLoad32`, zero-extending each into `Vt1` / `Vt2`. -/
+theorem SepWP.step_ldpSimd32 {prog : Program} {target_pc : BitVec 64}
+    {s s' : State} {P : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
+    {pc : BitVec 64} {vt1 vt2 : BitVec 5} {addr : AddrMode}
+    {ea ea2 : BitVec 64} {wb : Option (Reg × BitVec 64)} {v1 v2 : BitVec 32}
+    (hpc : s.pc = pc)
+    (hrun : s.status = .Running)
+    (hfetch : prog.fetch pc = some (.ldpSimd .S32 vt1 vt2 addr))
+    (hsp : checkAddrSPAligned s addr = true)
+    (haddr : evalAddrMode s addr = (ea, wb))
+    (hea2 : ea + 4#64 = ea2)
+    (hload1 : SepLoad32 ea P v1)
+    (hload2 : SepLoad32 ea2 P v2)
+    (hexec : (((applyWriteback s wb).writeVReg128 vt1 (v1.zeroExtend 128)).writeVReg128 vt2
+      (v2.zeroExtend 128)).setPC (pc + 4#64) = s')
+    (hnext : SepWP prog target_pc s' P post oom) :
+    SepWP prog target_pc s P post oom := by
+  intro R hm
+  have hfetch' : prog.fetch s.pc = some (.ldpSimd .S32 vt1 vt2 addr) := hpc.symm ▸ hfetch
+  have hread1 : s.mem.read32 ea = v1 := hload1.load hm
+  have hread2 : s.mem.read32 ea2 = v2 := hload2.load hm
+  have hcan1 : s.mem.canRead ea 4 = true := hload1.readable hm
+  have hcan2 : s.mem.canRead ea2 4 = true := hload2.readable hm
+  apply reaches_pc_step hrun hfetch'
+  have hstep : prog.evalInst (.ldpSimd .S32 vt1 vt2 addr) s = s' := by
+    rw [← hexec]
+    cases wb <;> simp [Program.evalInst, execInstWithSvc, Memory.readSimdSized, applyWriteback,
+      State.advancePC, State.setPC, hsp, haddr, hea2, hread1, hread2, hcan1, hcan2,
+      SimdMemSize.bytes, hpc]
+  rw [hstep]
+  have hmem : s'.mem = s.mem := by
+    rw [← hexec]
+    cases wb <;> rfl
+  apply hnext R
+  rwa [hmem]
+
+/-- 32-bit SIMD store pair (`STP St1, St2, [addr]`, any `AddrMode`) step rule for `SepWP`: updates
+    `ea` and `ea + 4` to the low 32 bits of `Vt1` / `Vt2` via `SepStore32`. -/
+theorem SepWP.step_stpSimd32 {prog : Program} {target_pc : BitVec 64}
+    {s s' : State} {P P1 P2 : SepProp} {post : State → SepProp → Prop} {oom : State → SepProp}
+    {pc : BitVec 64} {vt1 vt2 : BitVec 5} {addr : AddrMode}
+    {ea ea2 : BitVec 64} {wb : Option (Reg × BitVec 64)} {v1 v2 : BitVec 32}
+    (hpc : s.pc = pc)
+    (hrun : s.status = .Running)
+    (hfetch : prog.fetch pc = some (.stpSimd .S32 vt1 vt2 addr))
+    (hsp : checkAddrSPAligned s addr = true)
+    (haddr : evalAddrMode s addr = (ea, wb))
+    (hea2 : ea + 4#64 = ea2)
+    (hv1 : (s.readVReg128 vt1).extractLsb' 0 32 = v1)
+    (hv2 : (s.readVReg128 vt2).extractLsb' 0 32 = v2)
+    (hstore1 : SepStore32 ea v1 P P1)
+    (hstore2 : SepStore32 ea2 v2 P1 P2)
+    (hexec : (applyWriteback s wb).setPC (pc + 4#64) = s')
+    (hnext : ∀ m' : Memory, SepWP prog target_pc (s'.setMem m') P2 post oom) :
+    SepWP prog target_pc s P post oom := by
+  intro R hm
+  have hfetch' : prog.fetch s.pc = some (.stpSimd .S32 vt1 vt2 addr) := hpc.symm ▸ hfetch
+  let m1 := s.mem.write32 ea v1
+  let m2 := m1.write32 ea2 v2
+  have hm1 : m1 ⊨ P1 ∗ R := hstore1.store hm
+  have hm2 : m2 ⊨ P2 ∗ R := hstore2.store hm1
+  have hcan1 : s.mem.canWrite ea 4 = true := hstore1.writable hm
+  have hcan2 : m1.canWrite ea2 4 = true := hstore2.writable hm1
+  rw [Memory.canWrite_congr (Memory.perm_write32 _ _ _)] at hcan2
+  have htr1 : (s.readVReg128 vt1).truncate 32 = v1 := by
+    rw [← hv1]; ext i hi; simp
+  have htr2 : (s.readVReg128 vt2).truncate 32 = v2 := by
+    rw [← hv2]; ext i hi; simp
+  apply reaches_pc_step hrun hfetch'
+  have hstep : prog.evalInst (.stpSimd .S32 vt1 vt2 addr) s = s'.setMem m2 := by
     rw [← hexec]
     cases wb <;> simp [Program.evalInst, execInstWithSvc, Memory.writeSimdSized, applyWriteback,
       State.advancePC, State.setPC, State.setMem, State.writeReg64,

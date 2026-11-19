@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthAeadCpa -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthPrfSharedEval -- proof-setup: allow-public-import
 
 /-!
 # Shallow Encodings and Steps for the `Auth` `AeadIndCpa` Reduction
@@ -19,7 +19,7 @@ Defines value encodings, mid-level shallow step functions, and state/pause invar
 evaluating `aeadCpaRedProg`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -35,7 +35,7 @@ open OracleSpec OracleComp
 
 /-! ## Encodings -/
 
-def cpaPayloadToVal {S : Setup} (p : AuthCpaPausePayload S) : cpaPayloadTy.denote :=
+@[expose] def cpaPayloadToVal {S : Setup} (p : AuthCpaPausePayload S) : cpaPayloadTy.denote :=
   (sessionIdToVal p.sid, (principalEntryToVal p.uEntry,
     (p.peerPrin?.map (Prod.map id principalEntryToVal), (preKeyBundleToVal p.bundle,
       ((p.m0, p.m1), ((p.ekASk, (p.ekAPk, (p.ss, (p.kemCt, (p.ephASk, p.ephAPk))))),
@@ -43,19 +43,19 @@ def cpaPayloadToVal {S : Setup} (p : AuthCpaPausePayload S) : cpaPayloadTy.denot
           (p.spqrSalt?, (p.pqRatchetMsg, (p.ad, ((p.spkHon, (p.opkHon, p.pqspkHon)),
             (p.roCache.map (Prod.map id drKeyToVal), p.rootRoCache)))))))))))))
 
-def cpaStToVal {S : Setup} (idx : Nat) (hst : AuthHybridStateFixed S) : cpaStTy.denote :=
+@[expose] def cpaStToVal {S : Setup} (idx : Nat) (hst : AuthHybridStateFixed S) : cpaStTy.denote :=
   (idx, (0, authHybridStateFixedToVal hst))
 
 abbrev CpaSlotSt (S : Setup) := Nat × AuthHybridStateFixed S
 
-def cpaSlotStToVal {S : Setup} (idx : Nat) (shst : CpaSlotSt S) : cpaStTy.denote :=
+@[expose] def cpaSlotStToVal {S : Setup} (idx : Nat) (shst : CpaSlotSt S) : cpaStTy.denote :=
   (idx, (shst.1, authHybridStateFixedToVal shst.2))
 
 abbrev CpaSlotSendRes (S : Setup) :=
   (AuthResponse × CpaSlotSt S) ⊕
     (Bytes × Bytes × Bytes × AuthCpaPausePayload S × CpaSlotSt S)
 
-def cpaSlotSendResToVal {S : Setup} : CpaSlotSendRes S → cpaSlotSendResTy.denote
+@[expose] def cpaSlotSendResToVal {S : Setup} : CpaSlotSendRes S → cpaSlotSendResTy.denote
   | .inl (r, sh) => .inl (authRespToVal r, (sh.1, authHybridStateFixedToVal sh.2))
   | .inr (ad, m0, m1, p, sh) =>
     .inr ((ad, (m0, m1)), (cpaPayloadToVal p, (sh.1, authHybridStateFixedToVal sh.2)))
@@ -64,32 +64,32 @@ abbrev CpaSendRes (S : Setup) :=
   (AuthResponse × AuthHybridStateFixed S) ⊕
     (Bytes × Bytes × Bytes × AuthCpaPausePayload S × AuthHybridStateFixed S)
 
-def cpaSendResToVal {S : Setup} : CpaSendRes S → cpaSendResTy.denote
+@[expose] def cpaSendResToVal {S : Setup} : CpaSendRes S → cpaSendResTy.denote
   | .inl (r, h) => .inl (authRespToVal r, authHybridStateFixedToVal h)
   | .inr (ad, m0, m1, p, h) =>
     .inr ((ad, (m0, m1)), (cpaPayloadToVal p, authHybridStateFixedToVal h))
 
 /-! ## Shallow send and mid-level steps -/
 
-def cpaSendShOpk (S : Setup) (allowPause : Bool) (idx : Nat) (u : Fin S.N_id)
+@[expose] def cpaSendShOpk (S : Setup) (allowPause : Bool) (idx : Nat) (u : Fin S.N_id)
     (i : Fin S.N_send_opk) (b : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) : OracleComp PrimBaseSpec (CpaSendRes S) :=
   if b.opkB?.isNone then pure (.inl (.noneResp, hst))
   else tryPauseAuthCpaSendFixedPrim allowPause idx S (.sendOPK u i) u b m0 m1 hst
 
-def cpaSendShNoOpk (S : Setup) (allowPause : Bool) (idx : Nat) (u : Fin S.N_id)
+@[expose] def cpaSendShNoOpk (S : Setup) (allowPause : Bool) (idx : Nat) (u : Fin S.N_id)
     (i : Fin S.N_send_no_opk) (b : PreKeyBundleInput) (m0 m1 : Bytes)
     (hst : AuthHybridStateFixed S) : OracleComp PrimBaseSpec (CpaSendRes S) :=
   if b.opkB?.isSome then pure (.inl (.noneResp, hst))
   else tryPauseAuthCpaSendFixedPrim allowPause idx S (.sendNoOPK u i) u b m0 m1 hst
 
-def cpaSendResToStep {S : Setup} : CpaSendRes S →
+@[expose] def cpaSendResToStep {S : Setup} : CpaSendRes S →
     (AuthResponse × AuthHybridStateFixed S) ⊕
       ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × AuthHybridStateFixed S))
   | .inl x => .inl x
   | .inr (ad, m0, m1, p, h) => .inr ((ad, m0, m1), (p, h))
 
-def stepMidCpa (S : Setup) (idx : Nat) (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
+@[expose] def stepMidCpa (S : Setup) (idx : Nat) (q : AuthQuery S) (hst : AuthHybridStateFixed S) :
     OracleComp PrimBaseSpec
       (((authSpec S).Range q × AuthHybridStateFixed S) ⊕
         ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × AuthHybridStateFixed S))) :=
@@ -119,7 +119,7 @@ structure CpaPauseInv {S : Setup} (n : Nat) (c : Bytes × Bytes × Bytes)
   ro_le    : p.roCache.length ≤ n + 1
   root_le  : p.rootRoCache.length ≤ n + 1
 
-def CpaSendLeaf {S : Setup} (n : Nat) : CpaSendRes S → Prop
+@[expose] def CpaSendLeaf {S : Setup} (n : Nat) : CpaSendRes S → Prop
   | .inl (_, h) => CpaInv (n + 1) h
   | .inr (ad, m0, m1, p, h) => CpaPauseInv n (ad, m0, m1) p h
 
@@ -131,7 +131,7 @@ inductive CpaSlotPauseRes (S : Setup) (α : Type) where
       (shst : CpaSlotSt S)
       (cont : AuthResponse → OracleComp (unifSpec + authSpec S) α)
 
-def cpaTryPauseSendSlotPrim (allowPause : Bool) (cut : Nat) (S : Setup)
+@[expose] def cpaTryPauseSendSlotPrim (allowPause : Bool) (cut : Nat) (S : Setup)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (shst : CpaSlotSt S) : OracleComp PrimBaseSpec (CpaSlotSendRes S) := do
   let (ns, hst) := shst
@@ -163,7 +163,7 @@ def cpaTryPauseSendSlotPrim (allowPause : Bool) (cut : Nat) (S : Setup)
       let (resp, hst') := finishAuthCpaSendFixedPure false isIdealSend p aeadCt hst
       return .inl (resp, (ns, hst'))
 
-def cpaRunSendCutoffSlotPrim (cut : Nat) (S : Setup)
+@[expose] def cpaRunSendCutoffSlotPrim (cut : Nat) (S : Setup)
     (sid : SessionId S) (u : Fin S.N_id) (bundle : PreKeyBundleInput) (m0 m1 : Bytes)
     (shst : CpaSlotSt S) : OracleComp PrimBaseSpec (AuthResponse × CpaSlotSt S) := do
   let res ← cpaTryPauseSendSlotPrim false cut S sid u bundle m0 m1 shst
@@ -171,7 +171,7 @@ def cpaRunSendCutoffSlotPrim (cut : Nat) (S : Setup)
   | .inl p => return p
   | .inr _ => return (.noneResp, shst)
 
-def cpaStepCutoffSlotPrim (cut : Nat) (S : Setup)
+@[expose] def cpaStepCutoffSlotPrim (cut : Nat) (S : Setup)
     (q : AuthQuery S) (shst : CpaSlotSt S) :
     OracleComp PrimBaseSpec ((authSpec S).Range q × CpaSlotSt S) :=
   match q with
@@ -189,25 +189,25 @@ def cpaStepCutoffSlotPrim (cut : Nat) (S : Setup)
     let (resp, hst') ← stepAuthCpaNonSendPrim S q_other shst.2
     return (resp, (shst.1, hst'))
 
-def cpaSendSlotShOpk (S : Setup) (allowPause : Bool) (idx : Nat) (u : Fin S.N_id)
+@[expose] def cpaSendSlotShOpk (S : Setup) (allowPause : Bool) (idx : Nat) (u : Fin S.N_id)
     (i : Fin S.N_send_opk) (b : PreKeyBundleInput) (m0 m1 : Bytes)
     (shst : CpaSlotSt S) : OracleComp PrimBaseSpec (CpaSlotSendRes S) :=
   if b.opkB?.isNone then pure (.inl (.noneResp, shst))
   else cpaTryPauseSendSlotPrim allowPause idx S (.sendOPK u i) u b m0 m1 shst
 
-def cpaSendSlotShNoOpk (S : Setup) (allowPause : Bool) (idx : Nat) (u : Fin S.N_id)
+@[expose] def cpaSendSlotShNoOpk (S : Setup) (allowPause : Bool) (idx : Nat) (u : Fin S.N_id)
     (i : Fin S.N_send_no_opk) (b : PreKeyBundleInput) (m0 m1 : Bytes)
     (shst : CpaSlotSt S) : OracleComp PrimBaseSpec (CpaSlotSendRes S) :=
   if b.opkB?.isSome then pure (.inl (.noneResp, shst))
   else cpaTryPauseSendSlotPrim allowPause idx S (.sendNoOPK u i) u b m0 m1 shst
 
-def cpaSlotSendResToStep {S : Setup} : CpaSlotSendRes S →
+@[expose] def cpaSlotSendResToStep {S : Setup} : CpaSlotSendRes S →
     (AuthResponse × CpaSlotSt S) ⊕
       ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × CpaSlotSt S))
   | .inl x => .inl x
   | .inr (ad, m0, m1, p, sh) => .inr ((ad, m0, m1), (p, sh))
 
-def stepMidCpaSlot (S : Setup) (idx : Nat) (q : AuthQuery S) (shst : CpaSlotSt S) :
+@[expose] def stepMidCpaSlot (S : Setup) (idx : Nat) (q : AuthQuery S) (shst : CpaSlotSt S) :
     OracleComp PrimBaseSpec
       (((authSpec S).Range q × CpaSlotSt S) ⊕
         ((Bytes × Bytes × Bytes) × (AuthCpaPausePayload S × CpaSlotSt S))) :=
@@ -216,7 +216,7 @@ def stepMidCpaSlot (S : Setup) (idx : Nat) (q : AuthQuery S) (shst : CpaSlotSt S
   | .sendNoOPK u i b m0 m1 => cpaSlotSendResToStep <$> cpaSendSlotShNoOpk S true idx u i b m0 m1 shst
   | q' => (fun x => Sum.inl (x.1, (shst.1, x.2))) <$> stepAuthCpaNonSendPrim S q' shst.2
 
-def cpaStepUntilChallengeSlotPrim (idx : Nat) (S : Setup) {α : Type}
+@[expose] def cpaStepUntilChallengeSlotPrim (idx : Nat) (S : Setup) {α : Type}
     (defaultVal : α)
     (mx : OracleComp (unifSpec + authSpec S) α) (fuel : Nat) (shst : CpaSlotSt S) :
     OracleComp PrimBaseSpec (CpaSlotPauseRes S α) :=
@@ -257,7 +257,7 @@ def cpaStepUntilChallengeSlotPrim (idx : Nat) (S : Setup) {α : Type}
             r resp f' (s.1, hst'))
     mx fuel shst
 
-def cpaResumeAfterChallengeSlotPrim (idx : Nat) (S : Setup) (fuel : Nat) :
+@[expose] def cpaResumeAfterChallengeSlotPrim (idx : Nat) (S : Setup) (fuel : Nat) :
     CpaSlotPauseRes S Bool → Option Bytes → OracleComp PrimBaseSpec Bool
   | .done b' (_, hst), _ =>
     finalizeAeadCpaGameNoAuthPrim S b' hst.toAuthHybridState
@@ -268,7 +268,7 @@ def cpaResumeAfterChallengeSlotPrim (idx : Nat) (S : Setup) (fuel : Nat) :
       runWithPrimStepFuel false (cpaStepCutoffSlotPrim idx S) (cont resp) fuel (idx + 1, hst')
     finalizeAeadCpaGameNoAuthPrim S b' finalSt.toAuthHybridState
 
-def cpaReductionAuthSlotAtChoose (idx : Nat) (S : Setup) (fuel : Nat) (A : AuthAdversary S) :
+@[expose] def cpaReductionAuthSlotAtChoose (idx : Nat) (S : Setup) (fuel : Nat) (A : AuthAdversary S) :
     OracleComp PrimBaseSpec (Bytes × Bytes × Bytes × CpaSlotPauseRes S Bool) := do
   let initSt : CpaSlotSt S := (0, AuthHybridStateFixed.empty S true)
   let res ← cpaStepUntilChallengeSlotPrim idx S false A.run fuel initSt
@@ -281,19 +281,19 @@ def cpaReductionAuthSlotAtChoose (idx : Nat) (S : Setup) (fuel : Nat) (A : AuthA
   | .done _ _ =>
     return ([], [0], [0], res)
 
-def cpaReductionAuthSlotChoose (S : Setup) (fuel : Nat) (A : AuthAdversary S) :
+@[expose] def cpaReductionAuthSlotChoose (S : Setup) (fuel : Nat) (A : AuthAdversary S) :
     OracleComp PrimBaseSpec (Bytes × Bytes × Bytes × (Nat × CpaSlotPauseRes S Bool)) := do
   let idx ← embedUnif (RoKem.sampleIndexRange (min fuel S.N_send_tot))
   let (ad, m0, m1, res) ← cpaReductionAuthSlotAtChoose idx S fuel A
   return (ad, m0, m1, (idx, res))
 
-def cpaReductionAuthSlotDist (S : Setup) (fuel : Nat)
+@[expose] def cpaReductionAuthSlotDist (S : Setup) (fuel : Nat)
     (st : Nat × CpaSlotPauseRes S Bool) (chalCt? : Option Bytes) :
     OracleComp PrimBaseSpec Bool :=
   cpaResumeAfterChallengeSlotPrim st.1 S fuel st.2 chalCt?
 
 /-- Creation-order shallow `AeadIndCpaAdv` reduction. -/
-def cpaReductionAuthSlot (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : AeadIndCpaAdv where
+@[expose] def cpaReductionAuthSlot (S : Setup) (b : QueryBudget) (A : AuthAdversary S) : AeadIndCpaAdv where
   State  := Nat × CpaSlotPauseRes S Bool
   choose := cpaReductionAuthSlotChoose S b.q_total A
   dist   := cpaReductionAuthSlotDist S b.q_total
@@ -321,7 +321,7 @@ structure CpaSlotPauseInv {S : Setup} (idx n : Nat) (c : Bytes × Bytes × Bytes
   slot_le  : shst.1 ≤ n
   slot_eq  : shst.1 = idx
 
-def CpaSlotSendLeaf {S : Setup} (idx n : Nat) : CpaSlotSendRes S → Prop
+@[expose] def CpaSlotSendLeaf {S : Setup} (idx n : Nat) : CpaSlotSendRes S → Prop
   | .inl (_, sh) => CpaSlotInv (n + 1) sh
   | .inr (ad, m0, m1, p, sh) => CpaSlotPauseInv idx n (ad, m0, m1) p sh
 

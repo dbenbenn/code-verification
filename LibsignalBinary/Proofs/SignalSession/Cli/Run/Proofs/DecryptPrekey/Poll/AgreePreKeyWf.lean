@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.DecryptPrekey.S0Lemmas.AgreeCoins
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Canonical Pre-Key Record Inversion under `PreKeyFilesWf`
@@ -22,7 +24,7 @@ Under `PreKeyFilesWf W F`, any record returned by `getSignedPreKey`, `getPreKey`
 lengths for `StageP2` and `pkStoreKeys` agreement.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

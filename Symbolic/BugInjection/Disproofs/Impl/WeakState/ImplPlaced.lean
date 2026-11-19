@@ -35,9 +35,9 @@ set_option linter.dupNamespace false
 open Arm64.Obj (MultiPlacement)
 open Arm64.Process (ElfImage)
 open CryptoVerification.BugInjection (mutantCliElfBytes mutantCliElfImage)
-open CryptoVerification.SignalSession.Placed (cliRunPlacedSig)
+open LibsignalBinary.Proofs.Placed.CliBinaryPqPlaced.Placed (cliRunPlacedSig)
 open Symbolic.BugInjection (cliCompShapePlaced)
-open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (compHooks0 cliCompFitsPinned)
+open Symbolic.BugInjection.Proofs.Common.CompFitsSatisfiable (compHooks0 CliSetupMatchesPinned)
 open Symbolic.BugInjection.Proofs.CliExec.ElfFullSpecPlacedCore (ElfFullSpecPlaced)
 open Symbolic.BugInjection.Proofs.CliExec.ElfFullSpecPlaced (ElfFullValidPlaced)
 open Symbolic.BugInjection.Proofs.Cheval26WeakStateIdx1.ImplTrace
@@ -68,7 +68,7 @@ theorem impl_half_bytes_placed_of_runs
       cliRunPlacedSig mpl mmpl elf compHooks0 (wsInp6 files3) = some (wsOut6 files6)) :
     ∀ elf : ElfImage, ElfImage.parse mutantCliElfBytes = .ok elf →
       (cliCompShapePlaced mpl mmpl).ImplHalf
-        (cliCompFitsPinned Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.setup)
+        (CliSetupMatchesPinned Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.setup)
         elf Symbolic.BugInjection.Witnesses.Cheval26WeakStateIdx1Cli.trace := by
   intro elf hparse
   cases mutantCliElf_parse.symm.trans hparse

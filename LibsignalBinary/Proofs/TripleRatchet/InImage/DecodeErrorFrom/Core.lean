@@ -10,22 +10,13 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.TripleRatchet.Hooks.Defs
-public import LibsignalBinary.Proofs.TripleRatchet.TrapRng
-public import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.TripleRatchet.TrapRng -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.CodeLayout
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WP.Apply
 import ProofLib.SepLogic.WPp
-public import LibsignalBinary.Proofs.SpecLemmas.LibsignalTripleRatchetProofDefs
-
-/-!
-# Verification of In-Image `<DecodeError as From<DecodeErrorKind>>::from`
-
-Proves that the compiled `DecodeError::from` implementation allocates a 72-byte `Box<Inner>`
-with an empty context stack and satisfies `decodeErrorFromSpec`.
--/
-
-@[expose] public section
+import LibsignalBinary.Proofs.SpecLemmas.LibsignalTripleRatchetProofDefs
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.InImage.DecodeErrorFrom
 
@@ -38,43 +29,11 @@ set_option maxHeartbeats 400000
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnAddr Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_lemma% fnOff "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from")
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "alloc::alloc::handle_alloc_error")
-
-gen_decodes libsignalSessionCode_tree libsignalSessionBin [(ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from") → (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from" + 88)]
-
-/-! ## Local hook & memory helpers -/
-
 theorem sessionShim_hookOk : HookOk hookNoop sessionShimSpec := by
   refine hookNoop_ok fun _ R s0 hpre => ?_
   simp only [sessionShimSpec, hookNoop, retHook, id_eq, State.trace_setPC,
     satisfies_pure_sepConj, true_and, emp_sepConj] at hpre ⊢
   exact hpre
-
-theorem noAllocShim_ok_at_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        simp only [arm64_norm]) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) sessionShimSpec :=
-  hook_ok_at (hname := "__rustc::__rust_no_alloc_shim_is_unstable_v2") rfl hk
-    (by simp only [arm64_norm])
-    (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-    ⟨hookNoop, rfl, sessionShim_hookOk⟩
-
-theorem noAllocShim_ok_at {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_no_alloc_shim_is_unstable_v2" := by
-        simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) sessionShimSpec := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (noAllocShim_ok_at_trap hk)
 
 theorem allocHooks_alloc_tripleRatchetExterns_trap (C : Crypto)
     (A : RustAlloc) (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
@@ -96,55 +55,6 @@ theorem allocHooks_alloc_tripleRatchetExterns (C : Crypto) (ctl : BitVec 64)
     rw [tripleRatchetExterns_ctl C 0#64 ctl abs (n := allocName) (by decide)]
   unfold HookSat at ht ⊢
   rwa [← heq]
-
-theorem alloc_ok_at_norm_trap {A : RustAlloc} {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by simp only [arm64_norm]) :
-    subroutine_ok (trTrapProgAt b C abs)
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) (rustAllocSpec A) :=
-  hook_ok_at_raw (hname := "__rustc::__rust_alloc") rfl hk (by simp only [arm64_norm])
-    (fun _ => by simp only [arm64_norm])
-    (allocHooks_alloc_tripleRatchetExterns_trap C A abs hA)
-
-theorem alloc_ok_at_norm {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "__rustc::__rust_alloc" := by simp only [arm64_norm]) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) (rustAllocSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  exact subroutine_ok_kit_of_trTrap (alloc_ok_at_norm_trap hA hk)
-
-theorem panic_at_handle_alloc_error2_trap {b : BitVec 64} {C : Crypto}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" := by
-        simp only [arm64_norm]) :
-    (trTrapProgAt b C abs).externAt?
-      ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  panic_at_panicSymbol (hname := "alloc::alloc::handle_alloc_error") rfl hk
-    (by simp only [arm64_norm])
-    (fun _ => by simp only [arm64_norm]) (by simp [Rust.isPanicSymbol])
-
-theorem panic_at_handle_alloc_error2 {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" := by
-        simp only [arm64_norm]) :
-    (tripleRatchetProgAt b C ctl abs).externAt?
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked := by
-  have h := panic_at_handle_alloc_error2_trap (b := b) (C := C) (abs := abs) hk
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr name]
-  rcases (trapsOnly_trTrap_kit b C ctl abs).hook ((trTrapProgAt b C abs).fnAddr name + BitVec.ofNat 64 k) with
-    heq | ⟨f, hf, ht⟩
-  · exact heq.symm.trans h
-  · cases h.symm.trans hf
-    exact False.elim (ht default (ProofLib.Variant.OutcomeStatus.of_panicked rfl))
 
 theorem memRegion_zero (a : BitVec 64) : memRegion a 0 = emp := by
   have hb := IsBlock.pointsToBytes a []
@@ -299,80 +209,5 @@ theorem decodeErrorWith_zero_entails (A : RustAlloc) (e w u4 u3 u2 u1 u0 : BitVe
   exact sepConj_mono_right (sepConj_mono hvec (sepConj_mono hkind h40))
 
 /-! ## Main proof of `<DecodeError as From<DecodeErrorKind>>::from` -/
-
-theorem decodeErrorFrom_ok_aux_trap (b : BitVec 64) (C : Crypto) (A : RustAlloc)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (trTrapProgAt b C abs) ((trTrapProgAt b C abs).fnAddr decodeErrorFromName)
-      (decodeErrorFromSpec A) := by
-  simp only [decodeErrorFromSpec, stackAt_decodeErrorFrom]
-  cells_unfold
-  have hshim := noAllocShim_ok_at_trap (b := b) (C := C) (abs := abs)
-    (name := decodeErrorFromName) (k := num% (ls_off% "__rustc::__rust_no_alloc_shim_is_unstable_v2" - ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from"))
-  have halloc := alloc_ok_at_norm_trap (b := b) (C := C)
-    (name := decodeErrorFromName) (k := num% (ls_off% "__rustc::__rust_alloc" - ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from")) hA
-  have hpanic := panic_at_handle_alloc_error2_trap (b := b) (C := C) (abs := abs)
-    (name := decodeErrorFromName) (k := num% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from"))
-  clear hA
-  wpp_init x s0
-  have hfn : libsignalSessionCode.fnOff decodeErrorFromName = num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from") :=
-    (ls_lemma% fnOff "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from")
-  code_fetches CryptoVerification.libsignalSessionCode
-    libsignalSessionBin b
-    (Rust.withPanics (trTrapExterns C abs)) hfn (num% (ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from")) 92
-  replace hpc : s0.pc =
-      (libsignalSessionCode.rebase b
-        (Rust.withPanics (trTrapExterns C abs))).fnAddr decodeErrorFromName := by
-    rw [hpc, Program.fnAddr_rebase, hfn]
-  dsimp only [trTrapProgAt] at hshim halloc hpanic ⊢
-  clear hfn
-  generalize_entry (libsignalSessionCode.rebase b
-    (Rust.withPanics (trTrapExterns C abs))).fnAddr decodeErrorFromName = entry
-  examples_hide_fetches
-  obtain ⟨k, w⟩ := x
-  dsimp only at *
-  have hpow2 : ∃ j, 8 = 2 ^ j := ⟨3, rfl⟩
-  have hlay : LayoutOk 72 8 := ⟨by decide, hpow2, by decide⟩
-  apply SepWPp.of_sepWP (mid := entry + bv% (32))
-  wp_steps
-  wp_apply
-  wp_steps
-  wp_apply
-  apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-  by_cases hoom : sf_1.readReg64 (Reg.gpr 0#5) = 0
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) = 0#64 := hoom
-    simp only [hoom, ite_true, sepConj_assoc]
-    refine sepWPp_pure_mid fun htrace => ?_
-    apply SepWPp.of_sepWP (mid := entry + bv% (ls_off% "alloc::alloc::handle_alloc_error" - ls_off% "<prost::error::DecodeError as core::convert::From<prost::error::DecodeErrorKind>>::from"))
-    wp_steps
-    apply SepWP.done (by wp_norm_goal) (by wp_norm_lhs)
-    refine SepWPp.panic (by wp_norm_lhs) (by simpa only [arm64_norm] using hpanic) fun hm => ?_
-    simpa only [sepConj_assoc] using
-      allowPanic_panicked
-        (allocFailedIn_of_eq (by simp only [Rust.panicked, arm64_norm, htrace, ‹sf.trace = s0.trace›])) hm
-  · have hoom64 : sf_1.readReg64 (Reg.gpr 0#5) ≠ 0#64 := hoom
-    simp only [hoom, ite_false, memRegion_40_cells (k + 8#64), memRegion_72_cells,
-      sepExists_sepConj_left, sepExists_sepConj_right, sepConj_assoc]
-    refine SepWPp.exists_elim fun k0 => SepWPp.exists_elim fun k1 =>
-      SepWPp.exists_elim fun k2 => SepWPp.exists_elim fun k3 =>
-      SepWPp.exists_elim fun k4 =>
-      SepWPp.exists_elim fun u0 => SepWPp.exists_elim fun u1 =>
-      SepWPp.exists_elim fun u2 => SepWPp.exists_elim fun u3 =>
-      SepWPp.exists_elim fun u4 => SepWPp.exists_elim fun u5 =>
-      SepWPp.exists_elim fun u6 => SepWPp.exists_elim fun u7 =>
-      SepWPp.exists_elim fun u8 => ?_
-    refine sepWPp_pure_mid fun ⟨hmod, htrace⟩ => ?_
-    apply SepWPp.of_sepWP_ret
-    simp only [BitVec.add_assoc, BitVec.reduceAdd]
-    wp_steps
-    apply SepWP.fold (decodeErrorWith_zero_entails A _ w _ _ _ _ _ ‹KindNoHeap w›) (by sep_focus)
-    apply SepWP.fold (cells6_entails_memRegion48 k w _ _ _ _ _) (by sep_focus)
-    wp_done
-
-theorem decodeErrorFrom_ok_aux (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs) ((tripleRatchetProgAt b C ctl abs).fnAddr decodeErrorFromName)
-      (decodeErrorFromSpec A) := by
-  rw [← (trapsOnly_trTrap_kit b C ctl abs).fnAddr decodeErrorFromName]
-  exact subroutine_ok_kit_of_trTrap (decodeErrorFrom_ok_aux_trap b C A abs hA)
 
 end CryptoVerification.LibsignalTripleRatchet.InImage.DecodeErrorFrom

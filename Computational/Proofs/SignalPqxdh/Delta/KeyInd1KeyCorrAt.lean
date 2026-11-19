@@ -19,7 +19,7 @@ import Computational.Proofs.SignalPqxdh.Delta.KeyInd.CorrAt
 `runKeyInd1KeyShCrSim` via `KICorrAt.badKemCorrProbGenericAt_le_kemCorr`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

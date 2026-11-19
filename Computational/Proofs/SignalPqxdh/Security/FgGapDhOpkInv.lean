@@ -9,10 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkPre
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpkPre -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhE -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhOpk -- proof-setup: allow-public-import
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhD -- proof-setup: allow-public-import
 
 /-!
 # Case D (`DH4`) State Erasure, Invariant, and Terminal Win
@@ -22,7 +23,7 @@ Defines the Case D simulator projection `eraseStateFgOpk`, the per-index bad eve
 `FgSimInvDh4`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,15 +38,15 @@ namespace Proofs.SignalPqxdh.Security.FgGapDh.Opk
 
 open Proofs.SignalPqxdh.Security.FgGapDh
 
-def eraseOpkEntryFg (S : Setup) (oIdx : ℕ) (k : ℕ × ℕ × ℕ) (e : OpkEntry) : OpkEntry :=
+@[expose] def eraseOpkEntryFg (S : Setup) (oIdx : ℕ) (k : ℕ × ℕ × ℕ) (e : OpkEntry) : OpkEntry :=
   if opkSlotFlatIdx S k == oIdx then { e with opkSk := [] } else e
 
-def eraseOpkEntriesFg (S : Setup) (oIdx : ℕ)
+@[expose] def eraseOpkEntriesFg (S : Setup) (oIdx : ℕ)
     (opkEntries : List ((ℕ × ℕ × ℕ) × OpkEntry)) : List ((ℕ × ℕ × ℕ) × OpkEntry) :=
   opkEntries.map (fun (k, e) => (k, eraseOpkEntryFg S oIdx k e))
 
 /-- Simulator view of a `KeyInd` state in Case D. -/
-def eraseStateFgOpk {S : Setup} (sIdx oIdx : ℕ) (st : KeyIndState S) : KeyIndState S :=
+@[expose] def eraseStateFgOpk {S : Setup} (sIdx oIdx : ℕ) (st : KeyIndState S) : KeyIndState S :=
   { st with
     opkEntries := eraseOpkEntriesFg S oIdx st.opkEntries
     sessions   := eraseSessionsFg sIdx st.sessions
@@ -129,7 +130,7 @@ theorem isFreshKeyIndSession_eraseStateFgOpk {S : Setup} (sIdx oIdx : ℕ)
   simp only [find?_sid_eraseSessionsFg]
   cases st.sessions.find? (fun e => e.sid == sid) <;> simp
 
-def FgSlotReps.ofDh4 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
+@[expose] def FgSlotReps.ofDh4 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
     (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32) : FgSlotReps P where
   Rep1 := FgPosRightRep P vSk
   Rep2 := FgPosLeftRep P uSk
@@ -155,12 +156,12 @@ def FgSlotReps.ofDh4 (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
     | none => trivial
     | some d => exact ⟨hd d rfl, Or.inl rfl⟩
 
-def opkTargetIsV {S : Setup} (oIdx : ℕ) (V : Bytes) (hst : KeyIndFgCutoffState S) : Bool :=
+@[expose] def opkTargetIsV {S : Setup} (oIdx : ℕ) (V : Bytes) (hst : KeyIndFgCutoffState S) : Bool :=
   hst.base.opkEntries.all (fun (k, e) => !(opkSlotFlatIdx S k == oIdx) || (e.opkPk == V))
 
 /-- Sticky Case D death: the target initiator session exists and its peer OPK is absent or does
     not match `V` modulo `pow8`. -/
-def deadDh4 {S : Setup} (P : Primitives) (sIdx oIdx : ℕ) (V : Bytes)
+@[expose] def deadDh4 {S : Setup} (P : Primitives) (sIdx oIdx : ℕ) (V : Bytes)
     (hst : KeyIndFgCutoffState S) : Bool :=
   opkTargetIsV oIdx V hst &&
   match hst.base.sessions.find? (fun s => initSessionSlotIdx s.sid == sIdx) with
@@ -170,7 +171,7 @@ def deadDh4 {S : Setup} (P : Primitives) (sIdx oIdx : ℕ) (V : Bytes)
 /-- Case D (`DH4 = CDH(ek_U*, opk_V*)`) bad event at `(sIdx, oIdx)`: initiator session `sIdx` is
     fresh against OPK slot `oIdx` and `P.x25519 s.ekASk oEntry.opkPk` is queried in
     `advRoLog.take maxLen`. -/
-def badKeyIndFgDh4At {S : Setup} (P : Primitives) (maxLen sIdx oIdx : ℕ)
+@[expose] def badKeyIndFgDh4At {S : Setup} (P : Primitives) (maxLen sIdx oIdx : ℕ)
     (st : KeyIndState S) (advRoLog : List Bytes) : Bool :=
   match st.sessions.find? (fun s => initSessionSlotIdx s.sid == sIdx),
         st.opkEntries.find? (fun (k, _) => opkSlotFlatIdx S k == oIdx) with
@@ -346,7 +347,7 @@ theorem pqxdhKeyIndFgPreImplOpk_preserves_deadDh4 {S : Setup} (P : Primitives)
     exact pqxdhKeyIndFgPreImpl_preserves_deadDh4 P sIdx oIdx hsIdx uSk (P.x25519Base vSk) _
       (fun _ _ _ h => by cases h) hst hDead
 
-def FgSimInvDh4 (S : Setup) (b : QueryBudget) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
+@[expose] def FgSimInvDh4 (S : Setup) (b : QueryBudget) (P : Primitives) (hP : CryptoWellFormedPrimitivesδ P)
     (sIdx oIdx : ℕ) (uSk vSk : Bytes) (huSk : uSk.length = 32) (hvSk : vSk.length = 32)
     (rem : ℕ) (hst : KeyIndFgCutoffState S) (st : FgKeyIndSimState S) : Prop :=
   st.base = eraseStateFgOpk sIdx oIdx hst.base ∧

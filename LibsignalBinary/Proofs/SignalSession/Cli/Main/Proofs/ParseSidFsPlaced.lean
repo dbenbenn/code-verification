@@ -9,13 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseSidFs
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.UuidFsPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.ParseSidFs
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.ParseServiceId
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.InImageCalleesCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Relocatable `ServiceId::parse_from_service_id_string` Preserving `fs` (Block `206`)
@@ -25,7 +29,7 @@ on Block `252`) with `.keepsFs` under `[LibsignalPlacement]`, and lifts it to an
 `StoreKit.withLsRoCl` and `withLsCl`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -209,19 +213,5 @@ theorem parseSid_placed_okFs_rocl [LibsignalPlacement] {prog : Program} {i : Nat
       (parseSid_blk206_okFs H hookStack hstack)
   exact LibsignalPublicApi.StoreKit.ls_subroutine_ok_rocl_of_block
     (callerProg := prog) h0 hi (by decide) (by decide)
-
-/-- Relocatable `ServiceId::parse_from_service_id_string` lifted to any caller block `prog`
-(`IsLsBlockProg prog i H`, `i < 619`) at `lsmpl.base 206` with `withLsCl lsmpl`. -/
-theorem parseSid_placed_okFs_cl [LibsignalPlacement] {prog : Program} {i : Nat}
-    {H : LibsignalHooks} [IsLsBlockProg prog i H]
-    (hookStack : Nat := extHookStack)
-    (hstack : uuidTryParseStack ≤ hookStack := by decide)
-    (hi : i < 619 := by decide) :
-    subroutine_ok prog (lsmpl.base 206)
-      (withLsCl lsmpl (parseSidCodeStackSpec hookStack).keepsFs) := by
-  have h0 : subroutine_ok ((blkPC_206).rebase (blkPl_206).base H) (lsmpl.base 206)
-      (withLsCodeLoaded lsmpl (parseSidCodeStackSpec hookStack).keepsFs) :=
-    parseSid_blk206_okFs H hookStack hstack
-  exact ls_subroutine_ok_cl_of_block (callerProg := prog) h0 hi (by decide) (by decide)
 
 end CryptoVerification.SignalSession.Cli.MainHops

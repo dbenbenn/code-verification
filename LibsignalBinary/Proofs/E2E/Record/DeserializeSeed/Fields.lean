@@ -19,7 +19,7 @@ over `seedFields f`, together with tag case-analysis and monotonicity lemmas for
 `SessionStructure::merge_field` contracts.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeSeed
 
@@ -77,54 +77,6 @@ theorem seedSession_eq_fields {f : List (BitVec 8)} (hf : SeedOk f) :
 section Placed
 
 open Arm64 ProofLib Arm64.Obj CryptoVerification CryptoVerification.E2E.Record.Placed
-
-/-- Every `SeedField` has tag in `{1, 2, 3, 4, 6, 7, 9}`. -/
-theorem seedField_tag_cases (fl : SeedField) :
-    fl.tag = 1 ∨ (fl.tag = 2 ∨ fl.tag = 3 ∨ fl.tag = 4) ∨
-      fl.tag = 6 ∨ fl.tag = 7 ∨ fl.tag = 9 := by
-  cases fl <;> simp [SeedField.tag]
-
-theorem mergeFieldSeedPlacedOk_mono [LibsignalPlacement]
-    {P Q : SeedField → Prop} {H : String → Option (State → State)}
-    (hPQ : ∀ fl, P fl → Q fl) (hQ : MergeFieldSeedPlacedOk Q H) :
-    MergeFieldSeedPlacedOk P H := by
-  refine subroutine_ok_mono hQ (fun x R s0 hpre => ?_) (fun _ _ _ _ hpost => hpost)
-  obtain ⟨hcrl, hraw⟩ := LibsignalTripleRatchet.extract_withLsCodeRoLoaded hpre
-  dsimp only [mergeFieldSeedPlacedSpec, LibsignalTripleRatchet.withLsCodeRoLoaded]
-  rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-  refine ⟨hcrl, ?_⟩
-  dsimp only [mergeFieldSeedRawSpec] at hraw ⊢
-  rw [sepConj_assoc, satisfies_pure_sepConj] at hraw ⊢
-  obtain ⟨⟨h0, h1, h2, h3, h4, hP, hrest⟩, hsp⟩ := hraw
-  exact ⟨⟨h0, h1, h2, h3, h4, hPQ x.fld hP, hrest⟩, hsp⟩
-
-/-- Combine the per-tag `[LibsignalPlacement]` `merge_field` seed contracts (tags `1`, `2|3|4`,
-`6`, `7`, `9`) into the unrestricted `MergeFieldSeedPlacedOk (fun _ => True) H`. -/
-theorem mergeFieldSeedPlacedOk_of_tags [LibsignalPlacement]
-    {H : String → Option (State → State)}
-    (h1 : MergeFieldSeedPlacedOk (fun fl => fl.tag = 1) H)
-    (h234 : MergeFieldSeedPlacedOk (fun fl => fl.tag = 2 ∨ fl.tag = 3 ∨ fl.tag = 4) H)
-    (h6 : MergeFieldSeedPlacedOk (fun fl => fl.tag = 6) H)
-    (h7 : MergeFieldSeedPlacedOk (fun fl => fl.tag = 7) H)
-    (h9 : MergeFieldSeedPlacedOk (fun fl => fl.tag = 9) H) :
-    MergeFieldSeedPlacedOk (fun _ => True) H := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  have hrepl : ∀ (P : SeedField → Prop), P x.fld →
-      (s0.mem ⊨ (mergeFieldSeedPlacedSpec P).pre x s0 ∗ R) := fun P hP => by
-    obtain ⟨hcrl, hraw⟩ := LibsignalTripleRatchet.extract_withLsCodeRoLoaded hpre
-    dsimp only [mergeFieldSeedPlacedSpec, LibsignalTripleRatchet.withLsCodeRoLoaded]
-    rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj]
-    refine ⟨hcrl, ?_⟩
-    dsimp only [mergeFieldSeedRawSpec] at hraw ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hraw ⊢
-    obtain ⟨⟨h0, ht, hw, hb, hd, _, hrest⟩, hmem⟩ := hraw
-    exact ⟨⟨h0, ht, hw, hb, hd, hP, hrest⟩, hmem⟩
-  rcases seedField_tag_cases x.fld with ht1 | ht234 | ht6 | ht7 | ht9
-  · exact subroutine_ok.mono_outcome h1 x R s0 hpc hrun (hrepl _ ht1) hsp fun _ hout => hout
-  · exact subroutine_ok.mono_outcome h234 x R s0 hpc hrun (hrepl _ ht234) hsp fun _ hout => hout
-  · exact subroutine_ok.mono_outcome h6 x R s0 hpc hrun (hrepl _ ht6) hsp fun _ hout => hout
-  · exact subroutine_ok.mono_outcome h7 x R s0 hpc hrun (hrepl _ ht7) hsp fun _ hout => hout
-  · exact subroutine_ok.mono_outcome h9 x R s0 hpc hrun (hrepl _ ht9) hsp fun _ hout => hout
 
 end Placed
 

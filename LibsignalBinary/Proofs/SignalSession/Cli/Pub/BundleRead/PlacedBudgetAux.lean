@@ -9,14 +9,27 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.Placed
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.Placed
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import ProofLib.Hoare.Safety
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymA -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.DirSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.PublicSpecs
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+import LibsignalBinary.Proofs.SignalSession.Cli.Fs
+import LibsignalBinary.Proofs.SignalSession.Cli.Pub.BundleRead.Layout
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.Common.SharedHelpers
 
 /-!
 # Budget Envelopes, `read_file` Call, and `Ok` Branch for `read_bundle::{closure#0}`
@@ -25,7 +38,7 @@ Allocator event envelopes (`BundleReadAfterReadEnv`, `BundleReadTailEnv`, `Bundl
 `read_file` call-site lemma, the tail-deallocation epilogue, and the `Ok(bs)` branch for Block `563`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -70,20 +83,20 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 /-! ## Allocator Event Envelopes -/
 
 /-- Allocator events emitted after `read_file` returns in `read_bundle::{closure#0}` (`FreeOnlyEvs` on `Ok`, or a 22-byte allocation plus path deallocation on `Err`). -/
-def BundleReadAfterReadEnv (rd : ReadRule) (files : FsFiles) (p : List (BitVec 8))
+@[expose] def BundleReadAfterReadEnv (rd : ReadRule) (files : FsFiles) (p : List (BitVec 8))
     (evs : List AllocEvent) : Prop :=
   match rd files p with
   | .ok _ => FreeOnlyEvs evs
   | .error () => SeqEnv (· = rustAllocEvents 22 1) FreeOnlyEvs evs
 
 /-- Tail allocator events of `read_bundle::{closure#0}` after `path` returns (`read_file` followed by `BundleReadAfterReadEnv`). -/
-def BundleReadTailEnv (rd : ReadRule)
+@[expose] def BundleReadTailEnv (rd : ReadRule)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop := ReadFileRuleEnv rd)
     (files : FsFiles) (p : List (BitVec 8)) (evs : List AllocEvent) : Prop :=
   SeqEnv (ReadEnv files p) (BundleReadAfterReadEnv rd files p) evs
 
 /-- Full allocator event envelope of `read_bundle::{closure#0}` parameterized by `PathEnv` and `ReadEnv`. -/
-def BundleReadEnv (rd : ReadRule)
+@[expose] def BundleReadEnv (rd : ReadRule)
     (PathEnv : List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (ReadEnv : FsFiles → List (BitVec 8) → List AllocEvent → Prop := ReadFileRuleEnv rd)
     (files : FsFiles) (dir name : List (BitVec 8)) (evs : List AllocEvent) : Prop :=

@@ -11,12 +11,15 @@ module
 
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetSat -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetAuxCSat -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetAuxSat -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
+import LibsignalBinary.Proofs.TripleRatchet.Keys.KeysSat
 import ProofLib.ProgramReflection
 import ProofLib.SepLogic.WP.Apply
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `HookSat` Sibling of `CryptoCalleesPlacedBudget` (`CryptoCalleesPlacedBudgetSat`)
@@ -44,24 +47,23 @@ open CryptoVerification
    lsBlackBoxU8Sym lsRustDeallocSym
    ls_externAt?_blockProgram_eq_of_externs_eq lsmpl withLsCodeLoaded)
 open CryptoVerification.LibsignalSession (blackBoxHook)
+open CryptoVerification.RustHeap (allocHookStack)
 open CryptoVerification.LibsignalTripleRatchet
   (ExtractGhost LibsignalCodeRoLoaded
    blkPC_53 blkPC_54 blkPl_53 blkPl_54
-   diffieHellmanSpec expandMultiInfoStack extractSpec extractStack
-   hmacCoreAt keys_ls_hook_ok_of_mem keys_ls_subroutine_ok_of_block_cro
+   diffieHellmanSpec hmacCoreAt keys_ls_hook_ok_of_mem keys_ls_subroutine_ok_of_block_cro
    optSaltAt subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded
-   withLsCodeRoLoaded zeroizeSecretSpec)
+   withLsCodeRoLoaded withStack zeroizeSecretSpec)
 open CryptoVerification.LibsignalTripleRatchet.Keys
   (hmacCore_entails_cells lsDhSym lsRustAllocSym lsRustNoAllocShimSym
-   lsSharedDropSym lsStaticDropSym stackAt_alloc_expand stackAt_alloc_extract)
+   lsSharedDropSym lsStaticDropSym withLsRet624)
 open CryptoVerification.E2E (u8Vec)
 open CryptoVerification.E2E.Pqxdh.Initiator
   (INFO_PQXDH Primitives StructuralPrims
    bytesToBv8 hkdfExtractRef hkdfExtractRef_length pqxdhHmacStateAt)
 open CryptoVerification.E2E.Pqxdh.ResponderCore
   (PrimitivesMatchCrypto bytesToBv8_hkdfExpandRef_96 bytesToBv8_hkdfExtractRef_some
-   bytesToBv8_length expandMultiInfo96_46Spec
-   lsDalekMontToEdSym lsDalekTorsionFreeSym lsKyberDecapsSym
+   bytesToBv8_length lsDalekMontToEdSym lsDalekTorsionFreeSym lsKyberDecapsSym
    pqxdhHmacStateAt_eq u8Vec_toList_of_length)
 open LibsignalBinary.Heap
   (AllocCostModel BudgetLimits RustCliAllocBudget VmPreserved
@@ -82,25 +84,43 @@ open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetSat
    pqxdhHkdfExpand_10_placed_ok_sat pqxdhHkdfExpand_8_placed_ok_sat)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudget
   (PqxdhPlacedHookContracts cryptoBoolRegStubBudgetSpec dalekMontToEdStubBudgetSpec
-   expandMultiInfo96_46BudgetSpec kyberDecapsStubBudgetSpec)
+   kyberDecapsStubBudgetSpec)
+open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetAuxCSat
+  (expandMultiInfo96_46BudgetSpecSat expandMultiInfo96_46SpecSat
+   expand_multi_info_96_46_placed_vm_ok_sat)
 open LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetAuxSat
-  (expand_multi_info_96_46_placed_vm_ok_sat extract_placed_vm_ok_cro_sat
-   pqxdhHkdfExtractNone_placed_ok_block54_sat)
+  (extract_placed_vm_ok_cro_sat pqxdhHkdfExtractNone_placed_ok_block54_sat)
 open LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget (noAllocShimBudgetSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonBudgetSat
-  (HkdfPlacedHooksBudgetSat HkdfPlacedHooksExactBudgetSat)
+  (HkdfPlacedHooksBudgetSat HkdfPlacedHooksExactBudgetSat extractBudgetSpecSat)
+open LibsignalBinary.Proofs.TripleRatchet.Hkdf.CommonSat
+  (expandMultiInfoStackSat extractSpecSat extractStackSat)
 open LibsignalBinary.Proofs.TripleRatchet.Keys.CreateChainBudget
-  (createChain_placed_ok_of_contracts
-   extractBudgetSpec subroutine_ok_createChainSpecX_of_createChainSpec)
+  (subroutine_ok_createChainSpecX_of_createChainSpec)
 open LibsignalBinary.Proofs.TripleRatchet.Keys.DefsBudget
   (createChainSpec createChainSpecX)
+open LibsignalBinary.Proofs.TripleRatchet.Keys.KeysSat
+  (createChain_placed_ok_of_contracts_budget_sat)
 
 export LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoBridgePlacedBudgetSat
   (expand_multi_info_placed_vm_ok_of_other_block_sat
    pqxdhHkdfExpand_10_placed_ok_sat pqxdhHkdfExpand_8_placed_ok_sat)
+export LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetAuxCSat
+  (expand_multi_info_96_46_placed_vm_ok_sat)
 export LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.CryptoCalleesPlacedBudgetAuxSat
-  (expand_multi_info_96_46_placed_vm_ok_sat extract_placed_vm_ok_cro_sat
-   pqxdhHkdfExtractNone_placed_ok_block54_sat)
+  (extract_placed_vm_ok_cro_sat pqxdhHkdfExtractNone_placed_ok_block54_sat)
+
+private theorem stackAt_alloc_extract_sat (sp : BitVec 64) :
+    stackAt sp allocHookStack =
+      memRegion (sp - 4096#64) 2944 ∗ stackAt sp extractStackSat := by
+  simp only [stackAt, allocHookStack, extractStackSat]
+  exact ProofLib.memRegion_split' rfl (by bv_omega) (by decide)
+
+private theorem stackAt_alloc_expand_sat (sp : BitVec 64) :
+    stackAt sp allocHookStack =
+      memRegion (sp - 4096#64) 3280 ∗ stackAt sp expandMultiInfoStackSat := by
+  simp only [stackAt, allocHookStack, expandMultiInfoStackSat]
+  exact ProofLib.memRegion_split' rfl (by bv_omega) (by decide)
 
 private theorem satisfies_withLsCodeLoaded_intro {α : Type} {pl : Obj.MultiPlacement}
     {spec : Spec α} {x : α} {s0 : State} {R : SepProp}
@@ -172,7 +192,7 @@ public theorem expand_multi_info_96_46_placed_vm_ok_of_other_block_sat [Libsigna
     [IsLsBlockProg callerProg i H] [HkdfPlacedHooksExactBudgetSat C.F H]
     (hi : i < 619 := by decide) :
     subroutine_ok callerProg (lsmpl.base 53)
-      (withLsCodeRoLoaded lsmpl (expandMultiInfo96_46BudgetSpec C.F)) :=
+      (withLsCodeRoLoaded lsmpl (expandMultiInfo96_46BudgetSpecSat C.F)) :=
   keys_ls_subroutine_ok_of_block_cro
     (subroutine_ok_withLsCodeRoLoaded_of_withLsCodeLoaded (expand_multi_info_96_46_placed_vm_ok_sat C H))
     hi (by decide) (by decide)
@@ -189,7 +209,7 @@ public theorem pqxdhHkdfExpand_12_placed_ok_sat [LibsignalPlacement]
   rintro ⟨hkdfA, prk, infoHdrA, infoA, info, okmA, sp⟩ R s0 hpre
   dsimp only [pqxdhHkdfExpandCellsPlacedSpec, withVmPreserved,
     CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExpandCellsPlacedSpec] at hpre
-  rw [stackAt_alloc_expand sp, ← memRegion_cells okmA 12 (by decide)] at hpre
+  rw [stackAt_alloc_expand_sat sp, ← memRegion_cells okmA 12 (by decide)] at hpre
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hF, hx0, hx1, hx2, hx3, hsp, hprk, hcases⟩, hpre⟩
   have hinfo : info = INFO_PQXDH := by
@@ -203,18 +223,18 @@ public theorem pqxdhHkdfExpand_12_placed_ok_sat [LibsignalPlacement]
   rw [pqxdhHmacStateAt_eq hP hkdfA (by omega), hinfo_len_bv] at hpre
   refine ⟨⟨hkdfA, bytesToBv8 prk, infoHdrA, infoA, bytesToBv8 info, okmA, 96⟩,
     memRegion (sp - 8192#64) 3936 ∗ memRegion (sp - 4256#64) 160 ∗
-      memRegion (sp - 4096#64) 3456 ∗ R, ?_, ?_⟩
+      memRegion (sp - 4096#64) 3280 ∗ R, ?_, ?_⟩
   · apply satisfies_withLsCodeLoaded_intro hF.code
-    dsimp only [withVmPreserved, expandMultiInfo96_46Spec]
+    dsimp only [withVmPreserved, expandMultiInfo96_46SpecSat]
     subst hsp
     repeat rw [bytesToBv8_length]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨⟨hx0, hx1, hx2, hx3, hprk_le, hinfo_len, trivial⟩, by arm64_sep_close⟩
   · intro sf hpost
-    dsimp only [withLsCodeLoaded, withVmPreserved, expandMultiInfo96_46Spec,
+    dsimp only [withLsCodeLoaded, withVmPreserved, expandMultiInfo96_46SpecSat,
       pqxdhHkdfExpandCellsPlacedSpec,
       CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExpandCellsPlacedSpec] at hpost ⊢
-    rw [stackAt_alloc_expand sp, hinfo_len_bv]
+    rw [stackAt_alloc_expand_sat sp, hinfo_len_bv]
     subst hsp
     simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
     rcases hpost with ⟨hvm, htr, hpost⟩
@@ -223,9 +243,9 @@ public theorem pqxdhHkdfExpand_12_placed_ok_sat [LibsignalPlacement]
       (Q := ((infoHdrA ↦₆₄ infoA) ∗ ((infoHdrA + 8#64) ↦₆₄ 46#64) ∗
         (infoA ↦ᵣ bytesToBv8 info) ∗
         (okmA ↦ₛ hkdfExpand C.F (bytesToBv8 prk) (bytesToBv8 info) 96) ∗
-        stackAt s0.sp expandMultiInfoStack ∗
+        stackAt s0.sp expandMultiInfoStackSat ∗
         memRegion (s0.sp - 8192#64) 3936 ∗ memRegion (s0.sp - 4256#64) 160 ∗
-        memRegion (s0.sp - 4096#64) 3456) ∗ R)
+        memRegion (s0.sp - 4096#64) 3280) ∗ R)
       (hmacCore_entails_cells C.F hkdfA (bytesToBv8 prk))
     replace hpost := Satisfies.mono hE (by simpa only [sepConj_assoc] using hpost)
     exact ⟨hvm, htr, by arm64_sep_close⟩
@@ -270,7 +290,7 @@ public theorem extract_placed_vm_ok_of_other_block_sat [LibsignalPlacement] (C :
     [IsLsBlockProg callerProg i H] [HkdfPlacedHooksExactBudgetSat C.F H]
     (hi : i < 619 := by decide) :
     subroutine_ok callerProg (lsmpl.base 54)
-      (withLsCodeRoLoaded lsmpl (extractBudgetSpec C.F)) :=
+      (withLsCodeRoLoaded lsmpl (extractBudgetSpecSat C.F)) :=
   keys_ls_subroutine_ok_of_block_cro (extract_placed_vm_ok_cro_sat C H)
     hi (by decide) (by decide)
 
@@ -286,7 +306,7 @@ public theorem pqxdhHkdfExtractSome_placed_ok_block54_sat [LibsignalPlacement]
   rintro ⟨ret, saltA, salt, ikmA, ikm, sp⟩ R s0 hpre
   dsimp only [pqxdhHkdfExtractSomePlacedSpec, withVmPreserved,
     CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExtractSomePlacedSpec] at hpre
-  rw [stackAt_alloc_extract sp] at hpre
+  rw [stackAt_alloc_extract_sat sp] at hpre
   simp only [sepConj_assoc, satisfies_pure_sepConj] at hpre
   rcases hpre with ⟨⟨hF, hx0, hx1, hx2, hx3, hx4, hsp_eq, hsalt_ne, hsalt_len, hikm_len⟩, hpre⟩
   let x : ExtractGhost := ⟨ret, saltA, some (u8Vec 32 salt), ikmA, bytesToBv8 ikm⟩
@@ -294,40 +314,40 @@ public theorem pqxdhHkdfExtractSome_placed_ok_block54_sat [LibsignalPlacement]
   have hikm_bv_len : x.ikm.length = 32 := by dsimp [x]; rw [bytesToBv8_length, hikm_len]
   refine ⟨x,
     memRegion (sp - 8192#64) 3936 ∗ memRegion (sp - 4256#64) 160 ∗
-      memRegion (sp - 4096#64) 3120 ∗ R, ?_, ?_⟩
+      memRegion (sp - 4096#64) 2944 ∗ R, ?_, ?_⟩
   · dsimp only [withLsCodeRoLoaded]
     have hcomm :
-        ((extractBudgetSpec C.F).pre x s0 ∗ ⌜LibsignalCodeRoLoaded lsmpl s0.mem⌝) ∗
+        ((extractBudgetSpecSat C.F).pre x s0 ∗ ⌜LibsignalCodeRoLoaded lsmpl s0.mem⌝) ∗
           (memRegion (sp - 8192#64) 3936 ∗ memRegion (sp - 4256#64) 160 ∗
-            memRegion (sp - 4096#64) 3120 ∗ R) =
+            memRegion (sp - 4096#64) 2944 ∗ R) =
         ⌜LibsignalCodeRoLoaded lsmpl s0.mem⌝ ∗
-          ((extractBudgetSpec C.F).pre x s0 ∗
+          ((extractBudgetSpecSat C.F).pre x s0 ∗
             (memRegion (sp - 8192#64) 3936 ∗ memRegion (sp - 4256#64) 160 ∗
-              memRegion (sp - 4096#64) 3120 ∗ R)) := by sep_ac_rfl
+              memRegion (sp - 4096#64) 2944 ∗ R)) := by sep_ac_rfl
     rw [hcomm, satisfies_pure_sepConj]
     refine ⟨⟨hF.code, hF.ro⟩, ?_⟩
-    dsimp only [extractBudgetSpec, withVmPreserved, extractSpec, optSaltAt, x]
+    dsimp only [extractBudgetSpecSat, withVmPreserved, extractSpecSat, optSaltAt, x]
     subst hsp_eq
     rw [hsalt_list]
     simp only [sepConj_assoc, satisfies_pure_sepConj]
     refine ⟨⟨hx0, hx1, fun _ => hx2, (fun h => nomatch h), hx3, hx4, hikm_bv_len⟩, ?_⟩
     have hcomm_salt :
         memRegion ret 176 ∗ ⌜saltA ≠ 0#64⌝ ∗ (saltA ↦ₛ bytesToBv8 salt) ∗
-          (ikmA ↦ₛ bytesToBv8 ikm) ∗ stackAt s0.sp extractStack ∗
+          (ikmA ↦ₛ bytesToBv8 ikm) ∗ stackAt s0.sp extractStackSat ∗
           memRegion (s0.sp - 8192#64) 3936 ∗ memRegion (s0.sp - 4256#64) 160 ∗
-          memRegion (s0.sp - 4096#64) 3120 ∗ R =
+          memRegion (s0.sp - 4096#64) 2944 ∗ R =
         ⌜saltA ≠ 0#64⌝ ∗
           (memRegion ret 176 ∗ (saltA ↦ₛ bytesToBv8 salt) ∗
-            (ikmA ↦ₛ bytesToBv8 ikm) ∗ stackAt s0.sp extractStack ∗
+            (ikmA ↦ₛ bytesToBv8 ikm) ∗ stackAt s0.sp extractStackSat ∗
             memRegion (s0.sp - 8192#64) 3936 ∗ memRegion (s0.sp - 4256#64) 160 ∗
-            memRegion (s0.sp - 4096#64) 3120 ∗ R) := by sep_ac_rfl
+            memRegion (s0.sp - 4096#64) 2944 ∗ R) := by sep_ac_rfl
     rw [hcomm_salt, satisfies_pure_sepConj]
     exact ⟨hsalt_ne, by arm64_sep_close⟩
   · intro sf hpost
-    dsimp only [withLsCodeRoLoaded, extractBudgetSpec, withVmPreserved, extractSpec, optSaltAt,
+    dsimp only [withLsCodeRoLoaded, extractBudgetSpecSat, withVmPreserved, extractSpecSat, optSaltAt,
       pqxdhHkdfExtractSomePlacedSpec,
       CryptoVerification.E2E.Pqxdh.Initiator.pqxdhHkdfExtractSomePlacedSpec] at hpost ⊢
-    rw [stackAt_alloc_extract sp]
+    rw [stackAt_alloc_extract_sat sp]
     subst hsp_eq
     have hprk_eq : x.prk C.F = bytesToBv8 (hkdfExtractRef P (some salt) ikm) := by
       dsimp [x, ExtractGhost.prk]
@@ -335,28 +355,28 @@ public theorem pqxdhHkdfExtractSome_placed_ok_block54_sat [LibsignalPlacement]
     change sf.mem ⊨
       (⌜VmPreserved s0 sf⌝ ∗
         (⌜sf.trace = s0.trace⌝ ∗
-          (ret ↦ₛ x.prk C.F) ∗ hmacCoreAt C.F (ret + 0x20#64) (x.prk C.F) [] ∗
+          (ret ↦ₛ x.prk C.F) ∗ hmacCoreAt C.F (ret + 32#64) (x.prk C.F) [] ∗
           (⌜saltA ≠ 0#64⌝ ∗ (saltA ↦ₛ (u8Vec 32 salt).toList)) ∗ (ikmA ↦ₛ bytesToBv8 ikm) ∗
-          stackAt s0.sp extractStack)) ∗
+          stackAt s0.sp extractStackSat)) ∗
       (memRegion (s0.sp - 8192#64) 3936 ∗ memRegion (s0.sp - 4256#64) 160 ∗
-        memRegion (s0.sp - 4096#64) 3120 ∗ R) at hpost
+        memRegion (s0.sp - 4096#64) 2944 ∗ R) at hpost
     have hprk_ref_len : (hkdfExtractRef P (some salt) ikm).length = 32 :=
       hkdfExtractRef_length P (some salt) ikm
-    rw [hsalt_list, hprk_eq, ← pqxdhHmacStateAt_eq hP (ret + 0x20#64) (by omega)] at hpost
+    rw [hsalt_list, hprk_eq, ← pqxdhHmacStateAt_eq hP (ret + 32#64) (by omega)] at hpost
     simp only [sepConj_assoc, satisfies_pure_sepConj] at hpost ⊢
     rcases hpost with ⟨hvm, htr, hpost⟩
     have hcomm_post :
         (ret ↦ₛ bytesToBv8 (hkdfExtractRef P (some salt) ikm)) ∗
-          pqxdhHmacStateAt P (ret + 0x20#64) (hkdfExtractRef P (some salt) ikm) ∗
+          pqxdhHmacStateAt P (ret + 32#64) (hkdfExtractRef P (some salt) ikm) ∗
           ⌜saltA ≠ 0#64⌝ ∗ (saltA ↦ₛ bytesToBv8 salt) ∗ (ikmA ↦ₛ bytesToBv8 ikm) ∗
-          stackAt s0.sp extractStack ∗ memRegion (s0.sp - 8192#64) 3936 ∗
-          memRegion (s0.sp - 4256#64) 160 ∗ memRegion (s0.sp - 4096#64) 3120 ∗ R =
+          stackAt s0.sp extractStackSat ∗ memRegion (s0.sp - 8192#64) 3936 ∗
+          memRegion (s0.sp - 4256#64) 160 ∗ memRegion (s0.sp - 4096#64) 2944 ∗ R =
         ⌜saltA ≠ 0#64⌝ ∗
           ((ret ↦ₛ bytesToBv8 (hkdfExtractRef P (some salt) ikm)) ∗
-            pqxdhHmacStateAt P (ret + 0x20#64) (hkdfExtractRef P (some salt) ikm) ∗
+            pqxdhHmacStateAt P (ret + 32#64) (hkdfExtractRef P (some salt) ikm) ∗
             (saltA ↦ₛ bytesToBv8 salt) ∗ (ikmA ↦ₛ bytesToBv8 ikm) ∗
-            stackAt s0.sp extractStack ∗ memRegion (s0.sp - 8192#64) 3936 ∗
-            memRegion (s0.sp - 4256#64) 160 ∗ memRegion (s0.sp - 4096#64) 3120 ∗ R) := by
+            stackAt s0.sp extractStackSat ∗ memRegion (s0.sp - 8192#64) 3936 ∗
+            memRegion (s0.sp - 4256#64) 160 ∗ memRegion (s0.sp - 4096#64) 2944 ∗ R) := by
       sep_ac_rfl
     rw [hcomm_post, satisfies_pure_sepConj] at hpost
     rcases hpost with ⟨_, hpost⟩
@@ -455,7 +475,7 @@ public theorem createChain_placed_ok_unconditional_sat [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {C : Crypto} {H : LibsignalHooks}
     [HkdfPlacedHooksExactBudgetSat C.F H]
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -464,7 +484,7 @@ public theorem createChain_placed_ok_unconditional_sat [LibsignalPlacement]
     (h_dealloc : HookSat H lsRustDeallocSym (rustCliDeallocBudgetSpec M A lim)) :
     subroutine_ok ((blkPC_40).rebase (blkPl_40).base H) (blkPl_40).base
       (withLsCodeRoLoaded lsmpl (createChainSpec M A lim C)) :=
-  createChain_placed_ok_of_contracts
+  createChain_placed_ok_of_contracts_budget_sat
     (keys_ls_subroutine_ok_of_block_cro
       (calculateAgreement_placed_ok_unconditional h_dh h_shdrop h_bb h_shim h_alloc h_stdrop))
     (extract_placed_vm_ok_of_other_block_sat C H)
@@ -477,7 +497,7 @@ public theorem createChain_placed_ok_of_block_sat [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {C : Crypto} {H : LibsignalHooks}
     [IsLsBlockProg callerProg i H] [HkdfPlacedHooksExactBudgetSat C.F H]
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -497,7 +517,7 @@ public theorem createChain_placed_ok_x_unconditional_sat [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {C : Crypto} {H : LibsignalHooks}
     [HkdfPlacedHooksExactBudgetSat C.F H]
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -515,7 +535,7 @@ public theorem createChain_placed_ok_x_of_block_sat [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
     {C : Crypto} {H : LibsignalHooks}
     [IsLsBlockProg callerProg i H] [HkdfPlacedHooksExactBudgetSat C.F H]
-    (h_dh : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X)))
+    (h_dh : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808))))
     (h_shdrop : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec))
     (h_bb : H lsBlackBoxU8Sym = some blackBoxHook)
     (h_shim : HookSat H lsRustNoAllocShimSym noAllocShimBudgetSpec)
@@ -538,7 +558,7 @@ public structure PqxdhPlacedHookContractsSat [LibsignalPlacement]
     (M : AllocCostModel) (P : Primitives) (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop where
   hkdf             : HkdfPlacedHooksBudgetSat C.F H
-  dh               : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X))
+  dh               : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808)))
   sharedDrop       : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec)
   staticDrop       : HookSat H lsStaticDropSym (withVmPreserved zeroizeSecretSpec)
   blackBox         : H lsBlackBoxU8Sym = some blackBoxHook
@@ -695,7 +715,7 @@ public structure PqxdhPlacedHookContractsExactSat [LibsignalPlacement]
     (M : AllocCostModel) (P : Primitives) (C : Crypto)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) (H : LibsignalHooks) : Prop where
   hkdf             : HkdfPlacedHooksExactBudgetSat C.F H
-  dh               : HookSat H lsDhSym (withVmPreserved (diffieHellmanSpec C.X))
+  dh               : HookSat H lsDhSym (withLsRet624 (withVmPreserved (withStack (diffieHellmanSpec C.X) 1808)))
   sharedDrop       : HookSat H lsSharedDropSym (withVmPreserved zeroizeSecretSpec)
   staticDrop       : HookSat H lsStaticDropSym (withVmPreserved zeroizeSecretSpec)
   blackBox         : H lsBlackBoxU8Sym = some blackBoxHook

@@ -9,10 +9,10 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrWindowHonest
+public import Computational.Proofs.CryptoGames.Ratchet.LibsignalSpqrWindowHonest -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalE2E.PqxdhCorrectModel
 import LibsignalBinary.Proofs.SpqrV1.InitFacts
-public import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
+import LibsignalBinary.Proofs.SpecLemmas.LibsignalE2E.PqxdhCorrectModelProofDefs
 
 /-!
 # SPQR V1 First-Message Roundtrip Helpers
@@ -22,7 +22,7 @@ the end-to-end SPQR V1 first-message send/receive step (`spqrPq_firstMessage_sen
 `PqCliFirstMessageRoundtrip`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -994,7 +994,7 @@ theorem spqrPq_firstMessage_send_recv (W : PEParams) (pqr0 : BitVec 256)
     have h4 : ¬ ((0#32 : BitVec 32).toNat + (2000#32 : BitVec 32).toNat ≥ 2 ^ 32) := by decide
     have h5 : ¬ ((1#32 : BitVec 32) > 0#32 + 2000#32) := by decide
     have hGc : LibsignalSpqrV1.KeyHistory.new.gc 0#32 {} =
-        .ok LibsignalSpqrV1.KeyHistory.new := by decide
+        .ok LibsignalSpqrV1.KeyHistory.new := rfl
     simp only [hJump, hOoo, h1, h2, h3, h4, h5, Bool.false_eq_true, ↓reduceIte,
       Bind.bind, Except.bind, Pure.pure, Except.pure, LibsignalSpqrV1.ChainResult.ofPanic]
     rw [hKeyAdv]; dsimp only

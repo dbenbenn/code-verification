@@ -10,8 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal
-public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Chain.NextKeyInternal -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Relocatable `[LibsignalPlacement]` Specifications for `spqr::chain_from` (Block `323`)
@@ -19,7 +20,7 @@ public import LibsignalBinary.Proofs.SpqrV1.Top.TopLeafCodeSym
 Relocatable `withLsCallInv` contracts `ChainFromPbPlacedOkX` (Block `364`) and `ChainFromPlacedOkX` (Block `323`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -39,7 +40,7 @@ open CryptoVerification.SpqrV1.Top.Placed
 
 /-- Relocatable `<spqr::chain::Chain>::from_pb` (Block `364`) meets
 `withLsCallInv lsmpl (chainFromPbSpecX A)` on `Rust.withPanics ext`. -/
-def ChainFromPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
+@[expose] def ChainFromPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_323).rebase (blkPl_323).base (Rust.withPanics ext))
     (lsmpl.base 364)
@@ -47,7 +48,7 @@ def ChainFromPbPlacedOkX [LibsignalPlacement] (A : RustAlloc)
 
 /-- Relocatable `spqr::chain_from` (Block `323`) meets `withLsCallInv lsmpl (chainFromSpecX hkdf A)`
 on `Rust.withPanics ext`. -/
-def ChainFromPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (A : RustAlloc)
+@[expose] def ChainFromPlacedOkX [LibsignalPlacement] (hkdf : HkdfFn) (A : RustAlloc)
     (ext : String → Option (State → State)) : Prop :=
   subroutine_ok ((blkPC_323).rebase (blkPl_323).base (Rust.withPanics ext))
     (blkPl_323).base

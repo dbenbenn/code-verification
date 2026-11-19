@@ -11,9 +11,9 @@ module
 
 public import LibsignalBinary.Proofs.SpqrV1.Poly.EncodeBytes.Defs
 public import LibsignalBinary.Proofs.SpqrV1.Poly.AddChunk.Defs
-public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr
-public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # SPQR V1 Chunked Braid Leaf Transitions — Receiver & Encoder Specifications
@@ -27,7 +27,7 @@ for `send_ct2_encoder`, `<unchunked::Ct1Sent>::recv_ek`, `<EkReceivedCt1Sampled>
 and `<Ct1Acknowledged>::recv_ek_chunk`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.States.Leaves
 
@@ -83,48 +83,10 @@ abbrev unchunkedCt1SentEkReceivedSendCt2Name : String :=
 abbrev polyDecoderDecodedMessageName : String :=
   "<spqr::encoding::polynomial::PolyDecoder as spqr::encoding::Decoder>::decoded_message"
 
-@[simp, arm64_norm] theorem sendCt2Encoder_fnOff :
-    libsignalSessionCode.fnOff sendCt2EncoderName = 0x5e730 :=
-  libsignalSessionCode_fnOff_0x5e730
-
-@[simp, arm64_norm] theorem unchunkedCt1SentRecvEk_fnOff :
-    libsignalSessionCode.fnOff unchunkedCt1SentRecvEkName = 0x586c8 :=
-  libsignalSessionCode_fnOff_0x586c8
-
-@[simp, arm64_norm] theorem ekReceivedCt1SampledRecvCt1Ack_fnOff :
-    libsignalSessionCode.fnOff ekReceivedCt1SampledRecvCt1AckName = 0x58d04 :=
-  libsignalSessionCode_fnOff_0x58d04
-
-@[simp, arm64_norm] theorem ct1ReceivedRecvCt2Chunk_fnOff :
-    libsignalSessionCode.fnOff ct1ReceivedRecvCt2ChunkName = 0x58efc :=
-  libsignalSessionCode_fnOff_0x58efc
-
-@[simp, arm64_norm] theorem headerSentRecvCt1Chunk_fnOff :
-    libsignalSessionCode.fnOff headerSentRecvCt1ChunkName = 0x58504 :=
-  libsignalSessionCode_fnOff_0x58504
-
-@[simp, arm64_norm] theorem keysSampledRecvCt1Chunk_fnOff :
-    libsignalSessionCode.fnOff keysSampledRecvCt1ChunkName = 0x5c370 :=
-  libsignalSessionCode_fnOff_0x5c370
-
-@[simp, arm64_norm] theorem ct1AcknowledgedRecvEkChunk_fnOff :
-    libsignalSessionCode.fnOff ct1AcknowledgedRecvEkChunkName = 0x595d0 :=
-  libsignalSessionCode_fnOff_0x595d0
-
-@[simp, arm64_norm] theorem unchunkedCt1SentEkReceivedSendCt2_fnOff :
-    libsignalSessionCode.fnOff unchunkedCt1SentEkReceivedSendCt2Name = 0x59008 :=
-  libsignalSessionCode_fnOff_0x59008
-
-@[simp, arm64_norm] theorem polyDecoderDecodedMessage_fnOff :
-    libsignalSessionCode.fnOff polyDecoderDecodedMessageName = 0x66788 :=
-  libsignalSessionCode_fnOff_0x66788
-
-/-! ## 2. `Option<Vec<u8>>` Representation (`24`B) & Callee Specifications -/
-
 /-- `Option<Vec<u8>>` at `a` (`24` bytes = `0x18`, align `8`):
     - `none`: `(a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 16` (`cap = -1` niche)
     - `some bs`: `vecU8 A a bs` (with `cap < 2^63`, so `cap + 1 ≠ 0`) -/
-def optVecU8At (A : RustAlloc) (a : BitVec 64) : Option Bytes → SepProp
+@[expose] def optVecU8At (A : RustAlloc) (a : BitVec 64) : Option Bytes → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 16
   | some bs => vecU8 A a bs
 
@@ -142,6 +104,18 @@ theorem optVecU8At_none_entails_memRegion_24 (A : RustAlloc) (a : BitVec 64) :
   rw [ProofLib.memRegion_split' (b := a) (n := 8) (k := 16) (b' := a + 8#64) rfl rfl (by decide)]
   exact sepConj_mono_left (ProofLib.pointsTo64_entails_memRegion a noneCap)
 
+abbrev offTokenStorage : Nat := 678856
+abbrev offTokenState : Nat := 678872
+abbrev offReduceTable : Nat := 674528
+
+/-- Unaccelerated GF(2¹⁶) token assertion parameterized by `b`. -/
+@[expose] def tokenInitAt (b : BitVec 64) : SepProp :=
+  ((b + bv% offTokenStorage) ↦₈ 0#8) ∗ ((b + bv% offTokenState) ↦₃₂ 0#32)
+
+/-- Read-only `REDUCE_BYTES` table assertion parameterized by `b`. -/
+@[expose] def reduceTableAt (b : BitVec 64) : SepProp :=
+  (b + bv% offReduceTable) ↦ᵣ reduceTableBytes
+
 /-- Stack budget for `<PolyDecoder as Decoder>::decoded_message` (`0x6bb80`):
     canonical `decodedMessageStack = 672 + extHookStack`. -/
 abbrev polyDecoderDecodedMessageStack : Nat := 672 + extHookStack
@@ -158,7 +132,7 @@ structure PolyDecoderDecodedMessageGhost where
     - Preserves `polyDecoderAt A decA dec` and writes `optVecU8At A outA x.outMsg` where
       `spqrPolyApi.decoded_message x.dec = .ok x.outMsg`.
     - Panics only on OOM (`allocFailedIn s0 sf`). -/
-def polyDecoderDecodedMessageSpec (A : RustAlloc) (b : BitVec 64) :
+@[expose] def polyDecoderDecodedMessageSpec (A : RustAlloc) (b : BitVec 64) :
     Spec PolyDecoderDecodedMessageGhost where
   pre := fun x s =>
     ⌜b &&& 0xfff#64 = 0#64 ∧
@@ -197,8 +171,8 @@ abbrev unchunkedSendCt2Stack : Nat := 336 + extHookStack
 
 /-- Read-only `.rodata` + `MAX_LOG_LEVEL_FILTER` bundle required by
     `<Unchunked.SendCt.Ct1SentEkReceived>::send_ct2` (`0x5e400`). -/
-def unchunkedSendCt2RoAt (b : BitVec 64) : SepProp :=
-  ((b + bv% (ls_sym% "core::unicode::unicode_data::white_space::WHITESPACE_MAP" + 256)) ↦₆₄ 0#64) ∗ ((b + bv% (ls_str% "Signal_PQCKA_V1_MLKEM768:ciphertext")) ↦ᵣ Authenticator.ctLabel)
+@[expose] def unchunkedSendCt2RoAt (b : BitVec 64) : SepProp :=
+  ((b + bv% 696448) ↦₆₄ 0#64) ∗ ((b + bv% 665416) ↦ᵣ Authenticator.ctLabel)
 
 /-- Ghost arguments for `<Unchunked.SendCt.Ct1SentEkReceived>::send_ct2` (`0x5e400`). -/
 structure UnchunkedSendCt2Ghost (F : ShaCompress) where
@@ -214,7 +188,7 @@ structure UnchunkedSendCt2Ghost (F : ShaCompress) where
       `ct2: Vec<u8>` at `+56..+80`, `mac: Vec<u8>` at `+80..+104`),
     - `x1 = stA` (`128`B `Unchunked.SendCt.Ct1SentEkReceived`, consumed by value into `memRegion stA 128`).
     - Panics only on OOM (`allocFailedIn s0 sf`). -/
-def unchunkedCt1SentEkReceivedSendCt2Spec (A : RustAlloc) (F : ShaCompress) (K : MlKem)
+@[expose] def unchunkedCt1SentEkReceivedSendCt2Spec (A : RustAlloc) (F : ShaCompress) (K : MlKem)
     (b : BitVec 64) :
     Spec (UnchunkedSendCt2Ghost F) where
   pre := fun x s =>
@@ -284,7 +258,7 @@ structure SendCt2EncoderGhost where
     - Concatenates `ct2 ++ mac` into a temporary `Vec<u8>`, encodes it with `PolyEncoder.encode_bytes (ct2 ++ mac)`,
       deallocates the temporary `Vec<u8>`, and writes `polyEncoderAt A outA x.outEnc`.
     - Panics only on OOM (`allocFailedIn s0 sf`). -/
-def sendCt2EncoderSpec (A : RustAlloc) :
+@[expose] def sendCt2EncoderSpec (A : RustAlloc) :
     Spec SendCt2EncoderGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.outA ∧
@@ -308,7 +282,7 @@ def sendCt2EncoderSpec (A : RustAlloc) :
     - `.ok outSt`: `unchunkedCt1SentEkReceivedAt A a outSt` (`128`B, with niche `cap ≠ noneCap` at `+0`)
     - `.error _`: `(a ↦₆₄ noneCap) ∗ ((a + 8#64) ↦₈ 12#8) ∗ memRegion (a + 9#64) 119`
       (`Error::ErroneousDataReceived` discriminant `12`) -/
-def unchunkedCt1SentRecvEkResAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def unchunkedCt1SentRecvEkResAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     Except Error (Unchunked.SendCt.Ct1SentEkReceived (spqrAuthApi F)) → SepProp
   | .ok outSt => unchunkedCt1SentEkReceivedAt A a outSt
   | .error _ => (a ↦₆₄ noneCap) ∗ ((a + 8#64) ↦₈ 12#8) ∗ memRegion (a + 9#64) 119
@@ -331,7 +305,7 @@ structure UnchunkedCt1SentRecvEkGhost (F : ShaCompress) where
     - `x1 = stA` (`128`B `Unchunked.SendCt.Ct1Sent`, consumed by value into `memRegion stA 128`),
     - `x2 = st.epoch`,
     - `x3 = ekA` (`24`B `Vec<u8>`, consumed by value into `memRegion ekA 24`). -/
-def unchunkedCt1SentRecvEkSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) :
+@[expose] def unchunkedCt1SentRecvEkSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) :
     Spec (UnchunkedCt1SentRecvEkGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.outA ∧
@@ -366,7 +340,7 @@ structure EkReceivedCt1SampledRecvCt1AckGhost (F : ShaCompress) where
     - `x1 = stA` (`528`B `EkReceivedCt1Sampled` input, consumed by value into `memRegion stA 528`),
     - `x2 = st.uc.epoch`.
     - Panics only on OOM (`allocFailedIn s0 sf`). -/
-def ekReceivedCt1SampledRecvCt1AckSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem)
+@[expose] def ekReceivedCt1SampledRecvCt1AckSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem)
     (b : BitVec 64) :
     Spec (EkReceivedCt1SampledRecvCt1AckGhost F) where
   pre := fun x s =>
@@ -406,7 +380,7 @@ structure Ct1ReceivedRecvCt2ChunkGhost (F : ShaCompress) where
     - `x2 = st.uc.epoch`,
     - `x3 = chunkA` (`34`B `&Chunk`, preserved).
     - Panics only on OOM (`allocFailedIn s0 sf`). -/
-def ct1ReceivedRecvCt2ChunkSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def ct1ReceivedRecvCt2ChunkSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (Ct1ReceivedRecvCt2ChunkGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.outA ∧
@@ -429,7 +403,7 @@ def ct1ReceivedRecvCt2ChunkSpec (A : RustAlloc) (F : ShaCompress) :
 /-- Representation predicate for `spqr::v1::chunked::send_ek::HeaderSentRecvChunk` (`880`B at `a`):
     - `.stillReceiving s`: `chunkedHeaderSentAt A a s` (`880`B, with `PolyEncoder` tag `0` or `1` at `a + 0`)
     - `.done s`: `(a ↦₆₄ 2#64) ∗ chunkedCt1ReceivedAt A (a + 8#64) s ∗ memRegion (outA + 512) 368` -/
-def headerSentRecvChunkAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def headerSentRecvChunkAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     Chunked.SendEk.HeaderSentRecvChunk spqrPolyApi (spqrAuthApi F) → SepProp
   | .stillReceiving s => chunkedHeaderSentAt A a s
   | .done s => (a ↦₆₄ 2#64) ∗ chunkedCt1ReceivedAt A (a + 8#64) s ∗ memRegion (a + 512#64) 368
@@ -453,7 +427,7 @@ structure HeaderSentRecvCt1ChunkGhost (F : ShaCompress) where
     - `x2 = st.uc.epoch`,
     - `x3 = chunkA` (`34`B `&Chunk`, preserved).
     - Panics only on OOM (`allocFailedIn s0 sf`). -/
-def headerSentRecvCt1ChunkSpec (A : RustAlloc) (F : ShaCompress) (b : BitVec 64) :
+@[expose] def headerSentRecvCt1ChunkSpec (A : RustAlloc) (F : ShaCompress) (b : BitVec 64) :
     Spec (HeaderSentRecvCt1ChunkGhost F) where
   pre := fun x s =>
     ⌜b &&& 0xfff#64 = 0#64 ∧
@@ -496,7 +470,7 @@ structure KeysSampledRecvCt1ChunkGhost (F : ShaCompress) where
     - `x2 = st.uc.epoch`,
     - `x3 = chunkA` (`34`B `&Chunk`, preserved).
     - Panics only on OOM (`allocFailedIn s0 sf`). -/
-def keysSampledRecvCt1ChunkSpec (A : RustAlloc) (F : ShaCompress) :
+@[expose] def keysSampledRecvCt1ChunkSpec (A : RustAlloc) (F : ShaCompress) :
     Spec (KeysSampledRecvCt1ChunkGhost F) where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.outA ∧
@@ -520,7 +494,7 @@ def keysSampledRecvCt1ChunkSpec (A : RustAlloc) (F : ShaCompress) :
     - `.ok (.stillReceiving s)`: `chunkedCt1AcknowledgedAt A a s` (`528`B, niche `cap < 2^63` at `+0`)
     - `.ok (.done s)`: `(a ↦₆₄ noneCap) ∗ chunkedCt2SampledAt A (a + 8#64) s ∗ memRegion (a + 464#64) 64`
     - `.error _`: `(a ↦₆₄ 0xfffffffffffffffe#64) ∗ ((a + 8#64) ↦₈ 12#8) ∗ memRegion (a + 9#64) 519` -/
-def ct1AcknowledgedRecvEkChunkResAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
+@[expose] def ct1AcknowledgedRecvEkChunkResAt (A : RustAlloc) {F : ShaCompress} (a : BitVec 64) :
     Except Error (Chunked.SendCt.Ct1AcknowledgedRecvChunk spqrPolyApi (spqrAuthApi F)) → SepProp
   | .ok (.stillReceiving s) => chunkedCt1AcknowledgedAt A a s
   | .ok (.done s) =>
@@ -547,7 +521,7 @@ structure Ct1AcknowledgedRecvEkChunkGhost (F : ShaCompress) where
     - `x2 = st.uc.epoch`,
     - `x3 = chunkA` (`34`B `&Chunk`, preserved).
     - Panics only on OOM (`allocFailedIn s0 sf`). -/
-def ct1AcknowledgedRecvEkChunkSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64) :
+@[expose] def ct1AcknowledgedRecvEkChunkSpec (A : RustAlloc) (F : ShaCompress) (K : MlKem) (b : BitVec 64) :
     Spec (Ct1AcknowledgedRecvEkChunkGhost F) where
   pre := fun x s =>
     ⌜b &&& 0xfff#64 = 0#64 ∧

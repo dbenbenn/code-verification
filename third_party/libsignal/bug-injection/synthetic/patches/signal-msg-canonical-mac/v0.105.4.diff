@@ -1,0 +1,25 @@
+--- a/rust/protocol/src/protocol.rs
++++ b/rust/protocol/src/protocol.rs
+@@ -281,6 +281,13 @@ impl TryFrom<&[u8]> for SignalMessage {
+             proto::wire::SignalMessage::decode(&value[1..value.len() - SignalMessage::MAC_LENGTH])
+                 .map_err(|_| SignalProtocolError::InvalidProtobufEncoding)?;
+ 
++        let mut canonical = Vec::with_capacity(value.len());
++        canonical.push(((message_version & 0xF) << 4) | CIPHERTEXT_MESSAGE_CURRENT_VERSION);
++        proto_structure
++            .encode(&mut canonical)
++            .expect("can always append to a buffer");
++        canonical.extend_from_slice(&value[value.len() - SignalMessage::MAC_LENGTH..]);
++
+         let sender_ratchet_key = proto_structure
+             .ratchet_key
+             .ok_or(SignalProtocolError::InvalidProtobufEncoding)?;
+@@ -302,7 +309,7 @@ impl TryFrom<&[u8]> for SignalMessage {
+             ciphertext,
+             pq_ratchet: proto_structure.pq_ratchet.unwrap_or(vec![]),
+             addresses: proto_structure.addresses.map(Into::into),
+-            serialized: Box::from(value),
++            serialized: canonical.into_boxed_slice(),
+         })
+     }
+ }

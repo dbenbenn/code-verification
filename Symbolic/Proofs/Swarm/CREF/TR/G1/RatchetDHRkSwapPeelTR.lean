@@ -9,12 +9,12 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpqrRkForgedMac
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.SpqrRkForgedMac -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.Bytes.AttackerKnowledge
 import DY.ALaCarte.Basic
 import Symbolic.Specifications.Model.EquationalTheory.X25519
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.ShapeIdInv -- proof-setup: allow-public-import
 import Symbolic.Proofs.Swarm.CREF.Prelude
 import Symbolic.Proofs.Swarm.CREF.TR.G1.RkInvCons
 import Symbolic.DYBridge.DY.Bytes.Basic
@@ -29,7 +29,7 @@ Proves `KdfRkSafe` and `gamma'`-shape peel lemmas for `Dh.SubF`, `X25519.Variant
 `variant_variation_ne_zero_of_attackerKnows_reachable_peel`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false

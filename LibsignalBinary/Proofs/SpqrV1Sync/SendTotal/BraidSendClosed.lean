@@ -24,7 +24,7 @@ set_option autoImplicit false
 Proves that `States.send` preserves `BOk` across all eleven braid state variants (`st_bSendClosed`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

@@ -10,16 +10,17 @@ limitations under the License.
 module
 
 public import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedReds2 -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperPRNG -- proof-setup: allow-public-import
-public import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperFS -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperPRNG
+import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperFS
 public import Computational.Proofs.SessionCostedFig8.DFProgBoundsPaper -- proof-setup: allow-public-import
-public import Computational.Proofs.SessionCostedFig8.Bundles -- proof-setup: allow-public-import
+import Computational.Proofs.SessionCostedFig8.Bundles
 import Computational.Proofs.ReductionDsl.SM.RedPRNGPotOK
 import Computational.Proofs.ReductionDsl.SM.RedFSPotOKHooks
 import Computational.Proofs.ReductionDsl.SM.RedFSPotOK
 import Computational.Proofs.ReductionDsl.SM.DeliverForgePotOK
 import Computational.Proofs.SessionCostedFig8.QuerySubsumes
 import Computational.Proofs.HeadlineV1.DeliverForgePaperShiftedPotOK
+import Computational.Proofs.ReductionDsl.SM.DeliverForgePaperTMinusSim
 
 /-!
 # Potential Query Bounds for Paper `DeliverForge` Reductions

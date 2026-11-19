@@ -12,8 +12,7 @@ module
 public import Symbolic.Specifications.Refinement.TraceExplanation
 import all Init.Data.Repr
 import all Init.Data.String.Defs
-public import LibsignalBinary.Proofs.SpecLemmas.FsFold
-public import ProofLib.Lemmas
+public import LibsignalBinary.Proofs.SpecLemmas.FsFold -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.RecordCodecs.RoundTrip
 import Symbolic.Proofs.Tests.Refinement.Cli.ParStdinIff -- shake: keep
 
@@ -26,7 +25,7 @@ Proves that for every `interp` and well-formed `ProtocolSetupWF r`, Bob's initia
 has length `3169` and leading type byte `0x08`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

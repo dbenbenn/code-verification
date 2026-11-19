@@ -9,9 +9,9 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bPostLoop
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aPresenceWPlaced
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bPostLoop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W8bAssemblyPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.W5aPresenceWPlaced -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.PksmTryFrom.Wire.ErrTailCleanup
@@ -25,7 +25,7 @@ Relocatable `[LibsignalPlacement]` counterpart of the `+0x5b4` post-decode-loop 
 `PreKeyPresenceErrWPlaced`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -49,7 +49,7 @@ open CryptoVerification.SignalSession.Cli.RunProofs
 
 /-! ## Frames and `+0x5b4` continuation -/
 
-def w8bPostLoopFramePlaced [LibsignalPlacement] (s0 : State) (sp' sret ptr : BitVec 64)
+@[expose] def w8bPostLoopFramePlaced [LibsignalPlacement] (s0 : State) (sp' sret ptr : BitVec 64)
     (bytes : List (BitVec 8)) : SepProp :=
   memRegion sp' 16 ∗ memRegion (sp' + 112#64) 184 ∗ memRegion (sp' + 296#64) 16 ∗
     memRegion (sp' + 440#64) 8 ∗ memRegion (sp' + 448#64) 64 ∗
@@ -57,7 +57,7 @@ def w8bPostLoopFramePlaced [LibsignalPlacement] (s0 : State) (sp' sret ptr : Bit
     memRegion (sp' - BitVec.ofNat 64 preKeyTryFromSubStack)
       (preKeyTryFromSubStack - Prost.skipFieldStackX 100)
 
-def PreKey5b4OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PreKey5b4OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 sf : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage) (bk ik msg : List (BitVec 8)) (spkId : BitVec 32)
     (bkCap bkPtr ikCap ikPtr msgCap msgPtr kyberCap kyberPtr kyberLen : BitVec 64)
@@ -84,7 +84,7 @@ def PreKey5b4OkWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks)
         (Pf ⊢ (pksmTryFromSpecPlaced A).post x s0 sf'))
       (tryFromQp s0)
 
-def PreKeyPresenceErrWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PreKeyPresenceErrWPlaced [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   ∀ (x : RunCompose.PksmGhost) (s0 s : State) (vb b1 : BitVec 8) (bs1 : List (BitVec 8))
     (m : ProtoPreKeySignalMessage),
     x.bytes = vb :: b1 :: bs1 → ¬ (vb >>> 4) < 3#8 → ¬ 4#8 < (vb >>> 4) →

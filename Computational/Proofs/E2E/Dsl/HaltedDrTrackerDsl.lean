@@ -14,7 +14,7 @@ public import Computational.Proofs.SpecLemmas.Session.KemFailTrackBridge -- proo
 public import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
 public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
 public import LibsignalBinary.Specifications.LibsignalE2E.State
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
 public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.CoinBridge
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync

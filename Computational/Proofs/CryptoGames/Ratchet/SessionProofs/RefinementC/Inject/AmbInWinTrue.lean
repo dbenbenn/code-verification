@@ -22,7 +22,7 @@ Proves `closeByStateC_inject_newChain_amb_inWin_true_find_none`, closing the inj
 ambiguous new ratchet key arrives inside the receive-only window and no resolved chain is found.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal MeasureTheory
 

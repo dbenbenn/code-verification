@@ -10,30 +10,32 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer -- proof-setup: allow-public-import
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
+import LibsignalBinary.Proofs.SpecLemmas.RoLiterals
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
-# Per-Row `extra` Ghost Replay & `ExtraOk` Bundle (`Cli.HooksDehook.ExtraGhostReplay`)
+# Per-Row `extra` Ghost Replay and `ExtraOk` Bundle (`Cli.HooksDehook.ExtraGhostReplay`)
 
-Untrusted (`Role::Proof`) Block-`617` trajectory replay layer for `#1255` Cutover 2
-(`CliGhostHooks.extra : List (String × (State → State))`), implementing the binding `H-REV2`
-requirements (`rev_c11_design_v2.md` M1, M3, M4):
+Block-`617` trajectory replay layer for `CliGhostHooks.extra : List (String × (State → State))`:
 
-1. **Row-internal `keepR` & parametric `entryGuard` (`GhostRowReplayOn`):**
-   `GhostRowReplayOn` is a pure `Prop` structure with **zero data fields**: each row's code-region
-   predicate `keepR : BitVec 64 → Bool` stays purely internal to that row's proof (never unioned
-   across `extra`), and `entryGuard : State → Prop` is passed as a parameter (`guardOf sym` in
-   `ExtraListEntryGuard` / `ExtraListReplaysOn`).
-2. **Guarded trajectory-aware (`On`) per-row `ExtraListReplaysOn` / `ExtraReplaysOn`:**
-   Matches `GhostExternReplaysOn`'s behind-stub Arm 1 ∨ Arm 2 shape at `resolve mpl sym` without
-   requiring outer `hole2_keepSub (u.readReg64 .lr) = false`, and lifts directly into
-   `GhostExternReplaysOn keep_outer InvS` for any outer `keep_outer` (`fun _ => false` in
-   Cutover 2, per H-REV2 M3).
-3. **Full per-row & table bundles (`GhostRowOk`, `ExtraListOk` / `ExtraOk`) + single-row transfer
-   companion (`block617TransferFixedG_of_extraRow`).**
+1. `GhostRowReplayOn`: a `Prop`-only structure with no data fields. Each row's code-region
+   predicate `keepR : BitVec 64 → Bool` stays internal to its proof (never unioned across `extra`),
+   and `entryGuard : State → Prop` is passed as a parameter (`guardOf sym` in `ExtraListEntryGuard`
+   and `ExtraListReplaysOn`).
+2. `ExtraListReplaysOn` / `ExtraReplaysOn`: guarded trajectory-aware per-row replay matching
+   `GhostExternReplaysOn`'s behind-stub disjunction at `resolve mpl sym` without requiring
+   `hole2_keepSub (u.readReg64 .lr) = false`, lifting into `GhostExternReplaysOn keep_outer InvS`
+   for any outer `keep_outer` (e.g. `fun _ => false`).
+3. Per-row and table bundles (`GhostRowOk`, `ExtraRowFullOk`, `ExtraListOk` / `ExtraOk`) and the
+   single-row transfer combinator `block617TransferFixedG_of_extraRow`.
 -/
 
 set_option autoImplicit false
+set_option maxRecDepth 200000
 
 public section
 
@@ -45,7 +47,7 @@ open CryptoVerification.SignalSession
   (CliHooks Inputs cliExternsPlaced cliProcessInputs libsignalSessionLib
    lsMemcpySym lsMemsetSym lsReadFileSym lsReadStdinSym lsRustAllocSymCli
    lsRustAllocZeroedSymCli lsRustDeallocSymCli lsRustNoAllocShimSymCli lsRustReallocSymCli
-   lsStringCloneSym)
+   lsStringCloneSym lsWriteFileSym)
 open CryptoVerification.SignalSession.Cli (RunAnswer)
 open CryptoVerification.SignalSession.Cli.RunGlue (CliGhostHooks)
 open LibsignalBinary.Heap.Fine (fineCostModel fineHookRustCliAllocBudget)
@@ -57,7 +59,7 @@ open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.F3HarnessPlaced
 open LibsignalBinary.Proofs.SignalSession.Cli.F3.L4B.Ghost617Transfer
   (GhostExternReplaysOn GhostSymActive subroutine_ok_transfer_ghostS)
 open LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
-  (ExtraGhostTable ExtraListSpecOk GhostRowSpecOk cliExtraGhostSyms
+  (ExtraGhostTable ExtraListSpecOk ExtraRowOk GhostRowSpecOk WriteFileRowOk cliExtraGhostSyms
    cliGhostExternsNamed cliGhostExternsWithExtra cliGhostExternsWithExtra_nil
    named_eq_false_of_extra_contains)
 
@@ -81,9 +83,8 @@ export LibsignalBinary.Proofs.SignalSession.Cli.Run.Slots.ExtraGhostSpecs
   (sym = lsMemsetSym ∧ ghFixed.memset = some f) ∨
   (sym = lsMemcpySym ∧ ghFixed.memcpy = some f)
 
-/-- Extended 11-way `GhostSymActive` predicate over `(ghFixed, extra)`. In Commit 2B,
-    `GhostSymActive ghFixed sym f` becomes definitionally
-    `GhostSymActiveWithExtra ghFixed ghFixed.extra sym f`. -/
+/-- Extended 11-way `GhostSymActive` predicate over `(ghFixed, extra)`; matches
+    `GhostSymActive ghFixed sym f` definitionally when `extra = ghFixed.extra`. -/
 @[expose] def GhostSymActiveWithExtra (ghFixed : CliGhostHooks) (extra : ExtraGhostTable)
     (sym : String) (f : State → State) : Prop :=
   (sym = lsRustAllocSymCli ∧ f = ghFixed.alloc) ∨
@@ -120,9 +121,9 @@ theorem GhostSymActive_iff_named_or_extra
         (cliExtraGhostSyms.contains sym = true ∧ gh.extra.lookup sym = some f) :=
   GhostSymActiveWithExtra_iff_named_or_extra gh gh.extra sym f
 
-/-- Unconditional converse (`h2b2` / `h2ef` soundness check): holds for **arbitrary** `ghFixed`
-    and `extra` with **zero** freshness assumptions because the 11th disjunct carries
-    `cliExtraGhostSyms.contains sym = true` (which excludes all 10 named symbols). -/
+/-- Unconditional converse: holds for arbitrary `ghFixed` and `extra` without freshness
+    assumptions because the 11th disjunct requires `cliExtraGhostSyms.contains sym = true`,
+    excluding the 10 named symbols. -/
 theorem cliGhostExternsWithExtra_eq_some_of_active
     (ghFixed : CliGhostHooks) (extra : ExtraGhostTable)
     (baseExt : String → Option (State → State)) {sym : String} {f : State → State}
@@ -202,7 +203,8 @@ theorem cliGhostExternsWithExtra_nil_of_named
   cliGhostExternsWithExtra_eq_some_of_active gh [] b
     ((GhostSymActiveWithExtra_iff_named_or_extra gh [] sym f).mpr (Or.inl hNamed))
 
-/-- Equivalence of the two H-REV4 Step-3 formulations at `baseExt := fun _ => none`. -/
+/-- Equivalence between `cliGhostExternsWithExtra gh [] (fun _ => none)` and
+    `cliGhostExterns gh (fun _ => none)` on symbols outside `cliExtraGhostSyms`. -/
 theorem cliGhostExternsWithExtra_nil_none_iff
     (gh : CliGhostHooks) {sym : String} {f : State → State} :
     cliGhostExternsWithExtra gh [] (fun _ => none) sym = some f ↔
@@ -350,13 +352,12 @@ theorem cliGhostExternsWithExtra_some_cases
 
 /-! ## 2. Per-Row `GhostRowReplayOn` (Parametric `entryGuard`, No Data Fields) & `ExtraReplaysOn` -/
 
-/-- **Per-row behind-stub `On` replay obligation (`GhostRowReplayOn`):**
-    Takes THIS row's entry-state guard `entryGuard : State → Prop` as a parameter (so
-    `GhostRowReplayOn` is a pure `Prop` structure with zero data fields — H-REV2 M1) and keeps the
-    row's code-region predicate `keepR : BitVec 64 → Bool` purely internal to the row's proof
-    (never unioned across `extra`). Produces the exact behind-stub `GhostExternReplaysOn`
-    disjunction at `stubPc := libsignalSessionLib.resolve mpl sym` from the Block-`617` trajectory
-    endpoints `(s0, sf)` without requiring outer `keep_outer (u.readReg64 .lr) = false`. -/
+/-- Per-row behind-stub replay obligation (`GhostRowReplayOn`): takes the row's entry-state
+    guard `entryGuard : State → Prop` as a parameter (pure `Prop` structure, no data fields) and
+    keeps the row's code-region predicate `keepR : BitVec 64 → Bool` internal to its proof.
+    Produces the behind-stub `GhostExternReplaysOn` disjunction at
+    `stubPc := libsignalSessionLib.resolve mpl sym` from the Block-`617` trajectory endpoints
+    `(s0, sf)` without requiring `keep_outer (u.readReg64 .lr) = false`. -/
 structure GhostRowReplayOn
     (mpl mmpl : Obj.MultiPlacement)
     (InvS : State → Prop)
@@ -391,15 +392,109 @@ structure GhostRowReplayOn
           u.mem.KeepsFrozen (f u).mem → ExecFrozen u.mem → InvS u →
           Steps P_real u (f u) ∧ ExecFrozen (f u).mem ∧ InvS (f u))
 
-/-- Lift `GhostRowReplayOn` into the exact `GhostExternReplaysOn keep_outer InvS` disjunction at
-    `pc = libsignalSessionLib.resolve mpl sym` for **any** outer `keep_outer` (`fun _ => false` in
-    Cutover 2, per H-REV2 M3). -/
+/-- Generalized per-row `On` replay obligation across all `cliExtraGhostSyms` rows, relaxing
+    `(f u).fs = u.fs` only on `lsWriteFileSym` while keeping `.preserves_execFrozen ... .1`
+    definitionally `ExecFrozen (f u).mem` for `H2ExecFrozenWire`. -/
+structure ExtraRowReplayOn
+    (mpl mmpl : Obj.MultiPlacement)
+    (InvS : State → Prop)
+    (EG : CliHooks → String → Option (State → State))
+    (sym : String) (entryGuard : State → Prop) (f : State → State) : Prop where
+  /-- `ExecFrozen` preservation + `fs` preservation on all rows except `lsWriteFileSym`. -/
+  preserves_execFrozen :
+    ∀ u : State, u.status = .Running → (∀ msg, (f u).status ≠ .Exception msg) →
+      ExecFrozen u.mem → ExecFrozen (f u).mem ∧ ((sym == lsWriteFileSym) = false → (f u).fs = u.fs)
+  /-- Guarded trajectory-aware (`On`) behind-stub replay at `resolve mpl sym`. -/
+  replay_at_stub :
+    ∀ (W : CliHooks) (s0 sf : State),
+      let stubPc  := libsignalSessionLib.resolve mpl sym
+      let P_ghost := cliProgExtPlacedAt mpl EG 617 W
+      let P_real  := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W
+      entryGuard s0 →
+      (sf.status = .Running → sf.pc = s0.readReg64 .lr) →
+      (∀ msg, sf.status ≠ .Exception msg) →
+      sf.status ≠ .Halted →
+      (P_real.externAt? stubPc = some f ∧
+        ∀ u : State,
+          Steps P_ghost s0 u → Steps P_ghost (f u) sf →
+          u.pc = stubPc → u.status = .Running →
+          (∀ msg, (f u).status ≠ .Exception msg) →
+          u.mem.KeepsFrozen (f u).mem → ExecFrozen u.mem → InvS u →
+          ExecFrozen (f u).mem ∧ InvS (f u)) ∨
+      (P_real.externAt? stubPc = none ∧
+        ∀ u : State,
+          Steps P_ghost s0 u → Steps P_ghost (f u) sf →
+          u.pc = stubPc → u.status = .Running →
+          (∀ msg, (f u).status ≠ .Exception msg) →
+          u.mem.KeepsFrozen (f u).mem → ExecFrozen u.mem → InvS u →
+          Steps P_real u (f u) ∧ ExecFrozen (f u).mem ∧ InvS (f u))
+
+/-- Lift any `fs`-preserving `GhostRowReplayOn` into `ExtraRowReplayOn`. -/
+theorem GhostRowReplayOn.toExtraRowReplayOn
+    {mpl mmpl : Obj.MultiPlacement} {InvS : State → Prop}
+    {EG : CliHooks → String → Option (State → State)}
+    {sym : String} {entryGuard : State → Prop} {f : State → State}
+    (h : GhostRowReplayOn mpl mmpl InvS EG sym entryGuard f) :
+    ExtraRowReplayOn mpl mmpl InvS EG sym entryGuard f where
+  preserves_execFrozen u hrun hnoex hfr :=
+    let ⟨hfr', hfs⟩ := h.preserves_execFrozen u hrun hnoex hfr
+    ⟨hfr', fun _ => hfs⟩
+  replay_at_stub := h.replay_at_stub
+
+/-- Build `ExtraRowReplayOn` on `lsWriteFileSym` (where `lsWriteFileSym == lsWriteFileSym` is `true`,
+    so `(f u).fs = u.fs` is vacuously discharged). -/
+theorem ExtraRowReplayOn.of_writeFile
+    {mpl mmpl : Obj.MultiPlacement} {InvS : State → Prop}
+    {EG : CliHooks → String → Option (State → State)}
+    {entryGuard : State → Prop} {f : State → State}
+    (hExec : ∀ u : State, u.status = .Running → (∀ msg, (f u).status ≠ .Exception msg) →
+      ExecFrozen u.mem → ExecFrozen (f u).mem)
+    (hReplay : ∀ (W : CliHooks) (s0 sf : State),
+      let stubPc  := libsignalSessionLib.resolve mpl lsWriteFileSym
+      let P_ghost := cliProgExtPlacedAt mpl EG 617 W
+      let P_real  := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W
+      entryGuard s0 →
+      (sf.status = .Running → sf.pc = s0.readReg64 .lr) →
+      (∀ msg, sf.status ≠ .Exception msg) →
+      sf.status ≠ .Halted →
+      (P_real.externAt? stubPc = some f ∧
+        ∀ u : State,
+          Steps P_ghost s0 u → Steps P_ghost (f u) sf →
+          u.pc = stubPc → u.status = .Running →
+          (∀ msg, (f u).status ≠ .Exception msg) →
+          u.mem.KeepsFrozen (f u).mem → ExecFrozen u.mem → InvS u →
+          ExecFrozen (f u).mem ∧ InvS (f u)) ∨
+      (P_real.externAt? stubPc = none ∧
+        ∀ u : State,
+          Steps P_ghost s0 u → Steps P_ghost (f u) sf →
+          u.pc = stubPc → u.status = .Running →
+          (∀ msg, (f u).status ≠ .Exception msg) →
+          u.mem.KeepsFrozen (f u).mem → ExecFrozen u.mem → InvS u →
+          Steps P_real u (f u) ∧ ExecFrozen (f u).mem ∧ InvS (f u))) :
+    ExtraRowReplayOn mpl mmpl InvS EG lsWriteFileSym entryGuard f where
+  preserves_execFrozen u hrun hnoex hfr :=
+    ⟨hExec u hrun hnoex hfr, fun hfalse => by simp at hfalse⟩
+  replay_at_stub := hReplay
+
+/-- Contravariant entry-guard weakening on `ExtraRowReplayOn`. -/
+theorem ExtraRowReplayOn.mono_guard
+    {mpl mmpl : Obj.MultiPlacement} {InvS : State → Prop}
+    {EG : CliHooks → String → Option (State → State)}
+    {sym : String} {entryGuard guard' : State → Prop} {f : State → State}
+    (hRow : ExtraRowReplayOn mpl mmpl InvS EG sym entryGuard f)
+    (hImp : ∀ s0, guard' s0 → entryGuard s0) :
+    ExtraRowReplayOn mpl mmpl InvS EG sym guard' f where
+  preserves_execFrozen := hRow.preserves_execFrozen
+  replay_at_stub W s0 sf hg := hRow.replay_at_stub W s0 sf (hImp s0 hg)
+
+/-- Lift `ExtraRowReplayOn` into the `GhostExternReplaysOn keep_outer InvS` disjunction at
+    `pc = libsignalSessionLib.resolve mpl sym` for any outer `keep_outer` (e.g. `fun _ => false`). -/
 theorem ghostExternReplaysOn_arm_of_rowReplayOn
     {mpl mmpl : Obj.MultiPlacement} {InvS : State → Prop}
     {EG : CliHooks → String → Option (State → State)}
     {sym : String} {entryGuard : State → Prop} {f : State → State}
     (keep_outer : BitVec 64 → Bool)
-    (hRow : GhostRowReplayOn mpl mmpl InvS EG sym entryGuard f)
+    (hRow : ExtraRowReplayOn mpl mmpl InvS EG sym entryGuard f)
     {W : CliHooks} {s0 sf : State} {pc : BitVec 64}
     (hpc_eq : pc = libsignalSessionLib.resolve mpl sym)
     (hGuard0 : entryGuard s0)
@@ -431,6 +526,39 @@ theorem ghostExternReplaysOn_arm_of_rowReplayOn
       fun u hs1 hs2 hpc hrun hnoex hkf hfr _hlr hinv =>
         harm2 u hs1 hs2 hpc hrun hnoex hkf hfr hinv⟩
 
+/-- Convenience wrapper over `ghostExternReplaysOn_arm_of_rowReplayOn` for `GhostRowReplayOn` callers. -/
+theorem ghostExternReplaysOn_arm_of_ghostRowReplayOn
+    {mpl mmpl : Obj.MultiPlacement} {InvS : State → Prop}
+    {EG : CliHooks → String → Option (State → State)}
+    {sym : String} {entryGuard : State → Prop} {f : State → State}
+    (keep_outer : BitVec 64 → Bool)
+    (hRow : GhostRowReplayOn mpl mmpl InvS EG sym entryGuard f)
+    {W : CliHooks} {s0 sf : State} {pc : BitVec 64}
+    (hpc_eq : pc = libsignalSessionLib.resolve mpl sym)
+    (hGuard0 : entryGuard s0)
+    (hret_pc : sf.status = .Running → sf.pc = s0.readReg64 .lr)
+    (hnoex_sf : ∀ msg, sf.status ≠ .Exception msg)
+    (hnhalt_sf : sf.status ≠ .Halted) :
+    let P_ghost := cliProgExtPlacedAt mpl EG 617 W
+    let P_real  := cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W
+    (P_real.externAt? pc = some f ∧
+      ∀ u : State,
+        Steps P_ghost s0 u → Steps P_ghost (f u) sf →
+        u.pc = pc → u.status = .Running →
+        (∀ msg, (f u).status ≠ .Exception msg) →
+        u.mem.KeepsFrozen (f u).mem → ExecFrozen u.mem → InvS u →
+        ExecFrozen (f u).mem ∧ InvS (f u)) ∨
+    (P_real.externAt? pc = none ∧
+      ∀ u : State,
+        Steps P_ghost s0 u → Steps P_ghost (f u) sf →
+        u.pc = pc → u.status = .Running →
+        (∀ msg, (f u).status ≠ .Exception msg) →
+        u.mem.KeepsFrozen (f u).mem → ExecFrozen u.mem →
+        keep_outer (u.readReg64 .lr) = false → InvS u →
+        Steps P_real u (f u) ∧ ExecFrozen (f u).mem ∧ InvS (f u)) :=
+  ghostExternReplaysOn_arm_of_rowReplayOn keep_outer hRow.toExtraRowReplayOn
+    hpc_eq hGuard0 hret_pc hnoex_sf hnhalt_sf
+
 /-- Combined Block-`617` entry guard across all active `(sym, f)` rows in `extra`, parameterized by
     the **same** `guardOf : String → State → Prop` threaded into `ExtraListReplaysOn`. -/
 @[expose] def ExtraListEntryGuard
@@ -449,7 +577,7 @@ theorem ExtraListEntryGuard.nil (guardOf : String → State → Prop) (s0 : Stat
   fun _ _ _ hLook => by cases hLook
 
 /-- Per-row `ExtraListReplaysOn` across all active `(sym, f)` entries in `extra`, tied to `guardOf`
-    so `ExtraListEntryGuard guardOf extra s0` feeds `hRow.replay_at_stub` directly (H-REV2 M1). -/
+    so `ExtraListEntryGuard guardOf extra s0` feeds `hRow.replay_at_stub` directly. -/
 @[expose] def ExtraListReplaysOn
     (mpl mmpl : Obj.MultiPlacement) (InvS : State → Prop)
     (guardOf : String → State → Prop)
@@ -457,7 +585,7 @@ theorem ExtraListEntryGuard.nil (guardOf : String → State → Prop) (s0 : Stat
   ∀ sym f,
     cliExtraGhostSyms.contains sym = true →
     extra.lookup sym = some f →
-    GhostRowReplayOn mpl mmpl InvS
+    ExtraRowReplayOn mpl mmpl InvS
       (fun W' => cliGhostExternsWithExtra g extra (cliExternsPlaced mmpl W'))
       sym (guardOf sym) f
 
@@ -472,7 +600,7 @@ theorem ExtraListReplaysOn.nil
     ExtraListReplaysOn mpl mmpl InvS guardOf g [] :=
   fun _ _ _ hLook => by cases hLook
 
-/-- Direct WP4 replay-arm discharge combining `ExtraListEntryGuard guardOf extra s0` and
+/-- Direct replay-arm discharge combining `ExtraListEntryGuard guardOf extra s0` and
     `ExtraListReplaysOn mpl mmpl InvS guardOf g extra` at any active `extra` stub `pc`. -/
 theorem extraListReplaysOn_arm
     {mpl mmpl : Obj.MultiPlacement} {InvS : State → Prop}
@@ -510,14 +638,52 @@ theorem extraListReplaysOn_arm
     (hReplays sym f hDom hLook) hpc_eq (hEntry sym f hDom hLook)
     hret_pc hnoex_sf hnhalt_sf
 
-/-- Full per-row bundle (`GhostRowSpecOk` consumer specs ∧ `GhostRowReplayOn` per-row replay). -/
+/-- Full per-row bundle (`GhostRowSpecOk` consumer specs ∧ `GhostRowReplayOn` per-row replay)
+    for `fs`-preserving rows in `cliExtraGhostSyms`. -/
 @[expose] def GhostRowOk [LibsignalPlacement]
     (mpl mmpl : Obj.MultiPlacement) (InvS : State → Prop)
     (EG : CliHooks → String → Option (State → State))
     (sym : String) (entryGuard : State → Prop) (f : State → State) : Prop :=
   GhostRowSpecOk sym f ∧ GhostRowReplayOn mpl mmpl InvS EG sym entryGuard f
 
-/-- Complete `ExtraListOk` bundle combining `ExtraListSpecOk` (`FreshExtraKeysList` + `GhostRowSpecOk`)
+/-- Generalized per-row bundle (`ExtraRowOk` ∧ `ExtraRowReplayOn`) across all `cliExtraGhostSyms`
+    rows, including `lsWriteFileSym` (feeds `ExtraSpecOk.rowOk` via `.1` and `ExtraReplaysOn` via `.2`). -/
+@[expose] def ExtraRowFullOk [LibsignalPlacement]
+    (mpl mmpl : Obj.MultiPlacement) (InvS : State → Prop)
+    (EG : CliHooks → String → Option (State → State))
+    (sym : String) (entryGuard : State → Prop) (f : State → State) : Prop :=
+  ExtraRowOk sym f ∧ ExtraRowReplayOn mpl mmpl InvS EG sym entryGuard f
+
+/-- Lift any `fs`-preserving `GhostRowOk` into `ExtraRowFullOk`. -/
+theorem GhostRowOk.toExtraRowFullOk [LibsignalPlacement]
+    {mpl mmpl : Obj.MultiPlacement} {InvS : State → Prop}
+    {EG : CliHooks → String → Option (State → State)}
+    {sym : String} {entryGuard : State → Prop} {f : State → State}
+    (h : GhostRowOk mpl mmpl InvS EG sym entryGuard f) :
+    ExtraRowFullOk mpl mmpl InvS EG sym entryGuard f :=
+  ⟨h.1.toExtraRowOk, h.2.toExtraRowReplayOn⟩
+
+/-- Build `ExtraRowFullOk` directly from `GhostRowSpecOk` + `GhostRowReplayOn`. -/
+theorem ExtraRowFullOk.of_ghostRow [LibsignalPlacement]
+    {mpl mmpl : Obj.MultiPlacement} {InvS : State → Prop}
+    {EG : CliHooks → String → Option (State → State)}
+    {sym : String} {entryGuard : State → Prop} {f : State → State}
+    (hSpec : GhostRowSpecOk sym f)
+    (hReplay : GhostRowReplayOn mpl mmpl InvS EG sym entryGuard f) :
+    ExtraRowFullOk mpl mmpl InvS EG sym entryGuard f :=
+  ⟨hSpec.toExtraRowOk, hReplay.toExtraRowReplayOn⟩
+
+/-- Build `ExtraRowFullOk` on `lsWriteFileSym` from `WriteFileRowOk` + `ExtraRowReplayOn`. -/
+theorem ExtraRowFullOk.of_writeFile [LibsignalPlacement]
+    {mpl mmpl : Obj.MultiPlacement} {InvS : State → Prop}
+    {EG : CliHooks → String → Option (State → State)}
+    {entryGuard : State → Prop} {f : State → State}
+    (hSpec : WriteFileRowOk f)
+    (hReplay : ExtraRowReplayOn mpl mmpl InvS EG lsWriteFileSym entryGuard f) :
+    ExtraRowFullOk mpl mmpl InvS EG lsWriteFileSym entryGuard f :=
+  ⟨hSpec.toExtraRowOk, hReplay⟩
+
+/-- Complete `ExtraListOk` bundle combining `ExtraListSpecOk` (`FreshExtraKeysList` + `ExtraRowOk`)
     and `ExtraListReplaysOn` under `guardOf`. -/
 structure ExtraListOk [LibsignalPlacement]
     (mpl mmpl : Obj.MultiPlacement) (InvS : State → Prop)
@@ -715,7 +881,7 @@ theorem block617TransferFixedG_of_extraRow
     · subst hpc
       rw [hghost_stub W] at hgpc
       injection hgpc with hfg; subst hfg
-      exact ghostExternReplaysOn_arm_of_rowReplayOn (fun _ => false) hRow rfl
+      exact ghostExternReplaysOn_arm_of_rowReplayOn (fun _ => false) hRow.toExtraRowReplayOn rfl
         hGuard0 hret_pc hnoex_sf hnhalt_sf
     · have hreal_eq :
           (cliProgExtPlacedAt mpl (cliExternsPlaced mmpl) 617 W).externAt? pc = some gfn := by

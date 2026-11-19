@@ -10,11 +10,11 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.E2E.InMem.HashbrownBin.Specs
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP1
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.StageP1 -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.ConsumeMessageKey.FindIndexProofs.Loop
 import LibsignalBinary.Proofs.E2E.InMem.IdentityKeyStoreImpl.Defs
 import LibsignalBinary.Proofs.E2E.InMem.SessionStoreImpl.Defs
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Stage-Level Framing and `SepWPp` Combinators for `message_decrypt_prekey::<PqxdhRng>::{closure#0}`
@@ -23,7 +23,7 @@ Defines `PanicOomProp` and framed `SepWP` / `SepWPp` stage and subroutine-call c
 combinators for `message_decrypt_prekey::<PqxdhRng>::{closure#0}`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -42,14 +42,6 @@ set_option linter.unusedSimpArgs false
 
 attribute [local irreducible] Program.fetch Program.externAt? Program.fnOff
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
-ls_attribute [local simp, local arm64_norm ↓, local wp_norm ↓]
-  (ls_stub% "__rustc::__rust_no_alloc_shim_is_unstable_v2")
-  (ls_stub% "__rustc::__rust_alloc")
-  (ls_stub% "__rustc::__rust_dealloc")
-  (ls_stub% "memcpy")
-
-/-! ## `SepWPp` Stage and Subroutine-Call Combinators -/
-
 open CryptoVerification.LibsignalPublicApi.StoreKit
 open CryptoVerification.E2E.InMem
 open CryptoVerification.E2E.InMem.HashbrownModel
@@ -58,7 +50,7 @@ open CryptoVerification.E2E.InMem.SessionStoreImpl
 open CryptoVerification.E2E.InMem.IdentityKeyStoreImpl
 
 /-- Panic postcondition asserting OOM allocation failure between `s0` and `sf`. -/
-def PanicOomProp (s0 sf : State) (Pf : SepProp) : Prop :=
+@[expose] def PanicOomProp (s0 sf : State) (Pf : SepProp) : Prop :=
   ∀ R : SepProp, (sf.mem ⊨ Pf ∗ R) →
     (sf.mem ⊨ (⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap) ∗ R)
 
@@ -94,46 +86,6 @@ theorem SepWPp.weaken_frame {prog : Program} {ret : BitVec 64} {s : State}
   intro R hm hL
   rw [hP] at hm
   exact h R (Satisfies.mono (sepConj_mono_left (sepConj_mono_left hent)) hm) hL
-
-/-- Run a framed `SepWP` segment to `mid`, carrying `img.FrozenLoaded` and `symtab`,
-then continue in `SepWPp`. -/
-theorem SepWPp.bind_sepWP_frame {prog : Program} {img : Obj.Image} {mid ret : BitVec 64} {s : State}
-    {P P_step P_step_post F : SepProp} {Q_regs : State → Prop}
-    {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hstep : SepWP prog mid s P_step
-      (fun sm P_step' => (P_step' ⊢ P_step_post) ∧ Q_regs sm))
-    (hP : P = P_step ∗ F)
-    (hnext : ∀ sm : State, sm.pc = mid → sm.status = .Running →
-      img.FrozenLoaded sm → sm.symtab = img.symtab → Q_regs sm →
-      SepWPp prog ret sm (P_step_post ∗ F) Q Qp) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  rw [hP, sepConj_assoc] at hm
-  obtain ⟨sm, hsteps, ⟨hpc, hrun, P_step', hmm, hent, hregs⟩ | ⟨_, _hoom⟩⟩ := hstep.elim hm hL
-  rotate_left; · first | exact False.elim _hoom | exact (not_satisfies_false_sepConj _hoom).elim
-  have hmm' : sm.mem ⊨ (P_step_post ∗ F) ∗ R := by
-    rw [sepConj_assoc]
-    exact Satisfies.mono (sepConj_mono_left hent) hmm
-  obtain ⟨sf, hsteps', hout'⟩ :=
-    hnext sm hpc hrun (hF.of_keepsFrozen hsteps.keepsFrozen)
-      (hsteps.symtab_eq.trans hsym) hregs R hmm' (hsteps.codeLoaded hL)
-  exact ⟨sf, hsteps.trans hsteps', hout'⟩
-
-/-- Final framed `SepWP` segment reaching `ret` in `SepWPp`. -/
-theorem SepWPp.ret_sepWP_frame {prog : Program} {img : Obj.Image} {ret : BitVec 64} {s : State}
-    {P P_step P_step_post F : SepProp} {Q_regs : State → Prop}
-    {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hstep : SepWP prog ret s P_step
-      (fun sf P_step' => (P_step' ⊢ P_step_post) ∧ Q_regs sf))
-    (hP : P = P_step ∗ F)
-    (hret : ∀ sf : State, sf.pc = ret → sf.status = .Running →
-      img.FrozenLoaded sf → sf.symtab = img.symtab → Q_regs sf →
-      Q sf (P_step_post ∗ F)) :
-    SepWPp prog ret s P Q Qp :=
-  SepWPp.bind_sepWP_frame hF hsym hstep hP fun sf hpc hrun hF' hsym' hregs =>
-    SepWPp.done hpc hrun (hret sf hpc hrun hF' hsym' hregs)
 
 /-- Run a framed `SepWPp` stage to `mid`, then continue in `SepWPp` with `PanicOomProp s0`. -/
 theorem SepWPp.bind_sepWPp_frame {prog : Program} {mid ret : BitVec 64} {s0 s : State}
@@ -177,64 +129,6 @@ theorem SepWPp.ret_sepWPp_frame {prog : Program} {ret : BitVec 64} {s0 s : State
     SepWPp prog ret s P Q (PanicOomProp s0) :=
   SepWPp.bind_sepWPp_frame hstage hP fun sf hpc hrun hregs =>
     SepWPp.done hpc hrun (hret sf hpc hrun hregs)
-
-/-- Framed `SepWPp` subroutine call for a non-panicking, non-exiting callee. -/
-theorem SepWPp.call_frame_frozen_nopanic {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_false : ∀ sf, spec.onPanic x s sf = ⌜False⌝ := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q Qp := by
-  refine ProofLib.SepWPp.call_wpp_frozen hcall (x := x) (F := F) hF hsym hpc hrun hsp hlr
-    (fun R hm => ?_) (fun sf code R' _ hpost => ?_) (fun sf _ ⟨R', hpost⟩ => ?_)
-    (fun sf hpcm hrunm hspm hcsm hF' hsym' => ?_)
-    (fun sf R' _ hpost => ?_)
-  · rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-    exact ⟨hφ, hm⟩
-  · rw [hexit_false] at hpost; exact allowPanic_not_exited hpost
-  · rw [hpan_false] at hpost; exact (allowPanic_not_exited hpost).elim
-  · exact hnext sf hpcm hrunm hspm (by simpa [State.spAligned, hspm] using hsp) hcsm hF' hsym'
-  · rw [hoom_false] at hpost; exact (not_satisfies_false_sepConj hpost).elim
-
-/-- Framed `SepWPp` subroutine call for a may-panic OOM callee (`PanicOomProp s0`). -/
-theorem SepWPp.call_frame_frozen_oom {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s0 s : State} {φ : Prop}
-    {P T F : SepProp} {Q : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (htr : s.trace = s0.trace)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hpan_eq : ∀ sf, spec.onPanic x s sf =
-      (⌜allocFailedIn s sf ∧ s.trace <+: sf.trace⌝ ∗ anyHeap) := by intro _; rfl)
-    (hexit_false : ∀ code sf, spec.onExit x code s sf = ⌜False⌝ := by intro _ _; rfl)
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q (PanicOomProp s0))
-    (hoom_false : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q (PanicOomProp s0) := by
-  refine ProofLib.SepWPp.call_wpp_frozen hcall (x := x) (F := F) hF hsym hpc hrun hsp hlr
-    (fun R hm => ?_) (fun sf code R' _ hpost => ?_) (fun sf _ _ => ?_)
-    (fun sf hpcm hrunm hspm hcsm hF' hsym' => ?_)
-    (fun sf R' _ hpost => ?_)
-  · rw [hspec, sepConj_assoc, satisfies_pure_sepConj, ← sepConj_assoc, ← hP]
-    exact ⟨hφ, hm⟩
-  · rw [hexit_false] at hpost; exact allowPanic_not_exited hpost
-  · rw [hpan_eq]; exact allowPanic_oom_of_trace_eq htr
-  · exact hnext sf hpcm hrunm hspm (by simpa [State.spAligned, hspm] using hsp) hcsm hF' hsym'
-  · rw [hoom_false] at hpost; exact (not_satisfies_false_sepConj hpost).elim
 
 theorem stackAt_sub_eq (sp : BitVec 64) (big small : Nat)
     (h1 : small ≤ big := by decide) (h2 : big ≤ 2 ^ 64 := by decide) :

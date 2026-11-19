@@ -15,6 +15,8 @@ public import ProofLib.Hoare.MultiCodeROHook
 public import VerifiedLibraries.Mallocng.Spec
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
 public import LibsignalBinary.Specifications.LibsignalE2E.HooksMallocng
+-- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.AesHooks0
 public import LibsignalBinary.Heap.MallocngBridgeBudget
 public import LibsignalBinary.Heap.Fine.RustEntriesFine
 import VerifiedLibraries.Mallocng.Proofs.BridgeHelpers
@@ -28,7 +30,7 @@ the `RustCliAllocBudget` instances `mallocngHookRustCliAllocBudget` and `fineHoo
 startup pool constructors, and the placed-library-to-hook bridge `runPlacedAllocHook`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -37,8 +39,10 @@ namespace LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
 open Arm64 Arm64.CType ProofLib.SepLogic
 open ProofLib hiding MallocngMinBlockCost mallocngSizeClassUnits mallocngRoTablesBytes
   MallocngAddrs MallocngIface
+open CryptoGames.HMAC (ShaState hmacWith)
 open CryptoVerification.LibsignalTripleRatchet (extHookStack)
-open CryptoVerification.E2E (restoreCallerRegs writeVecHeader)
+open CryptoVerification.E2E (restoreCallerRegs stepRustAlloc1 stepRustDealloc1 writeVecHeader)
+open CryptoVerification.SignalSession (unmodelled)
 open LibsignalBinary.Heap (
   AllocCallPreserved AllocCostModel AllocEvent BudgetLimits
   FdsHiFrame FitsEvent FitsStep
@@ -51,6 +55,51 @@ open LibsignalBinary.Heap (
   mallocngLiveM mallocngRustCliAllocBudget mallocng_oom_false
   steps_of_withSvc_alloc_running_or_oom zeroBudgetLimits
 )
+
+/-- Own stack frame of `libcrux_hmac::hmac` (`sub sp, sp, #0xe0` at `+0x00`): `224` bytes
+(`16`-byte aligned; `224 + mallocngStackBytes = 224 + 1024 = 1248 ≤ extHookStack = 16384`).
+Kept in untrusted `Proofs/HookDischarge/` for ghost-table / budget replay proofs after
+`libcrux_hmac::hmac` left `cliHookTablePlaced`. -/
+abbrev libcruxHmacFrameBytes : Nat := 0xe0
+
+/-- `libcrux_hmac::hmac` (frame `0xe0 = 224` B) ghost replay over shared `mallocng` at placement
+`mpl`:
+1. Fails closed (`unmodelled`) unless `w0 == 0#32` (`Algorithm::Sha256`).
+2. Panics via `Rust.panicked` (`0` allocations) if `2 ^ 32 ≤ keyLen` (`x2`) or `2 ^ 32 ≤ dataLen`
+   (`x4`).
+3. Replays the SHA-256 arm's 7 allocator calls at `sp = s0.sp - 0xe0#64`: `calloc(64, 1)` for
+   `pKey`, `malloc(64)` for `pIpad`, `malloc(64)` for `pOpad`, `free(pOpad)`, `free(pIpad)`,
+   `free(pKey)`, and `malloc(32)` for `pOut`, writing `HMAC.hmacWith F key data` to `pOut` and
+   `Vec` header `{32, pOut, outLen}` at sret `x8`. -/
+@[expose] noncomputable def libcruxHmacHookMallocng (mpl : Obj.MultiPlacement)
+    (F : ShaState → List (BitVec 8) → ShaState) (s0 : State) : State :=
+  if (s0.readReg64 .x0).setWidth 32 != 0#32 then
+    unmodelled "libcrux_hmac::hmac: alg != Sha256" s0
+  else
+    let keyLen := (s0.readReg64 .x2).toNat
+    let dataLen := (s0.readReg64 .x4).toNat
+    if 2 ^ 32 ≤ keyLen || 2 ^ 32 ≤ dataLen then
+      Rust.panicked s0
+    else
+      stepRustAlloc1 mpl true libcruxHmacFrameBytes 64 (fun s1 pKey =>
+        let key := s1.mem.readBytes (s1.readReg64 .x1) keyLen
+        stepRustAlloc1 mpl false libcruxHmacFrameBytes 64 (fun s2 pIpad =>
+          stepRustAlloc1 mpl false libcruxHmacFrameBytes 64 (fun s3 pOpad =>
+            let data := s3.mem.readBytes (s3.readReg64 .x3) dataLen
+            let tag := hmacWith F key data
+            stepRustDealloc1 mpl libcruxHmacFrameBytes pOpad (fun s4 =>
+              stepRustDealloc1 mpl libcruxHmacFrameBytes pIpad (fun s5 =>
+                stepRustDealloc1 mpl libcruxHmacFrameBytes pKey (fun s6 =>
+                  stepRustAlloc1 mpl false libcruxHmacFrameBytes 32 (fun s7 pOut =>
+                    let outLen :=
+                      if (s7.readReg64 .x5).setWidth 32 &&& 1#32 != 0#32 then
+                        min (s7.readReg64 .x6).toNat 32
+                      else
+                        32
+                    retHook (fun s =>
+                      s.setMem (writeVecHeader (s.mem.writeBytes pOut tag)
+                        (s.readReg64 .x8) 32#64 pOut (BitVec.ofNat 64 outLen))) s7)
+                    s6) s5) s4) s3) s2) s1) s0
 open LibsignalBinary.Heap.Fine (
   fineCostModel fineCostModelIface fineCostModelSound fineRustCliAllocBudget
 )
@@ -66,7 +115,7 @@ open VerifiedLibraries.Mallocng (
     in `m` (automatic on any linked ELF via `codeBlocksPermRX_of_codeLoaded`, preserved by
     `VmPreserved` and `Memory.KeepsFrozen`, and ensuring `loadMultiCodeMem` / `restoreMultiCodeMem`
     leave `m.perm` — hence `rwBytes` and `physPlusRw` — invariant). -/
-def CodeBlocksPermRXMem (mpl : Obj.MultiPlacement) (m : Memory) : Prop :=
+@[expose] def CodeBlocksPermRXMem (mpl : Obj.MultiPlacement) (m : Memory) : Prop :=
   ∀ a : BitVec 64,
     (VerifiedLibraries.mallocngLib.findCodeBlock mpl a).isSome = true →
     m.perm a = some Perm.rx
@@ -176,14 +225,20 @@ theorem vmPreserved_hookExit {mpl : Obj.MultiPlacement} {i : Nat}
     exact perm_restoreMultiCodeMem_eq hrx0 hrxf a
   · exact multiCodeROHookExit_fs VerifiedLibraries.mallocngLib mpl i s0 sf'
 
+/-- Exclusive 1-byte `cpufeatures` `features_aes::STORAGE` static cell at `brkStart - 8160#64`
+    (`0xff#8` uninitialized at ELF load, updated to `0#8` or `1#8` by `init_inner`). -/
+@[expose] def aesStorageCell (brkStart : BitVec 64) : SepProp :=
+  ∃∗ v : BitVec 8, (brkStart - 8160#64) ↦₈ v
+
 /-- Budget-threaded `mallocng` pool for `MultiCodeROHook`-backed hooks: pairs
-    `VerifiedLibraries.mallocngLib.codeRO mpl` with `mallocngBudgetPool` and (when
-    `lim.enforced = true`) `CodeBlocksPermRX mpl s`. -/
-def mallocngHookBudgetPool (M : AllocCostModel) (I : MallocngCostModelIface M)
+    `VerifiedLibraries.mallocngLib.codeRO mpl` with `mallocngBudgetPool`, `aesStorageCell brkStart`,
+    and (when `lim.enforced = true`) `CodeBlocksPermRX mpl s`. -/
+@[expose] def mallocngHookBudgetPool (M : AllocCostModel) (I : MallocngCostModelIface M)
     (γ : GhostName) (mpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
     (lim : BudgetLimits) (st : M.σ) (s : State) : SepProp :=
   VerifiedLibraries.mallocngLib.codeRO mpl ∗
     mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗
+    aesStorageCell brkStart ∗
     ⌜lim.enforced = true → CodeBlocksPermRX mpl s⌝
 
 theorem mallocngHookBudgetPool_transport_mem (M : AllocCostModel) (I : MallocngCostModelIface M)
@@ -222,7 +277,7 @@ theorem mallocngHookBudgetPool_zero_transport (M : AllocCostModel) (I : Mallocng
   simp only [mallocngHookBudgetPool, hpool, hrx]
 
 /-- Cost-model-parametric `RustCliAllocBudget M` instance for `MultiCodeROHook`-backed hooks over `mallocngLib`. -/
-def mallocngHookRustCliAllocBudget (M : AllocCostModel) (I : MallocngCostModelIface M)
+@[expose] def mallocngHookRustCliAllocBudget (M : AllocCostModel) (I : MallocngCostModelIface M)
     (hS : MallocngCostModelSound M I)
     (γ : GhostName) (mpl : Obj.MultiPlacement) (tp brkStart : BitVec 64) :
     RustCliAllocBudget M where
@@ -235,7 +290,7 @@ def mallocngHookRustCliAllocBudget (M : AllocCostModel) (I : MallocngCostModelIf
     mallocngHookBudgetPool_zero_transport M I γ mpl tp brkStart st hp
 
 /-- `fineCostModel` specialization of `mallocngHookRustCliAllocBudget`. -/
-noncomputable def fineHookRustCliAllocBudget (γ : GhostName) (mpl : Obj.MultiPlacement)
+@[expose] def fineHookRustCliAllocBudget (γ : GhostName) (mpl : Obj.MultiPlacement)
     (tp brkStart : BitVec 64) : RustCliAllocBudget fineCostModel :=
   mallocngHookRustCliAllocBudget fineCostModel fineCostModelIface fineCostModelSound γ mpl tp brkStart
 
@@ -250,18 +305,18 @@ noncomputable def fineHookRustCliAllocBudget (γ : GhostName) (mpl : Obj.MultiPl
     (fineHookRustCliAllocBudget γ mpl tp brkStart).repAlloc =
       (fineRustCliAllocBudget γ mpl tp brkStart).repAlloc := rfl
 
-/-- Upgrade `mallocngBudgetPool` to `mallocngHookBudgetPool` whenever
+/-- Upgrade `mallocngBudgetPool ∗ aesStorageCell brkStart` to `mallocngHookBudgetPool` whenever
     `VerifiedLibraries.mallocngLib.CodeLoaded mpl s.mem` holds (using read-only code ownership
     introduction `satisfies_codeRO_of_codeLoaded`, consuming zero RW cells). -/
 theorem mallocngHookBudgetPool_of_codeLoaded {M : AllocCostModel} {I : MallocngCostModelIface M}
     {γ : GhostName} {mpl : Obj.MultiPlacement} {tp brkStart : BitVec 64}
     {lim : BudgetLimits} {st : M.σ} {s : State} {R : SepProp}
     (hCL : VerifiedLibraries.mallocngLib.CodeLoaded mpl s.mem)
-    (hsat : s.mem ⊨ mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗ R) :
+    (hsat : s.mem ⊨ mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗ aesStorageCell brkStart ∗ R) :
     s.mem ⊨ mallocngHookBudgetPool M I γ mpl tp brkStart lim st s ∗ R := by
   have hcode : s.mem ⊨
       VerifiedLibraries.mallocngLib.codeRO mpl ∗
-        (mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗ R) :=
+        (mallocngBudgetPool M I γ mpl tp brkStart lim st s ∗ aesStorageCell brkStart ∗ R) :=
     VerifiedLibraries.mallocngLib.satisfies_codeRO_of_codeLoaded hCL hsat
   have hrx : lim.enforced = true → CodeBlocksPermRX mpl s :=
     fun _ => codeBlocksPermRX_of_codeLoaded hCL
@@ -270,8 +325,8 @@ theorem mallocngHookBudgetPool_of_codeLoaded {M : AllocCostModel} {I : MallocngC
     (Entails.trans (Entails.pure_right hrx (Entails.refl _)) (Entails.of_eq (by sep_ac_rfl)))
     hcode
 
-/-- Startup initialization of `mallocngHookBudgetPool` from `VerifiedLibraries.mallocngLib.dataInit mpl`
-    and `VerifiedLibraries.mallocngLib.CodeLoaded mpl s0.mem`. -/
+/-- Startup initialization of `mallocngHookBudgetPool` from `VerifiedLibraries.mallocngLib.dataInit mpl`,
+    `aesStorageCell s0.brkStart`, and `VerifiedLibraries.mallocngLib.CodeLoaded mpl s0.mem`. -/
 theorem mallocngHookBudgetPool_of_init {M : AllocCostModel} {I : MallocngCostModelIface M}
     (hS : MallocngCostModelSound M I)
     {mpl : Obj.MultiPlacement} {auxvPtr : BitVec 64}
@@ -284,7 +339,7 @@ theorem mallocngHookBudgetPool_of_init {M : AllocCostModel} {I : MallocngCostMod
       VerifiedLibraries.mallocngLib.dataInit mpl ∗
         MallocngRuntime (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 ∗
         (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
+        MallocngAuxvAt auxvPtr ∗ aesStorageCell s0.brkStart ∗ R) :
     ∃ γ : GhostName,
       s0.mem ⊨
         (mallocngHookRustCliAllocBudget M I hS γ mpl s0.tpidrEl0 s0.brkStart).pool lim M.init s0 ∗ R := by
@@ -302,7 +357,7 @@ theorem fineHookBudgetPool_of_init {mpl : Obj.MultiPlacement} {auxvPtr : BitVec 
       VerifiedLibraries.mallocngLib.dataInit mpl ∗
         MallocngRuntime (mallocngAddrsOfPlacement mpl) s0.tpidrEl0 ∗
         (((mallocngAddrsOfPlacement mpl).libc + 8#64) ↦₆₄ auxvPtr) ∗
-        MallocngAuxvAt auxvPtr ∗ R) :
+        MallocngAuxvAt auxvPtr ∗ aesStorageCell s0.brkStart ∗ R) :
     ∃ γ : GhostName,
       s0.mem ⊨
         (fineHookRustCliAllocBudget γ mpl s0.tpidrEl0 s0.brkStart).pool lim fineCostModel.init s0 ∗ R :=
@@ -415,7 +470,7 @@ theorem vmPreserved_restoreCallerRegs (sCaller sCallee : State) :
 
 /-! ## `MultiCodeROHook` budget bridge combinators -/
 
-noncomputable def mallocngHook (mpl : Obj.MultiPlacement) (fnName : String) : State → State :=
+@[expose] noncomputable def mallocngHook (mpl : Obj.MultiPlacement) (fnName : String) : State → State :=
   VerifiedLibraries.mallocngLib.codeROSubroutineHook mpl fnName
     (fun _ => none) (fun _ => none) Syscall.standard
 
@@ -601,14 +656,15 @@ theorem unpackHookBudgetPool {M : AllocCostModel} {I : MallocngCostModelIface M}
       ivs0.length ≤ M.maxDynIvs st ∧
       (ivs0.map Prod.snd).sum ≤ M.footprint st ∧
       (s0.mem ⊨ VerifiedLibraries.mallocngLib.codeRO mpl ∗
-        (MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0 ∗ Rest)) := by
+        (MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs0 s0 ∗
+          (aesStorageCell brkStart ∗ Rest))) := by
   unfold mallocngHookBudgetPool mallocngBudgetPool LibsignalBinary.Heap.mallocngBudgetPoolAt at hsat
   have hsat1 : s0.mem ⊨
       ⌜lim.enforced = true → CodeBlocksPermRX mpl s0⌝ ∗
         ((∃∗ staticIvs : List (BitVec 64 × Nat), ∃∗ ivs : List (BitVec 64 × Nat),
           ⌜mallocngBudgetPoolInv lim staticIvs ivs s0⌝ ∗
           MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st ivs s0) ∗
-          (VerifiedLibraries.mallocngLib.codeRO mpl ∗ Rest)) :=
+          (VerifiedLibraries.mallocngLib.codeRO mpl ∗ aesStorageCell brkStart ∗ Rest)) :=
     Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hsat
   rw [satisfies_pure_sepConj] at hsat1
   obtain ⟨hrx0, hsat2⟩ := hsat1
@@ -633,20 +689,35 @@ theorem packHookPostEnv {M : AllocCostModel} (I : MallocngCostModelIface M)
     let s0' := multiCodeROHookEntry VerifiedLibraries.mallocngLib mpl i entry s0
     let sf := multiCodeROHookExit VerifiedLibraries.mallocngLib mpl i s0 sf'
     VerifiedLibraries.mallocngLib.codeRO mpl ∗
-      MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st' ivs0 s0' sf' ⊢
+      MallocngModelPostEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st' ivs0 s0' sf' ∗
+      aesStorageCell brkStart ⊢
       mallocngHookBudgetPool M I γ mpl tp brkStart lim st' sf := by
   intro s0' sf
   unfold MallocngModelPostEnv mallocngHookBudgetPool mallocngBudgetPool
     LibsignalBinary.Heap.mallocngBudgetPoolAt
-  rw [sepExists_sepConj_right]
+  have hex :
+      VerifiedLibraries.mallocngLib.codeRO mpl ∗
+        ((∃∗ ivs : List (BitVec 64 × Nat),
+          ⌜VerifiedLibraries.Mallocng.MallocngNoOrphanMappings ivs0 ivs s0'.mem sf'.mem⌝ ∗
+            MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st' ivs sf') ∗
+          aesStorageCell brkStart) =
+      ∃∗ ivs : List (BitVec 64 × Nat),
+        VerifiedLibraries.mallocngLib.codeRO mpl ∗
+          ((⌜VerifiedLibraries.Mallocng.MallocngNoOrphanMappings ivs0 ivs s0'.mem sf'.mem⌝ ∗
+            MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st' ivs sf') ∗
+            aesStorageCell brkStart) := by
+    rw [sepExists_sepConj_left, sepExists_sepConj_right]
+  rw [hex]
   refine Entails.sepExists_elim fun ivsf => ?_
   have hpull :
       VerifiedLibraries.mallocngLib.codeRO mpl ∗
-        (⌜VerifiedLibraries.Mallocng.MallocngNoOrphanMappings ivs0 ivsf s0'.mem sf'.mem⌝ ∗
-          MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st' ivsf sf') =
+        ((⌜VerifiedLibraries.Mallocng.MallocngNoOrphanMappings ivs0 ivsf s0'.mem sf'.mem⌝ ∗
+          MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st' ivsf sf') ∗
+          aesStorageCell brkStart) =
       ⌜VerifiedLibraries.Mallocng.MallocngNoOrphanMappings ivs0 ivsf s0'.mem sf'.mem⌝ ∗
         (VerifiedLibraries.mallocngLib.codeRO mpl ∗
-          MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st' ivsf sf') := by
+          MallocngModelEnv M I γ (mallocngAddrsOfPlacement mpl) tp brkStart st' ivsf sf' ∗
+          aesStorageCell brkStart) := by
     sep_ac_rfl
   rw [hpull]
   refine Entails.pure_left fun hNoOrphan => ?_
@@ -698,7 +769,7 @@ theorem packHookPostEnv {M : AllocCostModel} (I : MallocngCostModelIface M)
     (Entails.pure_right hInvF (Entails.pure_right hrxExit (Entails.refl _)))
     (Entails.of_eq (by sep_ac_rfl))
 
-def mallocHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
+@[expose] def mallocHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
     (γ : GhostName) (mpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
     (lim : BudgetLimits) : Spec (BitVec 64 × BitVec 64 × M.σ) where
   pre := fun (req, sp, st) s0 =>
@@ -721,7 +792,7 @@ def mallocHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
   onOom := fun (req, _, st) s0 sf =>
     ⌜¬ FitsEvent M lim st (.alloc req.toNat) ∧ OomPreserved s0 sf⌝
 
-def callocHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
+@[expose] def callocHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
     (γ : GhostName) (mpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
     (lim : BudgetLimits) : Spec (BitVec 64 × BitVec 64 × BitVec 64 × M.σ) where
   pre := fun (nmemb, size, sp, st) s0 =>
@@ -745,7 +816,7 @@ def callocHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
   onOom := fun (nmemb, size, _, st) s0 sf =>
     ⌜¬ FitsEvent M lim st (.alloc (nmemb.toNat * size.toNat)) ∧ OomPreserved s0 sf⌝
 
-def freeHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
+@[expose] def freeHookBridgeSpec (M : AllocCostModel) (I : MallocngCostModelIface M)
     (γ : GhostName) (mpl : Obj.MultiPlacement) (tp brkStart : BitVec 64)
     (lim : BudgetLimits) : Spec (BitVec 64 × Nat × Nat × BitVec 64 × M.σ) where
   pre := fun (p, n, align, sp, st) s0 =>
@@ -813,6 +884,7 @@ theorem mallocngHookBudgetPool_mapped_lt_userVa {M : AllocCostModel} {I : Malloc
   have hsat' : s0.mem ⊨
       mallocngBudgetPool M I γ mpl tp brkStart lim st s0 ∗
         (VerifiedLibraries.mallocngLib.codeRO mpl ∗
+          aesStorageCell brkStart ∗
           ⌜lim.enforced = true → CodeBlocksPermRX mpl s0⌝ ∗ Rest) :=
     Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hsat
   exact mallocngBudgetPool_mapped_lt_userVa hS henf hsat' hmap
@@ -827,3 +899,9 @@ theorem fineHookRustCliAllocBudget_mapped_lt_userVa
   mallocngHookBudgetPool_mapped_lt_userVa fineCostModelSound henf hsat hmap
 
 end LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase
+
+-- AUTO-BRIDGE BEGIN
+namespace CryptoVerification.E2E
+export LibsignalBinary.Proofs.HookDischarge.CryptoMallocngBudgetBase (libcruxHmacFrameBytes libcruxHmacHookMallocng)
+end CryptoVerification.E2E
+-- AUTO-BRIDGE END

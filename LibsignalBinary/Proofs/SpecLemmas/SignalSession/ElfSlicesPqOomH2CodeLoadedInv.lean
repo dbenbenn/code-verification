@@ -11,13 +11,13 @@ module
 
 public import Arm64
 public import Arm64.Trusted.Spec.Hoare
+public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst -- proof-setup: allow-public-import
+public import LibsignalBinary.Specifications.SignalSession.CliElf
 public import ProofLib
 public import ProofLib.ProgramReflection
-public import LibsignalBinary.Proofs.SignalSession.Cli.AllocGhostLinkTransfer
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.StartupStatics
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
-public import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfSlicesPqOomPlacedInst
-public import LibsignalBinary.Specifications.SignalSession.CliElf
+import LibsignalBinary.Proofs.SpecLemmas.SignalSession.ElfF3Relink.Tie
 
 /-!
 # `CodeLoaded (stripExecOutside keep ·)` Monotonicity, `KeepsFrozen` Stability, and Load Base Cases
@@ -31,7 +31,7 @@ Establishes `CodeLoaded (stripExecOutside keep ·)` invariants for ghost-to-real
    `hole2_keepSub` and `hole2_keep`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -198,7 +198,7 @@ theorem h2cl_inv_and_keepsFrozen_stable {Inv₁ Inv₂ : Memory → Prop}
   fun m m' ⟨hi1, hi2⟩ hkf => ⟨h₁ m m' hi1 hkf, h₂ m m' hi2 hkf⟩
 
 /-- Existing memory invariant `Inv` conjoined with `P.CodeLoaded (stripExecOutside keep ·)`. -/
-def h2cl_WithCodeLoaded (Inv : Memory → Prop) (keep : BitVec 64 → Bool) (P : Program)
+@[expose] def h2cl_WithCodeLoaded (Inv : Memory → Prop) (keep : BitVec 64 → Bool) (P : Program)
     (m : Memory) : Prop :=
   Inv m ∧ P.CodeLoaded (stripExecOutside keep m)
 
@@ -250,23 +250,24 @@ private theorem h2cl_toNat_add_ofNat_of_lt {b : BitVec 64} {k : Nat}
   have hlt' : b.toNat + k < 2 ^ 64 := by omega
   rw [BitVec.toNat_add, BitVec.toNat_ofNat, Nat.mod_eq_of_lt hk, Nat.mod_eq_of_lt hlt']
 
-/-! ### `f3TrialRxProg` (`seg[2]`, `[0x469000, 0x46f000)`) Base Cases -/
+/-! ### `f3TrialRxProg` (`seg[2]`) Base Cases -/
 
 private theorem h2cl_rxProg_byte_in_keepSub (i : Nat) (hi : i < f3TrialRxProg.code.length) :
     hole2_keepSub (f3TrialRxProg.base + BitVec.ofNat 64 i) = true := by
   have hbase : f3TrialRxProg.base = f3RxSegBase := f3TrialRxProg_base
-  have hbase_nat : f3RxSegBase.toNat = 0x469000 := by decide
+  have hbase_nat : f3RxSegBase.toNat = 0x474000 := by decide
   have hlen : f3TrialRxProg.code.length = 4 * f3RxWordCount := by
     rw [f3TrialRxWordTree_eq]
     exact WordTree.length_toBytes_of_checkSize? f3TrialRxWordTree_size
-  have hwc : f3RxWordCount = 6144 := rfl
+  have hwc : f3RxWordCount = 90112 := rfl
   have ht : (f3TrialRxProg.base + BitVec.ofNat 64 i).toNat =
       f3TrialRxProg.base.toNat + i := by
     apply h2cl_toNat_add_ofNat_of_lt
     rw [hbase, hbase_nat]
     rw [hlen, hwc] at hi
     omega
-  unfold hole2_keepSub
+  unfold hole2_keepSub LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubLo
+    LibsignalBinary.Proofs.SpecLemmas.SignalSession.Wp4LayoutGen.hole2_keepSubHi
   refine decide_eq_true ⟨?_, ?_⟩ <;> (rw [ht, hbase, hbase_nat]; rw [hlen, hwc] at hi; omega)
 
 /-- Equivalence between `hole2_keepSub` and `hole2_keep` for `f3TrialRxProg`. -/

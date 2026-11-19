@@ -9,27 +9,42 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.BranchesPlacedBudgetFd
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortErrPlacedBudgetAux
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Pure
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
-public import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
-public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.SignalSession.Cli.F3.HRead.FdThreadKit
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.Reserve11PlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.BranchesPlacedBudgetFd
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortAfterGetPlacedBudgetAux -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.LastResortErrPlacedBudgetAux
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Pure
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Varint.EncodeVarintPlacedCommonBudget
+import LibsignalBinary.Proofs.TripleRatchet.Alloc.DefsBudget
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public meta import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- shake: keep -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Alloc.DoReserve
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.PreKeyTryFromBase
+public import ProofLib.Disproof.Basic
+public import ProofLib.SepLogic.WP.SyscallsMmap
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocMetaFullStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedAllocSlotStage2
+public import VerifiedLibraries.Mallocng.Proofs.PlacedLibcFreeStage1
+public import VerifiedLibraries.Mallocng.Proofs.RdlAllocProof
+public import VerifiedLibraries.Mallocng.Proofs.SyscallWrappersProof
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Skeleton
 
 /-!
 # `.keepsFs` Budget-Threaded Relocatable Callee Contracts for `KpkMarkPoll`
@@ -38,7 +53,7 @@ Lifts `do_reserve_and_handle` (Block `561`) and `concat [local#3]` (Block `598`)
 under `AllocContractsFsPlaced A lim H`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -417,58 +432,5 @@ theorem kpkConcat2_pos_at_keepsFs_placed_ok [LibsignalPlacement] {M : AllocCostM
     refine Entails.of_eq (congrArg sepExists (funext fun p' => ?_))
     rw [stackAt_split_ge_p s0.sp hstk hstk64]
     sep_ac_rfl
-
-/-- Block `598` (`cliConcatName`) meets
-`withLsCodeRoLoaded lsmpl (kpkConcat2PosSpec A lim stk).keepsFs`
-for any `96 + extHookStack ≤ stk ≤ 2 ^ 64`. -/
-theorem kpkConcat2_pos_keepsFs_placed_ok [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (hFs : AllocContractsFsPlaced A lim H)
-    (_hpan : CliPanicHooksPlaced H)
-    (stk : Nat) (hstk : 96 + extHookStack ≤ stk) (hstk64 : stk ≤ 2 ^ 64) :
-    subroutine_ok (lsProg_598 H) (lsmpl.base 598)
-      (withLsCodeRoLoaded lsmpl (kpkConcat2PosSpec A lim stk).keepsFs) := by
-  have hat := kpkConcat2_pos_at_keepsFs_placed_ok hFs stk hstk hstk64
-  refine subroutine_ok_outcome_intro fun ⟨x, st⟩ R s0 hpc hrun hpre hsp => ?_
-  obtain ⟨hcrl, hpre0⟩ := extract_withLsCodeRoLoaded hpre
-  dsimp only [Spec.keepsFs, kpkConcat2PosSpec] at hpre0
-  have hbounds : 0 < x.bs0.length ∧ 0 < x.bs1.length ∧ x.bs0.length + x.bs1.length < 2 ^ 63 := by
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hpre0
-    exact ⟨hpre0.1.2.2.2.1, hpre0.1.2.2.2.2.1, hpre0.1.2.2.2.2.2.1⟩
-  have hpre' : s0.mem ⊨
-      (withLsCodeRoLoaded lsmpl (kpkConcat2PosAtSpec A lim stk).keepsFs).pre (x, st) s0 ∗ R :=
-    satisfies_lscro_pre hcrl hpre0
-  refine hat.mono_outcome (x, st) R s0 hpc hrun hpre' hsp ?_
-  rintro sf (⟨hret, hcc, hq⟩ | ⟨hpan', hq⟩ | ⟨code, hex, hq⟩ | ⟨hoom, hq⟩)
-  · refine Or.inl ⟨hret, hcc, ?_⟩
-    dsimp only [withLsCodeRoLoaded, Spec.keepsFs, kpkConcat2PosAtSpec, kpkConcat2PosSpec] at hq ⊢
-    rw [sepConj_assoc, satisfies_pure_sepConj] at hq ⊢
-    rcases hq with ⟨hfs_eq, hq⟩
-    refine ⟨hfs_eq, ?_⟩
-    simp only [sepExists_sepConj_left, satisfies_sepExists] at hq ⊢
-    rcases hq with ⟨p', hq⟩
-    rw [sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hq
-    rcases hq with ⟨⟨htrace, hp'⟩, hmem_f⟩
-    refine ⟨kpkConcat2PosEvents x, ?_⟩
-    rw [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨htrace, rfl⟩, ?_⟩
-    have hfold := vecU8_of_append_pos_p A x.outVec p' x.bs0 x.bs1
-      (by omega) hbounds.2.2 hp'
-    have hm1 : sf.mem ⊨
-        ((x.outVec ↦₆₄ BitVec.ofNat 64 (x.bs0.length + x.bs1.length)) ∗
-          ((x.outVec + 8#64) ↦₆₄ p') ∗
-          ((x.outVec + 16#64) ↦₆₄ BitVec.ofNat 64 (x.bs0.length + x.bs1.length)) ∗
-          A.live p' (x.bs0.length + x.bs1.length) 1 ∗
-          (p' ↦ₛ (x.bs0 ++ x.bs1))) ∗
-        ((x.slicesA ↦₆₄ x.p0) ∗ ((x.slicesA + 8#64) ↦₆₄ BitVec.ofNat 64 x.bs0.length) ∗
-          ((x.slicesA + 16#64) ↦₆₄ x.p1) ∗ ((x.slicesA + 24#64) ↦₆₄ BitVec.ofNat 64 x.bs1.length) ∗
-          (x.p0 ↦ₛ x.bs0) ∗ (x.p1 ↦ₛ x.bs1) ∗
-          A.pool lim (M.stepEvents (kpkConcat2PosEvents x) st) sf ∗ stackAt s0.sp stk ∗ R) := by
-      convert hmem_f using 1; sep_ac_rfl
-    have hm2 := Satisfies.mono (sepConj_mono_left hfold) hm1
-    convert hm2 using 1; sep_ac_rfl
-  · exact Or.inr (Or.inl ⟨hpan', hq⟩)
-  · exact Or.inr (Or.inr (Or.inl ⟨code, hex, hq⟩))
-  · exact Or.inr (Or.inr (Or.inr ⟨hoom, hq⟩))
 
 end LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.CalleesPlacedBudgetFd

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedMidBudget
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.FromRecordChainClone.ClonePlacedMidBudget -- proof-setup: allow-public-import
 public meta import Lean
 meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
 import LibsignalBinary.Heap.SpecBudget
@@ -21,6 +21,8 @@ import ProofLib.RegChain
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+import LibsignalBinary.Proofs.TripleRatchet.FromRecordChainClone.Clone
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
 
 /-!
 # Budget-Threaded Relocatable Prefix Segments for CLI `Chain::clone [local#2]`
@@ -29,7 +31,7 @@ Threads `RustCliAllocBudget M` and `VmPreserved` across the `chain_key`, `priv`,
 segments of CLI `Chain::clone [local#2]` (Block `468`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -106,13 +108,13 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 
 /-! ## Prefix Event-List Helpers -/
 
-def srkEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def srkEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   if gc.1.srk.bytes.length = 0 then [] else rustAllocEvents gc.1.srk.bytes.length 1
 
-def privEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def privEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   if gc.1.priv.bytes.length = 0 then [] else rustAllocEvents gc.1.priv.bytes.length 1
 
-def ckEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
+@[expose] def ckEvents (gc : ChainGhost × ReceiverChain) : List AllocEvent :=
   match gc.2.chainKey with
   | none => []
   | some _ => rustAllocEvents 32 1

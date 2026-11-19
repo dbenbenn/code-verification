@@ -9,24 +9,29 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectEarly
-public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectAmb
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectEarly
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectAmb
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.StepDeliverInject
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Coupling
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Amb
 import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Inject.Base
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.Refinement.Simulation -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.Defs
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.HiddenSaltBound -- proof-setup: allow-public-import
+public import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedBase
+import Computational.Proofs.CryptoGames.Ratchet.SessionProofs.RefinementC.TrackHaltedStepInjectAmbBase
 
 /-!
 # Tracker-halted `inject` step dispatcher
 
 Proves the ambiguous receive-only window `inject` case
 `closeByStateCTrack_inject_newChain_amb_inWin_true_find_none` and dispatches all tracker-halted
-`inject` cases in `closeByStateCTrack_inject_step`.
--/
+`inject` cases in `closeByStateCTrack_inject_step`.-/
 
 set_option autoImplicit false
+set_option linter.unusedSectionVars false
 
-@[expose] public section
+public section
 
 namespace CryptoGames.LibsignalSM.Proofs.Refinement
 

@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Defs
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Msg
-public import LibsignalBinary.Proofs.SpqrV1Sync.Codec.VarintPure
-public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib
-public import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Msg
+import LibsignalBinary.Proofs.SpqrV1Sync.Codec.VarintPure
+public import LibsignalBinary.Proofs.SpqrV1Sync.InSyncCalib -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.AsmConstants
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDecDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.CBCDefs
@@ -22,7 +22,7 @@ public import LibsignalBinary.Specifications.CryptoGames.AEAD.EtMDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HKDFDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.HMACDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.LibsignalAead
-public import LibsignalBinary.Specifications.CryptoGames.AEAD.MacPrecompDefs
+public import LibsignalBinary.Proofs.CryptoGames.AEAD.CBCProof.MacPrecompDefs
 public import LibsignalBinary.Specifications.CryptoGames.AEAD.WireAeadDefs
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Construction
 public import LibsignalBinary.Specifications.CryptoGames.FSAEAD.Defs
@@ -36,7 +36,7 @@ public import LibsignalBinary.Specifications.CryptoGames.Ratchet.RootKdfDefs
 public import LibsignalBinary.Specifications.HkdfSalt
 public import LibsignalBinary.Specifications.LibsignalAesCbc
 public import LibsignalBinary.Specifications.LibsignalHmac
-public import LibsignalBinary.Specifications.LibsignalProtoCodec
+public import LibsignalBinary.Proofs.ProtoCodecKat
 public import LibsignalBinary.Specifications.LibsignalSession
 public import LibsignalBinary.Specifications.LibsignalSessionRepr
 public import LibsignalBinary.Specifications.LibsignalSignalMessage
@@ -45,7 +45,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.Assemble
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Auth
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Chain
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Core
-public import LibsignalBinary.Specifications.LibsignalSpqrV1.Encaps1Total
+public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.Encaps1Total
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.GF16
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Init
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Interface
@@ -60,7 +60,7 @@ public import LibsignalBinary.Specifications.LibsignalSpqrV1.States
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Top
 public import LibsignalBinary.Specifications.LibsignalSpqrV1.Wire
 public import LibsignalBinary.Specifications.LibsignalTripleRatchet
-public import LibsignalBinary.Specifications.LibsignalTripleRatchetProst
+public import LibsignalBinary.Proofs.TripleRatchet.LibsignalTripleRatchetProst
 public import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
 public import LibsignalBinary.Specifications.RustHeap.Alloc
 public import LibsignalBinary.Specifications.RustHeap.Vec
@@ -75,7 +75,7 @@ Proves that any successful `Chain.recvKey` call preserves `ChainOk` (with update
 and `RecvSmall` (`st_chainRecv`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

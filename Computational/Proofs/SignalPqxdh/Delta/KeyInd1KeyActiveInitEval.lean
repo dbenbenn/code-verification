@@ -11,12 +11,13 @@ module
 
 public import Computational.Proofs.SpecLemmas.Pqxdh.Security.BoundProofDefs
 public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveShallow -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs -- proof-setup: allow-public-import
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Delta.KeyInd1KeyActiveProgs
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDhEvalEq
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhStepInit
 import VCVio.EvalDist.Monad.Basic
 import VCVio.OracleComp.EvalDist.Measure
 import VCVio.CryptoFoundations.SecExp.Measure
+import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyIndGapDhEvalEq
 
 /-!
 # Active `GapDhWithSign` Parameter Sampler Evaluation Equivalence
@@ -167,7 +168,7 @@ end Unsupported
     (Ty.prod keyIndRespTy gdh1KeyActiveStateTy).denote :=
   (keyIndRespToVal p.1, sim1KeyActiveStateToVal pa p.2)
 
-private noncomputable def bernoulliRatioProb (A B : Nat) : ProbComp Bool :=
+private def bernoulliRatioProb (A B : Nat) : ProbComp Bool :=
   if A = 0 then pure false
   else if B = 0 then pure true
   else if A ≤ B then do
@@ -181,7 +182,7 @@ private noncomputable def bernoulliRatioProb (A B : Nat) : ProbComp Bool :=
     let y2 ← sampleIndexRange B
     pure (!decide (x < y1 + y2 + 1))
 
-private noncomputable def chooseArm2Prob {α : Type} (w1 w2 : Nat)
+private def chooseArm2Prob {α : Type} (w1 w2 : Nat)
     (p1 p2 : ProbComp α) : ProbComp α :=
   if w1 = 0 then p2
   else if w2 = 0 then p1
@@ -189,7 +190,7 @@ private noncomputable def chooseArm2Prob {α : Type} (w1 w2 : Nat)
     let sel ← bernoulliRatioProb w1 w2
     if sel = true then p1 else p2
 
-private noncomputable def samplePairProb {α : Type} (M N : Nat) (dflt : α)
+private def samplePairProb {α : Type} (M N : Nat) (dflt : α)
     (mk : Nat → Nat → α) : ProbComp α :=
   if M * N = 0 then pure dflt
   else do
@@ -197,7 +198,7 @@ private noncomputable def samplePairProb {α : Type} (M N : Nat) (dflt : α)
     let j ← sampleIndexRange N
     pure (mk i j)
 
-private noncomputable def initParams1KeyActiveProb (S : Setup) (b : QueryBudget)
+private def initParams1KeyActiveProb (S : Setup) (b : QueryBudget)
     (U V : Bytes) : ProbComp FgActiveParams :=
   let n_id := activeIdCount S b.q_on
   let n_spk := activeSpkCount S b.q_on

@@ -91,9 +91,10 @@ def SYS_MADVISE : BitVec 64 := 233#64
       and `MADV_DONTNEED` re-faults underlying file bytes instead of zeroing); all other `advice`
       values fail closed with `.Exception "unmodeled madvise advice"`. -/
 def execMadvise (s : State) : State :=
-  let addr := s.readReg64 Reg.x0
+  let rawStart := s.readReg64 Reg.x0
+  let addr := untaggedAddr rawStart
   let len := (s.readReg64 Reg.x1).toNat
-  let advice := s.readReg64 Reg.x2
+  let advice := (s.readReg32 Reg.x2).signExtend 64
   let size := pageAlignUp len
   let isNoopHint :=
     advice == MADV_NORMAL || advice == MADV_RANDOM || advice == MADV_SEQUENTIAL ||
@@ -101,12 +102,13 @@ def execMadvise (s : State) : State :=
     advice == MADV_DONTDUMP || advice == MADV_DODUMP
   if advice != MADV_DONTNEED && advice != MADV_FREE && !isNoopHint then
     s.setStatus (.Exception "unmodeled madvise advice")
-  else if addr.toNat % PAGE_SIZE != 0 || !decide (addr.toNat + size ≤ 2 ^ 64) then
+  else if rawStart.toNat % PAGE_SIZE != 0 || !decide (len ≤ 2 ^ 64 - PAGE_SIZE) ||
+      !decide (rawStart.toNat + size < 2 ^ 64) then
     (s.writeReg64 Reg.x0 (-EINVAL)).advancePC
-  else if !decide (addr.toNat + size ≤ 2 ^ 48) then
-    s.setStatus (.Exception "madvise range exceeds user VA space")
   else if len == 0 then
     (s.writeReg64 Reg.x0 0#64).advancePC
+  else if !decide (addr.toNat + size ≤ 2 ^ 48) then
+    s.setStatus (.Exception "madvise range exceeds user VA space")
   else if !s.mem.allPerm (fun p => !p.frozen) addr size then
     s.setStatus (.Exception "madvise on frozen memory")
   else if !s.mem.allPerm (·.mapped) addr size then

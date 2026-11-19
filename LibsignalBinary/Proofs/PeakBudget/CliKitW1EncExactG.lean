@@ -9,7 +9,17 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactSplit
+public import LibsignalBinary.Proofs.PeakBudget.CliKitW1EncExactSplit -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Common.InImageKit
+import LibsignalBinary.Proofs.Common.SharedHelpers
+import LibsignalBinary.Proofs.Placed.BridgeReloc
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.GrowOne104Budget
+import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.DeserBudget.HookLift
+import LibsignalBinary.Proofs.SignalSession.Cli.Run.Compose.Arms.R1aProofPlacedBudgetSubHops
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdSavePoll.Branches
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.IdTrustPoll.SymPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.KpkMarkPoll.Layout
 
 /-!
 # Guarded-Tight `W1` (`encrypt` `@109`) Guard Discharge
@@ -22,7 +32,7 @@ Discharges `w1x_guard_Stmt W`: under `CliPqxdhInputs ⟨W.C, W.Q⟩ g.i`,
 holds via `peerSpqrStateTight640_of_cliPqInputs_send`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

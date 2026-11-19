@@ -9,15 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.Getters.Defs
 public import LibsignalBinary.Proofs.TripleRatchet.Alloc.Defs
-public import LibsignalBinary.Specifications.RecordCodecsBinary
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsBinary -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.TripleRatchet.Alloc.PublicKeySerialize
 import LibsignalBinary.Specifications.AsmConstants
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -83,121 +83,12 @@ theorem saveMinStk_max_eqStkExt (getStk putStk : Nat) :
   unfold saveMinStk saveMinStkExt
   rw [saveSubMax_max_eqStkExt]
 
-theorem dirGet_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr idSavePollName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_cli::stores::Dir>::get" -
-        ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}") =
-      (tripleRatchetProgAtExt b ext).fnAddr dirGetName := by
-  have h1 := idSavePoll_fnOff
-  have h2 := dirGet_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idSavePollName, dirGetName, h1, h2]
-  bv_omega
-
-theorem identityKeyDecode_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr idSavePollName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode" -
-        ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}") =
-      (tripleRatchetProgAtExt b ext).fnAddr identityKeyDecodeName := by
-  have h1 := idSavePoll_fnOff
-  have h2 : libsignalSessionCode.fnOff identityKeyDecodeName =
-      num% (ls_off% "<libsignal_protocol::identity_key::IdentityKey>::decode") :=
-    Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-      (ls_lemma% fnOff "<libsignal_protocol::identity_key::IdentityKey>::decode")
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idSavePollName,
-    identityKeyDecodeName, h1, h2]
-  bv_omega
-
-theorem publicKeyEq_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr idSavePollName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" -
-        ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}") =
-      (tripleRatchetProgAtExt b ext).fnAddr Getters.publicKeyEqName := by
-  have h1 := idSavePoll_fnOff
-  have h2 : libsignalSessionCode.fnOff Getters.publicKeyEqName =
-      num% (ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq") :=
-    Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-      (ls_lemma% fnOff "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq")
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idSavePollName,
-    Getters.publicKeyEqName, h1, h2]
-  bv_omega
-
-theorem publicKeySerialize_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr idSavePollName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_core::curve::PublicKey>::serialize" -
-        ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}") =
-      (tripleRatchetProgAtExt b ext).fnAddr publicKeySerializeName := by
-  have h1 := idSavePoll_fnOff
-  have h2 : libsignalSessionCode.fnOff publicKeySerializeName =
-      num% (ls_off% "<libsignal_core::curve::PublicKey>::serialize") :=
-    Eq.trans (congrArg libsignalSessionCode.fnOff rfl)
-      (ls_lemma% fnOff "<libsignal_core::curve::PublicKey>::serialize")
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idSavePollName,
-    publicKeySerializeName, h1, h2]
-  bv_omega
-
-theorem dirPutStr_fnAddr_eq (b : BitVec 64) (ext : String → Option (State → State)) :
-    (tripleRatchetProgAtExt b ext).fnAddr idSavePollName +
-      bv% (2 ^ 64 + ls_off% "<libsignal_cli::stores::Dir>::put::<&str>" -
-        ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}") =
-      (tripleRatchetProgAtExt b ext).fnAddr dirPutStrName := by
-  have h1 := idSavePoll_fnOff
-  have h2 := dirPutStr_fnOff
-  simp only [tripleRatchetProgAtExt, Program.fnAddr_rebase, idSavePollName,
-    dirPutStrName, h1, h2]
-  bv_omega
-
-theorem ispoll_dealloc_ok_at {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr idSavePollName +
-        bv% (ls_rel%
-          "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"
-          "__rustc::__rust_dealloc"))
-      ((rustDeallocExternSpecWithStack A extHookStack).inImage img) :=
-  dealloc_ok_at_norm_ext_x hC (name := idSavePollName)
-    (k := num% (ls_rel%
-      "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"
-      "__rustc::__rust_dealloc"))
-    (by rw [idSavePoll_fnOff, (ls_stub% "__rustc::__rust_dealloc")])
-
-theorem ispoll_serialize_ok_at {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)} (hC : AllocContractsX img A ext) :
-    subroutine_ok (tripleRatchetProgAtExt img.base ext)
-      ((tripleRatchetProgAtExt img.base ext).fnAddr idSavePollName +
-        bv% (2 ^ 64 + ls_off% "<libsignal_core::curve::PublicKey>::serialize" -
-          ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"))
-      ((publicKeySerializeSpecX A).inImage img) := by
-  rw [publicKeySerialize_fnAddr_eq]
-  exact public_key_serialize_ok_ext_x hC
-
-theorem ispoll_publicKeyEq_ok_at {b : BitVec 64} {ext : String → Option (State → State)}
-    (hEq : Getters.PublicKeyEqOkExt b ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr idSavePollName +
-        bv% (2 ^ 64 + ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" -
-          ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"))
-      Getters.publicKeyEqSpec := by
-  rw [publicKeyEq_fnAddr_eq]
-  exact hEq
-
-theorem ispoll_publicKeyEq_ok_at_ext32 {b : BitVec 64} {ext : String → Option (State → State)}
-    (hEq : Getters.PublicKeyEqOkExt32 b ext) :
-    subroutine_ok (tripleRatchetProgAtExt b ext)
-      ((tripleRatchetProgAtExt b ext).fnAddr idSavePollName +
-        bv% (2 ^ 64 + ls_off% "<libsignal_core::curve::PublicKey as core::cmp::PartialEq>::eq" -
-          ls_off% "<libsignal_cli::stores::IdentityFiles as libsignal_protocol::storage::traits::IdentityKeyStore>::save_identity::{closure#0}"))
-      Getters.publicKeyEqSpecExt := by
-  rw [publicKeyEq_fnAddr_eq]
-  exact hEq
-
-/-! ## Sub-word overlapping 7-byte & 32-byte chunk views -/
-
 /-- Aligned-at-`a` view of 7 consecutive bytes `b0 .. b6` (`4 + 1 + 2` bytes). -/
-def overlap7View1 (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8) : SepProp :=
+@[expose] def overlap7View1 (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8) : SepProp :=
   (a ↦₃₂ (b3 ++ b2 ++ b1 ++ b0)) ∗ ((a + 4#64) ↦₈ b4) ∗ ((a + 5#64) ↦₁₆ (b6 ++ b5))
 
 /-- Aligned-at-`a + 3` view of the same 7 consecutive bytes `b0 .. b6` (`2 + 1 + 4` bytes). -/
-def overlap7View2 (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8) : SepProp :=
+@[expose] def overlap7View2 (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8) : SepProp :=
   (a ↦₁₆ (b1 ++ b0)) ∗ ((a + 2#64) ↦₈ b2) ∗ ((a + 3#64) ↦₃₂ (b6 ++ b5 ++ b4 ++ b3))
 
 theorem overlap7_realign (a : BitVec 64) (b0 b1 b2 b3 b4 b5 b6 : BitVec 8) :
@@ -286,7 +177,7 @@ theorem byte_overlap7View2_eq_pointsTo64 (a a1 : BitVec 64) (w : BitVec 64)
   rw [← overlap7_realign, ← pointsTo64_eq_byte_overlap7View1 a a1 w ha1]
 
 /-- 32-byte key split matching the exact 7 non-overlapping load/store widths (`4+2+1+8+8+8+1 = 32`). -/
-def pkChunksAt (a : BitVec 64) (w0 : BitVec 32) (h1 : BitVec 16) (b2 : BitVec 8)
+@[expose] def pkChunksAt (a : BitVec 64) (w0 : BitVec 32) (h1 : BitVec 16) (b2 : BitVec 8)
     (d3 d4 d5 : BitVec 64) (b6 : BitVec 8) : SepProp :=
   (a ↦₃₂ w0) ∗ ((a + 4#64) ↦₁₆ h1) ∗ ((a + 6#64) ↦₈ b2) ∗
     ((a + 7#64) ↦₆₄ d3) ∗ ((a + 15#64) ↦₆₄ d4) ∗ ((a + 23#64) ↦₆₄ d5) ∗
@@ -450,7 +341,7 @@ theorem sepWPp_with_stk_bound {prog : Program} {ret : BitVec 64} {s : State}
     simpa only [stackAt, sepConj_assoc] using h1
   exact hw (memRegion_bound_of_pointsTo64 hm') R hm hL
 
-def savedCalleeSlots (s0 : State) : SepProp :=
+@[expose] def savedCalleeSlots (s0 : State) : SepProp :=
   ((s0.sp - 0x60#64) ↦₆₄ s0.readReg64 .x29) ∗
   ((s0.sp - 0x58#64) ↦₆₄ s0.readReg64 .lr) ∗
   ((s0.sp - 0x50#64) ↦₆₄ s0.readReg64 .x28) ∗
@@ -465,7 +356,7 @@ def savedCalleeSlots (s0 : State) : SepProp :=
   ((s0.sp - 0x08#64) ↦₆₄ s0.readReg64 .x19)
 
 /-- Exact 208-byte (`0xd0`) frame decomposition of `save_identity::{closure#0}`. -/
-def savePollFrameSlots (sp : BitVec 64)
+@[expose] def savePollFrameSlots (sp : BitVec 64)
     (c1 c2 c3 c4 c5 c6 c7 c15 : BitVec 8)
     (s16 : BitVec 64) (s24 : BitVec 8) (s32 : BitVec 64) (s40 : BitVec 8) (s48 s56w : BitVec 64)
     (g0 g1 g2 g3 g4 g5 g6 g7 g8 g9 g10 g11 : BitVec 64) : SepProp :=
@@ -637,7 +528,7 @@ theorem restore_savePollStack (s0 : State) {getStk putStk stk : Nat}
 
 /-! ## `protocolAddressAt`, `Vec<u8>`, `speAt`, and `idSaveOutAt` lemmas -/
 
-def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
+@[expose] def vecU8Tail (A : RustAlloc) (cap ptr : BitVec 64) (bs : List (BitVec 8)) : SepProp :=
   if cap = 0#64 then emp
   else A.live ptr cap.toNat 1 ∗ memRegion (ptr + BitVec.ofNat 64 bs.length) (cap.toNat - bs.length)
 
@@ -677,7 +568,7 @@ theorem vecU8_eq_bytes_tail (A : RustAlloc) (v : BitVec 64) (bs : List (BitVec 8
     ac_rfl
 
 /-- Borrow `SpqrV1.ChainProofs.bytesAt false g.name.ptr g.name.bytes` out of `protocolAddressAt`. -/
-def addrRestAt (A : RustAlloc) (g : AddrGhost) (addr : BitVec 64) : SepProp :=
+@[expose] def addrRestAt (A : RustAlloc) (g : AddrGhost) (addr : BitVec 64) : SepProp :=
   ⌜g.name.bytes.length ≤ g.name.cap.toNat ∧ g.name.cap.toNat < 2 ^ 63 ∧ g.name.ptr ≠ 0#64⌝ ∗
   (addr ↦₆₄ g.name.cap) ∗
   vecU8Tail A g.name.cap g.name.ptr g.name.bytes ∗
@@ -909,6 +800,5 @@ theorem speAt_read_invalidState_unpack (A : RustAlloc) (sp : BitVec 64) :
     refine Entails.sepExists_right fnPtr (Entails.sepExists_right bs
       (Entails.sepExists_right cap (Entails.sepExists_right ptr ?_)))
     exact Entails.of_eq (by ac_rfl)
-
 
 end CryptoVerification.SignalSession.Cli.Store.IdSavePoll.Helpers

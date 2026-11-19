@@ -10,6 +10,8 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.Swarm.UA.Defs
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredClassical -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatement -- proof-setup: allow-public-import
 
 /-!
 # CLI Event Schedule, Flattening, and Prefix-Restriction Lemmas
@@ -19,7 +21,7 @@ extensions (`explains_snoc_rejected`), and prefix-restriction lemmas for `Explai
 `ReadCollisionCliClassical`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -211,10 +213,6 @@ theorem activeBundleIds_append_of_no_init {evs₁ evs₂ : List CliEvent}
     activeBundleIds (evs₁ ++ evs₂) = activeBundleIds evs₁ := by
   rw [activeBundleIds_append]
   exact foldl_stepBundleIds_of_no_init evs₂ _ h
-
-theorem activeBundleIds_snoc_rejected {evs₁ : List CliEvent} {ev : RunEvent} (hrej : RunRejected ev) :
-    activeBundleIds (evs₁ ++ [.run ev]) = activeBundleIds evs₁ := by
-  rw [activeBundleIds_append, List.foldl_cons, List.foldl_nil, stepBundleIds_run_of_runRejected hrej]
 
 theorem activeBundleIds_snoc_init_ok {evs₁ : List CliEvent} {ev : RunEvent}
     {peer : CryptoVerification.SignalSession.Address} {bd : String} {out : HwBytes}

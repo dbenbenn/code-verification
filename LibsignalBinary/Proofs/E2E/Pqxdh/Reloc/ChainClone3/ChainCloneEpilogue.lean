@@ -21,7 +21,7 @@ Lifts `protoChainCloneSpec` to `chainCloneSpec` and `senderChainCloneSpec`, and 
 epilogue and allocation-failure panic-tail lemmas for `Chain::clone [local#3]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalTripleRatchet.ChainClone3
 
@@ -75,211 +75,6 @@ theorem optSenderChainAt_some_eq_chainAt (A : RustAlloc) (a : BitVec 64)
     exact propext ⟨fun ⟨h1, h2, h3, h4⟩ => ⟨⟨h2, h3, h4⟩, h1⟩,
       fun ⟨⟨h2, h3, h4⟩, h1⟩ => ⟨h1, h2, h3, h4⟩⟩
   rw [hp]; rfl
-
-theorem chainClone_of_protoChainClone
-    {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hclone : ProtoChainClone3Ok b C A ctl abs) :
-    ChainClone3Ok b C A ctl abs := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  simp only [chainCloneSpec, chainAt_eq_protoChainAt, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1⟩, hmem⟩
-  set P_rc : Prop := x.gc.1.srk.bytes.length = 33 ∧ x.gc.1.priv.bytes = []
-  change s0.mem ⊨ memRegion x.dst 104 ∗ ⌜P_rc⌝ ∗ protoChainAt A x.gc x.src ∗
-    A.pool ∗ stackAt s0.sp chainCloneStack ∗ R at hmem
-  have hmem_rearr :
-      s0.mem ⊨
-        memRegion x.dst 104 ∗ protoChainAt A x.gc x.src ∗
-        A.pool ∗ stackAt s0.sp chainCloneStack ∗ (⌜P_rc⌝ ∗ R) := by
-    have heq :
-        (memRegion x.dst 104 ∗ ⌜P_rc⌝ ∗ protoChainAt A x.gc x.src ∗
-          A.pool ∗ stackAt s0.sp chainCloneStack ∗ R) =
-        (memRegion x.dst 104 ∗ protoChainAt A x.gc x.src ∗
-          A.pool ∗ stackAt s0.sp chainCloneStack ∗ (⌜P_rc⌝ ∗ R)) := by
-      ac_rfl
-    rwa [← heq]
-  have hpre_clone :
-      s0.mem ⊨ (protoChainCloneSpec A).pre x s0 ∗ (⌜P_rc⌝ ∗ R) := by
-    simp only [protoChainCloneSpec, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1⟩, hmem_rearr⟩
-  refine hclone.mono_outcome x (⌜P_rc⌝ ∗ R) s0 hpc hrun hpre_clone hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hexit, hpost⟩ | ⟨_, hoom⟩
-  · left
-    refine ⟨hret, hcc, ?_⟩
-    simp only [protoChainCloneSpec, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨htrace, hmem_f⟩
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hmem_f
-    rcases hmem_f with ⟨g', hmem_f⟩
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hmem_f
-    rcases hmem_f with ⟨⟨hsrk', hpriv', hkeys'⟩, hmem_f⟩
-    have hpure_front :
-        sf.mem ⊨
-          ⌜P_rc⌝ ∗
-          (protoChainAt A (g', x.gc.2) x.dst ∗ protoChainAt A x.gc x.src ∗
-            A.pool ∗ stackAt s0.sp chainCloneStack ∗ R) := by
-      have heq :
-          (protoChainAt A (g', x.gc.2) x.dst ∗ protoChainAt A x.gc x.src ∗
-            A.pool ∗ stackAt s0.sp chainCloneStack ∗ ⌜P_rc⌝ ∗ R) =
-          (⌜P_rc⌝ ∗
-            (protoChainAt A (g', x.gc.2) x.dst ∗ protoChainAt A x.gc x.src ∗
-              A.pool ∗ stackAt s0.sp chainCloneStack ∗ R)) := by
-        ac_rfl
-      rwa [← heq]
-    rw [satisfies_pure_sepConj] at hpure_front
-    rcases hpure_front with ⟨⟨hsrk33, hpriv_nil⟩, hrest_f⟩
-    simp only [chainCloneSpec, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htrace, ?_⟩
-    rw [sepExists_sepConj_left, satisfies_sepExists]
-    refine ⟨g', ?_⟩
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hsrk', hpriv', hkeys'⟩, ?_⟩
-    rw [chainAt_eq_protoChainAt A (g', x.gc.2) x.dst, chainAt_eq_protoChainAt A x.gc x.src]
-    have hsrk33' : g'.srk.bytes.length = 33 := by rw [hsrk', hsrk33]
-    have hpriv_nil' : g'.priv.bytes = [] := hpriv'.trans hpriv_nil
-    set P_rc' : Prop := g'.srk.bytes.length = 33 ∧ g'.priv.bytes = []
-    change sf.mem ⊨
-      (⌜P_rc'⌝ ∗ protoChainAt A (g', x.gc.2) x.dst) ∗
-      (⌜P_rc⌝ ∗ protoChainAt A x.gc x.src) ∗
-      A.pool ∗ stackAt s0.sp chainCloneStack ∗ R
-    have heq2 :
-        ((⌜P_rc'⌝ ∗ protoChainAt A (g', x.gc.2) x.dst) ∗
-          (⌜P_rc⌝ ∗ protoChainAt A x.gc x.src) ∗
-          A.pool ∗ stackAt s0.sp chainCloneStack ∗ R) =
-        (⌜P_rc'⌝ ∗ (⌜P_rc⌝ ∗
-          (protoChainAt A (g', x.gc.2) x.dst ∗ protoChainAt A x.gc x.src ∗
-            A.pool ∗ stackAt s0.sp chainCloneStack ∗ R))) := by
-      ac_rfl
-    rw [heq2, satisfies_pure_sepConj, satisfies_pure_sepConj]
-    exact ⟨⟨hsrk33', hpriv_nil'⟩, ⟨hsrk33, hpriv_nil⟩, hrest_f⟩
-  · right; left
-    refine ⟨hpan, ?_⟩
-    simp only [protoChainCloneSpec, chainCloneSpec, sepConj_assoc,
-      satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨hp, hmem_f⟩
-    refine ⟨hp, ?_⟩
-    exact Satisfies.mono (by
-      rw [← sepConj_assoc]
-      exact sepConj_mono_left (entails_anyHeap _)) hmem_f
-  · right; right; left
-    exact ⟨code, hexit, by
-      simp only [protoChainCloneSpec, chainCloneSpec, sepConj_assoc] at hpost
-      exact False.elim (not_satisfies_false_sepConj hpost)⟩
-  · exact (not_satisfies_false_sepConj hoom).elim
-
-theorem senderChainClone_of_chainClone
-    {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hbridge : ∀ A a g sc, optSenderChainAt A a (some g) (some sc) =
-      ⌜g.priv.bytes = sc.ratchetKey.privateKey.bytes.toList ∧
-        Ratchet.clampScalar sc.ratchetKey.privateKey.bytes = sc.ratchetKey.privateKey.bytes ∧
-        g.srk.bytes.length = 33⌝ ∗
-      protoChainAt A (⟨g.srk, g.priv, g.mkCap, g.mkPtr, [], g.ck⟩,
-        ⟨sc.ratchetKey.publicKey, some sc.chainKey, []⟩) a)
-    (hclone : ProtoChainClone3Ok b C A ctl abs) :
-    SenderChainClone3Ok b C A ctl abs := by
-  refine subroutine_ok_outcome_intro fun x R s0 hpc hrun hpre hsp => ?_
-  simp only [senderChainCloneSpec, hbridge, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1⟩, hmem⟩
-  let P_sc : Prop :=
-    x.g.priv.bytes = x.sc.ratchetKey.privateKey.bytes.toList ∧
-      Ratchet.clampScalar x.sc.ratchetKey.privateKey.bytes = x.sc.ratchetKey.privateKey.bytes ∧
-      x.g.srk.bytes.length = 33
-  let gc0 : ChainGhost × ReceiverChain :=
-    (⟨x.g.srk, x.g.priv, x.g.mkCap, x.g.mkPtr, [], x.g.ck⟩,
-      ⟨x.sc.ratchetKey.publicKey, some x.sc.chainKey, []⟩)
-  change s0.mem ⊨ memRegion x.dst 104 ∗ ⌜P_sc⌝ ∗ protoChainAt A gc0 x.src ∗
-    A.pool ∗ stackAt s0.sp chainCloneStack ∗ R at hmem
-  have hmem_rearr :
-      s0.mem ⊨
-        memRegion x.dst 104 ∗ protoChainAt A gc0 x.src ∗
-        A.pool ∗ stackAt s0.sp chainCloneStack ∗ (⌜P_sc⌝ ∗ R) := by
-    have heq :
-        (memRegion x.dst 104 ∗ ⌜P_sc⌝ ∗ protoChainAt A gc0 x.src ∗
-          A.pool ∗ stackAt s0.sp chainCloneStack ∗ R) =
-        (memRegion x.dst 104 ∗ protoChainAt A gc0 x.src ∗
-          A.pool ∗ stackAt s0.sp chainCloneStack ∗ (⌜P_sc⌝ ∗ R)) := by
-      ac_rfl
-    rwa [← heq]
-  have hpre_clone :
-      s0.mem ⊨ (protoChainCloneSpec A).pre ⟨x.dst, x.src, gc0⟩ s0 ∗ (⌜P_sc⌝ ∗ R) := by
-    simp only [protoChainCloneSpec, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1⟩, hmem_rearr⟩
-  refine hclone.mono_outcome ⟨x.dst, x.src, gc0⟩ (⌜P_sc⌝ ∗ R) s0 hpc hrun hpre_clone hsp fun sf hout => ?_
-  rcases hout with ⟨hret, hcc, hpost⟩ | ⟨hpan, hpost⟩ | ⟨code, hexit, hpost⟩ | ⟨_, hoom⟩
-  · left
-    refine ⟨hret, hcc, ?_⟩
-    simp only [protoChainCloneSpec, sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨htrace, hmem_f⟩
-    rw [sepExists_sepConj_left, satisfies_sepExists] at hmem_f
-    rcases hmem_f with ⟨g', hmem_f⟩
-    simp only [sepConj_assoc, satisfies_pure_sepConj] at hmem_f
-    rcases hmem_f with ⟨⟨hsrk', hpriv', hkeys'⟩, hmem_f⟩
-    have hkeys_nil : g'.keys = [] := List.eq_nil_of_length_eq_zero hkeys'
-    have hpure_front :
-        sf.mem ⊨
-          ⌜P_sc⌝ ∗
-          (protoChainAt A (g', gc0.2) x.dst ∗ protoChainAt A gc0 x.src ∗
-            A.pool ∗ stackAt s0.sp chainCloneStack ∗ R) := by
-      have heq :
-          (protoChainAt A (g', gc0.2) x.dst ∗ protoChainAt A gc0 x.src ∗
-            A.pool ∗ stackAt s0.sp chainCloneStack ∗ ⌜P_sc⌝ ∗ R) =
-          (⌜P_sc⌝ ∗
-            (protoChainAt A (g', gc0.2) x.dst ∗ protoChainAt A gc0 x.src ∗
-              A.pool ∗ stackAt s0.sp chainCloneStack ∗ R)) := by
-        ac_rfl
-      rwa [← heq]
-    rw [satisfies_pure_sepConj] at hpure_front
-    rcases hpure_front with ⟨⟨hpriv_eq, hclamp, hsrk33⟩, hrest_f⟩
-    let sg' : SenderChainGhost := ⟨g'.srk, g'.priv, g'.mkCap, g'.mkPtr, g'.ck⟩
-    have hg'_eq : g' = ⟨sg'.srk, sg'.priv, sg'.mkCap, sg'.mkPtr, [], sg'.ck⟩ := by
-      cases g'; dsimp [sg'] at hkeys_nil ⊢; subst hkeys_nil; rfl
-    rw [hg'_eq] at hrest_f
-    simp only [senderChainCloneSpec, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨htrace, ?_⟩
-    rw [sepExists_sepConj_left, satisfies_sepExists]
-    refine ⟨sg', ?_⟩
-    simp only [sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hsrk', hpriv'⟩, ?_⟩
-    rw [hbridge A x.dst sg' x.sc, hbridge A x.src x.g x.sc]
-    have hpriv'_eq : sg'.priv.bytes = x.sc.ratchetKey.privateKey.bytes.toList :=
-      hpriv'.trans hpriv_eq
-    have hsrk33' : sg'.srk.bytes.length = 33 := by
-      change g'.srk.bytes.length = 33
-      rw [hsrk', hsrk33]
-    let P_sc' : Prop :=
-      sg'.priv.bytes = x.sc.ratchetKey.privateKey.bytes.toList ∧
-        Ratchet.clampScalar x.sc.ratchetKey.privateKey.bytes = x.sc.ratchetKey.privateKey.bytes ∧
-        sg'.srk.bytes.length = 33
-    let gc' : ChainGhost × ReceiverChain :=
-      (⟨sg'.srk, sg'.priv, sg'.mkCap, sg'.mkPtr, [], sg'.ck⟩, gc0.2)
-    change sf.mem ⊨
-      (⌜P_sc'⌝ ∗ protoChainAt A gc' x.dst) ∗
-      (⌜P_sc⌝ ∗ protoChainAt A gc0 x.src) ∗
-      A.pool ∗ stackAt s0.sp chainCloneStack ∗ R
-    have heq2 :
-        ((⌜P_sc'⌝ ∗ protoChainAt A gc' x.dst) ∗
-          (⌜P_sc⌝ ∗ protoChainAt A gc0 x.src) ∗
-          A.pool ∗ stackAt s0.sp chainCloneStack ∗ R) =
-        (⌜P_sc'⌝ ∗ (⌜P_sc⌝ ∗
-          (protoChainAt A gc' x.dst ∗ protoChainAt A gc0 x.src ∗
-            A.pool ∗ stackAt s0.sp chainCloneStack ∗ R))) := by
-      ac_rfl
-    rw [heq2, satisfies_pure_sepConj, satisfies_pure_sepConj]
-    exact ⟨⟨hpriv'_eq, hclamp, hsrk33'⟩, ⟨hpriv_eq, hclamp, hsrk33⟩, hrest_f⟩
-  · right; left
-    refine ⟨hpan, ?_⟩
-    simp only [protoChainCloneSpec, senderChainCloneSpec, sepConj_assoc,
-      satisfies_pure_sepConj] at hpost ⊢
-    rcases hpost with ⟨hp, hmem_f⟩
-    refine ⟨hp, ?_⟩
-    exact Satisfies.mono (by
-      rw [← sepConj_assoc]
-      exact sepConj_mono_left (entails_anyHeap _)) hmem_f
-  · right; right; left
-    exact ⟨code, hexit, by
-      simp only [protoChainCloneSpec, senderChainCloneSpec, sepConj_assoc] at hpost
-      exact False.elim (not_satisfies_false_sepConj hpost)⟩
-  · exact (not_satisfies_false_sepConj hoom).elim
 
 attribute [local irreducible] Program.fetch Program.externAt?
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
@@ -515,7 +310,7 @@ theorem epilogue_post_entails (A : RustAlloc) (x : ChainCloneGhost) (s0 sf : Sta
 /-! ## 5. Extern Hook and Panic Tail Lemmas for `tripleRatchetProgAt` at `chainClone3Name` -/
 
 /-- No-op shim spec that records trace preservation. -/
-def sessionShimSpec : Spec Unit where
+@[expose] def sessionShimSpec : Spec Unit where
   pre := fun _ _ => emp
   post := fun _ s0 sf => ⌜sf.trace = s0.trace⌝
 
@@ -526,7 +321,7 @@ theorem sessionShim_hookOk : HookOk hookNoop sessionShimSpec := by
   exact hpre
 
 /-- Region `memcpy` spec that records trace preservation. -/
-def sessionMemcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
+@[expose] def sessionMemcpySpec : Spec (BitVec 64 × BitVec 64 × List (BitVec 8)) where
   pre := fun (dst, src, bs) s0 =>
     ⌜s0.readReg64 .x0 = dst ∧
      s0.readReg64 .x1 = src ∧

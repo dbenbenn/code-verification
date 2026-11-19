@@ -208,6 +208,7 @@ theorem test_step_svc_ppoll {prog : Program} {target_pc pc ufds tsp : BitVec 64}
     (htsp : s.readReg64 .x2 = tsp) (hsigmask : s.readReg64 .x3 = 0#64)
     (htspNe : tsp ≠ 0#64) (htspFit : tsp.toNat + 16 ≤ 2 ^ 64)
     (hnfdsMax : nfds ≤ FsState.maxOpenFds) (hufdsFit : ufds.toNat + nfds * 8 ≤ 2 ^ 64)
+    (hufdsZeroFit : nfds = 0 → ufds.toNat ≤ USER_VA_LIMIT)
     (hlen : bs₀.length = nfds * 8)
     (heval : evalPpollBytes s.fs bs₀ 0 = some (bs', count))
     (hsvc : prog.evalInst (.system false 0#16) s = execPpoll s)
@@ -217,7 +218,7 @@ theorem test_step_svc_ppoll {prog : Program} {target_pc pc ufds tsp : BitVec 64}
     SepWP prog target_pc s
       ((ufds ↦ₛ bs₀) ∗ (((tsp ↦₆₄ 0#64) ∗ ((tsp + 8#64) ↦₆₄ 0#64)) ∗ F)) post :=
   SepWP.step_svc_ppoll hpc hrun hfetch hx8 hufds hnfds htsp hsigmask htspNe htspFit
-    hnfdsMax hufdsFit hlen heval hnext hsvc
+    hnfdsMax hufdsFit hlen heval hnext hsvc hufdsZeroFit
 
 theorem test_step_svc_rt_sigaction_sigpipe_ign {prog : Program} {target_pc pc act : BitVec 64}
     {s : State} {flags restorer mask : BitVec 64} {F : SepProp}

@@ -9,10 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoder1PlacedBudgetAux
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoder1PlacedBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.Iface
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.MallocngBridgeBudget
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyDecoderBasePlacedBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExactBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommon -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.V1StateCommonBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.PolyEncodedLenPlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeRepeated1PlacedBudget
+import LibsignalBinary.Proofs.Cli.SpqrV1.Varint.EncodeVarint2BasePlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyDecoderExactPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.Prost.EncodeToVec.PolyEncoderExactPlacedABudget
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
 
 /-!
 # Budget-Threaded Relocatable `encode<PolynomialDecoder> [local#3]` Verification (Block `455`)
@@ -22,7 +36,7 @@ for `prost::encoding::message::encode::<PolynomialDecoder, Vec<u8>> [local#3]` o
 under `[LibsignalPlacement]` and `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -427,113 +441,6 @@ theorem encode_polyDecoder_1_pinned_placed_ok_of_callees [LibsignalPlacement] {r
 
 /-! ## 3. Exact `< 2^58` 0-Allocation Contracts (`EncodePolyDecoder1PinnedExactPlacedOk`) -/
 
-theorem polyDecoder1_exact_placed_ok_of_memcpy [LibsignalPlacement] {resStack : Nat}
-    (hres : resStack + 176 < 2 ^ 64) (A : RustAlloc)
-    (hblk : ∀ p n al, A.live p n al ⊢
-      ⌜p ≠ 0#64 ∧ p.toNat % al = 0 ∧ p.toNat + n < 2 ^ 64 ∧ RustLayoutOk n al⌝ ∗ A.live p n al)
-    {H : String → Option (State → State)}
-    (hmemcpy : subroutine_ok (lsProg_448 H) (lsρ spqrMemcpySym) sessionMemcpyRegionBudgetSpec) :
-    EncodePolyDecoder1PinnedExactPlacedOk resStack A H := by
-  apply subroutine_ok_of_sepWPp
-  intro x R s0 hpc hrun hpre hsp
-  dsimp only [withLsCodeLoaded] at hpre
-  rw [sepConj_assoc, sepConj_left_comm, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨hcl0, hpre⟩
-  dsimp only [encodePolyDecoderPinnedExactVmSpecOf] at hpre
-  rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hw0, hx1, hx2, hpts58, hspare⟩, hmem⟩
-  have hpreVac : s0.mem ⊨
-      (encodePolyDecoderPinnedSpecOf resStack (rawVmRecordBudget A hblk s0) zeroEnforcedLimits).pre
-        (x, ()) s0 ∗ R := by
-    dsimp only [encodePolyDecoderPinnedSpecOf]
-    rw [rawVmRecordBudget_pool_zeroEnforced,
-      protoPolynomialDecoderPinnedAt_rawVmRecordBudget, vecU8At_rawVmRecordBudget]
-    rw [sepConj_assoc, sepConj_assoc, sepConj_assoc, sepConj_assoc, satisfies_pure_sepConj]
-    refine ⟨⟨hw0, hx1, hx2, hpts58, Or.inl hspare,
-      fitsEnv_vecU8EncodeEnv_of_spare noAllocCostModel zeroEnforcedLimits () hspare⟩, ?_⟩
-    have hmem' : s0.mem ⊨ ⌜VmPreserved s0 s0⌝ ∗
-        (protoPolynomialDecoderPinnedAt A x.g x.decA x.dec ∗
-          vecU8At A x.v x.cap x.ptr x.bs ∗
-          stackAt s0.sp (msgEnc48RepeatedStackOf resStack) ∗ R) := by
-      rw [satisfies_pure_sepConj]
-      exact ⟨VmPreserved.refl s0, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem⟩
-    exact Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmem'
-  have hencLen0 := ls_subroutine_ok_of_block (callerProg := lsProg_455 H)
-    (subroutine_ok_withLsCodeLoaded_of_plain
-      (subroutine_ok_polyDecLenElemsOut_of_pinned
-        (polynomialDecoderEncodedLen_local1_pinned_placed_ok_x
-          (rawVmRecordBudget A hblk s0).repAlloc H)))
-  have hencVarVac := encodeVarint2_det_placed_ok_of_doReserve (resStack := resStack) (by omega)
-    (rawVmRecordBudget A hblk s0) zeroEnforcedLimits H
-    (vacuous_doReserve2_placed_ok (rawVmRecordBudget A hblk s0))
-  have hencRepVac := encode_repeated_1_placed_ok_of_callees (resStack := resStack) (by omega)
-    (A := rawVmRecordBudget A hblk s0) (lim := zeroEnforcedLimits)
-    (ls_subroutine_ok_of_block (callerProg := lsProg_448 H) hencVarVac)
-    (vacuous_doReserve2_placed_ok (rawVmRecordBudget A hblk s0)) hmemcpy
-  obtain ⟨P, hP, hwp⟩ := polyDecoder1_core_placed_ok hres
-    (rawVmRecordBudget A hblk s0) zeroEnforcedLimits hcl0
-    (subroutine_ok_withMsgEnc48CSPlaced_placed s0 hcl0 hencLen0)
-    (subroutine_ok_withMsgEnc48CSPlaced_placed s0 hcl0
-      (ls_subroutine_ok_of_block (callerProg := lsProg_455 H) hencVarVac))
-    (subroutine_ok_withMsgEnc48CSPlaced_placed s0 hcl0
-      (ls_subroutine_ok_of_block (callerProg := lsProg_455 H) hencRepVac))
-    (subroutine_ok_withMsgEnc48CSPlaced_placed s0 hcl0
-      (vacuous_doReserve2_placed_ok (rawVmRecordBudget A hblk s0)))
-    hpc hrun hpreVac hsp
-  refine ⟨P, R, hP, sepWPp_mono_post hwp ?_ (fun _ _ h => h.elim)⟩
-  rintro sf P_f ⟨⟨cap', ptr', evs, htrf, _, hpres, hEnv, hmFn⟩, hspf, hccf⟩
-  rcases hpres hspare with ⟨rfl, rfl⟩
-  have hevs : evs = [] := encodePolyDecoderPinnedEnv_eq_nil_of_spare hspare hEnv
-  subst hevs
-  refine ⟨fun hmPf => ?_, hspf, hccf⟩
-  have hmPost := hmFn R hmPf
-  rw [rawVmRecordBudget_pool_zeroEnforced,
-    protoPolynomialDecoderPinnedAt_rawVmRecordBudget, vecU8At_rawVmRecordBudget] at hmPost
-  have hmPure : sf.mem ⊨ ⌜VmPreserved s0 sf⌝ ∗
-      (protoPolynomialDecoderPinnedAt A x.g x.decA x.dec ∗
-        vecU8At A x.v x.cap x.ptr (x.bs ++ encodePolyDecoderMsg x.tag x.dec) ∗
-        stackAt s0.sp (msgEnc48RepeatedStackOf resStack) ∗ R) :=
-    Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmPost
-  rw [satisfies_pure_sepConj] at hmPure
-  rcases hmPure with ⟨hvm, hmRest⟩
-  dsimp only [encodePolyDecoderPinnedExactVmSpecOf]
-  simp only [sepConj_assoc]
-  rw [satisfies_pure_sepConj]
-  exact ⟨⟨hvm, htrf⟩, Satisfies.mono (Entails.of_eq (by sep_ac_rfl)) hmRest⟩
-
-theorem encode_polyDecoder_1_pinned_exact_placed_ok [LibsignalPlacement] {resStack : Nat}
-    (hres : resStack + 176 < 2 ^ 64) (A : RustAlloc)
-    (hblk : ∀ p n al, A.live p n al ⊢
-      ⌜p ≠ 0#64 ∧ p.toNat % al = 0 ∧ p.toNat + n < 2 ^ 64 ∧ RustLayoutOk n al⌝ ∗ A.live p n al)
-    {H : String → Option (State → State)}
-    (hmc : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec) :
-    EncodePolyDecoder1PinnedExactPlacedOk resStack A H :=
-  polyDecoder1_exact_placed_ok_of_memcpy hres A hblk
-    (spqr_hook_ok_of_mem (show HookSat H spqrMemcpySym sessionMemcpyRegionBudgetSpec from hmc))
-
-theorem encode_polyDecoder_1_pinned_exact_placed_ok_of_vm [LibsignalPlacement] {resStack : Nat}
-    (hres : resStack + 176 < 2 ^ 64) (A : RustAlloc)
-    (hblk : ∀ p n al, A.live p n al ⊢
-      ⌜p ≠ 0#64 ∧ p.toNat % al = 0 ∧ p.toNat + n < 2 ^ 64 ∧ RustLayoutOk n al⌝ ∗ A.live p n al)
-    {H : String → Option (State → State)}
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    EncodePolyDecoder1PinnedExactPlacedOk resStack A H :=
-  polyDecoder1_exact_placed_ok_of_memcpy hres A hblk
-    (subroutine_ok_sessionMemcpyRegionBudget_of_allocMemcpyVm
-      (spqr_hook_ok_of_mem (show HookSat H spqrMemcpySym allocMemcpyVmSpec from hmc)))
-
-theorem encode_polyDecoder_1_pinned_exact_cli_placed_ok [LibsignalPlacement] {resStack : Nat}
-    (hres : resStack + 176 < 2 ^ 64) (A : RustCliAlloc) {H : String → Option (State → State)}
-    (hmc : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec) :
-    EncodePolyDecoder1PinnedExactPlacedOk resStack A.repAlloc H :=
-  encode_polyDecoder_1_pinned_exact_placed_ok hres A.repAlloc A.block_valid hmc
-
-theorem encode_polyDecoder_1_pinned_exact_cli_placed_ok_of_vm [LibsignalPlacement] {resStack : Nat}
-    (hres : resStack + 176 < 2 ^ 64) (A : RustCliAlloc) {H : String → Option (State → State)}
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    EncodePolyDecoder1PinnedExactPlacedOk resStack A.repAlloc H :=
-  encode_polyDecoder_1_pinned_exact_placed_ok_of_vm hres A.repAlloc A.block_valid hmc
-
 /-! ## 4. Top-Level `2^60` Placed `subroutine_ok` Exports for Block `455` -/
 
 theorem encode_polyDecoder_1_pinned_placed_ok [LibsignalPlacement] {M : AllocCostModel}
@@ -613,86 +520,6 @@ theorem encode_polyDecoder_1_placed_ok_x [LibsignalPlacement] {M : AllocCostMode
     EncodePolyDecoder1PlacedOkExtX A lim H :=
   polyDecoder_unpinned_of_pinned_placed_x
     (encode_polyDecoder_1_pinned_placed_ok_x h_panic hshim halloc hrealloc hmc)
-
-theorem encode_polyDecoder_1_pinned_placed_ok_of_vm [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : String → Option (State → State)}
-    (h_panic : H spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok (lsProg_455 H) (blkPl_455).base
-      (withLsCodeLoaded lsmpl (encodePolyDecoderPinnedSpec A lim)) :=
-  have hmc' := subroutine_ok_sessionMemcpyRegionBudget_of_allocMemcpyVm
-    (spqr_hook_ok_of_mem (show HookSat H spqrMemcpySym allocMemcpyVmSpec from hmc))
-  encode_polyDecoder_1_pinned_placed_ok_of_callees (resStack := doReserveStack) (by decide) A lim
-    (ls_subroutine_ok_of_block (callerProg := lsProg_455 H)
-      (subroutine_ok_withLsCodeLoaded_of_plain
-        (subroutine_ok_polyDecLenElemsOut_of_pinned
-          (polynomialDecoderEncodedLen_local1_pinned_placed_ok_x A.repAlloc H))))
-    (ls_subroutine_ok_of_block (callerProg := lsProg_455 H)
-      (encode_varint2_det_placed_ok h_panic hshim halloc hrealloc))
-    (ls_subroutine_ok_of_block (callerProg := lsProg_455 H)
-      (encode_repeated_1_placed_ok_of_callees (resStack := doReserveStack) (by decide)
-        (ls_subroutine_ok_of_block (callerProg := lsProg_448 H)
-          (encode_varint2_det_placed_ok h_panic hshim halloc hrealloc))
-        (ls_subroutine_ok_of_block (callerProg := lsProg_448 H)
-          (do_reserve2_placed_ok h_panic hshim halloc hrealloc))
-        hmc'))
-    (ls_subroutine_ok_of_block (callerProg := lsProg_455 H)
-      (do_reserve2_placed_ok h_panic hshim halloc hrealloc))
-    hmc'
-
-theorem encode_polyDecoder_1_placed_ok_of_vm [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : String → Option (State → State)}
-    (h_panic : H spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok (lsProg_455 H) (blkPl_455).base
-      (withLsCodeLoaded lsmpl (encodePolyDecoderSpec A lim)) :=
-  polyDecoder_unpinned_of_pinned_placed_x
-    (encode_polyDecoder_1_pinned_placed_ok_of_vm h_panic hshim halloc hrealloc hmc)
-
-theorem encode_polyDecoder_1_pinned_placed_ok_x_of_vm [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : String → Option (State → State)}
-    (h_panic : H spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    EncodePolyDecoder1PinnedPlacedOkExtX A lim H :=
-  have hmc' := subroutine_ok_sessionMemcpyRegionBudget_of_allocMemcpyVm
-    (spqr_hook_ok_of_mem (show HookSat H spqrMemcpySym allocMemcpyVmSpec from hmc))
-  encode_polyDecoder_1_pinned_placed_ok_of_callees (resStack := doReserveStackX) (by decide) A lim
-    (ls_subroutine_ok_of_block (callerProg := lsProg_455 H)
-      (subroutine_ok_withLsCodeLoaded_of_plain
-        (subroutine_ok_polyDecLenElemsOut_of_pinned
-          (polynomialDecoderEncodedLen_local1_pinned_placed_ok_x A.repAlloc H))))
-    (ls_subroutine_ok_of_block (callerProg := lsProg_455 H)
-      (encode_varint2_det_placed_ok_x h_panic hshim halloc hrealloc))
-    (ls_subroutine_ok_of_block (callerProg := lsProg_455 H)
-      (encode_repeated_1_placed_ok_of_callees (resStack := doReserveStackX) (by decide)
-        (ls_subroutine_ok_of_block (callerProg := lsProg_448 H)
-          (encode_varint2_det_placed_ok_x h_panic hshim halloc hrealloc))
-        (ls_subroutine_ok_of_block (callerProg := lsProg_448 H)
-          (do_reserve2_placed_ok_x h_panic hshim halloc hrealloc))
-        hmc'))
-    (ls_subroutine_ok_of_block (callerProg := lsProg_455 H)
-      (do_reserve2_placed_ok_x h_panic hshim halloc hrealloc))
-    hmc'
-
-theorem encode_polyDecoder_1_placed_ok_x_of_vm [LibsignalPlacement] {M : AllocCostModel}
-    {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : String → Option (State → State)}
-    (h_panic : H spqrHandleErrorSym = some Rust.panicked)
-    (hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)
-    (halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    EncodePolyDecoder1PlacedOkExtX A lim H :=
-  polyDecoder_unpinned_of_pinned_placed_x
-    (encode_polyDecoder_1_pinned_placed_ok_x_of_vm h_panic hshim halloc hrealloc hmc)
 
 theorem encode_polyDecoder_1_pinned_placed_ok_ext [LibsignalPlacement] {M : AllocCostModel}
     {A : RustCliAllocBudget M} {lim : BudgetLimits} {ext : String → Option (State → State)}
@@ -903,24 +730,6 @@ theorem encode_polyDecoder_1_exact_vm_pinned_placed_ok_x [LibsignalPlacement]
   encode_polyDecoder_1_exact_vm_pinned_placed_ok_of_memcpy_and_resStack (by decide)
     (spqr_hook_ok_of_mem (show HookSat H spqrMemcpySym sessionMemcpyRegionBudgetSpec from hmc))
 
-theorem encode_polyDecoder_1_exact_vm_pinned_placed_ok_of_vm [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {H : LibsignalHooks}
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok (lsProg_455 H) (blkPl_455).base
-      (withLsCodeLoaded lsmpl (encodePolyDecoderExactVmSpecOf doReserveStack A.repAlloc)) :=
-  encode_polyDecoder_1_exact_vm_pinned_placed_ok_of_memcpy_and_resStack (by decide)
-    (subroutine_ok_sessionMemcpyRegionBudget_of_allocMemcpyVm
-      (spqr_hook_ok_of_mem (show HookSat H spqrMemcpySym allocMemcpyVmSpec from hmc)))
-
-theorem encode_polyDecoder_1_exact_vm_pinned_placed_ok_x_of_vm [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {H : LibsignalHooks}
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok (lsProg_455 H) (blkPl_455).base
-      (withLsCodeLoaded lsmpl (encodePolyDecoderExactVmSpecOf doReserveStackX A.repAlloc)) :=
-  encode_polyDecoder_1_exact_vm_pinned_placed_ok_of_memcpy_and_resStack (by decide)
-    (subroutine_ok_sessionMemcpyRegionBudget_of_allocMemcpyVm
-      (spqr_hook_ok_of_mem (show HookSat H spqrMemcpySym allocMemcpyVmSpec from hmc)))
-
 theorem encode_polyDecoder_1_exact_pinned_placed_ok_of_memcpy [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
     (hmc : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec) :
@@ -959,30 +768,6 @@ theorem encode_polyDecoder_1_exact_pinned_placed_ok_x [LibsignalPlacement]
       (withLsCodeLoaded lsmpl (encodePolyDecoderExactSpecOf doReserveStackX A lim)) :=
   encode_polyDecoder_1_exact_pinned_placed_ok_of_memcpy_x hmc
 
-theorem encode_polyDecoder_1_exact_pinned_placed_ok_of_vm [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (_h_panic : H spqrHandleErrorSym = some Rust.panicked)
-    (_hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)
-    (_halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (_hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok (lsProg_455 H) (blkPl_455).base
-      (withLsCodeLoaded lsmpl (encodePolyDecoderExactSpecOf doReserveStack A lim)) :=
-  subroutine_ok_withLsCodeLoaded_encodePolyDecoderExact_of_vm
-    (encode_polyDecoder_1_exact_vm_pinned_placed_ok_of_vm hmc)
-
-theorem encode_polyDecoder_1_exact_pinned_placed_ok_x_of_vm [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (_h_panic : H spqrHandleErrorSym = some Rust.panicked)
-    (_hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)
-    (_halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (_hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok (lsProg_455 H) (blkPl_455).base
-      (withLsCodeLoaded lsmpl (encodePolyDecoderExactSpecOf doReserveStackX A lim)) :=
-  subroutine_ok_withLsCodeLoaded_encodePolyDecoderExact_of_vm
-    (encode_polyDecoder_1_exact_vm_pinned_placed_ok_x_of_vm hmc)
-
 theorem etv_polyDecoderEncode_1_exact_vm_placed_ok [LibsignalPlacement]
     {M : AllocCostModel} {A : RustCliAllocBudget M} {H : LibsignalHooks}
     (hmc : HookSat H lsMemcpySym sessionMemcpyRegionBudgetSpec) :
@@ -1020,30 +805,6 @@ theorem etv_polyDecoderEncode_1_exact_placed_ok_x [LibsignalPlacement]
     subroutine_ok (lsProg_455 H) (blkPl_455).base
       (withLsCodeLoaded lsmpl (etvPolyDecoderExactSpecOf doReserveStackX A.repAlloc)) :=
   etv_polyDecoderEncode_1_exact_vm_placed_ok_x hmc
-
-theorem etv_polyDecoderEncode_1_exact_placed_ok_of_vm [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (_h_panic : H spqrHandleErrorSym = some Rust.panicked)
-    (_hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)
-    (_halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (_hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok (lsProg_455 H) (blkPl_455).base
-      (withLsCodeLoaded lsmpl (etvPolyDecoderExactSpecOf doReserveStack A.repAlloc)) :=
-  etv_polyDecoderEncode_exact_of_lscl
-    (encode_polyDecoder_1_exact_vm_pinned_placed_ok_of_vm hmc)
-
-theorem etv_polyDecoderEncode_1_exact_placed_ok_x_of_vm [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits} {H : LibsignalHooks}
-    (_h_panic : H spqrHandleErrorSym = some Rust.panicked)
-    (_hshim : HookSat H spqrRustNoAllocShimSym noAllocShimSpec)
-    (_halloc : HookSat H spqrRustAllocSym (rustCliAllocBudgetSpec M A lim false))
-    (_hrealloc : HookSat H spqrRustReallocSym (rustCliReallocBudgetSpec M A lim))
-    (hmc : HookSat H lsMemcpySym allocMemcpyVmSpec) :
-    subroutine_ok (lsProg_455 H) (blkPl_455).base
-      (withLsCodeLoaded lsmpl (etvPolyDecoderExactSpecOf doReserveStackX A.repAlloc)) :=
-  etv_polyDecoderEncode_exact_of_lscl
-    (encode_polyDecoder_1_exact_vm_pinned_placed_ok_x_of_vm hmc)
 
 abbrev etv_polyDecoderEncode_exact_placed_ok := @etv_polyDecoderEncode_1_exact_placed_ok
 abbrev etv_polyDecoderEncode_exact_placed_ok_x := @etv_polyDecoderEncode_1_exact_placed_ok_x

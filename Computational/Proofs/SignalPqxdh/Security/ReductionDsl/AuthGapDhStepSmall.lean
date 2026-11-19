@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepPows
+public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepPows -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthGapDhStepBase
 import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.AuthCoreSimSend
 import VCVio.EvalDist.Monad.Basic
@@ -20,7 +20,7 @@ import VCVio.EvalDist.Monad.Basic
 Evaluation lemmas for the non-handshake branches of `fgStepC`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

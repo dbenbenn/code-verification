@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePend
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Over.ArchivePend -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderStore.ResponderStoreCodeSym -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyNoneX
 import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodySomeX
 import ProofLib.SepLogic.WPp
@@ -23,7 +23,7 @@ Relocatable `[LibsignalPlacement]` counterparts of `archive_clear_to_shim_cps`,
 `ArchiveOverGenPlacedOk` and `PromoteStateOverGenPlacedOk`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -47,19 +47,19 @@ attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero
 attribute [local irreducible] Program.fetch Program.externAt?
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `ArchiveOverGenOk` on `lsProg_51 H`. -/
-def ArchiveOverGenPlacedOk [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def ArchiveOverGenPlacedOk [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_51 H) (blkPl_51).base (withLsCodeLoaded lsmpl (archiveOverGenSpec A))
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `PromoteStateOverGenOk` on `lsProg_47 H`. -/
-def PromoteStateOverGenPlacedOk [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PromoteStateOverGenPlacedOk [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_47 H) (blkPl_47).base (withLsCodeLoaded lsmpl (promoteOverGenSpec A))
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `ArchiveOverOkX` on `lsProg_51 H`. -/
-def ArchiveOverPlacedOkX [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def ArchiveOverPlacedOkX [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_51 H) (blkPl_51).base (withLsCodeLoaded lsmpl (archiveOverSpecX A))
 
 /-- Relocatable `[LibsignalPlacement]` counterpart of `PromoteStateOverOkX` on `lsProg_47 H`. -/
-def PromoteStateOverPlacedOkX [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
+@[expose] def PromoteStateOverPlacedOkX [LibsignalPlacement] (A : RustAlloc) (H : LibsignalHooks) : Prop :=
   subroutine_ok (lsProg_47 H) (blkPl_47).base (withLsCodeLoaded lsmpl (promoteOverSpecX A))
 
 private abbrev lhsOfNe_arch {α : Type} {x y : α} (_ : x ≠ y) : α := x

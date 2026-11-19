@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2
+public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC2 -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhE
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.CollisionsC -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.Collisions -- proof-setup: allow-public-import
 
 /-!
 # `Auth` hop `G3 → G3.5`: trace monotonicity and hybrid run invariant
@@ -20,7 +22,7 @@ Establishes trace-sublist monotonicity (`AuthHybridTraceSub`) and the inductive 
 `ValidAuthHybridRunInv` across `pqxdhAuthHybridKoskImpl` and `pqxdhAuthAdvStageImpl`.
 -/
 
-@[expose] public section
+public section
 set_option autoImplicit false
 open SignalPqxdh SignalPqxdh.Security
 open OracleSpec OracleComp
@@ -560,7 +562,7 @@ private theorem prop_if_not_noneResp_true_c2b {S : Setup} {Q : AuthHybridState S
   · rw [hc] at hy; exact prop_pure_noneResp_c2b hst hRefl hy
   · rw [hc] at hy; exact h hc hy
 /-- Key-store invariant combining `ValidAuthKeyStores` and `ValidSessionIds`. -/
-def ValidAuthKeyStoresFull (S : Setup) (P : Primitives) (st : AuthState S) : Prop :=
+@[expose] def ValidAuthKeyStoresFull (S : Setup) (P : Primitives) (st : AuthState S) : Prop :=
   ValidAuthKeyStores S P st ∧
   ValidSessionIds S ((sessPksAuth S P st).map Prod.fst) ∧
   st.usedSendSessions = (sessPksAuth S P st).map Prod.fst
@@ -1050,7 +1052,7 @@ theorem validIdealAuthSession_of_traceSub {S : Setup} (P : Primitives)
     hSub.base_sub.sessions_sub.subset h1, h2, h3, h4, h5, h6, h7, h8,
     huMem2, h10, by rw [hIkEq, h11], h12, hSub.initRecs_sub.subset hiMem1,
     h14, h15, h16, h17, h18, h19⟩
-def ValidAllIdealAuthSessions (S : Setup) (P : Primitives) (hst : AuthHybridState S) : Prop :=
+@[expose] def ValidAllIdealAuthSessions (S : Setup) (P : Primitives) (hst : AuthHybridState S) : Prop :=
   ∀ s ∈ hst.idealSessions,
     ∃ (sessEntry : AuthInitiatorEntry S) (u : Nat) (uEntry : PrincipalEntry)
       (kemCoins ss_s : Bytes) (initRec : _root_.SignalPqxdh.Security.InitKemRecord S),
@@ -1303,7 +1305,7 @@ theorem validAllIdealAuthSessions_pqxdhAuthHybridKoskImpl {S : Setup} (stage : A
     exact validAllIdealAuthSessions_of_traceSub P hSub (prop_of_liftAuthBase_c2b (Q := fun s =>
       s.idealSessions = hst.idealSessions) _ hst (fun _ _ => rfl) hy) hV
 /-! ## Sent-event and combined run invariants -/
-def ValidSentOPKEvent (S : Setup) (P : Primitives) (hst : AuthHybridState S)
+@[expose] def ValidSentOPKEvent (S : Setup) (P : Primitives) (hst : AuthHybridState S)
     (s_ev : SentOPKEvent) : Prop :=
   ∃ (st0 : AuthState S) (u : Fin S.N_id) (uEntry0 pEntry0 : PrincipalEntry)
     (k_s : Nat) (bundle : PreKeyBundleInput) (opkId : KeyId)
@@ -1329,7 +1331,7 @@ def ValidSentOPKEvent (S : Setup) (P : Primitives) (hst : AuthHybridState S)
        (checkBundleProvenanceExact P st0.principals st0.spkBundles st0.opkEntries bundle).2.2)) =
          true →
      idealEntry ∈ hst.idealSessions)
-def ValidSentNoOPKEvent (S : Setup) (P : Primitives) (hst : AuthHybridState S)
+@[expose] def ValidSentNoOPKEvent (S : Setup) (P : Primitives) (hst : AuthHybridState S)
     (s_ev : SentNoOPKEvent) : Prop :=
   ∃ (st0 : AuthState S) (u : Fin S.N_id) (uEntry0 pEntry0 : PrincipalEntry)
     (k_s : Nat) (bundle : PreKeyBundleInput)
@@ -1419,7 +1421,7 @@ theorem mem_consumeMatchingSentNoOPK_snd (P : Primitives) (r : RecvdNoOPKEvent) 
       · exact ⟨s, List.mem_cons_self, Or.inl hEq⟩
       · rcases mem_consumeMatchingSentNoOPK_snd P r rest hMem with ⟨s0, hs0, hEq⟩
         exact ⟨s0, List.mem_cons_of_mem _ hs0, hEq⟩
-def ValidSentEvents (S : Setup) (P : Primitives) (hst : AuthHybridState S) : Prop :=
+@[expose] def ValidSentEvents (S : Setup) (P : Primitives) (hst : AuthHybridState S) : Prop :=
   (∀ s_ev ∈ hst.base.sentOPKEvents, ValidSentOPKEvent S P hst s_ev) ∧
   (∀ s_ev ∈ hst.base.sentNoOPKEvents, ValidSentNoOPKEvent S P hst s_ev)
 theorem validSentEvents_empty (S : Setup) (P : Primitives) (secb : Bool) :
@@ -1833,7 +1835,7 @@ theorem validSentEvents_pqxdhAuthHybridKoskImpl {S : Setup} (stage : AuthHybridS
       (rw [StateT.run_pure, mem_support_pure_iff] at hp; rcases hp with ⟨_, rfl⟩;
        exact validSentEvents_of_traceSub_and_eq P hSub (by rw [← hEq]) (by rw [← hEq]) hV)
 /-- Combined inductive run invariant of `pqxdhAuthHybridKoskImpl` and `pqxdhAuthAdvStageImpl`. -/
-def ValidAuthHybridRunInv (S : Setup) (P : Primitives) (hst : AuthHybridState S) : Prop :=
+@[expose] def ValidAuthHybridRunInv (S : Setup) (P : Primitives) (hst : AuthHybridState S) : Prop :=
   ValidAuthKeyStoresFull S P hst.base ∧
   ValidAllIdealAuthSessions S P hst ∧
   ValidSentEvents S P hst

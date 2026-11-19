@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2
-public import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
-public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSym
+public import LibsignalBinary.Proofs.SpqrV1.Varint.DecodeVarint2 -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.TripleRatchet.Prost.Int32Merge
+import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSym
 import ProofLib.SepLogic.WPp
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import LibsignalBinary.Proofs.RecordCodecs.RecordCodecsCodeSymC -- proof-setup: allow-public-import
 
 /-!
 # Relocatable Proof of `CliC` `decode_varint [local#5]`
@@ -23,7 +24,7 @@ Proves `decodeVarint2Spec` for `CliC` `prost::encoding::varint::decode_varint::<
 (Block `559`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

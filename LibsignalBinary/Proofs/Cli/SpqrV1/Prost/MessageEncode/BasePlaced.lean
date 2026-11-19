@@ -10,11 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.Cli.SpqrV1.Prost.MessageEncode.Base
-public import GeneratedLean.LibsignalSessionPlacedObj
+public import GeneratedLean.LibsignalSessionPlacedObj -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Placed.PlacedCallSym
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
-import GeneratedLean.LibsignalSessionObj
 
 /-!
 # Relocatable Block Indices and Entry Resolution for `MessageEncode`
@@ -23,7 +22,7 @@ Defines `[LibsignalPlacement]` block indices and entry-offset lemmas for CLI SPQ
 encoders (Blocks `453` and `455`–`459`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 2000000

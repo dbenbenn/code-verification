@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC
+public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSimC -- proof-setup: allow-public-import
 
 /-!
 # Next-epoch receiver-chain seed extraction (`k2Seed`)
@@ -17,7 +17,7 @@ public import Computational.Proofs.SpecLemmas.Session.ACD19.Ratchet.LibsignalSim
 **Checked by Lean.** Defines `k2Seed` for branch K2 of `LibsignalSimC.snapshotMessageKeySeed` (DEV-LS37), computing the next receiving chain from a snapshot's root key and sender private key.
 -/
 
-@[expose] public section
+public section
 
 open CryptoGames.Ratchet CryptoGames.LibsignalSession CryptoGames.Ratchet.LibsignalInst
 open CryptoGames.Ratchet.LibsignalSim
@@ -26,7 +26,7 @@ open CryptoGames.Ratchet.LibsignalSimC (chainKeyAfter chainSeedAt snapshotMessag
 namespace CryptoGames.LibsignalSM.Proofs.SaltMismatch
 
 /-- Seed extracted by branch K2 of `snapshotMessageKeySeed` from root key `rk` and sender chain `sc?`. -/
-def k2Seed (C : Crypto) (rk : LibsignalSession.RootKey) (sc? : Option SenderChain) (Y : PublicKey)
+@[expose] def k2Seed (C : Crypto) (rk : LibsignalSession.RootKey) (sc? : Option SenderChain) (Y : PublicKey)
     (n : BitVec 32) : Option (List (BitVec 8)) :=
   sc?.bind fun sc =>
     match rootCreateChain C rk Y sc.ratchetKey.privateKey with

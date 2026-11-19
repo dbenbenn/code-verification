@@ -14,11 +14,11 @@ public import Symbolic.Specifications.Concrete.ImageSymbols
 /-!
 # Proof-side cryptographic stub symbols
 
-Defines `StubSymbol` constants for incremental ML-KEM-768, SHA-512 compression, and Ed25519
-curve-core operations used by `ExternInterpretationTotalOnUsedSymbols` and extern-witness tests.
+Defines `StubSymbol` constants for incremental ML-KEM-768 and SHA-512 compression used by
+`ExternInterpretationTotalOnUsedSymbols` and extern-witness tests.
 -/
 
-@[expose] public section
+public section
 
 namespace DY.Libsignal.PQXDH.Refinement
 
@@ -38,19 +38,5 @@ abbrev mlkem768DecapsSymbol : StubSymbol :=
   "libcrux_ml_kem::mlkem768::incremental::decapsulate_compressed_key"
 
 abbrev sha512CompressSymbol : StubSymbol := "sha2::sha512::compress512"
-
-abbrev edwardsCompressSymbol : StubSymbol := "<curve25519_dalek::edwards::EdwardsPoint>::compress"
-
-abbrev edwardsNegSymbol : StubSymbol :=
-  "<curve25519_dalek::edwards::EdwardsPoint as core::ops::arith::Neg>::neg"
-
-abbrev doubleScalarMulSymbol : StubSymbol :=
-  "<curve25519_dalek::edwards::EdwardsPoint>::vartime_double_scalar_mul_basepoint"
-
-abbrev scalarModOrderSymbol : StubSymbol :=
-  "<curve25519_dalek::scalar::Scalar>::from_bytes_mod_order"
-
-abbrev scalarModOrderWideSymbol : StubSymbol :=
-  "<curve25519_dalek::scalar::Scalar>::from_bytes_mod_order_wide"
 
 end DY.Libsignal.PQXDH.Refinement

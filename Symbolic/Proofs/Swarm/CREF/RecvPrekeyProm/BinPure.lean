@@ -9,11 +9,11 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon
-public import Symbolic.Proofs.SR.SendSpecWPure
-public import Symbolic.Proofs.Hooks2.BridgeXPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+public import Symbolic.Proofs.Swarm.CREF.TR.PureCanon -- proof-setup: allow-public-import
+public import Symbolic.Proofs.SR.SendSpecWPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Hooks2.BridgeXPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.Rpk.SessionPrimsPure -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces -- proof-setup: allow-public-import
 public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredStatementDefs
 import Symbolic.Proofs.Refinement.RecordBytesBridge
 import Symbolic.Proofs.Swarm.CREF.Prelude
@@ -25,7 +25,7 @@ Defines `PromTurn` and `PromBinAcceptOut` for accepting `session_recv_prekey` ca
 session-promotion path, and proves `prom_recordBytes_ne_nil`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

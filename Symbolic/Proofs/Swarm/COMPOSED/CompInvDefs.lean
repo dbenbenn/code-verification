@@ -10,7 +10,7 @@ limitations under the License.
 module
 
 public import Symbolic.Proofs.SpecLemmas.ModelProofDefs
-public import Symbolic.Proofs.Swarm.COMPOSED.CompKeyInversion
+public import Symbolic.Proofs.Swarm.COMPOSED.CompKeyInversion -- proof-setup: allow-public-import
 import DY.Actions.ProtocolEvent
 import DY.Trace.Basic
 import DY.Bytes.Basic
@@ -42,7 +42,7 @@ over-approximation `Pub`, monotonicity lemmas, stored-state and handshake predic
 invariant `SpqrInv`, and its empty-trace base case `spqrInv_nil`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -79,19 +79,19 @@ abbrev StE (me : Participant) (st : PQXDHState) : StEntry :=
   ⟨({ participant := me, state := st } : PersistentLocalState.LocalState PQXDHState)⟩
 
 /-- A `genRand n` entry is at trace index `t`. -/
-def RandAt (tr : ExecTrace) (t n : Nat) : Prop :=
+@[expose] def RandAt (tr : ExecTrace) (t n : Nat) : Prop :=
   (tr.at? t : Option RndEntry) = some (RndE n)
 
 /-- `st : PQXDHState` is stored by `me` at trace index `idx`. -/
-def StoredAt (tr : ExecTrace) (me : Participant) (st : PQXDHState) (idx : Nat) : Prop :=
+@[expose] def StoredAt (tr : ExecTrace) (me : Participant) (st : PQXDHState) (idx : Nat) : Prop :=
   (tr.at? idx : Option StEntry) = some (StE me st)
 
 /-- `st : TRState` is stored by `me` at trace index `idx`. -/
-def TRStoredAt (tr : ExecTrace) (me : Participant) (st : TRState) (idx : Nat) : Prop :=
+@[expose] def TRStoredAt (tr : ExecTrace) (me : Participant) (st : TRState) (idx : Nat) : Prop :=
   (tr.at? idx : Option TRStEntry) = some (TRStE me st)
 
 /-- `msg : Bytes` is sent on the network at trace index `idx`. -/
-def NetAt (tr : ExecTrace) (msg : Bytes) (idx : Nat) : Prop :=
+@[expose] def NetAt (tr : ExecTrace) (msg : Bytes) (idx : Nat) : Prop :=
   (tr.at? idx : Option NetEntry) = some (NetE msg)
 
 theorem rnd_inj {t t' n n' : Nat} (h : rnd t n = rnd t' n') : t = t' ∧ n = n' := by
@@ -166,51 +166,51 @@ theorem sessionStateExposed_mono {tr tr' : ExecTrace} (hle : tr ≤ tr')
 
 /-- `r` is `p`'s honest identity secret: `genRand 32 @t`, then `IdentityRegistered p ... true @t+1`
 (`registerIdentity`). -/
-def IKAt (tr : ExecTrace) (p : Participant) (r : Bytes) : Prop :=
+@[expose] def IKAt (tr : ExecTrace) (p : Participant) (r : Bytes) : Prop :=
   ∃ t, r = rnd t 32 ∧ RandAt tr t 32 ∧
     tr.EventLoggedAt
       (PQXDHEvent.IdentityRegistered p (DiffieHellman.dhPk r) (Signature.vk r) true) (t + 1)
 
 /-- `r` is a signed prekey secret of `b`: `genRand 32 @t`, nonce `genRand 64 @t+1`,
 `SignedPrekeyPublished b (dhPk r) @t+2` (`genSignedPrekey`). -/
-def SPKAt (tr : ExecTrace) (b : Participant) (r : Bytes) : Prop :=
+@[expose] def SPKAt (tr : ExecTrace) (b : Participant) (r : Bytes) : Prop :=
   ∃ t, r = rnd t 32 ∧ RandAt tr t 32 ∧ RandAt tr (t + 1) 64 ∧
     tr.EventLoggedAt (PQXDHEvent.SignedPrekeyPublished b (DiffieHellman.dhPk r)) (t + 2)
 
 /-- `r` is a Kyber prekey secret of `b`: `genRand 64 @t`, nonce `genRand 64 @t+1`,
 `PQPrekeyPublished b (kemPk r) @t+2` (`genPQPrekey`). -/
-def PQAt (tr : ExecTrace) (b : Participant) (r : Bytes) : Prop :=
+@[expose] def PQAt (tr : ExecTrace) (b : Participant) (r : Bytes) : Prop :=
   ∃ t, r = rnd t 64 ∧ RandAt tr t 64 ∧ RandAt tr (t + 1) 64 ∧
     tr.EventLoggedAt (PQXDHEvent.PQPrekeyPublished b (PQKem.kemPk r)) (t + 2)
 
 /-- `r` is a one-time prekey secret of `b`: `genRand 32 @t`,
 `OneTimePrekeyPublished b (dhPk r) @t+1` (`genOneTimePrekey`). -/
-def OPKAt (tr : ExecTrace) (b : Participant) (r : Bytes) : Prop :=
+@[expose] def OPKAt (tr : ExecTrace) (b : Participant) (r : Bytes) : Prop :=
   ∃ t, r = rnd t 32 ∧ RandAt tr t 32 ∧
     tr.EventLoggedAt (PQXDHEvent.OneTimePrekeyPublished b (DiffieHellman.dhPk r)) (t + 1)
 
 /-- `t` starts an `aliceStart` execution: base key `32 @t`, KEM coins `32 @t+1`, ratchet secret
 `32 @t+2`, `NetE ek @t+3`, `NetE ct @t+4`, `AliceDone @t+5`. -/
-def AliceSlot (tr : ExecTrace) (t : Nat) : Prop :=
+@[expose] def AliceSlot (tr : ExecTrace) (t : Nat) : Prop :=
   RandAt tr t 32 ∧ RandAt tr (t + 1) 32 ∧ RandAt tr (t + 2) 32 ∧
     ∃ a b ikA ikB spk pqpk opk ek ct keys,
       NetAt tr ek (t + 3) ∧ NetAt tr ct (t + 4) ∧
       tr.EventLoggedAt (PQXDHEvent.AliceDone a b ikA ikB spk pqpk opk ek ct keys) (t + 5)
 
 /-- `r` is an `aliceStart` base-key secret (`ek`). -/
-def EKAt (tr : ExecTrace) (r : Bytes) : Prop := ∃ t, r = rnd t 32 ∧ AliceSlot tr t
+@[expose] def EKAt (tr : ExecTrace) (r : Bytes) : Prop := ∃ t, r = rnd t 32 ∧ AliceSlot tr t
 /-- `r` is an `aliceStart` sending-ratchet secret (`dhsA`). -/
-def RatchetAt (tr : ExecTrace) (r : Bytes) : Prop := ∃ t, r = rnd (t + 2) 32 ∧ AliceSlot tr t
+@[expose] def RatchetAt (tr : ExecTrace) (r : Bytes) : Prop := ∃ t, r = rnd (t + 2) 32 ∧ AliceSlot tr t
 
 /-- `r` is a `TripleRatchet` ratchet DH secret (`dhs'` in `bobStart` / `messageDecrypt`):
 `genRand 32 @t` followed by `sendMessage key` (`NetAt tr msg (t + 1)`). -/
-def TRRatchetAt (tr : ExecTrace) (r : Bytes) : Prop :=
+@[expose] def TRRatchetAt (tr : ExecTrace) (r : Bytes) : Prop :=
   ∃ t msg, r = rnd t 32 ∧ RandAt tr t 32 ∧ NetAt tr msg (t + 1)
 
 /-- `r` is a `messageEncrypt` plaintext (`rnd t 32` followed by `RandAt tr (t+1) n`, `NetE` at `t+2`,
 and `TREvent` at `t+3`) or `messageEncrypt` SPQR coins (`rnd (t+1) n` after `RandAt tr t 32` and
 before `NetE` at `t+2` and `TREvent` at `t+3`). -/
-def MsgEncRandAt (tr : ExecTrace) (r : Bytes) : Prop :=
+@[expose] def MsgEncRandAt (tr : ExecTrace) (r : Bytes) : Prop :=
   (∃ t n msg, r = rnd t 32 ∧ RandAt tr t 32 ∧ RandAt tr (t + 1) n ∧ NetAt tr msg (t + 2) ∧
     ∃ ev : TREvent, tr.EventLoggedAt ev (t + 3)) ∨
   (∃ t n msg, r = rnd (t + 1) n ∧ RandAt tr t 32 ∧ RandAt tr (t + 1) n ∧ NetAt tr msg (t + 2) ∧
@@ -218,17 +218,17 @@ def MsgEncRandAt (tr : ExecTrace) (r : Bytes) : Prop :=
 
 /-- DH secrets: their public key `dhPk r` is (or may be) sent, and `invertDH` recovers `r` after
 `BrokenDH`. -/
-def DhClass (tr : ExecTrace) (r : Bytes) : Prop :=
+@[expose] def DhClass (tr : ExecTrace) (r : Bytes) : Prop :=
   (∃ p, IKAt tr p r) ∨ (∃ b, SPKAt tr b r) ∨ (∃ b, OPKAt tr b r) ∨
   EKAt tr r ∨ RatchetAt tr r ∨ TRRatchetAt tr r
 
 /-- KEM secrets: `kemPk r` is sent, and `invertKEM` recovers `r` after `BrokenKEM`. -/
-def PQClass (tr : ExecTrace) (r : Bytes) : Prop := ∃ b, PQAt tr b r
+@[expose] def PQClass (tr : ExecTrace) (r : Bytes) : Prop := ∃ b, PQAt tr b r
 
 /-- The random terms the attacker may know: compromised stored secrets, DH secrets after
 `BrokenDH`, KEM secrets after `BrokenKEM`, exposed TR ratchet secrets, and `messageEncrypt`
 plaintexts/coins. -/
-def RandExposed (tr : ExecTrace) (r : Bytes) : Prop :=
+@[expose] def RandExposed (tr : ExecTrace) (r : Bytes) : Prop :=
   (∃ p, IKAt tr p r ∧ tr.EventLogged (PQXDHEvent.CompromisedIK p (DiffieHellman.dhPk r))) ∨
   (∃ b, SPKAt tr b r ∧ tr.EventLogged (PQXDHEvent.CompromisedSPK b (DiffieHellman.dhPk r))) ∨
   (∃ b, PQAt tr b r ∧ tr.EventLogged (PQXDHEvent.CompromisedPQSPK b (PQKem.kemPk r))) ∨
@@ -240,7 +240,7 @@ def RandExposed (tr : ExecTrace) (r : Bytes) : Prop :=
 
 /-- `x` is the HMAC input of a `messageEncrypt` MAC on a session rooted at an honest handshake
 (`HandshakeKeysAt tr j keys` at `j < tr.length`). -/
-def HonestMac (tr : ExecTrace) (x : Bytes) : Prop :=
+@[expose] def HonestMac (tr : ExecTrace) (x : Bytes) : Prop :=
   ∃ j keys rkChain pk sk counter pqSalt ikA ikB wire,
     j < tr.length ∧ HandshakeKeysAt tr j keys ∧
     (rkChain = keys.rk ∨ ∃ r₀ p₀ s₀, rkChain = (createChain r₀ p₀ s₀).1) ∧
@@ -251,7 +251,7 @@ def HonestMac (tr : ExecTrace) (x : Bytes) : Prop :=
 
 /-- `(sk, msg)` is an honest prekey signature: `sk` is `b`'s identity secret and `msg` is the
 encoding of one of `b`'s signed prekeys (`genSignedPrekey`) or Kyber prekeys (`genPQPrekey`). -/
-def HonestSig (tr : ExecTrace) (sk msg : Bytes) : Prop :=
+@[expose] def HonestSig (tr : ExecTrace) (sk msg : Bytes) : Prop :=
   ∃ b, IKAt tr b sk ∧
     ((∃ s, SPKAt tr b s ∧ msg = encodeEC (DiffieHellman.dhPk s)) ∨
      (∃ q, PQAt tr b q ∧ msg = encodeKEM (PQKem.kemPk q)))
@@ -478,7 +478,7 @@ theorem Pub.mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {x : Bytes} (h : Pub tr
 /-! ## Stored State and Handshake Predicates -/
 
 /-- A stored `PQXDHState` has the role its kind says, for its owner. -/
-def KindOK (tr : ExecTrace) (me : Participant) (st : PQXDHState) : Prop :=
+@[expose] def KindOK (tr : ExecTrace) (me : Participant) (st : PQXDHState) : Prop :=
   match st.kind with
   | .identity => IKAt tr me st.sk
   | .signedPrekey => SPKAt tr me st.sk
@@ -487,7 +487,7 @@ def KindOK (tr : ExecTrace) (me : Participant) (st : PQXDHState) : Prop :=
 
 /-- Bob's bundle as Alice used it: honest (`ikB`, `spk`, `pqpk` are `b`'s keys), or `ikB` was
 compromised before, or DH was broken before. -/
-def BundleOK (tr : ExecTrace) (b : Participant) (ikB spk pqpk : Bytes) (i : Nat) : Prop :=
+@[expose] def BundleOK (tr : ExecTrace) (b : Participant) (ikB spk pqpk : Bytes) (i : Nat) : Prop :=
   (∃ sB sS sQ, IKAt tr b sB ∧ ikB = DiffieHellman.dhPk sB ∧
     SPKAt tr b sS ∧ spk = DiffieHellman.dhPk sS ∧ PQAt tr b sQ ∧ pqpk = PQKem.kemPk sQ) ∨
   LoggedBefore (PQXDHEvent.CompromisedIK b ikB) i tr ∨
@@ -496,7 +496,7 @@ def BundleOK (tr : ExecTrace) (b : Participant) (ikB spk pqpk : Bytes) (i : Nat)
 /-- What an `AliceDone` at `i` records: `i = t + 5` for an `AliceSlot t` (so `ek` is the base key
 `rnd t 32` and the KEM coins are `rnd (t+1) 32`), `ikA` is `a`'s identity key, the key schedule
 is `aliceAgreement`, and Bob's bundle is `BundleOK`. -/
-def AliceDoneFacts (tr : ExecTrace) (a b : Participant) (ikA ikB spk pqpk : Bytes)
+@[expose] def AliceDoneFacts (tr : ExecTrace) (a b : Participant) (ikA ikB spk pqpk : Bytes)
     (opk : Option Bytes) (ek ct : Bytes) (keys : HandshakeKeys) (i : Nat) : Prop :=
   ∃ t sA, i = t + 5 ∧ AliceSlot tr t ∧ IKAt tr a sA ∧ ikA = DiffieHellman.dhPk sA ∧
     ek = DiffieHellman.dhPk (rnd t 32) ∧
@@ -504,13 +504,13 @@ def AliceDoneFacts (tr : ExecTrace) (a b : Participant) (ikA ikB spk pqpk : Byte
     BundleOK tr b ikB spk pqpk i
 
 /-- An honest Alice completed, before `i`, the exchange Bob completed. -/
-def AliceMatch (tr : ExecTrace) (ikA ikB pqpk ek ct : Bytes) (keys : HandshakeKeys) (i : Nat) :
+@[expose] def AliceMatch (tr : ExecTrace) (ikA ikB pqpk ek ct : Bytes) (keys : HandshakeKeys) (i : Nat) :
     Prop :=
   ∃ j a' b' spk' opk', j < i ∧
     tr.EventLoggedAt (PQXDHEvent.AliceDone a' b' ikA ikB spk' pqpk opk' ek ct keys) j
 
 /-- What a `BobDone` at `i` records. -/
-def BobDoneFacts (tr : ExecTrace) (b a : Participant) (ikB ikA spk pqpk : Bytes)
+@[expose] def BobDoneFacts (tr : ExecTrace) (b a : Participant) (ikB ikA spk pqpk : Bytes)
     (opk : Option Bytes) (ek ct : Bytes) (keys : HandshakeKeys) (i : Nat) : Prop :=
   ∃ (sB sS sQ : Bytes) (o : Option Bytes) (e : Bytes),
     IKAt tr b sB ∧ ikB = DiffieHellman.dhPk sB ∧
@@ -544,7 +544,7 @@ theorem SpqrStateFrom.mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {pqr spqr : B
   | recv _ hm ih => exact .recv ih (Pub.mono hle hm)
 
 /-- Structural invariant for every stored `st : TRState` of participant `me`. -/
-def TRStateOK (tr : ExecTrace) (me : Participant) (st : TRState) : Prop :=
+@[expose] def TRStateOK (tr : ExecTrace) (me : Participant) (st : TRState) : Prop :=
   ∃ j keys,
     j < tr.length ∧
     HandshakeKeysAt tr j keys ∧
@@ -573,7 +573,7 @@ theorem TRStateOK.mono {tr tr' : ExecTrace} (hle : tr ≤ tr') {me : Participant
   · exact .inr (h.mono hle)
 
 /-- Structural invariant for every `TREvent.SkippedKeyStored s rPk ctr seed rIdx src` on `tr`. -/
-def SkippedKeyOK (tr : ExecTrace) (seed : Bytes) : Prop :=
+@[expose] def SkippedKeyOK (tr : ExecTrace) (seed : Bytes) : Prop :=
   ∃ j keys,
     j < tr.length ∧
     HandshakeKeysAt tr j keys ∧
@@ -818,7 +818,7 @@ theorem spqrInv_nil : SpqrInv (Trace.nil : ExecTrace) where
   opkOrder := BobDoneOpkInv.nil
 
 /-- `Inv` is preserved by running `x` on any trace. -/
-def Preserves (Inv : ExecTrace → Prop) {α : Type} (x : Traceful α) : Prop :=
+@[expose] def Preserves (Inv : ExecTrace → Prop) {α : Type} (x : Traceful α) : Prop :=
   ∀ tr, Inv tr → Inv (x.run tr).2.val
 
 theorem ikAt_owner_unique {tr : ExecTrace} {p₁ p₂ : Participant} {r : Bytes}

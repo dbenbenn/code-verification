@@ -11,11 +11,27 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudget
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.Common.SharedHelpers
-public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlaced
-public import LibsignalBinary.Proofs.Placed.BudgetPoolSync
-public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep
+import LibsignalBinary.Proofs.Common.SharedHelpers
+public meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwnedPlaced
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+public meta import LibsignalBinary.Proofs.Placed.BudgetPoolSync -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.HandshakeDerive -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.Accept -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.AcceptErrOwned -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBob -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.InitBobErrOwned -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.ResponderCoreCodeSym -- proof-setup: allow-public-import
+public import Arm64.Trusted.Object.Labels
+public import ProofLib.Placed
+public import ProofLib.Placed.LabelsCheck
+public import ProofLib.Placed.LabelsCoverage
+public import ProofLib.Placed.LabelsInterned
+public import ProofLib.Placed.SharedCode
+public import ProofLib.Process.FsLemmas
+public import ProofLib.StdStartup.MemOps
+public import VerifiedLibraries.RustStd.Proofs.ExecSegSym
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Budget-Threaded Relocatable `initialize_bob_session` (Block `75`): Owned-Error Rejecting Run
@@ -25,7 +41,7 @@ rejecting branch of `initialize_bob_session` (Block `75`) under `[LibsignalPlace
 `A.pool` across the `Pqxdh::accept` call (`lsmpl.base 79`) and 48-byte `SignalProtocolError` copy.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -74,7 +90,7 @@ attribute [local arm64_norm ↓, local wp_norm ↓]
 branch (`acceptKeys P g.inp = none`), parameterized by allocator event envelope
 `AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`
 under `FitsEnv M lim st (AcceptErrEnv g.inp)`). -/
-def pqxdhAcceptErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pqxdhAcceptErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (AcceptFieldsCallGhost × M.σ) where
@@ -101,7 +117,7 @@ def pqxdhAcceptErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
       stackAt s0.sp pqxdhEntryStack ∗
       A.pool lim (M.stepEvents evs st) sf
 
-def pqxdhAcceptErrOwnedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def pqxdhAcceptErrOwnedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (AcceptFieldsCallGhost × M.σ) :=
@@ -109,7 +125,7 @@ def pqxdhAcceptErrOwnedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
 
 /-- Budget-threaded relocatable inner contract for `initialize_bob_session` (Block `75`) on the
 rejecting branch (`acceptKeys P g.inp = none`), exposing `initBobErrOwnedAt A.repAlloc g.outPtr`. -/
-def initializeBobSessionErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) where
@@ -141,13 +157,13 @@ def initializeBobSessionErrOwnedInnerPlacedSpec [LibsignalPlacement] {M : AllocC
       stackAt s0.sp (768 + pqxdhEntryStack) ∗
       A.pool lim (M.stepEvents evs st) sf
 
-def initializeBobSessionErrOwnedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrOwnedPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=
   withLsCodeRoLoaded lsmpl (initializeBobSessionErrOwnedInnerPlacedSpec P A lim AcceptErrEnv)
 
-def initializeBobSessionErrOwnedFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
+@[expose] def initializeBobSessionErrOwnedFrozenPlacedSpec [LibsignalPlacement] {M : AllocCostModel}
     (P : Primitives) (A : RustCliAllocBudget M) (lim : BudgetLimits)
     (AcceptErrEnv : AcceptKeysInput → List AllocEvent → Prop) :
     Spec (InitBobCallGhost × M.σ) :=

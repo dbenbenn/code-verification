@@ -19,7 +19,7 @@ Proves `deserReprG_ok`, converting `deserOutRecordG` at `out` into `sessionRecor
 with `CanonRecord`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record.DeserializeGeneral.Leaf.DeserReprG
 

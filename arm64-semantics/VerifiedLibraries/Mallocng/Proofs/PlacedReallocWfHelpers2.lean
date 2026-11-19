@@ -105,10 +105,11 @@ private theorem blk18_mremap_perm [MallocngMultiPlacement]
         ⌜MallocngProcPreserved s0 sf ∧ sf.brk = s0.brk⌝ ∗
         stackFrame s0 144 ∗
         if sf.readReg64 .x0 = BitVec.allOnes 64 then
-          ⌜sf.mem.perm = s0.mem.perm ∧ MallocngMappedDelta 0 0 s0.mem sf.mem⌝ ∗
-          ((tp - 0xa4#64) ↦₃₂ 12#32) ∗
-          (oldAddr ↦ₛ oldBs) ∗
-          memMapped oldAddr oldLen
+          ∃∗ err32 : BitVec 32,
+            ⌜sf.mem.perm = s0.mem.perm ∧ MallocngMappedDelta 0 0 s0.mem sf.mem⌝ ∗
+            ((tp - 0xa4#64) ↦₃₂ err32) ∗
+            (oldAddr ↦ₛ oldBs) ∗
+            memMapped oldAddr oldLen
         else
           ∃∗ newBase : BitVec 64,
             ⌜sf.readReg64 .x0 = newBase ∧ newBase ≠ 0#64 ∧ newBase ≠ BitVec.allOnes 64 ∧
@@ -157,16 +158,23 @@ private theorem blk18_mremap_perm [MallocngMultiPlacement]
       (by simpa [arm64_norm] using ‹(s0.readReg64 (Reg.gpr 1#5)).toNat = oldLen›)
       (by simpa [arm64_norm] using ‹(s0.readReg64 (Reg.gpr 2#5)).toNat = newRawLen›)
       (by simp only [arm64_norm]) hbs hposOld hdvdOld hdvdAddr holdFit hposNew hmaxNew ?_ ?_ ?_
-    · clear hcl0 hcl1 hcl2
-      wp_norm_mbase_pc; wp_step
-      wp_call hsys; clear hcl3
-      have hnle : ¬ ((-12#64 : BitVec 64).toNat ≤ 2 ^ 64 - 4096) := by decide
-      have herr12 : (0#32 - (-12#64 : BitVec 64).truncate 32) = 12#32 := by decide
-      simp only [hnle, herr12, MallocngProcPreserved] at *
-      wp_steps; simp only [Reg.x0]
-      have hperm_e : _ = s0.mem.perm := Eq.trans ‹_› hm3Perm
-      have _hdelta : MallocngMappedDelta 0 0 s0.mem _ := mappedDelta_of_perm_eq hperm_e
-      wp_done
+    · intro err sFail herr1 herr4095 hsFail
+      clear hcl0 hcl1 hcl2
+      have hnle : ¬ ((-BitVec.ofNat 64 err).toNat ≤ 2 ^ 64 - 4096) := by
+        have hlt : err < 2 ^ 64 := by omega
+        have hbv : (BitVec.ofNat 64 err).toNat = err := by
+          rw [BitVec.toNat_ofNat, Nat.mod_eq_of_lt hlt]
+        rw [BitVec.toNat_neg, hbv, Nat.mod_eq_of_lt (by omega)]
+        omega
+      rcases hsFail with rfl | rfl <;> {
+        wp_norm_mbase_pc; wp_step
+        wp_call hsys; clear hcl3
+        simp only [hnle, MallocngProcPreserved] at *
+        wp_steps; simp only [Reg.x0]
+        have hperm_e : _ = s0.mem.perm := Eq.trans ‹_› hm3Perm
+        have _hdelta : MallocngMappedDelta 0 0 s0.mem _ := mappedDelta_of_perm_eq hperm_e
+        wp_done
+      }
     · intro newBase hne hdvdNew hfitNew
       clear hcl0 hcl1 hcl2
       wp_norm_mbase_pc; wp_step
@@ -218,10 +226,11 @@ theorem placed_mremapWrapper_perm_ok [MallocngMultiPlacement] {P : Program}
         ⌜MallocngProcPreserved s0 sf ∧ sf.brk = s0.brk⌝ ∗
         stackFrame s0 144 ∗
         if sf.readReg64 .x0 = BitVec.allOnes 64 then
-          ⌜sf.mem.perm = s0.mem.perm ∧ MallocngMappedDelta 0 0 s0.mem sf.mem⌝ ∗
-          ((tp - 0xa4#64) ↦₃₂ 12#32) ∗
-          (oldAddr ↦ₛ oldBs) ∗
-          memMapped oldAddr oldLen
+          ∃∗ err32 : BitVec 32,
+            ⌜sf.mem.perm = s0.mem.perm ∧ MallocngMappedDelta 0 0 s0.mem sf.mem⌝ ∗
+            ((tp - 0xa4#64) ↦₃₂ err32) ∗
+            (oldAddr ↦ₛ oldBs) ∗
+            memMapped oldAddr oldLen
         else
           ∃∗ newBase : BitVec 64,
             ⌜sf.readReg64 .x0 = newBase ∧ newBase ≠ 0#64 ∧ newBase ≠ BitVec.allOnes 64 ∧

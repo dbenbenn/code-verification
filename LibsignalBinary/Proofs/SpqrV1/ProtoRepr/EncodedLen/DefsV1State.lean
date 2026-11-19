@@ -9,8 +9,7 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1
-import Arm64.Legacy.Spec.Library
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.EncodedLen.DefsChunkedV1 -- proof-setup: allow-public-import
 import ProofLib.VCGen
 
 /-!
@@ -21,7 +20,7 @@ pure `v1StatePBEncodedLen` model, equivalence bridge to `V1State.encodedLen`, an
 for `V1State::encoded_len [local#1, #2]`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1.ProtoRepr
 
@@ -38,34 +37,11 @@ set_option maxHeartbeats 400000
 
 /-- The 11-byte jump table in `.rodata` (`0x7e53a` for `local#1`, `0x8245a` for `local#2`)
     mapping `V1State.InnerState` discriminant index `0..10` to `((target - (entry + 80)) / 4)`. -/
-def v1StateJumpTableBytes : List (BitVec 8) :=
+@[expose] def v1StateJumpTableBytes : List (BitVec 8) :=
   [0x00#8, 0x7c#8, 0x49#8, 0x4c#8, 0x05#8, 0x9e#8, 0xa3#8, 0x6e#8, 0xca#8, 0x27#8, 0xc5#8]
 
 @[simp] theorem v1StateJumpTableBytes_length :
     v1StateJumpTableBytes.length = 11 := by decide
-
-/-- Introduce one `.rodata` slice into a `subroutine_ok` proof for `spec.inImage img`. -/
-theorem subroutine_ok_inImage_rodata1_keep {α : Type} {prog : Program} {entry : BitVec 64}
-    {img : Obj.Image} {roAddr : BitVec 64} {roBytes : List (BitVec 8)}
-    {spec : Spec α}
-    (hro : ∀ {s : State} (_ : img.FrozenLoaded s) {P : SepProp},
-      (s.mem ⊨ P) → (s.mem ⊨ (roAddr ↦ᵣ roBytes) ∗ P))
-    (h : subroutine_ok prog entry
-      { spec with
-        pre := fun x s =>
-          (roAddr ↦ᵣ roBytes) ∗ spec.pre x s
-        post := fun x s0 sf =>
-          (roAddr ↦ᵣ roBytes) ∗ spec.post x s0 sf }) :
-    subroutine_ok prog entry (spec.inImage img) := by
-  refine subroutine_ok_mono h (fun x R s0 hpre => ?_) (fun x R s0 sf hq => ?_)
-  · simp only [Spec.inImage, sepConj_assoc, satisfies_pure_sepConj] at hpre
-    rw [sepConj_assoc]
-    exact hro hpre.1.1 hpre.2
-  · dsimp only [Spec.inImage] at hq ⊢
-    rw [sepConj_assoc] at hq
-    exact Satisfies.of_sep_right hq
-
-/-! ## 2. Optional Unchunked Sub-Message Representation Predicates -/
 
 /-- Niche value `0xfffffffffffffffe` (`usize::MAX - 1`) used for `Option` of structs whose first
     field is already `Option<Vec<u8>>` / `Option<AuthenticatorPB>` (which uses `noneCap = 0xffffffffffffffff`). -/
@@ -74,12 +50,12 @@ abbrev noneCap2 : BitVec 64 := 0xfffffffffffffffe#64
 /-- `Option<Unchunked.KeysUnsampled>` (`56` bytes = `0x38`, align `8`):
     - `none`: niche `noneCap2 = 0xfffffffffffffffe#64` at `a + 0`, `48` bytes of padding at `a + 8..56`.
     - `some u`: `keysUnsampledPBPinnedAt A g a u`. -/
-def optKeysUnsampledPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64) :
+@[expose] def optKeysUnsampledPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64) :
     Option V1State.Unchunked.KeysUnsampled → SepProp
   | none => (a ↦₆₄ noneCap2) ∗ memRegion (a + 8#64) 48
   | some u => keysUnsampledPBPinnedAt A g a u
 
-def optKeysUnsampledPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optKeysUnsampledPBAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.KeysUnsampled → SepProp
   | none => (a ↦₆₄ noneCap2) ∗ memRegion (a + 8#64) 48
   | some u => keysUnsampledPBAt A a u
@@ -87,12 +63,12 @@ def optKeysUnsampledPBAt (A : RustAlloc) (a : BitVec 64) :
 /-- `Option<Unchunked.HeaderSent>` (`104` bytes = `0x68`, align `8`):
     - `none`: niche `noneCap = 0xffffffffffffffff#64` at `a + 0`, `96` bytes of padding at `a + 8..104`.
     - `some u`: `headerSentPBPinnedAt A g a u`. -/
-def optHeaderSentPBPinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64) :
+@[expose] def optHeaderSentPBPinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64) :
     Option V1State.Unchunked.HeaderSent → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96
   | some u => headerSentPBPinnedAt A g a u
 
-def optHeaderSentPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optHeaderSentPBAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.HeaderSent → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96
   | some u => headerSentPBAt A a u
@@ -100,12 +76,12 @@ def optHeaderSentPBAt (A : RustAlloc) (a : BitVec 64) :
 /-- `Option<Unchunked.EkSentCt1Received>` (`104` bytes = `0x68`, align `8`):
     - `none`: niche `noneCap = 0xffffffffffffffff#64` at `a + 0`, `96` bytes of padding at `a + 8..104`.
     - `some u`: `ekSentCt1ReceivedPBPinnedAt A g a u`. -/
-def optEkSentCt1ReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64) :
+@[expose] def optEkSentCt1ReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked4PBGhost) (a : BitVec 64) :
     Option V1State.Unchunked.EkSentCt1Received → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96
   | some u => ekSentCt1ReceivedPBPinnedAt A g a u
 
-def optEkSentCt1ReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optEkSentCt1ReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.EkSentCt1Received → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 96
   | some u => ekSentCt1ReceivedPBAt A a u
@@ -113,12 +89,12 @@ def optEkSentCt1ReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
 /-- `Option<Unchunked.NoHeaderReceived>` (`56` bytes = `0x38`, align `8`):
     - `none`: niche `noneCap2 = 0xfffffffffffffffe#64` at `a + 0`, `48` bytes of padding at `a + 8..56`.
     - `some u`: `noHeaderReceivedPBPinnedAt A g a u`. -/
-def optNoHeaderReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64) :
+@[expose] def optNoHeaderReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64) :
     Option V1State.Unchunked.NoHeaderReceived → SepProp
   | none => (a ↦₆₄ noneCap2) ∗ memRegion (a + 8#64) 48
   | some u => noHeaderReceivedPBPinnedAt A g a u
 
-def optNoHeaderReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optNoHeaderReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.NoHeaderReceived → SepProp
   | none => (a ↦₆₄ noneCap2) ∗ memRegion (a + 8#64) 48
   | some u => noHeaderReceivedPBAt A a u
@@ -126,12 +102,12 @@ def optNoHeaderReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
 /-- `Option<Unchunked.HeaderReceived>` (`80` bytes = `0x50`, align `8`):
     - `none`: niche `noneCap = 0xffffffffffffffff#64` at `a + 0`, `72` bytes of padding at `a + 8..80`.
     - `some u`: `headerReceivedPBPinnedAt A g a u`. -/
-def optHeaderReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64) :
+@[expose] def optHeaderReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked3PBGhost) (a : BitVec 64) :
     Option V1State.Unchunked.HeaderReceived → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72
   | some u => headerReceivedPBPinnedAt A g a u
 
-def optHeaderReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optHeaderReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.HeaderReceived → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 72
   | some u => headerReceivedPBAt A a u
@@ -139,12 +115,12 @@ def optHeaderReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
 /-- `Option<Unchunked.Ct1SentEkReceived>` (`128` bytes = `0x80`, align `8`):
     - `none`: niche `noneCap = 0xffffffffffffffff#64` at `a + 0`, `120` bytes of padding at `a + 8..128`.
     - `some u`: `ct1SentEkReceivedPBPinnedAt A g a u`. -/
-def optCt1SentEkReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64) :
+@[expose] def optCt1SentEkReceivedPBPinnedAt (A : RustAlloc) (g : Unchunked5PBGhost) (a : BitVec 64) :
     Option V1State.Unchunked.Ct1SentEkReceived → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120
   | some u => ct1SentEkReceivedPBPinnedAt A g a u
 
-def optCt1SentEkReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optCt1SentEkReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.Ct1SentEkReceived → SepProp
   | none => (a ↦₆₄ noneCap) ∗ memRegion (a + 8#64) 120
   | some u => ct1SentEkReceivedPBAt A a u
@@ -152,12 +128,12 @@ def optCt1SentEkReceivedPBAt (A : RustAlloc) (a : BitVec 64) :
 /-- `Option<Unchunked.Ct2Sent>` (`56` bytes = `0x38`, align `8`):
     - `none`: niche `noneCap2 = 0xfffffffffffffffe#64` at `a + 0`, `48` bytes of padding at `a + 8..56`.
     - `some u`: `ct2SentPBPinnedAt A g a u`. -/
-def optCt2SentPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64) :
+@[expose] def optCt2SentPBPinnedAt (A : RustAlloc) (g : Unchunked2PBGhost) (a : BitVec 64) :
     Option V1State.Unchunked.Ct2Sent → SepProp
   | none => (a ↦₆₄ noneCap2) ∗ memRegion (a + 8#64) 48
   | some u => ct2SentPBPinnedAt A g a u
 
-def optCt2SentPBAt (A : RustAlloc) (a : BitVec 64) :
+@[expose] def optCt2SentPBAt (A : RustAlloc) (a : BitVec 64) :
     Option V1State.Unchunked.Ct2Sent → SepProp
   | none => (a ↦₆₄ noneCap2) ∗ memRegion (a + 8#64) 48
   | some u => ct2SentPBAt A a u
@@ -196,7 +172,7 @@ structure V1StatePBGhost where
   deriving Inhabited
 
 /-- Layout of the `Some(is)` cases of `spqr::proto::pq_ratchet::V1State` (`224` bytes = `0xe0`, align `8`). -/
-def v1StateInnerPBPinnedAt (A : RustAlloc) (g : V1StatePBGhost) (a : BitVec 64) :
+@[expose] def v1StateInnerPBPinnedAt (A : RustAlloc) (g : V1StatePBGhost) (a : BitVec 64) :
     V1State.InnerState → SepProp
   | .keysUnsampled v =>
     (a ↦₆₄ 0x8000000000000000#64) ∗
@@ -250,13 +226,13 @@ def v1StateInnerPBPinnedAt (A : RustAlloc) (g : V1StatePBGhost) (a : BitVec 64) 
       memRegion (a + 120#64) 104
 
 /-- Niche-optimized layout of `spqr::proto::pq_ratchet::V1State` (`224` bytes = `0xe0`, align `8`). -/
-def v1StatePBPinnedAt (A : RustAlloc) (g : V1StatePBGhost) (a : BitVec 64) (m : V1State) : SepProp :=
+@[expose] def v1StatePBPinnedAt (A : RustAlloc) (g : V1StatePBGhost) (a : BitVec 64) (m : V1State) : SepProp :=
   match m.innerState with
   | none => (a ↦₆₄ noneCap2) ∗ memRegion (a + 8#64) 216
   | some is => v1StateInnerPBPinnedAt A g a is
 
 /-- Existentially-quantified `V1State` representation predicate (`224` bytes = `0xe0`, align `8`). -/
-def v1StatePBAt (A : RustAlloc) (a : BitVec 64) (m : V1State) : SepProp :=
+@[expose] def v1StatePBAt (A : RustAlloc) (a : BitVec 64) (m : V1State) : SepProp :=
   ∃∗ g : V1StatePBGhost, v1StatePBPinnedAt A g a m
 
 theorem v1StatePBAt_eq_exists_pinned (A : RustAlloc) (a : BitVec 64) (m : V1State) :
@@ -276,7 +252,7 @@ private theorem protoEncodeKey_len_one (tag : BitVec 32) (wt : Proto.WireType)
   · contradiction
 
 /-- Encoded length of an optional `Unchunked.KeysUnsampled` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optKeysUnsampledPBFieldEncodedLen : Option V1State.Unchunked.KeysUnsampled → Nat
+@[expose] def optKeysUnsampledPBFieldEncodedLen : Option V1State.Unchunked.KeysUnsampled → Nat
   | none => 0
   | some u =>
     let len := keysUnsampledPBEncodedLen u
@@ -295,7 +271,7 @@ theorem optKeysUnsampledPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Encoded length of an optional `Unchunked.HeaderSent` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optHeaderSentPBFieldEncodedLen : Option V1State.Unchunked.HeaderSent → Nat
+@[expose] def optHeaderSentPBFieldEncodedLen : Option V1State.Unchunked.HeaderSent → Nat
   | none => 0
   | some u =>
     let len := headerSentPBEncodedLen u
@@ -314,7 +290,7 @@ theorem optHeaderSentPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Encoded length of an optional `Unchunked.EkSentCt1Received` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optEkSentCt1ReceivedPBFieldEncodedLen : Option V1State.Unchunked.EkSentCt1Received → Nat
+@[expose] def optEkSentCt1ReceivedPBFieldEncodedLen : Option V1State.Unchunked.EkSentCt1Received → Nat
   | none => 0
   | some u =>
     let len := ekSentCt1ReceivedPBEncodedLen u
@@ -333,7 +309,7 @@ theorem optEkSentCt1ReceivedPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Encoded length of an optional `Unchunked.NoHeaderReceived` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optNoHeaderReceivedPBFieldEncodedLen : Option V1State.Unchunked.NoHeaderReceived → Nat
+@[expose] def optNoHeaderReceivedPBFieldEncodedLen : Option V1State.Unchunked.NoHeaderReceived → Nat
   | none => 0
   | some u =>
     let len := noHeaderReceivedPBEncodedLen u
@@ -352,7 +328,7 @@ theorem optNoHeaderReceivedPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Encoded length of an optional `Unchunked.HeaderReceived` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optHeaderReceivedPBFieldEncodedLen : Option V1State.Unchunked.HeaderReceived → Nat
+@[expose] def optHeaderReceivedPBFieldEncodedLen : Option V1State.Unchunked.HeaderReceived → Nat
   | none => 0
   | some u =>
     let len := headerReceivedPBEncodedLen u
@@ -371,7 +347,7 @@ theorem optHeaderReceivedPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Encoded length of an optional `Unchunked.Ct1SentEkReceived` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optCt1SentEkReceivedPBFieldEncodedLen : Option V1State.Unchunked.Ct1SentEkReceived → Nat
+@[expose] def optCt1SentEkReceivedPBFieldEncodedLen : Option V1State.Unchunked.Ct1SentEkReceived → Nat
   | none => 0
   | some u =>
     let len := ct1SentEkReceivedPBEncodedLen u
@@ -390,7 +366,7 @@ theorem optCt1SentEkReceivedPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Encoded length of an optional `Unchunked.Ct2Sent` field with a 1-byte tag (`tag ∈ 1..15`). -/
-def optCt2SentPBFieldEncodedLen : Option V1State.Unchunked.Ct2Sent → Nat
+@[expose] def optCt2SentPBFieldEncodedLen : Option V1State.Unchunked.Ct2Sent → Nat
   | none => 0
   | some u =>
     let len := ct2SentPBEncodedLen u
@@ -409,7 +385,7 @@ theorem optCt2SentPBFieldEncodedLen_eq_proto (tag : BitVec 32)
       ← protoEncodedLenVarint_eq_varintLen, Proto.encodedLenVarint]
 
 /-- Inner encoded length of each `V1State.InnerState` variant (before the outer 1-byte tag + varint prefix). -/
-def v1StateInnerPayloadEncodedLen : V1State.InnerState → Nat
+@[expose] def v1StateInnerPayloadEncodedLen : V1State.InnerState → Nat
   | .keysUnsampled v =>
     optKeysUnsampledPBFieldEncodedLen v.uc
   | .keysSampled v =>
@@ -443,7 +419,7 @@ def v1StateInnerPayloadEncodedLen : V1State.InnerState → Nat
 
 /-- Encoded length of `V1State`: `0` when `innerState = none`, and
     `1 + varintLen (BitVec.ofNat 64 len) + len` when `innerState = some is`. -/
-def v1StatePBEncodedLen (m : V1State) : Nat :=
+@[expose] def v1StatePBEncodedLen (m : V1State) : Nat :=
   match m.innerState with
   | none => 0
   | some is =>
@@ -559,7 +535,7 @@ abbrev V1StateEncodedLenPinnedGhost := PinnedEncLenGhost V1StatePBGhost V1State
 abbrev V1StateEncodedLenGhost := UnpinnedEncLenGhost V1State
 
 /-- Pinned Hoare specification for `V1State::encoded_len` with explicit `.rodata` jump table at `roBase`. -/
-def v1StateEncodedLenRoPinnedSpec (A : RustAlloc) (roBase : BitVec 64) :
+@[expose] def v1StateEncodedLenRoPinnedSpec (A : RustAlloc) (roBase : BitVec 64) :
     Spec V1StateEncodedLenPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ v1StatePBEncodedLen x.m < 2 ^ 64⌝ ∗
@@ -571,7 +547,7 @@ def v1StateEncodedLenRoPinnedSpec (A : RustAlloc) (roBase : BitVec 64) :
       v1StatePBPinnedAt A x.g x.a x.m ∗ stackAt s0.sp v1StateEncodedLenStack
 
 /-- Existentially-quantified Hoare specification for `V1State::encoded_len` with explicit `.rodata` jump table at `roBase`. -/
-def v1StateEncodedLenRoSpec (A : RustAlloc) (roBase : BitVec 64) :
+@[expose] def v1StateEncodedLenRoSpec (A : RustAlloc) (roBase : BitVec 64) :
     Spec V1StateEncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ v1StatePBEncodedLen x.m < 2 ^ 64⌝ ∗
@@ -583,7 +559,7 @@ def v1StateEncodedLenRoSpec (A : RustAlloc) (roBase : BitVec 64) :
       v1StatePBAt A x.a x.m ∗ stackAt s0.sp v1StateEncodedLenStack
 
 /-- Pinned Hoare specification for `V1State::encoded_len` (without explicit `.rodata` atom, for `.inImage img`). -/
-def v1StateEncodedLenPinnedSpec (A : RustAlloc) : Spec V1StateEncodedLenPinnedGhost where
+@[expose] def v1StateEncodedLenPinnedSpec (A : RustAlloc) : Spec V1StateEncodedLenPinnedGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ v1StatePBEncodedLen x.m < 2 ^ 64⌝ ∗
       v1StatePBPinnedAt A x.g x.a x.m ∗ stackAt s.sp v1StateEncodedLenStack
@@ -592,7 +568,7 @@ def v1StateEncodedLenPinnedSpec (A : RustAlloc) : Spec V1StateEncodedLenPinnedGh
       v1StatePBPinnedAt A x.g x.a x.m ∗ stackAt s0.sp v1StateEncodedLenStack
 
 /-- Existentially-quantified Hoare specification for `V1State::encoded_len` (without explicit `.rodata` atom, for `.inImage img`). -/
-def v1StateEncodedLenSpec (A : RustAlloc) : Spec V1StateEncodedLenGhost where
+@[expose] def v1StateEncodedLenSpec (A : RustAlloc) : Spec V1StateEncodedLenGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.a ∧ v1StatePBEncodedLen x.m < 2 ^ 64⌝ ∗
       v1StatePBAt A x.a x.m ∗ stackAt s.sp v1StateEncodedLenStack

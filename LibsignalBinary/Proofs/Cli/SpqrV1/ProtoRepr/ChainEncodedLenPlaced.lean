@@ -9,8 +9,8 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLen
-public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenBasePlaced
+public import LibsignalBinary.Proofs.SpqrV1.ProtoRepr.ChainEncodedLen -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.ChainEncodedLenBasePlaced -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.Cli.SpqrV1.ProtoRepr.EpochEncodedLenPlaced
 import ProofLib.SepLogic.WPp
 
@@ -21,7 +21,7 @@ Proves tail stage lemmas and top-level `[LibsignalPlacement]` `subroutine_ok` co
 Blocks `485` (`[local#3]`) and `406` (`[local#2]`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000

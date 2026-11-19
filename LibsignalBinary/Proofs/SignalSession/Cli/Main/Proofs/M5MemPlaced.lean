@@ -9,13 +9,24 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5IfacePlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5SitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Mem
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5IfacePlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5SitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.IoSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.AllocFsSitesPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Main.Proofs.M5Mem
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
+public import Arm64.Trusted.Surface.IncludeBytes
+public import ProofLib
+public import ProofLib.FsTrace
+public import ProofLib.GenPlacedFetches
+public import ProofLib.Hoare.MultiCodeROHook
+public import ProofLib.Placed.Multi
+public import ProofLib.ProgramReflection.SortedFresh
+public import ProofLib.ProgramReflection.Variant.TrapTransfer
+public import ProofLib.SepLogic.WP.Apply
+public import ProofLib.SepLogic.WPp
+public import VerifiedLibraries.Mallocng.Spec
 
 /-!
 # Relocatable Address, Heap, and `commitFiles` Helpers for `main` Hop M5 (Block `617`)
@@ -24,6 +35,6 @@ Re-exports pure 128-bit pair, `vecBuf` borrow/unborrow, `dirAt_unpack`, and `com
 from `M5Mem.lean` alongside Block `617` symbol decodes (`MainCodeSym.lean`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false

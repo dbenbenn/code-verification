@@ -13,7 +13,7 @@ public import Computational.Proofs.Game.PromotedCostedReds.KemFailTrackDslBase
 public import Computational.Specifications.Reductions.ReductionDsl.AtomicOps
 public import Computational.Specifications.Reductions.ReductionDsl.TargetCodecs
 public import LibsignalBinary.Specifications.LibsignalE2E.State
-public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.BraidCodec
 public import LibsignalBinary.Proofs.SpqrV1Sync.SendTotal.TightSize -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1Sync.TopInSync
 import LibsignalBinary.Proofs.SpqrV1Sync.Codec.Msg

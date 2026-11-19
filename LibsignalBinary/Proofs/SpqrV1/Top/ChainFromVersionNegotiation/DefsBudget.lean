@@ -10,8 +10,8 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Defs
 
 /-!
 # Budget-Threaded Specifications for `spqr::chain_from_version_negotiation`
@@ -20,7 +20,7 @@ public import LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.Defs
 allocating a single 32-byte `root_key` buffer on `Ok` and `evs = []` on `Err`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -33,8 +33,6 @@ open LibsignalBinary.Proofs.SpqrV1.Top.ChainFrom.DefsBudget
   (ChainFromVersionNegotiationEnv)
 open CryptoVerification.LibsignalSpqrV1
   (HkdfFn chainFromVersionNegotiation)
-open CryptoVerification.LibsignalTripleRatchet
-  (tripleRatchetProgAtExt)
 open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
   (ChainFromVersionNegotiationCall chainFromVersionNegotiationName
    chainFromVersionNegotiationStackExt chainFromVersionNegotiationStackX
@@ -42,7 +40,7 @@ open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
 
 /-- Budget-threaded contract of `spqr::chain_from_version_negotiation` (`0x545e4`, 18 instructions)
 at `chainFromVersionNegotiationStackX` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chainFromVersionNegotiationSpecX (hkdf : HkdfFn) (M : AllocCostModel)
+@[expose] def chainFromVersionNegotiationSpecX (hkdf : HkdfFn) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (ChainFromVersionNegotiationCall × M.σ) where
   pre := fun (x, st) s =>
@@ -61,17 +59,9 @@ def chainFromVersionNegotiationSpecX (hkdf : HkdfFn) (M : AllocCostModel)
       A.pool lim (M.stepEvents evs st) sf ∗
       stackAt s0.sp chainFromVersionNegotiationStackX
 
-/-- Budget-threaded callee-contract predicate for `spqr::chain_from_version_negotiation`. -/
-def ChainFromVersionNegotiationOkX (img : Obj.Image) (hkdf : HkdfFn)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainFromVersionNegotiationName)
-    ((chainFromVersionNegotiationSpecX hkdf M A lim).inImage img)
-
 /-- Budget-threaded contract-backed (`chainFromVersionNegotiationStackExt`) spec of
 `spqr::chain_from_version_negotiation` (`onPanic = ⌜False⌝`, `onOom = ⌜False⌝`). -/
-def chainFromVersionNegotiationSpecExt (hkdf : HkdfFn) (M : AllocCostModel)
+@[expose] def chainFromVersionNegotiationSpecExt (hkdf : HkdfFn) (M : AllocCostModel)
     (A : RustCliAllocBudget M) (lim : BudgetLimits) :
     Spec (ChainFromVersionNegotiationCall × M.σ) where
   pre := fun (x, st) s =>
@@ -89,14 +79,5 @@ def chainFromVersionNegotiationSpecExt (hkdf : HkdfFn) (M : AllocCostModel)
       versionNegotiationPBAt A.repAlloc x.pin x.vPtr x.v ∗
       A.pool lim (M.stepEvents evs st) sf ∗
       stackAt s0.sp chainFromVersionNegotiationStackExt
-
-/-- Contract-backed budget-threaded callee-contract predicate for
-`spqr::chain_from_version_negotiation`. -/
-def ChainFromVersionNegotiationOkExt (img : Obj.Image) (hkdf : HkdfFn)
-    (M : AllocCostModel) (A : RustCliAllocBudget M) (lim : BudgetLimits)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAtExt img.base ext)
-    ((tripleRatchetProgAtExt img.base ext).fnAddr chainFromVersionNegotiationName)
-    ((chainFromVersionNegotiationSpecExt hkdf M A lim).inImage img)
 
 end LibsignalBinary.Proofs.SpqrV1.Top.ChainFromVersionNegotiation.DefsBudget

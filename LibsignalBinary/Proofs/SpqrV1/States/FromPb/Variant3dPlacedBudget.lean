@@ -9,15 +9,36 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlacedBudgetAux
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3bPlacedBudget
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlacedBudgetAux
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant10
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3b
-import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3c
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3c -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3d
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Heap.IfaceBudget
+public import LibsignalBinary.Heap.IfaceBudgetLemmas
+public import LibsignalBinary.Heap.RustStdAllocBudgetBridge
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.ProtoTop -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Drop.StatesRepr -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.CodeSymBasePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DecodesPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Defs
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.DefsBudget -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2a -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant2aPlacedBudgetAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Proofs.SpecLemmas.SymtabGhost
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.Placed.BudgetPoolSync
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3cPlaced
 
 /-!
 # `<spqr::v1::chunked::states::States>::from_pb`: Budget-Threaded Variant 3 (`Ct1Received`) — Post-`uc` Composition
@@ -26,7 +47,7 @@ Relocatable Block-`333` post-encoder and `sendingEk = some pbEnc` continuations 
 `+1012`, `+1024 -> ret`) under `RustCliAllocBudget M`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -975,134 +996,5 @@ theorem v3_ct1Received_some_enc_924_placed [LibsignalPlacement]
       w0 w8 w16 w24 w32 w40 w48 e0 e8 e16 e24 e32 e40 e48 v64 v96 v184 v192 v200
       statesFromPbJumpTablePlacedAt hfits huc hpts hsp0_align hpc hrun hsp
       hx0 hx1 hx8 hx19 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 htr)
-
-theorem v3_ct1Received_some_enc_924_of_alloc_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (st : M.σ) (s0 s : State) (hcl : LibsignalCodeLoaded lsmpl s.mem)
-    (out pbA : BitVec 64)
-    (u : V1State.Unchunked.EkSentCt1Received)
-    (ucSt : CryptoVerification.LibsignalSpqrV1.Unchunked.SendEk.EkSentCt1Received (spqrAuthApi F))
-    (pbEnc : PolynomialEncoder)
-    (ca1 pa1 la1 ca2 pa2 la2 ca3 pa3 la3 ca4 pa4 la4 uc_ep
-     w0 w8 w16 w24 w32 w40 w48 e0 e8 e16 e24 e32 e40 e48 v64 v96 v184 v192 v200 : BitVec 64)
-    (R : SepProp)
-    (hfits : FitsEnv M lim st (EncoderFromPbAllocEnv (pbToProtoPolyEncoder pbEnc)))
-    (huc : CryptoVerification.LibsignalSpqrV1.Unchunked.SendEk.EkSentCt1Received.from_pb (spqrAuthApi F) u = .ok ucSt)
-    (hpts : ∀ bs ∈ pbEnc.pts, bs.length ≤ 2 * 0x0555555555555555)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = lsmpl.base 333 + 924#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 2400#64)
-    (hx0 : s.readReg64 .x0 = pa2) (hx1 : s.readReg64 .x1 = ca1) (hx8 : s.readReg64 .x8 = w0)
-    (hx19 : s.readReg64 .x19 = out) (hx21 : s.readReg64 .x21 = pa4) (hx22 : s.readReg64 .x22 = pa1)
-    (hx23 : s.readReg64 .x23 = (s0.sp - 2400#64) + 848#64) (hx24 : s.readReg64 .x24 = la1)
-    (hx25 : s.readReg64 .x25 = (s0.sp - 2400#64) + 1792#64) (hx26 : s.readReg64 .x26 = ca3)
-    (hx27 : s.readReg64 .x27 = pbA) (hx28 : s.readReg64 .x28 = ca2) (htr : TraceCalleeSaved s s0) :
-    SepWPp (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        memRegion (s0.sp - 2400#64) 64 ∗ (((s0.sp - 2400#64) + 64#64) ↦₆₄ v64) ∗
-        memRegion ((s0.sp - 2400#64) + 72#64) 24 ∗ (((s0.sp - 2400#64) + 96#64) ↦₆₄ v96) ∗
-        memRegion ((s0.sp - 2400#64) + 104#64) 72 ∗ (((s0.sp - 2400#64) + 176#64) ↦₆₄ pa3) ∗
-        (((s0.sp - 2400#64) + 184#64) ↦₆₄ v184) ∗ (((s0.sp - 2400#64) + 192#64) ↦₆₄ v192) ∗
-        (((s0.sp - 2400#64) + 200#64) ↦₆₄ v200) ∗ memRegion ((s0.sp - 2400#64) + 208#64) 16 ∗
-        (((s0.sp - 2400#64) + 224#64) ↦₆₄ ca4) ∗ memRegion ((s0.sp - 2400#64) + 232#64) 8 ∗
-        v1_optProtoPolyEncoderWordsAt ((s0.sp - 2400#64) + 240#64) e0 e8 e16 e24 e32 e40 e48 ∗
-        memRegion ((s0.sp - 2400#64) + 296#64) 1096 ∗ memRegion ((s0.sp - 2400#64) + 1392#64) 104 ∗
-        v1_optProtoPolyEncoderWordsAt ((s0.sp - 2400#64) + 1496#64) w0 w8 w16 w24 w32 w40 w48 ∗
-        memRegion ((s0.sp - 2400#64) + 1552#64) 336 ∗
-        v1_ucWordsAt ((s0.sp - 2400#64) + 1888#64) ca1 pa1 la1 ca2 pa2 la2 ca3 pa3 la3 ca4 pa4 la4 uc_ep ∗
-        memRegion ((s0.sp - 2400#64) + 1992#64) 296 ∗ memRegion ((s0.sp - 2400#64) + 2288#64) 16 ∗
-        memRegion pbA 112 ∗
-        v1_optProtoPolyEncoderWordsAt (pbA + 112#64) w0 w8 w16 w24 w32 w40 w48 ∗
-        memRegion (pbA + 168#64) 56 ∗
-        v1_optProtoPolyEncoderHeap A.repAlloc (some (pbToProtoPolyEncoder pbEnc)) w0 w8 w16 w24 w32 w40 w48 ∗
-        v3cr_unchunkedEkSentCt1ReceivedHeap A.repAlloc (F := F) ucSt
-          ca1 pa1 la1 ca2 pa2 la2 ca3 pa3 la3 ca4 pa4 la4 uc_ep ∗
-        statesFromPbSavedCells s0 ∗ memRegion out chunkedStatesSize ∗
-        statesFromPbJumpTablePlacedAt ∗ A.pool lim st s)
-      (fun sf Pf =>
-        ∃ evs : List AllocEvent,
-          EncoderFromPbEnv (pbToProtoPolyEncoder pbEnc) evs ∧
-          (Pf ⊢
-            resultChunkedStatesAt A.repAlloc (F := F) out
-              (States.from_pb spqrPolyApi (spqrAuthApi F)
-                { innerState := some (.ct1Received { uc := some u, sendingEk := some pbEnc }) }) ∗
-            memRegion pbA optProtoInnerStateSize ∗
-            statesFromPbJumpTablePlacedAt ∗ A.pool lim (M.stepEvents evs st) sf ∗
-            stackAt s0.sp statesFromPbStack) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ statesFromPbOnPanic s0 sf ∗ R)) :=
-  v3_ct1Received_some_enc_924_placed hA (Variant2aPlacedBudget.encoder_from_pb_ok_of_alloc_placed hA)
-    st s0 s hcl out pbA u ucSt pbEnc
-    ca1 pa1 la1 ca2 pa2 la2 ca3 pa3 la3 ca4 pa4 la4 uc_ep
-    w0 w8 w16 w24 w32 w40 w48 e0 e8 e16 e24 e32 e40 e48 v64 v96 v184 v192 v200
-    R hfits huc hpts hsp0_align hpc hrun hsp
-    hx0 hx1 hx8 hx19 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 htr
-
-theorem v3_ct1Received_some_enc_924_of_env_placed [LibsignalPlacement]
-    {M : AllocCostModel} {A : RustCliAllocBudget M} {lim : BudgetLimits}
-    {F : ShaCompress} {ext : String → Option (State → State)}
-    (hA : FromPbAllocHooksBudget M A lim ext)
-    (hEnc : EncoderFromPbPlacedOkExt M A lim ext)
-    (st : M.σ) (s0 s : State) (hcl : LibsignalCodeLoaded lsmpl s.mem)
-    (out pbA : BitVec 64)
-    (u : V1State.Unchunked.EkSentCt1Received)
-    (ucSt : CryptoVerification.LibsignalSpqrV1.Unchunked.SendEk.EkSentCt1Received (spqrAuthApi F))
-    (pbEnc : PolynomialEncoder)
-    (ca1 pa1 la1 ca2 pa2 la2 ca3 pa3 la3 ca4 pa4 la4 uc_ep
-     w0 w8 w16 w24 w32 w40 w48 e0 e8 e16 e24 e32 e40 e48 v64 v96 v184 v192 v200 : BitVec 64)
-    (R : SepProp)
-    (hfits : FitsEnv M lim st (EncoderFromPbEnv (pbToProtoPolyEncoder pbEnc)))
-    (huc : CryptoVerification.LibsignalSpqrV1.Unchunked.SendEk.EkSentCt1Received.from_pb (spqrAuthApi F) u = .ok ucSt)
-    (hpts : ∀ bs ∈ pbEnc.pts, bs.length ≤ 2 * 0x0555555555555555)
-    (hsp0_align : (s0.sp &&& 15#64 == 0#64) = true)
-    (hpc : s.pc = lsmpl.base 333 + 924#64)
-    (hrun : s.status = .Running) (hsp : s.sp = s0.sp - 2400#64)
-    (hx0 : s.readReg64 .x0 = pa2) (hx1 : s.readReg64 .x1 = ca1) (hx8 : s.readReg64 .x8 = w0)
-    (hx19 : s.readReg64 .x19 = out) (hx21 : s.readReg64 .x21 = pa4) (hx22 : s.readReg64 .x22 = pa1)
-    (hx23 : s.readReg64 .x23 = (s0.sp - 2400#64) + 848#64) (hx24 : s.readReg64 .x24 = la1)
-    (hx25 : s.readReg64 .x25 = (s0.sp - 2400#64) + 1792#64) (hx26 : s.readReg64 .x26 = ca3)
-    (hx27 : s.readReg64 .x27 = pbA) (hx28 : s.readReg64 .x28 = ca2) (htr : TraceCalleeSaved s s0) :
-    SepWPp (lsProg_333 (Rust.withPanics ext)) (s0.readReg64 .x30) s
-      (stackAt (s0.sp - 2400#64) encoderFromPbStack ∗
-        memRegion (s0.sp - 2400#64) 64 ∗ (((s0.sp - 2400#64) + 64#64) ↦₆₄ v64) ∗
-        memRegion ((s0.sp - 2400#64) + 72#64) 24 ∗ (((s0.sp - 2400#64) + 96#64) ↦₆₄ v96) ∗
-        memRegion ((s0.sp - 2400#64) + 104#64) 72 ∗ (((s0.sp - 2400#64) + 176#64) ↦₆₄ pa3) ∗
-        (((s0.sp - 2400#64) + 184#64) ↦₆₄ v184) ∗ (((s0.sp - 2400#64) + 192#64) ↦₆₄ v192) ∗
-        (((s0.sp - 2400#64) + 200#64) ↦₆₄ v200) ∗ memRegion ((s0.sp - 2400#64) + 208#64) 16 ∗
-        (((s0.sp - 2400#64) + 224#64) ↦₆₄ ca4) ∗ memRegion ((s0.sp - 2400#64) + 232#64) 8 ∗
-        v1_optProtoPolyEncoderWordsAt ((s0.sp - 2400#64) + 240#64) e0 e8 e16 e24 e32 e40 e48 ∗
-        memRegion ((s0.sp - 2400#64) + 296#64) 1096 ∗ memRegion ((s0.sp - 2400#64) + 1392#64) 104 ∗
-        v1_optProtoPolyEncoderWordsAt ((s0.sp - 2400#64) + 1496#64) w0 w8 w16 w24 w32 w40 w48 ∗
-        memRegion ((s0.sp - 2400#64) + 1552#64) 336 ∗
-        v1_ucWordsAt ((s0.sp - 2400#64) + 1888#64) ca1 pa1 la1 ca2 pa2 la2 ca3 pa3 la3 ca4 pa4 la4 uc_ep ∗
-        memRegion ((s0.sp - 2400#64) + 1992#64) 296 ∗ memRegion ((s0.sp - 2400#64) + 2288#64) 16 ∗
-        memRegion pbA 112 ∗
-        v1_optProtoPolyEncoderWordsAt (pbA + 112#64) w0 w8 w16 w24 w32 w40 w48 ∗
-        memRegion (pbA + 168#64) 56 ∗
-        v1_optProtoPolyEncoderHeap A.repAlloc (some (pbToProtoPolyEncoder pbEnc)) w0 w8 w16 w24 w32 w40 w48 ∗
-        v3cr_unchunkedEkSentCt1ReceivedHeap A.repAlloc (F := F) ucSt
-          ca1 pa1 la1 ca2 pa2 la2 ca3 pa3 la3 ca4 pa4 la4 uc_ep ∗
-        statesFromPbSavedCells s0 ∗ memRegion out chunkedStatesSize ∗
-        statesFromPbJumpTablePlacedAt ∗ A.pool lim st s)
-      (fun sf Pf =>
-        ∃ evs : List AllocEvent,
-          EncoderFromPbEnv (pbToProtoPolyEncoder pbEnc) evs ∧
-          (Pf ⊢
-            resultChunkedStatesAt A.repAlloc (F := F) out
-              (States.from_pb spqrPolyApi (spqrAuthApi F)
-                { innerState := some (.ct1Received { uc := some u, sendingEk := some pbEnc }) }) ∗
-            memRegion pbA optProtoInnerStateSize ∗
-            statesFromPbJumpTablePlacedAt ∗ A.pool lim (M.stepEvents evs st) sf ∗
-            stackAt s0.sp statesFromPbStack) ∧
-          sf.sp = s0.sp ∧ CalleeSavedPreserved s0 sf ∧ sf.trace = s0.trace)
-      (fun sf P_f => (sf.mem ⊨ P_f ∗ R) → (sf.mem ⊨ statesFromPbOnPanic s0 sf ∗ R)) :=
-  v3_ct1Received_some_enc_924_placed hA hEnc st s0 s hcl out pbA u ucSt pbEnc
-    ca1 pa1 la1 ca2 pa2 la2 ca3 pa3 la3 ca4 pa4 la4 uc_ep
-    w0 w8 w16 w24 w32 w40 w48 e0 e8 e16 e24 e32 e40 e48 v64 v96 v184 v192 v200
-    R (fitsEnv_encoderFromPbAllocEnv_of_encoderFromPbEnv hfits) huc hpts
-    hsp0_align hpc hrun hsp
-    hx0 hx1 hx8 hx19 hx21 hx22 hx23 hx24 hx25 hx26 hx27 hx28 htr
 
 end LibsignalBinary.Proofs.SpqrV1.States.FromPb.Variant3dPlacedBudget

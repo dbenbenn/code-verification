@@ -21,7 +21,7 @@ Oracle query wrappers for `PRFPRNG.spec` and fixed-bit game branch decomposition
 `PRFPRNG.advantage`.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 namespace CryptoGames
@@ -30,16 +30,16 @@ variable {Key State Input Output : Type}
 section Queries
 local notation "Comp" => AdversaryComp State Input Output
 
-def processQuery (I : Option Input) : Comp (Option Output) :=
+@[expose] def processQuery (I : Option Input) : Comp (Option Output) :=
   query (spec := unifSpec + spec State Input Output) (.inr (.inl (.inl (.inl I))))
 
-def challPrngQuery (I : Option Input) : Comp (Option Output) :=
+@[expose] def challPrngQuery (I : Option Input) : Comp (Option Output) :=
   query (spec := unifSpec + spec State Input Output) (.inr (.inl (.inl (.inr I))))
 
-def challPrfQuery (I : Input) : Comp (Option (State × Output)) :=
+@[expose] def challPrfQuery (I : Input) : Comp (Option (State × Output)) :=
   query (spec := unifSpec + spec State Input Output) (.inr (.inl (.inr I)))
 
-def corrQuery : Comp (Option State) :=
+@[expose] def corrQuery : Comp (Option State) :=
   query (spec := unifSpec + spec State Input Output) (.inr (.inr ()))
 
 end Queries
@@ -48,7 +48,7 @@ variable (P : PRFPRNG Key State Input Output) [DecidableEq Input]
   [SampleableType Key] [SampleableType Input] [SampleableType Output]
 
 /-- The PRF-PRNG game with a fixed challenge bit `b`. -/
-def branch (b : Bool) (A : Adversary State Input Output) : ProbComp Bool := do
+@[expose] def branch (b : Bool) (A : Adversary State Input Output) : ProbComp Bool := do
   let k ← $ᵗ Key
   let impl := (QueryImpl.ofLift unifSpec ProbComp).liftTarget
       (StateT (GameState State Input Output) ProbComp) + oracleImpl P

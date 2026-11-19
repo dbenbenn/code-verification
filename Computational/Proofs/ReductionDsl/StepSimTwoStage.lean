@@ -390,50 +390,6 @@ structure TwoStageForgetSim
     R'.finish.eval (.cons s' (.cons b (.cons y .nil))) =
       R.finish.eval (.cons (forgetσ s') (.cons b (.cons y .nil)))
 
-/-- Constructs `TwoStageForgetSim` when stage-1 pause uses the state-only invariant
-`fun c _ s' => Inv c s'`. -/
-theorem TwoStageForgetSim.ofSameInv
-    (R' R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
-    (forgetπ : R'.π.denote → R.π.denote)
-    (forgetσ : R'.σ.denote → R.σ.denote)
-    {m : ℕ} (P : Fin m → κ → Prop) [∀ j, DecidablePred (P j)] (B : Fin m → ℕ)
-    (x : rIn.denote)
-    (Inv : (Fin m → ℕ) → R'.σ.denote → Prop)
-    (hInit :
-      Prod.map id forgetσ <$> R'.init.eval (.cons x .nil) = R.init.eval (.cons x .nil) ∧
-      ∀ as' ∈ support (R'.init.eval (.cons x .nil)), Inv 0 as'.2)
-    (hPre : ∀ (c : Fin m → ℕ) (s' : R'.σ.denote) (t : κ),
-      (∀ j, c j ≤ B j) → (∀ j, P j t → c j + 1 ≤ B j) → Inv c s' →
-      forgetPreOut forgetπ forgetσ <$> R'.handlePre.eval (.cons s' (.cons (C.qenc t) .nil)) =
-        R.handlePre.eval (.cons (forgetσ s') (.cons (C.qenc t) .nil)) ∧
-      (∀ v s'₁, .inl (v, s'₁) ∈ support (R'.handlePre.eval (.cons s' (.cons (C.qenc t) .nil))) →
-        Inv (bumpPred P c t) s'₁) ∧
-      (∀ c_out p' s'₁,
-        .inr (c_out, p', s'₁) ∈ support (R'.handlePre.eval (.cons s' (.cons (C.qenc t) .nil))) →
-        Inv (bumpPred P c t) s'₁))
-    (hChDone : ∀ (c : Fin m → ℕ) (s' : R'.σ.denote) (b : aOut.denote),
-      (∀ j, c j ≤ B j) → Inv c s' →
-      R'.chDone.eval (.cons s' (.cons b .nil)) =
-        R.chDone.eval (.cons (forgetσ s') (.cons b .nil)))
-    (hResume : ∀ (c : Fin m → ℕ) (p' : R'.π.denote) (s' : R'.σ.denote) (y : rIn2.denote),
-      (∀ j, c j ≤ B j) → Inv c s' →
-      Prod.map id forgetσ <$> R'.resume.eval (.cons s' (.cons p' (.cons y .nil))) =
-        R.resume.eval (.cons (forgetσ s') (.cons (forgetπ p') (.cons y .nil))) ∧
-      ∀ vs' ∈ support (R'.resume.eval (.cons s' (.cons p' (.cons y .nil)))),
-        Inv c vs'.2)
-    (hPost : ∀ (c : Fin m → ℕ) (s' : R'.σ.denote) (t : κ),
-      (∀ j, c j ≤ B j) → (∀ j, P j t → c j + 1 ≤ B j) → Inv c s' →
-      Prod.map id forgetσ <$> R'.handlePost.eval (.cons s' (.cons (C.qenc t) .nil)) =
-        R.handlePost.eval (.cons (forgetσ s') (.cons (C.qenc t) .nil)) ∧
-      ∀ p ∈ support (R'.handlePost.eval (.cons s' (.cons (C.qenc t) .nil))),
-        Inv (bumpPred P c t) p.2)
-    (hFinish : ∀ (c : Fin m → ℕ) (s' : R'.σ.denote) (b : aOut.denote) (y : rIn2.denote),
-      (∀ j, c j ≤ B j) → Inv c s' →
-      R'.finish.eval (.cons s' (.cons b (.cons y .nil))) =
-        R.finish.eval (.cons (forgetσ s') (.cons b (.cons y .nil)))) :
-    TwoStageForgetSim R' R forgetπ forgetσ P B x Inv (fun c _ s' => Inv c s') :=
-  ⟨hInit, hPre, hChDone, fun c p' s' y hc hI => hResume c p' s' y hc hI, hPost, hFinish⟩
-
 /-- Constructs `TwoStageForgetSim` from disjoint per-kind obligations (`P i t := kind t = i`). -/
 theorem TwoStageForgetSim.ofByKind
     (R' R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out)
@@ -485,36 +441,6 @@ theorem TwoStageForgetSim.ofByKind
     rw [bumpPred_eq_bumpCount]; exact hPost c₀ s₀ t hc₀ (hroom₀ (kind t) rfl) hInv₀
   hFinish := hFinish
 
-/-- Two-stage `OracleComp` evaluation equality across `eval1`, challenger continuation `chall`, and
-`eval2` under `IsQueryBoundP`. -/
-theorem twoStage_eval_bind_eq_of_forgetSim
-    {β : Type}
-    {R' R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out}
-    {forgetπ : R'.π.denote → R.π.denote}
-    {forgetσ : R'.σ.denote → R.σ.denote}
-    {m : ℕ} {P : Fin m → κ → Prop} [∀ j, DecidablePred (P j)] {B : Fin m → ℕ}
-    {x : rIn.denote}
-    {Inv : (Fin m → ℕ) → R'.σ.denote → Prop}
-    {InvPause : (Fin m → ℕ) → R'.π.denote → R'.σ.denote → Prop}
-    (hSim : TwoStageForgetSim R' R forgetπ forgetσ P B x Inv InvPause)
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote)
-    (hA : ∀ a j, (A a).IsQueryBoundP (isGamePred (G := G) (P j)) (B j))
-    (fuel1 fuel2 : ℕ) (dflt : aOut.denote)
-    (chall : ch.denote → (rIn2.denote → OracleComp T out.denote) → OracleComp T β) :
-    (R'.eval1 A x fuel1 dflt >>= fun cm =>
-      chall cm.1 (fun y => R'.eval2 cm.2 y fuel2 dflt)) =
-    (R.eval1 A x fuel1 dflt >>= fun cm =>
-      chall cm.1 (fun y => R.eval2 cm.2 y fuel2 dflt)) := by
-  have h1 := twoStage_eval1_forget R' R forgetπ forgetσ P B x Inv InvPause
-    hSim.hInit hSim.hPre hSim.hChDone A hA fuel1 dflt
-  rw [← h1.1, bind_map_left]
-  refine bind_congr_support _ _ _ fun cm' hcm' => ?_
-  dsimp only [Prod.map, id_eq]
-  congr 1
-  funext y
-  exact twoStage_eval2_forget R' R forgetπ forgetσ P B Inv InvPause
-    hSim.hResume hSim.hPost hSim.hFinish cm'.2 (h1.2 cm' hcm') y fuel2 dflt
-
 /-- Two-stage `OracleComp` evaluation equality under `simulateQ impl` and `IsQueryBoundP`. -/
 theorem twoStage_simulateQ_eval_bind_eq_of_forgetSim
     {ι' : Type} {T' : OracleSpec ι'} {β : Type}
@@ -546,28 +472,6 @@ theorem twoStage_simulateQ_eval_bind_eq_of_forgetSim
   funext y
   rw [twoStage_eval2_forget R' R forgetπ forgetσ P B Inv InvPause
     hSim.hResume hSim.hPost hSim.hFinish cm'.2 (h1.2 cm' hcm'_supp) y fuel2 dflt]
-
-theorem twoStage_simulateQ_eval_bind_eq_of_forgetSim_byKind
-    {ι' : Type} {T' : OracleSpec ι'} {β : Type}
-    (impl : QueryImpl T (OracleComp T'))
-    {R' R : TwoStageCostedReduction O I G C rIn aIn aOut ch rIn2 out}
-    {forgetπ : R'.π.denote → R.π.denote}
-    {forgetσ : R'.σ.denote → R.σ.denote}
-    {k : ℕ} {kind : κ → Fin k} {counts : Fin k → ℕ}
-    {x : rIn.denote}
-    {Inv : (Fin k → ℕ) → R'.σ.denote → Prop}
-    {InvPause : (Fin k → ℕ) → R'.π.denote → R'.σ.denote → Prop}
-    (hSim : TwoStageForgetSim R' R forgetπ forgetσ (fun i t => kind t = i) counts x Inv InvPause)
-    (A : aIn.denote → OracleComp (unifSpec + G) aOut.denote)
-    (hA : ∀ a i, (A a).IsQueryBoundP (isQueryKind (G := G) kind i) (counts i))
-    (fuel1 fuel2 : ℕ) (dflt : aOut.denote)
-    (chall : ch.denote → (rIn2.denote → OracleComp T' out.denote) → OracleComp T' β) :
-    (simulateQ impl (R'.eval1 A x fuel1 dflt) >>= fun cm =>
-      chall cm.1 (fun y => simulateQ impl (R'.eval2 cm.2 y fuel2 dflt))) =
-    (simulateQ impl (R.eval1 A x fuel1 dflt) >>= fun cm =>
-      chall cm.1 (fun y => simulateQ impl (R.eval2 cm.2 y fuel2 dflt))) :=
-  twoStage_simulateQ_eval_bind_eq_of_forgetSim impl hSim A
-    (fun a i => by simpa [isGamePred_eq_isQueryKind] using hA a i) fuel1 fuel2 dflt chall
 
 end TwoStage
 

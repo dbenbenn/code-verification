@@ -20,7 +20,7 @@ status preservation, trace-event exclusion, and `FsState` predicate preservation
 Linux AArch64 `SYS_READV` (`execReadv`) and `SYS_WRITEV` (`execWritev`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Tests.Shared.Composed.Adversary
+public import Symbolic.Proofs.Tests.Shared.Composed.Adversary -- proof-setup: allow-public-import
 import DY.Bytes.Basic
 import DY.ALaCarte.Basic
 import DY.ALaCarte.Ordering
@@ -50,7 +50,7 @@ import Symbolic.DYBridge.DY.Actions.Random
 import Symbolic.DYBridge.DY.Bytes.AttackerKnowledge
 import Symbolic.DYBridge.DY.EquationalTheory.KdfExtract
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -88,37 +88,37 @@ open PQXDH (PQXDHEvent HandshakeKeys PreKeyMsgHandles AliceHandshakeOut IsHandsh
 
 /-! ## Split-compromise witness trace `trR2` -/
 
-def trR2_1 : ExecTrace := compIkTr t4 "bob" ikB
+@[expose] def trR2_1 : ExecTrace := compIkTr t4 "bob" ikB
 
-def trR2_2 : ExecTrace :=
+@[expose] def trR2_2 : ExecTrace :=
   aliceTr trR2_1 "alice" "bob" ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB)
 
 abbrev trR2_out : AliceHandshakeOut :=
   aliceOut trR2_1 ikA (dhPk ikB) (dhPk spkB) (kemPk pqskB)
 abbrev trR2_keys : HandshakeKeys := trR2_out.keys
 abbrev trR2_dhsA : Bytes := rnd 26 32
-def trR2_stA0 : TRState := aliceSt "bob" trR2_out trR2_dhsA
+@[expose] def trR2_stA0 : TRState := aliceSt "bob" trR2_out trR2_dhsA
 
 abbrev trR2_m0 : Bytes := rnd 33 32
 abbrev trR2_coins0 : Bytes := rnd 34 32
-def trR2_key0 : Bytes := (Spqr.spqrSend trR2_stA0.spqr trR2_coins0).2.1
-def trR2_pqm0 : Bytes := (Spqr.spqrSend trR2_stA0.spqr trR2_coins0).2.2
-def trR2_3 : ExecTrace := encTr trR2_2 "alice" 32 trR2_stA0 trR2_key0
+@[expose] def trR2_key0 : Bytes := (Spqr.spqrSend trR2_stA0.spqr trR2_coins0).2.1
+@[expose] def trR2_pqm0 : Bytes := (Spqr.spqrSend trR2_stA0.spqr trR2_coins0).2.2
+@[expose] def trR2_3 : ExecTrace := encTr trR2_2 "alice" 32 trR2_stA0 trR2_key0
 
 def trR2_mh : PreKeyMsgHandles := { ek := 27, ct := 28, msg := 39 }
 abbrev trR2_dhsB1 : Bytes := rnd 40 32
 def trR2_stB00 : TRState :=
   bobSt0 "alice" ikB spkB (dhPk ikA) trR2_keys
     (encSig trR2_stA0 trR2_coins0 trR2_key0 trR2_m0)
-def trR2_stB0' : TRState := (ratchetState trR2_stB00 (dhPk trR2_dhsA) trR2_dhsB1).1
+@[expose] def trR2_stB0' : TRState := (ratchetState trR2_stB00 (dhPk trR2_dhsA) trR2_dhsB1).1
 def trR2_cB : RecvChain := (ratchetState trR2_stB00 (dhPk trR2_dhsA) trR2_dhsB1).2
 def trR2_cB' : RecvChain := { trR2_cB with chainKey := (kdfCk trR2_cB.chainKey).1, index := 1 }
-def trR2_seedB0 : Bytes := (kdfCk trR2_cB.chainKey).2
-def trR2_stB1 : TRState :=
+@[expose] def trR2_seedB0 : Bytes := (kdfCk trR2_cB.chainKey).2
+@[expose] def trR2_stB1 : TRState :=
   { trR2_stB0' with
     recv := [trR2_cB'], spqr := recvSt (Spqr.spqrInit trR2_keys.pqr spqrB2A) trR2_pqm0 }
 
-def trR2_4 : ExecTrace :=
+@[expose] def trR2_4 : ExecTrace :=
   let tr1 := (trR2_3.append (RndE 32)).append (NetE trR2_key0)
   let tr5 := (((tr1.append (EvP (.BobDone "bob" "alice" (dhPk ikB) (dhPk ikA) (dhPk spkB)
       (kemPk pqskB) none trR2_out.ek trR2_out.ct trR2_keys))).append
@@ -130,8 +130,8 @@ def trR2_4 : ExecTrace :=
       trR2_key0 0 2 48))).append
     (StT "bob" trR2_stB1)
 
-def trR2_5 : ExecTrace := compSpkTr trR2_4 "bob" spkB
-def trR2 : ExecTrace := compPqTr trR2_5 "bob" pqskB
+@[expose] def trR2_5 : ExecTrace := compSpkTr trR2_4 "bob" spkB
+@[expose] def trR2 : ExecTrace := compPqTr trR2_5 "bob" pqskB
 
 theorem trR2_seedB0_eq : (kdfCk trR2_stA0.cks).2 = trR2_seedB0 := by
   show (kdfCk (createChain trR2_keys.rk (dhPk spkB) trR2_dhsA).2).2 =

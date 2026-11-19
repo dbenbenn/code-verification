@@ -34,11 +34,11 @@ import Symbolic.DYBridge.DY.Actions.ProtocolEvent
 import Symbolic.DYBridge.DY.Actions.Random
 
 /-!
-# Satisfiability of `cliCompFits` for Plausible Witness Setups
+# Satisfiability of `CliSetupMatches` for Plausible Witness Setups
 
-Proves `cliCompFits_satisfiable`: every `PQXDHSpqrSetup` satisfying the decidable byte-shape
+Proves `cliSetupMatches_satisfiable`: every `PQXDHSpqrSetup` satisfying the decidable byte-shape
 predicate `Plausible` admits an interpretation, CLI hooks, and `ProtocolSetup` records
-(`cliWitnessInterp`, `cliWitnessHooks`, `w.compRecords`) satisfying `cliCompFits`.
+(`cliWitnessInterp`, `cliWitnessHooks`, `w.compRecords`) satisfying `CliSetupMatches`.
 -/
 
 @[expose] public section
@@ -84,12 +84,14 @@ theorem length_toyAgreement (point : HwBytes) : (toyAgreement point).length = 32
   · simp
   · exact toyNonzeroAgreement_length
 
-/-- Decidable byte-length, slice, and torsion-shift conditions on `w` sufficient for `cliCompFits`. -/
+/-- Decidable byte-length, slice, and torsion-shift conditions on `w` sufficient for `CliSetupMatches`. -/
 def PQXDHSpqrSetup.Plausible (w : PQXDHSpqrSetup) : Prop :=
   w.aliceId.length = 32 ∧ w.bobId.length = 32 ∧ w.spk.length = 32 ∧ w.spkSig.length = 64 ∧
     w.kyberPk.length = 1568 ∧ w.kyberPkSig.length = 64 ∧ w.kyberSec.length = 3169 ∧
     slice w.kyberSec 1537 1568 = w.kyberPk ∧
-    [w.aliceId, w.bobId, w.spk, fillFresh 11 64, fillFresh 16 64, fillFresh 17 64].Nodup ∧
+    ([w.aliceId, w.bobId, w.spk, fillFresh 11 64, fillFresh 16 64, fillFresh 17 64] ++
+      if w.withOpk then [w.opk] else []).Nodup ∧
+    (w.withOpk = true → w.opk.length = 32) ∧
     ∀ ab ∈ w.torsionShifts,
       ab.1.length = 32 ∧ ab.2.length = 32 ∧
       isLowOrderKey (ab.1.map BitVec.toNat) = false ∧
@@ -99,11 +101,12 @@ def PQXDHSpqrSetup.Plausible (w : PQXDHSpqrSetup) : Prop :=
 instance (w : PQXDHSpqrSetup) : Decidable w.Plausible := by
   unfold PQXDHSpqrSetup.Plausible; infer_instance
 
-/-- Concrete fresh-byte schedule placing `w.aliceId`, `w.bobId`, and `w.spk` at `t = 0, 5, 10` and
-`fillFresh` elsewhere. -/
+/-- Concrete fresh-byte schedule placing `w.aliceId`, `w.bobId`, `w.spk`, and (when `w.withOpk`)
+`w.opk` at `t = 0, 5, 10, 22`, and `fillFresh` elsewhere. -/
 def PQXDHSpqrSetup.fresh (w : PQXDHSpqrSetup) (t n : Nat) : HwBytes :=
   if t = 0 ∧ n = 32 then w.aliceId else if t = 5 ∧ n = 32 then w.bobId
-  else if t = 10 ∧ n = 32 then w.spk else fillFresh t n
+  else if t = 10 ∧ n = 32 then w.spk else if t = 22 ∧ n = 32 then w.opk
+  else fillFresh t n
 
 theorem fillFresh_ne_11_17 : fillFresh 17 64 ≠ fillFresh 11 64 := by decide
 
@@ -126,8 +129,8 @@ def PQXDHSpqrSetup.compGhost (w : PQXDHSpqrSetup) : Ghost where
 
 def PQXDHSpqrSetup.compRecords (w : PQXDHSpqrSetup) :
     DY.Libsignal.Composed.Refinement.ProtocolSetup :=
-  { alice := "alice", bob := "bob", withOpk := false, regIdA := w.regIdA, regIdB := w.regIdB,
-    spkId := w.spkId, kpkId := w.kpkId, opkId := 0, kyberSecB := w.kyberSec, fresh := w.fresh,
+  { alice := "alice", bob := "bob", withOpk := w.withOpk, regIdA := w.regIdA, regIdB := w.regIdB,
+    spkId := w.spkId, kpkId := w.kpkId, opkId := w.opkId, kyberSecB := w.kyberSec, fresh := w.fresh,
     opaqueBytes :=
       DY.Libsignal.Composed.Refinement.gamma cliWitnessInterp w.compSem w.compGhost }
 
@@ -186,19 +189,20 @@ theorem compRecords_ne (w : PQXDHSpqrSetup) : w.compRecords.alice ≠ w.compReco
 
 theorem compRecords_alice (w : PQXDHSpqrSetup) : w.compRecords.alice = "alice" := rfl
 theorem compRecords_bob (w : PQXDHSpqrSetup) : w.compRecords.bob = "bob" := rfl
-theorem compRecords_withOpk (w : PQXDHSpqrSetup) : w.compRecords.withOpk = false := rfl
+theorem compRecords_withOpk (w : PQXDHSpqrSetup) : w.compRecords.withOpk = w.withOpk := rfl
 
 def compT4 : DY.ExecTrace :=
   ((DY.Libsignal.Composed.Refinement.setupAct "alice" "bob" false).run DY.Trace.nil).2.val
 
-theorem compRecords_setupTrace (w : PQXDHSpqrSetup) :
+theorem compRecords_setupTrace (w : PQXDHSpqrSetup) (hw : w.withOpk = false) :
     DY.Libsignal.Composed.Refinement.setupTrace w.compRecords = compT4 := by
   unfold DY.Libsignal.Composed.Refinement.setupTrace compT4
-  rw [compRecords_alice, compRecords_bob, compRecords_withOpk]
+  rw [compRecords_alice, compRecords_bob, compRecords_withOpk, hw]
 
 theorem compRecords_randomsAt (w : PQXDHSpqrSetup) :
     DY.Libsignal.Composed.Refinement.setupRandomsAt w.compRecords =
-      [(0, 32), (5, 32), (10, 32), (11, 64), (16, 64), (17, 64)] :=
+      [(0, 32), (5, 32), (10, 32), (11, 64), (16, 64), (17, 64)] ++
+        if w.withOpk then [(22, 32)] else [] :=
   Symbolic.Swarm.CREF.b1_setupRandomsAt_eq w.compRecords (compRecords_ne w)
 
 theorem compRecords_public (w : PQXDHSpqrSetup) :
@@ -219,10 +223,10 @@ theorem compRecords_public (w : PQXDHSpqrSetup) :
    Symbolic.Swarm.CREF.b1_setupPublic_7 w.compRecords (compRecords_ne w)⟩
 
 /-- Every plausible witness setup admits an interpretation, CLI hooks, and `ProtocolSetup` records
-satisfying `cliCompFits`. -/
-theorem cliCompFits_satisfiable (w : PQXDHSpqrSetup) (h : w.Plausible) :
-    ∃ iw r, cliCompFits w iw r := by
-  obtain ⟨ha, hb, hs, hss, hk, hks, hsec, hslice, hnd, _⟩ := h
+satisfying `CliSetupMatches`. -/
+theorem cliSetupMatches_satisfiable (w : PQXDHSpqrSetup) (h : w.Plausible) :
+    ∃ iw r, CliSetupMatches w iw r := by
+  obtain ⟨ha, hb, hs, hss, hk, hks, hsec, hslice, hnd, hopk_len, _⟩ := h
   obtain ⟨h5, h6, h7⟩ := compRecords_public w
   have hR := compRecords_randomsAt w
   have o5 : w.compRecords.opaqueBytes
@@ -255,11 +259,18 @@ theorem cliCompFits_satisfiable (w : PQXDHSpqrSetup) (h : w.Plausible) :
     refine ⟨compRecords_ne w, ?_, ?_, ?_, ?_, ?_, hsec, ?_⟩
     · rw [hR]
       intro p hp
-      simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
-      rcases hp with rfl | rfl | rfl | rfl | rfl | rfl <;>
-        simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh, fillFresh, ha, hb, hs]
+      rcases List.mem_append.mp hp with hp | hp
+      · simp only [List.mem_cons, List.not_mem_nil, or_false] at hp
+        rcases hp with rfl | rfl | rfl | rfl | rfl | rfl <;>
+          simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh, fillFresh, ha, hb, hs]
+      · cases hw : w.withOpk
+        · simp [hw] at hp
+        · simp [hw] at hp
+          subst hp
+          simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh, hopk_len hw]
     · rw [hR]
-      simpa [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh] using hnd
+      cases hw : w.withOpk <;>
+        simpa [hw, PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh] using hnd
     · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.spkSigTerm]; rw [o5]; exact hss
     · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkPubTerm]; rw [o6]; exact hk
     · dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkSigTerm]; rw [o7]; exact hks
@@ -267,11 +278,22 @@ theorem cliCompFits_satisfiable (w : PQXDHSpqrSetup) (h : w.Plausible) :
       dsimp only [DY.Libsignal.Composed.Refinement.ProtocolSetup.pqpkPubTerm]
       rw [o6]; exact hslice
   have hs0 : secretBytes w.compRecords 0 = w.aliceId := by
-    rw [secretBytes, hR]; simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh]
+    rw [secretBytes, hR]; cases w.withOpk <;> simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh]
   have hs1 : secretBytes w.compRecords 1 = w.bobId := by
-    rw [secretBytes, hR]; simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh]
+    rw [secretBytes, hR]; cases w.withOpk <;> simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh]
   have hs2 : secretBytes w.compRecords 2 = w.spk := by
-    rw [secretBytes, hR]; simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh]
+    rw [secretBytes, hR]; cases w.withOpk <;> simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh]
+  have hopk_fit :
+      (match w.withOpk with
+       | false => w.compRecords.withOpk = false
+       | true =>
+         w.compRecords.withOpk = true ∧ w.compRecords.opkId = w.opkId ∧
+           secretBytes w.compRecords 6 = w.opk) := by
+    cases hw : w.withOpk
+    · simp [PQXDHSpqrSetup.compRecords, hw]
+    · refine ⟨by simp [PQXDHSpqrSetup.compRecords, hw], rfl, ?_⟩
+      rw [secretBytes, hR]
+      simp [PQXDHSpqrSetup.compRecords, PQXDHSpqrSetup.fresh, hw]
   have hc := cliWitnessInterp_contracts
   have hlen : ∀ {s : String} {n : Nat}, witnessLength s = some n → ∀ args,
       cliWitnessInterp s args = some (List.replicate n 0#8) := by
@@ -291,7 +313,7 @@ theorem cliCompFits_satisfiable (w : PQXDHSpqrSetup) (h : w.Plausible) :
       rw [← he.2, List.drop_replicate]
     rw [kyberDecapsBytes, hdec, hss_eq]
   exact ⟨(cliWitnessInterp, cliWitnessHooks), w.compRecords,
-    ⟨hwf, rfl, rfl, rfl, rfl, rfl, hs0, hs1, hs2, o5, o6, o7, rfl, hc.1, hc.2.1, hkyb⟩,
+    ⟨hwf, hopk_fit, rfl, rfl, rfl, rfl, hs0, hs1, hs2, o5, o6, o7, rfl, hc.1, hc.2.1, hkyb⟩,
     hc, cliWitnessHooks_agree⟩
 
 end Symbolic.BugInjection

@@ -9,9 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Defs
 import LibsignalBinary.Proofs.TripleRatchet.RawByteMove.Move
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # `SessionRecord` Inline-Byte Decomposition and 312-Byte Move Lemmas
@@ -22,7 +24,7 @@ and address-independent `recordHeap A g r`, providing word-repack and niche-boun
 lemmas for `load_session` and `store_session`.
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.LibsignalPublicApi.StoreKit.Pf.RecordMove
 
@@ -39,20 +41,20 @@ open CryptoVerification.LibsignalPublicApi.StoreKit
 /-! ## 1. `current_session` (344 Bytes at `p + 0x18`) Inline-Byte & Heap Decomposition -/
 
 /-- Pure W0 invariant on `SessionGhost` and `Session` carried by `sessionStateReprAt`. -/
-def SessionAtPure (G : SessionGhost) (s : Session (List (BitVec 8))) : Prop :=
+@[expose] def SessionAtPure (G : SessionGhost) (s : Session (List (BitVec 8))) : Prop :=
   PendingRel G.pending s.pendingPreKey ∧ KyberRel G.kyber s.pendingKyberPreKey ∧
     G.alice.bytes = s.aliceBaseKey ∧ G.regIds.take 4 = leBytes 4 s.remoteRegistrationId.toNat ∧
     (G.regIds.drop 4).take 4 = leBytes 4 s.localRegistrationId.toNat
 
 /-- Word 0 (`+0x18` of the record) of `current_session`: `noneCap` (`-1`) when `g.cur = none`,
 or `G.localIk.cap` when `g.cur = some G`. -/
-def recordCurCap (g : RecordGhost) : BitVec 64 :=
+@[expose] def recordCurCap (g : RecordGhost) : BitVec 64 :=
   match g.cur with
   | none => noneCap
   | some G => G.localIk.cap
 
 /-- Spatial predicate for the 344-byte `current_session` field at `ss = p + 0x18`. -/
-def curSessionAt (A : RustAlloc) (ss : BitVec 64) (gcur : Option SessionGhost)
+@[expose] def curSessionAt (A : RustAlloc) (ss : BitVec 64) (gcur : Option SessionGhost)
     (rcur : Option (Session (List (BitVec 8)))) : SepProp :=
   match gcur, rcur with
   | none, none => (ss ↦₆₄ noneCap) ∗ memRegion (ss + 8#64) 336
@@ -60,7 +62,7 @@ def curSessionAt (A : RustAlloc) (ss : BitVec 64) (gcur : Option SessionGhost)
   | _, _ => ⌜False⌝
 
 /-- Position-independent pure predicate on the 344 inline bytes `bs` of `curSessionAt A ss gcur rcur`. -/
-def CurSessionInline : Option SessionGhost → Option (Session (List (BitVec 8))) → List (BitVec 8) → Prop
+@[expose] def CurSessionInline : Option SessionGhost → Option (Session (List (BitVec 8))) → List (BitVec 8) → Prop
   | none, none, bs =>
     ∃ pad : List (BitVec 8), pad.length = 336 ∧ bs = unpack64 noneCap ++ pad
   | some G, some s, bs =>
@@ -68,7 +70,7 @@ def CurSessionInline : Option SessionGhost → Option (Session (List (BitVec 8))
   | _, _, _ => False
 
 /-- Position-independent detached heap of `curSessionAt A ss gcur rcur`. Does not mention `ss`. -/
-def curSessionHeap (A : RustAlloc) :
+@[expose] def curSessionHeap (A : RustAlloc) :
     Option SessionGhost → Option (Session (List (BitVec 8))) → SepProp
   | none, none => emp
   | some G, some s => ⌜SessionAtPure G s⌝ ∗ sessionHeap A G s.state
@@ -141,21 +143,12 @@ theorem curSessionAt_eq_inline_sep_heap (A : RustAlloc) (ss : BitVec 64)
       apply RawByteMove.sepExists_congr; intro bs
       ac_rfl
 
-/-- Reassemble `curSessionAt A dst gcur rcur` from `(dst ↦ₛ bs) ∗ curSessionHeap A gcur rcur`. -/
-theorem curSessionAt_of_bytes (A : RustAlloc) (dst : BitVec 64)
-    (gcur : Option SessionGhost) (rcur : Option (Session (List (BitVec 8))))
-    {bs : List (BitVec 8)} (h : CurSessionInline gcur rcur bs) :
-    ((dst ↦ₛ bs) ∗ curSessionHeap A gcur rcur) ⊢ curSessionAt A dst gcur rcur := by
-  rw [curSessionAt_eq_inline_sep_heap A dst gcur rcur]
-  refine Entails.sepExists_right bs ?_
-  exact Entails.pure_right ⟨h.length_eq, h⟩ (Entails.refl _)
-
 /-! ## 2. `sessionRecordAt` (368 Bytes = 24 B Header + 344 B `current_session`) Decomposition & Moves -/
 
 /-- Position-independent pure predicate on the 368 inline bytes `bs` of `sessionRecordAt A p g r`:
 the 24-byte `previous_sessions` `Vec` header `{g.prevCap, g.prevPtr, 0}` followed by 344 bytes
 satisfying `CurSessionInline g.cur r.currentSession`. -/
-def RecordInline (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
+@[expose] def RecordInline (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
     (bs : List (BitVec 8)) : Prop :=
   ∃ curBs : List (BitVec 8),
     curBs.length = 344 ∧
@@ -163,7 +156,7 @@ def RecordInline (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
     bs = vecHeaderBytes g.prevCap g.prevPtr 0#64 ++ curBs
 
 /-- Position-independent detached heap of `sessionRecordAt A p g r`. Does not mention `p`. -/
-def recordHeap (A : RustAlloc) (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) :
+@[expose] def recordHeap (A : RustAlloc) (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) :
     SepProp :=
   vecBuf A 24 8 (fun (_ : Unit) _ => emp) g.prevCap g.prevPtr [] ∗
     curSessionHeap A g.cur r.currentSession
@@ -238,78 +231,6 @@ theorem sessionRecordAt_eq_inline_sep_heap (A : RustAlloc) (p : BitVec 64)
     refine Entails.sepExists_right curBs ?_
     exact Entails.pure_right ⟨hcur_len, hcur_inl⟩ (Entails.refl _)
 
-/-- Entailment direction of `sessionRecordAt_eq_inline_sep_heap`. -/
-theorem sessionRecordAt_entails_inline_sep_heap (A : RustAlloc) (p : BitVec 64)
-    (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) :
-    sessionRecordAt A p g r ⊢
-      ∃∗ bs : List (BitVec 8),
-        ⌜bs.length = 368 ∧ RecordInline g r bs⌝ ∗ (p ↦ₛ bs) ∗ recordHeap A g r :=
-  Entails.of_eq (sessionRecordAt_eq_inline_sep_heap A p g r)
-
-/-- Reassemble `sessionRecordAt A dst g r` from `(dst ↦ₛ bs) ∗ recordHeap A g r`
-given `RecordInline g r bs`. -/
-theorem sessionRecordAt_of_bytes (A : RustAlloc) (dst : BitVec 64)
-    (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
-    {bs : List (BitVec 8)} (h : RecordInline g r bs) :
-    ((dst ↦ₛ bs) ∗ recordHeap A g r) ⊢ sessionRecordAt A dst g r := by
-  rw [sessionRecordAt_eq_inline_sep_heap A dst g r]
-  refine Entails.sepExists_right bs ?_
-  exact Entails.pure_right ⟨h.length_eq, h⟩ (Entails.refl _)
-
-/-- Forgetting the 368 inline bytes of `sessionRecordAt` yields
-`memRegion p 368 ∗ recordHeap A g r`. -/
-theorem sessionRecordAt_entails_memRegion_sep_heap (A : RustAlloc) (p : BitVec 64)
-    (g : RecordGhost) (r : SessionRecord (List (BitVec 8))) :
-    sessionRecordAt A p g r ⊢ memRegion p 368 ∗ recordHeap A g r := by
-  rw [sessionRecordAt_eq_inline_sep_heap A p g r]
-  apply Entails.sepExists_elim; intro bs
-  apply Entails.pure_left; rintro ⟨hlen, _⟩
-  apply sepConj_mono_left
-  have h := pointsToBytes_entails_memRegion p bs
-  rwa [hlen] at h
-
-/-- Move `sessionRecordAt` from `src` to `dst` given `RecordInline g r bs`, leaving `src ↦ₛ bs`. -/
-theorem sessionRecordAt_move_bytes (A : RustAlloc) (src dst : BitVec 64)
-    (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
-    {bs : List (BitVec 8)} (h : RecordInline g r bs) :
-    ((dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ recordHeap A g r) ⊢
-      sessionRecordAt A dst g r ∗ (src ↦ₛ bs) := by
-  have hpull :
-      ((dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ recordHeap A g r) =
-      (((dst ↦ₛ bs) ∗ recordHeap A g r) ∗ (src ↦ₛ bs)) := by
-    ac_rfl
-  rw [hpull]
-  exact sepConj_mono_left (sessionRecordAt_of_bytes A dst g r h)
-
-/-- Move `sessionRecordAt` from `src` to `dst` after copying `bs`, collapsing `src ↦ₛ bs` to
-`memRegion src 368`. -/
-theorem sessionRecordAt_move_to_memRegion (A : RustAlloc) (src dst : BitVec 64)
-    (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
-    {bs : List (BitVec 8)} (h : RecordInline g r bs) :
-    ((dst ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ recordHeap A g r) ⊢
-      sessionRecordAt A dst g r ∗ memRegion src 368 := by
-  refine Entails.trans (sessionRecordAt_move_bytes A src dst g r h) ?_
-  apply sepConj_mono_right
-  have hregion := pointsToBytes_entails_memRegion src bs
-  rwa [h.length_eq] at hregion
-
-/-- Two-hop move of `sessionRecordAt` (`src → mid → dst`): reassembles `sessionRecordAt A dst g r`
-and collapses both `mid` and `src` to 368-byte `memRegion`s. -/
-theorem sessionRecordAt_move_bytes_twice (A : RustAlloc) (src mid dst : BitVec 64)
-    (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
-    {bs : List (BitVec 8)} (h : RecordInline g r bs) :
-    ((dst ↦ₛ bs) ∗ (mid ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ recordHeap A g r) ⊢
-      sessionRecordAt A dst g r ∗ memRegion mid 368 ∗ memRegion src 368 := by
-  have hpull :
-      ((dst ↦ₛ bs) ∗ (mid ↦ₛ bs) ∗ (src ↦ₛ bs) ∗ recordHeap A g r) =
-      (((dst ↦ₛ bs) ∗ (mid ↦ₛ bs) ∗ recordHeap A g r) ∗ (src ↦ₛ bs)) := by
-    ac_rfl
-  rw [hpull]
-  refine Entails.trans (sepConj_mono (sessionRecordAt_move_to_memRegion A mid dst g r h) ?_)
-    (Entails.of_eq (sepConj_assoc _ _ _))
-  have hsrc := pointsToBytes_entails_memRegion src bs
-  rwa [h.length_eq] at hsrc
-
 /-! ## 3. Splitting `sessionRecordAt` into 56-B Header Words (`24 + 8 + 24`) + 312-B `memcpy` Tail -/
 
 /-- Any `curBs` satisfying `CurSessionInline g.cur r.currentSession curBs` splits into
@@ -369,7 +290,7 @@ theorem CurSessionInline.exists_split_8_24_312 {g : RecordGhost}
   rw [s3, s2, s1, List.take_append_drop]
 
 /-- The 56-byte leading header of a `SessionRecord` at `p` as 7 64-bit words (`+0x00..+0x38`). -/
-def recordWords56At (p w0 w1 w2 w3 w4 w5 w6 : BitVec 64) : SepProp :=
+@[expose] def recordWords56At (p w0 w1 w2 w3 w4 w5 w6 : BitVec 64) : SepProp :=
   (p ↦₆₄ w0) ∗ ((p + 8#64) ↦₆₄ w1) ∗ ((p + 0x10#64) ↦₆₄ w2) ∗
     ((p + 0x18#64) ↦₆₄ w3) ∗ ((p + 0x20#64) ↦₆₄ w4) ∗
     ((p + 0x28#64) ↦₆₄ w5) ∗ ((p + 0x30#64) ↦₆₄ w6)
@@ -406,7 +327,7 @@ theorem recordWords56At_entails_memRegion (p w0 w1 w2 w3 w4 w5 w6 : BitVec 64) :
 
 /-- Pure inline relation for the `56 + 312` decomposition of `sessionRecordAt`:
 words `w4, w5, w6` at `+0x20..+0x38` and 312-byte `tail` at `+0x38..+0x170`. -/
-def RecordTailInline (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
+@[expose] def RecordTailInline (g : RecordGhost) (r : SessionRecord (List (BitVec 8)))
     (w4 w5 w6 : BitVec 64) (tail : List (BitVec 8)) : Prop :=
   tail.length = 312 ∧
     CurSessionInline g.cur r.currentSession
@@ -622,62 +543,5 @@ theorem recordHeap_curCap_lt_two_pow_63_of_some (A : RustAlloc) (g : RecordGhost
   exact Entails.refl _
 
 /-! ## 6. Relocatable `[LibsignalPlacement]` Proofs -/
-
-/-- Placed `loadPollPlacedOutAtS` coincides with `loadPollOutAtS` at any base `b` on `.ok`. -/
-theorem loadPollPlacedOutAtS_ok_eq [LibsignalPlacement]
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (A : RustAlloc)
-    (b out : BitVec 64) (o : Option (SessionRecord (List (BitVec 8)))) :
-    loadPollPlacedOutAtS Scope A out (.ok o) = loadPollOutAtS Scope A b out (.ok o) := by
-  cases o <;> rfl
-
-/-- Placed `storePollPlacedOutAt` coincides with `storePollOutAt` at any base `b` on `.ok`. -/
-theorem storePollPlacedOutAt_ok_eq [LibsignalPlacement] (b out : BitVec 64) (u : Unit) :
-    storePollPlacedOutAt out (.ok u) = storePollOutAt b out (.ok u) := by
-  cases u; rfl
-
-/-- Placed `trustPollPlacedOutAt` coincides with `trustPollOutAt` at any base `b` on `.ok`. -/
-theorem trustPollPlacedOutAt_ok_eq [LibsignalPlacement] (b out : BitVec 64) (t : Bool) :
-    trustPollPlacedOutAt out (.ok t) = trustPollOutAt b out (.ok t) := rfl
-
-/-- Placed `savePollPlacedOutAt` coincides with `savePollOutAt` at any base `b` on `.ok`. -/
-theorem savePollPlacedOutAt_ok_eq [LibsignalPlacement] (b out : BitVec 64) (c : IdentityChange) :
-    savePollPlacedOutAt out (.ok c) = savePollOutAt b out (.ok c) := rfl
-
-/-- Placed `loadPollPlacedOutAtS` `.ok (some r)` decomposes into `recordWords56At`, 312-B tail bytes,
-and `recordHeap` with the `prevCap < 2^63` niche bound exposed. -/
-theorem loadPollPlacedOutAtS_some_words56 [LibsignalPlacement]
-    (Scope : SessionRecord (List (BitVec 8)) → Prop) (A : RustAlloc) (out : BitVec 64)
-    (r : SessionRecord (List (BitVec 8))) :
-    loadPollPlacedOutAtS Scope A out (.ok (some r)) ⊢
-      ⌜Scope r⌝ ∗ ∃∗ g : RecordGhost, ∃∗ w4 : BitVec 64, ∃∗ w5 : BitVec 64,
-        ∃∗ w6 : BitVec 64, ∃∗ tail : List (BitVec 8),
-        ⌜g.prevCap.toNat < 2 ^ 63 ∧ RecordTailInline g r w4 w5 w6 tail⌝ ∗
-        recordWords56At out g.prevCap g.prevPtr 0#64 (recordCurCap g) w4 w5 w6 ∗
-        (out + 0x38#64) ↦ₛ tail ∗
-        recordHeap A g r := by
-  dsimp only [loadPollPlacedOutAtS]
-  apply sepConj_mono_right
-  apply Entails.sepExists_elim; intro g
-  refine Entails.sepExists_right g ?_
-  rw [sessionRecordAt_eq_words56_sep_tail A out g r]
-  apply Entails.sepExists_elim; intro w4
-  apply Entails.sepExists_elim; intro w5
-  apply Entails.sepExists_elim; intro w6
-  apply Entails.sepExists_elim; intro tail
-  refine Entails.sepExists_right w4 ?_
-  refine Entails.sepExists_right w5 ?_
-  refine Entails.sepExists_right w6 ?_
-  refine Entails.sepExists_right tail ?_
-  apply Entails.pure_left; intro htail
-  refine Entails.trans (sepConj_mono_right (sepConj_mono_right (recordHeap_prevCap_lt_two_pow_63 A g r))) ?_
-  have hcomm :
-      recordWords56At out g.prevCap g.prevPtr 0#64 (recordCurCap g) w4 w5 w6 ∗
-        ((out + 0x38#64) ↦ₛ tail ∗ (⌜g.prevCap.toNat < 2 ^ 63⌝ ∗ recordHeap A g r)) =
-      ⌜g.prevCap.toNat < 2 ^ 63⌝ ∗
-        (recordWords56At out g.prevCap g.prevPtr 0#64 (recordCurCap g) w4 w5 w6 ∗
-          (out + 0x38#64) ↦ₛ tail ∗ recordHeap A g r) := by ac_rfl
-  rw [hcomm]
-  apply Entails.pure_left; intro hlt
-  exact Entails.pure_right ⟨hlt, htail⟩ (Entails.refl _)
 
 end CryptoVerification.LibsignalPublicApi.StoreKit.Pf.RecordMove

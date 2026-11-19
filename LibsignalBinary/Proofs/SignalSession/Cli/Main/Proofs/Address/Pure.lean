@@ -9,10 +9,15 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model
+public import LibsignalBinary.Proofs.SignalSession.Cli.Main.Model -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WP.StateNorm
+import LibsignalBinary.Proofs.SpecLemmas.ReachesOutcome
+import LibsignalBinary.Specifications.LibsignalSessionRepr
+import LibsignalBinary.Specifications.LibsignalTripleRatchetRepr
+import LibsignalBinary.Specifications.RustHeap.Alloc
+import LibsignalBinary.Specifications.RustHeap.Vec
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -36,11 +41,11 @@ structure MemrchrCall where
   bs : List (BitVec 8)
 
 /-- Index of the last occurrence of `c` in `bs` (matching `CliRun.memrchrHook`). -/
-def memrchrIdx (c : BitVec 8) (bs : List (BitVec 8)) : Option Nat :=
+@[expose] def memrchrIdx (c : BitVec 8) (bs : List (BitVec 8)) : Option Nat :=
   ((List.range bs.length).filter fun i => bs[i]? == some c).getLast?
 
 /-- Specification of `core::slice::memchr::memrchr(c, p, len) -> Option<usize>`. -/
-def memrchrSpec (stk : Nat) : Spec MemrchrCall where
+@[expose] def memrchrSpec (stk : Nat) : Spec MemrchrCall where
   pre := fun x s =>
     ⌜(s.readReg64 .x0).setWidth 8 = x.c ∧ s.readReg64 .x1 = x.p ∧
       s.readReg64 .x2 = BitVec.ofNat 64 x.bs.length ∧ x.bs.length < 2 ^ 64⌝ ∗
@@ -195,7 +200,7 @@ theorem memrchrIdx_some_props {bs : List (BitVec 8)} {i : Nat}
 
 set_option maxRecDepth 200000
 
-def digitSub32 (b : BitVec 8) : BitVec 32 :=
+@[expose] def digitSub32 (b : BitVec 8) : BitVec 32 :=
   b.zeroExtend 32 - 0x30#32
 
 theorem isDigit_iff_sub32_ule9 (b : BitVec 8) :

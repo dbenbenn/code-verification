@@ -11,14 +11,14 @@ module
 
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.CloseDefs
 public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDefs
-public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX
+public import LibsignalBinary.Proofs.SessionRecordAt.Hooks2.Ser.SerializeBodyHelpersX -- proof-setup: allow-public-import
 public import LibsignalBinary.Proofs.E2E.Record.Serialization.EncodeRawAux.Base
-import GeneratedLean.LibsignalSessionCode -- shake: keep
 import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Over.VecVecDrop
 import LibsignalBinary.Proofs.E2E.Record.Serialization.Canon
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Fetch
 import LibsignalBinary.Proofs.E2E.Record.Serialization.SerializeBodyAux.Helpers
 import ProofLib.SepLogic.WPp
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # `SessionRecord::serialize` (`Prev1`) Body Specs, Step Statements, and Helpers
@@ -28,14 +28,14 @@ Defines the memory-level output encoding `encodeRecordPrev1Mem`, internal body s
 and stack/heap framing lemmas for `SessionRecord::serialize` on a record with one previous session.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option linter.unusedVariables false
 
 namespace CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over
 
-open Arm64 ProofLib ProofLib.ObjectLoad CryptoGames
+open Arm64 ProofLib CryptoGames
 open CryptoGames.LibsignalSession CryptoGames.LibsignalSessionApi
 open CryptoVerification CryptoVerification.RustHeap
 open CryptoVerification.LibsignalSessionRepr CryptoVerification.LibsignalPublicApiRepr
@@ -49,7 +49,7 @@ open Proofs.libsignal.Hooks2
 
 /-- Wire bytes written by `SessionRecord::serialize` for current session `sess` (ghost `G`) and
 `previous_sessions = [enc]`: field 1 (`encSessionMem G sess`) followed by field 2 (`enc`). -/
-def encodeRecordPrev1Mem (G : SessionGhost) (sess : Session (List (BitVec 8)))
+@[expose] def encodeRecordPrev1Mem (G : SessionGhost) (sess : Session (List (BitVec 8)))
     (enc : List (BitVec 8)) : List (BitVec 8) :=
   CryptoVerification.E2E.Record.lenField 1 (encSessionMem G sess) ++
     CryptoVerification.E2E.Record.lenField 2 enc
@@ -75,7 +75,7 @@ structure SerializePrev1BodyGhost where
 
 /-- Specification of `SessionRecord::serialize` on a record with a current session and
 `previous_sessions = [enc]`, at `serializeStackX` and a 32-byte `out` slot. -/
-def serializePrev1BodySpecX (A : RustAlloc) : Spec SerializePrev1BodyGhost where
+@[expose] def serializePrev1BodySpecX (A : RustAlloc) : Spec SerializePrev1BodyGhost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.self ∧ s.readReg64 .x8 = x.out ∧
       (encodeRecordPrev1Mem x.G x.sess x.enc).length < 2 ^ 32⌝ ∗
@@ -90,20 +90,9 @@ def serializePrev1BodySpecX (A : RustAlloc) : Spec SerializePrev1BodyGhost where
       A.pool ∗ stackAt s0.sp serializeStackX
   onPanic := fun _ s0 sf => ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap
 
-def SerializePrev1BodyOkStmt (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  subroutine_ok (SP2Ext img.base ext) ((SP2Ext img.base ext).fnAddr serializeName)
-    ((serializePrev1BodySpecX A).inImage img)
-
-def SerializePrev1BridgeStmt : Prop :=
-  ∀ (img : Obj.Image) (A : RustAlloc) (ext : String → Option (State → State)),
-    SerializePrev1BodyOkStmt img A ext → SerializePrev1OkStmt img A ext
-
-/-! ## Field-2 Write Step (`+444 .. +692`) -/
-
 /-- Registers preserved across the field-2 write block: `x19` (`out`), `x23` (clone word 0),
 `x24` (`sp`), `x28`, `fp`, and callee-saved vector registers. -/
-def SerField2Saved (s sm : State) : Prop :=
+@[expose] def SerField2Saved (s sm : State) : Prop :=
   sm.readReg64 .x19 = s.readReg64 .x19 ∧
   sm.readReg64 .x23 = s.readReg64 .x23 ∧
   sm.readReg64 .x24 = s.readReg64 .x24 ∧
@@ -111,41 +100,7 @@ def SerField2Saved (s sm : State) : Prop :=
   sm.readReg64 .fp = s.readReg64 .fp ∧
   calleeSavedVRegs sm = calleeSavedVRegs s
 
-/-- Continuation-passing contract for the field-2 write block (`+444 .. +692`). -/
-def SerField2StepStmt (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  ∀ (sp0 q' cap ptr capE ptrE : BitVec 64) (bs enc : List (BitVec 8))
-    {ret : BitVec 64} {s0 s : State} {P F : SepProp} {Q Qp : State → SepProp → Prop},
-    (∀ sf P_f,
-      CryptoVerification.E2E.Record.Serialization.EncodeRawAux.PanicAllocPost s0 sf P_f →
-        Qp sf P_f) →
-    bs.length + (CryptoVerification.E2E.Record.lenField 2 enc).length < 2 ^ 32 →
-    s.pc = (SP2Ext img.base ext).fnAddr serializeName + bv% (444) →
-    s.status = .Running →
-    s.sp = sp0 - 800#64 →
-    sp0 &&& 15#64 = 0#64 →
-    s.trace = s0.trace →
-    s.readReg64 .x22 = q' →
-    s.readReg64 .x25 = 1#64 →
-    P = (vecU8At A (sp0 - 432#64) cap ptr bs ∗ vecU8At A q' capE ptrE enc ∗ A.pool ∗
-      stackAt (sp0 - 800#64) serializeSubStackX) ∗ F →
-    (∀ (sm : State) (cap' ptr' : BitVec 64),
-      sm.pc = (SP2Ext img.base ext).fnAddr serializeName + bv% (692) →
-      sm.status = .Running →
-      sm.sp = sp0 - 800#64 →
-      sm.trace = s0.trace →
-      SerField2Saved s sm →
-      SepWPpIn img (SP2Ext img.base ext) ret sm
-        ((vecU8At A (sp0 - 432#64) cap' ptr'
-            (bs ++ CryptoVerification.E2E.Record.lenField 2 enc) ∗
-          vecU8At A q' capE ptrE enc ∗ A.pool ∗
-          stackAt (sp0 - 800#64) serializeSubStackX) ∗ F)
-        Q Qp) →
-    SepWPpIn img (SP2Ext img.base ext) ret s P Q Qp
-
-/-! ## Lifted Callee Contracts at `serializeSubStackX` -/
-
-def vecVecClone1SubSpecX (A : RustAlloc) : Spec VecVecClone1Ghost where
+@[expose] def vecVecClone1SubSpecX (A : RustAlloc) : Spec VecVecClone1Ghost where
   pre := fun x s =>
     ⌜s.readReg64 .x0 = x.dst ∧ s.readReg64 .x1 = x.src ∧ s.readReg64 .x2 = 1#64⌝ ∗
       arrayAt (prevElem A) 24 x.src [x.enc] ∗ memRegion x.dst 24 ∗ A.pool ∗
@@ -156,63 +111,13 @@ def vecVecClone1SubSpecX (A : RustAlloc) : Spec VecVecClone1Ghost where
       stackAt s0.sp serializeSubStackX
   onPanic := allocPanic
 
-theorem vecVecClone1_sub_okX {img : Obj.Image} {A : RustAlloc}
-    {ext : String → Option (State → State)}
-    (hK1 : VecVecClone1OkStmt img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr serializeName +
-        bv% (ls_off% "<alloc::vec::Vec<alloc::vec::Vec<u8>> as core::clone::Clone>::clone" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-      ((vecVecClone1SubSpecX A).inImage img) := by
-  rw [vecVecClone_fnAddrX]
-  refine subroutine_ok_frame_weaken_inImage
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStackX)
-      (serializeSubStackX - vecVecClone1StackX))
-    hK1
-    (fun x s0 => ?_)
-    (fun x s0 sf => ?_)
-    (fun x s0 sf => allocPanic_frame_entails x s0 sf _)
-    (fun _ _ _ _ => rfl)
-  · simp only [vecVecClone1SubSpecX, vecVecClone1SpecX,
-      stackAt_serializeSub_splitX s0.sp vecVecClone1StackX (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [vecVecClone1SubSpecX, vecVecClone1SpecX,
-      stackAt_serializeSub_splitX s0.sp vecVecClone1StackX (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-
-def deallocSubSpecX (A : RustAlloc) : Spec (BitVec 64 × Nat × Nat) where
+@[expose] def deallocSubSpecX (A : RustAlloc) : Spec (BitVec 64 × Nat × Nat) where
   pre := fun (p, size, align) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = size ∧ (s.readReg64 .x2).toNat = align ∧
       LayoutOk size align⌝ ∗
       A.live p size align ∗ memRegion p size ∗ A.pool ∗ stackAt s.sp serializeSubStackX
   post := fun _ s0 sf =>
     ⌜sf.trace = s0.trace⌝ ∗ A.pool ∗ stackAt s0.sp serializeSubStackX
-
-theorem dealloc_sub_okX {img : Obj.Image} {A : RustAlloc} {ext : String → Option (State → State)}
-    (hC : SerContractsX img A ext) :
-    subroutine_ok (SP2Ext img.base ext)
-      ((SP2Ext img.base ext).fnAddr serializeName +
-        bv% (ls_off% "__rustc::__rust_dealloc" -
-          ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize"))
-      ((deallocSubSpecX A).inImage img) := by
-  have hdealloc := hC.alloc.dealloc_ok_at serializeName
-    (num% (ls_off% "__rustc::__rust_dealloc" -
-      ls_off% "<libsignal_protocol::state::session::SessionRecord>::serialize")) (by
-      simp only [libsignalSessionCode_fnOff_serialize, arm64_norm])
-  refine subroutine_ok_frame_weaken_inImage
-    (fun _ s0 => memRegion (s0.sp - BitVec.ofNat 64 serializeSubStackX)
-      (serializeSubStackX - Proofs.libsignal.Stage1X.extHookStack))
-    hdealloc
-    (fun ⟨p, size, align⟩ s0 => ?_)
-    (fun ⟨p, size, align⟩ s0 sf => ?_)
-    (fun _ _ _ => Entails.pure_left False.elim)
-    (fun _ _ _ _ => rfl)
-  · simp only [deallocSubSpecX, Proofs.libsignal.Stage1X.rustDeallocExternSpecWithStack,
-      stackAt_serializeSub_splitX s0.sp Proofs.libsignal.Stage1X.extHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
-  · simp only [deallocSubSpecX, Proofs.libsignal.Stage1X.rustDeallocExternSpecWithStack,
-      stackAt_serializeSub_splitX s0.sp Proofs.libsignal.Stage1X.extHookStack (by decide)]
-    exact Entails.of_eq (by ac_rfl)
 
 theorem layoutOk_cap_u8_ser {cap : BitVec 64} (h0 : cap ≠ 0#64) (hlt : cap.toNat < 2 ^ 63) :
     LayoutOk cap.toNat 1 := by
@@ -380,46 +285,12 @@ theorem lenField_two_length (bs : List (BitVec 8)) :
 
 /-- The 12 callee-saved stack cells stored by `serialize`'s prologue at `sp0 - 96 .. sp0 - 8`,
 with saved link register `ret`. -/
-def serSavedCells (s0 : State) (ret : BitVec 64) : SepProp :=
+@[expose] def serSavedCells (s0 : State) (ret : BitVec 64) : SepProp :=
   ((s0.sp - 96#64) ↦₆₄ s0.readReg64 .fp) ∗ ((s0.sp - 88#64) ↦₆₄ ret) ∗
   ((s0.sp - 80#64) ↦₆₄ s0.readReg64 .x28) ∗ ((s0.sp - 72#64) ↦₆₄ s0.readReg64 .x27) ∗
   ((s0.sp - 64#64) ↦₆₄ s0.readReg64 .x26) ∗ ((s0.sp - 56#64) ↦₆₄ s0.readReg64 .x25) ∗
   ((s0.sp - 48#64) ↦₆₄ s0.readReg64 .x24) ∗ ((s0.sp - 40#64) ↦₆₄ s0.readReg64 .x23) ∗
   ((s0.sp - 32#64) ↦₆₄ s0.readReg64 .x22) ∗ ((s0.sp - 24#64) ↦₆₄ s0.readReg64 .x21) ∗
   ((s0.sp - 16#64) ↦₆₄ s0.readReg64 .x20) ∗ ((s0.sp - 8#64) ↦₆₄ s0.readReg64 .x19)
-
-/-- Epilogue step of `SessionRecord::serialize` (`+692 .. ret`) with one previous session:
-writes `Ok(vec)` to `out`, drops the cloned `SessionStructure` and `Vec<Vec<u8>>`, and returns. -/
-def SerPrev1TailStmt (img : Obj.Image) (A : RustAlloc)
-    (ext : String → Option (State → State)) : Prop :=
-  ∀ (out q' capE ptrE cap' ptr' o0 o1 o2 o3 : BitVec 64) (bs enc : List (BitVec 8))
-    (w : SessionGhost) (sess' : Session (List (BitVec 8)))
-    {ret : BitVec 64} {s0 sm : State} {Fx : SepProp} {Q Qp : State → SepProp → Prop},
-    (∀ sf P_f,
-      CryptoVerification.E2E.Record.Serialization.EncodeRawAux.PanicAllocPost s0 sf P_f →
-        Qp sf P_f) →
-    (∀ sf : State, sf.trace = s0.trace → sf.sp = s0.sp → CalleeSavedPreserved s0 sf →
-      Q sf (((out ↦₆₄ okTagVec) ∗ vecU8 A (out + 8#64) bs ∗ A.pool ∗
-        stackAt s0.sp serializeStackX) ∗ Fx)) →
-    s0.sp &&& 15#64 = 0#64 →
-    sm.pc = (SP2Ext img.base ext).fnAddr serializeName + bv% (692) →
-    sm.status = .Running →
-    sm.sp = s0.sp - 800#64 →
-    sm.trace = s0.trace →
-    sm.readReg64 .x19 = out →
-    (sm.readReg64 .x23 + 1#64 == 0#64) = false →
-    sm.readReg64 .x24 = s0.sp - 800#64 →
-    calleeSavedVRegs sm = calleeSavedVRegs s0 →
-    SepWPpIn img (SP2Ext img.base ext) ret sm
-      ((vecU8At A (s0.sp - 432#64) cap' ptr' bs ∗ vecU8At A q' capE ptrE enc ∗ A.pool ∗
-          stackAt (s0.sp - 800#64) serializeSubStackX) ∗
-        (((s0.sp - 800#64) ↦₆₄ 1#64) ∗ ((s0.sp - 792#64) ↦₆₄ q') ∗
-          ((s0.sp - 784#64) ↦₆₄ 1#64) ∗ A.live q' 24 8 ∗
-          sessionStateReprAt A (s0.sp - 776#64) w sess' ∗
-          memRegion (s0.sp - 408#64) 312 ∗
-          (out ↦₆₄ o0) ∗ ((out + 8#64) ↦₆₄ o1) ∗ ((out + 16#64) ↦₆₄ o2) ∗
-          ((out + 24#64) ↦₆₄ o3) ∗
-          serSavedCells s0 ret ∗ Fx))
-      Q Qp
 
 end CryptoVerification.Cli.E2E.Pqxdh.ResponderClosure.Over

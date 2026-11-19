@@ -9,13 +9,12 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.ResponderWireCodeSym
-public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees
-public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom
-public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromHooks
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.ResponderWireCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.ReceiveRatchet.From.Callees -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.InImageCallees.PublicKeyTryFrom -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Wire.TryFromHooks -- proof-setup: allow-public-import
 public import LibsignalBinary.Specifications.LibsignalPublicApiRepr
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderWire.Fetch
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.FnOffEq
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEncodePure
 import LibsignalBinary.Proofs.PublicApi.MessageEncrypt.PreKeySignalMessageNew.FieldsEpilogue
@@ -33,7 +32,7 @@ fields of `PreKeySignalMessage`, and `<IdentityKey as TryFrom<&[u8]>>::try_from`
 Block `116`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Pqxdh.ResponderWire
 
@@ -96,7 +95,6 @@ theorem readReg_setMem_setPC_pre_wire (s : State) (pc : BitVec 64) (m : Memory)
     (w : RegWidth) (r : Reg) :
     ((s.setPC pc).setMem m).readReg w r = s.readReg w r := by
   cases w <;> cases r <;> rfl
-
 
 /-! ## Symbol Names and Stack Budget -/
 
@@ -281,7 +279,7 @@ attribute [local arm64_norm, local wp_norm]
 
 /-! ## `<IdentityKey as TryFrom<&[u8]>>::try_from` (`0x2c530`) -/
 
-def bytes32At (a : BitVec 64)
+@[expose] def bytes32At (a : BitVec 64)
     (b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 b10 b11 b12 b13 b14 b15
      b16 b17 b18 b19 b20 b21 b22 b23 b24 b25 b26 b27 b28 b29 b30 b31 : BitVec 8) : SepProp :=
   (a ↦₈ b0) ∗ ((a + 1#64) ↦₈ b1) ∗ ((a + 2#64) ↦₈ b2) ∗ ((a + 3#64) ↦₈ b3) ∗
@@ -374,7 +372,7 @@ theorem memRegion_7_bytes (a : BitVec 64) :
     memRegion_split (a + 1#64 + 1#64 + 1#64 + 1#64 + 1#64) 1 1 (by decide)]
   simp only [ProofLib.memRegion_one, BitVec.add_assoc, BitVec.reduceAdd]
 
-def memRegion_8_bytes_mr_rhs (a : BitVec 64) : SepProp :=
+@[expose] def memRegion_8_bytes_mr_rhs (a : BitVec 64) : SepProp :=
   memRegion a 1 ∗
   memRegion (a + 1#64) 1 ∗
   memRegion (a + 2#64) 1 ∗
@@ -444,114 +442,6 @@ private theorem memRegion_40_identityKey_post (sp : BitVec 64) :
       memRegion_8_bytes_mr (sp - 71#64),
       memRegion_8_bytes_mr (sp - 63#64)]
 
-private def pkTryFromOk40Spec (img : Obj.Image) :
-    Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
-  pre := fun (p, bs, pk, out) s =>
-    ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧
-      s.readReg64 .x8 = out ∧ PublicKey.deserialize bs = .ok pk⌝ ∗
-      (p ↦ₛ bs) ∗ memRegion out 40 ∗ logOff img
-  post := fun (p, bs, pk, out) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (p ↦ₛ bs) ∗ (out ↦₈ 0#8) ∗ ((out + 1#64) ↦ₛ pk.bytes.toList) ∗
-      memRegion (out + 33#64) 7 ∗ logOff img
-
-private theorem pkTryFromOk40_ok_at {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr identityKeyTryFromSliceName +
-        BitVec.ofNat 64 75180)
-      (pkTryFromOk40Spec img) := by
-  have hk : libsignalSessionCode.fnOff identityKeyTryFromSliceName + 75180 =
-      libsignalSessionCode.fnOff pkTryFromName := by
-    simp only [libsignalSessionCode_fnOff_0x2c614, libsignalSessionCode_fnOff_0x3ebc0]
-  refine subroutine_ok_map
-    (pk_try_from_ok_at img C ctl abs himg identityKeyTryFromSliceName 75180 hk) ?_
-  rintro ⟨p, bs, pk, out⟩ R s0 hpre
-  simp only [pkTryFromOk40Spec, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx8, hdes⟩, hmem⟩
-  refine ⟨(p, bs, out), R, ?_, fun sf hpost => ?_⟩
-  · simp only [pkTryFromCodeSpec, pkTryFromSpec, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx8⟩, hmem⟩
-  · simp only [pkTryFromCodeSpec, pkTryFromSpec, hdes, pkTryFromResultAt,
-      sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨htr, hpost⟩
-    simp only [pkTryFromOk40Spec, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨htr, hpost⟩
-
-def identityKeyTryFromSliceOkSpec (img : Obj.Image) :
-    Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
-  pre := fun (p, bs, pk, outPtr) s =>
-    ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧
-      s.readReg64 .x8 = outPtr ∧ PublicKey.deserialize bs = .ok pk⌝ ∗
-      (p ↦ₛ bs) ∗ memRegion outPtr 40 ∗ logOff img ∗
-      stackAt s.sp 96
-  post := fun (p, bs, pk, outPtr) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-      (p ↦ₛ bs) ∗
-      (outPtr ↦₆₄ 0xfffffffffffffffe#64) ∗
-      ((outPtr + 8#64) ↦ₛ pk.bytes.toList) ∗
-      logOff img ∗
-      stackAt s0.sp 96
-
-set_option maxHeartbeats 3200000 in
-private theorem identityKeyTryFromSlice_ok {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr identityKeyTryFromSliceName)
-      (identityKeyTryFromSliceOkSpec img) := by
-  unfold identityKeyTryFromSliceOkSpec
-  have hpk := pkTryFromOk40_ok_at (C := C) (ctl := ctl) (abs := abs) himg
-  simp only [pkTryFromOk40Spec] at hpk
-  have hfn : libsignalSessionCode.fnOff identityKeyTryFromSliceName = 0x2c614 :=
-    libsignalSessionCode_fnOff_0x2c614
-  responder_wire_fetches_from img.base
-    (Rust.withPanics (tripleRatchetExterns C ctl abs)) hfn 0x2c614 0 264
-  clear hfn
-  dsimp only [tripleRatchetProgAt, BitVec.ofNat_eq_ofNat] at hpk ⊢
-  generalize_entry (libsignalSessionCode.rebase img.base
-    (Rust.withPanics (tripleRatchetExterns C ctl abs))).fnAddr identityKeyTryFromSliceName = entry
-  wp_init x s0
-  examples_hide_fetches
-  rcases x with ⟨p, bs, pk, outPtr⟩
-  dsimp only at *
-  subst h_1 h_3
-  obtain ⟨pk0, pk1, pk2, pk3, pk4, pk5, pk6, pk7, pk8, pk9, pk10, pk11, pk12, pk13, pk14, pk15,
-    pk16, pk17, pk18, pk19, pk20, pk21, pk22, pk23, pk24, pk25, pk26, pk27, pk28, pk29, pk30, pk31,
-    hpk_bytes⟩ := exists_bytes32_of_vector32 pk.bytes
-  have hstk_eq : stackAt s0.sp 96 = cells (s0.sp - 96#64) 12 := by
-    simp only [stackAt]
-    exact ProofLib.memRegion_cells (s0.sp - 96#64) 12 (by decide)
-  rw [hstk_eq]
-  rw (occs := .pos [1]) [cells_12_identityKey_pre s0.sp]
-  wp_pull_exists
-  wp_steps
-  wp_call hpk (s0.readReg64 (.gpr 0#5), bs, pk, s0.sp - 88#64)
-  rw [memRegion_40_words (s0.readReg64 (.gpr 8#5)),
-      memRegion_8_bytes (s0.sp - 48#64),
-      memRegion_8_bytes (s0.sp - 40#64),
-      memRegion_8_bytes (s0.sp - 8#64)]
-  simp only [bv_sub_add_lit', BitVec.reduceSub]
-  wp_pull_exists
-  rw [hpk_bytes (s0.sp - 87#64),
-      hpk_bytes (s0.readReg64 (.gpr 8#5) + 8#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 8#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 16#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 24#64),
-      pointsTo64_eq_extract_bytes8 (s0.readReg64 (.gpr 8#5) + 32#64),
-      cells_12_identityKey_pre s0.sp,
-      memRegion_40_identityKey_post s0.sp,
-      memRegion_8_bytes_mr (s0.sp - 48#64),
-      memRegion_8_bytes_mr (s0.sp - 40#64),
-      memRegion_8_bytes_mr (s0.sp - 8#64)]
-  dsimp only [memRegion_8_bytes_mr_rhs, bytes32At]
-  simp only [bv_sub_add_lit', BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub, sepConj_assoc]
-  wp_steps
-  wp_done
-
-/-! ## `PreKeyTryFromArgs` and `preKeyTryFromSpec` -/
-
 /-- Arguments of `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from` (`0x29b30`), matching
 `PreKeyMessageFields` in `Computational/Specifications/LibsignalE2E/PqxdhCorrect.lean`. -/
 structure PreKeyTryFromArgs where
@@ -579,15 +469,15 @@ structure PreKeyTryFromArgs where
 namespace PreKeyTryFromArgs
 
 /-- Serialized 1569-byte Kyber1024 ciphertext (`0x08 ‖ kyberCt`). -/
-def kyberBytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def kyberBytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   0x08#8 :: x.kyberCt.toList
 
 /-- Serialized 33-byte base public key (`0x05 ‖ baseKey`). -/
-def bkBytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def bkBytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   0x05#8 :: x.baseKey.toList
 
 /-- Serialized 33-byte identity public key (`0x05 ‖ idPub`). -/
-def ikBytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def ikBytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   0x05#8 :: x.idPub.toList
 
 @[simp] theorem kyberBytes_length (x : PreKeyTryFromArgs) : x.kyberBytes.length = 1569 := by
@@ -599,7 +489,7 @@ def ikBytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
 @[simp] theorem ikBytes_length (x : PreKeyTryFromArgs) : x.ikBytes.length = 33 := by
   simp [ikBytes]
 
-def protoMsg (x : PreKeyTryFromArgs) : ProtoPreKeySignalMessage :=
+@[expose] def protoMsg (x : PreKeyTryFromArgs) : ProtoPreKeySignalMessage :=
   { registrationId := some x.regId
     preKeyId := x.opkId
     signedPreKeyId := some x.spkId
@@ -609,16 +499,16 @@ def protoMsg (x : PreKeyTryFromArgs) : ProtoPreKeySignalMessage :=
     identityKey := some x.ikBytes
     message := some x.inner }
 
-def protoBytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def protoBytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   x.protoMsg.encode
 
 /-- Full wire bytes `versionByte 4#8 :: x.protoBytes`. -/
-def bytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def bytes (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   versionByte 4#8 :: x.protoBytes
 
 /-- Model `PreKeySignalMessage` produced when
 `SignalMessage.tryFrom protoSignalCodec x.inner = .ok innerMsg`. -/
-def toModel (x : PreKeyTryFromArgs) (innerMsg : SignalMessage) : PreKeySignalMessage :=
+@[expose] def toModel (x : PreKeyTryFromArgs) (innerMsg : SignalMessage) : PreKeySignalMessage :=
   { messageVersion := 4#8
     registrationId := x.regId
     preKeyId := x.opkId
@@ -632,7 +522,7 @@ def toModel (x : PreKeyTryFromArgs) (innerMsg : SignalMessage) : PreKeySignalMes
 end PreKeyTryFromArgs
 
 /-- Result layout at `sret` (248 bytes) after `PreKeySignalMessage::try_from` (`0x29b30`). -/
-def preKeyResultAt (A : RustAlloc) (sret : BitVec 64) (x : PreKeyTryFromArgs) : SepProp :=
+@[expose] def preKeyResultAt (A : RustAlloc) (sret : BitVec 64) (x : PreKeyTryFromArgs) : SepProp :=
   match SignalMessage.tryFrom protoSignalCodec x.inner with
   | .ok innerMsg =>
       ∃∗ g : PreKeyMsgGhost, preKeyMsgAt A g sret (x.toModel innerMsg)
@@ -641,219 +531,39 @@ def preKeyResultAt (A : RustAlloc) (sret : BitVec 64) (x : PreKeyTryFromArgs) : 
       speAt A [] (sret + 8#64) e ∗
       memRegion (sret + 56#64) 192
 
-/-- Specification of `<PreKeySignalMessage as TryFrom<&[u8]>>::try_from` (`0x29b30`, 675 insns). -/
-def preKeyTryFromSpec (A : RustAlloc) (img : Obj.Image) : Spec PreKeyTryFromArgs :=
-  Spec.inImage
-    { pre := fun x s =>
-        ⌜s.readReg64 .x0 = x.ptr ∧
-          (s.readReg64 .x1).toNat = x.bytes.length ∧
-          x.bytes.length < 2 ^ 32 ∧
-          s.readReg64 .x8 = x.sret⌝ ∗
-        (x.ptr ↦ₛ x.bytes) ∗
-        memRegion x.sret 248 ∗
-        logOff img ∗
-        stackAt s.sp preKeyTryFromStack ∗
-        A.pool
-      post := fun x s0 sf =>
-        ⌜sf.trace = s0.trace⌝ ∗
-        preKeyResultAt A x.sret x ∗
-        (x.ptr ↦ₛ x.bytes) ∗
-        logOff img ∗
-        stackAt s0.sp preKeyTryFromStack ∗
-        A.pool
-      onPanic := fun _ s0 sf =>
-        ⌜allocFailedIn s0 sf ∧ s0.trace <+: sf.trace⌝ ∗ anyHeap }
-    img
-
-/-! ## Callee Offset Wrappers from `preKeyTryFromName` -/
-
-theorem int32Merge_ok_at_prekey {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : Int32MergeOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyTryFromName + 18446744073709391792#64)
-      (int32MergeSpec A) := by
-  rw [fnAddr_sub_rel libsignalSessionCode_fnOff_0x29c14
-    libsignalSessionCode_fnOff_0x2bc4 (by decide)]
-  exact h
-
-theorem bytesMerge_ok_at_prekey {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : BytesMergeOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr preKeyTryFromName + 18446744073709390708#64)
-      (bytesMergeSpec A img) := by
-  rw [fnAddr_sub_rel libsignalSessionCode_fnOff_0x29c14
-    libsignalSessionCode_fnOff_0x2788 (by decide)]
-  exact h
-
-theorem dropSpe_ok_at_prekey {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : CryptoVerification.LibsignalTripleRatchet.DropSpeOk img C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr preKeyTryFromName + 18446744073709389828#64)
-      ((dropSpeSpec A).inImage img) := by
-  rw [fnAddr_sub_rel libsignalSessionCode_fnOff_0x29c14
-    libsignalSessionCode_fnOff_0x2418 (by decide)]
-  exact h
-
-def deserializeOk33Spec (img : Obj.Image) :
-    Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
-  pre := fun (ptr, bs, pk, sret) s =>
-    ⌜s.readReg64 .x0 = ptr ∧ (s.readReg64 .x1).toNat = bs.length ∧
-      s.readReg64 .x8 = sret ∧ bs.length < 2 ^ 63 ∧
-      PublicKey.deserialize bs = .ok pk⌝ ∗
-    (ptr ↦ₛ bs) ∗
-    memRegion sret 33 ∗
-    logOff img
-  post := fun (ptr, bs, pk, sret) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-    (ptr ↦ₛ bs) ∗
-    (sret ↦₈ 0#8) ∗ ((sret + 1#64) ↦ₛ pk.bytes.toList) ∗
-    logOff img
-
-theorem deserializeFull_ok_at_tripleRatchet {C : Crypto} {b : BitVec 64} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {off k : Nat}
-    (hfn : libsignalSessionCode.fnOff name = off) (hk : off + k = 0x3dc34) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k)
-      (deserializeFullSpec b) := by
-  rw [← Program.fnAddr_rel hfn libsignalSessionCode_fnOff_0x3dc34 hk]
-  exact deserializeFull_ok b (Rust.withPanics (tripleRatchetExterns C ctl abs))
-
-def IntoBoxedSliceOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr intoBoxedSliceName)
-    (intoBoxedSliceSpec A)
-
-def TryCloneFromRefOk (b : BitVec 64) (C : Crypto) (A : RustAlloc) (ctl : BitVec 64)
-    (abs : String → Option (State → State)) : Prop :=
-  subroutine_ok (tripleRatchetProgAt b C ctl abs)
-    ((tripleRatchetProgAt b C ctl abs).fnAddr tryCloneFromRefName)
-    (tryCloneFromRefSpec A)
-
-theorem panic_at_handle_alloc_error2 {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} {name : String} {k : Nat}
-    (hk : libsignalSessionCode.fnOff name + k =
-      libsignalSessionCode.fnOff "alloc::alloc::handle_alloc_error" := by fnoff_eq) :
-    (tripleRatchetProgAt b C ctl abs).externAt?
-      ((tripleRatchetProgAt b C ctl abs).fnAddr name + BitVec.ofNat 64 k) =
-      some Rust.panicked :=
-  panic_at_handle_alloc_error_ext b (tripleRatchetExterns C ctl abs) name k hk
-
-theorem deserialize_ok_at_prekey {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr preKeyTryFromName + 81952#64)
-      (deserializeOk33Spec img) := by
-  have hfull := deserializeFull_ok_at_tripleRatchet (C := C) (b := img.base) (ctl := ctl)
-    (abs := abs) libsignalSessionCode_fnOff_0x29c14 (k := 81952) (by decide)
-  refine subroutine_ok_map hfull ?_
-  rintro ⟨ptr, bs, pk, sret⟩ R s0 hpre
-  simp only [deserializeOk33Spec, logOff, sepConj_assoc, satisfies_pure_sepConj] at hpre
-  rcases hpre with ⟨⟨hx0, hx1, hx8, hlen, hdes⟩, hmem⟩
-  refine ⟨(ptr, bs, sret), R, ?_, fun sf hpost => ?_⟩
-  · simp only [deserializeFullSpec, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨⟨hx0, hx1, hx8, hlen, ProofLib.ObjectLoad.base_aligned_of_loads himg⟩, hmem⟩
-  · simp only [deserializeFullSpec, hdes, deserializeResult33At,
-      sepConj_assoc, satisfies_pure_sepConj] at hpost
-    rcases hpost with ⟨htr, hpost⟩
-    simp only [deserializeOk33Spec, logOff, sepConj_assoc, satisfies_pure_sepConj]
-    exact ⟨htr, hpost⟩
-
-theorem intoBoxedSlice_ok_at_prekey {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : IntoBoxedSliceOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyTryFromName + 18446744073709491136#64)
-      (intoBoxedSliceSpec A) := by
-  rw [fnAddr_sub_rel libsignalSessionCode_fnOff_0x29c14
-    libsignalSessionCode_fnOff_0x1afd4 (by decide)]
-  exact h
-
-theorem identityKeyTryFrom_ok_at_prekey {img : Obj.Image} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (himg : Obj.Loads libsignalSessionImage img) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr preKeyTryFromName + 10752#64)
-      (identityKeyTryFromSliceOkSpec img) := by
-  rw [fnAddr_sub_rel libsignalSessionCode_fnOff_0x29c14
-    libsignalSessionCode_fnOff_0x2c614 (by decide)]
-  exact identityKeyTryFromSlice_ok himg
-
-theorem signalTryFrom_ok_at_prekey {img : Obj.Image} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr tryFromName) (tryFromSpec A img)) :
-    subroutine_ok (tripleRatchetProgAt img.base C ctl abs)
-      ((tripleRatchetProgAt img.base C ctl abs).fnAddr preKeyTryFromName + 18446744073709534472#64)
-      (tryFromSpec A img) := by
-  rw [fnAddr_sub_rel libsignalSessionCode_fnOff_0x29c14
-    libsignalSessionCode_fnOff_0x2591c (by decide)]
-  exact h
-
-theorem tryCloneFromRef_ok_at_prekey {b : BitVec 64} {C : Crypto} {A : RustAlloc} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (h : TryCloneFromRefOk b C A ctl abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyTryFromName + 18446744073709433996#64)
-      (tryCloneFromRefSpec A) := by
-  rw [fnAddr_sub_rel libsignalSessionCode_fnOff_0x29c14
-    libsignalSessionCode_fnOff_0xd0a0 (by decide)]
-  exact h
-
-theorem dealloc_ok_at_prekey {A : RustAlloc} {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)}
-    (hA : AllocHooks A abs) :
-    subroutine_ok (tripleRatchetProgAt b C ctl abs)
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyTryFromName + bv% (ls_off% "__rustc::__rust_dealloc" - 0x29c14))
-      (rustDeallocSpec A) :=
-  dealloc_ok_at_norm hA (name := preKeyTryFromName) (k := num% (ls_off% "__rustc::__rust_dealloc" - 0x29c14))
-
-theorem panic_at_prekey_handle_alloc_error {b : BitVec 64} {C : Crypto} {ctl : BitVec 64}
-    {abs : String → Option (State → State)} :
-    (tripleRatchetProgAt b C ctl abs).externAt?
-      ((tripleRatchetProgAt b C ctl abs).fnAddr preKeyTryFromName + bv% (ls_off% "alloc::alloc::handle_alloc_error" - 0x29c14)) =
-      some Rust.panicked :=
-  panic_at_handle_alloc_error2 (name := preKeyTryFromName) (k := num% (ls_off% "alloc::alloc::handle_alloc_error" - 0x29c14))
-
-/-! ## Protobuf Field Suffix Decomposition and Cursor Lemmas -/
-
-def psmField1 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def psmField1 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   Prost.uint32Field 1 x.opkId
 
-def psmField2 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def psmField2 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   Prost.bytesField 2 (some x.bkBytes)
 
-def psmField3 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def psmField3 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   Prost.bytesField 3 (some x.ikBytes)
 
-def psmField4 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def psmField4 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   Prost.bytesField 4 (some x.inner)
 
-def psmField5 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def psmField5 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   Prost.uint32Field 5 (some x.regId)
 
-def psmField6 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def psmField6 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   Prost.uint32Field 6 (some x.spkId)
 
-def psmField7 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def psmField7 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   Prost.uint32Field 7 (some x.kpkId)
 
-def psmField8 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
+@[expose] def psmField8 (x : PreKeyTryFromArgs) : List (BitVec 8) :=
   Prost.bytesField 8 (some x.kyberBytes)
 
-def psmRem8 (_ : PreKeyTryFromArgs) : List (BitVec 8) := []
-def psmRem7 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField8 x ++ psmRem8 x
-def psmRem6 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField7 x ++ psmRem7 x
-def psmRem5 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField6 x ++ psmRem6 x
-def psmRem4 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField5 x ++ psmRem5 x
-def psmRem3 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField4 x ++ psmRem4 x
-def psmRem2 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField3 x ++ psmRem3 x
-def psmRem1 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField2 x ++ psmRem2 x
-def psmRem0 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField1 x ++ psmRem1 x
+@[expose] def psmRem8 (_ : PreKeyTryFromArgs) : List (BitVec 8) := []
+@[expose] def psmRem7 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField8 x ++ psmRem8 x
+@[expose] def psmRem6 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField7 x ++ psmRem7 x
+@[expose] def psmRem5 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField6 x ++ psmRem6 x
+@[expose] def psmRem4 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField5 x ++ psmRem5 x
+@[expose] def psmRem3 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField4 x ++ psmRem4 x
+@[expose] def psmRem2 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField3 x ++ psmRem3 x
+@[expose] def psmRem1 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField2 x ++ psmRem2 x
+@[expose] def psmRem0 (x : PreKeyTryFromArgs) : List (BitVec 8) := psmField1 x ++ psmRem1 x
 
 theorem protoBytes_eq_psmRem0 (x : PreKeyTryFromArgs) :
     x.protoBytes = psmRem0 x := by
@@ -954,7 +664,7 @@ theorem cons_sliceCursorAfter_split (slot ptr : BitVec 64) (b0 : BitVec 8)
   rw [hsub, pointsToBytes_append, pointsToBytes_cons, had]
   ac_rfl
 
-def opkTag (x : PreKeyTryFromArgs) : BitVec 32 :=
+@[expose] def opkTag (x : PreKeyTryFromArgs) : BitVec 32 :=
   match x.opkId with
   | none => 0#32
   | some _ => 1#32
@@ -980,7 +690,7 @@ theorem pointsTo32_pair_entails_optU32At (a : BitVec 64) (x : PreKeyTryFromArgs)
 
 /-! ## Placed Specifications and Callees -/
 
-def pkTryFromOk40PlacedSpec [LibsignalPlacement] :
+@[expose] def pkTryFromOk40PlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
   pre := fun (p, bs, pk, out) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧
@@ -1008,7 +718,7 @@ theorem pkTryFromOk40_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
     simp only [pkTryFromOk40PlacedSpec, sepConj_assoc, satisfies_pure_sepConj]
     exact ⟨htr, hpost⟩
 
-def identityKeyTryFromSliceOkPlacedSpec [LibsignalPlacement] :
+@[expose] def identityKeyTryFromSliceOkPlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
   pre := fun (p, bs, pk, outPtr) s =>
     ⌜s.readReg64 .x0 = p ∧ (s.readReg64 .x1).toNat = bs.length ∧
@@ -1071,7 +781,7 @@ theorem identityKeyTryFromSlice_placed_ok [LibsignalPlacement] (H : LibsignalHoo
   wp_steps
   wp_done
 
-def deserializeOk33PlacedSpec [LibsignalPlacement] :
+@[expose] def deserializeOk33PlacedSpec [LibsignalPlacement] :
     Spec (BitVec 64 × List (BitVec 8) × PublicKey × BitVec 64) where
   pre := fun (ptr, bs, pk, sret) s =>
     ⌜s.readReg64 .x0 = ptr ∧ (s.readReg64 .x1).toNat = bs.length ∧
@@ -1123,7 +833,7 @@ theorem deserialize_placed_ok [LibsignalPlacement] (H : LibsignalHooks) :
   · intro sf hpost
     exact hpost
 
-def preKeyTryFromPlacedSpec (A : RustAlloc) [LibsignalPlacement] : Spec PreKeyTryFromArgs :=
+@[expose] def preKeyTryFromPlacedSpec (A : RustAlloc) [LibsignalPlacement] : Spec PreKeyTryFromArgs :=
   withLsCodeLoaded lsmpl
     { pre := fun x s =>
         ⌜s.readReg64 .x0 = x.ptr ∧

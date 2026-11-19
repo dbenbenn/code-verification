@@ -9,12 +9,13 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced
-public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs
+public import LibsignalBinary.Proofs.SpqrV1.GF.Mul2U16 -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.NextChunk.EpiloguePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Batch2DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvHdrChunkPart1Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.CommonPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Unchunked.SendCt2PlacedSegs -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.AddChunkCl1Placed
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.Ct1AcknowledgedRecvEkChunkPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl2Placed
@@ -29,6 +30,9 @@ import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2ClPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.SendCt2EncoderPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.RecvCt2Chunk.ProofPlaced
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.RecvCt2ChunkPlaced -- shake: keep
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderFromPb.Defs
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 
 /-!
 # SPQR V1 Leaf Subroutines: Closed Relocatable Contracts
@@ -38,7 +42,7 @@ Aggregates and closes all 15 relocatable `Obj.MultiPlacedLib` leaf contracts (`3
 `[LibsignalPlacement]`, discharging cross-block callees `347`, `418`, and `419`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -143,7 +147,8 @@ theorem header_sent_recv_ct1_chunk_placed_ok_x [LibsignalPlacement]
     (hdealloc : HookSat (Rust.withPanics ext) "_RNvCs1njKG4L9aB3_7___rustc14___rust_dealloc" (rustDeallocSpec A))
     (hmemcpy : HookSat (Rust.withPanics ext) "memcpy" sessionMemcpyRegionSpec)
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym (sessionMemmoveSpec growOneStack))
-    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec) :
+    (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     HeaderSentRecvCt1ChunkPlacedOkX A F ext :=
   header_sent_recv_ct1_chunk_placed_cl_ext hdealloc hmemcpy
     (ls_subroutine_ok_of_block (i := 337) (j := 419)
@@ -152,7 +157,7 @@ theorem header_sent_recv_ct1_chunk_placed_ok_x [LibsignalPlacement]
     (keys_ls_subroutine_ok_of_block_cro (i := 337) (j := 418)
       (polyDecoderDecodedMessage_cro_placed_ok_x h_panic
         (hookSat_sessionShim_of_noAllocShim hshim)
-        halloc hrealloc hdealloc hmemcpy hmemset))
+        halloc hrealloc hdealloc hmemcpy hmemset hOnce))
 
 /-! ## 4. Closed Contract for Block `346` (`<Ct1Received>::recv_ct2_chunk`) -/
 
@@ -216,7 +221,8 @@ theorem ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x [LibsignalPlacement]
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec)
     (hval_pk : HookSat (Rust.withPanics ext) "_RNvNtNtCs1mK0QScfTrZ_14libcrux_ml_kem8mlkem76811incremental17validate_pk_bytes" (mlkemValidatePkSpec K))
     (hencaps2 : HookSat (Rust.withPanics ext) spqrMlkemEncaps2Sym (mlkemEncaps2Spec K))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacSpec F A)) :
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym (libcruxHmacSpec F A))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     Ct1AcknowledgedRecvEkChunkPlacedOkX A F K ext :=
   ct1_acknowledged_recv_ek_chunk_placed_ok_x h_panic hshim halloc hrealloc hdealloc hmemcpy hval_pk
     (ls_subroutine_ok_of_block (i := 349) (j := 419)
@@ -225,7 +231,7 @@ theorem ct1_acknowledged_recv_ek_chunk_placed_closed_ok_x [LibsignalPlacement]
     (keys_ls_subroutine_ok_of_block_cro (i := 349) (j := 418)
       (polyDecoderDecodedMessage_cro_placed_ok_x h_panic
         (hookSat_sessionShim_of_noAllocShim hshim)
-        halloc hrealloc hdealloc hmemcpy hmemset))
+        halloc hrealloc hdealloc hmemcpy hmemset hOnce))
     (ls_subroutine_ok_of_block (i := 349) (j := 347)
       (unchunked_ct1_sent_ek_received_send_ct2_cl_placed_ok
         h_panic hshim halloc hrealloc hdealloc hmemcpy_fl hmemcpy_ro hencaps2 hhmac))
@@ -249,14 +255,15 @@ theorem noHeaderReceived_recv_hdr_chunk_placed_closed_okX [LibsignalPlacement]
     (h_handle_error : (Rust.withPanics ext) spqrHandleErrorSym = some Rust.panicked)
     (h_assert_failed : (Rust.withPanics ext) assertFailedRecvHdrSym = some Rust.panicked)
     (h_slice_index_fail : (Rust.withPanics ext) sliceIndexFailRecvHdrSym = some Rust.panicked)
-    (h_panic_bounds_check : (Rust.withPanics ext) panicBoundsCheckRecvHdrSym = some Rust.panicked) :
+    (h_panic_bounds_check : (Rust.withPanics ext) panicBoundsCheckRecvHdrSym = some Rust.panicked)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     NoHeaderReceivedRecvHdrChunkPlacedOkX F A ext :=
   noHeaderReceived_recv_hdr_chunk_placed_okX
     (add_chunk_cl_placed_ok_x h_handle_error
       (hookSat_sessionShim_of_noAllocShim hshim) halloc hrealloc hmemmove)
     (polyDecodedMessagePlacedOkX_of_hooks h_handle_error
       (hookSat_sessionShim_of_noAllocShim hshim)
-      halloc hrealloc hdealloc hmemcpy hmemset)
+      halloc hrealloc hdealloc hmemcpy hmemset hOnce)
     hshim halloc hdealloc hmemcpy_fl hRO hhmac
     h_handle_error h_assert_failed h_slice_index_fail h_panic_bounds_check
 
@@ -272,14 +279,15 @@ theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x [LibsignalPlacement]
     (hmemmove : HookSat (Rust.withPanics ext) spqrMemmoveSym (sessionMemmoveSpec growOneStack))
     (hmemset : HookSat (Rust.withPanics ext) memsetName sessionMemsetRegionSpec)
     (hdecaps : HookSat (Rust.withPanics ext) spqrMlkemDecapsSym (mlkemDecapsSpec K))
-    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacSpec F A)) :
+    (hhmac : HookSat (Rust.withPanics ext) spqrLibcruxHmacSym' (libcruxHmacSpec F A))
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     RecvCt2ChunkPlacedOkX K F A ext :=
   recv_ct2_chunk_placed_ok_x hA
     (add_chunk_cl_placed_ok_x hA.handleError
       (hookSat_sessionShim_of_noAllocShim hA.shim) hA.alloc hA.realloc hmemmove)
     (polyDecodedMessagePlacedOkX_of_hooks hA.handleError
       (hookSat_sessionShim_of_noAllocShim hA.shim)
-      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset)
+      hA.alloc hA.realloc hA.dealloc hmemcpy hmemset hOnce)
     hdecaps hhmac
 
 /-- Closed relocatable contract for `<EkSentCt1Received>::recv_ct2_chunk` (Block `350`)
@@ -304,14 +312,15 @@ theorem ek_sent_ct1_received_recv_ct2_chunk_placed_ok_x_of_hooks [LibsignalPlace
     (h_slice_index_fail : Rust.withPanics ext spqrSliceIndexFailSym = some Rust.panicked)
     (h_unwrap_failed : Rust.withPanics ext spqrUnwrapFailedSym = some Rust.panicked)
     (h_panic_bounds_check : Rust.withPanics ext spqrPanicBoundsCheckSym = some Rust.panicked)
-    (h_panic_add_overflow : Rust.withPanics ext spqrPanicConstAddOverflowSym = some Rust.panicked) :
+    (h_panic_add_overflow : Rust.withPanics ext spqrPanicConstAddOverflowSym = some Rust.panicked)
+    (hOnce : OnceCallHookOk (Rust.withPanics ext)) :
     RecvCt2ChunkPlacedOkX K F A ext :=
   recv_ct2_chunk_placed_ok_x_of_hooks
     (add_chunk_cl_placed_ok_x h_handle_error
       (hookSat_sessionShim_of_noAllocShim hshim) halloc hrealloc hmemmove)
     (polyDecodedMessagePlacedOkX_of_hooks h_handle_error
       (hookSat_sessionShim_of_noAllocShim hshim)
-      halloc hrealloc hdealloc hmemcpy hmemset)
+      halloc hrealloc hdealloc hmemcpy hmemset hOnce)
     hshim halloc hallocZeroed hdealloc hrealloc hmemcpy_fl hRO
     hdecaps hhmac
     h_handle_error h_assert_failed_u64 h_slice_index_fail

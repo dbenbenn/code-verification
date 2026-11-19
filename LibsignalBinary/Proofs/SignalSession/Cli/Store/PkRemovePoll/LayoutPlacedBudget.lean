@@ -9,13 +9,20 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlaced
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
-public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget
+public import LibsignalBinary.Proofs.Placed.ElfLsRetAddr -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.LayoutPlaced
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.ShimCommonPlacedBudget
+public import LibsignalBinary.Proofs.SignalSession.Cli.Store.SpkGetPoll.CalleesBudget -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Common.SharedHelpers
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.CliSessionCodeSymC -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.Fs -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SignalSession.Cli.SpecsPlacedBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SignalSession.Cli.Store.PkRemovePoll.Layout
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
 
 /-!
 # Budget-Threaded Relocatable Helpers for `remove_pre_key::{closure#0}`
@@ -24,7 +31,7 @@ import LibsignalBinary.Proofs.Common.SharedHelpers
 helpers for Block `575` (`lsProg_575 H`) under `[LibsignalPlacement]`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -75,7 +82,7 @@ theorem freeOnlyEvs_optDeallocBufEvents (cap : BitVec 64) :
 - on `.ok (_ :: _)`: `FreeOnlyEvs` drops of `bytes` and `name`, followed by a second `decimal` call
   on `x.id` and `Dir::put` on `(x.dir, keyName x.id, [])`;
 - on `.error ()` or `.ok []`: `FreeOnlyEvs` buffer drops only. -/
-def OptPkRemoveTailEnv
+@[expose] def OptPkRemoveTailEnv
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)
     (x : PkPollGhost) (gr : Except Unit (List (BitVec 8))) : List AllocEvent → Prop :=
@@ -86,7 +93,7 @@ def OptPkRemoveTailEnv
 
 /-- Composed `AllocEvent` envelope for `remove_pre_key::{closure#0}`: `decimal` followed by
 `Dir::get` and `OptPkRemoveTailEnv`. -/
-def CliPkRemovePollEnv (rd : ReadRule)
+@[expose] def CliPkRemovePollEnv (rd : ReadRule)
     (DecEnv : BitVec 32 → List AllocEvent → Prop)
     (GetEnv : FsFiles → DirGhost → List (BitVec 8) → List AllocEvent → Prop)
     (PutEnv : DirGhost → List (BitVec 8) → List (BitVec 8) → List AllocEvent → Prop)

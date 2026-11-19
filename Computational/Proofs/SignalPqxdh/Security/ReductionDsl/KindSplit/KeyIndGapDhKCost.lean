@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.ReductionDsl.KindedDispatch -- proof-setup: allow-public-import
+import Computational.Proofs.ReductionDsl.KindedDispatch
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.SplitRo.RoTableBudget -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KeyInd1KeyGapDh -- proof-setup: allow-public-import
 public import Computational.Proofs.SignalPqxdh.Security.ReductionDsl.KindSplit.KeyIndGapDhK -- proof-setup: allow-public-import

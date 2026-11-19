@@ -9,12 +9,18 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.VerifyMacTrap507Placed
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecrypt
-public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchet
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.VerifyMacTrap507Placed
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AesDecrypt -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.TripleRatchet.Decrypt.ApplyRatchet -- proof-setup: allow-public-import
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.TripleRatchet.Decrypt.AuthDecryptDefs
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.DecryptPq.TryDecryptHsCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.StoreSession.CoinsTapePlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.TripleRatchet.Decrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.SpqrV1.M4.VerifyMacTrapPlaced
+import LibsignalBinary.Proofs.SessionRecordAt.Stage1X.Defs
+import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
 
 /-!
 # Relocatable Segments `S8` and `S9` (`AesDecrypt` and `ApplyRatchet`) on Block `507`
@@ -24,7 +30,7 @@ Relocatable `[LibsignalPlacement]` verification of Segment `S8` (`aes_256_cbc_de
 `clear_unacknowledged_pre_key_message`, and return epilogue, `S9SeamPlaced`) on Block `507`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

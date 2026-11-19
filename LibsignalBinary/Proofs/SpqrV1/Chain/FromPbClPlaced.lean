@@ -9,12 +9,19 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPb
-public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoopClPlaced
-import GeneratedLean.LibsignalSessionCode -- shake: keep
-import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbDecodes
+import LibsignalBinary.Proofs.SpqrV1.Chain.FromPb
+import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoopClPlaced
+import ProofLib.ProgramReflection.SortedFresh
 import LibsignalBinary.Proofs.TripleRatchet.GeneralizeEntry
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.Placed.Bridge -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Placed.PlacedCallSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.ChainPbCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbHelpers -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoin -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbJoinClPlaced -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Chain.FromPbLoop -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
 
 /-!
 # Code-Loaded Proof of `<spqr::chain::Chain>::from_pb` (Block `364`)
@@ -25,7 +32,7 @@ Code-loaded `[LibsignalPlacement]` loop and subroutine contracts (`fromPb_loop_s
 cross-block drop-glue callees (Blocks `287` and `288`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -39,7 +46,7 @@ open CryptoVerification.SpqrV1.Drop
 open CryptoVerification.SpqrV1.Top.ChainFromVersionNegotiation
 open CryptoVerification.SpqrV1.Top.ChainFrom
 open CryptoVerification.CodeLayout
-open FromPbDecodes
+
 
 set_option maxRecDepth 800000
 set_option maxHeartbeats 400000

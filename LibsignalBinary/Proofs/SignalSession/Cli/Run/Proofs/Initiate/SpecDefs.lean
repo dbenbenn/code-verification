@@ -10,7 +10,9 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Refine.Spec
-public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity
+public import LibsignalBinary.Proofs.SignalSession.Cli.StoreSpecs.Identity -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.E2E.Bin.Record
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
 
 /-!
 # Specification Model and Domain Preconditions for `signal_session_handshake::initiate`
@@ -33,7 +35,7 @@ Defines the model function `initDef` and file-system domain invariant `InitOk₀
   `capacity_overflow` panics) and carries the public key derived from its private key.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -61,7 +63,7 @@ abbrev cliInitiateFrame : Nat := 0x60 + 0x1000 + 0xc90
 /-! ## File-system domain invariant (`InitOk₀`) -/
 
 /-- `peer` and `me` parse via `serviceIdParse uuidTryParse` to the same `ServiceId`. -/
-def SameServiceId (peer me : AddrVal) : Prop :=
+@[expose] def SameServiceId (peer me : AddrVal) : Prop :=
   ∃ sid, serviceIdParse uuidTryParse peer.name = some sid ∧
     serviceIdParse uuidTryParse me.name = some sid
 
@@ -90,7 +92,7 @@ structure InitOk₀ (W : PEParams) (F : FsFiles) (peer me : AddrVal) : Prop wher
 /-! ## Model of `initiate` (`initDef`) -/
 
 /-- Extracts `PreKeyBundleFields` when `spkSig` and `kpkSig` are 64 bytes and `kpk` is 1568 bytes. -/
-def bundleEOf? (b : BundleV) : Option PreKeyBundleFields :=
+@[expose] def bundleEOf? (b : BundleV) : Option PreKeyBundleFields :=
   if h1 : b.spkSig.length = 64 then
     if h2 : b.kpkSig.length = 64 then
       if h3 : b.kpk.length = 1568 then
@@ -103,18 +105,18 @@ def bundleEOf? (b : BundleV) : Option PreKeyBundleFields :=
   else none
 
 /-- Takes 192 bytes (`initiateTapeLen`) from `c`, zero-padding past `c.length`. -/
-def padCoins (c : List (BitVec 8)) : List.Vector (BitVec 8) initiateTapeLen :=
+@[expose] def padCoins (c : List (BitVec 8)) : List.Vector (BitVec 8) initiateTapeLen :=
   ⟨c.take initiateTapeLen ++ List.replicate (initiateTapeLen - c.length) 0#8, by
     simp only [List.length_append, List.length_take, List.length_replicate]; omega⟩
 
 /-- Selects the initiator `Party` opposite `peer` (`B` when `peer` is `A`'s address, else `A`). -/
-def initParty (peer : AddrVal) : Party :=
+@[expose] def initParty (peer : AddrVal) : Party :=
   if peer = RunRefine.addrValE .A then .B else .A
 
 /-- Functional model of `signal_session_handshake::initiate` over `FsFiles`: validates bundle lengths,
 trust, signatures, empty session slot, and identity key pair, then updates `identities/<peer>` via
 `saveUpd` and `sessions/<peer>` via `encodeRecordUnderExtras`. -/
-def initDef (X : UnreachedPqxdhPrimitives) (W : PEParams) (F : FsFiles) (peer _me : AddrVal) (b : BundleV)
+@[expose] def initDef (X : UnreachedPqxdhPrimitives) (W : PEParams) (F : FsFiles) (peer _me : AddrVal) (b : BundleV)
     (coins : List (BitVec 8)) : SlotAns Unit :=
   let g := StoresGhost.opened
   match bundleEOf? b with
@@ -136,12 +138,6 @@ def initDef (X : UnreachedPqxdhPrimitives) (W : PEParams) (F : FsFiles) (peer _m
       | _, _ => some none
 
 /-! ## Symbol check -/
-
-example : libsignalSessionCode.fnOff cliInitiateName =
-    num% (ls_off% "libsignal_cli_handshake::initiate") :=
-  ls_lemma% fnOff "libsignal_cli_handshake::initiate"
-
-/-! ## Stack budget -/
 
 /-- Stack budget for `signal_session_handshake::initiate` (`max 524288 (cliInitiateFrame + 848 + B.dirGetNeed)`). -/
 abbrev cliInitiateNeed (B : RunBudgets) : Nat :=

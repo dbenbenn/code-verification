@@ -11,19 +11,22 @@ module
 
 public import LibsignalBinary.Heap.IfaceBudgetLemmas
 public import LibsignalBinary.Heap.SpecBudget
-public import LibsignalBinary.Proofs.Placed.BudgetVmSteps
-public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFullPlacedBudget
-public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl1Placed
-public import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl1PlacedBudgetAux
+import LibsignalBinary.Proofs.Placed.BudgetVmSteps
+public meta import LibsignalBinary.Proofs.Placed.BudgetVmSteps -- shake: keep -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFullPlacedBudget
+public import LibsignalBinary.Proofs.SpqrV1.Poly.LagrangePrepare.DefsBudget -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl1Placed
+import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DecodedMsgCl1PlacedBudgetAux
 import LibsignalBinary.Proofs.Common.SharedHelpers
 meta import LibsignalBinary.Proofs.Common.SharedHelpers -- shake: keep
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.Interpolate
 import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolatePlacedBudget
 import LibsignalBinary.Proofs.SpqrV1.States.Leaves.DefsPlaced
 import ProofLib.SepLogic.WPp
+public import LibsignalBinary.Proofs.SpqrV1.Poly.DecodedMessage.InterpolateFull -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.CodeLayout
+import LibsignalBinary.Proofs.SpqrV1.Poly.EncoderIntoPb.Defs
 
 /-!
 # `<PolyDecoder as Decoder>::decoded_message` (Block `418`, Part 1): `RustCliAllocBudget` Inlined `lagrange_interpolate`
@@ -33,7 +36,7 @@ Threads `RustCliAllocBudget M`, `BudgetLimits`, `FitsEnv`, `LagrangeInterpolateI
 `lagrangePrepare` on Block `372` and `lagrangeComplete` on Block `373`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -282,7 +285,7 @@ theorem lagrangeInterpolate_inlined_cl_placed_sepWP [LibsignalPlacement]
           ((sp0 - 160#64) ↦₆₄ sf1.readReg64 .x0) ∗ ((sp0 - 152#64) ↦₆₄ 0#64) ∗
           ((sp0 - 144#64) ↦₆₄ b_cap) ∗ ((sp0 - 136#64) ↦₆₄ ptr_b) ∗
           ((sp0 - 128#64) ↦₆₄ BitVec.ofNat 64 (pts_slice.length + 1)) ∗
-          A.pool lim st3 sf3 ∗ memRegion ((sp0 - 672#64) - 4096#64) 3856 ∗
+          A.pool lim st3 sf3 ∗ memRegion ((sp0 - 672#64) - 4096#64) 3664 ∗
           memRegion ((sp0 - 672#64) - 4304#64) 208 ∗ F)
         post hcl3 hpc3 hrun3 hsp3 rfl hx19_3 hx21_3 hx23_3 hx24_3 hx25_3 hx27_3 hx29_3 ?_)
     · rw [stackAt_alloc_eq_complete (sp0 - 672#64)]; exact Entails.of_eq (by sep_ac_rfl)
@@ -306,7 +309,7 @@ theorem lagrangeInterpolate_inlined_cl_placed_sepWP [LibsignalPlacement]
           ((sp0 - 160#64) ↦₆₄ sf1.readReg64 .x0) ∗ ((sp0 - 144#64) ↦₆₄ b_cap) ∗
           ((sp0 - 136#64) ↦₆₄ ptr_b) ∗
           ((sp0 - 128#64) ↦₆₄ BitVec.ofNat 64 (pts_slice.length + 1)) ∗
-          A.pool lim st3 sf3 ∗ memRegion ((sp0 - 672#64) - 4096#64) 3856 ∗
+          A.pool lim st3 sf3 ∗ memRegion ((sp0 - 672#64) - 4096#64) 3664 ∗
           memRegion ((sp0 - 672#64) - 4304#64) 208 ∗ F)
         post hcl4 hpc4 hrun4 hsp4 hx21_4 hx24_4 hx25_4 hx26_4 hx27_4 hx29_4 ?_)
     · exact Entails.of_eq (by sep_ac_rfl)
@@ -334,7 +337,7 @@ theorem lagrangeInterpolate_inlined_cl_placed_sepWP [LibsignalPlacement]
           ((sp0 - 160#64) ↦₆₄ sf1.readReg64 .x0) ∗ ((sp0 - 144#64) ↦₆₄ b_cap) ∗
           ((sp0 - 136#64) ↦₆₄ ptr_b) ∗
           ((sp0 - 128#64) ↦₆₄ BitVec.ofNat 64 (pts_slice.length + 1)) ∗
-          memRegion ((sp0 - 672#64) - 4096#64) 3856 ∗
+          memRegion ((sp0 - 672#64) - 4096#64) 3664 ∗
           memRegion ((sp0 - 672#64) - 4304#64) 208 ∗ F) by
         exact Entails.of_eq (by sep_ac_rfl)) ?_
     refine SepWP.transport_budgetPool (hvm4.trans hvm5) (hnext := ?_)

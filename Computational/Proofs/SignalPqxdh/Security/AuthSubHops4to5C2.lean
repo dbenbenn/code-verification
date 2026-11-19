@@ -9,11 +9,13 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1
-public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5C1
+public import Computational.Proofs.SignalPqxdh.Security.FgGapDhB -- proof-setup: allow-public-import
 import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5
 import Computational.Proofs.SignalPqxdh.Security.FgGapDhC
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.SigHopA -- proof-setup: allow-public-import
 
 /-!
 # `INT-CTXT` Cutoff Step and Primitive Query Bounds
@@ -22,7 +24,7 @@ Proves the adjacent step bound for `authIntCutoffExp` and primitive-oracle query
 (`PrimBounded`) for the `Auth` `INT-CTXT` reduction helpers.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 

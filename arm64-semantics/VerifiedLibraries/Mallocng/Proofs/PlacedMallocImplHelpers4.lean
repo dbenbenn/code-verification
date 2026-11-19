@@ -707,7 +707,7 @@ theorem mappedDelta_congr_perm_right {k b : Nat} {m0 m1 m2 : Memory}
 
 def mallocImplSuccessBody24 [MallocngMultiPlacement] (γ : GhostName)
     (tp brkStart : BitVec 64) (bud : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
-    (req : Nat) (s0 sf : State) : SepProp :=
+    (req : Nat) (s0 sf : State) (ro : Bool := false) : SepProp :=
   let bf := mallocngAllocBudget true req bud
   stackFrame s0 704 ∗
   ∃∗ p : BitVec 64, ∃∗ bs : List (BitVec 8), ∃∗ st' : MallocngSt,
@@ -723,16 +723,16 @@ def mallocImplSuccessBody24 [MallocngMultiPlacement] (γ : GhostName)
        (g'.sc = 24 → nominalSlotCap 23 < max req MallocngMinBlockCost) ∧
        (g'.sc = 63 → g'.maplen * 4096 ≤ req + 4115)⌝ ∗
     MallocngRoTablesA maddrs ∗
-    MallocngCoreStA γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
+    MallocngCoreStModeA ro γ maddrs brkStart sf.brk bf.liveCost bf.peakCost st' ∗
     MallocngRuntime maddrs tp ∗
     (p ↦ₛ bs) ∗
     MallocngBlockTokenK γ p req 0
 
 def mallocImplSuccessPost24 [MallocngMultiPlacement] (γ : GhostName)
     (tp brkStart : BitVec 64) (bud : MallocngBudget) (ivs0 : List (BitVec 64 × Nat))
-    (req : Nat) (s0 sf : State) : SepProp :=
+    (req : Nat) (s0 sf : State) (ro : Bool := false) : SepProp :=
   ⌜MallocngProcPreserved s0 sf ∧
    MallocngMappedDelta 16 (MallocngTightStepBound req bud.peakCount) s0.mem sf.mem⌝ ∗
-  mallocImplSuccessBody24 γ tp brkStart bud ivs0 req s0 sf
+  mallocImplSuccessBody24 γ tp brkStart bud ivs0 req s0 sf ro
 
 end VerifiedLibraries.Mallocng.Proofs

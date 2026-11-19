@@ -9,11 +9,12 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1
-public import Computational.Proofs.E2E.ComposedKeyIndHop
+import Computational.Proofs.E2E.BinaryHarnessCostedRedsV1
+import Computational.Proofs.E2E.ComposedKeyIndHop
 import Computational.Proofs.ReductionDsl.SM.GameCosted
 import Computational.Proofs.SpecLemmas.Session.ACD19.SM.Theorem8And12Statements
 import VCVio.EvalDist.Monad.Basic
+public import Computational.Specifications.Game.StatementBinaryHarnessCore
 
 /-!
 # State-field independence lemmas for `bhKindRed`
@@ -24,7 +25,7 @@ Proves independence of `BHE2EDrvState` predicates and local SM steps (`bhE2EFini
 `bhE2EStepLocalSm`) from the external `KeyIndState` and challenge-bit fields used by `bhKindRed`.
 -/
 
-@[expose] public section
+public section
 
 open scoped ENNReal
 open OracleComp OracleSpec MeasureTheory

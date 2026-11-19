@@ -20,7 +20,7 @@ Proves that `PolyDecoder.decodedMessage` on a `DecWF n` decoder returns a messag
 `2 * n` bytes (`st_decMsg`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.SpqrV1Sync.SendTotal
 

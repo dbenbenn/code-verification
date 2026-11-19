@@ -9,16 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4KyberRefused
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlaced
-public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProofPlaced
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4KyberRefused -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsRemovePreKeyProofPlaced
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsStoreSessionProofPlaced
 import Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.SpqrV1.Kdf.HkdfToSliceExtract
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsMarkKyberProof
-import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4VRegsSaveIdProof
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4MarkKyber
+import LibsignalBinary.Proofs.PublicApi.StoreKit.KyberPreKeyStoreKit
+import LibsignalBinary.Proofs.TripleRatchet.Hooks2
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.Kits.StageP4SaveIdProof
+public import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.RespClosureCodeSym -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.PublicApi.StoreKit.Placed -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.E2E.Pqxdh.ResponderClosure.AssemblyP3a2
+import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderClosure.Assembly
 
 /-!
 # Relocatable Stage P4 Kyber Pre-Key Refusal Arm and 4-Kit Spatial Predicates
@@ -27,7 +33,7 @@ Relocatable `[LibsignalPlacement]` counterpart of `StageP4VRegsKyberRefused` and
 Stage P4 spatial predicates on Block `518` (`lsProg_518 ext`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxRecDepth 200000
@@ -67,7 +73,7 @@ private theorem lsLogOff_eq_pl [LibsignalPlacement] :
 
 /-! ## Placed 2-kit Kyber refusal spatial predicates and theorem -/
 
-def kyberRefusedSharedPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def kyberRefusedSharedPlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64) (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr msgPtr remoteAddrPtr remoteIkPtr idStorePtr
@@ -107,7 +113,7 @@ def kyberRefusedSharedPlaced [LibsignalPlacement] {A : RustAlloc}
   A.pool ∗
   stackAt s.sp (kyberRefusedCallStack ikit kpkKit)
 
-def kyberRefusedPrePlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def kyberRefusedPrePlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64) (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr msgPtr outPtr remoteAddrPtr remoteIkPtr idStorePtr
@@ -133,7 +139,7 @@ def kyberRefusedPrePlaced [LibsignalPlacement] {A : RustAlloc}
   ikit.identityAt idStorePtr ist0 ∗
   kpkKit.storeAt kyberStorePtr kst0
 
-def kyberRefusedMarkErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def kyberRefusedMarkErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64) (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr msgPtr outPtr remoteAddrPtr remoteIkPtr idStorePtr
@@ -154,7 +160,7 @@ def kyberRefusedMarkErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
   ikit.identityAt idStorePtr (ikit.saveUpdate ist0 peer.val remoteIk (.ok c)) ∗
   kpkKit.storeAt kyberStorePtr (kpkKit.markUpdate kst0 kyberPreKeyId signedPreKeyId baseKey (.error e))
 
-def kyberRefusedSaveErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
+@[expose] def kyberRefusedSaveErrPostPlaced [LibsignalPlacement] {A : RustAlloc}
     (ikit : IdentityStoreSpec A 0#64) (kpkKit : KyberPreKeyStoreSpec A 0#64)
     (s0 s : State)
     (coroPtr msgPtr outPtr remoteAddrPtr remoteIkPtr idStorePtr
@@ -357,7 +363,7 @@ theorem stageP4_kyber_refused_core_vregs_kits_placed_ok [LibsignalPlacement] {A 
 
 /-! ## Placed 4-kit Stage P4 spatial predicates and refusal corollary -/
 
-def stageP4SharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4SharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (s0 s : State)
@@ -405,7 +411,7 @@ def stageP4SharedPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
   A.pool ∗
   stackAt s.sp (stageP4CallStack kit ikit pkKit kpkKit)
 
-def stageP4RawPrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4RawPrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (s0 s : State)
@@ -453,7 +459,7 @@ abbrev stageP4PrePlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (coroOpkIdAtP4 coroPtr opkId?) kyberPreKeyId signedPreKeyId b_2c0 pt peer remoteIk baseKey
     sst0 ist0 pst0 kst0 G st
 
-def stageP4ExitAtPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
+@[expose] def stageP4ExitAtPlaced [LibsignalPlacement] {A : RustAlloc} {b : BitVec 64}
     (kit : SessionStoreSpec A b) (ikit : IdentityStoreSpec A b)
     (pkKit : PreKeyStoreSpec A b) (kpkKit : KyberPreKeyStoreSpec A b)
     (s0 s : State)

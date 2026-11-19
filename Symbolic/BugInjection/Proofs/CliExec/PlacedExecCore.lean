@@ -43,7 +43,7 @@ namespace Symbolic.BugInjection.Proofs.CliExec.PlacedExecCore
 
 open Arm64 Arm64.Memory Arm64.Obj Arm64.Process ProofLib
 open CryptoVerification.SignalSession (CliHooks Inputs Outcome OutcomeMatchesProcess
-  cliProcessInputs filesOf sigAbrt)
+  cliProcessInputs filesOf)
 open Symbolic.BugInjection.Proofs.CliExec.CompHooks0Placed (compHooks0)
 open Symbolic.BugInjection.Proofs.CliExec.RadixMemAux
 open Symbolic.BugInjection.Proofs.CliExec.RadixMem
@@ -224,51 +224,50 @@ def fastOpenatPure (ffs : FastFs) (dfd : BitVec 32) (rawPath : String) (flags : 
     let hasCloexec := (flags &&& O_CLOEXEC_W32) != 0#32
     match resolveCwdPath dfd rawPath with
     | .trap msg => .trap msg
-    | .errno err => .errno err
+    | .errno err =>
+      match fastAllocFd ffs with
+      | none => .errno EMFILE
+      | some _ => .errno err
     | .ok segs =>
-      match fastStrictAncestorWalkErrno? ffs rawPath with
-      | some err => .errno err
-      | none =>
-        let isTrailDir := trailingDir rawPath
-        let isTrailNormSlash := trailingNormSlash rawPath
-        if hasCreat && isTrailNormSlash then .errno EISDIR
-        else if ((splitSlash rawPath).filter (!·.isEmpty)).getLast?.any (·.length > NAME_MAX) then
-          .errno ENAMETOOLONG
-        else
-          match ffs.getEntry segs with
-          | some .dir =>
-            if hasCreat && hasExcl && !isTrailNormSlash then .errno EEXIST
-            else if acc != .rdonly || hasTrunc || hasCreat then .errno EISDIR
-            else match fastAllocFd ffs with
-              | none => .errno EMFILE
-              | some fd =>
+      match fastAllocFd ffs with
+      | none => .errno EMFILE
+      | some fd =>
+        match fastStrictAncestorWalkErrno? ffs rawPath with
+        | some err => .errno err
+        | none =>
+          let isTrailDir := trailingDir rawPath
+          let isTrailNormSlash := trailingNormSlash rawPath
+          if hasCreat && isTrailNormSlash then .errno EISDIR
+          else if ((splitSlash rawPath).filter (!·.isEmpty)).getLast?.any (·.length > NAME_MAX) then
+            .errno ENAMETOOLONG
+          else
+            match ffs.getEntry segs with
+            | some .dir =>
+              if hasCreat && hasExcl && !isTrailNormSlash then .errno EEXIST
+              else if acc != .rdonly || hasTrunc || hasCreat then .errno EISDIR
+              else
                 let ffs' := ffs.setFd fd
                   (some { path := rawPath, accMode := .rdonly, append := hasAppend,
                           cloexec := hasCloexec, offset := 0, kind := .localDir })
                 .opened fd ffs' none
-          | some (.file oldBytes) =>
-            if isTrailDir || hasDir then .errno ENOTDIR
-            else if hasCreat && hasExcl then .errno EEXIST
-            else match fastAllocFd ffs with
-              | none => .errno EMFILE
-              | some fd =>
+            | some (.file oldBytes) =>
+              if isTrailDir || hasDir then .errno ENOTDIR
+              else if hasCreat && hasExcl then .errno EEXIST
+              else
                 let bs' := if hasTrunc then [] else oldBytes
                 let ffs' := (ffs.setEntry segs (some (.file bs'))).setFd fd
                   (some { path := rawPath, accMode := acc, append := hasAppend,
                           cloexec := hasCloexec, offset := 0 })
                 .opened fd ffs' (if hasTrunc then some segs.toPathString else none)
-          | none =>
-            if !hasCreat then .errno ENOENT
-            else match fastAllocFd ffs with
-              | none => .errno EMFILE
-              | some fd =>
-                if (mode &&& O_CREAT_OWNER_RW_MASK) != O_CREAT_OWNER_RW_MASK then
-                  .trap "unmodeled non-owner-rw O_CREAT mode"
-                else
-                  let ffs' := (ffs.setEntry segs (some (.file []))).setFd fd
-                    (some { path := rawPath, accMode := acc, append := hasAppend,
-                            cloexec := hasCloexec, offset := 0 })
-                  .opened fd ffs' (some segs.toPathString)
+            | none =>
+              if !hasCreat then .errno ENOENT
+              else if (mode &&& O_CREAT_OWNER_RW_MASK) != O_CREAT_OWNER_RW_MASK then
+                .trap "unmodeled non-owner-rw O_CREAT mode"
+              else
+                let ffs' := (ffs.setEntry segs (some (.file []))).setFd fd
+                  (some { path := rawPath, accMode := acc, append := hasAppend,
+                          cloexec := hasCloexec, offset := 0 })
+                .opened fd ffs' (some segs.toPathString)
 
 def fastApplyOpenVerdict (fs : FastState) : FastOpenVerdict → Option FastState
   | .opened fd ffs' none     => some (((fs.setFs ffs').writeReg64 Reg.x0 fd).advancePC)
@@ -310,7 +309,10 @@ def fastExecOpenat (fs : FastState) : Option FastState :=
   | none =>
     match readCStringFast fs.mem fname with
     | .trap _ => none
-    | .errno err => some ((fs.writeReg64 Reg.x0 (-err)).advancePC)
+    | .errno err =>
+      match fastAllocFd fs.fs with
+      | none => some ((fs.writeReg64 Reg.x0 (-EMFILE)).advancePC)
+      | some _ => some ((fs.writeReg64 Reg.x0 (-err)).advancePC)
     | .ok rawPath => fastApplyOpenVerdict fs (fastOpenatPure fs.fs dfd rawPath flags mode)
 
 /-- `SYS_CLOSE` (`57`) evaluator on `FastState`. -/
@@ -347,6 +349,8 @@ def fastExecRead (fs : FastState) : Option FastState :=
           some ((fs.writeReg64 Reg.x0 (-EBADF)).advancePC)
         else if decide (buf.toNat + count.toNat > USER_VA_LIMIT) then
           some ((fs.writeReg64 Reg.x0 EFAULT_RET).advancePC)
+        else if decide (desc.offset + count.toNat > MAX_LFS_FILESIZE) then
+          some ((fs.writeReg64 Reg.x0 (-EINVAL)).advancePC)
         else
           some ((fs.writeReg64 Reg.x0 (-EISDIR)).advancePC)
       else if !(desc.kind == .localFile || desc.kind == .stdio) then
@@ -388,7 +392,7 @@ def fastExecFstat (fs : FastState) : Option FastState :=
       if desc.kind != .localFile && desc.kind != .localDir then
         none
       else
-        let entry := (fs.fs.files desc.path).getD (.file [])
+        let entry := if desc.kind == .localDir then .dir else (fs.fs.files desc.path).getD (.file [])
         if !fs.mem.canWrite statbuf 128 then
           some ((fs.writeReg64 Reg.x0 EFAULT_RET).advancePC)
         else
@@ -403,15 +407,20 @@ def fastExecBrk (fs : FastState) : Option FastState :=
   else
     let oldPage := Arm64.pageAlignUp fs.brk.toNat
     let newPage := Arm64.pageAlignUp addr.toNat
-    if decide (newPage ≤ oldPage) then
+    if newPage == oldPage then
+      some (((fastSetBrk fs addr).writeReg64 Reg.x0 addr).advancePC)
+    else if decide (newPage < oldPage) then
+      let shrinkBase := BitVec.ofNat 64 newPage
       let shrinkBytes := oldPage - newPage
-      if !fs.mem.allPerm (·.mapped) (BitVec.ofNat 64 newPage) shrinkBytes then
+      if fs.mem.canMap shrinkBase shrinkBytes then
         some ((fs.writeReg64 Reg.x0 fs.brk).advancePC)
+      else if !fs.mem.allPerm (fun p => !p.frozen) shrinkBase shrinkBytes then
+        none
       else if !decide (oldPage ≤ USER_VA_LIMIT) then
         none
       else
-        let reclaimed := fs.mem.countRw (BitVec.ofNat 64 newPage) shrinkBytes
-        let mem := fs.mem.unmapWritable (BitVec.ofNat 64 newPage) shrinkBytes
+        let reclaimed := fs.mem.countRw shrinkBase shrinkBytes
+        let mem := fs.mem.unmapNonFrozen shrinkBase shrinkBytes
         some (((((fastSetBrk fs addr).setMem mem |>
           fun st => fastSetPhysMemAvail st (fs.physMemAvail + reclaimed)).writeReg64
             Reg.x0 addr)).advancePC)
@@ -430,7 +439,7 @@ def fastExecBrk (fs : FastState) : Option FastState :=
 
 /-- `SYS_MUNMAP` (`215`) evaluator on `FastState`. -/
 def fastExecMunmap (fs : FastState) : Option FastState :=
-  let addr := fs.readReg64 Reg.x0
+  let addr := untaggedAddr (fs.readReg64 Reg.x0)
   let len := (fs.readReg64 Reg.x1).toNat
   let size := Arm64.pageAlignUp len
   if addr.toNat % PAGE_SIZE != 0 || len == 0 || !decide (addr.toNat + size ≤ 2 ^ 48) then
@@ -444,32 +453,34 @@ def fastExecMunmap (fs : FastState) : Option FastState :=
 
 /-- `SYS_MREMAP` (`216`) evaluator on `FastState`. -/
 def fastExecMremap (fs : FastState) : Option FastState :=
-  let oldAddr := fs.readReg64 Reg.x0
+  let oldAddr := untaggedAddr (fs.readReg64 Reg.x0)
   let oldLen := (fs.readReg64 Reg.x1).toNat
   let newLen := (fs.readReg64 Reg.x2).toNat
   let flags := fs.readReg64 Reg.x3
   if flags != MREMAP_MAYMOVE then
     none
   else if oldAddr.toNat % PAGE_SIZE != 0 || newLen == 0 ||
-      !decide (newLen ≤ 2 ^ 64 - PAGE_SIZE) then
+      !decide (newLen ≤ USER_VA_LIMIT) then
     some ((fs.writeReg64 Reg.x0 (-EINVAL)).advancePC)
-  else if oldLen == 0 then
+  else if oldLen == 0 || !decide (oldLen ≤ 2 ^ 64 - PAGE_SIZE) then
     none
+  else if fs.oracle.mremapRefusal fs.oracleIdx == some .enomem then
+    some (((fastNextOracle fs).writeReg64 Reg.x0 (-ENOMEM)).advancePC)
   else
     let oldAligned := Arm64.pageAlignUp oldLen
     let newAligned := Arm64.pageAlignUp newLen
     if !decide (oldAddr.toNat + oldAligned ≤ USER_VA_LIMIT) then
-      some ((fs.writeReg64 Reg.x0 (-EINVAL)).advancePC)
+      none
     else if !fs.mem.allPerm (fun p => !p.frozen) oldAddr oldAligned then
       none
     else if fs.mem.canMap oldAddr oldAligned then
-      some ((fs.writeReg64 Reg.x0 EFAULT_RET).advancePC)
+      some (((fastNextOracle fs).writeReg64 Reg.x0 EFAULT_RET).advancePC)
     else if !fs.mem.allPerm (· == some Perm.rw) oldAddr oldAligned then
       none
     else if !fs.mem.allAnon oldAddr oldAligned then
       none
-    else if fs.oracle.mremapFail fs.oracleIdx then
-      some (((fastNextOracle fs).writeReg64 Reg.x0 (-ENOMEM)).advancePC)
+    else if fs.oracle.mremapRefusal fs.oracleIdx == some .efault then
+      some (((fastNextOracle fs).writeReg64 Reg.x0 EFAULT_RET).advancePC)
     else
       let fmUnmapped := fs.mem.unmapNonFrozen oldAddr oldAligned
       match sanitizeMmapAddrFast fmUnmapped (fs.oracle.mmap fs.oracleIdx) newAligned with
@@ -534,7 +545,7 @@ def fastExecMmap (fs : FastState) : Option FastState :=
 
 /-- `SYS_MPROTECT` (`226`) evaluator on `FastState`. -/
 def fastExecMprotect (fs : FastState) : Option FastState :=
-  let addr := fs.readReg64 Reg.x0
+  let addr := untaggedAddr (fs.readReg64 Reg.x0)
   let len := (fs.readReg64 Reg.x1).toNat
   let prot := fs.readReg64 Reg.x2
   let size := Arm64.pageAlignUp len
@@ -542,10 +553,12 @@ def fastExecMprotect (fs : FastState) : Option FastState :=
     none
   else if addr.toNat % PAGE_SIZE != 0 then
     some ((fs.writeReg64 Reg.x0 (-EINVAL)).advancePC)
-  else if !decide (addr.toNat + size ≤ 2 ^ 48) then
-    none
   else if len == 0 then
     some ((fs.writeReg64 Reg.x0 0#64).advancePC)
+  else if !decide (len ≤ 2 ^ 64 - PAGE_SIZE) || !decide (addr.toNat + size < 2 ^ 64) then
+    some ((fs.writeReg64 Reg.x0 (-ENOMEM)).advancePC)
+  else if !decide (addr.toNat + size ≤ 2 ^ 48) then
+    none
   else if !fs.mem.allPerm (fun p => !p.frozen) addr size then
     none
   else if !fs.mem.allPerm (·.mapped) addr size then
@@ -746,10 +759,6 @@ def overlayHooksPlaced (W : CliHooks) (stubs : List (String × Nat)) (tr : BinTr
   withForcedUInt8ListPlaced panicPrefixBs fun pfx =>
   withForcedNameTablePlaced (hookPlacedExactNamesBs W) fun tbl =>
     overlayHooksPlacedAux pfx tbl stubs tr
-
-def overlayHooksPlacedBv (W : CliHooks) (stubs : List (String × BitVec 64)) (tr : BinTree String) :
-    BinTree String :=
-  overlayHooksPlaced W (stubs.map fun (nm, va) => (nm, va.toNat)) tr
 
 /-- Resolve word index `idx = pc.toNat / 4 < 2 ^ 62`, giving `fp.hooks` priority over `fp.rxLines`. -/
 def lookupStepEntryPlaced (fp : FastProgPlaced) (idx : Nat) : StepEntryPlaced :=
@@ -1158,7 +1167,7 @@ def checkFastExited0 (fs : FastState) (expectedStdout : List (BitVec 8))
   checkFastExited fs 0#64 expectedStdout expectedFiles
 
 def checkFastAborted (fs : FastState) : Bool :=
-  isSignaledWith fs.status sigAbrt
+  isSignaledWith fs.status fastSigAbrt
 
 theorem checkFastExited_sound
     {fs : FastState} {sf : State} {code : BitVec 64}
@@ -1198,10 +1207,10 @@ theorem checkFastAborted_sound
     {fs : FastState} {sf : State}
     (hag : fs.Agrees sf)
     (hchk : checkFastAborted fs = true) :
-    sf.status = .Signaled sigAbrt ∧
-      OutcomeMatchesProcess .aborted (ProcessOutcome.ofSignal sigAbrt sf) := by
+    sf.status = .Signaled fastSigAbrt ∧
+      OutcomeMatchesProcess .aborted (ProcessOutcome.ofSignal fastSigAbrt sf) := by
   unfold checkFastAborted at hchk
-  have hst : sf.status = .Signaled sigAbrt := by
+  have hst : sf.status = .Signaled fastSigAbrt := by
     rw [← hag.status]
     cases h : fs.status <;> simp [isSignaledWith, h] at hchk
     exact congrArg ExecStatus.Signaled hchk

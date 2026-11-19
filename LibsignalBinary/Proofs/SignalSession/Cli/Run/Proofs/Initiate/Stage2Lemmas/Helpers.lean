@@ -10,10 +10,10 @@ limitations under the License.
 module
 
 public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Defs
-public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Fetch
+public import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Fetch -- proof-setup: allow-public-import
 import LibsignalBinary.Proofs.SignalSession.Cli.Run.Proofs.Initiate.Stage2Lemmas.Common
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option warningAsError false
@@ -100,110 +100,6 @@ theorem sepWPp_exists_left {α : Type} {prog : Program} {ret : BitVec 64} {s : S
     (h : ∀ a : α, SepWPp prog ret s (P a) Q Qp oom) :
     SepWPp prog ret s (∃∗ a, P a) Q Qp oom :=
   SepWPp.exists_elim h
-
-theorem sepWPp_panic_handleError {img : Obj.Image} {W : CliHooks}
-    {target_pc : BitVec 64} {s : State} {P : SepProp}
-    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hpc : s.pc = (initProg img W).fnAddr handleErrorName)
-    (hrun : s.status = .Running)
-    (hpan : Qp (Rust.panicked s) P) :
-    SepWPp (initProg img W) target_pc s P Q Qp oom :=
-  SepWPp.panic hrun (hpc ▸ handleError_externAt img W) hpan
-
-theorem initPanicPost_of_false (A : RustAlloc) (img : Obj.Image) (S : RunSem)
-    (x : InitGhost) (stk : Nat) {s0 sf : State} (F : SepProp) :
-    InitPanicPost A img S x stk s0 sf (⌜False⌝ ∗ F) :=
-  Entails.pure_left False.elim
-
-theorem fnAddr_cliInitiate_eq (img : Obj.Image) (W : CliHooks) :
-    (initProg img W).fnAddr cliInitiateName =
-      img.base + BitVec.ofNat 64 (num% (ls_off% "libsignal_cli_handshake::initiate")) := by
-  simp only [initProg, tripleRatchetProgAtExt, Program.fnAddr_rebase, cliInitiate_fnOff]
-
-theorem inInitiate_after_call {img : Obj.Image} {W : CliHooks} {s0 s sm sf : State} {k0 k1 : Nat}
-    (hctrl : InInitiate img W s0 s k0)
-    (hsp1 : sm.sp = s.sp)
-    (hfp1 : sm.readReg64 .fp = s.readReg64 .fp)
-    (hx19_1 : sm.readReg64 (.gpr 19#5) = s.readReg64 (.gpr 19#5))
-    (hsym1 : sm.symtab = s.symtab)
-    (hvregs1 : calleeSavedVRegs sm = calleeSavedVRegs s)
-    (hkf1 : s.mem.KeepsFrozen sm.mem)
-    (hfiles1 : sm.fs.files = s.fs.files)
-    (hpc2 : sf.pc = initPc img W k1)
-    (hrun2 : sf.status = .Running)
-    (hsp2 : sf.sp = sm.sp)
-    (hcs2 : CalleeSavedPreserved sm sf)
-    (hkf2 : sm.mem.KeepsFrozen sf.mem)
-    (hsym2 : sf.symtab = sm.symtab)
-    (hfiles2 : sf.fs.files = sm.fs.files) :
-    InInitiate img W s0 sf k1 := by
-  rcases hcs2 with ⟨hx19_2, _, _, _, _, _, _, _, _, _, hfp2, hvregs2⟩
-  exact
-    { pc := hpc2
-      run := hrun2
-      sp := hsp2.trans (hsp1.trans hctrl.sp)
-      fp := hfp2.trans (hfp1.trans hctrl.fp)
-      x19 := hx19_2.trans (hx19_1.trans hctrl.x19)
-      files0 := hfiles2.trans (hfiles1.trans hctrl.files0)
-      inv := imgCallInv_of_keepsFrozen (imgCallInv_of_keepsFrozen hctrl.inv hkf1 hsym1) hkf2 hsym2
-      vregs := hvregs2.trans (hvregs1.trans hctrl.vregs)
-      spAligned := hctrl.spAligned }
-
-theorem InInitiate.toExt {img : Obj.Image} {W : CliHooks} {s0 s : State} {k : Nat}
-    (h : InInitiate img W s0 s k) :
-    InInitiateExt img (cliHookExterns W) s0 s k :=
-  ⟨h.pc, h.run, h.sp, h.fp, h.x19, h.files0, h.inv, h.vregs, h.spAligned⟩
-
-theorem InInitiateExt.toLegacy {img : Obj.Image} {W : CliHooks} {s0 s : State} {k : Nat}
-    (h : InInitiateExt img (cliHookExterns W) s0 s k) :
-    InInitiate img W s0 s k :=
-  ⟨h.pc, h.run, h.sp, h.fp, h.x19, h.files0, h.inv, h.vregs, h.spAligned⟩
-
-theorem sepWPp_panic_handleError_ext {img : Obj.Image}
-    {ext : String → Option (State → State)}
-    {target_pc : BitVec 64} {s : State} {P : SepProp}
-    {Q Qp : State → SepProp → Prop} {oom : State → SepProp}
-    (hpc : s.pc = (initProgExt img ext).fnAddr handleErrorName)
-    (hrun : s.status = .Running)
-    (hpan : Qp (Rust.panicked s) P) :
-    SepWPp (initProgExt img ext) target_pc s P Q Qp oom :=
-  SepWPp.panic hrun (hpc ▸ handleError_externAt_ext img ext) hpan
-
-theorem fnAddr_cliInitiate_ext_eq (img : Obj.Image)
-    (ext : String → Option (State → State)) :
-    (initProgExt img ext).fnAddr cliInitiateName =
-      img.base + BitVec.ofNat 64 (num% (ls_off% "libsignal_cli_handshake::initiate")) := by
-  simp only [initProgExt, tripleRatchetProgAtExt, Program.fnAddr_rebase, cliInitiate_fnOff]
-
-theorem inInitiateExt_after_call {img : Obj.Image} {ext : String → Option (State → State)}
-    {s0 s sm sf : State} {k0 k1 : Nat}
-    (hctrl : InInitiateExt img ext s0 s k0)
-    (hsp1 : sm.sp = s.sp)
-    (hfp1 : sm.readReg64 .fp = s.readReg64 .fp)
-    (hx19_1 : sm.readReg64 (.gpr 19#5) = s.readReg64 (.gpr 19#5))
-    (hsym1 : sm.symtab = s.symtab)
-    (hvregs1 : calleeSavedVRegs sm = calleeSavedVRegs s)
-    (hkf1 : s.mem.KeepsFrozen sm.mem)
-    (hfiles1 : sm.fs.files = s.fs.files)
-    (hpc2 : sf.pc = initPcExt img ext k1)
-    (hrun2 : sf.status = .Running)
-    (hsp2 : sf.sp = sm.sp)
-    (hcs2 : CalleeSavedPreserved sm sf)
-    (hkf2 : sm.mem.KeepsFrozen sf.mem)
-    (hsym2 : sf.symtab = sm.symtab)
-    (hfiles2 : sf.fs.files = sm.fs.files) :
-    InInitiateExt img ext s0 sf k1 := by
-  rcases hcs2 with ⟨hx19_2, _, _, _, _, _, _, _, _, _, hfp2, hvregs2⟩
-  exact
-    { pc := hpc2
-      run := hrun2
-      sp := hsp2.trans (hsp1.trans hctrl.sp)
-      fp := hfp2.trans (hfp1.trans hctrl.fp)
-      x19 := hx19_2.trans (hx19_1.trans hctrl.x19)
-      files0 := hfiles2.trans (hfiles1.trans hctrl.files0)
-      inv := imgCallInv_of_keepsFrozen (imgCallInv_of_keepsFrozen hctrl.inv hkf1 hsym1) hkf2 hsym2
-      vregs := hvregs2.trans (hvregs1.trans hctrl.vregs)
-      spAligned := hctrl.spAligned }
 
 end CryptoVerification.SignalSession.Cli.RunProofs.Initiate.Stage2Lemmas
 

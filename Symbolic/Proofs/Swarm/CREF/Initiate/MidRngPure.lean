@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
+import Symbolic.Proofs.Swarm.CREF.Cli.RetiredModelTraces
 public import Symbolic.Specifications.Concrete.ImageSymbols
 import Mathlib.Algebra.Group.Nat.Defs
 
@@ -19,7 +19,7 @@ import Mathlib.Algebra.Group.Nat.Defs
 Defines `initiateFullDrawLengths`, the sequence of 34 RNG draw byte lengths in `session_initiate`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -30,7 +30,7 @@ open DY.Libsignal.HwEvents
 open DY.Libsignal.PQXDH.Refinement (preKeyBundleByteLength)
 
 /-- Sequence of 34 RNG draw byte lengths in `session_initiate`. -/
-def initiateFullDrawLengths : List Nat :=
+@[expose] def initiateFullDrawLengths : List Nat :=
   [32] ++ List.replicate 32 4 ++ [32]
 
 end Symbolic.Swarm.CREF

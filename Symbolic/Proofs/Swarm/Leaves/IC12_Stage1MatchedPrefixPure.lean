@@ -9,7 +9,7 @@ limitations under the License.
 
 module
 
-public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation
+public import Symbolic.Proofs.Swarm.CREF.Cli.RetiredTraceExplanation -- proof-setup: allow-public-import
 import DY.ALaCarte.Basic
 import DY.Trace.Basic
 import DY.Trace.Monad
@@ -19,7 +19,6 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import ProofLib.Lemmas
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
 import VCVio.Prelude.Core
 import Symbolic.DYBridge.DY.ALaCarte.Basic
@@ -39,7 +38,7 @@ Compositional append and snoc lemmas for `runMoves`, `ModelRun`, `RoleFaithful`,
 `ReadFaithful`, `OutcomeFaithful`, `ReadCollision`, `MatchedPrefix`, `ExplainsMoves`, and `Clean`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -149,7 +148,7 @@ theorem runTrace_take_reach_snoc {r : ProtocolSetup} {ms : List Move} {m : Move}
     | 0 => by have h := hall ms.length; rw [List.take_length] at h; simpa using h
     | _ + 1 => by simpa using hlast
 
-def MoveOK (r : ProtocolSetup) (m : Move) (tr : ExecTrace) : Prop :=
+@[expose] def MoveOK (r : ProtocolSetup) (m : Move) (tr : ExecTrace) : Prop :=
   m.isSetup = false ∧ m.LogsSessionCompletion tr ∧ m.MatchesSetupPeer r ∧
   (match m with | .exposeKey _ s _ | .exposeSpqr _ s => TripleRatchet.isCurrentSnapshot tr s = true | _ => True) ∧
   (match m with | .encrypt _ _ _ pqIdx _ => pqIdx = tr.length + 2 | _ => True)
@@ -337,7 +336,7 @@ theorem not_readCollision_append_noAccept {interpretation : ExternInterpretation
 
 /-! ## `MatchedPrefix`, `ExplainsMoves`, and `Clean` Combinators -/
 
-def Clean (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
+@[expose] def Clean (interpretation : ExternInterpretation) (r : ProtocolSetup) (S : OpaqueSymbolSemantics)
     (who : List Participant) (ok : Nat → Bool) (g : Ghost) (ms : List Move) (τ₁ : List MachineEvent) : Prop :=
   ExplainsMoves interpretation r S who ok g ms τ₁ ∧ ¬ ReadCollision interpretation r S g ms τ₁
 

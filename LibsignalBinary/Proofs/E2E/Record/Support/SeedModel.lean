@@ -18,7 +18,7 @@ Models the 300-byte seed parser and `RecordStructure` protobuf builder (`seedSes
 used by `session_m_seed`, together with X25519 scalar clamping (`SeedOk`, `seedSlice_129_clamped`).
 -/
 
-@[expose] public section
+public section
 
 namespace CryptoVerification.E2E.Record
 
@@ -28,29 +28,29 @@ open CryptoGames.Ratchet
 /-! ## Protobuf wire-format builders -/
 
 /-- `pb_key(v, tag, wire)`: the byte `(tag << 3) | wire` (tags below 16). -/
-def pbKey (tag wire : ℕ) : List (BitVec 8) := [BitVec.ofNat 8 (tag * 8 + wire)]
+@[expose] def pbKey (tag wire : ℕ) : List (BitVec 8) := [BitVec.ofNat 8 (tag * 8 + wire)]
 
 /-- The LEB128 bytes of `x` as `pb_varint`'s loop pushes them (`(x as u8) | 0x80` while
 `x ≥ 0x80`, then `x as u8`); `fuel` = the number of continuation bytes allowed (5 covers `u32`). -/
-def pbVarintBody : ℕ → ℕ → List (BitVec 8)
+@[expose] def pbVarintBody : ℕ → ℕ → List (BitVec 8)
   | 0, x => [BitVec.ofNat 8 x]
   | fuel + 1, x =>
     if x < 128 then [BitVec.ofNat 8 x] else BitVec.ofNat 8 (x % 128 + 128) :: pbVarintBody fuel (x / 128)
 
 /-- `pb_varint(v, tag, x)`: nothing if `x = 0`, else the key (wire type 0) and the LEB128 bytes. -/
-def pbVarint (tag x : ℕ) : List (BitVec 8) :=
+@[expose] def pbVarint (tag x : ℕ) : List (BitVec 8) :=
   if x = 0 then [] else pbKey tag 0 ++ pbVarintBody 5 x
 
 /-- `pb_bytes(v, tag, bytes)`: the key (wire type 2), `bytes.len() as u8`, the bytes. -/
-def pbBytes (tag : ℕ) (b : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def pbBytes (tag : ℕ) (b : List (BitVec 8)) : List (BitVec 8) :=
   pbKey tag 2 ++ [BitVec.ofNat 8 b.length] ++ b
 
 /-- `pb_pubkey(k)`: the type byte `0x05`, then `k`. -/
-def pbPubkey (k : List (BitVec 8)) : List (BitVec 8) := 5#8 :: k
+@[expose] def pbPubkey (k : List (BitVec 8)) : List (BitVec 8) := 5#8 :: k
 
 /-- `pb_chain(public, private, key, index)`: a `Chain` message (public key, optional private key,
 the `ChainKey { index, key }` sub-message). -/
-def pbChain (pub : List (BitVec 8)) (priv : Option (List (BitVec 8))) (key : List (BitVec 8))
+@[expose] def pbChain (pub : List (BitVec 8)) (priv : Option (List (BitVec 8))) (key : List (BitVec 8))
     (index : ℕ) : List (BitVec 8) :=
   let ck := pbVarint 1 index ++ pbBytes 2 key
   pbBytes 1 (pbPubkey pub) ++ (match priv with | some p => pbBytes 2 p | none => []) ++ pbBytes 3 ck
@@ -58,17 +58,17 @@ def pbChain (pub : List (BitVec 8)) (priv : Option (List (BitVec 8))) (key : Lis
 /-! ## Seed slice extractors and `SeedOk` -/
 
 /-- The bytes `f[o .. o + n]`. -/
-def seedSlice (f : List (BitVec 8)) (o n : ℕ) : List (BitVec 8) := (f.drop o).take n
+@[expose] def seedSlice (f : List (BitVec 8)) (o n : ℕ) : List (BitVec 8) := (f.drop o).take n
 
 /-- `u32le(o)`: the little-endian `u32` at `f[o .. o + 4]`. -/
-def seedU32 (f : List (BitVec 8)) (o : ℕ) : ℕ :=
+@[expose] def seedU32 (f : List (BitVec 8)) (o : ℕ) : ℕ :=
   (f.getD o 0).toNat + 256 * (f.getD (o + 1) 0).toNat + 65536 * (f.getD (o + 2) 0).toNat +
     16777216 * (f.getD (o + 3) 0).toNat
 
 /-- Validity predicate for the 300-byte `session_m_seed` input: boolean presence flags at offsets
 `96`, `197`, and `266`, zero padding in `267..300`, and a clamped X25519 sender private key at
 `129..161` when `f[96] = 1`. -/
-def SeedOk (f : List (BitVec 8)) : Prop :=
+@[expose] def SeedOk (f : List (BitVec 8)) : Prop :=
   f.length = 300 ∧ (f.getD 96 0).toNat ≤ 1 ∧ (f.getD 197 0).toNat ≤ 1 ∧ (f.getD 266 0).toNat ≤ 1 ∧
     (∀ i, 267 ≤ i → i < 300 → f.getD i 0 = 0) ∧
     (f.getD 96 0 = 1 →
@@ -100,34 +100,8 @@ theorem clampScalar_fix_iff (k : List.Vector (BitVec 8) 32) :
       · simp only [clampScalar, List.Vector.get_set_of_ne (Ne.symm hj31),
           List.Vector.get_set_of_ne (Ne.symm hj0)]
 
-theorem vecGet_eq_getD (l : List (BitVec 8)) (h : l.length = 32) (j : Fin 32) :
-    List.Vector.get (⟨l, h⟩ : List.Vector (BitVec 8) 32) j = l.getD j.val 0 := by
-  rw [List.getD_eq_getElem?_getD, List.getElem?_eq_getElem (by omega)]
-  rfl
-
-theorem vecToList_getD (k : List.Vector (BitVec 8) 32) (j : Fin 32) :
-    k.toList.getD j.val 0 = k.get j := by
-  obtain ⟨l, h⟩ := k
-  exact (vecGet_eq_getD l h j).symm
-
-theorem seedSlice_getD (f : List (BitVec 8)) (o n j : Nat) (hj : j < n) :
-    (seedSlice f o n).getD j 0 = f.getD (o + j) 0 := by
-  simp only [seedSlice, List.getD_eq_getElem?_getD, List.getElem?_take, hj, ite_true,
-    List.getElem?_drop]
-
-/-- Under `SeedOk f` and `f[96] = 1`, the sender private key slice `f[129..161]` is fixed by `clampScalar`. -/
-theorem seedSlice_129_clamped {f : List (BitVec 8)} (hf : SeedOk f) (h96 : f.getD 96 0 = 1)
-    (h : (seedSlice f 129 32).length = 32) :
-    clampScalar (⟨seedSlice f 129 32, h⟩ : List.Vector (BitVec 8) 32) =
-      (⟨seedSlice f 129 32, h⟩ : List.Vector (BitVec 8) 32) := by
-  obtain ⟨h129, h160⟩ := hf.2.2.2.2.2 h96
-  refine (clampScalar_fix_iff _).mpr ?_
-  rw [vecGet_eq_getD, vecGet_eq_getD, seedSlice_getD f 129 32 _ (by decide),
-    seedSlice_getD f 129 32 _ (by decide)]
-  exact ⟨h129, h160⟩
-
 /-- The `SessionStructure` bytes `s` that `session_m_seed` writes. -/
-def seedSession (f : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def seedSession (f : List (BitVec 8)) : List (BitVec 8) :=
   pbVarint 1 4 ++ pbBytes 2 (pbPubkey (seedSlice f 0 32)) ++ pbBytes 3 (pbPubkey (seedSlice f 32 32)) ++
     pbBytes 4 (seedSlice f 64 32) ++
     (if f.getD 96 0 = 1 then
@@ -139,7 +113,7 @@ def seedSession (f : List (BitVec 8)) : List (BitVec 8) :=
     (if f.getD 266 0 = 1 then pbBytes 9 (pbBytes 2 (pbPubkey (List.replicate 32 0#8))) else [])
 
 /-- `RecordStructure` protobuf encoding (`tag 1`, length-delimited `seedSession f`) passed to `SessionRecord::deserialize`. -/
-def seedRecord (f : List (BitVec 8)) : List (BitVec 8) :=
+@[expose] def seedRecord (f : List (BitVec 8)) : List (BitVec 8) :=
   pbKey 1 2 ++ pbVarintBody 5 (seedSession f).length ++ seedSession f
 
 /-- The fixed header of `s`. -/
@@ -238,16 +212,6 @@ theorem seedSession_length_bounds (f : List (BitVec 8)) :
   have h3 := seedC3_length_le f
   simp only [List.length_append]
   omega
-
-theorem pfx_eq_of_lt_128 {n : Nat} (h : n < 128) :
-    pbKey 1 2 ++ pbVarintBody 5 n = [10#8, BitVec.ofNat 8 n] := by
-  simp [pbKey, pbVarintBody, h]
-
-theorem pfx_eq_of_ge_128 {n : Nat} (hge : ¬ (n < 128)) (hlt : n < 16384) :
-    pbKey 1 2 ++ pbVarintBody 5 n =
-      [10#8, BitVec.ofNat 8 (n % 128 + 128), BitVec.ofNat 8 (n / 128)] := by
-  have hdiv : n / 128 < 128 := by omega
-  simp [pbKey, pbVarintBody, hge, hdiv]
 
 end SeedLengthFacts
 

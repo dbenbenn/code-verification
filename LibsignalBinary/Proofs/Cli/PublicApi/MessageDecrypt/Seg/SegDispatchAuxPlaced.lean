@@ -9,16 +9,22 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegDispatchAux
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced
-public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.SessionOnlyKitEPlaced
-public import LibsignalBinary.Proofs.Common.StringClonePlaced
+public import LibsignalBinary.Proofs.PublicApi.MessageDecrypt.Seg.SegDispatchAux -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.DefsPlaced -- proof-setup: allow-public-import
+import LibsignalBinary.Proofs.Cli.PublicApi.MessageDecrypt.SessionOnlyKitEPlaced
+import LibsignalBinary.Proofs.Common.StringClonePlaced
 import all Arm64.Trusted.Spec.Hoare
 import Arm64.Trusted.Spec.SepLogic
 import LibsignalBinary.Proofs.Placed.BridgeReloc
 import all Init.Data.String.Defs
+public import ProofLib.BV
+public import ProofLib.StdStartup.MuslStage1Init
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymA
+import LibsignalBinary.Proofs.Cli.TripleRatchet.CliRatchetCodeSymB
+import LibsignalBinary.Proofs.E2E.Record.Support.Repr
+import LibsignalBinary.Proofs.CodeLayout
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -289,11 +295,11 @@ theorem satisfies_rodata_msgDecryptStr_placed [LibsignalPlacement] {m : Memory} 
   CryptoVerification.lsro_slice_intro hro (off := 0) (BitVec.add_zero _).symm (by rfl_kernel) hP
 
 theorem ls_hook_ok_463 [LibsignalPlacement] {α : Type} {H : LibsignalHooks} {sym : String}
-    {spec : Spec α} (hmem : sym ∈ libsignalSessionExterns := by decide) (h : HookSat H sym spec) :
+    {spec : Spec α} (hmem : sym ∈ libsignalHookedExterns := by decide) (h : HookSat H sym spec) :
     subroutine_ok (lsProg_463 H) (lsmpl.ρ sym) spec := by
-  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem hmem
+  obtain ⟨k, hlt, hk⟩ := List.getElem_of_mem (mem_libsignalSessionExterns_of_hooked hmem)
   exact CryptoVerification.ls_hook_ok (prog := lsProg_463 H) (i := 463) (k := k)
-    (by rw [List.getElem?_eq_getElem hlt, hk]) h
+    (by rw [List.getElem?_eq_getElem hlt, hk]) h (hhooked := hmem)
 
 theorem stringClone_placed_ok [LibsignalPlacement] {A : RustAlloc} {H : LibsignalHooks}
     (hH : PublicApiDecHooksPlaced A H) :
@@ -374,7 +380,7 @@ theorem loadPollPlacedOutAt_some_entails (Scope : SessionRecord (List (BitVec 8)
         ((sp + 0x628#64) ↦ₛ tail) ∗ recordHeap A g rec :=
   loadPollOutAt_some_entails Scope A 0#64 sp rec
 
-def loadPollBranchRestPlaced (Scope : SessionRecord (List (BitVec 8)) → Prop)
+@[expose] def loadPollBranchRestPlaced (Scope : SessionRecord (List (BitVec 8)) → Prop)
     (A : RustAlloc)
     (w0 w1 w2 w3 w4 w5 w6 : BitVec 64) (tail : List (BitVec 8)) :
     Except Unit (Option (SessionRecord (List (BitVec 8)))) → SepProp

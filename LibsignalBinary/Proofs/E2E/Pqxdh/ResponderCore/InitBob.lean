@@ -9,12 +9,11 @@ limitations under the License.
 
 module
 
-public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.Accept
-public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees
-import GeneratedLean.LibsignalSessionCode -- shake: keep
+public import LibsignalBinary.Proofs.E2E.Pqxdh.ResponderCore.Accept -- proof-setup: allow-public-import
+public import LibsignalBinary.Proofs.E2E.Pqxdh.Initiator.SessionStateCallees -- proof-setup: allow-public-import
 import ProofLib.SepLogic.WPp
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 set_option maxHeartbeats 4000000
@@ -45,49 +44,9 @@ local macro "cells_unfold_fast" : tactic =>
     cells, sepConj_emp, sepExists_sepConj_right, bv_sub_add_lit',
     BitVec.add_assoc, BitVec.reduceAdd, BitVec.reduceSub])
 
-
-theorem SepWPp.of_sepWP_frozen_inImage {prog : Program} {img : Obj.Image} {mid ret : BitVec 64}
-    {s : State} {P : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hwp : SepWP prog mid s P (fun sm Pm =>
-      img.FrozenLoaded sm → sm.symtab = img.symtab → SepWPp prog ret sm Pm Q Qp)) :
-    SepWPp prog ret s P Q Qp := by
-  intro R hm hL
-  obtain ⟨sm, hsteps, ⟨_, _, Pm, hmm, hnext⟩ | ⟨_, hoom⟩⟩ := hwp.elim hm hL
-  · obtain ⟨sf, hsteps', hout⟩ :=
-      hnext (hF.of_keepsFrozen hsteps.keepsFrozen) (hsteps.symtab_eq.trans hsym)
-        R hmm (hsteps.codeLoaded hL)
-    exact ⟨sf, hsteps.trans hsteps', hout⟩
-  · exact (not_satisfies_false_sepConj hoom).elim
-
-theorem SepWPp.call_inImage_frame {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hcall : subroutine_ok prog entry (spec.inImage img))
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜φ⌝ ∗ T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗
-      R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q Qp := by
-  refine ProofLib.SepWPp.call_inImage_frame (x := x) (T := T) (F := F)
-    hcall hF hsym hpc hrun hsp hlr hspec hφ hP hexit hpanic
-    (fun sf hpcm hrunm hspm hcsm hFm hsymm =>
-      hnext sf hpcm hrunm hspm (by simpa [State.spAligned, hspm] using hsp) hcsm hFm hsymm)
-    (fun sf R' _ hoom_post => by
-      rw [hoom sf] at hoom_post
-      exact (not_satisfies_false_sepConj hoom_post).elim)
-
 attribute [local arm64_norm] bv_sub_add_lit BitVec.toNat_zero bv_sub_sub_lit bv_add_neg64
 
-def bobHead144Bv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr spqrCap spqrBufPtr :
+@[expose] def bobHead144Bv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr spqrCap spqrBufPtr :
     BitVec 64) : List (BitVec 8) :=
   unpack64 33#64 ++ unpack64 localIkBoxPtr ++ unpack64 33#64 ++
   unpack64 33#64 ++ unpack64 remoteIkBoxPtr ++ unpack64 33#64 ++
@@ -126,7 +85,7 @@ theorem bobHead144_eq_pointsToBytes (ptr : BitVec 64)
   simp only [List.append_assoc, pointsToBytes_append, unpack64_length,
     BitVec.add_assoc, BitVec.reduceAdd, ← pointsTo64_eq_pointsToBytes]
 
-def bobTail96Bv8 (c0 c1 c2 c3 c4 d0 d1 d2 : BitVec 64) : List (BitVec 8) :=
+@[expose] def bobTail96Bv8 (c0 c1 c2 c3 c4 d0 d1 d2 : BitVec 64) : List (BitVec 8) :=
   unpack64 0xffffffffffffffff#64 ++
   unpack64 c0 ++ unpack64 c1 ++ unpack64 c2 ++ unpack64 c3 ++ unpack64 c4 ++
   unpack64 0xffffffffffffffff#64 ++
@@ -157,7 +116,7 @@ theorem bobTail96_eq_pointsToBytes (ptr : BitVec 64)
   simp only [List.append_assoc, pointsToBytes_append, unpack64_length,
     BitVec.add_assoc, BitVec.reduceAdd, ← pointsTo64_eq_pointsToBytes]
 
-def bobSession344Bv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr spqrCap spqrBufPtr
+@[expose] def bobSession344Bv8 (localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr spqrCap spqrBufPtr
     ratchetPubBoxPtr ratchetPrivBoxPtr chainKeyBoxPtr : BitVec 64)
     (pad_f4 : BitVec 32) (c0 c1 c2 c3 c4 d0 d1 d2 : BitVec 64) : List (BitVec 8) :=
   bobHead144Bv8 localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr spqrCap spqrBufPtr ++
@@ -257,39 +216,6 @@ theorem handshakeKeysResultOk104_unpack (p : BitVec 64) (dk : DRKey)
 
 set_option maxHeartbeats 8000000
 
-
-
-theorem SepWPp.call_inImage_frame' {α : Type} {prog : Program} {img : Obj.Image}
-    {ret entry ret_pc : BitVec 64} {spec : Spec α} {x : α} {s : State} {φ : Prop}
-    {P T F : SepProp} {Q Qp : State → SepProp → Prop}
-    (hF : img.FrozenLoaded s) (hsym : s.symtab = img.symtab)
-    (hcall : subroutine_ok prog entry spec)
-    (hpc : s.pc = entry) (hrun : s.status = .Running) (hsp : s.spAligned = true)
-    (hlr : s.readReg64 Reg.lr = ret_pc)
-    (hspec : spec.pre x s = (⌜img.FrozenLoaded s ∧ s.symtab = img.symtab⌝ ∗ ⌜φ⌝ ∗
-      T)) (hφ : φ) (hP : P = T ∗ F)
-    (hexit : ∀ sf code R', sf.status = .Exited code → (sf.mem ⊨ spec.onExit x code s sf ∗
-      R') → False)
-    (hpanic : ∀ sf, sf.status = .Panicked → Qp sf (spec.onPanic x s sf ∗ F))
-    (hnext : ∀ sf : State, sf.pc = ret_pc → sf.status = .Running →
-      sf.sp = s.sp → sf.spAligned = true → CalleeSavedPreserved s sf →
-      img.FrozenLoaded sf → sf.symtab = img.symtab →
-      SepWPp prog ret sf (spec.post x s sf ∗ F) Q Qp)
-    (hoom : ∀ sf, spec.onOom x s sf = ⌜False⌝ := by intro sf; first | rfl | simp only [Spec.inImage]) :
-    SepWPp prog ret s P Q Qp := by
-  have hspec' : spec.pre x s = (⌜(img.FrozenLoaded s ∧ s.symtab = img.symtab) ∧ φ⌝ ∗ T) := by
-    rw [hspec]
-    exact ProofLib.Entails.antisymm
-      (Entails.pure_left fun h1 => Entails.pure_left fun h2 => Entails.pure_right ⟨h1, h2⟩ (Entails.refl T))
-      (Entails.pure_left fun ⟨h1, h2⟩ => Entails.pure_right h1 (Entails.pure_right h2 (Entails.refl T)))
-  refine ProofLib.call_frame_frozen (x := x) (T := T) (F := F)
-    hcall hF hsym hpc hrun hsp hlr hspec' ⟨⟨hF, hsym⟩, hφ⟩ hP hexit hpanic
-    (fun sf hpcm hrunm hspm hcsm hFm hsymm =>
-      hnext sf hpcm hrunm hspm (by simpa [State.spAligned, hspm] using hsp) hcsm hFm hsymm)
-    (fun sf R' _ hoom_post => by
-      rw [hoom sf] at hoom_post
-      exact (not_satisfies_false_sepConj hoom_post).elim)
-
 theorem sepWPp_pure_2 {prog : Program} {ret : BitVec 64} {s : State}
     {A B : SepProp} {φ : Prop} {Q Qp : State → SepProp → Prop}
     (h : φ → SepWPp prog ret s (A ∗ B) Q Qp) :
@@ -328,7 +254,7 @@ structure InitBobCallGhost where
   ratchetKeyPairPtr : BitVec 64
   outPtr : BitVec 64
 
-def bobParamsFieldsAt (argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr : BitVec 64)
+@[expose] def bobParamsFieldsAt (argPtr pqskPtr ctSlicePtr ctBufPtr ratchetKeyPairPtr : BitVec 64)
     (inp : AcceptKeysInput) (ikBPk spkBPk : Bytes) (sameAccountByte : BitVec 8) : SepProp :=
   (argPtr ↦ₛ bytesToBv8 ikBPk) ∗
   pqxdhAcceptOptFieldsAt argPtr pqskPtr ctSlicePtr ctBufPtr inp ∗
@@ -341,67 +267,6 @@ abbrev initBobErrAt (outPtr : BitVec 64) : SepProp :=
   (∃∗ w1 : BitVec 64, ⌜w1 ≠ pollReadyOkWord ∧ w1 ≠ 0xfffffffffffffffd#64⌝ ∗ ((outPtr +
     8#64) ↦₆₄ w1)) ∗
   memRegion (outPtr + 16#64) 328
-
-def initializeBobSessionInnerSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image) :
-    Spec InitBobCallGhost where
-  pre := fun (g : InitBobCallGhost) s =>
-    ⌜s.readReg64 .x0 = g.argPtr ∧
-      s.readReg64 .x1 = g.ratchetKeyPairPtr ∧
-      s.readReg64 .x8 = g.outPtr ∧
-      g.inp.trustedPeer = true ∧
-      g.inp.replayOk = true ∧
-      g.inp.hdr.opkId?.isSome = g.inp.opkBSk?.isSome ∧
-      WellSizedAcceptKeysInput g.inp ∧
-      g.ikBPk.length = 32 ∧
-      g.spkBPk.length = 32⌝ ∗
-    bobParamsFieldsAt g.argPtr g.pqskPtr g.ctSlicePtr g.ctBufPtr g.ratchetKeyPairPtr
-      g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
-    memRegion g.outPtr 344 ∗
-    (logFilterAddr img ↦₆₄ 0#64) ∗
-    stackAt s.sp (768 + pqxdhEntryStack) ∗
-    A.pool
-  post := fun (g : InitBobCallGhost) s0 sf =>
-    ⌜sf.trace = s0.trace⌝ ∗
-    bobParamsFieldsAt g.argPtr g.pqskPtr g.ctSlicePtr g.ctBufPtr g.ratchetKeyPairPtr
-      g.inp g.ikBPk g.spkBPk g.sameAccountByte ∗
-    (match Model.acceptKeys P g.inp with
-     | some drKey =>
-       ∃∗ localIkBoxPtr : BitVec 64,
-       ∃∗ remoteIkBoxPtr : BitVec 64,
-       ∃∗ rootKeyBoxPtr : BitVec 64,
-       ∃∗ baseKeyBoxPtr : BitVec 64,
-       ∃∗ ratchetPubBoxPtr : BitVec 64,
-       ∃∗ ratchetPrivBoxPtr : BitVec 64,
-       ∃∗ chainKeyBoxPtr : BitVec 64,
-       ∃∗ pad_f4 : BitVec 32,
-       ∃∗ c0 : BitVec 64, ∃∗ c1 : BitVec 64, ∃∗ c2 : BitVec 64, ∃∗ c3 : BitVec 64, ∃∗
-       c4 : BitVec 64,
-       ∃∗ d0 : BitVec 64, ∃∗ d1 : BitVec 64, ∃∗ d2 : BitVec 64,
-         ⌜localIkBoxPtr ≠ 0 ∧ remoteIkBoxPtr ≠ 0 ∧ rootKeyBoxPtr ≠ 0 ∧ baseKeyBoxPtr ≠ 0 ∧
-           ratchetPubBoxPtr ≠ 0 ∧ ratchetPrivBoxPtr ≠ 0 ∧ chainKeyBoxPtr ≠ 0⌝ ∗
-         (localIkBoxPtr ↦ₛ bytesToBv8 (Model.encodeEC g.ikBPk)) ∗ A.live localIkBoxPtr 33 1 ∗
-         (remoteIkBoxPtr ↦ₛ bytesToBv8 (Model.encodeEC g.inp.hdr.ikAPk)) ∗
-         A.live remoteIkBoxPtr 33 1 ∗
-         (rootKeyBoxPtr ↦ₛ bytesToBv8 drKey.rootKey) ∗ A.live rootKeyBoxPtr 32 1 ∗
-         (baseKeyBoxPtr ↦ₛ bytesToBv8 (Model.encodeEC g.inp.hdr.ekAPk)) ∗
-         A.live baseKeyBoxPtr 33 1 ∗
-         (ratchetPubBoxPtr ↦ₛ bytesToBv8 (Model.encodeEC g.spkBPk)) ∗ A.live ratchetPubBoxPtr 33 1 ∗
-         (ratchetPrivBoxPtr ↦ₛ bytesToBv8 g.inp.spkBSk) ∗ A.live ratchetPrivBoxPtr 32 1 ∗
-         (chainKeyBoxPtr ↦ₛ bytesToBv8 drKey.chainKey) ∗ A.live chainKeyBoxPtr 32 1 ∗
-         (g.outPtr ↦ₛ bobSession344Bv8 localIkBoxPtr remoteIkBoxPtr rootKeyBoxPtr baseKeyBoxPtr
-           0#64 1#64 ratchetPubBoxPtr ratchetPrivBoxPtr chainKeyBoxPtr
-           pad_f4 c0 c1 c2 c3 c4 d0 d1 d2)
-     | none =>
-       initBobErrAt g.outPtr ∗
-       anyHeap) ∗
-    (logFilterAddr img ↦₆₄ 0#64) ∗
-    stackAt s0.sp (768 + pqxdhEntryStack) ∗
-    A.pool
-  onPanic := rustPanicOnOom img
-
-def initializeBobSessionSpec (P : Primitives) (A : RustAlloc) (img : Obj.Image) :
-    Spec InitBobCallGhost :=
-  (initializeBobSessionInnerSpec P A img).inImage img
 
 theorem stackAt_initBob_entry (sp : BitVec 64) :
     stackAt sp (768 + pqxdhEntryStack) =
@@ -497,7 +362,6 @@ theorem initBobErrAt_merge (outPtr w1 w2 w3 w4 w5 w6 : BitVec 64)
   rw [hrearr]
   exact sepConj_mono hw1_ent (sepConj_mono_left hc5)
 
-
 theorem cells6_sub764_merge (sp v0 v1 v2 v3 v4 v5 : BitVec 64) :
     ((sp - 764#64) ↦₆₄ v0) ∗ ((sp - 756#64) ↦₆₄ v1) ∗ ((sp - 748#64) ↦₆₄ v2) ∗
     ((sp - 740#64) ↦₆₄ v3) ∗ ((sp - 732#64) ↦₆₄ v4) ∗ ((sp - 724#64) ↦₆₄ v5) ⊢
@@ -558,8 +422,6 @@ theorem cells12_sub96_merge (sp v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 : BitVec 6
         (Entails.sepExists_right v9 (Entails.sepExists_right v10 (Entails.sepExists_right v11
         (Entails.refl _))))))))))))
 
-
-
 theorem memRegion_280_some_split (sp : BitVec 64) :
     memRegion (sp - 768#64) 280 =
       cells (sp - 768#64) 12 ∗
@@ -606,8 +468,6 @@ private theorem cond_ne_subs32_0_1 :
 private theorem cond_ne_subs64_0_1 :
     ConditionHolds CondCode.NE (subsPState64 0#64 1#64) = true := by
   simp only [ConditionHolds, subsPState64]; decide
-
-
 
 theorem stackAt_entry_some_split (sp : BitVec 64) :
     stackAt sp pqxdhEntryStack =
@@ -751,7 +611,6 @@ theorem sub488_to_sessionState_frame (sp : BitVec 64)
   rw [hrearr]
   exact sepConj_mono_left h104
 
-
 theorem post100_pack (ptr : BitVec 64) (pad_f4 : BitVec 32)
     (c0 c1 c2 c3 c4 d0 d1 d2 : BitVec 64) :
     ((ptr + 0xf4#64) ↦₃₂ pad_f4) ∗
@@ -775,7 +634,7 @@ theorem post100_pack (ptr : BitVec 64) (pad_f4 : BitVec 32)
       ← pointsTo32_eq_pointsToBytes (ptr + 0xf4#64) pad_f4,
       ← h96]
 
-def pqxdhAcceptRestAt (basePtr pqskPtr ctSlicePtr ctBufPtr : BitVec 64) (inp : AcceptKeysInput) :
+@[expose] def pqxdhAcceptRestAt (basePtr pqskPtr ctSlicePtr ctBufPtr : BitVec 64) (inp : AcceptKeysInput) :
     SepProp :=
   ((basePtr + 32#64) ↦ₛ bytesToBv8 inp.ikBSk) ∗
   ((basePtr + 96#64) ↦ₛ bytesToBv8 inp.spkBSk) ∗
@@ -944,9 +803,5 @@ theorem sub768_some_post_merge (sp : BitVec 64)
   rw [hrearr]
   exact sepConj_mono hc12 (sepConj_mono hw1 (sepConj_mono_right (sepConj_mono hc8
     (sepConj_mono hw2 (sepConj_mono_right (sepConj_mono_left hc4))))))
-
-
-attribute [local simp, local arm64_norm, local wp_norm, local arm64_norm ↓, local wp_norm ↓]
-  CryptoVerification.libsignalSessionCode_fnOff_0x21c80
 
 end CryptoVerification.E2E.Pqxdh.ResponderCore

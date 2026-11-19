@@ -19,7 +19,7 @@ Defines the shallow `OracleComp` reference game `hop2Game` and the PRG/PRF reduc
 `hop2PrgRedK` and `hop2PrfRedK` for the 9 root-KDF hybrids of Hop 2.
 -/
 
-@[expose] public section
+public section
 
 open OracleComp OracleSpec ENNReal
 
@@ -62,10 +62,10 @@ section Hop2
 
 variable {Pt : Type} [DecidableEq Pt] [Zero Pt] {ℓ : ℕ} {PQC : Type} [SampleableType PQC]
 
-def hop2Unif : Hop2Comp Pt (BitVec 256) :=
+@[expose] def hop2Unif : Hop2Comp Pt (BitVec 256) :=
   (liftM ($ᵗ BitVec 256 : ProbComp (BitVec 256)) : Hop2Comp Pt (BitVec 256))
 
-def hop2Lift {α : Type}
+@[expose] def hop2Lift {α : Type}
     (m : StateT (SM.GameState (GhostState Bytes) (CBC.Plain ℓ) Bytes) ProbComp α) :
     Hop2M Pt ℓ α :=
   StateT.mk fun st => do
@@ -74,7 +74,7 @@ def hop2Lift {α : Type}
     return (r.1, (r.2, st.2))
 
 /-- Look up or lazily sample the off-chain PRK for table `t` at `Q`. -/
-def hop2Lazy (t : ℕ) (Q : Pt) : Hop2M Pt ℓ (BitVec 256) := do
+@[expose] def hop2Lazy (t : ℕ) (Q : Pt) : Hop2M Pt ℓ (BitVec 256) := do
   let st ← get
   match st.2.lazy.lookup (t, Q) with
   | some u => return u
@@ -84,7 +84,7 @@ def hop2Lazy (t : ℕ) (Q : Pt) : Hop2M Pt ℓ (BitVec 256) := do
     return u
 
 /-- Receiving half of a hooked DH step at index `idx` and DH output `Q`. -/
-def hop2RecvHalf (P : Params Bytes PQC) (h : Hop2Hyb Pt) (idx : Option ℕ) (rk : Ratchet.RootKey)
+@[expose] def hop2RecvHalf (P : Params Bytes PQC) (h : Hop2Hyb Pt) (idx : Option ℕ) (rk : Ratchet.RootKey)
     (their : PublicKey) (our : PrivateKey) (Q : Pt) :
     Hop2M Pt ℓ (Option (Option ℕ × Ratchet.RootKey × BitVec 256)) := do
   match idx with
@@ -107,7 +107,7 @@ def hop2RecvHalf (P : Params Bytes PQC) (h : Hop2Hyb Pt) (idx : Option ℕ) (rk 
       return some (none, rk', ck)
 
 /-- Sending half of a hooked DH step at index `idx` and DH output `Q'`. -/
-def hop2SendHalf (P : Params Bytes PQC) (h : Hop2Hyb Pt) (idx : Option ℕ) (rk : Ratchet.RootKey)
+@[expose] def hop2SendHalf (P : Params Bytes PQC) (h : Hop2Hyb Pt) (idx : Option ℕ) (rk : Ratchet.RootKey)
     (their : PublicKey) (our' : PrivateKey) (Q' : Pt) :
     Hop2Comp Pt
       (Option (Option ℕ × Ratchet.RootKey × BitVec 256 × Option ((ℕ × Pt) × BitVec 256))) := do
@@ -129,7 +129,7 @@ def hop2SendHalf (P : Params Bytes PQC) (h : Hop2Hyb Pt) (idx : Option ℕ) (rk 
       return some (none, rk', ck, none)
 
 /-- Hooked DH ratchet step and message decryption when no receiver chain matches `msg.senderRatchetKey`. -/
-def hop2DH (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
+@[expose] def hop2DH (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (h : Hop2Hyb Pt) (idx : Option ℕ) (coins : BitVec 256)
     (g : GhostState Bytes) (msg : SignalMessage) (rc : BitVec 256) : Hop2M Pt ℓ (Hop2Out Pt ℓ) := do
   match decT msg.senderRatchetKey with
@@ -164,7 +164,7 @@ def hop2DH (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → Pu
             g.epoch + 1, msg.counter.toNat + 1, padOrTruncatePlain ℓ m), some ⟨idx2, rc, pend⟩)
 
 /-- Hooked receive dispatching new-chain receives on the hybrid chain to `hop2DH`. -/
-def hop2Recv (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
+@[expose] def hop2Recv (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (h : Hop2Hyb Pt) (g : GhostState Bytes) (c : Bytes)
     (rc : BitVec 256) : Hop2M Pt ℓ (Hop2Out Pt ℓ) := do
   match SignalMessage.tryFrom P.codec c with
@@ -181,13 +181,13 @@ def hop2Recv (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → 
     | none => return ((sessionSchemeU P ℓ).receive g c rc).map fun r => (r, none)
 
 /-- Bad-event predicate: Alice holds her epoch-0 receiver chain and parses a message with sender key `pub s`. -/
-def hop2BadAt (P : Params Bytes PQC) (s : BitVec 256) (g : GhostState Bytes) (c : Bytes) : Bool :=
+@[expose] def hop2BadAt (P : Params Bytes PQC) (s : BitVec 256) (g : GhostState Bytes) (c : Bytes) : Bool :=
   g.party == .A && g.chainEpochs.contains 0 &&
     match SignalMessage.tryFrom P.codec c with
     | .error _ => false
     | .ok msg => msg.senderRatchetKey == (KeyPair.generate P.C s).publicKey
 
-def hop2Commit (aux : Hop2Aux Pt) (Q : Party) : Option (Hop2Upd Pt) → Hop2Aux Pt
+@[expose] def hop2Commit (aux : Hop2Aux Pt) (Q : Party) : Option (Hop2Upd Pt) → Hop2Aux Pt
   | none => aux
   | some u =>
     { aux with
@@ -195,7 +195,7 @@ def hop2Commit (aux : Hop2Aux Pt) (Q : Party) : Option (Hop2Upd Pt) → Hop2Aux 
       coins := Function.update aux.coins Q u.coins
       made := match u.made with | some e => e :: aux.made | none => aux.made }
 
-def hop2Deliver (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
+@[expose] def hop2Deliver (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (s : BitVec 256) (h : Hop2Hyb Pt) :
     QueryImpl ((Party × Bytes) →ₒ Option (SM.RecvResult (CBC.Plain ℓ))) (Hop2M Pt ℓ) :=
   fun ⟨Q, c⟩ => do
@@ -213,7 +213,7 @@ def hop2Deliver (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt �
           { hop2Commit st2.2 Q u with bad := st2.2.bad || hop2BadAt P s (st.1.st Q) c })
         return some (.accepted t' i' (if st2.1.chall.contains r.pos then none else some m'))
 
-def hop2Inject (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
+@[expose] def hop2Inject (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) (h : Hop2Hyb Pt) :
     QueryImpl ((Party × Bytes) →ₒ Option (SM.RecvResult (CBC.Plain ℓ))) (Hop2M Pt ℓ) :=
   fun ⟨Q, c⟩ => do
@@ -238,7 +238,7 @@ def hop2Inject (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt �
         set ({ st2.1 with win := true }, aux)
         return some .rejected
 
-def hop2Impl (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
+@[expose] def hop2Impl (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) (h : Hop2Hyb Pt) :
     QueryImpl (unifSpec + SM.spec (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) (Hop2M Pt ℓ)
   | .inl u => StateT.lift (query (spec := unifSpec + prfSpec Pt (BitVec 256)) (.inl u))
@@ -251,7 +251,7 @@ def hop2Impl (P : Params Bytes PQC) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → 
   | .inr (.inr y) => hop2Lift (SM.corrR (configRefuseEarlyBobCorr decT encT) y)
 
 /-- Hybrid game `G(k)` for `A` in Hop 2's uniform-SPK world, returning the bad-event flag. -/
-def hop2Game (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
+@[expose] def hop2Game (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encT : Pt → PublicKey)
     (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) (h : Hop2Hyb Pt)
     (A : SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) : Hop2Comp Pt Bool := do
   let b ← (liftM ($ᵗ Bool : ProbComp Bool) : Hop2Comp Pt Bool)
@@ -278,7 +278,7 @@ def hop2Game (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (en
   return fin.2.bad
 
 /-- Hop 2 PRG reduction against `expandPRG` at hybrid `k`. -/
-def hop2PrgRedK (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
+@[expose] def hop2PrgRedK (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) (encPt : Pt → Bytes)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) (k : ℕ)
     (A : SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) :
     PRGScheme.PRGAdversary (Ratchet.RootKey × BitVec 256) := fun rc =>
@@ -291,7 +291,7 @@ def hop2PrgRedK (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt) 
   simulateQ impl (hop2Game P ℓ Dh encT decT qep s ⟨k, rc, step⟩ A)
 
 /-- Hop 2 PRF reduction against `extractPRF` at hybrid `k`. -/
-def hop2PrfRedK (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
+@[expose] def hop2PrfRedK (P : Params Bytes PQC) (ℓ : ℕ) (Dh : DHFun (BitVec 256) Pt)
     (encT : Pt → PublicKey) (decT : PublicKey → Option Pt) (qep : ℕ) (s : BitVec 256) (k : ℕ)
     (A : SM.Adversary (GhostState Bytes) (CBC.Plain ℓ) PQC Bytes) :
     MACScheme.PRFAdversary Pt (BitVec 256) := (do

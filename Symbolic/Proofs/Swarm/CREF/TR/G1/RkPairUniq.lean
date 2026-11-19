@@ -18,10 +18,9 @@ import DY.Actions.PersistentLocalState
 import DY.Actions.PersistentGlobalState
 import DY.Actions.ProtocolEvent
 import DY.Actions.Random
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR
-public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTR -- proof-setup: allow-public-import
+public import Symbolic.Proofs.Swarm.CREF.TR.G1.MacKdfSafeTRStrong -- proof-setup: allow-public-import
 import Mathlib.MeasureTheory.Integral.Bochner.Basic
-import ProofLib.Lemmas
 import Symbolic.Proofs.SpecLemmas.Model.EquationalTheory.TrWireMsg
 import Symbolic.Proofs.SpecLemmas.Refinement.Composed.OpkSent
 import Symbolic.Proofs.Swarm.COMPOSED.CompHsClass
@@ -51,7 +50,7 @@ key in its parent `createChain`, and any two stored states sharing `dhs` agree o
 participant (`trStateStoredAt_rk_eq_of_dhs_eq`, `stored_dhs_ne_spkSk`, `stored_peer_lt`).
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -87,7 +86,7 @@ theorem randTerm_timestamp_inj {t₁ t₂ n₁ n₂ : Nat}
   exact ht.symm
 
 /-- Every DH public key timestamp occurring as `X25519.normalizeX25519Key pk = dhPk (randTerm c 32)` is `< t`. -/
-def PeerLtAt (t : Nat) (pk : DY.Bytes) : Prop :=
+@[expose] def PeerLtAt (t : Nat) (pk : DY.Bytes) : Prop :=
   ∀ c : Nat, X25519.normalizeX25519Key pk = DiffieHellman.dhPk (randTerm c 32) → c < t
 
 theorem peerLtAt_mono {t₁ t₂ : Nat} {pk : DY.Bytes} (hle : t₁ ≤ t₂) (h : PeerLtAt t₁ pk) :

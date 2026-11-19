@@ -9,16 +9,18 @@ limitations under the License.
 
 module
 
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3d
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5D
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC5
-public import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6b
-public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1
-public import Computational.Proofs.SignalPqxdh.Security.Reductions
+import Computational.Proofs.SignalPqxdh.Security.AuthSubHops1to3H
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M3d -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5D -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC5
+import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6b
+public import Computational.Proofs.SignalPqxdh.Security.AuthSubHops4to5M1 -- proof-setup: allow-public-import
+import Computational.Proofs.SignalPqxdh.Security.Reductions
 import Computational.Proofs.SignalPqxdh.Security.AuthGapDhHopC6c5
 import Computational.Proofs.SignalPqxdh.Security.AuthPrfHmac
 import Computational.Proofs.SpecLemmas.Assumptions.KemCorrect
+public import Computational.Proofs.SignalPqxdh.Security.AuthHopInterface -- proof-setup: allow-public-import
+public import Computational.Proofs.SignalPqxdh.Security.ReductionsAuthAead -- proof-setup: allow-public-import
 
 /-!
 # PQXDH authentication sub-hops 4–5 bundle assembly
@@ -27,7 +29,7 @@ Packages the multi-key AEAD integrity reduction `aeadMuIntReductionAuth` and the
 `G3.8 → G5` hop bound into `authSubHops4to5Bundle`.
 -/
 
-@[expose] public section
+public section
 
 set_option autoImplicit false
 
@@ -38,7 +40,7 @@ open scoped ENNReal
 namespace Proofs.SignalPqxdh.Security
 
 /-- Assembles `AuthSubHops4to5Bundle S` from `aeadMuIntReductionAuth` and `auth_hop_G3_8_split_g5_boolBias_le_mu`. -/
-def authSubHops4to5Bundle (S : Setup) : AuthSubHops4to5Bundle S :=
+@[expose] def authSubHops4to5Bundle (S : Setup) : AuthSubHops4to5Bundle S :=
   authSubHops4to5Bundle_of_int S
     (aeadMuIntReductionAuth S)
     (aeadMuIntReductionAuth_queries S)
